@@ -139,6 +139,14 @@ if [ -f scripts/verify-allowlist.txt ]; then
   grep -v -E '^[[:space:]]*(#|$)' scripts/verify-allowlist.txt >"$allow" || true
 fi
 if [ -s "$allow" ]; then
+  # An invalid extended regex makes grep -f exit 2 with no output, which would hide every error
+  # below. Compile the entries once against empty input: 0 or 1 is fine, anything else is not.
+  allow_rc=0
+  grep -E -f "$allow" /dev/null >/dev/null || allow_rc=$?
+  if [ "$allow_rc" -gt 1 ]; then
+    rm -f "$allow"
+    die 1 "scripts/verify-allowlist.txt contains an invalid extended regex (grep exit $allow_rc)"
+  fi
   errors="$(grep -E "$PATTERN" "$log" | grep -v -E -f "$allow" || true)"
 else
   errors="$(grep -E "$PATTERN" "$log" || true)"

@@ -81,7 +81,8 @@ Godot 4.7.2 (macOS arm64) found facts that shape the setup:
    when `results.xml` is missing or reports 0 tests. gdUnit4's exit codes are passed through:
    100 for failures, 101 for orphans, 105 for script errors. Upgrade only through a new ADR.
 8. **Silent-failure policy.** Every Godot run in scripts and CI is log-scanned with
-   `SCRIPT ERROR|^ERROR:|Parse Error` and `scripts/verify-allowlist.txt`. Parse errors anywhere in
+   `SCRIPT ERROR|^ERROR:|Parse Error` and `scripts/verify-allowlist.txt`. An invalid regex in the
+   allowlist fails the run (grep exits 2 on it) instead of silently turning the scan off. Parse errors anywhere in
    `game/` and `scenes/` are caught by a test that loads every script. A script must also check
    the artifact it expects (results.xml, export files). CI fails when a run leaves the working
    tree changed (`git status --porcelain` not empty), which catches a forgotten `.uid` or

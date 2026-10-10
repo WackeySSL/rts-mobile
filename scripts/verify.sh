@@ -59,7 +59,19 @@ ALLOW="$(mktemp -t allow.XXXXXX)"
 if [ -f scripts/verify-allowlist.txt ]; then
   grep -v -E '^[[:space:]]*(#|$)' scripts/verify-allowlist.txt > "$ALLOW" || true
 fi
+ALLOW_VALID=1
 if [ -s "$ALLOW" ]; then
+  # An invalid extended regex makes grep -f exit 2 with no output, which would hide every error
+  # below. Compile the entries once against empty input: 0 or 1 is fine, anything else is not.
+  ALLOW_RC=0
+  grep -E -f "$ALLOW" /dev/null >/dev/null || ALLOW_RC=$?
+  if [ "$ALLOW_RC" -gt 1 ]; then
+    ALLOW_VALID=0
+    echo "scripts/verify-allowlist.txt contains an invalid extended regex (grep exit $ALLOW_RC)"
+    FAILED+=("invalid regex in scripts/verify-allowlist.txt")
+  fi
+fi
+if [ -s "$ALLOW" ] && [ "$ALLOW_VALID" -eq 1 ]; then
   ERRORS="$(grep -E "$PATTERN" "$LOG" | grep -v -E -f "$ALLOW" || true)"
 else
   ERRORS="$(grep -E "$PATTERN" "$LOG" || true)"
