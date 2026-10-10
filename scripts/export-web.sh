@@ -9,9 +9,12 @@
 # Env:   GODOT=<binary> (default: godot). Must be version 4.7.2.stable.
 # Needs: the web export templates (version.txt, web_nothreads_debug.zip, web_nothreads_release.zip)
 #        in the Godot export_templates/4.7.2.stable folder of the platform.
+#        docs/licenses/godot-<version>/{LICENSE,COPYRIGHT}.txt, the engine's licence notices,
+#        which the script writes to <dir>/THIRD_PARTY_LICENSES.txt next to the build.
 # Exit:  0 ok
 #        1 export failed, an error in this run's log, an artifact missing or empty, wasm of
-#          50 MiB or more, threads on, or the dev_menu custom feature missing from the pack
+#          50 MiB or more, threads on, the dev_menu custom feature missing from the pack, or
+#          the licence notice sources or <dir>/THIRD_PARTY_LICENSES.txt missing or empty
 #        2 usage error, or --out inside the project but not under build/
 #        3 Godot missing or not 4.7.2.stable (also: the strings tool is missing)
 #        4 export templates missing (the message names the folder and files)
@@ -25,6 +28,11 @@ GODOT_VERSION="4.7.2.stable"
 PATTERN='SCRIPT ERROR|^ERROR:|Parse Error'
 WASM_LIMIT=52428800 # 50 MiB, GitHub warns about pushed files from here on
 TEMPLATE_FILES="version.txt web_nothreads_debug.zip web_nothreads_release.zip"
+# The build ships the Godot engine, whose MIT licence and the licences of its bundled components
+# require their notices to travel with the binary. The upstream files of the pinned tag are
+# committed here and written next to the build.
+LICENSE_DIR="docs/licenses/godot-${GODOT_VERSION%.stable}"
+NOTICE_NAME="THIRD_PARTY_LICENSES.txt"
 
 die() {
   local code="$1"
@@ -122,7 +130,7 @@ fi
 # files. Stale artifacts are removed so that an old build cannot pass the checks below.
 mkdir -p "$out_abs" "$ROOT/build"
 : >"$ROOT/build/.gdignore"
-rm -f "$out_abs"/index.* "$out_abs"/build.txt
+rm -f "$out_abs"/index.* "$out_abs"/build.txt "$out_abs/$NOTICE_NAME"
 
 # (4) Export. The log of this run only is scanned afterwards.
 log="$(mktemp -t export-web.XXXXXX)"
@@ -157,8 +165,39 @@ if [ -n "$errors" ]; then
   die 1 "Godot logged errors during the export (log: $log)"
 fi
 
+# (4b) Licence notice: a short header, then Godot's LICENSE.txt and COPYRIGHT.txt unchanged.
+# COPYRIGHT.txt lists the bundled components (FreeType, HarfBuzz, Open Sans, ...) and the
+# CC BY 4.0 notice for the Godot logo that the default boot splash shows.
+for source in LICENSE.txt COPYRIGHT.txt; do
+  if [ ! -s "$LICENSE_DIR/$source" ]; then
+    die 1 "licence notice source $LICENSE_DIR/$source is missing or empty"
+  fi
+done
+godot_tag="${GODOT_VERSION%.stable}-stable"
+{
+  printf '%s\n' "rts-mobile web build: third-party licences"
+  printf '%s\n' "============================================"
+  printf '\n'
+  printf '%s\n' "rts-mobile's own code is licensed under the MIT licence: see the file LICENSE in the"
+  printf '%s\n' "source repository."
+  printf '\n'
+  printf '%s\n' "This build runs on the Godot Engine ${godot_tag} (https://godotengine.org). Godot is"
+  printf '%s\n' "licensed under the MIT licence and bundles third-party components under their own"
+  printf '%s\n' "licences. Godot's LICENSE.txt and COPYRIGHT.txt for tag ${godot_tag} follow unchanged."
+  printf '\n'
+  printf '%s\n' "--------------------------------------------------------------------------------"
+  printf '%s\n' "Godot Engine ${godot_tag}: LICENSE.txt"
+  printf '%s\n' "--------------------------------------------------------------------------------"
+  cat "$LICENSE_DIR/LICENSE.txt"
+  printf '\n'
+  printf '%s\n' "--------------------------------------------------------------------------------"
+  printf '%s\n' "Godot Engine ${godot_tag}: COPYRIGHT.txt"
+  printf '%s\n' "--------------------------------------------------------------------------------"
+  cat "$LICENSE_DIR/COPYRIGHT.txt"
+} >"$out_abs/$NOTICE_NAME"
+
 # (5) Artifacts.
-for name in index.html index.js index.wasm index.pck; do
+for name in index.html index.js index.wasm index.pck "$NOTICE_NAME"; do
   if [ ! -s "$out_abs/$name" ]; then
     die 1 "$out/$name is missing or empty (log: $log)"
   fi
