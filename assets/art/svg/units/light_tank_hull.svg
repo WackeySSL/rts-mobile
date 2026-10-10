@@ -1,0 +1,50 @@
+<!-- Light tank, hull layer: faces east, drawn first, holds the ground shadow of the whole vehicle. -->
+<!-- Silhouette: an H on its side, two long round-ended track pods joined by a flat deck that stops short of the pod ends at both rear and front. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- ground shadow, offset (4,4), flattened as one group -->
+  <g transform="translate(4 4)" opacity="0.25" fill="#000000">
+    <rect x="8" y="24" width="102" height="22" rx="9"/>
+    <rect x="8" y="82" width="102" height="22" rx="9"/>
+    <polygon points="20,46 92,46 102,55 102,73 92,82 20,82"/>
+  </g>
+  <!-- track pods -->
+  <g fill="#5B6670" stroke="#1C2127" stroke-width="3" stroke-linejoin="round">
+    <rect x="8" y="24" width="102" height="22" rx="9"/>
+    <rect x="8" y="82" width="102" height="22" rx="9"/>
+  </g>
+  <!-- tread bars -->
+  <g stroke="#1C2127" stroke-width="1.5" stroke-linecap="round">
+    <line x1="16" y1="28" x2="16" y2="42"/>
+    <line x1="26" y1="28" x2="26" y2="42"/>
+    <line x1="36" y1="28" x2="36" y2="42"/>
+    <line x1="46" y1="28" x2="46" y2="42"/>
+    <line x1="56" y1="28" x2="56" y2="42"/>
+    <line x1="66" y1="28" x2="66" y2="42"/>
+    <line x1="76" y1="28" x2="76" y2="42"/>
+    <line x1="86" y1="28" x2="86" y2="42"/>
+    <line x1="96" y1="28" x2="96" y2="42"/>
+    <line x1="16" y1="86" x2="16" y2="100"/>
+    <line x1="26" y1="86" x2="26" y2="100"/>
+    <line x1="36" y1="86" x2="36" y2="100"/>
+    <line x1="46" y1="86" x2="46" y2="100"/>
+    <line x1="56" y1="86" x2="56" y2="100"/>
+    <line x1="66" y1="86" x2="66" y2="100"/>
+    <line x1="76" y1="86" x2="76" y2="100"/>
+    <line x1="86" y1="86" x2="86" y2="100"/>
+    <line x1="96" y1="86" x2="96" y2="100"/>
+  </g>
+  <!-- highlight on the top edge of each pod -->
+  <g stroke="#A9B4BE" stroke-width="2" stroke-linecap="round">
+    <line x1="16" y1="26.5" x2="100" y2="26.5"/>
+    <line x1="16" y1="84.5" x2="100" y2="84.5"/>
+  </g>
+  <!-- hull deck: the lowest plane, so the darkest olive -->
+  <polygon points="20,46 92,46 102,55 102,73 92,82 20,82" fill="#4E5A3A" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <!-- light edge on the top and rear sides -->
+  <polyline points="23,79 23,49 91,49" fill="none" stroke="#6B7A4F" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <polyline points="23.5,78 23.5,49.5 90,49.5" fill="none" stroke="#8C9A6B" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- front plate: upper facet lit, lower facet in shade, ridge between -->
+  <polygon points="92,46 102,55 102,64 92,64" fill="#6B7A4F" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round"/>
+  <polygon points="92,64 102,64 102,73 92,82" fill="#4E5A3A" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round"/>
+  <line x1="94" y1="48.5" x2="100.5" y2="54.5" stroke="#8C9A6B" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

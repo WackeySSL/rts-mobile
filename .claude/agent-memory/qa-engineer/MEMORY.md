@@ -1,0 +1,1 @@
+- [Godot silent-failure patterns](godot-silent-failure-patterns.md) — exit-0 traps, 64x64 headless window, push_error scan, SIGPIPE, zsh quirks

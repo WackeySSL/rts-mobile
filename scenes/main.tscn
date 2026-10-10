@@ -1,0 +1,42 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://game/view/TestMapView.gd" id="1_map"]
+[ext_resource type="Script" path="res://game/view/camera_pan.gd" id="2_cam"]
+[ext_resource type="Script" path="res://game/ui/dev_menu_button.gd" id="3_dev"]
+
+[node name="Main" type="Node2D"]
+
+[node name="TestMapView" type="Node2D" parent="."]
+script = ExtResource("1_map")
+size_tiles = Vector2i(32, 32)
+tile_px = 64
+tone_a = Color(0.36862746, 0.49019608, 0.2901961, 1)
+tone_b = Color(0.43529412, 0.56078434, 0.34117648, 1)
+grid_color = Color(0, 0, 0, 0.2)
+grid_width_px = 1.0
+
+[node name="Camera" type="Camera2D" parent="." node_paths=PackedStringArray("map_view")]
+script = ExtResource("2_cam")
+map_view = NodePath("../TestMapView")
+
+[node name="Hud" type="CanvasLayer" parent="."]
+
+[node name="Margin" type="MarginContainer" parent="Hud"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="DevButton" type="Button" parent="Hud/Margin"]
+custom_minimum_size = Vector2(120, 120)
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 40
+text = "Dev"
+script = ExtResource("3_dev")

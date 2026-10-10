@@ -1,0 +1,53 @@
+name: Preview sweep
+
+# Reconciles gh-pages with the PR list: removes every pr-<n>/ folder whose PR is not open and marks
+# its sticky comment as removed. preview.yml removes a folder when its PR closes, but that run never
+# starts for a PR closed with a merge conflict (GitHub starts no pull_request run then), and a failed
+# or cancelled cleanup is not repeated. Without this sweep those folders (about 40 MB each) would
+# stay for good against the 1 GB Pages limit.
+# Scheduled runs always use the workflow and scripts of the default branch. GitHub disables
+# scheduled workflows after 60 days without repository activity; run it by hand to re-enable it.
+on:
+  schedule:
+    - cron: "23 3 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only list the folders that would be removed"
+        type: boolean
+        default: false
+
+permissions: {}
+
+# One sweep at a time. Overlap with a close-triggered cleanup in preview.yml is safe: both push
+# through the retry loop in pages-publish.sh, and removing an absent folder is a no-op.
+concurrency:
+  group: preview-sweep
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  sweep:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write # push to gh-pages
+      pull-requests: write # read PR state, update the sticky comment
+      pages: write # request a Pages build so the removal goes live
+    steps:
+      # Only trusted code from the default branch runs here; no PR code is checked out.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: scripts/ci
+
+      # Inputs reach the script only through env, never through ${{ }} inside run:.
+      - name: Remove pr-<n>/ folders of PRs that are not open
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: bash scripts/ci/pages-publish.sh sweep
