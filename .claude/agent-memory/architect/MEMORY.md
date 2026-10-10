@@ -1,2 +1,4 @@
 - [Phase 0 decisions](project_phase0_decisions.md) — DetRng/DetRandom naming, game/core, 120 px dev buttons, docs issue blocks Phase 2
 - [Godot 4.7.2 pitfalls](pitfalls_godot_472.md) — camera limits, push_error scan, export dir, version fields, pck feature check, clean tree
+- [Phase 1 decisions](project_phase1_decisions.md) — ADRs 0003-0005: sim v0 pull-forward, gestures/UiScale, Android APK CI, two-lane PR plan
+- [Phase 1 research facts](pitfalls_phase1_research.md) — push_input coords, web DPI, Android export needs, no SDK in cloud sessions
