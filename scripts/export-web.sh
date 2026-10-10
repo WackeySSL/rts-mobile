@@ -155,6 +155,11 @@ if [ -s "$allow" ]; then
     rm -f "$allow"
     die 1 "scripts/verify-allowlist.txt contains an invalid extended regex (grep exit $allow_rc)"
   fi
+  # An entry that matches the empty string (a*, x?, .*, or foo| in GNU grep) matches every line.
+  if printf '\n' | grep -q -E -f "$allow"; then
+    rm -f "$allow"
+    die 1 "scripts/verify-allowlist.txt has an entry that matches an empty line and would hide every error"
+  fi
   errors="$(grep -E "$PATTERN" "$log" | grep -v -E -f "$allow" || true)"
 else
   errors="$(grep -E "$PATTERN" "$log" || true)"

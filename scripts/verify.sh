@@ -69,6 +69,11 @@ if [ -s "$ALLOW" ]; then
     ALLOW_VALID=0
     echo "scripts/verify-allowlist.txt contains an invalid extended regex (grep exit $ALLOW_RC)"
     FAILED+=("invalid regex in scripts/verify-allowlist.txt")
+  elif printf '\n' | grep -q -E -f "$ALLOW"; then
+    # An entry that matches the empty string (a*, x?, .*, or foo| in GNU grep) matches every line.
+    ALLOW_VALID=0
+    echo "scripts/verify-allowlist.txt has an entry that matches an empty line and would hide every error"
+    FAILED+=("allowlist entry matches everything in scripts/verify-allowlist.txt")
   fi
 fi
 if [ -s "$ALLOW" ] && [ "$ALLOW_VALID" -eq 1 ]; then
