@@ -9,9 +9,6 @@ extends Node
 
 
 func _ready() -> void:
-	if not get_parent() is Control:
-		push_warning("DpMinSize needs a Control parent: %s" % get_path())
-		return
 	get_viewport().size_changed.connect(_apply)
 	_apply()
 

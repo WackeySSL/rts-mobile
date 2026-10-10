@@ -1,13 +1,14 @@
 extends RefCounted
 ## Device profiles for the dp tests (plan Phase 1, "Test profiles"). Not a test suite. Each
 ## stretch scale is min(width / 1280, height / 720), what the engine computes at that window size.
-## A test sets the window to `window_size` and the override, and clears both in `after_test`.
+## A test sets the override first (see `UiScale.set_override`), then the window to `window_size`,
+## and clears both in `after_test`.
 ## android_6in: a 6-inch phone, 420 dpi. web_phone and web_phone_small: phone browsers with
 ## 914x355 and 800x304 CSS px viewports. web_tablet: a 4:3 tablet. desktop: the base size.
 
 
 ## Fresh metrics for every profile: profile name -> UiMetrics.
-static func all() -> Dictionary:
+static func all() -> Dictionary[StringName, UiMetrics]:
 	return {
 		&"android_6in": UiMetrics.create("Android", 420, 1.0, 1.5, Vector2i(2400, 1080), Rect2i()),
 		&"web_phone":

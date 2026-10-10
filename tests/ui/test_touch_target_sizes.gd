@@ -17,6 +17,7 @@ var _window_size_before: Vector2i
 
 
 func before() -> void:
+	assert_bool(UiScale.has_override()).override_failure_message("override leaked").is_false()
 	_window_size_before = get_window().size
 
 
@@ -36,23 +37,25 @@ func test_required_scenes_exist() -> void:
 
 func test_every_visible_button_is_at_least_dp_48_at_every_profile() -> void:
 	var too_small: Array[String] = []
-	var profiles: Dictionary = UiProfiles.all()
+	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
 	for profile_name: StringName in profiles:
 		var profile: UiMetrics = profiles[profile_name]
-		get_window().size = profile.window_size
 		UiScale.set_override(profile)
+		get_window().size = profile.window_size
 		await await_idle_frame()
 		var min_px: float = UiScale.dp(MIN_DP) - TOLERANCE_PX
 		for path: String in REQUIRED_SCENES:
 			var root: Node = (load(path) as PackedScene).instantiate()
 			add_child(root)
 			await await_idle_frame()
-			var buttons: Array[Node] = root.find_children("*", "BaseButton", true, false)
-			assert_array(buttons).override_failure_message("no button in %s" % path).is_not_empty()
-			for node: Node in buttons:
-				var button: BaseButton = node as BaseButton
-				var is_small: bool = button.size.x < min_px or button.size.y < min_px
-				if button.is_visible_in_tree() and is_small:
+			var found: Array[Node] = root.find_children("*", "BaseButton", true, false)
+			var buttons: Array = found.filter(
+				func(b: BaseButton) -> bool: return b.is_visible_in_tree()
+			)
+			var none_message: String = "no visible button in %s" % path
+			assert_array(buttons).override_failure_message(none_message).is_not_empty()
+			for button: BaseButton in buttons:
+				if button.size.x < min_px or button.size.y < min_px:
 					var where: String = "%s at %s" % [path, profile_name]
 					too_small.append(
 						"%s: %s is %s, needs %.1f" % [where, button.name, button.size, min_px]

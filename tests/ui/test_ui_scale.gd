@@ -7,7 +7,7 @@ const ANDROID: StringName = &"android_6in"
 const TABLET: StringName = &"web_tablet"
 const BASE_SIZE: Vector2i = Vector2i(1280, 720)
 ## dp(48) in base px for each profile (plan Phase 1, "Test profiles").
-const EXPECTED_DP48: Dictionary = {
+const EXPECTED_DP48: Dictionary[StringName, float] = {
 	&"android_6in": 84.0,
 	&"web_phone": 97.3,
 	&"web_phone_small": 113.7,
@@ -22,6 +22,7 @@ var _window_size_before: Vector2i
 
 
 func before() -> void:
+	assert_bool(UiScale.has_override()).override_failure_message("override leaked").is_false()
 	_window_size_before = get_window().size
 
 
@@ -42,7 +43,7 @@ func after_test() -> void:
 ## Each profile holds the stretch scale the engine computes at its window size, and gives its
 ## dp(48) in base px.
 func test_each_profile_matches_the_engine_and_gives_its_dp_48() -> void:
-	var profiles: Dictionary = UiProfiles.all()
+	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
 	assert_array(profiles.keys()).contains_exactly_in_any_order(EXPECTED_DP48.keys())
 	for profile_name: StringName in profiles:
 		var profile: UiMetrics = profiles[profile_name]
@@ -60,10 +61,11 @@ func test_each_profile_matches_the_engine_and_gives_its_dp_48() -> void:
 ## Cases are [os_name, dpi, screen_scale, window px per dp].
 func test_window_px_per_dp_per_platform_with_fallbacks_and_clamp() -> void:
 	var cases: Array[Array] = [
-		# Android is dpi / 160 and ignores screen_scale. Everything else is the reverse.
+		# Android is dpi / 160 and ignores screen_scale. Everything else is the reverse. The iOS
+		# row differs from dpi / 160 (2.875), so it proves iOS does not use the Android formula.
 		["Android", 320, 5.0, 2.0],
 		["Web", 480, 2.5, 2.5],
-		["iOS", 480, 3.0, 3.0],
+		["iOS", 460, 3.0, 3.0],
 		["Linux", 96, 1.0, 1.0],
 		# Values that are not finite or not above 0 count as 1.0.
 		["Android", 0, 3.0, 1.0],
@@ -108,6 +110,14 @@ func test_safe_rect_in_base_px() -> void:
 		assert_that(UiScale.safe_rect_base_for(metrics)).is_equal(ANDROID_VISIBLE)
 
 
+## The platform reports the safe area in screen px. A window at (200, 100) shifts it.
+func test_window_safe_area_converts_screen_px_to_window_px() -> void:
+	var safe: Rect2i = UiScale.window_safe_area(Rect2i(300, 150, 1000, 500), Vector2i(200, 100))
+	assert_that(safe).is_equal(Rect2i(100, 50, 1000, 500))
+	assert_bool(UiScale.window_safe_area(Rect2i(), Vector2i(200, 100)).has_area()).is_false()
+
+
+## Headless reports the engine defaults, so only the window size and the stretch are proven here.
 func test_override_wins_until_cleared_and_then_the_engine_is_read() -> void:
 	var metrics: UiMetrics = UiProfiles.by_name(TABLET)
 	UiScale.set_override(metrics)

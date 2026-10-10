@@ -25,7 +25,8 @@ static func base_px_per_dp_for(m: UiMetrics) -> float:
 
 
 ## The safe area in base px, clipped to the window. The visible rect when the platform reports
-## none, or none inside the window.
+## none, or none inside the window. The fallback can be under 0.5 base px off the engine's
+## `get_visible_rect()`, which rounds its width down.
 static func safe_rect_base_for(m: UiMetrics) -> Rect2:
 	var stretch: float = _positive_or_one(m.stretch_scale)
 	var visible_rect: Rect2 = Rect2(Vector2.ZERO, Vector2(m.window_size) / stretch)
@@ -57,13 +58,22 @@ static func safe_rect_base() -> Rect2:
 	return safe_rect_base_for(current())
 
 
-## Tests only.
+## Tests only. Set it before resizing the window: nothing tells a `DpMinSize` already in the tree.
 static func set_override(m: UiMetrics) -> void:
 	_override = m
 
 
 static func clear_override() -> void:
 	_override = null
+
+
+static func has_override() -> bool:
+	return _override != null
+
+
+## The platform reports the safe area in screen px, the metrics hold window px.
+static func window_safe_area(screen_safe: Rect2i, window_position: Vector2i) -> Rect2i:
+	return Rect2i(screen_safe.position - window_position, screen_safe.size)
 
 
 static func _positive_or_one(value: float) -> float:
@@ -78,9 +88,7 @@ static func _engine_metrics() -> UiMetrics:
 	if tree != null:
 		window_size = tree.root.size
 		stretch = tree.root.get_stretch_transform().get_scale().x
-		if safe_area.has_area():
-			# The platform reports screen coordinates, the metrics hold window coordinates.
-			safe_area.position -= tree.root.position
+		safe_area = window_safe_area(safe_area, tree.root.position)
 	return UiMetrics.create(
 		OS.get_name(),
 		DisplayServer.screen_get_dpi(),
