@@ -1,0 +1,98 @@
+name: Preview
+
+# Web build per same-repo PR, published to gh-pages under pr-<n>/ and linked in one sticky comment.
+# The deploy job is green only when the preview is live (pages-publish.sh comment exits 1 otherwise).
+# One-time setup (repo admin): gh-pages branch with .nojekyll exists and Pages serves gh-pages:/ .
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions: {}
+
+# One run per PR at a time; a newer push or the close event cancels an older run of the same PR.
+# Pushes from different PRs touch different folders and are serialized by the retry loop in
+# pages-publish.sh.
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+# Event data reaches the scripts only through env, never through ${{ }} inside run:.
+env:
+  GODOT_VERSION: "4.7.2"
+  PR: ${{ github.event.pull_request.number }}
+  HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+  MARKER: "<!-- rts-mobile-web-preview -->"
+
+jobs:
+  deploy:
+    # Fork PRs get a read-only token, so they are skipped (never use pull_request_target here).
+    if: >-
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: write # push to gh-pages
+      pull-requests: write # sticky comment
+      pages: write # request a Pages build if the push did not start one
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Cache Godot editor and web export templates
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.local/opt/godot-${{ env.GODOT_VERSION }}
+            ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64-web-${{ hashFiles('scripts/ci/install-godot.sh', 'scripts/ci/remote_zip.py') }}
+
+      - name: Install Godot (editor + web no-threads templates only)
+        run: bash scripts/ci/install-godot.sh
+
+      # export-web.sh owns the export checks and first deletes any stale build.txt, so the file
+      # written here is the one this run's pages-publish.sh publish and comment look for.
+      - name: Export web build
+        run: |
+          bash scripts/export-web.sh
+          printf '%s\n' "$HEAD_SHA" > build/web/build.txt
+
+      - name: Publish to gh-pages/pr-<n>/
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/ci/pages-publish.sh publish
+
+      - name: Comment, wait until live, update comment (fails when not live after 8 min)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/ci/pages-publish.sh comment
+
+  cleanup:
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write # push to gh-pages
+      pull-requests: write # sticky comment
+      pages: write # request a Pages build so the removal goes live
+    steps:
+      # Only trusted code from the default branch runs here; the PR head is not checked out.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: scripts/ci
+
+      - name: Remove gh-pages/pr-<n>/ and update the comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/ci/pages-publish.sh remove
