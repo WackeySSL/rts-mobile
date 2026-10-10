@@ -18,8 +18,12 @@ const SIM_DIR: String = "res://game/sim"
 const AI_DIR: String = "res://game/ai"
 
 const STRING_LITERAL: String = r"\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*'"
+## Array.shuffle() and pick_random() use the global generator. They take no argument, which
+## tells them apart from a DetRandom method that must receive the array.
 const RAND_NAMES: String = (
-	r"\b(RandomNumberGenerator" + r"|rand(i|f|i_range|f_range|fn|_from_seed|omize))\b"
+	r"\b(RandomNumberGenerator"
+	+ r"|rand(i|f|i_range|f_range|fn|_from_seed|omize))\b"
+	+ r"|\.(shuffle|pick_random)\s*\(\s*\)"
 )
 const BANNED_NAMES: String = (
 	r"\b(Node[A-Za-z0-9]*|SceneTree|Input|OS|Time|Engine"
@@ -30,11 +34,14 @@ const BANNED_NAMES: String = (
 	+ r"|Projection|Performance"
 	+ r"|lerpf?|inverse_lerp|remap|floorf|ceilf|roundf|absf|clampf|signf|snappedf|wrapf"
 	+ r"|fmod|fposmod|asin|acos|deg_to_rad|rad_to_deg|to_float|is_equal_approx"
+	+ r"|maxf|minf|move_toward|smoothstep|lerp_angle|angle_difference|rotate_toward|pingpong"
+	+ r"|sinh|cosh|tanh|is_zero_approx|cubic_interpolate\w*|bezier_\w+|distance_to"
 	+ r"|get_node|queue_free|create_tween)\b"
 )
-## exp and log only as calls: `var exp: int` (veterancy) and `var log: Array` (command log)
-## are legal names in the sim.
-const BANNED_CALLS: String = r"\b(exp|log)\s*\("
+## Only as calls: `var exp: int` (veterancy) and `var log: Array` (command log) are legal
+## names in the sim. Vector2i.length() and aspect() return float, and JSON parses every
+## number as float.
+const BANNED_CALLS: String = r"\b(exp|log|ease|aspect|length)\s*\(|\bJSON\.parse"
 const FLOAT_LITERAL: String = (
 	r"(?<![A-Za-z0-9_.])[0-9][0-9_]*\.[0-9]|(?<![A-Za-z0-9_])\.[0-9]"
 	+ r"|(?<![A-Za-z0-9_.])[0-9][0-9_]*\.(?![0-9A-Za-z_])|\b[0-9]+[eE][+-]?[0-9]"
@@ -115,6 +122,29 @@ const MUST_MATCH: Array[String] = [
 	# A # inside a string is not a comment: the code after it still counts.
 	'var s := "#"; var f: float',
 	'var s := "#" + str(1.5)',
+	# More float builtins and float-returning methods on integer vectors.
+	"maxf(a, b)",
+	"minf(a, b)",
+	"move_toward(a, b, d)",
+	"smoothstep(a, b, x)",
+	"lerp_angle(a, b, w)",
+	"angle_difference(a, b)",
+	"rotate_toward(a, b, d)",
+	"pingpong(t, 3)",
+	"sinh(x)",
+	"cosh(x)",
+	"tanh(x)",
+	"is_zero_approx(x)",
+	"cubic_interpolate(a, b, c, d, w)",
+	"bezier_interpolate(a, b, c, d, t)",
+	"var d := cell.distance_to(other)",
+	"var n := offset.length()",
+	"var r := size.aspect()",
+	"ease(x, 2)",
+	"var data = JSON.parse_string(text)",
+	# Randomness through the global generator.
+	"targets.pick_random()",
+	"units.shuffle()",
 ]
 const MUST_NOT_MATCH: Array[String] = [
 	"var delta: int = a - b",
@@ -152,6 +182,11 @@ const MUST_NOT_MATCH: Array[String] = [
 	"MAX_SPEED",
 	'var s := "#"',
 	'var s := "#" # float 1.5 Timer',
+	"rng.shuffle(units)",
+	"var target: int = rng.pick_random(ids)",
+	"var d2: int = a.distance_squared_to(b)",
+	"var ease_steps: int = 4",
+	"var lengths: Array[int] = []",
 ]
 
 ## Rule 3 for game/ai: the only check there is randomness.
@@ -164,6 +199,8 @@ const RAND_MUST_MATCH: Array[String] = [
 	"RandomNumberGenerator.new()",
 	"rand_from_seed(5)",
 	"randfn(0, 1)",
+	"var target: int = targets.pick_random()",
+	"units.shuffle()",
 ]
 const RAND_MUST_NOT_MATCH: Array[String] = [
 	"var x: float = 1.5",
@@ -173,6 +210,8 @@ const RAND_MUST_NOT_MATCH: Array[String] = [
 	"var operand: int = 0",
 	'var s := "randi()"',
 	"var x := 3 # randi()",
+	"rng.shuffle(units)",
+	"var target: int = rng.pick_random(ids)",
 ]
 
 const NODE_BASES: Array[String] = [
