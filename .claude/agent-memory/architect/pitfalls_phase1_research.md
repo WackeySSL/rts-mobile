@@ -13,3 +13,4 @@ metadata:
 - Android export: needs platform-tools/adb + build-tools/*/apksigner (prefers version == target SDK 36), java_sdk_path/android_sdk_path default from JAVA_HOME/ANDROID_HOME; keystore options are secret (export_credentials.cfg) or env GODOT_ANDROID_KEYSTORE_DEBUG_{PATH,USER,PASSWORD}. android_debug.apk template is 127 MB, range-fetchable from the .tpz.
 - InputEvent has no timestamp; InputEventScreenTouch has `canceled` and `double_tap`.
 - Keep a PR under ~400 changed lines including deletions: a pure module plus its tests often needs two PRs.
+- Review P1 (2026-10-10): data-file tests that derive expected values from the same .tres (columns/spacing) are self-referential; pin every contract number literally. Mutation (spawn 2 columns 2->4, spawn 3 spacing 2000->1000) passed all 58 tests.
