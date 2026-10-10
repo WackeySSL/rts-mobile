@@ -1,0 +1,2 @@
+- [Phase 0 decisions](project_phase0_decisions.md) — DetRng/DetRandom naming, game/core, 120 px dev buttons, docs issue blocks Phase 2
+- [Godot 4.7.2 pitfalls](pitfalls_godot_472.md) — camera limits, push_error scan, export dir, version fields, pck feature check, clean tree
