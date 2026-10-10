@@ -69,8 +69,9 @@ put_build() {
 
 drop_build() { rm -rf "${SITE:?}/$DIR"; }
 
-# Re-reads origin/gh-pages, applies "$1", commits and pushes. Never forces: a rejected push (another
-# PR pushed first) is retried on top of the new gh-pages, up to PUSH_ATTEMPTS times.
+# Re-reads origin/gh-pages, applies "$1", commits and pushes. Never forces: a failed ls-remote or
+# fetch (network) and a rejected push (another PR pushed first) are retried on top of the current
+# gh-pages, up to PUSH_ATTEMPTS times.
 # "$3" = create: also create gh-pages (with .nojekyll) when the branch does not exist yet.
 # Sets PUSHED=1 when a commit reached the remote.
 update_branch() {
@@ -81,7 +82,13 @@ update_branch() {
     rc=0
     site_git ls-remote --exit-code --heads origin gh-pages >/dev/null || rc=$?
     if [ "$rc" -eq 0 ]; then
-      site_git fetch -q --depth 1 origin gh-pages
+      # The depth-1 fetch moves the whole gh-pages tip (tens of MB), so it is the call most likely
+      # to hit a transient network error. Retry it like ls-remote; checkout and clean are local.
+      if ! site_git fetch -q --depth 1 origin gh-pages; then
+        echo "fetch of gh-pages failed (attempt $attempt of $PUSH_ATTEMPTS)" >&2
+        if [ "$attempt" -lt "$PUSH_ATTEMPTS" ]; then sleep $((attempt * PUSH_RETRY_SLEEP)); fi
+        continue
+      fi
       site_git checkout -q -B gh-pages FETCH_HEAD
       site_git clean -q -f -d -x
     elif [ "$rc" -eq 2 ]; then
@@ -113,7 +120,7 @@ update_branch() {
     echo "push rejected (attempt $attempt of $PUSH_ATTEMPTS); retrying on top of the new gh-pages"
     if [ "$attempt" -lt "$PUSH_ATTEMPTS" ]; then sleep $((attempt * PUSH_RETRY_SLEEP)); fi
   done
-  echo "could not push to gh-pages after $PUSH_ATTEMPTS attempts" >&2
+  echo "::error::could not update gh-pages after $PUSH_ATTEMPTS attempts" >&2
   return 1
 }
 
