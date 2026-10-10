@@ -1,0 +1,166 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://game/view/art_gallery.gd" id="1_gallery"]
+[ext_resource type="Texture2D" path="res://assets/art/svg/units/light_tank_hull.svg" id="2_hull"]
+[ext_resource type="Texture2D" path="res://assets/art/svg/units/light_tank_team.svg" id="3_team"]
+[ext_resource type="Texture2D" path="res://assets/art/svg/units/light_tank_turret.svg" id="4_turret"]
+
+[node name="ArtGallery" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_gallery")
+team_a_color = Color(0.18431373, 0.5019608, 0.92941177, 1)
+team_b_color = Color(0.8980392, 0.28235295, 0.3019608, 1)
+turret_turn_speed = 0.5
+
+[node name="Grass" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 0.5
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.43529412, 0.56078434, 0.34117648, 1)
+
+[node name="SlotA" type="Control" parent="Grass"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.3
+anchor_top = 0.5
+anchor_right = 0.3
+anchor_bottom = 0.5
+mouse_filter = 2
+
+[node name="TileMarker" type="ColorRect" parent="Grass/SlotA"]
+layout_mode = 1
+offset_left = -32.0
+offset_top = -32.0
+offset_right = 32.0
+offset_bottom = 32.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0.12)
+
+[node name="Tank" type="Node2D" parent="Grass/SlotA" groups=["gallery_team_a"]]
+
+[node name="Hull" type="Sprite2D" parent="Grass/SlotA/Tank"]
+texture = ExtResource("2_hull")
+
+[node name="Team" type="Sprite2D" parent="Grass/SlotA/Tank"]
+texture = ExtResource("3_team")
+
+[node name="Turret" type="Sprite2D" parent="Grass/SlotA/Tank"]
+texture = ExtResource("4_turret")
+
+[node name="SlotB" type="Control" parent="Grass"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.7
+anchor_top = 0.5
+anchor_right = 0.7
+anchor_bottom = 0.5
+mouse_filter = 2
+
+[node name="TileMarker" type="ColorRect" parent="Grass/SlotB"]
+layout_mode = 1
+offset_left = -32.0
+offset_top = -32.0
+offset_right = 32.0
+offset_bottom = 32.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0.12)
+
+[node name="Tank" type="Node2D" parent="Grass/SlotB" groups=["gallery_team_b"]]
+
+[node name="Hull" type="Sprite2D" parent="Grass/SlotB/Tank"]
+texture = ExtResource("2_hull")
+
+[node name="Team" type="Sprite2D" parent="Grass/SlotB/Tank"]
+texture = ExtResource("3_team")
+
+[node name="Turret" type="Sprite2D" parent="Grass/SlotB/Tank"]
+texture = ExtResource("4_turret")
+
+[node name="Sand" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.8039216, 0.7254902, 0.56078434, 1)
+
+[node name="SlotA" type="Control" parent="Sand"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.3
+anchor_top = 0.5
+anchor_right = 0.3
+anchor_bottom = 0.5
+mouse_filter = 2
+
+[node name="TileMarker" type="ColorRect" parent="Sand/SlotA"]
+layout_mode = 1
+offset_left = -32.0
+offset_top = -32.0
+offset_right = 32.0
+offset_bottom = 32.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0.12)
+
+[node name="Tank" type="Node2D" parent="Sand/SlotA" groups=["gallery_team_a"]]
+
+[node name="Hull" type="Sprite2D" parent="Sand/SlotA/Tank"]
+texture = ExtResource("2_hull")
+
+[node name="Team" type="Sprite2D" parent="Sand/SlotA/Tank"]
+texture = ExtResource("3_team")
+
+[node name="Turret" type="Sprite2D" parent="Sand/SlotA/Tank"]
+texture = ExtResource("4_turret")
+
+[node name="SlotB" type="Control" parent="Sand"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.7
+anchor_top = 0.5
+anchor_right = 0.7
+anchor_bottom = 0.5
+mouse_filter = 2
+
+[node name="TileMarker" type="ColorRect" parent="Sand/SlotB"]
+layout_mode = 1
+offset_left = -32.0
+offset_top = -32.0
+offset_right = 32.0
+offset_bottom = 32.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0.12)
+
+[node name="Tank" type="Node2D" parent="Sand/SlotB" groups=["gallery_team_b"]]
+
+[node name="Hull" type="Sprite2D" parent="Sand/SlotB/Tank"]
+texture = ExtResource("2_hull")
+
+[node name="Team" type="Sprite2D" parent="Sand/SlotB/Tank"]
+texture = ExtResource("3_team")
+
+[node name="Turret" type="Sprite2D" parent="Sand/SlotB/Tank"]
+texture = ExtResource("4_turret")
+
+[node name="BackButton" type="Button" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 120)
+layout_mode = 1
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 144.0
+offset_bottom = 144.0
+theme_override_font_sizes/font_size = 40
+text = "Back"
