@@ -20,7 +20,7 @@ One or two lines each. Found during Phase 0 (2026-10-10).
 - A test that skips a scene/file "while it does not exist" goes vacuous once the file moves. Require it by `DevRoutes.*` constants. Prove such fixes by moving the file and running old vs new tests.
 - In-memory `GDScript.new()` fixtures must be valid code: a parse error prints `SCRIPT ERROR` (fails the verify scan) and `get_instance_base_type()` returns "".
 - zsh traps in the Bash tool: `grep` is a ugrep function (use /usr/bin/grep for BSD behaviour), and an unmatched glob (`rm -f x_*.uid`) aborts the whole command.
-- Open gap: the allowlist check only rejects invalid ERE syntax. A valid entry that matches the empty string (`a*`, `x?`) still hides every line; review each new allowlist entry for that.
+- The allowlist must never fail open: verify.sh and export-web.sh reject invalid ERE syntax (grep exit 2) and entries that match an empty line (`a*`, `x?`, `.*`, GNU `foo|`). An over-broad but valid entry (e.g. `ERROR`) is still possible, so review every new entry.
 - Integrating fix branches: commit a dirty memory file before `git cherry-pick`, prove equivalence with a per-commit `git patch-id --stable` match, then `git worktree remove` (no --force needed when only ignored `.godot/build/reports` remain) and `git branch -D`.
 - Purity guard limit: name patterns cannot tell `Array.shuffle()`/`pick_random()` from a `DetRandom.shuffle()`, so those are not banned. `floor/ceil/round/lerp` on ints return ints, so they are not banned either (only `*f` variants).
 
