@@ -93,8 +93,11 @@ Godot 4.7.2 (macOS arm64) found facts that shape the setup:
    forced and is retried on races. The PR gets a sticky comment carrying the build SHA. The
    preview job fails when the build is not live within 8 minutes, so a green run means a live
    link. Pages (legacy, `gh-pages` `/`) is enabled once by the repo admin before the first
-   preview run. The folder is removed when the PR closes. Fork PRs get no preview. The PWA is off. Preview URL:
-   `https://wackeyssl.github.io/rts-mobile/pr-<n>/`.
+   preview run. The folder is removed when the PR closes. A PR closed with a merge conflict starts
+   no `pull_request` run, and a failed cleanup is not repeated, so `preview-sweep.yml` runs daily
+   (also by hand, with a dry-run option), uses only the default branch's code and removes the
+   folder of every PR that is not open. A folder whose PR state cannot be read is kept. Fork PRs
+   get no preview. The PWA is off. Preview URL: `https://wackeyssl.github.io/rts-mobile/pr-<n>/`.
 
 ## Consequences
 - Phase 2 must name its sim classes around the autoloads (`DetRandom`, a Command type that is not
@@ -114,7 +117,8 @@ Godot 4.7.2 (macOS arm64) found facts that shape the setup:
 - Local exports need the three template files under the platform's `export_templates/4.7.2.stable/`.
   `scripts/export-web.sh` stops with exit 4 and names the missing path.
 - Each open preview uses about 38 MB of the 1 GB Pages limit, so roughly 25 previews can be
-  open at once. The wasm file is identical between builds, which keeps git history small.
+  open at once. The daily sweep keeps closed PRs from using up this budget. The wasm file is
+  identical between builds, which keeps git history small.
 - The preview job runs PR code with a `contents: write` token. That is acceptable only because
   fork PRs are skipped and no secrets are present. Phase 6 revisits this when signing secrets
   arrive. The deploy would then run in a separate job that holds no build code.

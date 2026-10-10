@@ -4,15 +4,26 @@
 #   comment  create or update ONE sticky PR comment and wait until the build is live;
 #            exits 1 when pr-<n>/build.txt does not return HEAD_SHA in time (default 8 min)
 #   remove   delete gh-pages:pr-<n>/ and update the comment
+#   sweep    remove every pr-<n>/ on gh-pages whose PR is closed (one commit) and update their
+#            comments; reconciles runs of `remove` that never started (a PR closed with a merge
+#            conflict starts no pull_request run) or failed. Needs no PR. A folder whose PR state
+#            cannot be read is kept and the sweep exits 1 after doing the rest.
 # Env: PR, HEAD_SHA (publish and comment), GH_TOKEN, GITHUB_REPOSITORY. Untrusted event data must
 # reach this script only through env, never through ${{ }} inside run:.
 # Optional env: BUILD_DIR (build/web), MARKER, PAGES_URL, REMOTE_URL, LIVE_TIMEOUT (480 s),
-#   POLL_INTERVAL (15 s), BUILD_REQUEST_AFTER (90 s), PUSH_ATTEMPTS (6), PUSH_RETRY_SLEEP (5 s).
-# Exit: 0 ok; 1 failed (push, build dir or preview not live); 2 bad usage or env.
+#   POLL_INTERVAL (15 s), BUILD_REQUEST_AFTER (90 s), PUSH_ATTEMPTS (6), PUSH_RETRY_SLEEP (5 s),
+#   DRY_RUN (sweep only: true lists what would be removed and changes nothing; default false).
+# Exit: 0 ok; 1 failed (push, build dir, PR state lookup or preview not live); 2 bad usage or env.
 set -euo pipefail
 
-cmd="${1:?usage: pages-publish.sh publish|comment|remove}"
-[[ "${PR:-}" =~ ^[0-9]+$ ]] || { echo "PR must be a number" >&2; exit 2; }
+cmd="${1:?usage: pages-publish.sh publish|comment|remove|sweep}"
+if [ "$cmd" = sweep ]; then
+  PR=0 # the sweep covers every PR; it sets PR for each sticky comment
+  DRY_RUN="${DRY_RUN:-false}"
+  case "$DRY_RUN" in true | false) ;; *) echo "DRY_RUN must be true or false" >&2; exit 2 ;; esac
+else
+  [[ "${PR:-}" =~ ^[0-9]+$ ]] || { echo "PR must be a number" >&2; exit 2; }
+fi
 REPO="${GITHUB_REPOSITORY:?}"
 OWNER_LC="$(printf '%s' "${REPO%%/*}" | tr '[:upper:]' '[:lower:]')"
 PAGES_URL="${PAGES_URL:-https://${OWNER_LC}.github.io/${REPO#*/}/pr-${PR}/}"
@@ -31,6 +42,8 @@ for n in LIVE_TIMEOUT POLL_INTERVAL BUILD_REQUEST_AFTER PUSH_ATTEMPTS PUSH_RETRY
 done
 
 PUSHED=0
+SWEPT=""         # sweep: PR numbers whose folder the last change removed
+SWEEP_FAILED=0   # sweep: 1 when a PR state could not be read
 # The site clone holds the token in its git config while it exists; always remove it.
 trap 'rm -rf "${SITE:?}"' EXIT
 
@@ -68,6 +81,43 @@ put_build() {
 }
 
 drop_build() { rm -rf "${SITE:?}/$DIR"; }
+
+# One attempt to read a PR's state. The output is captured first, so a failed attempt prints nothing
+# to the stdout that `retry` hands on (gh may print the error body there).
+pr_state() {
+  local out
+  out="$(gh api "repos/$REPO/pulls/$1" --jq .state)" || return 1
+  printf '%s\n' "$out"
+}
+
+# Change function of `sweep`: removes every pr-<n>/ folder whose PR is closed (merged counts as
+# closed). Everything else stays: open PRs, PRs whose state cannot be read (never delete on a
+# failed lookup) and entries not named pr-<n>. It runs again on every push retry, so a PR that was
+# reopened meanwhile (its deploy pushed first) keeps its folder.
+drop_closed_builds() {
+  local re='^pr-([1-9][0-9]*)$' d name n state
+  SWEPT=""
+  SWEEP_FAILED=0
+  for d in "$SITE"/pr-*/; do
+    [ -d "$d" ] || continue
+    name="$(basename "$d")"
+    [[ "$name" =~ $re ]] || continue
+    n="${BASH_REMATCH[1]}"
+    state="$(retry pr_state "$n")" || state=""
+    if [ "$state" = closed ]; then
+      if [ "$DRY_RUN" = true ]; then
+        echo "dry run: would remove $name/ (PR #$n is closed)"
+      else
+        echo "removing $name/ (PR #$n is closed)"
+        rm -rf "${SITE:?}/$name"
+        SWEPT="$SWEPT $n"
+      fi
+    elif [ "$state" != open ]; then
+      echo "::warning::cannot read the state of PR #$n; keeping $name/"
+      SWEEP_FAILED=1
+    fi
+  done
+}
 
 # Re-reads origin/gh-pages, applies "$1", commits and pushes. Never forces: a failed ls-remote or
 # fetch (network) and a rejected push (another PR pushed first) are retried on top of the current
@@ -204,6 +254,20 @@ case "$cmd" in
     if [ "$PUSHED" -eq 1 ]; then request_pages_build; fi
     upsert_comment "Web preview removed (PR closed)." update-only ||
       echo "::warning::could not update the preview comment"
+    ;;
+  sweep)
+    prepare_site
+    update_branch drop_closed_builds "preview: remove folders of closed PRs" keep
+    if [ "$PUSHED" -eq 1 ]; then request_pages_build; fi
+    for n in $SWEPT; do
+      PR="$n"
+      upsert_comment "Web preview removed (PR closed)." update-only ||
+        echo "::warning::could not update the preview comment of PR #$n"
+    done
+    if [ "$SWEEP_FAILED" -ne 0 ]; then
+      echo "::error::the state of some PRs could not be read; their folders were kept (see warnings)"
+      exit 1
+    fi
     ;;
   *)
     echo "unknown command: $cmd" >&2
