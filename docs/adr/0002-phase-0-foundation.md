@@ -54,7 +54,10 @@ Godot 4.7.2 (macOS arm64) found facts that shape the setup:
    `limit_*` equal the map rect, and after every drag its `position` is clamped to the map rect
    inset by half the visible size (`get_viewport_rect().size * 0.5 / zoom`), because in 4.7.2
    `limit_*` clamps only the rendered view, not `position`, which leaves a dead zone after
-   overscrolling. No TileSet, no sim map, no `data/` resource. Phase 1 replaces the camera.
+   overscrolling. The camera tracks touches by index: a press that did not start on a GUI control
+   is a pan touch, its drags are handled before the GUI (so a pan that crosses the Dev button
+   keeps panning), and it pans only while exactly one pan touch is active. No TileSet, no sim
+   map, no `data/` resource. Phase 1 replaces the camera and adds pinch and two-finger pan.
    Phase 2 replaces the map with sim map data.
 6. **Dev menu gating.** `game/ui/DevRoutes.gd` (`class_name DevRoutes`) holds the scene paths
    and `is_enabled() = OS.is_debug_build() or OS.has_feature("dev_menu")`. The Web preset sets
