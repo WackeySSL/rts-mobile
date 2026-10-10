@@ -1,0 +1,26 @@
+# Godot 4
+.godot/
+/android/build/
+export/
+build/
+*.translation
+
+# Secrets: never commit
+.env
+.env.*
+*.keystore
+*.jks
+*.p12
+*.p8
+*.mobileprovision
+export_credentials.cfg
+
+# OS and editors
+.DS_Store
+.idea/
+.vscode/
+
+# Claude Code, personal only
+.claude/settings.local.json
+.claude/agent-memory-local/
+CLAUDE.local.md

@@ -1,0 +1,46 @@
+name: Mirror Godot toolchain
+
+# Copies the official, unmodified Godot Linux editor (MIT) into a release of THIS repository.
+# Claude Code cloud sessions may only download release files from repositories attached to the
+# session, so scripts/cloud/setup.sh downloads Godot from here.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Godot version, for example 4.7.2"
+        required: true
+        default: "4.7.2"
+
+permissions:
+  contents: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download official build and licence
+        env:
+          V: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          ZIP="Godot_v${V}-stable_linux.x86_64.zip"
+          curl -fsSL --retry 3 -o "$ZIP" \
+            "https://github.com/godotengine/godot-builds/releases/download/${V}-stable/${ZIP}"
+          curl -fsSL --retry 3 -o GODOT_LICENSE.txt \
+            "https://raw.githubusercontent.com/godotengine/godot/${V}-stable/LICENSE.txt"
+          sha256sum "$ZIP" > "${ZIP}.sha256"
+
+      - name: Publish as a pre-release in this repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          TAG="toolchain-godot-${V}"
+          ZIP="Godot_v${V}-stable_linux.x86_64.zip"
+          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" "$ZIP" "${ZIP}.sha256" GODOT_LICENSE.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Toolchain: Godot ${V} (Linux x86_64)" \
+            --notes "Unmodified mirror of the official Godot ${V} editor build (MIT, see GODOT_LICENSE.txt) for Claude Code cloud sessions. Not a game release." \
+            --prerelease

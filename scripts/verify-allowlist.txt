@@ -1,0 +1,3 @@
+# One extended regular expression per line. Matching lines are ignored by the error scan in
+# scripts/verify.sh. Add only engine messages proven benign, with a comment above the pattern
+# that says why and links to the evidence (issue, CI run). Keep patterns as narrow as possible.
