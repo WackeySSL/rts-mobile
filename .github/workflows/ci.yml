@@ -1,0 +1,90 @@
+name: CI
+
+# One job, named "verify" (branch protection requires this check): format, lint, import, tests,
+# sim smoke and the web export, all through the same scripts a developer runs locally.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    # An explicit shell makes GitHub run `bash --noprofile --norc -eo pipefail`, so a failing
+    # command before `| tee` fails the step.
+    shell: bash
+
+env:
+  GODOT_VERSION: "4.7.2"
+  GDTOOLKIT_VERSION: "4.5.0"
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Cache Godot editor and web export templates
+        id: godot-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.local/opt/godot-${{ env.GODOT_VERSION }}
+            ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64-web-${{ hashFiles('scripts/ci/install-godot.sh', 'scripts/ci/remote_zip.py') }}
+
+      - name: Install Godot (editor + web no-threads templates only)
+        run: bash scripts/ci/install-godot.sh
+
+      - name: Install gdtoolkit
+        run: pipx install "gdtoolkit==${GDTOOLKIT_VERSION}"
+
+      - name: Verify (format, lint, import, tests, sim smoke, error scan)
+        run: bash scripts/verify.sh 2>&1 | tee "$RUNNER_TEMP/verify.log"
+
+      # export-web.sh owns the export checks: Godot version, templates, error scan of its own log,
+      # non-empty artifacts, wasm size, threads off and the dev_menu custom feature.
+      - name: Export web build
+        run: bash scripts/export-web.sh
+
+      # verify.sh's dirty marker uses `git diff --quiet`, which misses untracked files such as a
+      # forgotten .gd.uid or .import file. build/ and reports/ are git-ignored.
+      - name: Clean-tree check (import, tests and export must not change the tree)
+        if: success()
+        run: |
+          out="$(git status --porcelain)"; [ -z "$out" ] || { echo "::error::import/test/export changed the tree"; echo "$out"; exit 1; }
+
+      - name: Job summary
+        if: always()
+        env:
+          CACHE_HIT: ${{ steps.godot-cache.outputs.cache-hit }}
+        run: |
+          {
+            echo "Godot cache hit: ${CACHE_HIT:-false}"
+            echo
+            echo '```'
+            if [ -f "$RUNNER_TEMP/verify.log" ] && grep -q '===== VERIFY SUMMARY =====' "$RUNNER_TEMP/verify.log"; then
+              sed -n '/===== VERIFY SUMMARY =====/,$p' "$RUNNER_TEMP/verify.log"
+            else
+              echo "no VERIFY SUMMARY block (verify.sh did not finish)"
+            fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload web build
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: web-${{ github.sha }}
+          path: build/web/
+          if-no-files-found: error
+          retention-days: 14
