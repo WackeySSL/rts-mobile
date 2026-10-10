@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="ScenarioDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/ScenarioDef.gd" id="1_w42i8"]
+[ext_resource type="Script" path="res://game/sim/defs/SpawnDef.gd" id="2_nxdor"]
+[ext_resource type="Resource" path="res://data/units/light_tank.tres" id="3_i0wkg"]
+
+[sub_resource type="Resource" id="Resource_8l7rg"]
+script = ExtResource("2_nxdor")
+owner = 1
+unit = ExtResource("3_i0wkg")
+count = 30
+origin_tile = Vector2i(8, 18)
+columns = 6
+spacing = 1500
+
+[sub_resource type="Resource" id="Resource_apqgn"]
+script = ExtResource("2_nxdor")
+owner = 2
+unit = ExtResource("3_i0wkg")
+count = 4
+origin_tile = Vector2i(34, 10)
+columns = 2
+spacing = 2000
+
+[sub_resource type="Resource" id="Resource_raywj"]
+script = ExtResource("2_nxdor")
+owner = 2
+unit = ExtResource("3_i0wkg")
+count = 3
+origin_tile = Vector2i(38, 30)
+columns = 3
+spacing = 2000
+
+[sub_resource type="Resource" id="Resource_oubyb"]
+script = ExtResource("2_nxdor")
+owner = 2
+unit = ExtResource("3_i0wkg")
+count = 3
+origin_tile = Vector2i(26, 40)
+columns = 3
+spacing = 2000
+
+[resource]
+script = ExtResource("1_w42i8")
+map_size_tiles = Vector2i(48, 48)
+camera_start_tile = Vector2i(12, 21)
+spawns = Array[ExtResource("2_nxdor")]([SubResource("Resource_8l7rg"), SubResource("Resource_apqgn"), SubResource("Resource_raywj"), SubResource("Resource_oubyb")])
