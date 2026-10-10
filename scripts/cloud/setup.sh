@@ -21,7 +21,13 @@ if [ -z "$REPO" ]; then
 elif [ ! -x "$DEST/$BIN" ]; then
   URL="https://github.com/${REPO}/releases/download/toolchain-godot-${GODOT_VERSION}/${ZIP}"
   if curl -fsSL --retry 3 -o "/tmp/${ZIP}" "$URL"; then
-    unzip -o -q "/tmp/${ZIP}" -d "$DEST" && chmod +x "$DEST/$BIN"
+    # unzip is not guaranteed on the cloud image; Python's zipfile module is.
+    if command -v unzip >/dev/null 2>&1; then
+      unzip -o -q "/tmp/${ZIP}" -d "$DEST"
+    else
+      python3 -m zipfile -e "/tmp/${ZIP}" "$DEST"
+    fi
+    chmod +x "$DEST/$BIN" 2>/dev/null || echo "Could not extract ${ZIP} into ${DEST}."
     rm -f "/tmp/${ZIP}"
   else
     echo "Could not download ${URL}. Run the 'Mirror Godot toolchain' workflow first."
