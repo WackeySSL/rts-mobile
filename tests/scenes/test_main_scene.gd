@@ -2,11 +2,18 @@ extends GdUnitTestSuite
 ## The Phase 0 main scene (ROADMAP Phase 0 box 3): a 32x32 test map of 64 px tiles, a camera that
 ## pans on one-finger drag and never leaves the map, and the Dev button.
 ##
-## The scene runs at 1280x720. The headless window is 64x64 by default, and GUI hit-tests
-## silently miss until the window has the base size.
+## Every test starts at a 1280x720 window (the stretch scale is then 1, so pushed event positions
+## equal viewport positions). The headless window is 64x64 by default, and GUI hit-tests silently
+## miss until the window has the base size. Tests that resize the window reset it in before_test.
 
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const BASE_SIZE: Vector2i = Vector2i(1280, 720)
+## The three screens every screen is tested at: base, 20:9 phone and 4:3 tablet.
+const TARGET_SIZES: Array[Vector2i] = [
+	Vector2i(1280, 720),
+	Vector2i(2400, 1080),
+	Vector2i(2048, 1536),
+]
 ## Bigger than the map, so the camera must stop at its limit.
 const OVERSCROLL_PX: float = 5000.0
 const BACK_PX: float = 1000.0
@@ -33,7 +40,6 @@ class UnhandledDragSpy:
 
 func before() -> void:
 	_window_size_before = get_window().size
-	get_window().size = BASE_SIZE
 
 
 func after() -> void:
@@ -42,6 +48,8 @@ func after() -> void:
 
 func before_test() -> void:
 	_pressed_count = 0
+	get_window().size = BASE_SIZE
+	await await_idle_frame()
 	var packed: PackedScene = load(MAIN_SCENE)
 	_main = auto_free(packed.instantiate())
 	add_child(_main)
@@ -77,24 +85,48 @@ func test_drag_moves_the_camera_by_minus_relative_over_zoom() -> void:
 
 
 func test_camera_has_no_dead_zone_after_overscrolling() -> void:
+	# The exact bounds at 1280x720: the map rect inset by half the 1280x720 view. An inset that is
+	# too large or too small would stop the camera short of the map edge or show past it.
+	assert_that(_expected_low()).is_equal(Vector2(640, 360))
+	assert_that(_expected_high()).is_equal(Vector2(1408, 1688))
 	# Toward the top-left limit: relative > 0 moves the camera up and left.
 	await _pan(Vector2(OVERSCROLL_PX, OVERSCROLL_PX))
-	var at_limit: Vector2 = _camera.get_screen_center_position()
+	assert_that(_camera.position).is_equal(Vector2(640, 360))
 	_assert_position_matches_screen_centre()
 	# Back by 1000 px. A camera that kept the overscrolled position would not move the view.
+	# x travels only 768 px, so it ends at its far bound; y has room for the full 1000 px.
 	await _pan(Vector2(-BACK_PX, -BACK_PX))
-	var moved_back: Vector2 = _camera.get_screen_center_position()
-	assert_float(moved_back.x).is_greater(at_limit.x)
-	assert_float(moved_back.y).is_greater(at_limit.y)
+	assert_that(_camera.position).is_equal(Vector2(1408, 1360))
 	_assert_position_matches_screen_centre()
 	# And the same toward the bottom-right limit.
 	await _pan(Vector2(-OVERSCROLL_PX, -OVERSCROLL_PX))
-	var at_far_limit: Vector2 = _camera.get_screen_center_position()
+	assert_that(_camera.position).is_equal(Vector2(1408, 1688))
 	_assert_position_matches_screen_centre()
 	await _pan(Vector2(BACK_PX, BACK_PX))
-	var moved_back_far: Vector2 = _camera.get_screen_center_position()
-	assert_float(moved_back_far.x).is_less(at_far_limit.x)
-	assert_float(moved_back_far.y).is_less(at_far_limit.y)
+	assert_that(_camera.position).is_equal(Vector2(640, 688))
+	_assert_position_matches_screen_centre()
+
+
+func test_camera_stops_exactly_at_the_map_edge_at_every_target_resolution() -> void:
+	for size: Vector2i in TARGET_SIZES:
+		get_window().size = size
+		await await_idle_frame()
+		await _pan(Vector2(OVERSCROLL_PX, OVERSCROLL_PX))
+		assert_that(_camera.position).is_equal(_expected_low())
+		_assert_position_matches_screen_centre()
+		await _pan(Vector2(-OVERSCROLL_PX, -OVERSCROLL_PX))
+		assert_that(_camera.position).is_equal(_expected_high())
+		_assert_position_matches_screen_centre()
+
+
+func test_camera_reclamps_when_the_viewport_resizes() -> void:
+	await _pan(Vector2(OVERSCROLL_PX, OVERSCROLL_PX))
+	assert_that(_camera.position).is_equal(Vector2(640, 360))
+	# A wider view needs a larger inset. Without the re-clamp the camera would stay at 640 and
+	# show 160 px past the left map edge.
+	get_window().size = Vector2i(1600, 720)
+	await await_idle_frame()
+	assert_that(_camera.position).is_equal(Vector2(800, 360))
 	_assert_position_matches_screen_centre()
 
 
@@ -220,6 +252,20 @@ func _drag(index: int, at: Vector2, relative: Vector2) -> void:
 	event.position = at
 	event.relative = relative
 	get_viewport().push_input(event)
+
+
+func _half_view() -> Vector2:
+	return get_viewport().get_visible_rect().size * 0.5 / _camera.zoom
+
+
+## Lowest camera position: the map's top-left corner plus half the view.
+func _expected_low() -> Vector2:
+	return Vector2(_map.map_rect_px().position) + _half_view()
+
+
+## Highest camera position: the map's bottom-right corner minus half the view.
+func _expected_high() -> Vector2:
+	return Vector2(_map.map_rect_px().end) - _half_view()
 
 
 func _assert_position_matches_screen_centre() -> void:
