@@ -41,7 +41,7 @@ fi
 run_step "import" godot --headless --path . --import
 
 if [ -f scripts/run-tests.sh ]; then
-  run_step "unit tests (gdUnit4)" bash scripts/run-tests.sh
+  run_step "unit tests (gdUnit4)" env RUN_TESTS_SKIP_IMPORT=1 bash scripts/run-tests.sh
 else
   echo "scripts/run-tests.sh is missing (created in Phase 0)"
   FAILED+=("run-tests.sh missing")
