@@ -1,6 +1,6 @@
 # ADR 0004: Touch gestures, UiScale.dp(), selection and the Phase 1 camera
 
-Status: proposed, 2026-10-10
+Status: accepted, 2026-10-10
 
 ## Context
 Phase 1 is a go/no-go on controls. `touch-ui-rules` gives the gesture map and the 48 dp rule,

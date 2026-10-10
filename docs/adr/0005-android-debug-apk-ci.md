@@ -1,6 +1,6 @@
 # ADR 0005: Android debug APK in CI and Phase 1 delivery (boot scene, web preview, licences)
 
-Status: proposed, 2026-10-10
+Status: accepted, 2026-10-10
 
 ## Context
 Phase 1 asks for "Android debug APK as a CI artifact for testing on a real device". The web
@@ -41,8 +41,8 @@ Facts:
      enables the dev menu through `OS.is_debug_build()`), and the same `exclude_filter` as
      the Web preset.
    - Options: `gradle_build/use_gradle_build=false`, `architectures/arm64-v8a=true` with the
-     three other ABIs false, `package/unique_name="dk.appcode.rtsmobile.dev"` (open question
-     for Michael), `package/name="rts-mobile dev"`, `package/signed=true`,
+     three other ABIs false, `package/unique_name="dk.appcode.rts.dev"` (ADR 0006),
+     `package/name="Treadline dev"`, `package/signed=true`,
      `permissions/vibrate=true` and `version/code=1`.
    - No keystore values are set in the file.
    - Orientation comes from the project setting (`sensor_landscape`).
@@ -120,5 +120,5 @@ Facts:
 - A Godot or runner-image bump re-checks the build-tools selection, the template hash and the
   manifest checks.
 - Phase 6 replaces this preset's signing with the release keystore and switches to the Gradle
-  build for the AdMob plugin. The release package id is chosen in Phase 7, and the `.dev` id
+  build for the AdMob plugin. The release package id is `dk.appcode.rts` (ADR 0006), and the `.dev` id
   stays separate so both can be installed side by side.

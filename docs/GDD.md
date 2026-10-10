@@ -1,6 +1,6 @@
 # Game design document: rts-mobile (MVP)
 
-Working title is decided in Phase 7 after a trademark search. Codename: rts-mobile.
+Store title: "Treadline: Offline RTS" (ADR 0006; trademark search in Phase 7). Codename: rts-mobile.
 
 ## Pitch
 A classic base-building RTS rebuilt for the phone: build a base, harvest ore, and out-produce

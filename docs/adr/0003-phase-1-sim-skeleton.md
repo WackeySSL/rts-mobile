@@ -1,6 +1,6 @@
 # ADR 0003: Phase 1 simulation skeleton (Command v0, World v0, 15 Hz runner, unit and scenario data)
 
-Status: proposed, 2026-10-10
+Status: accepted, 2026-10-10
 
 ## Context
 Phase 1 (`docs/ROADMAP.md`) must show 30 tanks that move when the player gives orders. The
