@@ -117,10 +117,13 @@ in doubt, choose a plainer real-world form.
      as its own shape, at least 3 px long and 3 px thick.
    - The visible team share is 20-35% at turret headings 0, 90, 180 and 270 degrees.
 
-Light tank result (v1): visible team share 29.9 / 26.5 / 26.8 / 26.4 % at 0 / 90 / 180 / 270
-degrees; the team layer has no non-grey pixel; the gun sticks out 4 px by 4 px in the 32 px
-silhouette; at 32 px greyscale the tracks, deck, turret and gun read as separate parts on grass and
-sand.
+Light tank result (v1): visible team share 28.6 / 24.5 / 25.6 / 24.5 % at 0 / 90 / 180 / 270
+degrees (team alpha not covered by the turret, divided by the alpha of the whole vehicle without
+its shadow, both summed over the 128 px raster); the team layer has no non-grey pixel; the gun
+sticks out 4 px by 4 px in the 32 px silhouette; at 32 px greyscale the tracks, deck, turret and
+gun read as separate parts on grass and sand. Detail check at 2x (raster scale 1.0): the muzzle
+face keeps 3 px of metal on each side of its 2 px vent, and one full row of the upper pod
+highlight stays visible beside the team plate.
 
 ## Gallery
 `scenes/dev/art_gallery.tscn` (opened from the dev menu, also in the web preview) shows every asset
