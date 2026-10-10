@@ -3,6 +3,7 @@
 /android/build/
 export/
 build/
+/reports/
 *.translation
 
 # Secrets: never commit
