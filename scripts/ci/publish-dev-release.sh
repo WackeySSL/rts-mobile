@@ -9,9 +9,11 @@
 #   GITHUB_RUN_ID (the runner sets the last four).
 # Env (optional): KEY_KIND stable|generated|unknown (default unknown; goes into the notes),
 #   GITHUB_STEP_SUMMARY.
+# If the live release is already on a newer commit than GITHUB_SHA (an old run re-run after a newer
+# one published), it keeps that release and exits 0, so the stable URL never goes back in time.
 # After creating the release it checks: published pre-release, both assets present with the local
 # APK size, the tag on GITHUB_SHA, and the stable download URL serving a file with the local SHA-256.
-# Exit: 0 ok; 1 failed (a file, a gh call or a check); 2 bad usage or env.
+# Exit: 0 ok or kept a newer release; 1 failed (a file, a gh call or a check); 2 bad usage or env.
 set -euo pipefail
 
 TAG="android-dev-latest"
@@ -50,7 +52,7 @@ work="$(mktemp -d)"
 trap 'rm -rf "${work:?}"' EXIT
 
 if [ "$key_kind" = stable ]; then
-  key_note="stable debug key: a new build installs over the old one and keeps its data."
+  key_note="stable debug key: installs over an earlier android-dev-latest build signed with the same key; uninstall a PR or generated-key build first."
 else
   key_note="key generated for this run: uninstall the previous dev build before installing."
 fi
@@ -68,6 +70,16 @@ EOF
 # Start from scratch: the old release and its tag, or a tag left behind by a failed run.
 release_api="repos/$GITHUB_REPOSITORY/releases/tags/$TAG"
 if gh api "$release_api" >/dev/null 2>&1; then
+  # Concurrency orders runs that overlap, not an old run that is re-run later. Keep a newer release.
+  live="$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha 2>/dev/null || true)"
+  if [ -n "$live" ] && [ "$live" != "$GITHUB_SHA" ]; then
+    rel="$(gh api "repos/$GITHUB_REPOSITORY/compare/$GITHUB_SHA...$live" --jq .status 2>/dev/null || true)"
+    if [ "$rel" = ahead ]; then
+      echo "- Pre-release \`$TAG\` is on newer commit \`$live\`; kept it, nothing published for \`$GITHUB_SHA\`." >>"${GITHUB_STEP_SUMMARY:-/dev/null}"
+      echo "publish-dev-release: $TAG is on newer commit $live, keeping it (this run is $GITHUB_SHA)"
+      exit 0
+    fi
+  fi
   gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
 fi
 if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then

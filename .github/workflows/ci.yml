@@ -104,6 +104,11 @@ jobs:
         with:
           persist-credentials: false
 
+      # android-dev-release only runs on main, so its script is tested here on every run: offline,
+      # against a stub gh. A failure stops that job too, because it needs this one.
+      - name: Offline test of publish-dev-release.sh
+        run: bash scripts/ci/test-publish-dev-release.sh
+
       # Godot copies JAVA_HOME and ANDROID_HOME into its editor settings on its first run, so set
       # them before any Godot call (ANDROID_HOME is the runner image's SDK already).
       - name: Select JDK 17
