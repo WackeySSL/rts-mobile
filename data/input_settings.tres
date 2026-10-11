@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="InputSettings" format=3]
+
+[ext_resource type="Script" path="res://game/input/InputSettings.gd" id="1_settings"]
+
+[resource]
+script = ExtResource("1_settings")
+tap_slop_dp = 12.0
+long_press_ms = 300
+double_tap_ms = 300
+double_tap_slop_dp = 32.0
+hit_radius_dp = 24.0
+group_assign_ms = 500
+zoom_levels = PackedFloat32Array(0.75, 1, 1.5)
+zoom_start_index = 1
+pinch_overshoot = 0.15
+zoom_snap_ms = 150
+marker_ms = 600
+haptic_ms = 15
+haptics_enabled = true
