@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="UnitDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/UnitDef.gd" id="1_atjfj"]
+
+[resource]
+script = ExtResource("1_atjfj")
+type_id = &"light_tank"
+speed = 120
+radius = 400
+selection_radius = 500
+formation_spacing = 1200
