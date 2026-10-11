@@ -45,12 +45,11 @@ func unit_screen_position(index: int) -> Vector2:
 	return camera.world_to_screen(_rigs[index].global_position)
 
 
-## Builds the rigs again when the runner has a new World (start() ran again) or another unit count.
-## Returns false while there is no World to draw.
+## Builds the rigs again when start() gave the runner a new World. False while there is none.
 func _sync_rigs() -> bool:
 	if runner == null or runner.world == null:
 		return false
-	if runner.world != _world or _rigs.size() != runner.world.unit_count():
+	if runner.world != _world:
 		_build(runner.world)
 	return true
 
@@ -102,12 +101,17 @@ func _update_rigs(delta: float) -> void:
 		var at: Vector2 = from.lerp(to, alpha)
 		if _rigs[row].position != at:
 			_rigs[row].position = at
-		# A unit that stood still last tick keeps the heading it had.
+		# A unit that stood still last tick keeps its heading. So does one that moved under half a
+		# full step: the step onto its goal is an integer remainder and can point anywhere.
 		var moved_x: int = cur_x[row] - prev_x[row]
 		var moved_y: int = cur_y[row] - prev_y[row]
-		if moved_x != 0 or moved_y != 0:
+		var moved: int = moved_x * moved_x + moved_y * moved_y
+		var speed: int = _world.type_speed[_world.type_index[row]]
+		if moved > 0 and 4 * moved >= speed * speed:
 			_aim[row] = atan2(float(moved_y), float(moved_x))
 		if _heading[row] != _aim[row]:
-			_heading[row] = rotate_toward(_heading[row], _aim[row], step)
+			# Not rotate_toward: after a turn through +-PI it ends at the aim +- TAU, never equal.
+			var turn: float = angle_difference(_heading[row], _aim[row])
+			_heading[row] = _aim[row] if absf(turn) <= step else _heading[row] + signf(turn) * step
 			for layer: int in LAYER_FILES.size():
 				_layers[row * LAYER_FILES.size() + layer].rotation = _heading[row]

@@ -73,15 +73,16 @@ func test_rigs_start_on_the_unit_positions_in_px() -> void:
 
 
 func test_rig_positions_are_prev_plus_cur_minus_prev_times_alpha() -> void:
-	CommandQueue.submit(Command.attack_move(1, TANK_1, 11500, 18500))
-	_runner.run_ticks(1)  # Tank 1 moves 120 milli east: px 544 -> 551.68.
+	CommandQueue.submit(Command.attack_move(1, TANK_1, 11500, 20000))
+	_runner.run_ticks(1)  # Tank 1 moves (107, 53) milli: px (544, 1184) -> (550.848, 1187.392).
 	_render(0.0)
-	assert_that(_rig(0).position).is_equal(Vector2(544, 1184))  # alpha 0 shows the old tick.
-	for expected_x: float in [545.92, 547.84, 549.76]:  # alpha 0.25, 0.5, 0.75
+	var prev: Vector2 = Vector2(544, 1184)
+	assert_that(_rig(0).position).is_equal(prev)  # alpha 0 shows the old tick.
+	for alpha: float in [0.25, 0.5, 0.75]:
 		_runner._process(1.0 / 60.0)
 		_render(0.0)
-		var tolerance: Vector2 = Vector2(0.001, 0.001)
-		assert_vector(_rig(0).position).is_equal_approx(Vector2(expected_x, 1184), tolerance)
+		var expected: Vector2 = prev + (Vector2(550.848, 1187.392) - prev) * alpha
+		assert_vector(_rig(0).position).is_equal_approx(expected, Vector2(0.001, 0.001))
 		assert_that(_rig(1).position).is_equal(Vector2(640, 1184))  # Tank 2 stands still.
 
 
@@ -91,7 +92,7 @@ func test_frames_without_ticks_leave_every_world_array_unchanged() -> void:
 	var before: int = _world_hash()
 	for _frame: int in 8:
 		_runner._process(0.004)  # 32 ms in all: under one tick.
-		_render(0.016)
+		_layer._process(0.016)  # The hulls turn on these frames.
 	assert_float(_runner.alpha()).is_greater(0.0)
 	assert_int(_runner.world.tick).is_equal(3)
 	assert_int(_world_hash()).is_equal(before)
@@ -100,44 +101,70 @@ func test_frames_without_ticks_leave_every_world_array_unchanged() -> void:
 func test_frames_leave_no_new_objects_alive() -> void:
 	CommandQueue.submit(Command.attack_move(1, TANK_1, 8500, 30000))
 	_runner.run_ticks(1)
-	_render(0.016)  # The first turn.
+	_layer._process(0.016)  # The first turn.
 	var objects: float = Performance.get_monitor(Performance.OBJECT_COUNT)
 	for _frame: int in 20:
 		_layer._process(0.016)
 	assert_float(Performance.get_monitor(Performance.OBJECT_COUNT)).is_equal(objects)
 
 
-func test_a_restarted_match_gets_new_rigs() -> void:
-	var old_rig: Node2D = _rig(0)
+func test_a_restarted_match_gets_new_rigs_with_their_own_tint_and_heading() -> void:
+	var south: Callable = func() -> void:
+		CommandQueue.submit(Command.attack_move(1, TANK_1, 8500, 21500))
+		_runner.run_ticks(1)
+		_render(0.5)
+	south.call()
+	_layer.team_colors = PackedColorArray([Color("9AA5B1"), BLUE])  # Owner 2 has no colour.
 	_runner.start()
-	_layer._process(0.0)
+	_layer._process(0.05)
 	assert_int(_layer.rig_count()).is_equal(40)
 	assert_int(_layer.get_child_count()).is_equal(40)
-	assert_object(_rig(0)).is_not_same(old_rig)
+	assert_that(_rig(0).get_node("Team").modulate).is_equal(BLUE)
+	assert_that(_rig(30).get_node("Team").modulate).is_equal(Color("9AA5B1"))  # The neutral one.
+	assert_float(_rig(0).get_node("Hull").rotation).is_equal(0.0)  # Neither heading nor aim is kept.
+	south.call()
+	assert_float(_rig(0).get_node("Hull").rotation).is_equal_approx(PI / 2.0, 0.001)
 	await await_idle_frame()  # The old rigs are freed.
 
 
-func test_the_hull_turns_toward_where_the_tank_moves_and_keeps_its_heading_when_it_stops() -> void:
+func test_the_hull_eases_toward_where_the_tank_moves_and_keeps_its_heading_when_it_stops() -> void:
 	var hull: Sprite2D = _rig(0).get_node("Hull")
-	# South, then west (a turn of 90 degrees), then east (a turn of 180). Each leg is 3 tiles.
-	var goals_x: Array[int] = [8500, 5500, 8500]  # milli; y is 21500 for all three.
-	var headings: Array[float] = [PI / 2.0, PI, 0.0]
+	# 3 tiles (25 ticks) south-east on a 3-4-5 path, then west (127 degrees), then east (180).
+	var goals: Array[Vector2i] = [Vector2i(10300, 20900), Vector2i(7300, 20900)]
+	goals.append(goals[0])
+	var headings: Array[float] = [atan2(4.0, 3.0), PI, 0.0]
 	for leg: int in 3:
-		CommandQueue.submit(Command.attack_move(1, TANK_1, goals_x[leg], 21500))
+		CommandQueue.submit(Command.attack_move(1, TANK_1, goals[leg].x, goals[leg].y))
 		_runner.run_ticks(1)
+		var before: float = hull.rotation
+		_layer._process(0.05)  # 12 rad/s * 0.05 s = 0.6 rad.
+		assert_float(absf(angle_difference(before, hull.rotation))).is_equal_approx(0.6, 0.001)
 		_render(0.5)
-		assert_float(absf(angle_difference(hull.rotation, headings[leg]))).is_less(0.05)
-		_runner.run_ticks(40)  # 25 ticks to arrive; then it stands still.
+		assert_float(hull.rotation).is_equal_approx(headings[leg], 0.001)
+		_runner.run_ticks(40)
 		assert_int(_runner.world.order[0]).is_equal(World.Order.IDLE)
 		_render(0.5)
-		assert_float(absf(angle_difference(hull.rotation, headings[leg]))).is_less(0.05)
+		assert_float(hull.rotation).is_equal_approx(headings[leg], 0.001)
 		assert_float(_rig(0).get_node("Team").rotation).is_equal(hull.rotation)
 		assert_float(_rig(0).get_node("Turret").rotation).is_equal(hull.rotation)
+
+
+func test_the_short_last_step_onto_the_goal_does_not_turn_the_hull() -> void:
+	# Tank 1 drives 5.5 tiles almost due east. Its last tick moves (1, 1) milli, which is 45 degrees.
+	CommandQueue.submit(Command.attack_move(1, TANK_1, 14021, 18540))
+	for _tick: int in 50:  # 47 to arrive. Every tick is drawn, as on the phone.
+		_runner.run_ticks(1)
+		_layer._process(0.05)
+	assert_int(_runner.world.order[0]).is_equal(World.Order.IDLE)
+	assert_float(_rig(0).get_node("Hull").rotation).is_equal_approx(0.0, 0.02)
 
 
 func test_unit_screen_position_is_the_rig_seen_through_the_camera() -> void:
 	_camera.position = Vector2(500, 1100)  # No map rect is set, so nothing clamps it.
 	assert_that(_layer.unit_screen_position(0)).is_equal(Vector2(684, 444))  # 640 + 44, 360 + 84
+	_camera.zoom = Vector2(1.5, 1.5)
+	_camera.position = Vector2(2000, 600)
+	assert_that(_layer.unit_screen_position(30)).is_equal(Vector2(952, 468))  # 640 + 208 * 1.5, ...
 
 
 func _rig(row: int) -> Node2D:
@@ -155,6 +182,8 @@ func _render(seconds: float) -> void:
 func _world_hash() -> int:
 	var w: World = _runner.world
 	var state: Array = [w.tick, w.next_id, w.dropped_commands, w.unit_id, w.owner, w.type_index]
+	state.append_array([w.map_w, w.map_h, w.type_ids, w.type_speed, w.type_radius])
+	state.append_array([w.type_selection_radius, w.type_spacing])
 	state.append_array([w.pos_x, w.pos_y, w.goal_x, w.goal_y, w.order])
 	state.append_array([_runner.prev_pos_x, _runner.prev_pos_y])
 	return hash(state)
