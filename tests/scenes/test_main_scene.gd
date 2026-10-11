@@ -1,12 +1,16 @@
 extends GdUnitTestSuite
-## The Phase 0 main scene (ROADMAP Phase 0 box 3): a 32x32 test map of 64 px tiles, a camera that
-## pans on one-finger drag and never leaves the map, and the Dev button.
+## The main scene (ROADMAP Phase 1 box 2): a 32x32 test map of 64 px tiles, an RtsCamera driven by
+## a TouchInput (both on data/input_settings.tres), and the Dev button. Composition only: the
+## camera and gesture rules are tested in tests/view and tests/input. Fingers enter through the
+## touch_events helper, which converts base px to the window px that push_input takes.
 ##
-## Every test starts at a 1280x720 window (the stretch scale is then 1, so pushed event positions
-## equal viewport positions). The headless window is 64x64 by default, and GUI hit-tests silently
-## miss until the window has the base size. Tests that resize the window reset it in before_test.
+## Every test starts at a 1280x720 window. The headless window is 64x64 by default, and GUI
+## hit-tests silently miss until the window has the base size. Tests that resize the window reset
+## it in before_test.
 
+const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const MAIN_SCENE: String = "res://scenes/main.tscn"
+const SETTINGS_PATH: String = "res://data/input_settings.tres"
 const BASE_SIZE: Vector2i = Vector2i(1280, 720)
 ## The three screens every screen is tested at: base, 20:9 phone and 4:3 tablet.
 const TARGET_SIZES: Array[Vector2i] = [
@@ -14,10 +18,16 @@ const TARGET_SIZES: Array[Vector2i] = [
 	Vector2i(2400, 1080),
 	Vector2i(2048, 1536),
 ]
+## The lowest camera position at each of them: half the visible size (1280x720, 1600x720, 1280x960).
+const LOWEST: Dictionary[Vector2i, Vector2] = {
+	Vector2i(1280, 720): Vector2(640, 360),
+	Vector2i(2400, 1080): Vector2(800, 360),
+	Vector2i(2048, 1536): Vector2(640, 480),
+}
 ## Bigger than the map, so the camera must stop at its limit.
 const OVERSCROLL_PX: float = 5000.0
-const BACK_PX: float = 1000.0
 const POSITION_MARGIN_PX: float = 0.5
+const TOLERANCE: Vector2 = Vector2(0.01, 0.01)
 ## Mid-screen at 1280x720, well clear of the Dev button (24..144 px).
 const MAP_POINT: Vector2 = Vector2(640, 360)
 
@@ -25,17 +35,8 @@ var _window_size_before: Vector2i
 var _pressed_count: int = 0
 var _main: Node2D
 var _map: TestMapView
-var _camera: Camera2D
-
-
-## Counts the drags that reached `_unhandled_input`, i.e. that nothing consumed.
-class UnhandledDragSpy:
-	extends Node
-	var drags: int = 0
-
-	func _unhandled_input(event: InputEvent) -> void:
-		if event is InputEventScreenDrag:
-			drags += 1
+var _camera: RtsCamera
+var _touch: TouchInput
 
 
 func before() -> void:
@@ -55,7 +56,8 @@ func before_test() -> void:
 	add_child(_main)
 	await await_idle_frame()
 	_map = _main.get_node("TestMapView")
-	_camera = _main.get_node("Camera")
+	_camera = _main.get_node("Camera") as RtsCamera
+	_touch = _main.get_node("TouchInput") as TouchInput
 
 
 func test_map_is_32_by_32_tiles_of_64_px() -> void:
@@ -74,43 +76,24 @@ func test_camera_limits_equal_the_map_rect_and_start_at_its_centre() -> void:
 	assert_that(_camera.get_screen_center_position()).is_equal(Vector2(1024, 1024))
 
 
-func test_drag_moves_the_camera_by_minus_relative_over_zoom() -> void:
-	var start: Vector2 = _camera.position
-	await _pan(Vector2(100, 40))
-	assert_that(_camera.position).is_equal(start - Vector2(100, 40) / _camera.zoom)
-	_camera.zoom = Vector2(2, 2)
-	var zoomed_start: Vector2 = _camera.position
-	await _pan(Vector2(-60, 20))
-	assert_that(_camera.position).is_equal(zoomed_start - Vector2(-60, 20) / _camera.zoom)
+func test_camera_and_touch_input_are_wired_to_each_other_and_the_shared_settings() -> void:
+	var settings: InputSettings = load(SETTINGS_PATH)
+	assert_object(_camera).is_not_null()
+	assert_object(_touch).is_not_null()
+	assert_object(_touch.camera).is_same(_camera)
+	assert_object(_camera.settings).is_same(settings)
+	assert_object(_touch.settings).is_same(settings)
+	assert_object(_main.get_node("Hud")).is_instanceof(CanvasLayer)  # The camera cannot move it.
 
 
-func test_camera_has_no_dead_zone_after_overscrolling() -> void:
-	# The exact bounds at 1280x720: the map rect inset by half the 1280x720 view. An inset that is
-	# too large or too small would stop the camera short of the map edge or show past it.
-	assert_that(_expected_low()).is_equal(Vector2(640, 360))
-	assert_that(_expected_high()).is_equal(Vector2(1408, 1688))
-	# Toward the top-left limit: relative > 0 moves the camera up and left.
-	await _pan(Vector2(OVERSCROLL_PX, OVERSCROLL_PX))
-	assert_that(_camera.position).is_equal(Vector2(640, 360))
-	_assert_position_matches_screen_centre()
-	# Back by 1000 px. A camera that kept the overscrolled position would not move the view.
-	# x travels only 768 px, so it ends at its far bound; y has room for the full 1000 px.
-	await _pan(Vector2(-BACK_PX, -BACK_PX))
-	assert_that(_camera.position).is_equal(Vector2(1408, 1360))
-	_assert_position_matches_screen_centre()
-	# And the same toward the bottom-right limit.
-	await _pan(Vector2(-OVERSCROLL_PX, -OVERSCROLL_PX))
-	assert_that(_camera.position).is_equal(Vector2(1408, 1688))
-	_assert_position_matches_screen_centre()
-	await _pan(Vector2(BACK_PX, BACK_PX))
-	assert_that(_camera.position).is_equal(Vector2(640, 688))
-	_assert_position_matches_screen_centre()
-
-
-func test_camera_stops_exactly_at_the_map_edge_at_every_target_resolution() -> void:
+func test_one_finger_pan_stops_exactly_at_the_map_edge_at_every_target_resolution() -> void:
 	for size: Vector2i in TARGET_SIZES:
 		get_window().size = size
 		await await_idle_frame()
+		assert_that(_expected_low()).is_equal(LOWEST[size])
+		_camera.centre_on(Vector2(1024, 1024))
+		await _pan(Vector2(100, 40))
+		assert_vector(_camera.position).is_equal_approx(Vector2(924, 984), TOLERANCE)
 		await _pan(Vector2(OVERSCROLL_PX, OVERSCROLL_PX))
 		assert_that(_camera.position).is_equal(_expected_low())
 		_assert_position_matches_screen_centre()
@@ -119,93 +102,47 @@ func test_camera_stops_exactly_at_the_map_edge_at_every_target_resolution() -> v
 		_assert_position_matches_screen_centre()
 
 
-func test_camera_reclamps_when_the_viewport_resizes() -> void:
-	await _pan(Vector2(OVERSCROLL_PX, OVERSCROLL_PX))
-	assert_that(_camera.position).is_equal(Vector2(640, 360))
-	# A wider view needs a larger inset. Without the re-clamp the camera would stay at 640 and
-	# show 160 px past the left map edge.
-	get_window().size = Vector2i(1600, 720)
-	await await_idle_frame()
-	assert_that(_camera.position).is_equal(Vector2(800, 360))
-	_assert_position_matches_screen_centre()
+func test_a_pinch_zooms_about_the_fingers_and_snaps_to_a_level_at_every_target_resolution() -> void:
+	# The snap is a tween on the clock (tests/view covers its timing): make it instant here.
+	var instant: InputSettings = _camera.settings.duplicate() as InputSettings
+	instant.zoom_snap_ms = 0
+	_camera.settings = instant
+	_touch.settings = instant
+	var vp: Viewport = get_viewport()
+	for size: Vector2i in TARGET_SIZES:
+		get_window().size = size
+		await await_idle_frame()
+		_camera.zoom = Vector2.ONE
+		_camera.centre_on(Vector2(1024, 1024))
+		var world: Vector2 = _camera.screen_to_world(Vector2(640, 400))
+		TouchEvents.press(vp, 0, Vector2(540, 400))
+		TouchEvents.press(vp, 1, Vector2(740, 400))  # 200 apart.
+		TouchEvents.drag(vp, 0, Vector2(510, 400), Vector2(-30, 0))  # x1.15
+		TouchEvents.drag(vp, 1, Vector2(780, 400), Vector2(40, 0))  # x1.174
+		assert_float(_camera.zoom.x).is_equal_approx(1.35, 0.001)
+		# The world point between the fingers follows their centre, which is now at x 645.
+		var under: Vector2 = _camera.screen_to_world(Vector2(645, 400))
+		assert_vector(under).is_equal_approx(world, Vector2(0.5, 0.5))
+		TouchEvents.release(vp, 1, Vector2(780, 400))
+		TouchEvents.release(vp, 0, Vector2(510, 400))
+		assert_float(_camera.zoom.x).is_equal_approx(1.5, 0.001)
 
 
-func test_pan_that_crosses_the_dev_button_keeps_panning_and_does_not_press_it() -> void:
-	var button: Button = _count_dev_button_presses()
-	var over_button: Vector2 = button.get_global_rect().get_center()
-	var start: Vector2 = _camera.position
-	_press(0, Vector2(400, 300))
-	# Over the button. The GUI used to take this drag, so the camera froze while the finger
-	# was on the button.
-	_drag(0, over_button, Vector2(-100, -100))
-	await await_idle_frame()
-	assert_that(_camera.position).is_equal(start + Vector2(100, 100))
-	# Past the button, on the margin.
-	_drag(0, Vector2(10, 10), Vector2(-50, -50))
-	_release(0, over_button)
-	await await_idle_frame()
-	assert_that(_camera.position).is_equal(start + Vector2(150, 150))
-	assert_int(_pressed_count).is_equal(0)
-
-
-func test_drag_that_starts_on_the_dev_button_does_not_pan() -> void:
-	var button: Button = _count_dev_button_presses()
-	var over_button: Vector2 = button.get_global_rect().get_center()
-	var start: Vector2 = _camera.position
-	_press(0, over_button)
-	_drag(0, MAP_POINT, Vector2(200, 100))
-	_release(0, MAP_POINT)
-	await await_idle_frame()
-	assert_that(_camera.position).is_equal(start)
-
-
-func test_a_pan_drag_is_consumed_and_a_stray_drag_is_not() -> void:
-	# The spy sees only events that nobody handled.
-	var spy: UnhandledDragSpy = auto_free(UnhandledDragSpy.new())
-	add_child(spy)
-	_press(0, MAP_POINT)
-	_drag(0, MAP_POINT, Vector2(5, 5))
-	assert_int(spy.drags).is_equal(0)
-	_release(0, MAP_POINT)
-	# A drag whose press the camera never saw is none of its business.
-	_drag(3, MAP_POINT, Vector2(5, 5))
-	assert_int(spy.drags).is_equal(1)
-
-
-func test_two_finger_drag_does_not_pan() -> void:
-	var start: Vector2 = _camera.position
-	_press(0, Vector2(400, 300))
-	_press(1, Vector2(800, 400))
-	_drag(0, Vector2(410, 310), Vector2(10, 10))
-	_drag(1, Vector2(810, 410), Vector2(-10, 20))
-	await await_idle_frame()
-	assert_that(_camera.position).is_equal(start)
-	# Lifting one finger hands the pan back to the other.
-	_release(1, Vector2(810, 410))
-	_drag(0, Vector2(430, 320), Vector2(20, 10))
-	_release(0, Vector2(430, 320))
-	await await_idle_frame()
-	assert_that(_camera.position).is_equal(start - Vector2(20, 10))
-
-
-func test_a_finger_lost_with_the_app_focus_does_not_block_the_pan() -> void:
-	var start: Vector2 = _camera.position
-	# This finger's release never arrives.
-	_press(1, Vector2(800, 400))
-	_camera.notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
-	await _pan(Vector2(40, 20))
-	assert_that(_camera.position).is_equal(start - Vector2(40, 20))
-
-
-func test_dev_button_is_pressed_exactly_once_by_a_touch() -> void:
+func test_dev_button_is_pressed_exactly_once_by_a_touch_at_every_target_resolution() -> void:
 	var button: Button = _count_dev_button_presses()
 	assert_bool(button.visible).is_true()
-	var centre: Vector2 = button.get_global_rect().get_center()
-	_press(0, centre)
-	await await_idle_frame()
-	_release(0, centre)
-	await await_idle_frame()
-	assert_int(_pressed_count).is_equal(1)
+	var start: Vector2 = _camera.position
+	for size: Vector2i in TARGET_SIZES:
+		get_window().size = size
+		await await_idle_frame()
+		_pressed_count = 0
+		var centre: Vector2 = button.get_global_rect().get_center()
+		TouchEvents.press(get_viewport(), 0, centre)
+		await await_idle_frame()
+		TouchEvents.release(get_viewport(), 0, centre)
+		await await_idle_frame()
+		assert_int(_pressed_count).is_equal(1)
+		assert_that(_camera.position).is_equal(start)  # A tap on the button is not a pan.
 
 
 func _on_dev_button_pressed() -> void:
@@ -222,36 +159,13 @@ func _count_dev_button_presses() -> Button:
 	return button
 
 
-## One finger pans the map: press, one drag of `relative`, release.
+## One finger pans the map: press, one drag of `relative` base px, release.
 func _pan(relative: Vector2) -> void:
-	_press(0, MAP_POINT)
-	_drag(0, MAP_POINT, relative)
-	_release(0, MAP_POINT)
+	var vp: Viewport = get_viewport()
+	TouchEvents.press(vp, 0, MAP_POINT)
+	TouchEvents.drag(vp, 0, MAP_POINT + relative, relative)
+	TouchEvents.release(vp, 0, MAP_POINT + relative)
 	await await_idle_frame()
-
-
-func _press(index: int, at: Vector2) -> void:
-	_push_touch(index, at, true)
-
-
-func _release(index: int, at: Vector2) -> void:
-	_push_touch(index, at, false)
-
-
-func _push_touch(index: int, at: Vector2, pressed: bool) -> void:
-	var event: InputEventScreenTouch = InputEventScreenTouch.new()
-	event.index = index
-	event.position = at
-	event.pressed = pressed
-	get_viewport().push_input(event)
-
-
-func _drag(index: int, at: Vector2, relative: Vector2) -> void:
-	var event: InputEventScreenDrag = InputEventScreenDrag.new()
-	event.index = index
-	event.position = at
-	event.relative = relative
-	get_viewport().push_input(event)
 
 
 func _half_view() -> Vector2:
