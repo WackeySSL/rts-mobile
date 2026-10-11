@@ -45,6 +45,27 @@ func unit_screen_position(index: int) -> Vector2:
 	return camera.world_to_screen(_rigs[index].global_position)
 
 
+## Fills `snap` for the Picker with every unit in row order: id, owner, type, centre on screen (base
+## px) and hit radius, the larger of `min_radius_px` and the type's selection radius at the camera
+## zoom. The snapshot's arrays are resized in place, so refilling one allocates nothing.
+func fill_pick_snapshot(snap: PickSnapshot, min_radius_px: float) -> void:
+	var count: int = _rigs.size()
+	snap.ids.resize(count)
+	snap.owners.resize(count)
+	snap.type_index.resize(count)
+	snap.screen_pos.resize(count)
+	snap.radius_px.resize(count)
+	var zoom: float = camera.zoom.x
+	for row: int in count:
+		var type: int = _world.type_index[row]
+		var art_px: float = ViewScale.milli_to_px(_world.type_selection_radius[type]) * zoom
+		snap.ids[row] = _world.unit_id[row]
+		snap.owners[row] = _world.owner[row]
+		snap.type_index[row] = type
+		snap.screen_pos[row] = unit_screen_position(row)
+		snap.radius_px[row] = maxf(min_radius_px, art_px)
+
+
 ## Builds the rigs again when start() gave the runner a new World. False while there is none.
 func _sync_rigs() -> bool:
 	if runner == null or runner.world == null:
