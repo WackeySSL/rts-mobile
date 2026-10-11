@@ -1,6 +1,6 @@
 # ADR 0011: View interpolation, draw structure and the performance budget (probe, headless test, phone gate)
 
-Status: proposed, 2026-10-11 (revision 4 after the five-lens plan review and two completeness checks, same day)
+Status: proposed, 2026-10-11 (revision 5 after the five-lens plan review and three completeness checks, same day)
 
 ## Context
 ROADMAP Phase 2 asks for three things:
@@ -94,7 +94,12 @@ Mesa/llvmpipe with Xvfb, so draw-call counts are reliable and times are not):
   gets no Turret layer, checked once per type with `ResourceLoader.exists` (works on imported
   resources in exports).
 - **Selection rings** are `Sprite2D`s with one shared ring texture (art-director), at absolute z
-  1, scaled for dp and zoom, so they batch like hulls.
+  1, scaled for dp and zoom, so they batch like hulls. The ring keeps the Phase 1 node contract
+  that tests pin (a `Ring` node, first child of its rig, created on the first selection, with
+  the Phase 1 `radius` and `unit`); only its drawing changes, to a scaled texture. A sprite
+  scales its baked stroke with the ring, so the stroke is 3 dp (plus the 1 dp outline on each
+  side) when the radius is at its 18 dp minimum and grows with the radius above it. This
+  partly supersedes ADR 0004 §7 (rings drawn in code); STYLE.md's ring row changes with it.
 - **No node per projectile, effect or health bar.** `ProjectileLayer`, `EffectsLayer` (fixed ring,
   `capacity` 128, oldest overwritten, state in packed arrays) and `HealthBarLayer` each draw in
   one `_draw()`.
@@ -142,8 +147,10 @@ Mesa/llvmpipe with Xvfb, so draw-call counts are reliable and times are not):
 - **Deterministic cost bounds (exact, cannot flake):** from `World.stats`, per tick: flow cells
   settled at most `flow_cells_per_tick`; separation pairs at most `separation_scan` x units; line
   checks at most the moving units; targeting candidates and fog cells stamped at most the bounds
-  set in P49 from the measured maxima plus 25%. These catch the algorithmic regressions that
-  matter.
+  set in P49 from the measured maxima plus 25%. P49 runs after fog updates enter the tick (P46),
+  so the fog bound and the `fog` phase are measured, not guessed. These catch the algorithmic
+  regressions that matter, so a sim PR never raises a cost bound itself: a rise goes to
+  qa-engineer.
 - **Wall-clock budget:** `tests/perf/budget.cfg` (`[sim]` `mean_ms`, `p95_ms`, `ticks`, `units`).
   - Before P49 fixes it, the harness runs at least 10 times on the CI runner (workflow_dispatch
     or a temporary loop).
@@ -162,7 +169,11 @@ Mesa/llvmpipe with Xvfb, so draw-call counts are reliable and times are not):
 - **Other fail rules:** the unit count at tick 0 is not 150; `projectile_overflow > 0`; `alive_end`
   or the projectile peak outside the bounds pinned in P49 (so a balance change cannot silently
   shrink the measured load); `Performance.MEMORY_STATIC` grows by more than a generous bound
-  between tick 100 and tick 900.
+  between tick 100 and tick 900. A sim PR after P49 that changes the arena run (the fog rules,
+  P46b, which change who fires; later tuning) re-pins the golden hashes and, only if they fall
+  outside, the `alive_end` and projectile-peak bounds around its new measured values with the
+  P49 margins, with a note (plan exception 3). It never changes the cost bounds or
+  `budget.cfg`.
 - **Same seed, same match, at scale:** the three seed-42 runs give identical 15-tick checkpoints.
   Seed 43 gives a different final hash. The seed-42 checkpoint hashes every 150 ticks and the
   final hash are pinned as literals in `data/dev/perf_gate.tres` (golden values) and checked by

@@ -79,7 +79,9 @@ Measurements (Godot 4.7.2 headless, 2026-10-11, Xeon cloud VM; mock code, not th
 - Formation slots stay as in ADR 0003 §4, with one addition: a candidate on a tile that is
   blocked for any movement class in the group is skipped. A target point on a blocked tile first
   moves to the centre of the nearest tile that is passable for every class in the group: rings of
-  tiles around it, row by row, first hit wins.
+  tiles around it, row by row, first hit wins. `Formation.assign` calls `world.prepare()` first
+  (one bool check), because Phase 1 tests call it on an unprepared hand-built World whose
+  `type_move_class` and tile grid exist only after `prepare()`.
 - Each moving unit has a `nav_mode`:
   - `DIRECT`: steer straight at the goal. This is Phase 1 movement.
   - `FIELD`: follow a flow field.

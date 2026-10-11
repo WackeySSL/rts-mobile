@@ -1,6 +1,6 @@
 # ADR 0007: Simulation core (World v1, Command v1, tick pipeline, DetRandom, state hash, replays)
 
-Status: proposed, 2026-10-11 (revision 4 after the five-lens plan review and two completeness checks, same day)
+Status: proposed, 2026-10-11 (revision 5 after the five-lens plan review and three completeness checks, same day)
 
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state
@@ -114,6 +114,10 @@ It has these sections:
   unit tests build worlds that way:
   - the rule ints start at the `RulesDef` script defaults (`World._init()` copies
     `RulesDef.new()`; those defaults equal `data/rules.tres`, pinned by a test);
+  - `World._init()` sets `rng = DetRandom.create(0, DetRandom.STREAM_SIM)`, the same default
+    stream `from_scenario` uses for a null `rng`, so `state_hash()` (which hashes
+    `rng.state()`) and spawn jitter never meet a null stream on a hand-built world (pinned by a
+    test in the first World v1 PR);
   - `add_unit` raises `player_count` to `maxi(player_count, owner)` before the world is
     prepared, and uses hp 1 when the type has no `type_max_hp` entry (a type's stored max hp is
     `maxi(def.max_hp, 1)`);

@@ -1,6 +1,6 @@
 # ADR 0010: Fog of war (sim grids, update cadence, rendering)
 
-Status: proposed, 2026-10-11 (revision 3 after the five-lens plan review and the completeness check, same day)
+Status: proposed, 2026-10-11 (revision 5 after the five-lens plan review and three completeness checks, same day)
 
 ## Context
 ROADMAP Phase 2 asks for "fog of war (visible and explored) and its rendering". The GDD says:
@@ -109,7 +109,10 @@ Measurements (Godot 4.7.2, Xeon cloud VM):
 - There is no minimap fog in Phase 2 (no minimap). There is no reveal toggle in the game. The
   perf arena alone sets a view-only `reveal_enemies` export on its unit, projectile and effects
   layers, so every enemy rig is drawn and the render load is the worst case. Its `FogLayer`
-  still draws player 1's real fog, and the sim and the hash are unaffected.
+  still draws player 1's real fog, and the sim and the hash are unaffected. Among shipped scenes
+  only the perf arena sets it; a test whose subject is not fog (a Phase 1 enemy-tap case, for
+  example) may set it on `UnitLayer`, which also makes those enemies pickable, while the fog
+  picking rule keeps its own cases.
 
 ### 3. Data
 `RulesDef.fog_period_ticks` (3). `TerrainDef` has no sight effect in Phase 2. The explored alpha
