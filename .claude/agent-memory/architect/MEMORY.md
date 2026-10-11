@@ -2,3 +2,5 @@
 - [Godot 4.7.2 pitfalls](pitfalls_godot_472.md) — camera limits, push_error scan, export dir, version fields, pck feature check, clean tree
 - [Phase 1 decisions](project_phase1_decisions.md) — ADRs 0003-0005: sim v0 pull-forward, gestures/UiScale, Android APK CI, two-lane PR plan
 - [Phase 1 research facts](pitfalls_phase1_research.md) — push_input coords, web DPI, Android export needs, no SDK in cloud sessions
+- [Phase 2 decisions](project_phase2_decisions.md) — ADRs 0007-0011: World v1 layout, Command v1, xoshiro128**, SHA-256 hash, lazy flow fields, fog grid, perf budget and gate
+- [Phase 2 research facts](pitfalls_phase2_research.md) — int overflow/int32 truncation, hash and isqrt costs, Dijkstra and tick spikes, z_index order
