@@ -33,8 +33,9 @@ path to multiplayer.
   do not shift combat rolls.
 
 ## Commands
-- `Command`: tick, player_id, type, unit_ids (PackedInt32Array), a target point in milli-tiles or
-  target_id, payload. Phase 1's Command v0 (attack-move) carries a target point in milli-tiles.
+- `Command`: tick, player_id, sequence, type, unit_ids (PackedInt32Array), a target point in
+  milli-tiles or target_id, payload (from Phase 2). Phase 1's Command v0 (attack-move) carries a
+  target point in milli-tiles and no payload.
 - Applied at the start of their tick in (tick, player_id, sequence) order. Invalid commands are
   dropped and counted; they never crash the sim.
 - Input and AI never touch entities directly.

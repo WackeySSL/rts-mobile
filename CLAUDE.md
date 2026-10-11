@@ -27,7 +27,7 @@ keep their flags stable because CI and skills call them.
 ## Layout
 ```
 game/sim/    deterministic simulation: pure GDScript, no Node, no rendering, no time
-game/core/   Node-side services (autoloads DetRng, CommandQueue; MatchRunner); no game rules
+game/core/   Node-side services (autoloads DetRng and CommandQueue, plus MatchRunner); no game rules
 game/view/   presentation: sprites, interpolation, effects, camera
 game/input/  touch gestures -> Command objects
 game/ui/     HUD, build sidebar, menus
