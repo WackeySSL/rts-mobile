@@ -1,7 +1,7 @@
 class_name TestMapView
 extends Node2D
 ## View-only test map: a checkerboard of two grass tones with a 1 px grid. Phase 2 replaces it
-## with sim map data. Size, tile size and colours are exported and set in scenes/main.tscn.
+## with sim map data. Tile size and colours are set in scenes/main.tscn, the size by main_view.gd.
 
 @export var size_tiles: Vector2i = Vector2i(32, 32):
 	set(value):
