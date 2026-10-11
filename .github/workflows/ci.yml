@@ -88,3 +88,35 @@ jobs:
           path: build/web/
           if-no-files-found: error
           retention-days: 14
+
+  # ADR 0005: a debug APK for real-device testing. Not a required check; `verify` stays the only one.
+  android-debug-apk:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Godot copies JAVA_HOME and ANDROID_HOME into its editor settings on its first run, so both
+      # are set before any Godot call. ANDROID_HOME already points at the runner image's SDK.
+      - name: Select JDK 17
+        run: echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+
+      - name: Cache Godot editor and export templates (web and Android debug)
+        id: godot-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.local/opt/godot-${{ env.GODOT_VERSION }}
+            ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64-android-${{ hashFiles('scripts/ci/install-godot.sh', 'scripts/ci/remote_zip.py') }}
+
+      - name: Install Godot (editor, web and Android debug templates)
+        run: bash scripts/ci/install-godot.sh --android
+
+      - name: SPIKE (temporary)
+        run: bash scripts/ci/spike-android.sh
