@@ -1,7 +1,8 @@
 name: CI
 
-# Two jobs. "verify" is the only required check: format, lint, import, tests, sim smoke and the web
-# export, all through the scripts a developer runs locally. "android-debug-apk" (ADR 0005) follows it.
+# Three jobs. "verify" is the only required check: format, lint, import, tests, sim smoke and the web
+# export, all through the scripts a developer runs locally. "android-debug-apk" (ADR 0005) follows it,
+# and on a push to main "android-dev-release" publishes that APK as the rolling pre-release.
 on:
   pull_request:
   push:
@@ -96,10 +97,17 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
+    outputs:
+      key_kind: ${{ steps.export-apk.outputs.kind }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # android-dev-release only runs on main, so its script is tested here on every run: offline,
+      # against a stub gh. A failure stops that job too, because it needs this one.
+      - name: Offline test of publish-dev-release.sh
+        run: bash scripts/ci/test-publish-dev-release.sh
 
       # Godot copies JAVA_HOME and ANDROID_HOME into its editor settings on its first run, so set
       # them before any Godot call (ANDROID_HOME is the runner image's SDK already).
@@ -130,6 +138,7 @@ jobs:
       # A key is generated per run. Only a push to main may use the optional stable key, so PR code
       # never sees the secrets (ADR 0005 section 4). The password reaches the script by env only.
       - name: Export debug APK
+        id: export-apk
         env:
           STABLE_KEYSTORE_B64: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.ANDROID_DEBUG_KEYSTORE_BASE64 || '' }}
           STABLE_KEYSTORE_PASSWORD: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.ANDROID_DEBUG_KEYSTORE_PASSWORD || '' }}
@@ -147,6 +156,7 @@ jobs:
             kind=generated
           fi
           echo "DEBUG_KEY_KIND=$kind" >> "$GITHUB_ENV"
+          echo "kind=$kind" >> "$GITHUB_OUTPUT"
           GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$keystore" \
           GODOT_ANDROID_KEYSTORE_DEBUG_USER="androiddebugkey" \
           GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD="$password" \
@@ -187,3 +197,38 @@ jobs:
             build/android/THIRD_PARTY_LICENSES.txt
           if-no-files-found: error
           retention-days: 14
+
+  # ADR 0005 section 6: the rolling pre-release android-dev-latest gives one stable phone URL. Only a
+  # push to main reaches it (never a pull request, a fork or a manual run), after android-debug-apk
+  # succeeded, and only this job holds contents: write. It publishes the APK that android-debug-apk
+  # built in this same run and never rebuilds it. The workflow-level group above already queues the
+  # push runs of main one after the other. The job-level group keeps two publishes from
+  # interleaving (delete + create) even if that ever changes.
+  android-dev-release:
+    needs: android-debug-apk
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !github.event.repository.fork
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: android-dev-latest
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/ci
+
+      - name: Download the debug APK of this run
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: rts-mobile-debug-apk-${{ github.sha }}
+          path: ${{ runner.temp }}/apk
+
+      # Deletes and recreates the pre-release, then downloads the stable URL and compares SHA-256.
+      - name: Replace the android-dev-latest pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEY_KIND: ${{ needs.android-debug-apk.outputs.key_kind }}
+        run: bash scripts/ci/publish-dev-release.sh "$RUNNER_TEMP/apk"

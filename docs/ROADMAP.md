@@ -16,7 +16,7 @@ Tick a box in the PR that meets the criterion.
 - [ ] Gate: CI green on `main`, the preview link works on Michael's phone, `/verify` works in a cloud session
 
 ## Phase 1: Controls prototype (go/no-go)
-- [ ] One 48x48 test map with 30 player tanks and 10 static enemy targets
+- [x] One 48x48 test map with 30 player tanks and 10 static enemy targets
 - [x] Camera: one-finger pan, pinch zoom with 3 levels, two-finger pan, edge clamping
 - [ ] Selection: tap, double-tap (all of type on screen), long-press box select, "All army" button, groups 1-3
 - [ ] Move orders are attack-moves with a move marker; units spread around the target point
