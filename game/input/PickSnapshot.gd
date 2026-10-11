@@ -1,8 +1,8 @@
 class_name PickSnapshot
 extends RefCounted
-## What the Picker needs to know about every unit on screen, as parallel arrays in World row
-## order (ascending id). UnitLayer.fill_pick_snapshot() fills it and resizes the arrays in place,
-## so one snapshot can be refilled every frame without allocating.
+## What the Picker needs to know about every unit, on or off screen, as parallel arrays in World
+## row order (ascending id). UnitLayer.fill_pick_snapshot() fills it and resizes the arrays in
+## place, so one snapshot can be refilled every frame without allocating.
 
 var ids: PackedInt32Array = PackedInt32Array()
 var owners: PackedInt32Array = PackedInt32Array()

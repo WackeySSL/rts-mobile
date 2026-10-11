@@ -15,18 +15,9 @@ const RADIUS: Dictionary[StringName, Array] = {
 }
 const ZOOMS: Array[float] = [0.75, 1.0]
 
-var _window_size_before: Vector2i
 var _settings: InputSettings = load("res://data/input_settings.tres")
 var _camera: RtsCamera
 var _layer: UnitLayer
-
-
-func before() -> void:
-	_window_size_before = get_window().size
-
-
-func after() -> void:
-	get_window().size = _window_size_before
 
 
 func before_test() -> void:
@@ -51,9 +42,7 @@ func test_the_hit_area_is_48_dp_across_or_the_art_if_larger_at_every_profile_and
 	assert_float(_settings.hit_radius_dp).is_equal(24.0)
 	for profile_name: StringName in RADIUS:
 		var profile: UiMetrics = UiProfiles.by_name(profile_name)
-		UiScale.set_override(profile)
-		get_window().size = profile.window_size
-		await await_idle_frame()
+		UiScale.set_override(profile)  # dp comes from the profile alone, not from the window.
 		for z: int in 2:
 			_camera.zoom = Vector2(ZOOMS[z], ZOOMS[z])
 			var snap: PickSnapshot = _fill(PickSnapshot.new())
@@ -85,6 +74,9 @@ func test_the_closest_centre_wins_not_the_closest_edge_and_ties_go_to_the_lower_
 		[[1, 1, 0, Vector2(100, 100), 100.0], [2, 1, 0, Vector2(150, 100), 20.0]]
 	)
 	assert_int(Picker.pick(wide, Vector2(140, 100), 1, false)).is_equal(1)
+	var edge: PickSnapshot = _snap([[1, 1, 0, Vector2(100, 100), 10.0]])  # Exactly 10 away hits.
+	var at_edge: Array[int] = [Picker.pick(edge, Vector2(110, 100), 1, false)]
+	assert_array(at_edge + [Picker.pick(edge, Vector2(111, 100), 1, false)]).is_equal([0, -1])
 
 
 func test_an_enemy_is_ignored_without_a_selection_and_wins_with_one() -> void:
@@ -98,6 +90,7 @@ func test_an_enemy_is_ignored_without_a_selection_and_wins_with_one() -> void:
 	assert_int(Picker.pick(snap, Vector2(190, 100), 1, true)).is_equal(1)
 	assert_int(Picker.pick(snap, Vector2(50, 100), 1, true)).is_equal(0)  # Only the own unit.
 	assert_int(Picker.pick(snap, near_own, 2, false)).is_equal(1)  # Player 2: the roles swap.
+	assert_int(Picker.pick(snap, Vector2(135, 100), 2, true)).is_equal(0)  # Enemy first, own closer.
 	assert_int(Picker.pick(PickSnapshot.new(), near_own, 1, true)).is_equal(-1)  # Nothing there.
 
 
@@ -124,6 +117,7 @@ func test_rect_queries_return_ascending_ids_of_own_units_and_replace_the_output(
 
 
 func test_filling_a_snapshot_writes_the_rows_in_place_and_keeps_the_sizes() -> void:
+	UiScale.set_override(UiProfiles.by_name(&"desktop"))  # dp(24) = 24 px, whatever the window is.
 	_camera.position = Vector2(500, 1100)
 	var snap: PickSnapshot = PickSnapshot.new()
 	snap.ids.resize(100)  # Stale rows beyond the 40 units are dropped.
@@ -137,11 +131,21 @@ func test_filling_a_snapshot_writes_the_rows_in_place_and_keeps_the_sizes() -> v
 	assert_that(snap.screen_pos[0]).is_equal(_camera.world_to_screen(Vector2(544, 1184)))
 	assert_that(snap.screen_pos[30]).is_equal(_layer.unit_screen_position(30))
 	assert_float(snap.radius_px[0]).is_equal(32.0)  # Art 32 px at zoom 1 beats dp(24) = 24 px.
-	var held: PackedVector2Array = snap.screen_pos
+	var world: World = _layer.runner.world  # A second type, 1000 milli = 64 px, for row 5.
+	world.type_selection_radius.append(1000)
+	world.type_index[5] = 1
+	_fill(snap)
+	var row_5: Array = [snap.type_index[5], snap.radius_px[5], snap.radius_px.count(32.0)]
+	assert_array(row_5).is_equal([1, 64.0, 39])  # The other 39 rows keep their 32 px.
+	var held: Array = [snap.ids, snap.owners, snap.type_index, snap.screen_pos, snap.radius_px]
+	for array: Variant in held:
+		array.clear()  # In place, so the snapshot's own arrays are empty now.
 	_camera.position = Vector2(600, 1100)
 	_camera.zoom = Vector2(1.5, 1.5)
 	_fill(snap)
-	assert_that(held[0]).is_equal(_camera.world_to_screen(Vector2(544, 1184)))  # Refilled in place.
+	# A fill that replaced an array would leave the held one empty.
+	assert_bool(held.all(func(a: Variant) -> bool: return a.size() == 40)).is_true()
+	assert_that(held[3][0]).is_equal(_camera.world_to_screen(Vector2(544, 1184)))
 	assert_float(snap.radius_px[0]).is_equal(48.0)  # Art 32 px * 1.5.
 
 

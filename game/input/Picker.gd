@@ -4,7 +4,7 @@ extends RefCounted
 ## Pure and static. A unit is hit when the point is within its `radius_px` of its centre. Any owner
 ## but `local_player` is an enemy. Box queries use unit centres and return ascending ids.
 
-const ANY_TYPE: int = -1
+const _ANY_TYPE: int = -1
 
 
 ## The snapshot index of the unit hit at `pos`, or -1. Without a selection only own units count.
@@ -33,7 +33,7 @@ static func pick(snap: PickSnapshot, pos: Vector2, local_player: int, has_select
 static func own_in_rect(
 	snap: PickSnapshot, rect: Rect2, local_player: int, out: PackedInt32Array
 ) -> void:
-	_collect(snap, ANY_TYPE, rect, local_player, out)
+	_collect(snap, _ANY_TYPE, rect, local_player, out)
 
 
 ## Like own_in_rect, but only units of type `type_index` (a World type index, 0 or more).
@@ -48,7 +48,7 @@ static func _collect(
 ) -> void:
 	out.clear()
 	for i: int in snap.size():
-		var wanted: bool = type_index == ANY_TYPE or snap.type_index[i] == type_index
+		var wanted: bool = type_index == _ANY_TYPE or snap.type_index[i] == type_index
 		if snap.owners[i] == local_player and wanted and rect.has_point(snap.screen_pos[i]):
 			out.append(snap.ids[i])
 	out.sort()

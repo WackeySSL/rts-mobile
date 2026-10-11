@@ -23,16 +23,22 @@ func test_set_ids_sorts_removes_duplicates_and_leaves_the_callers_array_alone() 
 
 
 func test_changed_fires_once_per_real_change_of_the_selection() -> void:
+	var seen: Array[PackedInt32Array] = []  # The selection as a listener sees it.
+	_model.changed.connect(func() -> void: seen.append(_model.selected.duplicate()))
 	_model.set_ids(PackedInt32Array([2, 1]))
 	assert_int(_changes).is_equal(1)
+	assert_array(seen[0]).is_equal([1, 2])
 	_model.set_ids(PackedInt32Array([1, 2, 2]))  # The same selection.
 	_model.assign_group(1)  # A group change leaves the selection alone.
 	assert_int(_changes).is_equal(1)
 	_model.set_ids(PackedInt32Array([1, 2, 3]))
 	assert_int(_changes).is_equal(2)
+	_model.set_ids(PackedInt32Array([4, 5, 6]))  # The same size, other ids.
+	assert_array(_model.selected).is_equal([4, 5, 6])
+	assert_int(_changes).is_equal(3)
 	_model.clear()
 	_model.clear()  # Already empty.
-	assert_int(_changes).is_equal(3)
+	assert_int(_changes).is_equal(4)
 
 
 func test_groups_keep_a_copy_of_the_selection_and_recall_it() -> void:
