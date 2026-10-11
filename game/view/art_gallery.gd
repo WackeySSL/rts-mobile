@@ -7,6 +7,11 @@ extends Control
 ## with `modulate` on the `Team` layer. The turrets turn slowly so both sides of each can be
 ## judged; `delta` is fine here because nothing in the sim reads this.
 ##
+## The zoom row (bottom) shows the light tank at rig scale 0.75, 1.0 and 1.5, the camera zoom
+## levels: team A on grass, team B (the enemy look) on sand. A rig's scale does to the sprite what
+## the camera zoom does, so the row shows how soft the 0.5 import scale looks at each level. It
+## needs no code: tint and turret turn find its rigs by group and layer name like any other rig.
+##
 ## To add an asset: add its layers as a rig on both backgrounds, put the rig in a team group and
 ## keep the layer names. See assets/art/STYLE.md.
 

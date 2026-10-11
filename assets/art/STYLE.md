@@ -4,8 +4,9 @@ This is the living version of the `svg-art-style` skill (`.claude/skills/svg-art
 plus the layer contract for multi-layer units. All art is hand-written SVG in this repository.
 Update this file when Michael approves a change; the skill stays the short checklist.
 
-Status: v1, written in Phase 0 with the light tank sample. Rules marked **(new)** go beyond the
-skill and are waiting for Michael's approval (list at the end).
+Status: v1, written in Phase 0 with the light tank sample. v1.1 (Phase 1, P12) adds the feedback
+markers and the gallery zoom row. Rules marked **(new)** go beyond the skill and are waiting for
+Michael's approval (list at the end).
 
 ## Look
 Clean, flat, top-down "military map" style with strong silhouettes, readable at small size on a
@@ -16,7 +17,7 @@ phone. Not cartoonish, not photoreal. Pure top-down view, light from the top-lef
 - Canvas at 2x: infantry squad 64x64, light vehicles 96x96, **tanks 128x128**, harvester 160x160,
   buildings 256x256 (2x2 tiles) or 384x384 (3x3 tiles).
 - Godot rasterises an SVG once, at import. Showing a sprite above scale 1 therefore looks soft.
-  The gallery shows scale 1 only.
+  The gallery's main row shows scale 1. Its zoom row shows the light tank at 0.75, 1.0 and 1.5.
 
 ## Palette
 | Role | Hex | Luminance (0-255) |
@@ -125,10 +126,72 @@ gun read as separate parts on grass and sand. Detail check at 2x (raster scale 1
 face keeps 3 px of metal on each side of its 2 px vent, and one full row of the upper pod
 highlight stays visible beside the team plate.
 
+## Feedback markers (new)
+Selection rings, the target flash, the attack-move marker, the long-press anchor and the box are
+drawn in code (`_draw` or `Line2D`), not as SVG. They stay crisp at every zoom and are sized in dp
+(ADR 0004 section 7). The SVG technical rules do not apply to them, the palette does. touch-ux-dev
+builds them in P16 and pins the numbers below in tests.
+
+Conventions:
+- **dp** is `UiScale.dp(v)`, base px on screen. In world space (under `RtsCamera`) divide by the
+  camera zoom, so a dp size looks the same at 0.75, 1.0 and 1.5. `MoveMarkerLayer` has no camera
+  export, so it reads the zoom as `get_canvas_transform().get_scale().x`. **World px** (1 tile = 64)
+  scale with the zoom, like the sprites.
+- **Stroke**: two passes on one centre line, round caps and joins, antialiased. First the outline
+  pass in #1C2127 at width + 2 dp, then the colour pass. 1 dp of dark shows on each side. That
+  separates every colour from grass (luminance 127) and sand (186).
+- **Fade**: full alpha until min(200 ms, `marker_ms` / 3), then linear to 0 at `marker_ms` (600),
+  so a shorter `marker_ms` never makes the fade interval empty. Fade the outline pass and the
+  colour pass as one group (a `CanvasGroup` per marker, or outline alpha a^2 under colour alpha a),
+  because Godot blends each draw pass on its own and two plain alphas turn the marker dark mid-fade.
+  **Ease** is ease-out quad, e(t) = 1 - (1 - t)^2.
+- Alpha is 1.0 unless a row says so. Markers have no shadow and make no sound.
+
+| Marker | Shape and size | Stroke | Colour | Motion | Drawn where |
+| --- | --- | --- | --- | --- | --- |
+| Own selection ring | Circle at the unit position, radius R = max((selection_radius / 1000 + 0.05) x 64 world px, 18 dp). Light tank: 35.2 world px, so 31.5 / 35.2 / 52.8 base px on screen at zoom 0.75 / 1.0 / 1.5 on the 6-inch phone profile (1 dp = 1.75 base px) | 3 dp | #FFFFFF | None. Shown in the frame of the tap | World space, first child of the unit rig, under the hull |
+| Enemy target flash | Diamond (a square turned 45 degrees), corners 45.8 world px from the enemy position (1.3 x the light tank's R of 35.2). `show_target(world_px)` carries only the position and Phase 1 has one unit type, so this is one view constant of the layer, not read from unit data | 3 dp | #E5484D | Starts at 1.5 x size, reaches 1.0 x in 150 ms (ease), then fades | World space, `MarkerLayer`, above the units |
+| Attack-move marker | Four chevrons around the tapped point (the origin), pointing at it. The east one is the open polyline (d + 7, -7), (d, 0), (d + 7, 7) dp, so its tip faces the point. The south, west and north ones are the same turned by 90, 180 and 270 degrees. d = 12 dp at rest | 3 dp | #F5A524 | d goes from 36 dp to 12 dp in 200 ms (ease), then fades | World space, `MarkerLayer`. A dp size, so it does not grow with the zoom |
+| Long-press anchor | Ring at the press point, radius 32 dp (diameter 64 dp, about 10 mm). Fill #FFFFFF at 15% | 3 dp | #FFFFFF | Radius 48 dp to 32 dp in 150 ms (ease), then it stays until the box ends or cancels | Screen space, `BoxOverlay`, drawn before the box |
+| Selection box | The normalised drag rect. The centre line is the rect inset by 1 dp, so the outer edge of the white is the rect edge. Fill #FFFFFF at 15% | 2 dp | #FFFFFF | None | Screen space, `BoxOverlay` |
+
+Draw order, bottom to top: ground, then each rig (ring, hull, team layer, turret), then flash and
+chevrons, then the HUD layer with the anchor and the box. A fill is drawn before its outline pass.
+
+Checked in a scratch render at 1.75 base px per dp on grass #6F8F57 and sand #CDB98F, in colour and
+in greyscale: all five read apart by shape on both grounds, and the dark outline keeps the red
+diamond (luminance 120, grass 127) and the chevrons (174, sand 186) readable. Look again once P16
+draws them on the phone.
+
+### Shape as second cue
+- Colour is never the only cue (`touch-ui-rules`). Each meaning has its own shape: own selection is
+  a closed circle around a unit, an enemy target is a closed diamond, attack-move is four open
+  chevrons closing in, the box is a rectangle, and the long-press anchor is the only lightly filled
+  ring and the only ring that shrinks in. A press on a unit puts the anchor on that unit, and on a
+  desktop or tablet profile a unit ring can be as large as the anchor. Fill and motion tell the two
+  apart there, not size.
+- Test for every new marker: look at it in greyscale at the size the player sees. The marker
+  colours have luminance white 255, warning 174, danger 120, outline 32. If two markers cannot be
+  told apart by shape, size or motion alone, change the shape, not the hue.
+- The sprites of team A and team B differ by hue only (luminance 116 and 120). In Phase 1 the markers
+  carry the second cue: only own units get a ring, and a targeted enemy gets the diamond. Anything
+  later that must tell the teams apart in a crowd (health bars, minimap dots) needs a shape
+  difference.
+
+### Enemy target look
+No new SVG. An enemy is the light tank (`units/light_tank_{hull,team,turret}.svg`) with its `Team`
+layer modulated #E5484D (team B). Hull and turret keep their olive and metal. The sand half of the
+gallery's zoom row shows it at 0.75, 1.0 and 1.5. Phase 1 targets stand still, so they need no other
+cue.
+
 ## Gallery
 `scenes/dev/art_gallery.tscn` (opened from the dev menu, also in the web preview) shows every asset
 at scale 1 (gameplay zoom) on grass and sand, in team A and team B. A faint 64 px square behind each
-unit marks one tile. Turrets turn slowly. To add an asset:
+unit marks one tile. Turrets turn slowly. The zoom row at the bottom shows the light tank at rig
+scale 0.75, 1.0 and 1.5, the camera zoom levels of `data/input_settings.tres`: team A on grass,
+team B on sand, labelled on the grass half. On a 6-inch phone (stretch 1.5) zoom 1.5 draws one
+tile as 144 window px from a 64 px raster, 2.25 times. Only the light tank has a zoom row. To add
+an asset:
 - Add its layers as one rig `Node2D` under each of the four slots (grass A, grass B, sand A, sand B).
 - Put the rig in the group `gallery_team_a` or `gallery_team_b`, and name the layers `Hull`, `Team`
   and `Turret` (a unit without a turret leaves `Turret` out).
@@ -140,9 +203,14 @@ unit marks one tile. Turrets turn slowly. To add an asset:
 
 ## Open points for Michael
 - Approve the **(new)** rules: team-layer greys, elevation reads as lightness, rotating layers carry
-  no shadow and no one-sided light, and the reading of "1.5 px vs 2 px".
-- Import scale 0.5 may look soft on phones with a device pixel ratio around 1.5. Judge it in the
-  gallery on the phone. Changing it means a new rule here, approved by you.
+  no shadow and no one-sided light, the reading of "1.5 px vs 2 px", and the feedback marker
+  spec (shapes, dp sizes, colours, outline, fade).
+- Please judge on the phone (Dev, Art gallery, bottom row) whether zoom 1.5 looks too soft. The
+  tile is a 64 px raster drawn at 2.25 times on a 6-inch phone. The fix would be SVG import scale
+  1.0 with mipmaps and sprites drawn at scale 0.5. That changes the Technical rules here, so it
+  needs your approval. It is not part of P12 (plan open question 4).
+- The red target diamond has almost the same luminance as grass (120 against 127). Only its dark
+  outline separates them. Judge it on the phone once P16 draws it.
 - Team A and team B differ only in hue in the unit art. `touch-ui-rules` asks for a second cue than
   colour, which belongs on HUD markers (selection ring, health bar), not on the unit sprites.
   Decide whether that is enough.
@@ -151,3 +219,4 @@ unit marks one tile. Turrets turn slowly. To add an asset:
 | Date | Change |
 | --- | --- |
 | 2026-10-10 | v1: guide written with the layer contract and the light tank sample. |
+| 2026-10-11 | v1.1 (P12): feedback marker spec, gallery zoom row, launcher icon credit. |
