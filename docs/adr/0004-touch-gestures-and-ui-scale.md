@@ -116,7 +116,8 @@ Facts checked on Godot 4.7.2:
      every suite that sets an override clears it in `after_test`.
    - Values change when the window resizes (rotation, browser toolbar). Users of dp sizes
      recompute on the viewport's `size_changed`: `DpMinSize` and `SafeAreaMargin` do, and
-     `TouchInput` re-runs `configure()`.
+     `TouchInput` re-runs `configure()`. A 180 degree turn (sensor landscape) moves the cutout
+     without a resize, so `SafeAreaMargin` gives both sides of an axis the larger inset.
    - Examples (a 6-inch phone, 1080x2400, 420 dpi, held landscape):
      - Native APK: window 2400x1080, stretch 1.5, so `dp(48)` = 48 x 2.625 / 1.5 = 84 base px.
      - Chrome: a 914x355 CSS viewport gives a canvas of 2400x932, stretch 1.294, so
@@ -149,7 +150,7 @@ Facts checked on Godot 4.7.2:
      the selection, which is the deliberate way to deselect.
    - "All army" selects every own unit with speed > 0 on the whole map.
    - Group button tap: select that group. Hold for `group_assign_ms`: assign the current
-     selection to the group.
+     selection to the group. Sliding off the button first cancels the hold.
    - The selection is a sorted, unique `PackedInt32Array`. Commands carry it as `unit_ids`.
 6. **Camera** (`game/view/RtsCamera.gd`, replaces `camera_pan.gd`):
    - Pan: `position -= delta / zoom`.
