@@ -1,6 +1,6 @@
 # ADR 0011: View interpolation, draw structure and the performance budget (probe, headless test, phone gate)
 
-Status: proposed, 2026-10-11 (revision 3 after the five-lens plan review and the completeness check, same day)
+Status: proposed, 2026-10-11 (revision 4 after the five-lens plan review and two completeness checks, same day)
 
 ## Context
 ROADMAP Phase 2 asks for three things:
@@ -135,8 +135,10 @@ Mesa/llvmpipe with Xvfb, so draw-call counts are reliable and times are not):
   All three runs are printed.
 - **Report:** one line
   `PERF sim units=150 ticks=900 runs=3 mean_ms=… p50_ms=… p95_ms=… p99_ms=… max_ms=… worst15_ms=… ticks_per_s=… alive_end=… proj_peak=… projectile_overflow=… phases=<ms per phase> hash=<16 hex>`
-  on stdout (`worst15_ms` is the costliest window of 15 consecutive ticks; the hash comes from
-  `World.hash_hex`), and the same numbers as JSON in `reports/perf/sim.json` (git-ignored).
+  on stdout (`worst15_ms` is the costliest window of 15 consecutive ticks; `phases=` lists all
+  `SimProbe.Phase.COUNT` phases in id order as `name:ms` pairs from `SimProbe.PHASE_NAMES`,
+  for example `phases=commands:0.05,flow:0.00,grids:0.04,...`, with 0 for a phase not yet in
+  the tick (ADR 0007 §4); the hash comes from `World.hash_hex`), and the same numbers as JSON in `reports/perf/sim.json` (git-ignored).
 - **Deterministic cost bounds (exact, cannot flake):** from `World.stats`, per tick: flow cells
   settled at most `flow_cells_per_tick`; separation pairs at most `separation_scan` x units; line
   checks at most the moving units; targeting candidates and fog cells stamped at most the bounds
@@ -163,13 +165,16 @@ Mesa/llvmpipe with Xvfb, so draw-call counts are reliable and times are not):
   between tick 100 and tick 900.
 - **Same seed, same match, at scale:** the three seed-42 runs give identical 15-tick checkpoints.
   Seed 43 gives a different final hash. The seed-42 checkpoint hashes every 150 ticks and the
-  final hash are pinned as literals in `data/dev/perf_gate.tres` (golden values). A sim PR that
-  changes them updates them on purpose, with a note.
+  final hash are pinned as literals in `data/dev/perf_gate.tres` (golden values) and checked by
+  `tests/perf/test_golden_hashes.gd`, a separate file with no clock, so it can run alone on
+  another architecture. The wall-clock budget lives only in `tests/perf/test_sim_perf.gd`. A
+  sim PR that changes the golden values updates them on purpose, with a note.
 - **Before P49:** the harness lands right after the match loop and the runner (P38p) as report
   only, with a catastrophic cap of 20 ms mean. Every later sim PR quotes its `PERF` line before
   and after the change.
 - **CI:** `verify` runs the suite like any test. `ci.yml`'s job summary copies the `PERF` line.
-  A small arm64 Linux job runs the determinism and golden-hash suites, if an official arm64
+  A small arm64 Linux job runs the determinism suites and `test_golden_hashes.gd` by path, if an
+  official arm64
   Linux editor build of 4.7.2 exists (P51b checks this first).
 
 ### 5. Phone measurement

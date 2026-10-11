@@ -1,6 +1,6 @@
 # ADR 0007: Simulation core (World v1, Command v1, tick pipeline, DetRandom, state hash, replays)
 
-Status: proposed, 2026-10-11 (revision 3 after the five-lens plan review and the completeness check, same day)
+Status: proposed, 2026-10-11 (revision 4 after the five-lens plan review and two completeness checks, same day)
 
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state
@@ -82,10 +82,10 @@ It has these sections:
 | Map | `map_w`, `map_h` (milli), `map_cols`, `map_rows` (tiles), `terrain_ids`, `terrain` (`PackedByteArray`, terrain index per tile), `move_cost` (`PackedByteArray`, `class * cells + cell`, 0 = blocked), `map_version` | `map_version` plus a cached map digest of `terrain` and `move_cost`, recomputed only when `map_version` changes |
 | Units, one row each, ascending id | v0 `unit_id`, `owner`, `type_index`, `pos_x`, `pos_y`, `goal_x`, `goal_y`, `order`, plus `hp`, `order_target`, `target`, `cooldown`, `nav_mode`, `field`, `nav_cell`, `nav_next`, `best_dist`, `stall`, `fog_cell` | every array |
 | Projectiles, fixed capacity `max_projectiles` | `proj_id` (0 = free slot), `proj_owner`, `proj_weapon`, `proj_target`, `proj_x`, `proj_y`, `proj_aim_x`, `proj_aim_y`, `proj_ticks`, and the free-slot stack `proj_free` with `proj_free_top` | live slots only (slot index plus its fields), then `proj_free[0, proj_free_top)` |
-| Scratch, capacity `max_rows`, rewritten every tick | `intent_x`, `intent_y`, `push_x`, `push_y` | no |
-| Cost counters | `stats: PackedInt32Array`, indexed by `enum Stat` (flow cells settled, line checks, separation pairs tested, targeting candidates tested, fog cells stamped, projectile steps, rows compacted), reset in phase 1 | no |
+| Scratch, capacity `max_rows`, rewritten every tick (`SCRATCH_ARRAYS`) | `intent_x`, `intent_y`, `push_x`, `push_y` | no |
+| Cost counters (`RUNTIME_ARRAYS`) | `stats: PackedInt32Array`, indexed by `enum Stat` (flow cells settled, line checks, separation pairs tested, targeting candidates tested, fog cells stamped, projectile steps, rows compacted), reset in phase 1 | no |
 | Helper objects (wired in P31a) | `fog: FogGrid` (hashed through its own lists, ADR 0010), `flow: FlowCache`, `sep_grid: SpatialGrid`, `target_grid: SpatialGrid`, sight masks (derived) | `fog` only |
-| Events | `events: PackedInt32Array`, records of `EVENT_STRIDE = 8` ints (section 10) | no |
+| Events (`RUNTIME_ARRAYS`) | `events: PackedInt32Array`, records of `EVENT_STRIDE = 8` ints (section 10) | no |
 | View support | `rows_version` (bumped whenever rows are added or removed) | no |
 
 - `World.Order` becomes `{ IDLE = 0, ATTACK_MOVE = 1, MOVE = 2, ATTACK = 3 }`. New enums:
@@ -94,13 +94,16 @@ It has these sections:
   `Event { SPAWNED = 1, DIED = 2, SHOT = 3, IMPACT = 4 }`,
   `NavMode { NONE = 0, DIRECT = 1, FIELD = 2, HOLD = 3, CHASE = 4 }`, `Stat { ... }`.
 - **Shape registry.** `World` declares `const ROW_ARRAYS`, `TYPE_ARRAYS`, `WEAPON_ARRAYS`,
-  `PROJECTILE_ARRAYS`, `MAP_ARRAYS`, `SCRATCH_ARRAYS` (all `Array[StringName]`), plus
+  `PROJECTILE_ARRAYS`, `MAP_ARRAYS`, `SCRATCH_ARRAYS`, `RUNTIME_ARRAYS` (`events` and `stats`:
+  rewritten every tick, neither hashed nor compacted; all `Array[StringName]`), plus
   `HASHED_SCALARS` and `UNHASHED_SCALARS`. `remove_dead()` compacts exactly the `ROW_ARRAYS`
   (through `get(name)`, only on ticks with a death), and a test fails unless every `Packed*Array`
   property of `World` is in exactly one shape list and every `int` property in exactly one scalar
   list. A Phase 3 array therefore cannot be forgotten by the compaction or by the hash.
-- **Who declares what.** The first World v1 PR (P29a) declares every World-level array,
-  scalar, enum, scratch array and the `stats` counters, including those that later PRs fill.
+- **Who declares what.** The first two World v1 PRs (P29a, then P29a2; the plan lists which
+  names each declares, so each stays under the PR size limit after `gdformat`) declare every
+  World-level array, scalar, enum, scratch array and the `stats` counters, including those that
+  later PRs fill.
   Each rule int keeps its `RulesDef` field name (`world.retarget_period_ticks`, ...), so data,
   code and tests use one name. Helper objects are separate classes from lane B (`FlowCache`,
   `SpatialGrid`, `FogGrid`). They become typed `World` members in P31a, after their classes
@@ -119,7 +122,9 @@ It has these sections:
     `type_ids.size()`** with named defaults, because Phase 1 tests append only the five v0 type
     arrays and the phase modules read the per-type tables inline and unguarded (section 1):
     `type_max_hp` 1, `type_armour` `INFANTRY`, `type_move_class` `TRACKED`, `type_sight` 0,
-    `type_acquire` 0, `type_weapon` -1 (unarmed), `type_names` the type id as a String, and 0 for
+    `type_acquire` 0, `type_weapon` -1 (unarmed), `type_names` the type id as a capitalized String
+    (`String(type_id).capitalize()`, the same rule `from_scenario` uses for a def whose
+    `display_name` is empty, and the name the Phase 1 selection panel shows), and 0 for
     a missing v0 entry (`type_speed`, `type_radius`, `type_selection_radius`, `type_spacing`).
     The defaults are constants next to the shape lists (`TYPE_PAD_*`), not balance numbers: a
     padded type cannot fire, sees only its own tile and counts as tracked. Types are
@@ -188,8 +193,28 @@ order, each phase iterating rows in ascending id order unless noted:
 Damage only lowers `hp` during phases 9 and 10. Rows die only in phase 11. A unit therefore
 fires in the tick it dies, whatever its id, and no id has an advantage.
 
-**Probe.** `game/sim/SimProbe.gd` is a `RefCounted` with `func mark(phase: int) -> void` that does
-nothing. When a probe is passed, `Sim.step` calls `probe.mark(k)` after each phase. The Node side
+**Probe.** `game/sim/SimProbe.gd` is a `RefCounted` with `func begin() -> void` and
+`func mark(phase: int) -> void`, both doing nothing, and the fixed phase ids:
+
+```
+enum Phase { COMMANDS = 0, FLOW = 1, GRIDS = 2, TARGETING = 3, INTENTS = 4, SEPARATION = 5,
+	INTEGRATE = 6, PROJECTILES = 7, FIRE = 8, REMOVE = 9, FOG = 10, COUNT = 11 }
+const PHASE_NAMES: Array[String] = ["commands", "flow", "grids", "targeting", "intents",
+	"separation", "integrate", "projectiles", "fire", "remove", "fog"]
+```
+
+`COMMANDS` covers steps 0-2 above; `FLOW` to `FOG` are steps 3-12 in order; step 13 is not
+timed. When a probe is passed, `Sim.step` calls `probe.begin()` first and
+`probe.mark(Phase.X)` after each phase. Rules:
+- The ids are fixed from the first pipeline PR on and never renumbered. A phase that does not
+  exist yet is not marked and keeps its id, so per-phase numbers compare between PRs. A phase
+  added in a later phase of the roadmap gets a new id through a new ADR.
+- Marks come in ascending id order, each at most once per tick. Until the movement rewrite the
+  Phase 1 movement is marked `INTEGRATE`.
+- The `GRIDS` phase holds one rebuild line per spatial grid; no phase module rebuilds a grid.
+- Consumers size by `Phase.COUNT` and label by `PHASE_NAMES`: the Node-side `TimingProbe`
+  (`phase_usec`, zeroed by `begin()`, so an unmarked phase reads 0), the `PERF` line's
+  `phases=` field and the perf card. The Node side
 passes a subclass (`game/core/TimingProbe.gd`) that reads the clock, so the per-phase split is
 measured without the sim ever referencing time. A probe never reads or writes the World. A test
 proves that the hashes with and without a probe are equal.
@@ -303,7 +328,9 @@ for Phase 2 types).
   and every helper object reachable from a World property declares its own `HASHED` and
   `UNHASHED` lists (dotted names such as `fog.visible`), checked the same way. A test changes one
   element of each hashed array and each hashed scalar and expects a different hash.
-- `World.hash_parts() -> PackedInt64Array` returns one 8-byte digest prefix per section. The
+- `World.hash_parts() -> PackedInt64Array` returns one 8-byte digest prefix per section, in the
+  order of `static func hash_section_names() -> PackedStringArray`: `"header"` (format, hashed
+  scalars, `rng`), `"map"`, one name per `ROW_ARRAYS` entry, `"projectiles"`, `"fog"`. The
   determinism and replay tests print the names of the differing sections when hashes differ.
   It is computed only on failure.
 - `World.defs_hash() -> int` hashes the type, weapon and rules tables the same way. It goes into

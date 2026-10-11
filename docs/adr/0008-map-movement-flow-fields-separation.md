@@ -1,6 +1,6 @@
 # ADR 0008: Map grid, movement, flow fields and separation
 
-Status: proposed, 2026-10-11 (revision 3 after the five-lens plan review and the completeness check, same day)
+Status: proposed, 2026-10-11 (revision 4 after the five-lens plan review and two completeness checks, same day)
 
 ## Context
 ROADMAP Phase 2 asks for "movement with flow fields and separation". Phase 1 moves units in
@@ -198,13 +198,22 @@ Measurements (Godot 4.7.2 headless, 2026-10-11, Xeon cloud VM; mock code, not th
 - All units separate, including enemies and idle units. Projectiles do not.
 - **Consequence for Phase 1's pinned results (decided):** an idle unit has no force pulling it
   back to its slot, so a moving group shoves units that already settled. The idle share stays
-  75, because an idle share of 0 would let idle units block corridors and gaps. The Phase 1
-  assertions change in the separation PR, with the reason in the PR:
-  - `test_controls_flow` (qa-owned, explicit one-line exception in P39): the bound "every pair at
-    least the formation spacing apart" becomes "every pair at least 90% of the radii sum apart"
-    (no visible overlap);
+  75, because an idle share of 0 would let idle units block corridors and gaps (and it would not
+  save the Phase 1 view tests below, where the moving tank itself is deflected). Separation does
+  not move units that stand on distinct slots at the Phase 1 spacing (1200 > the 800 radii sum),
+  but moving units push them. Every Phase 1 test that runs two or more ticks with more than one
+  unit was audited (plan, "File ownership"); the assertions that change, with the reason in the
+  PR:
+  - `test_controls_flow` (qa-owned) and `test_player_controller` (touch-ux-dev's; the same order),
+    each a one-line named exception in the PR that puts separation into the tick (P39b): the
+    bound "every pair at least the formation spacing apart" becomes "every pair at least 90% of
+    the radii sum apart" (no visible overlap). The centre bounds stay (prototype maximum 3794
+    against 3795-3800);
   - `test_sim_step` (gameplay-dev's own): "all 40 rows idle at tick 150" moves to the tick
-    measured in the PR, with distinct positions and the same 90% pair bound.
+    measured in the PR (prototype: 155), with distinct positions and the same 90% pair bound;
+  - `test_unit_layer` (touch-ux-dev's): two cases drive tank 1 through or next to the block. Its
+    owner re-aims them, before separation lands (P40), to corner tanks whose paths stay more than
+    800 milli from every other unit, with the same headings and arrival ticks.
 - **Integrate and slide:**
   - The new position (intent + push) is clamped to the map.
   - If its tile is blocked for the unit's class, try the x move alone, then the y move alone,
