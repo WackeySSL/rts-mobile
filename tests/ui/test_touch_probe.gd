@@ -40,6 +40,8 @@ func test_it_shows_the_numbers_of_the_profile() -> void:
 	var probe: Control = await _open(metrics)
 	assert_str((_control(probe, "MetricsLabel") as Label).text).is_equal(ANDROID_TEXT)
 	assert_str((_control(probe, "SquareLabel") as Label).text).is_equal("should measure 7.6 mm")
+	# The 60 px cutout is 40 base px, plus dp(12) = 21: the text no longer sits under it.
+	assert_float(_control(probe, "Column").get_global_rect().position.x).is_equal(61.0)
 
 
 ## Covers 1280x720 (desktop), 2400x1080 (android_6in) and 2048x1536 (web_tablet), and the phone

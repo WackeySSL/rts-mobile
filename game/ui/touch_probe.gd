@@ -27,7 +27,6 @@ var _recognizer: GestureRecognizer = GestureRecognizer.new()
 var _events: Array[GestureEvent] = []
 var _previous_quit_on_go_back: bool = true
 
-@onready var _margin: MarginContainer = $Margin
 @onready var _column: VBoxContainer = $Margin/Column
 @onready var _metrics_label: Label = $Margin/Column/MetricsLabel
 @onready var _square_label: Label = $Margin/Column/SquareLabel
@@ -127,8 +126,8 @@ func _show_log() -> void:
 	_log_label.text = "\n".join(padding + log_lines)
 
 
-## Recomputes everything that depends on dp: the numbers, the font, the margins, the gap and the
-## recognizer's thresholds.
+## Recomputes everything that depends on dp: the numbers, the font, the gap and the recognizer's
+## thresholds. The screen margins are the SafeAreaMargin's.
 func _refresh() -> void:
 	_recognizer.configure(SETTINGS, UiScale.base_px_per_dp())
 	var m: UiMetrics = UiScale.current()
@@ -146,10 +145,7 @@ func _refresh() -> void:
 	var font_size: int = roundi(UiScale.dp(FONT_DP))
 	for control: Control in [_metrics_label, _square_label, _back_button, _log_label]:
 		control.add_theme_font_size_override("font_size", font_size)
-	var gap: int = roundi(UiScale.dp(GAP_DP))
-	for side: String in ["left", "top", "right", "bottom"]:
-		_margin.add_theme_constant_override("margin_" + side, gap)
-	_column.add_theme_constant_override("separation", gap)
+	_column.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
 	queue_redraw()
 
 

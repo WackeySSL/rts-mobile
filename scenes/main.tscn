@@ -12,6 +12,9 @@
 [ext_resource type="Script" path="res://game/input/PlayerController.gd" id="10_player"]
 [ext_resource type="Script" path="res://game/view/MoveMarkerLayer.gd" id="11_markers"]
 [ext_resource type="Script" path="res://game/ui/BoxOverlay.gd" id="12_box"]
+[ext_resource type="Script" path="res://game/ui/SafeAreaMargin.gd" id="12_safe"]
+[ext_resource type="Script" path="res://game/ui/DpMinSize.gd" id="13_dp"]
+[ext_resource type="Script" path="res://game/ui/ArmyBar.gd" id="14_army"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -44,7 +47,7 @@ settings = ExtResource("6_settings")
 script = ExtResource("2_cam")
 settings = ExtResource("6_settings")
 
-[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "camera", "marker_layer", "box_overlay")]
+[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "camera", "marker_layer", "box_overlay", "army_bar")]
 script = ExtResource("10_player")
 runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
@@ -52,6 +55,7 @@ camera = NodePath("../Camera")
 settings = ExtResource("6_settings")
 marker_layer = NodePath("../MarkerLayer")
 box_overlay = NodePath("../Hud/BoxOverlay")
+army_bar = NodePath("../Hud/SafeArea/ArmyBar")
 
 [node name="TouchInput" type="Node" parent="." node_paths=PackedStringArray("camera", "controller")]
 script = ExtResource("5_touch")
@@ -68,24 +72,29 @@ anchor_bottom = 1.0
 mouse_filter = 2
 script = ExtResource("12_box")
 
-[node name="Margin" type="MarginContainer" parent="Hud"]
+[node name="SafeArea" type="MarginContainer" parent="Hud"]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/margin_left = 24
-theme_override_constants/margin_top = 24
-theme_override_constants/margin_right = 24
-theme_override_constants/margin_bottom = 24
+script = ExtResource("12_safe")
 
-[node name="DevButton" type="Button" parent="Hud/Margin"]
-custom_minimum_size = Vector2(120, 120)
+[node name="DevButton" type="Button" parent="Hud/SafeArea"]
 size_flags_horizontal = 0
 size_flags_vertical = 0
 theme_override_font_sizes/font_size = 40
 text = "Dev"
 script = ExtResource("3_dev")
+
+[node name="DpMinSize" type="Node" parent="Hud/SafeArea/DevButton"]
+script = ExtResource("13_dp")
+
+[node name="ArmyBar" type="HBoxContainer" parent="Hud/SafeArea"]
+size_flags_horizontal = 0
+size_flags_vertical = 8
+script = ExtResource("14_army")
+settings = ExtResource("6_settings")
 
 [connection signal="selection_changed" from="PlayerController" to="UnitLayer" method="set_selected"]

@@ -18,10 +18,13 @@ signal selection_changed(ids: PackedInt32Array)
 @export var settings: InputSettings
 @export var marker_layer: MoveMarkerLayer
 @export var box_overlay: BoxOverlay
+@export var army_bar: ArmyBar
 
 var selection: SelectionModel = SelectionModel.new()
 ## Receives each Command. Tests replace it.
 var command_sink: Callable = CommandQueue.submit
+## Buzzes for the given ms when a group is assigned. Tests replace it.
+var vibrate: Callable = Input.vibrate_handheld
 
 var _snap: PickSnapshot = PickSnapshot.new()
 var _found: PackedInt32Array = PackedInt32Array()  ## Scratch for the Picker's box queries.
@@ -34,6 +37,10 @@ func _init() -> void:
 func _ready() -> void:
 	if settings == null:
 		settings = InputSettings.new()  # The script defaults are the ADR table.
+	if army_bar != null:
+		army_bar.all_army_pressed.connect(select_all_army)
+		army_bar.group_tapped.connect(tap_group)
+		army_bar.group_assign_requested.connect(assign_group)
 
 
 func handle_gesture(e: GestureEvent) -> void:
@@ -53,6 +60,29 @@ func handle_gesture(e: GestureEvent) -> void:
 			_refresh()
 			Picker.own_in_rect(_snap, e.rect, _local_player(), _found)
 			selection.set_ids(_found)  # No unit in the box: this clears the selection.
+
+
+## "All army": every own unit that can move, wherever it is (ADR 0004 section 5).
+func select_all_army() -> void:
+	var world: World = runner.world
+	var ids: PackedInt32Array = PackedInt32Array()
+	for row: int in world.unit_count():
+		if world.owner[row] == _local_player() and world.type_speed[world.type_index[row]] > 0:
+			ids.append(world.unit_id[row])
+	selection.set_ids(ids)
+
+
+func tap_group(slot: int) -> void:
+	selection.recall_group(slot)
+
+
+## Stores the selection in group `slot`, shows the count and buzzes.
+func assign_group(slot: int) -> void:
+	selection.assign_group(slot)
+	if army_bar != null:
+		army_bar.set_group_count(slot, selection.group(slot).size())
+	if settings.haptics_enabled:
+		vibrate.call(settings.haptic_ms)
 
 
 func _tap(pos: Vector2) -> void:
