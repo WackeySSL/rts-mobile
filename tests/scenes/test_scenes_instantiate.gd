@@ -1,8 +1,8 @@
 extends GdUnitTestSuite
 ## Every scene under res://scenes instantiates, survives one frame in the tree and is freed
 ## without leaving orphans (gdUnit4 reports orphans as exit code 101). Scenes added later are
-## covered as soon as they exist. The three dev routes must be among them, so that a moved scene
-## cannot make the scan pass on fewer scenes.
+## covered as soon as they exist. The boot scene and the dev routes (menu, art gallery, touch probe)
+## must be among them, so that a moved scene cannot make the scan pass on fewer scenes.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const SCENES_DIR: String = "res://scenes"
@@ -15,6 +15,7 @@ func test_every_scene_instantiates_and_survives_a_frame() -> void:
 		DevRoutes.MAIN_SCENE,
 		DevRoutes.DEV_MENU_SCENE,
 		DevRoutes.ART_GALLERY_SCENE,
+		DevRoutes.TOUCH_PROBE_SCENE,
 	]
 	assert_array(scenes).contains(required)
 	for path: String in scenes:
