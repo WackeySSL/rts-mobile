@@ -91,6 +91,7 @@ jobs:
 
   # ADR 0005: a debug APK for real-device testing. Not a required check; `verify` stays the only one.
   android-debug-apk:
+    needs: verify
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
