@@ -24,6 +24,9 @@ ROOT="$(pwd -P)"
 GODOT="${GODOT:-godot}"
 GODOT_VERSION="4.7.2.stable"
 PATTERN='SCRIPT ERROR|^ERROR:|Parse Error'
+# The project sets no icon yet, so the APK keeps the default launcher icon of the template (the
+# Godot logo, ADR 0005). Godot prints this once per export (CI run 38117776194, spike).
+KNOWN_BENIGN='^ERROR: No project icon specified\. '
 PACKAGE="dk.appcode.rts.dev"
 APK_NAME="rts-mobile-debug.apk"
 NOTICE_NAME="THIRD_PARTY_LICENSES.txt"
@@ -76,11 +79,13 @@ java_version="$("${JAVA_HOME:-/nonexistent}/bin/java" -version 2>&1 || true)"
 if ! grep -q 'version "17\.' <<<"$java_version"; then
   missing="$missing; JDK 17 (JAVA_HOME='${JAVA_HOME:-}')"
 fi
-build_tools="$(ls -d "${ANDROID_HOME:-/nonexistent}"/build-tools/36.*/ 2>/dev/null | sort -V | tail -n 1 || true)"
-build_tools="${build_tools%/}"
 [ -x "${ANDROID_HOME:-/nonexistent}/platform-tools/adb" ] || missing="$missing; \$ANDROID_HOME/platform-tools/adb (ANDROID_HOME='${ANDROID_HOME:-}')"
 for tool in apksigner aapt2; do
-  [ -n "$build_tools" ] && [ -x "$build_tools/$tool" ] || missing="$missing; \$ANDROID_HOME/build-tools/36.*/$tool"
+  found=""
+  for dir in "${ANDROID_HOME:-/nonexistent}"/build-tools/36.*; do
+    if [ -x "$dir/$tool" ]; then found="$dir"; fi
+  done
+  [ -n "$found" ] || missing="$missing; \$ANDROID_HOME/build-tools/36.*/$tool"
 done
 [ -z "$missing" ] || die 4 "missing${missing#;}"
 
@@ -107,7 +112,7 @@ set -e
 [ "$status" -eq 0 ] || die 1 "Godot export failed with exit code ${status} (log: $log)"
 
 grep -v -E '^[[:space:]]*(#|$)' scripts/verify-allowlist.txt >"$allow" || true
-errors="$(grep -E "$PATTERN" "$log" || true)"
+errors="$(grep -E "$PATTERN" "$log" | grep -v -E "$KNOWN_BENIGN" || true)"
 if [ -s "$allow" ]; then
   # An invalid regex makes grep -f exit 2 with no output, and an entry that matches the empty
   # string matches every line. Either would hide every error.
@@ -154,18 +159,29 @@ EOF
 } >"$out_abs/$NOTICE_NAME"
 [ -s "$out_abs/$NOTICE_NAME" ] || die 1 "$out/$NOTICE_NAME is empty"
 
-# (7) The APK.
+# (7) The APK. Godot picks the build-tools version (the one that equals the target SDK, 36.0.0 on
+# the ubuntu-24.04 image). Its log names the apksigner it ran, and the checks use the same tools.
 [ -s "$apk" ] || die 1 "$out/$APK_NAME is missing or empty (log: $log)"
+signer="$(grep -m1 -E '^/.*/apksigner sign ' "$log" | cut -d' ' -f1 || true)"
+case "$signer" in
+  "$ANDROID_HOME"/build-tools/36.*/apksigner) ;;
+  *) die 1 "Godot did not sign with an apksigner of \$ANDROID_HOME/build-tools/36.* (log says '${signer:-nothing}')" ;;
+esac
+aapt2="$(dirname "$signer")/aapt2"
 listing="$(unzip -Z1 "$apk")"
 grep -qx 'lib/arm64-v8a/libgodot_android.so' <<<"$listing" || die 1 "the APK lacks lib/arm64-v8a/libgodot_android.so"
 other_abis="$(grep '^lib/' <<<"$listing" | grep -v '^lib/arm64-v8a/' || true)"
 [ -z "$other_abis" ] || die 1 "the APK holds libraries for other ABIs (arm64-v8a only): $(head -n 3 <<<"$other_abis")"
+# Project files sit under assets/ (a missing boot scene means the layout changed and the next
+# check proves nothing).
+grep -qx 'assets/scenes/main.tscn.remap' <<<"$listing" || die 1 "the APK lacks assets/scenes/main.tscn.remap"
 test_files="$(grep -E '^assets/(tests|addons/gdUnit4)/' <<<"$listing" || true)"
 [ -z "$test_files" ] || die 1 "the APK holds test files: $(head -n 3 <<<"$test_files")"
-"$build_tools/apksigner" verify --print-certs "$apk" || die 1 "apksigner verify failed"
-manifest="$("$build_tools/aapt2" dump xmltree --file AndroidManifest.xml "$apk")"
+"$signer" verify --print-certs "$apk" || die 1 "apksigner verify failed"
+manifest="$("$aapt2" dump xmltree --file AndroidManifest.xml "$apk")"
 grep -q "package=\"$PACKAGE\"" <<<"$manifest" || die 1 "the manifest package is not $PACKAGE"
-grep -Eq 'screenOrientation\(0x0101001e\)=(\(type 0x10\))?(0x)?6$' <<<"$manifest" || die 1 "the manifest screenOrientation is not 6 (sensorLandscape)"
+# Godot 4.7.2 maps the project's sensor landscape to userLandscape (11), not sensorLandscape (6).
+grep -Eq 'screenOrientation\(0x0101001e\)=11$' <<<"$manifest" || die 1 "the manifest screenOrientation is not 11 (userLandscape)"
 grep -q 'android.permission.VIBRATE' <<<"$manifest" || die 1 "the manifest lacks the VIBRATE permission"
 
 rm -f "$log"

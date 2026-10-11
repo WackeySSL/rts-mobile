@@ -118,5 +118,78 @@ jobs:
       - name: Install Godot (editor, web and Android debug templates)
         run: bash scripts/ci/install-godot.sh --android
 
-      - name: SPIKE (temporary)
-        run: bash scripts/ci/spike-android.sh
+      # Each exit code of export-android.sh that a runner or secret change could hit must stay
+      # distinct: 3 wrong Godot, 4 template or toolchain missing, 5 no keystore.
+      - name: Negative checks of export-android.sh (exit codes 3, 4, 5)
+        run: |
+          expect() { want="$1"; shift; rc=0; out="$("$@" 2>&1)" || rc=$?; [ "$rc" = "$want" ] || { echo "$out"; echo "::error::expected exit $want, got $rc: $*"; exit 1; }; echo "ok: exit $rc: ${out%%$'\n'*}"; }
+          expect 3 env GODOT=/bin/true bash scripts/export-android.sh
+          expect 4 env XDG_DATA_HOME="$RUNNER_TEMP/no-templates" bash scripts/export-android.sh
+          expect 5 bash scripts/export-android.sh
+
+      # The debug key is generated per run. Only a push to main may use the stable key from the
+      # optional secrets (ADR 0005 section 4), so PR code never sees them. The password reaches
+      # the script through its environment only.
+      - name: Export debug APK
+        env:
+          STABLE_KEYSTORE_B64: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.ANDROID_DEBUG_KEYSTORE_BASE64 || '' }}
+          STABLE_KEYSTORE_PASSWORD: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.ANDROID_DEBUG_KEYSTORE_PASSWORD || '' }}
+        run: |
+          umask 077
+          keystore="$RUNNER_TEMP/debug.keystore"
+          if [ -n "$STABLE_KEYSTORE_B64" ] && [ -n "$STABLE_KEYSTORE_PASSWORD" ]; then
+            printf '%s' "$STABLE_KEYSTORE_B64" | base64 -d > "$keystore"
+            password="$STABLE_KEYSTORE_PASSWORD"
+            echo "DEBUG_KEY_KIND=stable" >> "$GITHUB_ENV"
+          else
+            keytool -genkeypair -keystore "$keystore" -alias androiddebugkey -keyalg RSA -keysize 2048 \
+              -validity 10000 -storepass android -keypass android -dname "CN=rts-mobile dev"
+            password="android"
+            echo "DEBUG_KEY_KIND=generated" >> "$GITHUB_ENV"
+          fi
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$keystore" \
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER="androiddebugkey" \
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD="$password" \
+          bash scripts/export-android.sh
+
+      # Same check as in verify: the import and the export must not change the tree.
+      - name: Clean-tree check
+        if: success()
+        run: |
+          out="$(git status --porcelain)"; [ -z "$out" ] || { echo "::error::import/export changed the tree"; echo "$out"; exit 1; }
+
+      - name: Job summary
+        if: always()
+        env:
+          CACHE_HIT: ${{ steps.godot-cache.outputs.cache-hit }}
+        run: |
+          apk=build/android/rts-mobile-debug.apk
+          {
+            echo "Godot cache hit: ${CACHE_HIT:-false}"
+            if [ -s "$apk" ]; then
+              echo
+              echo "- APK: $(stat -c %s "$apk") bytes"
+              echo "- SHA-256: \`$(sha256sum "$apk" | cut -d' ' -f1)\`"
+              echo "- Package: dk.appcode.rts.dev (installs next to the Play build)"
+              if [ "${DEBUG_KEY_KIND:-}" = "stable" ]; then
+                echo "- Signing key: stable debug key, so an update installs over the old APK."
+              else
+                echo "- Signing key: generated for this run. Uninstall the previous APK before installing this one."
+              fi
+              echo "- Install: download the artifact, unzip it, open rts-mobile-debug.apk on the phone."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Delete debug keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/debug.keystore"
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rts-mobile-debug-apk-${{ github.sha }}
+          path: |
+            build/android/rts-mobile-debug.apk
+            build/android/THIRD_PARTY_LICENSES.txt
+          if-no-files-found: error
+          retention-days: 14
