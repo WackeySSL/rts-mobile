@@ -122,3 +122,13 @@ Facts:
 - Phase 6 replaces this preset's signing with the release keystore and switches to the Gradle
   build for the AdMob plugin. The release package id is `dk.appcode.rts` (ADR 0006), and the `.dev` id
   stays separate so both can be installed side by side.
+
+## Amendment (2026-10-11, P18 CI run)
+Two facts above were corrected by the first real export
+(https://github.com/WackeySSL/rts-mobile/actions/runs/38118498895):
+- Godot 4.7.2 writes `screenOrientation` 11 (`userLandscape`) for the project's
+  `sensor_landscape`, not 6. `scripts/export-android.sh` checks for 11.
+- The Android job uses one combined cache entry (editor, web and Android debug templates) of
+  about 222 MB, not an extra 126 MB next to the web cache.
+- Godot picked `build-tools/36.0.0/apksigner` (target SDK 36) from the runner image and read
+  `JAVA_HOME` and `ANDROID_HOME` from the environment; no editor settings had to be written.

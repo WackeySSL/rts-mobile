@@ -1,13 +1,26 @@
 #!/usr/bin/env bash
-# Installs the official Godot Linux editor and ONLY the web (no-threads) export templates.
+# Installs the official Godot Linux editor and the web (no-threads) export templates; --android adds more.
+# Usage: bash scripts/ci/install-godot.sh [--android]
+#   --android  also fetch templates/android_debug.apk (127 MB, ADR 0005 section 2)
 # Shared by .github/workflows/ci.yml and preview.yml. Idempotent: on an actions/cache hit it only
 # re-verifies the templates and re-links the editor. The 1.28 GB template archive is never
-# downloaded in full: the three members are read with HTTP Range requests
+# downloaded in full: the members are read with HTTP Range requests
 # (scripts/ci/remote_zip.py) and checked against pinned SHA-256s.
 # Changing the Godot version is a stack change: new ADR, then update the pins below.
 # Env (all optional): GODOT_VERSION (must be 4.7.2), GODOT_HOME, GODOT_BIN_DIR, TEMPLATES_DIR.
-# Exit: 0 ok; 1 download, hash or version mismatch; 2 unsupported GODOT_VERSION.
+# Exit: 0 ok; 1 download, hash or version mismatch; 2 unsupported GODOT_VERSION or usage error.
 set -euo pipefail
+
+WITH_ANDROID=0
+for arg in "$@"; do
+  case "$arg" in
+    --android) WITH_ANDROID=1 ;;
+    *)
+      echo "usage: bash scripts/ci/install-godot.sh [--android]" >&2
+      exit 2
+      ;;
+  esac
+done
 
 GODOT_VERSION="${GODOT_VERSION:-4.7.2}"
 PINNED_VERSION="4.7.2"
@@ -18,6 +31,14 @@ EDITOR_SHA512="9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b146
 TEMPLATE_SUMS="38885c88f75abbc797a1db7559719800279a00cfb9fa8b2e2868a7f6f84bad2e  version.txt
 d3ee2f08cef0cf3cf6678a6355a92a8db48ccdd35cbd2e8bfd5f0e8a0b4032a0  web_nothreads_release.zip
 08962aefef811b603541d7951ac67ef00413aad2d978855183c28adee98f626a  web_nothreads_debug.zip"
+# Same for templates/android_debug.apk (127 260 725 bytes), computed on 2026-10-11 from the .tpz.
+ANDROID_SUM="59e0073f0fa59f552684a861d8f4266b0b34b488a140d6657eac7dd70d1a0a0d  android_debug.apk"
+MEMBERS="templates/version.txt templates/web_nothreads_release.zip templates/web_nothreads_debug.zip"
+if [ "$WITH_ANDROID" = 1 ]; then
+  TEMPLATE_SUMS="$TEMPLATE_SUMS
+$ANDROID_SUM"
+  MEMBERS="$MEMBERS templates/android_debug.apk"
+fi
 
 if [ "$GODOT_VERSION" != "$PINNED_VERSION" ]; then
   echo "install-godot.sh pins Godot $PINNED_VERSION; update the hashes for $GODOT_VERSION first." >&2
@@ -63,15 +84,16 @@ ln -sf "$GODOT_HOME/$BIN_NAME" "$GODOT_BIN_DIR/godot"
 # Later steps of the same job find `godot` (and pipx tools in the same dir) on PATH.
 if [ -n "${GITHUB_PATH:-}" ]; then echo "$GODOT_BIN_DIR" >> "$GITHUB_PATH"; fi
 
-# 2. Web export templates (no-threads only), fetched by range from the .tpz
+# 2. Export templates (web no-threads; with --android also android_debug.apk), fetched by range from the .tpz
 templates_ok() {
   [ -d "$TEMPLATES_DIR" ] || return 1
   (cd "$TEMPLATES_DIR" && echo "$TEMPLATE_SUMS" | sha256 -c --quiet - >/dev/null 2>&1)
 }
 if ! templates_ok; then
   mkdir -p "$TEMPLATES_DIR"
+  # shellcheck disable=SC2086 # MEMBERS is a list of words on purpose
   python3 -I "$HERE/remote_zip.py" extract "$BASE/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" \
-    "$TEMPLATES_DIR" templates/version.txt templates/web_nothreads_release.zip templates/web_nothreads_debug.zip
+    "$TEMPLATES_DIR" $MEMBERS
   (cd "$TEMPLATES_DIR" && echo "$TEMPLATE_SUMS" | sha256 -c -)
 fi
 if [ "$(cat "$TEMPLATES_DIR/version.txt")" != "${GODOT_VERSION}.stable" ]; then
