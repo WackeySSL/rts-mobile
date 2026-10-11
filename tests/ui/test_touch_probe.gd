@@ -12,6 +12,7 @@ const ANDROID_TEXT: String = (
 )
 
 var _window_size_before: Vector2i
+var _now_ms: int = 0
 
 
 func before() -> void:
@@ -50,10 +51,19 @@ func test_every_profile_has_an_exact_square_and_a_layout_that_fits() -> void:
 		var square: Control = _control(probe, "Square")
 		var column: Rect2 = _control(probe, "Column").get_global_rect()
 		var back: Rect2 = _control(probe, "BackButton").get_global_rect()
+		_touch(0, Vector2(100, 100), true)  # A pinch line is about the widest the log gets.
+		_touch(1, Vector2(300, 100), true)
+		_drag(1, Vector2(500, 100))
+		await await_idle_frame()
+		var log_rect: Rect2 = _control(probe, "GestureLog").get_global_rect()
 		var label: String = str(profile_name)
-		var fits: bool = Rect2(Vector2.ZERO, probe.size).encloses(column.merge(back))
+		var fits: bool = Rect2(Vector2.ZERO, probe.size).encloses(
+			column.merge(back).merge(log_rect)
+		)
 		fits = fits and column.encloses(square.get_global_rect()) and square.is_visible_in_tree()
-		assert_bool(fits and not column.intersects(back)).override_failure_message(label).is_true()
+		var apart: bool = not (column.intersects(back) or log_rect.intersects(back))
+		apart = apart and not column.intersects(log_rect)
+		assert_bool(fits and apart).override_failure_message(label).is_true()
 		assert_vector(square.size).override_failure_message(label).is_equal_approx(
 			UiScale.dp_vec(48.0, 48.0), Vector2.ONE * 0.001
 		)
@@ -72,6 +82,9 @@ func test_the_square_and_the_numbers_follow_a_window_resize() -> void:
 	var metrics: Label = _control(probe, "MetricsLabel") as Label
 	assert_str(metrics.text).contains("dp(48): 60.0 base px")
 	assert_int(metrics.get_theme_font_size("font_size")).is_equal(20)  # dp(16)
+	var log_label: Control = _control(probe, "GestureLog")
+	assert_int(log_label.get_theme_font_size("font_size")).is_equal(20)
+	assert_int(_control(probe, "Margin").get_theme_constant("margin_bottom")).is_equal(15)
 	assert_int(_control(probe, "Margin").get_theme_constant("margin_left")).is_equal(15)  # dp(12)
 	assert_int(_control(probe, "Column").get_theme_constant("separation")).is_equal(15)
 	# Without an override it follows what the engine reports, as on a phone. The stretch scale
@@ -98,6 +111,70 @@ func test_touch_points_follow_the_fingers_in_base_px() -> void:
 	assert_dict(probe.touches).is_equal({0: Vector2(800, 360)})
 	_touch(0, Vector2(1200, 540), false)
 	assert_dict(probe.touches).is_empty()
+
+
+## At 1.75 base px per dp (stretch 1.5), so 12 dp is 21 base px and the thresholds are in dp.
+func test_the_log_names_each_gesture_with_its_numbers_and_keeps_the_last_8() -> void:
+	var probe: Control = await _open(UiProfiles.by_name(ANDROID))
+	probe.clock = func() -> int: return _now_ms
+	_touch(0, Vector2(150, 300), true)  # Base 100,200.
+	_drag(0, Vector2(180, 300))  # 20 base px: a tap, not a pan
+	_touch(0, Vector2(180, 300), false)
+	_touch(0, Vector2(150, 300), true)
+	_touch(1, Vector2(450, 300), true)
+	_drag(1, Vector2(750, 300))  # The distance doubles from 200 to 400 base px.
+	_touch(1, Vector2(750, 300), false)
+	_touch(0, Vector2(150, 300), false)
+	var first: Array[String] = ["TAP 100,200", "PINCH x2.00 move 100,0 at 300,200"]
+	assert_array(probe.log_lines).is_equal(first + ["CAMERA_END", "CAMERA_END"])
+	_now_ms = 5000
+	_touch(0, Vector2(150, 300), true)
+	_now_ms = 5300  # The long-press comes with the frame, no finger event.
+	await await_idle_frame()
+	_touch(0, Vector2(150, 300), false, true)  # The system cancels the touch: a box cancel, no tap.
+	var text: String = (_control(probe, "GestureLog") as Label).text
+	assert_str(text).is_equal("\n\n" + "\n".join(probe.log_lines))
+	assert_array(probe.log_lines).has_size(6)
+	assert_str(probe.log_lines[4]).is_equal("LONG_PRESS 100,200")
+	assert_str(probe.log_lines[5]).is_equal("BOX_CANCEL")
+	for i: int in 4:  # Taps 1 s and 100 base px apart push the oldest lines out.
+		_now_ms = 6000 + i * 1000
+		_touch(0, Vector2(150 * (i + 3), 300), true)
+		_touch(0, Vector2(150 * (i + 3), 300), false)
+	assert_array(probe.log_lines).has_size(8)
+	assert_str(probe.log_lines[0]).is_equal("CAMERA_END")
+	assert_str(probe.log_lines[7]).is_equal("TAP 600,200")
+	assert_int((_control(probe, "GestureLog") as Label).text.count("\n")).is_equal(7)
+
+
+## The phone check reads these lines. Each finger event hands the clock's time to the recognizer.
+func test_a_double_tap_a_pan_and_a_box_are_logged_with_their_numbers() -> void:
+	var probe: Control = await _open(UiProfiles.by_name(ANDROID))
+	probe.clock = func() -> int: return _now_ms
+	for step: Array in [[1000, true], [1050, false], [1300, true], [1350, false]]:
+		_now_ms = step[0]  # Two taps 250 ms apart.
+		_touch(0, Vector2(150, 300), step[1])
+	_now_ms = 5000
+	_touch(0, Vector2(150, 300), true)
+	_drag(0, Vector2(300, 300))
+	_drag(0, Vector2(300, 450))
+	_touch(0, Vector2(300, 450), false)
+	_now_ms = 6000
+	_touch(0, Vector2(150, 300), true)
+	_now_ms = 6300  # No frame ran: the first move applies the time, so this is a box.
+	_drag(0, Vector2(300, 450))
+	_touch(0, Vector2(300, 450), false)
+	var expected: Array[String] = [
+		"TAP 100,200",
+		"DOUBLE_TAP 100,200",
+		"PAN move 100,0",
+		"PAN move 0,100",
+		"CAMERA_END",
+		"LONG_PRESS 100,200",
+		"BOX_UPDATE 100,200 100x100",
+		"BOX_END 100,200 100x100",
+	]
+	assert_array(probe.log_lines).is_equal(expected)
 
 
 func test_back_button_and_the_android_back_request_both_leave() -> void:
@@ -130,11 +207,12 @@ func _control(probe: Control, node_name: String) -> Control:
 
 
 ## Events enter at the window, in window px, as the engine delivers them.
-func _touch(index: int, window_px: Vector2, pressed: bool) -> void:
+func _touch(index: int, window_px: Vector2, pressed: bool, canceled: bool = false) -> void:
 	var event: InputEventScreenTouch = InputEventScreenTouch.new()
 	event.index = index
 	event.position = window_px
 	event.pressed = pressed
+	event.canceled = canceled
 	get_window().push_input(event)
 
 
