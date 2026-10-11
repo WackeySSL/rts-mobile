@@ -15,6 +15,7 @@
 [ext_resource type="Script" path="res://game/ui/SafeAreaMargin.gd" id="12_safe"]
 [ext_resource type="Script" path="res://game/ui/DpMinSize.gd" id="13_dp"]
 [ext_resource type="Script" path="res://game/ui/ArmyBar.gd" id="14_army"]
+[ext_resource type="Script" path="res://game/ui/SelectionPanel.gd" id="15_selection"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -97,4 +98,17 @@ size_flags_vertical = 8
 script = ExtResource("14_army")
 settings = ExtResource("6_settings")
 
+[node name="SelectionBand" type="MarginContainer" parent="Hud/SafeArea"]
+mouse_filter = 2
+
+[node name="SelectionPanel" type="PanelContainer" parent="Hud/SafeArea/SelectionBand" node_paths=PackedStringArray("runner", "unit_layer", "army_bar")]
+visible = false
+size_flags_horizontal = 4
+size_flags_vertical = 8
+script = ExtResource("15_selection")
+runner = NodePath("../../../../MatchRunner")
+unit_layer = NodePath("../../../../UnitLayer")
+army_bar = NodePath("../../ArmyBar")
+
 [connection signal="selection_changed" from="PlayerController" to="UnitLayer" method="set_selected"]
+[connection signal="selection_changed" from="PlayerController" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="set_selected"]
