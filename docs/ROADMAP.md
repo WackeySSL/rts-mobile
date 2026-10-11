@@ -52,9 +52,13 @@ Tick a box in the PR that meets the criterion.
 - [ ] Main menu, map select, settings (sound, haptics, privacy options placeholder)
 - [ ] Commander rank, XP, unlocks and local save; save and resume when the app goes to the background
 - [ ] Sound effects (CC0 or generated) and music volume
-- [ ] Interactive tutorial of about 3 minutes
+- [ ] Interactive tutorial of about 3 minutes that teaches how to play, including every entry marked
+  Teach in `docs/HOW_TO_PLAY.md`; it starts on first launch and can be replayed from the menu
+- [ ] "How to play" screen in the main menu and the pause menu that explains every entry in
+  `docs/HOW_TO_PLAY.md` (controls, units, buildings, economy, how to win)
 - [ ] Second and third map
-- [ ] Gate: a new player finishes the tutorial without help, and the median match takes 8-10 minutes
+- [ ] Gate: a new player finishes the tutorial without help, every entry in `docs/HOW_TO_PLAY.md` is
+  covered by the tutorial or the How to play screen, and the median match takes 8-10 minutes
 
 ## Phase 6: Monetization and Android delivery
 - [ ] Poing AdMob plugin for Android, `AdService` with fake mode, caps from data

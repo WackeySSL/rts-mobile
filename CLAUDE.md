@@ -79,6 +79,8 @@ injected only by the release workflow. UMP consent before any ad request. Detail
 - PR description: what changed, the VERIFY SUMMARY block, how to test it on the phone preview.
 - Missing tool, secret or access: say exactly what is missing and stop. Never mock or work around.
 - Tick the checkbox in `docs/ROADMAP.md` when an acceptance criterion is met.
+- Player-facing feature or control: add or update its entry in `docs/HOW_TO_PLAY.md` in the same PR.
+  Phase 5 builds the tutorial and the How to play screen from that list.
 
 ## Subagents and review
 architect, gameplay-dev, ai-dev, touch-ux-dev, art-director, monetization-dev, qa-engineer,
