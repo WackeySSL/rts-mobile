@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 const SETTINGS_PATH: String = "res://data/input_settings.tres"
 const A: Vector2 = Vector2(100, 200)
 const TAP_A: String = "TAP 100,200"
+const BANNED: String = r"\b(Input|Time|OS|Engine|DisplayServer|Node\w*|SceneTree|get_tree)\b"
 
 var _rec: GestureRecognizer
 
@@ -20,7 +21,7 @@ func test_tap_is_press_and_release_inside_the_slop_and_acts_at_once() -> void:
 	_play("d0 100,200 @1000")
 	assert_int(_rec.state()).is_equal(GestureRecognizer.State.PENDING)
 	assert_str(_log()).is_empty()
-	_play("u0 100,200 @1100; d0 100,200 @5000; u0 100,200 @5450")  # 2nd: held 450 ms, no advance
+	_play("u0 100,200 @1100; d0 100,200 @5000; u0 105,200 @5450")  # 2nd: held 450 ms, no advance
 	assert_str(_log()).is_equal(TAP_A + "; " + TAP_A)
 
 
@@ -66,8 +67,9 @@ func test_box_drag_emits_normalised_rects_in_every_direction_then_box_end() -> v
 			+ " BOX_UPDATE 100,120,30,80; BOX_UPDATE 60,200,40,30; BOX_END 60,200,40,30"
 		)
 	)
-	# A release at a new place counts as the last move: a fast flick may send no drag event.
-	_play("d0 100,200 @5000; a @5300; u0 160,300 @5400; d0 100,200 @6000; u0 150,200 @6010")
+	# A release at a new place is the last move, with the time applied first: no drag event and
+	# no advance() needed. The same release after 10 ms is a pan.
+	_play("d0 100,200 @5000; u0 160,300 @5400; d0 100,200 @6000; u0 150,200 @6010")
 	var flick: String = "LONG_PRESS 100,200; BOX_UPDATE 100,200,60,100; BOX_END 100,200,60,100; "
 	assert_str(_log()).is_equal(flick + "PAN 50,0; CAMERA_END")
 
@@ -96,8 +98,8 @@ func test_double_tap_limits_300_ms_and_32_apart_and_a_third_tap_starts_over() ->
 	_tap(A, 5000, 5250)
 	_tap(A, 5551, 5600)  # 301 ms
 	_tap(A, 7000, 7050)
-	_tap(A + Vector2(33, 0), 7100, 7150)  # 33 apart
-	assert_str(_log()).is_equal(TAP_A + "; " + TAP_A + "; " + TAP_A + "; TAP 133,200")
+	_tap(A + Vector2(24, 24), 7100, 7150)  # 33.9 apart, each axis under 32
+	assert_str(_log()).is_equal(TAP_A + "; " + TAP_A + "; " + TAP_A + "; TAP 124,224")
 	_tap(A, 9000, 9050)  # a pan or a long press in between breaks the double tap
 	_play("d0 100,200 @9100; m0 150,200 @9110; u0 150,200 @9120")
 	_tap(A, 9200, 9250)
@@ -108,7 +110,7 @@ func test_double_tap_limits_300_ms_and_32_apart_and_a_third_tap_starts_over() ->
 
 
 func test_canceled_release_and_cancel_all_end_the_gesture_without_a_tap() -> void:
-	_play("d0 100,200 @0; c0 100,200 @50; d0 100,200 @100; a @400; c0 100,200 @450")
+	_play("d0 100,200 @0; c0 300,200 @50; d0 100,200 @100; a @400; c0 300,200 @450")
 	_play("d0 100,200 @1000; m0 130,200 @1010; c0 130,200 @1020")
 	_play("d0 100,200 @2000; a @2300; k; u0 100,200 @2400")  # the old touch is gone: no tap
 	_play("d0 100,200 @3000; m0 130,200 @3010; k; d0 100,200 @4000; k")
@@ -121,9 +123,9 @@ func test_canceled_release_and_cancel_all_end_the_gesture_without_a_tap() -> voi
 
 
 func test_finger_identity_duplicate_down_cancels_unknown_and_second_fingers_are_ignored() -> void:
-	_play("m7 100,200 @0; u7 100,200 @10; d0 100,200 @100")
+	_play("m7 100,200 @0; u7 100,200 @10; d2 100,200 @100")
 	# P7 tracks one finger: finger 1 and the never-pressed finger 7 change nothing.
-	_play("d1 500,300 @110; m1 580,300 @120; u1 500,300 @130; m7 500,300 @140; u0 100,200 @150")
+	_play("d1 500,300 @110; m1 580,300 @120; u1 500,300 @130; m7 500,300 @140; u2 100,200 @150")
 	# A press for an index that is already down cancels that touch first.
 	_play("d0 100,200 @1000; a @1300; d0 500,300 @1400; u0 500,300 @1450")
 	_play("d0 100,200 @2000; m0 130,200 @2010; d0 500,300 @2020")
@@ -140,8 +142,11 @@ func test_two_px_per_dp_doubles_the_slops_and_leaves_the_times_alone() -> void:
 	_tap(A, 4000, 4050)
 	_tap(A + Vector2(64, 0), 4100, 4150)
 	_tap(A, 5000, 5050)
-	_tap(A + Vector2(65, 0), 5100, 5150)
-	assert_str(_log()).is_equal(TAP_A + "; DOUBLE_TAP 164,200; " + TAP_A + "; TAP 165,200")
+	_tap(A + Vector2(48, 48), 5100, 5150)  # 67.9 apart, each axis under 64
+	_tap(A, 5200, 5250)
+	_tap(A, 5551, 5600)  # 301 ms: the double-tap time is not scaled
+	var tail: String = "; TAP 148,248; " + TAP_A + "; " + TAP_A
+	assert_str(_log()).is_equal(TAP_A + "; DOUBLE_TAP 164,200; " + TAP_A + tail)
 	_play("d0 100,200 @6000; a @6299")
 	assert_str(_log()).is_empty()
 	_play("a @6300")
@@ -159,7 +164,7 @@ func test_take_events_appends_in_order_clears_the_queue_and_counts() -> void:
 
 
 func test_sources_are_ref_counted_and_use_no_node_input_or_time() -> void:
-	var banned: RegEx = RegEx.create_from_string(r"\b(Input|Time|OS|Node\w*|SceneTree|get_tree)\b")
+	var banned: RegEx = RegEx.create_from_string(BANNED)
 	for name: String in ["GestureRecognizer", "GestureEvent"]:
 		var source: String = FileAccess.get_file_as_string("res://game/input/%s.gd" % name)
 		var code: String = RegEx.create_from_string(r"#.*").sub(source, "", true)

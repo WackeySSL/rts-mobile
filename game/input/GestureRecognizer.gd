@@ -61,7 +61,8 @@ func touch_move(index: int, pos: Vector2, now_ms: int) -> void:
 	_move_to(pos)
 
 
-## A release does not call advance(): a press held past the long-press time still taps.
+## A release inside the slop skips advance(): a long hold still taps. Outside it the release
+## is a last move, and a move applies the time first.
 func touch_up(index: int, pos: Vector2, now_ms: int, canceled: bool = false) -> void:
 	if _state == State.IDLE or index != _index:
 		return
@@ -69,6 +70,8 @@ func touch_up(index: int, pos: Vector2, now_ms: int, canceled: bool = false) -> 
 		_cancel_active()
 		return
 	if pos != _pos:
+		if pos.distance_to(_down_pos) > _slop_px:
+			advance(now_ms)
 		_move_to(pos)
 	match _state:
 		State.PENDING:
