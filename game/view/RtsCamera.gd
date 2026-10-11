@@ -13,6 +13,7 @@ extends Camera2D
 var _map_rect: Rect2 = Rect2()
 var _anchor: Vector2 = Vector2.ZERO  ## Screen point of the last pinch or step, kept for the snap.
 var _snap: Tween = null
+var _snap_level: int = -1  ## Level the snap in flight heads for, else -1.
 
 
 func _ready() -> void:
@@ -56,10 +57,13 @@ func end_gesture() -> void:
 	_snap_to_level(zoom_level_index())
 
 
-## One level in or out (`direction` is +1 or -1) about `anchor`, stopping at the ends.
+## One level in or out (`direction` is +1 or -1) about `anchor`, stopping at the ends. During a
+## snap the count starts from the level it heads for: half way, the nearest level is the old one.
 func step_zoom(direction: int, anchor: Vector2) -> void:
 	_anchor = anchor
-	_snap_to_level(clampi(zoom_level_index() + direction, 0, _last_level()))
+	var snapping: bool = _snap_level >= 0 and _snap.is_valid()
+	var from: int = _snap_level if snapping else zoom_level_index()
+	_snap_to_level(clampi(from + direction, 0, _last_level()))
 
 
 ## Index of the level nearest to the current zoom, by ratio.
@@ -109,10 +113,12 @@ func _snap_to_level(index: int) -> void:
 		_zoom_about(target, _anchor)
 		return
 	_snap = create_tween()
+	_snap_level = index
 	_snap.tween_method(_zoom_about.bind(_anchor), zoom.x, target, settings.zoom_snap_ms / 1000.0)
 
 
 func _stop_snap() -> void:
+	_snap_level = -1
 	if _snap != null:
 		_snap.kill()
 
