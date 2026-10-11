@@ -134,21 +134,25 @@ builds them in P16 and pins the numbers below in tests.
 
 Conventions:
 - **dp** is `UiScale.dp(v)`, base px on screen. In world space (under `RtsCamera`) divide by the
-  camera zoom, so a dp size looks the same at 0.75, 1.0 and 1.5. **World px** (1 tile = 64) scale
-  with the zoom, like the sprites.
+  camera zoom, so a dp size looks the same at 0.75, 1.0 and 1.5. `MoveMarkerLayer` has no camera
+  export, so it reads the zoom as `get_canvas_transform().get_scale().x`. **World px** (1 tile = 64)
+  scale with the zoom, like the sprites.
 - **Stroke**: two passes on one centre line, round caps and joins, antialiased. First the outline
   pass in #1C2127 at width + 2 dp, then the colour pass. 1 dp of dark shows on each side. That
   separates every colour from grass (luminance 127) and sand (186).
-- **Fade**: full alpha until 200 ms, then linear to 0 at `marker_ms` (600). **Ease** is ease-out
-  quad, e(t) = 1 - (1 - t)^2.
+- **Fade**: full alpha until min(200 ms, `marker_ms` / 3), then linear to 0 at `marker_ms` (600),
+  so a shorter `marker_ms` never makes the fade interval empty. Fade the outline pass and the
+  colour pass as one group (a `CanvasGroup` per marker, or outline alpha a^2 under colour alpha a),
+  because Godot blends each draw pass on its own and two plain alphas turn the marker dark mid-fade.
+  **Ease** is ease-out quad, e(t) = 1 - (1 - t)^2.
 - Alpha is 1.0 unless a row says so. Markers have no shadow and make no sound.
 
 | Marker | Shape and size | Stroke | Colour | Motion | Drawn where |
 | --- | --- | --- | --- | --- | --- |
 | Own selection ring | Circle at the unit position, radius R = max((selection_radius / 1000 + 0.05) x 64 world px, 18 dp). Light tank: 35.2 world px, so 31.5 / 35.2 / 52.8 base px on screen at zoom 0.75 / 1.0 / 1.5 on the 6-inch phone profile (1 dp = 1.75 base px) | 3 dp | #FFFFFF | None. Shown in the frame of the tap | World space, first child of the unit rig, under the hull |
-| Enemy target flash | Diamond (a square turned 45 degrees), corners 1.3 x R from the enemy position (45.8 world px for the light tank at zoom 1) | 3 dp | #E5484D | Starts at 1.5 x size, reaches 1.0 x in 150 ms (ease), then fades | World space, `MarkerLayer`, above the units |
+| Enemy target flash | Diamond (a square turned 45 degrees), corners 45.8 world px from the enemy position (1.3 x the light tank's R of 35.2). `show_target(world_px)` carries only the position and Phase 1 has one unit type, so this is one view constant of the layer, not read from unit data | 3 dp | #E5484D | Starts at 1.5 x size, reaches 1.0 x in 150 ms (ease), then fades | World space, `MarkerLayer`, above the units |
 | Attack-move marker | Four chevrons around the tapped point (the origin), pointing at it. The east one is the open polyline (d + 7, -7), (d, 0), (d + 7, 7) dp, so its tip faces the point. The south, west and north ones are the same turned by 90, 180 and 270 degrees. d = 12 dp at rest | 3 dp | #F5A524 | d goes from 36 dp to 12 dp in 200 ms (ease), then fades | World space, `MarkerLayer`. A dp size, so it does not grow with the zoom |
-| Long-press anchor | Ring at the press point, radius 32 dp (diameter 64 dp, wider than a fingertip, so it shows around the finger). Fill #FFFFFF at 15% | 3 dp | #FFFFFF | Radius 48 dp to 32 dp in 150 ms (ease), then it stays until the box ends or cancels | Screen space, `BoxOverlay`, drawn before the box |
+| Long-press anchor | Ring at the press point, radius 32 dp (diameter 64 dp, about 10 mm). Fill #FFFFFF at 15% | 3 dp | #FFFFFF | Radius 48 dp to 32 dp in 150 ms (ease), then it stays until the box ends or cancels | Screen space, `BoxOverlay`, drawn before the box |
 | Selection box | The normalised drag rect. The centre line is the rect inset by 1 dp, so the outer edge of the white is the rect edge. Fill #FFFFFF at 15% | 2 dp | #FFFFFF | None | Screen space, `BoxOverlay` |
 
 Draw order, bottom to top: ground, then each rig (ring, hull, team layer, turret), then flash and
@@ -162,8 +166,10 @@ draws them on the phone.
 ### Shape as second cue
 - Colour is never the only cue (`touch-ui-rules`). Each meaning has its own shape: own selection is
   a closed circle around a unit, an enemy target is a closed diamond, attack-move is four open
-  chevrons closing in, the box is a rectangle, and the long-press anchor is a lightly filled ring
-  that is never around a unit and is larger than any unit ring at the finger.
+  chevrons closing in, the box is a rectangle, and the long-press anchor is the only lightly filled
+  ring and the only ring that shrinks in. A press on a unit puts the anchor on that unit, and on a
+  desktop or tablet profile a unit ring can be as large as the anchor. Fill and motion tell the two
+  apart there, not size.
 - Test for every new marker: look at it in greyscale at the size the player sees. The marker
   colours have luminance white 255, warning 174, danger 120, outline 32. If two markers cannot be
   told apart by shape, size or motion alone, change the shape, not the hue.
