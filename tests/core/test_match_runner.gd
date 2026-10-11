@@ -19,6 +19,8 @@ func after_test() -> void:
 func test_start_builds_the_world_and_clears_the_queue() -> void:
 	CommandQueue.submit(_move(12500))
 	_runner.run_ticks(2)
+	# A part tick on the clock, which start() must clear.
+	_runner._process(0.05)
 	CommandQueue.submit(_move(12500))
 	_runner.start()
 	assert_int(CommandQueue.pending()).is_equal(0)
@@ -28,6 +30,11 @@ func test_start_builds_the_world_and_clears_the_queue() -> void:
 	assert_array(_runner.prev_pos_y).is_equal(PackedInt32Array([2500, 2500, 2500]))
 	assert_float(_runner.alpha()).is_equal(0.0)
 	assert_int(_runner.max_catch_up_ticks).is_equal(4)
+	# Sequence numbers start over with the match.
+	var again: Command = _move(12500)
+	CommandQueue.submit(again)
+	_runner.run_ticks(1)
+	assert_int(again.sequence).is_equal(1)
 
 
 func test_ready_starts_the_match_only_when_a_scenario_is_set() -> void:
@@ -78,21 +85,33 @@ func test_commands_get_the_next_tick_and_an_increasing_sequence() -> void:
 	assert_int(CommandQueue.pending()).is_equal(0)
 
 
-func test_prev_positions_hold_the_positions_before_the_last_tick() -> void:
-	CommandQueue.submit(_move(12500))
-	_runner.run_ticks(1)
+func test_process_stamps_commands_emits_ticked_and_keeps_prev_positions_on_both_axes() -> void:
+	var seen: Array[int] = []
+	_runner.ticked.connect(func(tick: int) -> void: seen.append(tick))
+	var command: Command = Command.attack_move(1, PackedInt32Array([1]), 12500, 4500)
+	CommandQueue.submit(command)
+	_runner._process(1.0 / 15.0)
+	assert_array([command.tick, command.sequence]).is_equal([0, 1])
 	assert_array(_runner.prev_pos_x).is_equal(PackedInt32Array([2500, 4000, 5500]))
-	assert_array(_runner.world.pos_x).is_equal(PackedInt32Array([2620, 4000, 5500]))
-	_runner.run_ticks(1)
-	assert_array(_runner.prev_pos_x).is_equal(PackedInt32Array([2620, 4000, 5500]))
-	assert_array(_runner.world.pos_x).is_equal(PackedInt32Array([2740, 4000, 5500]))
+	assert_array(_runner.prev_pos_y).is_equal(PackedInt32Array([2500, 2500, 2500]))
+	var x1: int = _runner.world.pos_x[0]
+	var y1: int = _runner.world.pos_y[0]
+	_runner._process(1.0 / 15.0)
+	assert_array(seen).is_equal([1, 2])
+	assert_array([_runner.prev_pos_x[0], _runner.prev_pos_y[0]]).is_equal([x1, y1])
+	assert_int(_runner.world.pos_y[0]).is_greater(y1)
 
 
 func test_prev_arrays_keep_their_size_and_follow_a_unit_added_to_a_running_world() -> void:
 	CommandQueue.submit(_move(12500))
+	var x_before: PackedInt32Array = _runner.prev_pos_x
+	var y_before: PackedInt32Array = _runner.prev_pos_y
 	for _t: int in 10:
 		_runner.run_ticks(1)
 		assert_array([_runner.prev_pos_x.size(), _runner.prev_pos_y.size()]).is_equal([3, 3])
+	# Written in place: a duplicate() per tick would hand out new arrays.
+	assert_bool(is_same(x_before, _runner.prev_pos_x)).is_true()
+	assert_bool(is_same(y_before, _runner.prev_pos_y)).is_true()
 	_runner.world.add_unit(1, 0, 7000, 8000)
 	_runner.run_ticks(1)
 	assert_array([_runner.prev_pos_x.size(), _runner.prev_pos_y.size()]).is_equal([4, 4])
@@ -155,21 +174,31 @@ func test_paused_stops_the_clock_and_accumulates_nothing() -> void:
 	_runner.paused = false
 	_runner._process(1.0 / 15.0)
 	assert_int(_runner.world.tick).is_equal(3)
+	# A listener that pauses in the middle of a long frame stops the rest of that frame.
+	_runner.ticked.connect(func(_tick: int) -> void: _runner.paused = true)
+	_runner._process(3.0 / 15.0)
+	assert_int(_runner.world.tick).is_equal(4)
 
 
 func test_an_application_pause_stops_the_clock_until_the_application_resumes() -> void:
 	_runner.notification(Node.NOTIFICATION_APPLICATION_PAUSED)
 	_runner._process(1.0)
 	assert_int(_runner.world.tick).is_equal(0)
+	# run_ticks ignores this pause too.
+	_runner.run_ticks(1)
+	assert_int(_runner.world.tick).is_equal(1)
 	_runner.notification(Node.NOTIFICATION_APPLICATION_RESUMED)
 	_runner._process(1.0 / 15.0)
-	assert_int(_runner.world.tick).is_equal(1)
-	# The application pause is not the `paused` flag.
+	assert_int(_runner.world.tick).is_equal(2)
+	# The application pause is not the `paused` flag, and neither sticks to the other.
 	_runner.paused = true
 	_runner.notification(Node.NOTIFICATION_APPLICATION_PAUSED)
 	_runner.notification(Node.NOTIFICATION_APPLICATION_RESUMED)
 	_runner._process(1.0)
-	assert_int(_runner.world.tick).is_equal(1)
+	assert_int(_runner.world.tick).is_equal(2)
+	_runner.paused = false
+	_runner._process(1.0 / 15.0)
+	assert_int(_runner.world.tick).is_equal(3)
 
 
 func _move(target_x: int) -> Command:

@@ -3,6 +3,8 @@ extends Node
 ## Runs one match: builds the World from a scenario and steps it at Sim.TICK_RATE (ADR 0003
 ## section 7). Frame delta lives only here; the sim never sees time. The view interpolates
 ## between prev_pos_* and world.pos_* with alpha().
+## It needs the CommandQueue autoload, so a headless `godot -s` tool must load() this script at
+## runtime; naming MatchRunner in the entry script does not compile.
 
 ## Emitted after each tick with world.tick, the number of ticks played so far.
 signal ticked(tick: int)
@@ -19,12 +21,12 @@ var world: World
 ## Positions before the last tick, same indices as world.pos_x and world.pos_y.
 var prev_pos_x: PackedInt32Array = PackedInt32Array()
 var prev_pos_y: PackedInt32Array = PackedInt32Array()
-## Stops _process from ticking. run_ticks ignores it.
+## Stops _process from ticking, also between two ticks of one frame. run_ticks ignores it.
 var paused: bool = false
 
 var _micro_ticks: int = 0
 var _app_paused: bool = false
-## Runner-wide, so every command of the match gets its own. 0 stays "not stamped yet".
+## Runner-wide, so every command of a match gets its own; start() restarts it. 0 is "not stamped".
 var _next_sequence: int = 1
 ## Reused every tick, so a tick allocates no command list.
 var _commands: Array[Command] = []
@@ -35,17 +37,18 @@ func _ready() -> void:
 		start()
 
 
-## Builds a new world from the scenario, with an empty queue and a clock at zero.
+## Builds a new world from the scenario: empty queue, clock at zero, sequence back at 1.
 func start() -> void:
 	world = World.from_scenario(scenario)
 	prev_pos_x = world.pos_x.duplicate()
 	prev_pos_y = world.pos_y.duplicate()
 	_micro_ticks = 0
+	_next_sequence = 1
 	_commands.clear()
 	CommandQueue.clear()
 
 
-## Plays `n` ticks now. It ignores time and `paused`; tests and replays call it.
+## Plays `n` ticks now. It ignores time and both pauses; tests and replays call it.
 func run_ticks(n: int) -> void:
 	if world == null:
 		return
@@ -64,7 +67,7 @@ func _process(delta: float) -> void:
 	_micro_ticks += roundi(maxf(delta, 0.0) * float(Sim.TICK_RATE * MICRO_TICKS_PER_TICK))
 	var limit: int = maxi(max_catch_up_ticks, 1)
 	var played: int = 0
-	while _micro_ticks >= MICRO_TICKS_PER_TICK and played < limit:
+	while _micro_ticks >= MICRO_TICKS_PER_TICK and played < limit and not paused:
 		_micro_ticks -= MICRO_TICKS_PER_TICK
 		_tick()
 		played += 1
@@ -72,6 +75,8 @@ func _process(delta: float) -> void:
 	_micro_ticks %= MICRO_TICKS_PER_TICK
 
 
+## On a phone no frame runs between PAUSED and RESUMED. The background time reaches the first
+## frame after RESUMED, which the engine caps at about 0.14 s, so it plays about two ticks.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED:
 		_app_paused = true
