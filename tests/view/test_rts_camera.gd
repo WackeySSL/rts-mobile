@@ -1,7 +1,6 @@
 extends GdUnitTestSuite
-## RtsCamera on the 48x48 tile map (3072 px): the Phase 0 clamp cases at the three target screens,
-## pan, pinch, the three zoom levels and the screen/world maths. Snaps are immediate unless a test
-## sets `zoom_snap_ms`.
+## RtsCamera on the 48x48 tile map (3072 px): clamp cases at the three target screens, pan, pinch,
+## the zoom levels, screen/world maths. Snaps are immediate unless a test sets `zoom_snap_ms`.
 
 const MAP: Rect2 = Rect2(0, 0, 3072, 3072)
 const BASE_SIZE: Vector2i = Vector2i(1280, 720)
@@ -38,10 +37,13 @@ func before_test() -> void:
 	_camera = _add_camera()
 
 
-func test_starts_at_the_settings_start_level() -> void:
+func test_starts_at_the_settings_start_level_and_falls_back_to_the_defaults() -> void:
 	_zoom_is(1.0)
 	_settings.zoom_start_index = 2
 	assert_that(_add_camera().zoom).is_equal(Vector2(1.5, 1.5))
+	var bare: RtsCamera = auto_free(RtsCamera.new())  # No settings: the InputSettings defaults.
+	add_child(bare)
+	assert_that(bare.zoom).is_equal(Vector2(1, 1))
 
 
 func test_set_map_rect_sets_the_limits_reclamps_and_centres_a_narrow_map() -> void:
@@ -56,6 +58,8 @@ func test_set_map_rect_sets_the_limits_reclamps_and_centres_a_narrow_map() -> vo
 	# 640 px is narrower than the 1280 px view: centred on x. y is clamped to 360..1640.
 	_camera.set_map_rect(Rect2(0, 0, 640, 2000))
 	_near(_camera.position, Vector2(320, 1640))
+	_camera.set_map_rect(Rect2(0, 0, 2000, 500))  # 500 px is shorter than the 720 px view.
+	_near(_camera.position, Vector2(640, 250))
 	var detached: RtsCamera = auto_free(RtsCamera.new())
 	detached.set_map_rect(MAP)  # Outside a tree there is no viewport to clamp to: no error.
 	assert_int(detached.limit_right).is_equal(3072)
@@ -107,6 +111,13 @@ func test_pan_moves_by_minus_delta_over_zoom() -> void:
 	_near(_camera.position, Vector2(1496, 1556))
 
 
+func test_zooming_out_at_a_corner_reclamps_the_position() -> void:
+	_camera.zoom = Vector2(1.5, 1.5)
+	_camera.pan_by_screen(Vector2(OVERSCROLL, OVERSCROLL))  # The corner, (426.67, 240).
+	_camera.pinch(Vector2(640, 360), 0.5)  # Zoom 0.75 about the view centre.
+	_near(_camera.position, Vector2(853.3333, 480))  # The view grew, so the inset grew.
+
+
 func test_pinch_keeps_the_world_point_under_the_centre_fixed_through_the_snap() -> void:
 	var world: Vector2 = _camera.screen_to_world(POINT)
 	for factor: float in [1.3, 0.8]:
@@ -132,6 +143,8 @@ func test_pinch_is_bounded_by_the_outer_levels_plus_minus_15_percent() -> void:
 	_camera.pinch(POINT, NAN)  # Two fingers on one point give a NaN or 0 ratio: ignored.
 	_camera.pinch(POINT, 0.0)
 	_zoom_is(2.25)
+	_camera.pinch(POINT, 0.001)
+	_zoom_is(0.375)
 
 
 func test_end_gesture_snaps_to_the_nearest_level_by_ratio() -> void:
@@ -154,19 +167,22 @@ func test_step_zoom_walks_the_levels_and_stops_at_the_ends() -> void:
 		_near(_camera.screen_to_world(POINT), world, str(i), 0.5)
 
 
-func test_snap_takes_zoom_snap_ms_and_a_new_pinch_cancels_it() -> void:
+func test_snap_is_zoom_snap_ms_long_about_the_pinch_point_and_a_new_pinch_cancels_it() -> void:
 	_settings.zoom_snap_ms = 150
-	_camera.zoom = Vector2(1.3, 1.3)
+	_camera.pinch(POINT, 1.3)
+	var world: Vector2 = _camera.screen_to_world(POINT)
 	_camera.end_gesture()
-	_zoom_is(1.3)  # Not instant.
-	await _wait_for_snap()
+	_camera._snap.pause()  # The tween is stepped by hand: exact, no wall-clock waits.
+	_camera._snap.custom_step(0.075)  # Half of 150 ms, linear in zoom.
+	_zoom_is(1.4)
+	_near(_camera.screen_to_world(POINT), world, "half way", 0.5)
+	_camera._snap.custom_step(0.075)
 	_zoom_is(1.5)
-	# A pinch during the snap cancels it.
-	_camera.zoom = Vector2(1.3, 1.3)
+	_camera.pinch(POINT, 0.8)
 	_camera.end_gesture()
-	_camera.pinch(POINT, 1.0)
-	await _wait_for_snap()
-	_zoom_is(1.3)
+	_camera.pinch(POINT, 1.0)  # A pinch during the snap cancels it.
+	_camera._snap.custom_step(1.0)  # A live tween would finish and move the zoom to 1.0.
+	_zoom_is(1.2)
 
 
 func test_screen_and_world_round_trip_and_match_the_engine_canvas_transform() -> void:
@@ -191,15 +207,9 @@ func _add_camera() -> RtsCamera:
 	return camera
 
 
-## Longer than `zoom_snap_ms = 150`, then one more frame so the tween has stepped.
-func _wait_for_snap() -> void:
-	await await_millis(400)
-	await await_idle_frame()
-
-
 func _near(actual: Vector2, expected: Vector2, note: String = "", tol: float = 0.01) -> void:
 	var approx: Vector2 = Vector2(tol, tol)
-	assert_vector(actual).override_failure_message(note).is_equal_approx(expected, approx)
+	assert_vector(actual).append_failure_message(note).is_equal_approx(expected, approx)
 
 
 ## The zoom is `expected` on both axes.

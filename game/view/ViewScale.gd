@@ -4,7 +4,7 @@ extends RefCounted
 ## a tile 64 px wide. View code converts here and nowhere else, so no other file holds the 64.
 
 const PX_PER_TILE: int = 64  ## TestMapView.tile_px must equal this.
-const MILLI_PER_TILE: int = 1000  ## Same as the sim's tile size, read only from here.
+const MILLI_PER_TILE: int = World.MILLI_PER_TILE  ## The sim's tile size.
 
 
 static func milli_to_px(v: int) -> float:

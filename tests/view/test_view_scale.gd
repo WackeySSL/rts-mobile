@@ -2,10 +2,11 @@ extends GdUnitTestSuite
 ## ViewScale: 64 px per tile, 1000 milli per tile (plan Phase 1, interface contracts).
 
 
-func test_a_tile_is_64_px_and_matches_the_test_map() -> void:
+func test_a_tile_is_64_px_and_matches_the_test_map_view_default() -> void:
 	assert_int(ViewScale.PX_PER_TILE).is_equal(64)
 	assert_int(auto_free(TestMapView.new()).tile_px).is_equal(ViewScale.PX_PER_TILE)
 	assert_float(ViewScale.milli_to_px(1000)).is_equal(64.0)
+	assert_float(ViewScale.milli_to_px(1)).is_equal_approx(0.064, 0.0001)  # Not whole px.
 	assert_that(ViewScale.milli_to_px_vec(1500, 48000)).is_equal(Vector2(96.0, 3072.0))
 
 
