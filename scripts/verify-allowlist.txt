@@ -1,3 +1,10 @@
 # One extended regular expression per line. Matching lines are ignored by the error scan in
 # scripts/verify.sh. Add only engine messages proven benign, with a comment above the pattern
 # that says why and links to the evidence (issue, CI run). Keep patterns as narrow as possible.
+
+# The project sets no icon yet, so the debug APK keeps the template's default launcher icon (ADR 0005,
+# credited in assets/CREDITS.md). Godot prints "ERROR: No project icon specified. Please specify one
+# in the Project Settings under Application -> Config -> Icon" once per Android export, which only
+# runs in CI (job android-debug-apk, run 38117776194). The trailing space is part of the pattern.
+# Delete the entry when the project sets an icon (ROADMAP Phase 7).
+^ERROR: No project icon specified\. 
