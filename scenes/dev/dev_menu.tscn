@@ -53,3 +53,10 @@ custom_minimum_size = Vector2(360, 120)
 layout_mode = 2
 theme_override_font_sizes/font_size = 40
 text = "Art gallery"
+
+[node name="TouchProbeButton" type="Button" parent="Center/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(360, 120)
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "Touch probe"

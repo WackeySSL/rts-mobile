@@ -35,3 +35,16 @@ func test_test_map_entry_is_enabled() -> void:
 	var test_map: Button = menu.find_child("TestMapButton", true, false)
 	assert_object(test_map).is_not_null()
 	assert_bool(test_map.disabled).is_false()
+
+
+func test_touch_probe_route_and_menu_entry() -> void:
+	assert_str(DevRoutes.TOUCH_PROBE_SCENE).is_equal("res://scenes/dev/touch_probe.tscn")
+	assert_bool(ResourceLoader.exists(DevRoutes.TOUCH_PROBE_SCENE)).is_true()
+	var packed: PackedScene = load(DevRoutes.DEV_MENU_SCENE)
+	var menu: Node = auto_free(packed.instantiate())
+	add_child(menu)
+	await await_idle_frame()
+	var probe: Button = menu.find_child("TouchProbeButton", true, false)
+	assert_object(probe).is_not_null()
+	assert_bool(probe.disabled).is_false()
+	assert_array(probe.pressed.get_connections()).is_not_empty()
