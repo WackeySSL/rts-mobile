@@ -6,20 +6,32 @@
 [ext_resource type="Script" path="res://game/view/main_view.gd" id="4_main"]
 [ext_resource type="Script" path="res://game/input/TouchInput.gd" id="5_touch"]
 [ext_resource type="Resource" path="res://data/input_settings.tres" id="6_settings"]
+[ext_resource type="Script" path="res://game/core/MatchRunner.gd" id="7_runner"]
+[ext_resource type="Resource" path="res://data/scenarios/controls_test.tres" id="8_scenario"]
+[ext_resource type="Script" path="res://game/view/UnitLayer.gd" id="9_units"]
 
-[node name="Main" type="Node2D" node_paths=PackedStringArray("map_view", "camera")]
+[node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
+runner = NodePath("MatchRunner")
 map_view = NodePath("TestMapView")
 camera = NodePath("Camera")
 
+[node name="MatchRunner" type="Node" parent="."]
+script = ExtResource("7_runner")
+scenario = ExtResource("8_scenario")
+
 [node name="TestMapView" type="Node2D" parent="."]
 script = ExtResource("1_map")
-size_tiles = Vector2i(32, 32)
 tile_px = 64
 tone_a = Color(0.36862746, 0.49019608, 0.2901961, 1)
 tone_b = Color(0.43529412, 0.56078434, 0.34117648, 1)
 grid_color = Color(0, 0, 0, 0.2)
 grid_width_px = 1.0
+
+[node name="UnitLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "camera")]
+script = ExtResource("9_units")
+runner = NodePath("../MatchRunner")
+camera = NodePath("../Camera")
 
 [node name="Camera" type="Camera2D" parent="."]
 script = ExtResource("2_cam")

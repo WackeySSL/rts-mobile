@@ -1,8 +1,9 @@
 extends GdUnitTestSuite
-## The main scene (ROADMAP Phase 1 box 2): a 32x32 test map of 64 px tiles, an RtsCamera driven by
-## a TouchInput (both on data/input_settings.tres), and the Dev button. Composition only: the
-## camera and gesture rules are tested in tests/view and tests/input. Fingers enter through the
-## touch_events helper, which converts base px to the window px that push_input takes.
+## The main scene (ROADMAP Phase 1 boxes 1 and 2): a MatchRunner on the controls_test scenario, a
+## 48x48 test map of 64 px tiles, 40 unit rigs, an RtsCamera driven by a TouchInput (both on
+## data/input_settings.tres), and the Dev button. Composition only: the camera and gesture rules
+## are tested in tests/view and tests/input. Fingers enter through the touch_events helper, which
+## converts base px to the window px that push_input takes.
 ##
 ## Every test starts at a 1280x720 window. The headless window is 64x64 by default, and GUI
 ## hit-tests silently miss until the window has the base size. Tests that resize the window reset
@@ -11,6 +12,7 @@ extends GdUnitTestSuite
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const SETTINGS_PATH: String = "res://data/input_settings.tres"
+const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
 const BASE_SIZE: Vector2i = Vector2i(1280, 720)
 ## The three screens every screen is tested at: base, 20:9 phone and 4:3 tablet.
 const TARGET_SIZES: Array[Vector2i] = [
@@ -26,6 +28,8 @@ const LOWEST: Dictionary[Vector2i, Vector2] = {
 }
 ## Bigger than the map, so the camera must stop at its limit.
 const OVERSCROLL_PX: float = 5000.0
+## The middle of the 48x48 map (3072 px), where the pan and pinch tests begin.
+const MAP_CENTRE: Vector2 = Vector2(1536, 1536)
 const POSITION_MARGIN_PX: float = 0.5
 const TOLERANCE: Vector2 = Vector2(0.01, 0.01)
 ## Mid-screen at 1280x720, well clear of the Dev button (24..144 px).
@@ -61,20 +65,55 @@ func before_test() -> void:
 	_touch.clock = func() -> int: return 0  # No long-press, however long the test stalls.
 
 
-func test_map_is_32_by_32_tiles_of_64_px() -> void:
-	assert_that(_map.size_tiles).is_equal(Vector2i(32, 32))
+func test_map_is_48_by_48_tiles_of_64_px_from_the_scenario() -> void:
+	var scenario: ScenarioDef = load(SCENARIO_PATH)
+	assert_that(scenario.map_size_tiles).is_equal(Vector2i(48, 48))
+	assert_object(_main.get_node("MatchRunner").scenario).is_same(scenario)
+	assert_that(_map.size_tiles).is_equal(Vector2i(48, 48))
 	assert_int(_map.tile_px).is_equal(64)
-	assert_that(_map.map_rect_px()).is_equal(Rect2i(0, 0, 2048, 2048))
+	assert_int(_map.tile_px).is_equal(ViewScale.PX_PER_TILE)
+	assert_that(_map.map_rect_px()).is_equal(Rect2i(0, 0, 3072, 3072))
 
 
-func test_camera_limits_equal_the_map_rect_and_start_at_its_centre() -> void:
+func test_camera_limits_equal_the_map_rect() -> void:
 	var rect: Rect2i = _map.map_rect_px()
 	assert_int(_camera.limit_left).is_equal(rect.position.x)
 	assert_int(_camera.limit_top).is_equal(rect.position.y)
 	assert_int(_camera.limit_right).is_equal(rect.end.x)
 	assert_int(_camera.limit_bottom).is_equal(rect.end.y)
-	assert_that(_camera.position).is_equal(Vector2(1024, 1024))
-	assert_that(_camera.get_screen_center_position()).is_equal(Vector2(1024, 1024))
+
+
+func test_camera_starts_on_the_scenario_camera_tile_and_sees_all_30_tanks_at_every_size() -> void:
+	var scenario: ScenarioDef = load(SCENARIO_PATH)
+	assert_that(scenario.camera_start_tile).is_equal(Vector2i(12, 21))
+	var layer: UnitLayer = _main.get_node("UnitLayer")
+	for size: Vector2i in TARGET_SIZES:
+		get_window().size = size
+		await await_idle_frame()
+		assert_that(_camera.position).is_equal(Vector2(800, 1376))  # The centre of tile (12, 21).
+		assert_that(_camera.get_screen_center_position()).is_equal(Vector2(800, 1376))
+		for row: int in 30:
+			(
+				assert_bool(_camera.visible_world_rect().has_point(layer.get_child(row).position))
+				. is_true()
+			)
+
+
+func test_30_blue_and_10_red_tanks_stand_on_the_map_under_the_unit_layer() -> void:
+	var layer: UnitLayer = _main.get_node("UnitLayer")
+	var tints: Array[Color] = []
+	for rig: Node2D in layer.get_children():
+		tints.append(rig.get_node("Team").modulate)
+		assert_bool(Rect2(_map.map_rect_px()).has_point(rig.position)).is_true()
+	assert_int(layer.rig_count()).is_equal(40)
+	assert_int(tints.count(Color("2F80ED"))).is_equal(30)
+	assert_int(tints.count(Color("E5484D"))).is_equal(10)
+	assert_object(layer.runner).is_same(_main.get_node("MatchRunner"))
+	assert_object(layer.camera).is_same(_camera)
+	# The runner ticks before the layer reads it, the map is drawn under the units, the HUD above.
+	assert_int(_main.get_node("MatchRunner").get_index()).is_less(layer.get_index())
+	assert_int(_map.get_index()).is_less(layer.get_index())
+	assert_int(layer.get_index()).is_less(_main.get_node("Hud").get_index())
 
 
 func test_camera_and_touch_input_are_wired_to_each_other_and_the_shared_settings() -> void:
@@ -92,9 +131,9 @@ func test_one_finger_pan_stops_exactly_at_the_map_edge_at_every_target_resolutio
 		get_window().size = size
 		await await_idle_frame()
 		assert_that(_expected_low()).is_equal(LOWEST[size])
-		_camera.centre_on(Vector2(1024, 1024))
+		_camera.centre_on(MAP_CENTRE)
 		await _pan(Vector2(100, 40))
-		assert_vector(_camera.position).is_equal_approx(Vector2(924, 984), TOLERANCE)
+		assert_vector(_camera.position).is_equal_approx(Vector2(1436, 1496), TOLERANCE)
 		await _pan(Vector2(OVERSCROLL_PX, OVERSCROLL_PX))
 		assert_that(_camera.position).is_equal(_expected_low())
 		_assert_position_matches_screen_centre()
@@ -114,7 +153,7 @@ func test_a_pinch_zooms_about_the_fingers_and_snaps_to_a_level_at_every_target_r
 		get_window().size = size
 		await await_idle_frame()
 		_camera.zoom = Vector2.ONE
-		_camera.centre_on(Vector2(1024, 1024))
+		_camera.centre_on(MAP_CENTRE)
 		var world: Vector2 = _camera.screen_to_world(Vector2(640, 400))
 		TouchEvents.press(vp, 0, Vector2(540, 400))
 		TouchEvents.press(vp, 1, Vector2(740, 400))  # 200 apart.
