@@ -71,8 +71,22 @@ func test_units_without_a_slot_get_the_clamped_target() -> void:
 	Formation.assign(small, rows, 0, 0)
 	for row: int in rows:
 		assert_that(_goal(small, row)).is_equal(Vector2i(400, 400))
+	small.goal_x[0] = 7
 	Formation.assign(small, PackedInt32Array(), 0, 0)
-	assert_that(_goal(small, 0)).is_equal(Vector2i(400, 400))
+	assert_int(small.goal_x[0]).is_equal(7)
+
+
+## A map thinner than twice the radius: the inset is half the map on that axis, so the clamp
+## range is never empty. x is clamped by the radius, y by half of 600. Only the j = 0 row fits.
+func test_a_thin_map_limits_the_inset_to_half_the_map_on_each_axis() -> void:
+	var thin: World = _make_world(MAP)
+	thin.map_h = 600
+	_add_type(thin, SPACING, RADIUS)
+	var rows: PackedInt32Array = _add_block(thin, 3, 3, 100, 100, 0, 0)
+	Formation.assign(thin, rows, 60000, 60000)
+	assert_that(_goal(thin, 0)).is_equal(Vector2i(MAP - RADIUS, 300))
+	assert_that(_goal(thin, 1)).is_equal(Vector2i(MAP - RADIUS - SPACING, 300))
+	assert_that(_goal(thin, 2)).is_equal(Vector2i(MAP - RADIUS - 2 * SPACING, 300))
 
 
 ## Slot order is centre, (0,-1), (-1,0). Id 2 is nearest the target, id 3 is nearer the second
@@ -89,12 +103,23 @@ func test_the_nearest_unit_takes_the_centre_slot_and_the_rest_follow_greedily() 
 	assert_that(_goal(_world, 3)).is_equal(Vector2i(20000, 20000))
 
 
+## Offsets from the centre slot: unit 0 (1500, 3500), unit 1 (4500, 0), unit 2 (3400, 3400).
+## Squared distance picks unit 0. Manhattan distance would pick unit 1, Chebyshev unit 2.
+func test_the_centre_slot_goes_to_the_unit_nearest_by_squared_distance() -> void:
+	_world.add_unit(1, 0, 11500, 13500)
+	_world.add_unit(1, 0, 14500, 10000)
+	_world.add_unit(1, 0, 13400, 13400)
+	Formation.assign(_world, PackedInt32Array([0, 1, 2]), 10000, 10000)
+	assert_that(_goal(_world, 0)).is_equal(Vector2i(10000, 10000))
+
+
 func test_equal_distances_go_to_the_lower_id_whatever_the_list_order() -> void:
 	_world.add_unit(1, 0, 11000, 10000)
 	_world.add_unit(1, 0, 9000, 10000)
-	Formation.assign(_world, PackedInt32Array([1, 0]), 10000, 10000)
-	assert_that(_goal(_world, 0)).is_equal(Vector2i(10000, 10000))
-	assert_that(_goal(_world, 1)).is_equal(Vector2i(10000, 8800))
+	for order: Array in [[0, 1], [1, 0]]:
+		Formation.assign(_world, PackedInt32Array(order), 10000, 10000)
+		assert_that(_goal(_world, 0)).is_equal(Vector2i(10000, 10000))
+		assert_that(_goal(_world, 1)).is_equal(Vector2i(10000, 8800))
 
 
 ## Types 0 and 1 differ in spacing and radius. The middle unit has the largest of both, so

@@ -51,7 +51,10 @@ static func _slots(
 	var keys: Array[int] = []
 	var last_ring: int = -1
 	var ring: int = 0
-	while last_ring < 0 or ring <= last_ring:
+	# A ring r point is r * spacing away from the centre on an axis, and the centre is in the box,
+	# so no ring beyond the box extent holds a point. This ends the loop on its own.
+	var extent: int = maxi(high.x - low.x, high.y - low.y)
+	while (last_ring < 0 or ring <= last_ring) and ring * spacing <= extent:
 		var before: int = points.size()
 		for j: int in range(-ring, ring + 1):
 			# Inner rows only hold their two end points.
@@ -61,7 +64,7 @@ static func _slots(
 					continue
 				keys.append((i * i + j * j) * KEY_SHIFT + points.size())
 				points.append(point)
-		# A ring with no point inside the box means no later ring has one either.
+		# A ring with no point inside the box means no later ring has one either, so stop early.
 		if points.size() == before:
 			break
 		if last_ring < 0 and points.size() >= count:
