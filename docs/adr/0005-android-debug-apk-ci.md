@@ -132,3 +132,17 @@ Two facts above were corrected by the first real export
   about 222 MB, not an extra 126 MB next to the web cache.
 - Godot picked `build-tools/36.0.0/apksigner` (target SDK 36) from the runner image and read
   `JAVA_HOME` and `ANDROID_HOME` from the environment; no editor settings had to be written.
+
+## Amendment (2026-10-11, P19)
+- The rolling pre-release is published by the job `android-dev-release` in `ci.yml` through
+  `scripts/ci/publish-dev-release.sh`. It runs only on a push to `refs/heads/main` of the
+  repository itself (never for pull requests, forks or `workflow_dispatch`), after
+  `android-debug-apk`, with `contents: write` on that job only and its own concurrency group.
+- It reuses the APK artifact of the same run, deletes and recreates the `android-dev-latest`
+  pre-release so the tag moves to the new commit (a few seconds of 404 on the stable URL), and
+  then checks that the stable URL serves the same SHA-256. A re-run of an older main run does
+  not roll the release back to an older commit.
+- The release notes name the commit and whether the stable debug key signed the APK.
+- `scripts/ci/test-publish-dev-release.sh` tests the script offline against a stub `gh` and
+  `curl`; `tests/project/test_ci_workflow.gd` pins the job condition and permissions.
+- The repository setting "Immutable releases" must stay off, or recreating the tag is refused.
