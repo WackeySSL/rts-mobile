@@ -54,16 +54,13 @@ func pinch(centre: Vector2, factor: float) -> void:
 
 ## Fingers up: snap to the nearest level (by ratio), about the last pinch point.
 func end_gesture() -> void:
-	_snap_to_level(zoom_level_index())
+	_snap_to_level(_target_level())
 
 
-## One level in or out (`direction` is +1 or -1) about `anchor`, stopping at the ends. During a
-## snap the count starts from the level it heads for: half way, the nearest level is the old one.
+## One level in or out (`direction` is +1 or -1) about `anchor`, stopping at the ends.
 func step_zoom(direction: int, anchor: Vector2) -> void:
 	_anchor = anchor
-	var snapping: bool = _snap_level >= 0 and _snap.is_valid()
-	var from: int = _snap_level if snapping else zoom_level_index()
-	_snap_to_level(clampi(from + direction, 0, _last_level()))
+	_snap_to_level(clampi(_target_level() + direction, 0, _last_level()))
 
 
 ## Index of the level nearest to the current zoom, by ratio.
@@ -102,6 +99,11 @@ func _view_size() -> Vector2:
 
 func _last_level() -> int:
 	return settings.zoom_levels.size() - 1
+
+
+## The level a snap in flight heads for, else the nearest one: half way, the nearest is the old one.
+func _target_level() -> int:
+	return _snap_level if _snap_level >= 0 and _snap.is_valid() else zoom_level_index()
 
 
 func _snap_to_level(index: int) -> void:

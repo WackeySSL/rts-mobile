@@ -52,17 +52,20 @@ func before_test() -> void:
 	add_child(_camera)
 	_camera.set_map_rect(MAP)
 	_camera.centre_on(MAP.get_center())
-	var button: Button = auto_free(Button.new())
+	var hud: CanvasLayer = auto_free(CanvasLayer.new())  # As in main.tscn: the camera cannot move it.
+	add_child(hud)
+	var button: Button = Button.new()
 	button.position = BUTTON.position
 	button.size = BUTTON.size
 	button.pressed.connect(func() -> void: _presses += 1)
-	add_child(button)
+	hud.add_child(button)
 	_touch = auto_free(TouchInput.new())
 	_touch.settings = _settings
 	_touch.camera = _camera
 	_touch.clock = func() -> int: return _now_ms
 	_touch.vibrate = func(ms: int) -> void: _buzzes.append(ms)
 	add_child(_touch)
+	await await_idle_frame()  # The camera moves the canvas on the first frame.
 
 
 ## The override is static state: leaving one behind changes every later suite.
@@ -89,24 +92,20 @@ func test_the_slop_is_12_dp_in_base_px_and_follows_the_window() -> void:
 		assert_array(moved).override_failure_message(profile).is_equal([0.0, slops[profile] + 1.0])
 
 
-func test_a_tap_on_the_button_presses_it_and_the_recognizer_never_sees_the_finger() -> void:
-	TouchEvents.press(_vp, 0, BUTTON.get_center())
-	await await_idle_frame()
-	assert_int(_touch._recognizer.state()).is_equal(GestureRecognizer.State.IDLE)
-	TouchEvents.release(_vp, 0, BUTTON.get_center())
-	await await_idle_frame()
-	assert_int(_presses).is_equal(1)
-
-
-func test_a_drag_that_starts_on_the_button_never_reaches_the_recognizer() -> void:
+func test_a_touch_that_starts_on_the_button_stays_with_it_even_for_a_stale_map_finger() -> void:
+	var middle: Vector2 = BUTTON.get_center()
+	TouchEvents.press(_vp, 0, AWAY)  # Finger 0 pans the map, then its release is lost.
+	TouchEvents.drag(_vp, 0, AWAY + Vector2(60, 0), Vector2(60, 0))
 	var start: Vector2 = _camera.position
-	TouchEvents.press(_vp, 0, BUTTON.get_center())
-	TouchEvents.drag(_vp, 0, AWAY, AWAY - BUTTON.get_center())
-	TouchEvents.release(_vp, 0, AWAY)
-	await await_idle_frame()
-	assert_int(_touch._recognizer.state()).is_equal(GestureRecognizer.State.IDLE)
+	TouchEvents.press(_vp, 0, middle)  # The same index, now on the button.
+	TouchEvents.drag(_vp, 0, middle + Vector2(4, 0), Vector2(4, 0))
+	TouchEvents.release(_vp, 0, middle)
+	assert_int(_presses).is_equal(1)
 	assert_vector(_camera.position).is_equal(start)
-	assert_int(_presses).is_equal(0)
+	TouchEvents.press(_vp, 0, middle)
+	TouchEvents.drag(_vp, 0, AWAY, AWAY - middle)  # Dragged off the button: not a pan either.
+	TouchEvents.release(_vp, 0, AWAY)
+	assert_vector(_camera.position).is_equal(start)
 
 
 func test_a_pan_that_crosses_the_button_keeps_panning_and_does_not_press_it() -> void:
@@ -120,12 +119,12 @@ func test_a_pan_that_crosses_the_button_keeps_panning_and_does_not_press_it() ->
 	TouchEvents.drag(_vp, 0, Vector2(20, 100), Vector2(-80, 0))  # Past it, on the margin.
 	TouchEvents.drag(_vp, 0, over, Vector2(80, 0))  # Back, and let go over it.
 	TouchEvents.release(_vp, 0, over)
-	await await_idle_frame()
 	assert_vector(_camera.position).is_equal(start + Vector2(200, 0))
-	assert_int(_presses).is_equal(0)
-	assert_int(spy.unhandled).is_equal(0)  # The drags and the release were taken.
-	TouchEvents.drag(_vp, 3, AWAY, Vector2(5, 5))  # A finger the map never owned is not.
+	assert_int(spy.unhandled).is_equal(0)  # The drags and the release were taken: the proof.
+	TouchEvents.drag(_vp, 0, AWAY, Vector2(5, 5))  # Finger 0 is up: the map owns nothing now.
 	assert_int(spy.unhandled).is_equal(1)
+	TouchEvents.release(_vp, 5, AWAY)  # A stray release starts nothing.
+	assert_int(_touch._recognizer.state()).is_equal(GestureRecognizer.State.IDLE)
 
 
 func test_mouse_buttons_and_motion_are_ignored_and_the_wheel_steps_the_zoom() -> void:
@@ -151,17 +150,18 @@ func test_mouse_buttons_and_motion_are_ignored_and_the_wheel_steps_the_zoom() ->
 
 
 ## Half way the zoom (0.833 or 1.333) is still nearest the old level: counting from it loses a step.
-func test_two_quick_wheel_steps_while_a_snap_is_in_flight_go_two_levels() -> void:
+func test_two_quick_wheel_steps_go_two_levels_even_with_a_pan_released_in_between() -> void:
 	_settings.zoom_snap_ms = 150
-	_camera.zoom = Vector2(0.75, 0.75)
-	for step: Array in [[UP, 1.5], [DOWN, 0.75]]:
-		TouchEvents.wheel(_vp, step[0], AWAY)
+	for c: Array in [[0.75, UP, UP, 1.5], [1.5, DOWN, DOWN, 0.75], [1.0, DOWN, UP, 1.0]]:
+		_camera.zoom = Vector2(c[0], c[0])
+		TouchEvents.wheel(_vp, c[1], AWAY)
 		_camera._snap.pause()  # The tween is stepped by hand: exact, no wall-clock waits.
 		_camera._snap.custom_step(0.05)  # A third of the way.
-		TouchEvents.wheel(_vp, step[0], AWAY)
+		_pan_by(30.0)  # Its release ends the gesture: the snap keeps its level.
+		TouchEvents.wheel(_vp, c[2], AWAY)
 		_camera._snap.pause()
 		_camera._snap.custom_step(1.0)
-		_zoom_is(step[1])
+		_zoom_is(c[3])
 
 
 func test_a_pinch_zooms_about_the_centroid_applying_every_event_and_snaps_on_release() -> void:
@@ -178,21 +178,28 @@ func test_a_pinch_zooms_about_the_centroid_applying_every_event_and_snaps_on_rel
 	_zoom_is(1.5)
 
 
-func test_focus_loss_cancels_the_gesture() -> void:
-	TouchEvents.press(_vp, 0, Vector2(700, 400))
-	TouchEvents.press(_vp, 1, Vector2(900, 400))
-	TouchEvents.drag(_vp, 1, Vector2(980, 400), Vector2(80, 0))  # x1.4
-	_zoom_is(1.4)
-	_touch.notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
-	_zoom_is(1.5)  # CAMERA_END snapped it.
-	var at: Vector2 = _camera.position
-	TouchEvents.drag(_vp, 0, Vector2(760, 400), Vector2(60, 0))  # The lost finger is nobody's now.
-	assert_vector(_camera.position).is_equal(at)
-	assert_int(_touch._recognizer.state()).is_equal(GestureRecognizer.State.IDLE)
+func test_focus_loss_cancels_the_gesture_and_the_lost_finger_is_nobodys() -> void:
+	var spy: UnhandledSpy = auto_free(UnhandledSpy.new())
+	add_child(spy)
+	for what: int in [NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_WINDOW_FOCUS_OUT]:
+		_camera.zoom = Vector2.ONE
+		spy.unhandled = 0
+		TouchEvents.press(_vp, 0, Vector2(700, 400))
+		TouchEvents.press(_vp, 1, Vector2(900, 400))
+		TouchEvents.drag(_vp, 1, Vector2(980, 400), Vector2(80, 0))  # x1.4
+		_zoom_is(1.4)
+		_touch.notification(what)
+		_zoom_is(1.5)  # CAMERA_END snapped it.
+		var at: Vector2 = _camera.position
+		TouchEvents.drag(_vp, 0, Vector2(760, 400), Vector2(60, 0))  # Finger 0 is lost.
+		assert_vector(_camera.position).is_equal(at)
+		assert_int(_touch._recognizer.state()).is_equal(GestureRecognizer.State.IDLE)
+		assert_int(spy.unhandled).override_failure_message(str(what)).is_equal(1)
 
 
 func test_long_press_comes_at_300_ms_from_process_and_buzzes_when_haptics_are_on() -> void:
 	var start: Vector2 = _camera.position
+	_settings.haptic_ms = 25  # Not the default: a hardcoded buzz fails.
 	_now_ms = 1000
 	TouchEvents.press(_vp, 0, AWAY)
 	_now_ms = 1299
@@ -200,7 +207,7 @@ func test_long_press_comes_at_300_ms_from_process_and_buzzes_when_haptics_are_on
 	assert_array(_buzzes).is_empty()
 	_now_ms = 1300
 	await await_idle_frame()
-	assert_array(_buzzes).is_equal([15])
+	assert_array(_buzzes).is_equal([25])
 	TouchEvents.drag(_vp, 0, AWAY + Vector2(100, 0), Vector2(100, 0))  # Holding first: a box.
 	TouchEvents.release(_vp, 0, AWAY + Vector2(100, 0))
 	assert_vector(_camera.position).is_equal(start)

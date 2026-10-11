@@ -51,14 +51,18 @@ func _notification(what: int) -> void:
 func _input(event: InputEvent) -> void:
 	var touch: InputEventScreenTouch = event as InputEventScreenTouch
 	var drag: InputEventScreenDrag = event as InputEventScreenDrag
-	if touch != null and not touch.pressed and _owned.erase(touch.index):
-		_recognizer.touch_up(touch.index, touch.position, clock.call(), touch.canceled)
+	if touch != null and _owned.erase(touch.index):
+		# A press for a finger still down: its release was lost. End it, the press goes on.
+		_recognizer.touch_up(
+			touch.index, touch.position, clock.call(), touch.canceled or touch.pressed
+		)
 	elif drag != null and _owned.has(drag.index):
 		_recognizer.touch_move(drag.index, drag.position, clock.call())
 	else:
 		return
 	_dispatch()
-	get_viewport().set_input_as_handled()
+	if touch == null or not touch.pressed:
+		get_viewport().set_input_as_handled()
 
 
 ## Only presses the GUI did not take get here.

@@ -23,11 +23,12 @@ static func drag(vp: Viewport, index: int, at_base: Vector2, relative_base: Vect
 
 ## One wheel notch (MOUSE_BUTTON_WHEEL_UP or MOUSE_BUTTON_WHEEL_DOWN) at `at_base`.
 static func wheel(vp: Viewport, button_index: int, at_base: Vector2) -> void:
-	var event: InputEventMouseButton = InputEventMouseButton.new()
-	event.button_index = button_index
-	event.pressed = true
-	event.position = vp.get_final_transform() * at_base
-	vp.push_input(event)
+	for pressed: bool in [true, false]:  # The engine follows every notch with a release.
+		var event: InputEventMouseButton = InputEventMouseButton.new()
+		event.button_index = button_index
+		event.pressed = pressed
+		event.position = vp.get_final_transform() * at_base
+		vp.push_input(event)
 
 
 static func _push(vp: Viewport, index: int, at: Vector2, pressed: bool, canceled: bool) -> void:
