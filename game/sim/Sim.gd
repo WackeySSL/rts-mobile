@@ -9,8 +9,11 @@ const MILLI_PER_TILE: int = 1000
 
 
 ## Sorts `commands` in place with Command.compare and applies those whose tick is `world.tick`.
-## Any other command is dropped and counted. Then units with an order move, and the tick counts.
+## A null or any other command is dropped and counted. Then ordered units move, and the tick counts.
 static func step(world: World, commands: Array[Command]) -> void:
+	while commands.has(null):
+		commands.erase(null)
+		world.dropped_commands += 1
 	commands.sort_custom(Command.compare)
 	for command: Command in commands:
 		if command.tick == world.tick:

@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## Sim.step (ADR 0003 sections 3 to 5). Hand-built worlds use literal stats (type 0: speed 120,
-## type 1: speed 0), so no data file can agree with a wrong rule. A push_error would fail
-## verify, which scans the log.
+## type 1: speed 0, type 2: speed 60), so no data file can agree with a wrong rule. A push_error
+## would fail verify, which scans the log.
 
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
 const MAP: int = 48000
@@ -14,27 +14,31 @@ func test_constants_match_the_contract_and_world() -> void:
 
 
 ## Offsets from the start after every tick, as x, y pairs. The last pair is the snap.
-func test_a_tank_moves_exactly_120_milli_per_tick_on_axes_and_diagonals() -> void:
+func test_a_unit_moves_exactly_its_speed_per_tick_on_axes_and_diagonals() -> void:
 	assert_array(_walk(500, 0, 5)).is_equal([120, 0, 240, 0, 360, 0, 480, 0, 500, 0])
 	assert_array(_walk(-500, 0, 5)).is_equal([-120, 0, -240, 0, -360, 0, -480, 0, -500, 0])
 	assert_array(_walk(0, -400, 4)).is_equal([0, -120, 0, -240, 0, -360, 0, -400])
 	# A 3-4-5 diagonal moves (72, 96) per tick.
 	assert_array(_walk(300, 400, 5)).is_equal([72, 96, 144, 192, 216, 288, 288, 384, 300, 400])
-	# (-100, -100) is 141 long: -100 * 120 / 141 = -85.1 truncates toward zero, not to -86.
-	assert_array(_walk(-100, -100, 2)).is_equal([-85, -85, -100, -100])
+	# (-300, 100) is 316 long: -113.9 and 37.97 truncate toward zero, not to -114 or 38.
+	assert_array(_walk(-300, 100, 1)).is_equal([-113, 37])
+	# Type 2 has speed 60, so the speed comes from the unit's own type.
+	assert_array(_walk(500, 0, 2, 2)).is_equal([60, 0, 120, 0])
 
 
-## A goal exactly one step away is reached in one tick. One milli further takes a second tick.
+## A goal exactly one step away is reached in one tick. One milli further takes a second tick, and
+## so does (1, 120): d2 = 14401 is over 120 squared, although its rounded-down distance is 120.
 func test_a_goal_one_step_away_snaps_and_goes_idle() -> void:
-	for far: int in [120, 121]:
+	for far: Vector2i in [Vector2i(120, 0), Vector2i(121, 0), Vector2i(1, 120)]:
 		var world: World = _make_world()
 		world.add_unit(1, 0, 10000, 10000)
-		Sim.step(world, [_move(1, [1], 0, 10000 + far, 10000)])
-		assert_int(world.order[0]).is_equal(World.Order.ATTACK_MOVE if far == 121 else 0)
-		assert_int(world.pos_x[0]).is_equal(10000 + mini(far, 120))
+		var arrived: bool = far == Vector2i(120, 0)
+		Sim.step(world, [_move(1, [1], 0, 10000 + far.x, 10000 + far.y)])
+		assert_int(world.order[0]).is_equal(0 if arrived else World.Order.ATTACK_MOVE)
+		assert_int(world.pos_x[0]).is_equal(10000 + mini(far.x, 120))
 		Sim.step(world, [])
 		assert_int(world.order[0]).is_equal(World.Order.IDLE)
-		assert_int(world.pos_x[0]).is_equal(10000 + far)
+		assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([10000 + far.x, 10000 + far.y])
 
 
 func test_thirty_tanks_reach_distinct_slots_and_enemies_never_move() -> void:
@@ -65,8 +69,10 @@ func test_invalid_commands_are_dropped_and_counted() -> void:
 		"type none": _move(1, [1, 2], 7, 20000, 20000, 0, Command.Type.NONE),
 		"only enemy ids": _move(1, [31, 32], 7),
 		"other player's ids": _move(2, [1, 2], 7),
-		"unknown ids": _move(1, [0, -3, 41, 999], 7),
+		# Player 2 owns the last row, so an unguarded row -1 would pass the owner check.
+		"unknown ids": _move(2, [0, -3, 41, 999], 7),
 		"no ids": _move(1, [], 7),
+		"null": null,
 	}
 	for label: String in cases:
 		var world: World = _scenario_world()
@@ -98,6 +104,15 @@ func test_a_duplicate_id_is_used_once() -> void:
 	Sim.step(many, [_move(1, [3, 1, 1, 2, 3, 1], 0)])
 	assert_array(many.goal_x).is_equal(once.goal_x)
 	assert_array(many.goal_y).is_equal(once.goal_y)
+
+
+## Drops add up and do not stop later commands: stale, valid, wrong player, future, and a null.
+func test_a_dropped_command_does_not_block_the_next_ones() -> void:
+	var world: World = _scenario_world()
+	world.tick = 7
+	Sim.step(world, [_move(1, [1], 8), _move(2, [1], 7), null, _move(1, [2], 7), _move(1, [1], 6)])
+	assert_int(world.dropped_commands).is_equal(4)
+	assert_array([world.order[0], world.order[1]]).is_equal([0, 1])
 
 
 func test_a_target_outside_the_map_is_clamped() -> void:
@@ -166,12 +181,12 @@ func _scenario_world() -> World:
 	return World.from_scenario(load(SCENARIO_PATH) as ScenarioDef)
 
 
-## Type 0 is a tank (speed 120, radius 400, spacing 1200), type 1 a unit that cannot move.
+## Type 0: tank (speed 120, radius 400, spacing 1200). Type 1 cannot move. Type 2 has speed 60.
 func _make_world() -> World:
 	var world: World = World.new()
 	world.map_w = MAP
 	world.map_h = MAP
-	for speed: int in [120, 0]:
+	for speed: int in [120, 0, 60]:
 		world.type_ids.append(&"type")
 		world.type_speed.append(speed)
 		world.type_radius.append(400)
@@ -197,10 +212,10 @@ func _move(
 	return command
 
 
-## One tank at (10000, 10000) is ordered to move by (dx, dy). Returns its offset after each tick.
-func _walk(dx: int, dy: int, ticks: int) -> PackedInt32Array:
+## A unit of `type` at (10000, 10000) is ordered to move by (dx, dy). Returns its offset per tick.
+func _walk(dx: int, dy: int, ticks: int, type: int = 0) -> PackedInt32Array:
 	var world: World = _make_world()
-	world.add_unit(1, 0, 10000, 10000)
+	world.add_unit(1, type, 10000, 10000)
 	var offsets: PackedInt32Array = PackedInt32Array()
 	for t: int in ticks:
 		var commands: Array[Command] = []
