@@ -21,7 +21,7 @@ Tick a box in the PR that meets the criterion.
 - [ ] Selection: tap, double-tap (all of type on screen), long-press box select, "All army" button, groups 1-3
 - [ ] Move orders are attack-moves with a move marker; units spread around the target point
 - [ ] Hit areas of at least 48 dp through `UiScale.dp()`; gesture tests in `tests/input/`
-- [ ] Android debug APK as a CI artifact for testing on a real device
+- [x] Android debug APK as a CI artifact for testing on a real device
 - [ ] Gate: on a 6-inch phone Michael selects a single tank with the first tap and moves groups without thinking about it, over 3 days of use
 
 ## Phase 2: Simulation core
