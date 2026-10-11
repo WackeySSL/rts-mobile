@@ -101,8 +101,8 @@ jobs:
         with:
           persist-credentials: false
 
-      # Godot copies JAVA_HOME and ANDROID_HOME into its editor settings on its first run, so both
-      # are set before any Godot call. ANDROID_HOME already points at the runner image's SDK.
+      # Godot copies JAVA_HOME and ANDROID_HOME into its editor settings on its first run, so set
+      # them before any Godot call (ANDROID_HOME is the runner image's SDK already).
       - name: Select JDK 17
         run: echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
 
@@ -127,9 +127,8 @@ jobs:
           expect 4 env XDG_DATA_HOME="$RUNNER_TEMP/no-templates" bash scripts/export-android.sh
           expect 5 bash scripts/export-android.sh
 
-      # The debug key is generated per run. Only a push to main may use the stable key from the
-      # optional secrets (ADR 0005 section 4), so PR code never sees them. The password reaches
-      # the script through its environment only.
+      # A key is generated per run. Only a push to main may use the optional stable key, so PR code
+      # never sees the secrets (ADR 0005 section 4). The password reaches the script by env only.
       - name: Export debug APK
         env:
           STABLE_KEYSTORE_B64: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.ANDROID_DEBUG_KEYSTORE_BASE64 || '' }}
@@ -140,13 +139,14 @@ jobs:
           if [ -n "$STABLE_KEYSTORE_B64" ] && [ -n "$STABLE_KEYSTORE_PASSWORD" ]; then
             printf '%s' "$STABLE_KEYSTORE_B64" | base64 -d > "$keystore"
             password="$STABLE_KEYSTORE_PASSWORD"
-            echo "DEBUG_KEY_KIND=stable" >> "$GITHUB_ENV"
+            kind=stable
           else
             keytool -genkeypair -keystore "$keystore" -alias androiddebugkey -keyalg RSA -keysize 2048 \
               -validity 10000 -storepass android -keypass android -dname "CN=rts-mobile dev"
-            password="android"
-            echo "DEBUG_KEY_KIND=generated" >> "$GITHUB_ENV"
+            password=android
+            kind=generated
           fi
+          echo "DEBUG_KEY_KIND=$kind" >> "$GITHUB_ENV"
           GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$keystore" \
           GODOT_ANDROID_KEYSTORE_DEBUG_USER="androiddebugkey" \
           GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD="$password" \
@@ -167,16 +167,9 @@ jobs:
           {
             echo "Godot cache hit: ${CACHE_HIT:-false}"
             if [ -s "$apk" ]; then
-              echo
-              echo "- APK: $(stat -c %s "$apk") bytes"
-              echo "- SHA-256: \`$(sha256sum "$apk" | cut -d' ' -f1)\`"
-              echo "- Package: dk.appcode.rts.dev (installs next to the Play build)"
-              if [ "${DEBUG_KEY_KIND:-}" = "stable" ]; then
-                echo "- Signing key: stable debug key, so an update installs over the old APK."
-              else
-                echo "- Signing key: generated for this run. Uninstall the previous APK before installing this one."
-              fi
-              echo "- Install: download the artifact, unzip it, open rts-mobile-debug.apk on the phone."
+              echo "- APK: $(stat -c %s "$apk") bytes, SHA-256 \`$(sha256sum "$apk" | cut -d' ' -f1)\`, package dk.appcode.rts.dev"
+              echo "- Signing key: ${DEBUG_KEY_KIND:-unknown}. A generated key changes every run: uninstall the old APK first."
+              echo "- Install: unzip the artifact on the phone and open rts-mobile-debug.apk."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 

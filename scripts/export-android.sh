@@ -2,8 +2,8 @@
 # Export the Android debug APK (no Gradle, arm64 only, ADR 0005) and check the result. Godot exits
 # 0 after export configuration errors, so the log is scanned and the APK is inspected.
 # Usage: bash scripts/export-android.sh [--out DIR]
-#   --out DIR  output directory (default: build/android). A relative DIR is relative to the
-#              repository root. Inside the project it must be build/ or below.
+#   --out DIR  output directory (default: build/android), relative to the repository root and
+#              build/ or below.
 # Env:   GODOT=<binary> (default: godot). Must be version 4.7.2.stable.
 #        JAVA_HOME (JDK 17) and ANDROID_HOME (SDK with platform-tools and build-tools 36.x).
 #        GODOT_ANDROID_KEYSTORE_DEBUG_{PATH,USER,PASSWORD}: the debug keystore, all three.
@@ -11,7 +11,7 @@
 #        (scripts/ci/install-godot.sh --android), docs/licenses/godot-<version>/{LICENSE,COPYRIGHT}.txt.
 # Exit:  0 ok
 #        1 export failed, an error in this run's log, or a check of the APK failed
-#        2 usage error, or --out inside the project but not under build/
+#        2 usage error, or --out not under build/
 #        3 Godot missing or not 4.7.2.stable
 #        4 export template, JDK 17 or Android SDK piece missing (the message names each)
 #        5 debug keystore variables incomplete or the keystore file missing
@@ -24,8 +24,8 @@ ROOT="$(pwd -P)"
 GODOT="${GODOT:-godot}"
 GODOT_VERSION="4.7.2.stable"
 PATTERN='SCRIPT ERROR|^ERROR:|Parse Error'
-# The project sets no icon yet, so the APK keeps the default launcher icon of the template (the
-# Godot logo, ADR 0005). Godot prints this once per export (CI run 38117776194, spike).
+# The project sets no icon yet, so the APK keeps the template's default launcher icon (the Godot
+# logo, ADR 0005). Godot prints this once per export (CI run 38117776194).
 KNOWN_BENIGN='^ERROR: No project icon specified\. '
 PACKAGE="dk.appcode.rts.dev"
 APK_NAME="rts-mobile-debug.apk"
@@ -44,24 +44,18 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --out)
       [ $# -ge 2 ] && [ -n "$2" ] || die 2 "--out needs a directory"
-      out="$2"
+      out="${2%/}"
       shift 2
       ;;
     *) die 2 "unknown argument '$1' (usage: bash scripts/export-android.sh [--out DIR])" ;;
   esac
 done
 case "$out" in
-  /*) out_abs="$out" ;;
-  *) out_abs="$ROOT/$out" ;;
+  *..*) die 2 "--out '$out' contains '..'" ;;
+  build | build/*) ;;
+  *) die 2 "--out '$out' must be build/ or below, relative to the repository root" ;;
 esac
-out_abs="${out_abs%/}"
-case "/$out_abs/" in
-  */../*) die 2 "--out '$out' contains '..'" ;;
-esac
-case "$out_abs" in
-  "$ROOT/build" | "$ROOT/build"/*) ;;
-  "$ROOT" | "$ROOT"/*) die 2 "--out '$out' is inside the project but not under build/" ;;
-esac
+out_abs="$ROOT/$out"
 
 # (1) Godot present and exactly the pinned version.
 command -v "$GODOT" >/dev/null 2>&1 || die 3 "GODOT MISSING: '$GODOT' is not on PATH (set GODOT=/path/to/godot)"
@@ -76,9 +70,7 @@ for name in version.txt android_debug.apk; do
   [ -s "$template_dir/$name" ] || missing="$missing; template $template_dir/$name"
 done
 java_version="$("${JAVA_HOME:-/nonexistent}/bin/java" -version 2>&1 || true)"
-if ! grep -q 'version "17\.' <<<"$java_version"; then
-  missing="$missing; JDK 17 (JAVA_HOME='${JAVA_HOME:-}')"
-fi
+grep -q 'version "17\.' <<<"$java_version" || missing="$missing; JDK 17 (JAVA_HOME='${JAVA_HOME:-}')"
 [ -x "${ANDROID_HOME:-/nonexistent}/platform-tools/adb" ] || missing="$missing; \$ANDROID_HOME/platform-tools/adb (ANDROID_HOME='${ANDROID_HOME:-}')"
 for tool in apksigner aapt2; do
   found=""
@@ -97,30 +89,28 @@ done
 
 # (4) Fresh output folder. build/.gdignore keeps the next import away from the exported files.
 apk="$out_abs/$APK_NAME"
-mkdir -p "$out_abs" "$ROOT/build"
+mkdir -p "$out_abs"
 : >"$ROOT/build/.gdignore"
 rm -f "$apk" "$apk.idsig" "$out_abs/$NOTICE_NAME"
 
 # (5) Import (a fresh checkout has no .godot/) and export. The log of this run only is scanned.
 log="$(mktemp -t export-android.XXXXXX)"
-allow="$(mktemp -t export-android-allow.XXXXXX)"
-trap 'rm -f "$allow"' EXIT
 set +e
 { "$GODOT" --headless --path . --import && "$GODOT" --headless --path . --export-debug Android "$apk"; } 2>&1 | tee "$log"
 status=${PIPESTATUS[0]}
 set -e
 [ "$status" -eq 0 ] || die 1 "Godot export failed with exit code ${status} (log: $log)"
 
-grep -v -E '^[[:space:]]*(#|$)' scripts/verify-allowlist.txt >"$allow" || true
 errors="$(grep -E "$PATTERN" "$log" | grep -v -E "$KNOWN_BENIGN" || true)"
-if [ -s "$allow" ]; then
+allow="$(grep -v -E '^[[:space:]]*(#|$)' scripts/verify-allowlist.txt || true)"
+if [ -n "$allow" ]; then
   # An invalid regex makes grep -f exit 2 with no output, and an entry that matches the empty
   # string matches every line. Either would hide every error.
   allow_rc=0
-  grep -E -f "$allow" /dev/null >/dev/null || allow_rc=$?
-  [ "$allow_rc" -le 1 ] || die 1 "scripts/verify-allowlist.txt contains an invalid extended regex"
-  ! printf '\n' | grep -q -E -f "$allow" || die 1 "scripts/verify-allowlist.txt has an entry that matches an empty line"
-  errors="$(printf '%s\n' "$errors" | grep -v -E -f "$allow" | grep . || true)"
+  grep -E -f <(echo "$allow") /dev/null >/dev/null || allow_rc=$?
+  [ "$allow_rc" -le 1 ] && ! grep -q -E -f <(echo "$allow") <<<"" ||
+    die 1 "scripts/verify-allowlist.txt has an invalid entry (bad regex, or it matches an empty line)"
+  errors="$(grep -v -E -f <(echo "$allow") <<<"$errors" | grep . || true)"
 fi
 if [ -n "$errors" ]; then
   echo "$errors" | head -n 20 >&2
@@ -128,10 +118,10 @@ if [ -n "$errors" ]; then
 fi
 
 # (6) Licence notice: the same content as the web build's, with this build named in the header.
-for source in LICENSE.txt COPYRIGHT.txt; do
-  [ -s "$LICENSE_DIR/$source" ] || die 1 "licence notice source $LICENSE_DIR/$source is missing or empty"
-done
+[ -s "$LICENSE_DIR/LICENSE.txt" ] && [ -s "$LICENSE_DIR/COPYRIGHT.txt" ] ||
+  die 1 "licence notice sources in $LICENSE_DIR are missing or empty"
 godot_tag="${GODOT_VERSION%.stable}-stable"
+rule="--------------------------------------------------------------------------------"
 {
   cat <<EOF
 rts-mobile Android debug build: third-party licences
@@ -143,21 +133,12 @@ source repository.
 This build runs on the Godot Engine ${godot_tag} (https://godotengine.org). Godot is
 licensed under the MIT licence and bundles third-party components under their own
 licences. Godot's LICENSE.txt and COPYRIGHT.txt for tag ${godot_tag} follow unchanged.
-
---------------------------------------------------------------------------------
-Godot Engine ${godot_tag}: LICENSE.txt
---------------------------------------------------------------------------------
 EOF
-  cat "$LICENSE_DIR/LICENSE.txt"
-  cat <<EOF
-
---------------------------------------------------------------------------------
-Godot Engine ${godot_tag}: COPYRIGHT.txt
---------------------------------------------------------------------------------
-EOF
-  cat "$LICENSE_DIR/COPYRIGHT.txt"
+  for source in LICENSE.txt COPYRIGHT.txt; do
+    printf '\n%s\nGodot Engine %s: %s\n%s\n' "$rule" "$godot_tag" "$source" "$rule"
+    cat "$LICENSE_DIR/$source"
+  done
 } >"$out_abs/$NOTICE_NAME"
-[ -s "$out_abs/$NOTICE_NAME" ] || die 1 "$out/$NOTICE_NAME is empty"
 
 # (7) The APK. Godot picks the build-tools version (the one that equals the target SDK, 36.0.0 on
 # the ubuntu-24.04 image). Its log names the apksigner it ran, and the checks use the same tools.
@@ -167,18 +148,16 @@ case "$signer" in
   "$ANDROID_HOME"/build-tools/36.*/apksigner) ;;
   *) die 1 "Godot did not sign with an apksigner of \$ANDROID_HOME/build-tools/36.* (log says '${signer:-nothing}')" ;;
 esac
-aapt2="$(dirname "$signer")/aapt2"
 listing="$(unzip -Z1 "$apk")"
 grep -qx 'lib/arm64-v8a/libgodot_android.so' <<<"$listing" || die 1 "the APK lacks lib/arm64-v8a/libgodot_android.so"
 other_abis="$(grep '^lib/' <<<"$listing" | grep -v '^lib/arm64-v8a/' || true)"
 [ -z "$other_abis" ] || die 1 "the APK holds libraries for other ABIs (arm64-v8a only): $(head -n 3 <<<"$other_abis")"
-# Project files sit under assets/ (a missing boot scene means the layout changed and the next
-# check proves nothing).
+# Project files sit under assets/. Without the boot scene there the next check proves nothing.
 grep -qx 'assets/scenes/main.tscn.remap' <<<"$listing" || die 1 "the APK lacks assets/scenes/main.tscn.remap"
 test_files="$(grep -E '^assets/(tests|addons/gdUnit4)/' <<<"$listing" || true)"
 [ -z "$test_files" ] || die 1 "the APK holds test files: $(head -n 3 <<<"$test_files")"
 "$signer" verify --print-certs "$apk" || die 1 "apksigner verify failed"
-manifest="$("$aapt2" dump xmltree --file AndroidManifest.xml "$apk")"
+manifest="$("$(dirname "$signer")/aapt2" dump xmltree --file AndroidManifest.xml "$apk")"
 grep -q "package=\"$PACKAGE\"" <<<"$manifest" || die 1 "the manifest package is not $PACKAGE"
 # Godot 4.7.2 maps the project's sensor landscape to userLandscape (11), not sensorLandscape (6).
 grep -Eq 'screenOrientation\(0x0101001e\)=11$' <<<"$manifest" || die 1 "the manifest screenOrientation is not 11 (userLandscape)"
