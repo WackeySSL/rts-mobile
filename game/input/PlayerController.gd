@@ -63,6 +63,7 @@ func _double_tap(pos: Vector2) -> void:
 		return
 	var on_screen: Rect2 = get_viewport().get_visible_rect()
 	Picker.own_of_type_in_rect(_snap, _snap.type_index[hit], on_screen, _local_player(), _found)
+	_found.append(_snap.ids[hit])  # The tapped unit counts, even with its centre off screen.
 	selection.set_ids(_found)
 
 
