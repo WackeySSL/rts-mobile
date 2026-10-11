@@ -11,6 +11,7 @@ const REQUIRED_SCENES: Array[String] = [
 	DevRoutes.MAIN_SCENE,
 	DevRoutes.DEV_MENU_SCENE,
 	DevRoutes.ART_GALLERY_SCENE,
+	DevRoutes.TOUCH_PROBE_SCENE,
 ]
 
 var _window_size_before: Vector2i

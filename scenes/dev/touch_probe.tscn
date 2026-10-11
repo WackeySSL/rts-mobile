@@ -1,0 +1,50 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://game/ui/touch_probe.gd" id="1_probe"]
+[ext_resource type="Script" path="res://game/ui/DpMinSize.gd" id="2_dp"]
+
+[node name="TouchProbe" type="Control"]
+layout_mode = 3
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_probe")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Column" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+
+[node name="MetricsLabel" type="Label" parent="Margin/Column"]
+layout_mode = 2
+
+[node name="SquareSlot" type="Control" parent="Margin/Column"]
+layout_mode = 2
+
+[node name="DpMinSize" type="Node" parent="Margin/Column/SquareSlot"]
+script = ExtResource("2_dp")
+
+[node name="Square" type="ColorRect" parent="Margin/Column/SquareSlot"]
+layout_mode = 0
+color = Color(0.9607843, 0.64705884, 0.14509805, 1)
+
+[node name="DpMinSize" type="Node" parent="Margin/Column/SquareSlot/Square"]
+script = ExtResource("2_dp")
+
+[node name="SquareLabel" type="Label" parent="Margin/Column"]
+layout_mode = 2
+text = "should measure 7.6 mm"
+
+[node name="BackButton" type="Button" parent="Margin"]
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 0
+text = "Back"
+
+[node name="DpMinSize" type="Node" parent="Margin/BackButton"]
+script = ExtResource("2_dp")
+min_dp = Vector2(96, 56)
