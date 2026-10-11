@@ -1,15 +1,17 @@
 class_name SelectionPanel
 extends PanelContainer
 ## What is selected and how many, at the bottom centre (read-only in Phase 1). One row per unit
-## type: its own art (hull, team layer in the owner colour, turret), display name and "×N". With
-## more than one type a last row shows the total. Hidden when nothing is selected.
+## type: its own art (hull, team layer in the owner colour, turret), its name (the type id,
+## capitalised) and "×N". With more than one type a last row shows the total. Hidden when nothing
+## is selected.
 ## Fed by PlayerController.selection_changed (wired in the scene), so it works on a change only. It
 ## reads the World through the runner and never writes to it. Rows are made once and reused.
-## It keeps its touches (mouse_filter STOP): a touch that starts on a HUD Control belongs to it
-## (ADR 0004 section 1), so a tap on it never becomes a ground order.
+## It keeps its touches (mouse_filter STOP), so a tap on it never becomes a ground order. ADR 0004
+## section 1 says that of HUD buttons; this panel is none, so it widens the rule to any HUD Control
+## (a pan, box or pinch finger that starts on it is lost too, which is why it is small).
 ## Its parent MarginContainer is the band between the ArmyBar and the sidebar zone (the right 20%,
 ## at least 200 dp, kept free for the build sidebar). The panel sets that band's margins and sits
-## in its middle, so it clears both whatever the screen size and the length of a name.
+## in its middle. A name much longer than "Light Tank" needs a width cap before a second type lands.
 
 const ICON_DP: float = 40.0
 const MIN_HEIGHT_DP: float = 48.0
@@ -62,13 +64,13 @@ class Row:
 			label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			add_child(label)
 
-	func show_type(id: StringName, label: String, number: int, tint: Color) -> void:
+	func show_type(id: StringName, number: int, tint: Color) -> void:
 		visible = true
 		for index: int in layers.size():  # A type without art shows a blank icon.
 			var path: String = "%s%s_%s.svg" % [UnitLayer.ART_DIR, id, UnitLayer.LAYER_FILES[index]]
 			layers[index].texture = load(path) if ResourceLoader.exists(path) else null
 		layers[UnitLayer.TEAM_LAYER].modulate = tint
-		title.text = label
+		title.text = String(id).capitalize()
 		count.text = "×%d" % number
 
 	func apply_dp() -> void:
@@ -117,8 +119,7 @@ func set_selected(ids: PackedInt32Array) -> void:
 			continue
 		if shown == _rows.size():
 			_add_row()
-		var type_id: StringName = world.type_ids[type]
-		_rows[shown].show_type(type_id, _name_of(type_id), _counts[type], tint)
+		_rows[shown].show_type(world.type_ids[type], _counts[type], tint)
 		shown += 1
 		total += _counts[type]
 	for hidden: int in range(shown, _rows.size()):
@@ -126,16 +127,7 @@ func set_selected(ids: PackedInt32Array) -> void:
 	_total.text = "Total ×%d" % total
 	_total.visible = shown > 1
 	visible = shown > 0
-
-
-## The unit definition's display name, else its type id. The first definition of a type wins, as
-## in World.from_scenario.
-func _name_of(type_id: StringName) -> String:
-	for spawn: SpawnDef in runner.scenario.spawns:
-		if spawn != null and spawn.unit != null and spawn.unit.type_id == type_id:
-			var named: String = spawn.unit.display_name
-			return named if not named.is_empty() else String(type_id)
-	return String(type_id)
+	_fit_band()  # The panel's width follows the name and the count.
 
 
 func _add_row() -> void:
@@ -155,11 +147,20 @@ func _apply_dp() -> void:
 	_total.add_theme_font_size_override("font_size", roundi(UiScale.dp(NUMBER_FONT_DP)))
 	for row: Row in _rows:
 		row.apply_dp()
+	_fit_band()
+
+
+## The band's margins: the ArmyBar on the left, the sidebar zone on the right. The band's minimum
+## width counts both, so on a screen too narrow for all three the zone gives way and the panel sits
+## in the still empty zone, instead of growing the SafeArea and pushing the HUD off the screen.
+func _fit_band() -> void:
 	var band: MarginContainer = get_parent() as MarginContainer
-	if band != null and army_bar != null:  # Both start at the SafeArea's edges: sizes are enough.
-		var zone: float = get_viewport().get_visible_rect().size.x * SIDEBAR_SHARE
-		var left: float = army_bar.get_combined_minimum_size().x + UiScale.dp(GAP_DP)
-		band.add_theme_constant_override("margin_left", ceili(left))
-		band.add_theme_constant_override(
-			"margin_right", ceili(maxf(zone, UiScale.dp(SIDEBAR_MIN_DP)))
-		)
+	var safe: SafeAreaMargin = null if band == null else band.get_parent() as SafeAreaMargin
+	if safe == null or army_bar == null:
+		return
+	var width: float = get_viewport().get_visible_rect().size.x
+	var zone: float = maxf(width * SIDEBAR_SHARE, UiScale.dp(SIDEBAR_MIN_DP))
+	var left: int = ceili(army_bar.get_combined_minimum_size().x + UiScale.dp(GAP_DP))
+	var room: float = width - 2.0 * safe.apply().x - left - get_combined_minimum_size().x
+	band.add_theme_constant_override("margin_left", left)
+	band.add_theme_constant_override("margin_right", mini(ceili(zone), maxi(floori(room), 0)))

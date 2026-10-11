@@ -82,17 +82,22 @@ func test_two_types_get_a_row_each_and_a_total_and_the_rows_are_reused() -> void
 	_panel.unit_layer = auto_free(UnitLayer.new())
 	add_child(_panel)
 	_panel.set_selected(PackedInt32Array([1, 2, 3, 4, 5, 999]))  # 999 is no unit.
-	assert_array(_texts("Row0")).is_equal(["Light tank", "×2"])
-	assert_array(_texts("Row1")).is_equal(["scout_test", "×3"])
+	assert_array(_texts("Row0")).is_equal(["Light Tank", "×2"])
+	assert_array(_texts("Row1")).is_equal(["Scout Test", "×3"])
 	assert_str((_node("Rows/Total") as Label).text).is_equal("Total ×5")
 	assert_bool(_node("Rows/Total").visible).is_true()
+	assert_int(_node("Rows/Total").get_index()).is_equal(2)  # Below the rows.
+	assert_object((_node("Rows/Row1/Icon/Hull") as TextureRect).texture).is_null()  # No art.
 	var row0: Node = _node("Rows/Row0")
 	_panel.set_selected(PackedInt32Array([4]))
 	assert_object(_node("Rows/Row0")).is_same(row0)  # Reused, now the scout.
-	assert_array(_texts("Row0")).is_equal(["scout_test", "×1"])
+	assert_array(_texts("Row0")).is_equal(["Scout Test", "×1"])
+	assert_object((_node("Rows/Row0/Icon/Hull") as TextureRect).texture).is_null()  # Not the tank's.
 	assert_bool(_node("Rows/Row1").visible).is_false()
 	assert_bool(_node("Rows/Total").visible).is_false()
 	assert_int(_node("Rows").get_child_count()).is_equal(3)  # Two rows and the total, none new.
+	_panel.set_selected(PackedInt32Array([999]))
+	assert_bool(_panel.visible).is_false()  # An unknown id on its own shows nothing.
 
 
 func test_a_tap_on_the_panel_orders_nothing_and_keeps_the_selection() -> void:
@@ -111,7 +116,8 @@ func test_the_panel_is_dp_sized_and_sits_between_the_army_bar_and_the_sidebar_zo
 	var michael: UiMetrics = UiMetrics.create(
 		"Android", 420, 1.0, 1.5, Vector2i(2424, 1080), Rect2i(152, 0, 2272, 1080)
 	)
-	var cases: Array[UiMetrics] = [michael]
+	var xhdpi: UiMetrics = UiMetrics.create("Android", 320, 1.0, 1.0, Vector2i(1280, 720), Rect2i())
+	var cases: Array[UiMetrics] = [michael, xhdpi]  # xhdpi is 2 base px per dp: the tightest fit.
 	for profile_name: StringName in UiProfiles.all():
 		var m: UiMetrics = UiProfiles.by_name(profile_name)
 		var cutout: Rect2i = Rect2i(100, 0, m.window_size.x - 100, m.window_size.y)
@@ -126,30 +132,51 @@ func test_the_panel_is_dp_sized_and_sits_between_the_army_bar_and_the_sidebar_zo
 		var width: float = get_viewport().get_visible_rect().size.x
 		var sidebar: float = maxf(width * 0.2, UiScale.dp(200.0))  # 20%, at least 200 dp.
 		var why: String = "%s: panel %s, bar %s" % [m.window_size, rect, bar]
-		var centre: float = rect.get_center().x
 		var sizes: Array[int] = []
 		for path: String in ["Rows/Row0/Name", "Rows/Row0/Count", "Rows/Total"]:
 			sizes.append(_node(path).get_theme_font_size("font_size"))
 		var pinned: Array[int] = [_px(16.0), _px(20.0), _px(20.0)]  # Name, count, total.
 		assert_array(sizes).override_failure_message(why).is_equal(pinned)
-		assert_int(sizes[0]).override_failure_message(why).is_greater_equal(_px(14.0))
-		assert_int(sizes[1]).override_failure_message(why).is_greater_equal(_px(18.0))
-		var icon: Vector2 = (_node("Rows/Row0/Icon") as Control).size
-		var icon_dp: Vector2 = UiScale.dp_vec(40.0, 40.0)
-		assert_vector(icon).override_failure_message(why).is_equal_approx(icon_dp, Vector2.ONE)
+		for part: String in ["", "/Hull", "/Team", "/Turret"]:  # The icon and its drawn layers.
+			var icon: Vector2 = (_node("Rows/Row0/Icon" + part) as Control).size
+			var icon_dp: Vector2 = UiScale.dp_vec(40.0, 40.0)
+			assert_vector(icon).override_failure_message(why).is_equal_approx(icon_dp, Vector2.ONE)
 		assert_float(rect.size.y).override_failure_message(why).is_greater_equal(UiScale.dp(48.0))
-		assert_bool(UiScale.safe_rect_base().encloses(rect)).override_failure_message(why).is_true()
+		assert_float(rect.size.y).override_failure_message(why).is_less_equal(UiScale.dp(72.0))
+		assert_float(rect.size.x).override_failure_message(why).is_less_equal(UiScale.dp(260.0))
+		var dev: Rect2 = (_hud("DevButton") as Control).get_global_rect()
+		var safe: Rect2 = UiScale.safe_rect_base()
+		for hud: Rect2 in [rect, bar, dev]:  # A selection must not push the HUD off the screen.
+			assert_bool(safe.encloses(hud)).override_failure_message(why).is_true()
+		var area: Rect2 = (_hud("SafeArea") as Control).get_global_rect()  # It must not grow.
+		assert_that(area).override_failure_message(why).is_equal(get_viewport().get_visible_rect())
 		assert_bool(rect.intersects(bar)).override_failure_message(why).is_false()
+		assert_float(rect.end.y).override_failure_message(why).is_equal_approx(bar.end.y, 0.5)
+		if m == xhdpi:  # No room for the whole zone beside the panel: the zone gives way.
+			continue
 		assert_float(rect.end.x).override_failure_message(why).is_less_equal(width - sidebar)
 		var band: Control = _panel.get_parent()  # It reserves the whole zone, not just the panel.
 		assert_int(band.get_theme_constant("margin_right")).is_equal(ceili(sidebar))
+		var centre: float = rect.get_center().x
 		assert_float(centre).override_failure_message(why).is_between(width * 0.4, width * 0.65)
-		assert_float(rect.end.y).override_failure_message(why).is_equal_approx(bar.end.y, 0.5)
+
+
+## The band and the text follow a window change, as on a phone browser's toolbar or a turn.
+func test_the_band_and_the_text_follow_a_window_resize() -> void:
+	await _open(UiProfiles.by_name(&"desktop"))
+	_select([1])
+	var android: UiMetrics = UiProfiles.by_name(&"android_6in")
+	UiScale.set_override(android)
+	get_window().size = android.window_size
+	await await_idle_frame()
+	var zone: float = maxf(get_viewport().get_visible_rect().size.x * 0.2, UiScale.dp(200.0))
+	assert_int(_panel.get_parent().get_theme_constant("margin_right")).is_equal(ceili(zone))
+	assert_int(_node("Rows/Row0/Name").get_theme_font_size("font_size")).is_equal(_px(16.0))
 
 
 func _expect(step: String, count: String) -> void:
 	assert_bool(_panel.visible).override_failure_message(step).is_true()
-	assert_array(_texts("Row0")).override_failure_message(step).is_equal(["Light tank", count])
+	assert_array(_texts("Row0")).override_failure_message(step).is_equal(["Light Tank", count])
 
 
 func _texts(row: String) -> Array[String]:
