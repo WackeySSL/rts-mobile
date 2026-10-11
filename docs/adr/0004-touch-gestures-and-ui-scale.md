@@ -193,3 +193,11 @@ Facts checked on Godot 4.7.2:
   handles the press normally.
 - Two fingers moving in the same frame give two `PINCH` events, each with part of the centroid
   delta and a partial scale. The scales multiply, so `TouchInput` (P10) applies every event in order.
+
+## Amendment (2026-10-11, P21)
+- Section 1 gives a touch that starts on a HUD button to the button. A read-only HUD panel with
+  `mouse_filter` STOP gets the same rule: a tap on it never orders, and a pan, box or pinch finger
+  that starts on it is lost. Such panels stay small; the selection panel is the only one so far.
+- The right sidebar zone (touch-ui-rules: 20% and at least 200 dp) is reserved for the build
+  sidebar. HUD elements stay out of it, except that it gives way on screens too narrow for the
+  bottom HUD.
