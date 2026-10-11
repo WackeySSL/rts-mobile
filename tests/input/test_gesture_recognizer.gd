@@ -159,7 +159,7 @@ func test_two_px_per_dp_doubles_the_slops_and_leaves_the_times_alone() -> void:
 
 
 func test_a_second_finger_drops_a_pending_tap_cancels_a_box_and_takes_over_a_pan() -> void:
-	_play("d0 100,200 @0; d1 300,200 @400")  # undecided, even after 300 ms: no long-press
+	_play("d0 100,200 @0; d1 300,200 @400; a @900")  # undecided, even after 300 ms: no long-press
 	assert_int(_rec.state()).is_equal(GestureRecognizer.State.MULTI)
 	assert_str(_log()).is_empty()
 	_play("u1 300,200 @410; u0 100,200 @420")
@@ -216,18 +216,22 @@ func test_a_third_finger_is_ignored_and_a_lost_tracked_finger_re_pairs_without_a
 
 
 func test_pinch_never_divides_by_a_zero_distance_and_keeps_scale_1_below_8_dp() -> void:
-	# [gap between the fingers, how far the second one moves, the PINCH]
+	# [gap between the fingers, how far the second one moves (negative: toward the first), the PINCH]
 	var cases: Array[Array] = [
 		[0.0, 30.0, "PINCH 115,200,15,0,1"],  # both on one point
 		[7.5, 7.5, "PINCH 107.5,200,3.75,0,1"],
 		[8.0, 8.0, "PINCH 108,200,4,0,2"],
 		[30.0, 100.0, "PINCH 165,200,50,0,4.33"],
+		[30.0, -25.0, "PINCH 102.5,200,-12.5,0,1"],  # squeezed to 5: the new gap counts too
+		[100.0, -100.0, "PINCH 100,200,-50,0,1"],  # squeezed onto one point: never scale 0
 	]
 	for c: Array in cases:
 		assert_str(_spread_log(c[0], c[1])).is_equal(c[2])
 	_rec.configure(load(SETTINGS_PATH) as InputSettings, 2.0)  # the minimum is 16 px there
 	assert_str(_spread_log(15.0, 15.0)).is_equal("PINCH 115,200,7.5,0,1")
 	assert_str(_spread_log(16.0, 16.0)).is_equal("PINCH 116,200,8,0,2")
+	_rec.configure(load(SETTINGS_PATH) as InputSettings, 0.0)  # the minimum never drops below 1 px
+	assert_str(_spread_log(0.0, 30.0)).is_equal("PINCH 115,200,15,0,1")
 
 
 func test_a_new_recognizer_has_the_default_thresholds_and_configure_is_safe_mid_gesture() -> void:

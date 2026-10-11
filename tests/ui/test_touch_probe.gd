@@ -147,6 +147,36 @@ func test_the_log_names_each_gesture_with_its_numbers_and_keeps_the_last_8() -> 
 	assert_int((_control(probe, "GestureLog") as Label).text.count("\n")).is_equal(7)
 
 
+## The phone check reads these lines. Each finger event hands the clock's time to the recognizer.
+func test_a_double_tap_a_pan_and_a_box_are_logged_with_their_numbers() -> void:
+	var probe: Control = await _open(UiProfiles.by_name(ANDROID))
+	probe.clock = func() -> int: return _now_ms
+	for step: Array in [[1000, true], [1050, false], [1300, true], [1350, false]]:
+		_now_ms = step[0]  # Two taps 250 ms apart.
+		_touch(0, Vector2(150, 300), step[1])
+	_now_ms = 5000
+	_touch(0, Vector2(150, 300), true)
+	_drag(0, Vector2(300, 300))
+	_drag(0, Vector2(300, 450))
+	_touch(0, Vector2(300, 450), false)
+	_now_ms = 6000
+	_touch(0, Vector2(150, 300), true)
+	_now_ms = 6300  # No frame ran: the first move applies the time, so this is a box.
+	_drag(0, Vector2(300, 450))
+	_touch(0, Vector2(300, 450), false)
+	var expected: Array[String] = [
+		"TAP 100,200",
+		"DOUBLE_TAP 100,200",
+		"PAN move 100,0",
+		"PAN move 0,100",
+		"CAMERA_END",
+		"LONG_PRESS 100,200",
+		"BOX_UPDATE 100,200 100x100",
+		"BOX_END 100,200 100x100",
+	]
+	assert_array(probe.log_lines).is_equal(expected)
+
+
 func test_back_button_and_the_android_back_request_both_leave() -> void:
 	var probe: Control = await _open(UiProfiles.by_name(ANDROID))
 	var calls: Array[int] = []
