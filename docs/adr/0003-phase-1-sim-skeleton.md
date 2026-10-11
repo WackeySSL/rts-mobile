@@ -143,3 +143,12 @@ those names. GDScript `int` is 64-bit, and integer division truncates toward zer
   is ticked only with its 150-unit check.
 - Per command, slot generation and assignment are O(n^2) in the group size. That is 22 500
   comparisons for 150 units, run once per order, never per tick.
+
+## Amendment (2026-10-11, P3 review)
+- Movement truncates each axis step toward zero (`speed * d_axis / dist`). A unit with speed 1 can
+  therefore stall near a diagonal goal, for example at offset (3, 3): both steps truncate to 0 and
+  the unit never reaches the snap distance. Any speed of 2 or more always advances. **`UnitDef.speed`
+  must be 0 (static) or at least 2 milli per tick.** All current data uses 120. A data-validation
+  test enforces this when the next unit definitions are added.
+- `Sim.step` treats a null entry in the command list as an invalid command: it is dropped and
+  counted, and the tick completes normally.
