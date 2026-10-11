@@ -5,6 +5,10 @@
 [ext_resource type="Texture2D" path="res://assets/art/svg/units/light_tank_team.svg" id="3_team"]
 [ext_resource type="Texture2D" path="res://assets/art/svg/units/light_tank_turret.svg" id="4_turret"]
 
+[sub_resource type="LabelSettings" id="LabelSettings_zoom"]
+font_size = 24
+font_color = Color(0.10980392, 0.12941177, 0.15294118, 1)
+
 [node name="ArtGallery" type="Control"]
 layout_mode = 3
 anchors_preset = 15
@@ -85,6 +89,82 @@ texture = ExtResource("3_team")
 [node name="Turret" type="Sprite2D" parent="Grass/SlotB/Tank"]
 texture = ExtResource("4_turret")
 
+[node name="ZoomRow" type="Control" parent="Grass"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.78
+anchor_right = 0.5
+anchor_bottom = 0.78
+mouse_filter = 2
+
+[node name="Zoom075" type="Node2D" parent="Grass/ZoomRow" groups=["gallery_team_a"]]
+position = Vector2(-208, 0)
+scale = Vector2(0.75, 0.75)
+
+[node name="Hull" type="Sprite2D" parent="Grass/ZoomRow/Zoom075"]
+texture = ExtResource("2_hull")
+
+[node name="Team" type="Sprite2D" parent="Grass/ZoomRow/Zoom075"]
+texture = ExtResource("3_team")
+
+[node name="Turret" type="Sprite2D" parent="Grass/ZoomRow/Zoom075"]
+texture = ExtResource("4_turret")
+
+[node name="Label075" type="Label" parent="Grass/ZoomRow"]
+layout_mode = 0
+offset_left = -248.0
+offset_top = 60.0
+offset_right = -168.0
+offset_bottom = 90.0
+label_settings = SubResource("LabelSettings_zoom")
+text = "0.75"
+horizontal_alignment = 1
+
+[node name="Zoom100" type="Node2D" parent="Grass/ZoomRow" groups=["gallery_team_a"]]
+
+[node name="Hull" type="Sprite2D" parent="Grass/ZoomRow/Zoom100"]
+texture = ExtResource("2_hull")
+
+[node name="Team" type="Sprite2D" parent="Grass/ZoomRow/Zoom100"]
+texture = ExtResource("3_team")
+
+[node name="Turret" type="Sprite2D" parent="Grass/ZoomRow/Zoom100"]
+texture = ExtResource("4_turret")
+
+[node name="Label100" type="Label" parent="Grass/ZoomRow"]
+layout_mode = 0
+offset_left = -40.0
+offset_top = 60.0
+offset_right = 40.0
+offset_bottom = 90.0
+label_settings = SubResource("LabelSettings_zoom")
+text = "1.0"
+horizontal_alignment = 1
+
+[node name="Zoom150" type="Node2D" parent="Grass/ZoomRow" groups=["gallery_team_a"]]
+position = Vector2(208, 0)
+scale = Vector2(1.5, 1.5)
+
+[node name="Hull" type="Sprite2D" parent="Grass/ZoomRow/Zoom150"]
+texture = ExtResource("2_hull")
+
+[node name="Team" type="Sprite2D" parent="Grass/ZoomRow/Zoom150"]
+texture = ExtResource("3_team")
+
+[node name="Turret" type="Sprite2D" parent="Grass/ZoomRow/Zoom150"]
+texture = ExtResource("4_turret")
+
+[node name="Label150" type="Label" parent="Grass/ZoomRow"]
+layout_mode = 0
+offset_left = 168.0
+offset_top = 60.0
+offset_right = 248.0
+offset_bottom = 90.0
+label_settings = SubResource("LabelSettings_zoom")
+text = "1.5"
+horizontal_alignment = 1
+
 [node name="Sand" type="ColorRect" parent="."]
 layout_mode = 1
 anchors_preset = -1
@@ -152,6 +232,52 @@ texture = ExtResource("2_hull")
 texture = ExtResource("3_team")
 
 [node name="Turret" type="Sprite2D" parent="Sand/SlotB/Tank"]
+texture = ExtResource("4_turret")
+
+[node name="ZoomRow" type="Control" parent="Sand"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.78
+anchor_right = 0.5
+anchor_bottom = 0.78
+mouse_filter = 2
+
+[node name="Zoom075" type="Node2D" parent="Sand/ZoomRow" groups=["gallery_team_b"]]
+position = Vector2(-208, 0)
+scale = Vector2(0.75, 0.75)
+
+[node name="Hull" type="Sprite2D" parent="Sand/ZoomRow/Zoom075"]
+texture = ExtResource("2_hull")
+
+[node name="Team" type="Sprite2D" parent="Sand/ZoomRow/Zoom075"]
+texture = ExtResource("3_team")
+
+[node name="Turret" type="Sprite2D" parent="Sand/ZoomRow/Zoom075"]
+texture = ExtResource("4_turret")
+
+[node name="Zoom100" type="Node2D" parent="Sand/ZoomRow" groups=["gallery_team_b"]]
+
+[node name="Hull" type="Sprite2D" parent="Sand/ZoomRow/Zoom100"]
+texture = ExtResource("2_hull")
+
+[node name="Team" type="Sprite2D" parent="Sand/ZoomRow/Zoom100"]
+texture = ExtResource("3_team")
+
+[node name="Turret" type="Sprite2D" parent="Sand/ZoomRow/Zoom100"]
+texture = ExtResource("4_turret")
+
+[node name="Zoom150" type="Node2D" parent="Sand/ZoomRow" groups=["gallery_team_b"]]
+position = Vector2(208, 0)
+scale = Vector2(1.5, 1.5)
+
+[node name="Hull" type="Sprite2D" parent="Sand/ZoomRow/Zoom150"]
+texture = ExtResource("2_hull")
+
+[node name="Team" type="Sprite2D" parent="Sand/ZoomRow/Zoom150"]
+texture = ExtResource("3_team")
+
+[node name="Turret" type="Sprite2D" parent="Sand/ZoomRow/Zoom150"]
 texture = ExtResource("4_turret")
 
 [node name="BackButton" type="Button" parent="."]
