@@ -17,16 +17,21 @@ var _is_held: bool = false
 
 
 func _init() -> void:
-	set_process(false)  # Only while a finger is down.
 	button_down.connect(_on_down)
 	button_up.connect(set_process.bind(false))
 	pressed.connect(_on_pressed)
 
 
-## Polls the clock, so the hold lands while the finger rests and not only on release.
+## Idle without a finger. Not in `_init`: READY turns `_process` on again for an override.
+func _ready() -> void:
+	set_process(false)
+
+
+## Polls the clock, so the hold lands while the finger rests and not only on release. A finger
+## that slid off the button cancels the hold (DRAW_PRESSED is only true over the button).
 func _process(_delta: float) -> void:
 	var now_ms: int = clock.call()
-	if not _is_held and now_ms - _down_ms >= hold_ms:
+	if not _is_held and get_draw_mode() == DRAW_PRESSED and now_ms - _down_ms >= hold_ms:
 		_is_held = true
 		held.emit()
 

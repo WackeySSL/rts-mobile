@@ -34,6 +34,8 @@ func test_a_tap_emits_tapped_and_a_hold_emits_held_and_not_tapped() -> void:
 	add_child(bar)
 	await await_idle_frame()
 	var button: HoldButton = bar.get_node("Group3")
+	assert_bool(button.is_processing()).is_false()  # Frames watch the clock only with a finger down.
+	assert_bool(button.clock == Callable(Time, &"get_ticks_msec")).is_true()
 	button.clock = func() -> int: return _now_ms
 	var events: Array[String] = []
 	button.tapped.connect(func() -> void: events.append("tapped"))
@@ -43,9 +45,20 @@ func test_a_tap_emits_tapped_and_a_hold_emits_held_and_not_tapped() -> void:
 		_hold(button, case[0])  # No frame runs between the time passing and the release.
 		assert_array(events).override_failure_message(str(case)).is_equal([case[1]])
 	var at: Vector2 = button.get_global_rect().get_center()
+	var off: Vector2 = at + Vector2(500, 300)
+	events.clear()
 	TouchEvents.press(get_viewport(), 0, at)
-	assert_bool(button.is_processing()).is_true()  # Frames watch the clock while a finger is down.
+	TouchEvents.drag(get_viewport(), 0, off, off - at)  # Sliding off the button cancels the hold.
+	_now_ms += 700
+	await await_idle_frame()
+	TouchEvents.release(get_viewport(), 0, off)
+	assert_array(events).is_empty()
+	TouchEvents.press(get_viewport(), 0, at)
+	_now_ms += 700
+	await await_idle_frame()  # The hold lands on a frame, while the finger still rests.
+	assert_array(events).is_equal(["held"])
 	TouchEvents.release(get_viewport(), 0, at)
+	assert_array(events).is_equal(["held"])
 	assert_bool(button.is_processing()).is_false()
 
 
@@ -79,19 +92,34 @@ func test_hud_stays_inside_the_safe_area_with_a_100_px_cutout_and_on_michaels_ph
 	assert_float(_rect("DevButton").position.x).is_equal(123.0)
 
 
-## Every side counts and a resize recomputes it. Dev is top-left, the army bar bottom-left, on the
-## 1600x720 canvas of android_6in.
+## Every side counts, a resize recomputes it and a 180 degree turn (the same window, the cutout on
+## the other side) changes nothing. Dev is top-left, the army bar bottom-left, on the 1600x720
+## canvas of android_6in.
 func test_margins_follow_all_four_sides_of_the_safe_area_and_a_window_change() -> void:
 	var android: UiMetrics = UiProfiles.by_name(&"android_6in")
 	await _open(UiProfiles.by_name(&"desktop"))
-	UiScale.set_override(UiProfiles.with_safe_area(android, Rect2i(100, 30, 2250, 1000)))
+	UiScale.set_override(UiProfiles.with_safe_area(android, Rect2i(100, 30, 2250, 980)))
 	get_window().size = android.window_size
 	await await_idle_frame()
-	# Left 66.7 up to 67, top 20, right and bottom 33.3 up to 34, each plus dp(12) = 21.
-	assert_array(_margins()).is_equal([88, 41, 55, 55])
-	assert_vector(_rect("DevButton").position).is_equal(Vector2(88, 41))
-	assert_float(_rect("ArmyBar").position.x).is_equal(88.0)
-	assert_float(_rect("ArmyBar").end.y).is_equal(720.0 - 55.0)
+	# Insets 67, 20, 34 and 47 base px: the larger of each axis plus dp(12) = 21.
+	assert_array(_margins()).is_equal([88, 68, 88, 68])
+	assert_vector(_rect("DevButton").position).is_equal(Vector2(88, 68))
+	assert_float(_rect("ArmyBar").end.y).is_equal(720.0 - 68.0)
+	assert_int(_hud("ArmyBar").get_theme_constant("separation")).is_equal(roundi(UiScale.dp(8.0)))
+	var font_size: int = (_hud("Group1") as Button).get_theme_font_size("font_size")
+	assert_int(font_size).is_equal(roundi(UiScale.dp(18.0)))
+	await _open(UiProfiles.with_safe_area(android, Rect2i(50, 70, 2250, 980)))  # Turned.
+	assert_array(_margins()).is_equal([88, 68, 88, 68])
+
+
+## The gaps between the buttons belong to the map.
+func test_a_tap_in_the_gap_between_two_buttons_orders_the_selection() -> void:
+	await _open(UiProfiles.by_name(&"android_6in"))
+	_select([1])
+	var gap: Vector2 = Vector2(_rect("Group1").end.x + 1.0, _rect("Group1").get_center().y)
+	TouchEvents.press(get_viewport(), 0, gap)
+	TouchEvents.release(get_viewport(), 0, gap)
+	assert_array(_sent).has_size(1)
 
 
 func test_all_army_selects_the_30_tanks_off_screen_too_and_skips_units_that_cannot_move() -> void:
@@ -109,22 +137,28 @@ func test_all_army_selects_the_30_tanks_off_screen_too_and_skips_units_that_cann
 func test_hold_assigns_a_group_and_tap_recalls_it_and_the_count_updates() -> void:
 	await _open(UiProfiles.by_name(&"android_6in"))
 	var selection: SelectionModel = _controller.selection
+	var bar: ArmyBar = _hud("ArmyBar")
+	assert_object(bar.settings).is_same(load("res://data/input_settings.tres"))
+	_controller.settings = _controller.settings.duplicate()
+	_controller.settings.haptic_ms = 25  # Not the default: a hardcoded buzz fails.
+	var recalls: Array[int] = []
+	bar.group_tapped.connect(func(slot: int) -> void: recalls.append(slot))
 	_select([5, 3, 4])
-	_touch_button("Group2", 500)
-	assert_array(selection.group(2)).is_equal([3, 4, 5])
-	assert_str((_hud("Group2") as Button).text).is_equal("2\n3")
-	assert_array(_buzzes).is_equal([15])
-	assert_array(selection.selected).is_equal([3, 4, 5])  # A hold does not recall.
+	_touch_button("Group3", 500)
+	assert_array(selection.group(3)).is_equal([3, 4, 5])
+	assert_str((_hud("Group3") as Button).text).is_equal("3\n3")
+	assert_array(_buzzes).is_equal([25])
+	assert_array(recalls).is_empty()  # A hold does not recall.
 	_select([10])
-	_touch_button("Group2", 499)  # Short of 500 ms, a tap.
+	_touch_button("Group3", 499)  # Short of 500 ms, a tap.
 	assert_array(selection.selected).is_equal([3, 4, 5])
 	_select([10])
-	_touch_button("Group3")  # An empty group changes nothing, and a tap assigns nothing.
+	_touch_button("Group1")  # An empty group changes nothing, and a tap assigns nothing.
 	assert_array(selection.selected).is_equal([10])
-	assert_array(selection.group(3)).is_empty()
+	assert_array(selection.group(1)).is_empty()
 	_touch_button("Group1", 500)
 	assert_array(selection.group(1)).is_equal([10])
-	_controller.settings = _controller.settings.duplicate()
+	assert_str((_hud("Group1") as Button).text).is_equal("1\n1")
 	_controller.settings.haptics_enabled = false
 	selection.clear()
 	_touch_button("Group1", 500)  # The empty selection empties the group, and nothing buzzes.
@@ -180,6 +214,7 @@ func _open(metrics: UiMetrics) -> void:
 	_sent.clear()
 	_buzzes.clear()
 	_controller = _main.get_node("PlayerController")
+	assert_bool(_controller.vibrate == Callable(Input, &"vibrate_handheld")).is_true()
 	_controller.command_sink = func(command: Command) -> void: _sent.append(command)
 	_controller.vibrate = func(ms: int) -> void: _buzzes.append(ms)
 	(_main.get_node("TouchInput") as TouchInput).clock = func() -> int: return _now_ms
