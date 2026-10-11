@@ -15,3 +15,4 @@ metadata:
 - Keep a PR under ~400 changed lines including deletions: a pure module plus its tests often needs two PRs.
 - Review P1 (2026-10-10): data-file tests that derive expected values from the same .tres (columns/spacing) are self-referential; pin every contract number literally. Mutation (spawn 2 columns 2->4, spawn 3 spacing 2000->1000) passed all 58 tests.
 - P8 review: a guard on min(old, new) tested only with spreading fingers lets the mutation `old >= min` survive (30 -> 7.5 px gives scale 0.25). Test both directions of any two-sided guard.
+- P10 (verified headless): Viewport.is_input_handled() stays true after push_input, so "marked handled" needs an _unhandled_input spy; a Button ignores a second touch sequence on the same instance in one test. A stale owned touch index (missed release) followed by a press on a Button leaves the recognizer PENDING and TouchInput eats the Button's release.
