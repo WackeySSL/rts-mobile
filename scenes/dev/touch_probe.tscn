@@ -39,6 +39,11 @@ script = ExtResource("2_dp")
 layout_mode = 2
 text = "should measure 7.6 mm"
 
+[node name="GestureLog" type="Label" parent="Margin"]
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 8
+
 [node name="BackButton" type="Button" parent="Margin"]
 layout_mode = 2
 size_flags_horizontal = 8

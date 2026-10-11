@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
-## GestureRecognizer with one finger (ADR 0004 section 2), explicit now_ms, the thresholds of
-## data/input_settings.tres as literals (12 dp, 300 ms, 32 dp) at 1 px per dp. P8 adds fingers.
+## GestureRecognizer (ADR 0004 section 2), explicit now_ms, the thresholds of
+## data/input_settings.tres as literals (12 dp, 300 ms, 32 dp) at 1 px per dp.
 ## _play() runs a timeline, "d0 100,200 @0": d down, m move, u up, c canceled up, a advance,
 ## k cancel_all; the digit is the finger. _log() renders events as text: "KIND x,y; KIND".
 
@@ -122,15 +122,20 @@ func test_canceled_release_and_cancel_all_end_the_gesture_without_a_tap() -> voi
 	assert_str(_log()).is_equal(ended + ended + TAP_A + "; " + TAP_A)
 
 
-func test_finger_identity_duplicate_down_cancels_unknown_and_second_fingers_are_ignored() -> void:
+func test_finger_identity_unknown_indices_are_ignored_and_a_duplicate_down_cancels() -> void:
 	_play("m7 100,200 @0; u7 100,200 @10; d2 100,200 @100")
-	# P7 tracks one finger: finger 1 and the never-pressed finger 7 change nothing.
-	_play("d1 500,300 @110; m1 580,300 @120; u1 500,300 @130; m7 500,300 @140; u2 100,200 @150")
+	# Finger 2 and finger 1 pair up. The never-pressed finger 7 changes nothing, even now.
+	_play("d1 500,200 @110; m7 900,200 @115; m1 700,200 @120; u7 100,200 @125; u1 700,200 @130")
+	_play("u2 100,200 @150")  # distance 400 -> 600, centre 300 -> 400; no tap
 	# A press for an index that is already down cancels that touch first.
 	_play("d0 100,200 @1000; a @1300; d0 500,300 @1400; u0 500,300 @1450")
 	_play("d0 100,200 @2000; m0 130,200 @2010; d0 500,300 @2020")
 	var duplicate_down: String = "LONG_PRESS 100,200; BOX_CANCEL; TAP 500,300; PAN 30,0; CAMERA_END"
-	assert_str(_log()).is_equal(TAP_A + "; " + duplicate_down)
+	var pair: String = "PINCH 400,200,100,0,1.5; CAMERA_END; CAMERA_END; "
+	assert_str(_log()).is_equal(pair + duplicate_down)
+	# The same with two fingers down: the old finger 1 ends and the new one pairs with finger 0.
+	_play("k; d0 100,200 @3000; d1 300,200 @3010; d1 500,200 @3020; m1 700,200 @3030")
+	assert_str(_log()).is_equal("CAMERA_END; PINCH 400,200,100,0,1.5")
 
 
 func test_two_px_per_dp_doubles_the_slops_and_leaves_the_times_alone() -> void:
@@ -151,6 +156,101 @@ func test_two_px_per_dp_doubles_the_slops_and_leaves_the_times_alone() -> void:
 	assert_str(_log()).is_empty()
 	_play("a @6300")
 	assert_str(_log()).is_equal("LONG_PRESS 100,200")
+
+
+func test_a_second_finger_drops_a_pending_tap_cancels_a_box_and_takes_over_a_pan() -> void:
+	_play("d0 100,200 @0; d1 300,200 @400")  # undecided, even after 300 ms: no long-press
+	assert_int(_rec.state()).is_equal(GestureRecognizer.State.MULTI)
+	assert_str(_log()).is_empty()
+	_play("u1 300,200 @410; u0 100,200 @420")
+	assert_str(_log()).is_equal("CAMERA_END; CAMERA_END")  # no TAP
+	_play("d0 100,200 @1000; a @1300; d1 300,200 @1400")
+	assert_str(_log()).is_equal("LONG_PRESS 100,200; BOX_CANCEL")
+	_play("k")
+	_play("d0 100,200 @2000; m0 150,200 @2010; d1 300,200 @2020")  # a pan carries on as a pinch
+	assert_str(_log()).is_equal("CAMERA_END; PAN 50,0")
+	_play("m1 450,200 @2030")  # from where finger 0 is now: distance 150 -> 300
+	assert_str(_log()).is_equal("PINCH 300,200,75,0,2")
+
+
+func test_pinch_scale_is_the_distance_ratio_since_the_last_pinch_and_delta_the_centroid_move(
+) -> void:
+	_play("d0 100,200 @0; d1 300,200 @10")  # distance 200, centre 200,200: nothing yet
+	assert_str(_log()).is_empty()
+	_play("m1 500,200 @20; m0 200,200 @30")  # 200 -> 400 is 2, then 400 -> 300 is 0.75 (not 1.5)
+	assert_str(_log()).is_equal("PINCH 300,200,100,0,2; PINCH 350,200,50,0,0.75")
+	# A two-finger drag with the spacing kept: scale 1, and the deltas add up to the drag.
+	_play("k; d0 100,200 @100; d1 300,200 @110; m0 180,360 @120; m1 380,360 @130")
+	assert_str(_log()).is_equal("CAMERA_END; PINCH 240,280,40,80,1; PINCH 280,360,40,80,1")
+
+
+func test_lifting_one_of_two_fingers_hands_over_to_a_pan_and_no_tap_comes_after() -> void:
+	_play("d0 100,200 @0; d1 300,200 @10; m0 60,200 @20; u1 360,200 @30")  # finger 1 lifts at 360
+	assert_str(_log()).is_equal("PINCH 180,200,-20,0,1.2; PINCH 210,200,30,0,1.25; CAMERA_END")
+	assert_int(_rec.state()).is_equal(GestureRecognizer.State.PAN)
+	_play("m0 90,200 @40; a @5000; m0 90,230 @5010")  # no long-press; from where it was, not 100
+	assert_str(_log()).is_equal("PAN 30,0; PAN 0,30")
+	_play("u0 90,230 @5020")
+	assert_str(_log()).is_equal("CAMERA_END")
+	assert_int(_rec.state()).is_equal(GestureRecognizer.State.IDLE)
+	# Fingers that never moved: still no TAP, whichever one lifts first.
+	_play("d0 100,200 @6000; d1 300,200 @6010; u0 100,200 @6020; u1 300,200 @6030")
+	assert_str(_log()).is_equal("CAMERA_END; CAMERA_END")
+	_tap(A, 7000, 7050)
+	assert_str(_log()).is_equal(TAP_A)
+
+
+func test_a_third_finger_is_ignored_and_a_lost_tracked_finger_re_pairs_without_a_jump() -> void:
+	_play("d0 100,200 @0; d1 300,200 @10; d2 500,500 @20; m2 600,600 @30; u2 600,600 @40")
+	assert_str(_log()).is_empty()
+	_play("d2 500,500 @50; m2 600,600 @60; u0 100,200 @70")  # finger 0 lifts: 1 and 2 are the pair
+	assert_int(_rec.state()).is_equal(GestureRecognizer.State.MULTI)
+	assert_str(_log()).is_empty()
+	_play("m2 660,680 @80")  # distance 500 -> 600, centre 450,400 -> 480,440
+	assert_str(_log()).is_equal("PINCH 480,440,30,40,1.2")
+	_play("u1 300,200 @90; m2 700,680 @100; u2 700,680 @110")
+	assert_str(_log()).is_equal("CAMERA_END; PAN 40,0; CAMERA_END")
+	# The second tracked finger lifts: 0 and 2 are the pair.
+	_play("d0 0,0 @200; d1 300,0 @210; d2 300,400 @220; u1 300,0 @230; m2 480,640 @240")
+	assert_str(_log()).is_equal("PINCH 240,320,90,120,1.6")
+
+
+func test_pinch_never_divides_by_a_zero_distance_and_keeps_scale_1_below_8_dp() -> void:
+	# [gap between the fingers, how far the second one moves, the PINCH]
+	var cases: Array[Array] = [
+		[0.0, 30.0, "PINCH 115,200,15,0,1"],  # both on one point
+		[7.5, 7.5, "PINCH 107.5,200,3.75,0,1"],
+		[8.0, 8.0, "PINCH 108,200,4,0,2"],
+		[30.0, 100.0, "PINCH 165,200,50,0,4.33"],
+	]
+	for c: Array in cases:
+		assert_str(_spread_log(c[0], c[1])).is_equal(c[2])
+	_rec.configure(load(SETTINGS_PATH) as InputSettings, 2.0)  # the minimum is 16 px there
+	assert_str(_spread_log(15.0, 15.0)).is_equal("PINCH 115,200,7.5,0,1")
+	assert_str(_spread_log(16.0, 16.0)).is_equal("PINCH 116,200,8,0,2")
+
+
+func test_a_new_recognizer_has_the_default_thresholds_and_configure_is_safe_mid_gesture() -> void:
+	_rec = GestureRecognizer.new()  # never configured: the InputSettings defaults at 1 px per dp
+	assert_str(_drag_log(0, false, Vector2(11.9, 0))).is_equal(TAP_A)
+	assert_str(_drag_log(1000, false, Vector2(12.1, 0))).is_equal("PAN 12.1,0; CAMERA_END")
+	_play("d0 100,200 @2000; a @2299")
+	assert_str(_log()).is_empty()
+	_play("a @2300; k")
+	assert_str(_log()).is_equal("LONG_PRESS 100,200; BOX_CANCEL")
+	_tap(A, 3000, 3050)
+	_tap(A + Vector2(32, 0), 3350, 3400)
+	assert_str(_log()).is_equal(TAP_A + "; DOUBLE_TAP 132,200")
+	# configure() swaps thresholds only. A gesture under way keeps its state.
+	var settings: InputSettings = load(SETTINGS_PATH) as InputSettings
+	_play("d0 100,200 @4000")
+	_rec.configure(settings, 2.0)
+	_play("m0 120,200 @4010")  # 20 px is inside the new 24 px slop
+	assert_int(_rec.state()).is_equal(GestureRecognizer.State.PENDING)
+	_play("u0 120,200 @4020; d0 100,200 @5000; m0 130,200 @5010")  # 30 px: a pan
+	_rec.configure(settings, 1.0)
+	_play("m0 135,200 @5020; u0 135,200 @5030")
+	assert_str(_log()).is_equal(TAP_A + "; PAN 30,0; PAN 5,0; CAMERA_END")
 
 
 func test_take_events_appends_in_order_clears_the_queue_and_counts() -> void:
@@ -194,7 +294,8 @@ func _play(script: String) -> void:
 
 
 ## The queued events as one line, "KIND x,y[,w,h]; ...": the press point for taps, the delta for
-## PAN and the rect for BOX_UPDATE and BOX_END, rounded to 0.1. Other kinds have no numbers.
+## PAN, the rect for BOX_UPDATE and BOX_END and "centre, delta, scale" for PINCH, rounded to 0.01.
+## CAMERA_END and BOX_CANCEL have no numbers.
 func _log() -> String:
 	var events: Array[GestureEvent] = []
 	_rec.take_events(events)
@@ -209,9 +310,13 @@ func _log() -> String:
 			GestureEvent.Kind.BOX_UPDATE, GestureEvent.Kind.BOX_END:
 				var r: Rect2 = event.rect
 				numbers = [r.position.x, r.position.y, r.size.x, r.size.y]
+			GestureEvent.Kind.PINCH:
+				numbers = [
+					event.centre.x, event.centre.y, event.delta.x, event.delta.y, event.scale
+				]
 		var text: PackedStringArray = []
 		for number: float in numbers:
-			text.append(("%.1f" % number).trim_suffix(".0"))
+			text.append(("%.2f" % number).trim_suffix("0").trim_suffix("0").trim_suffix("."))
 		var kind_name: String = GestureEvent.Kind.keys()[event.kind]
 		lines.append((kind_name + " " + ",".join(text)).strip_edges())
 	return "; ".join(lines)
@@ -231,3 +336,14 @@ func _drag_log(t: int, hold: bool, offset: Vector2) -> String:
 	_rec.touch_move(0, A + offset, move_ms)
 	_rec.touch_up(0, A + offset, move_ms + 10)
 	return _log()
+
+
+## Two fingers `gap` apart; the second moves `move` further. The log of that one PINCH.
+func _spread_log(gap: float, move: float) -> String:
+	_rec.touch_down(0, A, 0)
+	_rec.touch_down(1, A + Vector2(gap, 0), 10)
+	_rec.touch_move(1, A + Vector2(gap + move, 0), 20)
+	var got: String = _log()
+	_rec.cancel_all()
+	_log()
+	return got
