@@ -6,6 +6,8 @@ extends Node
 ## A tap acts at once. A double-tap on an own unit selects its type on screen, a box selects the
 ## own units inside it, and an empty box clears the selection (the one way to deselect). Selection
 ## is not a Command, so it never reaches the sim.
+## Each order shows its marker and the BoxOverlay follows a long-press and its box, both in the
+## frame of the gesture. The selection rings follow `selection_changed` (wired in the scene).
 
 ## Emitted with the new `selection.selected` after every real change.
 signal selection_changed(ids: PackedInt32Array)
@@ -14,6 +16,8 @@ signal selection_changed(ids: PackedInt32Array)
 @export var unit_layer: UnitLayer
 @export var camera: RtsCamera
 @export var settings: InputSettings
+@export var marker_layer: MoveMarkerLayer
+@export var box_overlay: BoxOverlay
 
 var selection: SelectionModel = SelectionModel.new()
 ## Receives each Command. Tests replace it.
@@ -32,14 +36,20 @@ func _ready() -> void:
 		settings = InputSettings.new()  # The script defaults are the ADR table.
 
 
-## LONG_PRESS, BOX_UPDATE and BOX_CANCEL change nothing yet; feedback for them comes with P16.
 func handle_gesture(e: GestureEvent) -> void:
 	match e.kind:
 		GestureEvent.Kind.TAP:
 			_tap(e.position)
 		GestureEvent.Kind.DOUBLE_TAP:
 			_double_tap(e.position)
+		GestureEvent.Kind.LONG_PRESS:
+			box_overlay.show_anchor(e.position)
+		GestureEvent.Kind.BOX_UPDATE:
+			box_overlay.show_rect(e.rect)
+		GestureEvent.Kind.BOX_CANCEL:
+			box_overlay.hide_all()
 		GestureEvent.Kind.BOX_END:
+			box_overlay.hide_all()
 			_refresh()
 			Picker.own_in_rect(_snap, e.rect, _local_player(), _found)
 			selection.set_ids(_found)  # No unit in the box: this clears the selection.
@@ -50,7 +60,7 @@ func _tap(pos: Vector2) -> void:
 	if hit >= 0 and _snap.owners[hit] == _local_player():
 		selection.set_ids(PackedInt32Array([_snap.ids[hit]]))
 	elif hit >= 0:  # An enemy: only picked while a selection exists. Attack-move to where it is.
-		_attack_move(runner.world.pos_x[hit], runner.world.pos_y[hit])
+		_attack_move(runner.world.pos_x[hit], runner.world.pos_y[hit], true)
 	elif not selection.selected.is_empty():
 		var world_px: Vector2 = camera.screen_to_world(pos)
 		_attack_move(ViewScale.px_to_milli(world_px.x), ViewScale.px_to_milli(world_px.y))
@@ -81,8 +91,14 @@ func _on_selection_changed() -> void:
 	selection_changed.emit(selection.selected)
 
 
-func _attack_move(target_x: int, target_y: int) -> void:
+## Attack-move to a point in milli-tiles, with its marker: the diamond on an enemy, else chevrons.
+func _attack_move(target_x: int, target_y: int, on_enemy: bool = false) -> void:
 	command_sink.call(Command.attack_move(_local_player(), selection.selected, target_x, target_y))
+	var at: Vector2 = ViewScale.milli_to_px_vec(target_x, target_y)
+	if on_enemy:
+		marker_layer.show_target(at)
+	else:
+		marker_layer.show_attack_move(at)
 
 
 func _local_player() -> int:

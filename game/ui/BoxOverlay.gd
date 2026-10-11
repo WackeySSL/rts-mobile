@@ -1,0 +1,61 @@
+class_name BoxOverlay
+extends Control
+## The long-press anchor and the selection box, in screen space (STYLE.md "Feedback markers").
+## PlayerController shows the anchor on LONG_PRESS and the rect on BOX_UPDATE, and hides both on
+## BOX_END and BOX_CANCEL. The anchor ring shrinks from 48 to 32 dp as it appears, then stays.
+
+const ANCHOR_DP: Vector2 = Vector2(48.0, 32.0)  ## Radius when it appears, and at rest.
+const ANCHOR_MS: float = 150.0
+const BOX_DP: float = 2.0  ## Stroke of the box. Its centre line is 1 dp inside the rect.
+
+var clock: Callable = Time.get_ticks_msec  ## Returns ms. Tests replace it.
+var anchor: Vector2 = Vector2.ZERO
+var rect: Rect2 = Rect2()  ## Zero size while there is no box.
+var _anchor_ms: int = -1  ## When the anchor appeared, or -1.
+
+
+func show_anchor(pos: Vector2) -> void:
+	anchor = pos
+	_anchor_ms = clock.call()
+	visible = true
+
+
+func show_rect(box: Rect2) -> void:
+	rect = box
+	visible = true
+
+
+func hide_all() -> void:
+	_anchor_ms = -1
+	rect = Rect2()
+	visible = false
+
+
+func is_showing() -> bool:
+	return visible
+
+
+## The anchor ring's radius now, in base px.
+func anchor_radius() -> float:
+	var t: float = (clock.call() - _anchor_ms) / ANCHOR_MS
+	return UiScale.dp(lerpf(ANCHOR_DP.x, ANCHOR_DP.y, FeedbackStyle.ease_out(t)))
+
+
+func _process(_delta: float) -> void:
+	if visible:
+		queue_redraw()
+
+
+func _draw() -> void:
+	var stroke: float = UiScale.dp(FeedbackStyle.STROKE_DP)
+	var edge: float = UiScale.dp(FeedbackStyle.OUTLINE_DP)
+	if _anchor_ms >= 0:
+		var radius: float = anchor_radius()
+		draw_circle(anchor, radius, FeedbackStyle.FILL)
+		draw_circle(anchor, radius, FeedbackStyle.OUTLINE, false, stroke + edge, true)
+		draw_circle(anchor, radius, Color.WHITE, false, stroke, true)
+	if rect.has_area():
+		var line: Rect2 = rect.grow(-UiScale.dp(1.0))
+		draw_rect(rect, FeedbackStyle.FILL)
+		draw_rect(line, FeedbackStyle.OUTLINE, false, UiScale.dp(BOX_DP) + edge, true)
+		draw_rect(line, Color.WHITE, false, UiScale.dp(BOX_DP), true)
