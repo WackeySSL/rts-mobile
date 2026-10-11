@@ -1,8 +1,8 @@
 class_name TouchInput
 extends Node
 ## The engine adapter for fingers (ADR 0004 section 1). It feeds a pure GestureRecognizer and
-## routes each GestureEvent at once: PAN, PINCH and CAMERA_END drive the RtsCamera. Selection events
-## are dropped until the PlayerController exists (P15), but LONG_PRESS buzzes.
+## routes each GestureEvent at once: PAN, PINCH and CAMERA_END drive the RtsCamera. TAP, DOUBLE_TAP,
+## LONG_PRESS and BOX_* go to the PlayerController (none set: dropped), and LONG_PRESS also buzzes.
 ## A press the GUI did not take reaches `_unhandled_input` and belongs to the recognizer. Its drags
 ## and release are taken in `_input` and marked handled, so a pan that crosses a HUD button keeps
 ## panning and never presses it. A touch that starts on a Control stays with it. Mouse buttons and
@@ -10,6 +10,7 @@ extends Node
 
 @export var settings: InputSettings
 @export var camera: RtsCamera
+@export var controller: PlayerController
 
 ## Returns the time in ms. Tests replace it.
 var clock: Callable = Time.get_ticks_msec
@@ -101,3 +102,11 @@ func _route(e: GestureEvent) -> void:
 		GestureEvent.Kind.LONG_PRESS:
 			if settings.haptics_enabled:
 				vibrate.call(settings.haptic_ms)
+			_to_controller(e)
+		_:  # TAP, DOUBLE_TAP and BOX_*.
+			_to_controller(e)
+
+
+func _to_controller(e: GestureEvent) -> void:
+	if controller != null:
+		controller.handle_gesture(e)
