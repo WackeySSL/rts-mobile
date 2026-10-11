@@ -201,11 +201,11 @@ jobs:
   # interleaving (delete + create) even if that ever changes.
   android-dev-release:
     needs: android-debug-apk
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !github.event.repository.fork
+    if: github.event_name == 'workflow_dispatch' # SPIKE, reverted in the next commit
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
-      contents: write
+      contents: read # SPIKE: read-only so the publish cannot change anything
     concurrency:
       group: android-dev-latest
       cancel-in-progress: false
