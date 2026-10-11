@@ -4,7 +4,6 @@ extends RefCounted
 ## `OUTLINE_DP` wider than the colour pass, and every motion eases out.
 
 const OUTLINE: Color = Color("1C2127")
-const FILL: Color = Color(1.0, 1.0, 1.0, 0.15)  ## The anchor and the box.
 const STROKE_DP: float = 3.0
 const OUTLINE_DP: float = 2.0
 

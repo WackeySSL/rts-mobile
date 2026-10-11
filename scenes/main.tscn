@@ -11,7 +11,6 @@
 [ext_resource type="Script" path="res://game/view/UnitLayer.gd" id="9_units"]
 [ext_resource type="Script" path="res://game/input/PlayerController.gd" id="10_player"]
 [ext_resource type="Script" path="res://game/view/MoveMarkerLayer.gd" id="11_markers"]
-[ext_resource type="Script" path="res://game/ui/BoxOverlay.gd" id="12_box"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -44,14 +43,13 @@ settings = ExtResource("6_settings")
 script = ExtResource("2_cam")
 settings = ExtResource("6_settings")
 
-[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "camera", "marker_layer", "box_overlay")]
+[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "camera", "marker_layer")]
 script = ExtResource("10_player")
 runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
 camera = NodePath("../Camera")
 settings = ExtResource("6_settings")
 marker_layer = NodePath("../MarkerLayer")
-box_overlay = NodePath("../Hud/BoxOverlay")
 
 [node name="TouchInput" type="Node" parent="." node_paths=PackedStringArray("camera", "controller")]
 script = ExtResource("5_touch")
@@ -60,13 +58,6 @@ camera = NodePath("../Camera")
 controller = NodePath("../PlayerController")
 
 [node name="Hud" type="CanvasLayer" parent="."]
-
-[node name="BoxOverlay" type="Control" parent="Hud"]
-visible = false
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
-script = ExtResource("12_box")
 
 [node name="Margin" type="MarginContainer" parent="Hud"]
 anchors_preset = 15
@@ -87,5 +78,3 @@ size_flags_vertical = 0
 theme_override_font_sizes/font_size = 40
 text = "Dev"
 script = ExtResource("3_dev")
-
-[connection signal="selection_changed" from="PlayerController" to="UnitLayer" method="set_selected"]

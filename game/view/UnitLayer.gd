@@ -6,13 +6,10 @@ extends Node2D
 ## direction the unit moved in (the gun follows the hull until a unit has a target). The turn is a
 ## view effect and never touches the World.
 ## Rigs are the children of this node in World row order, so rig `i` shows unit row `i`.
-## A selected unit has a Ring as the first child of its rig, under the layers.
 
 const ART_DIR: String = "res://assets/art/svg/units/"
 const LAYER_FILES: Array[String] = ["hull", "team", "turret"]  ## Draw order, also the node names.
 const TEAM_LAYER: int = 1  ## Index of "team" in LAYER_FILES.
-const RING_PAD_MILLI: int = 50  ## The ring clears the selection radius by this much.
-const RING_MIN_DP: float = 18.0
 
 ## Tint of the Team layer by owner id. Index 0 is neutral and also used for any owner past the end.
 @export var team_colors: PackedColorArray = PackedColorArray(
@@ -28,35 +25,15 @@ var _rigs: Array[Node2D] = []
 var _layers: Array[Sprite2D] = []  ## Hull, Team and Turret of rig `i` at 3i, 3i + 1 and 3i + 2.
 var _heading: PackedFloat64Array = PackedFloat64Array()  ## Angle the layers show now.
 var _aim: PackedFloat64Array = PackedFloat64Array()  ## Last movement direction. East is 0.
-var _rings: Array[Ring] = []  ## Ring of row `i`, made the first time that unit is selected.
-var _ringed: PackedInt32Array = PackedInt32Array()  ## Rows whose ring shows.
-var _ring_zoom: float = 1.0  ## Camera zoom the rings are sized for.
-var _dp_px: float = 1.0  ## Base px per dp, read when the selection or the window changes.
-
-
-## A circle of `radius` world px with strokes of `unit` world px per dp, drawn on a change only.
-class Ring:
-	extends Node2D
-
-	var radius: float = 0.0
-	var unit: float = 1.0
-
-	func _draw() -> void:
-		var wide: float = (FeedbackStyle.STROKE_DP + FeedbackStyle.OUTLINE_DP) * unit
-		draw_circle(Vector2.ZERO, radius, FeedbackStyle.OUTLINE, false, wide, true)
-		draw_circle(Vector2.ZERO, radius, Color.WHITE, false, FeedbackStyle.STROKE_DP * unit, true)
 
 
 func _ready() -> void:
-	get_viewport().size_changed.connect(_resize_rings)
 	_sync_rigs()
 
 
 func _process(delta: float) -> void:
 	if _sync_rigs():
 		_update_rigs(delta)
-		if not _ringed.is_empty() and camera.zoom.x != _ring_zoom:
-			_refresh_rings()
 
 
 func rig_count() -> int:
@@ -66,27 +43,6 @@ func rig_count() -> int:
 ## Where unit row `index` is on screen, in base px.
 func unit_screen_position(index: int) -> Vector2:
 	return camera.world_to_screen(_rigs[index].global_position)
-
-
-## Rings exactly the units in `ids` at once. Unknown ids are skipped.
-func set_selected(ids: PackedInt32Array) -> void:
-	if not _sync_rigs():
-		return
-	for row: int in _ringed:
-		_rings[row].visible = false
-	_ringed.clear()
-	for id: int in ids:
-		var row: int = _world.index_of(id)
-		if row < 0:
-			continue
-		if _rings[row] == null:
-			_rings[row] = Ring.new()
-			_rings[row].name = "Ring"
-			_rigs[row].add_child(_rings[row])
-			_rigs[row].move_child(_rings[row], 0)
-		_rings[row].visible = true
-		_ringed.append(row)
-	_resize_rings()
 
 
 ## Fills `snap` for the Picker with every unit in row order: id, owner, type, centre on screen (base
@@ -127,9 +83,6 @@ func _build(world: World) -> void:
 	_layers.clear()
 	_world = world
 	var count: int = world.unit_count()
-	_rings.clear()
-	_rings.resize(count)
-	_ringed.clear()
 	_heading.resize(count)
 	_heading.fill(0.0)
 	_aim.resize(count)
@@ -148,25 +101,6 @@ func _build(world: World) -> void:
 		add_child(rig)
 		_rigs.append(rig)
 	_update_rigs(0.0)
-
-
-func _resize_rings() -> void:  # dp changes with the window.
-	_dp_px = UiScale.base_px_per_dp()
-	_refresh_rings()
-
-
-## A dp size divided by the zoom is world px, so rings are sized again when the zoom changes.
-func _refresh_rings() -> void:
-	if _ringed.is_empty():
-		return
-	_ring_zoom = camera.zoom.x
-	var unit: float = _dp_px / _ring_zoom
-	for row: int in _ringed:
-		var ring: Ring = _rings[row]
-		var art: int = _world.type_selection_radius[_world.type_index[row]] + RING_PAD_MILLI
-		ring.radius = maxf(ViewScale.milli_to_px(art), RING_MIN_DP * unit)
-		ring.unit = unit
-		ring.queue_redraw()
 
 
 func _team_color(owner_id: int) -> Color:

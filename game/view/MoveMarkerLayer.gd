@@ -2,9 +2,10 @@ class_name MoveMarkerLayer
 extends Node2D
 ## Order feedback in world space (STYLE.md "Feedback markers"): four chevrons closing in on an
 ## attack-move point, or a diamond flash on an enemy. `pool_size` marks are reused oldest first and
-## each lives `settings.marker_ms` by `clock`. A mark is scaled by 1/zoom when shown, so its dp
-## children keep their size on screen. It fades as ONE group through `CanvasGroup.self_modulate`:
-## `modulate` would reach the lines too and blend twice, which turns the marker dark mid-fade.
+## each lives `settings.marker_ms` by `clock`. A mark is scaled by dp / zoom every frame, so its dp
+## children keep their size on screen through a pinch. It fades as ONE group through
+## `CanvasGroup.self_modulate`: `modulate` would reach the lines too and blend twice, which turns
+## the marker dark mid-fade.
 
 const WARNING: Color = Color("F5A524")
 const DANGER: Color = Color("E5484D")
@@ -32,6 +33,7 @@ class Mark:
 
 	var born_ms: int = 0
 	var diamond: bool = false
+	var dp_px: float = 1.0  ## Base px per dp when the mark was shown.
 
 	func _init() -> void:
 		for outline: bool in [true, false]:
@@ -52,8 +54,9 @@ class Mark:
 				line.rotation = shape * PI / 2.0 if shape < 4 else 0.0
 				add_child(line)
 
-	## The fade and the motion `age` ms after the mark was shown.
-	func pose(age: float, marker_ms: float) -> void:
+	## The size, fade and motion `age` ms after the mark was shown, at camera `zoom`.
+	func pose(age: float, marker_ms: float, zoom: float) -> void:
+		scale = Vector2.ONE * dp_px / zoom
 		var fade_start: float = minf(FADE_START_MS, marker_ms / 3.0)
 		self_modulate.a = clampf((marker_ms - age) / maxf(marker_ms - fade_start, 1.0), 0.0, 1.0)
 		var reach: float = lerpf(
@@ -90,10 +93,11 @@ func active_count() -> int:
 
 func _process(_delta: float) -> void:
 	var now: int = clock.call()
+	var zoom: float = get_canvas_transform().get_scale().x
 	for mark: Mark in _marks:
 		var age: int = now - mark.born_ms
 		if mark.visible:
-			mark.pose(age, settings.marker_ms)
+			mark.pose(age, settings.marker_ms, zoom)
 			mark.visible = age < settings.marker_ms
 
 
@@ -104,8 +108,8 @@ func _show(world_px: Vector2, diamond: bool) -> void:
 	var mark: Mark = _marks[_next]
 	_next = (_next + 1) % maxi(pool_size, 1)
 	mark.position = world_px
-	mark.scale = Vector2.ONE * UiScale.base_px_per_dp() / get_canvas_transform().get_scale().x
+	mark.dp_px = UiScale.base_px_per_dp()
 	mark.diamond = diamond
 	mark.born_ms = clock.call()
 	mark.visible = true
-	mark.pose(0.0, settings.marker_ms)
+	mark.pose(0.0, settings.marker_ms, get_canvas_transform().get_scale().x)

@@ -6,8 +6,7 @@ extends Node
 ## A tap acts at once. A double-tap on an own unit selects its type on screen, a box selects the
 ## own units inside it, and an empty box clears the selection (the one way to deselect). Selection
 ## is not a Command, so it never reaches the sim.
-## Each order shows its marker and the BoxOverlay follows a long-press and its box, both in the
-## frame of the gesture. The selection rings follow `selection_changed` (wired in the scene).
+## Each order shows its marker in the frame of the gesture.
 
 ## Emitted with the new `selection.selected` after every real change.
 signal selection_changed(ids: PackedInt32Array)
@@ -17,7 +16,6 @@ signal selection_changed(ids: PackedInt32Array)
 @export var camera: RtsCamera
 @export var settings: InputSettings
 @export var marker_layer: MoveMarkerLayer
-@export var box_overlay: BoxOverlay
 
 var selection: SelectionModel = SelectionModel.new()
 ## Receives each Command. Tests replace it.
@@ -36,20 +34,15 @@ func _ready() -> void:
 		settings = InputSettings.new()  # The script defaults are the ADR table.
 
 
+## LONG_PRESS, BOX_UPDATE and BOX_CANCEL change nothing yet; feedback for them comes with the box
+## overlay.
 func handle_gesture(e: GestureEvent) -> void:
 	match e.kind:
 		GestureEvent.Kind.TAP:
 			_tap(e.position)
 		GestureEvent.Kind.DOUBLE_TAP:
 			_double_tap(e.position)
-		GestureEvent.Kind.LONG_PRESS:
-			box_overlay.show_anchor(e.position)
-		GestureEvent.Kind.BOX_UPDATE:
-			box_overlay.show_rect(e.rect)
-		GestureEvent.Kind.BOX_CANCEL:
-			box_overlay.hide_all()
 		GestureEvent.Kind.BOX_END:
-			box_overlay.hide_all()
 			_refresh()
 			Picker.own_in_rect(_snap, e.rect, _local_player(), _found)
 			selection.set_ids(_found)  # No unit in the box: this clears the selection.
@@ -92,6 +85,8 @@ func _on_selection_changed() -> void:
 
 
 ## Attack-move to a point in milli-tiles, with its marker: the diamond on an enemy, else chevrons.
+## The marker shows the point as ordered. Near a map edge the sim moves the formation inward by the
+## largest unit radius, so the units stop that much off the marker.
 func _attack_move(target_x: int, target_y: int, on_enemy: bool = false) -> void:
 	command_sink.call(Command.attack_move(_local_player(), selection.selected, target_x, target_y))
 	var at: Vector2 = ViewScale.milli_to_px_vec(target_x, target_y)
