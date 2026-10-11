@@ -9,6 +9,7 @@
 [ext_resource type="Script" path="res://game/core/MatchRunner.gd" id="7_runner"]
 [ext_resource type="Resource" path="res://data/scenarios/controls_test.tres" id="8_scenario"]
 [ext_resource type="Script" path="res://game/view/UnitLayer.gd" id="9_units"]
+[ext_resource type="Script" path="res://game/input/PlayerController.gd" id="10_player"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -37,10 +38,18 @@ camera = NodePath("../Camera")
 script = ExtResource("2_cam")
 settings = ExtResource("6_settings")
 
-[node name="TouchInput" type="Node" parent="." node_paths=PackedStringArray("camera")]
+[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "camera")]
+script = ExtResource("10_player")
+runner = NodePath("../MatchRunner")
+unit_layer = NodePath("../UnitLayer")
+camera = NodePath("../Camera")
+settings = ExtResource("6_settings")
+
+[node name="TouchInput" type="Node" parent="." node_paths=PackedStringArray("camera", "controller")]
 script = ExtResource("5_touch")
 settings = ExtResource("6_settings")
 camera = NodePath("../Camera")
+controller = NodePath("../PlayerController")
 
 [node name="Hud" type="CanvasLayer" parent="."]
 
