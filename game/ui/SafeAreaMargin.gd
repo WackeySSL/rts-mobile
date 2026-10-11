@@ -10,11 +10,13 @@ extends MarginContainer
 
 
 func _ready() -> void:
-	get_viewport().size_changed.connect(_apply)
-	_apply()
+	get_viewport().size_changed.connect(apply)
+	apply()
 
 
-func _apply() -> void:
+## Sets the margins from the current screen and returns them (x: left and right, y: top and
+## bottom). A child that needs the room inside calls this: on a resize it runs before our handler.
+func apply() -> Vector2i:
 	var full: Rect2 = get_viewport().get_visible_rect()
 	var safe: Rect2 = UiScale.safe_rect_base()
 	var gap: int = roundi(UiScale.dp(margin_dp))
@@ -24,6 +26,7 @@ func _apply() -> void:
 	add_theme_constant_override("margin_right", x)
 	add_theme_constant_override("margin_top", y)
 	add_theme_constant_override("margin_bottom", y)
+	return Vector2i(x, y)
 
 
 ## Whole base px, rounded up so a control never touches the cutout. Float noise is ignored.
