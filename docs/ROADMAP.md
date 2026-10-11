@@ -11,7 +11,7 @@ Tick a box in the PR that meets the criterion.
 - [x] `scripts/run-sim-smoke.sh` stub that accepts `--matches N` and `--report PATH` and exits 0 with "no sim yet"
 - [x] `scripts/export-web.sh` and a "Web" export preset with thread support off
 - [x] `ci.yml`: format check, lint, Godot import, tests, web export, Godot and templates cached, error scan of the logs
-- [ ] `preview.yml`: web build per PR to `pr-<n>/` on the `gh-pages` branch, link commented on the PR, removed when the PR closes
+- [x] `preview.yml`: web build per PR to `pr-<n>/` on the `gh-pages` branch, link commented on the PR, removed when the PR closes
 - [x] `assets/art/STYLE.md` from the svg-art-style skill, one sample unit (light tank hull, turret and team layer) and `scenes/dev/art_gallery.tscn` reachable from a dev menu in the preview
 - [ ] Gate: CI green on `main`, the preview link works on Michael's phone, `/verify` works in a cloud session
 
@@ -68,5 +68,5 @@ Tick a box in the PR that meets the criterion.
 ## Phase 7: Release
 - [ ] `release.yml` (workflow_dispatch with a version input) tags `main` and calls the Android and iOS workflows as reusable workflows
 - [ ] `ios-testflight.yml` with the iOS AdMob plugin and an App Store Connect API key
-- [ ] Name and logo chosen after a trademark search; English store texts and screenshots in `docs/store/`
+- [ ] Trademark search for the name (ADR 0006) and logo; English store texts and screenshots in `docs/store/`
 - [ ] Gate: live on Google Play and an approved TestFlight build
