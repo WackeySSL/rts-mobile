@@ -144,7 +144,7 @@ func _build(world: World) -> void:
 			sprite.texture = load("%s%s_%s.svg" % [ART_DIR, type_id, file])
 			rig.add_child(sprite)
 			_layers.append(sprite)
-		_layers[row * LAYER_FILES.size() + TEAM_LAYER].modulate = _team_color(world.owner[row])
+		_layers[row * LAYER_FILES.size() + TEAM_LAYER].modulate = team_color(world.owner[row])
 		add_child(rig)
 		_rigs.append(rig)
 	_update_rigs(0.0)
@@ -169,7 +169,8 @@ func _refresh_rings() -> void:
 		ring.queue_redraw()
 
 
-func _team_color(owner_id: int) -> Color:
+## The Team layer tint of `owner_id`: index 0 (neutral) for an owner with no colour.
+func team_color(owner_id: int) -> Color:
 	var known: bool = owner_id >= 0 and owner_id < team_colors.size()
 	return team_colors[owner_id if known else 0]
 
