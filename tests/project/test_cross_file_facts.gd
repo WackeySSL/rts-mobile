@@ -1,11 +1,13 @@
 extends GdUnitTestSuite
-## Facts that live in two files and would drift apart without a word: the zoom levels of the camera
-## (data/input_settings.tres) and the zoom row of the art gallery that judges them, and the licence
-## credit for the default launcher icon of the debug APKs (ADR 0005, plan risk 12).
+## Facts that live in two files and would drift apart without a word: the camera's zoom levels
+## (data/input_settings.tres) and the art gallery's zoom row, the licence credit for the debug APKs'
+## default launcher icon (ADR 0005, plan risk 12), and the error scan's allowlist, which hides
+## engine errors from verify.sh and both export scripts: a new or widened entry must show up here.
 
 const SETTINGS_PATH: String = "res://data/input_settings.tres"
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
 const CREDITS_PATH: String = "res://assets/CREDITS.md"
+const ALLOWLIST_PATH: String = "res://scripts/verify-allowlist.txt"
 const ZOOM_ROWS: Array[String] = ["Grass/ZoomRow", "Sand/ZoomRow"]
 
 
@@ -19,7 +21,9 @@ func test_the_gallery_zoom_row_shows_the_camera_zoom_levels() -> void:
 		var scales: Array[float] = []
 		for rig: Node in gallery.get_node(row_path).get_children():
 			if rig is Node2D:  # The labels under the rigs are Controls.
-				scales.append((rig as Node2D).scale.x)
+				var rig_scale: Vector2 = (rig as Node2D).scale
+				assert_float(rig_scale.y).override_failure_message(row_path).is_equal(rig_scale.x)
+				scales.append(rig_scale.x)
 		scales.sort()
 		assert_array(scales).override_failure_message(row_path).is_equal(levels)
 
@@ -31,3 +35,13 @@ func test_credits_name_the_debug_launcher_icon_and_the_licence_file() -> void:
 	var flat: String = RegEx.create_from_string("\\s+").sub(credits, " ", true)
 	assert_str(flat).contains("default launcher icon of the debug APKs")
 	assert_str(flat).contains("THIRD_PARTY_LICENSES.txt")
+	assert_str(flat).contains("Andrea Calabró")  # CC BY: the author and the licence are the credit.
+	assert_str(flat).contains("CC BY 4.0")
+
+
+func test_the_allowlist_holds_only_the_icon_entry() -> void:
+	var entries: Array[String] = []
+	for line: String in FileAccess.get_file_as_string(ALLOWLIST_PATH).split("\n"):
+		if not line.strip_edges().is_empty() and not line.begins_with("#"):
+			entries.append(line)
+	assert_array(entries).is_equal(["^ERROR: No project icon specified\\.[ ]"])

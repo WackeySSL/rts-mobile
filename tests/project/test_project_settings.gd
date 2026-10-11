@@ -59,7 +59,7 @@ func test_touch_emulation() -> void:
 func test_android_does_not_turn_touches_into_other_events() -> void:
 	for key: String in ["enable_long_press_as_right_click", "enable_pan_and_scale_gestures"]:
 		var setting_name: String = "input_devices/pointing/android/" + key
-		assert_bool(ProjectSettings.get_setting(setting_name, false)).is_false()
+		assert_bool(_setting(setting_name)).is_false()
 
 
 func _setting(setting_name: String) -> Variant:
