@@ -181,3 +181,14 @@ Facts checked on Godot 4.7.2:
   Michael's ruler check close that gap. Fixing a wrong factor needs a new ADR, not a silent
   constant change.
 - Mouse wheel zoom is the only Mouse event any gesture code reads.
+
+## Amendment (2026-10-11, P8 review)
+- Pinch guard: `PINCH.scale` stays 1.0 while either finger distance, before or after the move, is
+  below `GestureRecognizer.MIN_PINCH_DP` (8 dp, at least 1 px). The centroid delta still applies.
+  This is a numeric guard against dividing by about zero, not a feel threshold, so it stays in code.
+- Hand-over: when one of two fingers lifts, the recognizer emits `CAMERA_END` and continues as
+  `PAN`; the final release emits `CAMERA_END` again. `RtsCamera.end_gesture()` is idempotent.
+- A duplicate down for a finger already down in `MULTI` first ends that finger like a lift, then
+  handles the press normally.
+- Two fingers moving in the same frame give two `PINCH` events, each with part of the centroid
+  delta and a partial scale. The scales multiply, so `TouchInput` (P10) applies every event in order.
