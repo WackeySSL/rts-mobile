@@ -25,7 +25,8 @@ GODOT="${GODOT:-godot}"
 GODOT_VERSION="4.7.2.stable"
 PATTERN='SCRIPT ERROR|^ERROR:|Parse Error'
 # The project sets no icon yet, so the APK keeps the template's default launcher icon (the Godot
-# logo, ADR 0005). Godot prints this once per export (CI run 38117776194).
+# logo, ADR 0005). Godot prints this once per export (CI run 38117776194). Temporary: it belongs in
+# scripts/verify-allowlist.txt (qa-engineer's file). Delete this variable once it is moved there.
 KNOWN_BENIGN='^ERROR: No project icon specified\. '
 PACKAGE="dk.appcode.rts.dev"
 APK_NAME="rts-mobile-debug.apk"

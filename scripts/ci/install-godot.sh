@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installs the official Godot Linux editor and ONLY the web (no-threads) export templates.
+# Installs the official Godot Linux editor and the web (no-threads) export templates; --android adds more.
 # Usage: bash scripts/ci/install-godot.sh [--android]
 #   --android  also fetch templates/android_debug.apk (127 MB, ADR 0005 section 2)
 # Shared by .github/workflows/ci.yml and preview.yml. Idempotent: on an actions/cache hit it only
@@ -84,7 +84,7 @@ ln -sf "$GODOT_HOME/$BIN_NAME" "$GODOT_BIN_DIR/godot"
 # Later steps of the same job find `godot` (and pipx tools in the same dir) on PATH.
 if [ -n "${GITHUB_PATH:-}" ]; then echo "$GODOT_BIN_DIR" >> "$GITHUB_PATH"; fi
 
-# 2. Web export templates (no-threads only), fetched by range from the .tpz
+# 2. Export templates (web no-threads; with --android also android_debug.apk), fetched by range from the .tpz
 templates_ok() {
   [ -d "$TEMPLATES_DIR" ] || return 1
   (cd "$TEMPLATES_DIR" && echo "$TEMPLATE_SUMS" | sha256 -c --quiet - >/dev/null 2>&1)

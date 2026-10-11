@@ -1,7 +1,7 @@
 name: CI
 
-# One job, named "verify" (branch protection requires this check): format, lint, import, tests,
-# sim smoke and the web export, all through the same scripts a developer runs locally.
+# Two jobs. "verify" is the only required check: format, lint, import, tests, sim smoke and the web
+# export, all through the scripts a developer runs locally. "android-debug-apk" (ADR 0005) follows it.
 on:
   pull_request:
   push:
@@ -168,7 +168,8 @@ jobs:
             echo "Godot cache hit: ${CACHE_HIT:-false}"
             if [ -s "$apk" ]; then
               echo "- APK: $(stat -c %s "$apk") bytes, SHA-256 \`$(sha256sum "$apk" | cut -d' ' -f1)\`, package dk.appcode.rts.dev"
-              echo "- Signing key: ${DEBUG_KEY_KIND:-unknown}. A generated key changes every run: uninstall the old APK first."
+              echo "- Signing key: ${DEBUG_KEY_KIND:-unknown}."
+              [ "${DEBUG_KEY_KIND:-}" = stable ] || echo "- A generated key changes every run: uninstall the old APK first."
               echo "- Install: unzip the artifact on the phone and open rts-mobile-debug.apk."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
