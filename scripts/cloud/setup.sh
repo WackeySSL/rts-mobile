@@ -44,9 +44,9 @@ if [ -x "$DEST/$BIN" ]; then
 fi
 
 if ! command -v gdlint >/dev/null 2>&1; then
-  pip install --quiet "gdtoolkit==4.*" 2>/dev/null ||
-    pip install --quiet --break-system-packages "gdtoolkit==4.*" 2>/dev/null ||
-    uv tool install "gdtoolkit==4.*" 2>/dev/null ||
+  pip install --quiet "gdtoolkit==4.5.0" 2>/dev/null ||
+    pip install --quiet --break-system-packages "gdtoolkit==4.5.0" 2>/dev/null ||
+    uv tool install "gdtoolkit==4.5.0" 2>/dev/null ||
     echo "Could not install gdtoolkit."
 fi
 exit 0

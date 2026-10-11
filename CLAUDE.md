@@ -20,11 +20,14 @@ Source of truth: this file for rules, `docs/GDD.md` for game design,
 - `bash scripts/run-tests.sh` - gdUnit4 only.
 - `bash scripts/run-sim-smoke.sh --matches N` - headless AI-vs-AI matches with fixed seeds.
 - `bash scripts/export-web.sh` - web build for the phone preview.
-Phase 0 creates the last three scripts; keep their flags stable because CI and skills call them.
+- `bash scripts/export-android.sh` - Android debug APK (CI only; a cloud session has no Android SDK and exits 4).
+Phase 0 created `run-tests.sh`, `run-sim-smoke.sh` and `export-web.sh`, Phase 1 `export-android.sh`;
+keep their flags stable because CI and skills call them.
 
 ## Layout
 ```
 game/sim/    deterministic simulation: pure GDScript, no Node, no rendering, no time
+game/core/   Node-side services (autoloads DetRng, CommandQueue; MatchRunner); no game rules
 game/view/   presentation: sprites, interpolation, effects, camera
 game/input/  touch gestures -> Command objects
 game/ui/     HUD, build sidebar, menus
@@ -41,7 +44,8 @@ tests/       gdUnit4 tests mirroring game/
 1. Simulation and presentation are separate. `game/sim` never references Node, SceneTree,
    Input, rendering, OS time or frame delta. The view reads sim state and interpolates.
 2. Fixed tick: 15 Hz. Sim state is integers only (fixed point: 1 tile = 1000 units). No floats in sim state.
-3. Randomness only via `DetRng` seeded per match. Never `randi()`/`randf()` in sim or AI.
+3. Randomness only via per-match `DetRandom` streams (created through the `DetRng` factory autoload
+   outside `game/sim`). Never `randi()`/`randf()` in sim or AI.
 4. Humans and AI act only through `Command` objects queued to the sim. This gives replays,
    AI-vs-AI tests and a path to multiplayer.
 5. Stats come from `data/*.tres`. No balance numbers hardcoded in code.

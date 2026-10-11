@@ -1,6 +1,6 @@
 ---
 name: rts-sim-conventions
-description: Rules and patterns for the deterministic RTS simulation of rts-mobile - 15 Hz fixed tick, fixed-point integers, DetRng, the Command queue, entity storage, flow-field pathfinding, targeting, fog of war, state hashing and replays. Use whenever writing, reviewing or debugging code in game/sim, game/ai, data or tests/sim, even for small changes.
+description: Rules and patterns for the deterministic RTS simulation of rts-mobile - 15 Hz fixed tick, fixed-point integers, DetRandom, the Command queue, entity storage, flow-field pathfinding, targeting, fog of war, state hashing and replays. Use whenever writing, reviewing or debugging code in game/sim, game/ai, data or tests/sim, even for small changes.
 paths:
   - "game/sim/**"
   - "game/ai/**"
@@ -25,13 +25,16 @@ path to multiplayer.
 - Health, damage, credits and power are plain ints.
 
 ## Randomness
-- `DetRng` (PCG32 or xorshift64*) is owned by the match and passed explicitly. Never global,
+- `DetRandom` (PCG32 or xorshift64*) is owned by the match and passed explicitly. Never global,
   never `randi()` or `randf()`.
+- `DetRng` is the Node-side factory autoload (`game/core/`) that creates the streams. It is never
+  referenced from `game/sim`; `tests/project/test_sim_purity.gd` rejects it.
 - Each AI player draws from its own stream seeded from (match seed, player index), so AI changes
   do not shift combat rolls.
 
 ## Commands
-- `Command`: tick, player_id, type, unit_ids (PackedInt32Array), target cell or target_id, payload.
+- `Command`: tick, player_id, type, unit_ids (PackedInt32Array), a target point in milli-tiles or
+  target_id, payload. Phase 1's Command v0 (attack-move) carries a target point in milli-tiles.
 - Applied at the start of their tick in (tick, player_id, sequence) order. Invalid commands are
   dropped and counted; they never crash the sim.
 - Input and AI never touch entities directly.

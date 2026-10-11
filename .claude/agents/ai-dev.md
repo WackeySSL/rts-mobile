@@ -17,7 +17,7 @@ Rules:
   expand, attack, defend), tactics (grouping, target choice, retreat at low health).
 - Difficulty is parameters (reaction delay, build-order quality, micro), not separate code paths.
 - Decide every 15 ticks (1 second), not every tick. Keep each decision under 1 ms on CI.
-- All randomness through the match `DetRng`, so every AI-vs-AI run is reproducible from its seed.
+- All randomness through the match's `DetRandom` stream, so every AI-vs-AI run is reproducible from its seed.
 
 Balance work:
 - Run `bash scripts/run-sim-smoke.sh --matches N` and read win rates, match length, production

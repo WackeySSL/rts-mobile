@@ -26,7 +26,7 @@ Tick a box in the PR that meets the criterion.
 
 ## Phase 2: Simulation core
 - [ ] ADR for the World data model, Command format and state hash
-- [ ] 15 Hz fixed tick, FixedMath, DetRng, Command queue, state hash and replay test
+- [ ] 15 Hz fixed tick, FixedMath, DetRandom, Command queue, state hash and replay test
 - [ ] Movement with flow fields and separation; combat with projectiles, armour classes and death
 - [ ] Fog of war (visible and explored) and its rendering
 - [ ] View interpolation at the display frame rate
@@ -56,6 +56,9 @@ Tick a box in the PR that meets the criterion.
   Teach in `docs/HOW_TO_PLAY.md`; it starts on first launch and can be replayed from the menu
 - [ ] "How to play" screen in the main menu and the pause menu that explains every entry in
   `docs/HOW_TO_PLAY.md` (controls, units, buildings, economy, how to win)
+- [ ] Licences screen in the menu that shows `Engine.get_license_text()` and
+  `Engine.get_copyright_info()` (Play builds need an in-game notice), and the game's own boot
+  splash instead of Godot's default
 - [ ] Second and third map
 - [ ] Gate: a new player finishes the tutorial without help, every entry in `docs/HOW_TO_PLAY.md` is
   covered by the tutorial or the How to play screen, and the median match takes 8-10 minutes

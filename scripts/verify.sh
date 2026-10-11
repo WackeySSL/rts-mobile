@@ -33,7 +33,7 @@ if [ ${#GD_DIRS[@]} -gt 0 ]; then
     run_step "format (gdformat --check)" gdformat --check "${GD_DIRS[@]}"
     run_step "lint (gdlint)" gdlint "${GD_DIRS[@]}"
   else
-    echo "gdtoolkit missing: pip install 'gdtoolkit==4.*'"
+    echo "gdtoolkit missing: pip install 'gdtoolkit==4.5.0'"
     FAILED+=("gdtoolkit missing")
   fi
 fi
