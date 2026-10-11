@@ -58,6 +58,7 @@ func before_test() -> void:
 	_map = _main.get_node("TestMapView")
 	_camera = _main.get_node("Camera") as RtsCamera
 	_touch = _main.get_node("TouchInput") as TouchInput
+	_touch.clock = func() -> int: return 0  # No long-press, however long the test stalls.
 
 
 func test_map_is_32_by_32_tiles_of_64_px() -> void:
@@ -138,11 +139,13 @@ func test_dev_button_is_pressed_exactly_once_by_a_touch_at_every_target_resoluti
 		_pressed_count = 0
 		var centre: Vector2 = button.get_global_rect().get_center()
 		TouchEvents.press(get_viewport(), 0, centre)
+		TouchEvents.drag(get_viewport(), 0, centre + Vector2(30, 30), Vector2(30, 30))
 		await await_idle_frame()
-		TouchEvents.release(get_viewport(), 0, centre)
+		TouchEvents.release(get_viewport(), 0, centre + Vector2(30, 30))
 		await await_idle_frame()
 		assert_int(_pressed_count).is_equal(1)
-		assert_that(_camera.position).is_equal(start)  # A tap on the button is not a pan.
+		# A touch that starts on the button stays with it: no pan.
+		assert_that(_camera.position).is_equal(start)
 
 
 func _on_dev_button_pressed() -> void:
