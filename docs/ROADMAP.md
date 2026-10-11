@@ -13,7 +13,7 @@ Tick a box in the PR that meets the criterion.
 - [x] `ci.yml`: format check, lint, Godot import, tests, web export, Godot and templates cached, error scan of the logs
 - [x] `preview.yml`: web build per PR to `pr-<n>/` on the `gh-pages` branch, link commented on the PR, removed when the PR closes
 - [x] `assets/art/STYLE.md` from the svg-art-style skill, one sample unit (light tank hull, turret and team layer) and `scenes/dev/art_gallery.tscn` reachable from a dev menu in the preview
-- [ ] Gate: CI green on `main`, the preview link works on Michael's phone, `/verify` works in a cloud session
+- [x] Gate: CI green on `main`, the preview link works on Michael's phone, `/verify` works in a cloud session
 
 ## Phase 1: Controls prototype (go/no-go)
 - [x] One 48x48 test map with 30 player tanks and 10 static enemy targets
