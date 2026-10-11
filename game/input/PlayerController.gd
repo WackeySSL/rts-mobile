@@ -6,6 +6,7 @@ extends Node
 ## A tap acts at once. A double-tap on an own unit selects its type on screen, a box selects the
 ## own units inside it, and an empty box clears the selection (the one way to deselect). Selection
 ## is not a Command, so it never reaches the sim.
+## Each order shows its marker in the frame of the gesture.
 
 ## Emitted with the new `selection.selected` after every real change.
 signal selection_changed(ids: PackedInt32Array)
@@ -14,6 +15,7 @@ signal selection_changed(ids: PackedInt32Array)
 @export var unit_layer: UnitLayer
 @export var camera: RtsCamera
 @export var settings: InputSettings
+@export var marker_layer: MoveMarkerLayer
 
 var selection: SelectionModel = SelectionModel.new()
 ## Receives each Command. Tests replace it.
@@ -32,7 +34,8 @@ func _ready() -> void:
 		settings = InputSettings.new()  # The script defaults are the ADR table.
 
 
-## LONG_PRESS, BOX_UPDATE and BOX_CANCEL change nothing yet; feedback for them comes with P16.
+## LONG_PRESS, BOX_UPDATE and BOX_CANCEL change nothing yet; feedback for them comes with the box
+## overlay.
 func handle_gesture(e: GestureEvent) -> void:
 	match e.kind:
 		GestureEvent.Kind.TAP:
@@ -50,7 +53,7 @@ func _tap(pos: Vector2) -> void:
 	if hit >= 0 and _snap.owners[hit] == _local_player():
 		selection.set_ids(PackedInt32Array([_snap.ids[hit]]))
 	elif hit >= 0:  # An enemy: only picked while a selection exists. Attack-move to where it is.
-		_attack_move(runner.world.pos_x[hit], runner.world.pos_y[hit])
+		_attack_move(runner.world.pos_x[hit], runner.world.pos_y[hit], true)
 	elif not selection.selected.is_empty():
 		var world_px: Vector2 = camera.screen_to_world(pos)
 		_attack_move(ViewScale.px_to_milli(world_px.x), ViewScale.px_to_milli(world_px.y))
@@ -81,8 +84,16 @@ func _on_selection_changed() -> void:
 	selection_changed.emit(selection.selected)
 
 
-func _attack_move(target_x: int, target_y: int) -> void:
+## Attack-move to a point in milli-tiles, with its marker: the diamond on an enemy, else chevrons.
+## The marker shows the point as ordered. Near a map edge the sim moves the formation inward by the
+## largest unit radius, so the units stop that much off the marker.
+func _attack_move(target_x: int, target_y: int, on_enemy: bool = false) -> void:
 	command_sink.call(Command.attack_move(_local_player(), selection.selected, target_x, target_y))
+	var at: Vector2 = ViewScale.milli_to_px_vec(target_x, target_y)
+	if on_enemy:
+		marker_layer.show_target(at)
+	else:
+		marker_layer.show_attack_move(at)
 
 
 func _local_player() -> int:
