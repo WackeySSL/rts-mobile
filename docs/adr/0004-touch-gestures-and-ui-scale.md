@@ -144,7 +144,7 @@ Facts checked on Godot 4.7.2:
    - Tap ground with units selected: an attack-move Command plus a move marker. The target is
      `ViewScale.px_to_milli()` of the world point. Tap ground with nothing selected: nothing.
    - `DOUBLE_TAP` on an own unit selects all own units of that type whose screen positions are
-     inside the visible viewport. Anywhere else it is handled as a tap.
+     inside the visible viewport, and always the tapped unit. Anywhere else it is handled as a tap.
    - `BOX_END` selects the own units whose screen centres lie in the rect. An empty box clears
      the selection, which is the deliberate way to deselect.
    - "All army" selects every own unit with speed > 0 on the whole map.
