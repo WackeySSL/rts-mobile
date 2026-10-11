@@ -37,14 +37,21 @@ func test_test_map_entry_is_enabled() -> void:
 	assert_bool(test_map.disabled).is_false()
 
 
-func test_touch_probe_route_and_menu_entry() -> void:
+## Dev menu -> Touch probe -> Back -> Dev menu, through the real buttons and scene changes.
+func test_dev_menu_opens_the_touch_probe_and_back_returns_to_the_dev_menu() -> void:
 	assert_str(DevRoutes.TOUCH_PROBE_SCENE).is_equal("res://scenes/dev/touch_probe.tscn")
-	assert_bool(ResourceLoader.exists(DevRoutes.TOUCH_PROBE_SCENE)).is_true()
-	var packed: PackedScene = load(DevRoutes.DEV_MENU_SCENE)
-	var menu: Node = auto_free(packed.instantiate())
-	add_child(menu)
+	var tree: SceneTree = get_tree()
+	var menu: Node = (load(DevRoutes.DEV_MENU_SCENE) as PackedScene).instantiate()
+	tree.root.add_child(menu)
+	tree.current_scene = menu
 	await await_idle_frame()
-	var probe: Button = menu.find_child("TouchProbeButton", true, false)
-	assert_object(probe).is_not_null()
-	assert_bool(probe.disabled).is_false()
-	assert_array(probe.pressed.get_connections()).is_not_empty()
+	var probe_button: Button = menu.find_child("TouchProbeButton", true, false)
+	assert_bool(probe_button.disabled).is_false()
+	probe_button.pressed.emit()
+	await await_idle_frame()
+	assert_str(tree.current_scene.scene_file_path).is_equal(DevRoutes.TOUCH_PROBE_SCENE)
+	tree.current_scene.find_child("BackButton", true, false).pressed.emit()
+	await await_idle_frame()
+	assert_str(tree.current_scene.scene_file_path).is_equal(DevRoutes.DEV_MENU_SCENE)
+	tree.current_scene.free()
+	tree.current_scene = null

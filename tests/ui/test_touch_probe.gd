@@ -5,9 +5,10 @@ extends GdUnitTestSuite
 
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ANDROID: StringName = &"android_6in"
+const SAFE_AREA: Rect2i = Rect2i(60, 0, 2280, 1080)  ## A landscape cutout on the left.
 const ANDROID_TEXT: String = (
 	"OS: Android\ndpi: 420\nscreen scale: 1.000\nstretch scale: 1.500\nwindow: 2400 x 1080 px\n"
-	+ "base px per dp: 1.750\ndp(48): 84.0 base px"
+	+ "safe area: [P: (60, 0), S: (2280, 1080)] px\nbase px per dp: 1.750\ndp(48): 84.0 base px"
 )
 
 var _window_size_before: Vector2i
@@ -22,32 +23,41 @@ func after() -> void:
 	get_window().size = _window_size_before
 
 
+## The engine default is true. A probe that is gone restores it, or a false leaks into later suites.
+func before_test() -> void:
+	var restored: bool = get_tree().quit_on_go_back
+	assert_bool(restored).override_failure_message("quit_on_go_back leaked").is_true()
+
+
 ## The override is static state: leaving one behind changes every later suite.
 func after_test() -> void:
 	UiScale.clear_override()
 
 
 func test_it_shows_the_numbers_of_the_profile() -> void:
-	var probe: Control = await _open(UiProfiles.by_name(ANDROID))
+	var metrics: UiMetrics = UiProfiles.with_safe_area(UiProfiles.by_name(ANDROID), SAFE_AREA)
+	var probe: Control = await _open(metrics)
 	assert_str((_control(probe, "MetricsLabel") as Label).text).is_equal(ANDROID_TEXT)
 	assert_str((_control(probe, "SquareLabel") as Label).text).is_equal("should measure 7.6 mm")
 
 
 ## Covers 1280x720 (desktop), 2400x1080 (android_6in) and 2048x1536 (web_tablet), and the phone
-## browsers. The square is dp(48) on each side. The column and the Back button stay on screen.
+## browsers. The square is dp(48) on each side. The column, the square and the Back button stay on
+## screen.
 func test_every_profile_has_an_exact_square_and_a_layout_that_fits() -> void:
 	for profile_name: StringName in UiProfiles.all():
 		var probe: Control = await _open(UiProfiles.by_name(profile_name))
+		var square: Control = _control(probe, "Square")
 		var column: Rect2 = _control(probe, "Column").get_global_rect()
 		var back: Rect2 = _control(probe, "BackButton").get_global_rect()
 		var label: String = str(profile_name)
 		var fits: bool = Rect2(Vector2.ZERO, probe.size).encloses(column.merge(back))
+		fits = fits and column.encloses(square.get_global_rect()) and square.is_visible_in_tree()
 		assert_bool(fits and not column.intersects(back)).override_failure_message(label).is_true()
-		(
-			assert_vector(_control(probe, "Square").size)
-			. override_failure_message(label)
-			. is_equal_approx(UiScale.dp_vec(48.0, 48.0), Vector2.ONE * 0.001)
+		assert_vector(square.size).override_failure_message(label).is_equal_approx(
+			UiScale.dp_vec(48.0, 48.0), Vector2.ONE * 0.001
 		)
+		probe.free()  # One at a time: probes alive together restore quit_on_go_back in a bad order.
 
 
 func test_the_square_and_the_numbers_follow_a_window_resize() -> void:
@@ -59,7 +69,11 @@ func test_the_square_and_the_numbers_follow_a_window_resize() -> void:
 	get_window().size = tablet.window_size
 	await await_idle_frame()
 	assert_that(square.size).is_equal_approx(Vector2(60.0, 60.0), Vector2(0.05, 0.05))
-	assert_str((_control(probe, "MetricsLabel") as Label).text).contains("dp(48): 60.0 base px")
+	var metrics: Label = _control(probe, "MetricsLabel") as Label
+	assert_str(metrics.text).contains("dp(48): 60.0 base px")
+	assert_int(metrics.get_theme_font_size("font_size")).is_equal(20)  # dp(16)
+	assert_int(_control(probe, "Margin").get_theme_constant("margin_left")).is_equal(15)  # dp(12)
+	assert_int(_control(probe, "Column").get_theme_constant("separation")).is_equal(15)
 	# Without an override it follows what the engine reports, as on a phone. The stretch scale
 	# goes from 1.0 to 1.5 here, so the same dp is fewer base px.
 	UiScale.clear_override()
@@ -78,16 +92,15 @@ func test_touch_points_follow_the_fingers_in_base_px() -> void:
 	_touch(0, Vector2(1200, 540), true)
 	_touch(1, Vector2(600, 300), true)
 	assert_dict(probe.touches).is_equal({0: Vector2(800, 360), 1: Vector2(400, 200)})
-	_drag(0, Vector2(1500, 600))
-	assert_dict(probe.touches).is_equal({0: Vector2(1000, 400), 1: Vector2(400, 200)})
-	_touch(1, Vector2(600, 300), false)
-	assert_dict(probe.touches).is_equal({0: Vector2(1000, 400)})
-	_touch(0, Vector2(1500, 600), false)
+	_drag(1, Vector2(1500, 600))
+	assert_dict(probe.touches).is_equal({0: Vector2(800, 360), 1: Vector2(1000, 400)})
+	_touch(1, Vector2(1500, 600), false)
+	assert_dict(probe.touches).is_equal({0: Vector2(800, 360)})
+	_touch(0, Vector2(1200, 540), false)
 	assert_dict(probe.touches).is_empty()
 
 
 func test_back_button_and_the_android_back_request_both_leave() -> void:
-	var quit_before: bool = get_tree().quit_on_go_back
 	var probe: Control = await _open(UiProfiles.by_name(ANDROID))
 	var calls: Array[int] = []
 	probe.back_action = func() -> void: calls.append(1)
@@ -99,7 +112,7 @@ func test_back_button_and_the_android_back_request_both_leave() -> void:
 	await await_idle_frame()
 	assert_array(calls).has_size(2)
 	remove_child(probe)
-	assert_bool(get_tree().quit_on_go_back).is_equal(quit_before)
+	assert_bool(get_tree().quit_on_go_back).is_true()
 
 
 func _open(profile: UiMetrics) -> Control:

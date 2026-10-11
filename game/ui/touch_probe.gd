@@ -20,6 +20,7 @@ var touches: Dictionary[int, Vector2] = {}
 var _previous_quit_on_go_back: bool = true
 
 @onready var _margin: MarginContainer = $Margin
+@onready var _column: VBoxContainer = $Margin/Column
 @onready var _metrics_label: Label = $Margin/Column/MetricsLabel
 @onready var _square_label: Label = $Margin/Column/SquareLabel
 @onready var _back_button: Button = $Margin/BackButton
@@ -69,7 +70,7 @@ func _draw() -> void:
 		draw_arc(at, radius, 0.0, TAU, 48, Color.WHITE, 2.0)
 
 
-## Recomputes everything that depends on dp: the numbers, the font and the margins.
+## Recomputes everything that depends on dp: the numbers, the font, the margins and the gap.
 func _refresh() -> void:
 	var m: UiMetrics = UiScale.current()
 	var lines: PackedStringArray = [
@@ -78,6 +79,7 @@ func _refresh() -> void:
 		"screen scale: %.3f" % m.screen_scale,
 		"stretch scale: %.3f" % m.stretch_scale,
 		"window: %d x %d px" % [m.window_size.x, m.window_size.y],
+		"safe area: %s px" % m.safe_area,
 		"base px per dp: %.3f" % UiScale.base_px_per_dp(),
 		"dp(%d): %.1f base px" % [roundi(SQUARE_DP), UiScale.dp(SQUARE_DP)],
 	]
@@ -85,8 +87,10 @@ func _refresh() -> void:
 	var font_size: int = roundi(UiScale.dp(FONT_DP))
 	for control: Control in [_metrics_label, _square_label, _back_button]:
 		control.add_theme_font_size_override("font_size", font_size)
+	var gap: int = roundi(UiScale.dp(GAP_DP))
 	for side: String in ["left", "top", "right"]:
-		_margin.add_theme_constant_override("margin_" + side, roundi(UiScale.dp(GAP_DP)))
+		_margin.add_theme_constant_override("margin_" + side, gap)
+	_column.add_theme_constant_override("separation", gap)
 	queue_redraw()
 
 

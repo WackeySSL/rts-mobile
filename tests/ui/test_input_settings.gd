@@ -46,3 +46,5 @@ func _assert_table(settings: InputSettings) -> void:
 	var table: Dictionary[String, Variant] = _table()
 	for field: String in table:
 		assert_that(settings.get(field)).override_failure_message(field).is_equal(table[field])
+		# gdUnit equality also accepts an Array[float] for a PackedFloat32Array: pin the type.
+		assert_int(typeof(settings.get(field))).is_equal(typeof(table[field]))
