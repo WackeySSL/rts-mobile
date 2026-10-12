@@ -1,9 +1,10 @@
 # ADR 0012: Sim tick on a worker thread, the view snapshot, and the revised performance gate
 
-Status: proposed, 2026-10-12 (Michael asked for it: "ok ADR 0012"). Revision 2, the same day,
-after a review in four lenses (performance, gameplay, view, tests), and revision 3 after the
-completeness check; "Revision 2" and "Revision 3" at the end list what changed. When accepted, it
-supersedes in part:
+Status: accepted, 2026-10-12 (Michael). Proposed the same day (Michael asked for it: "ok ADR
+0012"). Revision 2, the same day, after a review in four lenses (performance, gameplay, view,
+tests), and revision 3 after the completeness check; "Revision 2" and "Revision 3" at the end
+list what changed, and the "Acceptance note" after them records Michael's answers and the release
+run. It supersedes in part:
 - ADR 0011 §1 (what the view reads), §2 (where the prev positions live), §3 (the z list), §4
   (the CI ceiling becomes a printed estimate; the enforced CI budget becomes a regression
   ratchet; its 4.0 ms starting value of `mean_ms` is withdrawn), §5 (the meaning and values of
