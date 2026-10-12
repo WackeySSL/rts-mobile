@@ -21,8 +21,10 @@ func test_preset_identity() -> void:
 	assert_str(config.get_value(SECTION, "export_path")).is_equal(
 		"build/android/rts-mobile-debug.apk"
 	)
-	# A debug build enables the dev menu through OS.is_debug_build(), not a custom feature.
-	assert_str(config.get_value(SECTION, "custom_features")).is_empty()
+	# PROBE ONLY (branch claude/p26s-perf-probe, never merged): this branch exports the Android
+	# RELEASE template, where OS.is_debug_build() is false, so the dev menu (and with it the perf
+	# probe) is reached through the custom feature instead. On main this is empty.
+	assert_str(config.get_value(SECTION, "custom_features")).is_equal("dev_menu")
 	# Test code and the test runner never ship (the Web preset has the same filter).
 	assert_str(config.get_value(SECTION, "exclude_filter")).is_equal("tests/*, addons/gdUnit4/*")
 

@@ -63,7 +63,9 @@ version="$("$GODOT" --version 2>/dev/null | head -n 1 | cut -d. -f1-4 || true)"
 # unexpected tool (ADR 0005 section 3).
 template_dir="${XDG_DATA_HOME:-$HOME/.local/share}/godot/export_templates/${GODOT_VERSION}"
 missing=""
-for name in version.txt android_debug.apk; do
+# PROBE ONLY (branch claude/p26s-perf-probe, never merged; Michael approved 2026-10-12): the probe
+# APK is exported with the RELEASE template so it measures what players get.
+for name in version.txt android_release.apk; do
   [ -s "$template_dir/$name" ] || missing="$missing; template $template_dir/$name"
 done
 java_version="$("${JAVA_HOME:-/nonexistent}/bin/java" -version 2>&1 || true)"
@@ -83,6 +85,11 @@ for name in GODOT_ANDROID_KEYSTORE_DEBUG_PATH GODOT_ANDROID_KEYSTORE_DEBUG_USER 
   [ -n "${!name:-}" ] || die 5 "$name is not set (path, user and password must all be set)"
 done
 [ -s "$GODOT_ANDROID_KEYSTORE_DEBUG_PATH" ] || die 5 "the debug keystore file is missing or empty"
+# PROBE ONLY: the release export is signed with the same per-run generated keystore (never a real
+# release key). Godot reads the release keystore from these variables; the values are never printed.
+export GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$GODOT_ANDROID_KEYSTORE_DEBUG_PATH"
+export GODOT_ANDROID_KEYSTORE_RELEASE_USER="$GODOT_ANDROID_KEYSTORE_DEBUG_USER"
+export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD"
 
 # (4) Fresh output folder. build/.gdignore keeps the next import away from the exported files.
 apk="$out_abs/$APK_NAME"
@@ -93,7 +100,7 @@ rm -f "$apk" "$apk.idsig" "$out_abs/$NOTICE_NAME"
 # (5) Import (a fresh checkout has no .godot/) and export. The log of this run only is scanned.
 log="$(mktemp -t export-android.XXXXXX)"
 set +e
-{ "$GODOT" --headless --path . --import && "$GODOT" --headless --path . --export-debug Android "$apk"; } 2>&1 | tee "$log"
+{ "$GODOT" --headless --path . --import && "$GODOT" --headless --path . --export-release Android "$apk"; } 2>&1 | tee "$log"
 status=${PIPESTATUS[0]}
 set -e
 [ "$status" -eq 0 ] || die 1 "Godot export failed with exit code ${status} (log: $log)"
@@ -159,6 +166,16 @@ grep -q "package=\"$PACKAGE\"" <<<"$manifest" || die 1 "the manifest package is 
 # Godot 4.7.2 maps the project's sensor landscape to userLandscape (11), not sensorLandscape (6).
 grep -Eq 'screenOrientation\(0x0101001e\)=11$' <<<"$manifest" || die 1 "the manifest screenOrientation is not 11 (userLandscape)"
 grep -q 'android.permission.VIBRATE' <<<"$manifest" || die 1 "the manifest lacks the VIBRATE permission"
+# PROBE ONLY: prove the release template. The engine library must be the release template's, and
+# the manifest must not be debuggable.
+apk_lib_sum="$(unzip -p "$apk" lib/arm64-v8a/libgodot_android.so | sha256sum | cut -d' ' -f1)"
+tpl_lib_sum="$(unzip -p "$template_dir/android_release.apk" lib/arm64-v8a/libgodot_android.so | sha256sum | cut -d' ' -f1)"
+echo "export-android: libgodot_android.so apk=$apk_lib_sum release_template=$tpl_lib_sum"
+[ "$apk_lib_sum" = "$tpl_lib_sum" ] || die 1 "the APK engine library is not the release template's"
+if grep -Eq 'debuggable\(0x0101000f\)=(true|0xffffffff)' <<<"$manifest"; then
+  die 1 "the manifest is debuggable"
+fi
+echo "export-android: RELEASE template confirmed, APK is not debuggable"
 
 rm -f "$log"
 echo "export-android: OK $out/$APK_NAME"
