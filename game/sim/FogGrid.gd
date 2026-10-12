@@ -8,12 +8,19 @@ extends RefCounted
 const MILLI_PER_TILE: int = 1000
 ## The arrays the state hash covers.
 const HASHED: Array[StringName] = [&"visible", &"explored"]
-## Every other Packed array of the class: the version, the dirty-list blocks and the masks.
+## Every other int and Packed array of the class: the sizes, the version, the dirty-list blocks
+## and the masks (ADR 0007 section 8 lists each one exactly once).
 const UNHASHED: Array[StringName] = [
+	&"cols",
+	&"rows",
+	&"cells",
+	&"player_count",
+	&"dirty_capacity",
 	&"version",
 	&"dirty",
 	&"dirty_count",
 	&"dirty_full",
+	&"listed",
 	&"mask_start",
 	&"mask_radius",
 	&"mask_half",
@@ -38,6 +45,8 @@ var dirty: PackedInt32Array = PackedInt32Array()
 var dirty_count: PackedInt32Array = PackedInt32Array()
 ## Per player, 1 when a flip found its block full since the last begin_update.
 var dirty_full: PackedInt32Array = PackedInt32Array()
+## 1 while the cell is in the player's dirty list, same layout as visible: a cell is listed once.
+var listed: PackedByteArray = PackedByteArray()
 ## Per mask: where its rows start in mask_half, and how many rows it reaches above and below
 ## its centre. mask_half holds each row's half-width in tiles, from dy = -radius down.
 var mask_start: PackedInt32Array = PackedInt32Array()
@@ -56,6 +65,7 @@ func configure(cols: int, rows: int, player_count: int) -> void:
 	visible = _zeros(player_count * cells)
 	explored = PackedByteArray()
 	explored.resize(player_count * cells)
+	listed = explored.duplicate()
 	version = _zeros(player_count)
 	dirty = _zeros(player_count * dirty_capacity)
 	dirty_count = _zeros(player_count)
@@ -78,11 +88,12 @@ func add_mask(sight_milli: int) -> int:
 
 ## Adds `delta` (+1 stamps, -1 unstamps) to the visible count of every cell of the mask's disc
 ## centred on `cell`, clipped to the map, and marks the cells it leaves visible as explored. A
-## cell turns explored only as it turns visible, so a flip is a count crossing 0. Each flip goes
-## into the player's dirty block, one entry per flip (a cell that flips twice before
-## begin_update is listed twice); a full block sets its flag instead. The version grows by one
-## if any cell flipped. `cell` must be in the map, `player` and `mask` valid. It allocates
-## nothing.
+## cell turns explored only as it turns visible, so a flip is a count crossing 0. A cell that
+## flips goes into the player's dirty block once per update, however often it flips (so a
+## re-stamp lists the cells of both discs when the old one is unstamped first, and only the
+## cells that change when the new one is stamped first); a cell that finds the block full sets
+## its flag instead. The version grows by one if any cell flipped. `cell` must be in the map,
+## `player` and `mask` valid. It allocates nothing.
 @warning_ignore("integer_division")
 func stamp(player: int, cell: int, mask: int, delta: int) -> void:
 	var block: int = player - 1
@@ -95,6 +106,7 @@ func stamp(player: int, cell: int, mask: int, delta: int) -> void:
 	var half: PackedInt32Array = mask_half
 	var counts: PackedInt32Array = visible
 	var seen: PackedByteArray = explored
+	var marks: PackedByteArray = listed
 	var list: PackedInt32Array = dirty
 	var list_at: int = block * dirty_capacity
 	var capacity: int = dirty_capacity
@@ -114,9 +126,12 @@ func stamp(player: int, cell: int, mask: int, delta: int) -> void:
 			if (before > 0) == (after > 0):
 				continue
 			flipped = true
+			if marks[base + at] != 0:
+				continue
 			if used < capacity:
 				list[list_at + used] = at
 				used += 1
+				marks[base + at] = 1
 			else:
 				overflowed = true
 	dirty_count[block] = used
@@ -140,7 +155,8 @@ func version_of(player: int) -> int:
 
 
 ## The used part of the player's dirty block: the cells that flipped since its last
-## begin_update, in flip order. A copy, for the view; the sim never calls it.
+## begin_update, each once, in the order of its first flip. A copy, for the view; the sim never
+## calls it.
 func dirty_cells(player: int) -> PackedInt32Array:
 	var at: int = (player - 1) * dirty_capacity
 	return dirty.slice(at, at + dirty_count[player - 1])
@@ -151,14 +167,22 @@ func dirty_overflowed(player: int) -> bool:
 	return dirty_full[player - 1] != 0
 
 
-## Empties the player's dirty list and clears its flag. Nothing is resized.
+## Empties the player's dirty list and clears its flag and the marks of its cells. Nothing is
+## resized.
 func begin_update(player: int) -> void:
-	dirty_count[player - 1] = 0
-	dirty_full[player - 1] = 0
+	var block: int = player - 1
+	var marks: PackedByteArray = listed
+	var list: PackedInt32Array = dirty
+	var base: int = block * cells
+	var list_at: int = block * dirty_capacity
+	for entry: int in dirty_count[block]:
+		marks[base + list[list_at + entry]] = 0
+	dirty_count[block] = 0
+	dirty_full[block] = 0
 
 
-## Makes `dst` an independent copy (ADR 0012 section 3): every array of HASHED and UNHASHED is a
-## duplicate() and every scalar is copied, so a later write to this grid never reaches `dst`.
+## Makes `dst` an independent copy (ADR 0012 section 3): every Packed array of HASHED and
+## UNHASHED is a duplicate() and every int is copied, so a later write here never reaches `dst`.
 func copy_into(dst: FogGrid) -> void:
 	dst.cols = cols
 	dst.rows = rows
@@ -171,6 +195,7 @@ func copy_into(dst: FogGrid) -> void:
 	dst.dirty = dirty.duplicate()
 	dst.dirty_count = dirty_count.duplicate()
 	dst.dirty_full = dirty_full.duplicate()
+	dst.listed = listed.duplicate()
 	dst.mask_start = mask_start.duplicate()
 	dst.mask_radius = mask_radius.duplicate()
 	dst.mask_half = mask_half.duplicate()
