@@ -2,9 +2,9 @@
 
 Status: proposed, 2026-10-12 (Michael asked for it: "ok ADR 0012"). When accepted, it supersedes
 in part:
-- ADR 0011 §1 (what the view reads), §2 (where the prev positions live), §3 (the z list), §5 (the
-  meaning and values of `work_p95_ms` and `sim_p95_ms` in its acceptance note, and the debug-APK
-  margin) and §6 step 4 (adopted here);
+- ADR 0011 §1 (what the view reads), §2 (where the prev positions live), §3 (the z list), §5
+  (the meaning and values of `work_p95_ms` and `sim_p95_ms` in its acceptance note, and the
+  debug-APK margin) and §6 step 4 (adopted here);
 - ADR 0008 §3 (the flow-slice budget and the starting `flow_cells_per_tick`);
 - ADR 0007 §6 (where the runner's per-tick work runs).
 
@@ -154,16 +154,16 @@ it.
   Commands keep queuing in `CommandQueue` meanwhile, and none is dropped.
 - **Catch-up:** in `WORKER` mode at most one publish happens per frame. Backlog beyond
   `max_catch_up_ticks` is dropped, as in `SYNC`.
-- **Refill:** while the runner runs (not paused) with no job in flight, after `start()`,
-  `run_ticks()`, a pause or an application resume, the next `_process` posts a job at once. It
-  does not wait for a boundary.
+- **Refill** (`WORKER` only): while the runner runs (not paused) with no job in flight, after
+  `start()`, `run_ticks()`, a pause or an application resume, the next `_process` posts a job at
+  once. It does not wait for a boundary.
 - **Synchronous mode:** the same `TickJob.run()` runs inline on the main thread at the boundary
   and publishes at once. It is used:
   - by every headless test (`AUTO` resolves to `SYNC` headless). The runner's own worker tests
     (plan P38w) are the one exception: they set `WORKER` explicitly;
-  - by `run_ticks(n)`, always inline. It first waits for the job in flight and publishes it,
-    which counts as the first of the n ticks, so the published tick always advances by exactly
-    n;
+  - by `run_ticks(n)`, always inline. For n > 0 it first waits for the job in flight and
+    publishes it, which counts as the first of the n ticks, so the published tick always advances
+    by exactly n;
   - by `Replay.play` and `tests/perf`, which drive `MatchLoop` directly with no runner;
   - by the web build. Threads are off in the web preset, so the web preview keeps the in-frame
     tick and its hitches. The APK is the gate.
