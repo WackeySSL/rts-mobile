@@ -131,8 +131,10 @@ func test_the_dirty_list_holds_exactly_the_flipped_cells() -> void:
 	assert_bool(grid.dirty_overflowed(1)).is_false()
 
 
-## 8 x 8 cells hold 16 entries per block: three plus shapes and one dot fill it exactly.
-func test_a_full_block_sets_the_flag_and_begin_update_clears_it() -> void:
+## 8 x 8 cells hold 16 entries per block: three plus shapes and one dot fill it exactly. A flip
+## that finds the block full still grows the version (the view's trigger) and leaves no mark, so
+## once begin_update empties the block the cell is listed when it flips back.
+func test_a_full_block_sets_the_flag_grows_the_version_and_leaves_no_mark() -> void:
 	var grid: FogGrid = _grid(8, 8, 1)
 	var plus: int = grid.add_mask(1000)
 	var dot: int = grid.add_mask(0)
@@ -141,8 +143,10 @@ func test_a_full_block_sets_the_flag_and_begin_update_clears_it() -> void:
 	grid.stamp(1, 54, dot, 1)
 	assert_int(grid.dirty_cells(1).size()).is_equal(16)
 	assert_bool(grid.dirty_overflowed(1)).is_false()
+	assert_int(grid.version_of(1)).is_equal(4)
 	grid.stamp(1, 63, dot, 1)
 	assert_bool(grid.dirty_overflowed(1)).is_true()
+	assert_int(grid.version_of(1)).is_equal(5)
 	assert_int(grid.dirty_cells(1).size()).is_equal(16)
 	assert_int(grid.dirty_cells(1)[15]).is_equal(54)
 	assert_bool(grid.is_visible(1, 63)).is_true()
@@ -152,6 +156,8 @@ func test_a_full_block_sets_the_flag_and_begin_update_clears_it() -> void:
 	grid.begin_update(1)
 	assert_bool(grid.dirty_overflowed(1)).is_false()
 	assert_array(grid.dirty_cells(1)).is_empty()
+	grid.stamp(1, 63, dot, -1)
+	assert_array(grid.dirty_cells(1)).is_equal(PackedInt32Array([63]))
 
 
 ## A lone unit of player 2 with sight 6000 (113 tiles) moves one tile on a 30 x 30 map. Unstamping
@@ -209,6 +215,17 @@ func test_dirty_lists_are_fixed_blocks_and_begin_update_clears_one_player() -> v
 	assert_array(grid.dirty_cells(2)).is_equal(PackedInt32Array([0]))
 	assert_array(grid.dirty_cells(1)).is_equal(first)
 	assert_int(grid.dirty.size()).is_equal(32)
+
+
+## begin_update(2) clears the marks of player 2's cells only: cell 5 of player 1 is still listed,
+## so its flip back adds no second entry.
+func test_begin_update_of_another_player_keeps_a_cell_listed_once() -> void:
+	var grid: FogGrid = _grid(8, 8, 2)
+	var dot: int = grid.add_mask(0)
+	grid.stamp(1, 5, dot, 1)
+	grid.begin_update(2)
+	grid.stamp(1, 5, dot, -1)
+	assert_array(grid.dirty_cells(1)).is_equal(PackedInt32Array([5]))
 
 
 ## 7 x 5 is not square and has 35 cells, so a quarter is 8, rounded down. configure() on a used
