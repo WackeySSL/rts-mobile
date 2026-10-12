@@ -105,6 +105,8 @@ accepted 2026-10-12). Where this file and an ADR disagree, the ADR wins; fix thi
   cell, passability and visibility lookups, and never allocate (`# alloc-ok` marks a reviewed
   exception).
 - Helper calls only at event cadence: line checks, and `best_neighbour` stored into `nav_next`.
+- Use `len(s)` for a String's size: `test_sim_purity` bans `.length(` in `game/sim`, because
+  `Vector2i.length()` returns a float.
 
 ## Data
 - Units, buildings, weapons and AI profiles are custom Resources in `data/`. Load them once at
