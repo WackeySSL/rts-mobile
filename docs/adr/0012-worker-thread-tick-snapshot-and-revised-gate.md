@@ -207,11 +207,16 @@ release-template facts on the official `linux_release` template):
   instead of hanging CI (gdUnit4's per-test timeout is a SceneTree timer, which cannot fire while
   the main thread blocks). The transitions live in one pure
   `static func hand_off(state: int, event: int) -> Vector2i` (x = next state, y = action), tested
-  as a table without threads:
+  as a table without threads. Results of the semaphore are inputs, never something `hand_off`
+  finds out: in `RUNNING` the runner calls `try_wait()` once per frame and passes `FRAME_TAKEN`
+  when it got the token and `FRAME` otherwise; in `IDLE` and `FINISHED` it does not poll and
+  passes `FRAME`. The timed-wait cells give the next state for a taken token; at the cap the
+  runner does not apply it: it stays `RUNNING`, logs the error and returns false.
 
   | Event | `IDLE` | `RUNNING` | `FINISHED` |
   | --- | --- | --- | --- |
-  | frame, running and not paused | refill: drain, post, clock 0 → `RUNNING` | `try_wait()`; taken → `FINISHED` | none |
+  | `FRAME` (running, not paused, no token taken this frame) | refill: drain, post, clock 0 → `RUNNING` | none → `RUNNING` | none |
+  | `FRAME_TAKEN` (running, not paused, this frame's `try_wait()` took the token) | not reached (no poll) | → `FINISHED` | not reached (no poll) |
   | tick boundary | not reached (the refill came first) | hold → `RUNNING` | publish, drain, post → `RUNNING` |
   | `wait_idle()` | true | timed wait → `FINISHED` | true |
   | `start()` | tick-0 snapshot → `IDLE` | timed wait, discard, tick-0 snapshot → `IDLE` | discard, tick-0 snapshot → `IDLE` |
@@ -745,3 +750,5 @@ period.
   compares it with `previous.match_serial`), and `TickJob.run()` sets `last_hash` after the step.
 - §4: why held ticks have no verdict, and the condition for proposing one.
 - Context: the two derivations behind the 10.4-13.3 ms estimate.
+- Second completeness check: the frame's poll result is part of the event (`FRAME`,
+  `FRAME_TAKEN`), so the §1 table is a pure function of (state, event).
