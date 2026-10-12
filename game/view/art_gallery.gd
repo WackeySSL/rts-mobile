@@ -17,6 +17,9 @@ extends Control
 ## pair per zoom level. `Grass/ZoomRow` and `Sand/ZoomRow` stay the tank's (tests/project).
 ## They have no tile square; a unit without a turret can join the list in `_squad_pair`.
 ##
+## `_add_rings_and_atlas` adds a ring row (the team A tank with its selection ring at the three
+## zooms, at the 6-inch phone's ring radius) and the effects atlas at scale 1 to each ground.
+##
 ## To add an asset: add its layers as a rig on both backgrounds, put the rig in a team group and
 ## keep the layer names. See assets/art/STYLE.md.
 
@@ -28,6 +31,15 @@ const UNIT_ART: String = "res://assets/art/svg/units/%s_%s.svg"
 const SQUAD_SLOT_OFFSET_PX: float = 80.0  ## Rifle squad left of the tank, rocket squad right.
 const SQUAD_ZOOM_OFFSET_PX: float = 34.0  ## From the zoom column's centre, before the rig scale.
 const SQUAD_ROW_TOP: float = 0.62  ## Anchor of the squad zoom row (the tank's is 0.78).
+const RING_ART: String = "res://assets/art/svg/ui/selection_ring.svg"
+const RING_TEX_RADIUS_PX: float = 72.0  ## The ring texture's centre-line radius (STYLE.md).
+const RING_MIN_RADIUS_DP: float = 18.0
+const PX_PER_DP: float = 1.75  ## Base px per dp on the 6-inch phone profile.
+const TANK_RING_RADIUS_PX: float = 35.2  ## World px: (selection_radius / 1000 + 0.05) x 64.
+const RING_ROW_TOP: float = 0.3
+const ATLAS_ART: String = "res://assets/art/svg/fx/effects_atlas.svg"
+const ATLAS_TOP_PX: float = 20.0
+const ATLAS_LEFT_PX: Dictionary[String, float] = {"Grass": 190.0, "Sand": 282.0}
 
 @export var team_a_color: Color = Color("2F80ED")
 @export var team_b_color: Color = Color("E5484D")
@@ -55,6 +67,7 @@ func _exit_tree() -> void:
 
 func _ready() -> void:
 	_add_squads()
+	_add_rings_and_atlas()
 	_tint_team_layers(TEAM_A_GROUP, team_a_color)
 	_tint_team_layers(TEAM_B_GROUP, team_b_color)
 	for node: Node in find_children(TURRET_LAYER, "Sprite2D", true, false):
@@ -87,14 +100,7 @@ func _add_squads() -> void:
 			for rig: Node2D in _squad_pair("", is_a, Vector2.ZERO, SQUAD_SLOT_OFFSET_PX, 1.0):
 				slot.add_child(rig)
 				_spinners.append(rig)
-		var row: Control = Control.new()
-		row.name = "SquadZoomRow"
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.anchor_left = 0.5
-		row.anchor_right = 0.5
-		row.anchor_top = SQUAD_ROW_TOP
-		row.anchor_bottom = SQUAD_ROW_TOP
-		ground.add_child(row)
+		var row: Control = _anchored_row(ground, "SquadZoomRow", SQUAD_ROW_TOP)
 		# A pair per tank rig of the zoom row, same column and scale, so the two rows cannot
 		# drift apart. The labels under the rigs are Controls.
 		for node: Node in ground.get_node("ZoomRow").get_children():
@@ -105,6 +111,52 @@ func _add_squads() -> void:
 					String(tank.name), is_a, tank.position, SQUAD_ZOOM_OFFSET_PX, tank.scale.x
 				):
 					row.add_child(rig)
+
+
+func _add_rings_and_atlas() -> void:
+	for ground_name: String in ["Grass", "Sand"]:
+		var ground: Control = get_node(ground_name)
+		var row: Control = _anchored_row(ground, "RingRow", RING_ROW_TOP)
+		for node: Node in ground.get_node("ZoomRow").get_children():
+			var tank: Node2D = node as Node2D
+			if tank == null:
+				continue
+			# The tank rig again, with the ring the game draws at this zoom: the larger of the
+			# tank's own radius and the 18 dp minimum, which is dp / zoom in world px.
+			var rig: Node2D = tank.duplicate()
+			rig.name = "Ring" + String(tank.name)
+			# Only own units get a ring (STYLE.md), so the sand row shows team A as well.
+			rig.remove_from_group(TEAM_B_GROUP)
+			rig.add_to_group(TEAM_A_GROUP)
+			var ring: Sprite2D = Sprite2D.new()
+			ring.name = "Ring"
+			ring.texture = load(RING_ART)
+			var radius: float = maxf(
+				TANK_RING_RADIUS_PX, RING_MIN_RADIUS_DP * PX_PER_DP / tank.scale.x
+			)
+			ring.scale = Vector2.ONE * radius / RING_TEX_RADIUS_PX
+			rig.add_child(ring)
+			rig.move_child(ring, 0)
+			row.add_child(rig)
+		var atlas: TextureRect = TextureRect.new()
+		atlas.name = "EffectsAtlas"
+		atlas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		atlas.texture = load(ATLAS_ART)
+		atlas.position = Vector2(ATLAS_LEFT_PX[ground_name], ATLAS_TOP_PX)
+		ground.add_child(atlas)
+
+
+## An empty Control in the middle of `ground`, `top` of the way down, that rigs are added to.
+func _anchored_row(ground: Control, row_name: String, top: float) -> Control:
+	var row: Control = Control.new()
+	row.name = row_name
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.anchor_left = 0.5
+	row.anchor_right = 0.5
+	row.anchor_top = top
+	row.anchor_bottom = top
+	ground.add_child(row)
+	return row
 
 
 ## The rifle squad `offset` px left of `centre`, the rocket squad the same distance right.
