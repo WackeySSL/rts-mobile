@@ -1,9 +1,11 @@
 extends GdUnitTestSuite
 ## STYLE.md rules a plain check can hold, the unit art that UnitLayer builds on (one canvas per
 ## unit, half import scale, grey team layers, no turret on a squad), the ring texture and the
-## effects atlas that P40 and P44 copy numbers from, and the gallery's squads and rings.
+## effects atlas that P40 and P44 copy numbers from, the terrain tiles and fog alpha that P36 and
+## P47 copy, and the gallery's squads, rings and terrain row.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
+const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
 const UNIT_ART: String = "res://assets/art/svg/units/%s_%s.svg"
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
 const SIDE_PX: Dictionary[String, int] = {"light_tank": 64, "rifle_squad": 32, "rocket_squad": 32}
@@ -11,6 +13,16 @@ const SIDE_PX: Dictionary[String, int] = {"light_tank": 64, "rifle_squad": 32, "
 const FORBIDDEN: Array[String] = ["text", "image", "filter", "mask", "href", "style", "script"]
 const OK_TAGS: String = " g path rect circle ellipse polygon polyline line linearGradient stop "
 const ATLAS_PATH: String = "res://assets/art/svg/fx/effects_atlas.svg"
+## Texels "x,y,hex" of each map tile (STYLE.md, Fog and terrain). Row 0 and column 0 are the grid:
+## the colour below it, darkened by 10 % (a channel is truncated, 94 x 0.9 = 84).
+const TEXELS: Dictionary[String, String] = {
+	"GrassEven": "3,3,5e7d4a 3,0,547042 0,3,547042",
+	"GrassOdd": "3,3,6f8f57 3,0,63804e",
+	"Sand": "3,3,cdb98f 0,3,b8a680",
+	"Scrub": "1,1,8c9a6b 2,2,6b7a4f 4,4,8c9a6b 5,6,6b7a4f 6,2,4e5a3a 3,0,465134",
+	"Rock": "3,3,6e6a66 7,3,4f4b48 3,7,4f4b48 3,0,7e7975",
+	"Water": "2,2,3c7396 5,6,3c7396 3,3,2e5e7e",
+}
 ## Atlas regions in imported px (STYLE.md, Combat effects): burst, puff, flash, shell, rocket.
 const REGIONS: Array[Rect2i] = [
 	Rect2i(0, 0, 80, 80),
@@ -213,6 +225,32 @@ func test_each_ground_carries_the_atlas_at_scale_1_clear_of_the_back_button_and_
 				. override_failure_message("%s over %s" % [ground_name, sprite.get_path()])
 				. is_false()
 			)
+
+
+func test_the_map_tiles_have_the_texels_of_the_style_guide() -> void:
+	assert_array(Gallery.TERRAIN_TILES.keys()).is_equal(TEXELS.keys())
+	for id: String in TEXELS:
+		var image: Image = Gallery.tile_image(Gallery.TERRAIN_TILES[id])
+		for texel: String in TEXELS[id].split(" "):
+			var part: PackedStringArray = texel.split(",")
+			var hex: String = image.get_pixel(int(part[0]), int(part[1])).to_html(false)
+			assert_str(hex).override_failure_message(id + " " + texel).is_equal(part[2])
+
+
+func test_the_gallery_terrain_row_shows_six_swatches_with_the_explored_fog_over_their_lower_half(
+) -> void:
+	var gallery: Node = await _open_gallery()
+	assert_int(gallery.explored_fog_alpha).is_equal(140)
+	var row: Node = gallery.get_node("TerrainRow")
+	(
+		assert_array(row.get_children().map(func(c: Node) -> String: return c.name))
+		. is_equal(["GrassEven", "GrassOdd", "Sand", "Scrub", "Rock", "Water", "ExploredFog"])
+	)
+	assert_vector((row.get_node("Scrub") as Control).size).is_equal(Vector2(64, 64))
+	var fog: ColorRect = row.get_node("ExploredFog")
+	assert_that(fog.color).is_equal(Color(0.0, 0.0, 0.0, 140.0 / 255.0))
+	assert_vector(fog.size).is_equal(Vector2(424, 32))
+	assert_float(fog.position.y).is_equal(32.0)
 
 
 ## One character per pixel: clear, white, dark (#1C2127, luminance 0.127) or anything else. The

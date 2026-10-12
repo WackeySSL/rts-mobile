@@ -17,6 +17,7 @@ extends Control
 ## pair per zoom level. `Grass/ZoomRow` and `Sand/ZoomRow` stay the tank's (tests/project).
 ## They have no tile square; a unit without a turret can join the list in `_squad_pair`.
 ##
+## `_add_terrain_row` adds the terrain swatches, half of them under the explored fog alpha.
 ## `_add_rings_and_atlas` adds a ring row (the team A tank with its selection ring at the three
 ## zooms, at the 6-inch phone's ring radius) and the effects atlas at scale 1 to each ground.
 ##
@@ -40,11 +41,27 @@ const RING_ROW_TOP: float = 0.3
 const ATLAS_ART: String = "res://assets/art/svg/fx/effects_atlas.svg"
 const ATLAS_TOP_PX: float = 20.0
 const ATLAS_LEFT_PX: Dictionary[String, float] = {"Grass": 190.0, "Sand": 282.0}
+## Terrain tiles as the map bake draws them (STYLE.md, "Fog and terrain"): 8x8 texels, as filled
+## rects "x,y,w,h,hex" drawn in order, then row 0 and column 0 darkened by GRID_DARKEN.
+const TERRAIN_TILES: Dictionary[String, String] = {
+	"GrassEven": "0,0,8,8,5E7D4A",
+	"GrassOdd": "0,0,8,8,6F8F57",
+	"Sand": "0,0,8,8,CDB98F",
+	"Scrub": "0,0,8,8,4E5A3A 1,1,3,3,6B7A4F 4,4,3,3,6B7A4F 1,1,1,1,8C9A6B 4,4,1,1,8C9A6B",
+	"Rock": "0,0,8,8,6E6A66 0,0,8,1,8C8782 0,0,1,8,8C8782 0,7,8,1,4F4B48 7,0,1,8,4F4B48",
+	"Water": "0,0,8,8,2E5E7E 1,2,4,1,3C7396 4,6,4,1,3C7396",
+}
+const GRID_DARKEN: float = 0.1
+const SWATCH_PX: float = 64.0  ## One tile at gameplay zoom.
+const SWATCH_GAP_PX: float = 8.0
+const TERRAIN_ROW_TOP: float = 0.03
 
 @export var team_a_color: Color = Color("2F80ED")
 @export var team_b_color: Color = Color("E5484D")
 ## Turret turn speed in radians per second.
 @export var turret_turn_speed: float = 0.5
+## The fog alpha of explored but not visible tiles (STYLE.md; `FogLayer.explored_alpha`).
+@export var explored_fog_alpha: int = 140
 
 var _turrets: Array[Sprite2D] = []
 var _spinners: Array[Node2D] = []
@@ -68,6 +85,7 @@ func _exit_tree() -> void:
 func _ready() -> void:
 	_add_squads()
 	_add_rings_and_atlas()
+	_add_terrain_row()
 	_tint_team_layers(TEAM_A_GROUP, team_a_color)
 	_tint_team_layers(TEAM_B_GROUP, team_b_color)
 	for node: Node in find_children(TURRET_LAYER, "Sprite2D", true, false):
@@ -144,6 +162,43 @@ func _add_rings_and_atlas() -> void:
 		atlas.texture = load(ATLAS_ART)
 		atlas.position = Vector2(ATLAS_LEFT_PX[ground_name], ATLAS_TOP_PX)
 		ground.add_child(atlas)
+
+
+func _add_terrain_row() -> void:
+	var row: Control = _anchored_row(self, "TerrainRow", TERRAIN_ROW_TOP)
+	var step: float = SWATCH_PX + SWATCH_GAP_PX
+	var width: float = step * TERRAIN_TILES.size() - SWATCH_GAP_PX
+	var index: int = 0
+	for id: String in TERRAIN_TILES:
+		var swatch: TextureRect = TextureRect.new()
+		swatch.name = id
+		swatch.texture = ImageTexture.create_from_image(tile_image(TERRAIN_TILES[id]))
+		swatch.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		swatch.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		swatch.position = Vector2(step * index - width / 2.0, 0.0)
+		swatch.size = Vector2(SWATCH_PX, SWATCH_PX)
+		row.add_child(swatch)
+		index += 1
+	var fog: ColorRect = ColorRect.new()
+	fog.name = "ExploredFog"
+	fog.color = Color(0.0, 0.0, 0.0, explored_fog_alpha / 255.0)
+	fog.position = Vector2(-width / 2.0, SWATCH_PX / 2.0)
+	fog.size = Vector2(width, SWATCH_PX / 2.0)
+	row.add_child(fog)
+
+
+## The CPU-side 8x8 tile of a `TERRAIN_TILES` spec, grid texels included.
+static func tile_image(spec: String) -> Image:
+	var image: Image = Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	for fill: String in spec.split(" "):
+		var part: PackedStringArray = fill.split(",")
+		var rect: Rect2i = Rect2i(int(part[0]), int(part[1]), int(part[2]), int(part[3]))
+		image.fill_rect(rect, Color(part[4]))
+	for i: int in 8:
+		image.set_pixel(i, 0, image.get_pixel(i, 0).darkened(GRID_DARKEN))
+		if i > 0:
+			image.set_pixel(0, i, image.get_pixel(0, i).darkened(GRID_DARKEN))
+	return image
 
 
 ## An empty Control in the middle of `ground`, `top` of the way down, that rigs are added to.

@@ -6,7 +6,7 @@ Update this file when Michael approves a change; the skill stays the short check
 
 Status: v1, written in Phase 0 with the light tank sample. v1.1 (Phase 1, P12) adds the feedback
 markers and the gallery zoom row. v1.2 (Phase 2, P34) adds the rifle and rocket squads, the selection ring
-texture, the effects atlas and the specs for combat effects and health bars. Rules marked **(new)**
+texture, the effects atlas and the specs for combat effects, health bars, fog and terrain. Rules marked **(new)**
 go beyond the skill and are waiting for Michael's approval (list at the end).
 
 ## Look
@@ -30,6 +30,7 @@ phone. Not cartoonish, not photoreal. Pure top-down view, light from the top-lef
 | Sand shade / mid / highlight | #B59F72 / #CDB98F / #E4D6B3 | mid 186 |
 | Grass (map) | #5E7D4A / #6F8F57 | grass 127 |
 | Dirt / rock | #8A6F4D / #6E6A66 | |
+| Rock lit / shade (new) | #8C8782 / #4F4B48 | 136 / 76 |
 | Water | #2E5E7E / #3C7396 | |
 | Ore | #F2B705, highlight #FFD84D, shade #A67C00 | |
 | Team A / team B / neutral | #2F80ED / #E5484D / #9AA5B1 | 116 / 120 / 163 |
@@ -308,6 +309,33 @@ grass and sand. In greyscale own bars read as plain rectangles and enemy bars as
 out of the top edge, at every zoom and for both classes, so the notch alone tells them apart (the fill
 luminance, 123 against 174, is a second cue).
 
+## Fog and terrain
+`MapView` bakes the map once per match into one texture at 8 px per tile (ADR 0011 section 3) and
+draws it with `texture_filter` NEAREST, so a texel is 8x8 world px. Each terrain id of
+`data/terrain/standard.tres` has a tile of 8x8 texels, filled rects (x, y, w, h) in drawing order:
+
+| Terrain id | Colours | Rects |
+| --- | --- | --- |
+| `grass` | #5E7D4A on tiles with x + y even, #6F8F57 on odd ones (the Phase 1 checkerboard) | whole tile |
+| `sand` | #CDB98F | whole tile |
+| `scrub` | base #4E5A3A, bush #6B7A4F, highlight #8C9A6B | base 0,0,8,8; bush 1,1,3,3 and 4,4,3,3; highlight 1,1,1,1 and 4,4,1,1 |
+| `rock` | base #6E6A66, lit #8C8782 (new), shade #4F4B48 (new) | base 0,0,8,8; lit 0,0,8,1 and 0,0,1,8; shade 0,7,8,1 and 7,0,1,8 |
+| `water` | base #2E5E7E, ripple #3C7396 | base 0,0,8,8; ripple 1,2,4,1 and 4,6,4,1 |
+
+After the rects, row 0 and column 0 of every tile are darkened by 10 % (black at 10 %): the grid,
+which replaces Phase 1's 1 px line at 20 % (new). Fog is black on a texture of one texel per tile,
+linear filtered, so its edge is soft across one tile (ADR 0010 section 2): alpha 255 where
+unexplored, 140 where explored but not visible, 0 where visible. `FogLayer.explored_alpha` and the
+gallery's `explored_fog_alpha` are 140. `TERRAIN_TILES` in `art_gallery.gd` holds the same rects.
+
+Greyscale check (P34c, a scratch render of a map with every terrain: mean luminance and the spread
+(standard deviation) inside one tile, grid included): grass 107 and 124 (spread 5 and 6), sand 182
+(9), scrub 90 (17.5), rock 102 (16), water 84 (8). Scrub is 17 to 34 below the grass tones and its
+spread is three times theirs, so the dotted bushes read apart from grass in greyscale, as a darker
+patch with a texture. Rock has the grass's mean luminance, so the lit and shaded edges carry it
+(the bevel reads as a raised block). Under the explored fog (x 0.45): grass 48 and 56, sand 82,
+scrub 41, rock 46, water 38, all dark, with the patterns still visible.
+
 ## Gallery
 `scenes/dev/art_gallery.tscn` (opened from the dev menu, also in the web preview) shows every asset
 at scale 1 (gameplay zoom) on grass and sand, in team A and team B. A faint 64 px square behind each
@@ -320,7 +348,9 @@ the same three columns, and in each slot the squads stand beside the tank and tu
 squads are built in code, without a tile square: a unit with no turret can join the `_squad_pair`
 list in `art_gallery.gd` instead of getting rigs in the scene. A ring row (also built by the
 script) shows team A's tank with its ring on both grounds (only own units get one) at the three zoom
-levels, at the ring radius of the 6-inch phone, and each ground carries the effects atlas at scale 1. To add an asset:
+levels, at the ring radius of the 6-inch phone, and each ground carries the effects atlas at scale 1.
+A terrain row at the top shows the five terrains (grass twice) as map tiles at 64 px, the lower half
+under the explored fog alpha. To add an asset:
 - Add its layers as one rig `Node2D` under each of the four slots (grass A, grass B, sand A, sand B).
 - Put the rig in the group `gallery_team_a` or `gallery_team_b`, and name the layers `Hull`, `Team`
   and `Turret` (a unit without a turret leaves `Turret` out).
@@ -355,6 +385,10 @@ levels, at the ring radius of the 6-inch phone, and each ground carries the effe
 - The selection ring is imported at scale 1.0, not 0.5 (see `RING_TEX_RADIUS_PX = 72` under the
   marker table), so it stays sharp at zoom 1.5. This is an exception to the half-scale rule for one
   asset.
+- Terrain: rock has the same mean luminance as grass, so only its bevel separates them in greyscale;
+  judge it on the phone. The rock lit and shade colours and the 10 % grid are new. The explored fog
+  (alpha 140) leaves terrain at 45 % brightness: check that explored ground stays readable; it is one
+  value (`FogLayer.explored_alpha`) to change.
 
 ## Change log
 | Date | Change |
@@ -363,3 +397,4 @@ levels, at the ring radius of the 6-inch phone, and each ground carries the effe
 | 2026-10-11 | v1.1 (P12): feedback marker spec, gallery zoom row, launcher icon credit. |
 | 2026-10-12 | v1.2 (P34): rifle and rocket squads, their gallery slots and zoom row. |
 | 2026-10-12 | v1.2 (P34b): selection ring texture and the draw-order rule, effects atlas, combat effects and health bars specs (weapon and class from snapshot columns, bars placed by sprite reach), the own and enemy cue. |
+| 2026-10-12 | v1.2 (P34c): terrain tiles with the scrub pattern, grid and fog alphas, the gallery terrain row. |
