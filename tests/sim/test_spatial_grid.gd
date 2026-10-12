@@ -20,9 +20,10 @@ func before_test() -> void:
 	_grid.configure(MAP_W, MAP_H, CELL, CAPACITY)
 
 
-func test_configure_rounds_the_cells_up_and_sizes_the_arrays_once() -> void:
+func test_configure_rounds_the_cells_up_and_sizes_the_arrays() -> void:
 	assert_int(_grid.cols).is_equal(3)
 	assert_int(_grid.rows).is_equal(2)
+	assert_int(_grid.cell_milli).is_equal(4000)
 	assert_array(_grid.head).is_equal([-1, -1, -1, -1, -1, -1])
 	assert_array(_grid.next).is_equal([-1, -1, -1, -1, -1, -1, -1, -1])
 	_expect_size(8000, 4000, 4000, 2, 1)
@@ -31,8 +32,21 @@ func test_configure_rounds_the_cells_up_and_sizes_the_arrays_once() -> void:
 	_expect_size(1, 1, 4000, 1, 1)
 	_expect_size(48000, 48000, 1000, 48, 48)
 	_expect_size(0, 0, 1000, 0, 0)
+	_expect_size(0, 7000, 1000, 0, 0)
+	_expect_size(-1000, 7000, 1000, 0, 0)
 	_expect_size(10000, 0, 1000, 0, 0)
+	_expect_size(10000, -1, 1000, 0, 0)
 	_expect_size(10000, 7000, 0, 0, 0)
+	_expect_size(10000, 7000, -1, 0, 0)
+
+
+func test_cell_milli_is_the_configured_side_and_never_below_one() -> void:
+	_grid.configure(MAP_W, MAP_H, 1000, CAPACITY)
+	assert_int(_grid.cell_milli).is_equal(1000)
+	_grid.configure(MAP_W, MAP_H, 0, CAPACITY)
+	assert_int(_grid.cell_milli).is_equal(1)
+	_grid.configure(MAP_W, MAP_H, -5, CAPACITY)
+	assert_int(_grid.cell_milli).is_equal(1)
 
 
 func test_every_row_is_in_the_list_of_its_cell_ascending() -> void:
@@ -142,6 +156,32 @@ func test_a_rebuild_resets_only_the_cells_occupied_last_time() -> void:
 	assert_array(_grid.head).is_equal([0, -1, 77, -1, 1, -1])
 
 
+## The occupied list restarts on every rebuild: a cell occupied two rebuilds ago is not reset.
+func test_a_cell_occupied_two_rebuilds_ago_is_not_reset_again() -> void:
+	var first: Array[Vector2i] = [Vector2i(500, 500)]
+	var second: Array[Vector2i] = [Vector2i(4500, 4500)]
+	_rebuild(first)
+	_rebuild(second)
+	_grid.head[0] = 77
+	_rebuild(second)
+	assert_array(_grid.head).is_equal([77, -1, -1, -1, 0, -1])
+
+
+func test_many_rebuilds_never_grow_the_occupied_list_past_the_capacity() -> void:
+	var spread: Array[Vector2i] = [
+		Vector2i(500, 500),
+		Vector2i(4500, 500),
+		Vector2i(8500, 500),
+		Vector2i(500, 4500),
+		Vector2i(4500, 4500),
+		Vector2i(8500, 4500),
+	]
+	for _round: int in 20:
+		_rebuild(spread)
+	assert_array(_grid.head).is_equal([0, 1, 2, 3, 4, 5])
+	assert_array(_grid.next).is_equal([-1, -1, -1, -1, -1, -1, -1, -1])
+
+
 func test_a_rebuild_with_fewer_units_keeps_the_array_sizes() -> void:
 	var all: Array[Vector2i] = []
 	for row: int in 8:
@@ -171,8 +211,18 @@ func test_capacity_bounds_the_rows_and_a_negative_count_inserts_none() -> void:
 	assert_array(_grid.head).is_equal([-1, -1, -1, -1, -1, -1])
 
 
+func test_a_negative_capacity_holds_no_rows() -> void:
+	_grid.configure(MAP_W, MAP_H, CELL, -1)
+	assert_int(_grid.next.size()).is_equal(0)
+	_rebuild([Vector2i(500, 500), Vector2i(4500, 500)])
+	assert_array(_grid.head).is_equal([-1, -1, -1, -1, -1, -1])
+
+
 func test_configure_again_resets_the_lists_and_resizes() -> void:
-	_rebuild([Vector2i(9000, 6000), Vector2i(500, 500)])
+	var all: Array[Vector2i] = []
+	all.resize(CAPACITY)
+	all.fill(Vector2i(9000, 6000))
+	_rebuild(all)
 	_grid.configure(8000, 4000, CELL, 2)
 	assert_array(_grid.head).is_equal([-1, -1])
 	assert_array(_grid.next).is_equal([-1, -1])

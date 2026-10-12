@@ -16,7 +16,10 @@ var head: PackedInt32Array = PackedInt32Array()
 ## list. Entries from the last rebuild's count on are -1.
 var next: PackedInt32Array = PackedInt32Array()
 
-var _cell_milli: int = 1
+## The side of a cell in milli-tiles, at least 1. Set by configure(). A consumer that turns a reach
+## into the cells covering it (targeting) reads this, so the size is written in one place only.
+var cell_milli: int = 1
+
 var _capacity: int = 0
 ## `_occupied[0.._occupied_count]` are the cells with a row after the last rebuild, once each.
 var _occupied: PackedInt32Array = PackedInt32Array()
@@ -26,16 +29,19 @@ var _inserted: int = 0
 
 ## Sizes the grid for a map of `map_w` x `map_h` milli-tiles with square cells of `cell_milli`,
 ## and for at most `capacity` rows. An empty map (a size or `cell_milli` of 0 or less) gives 0
-## cells, and a rebuild then inserts nothing. This is the only place that allocates.
-@warning_ignore("integer_division")
+## cells, and a rebuild then inserts nothing. This is the only place that allocates. It costs
+## O(cells), so call it when a size changes, not every tick. The parameters keep the contract's
+## names, so `cell_milli` shadows the field of the same name.
+@warning_ignore("integer_division", "shadowed_variable")
 func configure(map_w: int, map_h: int, cell_milli: int, capacity: int) -> void:
-	_cell_milli = maxi(cell_milli, 1)
+	var side: int = maxi(cell_milli, 1)
+	self.cell_milli = side
 	_capacity = maxi(capacity, 0)
 	cols = 0
 	rows = 0
 	if map_w > 0 and map_h > 0 and cell_milli > 0:
-		cols = (map_w + _cell_milli - 1) / _cell_milli
-		rows = (map_h + _cell_milli - 1) / _cell_milli
+		cols = (map_w + side - 1) / side
+		rows = (map_h + side - 1) / side
 	head.resize(cols * rows)
 	head.fill(-1)
 	next.resize(_capacity)
@@ -48,7 +54,7 @@ func configure(map_w: int, map_h: int, cell_milli: int, capacity: int) -> void:
 ## Rebuilds the lists from rows 0..count - 1 at (xs[row], ys[row]). Only the cells that held a
 ## row last time are reset, and rows go in descending order so each cell lists its rows in
 ## ascending order. Rows from `capacity` on are left out. A point outside the map goes to the
-## nearest edge cell.
+## nearest edge cell: a negative coordinate divides toward zero and then clamps to column or row 0.
 @warning_ignore("integer_division")
 func rebuild(xs: PackedInt32Array, ys: PackedInt32Array, count: int) -> void:
 	var heads: PackedInt32Array = head
@@ -59,7 +65,7 @@ func rebuild(xs: PackedInt32Array, ys: PackedInt32Array, count: int) -> void:
 	var used: int = 0
 	var last_column: int = cols - 1
 	var last_line: int = rows - 1
-	var cell: int = _cell_milli
+	var cell: int = cell_milli
 	var width: int = cols
 	var total: int = clampi(count, 0, _capacity) if width > 0 else 0
 	for row: int in range(total - 1, -1, -1):
@@ -88,9 +94,10 @@ func rebuild(xs: PackedInt32Array, ys: PackedInt32Array, count: int) -> void:
 
 ## The cell holding the point (x, y) in milli-tiles, for points inside the map
 ## `(y / cell_milli) * cols + x / cell_milli`. A point outside the map gives the nearest edge
-## cell. With an empty map it is 0.
+## cell (a negative coordinate divides toward zero and then clamps to 0). With an empty map it
+## is 0.
 @warning_ignore("integer_division")
 func cell_of(x: int, y: int) -> int:
 	if cols == 0:
 		return 0
-	return clampi(y / _cell_milli, 0, rows - 1) * cols + clampi(x / _cell_milli, 0, cols - 1)
+	return clampi(y / cell_milli, 0, rows - 1) * cols + clampi(x / cell_milli, 0, cols - 1)
