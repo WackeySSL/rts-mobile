@@ -99,4 +99,5 @@ injected only by the release workflow. UMP consent before any ad request. Detail
 
 ## Subagents and review
 architect, gameplay-dev, ai-dev, touch-ux-dev, art-director, monetization-dev, qa-engineer,
-release-engineer (`.claude/agents/`). Review with `/code-review` plus the `godot-code-review` skill.
+release-engineer (`.claude/agents/`). Review with `/code-review` plus the `godot-code-review` skill
+(and `rts-sim-conventions`' "Native kernels" checklist for any PR that touches `native/`).
