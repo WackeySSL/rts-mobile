@@ -24,7 +24,7 @@ Status: pre-alpha. See [docs/ROADMAP.md](docs/ROADMAP.md).
   [docs/licenses/godot-4.7.2/](docs/licenses/godot-4.7.2/), and every web build ships them as
   `THIRD_PARTY_LICENSES.txt` next to `index.html`.
 - C++ runtime: the Godot export templates use LLVM libc++ (Apache-2.0 WITH LLVM-exception), which
-  every Android build ships as `libc++_shared.so`. Its licence text (LLVM `llvmorg-19.1.0`) is in
+  every Android build ships as `libc++_shared.so`. Its licence text (LLVM `llvmorg-21.1.0`) is in
   [docs/licenses/llvm-libc++/](docs/licenses/llvm-libc++/), and the `THIRD_PARTY_LICENSES.txt` of
   every Android and web build includes it.
 - The game's name and logo are not covered by the MIT licence and remain the property of

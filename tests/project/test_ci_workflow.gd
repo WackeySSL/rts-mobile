@@ -71,5 +71,8 @@ func test_android_job_runs_the_offline_licence_notice_test_before_the_export() -
 	assert_int(job).is_greater(-1)
 	assert_int(step).is_greater(job)
 	assert_str(lines[step + 1]).is_equal(NOTICE_TEST_RUN)
+	# The run line ends the step (a blank line follows). A modifier after it, such as
+	# `continue-on-error: true` or `if: false`, would neuter the test and must fail here.
+	assert_str(lines[step + 2].strip_edges()).is_empty()
 	assert_int(export_step).is_greater(step)
 	assert_int(export_step).is_less(release)

@@ -36,7 +36,7 @@ LICENSE_DIR="docs/licenses/godot-${GODOT_VERSION%.stable}"
 # LLVM tag below (docs/licenses/llvm-libc++/README.md says why that tag). export-web.sh holds the
 # same tag and the same notice text.
 LIBCXX_DIR="docs/licenses/llvm-libc++"
-LIBCXX_TAG="llvmorg-19.1.0"
+LIBCXX_TAG="llvmorg-21.1.0"
 
 die() {
   local code="$1"
