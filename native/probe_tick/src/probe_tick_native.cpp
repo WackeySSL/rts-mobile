@@ -7,7 +7,9 @@
 //   PackedInt32Array store does;
 // - division truncates toward zero and % takes the sign of the dividend, in both languages;
 // - the evaluation order of the LCG draws is spelled out (C++ leaves operand order open);
-// - no floats anywhere, no allocation and no Godot call inside step() and flow_slice().
+// - no floats anywhere, and nothing but the ported code inside the timed part of step() and
+//   flow_slice(): no allocation and no Godot call. Each of the two makes one
+//   OS.get_thread_caller_id() call per job, before its timer starts, for the thread tests.
 
 #include "probe_tick_native.h"
 
@@ -118,8 +120,8 @@ ProbeTickNative::ProbeTickNative() {
 
 // Plays one tick and returns its wall time in microseconds.
 int64_t ProbeTickNative::step() {
+	last_step_thread_ = OS::get_singleton()->get_thread_caller_id(); // Before the timer starts.
 	int64_t started = now_usec();
-	last_step_thread_ = OS::get_singleton()->get_thread_caller_id();
 	tick_ += 1;
 	rebuild(sep_head_, sep_next_, 1000, COLS);
 	rebuild(tgt_head_, tgt_next_, 4000, 16);
@@ -132,8 +134,8 @@ int64_t ProbeTickNative::step() {
 // Settles up to `budget` flow cells and returns the wall time in microseconds. A finished field is
 // replaced by the next goal at the start of the following call.
 int64_t ProbeTickNative::flow_slice(int64_t p_budget) {
+	last_slice_thread_ = OS::get_singleton()->get_thread_caller_id(); // Before the timer starts.
 	int64_t started = now_usec();
-	last_slice_thread_ = OS::get_singleton()->get_thread_caller_id();
 	int32_t *cost = flow_cost_.data();
 	const int32_t *terrain = terrain_.data();
 	int32_t *count = bucket_n_.data();

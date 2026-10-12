@@ -7,6 +7,8 @@ extends RefCounted
 ## loaded; check `ClassDB.class_exists(NATIVE_CLASS)` first.
 
 const NATIVE_CLASS: String = "ProbeTickNative"
+const FLOW_PERIOD: int = 15  ## A flow slice runs on every 15th tick, in every probe mode.
+const FOG_PERIOD: int = 3  ## The fog is published, and `dirty_count` drained, on every 3rd tick.
 const SCALARS: Array[String] = ["tick", "dirty_count", "slice_cells"]
 const ARRAYS: Array[String] = ["x", "y", "target", "seen", "dirty", "flow_cost"]
 
@@ -43,10 +45,20 @@ static func field_of(found: String) -> String:
 	return found.split(":")[0].split("[")[0]
 
 
-## Plays `ticks` ticks of both, the flow slice (`flow_cells`) on every 15th as the probe does, and
-## compares everything after the start and after every call. Returns "" when they never differ, else
-## "tick N: <difference>" for the first one (N is the GDScript tick of the call). Both
-## objects must be fresh (the same start) and are advanced.
+## What the probe's publish does on a fog tick (5 Hz): the fog patch consumes the dirty cells, so
+## the next window starts empty. Without it `dirty_count` reaches its cap of 4096 at tick 171 and
+## the dirty path stops being written, and so stops being compared, for the rest of a run.
+static func drain_dirty(gd: PerfProbeTick, cpp: RefCounted) -> void:
+	if gd.tick % FOG_PERIOD == 0:
+		gd.dirty_count = 0
+		cpp.dirty_count = 0
+
+
+## Plays `ticks` ticks of both, the flow slice (`flow_cells`) on every 15th and the dirty drain on
+## every 3rd as the probe does, and compares everything after the start and after every call.
+## Returns "" when they never differ, else "tick N: <difference>" for the first one (N is the
+## GDScript tick of the call). Both objects must be in the same state (fresh, or equal) and are
+## advanced.
 static func play(gd: PerfProbeTick, cpp: RefCounted, ticks: int, flow_cells: int) -> String:
 	var found: String = difference(gd, cpp)
 	if found != "":
@@ -57,10 +69,24 @@ static func play(gd: PerfProbeTick, cpp: RefCounted, ticks: int, flow_cells: int
 		found = difference(gd, cpp)
 		if found != "":
 			return "tick %d (step): %s" % [gd.tick, found]
-		if gd.tick % 15 == 0:
+		if gd.tick % FLOW_PERIOD == 0:
 			gd.flow_slice(flow_cells)
 			cpp.flow_slice(flow_cells)
 			found = difference(gd, cpp)
 			if found != "":
 				return "tick %d (flow_slice): %s" % [gd.tick, found]
+		drain_dirty(gd, cpp)
 	return ""
+
+
+## Brings a fresh C++ tick (tick 3, as a fresh PerfProbeTick) to `to_tick` with the cadence every
+## probe mode runs: a flow slice of `flow_cells` on every 15th tick and the dirty drain on every
+## 3rd. A GDScript tick that has played those ticks in the probe is then in the same state, and a
+## run that measures the C++ tick starts at the tick the GDScript run started at.
+static func advance(cpp: RefCounted, to_tick: int, flow_cells: int) -> void:
+	while cpp.tick < to_tick:
+		cpp.step()
+		if cpp.tick % FLOW_PERIOD == 0:
+			cpp.flow_slice(flow_cells)
+		if cpp.tick % FOG_PERIOD == 0:
+			cpp.dirty_count = 0

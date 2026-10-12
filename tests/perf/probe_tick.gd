@@ -7,6 +7,9 @@ extends GdUnitTestSuite
 ## moving, no targets, a flow field that does not reach every open tile).
 ## Spike P26n adds the C++ port (ProbeTickNative) to every run, timed the same way, with its own
 ## "PROBE ci cpp ..." lines and the speedup over the GDScript mock; the GDScript lines stay as were.
+## The speedup is of the builds named on the "PROBE ci builds" line: the GDScript VM of the editor
+## that runs the tests (a debug build, slower than a release template) against the library's
+## template_debug -O2. The phone compares release GDScript with -O3, so this ratio is not that one.
 
 const CELLS: int = 512
 const NOT_LOADED: String = "ProbeTickNative not loaded: run scripts/build-native.sh"
@@ -18,6 +21,14 @@ func test_mock_tick_and_flow_slice_are_timed_and_sane() -> void:
 	var probe: PerfProbeTick = null
 	var loaded: bool = ClassDB.class_exists(PerfProbeLockstep.NATIVE_CLASS)
 	assert_bool(loaded).override_failure_message(NOT_LOADED).is_true()
+	var builds: String = ""  # Which two builds the C++ lines compare.
+	if loaded:
+		var sample: RefCounted = ClassDB.instantiate(PerfProbeLockstep.NATIVE_CLASS)
+		builds = (
+			"C++ %s | GDScript VM %s build"
+			% [sample.get_build_info(), "debug" if OS.is_debug_build() else "release"]
+		)
+		print("PROBE ci builds: %s" % builds)
 	for run: int in 3:
 		probe = PerfProbeTick.new()
 		var ticks: PackedFloat64Array = PackedFloat64Array()
@@ -45,23 +56,28 @@ func test_mock_tick_and_flow_slice_are_timed_and_sane() -> void:
 	print("PROBE ci min-of-3 tick_us mean=%.1f p95=%.1f" % [best[0], best[1]])
 	print("PROBE ci min-of-3 flow_slice_512_us mean=%.1f p95=%.1f" % [best[2], best[3]])
 	if loaded:
-		print("PROBE ci cpp min-of-3 tick_us mean=%.1f p95=%.1f" % [cpp_best[0], cpp_best[1]])
 		print(
 			(
-				"PROBE ci cpp min-of-3 flow_slice_512_us mean=%.1f p95=%.1f"
-				% [cpp_best[2], cpp_best[3]]
+				"PROBE ci cpp min-of-3 tick_us mean=%.1f p95=%.1f | %s"
+				% [cpp_best[0], cpp_best[1], builds]
 			)
 		)
 		print(
 			(
-				"PROBE ci cpp speedup tick_us mean %.1fx p95 %.1fx"
-				% [best[0] / cpp_best[0], best[1] / cpp_best[1]]
+				"PROBE ci cpp min-of-3 flow_slice_512_us mean=%.1f p95=%.1f | %s"
+				% [cpp_best[2], cpp_best[3], builds]
 			)
 		)
 		print(
 			(
-				"PROBE ci cpp speedup flow_slice_512_us mean %.1fx p95 %.1fx"
-				% [best[2] / cpp_best[2], best[3] / cpp_best[3]]
+				"PROBE ci cpp speedup tick_us mean %.1fx p95 %.1fx | %s"
+				% [best[0] / cpp_best[0], best[1] / cpp_best[1], builds]
+			)
+		)
+		print(
+			(
+				"PROBE ci cpp speedup flow_slice_512_us mean %.1fx p95 %.1fx | %s"
+				% [best[2] / cpp_best[2], best[3] / cpp_best[3], builds]
 			)
 		)
 	var limit: int = PerfProbeTick.COLS * 1000

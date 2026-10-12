@@ -23,6 +23,8 @@ defaults:
 # Event data reaches the scripts only through env, never through ${{ }} inside run:.
 env:
   GODOT_VERSION: "4.7.2"
+  # PROBE ONLY (spike P26n, never merged): scripts/build-native.sh needs exactly this scons.
+  SCONS_VERSION: "4.9.1"
   PR: ${{ github.event.pull_request.number }}
   HEAD_SHA: ${{ github.event.pull_request.head.sha }}
   MARKER: "<!-- rts-mobile-web-preview -->"
@@ -56,6 +58,19 @@ jobs:
 
       - name: Install Godot (editor + web no-threads templates only)
         run: bash scripts/ci/install-godot.sh
+
+      # PROBE ONLY (spike P26n, never merged): the project holds native/probe_tick.gdextension, and
+      # Godot's first scan loads it whatever the web preset excludes (exclude_filter only decides what
+      # is packed). Without the Linux library that scan logs "Can't open dynamic library", and
+      # export-web.sh's error scan fails the job, so no preview would be published. The library is
+      # built first, as ci.yml does (a cold build, godot-cpp fetch included, takes about 20 s on 4
+      # cores, so no cache). build-native.sh also lists the extension in .godot/extension_list.cfg,
+      # which keeps the first import of a fresh checkout from aborting.
+      - name: Install scons
+        run: pipx install "scons==${SCONS_VERSION}"
+
+      - name: Build the C++ tick (linux template_debug, what the editor loads)
+        run: bash scripts/build-native.sh
 
       # export-web.sh owns the export checks and first deletes any stale build.txt, so the file
       # written here is the one this run's pages-publish.sh publish and comment look for.

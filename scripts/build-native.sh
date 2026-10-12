@@ -7,19 +7,20 @@
 #   defaults: --platform linux --target template_debug --arch x86_64
 #   linux builds the host architecture only; android builds arm64 only (Android is built in CI,
 #   a cloud session has no NDK).
-# Env:   SCONS=<binary> (default: scons; must be 4.9.1), CXX=<compiler> (linux, default: g++),
+# Env:   SCONS=<binary> (default: scons; must be 4.9.1),
 #        ANDROID_NDK_ROOT=<NDK folder> (android; must be <sdk>/ndk/28.1.13356709, the layout that
 #        sdkmanager makes and that godot-cpp's tools/android.py reads as $ANDROID_HOME/ndk/<ndk_version>,
 #        NDK 28.1.13356709 being its default ndk_version at the pinned commit; CI installs it with
 #        scripts/ci/install-ndk.sh), SCONS_CACHE=<folder> (godot-cpp's SConstruct passes it to
 #        CacheDir: objects are shared by content, CI caches the folder).
 # Needs: git and network access to github.com (first run only), scons 4.9.1
-#        (pip install scons==4.9.1), a C++ compiler.
+#        (pip install scons==4.9.1), g++ (linux). The compiler is g++ whatever CXX says: godot-cpp's
+#        SConstruct never reads CXX (its switch for clang is the scons option use_llvm=yes).
 # Flags: godot-cpp's defaults per target, nothing added: template_debug = -O2 (optimize=speed_trace,
 #        DEBUG_ENABLED), template_release = -O3 (optimize=speed, NDEBUG); no LTO, no debug symbols.
 # Exit:  0 ok
 #        2 bad flag or an impossible platform/arch pair
-#        3 tool missing (git, scons 4.9.1, the compiler, binutils, or ANDROID_NDK_ROOT / the NDK
+#        3 tool missing (git, scons 4.9.1, g++, binutils, or ANDROID_NDK_ROOT / the NDK
 #          toolchain), or an NDK of another version than the pinned one
 #        4 godot-cpp fetch or SHA check failed, or the build failed, produced no library, or the
 #          library fails the ELF check (machine, shared object, entry symbol, and on Android only
@@ -114,8 +115,10 @@ scons_version="$("$SCONS" --version 2>/dev/null | sed -n 's/^.*SCons: v\([0-9][0
 scons_env=()
 scons_args=()
 if [ "$platform" = "linux" ]; then
-  compiler="${CXX:-g++}"
-  command -v "$compiler" >/dev/null 2>&1 || die 3 "C++ compiler '$compiler' is missing (install g++ or set CXX)"
+  # godot-cpp's SConstruct makes Environment(tools=["default"]) and never reads CXX, so scons builds
+  # with g++ on Linux whatever CXX says (and the CI cache key names g++ for the same reason).
+  command -v g++ >/dev/null 2>&1 || die 3 "g++ is missing (install g++; the godot-cpp build uses it, CXX has no effect)"
+  [ -z "${CXX:-}" ] || echo "build-native: CXX='${CXX}' is ignored: the godot-cpp build uses g++"
   for tool in readelf nm; do
     command -v "$tool" >/dev/null 2>&1 || die 3 "$tool is missing (install binutils)"
   done

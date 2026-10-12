@@ -11,8 +11,10 @@ extends Node2D
 ## The view draws from its own copies, taken at publish, while the worker owns `sim`.
 ## The fifth mode (spike P26n, never merged) is the fourth with the worker running the C++ port of
 ## the tick (the GDExtension class ProbeTickNative, native/probe_tick) instead of PerfProbeTick. It
-## first plays 60 ticks of both in lockstep and reports whether they matched. Without the library
-## (no build, or the web preview) the mode says so and measures nothing.
+## first plays 60 ticks of both in lockstep and reports whether they matched, then brings the C++
+## tick to the tick `sim` stands at, so that it times the same stretch of the deterministic tick
+## sequence as mode 4, which continues `sim`. Both worker modes print the tick they started at.
+## Without the library (no build, or the web preview) the mode says so and measures nothing.
 
 @warning_ignore_start("integer_division")
 
@@ -75,6 +77,7 @@ var _process_start_us: int = 0  ## Top of this frame's `_process`, the first one
 var _pre_draw_us: int = 0
 var _ticked: bool = false  ## This frame ran at least one mock tick (worker: published one).
 var _runner: RefCounted = null  ## Who the worker ticks: `sim`, or `native`; set before it starts.
+var _start_tick: int = 0  ## The tick the worker's runner stood at when the worker started.
 var _check: String = ""  ## Mode 5's self-check result line.
 var _thread: Thread = null
 var _work: Semaphore = Semaphore.new()  ## The main thread posts a job; the worker waits.
@@ -334,6 +337,7 @@ func _sync_worker() -> void:
 		if native_available():
 			_check = _self_check()
 			native = ClassDB.instantiate(native_class)
+			_catch_up(native)
 			_start_worker(native)
 		else:
 			_follow_sim()
@@ -355,9 +359,7 @@ func _self_check() -> String:
 	var found: String = PerfProbeLockstep.play(
 		PerfProbeTick.new(), ClassDB.instantiate(native_class), CHECK_TICKS, FLOW_CELLS
 	)
-	# The check holds the main thread for about a second on a phone: the frame clock starts again.
-	_last_us = Time.get_ticks_usec()
-	_process_start_us = _last_us
+	_restart_frame_clock()
 	if found == "":
 		return "C++ matches GDScript: yes (%d ticks)" % CHECK_TICKS
 	print("perf probe: C++ differs from GDScript: ", found)
@@ -366,13 +368,41 @@ func _self_check() -> String:
 	return "C++ matches GDScript: NO at tick %s (%s)" % [at, field]
 
 
-## The implementation lines of the card: who ticks, and mode 5's self-check or its absence.
+## Mode 5, not timed: plays the fresh C++ tick forward to the tick `sim` stands at, with the cadence
+## of every probe mode (a flow slice on every 15th tick, the dirty drain on every 3rd). The tick is
+## deterministic, so it then holds the state `sim` holds, and mode 4, which continues `sim`, and
+## mode 5 time the same stretch of ticks. A normal 60 s per mode session leaves `sim` at tick 2700
+## or later; a fresh C++ tick started at tick 3, where the first 900 ticks are the lightest at p95.
+## About 3000 C++ ticks: well under a second, even on a phone. The dirty list is copied from `sim`:
+## the scene's first fog patch drained it once, outside any tick, which a replay cannot know, and
+## nothing else depends on it.
+func _catch_up(cpp: RefCounted) -> void:
+	PerfProbeLockstep.advance(cpp, sim.tick, FLOW_CELLS)
+	cpp.dirty = sim.dirty.duplicate()
+	cpp.dirty_count = sim.dirty_count
+	_restart_frame_clock()
+
+
+## A long call on the main thread (the self-check, the catch-up) must not count as a long frame.
+func _restart_frame_clock() -> void:
+	_last_us = Time.get_ticks_usec()
+	_process_start_us = _last_us
+
+
+## The implementation lines of the card: who ticks, from which tick, and mode 5's self-check or its
+## absence.
 func _impl_text() -> String:
 	if mode != Mode.NATIVE_TICK:
-		return "tick impl: GDScript"
+		return "tick impl: GDScript%s" % _from_text()
 	if native == null:
 		return "tick impl: C++\n%s" % NATIVE_MISSING
-	return "tick impl: C++ (%s)\n%s" % [native.get_build_info(), _check]
+	return "tick impl: C++ (%s)%s\n%s" % [native.get_build_info(), _from_text(), _check]
+
+
+## ", worker from tick N" in the worker modes, else "". The two worker modes play the same
+## deterministic ticks, so the tick a run starts at says which stretch of them it timed.
+func _from_text() -> String:
+	return ", worker from tick %d" % _start_tick if _worker_mode() else ""
 
 
 ## The frame reads `sim` again, and interpolates from where `sim` stands. Only with no worker.
@@ -384,6 +414,7 @@ func _follow_sim() -> void:
 
 func _start_worker(runner: RefCounted) -> void:
 	_runner = runner
+	_start_tick = runner.tick
 	_work = Semaphore.new()  # Fresh tokens: a joined worker may have left one behind.
 	_done = Semaphore.new()
 	_quit = false
@@ -475,6 +506,7 @@ func report() -> String:
 	]
 	if _worker_mode():  # Rows only the worker modes have; the rows above keep their format.
 		var ticks: int = _series[Series.TICK].size()
+		lines.append(_usec_row())
 		lines.append(
 			(
 				"late ticks (job post to done above %.1f ms): %d of %d ticks"
@@ -489,6 +521,24 @@ func report() -> String:
 		)
 		lines.append(_row("job post to done (worker wake-up + tick + slice)", Series.LATENCY, "ms"))
 	return "\n".join(lines)
+
+
+## The worker's tick and flow slice in microseconds, as the usec timer measured them: the rows in
+## ms print two decimals, which is one or two significant digits for a C++ tick.
+func _usec_row() -> String:
+	var tick: PackedFloat64Array = _series[Series.TICK]
+	var slice: PackedFloat64Array = _series[Series.SLICE]
+	return (
+		"worker tick usec: mean %.1f, p95 %.1f, max %.1f | flow slice usec: mean %.1f, p95 %.1f, max %.1f"
+		% [
+			PerfProbeTick.mean(tick) * 1000.0,
+			PerfProbeTick.percentile(tick, 95) * 1000.0,
+			PerfProbeTick.percentile(tick, 100) * 1000.0,
+			PerfProbeTick.mean(slice) * 1000.0,
+			PerfProbeTick.percentile(slice, 95) * 1000.0,
+			PerfProbeTick.percentile(slice, 100) * 1000.0,
+		]
+	)
 
 
 func _row(label: String, series: int, unit: String) -> String:

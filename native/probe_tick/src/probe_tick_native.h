@@ -16,10 +16,11 @@ namespace godot {
 // wall time in microseconds.
 //
 // Threading: step() and flow_slice() run on the probe's worker thread and touch only this
-// object's own members, no Godot API and no allocation. The Packed-array properties return
-// copies and must be read by the main thread only between jobs, while the worker is asleep
-// (the perf probe's mode 4 does the same with PerfProbeTick). Setters are for the main thread
-// between jobs as well.
+// object's own members: no allocation, and no Godot API apart from the one
+// OS.get_thread_caller_id() call each makes before its timer starts. The Packed-array
+// properties return copies and must be read by the main thread only between jobs, while the
+// worker is asleep (the perf probe's mode 4 does the same with PerfProbeTick). Setters are for
+// the main thread between jobs as well.
 class ProbeTickNative : public RefCounted {
 	GDCLASS(ProbeTickNative, RefCounted)
 

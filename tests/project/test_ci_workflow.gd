@@ -53,3 +53,43 @@ func test_every_action_is_pinned_by_sha() -> void:
 					. is_not_null()
 				)
 	assert_int(checked).is_greater(0)
+
+
+## Spike P26n (never merged): the project holds native/probe_tick.gdextension, which Godot's first
+## scan loads whatever the web preset excludes. A job that exports the web build from a fresh
+## checkout must build the Linux library first, or the scan logs "Can't open dynamic library" and
+## export-web.sh's error scan fails the job: the draft PR's Preview run would be red and publish
+## nothing. ci.yml's verify job gets the library from the same script.
+func test_preview_builds_the_native_library_before_the_web_export() -> void:
+	var lines: PackedStringArray = _lines("preview.yml")
+	var build: int = -1
+	var export: int = -1
+	for i: int in lines.size():
+		var text: String = lines[i].strip_edges()
+		if text == "run: bash scripts/build-native.sh":
+			build = i
+		elif text == "bash scripts/export-web.sh":
+			export = i
+	assert_int(build).override_failure_message("preview.yml never runs build-native.sh").is_greater(
+		-1
+	)
+	assert_int(export).override_failure_message("preview.yml never runs export-web.sh").is_greater(
+		-1
+	)
+	assert_int(build).override_failure_message("the library is built after the export").is_less(
+		export
+	)
+
+
+## build-native.sh refuses any other scons, so the version that preview.yml installs is the one it
+## names.
+func test_preview_installs_the_scons_that_build_native_requires() -> void:
+	var wanted: RegEx = RegEx.create_from_string('(?m)^SCONS_VERSION="([0-9.]+)"$')
+	var script: FileAccess = FileAccess.open("res://scripts/build-native.sh", FileAccess.READ)
+	assert_object(script).is_not_null()
+	var found: RegExMatch = wanted.search(script.get_as_text())
+	assert_object(found).is_not_null()
+	var version: String = found.get_string(1)
+	var lines: PackedStringArray = _lines("preview.yml")
+	assert_bool(lines.has('  SCONS_VERSION: "%s"' % version)).is_true()
+	assert_bool(lines.has('        run: pipx install "scons==${SCONS_VERSION}"')).is_true()

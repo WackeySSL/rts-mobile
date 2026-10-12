@@ -14,7 +14,7 @@
 #        2 usage error, or --out not under build/
 #        3 Godot missing or not 4.7.2.stable
 #        4 export template, JDK 17, Android SDK piece or (probe branch) the C++ library missing
-#          (the message names each)
+#          (the message names each), or the godot-cpp pins unreadable in scripts/build-native.sh
 #        5 debug keystore variables incomplete or the keystore file missing
 # Success prints "export-android: OK <dir>/rts-mobile-debug.apk". Cloud sessions have no Android
 # SDK, so a local run ends with exit 4. CI (the android-debug-apk job) is the test bed.
@@ -30,10 +30,12 @@ APK_NAME="rts-mobile-debug.apk"
 NOTICE_NAME="THIRD_PARTY_LICENSES.txt"
 LICENSE_DIR="docs/licenses/godot-${GODOT_VERSION%.stable}"
 # PROBE ONLY (spike P26n): the APK carries a GDExtension built with godot-cpp (MIT), whose licence
-# text is committed unchanged from the pinned commit (scripts/build-native.sh).
-GODOT_CPP_TAG="godot-4.5-stable"
-GODOT_CPP_SHA="e83fd0904c13356ed1d4c3d09f8bb9132bdc6b77"
-GODOT_CPP_LICENSE="docs/licenses/godot-cpp-4.5-stable/LICENSE.md"
+# text is committed unchanged from the pinned commit. The tag and commit the notice names are read
+# from scripts/build-native.sh, which owns them (ci.yml reads the commit from there for its cache
+# key the same way), so a bump of the pin cannot leave this notice naming the old commit. They are
+# checked once the arguments are, below.
+GODOT_CPP_TAG="$(sed -n 's/^GODOT_CPP_TAG="\(godot-[0-9][0-9.]*-stable\)"$/\1/p' scripts/build-native.sh | head -n 1)"
+GODOT_CPP_SHA="$(sed -n 's/^GODOT_CPP_SHA="\([0-9a-f]\{40\}\)"$/\1/p' scripts/build-native.sh | head -n 1)"
 # The library Godot packs for the release export of android arm64 (the .gdextension entry
 # android.release.arm64), built by scripts/build-native.sh in CI before this script runs.
 EXT_NAME="libprobe_tick.android.template_release.arm64.so"
@@ -64,6 +66,15 @@ case "$out" in
   *) die 2 "--out '$out' must be build/ or below, relative to the repository root" ;;
 esac
 out_abs="$ROOT/$out"
+
+# PROBE ONLY (spike P26n): the godot-cpp pins of the licence notice. Without them the notice would
+# name nothing, or the wrong commit.
+[ -n "$GODOT_CPP_TAG" ] ||
+  die 4 "no GODOT_CPP_TAG=\"godot-<version>-stable\" line in scripts/build-native.sh (the godot-cpp pin of the licence notice)"
+[ -n "$GODOT_CPP_SHA" ] ||
+  die 4 "no GODOT_CPP_SHA=\"<40 hex digits>\" line in scripts/build-native.sh (the godot-cpp pin of the licence notice)"
+# The licence text sits in a folder named after the tag, with "godot-cpp-" for its "godot-".
+GODOT_CPP_LICENSE="docs/licenses/godot-cpp-${GODOT_CPP_TAG#godot-}/LICENSE.md"
 
 # (1) Godot present and exactly the pinned version.
 command -v "$GODOT" >/dev/null 2>&1 || die 3 "GODOT MISSING: '$GODOT' is not on PATH (set GODOT=/path/to/godot)"
@@ -199,7 +210,7 @@ if grep -Eq '(^| )libc\+\+_shared\.so( |$)' <<<"$ext_needed"; then
     die 1 "$EXT_NAME needs libc++_shared.so but the APK lacks lib/arm64-v8a/libc++_shared.so"
   echo "export-android: lib/arm64-v8a/libc++_shared.so is in the APK"
 fi
-grep -q 'godot-cpp' "$out_abs/$NOTICE_NAME" || die 1 "$NOTICE_NAME does not name godot-cpp"
+grep -q "$GODOT_CPP_SHA" "$out_abs/$NOTICE_NAME" || die 1 "$NOTICE_NAME does not name the godot-cpp commit $GODOT_CPP_SHA"
 other_abis="$(grep '^lib/' <<<"$listing" | grep -v '^lib/arm64-v8a/' || true)"
 [ -z "$other_abis" ] || die 1 "the APK holds libraries for other ABIs (arm64-v8a only): $(head -n 3 <<<"$other_abis")"
 # Project files sit under assets/. Without the boot scene there the next check proves nothing.

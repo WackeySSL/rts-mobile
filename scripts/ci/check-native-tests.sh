@@ -29,12 +29,16 @@ REQUIRED = {
     "test_probe_tick_native": [
         "test_900_ticks_and_their_flow_slices_match_bit_for_bit",
         "test_flow_fields_run_to_completion_many_times_with_odd_budgets",
+        "test_a_crowd_reaches_the_pair_caps_and_still_matches",
         "test_properties_read_back_what_was_written",
     ],
     "test_perf_probe_native": [
         "test_the_next_mode_button_reaches_the_cpp_mode_from_the_worker_mode_and_leaves_it_joined",
         "test_the_cpp_tick_runs_on_a_worker_thread_with_no_late_ticks_and_the_card_says_so",
         "test_the_view_follows_the_cpp_tick_and_it_plays_the_same_ticks",
+        "test_mode_five_starts_the_cpp_tick_where_sim_stands",
+        "test_mode_five_follows_the_gdscript_worker_from_the_same_tick",
+        "test_the_worker_modes_name_their_start_tick_and_print_microseconds",
         "test_without_the_library_mode_five_says_so_and_measures_nothing",
         "test_every_mode_names_its_tick_implementation",
     ],

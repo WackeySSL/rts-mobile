@@ -166,6 +166,11 @@ jobs:
       - name: Offline test of install-ndk.sh
         run: bash scripts/ci/test-install-ndk.sh
 
+      # PROBE ONLY (spike P26n): and for the godot-cpp pins that export-android.sh names in the shipped
+      # licence notice: read from build-native.sh, no second copy, exit 4 when they cannot be read.
+      - name: Offline test of the godot-cpp pins in export-android.sh
+        run: bash scripts/ci/test-export-android-pins.sh
+
       # Godot copies JAVA_HOME and ANDROID_HOME into its editor settings on its first run, so set
       # them before any Godot call (ANDROID_HOME is the runner image's SDK already).
       - name: Select JDK 17

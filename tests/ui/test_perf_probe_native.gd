@@ -100,6 +100,88 @@ func test_the_view_follows_the_cpp_tick_and_it_plays_the_same_ticks() -> void:
 	probe.free()
 
 
+## Mode 4 continues `sim` from the tick the earlier modes left it at, so mode 5 must time the same
+## stretch of the deterministic tick sequence: a fresh C++ tick starts at tick 3, where the first
+## 900 ticks are the lightest at p95 and the phone ratio would flatter C++.
+func test_mode_five_starts_the_cpp_tick_where_sim_stands() -> void:
+	if not _loaded():
+		return
+	var probe: Node2D = _open()
+	await await_millis(1500)  # Mode 1 ticks in the frame: about 22 ticks, a flow slice at tick 15.
+	var stood_at: int = probe.sim.tick
+	assert_int(stood_at).is_greater(15)
+	_press_next_mode(probe, NATIVE_MODE)  # The worker sleeps until the next frame: both readable.
+	var native: RefCounted = probe.native
+	assert_int(native.tick).is_equal(stood_at)
+	var found: String = PerfProbeLockstep.difference(probe.sim, native)
+	(
+		assert_str(found)
+		. override_failure_message("C++ differs from sim at its start: " + found)
+		. is_empty()
+	)
+	assert_str(probe.report()).contains("tick impl: C++ (")
+	assert_str(probe.report()).contains("worker from tick %d" % stood_at)
+	remove_child(probe)
+	probe.free()
+
+
+## The same after the GDScript worker has run: it played its ticks with the flow slice on every
+## 15th, a job in flight finished when it was joined, and the C++ tick joins it there.
+func test_mode_five_follows_the_gdscript_worker_from_the_same_tick() -> void:
+	if not _loaded():
+		return
+	var probe: Node2D = _open()
+	_press_next_mode(probe, WORKER_MODE)
+	await await_millis(1500)
+	_press_next_mode(probe, 1)
+	var native: RefCounted = probe.native
+	assert_int(native.tick).is_equal(probe.sim.tick)
+	assert_int(native.tick).is_greater(15)
+	var found: String = PerfProbeLockstep.difference(probe.sim, native)
+	(
+		assert_str(found)
+		. override_failure_message("C++ differs from sim at its start: " + found)
+		. is_empty()
+	)
+	remove_child(probe)
+	probe.free()
+
+
+## Both worker modes print the tick they started at (so a ratio between them says which stretch it
+## compares) and the tick and flow slice times in whole microseconds: the rows in ms carry two
+## decimals, which leaves one significant digit for a C++ tick of 0.09 ms.
+func test_the_worker_modes_name_their_start_tick_and_print_microseconds() -> void:
+	if not _loaded():
+		return
+	var probe: Node2D = _open()
+	await await_millis(300)
+	_press_next_mode(probe, WORKER_MODE)
+	var gd_start: int = probe.sim.tick
+	await await_millis(1500)
+	var gd_report: String = probe.report()
+	assert_str(gd_report).contains("tick impl: GDScript, worker from tick %d" % gd_start)
+	var gd_us: PackedFloat64Array = _usec_line(gd_report)
+	assert_float(gd_us[0]).is_greater(0.0)  # The mean tick.
+	_press_next_mode(probe, 1)
+	var cpp_start: int = probe.native.tick
+	assert_int(cpp_start).is_greater_equal(gd_start)
+	await await_millis(1500)
+	var cpp_report: String = probe.report()
+	assert_str(cpp_report).contains("worker from tick %d" % cpp_start)
+	var cpp_us: PackedFloat64Array = _usec_line(cpp_report)
+	assert_float(cpp_us[0]).is_greater(0.0)
+	assert_float(cpp_us[1]).is_greater_equal(cpp_us[0] * 0.5)  # A p95 is of the same order.
+	remove_child(probe)
+	probe.free()
+	# The in-frame modes have no such line, and keep their rows.
+	var plain: Node2D = _open()
+	await await_millis(100)
+	assert_str(plain.report()).not_contains("worker tick usec")
+	assert_str(plain.report()).not_contains("worker from tick")
+	remove_child(plain)
+	plain.free()
+
+
 func test_without_the_library_mode_five_says_so_and_measures_nothing() -> void:
 	var probe: Node2D = _open()
 	probe.native_class = "NoSuchProbeTickNative"  # What a build without the library looks like.
@@ -152,6 +234,21 @@ func _press_next_mode(probe: Node2D, times: int) -> void:
 	var button: Button = probe.get_node("Hud/Margin/Buttons/RingsButton")
 	for _i: int in times:
 		button.pressed.emit()
+
+
+## The mean and p95 of the tick, then the mean and p95 of the flow slice, from the usec line of a
+## worker report: "worker tick usec: mean 48.1, p95 66.0, max 90.0 | flow slice usec: ...".
+func _usec_line(report: String) -> PackedFloat64Array:
+	var pattern: String = (
+		"worker tick usec: mean ([\\d.]+), p95 ([\\d.]+), max ([\\d.]+) \\| "
+		+ "flow slice usec: mean ([\\d.]+), p95 ([\\d.]+), max ([\\d.]+)"
+	)
+	var found: RegExMatch = RegEx.create_from_string(pattern).search(report)
+	assert_object(found).override_failure_message("no usec line in:\n" + report).is_not_null()
+	var values: PackedFloat64Array = PackedFloat64Array()
+	for group: int in [1, 2, 4, 5]:
+		values.append(found.get_string(group).to_float() if found != null else 0.0)
+	return values
 
 
 func _late_ticks(report: String) -> int:

@@ -11,7 +11,9 @@ nothing here touches `game/sim`.
   `dirty_count`, `flow_cost`, `slice_cells`, and `step()` / `flow_slice(budget)` returning their wall
   time in microseconds. Ported function for function: int64 where GDScript holds an int, int32
   storage where it stores into a `PackedInt32Array`, no floats, no allocation and no Godot call
-  inside the hot loops, no SIMD, no threads of its own.
+  inside the hot loops and the timed part of either method (each makes one
+  `OS.get_thread_caller_id()` call before its timer starts, for the thread tests), no SIMD, no threads
+  of its own.
 - `probe_tick/src/register_types.{h,cpp}`, `probe_tick/SConstruct`: the registration and the build.
 - `probe_tick.gdextension`: `res://native/probe_tick.gdextension` (entry `probe_tick_library_init`,
   `compatibility_minimum = "4.5"`), libraries for linux x86_64 and android arm64, debug and release.
@@ -26,7 +28,7 @@ bash scripts/build-native.sh --target template_release
 bash scripts/build-native.sh --platform android --target template_release --arch arm64   # CI only
 ```
 
-Exit codes: 0 ok, 2 bad flag, 3 tool missing (git, scons 4.9.1, the compiler, `ANDROID_NDK_ROOT` or
+Exit codes: 0 ok, 2 bad flag, 3 tool missing (git, scons 4.9.1, g++, `ANDROID_NDK_ROOT` or
 its toolchain), 4 fetch, SHA check or build failed. Android needs `ANDROID_NDK_ROOT`; a cloud
 session has no NDK, so the Android library is built in CI only. `scripts/verify.sh` calls the linux
 debug build first on this branch, and the tests that need the library FAIL without it (no skip).
@@ -60,7 +62,12 @@ build, as the editor does after its first scan (0 of 6 aborts). Build before the
 GDExtension is forward compatible, so the library built against 4.5 loads in Godot 4.7.2. The
 script fetches the commit into `native/godot-cpp` (no git submodule) and writes a `.gdignore` there.
 The licence text is committed unchanged in `docs/licenses/godot-cpp-4.5-stable/LICENSE.md`, and
-`scripts/export-android.sh` adds it to the `THIRD_PARTY_LICENSES.txt` that ships next to the APK.
+`scripts/export-android.sh` adds it to the `THIRD_PARTY_LICENSES.txt` that ships next to the APK. The
+tag and commit that notice names are read from `scripts/build-native.sh` (the one place that owns the
+pin, like `ci.yml`'s cache key and `scripts/ci/install-ndk.sh` do), so a bump cannot leave the notice
+naming the old commit; the export script stops with exit 4 when it cannot read them, and with exit 1
+when the licence folder of the new tag is missing. `scripts/ci/test-export-android-pins.sh` tests
+this offline.
 
 ## Threads
 
@@ -72,16 +79,47 @@ call, which is how the tests prove the tick ran off the main thread.
 
 ## Web and a missing library
 
-The web preset excludes `native/*`: there is no wasm build, and without the `.gdextension` the web
-preview loads as before (the export log has no GDExtension warning; the build reports "no GDExtension
-support"). A fresh checkout has no `native/bin/` until the build runs; the probe and the tests check
+The web preset excludes `native/*`: there is no wasm build, so the packed web build has no
+`.gdextension` and the web preview runs as before (the build reports "no GDExtension support"). That
+filter only decides what is packed. Godot's first scan of the project still finds
+`res://native/probe_tick.gdextension` and tries to load the Linux library, in the editor process
+that does the export too. On a checkout without `native/bin/` that logs `ERROR: Can't open dynamic
+library` (four times in the reproduction), and `scripts/export-web.sh`'s error scan then exits 1. So every
+job that runs `export-web.sh` on a fresh checkout builds the library first:
+`bash scripts/build-native.sh`, which needs scons 4.9.1 and takes about 20 s with the godot-cpp
+fetch (`.github/workflows/preview.yml` and `ci.yml` both do; `tests/project/test_ci_workflow.gd`
+pins the order in `preview.yml`). Without the build the Preview workflow of this never-merged
+draft PR would be red and publish nothing.
+
+A fresh checkout has no `native/bin/` until the build runs; the probe and the tests check
 `ClassDB.class_exists("ProbeTickNative")`, and probe mode 5 then shows "C++ tick not available on
-this build" instead of crashing.
+this build" instead of crashing. The packed web build never has the library, so mode 5 is not
+reachable there (the web build has no threads, and the mode cycle skips the worker modes).
 
 ## Proof of identity
 
 `tests/perf/test_probe_tick_native.gd` plays 900 ticks of both ticks in lockstep (a flow slice of 512
-cells on every 15th) and compares tick, x, y, target, seen, dirty, dirty_count, flow_cost and
-slice_cells after every call, failing on the first difference with the tick, the array and the
-index. Probe mode 5 plays a 60-tick version of it before its 60 s measurement and prints the result
-on the card. `tests/perf/probe_tick.gd` times both on CI and prints the speedup.
+cells on every 15th, and `dirty_count` drained on every 3rd as the probe's publish does, so the
+dirty list keeps being written after tick 171, where an undrained count sticks at its cap of 4096)
+and compares tick, x, y, target, seen, dirty, dirty_count, flow_cost and slice_cells after every
+call, failing on the first difference with the tick, the array and the index. A second case starts
+both from a crowd that fills the separation scan to its 8-hit and 16-looked-at caps, which the
+natural ticks only reach by chance. What no committed test reaches (an exact distance tie in the
+targeting scan, a stale flow-queue entry, which this map never has) is named in the suite header,
+with the 20000-tick run (about 55 s) that reaches the ties. Mutants of the port that were run
+against the suite: the two cap mutants and a mutant that stops writing the dirty list after tick 400
+fail it; `<=` for `<` in the targeting tie fails only the 20000-tick run, and the stale-entry skip
+is covered by reading alone.
+
+## What the probe prints for the two worker modes
+
+Mode 5 first plays a 60-tick lockstep and prints the result, then brings the C++ object to the tick
+that `sim` stands at (`PerfProbeLockstep.advance`, the probe's cadence, under a second even on a
+phone), so that mode 4 (which continues `sim`) and mode 5 time the same stretch of the
+deterministic tick sequence and not tick 3 to 903 against 2700 and later. Both worker modes print
+`worker from tick N` on the implementation line, and a row `worker tick usec: mean, p95, max | flow
+slice usec: mean, p95, max` in whole microseconds (the ms rows have two decimals, which is one or
+two significant digits for a C++ tick). `tests/perf/probe_tick.gd` times both on CI and prints the
+speedup, with a `PROBE ci builds:` line naming the two builds it compares (the editor's debug GDScript
+VM against `template_debug -O2`); the phone compares a release GDScript VM with `-O3`, so the CI
+ratio is not the phone ratio.
