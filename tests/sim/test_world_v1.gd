@@ -51,10 +51,14 @@ func test_a_hand_built_world_has_the_rule_defaults_and_the_default_stream() -> v
 		assert_that(world.get(field)).override_failure_message(field).is_equal(RULES[field])
 	assert_array(world.rng.state()).is_equal(DetRandom.create(0, DetRandom.STREAM_SIM).state())
 	assert_int(world.next_projectile_id).is_equal(1)
+	for scalar: String in ["player_count", "spawn_refused", "projectile_overflow", "proj_free_top"]:
+		assert_int(world.get(scalar)).override_failure_message(scalar).is_equal(0)
+	world.add_unit(1, 0, 1000, 1000)
+	assert_int(world.player_count).is_equal(1)
 	for player: int in [2, 1, 3, 1]:
 		world.add_unit(player, 0, 1000, 1000)
 	assert_int(world.player_count).is_equal(3)
-	assert_array(world.hp).is_equal([1, 1, 1, 1])
+	assert_array(world.hp).is_equal([1, 1, 1, 1, 1])
 
 
 func test_from_scenario_keeps_a_given_stream_and_defaults_to_the_sim_stream() -> void:
@@ -132,8 +136,9 @@ func test_add_unit_writes_every_column_at_its_spawn_value_and_one_spawned_record
 	assert_int(world.add_unit(1, 1, 10, 20)).is_equal(2)
 	assert_int(world.add_unit(1, 2, 30, 40)).is_equal(3)
 	assert_array(world.hp).is_equal([300, 1, 1])
-	assert_array(world.events.slice(8, 16)).is_equal([1, 2, 10, 20, 1, 1, 0, 0])
-	assert_int(world.events.size()).is_equal(3 * World.EVENT_STRIDE)
+	var records: Array[int] = [1, 1, 3500, 4500, 0, 2, 0, 0, 1, 2, 10, 20, 1, 1, 0, 0]
+	records.append_array([1, 3, 30, 40, 2, 1, 0, 0])
+	assert_array(world.events).is_equal(records)
 	assert_array([world.rows_version, world.next_id]).is_equal([3, 4])
 
 
@@ -145,6 +150,13 @@ func test_the_phase_1_shaped_world_steps_ten_ticks() -> void:
 	world.add_unit(1, 2, 10000, 20000)
 	world.add_unit(2, 1, 40000, 40000)
 	world.prepare()
+	assert_array(world.type_max_hp).is_equal([1, 1, 1])
+	assert_array(world.type_armour).is_equal([0, 0, 0])
+	assert_array(world.type_move_class).is_equal([2, 2, 2])
+	assert_array(world.type_sight).is_equal([0, 0, 0])
+	assert_array(world.type_acquire).is_equal([0, 0, 0])
+	assert_array(world.type_weapon).is_equal([-1, -1, -1])
+	assert_array(world.type_names).is_equal(["Type", "Type", "Type"])
 	var order: Command = Command.attack_move(1, PackedInt32Array([1]), 30000, 10000)
 	order.tick = 0
 	var first: Array[Command] = [order]

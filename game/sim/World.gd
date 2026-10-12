@@ -78,10 +78,12 @@ var next_id: int = 1
 var dropped_commands: int = 0
 ## Projectile ids start at 1, because projectile id 0 marks a free slot.
 var next_projectile_id: int = 1
+## Counters since match start: a projectile or a row that did not fit. 0 or more.
 var projectile_overflow: int = 0
 var spawn_refused: int = 0
 ## Players are 1..player_count, 0 is neutral.
 var player_count: int = 0
+## The top of the projectile free stack, 0..max_projectiles.
 var proj_free_top: int = 0
 ## Bumped whenever rows are added or removed, so the view can tell when rows moved.
 var rows_version: int = 0
@@ -112,9 +114,13 @@ var type_speed: PackedInt32Array = PackedInt32Array()
 var type_radius: PackedInt32Array = PackedInt32Array()
 var type_selection_radius: PackedInt32Array = PackedInt32Array()
 var type_spacing: PackedInt32Array = PackedInt32Array()
+## At least 1.
 var type_max_hp: PackedInt32Array = PackedInt32Array()
+## A World.Armour.
 var type_armour: PackedInt32Array = PackedInt32Array()
+## A World.MoveClass.
 var type_move_class: PackedInt32Array = PackedInt32Array()
+## Sight and acquire range in milli-tiles, 0 or more.
 var type_sight: PackedInt32Array = PackedInt32Array()
 var type_acquire: PackedInt32Array = PackedInt32Array()
 ## -1 = unarmed, else a weapon index.
@@ -135,8 +141,9 @@ var hp: PackedInt32Array = PackedInt32Array()
 ## Unit ids, 0 = none.
 var order_target: PackedInt32Array = PackedInt32Array()
 var target: PackedInt32Array = PackedInt32Array()
-## Ticks until the weapon can fire again.
+## Ticks until the weapon can fire again, 0..the weapon's cooldown_ticks.
 var cooldown: PackedInt32Array = PackedInt32Array()
+## A World.NavMode.
 var nav_mode: PackedInt32Array = PackedInt32Array()
 ## A flow cache slot, -1 = none.
 var field: PackedInt32Array = PackedInt32Array()
@@ -145,7 +152,9 @@ var nav_cell: PackedInt32Array = PackedInt32Array()
 var nav_next: PackedInt32Array = PackedInt32Array()
 ## A plain distance in milli, 0..0x3FFFFFFF.
 var best_dist: PackedInt32Array = PackedInt32Array()
+## 0..stall_ticks.
 var stall: PackedInt32Array = PackedInt32Array()
+## The cell last stamped into the fog, -1 = not stamped.
 var fog_cell: PackedInt32Array = PackedInt32Array()
 
 ## Records of EVENT_STRIDE ints for the last tick. Rewritten every tick and not state.
@@ -264,7 +273,14 @@ func add_unit(owner: int, type_index: int, x: int, y: int) -> int:
 	best_dist.append(0x3FFFFFFF)  # No distance yet; equals FlowField.UNREACHED.
 	stall.append(0)
 	fog_cell.append(-1)
-	events.append_array(PackedInt32Array([Event.SPAWNED, id, x, y, type_index, owner, 0, 0]))
+	var at: int = events.size()
+	events.resize(at + EVENT_STRIDE)  # In place, no allocation. The last two ints stay 0.
+	events[at] = Event.SPAWNED
+	events[at + 1] = id
+	events[at + 2] = x
+	events[at + 3] = y
+	events[at + 4] = type_index
+	events[at + 5] = owner
 	rows_version += 1
 	player_count = maxi(player_count, owner)
 	return id
