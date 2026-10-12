@@ -1,6 +1,11 @@
 # ADR 0013: C++ GDExtension kernels for the sim's hot phases
 
-Status: proposed, 2026-10-12 (revision 7, after the second merge-readiness review: §1's port
+Status: proposed, 2026-10-12 (revision 8, after merging `main` and the review of revision 7:
+§3's self-check runs from `PerfHud.preflight()` (P50a2's seam), which P50b's arena script calls
+before the runner starts, with an order test; §3's table names the INTENTS entry; §5's twin rule
+names the GDScript rows that merge after a port (P41); P38j2's skip of `NON_STATE_MEMBERS`
+depends on P54; ADR 0005 §8 is named in "It keeps"; the slip is recounted on the merged plan.
+Revision 7, after the second merge-readiness review: §1's port
 rule gains clause (b) for bursty phases, the one FLOW is ported by; §10's
 `check-native-tests.sh` discovers the native suites and holds no list, and P51 adds the
 `native-clang` golden step; unrecorded build times now cite the spike's README or the PR that
@@ -54,6 +59,11 @@ It keeps:
 - CLAUDE.md rules 1-6;
 - ADR 0005 §5: the APK's `THIRD_PARTY_LICENSES.txt` keeps the web build's content; godot-cpp's
   notice goes into both (§11);
+- ADR 0005 §8 ("`preview.yml` and `export-web.sh` are unchanged"): that sentence scoped Phase
+  1's delivery work; what §8 decides stays (`main.tscn` is the boot scene of every build, every
+  PR keeps its web preview). `export-web.sh` changes in P26l (the libc++ notice, in any outcome),
+  P53 (the seed call, the check that no `.gdextension` is packed) and P55a (the godot-cpp
+  notice); `preview.yml` changes only if P53 falls back to a committed `.gdextension` (P55);
 - ADR 0005 §7 ("`toolchain-mirror.yml` and `scripts/cloud/setup.sh` are unchanged"): P53 changes
   `setup.sh` to install SCons and `clang-format` (§8), not to build APKs, and cloud sessions still
   build none;
@@ -429,7 +439,8 @@ absorbs next to the C++ phases.
       values;
     - the `FlowCache` and slot scalars the kernel sets on exit arrive (the same values as the
       GDScript twin's);
-    - a budget-0 call (the checkpoint-tick case) after an ordinary tick leaves `state_hash`
+    - a budget-0 call (the checkpoint-tick case) after an ordinary FLOW call (a non-zero
+      budget through `FlowCache.run`; P30n has no `Sim.step` tick to call) leaves `state_hash`
       unchanged.
 
   They rerun on every Godot or godot-cpp pin change, because in-place writes rely on the
@@ -444,7 +455,7 @@ absorbs next to the C++ phases.
   The choice of implementation is therefore never hashed. The golden hashes are the same in both.
   `kernels` is not state: P54 adds `const NON_STATE_MEMBERS: Array[StringName] = [&"kernels"]` to
   the World. ADR 0007 §8's coverage test, the `state_hash` walk and P38j2's reachability walk
-  skip exactly the members of that list, and a test pins that it holds only `kernels` (an object
+  skip exactly the members of that list (P38j and P38j2 depend on P54, which creates it), and a test pins that it holds only `kernels` (an object
   member outside it still fails the coverage test). The snapshot's `COPIED`/`NOT_COPIED`
   coverage spans only the five shape lists, which hold neither `kernels` nor `native_phases`, so
   P38s does not change.
@@ -455,7 +466,7 @@ absorbs next to the C++ phases.
   | --- | --- | --- |
   | `FLOW` | `FlowCache.run(world, budget)` (static: the recount, then `world.flow.advance`) | `flow(world, budget)` |
   | `GRIDS` (only if its rule fires, §1) | `SpatialGrid.rebuild_grids(world)` (static: one `_rebuild_one(world, which)` line per grid) | `grids(world, which)` |
-  | `TARGETING`, `SEPARATION`, `INTEGRATE`, `FOG`; `INTENTS`, `PROJECTILES`, `FIRE` only if their rule fires | the module's `run(world)` (`Movement.integrate`, `Combat.advance_projectiles`, `Combat.fire` likewise) | `targeting(world)` and so on |
+  | `TARGETING`, `SEPARATION`, `INTEGRATE`, `FOG`; `INTENTS`, `PROJECTILES`, `FIRE` only if their rule fires | the module's `run(world)`: `Targeting.run`, `Separation.run`, `Movement.integrate`, `FogUpdate.run`; `Movement.run` for `INTENTS` (the plan's `Sim` contract row: "`Movement.run` (intents)"); `Combat.advance_projectiles` and `Combat.fire` | `targeting(world)`, `separation(world)`, `integrate(world)`, `fog(world)`, `intents(world)`, `projectiles(world)`, `fire(world)` |
 
   The dispatch is
   `if ((world.native_phases >> SimProbe.Phase.X) & 1) == 1: world.kernels.x(world[, int]); return`
@@ -494,9 +505,13 @@ absorbs next to the C++ phases.
     `native_phases = mask`, steps each through its own `MatchLoop` in `SYNC` with the scenario's
     orders for `ticks` ticks, compares `state_hash()` after every tick, and returns false at the
     first difference. It touches no runner, World or snapshot of the match.
-- **When the self-check runs.** Only in the perf arena (P50a calls it), at the arena's start, on
-  the main thread, before the runner posts the match's first tick (so no job is in flight) and
-  before ADR 0014's reference burst if that ADR is accepted: the seed-42 arena, 60 ticks,
+- **When the self-check runs.** Only in the perf arena, through `PerfHud.preflight(runner)`:
+  P50a2 adds the self-check seam (and the entry, if P50a has not added it for ADR 0014), and
+  P50b's `perf_arena.gd` calls `preflight()` in its `_ready`, before it starts the arena's
+  runner (the scene's runner has no `scenario`, so it does not start itself). So it runs on the
+  main thread, with no World and no job in flight, and before ADR 0014's reference burst (the
+  next seam) if that ADR is accepted; P50b's headless test pins the order (self-check, burst,
+  runner start) and that no job is in flight. Its inputs: the seed-42 arena, 60 ticks,
   `NativeKernels.create()` and its `phases()`. It runs only when the resolved implementation is
   `NATIVE`; otherwise the card's `self_check` reads `not run` (on Android the `impl` verdict
   fails anyway). It never runs in ordinary matches. It takes about 1-3 s on the gate phone (an
@@ -519,7 +534,8 @@ absorbs next to the C++ phases.
     (`tests/sim/support/sim_impls.gd`).
 - **Who sets what:**
   - **P50b** sets `sim_impl = AUTO` in `scenes/main.tscn` and `scenes/dev/perf_arena.tscn`, next
-    to `tick_mode = AUTO`, and its scene test asserts both. Before P50b no scene runs the native
+    to `tick_mode = AUTO`, and its scene test asserts both. It also adds the `preflight()` call
+    before the arena's runner starts ("When the self-check runs" above). Before P50b no scene runs the native
     path, and the gate card cannot show `sim impl: native` without it. By P50b every port row
     that exists has merged (P49a's Depends cell names every port row, conditional rows that fired
     included, and P50b needs P49a);
@@ -623,7 +639,7 @@ absorbs next to the C++ phases.
      x86_64 with clang at the release optimisation (P55's `native-clang` job; P51 adds its golden
      step, §10), and on arm64 Linux with clang at the release optimisation (P51b). On the phone,
      the APK runs a 60-tick lockstep against the GDScript twin (NDK clang;
-     `NativeKernels.self_check`, §3, called by P50a's part P50a2); the
+     `NativeKernels.self_check`, §3: P50a2's preflight seam, called by P50b's arena); the
      full golden check on the device is the gate's checkpoint match, which compares the APK (C++)
      and the web build (GDScript) with the same golden values;
   5. the sanitizer job (§10);
@@ -637,7 +653,10 @@ absorbs next to the C++ phases.
   - the lockstep oracle.
 - **Order:** the GDScript PR first, as planned. The port PR follows straight after the module's
   last main GDScript PR. Once a port has merged, any change to that rule edits both versions and
-  passes the lockstep test in the same PR (P46b, and Phase 3 onwards).
+  passes the lockstep test in the same PR. This binds every GDScript row whose file list edits
+  a module with a merged port, whatever its title: in Phase 2 P41 (`Movement.gd`, after P37n),
+  P46b (`Targeting.gd`, after P41n), and Phase 3 onwards. The plan's amendment states it as a
+  general line and amends P41's row.
 - **Cost:**
   - about twice the code in the hot phases (the spike: about 550 C++ lines for a mock of about
     250 GDScript lines, bind boilerplate included; with the bind layer shared after P54, the
@@ -1207,16 +1226,18 @@ that approval.
     conditional ports (§1; 5 with splits); lane B gets 8 infrastructure, port and perf rows (up
     to 11 with splits);
   - **the slip, counted with the plan's Depends cells** (a model in which each lane merges one PR
-    per slot, on the rows of this draft's base, `main` at `5311132`; the lead reruns it at merge):
-    the gate becomes ready at slot 35 instead of 30, and at slot 39 with every named port and
-    infrastructure split; every conditional row that fires adds its slots on lane A on top (up
-    to 5 more). The PerfHud split P50a3, expected on acceptance of either ADR (plan, "P50a's
-    parts on acceptance"), makes it 36 without port splits (39 with them unchanged). Lane B's rows before P38 (P53, P55, P55a, P56) and between P38p and P38s
-    (P30n) move P40 from slot 16 to 18 (20 with splits), and lane A waits for P40 at P39b
-    (P42a needs it too), so the critical path runs through lane B up to P40 and through lane A's
-    ports after it. P54r, P38pn and P57 sit after P43b: P54r needs P37n for its self-check tests,
-    and only P38pn, P38w and P50a, all later, need P54r. The plan's lane order is built for this
-    (amendment, "Lanes on acceptance");
+    per slot, on the merged plan, `main` at `038392d` with P34c merged; plan amendment, "the
+    slip"): the gate becomes ready at slot 35 instead of 30 if ADR 0014 is accepted too (5 slots;
+    the PerfHud split P50a3 is expected on acceptance of either ADR), or instead of 29 if this
+    ADR is accepted alone (6 slots, P50a3 then charged to it). With every named port and
+    infrastructure split it is 38 (8-9 slots). Each conditional row that fires adds its slots on
+    lane A on top: up to 5 more with their splits (43), 1 more without. Lane B's rows before
+    P38 (P53, P55, P55a, P56) and between P38p and P38s (P30n) move P40 from slot 15 to 17 (19
+    with splits), and lane A waits for P40 at P39b (P42a needs it too), so the critical path
+    runs through lane B up to P40 and through lane A's ports after it. P54r, P38pn and P57 sit
+    after P43b: P54r needs P37n for its self-check tests, and only P38pn, P38w and P50a, all
+    later, need P54r. The plan's lane order is built for this (amendment, "Lanes on
+    acceptance");
   - one release-engineer PR, P26l (the libc++ notice), lands in any outcome;
   - details are in the plan's amendment.
 - **Permanent dual maintenance** of the hot phases, and lockstep tests in every PR that touches

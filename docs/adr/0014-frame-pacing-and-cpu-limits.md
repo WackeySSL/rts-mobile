@@ -1,6 +1,9 @@
 # ADR 0014: Frame pacing by dropped frames, and main-thread CPU-time limits normalised for clock scaling
 
-Status: proposed, 2026-10-12 (revision 7: `refresh_hz` is a float, so §2 and C1 compare it with
+Status: proposed, 2026-10-12 (revision 8, after merging `main` and the review of revision 7: the
+burst runs as the second seam of `PerfHud.preflight()`, which P50b's arena script calls before
+the runner starts, with an order test (§3, §4); the Context's source facts are listed as not
+re-run with the PR that re-proves each; P52 is about +15. Revision 7: `refresh_hz` is a float, so §2 and C1 compare it with
 `refresh_tolerance_pct`; P50a depends on the calibration's recorded outcome, and the load-pinned
 fallback has a conditional plan row, P50lp, with its busy share in `PerfGateDef`; the burst keeps
 the second half of `ref_burst_ms`. Revision 6: the docs PR is P26e and the plan revision is the next
@@ -103,6 +106,28 @@ The reason lies in how Godot paces frames on Android under Compatibility (Godot 
   - Perfetto's FrameTimeline does not support SurfaceViews, and Godot draws into one.
   - The ground truth is `EGL_ANDROID_get_frame_timestamps`, which needs native code.
 
+### Source facts not re-run
+The Context's explanations rest on facts from the first research run that are neither in the PR
+#41 evidence comment nor re-run. None of them sets a threshold: §1-§3 rest on the measured runs
+in the table above, and the calibration (§5) tests the consequences on the phone. Each is
+re-proven, or corrected in this ADR, by the PR named:
+- Godot 4.7.2's Android frame loop under Compatibility (GLSurfaceView GLThread; `onDrawFrame` calls
+  `Main::iteration`; process, `RenderingServer::draw`, then `OS::add_frame_delay`, then
+  `eglSwapBuffers`), and that this path uses no Swappy, Choreographer or ADPF and cannot change
+  V-Sync: P26e cites the source files and lines at the `4.7.2-stable` tag in this ADR's
+  acceptance note, or corrects Context;
+- the display queue of typically 2 buffers: P26n2's card records the frame-interval histogram
+  (extra slots 0, 1, 2, ≥ 3, §4), which shows whether a few-ms-late frame costs a slot;
+- schedutil's target of 1.25 × utilisation × f_max (so a light thread settles at about 80 % busy):
+  P26e cites the kernel source or documentation, and P26n2's C3 and C4 test its consequence (raw
+  ms rising on a lighter thread) on the gate phone;
+- Perfetto's FrameTimeline not supporting SurfaceViews: P26e cites the Perfetto documentation;
+  it only explains why option D is not the gate;
+- AOSP's `screen_get_refresh_rate()` reporting the rate the app experiences (per-app override
+  first): P26n2's C1 prints the start and end values with two decimals;
+- the Android documentation quotes (Microbenchmark clocks, ADPF Fixed Performance Mode): P26e
+  cites the pages.
+
 ## Decision
 
 ### 1. Frame pacing: dropped frames, cadence and hitches
@@ -174,8 +199,9 @@ load-normalised time instead of raw wall-clock time. The worker limits stay on r
 **Why the worker stays raw.** A normalisation by a reference loop cancels everything that slows
 the loop, not only the clock: it also cancels the core the thread runs on. The energy-aware
 scheduler places a light thread on a smaller core for the same reason schedutil lowers its clock,
-and the gate phone has four A520 little cores; PR #35's release run 2 attributes its bimodal
-worker times to the worker sometimes landing on a mid or little core. ADR 0012 §4 sets
+and the gate phone has four A520 little cores; PR #35's release run 2 hypothesises (its own
+label: "Hypothesis") that its bimodal worker times come from the worker sometimes landing on a
+mid or little core. That was not measured. ADR 0012 §4 sets
 `sim_p95_ms` at half the period precisely so that the other half, a factor 2, covers what k does
 not model: a slower or efficiency core, and heat. Normalising the worker would remove that
 margin's subject and leave the factor 2 unexplained. So `job_usec` stays raw, ADR 0012 §4's
@@ -192,7 +218,9 @@ is how k is defined (below). Cancelling core placement there is intended.
   iterations (26-28 µs at p25-p50 on the cloud VM, evidence comment section 6; about
   0.11-0.13 ms on the phone by the measured release GDScript ratios).
 - **`ref_peak`:** a back-to-back burst of `ref_burst_ms` (400 ms) on the main thread before the
-  run, keeping its second half (200 ms at 400; no separate literal). That is long enough for schedutil and the energy-aware scheduler to
+  run (the `burst_step` seam of `PerfHud.preflight()`, which P50b's `perf_arena.gd` calls in its
+  `_ready` before it starts the arena's runner, so no World and no job exist yet; after ADR
+  0013's self-check if that ADR is accepted), keeping its second half (200 ms at 400; no separate literal). That is long enough for schedutil and the energy-aware scheduler to
   reach the top clock and core. `ref_peak` is the p25 of the kept samples.
   - It is measured per run, so thermal throttling makes it conservative.
   - It is printed, and across the three warm runs it doubles as a heat indicator.
@@ -259,12 +287,16 @@ is how k is defined (below). Cancelling core placement there is intended.
 - **Plan PRs:**
   - P38t (`PerfGateDef` fields, `RefLoop`; about +30 lines);
   - P38p (the new fields in `data/dev/perf_gate.tres`; about +10);
-  - P50a (verdicts, the burst, the main-thread samples; about +40) and P50a2 (the §2 `INVALID`
+  - P50a (verdicts, `PerfHud.preflight(runner)` with its `burst_step` seam, the main-thread
+    samples; about +40) and P50a2 (the §2 `INVALID`
     rules next to the ones P50a's split already moves there, about +20; card rows and copy keys,
     about +20). P50a's Depends cell gains "ADR 0014's acceptance note records P26n2's C1-C4
     outcome" (§5), because that outcome picks the formula P50a implements;
+  - P50b (the `preflight()` call before the arena's runner starts, and a headless test that pins
+    the order self-check if present, burst, runner start, with no job in flight; about +25,
+    shared with ADR 0013's P50b row and counted once if both are accepted);
   - P50lp, only if §5's fallback applies (the load-pinned run, about +60);
-  - P52 (about +10).
+  - P52 (about +15).
   - No change to `TimingProbe`, `TickJob` (P38j), the worker-file scan (P38j2) or late ticks
     (P38w2): the worker takes no reference samples.
 
@@ -361,8 +393,9 @@ only this list; if he accepts both, it holds both lists (ADR 0013 §14).
   `PerfGateDef` and "Perf arena" (the `summary()` keys of §4), P38t, P38p, P50a, P50a2, P52, the
   gate procedure, the test plan and the risks, plus the calibration row P26n2 (and P50lp if §5's
   fallback applies).
-- **This ADR's acceptance note** records Michael's answer; after the calibration run (§5) it also
-  records C1-C5 and which outcome applies.
+- **This ADR's acceptance note** records Michael's answer and the citations (or corrections) that
+  "Source facts not re-run" assigns to P26e; after the calibration run (§5) it also records C1-C5
+  and which outcome applies.
 - No CLAUDE.md, skill, ROADMAP or agent text changes: the ROADMAP gate line ("150 units at 60
   fps") stays, and only the measures behind it change.
 
