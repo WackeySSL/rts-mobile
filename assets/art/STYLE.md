@@ -58,7 +58,7 @@ a team layer has R = G = B, so the runtime tint stays clean.
 ## Technical rules
 - One drawing per file with `width`, `height` and `viewBox="0 0 W H"` set to the canvas.
 - Allowed elements: `svg`, `g`, `path`, `rect`, `circle`, `ellipse`, `polygon`, `polyline`, `line`,
-  `linearGradient` (sparingly; the tank uses none). Not allowed: text, image, filter, mask,
+  `linearGradient` and its `stop` children (sparingly; the tank uses none). Not allowed: text, image, filter, mask,
   foreignObject, external href, style blocks, scripts, raster data.
 - At most 20 KB per file; integer or one-decimal coordinates. A group `opacity` is fine and flattens
   overlapping shapes (used for the shadow).
@@ -70,7 +70,8 @@ a team layer has R = G = B, so the runtime tint stays clean.
   1. Write the SVG, run `godot --headless --path . --import` (this creates the `.import` with
      `svg/scale=1.0`).
   2. Set `svg/scale=0.5` in the `.import` file and import again. The uid does not change.
-  3. Check the texture: a 128 px canvas must load as 64x64.
+  3. Check the texture: a 128 px canvas must load as 64x64 (`ui/selection_ring.svg` is the
+     exception: import scale 1.0, 168 px).
 
 ## Layer contract (multi-layer units)
 Vehicles are drawn from three layers that share one canvas size:
@@ -197,7 +198,8 @@ draws them on the phone.
 Ring check (P34b): in a scratch render at 1.75 base px per dp the ring around the light tank at zoom
 0.75 / 1.0 / 1.5 measures 3.00 / 3.35 / 5.03 dp of white with 1.00 / 1.12 / 1.68 dp of dark on each
 side. In greyscale on grass and sand it reads at all three zooms as a closed white circle around a
-unit, apart from the long-press anchor (56 px radius, 15 % fill, no unit inside).
+unit. At zoom 1.5 its outer radius equals the long-press anchor's (60 base px): the ring's band is
+5 dp against 3 dp, and the anchor has the 15 % fill and shrinks in.
 
 ### Shape as second cue
 - Colour is never the only cue (`touch-ui-rules`). Each meaning has its own shape: own selection is
@@ -220,37 +222,49 @@ layer modulated #E5484D (team B). Hull and turret keep their olive and metal. Th
 gallery's zoom row shows it at 0.75, 1.0 and 1.5. Phase 1 targets stand still, so they need no other
 cue.
 
-## Combat effects
-Five sprites share one sheet, `fx/effects_atlas.svg` (336x168 at 2x, import scale 0.5, so 168x84 px).
+## Combat effects (new)
+Five sprites share one sheet, `fx/effects_atlas.svg` (352x168 at 2x, import scale 0.5, so 176x84 px).
 Quads are drawn in one `_draw()` per layer from these regions (x, y, w, h in px of the imported
-texture), each sprite at the centre of its region and facing east; a layer turns shell and rocket by
-the flight direction and leaves the others unturned. Sizes are world px (they scale with the zoom),
-times run on the frame clock, and all colours are palette colours, none a team colour. Thin parts
-(flash points, flame) have a 2 px outline (new), fins 1.5 px, the rest 3 px (at 2x).
+texture), each sprite at the centre of its region, facing east, with `modulate` Color(1, 1, 1, alpha).
+The colours are baked in, all palette colours and none a team colour: burst #F5A524, #FFD84D, #FFFFFF;
+puff #7D8893, #A9B4BE with a #F5A524, #FFD84D core; shell #F2B705, #FFD84D; rocket #A9B4BE, #5B6670
+with #F5A524, #FFD84D; outlines #1C2127. A layer turns shell and rocket by the flight direction and
+leaves the others unturned. Sizes are world px (they scale with the zoom), times run on the frame
+clock. Thin parts (flash points, flame) have a 2 px outline (new), fins 1.5 px, the rest 3 px (at 2x).
+`PUFF` holds the largest puff (56), so the smaller ones scale it down and none is stretched.
+
+Every rule keys on a snapshot column (ADR 0012 section 3). A weapon is `weapon_ids[i]` for the weapon
+index `i` of the event or slot (`tank_cannon`, `rocket`, `rifle`); hitscan is `weapon_projectile_speed[i]
+== 0`. A type is infantry when `type_armour[type_index] == World.Armour.INFANTRY`; any other armour
+(light, heavy, building) is a vehicle. ADR 0011 section 1 and ADR 0012 section 3 list neither
+`weapon_ids` nor `type_armour`, so an addendum must add both to the view's read list and to
+`MatchSnapshot.COPIED` before P44 and P45 can follow this spec.
 
 | Effect | Trigger | Region | Size (world px) | Motion and lifetime | Layer |
 | --- | --- | --- | --- | --- | --- |
-| Shell | live slot of a projectile weapon other than `rocket` | `SHELL` 84,44,16,8 | 16x8 | At the interpolated position, turned to the flight direction, for as long as the slot lives | Projectiles, z 120 |
-| Rocket | live slot of the weapon `rocket` | `ROCKET` 84,56,36,12 | 36x12 | As the shell; the quad centre is the body centre, the flame trails behind it | z 120 |
-| Muzzle flash | `SHOT` | `FLASH` 128,0,32,32 | 32 (cannon), 24 (rocket), 16 (rifle) | At the shooter's position plus 31 px (cannon) or 13 px (rocket, rifle) towards the target. Alpha 1 until 40 ms, then linear to 0 at 100 ms | Effects, z 130 |
-| Tracer | `SHOT` of a hitscan weapon (rifle) | none, a line | #FFD84D 1.5 dp over #1C2127 3.5 dp (the marker stroke rule) | From the muzzle point to the target's position at fire time, alpha 1 to 0 over 120 ms | z 130 |
-| Impact puff | `IMPACT` | `PUFF` 84,0,40,40 | 40 (cannon), 56 (rocket) | At the event position, 0.6x growing to 1.0x. Alpha 1 until 150 ms, then linear to 0 at 350 ms | z 130 |
+| Shell | live slot (`proj_weapon`) of a weapon other than `rocket` | `SHELL` 84,60,16,8 | 16x8 | At the interpolated position, turned along `prev_proj` to the position, for as long as the slot lives. A new slot (its `proj_id` differs from `prev_proj_id`) has no heading: it is not drawn until it has moved, one tick (67 ms), which the muzzle flash covers | Projectiles, z 120 |
+| Rocket | live slot of the weapon `rocket` | `ROCKET` 84,72,36,12 | 36x12 | As the shell; the quad centre is the body centre, the flame trails behind it | z 120 |
+| Muzzle flash | `SHOT` | `FLASH` 144,0,32,32 | 32 (`tank_cannon`), 24 (`rocket`), 16 (`rifle`) | At the muzzle point: the shooter's position plus 31 px (`tank_cannon`) or 13 px (`rocket`, `rifle`) towards the event's target position. Alpha 1 until 40 ms, then linear to 0 at 100 ms | Effects, z 130 |
+| Tracer | `SHOT` of a hitscan weapon (the rifle) | none, a line | #FFD84D 1.5 dp over #1C2127 3.5 dp (the marker stroke rule) | From the muzzle point to the event's target position. Alpha a from 1 to 0 over 120 ms: outline pass at a squared, colour pass at a (the marker fade rule) | z 130 |
+| Impact puff | `IMPACT` (projectiles only) | `PUFF` 84,0,56,56 | 40 (`tank_cannon`), 56 (`rocket`) | At the event position, 0.6x growing to 1.0x. Alpha 1 until 150 ms, then linear to 0 at 350 ms | z 130 |
 | Vehicle death | `DIED` of a type that is not infantry | `BURST` 0,0,80,80 | 80 | At the event position, 0.5x to 1.0x in 150 ms (ease-out). Alpha 1 until 350 ms, then linear to 0 at 600 ms | z 130 |
 | Infantry death | `DIED` of an infantry type | `PUFF` | 24, no growth | At the event position, alpha 0.7 linear to 0 over 700 ms | z 130 |
 
-The regions have 4 px of clear space between them and no ink outside. On grass and sand, in colour
-and in greyscale, all five read apart by shape; the dark outline keeps the shell body (luminance 180,
-sand 186) and the cloud (134, grass 127) readable.
+The regions have 4 px of clear space between them and no ink outside (the rocket's ends at the
+sheet's edge). On grass and sand, in colour and in greyscale, all five read apart by shape at zoom
+0.75 / 1.0 / 1.5; the dark outline keeps the shell body (luminance 180, sand 186) and the cloud (134,
+grass 127) readable.
 
-## Health bars
+## Health bars (new)
 Bars are filled rects only, drawn in one `_draw()` (ADR 0011 section 3), sized in dp so they look the
-same at every zoom. Sizes are outer boxes in dp, in rects of 1 dp, origin at the top-left corner.
+same at every zoom. Sizes are outer boxes in dp, in rects of 1 dp, origin at the top-left corner. The
+class is the one under Combat effects (infantry when `type_armour` is INFANTRY).
 
-| Class | Width W | Height | Edge and empty part | Fill |
-| --- | --- | --- | --- | --- |
-| Own, vehicle | 22 | 6 | #1C2127, 1 dp round the 4 dp interior | #30A46C (ok), luminance 123 |
-| Own, infantry | 16 | 6 | as above | as above |
-| Enemy | as the class of the unit | 6 | as above | #F5A524 (warning), luminance 174 |
+| Class | Width W | Height | Reach r (world px) | Edge and empty part | Fill |
+| --- | --- | --- | --- | --- | --- |
+| Own, vehicle | 22 | 6 | 26 | #1C2127, 1 dp round the 4 dp interior | #30A46C (ok), luminance 123 |
+| Own, infantry | 16 | 6 | 14 | as above | as above |
+| Enemy | as the class of the unit | 6 | as the class | as above | #F5A524 (warning), luminance 174 |
 
 Neither fill is a team colour, so a red or blue unit keeps its bar colour. Own bars are plain
 rects, enemy bars are notched (Michael's answer 3, see Open points):
@@ -259,21 +273,39 @@ rects, enemy bars are notched (Michael's answer 3, see Open points):
   (a,2,4,4), which leave an open notch 4 dp wide and 2 dp deep in the top edge, outlined all
   round; fill rects (1,1,a-2,2), (a+5,1,a-2,2) and (1,3,W-2,2), a shoulder on each side of the
   notch over one continuous strip.
-- Fill length: x_end = 1 + round((W - 2) x hp / max_hp), at least 1 while hp > 0. Every fill rect is
-  clipped to x < x_end, so a bar fills from the left.
-- The bar is centred on the unit, its bottom edge 2 dp above the ring's outer edge (1.14 R, R the
-  unit's ring radius on screen).
+- Fill length: x_end = 1 + max(1, round((W - 2) x hp / max_hp)) while hp > 0, so a living unit
+  always shows 1 dp of fill. Every fill rect is clipped to x < x_end, so a bar fills from the left.
+- The bar is centred on the unit, its bottom edge 1 dp above the sprite: r x zoom + 1 dp above the
+  unit's position on screen, r the class's reach in world px. The light tank hull is 21 high facing
+  east and 29 long, so 26 sits between; a rifle squad is 14 high and a rocket squad 12 to 13. The
+  ring does not set it: its 18 dp floor put each bar on the unit above in a formation. The bar may
+  cover the unit's own barrel or the inner edge of its ring (z 110 is above both).
 - Density: a bar shows for a unit that is selected (at any hp) or was hit within the last 3000 ms
   (frame clock, `hit_time_ms`). No bar otherwise, and none for a unit the fog hides.
 
-Overlap: at zoom 0.75 on the widest dp ratio of the test profiles (web_phone_small, 2.37 base px per
-dp) the 900-milli squad spacing is 18.2 dp and the 1200-milli tank spacing 24.3 dp, so 16 and 22 dp
-leave 2.2 and 2.3 dp; on the 6-inch phone 8.7 and 10.9 dp.
+Overlap (P34b, scratch render and sweep): each class at its own formation spacing, 900 milli for squads
+and 1200 milli for tanks and mixed groups (a group spaces by its largest `type_spacing`, so tanks
+never form at 900), at zoom 0.75 / 1.0 / 1.5 and 1.0 to 2.37 base px per dp.
+- Side by side, at zoom 0.75 on web_phone_small (2.37 px per dp, the widest ratio) the spacing is 18.2
+  dp (squads) and 24.3 dp (tanks), so 16 and 22 dp bars leave 2.2 and 2.3 dp; 8.7 and 10.9 dp on the
+  6-inch phone.
+- Above each other, a bar's top is r x zoom + 7 dp over its unit and the unit above starts (spacing -
+  half-height) x zoom over it: at worst 5.6 px clear. The bar's middle is nearer its own unit than the
+  unit above, except for tanks at zoom 0.75 on web_phone_small, where it is midway.
+- Notch: 3x3 formations of squads, of tanks and of a mixed group, every unit hit, at headings 0 to 315
+  degrees in 45 degree steps and with the turret aligned or pointing down. On the 6-inch phone (1.75
+  px per dp) no sprite covers a notch at any zoom, and squads are clean on every profile. Residual:
+  on web_phone_small at zoom 0.75 the barrel of the tank above pointing down, or its hull corner at
+  225 or 315 degrees, covers up to 53 % of a notch (25 % averaged over the headings; 4 % at most on
+  web_phone). On desktop and tablet (1.0 and 1.25 px per dp) at zoom 1.5, and desktop at zoom 1.0, a
+  tank aimed north puts its own barrel through its notch, and its hull corner does at 45 or 135
+  degrees. The fill still shows the notch as a 6 dp gap in its top row.
+P45's test pins the first two inequalities (squads at 900, tanks at 1200), not only the side-by-side gap.
 
-Mixed group check (P34b): a scratch render at 1.75 base px per dp of blue tanks and squads, selected
-with plain bars, beside red ones with notched bars, at zoom 1.0 and 0.75 on grass and sand. In
-greyscale the own bars read as plain rectangles and the enemy bars as rectangles with a bite out of
-the top edge, at both zooms and for both classes, so the notch alone tells them apart (the fill
+Mixed group check (P34b): a scratch render at 1.75 base px per dp of blue tanks and squads, ringed, with
+plain bars, beside red ones with notched bars, in a 1200-milli formation at zoom 0.75, 1.0 and 1.5 on
+grass and sand. In greyscale own bars read as plain rectangles and enemy bars as rectangles with a bite
+out of the top edge, at every zoom and for both classes, so the notch alone tells them apart (the fill
 luminance, 123 against 174, is a second cue).
 
 ## Gallery
@@ -287,8 +319,8 @@ second row above it, built by `art_gallery.gd`, shows both squads (team A on gra
 the same three columns, and in each slot the squads stand beside the tank and turn slowly. The
 squads are built in code, without a tile square: a unit with no turret can join the `_squad_pair`
 list in `art_gallery.gd` instead of getting rigs in the scene. A ring row (also built by the
-script) shows the tank with its ring at the three zoom levels, at the ring radius of the 6-inch
-phone, and each ground carries the effects atlas at scale 1. To add an asset:
+script) shows team A's tank with its ring on both grounds (only own units get one) at the three zoom
+levels, at the ring radius of the 6-inch phone, and each ground carries the effects atlas at scale 1. To add an asset:
 - Add its layers as one rig `Node2D` under each of the four slots (grass A, grass B, sand A, sand B).
 - Put the rig in the group `gallery_team_a` or `gallery_team_b`, and name the layers `Hull`, `Team`
   and `Turret` (a unit without a turret leaves `Turret` out).
@@ -300,12 +332,15 @@ phone, and each ground carries the effects atlas at scale 1. To add an asset:
 
 ## Open points for Michael
 - Approve the **(new)** rules: team-layer greys, elevation reads as lightness, rotating layers carry
-  no shadow and no one-sided light, the reading of "1.5 px vs 2 px", and the feedback marker
-  spec (shapes, dp sizes, colours, outline, fade).
+  no shadow and no one-sided light, the reading of "1.5 px vs 2 px", the feedback marker spec
+  (shapes, dp sizes, colours, outline, fade), the combat effect spec (sizes, lifetimes, the 2 px
+  outline on thin parts) and the health bar spec (sizes, notched enemy bar, placement, density).
 - **(new)** The rocket warhead is #F5A524, the UI warning accent, used in unit art. The attack-move
-  chevrons and the enemy health bar fill (P34b) use the same colour, so an own rocket squad carries
-  two marks in the enemy-bar colour. The notch stays the own/enemy cue. Judge the warhead next to
-  the bar in the gallery: if it confuses, the fix is a warm tone that is not a UI accent.
+  chevrons, the enemy health bar fill and four of the five effect sprites (burst, flash, puff core,
+  rocket nose and flame) use it too. An own rocket squad's warhead is about 6 px of the enemy-bar
+  colour at zoom 1.0 on the 6-inch phone, beside 411 px of enemy bar, at the same luminance (174).
+  The notch stays the own/enemy cue. The gallery shows no bars, so judge it in the main scene after
+  P45: if it confuses, the fix is a warm tone that is not a UI accent.
 - Please judge on the phone (Dev, Art gallery, bottom row) whether zoom 1.5 looks too soft. The
   tile is a 64 px raster drawn at 2.25 times on a 6-inch phone. The fix would be SVG import scale
   1.0 with mipmaps and sprites drawn at scale 0.5. That changes the Technical rules here, so it
@@ -317,9 +352,9 @@ phone, and each ground carries the effects atlas at scale 1. To add an asset:
   enemy was just hit), so in a calm moment colour is the only cue. There is no always-on marker. Phase 5
   polish revisits this if playtesters have trouble telling the sides apart, for example with an
   always-on marker or a second team stripe shape.
-- The selection ring is imported at scale 1.0, not 0.5 (see its row), so it stays sharp at zoom 1.5.
-  This is an exception to the half-scale rule for one asset.
-- Effects use a 2 px outline on their thin parts, where the unit rule asks for 3 px.
+- The selection ring is imported at scale 1.0, not 0.5 (see `RING_TEX_RADIUS_PX = 72` under the
+  marker table), so it stays sharp at zoom 1.5. This is an exception to the half-scale rule for one
+  asset.
 
 ## Change log
 | Date | Change |
@@ -327,4 +362,4 @@ phone, and each ground carries the effects atlas at scale 1. To add an asset:
 | 2026-10-10 | v1: guide written with the layer contract and the light tank sample. |
 | 2026-10-11 | v1.1 (P12): feedback marker spec, gallery zoom row, launcher icon credit. |
 | 2026-10-12 | v1.2 (P34): rifle and rocket squads, their gallery slots and zoom row. |
-| 2026-10-12 | v1.2 (P34b): selection ring texture and the draw-order rule, effects atlas, combat effects and health bars specs, the own and enemy cue. |
+| 2026-10-12 | v1.2 (P34b): selection ring texture and the draw-order rule, effects atlas, combat effects and health bars specs (weapon and class from snapshot columns, bars placed by sprite reach), the own and enemy cue. |

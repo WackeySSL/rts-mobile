@@ -17,8 +17,8 @@ extends Control
 ## pair per zoom level. `Grass/ZoomRow` and `Sand/ZoomRow` stay the tank's (tests/project).
 ## They have no tile square; a unit without a turret can join the list in `_squad_pair`.
 ##
-## `_add_rings_and_atlas` adds a ring row (the tank with its selection ring at the three zooms, at
-## the 6-inch phone's ring radius) and the effects atlas at scale 1 to each ground.
+## `_add_rings_and_atlas` adds a ring row (the team A tank with its selection ring at the three
+## zooms, at the 6-inch phone's ring radius) and the effects atlas at scale 1 to each ground.
 ##
 ## To add an asset: add its layers as a rig on both backgrounds, put the rig in a team group and
 ## keep the layer names. See assets/art/STYLE.md.
@@ -125,6 +125,9 @@ func _add_rings_and_atlas() -> void:
 			# tank's own radius and the 18 dp minimum, which is dp / zoom in world px.
 			var rig: Node2D = tank.duplicate()
 			rig.name = "Ring" + String(tank.name)
+			# Only own units get a ring (STYLE.md), so the sand row shows team A as well.
+			rig.remove_from_group(TEAM_B_GROUP)
+			rig.add_to_group(TEAM_A_GROUP)
 			var ring: Sprite2D = Sprite2D.new()
 			ring.name = "Ring"
 			ring.texture = load(RING_ART)

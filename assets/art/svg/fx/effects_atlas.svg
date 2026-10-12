@@ -1,46 +1,46 @@
-<!-- Effects atlas: five sprites on one transparent sheet, drawn by the projectile and effects layers as quads. 336x168 at 2x, so 168x84 px after the 0.5 import scale. -->
-<!-- Regions in imported px (x, y, w, h), every sprite faces east and sits at its region's centre: burst 0,0,80,80; puff 84,0,40,40; flash 128,0,32,32; shell 84,44,16,8; rocket 84,56,36,12. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="336" height="168" viewBox="0 0 336 168">
+<!-- Effects atlas: five sprites on one transparent sheet, drawn by the projectile and effects layers as quads. 352x168 at 2x, so 176x84 px after the 0.5 import scale. -->
+<!-- Regions in imported px (x, y, w, h), every sprite faces east and sits at its region's centre: burst 0,0,80,80; puff 84,0,56,56; flash 144,0,32,32; shell 84,60,16,8; rocket 84,72,36,12. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="352" height="168" viewBox="0 0 352 168">
   <!-- burst, vehicle death: a jagged orange fireball with a yellow heart and a white core -->
   <polygon points="154.0,80.0 124.4,91.9 144.1,117.0 112.5,112.5 117.0,144.1 91.9,124.4 80.0,154.0 68.1,124.4 43.0,144.1 47.5,112.5 15.9,117.0 35.6,91.9 6.0,80.0 35.6,68.1 15.9,43.0 47.5,47.5 43.0,15.9 68.1,35.6 80.0,6.0 91.9,35.6 117.0,15.9 112.5,47.5 144.1,43.0 124.4,68.1" fill="#F5A524" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
   <polygon points="133.5,87.0 109.6,92.2 122.8,112.9 99.5,105.4 100.7,129.9 84.2,111.7 73.0,133.5 67.8,109.6 47.1,122.8 54.6,99.5 30.1,100.7 48.3,84.2 26.5,73.0 50.4,67.8 37.2,47.1 60.5,54.6 59.3,30.1 75.8,48.3 87.0,26.5 92.2,50.4 112.9,37.2 105.4,60.5 129.9,59.3 111.7,75.8" fill="#FFD84D"/>
   <circle cx="80" cy="80" r="18" fill="#FFFFFF"/>
   <!-- puff, shell impact and infantry fade: a grey dust cloud with a small hot core -->
   <g fill="#1C2127" stroke="#1C2127" stroke-width="6">
-    <circle cx="188" cy="34" r="14"/>
-    <circle cx="229" cy="36" r="15"/>
-    <circle cx="198" cy="58" r="13"/>
-    <circle cx="222" cy="59" r="12"/>
-    <circle cx="210" cy="20" r="13"/>
-    <circle cx="208" cy="42" r="20"/>
+    <circle cx="196" cy="47.6" r="19.6"/>
+    <circle cx="253.4" cy="50.4" r="21"/>
+    <circle cx="210" cy="81.2" r="18.2"/>
+    <circle cx="243.6" cy="82.6" r="16.8"/>
+    <circle cx="226.8" cy="28" r="18.2"/>
+    <circle cx="224" cy="58.8" r="28"/>
   </g>
   <g fill="#7D8893">
-    <circle cx="188" cy="34" r="14"/>
-    <circle cx="229" cy="36" r="15"/>
-    <circle cx="198" cy="58" r="13"/>
-    <circle cx="222" cy="59" r="12"/>
-    <circle cx="210" cy="20" r="13"/>
-    <circle cx="208" cy="42" r="20"/>
+    <circle cx="196" cy="47.6" r="19.6"/>
+    <circle cx="253.4" cy="50.4" r="21"/>
+    <circle cx="210" cy="81.2" r="18.2"/>
+    <circle cx="243.6" cy="82.6" r="16.8"/>
+    <circle cx="226.8" cy="28" r="18.2"/>
+    <circle cx="224" cy="58.8" r="28"/>
   </g>
   <g fill="#A9B4BE">
-    <circle cx="200" cy="34" r="6"/>
-    <circle cx="184" cy="30" r="4"/>
-    <circle cx="206" cy="15" r="4"/>
+    <circle cx="212.8" cy="47.6" r="8.4"/>
+    <circle cx="190.4" cy="42" r="5.6"/>
+    <circle cx="221.2" cy="21" r="5.6"/>
   </g>
-  <circle cx="212" cy="46" r="9" fill="#F5A524"/>
-  <circle cx="212" cy="46" r="4.5" fill="#FFD84D"/>
+  <circle cx="229.6" cy="64.4" r="12.6" fill="#F5A524"/>
+  <circle cx="229.6" cy="64.4" r="6.3" fill="#FFD84D"/>
   <!-- flash, muzzle: an eight-point star, so it needs no turning -->
-  <polygon points="318.0,32.0 297.2,35.8 303.6,47.6 291.8,41.2 288.0,62.0 284.2,41.2 272.4,47.6 278.8,35.8 258.0,32.0 278.8,28.2 272.4,16.4 284.2,22.8 288.0,2.0 291.8,22.8 303.6,16.4 297.2,28.2" fill="#F5A524" stroke="#1C2127" stroke-width="2" stroke-linejoin="round"/>
-  <polygon points="304.5,32.0 293.1,34.1 296.6,40.6 290.1,37.1 288.0,48.5 285.9,37.1 279.4,40.6 282.9,34.1 271.5,32.0 282.9,29.9 279.4,23.4 285.9,26.9 288.0,15.5 290.1,26.9 296.6,23.4 293.1,29.9" fill="#FFD84D"/>
-  <circle cx="288" cy="32" r="5" fill="#FFFFFF"/>
+  <polygon points="350,32 329.2,35.8 335.6,47.6 323.8,41.2 320,62 316.2,41.2 304.4,47.6 310.8,35.8 290,32 310.8,28.2 304.4,16.4 316.2,22.8 320,2 323.8,22.8 335.6,16.4 329.2,28.2" fill="#F5A524" stroke="#1C2127" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="336.5,32 325.1,34.1 328.6,40.6 322.1,37.1 320,48.5 317.9,37.1 311.4,40.6 314.9,34.1 303.5,32 314.9,29.9 311.4,23.4 317.9,26.9 320,15.5 322.1,26.9 328.6,23.4 325.1,29.9" fill="#FFD84D"/>
+  <circle cx="320" cy="32" r="5" fill="#FFFFFF"/>
   <!-- shell, tank cannon in flight: a short yellow shell with a rounded nose -->
-  <rect x="171" y="91" width="20" height="10" rx="3" fill="#F2B705" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
-  <path d="M191 91 Q198 96 191 101 Z" fill="#FFD84D" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <rect x="171" y="123" width="20" height="10" rx="3" fill="#F2B705" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M191 123 Q198 128 191 133 Z" fill="#FFD84D" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
   <!-- rocket in flight: metal body, orange nose, two fins and a short flame trail behind -->
-  <polygon points="192,119 174,124 192,129" fill="#F5A524" stroke="#1C2127" stroke-width="2" stroke-linejoin="round"/>
-  <polygon points="192,121 181,124 192,127" fill="#FFD84D"/>
-  <polygon points="194,118 190,114 199,118" fill="#5B6670" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round"/>
-  <polygon points="194,130 190,134 199,130" fill="#5B6670" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round"/>
-  <rect x="194" y="118" width="22" height="12" rx="2" fill="#A9B4BE" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
-  <path d="M216 118 L228 124 L216 130 Z" fill="#F5A524" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <polygon points="192,151 174,156 192,161" fill="#F5A524" stroke="#1C2127" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="192,153 181,156 192,159" fill="#FFD84D"/>
+  <polygon points="194,150 190,146 199,150" fill="#5B6670" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round"/>
+  <polygon points="194,162 190,166 199,162" fill="#5B6670" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round"/>
+  <rect x="194" y="150" width="22" height="12" rx="2" fill="#A9B4BE" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M216 150 L228 156 L216 162 Z" fill="#F5A524" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
 </svg>
