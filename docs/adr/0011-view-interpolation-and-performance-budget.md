@@ -2,6 +2,14 @@
 
 Status: accepted, 2026-10-12 (Michael). Proposed 2026-10-11 (revision 5 after the five-lens plan review and three completeness checks, same day).
 
+Status note (2026-10-12): partly superseded by ADR 0012: §1 (the view reads `runner.snapshot`,
+not the World), §2 (the prev positions live in the snapshot), §3 (the z list becomes one z per
+batch group), §4 (the CI ceiling becomes a printed phone estimate and the enforced budget a
+regression ratchet; the 4.0 ms starting value of `mean_ms` is withdrawn), §5 (the meaning and
+values of `work_p95_ms` and `sim_p95_ms` in the acceptance note, and the debug-APK margin; the
+gate uses the release template), §6 step 4 (the worker thread, adopted), and the sim cost
+estimate (1.9 ms mean on CI).
+
 ## Context
 ROADMAP Phase 2 asks for three things:
 - "View interpolation at the display frame rate";

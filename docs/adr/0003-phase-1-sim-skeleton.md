@@ -4,6 +4,10 @@ Status: accepted, 2026-10-10
 
 Status note (2026-10-12): §2-3 partly superseded by ADR 0007 (Command v1, World v1, removal).
 
+Status note (2026-10-12): §7 partly superseded by ADR 0012 §1, for the `WORKER` clock only (at
+most one publish per frame instead of up to `max_catch_up_ticks` ticks; the drain and stamp at
+the boundary before the post). `SYNC` is unchanged.
+
 ## Context
 Phase 1 (`docs/ROADMAP.md`) must show 30 tanks that move when the player gives orders. The
 simulation core (World data model, Command format, state hash, flow fields, combat, fog) is

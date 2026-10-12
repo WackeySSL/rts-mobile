@@ -2,6 +2,9 @@
 
 Status: accepted, 2026-10-12 (Michael). Proposed 2026-10-11 (revision 5 after the five-lens plan review and three completeness checks, same day).
 
+Status note (2026-10-12): §1-2 partly superseded by ADR 0012 §3, where the view reads the fog and
+its dirty lists from the World: it reads them from `runner.snapshot.fog`.
+
 ## Context
 ROADMAP Phase 2 asks for "fog of war (visible and explored) and its rendering". The GDD says:
 - unexplored is black;
