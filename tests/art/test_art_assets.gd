@@ -55,6 +55,19 @@ const ATLAS_COLOURS: PackedStringArray = [
 ]
 
 
+## A gallery switches `SceneTree.quit_on_go_back` off while it is open and restores what it found.
+## Galleries alive together restore it in the wrong order and leave it off for every later suite.
+## The order the suites run in is the file system's, so one machine can run this suite before
+## tests/ui/test_touch_probe.gd (which checks it) and another after. Check it here, on every
+## machine, so a leak fails the suite that causes it.
+func before_test() -> void:
+	_assert_quit_on_go_back_restored()
+
+
+func after() -> void:
+	_assert_quit_on_go_back_restored()
+
+
 func test_every_svg_follows_the_technical_rules() -> void:
 	var files: Array[String] = FileScan.list_files("res://assets/art/svg", ".svg")
 	assert_int(files.size()).is_greater_equal(9)
@@ -398,6 +411,8 @@ func test_the_gallery_terrain_row_is_inside_and_clear_of_the_back_button_atlases
 			if frame.intersects(box):
 				hits.append(str(box))
 		assert_array(hits).override_failure_message(str(base)).is_empty()
+		# One at a time: galleries alive together restore quit_on_go_back in a bad order.
+		gallery.get_parent().free()
 
 
 ## One character per pixel: clear, white, dark (#1C2127, luminance 0.127) or anything else. The
@@ -423,6 +438,11 @@ func _terrain_section() -> String:
 	var style: String = FileAccess.get_file_as_string("res://assets/art/STYLE.md")
 	var start: int = style.find("## Fog and terrain")
 	return style.substr(start, style.find("\n## ", start + 1) - start)
+
+
+func _assert_quit_on_go_back_restored() -> void:
+	var restored: bool = get_tree().quit_on_go_back
+	assert_bool(restored).override_failure_message("quit_on_go_back leaked").is_true()
 
 
 ## The gallery in a parent of `base_size`, the base size of a 16:9 phone unless given.
