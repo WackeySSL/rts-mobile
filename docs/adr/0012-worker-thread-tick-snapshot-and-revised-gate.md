@@ -753,3 +753,67 @@ period.
 - Context: the two derivations behind the 10.4-13.3 ms estimate.
 - Second completeness check: the frame's poll result is part of the event (`FRAME`,
   `FRAME_TAKEN`), so the §1 table is a pure function of (state, event).
+
+## Acceptance note (2026-10-12, Michael)
+Michael accepted this ADR in chat on 2026-10-12 ("1 ja, 2 ja, 3 ja, 4 ja", the plan's open
+questions for ADR 0012; `docs/plans/2026-10-11-phase-2.md`, "Answers (Michael, ADR 0012)"):
+1. this ADR is accepted;
+2. one tick of extra tap delay on Android and desktop is accepted for Phase 2; the gate's play
+   session checks how it feels;
+3. `android-perf-release` is a rolling pre-release, updated on every merge to `main` like
+   `android-dev-latest` (plan P51r);
+4. the qa-engineer role's budget line changes from "start at 4 ms per tick on CI" to the
+   ratchet of §4.
+
+The gate thresholds of §4 are final with this acceptance.
+
+**Release run, in-frame mode** (the P26s probe built on the release template, PR #35, Pixel 9a,
+mode 1: sprite rings and tints grouped by team, the mock tick and the flow slice in the frame,
+60 s). The debug values are from Context.
+
+| Measure | Release | Debug |
+| --- | --- | --- |
+| Mock tick mean / p95 | 9.02 / 12.63 ms | 10.96 / 15.33 ms (release 18 % faster on both) |
+| Flow slice, 512 cells, mean | 3.13 ms | 3.57 ms |
+| Frames on time (<= 17.5 ms) | 90.5 % | 83.5 % |
+| Work p95, frames without a tick | 4.18 ms | 4.64 ms |
+| Render CPU mean | 1.65 ms | 1.53 ms |
+| Draw calls | 13 | 13 |
+
+CI side (same mock, GitHub runner, min of 3, unchanged from Context): 2.51 ms mean, 3.36 ms p95.
+
+What it sets:
+- **The release ratio: 3.6 (mean) and 3.8 (p95).** 9.02 / 2.51 = 3.59 and 12.63 / 3.36 = 3.76,
+  each rounded up to one decimal (§4). These are the values the CI side uses: `ci_ratio_mean`
+  3.6 and `ci_ratio_p95` 3.8 in `data/dev/perf_gate.tres`, from which the `PERF` line prints
+  `est_phone_mean_ms` and `est_phone_p95_ms`. No `budget.cfg` value moves with them (§4, the
+  ratchet). They also confirm the withdrawn device ceiling: 13.3 / 3.8 = 3.5 ms, still below
+  the floor of 1.5 x 3.36 = 5.0 ms, because 3.8 is above the 2.6 at which the floor would fit.
+  §4 defines the ratios on the worker job; these come from the in-frame mode. The worker-mode
+  run re-derives both with the same formula, and the lead sets them again if either changes.
+- **`flow_cells_per_tick` 320** by §5's 2 ms rule with the release slice mean:
+  floor(512 x 2.0 / 3.13 / 64) x 64 = floor(5.11) x 64 = 320 (about 1.96 ms on the release
+  template). gameplay-dev ships it as plan P27f. §5's headroom condition (worker job p95 plus
+  the slice at or below 12.0 ms) needs the worker job p95, which only the worker-mode run
+  measures. 320 holds only if that p95 is at or below 10.0 ms. Above 11.6 ms not even 64 cells
+  fit, so by §5 the value becomes 64 with an early-warning finding (risk 1), shipped as a
+  one-value follow-up. The in-frame p95 is already 12.63 ms.
+- **Draw calls and render CPU read above 0 on release**, so the monitors work on the release
+  template. There is no finding for plan P50a's render line.
+
+**The measured margin.** The mock tick's release p95 of 12.63 ms is inside the 13.3 ms
+`sim_p95_ms` limit by 0.67 ms, about 5 %. It sits at the high end of the 10.4-13.3 ms estimate
+in Context: the release template was 1.21 times faster than debug on the phone, against 1.32-1.39
+on CI. On CI the worker cost 4-5 % more than the frame (Context), and that alone would use up
+the margin (12.63 x 1.05 = 13.26 ms). The real tick does more than the mock (combat,
+projectiles, line checks, orders). So the real sim is expected to be marginal against
+`sim_p95_ms` and may miss it. With the release ratio, the limit equals a CI `TickJob` p95 of
+about 3.5 ms, and the mock alone takes 3.36 ms. The GDExtension trigger stays as §7 wrote it:
+- the lead starts drafting the GDExtension ADR when P46's `est_phone_p95_ms` is above 26.6 ms;
+- the ADR is proposed when a release perf-arena card in `WORKER` mode misses `sim_p95_ms` or
+  `job_p99_ms`, or shows late ticks, after remedy steps 1 and 2.
+
+**Still open: the worker-mode run** (a new probe build adds the mode). It measures the worker job
+mean and p95, held ticks, the main thread's frame work with the tick out of the frame, and the
+core the worker lands on. It re-derives the two ratios and checks the headroom condition for
+`flow_cells_per_tick`.
