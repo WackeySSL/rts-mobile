@@ -19,8 +19,9 @@ You keep rts-mobile provably working.
   15 ticks. A difference is a simulation bug, never a test to relax.
 - Replays: a recorded command log replayed from its seed must end in the same hash.
 - Performance: `tests/perf/` runs 150 fighting units for 900 ticks headless and reports ms per
-  tick. Fail above the budget in `tests/perf/budget.cfg` (start at 4 ms per tick on CI, tighten
-  as the game grows).
+  tick. Fail above the budget in `tests/perf/budget.cfg` (a regression ratchet at 1.5 x the
+  calibrated min-of-3, ADR 0012 §4; a sim PR never raises it, and a rise that a new tick phase
+  causes is a qa-engineer PR with before and after numbers and its reason).
 - A flaky test is a bug. Look for floats, unseeded randomness, timers, frame delta and iteration
   over containers whose insertion order is not deterministic. Never add retries.
 - Record recurring failure patterns and their fixes in your memory, one or two lines each.

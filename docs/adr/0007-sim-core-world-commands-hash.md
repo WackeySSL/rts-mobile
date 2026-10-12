@@ -2,6 +2,11 @@
 
 Status: accepted, 2026-10-12 (Michael). Proposed 2026-10-11 (revision 5 after the five-lens plan review and three completeness checks, same day).
 
+Status note (2026-10-12): §6 partly superseded by ADR 0012 §1 and §3 (the runner's per-tick work
+runs as a `TickJob`, on a worker thread on Android and desktop; prev positions live in the
+`MatchSnapshot`); §10's last bullet superseded by ADR 0012 §3 (view handlers read
+`runner.snapshot.events` inside `ticked`, not `runner.world.events`).
+
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state
 hash. Phase 1 shipped the v0 shapes of ADR 0003: a struct-of-arrays `World` that never removes a

@@ -2,6 +2,10 @@
 
 Status: accepted, 2026-10-12 (Michael). Proposed 2026-10-11 (revision 4 after the five-lens plan review and two completeness checks, same day).
 
+Status note (2026-10-12): §3 partly superseded by ADR 0012 §5 (the slice budget of about 2 ms on
+the worker instead of 0.2 ms, `flow_cells_per_tick` from the release run instead of 512, and no
+slice on checkpoint ticks instead of a slice on every tick).
+
 ## Context
 ROADMAP Phase 2 asks for "movement with flow fields and separation". Phase 1 moves units in
 straight lines to formation slots with no terrain and no collision (ADR 0003 §4-5), and its

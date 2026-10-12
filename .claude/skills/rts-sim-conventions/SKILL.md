@@ -14,8 +14,9 @@ The simulation is a pure function of (initial state, seed, ordered command list)
 below protects that, because it gives reproducible tests, AI-vs-AI balance runs, replays and a
 path to multiplayer.
 
-Decisions behind these rules: ADR 0003 (Phase 1 skeleton) and ADRs 0007-0011 (Phase 2 core,
-accepted 2026-10-12). Where this file and an ADR disagree, the ADR wins; fix this file.
+Decisions behind these rules: ADR 0003 (Phase 1 skeleton), ADRs 0007-0011 (Phase 2 core,
+accepted 2026-10-12) and ADR 0012 (worker-thread tick and view snapshot, accepted 2026-10-12).
+Where this file and an ADR disagree, the ADR wins; fix this file.
 
 ## Time and units
 - 15 ticks per second (`Sim.TICK_RATE = 15`). Durations in data are stored in ticks.
@@ -63,8 +64,11 @@ accepted 2026-10-12). Where this file and an ADR disagree, the ADR wins; fix thi
   `line_check_period_ticks`. A flow field is used only when the straight line is blocked.
 - Flow fields per (goal cell, movement class, `map_version`): integer Dijkstra, time-sliced by
   `flow_cells_per_tick`, double-buffered (units read `cost` while `next` integrates), cached, and
-  re-integrated when the map changes. References are derived from the World's `field` column
-  every tick, never released by hand. A group move shares one field.
+  re-integrated when the map changes. No slice on checkpoint ticks (`Sim.step` passes 0 cells on
+  the ticks `MatchLoop` hashes). `flow_cells_per_tick` comes from the release run's headroom
+  (ADR 0012 §5; 320 from P27f, 512 until then), never from a literal in code. References are
+  derived from the World's `field` column every tick, never released by hand. A group move
+  shares one field.
 - Two spatial grids as linked lists (`head` per cell, `next` per row), rebuilt once per tick in
   the grids phase: a 1-tile separation grid and a 4-tile targeting grid (not one 2-tile grid).
   Processed in ID order.
@@ -84,6 +88,37 @@ accepted 2026-10-12). Where this file and an ADR disagree, the ADR wins; fix thi
   the view which cells changed.
 - AI code reads the World only through `PlayerView` once it exists (reserved by ADR 0010). Easy
   and Normal AI read only their own player's visibility.
+
+## Threading (ADR 0012 §2)
+On Android and desktop `MatchRunner` runs each tick as a `TickJob` on one worker thread; `SYNC`
+runs it inline (headless tests, replays, `tests/perf`, web). `Sim.step` is safe there only
+because of these rules:
+- No `static var` in `game/sim`; constants only.
+- No `signal`, `.emit(` or `call_deferred(` in `game/sim`. Signals are emitted on the main
+  thread only (`ticked`, at publish).
+- No Resource load, read or write inside `Sim.step` or `MatchLoop.step`. `World.from_scenario`
+  copies the defs into World arrays on the main thread before any job; nothing in the sim keeps
+  a def.
+- The sim never creates or waits on a thread (`Thread`, `Mutex`, `Semaphore`,
+  `WorkerThreadPool`, `await` are banned in `game/sim`).
+- A job touches only objects reachable from the World, the `MatchLoop`, the probe, the command
+  list or its snapshot, and none of them is a Node or a Resource.
+- **Alias before the loop, on both threads.** On the worker (all of `Sim.step`, including
+  event-cadence code such as `Formation.assign` and command validation, and the snapshot
+  capture) and in the main thread's per-row and per-item loops (`UnitLayer`, the pick snapshot,
+  the layers' `_draw()`), read object properties into typed locals once before the loop; no loop
+  reads `obj.prop` per row. Godot serializes cross-thread property access, so two threads doing
+  it at once both run 2-4 times slower.
+- No main-thread access during a job to the World, the loop, the replay, the probe, the command
+  list or the job's snapshot (the runner's getters fail such a read).
+- The main thread reads the World only inside a `ticked` handler or after `wait_idle()`, never
+  from `_process`, a timer or an input handler.
+- **The view reads `MatchSnapshot`, never the World.** View, input and UI code read
+  `runner.snapshot` (events, fog and its dirty lists too); only tests touch `runner.world`, in
+  `SYNC` or after `wait_idle()`. A published snapshot is never written by either thread.
+- A submitted `Command` belongs to the runner; every `Command` factory duplicates the arrays it
+  is given.
+- Determinism does not depend on the mode: the golden hashes are equal in `SYNC` and `WORKER`.
 
 ## Determinism checks
 - `World.state_hash()` is SHA-256 through `HashingContext` over the header, the map, every
@@ -105,6 +140,8 @@ accepted 2026-10-12). Where this file and an ADR disagree, the ADR wins; fix thi
   cell, passability and visibility lookups, and never allocate (`# alloc-ok` marks a reviewed
   exception).
 - Helper calls only at event cadence: line checks, and `best_neighbour` stored into `nav_next`.
+- Use `len(s)` for a String's size: `test_sim_purity` bans `.length(` in `game/sim`, because
+  `Vector2i.length()` returns a float.
 
 ## Data
 - Units, buildings, weapons and AI profiles are custom Resources in `data/`. Load them once at
