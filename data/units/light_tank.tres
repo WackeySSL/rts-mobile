@@ -1,11 +1,19 @@
 [gd_resource type="Resource" script_class="UnitDef" format=3]
 
 [ext_resource type="Script" path="res://game/sim/defs/UnitDef.gd" id="1_atjfj"]
+[ext_resource type="Resource" path="res://data/weapons/tank_cannon.tres" id="2_weapon"]
 
 [resource]
 script = ExtResource("1_atjfj")
 type_id = &"light_tank"
+display_name = "Light Tank"
 speed = 120
 radius = 400
 selection_radius = 500
 formation_spacing = 1200
+max_hp = 300
+armour = 1
+move_class = 2
+sight_range = 7000
+acquire_range = 5500
+weapon = ExtResource("2_weapon")
