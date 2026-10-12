@@ -108,7 +108,8 @@ const SCRATCH_ARRAYS: Array[StringName] = [&"intent_x", &"intent_y", &"push_x", 
 ## Rewritten every tick, neither hashed nor compacted.
 const RUNTIME_ARRAYS: Array[StringName] = [&"events", &"stats"]
 
-## The int properties that go into the state hash, in hash order (rng.state() follows them).
+## The int properties that go into the state hash, in hash order: the header ints, then
+## map_version (the map grid itself goes in as a cached digest). rng.state() follows them.
 const HASHED_SCALARS: Array[StringName] = [
 	&"tick",
 	&"next_id",
@@ -118,6 +119,7 @@ const HASHED_SCALARS: Array[StringName] = [
 	&"spawn_refused",
 	&"player_count",
 	&"proj_free_top",
+	&"map_version",
 ]
 ## The other int properties: set up from the data (map size, rules) or only for the view.
 const UNHASHED_SCALARS: Array[StringName] = [
@@ -125,7 +127,6 @@ const UNHASHED_SCALARS: Array[StringName] = [
 	&"map_h",
 	&"map_cols",
 	&"map_rows",
-	&"map_version",
 	&"rows_version",
 	&"retarget_period_ticks",
 	&"fog_period_ticks",
@@ -428,7 +429,7 @@ func add_unit(owner: int, type_index: int, x: int, y: int) -> int:
 
 
 ## Sizes every projectile slot array to max_projectiles, all slots free. Only the first prepare()
-## calls it (the sizes match afterwards); changing max_projectiles later rebuilds the slots empty.
+## calls it (the sizes match afterwards). Changing max_projectiles after prepare() is not supported.
 func _reset_projectile_slots() -> void:
 	var slots: int = max_projectiles
 	for column_name: StringName in PROJECTILE_ARRAYS:

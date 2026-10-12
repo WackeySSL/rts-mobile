@@ -55,7 +55,9 @@ func test_a_hand_built_world_has_the_rule_defaults_and_the_default_stream() -> v
 		assert_that(world.get(field)).override_failure_message(field).is_equal(RULES[field])
 	assert_array(world.rng.state()).is_equal(DetRandom.create(0, DetRandom.STREAM_SIM).state())
 	assert_int(world.next_projectile_id).is_equal(1)
-	for scalar: String in ["player_count", "spawn_refused", "projectile_overflow", "proj_free_top"]:
+	var zeros: Array[String] = ["player_count", "spawn_refused", "projectile_overflow"]
+	zeros.append_array(["proj_free_top", "map_cols", "map_rows", "map_version"])
+	for scalar: String in zeros:
 		assert_int(world.get(scalar)).override_failure_message(scalar).is_equal(0)
 	world.add_unit(1, 0, 1000, 1000)
 	assert_int(world.player_count).is_equal(1)
@@ -190,9 +192,10 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	assert_array(World.RUNTIME_ARRAYS).is_equal(["events", "stats"])
 	var hashed: Array[String] = ["tick", "next_id", "next_projectile_id", "dropped_commands"]
 	hashed.append_array(["projectile_overflow", "spawn_refused", "player_count", "proj_free_top"])
+	hashed.append("map_version")
 	assert_array(World.HASHED_SCALARS).is_equal(hashed)
-	var unhashed: Array[String] = ["map_w", "map_h", "map_cols", "map_rows", "map_version"]
-	unhashed.append_array(["rows_version", "flow_cells_per_tick"])
+	var unhashed: Array[String] = ["map_w", "map_h", "map_cols", "map_rows", "rows_version"]
+	unhashed.append("flow_cells_per_tick")
 	unhashed.append_array(RULES.keys())
 	assert_array(World.UNHASHED_SCALARS).contains_exactly_in_any_order(unhashed)
 	var array_lists: Array = [World.ROW_ARRAYS, World.TYPE_ARRAYS, World.WEAPON_ARRAYS]
@@ -201,16 +204,29 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	var scalar_lists: Array = [World.HASHED_SCALARS, World.UNHASHED_SCALARS]
 	var packed: Array[String] = []
 	var ints: Array[String] = []
+	var not_int32: Array[String] = []
+	var others: Array[String] = []
 	for info: Dictionary in World.new().get_property_list():
 		if (int(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) == 0:
 			continue
 		var kind: int = int(info["type"])
+		var column: String = String(info["name"])
 		if kind == TYPE_INT:
-			ints.append(String(info["name"]))
+			ints.append(column)
 		elif kind >= TYPE_PACKED_BYTE_ARRAY and kind <= TYPE_PACKED_VECTOR4_ARRAY:
-			packed.append(String(info["name"]))
+			packed.append(column)
+			if kind != TYPE_PACKED_INT32_ARRAY:
+				not_int32.append(column)
+		else:
+			others.append(column)
 	assert_int(packed.size()).is_equal(54)
 	assert_int(ints.size()).is_equal(29)
+	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
+	# neither an int nor a Packed*Array sit in no list: the id tables and the stream. P31a adds
+	# the helper objects here.
+	assert_array(not_int32).contains_exactly_in_any_order(["type_names", "terrain", "move_cost"])
+	var unlisted: Array[String] = ["type_ids", "weapon_ids", "terrain_ids", "rng"]
+	assert_array(others).contains_exactly_in_any_order(unlisted)
 	_assert_listed_once(packed, array_lists)
 	_assert_listed_once(ints, scalar_lists)
 
@@ -241,23 +257,31 @@ func test_prepare_sizes_the_fixed_capacity_arrays_and_a_second_call_keeps_them()
 	assert_array(small.proj_free).is_equal([3, 2, 1, 0])
 	assert_int(small.proj_free_top).is_equal(4)
 	assert_array(small.push_x).is_equal([0, 0, 0, 0, 0, 0])
-	# A tick takes slot 0 for a shot and writes scratch and stats. prepare() must not undo it.
+	# A tick takes slot 0 for a shot and writes scratch and stats. prepare() must not undo any of
+	# it, so every scratch array and every slot column (but the stack) gets its own sentinel.
 	small.proj_free_top = 3
-	small.proj_id[0] = 7
-	small.proj_ticks[0] = 5
-	small.intent_x[2] = -60
+	var sentinels: Dictionary[StringName, int] = {}
+	for column_name: StringName in World.SCRATCH_ARRAYS:
+		sentinels[column_name] = 30 + sentinels.size()
+	for column_name: StringName in World.PROJECTILE_ARRAYS:
+		if column_name != &"proj_free":
+			sentinels[column_name] = 30 + sentinels.size()
+	for column_name: StringName in sentinels:
+		var column: PackedInt32Array = small.get(column_name)
+		column[2] = sentinels[column_name]
 	small.stats[World.Stat.PROJ_STEPS] = 9
 	small.prepare()
 	assert_array(small.proj_free).is_equal([3, 2, 1, 0])
-	assert_array([small.proj_free_top, small.proj_id[0], small.proj_ticks[0]]).is_equal([3, 7, 5])
-	assert_array([small.intent_x[2], small.stats[5], small.stats.size()]).is_equal([-60, 9, 7])
-	assert_int(small.intent_x.size()).is_equal(6)
-	# A new capacity rebuilds the slots empty at the new size (not a supported change mid-match).
-	small.max_projectiles = 2
-	small.prepare()
-	assert_array(small.proj_id).is_equal([0, 0])
-	assert_array(small.proj_free).is_equal([1, 0])
-	assert_int(small.proj_free_top).is_equal(2)
+	assert_int(small.proj_free_top).is_equal(3)
+	for column_name: StringName in sentinels:
+		var column: PackedInt32Array = small.get(column_name)
+		var wanted: int = sentinels[column_name]
+		assert_int(column[2]).override_failure_message(column_name).is_equal(wanted)
+	assert_array([small.stats[5], small.stats.size()]).is_equal([9, 7])
+	for column_name: StringName in World.SCRATCH_ARRAYS:
+		assert_int(small.get(column_name).size()).override_failure_message(column_name).is_equal(6)
+	for column_name: StringName in World.PROJECTILE_ARRAYS:
+		assert_int(small.get(column_name).size()).override_failure_message(column_name).is_equal(4)
 
 
 ## The five Phase 1 type arrays and nothing else, as test_sim_step builds a world.
