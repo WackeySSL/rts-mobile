@@ -1367,10 +1367,11 @@ a C++ PR loads `rts-sim-conventions` next to `godot-code-review`. The plan's "Fi
 row for the lead names the skill instead. What is checked does not change, only where the text
 lives. The skill's `paths` include `native/**`, so it loads for any edit there.
 
-**Open item for Michael (CLAUDE.md's review line).** CLAUDE.md's "Review with `/code-review` plus
-the `godot-code-review` skill" lies outside §14's approved text, so it is unchanged. The lead asks
-Michael whether to extend it to "... plus the `godot-code-review` skill (and `rts-sim-conventions`'
-"Native kernels" checklist for any PR that touches `native/`)"; it changes only on his yes.
+**CLAUDE.md's review line (answered).** CLAUDE.md's "Review with `/code-review` plus the
+`godot-code-review` skill" lay outside §14's approved text, so P26b left it unchanged and the lead
+asked Michael whether to extend it to "... plus the `godot-code-review` skill (and
+`rts-sim-conventions`' "Native kernels" checklist for any PR that touches `native/`)". He answered
+in chat on 2026-10-12, verbatim: **"Ja"**. P26f applies that exact text to CLAUDE.md.
 
 **CLAUDE.md describes the state from P53 on.** §14's lines land before the tooling they name:
 `scripts/build-native.sh`, `native/` and the `verify.sh` build and format step arrive in P53, the
