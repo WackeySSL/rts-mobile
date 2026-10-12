@@ -22,7 +22,8 @@
 #        3 tool missing (git, scons 4.9.1, the compiler, binutils, or ANDROID_NDK_ROOT / the NDK
 #          toolchain), or an NDK of another version than the pinned one
 #        4 godot-cpp fetch or SHA check failed, or the build failed, produced no library, or the
-#          library fails the ELF check (machine, shared object, entry symbol, no libc++_shared.so)
+#          library fails the ELF check (machine, shared object, entry symbol, and on Android only
+#          system libraries or Godot's libc++_shared.so as dependencies)
 # Success prints "build-native: OK <library> (<bytes> bytes)". Bash 3.2 compatible.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -199,19 +200,21 @@ library="$ROOT/native/bin/libprobe_tick.${platform}.${target}.${arch}.so"
 rm -f "$log"
 
 # (4b) Look inside the library, so that a wrong build fails here and not on the phone: the right
-# machine, a shared object, the entry symbol exported, and no dependency on a C++ runtime that the
-# APK would not carry (Android would fail to load it, and probe mode 5 would say "not available").
-# Host binutils for linux, the NDK's llvm tools for android; both print the same layout.
+# machine, a shared object, the entry symbol exported, and on Android no dependency that the phone
+# cannot resolve (the dlopen would fail, and probe mode 5 would say "not available"). The NDK's
+# clang++ links the shared C++ runtime by default, as godot-cpp expects: Godot's Android template
+# ships libc++_shared.so for GDExtensions, and scripts/export-android.sh checks that the exported APK
+# really holds it. Host binutils for linux, the NDK's llvm tools for android; same output layout.
 if [ "$platform" = "android" ]; then
   elf_readelf="$toolchain/llvm-readelf"
   elf_nm="$toolchain/llvm-nm"
   elf_machine="AArch64"
-  elf_forbidden='libc\+\+_shared\.so'
+  elf_allowed="libc.so libm.so libdl.so liblog.so libandroid.so libc++_shared.so"
 else
   elf_readelf="readelf"
   elf_nm="nm"
   case "$arch" in x86_64) elf_machine="Advanced Micro Devices X86-64" ;; *) elf_machine="AArch64" ;; esac
-  elf_forbidden=""
+  elf_allowed=""
 fi
 elf_name="${library#"$ROOT"/}"
 elf_header="$("$elf_readelf" -h "$library" 2>&1)" || die 4 "$elf_readelf -h failed on $elf_name: $elf_header"
@@ -220,8 +223,13 @@ grep -Eq "^[[:space:]]*Machine:[[:space:]]+${elf_machine}[[:space:]]*\$" <<<"$el
 grep -Eq '^[[:space:]]*Type:[[:space:]]+DYN' <<<"$elf_header" || die 4 "$elf_name is not a shared object"
 elf_dynamic="$("$elf_readelf" -d "$library" 2>&1)" || die 4 "$elf_readelf -d failed on $elf_name: $elf_dynamic"
 elf_needed="$(sed -n 's/^.*(NEEDED)[[:space:]]*Shared library: \[\(.*\)\].*$/\1/p' <<<"$elf_dynamic" | tr '\n' ' ')"
-if [ -n "$elf_forbidden" ] && grep -Eq "(^| )${elf_forbidden}( |\$)" <<<"$elf_needed"; then
-  die 4 "$elf_name needs libc++_shared.so, which the APK does not carry (link the C++ runtime statically): needs ${elf_needed}"
+if [ -n "$elf_allowed" ]; then
+  for lib in $elf_needed; do
+    case " $elf_allowed " in
+      *" $lib "*) ;;
+      *) die 4 "$elf_name needs $lib, which neither Android nor Godot's template provides (allowed: $elf_allowed)" ;;
+    esac
+  done
 fi
 elf_symbols="$("$elf_nm" -D --defined-only "$library" 2>&1)" || die 4 "$elf_nm -D failed on $elf_name: $elf_symbols"
 grep -Eq ' T probe_tick_library_init$' <<<"$elf_symbols" ||

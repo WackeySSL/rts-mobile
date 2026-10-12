@@ -83,6 +83,7 @@ done
 # nothing and probe mode 5 says "not available" on the phone.
 [ -s "$EXT_BUILT" ] ||
   missing="$missing; $EXT_BUILT (bash scripts/build-native.sh --platform android --target template_release --arch arm64)"
+command -v readelf >/dev/null 2>&1 || missing="$missing; readelf (binutils, for the dependencies of the C++ library)"
 java_version="$("${JAVA_HOME:-/nonexistent}/bin/java" -version 2>&1 || true)"
 grep -q 'version "17\.' <<<"$java_version" || missing="$missing; JDK 17 (JAVA_HOME='${JAVA_HOME:-}')"
 [ -x "${ANDROID_HOME:-/nonexistent}/platform-tools/adb" ] || missing="$missing; \$ANDROID_HOME/platform-tools/adb (ANDROID_HOME='${ANDROID_HOME:-}')"
@@ -189,6 +190,15 @@ ext_built_sum="$(sha256sum "$EXT_BUILT" | cut -d' ' -f1)"
 echo "export-android: $EXT_IN_APK ${ext_apk_bytes} bytes in the APK, sha256 apk=${ext_apk_sum} built=${ext_built_sum}"
 [ "$ext_apk_bytes" -gt 0 ] || die 1 "$EXT_IN_APK in the APK is empty"
 [ "$ext_apk_sum" = "$ext_built_sum" ] || die 1 "$EXT_IN_APK in the APK is not the library built in $EXT_BUILT"
+# What the library links to must be on the phone: bionic's libraries always are, libc++_shared.so
+# comes from Godot's template and must be in the APK (host readelf reads AArch64 files too).
+ext_needed="$(readelf -d "$EXT_BUILT" | sed -n 's/^.*(NEEDED)[[:space:]]*Shared library: \[\(.*\)\].*$/\1/p' | tr '\n' ' ')"
+echo "export-android: $EXT_NAME needs: ${ext_needed:-nothing}"
+if grep -Eq '(^| )libc\+\+_shared\.so( |$)' <<<"$ext_needed"; then
+  grep -qx 'lib/arm64-v8a/libc++_shared.so' <<<"$listing" ||
+    die 1 "$EXT_NAME needs libc++_shared.so but the APK lacks lib/arm64-v8a/libc++_shared.so"
+  echo "export-android: lib/arm64-v8a/libc++_shared.so is in the APK"
+fi
 grep -q 'godot-cpp' "$out_abs/$NOTICE_NAME" || die 1 "$NOTICE_NAME does not name godot-cpp"
 other_abis="$(grep '^lib/' <<<"$listing" | grep -v '^lib/arm64-v8a/' || true)"
 [ -z "$other_abis" ] || die 1 "the APK holds libraries for other ABIs (arm64-v8a only): $(head -n 3 <<<"$other_abis")"
