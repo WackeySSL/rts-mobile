@@ -15,6 +15,7 @@ extends Control
 ## The squads (`Hull` and `Team`, no turret) are built in `_add_squads`: beside the tank in each
 ## slot, turning as a whole like a squad rig does in game, and in a row above the zoom row, one
 ## pair per zoom level. `Grass/ZoomRow` and `Sand/ZoomRow` stay the tank's (tests/project).
+## They have no tile square; a unit without a turret can join the list in `_squad_pair`.
 ##
 ## To add an asset: add its layers as a rig on both backgrounds, put the rig in a team group and
 ## keep the layer names. See assets/art/STYLE.md.
