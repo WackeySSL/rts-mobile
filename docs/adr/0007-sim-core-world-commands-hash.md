@@ -1,6 +1,6 @@
 # ADR 0007: Simulation core (World v1, Command v1, tick pipeline, DetRandom, state hash, replays)
 
-Status: proposed, 2026-10-11 (revision 5 after the five-lens plan review and three completeness checks, same day)
+Status: accepted, 2026-10-12 (Michael). Proposed 2026-10-11 (revision 5 after the five-lens plan review and three completeness checks, same day).
 
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state

@@ -2,6 +2,10 @@
 
 Status: accepted, 2026-10-10
 
+Status note (2026-10-12): §5 partly superseded by ADR 0009 (a tap on an enemy issues `ATTACK`);
+§7 partly superseded by ADR 0011 §3 (selection rings are sprites of one ring texture, not drawn
+in code).
+
 ## Context
 Phase 1 is a go/no-go on controls. `touch-ui-rules` gives the gesture map and the 48 dp rule,
 but it leaves several things open: how tap, long-press, drag, pinch and double-tap are told

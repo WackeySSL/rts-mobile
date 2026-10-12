@@ -1,6 +1,6 @@
 # ADR 0008: Map grid, movement, flow fields and separation
 
-Status: proposed, 2026-10-11 (revision 4 after the five-lens plan review and two completeness checks, same day)
+Status: accepted, 2026-10-12 (Michael). Proposed 2026-10-11 (revision 4 after the five-lens plan review and two completeness checks, same day).
 
 ## Context
 ROADMAP Phase 2 asks for "movement with flow fields and separation". Phase 1 moves units in
@@ -141,11 +141,12 @@ Measurements (Godot 4.7.2 headless, 2026-10-11, Xeon cloud VM; mock code, not th
   A re-integration after a map change also fills `next` while units keep reading the old
   `cost`, and swaps on completion. About 2 x 4356 x 4 bytes per slot on 64x64 (280 KB for 8
   slots).
-- **Time-sliced:** `FlowCache.advance(budget)` settles at most `flow_cells_per_tick` (rules,
-  starting value 512, to be set from the P26s probe so that a slice costs at most about 0.5 ms on
-  the gate phone) cells per tick, over one field at a time, in request order. A 64x64 field
-  completes in about 8 ticks (0.5 s) at 512. Units steer `DIRECT` until then. The slicing
-  counts cells, not time, so it is deterministic.
+- **Time-sliced:** `FlowCache.advance(budget)` settles at most `flow_cells_per_tick` cells per
+  tick, over one field at a time, in request order. The rule value starts at 512 and is set from
+  the P26s probe so that a slice costs at most about 0.5 ms on a 2021 phone, which is 0.2 ms on
+  the gate phone with k = 2.5 (ADR 0011 §5). A 64x64 field completes in about 8 ticks (0.5 s)
+  at 512, and proportionally later at a smaller value. Units steer `DIRECT` until then. The
+  slicing counts cells, not time, so it is deterministic.
 - **Cache:** `flow_cache_size` (rules, 8) slots, keyed by (goal cell, class, `map_version`).
   - **References are derived, not maintained.** At the start of `advance`, the cache recounts
     each slot's references from the World's `field` column in one pass over the rows. No code

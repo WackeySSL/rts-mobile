@@ -1,6 +1,6 @@
 # ADR 0011: View interpolation, draw structure and the performance budget (probe, headless test, phone gate)
 
-Status: proposed, 2026-10-11 (revision 5 after the five-lens plan review and three completeness checks, same day)
+Status: accepted, 2026-10-12 (Michael). Proposed 2026-10-11 (revision 5 after the five-lens plan review and three completeness checks, same day).
 
 ## Context
 ROADMAP Phase 2 asks for three things:
@@ -154,8 +154,9 @@ Mesa/llvmpipe with Xvfb, so draw-call counts are reliable and times are not):
 - **Wall-clock budget:** `tests/perf/budget.cfg` (`[sim]` `mean_ms`, `p95_ms`, `ticks`, `units`).
   - Before P49 fixes it, the harness runs at least 10 times on the CI runner (workflow_dispatch
     or a temporary loop).
-  - The ceiling is the phone sim threshold (section 5) divided by the phone-to-CI speed ratio
-    measured by the P26s probe. The floor is 1.5 times the worst min-of-3 seen in calibration.
+  - The ceiling is the gate phone's sim threshold (`sim_p95_ms`, section 5) divided by the
+    phone-to-CI speed ratio measured by the P26s probe. The floor is 1.5 times the worst
+    min-of-3 seen in calibration.
     The budget is the ceiling. If the floor is above the ceiling, the sim is already too slow:
     that is a finding for section 6, not a reason to raise the number.
   - That rule gives `p95_ms`. `mean_ms` follows the same rule on the mean: its ceiling is the
@@ -189,13 +190,38 @@ Mesa/llvmpipe with Xvfb, so draw-call counts are reliable and times are not):
   Linux editor build of 4.7.2 exists (P51b checks this first).
 
 ### 5. Phone measurement
-- **Probe first (P26s).** A throwaway dev scene on a draft PR, run on the phone while the plan is
-  reviewed: 150 rigs with the real tank SVGs at absolute z, 75 ring sprites, 150 health bars,
-  60 projectiles and 128 effects drawn as textured quads, a 64x64 fog texture patched at 5 Hz,
-  and the optimised mock tick at 15 Hz in the frame, with every unit on screen at zoom 0.75. Its
-  card shows the numbers listed below, and the same mock tick runs headless on CI, which gives
-  the phone-to-CI speed ratio. The probe settles `flow_cells_per_tick`, the draw contracts and
-  the thresholds before the view PRs start.
+- **Gate device (Michael, 2026-10-12): Michael's own phone**, permanently (2424x1080, 420 dpi,
+  Android; the P26s report and every perf card record its model). No 2021 phone is bought and no
+  step waits for one. It stands in for the "mid-range 2021 Android phone" of CLAUDE.md rule 6
+  through stricter limits:
+  - every CPU-time threshold is the limit set for a 2021 mid-range phone divided by the
+    slowdown factor **k = 2.5** (assumed, not measured: the plan's estimate inside the "2 to 4
+    times slower" range of ADR 0008's Context; the recalled scores above suggest up to 3). Work
+    that fits the divided limit on the gate phone would fit the 2021 limit on a phone k times
+    slower;
+  - the 2021 limits are: tick-frame work p95 14 ms (of the 16.7 ms frame), device `Sim.step`
+    p95 8 ms, fog update p95 1 ms;
+  - the frame-pacing rules (interval at most 17.5 ms for 95% of frames, the 600-frame heavy
+    window) are not divided: they are measured at 60 fps on the gate phone and prove that the
+    frame keeps its pace;
+  - the draw-call ceiling is a count and is not divided. It guards the GPU and driver side,
+    which the division does not model;
+  - what the proxy for rule 6 does not model: GPU fill rate, memory bandwidth and thermal
+    limits of an older phone. The margins there are the Compatibility renderer, the draw-call ceiling, three
+    runs in a row (a warm phone) and the debug APK (GDScript slower than release);
+  - k, the 2021 limits and the gate device change only through a new ADR. A slower test phone
+    can be added later the same way, if field data (playtests, store reviews, Android vitals)
+    shows that the proxy for rule 6 misses real slow phones.
+- **Probe first (P26s).** A throwaway dev scene on a draft PR, run on the gate phone after P26
+  merges and before the art and view PRs start (P34 on): 150 rigs with the real tank SVGs at
+  absolute z, 75 ring sprites, 150 health bars, 60 projectiles and 128 effects drawn as textured
+  quads, a 64x64 fog texture patched at 5 Hz, and the optimised mock tick at 15 Hz in the frame,
+  with every unit on screen at zoom 0.75. Its card shows the numbers listed below, and the same
+  mock tick runs headless on CI, which gives the phone-to-CI speed ratio. The probe gives the
+  ratio for `budget.cfg` (section 4), the starting `flow_cells_per_tick` (ADR 0008 §3, a data
+  value) and a check of the draw contracts (section 3). It does not change the gate thresholds
+  (acceptance note). A draw contract that the probe contradicts changes through a new ADR before
+  the art and view PRs that use it.
 - **The perf arena** (`scenes/dev/perf_arena.tscn`, dev menu "Perf arena"):
   - the same scenario and seed 42, through the same `MatchRunner`;
   - the real view (map, units, projectiles, effects, health bars, player 1's fog) with
@@ -239,15 +265,13 @@ Mesa/llvmpipe with Xvfb, so draw-call counts are reliable and times are not):
     heavy window;
   - frame work p95 on tick frames in the heavy window is at most `work_p95_ms`;
   - device `Sim.step` p95 is at most `sim_p95_ms`;
-  - draw calls p95 at most `draw_calls_max` (starting value 60, set from P26s);
-  - fog update p95 at most 1 ms;
+  - draw calls p95 at most `draw_calls_max`;
+  - fog update p95 at most `fog_update_p95_ms`;
   - every checkpoint hash matches.
 
-  The threshold values follow from the plan's open question 1: on a 2021 reference phone,
-  `work_p95_ms` 14 and `sim_p95_ms` 8; on a faster phone as a stand-in, both divided by the
-  slowdown factor k measured or assumed for a 2021 phone (for example 16.7 / 2.5 = about 7 ms of
-  work). Michael's answer and the chosen values go into this ADR's acceptance note, not into this
-  text later.
+  The values are the 2021 limits divided by k on the gate device (above), listed in this ADR's
+  acceptance note, which `tests/project/test_cross_file_facts.gd` compares with
+  `data/dev/perf_gate.tres`.
 - Debug APKs run GDScript slower than release, so the gate errs on the safe side. The web
   preview's numbers are reported but do not gate; its hashes must match.
 
@@ -276,3 +300,29 @@ Steps 3 to 5 each need a new ADR.
   regression can be compared on the same model.
 - Art for effects becomes an atlas of small sprites instead of code-drawn shapes, so effects
   stay within the draw-call ceiling at 150 units.
+- The divided limits are tight: on a phone as fast as the VM, the estimate in Context (3.3-6 ms
+  on flow and order ticks) would exceed `sim_p95_ms` (3.2 ms) if such ticks are more than 5% of
+  a run. The gate may therefore fail on sim time first; section 6 gives the order of remedies,
+  and the per-phase split on the card picks the step.
+- With one gate device, regressions are compared on the same model across phases. A phone slower
+  than k assumes can still run below 60 fps; that is the accepted limit of the proxy for rule 6
+  until field data says otherwise.
+
+## Acceptance note (2026-10-12, Michael)
+Michael accepted ADRs 0007-0011 with the plan's answers (`docs/plans/2026-10-11-phase-2.md`,
+"Answers (Michael)"). Gate device: his own phone, permanently; k = 2.5. The thresholds in
+`data/dev/perf_gate.tres` (`PerfGateDef` defaults, P38t; pinned by
+`tests/project/test_cross_file_facts.gd`, P52):
+
+| Field | Value | Rule |
+| --- | --- | --- |
+| `heavy_rigs` | 135 | frames with at least 135 drawn rigs form the heavy window |
+| `heavy_frames_min` | 600 | 10 s at 60 fps; not divided |
+| `on_time_ms` | 17.5 | frame interval; not divided |
+| `on_time_share_pct` | 95 | over the run and over the heavy window; not divided |
+| `work_p95_ms` | 5.6 | 14 ms on a 2021 phone / 2.5 |
+| `sim_p95_ms` | 3.2 | 8 ms on a 2021 phone / 2.5 |
+| `fog_update_p95_ms` | 0.4 | 1 ms on a 2021 phone / 2.5 (ADR 0010 §2) |
+| `draw_calls_max` | 60 | a count; not divided |
+
+The P26s probe had not run at acceptance; its report changes none of these values (section 5).

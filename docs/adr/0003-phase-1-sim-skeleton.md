@@ -2,6 +2,8 @@
 
 Status: accepted, 2026-10-10
 
+Status note (2026-10-12): §2-3 partly superseded by ADR 0007 (Command v1, World v1, removal).
+
 ## Context
 Phase 1 (`docs/ROADMAP.md`) must show 30 tanks that move when the player gives orders. The
 simulation core (World data model, Command format, state hash, flow fields, combat, fog) is

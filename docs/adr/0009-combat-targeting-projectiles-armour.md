@@ -1,6 +1,6 @@
 # ADR 0009: Combat (Phase 2 roster, targeting, weapons, projectiles, armour classes, death)
 
-Status: proposed, 2026-10-11 (revision 2 after the five-lens plan review, same day)
+Status: accepted, 2026-10-12 (Michael). Proposed 2026-10-11 (revision 2 after the five-lens plan review, same day).
 
 ## Context
 ROADMAP Phase 2 asks for "combat with projectiles, armour classes and death". The GDD lists six

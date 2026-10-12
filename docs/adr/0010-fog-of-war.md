@@ -1,6 +1,6 @@
 # ADR 0010: Fog of war (sim grids, update cadence, rendering)
 
-Status: proposed, 2026-10-11 (revision 5 after the five-lens plan review and three completeness checks, same day)
+Status: accepted, 2026-10-12 (Michael). Proposed 2026-10-11 (revision 5 after the five-lens plan review and three completeness checks, same day).
 
 ## Context
 ROADMAP Phase 2 asks for "fog of war (visible and explored) and its rendering". The GDD says:
@@ -95,7 +95,8 @@ Measurements (Godot 4.7.2, Xeon cloud VM):
     overflowed.
 
   The GDScript work is then proportional to the cells that changed. The layer records its update
-  time for the perf card, and the phone budget is 1 ms p95.
+  time for the perf card. Its budget is 1 ms p95 on a 2021 phone, which the gate checks as
+  0.4 ms p95 on the gate phone (`fog_update_p95_ms`, ADR 0011 §5).
 - **Testability:** the layer keeps its CPU-side `Image` and exposes it (`func image() -> Image`).
   Tests assert on that image, never on `ImageTexture.get_image()`, which on Godot 4.7.2 keeps
   returning the first upload after `update()` or `set_image()` (verified headless).
