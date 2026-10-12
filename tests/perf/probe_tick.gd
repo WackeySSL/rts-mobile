@@ -5,13 +5,19 @@ extends GdUnitTestSuite
 ## runs (ADR 0011 section 4; the phone card prints the same numbers in ms). Timing is never
 ## asserted: this test fails on errors and on a mock that stopped doing its work (units not
 ## moving, no targets, a flow field that does not reach every open tile).
+## Spike P26n adds the C++ port (ProbeTickNative) to every run, timed the same way, with its own
+## "PROBE ci cpp ..." lines and the speedup over the GDScript mock; the GDScript lines stay as were.
 
 const CELLS: int = 512
+const NOT_LOADED: String = "ProbeTickNative not loaded: run scripts/build-native.sh"
 
 
 func test_mock_tick_and_flow_slice_are_timed_and_sane() -> void:
 	var best: Array[float] = [INF, INF, INF, INF]  # Tick mean and p95, slice mean and p95.
+	var cpp_best: Array[float] = [INF, INF, INF, INF]  # The same for the C++ port.
 	var probe: PerfProbeTick = null
+	var loaded: bool = ClassDB.class_exists(PerfProbeLockstep.NATIVE_CLASS)
+	assert_bool(loaded).override_failure_message(NOT_LOADED).is_true()
 	for run: int in 3:
 		probe = PerfProbeTick.new()
 		var ticks: PackedFloat64Array = PackedFloat64Array()
@@ -34,8 +40,30 @@ func test_mock_tick_and_flow_slice_are_timed_and_sane() -> void:
 		best[3] = minf(best[3], _p95(slices))
 		assert_int(reached).is_equal(3980)  # Every open tile: 4096 less the 116 ridge tiles.
 		assert_int(slices.size()).is_equal(56)  # 8 field ends in 64 calls; a short slice is dropped.
+		if loaded:
+			_time_cpp(run, cpp_best)
 	print("PROBE ci min-of-3 tick_us mean=%.1f p95=%.1f" % [best[0], best[1]])
 	print("PROBE ci min-of-3 flow_slice_512_us mean=%.1f p95=%.1f" % [best[2], best[3]])
+	if loaded:
+		print("PROBE ci cpp min-of-3 tick_us mean=%.1f p95=%.1f" % [cpp_best[0], cpp_best[1]])
+		print(
+			(
+				"PROBE ci cpp min-of-3 flow_slice_512_us mean=%.1f p95=%.1f"
+				% [cpp_best[2], cpp_best[3]]
+			)
+		)
+		print(
+			(
+				"PROBE ci cpp speedup tick_us mean %.1fx p95 %.1fx"
+				% [best[0] / cpp_best[0], best[1] / cpp_best[1]]
+			)
+		)
+		print(
+			(
+				"PROBE ci cpp speedup flow_slice_512_us mean %.1fx p95 %.1fx"
+				% [best[2] / cpp_best[2], best[3] / cpp_best[3]]
+			)
+		)
 	var limit: int = PerfProbeTick.COLS * 1000
 	for i: int in PerfProbeTick.UNITS:
 		assert_int(probe.x[i]).is_between(0, limit - 1)
@@ -62,8 +90,35 @@ func test_the_same_start_plays_the_same_ticks() -> void:
 	assert_array(a.seen).is_equal(b.seen)
 
 
+## One run of the same method on a fresh C++ port (900 ticks, then 64 flow slices of 512 cells),
+## printed per run; `best` keeps the minimum over the runs.
+func _time_cpp(run: int, best: Array[float]) -> void:
+	var cpp: RefCounted = ClassDB.instantiate(PerfProbeLockstep.NATIVE_CLASS)
+	var ticks: PackedFloat64Array = PackedFloat64Array()
+	for _i: int in 900:
+		ticks.append(cpp.step())
+	var slices: PackedFloat64Array = PackedFloat64Array()
+	_time_slices(cpp, 8, slices)
+	var flow_cost: PackedInt32Array = cpp.flow_cost
+	var reached: int = flow_cost.size() - flow_cost.count(PerfProbeTick.UNREACHED)
+	_time_slices(cpp, 56, slices)
+	print("PROBE ci cpp run=%d tick_us mean=%.1f p95=%.1f" % [run, _mean(ticks), _p95(ticks)])
+	print(
+		(
+			"PROBE ci cpp run=%d flow_slice_512_us mean=%.1f p95=%.1f"
+			% [run, _mean(slices), _p95(slices)]
+		)
+	)
+	best[0] = minf(best[0], _mean(ticks))
+	best[1] = minf(best[1], _p95(ticks))
+	best[2] = minf(best[2], _mean(slices))
+	best[3] = minf(best[3], _p95(slices))
+	assert_int(reached).is_equal(3980)
+	assert_int(slices.size()).is_equal(56)
+
+
 ## Times `calls` flow slices into `into`; the short slice that ends a field is left out.
-func _time_slices(probe: PerfProbeTick, calls: int, into: PackedFloat64Array) -> void:
+func _time_slices(probe: RefCounted, calls: int, into: PackedFloat64Array) -> void:
 	for _i: int in calls:
 		var elapsed: int = probe.flow_slice(CELLS)
 		if probe.slice_cells == CELLS:

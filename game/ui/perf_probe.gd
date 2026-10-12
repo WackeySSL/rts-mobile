@@ -9,10 +9,14 @@ extends Node2D
 ## The fourth mode (ADR 0012 section 1) is mode 1 with each mock tick, and the flow slice, run on
 ## one dedicated Thread: a tick ahead, handed over by two Semaphores, never blocking the frame.
 ## The view draws from its own copies, taken at publish, while the worker owns `sim`.
+## The fifth mode (spike P26n, never merged) is the fourth with the worker running the C++ port of
+## the tick (the GDExtension class ProbeTickNative, native/probe_tick) instead of PerfProbeTick. It
+## first plays 60 ticks of both in lockstep and reports whether they matched. Without the library
+## (no build, or the web preview) the mode says so and measures nothing.
 
 @warning_ignore_start("integer_division")
 
-enum Mode { SPRITE_RINGS, CODE_RINGS, ALTERNATING_TINTS, WORKER_TICK }
+enum Mode { SPRITE_RINGS, CODE_RINGS, ALTERNATING_TINTS, WORKER_TICK, NATIVE_TICK }
 enum Series { INTERVAL, PROCESS, RENDER, CALLS, WORK_TICK, WORK_OTHER, TICK, SLICE, FOG, LATENCY }
 ## The worker job, as ADR 0012 section 1: nothing posted, posted and not taken, taken and not
 ## published.
@@ -25,11 +29,14 @@ const SIDE: int = PerfProbeTick.SIDE
 const TICK_USEC: int = 66667  ## 15 Hz.
 const FLOW_CELLS: int = 512
 const ON_TIME_MS: float = 17.5
+const CHECK_TICKS: int = 60  ## Mode 5's lockstep self-check, not timed.
+const NATIVE_MISSING: String = "C++ tick not available on this build"
 const MODES: Array[String] = [
 	"sprite rings",
 	"code rings",
 	"sprite rings, tints alternate",
 	"sprite rings, worker tick",
+	"sprite rings, C++ worker tick",
 ]
 
 var run_seconds: int = 60
@@ -37,6 +44,11 @@ var mode: int = Mode.SPRITE_RINGS  ## Code rings are the Phase 1 ones; the tint 
 var clipboard_sink: Callable = DisplayServer.clipboard_set
 ## The worker mode hands it to the worker. Swap it before the node enters the tree, not after.
 var sim: PerfProbeTick = PerfProbeTick.new()
+## The GDExtension class mode 5 runs; a test swaps it for a name that is not registered.
+var native_class: String = PerfProbeLockstep.NATIVE_CLASS
+## Mode 5's C++ tick, owned by the worker while it runs. A RefCounted, never a ProbeTickNative:
+## that class does not exist (and a typed variable would not parse) without the library.
+var native: RefCounted = null
 
 var _rigs: Array[Node2D] = []
 var _rings: Array[Node2D] = []  ## Per selected unit: a sprite ring, then a code ring.
@@ -62,6 +74,8 @@ var _clock_us: int = 0
 var _process_start_us: int = 0  ## Top of this frame's `_process`, the first one in the tree.
 var _pre_draw_us: int = 0
 var _ticked: bool = false  ## This frame ran at least one mock tick (worker: published one).
+var _runner: RefCounted = null  ## Who the worker ticks: `sim`, or `native`; set before it starts.
+var _check: String = ""  ## Mode 5's self-check result line.
 var _thread: Thread = null
 var _work: Semaphore = Semaphore.new()  ## The main thread posts a job; the worker waits.
 var _done: Semaphore = Semaphore.new()  ## The worker posts when the job is finished.
@@ -187,8 +201,10 @@ func _process(_delta: float) -> void:
 	_record(Series.INTERVAL, interval / 1000.0)
 	_clock_us += interval
 	_ticked = false
-	if mode == Mode.WORKER_TICK:
+	if _thread != null:
 		_tick_worker()
+	elif mode == Mode.NATIVE_TICK:  # Mode 5 without the library: nothing ticks.
+		_clock_us = 0
 	else:
 		_tick_in_frame()
 	for i: int in UNITS:
@@ -199,7 +215,9 @@ func _process(_delta: float) -> void:
 		layer.queue_redraw()
 	if _end_us == 0:
 		var left: int = run_seconds - (now - _start_us) / 1000000
-		_card.text = "PERF PROBE: running, %d s left.\nLeave the phone alone." % left
+		_card.text = (
+			"PERF PROBE: running, %d s left.\nLeave the phone alone.\n%s" % [left, _impl_text()]
+		)
 		if left <= 0:
 			_end_us = now
 			_card.text = report()
@@ -258,17 +276,18 @@ func _tick_worker() -> void:
 ## A late tick (ADR 0012 section 1) is a job whose post to done exceeds the period: the worker
 ## itself was slow, whatever the main thread was doing.
 func _publish() -> void:
+	var source: RefCounted = _runner  # `sim`, or `native` (its getters return copies).
 	_prev_x = _view.x
 	_prev_y = _view.y
-	_view.x = sim.x.duplicate()
-	_view.y = sim.y.duplicate()
-	_view.target = sim.target.duplicate()
-	var fog_tick: bool = sim.tick % 3 == 0  # 5 Hz, as in the in-frame modes.
+	_view.x = source.x.duplicate()
+	_view.y = source.y.duplicate()
+	_view.target = source.target.duplicate()
+	var fog_tick: bool = source.tick % 3 == 0  # 5 Hz, as in the in-frame modes.
 	if fog_tick:
-		_view.seen = sim.seen.duplicate()
-		_view.dirty = sim.dirty.duplicate()
-		_view.dirty_count = sim.dirty_count
-		sim.dirty_count = 0
+		_view.seen = source.seen.duplicate()
+		_view.dirty = source.dirty.duplicate()
+		_view.dirty_count = source.dirty_count
+		source.dirty_count = 0
 	_record(Series.TICK, _job_tick_usec / 1000.0)
 	_record(Series.SLICE, _job_slice_usec / 1000.0 if _job_slice_usec >= 0 else -1.0)
 	_record(Series.LATENCY, (_job_end_us - _post_us) / 1000.0)
@@ -285,30 +304,75 @@ func _post_job() -> void:
 
 
 ## The worker thread: sleeps on `_work`, runs one mock tick (and, every 15th, one flow slice),
-## stamps the end time and posts `_done`. It touches `sim` and the `_job_*` fields only; the two
-## semaphores order every hand-over between the threads.
+## stamps the end time and posts `_done`. It touches its runner (`sim` or `native`) and the `_job_*`
+## fields only; the two semaphores order every hand-over between the threads.
 func _serve() -> void:
+	var job: RefCounted = _runner  # Set before the thread started, never changed while it runs.
 	while true:
 		_work.wait()
 		if _quit:
 			return
-		_job_tick_usec = sim.step()  # The usec timer inside the tick body.
+		_job_tick_usec = job.step()  # The usec timer inside the tick body.
 		_job_slice_usec = -1
-		if sim.tick % 15 == 0:
-			var elapsed: int = sim.flow_slice(FLOW_CELLS)
-			_job_slice_usec = elapsed if sim.slice_cells == FLOW_CELLS else -1
+		if job.tick % 15 == 0:
+			var elapsed: int = job.flow_slice(FLOW_CELLS)
+			_job_slice_usec = elapsed if job.slice_cells == FLOW_CELLS else -1
 		_job_end_us = Time.get_ticks_usec()
 		_done.post()
 
 
 ## Starts or stops the worker to match `mode`. The view reads `_shown` while the worker runs and
-## goes back to `sim` when it is joined.
+## goes back to `sim` when it is joined. Mode 5 first plays its self-check and makes a fresh C++
+## tick; without the library it starts nothing and the view stays on `sim`.
 func _sync_worker() -> void:
-	if mode == Mode.WORKER_TICK:
-		_start_worker()
-	elif _thread != null:
-		_stop_worker()
+	var was_running: bool = _thread != null
+	if was_running:
+		_stop_worker()  # Also from the worker mode to the C++ one: the old runner is ours again.
+	native = null
+	_check = ""
+	if mode == Mode.NATIVE_TICK:
+		if native_available():
+			_check = _self_check()
+			native = ClassDB.instantiate(native_class)
+			_start_worker(native)
+		else:
+			_follow_sim()
+	elif mode == Mode.WORKER_TICK:
+		_start_worker(sim)
+	elif was_running:
 		_follow_sim()
+
+
+## True when the C++ tick's class is registered: the library is built and loaded on this platform.
+func native_available() -> bool:
+	return ClassDB.class_exists(native_class)
+
+
+## Mode 5, before the measurement and not timed: a fresh GDScript tick and a fresh C++ tick play
+## `CHECK_TICKS` ticks in lockstep (the flow slice on every 15th, as in the run) and every state
+## array is compared after each call. Returns the report line.
+func _self_check() -> String:
+	var found: String = PerfProbeLockstep.play(
+		PerfProbeTick.new(), ClassDB.instantiate(native_class), CHECK_TICKS, FLOW_CELLS
+	)
+	# The check holds the main thread for about a second on a phone: the frame clock starts again.
+	_last_us = Time.get_ticks_usec()
+	_process_start_us = _last_us
+	if found == "":
+		return "C++ matches GDScript: yes (%d ticks)" % CHECK_TICKS
+	print("perf probe: C++ differs from GDScript: ", found)
+	var at: String = found.get_slice(" ", 1)
+	var field: String = PerfProbeLockstep.field_of(found.get_slice(": ", 1))
+	return "C++ matches GDScript: NO at tick %s (%s)" % [at, field]
+
+
+## The implementation lines of the card: who ticks, and mode 5's self-check or its absence.
+func _impl_text() -> String:
+	if mode != Mode.NATIVE_TICK:
+		return "tick impl: GDScript"
+	if native == null:
+		return "tick impl: C++\n%s" % NATIVE_MISSING
+	return "tick impl: C++ (%s)\n%s" % [native.get_build_info(), _check]
 
 
 ## The frame reads `sim` again, and interpolates from where `sim` stands. Only with no worker.
@@ -318,7 +382,8 @@ func _follow_sim() -> void:
 	_prev_y = sim.y.duplicate()
 
 
-func _start_worker() -> void:
+func _start_worker(runner: RefCounted) -> void:
+	_runner = runner
 	_work = Semaphore.new()  # Fresh tokens: a joined worker may have left one behind.
 	_done = Semaphore.new()
 	_quit = false
@@ -328,13 +393,14 @@ func _start_worker() -> void:
 	if _thread.start(_serve) != OK:
 		push_warning("perf probe: the worker thread did not start; staying in the frame")
 		_thread = null
+		native = null
 		mode = Mode.SPRITE_RINGS  # Same picture as the worker mode, the tick back in the frame.
 		return
-	_shown.x = sim.x.duplicate()  # The worker is asleep until the first post: `sim` is ours.
-	_shown.y = sim.y.duplicate()
-	_shown.target = sim.target.duplicate()
-	_shown.seen = sim.seen.duplicate()
-	_shown.dirty = sim.dirty.duplicate()
+	_shown.x = runner.x.duplicate()  # The worker is asleep until the first post: the runner is ours.
+	_shown.y = runner.y.duplicate()
+	_shown.target = runner.target.duplicate()
+	_shown.seen = runner.seen.duplicate()
+	_shown.dirty = runner.dirty.duplicate()
 	_shown.dirty_count = 0
 	_view = _shown
 	_prev_x = _shown.x
@@ -350,6 +416,11 @@ func _stop_worker() -> void:
 	_thread = null
 	_job = Job.IDLE
 	_held = false
+
+
+## True in the two worker modes, when their worker was started (mode 5 needs the library).
+func _worker_mode() -> bool:
+	return mode == Mode.WORKER_TICK or (mode == Mode.NATIVE_TICK and native != null)
 
 
 ## True while a started worker thread has not been joined.
@@ -373,6 +444,8 @@ func _on_post_draw() -> void:
 
 ## The plain-text report: the card shows it and "Copy report" puts it on the clipboard.
 func report() -> String:
+	if mode == Mode.NATIVE_TICK and native == null:  # Nothing was measured.
+		return "PERF PROBE P26s | %s | not available\n%s" % [MODES[mode], _impl_text()]
 	var frames: int = _series[Series.INTERVAL].size()
 	var on_time: int = 0
 	for ms: float in _series[Series.INTERVAL]:
@@ -386,6 +459,7 @@ func report() -> String:
 	var share: float = 100.0 * on_time / maxi(frames, 1)
 	var lines: PackedStringArray = [
 		"PERF PROBE P26s | %s | %s" % [MODES[mode], "done" if _end_us > 0 else "running"],
+		_impl_text(),
 		"device %s | %s | Godot %s" % [OS.get_model_name(), OS.get_name(), engine],
 		"screen %s px | refresh %s | max_fps %d" % [screen, refresh, Engine.max_fps],
 		"frames %d in %.1f s | on time (<= 17.5 ms) %.1f %%" % [frames, seconds, share],
@@ -399,7 +473,7 @@ func report() -> String:
 		_row("flow slice %d cells (usec timer)" % FLOW_CELLS, Series.SLICE, "ms"),
 		_row("fog patch (bytes + set_data + update, 5 Hz)", Series.FOG, "ms"),
 	]
-	if mode == Mode.WORKER_TICK:  # Rows only this mode has; the rows above keep their format.
+	if _worker_mode():  # Rows only the worker modes have; the rows above keep their format.
 		var ticks: int = _series[Series.TICK].size()
 		lines.append(
 			(
@@ -440,12 +514,18 @@ func _start_run() -> void:
 	_late_ticks = 0
 	_rings_button.visible = false
 	_copy_button.visible = false
+	if mode == Mode.NATIVE_TICK and native == null:  # No library: the card says so and stops.
+		_end_us = _start_us + 1
+		_card.text = report()
+		_rings_button.visible = true
+		_copy_button.visible = true
+		_copy_button.text = "Copy report"
 
 
 func _next_mode() -> void:
 	mode = (mode + 1) % MODES.size()
-	if mode == Mode.WORKER_TICK and not OS.has_feature("threads"):
-		mode = Mode.SPRITE_RINGS  # The web preview has no threads: the cycle skips the worker mode.
+	if mode >= Mode.WORKER_TICK and not OS.has_feature("threads"):
+		mode = Mode.SPRITE_RINGS  # The web preview has no threads: the cycle skips the worker modes.
 	_apply_mode()
 	_start_run()
 

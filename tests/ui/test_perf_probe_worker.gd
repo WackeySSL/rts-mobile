@@ -34,7 +34,9 @@ func test_the_next_mode_button_reaches_the_worker_mode_and_leaves_it_joined() ->
 	assert_int(probe.mode).is_equal(WORKER_MODE)
 	assert_bool(probe.worker_active()).is_true()
 	assert_int(Engine.max_fps).is_equal(60)
-	_press_next_mode(probe, 1)  # Back to the in-frame mode: the worker is joined, `sim` is ours.
+	# P26n: the cycle has a fifth mode now (the C++ worker, tests/ui/test_perf_probe_native.gd), so
+	# two presses lead back to the in-frame mode: the worker is joined, `sim` is ours.
+	_press_next_mode(probe, 2)
 	assert_int(probe.mode).is_equal(0)
 	assert_bool(probe.worker_active()).is_false()
 	assert_int(probe.sim.tick).is_greater_equal(3)
