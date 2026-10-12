@@ -23,6 +23,7 @@ One or two lines each. Found during Phase 0 (2026-10-10).
 - The allowlist must never fail open: verify.sh and export-web.sh reject invalid ERE syntax (grep exit 2) and entries that match an empty line (`a*`, `x?`, `.*`, GNU `foo|`). An over-broad but valid entry (e.g. `ERROR`) is still possible, so review every new entry.
 - Integrating fix branches: commit a dirty memory file before `git cherry-pick`, prove equivalence with a per-commit `git patch-id --stable` match, then `git worktree remove` (no --force needed when only ignored `.godot/build/reports` remain) and `git branch -D`.
 - Purity guard limit: name patterns cannot tell `Array.shuffle()`/`pick_random()` from a `DetRandom.shuffle()`, so those are not banned. `floor/ceil/round/lerp` on ints return ints, so they are not banned either (only `*f` variants).
+- Purity guard (P27q): `length(` also trips on `String.length()`; use `len(s)` in game/sim (the report now says so). Multi-line scan fixtures live as `.txt` under `tests/project/fixtures/` so gdformat, gdlint and the compile test never see them; pin flagged line numbers and append new cases at the end.
 
 **Why:** each of these cost a spike or a false GREEN during Phase 0.
 **How to apply:** check this list first when a test is flaky or a script reports success without evidence. Never relax the scan; add a narrow allowlist regex with a comment only for a message proven benign.

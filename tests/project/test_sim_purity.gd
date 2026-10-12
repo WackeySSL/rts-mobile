@@ -2,11 +2,14 @@ extends GdUnitTestSuite
 ## Purity guard for game/sim (CLAUDE.md architecture rules 1 to 3): no Node, no engine time or
 ## input, no floats, no randomness except through a DetRandom passed in, no autoload.
 ##
-## Three layers guard game/sim:
+## Four layers guard game/sim:
 ## - Name and literal patterns on each line, after string literals and comments are stripped.
 ## - An identifier scan that asks ClassDB whether a capitalised word is an engine Node class or
 ##   a *Server singleton. Names alone cannot list the 200 Node classes.
 ## - A base type check: no sim script may extend a Node, directly or through a user base class.
+## - An allocation check by indentation (ADR 0007 section 1): no array or dictionary literal,
+##   Packed*Array(...), duplicate() or slice() inside the body of a for or while loop, unless
+##   the line ends with `# alloc-ok`.
 ## game/ai is scanned for randomness only (rule 3).
 ##
 ## The scans over game/sim and game/ai are vacuous until those folders hold code. The fixture
@@ -16,6 +19,9 @@ extends GdUnitTestSuite
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const SIM_DIR: String = "res://game/sim"
 const AI_DIR: String = "res://game/ai"
+## Read as text and never loaded, so no scan of game/ and no import step meets it.
+const LOOP_FIXTURE: String = "res://tests/project/fixtures/sim_loop_allocations.txt"
+const ALLOC_OK: String = "# alloc-ok"
 
 const STRING_LITERAL: String = r"\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*'"
 ## Array.shuffle() and pick_random() use the global generator. They take no argument, which
@@ -40,8 +46,22 @@ const BANNED_NAMES: String = (
 )
 ## Only as calls: `var exp: int` (veterancy) and `var log: Array` (command log) are legal
 ## names in the sim. Vector2i.length() and aspect() return float, and JSON parses every
-## number as float.
-const BANNED_CALLS: String = r"\b(exp|log|ease|aspect|length)\s*\(|\bJSON\.parse"
+## number as float. hash() is engine defined (ADR 0007 section 1); `\b` keeps state_hash(),
+## defs_hash() and hash_hex() legal.
+const BANNED_CALLS: String = r"\b(exp|log|ease|aspect|length|hash)\s*\(|\bJSON\.parse"
+## What to do about a banned call, appended to its report line.
+const HINTS: Dictionary[String, String] = {
+	r"\blength\s*\(": "use len() for a String size; Vector2i.length() is a float",
+	r"\bhash\s*\(": "hash() is engine defined; use World.state_hash() or an integer mix",
+}
+## A `[` opens an array literal after an operator, an opening bracket, a comma or a keyword,
+## and from the start of a line. After a name, `)`, `]` or a string it indexes.
+const ALLOC_NAMES: String = (
+	r"(?:^|[=(,:+\-*/%&|^<>!~{\[?])\s*\["
+	+ r"|\b(?:return|in|and|or|not|if|else|elif|await|is|as|when|match)\s*\["
+	+ r"|\{|\bPacked(?:Int32|Int64|Byte)Array\s*\(|\.(?:duplicate|slice)\s*\("
+)
+const LOOP_HEADER: String = r"^\s*(?:for|while)\b"
 const FLOAT_LITERAL: String = (
 	r"(?<![A-Za-z0-9_.])[0-9][0-9_]*\.[0-9]|(?<![A-Za-z0-9_])\.[0-9]"
 	+ r"|(?<![A-Za-z0-9_.])[0-9][0-9_]*\.(?![0-9A-Za-z_])|\b[0-9]+[eE][+-]?[0-9]"
@@ -142,6 +162,10 @@ const MUST_MATCH: Array[String] = [
 	"var r := size.aspect()",
 	"ease(x, 2)",
 	"var data = JSON.parse_string(text)",
+	# hash() is engine defined, as a function or as a method.
+	"var h: int = hash(pos)",
+	"var h := name.hash()",
+	"var h := hash (value)",
 	# Randomness through the global generator.
 	"targets.pick_random()",
 	"units.shuffle()",
@@ -187,6 +211,13 @@ const MUST_NOT_MATCH: Array[String] = [
 	"var d2: int = a.distance_squared_to(b)",
 	"var ease_steps: int = 4",
 	"var lengths: Array[int] = []",
+	# The legal hash names: only a bare hash( is banned.
+	"var h: int = world.state_hash()",
+	"var d: int = world.defs_hash()",
+	"var s: String = World.hash_hex(h)",
+	"var parts: PackedInt64Array = world.hash_parts()",
+	"var hash_count: int = 0",
+	"var hash: int = 0",
 ]
 
 ## Rule 3 for game/ai: the only check there is randomness.
@@ -233,6 +264,8 @@ var _banned_calls: RegEx
 var _rand: RegEx
 var _floats: RegEx
 var _identifiers: RegEx
+var _alloc: RegEx
+var _loop_header: RegEx
 
 
 func before() -> void:
@@ -242,13 +275,22 @@ func before() -> void:
 	_rand = _compile(RAND_NAMES)
 	_floats = _compile(FLOAT_LITERAL)
 	_identifiers = _compile(CAPITALISED_IDENTIFIER)
+	_alloc = _compile(ALLOC_NAMES)
+	_loop_header = _compile(LOOP_HEADER)
 
 
 func test_sim_sources_are_pure() -> void:
 	var violations: Array[String] = []
 	for path: String in FileScan.list_files(SIM_DIR, ".gd"):
 		var source: String = FileAccess.get_file_as_string(path)
-		violations.append_array(_violations(source, path, _is_sim_violation))
+		violations.append_array(_violations(source, path, _is_sim_violation, _hint))
+	assert_array(violations).is_empty()
+
+
+func test_sim_sources_do_not_allocate_in_loops() -> void:
+	var violations: Array[String] = []
+	for path: String in FileScan.list_files(SIM_DIR, ".gd"):
+		violations.append_array(_alloc_violations(FileAccess.get_file_as_string(path), path))
 	assert_array(violations).is_empty()
 
 
@@ -271,6 +313,45 @@ func test_ai_sources_use_no_unseeded_randomness() -> void:
 		var source: String = FileAccess.get_file_as_string(path)
 		violations.append_array(_violations(source, path, _is_rand_violation))
 	assert_array(violations).is_empty()
+
+
+## Pinned to the line numbers of the fixture: the lines in a loop body that allocate and do not
+## end with `# alloc-ok`. Lines 4 to 6 and 30 to 31 (before and after a loop), 19 to 27 (comment,
+## index expressions, strings, `# alloc-ok`), 36, 40, 43 (a loop header's own brackets), 46, 50
+## and 51 (an index after a call or a string) are legal.
+func test_alloc_guard_flags_exactly_the_allocations_in_loop_bodies() -> void:
+	var source: String = FileAccess.get_file_as_string(LOOP_FIXTURE)
+	assert_str(source).is_not_empty()
+	var found: Array[String] = _alloc_violations(source, "fixture")
+	var line_numbers: Array[int] = []
+	for report: String in found:
+		line_numbers.append(int(report.split(":")[1]))
+	assert_array(line_numbers).contains_exactly(
+		[7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 29, 33, 34, 35, 39, 45, 49, 52]
+	)
+	assert_str(found[0]).is_equal("fixture:7: var a: Array[int] = []")
+
+
+func test_banned_calls_tell_the_author_what_to_use() -> void:
+	var length_report: Array[String] = _violations(
+		"var n: int = name.length()", "a.gd", _is_sim_violation, _hint
+	)
+	assert_array(length_report).contains_exactly(
+		[
+			(
+				"a.gd:1: var n: int = name.length()"
+				+ "  <- use len() for a String size; Vector2i.length() is a float"
+			)
+		]
+	)
+	var hash_report: Array[String] = _violations(
+		"var h: int = hash(pos)", "a.gd", _is_sim_violation, _hint
+	)
+	assert_str(hash_report[0]).contains("World.state_hash()")
+	# A line that breaks another rule gets no hint.
+	assert_array(_violations("var f: float", "a.gd", _is_sim_violation, _hint)).contains_exactly(
+		["a.gd:1: var f: float"]
+	)
 
 
 func test_guard_flags_every_banned_fixture() -> void:
@@ -416,11 +497,57 @@ func _script_from(source: String) -> GDScript:
 	return script
 
 
-func _violations(source: String, label: String, is_violation: Callable) -> Array[String]:
+func _violations(
+	source: String, label: String, is_violation: Callable, hint: Callable = Callable()
+) -> Array[String]:
 	var found: Array[String] = []
 	var lines: PackedStringArray = source.split("\n")
 	for index: int in lines.size():
 		var flagged: bool = is_violation.call(lines[index])
 		if flagged:
-			found.append("%s:%d: %s" % [label, index + 1, lines[index].strip_edges()])
+			var report: String = "%s:%d: %s" % [label, index + 1, lines[index].strip_edges()]
+			found.append(report + (hint.call(lines[index]) if hint.is_valid() else ""))
 	return found
+
+
+## "  <- advice" for the banned calls that have some, else "".
+func _hint(line: String) -> String:
+	var code: String = _strip(line)
+	for pattern: String in HINTS:
+		if _compile(pattern).search(code) != null:
+			return "  <- " + HINTS[pattern]
+	return ""
+
+
+## Reports of allocations inside for and while bodies. A loop owns the lines after its header
+## that are indented deeper than the header; comment and blank lines do not count. A header
+## whose brackets stay open past its line (a long `range(...)` call) starts its loop only when
+## they close, so the arguments, evaluated once, are not part of the body.
+func _alloc_violations(source: String, label: String) -> Array[String]:
+	var found: Array[String] = []
+	var loops: Array[int] = []
+	var pending: int = -1
+	var open_brackets: int = 0
+	var lines: PackedStringArray = source.split("\n")
+	for index: int in lines.size():
+		var code: String = _strip(lines[index])
+		if code.strip_edges().is_empty():
+			continue
+		var indent: int = len(code) - len(code.lstrip(" \t"))
+		while not loops.is_empty() and indent <= loops[-1]:
+			loops.pop_back()
+		if not loops.is_empty() and _alloc.search(code) != null:
+			if not lines[index].strip_edges().ends_with(ALLOC_OK):
+				found.append("%s:%d: %s" % [label, index + 1, lines[index].strip_edges()])
+		open_brackets = maxi(open_brackets + _bracket_balance(code), 0)
+		if _loop_header.search(code) != null:
+			pending = indent
+		if pending >= 0 and open_brackets == 0:
+			loops.push_back(pending)
+			pending = -1
+	return found
+
+
+func _bracket_balance(code: String) -> int:
+	var opened: int = code.count("(") + code.count("[") + code.count("{")
+	return opened - code.count(")") - code.count("]") - code.count("}")

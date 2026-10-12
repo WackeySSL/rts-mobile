@@ -1,0 +1,52 @@
+# Fixture for test_sim_purity: sim-style code read as text, never loaded as a script.
+# The test pins the line numbers it flags, so add new cases at the end.
+func tick(world: World, n: int) -> void:
+	var before: Array[int] = [1, 2]
+	var pos_x: PackedInt32Array = world.pos_x
+	for row: int in [1, 2, 3]:
+		var a: Array[int] = []
+		var d: Dictionary = {}
+		x = [1, 2]
+		y = [1, -1][k]
+		z = a.duplicate()
+		z = a.slice(1, 3)
+		var p := PackedInt32Array()
+		var q := PackedByteArray(8)
+		var r := PackedInt64Array(8)
+		foo(a, [row])
+		if row in [1, 2]:
+			return [row]
+		# a comment with [1, 2], {} and .slice( is not code
+		var u: int = pos_x[row]
+		pos_x[row] = u
+		world.pos_x[row] += world.vel_x[row]
+		grid[cell_of[row]] = ids[row][0]
+		var s: String = "[1, 2] {} .slice("
+		var t: Array[int]
+		x = [1, 2]  # alloc-ok
+		note("row %d" % [row])  # alloc-ok
+
+		var after_blank: Array[int] = [row]
+	var after: Array[int] = [3]
+	var empty: Dictionary = {}
+	for i: int in range(3):
+		for j: int in [i, 1]:
+			var inner: Array[int] = [j]
+		var outer: Array[int] = [i]
+	var outside: Array[int] = []
+	while n > 0:
+		n -= 1
+		var w: Array[int] = [n]
+	var done: Array[int] = [n]
+	for row: int in range(
+		first,
+		[1, 2][0],
+	):
+		var m: Array[int] = [row]
+	var tail: Array[int] = [0]
+	for row: int in range(3):
+# a comment at column zero does not end the loop
+		var c: Array[int] = [row]
+		var e: int = make(row)[0] + ids[row][1]
+		var g: String = "ab"[1]
+		[1, -1][row]
