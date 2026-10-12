@@ -171,6 +171,34 @@ func test_every_scenario_file_sets_the_shared_rules_resource_and_has_a_valid_map
 			assert_array(scenario.map.validate()).override_failure_message(path).is_empty()
 
 
+## What World.from_scenario takes on trust from a scenario file: every grid point inside the map and
+## on ground its class may enter (the jitter fallback is the grid point), a jitter in 0..8000 (the
+## spawn draws nothing from a span above 2^31), at most `max_rows` units (nothing refuses a row
+## before prepare()) and a player_count of 0 or at least the highest spawn owner.
+func test_every_scenario_file_places_its_units_inside_the_map_and_within_its_limits() -> void:
+	for path: String in FileScan.list_files(SCENARIOS_DIR, ".tres"):
+		var scenario: ScenarioDef = load(path)
+		var world: World = World.from_scenario(scenario)
+		var map: Rect2i = Rect2i(0, 0, world.map_w, world.map_h)
+		var problems: Array[String] = []
+		var units: int = 0
+		var owners: int = 0
+		for spawn: SpawnDef in scenario.spawns:
+			units += spawn.count
+			owners = maxi(owners, spawn.owner)
+			if spawn.jitter < 0 or spawn.jitter > 8000:
+				problems.append("jitter %d of %s" % [spawn.jitter, spawn.unit.type_id])
+			for k: int in spawn.count:
+				var at: Vector2i = _grid_point(spawn, k)
+				if not map.has_point(at) or not _passable(world, at, spawn.unit.move_class):
+					problems.append("%s %d at %s" % [spawn.unit.type_id, k, at])
+		if units > world.max_rows:
+			problems.append("%d units, max_rows %d" % [units, world.max_rows])
+		if scenario.player_count != 0 and scenario.player_count < owners:
+			problems.append("player_count %d, owner %d" % [scenario.player_count, owners])
+		assert_array(problems).override_failure_message(path).is_empty()
+
+
 func test_the_perf_arena_map_is_64_by_64_with_a_ridge_three_gaps_and_scenery_in_the_window(
 ) -> void:
 	var map: MapDef = load(ARENA_MAP_PATH)
@@ -424,6 +452,10 @@ func _spawn_centre_tile(scenario: ScenarioDef, player: int) -> Vector2i:
 			sum += _grid_point(spawn, k)
 			units += 1
 	return sum / units / 1000
+
+
+func _passable(world: World, at: Vector2i, move_class: int) -> bool:
+	return world.is_passable(world.cell_of(at.x, at.y), move_class)
 
 
 func _in_window(at: Vector2i) -> bool:

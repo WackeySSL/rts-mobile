@@ -333,6 +333,8 @@ func test_cell_of_clamps_each_axis_into_the_map() -> void:
 func test_prepare_derives_open_grass_from_the_map_size_rounded_up_to_whole_tiles() -> void:
 	assert_int(World.GRASS_COST).is_equal(10)
 	assert_int(World.GRASS_COST).is_equal(TerrainDef.new().cost[0])
+	var standard: TerrainSetDef = load("res://data/terrain/standard.tres") as TerrainSetDef
+	assert_array([World.GRASS_ID, standard.terrains[0].id]).is_equal([&"grass", &"grass"])
 	# width, height, columns, rows
 	var sizes: Array[Array] = [
 		[64000, 48000, 64, 48],
@@ -354,6 +356,7 @@ func test_prepare_derives_open_grass_from_the_map_size_rounded_up_to_whole_tiles
 			[3 * cells, 3 * cells]
 		)
 		assert_array(world.terrain_cost).is_equal([10, 10, 10])
+		assert_array(world.terrain_ids).is_equal([&"grass"])
 		assert_int(world.map_version).is_equal(0)
 		assert_bool(world.is_passable(0, 0)).override_failure_message(str(size)).is_true()
 	# prepare() derives the grid once: a later call keeps what the world holds.
