@@ -1,0 +1,32 @@
+<!-- Rifle squad, hull layer: faces east, drawn first, holds the ground shadow of all four soldiers; no turret layer. -->
+<!-- Silhouette: four soldiers in a loose diamond, each a broad-shouldered oval with a short stubby rifle held out to the right of the head. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- ground shadow, offset (4,4), flattened as one group; the soldiers sit at (39,32), (26,15.5), (26,48.5) and (12,32) -->
+  <g transform="translate(4 4)" opacity="0.25" fill="#000000">
+    <g transform="translate(39 32)"><ellipse rx="5.2" ry="8.6"/><rect x="3" y="0.5" width="14" height="5"/></g>
+    <g transform="translate(26 15.5)"><ellipse rx="5.2" ry="8.6"/><rect x="3" y="0.5" width="14" height="5"/></g>
+    <g transform="translate(26 48.5)"><ellipse rx="5.2" ry="8.6"/><rect x="3" y="0.5" width="14" height="5"/></g>
+    <g transform="translate(12 32)"><ellipse rx="5.2" ry="8.6"/><rect x="3" y="0.5" width="14" height="5"/></g>
+  </g>
+  <!-- one soldier: shoulders in mid olive with a light edge on the top-left, then a metal rifle, which keeps 2 px of metal between its outlines -->
+  <g transform="translate(39 32)">
+    <ellipse rx="5.2" ry="8.6" fill="#6B7A4F" stroke="#1C2127" stroke-width="3"/>
+    <path d="M-3.2 4 Q-3.2 -5.5 1.5 -6.4" fill="none" stroke="#8C9A6B" stroke-width="1.5" stroke-linecap="round"/>
+    <rect x="3" y="0.5" width="14" height="5" fill="#7D8893" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+  <g transform="translate(26 15.5)">
+    <ellipse rx="5.2" ry="8.6" fill="#6B7A4F" stroke="#1C2127" stroke-width="3"/>
+    <path d="M-3.2 4 Q-3.2 -5.5 1.5 -6.4" fill="none" stroke="#8C9A6B" stroke-width="1.5" stroke-linecap="round"/>
+    <rect x="3" y="0.5" width="14" height="5" fill="#7D8893" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+  <g transform="translate(26 48.5)">
+    <ellipse rx="5.2" ry="8.6" fill="#6B7A4F" stroke="#1C2127" stroke-width="3"/>
+    <path d="M-3.2 4 Q-3.2 -5.5 1.5 -6.4" fill="none" stroke="#8C9A6B" stroke-width="1.5" stroke-linecap="round"/>
+    <rect x="3" y="0.5" width="14" height="5" fill="#7D8893" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+  <g transform="translate(12 32)">
+    <ellipse rx="5.2" ry="8.6" fill="#6B7A4F" stroke="#1C2127" stroke-width="3"/>
+    <path d="M-3.2 4 Q-3.2 -5.5 1.5 -6.4" fill="none" stroke="#8C9A6B" stroke-width="1.5" stroke-linecap="round"/>
+    <rect x="3" y="0.5" width="14" height="5" fill="#7D8893" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+</svg>

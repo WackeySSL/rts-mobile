@@ -5,8 +5,8 @@ plus the layer contract for multi-layer units. All art is hand-written SVG in th
 Update this file when Michael approves a change; the skill stays the short checklist.
 
 Status: v1, written in Phase 0 with the light tank sample. v1.1 (Phase 1, P12) adds the feedback
-markers and the gallery zoom row. Rules marked **(new)** go beyond the skill and are waiting for
-Michael's approval (list at the end).
+markers and the gallery zoom row. v1.2 (Phase 2, P34) adds the rifle and rocket squads. Rules marked
+**(new)** go beyond the skill and are waiting for Michael's approval (list at the end).
 
 ## Look
 Clean, flat, top-down "military map" style with strong silhouettes, readable at small size on a
@@ -91,6 +91,10 @@ Vehicles are drawn from three layers that share one canvas size:
 - **Rotating layers (new).** The ground shadow lives only in the hull layer. A turret layer has no
   drop shadow and no one-sided light: its shading is mirrored about the gun line, so it still
   looks right when it turns. Give it one off-axis detail (hatch, sight) so the heading is readable.
+- **Infantry squads** have two layers, hull and team, on a 64x64 canvas (32 px in game, import scale
+  0.5) and no turret: the whole rig turns toward its target. The hull holds every soldier and weapon,
+  facing east. The team layer holds one marker per soldier (a helmet cover; also a band on each rocket
+  tube), clear of the shoulders and weapons so it shows at any heading.
 
 ## Originality
 Describe each silhouette in one line before drawing, in your own words. The catalogue below holds
@@ -102,6 +106,8 @@ in doubt, choose a plainer real-world form.
 | Unit | Silhouette | Layers |
 | --- | --- | --- |
 | Light tank | A plain light tank shaped like an H on its side: two long round-ended track pods joined by a short flat deck, a compact rounded-rear turret, and one long vented barrel leaving through the front bay. | `units/light_tank_{hull,team,turret}.svg`, 128x128 |
+| Rifle squad | Four soldiers in a loose pinwheel diamond, each a broad-shouldered oval with a round helmet cover and a short stubby rifle held out to the right of the head. | `units/rifle_squad_{hull,team}.svg`, 64x64, no turret |
+| Rocket squad | Two staggered soldiers, each carrying a long fat launch tube over the right shoulder, flared at the back and ending in a rounded orange warhead: the squad reads as two parallel bars. | `units/rocket_squad_{hull,team}.svg`, 64x64, no turret |
 
 ## Readability check (every asset)
 1. Rasterise each layer at 32 px with `Image.load_svg_from_buffer` (scale = 32 / canvas, so 0.25 for
@@ -125,6 +131,16 @@ sticks out 4 px by 4 px in the 32 px silhouette; at 32 px greyscale the tracks, 
 gun read as separate parts on grass and sand. Detail check at 2x (raster scale 1.0): the muzzle
 face keeps 3 px of metal on each side of its 2 px vent, and one full row of the upper pod
 highlight stays visible beside the team plate.
+
+Squad results (v1, rasterised at 32 px with scale 0.5 in a scratch script): the team layers have no
+non-grey pixel. The visible team share is 25.8 % (rifle) and 24.0 % (rocket) at 32 px, 25.7 and
+25.1 % at 2x; a squad has no turret, so every heading gives the same value. In the pure silhouette
+(hull and team as one shape) the rifle squad is four lollipops, each with a 7x5 px rifle sticking out
+of the body, and the rocket squad two bars with a 14x6 px tube each. The two silhouettes overlap by
+0.34 (intersection over union, centred). Composited on grass and sand in greyscale at headings 0, 90,
+180 and 270 degrees, the pinwheel and the two bars stay apart and the heading reads. Detail check at
+2x: 2 px of metal between the rifle outlines and a 2.1 px grey shade on each helmet cover, both the
+2 px minimum.
 
 ## Feedback markers (new)
 Selection rings, the target flash, the attack-move marker, the long-press anchor and the box are
@@ -190,7 +206,9 @@ at scale 1 (gameplay zoom) on grass and sand, in team A and team B. A faint 64 p
 unit marks one tile. Turrets turn slowly. The zoom row at the bottom shows the light tank at rig
 scale 0.75, 1.0 and 1.5, the camera zoom levels of `data/input_settings.tres`: team A on grass,
 team B on sand, labelled on the grass half. On a 6-inch phone (stretch 1.5) zoom 1.5 draws one
-tile as 144 window px from a 64 px raster, 2.25 times. Only the light tank has a zoom row. To add
+tile as 144 window px from a 64 px raster, 2.25 times. Only the light tank has that zoom row; a
+second row above it, built by `art_gallery.gd`, shows both squads (team A on grass, B on sand) in
+the same three columns, and in each slot the squads stand beside the tank and turn slowly. To add
 an asset:
 - Add its layers as one rig `Node2D` under each of the four slots (grass A, grass B, sand A, sand B).
 - Put the rig in the group `gallery_team_a` or `gallery_team_b`, and name the layers `Hull`, `Team`
@@ -220,3 +238,4 @@ an asset:
 | --- | --- |
 | 2026-10-10 | v1: guide written with the layer contract and the light tank sample. |
 | 2026-10-11 | v1.1 (P12): feedback marker spec, gallery zoom row, launcher icon credit. |
+| 2026-10-12 | v1.2 (P34): rifle and rocket squads, their gallery slots and zoom row. |
