@@ -4,11 +4,11 @@ Status: proposed, 2026-10-12 (Michael asked for it: "ok ADR 0012"). Revision 2, 
 after a review in four lenses (performance, gameplay, view, tests), and revision 3 after the
 completeness check; "Revision 2" and "Revision 3" at the end list what changed. When accepted, it
 supersedes in part:
-- ADR 0011 §1 (what the view reads), §2 (where the prev positions live), §3 (the z list), §4 (the
-  CI ceiling becomes a printed estimate; the enforced CI budget becomes a regression ratchet; its
-  4.0 ms starting value of `mean_ms` is withdrawn), §5
-  (the meaning and values of `work_p95_ms` and `sim_p95_ms` in its acceptance note, and the
-  debug-APK margin), §6 step 4 (adopted here), and its sim cost estimate (1.9 ms mean on CI);
+- ADR 0011 §1 (what the view reads), §2 (where the prev positions live), §3 (the z list), §4
+  (the CI ceiling becomes a printed estimate; the enforced CI budget becomes a regression
+  ratchet; its 4.0 ms starting value of `mean_ms` is withdrawn), §5 (the meaning and values of
+  `work_p95_ms` and `sim_p95_ms` in its acceptance note, and the debug-APK margin), §6 step 4
+  (adopted here), and its sim cost estimate (1.9 ms mean on CI);
 - ADR 0010 §1-2 where the view reads the fog and its dirty lists from the World (now
   `runner.snapshot.fog`);
 - ADR 0008 §3 (the flow-slice budget, the starting `flow_cells_per_tick`, and a slice on every
@@ -242,7 +242,9 @@ release-template facts on the official `linux_release` template):
      from it, and `ticked(tick)` is emitted.
   2. **Drain.** It drains `CommandQueue` into the command list. `MatchLoop` stamps the commands
      with the tick the job will step.
-  3. **Start.** It creates the next snapshot object and posts the next job.
+  3. **Start.** It creates the next snapshot object, sets its `match_serial` (§3), hands the job
+     the runner's current World, `MatchLoop` and probe (read from the private fields at every
+     post, so a setter's swap takes effect on the next tick), and posts the next job.
 
   State N is therefore computed during the period before it is shown. During
   `[T_N, T_N+1)` the view interpolates from the prev positions to state N, as in `SYNC`, so the
@@ -303,10 +305,11 @@ release-template facts on the official `linux_release` template):
   `world`, `loop` and `replay` setters assign the private field under the getters' rule (for
   tests: main thread, no job `RUNNING`); the `probe` setter calls `set_probe()`.
 - **`start()`** (both modes) waits for and discards a job in flight, builds the World and the
-  `MatchLoop`, increments `match_serial`, captures the tick-0 snapshot with
-  `capture(world, null)` into a new snapshot and publishes it before it returns (without emitting
-  `ticked`), resets `late_ticks`, `held_ticks` and `latency_usec_max`, and sets the clock to 0.
-  The next `_process` refills.
+  `MatchLoop`, increments `match_serial`, creates a new snapshot, sets its `match_serial` and
+  `last_hash` (from the new `MatchLoop`), captures the tick-0 snapshot into it with
+  `capture(world, null)` and publishes it before it returns (without emitting `ticked`),
+  resets `late_ticks`, `held_ticks` and `latency_usec_max`, and sets the clock to 0. The next
+  `_process` refills.
 - **Stop.** One `_join_worker()` is called from both `_exit_tree()` and
   `NOTIFICATION_PREDELETE`. It is idempotent and joins only when `_thread != null and
   _thread.is_started()`: it sets `quit`, posts `work` and calls `wait_to_finish()`. A runner that
@@ -374,9 +377,19 @@ test proves it.
   one tick:
   - **header:** `match_serial`, `tick`, `rows_version`, `map_version`, `last_hash`, and the row
     count. The World holds neither `match_serial` nor `last_hash`, so `capture` does not set
-    them: `TickJob.run()` sets `snapshot.match_serial` (from the runner, handed to the job at the
-    post) and `snapshot.last_hash` (from `loop.last_hash`) right after the capture, and `start()`
-    does the same for the tick-0 snapshot;
+    them, and the order is fixed:
+    1. the runner sets `match_serial` on the new snapshot when it creates it, on the main thread,
+       before the post (in `SYNC`, before the inline run; in `start()`, before
+       `capture(world, null)`), because `capture` reads it to decide whether `previous` belongs
+       to the same match (prev positions, below);
+    2. `capture` then compares `previous.match_serial` with the snapshot's own, already set,
+       value;
+    3. `TickJob.run()` sets `snapshot.last_hash` from `loop.last_hash` after `loop.step` (the
+       capture does not read it), and `start()` sets it from the new `MatchLoop`.
+
+    Set after the capture, `match_serial` would still be 0 there, every tick would take the
+    "another match" branch, and interpolation would be dead; a plan P38j case catches that
+    order;
   - **rows:** `unit_id`, `owner`, `type_index`, `pos_x`, `pos_y`, `hp`, `order`, `target` and
     `target_row` (the target's row in this snapshot, -1 when there is no target or it is gone,
     computed in `capture` on the worker), each with exactly `unit_count()` entries;
@@ -411,15 +424,17 @@ test proves it.
     buffers, which nobody writes).
   - When it changed, a merge walk by id (on the worker, ADR 0011 §2): a survivor keeps its old
     position, a new row starts at its current position, and a dead row is dropped.
-  - A `previous` that is null or has another `match_serial` counts as none: prev = current.
+  - A `previous` that is null or has another `match_serial` than this snapshot (set by the
+    runner before the capture, header above) counts as none: prev = current.
   - Projectiles: the `prev_proj_*` arrays are the previous snapshot's arrays. A layer treats a
     slot whose `proj_id` differs from `prev_proj_id` as new and draws it at its current position.
 - **One snapshot per publish** (it replaces revision 1's double buffer). When it posts a job, the
-  main thread creates a new `MatchSnapshot` (with its `FogGrid`) and hands it to the job together
-  with the current `runner.snapshot` as `previous`. The job writes only the new object; publishing
-  makes it `runner.snapshot`; nobody writes it afterwards. At most two snapshots exist in
-  `WORKER` mode (the published one and the one in flight). A layer that holds a snapshot, or one of
-  its arrays, past a publish reads an old tick, never a torn one.
+  main thread creates a new `MatchSnapshot` (with its `FogGrid`), sets its `match_serial`, and
+  hands it to the job together with the current `runner.snapshot` as `previous`. The job writes
+  only the new object; publishing makes it `runner.snapshot`; nobody writes it afterwards. At
+  most two snapshots exist in `WORKER` mode (the published one and the one in flight). A layer
+  that holds a snapshot, or one of its arrays, past a publish reads an old tick, never a torn
+  one.
 - **View rules** (they replace the first bullet of ADR 0011 §1):
   - Production code in `game/view`, `game/input` and `game/ui` reads only `runner.snapshot`,
     `runner.alpha()`, `runner.scenario` (an immutable Resource, read on the main thread) and the
@@ -498,11 +513,14 @@ The withdrawn debug-APK margin of ADR 0011 §5 is replaced by these limits.
 **CI budget** (replaces ADR 0011 §4's ceiling rule; its method stays: min of 3, deterministic cost
 bounds, golden hashes, `ref_ms`):
 - **ADR 0011 §4's 4.0 ms starting value is withdrawn.** `budget.cfg` starts at 1.5 x the
-  calibrated min-of-3 and only ever tightens. The mock tick alone takes 2.51 ms mean and 3.36 ms
-  p95 on CI, and the real tick is estimated at about 6 ms mean (Context), so the old rule ("a mean
-  floor above 4.0 ms is a finding for §6") would block P49b exactly as the ceiling would. The
-  qa-engineer role text ("start at 4 ms per tick on CI") changes with it (plan: "On acceptance").
-  The device verdict stays with the gate.
+  calibrated min-of-3. A sim PR never raises it (ADR 0011 §4 and plan exception 3 stay). A rise
+  that a new tick phase causes (Phase 3's production and economy in the same 150-unit tick) is a
+  qa-engineer PR with before and after calibration numbers and the reason recorded in it; the
+  lead reviews it. The mock tick alone takes 2.51 ms mean and 3.36 ms p95 on CI, and the real
+  tick is estimated at about 6 ms mean (Context), so the old rule ("a mean floor above 4.0 ms is
+  a finding for §6") would block P49b exactly as the ceiling would. The qa-engineer role text
+  ("start at 4 ms per tick on CI") changes with it, once Michael approves (plan: "On
+  acceptance"). The device verdict stays with the gate.
 - **The device-derived ceiling is withdrawn as an assertion.** With the debug ratio it is
   13.3 / 4.6 = 2.9 ms, while the mock tick alone takes 3.36 ms p95 on CI, and ADR 0011 §4's floor
   (1.5 times the worst min-of-3) would be at least 5.0 ms. The floor fits under the ceiling only
@@ -681,10 +699,11 @@ period.
   at 256 cells); units drive straight meanwhile.
 - **Docs when accepted:**
   - the lead adds one status line each to ADRs 0003 (§7, the `WORKER` clock only), 0007 (§6,
-    §10), 0008 (§3), 0010 (§1-2) and 0011 (§1-§6 as listed above, including the withdrawn 4.0 ms
-    start) (status notes, not rewrites);
+    §10), 0008 (§3), 0010 (§1-2) and 0011 (§1-§6 as listed above, including the withdrawn
+    4.0 ms start) (status notes, not rewrites);
   - the lead asks Michael to approve the one-line change of the qa-engineer role's budget rule
-    (`.claude/agents/qa-engineer.md`, "start at 4 ms per tick on CI") to the ratchet of §4;
+    (`.claude/agents/qa-engineer.md`, "start at 4 ms per tick on CI") to the ratchet of §4 (a
+    separate question in the plan, since agent files change only with his approval);
   - `rts-sim-conventions` gets a "Threading" section (§2, including the alias rule for both
     threads), the new flow-slice rule and the snapshot rule;
   - this ADR's PR carries the plan amendment.
@@ -714,11 +733,15 @@ period.
 
 ## Revision 3 (2026-10-12, completeness check)
 - Header: ADR 0003 §7 added to the supersede list (the `WORKER` clock only); ADR 0011 §4's 4.0 ms
-  starting value withdrawn (§4, with the qa-engineer role line on acceptance).
+  starting value withdrawn (§4, with the qa-engineer role line on acceptance, after Michael's
+  approval); a legitimate rise of the CI budget is a qa-engineer PR with a recorded reason, never
+  a sim PR (§4).
 - §1: `world`, `loop`, `replay` and `probe` get setters (a getter-only property silently ignores
-  assignments in 4.7.2); `run_ticks(n)` wording; `TICK_USEC` derived from `Sim.TICK_RATE`; a
+  assignments in 4.7.2), and the runner hands the job its World, `MatchLoop` and probe at every
+  post; `run_ticks(n)` wording; `TICK_USEC` derived from `Sim.TICK_RATE`; a
   failed `Thread.start()` falls back to `SYNC` with one warning (`mode_after_start`).
-- §3: `cell_of` clamps into the map, pinned in `World.cell_of` from P29b; `match_serial` and
-  `last_hash` set by `TickJob.run()` after the capture.
+- §3: `cell_of` clamps into the map, pinned in `World.cell_of` from P29b; the order of the
+  header fields: the runner sets `match_serial` on the new snapshot before the capture (which
+  compares it with `previous.match_serial`), and `TickJob.run()` sets `last_hash` after the step.
 - §4: why held ticks have no verdict, and the condition for proposing one.
 - Context: the two derivations behind the 10.4-13.3 ms estimate.
