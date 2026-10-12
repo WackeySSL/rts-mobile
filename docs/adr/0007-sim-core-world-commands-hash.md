@@ -80,11 +80,11 @@ It has these sections:
 
 | Section | Contents | In the state hash |
 | --- | --- | --- |
-| Header | `tick`, `next_id`, `next_projectile_id`, `dropped_commands`, `projectile_overflow`, `spawn_refused`, `player_count` (players are 1..player_count, 0 is neutral), `proj_free_top`, `rng: DetRandom` | yes (`HASHED_SCALARS`, then `rng.state()`) |
+| Header | `tick`, `next_id`, `next_projectile_id`, `dropped_commands`, `projectile_overflow`, `spawn_refused`, `player_count` (players are 1..player_count, 0 is neutral), `proj_free_top`, `map_version` (last in `HASHED_SCALARS`, P29a2), `rng: DetRandom` | yes (`HASHED_SCALARS`, then `rng.state()`) |
 | Rules | ints copied from `data/rules.tres` (`RulesDef`, ADRs 0008-0010), including `max_rows` and `max_projectiles` | no (in `defs_hash()`) |
 | Types | v0 arrays plus `type_names` (display names), `type_max_hp`, `type_armour`, `type_move_class`, `type_sight`, `type_acquire`, `type_weapon` (-1 = unarmed) | no (in `defs_hash()`) |
 | Weapons | `weapon_ids`, `weapon_range`, `weapon_min_range`, `weapon_damage`, `weapon_cooldown`, `weapon_projectile_speed` (0 = hitscan), `weapon_vs_armour` (4 per weapon, percent) | no (in `defs_hash()`) |
-| Map | `map_w`, `map_h` (milli), `map_cols`, `map_rows` (tiles), `terrain_ids`, `terrain` (`PackedByteArray`, terrain index per tile), `move_cost` (`PackedByteArray`, `class * cells + cell`, 0 = blocked), `map_version` | `map_version` plus a cached map digest of `terrain` and `move_cost`, recomputed only when `map_version` changes |
+| Map | `map_w`, `map_h` (milli), `map_cols`, `map_rows` (tiles), `terrain_ids`, `terrain` (`PackedByteArray`, terrain index per tile), `move_cost` (`PackedByteArray`, `class * cells + cell`, 0 = blocked), `map_version` | `map_version` (through `HASHED_SCALARS`, in the header section) plus a cached map digest of `terrain` and `move_cost` (the map section), recomputed only when `map_version` changes |
 | Units, one row each, ascending id | v0 `unit_id`, `owner`, `type_index`, `pos_x`, `pos_y`, `goal_x`, `goal_y`, `order`, plus `hp`, `order_target`, `target`, `cooldown`, `nav_mode`, `field`, `nav_cell`, `nav_next`, `best_dist`, `stall`, `fog_cell` | every array |
 | Projectiles, fixed capacity `max_projectiles` | `proj_id` (0 = free slot), `proj_owner`, `proj_weapon`, `proj_target`, `proj_x`, `proj_y`, `proj_aim_x`, `proj_aim_y`, `proj_ticks`, and the free-slot stack `proj_free` with `proj_free_top` | live slots only (slot index plus its fields), then `proj_free[0, proj_free_top)` |
 | Scratch, capacity `max_rows`, rewritten every tick (`SCRATCH_ARRAYS`) | `intent_x`, `intent_y`, `push_x`, `push_y` | no |
