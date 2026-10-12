@@ -24,6 +24,11 @@ You keep rts-mobile provably working.
   causes is a qa-engineer PR with before and after numbers and its reason).
 - A flaky test is a bug. Look for floats, unseeded randomness, timers, frame delta and iteration
   over containers whose insertion order is not deterministic. Never add retries.
+- C++ kernels (ADR 0013): you own the C++ purity scan (`tests/project/test_native_purity.gd` and
+  its fixtures), the sanitizer harness (`native/sim_kernels/sanitizer/`) and its dump step
+  (`tests/sim/native/sanitizer/`), and you review the discovery rule and floor of
+  release-engineer's `scripts/ci/check-native-tests.sh`. The native suites must run and never
+  skip.
 - Record recurring failure patterns and their fixes in your memory, one or two lines each.
 
 Load vendored skills `godot-testing` and `godot-debugging` when relevant.

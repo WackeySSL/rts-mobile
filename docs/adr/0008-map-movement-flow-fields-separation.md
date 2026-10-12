@@ -6,6 +6,11 @@ Status note (2026-10-12): §3 partly superseded by ADR 0012 §5 (the slice budge
 the worker instead of 0.2 ms, `flow_cells_per_tick` from the release run instead of 512, and no
 slice on checkpoint ticks instead of a slice on every tick).
 
+Status note (2026-10-12): §3 superseded in part by ADR 0013 §2 (accepted 2026-10-12): "the buckets
+are preallocated rings, so integrating allocates nothing after the first field" becomes
+"`configure()` allocates every slot's arrays; nothing allocates after it" (P30b), so the C++ FLOW
+kernel never resizes a slot array.
+
 ## Context
 ROADMAP Phase 2 asks for "movement with flow fields and separation". Phase 1 moves units in
 straight lines to formation slots with no terrain and no collision (ADR 0003 §4-5), and its

@@ -58,7 +58,10 @@ Tick a box in the PR that meets the criterion.
   `docs/HOW_TO_PLAY.md` (controls, units, buildings, economy, how to win)
 - [ ] Licences screen in the menu that shows `Engine.get_license_text()`,
   `Engine.get_copyright_info()` and the full texts from `Engine.get_license_info()` (Play builds
-  need an in-game notice), and the game's own boot splash instead of Godot's default
+  need an in-game notice), plus the LLVM libc++ licence (`docs/licenses/llvm-libc++/`) on Android,
+  because Godot's Android template ships `libc++_shared.so` (Phase 2 plan, P26l), and godot-cpp's
+  MIT licence (`docs/licenses/godot-cpp-4.5-stable/`) on builds that contain the C++ sim kernels
+  (ADR 0013 §11), and the game's own boot splash instead of Godot's default
 - [ ] Second and third map
 - [ ] Gate: a new player finishes the tutorial without help, every entry in `docs/HOW_TO_PLAY.md` is
   covered by the tutorial or the How to play screen, and the median match takes 8-10 minutes

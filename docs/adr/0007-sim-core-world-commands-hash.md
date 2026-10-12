@@ -7,6 +7,12 @@ runs as a `TickJob`, on a worker thread on Android and desktop; prev positions l
 `MatchSnapshot`); §10's last bullet superseded by ADR 0012 §3 (view handlers read
 `runner.snapshot.events` inside `ticked`, not `runner.world.events`).
 
+Status note (2026-10-12): §8 superseded in part by ADR 0013 §3 (accepted 2026-10-12):
+`World.kernels`, the C++ kernels object, is reachable from the World and declares no `HASHED` or
+`UNHASHED` lists; it is the one member of `World.NON_STATE_MEMBERS` (P54), which the coverage
+test, the hash walk and P38j2's reachability walk skip. `World.native_phases` is an
+`UNHASHED_SCALARS` entry, so the choice of implementation is never hashed.
+
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state
 hash. Phase 1 shipped the v0 shapes of ADR 0003: a struct-of-arrays `World` that never removes a
