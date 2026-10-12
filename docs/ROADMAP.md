@@ -25,7 +25,7 @@ Tick a box in the PR that meets the criterion.
 - [x] Gate: on a 6-inch phone Michael selects a single tank with the first tap and moves groups without thinking about it, over 3 days of use
 
 ## Phase 2: Simulation core
-- [ ] ADR for the World data model, Command format and state hash
+- [x] ADR for the World data model, Command format and state hash
 - [ ] 15 Hz fixed tick, FixedMath, DetRandom, Command queue, state hash and replay test
 - [ ] Movement with flow fields and separation; combat with projectiles, armour classes and death
 - [ ] Fog of war (visible and explored) and its rendering
