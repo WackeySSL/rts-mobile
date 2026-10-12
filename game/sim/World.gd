@@ -45,6 +45,9 @@ const TYPE_PAD_V0: int = 0
 ## The cost of open grass for every class, 10 = normal ground (ADR 0008 section 1). It equals the
 ## default TerrainDef.cost, which a test pins: prepare() may run in the tick and reads no Resource.
 const GRASS_COST: int = 10
+## The id of open grass, the one terrain of a map without a MapDef. It equals the first terrain of
+## data/terrain/standard.tres, which a test pins.
+const GRASS_ID: StringName = &"grass"
 
 ## The per-unit columns, in this order.
 const ROW_ARRAYS: Array[StringName] = [
@@ -188,7 +191,7 @@ var attack_rekey_milli: int = 0
 var max_projectiles: int = 0
 var max_rows: int = 0
 
-## Per type. The index is the order of first appearance in the scenario's spawns.
+## Per type. The index is the order of first appearance in the scenario's spawns, then its roster.
 var type_ids: Array[StringName] = []
 var type_speed: PackedInt32Array = PackedInt32Array()
 var type_radius: PackedInt32Array = PackedInt32Array()
@@ -205,6 +208,7 @@ var type_sight: PackedInt32Array = PackedInt32Array()
 var type_acquire: PackedInt32Array = PackedInt32Array()
 ## -1 = unarmed, else a weapon index.
 var type_weapon: PackedInt32Array = PackedInt32Array()
+## The display name, or the capitalised type id when the definition has none.
 var type_names: PackedStringArray = PackedStringArray()
 
 ## Per weapon, in the order of first appearance in the unit types. The index is `type_weapon`.
@@ -227,7 +231,7 @@ var map_cols: int = 0
 var map_rows: int = 0
 ## Bumped by every passability change, 0 or more.
 var map_version: int = 0
-## Per terrain, in the order of the scenario's terrain set.
+## Per terrain, in the order of the scenario's terrain set (GRASS_ID alone for open grass).
 var terrain_ids: Array[StringName] = []
 ## Per cell (`(y / 1000) * map_cols + x / 1000`): an index into terrain_ids, 0..255.
 var terrain: PackedByteArray = PackedByteArray()
@@ -305,7 +309,12 @@ var stats: PackedInt32Array = PackedInt32Array()
 
 ## The rule ints start at the RulesDef script defaults, so a hand-built world is a valid world.
 func _init() -> void:
-	var rules: RulesDef = RulesDef.new()
+	_copy_rules(RulesDef.new())
+	rng = DetRandom.create(0, DetRandom.STREAM_SIM)
+
+
+## Copies the rule ints from `rules` under the same names.
+func _copy_rules(rules: RulesDef) -> void:
 	retarget_period_ticks = rules.retarget_period_ticks
 	fog_period_ticks = rules.fog_period_ticks
 	line_check_period_ticks = rules.line_check_period_ticks
@@ -321,20 +330,26 @@ func _init() -> void:
 	attack_rekey_milli = rules.attack_rekey_milli
 	max_projectiles = rules.max_projectiles
 	max_rows = rules.max_rows
-	rng = DetRandom.create(0, DetRandom.STREAM_SIM)
 
 
-## Reads the scenario and its unit definitions once. A null scenario gives an empty world.
-## A spawn without a unit is skipped. A null `rng` keeps the default stream. The map grid comes
-## from `scenario.map`, which also sets the map size. Without a map, or with one that fails
-## validate(), the world is open grass of `map_size_tiles`.
+## Reads the scenario and its definitions once and returns a prepared world; a null scenario gives
+## an empty one. The rules come from `scenario.rules`, else they stay the RulesDef defaults. A null
+## `rng` keeps the default stream. The map grid comes from `scenario.map`, which also sets the map
+## size; without a map, or with one that fails validate(), the world is open grass of
+## `map_size_tiles`. Types come from the spawns (one without a unit is skipped), then the roster.
+## `player_count` is the scenario's value, raised to the highest spawn owner. A spawn with a jitter
+## draws two values per unit (see _jittered). The SPAWNED events of the setup are dropped.
 @warning_ignore("shadowed_variable")
 static func from_scenario(scenario: ScenarioDef, rng: DetRandom = null) -> World:
 	var world: World = World.new()
 	if rng != null:
 		world.rng = rng
 	if scenario == null:
+		world.prepare()
 		return world
+	if scenario.rules != null:
+		world._copy_rules(scenario.rules)
+	world.player_count = maxi(scenario.player_count, 0)
 	var map: MapDef = scenario.map
 	if map != null and map.validate().is_empty():
 		world._load_map(map)
@@ -346,6 +361,7 @@ static func from_scenario(scenario: ScenarioDef, rng: DetRandom = null) -> World
 		if spawn == null or spawn.unit == null:
 			continue
 		var type: int = world._type_for(spawn.unit)
+		var move_class: int = world.type_move_class[type]
 		var columns: int = maxi(spawn.columns, 1)
 		var start_x: int = spawn.origin_tile.x * MILLI_PER_TILE + TILE_CENTRE
 		var start_y: int = spawn.origin_tile.y * MILLI_PER_TILE + TILE_CENTRE
@@ -354,11 +370,20 @@ static func from_scenario(scenario: ScenarioDef, rng: DetRandom = null) -> World
 		for _slot: int in spawn.count:
 			var x: int = start_x + column * spawn.spacing
 			var y: int = start_y + row * spawn.spacing
+			if spawn.jitter > 0:
+				var at: Vector2i = world._jittered(x, y, spawn.jitter, move_class)
+				x = at.x
+				y = at.y
 			world.add_unit(spawn.owner, type, x, y)
 			column += 1
 			if column == columns:
 				column = 0
 				row += 1
+	for unit: UnitDef in scenario.roster:
+		if unit != null:
+			world._type_for(unit)
+	world.prepare()
+	world.events.clear()
 	return world
 
 
@@ -486,6 +511,21 @@ func add_unit(owner: int, type_index: int, x: int, y: int) -> int:
 	return id
 
 
+## The start point of a unit whose grid point is (x, y) and whose spawn has a `jitter` above 0: the
+## point moved by -jitter..jitter on each axis (always two draws, x then y), clamped into the map,
+## and kept only when its tile is passable for `move_class`. Otherwise the unit starts on the grid
+## point, so it is never more than `jitter` away on an axis.
+func _jittered(x: int, y: int, jitter: int, move_class: int) -> Vector2i:
+	var moved_x: int = x + rng.range_int(-jitter, jitter)
+	var moved_y: int = y + rng.range_int(-jitter, jitter)
+	if map_cols > 0:
+		moved_x = clampi(moved_x, 0, map_w - 1)
+		moved_y = clampi(moved_y, 0, map_h - 1)
+		if not is_passable(cell_of(moved_x, moved_y), move_class):
+			return Vector2i(x, y)
+	return Vector2i(moved_x, moved_y)
+
+
 ## Sizes every projectile slot array to max_projectiles, all slots free. Only the first prepare()
 ## calls it (the sizes match afterwards). Changing max_projectiles after prepare() is not supported.
 func _reset_projectile_slots() -> void:
@@ -517,6 +557,8 @@ func _derive_open_grass() -> void:
 	move_cost.fill(GRASS_COST)
 	terrain_cost.resize(classes)
 	terrain_cost.fill(GRASS_COST)
+	terrain_ids.resize(1)  # In place, so a later prepare() allocates nothing.
+	terrain_ids[0] = GRASS_ID
 
 
 ## Copies a map that validate() accepted: its size, the terrain index of each tile and the cost
@@ -529,6 +571,7 @@ func _load_map(map: MapDef) -> void:
 	terrain_cost.resize(defs.size() * classes)
 	for index: int in defs.size():
 		var def: TerrainDef = defs[index]
+		terrain_ids.append(def.id)
 		if len(def.symbol) == 1:
 			index_of_symbol[def.symbol.unicode_at(0)] = index
 		for move_class: int in classes:
@@ -571,4 +614,32 @@ func _type_for(unit: UnitDef) -> int:
 	type_radius.append(unit.radius)
 	type_selection_radius.append(unit.selection_radius)
 	type_spacing.append(unit.formation_spacing)
+	type_max_hp.append(maxi(unit.max_hp, 1))
+	type_armour.append(unit.armour)
+	type_move_class.append(unit.move_class)
+	type_sight.append(unit.sight_range)
+	type_acquire.append(unit.acquire_range)
+	type_weapon.append(_weapon_for(unit.weapon))
+	var label: String = unit.display_name
+	type_names.append(label if not label.is_empty() else String(unit.type_id).capitalize())
 	return type_ids.size() - 1
+
+
+## The weapon index for `weapon`, -1 for none. A weapon is known by its id like a type by its
+## type_id: the first definition of an id is copied in and wins. A definition has four percents
+## (a data test pins it for the shipped ones), so each weapon takes four table entries.
+func _weapon_for(weapon: WeaponDef) -> int:
+	if weapon == null:
+		return -1
+	var found: int = weapon_ids.find(weapon.id)
+	if found >= 0:
+		return found
+	weapon_ids.append(weapon.id)
+	weapon_range.append(weapon.range)
+	weapon_min_range.append(weapon.min_range)
+	weapon_damage.append(weapon.damage)
+	weapon_cooldown.append(weapon.cooldown_ticks)
+	weapon_projectile_speed.append(weapon.projectile_speed)
+	for armour: int in Armour.size():
+		weapon_vs_armour.append(weapon.vs_armour[armour])
+	return weapon_ids.size() - 1
