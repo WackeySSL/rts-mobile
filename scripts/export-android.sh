@@ -8,9 +8,12 @@
 #        JAVA_HOME (JDK 17) and ANDROID_HOME (SDK with platform-tools and build-tools 36.x).
 #        GODOT_ANDROID_KEYSTORE_DEBUG_{PATH,USER,PASSWORD}: the debug keystore, all three.
 # Needs: version.txt and android_debug.apk in the Godot export_templates/4.7.2.stable folder
-#        (scripts/ci/install-godot.sh --android), docs/licenses/godot-<version>/{LICENSE,COPYRIGHT}.txt.
+#        (scripts/ci/install-godot.sh --android), docs/licenses/godot-<version>/{LICENSE,COPYRIGHT}.txt
+#        and docs/licenses/llvm-libc++/LICENSE.TXT (the licence notices written next to the APK;
+#        export-web.sh writes the same notice text, ADR 0005 section 5).
 # Exit:  0 ok
-#        1 export failed, an error in this run's log, or a check of the APK failed
+#        1 export failed, an error in this run's log, a check of the APK failed, or a licence
+#          notice source is missing or empty
 #        2 usage error, or --out not under build/
 #        3 Godot missing or not 4.7.2.stable
 #        4 export template, JDK 17 or Android SDK piece missing (the message names each)
@@ -28,6 +31,12 @@ PACKAGE="dk.appcode.rts.dev"
 APK_NAME="rts-mobile-debug.apk"
 NOTICE_NAME="THIRD_PARTY_LICENSES.txt"
 LICENSE_DIR="docs/licenses/godot-${GODOT_VERSION%.stable}"
+# Every APK ships the template's libc++_shared.so (LLVM libc++, Apache-2.0 WITH LLVM-exception),
+# which Godot's COPYRIGHT.txt does not name. Its upstream licence file sits in LIBCXX_DIR, from the
+# LLVM tag below (docs/licenses/llvm-libc++/README.md says why that tag). export-web.sh holds the
+# same tag and the same notice text.
+LIBCXX_DIR="docs/licenses/llvm-libc++"
+LIBCXX_TAG="llvmorg-19.1.0"
 
 die() {
   local code="$1"
@@ -117,6 +126,7 @@ fi
 # (6) Licence notice: the same content as the web build's, with this build named in the header.
 [ -s "$LICENSE_DIR/LICENSE.txt" ] && [ -s "$LICENSE_DIR/COPYRIGHT.txt" ] ||
   die 1 "licence notice sources in $LICENSE_DIR are missing or empty"
+[ -s "$LIBCXX_DIR/LICENSE.TXT" ] || die 1 "licence notice source $LIBCXX_DIR/LICENSE.TXT is missing or empty"
 godot_tag="${GODOT_VERSION%.stable}-stable"
 rule="--------------------------------------------------------------------------------"
 {
@@ -130,11 +140,18 @@ source repository.
 This build runs on the Godot Engine ${godot_tag} (https://godotengine.org). Godot is
 licensed under the MIT licence and bundles third-party components under their own
 licences. Godot's LICENSE.txt and COPYRIGHT.txt for tag ${godot_tag} follow unchanged.
+
+This build also contains LLVM libc++, the C++ standard library that the Godot export
+template links (on Android it is the file libc++_shared.so). libc++ is licensed under
+the Apache License v2.0 with LLVM Exceptions. Its libcxx/LICENSE.TXT for tag
+${LIBCXX_TAG} follows unchanged.
 EOF
   for source in LICENSE.txt COPYRIGHT.txt; do
     printf '\n%s\nGodot Engine %s: %s\n%s\n' "$rule" "$godot_tag" "$source" "$rule"
     cat "$LICENSE_DIR/$source"
   done
+  printf '\n%s\nLLVM libc++ %s: LICENSE.TXT\n%s\n' "$rule" "$LIBCXX_TAG" "$rule"
+  cat "$LIBCXX_DIR/LICENSE.TXT"
 } >"$out_abs/$NOTICE_NAME"
 
 # (7) The APK. Godot picks the build-tools version (the one that equals the target SDK, 36.0.0 on

@@ -109,6 +109,12 @@ jobs:
       - name: Offline test of publish-dev-release.sh
         run: bash scripts/ci/test-publish-dev-release.sh
 
+      # Both export scripts write a THIRD_PARTY_LICENSES.txt. This runs the real scripts against stub
+      # tools, offline, and checks that each appends the LLVM libc++ licence with the same text
+      # (ADR 0005 section 5), before the job spends time on a real export.
+      - name: Offline test of the export licence notices
+        run: bash scripts/ci/test-export-notices.sh
+
       # Godot copies JAVA_HOME and ANDROID_HOME into its editor settings on its first run, so set
       # them before any Godot call (ANDROID_HOME is the runner image's SDK already).
       - name: Select JDK 17
