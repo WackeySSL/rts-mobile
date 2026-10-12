@@ -1,6 +1,9 @@
 # ADR 0014: Frame pacing by dropped frames, and main-thread CPU-time limits normalised for clock scaling
 
-Status: proposed, 2026-10-12 (revision 8, after merging `main` and the review of revision 7: the
+Status: proposed, 2026-10-12 (revision 9, after the review of revision 8: the burst runs before
+every run, "Run again" included, so `ref_peak` is per run as §3 says (P50a3); the preflight's
+refusal sets `INVALID` without `push_error`; P50lp's `pin_busy_pct` enters `PerfGateDef.gd` and
+`perf_gate.tres` under the plan's named exception 8. Revision 8, after merging `main` and the review of revision 7: the
 burst runs as the second seam of `PerfHud.preflight()`, which P50b's arena script calls before
 the runner starts, with an order test (§3, §4); the Context's source facts are listed as not
 re-run with the PR that re-proves each; P52 is about +15. Revision 7: `refresh_hz` is a float, so §2 and C1 compare it with
@@ -217,13 +220,22 @@ is how k is defined (below). Cancelling core placement there is intended.
 - **`ref`:** one fixed GDScript integer loop, `RefLoop.run()` with `ref_iterations` (1000)
   iterations (26-28 µs at p25-p50 on the cloud VM, evidence comment section 6; about
   0.11-0.13 ms on the phone by the measured release GDScript ratios).
-- **`ref_peak`:** a back-to-back burst of `ref_burst_ms` (400 ms) on the main thread before the
-  run (the `burst_step` seam of `PerfHud.preflight()`, which P50b's `perf_arena.gd` calls in its
-  `_ready` before it starts the arena's runner, so no World and no job exist yet; after ADR
-  0013's self-check if that ADR is accepted), keeping its second half (200 ms at 400; no separate literal). That is long enough for schedutil and the energy-aware scheduler to
-  reach the top clock and core. `ref_peak` is the p25 of the kept samples.
-  - It is measured per run, so thermal throttling makes it conservative.
-  - It is printed, and across the three warm runs it doubles as a heat indicator.
+- **`ref_peak`:** a back-to-back burst of `ref_burst_ms` (400 ms) on the main thread before
+  every run, keeping its second half (200 ms at 400; no separate literal). That is long enough
+  for schedutil and the energy-aware scheduler to reach the top clock and core. `ref_peak` is
+  the p25 of the kept samples. The burst is the `burst_step` seam of `PerfHud.preflight()`,
+  called in two places:
+  - at scene entry: P50b's `perf_arena.gd` calls `preflight()` in its `_ready` before it starts
+    the arena's runner, so no World and no job exist yet (after ADR 0013's self-check if that ADR
+    is accepted);
+  - on every "Run again" (P50a3): the handler calls `runner.wait_idle()`, then
+    `preflight(runner, false)` (the burst alone; the self-check does not repeat), then
+    `runner.start()` and `restart()`, so no job is in flight and the burst lies in no timed
+    window. The gate's runs 2 and 3 come from "Run again" (gate procedure, step 1), so each of
+    the three runs normalises against a peak measured right before it.
+  - So it is measured per run, and thermal throttling makes it conservative: a hotter run gets a
+    slower peak, never run 1's cooler one.
+  - It is printed for every run, and across the three warm runs it doubles as a heat indicator.
 - **`ref_span`:** at the top of the first `_process` of every frame, two back-to-back `RefLoop`
   runs; the first is a warm-up and is discarded, the second is the frame's sample. Per class
   (all heavy frames, publish frames, fog frames), `ref_span` is the p25 of those samples. Both
@@ -282,7 +294,9 @@ is how k is defined (below). Cancelling core placement there is intended.
   - adds `drop_slots`, `dropped_pct_max`, `cadence_pct_min`, `hitches_max`, `jitter_ms`,
     `median_tolerance_pct` 2.0 (one-sided, §2), `refresh_tolerance_pct` 1.0 (§2),
     `ref_iterations` 1000 and `ref_burst_ms` 400 (the burst keeps its second half, §3);
-  - `pin_busy_pct` 85 only if §5's fallback applies (P50lp adds it);
+  - `pin_busy_pct` 85 only if §5's fallback applies (P50lp adds it to `PerfGateDef.gd` and
+    `perf_gate.tres` under the plan's named exception 8, reviewed by the lead and qa-engineer,
+    who own those files);
   - `tests/project/test_cross_file_facts.gd` (P52) pins them.
 - **Plan PRs:**
   - P38t (`PerfGateDef` fields, `RefLoop`; about +30 lines);
@@ -292,9 +306,12 @@ is how k is defined (below). Cancelling core placement there is intended.
     rules next to the ones P50a's split already moves there, about +20; card rows and copy keys,
     about +20). P50a's Depends cell gains "ADR 0014's acceptance note records P26n2's C1-C4
     outcome" (§5), because that outcome picks the formula P50a implements;
+  - P50a3 ("Run again" re-runs the burst seam alone after `wait_idle()` and before the runner
+    restarts, §3; about +15);
   - P50b (the `preflight()` call before the arena's runner starts, and a headless test that pins
-    the order self-check if present, burst, runner start, with no job in flight; about +25,
-    shared with ADR 0013's P50b row and counted once if both are accepted);
+    the order self-check if present, burst, runner start, with no job in flight, and that "Run
+    again" runs the burst again but not the self-check; about +25, shared with ADR 0013's P50b
+    row and counted once if both are accepted);
   - P50lp, only if §5's fallback applies (the load-pinned run, about +60);
   - P52 (about +15).
   - No change to `TimingProbe`, `TickJob` (P38j), the worker-file scan (P38j2) or late ticks
@@ -355,7 +372,8 @@ P50a (P45, P44a, P44b, P47, P47p), as lane A does for P54 in ADR 0013's plan.
   drives the clocks to the top. The main-thread CPU verdicts then come from that run, and pacing
   from the normal one. P50a then implements the class formula for the normal run's printed
   values only, and the conditional plan row **P50lp** (touch-ux-dev, about +60 lines, Depends
-  P50a2) builds the padded run, its `pin_busy_pct` field, and the verdict source switch; the gate
+  P50a2) builds the padded run, its `pin_busy_pct` field (in the lead's `PerfGateDef.gd` and qa's
+  `perf_gate.tres`, under the plan's named exception 8), and the verdict source switch; the gate
   procedure gains the second run. P50lp exists only if this outcome is recorded.
   - It runs after the pacing runs, with the same conditions (battery saver off, not charging),
     so its heat cannot spill into the runs that pacing verdicts come from; `ref_peak` is printed
@@ -390,7 +408,7 @@ only this list; if he accepts both, it holds both lists (ADR 0013 §14).
     draw-call ceiling and the fog limit stay.
 - **The plan** goes to the next plan revision at acceptance (15: P26d took revisions 12 and 13, and this PR, P26b, revision 14), with
   "ADR 0014: changes" folded into the rows: the contract rows `TimingProbe`, `PerfStats`,
-  `PerfGateDef` and "Perf arena" (the `summary()` keys of §4), P38t, P38p, P50a, P50a2, P52, the
+  `PerfGateDef` and "Perf arena" (the `summary()` keys of §4), P38t, P38p, P50a, P50a2, P50a3, P50b, P52, named exception 8, the
   gate procedure, the test plan and the risks, plus the calibration row P26n2 (and P50lp if §5's
   fallback applies).
 - **This ADR's acceptance note** records Michael's answer and the citations (or corrections) that
@@ -459,8 +477,8 @@ only this list; if he accepts both, it holds both lists (ADR 0013 §14).
     is then invisible to the 25 ms rule.
   - **Wall-clock work includes preemption** (the worker landing on the main thread's core).
     Thread CPU time would need native code.
-  - **A per-run `ref_peak` normalises against the throttled peak.** That hides heat from the
-    main-thread CPU verdicts. The pacing verdict, the raw worker verdicts and the printed
+  - **A per-run `ref_peak` normalises against the throttled peak** (the burst runs before every
+    run, "Run again" included, §3). That hides heat from the main-thread CPU verdicts. The pacing verdict, the raw worker verdicts and the printed
     `ref_peak` still show it.
   - **The 1 %, 99 % and zero-hitch limits are policy limits**, derived from the 1 Hz cadence and
     the tick period, not measured. They are part of what Michael accepts with this ADR.

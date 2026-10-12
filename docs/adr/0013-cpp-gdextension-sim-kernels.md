@@ -1,6 +1,10 @@
 # ADR 0013: C++ GDExtension kernels for the sim's hot phases
 
-Status: proposed, 2026-10-12 (revision 8, after merging `main` and the review of revision 7:
+Status: proposed, 2026-10-12 (revision 9, after the review of revision 8: a preflight with a
+job in flight is refused by a pure check, never a `push_error` (§3); `resolve_impl` is pure and
+`start()` logs its fallback (§3); P30n owns `FlowCache.run` (§3); `check-native-tests.sh` runs
+as a `ci.yml` step, not inside `verify.sh`, and the `native-clang` job skips gdUnit4 before the
+first suite (§10); ADR 0007 §4's status line waits for P41g (§14). Revision 8, after merging `main` and the review of revision 7:
 §3's self-check runs from `PerfHud.preflight()` (P50a2's seam), which P50b's arena script calls
 before the runner starts, with an order test; §3's table names the INTENTS entry; §5's twin rule
 names the GDScript rows that merge after a port (P41); P38j2's skip of `NON_STATE_MEMBERS`
@@ -476,8 +480,10 @@ absorbs next to the C++ phases.
   - the `Sim` contract row: `Sim.step`'s FLOW line calls `FlowCache.run(world, budget)`, so ADR
     0012 §5's "`Sim.step` passes 0 cells to `FlowCache.advance`" reads "passes a budget of 0 to
     `FlowCache.run`";
-  - P37b, which adds that `Sim.step` line, uses the entry. If P37b merged before this ADR was
-    accepted, P30n adds the entry and changes the one `Sim.step` line.
+  - P30n adds the entry with its dispatch, and P37b, which adds that `Sim.step` line, calls it
+    (the plan's model merges P30n first). Only if P30n has not merged when P37b opens does P37b
+    add the entry without the dispatch, which P30n then adds; if P37b merged before this ADR was
+    accepted, with the `FlowCache.advance` line, P30n also changes that one line.
 
   GRIDS keeps its plan contract (one rebuild line per grid in `Sim.step`) unless its rule fires.
   Then its port row (P41g) adds `rebuild_grids` and turns the two `Sim.step` lines into one line
@@ -511,7 +517,9 @@ absorbs next to the C++ phases.
   runner (the scene's runner has no `scenario`, so it does not start itself). So it runs on the
   main thread, with no World and no job in flight, and before ADR 0014's reference burst (the
   next seam) if that ADR is accepted; P50b's headless test pins the order (self-check, burst,
-  runner start) and that no job is in flight. Its inputs: the seed-42 arena, 60 ticks,
+  runner start) and that no job is in flight. A preflight with a job in flight is refused by a
+  pure check (`PerfHud.preflight_allowed`): the run is `INVALID` with a reason, and nothing
+  calls `push_error`, so no test prints `ERROR:` (plan, P50a row). Its inputs: the seed-42 arena, 60 ticks,
   `NativeKernels.create()` and its `phases()`. It runs only when the resolved implementation is
   `NATIVE`; otherwise the card's `self_check` reads `not run` (on Android the `impl` verdict
   fails anyway). It never runs in ordinary matches. It takes about 1-3 s on the gate phone (an
@@ -529,7 +537,9 @@ absorbs next to the C++ phases.
   - `NATIVE` on a build without the library is an error;
   - `AUTO` means `NATIVE` whenever the class exists. Without it, `AUTO` falls back to `GDSCRIPT`:
     with one `push_error` on Android, where the library is required (below), so the dev APK's log
-    and the card show it; with one warning on Linux and other desktops; silently on the web;
+    and the card show it; with one warning on Linux and other desktops; silently on the web.
+    `resolve_impl` itself is pure; `start()` logs the result, and tests call `resolve_impl` with
+    the OS name injected, so no test triggers the Android `push_error`;
   - headless CI runs `NATIVE` in the native suites and both implementations in the twin suites
     (`tests/sim/support/sim_impls.gd`).
 - **Who sets what:**
@@ -894,9 +904,13 @@ mode or inline in `SYNC`, with the same code. In addition:
   1. build the Linux `template_debug` library;
   2. seed the extension list;
   3. import;
-  4. run the tests, where the native suites must run, never skip, and
-     `scripts/ci/check-native-tests.sh` proves it from `results.xml`;
+  4. run the tests, where the native suites must run and never skip;
   5. check the `clang-format` version, then the C++ format (§12).
+
+  `scripts/ci/check-native-tests.sh` is not a `verify.sh` step: it is a `ci.yml` step that runs
+  after `verify.sh` in the verify job and reads its `results.xml` (P55, release-engineer's
+  file), as in the spike. Only P53 edits qa's `verify.sh` (the plan's exception 6), and the
+  script arrives in P55.
 - **`check-native-tests.sh` discovers its suites; it holds no list** (P55). The spike's version
   named its suites and cases in a hard-coded list, which every later suite would have to edit in
   release-engineer's file, and which before the first suite would be either empty (a vacuous
@@ -922,7 +936,10 @@ mode or inline in `SYNC`, with the same code. In addition:
   so P53's own verify job is green; P55 adds the caches (§8) and `check-native-tests.sh`.
 - **`ci.yml`, `native-clang` job** (P55): an x86_64 library built with clang at the release
   optimisation (`use_llvm=yes`, `optimize=speed`, the release flags apart from `DEBUG_ENABLED`),
-  running the `tests/sim/native` suites, checked by `check-native-tests.sh`. **P51**
+  running the `tests/sim/native` suites, checked by `check-native-tests.sh`. Its gdUnit4 step
+  runs only when discovery finds a suite: `run-tests.sh -a res://tests/sim/native` exits 1 when
+  no test ran, so before P54 the job skips that step and runs only the check, which prints its
+  "no native suites yet" line. So P55 is green on its own. **P51**
   (release-engineer, which already edits `ci.yml` and depends on P49a) adds the
   `test_golden_hashes` step to this job and passes `--require test_golden_hashes` to the check;
   P49a (qa-engineer) does not edit `ci.yml`. Every other CI determinism run uses g++ `-O2`, and
@@ -1090,7 +1107,8 @@ mode or inline in `SYNC`, with the same code. In addition:
     §7 is kept: P53 changes `scripts/cloud/setup.sh` for SCons and `clang-format`, and cloud
     sessions still build no APK;
   - ADR 0007: §8 (`World.kernels` and `NON_STATE_MEMBERS` are the one exception to the helper
-    `HASHED`/`UNHASHED` rule), and §4 only if P41g fires (the one `rebuild_grids` line);
+    `HASHED`/`UNHASHED` rule). §4's line (the one `rebuild_grids` line) is not in P26e: the
+    lead adds it in a one-line docs PR when P41g's rule fires, which P26e cannot know;
   - ADR 0008 §3 ("`configure()` allocates every slot's arrays; nothing allocates after it");
   - ADR 0011 §6;
   - ADR 0012 §4 (the P46 decision point, and the `impl` verdict added to the verdict list), §5
@@ -1230,7 +1248,8 @@ that approval.
     slip"): the gate becomes ready at slot 35 instead of 30 if ADR 0014 is accepted too (5 slots;
     the PerfHud split P50a3 is expected on acceptance of either ADR), or instead of 29 if this
     ADR is accepted alone (6 slots, P50a3 then charged to it). With every named port and
-    infrastructure split it is 38 (8-9 slots). Each conditional row that fires adds its slots on
+    infrastructure split it is 38 (8-9 slots; 39 if P41's twin edit makes its split P41b
+    expected). Each conditional row that fires adds its slots on
     lane A on top: up to 5 more with their splits (43), 1 more without. Lane B's rows before
     P38 (P53, P55, P55a, P56) and between P38p and P38s (P30n) move P40 from slot 15 to 17 (19
     with splits), and lane A waits for P40 at P39b (P42a needs it too), so the critical path
