@@ -1,0 +1,84 @@
+[gd_resource type="Resource" script_class="ScenarioDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/ScenarioDef.gd" id="1_scenario"]
+[ext_resource type="Script" path="res://game/sim/defs/SpawnDef.gd" id="2_spawn"]
+[ext_resource type="Script" path="res://game/sim/defs/OrderDef.gd" id="3_order"]
+[ext_resource type="Resource" path="res://data/maps/perf_arena.tres" id="4_map"]
+[ext_resource type="Resource" path="res://data/rules.tres" id="5_rules"]
+[ext_resource type="Resource" path="res://data/units/light_tank.tres" id="6_tank"]
+[ext_resource type="Resource" path="res://data/units/rifle_squad.tres" id="7_rifle"]
+[ext_resource type="Resource" path="res://data/units/rocket_squad.tres" id="8_rocket"]
+
+[sub_resource type="Resource" id="Spawn_p1_tanks"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("6_tank")
+count = 30
+origin_tile = Vector2i(25, 27)
+columns = 3
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p1_rifles"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("7_rifle")
+count = 27
+origin_tile = Vector2i(22, 28)
+columns = 3
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p1_rockets"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("8_rocket")
+count = 18
+origin_tile = Vector2i(20, 28)
+columns = 2
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p2_tanks"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("6_tank")
+count = 30
+origin_tile = Vector2i(36, 27)
+columns = 3
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p2_rifles"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("7_rifle")
+count = 27
+origin_tile = Vector2i(39, 28)
+columns = 3
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p2_rockets"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("8_rocket")
+count = 18
+origin_tile = Vector2i(42, 28)
+columns = 2
+jitter = 300
+
+[sub_resource type="Resource" id="Order_p1"]
+script = ExtResource("3_order")
+player = 1
+target_tile = Vector2i(39, 32)
+
+[sub_resource type="Resource" id="Order_p2"]
+script = ExtResource("3_order")
+player = 2
+target_tile = Vector2i(24, 32)
+
+[resource]
+script = ExtResource("1_scenario")
+map_size_tiles = Vector2i(64, 64)
+camera_start_tile = Vector2i(32, 32)
+spawns = Array[ExtResource("2_spawn")]([SubResource("Spawn_p1_tanks"), SubResource("Spawn_p1_rifles"), SubResource("Spawn_p1_rockets"), SubResource("Spawn_p2_tanks"), SubResource("Spawn_p2_rifles"), SubResource("Spawn_p2_rockets")])
+map = ExtResource("4_map")
+rules = ExtResource("5_rules")
+orders = Array[ExtResource("3_order")]([SubResource("Order_p1"), SubResource("Order_p2")])
+player_count = 2
