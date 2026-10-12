@@ -156,7 +156,9 @@ func test_every_rule_accepts_its_edge_values_and_reports_the_next_ones() -> void
 	assert_array(_unit_problems("tank.tres", unarmed)).is_empty()
 
 
-func test_every_scenario_file_sets_the_shared_rules_resource() -> void:
+## from_scenario swaps a map that fails validate() for open grass without a message (gdUnit4
+## fails a test on a push_error), so the map check here is what catches a typo in a shipped map.
+func test_every_scenario_file_sets_the_shared_rules_resource_and_has_a_valid_map() -> void:
 	var files: Array[String] = FileScan.list_files(SCENARIOS_DIR, ".tres")
 	assert_array(files).contains(["res://data/scenarios/controls_test.tres", ARENA_PATH])
 	for path: String in files:
@@ -165,6 +167,8 @@ func test_every_scenario_file_sets_the_shared_rules_resource() -> void:
 			"no rules" if scenario.rules == null else scenario.rules.resource_path
 		)
 		assert_str(rules_path).override_failure_message(path).is_equal(RULES_PATH)
+		if scenario.map != null:
+			assert_array(scenario.map.validate()).override_failure_message(path).is_empty()
 
 
 func test_the_perf_arena_map_is_64_by_64_with_a_ridge_three_gaps_and_scenery_in_the_window(

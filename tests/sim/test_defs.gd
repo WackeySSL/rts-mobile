@@ -107,6 +107,17 @@ func test_validate_reports_a_terrain_without_one_cost_per_move_class() -> void:
 	)
 
 
+## World keeps a cost in a byte: 256 would read as blocked and -1 as 255. 0 and 40 are legal.
+func test_validate_reports_a_cost_outside_0_to_40_by_terrain_and_entry() -> void:
+	var map: MapDef = _map(["..#", "~.:"])
+	map.terrain.terrains[0].cost = PackedInt32Array([0, 40, 41])
+	map.terrain.terrains[2].cost = PackedInt32Array([-1, 10, 256])
+	var problem: String = "terrain %d cost %d is %d, expected 0..40"
+	assert_array(map.validate()).is_equal(
+		[problem % [0, 2, 41], problem % [2, 0, -1], problem % [2, 2, 256]]
+	)
+
+
 func test_validate_reports_every_row_whose_length_differs_from_the_first() -> void:
 	var map: MapDef = _map(["...", "..", "....", "..."])
 	assert_array(map.validate()).is_equal(
