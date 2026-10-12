@@ -50,3 +50,48 @@ func tick(world: World, n: int) -> void:
 		var e: int = make(row)[0] + ids[row][1]
 		var g: String = "ab"[1]
 		[1, -1][row]
+	while n in [1, 2]:
+		n -= 1
+	while [n, 3].max() > 2:
+		n -= 1
+	for d: int in [
+		-1,
+		0,
+	]:
+		var f: Array[int] = [d]
+	var g: Array[int] = [0]
+	for a1: int in range(2):
+		for a2: int in range(2):
+			for a3: int in range(2):
+				var h: int = a3
+	var i1: Array[int] = [0]
+	ids.sort_custom(
+		func(p: int, q: int) -> bool:
+			for k: int in range(3):
+				var t2: Array[int] = [k]
+			return p < q
+	)
+	for row: int in range(3):
+		var col: PackedInt32Array = pos_x
+		var w: int = when[row]
+		var c2: Array[int] = world.col
+		match kind:
+			[1, _]:
+				pass
+			{"a": 1}:
+				pass
+		match [row, 1]:
+			_:
+				pass
+	forward = func(n: int) -> int:
+		return [n][0]
+const HELP: String = """
+Usage: (see notes
+"""
+func later() -> void:
+	for j: int in range(3):
+		var u: Array[int] = [j]
+	for dk: int in {
+		1: [2],
+	}:
+		var z1: Array[int] = [dk]

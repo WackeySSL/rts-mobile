@@ -8,8 +8,8 @@ extends GdUnitTestSuite
 ##   a *Server singleton. Names alone cannot list the 200 Node classes.
 ## - A base type check: no sim script may extend a Node, directly or through a user base class.
 ## - An allocation check by indentation (ADR 0007 section 1): no array or dictionary literal,
-##   Packed*Array(...), duplicate() or slice() inside the body of a for or while loop, unless
-##   the line ends with `# alloc-ok`.
+##   Array or Dictionary variable without a value, Packed*Array(...), duplicate() or slice()
+##   inside a for or while body or a while condition, unless the line ends with `# alloc-ok`.
 ## game/ai is scanned for randomness only (rule 3).
 ##
 ## The scans over game/sim and game/ai are vacuous until those folders hold code. The fixture
@@ -55,11 +55,13 @@ const HINTS: Dictionary[String, String] = {
 	r"\bhash\s*\(": "hash() is engine defined; use World.state_hash() or an integer mix",
 }
 ## A `[` opens an array literal after an operator, an opening bracket, a comma or a keyword,
-## and from the start of a line. After a name, `)`, `]` or a string it indexes.
+## and from the start of a line. After a name, `)`, `]` or a string it indexes. A typed Array or
+## Dictionary variable without a value is a new object on every pass too.
 const ALLOC_NAMES: String = (
-	r"(?:^|[=(,:+\-*/%&|^<>!~{\[?])\s*\["
-	+ r"|\b(?:return|in|and|or|not|if|else|elif|await|is|as|when|match)\s*\["
-	+ r"|\{|\bPacked(?:Int32|Int64|Byte)Array\s*\(|\.(?:duplicate|slice)\s*\("
+	r"(?:^|[=(,:+\-*/%&|^<>!~\[])\s*\["
+	+ r"|\b(?:return|in|and|or|not|if|else|elif|while|match)\s*\["
+	+ r"|\{|\bPacked(?:Int32|Int64|Byte)Array\s*\(|\.(?:duplicate(?:_deep)?|slice)\s*\("
+	+ r"|^\s*var\s+\w+\s*:\s*(?:Array|Dictionary)\b[^=]*$"
 )
 const LOOP_HEADER: String = r"^\s*(?:for|while)\b"
 const FLOAT_LITERAL: String = (
@@ -245,6 +247,41 @@ const RAND_MUST_NOT_MATCH: Array[String] = [
 	"var target: int = rng.pick_random(ids)",
 ]
 
+## Run as the body of a loop. Each statement is matched by exactly one part of ALLOC_NAMES, so
+## dropping an operator, a keyword or a call from it fails this list.
+const LOOP_OPEN: String = "for row: int in range(3):\n\t"
+const ALLOC_MUST_MATCH: Array[String] = [
+	"x = [row]",
+	"foo([row])",
+	"foo(a, [row])",
+	'"k": [row],',
+	"x = ids[[row][0]]",
+	"x = a + [row]",
+	"x = a - [row]",
+	"x = a * [row]",
+	"x = a / [row]",
+	'x = "%d" % [row]',
+	"x = a & [row]",
+	"x = a | [row]",
+	"x = a ^ [row]",
+	"x = a < [row]",
+	"x = a > [row]",
+	"x = ![row]",
+	"x = ~[row]",
+	"return [row]",
+	"x = row in [1, 2]",
+	"x = a and [row]",
+	"x = a or [row]",
+	"x = not [row]",
+	"x = 1 if a else [row]",
+	"if [row]:",
+	"elif [row]:",
+	"while [row].size() > 2:",
+	"match [row, 1]:",
+	"x = a.duplicate(true)",
+	"x = a.duplicate_deep()",
+]
+
 const NODE_BASES: Array[String] = [
 	"extends Node\n",
 	"extends CharacterBody2D\n",
@@ -283,7 +320,7 @@ func test_sim_sources_are_pure() -> void:
 	var violations: Array[String] = []
 	for path: String in FileScan.list_files(SIM_DIR, ".gd"):
 		var source: String = FileAccess.get_file_as_string(path)
-		violations.append_array(_violations(source, path, _is_sim_violation, _hint))
+		violations.append_array(_sim_violations(source, path))
 	assert_array(violations).is_empty()
 
 
@@ -315,10 +352,12 @@ func test_ai_sources_use_no_unseeded_randomness() -> void:
 	assert_array(violations).is_empty()
 
 
-## Pinned to the line numbers of the fixture: the lines in a loop body that allocate and do not
-## end with `# alloc-ok`. Lines 4 to 6 and 30 to 31 (before and after a loop), 19 to 27 (comment,
-## index expressions, strings, `# alloc-ok`), 36, 40, 43 (a loop header's own brackets), 46, 50
-## and 51 (an index after a call or a string) are legal.
+## Pinned to the line numbers of the fixture: the lines in a loop body or a while condition that
+## allocate and do not end with `# alloc-ok`. Legal: 4 to 6, 30 to 31, 36, 40, 46, 62 and 67
+## (before and after a loop), 19 to 24 and 26 to 27 (comment, index expressions, strings,
+## `# alloc-ok`), 43, 57 to 60 and 95 (a `for` header's own brackets), 50 and 51 (an index after
+## a call or a string), 75 to 82 and 84 to 85 (an alias, a name `when`, match patterns), 87 (a
+## lambda body is no loop) and 89 (a stray bracket in a docstring).
 func test_alloc_guard_flags_exactly_the_allocations_in_loop_bodies() -> void:
 	var source: String = FileAccess.get_file_as_string(LOOP_FIXTURE)
 	assert_str(source).is_not_empty()
@@ -327,15 +366,29 @@ func test_alloc_guard_flags_exactly_the_allocations_in_loop_bodies() -> void:
 	for report: String in found:
 		line_numbers.append(int(report.split(":")[1]))
 	assert_array(line_numbers).contains_exactly(
-		[7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 29, 33, 34, 35, 39, 45, 49, 52]
+		(
+			[7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 25, 29, 33, 34, 35, 39, 45, 49, 52]
+			+ [53, 55, 61, 71, 83, 93, 97]
+		)
 	)
 	assert_str(found[0]).is_equal("fixture:7: var a: Array[int] = []")
 
 
+func test_alloc_guard_flags_an_array_after_every_operator_and_keyword() -> void:
+	var missed: Array[String] = []
+	for statement: String in ALLOC_MUST_MATCH:
+		if _alloc_violations(LOOP_OPEN + statement, "x").is_empty():
+			missed.append(statement)
+	assert_array(missed).is_empty()
+
+
+## A source with CRLF line endings leaves a \r after the marker.
+func test_alloc_ok_marker_holds_on_a_crlf_line() -> void:
+	assert_array(_alloc_violations(LOOP_OPEN + "x = [row]  # alloc-ok\r", "x")).is_empty()
+
+
 func test_banned_calls_tell_the_author_what_to_use() -> void:
-	var length_report: Array[String] = _violations(
-		"var n: int = name.length()", "a.gd", _is_sim_violation, _hint
-	)
+	var length_report: Array[String] = _sim_violations("var n: int = name.length()", "a.gd")
 	assert_array(length_report).contains_exactly(
 		[
 			(
@@ -344,13 +397,12 @@ func test_banned_calls_tell_the_author_what_to_use() -> void:
 			)
 		]
 	)
-	var hash_report: Array[String] = _violations(
-		"var h: int = hash(pos)", "a.gd", _is_sim_violation, _hint
-	)
+	var hash_report: Array[String] = _sim_violations("var h: int = hash(pos)", "a.gd")
 	assert_str(hash_report[0]).contains("World.state_hash()")
-	# A line that breaks another rule gets no hint.
-	assert_array(_violations("var f: float", "a.gd", _is_sim_violation, _hint)).contains_exactly(
-		["a.gd:1: var f: float"]
+	# A line that breaks another rule gets no hint, and a hint is looked for in code only.
+	assert_array(_sim_violations("var f: float", "a.gd")).contains_exactly(["a.gd:1: var f: float"])
+	assert_array(_sim_violations("var f: float  # hash(x)", "a.gd")).contains_exactly(
+		["a.gd:1: var f: float  # hash(x)"]
 	)
 
 
@@ -497,6 +549,11 @@ func _script_from(source: String) -> GDScript:
 	return script
 
 
+## What test_sim_sources_are_pure reports for one file.
+func _sim_violations(source: String, label: String) -> Array[String]:
+	return _violations(source, label, _is_sim_violation, _hint)
+
+
 func _violations(
 	source: String, label: String, is_violation: Callable, hint: Callable = Callable()
 ) -> Array[String]:
@@ -519,14 +576,18 @@ func _hint(line: String) -> String:
 	return ""
 
 
-## Reports of allocations inside for and while bodies. A loop owns the lines after its header
-## that are indented deeper than the header; comment and blank lines do not count. A header
-## whose brackets stay open past its line (a long `range(...)` call) starts its loop only when
-## they close, so the arguments, evaluated once, are not part of the body.
+## Reports of allocations inside for and while bodies, and in a while condition, which runs on
+## every pass. A loop owns the lines after its header that are indented deeper than the header;
+## comment and blank lines do not count. A header whose brackets stay open past its line (a long
+## `range(...)` call) starts its loop only when they close, so a `for` iterable, evaluated once,
+## is not part of the body. Brackets are counted from the header's own depth, so a multi-line
+## call around the loop or a stray bracket in a docstring cannot hide it.
 func _alloc_violations(source: String, label: String) -> Array[String]:
 	var found: Array[String] = []
 	var loops: Array[int] = []
-	var pending: int = -1
+	var header: int = -1
+	var header_depth: int = 0
+	var each_pass: bool = false
 	var open_brackets: int = 0
 	var lines: PackedStringArray = source.split("\n")
 	for index: int in lines.size():
@@ -536,16 +597,26 @@ func _alloc_violations(source: String, label: String) -> Array[String]:
 		var indent: int = len(code) - len(code.lstrip(" \t"))
 		while not loops.is_empty() and indent <= loops[-1]:
 			loops.pop_back()
-		if not loops.is_empty() and _alloc.search(code) != null:
+		var depth_before: int = open_brackets
+		open_brackets += _bracket_balance(code)
+		if header < 0 and _loop_header.search(code) != null:
+			header = indent
+			header_depth = depth_before
+			each_pass = code.strip_edges().begins_with("while")
+		var scanned: bool = not loops.is_empty() or (header >= 0 and each_pass)
+		if scanned and not _is_match_pattern(code) and _alloc.search(code) != null:
 			if not lines[index].strip_edges().ends_with(ALLOC_OK):
 				found.append("%s:%d: %s" % [label, index + 1, lines[index].strip_edges()])
-		open_brackets = maxi(open_brackets + _bracket_balance(code), 0)
-		if _loop_header.search(code) != null:
-			pending = indent
-		if pending >= 0 and open_brackets == 0:
-			loops.push_back(pending)
-			pending = -1
+		if header >= 0 and open_brackets <= header_depth:
+			loops.push_back(header)
+			header = -1
 	return found
+
+
+## A pattern such as `[1, _]:` or `{"a": 1}:` under a match is compared, not built.
+func _is_match_pattern(code: String) -> bool:
+	var text: String = code.strip_edges()
+	return text.ends_with(":") and (text.begins_with("[") or text.begins_with("{"))
 
 
 func _bracket_balance(code: String) -> int:

@@ -24,6 +24,7 @@ One or two lines each. Found during Phase 0 (2026-10-10).
 - Integrating fix branches: commit a dirty memory file before `git cherry-pick`, prove equivalence with a per-commit `git patch-id --stable` match, then `git worktree remove` (no --force needed when only ignored `.godot/build/reports` remain) and `git branch -D`.
 - Purity guard limit: name patterns cannot tell `Array.shuffle()`/`pick_random()` from a `DetRandom.shuffle()`, so those are not banned. `floor/ceil/round/lerp` on ints return ints, so they are not banned either (only `*f` variants).
 - Purity guard (P27q): `length(` also trips on `String.length()`; use `len(s)` in game/sim (the report now says so). Multi-line scan fixtures live as `.txt` under `tests/project/fixtures/` so gdformat, gdlint and the compile test never see them; pin flagged line numbers and append new cases at the end.
+- Text scanners that track brackets must count depth relative to the construct they track (a loop header inside a multi-line lambda call, or after a docstring with a stray `(`, was skipped silently with an absolute count). Pin every operator and keyword of a detection regex with its own one-line snippet, then delete one token at a time to prove each pin fails.
 
 **Why:** each of these cost a spike or a false GREEN during Phase 0.
 **How to apply:** check this list first when a test is flaky or a script reports success without evidence. Never relax the scan; add a narrow allowlist regex with a comment only for a message proven benign.
