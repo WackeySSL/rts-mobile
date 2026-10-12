@@ -66,7 +66,7 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
   `flow_cells_per_tick`, double-buffered (units read `cost` while `next` integrates), cached, and
   re-integrated when the map changes. No slice on checkpoint ticks (`Sim.step` passes 0 cells on
   the ticks `MatchLoop` hashes). `flow_cells_per_tick` comes from the release run's headroom
-  (ADR 0012 §5; 320, in `data/rules.tres`), never from a literal in code. References are
+  (ADR 0012 §5; 320 from P27f, 512 until then), never from a literal in code. References are
   derived from the World's `field` column every tick, never released by hand. A group move
   shares one field.
 - Two spatial grids as linked lists (`head` per cell, `next` per row), rebuilt once per tick in
