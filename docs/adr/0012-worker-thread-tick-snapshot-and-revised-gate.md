@@ -23,6 +23,25 @@ projectile slot). It supersedes in part:
 
 It keeps Michael's answer 1 (the gate runs on his phone with k = 2.5) and CLAUDE.md rule 6.
 
+Status note (2026-10-12, ADRs 0013 and 0014 accepted; the worker-mode run is recorded at the end
+of the acceptance note):
+- §4, by ADR 0013 §15: the P46 decision point ("start drafting the GDExtension ADR above 26.6 ms")
+  is dropped, and the verdict list gains `impl`, which fails the gate on its own like `build`.
+  Every threshold and the ratio formula stay.
+- §4, by ADR 0014 §1-§3: the rows `on_time_ms` and `on_time_share_pct` are replaced by the
+  dropped-frame, cadence and hitch rules; `work_p95_ms`, `work_tick_p95_ms` and
+  `fog_update_p95_ms` keep their values but are compared on clock-normalised main-thread time
+  (`sim_p95_ms` and `job_p99_ms` stay raw); in "Why held ticks have no verdict", the first
+  cause's reason is now judged by the dropped-frame and hitch rules (the conclusion and the
+  `held_ticks` above 9 condition stay).
+- §5, by ADR 0013 §3 and §15: the rule is unchanged, but the P27f value is withdrawn (P27b's 512
+  stays, given by the rule with the C++ slice), and "`Sim.step` passes 0 cells to
+  `FlowCache.advance`" reads "passes a budget of 0 to `FlowCache.run`".
+- §7: "GDExtension (C++) is not adopted now" and its trigger are replaced by ADR 0013 §15 (the port
+  trigger for GDScript-only phases and the engine-side watch line, neither a verdict); the
+  "frame pacing" part of the "Unchanged" bullet is superseded by ADR 0014 §1 and §2 (the heavy
+  window, the draw-call ceiling and the fog limit's value stay).
+
 ## Context
 The Phase 2 plan (P26s) says that a contract the phone probe contradicts changes through a new ADR
 before P34 starts. The probe ran on 2026-10-12. The full reports are comments on PR #35.
@@ -821,6 +840,28 @@ about 3.5 ms, and the mock alone takes 3.36 ms. The GDExtension trigger stays as
 mean and p95, held ticks, the main thread's frame work with the tick out of the frame, and the
 core the worker lands on. It re-derives the two ratios and checks the headroom condition for
 `flow_cells_per_tick`.
+
+**Addendum (2026-10-12): the worker-mode run.** This applies §4 and §5 as accepted to the run they
+name; it is not a new decision.
+- Results on the Pixel 9a, release template, mode 4 (the mock tick on the worker): PR #35 release
+  run 2, job post to done mean 11.03 ms and p95 19.75 ms; the spike session (PR #41), job p95
+  20.10 ms. No late or held ticks.
+- **The ratios** (§4's formula, the release worker job over the CI mock tick, rounded up to one
+  decimal): `ci_ratio_mean` 11.03 / 2.51 = 4.39, so 4.4; `ci_ratio_p95` 19.75 / 3.36 = 5.88, so
+  5.9. They replace 3.6 and 3.8 above. With 5.9, `sim_p95_ms` equals a CI `TickJob` p95 of about
+  2.3 ms (13.3 / 5.9), and the P46 decision point (26.6 ms) a CI p95 of about 4.5 ms. Release
+  run 2 sets them because it is the run §4 names (the release run's worker mode, in the session
+  with the in-frame mode). The spike session would give 11.87 / 2.51 = 4.8 and 20.10 / 3.36 =
+  6.0; both lie within §4's 10 % re-derivation rule of 4.4 and 5.9, so 4.4 and 5.9 stand.
+- **`flow_cells_per_tick`** (§5's headroom half): the worker job p95 is above 11.6 ms, so not even
+  64 cells fit; by §5 the value is 64, with the early-warning finding of plan risk 1. The 320
+  above was the 2 ms half only.
+- **The margin.** "The measured margin" above is overtaken by this run: the worker job p95 of
+  19.75-20.10 ms misses `sim_p95_ms` (13.3 ms) by 48-51 % with the mock alone, so the GDScript
+  sim is not marginal; it fails the limit. This is plan risk 1's early-warning finding. §7's
+  trigger is unchanged by this addendum; the proposed ADR 0013 (accepted 2026-10-12) is the
+  response.
+- The plan records how P38t, P38p and P27f carry these (revision 14).
 
 ## Amendment (2026-10-12, P34b review)
 The art spec (`assets/art/STYLE.md` § "Combat effects" and § "Health bars", P34b) keys every

@@ -2,6 +2,10 @@
 
 Status: accepted, 2026-10-10
 
+Status note (2026-10-12): the Consequences line "hot paths may move to GDExtension later through a
+new ADR" is taken up by ADR 0013 (accepted 2026-10-12): C++17 kernels for the sim's measured hot
+phases in `native/sim_kernels/`, each with a GDScript twin kept in `game/sim/`.
+
 ## Context
 rts-mobile is built entirely by Claude Code, mostly in cloud sessions, published as open source
 and built by GitHub Actions. It is a 2D RTS for phones with up to about 150 units, funded by ads,

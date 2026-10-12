@@ -2,6 +2,14 @@
 
 Status: accepted, 2026-10-10
 
+Status note (2026-10-12): §1 superseded in part by ADR 0013 (accepted 2026-10-12): the Android
+preset no longer has "the same `exclude_filter` as the Web preset". The Web preset alone gains
+`native/*` (P53); the Android preset must never exclude `native/*`, or the APK silently loses the
+kernels library (`tests/project/test_export_presets.gd` pins both). §5 is kept: both notices stay
+identical, gaining the LLVM libc++ text in P26l and godot-cpp's in P55a. §7 is kept: P53 changes
+`scripts/cloud/setup.sh` to install SCons and `clang-format`, and cloud sessions still build no
+APK. §8 is kept as ADR 0013's "It keeps" scopes it.
+
 ## Context
 Phase 1 asks for "Android debug APK as a CI artifact for testing on a real device". The web
 preview (ADR 0002 §9) must keep working, so Michael can compare touch in the phone browser
