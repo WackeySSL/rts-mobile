@@ -365,11 +365,18 @@ texel (127 at most) and the shade edge (76) darker than any (110 at least). Unde
 (x 0.45) the means are grass 50 and 57, sand 84, scrub 42, rock 48, water 39, all dark, with the
 patterns of scrub, rock and water still visible.
 
-Squads on scrub (P34c, both squads in both team colours composited on scrub, grass and sand, in
-greyscale at zoom 1.0 and 0.75): scrub has the unit olive and only foot units can stand on it. The
-mean luminance difference between a squad pixel and the ground under it is 41 to 49 on scrub (49 to
-56 on grass, 113 to 124 on sand), and at most 14 % of the squad's pixels are within 12 of the
-ground (9 % on grass): the outline and team colour carry the squads on scrub about as on grass.
+Squads on scrub (P34c, a one-off measurement in greyscale): scrub has the unit olive and only foot
+units can stand on it. Method: both squads in both team colours, laid out as the gallery's terrain
+row draws them (the rifle squad 16 px and the rocket squad 48 px across a 64 px tile, both 32 px
+down, hull then the tinted team layer, bilinear), over the ground with nearest filtering (an 8 px
+texel; flat colours for the two grass tones and for sand), at zoom 1.0 and 0.75, turning through 12
+headings 30 degrees apart. A squad pixel is one with alpha 0.5 or more, and the figure is the Rec.
+601 luminance of what is shown there against the ground under it. Over the 8 variants of squad,
+team and zoom, the mean luminance difference is 37 to 44 on scrub (48 to 51 on the darker grass, 62
+to 65 on the lighter, 114 to 119 on sand), and at most 15 % of the squad's pixels are within 12 of
+the ground (9 % on the darker grass, 6 % on the lighter, 1 % on sand). Scrub has the least contrast
+of the four grounds, lower than on either grass tone, and the dark outline and team colour carry the
+squads there. The figures move by about 1 with the number of headings, and no test pins them.
 
 ## Gallery
 `scenes/dev/art_gallery.tscn` (opened from the dev menu, also in the web preview) shows every asset

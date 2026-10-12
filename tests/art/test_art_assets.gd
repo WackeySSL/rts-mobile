@@ -280,22 +280,16 @@ func test_the_map_tiles_have_the_luminance_of_the_style_guide_and_scrub_and_rock
 	var spreads: Dictionary[StringName, float] = {}
 	var grass_lums: Array[float] = []  # Every texel of both grass tiles.
 	for id: StringName in GREYSCALE:
-		var image: Image = Gallery.tile_image(Gallery.TERRAIN_TILES[id])
-		var lums: Array[float] = []
-		for y: int in 8:
-			for x: int in 8:
-				lums.append(_luminance(image.get_pixel(x, y)))
+		var lums: Array[float] = _tile_lums(id)
 		if String(id).begins_with("grass"):
 			grass_lums.append_array(lums)
-		means[id] = lums.reduce(func(a: float, b: float) -> float: return a + b, 0.0) / 64.0
-		var variance: float = 0.0
-		for lum: float in lums:
-			variance += (lum - means[id]) * (lum - means[id]) / 64.0
-		spreads[id] = sqrt(variance)
+		means[id] = _mean(lums)
+		spreads[id] = _spread(lums)
 		var fogged: int = roundi(means[id] * (1.0 - 140.0 / 255.0))
 		got[id] = "%.1f %.1f %d" % [means[id], spreads[id], fogged]
 	assert_dict(got).is_equal(GREYSCALE)
-	# Grass is flat. Scrub is 17 below its darker tone and has a pattern: spread 15 or more.
+	# Grass is flat. Scrub is at least 17 below the darker grass tone (18 measured) and has a
+	# pattern: spread 15 or more.
 	assert_float(spreads[&"grass"] + spreads[&"grass_b"]).is_less(0.001)
 	assert_float(means[&"grass"] - means[&"scrub"]).is_greater_equal(17.0)
 	assert_float(spreads[&"scrub"]).is_greater_equal(15.0)
@@ -305,8 +299,87 @@ func test_the_map_tiles_have_the_luminance_of_the_style_guide_and_scrub_and_rock
 	assert_float(_luminance(rock.get_pixel(7, 3))).is_less(grass_lums.min())
 
 
+func test_the_greyscale_check_of_the_style_guide_quotes_the_numbers_the_tiles_have() -> void:
+	var section: String = _terrain_section()
+	var start: int = section.find("Greyscale check")
+	assert_int(start).is_greater(-1)
+	var text: String = section.substr(start, section.find("\n\n", start) - start)
+	text = text.replace("\n", " ")
+	var means: Dictionary[StringName, int] = {}
+	var spreads: Dictionary[StringName, String] = {}
+	var fogged: Dictionary[StringName, int] = {}
+	var raw: Dictionary[StringName, float] = {}
+	var grass_lums: Array[float] = []
+	for id: StringName in Gallery.TERRAIN_TILES:
+		var lums: Array[float] = _tile_lums(id)
+		if String(id).begins_with("grass"):
+			grass_lums.append_array(lums)
+		raw[id] = _mean(lums)
+		means[id] = roundi(raw[id])
+		spreads[id] = "%.1f" % _spread(lums)
+		fogged[id] = roundi(raw[id] * (1.0 - 140.0 / 255.0))
+	var base: float = _luminance(Gallery.TERRAIN_COLORS[&"scrub"])
+	var rock: Image = Gallery.tile_image(Gallery.TERRAIN_TILES[&"rock"])
+	var expected: Array[String] = [
+		(
+			"grass %d and %d (spread 0), sand %d (0), scrub %d (%s), rock %d (%s), water %d (%s)"
+			% [
+				means[&"grass"],
+				means[&"grass_b"],
+				means[&"sand"],
+				means[&"scrub"],
+				spreads[&"scrub"],
+				means[&"rock"],
+				spreads[&"rock"],
+				means[&"water"],
+				spreads[&"water"],
+			]
+		),
+		(
+			(
+				"Scrub is %d and %d below the grass tones (its base alone, %d, is %d and %d below) "
+				% [
+					roundi(raw[&"grass"] - raw[&"scrub"]),
+					roundi(raw[&"grass_b"] - raw[&"scrub"]),
+					roundi(base),
+					roundi(raw[&"grass"] - base),
+					roundi(raw[&"grass_b"] - base),
+				]
+			)
+			+ "and has a spread of %s" % spreads[&"scrub"]
+		),
+		(
+			(
+				"the lit edge (%d) is lighter than any grass texel (%d at most) "
+				+ "and the shade edge (%d) darker than any (%d at least)"
+			)
+			% [
+				roundi(_luminance(rock.get_pixel(3, 0))),
+				roundi(grass_lums.max()),
+				roundi(_luminance(rock.get_pixel(7, 3))),
+				roundi(grass_lums.min()),
+			]
+		),
+		(
+			"the means are grass %d and %d, sand %d, scrub %d, rock %d, water %d"
+			% [
+				fogged[&"grass"],
+				fogged[&"grass_b"],
+				fogged[&"sand"],
+				fogged[&"scrub"],
+				fogged[&"rock"],
+				fogged[&"water"],
+			]
+		),
+	]
+	for snippet: String in expected:
+		assert_str(text).contains(snippet)
+
+
 func test_the_style_guide_lists_every_colour_key_with_its_hex_and_a_probe_texel() -> void:
 	var section: String = _terrain_section()
+	# The map has no grid (Michael, 2026-10-12): no grid rule may come back as a colour or an export.
+	assert_str(section).not_contains("grid_color")
 	var row: RegEx = RegEx.create_from_string(
 		"\\| `(\\w+)` \\| #([0-9A-F]{6}) \\|[^|]*\\| (\\d),(\\d) \\|"
 	)
@@ -337,8 +410,22 @@ func test_the_gallery_terrain_row_is_a_patch_of_map_tiles_with_the_fog_over_its_
 	assert_bool(row.is_visible_in_tree()).is_true()
 	# Over both grounds, in the order frame, patch, squads, fog.
 	assert_bool(row.get_index() > gallery.get_node("Sand").get_index()).is_true()
+	# Nothing else: a grid, a line or a band over the patch would be one more child.
 	var names: Array = row.get_children().map(func(c: Node) -> String: return c.name)
-	assert_array([names[0], names[1], names[-1]]).is_equal(["Frame", "Patch", "ExploredFog"])
+	(
+		assert_array(names)
+		. is_equal(
+			[
+				"Frame",
+				"Patch",
+				"RifleSquadScrub2",
+				"RocketSquadScrub2",
+				"RifleSquadScrub3",
+				"RocketSquadScrub3",
+				"ExploredFog",
+			]
+		)
+	)
 	var patch: TextureRect = row.get_node("Patch")
 	var frame: ColorRect = row.get_node("Frame")
 	var fog: ColorRect = row.get_node("ExploredFog")
@@ -427,6 +514,29 @@ func _ink(pixel: Color) -> String:
 ## Rec. 601 luminance of the 8-bit colour (STYLE.md, Palette).
 func _luminance(color: Color) -> float:
 	return 0.299 * color.r8 + 0.587 * color.g8 + 0.114 * color.b8
+
+
+## The Rec. 601 luminance of each of the 64 texels of the map tile `id`.
+func _tile_lums(id: StringName) -> Array[float]:
+	var image: Image = Gallery.tile_image(Gallery.TERRAIN_TILES[id])
+	var lums: Array[float] = []
+	for y: int in 8:
+		for x: int in 8:
+			lums.append(_luminance(image.get_pixel(x, y)))
+	return lums
+
+
+func _mean(lums: Array[float]) -> float:
+	return lums.reduce(func(a: float, b: float) -> float: return a + b, 0.0) / lums.size()
+
+
+## The standard deviation, which STYLE.md calls the spread inside one tile.
+func _spread(lums: Array[float]) -> float:
+	var mean: float = _mean(lums)
+	var variance: float = 0.0
+	for lum: float in lums:
+		variance += (lum - mean) * (lum - mean) / lums.size()
+	return sqrt(variance)
 
 
 ## The bounding box of a sprite on screen.
