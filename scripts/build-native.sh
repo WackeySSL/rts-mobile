@@ -8,16 +8,21 @@
 #   linux builds the host architecture only; android builds arm64 only (Android is built in CI,
 #   a cloud session has no NDK).
 # Env:   SCONS=<binary> (default: scons; must be 4.9.1), CXX=<compiler> (linux, default: g++),
-#        ANDROID_NDK_ROOT=<NDK folder> (android; the toolchain is read from
-#        $ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64).
+#        ANDROID_NDK_ROOT=<NDK folder> (android; must be NDK 28.1.13356709, the ndk_version that
+#        godot-cpp's tools/android.py defaults to at the pinned commit; the toolchain is read from
+#        $ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64; CI installs it with
+#        scripts/ci/install-ndk.sh), SCONS_CACHE=<folder> (godot-cpp's SConstruct passes it to
+#        CacheDir: objects are shared by content, CI caches the folder).
 # Needs: git and network access to github.com (first run only), scons 4.9.1
 #        (pip install scons==4.9.1), a C++ compiler.
 # Flags: godot-cpp's defaults per target, nothing added: template_debug = -O2 (optimize=speed_trace,
 #        DEBUG_ENABLED), template_release = -O3 (optimize=speed, NDEBUG); no LTO, no debug symbols.
 # Exit:  0 ok
 #        2 bad flag or an impossible platform/arch pair
-#        3 tool missing (git, scons 4.9.1, the compiler, or ANDROID_NDK_ROOT / the NDK toolchain)
-#        4 godot-cpp fetch or SHA check failed, or the build failed or produced no library
+#        3 tool missing (git, scons 4.9.1, the compiler, binutils, or ANDROID_NDK_ROOT / the NDK
+#          toolchain), or an NDK of another version than the pinned one
+#        4 godot-cpp fetch or SHA check failed, or the build failed, produced no library, or the
+#          library fails the ELF check (machine, shared object, entry symbol, no libc++_shared.so)
 # Success prints "build-native: OK <library> (<bytes> bytes)". Bash 3.2 compatible.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -29,6 +34,10 @@ GODOT_CPP_URL="https://github.com/godotengine/godot-cpp.git"
 GODOT_CPP_TAG="godot-4.5-stable"
 GODOT_CPP_SHA="e83fd0904c13356ed1d4c3d09f8bb9132bdc6b77"
 SCONS_VERSION="4.9.1"
+# godot-cpp godot-4.5-stable, tools/android.py: opts.Add("ndk_version", ..., "28.1.13356709"). The
+# ubuntu-24.04 runner image ships NDK 27, 29 and 30 only, so CI installs this one with sdkmanager
+# (scripts/ci/install-ndk.sh reads this line, keep its shape).
+NDK_VERSION="28.1.13356709"
 SCONS="${SCONS:-scons}"
 GODOT_CPP_DIR="$ROOT/native/godot-cpp"
 
@@ -105,11 +114,21 @@ scons_env=()
 if [ "$platform" = "linux" ]; then
   compiler="${CXX:-g++}"
   command -v "$compiler" >/dev/null 2>&1 || die 3 "C++ compiler '$compiler' is missing (install g++ or set CXX)"
+  for tool in readelf nm; do
+    command -v "$tool" >/dev/null 2>&1 || die 3 "$tool is missing (install binutils)"
+  done
 else
   ndk="${ANDROID_NDK_ROOT:-}"
   [ -n "$ndk" ] || die 3 "ANDROID_NDK_ROOT is not set (Android NDK missing; a cloud session has none, CI sets it)"
   toolchain="$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin"
   [ -x "$toolchain/clang++" ] || die 3 "the Android NDK toolchain is missing: no $toolchain/clang++ (ANDROID_NDK_ROOT='$ndk')"
+  ndk_revision="$(sed -n 's/^Pkg\.Revision[[:space:]]*=[[:space:]]*\([0-9][0-9.]*\).*$/\1/p' "$ndk/source.properties" 2>/dev/null | head -n 1 || true)"
+  [ "$ndk_revision" = "$NDK_VERSION" ] ||
+    die 3 "needs Android NDK ${NDK_VERSION} (godot-cpp's default ndk_version), ANDROID_NDK_ROOT='$ndk' is '${ndk_revision:-unknown}': run scripts/ci/install-ndk.sh or sdkmanager 'ndk;${NDK_VERSION}'"
+  for tool in llvm-readelf llvm-nm; do
+    [ -x "$toolchain/$tool" ] || die 3 "the Android NDK toolchain is missing: no $toolchain/$tool"
+  done
+  echo "build-native: Android NDK ${ndk_revision} at ${ndk}"
   # godot-cpp looks for $ANDROID_HOME/ndk/<its default version> first; the NDK of ANDROID_NDK_ROOT
   # is the one the caller chose, so hide the SDK variables from this one process.
   scons_env=(env -u ANDROID_HOME -u ANDROID_SDK_ROOT "ANDROID_NDK_ROOT=$ndk")
@@ -148,6 +167,7 @@ case "$target" in
   template_release) optimize="-O3 (godot-cpp optimize=speed)" ;;
 esac
 echo "build-native: ${platform} ${target} ${arch}, ${optimize}, ${jobs} jobs"
+[ -z "${SCONS_CACHE:-}" ] || echo "build-native: scons object cache ${SCONS_CACHE}"
 log="$(mktemp -t build-native.XXXXXX)"
 set +e
 (
@@ -168,6 +188,36 @@ fi
 library="$ROOT/native/bin/libprobe_tick.${platform}.${target}.${arch}.so"
 [ -s "$library" ] || die 4 "scons succeeded but ${library#"$ROOT"/} is missing or empty (log: $log)"
 rm -f "$log"
+
+# (4b) Look inside the library, so that a wrong build fails here and not on the phone: the right
+# machine, a shared object, the entry symbol exported, and no dependency on a C++ runtime that the
+# APK would not carry (Android would fail to load it, and probe mode 5 would say "not available").
+# Host binutils for linux, the NDK's llvm tools for android; both print the same layout.
+if [ "$platform" = "android" ]; then
+  elf_readelf="$toolchain/llvm-readelf"
+  elf_nm="$toolchain/llvm-nm"
+  elf_machine="AArch64"
+  elf_forbidden='libc\+\+_shared\.so'
+else
+  elf_readelf="readelf"
+  elf_nm="nm"
+  case "$arch" in x86_64) elf_machine="Advanced Micro Devices X86-64" ;; *) elf_machine="AArch64" ;; esac
+  elf_forbidden=""
+fi
+elf_name="${library#"$ROOT"/}"
+elf_header="$("$elf_readelf" -h "$library" 2>&1)" || die 4 "$elf_readelf -h failed on $elf_name: $elf_header"
+grep -Eq "^[[:space:]]*Machine:[[:space:]]+${elf_machine}[[:space:]]*\$" <<<"$elf_header" ||
+  die 4 "$elf_name is not a '${elf_machine}' ELF file: $(grep -E '^[[:space:]]*Machine:' <<<"$elf_header" | tr -s ' ' || true)"
+grep -Eq '^[[:space:]]*Type:[[:space:]]+DYN' <<<"$elf_header" || die 4 "$elf_name is not a shared object"
+elf_dynamic="$("$elf_readelf" -d "$library" 2>&1)" || die 4 "$elf_readelf -d failed on $elf_name: $elf_dynamic"
+elf_needed="$(sed -n 's/^.*(NEEDED)[[:space:]]*Shared library: \[\(.*\)\].*$/\1/p' <<<"$elf_dynamic" | tr '\n' ' ')"
+if [ -n "$elf_forbidden" ] && grep -Eq "(^| )${elf_forbidden}( |\$)" <<<"$elf_needed"; then
+  die 4 "$elf_name needs libc++_shared.so, which the APK does not carry (link the C++ runtime statically): needs ${elf_needed}"
+fi
+elf_symbols="$("$elf_nm" -D --defined-only "$library" 2>&1)" || die 4 "$elf_nm -D failed on $elf_name: $elf_symbols"
+grep -Eq ' T probe_tick_library_init$' <<<"$elf_symbols" ||
+  die 4 "$elf_name does not export the entry symbol probe_tick_library_init"
+echo "build-native: ELF ok: ${elf_machine}, shared object, exports probe_tick_library_init, needs ${elf_needed:-nothing}"
 
 # (5) Godot 4.7.2 aborts at the end of a fresh `godot --import` (exit 134 or 139; 4 of 6 runs on
 # the dev VM, 6 of 6 with a bare class registered) when the first scan of the project finds a

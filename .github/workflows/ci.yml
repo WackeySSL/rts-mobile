@@ -52,12 +52,56 @@ jobs:
       - name: Install gdtoolkit
         run: pipx install "gdtoolkit==${GDTOOLKIT_VERSION}"
 
-      # PROBE ONLY (spike P26n): verify.sh builds the C++ port first (g++ is on the runner image).
+      # PROBE ONLY (spike P26n): the C++ port of the mock tick is built before anything imports or
+      # tests the project. scripts/build-native.sh needs exactly scons 4.9.1 (pipx is pip in an isolated
+      # environment: the runner's system Python is externally managed) and g++ (on the runner image).
       - name: Install scons
-        run: pipx install "scons==${SCONS_VERSION}"
+        run: |
+          pipx install "scons==${SCONS_VERSION}"
+          scons --version | sed -n '/SCons: /p'
+
+      # The pins that key the cache, read from the script that owns them, so they cannot drift. The
+      # scons object cache lives outside the workspace (SCONS_CACHE is read by godot-cpp's SConstruct),
+      # which keeps the clean-tree check below meaningful.
+      - name: Read the native toolchain pins
+        id: native-pins
+        run: |
+          sha="$(sed -n 's/^GODOT_CPP_SHA="\([0-9a-f]\{40\}\)"$/\1/p' scripts/build-native.sh)"
+          [ "${#sha}" = 40 ] || { echo "::error::no 40-digit GODOT_CPP_SHA=\"...\" line in scripts/build-native.sh"; exit 1; }
+          gcc="$(g++ -dumpfullversion)"
+          case "$gcc" in "" | *[!0-9.]*) echo "::error::unexpected g++ version '$gcc'"; exit 1 ;; esac
+          { echo "godot_cpp_sha=$sha"; echo "gcc=$gcc"; } >> "$GITHUB_OUTPUT"
+          echo "SCONS_CACHE=$HOME/.cache/rts-mobile-scons" >> "$GITHUB_ENV"
+
+      # native/godot-cpp is the fetched, pinned godot-cpp checkout, SCONS_CACHE its compiled objects
+      # (content-addressed: an entry is only used for the exact command line and sources that made it).
+      # hashFiles runs before anything under native/ is fetched or built, so it sees tracked files only.
+      # A source change misses the exact key and restores the newest cache of the same godot-cpp commit,
+      # g++ and scons, which still holds the godot-cpp objects; only the port is compiled again.
+      - name: Cache godot-cpp and the scons object cache
+        id: native-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            native/godot-cpp
+            ~/.cache/rts-mobile-scons
+          key: native-linux-x86_64-gcc${{ steps.native-pins.outputs.gcc }}-godotcpp-${{ steps.native-pins.outputs.godot_cpp_sha }}-scons${{ env.SCONS_VERSION }}-${{ hashFiles('native/**', 'scripts/build-native.sh') }}
+          restore-keys: |
+            native-linux-x86_64-gcc${{ steps.native-pins.outputs.gcc }}-godotcpp-${{ steps.native-pins.outputs.godot_cpp_sha }}-scons${{ env.SCONS_VERSION }}-
+
+      # Built here once, visibly, and again (an up-to-date no-op) by verify.sh, whose first step after
+      # lint is the same build, before the import and the tests: if it fails there, verify.sh is RED.
+      - name: Build the C++ tick (linux template_debug, what the editor loads)
+        run: bash scripts/build-native.sh 2>&1 | tee "$RUNNER_TEMP/native-build.log"
 
       - name: Verify (format, lint, import, tests, sim smoke, error scan)
         run: bash scripts/verify.sh 2>&1 | tee "$RUNNER_TEMP/verify.log"
+
+      # The tests that compare the C++ tick with the GDScript one FAIL without the library (they never
+      # skip). This step proves from gdUnit4's results.xml that those suites ran and passed here: every
+      # required case present, none failed, errored or skipped.
+      - name: Check that the C++ bit-identity tests ran and passed
+        run: bash scripts/ci/check-native-tests.sh
 
       # export-web.sh owns the export checks: Godot version, templates, error scan of its own log,
       # non-empty artifacts, wasm size, threads off and the dev_menu custom feature.
@@ -75,9 +119,12 @@ jobs:
         if: always()
         env:
           CACHE_HIT: ${{ steps.godot-cache.outputs.cache-hit }}
+          NATIVE_CACHE_HIT: ${{ steps.native-cache.outputs.cache-hit }}
         run: |
+          retrieved="$(grep -c '^Retrieved ' "$RUNNER_TEMP/native-build.log" 2>/dev/null || true)"
           {
             echo "Godot cache hit: ${CACHE_HIT:-false}"
+            echo "Native (godot-cpp + scons objects) cache hit: ${NATIVE_CACHE_HIT:-false}, scons objects retrieved from it: ${retrieved:-0}"
             echo
             echo '```'
             if [ -f "$RUNNER_TEMP/verify.log" ] && grep -q '===== VERIFY SUMMARY =====' "$RUNNER_TEMP/verify.log"; then
@@ -115,6 +162,10 @@ jobs:
       - name: Offline test of publish-dev-release.sh
         run: bash scripts/ci/test-publish-dev-release.sh
 
+      # PROBE ONLY (spike P26n): same for the NDK installer used below, against a stub sdkmanager.
+      - name: Offline test of install-ndk.sh
+        run: bash scripts/ci/test-install-ndk.sh
+
       # Godot copies JAVA_HOME and ANDROID_HOME into its editor settings on its first run, so set
       # them before any Godot call (ANDROID_HOME is the runner image's SDK already).
       - name: Select JDK 17
@@ -133,11 +184,22 @@ jobs:
         run: bash scripts/ci/install-godot.sh --android
 
       # PROBE ONLY (spike P26n): the APK carries the C++ port of the mock tick, built here for android
-      # release arm64 with the runner image's NDK (ANDROID_NDK_ROOT). export-android.sh checks the
-      # library is in the APK. The Godot editor that exports it loads the linux debug library, so
-      # that one is built as well (else every Godot call logs "Can't open dynamic library").
+      # arm64 with the NDK that godot-cpp's pinned commit expects (28.1.13356709). The runner image
+      # ships NDK 27.3, 29 and 30 only, so install-ndk.sh installs that one with sdkmanager (pinned,
+      # into its own SDK root, with the licences the image already accepted) and sets
+      # ANDROID_NDK_ROOT for the steps below. JAVA_HOME (JDK 17, above) is what sdkmanager runs on.
+      # Only the release library is built for Android: the export below is --export-release (proved
+      # in export-android.sh), which packs the android.release.arm64 entry of the .gdextension. The
+      # editor that runs the export loads the linux debug library, so that one is built as well (else
+      # every Godot call logs "Can't open dynamic library"). export-android.sh then fails unless the
+      # APK holds lib/arm64-v8a/libprobe_tick.android.template_release.arm64.so with the bytes built here.
       - name: Install scons
-        run: pipx install "scons==${SCONS_VERSION}"
+        run: |
+          pipx install "scons==${SCONS_VERSION}"
+          scons --version | sed -n '/SCons: /p'
+
+      - name: Install the pinned Android NDK
+        run: bash scripts/ci/install-ndk.sh
 
       - name: Build the C++ tick (linux debug for the editor, android release arm64 for the APK)
         run: |
@@ -192,9 +254,12 @@ jobs:
           CACHE_HIT: ${{ steps.godot-cache.outputs.cache-hit }}
         run: |
           apk=build/android/rts-mobile-debug.apk
+          lib=lib/arm64-v8a/libprobe_tick.android.template_release.arm64.so
           {
             echo "Godot cache hit: ${CACHE_HIT:-false}"
+            echo "- Android NDK for the C++ tick: $(basename "${ANDROID_NDK_ROOT:-unknown}")"
             if [ -s "$apk" ]; then
+              echo "- C++ tick in the APK: \`$lib\`, $(unzip -p "$apk" "$lib" 2>/dev/null | wc -c | tr -d ' ' || true) bytes"
               echo "- APK: $(stat -c %s "$apk") bytes, SHA-256 \`$(sha256sum "$apk" | cut -d' ' -f1)\`, package dk.appcode.rts.dev"
               echo "- Signing key: ${DEBUG_KEY_KIND:-unknown}."
               [ "${DEBUG_KEY_KIND:-}" = stable ] || echo "- A generated key changes every run: uninstall the old APK first."

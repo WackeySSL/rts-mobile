@@ -13,7 +13,8 @@
 #        1 export failed, an error in this run's log, or a check of the APK failed
 #        2 usage error, or --out not under build/
 #        3 Godot missing or not 4.7.2.stable
-#        4 export template, JDK 17 or Android SDK piece missing (the message names each)
+#        4 export template, JDK 17, Android SDK piece or (probe branch) the C++ library missing
+#          (the message names each)
 #        5 debug keystore variables incomplete or the keystore file missing
 # Success prints "export-android: OK <dir>/rts-mobile-debug.apk". Cloud sessions have no Android
 # SDK, so a local run ends with exit 4. CI (the android-debug-apk job) is the test bed.
@@ -33,6 +34,11 @@ LICENSE_DIR="docs/licenses/godot-${GODOT_VERSION%.stable}"
 GODOT_CPP_TAG="godot-4.5-stable"
 GODOT_CPP_SHA="e83fd0904c13356ed1d4c3d09f8bb9132bdc6b77"
 GODOT_CPP_LICENSE="docs/licenses/godot-cpp-4.5-stable/LICENSE.md"
+# The library Godot packs for the release export of android arm64 (the .gdextension entry
+# android.release.arm64), built by scripts/build-native.sh in CI before this script runs.
+EXT_NAME="libprobe_tick.android.template_release.arm64.so"
+EXT_BUILT="native/bin/$EXT_NAME"
+EXT_IN_APK="lib/arm64-v8a/$EXT_NAME"
 
 die() {
   local code="$1"
@@ -73,6 +79,10 @@ missing=""
 for name in version.txt android_release.apk; do
   [ -s "$template_dir/$name" ] || missing="$missing; template $template_dir/$name"
 done
+# PROBE ONLY (spike P26n): the arm64 C++ library must be built before the export, else Godot packs
+# nothing and probe mode 5 says "not available" on the phone.
+[ -s "$EXT_BUILT" ] ||
+  missing="$missing; $EXT_BUILT (bash scripts/build-native.sh --platform android --target template_release --arch arm64)"
 java_version="$("${JAVA_HOME:-/nonexistent}/bin/java" -version 2>&1 || true)"
 grep -q 'version "17\.' <<<"$java_version" || missing="$missing; JDK 17 (JAVA_HOME='${JAVA_HOME:-}')"
 [ -x "${ANDROID_HOME:-/nonexistent}/platform-tools/adb" ] || missing="$missing; \$ANDROID_HOME/platform-tools/adb (ANDROID_HOME='${ANDROID_HOME:-}')"
@@ -167,10 +177,18 @@ esac
 listing="$(unzip -Z1 "$apk")"
 grep -qx 'lib/arm64-v8a/libgodot_android.so' <<<"$listing" || die 1 "the APK lacks lib/arm64-v8a/libgodot_android.so"
 # PROBE ONLY (spike P26n): the C++ tick library must be in the APK, or mode 5 of the probe would say
-# "C++ tick not available" on the phone. Build it first: scripts/build-native.sh --platform android
-# --target template_release --arch arm64.
-grep -qx 'lib/arm64-v8a/libprobe_tick.android.template_release.arm64.so' <<<"$listing" ||
-  die 1 "the APK lacks lib/arm64-v8a/libprobe_tick.android.template_release.arm64.so (scripts/build-native.sh not run?)"
+# "C++ tick not available" on the phone. It must be the very file CI built (same bytes, so not a
+# stale or empty one), and its size is printed. Build it first: scripts/build-native.sh --platform
+# android --target template_release --arch arm64.
+grep -qx "$EXT_IN_APK" <<<"$listing" ||
+  die 1 "the APK lacks $EXT_IN_APK (scripts/build-native.sh not run?)"
+unzip -l "$apk" "$EXT_IN_APK"
+ext_apk_bytes="$(unzip -p "$apk" "$EXT_IN_APK" | wc -c | tr -d ' ')"
+ext_apk_sum="$(unzip -p "$apk" "$EXT_IN_APK" | sha256sum | cut -d' ' -f1)"
+ext_built_sum="$(sha256sum "$EXT_BUILT" | cut -d' ' -f1)"
+echo "export-android: $EXT_IN_APK ${ext_apk_bytes} bytes in the APK, sha256 apk=${ext_apk_sum} built=${ext_built_sum}"
+[ "$ext_apk_bytes" -gt 0 ] || die 1 "$EXT_IN_APK in the APK is empty"
+[ "$ext_apk_sum" = "$ext_built_sum" ] || die 1 "$EXT_IN_APK in the APK is not the library built in $EXT_BUILT"
 grep -q 'godot-cpp' "$out_abs/$NOTICE_NAME" || die 1 "$NOTICE_NAME does not name godot-cpp"
 other_abis="$(grep '^lib/' <<<"$listing" | grep -v '^lib/arm64-v8a/' || true)"
 [ -z "$other_abis" ] || die 1 "the APK holds libraries for other ABIs (arm64-v8a only): $(head -n 3 <<<"$other_abis")"
