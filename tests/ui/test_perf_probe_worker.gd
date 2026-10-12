@@ -23,12 +23,6 @@ class SlowTick:
 
 	var delay_msec: int = 0
 
-	## A fresh slow tick: the constructor's three warm-up ticks run before the delay is set.
-	static func slow(delay: int) -> SlowTick:
-		var tick: SlowTick = SlowTick.new()
-		tick.delay_msec = delay
-		return tick
-
 	func step() -> int:
 		OS.delay_msec(delay_msec)
 		return super.step()
@@ -164,9 +158,19 @@ func _open(sim: PerfProbeTick) -> Node2D:
 		probe.sim = sim
 	if sim is SlowTick:
 		var delay: int = (sim as SlowTick).delay_msec
-		probe.new_sim = func() -> PerfProbeTick: return SlowTick.slow(delay)
+		probe.new_sim = func() -> PerfProbeTick: return _slow_tick(delay)
 	add_child(probe)
 	return probe
+
+
+## A fresh slow tick: the constructor's three warm-up ticks run before the delay is set. Built here
+## and not by a static function of SlowTick: a class that names itself in its own body leaves the
+## scripts alive at exit when a suite that names PerfProbeTick ran first
+## (tests/project/test_inner_class_self_reference.gd).
+func _slow_tick(delay: int) -> SlowTick:
+	var tick: SlowTick = SlowTick.new()
+	tick.delay_msec = delay
+	return tick
 
 
 func _press_next_mode(probe: Node2D, times: int) -> void:
