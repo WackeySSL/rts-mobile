@@ -1,11 +1,12 @@
 ---
 name: rts-sim-conventions
-description: Rules and patterns for the deterministic RTS simulation of rts-mobile - 15 Hz fixed tick, fixed-point integers, DetRandom, the Command queue, entity storage, flow-field pathfinding, targeting, fog of war, state hashing and replays. Use whenever writing, reviewing or debugging code in game/sim, game/ai, data or tests/sim, even for small changes.
+description: Rules and patterns for the deterministic RTS simulation of rts-mobile - 15 Hz fixed tick, fixed-point integers, DetRandom, the Command queue, entity storage, flow-field pathfinding, targeting, fog of war, state hashing, replays and the C++ sim kernels (ADR 0013). Use whenever writing, reviewing or debugging code in game/sim, game/ai, data, tests/sim or native/, including review of C++ kernel PRs, even for small changes.
 paths:
   - "game/sim/**"
   - "game/ai/**"
   - "data/**"
   - "tests/sim/**"
+  - "native/**"
 ---
 
 # RTS simulation conventions
@@ -184,6 +185,10 @@ bursty phase whose per-active-tick cost sets a headroom value. `COMMANDS`, `REMO
   fails silently). `check_world(world, phase)` is pure and returns a status; a kernel that gets a
   non-zero status logs one error and returns without writing. No mismatch message is ever
   allowlisted.
+- FLOW (§2, "Arrays of helper objects"): fetch the typed slot `Array` once, then each touched
+  slot's arrays and scalars once (bounded by `flow_cache_size`, never per row or cell). The
+  buffer swap is two `set` calls, after which both pointers are fetched again; no slot array is
+  resized in a tick (P30b's `configure()` sizes them).
 - Forbidden: a `Packed*Array` parameter anywhere in `bind/` (by value or by reference: both write
   to a silent copy); keeping a pointer, Variant, array or Object between calls; `get` or `set`
   per row; calling back into GDScript while holding a `ptrw()` pointer; resizing a held array.
@@ -218,7 +223,8 @@ bursty phase whose per-active-tick cost sets a headroom value. `COMMANDS`, `REMO
   shifts only on non-negative values by 0-62, no division by zero or `INT64_MIN / -1`, no index
   past the size checked on entry, no uninitialised read, `reinterpret_cast`/`const_cast` only in
   `world_access.h`. `/` and `%` truncate toward zero as in GDScript; each port's crafted cases
-  include a negative operand. `-fwrapv` in every production and test build.
+  include a negative operand. `-fwrapv` in every production and test build except the sanitizer
+  (UBSan) build, which drops it so an overflow fails there (§4, §10).
 - The same loops in the same ascending row order as the twin; no unordered containers,
   `std::hash`, pointer ordering, threads or SIMD intrinsics. No randomness in Phase 2 kernels.
 - Proof: a 900-tick lockstep test per kernel that compares the full state after every call (and
@@ -228,9 +234,12 @@ bursty phase whose per-active-tick cost sets a headroom value. `COMMANDS`, `REMO
 
 **Threading (§6).** ADR 0012 §2 applies unchanged. In a kernel: no Godot API except
 `world_access.h` on entry and exit (no `OS`, `Time`, `Engine`, print on non-error paths,
-signals, `ClassDB`, resource loading, Nodes or singletons); no mutable statics, `thread_local`,
-threads, atomics or mutexes; no heap allocation (`new`, `malloc`, std containers); fixed scratch
-lives in the World's `SCRATCH_ARRAYS` or helper arrays.
+signals, `call_deferred`, `ClassDB`, resource loading, Nodes or singletons); no mutable statics
+(static locals included), `thread_local`, threads, atomics, mutexes, futures or OpenMP. `SimKernels`
+holds no mutable state; its `StringName`s are made once in its constructor on the main thread
+and only read afterwards (no function-local `static StringName`, which would be built lazily on
+the worker). No heap allocation (`new`, `malloc`, std containers); fixed scratch lives in the
+World's `SCRATCH_ARRAYS` or helper arrays.
 
 **Review checklist for a C++ PR (§12).** `godot-code-review` is vendored unchanged, so the C++
 checklist lives here; load both skills for any PR that touches `native/`:

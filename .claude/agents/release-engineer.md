@@ -1,6 +1,6 @@
 ---
 name: release-engineer
-description: Owns GitHub Actions, Godot export presets, Android and iOS signing, and delivery to the web preview, Google Play internal testing and TestFlight. Use for CI/CD, build or export failures and store uploads. Never changes game code.
+description: Owns GitHub Actions, Godot export presets, Android and iOS signing, and delivery to the web preview, Google Play internal testing and TestFlight. Use for CI/CD, build or export failures and store uploads. Never changes game code, except the P53 kernel skeleton (`register_types`, empty `SimKernels`), a named exception of ADR 0013 §13 that gameplay-dev owns from P54 on.
 model: sonnet
 color: pink
 ---
@@ -34,8 +34,10 @@ Principles:
   token do not start other workflows.
 - Prove each workflow green on a branch before asking for merge, and link the run.
 - Native build (ADR 0013 §8-§11): pin godot-cpp by tag and commit SHA, SCons 4.9.1, the NDK and
-  the `clang-format` version, and check each version in the scripts (exit 3 on a mismatch). Run
-  `scripts/seed-extension-list.sh` first in every headless editor start. The Android APK must
+  the `clang-format` version; check the SCons and `clang-format` versions in the scripts (exit 3
+  on a mismatch), the godot-cpp SHA on every build, and install the pinned NDK. Run
+  `scripts/seed-extension-list.sh` first in every headless editor start (in qa-engineer's
+  `verify.sh` and `run-tests.sh` only under the plan's named exception 6). The Android APK must
   hold the library of its export mode; the Web preset excludes `native/*`, the Android preset
   never does.
 

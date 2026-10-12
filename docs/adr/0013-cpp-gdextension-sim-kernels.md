@@ -62,7 +62,7 @@ It keeps:
 - ADR 0012 §1-§3, and §4's thresholds and ratio formula: the worker thread, the thread-safety
   rules, `MatchSnapshot`, and the gate values, except the rows ADR 0014 changes if Michael
   accepts it;
-- CLAUDE.md rules 1-6;
+- CLAUDE.md rules 1-6 (rule 1 gains §14's `native/` sentence);
 - ADR 0005 §5: the APK's `THIRD_PARTY_LICENSES.txt` keeps the web build's content; godot-cpp's
   notice goes into both (§11);
 - ADR 0005 §8 ("`preview.yml` and `export-web.sh` are unchanged"): that sentence scoped Phase
@@ -76,8 +76,8 @@ It keeps:
 - Michael's answer 1: the gate runs on his Pixel 9a for good, with the 2021 limits divided by
   k = 2.5.
 
-ADR 0014 (frame pacing and the CPU-time limits) is a separate proposal. Michael can answer each
-one on its own.
+ADR 0014 (frame pacing and the CPU-time limits) was a separate proposal, so Michael could answer
+each one on its own; both were accepted on 2026-10-12 (see "Acceptance note").
 
 ## Context
 
@@ -1028,7 +1028,8 @@ mode or inline in `SYNC`, with the same code. In addition:
   ours carry both. `-Wconversion` forces the explicit cast at every int32 store (§4).
 - **Not in Phase 2:** clang-tidy and coverage tooling.
 - **Each kernel file** names its GDScript twin and its lockstep test in a header comment.
-- **The `godot-code-review` skill gains a C++ checklist:**
+- **The `godot-code-review` skill gains a C++ checklist** (at acceptance: in `rts-sim-conventions`
+  instead; see "Acceptance note"):
   - signatures, and the type and size check on every fetched array;
   - pointer lifetime;
   - integer widths;
@@ -1101,7 +1102,8 @@ mode or inline in `SYNC`, with the same code. In addition:
 - **`rts-sim-conventions`** gets a "Native kernels" section: the scope (§1), `world_access.h` and
   the forbidden signatures (§2), the dispatch (§3), the determinism rules (§4), the twin rule
   (§5), and the threading rules (§6).
-- **`godot-code-review`** gets the C++ checklist (§12).
+- **`godot-code-review`** gets the C++ checklist (§12). (At acceptance: in `rts-sim-conventions`
+  instead; see "Acceptance note".)
 - **Status lines**, replacing the one-line pointers the draft added:
   - ADR 0001 (Consequences);
   - ADR 0005 §1 (the Web preset alone excludes `native/*`; the Android preset must not). §5 is
@@ -1363,7 +1365,18 @@ pointer lifetime, integer widths, undefined behaviour, order, allocation, the li
 of the twin) is therefore the last part of the skill's "Native kernels" section, and a reviewer of
 a C++ PR loads `rts-sim-conventions` next to `godot-code-review`. The plan's "File ownership"
 row for the lead names the skill instead. What is checked does not change, only where the text
-lives.
+lives. The skill's `paths` include `native/**`, so it loads for any edit there.
+
+**Open item for Michael (CLAUDE.md's review line).** CLAUDE.md's "Review with `/code-review` plus
+the `godot-code-review` skill" lies outside §14's approved text, so it is unchanged. The lead asks
+Michael whether to extend it to "... plus the `godot-code-review` skill (and `rts-sim-conventions`'
+"Native kernels" checklist for any PR that touches `native/`)"; it changes only on his yes.
+
+**CLAUDE.md describes the state from P53 on.** §14's lines land before the tooling they name:
+`scripts/build-native.sh`, `native/` and the `verify.sh` build and format step arrive in P53, the
+sanitizer harness in P57. Until P53 merges, agents run `verify.sh` as before and do not run
+`build-native.sh`; its absence is not a missing tool. The one-line `clang-format` follow-up after
+P53 confirms the Commands line has become true.
 
 **Consequences recorded at acceptance:**
 - **P27f is withdrawn** and P27b's 512 stays (§15, ADR 0012 §5's rule with the C++ slice). The

@@ -859,7 +859,8 @@ name; it is not a new decision.
 - **The margin.** "The measured margin" above is overtaken by this run: the worker job p95 of
   19.75-20.10 ms misses `sim_p95_ms` (13.3 ms) by 48-51 % with the mock alone, so the GDScript
   sim is not marginal; it fails the limit. This is plan risk 1's early-warning finding. §7's
-  trigger is unchanged by this addendum; the proposed ADR 0013 is the response.
+  trigger is unchanged by this addendum; the proposed ADR 0013 (accepted 2026-10-12) is the
+  response.
 - The plan records how P38t, P38p and P27f carry these (revision 14).
 
 ## Amendment (2026-10-12, P34b review)
