@@ -6,11 +6,17 @@ extends Node2D
 ## atlas, a 64x64 fog texture (8) patched at 5 Hz, and the mock tick at 15 Hz in the frame. A run
 ## of `run_seconds` records the frame; the card is the clipboard report. `Engine.max_fps` is 60
 ## while the scene is open, so a 90 or 120 Hz panel is judged at 60 fps.
+## The fourth mode (ADR 0012 section 1) is mode 1 with each mock tick, and the flow slice, run on
+## one dedicated Thread: a tick ahead, handed over by two Semaphores, never blocking the frame.
+## The view draws from its own copies, taken at publish, while the worker owns `sim`.
 
 @warning_ignore_start("integer_division")
 
-enum Mode { SPRITE_RINGS, CODE_RINGS, ALTERNATING_TINTS }
-enum Series { INTERVAL, PROCESS, RENDER, CALLS, WORK_TICK, WORK_OTHER, TICK, SLICE, FOG }
+enum Mode { SPRITE_RINGS, CODE_RINGS, ALTERNATING_TINTS, WORKER_TICK }
+enum Series { INTERVAL, PROCESS, RENDER, CALLS, WORK_TICK, WORK_OTHER, TICK, SLICE, FOG, LATENCY }
+## The worker job, as ADR 0012 section 1: nothing posted, posted and not taken, taken and not
+## published.
+enum Job { IDLE, RUNNING, FINISHED }
 
 const ART: String = "res://assets/art/svg/units/light_tank_%s.svg"
 const UNITS: int = PerfProbeTick.UNITS
@@ -19,17 +25,24 @@ const SIDE: int = PerfProbeTick.SIDE
 const TICK_USEC: int = 66667  ## 15 Hz.
 const FLOW_CELLS: int = 512
 const ON_TIME_MS: float = 17.5
-const MODES: Array[String] = ["sprite rings", "code rings", "sprite rings, tints alternate"]
+const MODES: Array[String] = [
+	"sprite rings",
+	"code rings",
+	"sprite rings, tints alternate",
+	"sprite rings, worker tick",
+]
 
 var run_seconds: int = 60
 var mode: int = Mode.SPRITE_RINGS  ## Code rings are the Phase 1 ones; the tint order is by team.
 var clipboard_sink: Callable = DisplayServer.clipboard_set
-var sim: PerfProbeTick = PerfProbeTick.new()
+var sim: PerfProbeTick = PerfProbeTick.new()  ## The worker mode hands it to the worker.
 
 var _rigs: Array[Node2D] = []
 var _rings: Array[Node2D] = []  ## Per selected unit: a sprite ring, then a code ring.
 var _layers: Array[Painted] = []
 var _series: Array[PackedFloat64Array] = []
+var _view: PerfProbeTick = sim  ## What the frame reads: `sim`, or `_shown` in the worker mode.
+var _shown: PerfProbeTick = PerfProbeTick.new()  ## The worker mode's copies, taken at publish.
 var _prev_x: PackedInt32Array = sim.x.duplicate()
 var _prev_y: PackedInt32Array = sim.y.duplicate()
 var _atlas: ImageTexture = null
@@ -45,7 +58,18 @@ var _end_us: int = 0  ## 0 while the run goes on.
 var _clock_us: int = 0
 var _process_start_us: int = 0  ## Top of this frame's `_process`, the first one in the tree.
 var _pre_draw_us: int = 0
-var _ticked: bool = false  ## This frame ran at least one mock tick.
+var _ticked: bool = false  ## This frame ran at least one mock tick (worker: published one).
+var _thread: Thread = null
+var _work: Semaphore = Semaphore.new()  ## The main thread posts a job; the worker waits.
+var _done: Semaphore = Semaphore.new()  ## The worker posts when the job is finished.
+var _quit: bool = false  ## Set before the last `_work.post()`; the worker then returns.
+var _job: int = Job.IDLE
+var _held: bool = false  ## A late tick is waiting for its job to finish.
+var _late_ticks: int = 0  ## Boundaries reached with the previous job still running.
+var _post_us: int = 0  ## Main thread, at the post; read at publish.
+var _job_tick_usec: int = 0  ## Worker, from `sim.step()`; read at publish, after `_done`.
+var _job_slice_usec: int = -1  ## Worker; -1 when the job ran no whole 512-cell slice.
+var _job_end_us: int = 0  ## Worker, before `_done.post()`.
 
 @onready var _card: Label = $Hud/Margin/Card
 @onready var _back: Button = $Hud/Margin/Buttons/BackButton
@@ -76,6 +100,7 @@ func _enter_tree() -> void:
 
 
 func _exit_tree() -> void:
+	_stop_worker()  # Joined before anything else goes away; a running job finishes first.
 	Engine.max_fps = _max_fps
 	DisplayServer.screen_set_keep_on(_kept_on)
 	RenderingServer.frame_pre_draw.disconnect(_on_pre_draw)
@@ -157,6 +182,29 @@ func _process(_delta: float) -> void:
 	_record(Series.INTERVAL, interval / 1000.0)
 	_clock_us += interval
 	_ticked = false
+	if mode == Mode.WORKER_TICK:
+		_tick_worker()
+	else:
+		_tick_in_frame()
+	for i: int in UNITS:
+		var from: Vector2 = ViewScale.milli_to_px_vec(_prev_x[i], _prev_y[i])
+		var to: Vector2 = ViewScale.milli_to_px_vec(_view.x[i], _view.y[i])
+		_rigs[i].position = from.lerp(to, float(_clock_us) / TICK_USEC)
+	for layer: Painted in _layers:
+		layer.queue_redraw()
+	if _end_us == 0:
+		var left: int = run_seconds - (now - _start_us) / 1000000
+		_card.text = "PERF PROBE: running, %d s left.\nLeave the phone alone." % left
+		if left <= 0:
+			_end_us = now
+			_card.text = report()
+			_rings_button.visible = true
+			_copy_button.visible = true
+			_copy_button.text = "Copy report"
+
+
+## Modes 0-2: the mock tick, the flow slice and the fog patch run inside the frame.
+func _tick_in_frame() -> void:
 	for _step: int in 4:  # At most four ticks a frame; time beyond that is dropped.
 		if _clock_us < TICK_USEC:
 			break
@@ -171,21 +219,127 @@ func _process(_delta: float) -> void:
 		_record(Series.FOG, _patch_fog() if sim.tick % 3 == 0 else -1.0)  # 5 Hz.
 		_ticked = true
 	_clock_us = _clock_us if _clock_us < TICK_USEC else 0
-	for i: int in UNITS:
-		var from: Vector2 = ViewScale.milli_to_px_vec(_prev_x[i], _prev_y[i])
-		var to: Vector2 = ViewScale.milli_to_px_vec(sim.x[i], sim.y[i])
-		_rigs[i].position = from.lerp(to, float(_clock_us) / TICK_USEC)
-	for layer: Painted in _layers:
-		layer.queue_redraw()
-	if _end_us == 0:
-		var left: int = run_seconds - (now - _start_us) / 1000000
-		_card.text = "PERF PROBE: running, %d s left.\nLeave the phone alone." % left
-		if left <= 0:
-			_end_us = now
-			_card.text = report()
-			_rings_button.visible = true
-			_copy_button.visible = true
-			_copy_button.text = "Copy report"
+
+
+## The worker mode, one tick ahead (ADR 0012 section 1). At a boundary the main thread publishes
+## the finished job, then posts the next one. A boundary reached while the job still runs is a late
+## tick: nothing is published or posted, the view keeps the newest state, and the frame goes on.
+func _tick_worker() -> void:
+	if _job == Job.RUNNING and _done.try_wait():
+		_job = Job.FINISHED
+	if _job == Job.IDLE:  # First frame of a run: start the first job, show the current state.
+		_clock_us = 0
+		_post_job()
+		return
+	if _clock_us < TICK_USEC:
+		return
+	if _job == Job.RUNNING:
+		if not _held and _end_us == 0:
+			_late_ticks += 1
+		_held = true
+		_clock_us = TICK_USEC  # The newest state stays on screen; the waiting is not caught up.
+		return
+	_publish()
+	# Whole ticks still owed are dropped, only the part of a tick is kept; after a hold, none.
+	_clock_us = 0 if _held else _clock_us % TICK_USEC
+	_held = false
+	_post_job()
+	_ticked = true
+
+
+## Main thread, job finished: the worker is asleep, so `sim` is readable. Takes the view's copies
+## (packed arrays copy on write, so the worker's next writes leave these alone) and the timings.
+func _publish() -> void:
+	_prev_x = _view.x
+	_prev_y = _view.y
+	_view.x = sim.x.duplicate()
+	_view.y = sim.y.duplicate()
+	_view.target = sim.target.duplicate()
+	var fog_tick: bool = sim.tick % 3 == 0  # 5 Hz, as in the in-frame modes.
+	if fog_tick:
+		_view.seen = sim.seen.duplicate()
+		_view.dirty = sim.dirty.duplicate()
+		_view.dirty_count = sim.dirty_count
+		sim.dirty_count = 0
+	_record(Series.TICK, _job_tick_usec / 1000.0)
+	_record(Series.SLICE, _job_slice_usec / 1000.0 if _job_slice_usec >= 0 else -1.0)
+	_record(Series.LATENCY, (_job_end_us - _post_us) / 1000.0)
+	_record(Series.FOG, _patch_fog() if fog_tick else -1.0)
+	_job = Job.IDLE
+
+
+func _post_job() -> void:
+	_post_us = Time.get_ticks_usec()
+	_job = Job.RUNNING
+	_work.post()
+
+
+## The worker thread: sleeps on `_work`, runs one mock tick (and, every 15th, one flow slice),
+## stamps the end time and posts `_done`. It touches `sim` and the `_job_*` fields only; the two
+## semaphores order every hand-over between the threads.
+func _serve() -> void:
+	while true:
+		_work.wait()
+		if _quit:
+			return
+		_job_tick_usec = sim.step()  # The usec timer inside the tick body.
+		_job_slice_usec = -1
+		if sim.tick % 15 == 0:
+			var elapsed: int = sim.flow_slice(FLOW_CELLS)
+			_job_slice_usec = elapsed if sim.slice_cells == FLOW_CELLS else -1
+		_job_end_us = Time.get_ticks_usec()
+		_done.post()
+
+
+## Starts or stops the worker to match `mode`. The view reads `_shown` while the worker runs and
+## goes back to `sim` when it is joined.
+func _sync_worker() -> void:
+	if mode == Mode.WORKER_TICK:
+		_start_worker()
+	elif _thread != null:
+		_stop_worker()
+		_view = sim
+		_prev_x = sim.x.duplicate()
+		_prev_y = sim.y.duplicate()
+
+
+func _start_worker() -> void:
+	_work = Semaphore.new()  # Fresh tokens: a joined worker may have left one behind.
+	_done = Semaphore.new()
+	_quit = false
+	_job = Job.IDLE
+	_held = false
+	_thread = Thread.new()
+	if _thread.start(_serve) != OK:
+		push_warning("perf probe: the worker thread did not start; staying in the frame")
+		_thread = null
+		mode = Mode.SPRITE_RINGS  # Same picture as the worker mode, the tick back in the frame.
+		return
+	_shown.x = sim.x.duplicate()  # The worker is asleep until the first post: `sim` is ours.
+	_shown.y = sim.y.duplicate()
+	_shown.target = sim.target.duplicate()
+	_shown.seen = sim.seen.duplicate()
+	_shown.dirty = sim.dirty.duplicate()
+	_shown.dirty_count = 0
+	_view = _shown
+	_prev_x = _shown.x
+	_prev_y = _shown.y
+
+
+## Joins the worker: any job in flight finishes first. Safe to call twice or with no worker.
+func _stop_worker() -> void:
+	if _thread != null and _thread.is_started():
+		_quit = true
+		_work.post()
+		_thread.wait_to_finish()
+	_thread = null
+	_job = Job.IDLE
+	_held = false
+
+
+## True while a started worker thread has not been joined.
+func worker_active() -> bool:
+	return _thread != null and _thread.is_started()
 
 
 func _on_pre_draw() -> void:
@@ -230,6 +384,15 @@ func report() -> String:
 		_row("flow slice %d cells (usec timer)" % FLOW_CELLS, Series.SLICE, "ms"),
 		_row("fog patch (bytes + set_data + update, 5 Hz)", Series.FOG, "ms"),
 	]
+	if mode == Mode.WORKER_TICK:  # Rows only this mode has; the rows above keep their format.
+		var ticks: int = _series[Series.TICK].size()
+		lines.append(
+			(
+				"late ticks (job still running at a 15 Hz boundary): %d of %d ticks"
+				% [_late_ticks, ticks]
+			)
+		)
+		lines.append(_row("job post to done (worker wake-up + tick + slice)", Series.LATENCY, "ms"))
 	return "\n".join(lines)
 
 
@@ -252,12 +415,15 @@ func _start_run() -> void:
 		values.clear()
 	_start_us = Time.get_ticks_usec()
 	_end_us = 0
+	_late_ticks = 0
 	_rings_button.visible = false
 	_copy_button.visible = false
 
 
 func _next_mode() -> void:
 	mode = (mode + 1) % MODES.size()
+	if mode == Mode.WORKER_TICK and not OS.has_feature("threads"):
+		mode = Mode.SPRITE_RINGS  # The web preview has no threads: the cycle skips the worker mode.
 	_apply_mode()
 	_start_run()
 
@@ -269,6 +435,7 @@ func _apply_mode() -> void:
 	for i: int in UNITS:
 		var team: int = i % 2 if mode == Mode.ALTERNATING_TINTS else i / SIDE
 		_rigs[i].get_child(1).modulate = Color("2F80ED") if team == 0 else Color("E5484D")
+	_sync_worker()
 
 
 func _copy_report() -> void:
@@ -290,10 +457,10 @@ func _apply_dp() -> void:
 ## Patches the alpha byte of the cells whose sight flipped, uploads the image and returns ms.
 func _patch_fog() -> float:
 	var started: int = Time.get_ticks_usec()
-	for k: int in sim.dirty_count:  # ADR 0010 section 2: patch the alpha bytes, then upload.
-		var cell: int = sim.dirty[k]
-		_fog_bytes[cell * 4 + 3] = 0 if sim.seen[cell] > 0 else 140
-	sim.dirty_count = 0
+	for k: int in _view.dirty_count:  # ADR 0010 section 2: patch the alpha bytes, then upload.
+		var cell: int = _view.dirty[k]
+		_fog_bytes[cell * 4 + 3] = 0 if _view.seen[cell] > 0 else 140
+	_view.dirty_count = 0
 	_fog_image.set_data(COLS, COLS, false, Image.FORMAT_RGBA8, _fog_bytes)
 	_fog_texture.update(_fog_image)
 	return (Time.get_ticks_usec() - started) / 1000.0
@@ -326,7 +493,7 @@ func _paint_bars(canvas: CanvasItem) -> void:
 func _paint_projectiles(canvas: CanvasItem) -> void:
 	var flight: float = (Time.get_ticks_msec() % 1000) / 1000.0
 	for k: int in 60:
-		var to: int = sim.target[k] if sim.target[k] >= 0 else k
+		var to: int = _view.target[k] if _view.target[k] >= 0 else k
 		var at: Vector2 = _rigs[k].position.lerp(
 			_rigs[to].position, fposmod(flight + k * 0.07, 1.0)
 		)
