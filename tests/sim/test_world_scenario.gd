@@ -5,9 +5,10 @@ extends GdUnitTestSuite
 
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
-## A 4 x 3 map of grass '.' and scrub '^' of the standard terrain set, 4000 x 3000 milli. Only
-## foot units may enter scrub (costs 10, 0, 0).
-const SCRUB_MAP: Array[String] = ["....", ".^..", "..^."]
+## A 4 x 3 map, 4000 x 3000 milli, of grass '.', 't' (only tracked units may enter) and 'w' (only
+## wheeled ones). The costs are per class: foot, wheeled, tracked. Foot units may enter neither.
+const CLASS_MAP: Array[String] = [".t..", "w...", "...."]
+const CLASS_COSTS: Dictionary[String, Array] = {".": [10, 10, 10], "t": [0, 0, 12], "w": [0, 12, 0]}
 
 
 ## The tables hold what the shipped unit and weapon files say (ADR 0009 section 1), in the order of
@@ -103,6 +104,7 @@ func test_player_count_is_the_scenario_value_else_the_highest_spawn_owner() -> v
 		[0, [1, 3], 3],
 		[5, [1, 2], 5],
 		[1, [2], 2],
+		[1, [], 1],
 		[-4, [1], 1],
 		[-4, [], 0],
 	]
@@ -117,23 +119,34 @@ func test_player_count_is_the_scenario_value_else_the_highest_spawn_owner() -> v
 
 ## Two draws per unit, x then y, from the world's stream, and none for a spawn without a jitter
 ## (its units stay on the grid points of Phase 1; test_world_setup pins those, and the controls
-## scenario in test_world_v1 leaves the stream fresh). The replay makes the same draws by hand.
+## scenario in test_world_v1 leaves the stream fresh). The map is open grass of 14 x 14 tiles (no
+## MapDef): two corner blocks throw draws off all four edges, and a block with a jitter of 1 pins
+## the smallest jitter. The replay makes the same draws and clamps by hand.
 func test_jitter_draws_x_then_y_for_each_unit_of_a_spawn_with_a_jitter_only() -> void:
 	var scenario: ScenarioDef = ScenarioDef.new()
+	scenario.map_size_tiles = Vector2i(14, 14)
 	var tank: UnitDef = _unit(&"tank", null)
 	scenario.spawns.append(_block(1, tank, 3, Vector2i(2, 2), 2, 1000, 0))
 	scenario.spawns.append(_block(2, tank, 4, Vector2i(10, 5), 2, 1500, 200))
 	scenario.spawns.append(_block(1, tank, 2, Vector2i(5, 12), 1, 1000, 400))
+	scenario.spawns.append(_block(2, tank, 5, Vector2i(7, 7), 1, 0, 1))
+	scenario.spawns.append(_block(1, tank, 20, Vector2i(0, 0), 1, 0, 1400))
+	scenario.spawns.append(_block(2, tank, 20, Vector2i(13, 13), 1, 0, 1400))
 	var world: World = World.from_scenario(scenario, _stream(7))
 	var replay: DetRandom = _stream(7)
 	var drawn: Array[Vector2i] = []
+	var clamped: int = 0
 	for spawn: SpawnDef in scenario.spawns:
 		for k: int in spawn.count:
 			var point: Vector2i = _grid_point(spawn, k)
 			if spawn.jitter > 0:
 				point.x += replay.range_int(-spawn.jitter, spawn.jitter)
 				point.y += replay.range_int(-spawn.jitter, spawn.jitter)
+				var inside: Vector2i = point.clamp(Vector2i.ZERO, Vector2i(13999, 13999))
+				clamped += 1 if inside != point else 0
+				point = inside
 			drawn.append(point)
+	assert_int(clamped).is_greater(10)
 	assert_array(_points(world)).is_equal(drawn)
 	assert_array(world.goal_x).is_equal(world.pos_x)
 	assert_array(world.goal_y).is_equal(world.pos_y)
@@ -142,9 +155,9 @@ func test_jitter_draws_x_then_y_for_each_unit_of_a_spawn_with_a_jitter_only() ->
 
 
 ## The arena (jitter 300 on tile centres): each unit within 300 of its grid point on both axes and
-## on ground its class may enter; the same for the same seed and different for another. A null rng
-## is the stream of seed 0.
-func test_the_arena_jitter_stays_within_300_on_passable_ground_and_follows_the_seed() -> void:
+## moved from it; the same for the same seed and different for another. A null rng is the stream of
+## seed 0. Passable ground is pinned by the clamp test and test_defs_data, not here.
+func test_the_arena_jitter_stays_within_300_and_follows_the_seed() -> void:
 	var scenario: ScenarioDef = load(ARENA_PATH) as ScenarioDef
 	var first: World = World.from_scenario(scenario, _stream(1))
 	var repeat: World = World.from_scenario(scenario, _stream(1))
@@ -160,57 +173,58 @@ func test_the_arena_jitter_stays_within_300_on_passable_ground_and_follows_the_s
 	var points: Array[Vector2i] = _points(first)
 	var row: int = 0
 	var too_far: int = 0
-	var blocked: int = 0
 	var moved: int = 0
 	for spawn: SpawnDef in scenario.spawns:
 		for k: int in spawn.count:
 			var off: Vector2i = points[row] - _grid_point(spawn, k)
-			var cell: int = first.cell_of(points[row].x, points[row].y)
-			var move_class: int = first.type_move_class[first.type_index[row]]
 			too_far += 1 if maxi(absi(off.x), absi(off.y)) > spawn.jitter else 0
-			blocked += 0 if first.is_passable(cell, move_class) else 1
 			moved += 1 if off != Vector2i.ZERO else 0
 			row += 1
-	assert_array([row, too_far, blocked, moved]).is_equal([150, 0, 0, 150])
+	assert_array([row, too_far, moved]).is_equal([150, 0, 150])
 
 
-## A jitter of 1400 from two corners of the 4 x 3 map throws draws off the map and onto scrub, which
-## only foot units may enter. The draws are replayed here: clamped into 0..3999 by 0..2999, kept
-## unless the tile is scrub and the class is not foot, in which case the unit starts on its grid
-## point. Wheeled and tracked units are blocked, the third block of foot units never is.
+## A jitter of 1400 from the corner tile of the 4 x 3 map throws draws off the map and onto ground
+## that only one class may enter. The draws are replayed: clamped into 0..3999 by 0..2999, kept
+## unless the tile costs 0 for the unit's class, else the unit starts on its grid point. Each class
+## is blocked on some tile and free on another, so a fallback that checks another class fails.
 @warning_ignore("integer_division")
 func test_jitter_is_clamped_into_the_map_and_blocked_ground_keeps_the_grid_point() -> void:
+	var terrains: TerrainSetDef = TerrainSetDef.new()
+	for symbol: String in CLASS_COSTS:
+		var terrain: TerrainDef = TerrainDef.new()
+		terrain.symbol = symbol
+		terrain.cost = PackedInt32Array(CLASS_COSTS[symbol])
+		terrains.terrains.append(terrain)
 	var scenario: ScenarioDef = ScenarioDef.new()
 	scenario.map = MapDef.new()
-	scenario.map.rows = PackedStringArray(SCRUB_MAP)
-	scenario.map.terrain = load("res://data/terrain/standard.tres") as TerrainSetDef
+	scenario.map.rows = PackedStringArray(CLASS_MAP)
+	scenario.map.terrain = terrains
 	var classes: Array[int] = [
 		World.MoveClass.TRACKED, World.MoveClass.WHEELED, World.MoveClass.FOOT
 	]
-	var corners: Array[Vector2i] = [Vector2i(0, 0), Vector2i(3, 2), Vector2i(0, 0)]
-	for i: int in 3:
-		var unit: UnitDef = _unit(StringName("class_%d" % classes[i]), null)
-		unit.move_class = classes[i]
-		scenario.spawns.append(_block(1, unit, 40, corners[i], 1, 0, 1400))
+	for move_class: int in classes:
+		var unit: UnitDef = _unit(StringName("class_%d" % move_class), null)
+		unit.move_class = move_class
+		scenario.spawns.append(_block(1, unit, 40, Vector2i.ZERO, 1, 0, 1400))
 	var world: World = World.from_scenario(scenario, _stream(5))
 	var replay: DetRandom = _stream(5)
 	var expected: Array[Vector2i] = []
 	var clamped: int = 0
 	var kept: Array[int] = [0, 0, 0]
 	for i: int in 3:
-		var grid: Vector2i = _grid_point(scenario.spawns[i], 0)
 		for _k: int in 40:
-			var drawn: Vector2i = grid
+			var drawn: Vector2i = Vector2i(500, 500)
 			drawn.x += replay.range_int(-1400, 1400)
 			drawn.y += replay.range_int(-1400, 1400)
-			var at: Vector2i = Vector2i(clampi(drawn.x, 0, 3999), clampi(drawn.y, 0, 2999))
-			var blocked: bool = SCRUB_MAP[at.y / 1000][at.x / 1000] == "^" and classes[i] != 0
+			var at: Vector2i = drawn.clamp(Vector2i.ZERO, Vector2i(3999, 2999))
+			var symbol: String = CLASS_MAP[at.y / 1000][at.x / 1000]
+			var blocked: bool = CLASS_COSTS[symbol][classes[i]] == 0
 			clamped += 1 if at != drawn else 0
 			kept[i] += 1 if blocked else 0
-			expected.append(grid if blocked else at)
+			expected.append(Vector2i(500, 500) if blocked else at)
 	assert_array(_points(world)).is_equal(expected)
 	assert_int(clamped).is_greater(10)
-	assert_array([kept[0] > 0, kept[1] > 0, kept[2]]).is_equal([true, true, 0])
+	assert_int(kept.min()).is_greater(0)
 
 
 ## from_scenario ends with prepare() (also for a null scenario) and drops the SPAWNED events of the

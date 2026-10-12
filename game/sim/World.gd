@@ -192,6 +192,8 @@ var max_projectiles: int = 0
 var max_rows: int = 0
 
 ## Per type. The index is the order of first appearance in the scenario's spawns, then its roster.
+## The ranges named on these tables and the weapon tables hold for data that passes test_defs_data;
+## from_scenario copies the values and clamps only max hp.
 var type_ids: Array[StringName] = []
 var type_speed: PackedInt32Array = PackedInt32Array()
 var type_radius: PackedInt32Array = PackedInt32Array()
@@ -338,7 +340,8 @@ func _copy_rules(rules: RulesDef) -> void:
 ## size; without a map, or with one that fails validate(), the world is open grass of
 ## `map_size_tiles`. Types come from the spawns (one without a unit is skipped), then the roster.
 ## `player_count` is the scenario's value, raised to the highest spawn owner. A spawn with a jitter
-## draws two values per unit (see _jittered). The SPAWNED events of the setup are dropped.
+## draws two values per unit (see _jittered). The SPAWNED events of the setup are dropped. Spawns
+## run before prepare(), so no row is refused here: data keeps their total within `max_rows`.
 @warning_ignore("shadowed_variable")
 static func from_scenario(scenario: ScenarioDef, rng: DetRandom = null) -> World:
 	var world: World = World.new()
@@ -514,7 +517,8 @@ func add_unit(owner: int, type_index: int, x: int, y: int) -> int:
 ## The start point of a unit whose grid point is (x, y) and whose spawn has a `jitter` above 0: the
 ## point moved by -jitter..jitter on each axis (always two draws, x then y), clamped into the map,
 ## and kept only when its tile is passable for `move_class`. Otherwise the unit starts on the grid
-## point, so it is never more than `jitter` away on an axis.
+## point. Data keeps every grid point inside the map and passable (test_defs_data), so the unit is
+## never more than `jitter` away on an axis; a grid point that is not, is not repaired here.
 func _jittered(x: int, y: int, jitter: int, move_class: int) -> Vector2i:
 	var moved_x: int = x + rng.range_int(-jitter, jitter)
 	var moved_y: int = y + rng.range_int(-jitter, jitter)
