@@ -15,8 +15,8 @@ const BUCKET_MASK: int = BUCKETS - 1
 ## best_neighbour goes to the first of them (the lower cell index).
 const DX: Array[int] = [-1, 0, 1, -1, 1, -1, 0, 1]
 const DY: Array[int] = [-1, -1, -1, 0, 0, 1, 1, 1]
-## A step costs the entered cell's terrain cost times STEP_PERCENT / STEP_BASE: 10 / 10
-## orthogonal, 14 / 10 diagonal.
+## A step costs the terrain cost of the cell it labels (the cell a unit leaves) times
+## STEP_PERCENT / STEP_BASE: 10 / 10 orthogonal, 14 / 10 diagonal.
 const STEP_PERCENT: Array[int] = [14, 10, 14, 10, 10, 14, 10, 14]
 const STEP_BASE: int = 10
 ## Every array advance() reads or writes.
@@ -64,7 +64,8 @@ func reserve(cols: int, rows: int) -> void:
 ## (entry `class * cells + cell`, 0 = blocked). The goal is seeded at 0 whatever its terrain
 ## (an attack field may be keyed on ground the class cannot enter). A goal outside the map or a
 ## class `costs` lacks completes at once, all UNREACHED, so a cache never waits on it. The old
-## `cost` keeps serving only for the same key (a re-integration); a new key serves nothing.
+## `cost` keeps serving only for the same key (a re-integration); a new key serves nothing, so a
+## caller that recycles a slot for the same key on another map clears `complete` first.
 @warning_ignore("shadowed_variable", "integer_division")
 func begin(goal_cell: int, move_class: int, costs: PackedByteArray, cols: int, rows: int) -> void:
 	reserve(cols, rows)
@@ -111,7 +112,6 @@ func advance(budget_cells: int) -> int:
 	var before: PackedInt32Array = link_prev
 	var terrain: PackedByteArray = pad_cost
 	var width: int = stride
-	var offsets: Array[int] = [-width - 1, -width, -width + 1, -1, 1, width - 1, width, width + 1]
 	var queued: int = pending
 	var dist: int = level
 	var settled: int = 0
@@ -120,19 +120,20 @@ func advance(budget_cells: int) -> int:
 		if cell == -1:
 			dist += 1
 			continue
+		# A pop moves only the head: the new head keeps a stale link_prev, never read because a
+		# cell of the bucket being drained is never relaxed (old <= dist).
 		head[dist & BUCKET_MASK] = after[cell]
 		queued -= 1
 		settled += 1
 		for k: int in 8:
-			var other: int = cell + offsets[k]
+			var other: int = cell + DY[k] * width + DX[k]
 			var old: int = dist_of[other]
 			if old <= dist or terrain[other] == 0:
 				continue
 			var through: int = dist + terrain[other] * STEP_PERCENT[k] / STEP_BASE
 			if through >= old:
 				continue
-			# A diagonal step needs both orthogonal cells open (no corner cutting). Cells of the
-			# bucket being drained are only popped, so the list heads keep no back link.
+			# A diagonal step needs both orthogonal cells open (no corner cutting).
 			if STEP_PERCENT[k] != STEP_BASE:
 				if terrain[cell + DX[k]] == 0 or terrain[cell + DY[k] * width] == 0:
 					continue

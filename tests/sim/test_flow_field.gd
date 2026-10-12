@@ -75,13 +75,20 @@ func test_a_wall_with_one_gap_leads_through_the_gap() -> void:
 	assert_array(chain).is_equal([36, 28, 29, 30, 31, 22, 13, 5, 6, 7, 8])
 
 
-## A diagonal needs both orthogonal cells open: either one rock blocks it, in the integration
-## and in best_neighbour.
+## A diagonal needs both orthogonal cells open, in the integration and in best_neighbour: with the
+## goal in each corner of a 2x2 map and rock on either of the other two cells, the opposite
+## corner goes round the rock (20), never across (14). Rock on both leaves it unreached.
+@warning_ignore("integer_division")
 func test_no_corner_cutting_past_a_blocked_orthogonal_neighbour() -> void:
-	var rock_south: FlowField = _field(PackedStringArray(["..", "#."]), 0, 0)
-	assert_array([_at(rock_south, 2, 1, 1), rock_south.best_neighbour(3)]).is_equal([20, 1])
-	var rock_east: FlowField = _field(PackedStringArray([".#", ".."]), 0, 0)
-	assert_array([_at(rock_east, 2, 1, 1), rock_east.best_neighbour(3)]).is_equal([20, 2])
+	for goal: int in 4:
+		for rock: int in 4:
+			if rock == goal or rock == 3 - goal:
+				continue
+			var rows: PackedStringArray = ["..", ".."]
+			rows[rock / 2] = rows[rock / 2].erase(rock % 2).insert(rock % 2, "#")
+			var field: FlowField = _field(rows, goal % 2, goal / 2)
+			var opposite: int = _at(field, 2, 1 - goal % 2, 1 - goal / 2)
+			assert_array([opposite, field.best_neighbour(3 - goal)]).is_equal([20, 3 - rock])
 	var both: FlowField = _field(PackedStringArray([".#", "#."]), 0, 0)
 	assert_array([_at(both, 2, 1, 1), both.best_neighbour(3)]).is_equal([UNREACHED, -1])
 
@@ -102,27 +109,30 @@ func test_scrub_is_foot_ground_and_an_enclosed_cell_stays_unreached() -> void:
 	assert_array([_at(enclosed, 5, 4, 4), enclosed.best_neighbour(12)]).is_equal([80, -1])
 
 
-## A step costs the terrain of the cell it labels, times 14 / 10 on a diagonal.
-func test_terrain_cost_weighs_each_step() -> void:
-	assert_int(_at(_field(PackedStringArray([".24."]), 0, 0), 4, 3, 0)).is_equal(70)
-	assert_int(_at(_field(PackedStringArray(["..", ".2"]), 0, 0), 2, 1, 1)).is_equal(28)
-
-
 ## -1 at the goal, outside the map and before completion; a goal outside the map completes at
 ## once. In the last field (2,2) reaches the goal through (2,1) = 5 or (1,2) = 7, both 30: 5 wins.
 func test_best_neighbour_is_minus_one_at_the_ends_and_ties_go_to_the_lower_cell() -> void:
 	var field: FlowField = _field(_open(4, 4), 1, 1)
-	for cell: int in [5, -1, 16]:
+	for cell: int in [5, -1, 16, 17, 1000, -100]:
 		assert_int(field.best_neighbour(cell)).is_equal(-1)
 	assert_int(field.best_neighbour(0)).is_equal(5)
+	var ring: FlowField = _field(_open(3, 3), 1, 1)
+	for cell: int in [0, 1, 2, 3, 5, 6, 7, 8]:
+		assert_int(ring.best_neighbour(cell)).is_equal(4)
 	var pending: FlowField = FlowField.new()
-	pending.begin(5, FOOT, _costs(_open(4, 4)), 4, 4)
+	var open: PackedByteArray = _costs(_open(4, 4))
+	pending.begin(5, FOOT, open, 4, 4)
 	pending.advance(3)
 	assert_array([pending.complete, pending.best_neighbour(0)]).is_equal([false, -1])
-	pending.begin(16, FOOT, _costs(_open(4, 4)), 4, 4)
-	assert_array([pending.complete, pending.advance(BIG), pending.cost.count(UNREACHED)]).is_equal(
-		[true, 0, 36]
-	)
+	# A key that cannot be integrated completes at once, all UNREACHED: after a finished field or
+	# in the middle of one. The goal is off the map, or the class is negative or not in `costs`.
+	for key: Vector2i in [Vector2i(16, FOOT), Vector2i(-1, FOOT), Vector2i(0, 3), Vector2i(0, -1)]:
+		for slice: int in [3, BIG]:
+			pending.begin(5, FOOT, open, 4, 4)
+			pending.advance(slice)
+			pending.begin(key.x, key.y, open, 4, 4)
+			var got: Array = [pending.complete, pending.advance(BIG), pending.cost.count(UNREACHED)]
+			assert_array(got + [pending.best_neighbour(5)]).is_equal([true, 0, 36, -1])
 	var tie: FlowField = _field(PackedStringArray(["...", ".#.", "..."]), 0, 0)
 	assert_array([_at(tie, 3, 2, 1), _at(tie, 3, 1, 2)]).is_equal([30, 30])
 	assert_int(tie.best_neighbour(8)).is_equal(5)
@@ -142,11 +152,15 @@ func test_slices_complete_in_whole_budgets_on_an_open_64_grid() -> void:
 			calls += 1
 		assert_int(calls).is_equal(4096 / budget)
 		assert_array(field.cost).is_equal(whole)
-		assert_int(field.advance(budget)).is_equal(0)
+		for i: int in 2:
+			assert_int(field.advance(budget)).is_equal(0)
+			assert_array(field.cost).is_equal(whole)
+		assert_bool(field.complete).is_true()
 
 
 ## Seeded slow ground and rock: the costs equal a brute force that relaxes every cell until
-## nothing changes, for any slicing; a call never settles more than its budget. Goal (12, 12).
+## nothing changes, for any slicing; a call never settles more than its budget. A step costs the
+## terrain of the cell it labels (the one a unit leaves), times 14 / 10 diagonally. Goal (12, 12).
 @warning_ignore("integer_division")
 func test_costs_match_a_brute_force_on_a_seeded_map_for_any_slicing() -> void:
 	var rng: DetRandom = DetRandom.create(42, 7)
@@ -192,13 +206,14 @@ func test_costs_match_a_brute_force_on_a_seeded_map_for_any_slicing() -> void:
 			assert_int(_at(field, 24, cell % 24, cell / 24)).is_equal(brute[cell])
 
 
-## `cost` keeps the old values until the swap, another key serves nothing until it completes,
-## and neither begin nor the swap allocates: the same arrays (cost and next exchanged), same sizes.
+## `cost` keeps the old values until the swap (cells near the goal change, so a partial write would
+## show), another key serves nothing until it completes, and neither begin nor the swap allocates:
+## the same arrays (cost and next exchanged), same sizes.
 func test_a_reintegration_serves_the_old_cost_until_the_swap_without_allocating() -> void:
 	var field: FlowField = FlowField.new()
 	var rows: PackedStringArray = _open(8, 8)
 	field.begin(0, FOOT, _costs(rows), 8, 8)
-	assert_array([field.complete, field.cost[0]]).is_equal([false, UNREACHED])
+	assert_array([field.complete, field.cost.count(UNREACHED)]).is_equal([false, 100])
 	field.advance(BIG)
 	var old: PackedInt32Array = field.cost.duplicate()
 	var held: Array = []
@@ -207,14 +222,18 @@ func test_a_reintegration_serves_the_old_cost_until_the_swap_without_allocating(
 		held.append(field.get(name))
 		sizes.append(field.get(name).size())
 	assert_array(sizes).is_equal([100, 100, 100, FlowField.BUCKETS, 100, 100])
+	rows[0] = ".2......"
 	rows[3] = "...####."
 	field.begin(0, FOOT, _costs(rows), 8, 8)
 	assert_bool(field.complete).is_true()
-	assert_int(field.advance(10)).is_equal(10)
+	assert_int(field.advance(6)).is_equal(6)
+	assert_array(field.cost).is_equal(old)
+	while field.pending > 3:
+		field.advance(1)
 	assert_array(field.cost).is_equal(old)
 	assert_int(field.advance(BIG)).is_greater(0)
 	assert_array(field.cost).is_equal(_field(rows, 0, 0).cost)
-	assert_int(_at(field, 8, 4, 3)).is_equal(UNREACHED)
+	assert_array([_at(field, 8, 1, 0), _at(field, 8, 4, 3)]).is_equal([20, UNREACHED])
 	var swapped: Dictionary[StringName, StringName] = {&"cost": &"next", &"next": &"cost"}
 	for i: int in sizes.size():
 		var name: StringName = FlowField.STATE_ARRAYS[i]
@@ -224,4 +243,63 @@ func test_a_reintegration_serves_the_old_cost_until_the_swap_without_allocating(
 		field.begin(0, FOOT, _costs(rows), 8, 8)
 		field.advance(BIG)
 		field.begin(key.x, key.y, _costs(rows), 8, 8)
-		assert_array([field.complete, field.cost[10]]).is_equal([false, UNREACHED])
+		field.advance(20)
+		var served: Array = [field.complete, field.cost.count(UNREACHED), field.best_neighbour(10)]
+		assert_array(served).is_equal([false, field.cost.size(), -1])
+
+
+## A recycled slot (P30b's LRU): leaving an integration for another key, class or map size ends in
+## the field a fresh FlowField gives. 4x6 and 6x4 share a padded size, 12x12 shrinks to 4x6.
+@warning_ignore("integer_division")
+func test_a_recycled_field_integrates_like_a_fresh_one() -> void:
+	var field: FlowField = FlowField.new()
+	for dims: Vector2i in [Vector2i(12, 12), Vector2i(4, 6), Vector2i(6, 4), Vector2i(5, 5)]:
+		var rows: PackedStringArray = _open(dims.x, dims.y)
+		rows[1] = "^".repeat(dims.x)
+		var costs: PackedByteArray = _costs(rows)
+		field.begin(0, FOOT, costs, dims.x, dims.y)
+		field.advance(40)
+		for key: Vector2i in [Vector2i(2, FOOT), Vector2i(dims.x * dims.y - 1, TRACKED)]:
+			field.begin(key.x, key.y, costs, dims.x, dims.y)
+			field.advance(BIG)
+			assert_array(field.cost).is_equal(
+				_field(rows, key.x % dims.x, key.x / dims.x, key.y).cost
+			)
+
+
+## The slowest ground costs a step of 255 * 14 / 10 = 357, which the bucket ring must hold.
+@warning_ignore("integer_division")
+func test_the_slowest_ground_stays_inside_the_bucket_ring() -> void:
+	assert_array([UNREACHED, FlowField.BUCKETS > 357]).is_equal([0x3FFFFFFF, true])
+	var slow: PackedByteArray = PackedByteArray([255, 255, 255, 255, 255, 255, 255, 255, 255])
+	var field: FlowField = FlowField.new()
+	field.begin(0, FOOT, slow, 3, 3)
+	field.advance(BIG)
+	var got: Array[int] = []
+	for cell: int in 9:
+		got.append(_at(field, 3, cell % 3, cell / 3))
+	assert_array(got).is_equal([0, 255, 510, 255, 357, 612, 510, 612, 714])
+
+
+## Neighbours are scanned NW to SE and a bucket is last in, first out (the C++ twin copies both):
+## on an open 5x5 map the second cell settled is the south one, so (2,4) is queued and (2,0) not.
+func test_the_second_cell_settled_is_the_last_one_queued() -> void:
+	var field: FlowField = FlowField.new()
+	field.begin(12, FOOT, _costs(_open(5, 5)), 5, 5)
+	field.advance(2)
+	assert_array([field.next[38], field.next[10]]).is_equal([20, UNREACHED])
+
+
+## ADR 0013 section 2: a member is an int, a bool or a Packed array listed in STATE_ARRAYS, so the
+## kernel's lockstep test sees all of the state advance() changes.
+func test_the_state_is_ints_bools_and_the_listed_packed_arrays() -> void:
+	var packed: Array[StringName] = []
+	for info: Dictionary in FlowField.new().get_property_list():
+		if (int(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) == 0:
+			continue
+		var kind: int = int(info["type"])
+		if kind >= TYPE_PACKED_BYTE_ARRAY and kind <= TYPE_PACKED_VECTOR4_ARRAY:
+			packed.append(StringName(info["name"]))
+		else:
+			assert_int(kind).is_in([TYPE_INT, TYPE_BOOL])
+	assert_array(packed).contains_exactly_in_any_order(FlowField.STATE_ARRAYS)
