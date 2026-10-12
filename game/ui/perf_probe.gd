@@ -35,16 +35,19 @@ const MODES: Array[String] = [
 var run_seconds: int = 60
 var mode: int = Mode.SPRITE_RINGS  ## Code rings are the Phase 1 ones; the tint order is by team.
 var clipboard_sink: Callable = DisplayServer.clipboard_set
-var sim: PerfProbeTick = PerfProbeTick.new()  ## The worker mode hands it to the worker.
+## The worker mode hands it to the worker. Swap it before the node enters the tree, not after.
+var sim: PerfProbeTick = PerfProbeTick.new()
 
 var _rigs: Array[Node2D] = []
 var _rings: Array[Node2D] = []  ## Per selected unit: a sprite ring, then a code ring.
 var _layers: Array[Painted] = []
 var _series: Array[PackedFloat64Array] = []
-var _view: PerfProbeTick = sim  ## What the frame reads: `sim`, or `_shown` in the worker mode.
+## What the frame reads: `sim`, or `_shown` in the worker mode. Bound by `_follow_sim()` in
+## `_ready`, after any swap of `sim`, so it is never a stale object.
+var _view: PerfProbeTick = null
 var _shown: PerfProbeTick = PerfProbeTick.new()  ## The worker mode's copies, taken at publish.
-var _prev_x: PackedInt32Array = sim.x.duplicate()
-var _prev_y: PackedInt32Array = sim.y.duplicate()
+var _prev_x: PackedInt32Array = PackedInt32Array()
+var _prev_y: PackedInt32Array = PackedInt32Array()
 var _atlas: ImageTexture = null
 var _fog_image: Image = Image.create_empty(COLS, COLS, false, Image.FORMAT_RGBA8)
 var _fog_texture: ImageTexture = null
@@ -64,8 +67,9 @@ var _work: Semaphore = Semaphore.new()  ## The main thread posts a job; the work
 var _done: Semaphore = Semaphore.new()  ## The worker posts when the job is finished.
 var _quit: bool = false  ## Set before the last `_work.post()`; the worker then returns.
 var _job: int = Job.IDLE
-var _held: bool = false  ## A late tick is waiting for its job to finish.
-var _late_ticks: int = 0  ## Boundaries reached with the previous job still running.
+var _held: bool = false  ## A held tick is waiting for its job to finish.
+var _held_ticks: int = 0  ## Boundaries reached with the job running, once per held job.
+var _late_ticks: int = 0  ## Jobs whose post to done exceeded `TICK_USEC`, counted at publish.
 var _post_us: int = 0  ## Main thread, at the post; read at publish.
 var _job_tick_usec: int = 0  ## Worker, from `sim.step()`; read at publish, after `_done`.
 var _job_slice_usec: int = -1  ## Worker; -1 when the job ran no whole 512-cell slice.
@@ -109,6 +113,7 @@ func _exit_tree() -> void:
 
 
 func _ready() -> void:
+	_follow_sim()  # After any swap of `sim`, before the mode decides who reads what.
 	_viewport = get_viewport().get_viewport_rid()
 	RenderingServer.viewport_set_measure_render_time(_viewport, true)
 	for _s: int in Series.size():
@@ -222,8 +227,9 @@ func _tick_in_frame() -> void:
 
 
 ## The worker mode, one tick ahead (ADR 0012 section 1). At a boundary the main thread publishes
-## the finished job, then posts the next one. A boundary reached while the job still runs is a late
-## tick: nothing is published or posted, the view keeps the newest state, and the frame goes on.
+## the finished job, then posts the next one. A boundary reached while the job still runs is a held
+## tick: nothing is published or posted, the view keeps the newest state, and the frame goes on. A
+## hold is not a late tick: a main-thread hitch holds a quick job too. `_publish` counts late ticks.
 func _tick_worker() -> void:
 	if _job == Job.RUNNING and _done.try_wait():
 		_job = Job.FINISHED
@@ -235,7 +241,7 @@ func _tick_worker() -> void:
 		return
 	if _job == Job.RUNNING:
 		if not _held and _end_us == 0:
-			_late_ticks += 1
+			_held_ticks += 1
 		_held = true
 		_clock_us = TICK_USEC  # The newest state stays on screen; the waiting is not caught up.
 		return
@@ -249,6 +255,8 @@ func _tick_worker() -> void:
 
 ## Main thread, job finished: the worker is asleep, so `sim` is readable. Takes the view's copies
 ## (packed arrays copy on write, so the worker's next writes leave these alone) and the timings.
+## A late tick (ADR 0012 section 1) is a job whose post to done exceeds the period: the worker
+## itself was slow, whatever the main thread was doing.
 func _publish() -> void:
 	_prev_x = _view.x
 	_prev_y = _view.y
@@ -264,6 +272,8 @@ func _publish() -> void:
 	_record(Series.TICK, _job_tick_usec / 1000.0)
 	_record(Series.SLICE, _job_slice_usec / 1000.0 if _job_slice_usec >= 0 else -1.0)
 	_record(Series.LATENCY, (_job_end_us - _post_us) / 1000.0)
+	if _end_us == 0 and _job_end_us - _post_us > TICK_USEC:
+		_late_ticks += 1
 	_record(Series.FOG, _patch_fog() if fog_tick else -1.0)
 	_job = Job.IDLE
 
@@ -298,9 +308,14 @@ func _sync_worker() -> void:
 		_start_worker()
 	elif _thread != null:
 		_stop_worker()
-		_view = sim
-		_prev_x = sim.x.duplicate()
-		_prev_y = sim.y.duplicate()
+		_follow_sim()
+
+
+## The frame reads `sim` again, and interpolates from where `sim` stands. Only with no worker.
+func _follow_sim() -> void:
+	_view = sim
+	_prev_x = sim.x.duplicate()
+	_prev_y = sim.y.duplicate()
 
 
 func _start_worker() -> void:
@@ -388,8 +403,14 @@ func report() -> String:
 		var ticks: int = _series[Series.TICK].size()
 		lines.append(
 			(
-				"late ticks (job still running at a 15 Hz boundary): %d of %d ticks"
-				% [_late_ticks, ticks]
+				"late ticks (job post to done above %.1f ms): %d of %d ticks"
+				% [TICK_USEC / 1000.0, _late_ticks, ticks]
+			)
+		)
+		lines.append(
+			(
+				"held ticks (boundary reached with the job running): %d of %d ticks"
+				% [_held_ticks, ticks]
 			)
 		)
 		lines.append(_row("job post to done (worker wake-up + tick + slice)", Series.LATENCY, "ms"))
@@ -415,6 +436,7 @@ func _start_run() -> void:
 		values.clear()
 	_start_us = Time.get_ticks_usec()
 	_end_us = 0
+	_held_ticks = 0
 	_late_ticks = 0
 	_rings_button.visible = false
 	_copy_button.visible = false

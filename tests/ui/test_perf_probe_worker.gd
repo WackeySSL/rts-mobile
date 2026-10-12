@@ -2,13 +2,16 @@ extends GdUnitTestSuite
 ## The perf probe's worker mode (P26s, ADR 0012 section 1): the fourth "Next mode" runs each mock
 ## tick on one dedicated Thread. Proved here without a phone: the mode is reachable from the
 ## button, the worker plays the same ticks as the frame would (the view's copies do not change the
-## sim), a job that outlasts the period is counted as a late tick without stopping the frames, and
-## the thread is joined when the scene leaves the tree with Engine.max_fps restored. Timing is never
-## asserted, except that the frames keep coming while a 600 ms job runs.
+## sim), a job that outlasts the period is counted as a late tick without stopping the frames, a
+## main-thread hitch is a held tick and never a late one (ADR 0012 section 1), a swapped `sim`
+## drives the view in the in-frame modes, and the thread is joined when the scene leaves the tree
+## with Engine.max_fps restored. Timing is never asserted, except that the frames keep coming while
+## a 600 ms job runs.
 
 const SCENE: String = "res://scenes/dev/perf_probe.tscn"
 const WORKER_MODE: int = 3
-const LATE_ROW: String = "late ticks (job still running at a 15 Hz boundary): "
+const LATE_ROW: String = "late ticks (job post to done above 66.7 ms): "
+const HELD_ROW: String = "held ticks (boundary reached with the job running): "
 
 
 ## A tick that outlasts several periods (66.7 ms each) once `delay_msec` is set.
@@ -50,6 +53,7 @@ func test_the_worker_plays_the_same_ticks_and_the_card_has_the_new_rows() -> voi
 	var report: String = probe.report()
 	assert_str(report).contains("PERF PROBE P26s | sprite rings, worker tick | running")
 	assert_str(report).contains(LATE_ROW)
+	assert_str(report).contains(HELD_ROW)
 	assert_str(report).contains("job post to done (worker wake-up + tick + slice): p95 ")
 	assert_str(report).contains("mock tick (15 Hz, usec timer): p95 ")  # The row keeps its label.
 	assert_int(_ticks_published(report)).is_greater_equal(8)
@@ -77,6 +81,7 @@ func test_a_job_that_outlasts_the_period_is_a_late_tick_and_does_not_block_the_f
 	await await_millis(2000)
 	var report: String = probe.report()
 	assert_int(_late_ticks(report)).is_greater_equal(2)  # One per job, three jobs in 2 s.
+	assert_int(_held_ticks(report)).is_greater_equal(2)  # Each of those jobs held a boundary.
 	assert_int(_ticks_published(report)).is_greater_equal(2)  # Late jobs are still published.
 	# A main thread that waited for a job would stand still for about 530 ms, and manage about 40
 	# frames in the 2 s where 60 fps gives 120.
@@ -92,6 +97,48 @@ func test_a_quick_job_is_never_late() -> void:
 	_press_next_mode(probe, WORKER_MODE)
 	await await_millis(900)
 	assert_int(_late_ticks(probe.report())).is_equal(0)
+	remove_child(probe)
+	probe.free()
+
+
+func test_a_main_thread_hitch_holds_a_quick_job_but_does_not_make_it_late() -> void:
+	var slow: SlowTick = SlowTick.new()
+	slow.delay_msec = 40  # Under the 66.7 ms period, and still running one frame after its post.
+	var probe: Node2D = _open(slow)
+	probe.set_process(false)  # The test plays the frames itself, at the lengths it picks.
+	_press_next_mode(probe, WORKER_MODE)
+	_frame(probe, 16)  # Posts the first job.
+	OS.delay_msec(100)  # The job is done long before the next frame.
+	# A 128 ms frame publishes it and keeps 61 ms of the next period owed, so the next frame reaches
+	# a boundary one frame after the second job's post, with that job still running: a held tick.
+	_frame(probe, 128)
+	_frame(probe, 8)
+	OS.delay_msec(100)
+	_frame(probe, 16)  # The second job is published after its hold.
+	var report: String = probe.report()
+	assert_int(_ticks_published(report)).is_equal(2)
+	assert_int(_held_ticks(report)).is_equal(1)
+	assert_int(_late_ticks(report)).is_equal(0)  # No job came near the period.
+	remove_child(probe)
+	probe.free()
+
+
+func test_a_swapped_sim_drives_the_view_in_the_in_frame_modes() -> void:
+	var swapped: PerfProbeTick = PerfProbeTick.new()
+	var probe: Node2D = _open(swapped)
+	probe.set_process(false)
+	var from_x: PackedInt32Array = swapped.x.duplicate()
+	var from_y: PackedInt32Array = swapped.y.duplicate()
+	_frame(probe, 100)  # One tick of `swapped`, and half a tick over: the rigs sit half way.
+	assert_int(swapped.tick).is_equal(4)  # Three warm-up ticks and the one played.
+	var moved: int = 0
+	for i: int in PerfProbeTick.UNITS:
+		var from: Vector2 = ViewScale.milli_to_px_vec(from_x[i], from_y[i])
+		var to: Vector2 = ViewScale.milli_to_px_vec(swapped.x[i], swapped.y[i])
+		if from.distance_to(to) > 4.0:  # A stale view would leave this rig on `from`.
+			moved += 1
+			assert_float(probe._rigs[i].position.distance_to(from.lerp(to, 0.5))).is_less(0.5)
+	assert_int(moved).is_greater(20)
 	remove_child(probe)
 	probe.free()
 
@@ -112,12 +159,22 @@ func _press_next_mode(probe: Node2D, times: int) -> void:
 		button.pressed.emit()
 
 
+## One frame of `ms` milliseconds, played by hand: the probe measures a frame from the last one.
+func _frame(probe: Node2D, ms: int) -> void:
+	probe._last_us = Time.get_ticks_usec() - ms * 1000
+	probe._process(0.0)
+
+
 func _late_ticks(report: String) -> int:
-	return _number(report, "late ticks \\(job still running at a 15 Hz boundary\\): (\\d+) of")
+	return _number(report, "late ticks \\(job post to done above [\\d.]+ ms\\): (\\d+) of")
+
+
+func _held_ticks(report: String) -> int:
+	return _number(report, "held ticks \\(boundary reached with the job running\\): (\\d+) of")
 
 
 func _ticks_published(report: String) -> int:
-	return _number(report, "boundary\\): \\d+ of (\\d+) ticks")
+	return _number(report, "held ticks \\(boundary reached with the job running\\): \\d+ of (\\d+)")
 
 
 ## Whole milliseconds of the slowest frame.
