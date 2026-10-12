@@ -76,11 +76,35 @@ func test_size_tiles_is_width_by_height_of_the_first_row_and_zero_without_rows()
 	assert_that(map.size_tiles()).is_equal(Vector2i(1, 4))
 
 
-func test_validate_is_empty_for_a_valid_map_and_skips_a_null_terrain_entry() -> void:
+func test_validate_is_empty_for_a_valid_map_and_reports_a_null_terrain_by_index() -> void:
 	var map: MapDef = _map(["..#", "~.:"])
 	assert_array(map.validate()).is_empty()
 	map.terrain.terrains.append(null)
-	assert_array(map.validate()).is_empty()
+	map.terrain.terrains.insert(1, null)
+	assert_array(map.validate()).is_equal(["terrain 1 is null", "terrain 5 is null"])
+
+
+func test_validate_reports_a_symbol_that_an_earlier_terrain_already_uses() -> void:
+	var map: MapDef = _map(["..#", "~.:"])
+	map.terrain.terrains.append(_terrain("#"))
+	assert_array(map.validate()).is_equal(["terrain 4 repeats symbol '#'"])
+
+
+func test_validate_reports_a_terrain_without_one_cost_per_move_class() -> void:
+	var map: MapDef = _map(["..#", "~.:"])
+	map.terrain.terrains[0].cost = PackedInt32Array([10])
+	map.terrain.terrains[2].cost = PackedInt32Array([10, 10, 10, 10])
+	map.terrain.terrains[3].cost = PackedInt32Array()
+	(
+		assert_array(map.validate())
+		. is_equal(
+			[
+				"terrain 0 has 1 costs, expected 3",
+				"terrain 2 has 4 costs, expected 3",
+				"terrain 3 has 0 costs, expected 3",
+			]
+		)
+	)
 
 
 func test_validate_reports_every_row_whose_length_differs_from_the_first() -> void:
@@ -88,19 +112,29 @@ func test_validate_reports_every_row_whose_length_differs_from_the_first() -> vo
 	assert_array(map.validate()).is_equal(
 		["row 1 has 2 tiles, expected 3", "row 2 has 4 tiles, expected 3"]
 	)
+	assert_array(_map(["...", "", "..."]).validate()).is_equal(["row 1 has 0 tiles, expected 3"])
 
 
 func test_validate_reports_the_first_unknown_symbol_of_each_row() -> void:
-	var map: MapDef = _map([".#.", ".x.", "?.x"])
-	assert_array(map.validate()).is_equal(
-		["row 1 column 1: unknown symbol 'x'", "row 2 column 0: unknown symbol '?'"]
+	var map: MapDef = _map(["..?", ".x.", "?.x"])
+	(
+		assert_array(map.validate())
+		. is_equal(
+			[
+				"row 0 column 2: unknown symbol '?'",
+				"row 1 column 1: unknown symbol 'x'",
+				"row 2 column 0: unknown symbol '?'",
+			]
+		)
 	)
 
 
-func test_validate_lists_a_short_row_and_its_unknown_symbol_separately() -> void:
-	var map: MapDef = _map(["...", "x"])
-	assert_array(map.validate()).is_equal(
+func test_validate_lists_a_wrong_length_row_and_its_unknown_symbol_separately() -> void:
+	assert_array(_map(["...", "x"]).validate()).is_equal(
 		["row 1 has 1 tiles, expected 3", "row 1 column 0: unknown symbol 'x'"]
+	)
+	assert_array(_map(["...", "...x"]).validate()).is_equal(
+		["row 1 has 4 tiles, expected 3", "row 1 column 3: unknown symbol 'x'"]
 	)
 
 
@@ -108,6 +142,10 @@ func test_validate_reports_a_missing_terrain_set_once_and_an_empty_map() -> void
 	var map: MapDef = _map(["...", "..."])
 	map.terrain = null
 	assert_array(map.validate()).is_equal(["map has no terrain set"])
+	map.rows = PackedStringArray(["...", ".."])
+	assert_array(map.validate()).is_equal(
+		["map has no terrain set", "row 1 has 2 tiles, expected 3"]
+	)
 	map.rows = PackedStringArray()
 	assert_array(map.validate()).is_equal(["map has no tiles", "map has no terrain set"])
 	map.rows = PackedStringArray([""])
@@ -134,12 +172,46 @@ func test_order_def_defaults_to_an_attack_move_at_tick_0_for_no_player() -> void
 	assert_that(order.target_tile).is_equal(Vector2i.ZERO)
 
 
+func test_every_def_field_is_exported_so_a_resave_of_a_data_file_keeps_it() -> void:
+	var defs: Array[Resource] = [
+		UnitDef.new(),
+		WeaponDef.new(),
+		TerrainDef.new(),
+		TerrainSetDef.new(),
+		MapDef.new(),
+		OrderDef.new(),
+		ScenarioDef.new(),
+		SpawnDef.new(),
+		RulesDef.new(),
+	]
+	for def: Resource in defs:
+		for info: Dictionary in def.get_property_list():
+			if (int(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0:
+				var stored: int = int(info["usage"]) & PROPERTY_USAGE_STORAGE
+				assert_int(stored).override_failure_message(String(info["name"])).is_not_equal(0)
+
+
+func test_resource_exports_keep_their_declared_types() -> void:
+	var array_of: String = "%d/%d:" % [TYPE_OBJECT, PROPERTY_HINT_RESOURCE_TYPE]
+	assert_str(_hint_string(UnitDef.new(), "weapon")).is_equal("WeaponDef")
+	assert_str(_hint_string(MapDef.new(), "terrain")).is_equal("TerrainSetDef")
+	assert_str(_hint_string(ScenarioDef.new(), "map")).is_equal("MapDef")
+	assert_str(_hint_string(ScenarioDef.new(), "rules")).is_equal("RulesDef")
+	assert_str(_hint_string(TerrainSetDef.new(), "terrains")).is_equal(array_of + "TerrainDef")
+	assert_str(_hint_string(ScenarioDef.new(), "orders")).is_equal(array_of + "OrderDef")
+	assert_str(_hint_string(ScenarioDef.new(), "roster")).is_equal(array_of + "UnitDef")
+
+
+func _terrain(symbol: String) -> TerrainDef:
+	var terrain: TerrainDef = TerrainDef.new()
+	terrain.symbol = symbol
+	return terrain
+
+
 func _map(rows: Array[String]) -> MapDef:
 	var terrains: TerrainSetDef = TerrainSetDef.new()
 	for symbol: String in [".", ":", "#", "~"]:
-		var terrain: TerrainDef = TerrainDef.new()
-		terrain.symbol = symbol
-		terrains.terrains.append(terrain)
+		terrains.terrains.append(_terrain(symbol))
 	var map: MapDef = MapDef.new()
 	map.rows = PackedStringArray(rows)
 	map.terrain = terrains
@@ -150,5 +222,12 @@ func _enum_hint(object: Object, property: String) -> String:
 	for info: Dictionary in object.get_property_list():
 		if info["name"] == property:
 			assert_int(int(info["hint"])).is_equal(PROPERTY_HINT_ENUM)
+			return String(info["hint_string"])
+	return "no such property: " + property
+
+
+func _hint_string(object: Object, property: String) -> String:
+	for info: Dictionary in object.get_property_list():
+		if info["name"] == property:
 			return String(info["hint_string"])
 	return "no such property: " + property

@@ -4,7 +4,8 @@ extends Resource
 ## milli-tiles per tick and times are ticks. The sim copies these into World at match start.
 
 @export var id: StringName = &""
-@export var range: int = 0
+## Named `range` by the contract, which shadows the built-in function in this class only.
+@warning_ignore("shadowed_global_identifier") @export var range: int = 0
 @export var min_range: int = 0
 @export var damage: int = 0
 @export var cooldown_ticks: int = 1
