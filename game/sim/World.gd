@@ -4,8 +4,8 @@ extends RefCounted
 ## milli-tiles (1 tile = 1000). Units are rows in the per-unit arrays, ascending by id. Ids come
 ## from a counter that starts at 1 and are never reused. Phase 1 never removes a unit, so an id
 ## is found by binary search. The view and input read a World and never write to it. Every array
-## and scalar is declared here and listed in one shape list (ADR 0007 section 2); the map grid,
-## the helper objects and the hash follow in later World changes.
+## and scalar is declared here and listed in one shape list (ADR 0007 section 2); the helper
+## objects and the hash follow in later World changes.
 
 enum Order { IDLE = 0, ATTACK_MOVE = 1, MOVE = 2, ATTACK = 3 }
 enum Armour { INFANTRY = 0, LIGHT = 1, HEAVY = 2, BUILDING = 3 }
@@ -42,6 +42,9 @@ const TYPE_PAD_ACQUIRE: int = 0
 const TYPE_PAD_WEAPON: int = -1
 ## For the four Phase 1 tables (speed, radius, selection radius, spacing).
 const TYPE_PAD_V0: int = 0
+## The cost of open grass for every class, 10 = normal ground (ADR 0008 section 1). It equals the
+## default TerrainDef.cost, which a test pins: prepare() may run in the tick and reads no Resource.
+const GRASS_COST: int = 10
 
 ## The per-unit columns, in this order.
 const ROW_ARRAYS: Array[StringName] = [
@@ -101,8 +104,9 @@ const PROJECTILE_ARRAYS: Array[StringName] = [
 	&"proj_ticks",
 	&"proj_free",
 ]
-## The tile grid: the terrain index per cell, and the move cost per class and cell.
-const MAP_ARRAYS: Array[StringName] = [&"terrain", &"move_cost"]
+## The tile grid: the terrain index per cell, the move cost per class and cell, and the cost per
+## terrain and class that set_terrain copies into it.
+const MAP_ARRAYS: Array[StringName] = [&"terrain", &"move_cost", &"terrain_cost"]
 ## Per-row working space, max_rows entries each, rewritten every tick. Not state.
 const SCRATCH_ARRAYS: Array[StringName] = [&"intent_x", &"intent_y", &"push_x", &"push_y"]
 ## Rewritten every tick, neither hashed nor compacted.
@@ -217,7 +221,8 @@ var weapon_projectile_speed: PackedInt32Array = PackedInt32Array()
 ## Percents 0..200, four per weapon: entry `weapon * 4 + Armour`.
 var weapon_vs_armour: PackedInt32Array = PackedInt32Array()
 
-## The tile grid. Columns and rows are tiles, 0 until a map is loaded, at most 64 in Phase 2.
+## The tile grid. Columns and rows are tiles, 0 until a map is loaded or prepare() derives open
+## grass, at most 64 in Phase 2.
 var map_cols: int = 0
 var map_rows: int = 0
 ## Bumped by every passability change, 0 or more.
@@ -228,6 +233,9 @@ var terrain_ids: Array[StringName] = []
 var terrain: PackedByteArray = PackedByteArray()
 ## Entry `class * cells + cell`, 3 classes: 0 = blocked, 10 = normal, up to 40 (ADR 0008).
 var move_cost: PackedByteArray = PackedByteArray()
+## Entry `terrain * 3 + class` for each terrain index, the numbers move_cost holds: 0 = blocked,
+## up to 40. Open grass has the one terrain 0.
+var terrain_cost: PackedByteArray = PackedByteArray()
 
 ## Per unit, ascending by id.
 var unit_id: PackedInt32Array = PackedInt32Array()
@@ -316,7 +324,9 @@ func _init() -> void:
 
 
 ## Reads the scenario and its unit definitions once. A null scenario gives an empty world.
-## A spawn without a unit is skipped. A null `rng` keeps the default stream.
+## A spawn without a unit is skipped. A null `rng` keeps the default stream. The map grid comes
+## from `scenario.map`, which also sets the map size. Without a map, or with one that fails
+## validate(), the world is open grass of `map_size_tiles`.
 @warning_ignore("shadowed_variable")
 static func from_scenario(scenario: ScenarioDef, rng: DetRandom = null) -> World:
 	var world: World = World.new()
@@ -324,8 +334,13 @@ static func from_scenario(scenario: ScenarioDef, rng: DetRandom = null) -> World
 		world.rng = rng
 	if scenario == null:
 		return world
-	world.map_w = scenario.map_size_tiles.x * MILLI_PER_TILE
-	world.map_h = scenario.map_size_tiles.y * MILLI_PER_TILE
+	var map: MapDef = scenario.map
+	if map != null and map.validate().is_empty():
+		world._load_map(map)
+	else:
+		world.map_w = scenario.map_size_tiles.x * MILLI_PER_TILE
+		world.map_h = scenario.map_size_tiles.y * MILLI_PER_TILE
+		world._derive_open_grass()
 	for spawn: SpawnDef in scenario.spawns:
 		if spawn == null or spawn.unit == null:
 			continue
@@ -361,7 +376,8 @@ func index_of(id: int) -> int:
 ## Gives every type table one entry per type_ids entry, with the TYPE_PAD_* values (a name is the
 ## capitalised type id), because Phase 1 code appends only the four Phase 1 tables. It also sizes
 ## the scratch arrays to max_rows, stats to the Stat count and the projectile slots to
-## max_projectiles. Idempotent. Types are appended before the first step.
+## max_projectiles, and derives open grass from map_w and map_h when no map is loaded.
+## Idempotent. Types are appended before the first step.
 func prepare() -> void:
 	var types: int = type_ids.size()
 	_pad(type_speed, types, TYPE_PAD_V0)
@@ -386,6 +402,45 @@ func prepare() -> void:
 	stats.resize(Stat.size())
 	if proj_id.size() != max_projectiles:
 		_reset_projectile_slots()
+	if map_cols == 0:
+		_derive_open_grass()
+
+
+## The cell holding the point (x, y) in milli-tiles: `row * map_cols + column`. A point outside
+## the map gives the nearest edge cell, so the result is never outside the map (negative values
+## divide toward zero and clamp to 0). With no map it is 0.
+@warning_ignore("integer_division")
+func cell_of(x: int, y: int) -> int:
+	var column: int = clampi(x / MILLI_PER_TILE, 0, maxi(map_cols - 1, 0))
+	var row: int = clampi(y / MILLI_PER_TILE, 0, maxi(map_rows - 1, 0))
+	return row * map_cols + column
+
+
+## Whether a unit of `move_class` may stand on `cell`: its cost there is above 0. True while no
+## map is loaded, false for a cell outside the map or a class that does not exist.
+func is_passable(cell: int, move_class: int) -> bool:
+	if map_cols == 0:
+		return true
+	var cells: int = map_cols * map_rows
+	if cell < 0 or cell >= cells or move_class < 0 or move_class >= MoveClass.size():
+		return false
+	return move_cost[move_class * cells + cell] > 0
+
+
+## Makes `cell` the terrain `terrain_index` (an index into terrain_ids) with that terrain's cost
+## for each class, and bumps map_version, also when the terrain is the same. A cell outside the
+## map or an unknown terrain index changes nothing.
+func set_terrain(cell: int, terrain_index: int) -> void:
+	var classes: int = MoveClass.size()
+	var cells: int = map_cols * map_rows
+	if cell < 0 or cell >= cells or terrain_index < 0:
+		return
+	if (terrain_index + 1) * classes > terrain_cost.size():
+		return
+	terrain[cell] = terrain_index
+	for move_class: int in classes:
+		move_cost[move_class * cells + cell] = terrain_cost[terrain_index * classes + move_class]
+	map_version += 1
 
 
 ## Appends an idle unit at (x, y) at its type's max hp (at least 1; 1 for a type with no entry)
@@ -440,6 +495,56 @@ func _reset_projectile_slots() -> void:
 	for i: int in slots:
 		stack[i] = slots - 1 - i
 	proj_free_top = slots
+
+
+## Open grass over map_w x map_h rounded up to whole tiles (ADR 0007 section 2): terrain 0 on
+## every cell, normal ground for every class. A size of 0 leaves no map.
+@warning_ignore("integer_division")
+func _derive_open_grass() -> void:
+	map_cols = maxi(map_w + MILLI_PER_TILE - 1, 0) / MILLI_PER_TILE
+	map_rows = maxi(map_h + MILLI_PER_TILE - 1, 0) / MILLI_PER_TILE
+	var cells: int = map_cols * map_rows
+	var classes: int = MoveClass.size()
+	terrain.resize(cells)
+	move_cost.resize(classes * cells)
+	move_cost.fill(GRASS_COST)
+	terrain_cost.resize(classes)
+	terrain_cost.fill(GRASS_COST)
+
+
+## Copies a map that validate() accepted: its size, the terrain index of each tile and the cost
+## per class of each terrain and tile. The terrain index is the position in the terrain set.
+func _load_map(map: MapDef) -> void:
+	var defs: Array[TerrainDef] = map.terrain.terrains
+	var rows: PackedStringArray = map.rows
+	var classes: int = MoveClass.size()
+	var index_of_symbol: Dictionary[int, int] = {}
+	terrain_cost.resize(defs.size() * classes)
+	for index: int in defs.size():
+		var def: TerrainDef = defs[index]
+		if len(def.symbol) == 1:
+			index_of_symbol[def.symbol.unicode_at(0)] = index
+		for move_class: int in classes:
+			terrain_cost[index * classes + move_class] = def.cost[move_class]
+	var size: Vector2i = map.size_tiles()
+	map_cols = size.x
+	map_rows = size.y
+	map_w = size.x * MILLI_PER_TILE
+	map_h = size.y * MILLI_PER_TILE
+	var cells: int = size.x * size.y
+	terrain.resize(cells)
+	move_cost.resize(classes * cells)
+	var kind_at: PackedByteArray = terrain
+	var costs: PackedByteArray = terrain_cost
+	var cost_at: PackedByteArray = move_cost
+	for ty: int in size.y:
+		var line: String = rows[ty]
+		for tx: int in size.x:
+			var cell: int = ty * size.x + tx
+			var kind: int = index_of_symbol[line.unicode_at(tx)]
+			kind_at[cell] = kind
+			for move_class: int in classes:
+				cost_at[move_class * cells + cell] = costs[kind * classes + move_class]
 
 
 ## Appends `value` to `table` until it has `size` entries.
