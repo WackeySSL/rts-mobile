@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## Phase 2 data files (plan P27b): the starting numbers of ADRs 0007-0010 as literals, the rules
 ## every unit file keeps, and the link from every scenario to data/rules.tres. The perf arena map
-## and scenario are a separate data PR (P27c) and get their cases there.
+## and scenario (P27c, ADR 0011 section 4) are pinned here too.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const UNITS_DIR: String = "res://data/units"
@@ -9,6 +9,15 @@ const SCENARIOS_DIR: String = "res://data/scenarios"
 const WEAPONS_DIR: String = "res://data/weapons"
 const RULES_PATH: String = "res://data/rules.tres"
 const TERRAIN_PATH: String = "res://data/terrain/standard.tres"
+const ARENA_MAP_PATH: String = "res://data/maps/perf_arena.tres"
+const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
+## The 26 x 15 tile window of the fight, centred on tile (32, 32): columns 19..44, rows 25..39.
+const WINDOW_TILES: Rect2i = Rect2i(19, 25, 26, 15)
+## The same window in milli-tiles, for unit positions. It lies inside the window whether
+## "centred on tile (32, 32)" means the corner or the centre of that tile.
+const WINDOW_MIN: Vector2i = Vector2i(19500, 25000)
+const WINDOW_MAX: Vector2i = Vector2i(45000, 39500)
+const TRACKED: int = 2
 
 
 func test_unit_files_hold_the_adr_0009_starting_stats() -> void:
@@ -146,13 +155,135 @@ func test_every_rule_accepts_its_edge_values_and_reports_the_next_ones() -> void
 
 func test_every_scenario_file_sets_the_shared_rules_resource() -> void:
 	var files: Array[String] = FileScan.list_files(SCENARIOS_DIR, ".tres")
-	assert_array(files).contains(["res://data/scenarios/controls_test.tres"])
+	assert_array(files).contains(["res://data/scenarios/controls_test.tres", ARENA_PATH])
 	for path: String in files:
 		var scenario: ScenarioDef = load(path)
 		var rules_path: String = (
 			"no rules" if scenario.rules == null else scenario.rules.resource_path
 		)
 		assert_str(rules_path).override_failure_message(path).is_equal(RULES_PATH)
+
+
+func test_the_perf_arena_map_is_64_by_64_with_a_ridge_three_gaps_and_scenery_in_the_window(
+) -> void:
+	var map: MapDef = load(ARENA_MAP_PATH)
+	assert_array(map.validate()).is_empty()
+	assert_that(map.size_tiles()).is_equal(Vector2i(64, 64))
+	assert_str(map.terrain.resource_path).is_equal(TERRAIN_PATH)
+	# The ridge is rock in columns 31 and 32 on every row but the gap rows, and rock nowhere else.
+	var gap_rows: Array[int] = []
+	var outside: Array[Vector2i] = []
+	var water: int = 0
+	var scrub_patches: int = 0
+	for y: int in map.rows.size():
+		var row: String = map.rows[y]
+		if row.count("#") == 0:
+			gap_rows.append(y)
+			for x: int in [31, 32]:
+				assert_int(_cost(map, x, y, TRACKED)).override_failure_message(str(y)).is_greater(0)
+		else:
+			assert_str(row.substr(31, 2)).override_failure_message(str(y)).is_equal("##")
+			assert_int(row.count("#")).override_failure_message(str(y)).is_equal(2)
+		for x: int in len(row):
+			var symbol: String = row[x]
+			if symbol != "." and symbol != "#" and not WINDOW_TILES.has_point(Vector2i(x, y)):
+				outside.append(Vector2i(x, y))
+			water += 1 if symbol == "~" else 0
+			# A patch is counted once, at its first tile in reading order.
+			if (
+				symbol == "^"
+				and (x == 0 or row[x - 1] != "^")
+				and (y == 0 or map.rows[y - 1][x] != "^")
+			):
+				scrub_patches += 1
+	assert_array(gap_rows).is_equal([26, 27, 31, 32, 33, 37, 38])
+	assert_array(outside).is_empty()
+	assert_int(water).is_greater(0)
+	assert_int(scrub_patches).is_greater_equal(2)
+
+
+@warning_ignore("integer_division")
+func test_the_perf_arena_scenario_spawns_150_units_inside_the_window_on_open_ground() -> void:
+	var scenario: ScenarioDef = load(ARENA_PATH)
+	assert_str(scenario.map.resource_path).is_equal(ARENA_MAP_PATH)
+	assert_array(scenario.map.validate()).is_empty()
+	assert_int(scenario.player_count).is_equal(2)
+	assert_that(scenario.map_size_tiles).is_equal(Vector2i(64, 64))
+	# owner, type, count, origin tile, columns, spacing, jitter. Player 1 is west of the ridge.
+	var blocks: Array = []
+	for spawn: SpawnDef in scenario.spawns:
+		(
+			blocks
+			. append(
+				[
+					spawn.owner,
+					String(spawn.unit.type_id),
+					spawn.count,
+					spawn.origin_tile,
+					spawn.columns,
+					spawn.spacing,
+					spawn.jitter,
+				]
+			)
+		)
+	(
+		assert_array(blocks)
+		. is_equal(
+			[
+				[1, "light_tank", 30, Vector2i(25, 27), 3, 1000, 300],
+				[1, "rifle_squad", 27, Vector2i(22, 28), 3, 1000, 300],
+				[1, "rocket_squad", 18, Vector2i(20, 28), 2, 1000, 300],
+				[2, "light_tank", 30, Vector2i(36, 27), 3, 1000, 300],
+				[2, "rifle_squad", 27, Vector2i(39, 28), 3, 1000, 300],
+				[2, "rocket_squad", 18, Vector2i(42, 28), 2, 1000, 300],
+			]
+		)
+	)
+	# Every unit, at each corner of its largest jitter, is inside the window, on its own side of
+	# the ridge (columns 31-32, x 31000..33000) and on a tile its movement class can enter.
+	var points: Array[Vector2i] = []
+	var problems: Array[String] = []
+	for spawn: SpawnDef in scenario.spawns:
+		for k: int in spawn.count:
+			var point: Vector2i = _grid_point(spawn, k)
+			points.append(point)
+			for sign_x: int in [-1, 1]:
+				for sign_y: int in [-1, 1]:
+					var at: Vector2i = point + Vector2i(sign_x, sign_y) * spawn.jitter
+					var on_side: bool = at.x < 31000 if spawn.owner == 1 else at.x >= 33000
+					var open: int = _cost(
+						scenario.map, at.x / 1000, at.y / 1000, spawn.unit.move_class
+					)
+					if not _in_window(at) or not on_side or open <= 0:
+						problems.append("%s unit %d at %s" % [spawn.unit.type_id, k, at])
+	assert_int(points.size()).is_equal(150)
+	assert_array(problems).is_empty()
+	# Not even two maximum jitters bring two units onto one point.
+	var touching: int = 0
+	for i: int in points.size():
+		for j: int in range(i + 1, points.size()):
+			var apart: Vector2i = (points[i] - points[j]).abs()
+			touching += 1 if apart.x <= 2 * 300 and apart.y <= 2 * 300 else 0
+	assert_int(touching).is_equal(0)
+
+
+func test_the_perf_arena_orders_send_each_side_to_the_centre_of_the_other() -> void:
+	var scenario: ScenarioDef = load(ARENA_PATH)
+	var orders: Array = []
+	for order: OrderDef in scenario.orders:
+		orders.append([order.tick, order.player, order.type, order.target_tile])
+	(
+		assert_array(orders)
+		. is_equal(
+			[
+				[0, 1, Command.Type.ATTACK_MOVE, Vector2i(39, 32)],
+				[0, 2, Command.Type.ATTACK_MOVE, Vector2i(24, 32)],
+			]
+		)
+	)
+	for order: OrderDef in scenario.orders:
+		var enemy_centre: Vector2i = _spawn_centre_tile(scenario, 3 - order.player)
+		assert_that(order.target_tile).is_equal(enemy_centre)
 
 
 ## The rules of every unit file, and the ones that span files: a type_id used once, and a weapon id
@@ -226,6 +357,47 @@ func _fine_unit() -> UnitDef:
 	unit.acquire_range = 5000
 	unit.weapon = weapon
 	return unit
+
+
+## Where unit k of a block starts before jitter (the SpawnDef rule), in milli-tiles.
+@warning_ignore("integer_division")
+func _grid_point(spawn: SpawnDef, k: int) -> Vector2i:
+	var columns: int = maxi(spawn.columns, 1)
+	return Vector2i(
+		spawn.origin_tile.x * 1000 + 500 + (k % columns) * spawn.spacing,
+		spawn.origin_tile.y * 1000 + 500 + (k / columns) * spawn.spacing,
+	)
+
+
+## The tile of the mean start point of all units of `player`, before jitter.
+@warning_ignore("integer_division")
+func _spawn_centre_tile(scenario: ScenarioDef, player: int) -> Vector2i:
+	var sum: Vector2i = Vector2i.ZERO
+	var units: int = 0
+	for spawn: SpawnDef in scenario.spawns:
+		if spawn.owner != player:
+			continue
+		for k: int in spawn.count:
+			sum += _grid_point(spawn, k)
+			units += 1
+	return sum / units / 1000
+
+
+func _in_window(at: Vector2i) -> bool:
+	return (
+		at.x >= WINDOW_MIN.x
+		and at.y >= WINDOW_MIN.y
+		and at.x <= WINDOW_MAX.x
+		and at.y <= WINDOW_MAX.y
+	)
+
+
+## The cost of tile (x, y) for a movement class, 0 = blocked; -1 for a symbol the set lacks.
+func _cost(map: MapDef, x: int, y: int, move_class: int) -> int:
+	for terrain: TerrainDef in map.terrain.terrains:
+		if terrain.symbol == map.rows[y][x]:
+			return terrain.cost[move_class]
+	return -1
 
 
 func _unit_row(name: String) -> Array:
