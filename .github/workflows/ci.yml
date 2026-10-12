@@ -25,6 +25,8 @@ defaults:
 env:
   GODOT_VERSION: "4.7.2"
   GDTOOLKIT_VERSION: "4.5.0"
+  # PROBE ONLY (spike P26n, never merged): scripts/build-native.sh needs exactly this scons.
+  SCONS_VERSION: "4.9.1"
 
 jobs:
   verify:
@@ -49,6 +51,10 @@ jobs:
 
       - name: Install gdtoolkit
         run: pipx install "gdtoolkit==${GDTOOLKIT_VERSION}"
+
+      # PROBE ONLY (spike P26n): verify.sh builds the C++ port first (g++ is on the runner image).
+      - name: Install scons
+        run: pipx install "scons==${SCONS_VERSION}"
 
       - name: Verify (format, lint, import, tests, sim smoke, error scan)
         run: bash scripts/verify.sh 2>&1 | tee "$RUNNER_TEMP/verify.log"
@@ -125,6 +131,18 @@ jobs:
 
       - name: Install Godot (editor, web and Android debug templates)
         run: bash scripts/ci/install-godot.sh --android
+
+      # PROBE ONLY (spike P26n): the APK carries the C++ port of the mock tick, built here for android
+      # release arm64 with the runner image's NDK (ANDROID_NDK_ROOT). export-android.sh checks the
+      # library is in the APK. The Godot editor that exports it loads the linux debug library, so
+      # that one is built as well (else every Godot call logs "Can't open dynamic library").
+      - name: Install scons
+        run: pipx install "scons==${SCONS_VERSION}"
+
+      - name: Build the C++ tick (linux debug for the editor, android release arm64 for the APK)
+        run: |
+          bash scripts/build-native.sh
+          bash scripts/build-native.sh --platform android --target template_release --arch arm64
 
       # Each exit code of export-android.sh that a runner or secret change could hit must stay
       # distinct: 3 wrong Godot, 4 template or toolchain missing, 5 no keystore.

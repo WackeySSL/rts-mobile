@@ -1,0 +1,15 @@
+; P26n spike (never merged): the C++ port of the perf probe's mock tick, class ProbeTickNative.
+; Built by scripts/build-native.sh into native/bin/ (git-ignored). The web preset excludes this
+; folder: there is no wasm build, and the probe then shows "C++ tick not available on this build".
+[configuration]
+
+entry_symbol = "probe_tick_library_init"
+compatibility_minimum = "4.5"
+reloadable = false
+
+[libraries]
+
+linux.debug.x86_64 = "res://native/bin/libprobe_tick.linux.template_debug.x86_64.so"
+linux.release.x86_64 = "res://native/bin/libprobe_tick.linux.template_release.x86_64.so"
+android.debug.arm64 = "res://native/bin/libprobe_tick.android.template_debug.arm64.so"
+android.release.arm64 = "res://native/bin/libprobe_tick.android.template_release.arm64.so"

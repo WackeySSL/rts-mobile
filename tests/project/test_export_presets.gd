@@ -50,3 +50,19 @@ func test_non_gradle_arm64_only() -> void:
 func test_no_keystore_value_in_the_file() -> void:
 	for key: String in _config().get_section_keys(OPTIONS):
 		assert_bool(key.begins_with("keystore/")).is_false()
+
+
+## Spike P26n: the C++ extension (native/) has no wasm build, so the web pack must not carry the
+## .gdextension; without it the web preview never tries to load a library it does not have, and the
+## probe shows "C++ tick not available on this build" for mode 5 (which the cycle skips anyway, as
+## the web build has no threads).
+func test_web_preset_leaves_the_native_extension_out() -> void:
+	var config: ConfigFile = _config()
+	assert_str(config.get_value("preset.0", "name")).is_equal("Web")
+	var filter: String = config.get_value("preset.0", "exclude_filter")
+	assert_str(filter).contains("tests/*")
+	assert_str(filter).contains("addons/gdUnit4/*")
+	assert_str(filter).contains("native/*")
+	assert_bool(config.get_value("preset.0.options", "variant/extensions_support")).is_false()
+	# The Android preset keeps it: its pack carries the .gdextension and the arm64 library.
+	assert_str(config.get_value(SECTION, "exclude_filter")).not_contains("native")

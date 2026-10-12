@@ -1,0 +1,45 @@
+#!/usr/bin/env python
+# P26n spike (never merged): builds the ProbeTickNative GDExtension against godot-cpp, which
+# scripts/build-native.sh fetches into native/godot-cpp at a pinned commit. Run it through the
+# script (it pins scons 4.9.1 and checks the tools); the library lands in native/bin/.
+#
+# Flags are godot-cpp's defaults per target, untouched: template_debug is optimize=speed_trace
+# (-O2, no debug symbols, DEBUG_ENABLED), template_release is optimize=speed (-O3, NDEBUG).
+# Neither enables LTO (lto=none), SIMD options or threads in the port.
+
+env = SConscript("../godot-cpp/SConstruct")
+
+OPT_FLAG = {
+    "none": "-O0",
+    "custom": "custom",
+    "debug": "-Og",
+    "speed": "-O3",
+    "speed_trace": "-O2",
+    "size": "-Os",
+}
+
+# godot-cpp archives about a thousand objects into one static library. SCons hands that command to
+# `sh -c` as one argument, and with a long checkout path it passes the kernel's 128 KiB limit for a
+# single argument ("sh: Argument list too long"). Past MAXLINELENGTH the archiver reads its operands
+# from a response file instead (GNU ar and llvm-ar both take @file).
+env["MAXLINELENGTH"] = 32768
+env["ARCOM"] = "${TEMPFILE('$AR $ARFLAGS $TARGET $SOURCES', '$ARCOMSTR')}"
+
+env.Append(CPPPATH=["src/"])
+# The build the library reports about itself (ProbeTickNative.get_build_info()), as plain tokens
+# so that no define needs shell quoting.
+for name, value in (
+    ("PROBE_TICK_PLATFORM", env["platform"]),
+    ("PROBE_TICK_TARGET", env["target"]),
+    ("PROBE_TICK_ARCH", env["arch"]),
+    ("PROBE_TICK_OPT", OPT_FLAG.get(env["optimize"], env["optimize"])),
+):
+    env.Append(CPPDEFINES=[(name, '\\"%s\\"' % value)])
+sources = Glob("src/*.cpp")
+
+library = env.SharedLibrary(
+    "../bin/libprobe_tick{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),
+    source=sources,
+)
+env.NoCache(library)
+Default(library)

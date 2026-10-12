@@ -25,3 +25,12 @@ export_credentials.cfg
 .claude/settings.local.json
 .claude/agent-memory-local/
 CLAUDE.local.md
+
+# P26n spike: native build (scripts/build-native.sh)
+/native/godot-cpp/
+/native/bin/
+/native/.godot-cpp-fetch.*/
+/native/probe_tick/src/*.os
+/native/probe_tick/.sconsign*.dblite
+/native/probe_tick/.sconf_temp/
+/native/probe_tick/config.log

@@ -28,6 +28,11 @@ PACKAGE="dk.appcode.rts.dev"
 APK_NAME="rts-mobile-debug.apk"
 NOTICE_NAME="THIRD_PARTY_LICENSES.txt"
 LICENSE_DIR="docs/licenses/godot-${GODOT_VERSION%.stable}"
+# PROBE ONLY (spike P26n): the APK carries a GDExtension built with godot-cpp (MIT), whose licence
+# text is committed unchanged from the pinned commit (scripts/build-native.sh).
+GODOT_CPP_TAG="godot-4.5-stable"
+GODOT_CPP_SHA="e83fd0904c13356ed1d4c3d09f8bb9132bdc6b77"
+GODOT_CPP_LICENSE="docs/licenses/godot-cpp-4.5-stable/LICENSE.md"
 
 die() {
   local code="$1"
@@ -124,6 +129,7 @@ fi
 # (6) Licence notice: the same content as the web build's, with this build named in the header.
 [ -s "$LICENSE_DIR/LICENSE.txt" ] && [ -s "$LICENSE_DIR/COPYRIGHT.txt" ] ||
   die 1 "licence notice sources in $LICENSE_DIR are missing or empty"
+[ -s "$GODOT_CPP_LICENSE" ] || die 1 "licence notice source $GODOT_CPP_LICENSE is missing or empty"
 godot_tag="${GODOT_VERSION%.stable}-stable"
 rule="--------------------------------------------------------------------------------"
 {
@@ -142,6 +148,12 @@ EOF
     printf '\n%s\nGodot Engine %s: %s\n%s\n' "$rule" "$godot_tag" "$source" "$rule"
     cat "$LICENSE_DIR/$source"
   done
+  # PROBE ONLY (spike P26n): the C++ library inside the APK.
+  printf '\n%s\n' "This build also contains the ProbeTickNative GDExtension (native/probe_tick), built with"
+  printf '%s\n' "godot-cpp ${GODOT_CPP_TAG} (https://github.com/godotengine/godot-cpp, commit ${GODOT_CPP_SHA}),"
+  printf '%s\n' "licensed under the MIT licence. Its LICENSE.md follows unchanged."
+  printf '\n%s\ngodot-cpp %s: LICENSE.md\n%s\n' "$rule" "$GODOT_CPP_TAG" "$rule"
+  cat "$GODOT_CPP_LICENSE"
 } >"$out_abs/$NOTICE_NAME"
 
 # (7) The APK. Godot picks the build-tools version (the one that equals the target SDK, 36.0.0 on
@@ -154,6 +166,12 @@ case "$signer" in
 esac
 listing="$(unzip -Z1 "$apk")"
 grep -qx 'lib/arm64-v8a/libgodot_android.so' <<<"$listing" || die 1 "the APK lacks lib/arm64-v8a/libgodot_android.so"
+# PROBE ONLY (spike P26n): the C++ tick library must be in the APK, or mode 5 of the probe would say
+# "C++ tick not available" on the phone. Build it first: scripts/build-native.sh --platform android
+# --target template_release --arch arm64.
+grep -qx 'lib/arm64-v8a/libprobe_tick.android.template_release.arm64.so' <<<"$listing" ||
+  die 1 "the APK lacks lib/arm64-v8a/libprobe_tick.android.template_release.arm64.so (scripts/build-native.sh not run?)"
+grep -q 'godot-cpp' "$out_abs/$NOTICE_NAME" || die 1 "$NOTICE_NAME does not name godot-cpp"
 other_abis="$(grep '^lib/' <<<"$listing" | grep -v '^lib/arm64-v8a/' || true)"
 [ -z "$other_abis" ] || die 1 "the APK holds libraries for other ABIs (arm64-v8a only): $(head -n 3 <<<"$other_abis")"
 # Project files sit under assets/. Without the boot scene there the next check proves nothing.

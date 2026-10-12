@@ -38,6 +38,12 @@ if [ ${#GD_DIRS[@]} -gt 0 ]; then
   fi
 fi
 
+# PROBE ONLY (spike P26n, branch claude/p26n-cpp-spike, never merged): build the C++ port of the mock
+# tick first, so every verify tests it. scons caches, so only the first run is slow. A missing tool
+# (exit 3: scons 4.9.1, the compiler, git) fails the verify with the script's own message; it never
+# skips.
+run_step "native build (linux template_debug)" bash scripts/build-native.sh
+
 run_step "import" godot --headless --path . --import
 
 if [ -f scripts/run-tests.sh ]; then
