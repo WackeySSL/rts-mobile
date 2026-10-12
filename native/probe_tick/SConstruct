@@ -9,6 +9,13 @@
 
 env = SConscript("../godot-cpp/SConstruct")
 
+# The APK carries no libc++_shared.so, but the NDK's clang++ links the shared C++ runtime by default:
+# the first Android build in CI (run 38243715898) produced a library that NEEDED libc++_shared.so,
+# which would fail to load on the phone. Link libc++ statically, as godot-cpp's linux.py does with
+# -static-libstdc++. scripts/build-native.sh checks the result with llvm-readelf.
+if env["platform"] == "android":
+    env.Append(LINKFLAGS=["-static-libstdc++"])
+
 OPT_FLAG = {
     "none": "-O0",
     "custom": "custom",
