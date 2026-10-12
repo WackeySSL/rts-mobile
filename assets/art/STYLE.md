@@ -330,7 +330,7 @@ gallery's `explored_fog_alpha` are 140. `TERRAIN_TILES` in `art_gallery.gd` hold
 
 Greyscale check (P34c, a scratch render of a map with every terrain: mean luminance and the spread
 (standard deviation) inside one tile, grid included): grass 107 and 124 (spread 5 and 6), sand 182
-(9), scrub 90 (17.5), rock 102 (16), water 84 (8). Scrub is 17 to 34 below the grass tones and its
+(8), scrub 90 (17.5), rock 102 (16), water 84 (8). Scrub is 17 to 34 below the grass tones and its
 spread is three times theirs, so the dotted bushes read apart from grass in greyscale, as a darker
 patch with a texture. Rock has the grass's mean luminance, so the lit and shaded edges carry it
 (the bevel reads as a raised block). Under the explored fog (x 0.45): grass 48 and 56, sand 82,
