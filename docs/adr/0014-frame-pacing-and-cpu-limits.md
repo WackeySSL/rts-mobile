@@ -356,7 +356,7 @@ only this list; if he accepts both, it holds both lists (ADR 0013 §14).
     ticks");
   - ADR 0012 §7: "frame pacing" in the "Unchanged" bullet (§1, §2); the heavy window, the
     draw-call ceiling and the fog limit stay.
-- **The plan** goes to the next plan revision at acceptance (14: P26d, with revisions 12 and 13, has merged on `main`), with
+- **The plan** goes to the next plan revision at acceptance (15: P26d took revisions 12 and 13, and this PR, P26b, revision 14), with
   "ADR 0014: changes" folded into the rows: the contract rows `TimingProbe`, `PerfStats`,
   `PerfGateDef` and "Perf arena" (the `summary()` keys of §4), P38t, P38p, P50a, P50a2, P52, the
   gate procedure, the test plan and the risks, plus the calibration row P26n2 (and P50lp if §5's

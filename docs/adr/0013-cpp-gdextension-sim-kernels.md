@@ -1078,7 +1078,7 @@ mode or inline in `SYNC`, with the same code. In addition:
     (the P27f value, and `FlowCache.run` in place of `FlowCache.advance`) and §7.
 - **`docs/ROADMAP.md`**, Phase 5's licences screen: godot-cpp's MIT text on builds with the
   library (§11).
-- **The plan** goes to the next plan revision at acceptance (14: P26d, with revisions 12 and 13, has merged on `main`), folding in
+- **The plan** goes to the next plan revision at acceptance (15: P26d took revisions 12 and 13, and this PR, P26b, revision 14), folding in
   its "Amendment (ADR 0013/0014, proposed)" section.
 
 The CLAUDE.md and skill changes and the session tool install (§8) are part of question 1; the
