@@ -13,10 +13,13 @@ const ARENA_MAP_PATH: String = "res://data/maps/perf_arena.tres"
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 ## The 26 x 15 tile window of the fight, centred on tile (32, 32): columns 19..44, rows 25..39.
 const WINDOW_TILES: Rect2i = Rect2i(19, 25, 26, 15)
-## The same window in milli-tiles, for unit positions. It lies inside the window whether
-## "centred on tile (32, 32)" means the corner or the centre of that tile.
+## The same window in milli-tiles, for unit positions: the camera centres on the middle of tile
+## (32, 32) (main_view.gd adds 0.5), which gives x 19500..45500 and y 25000..40000. The maxima
+## are kept 500 inside that, so a unit also stays in the window for a camera on the tile corner.
 const WINDOW_MIN: Vector2i = Vector2i(19500, 25000)
 const WINDOW_MAX: Vector2i = Vector2i(45000, 39500)
+## The movement classes of the unit files (World.MoveClass from P29a).
+const FOOT: int = 0
 const TRACKED: int = 2
 
 
@@ -198,6 +201,7 @@ func test_the_perf_arena_map_is_64_by_64_with_a_ridge_three_gaps_and_scenery_in_
 				scrub_patches += 1
 	assert_array(gap_rows).is_equal([26, 27, 31, 32, 33, 37, 38])
 	assert_array(outside).is_empty()
+	# P48 may tune the pond and the scrub, so only that they exist is pinned.
 	assert_int(water).is_greater(0)
 	assert_int(scrub_patches).is_greater_equal(2)
 
@@ -209,6 +213,8 @@ func test_the_perf_arena_scenario_spawns_150_units_inside_the_window_on_open_gro
 	assert_array(scenario.map.validate()).is_empty()
 	assert_int(scenario.player_count).is_equal(2)
 	assert_that(scenario.map_size_tiles).is_equal(Vector2i(64, 64))
+	assert_int(scenario.local_player).is_equal(1)
+	assert_that(scenario.camera_start_tile).is_equal(Vector2i(32, 32))
 	# owner, type, count, origin tile, columns, spacing, jitter. Player 1 is west of the ridge.
 	var blocks: Array = []
 	for spawn: SpawnDef in scenario.spawns:
@@ -242,11 +248,13 @@ func test_the_perf_arena_scenario_spawns_150_units_inside_the_window_on_open_gro
 	# Every unit, at each corner of its largest jitter, is inside the window, on its own side of
 	# the ridge (columns 31-32, x 31000..33000) and on a tile its movement class can enter.
 	var points: Array[Vector2i] = []
+	var jitters: Array[int] = []
 	var problems: Array[String] = []
 	for spawn: SpawnDef in scenario.spawns:
 		for k: int in spawn.count:
 			var point: Vector2i = _grid_point(spawn, k)
 			points.append(point)
+			jitters.append(spawn.jitter)
 			for sign_x: int in [-1, 1]:
 				for sign_y: int in [-1, 1]:
 					var at: Vector2i = point + Vector2i(sign_x, sign_y) * spawn.jitter
@@ -258,13 +266,24 @@ func test_the_perf_arena_scenario_spawns_150_units_inside_the_window_on_open_gro
 						problems.append("%s unit %d at %s" % [spawn.unit.type_id, k, at])
 	assert_int(points.size()).is_equal(150)
 	assert_array(problems).is_empty()
-	# Not even two maximum jitters bring two units onto one point.
+	# Not even the two maximum jitters of a pair bring two units onto one point.
 	var touching: int = 0
 	for i: int in points.size():
 		for j: int in range(i + 1, points.size()):
 			var apart: Vector2i = (points[i] - points[j]).abs()
-			touching += 1 if apart.x <= 2 * 300 and apart.y <= 2 * 300 else 0
+			var reach: int = jitters[i] + jitters[j]
+			touching += 1 if apart.x <= reach and apart.y <= reach else 0
 	assert_int(touching).is_equal(0)
+	# The real spawn code agrees with the placement above: 75 units per player, and each unit
+	# within its jitter of its grid point (the rows are in spawn order, ids ascending).
+	var world: World = World.from_scenario(scenario)
+	assert_int(world.unit_count()).is_equal(150)
+	assert_array([world.owner.count(1), world.owner.count(2)]).is_equal([75, 75])
+	var drifted: int = 0
+	for row: int in points.size():
+		var off: Vector2i = Vector2i(world.pos_x[row], world.pos_y[row]) - points[row]
+		drifted += 1 if maxi(absi(off.x), absi(off.y)) > jitters[row] else 0
+	assert_int(drifted).is_equal(0)
 
 
 func test_the_perf_arena_orders_send_each_side_to_the_centre_of_the_other() -> void:
@@ -284,6 +303,26 @@ func test_the_perf_arena_orders_send_each_side_to_the_centre_of_the_other() -> v
 	for order: OrderDef in scenario.orders:
 		var enemy_centre: Vector2i = _spawn_centre_tile(scenario, 3 - order.player)
 		assert_that(order.target_tile).is_equal(enemy_centre)
+
+
+## The ridge cuts the map in two: with every gap shut the two spawn centres are cut off, and with
+## any one gap open alone foot and tracked units get from their centre to the other one. Scrub
+## stops tracked units, so both ends must be tiles the class can enter.
+func test_each_perf_arena_gap_alone_lets_foot_and_tracked_units_cross_the_ridge() -> void:
+	var scenario: ScenarioDef = load(ARENA_PATH)
+	var map: MapDef = scenario.map
+	var gaps: Array = [[26, 27], [31, 32, 33], [37, 38]]  # the runs of gap rows pinned above
+	for order: OrderDef in scenario.orders:
+		var start: Vector2i = _spawn_centre_tile(scenario, order.player)
+		for move_class: int in [FOOT, TRACKED]:
+			for tile: Vector2i in [start, order.target_tile]:
+				var enter: int = _cost(map, tile.x, tile.y, move_class)
+				assert_int(enter).override_failure_message("enter %s" % [tile]).is_greater(0)
+			var shut: bool = _reaches(map, start, order.target_tile, move_class, [])
+			assert_bool(shut).override_failure_message("all gaps shut").is_false()
+			for rows: Array in gaps:
+				var crossed: bool = _reaches(map, start, order.target_tile, move_class, rows)
+				assert_bool(crossed).override_failure_message("rows %s" % [rows]).is_true()
 
 
 ## The rules of every unit file, and the ones that span files: a type_id used once, and a weapon id
@@ -390,6 +429,39 @@ func _in_window(at: Vector2i) -> bool:
 		and at.x <= WINDOW_MAX.x
 		and at.y <= WINDOW_MAX.y
 	)
+
+
+## Whether a unit of `move_class` walks from tile `start` to tile `goal`: 8 neighbours, no step
+## past a blocked orthogonal neighbour (ADR 0008), the ridge (columns 31-32) shut but on `rows`.
+func _reaches(map: MapDef, start: Vector2i, goal: Vector2i, move_class: int, rows: Array) -> bool:
+	var size: Vector2i = map.size_tiles()
+	var stride: int = size.x + 2  # a blocked ring around the map, so no step leaves the grid
+	var open: PackedByteArray = PackedByteArray()
+	open.resize(stride * (size.y + 2))
+	for y: int in size.y:
+		for x: int in size.x:
+			var shut: bool = (x == 31 or x == 32) and not rows.has(y)
+			open[(y + 1) * stride + x + 1] = 0 if shut or _cost(map, x, y, move_class) <= 0 else 1
+	var seen: PackedByteArray = PackedByteArray()
+	seen.resize(open.size())
+	var queue: PackedInt32Array = [(start.y + 1) * stride + start.x + 1]
+	seen[queue[0]] = 1
+	var head: int = 0
+	while head < queue.size():
+		var cell: int = queue[head]
+		head += 1
+		if cell == (goal.y + 1) * stride + goal.x + 1:
+			return true
+		for dy: int in [-1, 0, 1]:
+			for dx: int in [-1, 0, 1]:
+				var next: int = cell + dy * stride + dx
+				var cuts: bool = (
+					dx != 0 and dy != 0 and open[cell + dx] + open[cell + dy * stride] < 2
+				)
+				if open[next] == 1 and seen[next] == 0 and not cuts:
+					seen[next] = 1
+					queue.append(next)
+	return false
 
 
 ## The cost of tile (x, y) for a movement class, 0 = blocked; -1 for a symbol the set lacks.
