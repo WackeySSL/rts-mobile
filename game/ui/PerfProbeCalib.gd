@@ -37,6 +37,9 @@ class Pacing:
 class Stats:
 	var frames: int = 0
 	var ref_span_us: float = 0.0  ## p25 of the class's ref samples.
+	## p50 and p95 of the same samples: their spread is what the per-frame method also divides by.
+	var ref_p50_us: float = 0.0
+	var ref_p95_us: float = 0.0
 	var speed_pct: float = 0.0  ## speed_main_pct = 100 x ref_peak / ref_span.
 	var p95_raw: float = 0.0
 	var p95_class: float = 0.0  ## Raw p95 x min(1, ref_peak / ref_span).
@@ -148,6 +151,8 @@ static func stats(work: PackedFloat64Array, refs: PackedFloat64Array, ref_peak: 
 		per_frame.append(work[i] * factor(ref_peak, refs[i]))
 	out.frames = work.size()
 	out.ref_span_us = PerfProbeTick.percentile(refs, 25)
+	out.ref_p50_us = PerfProbeTick.percentile(refs, 50)
+	out.ref_p95_us = PerfProbeTick.percentile(refs, 95)
 	out.speed_pct = 100.0 * ref_peak / out.ref_span_us if out.ref_span_us > 0.0 else 0.0
 	var by_class: float = factor(ref_peak, out.ref_span_us)
 	out.p95_raw = PerfProbeTick.percentile(work, 95)

@@ -4,7 +4,7 @@ extends Node2D
 ## 75 rings (1; sprites, or the Phase 1 code-drawn rings), 150 tank rigs (2-4, the real SVGs),
 ## 150 health bars (5, rects), 60 projectiles (6) and 128 effects (7) as quads of one placeholder
 ## atlas, a 64x64 fog texture (8) patched at 5 Hz, and the mock tick at 15 Hz in the frame. A run
-## of `run_seconds` records the frame; the card is the clipboard report. `Engine.max_fps` is 60
+## of `run_seconds` records the frame; "Copy report" copies the report. `Engine.max_fps` is 60
 ## while the scene is open, so a 90 or 120 Hz panel is judged at 60 fps.
 ## The fourth mode (ADR 0012 section 1) is mode 1 with each mock tick, and the flow slice, run on
 ## one dedicated Thread: a tick ahead, handed over by two Semaphores, never blocking the frame.
@@ -18,9 +18,10 @@ extends Node2D
 ## Spike P26n2 (ADR 0014 section 5, never merged) adds the calibration rows: every mode starts from
 ## a fresh tick at `START_TICK` (mode 5's C++ tick too), so all modes time ticks 3-903 in 60 s;
 ## before every run a 400 ms burst of the reference loop gives `ref_peak`; every timed frame starts
-## with a discarded warm-up run and its ref sample, both outside the frame's work; the card prints
+## with a discarded warm-up run and its ref sample, both outside the frame's work; the report prints
 ## the pacing rows (PerfProbeCalib) and the raw, class-method and per-frame normalised main-thread
-## times, and the report ends with a CALIBRATION block of the values checks C1-C5 need.
+## times, and ends with a CALIBRATION block of the values checks C1-C5 need. That report no longer
+## fits a phone screen, so the finished card shows `card()`, a summary of it.
 
 @warning_ignore_start("integer_division")
 
@@ -41,6 +42,7 @@ enum Series {
 	WORK_OTHER_REF,
 	TICK_REF,
 	FOG_REF,
+	JOB,  ## The worker job, step + slice, wall clock on the worker: ADR 0012's `job_usec`, raw.
 }
 ## The worker job, as ADR 0012 section 1: nothing posted, posted and not taken, taken and not
 ## published.
@@ -76,6 +78,8 @@ var new_sim: Callable = func() -> PerfProbeTick: return PerfProbeTick.new()
 ## One reference run in usec (ADR 0014 section 3), for the burst and the per-frame samples.
 var ref_sampler: Callable = PerfProbeCalib.ref_usec
 var burst_usec: int = PerfProbeCalib.BURST_USEC  ## Tests shorten it; the phone run never does.
+## The panel's refresh rate in Hz, read at run start and at run end (ADR 0014 section 1).
+var refresh_source: Callable = DisplayServer.screen_get_refresh_rate
 ## Mode 5's C++ tick, owned by the worker while it runs. A RefCounted, never a ProbeTickNative:
 ## that class does not exist (and a typed variable would not parse) without the library.
 var native: RefCounted = null
@@ -118,12 +122,16 @@ var _late_ticks: int = 0  ## Jobs whose post to done exceeded `TICK_USEC`, count
 var _post_us: int = 0  ## Main thread, at the post; read at publish.
 var _job_tick_usec: int = 0  ## Worker, from `sim.step()`; read at publish, after `_done`.
 var _job_slice_usec: int = -1  ## Worker; -1 when the job ran no whole 512-cell slice.
+var _job_start_us: int = 0  ## Worker, when it takes the job (after `_work.wait()`).
 var _job_end_us: int = 0  ## Worker, before `_done.post()`.
 var _ref_peak: PackedFloat64Array = PackedFloat64Array()  ## The burst's kept second half, usec.
 var _frame_ref_us: float = 0.0  ## This frame's ref sample, taken after the warm-up run.
 var _sampled: bool = false  ## This frame's `_process` ran in the run and took the ref runs.
 var _refresh_start: float = 0.0  ## `screen_get_refresh_rate()` at run start and at run end.
 var _refresh_end: float = 0.0
+## The first frame of a run records no interval: it began before the run did (the burst's frame).
+## So the first interval runs between the two frames after the burst, as P50a's `restart()`.
+var _skip_interval: bool = false
 
 @onready var _card: Label = $Hud/Margin/Card
 @onready var _back: Button = $Hud/Margin/Buttons/BackButton
@@ -235,7 +243,9 @@ func _process(_delta: float) -> void:
 		_record(Series.WARMUP, float(ref_sampler.call()))
 		_frame_ref_us = float(ref_sampler.call())
 	_process_start_us = Time.get_ticks_usec()  # The frame's work starts after both ref runs.
-	_record(Series.INTERVAL, interval / 1000.0)
+	if not _skip_interval:
+		_record(Series.INTERVAL, interval / 1000.0)
+	_skip_interval = false
 	_clock_us += interval
 	_ticked = false
 	if _thread != null:
@@ -257,8 +267,8 @@ func _process(_delta: float) -> void:
 		)
 		if left <= 0:
 			_end_us = now
-			_refresh_end = DisplayServer.screen_get_refresh_rate()
-			_card.text = report()
+			_refresh_end = refresh_source.call()
+			_card.text = card()
 			_rings_button.visible = true
 			_copy_button.visible = true
 			_copy_button.text = "Copy report"
@@ -329,6 +339,7 @@ func _publish() -> void:
 	_record_ref(Series.TICK, _job_tick_usec / 1000.0, Series.TICK_REF)
 	_record(Series.SLICE, _job_slice_usec / 1000.0 if _job_slice_usec >= 0 else -1.0)
 	_record(Series.LATENCY, (_job_end_us - _post_us) / 1000.0)
+	_record(Series.JOB, (_job_end_us - _job_start_us) / 1000.0)
 	if _end_us == 0 and _job_end_us - _post_us > TICK_USEC:
 		_late_ticks += 1
 	_record_ref(Series.FOG, _patch_fog() if fog_tick else -1.0, Series.FOG_REF)
@@ -350,6 +361,7 @@ func _serve() -> void:
 		_work.wait()
 		if _quit:
 			return
+		_job_start_us = Time.get_ticks_usec()
 		_job_tick_usec = job.step()  # The usec timer inside the tick body.
 		_job_slice_usec = -1
 		if job.tick % 15 == 0:
@@ -514,7 +526,7 @@ func _on_post_draw() -> void:
 		_record_ref(Series.WORK_OTHER, process_ms + render_ms, Series.WORK_OTHER_REF)
 
 
-## The plain-text report: the card shows it and "Copy report" puts it on the clipboard.
+## The plain-text report: "Copy report" puts it on the clipboard; the finished card shows `card()`.
 func report() -> String:
 	if mode == Mode.NATIVE_TICK and native == null:  # Nothing was measured.
 		return "PERF PROBE P26s | %s | not available\n%s" % [MODES[mode], _impl_text()]
@@ -561,9 +573,59 @@ func report() -> String:
 			)
 		)
 		lines.append(_row("job post to done (worker wake-up + tick + slice)", Series.LATENCY, "ms"))
+		lines.append(_row("worker job (tick + slice, wall clock on the worker)", Series.JOB, "ms"))
 	lines.append_array(_pacing_lines(pace))
 	lines.append_array(_cpu_lines())
 	lines.append_array(_calibration(pace))
+	return "\n".join(lines)
+
+
+## The finished card: a summary that fits the safe area of a phone (the Pixel 9a's 1616x720 view),
+## so "Next mode" and "Copy report" stay on screen. "Copy report" puts the whole `report()`, with
+## its CALIBRATION block, on the clipboard.
+func card() -> String:
+	if mode == Mode.NATIVE_TICK and native == null:
+		return report()  # Two or three short lines.
+	var pace: PerfProbeCalib.Pacing = _pacing()
+	var work: PerfProbeCalib.Stats = _stats_all()
+	var lines: PackedStringArray = [
+		"PERF PROBE P26s | %s | %s" % [MODES[mode], "done" if _end_us > 0 else "running"],
+		_impl_text(),
+		(
+			"refresh_hz start %.2f, end %.2f | max_fps %d"
+			% [_refresh_start, _refresh_end_now(), Engine.max_fps]
+		),
+		(
+			"frames %d | dropped %d (%.2f %%) | cadence %.2f %% | hitches %d"
+			% [pace.frames, pace.dropped, pace.dropped_pct, pace.cadence_pct, pace.hitches]
+		),
+		"interval median %.2f, p99 %.2f, max %.2f ms" % [pace.median_ms, pace.p99_ms, pace.max_ms],
+		(
+			"ref_peak p25 %.1f, p95 %.1f us"
+			% [PerfProbeTick.percentile(_ref_peak, 25), PerfProbeTick.percentile(_ref_peak, 95)]
+		),
+		(
+			"work p95: raw %.2f, norm class %.2f, norm frame %.2f ms"
+			% [work.p95_raw, work.p95_class, work.p95_frame]
+		),
+	]
+	if _worker_mode():
+		var job: PackedFloat64Array = _series[Series.JOB]
+		lines.append(
+			(
+				"worker job (raw): mean %.2f, p95 %.2f ms | late ticks %d"
+				% [PerfProbeTick.mean(job), PerfProbeTick.percentile(job, 95), _late_ticks]
+			)
+		)
+	else:
+		var tick: PerfProbeCalib.Stats = _stats(Series.TICK, Series.TICK_REF)
+		lines.append(
+			(
+				"tick mean: raw %.2f, norm class %.2f, norm frame %.2f ms"
+				% [tick.mean_raw, tick.mean_class, tick.mean_frame]
+			)
+		)
+	lines.append("The whole report and its CALIBRATION block: Copy report.")
 	return "\n".join(lines)
 
 
@@ -574,7 +636,7 @@ func _pacing_hz() -> float:
 
 
 func _refresh_end_now() -> float:
-	return _refresh_end if _end_us > 0 else DisplayServer.screen_get_refresh_rate()
+	return _refresh_end if _end_us > 0 else refresh_source.call()
 
 
 func _pacing() -> PerfProbeCalib.Pacing:
@@ -599,6 +661,7 @@ func _pacing_lines(pace: PerfProbeCalib.Pacing) -> PackedStringArray:
 			% [pace.median_ms, pace.p99_ms, pace.max_ms, slots[0], slots[1], slots[2], slots[3]]
 		),
 		"(extra slots: 0 up to drop_ms, else ceil((interval - drop_ms) / V); P + k V gives k)",
+		"(the first interval is the one between the two frames after the burst)",
 	]
 
 
@@ -632,8 +695,8 @@ func _cpu_lines() -> PackedStringArray:
 	]:
 		var c: PerfProbeCalib.Stats = row[1]
 		var head: String = (
-			"cpu %s: n %d, ref_span p25 %.1f us, speed_main %.1f %%"
-			% [row[0], c.frames, c.ref_span_us, c.speed_pct]
+			"cpu %s: n %d, ref_span p25 %.1f us (p50 %.1f, p95 %.1f), speed_main %.1f %%"
+			% [row[0], c.frames, c.ref_span_us, c.ref_p50_us, c.ref_p95_us, c.speed_pct]
 		)
 		var tail: String = (
 			" | p95 raw %.3f, norm class %.3f, norm frame %.3f ms"
@@ -670,12 +733,17 @@ func _calibration(pace: PerfProbeCalib.Pacing) -> PackedStringArray:
 	if mode in [Mode.SPRITE_RINGS, Mode.WORKER_TICK, Mode.NATIVE_TICK]:
 		var other: PerfProbeCalib.Stats = _stats(Series.WORK_OTHER, Series.WORK_OTHER_REF)
 		lines.append("C3 other_ref_span_us=%.1f" % other.ref_span_us)
+		# The samples' spread: noise alone pulls the per-frame value below raw.
+		lines.append("C3 other_ref_p50_us=%.1f" % other.ref_p50_us)
+		lines.append("C3 other_ref_p95_us=%.1f" % other.ref_p95_us)
 		lines.append("C3 other_work_p95_raw_ms=%.3f" % other.p95_raw)
 		lines.append("C3 other_work_p95_norm_class_ms=%.3f" % other.p95_class)
 		lines.append("C3 other_work_p95_norm_frame_ms=%.3f" % other.p95_frame)
 	if mode in [Mode.SPRITE_RINGS, Mode.CODE_RINGS]:
 		var tick: PerfProbeCalib.Stats = _stats(Series.TICK, Series.TICK_REF)
 		lines.append("C4 tick_ref_span_us=%.1f" % tick.ref_span_us)
+		lines.append("C4 tick_ref_p50_us=%.1f" % tick.ref_p50_us)
+		lines.append("C4 tick_ref_p95_us=%.1f" % tick.ref_p95_us)
 		lines.append("C4 tick_mean_raw_ms=%.3f" % tick.mean_raw)
 		lines.append("C4 tick_mean_norm_class_ms=%.3f" % tick.mean_class)
 		lines.append("C4 tick_mean_norm_frame_ms=%.3f" % tick.mean_frame)
@@ -685,10 +753,15 @@ func _calibration(pace: PerfProbeCalib.Pacing) -> PackedStringArray:
 	lines.append("C5 cadence_pct=%.2f" % pace.cadence_pct)
 	lines.append("C5 hitches=%d" % pace.hitches)
 	if _worker_mode():  # Raw: the worker is never normalised (ADR 0014 section 3).
-		var job: PackedFloat64Array = _series[Series.TICK]
+		# C5's values: the job as ADR 0012 times it (`job_usec`). The usec timer inside the tick
+		# body and the post to done (the wake-up added) are diagnostics.
+		var job: PackedFloat64Array = _series[Series.JOB]
+		var tick: PackedFloat64Array = _series[Series.TICK]
 		var done: PackedFloat64Array = _series[Series.LATENCY]
-		lines.append("C5 job_tick_mean_ms=%.3f" % PerfProbeTick.mean(job))
-		lines.append("C5 job_tick_p95_ms=%.3f" % PerfProbeTick.percentile(job, 95))
+		lines.append("C5 job_mean_ms=%.3f" % PerfProbeTick.mean(job))
+		lines.append("C5 job_p95_ms=%.3f" % PerfProbeTick.percentile(job, 95))
+		lines.append("C5 job_tick_mean_ms=%.3f" % PerfProbeTick.mean(tick))
+		lines.append("C5 job_tick_p95_ms=%.3f" % PerfProbeTick.percentile(tick, 95))
 		lines.append("C5 job_done_mean_ms=%.3f" % PerfProbeTick.mean(done))
 		lines.append("C5 job_done_p95_ms=%.3f" % PerfProbeTick.percentile(done, 95))
 	return lines
@@ -754,7 +827,7 @@ func _start_run() -> void:
 	_clock_us = 0
 	_rings_button.visible = false
 	_copy_button.visible = false
-	_refresh_start = DisplayServer.screen_get_refresh_rate()
+	_refresh_start = refresh_source.call()
 	_refresh_end = _refresh_start
 	_ref_peak = PackedFloat64Array()
 	if mode == Mode.NATIVE_TICK and native == null:  # No library: the card says so and stops.
@@ -770,6 +843,7 @@ func _start_run() -> void:
 	_restart_frame_clock()
 	_start_us = _last_us
 	_end_us = 0
+	_skip_interval = true
 
 
 func _next_mode() -> void:
