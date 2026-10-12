@@ -23,8 +23,24 @@ projectile slot). It supersedes in part:
 
 It keeps Michael's answer 1 (the gate runs on his phone with k = 2.5) and CLAUDE.md rule 6.
 
-Pointer (2026-10-12): see the proposed ADRs 0013 and 0014. Nothing here is superseded by them
-until Michael accepts. The worker-mode run is recorded at the end of the acceptance note.
+Status note (2026-10-12, ADRs 0013 and 0014 accepted; the worker-mode run is recorded at the end
+of the acceptance note):
+- §4, by ADR 0013 §15: the P46 decision point ("start drafting the GDExtension ADR above 26.6 ms")
+  is dropped, and the verdict list gains `impl`, which fails the gate on its own like `build`.
+  Every threshold and the ratio formula stay.
+- §4, by ADR 0014 §1-§3: the rows `on_time_ms` and `on_time_share_pct` are replaced by the
+  dropped-frame, cadence and hitch rules; `work_p95_ms`, `work_tick_p95_ms` and
+  `fog_update_p95_ms` keep their values but are compared on clock-normalised main-thread time
+  (`sim_p95_ms` and `job_p99_ms` stay raw); in "Why held ticks have no verdict", the first
+  cause's reason is now judged by the dropped-frame and hitch rules (the conclusion and the
+  `held_ticks` above 9 condition stay).
+- §5, by ADR 0013 §3 and §15: the rule is unchanged, but the P27f value is withdrawn (P27b's 512
+  stays, given by the rule with the C++ slice), and "`Sim.step` passes 0 cells to
+  `FlowCache.advance`" reads "passes a budget of 0 to `FlowCache.run`".
+- §7: "GDExtension (C++) is not adopted now" and its trigger are replaced by ADR 0013 §15 (the port
+  trigger for GDScript-only phases and the engine-side watch line, neither a verdict); the
+  "frame pacing" part of the "Unchanged" bullet is superseded by ADR 0014 §1 and §2 (the heavy
+  window, the draw-call ceiling and the fog limit's value stay).
 
 ## Context
 The Phase 2 plan (P26s) says that a contract the phone probe contradicts changes through a new ADR

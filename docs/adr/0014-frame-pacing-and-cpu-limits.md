@@ -1,6 +1,8 @@
 # ADR 0014: Frame pacing by dropped frames, and main-thread CPU-time limits normalised for clock scaling
 
-Status: proposed, 2026-10-12 (revision 9, after the review of revision 8: the burst runs before
+Status: accepted, 2026-10-12 (Michael: "1 ja, 2 A, 3 ja, 4 ja"; answer 3 accepts this ADR and the
+calibration run of §5, which is still open; see "Acceptance note" at the end). Proposed the
+same day (revision 9, after the review of revision 8: the burst runs before
 every run, "Run again" included, so `ref_peak` is per run as §3 says (P50a3); the preflight's
 refusal sets `INVALID` without `push_error`; P50lp's `pin_busy_pct` enters `PerfGateDef.gd` and
 `perf_gate.tres` under the plan's named exception 8. Revision 8, after merging `main` and the review of revision 7: the
@@ -14,14 +16,14 @@ one at acceptance; `Engine.max_fps` 0 counts as `refresh_hz` in P; the cold-samp
 given per quantile. Revision 5: ADR 0012 §7's "frame pacing" joins the supersedes
 list, and the calibration build also prints a per-frame normalised p95 that C3/C4 can choose.
 Revision 4, after the completeness check of revision 3: §3's reference-loop claim was re-run
-and corrected; each frame's sample now follows a discarded warm-up run). Nothing here applies
-until Michael accepts it. On acceptance the lead applies §7.
+and corrected; each frame's sample now follows a discarded warm-up run). Michael accepted it
+on 2026-10-12, and the lead applied §7 (acceptance note).
 
 It does not depend on ADR 0013 (C++ kernels). Michael can accept either one, both or neither.
 The calibration run below needs only the GDScript modes of the never-merged probe branches; the C++
 mode is optional.
 
-On acceptance it supersedes in part:
+From its acceptance (2026-10-12) it supersedes in part:
 - **ADR 0012 §4:**
   - the rows `on_time_ms` (17.5) and `on_time_share_pct` (95);
   - the measured quantity, not the value, of the main-thread limits `work_p95_ms`,
@@ -482,3 +484,73 @@ only this list; if he accepts both, it holds both lists (ADR 0013 §14).
     `ref_peak` still show it.
   - **The 1 %, 99 % and zero-hitch limits are policy limits**, derived from the 1 Hz cadence and
     the tick period, not measured. They are part of what Michael accepts with this ADR.
+
+## Acceptance note (2026-10-12)
+Michael answered the four questions of the plan's amendment ("Open questions for Michael (ADR
+0013/0014)") in chat on 2026-10-12, verbatim: **"1 ja, 2 A, 3 ja, 4 ja"**.
+- **Answer 3, yes: this ADR is accepted, and Michael does the calibration run of §5** (about 5
+  minutes on his Pixel 9a, plan row P26n2).
+- Answers 1 and 4 accept ADR 0013 and its agent-file changes (its own acceptance note). Answer 2
+  (A) keeps the web preview on the GDScript twins (ADR 0013 §7, option A). For this ADR that
+  means: the web build keeps running the sim in the frame (`SYNC`), and its card's frame
+  numbers do not gate (gate procedure, step 2); only its hashes count.
+
+**Applied on acceptance (§7), in P26b** (the PR that carried the proposal; the plan's revision 15
+folds P26e's row into P26b):
+- status lines in ADR 0011 (§5 and its acceptance note) and ADR 0012 (§4, including the first
+  cause in "Why held ticks have no verdict", and §7's "frame pacing"), replacing the draft's
+  pointers;
+- the plan's revision 15: the contract rows `TimingProbe`, `PerfStats`, `PerfGateDef` and "Perf
+  arena", P38t, P38p, P50a, P50a2, P50a3, P50b, P52, named exception 8, the gate procedure, the
+  test plan, the risks and the calibration row P26n2;
+- no CLAUDE.md, skill, ROADMAP or agent text changes (§7).
+
+**Source facts not re-run: the citations assigned to the docs PR.** All four stand; Context
+needs no correction.
+- **Godot 4.7.2's Android frame loop under Compatibility.** Tag `4.7.2-stable`, commit
+  `ed1daf0bf001b61586d9930840f2f1394092c079`:
+  - with the `opengl3` driver, `Godot.kt` (lines 547-548) creates a `GodotGLRenderView`, which
+    `extends GLSurfaceView` (`platform/android/java/lib/src/main/java/org/godotengine/godot/GodotGLRenderView.java:78`);
+    the vendored `gl/GLSurfaceView.java` `extends SurfaceView` (line 166);
+  - its `GLThread` (line 1287) runs `guardedRun()` (line 1336), which calls
+    `view.mRenderer.onDrawFrame(gl)` (line 1604) and, when that returns true,
+    `mEglHelper.swap()` (line 1613), that is `eglSwapBuffers` (line 1205);
+  - `gl/GodotRenderer.java`: `onDrawFrame` (line 55) calls `GodotLib.step()` (line 61);
+  - `platform/android/java_godot_lib_jni.cpp`: `Java_org_godotengine_godot_GodotLib_step`
+    (line 292) calls `os_android->main_loop_iterate` (line 354), which calls `Main::iteration()`
+    (`platform/android/os_android.cpp`, lines 380 and 392);
+  - `main/main.cpp`: `Main::iteration()` (line 4921) runs the main loop's `process` (line 5062),
+    then `RenderingServer::draw` (lines 5089 and 5093), then `OS::add_frame_delay` (line 5178);
+  - no Swappy, Choreographer or ADPF on this path: no file under `platform/android/` (Java,
+    Kotlin or C++) names `Choreographer` or `PerformanceHint`, and Swappy is compiled only into
+    the Vulkan driver (`SWAPPY_FRAME_PACING_ENABLED`, set in `platform/android/detect.py` line 262
+    and read only in `drivers/vulkan/rendering_device_driver_vulkan.cpp` and `.h`);
+  - V-Sync cannot be changed: `DisplayServerAndroid::window_set_vsync_mode`
+    (`platform/android/display_server_android.cpp`, lines 979-985) acts only on the
+    RenderingDevice context (`RD_ENABLED`, Vulkan), and `window_get_vsync_mode` returns
+    `VSYNC_ENABLED` otherwise (lines 987-994).
+- **schedutil's 1.25 × utilisation × f_max.** Linux mainline at `v6.1` and `v6.6`:
+  `Documentation/scheduler/schedutil.rst` (line 140: `f_des := min( f_max, 1.25 u * f_max )`);
+  `kernel/sched/cpufreq_schedutil.c` (v6.1, line 134: "Take C = 1.25 for the frequency tipping
+  point at (util / max) = 0.8", applied in `get_next_freq`, line 140, through `map_util_perf`,
+  which adds `util >> 2`, `include/linux/sched/cpufreq.h` line 34). This is the upstream
+  governor; whether the Pixel's vendor kernel follows it is what C3 and C4 test, as §5 says.
+- **Perfetto's FrameTimeline and SurfaceViews.**
+  https://perfetto.dev/docs/data-sources/frametimeline (source
+  `docs/data-sources/frametimeline.md` in `google/perfetto`, read 2026-10-12): "SurfaceViews are
+  currently **not supported**, but will be, in future." Godot draws into one (above).
+- **The Android documentation quotes** (read 2026-10-12):
+  - Microbenchmark overview,
+    https://developer.android.com/topic/performance/benchmarking/microbenchmark-overview: "Clocks
+    on mobile devices dynamically change from high state, for performance, to low state, to save
+    power or when the device gets hot", and locked clocks keep them from going "low if a
+    benchmark isn't fully utilizing the CPU";
+  - ADPF Fixed Performance Mode,
+    https://developer.android.com/games/optimize/adpf/fixed-performance-mode: "your results won't
+    be reliable if they aren't tested at fixed clock speeds" (Context quotes it verbatim).
+
+**Calibration (§5): open.** Michael runs P26n2 on his Pixel 9a (modes 1, 2, 4 and 5, 60 s each,
+battery saver off, not charging). The lead then records here C1-C5 with their values and which
+outcome of §5 applies (the class method, the per-frame method, a repeat, or the load-pinned
+fallback with P50lp). P50a's Depends cell waits for that record, so P50a implements the one
+formula named here. The pacing verdicts (§1) do not depend on it.

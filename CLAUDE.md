@@ -9,14 +9,22 @@ Source of truth: this file for rules, `docs/GDD.md` for game design,
 `docs/ROADMAP.md` for phases and acceptance criteria, `docs/adr/` for decisions.
 
 ## Stack (change only via a new ADR)
-- Godot **4.7.x** (pinned: 4.7.2), GDScript 2.0 with **static typing everywhere**. No C#.
+- Godot **4.7.x** (pinned: 4.7.2), GDScript 2.0 with **static typing everywhere**. C++17 only
+  for the sim's hot-phase kernels in `native/sim_kernels/` (GDExtension, godot-cpp pinned, ADR
+  0013), each with a GDScript twin in `game/sim/` that stays the reference and the web path.
+  No C#.
 - Renderer: **Compatibility** (required for web export and low-end Android).
 - 2D top-down, landscape only. Base size 1280x720, stretch mode `canvas_items`, aspect `expand`.
-- Tests: gdUnit4 in `tests/`. Format/lint: gdtoolkit 4 (`gdformat`, `gdlint`).
+- Tests: gdUnit4 in `tests/`, plus a CI-only C++ sanitizer harness in
+  `native/sim_kernels/sanitizer/` (ADR 0013 §10). Format/lint: gdtoolkit 4 (`gdformat`,
+  `gdlint`). C++: `clang-format` the version `verify.sh` pins (P53)
+  (`native/sim_kernels/.clang-format`).
 - Ads: Poing Studios godot-admob plugin (Android + iOS) behind `game/ads/AdService.gd`.
 
 ## Commands
 - `bash scripts/verify.sh` - full check (format, lint, import, tests, sim smoke). Run before every commit.
+- `bash scripts/build-native.sh` - builds the C++ kernels (scons 4.9.1, g++, binutils; the NDK for Android, CI only).
+  verify.sh runs it first and checks the C++ format with the pinned clang-format.
 - `bash scripts/run-tests.sh` - gdUnit4 only.
 - `bash scripts/run-sim-smoke.sh --matches N` - headless AI-vs-AI matches with fixed seeds.
 - `bash scripts/export-web.sh` - web build for the phone preview.
@@ -34,6 +42,7 @@ game/ui/     HUD, build sidebar, menus
 game/ai/     opponent AI (issues Commands like a player)
 game/ads/    AdService + consent
 game/meta/   progression, save data
+native/      C++ sim kernels (GDExtension) and their build; godot-cpp is fetched, not committed
 data/        unit/building/AI definitions (.tres) - all balance numbers live here
 assets/art/svg/, assets/audio/   see assets/CREDITS.md
 scenes/dev/  developer scenes (art gallery, sandbox maps)
@@ -43,6 +52,8 @@ tests/       gdUnit4 tests mirroring game/
 ## Architecture rules (hard)
 1. Simulation and presentation are separate. `game/sim` never references Node, SceneTree,
    Input, rendering, OS time or frame delta. The view reads sim state and interpolates.
+   `native/sim_kernels/` follows the same rules, and rules 2, 3 and 5 apply to it: kernels read
+   every rule value from the World, never from a C++ literal (ADR 0013 §2, §4, §6).
 2. Fixed tick: 15 Hz. Sim state is integers only (fixed point: 1 tile = 1000 units). No floats in sim state.
 3. Randomness only via per-match `DetRandom` streams (created through the `DetRng` factory autoload
    outside `game/sim`). Never `randi()`/`randf()` in sim or AI.

@@ -15,7 +15,8 @@ below protects that, because it gives reproducible tests, AI-vs-AI balance runs,
 path to multiplayer.
 
 Decisions behind these rules: ADR 0003 (Phase 1 skeleton), ADRs 0007-0011 (Phase 2 core,
-accepted 2026-10-12) and ADR 0012 (worker-thread tick and view snapshot, accepted 2026-10-12).
+accepted 2026-10-12), ADR 0012 (worker-thread tick and view snapshot, accepted 2026-10-12) and
+ADR 0013 (C++ kernels for the hot phases with GDScript twins, accepted 2026-10-12).
 Where this file and an ADR disagree, the ADR wins; fix this file.
 
 ## Time and units
@@ -64,10 +65,11 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
   `line_check_period_ticks`. A flow field is used only when the straight line is blocked.
 - Flow fields per (goal cell, movement class, `map_version`): integer Dijkstra, time-sliced by
   `flow_cells_per_tick`, double-buffered (units read `cost` while `next` integrates), cached, and
-  re-integrated when the map changes. No slice on checkpoint ticks (`Sim.step` passes 0 cells on
-  the ticks `MatchLoop` hashes). `flow_cells_per_tick` comes from the release run's headroom
-  (ADR 0012 §5; 512 on `main` (P27b); P27f is held (64 by the headroom rule in GDScript, 512
-  with ADR 0013's C++ slice)), never from a literal in code. References are
+  re-integrated when the map changes. No slice on checkpoint ticks (`Sim.step` passes a budget
+  of 0 to `FlowCache.run` on the ticks `MatchLoop` hashes). `flow_cells_per_tick` comes from
+  the release run's headroom (ADR 0012 §5): 512 (P27b), which the rule gives with ADR 0013's C++
+  slice, so P27f is withdrawn; never a literal in code. `FlowCache.configure()` sizes every
+  slot's arrays once; nothing resizes them afterwards (ADR 0013 §2). References are
   derived from the World's `field` column every tick, never released by hand. A group move
   shares one field.
 - Two spatial grids as linked lists (`head` per cell, `next` per row), rebuilt once per tick in
@@ -86,7 +88,9 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
 ## Fog of war
 - Per player `visible` counts (not bit grids) and `explored` bytes, stamped from precomputed sight
   masks. One player updates per tick (each player every `fog_period_ticks`), and dirty lists tell
-  the view which cells changed.
+  the view which cells changed. Each player's dirty list is a fixed block of one flat
+  `PackedInt32Array` with count and "full" arrays, sized in `configure()`; `begin_update` resets
+  a count and never resizes (ADR 0013 §2).
 - AI code reads the World only through `PlayerView` once it exists (reserved by ADR 0010). Easy
   and Normal AI read only their own player's visibility.
 
@@ -154,3 +158,89 @@ because of these rules:
 - `SimProbe.Phase` ids are fixed (`COMMANDS` 0 to `FOG` 10, `COUNT` 11). A new phase takes an id
   in pipeline order through an ADR, never by renumbering.
 - A probe never reads or writes the World; hashes are equal with and without one.
+
+## Native kernels (ADR 0013)
+**Scope (§1).** C++17 kernels in `native/sim_kernels/` for `FLOW`, `SEPARATION`, `INTEGRATE`,
+`TARGETING` and `FOG`. `GRIDS`, `INTENTS`, `FIRE` and `PROJECTILES` get a port row only when
+their `PERF` line meets the port rule: (a) phase mean x `ci_ratio_mean` above 0.67 ms, or (b) a
+bursty phase whose per-active-tick cost sets a headroom value. `COMMANDS`, `REMOVE`, `World`,
+`state_hash`, `MatchSnapshot`, `MatchLoop`, `Replay` and `DetRandom` stay GDScript.
+
+**The twin rule (§5).**
+- Every kernel keeps its GDScript version in `game/sim`: it is the web path, the readable spec
+  and the lockstep oracle. Never delete it.
+- The GDScript PR comes first; the port follows the module's last GDScript PR. After a port has
+  merged, any change to that rule (whatever the PR's title) edits both versions and passes the
+  kernel's lockstep test in the same PR.
+- gameplay-dev writes both versions of a rule. Each kernel file names its twin and its lockstep
+  test in a header comment.
+
+**Boundary (§2).** The World stays GDScript; kernels borrow its arrays in place for one call.
+- A kernel is a method of the stateless `SimKernels` (`RefCounted`) and takes the World (an
+  `Object`) plus plain ints only.
+- On entry it fetches each array once through `bind/world_access.h`: `Object::get(name)`, then a
+  type and size check, then `ptrw()` for an array it writes and `ptr()` for one it only reads.
+  Every name it gets or sets is in that header's checked table (`Object::set` on an unknown name
+  fails silently). `check_world(world, phase)` is pure and returns a status; a kernel that gets a
+  non-zero status logs one error and returns without writing. No mismatch message is ever
+  allowlisted.
+- Forbidden: a `Packed*Array` parameter anywhere in `bind/` (by value or by reference: both write
+  to a silent copy); keeping a pointer, Variant, array or Object between calls; `get` or `set`
+  per row; calling back into GDScript while holding a `ptrw()` pointer; resizing a held array.
+  The only resizes in a tick are the event appends, one per appending kernel after its loop.
+- Two layers: `core/` is plain C++17 over `WorldView` and includes no Godot header; `bind/`
+  (`SimKernels`, `world_access.h`, `register_types`, one `kernel_<phase>.cpp` each, one line per
+  kernel in `kernel_list.h`) is the only code that touches Godot types. A `core/` function lands
+  only with the kernel that calls it, and that kernel's tests run in the same PR.
+- Rule ints and def columns come from the World on entry, never from a C++ literal. The only
+  literals in `core/` are 0, 1, -1 and `constexpr` mirrors of a twin's GDScript `const`, each
+  naming it.
+
+**Dispatch (§3).**
+- `World.kernels` (null = GDScript) and `World.native_phases` (one bit per `SimProbe.Phase`, in
+  `UNHASHED_SCALARS`); `kernels` is the one entry of `World.NON_STATE_MEMBERS`, which the
+  coverage test, the hash walk and the reachability walk skip. The choice is never hashed.
+- The dispatch is the first line of the phase's entry (`FlowCache.run(world, budget)` for FLOW,
+  the module's `run(world)` or `Movement.integrate` for the others):
+  `if ((world.native_phases >> SimProbe.Phase.X) & 1) == 1: world.kernels.x(world[, int]); return`.
+- `game/sim` never names `SimKernels` or `ClassDB` (`test_sim_purity` bans both); the call is
+  dynamic on an untyped `Object`.
+- `MatchRunner.sim_impl` defaults to `GDSCRIPT`; scenes set `AUTO` from P50b. The mask always
+  comes from `kernels.phases()`, and `tests/sim/support/sim_impls.gd` asserts it against
+  `EXPECTED_PHASES`.
+
+**Determinism in C++ (§4).**
+- `int64_t` wherever GDScript holds an `int`. Every element read from an `int32` or `uint8` array
+  is widened to `int64_t` before any arithmetic (through `WorldView`'s accessors); raw
+  `int32_t`/`uint8_t` pointers appear only at the store, with an explicit `static_cast`. No
+  `char`, `short`, `int` or `long` as a type in `core/`.
+- No `float`, `double`, `<cmath>` or float literal. No undefined behaviour: no signed overflow,
+  shifts only on non-negative values by 0-62, no division by zero or `INT64_MIN / -1`, no index
+  past the size checked on entry, no uninitialised read, `reinterpret_cast`/`const_cast` only in
+  `world_access.h`. `/` and `%` truncate toward zero as in GDScript; each port's crafted cases
+  include a negative operand. `-fwrapv` in every production and test build.
+- The same loops in the same ascending row order as the twin; no unordered containers,
+  `std::hash`, pointer ordering, threads or SIMD intrinsics. No randomness in Phase 2 kernels.
+- Proof: a 900-tick lockstep test per kernel that compares the full state after every call (and
+  once on non-default rules), crafted tie, cap, division and opposite-corner cases, the module's
+  tests under both implementations through `sim_impls.gd`, golden hashes under both, the
+  sanitizer job, and the reviewer's mutants.
+
+**Threading (§6).** ADR 0012 §2 applies unchanged. In a kernel: no Godot API except
+`world_access.h` on entry and exit (no `OS`, `Time`, `Engine`, print on non-error paths,
+signals, `ClassDB`, resource loading, Nodes or singletons); no mutable statics, `thread_local`,
+threads, atomics or mutexes; no heap allocation (`new`, `malloc`, std containers); fixed scratch
+lives in the World's `SCRATCH_ARRAYS` or helper arrays.
+
+**Review checklist for a C++ PR (§12).** `godot-code-review` is vendored unchanged, so the C++
+checklist lives here; load both skills for any PR that touches `native/`:
+- signatures: the World plus plain ints, no Packed parameter; the type and size check on every
+  fetched array, through the checked table;
+- pointer lifetime: nothing held across calls, re-fetched after the FLOW swap and after an
+  event resize;
+- integer widths: widened reads, `static_cast` at every int32/uint8 store;
+- undefined behaviour: overflow, shifts, division, bounds, uninitialised reads;
+- order: the twin's loops in the twin's row order, no unordered containers;
+- allocation: none inside a kernel except the event appends;
+- a line-by-line mirror of the GDScript twin, plus the lead's mutants and a 20,000-tick lockstep
+  run.

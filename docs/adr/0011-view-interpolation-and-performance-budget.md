@@ -19,8 +19,13 @@ gitter"); Phase 1's 1 px grid lines are gone on purpose. §2: a new projectile s
 changed in the last tick) is not drawn until its second tick, because it has no heading yet (ADR
 0012's amendment); it no longer gets prev = current.
 
-Pointer (2026-10-12): see the proposed ADRs 0013 and 0014. Nothing here is superseded by them
-until Michael accepts.
+Status note (2026-10-12, ADRs 0013 and 0014 accepted): §6 step 5 (GDExtension) is adopted by ADR
+0013 §15 for the sim's hot phases, before steps 1 and 2 are exhausted; steps 1 and 2 stay the
+remedies for the main thread, the view and the GDScript-only phases, and step 3 is unchanged. §5's
+pacing rule "interval at most 17.5 ms for 95 % of frames" and the acceptance note's rows
+`on_time_ms` and `on_time_share_pct` are superseded by ADR 0014 §1 and §2 (dropped frames at most
+1 %, cadence at least 99 %, no hitch in the heavy window); the 17.5 ms share stays only as a
+jitter diagnostic.
 
 ## Context
 ROADMAP Phase 2 asks for three things:

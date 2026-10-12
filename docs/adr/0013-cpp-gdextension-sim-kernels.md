@@ -1,6 +1,8 @@
 # ADR 0013: C++ GDExtension kernels for the sim's hot phases
 
-Status: proposed, 2026-10-12 (revision 9, after the review of revision 8: a preflight with a
+Status: accepted, 2026-10-12 (Michael: "1 ja, 2 A, 3 ja, 4 ja"; the web preview stays on the
+GDScript twins, option A of §7; see "Acceptance note" at the end). Proposed the same day
+(revision 9, after the review of revision 8: a preflight with a
 job in flight is refused by a pure check, never a `push_error` (§3); `resolve_impl` is pure and
 `start()` logs its fallback (§3); P30n owns `FlowCache.run` (§3); `check-native-tests.sh` runs
 as a `ci.yml` step, not inside `verify.sh`, and the `native-clang` job skips gdUnit4 before the
@@ -24,9 +26,9 @@ and both licence notices stay identical; §15's trigger and watch line read name
 and are not verdicts, while the card's `impl` line is one; the boundary write cases move to
 P30n; unevidenced figures are marked with the PR that re-proves them. Revision 4: the research is re-run and on record, the accepted ADRs it changes are
 listed, and every `core/` function lands with the kernel that calls it). Michael approved
-drafting it ("ja til ADR 0013-udkast"). Nothing here applies until he accepts it.
+drafting it ("ja til ADR 0013-udkast") and accepted it on 2026-10-12.
 
-On acceptance it supersedes in part:
+From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
 - ADR 0012 §5: the P27f value, and the wording "`Sim.step` passes 0 cells to
@@ -1313,3 +1315,64 @@ that approval.
   dlink, release-template and upstream-status items.
   P53 re-proves the import facts in CI after acceptance, P54 the `check_world` and name facts,
   and P30n the in-place write, fork, scalar and no-op facts through the FLOW kernel.
+
+## Acceptance note (2026-10-12)
+Michael answered the four questions of the plan's amendment ("Open questions for Michael (ADR
+0013/0014)") in chat on 2026-10-12, verbatim: **"1 ja, 2 A, 3 ja, 4 ja"**.
+1. **Yes: this ADR is accepted:** C++17 kernels for the measured hot phases of §1, each with its
+   GDScript twin kept for good (§5), including its CLAUDE.md lines (§14) and the session tools of
+   §8 (SCons 4.9.1, g++, binutils and the pinned `clang-format` in `setup.sh` and the session
+   hook, P53). This ADR is the "new ADR" that CLAUDE.md's Stack heading requires for the change.
+2. **A: the web preview stays on the GDScript twins** (§7, option A): the plain `web_nothreads`
+   template, no emsdk, the Web preset excluding `native/*` (P53). Option B (the dlink template)
+   stays the recorded exit route of §5 and §7. Adopting it needs the P26w spike and a new ADR
+   after the Phase 2 gate. No PR works on it before then.
+3. ADR 0014 is accepted too, with the calibration run; see its own acceptance note. The slip
+   therefore counts with P50a3 charged to both ADRs: the gate becomes ready at slot 35 instead of
+   30 (38 with every named split, 39 if P41b is expected, up to 44 if every conditional row fires
+   with its splits; the plan's amendment, "the slip").
+4. **Yes: the agent-file changes of §13.** `gameplay-dev.md` (both versions of a rule,
+   `native/sim_kernels/src/**` and `tests/sim/native/**`), `release-engineer.md` (the native
+   build, the seed script, the NDK, the session tools, the licence files, the P53 skeleton as a
+   named exception) and `qa-engineer.md` (the C++ scan, the sanitizer harness and its dump step,
+   the review of `check-native-tests.sh`) changed with this note.
+
+**Applied on acceptance (§14), in P26b.** The lead applied §14's docs list in P26b, the PR that
+carried the proposal, instead of a separate P26e (the plan's revision 15 folds P26e's row into
+P26b; nothing that waited for P26e waits any longer, and P53 now depends on P26b):
+- `CLAUDE.md`: the Stack line, the Tests and Format/lint line (the `clang-format` version reads
+  "the version `verify.sh` pins (P53)"), the Layout line for `native/`, the Commands line for
+  `build-native.sh`, and the addition to Architecture rule 1, each with §14's text;
+- the three agent files (§13, answer 4);
+- `rts-sim-conventions`: the "Native kernels" section (§1-§6, §12's checklist) and the flow line
+  (P27f withdrawn, 512 stays, §15);
+- the status lines in ADRs 0001, 0005 (§1), 0007 (§8), 0008 (§3), 0011 (§6) and 0012 (§4, §5,
+  §7), replacing the one-line pointers of the draft;
+- `docs/ROADMAP.md`, Phase 5's licences screen: godot-cpp's MIT text on builds with the library;
+- the plan's revision 15.
+
+Two follow-ups stay as §14 named them: the lead puts the `clang-format` version number into
+`CLAUDE.md` in a one-line docs PR after P53 merges, and adds ADR 0007 §4's status line in a
+one-line docs PR only if P41g's rule fires.
+
+**One correction to §12 and §14: the C++ review checklist lives in `rts-sim-conventions`, not in
+`godot-code-review`.** `godot-code-review` is one of the GodotPrompter skills copied unchanged
+under `.claude/skills/THIRD_PARTY_NOTICES.md`, which says "Do not edit these folders locally; put
+project-specific rules in our own skills". §12's checklist (signatures and the checked fetch,
+pointer lifetime, integer widths, undefined behaviour, order, allocation, the line-by-line mirror
+of the twin) is therefore the last part of the skill's "Native kernels" section, and a reviewer of
+a C++ PR loads `rts-sim-conventions` next to `godot-code-review`. The plan's "File ownership"
+row for the lead names the skill instead. What is checked does not change, only where the text
+lives.
+
+**Consequences recorded at acceptance:**
+- **P27f is withdrawn** and P27b's 512 stays (§15, ADR 0012 §5's rule with the C++ slice). The
+  value holds from the moment the §1 ports have merged (P49a's Depends cell names them all);
+  until then 512 runs on phases that are partly GDScript, which no gate judges.
+- **Michael re-pastes `scripts/cloud/setup.sh`** into the cloud environment's settings after P53
+  merges (§8, "Sessions"). Until he does, the session hook that P53 changes installs SCons and
+  `clang-format` at session start; if an install fails, `verify.sh` is RED and names the missing
+  tool, never a skip.
+- **`-fwrapv` stays in every production build** until Michael decides otherwise (§4). P53 measures
+  its cost on the mock; above 5 % the lead brings the number to him with a recommendation.
+- P26l (the LLVM libc++ notice) lands as planned, independent of this answer.
