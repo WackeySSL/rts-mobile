@@ -1,10 +1,12 @@
 # ADR 0012: Sim tick on a worker thread, the view snapshot, and the revised performance gate
 
 Status: proposed, 2026-10-12 (Michael asked for it: "ok ADR 0012"). Revision 2, the same day,
-after a review in four lenses (performance, gameplay, view, tests); "Revision 2" at the end lists
-what changed. When accepted, it supersedes in part:
+after a review in four lenses (performance, gameplay, view, tests), and revision 3 after the
+completeness check; "Revision 2" and "Revision 3" at the end list what changed. When accepted, it
+supersedes in part:
 - ADR 0011 §1 (what the view reads), §2 (where the prev positions live), §3 (the z list), §4 (the
-  CI ceiling becomes a printed estimate; the enforced CI budget becomes a regression ratchet), §5
+  CI ceiling becomes a printed estimate; the enforced CI budget becomes a regression ratchet; its
+  4.0 ms starting value of `mean_ms` is withdrawn), §5
   (the meaning and values of `work_p95_ms` and `sim_p95_ms` in its acceptance note, and the
   debug-APK margin), §6 step 4 (adopted here), and its sim cost estimate (1.9 ms mean on CI);
 - ADR 0010 §1-2 where the view reads the fog and its dirty lists from the World (now
@@ -12,7 +14,10 @@ what changed. When accepted, it supersedes in part:
 - ADR 0008 §3 (the flow-slice budget, the starting `flow_cells_per_tick`, and a slice on every
   tick);
 - ADR 0007 §6 (where the runner's per-tick work runs) and §10's last bullet (view handlers read
-  `runner.snapshot.events` inside `ticked`, not `runner.world.events`).
+  `runner.snapshot.events` inside `ticked`, not `runner.world.events`);
+- ADR 0003 §7, for the `WORKER` clock only (at most one publish per frame instead of up to
+  `max_catch_up_ticks` ticks; the drain and stamp at the boundary before the post). `SYNC` is
+  unchanged.
 
 It keeps Michael's answer 1 (the gate runs on his phone with k = 2.5) and CLAUDE.md rule 6.
 
@@ -55,8 +60,13 @@ templates, 1800 frames per phase):
   tight loop (wake-up and cache effects).
 
 Applied to the phone's debug p95 of 15.33 ms, the release mock tick on the worker would take
-about 10.4-13.3 ms p95, against the 13.3 ms limit (§4). That is an estimate; the release run
-measures it.
+about 10.4-13.3 ms p95, against the 13.3 ms limit (§4). The two ends come from two methods, so
+the range is a spread of methods, not a confidence interval:
+- low end, from the phone-sized job measured on the worker: 15.33 x 13.2 / 19.4 = 10.4 ms;
+- high end, from the tight loop plus 5 % for the worker: 15.33 x 2.93 / 3.55 x 1.05 = 13.3 ms,
+  exactly on the limit.
+
+That is an estimate; the release run measures it.
 
 **What the probe contradicts:**
 - **ADR 0011 §5 and its acceptance note (budget and gate).** The gate phone runs this GDScript
@@ -177,6 +187,10 @@ release-template facts on the official `linux_release` template):
 - **Worker:** one dedicated `Thread` per runner, created for the first job. It runs
   `TickJob.serve()`: wait on the `work` semaphore, return if `quit` is set, run one job, post the
   `done` semaphore, and repeat. Priority is normal. It is not the `WorkerThreadPool` (Context).
+  If `Thread.start()` returns an error (for example a thread limit), the runner resolves to
+  `SYNC` for the rest of its life, calls `push_warning` once, and runs the job it was about to
+  post inline in that frame. The rule is the pure
+  `static func mode_after_start(mode: int, start_error: int) -> int`, tested as a table.
 - **Hand-off.** The two semaphores are the only synchronisation, and they also give the memory
   ordering. The runner is in one of three states:
 
@@ -257,7 +271,8 @@ release-template facts on the official `linux_release` template):
   drains and posts the next one, and the clock restarts at 0 in that frame. `_process` never
   blocks. Commands keep queuing in `CommandQueue` meanwhile, and none is dropped.
 - **A late tick** is one where the worker really was slow: its post-to-done time
-  (`end_usec - post_usec`) exceeds the tick period (66 667 µs). `late_ticks` counts them at
+  (`end_usec - post_usec`) exceeds the tick period, `TICK_USEC = 1_000_000 / Sim.TICK_RATE`
+  (66 666 µs; derived from the tick rate, never a literal). `late_ticks` counts them at
   publish, and `latency_usec_max` keeps the largest post-to-done time of the run. A hold caused by
   a main-thread hitch or by catch-up is a held tick, not a late one: the hitch itself is judged
   by the on-time share.
@@ -266,8 +281,8 @@ release-template facts on the official `linux_release` template):
   - by every headless test (`AUTO` resolves to `SYNC` headless). The runner's own worker tests
     (plan P38w, P38w2) and the worker scene test (P50w) are the exceptions: they set `WORKER`
     explicitly;
-  - by `run_ticks(n)`, always inline (table above), so the published tick always advances by
-    exactly n;
+  - by `run_ticks(n)`, inline, except that a job already in flight is published as the first of
+    the n ticks (table above), so the published tick always advances by exactly n;
   - by `Replay.play` and `tests/perf`, which drive `MatchLoop` or `TickJob` directly with no
     runner;
   - by the web build. Threads are off in the web preset, so the web preview keeps the in-frame
@@ -282,6 +297,11 @@ release-template facts on the official `linux_release` template):
   pure `static func shared_access_allowed(mode: int, state: int) -> bool`, tested as a table; no
   test triggers the error itself (the log scan would catch it). The probe is installed through
   `set_probe(probe: SimProbe)`, which waits idle first.
+  Each of the four properties also has a setter, because in Godot 4.7.2 an assignment to a
+  getter-only script property is silently ignored (no parse or runtime error; verified headless),
+  so a test that installs a probe or swaps in a World would stop doing it without a word. The
+  `world`, `loop` and `replay` setters assign the private field under the getters' rule (for
+  tests: main thread, no job `RUNNING`); the `probe` setter calls `set_probe()`.
 - **`start()`** (both modes) waits for and discards a job in flight, builds the World and the
   `MatchLoop`, increments `match_serial`, captures the tick-0 snapshot with
   `capture(world, null)` into a new snapshot and publishes it before it returns (without emitting
@@ -353,7 +373,10 @@ test proves it.
 - **`game/core/MatchSnapshot.gd`**, a pure `RefCounted` with no Node. It holds the view's copy of
   one tick:
   - **header:** `match_serial`, `tick`, `rows_version`, `map_version`, `last_hash`, and the row
-    count;
+    count. The World holds neither `match_serial` nor `last_hash`, so `capture` does not set
+    them: `TickJob.run()` sets `snapshot.match_serial` (from the runner, handed to the job at the
+    post) and `snapshot.last_hash` (from `loop.last_hash`) right after the capture, and `start()`
+    does the same for the tick-0 snapshot;
   - **rows:** `unit_id`, `owner`, `type_index`, `pos_x`, `pos_y`, `hp`, `order`, `target` and
     `target_row` (the target's row in this snapshot, -1 when there is no target or it is gone,
     computed in `capture` on the worker), each with exactly `unit_count()` entries;
@@ -368,8 +391,11 @@ test proves it.
     `job_usec`, `post_usec` and `end_usec` (§1).
 
   Methods: `unit_count()`, `index_of(id)` (binary search over the ascending ids),
-  `cell_of(x, y)` (clamped exactly like `World.cell_of`, so the layers that hide by fog share one
-  formula) and `capture(world: World, previous: MatchSnapshot) -> void`.
+  `cell_of(x, y)` (the same formula as `World.cell_of`, so the layers that hide by fog share one
+  formula: x and y are clamped into the map, column `clampi(x / 1000, 0, map_cols - 1)` and row
+  `clampi(y / 1000, 0, map_rows - 1)`, so a position outside the map gives the nearest edge cell
+  and never indexes outside the fog arrays; the plan pins the clamp in `World.cell_of` from its
+  first PR, P29b) and `capture(world: World, previous: MatchSnapshot) -> void`.
 - **Copied columns:** `MatchSnapshot.COPIED` and `MatchSnapshot.NOT_COPIED`
   (`Array[StringName]`). A test checks that their union is exactly the World's `ROW_ARRAYS`,
   `TYPE_ARRAYS`, `WEAPON_ARRAYS`, `PROJECTILE_ARRAYS` and `MAP_ARRAYS`, that they are disjoint,
@@ -444,6 +470,15 @@ CPU p95 is 0 is `INVALID`. A monitor that a release template compiles out would 
 verdict silently. The card also shows, without a verdict: job mean, p50 and max,
 `latency_usec_max`, `held_ticks`, and the flow line of §5.
 
+**Why held ticks have no verdict.** A hold is visible (one frame or more of frozen motion), but it
+has two causes that are judged elsewhere. A main-thread hitch delays the post, which the on-time
+share already judges. A slow job holds once its post-to-done time passes the time left after a
+late post (from about 50 ms on the gate phone, because the post can come up to one frame after
+the boundary); such a job is far above `job_p99_ms` (26.7 ms), so the p99 verdict keeps them under
+1 % of ticks, and above one period they are late ticks. A hold verdict would judge the same frames
+twice. The first release perf-arena card records `held_ticks`; if it is above 9 (1 % of the 900
+ticks), the lead proposes a `held_ticks_max` field through a new ADR.
+
 **What the CPU-time limits cover.** Every CPU-time threshold is a 2021 limit divided by k = 2.5
 (ADR 0011 §5):
 - **The p95 job** may take half the period on a 2021 phone (33.3 ms). The other half is a factor
@@ -462,6 +497,12 @@ The withdrawn debug-APK margin of ADR 0011 §5 is replaced by these limits.
 
 **CI budget** (replaces ADR 0011 §4's ceiling rule; its method stays: min of 3, deterministic cost
 bounds, golden hashes, `ref_ms`):
+- **ADR 0011 §4's 4.0 ms starting value is withdrawn.** `budget.cfg` starts at 1.5 x the
+  calibrated min-of-3 and only ever tightens. The mock tick alone takes 2.51 ms mean and 3.36 ms
+  p95 on CI, and the real tick is estimated at about 6 ms mean (Context), so the old rule ("a mean
+  floor above 4.0 ms is a finding for §6") would block P49b exactly as the ceiling would. The
+  qa-engineer role text ("start at 4 ms per tick on CI") changes with it (plan: "On acceptance").
+  The device verdict stays with the gate.
 - **The device-derived ceiling is withdrawn as an assertion.** With the debug ratio it is
   13.3 / 4.6 = 2.9 ms, while the mock tick alone takes 3.36 ms p95 on CI, and ADR 0011 §4's floor
   (1.5 times the worst min-of-3) would be at least 5.0 ms. The floor fits under the ceiling only
@@ -622,9 +663,9 @@ period.
 - **The CI budget catches regressions, not the device verdict.** The phone gate is the only
   device verdict; CI prints an estimate.
 - **More code in the runner:** the snapshot, the job, the worker's life cycle, the hand-off states
-  and the clock rules. That is four lead PRs (P38s, P38j, P38w, P38w2), one qa PR (P50w) and one
-  release-engineer PR. The view PRs (P40, P43a, P44a, P44b, P45, P47, P47p) read the snapshot
-  instead of the World.
+  and the clock rules. That is four lead PRs (P38s, P38j, P38w, P38w2; each has a named split, and
+  P38w is expected to take it), one qa PR (P50w) and one release-engineer PR. The view PRs (P40,
+  P43a, P44a, P44b, P45, P47, P47p) read the snapshot instead of the World.
 - **Threading risks:** two busy threads heat the phone more. The worker is busy about 15 % of
   each period and asleep in between, so Android's scheduler may put it on a little core (the gate
   phone has four A520s), and the clock ramps after each sleep. Neither is modelled by k, and the
@@ -639,8 +680,11 @@ period.
 - **Flow fields** complete later than ADR 0008 planned (about 4.6 s for the arena's fourth field
   at 256 cells); units drive straight meanwhile.
 - **Docs when accepted:**
-  - the lead adds one status line each to ADRs 0007 (§6, §10), 0008 (§3), 0010 (§1-2) and 0011
-    (§1-§6 as listed above) (status notes, not rewrites);
+  - the lead adds one status line each to ADRs 0003 (§7, the `WORKER` clock only), 0007 (§6,
+    §10), 0008 (§3), 0010 (§1-2) and 0011 (§1-§6 as listed above, including the withdrawn 4.0 ms
+    start) (status notes, not rewrites);
+  - the lead asks Michael to approve the one-line change of the qa-engineer role's budget rule
+    (`.claude/agents/qa-engineer.md`, "start at 4 ms per tick on CI") to the ratchet of §4;
   - `rts-sim-conventions` gets a "Threading" section (§2, including the alias rule for both
     threads), the new flow-slice rule and the snapshot rule;
   - this ADR's PR carries the plan amendment.
@@ -667,3 +711,14 @@ period.
 - §7: the GDExtension triggers restated on the real tick, and the build order.
 - Context: corrected Node-guard and thread-lifecycle facts, frame-paced hand-off numbers, the pool
   measurement, the contention measurement, debug against release, the stale tick estimates.
+
+## Revision 3 (2026-10-12, completeness check)
+- Header: ADR 0003 §7 added to the supersede list (the `WORKER` clock only); ADR 0011 §4's 4.0 ms
+  starting value withdrawn (§4, with the qa-engineer role line on acceptance).
+- §1: `world`, `loop`, `replay` and `probe` get setters (a getter-only property silently ignores
+  assignments in 4.7.2); `run_ticks(n)` wording; `TICK_USEC` derived from `Sim.TICK_RATE`; a
+  failed `Thread.start()` falls back to `SYNC` with one warning (`mode_after_start`).
+- §3: `cell_of` clamps into the map, pinned in `World.cell_of` from P29b; `match_serial` and
+  `last_hash` set by `TickJob.run()` after the capture.
+- §4: why held ticks have no verdict, and the condition for proposing one.
+- Context: the two derivations behind the 10.4-13.3 ms estimate.
