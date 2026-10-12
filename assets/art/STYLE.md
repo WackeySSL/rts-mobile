@@ -310,31 +310,63 @@ out of the top edge, at every zoom and for both classes, so the notch alone tell
 luminance, 123 against 174, is a second cue).
 
 ## Fog and terrain
-`MapView` bakes the map once per match into one texture at 8 px per tile (ADR 0011 section 3) and
-draws it with `texture_filter` NEAREST, so a texel is 8x8 world px. Each terrain id of
-`data/terrain/standard.tres` has a tile of 8x8 texels, filled rects (x, y, w, h) in drawing order:
+`MapView` bakes the map once per match and per `map_version` (a terrain change) into one texture at
+8 px per tile (ADR 0011 section 3) and draws it with `texture_filter` NEAREST, so a texel is 8x8
+world px. The colours are `MapView.colors` keys: a terrain id of `data/terrain/standard.tres`, and
+`<id>_b` and `<id>_c` for the second and third tone of its tile (for grass `_b` is the tile parity,
+elsewhere a pattern tone). Probe is a texel (x, y) that shows the key's colour, for tests to read;
+the tile centre would show the scrub's highlight, so it is named per key:
 
-| Terrain id | Colours | Rects |
-| --- | --- | --- |
-| `grass` | #5E7D4A on tiles with x + y even, #6F8F57 on odd ones (the Phase 1 checkerboard) | whole tile |
-| `sand` | #CDB98F | whole tile |
-| `scrub` | base #4E5A3A, bush #6B7A4F, highlight #8C9A6B | base 0,0,8,8; bush 1,1,3,3 and 4,4,3,3; highlight 1,1,1,1 and 4,4,1,1 |
-| `rock` | base #6E6A66, lit #8C8782 (new), shade #4F4B48 (new) | base 0,0,8,8; lit 0,0,8,1 and 0,0,1,8; shade 0,7,8,1 and 7,0,1,8 |
-| `water` | base #2E5E7E, ripple #3C7396 | base 0,0,8,8; ripple 1,2,4,1 and 4,6,4,1 |
+| Key | Colour | Where | Probe |
+| --- | --- | --- | --- |
+| `grass` | #5E7D4A | tiles with x + y even (the Phase 1 checkerboard) | 3,3 |
+| `grass_b` | #6F8F57 | tiles with x + y odd | 3,3 |
+| `sand` | #CDB98F | the whole tile | 3,3 |
+| `scrub` | #4E5A3A | base | 6,2 |
+| `scrub_b` | #6B7A4F | bush | 2,2 |
+| `scrub_c` | #8C9A6B | highlight | 4,4 |
+| `rock` | #6E6A66 | base | 3,3 |
+| `rock_b` | #8C8782 | lit edge, top and left (new) | 3,0 |
+| `rock_c` | #4F4B48 | shade edge, bottom and right (new) | 7,3 |
+| `water` | #2E5E7E | base | 3,3 |
+| `water_b` | #3C7396 | ripple | 2,2 |
 
-After the rects, row 0 and column 0 of every tile are darkened by 10 % (black at 10 %): the grid,
-which replaces Phase 1's 1 px line at 20 % (new). Fog is black on a texture of one texel per tile,
-linear filtered, so its edge is soft across one tile (ADR 0010 section 2): alpha 255 where
-unexplored, 140 where explored but not visible, 0 where visible. `FogLayer.explored_alpha` and the
-gallery's `explored_fog_alpha` are 140. `TERRAIN_TILES` in `art_gallery.gd` holds the same rects.
+A tile is 8x8 texels of filled rects `x,y,w,h,key`, in drawing order. The first rect is the base,
+the whole tile. The grid then darkens it, and the other rects are drawn over the result:
 
-Greyscale check (P34c, a scratch render of a map with every terrain: mean luminance and the spread
-(standard deviation) inside one tile, grid included): grass 107 and 124 (spread 5 and 6), sand 182
-(8), scrub 90 (17.5), rock 102 (16), water 84 (8). Scrub is 17 to 34 below the grass tones and its
+| Terrain id | Rects |
+| --- | --- |
+| `grass` | `0,0,8,8,grass`, and `0,0,8,8,grass_b` on odd tiles |
+| `sand` | `0,0,8,8,sand` |
+| `scrub` | `0,0,8,8,scrub 1,1,3,3,scrub_b 4,4,3,3,scrub_b 1,1,1,1,scrub_c 4,4,1,1,scrub_c` |
+| `rock` | `0,0,8,8,rock 0,0,8,1,rock_b 0,0,1,8,rock_b 0,7,8,1,rock_c 7,0,1,8,rock_c` |
+| `water` | `0,0,8,8,water 1,2,4,1,water_b 4,6,4,1,water_b` |
+
+The grid is `grid_color = Color(0, 0, 0, 0.1)`, on row 0 and column 0 of every tile: the base is
+mixed with black by 10 %, so each channel becomes floor(c x 0.9) (94 becomes 84), as
+`Color.darkened(0.1)` written into an 8-bit image gives. It is one texel, 8 world px, wide, where
+Phase 1 drew a 1 px line at 20 %, also on the map's right and bottom edge, which this grid leaves
+out (new). The rock's lit edge lies on row 0 and column 0 and is drawn after the grid, so it keeps
+its colour. Fog is black on a texture of one texel per tile, linear filtered, so its edge is soft across
+one tile (ADR 0010 section 2): alpha 255 where unexplored, 140 where explored but not visible, 0 where
+visible. `FogLayer.explored_alpha` and the gallery's `explored_fog_alpha` are 140. The gallery's
+`TERRAIN_COLORS` and `TERRAIN_TILES` (`art_gallery.gd`) hold these keys and strings, which `tests/art`
+pins to this text and to every texel; `MapView` keeps its own copy and P50 compares the two.
+
+Greyscale check (P34c, the tiles' own texels, Rec. 601 luminance of the 8-bit colours, grid included;
+mean and spread (standard deviation) inside one tile): grass 107 and 124 (spread 5 and 6), sand 182
+(8), scrub 90 (17.4), rock 105 (19.9), water 84 (8). Scrub is 17 and 34 below the grass tones and its
 spread is three times theirs, so the dotted bushes read apart from grass in greyscale, as a darker
-patch with a texture. Rock has the grass's mean luminance, so the lit and shaded edges carry it
-(the bevel reads as a raised block). Under the explored fog (x 0.45): grass 48 and 56, sand 82,
-scrub 41, rock 46, water 38, all dark, with the patterns still visible.
+patch with a texture. Rock has the grass's mean luminance, so its bevel carries it: the lit edge (136)
+is lighter than any grass texel (127 at most) and the shade edge (76) darker than any (98 at least).
+Under the explored fog (x 0.45) the means are grass 48 and 56, sand 82, scrub 41, rock 48, water 38,
+all dark, with the patterns still visible.
+
+Squads on scrub (P34c, both squads in both team colours composited on scrub, grass and sand, in
+greyscale at zoom 1.0 and 0.75): scrub has the unit olive and only foot units can stand on it. The
+mean luminance difference between a squad pixel and the ground under it is 41 to 49 on scrub (49 to
+56 on grass, 113 to 124 on sand), and at most 14 % of the squad's pixels are within 12 of the
+ground (9 % on grass): the outline and team colour carry the squads on scrub about as on grass.
 
 ## Gallery
 `scenes/dev/art_gallery.tscn` (opened from the dev menu, also in the web preview) shows every asset
@@ -349,8 +381,10 @@ squads are built in code, without a tile square: a unit with no turret can join 
 list in `art_gallery.gd` instead of getting rigs in the scene. A ring row (also built by the
 script) shows team A's tank with its ring on both grounds (only own units get one) at the three zoom
 levels, at the ring radius of the 6-inch phone, and each ground carries the effects atlas at scale 1.
-A terrain row at the top shows the five terrains (grass twice) as map tiles at 64 px, the lower half
-under the explored fog alpha. To add an asset:
+A terrain row at the top shows a patch of 8 x 2 map tiles at 64 px in a dark frame, so every tile
+edge shows on both grounds: grass, scrub, rock, water and sand, with the grid. Team A's and team B's
+squads stand on the two scrub tiles, and the second row of the patch is under the explored fog alpha.
+To add an asset:
 - Add its layers as one rig `Node2D` under each of the four slots (grass A, grass B, sand A, sand B).
 - Put the rig in the group `gallery_team_a` or `gallery_team_b`, and name the layers `Hull`, `Team`
   and `Turret` (a unit without a turret leaves `Turret` out).
@@ -385,10 +419,24 @@ under the explored fog alpha. To add an asset:
 - The selection ring is imported at scale 1.0, not 0.5 (see `RING_TEX_RADIUS_PX = 72` under the
   marker table), so it stays sharp at zoom 1.5. This is an exception to the half-scale rule for one
   asset.
-- Terrain: rock has the same mean luminance as grass, so only its bevel separates them in greyscale;
-  judge it on the phone. The rock lit and shade colours and the 10 % grid are new. The explored fog
-  (alpha 140) leaves terrain at 45 % brightness: check that explored ground stays readable; it is one
-  value (`FogLayer.explored_alpha`) to change.
+- Terrain (gallery, top row). The grid is one texel wide, 8 world px (6, 8 and 12 base px at zoom
+  0.75, 1.0 and 1.5; 12 window px at zoom 1.0 on the 6-inch phone), where Phase 1 drew a 1 px
+  line. At 10 % it reads as a faint offset of the checkerboard more than as thin lines: on a light
+  grass tile the band (luminance 114) is still lighter than the dark tile next to it (110), so it
+  is a step, not a line. Please judge it in the patch. The levers are `GRID_DARKEN` in
+  `art_gallery.gd` (the alpha of `MapView.grid_color`) and the grid on sand only. The rock lit and
+  shade colours and the grid are new. Scrub shares the unit olive, so judge the squads on it in the
+  patch. The explored fog (alpha 140) leaves terrain at 45 % brightness: check that explored ground
+  stays readable; it is one value (`FogLayer.explored_alpha`) to change.
+- For the lead, before P36 starts: the plan's `MapView` row allows the keys `<id>` and `<id>_b`
+  and holds no tile rects, but this spec has three tones for scrub and rock and rect patterns for
+  scrub, rock and water (ADR 0011 section 3 asks for the scrub pattern). The row needs `_c` keys, a
+  rect table in `MapView` copied from the table above and applied as base, grid, rects, the
+  `grid_color` value, and the probe texels in P36's colour test (the tile centre of scrub is its
+  highlight). P50's cross-file test then compares `MapView`'s keys and strings with the gallery's
+  `TERRAIN_COLORS` and `TERRAIN_TILES`. P36's phone check "the map looks as before" needs the grid
+  exception. The other route is two tones per terrain, which drops the scrub highlight and the
+  rock bevel: change this spec for it, not the contract.
 
 ## Change log
 | Date | Change |
@@ -397,4 +445,4 @@ under the explored fog alpha. To add an asset:
 | 2026-10-11 | v1.1 (P12): feedback marker spec, gallery zoom row, launcher icon credit. |
 | 2026-10-12 | v1.2 (P34): rifle and rocket squads, their gallery slots and zoom row. |
 | 2026-10-12 | v1.2 (P34b): selection ring texture and the draw-order rule, effects atlas, combat effects and health bars specs (weapon and class from snapshot columns, bars placed by sprite reach), the own and enemy cue. |
-| 2026-10-12 | v1.2 (P34c): terrain tiles with the scrub pattern, grid and fog alphas, the gallery terrain row. |
+| 2026-10-12 | v1.2 (P34c): terrain tiles with the scrub pattern, keyed by `MapView.colors` key, the grid and fog alphas, the gallery terrain patch with squads on scrub. |

@@ -17,7 +17,7 @@ extends Control
 ## pair per zoom level. `Grass/ZoomRow` and `Sand/ZoomRow` stay the tank's (tests/project).
 ## They have no tile square; a unit without a turret can join the list in `_squad_pair`.
 ##
-## `_add_terrain_row` adds the terrain swatches, half of them under the explored fog alpha.
+## `_add_terrain_row` adds a patch of map tiles, both teams' squads on its scrub, and the fog alpha.
 ## `_add_rings_and_atlas` adds a ring row (the team A tank with its selection ring at the three
 ## zooms, at the 6-inch phone's ring radius) and the effects atlas at scale 1 to each ground.
 ##
@@ -41,20 +41,43 @@ const RING_ROW_TOP: float = 0.3
 const ATLAS_ART: String = "res://assets/art/svg/fx/effects_atlas.svg"
 const ATLAS_TOP_PX: float = 20.0
 const ATLAS_LEFT_PX: Dictionary[String, float] = {"Grass": 190.0, "Sand": 282.0}
-## Terrain tiles as the map bake draws them (STYLE.md, "Fog and terrain"): 8x8 texels, as filled
-## rects "x,y,w,h,hex" drawn in order, then row 0 and column 0 darkened by GRID_DARKEN.
-const TERRAIN_TILES: Dictionary[String, String] = {
-	"GrassEven": "0,0,8,8,5E7D4A",
-	"GrassOdd": "0,0,8,8,6F8F57",
-	"Sand": "0,0,8,8,CDB98F",
-	"Scrub": "0,0,8,8,4E5A3A 1,1,3,3,6B7A4F 4,4,3,3,6B7A4F 1,1,1,1,8C9A6B 4,4,1,1,8C9A6B",
-	"Rock": "0,0,8,8,6E6A66 0,0,8,1,8C8782 0,0,1,8,8C8782 0,7,8,1,4F4B48 7,0,1,8,4F4B48",
-	"Water": "0,0,8,8,2E5E7E 1,2,4,1,3C7396 4,6,4,1,3C7396",
+## Map colours by `MapView.colors` key (STYLE.md, "Fog and terrain"): a terrain id, and `<id>_b` and
+## `<id>_c` for the second and third tone of its tile.
+const TERRAIN_COLORS: Dictionary[StringName, Color] = {
+	&"grass": Color("5E7D4A"),
+	&"grass_b": Color("6F8F57"),
+	&"sand": Color("CDB98F"),
+	&"scrub": Color("4E5A3A"),
+	&"scrub_b": Color("6B7A4F"),
+	&"scrub_c": Color("8C9A6B"),
+	&"rock": Color("6E6A66"),
+	&"rock_b": Color("8C8782"),
+	&"rock_c": Color("4F4B48"),
+	&"water": Color("2E5E7E"),
+	&"water_b": Color("3C7396"),
+}
+## The map tiles, 8x8 texels, as filled rects "x,y,w,h,key" (a `TERRAIN_COLORS` key) in drawing
+## order: the base, then the grid darkens it, then the rest. Grass has one per parity of x + y.
+const TERRAIN_TILES: Dictionary[StringName, String] = {
+	&"grass": "0,0,8,8,grass",
+	&"grass_b": "0,0,8,8,grass_b",
+	&"sand": "0,0,8,8,sand",
+	&"scrub": "0,0,8,8,scrub 1,1,3,3,scrub_b 4,4,3,3,scrub_b 1,1,1,1,scrub_c 4,4,1,1,scrub_c",
+	&"rock": "0,0,8,8,rock 0,0,8,1,rock_b 0,0,1,8,rock_b 0,7,8,1,rock_c 7,0,1,8,rock_c",
+	&"water": "0,0,8,8,water 1,2,4,1,water_b 4,6,4,1,water_b",
 }
 const GRID_DARKEN: float = 0.1
-const SWATCH_PX: float = 64.0  ## One tile at gameplay zoom.
-const SWATCH_GAP_PX: float = 8.0
-const TERRAIN_ROW_TOP: float = 0.03
+## The terrain row's map patch: one terrain id per column, the same in every row, and the fog over
+## the rows after the first. Scrub is two tiles wide, so both teams' squads stand on it.
+const PATCH_IDS: Array[StringName] = [
+	&"grass", &"grass", &"scrub", &"scrub", &"grass", &"rock", &"water", &"sand"
+]
+const PATCH_ROWS: int = 2
+const TILE_PX: float = 64.0  ## One tile at gameplay zoom.
+const FRAME_PX: float = 4.0  ## The dark frame around the patch, so every tile edge shows.
+const FRAME_COLOR: Color = Color("1C2127")
+const SQUAD_TILE_OFFSET_PX: float = 16.0  ## A squad pair fills one tile: 2 x 32 px.
+const TERRAIN_ROW_TOP: float = 0.02
 
 @export var team_a_color: Color = Color("2F80ED")
 @export var team_b_color: Color = Color("E5484D")
@@ -166,38 +189,69 @@ func _add_rings_and_atlas() -> void:
 
 func _add_terrain_row() -> void:
 	var row: Control = _anchored_row(self, "TerrainRow", TERRAIN_ROW_TOP)
-	var step: float = SWATCH_PX + SWATCH_GAP_PX
-	var width: float = step * TERRAIN_TILES.size() - SWATCH_GAP_PX
-	var index: int = 0
-	for id: String in TERRAIN_TILES:
-		var swatch: TextureRect = TextureRect.new()
-		swatch.name = id
-		swatch.texture = ImageTexture.create_from_image(tile_image(TERRAIN_TILES[id]))
-		swatch.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		swatch.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		swatch.position = Vector2(step * index - width / 2.0, 0.0)
-		swatch.size = Vector2(SWATCH_PX, SWATCH_PX)
-		row.add_child(swatch)
-		index += 1
+	var extent: Vector2 = Vector2(PATCH_IDS.size(), PATCH_ROWS) * TILE_PX
+	var origin: Vector2 = Vector2(-extent.x / 2.0, 0.0)
+	var frame: ColorRect = ColorRect.new()
+	frame.name = "Frame"
+	frame.color = FRAME_COLOR
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.position = origin - Vector2.ONE * FRAME_PX
+	frame.size = extent + Vector2.ONE * 2.0 * FRAME_PX
+	row.add_child(frame)
+	var patch: TextureRect = TextureRect.new()
+	patch.name = "Patch"
+	patch.texture = ImageTexture.create_from_image(patch_image())
+	patch.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	patch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	patch.position = origin
+	patch.size = extent
+	row.add_child(patch)
+	# Team A's squads on the first scrub tile, team B's on the next.
+	var is_team_a: bool = true
+	for column: int in PATCH_IDS.size():
+		if PATCH_IDS[column] == &"scrub":
+			var centre: Vector2 = origin + Vector2(column + 0.5, 0.5) * TILE_PX
+			for rig: Node2D in _squad_pair(
+				"Scrub%d" % column, is_team_a, centre, SQUAD_TILE_OFFSET_PX, 1.0
+			):
+				row.add_child(rig)
+				_spinners.append(rig)
+			is_team_a = false
 	var fog: ColorRect = ColorRect.new()
 	fog.name = "ExploredFog"
 	fog.color = Color(0.0, 0.0, 0.0, explored_fog_alpha / 255.0)
-	fog.position = Vector2(-width / 2.0, SWATCH_PX / 2.0)
-	fog.size = Vector2(width, SWATCH_PX / 2.0)
+	fog.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fog.position = origin + Vector2(0.0, TILE_PX)
+	fog.size = extent - Vector2(0.0, TILE_PX)
 	row.add_child(fog)
 
 
-## The CPU-side 8x8 tile of a `TERRAIN_TILES` spec, grid texels included.
+## The CPU-side map patch of the terrain row, 8 texels per tile.
+static func patch_image() -> Image:
+	var image: Image = Image.create(8 * PATCH_IDS.size(), 8 * PATCH_ROWS, false, Image.FORMAT_RGBA8)
+	for y: int in PATCH_ROWS:
+		for x: int in PATCH_IDS.size():
+			var id: StringName = PATCH_IDS[x]
+			if id == &"grass" and (x + y) % 2 == 1:
+				id = &"grass_b"
+			var tile: Image = tile_image(TERRAIN_TILES[id])
+			image.blit_rect(tile, Rect2i(0, 0, 8, 8), Vector2i(8 * x, 8 * y))
+	return image
+
+
+## The CPU-side 8x8 tile of a `TERRAIN_TILES` spec: the base, the grid, then the other rects.
 static func tile_image(spec: String) -> Image:
 	var image: Image = Image.create(8, 8, false, Image.FORMAT_RGBA8)
-	for fill: String in spec.split(" "):
-		var part: PackedStringArray = fill.split(",")
+	var fills: PackedStringArray = spec.split(" ")
+	for index: int in fills.size():
+		var part: PackedStringArray = fills[index].split(",")
 		var rect: Rect2i = Rect2i(int(part[0]), int(part[1]), int(part[2]), int(part[3]))
-		image.fill_rect(rect, Color(part[4]))
-	for i: int in 8:
-		image.set_pixel(i, 0, image.get_pixel(i, 0).darkened(GRID_DARKEN))
-		if i > 0:
-			image.set_pixel(0, i, image.get_pixel(0, i).darkened(GRID_DARKEN))
+		image.fill_rect(rect, TERRAIN_COLORS[StringName(part[4])])
+		if index == 0:
+			for i: int in 8:
+				image.set_pixel(i, 0, image.get_pixel(i, 0).darkened(GRID_DARKEN))
+				if i > 0:
+					image.set_pixel(0, i, image.get_pixel(0, i).darkened(GRID_DARKEN))
 	return image
 
 
