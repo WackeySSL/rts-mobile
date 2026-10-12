@@ -5,6 +5,8 @@ extends Resource
 
 ## The entries a TerrainDef.cost must have: one per movement class (foot, wheeled, tracked).
 const _COST_ENTRIES: int = 3
+## The largest cost (ADR 0008 section 1). World keeps a cost in a byte.
+const _COST_MAX: int = 40
 
 @export var rows: PackedStringArray = PackedStringArray()
 @export var terrain: TerrainSetDef
@@ -18,8 +20,9 @@ func size_tiles() -> Vector2i:
 
 
 ## One text per problem, empty when the map is valid: an empty map, a missing terrain set, a null,
-## repeated-symbol or wrong-cost-count terrain, a row of the wrong length, and the first unknown
-## symbol of a row. It runs at load time, so its messages are reviewed allocations (`# alloc-ok`).
+## repeated-symbol or wrong-cost-count terrain, a cost outside 0..40, a row of the wrong length,
+## and the first unknown symbol of a row. It runs at load time, so its messages are reviewed
+## allocations (`# alloc-ok`).
 func validate() -> PackedStringArray:
 	var problems: PackedStringArray = PackedStringArray()
 	var size: Vector2i = size_tiles()
@@ -41,6 +44,12 @@ func validate() -> PackedStringArray:
 				problems.append(
 					"terrain %d has %d costs, expected %d" % [i, def.cost.size(), _COST_ENTRIES]  # alloc-ok
 				)
+			for entry: int in def.cost.size():
+				var cost: int = def.cost[entry]
+				if cost < 0 or cost > _COST_MAX:
+					problems.append(
+						"terrain %d cost %d is %d, expected 0..%d" % [i, entry, cost, _COST_MAX]  # alloc-ok
+					)
 	for y: int in rows.size():
 		var row: String = rows[y]
 		if len(row) != size.x:

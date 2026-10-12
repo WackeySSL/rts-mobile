@@ -233,8 +233,9 @@ var terrain_ids: Array[StringName] = []
 var terrain: PackedByteArray = PackedByteArray()
 ## Entry `class * cells + cell`, 3 classes: 0 = blocked, 10 = normal, up to 40 (ADR 0008).
 var move_cost: PackedByteArray = PackedByteArray()
-## Entry `terrain * 3 + class` for each terrain index, the numbers move_cost holds: 0 = blocked,
-## up to 40. Open grass has the one terrain 0.
+## Entry `terrain * 3 + class` for each terrain index: the numbers move_cost holds, 0 = blocked,
+## up to 40 (MapDef.validate keeps them in 0..40). Open grass has the one terrain 0. Only
+## from_scenario and prepare() write it, so it is constant during a match.
 var terrain_cost: PackedByteArray = PackedByteArray()
 
 ## Per unit, ascending by id.
@@ -411,8 +412,10 @@ func prepare() -> void:
 ## divide toward zero and clamp to 0). With no map it is 0.
 @warning_ignore("integer_division")
 func cell_of(x: int, y: int) -> int:
-	var column: int = clampi(x / MILLI_PER_TILE, 0, maxi(map_cols - 1, 0))
-	var row: int = clampi(y / MILLI_PER_TILE, 0, maxi(map_rows - 1, 0))
+	if map_cols == 0:
+		return 0
+	var column: int = clampi(x / MILLI_PER_TILE, 0, map_cols - 1)
+	var row: int = clampi(y / MILLI_PER_TILE, 0, map_rows - 1)
 	return row * map_cols + column
 
 
@@ -498,11 +501,15 @@ func _reset_projectile_slots() -> void:
 
 
 ## Open grass over map_w x map_h rounded up to whole tiles (ADR 0007 section 2): terrain 0 on
-## every cell, normal ground for every class. A size of 0 leaves no map.
+## every cell, normal ground for every class. A size of 0 or less on either axis leaves no map:
+## both counts are 0, never a grid with columns and no rows.
 @warning_ignore("integer_division")
 func _derive_open_grass() -> void:
-	map_cols = maxi(map_w + MILLI_PER_TILE - 1, 0) / MILLI_PER_TILE
-	map_rows = maxi(map_h + MILLI_PER_TILE - 1, 0) / MILLI_PER_TILE
+	map_cols = (map_w + MILLI_PER_TILE - 1) / MILLI_PER_TILE
+	map_rows = (map_h + MILLI_PER_TILE - 1) / MILLI_PER_TILE
+	if map_cols <= 0 or map_rows <= 0:
+		map_cols = 0
+		map_rows = 0
 	var cells: int = map_cols * map_rows
 	var classes: int = MoveClass.size()
 	terrain.resize(cells)

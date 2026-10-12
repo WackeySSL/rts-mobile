@@ -329,7 +329,7 @@ func test_cell_of_clamps_each_axis_into_the_map() -> void:
 
 
 ## Open grass is terrain 0 and normal ground for the three classes, over the size rounded up to
-## whole tiles. A width of 0 leaves no map.
+## whole tiles. A size of 0 or less on either axis leaves no map on both, which is passable.
 func test_prepare_derives_open_grass_from_the_map_size_rounded_up_to_whole_tiles() -> void:
 	assert_int(World.GRASS_COST).is_equal(10)
 	assert_int(World.GRASS_COST).is_equal(TerrainDef.new().cost[0])
@@ -340,7 +340,10 @@ func test_prepare_derives_open_grass_from_the_map_size_rounded_up_to_whole_tiles
 		[1001, 1000, 2, 1],
 		[2500, 600, 3, 1],
 		[1, 1, 1, 1],
-		[-5000, 1000, 0, 1],
+		[-5000, 1000, 0, 0],
+		[1000, -5000, 0, 0],
+		[0, 48000, 0, 0],
+		[64000, 0, 0, 0],
 	]
 	for size: Array in sizes:
 		var world: World = _open_world(int(size[0]), int(size[1]))
@@ -352,28 +355,34 @@ func test_prepare_derives_open_grass_from_the_map_size_rounded_up_to_whole_tiles
 		)
 		assert_array(world.terrain_cost).is_equal([10, 10, 10])
 		assert_int(world.map_version).is_equal(0)
+		assert_bool(world.is_passable(0, 0)).override_failure_message(str(size)).is_true()
 	# prepare() derives the grid once: a later call keeps what the world holds.
 	var kept: World = _open_world(3000, 2000)
 	kept.move_cost[7] = 0
 	kept.prepare()
 	assert_array([kept.move_cost[7], kept.move_cost.size()]).is_equal([0, 18])
-	var empty: World = _open_world(0, 48000)
-	assert_array([empty.map_cols, empty.map_rows, empty.terrain.size()]).is_equal([0, 48, 0])
 
 
+## Besides grass, scrub (foot only), hills (every class, cost above 10) and rock, the map has a
+## wheeled-only and a tracked-only terrain, so a swapped class block or a test for exactly 10 shows.
 func test_is_passable_is_true_without_a_map_and_reads_the_cost_of_the_class_with_one() -> void:
 	for cell: int in [0, -1]:
 		assert_str(_classes(World.new(), cell)).is_equal("FWT")
-	var world: World = World.from_scenario(_tile_scenario())
-	# Grass, scrub (foot only) and rock; then cells outside the map.
-	var expected: Dictionary[int, String] = {0: "FWT", 2: "F", 5: "", -1: "", 12: "", 1000: ""}
+	var scenario: ScenarioDef = _tile_scenario()
+	scenario.map.terrain.terrains.append(_terrain("w", [0, 12, 0]))
+	scenario.map.terrain.terrains.append(_terrain("t", [0, 0, 12]))
+	scenario.map.rows = PackedStringArray(["wt^h", "h#^.", "#..h"])
+	var world: World = World.from_scenario(scenario)
+	# Cells 0 to 7 hold w, t, scrub, hills, hills, rock, scrub, grass; then cells outside.
+	var expected: Dictionary[int, String] = {0: "W", 1: "T", 2: "F", 3: "FWT", 4: "FWT", 5: ""}
+	expected.merge({6: "F", 7: "FWT", 8: "", -1: "", 12: "", 1000: ""})
 	for cell: int in expected:
 		assert_str(_classes(world, cell)).override_failure_message(str(cell)).is_equal(
 			expected[cell]
 		)
 	# A class that does not exist is blocked, and so is a cell past a narrow map.
-	assert_bool(world.is_passable(0, -1)).is_false()
-	assert_bool(world.is_passable(0, 3)).is_false()
+	assert_bool(world.is_passable(3, -1)).is_false()
+	assert_bool(world.is_passable(3, 3)).is_false()
 	assert_bool(_open_world(2000, 1000).is_passable(2, 0)).is_false()
 
 
@@ -414,9 +423,9 @@ func test_from_scenario_without_a_usable_map_is_open_grass_of_the_scenario_size(
 		assert_array(world.terrain_cost).is_equal([10, 10, 10])
 
 
-## Spot checks on the shipped arena (data/maps/perf_arena.tres): the ridge at columns 31 and 32
-## with its gap at row 27, water and scrub west and east of it, and sand. The terrain set is
-## grass, sand, scrub, rock, water.
+## The shipped arena (data/maps/perf_arena.tres): the ridge at columns 31 and 32 with its gap at
+## row 27 by position, and the first scrub and water cell wherever P48 leaves them (test_defs_data
+## pins that both exist). The terrain set is grass, sand, scrub, rock, water.
 func test_the_perf_arena_map_is_loaded_into_the_world() -> void:
 	var world: World = World.from_scenario(load(ARENA_PATH) as ScenarioDef)
 	var size: Array[int] = [world.map_cols, world.map_rows, world.map_w, world.map_h]
@@ -424,18 +433,16 @@ func test_the_perf_arena_map_is_loaded_into_the_world() -> void:
 	assert_array([world.terrain.size(), world.move_cost.size()]).is_equal([4096, 12288])
 	assert_array(world.terrain_cost).is_equal([10, 10, 10, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0])
 	# x, y (a tile centre), terrain, the classes that can stand there
-	var spots: Array[Array] = [
-		[31500, 500, 3, ""],
-		[32500, 63500, 3, ""],
-		[31500, 27500, 0, "FWT"],
-		[28500, 29500, 4, ""],
-		[33500, 29500, 2, "F"],
-		[33500, 34500, 1, "FWT"],
-	]
+	var spots: Array[Array] = [[31500, 500, 3, ""], [32500, 63500, 3, ""], [31500, 27500, 0, "FWT"]]
 	for spot: Array in spots:
 		var cell: int = world.cell_of(int(spot[0]), int(spot[1]))
 		assert_int(world.terrain[cell]).override_failure_message(str(spot)).is_equal(spot[2])
 		assert_str(_classes(world, cell)).override_failure_message(str(spot)).is_equal(spot[3])
+	# terrain, the classes that can stand on the first such cell
+	for kind: Array in [[2, "F"], [4, ""]]:
+		var first: int = world.terrain.find(int(kind[0]))
+		assert_int(first).override_failure_message(str(kind)).is_greater_equal(0)
+		assert_str(_classes(world, first)).override_failure_message(str(kind)).is_equal(kind[1])
 
 
 ## set_terrain takes the new terrain's cost for each class from the table, bumps map_version on
