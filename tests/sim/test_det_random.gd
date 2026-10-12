@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
-## DetRandom (ADR 0007 section 7). Expected numbers are literals: the generator vector comes
-## from Vigna's xoshiro128starstar.c, every other one from tests/sim/reference/det_random_ref.py.
+## DetRandom (ADR 0007 section 7). Expected numbers are literals from
+## tests/sim/reference/det_random_ref.py; its docstring says where the generator vector comes from.
 
 
 func test_core_generator_matches_the_published_reference() -> void:
@@ -19,18 +19,16 @@ func test_seeding_matches_the_python_transcription() -> void:
 	assert_array(_draws(DetRandom.create(7, 101), 5)).is_equal(
 		[3000987990, 2895628540, 628647319, 1088727151, 1005758799]
 	)
+	# Seed bit 30 and stream bit 15 are set.
+	assert_array(_draws(DetRandom.create(0x7FFFFFFF, 65535), 5)).is_equal(
+		[2797220835, 2825680778, 2432194248, 1616142701, 1962500657]
+	)
 
 
 func test_mul32_equals_the_true_low_32_bits() -> void:
 	assert_int(DetRandom.mul32(0xFFFFFFFF, 0xFFFFFFFF)).is_equal(1)
 	assert_int(DetRandom.mul32(0xFFFFFFFF, 2)).is_equal(4294967294)
 	assert_int(DetRandom.mul32(0xDEADBEEF, 0x7FEB352D)).is_equal(4084665091)
-	# Operands below 2^31 and 2^32 give products below 2^63, so the engine product is exact.
-	var rng: DetRandom = DetRandom.create(5, 1)
-	for i: int in range(2000):
-		var a: int = rng.next_u32() >> 1
-		var b: int = rng.next_u32()
-		assert_int(DetRandom.mul32(a, b)).is_equal((a * b) & 0xFFFFFFFF)
 
 
 func test_rotl_rotates_within_32_bits() -> void:
@@ -41,6 +39,8 @@ func test_rotl_rotates_within_32_bits() -> void:
 
 
 func test_streams_and_seed_masks() -> void:
+	assert_int(DetRandom.STREAM_SIM).is_equal(1)
+	assert_int(DetRandom.STREAM_AI_BASE).is_equal(100)
 	assert_array(DetRandom.create(1, 1).state()).is_not_equal(DetRandom.create(1, 101).state())
 	var base: PackedInt64Array = DetRandom.create(5, 1).state()
 	assert_array(DetRandom.create((1 << 31) + 5, 1).state()).is_equal(base)
@@ -71,23 +71,37 @@ func test_next_int_buckets_are_even() -> void:
 		assert_int(counts[bucket]).is_between(9700, 10300)
 
 
-## n = 0x66666667 is 2^32 / 2.5. Without rejection the residues below 858993458 would be hit
-## 3 times in 5 instead of 1 in 2.
-func test_next_int_rejects_the_biased_tail() -> void:
+## n = 1431655766 rejects a third of the draws (limit 2863311532 = 2^32 - 2^32 % n). A twin that
+## draws again while the value is at or above the limit must agree on every result and every draw.
+func test_next_int_draws_again_until_the_value_is_below_the_limit() -> void:
 	var rng: DetRandom = DetRandom.create(42, 1)
-	var below: int = 0
-	for i: int in range(20000):
-		if rng.next_int(1717986919) < 858993459:
-			below += 1
-	assert_int(below).is_between(9500, 10500)
+	var twin: DetRandom = DetRandom.create(42, 1)
+	for i: int in range(3000):
+		var value: int = twin.next_u32()
+		while value >= 2863311532:
+			value = twin.next_u32()
+		assert_int(rng.next_int(1431655766)).is_equal(value % 1431655766)
+	assert_array(rng.state()).is_equal(twin.state())
+
+
+## For n = 3 the limit is 0xFFFFFFFF, so a draw of exactly the limit is rejected (it would be 0).
+## The first draw of this state is 0xFFFFFFFF, the second is 40319 (2 modulo 3), and no third.
+func test_next_int_rejects_a_draw_equal_to_the_limit() -> void:
+	var rng: DetRandom = DetRandom.new()
+	rng.set_state(PackedInt64Array([1, 2199679431, 8, 7]))
+	assert_int(rng.next_int(3)).is_equal(2)
+	assert_array(rng.state()).is_equal([3817735191, 954437126, 2199675848, 2477699844])
 
 
 func test_next_int_and_range_int_match_the_python_transcription() -> void:
+	# n = 0x66666667 is 2^32 / 2.5. Draws 3 and 4 of this stream are rejected in a row.
 	var rng: DetRandom = DetRandom.create(42, 1)
 	var ints: Array[int] = []
-	for i: int in range(5):
-		ints.append(rng.next_int(1000))
-	assert_array(ints).is_equal([245, 650, 811, 129, 441])
+	for i: int in range(8):
+		ints.append(rng.next_int(1717986919))
+	assert_array(ints).is_equal(
+		[1378458326, 1658389731, 491497522, 229147235, 763497333, 1076119403, 407490571, 57000160]
+	)
 	rng = DetRandom.create(42, 1)
 	var ranged: Array[int] = []
 	for i: int in range(5):
@@ -105,6 +119,12 @@ func test_next_int_outside_1_to_2_pow_31_returns_0_without_drawing() -> void:
 	# n = 1 and n = 2^31 are valid: each draws exactly once (2^32 is a multiple of both).
 	var twin: DetRandom = DetRandom.create(3, 1)
 	assert_int(rng.next_int(1)).is_equal(0)
+	twin.next_u32()
+	assert_array(rng.state()).is_equal(twin.state())
+	# A span of one value is a draw of next_int(1) too, also through pick_random.
+	assert_int(rng.range_int(7, 7)).is_equal(7)
+	assert_int(rng.pick_random(PackedInt32Array([4]))).is_equal(4)
+	twin.next_u32()
 	twin.next_u32()
 	assert_array(rng.state()).is_equal(twin.state())
 	assert_int(rng.next_int(0x80000000)).is_equal(twin.next_u32() & 0x7FFFFFFF)
@@ -133,16 +153,11 @@ func test_shuffle_is_the_same_permutation_for_the_same_seed() -> void:
 	var sorted: Array = Array(values)
 	sorted.sort()
 	assert_array(sorted).is_equal([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
-
-
-## The last swap of a shuffle is the one between positions 0 and 1.
-func test_shuffle_of_two_values_swaps_for_about_half_of_the_seeds() -> void:
-	var swapped: int = 0
-	for stream: int in range(40):
+	# The last swap is the one between positions 0 and 1: stream 1 makes it, stream 0 does not.
+	for stream: int in [0, 1]:
 		var pair: PackedInt32Array = PackedInt32Array([1, 2])
 		DetRandom.create(7, stream).shuffle(pair)
-		swapped += 1 if pair[0] == 2 else 0
-	assert_int(swapped).is_between(10, 30)
+		assert_array(pair).is_equal([2, 1] if stream == 1 else [1, 2])
 
 
 func test_shuffle_and_pick_random_edge_cases() -> void:
@@ -177,12 +192,20 @@ func test_state_round_trips_with_words_above_2_pow_31() -> void:
 func test_set_state_masks_pads_and_avoids_the_all_zero_state() -> void:
 	var rng: DetRandom = DetRandom.new()
 	assert_array(rng.state()).is_equal([1, 0, 0, 0])
-	rng.set_state(PackedInt64Array([0x100000001, -1, 5, 6]))
-	assert_array(rng.state()).is_equal([1, 0xFFFFFFFF, 5, 6])
-	rng.set_state(PackedInt64Array([5]))
-	assert_array(rng.state()).is_equal([5, 0, 0, 0])
-	rng.set_state(PackedInt64Array([0, 0x100000000, 0, 0]))
-	assert_array(rng.state()).is_equal([1, 0, 0, 0])
+	# Each row: the words given, then the state expected. Only a state of zeros is replaced.
+	var rows: Array[Array] = [
+		[[0x100000001, -1, 0x100000003, 0x100000004], [1, 0xFFFFFFFF, 3, 4]],
+		[[0, 5, 0, 0], [0, 5, 0, 0]],
+		[[0, 0, 6, 0], [0, 0, 6, 0]],
+		[[0, 0, 0, 9], [0, 0, 0, 9]],
+		[[0, 0x100000000, 0, 0], [1, 0, 0, 0]],
+		[[], [1, 0, 0, 0]],
+		[[7, 8], [7, 8, 0, 0]],
+		[[7, 8, 9], [7, 8, 9, 0]],
+	]
+	for row: Array in rows:
+		rng.set_state(PackedInt64Array(row[0]))
+		assert_array(rng.state()).is_equal(row[1])
 
 
 func _draws(rng: DetRandom, count: int) -> Array[int]:

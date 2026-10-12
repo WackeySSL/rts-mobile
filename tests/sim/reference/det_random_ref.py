@@ -2,9 +2,10 @@
 """Reference literals for tests/sim/test_det_random.gd (ADR 0007 section 7). Not run by verify.
 
 Plain transcription with Python's unbounded ints (a product is masked after the fact), so it
-shares nothing with the 16-bit halves of DetRandom.mul32. The generator itself was checked
-against Vigna's public-domain xoshiro128starstar.c: state [1, 2, 3, 4] gives 11520 0 5927040
-70819200 2031721883 1637235492. Run: python3 -I tests/sim/reference/det_random_ref.py
+shares nothing with the 16-bit halves of DetRandom.mul32. For state [1, 2, 3, 4] the generator
+gives 11520 0 5927040 70819200 2031721883 1637235492, the first six values of the rand_xoshiro
+crate's `reference` test (made there with Vigna's xoshiro128starstar.c v1.1). That C file could
+not be downloaded (proxy 403), so it was not compiled. Run: python3 -I -B <this file>
 """
 
 M32 = 0xFFFFFFFF
@@ -65,15 +66,16 @@ def shuffle(s, values):  # Fisher-Yates from the end
 if __name__ == "__main__":
     s = [1, 2, 3, 4]
     print("state [1, 2, 3, 4]:", *[draw(s) for _ in range(6)])
-    for seed, stream in ((0, 1), (42, 1), (7, 101)):
+    for seed, stream in ((0, 1), (42, 1), (7, 101), (0x7FFFFFFF, 65535)):
         s = create(seed, stream)
         print(f"create({seed}, {stream}) draws:", *[draw(s) for _ in range(5)])
     print("mul32:", *[(a, b, mul32(a, b)) for a, b in MUL_PAIRS])
     print("rotl:", *[(x, k, rotl(x, k)) for x, k in ROTL_PAIRS])
     s = create(42, 1)
-    print("create(42, 1) next_int(1000) x5:", *[next_int(s, 1000) for _ in range(5)])
+    print("create(42, 1) next_int(1717986919) x8:", *[next_int(s, 1717986919) for _ in range(8)])
     s = create(42, 1)
     print("create(42, 1) range_int(-5, 5) x5:", *[-5 + next_int(s, 11) for _ in range(5)])
     print("create(42, 1) shuffle(0..9):", *shuffle(create(42, 1), list(range(10))))
+    print("create(7, 0|1) shuffle([1, 2]):", *[shuffle(create(7, k), [1, 2]) for k in (0, 1)])
     s = create(42, 1)
     print("create(42, 1) pick_random x5:", *[[10, 20, 30, 40, 50][next_int(s, 5)] for _ in range(5)])

@@ -25,10 +25,10 @@ var _s1: int = 0
 var _s2: int = 0
 var _s3: int = 0
 
-
 ## A generator for (seed, stream). The seed is masked to 0..2^31-1 and the stream to 0..65535.
 ## Word i is mix32(seed + stream * STREAM_STEP + i * WORD_STEP, mod 2^32); an all-zero state
-## becomes word 0 = 1.
+## becomes word 0 = 1. The parameter keeps the contract's name, so it shadows `seed()`.
+@warning_ignore("shadowed_global_identifier")
 static func create(seed: int, stream: int) -> DetRandom:
 	var base: int = (seed & SEED_MASK) + (stream & STREAM_MASK) * STREAM_STEP
 	var rng: DetRandom = DetRandom.new()
