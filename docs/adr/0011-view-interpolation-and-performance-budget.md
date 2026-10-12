@@ -13,10 +13,11 @@ estimate (1.9 ms mean on CI).
 Amendment note (2026-10-12, from the P34b and P34c art reviews): §1 gains `type_armour` and
 `weapon_ids`, which the art spec keys effects and bars on (copied into the snapshot by ADR 0012's
 "Amendment (2026-10-12, P34b review)"). §3's `MapView` bake follows `assets/art/STYLE.md` § "Fog
-and terrain": up to three tones per terrain id and tile rects instead of one colour per id, a grid
-band one texel wide, and NEAREST filtering. §2: a new projectile slot (its `proj_id` changed in
-the last tick) is not drawn until its second tick, because it has no heading yet (ADR 0012's
-amendment); it no longer gets prev = current.
+and terrain": up to three tones per terrain id and tile rects instead of one colour per id, and
+NEAREST filtering. The map bakes no grid (Michael, 2026-10-12, after the Art gallery check: "fjern
+gitter"); Phase 1's 1 px grid lines are gone on purpose. §2: a new projectile slot (its `proj_id`
+changed in the last tick) is not drawn until its second tick, because it has no heading yet (ADR
+0012's amendment); it no longer gets prev = current.
 
 ## Context
 ROADMAP Phase 2 asks for three things:
@@ -133,9 +134,9 @@ Mesa/llvmpipe with Xvfb, so draw-call counts are reliable and times are not):
   (`z_as_relative = false`): map 0, rig layers (ring 1, hull 2, team 3, turret 4), health bars 5,
   projectiles 6, effects 7, fog 8, markers 9. Measured: this takes rigs from 360 draw calls to 13.
 - **`MapView`** bakes the terrain once per match and per `map_version` into one `ImageTexture` at
-  8 px per tile (two-tone grass, the scrub pattern and the grid lines included; amended
-  2026-10-12: the tiles, tones and grid of STYLE.md, see the amendment note) and draws it with
-  one textured rect. It replaces `TestMapView` (ADR 0002 §5). Like `FogLayer` (ADR 0010 §2) it
+  8 px per tile (two-tone grass and the scrub pattern included; amended 2026-10-12: the tiles
+  and tones of STYLE.md and no grid (Michael, 2026-10-12), see the amendment note) and draws it
+  with one textured rect. It replaces `TestMapView` (ADR 0002 §5). Like `FogLayer` (ADR 0010 §2) it
   exposes its CPU-side bake (`func image() -> Image`) for tests, which never read an
   `ImageTexture` back after `update()`.
 
