@@ -8,9 +8,9 @@
 #   linux builds the host architecture only; android builds arm64 only (Android is built in CI,
 #   a cloud session has no NDK).
 # Env:   SCONS=<binary> (default: scons; must be 4.9.1), CXX=<compiler> (linux, default: g++),
-#        ANDROID_NDK_ROOT=<NDK folder> (android; must be NDK 28.1.13356709, the ndk_version that
-#        godot-cpp's tools/android.py defaults to at the pinned commit; the toolchain is read from
-#        $ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64; CI installs it with
+#        ANDROID_NDK_ROOT=<NDK folder> (android; must be <sdk>/ndk/28.1.13356709, the layout that
+#        sdkmanager makes and that godot-cpp's tools/android.py reads as $ANDROID_HOME/ndk/<ndk_version>,
+#        NDK 28.1.13356709 being its default ndk_version at the pinned commit; CI installs it with
 #        scripts/ci/install-ndk.sh), SCONS_CACHE=<folder> (godot-cpp's SConstruct passes it to
 #        CacheDir: objects are shared by content, CI caches the folder).
 # Needs: git and network access to github.com (first run only), scons 4.9.1
@@ -111,6 +111,7 @@ scons_version="$("$SCONS" --version 2>/dev/null | sed -n 's/^.*SCons: v\([0-9][0
 [ "$scons_version" = "$SCONS_VERSION" ] ||
   die 3 "needs scons ${SCONS_VERSION}, '$SCONS' reports '${scons_version:-nothing}': pip install scons==${SCONS_VERSION}"
 scons_env=()
+scons_args=()
 if [ "$platform" = "linux" ]; then
   compiler="${CXX:-g++}"
   command -v "$compiler" >/dev/null 2>&1 || die 3 "C++ compiler '$compiler' is missing (install g++ or set CXX)"
@@ -120,6 +121,13 @@ if [ "$platform" = "linux" ]; then
 else
   ndk="${ANDROID_NDK_ROOT:-}"
   [ -n "$ndk" ] || die 3 "ANDROID_NDK_ROOT is not set (Android NDK missing; a cloud session has none, CI sets it)"
+  # godot-cpp's tools/android.py reads the NDK as $ANDROID_HOME/ndk/<ndk_version>; it falls back to
+  # ANDROID_NDK_ROOT only when ANDROID_HOME is not an option at all, and its option default is None
+  # then, which ends in KeyError: 'ANDROID_HOME'. So derive the SDK folder from the NDK folder.
+  if [ "$(basename "$ndk")" != "$NDK_VERSION" ] || [ "$(basename "$(dirname "$ndk")")" != "ndk" ]; then
+    die 3 "ANDROID_NDK_ROOT='$ndk' must be <sdk>/ndk/${NDK_VERSION} (the layout sdkmanager makes)"
+  fi
+  android_sdk="$(dirname "$(dirname "$ndk")")"
   toolchain="$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin"
   [ -x "$toolchain/clang++" ] || die 3 "the Android NDK toolchain is missing: no $toolchain/clang++ (ANDROID_NDK_ROOT='$ndk')"
   ndk_revision="$(sed -n 's/^Pkg\.Revision[[:space:]]*=[[:space:]]*\([0-9][0-9.]*\).*$/\1/p' "$ndk/source.properties" 2>/dev/null | head -n 1 || true)"
@@ -129,9 +137,10 @@ else
     [ -x "$toolchain/$tool" ] || die 3 "the Android NDK toolchain is missing: no $toolchain/$tool"
   done
   echo "build-native: Android NDK ${ndk_revision} at ${ndk}"
-  # godot-cpp looks for $ANDROID_HOME/ndk/<its default version> first; the NDK of ANDROID_NDK_ROOT
-  # is the one the caller chose, so hide the SDK variables from this one process.
-  scons_env=(env -u ANDROID_HOME -u ANDROID_SDK_ROOT "ANDROID_NDK_ROOT=$ndk")
+  # ANDROID_HOME for this one process only, so that godot-cpp finds exactly the NDK checked above
+  # (and not the image's SDK); ndk_version is passed to scons below.
+  scons_env=(env -u ANDROID_SDK_ROOT "ANDROID_HOME=$android_sdk")
+  scons_args=("ndk_version=${NDK_VERSION}")
 fi
 
 # (2) godot-cpp at the pinned commit. The SHA is checked after the fetch and on every run.
@@ -175,7 +184,7 @@ set +e
   # build_profile: godot-cpp binds only the engine classes the port uses (OS, RefCounted and their
   # parents) instead of all ~1000, which takes the first build from minutes to under one.
   ${scons_env[@]+"${scons_env[@]}"} "$SCONS" "-j${jobs}" "platform=${platform}" "target=${target}" "arch=${arch}" \
-    "build_profile=${ROOT}/native/probe_tick/build_profile.json"
+    "build_profile=${ROOT}/native/probe_tick/build_profile.json" ${scons_args[@]+"${scons_args[@]}"}
 ) 2>&1 | tee "$log"
 status=${PIPESTATUS[0]}
 set -e
