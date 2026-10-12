@@ -10,6 +10,14 @@ values of `work_p95_ms` and `sim_p95_ms` in the acceptance note, and the debug-A
 gate uses the release template), §6 step 4 (the worker thread, adopted), and the sim cost
 estimate (1.9 ms mean on CI).
 
+Amendment note (2026-10-12, from the P34b and P34c art reviews): §1 gains `type_armour` and
+`weapon_ids`, which the art spec keys effects and bars on (copied into the snapshot by ADR 0012's
+"Amendment (2026-10-12, P34b review)"). §3's `MapView` bake follows `assets/art/STYLE.md` § "Fog
+and terrain": up to three tones per terrain id and tile rects instead of one colour per id, a grid
+band one texel wide, and NEAREST filtering. §2: a new projectile slot (its `proj_id` changed in
+the last tick) is not drawn until its second tick, because it has no heading yet (ADR 0012's
+amendment); it no longer gets prev = current.
+
 ## Context
 ROADMAP Phase 2 asks for three things:
 - "View interpolation at the display frame rate";
@@ -61,7 +69,8 @@ Mesa/llvmpipe with Xvfb, so draw-call counts are reliable and times are not):
 - **`World`, through `runner.world`, re-read every frame:**
   - per row: `unit_id`, `owner`, `type_index`, `pos_*`, `hp`, `order` and `target`;
   - type tables (`type_ids`, `type_names`, `type_max_hp`, `type_speed`, `type_selection_radius`,
-    `type_weapon`) and `weapon_projectile_speed`;
+    `type_weapon`, and `type_armour`, amended 2026-10-12) and `weapon_projectile_speed` (and
+    `weapon_ids`, amended 2026-10-12; see the amendment note);
   - projectile slots (`proj_id`, `proj_owner`, `proj_weapon`, `proj_x`, `proj_y`);
   - map (`map_cols`, `map_rows`, `terrain`, `terrain_ids`, `map_version`);
   - `fog` (`version_of`, dirty lists, `visible`, `explored`) and `rows_version`;
@@ -84,7 +93,8 @@ Mesa/llvmpipe with Xvfb, so draw-call counts are reliable and times are not):
   The arrays keep their buffers (capacity `max_rows`), and the copy costs O(rows) only on ticks
   that change rows.
 - **Projectiles:** `lerp(prev_proj, proj, alpha)` per live slot. A slot whose `proj_id` changed
-  in the last tick has prev = current.
+  in the last tick ~~has prev = current~~ is not drawn in that tick (amended 2026-10-12, see ADR
+  0012's "Amendment (2026-10-12, P34b review)").
 - **Not interpolated:**
   - hp, fog and visibility, which change per tick;
   - effects and the turret's turn, which run on the frame clock (`delta`, view only, as Phase 1's
@@ -123,7 +133,8 @@ Mesa/llvmpipe with Xvfb, so draw-call counts are reliable and times are not):
   (`z_as_relative = false`): map 0, rig layers (ring 1, hull 2, team 3, turret 4), health bars 5,
   projectiles 6, effects 7, fog 8, markers 9. Measured: this takes rigs from 360 draw calls to 13.
 - **`MapView`** bakes the terrain once per match and per `map_version` into one `ImageTexture` at
-  8 px per tile (two-tone grass, the scrub pattern and the grid lines included) and draws it with
+  8 px per tile (two-tone grass, the scrub pattern and the grid lines included; amended
+  2026-10-12: the tiles, tones and grid of STYLE.md, see the amendment note) and draws it with
   one textured rect. It replaces `TestMapView` (ADR 0002 §5). Like `FogLayer` (ADR 0010 §2) it
   exposes its CPU-side bake (`func image() -> Image`) for tests, which never read an
   `ImageTexture` back after `update()`.
