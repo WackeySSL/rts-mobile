@@ -1,11 +1,41 @@
 extends GdUnitTestSuite
-## The unit art that UnitLayer and the gallery build on (one canvas per unit, half import scale,
-## grey team layers, no turret on a squad) and the gallery's squads (assets/art/STYLE.md).
+## STYLE.md rules a plain check can hold, the unit art that UnitLayer builds on (one canvas per
+## unit, half import scale, grey team layers, no turret on a squad), the ring texture and the
+## effects atlas that P40 and P44 copy numbers from, and the gallery's squads and rings.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const UNIT_ART: String = "res://assets/art/svg/units/%s_%s.svg"
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
 const SIDE_PX: Dictionary[String, int] = {"light_tank": 64, "rifle_squad": 32, "rocket_squad": 32}
+## Words the plain `grep` of STYLE.md forbids (comments too); the elements allowed besides `svg`.
+const FORBIDDEN: Array[String] = ["text", "image", "filter", "mask", "href", "style", "script"]
+const OK_TAGS: String = " g path rect circle ellipse polygon polyline line "
+## Atlas regions in imported px (STYLE.md, Combat effects): burst, puff, flash, shell, rocket.
+const REGIONS: Array[Rect2i] = [
+	Rect2i(0, 0, 80, 80),
+	Rect2i(84, 0, 40, 40),
+	Rect2i(128, 0, 32, 32),
+	Rect2i(84, 44, 16, 8),
+	Rect2i(84, 56, 36, 12),
+]
+
+
+func test_every_svg_follows_the_technical_rules() -> void:
+	var files: Array[String] = FileScan.list_files("res://assets/art/svg", ".svg")
+	assert_int(files.size()).is_greater_equal(9)
+	var tag: RegEx = RegEx.create_from_string("<(?!svg)([a-zA-Z]+)")
+	var problems: Array[String] = []
+	for path: String in files:
+		var text: String = FileAccess.get_file_as_string(path)
+		if text.length() > 20480:
+			problems.append(path + " is over 20 KB")
+		for word: String in FORBIDDEN:
+			if text.containsn(word):
+				problems.append("%s has '%s'" % [path, word])
+		for found: RegExMatch in tag.search_all(text):
+			if not OK_TAGS.contains(" %s " % found.get_string(1)):
+				problems.append("%s has <%s>" % [path, found.get_string(1)])
+	assert_array(problems).is_empty()
 
 
 func test_unit_layers_are_one_canvas_at_half_scale_and_squads_have_no_turret() -> void:
@@ -65,6 +95,49 @@ func test_the_gallery_squads_turn_and_repeat_in_a_row_at_the_camera_zoom_levels(
 			scales.append((rig as Node2D).scale.x)
 		scales.sort()
 		assert_array(scales).override_failure_message(ground).is_equal(levels)
+
+
+## RING_TEX_RADIUS_PX is 72: 62 px clear, 4 dark, 12 white (centred on 72), 4 dark, clear.
+func test_the_ring_texture_has_the_centre_line_radius_and_stroke_of_the_style_guide() -> void:
+	var texture: Texture2D = load("res://assets/art/svg/ui/selection_ring.svg")
+	assert_vector(texture.get_size()).is_equal(Vector2(168, 168))
+	var image: Image = texture.get_image()
+	var along: String = ""
+	for x: int in range(84, 168):
+		var pixel: Color = image.get_pixel(x, 84)
+		along += "." if pixel.a < 0.5 else ("W" if pixel.r > 0.5 else "D")
+	assert_str(along).is_equal(".".repeat(62) + "DDDD" + "W".repeat(12) + "DDDD" + "..")
+
+
+func test_the_effects_atlas_has_ink_at_the_centre_of_its_five_regions_and_nowhere_else() -> void:
+	var texture: Texture2D = load("res://assets/art/svg/fx/effects_atlas.svg")
+	assert_vector(texture.get_size()).is_equal(Vector2(168, 84))
+	var image: Image = texture.get_image()
+	var stray: int = 0
+	for y: int in image.get_height():
+		for x: int in image.get_width():
+			var inside: bool = REGIONS.any(
+				func(r: Rect2i) -> bool: return r.has_point(Vector2i(x, y))
+			)
+			stray += int(image.get_pixel(x, y).a > 0.02 and not inside)
+	assert_int(stray).is_equal(0)
+	var hollow: Array[Rect2i] = REGIONS.filter(
+		func(r: Rect2i) -> bool:
+			var c: Vector2i = r.position + r.size / 2
+			return image.get_pixel(c.x, c.y).a < 0.9
+	)
+	assert_array(hollow).is_empty()
+
+
+func test_the_gallery_ring_row_draws_the_ring_at_31_5_35_2_and_52_8_px_on_both_grounds() -> void:
+	var gallery: Node = await _open_gallery()
+	for ground: String in ["Grass", "Sand"]:
+		var radii: Array[float] = []
+		for rig: Node in gallery.get_node(ground + "/RingRow").get_children():
+			var ring: Sprite2D = rig.get_node("Ring") as Sprite2D
+			radii.append(snappedf((rig as Node2D).scale.x * ring.scale.x * 72.0, 0.01))
+		radii.sort()
+		assert_str(str(radii)).override_failure_message(ground).is_equal("[31.5, 35.2, 52.8]")
 
 
 func _open_gallery() -> Node:
