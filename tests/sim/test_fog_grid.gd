@@ -116,6 +116,7 @@ func test_version_changes_only_when_a_cell_flips() -> void:
 	assert_int(grid.version_of(2)).is_equal(0)
 
 
+## begin_update empties the list and touches nothing else: no version change, nothing re-fogged.
 func test_the_dirty_list_holds_exactly_the_flipped_cells() -> void:
 	var grid: FogGrid = _grid(16, 16, 1)
 	var mask: int = grid.add_mask(1000)
@@ -123,6 +124,9 @@ func test_the_dirty_list_holds_exactly_the_flipped_cells() -> void:
 	assert_array(grid.dirty_cells(1)).is_equal(PackedInt32Array([69, 84, 85, 86, 101]))
 	grid.begin_update(1)
 	assert_array(grid.dirty_cells(1)).is_empty()
+	assert_int(grid.version_of(1)).is_equal(1)
+	assert_bool(grid.is_visible(1, 85)).is_true()
+	assert_bool(grid.is_explored(1, 85)).is_true()
 	grid.stamp(1, 86, mask, 1)
 	assert_array(grid.dirty_cells(1)).is_equal(PackedInt32Array([70, 87, 102]))
 	grid.begin_update(1)
@@ -244,8 +248,9 @@ func test_configure_sizes_every_block_and_clears_a_used_grid() -> void:
 		assert_bool(grid.get(field) == fresh.get(field)).is_true()
 
 
+## 12 x 10 (cols != rows), so a copy that takes one size for the other fails the field loop.
 func test_copy_into_answers_as_the_source_and_shares_nothing() -> void:
-	var src: FogGrid = _grid(12, 12, 2)
+	var src: FogGrid = _grid(12, 10, 2)
 	var disc: int = src.add_mask(3000)
 	var dot: int = src.add_mask(0)
 	src.stamp(1, 30, disc, 1)
