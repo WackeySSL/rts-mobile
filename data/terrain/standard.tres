@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="TerrainSetDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/TerrainSetDef.gd" id="1_set"]
+[ext_resource type="Script" path="res://game/sim/defs/TerrainDef.gd" id="2_terrain"]
+
+[sub_resource type="Resource" id="Resource_grass"]
+script = ExtResource("2_terrain")
+symbol = "."
+id = &"grass"
+cost = PackedInt32Array(10, 10, 10)
+
+[sub_resource type="Resource" id="Resource_sand"]
+script = ExtResource("2_terrain")
+symbol = ":"
+id = &"sand"
+cost = PackedInt32Array(10, 10, 10)
+
+[sub_resource type="Resource" id="Resource_scrub"]
+script = ExtResource("2_terrain")
+symbol = "^"
+id = &"scrub"
+cost = PackedInt32Array(10, 0, 0)
+
+[sub_resource type="Resource" id="Resource_rock"]
+script = ExtResource("2_terrain")
+symbol = "#"
+id = &"rock"
+cost = PackedInt32Array(0, 0, 0)
+
+[sub_resource type="Resource" id="Resource_water"]
+script = ExtResource("2_terrain")
+symbol = "~"
+id = &"water"
+cost = PackedInt32Array(0, 0, 0)
+
+[resource]
+script = ExtResource("1_set")
+terrains = Array[ExtResource("2_terrain")]([SubResource("Resource_grass"), SubResource("Resource_sand"), SubResource("Resource_scrub"), SubResource("Resource_rock"), SubResource("Resource_water")])

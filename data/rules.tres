@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="RulesDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/RulesDef.gd" id="1_rules"]
+
+[resource]
+script = ExtResource("1_rules")
+retarget_period_ticks = 5
+fog_period_ticks = 3
+line_check_period_ticks = 5
+flow_cells_per_tick = 512
+flow_cache_size = 8
+separation_neighbours = 8
+separation_scan = 16
+separation_idle_share = 75
+separation_push_max = 60
+separation_coincident_divisor = 4
+stall_ticks = 15
+stall_range_spacings = 2
+attack_rekey_milli = 4000
+max_projectiles = 512
+max_rows = 256
