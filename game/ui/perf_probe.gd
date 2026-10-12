@@ -13,13 +13,35 @@ extends Node2D
 ## the tick (the GDExtension class ProbeTickNative, native/probe_tick) instead of PerfProbeTick. It
 ## first plays 60 ticks of both in lockstep and reports whether they matched, then brings the C++
 ## tick to the tick `sim` stands at, so that it times the same stretch of the deterministic tick
-## sequence as mode 4, which continues `sim`. Both worker modes print the tick they started at.
+## sequence as the other modes. Every mode prints the tick it started at.
 ## Without the library (no build, or the web preview) the mode says so and measures nothing.
+## Spike P26n2 (ADR 0014 section 5, never merged) adds the calibration rows: every mode starts from
+## a fresh tick at `START_TICK` (mode 5's C++ tick too), so all modes time ticks 3-903 in 60 s;
+## before every run a 400 ms burst of the reference loop gives `ref_peak`; every timed frame starts
+## with a discarded warm-up run and its ref sample, both outside the frame's work; the card prints
+## the pacing rows (PerfProbeCalib) and the raw, class-method and per-frame normalised main-thread
+## times, and the report ends with a CALIBRATION block of the values checks C1-C5 need.
 
 @warning_ignore_start("integer_division")
 
 enum Mode { SPRITE_RINGS, CODE_RINGS, ALTERNATING_TINTS, WORKER_TICK, NATIVE_TICK }
-enum Series { INTERVAL, PROCESS, RENDER, CALLS, WORK_TICK, WORK_OTHER, TICK, SLICE, FOG, LATENCY }
+enum Series {
+	INTERVAL,
+	PROCESS,
+	RENDER,
+	CALLS,
+	WORK_TICK,
+	WORK_OTHER,
+	TICK,
+	SLICE,
+	FOG,
+	LATENCY,
+	WARMUP,  ## P26n2: the discarded warm-up run of every timed frame, usec.
+	WORK_TICK_REF,  ## The frame's ref sample (usec) of every WORK_TICK value, and so on.
+	WORK_OTHER_REF,
+	TICK_REF,
+	FOG_REF,
+}
 ## The worker job, as ADR 0012 section 1: nothing posted, posted and not taken, taken and not
 ## published.
 enum Job { IDLE, RUNNING, FINISHED }
@@ -30,8 +52,8 @@ const COLS: int = PerfProbeTick.COLS
 const SIDE: int = PerfProbeTick.SIDE
 const TICK_USEC: int = 66667  ## 15 Hz.
 const FLOW_CELLS: int = 512
-const ON_TIME_MS: float = 17.5
 const CHECK_TICKS: int = 60  ## Mode 5's lockstep self-check, not timed.
+const START_TICK: int = 3  ## P26n2: every mode starts from a fresh tick here (its warm-up ticks).
 const NATIVE_MISSING: String = "C++ tick not available on this build"
 const MODES: Array[String] = [
 	"sprite rings",
@@ -48,6 +70,12 @@ var clipboard_sink: Callable = DisplayServer.clipboard_set
 var sim: PerfProbeTick = PerfProbeTick.new()
 ## The GDExtension class mode 5 runs; a test swaps it for a name that is not registered.
 var native_class: String = PerfProbeLockstep.NATIVE_CLASS
+## P26n2: makes the fresh tick every later mode starts from (the first mode runs `sim` as set); a
+## test that swaps `sim` swaps this too.
+var new_sim: Callable = func() -> PerfProbeTick: return PerfProbeTick.new()
+## One reference run in usec (ADR 0014 section 3), for the burst and the per-frame samples.
+var ref_sampler: Callable = PerfProbeCalib.ref_usec
+var burst_usec: int = PerfProbeCalib.BURST_USEC  ## Tests shorten it; the phone run never does.
 ## Mode 5's C++ tick, owned by the worker while it runs. A RefCounted, never a ProbeTickNative:
 ## that class does not exist (and a typed variable would not parse) without the library.
 var native: RefCounted = null
@@ -91,6 +119,11 @@ var _post_us: int = 0  ## Main thread, at the post; read at publish.
 var _job_tick_usec: int = 0  ## Worker, from `sim.step()`; read at publish, after `_done`.
 var _job_slice_usec: int = -1  ## Worker; -1 when the job ran no whole 512-cell slice.
 var _job_end_us: int = 0  ## Worker, before `_done.post()`.
+var _ref_peak: PackedFloat64Array = PackedFloat64Array()  ## The burst's kept second half, usec.
+var _frame_ref_us: float = 0.0  ## This frame's ref sample, taken after the warm-up run.
+var _sampled: bool = false  ## This frame's `_process` ran in the run and took the ref runs.
+var _refresh_start: float = 0.0  ## `screen_get_refresh_rate()` at run start and at run end.
+var _refresh_end: float = 0.0
 
 @onready var _card: Label = $Hud/Margin/Card
 @onready var _back: Button = $Hud/Margin/Buttons/BackButton
@@ -171,16 +204,13 @@ func _ready() -> void:
 		layer.z_as_relative = false
 		add_child(layer)
 		_layers.append(layer)
-	_apply_mode()
-	_fog_image.fill(Color.BLACK)
-	_fog_bytes = _fog_image.get_data()
 	_fog_texture = ImageTexture.create_from_image(_fog_image)
 	var fog: Sprite2D = _sprite(_fog_texture, 8)
 	fog.centered = false
 	fog.scale = Vector2.ONE * ViewScale.PX_PER_TILE
 	fog.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	add_child(fog)
-	_patch_fog()
+	_apply_mode()  # Resets the fog image to `sim`'s.
 	_back.pressed.connect(DevRoutes.open.bind(get_tree(), DevRoutes.DEV_MENU_SCENE))
 	_rings_button.pressed.connect(_next_mode)
 	_copy_button.pressed.connect(_copy_report)
@@ -198,9 +228,13 @@ func _draw() -> void:
 
 func _process(_delta: float) -> void:
 	var now: int = Time.get_ticks_usec()
-	_process_start_us = now
 	var interval: int = now - _last_us
 	_last_us = now
+	_sampled = _end_us == 0
+	if _sampled:  # ADR 0014 section 3: a discarded warm-up run, then the frame's ref sample.
+		_record(Series.WARMUP, float(ref_sampler.call()))
+		_frame_ref_us = float(ref_sampler.call())
+	_process_start_us = Time.get_ticks_usec()  # The frame's work starts after both ref runs.
 	_record(Series.INTERVAL, interval / 1000.0)
 	_clock_us += interval
 	_ticked = false
@@ -223,6 +257,7 @@ func _process(_delta: float) -> void:
 		)
 		if left <= 0:
 			_end_us = now
+			_refresh_end = DisplayServer.screen_get_refresh_rate()
 			_card.text = report()
 			_rings_button.visible = true
 			_copy_button.visible = true
@@ -237,12 +272,12 @@ func _tick_in_frame() -> void:
 		_clock_us -= TICK_USEC
 		_prev_x = sim.x.duplicate()
 		_prev_y = sim.y.duplicate()
-		_record(Series.TICK, sim.step() / 1000.0)
+		_record_ref(Series.TICK, sim.step() / 1000.0, Series.TICK_REF)
 		if sim.tick % 15 == 0:
 			var elapsed: int = sim.flow_slice(FLOW_CELLS)
 			# A field's last slice is short; it would pull the mean down.
 			_record(Series.SLICE, elapsed / 1000.0 if sim.slice_cells == FLOW_CELLS else -1.0)
-		_record(Series.FOG, _patch_fog() if sim.tick % 3 == 0 else -1.0)  # 5 Hz.
+		_record_ref(Series.FOG, _patch_fog() if sim.tick % 3 == 0 else -1.0, Series.FOG_REF)
 		_ticked = true
 	_clock_us = _clock_us if _clock_us < TICK_USEC else 0
 
@@ -291,12 +326,12 @@ func _publish() -> void:
 		_view.dirty = source.dirty.duplicate()
 		_view.dirty_count = source.dirty_count
 		source.dirty_count = 0
-	_record(Series.TICK, _job_tick_usec / 1000.0)
+	_record_ref(Series.TICK, _job_tick_usec / 1000.0, Series.TICK_REF)
 	_record(Series.SLICE, _job_slice_usec / 1000.0 if _job_slice_usec >= 0 else -1.0)
 	_record(Series.LATENCY, (_job_end_us - _post_us) / 1000.0)
 	if _end_us == 0 and _job_end_us - _post_us > TICK_USEC:
 		_late_ticks += 1
-	_record(Series.FOG, _patch_fog() if fog_tick else -1.0)
+	_record_ref(Series.FOG, _patch_fog() if fog_tick else -1.0, Series.FOG_REF)
 	_job = Job.IDLE
 
 
@@ -324,27 +359,27 @@ func _serve() -> void:
 		_done.post()
 
 
-## Starts or stops the worker to match `mode`. The view reads `_shown` while the worker runs and
-## goes back to `sim` when it is joined. Mode 5 first plays its self-check and makes a fresh C++
-## tick; without the library it starts nothing and the view stays on `sim`.
+## Starts or stops the worker to match `mode`, from `sim` at `START_TICK` (P26n2: `_next_mode` has
+## made it fresh; the first mode's is fresh by construction). The view reads `_shown` while the
+## worker runs, else `sim`. Mode 5 first plays its self-check and makes a fresh C++ tick; without
+## the library it starts nothing and the view stays on `sim`.
 func _sync_worker() -> void:
-	var was_running: bool = _thread != null
-	if was_running:
-		_stop_worker()  # Also from the worker mode to the C++ one: the old runner is ours again.
+	_stop_worker()  # Safe with no worker; the old runner is ours again.
 	native = null
 	_check = ""
+	PerfProbeLockstep.advance(sim, START_TICK, FLOW_CELLS)  # A fresh tick stands there already.
+	_follow_sim()
+	_reset_fog()
+	_start_tick = sim.tick
 	if mode == Mode.NATIVE_TICK:
 		if native_available():
 			_check = _self_check()
 			native = ClassDB.instantiate(native_class)
 			_catch_up(native)
 			_start_worker(native)
-		else:
-			_follow_sim()
 	elif mode == Mode.WORKER_TICK:
 		_start_worker(sim)
-	elif was_running:
-		_follow_sim()
+	_restart_frame_clock()
 
 
 ## True when the C++ tick's class is registered: the library is built and loaded on this platform.
@@ -370,12 +405,10 @@ func _self_check() -> String:
 
 ## Mode 5, not timed: plays the fresh C++ tick forward to the tick `sim` stands at, with the cadence
 ## of every probe mode (a flow slice on every 15th tick, the dirty drain on every 3rd). The tick is
-## deterministic, so it then holds the state `sim` holds, and mode 4, which continues `sim`, and
-## mode 5 time the same stretch of ticks. A normal 60 s per mode session leaves `sim` at tick 2700
-## or later; a fresh C++ tick started at tick 3, where the first 900 ticks are the lightest at p95.
-## About 3000 C++ ticks: well under a second, even on a phone. The dirty list is copied from `sim`:
-## the scene's first fog patch drained it once, outside any tick, which a replay cannot know, and
-## nothing else depends on it.
+## deterministic, so it then holds the state `sim` holds. Since P26n2 `sim` is fresh at
+## `START_TICK`, where a fresh C++ tick stands too, so every mode times ticks 3-903. The dirty list
+## is copied from `sim`: the mode's fog reset drained it once, outside any tick, which a replay
+## cannot know, and nothing else depends on it.
 func _catch_up(cpp: RefCounted) -> void:
 	PerfProbeLockstep.advance(cpp, sim.tick, FLOW_CELLS)
 	cpp.dirty = sim.dirty.duplicate()
@@ -392,11 +425,12 @@ func _restart_frame_clock() -> void:
 ## The implementation lines of the card: who ticks, from which tick, and mode 5's self-check or its
 ## absence.
 func _impl_text() -> String:
+	var start: String = "\nstart tick %d (a fresh tick in every mode)" % _start_tick
 	if mode != Mode.NATIVE_TICK:
-		return "tick impl: GDScript%s" % _from_text()
+		return "tick impl: GDScript%s%s" % [_from_text(), start]
 	if native == null:
 		return "tick impl: C++\n%s" % NATIVE_MISSING
-	return "tick impl: C++ (%s)%s\n%s" % [native.get_build_info(), _from_text(), _check]
+	return "tick impl: C++ (%s)%s%s\n%s" % [native.get_build_info(), _from_text(), start, _check]
 
 
 ## ", worker from tick N" in the worker modes, else "". The two worker modes play the same
@@ -463,37 +497,44 @@ func _on_pre_draw() -> void:
 	_pre_draw_us = Time.get_ticks_usec()
 
 
-## Files this frame's process and render CPU time under this frame's tick flag.
+## Files this frame's process and render CPU time under this frame's tick flag, with its ref sample.
+## Only a timed frame: one whose `_process` ran in the run.
 func _on_post_draw() -> void:
+	if not _sampled:
+		return
+	_sampled = false
 	var process_ms: float = (_pre_draw_us - _process_start_us) / 1000.0
 	var render_ms: float = RenderingServer.viewport_get_measured_render_time_cpu(_viewport)
 	_record(Series.PROCESS, process_ms)
 	_record(Series.RENDER, render_ms)
 	_record(Series.CALLS, Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
-	_record(Series.WORK_TICK if _ticked else Series.WORK_OTHER, process_ms + render_ms)
+	if _ticked:
+		_record_ref(Series.WORK_TICK, process_ms + render_ms, Series.WORK_TICK_REF)
+	else:
+		_record_ref(Series.WORK_OTHER, process_ms + render_ms, Series.WORK_OTHER_REF)
 
 
 ## The plain-text report: the card shows it and "Copy report" puts it on the clipboard.
 func report() -> String:
 	if mode == Mode.NATIVE_TICK and native == null:  # Nothing was measured.
 		return "PERF PROBE P26s | %s | not available\n%s" % [MODES[mode], _impl_text()]
-	var frames: int = _series[Series.INTERVAL].size()
-	var on_time: int = 0
-	for ms: float in _series[Series.INTERVAL]:
-		on_time += int(ms <= ON_TIME_MS)
+	var pace: PerfProbeCalib.Pacing = _pacing()
 	var seconds: float = ((_end_us if _end_us > 0 else _last_us) - _start_us) / 1e6
 	var build: String = "debug" if OS.is_debug_build() else "release"
 	var engine: String = "%s %s" % [Engine.get_version_info()["string"], build]
 	var screen: Vector2i = DisplayServer.screen_get_size()
-	var hz: float = DisplayServer.screen_get_refresh_rate()
-	var refresh: String = "%.0f Hz" % hz if hz > 0.0 else "unknown"
-	var share: float = 100.0 * on_time / maxi(frames, 1)
 	var lines: PackedStringArray = [
 		"PERF PROBE P26s | %s | %s" % [MODES[mode], "done" if _end_us > 0 else "running"],
 		_impl_text(),
 		"device %s | %s | Godot %s" % [OS.get_model_name(), OS.get_name(), engine],
-		"screen %s px | refresh %s | max_fps %d" % [screen, refresh, Engine.max_fps],
-		"frames %d in %.1f s | on time (<= 17.5 ms) %.1f %%" % [frames, seconds, share],
+		(
+			"screen %s px | refresh_hz start %.2f, end %.2f | max_fps %d"
+			% [screen, _refresh_start, _refresh_end_now(), Engine.max_fps]
+		),
+		(
+			"frames %d in %.1f s | jitter (<= 17.5 ms, diagnostic, was on time) %.1f %%"
+			% [pace.frames, seconds, pace.jitter_pct]
+		),
 		_row("frame interval (wall clock)", Series.INTERVAL, "ms"),
 		_row("process (_process start to draw)", Series.PROCESS, "ms"),
 		_row("render CPU (viewport time)", Series.RENDER, "ms"),
@@ -520,7 +561,150 @@ func report() -> String:
 			)
 		)
 		lines.append(_row("job post to done (worker wake-up + tick + slice)", Series.LATENCY, "ms"))
+	lines.append_array(_pacing_lines(pace))
+	lines.append_array(_cpu_lines())
+	lines.append_array(_calibration(pace))
 	return "\n".join(lines)
+
+
+## The refresh rate P and V are computed from: the run start's, or `max_fps` when the platform does
+## not report one (headless, -1).
+func _pacing_hz() -> float:
+	return _refresh_start if _refresh_start > 0.0 else float(maxi(Engine.max_fps, 1))
+
+
+func _refresh_end_now() -> float:
+	return _refresh_end if _end_us > 0 else DisplayServer.screen_get_refresh_rate()
+
+
+func _pacing() -> PerfProbeCalib.Pacing:
+	return PerfProbeCalib.pacing(_series[Series.INTERVAL], _pacing_hz(), Engine.max_fps)
+
+
+## ADR 0014 sections 1 and 4. The window is the whole timed run: the probe is heavy throughout.
+func _pacing_lines(pace: PerfProbeCalib.Pacing) -> PackedStringArray:
+	var assumed: String = "" if _refresh_start > 0.0 else " (refresh unknown: max_fps assumed)"
+	var slots: PackedInt32Array = pace.slots
+	return [
+		(
+			"pacing, window = the whole timed run (heavy throughout): P %.2f ms, V %.2f ms, drop_ms %.2f%s"
+			% [pace.period_ms, pace.slot_ms, pace.drop_ms, assumed]
+		),
+		(
+			"dropped (interval > drop_ms) %d of %d (%.2f %%) | cadence %.2f %% | hitches (>= 66.7 ms) %d"
+			% [pace.dropped, pace.frames, pace.dropped_pct, pace.cadence_pct, pace.hitches]
+		),
+		(
+			"interval median %.2f, p99 %.2f, max %.2f ms | extra slots 0/1/2/>=3: %d/%d/%d/%d"
+			% [pace.median_ms, pace.p99_ms, pace.max_ms, slots[0], slots[1], slots[2], slots[3]]
+		),
+		"(extra slots: 0 up to drop_ms, else ceil((interval - drop_ms) / V); P + k V gives k)",
+	]
+
+
+## ADR 0014 sections 3 and 4: `ref_peak`, the warm-up runs, and per main-thread class the raw p95
+## next to the class-method and the per-frame normalised p95. The worker's rows above stay raw.
+func _cpu_lines() -> PackedStringArray:
+	var peak: PackedFloat64Array = _ref_peak
+	var warm: PackedFloat64Array = _series[Series.WARMUP]
+	var ref: String = (
+		"ref loop (%d iterations): ref_peak p25 %.1f, p95 %.1f us"
+		% [
+			PerfProbeCalib.REF_ITERATIONS,
+			PerfProbeTick.percentile(peak, 25),
+			PerfProbeTick.percentile(peak, 95),
+		]
+	)
+	var lines: PackedStringArray = [
+		(
+			ref
+			+ (
+				" (%d ms burst, second half, n %d) | warm-up p25 %.1f us (n %d, discarded)"
+				% [burst_usec / 1000, peak.size(), PerfProbeTick.percentile(warm, 25), warm.size()]
+			)
+		),
+	]
+	for row: Array in [
+		["all frames, work", _stats_all()],
+		["tick frames, work", _stats(Series.WORK_TICK, Series.WORK_TICK_REF)],
+		["other frames, work", _stats(Series.WORK_OTHER, Series.WORK_OTHER_REF)],
+		["fog patches", _stats(Series.FOG, Series.FOG_REF)],
+	]:
+		var c: PerfProbeCalib.Stats = row[1]
+		var head: String = (
+			"cpu %s: n %d, ref_span p25 %.1f us, speed_main %.1f %%"
+			% [row[0], c.frames, c.ref_span_us, c.speed_pct]
+		)
+		var tail: String = (
+			" | p95 raw %.3f, norm class %.3f, norm frame %.3f ms"
+			% [c.p95_raw, c.p95_class, c.p95_frame]
+		)
+		lines.append(head + tail)
+	if not _worker_mode():
+		var t: PerfProbeCalib.Stats = _stats(Series.TICK, Series.TICK_REF)
+		lines.append(
+			(
+				"in-frame tick mean: raw %.3f, norm class %.3f, norm frame %.3f ms"
+				% [t.mean_raw, t.mean_class, t.mean_frame]
+			)
+		)
+	return lines
+
+
+## The values checks C1-C5 of ADR 0014 section 5 need from this mode, one per line, so the lead
+## computes them from the four pasted reports. Modes are numbered 1-5 as on the plan.
+func _calibration(pace: PerfProbeCalib.Pacing) -> PackedStringArray:
+	var peak: PackedFloat64Array = _ref_peak
+	var lines: PackedStringArray = [
+		"CALIBRATION P26n2 | mode %d (%s) | start_tick %d" % [mode + 1, MODES[mode], _start_tick],
+		"C1 refresh_hz_start=%.2f" % _refresh_start,
+		"C1 refresh_hz_end=%.2f" % _refresh_end_now(),
+		"C1 max_fps=%d" % Engine.max_fps,
+		"C1 period_ms=%.3f" % pace.period_ms,
+		"C1 median_ms=%.3f" % pace.median_ms,
+		"C1 median_floor_ms=%.3f" % (pace.period_ms * PerfProbeCalib.MEDIAN_FLOOR),
+		"C2 ref_peak_p25_us=%.1f" % PerfProbeTick.percentile(peak, 25),
+		"C2 ref_peak_p95_us=%.1f" % PerfProbeTick.percentile(peak, 95),
+		"C2 warmup_p25_us=%.1f" % PerfProbeTick.percentile(_series[Series.WARMUP], 25),
+	]
+	if mode in [Mode.SPRITE_RINGS, Mode.WORKER_TICK, Mode.NATIVE_TICK]:
+		var other: PerfProbeCalib.Stats = _stats(Series.WORK_OTHER, Series.WORK_OTHER_REF)
+		lines.append("C3 other_ref_span_us=%.1f" % other.ref_span_us)
+		lines.append("C3 other_work_p95_raw_ms=%.3f" % other.p95_raw)
+		lines.append("C3 other_work_p95_norm_class_ms=%.3f" % other.p95_class)
+		lines.append("C3 other_work_p95_norm_frame_ms=%.3f" % other.p95_frame)
+	if mode in [Mode.SPRITE_RINGS, Mode.CODE_RINGS]:
+		var tick: PerfProbeCalib.Stats = _stats(Series.TICK, Series.TICK_REF)
+		lines.append("C4 tick_ref_span_us=%.1f" % tick.ref_span_us)
+		lines.append("C4 tick_mean_raw_ms=%.3f" % tick.mean_raw)
+		lines.append("C4 tick_mean_norm_class_ms=%.3f" % tick.mean_class)
+		lines.append("C4 tick_mean_norm_frame_ms=%.3f" % tick.mean_frame)
+	lines.append("C5 frames=%d" % pace.frames)
+	lines.append("C5 dropped=%d" % pace.dropped)
+	lines.append("C5 dropped_pct=%.2f" % pace.dropped_pct)
+	lines.append("C5 cadence_pct=%.2f" % pace.cadence_pct)
+	lines.append("C5 hitches=%d" % pace.hitches)
+	if _worker_mode():  # Raw: the worker is never normalised (ADR 0014 section 3).
+		var job: PackedFloat64Array = _series[Series.TICK]
+		var done: PackedFloat64Array = _series[Series.LATENCY]
+		lines.append("C5 job_tick_mean_ms=%.3f" % PerfProbeTick.mean(job))
+		lines.append("C5 job_tick_p95_ms=%.3f" % PerfProbeTick.percentile(job, 95))
+		lines.append("C5 job_done_mean_ms=%.3f" % PerfProbeTick.mean(done))
+		lines.append("C5 job_done_p95_ms=%.3f" % PerfProbeTick.percentile(done, 95))
+	return lines
+
+
+func _stats(work: int, refs: int) -> PerfProbeCalib.Stats:
+	return PerfProbeCalib.stats(
+		_series[work], _series[refs], PerfProbeTick.percentile(_ref_peak, 25)
+	)
+
+
+## Tick and other frames together.
+func _stats_all() -> PerfProbeCalib.Stats:
+	var work: PackedFloat64Array = _series[Series.WORK_TICK] + _series[Series.WORK_OTHER]
+	var refs: PackedFloat64Array = _series[Series.WORK_TICK_REF] + _series[Series.WORK_OTHER_REF]
+	return PerfProbeCalib.stats(work, refs, PerfProbeTick.percentile(_ref_peak, 25))
 
 
 ## The worker's tick and flow slice in microseconds, as the usec timer measured them: the rows in
@@ -555,27 +739,45 @@ func _record(series: int, value: float) -> void:
 		_series[series].append(value)
 
 
+## `_record`, and this frame's ref sample to `paired` with it, so the two stay parallel.
+func _record_ref(series: int, value: float, paired: int) -> void:
+	if _end_us == 0 and value >= 0.0:
+		_series[series].append(value)
+		_series[paired].append(_frame_ref_us)
+
+
 func _start_run() -> void:
 	for values: PackedFloat64Array in _series:
 		values.clear()
-	_start_us = Time.get_ticks_usec()
-	_end_us = 0
 	_held_ticks = 0
 	_late_ticks = 0
+	_clock_us = 0
 	_rings_button.visible = false
 	_copy_button.visible = false
+	_refresh_start = DisplayServer.screen_get_refresh_rate()
+	_refresh_end = _refresh_start
+	_ref_peak = PackedFloat64Array()
 	if mode == Mode.NATIVE_TICK and native == null:  # No library: the card says so and stops.
+		_start_us = Time.get_ticks_usec()
 		_end_us = _start_us + 1
 		_card.text = report()
 		_rings_button.visible = true
 		_copy_button.visible = true
 		_copy_button.text = "Copy report"
+		return
+	# ADR 0014 section 3: the burst, after the mode's reset and before the timed window.
+	_ref_peak = PerfProbeCalib.burst(burst_usec, ref_sampler)
+	_restart_frame_clock()
+	_start_us = _last_us
+	_end_us = 0
 
 
 func _next_mode() -> void:
 	mode = (mode + 1) % MODES.size()
 	if mode >= Mode.WORKER_TICK and not OS.has_feature("threads"):
 		mode = Mode.SPRITE_RINGS  # The web preview has no threads: the cycle skips the worker modes.
+	_stop_worker()  # The old runner is ours again; then a fresh tick replaces it (P26n2).
+	sim = new_sim.call()
 	_apply_mode()
 	_start_run()
 
@@ -604,6 +806,14 @@ func _apply_dp() -> void:
 	for button: Button in [_back, _rings_button, _copy_button]:
 		button.custom_minimum_size = UiScale.dp_vec(96.0, 56.0)
 		button.add_theme_font_size_override("font_size", roundi(UiScale.dp(16.0)))
+
+
+## P26n2: the fog image of the mode's fresh tick, all black, then the cells its warm-up ticks
+## revealed. This drains the dirty list once, outside any tick and timed window, in every mode.
+func _reset_fog() -> void:
+	_fog_image.fill(Color.BLACK)
+	_fog_bytes = _fog_image.get_data()
+	_patch_fog()
 
 
 ## Patches the alpha byte of the cells whose sight flipped, uploads the image and returns ms.

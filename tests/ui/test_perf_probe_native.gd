@@ -13,6 +13,7 @@ const WORKER_MODE: int = 3
 const NOT_LOADED: String = "ProbeTickNative not loaded: run scripts/build-native.sh"
 const CHECK_LINE: String = "C++ matches GDScript: yes (60 ticks)"
 const MISSING: String = "C++ tick not available on this build"
+const SHORT_BURST_USEC: int = 20000
 
 
 func test_the_next_mode_button_reaches_the_cpp_mode_from_the_worker_mode_and_leaves_it_joined(
@@ -100,56 +101,53 @@ func test_the_view_follows_the_cpp_tick_and_it_plays_the_same_ticks() -> void:
 	probe.free()
 
 
-## Mode 4 continues `sim` from the tick the earlier modes left it at, so mode 5 must time the same
-## stretch of the deterministic tick sequence: a fresh C++ tick starts at tick 3, where the first
-## 900 ticks are the lightest at p95 and the phone ratio would flatter C++.
-func test_mode_five_starts_the_cpp_tick_where_sim_stands() -> void:
+## P26n2 (ADR 0014 section 5): modes 1, 2, 4 and 5 start from identical state at tick 3, each after
+## the mode before it ticked on: every mode makes a fresh tick (mode 5 a fresh C++ one) and drains
+## the warm-up's dirty list once in its fog reset, so all four time ticks 3-903 in 60 s.
+func test_modes_one_two_four_and_five_start_from_identical_state_at_tick_three() -> void:
 	if not _loaded():
 		return
+	var reference: PerfProbeTick = PerfProbeTick.new()
+	reference.dirty_count = 0  # What the fog reset leaves.
 	var probe: Node2D = _open()
-	await await_millis(1500)  # Mode 1 ticks in the frame: about 22 ticks, a flow slice at tick 15.
-	var stood_at: int = probe.sim.tick
-	assert_int(stood_at).is_greater(15)
-	_press_next_mode(probe, NATIVE_MODE)  # The worker sleeps until the next frame: both readable.
-	var native: RefCounted = probe.native
-	assert_int(native.tick).is_equal(stood_at)
-	var found: String = PerfProbeLockstep.difference(probe.sim, native)
-	(
-		assert_str(found)
-		. override_failure_message("C++ differs from sim at its start: " + found)
-		. is_empty()
-	)
-	assert_str(probe.report()).contains("tick impl: C++ (")
-	assert_str(probe.report()).contains("worker from tick %d" % stood_at)
-	remove_child(probe)
-	probe.free()
-
-
-## The same after the GDScript worker has run: it played its ticks with the flow slice on every
-## 15th, a job in flight finished when it was joined, and the C++ tick joins it there.
-func test_mode_five_follows_the_gdscript_worker_from_the_same_tick() -> void:
-	if not _loaded():
-		return
-	var probe: Node2D = _open()
-	_press_next_mode(probe, WORKER_MODE)
-	await await_millis(1500)
+	_expect_start(reference, probe.sim, "mode 1")  # No frame has run yet.
+	var states: Array[RefCounted] = [probe.sim]
+	await await_millis(700)  # About 10 ticks in the frame.
+	assert_int(probe.sim.tick).is_greater(3)
 	_press_next_mode(probe, 1)
-	var native: RefCounted = probe.native
-	assert_int(native.tick).is_equal(probe.sim.tick)
-	assert_int(native.tick).is_greater(15)
-	var found: String = PerfProbeLockstep.difference(probe.sim, native)
-	(
-		assert_str(found)
-		. override_failure_message("C++ differs from sim at its start: " + found)
-		. is_empty()
-	)
+	_expect_start(reference, probe.sim, "mode 2")
+	states.append(probe.sim)
+	await await_millis(700)
+	assert_int(probe.sim.tick).is_greater(3)
+	_press_next_mode(probe, 2)  # Mode 3, then mode 4: the worker sleeps until the first post.
+	_expect_start(reference, probe.sim, "mode 4")
+	states.append(probe.sim)
+	await await_millis(700)
+	_press_next_mode(probe, 1)
+	assert_int(probe.mode).is_equal(NATIVE_MODE)
+	assert_int(states[2].tick).is_greater(3)  # Mode 4's tick, joined, had ticked on.
+	_expect_start(reference, probe.native, "mode 5")
+	states.append(probe.native)
+	for i: int in states.size():  # Four distinct objects: none was carried over.
+		for j: int in i:
+			assert_bool(states[i] == states[j]).is_false()
+	var report: String = probe.report()
+	assert_str(report).contains("start tick 3 (a fresh tick in every mode)")
+	assert_str(report).contains("CALIBRATION P26n2 | mode 5 (sprite rings, C++ worker tick)")
+	assert_str(report).contains("| start_tick 3")
+	assert_str(report).contains(CHECK_LINE)  # The self-check ran on its own objects.
+	await await_millis(1200)
+	report = probe.report()
+	assert_str(report).contains("C3 other_work_p95_norm_frame_ms=")
+	assert_str(report).contains("C5 job_tick_p95_ms=")
+	assert_str(report).not_contains("C4 ")
 	remove_child(probe)
 	probe.free()
 
 
 ## Both worker modes print the tick they started at (so a ratio between them says which stretch it
-## compares) and the tick and flow slice times in whole microseconds: the rows in ms carry two
-## decimals, which leaves one significant digit for a C++ tick of 0.09 ms.
+## compares; since P26n2 always tick 3) and the tick and flow slice times in whole microseconds: the
+## rows in ms carry two decimals, which leaves one significant digit for a C++ tick of 0.09 ms.
 func test_the_worker_modes_name_their_start_tick_and_print_microseconds() -> void:
 	if not _loaded():
 		return
@@ -226,8 +224,31 @@ func _loaded() -> bool:
 func _open() -> Node2D:
 	var packed: PackedScene = load(SCENE)
 	var probe: Node2D = packed.instantiate()
+	probe.burst_usec = SHORT_BURST_USEC  # P26n2's burst; tests/ui/test_perf_probe_calib.gd has it.
 	add_child(probe)
 	return probe
+
+
+## `state` (a PerfProbeTick or the C++ tick) equals the fresh `reference` in every compared field
+## (tick, dirty_count, slice_cells, x, y, target, seen, dirty, flow_cost); a GDScript one also in
+## every other script variable, the private grids, goals and generator included.
+func _expect_start(reference: PerfProbeTick, state: RefCounted, label: String) -> void:
+	var found: String = PerfProbeLockstep.difference(reference, state)
+	assert_str(found).override_failure_message("%s start: %s" % [label, found]).is_empty()
+	if not state is PerfProbeTick:
+		return
+	var compared: int = 0
+	for property: Dictionary in reference.get_property_list():
+		if property["usage"] & PROPERTY_USAGE_SCRIPT_VARIABLE == 0:
+			continue
+		var name: String = property["name"]
+		compared += 1
+		(
+			assert_bool(reference.get(name) == state.get(name))
+			. override_failure_message("%s start differs in %s" % [label, name])
+			. is_true()
+		)
+	assert_int(compared).is_greater(20)
 
 
 func _press_next_mode(probe: Node2D, times: int) -> void:

@@ -6,12 +6,15 @@ extends GdUnitTestSuite
 ## main-thread hitch is a held tick and never a late one (ADR 0012 section 1), a swapped `sim`
 ## drives the view in the in-frame modes, and the thread is joined when the scene leaves the tree
 ## with Engine.max_fps restored. Timing is never asserted, except that the frames keep coming while
-## a 600 ms job runs.
+## a 600 ms job runs. Since P26n2 every later mode starts from a fresh tick made by `new_sim`, so a
+## test that swaps `sim` for a slow tick swaps the maker too, and the burst before every run is
+## shortened here (tests/ui/test_perf_probe_calib.gd covers it).
 
 const SCENE: String = "res://scenes/dev/perf_probe.tscn"
 const WORKER_MODE: int = 3
 const LATE_ROW: String = "late ticks (job post to done above 66.7 ms): "
 const HELD_ROW: String = "held ticks (boundary reached with the job running): "
+const SHORT_BURST_USEC: int = 20000
 
 
 ## A tick that outlasts several periods (66.7 ms each) once `delay_msec` is set.
@@ -19,6 +22,12 @@ class SlowTick:
 	extends PerfProbeTick
 
 	var delay_msec: int = 0
+
+	## A fresh slow tick: the constructor's three warm-up ticks run before the delay is set.
+	static func slow(delay: int) -> SlowTick:
+		var tick: SlowTick = SlowTick.new()
+		tick.delay_msec = delay
+		return tick
 
 	func step() -> int:
 		OS.delay_msec(delay_msec)
@@ -145,12 +154,17 @@ func test_a_swapped_sim_drives_the_view_in_the_in_frame_modes() -> void:
 	probe.free()
 
 
-## The scene in the tree, in its first mode; `sim` is swapped before `_ready` when one is given.
+## The scene in the tree, in its first mode; `sim` is swapped before `_ready` when one is given,
+## and a slow one is what every later mode starts from too.
 func _open(sim: PerfProbeTick) -> Node2D:
 	var packed: PackedScene = load(SCENE)
 	var probe: Node2D = packed.instantiate()
+	probe.burst_usec = SHORT_BURST_USEC
 	if sim != null:
 		probe.sim = sim
+	if sim is SlowTick:
+		var delay: int = (sim as SlowTick).delay_msec
+		probe.new_sim = func() -> PerfProbeTick: return SlowTick.slow(delay)
 	add_child(probe)
 	return probe
 
