@@ -3,15 +3,26 @@ extends RefCounted
 ## Simulation state v1 (ADR 0007 section 2): struct-of-arrays, integers only. Positions are
 ## milli-tiles (1 tile = 1000). Units are rows in the per-unit arrays, ascending by id. Ids come
 ## from a counter that starts at 1 and are never reused. Phase 1 never removes a unit, so an id
-## is found by binary search. The view and input read a World and never write to it. This part
-## declares the enums, header, rule ints, row columns and type tables; the weapon, map,
-## projectile and scratch arrays follow in the next World change.
+## is found by binary search. The view and input read a World and never write to it. Every array
+## and scalar is declared here and listed in one shape list (ADR 0007 section 2); the map grid,
+## the helper objects and the hash follow in later World changes.
 
 enum Order { IDLE = 0, ATTACK_MOVE = 1, MOVE = 2, ATTACK = 3 }
 enum Armour { INFANTRY = 0, LIGHT = 1, HEAVY = 2, BUILDING = 3 }
 enum MoveClass { FOOT = 0, WHEELED = 1, TRACKED = 2 }
 enum Event { SPAWNED = 1, DIED = 2, SHOT = 3, IMPACT = 4 }
 enum NavMode { NONE = 0, DIRECT = 1, FIELD = 2, HOLD = 3, CHASE = 4 }
+## The indexes of `stats`: flow cells settled, line checks, separation pairs tested, targeting
+## candidates tested, fog cells stamped, projectile steps and rows moved by a compaction.
+enum Stat {
+	FLOW_CELLS = 0,
+	LINE_CHECKS = 1,
+	SEP_PAIRS = 2,
+	TARGET_CANDIDATES = 3,
+	FOG_CELLS = 4,
+	PROJ_STEPS = 5,
+	ROWS_COMPACTED = 6,
+}
 
 ## Same value as Sim.MILLI_PER_TILE, which P3 adds. World cannot read it from Sim (Sim reads World).
 const MILLI_PER_TILE: int = 1000
@@ -67,6 +78,71 @@ const TYPE_ARRAYS: Array[StringName] = [
 	&"type_acquire",
 	&"type_weapon",
 	&"type_names",
+]
+## The weapon tables, one entry per weapon (weapon_vs_armour has four).
+const WEAPON_ARRAYS: Array[StringName] = [
+	&"weapon_range",
+	&"weapon_min_range",
+	&"weapon_damage",
+	&"weapon_cooldown",
+	&"weapon_projectile_speed",
+	&"weapon_vs_armour",
+]
+## The projectile slots, max_projectiles entries each. proj_free is the stack of free slots.
+const PROJECTILE_ARRAYS: Array[StringName] = [
+	&"proj_id",
+	&"proj_owner",
+	&"proj_weapon",
+	&"proj_target",
+	&"proj_x",
+	&"proj_y",
+	&"proj_aim_x",
+	&"proj_aim_y",
+	&"proj_ticks",
+	&"proj_free",
+]
+## The tile grid: the terrain index per cell, and the move cost per class and cell.
+const MAP_ARRAYS: Array[StringName] = [&"terrain", &"move_cost"]
+## Per-row working space, max_rows entries each, rewritten every tick. Not state.
+const SCRATCH_ARRAYS: Array[StringName] = [&"intent_x", &"intent_y", &"push_x", &"push_y"]
+## Rewritten every tick, neither hashed nor compacted.
+const RUNTIME_ARRAYS: Array[StringName] = [&"events", &"stats"]
+
+## The int properties that go into the state hash, in hash order: the header ints, then
+## map_version (the map grid itself goes in as a cached digest). rng.state() follows them.
+const HASHED_SCALARS: Array[StringName] = [
+	&"tick",
+	&"next_id",
+	&"next_projectile_id",
+	&"dropped_commands",
+	&"projectile_overflow",
+	&"spawn_refused",
+	&"player_count",
+	&"proj_free_top",
+	&"map_version",
+]
+## The other int properties: set up from the data (map size, rules) or only for the view.
+const UNHASHED_SCALARS: Array[StringName] = [
+	&"map_w",
+	&"map_h",
+	&"map_cols",
+	&"map_rows",
+	&"rows_version",
+	&"retarget_period_ticks",
+	&"fog_period_ticks",
+	&"line_check_period_ticks",
+	&"flow_cells_per_tick",
+	&"flow_cache_size",
+	&"separation_neighbours",
+	&"separation_scan",
+	&"separation_idle_share",
+	&"separation_push_max",
+	&"separation_coincident_divisor",
+	&"stall_ticks",
+	&"stall_range_spacings",
+	&"attack_rekey_milli",
+	&"max_projectiles",
+	&"max_rows",
 ]
 
 var tick: int = 0
@@ -127,6 +203,32 @@ var type_acquire: PackedInt32Array = PackedInt32Array()
 var type_weapon: PackedInt32Array = PackedInt32Array()
 var type_names: PackedStringArray = PackedStringArray()
 
+## Per weapon, in the order of first appearance in the unit types. The index is `type_weapon`.
+var weapon_ids: Array[StringName] = []
+## Milli-tiles, 0 or more. A squared range is made in int64 and never stored.
+var weapon_range: PackedInt32Array = PackedInt32Array()
+var weapon_min_range: PackedInt32Array = PackedInt32Array()
+## At least 1. Damage times a percent is made in int64 and never stored.
+var weapon_damage: PackedInt32Array = PackedInt32Array()
+## Ticks, at least 1.
+var weapon_cooldown: PackedInt32Array = PackedInt32Array()
+## Milli-tiles per tick, 0 = hitscan.
+var weapon_projectile_speed: PackedInt32Array = PackedInt32Array()
+## Percents 0..200, four per weapon: entry `weapon * 4 + Armour`.
+var weapon_vs_armour: PackedInt32Array = PackedInt32Array()
+
+## The tile grid. Columns and rows are tiles, 0 until a map is loaded, at most 64 in Phase 2.
+var map_cols: int = 0
+var map_rows: int = 0
+## Bumped by every passability change, 0 or more.
+var map_version: int = 0
+## Per terrain, in the order of the scenario's terrain set.
+var terrain_ids: Array[StringName] = []
+## Per cell (`(y / 1000) * map_cols + x / 1000`): an index into terrain_ids, 0..255.
+var terrain: PackedByteArray = PackedByteArray()
+## Entry `class * cells + cell`, 3 classes: 0 = blocked, 10 = normal, up to 40 (ADR 0008).
+var move_cost: PackedByteArray = PackedByteArray()
+
 ## Per unit, ascending by id.
 var unit_id: PackedInt32Array = PackedInt32Array()
 var owner: PackedInt32Array = PackedInt32Array()
@@ -157,8 +259,39 @@ var stall: PackedInt32Array = PackedInt32Array()
 ## The cell last stamped into the fog, -1 = not stamped.
 var fog_cell: PackedInt32Array = PackedInt32Array()
 
+## Projectile slots, max_projectiles entries each. Valid while proj_id is not 0.
+## Ids come from next_projectile_id.
+var proj_id: PackedInt32Array = PackedInt32Array()
+## 1..player_count.
+var proj_owner: PackedInt32Array = PackedInt32Array()
+## A weapon index.
+var proj_weapon: PackedInt32Array = PackedInt32Array()
+## A unit id, 0 = none.
+var proj_target: PackedInt32Array = PackedInt32Array()
+## Milli-tiles inside the map: 0..map_w - 1 and 0..map_h - 1.
+var proj_x: PackedInt32Array = PackedInt32Array()
+var proj_y: PackedInt32Array = PackedInt32Array()
+var proj_aim_x: PackedInt32Array = PackedInt32Array()
+var proj_aim_y: PackedInt32Array = PackedInt32Array()
+## Ticks to impact: at most max(1, ceil(longest weapon range / slowest projectile speed)),
+## 17 with the shipped data, because shots fire only within range.
+var proj_ticks: PackedInt32Array = PackedInt32Array()
+## Free slot indices 0..max_projectiles - 1, valid below proj_free_top. Filled in descending
+## order, so slot 0 is taken first.
+var proj_free: PackedInt32Array = PackedInt32Array()
+
+## Per row, max_rows entries, milli-tiles per tick. The intent is -speed..speed (the fastest
+## type), the push -separation_push_max..separation_push_max.
+var intent_x: PackedInt32Array = PackedInt32Array()
+var intent_y: PackedInt32Array = PackedInt32Array()
+var push_x: PackedInt32Array = PackedInt32Array()
+var push_y: PackedInt32Array = PackedInt32Array()
+
 ## Records of EVENT_STRIDE ints for the last tick. Rewritten every tick and not state.
 var events: PackedInt32Array = PackedInt32Array()
+## This tick's work counts, indexed by Stat. Cleared every tick, each 0 or more and far below the
+## int32 limit (one tick's work).
+var stats: PackedInt32Array = PackedInt32Array()
 
 
 ## The rule ints start at the RulesDef script defaults, so a hand-built world is a valid world.
@@ -226,8 +359,9 @@ func index_of(id: int) -> int:
 
 
 ## Gives every type table one entry per type_ids entry, with the TYPE_PAD_* values (a name is the
-## capitalised type id), because Phase 1 code appends only the four Phase 1 tables. Idempotent.
-## Types are appended before the first step.
+## capitalised type id), because Phase 1 code appends only the four Phase 1 tables. It also sizes
+## the scratch arrays to max_rows, stats to the Stat count and the projectile slots to
+## max_projectiles. Idempotent. Types are appended before the first step.
 func prepare() -> void:
 	var types: int = type_ids.size()
 	_pad(type_speed, types, TYPE_PAD_V0)
@@ -244,6 +378,14 @@ func prepare() -> void:
 	var names: PackedStringArray = type_names
 	for i: int in range(names.size(), types):
 		names.append(String(ids[i]).capitalize())
+	# The fixed-capacity arrays. Resizing keeps the contents, so a second call is a no-op.
+	intent_x.resize(max_rows)
+	intent_y.resize(max_rows)
+	push_x.resize(max_rows)
+	push_y.resize(max_rows)
+	stats.resize(Stat.size())
+	if proj_id.size() != max_projectiles:
+		_reset_projectile_slots()
 
 
 ## Appends an idle unit at (x, y) at its type's max hp (at least 1; 1 for a type with no entry)
@@ -284,6 +426,20 @@ func add_unit(owner: int, type_index: int, x: int, y: int) -> int:
 	rows_version += 1
 	player_count = maxi(player_count, owner)
 	return id
+
+
+## Sizes every projectile slot array to max_projectiles, all slots free. Only the first prepare()
+## calls it (the sizes match afterwards). Changing max_projectiles after prepare() is not supported.
+func _reset_projectile_slots() -> void:
+	var slots: int = max_projectiles
+	for column_name: StringName in PROJECTILE_ARRAYS:
+		var column: PackedInt32Array = get(column_name)
+		column.clear()
+		column.resize(slots)
+	var stack: PackedInt32Array = proj_free
+	for i: int in slots:
+		stack[i] = slots - 1 - i
+	proj_free_top = slots
 
 
 ## Appends `value` to `table` until it has `size` entries.
