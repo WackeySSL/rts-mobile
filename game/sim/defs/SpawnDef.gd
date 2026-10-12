@@ -12,3 +12,6 @@ extends Resource
 @export var columns: int = 1
 ## Milli-tiles between neighbouring units of the block.
 @export var spacing: int = 1000
+## Milli-tiles. Above 0, each unit starts up to this far from its grid point (two draws per unit,
+## x then y, ADR 0007 section 2). 0 draws nothing.
+@export var jitter: int = 0
