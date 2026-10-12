@@ -57,7 +57,7 @@ const TERRAIN_COLORS: Dictionary[StringName, Color] = {
 	&"water_b": Color("3C7396"),
 }
 ## The map tiles, 8x8 texels, as filled rects "x,y,w,h,key" (a `TERRAIN_COLORS` key) in drawing
-## order: the base, then the grid darkens it, then the rest. Grass has one per parity of x + y.
+## order: the base, then the pattern rects. There is no grid. Grass has one per parity of x + y.
 const TERRAIN_TILES: Dictionary[StringName, String] = {
 	&"grass": "0,0,8,8,grass",
 	&"grass_b": "0,0,8,8,grass_b",
@@ -66,7 +66,6 @@ const TERRAIN_TILES: Dictionary[StringName, String] = {
 	&"rock": "0,0,8,8,rock 0,0,8,1,rock_b 0,0,1,8,rock_b 0,7,8,1,rock_c 7,0,1,8,rock_c",
 	&"water": "0,0,8,8,water 1,2,4,1,water_b 4,6,4,1,water_b",
 }
-const GRID_DARKEN: float = 0.1
 ## The terrain row's map patch: one terrain id per column, the same in every row, and the fog over
 ## the rows after the first. Scrub is two tiles wide, so both teams' squads stand on it.
 const PATCH_IDS: Array[StringName] = [
@@ -239,19 +238,13 @@ static func patch_image() -> Image:
 	return image
 
 
-## The CPU-side 8x8 tile of a `TERRAIN_TILES` spec: the base, the grid, then the other rects.
+## The CPU-side 8x8 tile of a `TERRAIN_TILES` spec: its rects in drawing order, nothing else.
 static func tile_image(spec: String) -> Image:
 	var image: Image = Image.create(8, 8, false, Image.FORMAT_RGBA8)
-	var fills: PackedStringArray = spec.split(" ")
-	for index: int in fills.size():
-		var part: PackedStringArray = fills[index].split(",")
+	for fill: String in spec.split(" "):
+		var part: PackedStringArray = fill.split(",")
 		var rect: Rect2i = Rect2i(int(part[0]), int(part[1]), int(part[2]), int(part[3]))
 		image.fill_rect(rect, TERRAIN_COLORS[StringName(part[4])])
-		if index == 0:
-			for i: int in 8:
-				image.set_pixel(i, 0, image.get_pixel(i, 0).darkened(GRID_DARKEN))
-				if i > 0:
-					image.set_pixel(0, i, image.get_pixel(0, i).darkened(GRID_DARKEN))
 	return image
 
 

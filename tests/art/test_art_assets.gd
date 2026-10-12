@@ -14,27 +14,24 @@ const FORBIDDEN: Array[String] = ["text", "image", "filter", "mask", "href", "st
 const OK_TAGS: String = " g path rect circle ellipse polygon polyline line linearGradient stop "
 const ATLAS_PATH: String = "res://assets/art/svg/fx/effects_atlas.svg"
 ## Each map tile as the style guide draws it, rows from the top: 0 is the tile's own colour, 1 and 2
-## its `_b` and `_c` tone, x the grid (the base darkened by 10 %, each channel truncated, see
-## GRID_HEX: 94 x 0.9 is 84). The rock's lit edge is drawn over the grid.
+## its `_b` and `_c` tone. There is no grid: row 0 and column 0 are the base, or the rock's edge.
 const PICTURES: Dictionary[StringName, String] = {
-	&"grass": "xxxxxxxx/x0000000/x0000000/x0000000/x0000000/x0000000/x0000000/x0000000",
-	&"grass_b": "xxxxxxxx/x0000000/x0000000/x0000000/x0000000/x0000000/x0000000/x0000000",
-	&"sand": "xxxxxxxx/x0000000/x0000000/x0000000/x0000000/x0000000/x0000000/x0000000",
-	&"scrub": "xxxxxxxx/x2110000/x1110000/x1110000/x0002110/x0001110/x0001110/x0000000",
+	&"grass": "00000000/00000000/00000000/00000000/00000000/00000000/00000000/00000000",
+	&"grass_b": "00000000/00000000/00000000/00000000/00000000/00000000/00000000/00000000",
+	&"sand": "00000000/00000000/00000000/00000000/00000000/00000000/00000000/00000000",
+	&"scrub": "00000000/02110000/01110000/01110000/00002110/00001110/00001110/00000000",
 	&"rock": "11111112/10000002/10000002/10000002/10000002/10000002/10000002/22222222",
-	&"water": "xxxxxxxx/x0000000/x1111000/x0000000/x0000000/x0000000/x0001111/x0000000",
+	&"water": "00000000/00000000/01111000/00000000/00000000/00000000/00001111/00000000",
 }
-## The grid texel of each tile in the order of PICTURES (rock has none): the base colour darkened.
-const GRID_HEX: String = "547042 63804e b8a680 465134 - 295471"
 ## Rec. 601 luminance of the 8-bit texels of a whole tile (STYLE.md): "mean spread fogged", the
 ## spread being the standard deviation and fogged the mean under the explored fog (alpha 140).
 const GREYSCALE: Dictionary[StringName, String] = {
-	&"grass": "107.2 4.9 48",
-	&"grass_b": "123.9 5.7 56",
-	&"sand": "181.7 8.1 82",
-	&"scrub": "90.2 17.4 41",
+	&"grass": "109.9 0.0 50",
+	&"grass_b": "127.0 0.0 57",
+	&"sand": "186.2 0.0 84",
+	&"scrub": "92.2 15.9 42",
 	&"rock": "105.4 19.9 48",
-	&"water": "83.6 8.0 38",
+	&"water": "85.7 6.4 39",
 }
 ## The map patch of the gallery's terrain row, left to right, rows 0 and 1 (grass by x + y parity).
 const PATCH_TILES: Array[Array] = [
@@ -267,12 +264,10 @@ func test_every_texel_of_the_map_tiles_is_the_picture_of_the_style_guide() -> vo
 		for y: int in 8:
 			for x: int in 8:
 				var tone: String = rows[y][x]
-				var hex: String = GRID_HEX.split(" ")[PICTURES.keys().find(id)]
-				if tone != "x":
-					var key: StringName = id
-					if tone != "0":
-						key = StringName("%s_%s" % [id, "b" if tone == "1" else "c"])
-					hex = Gallery.TERRAIN_COLORS[key].to_html(false)
+				var key: StringName = id
+				if tone != "0":
+					key = StringName("%s_%s" % [id, "b" if tone == "1" else "c"])
+				var hex: String = Gallery.TERRAIN_COLORS[key].to_html(false)
 				if image.get_pixel(x, y).to_html(false) != hex:
 					wrong.append("%s %d,%d" % [id, x, y])
 	assert_array(wrong).is_empty()
@@ -283,13 +278,15 @@ func test_the_map_tiles_have_the_luminance_of_the_style_guide_and_scrub_and_rock
 	var got: Dictionary[StringName, String] = {}
 	var means: Dictionary[StringName, float] = {}
 	var spreads: Dictionary[StringName, float] = {}
+	var grass_lums: Array[float] = []  # Every texel of both grass tiles.
 	for id: StringName in GREYSCALE:
 		var image: Image = Gallery.tile_image(Gallery.TERRAIN_TILES[id])
 		var lums: Array[float] = []
 		for y: int in 8:
 			for x: int in 8:
-				var c: Color = image.get_pixel(x, y)
-				lums.append(0.299 * c.r8 + 0.587 * c.g8 + 0.114 * c.b8)
+				lums.append(_luminance(image.get_pixel(x, y)))
+		if String(id).begins_with("grass"):
+			grass_lums.append_array(lums)
 		means[id] = lums.reduce(func(a: float, b: float) -> float: return a + b, 0.0) / 64.0
 		var variance: float = 0.0
 		for lum: float in lums:
@@ -298,13 +295,14 @@ func test_the_map_tiles_have_the_luminance_of_the_style_guide_and_scrub_and_rock
 		var fogged: int = roundi(means[id] * (1.0 - 140.0 / 255.0))
 		got[id] = "%.1f %.1f %d" % [means[id], spreads[id], fogged]
 	assert_dict(got).is_equal(GREYSCALE)
-	# Scrub is 17 below the darker grass and has three times its spread (the acceptance item).
+	# Grass is flat. Scrub is 17 below its darker tone and has a pattern: spread 15 or more.
+	assert_float(spreads[&"grass"] + spreads[&"grass_b"]).is_less(0.001)
 	assert_float(means[&"grass"] - means[&"scrub"]).is_greater_equal(17.0)
-	assert_float(spreads[&"scrub"]).is_greater_equal(3.0 * spreads[&"grass_b"])
-	# The rock's lit edge is lighter than any grass texel (127) and its shade edge darker (98).
+	assert_float(spreads[&"scrub"]).is_greater_equal(15.0)
+	# The rock's lit edge is lighter than any grass texel (127) and its shade edge darker (110).
 	var rock: Image = Gallery.tile_image(Gallery.TERRAIN_TILES[&"rock"])
-	assert_float(rock.get_pixel(3, 0).get_luminance() * 255.0).is_greater(127.1)
-	assert_float(rock.get_pixel(7, 3).get_luminance() * 255.0).is_less(98.0)
+	assert_float(_luminance(rock.get_pixel(3, 0))).is_greater(grass_lums.max())
+	assert_float(_luminance(rock.get_pixel(7, 3))).is_less(grass_lums.min())
 
 
 func test_the_style_guide_lists_every_colour_key_with_its_hex_and_a_probe_texel() -> void:
@@ -330,7 +328,6 @@ func test_the_style_guide_lists_every_colour_key_with_its_hex_and_a_probe_texel(
 	assert_array(keys).is_equal(Gallery.TERRAIN_COLORS.keys())
 	for id: StringName in Gallery.TERRAIN_TILES:
 		assert_str(section).contains("`%s`" % Gallery.TERRAIN_TILES[id])
-	assert_str(section).contains("`grid_color = Color(0, 0, 0, %s)`" % Gallery.GRID_DARKEN)
 
 
 func test_the_gallery_terrain_row_is_a_patch_of_map_tiles_with_the_fog_over_its_second_row(
@@ -425,6 +422,11 @@ func _ink(pixel: Color) -> String:
 	if pixel.get_luminance() > 0.95:
 		return "W"
 	return "D" if absf(pixel.get_luminance() - 0.127) < 0.05 else "?"
+
+
+## Rec. 601 luminance of the 8-bit colour (STYLE.md, Palette).
+func _luminance(color: Color) -> float:
+	return 0.299 * color.r8 + 0.587 * color.g8 + 0.114 * color.b8
 
 
 ## The bounding box of a sprite on screen.

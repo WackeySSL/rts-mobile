@@ -267,6 +267,10 @@ class is the one under Combat effects (infantry when `type_armour` is INFANTRY).
 | Own, infantry | 16 | 6 | 14 | as above | as above |
 | Enemy | as the class of the unit | 6 | as the class | as above | #F5A524 (warning), luminance 174 |
 
+Half-heights, for the overlap check only: P45's overlap test (see Overlap below) takes the vertical
+half-height h of a unit as 14 world px for squads and 21 for tanks. The layer never reads h, it places
+a bar by r.
+
 Neither fill is a team colour, so a red or blue unit keeps its bar colour. Own bars are plain
 rects, enemy bars are notched (Michael's answer 3, see Open points):
 - Own: edge (0,0,W,6), fill (1,1,W-2,4).
@@ -291,8 +295,9 @@ never form at 900), at zoom 0.75 / 1.0 / 1.5 and 1.0 to 2.37 base px per dp.
   dp (squads) and 24.3 dp (tanks), so 16 and 22 dp bars leave 2.2 and 2.3 dp; 8.7 and 10.9 dp on the
   6-inch phone.
 - Above each other, a bar's top is r x zoom + 7 dp over its unit and the unit above starts (spacing -
-  half-height) x zoom over it: at worst 5.6 px clear. The bar's middle is nearer its own unit than the
-  unit above, except for tanks at zoom 0.75 on web_phone_small, where it is midway.
+  h) x zoom over it, h the half-height above (14 squads, 21 tanks): at worst 5.6 px clear. The bar's
+  middle is nearer its own unit than the unit above, except for tanks at zoom 0.75 on web_phone_small,
+  where it is midway.
 - Notch: 3x3 formations of squads, of tanks and of a mixed group, every unit hit, at headings 0 to 315
   degrees in 45 degree steps and with the turret aligned or pointing down. On the 6-inch phone (1.75
   px per dp) no sprite covers a notch at any zoom, and squads are clean on every profile. Residual:
@@ -332,7 +337,7 @@ the tile centre would show the scrub's highlight, so it is named per key:
 | `water_b` | #3C7396 | ripple | 2,2 |
 
 A tile is 8x8 texels of filled rects `x,y,w,h,key`, in drawing order. The first rect is the base,
-the whole tile. The grid then darkens it, and the other rects are drawn over the result:
+the whole tile, and the other rects are drawn over it:
 
 | Terrain id | Rects |
 | --- | --- |
@@ -342,25 +347,23 @@ the whole tile. The grid then darkens it, and the other rects are drawn over the
 | `rock` | `0,0,8,8,rock 0,0,8,1,rock_b 0,0,1,8,rock_b 0,7,8,1,rock_c 7,0,1,8,rock_c` |
 | `water` | `0,0,8,8,water 1,2,4,1,water_b 4,6,4,1,water_b` |
 
-The grid is `grid_color = Color(0, 0, 0, 0.1)`, on row 0 and column 0 of every tile: the base is
-mixed with black by 10 %, so each channel becomes floor(c x 0.9) (94 becomes 84), as
-`Color.darkened(0.1)` written into an 8-bit image gives. It is one texel, 8 world px, wide, where
-Phase 1 drew a 1 px line at 20 %, also on the map's right and bottom edge, which this grid leaves
-out (new). The rock's lit edge lies on row 0 and column 0 and is drawn after the grid, so it keeps
-its colour. Fog is black on a texture of one texel per tile, linear filtered, so its edge is soft across
-one tile (ADR 0010 section 2): alpha 255 where unexplored, 140 where explored but not visible, 0 where
-visible. `FogLayer.explored_alpha` and the gallery's `explored_fog_alpha` are 140. The gallery's
-`TERRAIN_COLORS` and `TERRAIN_TILES` (`art_gallery.gd`) hold these keys and strings, which `tests/art`
-pins to this text and to every texel; `MapView` keeps its own copy and P50 compares the two.
+There is no grid (Michael, 2026-10-12): no band, no line and nothing darkened on row 0 or column 0
+of a tile, on any terrain. `MapView` (P36) bakes no grid. Fog is black on a texture of one texel per
+tile, linear filtered, so its edge is soft across one tile (ADR 0010 section 2): alpha 255 where
+unexplored, 140 where explored but not visible, 0 where visible. `FogLayer.explored_alpha` and the
+gallery's `explored_fog_alpha` are 140. The gallery's `TERRAIN_COLORS` and `TERRAIN_TILES`
+(`art_gallery.gd`) hold these keys and strings, which `tests/art` pins to this text and to every
+texel; `MapView` keeps its own copy and P52 compares the two.
 
-Greyscale check (P34c, the tiles' own texels, Rec. 601 luminance of the 8-bit colours, grid included;
-mean and spread (standard deviation) inside one tile): grass 107 and 124 (spread 5 and 6), sand 182
-(8), scrub 90 (17.4), rock 105 (19.9), water 84 (8). Scrub is 17 and 34 below the grass tones and its
-spread is three times theirs, so the dotted bushes read apart from grass in greyscale, as a darker
-patch with a texture. Rock has the grass's mean luminance, so its bevel carries it: the lit edge (136)
-is lighter than any grass texel (127 at most) and the shade edge (76) darker than any (98 at least).
-Under the explored fog (x 0.45) the means are grass 48 and 56, sand 82, scrub 41, rock 48, water 38,
-all dark, with the patterns still visible.
+Greyscale check (P34c, the tiles' own texels, Rec. 601 luminance of the 8-bit colours; mean and
+spread (standard deviation) inside one tile): grass 110 and 127 (spread 0), sand 186 (0), scrub 92
+(15.9), rock 105 (19.9), water 86 (6.4). Grass and sand are flat. Scrub is 18 and 35 below the grass
+tones (its base alone, 83, is 27 and 44 below) and has a spread of 15.9 where grass has none, so the
+dotted bushes read apart from grass in greyscale, as a darker patch with a texture. Rock's mean is
+just under the darker grass, so its bevel carries it: the lit edge (136) is lighter than any grass
+texel (127 at most) and the shade edge (76) darker than any (110 at least). Under the explored fog
+(x 0.45) the means are grass 50 and 57, sand 84, scrub 42, rock 48, water 39, all dark, with the
+patterns of scrub, rock and water still visible.
 
 Squads on scrub (P34c, both squads in both team colours composited on scrub, grass and sand, in
 greyscale at zoom 1.0 and 0.75): scrub has the unit olive and only foot units can stand on it. The
@@ -382,7 +385,7 @@ list in `art_gallery.gd` instead of getting rigs in the scene. A ring row (also 
 script) shows team A's tank with its ring on both grounds (only own units get one) at the three zoom
 levels, at the ring radius of the 6-inch phone, and each ground carries the effects atlas at scale 1.
 A terrain row at the top shows a patch of 8 x 2 map tiles at 64 px in a dark frame, so every tile
-edge shows on both grounds: grass, scrub, rock, water and sand, with the grid. Team A's and team B's
+edge shows on both grounds: grass, scrub, rock, water and sand. Team A's and team B's
 squads stand on the two scrub tiles, and the second row of the patch is under the explored fog alpha.
 To add an asset:
 - Add its layers as one rig `Node2D` under each of the four slots (grass A, grass B, sand A, sand B).
@@ -399,12 +402,11 @@ To add an asset:
   no shadow and no one-sided light, the reading of "1.5 px vs 2 px", the feedback marker spec
   (shapes, dp sizes, colours, outline, fade), the combat effect spec (sizes, lifetimes, the 2 px
   outline on thin parts) and the health bar spec (sizes, notched enemy bar, placement, density).
-- **(new)** The rocket warhead is #F5A524, the UI warning accent, used in unit art. The attack-move
-  chevrons, the enemy health bar fill and four of the five effect sprites (burst, flash, puff core,
-  rocket nose and flame) use it too. An own rocket squad's warhead is about 6 px of the enemy-bar
-  colour at zoom 1.0 on the 6-inch phone, beside 411 px of enemy bar, at the same luminance (174).
-  The notch stays the own/enemy cue. The gallery shows no bars, so judge it in the main scene after
-  P45: if it confuses, the fix is a warm tone that is not a UI accent.
+- The rocket warhead is #F5A524, the UI warning accent, used in unit art. Decided by Michael on
+  2026-10-12: kept. The attack-move chevrons, the enemy health bar fill and four of the five effect
+  sprites (burst, flash, puff core, rocket nose and flame) use it too. The measured reason: an own
+  rocket squad's warhead is about 6 px of the enemy-bar colour at zoom 1.0 on the 6-inch phone,
+  beside 411 px of enemy bar, at the same luminance (174), and the notch stays the own/enemy cue.
 - Please judge on the phone (Dev, Art gallery, bottom row) whether zoom 1.5 looks too soft. The
   tile is a 64 px raster drawn at 2.25 times on a 6-inch phone. The fix would be SVG import scale
   1.0 with mipmaps and sprites drawn at scale 0.5. That changes the Technical rules here, so it
@@ -419,23 +421,20 @@ To add an asset:
 - The selection ring is imported at scale 1.0, not 0.5 (see `RING_TEX_RADIUS_PX = 72` under the
   marker table), so it stays sharp at zoom 1.5. This is an exception to the half-scale rule for one
   asset.
-- Terrain (gallery, top row). The grid is one texel wide, 8 world px (6, 8 and 12 base px at zoom
-  0.75, 1.0 and 1.5; 12 window px at zoom 1.0 on the 6-inch phone), where Phase 1 drew a 1 px
-  line. At 10 % it reads as a faint offset of the checkerboard more than as thin lines: on a light
-  grass tile the band (luminance 114) is still lighter than the dark tile next to it (110), so it
-  is a step, not a line. Please judge it in the patch. The levers are `GRID_DARKEN` in
-  `art_gallery.gd` (the alpha of `MapView.grid_color`) and the grid on sand only. The rock lit and
-  shade colours and the grid are new. Scrub shares the unit olive, so judge the squads on it in the
-  patch. The explored fog (alpha 140) leaves terrain at 45 % brightness: check that explored ground
-  stays readable; it is one value (`FogLayer.explored_alpha`) to change.
+- Terrain (gallery, top row). Decided by Michael on 2026-10-12: the map has no grid. A tile is its
+  base colour and its pattern rects, and `MapView` (P36) bakes no grid. Still open: the rock lit and
+  shade colours are new, and scrub shares the unit olive, so judge the squads on it in the patch.
+  The explored fog (alpha 140) leaves terrain at 45 % brightness: check that explored ground stays
+  readable; it is one value (`FogLayer.explored_alpha`) to change.
 - For the lead, before P36 starts: the plan's `MapView` row allows the keys `<id>` and `<id>_b`
   and holds no tile rects, but this spec has three tones for scrub and rock and rect patterns for
   scrub, rock and water (ADR 0011 section 3 asks for the scrub pattern). The row needs `_c` keys, a
-  rect table in `MapView` copied from the table above and applied as base, grid, rects, the
-  `grid_color` value, and the probe texels in P36's colour test (the tile centre of scrub is its
-  highlight). P50's cross-file test then compares `MapView`'s keys and strings with the gallery's
-  `TERRAIN_COLORS` and `TERRAIN_TILES`. P36's phone check "the map looks as before" needs the grid
-  exception. The other route is two tones per terrain, which drops the scrub highlight and the
+  rect table in `MapView` copied from the table above and applied as base, then rects, and the
+  probe texels in P36's colour test (the tile centre of scrub is its highlight). The row's grid
+  colour export and ADR 0011 section 3's "grid lines" are stale: the map has no grid. P52's
+  cross-file test then compares `MapView`'s keys and strings with the gallery's `TERRAIN_COLORS` and
+  `TERRAIN_TILES`. P36's phone check "the map looks as before" needs an exception: the Phase 1 grid
+  lines are gone. The other route is two tones per terrain, which drops the scrub highlight and the
   rock bevel: change this spec for it, not the contract.
 
 ## Change log
@@ -445,4 +444,5 @@ To add an asset:
 | 2026-10-11 | v1.1 (P12): feedback marker spec, gallery zoom row, launcher icon credit. |
 | 2026-10-12 | v1.2 (P34): rifle and rocket squads, their gallery slots and zoom row. |
 | 2026-10-12 | v1.2 (P34b): selection ring texture and the draw-order rule, effects atlas, combat effects and health bars specs (weapon and class from snapshot columns, bars placed by sprite reach), the own and enemy cue. |
-| 2026-10-12 | v1.2 (P34c): terrain tiles with the scrub pattern, keyed by `MapView.colors` key, the grid and fog alphas, the gallery terrain patch with squads on scrub. |
+| 2026-10-12 | v1.2 (P34c): terrain tiles with the scrub pattern, keyed by `MapView.colors` key, the fog alpha, the gallery terrain patch with squads on scrub. |
+| 2026-10-12 | v1.2 (P34c, Michael's answers): the map grid is removed, the rocket warhead stays #F5A524; the health bar overlap half-heights (14 and 21 world px) are recorded. |
