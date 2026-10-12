@@ -1,0 +1,35 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://game/ui/perf_probe.gd" id="1_probe"]
+[ext_resource type="Script" path="res://game/ui/SafeAreaMargin.gd" id="2_safe"]
+
+[node name="PerfProbe" type="Node2D"]
+script = ExtResource("1_probe")
+
+[node name="Camera" type="Camera2D" parent="."]
+position = Vector2(2048, 2048)
+zoom = Vector2(0.75, 0.75)
+
+[node name="Hud" type="CanvasLayer" parent="."]
+
+[node name="Margin" type="MarginContainer" parent="Hud"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("2_safe")
+
+[node name="Card" type="Label" parent="Hud/Margin"]
+size_flags_horizontal = 0
+size_flags_vertical = 0
+
+[node name="Buttons" type="VBoxContainer" parent="Hud/Margin"]
+size_flags_horizontal = 8
+size_flags_vertical = 0
+
+[node name="BackButton" type="Button" parent="Hud/Margin/Buttons"]
+text = "Back"
+
+[node name="RingsButton" type="Button" parent="Hud/Margin/Buttons"]
+text = "Next mode"
+
+[node name="CopyButton" type="Button" parent="Hud/Margin/Buttons"]
+text = "Copy report"

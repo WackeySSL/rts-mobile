@@ -5,6 +5,7 @@ extends Control
 @onready var _test_map_button: Button = %TestMapButton
 @onready var _gallery_button: Button = %GalleryButton
 @onready var _probe_button: Button = %TouchProbeButton
+@onready var _perf_button: Button = %PerfProbeButton
 
 
 func _ready() -> void:
@@ -14,6 +15,8 @@ func _ready() -> void:
 	# An entry whose scene does not exist yet stays visible but cannot be pressed.
 	_gallery_button.disabled = not ResourceLoader.exists(DevRoutes.ART_GALLERY_SCENE)
 	_probe_button.disabled = not ResourceLoader.exists(DevRoutes.TOUCH_PROBE_SCENE)
+	_perf_button.disabled = not ResourceLoader.exists(DevRoutes.PERF_PROBE_SCENE)
+	_perf_button.pressed.connect(DevRoutes.open.bind(get_tree(), DevRoutes.PERF_PROBE_SCENE))
 	_test_map_button.pressed.connect(_on_test_map_pressed)
 	_gallery_button.pressed.connect(_on_gallery_pressed)
 	_probe_button.pressed.connect(_on_probe_pressed)

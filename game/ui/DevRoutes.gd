@@ -9,6 +9,7 @@ const MAIN_SCENE: String = "res://scenes/main.tscn"
 const DEV_MENU_SCENE: String = "res://scenes/dev/dev_menu.tscn"
 const ART_GALLERY_SCENE: String = "res://scenes/dev/art_gallery.tscn"
 const TOUCH_PROBE_SCENE: String = "res://scenes/dev/touch_probe.tscn"
+const PERF_PROBE_SCENE: String = "res://scenes/dev/perf_probe.tscn"
 
 
 static func is_enabled() -> bool:
