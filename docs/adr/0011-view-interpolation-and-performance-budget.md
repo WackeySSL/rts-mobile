@@ -10,6 +10,9 @@ values of `work_p95_ms` and `sim_p95_ms` in the acceptance note, and the debug-A
 gate uses the release template), §6 step 4 (the worker thread, adopted), and the sim cost
 estimate (1.9 ms mean on CI).
 
+Pointer (2026-10-12): see the proposed ADRs 0013 and 0014. Nothing here is superseded by them
+until Michael accepts.
+
 ## Context
 ROADMAP Phase 2 asks for three things:
 - "View interpolation at the display frame rate";

@@ -22,6 +22,9 @@ run. It supersedes in part:
 
 It keeps Michael's answer 1 (the gate runs on his phone with k = 2.5) and CLAUDE.md rule 6.
 
+Pointer (2026-10-12): see the proposed ADRs 0013 and 0014. Nothing here is superseded by them
+until Michael accepts. The worker-mode run is recorded at the end of the acceptance note.
+
 ## Context
 The Phase 2 plan (P26s) says that a contract the phone probe contradicts changes through a new ADR
 before P34 starts. The probe ran on 2026-10-12. The full reports are comments on PR #35.
@@ -817,3 +820,24 @@ about 3.5 ms, and the mock alone takes 3.36 ms. The GDExtension trigger stays as
 mean and p95, held ticks, the main thread's frame work with the tick out of the frame, and the
 core the worker lands on. It re-derives the two ratios and checks the headroom condition for
 `flow_cells_per_tick`.
+
+**Addendum (2026-10-12): the worker-mode run.** This applies §4 and §5 as accepted to the run they
+name; it is not a new decision.
+- Results on the Pixel 9a, release template, mode 4 (the mock tick on the worker): PR #35 release
+  run 2, job post to done mean 11.03 ms and p95 19.75 ms; the spike session (PR #41), job p95
+  20.10 ms. No late or held ticks.
+- **The ratios** (§4's formula, the release worker job over the CI mock tick, rounded up to one
+  decimal): `ci_ratio_mean` 11.03 / 2.51 = 4.39, so 4.4; `ci_ratio_p95` 19.75 / 3.36 = 5.88, so
+  5.9. They replace 3.6 and 3.8 above. With 5.9, `sim_p95_ms` equals a CI `TickJob` p95 of about
+  2.3 ms (13.3 / 5.9), and the P46 decision point (26.6 ms) a CI p95 of about 4.5 ms. Release
+  run 2 sets them because it is the run §4 names (the release run's worker mode, in the session
+  with the in-frame mode). The spike session would give 11.87 / 2.51 = 4.8 and 20.10 / 3.36 =
+  6.0; both lie within §4's 10 % re-derivation rule of 4.4 and 5.9, so 4.4 and 5.9 stand.
+- **`flow_cells_per_tick`** (§5's headroom half): the worker job p95 is above 11.6 ms, so not even
+  64 cells fit; by §5 the value is 64, with the early-warning finding of plan risk 1. The 320
+  above was the 2 ms half only.
+- **The margin.** "The measured margin" above is overtaken by this run: the worker job p95 of
+  19.75-20.10 ms misses `sim_p95_ms` (13.3 ms) by 48-51 % with the mock alone, so the GDScript
+  sim is not marginal; it fails the limit. This is plan risk 1's early-warning finding. §7's
+  trigger is unchanged by this addendum; the proposed ADR 0013 is the response.
+- The plan records how P38t, P38p and P27f carry these (revision 11b).
