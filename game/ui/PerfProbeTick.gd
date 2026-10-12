@@ -16,7 +16,11 @@ const COLS: int = 64
 const PAD: int = 66  ## The flow grid carries a blocked ring.
 const UNREACHED: int = 0x3FFFFFFF
 const STEPS: Array[int] = [-67, -66, -65, -1, 1, 65, 66, 67]  ## Flow neighbours and their costs.
-const COSTS: Array[int] = [14, 10, 14, 10, 10, 14, 10, 14]
+const COSTS: Array[int] = [14, 10, 14, 10, 10, 14, 10, 14]  ## Per 10 of terrain cost (x14 / 10).
+## The two orthogonal cells a diagonal step passes between; both are the cell itself (always open)
+## for an orthogonal step, so every step runs the same corner check.
+const SIDE_X: Array[int] = [-1, 0, 1, 0, 0, -1, 0, 1]
+const SIDE_Y: Array[int] = [-66, 0, -66, 0, 0, 66, 0, 66]
 
 var tick: int = 0
 var x: PackedInt32Array = _ints(UNITS, 0)
@@ -26,6 +30,7 @@ var seen: PackedInt32Array = _ints(2 * COLS * COLS, 0)  ## Sight squares on a ce
 var dirty: PackedInt32Array = _ints(COLS * COLS, 0)  ## Player 0 cells that flipped 0 <-> 1.
 var dirty_count: int = 0
 var flow_cost: PackedInt32Array = _ints(PAD * PAD, UNREACHED)
+var slice_cells: int = 0  ## Cells the last `flow_slice()` settled (short at a field's end).
 
 var _goal_x: PackedInt32Array = _ints(UNITS, 0)
 var _goal_y: PackedInt32Array = _ints(UNITS, 0)
@@ -34,7 +39,7 @@ var _sep_head: PackedInt32Array = _ints(COLS * COLS, -1)
 var _sep_next: PackedInt32Array = _ints(UNITS, -1)
 var _tgt_head: PackedInt32Array = _ints(16 * 16, -1)  ## 4-tile cells.
 var _tgt_next: PackedInt32Array = _ints(UNITS, -1)
-var _open: PackedByteArray = PackedByteArray()
+var _terrain: PackedInt32Array = _ints(PAD * PAD, 0)  ## Move cost per padded cell, 0 = blocked.
 var _bucket: PackedInt32Array = _ints(16 * PAD * PAD, 0)  ## 16 Dial buckets, one stack each.
 var _bucket_n: PackedInt32Array = _ints(16, 0)
 var _dist: int = 0
@@ -43,11 +48,10 @@ var _lcg: int = 42
 
 
 func _init() -> void:
-	_open.resize(PAD * PAD)
 	for ty: int in COLS:  # A ridge at columns 31-32 with three gaps inside rows 25-39.
 		for tx: int in COLS:
 			var gap: bool = ty >= 25 and ty <= 39 and (ty - 25) % 5 < 2
-			_open[(ty + 1) * PAD + tx + 1] = 0 if (tx == 31 or tx == 32) and not gap else 1
+			_terrain[(ty + 1) * PAD + tx + 1] = 0 if (tx == 31 or tx == 32) and not gap else 10
 	for i: int in UNITS:
 		x[i] = 19000 + (i / SIDE) * 14000 + _next(12000)
 		y[i] = 24500 + _next(15000)
@@ -69,10 +73,13 @@ func step() -> int:
 
 
 ## Settles up to `budget` flow cells and returns the wall time in microseconds. A finished field
-## is replaced by the next goal at the start of the following call.
+## is replaced by the next goal at the start of the following call. The steps follow ADR 0008
+## section 3: the cost of the cell stepped onto (x14 / 10 on a diagonal), and no diagonal step
+## past a blocked orthogonal neighbour.
 func flow_slice(budget: int) -> int:
 	var started: int = Time.get_ticks_usec()
 	var cost: PackedInt32Array = flow_cost
+	var terrain: PackedInt32Array = _terrain
 	var count: PackedInt32Array = _bucket_n
 	if _pending == 0:
 		var goal: int = (1 + _next(COLS)) * PAD + 1 + _next(30)
@@ -97,13 +104,17 @@ func flow_slice(budget: int) -> int:
 		settled += 1
 		for k: int in 8:
 			var next: int = cell + STEPS[k]
-			var next_cost: int = _dist + COSTS[k]
-			if _open[next] != 0 and next_cost < cost[next]:
+			var enter: int = terrain[next]  # Cost of the cell stepped onto.
+			if enter == 0 or terrain[cell + SIDE_X[k]] == 0 or terrain[cell + SIDE_Y[k]] == 0:
+				continue  # Blocked, or a diagonal that would cut a corner.
+			var next_cost: int = _dist + enter * COSTS[k] / 10
+			if next_cost < cost[next]:
 				var next_ring: int = next_cost % 16
 				cost[next] = next_cost
 				_bucket[next_ring * PAD * PAD + count[next_ring]] = next
 				count[next_ring] += 1
 				_pending += 1
+	slice_cells = settled
 	return Time.get_ticks_usec() - started
 
 

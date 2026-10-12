@@ -36,12 +36,16 @@ var _atlas: ImageTexture = null
 var _fog_image: Image = Image.create_empty(COLS, COLS, false, Image.FORMAT_RGBA8)
 var _fog_texture: ImageTexture = null
 var _viewport: RID = RID()
+var _fog_bytes: PackedByteArray = PackedByteArray()  ## RGBA8 of the fog image, patched in place.
 var _max_fps: int = 0
+var _kept_on: bool = false
 var _last_us: int = 0
 var _start_us: int = 0
 var _end_us: int = 0  ## 0 while the run goes on.
 var _clock_us: int = 0
-var _prev_ticked: bool = false
+var _process_start_us: int = 0  ## Top of this frame's `_process`, the first one in the tree.
+var _pre_draw_us: int = 0
+var _ticked: bool = false  ## This frame ran at least one mock tick.
 
 @onready var _card: Label = $Hud/Margin/Card
 @onready var _back: Button = $Hud/Margin/Buttons/BackButton
@@ -62,12 +66,20 @@ class Painted:
 func _enter_tree() -> void:
 	_max_fps = Engine.max_fps
 	Engine.max_fps = 60
+	_kept_on = DisplayServer.screen_is_kept_on()
 	DisplayServer.screen_set_keep_on(true)  # A 60 s run outlasts the usual screen timeout.
+	# Performance.TIME_PROCESS is the slowest frame of the past second, so each frame is timed here:
+	# this node processes first, and the frame's process time ends when the server starts to draw.
+	process_priority = -1000
+	RenderingServer.frame_pre_draw.connect(_on_pre_draw)
+	RenderingServer.frame_post_draw.connect(_on_post_draw)
 
 
 func _exit_tree() -> void:
 	Engine.max_fps = _max_fps
-	DisplayServer.screen_set_keep_on(false)
+	DisplayServer.screen_set_keep_on(_kept_on)
+	RenderingServer.frame_pre_draw.disconnect(_on_pre_draw)
+	RenderingServer.frame_post_draw.disconnect(_on_post_draw)
 	RenderingServer.viewport_set_measure_render_time(_viewport, false)
 
 
@@ -114,6 +126,7 @@ func _ready() -> void:
 		_layers.append(layer)
 	_apply_mode()
 	_fog_image.fill(Color.BLACK)
+	_fog_bytes = _fog_image.get_data()
 	_fog_texture = ImageTexture.create_from_image(_fog_image)
 	var fog: Sprite2D = _sprite(_fog_texture, 8)
 	fog.centered = false
@@ -127,27 +140,23 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_apply_dp)
 	_apply_dp()
 	_last_us = Time.get_ticks_usec()
+	_process_start_us = _last_us
 	_start_run()
 
 
 func _draw() -> void:
-	draw_rect(Rect2(0.0, 0.0, 64.0 * COLS, 64.0 * COLS), Color("6F8F57"))
+	var side: float = float(ViewScale.PX_PER_TILE * COLS)
+	draw_rect(Rect2(0.0, 0.0, side, side), Color("6F8F57"))
 
 
 func _process(_delta: float) -> void:
 	var now: int = Time.get_ticks_usec()
+	_process_start_us = now
 	var interval: int = now - _last_us
 	_last_us = now
-	# The engine counters describe the frame before this one, so the tick flag does too.
-	var process_ms: float = Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
-	var render_ms: float = RenderingServer.viewport_get_measured_render_time_cpu(_viewport)
 	_record(Series.INTERVAL, interval / 1000.0)
-	_record(Series.PROCESS, process_ms)
-	_record(Series.RENDER, render_ms)
-	_record(Series.CALLS, Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
-	_record(Series.WORK_TICK if _prev_ticked else Series.WORK_OTHER, process_ms + render_ms)
 	_clock_us += interval
-	_prev_ticked = false
+	_ticked = false
 	for _step: int in 4:  # At most four ticks a frame; time beyond that is dropped.
 		if _clock_us < TICK_USEC:
 			break
@@ -155,9 +164,12 @@ func _process(_delta: float) -> void:
 		_prev_x = sim.x.duplicate()
 		_prev_y = sim.y.duplicate()
 		_record(Series.TICK, sim.step() / 1000.0)
-		_record(Series.SLICE, sim.flow_slice(FLOW_CELLS) / 1000.0 if sim.tick % 15 == 0 else -1.0)
+		if sim.tick % 15 == 0:
+			var elapsed: int = sim.flow_slice(FLOW_CELLS)
+			# A field's last slice is short; it would pull the mean down.
+			_record(Series.SLICE, elapsed / 1000.0 if sim.slice_cells == FLOW_CELLS else -1.0)
 		_record(Series.FOG, _patch_fog() if sim.tick % 3 == 0 else -1.0)  # 5 Hz.
-		_prev_ticked = true
+		_ticked = true
 	_clock_us = _clock_us if _clock_us < TICK_USEC else 0
 	for i: int in UNITS:
 		var from: Vector2 = ViewScale.milli_to_px_vec(_prev_x[i], _prev_y[i])
@@ -174,6 +186,20 @@ func _process(_delta: float) -> void:
 			_rings_button.visible = true
 			_copy_button.visible = true
 			_copy_button.text = "Copy report"
+
+
+func _on_pre_draw() -> void:
+	_pre_draw_us = Time.get_ticks_usec()
+
+
+## Files this frame's process and render CPU time under this frame's tick flag.
+func _on_post_draw() -> void:
+	var process_ms: float = (_pre_draw_us - _process_start_us) / 1000.0
+	var render_ms: float = RenderingServer.viewport_get_measured_render_time_cpu(_viewport)
+	_record(Series.PROCESS, process_ms)
+	_record(Series.RENDER, render_ms)
+	_record(Series.CALLS, Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
+	_record(Series.WORK_TICK if _ticked else Series.WORK_OTHER, process_ms + render_ms)
 
 
 ## The plain-text report: the card shows it and "Copy report" puts it on the clipboard.
@@ -195,14 +221,14 @@ func report() -> String:
 		"screen %s px | refresh %s | max_fps %d" % [screen, refresh, Engine.max_fps],
 		"frames %d in %.1f s | on time (<= 17.5 ms) %.1f %%" % [frames, seconds, share],
 		_row("frame interval (wall clock)", Series.INTERVAL, "ms"),
-		_row("process (TIME_PROCESS)", Series.PROCESS, "ms"),
+		_row("process (_process start to draw)", Series.PROCESS, "ms"),
 		_row("render CPU (viewport time)", Series.RENDER, "ms"),
 		_row("draw calls (monitor, HUD in)", Series.CALLS, "calls"),
 		_row("work, tick frames (process + render)", Series.WORK_TICK, "ms"),
 		_row("work, other frames (process + render)", Series.WORK_OTHER, "ms"),
 		_row("mock tick (15 Hz, usec timer)", Series.TICK, "ms"),
 		_row("flow slice %d cells (usec timer)" % FLOW_CELLS, Series.SLICE, "ms"),
-		_row("fog patch (set_pixel + update, 5 Hz)", Series.FOG, "ms"),
+		_row("fog patch (bytes + set_data + update, 5 Hz)", Series.FOG, "ms"),
 	]
 	return "\n".join(lines)
 
@@ -261,14 +287,14 @@ func _apply_dp() -> void:
 		button.add_theme_font_size_override("font_size", roundi(UiScale.dp(16.0)))
 
 
-## Sets the pixels of the cells whose sight flipped, uploads the image and returns ms.
+## Patches the alpha byte of the cells whose sight flipped, uploads the image and returns ms.
 func _patch_fog() -> float:
 	var started: int = Time.get_ticks_usec()
-	for k: int in sim.dirty_count:
+	for k: int in sim.dirty_count:  # ADR 0010 section 2: patch the alpha bytes, then upload.
 		var cell: int = sim.dirty[k]
-		var alpha: float = 0.0 if sim.seen[cell] > 0 else 140.0 / 255.0
-		_fog_image.set_pixel(cell % COLS, cell / COLS, Color(0.0, 0.0, 0.0, alpha))
+		_fog_bytes[cell * 4 + 3] = 0 if sim.seen[cell] > 0 else 140
 	sim.dirty_count = 0
+	_fog_image.set_data(COLS, COLS, false, Image.FORMAT_RGBA8, _fog_bytes)
 	_fog_texture.update(_fog_image)
 	return (Time.get_ticks_usec() - started) / 1000.0
 
