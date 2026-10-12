@@ -84,7 +84,7 @@ It has these sections:
 | Rules | ints copied from `data/rules.tres` (`RulesDef`, ADRs 0008-0010), including `max_rows` and `max_projectiles` | no (in `defs_hash()`) |
 | Types | v0 arrays plus `type_names` (display names), `type_max_hp`, `type_armour`, `type_move_class`, `type_sight`, `type_acquire`, `type_weapon` (-1 = unarmed) | no (in `defs_hash()`) |
 | Weapons | `weapon_ids`, `weapon_range`, `weapon_min_range`, `weapon_damage`, `weapon_cooldown`, `weapon_projectile_speed` (0 = hitscan), `weapon_vs_armour` (4 per weapon, percent) | no (in `defs_hash()`) |
-| Map | `map_w`, `map_h` (milli), `map_cols`, `map_rows` (tiles), `terrain_ids`, `terrain` (`PackedByteArray`, terrain index per tile), `move_cost` (`PackedByteArray`, `class * cells + cell`, 0 = blocked), `map_version` | `map_version` (through `HASHED_SCALARS`, in the header section) plus a cached map digest of `terrain` and `move_cost` (the map section), recomputed only when `map_version` changes |
+| Map | `map_w`, `map_h` (milli), `map_cols`, `map_rows` (tiles), `terrain_ids`, `terrain` (`PackedByteArray`, terrain index per tile), `move_cost` (`PackedByteArray`, `class * cells + cell`, 0 = blocked), `map_version`, `terrain_cost` (see the amendment in the next cell) | `map_version` (through `HASHED_SCALARS`, in the header section) plus a cached map digest of `terrain` and `move_cost` (the map section), recomputed only when `map_version` changes. Amendment (2026-10-12, P29b and P29c reviews): the Map section gains `terrain_cost`, declared in P29b (`PackedByteArray`, entry `terrain * 3 + class`, values 0..40, the per-terrain costs `set_terrain` copies into `move_cost`), written only by `from_scenario` and `prepare()` (open grass) and constant during a match; `MAP_ARRAYS` is `terrain`, `move_cost`, `terrain_cost`. The map digest covers every `MAP_ARRAYS` entry, `terrain_cost` included (no special case; it is not in `defs_hash()`). Open grass has `terrain_ids = [&"grass"]` (`World.GRASS_ID`), and a map size of 0 or less on either axis gives no map (0 x 0) |
 | Units, one row each, ascending id | v0 `unit_id`, `owner`, `type_index`, `pos_x`, `pos_y`, `goal_x`, `goal_y`, `order`, plus `hp`, `order_target`, `target`, `cooldown`, `nav_mode`, `field`, `nav_cell`, `nav_next`, `best_dist`, `stall`, `fog_cell` | every array |
 | Projectiles, fixed capacity `max_projectiles` | `proj_id` (0 = free slot), `proj_owner`, `proj_weapon`, `proj_target`, `proj_x`, `proj_y`, `proj_aim_x`, `proj_aim_y`, `proj_ticks`, and the free-slot stack `proj_free` with `proj_free_top` | live slots only (slot index plus its fields), then `proj_free[0, proj_free_top)` |
 | Scratch, capacity `max_rows`, rewritten every tick (`SCRATCH_ARRAYS`) | `intent_x`, `intent_y`, `push_x`, `push_y` | no |
@@ -156,6 +156,9 @@ It has these sections:
   so Phase 1 callers keep working. `world.rng` is the sim's stream. Types come from the spawns and
   from `ScenarioDef.roster` (extra types a later phase may produce). `player_count` comes from
   `ScenarioDef.player_count`, or the highest spawn owner when that is 0.
+  Amendment (2026-10-12, P29c review): `player_count` is the scenario value (a negative value
+  counts as 0) raised to the highest spawn owner, because spawns go through `add_unit` before
+  `prepare()`; data keeps the spawn total within `max_rows` and the jitter in 0..8000.
 - **Spawn jitter** draws exactly two values per unit (x then y) from `world.rng` if and only if
   the spawn's `jitter > 0`. A scenario with no jitter consumes no draws.
 

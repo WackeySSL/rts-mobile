@@ -4,7 +4,8 @@ Status: accepted, 2026-10-12 (Michael). Proposed the same day (Michael asked for
 0012"). Revision 2, the same day, after a review in four lenses (performance, gameplay, view,
 tests), and revision 3 after the completeness check; "Revision 2" and "Revision 3" at the end
 list what changed, and the "Acceptance note" after them records Michael's answers and the release
-run. It supersedes in part:
+run. "Amendment (2026-10-12, P34b review)" at the end amends §3 (two more copied tables, a new
+projectile slot). It supersedes in part:
 - ADR 0011 §1 (what the view reads), §2 (where the prev positions live), §3 (the z list), §4
   (the CI ceiling becomes a printed estimate; the enforced CI budget becomes a regression
   ratchet; its 4.0 ms starting value of `mean_ms` is withdrawn), §5 (the meaning and values of
@@ -400,7 +401,8 @@ test proves it.
     `target_row` (the target's row in this snapshot, -1 when there is no target or it is gone,
     computed in `capture` on the worker), each with exactly `unit_count()` entries;
   - **prev positions:** `prev_pos_x` and `prev_pos_y`, aligned to this snapshot's rows;
-  - **type and weapon tables:** the ones ADR 0011 §1 lists;
+  - **type and weapon tables:** the ones ADR 0011 §1 lists, plus `type_armour` and `weapon_ids`
+    (amended 2026-10-12, see "Amendment (2026-10-12, P34b review)");
   - **projectiles:** `proj_id`, `proj_owner`, `proj_weapon`, `proj_x` and `proj_y`, plus
     `prev_proj_id`, `prev_proj_x` and `prev_proj_y`;
   - **map:** `map_cols`, `map_rows`, `terrain` and `terrain_ids`;
@@ -433,7 +435,9 @@ test proves it.
   - A `previous` that is null or has another `match_serial` than this snapshot (set by the
     runner before the capture, header above) counts as none: prev = current.
   - Projectiles: the `prev_proj_*` arrays are the previous snapshot's arrays. A layer treats a
-    slot whose `proj_id` differs from `prev_proj_id` as new and draws it at its current position.
+    slot whose `proj_id` differs from `prev_proj_id` as new ~~and draws it at its current
+    position~~ and does not draw it in that tick (amended 2026-10-12, see "Amendment
+    (2026-10-12, P34b review)").
 - **One snapshot per publish** (it replaces revision 1's double buffer). When it posts a job, the
   main thread creates a new `MatchSnapshot` (with its `FogGrid`), sets its `match_serial`, and
   hands it to the job together with the current `runner.snapshot` as `previous`. The job writes
@@ -817,3 +821,24 @@ about 3.5 ms, and the mock alone takes 3.36 ms. The GDExtension trigger stays as
 mean and p95, held ticks, the main thread's frame work with the tick out of the frame, and the
 core the worker lands on. It re-derives the two ratios and checks the headroom condition for
 `flow_cells_per_tick`.
+
+## Amendment (2026-10-12, P34b review)
+The art spec (`assets/art/STYLE.md` § "Combat effects" and § "Health bars", P34b) keys every
+effect and bar on snapshot columns. Two of them were missing, and one §3 rule disagreed with it.
+This amends §3 only; nothing else changes.
+- **Two more copied tables.** The snapshot carries `type_armour` (a type is infantry when
+  `type_armour[type_index] == World.Armour.INFANTRY`) and `weapon_ids` (`tank_cannon`, `rocket`,
+  `rifle`). Both are definition tables, copied like the other type and weapon tables.
+  `type_armour` is in the World's `TYPE_ARRAYS`, so it is in `COPIED`. `weapon_ids`, like
+  `type_ids` and `terrain_ids`, is an `Array[StringName]` in no World shape list, so the
+  `COPIED`/`NOT_COPIED` coverage cannot see it. The snapshot therefore lists the three in
+  `const ID_LISTS: Array[StringName] = [&"type_ids", &"weapon_ids", &"terrain_ids"]`, and
+  `capture` copies each with `duplicate()` into a typed `Array[StringName]` property of the same
+  name: a shallow copy of a few entries (StringNames are immutable), once per tick, outside every
+  loop. A test checks that each `ID_LISTS` name is a snapshot property equal to the World's and
+  not the same object.
+- **A new projectile slot is not drawn in its first tick.** A slot whose `proj_id` differs from
+  `prev_proj_id` has no heading yet, so a layer skips it. From the next tick it is drawn at
+  `lerp(prev_proj, proj, alpha)`, turned along `prev_proj` to `proj`. The delay is one tick
+  (67 ms), which the muzzle flash covers. A projectile that lands in the tick after it was
+  fired is never drawn; its flash and impact show.

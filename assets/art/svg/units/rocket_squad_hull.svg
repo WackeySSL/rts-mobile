@@ -1,0 +1,26 @@
+<!-- Rocket squad, hull layer: faces east, drawn first, holds the ground shadow of both soldiers; no turret layer. -->
+<!-- Silhouette: two staggered soldiers, each with a long fat launch tube over the right shoulder, flared at the back and ending in a fat rounded warhead, so the squad reads as two parallel bars. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- ground shadow, offset (4,4), flattened as one group; the soldiers sit at (26.5,18.5) and (22.5,45.5) -->
+  <g transform="translate(4 4)" opacity="0.25" fill="#000000">
+    <g transform="translate(26.5 18.5)"><ellipse rx="5.2" ry="8.6"/><polygon points="-13,-0.5 -8,2 19,2 19,1 25,1 30,5 25,9 19,9 19,8 -8,8 -13,10.5"/></g>
+    <g transform="translate(22.5 45.5)"><ellipse rx="5.2" ry="8.6"/><polygon points="-13,-0.5 -8,2 19,2 19,1 25,1 30,5 25,9 19,9 19,8 -8,8 -13,10.5"/></g>
+  </g>
+  <!-- one soldier: shoulders with a light edge, then the tube with its flare, and the warhead on the front -->
+  <g transform="translate(26.5 18.5)">
+    <ellipse rx="5.2" ry="8.6" fill="#6B7A4F" stroke="#1C2127" stroke-width="3"/>
+    <path d="M-3.2 3 Q-3.2 -5.5 1.5 -6.4" fill="none" stroke="#8C9A6B" stroke-width="1.5" stroke-linecap="round"/>
+    <polygon points="-8,2 -13,-0.5 -13,10.5 -8,8" fill="#5B6670" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M19 1 L25 1 Q31 5 25 9 L19 9 Z" fill="#F5A524" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+    <rect x="-8" y="2" width="27" height="6" fill="#7D8893" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+    <line x1="-6" y1="3.8" x2="16" y2="3.8" stroke="#A9B4BE" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(22.5 45.5)">
+    <ellipse rx="5.2" ry="8.6" fill="#6B7A4F" stroke="#1C2127" stroke-width="3"/>
+    <path d="M-3.2 3 Q-3.2 -5.5 1.5 -6.4" fill="none" stroke="#8C9A6B" stroke-width="1.5" stroke-linecap="round"/>
+    <polygon points="-8,2 -13,-0.5 -13,10.5 -8,8" fill="#5B6670" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M19 1 L25 1 Q31 5 25 9 L19 9 Z" fill="#F5A524" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+    <rect x="-8" y="2" width="27" height="6" fill="#7D8893" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+    <line x1="-6" y1="3.8" x2="16" y2="3.8" stroke="#A9B4BE" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+</svg>
