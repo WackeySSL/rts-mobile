@@ -5,6 +5,9 @@ Status: accepted, 2026-10-12 (Michael). Proposed 2026-10-11 (revision 5 after th
 Status note (2026-10-12): §1-2 partly superseded by ADR 0012 §3, where the view reads the fog and
 its dirty lists from the World: it reads them from `runner.snapshot.fog`.
 
+Status note (2026-10-13): §1's stamping order is amended (the new disc before the old one); see the
+status note under "Stamping" in §1.
+
 ## Context
 ROADMAP Phase 2 asks for "fog of war (visible and explored) and its rendering". The GDD says:
 - unexplored is black;
@@ -55,9 +58,21 @@ Measurements (Godot 4.7.2, Xeon cloud VM):
   - `World.prepare()` stamps every existing row, so the first frame of a match already shows the
     player's own vision (the tick-0 hash includes it).
   - An update re-stamps a row only when its current cell differs: unstamp the old disc
-    (counts - 1), stamp the new one (counts + 1, explored = 1).
+    (counts - 1), stamp the new one (counts + 1, explored = 1). (Order amended 2026-10-13, see
+    the status note below.)
   - `remove_dead()` unstamps a dying row at once, so a dead scout's vision ends that tick.
   - A row added later is stamped at its player's next update.
+
+  Status note (2026-10-13, P26h, after the P32f review): an update re-stamps a moving row by
+  stamping the new disc (counts + 1, explored = 1) **before** it unstamps the old one
+  (counts - 1), so only the cells that really change flip and are listed in the dirty list
+  (the symmetric difference of the two discs instead of their union). For a 6-tile disc (sight
+  6000, 113 cells) moving one tile along a row or a column that is 26 listed cells instead of
+  126 (P32f's `test_a_cell_is_listed_once_per_update_in_either_stamp_order`, cell 465 to 466 on
+  a 30 x 30 map); a diagonal one-tile step lists 34 instead of 130. The final counts and
+  `explored` are identical in either order. The lead proposed it; Michael answered "ja"
+  (2026-10-13). `remove_dead()`'s unstamp of a dying row stays as it is. The plan's row P46
+  (the fog update) carries it.
 - **Cadence:** player `p` updates on ticks where `tick % fog_period == (p - 1) % fog_period`
   (rules, 3). With two players the work is spread over two ticks of every three, never both on
   one tick (with four players, players 1 and 4 share a tick). A unit entering view may show up
