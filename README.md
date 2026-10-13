@@ -24,9 +24,12 @@ Status: pre-alpha. See [docs/ROADMAP.md](docs/ROADMAP.md).
 - `bash scripts/export-web.sh` builds the web preview into `build/web`. It needs the Godot 4.7.2
   web export templates.
 - `bash scripts/export-android.sh` builds the debug APK into `build/android` (CI on every run). A cloud
-  session first runs `bash scripts/cloud/install-android.sh --accept-android-sdk-licenses` (about 1.2 GB:
-  JDK 17, the Android SDK and NDK, Godot's Android template, a debug keystore; it prints the environment
-  and the export command, and a second run downloads nothing). The flag accepts the Android SDK licences.
+  session first runs `bash scripts/cloud/install-android.sh` (about 1.5 GB: JDK 17, the Android SDK and NDK,
+  Godot's Android template, a debug keystore; it prints the environment and the export command, and a
+  second run downloads nothing). Its first run needs `--accept-android-sdk-licenses`, which accepts the
+  Android SDK licences on behalf of AppCode ApS: pass it only with the owner's consent. Without the flag it
+  installs nothing through sdkmanager, and stops with exit 5 when cmdline-tools, platform-tools, build-tools
+  or the NDK is missing.
 
 ## Licence
 - Code: MIT, see [LICENSE](LICENSE).
