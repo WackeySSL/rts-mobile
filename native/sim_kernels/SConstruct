@@ -2,8 +2,9 @@
 # Builds the native sim kernels (ADR 0013) against godot-cpp. Run it through
 # scripts/build-native.sh: that fetches godot-cpp at its pinned commit into native/godot-cpp,
 # pins SCons, checks the tools and writes the .gdextension. The library lands in native/bin/.
-# godot-cpp's flags per target stay untouched: template_debug is -O2 with DEBUG_ENABLED,
-# template_release is -O3 with NDEBUG; no LTO, -fno-exceptions.
+# godot-cpp's flags per target stay untouched: template_debug is -O2 with DEBUG_ENABLED, template_release
+# is -O3; both get NDEBUG (godot-cpp sets it on every non-dev build, so C++ assert() never fires);
+# no LTO, -fno-exceptions.
 
 env = SConscript("../godot-cpp/SConstruct")
 
@@ -18,7 +19,12 @@ for include in env["CPPPATH"]:
     kenv.Append(CCFLAGS=["-isystem", env.Dir(include).abspath])
 kenv.Append(CPPPATH=["src"])
 # -fwrapv makes signed overflow a defined wrap in every production and test build (section 4).
-kenv.Append(CCFLAGS=["-Wall", "-Wextra", "-Wshadow", "-Wconversion", "-Wsign-compare", "-Werror", "-fwrapv"])
+# -Wsign-conversion is in clang's -Wconversion and not in g++'s: it makes g++ (verify.sh) as strict as
+# the clang jobs (Android, native-clang), which also run with -Werror.
+kenv.Append(CCFLAGS=["-Wall", "-Wextra", "-Wshadow", "-Wconversion", "-Wsign-conversion", "-Wsign-compare", "-Werror", "-fwrapv"])
+# Objects carry the build's suffix like godot-cpp's own, so that another platform, target or arch in the
+# same tree keeps its objects instead of overwriting them.
+kenv["SHOBJSUFFIX"] = kenv["suffix"] + kenv["SHOBJSUFFIX"]
 # The build the library reports about itself (SimKernels.build_info()), as plain tokens.
 for name, value in (
     ("SIM_KERNELS_PLATFORM", kenv["platform"]),

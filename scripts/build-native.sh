@@ -4,7 +4,7 @@
 # native/bin/, and so does the native/sim_kernels.gdextension that names it: generated, so that a
 # checkout without a build is a plain GDScript project (ADR 0013 section 9). verify.sh runs it first.
 # Usage: bash scripts/build-native.sh [--platform linux] [--target template_debug|template_release]
-#                                     [--arch x86_64|arm64]    (linux: the host architecture only)
+#                                     [--arch x86_64|arm64]    (linux: the host architecture, also the default)
 # Env:   SCONS=<binary> (default: scons; must be 4.9.1), SCONS_CACHE=<folder> (godot-cpp's CacheDir)
 # Needs: git and network access to github.com (first run only), scons 4.9.1, and g++ (godot-cpp's
 #        SConstruct never reads CXX; use_llvm=yes picks clang). Flags: native/sim_kernels/SConstruct.
@@ -35,7 +35,7 @@ die() {
 
 platform="linux"
 target="template_debug"
-arch="x86_64"
+arch=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --platform | --target | --arch)
@@ -54,6 +54,7 @@ done
 case "$target" in template_debug | template_release) ;; *) die 2 "--target must be template_debug or template_release, got '$target'" ;; esac
 host_arch="$(uname -m)"
 case "$host_arch" in aarch64 | arm64) host_arch="arm64" ;; esac
+[ -n "$arch" ] || arch="$host_arch"
 [ "$arch" = "$host_arch" ] || die 2 "linux builds the host architecture only ($host_arch), got --arch $arch"
 
 # (1) Tools. Each missing one is named.
