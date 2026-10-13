@@ -12,6 +12,8 @@ const RELEASE_IF: String = (
 const ANDROID_JOB: String = "  android-debug-apk:"
 const NOTICE_TEST_STEP: String = "      - name: Offline test of the export licence notices"
 const NOTICE_TEST_RUN: String = "        run: bash scripts/ci/test-export-notices.sh"
+const INSTALLER_STEP: String = "Offline test of the cloud Android installer"
+const INSTALLER_RUN: String = "run: bash scripts/ci/test-install-android.sh"
 const EXPORT_STEP: String = "      - name: Export debug APK"
 const CHECK_STEP: String = "Check the native suites ran (check-native-tests.sh)"
 const CHECK_RUN: String = "run: bash scripts/ci/check-native-tests.sh"
@@ -175,6 +177,11 @@ func test_verify_job_runs_the_native_script_test() -> void:
 	assert_int(step).is_less(lines.find(ANDROID_JOB))
 	assert_str(lines[step + 1]).is_equal("        run: bash scripts/ci/test-native-scripts.sh")
 	assert_str(lines[step + 2].strip_edges()).is_empty()
+
+
+## P55b: the offline test of the cloud Android installer runs in the verify job, the required check.
+func test_verify_job_runs_the_cloud_installer_test() -> void:
+	_assert_step(_job(_lines("ci.yml"), "  verify:"), INSTALLER_STEP, [INSTALLER_RUN])
 
 
 ## ADR 0013 section 10: check-native-tests.sh is a step after verify.sh, never inside verify.sh.

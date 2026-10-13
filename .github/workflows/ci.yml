@@ -61,6 +61,12 @@ jobs:
       - name: Offline test of the native scripts
         run: bash scripts/ci/test-native-scripts.sh
 
+      # The Android installer of cloud sessions (on demand, never part of CI or of the session setup) is
+      # tested here, offline, against stubs: the licence gate, the SHA-256 pin, JDK 17, the one NDK pin and a
+      # second run that downloads nothing.
+      - name: Offline test of the cloud Android installer
+        run: bash scripts/ci/test-install-android.sh
+
       # verify.sh builds the C++ kernels first and checks their format last (ADR 0013 section 10).
       - name: Install the native toolchain (SCons, clang-format, binutils)
         run: |

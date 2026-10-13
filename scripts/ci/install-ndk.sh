@@ -10,7 +10,8 @@
 #        SDKMANAGER=<binary> (default: <sdk>/cmdline-tools/latest/bin/sdkmanager, else sdkmanager on PATH),
 #        GITHUB_ENV (CI: ANDROID_NDK_ROOT=<ndk folder> is appended for the later steps of the job).
 # Needs: network access to dl.google.com (first run only), a JDK for sdkmanager, and the SDK licence
-#        accepted in <sdk>/licenses (the runner image has it; this script never accepts a licence).
+#        accepted in <sdk>/licenses (the runner image has it; this script accepts none itself, but the sdkmanager of
+#        cmdline-tools 23.0 records it without asking, which scripts/cloud/install-android.sh gates behind a flag).
 # Exit:  0 ok
 #        2 an argument was given, or build-native.sh has no single NDK_VERSION="<major>.<minor>.<build>" line
 #        3 tool missing: no SDK folder, or no sdkmanager

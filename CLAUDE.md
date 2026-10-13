@@ -28,7 +28,7 @@ Source of truth: this file for rules, `docs/GDD.md` for game design,
 - `bash scripts/run-tests.sh` - gdUnit4 only.
 - `bash scripts/run-sim-smoke.sh --matches N` - headless AI-vs-AI matches with fixed seeds.
 - `bash scripts/export-web.sh` - web build for the phone preview.
-- `bash scripts/export-android.sh` - Android debug APK (CI only; a cloud session has no Android SDK and exits 4).
+- `bash scripts/export-android.sh` - Android debug APK (CI, or a cloud session after `bash scripts/cloud/install-android.sh --accept-android-sdk-licenses`, about 1.2 GB; the flag accepts the Android SDK licences for AppCode ApS, so that is Michael's call; without the SDK it exits 4).
 Phase 0 created `run-tests.sh`, `run-sim-smoke.sh` and `export-web.sh`, Phase 1 `export-android.sh`;
 keep their flags stable because CI and skills call them.
 

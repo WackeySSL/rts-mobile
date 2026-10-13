@@ -14,7 +14,7 @@ Status: pre-alpha. See [docs/ROADMAP.md](docs/ROADMAP.md).
 - `bash scripts/build-native.sh` builds the Linux library and writes the git-ignored
   `native/sim_kernels.gdextension`; without it the project is plain GDScript.
   `--platform android` (arm64) needs the Android NDK that `scripts/ci/install-ndk.sh` installs
-  (the pinned `NDK_VERSION`, r29) and runs in CI only.
+  (the pinned `NDK_VERSION`, r29); it runs in CI, or in a cloud session after `scripts/cloud/install-android.sh`.
   `--compiler clang --optimize speed` builds it as the `native-clang` CI job does.
 - `bash scripts/verify.sh` runs the native build, format, lint, import, tests, the C++ format check
   and a headless AI-vs-AI smoke run.
@@ -23,6 +23,10 @@ Status: pre-alpha. See [docs/ROADMAP.md](docs/ROADMAP.md).
   (a stub until the simulation exists).
 - `bash scripts/export-web.sh` builds the web preview into `build/web`. It needs the Godot 4.7.2
   web export templates.
+- `bash scripts/export-android.sh` builds the debug APK into `build/android` (CI on every run). A cloud
+  session first runs `bash scripts/cloud/install-android.sh --accept-android-sdk-licenses` (about 1.2 GB:
+  JDK 17, the Android SDK and NDK, Godot's Android template, a debug keystore; it prints the environment
+  and the export command, and a second run downloads nothing). The flag accepts the Android SDK licences.
 
 ## Licence
 - Code: MIT, see [LICENSE](LICENSE).

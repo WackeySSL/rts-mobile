@@ -23,8 +23,9 @@
 #        3 Godot missing or not 4.7.2.stable
 #        4 export template, Android library, JDK 17 or Android SDK piece missing (the message names each)
 #        5 debug keystore variables incomplete or the keystore file missing
-# Success prints "export-android: OK <dir>/rts-mobile-debug.apk". Cloud sessions have no Android
-# SDK, so a local run ends with exit 4. CI (the android-debug-apk job) is the test bed.
+# Success prints "export-android: OK <dir>/rts-mobile-debug.apk". A cloud session has no Android SDK and ends
+# with exit 4 until scripts/cloud/install-android.sh has run (it prints the environment and the command to use).
+# CI (the android-debug-apk job) is the test bed.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 ROOT="$(pwd -P)"
