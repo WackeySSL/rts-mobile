@@ -65,9 +65,11 @@ Measurements (Godot 4.7.2, Xeon cloud VM):
 
   Status note (2026-10-13, P26h, after the P32f review): an update re-stamps a moving row by
   stamping the new disc (counts + 1, explored = 1) **before** it unstamps the old one
-  (counts - 1), so only the cells that really change flip and are listed in the dirty list. For
-  a 6-tile disc (sight 6000) moving one tile that is 26 listed cells instead of 126 (P32f's
-  `test_a_cell_is_listed_once_per_update_in_either_stamp_order`); the final counts and
+  (counts - 1), so only the cells that really change flip and are listed in the dirty list
+  (the symmetric difference of the two discs instead of their union). For a 6-tile disc (sight
+  6000, 113 cells) moving one tile along a row or a column that is 26 listed cells instead of
+  126 (P32f's `test_a_cell_is_listed_once_per_update_in_either_stamp_order`, cell 465 to 466 on
+  a 30 x 30 map); a diagonal one-tile step lists 34 instead of 130. The final counts and
   `explored` are identical in either order. The lead proposed it; Michael answered "ja"
   (2026-10-13). `remove_dead()`'s unstamp of a dying row stays as it is. The plan's row P46
   (the fog update) carries it.
