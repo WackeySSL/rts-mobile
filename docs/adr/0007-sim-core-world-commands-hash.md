@@ -13,6 +13,9 @@ Status note (2026-10-12): §8 superseded in part by ADR 0013 §3 (accepted 2026-
 test, the hash walk and P38j2's reachability walk skip. `World.native_phases` is an
 `UNHASHED_SCALARS` entry, so the choice of implementation is never hashed.
 
+Status note (2026-10-13, P26j): §4 carries a dated status note on how the merged P31a (#62) runs
+steps 0, 1 and 11 (`prepare()`, the clear of `events` and `stats`, and `remove_dead()`).
+
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state
 hash. Phase 1 shipped the v0 shapes of ADR 0003: a struct-of-arrays `World` that never removes a
@@ -236,6 +239,17 @@ timed. When a probe is passed, `Sim.step` calls `probe.begin()` first and
 passes a subclass (`game/core/TimingProbe.gd`) that reads the clock, so the per-phase split is
 measured without the sim ever referencing time. A probe never reads or writes the World. A test
 proves that the hashes with and without a probe are equal.
+
+Status note (2026-10-13, P26j, after the P31a review, #62; the text above stays as accepted):
+the merged `Sim.step` calls `world.prepare()`, then clears `events` (`events.clear()`) and
+`stats` (`stats.fill(0)`) at the start of every tick (steps 0 and 1). So the `SPAWNED` records
+that a hand-built world's setup wrote with `add_unit` are gone after tick 0; `from_scenario`
+already clears them before it returns. `remove_dead()` (step 11, §3) calls `prepare()` first
+(O(1) once prepared), so it works on a hand-built world that never stepped; then, on a tick with a
+death, it writes one `DIED` record per dead row (in row order), compacts every `ROW_ARRAYS` column
+stably, bumps `rows_version` once and adds the rows that changed place to
+`stats[Stat.ROWS_COMPACTED]`; a tick without a death changes nothing. §3's fog unstamping of a
+dead row is not in it yet: it stays in P46, which adds the fog update (plan row P46).
 
 ### 5. Command v1
 `Command` keeps every v0 field and gains `payload: PackedInt32Array` (type-specific ints, empty

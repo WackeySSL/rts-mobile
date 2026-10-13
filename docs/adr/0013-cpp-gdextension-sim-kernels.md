@@ -39,6 +39,9 @@ fallback and the fresh-clone proof), §12, "Open after this draft" and the accep
 answered in chat on 2026-10-13, verbatim: **"NDK r29"**: the kernels are built with NDK
 29.0.14206865, not 28.1.13356709 (§8).
 
+Status note (2026-10-13, P26j): after the P55 review (#63), dated status notes from P26j sit in
+§8 (the CI cache key) and §10 (`check-native-tests.sh` as merged).
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -859,6 +862,20 @@ Status notes (2026-10-13, P26i) on the rows above, which stay as accepted:
   pre-commit hook pins the 20 series), pinned in `scripts/ci/check-cpp-format.sh`, which exits 3
   on any other version.
 
+Status note (2026-10-13, P26j, P55 review, #63) on the Caches row, which stays as accepted:
+- **The key.** `bash scripts/build-native.sh --print-cache-key` prints the CI cache key alone on
+  stdout and exits 0 before the fetch and the build (after the toolchain checks). Its fields:
+  the platform, the arch, the target, the compiler with its version (`gcc` or `clang` plus the
+  version on Linux, `ndk` plus the NDK revision on Android), `optimize` when set (`-speed`), the
+  godot-cpp SHA and the SCons version, as
+  `native-<platform>-<arch>-<target>-<compiler><version>[-speed]-godotcpp-<sha>-scons<version>`.
+  `ci.yml` reads it in a step of its own and passes it to `actions/cache` for `native/godot-cpp`
+  and `SCONS_CACHE`.
+- **No source hash.** No hash of `native/**` joins the key: the SCons cache is content-addressed,
+  so a changed source misses on its own objects and the rest still hit.
+- **`native-clang`** builds `template_debug` (the script's default target) with clang and
+  `optimize=speed` (`--compiler clang --optimize speed`), under its own key.
+
 - **The 4.5 against 4.7 API question.**
   - godot-cpp has no 4.6 or 4.7 tag. GDExtension is forward compatible, and the library built
     against 4.5 loaded in 4.7.2 on the x86_64 editor, on the release template and on the arm64
@@ -1010,6 +1027,18 @@ Status notes (2026-10-13, P26i) on the rows above, which stay as accepted:
   - so no later PR edits the script: a port PR's suite is required because its file exists.
     Deleting a suite file shows in the PR's diff, and the module tests under both implementations
     keep `sim_impls.gd`'s non-vacuity assert.
+
+  Status note (2026-10-13, P26j, P55 review, #63): as merged, `check-native-tests.sh` matches a
+  discovered suite by its base name plus its gdUnit4 package (the suite's folder, such as
+  `tests/sim/native`), so a suite elsewhere with the same base name is not counted for it; a
+  `--require` suite is matched by name alone. It fails when two discovered files share a base
+  name. `--list` prints the discovered suite files and exits 0 without reading `results.xml`
+  (`native-clang` uses it to decide whether its gdUnit4 step runs). It reads one `results.xml`
+  (`reports/gdunit/report_1/results.xml` by default), and `run-tests.sh` deletes `reports/gdunit`
+  on each call, so a `--require` suite must run in the same `run-tests.sh` call as the native
+  suites. Its exit codes: 0 ok; 1 a suite is missing, empty or not passed, the floor failed, or two
+  discovered files share a base name; 2 a bad argument; 3 Python (`python3`, or `PYTHON`) is
+  missing; 4 `results.xml` is missing, empty or not XML.
 - **`ci.yml`, verify job:** P53 installs SCons (pipx), the pinned `clang-format` and binutils,
   so P53's own verify job is green; P55 adds the caches (§8) and `check-native-tests.sh`.
 - **`ci.yml`, `native-clang` job** (P55): an x86_64 library built with clang at the release
