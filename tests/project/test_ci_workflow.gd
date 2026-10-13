@@ -49,6 +49,14 @@ const KEYS_OUT: String = (
 	+ ' echo "android_release=$android_release"; } >> "$GITHUB_OUTPUT"'
 )
 const ANDROID_FLAGS: String = " --platform android --arch arm64 --target template_"
+## The fourth cache step of the job holds the Godot editor and templates, and nothing of the SDK.
+const GODOT_CACHE_STEP: String = "Cache Godot editor and export templates (web and Android debug)"
+const GODOT_CACHE_PATHS: Array[String] = [
+	"~/.local/opt/godot-${{ env.GODOT_VERSION }}",
+	"~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable",
+]
+## Any line of the job that names the NDK or the SDK folder (comments are skipped before the match).
+const SDK_WORDS: String = "(?i)ndk|ANDROID_HOME|ANDROID_SDK|lib/android"
 ## The libraries in the order the job builds them, the host's first. The id names the key's output
 ## and its shell variable.
 const LIBRARIES: Array[Dictionary] = [
@@ -206,8 +214,8 @@ func test_native_caches_use_the_key_that_build_native_prints() -> void:
 ## P55a (ADR 0013 sections 8 and 10): the Android job installs the NDK, reads three keys, restores
 ## three caches and then builds the host's Linux library before the two Android ones, all before the
 ## export. The generated .gdextension names all six libraries, so without the host library the
-## editor cannot load it. Each key is printed for exactly the flags of its build, and no cache step
-## holds anything but godot-cpp and the SCons objects, so the NDK is never cached.
+## editor cannot load it. Each key is printed for exactly the flags of its build, and the NDK is
+## never cached: see _assert_ndk_is_never_cached.
 func test_android_job_installs_the_ndk_and_builds_the_host_library_first() -> void:
 	var job: PackedStringArray = _job(_lines("ci.yml"), ANDROID_JOB)
 	_assert_step(job, NDK_STEP, [NDK_RUN])
@@ -229,11 +237,39 @@ func test_android_job_installs_the_ndk_and_builds_the_host_library_first() -> vo
 	_assert_step(job, KEYS_STEP, keys)
 	var first: Array = ["Select JDK 17", NDK_STEP, ANDROID_INSTALL_STEP, KEYS_STEP]
 	_assert_order(job, first + caches + builds + ["Export debug APK"])
+	_assert_ndk_is_never_cached(job)
+	_assert_job_always_runs(job)
+
+
+## The NDK is never cached (ADR 0013 section 8). The job has the three library caches (godot-cpp and
+## the SCons objects, pinned exactly above) and the Godot cache (the editor and templates, pinned
+## here), and no other step of any kind that restores or saves a cache, whatever its path: every
+## `uses: actions/cache` variant is counted. Beyond that, no line of the job outside its comments
+## names the NDK or the SDK folder except the install step, so no path or key can reach them.
+func _assert_ndk_is_never_cached(job: PackedStringArray) -> void:
+	var godot: Array = Array(_step(job, GODOT_CACHE_STEP))
+	assert_array(godot).has_size(8)
+	assert_str(godot[2]).starts_with("uses: actions/cache@")
+	assert_str(godot[7]).starts_with("key: godot-")
+	godot.remove_at(7)
+	godot.remove_at(2)
+	var wanted: Array = ["- name: " + GODOT_CACHE_STEP, "id: godot-cache", "with:", "path: |"]
+	assert_array(godot).contains_exactly(wanted + GODOT_CACHE_PATHS)
+	var sdk_words: RegEx = RegEx.create_from_string(SDK_WORDS)
+	var allowed: Array = ["- name: " + NDK_STEP, NDK_RUN]
 	var cache_steps: int = 0
 	for line: String in job:
-		cache_steps += 1 if line.strip_edges().begins_with("uses: actions/cache@") else 0
+		var text: String = line.strip_edges().trim_prefix("- ")
+		if text.begins_with("#"):
+			continue
+		cache_steps += 1 if text.begins_with("uses: actions/cache") else 0
+		if sdk_words.search(line) != null:
+			(
+				assert_array(allowed)
+				. override_failure_message("A line names the NDK or the SDK folder: " + line)
+				. contains([line.strip_edges()])
+			)
 	assert_int(cache_steps).is_equal(1 + LIBRARIES.size())
-	_assert_job_always_runs(job)
 
 
 ## Michael's "NDK r29" (2026-10-13): the NDK is pinned once, in build-native.sh. install-ndk.sh

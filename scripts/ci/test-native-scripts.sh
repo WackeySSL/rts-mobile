@@ -42,6 +42,7 @@ cat >"$root/bin/scons" <<'STUB'
 #!/usr/bin/env bash
 if [ "$1" = "--version" ]; then echo "	SCons: v${STUB_SCONS:-4.9.1}.0123abc, by stub"; exit 0; fi
 echo "$*" >../../scons.args # the flags build-native.sh passed, in the tree root
+echo "${ANDROID_HOME:-}" >../../scons.home # the SDK folder godot-cpp would read the NDK from
 for a in "$@"; do case "$a" in platform=* | target=* | arch=*) eval "${a%%=*}=${a#*=}" ;; esac; done
 mkdir -p ../bin && echo stub >"../bin/libsim_kernels.${platform}.${target}.${arch}.so"
 STUB
@@ -184,6 +185,9 @@ key_is "build: cache key, clang at speed, release" \
 key_is "build: cache key, android (the NDK installed first)" \
   "native-android-arm64-template_debug-ndk$ndk_pin-godotcpp-$sha-scons4.9.1" \
   ANDROID_NDK_ROOT="$ndk" bash scripts/build-native.sh --platform android --print-cache-key
+key_is "build: cache key, android arm64 template_release (ci.yml's third key)" \
+  "native-android-arm64-template_release-ndk$ndk_pin-godotcpp-$sha-scons4.9.1" \
+  ANDROID_NDK_ROOT="$ndk" bash scripts/build-native.sh --platform android --arch arm64 --target template_release --print-cache-key
 assert "build: --print-cache-key fetches no godot-cpp" test ! -e "$root/bk/native/godot-cpp"
 assert "build: --print-cache-key builds nothing" test ! -e "$root/bk/scons.args"
 run bk bash scripts/build-native.sh --platform android --print-cache-key
@@ -195,17 +199,26 @@ check "build: android with another NDK folder" 3 "must be <sdk>/ndk/$ndk_pin"
 run bn ANDROID_NDK_ROOT="$ndk" STUB_MACHINE=AArch64 STUB_NEEDED="libc.so libm.so libc++_shared.so" bash scripts/build-native.sh --platform android
 check "build: android, no --arch, system libraries and libc++_shared.so" 0 "needs libc.so libm.so libc++_shared.so"
 check "build: android without --arch builds arm64" 0 "OK native/bin/libsim_kernels.android.template_debug.arm64.so"
+assert "build: android passes the pinned ndk_version to SCons" grep -Fq "ndk_version=$ndk_pin" "$root/bn/scons.args"
+assert "build: android gives SCons the NDK's SDK folder as ANDROID_HOME" test "$(cat "$root/bn/scons.home")" = "$root/sdk"
+run bn ANDROID_NDK_ROOT="$ndk" STUB_MACHINE=AArch64 STUB_NEEDED="libc.so libm.so libc++_shared.so" bash scripts/build-native.sh --platform android --arch arm64 --target template_release
+check "build: android arm64 template_release" 0 "OK native/bin/libsim_kernels.android.template_release.arm64.so"
 run bn ANDROID_NDK_ROOT="$ndk" STUB_MACHINE=AArch64 STUB_NEEDED="libc.so libfoo.so" bash scripts/build-native.sh --platform android --arch arm64
 check "build: android, a dependency the phone cannot resolve" 4 "needs libfoo.so"
 
 # (3b) install-ndk.sh (P55a): the version is the NDK_VERSION line of build-native.sh (no second pin), sdkmanager
 # installs it into <sdk>/ndk/<version>, a second run calls nothing, and a wrong result is exit 4. The stub makes
-# what sdkmanager makes; STUB_SDKM=fail exits 1, STUB_SDKM_REVISION installs another revision and STUB_SDKM_TOOLS
-# only those tools. $root/tools holds the few tools the script and the stub use, so that no sdkmanager of the host is on PATH.
+# what sdkmanager makes; STUB_SDKM=fail exits 1, STUB_SDKM_REVISION installs another revision, STUB_SDKM_TOOLS
+# only those tools and STUB_SDKM_STDIN=1 fails the call when the script answered a licence prompt on stdin. $root/tools holds the few tools the script and the stub use, so that no sdkmanager of the host is on PATH.
+tools="clang++ llvm-readelf llvm-nm" # what sdkmanager's stub makes, and what install-ndk.sh checks
 mkdir -p "$root/sdkm" "$root/tools"
 cat >"$root/sdkm/sdkmanager" <<'STUB'
 #!/usr/bin/env bash
 echo "$*" >>sdkmanager.args # in the tree root, one line per call
+if [ -n "${STUB_SDKM_STDIN:-}" ]; then # a licence answer on stdin would be an acceptance
+  IFS= read -r answer || answer=
+  [ "$answer" != y ] || { echo "stub sdkmanager: a licence was accepted on stdin" >&2; exit 1; }
+fi
 [ "${STUB_SDKM:-}" != fail ] || { echo "stub sdkmanager: License for package NDK not accepted" >&2; exit 1; }
 for a in "$@"; do case "$a" in --sdk_root=*) dir="${a#*=}" ;; ndk\;*) version="${a#ndk;}" ;; esac; done
 bin="$dir/ndk/$version/toolchains/llvm/prebuilt/linux-x86_64/bin"
@@ -237,15 +250,17 @@ check "ndk: build-native.sh with two NDK_VERSION lines" 2 "(it has 2)"
 new_sdk isdk1
 mkdir -p "$sdk/cmdline-tools/latest/bin" && cp "$root/sdkm/sdkmanager" "$sdk/cmdline-tools/latest/bin/"
 : >"$root/github.env"
-run in GITHUB_ENV="$root/github.env" ANDROID_HOME="$sdk/" bash scripts/ci/install-ndk.sh
-check "ndk: installs the pinned NDK through the SDK's own sdkmanager" 0 "install-ndk: OK $sdk/ndk/$ndk_pin"
+run in STUB_SDKM_STDIN=1 GITHUB_ENV="$root/github.env" ANDROID_HOME="$sdk/" bash scripts/ci/install-ndk.sh <<<y
+check "ndk: installs the pinned NDK through the SDK's own sdkmanager, accepting no licence" 0 "install-ndk: OK $sdk/ndk/$ndk_pin"
 assert "ndk: sdkmanager got the SDK folder and the pinned package" test "$(cat "$root/in/sdkmanager.args")" = "--sdk_root=$sdk ndk;$ndk_pin"
 assert "ndk: ANDROID_NDK_ROOT goes to GITHUB_ENV" test "$(cat "$root/github.env")" = "ANDROID_NDK_ROOT=$sdk/ndk/$ndk_pin"
 run in ANDROID_NDK_ROOT="$sdk/ndk/$ndk_pin" bash scripts/build-native.sh --platform android --print-cache-key
 check "ndk: build-native.sh accepts what was installed" 0 "-ndk$ndk_pin-godotcpp-"
-run in PATH="$root/tools" ANDROID_HOME="$sdk" bash scripts/ci/install-ndk.sh
+: >"$root/github.env2"
+run in PATH="$root/tools" GITHUB_ENV="$root/github.env2" ANDROID_HOME="$sdk" bash scripts/ci/install-ndk.sh
 check "ndk: a second run finds the NDK" 0 "installed already"
 assert "ndk: a second run does not call sdkmanager" test "$(wc -l <"$root/in/sdkmanager.args" | tr -d ' ')" = 1
+assert "ndk: a second run still sets ANDROID_NDK_ROOT (the image's own is another NDK)" test "$(cat "$root/github.env2")" = "ANDROID_NDK_ROOT=$sdk/ndk/$ndk_pin"
 new_sdk isdk2
 run in PATH="$root/sdkm:$root/tools" ANDROID_SDK_ROOT="$sdk" bash scripts/ci/install-ndk.sh
 check "ndk: sdkmanager on PATH, SDK folder from ANDROID_SDK_ROOT" 0 "install-ndk: OK $sdk/ndk/$ndk_pin"
@@ -260,9 +275,18 @@ check "ndk: sdkmanager fails" 4 "sdkmanager failed with exit code 1"
 new_sdk isdk5
 run in STUB_SDKM_REVISION=28.1.13356709 SDKMANAGER="$root/sdkm/sdkmanager" ANDROID_HOME="$sdk" bash scripts/ci/install-ndk.sh
 check "ndk: sdkmanager leaves another revision" 4 "did not leave the pinned NDK $ndk_pin: '$sdk/ndk/$ndk_pin' is '28.1.13356709'"
-new_sdk isdk6
-run in STUB_SDKM_TOOLS="llvm-readelf llvm-nm" SDKMANAGER="$root/sdkm/sdkmanager" ANDROID_HOME="$sdk" bash scripts/ci/install-ndk.sh
-check "ndk: an incomplete toolchain" 4 "no $sdk/ndk/$ndk_pin/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++"
+for missing in clang++ llvm-readelf llvm-nm; do
+  new_sdk "isdk6-${missing//+/p}"
+  run in STUB_SDKM_TOOLS="${tools/$missing/}" SDKMANAGER="$root/sdkm/sdkmanager" ANDROID_HOME="$sdk" bash scripts/ci/install-ndk.sh
+  check "ndk: an incomplete toolchain, no $missing" 4 "no $sdk/ndk/$ndk_pin/toolchains/llvm/prebuilt/linux-x86_64/bin/$missing"
+done
+# A folder of the pinned name that holds another revision (a stale or half-made install) is no NDK: sdkmanager runs.
+tree in3
+new_sdk isdk7
+mkdir -p "$sdk/ndk/$ndk_pin" && echo "Pkg.Revision = 28.1.13356709" >"$sdk/ndk/$ndk_pin/source.properties"
+run in3 SDKMANAGER="$root/sdkm/sdkmanager" ANDROID_HOME="$sdk" bash scripts/ci/install-ndk.sh
+check "ndk: a stale folder of the pinned name is installed over" 0 "install-ndk: OK $sdk/ndk/$ndk_pin"
+assert "ndk: sdkmanager ran once for the stale folder" test "$(cat "$root/in3/sdkmanager.args" 2>/dev/null)" = "--sdk_root=$sdk ndk;$ndk_pin"
 
 # (4) check-cpp-format.sh: the pinned clang-format, then every .cpp, .h and .hpp below native/sim_kernels,
 # in every folder (and nothing else). The stub fails only a BAD file, and only on --dry-run with --Werror.

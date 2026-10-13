@@ -4,7 +4,7 @@
 # tools/android.py reads as $ANDROID_HOME/ndk/<version>. The version is read from the NDK_VERSION line
 # of build-native.sh, so the pin lives in that one place. Idempotent: an NDK that is installed already,
 # and passes the checks build-native.sh makes, is left alone and sdkmanager is not needed. The NDK is
-# never cached (ci.yml caches godot-cpp and the SCons objects only): the download is the install.
+# never cached (the caches of ci.yml hold godot-cpp, the SCons objects and Godot): the download is the install.
 # Usage: bash scripts/ci/install-ndk.sh
 # Env:   ANDROID_HOME=<Android SDK folder> (else ANDROID_SDK_ROOT; the runner image sets it),
 #        SDKMANAGER=<binary> (default: <sdk>/cmdline-tools/latest/bin/sdkmanager, else sdkmanager on PATH),

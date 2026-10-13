@@ -217,8 +217,11 @@ jobs:
         run: echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
 
       # The Android library is built with the NDK that build-native.sh pins (ADR 0013 section 8). install-ndk.sh
-      # reads that pin, installs it with the SDK's sdkmanager and appends ANDROID_NDK_ROOT to GITHUB_ENV for
-      # the steps below. The NDK itself is never cached: no cache step of this job has its folder in its path.
+      # reads that pin, finds the NDK in the SDK (the runner image may ship it) or installs it there with the
+      # SDK's sdkmanager, and appends ANDROID_NDK_ROOT to GITHUB_ENV for the steps below, which overrides the
+      # image's own. The NDK itself is never cached: the library caches below hold godot-cpp and the SCons
+      # objects, the Godot cache the editor and templates, and test_ci_workflow.gd checks that no other line
+      # of this job names the NDK or the SDK folder.
       - name: Install the Android NDK (install-ndk.sh)
         run: bash scripts/ci/install-ndk.sh
 
