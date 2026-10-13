@@ -25,6 +25,9 @@ kenv.Append(CCFLAGS=["-Wall", "-Wextra", "-Wshadow", "-Wconversion", "-Wsign-con
 # Objects carry the build's suffix like godot-cpp's own, so that another platform, target or arch in the
 # same tree keeps its objects instead of overwriting them.
 kenv["SHOBJSUFFIX"] = kenv["suffix"] + kenv["SHOBJSUFFIX"]
+if kenv["platform"] == "android":
+    # Google Play requires 16 KB page support from Android 15; godot-cpp sets no max-page-size.
+    kenv.Append(LINKFLAGS=["-Wl,-z,max-page-size=16384"])
 # The build the library reports about itself (SimKernels.build_info()), as plain tokens.
 for name, value in (
     ("SIM_KERNELS_PLATFORM", kenv["platform"]),

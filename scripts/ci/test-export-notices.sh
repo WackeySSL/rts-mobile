@@ -42,7 +42,7 @@ case "$*" in
     printf 'const GODOT_THREADS_ENABLED = false;\n' >"$dir/index.html"
     echo js >"$dir/index.js"
     echo wasm >"$dir/index.wasm"
-    printf 'project\n_custom_features\ndev_menu\n' >"$dir/index.pck"
+    printf 'project\n_custom_features\ndev_menu\n%s\n' "$STUB_PCK_EXTRA" >"$dir/index.pck"
     ;;
   *"--export-debug Android "*)
     echo "$ANDROID_HOME/build-tools/36.0.0/apksigner sign --ks stub"
@@ -88,7 +88,7 @@ tree() {
 run() {
   rc=0
   out="$(cd "$root/$1" && env -i PATH="$root/bin:$PATH" HOME="$root/home" TMPDIR="$root/tmp" GODOT="$root/bin/godot" \
-    JAVA_HOME="$root/jdk" ANDROID_HOME="$root/sdk" STUB_APK="$root/stub.apk" \
+    JAVA_HOME="$root/jdk" ANDROID_HOME="$root/sdk" STUB_APK="$root/stub.apk" STUB_PCK_EXTRA="${STUB_PCK_EXTRA:-}" \
     GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$root/keystore" GODOT_ANDROID_KEYSTORE_DEBUG_USER=u \
     GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=p bash "scripts/export-$2.sh" 2>&1)" || rc=$?
 }
@@ -143,6 +143,17 @@ for kind in web android; do
     fi
   done
 done
+
+# (4) ADR 0013 section 7: a .gdextension in the web pack (the Web preset must exclude native/*) stops
+# export-web.sh with exit 1, which the engine itself only warns about. The pack holds the generated
+# file's comment line (it mentions .gdextension) before the path, and the message must quote the path.
+tree web-native
+STUB_PCK_EXTRA=$'; build has no .gdextension and loads no library. Do not edit.\nres://native/sim_kernels.gdextension' run web-native web
+if [ "$rc" = 1 ] && grep -Fq "must exclude native/*): res://native/sim_kernels.gdextension" <<<"$out"; then
+  pass "web: exit 1 when the pack holds a .gdextension, and the message quotes its path"
+else
+  fail "web: wanted exit 1 and 'the pack holds a .gdextension (...): res://native/sim_kernels.gdextension', got exit $rc: $(tail -n 1 <<<"$out")"
+fi
 
 if [ "$failures" -ne 0 ]; then
   echo "test-export-notices: $failures case(s) failed" >&2
