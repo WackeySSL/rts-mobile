@@ -13,6 +13,22 @@ const ANDROID_JOB: String = "  android-debug-apk:"
 const NOTICE_TEST_STEP: String = "      - name: Offline test of the export licence notices"
 const NOTICE_TEST_RUN: String = "        run: bash scripts/ci/test-export-notices.sh"
 const EXPORT_STEP: String = "      - name: Export debug APK"
+const CHECK_STEP: String = "Check the native suites ran (check-native-tests.sh)"
+const CHECK_RUN: String = "run: bash scripts/ci/check-native-tests.sh"
+const VERIFY_RUN: String = (
+	"        run: bash scripts/verify.sh 2>&1 | tee " + '"$RUNNER_TEMP/verify.log"'
+)
+const KEY_STEP: String = "Read the native cache key"
+const KEY_RUN: String = (
+	'run: echo "key=$(bash scripts/build-native.sh%s --print-cache-key)"' + ' >> "$GITHUB_OUTPUT"'
+)
+const GATE_STEP: String = "Run the native suites (gdUnit4), when discovery finds one"
+const GATE_RUN: String = (
+	'if [ -n "$(bash scripts/ci/check-native-tests.sh --list)" ]; then'
+	+ " bash scripts/run-tests.sh -a res://tests/sim/native; fi"
+)
+const CACHE_STEP: String = "Cache godot-cpp and the SCons object cache"
+const CACHE_KEY: String = "key: ${{ steps.native-key.outputs.key }}"
 
 
 func _lines(file_name: String) -> PackedStringArray:
@@ -106,6 +122,71 @@ func test_verify_job_runs_the_native_script_test() -> void:
 	assert_int(step).is_less(lines.find(ANDROID_JOB))
 	assert_str(lines[step + 1]).is_equal("        run: bash scripts/ci/test-native-scripts.sh")
 	assert_str(lines[step + 2].strip_edges()).is_empty()
+
+
+## ADR 0013 section 10: check-native-tests.sh is a step after verify.sh, never inside verify.sh.
+func test_verify_job_checks_the_native_suites_after_verify_sh() -> void:
+	var job: PackedStringArray = _job(_lines("ci.yml"), "  verify:")
+	_assert_step(job, CHECK_STEP, [CHECK_RUN])
+	assert_int(job.find("      - name: " + CHECK_STEP)).is_greater(job.find(VERIFY_RUN))
+	var verify_sh: String = FileAccess.get_file_as_string("res://scripts/verify.sh")
+	assert_bool(verify_sh.contains("check-native-tests")).is_false()
+
+
+## P55: native-clang builds with the flags its cache key names; gdUnit4 runs only if a suite exists.
+func test_native_clang_job_builds_with_clang_at_speed_and_gates_gdunit4_on_discovery() -> void:
+	var job: PackedStringArray = _job(_lines("ci.yml"), "  native-clang:")
+	var flags: String = " --compiler clang --optimize speed"
+	_assert_step(job, KEY_STEP, ["id: native-key", KEY_RUN % flags])
+	_assert_step(
+		job,
+		"Build the library (clang, optimize=speed)",
+		["run: bash scripts/build-native.sh" + flags]
+	)
+	_assert_step(job, GATE_STEP, ["run: |", GATE_RUN])
+	_assert_step(job, CHECK_STEP, [CHECK_RUN])
+
+
+## ADR 0013 section 8: both jobs cache godot-cpp and SCons objects under build-native.sh's key.
+func test_native_caches_use_the_key_that_build_native_prints() -> void:
+	var lines: PackedStringArray = _lines("ci.yml")
+	assert_array(Array(lines)).contains("  SCONS_CACHE: /home/runner/.cache/rts-mobile-scons")
+	_assert_step(_job(lines, "  verify:"), KEY_STEP, ["id: native-key", KEY_RUN % ""])
+	for header: String in ["  verify:", "  native-clang:"]:
+		var job: PackedStringArray = _job(lines, header)
+		var cache: Array = Array(_step(job, CACHE_STEP))
+		assert_array(cache).contains(["native/godot-cpp", "${{ env.SCONS_CACHE }}", CACHE_KEY])
+		var key_at: int = job.find("      - name: " + KEY_STEP)
+		assert_int(job.find("      - name: " + CACHE_STEP)).is_greater(key_at)
+
+
+## The lines of one job: from the line after its header to the next job (or the comment before it).
+func _job(lines: PackedStringArray, header: String) -> PackedStringArray:
+	var start: int = lines.find(header)
+	assert_int(start).is_greater(-1)
+	var end: int = start + 1
+	while end < lines.size() and not (lines[end].begins_with("  ") and lines[end][2] != " "):
+		end += 1
+	return lines.slice(start + 1, end)
+
+
+## One step of a job, stripped, without its blank and comment lines: its "- name:" line to the next.
+func _step(job: PackedStringArray, step_name: String) -> PackedStringArray:
+	var start: int = job.find("      - name: " + step_name)
+	assert_int(start).is_greater(-1)
+	var end: int = start + 1
+	while end < job.size() and not job[end].begins_with("      - "):
+		end += 1
+	var out: PackedStringArray = PackedStringArray()
+	for line: String in job.slice(start, end):
+		if not line.strip_edges().is_empty() and not line.strip_edges().begins_with("#"):
+			out.append(line.strip_edges())
+	return out
+
+
+## A step is exactly its name line and these lines: no `if:` or `continue-on-error` can neuter it.
+func _assert_step(job: PackedStringArray, step_name: String, body: Array) -> void:
+	assert_array(Array(_step(job, step_name))).contains_exactly(["- name: " + step_name] + body)
 
 
 func _pin(path: String, pin_name: String) -> String:

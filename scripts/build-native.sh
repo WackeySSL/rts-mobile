@@ -4,10 +4,15 @@
 # native/bin/, and so does the native/sim_kernels.gdextension that names it: generated, so that a
 # checkout without a build is a plain GDScript project (ADR 0013 section 9). verify.sh runs it first.
 # Usage: bash scripts/build-native.sh [--platform linux|android] [--target template_debug|template_release]
-#                                     [--arch x86_64|arm64]
+#                                     [--arch x86_64|arm64] [--compiler gcc|clang] [--optimize speed]
+#                                     [--print-cache-key]
 #   --arch defaults to the one value a platform accepts: linux builds the host architecture only,
 #   android arm64 only (CI only: a cloud session has no NDK, and scripts/ci/install-ndk.sh installs
 #   the NDK_VERSION below).
+#   --compiler clang adds use_llvm=yes (the native-clang CI job; the default gcc is the host g++, and android
+#   always uses the NDK's clang). --optimize speed adds optimize=speed (-O3; template_debug is -O2 without it).
+#   --print-cache-key prints the CI cache key (ADR 0013 section 8: platform, arch, target, compiler version,
+#   optimize, godot-cpp SHA, SCons version) and exits 0 before the fetch and the build.
 # Env:   SCONS=<binary> (default: scons; must be 4.9.1), SCONS_CACHE=<folder> (godot-cpp's CacheDir),
 #        ANDROID_NDK_ROOT=<NDK folder> (android; must be <sdk>/ndk/28.1.13356709, the layout that
 #        sdkmanager makes and that godot-cpp's tools/android.py reads as $ANDROID_HOME/ndk/<version>).
@@ -15,8 +20,8 @@
 #        (readelf, nm) for linux (godot-cpp's SConstruct never reads CXX; use_llvm=yes picks clang).
 #        Flags: native/sim_kernels/SConstruct.
 # Exit:  0 ok
-#        2 bad flag or an impossible platform/arch pair
-#        3 tool missing (git, scons 4.9.1, g++, binutils, or the NDK and its toolchain), or an NDK of
+#        2 bad flag or an impossible platform/arch/compiler combination
+#        3 tool missing (git, scons 4.9.1, g++ or clang, binutils, or the NDK and its toolchain), or an NDK of
 #          another version than the pinned one
 #        4 godot-cpp fetch or SHA check failed, or the build failed, produced no library, or the
 #          library fails the ELF check (machine, shared object, entry symbol, and on Android only
@@ -51,29 +56,40 @@ die() {
 platform="linux"
 target="template_debug"
 arch=""
+compiler=""
+optimize=""
+print_key=0
 while [ $# -gt 0 ]; do
   case "$1" in
-    --platform | --target | --arch)
+    --platform | --target | --arch | --compiler | --optimize)
       [ $# -ge 2 ] && [ -n "$2" ] || die 2 "$1 needs a value"
       case "$1" in
         --platform) platform="$2" ;;
         --target) target="$2" ;;
         --arch) arch="$2" ;;
+        --compiler) compiler="$2" ;;
+        --optimize) optimize="$2" ;;
       esac
       shift 2
       ;;
-    *) die 2 "unknown argument '$1' (usage: bash scripts/build-native.sh [--platform linux|android] [--target template_debug|template_release] [--arch x86_64|arm64])" ;;
+    --print-cache-key) print_key=1; shift ;;
+    *) die 2 "unknown argument '$1' (usage: bash scripts/build-native.sh [--platform linux|android] [--target template_debug|template_release] [--arch x86_64|arm64] [--compiler gcc|clang] [--optimize speed] [--print-cache-key])" ;;
   esac
 done
 case "$platform" in linux | android) ;; *) die 2 "--platform must be linux or android, got '$platform'" ;; esac
 case "$target" in template_debug | template_release) ;; *) die 2 "--target must be template_debug or template_release, got '$target'" ;; esac
+case "$compiler" in "" | gcc | clang) ;; *) die 2 "--compiler must be gcc or clang, got '$compiler'" ;; esac
+case "$optimize" in "" | speed) ;; *) die 2 "--optimize must be speed, got '$optimize'" ;; esac
 host_arch="$(uname -m)"
 case "$host_arch" in aarch64 | arm64) host_arch="arm64" ;; esac
 if [ "$platform" = "android" ]; then
   [ -n "$arch" ] || arch="arm64"
   [ "$arch" = "arm64" ] || die 2 "android builds arm64 only (the preset ships arm64-v8a), got --arch $arch"
+  [ "$compiler" != "gcc" ] || die 2 "android builds with the NDK's clang, got --compiler gcc"
+  compiler="clang"
 else
   [ -n "$arch" ] || arch="$host_arch"
+  [ -n "$compiler" ] || compiler="gcc"
   [ "$arch" = "$host_arch" ] || die 2 "linux builds the host architecture only ($host_arch), got --arch $arch"
 fi
 
@@ -86,11 +102,22 @@ scons_version="$("$SCONS" --version 2>/dev/null | sed -n 's/^.*SCons: v\([0-9][0
 scons_env=()
 scons_args=()
 if [ "$platform" = "linux" ]; then
-  command -v g++ >/dev/null 2>&1 || die 3 "g++ is missing (install g++; the build uses it whatever CXX says)"
+  if [ "$compiler" = "clang" ]; then
+    cxx="clang++"
+    command -v clang >/dev/null 2>&1 && command -v clang++ >/dev/null 2>&1 || die 3 "clang or clang++ is missing (install clang)"
+    cc_version="$(clang++ --version 2>/dev/null | sed -n 's/^.*clang version \([0-9][0-9.]*\).*$/\1/p' | head -n 1 || true)"
+    scons_args=("use_llvm=yes")
+  else
+    cxx="g++"
+    command -v g++ >/dev/null 2>&1 || die 3 "g++ is missing (install g++; the build uses it whatever CXX says)"
+    cc_version="$(g++ -dumpfullversion 2>/dev/null || true)"
+  fi
+  [ -n "$cc_version" ] || die 3 "$cxx reports no version"
   for tool in readelf nm; do
     command -v "$tool" >/dev/null 2>&1 || die 3 "$tool is missing (install binutils)"
   done
-  echo "build-native: $(g++ --version | head -n 1), scons ${scons_version}"
+  cc_id="${compiler}${cc_version}"
+  echo "build-native: $("$cxx" --version | head -n 1), scons ${scons_version}" >&2
 else
   ndk="${ANDROID_NDK_ROOT:-}"
   [ -n "$ndk" ] || die 3 "ANDROID_NDK_ROOT is not set (Android NDK missing; a cloud session has none, CI sets it)"
@@ -107,10 +134,16 @@ else
   for tool in llvm-readelf llvm-nm; do
     [ -x "$toolchain/$tool" ] || die 3 "the Android NDK toolchain is missing: no $toolchain/$tool"
   done
-  echo "build-native: Android NDK ${ndk_revision}, scons ${scons_version}"
+  cc_id="ndk${ndk_revision}"
+  echo "build-native: Android NDK ${ndk_revision}, scons ${scons_version}" >&2
   # ANDROID_HOME for this one process only, so that godot-cpp finds exactly the NDK checked above.
   scons_env=(env -u ANDROID_SDK_ROOT "ANDROID_HOME=$(dirname "$(dirname "$ndk")")")
   scons_args=("ndk_version=${NDK_VERSION}")
+fi
+[ -z "$optimize" ] || scons_args+=("optimize=${optimize}")
+if [ "$print_key" = 1 ]; then
+  echo "native-${platform}-${arch}-${target}-${cc_id}${optimize:+-$optimize}-godotcpp-${GODOT_CPP_SHA}-scons${scons_version}"
+  exit 0
 fi
 
 # (2) godot-cpp at the pinned commit. The SHA is checked after the fetch and on every run.
@@ -140,7 +173,7 @@ fi
 # (3) Build. build_profile binds only the engine classes the bind layer uses instead of all ~1000,
 # which takes a cold godot-cpp build from minutes to seconds; it changes no compiler flag.
 jobs="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
-echo "build-native: ${platform} ${target} ${arch}, ${jobs} jobs"
+echo "build-native: ${platform} ${target} ${arch} (${cc_id}${optimize:+, optimize=${optimize}}), ${jobs} jobs"
 log="$(mktemp -t build-native.XXXXXX)"
 set +e
 (

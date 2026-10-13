@@ -1,8 +1,9 @@
 name: CI
 
-# Three jobs. "verify" is the only required check: format, lint, import, tests, sim smoke and the web
+# Four jobs. "verify" is the only required check: format, lint, import, tests, sim smoke and the web
 # export, all through the scripts a developer runs locally. "android-debug-apk" (ADR 0005) follows it,
 # and on a push to main "android-dev-release" publishes that APK as the rolling pre-release.
+# "native-clang" runs the native suites on a clang library (ADR 0013 section 10).
 on:
   pull_request:
   push:
@@ -27,6 +28,8 @@ env:
   GDTOOLKIT_VERSION: "4.5.0"
   SCONS_VERSION: "4.9.1"
   CLANG_FORMAT_VERSION: "20.1.8"
+  # godot-cpp's SConstruct caches objects here, outside the workspace (the tree stays clean).
+  SCONS_CACHE: /home/runner/.cache/rts-mobile-scons
 
 jobs:
   verify:
@@ -64,10 +67,27 @@ jobs:
           pipx install "clang-format==${CLANG_FORMAT_VERSION}"
           sudo apt-get install -y --no-install-recommends binutils
 
+      # The native caches (ADR 0013 section 8). build-native.sh owns the pins and prints the key.
+      - name: Read the native cache key
+        id: native-key
+        run: echo "key=$(bash scripts/build-native.sh --print-cache-key)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache godot-cpp and the SCons object cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            native/godot-cpp
+            ${{ env.SCONS_CACHE }}
+          key: ${{ steps.native-key.outputs.key }}
+
       # On this fresh checkout verify.sh builds, seeds and imports with no retry: the fresh-clone
       # import canary (ADR 0013 section 9).
       - name: Verify (native build, format, lint, import, tests, C++ format, sim smoke, error scan)
         run: bash scripts/verify.sh 2>&1 | tee "$RUNNER_TEMP/verify.log"
+
+      # ADR 0013 section 10: the native suites verify.sh ran must have passed. Never inside verify.sh.
+      - name: Check the native suites ran (check-native-tests.sh)
+        run: bash scripts/ci/check-native-tests.sh
 
       # export-web.sh owns the export checks: Godot version, templates, error scan of its own log,
       # non-empty artifacts, wasm size, threads off and the dev_menu custom feature.
@@ -105,6 +125,55 @@ jobs:
           path: build/web/
           if-no-files-found: error
           retention-days: 14
+
+  # ADR 0013 section 10: a clang -O3 library (the shipped build is NDK clang -O3, the other runs g++ -O2)
+  # running the tests/sim/native suites. Not required. gdUnit4 runs only when a suite exists
+  # (run-tests.sh exits 1 when no test ran): before P54 only the check runs. P51 adds the golden hashes.
+  native-clang:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Cache Godot editor and web export templates
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.local/opt/godot-${{ env.GODOT_VERSION }}
+            ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64-web-${{ hashFiles('scripts/ci/install-godot.sh', 'scripts/ci/remote_zip.py') }}
+
+      - name: Install Godot (editor + web no-threads templates only)
+        run: bash scripts/ci/install-godot.sh
+
+      - name: Install the native toolchain (SCons, clang, binutils)
+        run: |
+          pipx install "scons==${SCONS_VERSION}"
+          sudo apt-get install -y --no-install-recommends binutils clang
+
+      - name: Read the native cache key
+        id: native-key
+        run: echo "key=$(bash scripts/build-native.sh --compiler clang --optimize speed --print-cache-key)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache godot-cpp and the SCons object cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            native/godot-cpp
+            ${{ env.SCONS_CACHE }}
+          key: ${{ steps.native-key.outputs.key }}
+
+      - name: Build the library (clang, optimize=speed)
+        run: bash scripts/build-native.sh --compiler clang --optimize speed
+
+      - name: Run the native suites (gdUnit4), when discovery finds one
+        run: |
+          if [ -n "$(bash scripts/ci/check-native-tests.sh --list)" ]; then bash scripts/run-tests.sh -a res://tests/sim/native; fi
+
+      - name: Check the native suites ran (check-native-tests.sh)
+        run: bash scripts/ci/check-native-tests.sh
 
   # ADR 0005: a debug APK for real-device testing. Not a required check; `verify` stays the only one.
   android-debug-apk:
