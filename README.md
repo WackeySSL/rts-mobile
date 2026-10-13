@@ -8,7 +8,13 @@ Status: pre-alpha. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Build and test
 - Godot 4.7.2 with the Compatibility renderer.
-- `bash scripts/verify.sh` runs format, lint, import, tests and a headless AI-vs-AI smoke run.
+- For the C++ sim kernels in `native/sim_kernels/`: SCons 4.9.1 (`pipx install scons==4.9.1`), g++,
+  binutils and `clang-format` 20.1.8 (`pipx install clang-format==20.1.8`). godot-cpp is fetched at
+  a pinned commit, not committed.
+- `bash scripts/build-native.sh` builds the Linux library and writes the git-ignored
+  `native/sim_kernels.gdextension`; without it the project is plain GDScript.
+- `bash scripts/verify.sh` runs the native build, format, lint, import, tests, the C++ format check
+  and a headless AI-vs-AI smoke run.
 - `bash scripts/run-tests.sh` runs the gdUnit4 tests only.
 - `bash scripts/run-sim-smoke.sh --matches N` runs headless AI-vs-AI matches with fixed seeds
   (a stub until the simulation exists).

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Full verification for rts-mobile: format, lint, import, unit tests, headless AI-vs-AI smoke.
+# Full verification for rts-mobile: native build, format, lint, import, tests, C++ format, smoke.
 # Prints a VERIFY SUMMARY block and exits 0 only when everything is GREEN.
 # Godot can exit 0 after runtime script errors, so the combined log is scanned as well.
 set -uo pipefail
@@ -23,6 +23,10 @@ run_step() {
   fi
 }
 
+# Native kernels (ADR 0013 section 10): build first (a missing tool is RED, never a skip), seed
+# before the import, C++ format after the tests.
+run_step "native build (build-native.sh)" bash scripts/build-native.sh
+
 GD_DIRS=()
 for d in game tests scenes; do
   if [ -d "$d" ]; then GD_DIRS+=("$d"); fi
@@ -38,6 +42,7 @@ if [ ${#GD_DIRS[@]} -gt 0 ]; then
   fi
 fi
 
+run_step "seed extension list" bash scripts/seed-extension-list.sh
 run_step "import" godot --headless --path . --import
 
 if [ -f scripts/run-tests.sh ]; then
@@ -46,6 +51,8 @@ else
   echo "scripts/run-tests.sh is missing (created in Phase 0)"
   FAILED+=("run-tests.sh missing")
 fi
+
+run_step "C++ format (clang-format)" bash scripts/ci/check-cpp-format.sh
 
 if [ -f scripts/run-sim-smoke.sh ]; then
   run_step "sim smoke (3 seeded AI-vs-AI matches)" bash scripts/run-sim-smoke.sh --matches 3

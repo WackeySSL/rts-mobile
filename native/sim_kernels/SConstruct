@@ -1,0 +1,46 @@
+#!/usr/bin/env python
+# Builds the native sim kernels (ADR 0013) against godot-cpp. Run it through
+# scripts/build-native.sh: that fetches godot-cpp at its pinned commit into native/godot-cpp,
+# pins SCons, checks the tools and writes the .gdextension. The library lands in native/bin/.
+# godot-cpp's flags per target stay untouched: template_debug is -O2 with DEBUG_ENABLED, template_release
+# is -O3; both get NDEBUG (godot-cpp sets it on every non-dev build, so C++ assert() never fires);
+# no LTO, -fno-exceptions.
+
+env = SConscript("../godot-cpp/SConstruct")
+
+# Our sources get their own clone (ADR 0013 section 12). SCons expands flags when a target is
+# built, so a flag appended to `env` would reach godot-cpp's own sources too.
+kenv = env.Clone()
+# godot-cpp's include directories reach our sources as -isystem, so that its headers raise none of
+# the warnings below. godot-cpp fills CPPEXTPATH for this, but SCons 4.9.1's compile commands never
+# expand it, so the flags go into CCFLAGS. The directories stay in CPPPATH too, so that SCons still
+# scans their headers; a compiler drops an -I directory that is also an -isystem one.
+for include in env["CPPPATH"]:
+    kenv.Append(CCFLAGS=["-isystem", env.Dir(include).abspath])
+kenv.Append(CPPPATH=["src"])
+# -fwrapv makes signed overflow a defined wrap in every production and test build (section 4).
+# -Wsign-conversion is in clang's -Wconversion and not in g++'s: it makes g++ (verify.sh) as strict as
+# the clang jobs (Android, native-clang), which also run with -Werror.
+kenv.Append(CCFLAGS=["-Wall", "-Wextra", "-Wshadow", "-Wconversion", "-Wsign-conversion", "-Wsign-compare", "-Werror", "-fwrapv"])
+# Objects carry the build's suffix like godot-cpp's own, so that another platform, target or arch in the
+# same tree keeps its objects instead of overwriting them.
+kenv["SHOBJSUFFIX"] = kenv["suffix"] + kenv["SHOBJSUFFIX"]
+# The build the library reports about itself (SimKernels.build_info()), as plain tokens.
+for name, value in (
+    ("SIM_KERNELS_PLATFORM", kenv["platform"]),
+    ("SIM_KERNELS_TARGET", kenv["target"]),
+    ("SIM_KERNELS_ARCH", kenv["arch"]),
+    ("SIM_KERNELS_OPT", kenv["optimize"]),
+):
+    kenv.Append(CPPDEFINES=[(name, '\\"%s\\"' % value)])
+
+# Guard: nothing above may have reached godot-cpp's own environment.
+if {"-Werror", "-fwrapv"} & set(map(str, env.Flatten(env["CCFLAGS"]))):
+    Exit("SConstruct: -Werror or -fwrapv reached godot-cpp's environment, use the kenv clone")
+
+library = kenv.SharedLibrary(
+    "../bin/libsim_kernels{}{}".format(kenv["suffix"], kenv["SHLIBSUFFIX"]),
+    source=Glob("src/bind/*.cpp") + Glob("src/core/*.cpp"),
+)
+kenv.NoCache(library)
+Default(library)

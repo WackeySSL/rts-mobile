@@ -16,6 +16,15 @@ build/
 *.mobileprovision
 export_credentials.cfg
 
+# Native kernels (scripts/build-native.sh): fetched bindings, libraries, the generated .gdextension
+# (ADR 0013 section 9), SCons state and objects
+/native/godot-cpp/
+/native/bin/
+/native/.godot-cpp-fetch.*/
+/native/sim_kernels.gdextension*
+/native/sim_kernels/.sconsign*.dblite
+/native/sim_kernels/src/**/*.os
+
 # OS and editors
 .DS_Store
 .idea/

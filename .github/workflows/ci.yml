@@ -25,6 +25,8 @@ defaults:
 env:
   GODOT_VERSION: "4.7.2"
   GDTOOLKIT_VERSION: "4.5.0"
+  SCONS_VERSION: "4.9.1"
+  CLANG_FORMAT_VERSION: "20.1.8"
 
 jobs:
   verify:
@@ -50,7 +52,16 @@ jobs:
       - name: Install gdtoolkit
         run: pipx install "gdtoolkit==${GDTOOLKIT_VERSION}"
 
-      - name: Verify (format, lint, import, tests, sim smoke, error scan)
+      # verify.sh builds the C++ kernels first and checks their format last (ADR 0013 section 10).
+      - name: Install the native toolchain (SCons, clang-format, binutils)
+        run: |
+          pipx install "scons==${SCONS_VERSION}"
+          pipx install "clang-format==${CLANG_FORMAT_VERSION}"
+          sudo apt-get install -y --no-install-recommends binutils
+
+      # On this fresh checkout verify.sh builds, seeds and imports with no retry: the fresh-clone
+      # import canary (ADR 0013 section 9).
+      - name: Verify (native build, format, lint, import, tests, C++ format, sim smoke, error scan)
         run: bash scripts/verify.sh 2>&1 | tee "$RUNNER_TEMP/verify.log"
 
       # export-web.sh owns the export checks: Godot version, templates, error scan of its own log,
