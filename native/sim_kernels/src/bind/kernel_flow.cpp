@@ -23,12 +23,6 @@ struct SlotTurn {
 	flow::Slot slot;
 };
 
-// Slot `index` of the typed Array flow.fields; the Array keeps it alive.
-Object *slot_at(const Array &fields, int64_t index) {
-	const Variant item = fields[index];
-	return WorldAccess::object_in(item);
-}
-
 SlotTurn load_turn(const WorldAccess &access, Object *object) {
 	SlotTurn turn;
 	turn.object = object;
@@ -100,15 +94,18 @@ void SimKernels::flow(Object *world, int64_t budget) const {
 	const int64_t cols = access.int_in(cache, ID_FLOW_cols);
 	const int64_t rows = access.int_in(cache, ID_FLOW_rows);
 
-	flow::recount(refs.view, field.view, unit_id.view.size);
-	const auto pending_of = [&](int64_t slot) { return access.int_in(slot_at(fields, slot), ID_SLOT_pending); };
+	flow::recount(refs.view, field.view, unit_id.view.size());
+	const auto pending_of = [&](int64_t slot) { return access.int_in(WorldAccess::slot_in(fields, slot), ID_SLOT_pending); };
 	int64_t settled = 0;
 	while (settled < budget) {
 		const int64_t pick = flow::oldest_request(state.view, requested.view, pending_of);
 		if (pick == -1) {
 			break;
 		}
-		Object *object = slot_at(fields, pick);
+		Object *object = WorldAccess::slot_in(fields, pick);
+		if (object == nullptr) {
+			break;
+		}
 		SlotTurn turn = load_turn(access, object);
 		if (state.view.get(pick) == flow::WAITING) {
 			flow::begin(turn.slot, key_goal.view.get(pick), key_class.view.get(pick), costs.view, cols, rows);

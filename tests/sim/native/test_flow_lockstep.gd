@@ -22,9 +22,11 @@ const TRACKED: int = World.MoveClass.TRACKED
 const GROUP_ROWS: int = 5
 ## The ticks of a terrain change, which re-integrates the referenced fields.
 const REPAINT_TICKS: Array[int] = [200, 450, 700]
-## The cost of grass, slow sand (up to the 255 of the bucket ring), scrub (foot only), rock and
-## water for foot, wheeled and tracked, as World.terrain_cost holds them.
-const GROUND_COST: Array[int] = [10, 10, 10, 20, 40, 255, 10, 0, 0, 0, 0, 0, 0, 0, 0]
+## The cost of grass, slow sand (255 tracked, the cap of the bucket ring), scrub (foot only), rock
+## and water for foot, wheeled and tracked, as World.terrain_cost holds them. Sand 12 and 41 and
+## scrub 13 make a diagonal step of 16.8, 57.4 and 18.2: the integer division truncates, and a
+## ceiling or a rounding half up shows.
+const GROUND_COST: Array[int] = [10, 10, 10, 12, 41, 255, 13, 0, 0, 0, 0, 0, 0, 0, 0]
 
 
 func test_900_arena_ticks_of_requests_terrain_changes_and_odd_budgets_match_gdscript() -> void:
@@ -59,16 +61,19 @@ func test_maps_wider_and_taller_than_square_match() -> void:
 func test_keys_the_costs_cannot_integrate_match() -> void:
 	var worlds: Array[World] = [_world(_arena_scenario(null)), _world(_arena_scenario(null))]
 	assert_array(SimImpls.use(worlds[1], SimImpls.Impl.NATIVE)).is_empty()
+	assert_bool(SimImpls.is_native(worlds[1], FlowCache.PHASE_FLOW)).is_true()
 	for world: World in worlds:
-		for slot: int in 4:
+		for slot: int in 5:
 			world.flow.acquire(100 + slot * 900, slot % 3, 0, 1)
 		world.flow.key_goal[1] = world.map_cols * world.map_rows
 		world.flow.key_class[2] = 3
 		world.flow.key_class[3] = -1
+		world.flow.key_goal[4] = -1
 		FlowCache.run(world, 100000)
 	assert_str(StateDiff.first(worlds[0], worlds[1])).is_empty()
-	assert_array(worlds[1].flow.status).is_equal([2, 2, 2, 2, 0, 0, 0, 0])
-	assert_int(worlds[1].flow.field(1).cost.count(FlowField.UNREACHED)).is_equal(4356)
+	assert_array(worlds[1].flow.status).is_equal([2, 2, 2, 2, 2, 0, 0, 0])
+	for slot: int in range(1, 5):
+		assert_int(worlds[1].flow.field(slot).cost.count(FlowField.UNREACHED)).is_equal(4356)
 	assert_bool(worlds[1].flow.field(0).cost.count(FlowField.UNREACHED) < 4356).is_true()
 
 
@@ -77,6 +82,7 @@ func test_keys_the_costs_cannot_integrate_match() -> void:
 func test_a_served_slot_re_keyed_by_hand_matches() -> void:
 	var worlds: Array[World] = [_world(_arena_scenario(null)), _world(_arena_scenario(null))]
 	assert_array(SimImpls.use(worlds[1], SimImpls.Impl.NATIVE)).is_empty()
+	assert_bool(SimImpls.is_native(worlds[1], FlowCache.PHASE_FLOW)).is_true()
 	for world: World in worlds:
 		world.flow.acquire(100, FOOT, 0, 1)
 		FlowCache.run(world, 100000)
@@ -108,6 +114,10 @@ func _lockstep(scenario: ScenarioDef, ticks: int) -> Dictionary:
 	var keys: Array[Vector2i] = []
 	for key: int in KEYS:
 		keys.append(Vector2i(rng.next_int(cells), key % 3))
+	# The first two keys sit in opposite corners: cell 0 and the last cell are goals, and their
+	# fields cross the whole map.
+	keys[0] = Vector2i(0, keys[0].y)
+	keys[1] = Vector2i(cells - 1, keys[1].y)
 	var repaints: Array[Vector2i] = []
 	for _tick: int in REPAINT_TICKS:
 		repaints.append(Vector2i(rng.next_int(cells), 3))
@@ -143,10 +153,10 @@ func _lockstep(scenario: ScenarioDef, ticks: int) -> Dictionary:
 	return run
 
 
-## The rows of `group` leave their fields and take the field of `key` (goal cell, move class), or -1
-## when every slot is referenced.
+## The rows of `group`, counted from the end of the World (group 0 holds the last row), leave their
+## fields and take the field of `key` (goal cell, move class), or -1 when every slot is referenced.
 func _take_field(world: World, group: int, key: Vector2i) -> void:
-	var first: int = group * GROUP_ROWS
+	var first: int = maxi(world.unit_count() - (group + 1) * GROUP_ROWS, 0)
 	for row: int in range(first, first + GROUP_ROWS):
 		world.field[row] = -1
 	var slot: int = world.flow.acquire(key.x, key.y, world.map_version, world.tick)

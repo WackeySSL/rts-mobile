@@ -11,8 +11,10 @@ extends GdUnitTestSuite
 
 const KernelSpy: GDScript = preload("res://tests/sim/support/kernel_spy.gd")
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
+const StateDiff: GDScript = preload("res://tests/sim/support/state_diff.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const HEADER: String = "res://native/sim_kernels/src/bind/world_access.h"
+const FLOW_SOURCE: String = "res://native/sim_kernels/src/bind/kernel_flow.cpp"
 ## FLOW, TARGETING, SEPARATION, INTEGRATE and FOG.
 const PHASES: Array[int] = [1, 3, 5, 6, 10]
 ## The slots of the flow cache (flow_cache_size).
@@ -334,17 +336,27 @@ func test_check_world_names_the_first_bad_name_and_what_is_wrong_with_it() -> vo
 		assert_array(tags).contains([tag])
 
 
+## The list of the table is FLOW_NAMES, and kernel_flow.cpp names those and no other: a name it
+## fetched outside the list would reach the engine without check_world's type test.
 func test_flow_gets_and_sets_exactly_the_names_of_its_list() -> void:
 	var table: Array[Dictionary] = _table()
 	var names: Array[String] = []
 	for index: int in _listed(table, 1):
 		names.append("%s.%s" % [table[index].owner, table[index].name])
 	assert_array(names).contains_exactly(FLOW_NAMES)
+	var used: Array[String] = []
+	var ids: RegEx = RegEx.create_from_string("\\bID_(WORLD|FLOW|SLOT)_(\\w+)")
+	for found: RegExMatch in ids.search_all(FileAccess.get_file_as_string(FLOW_SOURCE)):
+		var name: String = "%s.%s" % [found.get_string(1), found.get_string(2)]
+		if not used.has(name):
+			used.append(name)
+	assert_array(used).contains_exactly_in_any_order(FLOW_NAMES)
 
 
 ## An array the call writes in place is seen through an alias taken before it, with no copy held
 ## and with one (a duplicate() keeps its old values; the member forks once and writes in place
-## after that), the scalars arrive as the twin's, and a budget-0 call writes nothing.
+## after that), the scalars arrive as the twin's, a budget-0 call writes nothing, and the call that
+## completes the field swaps cost and next and sets `complete`.
 func test_the_flow_kernel_writes_in_place_and_sets_what_the_twin_sets() -> void:
 	for hold: bool in [false, true]:
 		var seen: Dictionary = _write_case(_flow_pair(), hold)
@@ -376,16 +388,18 @@ func test_check_world_gives_the_same_statuses_on_a_worker_thread() -> void:
 func _written(hold: bool) -> Dictionary:
 	var seen: Dictionary = {"settled": 5, "alias": true, "member": true, "scalars": true}
 	seen.merge({"again": true, "refs": true, "idle": true, "copy_kept": hold, "pending": true})
+	seen["done"] = true
 	return seen
 
 
-## The arena with one key taken on both Worlds, the first running C++ and the second the twin.
-## Rows 0 to 2 follow the field.
+## The arena with one wheeled key taken on both Worlds, the first running C++ and the second the
+## twin. Rows 0 to 2 follow the field.
 func _flow_pair() -> Array[World]:
 	var pair: Array[World] = [_arena(), _arena()]
 	assert_array(SimImpls.use(pair[0], SimImpls.Impl.NATIVE)).is_empty()
+	assert_bool(SimImpls.is_native(pair[0], FlowCache.PHASE_FLOW)).is_true()
 	for world: World in pair:
-		var slot: int = world.flow.acquire(2080, 0, world.map_version, 1)
+		var slot: int = world.flow.acquire(2080, World.MoveClass.WHEELED, world.map_version, 1)
 		for row: int in 3:
 			world.field[row] = slot
 	return pair
@@ -400,7 +414,8 @@ static func _write_case(pair: Array[World], hold: bool) -> Dictionary:
 	var served: FlowField = twin.flow.field(0)
 	var alias: PackedInt32Array = field.next
 	var copy: PackedInt32Array = field.next.duplicate() if hold else PackedInt32Array()
-	var old_values: PackedInt32Array = copy.duplicate()
+	# Own storage: a duplicate() shares its buffer with `copy` until one of them is written.
+	var old_values: Array = Array(copy)
 	var seen: Dictionary = {}
 	FlowCache.run(world, 5)
 	FlowCache.run(twin, 5)
@@ -416,13 +431,24 @@ static func _write_case(pair: Array[World], hold: bool) -> Dictionary:
 	FlowCache.run(world, 5)
 	FlowCache.run(twin, 5)
 	seen["again"] = alias == served.next and field.pending == served.pending
-	seen["copy_kept"] = hold and copy == old_values
+	# Kept only if the write forked: a write through the held buffer would change `copy` as well.
+	seen["copy_kept"] = hold and Array(copy) == old_values and copy != field.next
+	# The flow cache is derived state and not hashed, so the hash only says the call touched no
+	# other state; StateDiff compares the flow cache and every slot with the twin's.
 	var hash_before: int = world.state_hash()
 	var snapshot: PackedInt32Array = field.next.duplicate()
 	world.stats.fill(0)
+	twin.stats.fill(0)
 	FlowCache.run(world, 0)
+	FlowCache.run(twin, 0)
 	seen["idle"] = world.state_hash() == hash_before and field.next == snapshot
+	seen["idle"] = seen["idle"] and StateDiff.first(world, twin) == ""
 	seen["pending"] = world.stats[World.Stat.FLOW_CELLS] == 0 and field.pending == served.pending
+	FlowCache.run(world, 100000)
+	FlowCache.run(twin, 100000)
+	seen["done"] = field.complete and field.pending == 0 and field.move_class == 1
+	seen["done"] = seen["done"] and field.cost == served.cost and field.cost != snapshot
+	seen["done"] = seen["done"] and StateDiff.first(world, twin) == ""
 	return seen
 
 

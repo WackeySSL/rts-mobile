@@ -339,15 +339,7 @@ class WorldAccess {
 			return nullptr;
 		}
 		const Array slots = held.fields;
-		if (index < 0 || index >= slots.size()) {
-			return nullptr;
-		}
-		const Variant &slot = slots[index];
-		if (slot.get_type() != Variant::OBJECT) {
-			return nullptr;
-		}
-		Object *object = slot;
-		return object;
+		return slot_in(slots, index);
 	}
 
 	// An int member of its owner, or -1.
@@ -452,11 +444,26 @@ public:
 		}
 		return object;
 	}
+	// Slot `index` of the typed Array flow.fields (the Array keeps it alive), or null outside it or for a non-Object.
+	static Object *slot_in(const Array &slots, int64_t index) {
+		if (index < 0 || index >= slots.size()) {
+			return nullptr;
+		}
+		const Variant &slot = slots[index];
+		return object_in(slot);
+	}
+	// An int or bool member of `object`, 0 or false for a null Object or another type.
 	int64_t int_in(Object *object, int64_t id) const {
+		if (object == nullptr) {
+			return 0;
+		}
 		const Variant value = get(object, id);
 		return value.get_type() == Variant::INT ? static_cast<int64_t>(value) : 0;
 	}
 	bool bool_in(Object *object, int64_t id) const {
+		if (object == nullptr) {
+			return false;
+		}
 		const Variant value = get(object, id);
 		return value.get_type() == Variant::BOOL && static_cast<bool>(value);
 	}

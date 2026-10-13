@@ -28,7 +28,7 @@ void begin(Slot &slot, int64_t goal_cell, int64_t move_class, const ArrayView<co
 	slot.pending = 0;
 	const int64_t base = move_class * slot.cell_count;
 	const bool usable = goal_cell >= 0 && goal_cell < slot.cell_count && move_class >= 0;
-	if (!usable || base + slot.cell_count > costs.size) {
+	if (!usable || base + slot.cell_count > costs.size()) {
 		swap_buffers(slot);
 		return;
 	}
@@ -117,10 +117,10 @@ int64_t advance(Slot &slot, int64_t budget) {
 
 void recount(ArrayView<int32_t> ref_count, const ArrayView<const int32_t> &field, int64_t count) {
 	ref_count.fill(0);
-	const int64_t rows = count < field.size ? count : field.size;
+	const int64_t rows = count < field.size() ? count : field.size();
 	for (int64_t row = 0; row < rows; row++) {
 		const int64_t slot = field.get(row);
-		if (slot >= 0 && slot < ref_count.size) {
+		if (slot >= 0 && slot < ref_count.size()) {
 			ref_count.set(slot, ref_count.get(slot) + 1);
 		}
 	}

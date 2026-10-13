@@ -13,7 +13,7 @@ namespace flow {
 constexpr int64_t UNREACHED = 0x3FFFFFFF; // FlowField.UNREACHED
 constexpr int64_t BUCKETS = 512; // FlowField.BUCKETS
 constexpr int64_t BUCKET_MASK = BUCKETS - 1; // FlowField.BUCKET_MASK
-constexpr int64_t PAD = 2; // FlowField's padded grid: one blocked ring, so the stride is cols + 2
+constexpr int64_t PAD = 2; // FlowField.PAD
 constexpr int64_t NEIGHBOURS = 8; // len(FlowField.DX)
 inline constexpr int64_t DX[NEIGHBOURS] = { -1, 0, 1, -1, 1, -1, 0, 1 }; // FlowField.DX
 inline constexpr int64_t DY[NEIGHBOURS] = { -1, -1, -1, 0, 0, 1, 1, 1 }; // FlowField.DY
@@ -44,7 +44,7 @@ void recount(ArrayView<int32_t> ref_count, const ArrayView<const int32_t> &field
 template <typename PendingOf>
 int64_t oldest_request(const ArrayView<int32_t> &status, const ArrayView<const int32_t> &requested, PendingOf pending_of) {
 	int64_t best = -1;
-	for (int64_t slot = 0; slot < status.size; slot++) {
+	for (int64_t slot = 0; slot < status.size(); slot++) {
 		bool work = status.get(slot) == WAITING;
 		if (status.get(slot) == ACTIVE) {
 			work = pending_of(slot) > 0;
