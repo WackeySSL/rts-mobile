@@ -8,9 +8,13 @@ const TICK_RATE: int = 15
 const MILLI_PER_TILE: int = 1000
 
 
-## Sorts `commands` in place with Command.compare and applies those whose tick is `world.tick`.
-## A null or any other command is dropped and counted. Then ordered units move, and the tick counts.
+## Prepares the world, clears the last tick's events and stats, sorts `commands` in place with
+## Command.compare and applies those whose tick is `world.tick`. A null or any other command is
+## dropped and counted. Then ordered units move, dead rows leave, and the tick counts.
 static func step(world: World, commands: Array[Command]) -> void:
+	world.prepare()
+	world.events.clear()
+	world.stats.fill(0)
 	while commands.has(null):
 		commands.erase(null)
 		world.dropped_commands += 1
@@ -21,6 +25,7 @@ static func step(world: World, commands: Array[Command]) -> void:
 		else:
 			world.dropped_commands += 1
 	_move_units(world)
+	world.remove_dead()
 	world.tick += 1
 
 

@@ -2,10 +2,10 @@ class_name World
 extends RefCounted
 ## Simulation state v1 (ADR 0007 section 2): struct-of-arrays, integers only. Positions are
 ## milli-tiles (1 tile = 1000). Units are rows in the per-unit arrays, ascending by id. Ids come
-## from a counter that starts at 1 and are never reused. Phase 1 never removes a unit, so an id
-## is found by binary search. The view and input read a World and never write to it. Every array
-## and scalar is declared here and listed in one shape list (ADR 0007 section 2); the helper
-## objects and the hash follow in later World changes.
+## from a counter that starts at 1 and are never reused. Removal keeps the rows in id order, so an
+## id is found by binary search. The view and input read a World and never write to it. Every array
+## and scalar is declared here and listed in one shape list (ADR 0007 section 2); the hash follows
+## in a later World change.
 
 enum Order { IDLE = 0, ATTACK_MOVE = 1, MOVE = 2, ATTACK = 3 }
 enum Armour { INFANTRY = 0, LIGHT = 1, HEAVY = 2, BUILDING = 3 }
@@ -48,6 +48,10 @@ const GRASS_COST: int = 10
 ## The id of open grass, the one terrain of a map without a MapDef. It equals the first terrain of
 ## data/terrain/standard.tres, which a test pins.
 const GRASS_ID: StringName = &"grass"
+## The cell sides of the spatial grids (ADR 0008 section 4, ADR 0009): structural, not balance
+## numbers, so not in RulesDef. Targeting reads `target_grid.cell_milli`, never a second 4000.
+const SEP_CELL_MILLI: int = MILLI_PER_TILE
+const TARGET_CELL_MILLI: int = 4 * MILLI_PER_TILE
 
 ## The per-unit columns, in this order.
 const ROW_ARRAYS: Array[StringName] = [
@@ -172,6 +176,15 @@ var proj_free_top: int = 0
 var rows_version: int = 0
 ## The sim's random stream (spawn jitter). Never null.
 var rng: DetRandom
+## The helper objects (ADR 0007 section 2): empty from the start, sized by the first prepare().
+## Only `fog` is state; the others are derived. Objects sit in no shape list.
+var fog: FogGrid = FogGrid.new()
+var flow: FlowCache = FlowCache.new()
+var sep_grid: SpatialGrid = SpatialGrid.new()
+var target_grid: SpatialGrid = SpatialGrid.new()
+## ADR 0007 section 2's one bool check. A bool is neither an int nor a Packed*Array, so no shape
+## list holds it and the coverage walk skips it. Not hashed: it follows from the helpers.
+var prepared: bool = false
 
 ## Rule ints, copied from RulesDef under the same names by _init(). The sim reads these and never
 ## the Resource.
@@ -405,9 +418,12 @@ func index_of(id: int) -> int:
 ## Gives every type table one entry per type_ids entry, with the TYPE_PAD_* values (a name is the
 ## capitalised type id), because Phase 1 code appends only the four Phase 1 tables. It also sizes
 ## the scratch arrays to max_rows, stats to the Stat count and the projectile slots to
-## max_projectiles, and derives open grass from map_w and map_h when no map is loaded.
-## Idempotent. Types are appended before the first step.
+## max_projectiles, and derives open grass from map_w and map_h when no map is loaded. Last it
+## configures the helpers, once, because configure() re-creates their arrays. Idempotent through
+## `prepared`, so Sim.step calls it every tick. Types, players and sizes are fixed before it.
 func prepare() -> void:
+	if prepared:
+		return
 	var types: int = type_ids.size()
 	_pad(type_speed, types, TYPE_PAD_V0)
 	_pad(type_radius, types, TYPE_PAD_V0)
@@ -433,6 +449,11 @@ func prepare() -> void:
 		_reset_projectile_slots()
 	if map_cols == 0:
 		_derive_open_grass()
+	fog.configure(map_cols, map_rows, player_count)
+	flow.configure(map_cols, map_rows, MoveClass.size(), flow_cache_size)
+	sep_grid.configure(map_w, map_h, SEP_CELL_MILLI, max_rows)
+	target_grid.configure(map_w, map_h, TARGET_CELL_MILLI, max_rows)
+	prepared = true
 
 
 ## The cell holding the point (x, y) in milli-tiles: `row * map_cols + column`. A point outside
@@ -472,14 +493,19 @@ func set_terrain(cell: int, terrain_index: int) -> void:
 	for move_class: int in classes:
 		move_cost[move_class * cells + cell] = terrain_cost[terrain_index * classes + move_class]
 	map_version += 1
+	flow.invalidate(map_version)  # Before any acquire() under the new version.
 
 
 ## Appends an idle unit at (x, y) at its type's max hp (at least 1; 1 for a type with no entry)
 ## and returns its new id. `type_index` must be an index into type_ids. It writes one SPAWNED
-## event and raises player_count to the owner. The parameters keep the contract's names, so
-## they shadow the arrays of the same name.
+## event and raises player_count to the owner. After prepare() an owner above player_count or a
+## row beyond max_rows is refused instead: 0, and spawn_refused counts it. The parameters keep the
+## contract's names, so they shadow the arrays of the same name.
 @warning_ignore("shadowed_variable")
 func add_unit(owner: int, type_index: int, x: int, y: int) -> int:
+	if prepared and (owner > player_count or unit_id.size() >= max_rows):
+		spawn_refused += 1
+		return 0
 	var id: int = next_id
 	next_id += 1
 	unit_id.append(id)
@@ -501,17 +527,62 @@ func add_unit(owner: int, type_index: int, x: int, y: int) -> int:
 	best_dist.append(0x3FFFFFFF)  # No distance yet; equals FlowField.UNREACHED.
 	stall.append(0)
 	fog_cell.append(-1)
-	var at: int = events.size()
-	events.resize(at + EVENT_STRIDE)  # In place, no allocation. The last two ints stay 0.
-	events[at] = Event.SPAWNED
-	events[at + 1] = id
-	events[at + 2] = x
-	events[at + 3] = y
-	events[at + 4] = type_index
-	events[at + 5] = owner
+	_push_unit_event(Event.SPAWNED, unit_id.size() - 1)
 	rows_version += 1
 	player_count = maxi(player_count, owner)
 	return id
+
+
+## Appends the `kind` record (SPAWNED) of row `row` to `events` (ADR 0007 section 10), in place.
+func _push_unit_event(kind: int, row: int) -> void:
+	var at: int = events.size()
+	events.resize(at + EVENT_STRIDE)  # The last two ints of the record stay 0.
+	_write_unit_event(at, kind, row)
+
+
+## Writes the SPAWNED or DIED record of row `row` at `events[at]`, which is already sized.
+func _write_unit_event(at: int, kind: int, row: int) -> void:
+	events[at] = kind
+	events[at + 1] = unit_id[row]
+	events[at + 2] = pos_x[row]
+	events[at + 3] = pos_y[row]
+	events[at + 4] = type_index[row]
+	events[at + 5] = owner[row]
+
+
+## Removes every row with hp of 0 or less, the last step of a tick (ADR 0007 section 3): a DIED
+## record per dead row, in row order, then a stable compaction of every ROW_ARRAYS column, so the
+## rows stay ascending by id. It bumps rows_version once and adds the rows that changed place to
+## stats[ROWS_COMPACTED]. A tick without a death costs one scan. It prepares the world first
+## (O(1) once prepared), so a hand-built world works: stats is sized by prepare().
+func remove_dead() -> void:
+	prepare()
+	var count: int = unit_id.size()
+	var alive: PackedInt32Array = hp
+	var first: int = 0
+	while first < count and alive[first] > 0:
+		first += 1
+	if first == count:
+		return
+	var dead: int = 0
+	for row: int in range(first, count):
+		if alive[row] <= 0:
+			dead += 1
+	# One resize for all the records, then the writes: the loops allocate nothing.
+	var at: int = events.size()
+	events.resize(at + dead * EVENT_STRIDE)  # The last two ints of each record stay 0.
+	for row: int in range(first, count):
+		if alive[row] <= 0:
+			_write_unit_event(at, Event.DIED, row)
+			at += EVENT_STRIDE
+	# hp is the test for every column, so it goes last.
+	for column_name: StringName in ROW_ARRAYS:
+		if column_name != &"hp":
+			var column: PackedInt32Array = get(column_name)
+			_compact(column, alive, first, count)
+	_compact(alive, alive, first, count)
+	stats[Stat.ROWS_COMPACTED] += count - first - dead
+	rows_version += 1
 
 
 ## The start point of a unit whose grid point is (x, y) and whose spawn has a `jitter` above 0: the
@@ -599,6 +670,18 @@ func _load_map(map: MapDef) -> void:
 			kind_at[cell] = kind
 			for move_class: int in classes:
 				cost_at[move_class * cells + cell] = costs[kind * classes + move_class]
+
+
+## Moves the entries of `col` whose `alive` is above 0 down over the dead ones, in order, and cuts
+## it to the survivors. Rows before `first`, the first dead row, stay. `alive` may be `col` itself:
+## a write never reaches a row still to be read.
+static func _compact(col: PackedInt32Array, alive: PackedInt32Array, first: int, end: int) -> void:
+	var to: int = first
+	for row: int in range(first + 1, end):
+		if alive[row] > 0:
+			col[to] = col[row]
+			to += 1
+	col.resize(to)
 
 
 ## Appends `value` to `table` until it has `size` entries.

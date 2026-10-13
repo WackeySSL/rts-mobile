@@ -3,6 +3,7 @@ extends GdUnitTestSuite
 ## hand-built world, type table padding, add_unit's new columns and event, the Phase 1-shaped
 ## world through Sim.step, the shape lists, the sizes prepare() gives the fixed-capacity arrays,
 ## and the map grid (cell_of, is_passable, set_terrain, open grass, a MapDef in from_scenario).
+## Part 4 (P31a): the helper objects, the refusals after prepare() and the flow invalidation.
 ## Numbers are literals, so no data file can agree with a wrong rule. A push_error would fail
 ## verify, which scans the log.
 
@@ -188,6 +189,27 @@ func test_the_phase_1_shaped_world_steps_ten_ticks() -> void:
 	assert_array(world.hp).is_equal([1, 1, 1])
 
 
+## The same world with no prepare() call: Sim.step prepares a hand-built world on its first tick.
+func test_the_phase_1_shaped_world_steps_ten_ticks_without_an_explicit_prepare() -> void:
+	var world: World = _phase1_world()
+	world.add_unit(1, 0, 10000, 10000)
+	world.add_unit(1, 2, 10000, 20000)
+	world.add_unit(2, 1, 40000, 40000)
+	assert_bool(world.prepared).is_false()
+	var order: Command = Command.attack_move(1, PackedInt32Array([1]), 30000, 10000)
+	order.tick = 0
+	var first: Array[Command] = [order]
+	Sim.step(world, first)
+	for _t: int in 9:
+		Sim.step(world, [])
+	assert_bool(world.prepared).is_true()
+	assert_array([world.tick, world.dropped_commands]).is_equal([10, 0])
+	assert_array(world.pos_x).is_equal([11200, 10000, 40000])
+	assert_array(world.pos_y).is_equal([10000, 20000, 40000])
+	assert_array(world.hp).is_equal([1, 1, 1])
+	assert_array(world.type_names).is_equal(["Type", "Type", "Type"])
+
+
 ## The shape lists: the new ones are pinned by name, and every Packed*Array property is in
 ## exactly one array list and every int property in exactly one scalar list. A name in a list that
 ## is no property would make a list longer than the properties, so the sums are compared too.
@@ -233,11 +255,12 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	assert_int(packed.size()).is_equal(55)
 	assert_int(ints.size()).is_equal(29)
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
-	# neither an int nor a Packed*Array sit in no list: the id tables and the stream. P31a adds
-	# the helper objects here.
+	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper
+	# objects and the bool `prepared`.
 	var byte_tables: Array[String] = ["type_names", "terrain", "move_cost", "terrain_cost"]
 	assert_array(not_int32).contains_exactly_in_any_order(byte_tables)
-	var unlisted: Array[String] = ["type_ids", "weapon_ids", "terrain_ids", "rng"]
+	var unlisted: Array[String] = ["type_ids", "weapon_ids", "terrain_ids", "rng", "prepared"]
+	unlisted.append_array(["fog", "flow", "sep_grid", "target_grid"])
 	assert_array(others).contains_exactly_in_any_order(unlisted)
 	_assert_listed_once(packed, array_lists)
 	_assert_listed_once(ints, scalar_lists)
@@ -486,6 +509,112 @@ func test_set_terrain_rewrites_the_cell_and_its_costs_and_bumps_map_version() ->
 	assert_int(grass.map_version).is_equal(1)
 
 
+## prepare() sizes the helpers from the World. A 5.5 x 3 tile map shows columns and rows apart and
+## the rounding up (6 columns; one row of two 4-tile columns), and 2 players, 7 rows and 3 slots
+## show where each size comes from.
+func test_prepare_sizes_the_helpers_from_the_map_the_players_and_the_rules() -> void:
+	var world: World = World.new()
+	assert_bool(world.prepared).is_false()
+	world.map_w = 5500
+	world.map_h = 3000
+	world.max_rows = 7
+	world.flow_cache_size = 3
+	world.add_unit(2, 0, 500, 500)
+	world.prepare()
+	assert_bool(world.prepared).is_true()
+	assert_array([world.fog.cols, world.fog.rows, world.fog.player_count]).is_equal([6, 3, 2])
+	assert_int(world.fog.visible.size()).is_equal(36)
+	assert_array([world.flow.cols, world.flow.rows, world.flow.classes]).is_equal([6, 3, 3])
+	assert_array([world.flow.fields.size(), world.flow.fields[2].cost.size()]).is_equal([3, 40])
+	var sep: SpatialGrid = world.sep_grid
+	assert_array([sep.cols, sep.rows, sep.cell_milli, sep.next.size()]).is_equal([6, 3, 1000, 7])
+	var target: SpatialGrid = world.target_grid
+	var four_tiles: Array[int] = [2, 1, 4000, 7]
+	assert_array([target.cols, target.rows, target.cell_milli, target.next.size()]).is_equal(
+		four_tiles
+	)
+
+
+## A second prepare() and a Sim.step (which prepares first) change no helper: every object and array
+## stays the same buffer with the same contents, after a rebuilt grid, a stamped fog and a finished
+## flow slot. configure() would re-create or clear each of them. The tick has no order and no
+## sight, so nothing else in it writes a helper yet; the first rule that does updates this case.
+func test_a_second_prepare_keeps_the_helper_state() -> void:
+	var world: World = World.new()
+	world.map_w = 6000
+	world.map_h = 4000
+	world.add_unit(1, 0, 1500, 500)
+	world.add_unit(2, 0, 4500, 3500)
+	world.prepare()
+	world.sep_grid.rebuild(world.pos_x, world.pos_y, 2)
+	world.target_grid.rebuild(world.pos_x, world.pos_y, 2)
+	world.fog.stamp(2, 9, world.fog.add_mask(2000), 1)
+	var slot: int = world.flow.acquire(5, World.MoveClass.FOOT, 0, 4)
+	world.flow.advance(world.move_cost, 100)
+	assert_bool(world.flow.fields[slot].complete).is_true()
+	var before: Array = _helper_state(world, slot)
+	var contents: Array = []
+	for item: Variant in before:
+		contents.append(item if item is Object else item.duplicate())
+	Sim.step(world, [])
+	world.prepare()
+	var after: Array = _helper_state(world, slot)
+	var changed: Array[int] = []
+	for i: int in before.size():
+		if not is_same(before[i], after[i]) or after[i] != contents[i]:
+			changed.append(i)
+	assert_array(changed).is_empty()
+	# The state is not the cleared one, or a configure() would not show.
+	assert_int(world.fog.visible.count(0)).is_less(world.fog.visible.size())
+	assert_int(world.sep_grid.head.count(-1)).is_less(world.sep_grid.head.size())
+
+
+## After prepare(), an owner above player_count and a row beyond max_rows are refused with nothing
+## else changed. Before it a spawn is never refused (from_scenario relies on that). A row that
+## remove_dead freed can be filled again.
+func test_add_unit_refuses_an_owner_and_a_row_the_prepared_world_cannot_hold() -> void:
+	var early: World = World.new()
+	early.max_rows = 1
+	assert_array([early.add_unit(1, 0, 0, 0), early.add_unit(5, 0, 0, 0)]).is_equal([1, 2])
+	assert_int(early.spawn_refused).is_equal(0)
+	var world: World = World.new()
+	world.max_rows = 3
+	world.add_unit(2, 0, 1000, 1000)
+	world.prepare()
+	world.events.clear()
+	assert_int(world.add_unit(3, 0, 1, 1)).is_equal(0)
+	assert_array([world.spawn_refused, world.unit_count(), world.next_id]).is_equal([1, 1, 2])
+	assert_array([world.player_count, world.rows_version, world.events.size()]).is_equal([2, 1, 0])
+	assert_int(world.add_unit(2, 0, 2000, 1000)).is_equal(2)
+	assert_int(world.add_unit(0, 0, 3000, 1000)).is_equal(3)
+	assert_int(world.add_unit(1, 0, 4000, 1000)).is_equal(0)
+	assert_array([world.spawn_refused, world.unit_count(), world.next_id]).is_equal([2, 3, 4])
+	world.hp[0] = 0
+	world.remove_dead()
+	assert_int(world.add_unit(1, 0, 4000, 1000)).is_equal(4)
+
+
+## set_terrain() tells the flow cache the new map_version: a slot a unit points at is re-keyed to
+## the new version, one nobody points at is dropped, and acquire() under the new version finds the
+## re-keyed slot instead of a second slot with the same key.
+func test_set_terrain_invalidates_the_flow_cache_under_the_new_map_version() -> void:
+	var world: World = World.from_scenario(_tile_scenario())
+	var foot: int = World.MoveClass.FOOT
+	var held: int = world.flow.acquire(1, foot, world.map_version, 5)
+	var spare: int = world.flow.acquire(2, foot, world.map_version, 6)
+	world.add_unit(0, 0, 500, 500)
+	world.field[0] = held
+	world.flow.recount(world.field, 1)
+	assert_array([world.flow.refs(held), world.flow.refs(spare)]).is_equal([1, 0])
+	world.set_terrain(0, 3)
+	assert_int(world.map_version).is_equal(1)
+	assert_array([world.flow.key_version[held], world.flow.status[held]]).is_equal(
+		[1, FlowCache.Status.WAITING]
+	)
+	assert_int(world.flow.status[spare]).is_equal(FlowCache.Status.FREE)
+	assert_int(world.flow.acquire(1, foot, world.map_version, 7)).is_equal(held)
+
+
 ## A World with a size and no map, prepared: open grass.
 func _open_world(width: int, height: int) -> World:
 	var world: World = World.new()
@@ -539,6 +668,17 @@ func _phase1_world() -> World:
 		world.type_selection_radius.append(500)
 		world.type_spacing.append(1200)
 	return world
+
+
+## The helper objects and the arrays that configure() would re-create: the fog grids, both spatial
+## grids, the cache's state arrays and the cost array of slot `slot`.
+func _helper_state(world: World, slot: int) -> Array:
+	var state: Array = [world.fog, world.flow, world.sep_grid, world.target_grid]
+	state.append_array([world.fog.visible, world.fog.explored, world.fog.listed])
+	state.append_array([world.sep_grid.head, world.sep_grid.next])
+	state.append_array([world.target_grid.head, world.target_grid.next])
+	state.append_array([world.flow.key_goal, world.flow.status, world.flow.fields[slot].cost])
+	return state
 
 
 func _assert_columns(world: World, expected: Dictionary[StringName, Array]) -> void:
