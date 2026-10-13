@@ -153,13 +153,33 @@ const RULE_SCALARS: Array[StringName] = [
 	&"max_rows",
 ]
 ## The other int properties: the map size, the view's rows_version, the map digest cache (it
-## follows from map_version and the grid) and the rule ints. None is in the state hash.
-const UNHASHED_SCALARS: Array[StringName] = (
-	[&"map_w", &"map_h", &"map_cols", &"map_rows", &"rows_version", &"_map_digest"]
-	+ [&"_map_digest_version"]
-	+ RULE_SCALARS
-)
-
+## follows from map_version and the grid) and the rule ints, which repeat RULE_SCALARS (a literal,
+## because `+` on typed constants gives an untyped Array; a test pins the repeat). None is in the
+## state hash.
+const UNHASHED_SCALARS: Array[StringName] = [
+	&"map_w",
+	&"map_h",
+	&"map_cols",
+	&"map_rows",
+	&"rows_version",
+	&"_map_digest",
+	&"_map_digest_version",
+	&"retarget_period_ticks",
+	&"fog_period_ticks",
+	&"line_check_period_ticks",
+	&"flow_cells_per_tick",
+	&"flow_cache_size",
+	&"separation_neighbours",
+	&"separation_scan",
+	&"separation_idle_share",
+	&"separation_push_max",
+	&"separation_coincident_divisor",
+	&"stall_ticks",
+	&"stall_range_spacings",
+	&"attack_rekey_milli",
+	&"max_projectiles",
+	&"max_rows"
+]
 var tick: int = 0
 ## Map size in milli-tiles.
 var map_w: int = 0
@@ -839,12 +859,20 @@ func _feed_projectiles(ctx: HashingContext, section: int) -> void:
 		if column_name != &"proj_free":
 			columns.append(get(column_name))
 	var ids: PackedInt32Array = proj_id
-	var live: PackedInt32Array = PackedInt32Array()
+	var live_count: int = 0
 	for slot: int in ids.size():
 		if ids[slot] != 0:
-			live.append(slot)
+			live_count += 1
+	var live: PackedInt32Array = PackedInt32Array()
+	live.resize(live_count * (columns.size() + 1))  # One resize, then writes by index.
+	var at: int = 0
+	for slot: int in ids.size():
+		if ids[slot] != 0:
+			live[at] = slot
+			at += 1
 			for column: PackedInt32Array in columns:
-				live.append(column[slot])
+				live[at] = column[slot]
+				at += 1
 	_feed(ctx, section, live.to_byte_array())
 	_feed(ctx, section, proj_free.slice(0, proj_free_top).to_byte_array())
 

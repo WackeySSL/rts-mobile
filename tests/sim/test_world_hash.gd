@@ -41,6 +41,36 @@ func test_the_rule_scalars_are_the_rules_def_ints() -> void:
 	assert_array(World.RULE_SCALARS).contains_exactly_in_any_order(rule_ints)
 
 
+## A `+` on typed constants gives an untyped Array (Godot 4.7.2), which a typed local or parameter
+## of a later kernel or test would refuse at runtime only. Every shape, scalar and HASHED/UNHASHED
+## list of World and its helpers is a literal Array[StringName].
+func test_every_shape_scalar_and_hashed_list_is_a_typed_string_name_array() -> void:
+	var checked: int = 0
+	for script: GDScript in [World, FlowCache, FlowField, SpatialGrid, FogGrid]:
+		var constants: Dictionary = script.get_script_constant_map()
+		for const_name: String in constants:
+			var is_list: bool = const_name.ends_with("_ARRAYS") or const_name.ends_with("_SCALARS")
+			if is_list or const_name == "HASHED" or const_name == "UNHASHED":
+				var list: Array = constants[const_name]
+				var label: String = "%s.%s" % [script.get_global_name(), const_name]
+				var typed: bool = list.is_typed() and list.get_typed_builtin() == TYPE_STRING_NAME
+				assert_bool(typed).override_failure_message(label).is_true()
+				checked += 1
+	assert_int(checked).is_equal(20)
+
+
+## The literal UNHASHED lists repeat the names of STATE_ARRAYS and RULE_SCALARS; this keeps the
+## repeat honest.
+func test_the_unhashed_lists_repeat_the_state_arrays_and_the_rule_scalars() -> void:
+	for pair: Array in [
+		[FlowCache.STATE_ARRAYS, FlowCache.UNHASHED],
+		[FlowField.STATE_ARRAYS, FlowField.UNHASHED],
+		[World.RULE_SCALARS, World.UNHASHED_SCALARS],
+	]:
+		for member: StringName in pair[0]:
+			assert_array(pair[1]).contains([member])
+
+
 ## One element (the last) of each row column, each hashed scalar and the stream changes its section.
 func test_each_hashed_row_array_scalar_and_the_stream_changes_its_section() -> void:
 	var base: World = _world()
@@ -174,7 +204,8 @@ func test_a_hand_built_world_and_a_scenario_world_hash_the_same_way_every_time()
 	assert_int(scenario.state_hash()).is_equal(after_setup)
 
 
-## defs_hash covers the weapon, type and rule tables and none of the match state.
+## defs_hash covers the weapon and type tables entry by entry, their ids and the rule ints, and none
+## of the match state.
 func test_defs_hash_follows_the_data_and_not_the_state() -> void:
 	var defs: int = _world().defs_hash()
 	assert_int(_world().defs_hash()).is_equal(defs)
@@ -186,10 +217,19 @@ func test_defs_hash_follows_the_data_and_not_the_state() -> void:
 	var heavier: World = _world()
 	heavier.weapon_damage[0] += 1
 	assert_int(heavier.defs_hash()).is_not_equal(defs)
-	for member: StringName in World.TYPE_ARRAYS + World.WEAPON_ARRAYS + World.RULE_SCALARS:
+	for table: StringName in World.TYPE_ARRAYS + World.WEAPON_ARRAYS:  # One entry, not the size.
+		var edited: World = _world()
+		_edit_last(edited, table)
+		assert_int(edited.defs_hash()).override_failure_message(table).is_not_equal(defs)
+	for rule: StringName in World.RULE_SCALARS:
 		var changed: World = _world()
-		_poke(changed, member)
-		assert_int(changed.defs_hash()).override_failure_message(member).is_not_equal(defs)
+		_poke(changed, rule)
+		assert_int(changed.defs_hash()).override_failure_message(rule).is_not_equal(defs)
+	for ids_name: StringName in [&"type_ids", &"weapon_ids"]:
+		var renamed: World = _world()
+		var ids: Array[StringName] = renamed.get(ids_name)
+		ids[0] = &"renamed"
+		assert_int(renamed.defs_hash()).override_failure_message(ids_name).is_not_equal(defs)
 
 
 ## controls_test with seed 1, at tick 0.
@@ -253,6 +293,15 @@ func _helpers(world: World) -> Array[Array]:
 	helpers.append([world.sep_grid, "sep_grid", SpatialGrid.HASHED, SpatialGrid.UNHASHED])
 	helpers.append([world.target_grid, "target_grid", SpatialGrid.HASHED, SpatialGrid.UNHASHED])
 	return helpers
+
+
+## Changes the last entry of the Packed array `member` of `object` and keeps its size.
+func _edit_last(object: Object, member: StringName) -> void:
+	var value: Variant = object.get(member)
+	assert_int(value.size()).override_failure_message(member).is_greater(0)
+	var last: int = value.size() - 1
+	value[last] = value[last] + ("x" if value is PackedStringArray else 1)
+	object.set(member, value)
 
 
 ## Changes `member` of `object`: an int by one, a bool flipped, a Packed array by one more entry.
