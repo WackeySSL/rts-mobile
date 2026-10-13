@@ -5,6 +5,8 @@ extends RefCounted
 ## `cost` is served; completion swaps them. ADR 0013 section 2: all state advance() changes is in
 ## Packed arrays and int members, sized once by reserve(). Padded cell = (ty + 1) * (cols + 2) +
 ## tx + 1; every method argument and result is a plain cell ty * cols + tx.
+## begin() and advance() have a C++ twin, core/flow.cpp of native/sim_kernels (ADR 0013 section 5):
+## a change to either edits both and passes tests/sim/native/test_flow_lockstep.gd.
 
 ## The cost of a cell no integration reached: rock, the padding ring, enclosed ground.
 const UNREACHED: int = 0x3FFFFFFF

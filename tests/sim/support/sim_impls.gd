@@ -1,15 +1,15 @@
 extends RefCounted
 ## The two implementations of the simulation (ADR 0013 section 3), for the tests of a module that
 ## has a native kernel: `use(world, impl)` makes a World run the GDScript phases or the C++ ones,
-## and a test loops over IMPLS. Not a test suite. P54 has no kernel yet, so the mask is 0; a port
-## PR adds its phase to EXPECTED_PHASES and its line to native/sim_kernels/src/bind/kernel_list.h.
+## and a test loops over IMPLS. Not a test suite. A port PR adds its phase to EXPECTED_PHASES and
+## its line to native/sim_kernels/src/bind/kernel_list.h; FLOW (P30n) is the first.
 
 enum Impl { GDSCRIPT = 0, NATIVE = 1 }
 
 const IMPLS: Array[int] = [Impl.GDSCRIPT, Impl.NATIVE]
 ## The SimProbe.Phase ids the library must report, one per line (SimProbe arrives with P33).
 ## The ids are fixed: FLOW 1, TARGETING 3, SEPARATION 5, INTEGRATE 6, FOG 10.
-const EXPECTED_PHASES: Array[int] = []
+const EXPECTED_PHASES: Array[int] = [1]
 
 
 ## One bit per entry of `phases` (EXPECTED_PHASES), the mask the library has to report.

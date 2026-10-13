@@ -6,10 +6,15 @@ extends RefCounted
 ## provisional reference that the next recount() overwrites. Derived state, never hashed (ADR
 ## 0007 section 8). configure() allocates every slot's arrays; nothing allocates after it, and
 ## all state advance() changes is Packed arrays, ints and FlowField members (ADR 0013 section 2).
+## run() is the FLOW phase's entry: it hands the phase to the native kernel when the World's mask
+## has its bit. recount() and advance() have the same C++ twin as FlowField (core/flow.cpp).
 
 ## WAITING: the key is set and integration starts at the slot's turn in advance(), the only call
 ## that has the costs. ACTIVE: begun, done once its field has no pending cells.
 enum Status { FREE = 0, WAITING = 1, ACTIVE = 2 }
+
+## SimProbe.Phase.FLOW, whose ids are fixed (SimProbe arrives with P33): its bit in `native_phases`.
+const PHASE_FLOW: int = 1
 
 ## Every Packed array of the cache, one entry per slot.
 const STATE_ARRAYS: Array[StringName] = [
@@ -133,6 +138,18 @@ func refs(slot: int) -> int:
 ## The field of a slot, null for a number that is no slot.
 func field(slot: int) -> FlowField:
 	return fields[slot] if slot >= 0 and slot < fields.size() else null
+
+
+## The FLOW phase (ADR 0013 section 3): recounts the references from the World's `field` column,
+## then settles at most `budget` cells and adds them to `stats[FLOW_CELLS]`. `Sim.step` passes
+## `flow_cells_per_tick`, and 0 on the ticks `MatchLoop` hashes. The kernel does the same when its
+## bit is set. No invalidate(): World.set_terrain() made it with the change.
+static func run(world: World, budget: int) -> void:
+	if ((world.native_phases >> PHASE_FLOW) & 1) == 1:
+		world.kernels.flow(world, budget)
+		return
+	world.flow.recount(world.field, world.unit_count())
+	world.stats[World.Stat.FLOW_CELLS] += world.flow.advance(world.move_cost, budget)
 
 
 ## Settles at most `budget_cells` cells and returns how many it settled. The field with the
