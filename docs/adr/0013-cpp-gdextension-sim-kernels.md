@@ -28,6 +28,10 @@ P30n; unevidenced figures are marked with the PR that re-proves them. Revision 4
 listed, and every `core/` function lands with the kernel that calls it). Michael approved
 drafting it ("ja til ADR 0013-udkast") and accepted it on 2026-10-12.
 
+Status note (2026-10-13): §2 carries two dated status notes from P26h (after the P30a and P32f
+reviews): the checked table's bool kind for FLOW's `complete`, and `FogGrid.listed`, which the
+stamp and the FOG kernel write in place with the dirty-list blocks.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -333,6 +337,12 @@ absorbs next to the C++ phases.
   phase's list and adds the names its GDScript module introduced after P54; a conditional port
   (P37n2, P41g, P42n) adds its phase's list. The name test below covers every addition with no
   new case.
+
+  Status note (2026-10-13, P26h, after the P30a review): the kinds above name only int scalars,
+  but FLOW's list also needs a **bool** kind: each slot's `complete` (`FlowField.complete`, P30a),
+  which the completion swap sets. The checked table therefore has a bool scalar kind next to the
+  int one, with the same wrong-type case in P54's boundary test. The plan's P54 and P30n rows
+  carry it.
 - **Arrays of helper objects.** `FlowCache` serves one `FlowField` per slot (P30a, P30b). A kernel
   fetches the typed `Array` of slot objects once (type and size checked like a Packed array), then
   for each slot it touches, the slot's arrays and scalars once, through the same checked table.
@@ -354,6 +364,15 @@ absorbs next to the C++ phases.
   There is no `Array` of Packed arrays. `dirty_cells(player)` keeps its contract signature and
   returns a copy of the used part of the block; only the view calls it, on the snapshot's copy
   on the main thread, never the sim. The kernel for FOG (P46n) then writes the lists in place.
+
+  Status note (2026-10-13, P26h, after the P32f review): the merged `FogGrid` (P32f) adds
+  `listed`, a `PackedByteArray` with one mark per player and cell (the layout of `visible`), so
+  a flipped cell is listed once per update. A stamp writes a flipped cell at `block + count`
+  only while its mark is 0 and then sets the mark; a cell that finds the block full sets the
+  flag and is not marked; `begin_update` clears the marks of its listed cells (O(count)) and
+  never resizes. So the stamp writes the block, the count **and the `listed` marks**, and the FOG
+  kernel (P46n) writes `listed` in place with the lists; FOG's list in the checked table holds
+  it. The plan's P46n and P54 rows carry it.
 - **Scalars and counters.** A kernel reads scalars with `get` on entry and writes them with `set`
   on exit, or returns them. Every name it gets or sets comes from the same checked table in
   `world_access.h`, because `Object::set` on an unknown name fails silently. `stats` is an array,
