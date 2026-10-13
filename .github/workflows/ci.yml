@@ -52,6 +52,11 @@ jobs:
       - name: Install gdtoolkit
         run: pipx install "gdtoolkit==${GDTOOLKIT_VERSION}"
 
+      # Offline, against stub tools: the seed, the library check, build-native.sh's exit codes and ELF
+      # checks and the C++ format check (ADR 0013 sections 8-10).
+      - name: Offline test of the native scripts
+        run: bash scripts/ci/test-native-scripts.sh
+
       # verify.sh builds the C++ kernels first and checks their format last (ADR 0013 section 10).
       - name: Install the native toolchain (SCons, clang-format, binutils)
         run: |
