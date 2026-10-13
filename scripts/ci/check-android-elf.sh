@@ -9,8 +9,10 @@
 #             libraries or libc++_shared.so (required when LIBRARY uses a libc++ symbol); the entry symbol
 #             (default ENTRY_SYMBOL of build-native.sh) exported; every PT_LOAD p_align at least 0x4000;
 #             PT_GNU_RELRO ending on a 0x4000 boundary (Google's check); every undefined libc++ symbol
-#             (a C++ mangled _Z... name, or a libc++abi __cxa_... or __gxx_... helper that bionic's libc
-#             does not define) defined by LIBCXX.
+#             defined by LIBCXX. That is a C++ mangled _Z... name, a libc++abi __cxa_... or __gxx_... helper
+#             that bionic's libc does not define, __dynamic_cast (godot-cpp's Wrapped uses dynamic_cast) and
+#             __emutls_get_address (emulated TLS below API 29): the names the template's libc++_shared.so
+#             exports besides C++ mangled ones, less its compiler-rt helper __muloti4, which is not counted.
 #   describe  prints the .note.android.ident strings and the PT_LOAD alignment of each FILE.
 # Env:   READELF, NM override the tools; default llvm-readelf and llvm-nm of $ANDROID_NDK_ROOT, else binutils.
 # Exit:  0 ok, 1 a check failed, 2 usage error, 3 tool missing.
@@ -110,10 +112,15 @@ done
 defined="$("$nm_bin" -D --defined-only "$lib" 2>&1)" || die 1 "$nm_bin -D failed on $name: $defined"
 awk -v e="$entry" '$2 == "T" && $3 == e { found = 1 } END { exit !found }' <<<"$defined" || problem "does not export the entry symbol $entry"
 
-# Undefined libc++ symbols against what the APK's libc++_shared.so defines. Weak references (w) are skipped,
-# and the version suffix nm prints on bionic's symbols (__cxa_atexit@LIBC, in the real libraries) is cut.
-wanted="$("$nm_bin" -D --undefined-only "$lib" 2>&1 | awk '{ sub(/@.*/, "", $2) } $1 == "U" && ($2 ~ /^_Z/ || ($2 ~ /^(__cxa_|__gxx_)/ && $2 !~ /^__cxa_(atexit|finalize|thread_atexit_impl)$/)) { print $2 }' | LC_ALL=C sort -u)"
-have="$("$nm_bin" -D --defined-only "$libcxx" 2>&1 | awk '{ print $3 }' | LC_ALL=C sort -u)"
+# Undefined libc++ symbols against what the APK's libc++_shared.so defines. Weak references (w) are skipped, and
+# the version suffix nm prints (__cxa_atexit@LIBC on bionic's symbols in the real libraries) is cut on both sides.
+undefined="$("$nm_bin" -D --undefined-only "$lib" 2>&1)" || die 1 "$nm_bin -D failed on $name: $undefined"
+cxx_defined="$("$nm_bin" -D --defined-only "$libcxx" 2>&1)" || die 1 "$nm_bin -D failed on $(basename "$libcxx"): $cxx_defined"
+wanted="$(awk '
+  { sub(/@.*/, "", $2) }
+  $1 == "U" && ($2 ~ /^(_Z|__gxx_)/ || $2 == "__dynamic_cast" || $2 == "__emutls_get_address" ||
+    ($2 ~ /^__cxa_/ && $2 !~ /^__cxa_(atexit|finalize|thread_atexit_impl)$/)) { print $2 }' <<<"$undefined" | LC_ALL=C sort -u)"
+have="$(awk '{ sub(/@.*/, "", $3); print $3 }' <<<"$cxx_defined" | LC_ALL=C sort -u)"
 missing="$(grep -vxF -f <(printf '%s\n' "$have") <<<"$wanted" || true)"
 [ -z "$missing" ] || problem "uses $(grep -c . <<<"$missing") libc++ symbol(s) that $(basename "$libcxx") does not define, first: $(head -n 3 <<<"$missing" | tr '\n' ' ')"
 if [ -n "$wanted" ]; then

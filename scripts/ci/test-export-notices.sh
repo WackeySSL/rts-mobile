@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# Offline test of the licence notices of export-web.sh and export-android.sh (P26l, ADR 0005
-# section 5). It runs both real scripts in a temp copy of scripts/ and docs/licenses/, against stub
-# godot, java, apksigner and aapt2 on PATH, so no Godot, Android SDK, token or network is touched.
-# It checks that each script writes a THIRD_PARTY_LICENSES.txt that ends with the unchanged libc++
-# LICENSE.TXT, that the two notices agree line for line after their header line, that the tag they
-# name and the SHA-256 of the licence file are the ones docs/licenses/llvm-libc++/README.md records,
-# and that each script exits 1 when the libc++ file is missing or empty. ci.yml runs it in
-# android-debug-apk, next to the offline test of publish-dev-release.sh.
+# Offline test of the licence notices and the packed-library checks of export-web.sh and export-android.sh
+# (P26l, P55a2, ADR 0005 section 5, ADR 0013 sections 10 and 11). It runs both real scripts in a temp copy of
+# scripts/ and docs/licenses/, against stub godot, java, apksigner, aapt2, readelf and nm on PATH, so no Godot,
+# Android SDK, token or network is touched. It checks that each script writes a THIRD_PARTY_LICENSES.txt that
+# ends with the unchanged libc++ LICENSE.TXT and then the godot-cpp LICENSE.md, that the two notices agree line
+# for line after their header line, that the tags they name and the SHA-256 of the libc++ licence are the ones
+# the README and build-native.sh record, and that each script exits 1 when either licence file is missing or
+# empty. For export-android.sh it checks that the APK's library holds the built bytes, that libc++_shared.so is
+# required, that a failing ELF check fails the export and, from the stubs' log, which files the checks and the
+# description ran on. ci.yml runs it in android-debug-apk, next to the offline test of publish-dev-release.sh.
 # Needs: bash, zip, unzip, strings (binutils), sha256sum.
 # Usage: bash scripts/ci/test-export-notices.sh      Exit: 0 all cases pass, 1 a case failed.
 set -euo pipefail
@@ -68,25 +70,42 @@ echo remap >"$root/apk/assets/scenes/main.tscn.remap"
 native="libsim_kernels.android.template_debug.arm64.so"
 echo kernels >"$root/apk/lib/arm64-v8a/$native"
 echo libcxx >"$root/apk/lib/arm64-v8a/libc++_shared.so"
-# readelf and nm answer as if every file were a good arm64 library (scripts/ci/test-android-elf.sh tests the
-# checks on real ELF files); STUB_ALIGN sets the PT_LOAD alignment they report.
+# readelf and nm answer by the content of the file they are given (scripts/ci/test-android-elf.sh tests the checks
+# on real ELF files): "kernels" is a good arm64 library whose PT_LOAD alignment STUB_ALIGN sets, "libcxx" defines
+# what the kernels library imports, and any other file (the template's "so") has 16 KB alignment and no symbols.
+# Each call is logged to STUB_LOG with that content, so the test sees which file a tool was asked about.
 cat >"$root/bin/readelf" <<'STUB'
 #!/usr/bin/env bash
-case "$1" in
-  -h) printf '  Machine:   AArch64\n  Type:      DYN (Shared object file)\n' ;;
-  -lW) printf '  LOAD      0x0 0x0 0x0 0x10 0x10 R %s\n  GNU_RELRO 0x0 0xfed8 0xfed8 0x128 0x128 R 0x1\n' "$STUB_ALIGN" ;;
-  -d) echo ' 0x01 (NEEDED)   Shared library: [libc++_shared.so]' ;;
+file="${!#}"
+[ -f "$file" ] || { echo "readelf: Error: '$file': No such file" >&2; exit 1; }
+what="$(cat "$file")"
+echo "readelf $* <$what>" >>"$STUB_LOG"
+case "$1:$what" in
+  -h:kernels) printf '  Machine:   AArch64\n  Type:      DYN (Shared object file)\n' ;;
+  -d:kernels) echo ' 0x01 (NEEDED)   Shared library: [libc++_shared.so]' ;;
+  -lW:kernels) printf '  LOAD      0x0 0x0 0x0 0x10 0x10 R %s\n  GNU_RELRO 0x0 0xfed8 0xfed8 0x128 0x128 R 0x1\n' "$STUB_ALIGN" ;;
+  -lW:*) printf '  LOAD      0x0 0x0 0x0 0x10 0x10 R 0x4000\n' ;;
+  -p:so | -p:libcxx) printf "String dump of section '.note.android.ident':\n  [     0]  Android\n  [     8]  r29\n" ;;
 esac
 STUB
 cat >"$root/bin/nm" <<'STUB'
 #!/usr/bin/env bash
-case "$*" in *--undefined-only*) ;; *) echo "0000000000001000 T sim_kernels_library_init" ;; esac
+file="${!#}"
+[ -f "$file" ] || { echo "nm: '$file': No such file" >&2; exit 1; }
+what="$(cat "$file")"
+echo "nm $* <$what>" >>"$STUB_LOG"
+case "$*:$what" in
+  *--defined-only*:kernels) echo "0000000000001000 T sim_kernels_library_init" ;;
+  *--defined-only*:libcxx) echo "0000000000002000 T _ZdlPv" ;;
+  *--undefined-only*:kernels) echo "                 U _ZdlPv" ;;
+esac
 STUB
 chmod +x "$root/bin/readelf" "$root/bin/nm"
 (cd "$root/apk" && zip -q -r -D "$root/stub.apk" lib assets)
-variant() { # NAME [FILE]: stub.apk as NAME.apk, with FILE (under apk/) removed, or with the kernels library changed
+variant() { # NAME [FILE]: stub.apk as NAME.apk, with FILE (under apk/) removed, or with other bytes in the kernels library
   rm -rf "$root/v" && cp -R "$root/apk" "$root/v"
-  if [ -n "${2:-}" ]; then rm "$root/v/$2"; else echo other >"$root/v/lib/arm64-v8a/$native"; fi
+  # "kernelz" is as long as "kernels": a size-only comparison would pass it.
+  if [ -n "${2:-}" ]; then rm "$root/v/$2"; else echo kernelz >"$root/v/lib/arm64-v8a/$native"; fi
   (cd "$root/v" && zip -q -r -D "$root/$1.apk" lib assets)
 }
 variant badbytes
@@ -116,9 +135,10 @@ tree() {
 # run NAME web|android: runs the export script in the tree NAME and sets rc and out.
 run() {
   rc=0
+  : >"$root/$1.stub.log"
   out="$(cd "$root/$1" && env -i PATH="$root/bin:$PATH" HOME="$root/home" TMPDIR="$root/tmp" GODOT="$root/bin/godot" \
     JAVA_HOME="$root/jdk" ANDROID_HOME="$root/sdk" STUB_APK="${STUB_APK:-$root/stub.apk}" STUB_ALIGN="${STUB_ALIGN:-0x4000}" \
-    STUB_PCK_EXTRA="${STUB_PCK_EXTRA:-}" \
+    STUB_PCK_EXTRA="${STUB_PCK_EXTRA:-}" STUB_LOG="$root/$1.stub.log" \
     GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$root/keystore" GODOT_ANDROID_KEYSTORE_DEBUG_USER=u \
     GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=p bash "scripts/export-$2.sh" 2>&1)" || rc=$?
 }
@@ -135,6 +155,7 @@ size="$(wc -c <"$license" | tr -d ' ')"
 sha="$(sha256sum "$license" | cut -d' ' -f1)"
 for kind in web android; do
   run ok "$kind"
+  if [ "$kind" = android ]; then android_out="$out"; fi
   notice="$root/ok/build/$kind/THIRD_PARTY_LICENSES.txt"
   if [ "$rc" != 0 ] || [ ! -s "$notice" ]; then
     fail "$kind: the export did not run through (exit $rc): $(tail -n 3 <<<"$out")"
@@ -142,7 +163,7 @@ for kind in web android; do
   fi
   pass "$kind: the export runs through with stub tools"
   # The godot-cpp section ends the notice (a blank line, a rule, the title line and a rule come before its text).
-  title="$(grep -n '^godot-cpp .*: LICENSE\.md$' "$notice" | cut -d: -f1)"
+  title="$(grep -n '^godot-cpp .*: LICENSE\.md$' "$notice" | cut -d: -f1 || true)"
   if [ -n "$title" ] && head -n $((title - 3)) "$notice" | tail -c "$size" | cmp -s - "$license"; then
     pass "$kind: the libc++ LICENSE.TXT, unchanged, ends the notice before the godot-cpp section"
   else
@@ -177,6 +198,29 @@ if cmp -s <(tail -n +2 "$root/ok/build/web/THIRD_PARTY_LICENSES.txt") \
 else
   fail "the web and Android notices differ after their header line"
 fi
+
+# (2b) ADR 0013 section 10: the checks ran on the right files. The stubs logged each call with the content of its
+# file (kernels, libcxx or so): the library as the APK packs it (never the built copy) first and the APK's
+# libc++_shared.so second, and the template's libraries were described, with their notes in the export's output.
+packed='/export-android-native\.[^/]*/lib/arm64-v8a'
+for call in "readelf -h .*$packed/$native <kernels>" "readelf -lW .*$packed/$native <kernels>" \
+  "readelf -d .*$packed/$native <kernels>" "nm -D --defined-only .*$packed/$native <kernels>" \
+  "nm -D --undefined-only .*$packed/$native <kernels>" "nm -D --defined-only .*$packed/libc\+\+_shared\.so <libcxx>" \
+  "readelf -p .note.android.ident .*$packed/libgodot_android\.so <so>" "readelf -p .note.android.ident .*$packed/libc\+\+_shared\.so <libcxx>"; do
+  if grep -Eq -- "^$call\$" "$root/ok.stub.log"; then
+    base="${call##*/}"
+    pass "android: the stubs were asked '${call%% .*}' about ${base//\\/}"
+  else
+    fail "android: the stubs were not asked '$call' (log: $(tr '\n' ';' <"$root/ok.stub.log"))"
+  fi
+done
+for name in libgodot_android.so libc++_shared.so; do
+  if grep -Fq "check-android-elf: $name: .note.android.ident: Android r29 ; PT_LOAD align: 0x4000" <<<"$android_out"; then
+    pass "android: the export prints the .note.android.ident and PT_LOAD alignment of the template's $name"
+  else
+    fail "android: the export output lacks the description of the template's $name"
+  fi
+done
 
 # (3) A missing or empty libc++ or godot-cpp licence file stops each script with exit 1 and a message that names it.
 for kind in web android; do

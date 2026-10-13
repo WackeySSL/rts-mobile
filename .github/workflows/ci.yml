@@ -206,8 +206,9 @@ jobs:
         run: bash scripts/ci/test-publish-dev-release.sh
 
       # Both export scripts write a THIRD_PARTY_LICENSES.txt. This runs the real scripts against stub
-      # tools, offline, and checks that each appends the LLVM libc++ licence with the same text
-      # (ADR 0005 section 5), before the job spends time on a real export.
+      # tools, offline, and checks that each appends the LLVM libc++ and godot-cpp licences with the same
+      # text (ADR 0005 section 5, ADR 0013 section 11), and that export-android.sh runs its packed-library
+      # checks (readelf and nm stubs) on the right files, before the job spends time on a real export.
       - name: Offline test of the export licence notices
         run: bash scripts/ci/test-export-notices.sh
 
@@ -231,7 +232,8 @@ jobs:
           sudo apt-get install -y --no-install-recommends binutils
 
       # The ELF and libc++ symbol checks that export-android.sh runs on the packed library (ADR 0013 section 10),
-      # offline on gcc-built fixtures, once with binutils and once with the llvm tools of the NDK installed above.
+      # offline on gcc-built fixtures, once with binutils and once with the llvm tools of the NDK installed above
+      # (the test fails, not skips, when CI has none).
       - name: Offline test of the packed-library ELF checks
         run: bash scripts/ci/test-android-elf.sh
 
