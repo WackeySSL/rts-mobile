@@ -152,7 +152,8 @@ const RULE_SCALARS: Array[StringName] = [
 	&"max_projectiles",
 	&"max_rows",
 ]
-## The other int properties: the map size, the view's rows_version, the map digest cache (it
+## The other int properties: the map size, the view's rows_version, native_phases (which
+## implementation runs a phase is never state, ADR 0013 section 3), the map digest cache (it
 ## follows from map_version and the grid) and the rule ints, which repeat RULE_SCALARS (a literal,
 ## because `+` on typed constants gives an untyped Array; a test pins the repeat). None is in the
 ## state hash.
@@ -162,6 +163,7 @@ const UNHASHED_SCALARS: Array[StringName] = [
 	&"map_cols",
 	&"map_rows",
 	&"rows_version",
+	&"native_phases",
 	&"_map_digest",
 	&"_map_digest_version",
 	&"retarget_period_ticks",
@@ -180,6 +182,9 @@ const UNHASHED_SCALARS: Array[StringName] = [
 	&"max_projectiles",
 	&"max_rows"
 ]
+## The members that are not state (ADR 0013 section 3): the coverage test, the state hash and the
+## reachability walk skip exactly these. `kernels` is the native kernels object, or null.
+const NON_STATE_MEMBERS: Array[StringName] = [&"kernels"]
 var tick: int = 0
 ## Map size in milli-tiles.
 var map_w: int = 0
@@ -209,6 +214,12 @@ var target_grid: SpatialGrid = SpatialGrid.new()
 ## ADR 0007 section 2's one bool check. A bool is neither an int nor a Packed*Array, so no shape
 ## list holds it and the coverage walk skips it. Not hashed: it follows from the helpers.
 var prepared: bool = false
+## The native kernels (an untyped Object, so no script names the class; null = the GDScript phases)
+## and one bit per SimProbe.Phase that runs in them. A phase entry starts with
+## `if ((world.native_phases >> SimProbe.Phase.X) & 1) == 1: world.kernels.x(world); return`.
+## Neither is hashed (ADR 0013 section 3); callers attach both after prepare().
+var kernels: Object = null
+var native_phases: int = 0
 
 ## Rule ints, copied from RulesDef under the same names by _init(). The sim reads these and never
 ## the Resource.

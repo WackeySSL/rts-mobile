@@ -14,8 +14,8 @@ extends GdUnitTestSuite
 ## headers pull in <cmath> and <atomic>, so the words are banned too, not only the includes), no
 ## Packed*Array parameter by value or reference (the ADR bans those; a pointer is in place and
 ## legal), and reinterpret_cast or const_cast only in world_access.h. Both layers: no static
-## Godot or std object (const or not: it is built lazily on the worker). Both scans pass while
-## core/ is absent (P54 adds it, and its PR adds an assertion that core/ is seen). Every banned
+## Godot or std object (const or not: it is built lazily on the worker). core/ exists since P54,
+## which asserts that the scan sees it and that a view in one file guards another. Every banned
 ## word is probed and counted, and the ADR-named bans are pinned by hand (PINNED) apart from the
 ## word lists, so deleting a word fails; every rule has a flagged and a legal fixture, and a
 ## fixture of several files has a line `---` between them. A blind spot, left to review: a global
@@ -24,6 +24,8 @@ extends GdUnitTestSuite
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const NATIVE_DIR: String = "res://native/sim_kernels/src"
 const COMMENT_FIXTURE: String = "res://tests/project/fixtures/native_comments_and_strings.txt"
+## A tree of two files for the tree scan: core/view.h declares a view, core/use.cpp reads it.
+const TREE_FIXTURE: String = "res://tests/project/fixtures/native_tree"
 const CORE: String = "core"
 const BIND: String = "bind"
 const EXTENSIONS: Array[String] = ["cpp", "h", "hpp"]
@@ -372,6 +374,20 @@ func test_core_sources_are_pure() -> void:
 	assert_array(_scan_tree(CORE)).is_empty()
 
 
+## The scan above passes on an unreadable folder, so core/ must be seen (P54 added it).
+func test_the_core_scan_sees_core() -> void:
+	assert_array(_sources(CORE)).contains([NATIVE_DIR + "/core/world_status.h"])
+
+
+## The pointers of a view in one file guard every file, through `_scan_tree`, the scan that the
+## core and bind tests use (a scan file by file finds nothing here).
+func test_a_view_pointer_read_in_another_file_is_flagged_by_the_tree_scan() -> void:
+	var report: String = (
+		TREE_FIXTURE + "/core/use.cpp:2: raw_pointer: return w.pos_x[0] - w.pos_x[1];"
+	)
+	assert_array(_scan_tree(CORE, TREE_FIXTURE)).contains_exactly([report])
+
+
 func test_bind_sources_follow_the_boundary_rules() -> void:
 	# The skeleton must be seen, or the scan below could pass on an unreadable folder.
 	assert_array(_sources(BIND)).contains(
@@ -486,17 +502,17 @@ func _misjudged(entries: Array, exact: bool) -> Array[String]:
 	return wrong
 
 
-func _sources(layer: String) -> Array[String]:
+func _sources(layer: String, root: String = NATIVE_DIR) -> Array[String]:
 	var found: Array[String] = []
-	for path: String in FileScan.list_files(NATIVE_DIR.path_join(layer), ""):
+	for path: String in FileScan.list_files(root.path_join(layer), ""):
 		if path.get_extension() in EXTENSIONS:
 			found.append(path)
 	return found
 
 
-func _scan_tree(layer: String) -> Array[String]:
+func _scan_tree(layer: String, root: String = NATIVE_DIR) -> Array[String]:
 	var files: Dictionary = {}
-	for path: String in _sources(layer):
+	for path: String in _sources(layer, root):
 		files[path] = FileAccess.get_file_as_string(path)
 	return _scan_files(layer, files)
 

@@ -136,6 +136,19 @@ func test_changing_an_unhashed_member_leaves_the_hash_unchanged() -> void:
 				assert_int(world.state_hash()).override_failure_message(label).is_equal(baseline)
 
 
+## Which implementation runs a phase is never state (ADR 0013 section 3): attaching kernels and a
+## phase mask changes no section of the hash, and the hash walk reads only its lists.
+func test_attaching_kernels_and_a_phase_mask_changes_no_section_of_the_hash() -> void:
+	var world: World = _world()
+	var baseline: int = world.state_hash()
+	var parts: PackedInt64Array = world.hash_parts()
+	world.kernels = RefCounted.new()
+	world.native_phases = 0x7FF
+	assert_int(world.state_hash()).is_equal(baseline)
+	assert_array(world.hash_parts()).is_equal(parts)
+	assert_bool(World.UNHASHED_SCALARS.has(&"native_phases")).is_true()
+
+
 func test_set_terrain_changes_the_header_and_the_map_digest() -> void:
 	var world: World = _arena()
 	world.set_terrain(world.terrain.find(0), 2)
