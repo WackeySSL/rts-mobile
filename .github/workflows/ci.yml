@@ -67,10 +67,14 @@ jobs:
           pipx install "clang-format==${CLANG_FORMAT_VERSION}"
           sudo apt-get install -y --no-install-recommends binutils
 
-      # The native caches (ADR 0013 section 8). build-native.sh owns the pins and prints the key.
+      # The native caches (ADR 0013 section 8). build-native.sh owns the pins and prints the key. The key
+      # is assigned first, so a failing build-native.sh fails this step with its own message (inside
+      # echo's argument it would write an empty key and fail one step later, in actions/cache).
       - name: Read the native cache key
         id: native-key
-        run: echo "key=$(bash scripts/build-native.sh --print-cache-key)" >> "$GITHUB_OUTPUT"
+        run: |
+          key="$(bash scripts/build-native.sh --print-cache-key)"
+          echo "key=$key" >> "$GITHUB_OUTPUT"
 
       - name: Cache godot-cpp and the SCons object cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -155,7 +159,9 @@ jobs:
 
       - name: Read the native cache key
         id: native-key
-        run: echo "key=$(bash scripts/build-native.sh --compiler clang --optimize speed --print-cache-key)" >> "$GITHUB_OUTPUT"
+        run: |
+          key="$(bash scripts/build-native.sh --compiler clang --optimize speed --print-cache-key)"
+          echo "key=$key" >> "$GITHUB_OUTPUT"
 
       - name: Cache godot-cpp and the SCons object cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -168,6 +174,10 @@ jobs:
       - name: Build the library (clang, optimize=speed)
         run: bash scripts/build-native.sh --compiler clang --optimize speed
 
+      # Everything under tests/sim/native runs, sanitizer/ included, while the check prunes it: P57 decides
+      # how its dump step stays out of the gdUnit4 runs (here and in verify.sh), once that step exists.
+      # P51 adds the golden hashes to this one call (-a res://tests/perf/test_golden_hashes.gd): the check
+      # reads one results.xml, and run-tests.sh deletes the report of an earlier call.
       - name: Run the native suites (gdUnit4), when discovery finds one
         run: |
           if [ -n "$(bash scripts/ci/check-native-tests.sh --list)" ]; then bash scripts/run-tests.sh -a res://tests/sim/native; fi

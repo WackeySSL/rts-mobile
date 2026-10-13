@@ -161,14 +161,30 @@ check "build: clang at speed" 0 "(clang18.1.3, optimize=speed)"
 assert "build: clang at speed passes use_llvm=yes and optimize=speed" grep -Eq 'use_llvm=yes.*optimize=speed' "$root/bn/scons.args"
 run bn STUB_CLANGV=nonsense bash scripts/build-native.sh --compiler clang
 check "build: clang without a readable version" 3 "clang++ reports no version"
-rm "$root/bn/scons.args"
-run bn bash scripts/build-native.sh --print-cache-key
-check "build: cache key (platform, arch, target, compiler version, godot-cpp SHA, SCons)" 0 "native-linux-x86_64-template_debug-gcc13.3.0-godotcpp-$sha-scons4.9.1"
-assert "build: --print-cache-key builds nothing" test ! -e "$root/bn/scons.args"
-run bn bash scripts/build-native.sh --compiler clang --optimize speed --target template_release --print-cache-key
-check "build: cache key, clang at speed, release" 0 "native-linux-x86_64-template_release-clang18.1.3-speed-godotcpp-$sha-scons4.9.1"
-run bn ANDROID_NDK_ROOT="$ndk" bash scripts/build-native.sh --platform android --print-cache-key
-check "build: cache key, android" 0 "native-android-arm64-template_debug-ndk28.1.13356709-godotcpp-$sha-scons4.9.1"
+# --print-cache-key: ci.yml writes its stdout to $GITHUB_OUTPUT, so stdout holds the key alone (one line, the
+# info line goes to stderr), printed before the godot-cpp fetch (the cache restores it) and before the build.
+# The tree has no native/godot-cpp: a fetch would create it, and the build would write scons.args.
+tree bk
+rmdir "$root/bk/native/godot-cpp"
+key_is() { # name, wanted key, ENV... -- script args: exit 0 and exactly the key on stdout
+  local name="$1" want="$2"
+  shift 2
+  rc=0
+  key_out="$(cd "$root/bk" && env -i PATH="$root/bin:$PATH" HOME="$root" TMPDIR="$root/tmp" "$@" 2>/dev/null)" || rc=$?
+  assert "$name" test "$rc:$key_out" = "0:$want"
+}
+key_is "build: cache key (platform, arch, target, compiler version, godot-cpp SHA, SCons) alone on stdout" \
+  "native-linux-x86_64-template_debug-gcc13.3.0-godotcpp-$sha-scons4.9.1" bash scripts/build-native.sh --print-cache-key
+key_is "build: cache key, clang at speed, release" \
+  "native-linux-x86_64-template_release-clang18.1.3-speed-godotcpp-$sha-scons4.9.1" \
+  bash scripts/build-native.sh --compiler clang --optimize speed --target template_release --print-cache-key
+key_is "build: cache key, android (the NDK installed first)" \
+  "native-android-arm64-template_debug-ndk28.1.13356709-godotcpp-$sha-scons4.9.1" \
+  ANDROID_NDK_ROOT="$ndk" bash scripts/build-native.sh --platform android --print-cache-key
+assert "build: --print-cache-key fetches no godot-cpp" test ! -e "$root/bk/native/godot-cpp"
+assert "build: --print-cache-key builds nothing" test ! -e "$root/bk/scons.args"
+run bk bash scripts/build-native.sh --platform android --print-cache-key
+check "build: cache key, android without the NDK installed" 3 "ANDROID_NDK_ROOT is not set"
 run bn bash scripts/build-native.sh --platform android --arch arm64
 check "build: android without ANDROID_NDK_ROOT" 3 "ANDROID_NDK_ROOT is not set"
 run bn ANDROID_NDK_ROOT="$root/sdk/ndk/27.0.0" bash scripts/build-native.sh --platform android --arch arm64
@@ -203,10 +219,12 @@ run cf bash scripts/ci/check-cpp-format.sh
 check "format: no C++ files" 1 "no C++ files"
 
 # (4b) check-native-tests.sh (P55): suites are discovered, not listed. `suite NAME CASES [COUNTER set to 1]
-# [CHILD TAG of the first case]` writes a gdUnit4 suite into the fixture results.xml.
+# [CHILD TAG of the first case] [PACKAGE]` writes a gdUnit4 suite into the fixture results.xml; the package
+# is the suite file's folder, which for test_b is sub/ and for test_golden_hashes tests/perf.
 suite() {
-  local i c='failures="0" errors="0" skipped="0"'
-  printf '<testsuite name="%s" %s>\n' "$1" "${c/${3:-x}=\"0\"/${3:-x}=\"1\"}"
+  local i c='failures="0" errors="0" skipped="0"' pkg=tests/sim/native
+  case "$1" in test_b) pkg=$pkg/sub ;; test_golden_hashes) pkg=tests/perf ;; esac
+  printf '<testsuite name="%s" package="%s" %s>\n' "$1" "${5:-$pkg}" "${c/${3:-x}=\"0\"/${3:-x}=\"1\"}"
   for ((i = 1; i <= $2; i++)); do printf '<testcase name="c%s">%s</testcase>\n' "$i" "$([ "$i" = 1 ] && [ -n "${4:-}" ] && echo "<$4/>")"; done
   echo '</testsuite>'
 }
@@ -221,9 +239,20 @@ nt
 check "natives: both discovered suites ran (the sanitizer one is not required)" 0 "OK 2 suites"
 run nt bash scripts/ci/check-native-tests.sh --list
 assert "natives: --list names the two suites, not the sanitizer's, a helper or a .uid" test "$out" = "tests/sim/native/sub/test_b.gd"$'\n'"tests/sim/native/test_a.gd"
+mkdir -p "$root/nt/reports/gdunit/report_1"
+cp "$root/nt/r.xml" "$root/nt/reports/gdunit/report_1/results.xml"
+run nt bash scripts/ci/check-native-tests.sh
+check "natives: results.xml defaults to reports/gdunit/report_1 (run-tests.sh writes it there)" 0 "OK 2 suites"
+rm -r "$root/nt/reports"
 suite test_a 2 | xml
 nt
 check "natives: a discovered suite missing from results.xml" 1 "test_b: found 0 times"
+{ suite test_a 2; suite test_b 1 "" "" tests/sim/native; } | xml
+nt
+check "natives: a suite found only in another folder is not that suite" 1 "test_b: found 0 times in results.xml in tests/sim/native/sub"
+{ suite test_a 2; suite test_b 1; suite test_a 1 "" "" tests/sim; } | xml
+nt
+check "natives: a suite elsewhere with the same base name is not a second one" 0 "OK 2 suites"
 { suite test_a 2; suite test_b 0; } | xml
 nt
 check "natives: a suite with zero cases" 1 "test_b: no cases ran"
@@ -268,6 +297,8 @@ check "natives: no suites but a --require suite needs a results.xml" 4 "is missi
 mkdir -p "$root/nt/native/sim_kernels/src/bind" && touch "$root/nt/native/sim_kernels/src/bind/kernel_list.h"
 nt
 check "natives: no suites with kernel_list.h (the floor)" 1 "kernel_list.h exists"
+nt --require test_golden_hashes
+check "natives: the floor holds with a --require suite too" 1 "kernel_list.h exists"
 
 # (5) verify.sh builds first, seeds before the import, tests after it and checks the C++ format last.
 prev=0

@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # Proves from gdUnit4's results.xml that the native suites ran and passed (ADR 0013 section 10). It holds
 # no list: every tests/sim/native/**/test_*.gd outside sanitizer/ is required, exactly once in results.xml
-# under its base name, with a case and no failure, error or skip. --require <suite> adds a suite elsewhere
-# (test_golden_hashes). The floor: once native/sim_kernels/src/bind/kernel_list.h exists (P54), zero
-# suites fails; before it, zero suites and no --require print "no native suites yet (before P54)" and
-# pass, with no results.xml needed.
+# under its base name and its folder (gdUnit4's package), with a case and no failure, error or skip, so a
+# suite elsewhere with the same base name is not a second one. --require <suite> adds a suite elsewhere
+# (test_golden_hashes) by name alone. The floor: once native/sim_kernels/src/bind/kernel_list.h exists
+# (P54), zero suites fails; before it, zero suites and no --require print "no native suites yet (before
+# P54)" and pass, with no results.xml needed.
+# One results.xml: run-tests.sh deletes reports/gdunit on every call, so a --require suite must run in the
+# same run-tests.sh call as the native suites (P51: add -a res://tests/perf/test_golden_hashes.gd to it).
 # Usage: bash scripts/ci/check-native-tests.sh [--require <suite>]... [--list] [results.xml]
 #   results.xml defaults to reports/gdunit/report_1/results.xml; --list prints the discovered suite files.
 # Env:   PYTHON=<binary> (default: python3). Run it after run-tests.sh, never inside verify.sh.
@@ -59,7 +62,8 @@ names=()
 for file in ${files[@]+"${files[@]}"}; do names+=("$(basename "$file" .gd)"); done
 dups="$(printf '%s\n' ${names[@]+"${names[@]}"} | LC_ALL=C sort | uniq -d)"
 [ -z "$dups" ] || die 1 "FAIL two suite files share the base name $dups, which names the suite in results.xml"
-"$PYTHON" -I - "$results" ${names[@]+"${names[@]}"} ${required[@]+"${required[@]}"} <<'PY'
+"$PYTHON" -I - "$results" ${files[@]+"${files[@]}"} -- ${required[@]+"${required[@]}"} <<'PY'
+import os
 import sys
 import xml.etree.ElementTree as ET
 
@@ -69,11 +73,19 @@ except (ET.ParseError, OSError) as exc:
     print("check-native-tests: %s is not readable XML: %s" % (sys.argv[1], exc), file=sys.stderr)
     sys.exit(4)
 problems = []
-names = list(dict.fromkeys(sys.argv[2:]))
-for name in names:
-    found = [s for s in root.iter("testsuite") if s.get("name") == name]
+split = sys.argv.index("--")
+# (suite name, package): a discovered file is its base name in its folder, a --require suite its name alone.
+wanted = {}
+for path in sys.argv[2:split]:
+    wanted[(os.path.basename(path)[:-3], os.path.dirname(path))] = True
+for name in sys.argv[split + 1 :]:
+    if not any(n == name for n, _ in wanted):
+        wanted[(name, None)] = True
+for name, package in wanted:
+    found = [s for s in root.iter("testsuite") if s.get("name") == name and package in (None, s.get("package"))]
     if len(found) != 1:
-        problems.append("%s: found %d times in results.xml, want once" % (name, len(found)))
+        where = " in %s" % package if package else ""
+        problems.append("%s: found %d times in results.xml%s, want once" % (name, len(found), where))
         continue
     cases = list(found[0].iter("testcase"))
     counts = {a: found[0].get(a, "0") for a in ("failures", "errors", "skipped")}
@@ -88,5 +100,5 @@ for line in problems:
     print("check-native-tests: FAIL " + line, file=sys.stderr)
 if problems:
     sys.exit(1)
-print("check-native-tests: OK %d suites" % len(names))
+print("check-native-tests: OK %d suites" % len(wanted))
 PY

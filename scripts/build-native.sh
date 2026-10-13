@@ -12,7 +12,9 @@
 #   --compiler clang adds use_llvm=yes (the native-clang CI job; the default gcc is the host g++, and android
 #   always uses the NDK's clang). --optimize speed adds optimize=speed (-O3; template_debug is -O2 without it).
 #   --print-cache-key prints the CI cache key (ADR 0013 section 8: platform, arch, target, compiler version,
-#   optimize, godot-cpp SHA, SCons version) and exits 0 before the fetch and the build.
+#   optimize, godot-cpp SHA, SCons version) alone on stdout and exits 0 before the fetch and the build.
+#   It checks the toolchain first, so android needs the NDK installed already: the key serves the
+#   godot-cpp and SCons cache after install-ndk.sh, never a cache of the NDK itself (key that on NDK_VERSION).
 # Env:   SCONS=<binary> (default: scons; must be 4.9.1), SCONS_CACHE=<folder> (godot-cpp's CacheDir),
 #        ANDROID_NDK_ROOT=<NDK folder> (android; must be <sdk>/ndk/28.1.13356709, the layout that
 #        sdkmanager makes and that godot-cpp's tools/android.py reads as $ANDROID_HOME/ndk/<version>).
