@@ -15,7 +15,8 @@
 #        the same notice text, so the two stay identical (ADR 0005 section 5).
 # Exit:  0 ok
 #        1 export failed, an error in this run's log, an artifact missing or empty, wasm of
-#          50 MiB or more, threads on, the dev_menu custom feature missing from the pack, or
+#          50 MiB or more, threads on, the dev_menu custom feature missing from the pack, a
+#          .gdextension in the pack (the Web preset excludes native/*), or
 #          a licence notice source (Godot's or libc++'s) or <dir>/THIRD_PARTY_LICENSES.txt
 #          missing or empty
 #        2 usage error, or --out inside the project but not under build/
@@ -141,7 +142,9 @@ mkdir -p "$out_abs" "$ROOT/build"
 : >"$ROOT/build/.gdignore"
 rm -f "$out_abs"/index.* "$out_abs"/build.txt "$out_abs/$NOTICE_NAME"
 
-# (4) Export. The log of this run only is scanned afterwards.
+# (4) Export, after seeding the extension list (ADR 0013 section 9). The log of this run only is
+# scanned afterwards.
+bash scripts/seed-extension-list.sh
 log="$(mktemp -t export-web.XXXXXX)"
 set +e
 "$GODOT" --headless --path . "--export-${mode}" Web "$out_abs/index.html" 2>&1 | tee "$log"
@@ -243,6 +246,12 @@ fi
 features="$(strings "$out_abs/index.pck" | grep -A1 -x _custom_features || true)"
 if ! grep -qx dev_menu <<<"$features"; then
   die 1 "the pack lacks the dev_menu custom feature (preset custom_features, ADR 0002 section 6)"
+fi
+# The web preview runs the GDScript twins (ADR 0013 section 7): the Web preset excludes native/*.
+# Godot only warns about a packed .gdextension ("No wasm32 library found"), so search the pack.
+packed="$(strings "$out_abs/index.pck" | grep -F '.gdextension' || true)"
+if [ -n "$packed" ]; then
+  die 1 "the pack holds a .gdextension (the Web preset must exclude native/*): $(head -n 1 <<<"$packed")"
 fi
 
 rm -f "$log"

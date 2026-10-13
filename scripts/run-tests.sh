@@ -5,7 +5,7 @@
 #        RUN_TESTS_SKIP_IMPORT=1 skips the import step when the caller just ran it.
 # Exit:  0 only if at least one test ran and none failed, errored or leaked orphans.
 #        1 no tests ran or results.xml is missing
-#        3 Godot or the gdUnit4 addon is missing
+#        3 Godot, the gdUnit4 addon or the native library is missing (this script does not build)
 #        otherwise gdUnit4's own code (100 failures, 101 orphans, 105 script errors)
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -23,10 +23,20 @@ if [ ! -f addons/gdUnit4/bin/GdUnitCmdTool.gd ]; then
   exit 3
 fi
 
+# The native suites never skip (ADR 0013 section 9): the generated .gdextension and its host library
+# must exist. verify.sh builds first.
+case "$(uname -m)" in aarch64 | arm64) host_arch="arm64" ;; *) host_arch="x86_64" ;; esac
+native_lib="$(sed -n "s|^linux\\.debug\\.${host_arch}[[:space:]]*=[[:space:]]*\"res://\\(.*\\)\"[[:space:]]*\$|\\1|p" native/sim_kernels.gdextension 2>/dev/null | head -n 1 || true)"
+if [ -z "$native_lib" ] || [ ! -s "$native_lib" ]; then
+  echo "NATIVE LIBRARY MISSING: run bash scripts/build-native.sh first" >&2
+  exit 3
+fi
+
 # The CLI resolves class_name via .godot/global_script_class_cache.cfg. On a fresh
 # clone (no .godot/) or after adding a class_name, it fails with "Parse Error" and
-# Godot still exits 0, so always refresh the cache first.
+# Godot still exits 0, so always refresh the cache first. The extension list is seeded first.
 if [ "${RUN_TESTS_SKIP_IMPORT:-0}" != "1" ]; then
+  bash scripts/seed-extension-list.sh
   "$GODOT" --headless --path . --import
 fi
 

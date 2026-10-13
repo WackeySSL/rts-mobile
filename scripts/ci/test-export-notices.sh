@@ -72,7 +72,8 @@ done
 # the folder above their own, so they read and write inside the copy.
 tree() {
   mkdir -p "$root/$1/scripts" "$root/$1/docs"
-  cp "$repo/scripts/export-web.sh" "$repo/scripts/export-android.sh" "$repo/scripts/verify-allowlist.txt" "$root/$1/scripts/"
+  cp "$repo/scripts/export-web.sh" "$repo/scripts/export-android.sh" "$repo/scripts/seed-extension-list.sh" \
+    "$repo/scripts/verify-allowlist.txt" "$root/$1/scripts/"
   cp -R "$repo/docs/licenses" "$root/$1/docs/licenses"
 }
 
