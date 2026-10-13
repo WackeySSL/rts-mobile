@@ -16,6 +16,9 @@ test, the hash walk and P38j2's reachability walk skip. `World.native_phases` is
 Status note (2026-10-13, P26j): §4 carries a dated status note on how the merged P31a (#62) runs
 steps 0, 1 and 11 (`prepare()`, the clear of `events` and `stats`, and `remove_dead()`).
 
+Status note (2026-10-13, P26k): §8 carries a dated status note with the hash cost P31b (#65)
+measured; the once-per-second cadence stands.
+
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state
 hash. Phase 1 shipped the v0 shapes of ADR 0003: a struct-of-arrays `World` that never removes a
@@ -371,6 +374,13 @@ for Phase 2 types).
 - **Cadence:** the match loop hashes after every tick where `tick % 15 == 0` (once per second,
   measured at 0.34-0.38 ms before the live-slot and map-digest savings, so it is re-measured in
   P31b), and tests compare those checkpoints. Nothing hashes inside `Sim.step`.
+
+Status note (2026-10-13, P26k, after P31b, #65; the text above stays as accepted): P31b measured
+the hash cost on the perf arena at tick 0 (150 rows, 64x64 map, headless, a loaded 4-CPU VM):
+`state_hash()` about 0.25-0.4 ms (per-run medians 0.27-0.38 ms), plus 0.05 ms for the first hash
+after a `map_version` bump (the map digest is recomputed); `hash_parts()` 0.27-0.37 ms (failure
+path only); `defs_hash()` 23-27 µs. Most of the cost is the fog (about 45 KB). The once-per-second
+cadence stands.
 
 ### 9. Match loop and replays
 - **`game/sim/MatchLoop.gd`** (pure `RefCounted`) is the one tick driver. It owns the sequence
