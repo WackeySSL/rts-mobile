@@ -11,6 +11,16 @@ are preallocated rings, so integrating allocates nothing after the first field" 
 "`configure()` allocates every slot's arrays; nothing allocates after it" (P30b), so the C++ FLOW
 kernel never resizes a slot array.
 
+Status note (2026-10-13, P26i): two decisions of the lead after the P30b review (#58) refine §3;
+the inline notes in §3 give them in full:
+- `acquire()` counts the slot it hands out as referenced until the next `recount()` (a
+  provisional reference), so two new keys in one tick never share a slot;
+- `World.set_terrain()` calls `flow.invalidate(map_version)` right after it bumps `map_version`,
+  once the World is prepared; `FlowCache.run` (P30n) does not call `invalidate()`.
+
+The allocation rule of the note above is the plan's revision-15 rule, and it is what P30b merged:
+`FlowCache.configure()` calls `FlowField.reserve()` on every slot, and nothing allocates after it.
+
 ## Context
 ROADMAP Phase 2 asks for "movement with flow fields and separation". Phase 1 moves units in
 straight lines to formation slots with no terrain and no collision (ADR 0003 §4-5), and its
@@ -167,9 +177,27 @@ Measurements (Godot 4.7.2 headless, 2026-10-11, Xeon cloud VM; mock code, not th
   - A new key takes a free slot, else the least recently used slot with no references (ties go
     to the lower slot).
   - If none exists, the request returns -1 and the unit stays `DIRECT`.
+
+  Status note (2026-10-13, P26i, a decision of the lead after the P30b review): references stay
+  derived, and `acquire()` adds a provisional one. The recount is `FlowCache.recount(field_column,
+  count)`, which `FlowCache.run` calls before `advance` (P30n). A unit stores the slot in its
+  `field` column only after `acquire()` returns, so a slot handed out since the last recount
+  would read as unreferenced, and a second new key in the same tick could take it while a unit
+  already points at it. `acquire()` therefore counts the slot it hands out (a new key's, or a
+  shared one's) as referenced until the next `recount()`, which overwrites every count from the
+  rows; two new keys in one tick never share a slot. `FlowCache.gd` (P30b, #58) does this.
 - **Invalidation:** when `map_version` changes, slots with references re-integrate into `next`
   (double buffer, so units keep following the old costs until the swap), and slots without
   references are dropped.
+
+  Status note (2026-10-13, P26i, a decision of the lead after the P30b review): **who calls it.**
+  `World.set_terrain()` calls `flow.invalidate(map_version)` right after it bumps `map_version`,
+  once the World is prepared. `FlowCache.run` (P30n) does not call `invalidate()`. The reason:
+  `COMMANDS` run before `FLOW`, so an `acquire()` under the new version can happen before any
+  `FLOW` phase; invalidating at the change keeps one slot per key (a slot still holding the key
+  under the old version would otherwise stay beside a new one). An unreferenced slot is dropped,
+  which also spares a slot handed out since the last recount, because its provisional reference
+  counts. P31a implements the call.
 - The cache is derived state and is not hashed (ADR 0007 §8). It changes behaviour only through
   "complete or not", which follows the command history deterministically.
 - Fields for `ATTACK` orders are keyed on the target's tile when the order is applied. They are
