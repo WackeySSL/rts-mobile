@@ -236,8 +236,9 @@ The facts:
   evidence comment. P55a re-reads both in CI, see "Open after this draft".)
 
   Status note (2026-10-13, P26i): the r28 reading of the template's `libc++_shared.so` does not
-  hold. P26l (`docs/licenses/llvm-libc++/README.md`) traced its `.note.android.ident` to NDK r28
-  sysroot objects linked into it: its `.comment` names Android clang 21.0.0 (r563880c) and LLD
+  hold. P26l (`docs/licenses/llvm-libc++/README.md`) attributed its `.note.android.ident` (most
+  likely) to NDK r28 sysroot objects linked into it; the conclusion does not rest on that
+  attribution: its `.comment` names Android clang 21.0.0 (r563880c) and LLD
   21.0.0, its exported symbols match the LLVM 21 line of upstream's libc++ ABI list, and Godot
   4.7.2 pins NDK 29.0.14206865 and copies `libc++_shared.so` out of that NDK. So the library is
   r29 / LLVM 21, like `libgodot_android.so`, and Michael chose NDK 29.0.14206865 for the kernels
@@ -841,8 +842,8 @@ Status notes (2026-10-13, P26i) on the rows above, which stay as accepted:
 - **Android.** Michael answered in chat on 2026-10-13, verbatim: **"NDK r29"**. The kernels are
   built with NDK **29.0.14206865**, the NDK Godot 4.7.2's Android template is built with. Its
   `libc++_shared.so` is LLVM 21 / Android clang r563880c (`docs/licenses/llvm-libc++/README.md`),
-  not r28: P26l traced the r28 in its `.note.android.ident` to r28 sysroot objects (Context's
-  status note). So the row's reason for 28.1 ("the same r28 release as the `libc++_shared.so` our
+  not r28: P26l attributed the r28 in its `.note.android.ident` (most likely) to r28 sysroot
+  objects linked into it (Context's status note). So the row's reason for 28.1 ("the same r28 release as the `libc++_shared.so` our
   library links against") does not hold. P55a applies the pin: `NDK_VERSION` in
   `scripts/build-native.sh`, which P55a's `scripts/ci/install-ndk.sh` reads. P55a's libc++ symbol check
   stays. godot-cpp's own default at the pin stays 28.1.13356709 (`tools/android.py`);
@@ -1103,11 +1104,16 @@ Status notes (2026-10-13, P26i) on the rows above, which stay as accepted:
   ours carry both. `-Wconversion` forces the explicit cast at every int32 store (§4).
 
   Status notes (2026-10-13, P26i, P53 review), the text above stays as accepted:
-  - **How the headers become `-isystem`.** godot-cpp fills `CPPEXTPATH`, but SCons 4.9.1's
-    compile commands never expand it. So `native/sim_kernels/SConstruct` adds each of godot-cpp's
-    include directories as an `-isystem` flag to `CCFLAGS` on the `env.Clone()`, and keeps them in
-    `CPPPATH` so that SCons still scans their headers (a compiler drops an `-I` directory that is
-    also an `-isystem` one). The outcome this section wants holds: 0 warnings with `-Werror` on
+  - **How the headers become `-isystem`.** The cause in the text above is wrong. At the pinned
+    commit godot-cpp declares `CPPEXTPATH` as an empty list that nothing appends to
+    (`tools/godotcpp.py:455`) and keeps its include directories in `CPPPATH`
+    (`tools/godotcpp.py:566-571`), so they arrive as plain `-I`; and SCons 4.9.1 would not
+    expand `CPPEXTPATH` even if it were filled (no occurrence of `CPPEXTPATH` or `EXTINCPREFIX` in
+    its package). So `native/sim_kernels/SConstruct` adds each of godot-cpp's include directories
+    as an `-isystem` flag to `CCFLAGS` on the `env.Clone()`, and keeps them in `CPPPATH` so that
+    SCons still scans their headers (a compiler drops an `-I` directory that is also an
+    `-isystem` one). The SConstruct's comment at `ebb3b91` repeats "godot-cpp fills
+    CPPEXTPATH"; the next PR that edits `SConstruct` corrects that comment. The outcome this section wants holds: 0 warnings with `-Werror` on
     g++ 13.3.0 and clang++ 18.1.3. P53's build log showed godot-cpp's 61 compile lines without
     `-Werror` and `-fwrapv` and our 2 with both.
   - **The warning set gains `-Wsign-conversion`**, which is in clang's `-Wconversion` and not in
@@ -1408,19 +1414,24 @@ that approval.
   P53 re-proves the import facts in CI after acceptance, P54 the `check_world` and name facts,
   and P30n the in-place write, fork, scalar and no-op facts through the FLOW kernel.
 
-Status note (2026-10-13, P26i): P53 (#59) and P53b (#60) closed these items:
+Status note (2026-10-13, P26i): these items are closed by P53 (#59) and P53b (#60), except where a
+bullet names another source:
 - **the generated `.gdextension`:** proven, 6 of 6 fresh-clone imports without a build and 6 of 6
   with a build and the seed (§9's status note);
 - **the cost of `-fwrapv`:** at most +1.9 % on the mock's tick mean (+4.1 % on one slice mean,
   g++ `-O2`; clang++ `-O3`, the shipped build, -1.6 %), under the 5 % rule (§4's status note);
 - **the `clang-format` version:** 20.1.8, the last 20.x patch; godot-cpp's own pre-commit hook pins
   the 20 series (§8's status note);
-- **the `--recovery-mode` fallback:** 0 of 10 failures at about +6-7 s per job, not used (§9);
+- **the `--recovery-mode` fallback:** 0 of 10 failures at about +6-7 s per job, not used (§9).
+  The other half of that list item, the upstream issue status, stays open: no PR re-checked
+  #111048, #111645 or fix PR #123658. Nothing waits on it, because the seed stays until a
+  Godot-bump ADR shows the minimal repro at 0 of 10 (§9, Exit);
 - **the plain `-I` warning counts:** 200 lines (83 distinct) on g++ 13.3.0 and 333 (178) on
   clang++ 18.1.3 (§12's status note);
-- **the template's NDK notes:** the `libc++_shared.so` is r29 / LLVM 21, not r28 (P26l; Context's
-  status note); P55a still logs the notes and the 16 KB alignment from the APK it checks, with
-  the kernels built by NDK 29.0.14206865 (§8).
+- **the template's NDK notes:** settled by P26l and Michael's answer of 2026-10-13 ("NDK r29"),
+  not by P53: the `libc++_shared.so` is r29 / LLVM 21, not r28 (Context's status note), and the
+  kernels are built with NDK 29.0.14206865 (§8). Still to come: P55a re-reads the notes and the
+  16 KB alignment in CI from the APK it checks.
 
 ## Acceptance note (2026-10-12)
 Michael answered the four questions of the plan's amendment ("Open questions for Michael (ADR
