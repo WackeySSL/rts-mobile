@@ -15,7 +15,24 @@ enum Status { FREE = 0, WAITING = 1, ACTIVE = 2 }
 const STATE_ARRAYS: Array[StringName] = [
 	&"key_goal", &"key_class", &"key_version", &"last_used", &"ref_count", &"requested", &"status"
 ]
-
+## Nothing here is in the state hash; UNHASHED names every int and Packed array member once (ADR
+## 0007 section 8); a literal that repeats STATE_ARRAYS, because `+` on typed constants gives an
+## untyped Array. `fields` and the Status enum need no list; the walk reaches the slots through
+## `fields` and each FlowField lists its own members.
+const HASHED: Array[StringName] = []
+const UNHASHED: Array[StringName] = [
+	&"key_goal",
+	&"key_class",
+	&"key_version",
+	&"last_used",
+	&"ref_count",
+	&"requested",
+	&"status",
+	&"cols",
+	&"rows",
+	&"classes",
+	&"requests"
+]
 var cols: int = 0
 var rows: int = 0
 ## A key's move class is 0..classes - 1.

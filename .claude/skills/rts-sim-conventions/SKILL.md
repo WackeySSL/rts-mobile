@@ -253,3 +253,20 @@ checklist lives here; load both skills for any PR that touches `native/`:
 - allocation: none inside a kernel except the event appends;
 - a line-by-line mirror of the GDScript twin, plus the lead's mutants and a 20,000-tick lockstep
   run.
+- what `tests/project/test_native_purity.gd` cannot see (P56 final check, 2026-10-13): check
+  these by eye. A hardening PR comes only if a port PR's review finds one in real code (lead
+  decision, 2026-10-13).
+  - a mutable static with a named or expression direct-init (`static int64_t calls(K);`);
+  - a `constexpr` lambda without a parameter list (`[] { ... }`), whose body the literal rule
+    exempts;
+  - every declarator after the first in a view's pointer list (`const int32_t *pos_x, *pos_y;`
+    collects only `pos_x`), and a view method that returns the raw pointer;
+  - rarer float helpers missing from the word lists: `UtilityFunctions` `asinh`, `acosh`,
+    `atanh`, `is_nan`, `is_inf`, `ease`, `remap` and similar; `std::` `nextafter`, `erf`,
+    `tgamma` and similar;
+  - a namespace-scope `static const StringName n(NAME);` and a function-local
+    `static const auto x = make();` (static objects the scan does not see);
+  - `std::array<const T, N>`: a `const` among the template arguments reads as a const variable;
+  - false positives: static members inside `extern "C" { }` and `struct alignas(8) S { }` (the
+    scan does not read those heads as scopes);
+  - the blind spot the test's header names: a global without `static` or `inline`.
