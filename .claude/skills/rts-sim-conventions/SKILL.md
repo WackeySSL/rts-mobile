@@ -148,6 +148,8 @@ because of these rules:
 - Helper calls only at event cadence: line checks, and `best_neighbour` stored into `nav_next`.
 - Use `len(s)` for a String's size: `test_sim_purity` bans `.length(` in `game/sim`, because
   `Vector2i.length()` returns a float.
+- Write a typed name list as one literal. Godot 4.7.2 drops the element type of a typed const
+  built with `+`: `const A: Array[StringName] = B + [...]` is untyped at runtime (P31b).
 
 ## Data
 - Units, buildings, weapons and AI profiles are custom Resources in `data/`. Load them once at

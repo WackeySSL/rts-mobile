@@ -42,6 +42,14 @@ answered in chat on 2026-10-13, verbatim: **"NDK r29"**: the kernels are built w
 Status note (2026-10-13, P26j): after the P55 review (#63), dated status notes from P26j sit in
 §8 (the CI cache key) and §10 (`check-native-tests.sh` as merged).
 
+Status note (2026-10-13, P26k): after the real runs of P55a (#67) and P55a2 (#68), dated status
+notes from P26k sit in Context ("The template's own NDK"), §8 (NDK r29's clean build, the
+common-page-size flag, the measured build times, which answer the Targets row's "P55a measures
+it", and Michael's two answers of 2026-10-13 on "Sessions": **"ja til install-android"** and
+**"ja til SDK-licens"**) and §10 (the Android job as merged). In §8 the P26i and P26j status notes
+now follow the "Sessions" bullet, so the two accepted bullets before them no longer render inside
+a status note's list; no text changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -246,6 +254,15 @@ The facts:
   4.7.2 pins NDK 29.0.14206865 and copies `libc++_shared.so` out of that NDK. So the library is
   r29 / LLVM 21, like `libgodot_android.so`, and Michael chose NDK 29.0.14206865 for the kernels
   (§8's status notes).
+
+  Status note (2026-10-13, P26k, P55a2's real run on an APK, #68): the Godot 4.7.2 template's
+  `libgodot_android.so` carries `.note.android.ident` "Android r29 14206865", so it is built with
+  exactly the pinned NDK, and its `libc++_shared.so` carries "Android r28 13004108". That r28
+  note is expected: the file is byte-identical to NDK r29's own sysroot `libc++_shared.so` after
+  `llvm-strip --strip-unneeded`, and that copy carries the same note. Both libraries have three
+  `PT_LOAD` segments aligned to 0x4000. Since P55a2, `export-android.sh` logs both notes and the
+  alignment (`check-android-elf.sh describe`, no verdict) on every Android export, CI's included,
+  which is the re-read that "Open after this draft" left to P55a ("Still to come").
 - **Spike review:**
   - a 200k-tick ASan and UBSan run of the whole mock tick in C++ was clean;
   - g++ -O3 and clang++ -O3 gave the same checksum (x86_64, one mock run);
@@ -841,6 +858,29 @@ mode or inline in `SYNC`, with the same code. In addition:
 | Build profile | `native/sim_kernels/build_profile.json` binds only the classes the bind layer uses (the spike's `native/README.md`: a cold godot-cpp build of "about ten seconds"; P53 measures it) |
 | Caches | CI caches `native/godot-cpp` and `SCONS_CACHE`, keyed on the godot-cpp SHA, the SCons version, the compiler version, the platform and the target |
 
+- **The 4.5 against 4.7 API question.**
+  - godot-cpp has no 4.6 or 4.7 tag. GDExtension is forward compatible, and the library built
+    against 4.5 loaded in 4.7.2 on the x86_64 editor, on the release template and on the arm64
+    Pixel 9a.
+  - Kernels use only API from 4.4 or older: the internal-pointer getter (since 4.4),
+    `Object::get` and `set`, `RefCounted`, and class registration.
+  - Moving to a newer godot-cpp tag is a release-engineer PR that reruns the boundary, lockstep,
+    import and APK tests and names this ADR. Changing the language, the binding library or the
+    build tool needs a new ADR.
+- **Sessions.** `verify.sh` needs SCons 4.9.1, g++, binutils and the pinned `clang-format`.
+  Without one of them it exits RED and names the missing tool (`build-native.sh` exit 3, the
+  format step likewise), never a skip.
+  - `scripts/cloud/setup.sh` and `scripts/hooks/session-start.sh` change in P53
+    (release-engineer). The hook checks SCons and `clang-format` separately from Godot (today it
+    runs the setup only when Godot is missing, so a cached environment would never install them)
+    and installs the pinned versions with the setup script's fallback chain (pipx, then pip, then
+    `pip --break-system-packages`, then `uv tool`), because the session's Python is externally
+    managed.
+  - `setup.sh` is pasted into the cloud environment's settings by hand, so Michael re-pastes it
+    after P53 merges.
+  - These are part of accepting this ADR (question 1): accepting it without them would leave every
+    session RED once P53 merges.
+
 Status notes (2026-10-13, P26i) on the rows above, which stay as accepted:
 - **Android.** Michael answered in chat on 2026-10-13, verbatim: **"NDK r29"**. The kernels are
   built with NDK **29.0.14206865**, the NDK Godot 4.7.2's Android template is built with. Its
@@ -876,28 +916,38 @@ Status note (2026-10-13, P26j, P55 review, #63) on the Caches row, which stays a
 - **`native-clang`** builds `template_debug` (the script's default target) with clang and
   `optimize=speed` (`--compiler clang --optimize speed`), under its own key.
 
-- **The 4.5 against 4.7 API question.**
-  - godot-cpp has no 4.6 or 4.7 tag. GDExtension is forward compatible, and the library built
-    against 4.5 loaded in 4.7.2 on the x86_64 editor, on the release template and on the arm64
-    Pixel 9a.
-  - Kernels use only API from 4.4 or older: the internal-pointer getter (since 4.4),
-    `Object::get` and `set`, `RefCounted`, and class registration.
-  - Moving to a newer godot-cpp tag is a release-engineer PR that reruns the boundary, lockstep,
-    import and APK tests and names this ADR. Changing the language, the binding library or the
-    build tool needs a new ADR.
-- **Sessions.** `verify.sh` needs SCons 4.9.1, g++, binutils and the pinned `clang-format`.
-  Without one of them it exits RED and names the missing tool (`build-native.sh` exit 3, the
-  format step likewise), never a skip.
-  - `scripts/cloud/setup.sh` and `scripts/hooks/session-start.sh` change in P53
-    (release-engineer). The hook checks SCons and `clang-format` separately from Godot (today it
-    runs the setup only when Godot is missing, so a cached environment would never install them)
-    and installs the pinned versions with the setup script's fallback chain (pipx, then pip, then
-    `pip --break-system-packages`, then `uv tool`), because the session's Python is externally
-    managed.
-  - `setup.sh` is pasted into the cloud environment's settings by hand, so Michael re-pastes it
-    after P53 merges.
-  - These are part of accepting this ADR (question 1): accepting it without them would leave every
-    session RED once P53 merges.
+Status notes (2026-10-13, P26k, from the real runs of P55a, #67, and P55a2, #68) on the Android,
+Android page size and Targets rows, which stay as accepted:
+- **Android.** NDK r29's clang 21 compiles the kernel sources under the `SConstruct` warning set
+  (with `-Werror`) with zero warnings, for `template_debug` and `template_release` (P55a). Every
+  undefined libc++ symbol of our library (14 of them) is defined by the template's
+  `libc++_shared.so` (P55a2's `check-android-elf.sh`).
+- **Android page size.** NDK r29's LLD already defaults max-page-size to 16 KB on arm64, but not
+  common-page-size, and LLD ends `PT_GNU_RELRO` on the common page size. `-z common-page-size=16384`
+  is the flag that ends it on a 16 KB boundary, so P55a2 added `-Wl,-z,common-page-size=16384`
+  next to `-Wl,-z,max-page-size=16384` in `native/sim_kernels/SConstruct`. A real build without
+  it ends RELRO at 0x6d000 and fails the RELRO check; with it RELRO ends at 0x70000 (debug) and
+  0x6c000 (release), and all three `PT_LOAD` segments have `p_align` at least 0x4000.
+- **Targets: the second cold NDK build's time** (the row's "P55a measures it"). Measured by P55a
+  on a 4-CPU VM with an empty SCons cache: the NDK install through sdkmanager 161.7 s, the host
+  library 14.3 s, Android `template_debug` 13.4 s and `template_release` 13.1 s. The CI
+  android-debug-apk job of P55a's PR (run 38417308180) took 92 s in total, with the runner image
+  already holding NDK 29.0.14206865 (`install-ndk.sh`'s installed path, no sdkmanager call) and
+  Godot signing with build-tools 36.0.0. This answers the row's open item.
+
+Status note (2026-10-13, P26k) on "Sessions", which stays as accepted: Michael answered in chat
+on 2026-10-13, verbatim, **"ja til install-android"** and **"ja til SDK-licens"**.
+- **"ja til install-android"**: the plan's row P55b (release-engineer, lane B right after P55a2)
+  adds `scripts/cloud/install-android.sh`, an on-demand installer of JDK 17, the Android SDK
+  pieces and the pinned NDK (through `scripts/ci/install-ndk.sh`), so a cloud session can build
+  and export Android. It is never part of `setup.sh`, the session-start hook or CI, so the
+  session tools above are unchanged.
+- **"ja til SDK-licens"**: AppCode ApS accepts the Android SDK License Agreement. The script
+  accepts the SDK licences only with an explicit flag, used only when a session needs Android;
+  `install-ndk.sh` itself still never accepts a licence.
+- P55b is in flight; this note records the two answers, not its code. How this meets ADR 0005 §7
+  ("Cloud sessions do not build APKs"), which "It keeps" above repeats, is open for the lead
+  (the plan's P26k section).
 
 ### 9. The fresh-import crash, and a checkout without the library
 - **Root cause** (Godot 4.7.2 source; evidence comment on PR #41, section 3): the bug is in the
@@ -1062,6 +1112,20 @@ Status note (2026-10-13, P26j, P55 review, #63) on the Caches row, which stays a
   - it then writes the notices (§11).
   - Phase 6's Gradle/AAB switch (ADR 0005) re-checks alignment with `zipalign -c -P 16` and
     bundletool. Optionally, one run on a 16 KB device or emulator image.
+
+  Status note (2026-10-13, P26k, as P55a, #67, and P55a2, #68, merged them; the text above stays
+  as accepted): the job installs the NDK with `scripts/ci/install-ndk.sh`, builds the host's
+  Linux library first and then Android arm64 `template_debug` and `template_release`. The APK
+  packs the library as `lib/arm64-v8a/<basename of the .gdextension entry>`
+  (`libsim_kernels.android.template_debug.arm64.so` in the debug APK); `export-android.sh`
+  compares those bytes with the built file, checks that `libc++_shared.so` is packed, runs
+  `scripts/ci/check-android-elf.sh check` on the packed copy (it reports every failing check,
+  then exits 1) and logs the template's two libraries with `describe` (Context's status note).
+  Both notices end with the godot-cpp section from `scripts/ci/godot-cpp-notice.sh`; P55a2's real
+  run measured them at 121,039 B (Android) and 121,029 B (web), identical apart from the header
+  line. The offline tests `scripts/ci/test-android-elf.sh` and `scripts/ci/test-export-notices.sh`
+  run in this job, not in `verify.sh` (an open item in the plan's P26k section). The real export
+  took 18.4 s with a throwaway debug keystore, and apksigner's v2/v3 verify passed.
 - **Sanitizer job** (P57). It runs on PRs that touch `native/**`, `game/sim/**`, `data/**` or
   `tests/sim/native/**`, because a World column, rule or twin change can break a kernel without
   touching `native/`:
