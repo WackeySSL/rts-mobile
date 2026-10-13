@@ -1,0 +1,11 @@
+// Fixture for test_native_purity: C++ read as text, never compiled. Every banned word on lines 1
+// to 10 sits in a comment, a string or a character literal, so the scan reports only line 11.
+// double rand() <random> int x = 5; static int64_t n = 0;
+/* A block comment over two lines:
+ * float 1.5 std::thread new Foo
+ */ int64_t a = 0;
+const Name n = note("int 2.5 // not a comment, std::vector, time(0)");
+int64_t b = '9';  // a character literal; 1'000 in a comment
+int64_t c = a + 1; /* inline */ int64_t d = 1; // tail: long 7.0
+#include "kernel_2.h" // a quoted include keeps its path, digits and all
+int e = int(0);  // the one report: plain_type, twice on this line
