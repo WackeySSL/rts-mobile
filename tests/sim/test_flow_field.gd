@@ -1,6 +1,10 @@
 extends GdUnitTestSuite
 ## FlowField (ADR 0008 section 3, ADR 0013 section 2): costs, slices, the double buffer, cells.
+## What a finished field holds runs under both implementations (plan P30n): a FlowRig integrates it
+## through FlowCache.run, in GDScript and in C++, and the lone FlowField of `_field` is the oracle.
 
+const FlowRig: GDScript = preload("res://tests/sim/support/flow_rig.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const FOOT: int = World.MoveClass.FOOT
 const TRACKED: int = World.MoveClass.TRACKED
 const UNREACHED: int = FlowField.UNREACHED
@@ -36,13 +40,38 @@ func _field(rows: PackedStringArray, gx: int, gy: int, move_class: int = FOOT) -
 	return field
 
 
+## Runs `check(impl)` once per implementation: the GDScript phase, then the C++ kernel.
+func _under_both(check: Callable) -> void:
+	for impl: int in SimImpls.IMPLS:
+		check.call(impl)
+
+
+## A cache of four slots on a World that runs `impl`, with the map of `rows`.
+func _rig(impl: int, rows: PackedStringArray) -> RefCounted:
+	var rig: RefCounted = FlowRig.new().setup(impl, len(rows[0]), rows.size(), 4)
+	assert_array(rig.problems).is_empty()
+	var native: bool = SimImpls.is_native(rig.world, FlowCache.PHASE_FLOW)
+	assert_bool(native).is_equal(impl == SimImpls.Impl.NATIVE)
+	return rig
+
+
+## A finished field for `rows` from (gx, gy), integrated by `impl` through a World's cache.
+func _integrate(
+	impl: int, rows: PackedStringArray, gx: int, gy: int, move_class: int = FOOT
+) -> FlowField:
+	var rig: RefCounted = _rig(impl, rows)
+	var slot: int = rig.acquire(gy * len(rows[0]) + gx, move_class, 0, 1)
+	rig.advance(_costs(rows), BIG)
+	return rig.field(slot)
+
+
 ## The served cost of the plain cell (x, y) of a map `cols` wide.
 func _at(field: FlowField, cols: int, x: int, y: int) -> int:
 	return field.cost[(y + 1) * (cols + 2) + x + 1]
 
 
-func test_open_grid_costs_are_the_octile_distance() -> void:
-	var field: FlowField = _field(_open(16, 16), 5, 9)
+func _open_grid_costs_are_the_octile_distance(impl: int) -> void:
+	var field: FlowField = _integrate(impl, _open(16, 16), 5, 9)
 	for y: int in 16:
 		for x: int in 16:
 			var dx: int = absi(x - 5)
@@ -52,9 +81,13 @@ func test_open_grid_costs_are_the_octile_distance() -> void:
 	assert_array(pins).is_equal([14, 100, 110])
 
 
+func test_open_grid_costs_are_the_octile_distance() -> void:
+	_under_both(_open_grid_costs_are_the_octile_distance)
+
+
 ## A 5x3 map is 7 x 5 padded entries, the 20 ring entries UNREACHED; methods use plain cells.
-func test_cost_is_padded_by_one_unreached_ring_and_methods_take_plain_cells() -> void:
-	var field: FlowField = _field(_open(5, 3), 4, 0)
+func _cost_is_padded_by_one_unreached_ring_and_methods_take_plain_cells(impl: int) -> void:
+	var field: FlowField = _integrate(impl, _open(5, 3), 4, 0)
 	assert_array([field.cost.size(), field.next.size()]).is_equal([35, 35])
 	assert_int(field.cost.count(UNREACHED)).is_equal(20)
 	# Cell 10 is (0, 2): north-east (1, 1) = cell 6 costs 34, east 38 and north 44.
@@ -62,9 +95,13 @@ func test_cost_is_padded_by_one_unreached_ring_and_methods_take_plain_cells() ->
 	assert_int(field.best_neighbour(10)).is_equal(6)
 
 
-func test_a_wall_with_one_gap_leads_through_the_gap() -> void:
+func test_cost_is_padded_by_one_unreached_ring_and_methods_take_plain_cells() -> void:
+	_under_both(_cost_is_padded_by_one_unreached_ring_and_methods_take_plain_cells)
+
+
+func _a_wall_with_one_gap_leads_through_the_gap(impl: int) -> void:
 	var rows: PackedStringArray = [".........", ".........", "####.####", ".........", "........."]
-	var field: FlowField = _field(rows, 8, 0)
+	var field: FlowField = _integrate(impl, rows, 8, 0)
 	assert_int(_at(field, 9, 4, 2)).is_equal(54)
 	var chain: Array[int] = []
 	var cell: int = 36
@@ -75,48 +112,60 @@ func test_a_wall_with_one_gap_leads_through_the_gap() -> void:
 	assert_array(chain).is_equal([36, 28, 29, 30, 31, 22, 13, 5, 6, 7, 8])
 
 
+func test_a_wall_with_one_gap_leads_through_the_gap() -> void:
+	_under_both(_a_wall_with_one_gap_leads_through_the_gap)
+
+
 ## A diagonal needs both orthogonal cells open, in the integration and in best_neighbour: with the
 ## goal in each corner of a 2x2 map and rock on either of the other two cells, the opposite
 ## corner goes round the rock (20), never across (14). Rock on both leaves it unreached.
 @warning_ignore("integer_division")
-func test_no_corner_cutting_past_a_blocked_orthogonal_neighbour() -> void:
+func _no_corner_cutting_past_a_blocked_orthogonal_neighbour(impl: int) -> void:
 	for goal: int in 4:
 		for rock: int in 4:
 			if rock == goal or rock == 3 - goal:
 				continue
 			var rows: PackedStringArray = ["..", ".."]
 			rows[rock / 2] = rows[rock / 2].erase(rock % 2).insert(rock % 2, "#")
-			var field: FlowField = _field(rows, goal % 2, goal / 2)
+			var field: FlowField = _integrate(impl, rows, goal % 2, goal / 2)
 			var opposite: int = _at(field, 2, 1 - goal % 2, 1 - goal / 2)
 			assert_array([opposite, field.best_neighbour(3 - goal)]).is_equal([20, 3 - rock])
-	var both: FlowField = _field(PackedStringArray([".#", "#."]), 0, 0)
+	var both: FlowField = _integrate(impl, PackedStringArray([".#", "#."]), 0, 0)
 	assert_array([_at(both, 2, 1, 1), both.best_neighbour(3)]).is_equal([UNREACHED, -1])
 
 
-func test_scrub_is_foot_ground_and_an_enclosed_cell_stays_unreached() -> void:
+func test_no_corner_cutting_past_a_blocked_orthogonal_neighbour() -> void:
+	_under_both(_no_corner_cutting_past_a_blocked_orthogonal_neighbour)
+
+
+func _scrub_is_foot_ground_and_an_enclosed_cell_stays_unreached(impl: int) -> void:
 	var strip: PackedStringArray = [".^."]
-	var foot: FlowField = _field(strip, 0, 0, FOOT)
+	var foot: FlowField = _integrate(impl, strip, 0, 0, FOOT)
 	assert_array([_at(foot, 3, 1, 0), _at(foot, 3, 2, 0)]).is_equal([10, 20])
-	var tracked: FlowField = _field(strip, 0, 0, TRACKED)
+	var tracked: FlowField = _integrate(impl, strip, 0, 0, TRACKED)
 	assert_array([_at(tracked, 3, 1, 0), _at(tracked, 3, 2, 0)]).is_equal([UNREACHED, UNREACHED])
 	# A goal on ground the class cannot enter is still seeded, and its neighbours are reached.
-	var on_scrub: FlowField = _field(strip, 1, 0, TRACKED)
+	var on_scrub: FlowField = _integrate(impl, strip, 1, 0, TRACKED)
 	assert_array([_at(on_scrub, 3, 1, 0), _at(on_scrub, 3, 0, 0)]).is_equal([0, 10])
 	assert_int(on_scrub.best_neighbour(0)).is_equal(1)
 	var ring: PackedStringArray = [".....", ".###.", ".#.#.", ".###.", "....."]
-	var enclosed: FlowField = _field(ring, 0, 0)
+	var enclosed: FlowField = _integrate(impl, ring, 0, 0)
 	assert_array([_at(enclosed, 5, 2, 2), _at(enclosed, 5, 1, 1)]).is_equal([UNREACHED, UNREACHED])
 	assert_array([_at(enclosed, 5, 4, 4), enclosed.best_neighbour(12)]).is_equal([80, -1])
 
 
+func test_scrub_is_foot_ground_and_an_enclosed_cell_stays_unreached() -> void:
+	_under_both(_scrub_is_foot_ground_and_an_enclosed_cell_stays_unreached)
+
+
 ## -1 at the goal, outside the map and before completion; a goal outside the map completes at
 ## once. In the last field (2,2) reaches the goal through (2,1) = 5 or (1,2) = 7, both 30: 5 wins.
-func test_best_neighbour_is_minus_one_at_the_ends_and_ties_go_to_the_lower_cell() -> void:
-	var field: FlowField = _field(_open(4, 4), 1, 1)
+func _best_neighbour_is_minus_one_at_the_ends_and_ties_go_to_the_lower_cell(impl: int) -> void:
+	var field: FlowField = _integrate(impl, _open(4, 4), 1, 1)
 	for cell: int in [5, -1, 16, 17, 1000, -100]:
 		assert_int(field.best_neighbour(cell)).is_equal(-1)
 	assert_int(field.best_neighbour(0)).is_equal(5)
-	var ring: FlowField = _field(_open(3, 3), 1, 1)
+	var ring: FlowField = _integrate(impl, _open(3, 3), 1, 1)
 	for cell: int in [0, 1, 2, 3, 5, 6, 7, 8]:
 		assert_int(ring.best_neighbour(cell)).is_equal(4)
 	var pending: FlowField = FlowField.new()
@@ -133,36 +182,45 @@ func test_best_neighbour_is_minus_one_at_the_ends_and_ties_go_to_the_lower_cell(
 			pending.begin(key.x, key.y, open, 4, 4)
 			var got: Array = [pending.complete, pending.advance(BIG), pending.cost.count(UNREACHED)]
 			assert_array(got + [pending.best_neighbour(5)]).is_equal([true, 0, 36, -1])
-	var tie: FlowField = _field(PackedStringArray(["...", ".#.", "..."]), 0, 0)
+	var tie: FlowField = _integrate(impl, PackedStringArray(["...", ".#.", "..."]), 0, 0)
 	assert_array([_at(tie, 3, 2, 1), _at(tie, 3, 1, 2)]).is_equal([30, 30])
 	assert_int(tie.best_neighbour(8)).is_equal(5)
 
 
+func test_best_neighbour_is_minus_one_at_the_ends_and_ties_go_to_the_lower_cell() -> void:
+	_under_both(_best_neighbour_is_minus_one_at_the_ends_and_ties_go_to_the_lower_cell)
+
+
 @warning_ignore("integer_division")
-func test_slices_complete_in_whole_budgets_on_an_open_64_grid() -> void:
+func _slices_complete_in_whole_budgets_on_an_open_64_grid(impl: int) -> void:
 	var rows: PackedStringArray = _open(64, 64)
 	var whole: PackedInt32Array = _field(rows, 0, 0).cost
+	var costs: PackedByteArray = _costs(rows)
 	for budget: int in [1024, 512]:
-		var field: FlowField = FlowField.new()
-		field.begin(0, FOOT, _costs(rows), 64, 64)
-		assert_int(field.advance(0) + field.advance(-5)).is_equal(0)
+		var rig: RefCounted = _rig(impl, rows)
+		var field: FlowField = rig.field(rig.acquire(0, FOOT, 0, 1))
+		assert_int(rig.advance(costs, 0) + rig.advance(costs, -5)).is_equal(0)
 		var calls: int = 0
 		while not field.complete:
-			assert_int(field.advance(budget)).is_equal(budget)
+			assert_int(rig.advance(costs, budget)).is_equal(budget)
 			calls += 1
 		assert_int(calls).is_equal(4096 / budget)
 		assert_array(field.cost).is_equal(whole)
 		for i: int in 2:
-			assert_int(field.advance(budget)).is_equal(0)
+			assert_int(rig.advance(costs, budget)).is_equal(0)
 			assert_array(field.cost).is_equal(whole)
 		assert_bool(field.complete).is_true()
+
+
+func test_slices_complete_in_whole_budgets_on_an_open_64_grid() -> void:
+	_under_both(_slices_complete_in_whole_budgets_on_an_open_64_grid)
 
 
 ## Seeded slow ground and rock: the costs equal a brute force that relaxes every cell until
 ## nothing changes, for any slicing; a call never settles more than its budget. A step costs the
 ## terrain of the cell it labels (the one a unit leaves), times 14 / 10 diagonally. Goal (12, 12).
 @warning_ignore("integer_division")
-func test_costs_match_a_brute_force_on_a_seeded_map_for_any_slicing() -> void:
+func _costs_match_a_brute_force_on_a_seeded_map_for_any_slicing(impl: int) -> void:
 	var rng: DetRandom = DetRandom.create(42, 7)
 	var rows: PackedStringArray = PackedStringArray()
 	for y: int in 24:
@@ -194,16 +252,20 @@ func test_costs_match_a_brute_force_on_a_seeded_map_for_any_slicing() -> void:
 	var reached: int = 576 - brute.count(UNREACHED)
 	assert_int(reached).is_between(300, 500)
 	for budget: int in [1, 7, 300]:
-		var field: FlowField = FlowField.new()
-		field.begin(300, FOOT, costs, 24, 24)
+		var rig: RefCounted = _rig(impl, rows)
+		var field: FlowField = rig.field(rig.acquire(300, FOOT, 0, 1))
 		var total: int = 0
 		while not field.complete:
-			var settled: int = field.advance(budget)
+			var settled: int = rig.advance(costs, budget)
 			assert_int(settled).is_between(1, budget)
 			total += settled
 		assert_int(total).is_equal(reached)
 		for cell: int in 576:
 			assert_int(_at(field, 24, cell % 24, cell / 24)).is_equal(brute[cell])
+
+
+func test_costs_match_a_brute_force_on_a_seeded_map_for_any_slicing() -> void:
+	_under_both(_costs_match_a_brute_force_on_a_seeded_map_for_any_slicing)
 
 
 ## `cost` keeps the old values until the swap (cells near the goal change, so a partial write would
@@ -278,25 +340,35 @@ func test_a_map_of_another_size_ends_complete_even_for_the_same_key() -> void:
 
 ## The slowest ground costs a step of 255 * 14 / 10 = 357, which the bucket ring must hold.
 @warning_ignore("integer_division")
-func test_the_slowest_ground_stays_inside_the_bucket_ring() -> void:
+func _the_slowest_ground_stays_inside_the_bucket_ring(impl: int) -> void:
 	assert_array([UNREACHED, FlowField.BUCKETS > 357]).is_equal([0x3FFFFFFF, true])
-	var slow: PackedByteArray = PackedByteArray([255, 255, 255, 255, 255, 255, 255, 255, 255])
-	var field: FlowField = FlowField.new()
-	field.begin(0, FOOT, slow, 3, 3)
-	field.advance(BIG)
+	var slow: PackedByteArray = PackedByteArray()
+	slow.resize(27)  # Three classes of nine cells.
+	slow.fill(255)
+	var rig: RefCounted = _rig(impl, _open(3, 3))
+	var field: FlowField = rig.field(rig.acquire(0, FOOT, 0, 1))
+	rig.advance(slow, BIG)
 	var got: Array[int] = []
 	for cell: int in 9:
 		got.append(_at(field, 3, cell % 3, cell / 3))
 	assert_array(got).is_equal([0, 255, 510, 255, 357, 612, 510, 612, 714])
 
 
+func test_the_slowest_ground_stays_inside_the_bucket_ring() -> void:
+	_under_both(_the_slowest_ground_stays_inside_the_bucket_ring)
+
+
 ## Neighbours are scanned NW to SE and a bucket is last in, first out (the C++ twin copies both):
 ## on an open 5x5 map the second cell settled is the south one, so (2,4) is queued and (2,0) not.
-func test_the_second_cell_settled_is_the_last_one_queued() -> void:
-	var field: FlowField = FlowField.new()
-	field.begin(12, FOOT, _costs(_open(5, 5)), 5, 5)
-	field.advance(2)
+func _the_second_cell_settled_is_the_last_one_queued(impl: int) -> void:
+	var rig: RefCounted = _rig(impl, _open(5, 5))
+	var field: FlowField = rig.field(rig.acquire(12, FOOT, 0, 1))
+	assert_int(rig.advance(_costs(_open(5, 5)), 2)).is_equal(2)
 	assert_array([field.next[38], field.next[10]]).is_equal([20, UNREACHED])
+
+
+func test_the_second_cell_settled_is_the_last_one_queued() -> void:
+	_under_both(_the_second_cell_settled_is_the_last_one_queued)
 
 
 ## ADR 0013 section 2: a member is an int, a bool or a Packed array listed in STATE_ARRAYS, so the
