@@ -19,6 +19,12 @@ Revision 4, after the completeness check of revision 3: §3's reference-loop cla
 and corrected; each frame's sample now follows a discarded warm-up run). Michael accepted it
 on 2026-10-12, and the lead applied §7 (acceptance note).
 
+Status note (2026-10-13, calibration recorded in the acceptance note, docs PR P26g): C1 and C2
+hold; C3 and C4 fail on the class method and hold on the per-frame method. By §5's third outcome
+the per-frame method is §3's formula from 2026-10-13 and P50a implements it; the class p25 factor
+stays printed as a diagnostic. No repeat and no load-pinned fallback: P50lp and `pin_busy_pct`
+are not taken.
+
 It does not depend on ADR 0013 (C++ kernels). Michael can accept either one, both or neither.
 The calibration run below needs only the GDScript modes of the never-merged probe branches; the C++
 mode is optional.
@@ -242,6 +248,9 @@ is how k is defined (below). Cancelling core placement there is intended.
   runs; the first is a warm-up and is discarded, the second is the frame's sample. Per class
   (all heavy frames, publish frames, fog frames), `ref_span` is the p25 of those samples. Both
   runs are excluded from `work`.
+  - Status (2026-10-13, see the acceptance note): the class `ref_span` is a diagnostic only
+    (`speed_main_pct`, §4); the verdicts normalise each frame by its own sample (the formula
+    below).
 - **Why the warm-up** (evidence comment on PR #41,
   https://github.com/WackeySSL/rts-mobile/pull/41#issuecomment-6128912281, section 6; cloud VM
   with no frequency scaling, official 4.7.2 editor, 60 fps): a single cold run per frame came out
@@ -255,6 +264,11 @@ is how k is defined (below). Cancelling core placement there is intended.
 - **Only on perf runs.** The burst and the samples run only while the perf card or a
   `TimingProbe` is active, never in player builds or ordinary matches.
 - **The formula:** normalised = raw × min(1, `ref_peak` / `ref_span`).
+  - Status (2026-10-13, calibration recorded; see the acceptance note): by §5's outcome "C3 or
+    C4 fails on the class method but holds on the per-frame method", the formula from 2026-10-13
+    is the per-frame method: per main-thread class, the p95 over frames of
+    `work_i × min(1, ref_peak / sample_i)`, where `sample_i` is frame i's sample. The class p25
+    factor above stays printed as a diagnostic.
 - **Normalised ≤ raw by construction.** A raw pass stays a pass. Normalisation can clear a failure
   that a low clock or a small core caused, never create one.
 - **Answer 1 still holds.** k is a ratio of peak single-core speeds (ADR 0011 Context), so
@@ -276,6 +290,10 @@ is how k is defined (below). Cancelling core placement there is intended.
     and fog. Job p95 and p99 stay raw only.
 
   Raw values stay on the card.
+
+  Status (2026-10-13, see the acceptance note): the normalised rows and the `_norm_` keys below
+  carry the per-frame method (§3's status line); `speed_main_pct`, `speed_tick_pct` and
+  `speed_fog_pct` (the class p25 factor) stay as diagnostics.
 - **`PerfHud.summary()` keys** (the plan's "Perf arena" contract row) and the copy report's JSON,
   which uses the same names:
   - `on_time_pct` and `heavy_on_time_pct` become `jitter_pct` and `heavy_jitter_pct`
@@ -549,8 +567,41 @@ needs no correction.
     https://developer.android.com/games/optimize/adpf/fixed-performance-mode: "your results won't
     be reliable if they aren't tested at fixed clock speeds" (Context quotes it verbatim).
 
-**Calibration (§5): open.** Michael runs P26n2 on his Pixel 9a (modes 1, 2, 4 and 5, 60 s each,
-battery saver off, not charging). The lead then records here C1-C5 with their values and which
-outcome of §5 applies (the class method, the per-frame method, a repeat, or the load-pinned
-fallback with P50lp). P50a's Depends cell waits for that record, so P50a implements the one
-formula named here. The pacing verdicts (§1) do not depend on it.
+**Calibration (§5): recorded 2026-10-13 (docs PR P26g).**
+- **The run.** Michael ran P26n2 on his Pixel 9a on 2026-10-13: build `db02f7f` on the
+  never-merged spike branch `claude/p26n-cpp-spike` (PR #41), release template, Godot
+  4.7.2-stable (official); modes 1, 2, 4 and 5 for 60 s each in one session, battery saver off,
+  not charging; every mode from start tick 3; mode 3 sat out (§5 does not use it). The four
+  reports are in the lead's evidence comment,
+  https://github.com/WackeySSL/rts-mobile/pull/41#issuecomment-6138576314.
+- **The checks** (values per mode 1 / 2 / 4 / 5 unless named; "class" is §3's class p25
+  factor, "per-frame" the p95 over frames of `work_i × min(1, ref_peak / sample_i)`):
+
+| Check | Recorded | Result |
+| --- | --- | --- |
+| C1 | `refresh_hz` 60.00 at start and end in all four modes; median interval 16.657 / 16.693 / 16.674 / 16.675 ms, all ≥ 16.333 ms (P × 0.98) | holds |
+| C2 | `ref_peak` p25 = p95 = 21.0 µs in all four modes (burst n 9362-9433): 0 % spread | holds (limit ± 5 %) |
+| C3, raw | other-frame work p95, modes 1 / 4 / 5: 4.104 / 6.009 / 6.572 ms, mean 5.562: −26.2 % / +8.0 % / +18.2 % | no check |
+| C3, class | 1.002 / 1.127 / 1.232 ms, mean 1.120: −10.6 % / +0.6 % / +10.0 % | fails (mode 1) |
+| C3, per-frame | 1.044 / 0.985 / 1.013 ms, mean 1.014: +3.0 % / −2.9 % / −0.1 % | holds |
+| C4, raw | in-frame tick mean, mode 1 → mode 2 (ticks 3-903 in both): 8.977 → 7.383 ms (−17.8 %) | no check |
+| C4, class | 1.683 → 1.891 ms (+12.4 %) | fails |
+| C4, per-frame | 1.739 → 1.693 ms (−2.6 %) | holds |
+| C5 | dropped 0 / 0 / 1 (0.03 %, one 36.49 ms interval) / 0; cadence 100.03 / 100.05 / 100.05 / 100.04 %; hitches 0 in all; extra slots 0/1/2/≥3: all intervals 0 except mode 4's one interval at 1; raw worker job mean / p95: mode 4 (GDScript) 11.147 / 19.442 ms, mode 5 (C++) 0.337 / 0.609 ms; late and held ticks 0 (modes 4 and 5) | recorded, no check |
+
+- **The outcome (§5):** C1 and C2 hold; C3 and C4 fail on the class method and hold on the
+  per-frame method. That is §5's outcome "C3 or C4 fails on the class method but holds on the
+  per-frame method": the per-frame method is the formula of §3 from 2026-10-13 (decided by §5,
+  so no new ADR), and P50a implements that one, with the same samples. The class p25 factor
+  (`ref_span` per class, `speed_main_pct`) stays printed as a diagnostic. No repeat (C1 and C2
+  hold), no load-pinned fallback: P50lp is not taken, and `pin_busy_pct` enters neither
+  `PerfGateDef.gd` nor `perf_gate.tres`. Normalised ≤ raw still holds, because every per-frame
+  factor is at most 1. The pacing verdicts (§1) did not depend on the run.
+- **Observations** (no decision rests on them):
+  - in frames the main thread ran at `speed_main` 18.6-29.6 % of the burst (frame-sample p25
+    71-113 µs, p50 82-181 µs against the burst's 21 µs), while every mode met the pacing rules
+    (C5);
+  - the discarded warm-up run's p25 (78-123 µs) is not faster than the frame sample, so the
+    slowdown is the clock or the core placement, not cold caches;
+  - normalised to peak, the GDScript mock tick in the frame is about 1.7 ms (C4's per-frame
+    1.693-1.739 ms against 7.4-9.0 ms raw).
