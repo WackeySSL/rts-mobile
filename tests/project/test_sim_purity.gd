@@ -42,7 +42,7 @@ const BANNED_NAMES: String = (
 	+ r"|fmod|fposmod|asin|acos|deg_to_rad|rad_to_deg|to_float|is_equal_approx"
 	+ r"|maxf|minf|move_toward|smoothstep|lerp_angle|angle_difference|rotate_toward|pingpong"
 	+ r"|sinh|cosh|tanh|is_zero_approx|cubic_interpolate\w*|bezier_\w+|distance_to"
-	+ r"|get_node|queue_free|create_tween)\b"
+	+ r"|get_node|queue_free|create_tween|ClassDB|SimKernels)\b"
 )
 ## Only as calls: `var exp: int` (veterancy) and `var log: Array` (command log) are legal
 ## names in the sim. Vector2i.length() and aspect() return float, and JSON parses every
@@ -171,6 +171,9 @@ const MUST_MATCH: Array[String] = [
 	# Randomness through the global generator.
 	"targets.pick_random()",
 	"units.shuffle()",
+	# The native kernels (ADR 0013 section 3) are reached through an untyped Object.
+	"var kernels: SimKernels",
+	"var ok: bool = ClassDB.class_exists(name)",
 ]
 const MUST_NOT_MATCH: Array[String] = [
 	"var delta: int = a - b",
@@ -220,6 +223,9 @@ const MUST_NOT_MATCH: Array[String] = [
 	"var parts: PackedInt64Array = world.hash_parts()",
 	"var hash_count: int = 0",
 	"var hash: int = 0",
+	"world.kernels.flow(world, budget)",
+	"var native_kernels_ready: bool = false",
+	'var s := "SimKernels ClassDB"  # SimKernels, ClassDB',
 ]
 
 ## Rule 3 for game/ai: the only check there is randomness.
