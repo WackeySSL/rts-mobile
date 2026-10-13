@@ -29,6 +29,12 @@ mkdir -p "$root/bin" "$root/tmp" "$root/jdk/bin" "$root/sdk/platform-tools" "$ro
   "$root/apk/lib/arm64-v8a" "$root/apk/assets/scenes"
 cat >"$root/bin/godot" <<'STUB'
 #!/usr/bin/env bash
+# Every headless editor start needs the seeded extension list when the project has a .gdextension; the
+# real Godot 4.7.2 aborts with exit 134 without it (ADR 0013 section 9).
+if [ "$1" != "--version" ] && [ -f native/sim_kernels.gdextension ] && ! grep -Fq res://native/sim_kernels.gdextension .godot/extension_list.cfg 2>/dev/null; then
+  echo "stub godot: started without the seeded extension list" >&2
+  exit 134
+fi
 case "$*" in
   --version*) echo "4.7.2.stable.official.0000000" ;;
   *"--export-release Web "*)
@@ -36,7 +42,7 @@ case "$*" in
     printf 'const GODOT_THREADS_ENABLED = false;\n' >"$dir/index.html"
     echo js >"$dir/index.js"
     echo wasm >"$dir/index.wasm"
-    printf 'project\n_custom_features\ndev_menu\n' >"$dir/index.pck"
+    printf 'project\n_custom_features\ndev_menu\n%s\n' "$STUB_PCK_EXTRA" >"$dir/index.pck"
     ;;
   *"--export-debug Android "*)
     echo "$ANDROID_HOME/build-tools/36.0.0/apksigner sign --ks stub"
@@ -71,8 +77,10 @@ done
 # tree NAME: a copy of the scripts and licence folders under $root/NAME. The scripts change into
 # the folder above their own, so they read and write inside the copy.
 tree() {
-  mkdir -p "$root/$1/scripts" "$root/$1/docs"
-  cp "$repo/scripts/export-web.sh" "$repo/scripts/export-android.sh" "$repo/scripts/verify-allowlist.txt" "$root/$1/scripts/"
+  mkdir -p "$root/$1/scripts" "$root/$1/docs" "$root/$1/native"
+  touch "$root/$1/native/sim_kernels.gdextension"
+  cp "$repo/scripts/export-web.sh" "$repo/scripts/export-android.sh" "$repo/scripts/seed-extension-list.sh" \
+    "$repo/scripts/verify-allowlist.txt" "$root/$1/scripts/"
   cp -R "$repo/docs/licenses" "$root/$1/docs/licenses"
 }
 
@@ -80,7 +88,7 @@ tree() {
 run() {
   rc=0
   out="$(cd "$root/$1" && env -i PATH="$root/bin:$PATH" HOME="$root/home" TMPDIR="$root/tmp" GODOT="$root/bin/godot" \
-    JAVA_HOME="$root/jdk" ANDROID_HOME="$root/sdk" STUB_APK="$root/stub.apk" \
+    JAVA_HOME="$root/jdk" ANDROID_HOME="$root/sdk" STUB_APK="$root/stub.apk" STUB_PCK_EXTRA="${STUB_PCK_EXTRA:-}" \
     GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$root/keystore" GODOT_ANDROID_KEYSTORE_DEBUG_USER=u \
     GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=p bash "scripts/export-$2.sh" 2>&1)" || rc=$?
 }
@@ -135,6 +143,17 @@ for kind in web android; do
     fi
   done
 done
+
+# (4) ADR 0013 section 7: a .gdextension in the web pack (the Web preset must exclude native/*) stops
+# export-web.sh with exit 1, which the engine itself only warns about. The pack holds the generated
+# file's comment line (it mentions .gdextension) before the path, and the message must quote the path.
+tree web-native
+STUB_PCK_EXTRA=$'; build has no .gdextension and loads no library. Do not edit.\nres://native/sim_kernels.gdextension' run web-native web
+if [ "$rc" = 1 ] && grep -Fq "must exclude native/*): res://native/sim_kernels.gdextension" <<<"$out"; then
+  pass "web: exit 1 when the pack holds a .gdextension, and the message quotes its path"
+else
+  fail "web: wanted exit 1 and 'the pack holds a .gdextension (...): res://native/sim_kernels.gdextension', got exit $rc: $(tail -n 1 <<<"$out")"
+fi
 
 if [ "$failures" -ne 0 ]; then
   echo "test-export-notices: $failures case(s) failed" >&2

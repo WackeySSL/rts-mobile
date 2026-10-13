@@ -267,6 +267,15 @@ func test_a_recycled_field_integrates_like_a_fresh_one() -> void:
 			)
 
 
+## A resize ends `complete` even for the same key: the old cost does not fit the new map.
+func test_a_map_of_another_size_ends_complete_even_for_the_same_key() -> void:
+	var field: FlowField = FlowField.new()
+	field.begin(0, FOOT, _costs(_open(4, 4)), 4, 4)
+	field.advance(BIG)
+	field.begin(0, FOOT, _costs(_open(5, 5)), 5, 5)
+	assert_array([field.complete, field.cost.count(UNREACHED)]).is_equal([false, 49])
+
+
 ## The slowest ground costs a step of 255 * 14 / 10 = 357, which the bucket ring must hold.
 @warning_ignore("integer_division")
 func test_the_slowest_ground_stays_inside_the_bucket_ring() -> void:

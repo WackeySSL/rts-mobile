@@ -99,7 +99,9 @@ mkdir -p "$out_abs"
 : >"$ROOT/build/.gdignore"
 rm -f "$apk" "$apk.idsig" "$out_abs/$NOTICE_NAME"
 
-# (5) Import (a fresh checkout has no .godot/) and export. The log of this run only is scanned.
+# (5) Import (a fresh checkout has no .godot/) and export, after seeding the extension list (ADR 0013
+# section 9). The log of this run only is scanned.
+bash scripts/seed-extension-list.sh
 log="$(mktemp -t export-android.XXXXXX)"
 set +e
 { "$GODOT" --headless --path . --import && "$GODOT" --headless --path . --export-debug Android "$apk"; } 2>&1 | tee "$log"

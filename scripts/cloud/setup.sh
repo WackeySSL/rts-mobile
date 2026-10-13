@@ -49,4 +49,22 @@ if ! command -v gdlint >/dev/null 2>&1; then
     uv tool install "gdtoolkit==4.5.0" 2>/dev/null ||
     echo "Could not install gdtoolkit."
 fi
+
+# The native build (ADR 0013 section 8): SCons 4.9.1 and the pinned clang-format. g++ and binutils
+# come with the image. The session's Python is externally managed, so pipx comes first, then pip,
+# pip --break-system-packages and uv tool. A tool that is there with another version is replaced,
+# because verify.sh stops on any other version. Keep the pins equal to scripts/build-native.sh
+# (SCONS_VERSION) and scripts/ci/check-cpp-format.sh (CLANG_FORMAT_VERSION).
+SCONS_VERSION="4.9.1"
+CLANG_FORMAT_VERSION="20.1.8"
+install_pinned() { # command, PyPI package, exact version
+  if "$1" --version 2>/dev/null | grep -qF "$3"; then return 0; fi
+  pipx install --force "$2==$3" >/dev/null 2>&1 ||
+    pip install --quiet "$2==$3" 2>/dev/null ||
+    pip install --quiet --break-system-packages "$2==$3" 2>/dev/null ||
+    uv tool install --force "$2==$3" >/dev/null 2>&1 ||
+    echo "Could not install $2 $3."
+}
+install_pinned scons scons "$SCONS_VERSION"
+install_pinned clang-format clang-format "$CLANG_FORMAT_VERSION"
 exit 0

@@ -76,3 +76,39 @@ func test_android_job_runs_the_offline_licence_notice_test_before_the_export() -
 	assert_str(lines[step + 2].strip_edges()).is_empty()
 	assert_int(export_step).is_greater(step)
 	assert_int(export_step).is_less(release)
+
+
+## ADR 0013 section 8: SCons and clang-format are pinned in places that cannot share a file (the
+## pasted setup script, the session hook, the workflow, the README). Each must equal its owner:
+## build-native.sh for SCons, scripts/ci/check-cpp-format.sh for clang-format.
+func test_native_tool_pins_agree_everywhere() -> void:
+	var scons: String = _pin("res://scripts/build-native.sh", "SCONS_VERSION")
+	var clang: String = _pin("res://scripts/ci/check-cpp-format.sh", "CLANG_FORMAT_VERSION")
+	assert_str(scons).is_not_empty()
+	assert_str(clang).is_not_empty()
+	for path: String in [
+		"res://scripts/cloud/setup.sh",
+		"res://scripts/hooks/session-start.sh",
+		"res://.github/workflows/ci.yml",
+	]:
+		assert_str(_pin(path, "SCONS_VERSION")).is_equal(scons)
+		assert_str(_pin(path, "CLANG_FORMAT_VERSION")).is_equal(clang)
+	var readme: String = FileAccess.get_file_as_string("res://README.md")
+	assert_bool(readme.contains("scons==" + scons)).is_true()
+	assert_bool(readme.contains("clang-format==" + clang)).is_true()
+
+
+## The offline test of the native scripts runs in the verify job, the required check.
+func test_verify_job_runs_the_native_script_test() -> void:
+	var lines: PackedStringArray = _lines("ci.yml")
+	var step: int = lines.find("      - name: Offline test of the native scripts")
+	assert_int(step).is_greater(lines.find("  verify:"))
+	assert_int(step).is_less(lines.find(ANDROID_JOB))
+	assert_str(lines[step + 1]).is_equal("        run: bash scripts/ci/test-native-scripts.sh")
+	assert_str(lines[step + 2].strip_edges()).is_empty()
+
+
+func _pin(path: String, pin_name: String) -> String:
+	var rx: RegEx = RegEx.create_from_string("(?m)^\\s*" + pin_name + '[=:]\\s*"([^"]+)"')
+	var hit: RegExMatch = rx.search(FileAccess.get_file_as_string(path))
+	return hit.get_string(1) if hit != null else ""

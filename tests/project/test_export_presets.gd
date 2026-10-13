@@ -23,8 +23,18 @@ func test_preset_identity() -> void:
 	)
 	# A debug build enables the dev menu through OS.is_debug_build(), not a custom feature.
 	assert_str(config.get_value(SECTION, "custom_features")).is_empty()
-	# Test code and the test runner never ship (the Web preset has the same filter).
+	# Test code and the test runner never ship. Unlike the Web preset, never native/* (ADR 0013).
 	assert_str(config.get_value(SECTION, "exclude_filter")).is_equal("tests/*, addons/gdUnit4/*")
+
+
+## ADR 0013 section 7: the web preview runs the GDScript twins and packs no .gdextension, which
+## Godot only warns about. scripts/export-web.sh checks the pack; this catches the edit first.
+func test_web_preset_excludes_native() -> void:
+	var config: ConfigFile = _config()
+	assert_str(config.get_value("preset.0", "name")).is_equal("Web")
+	assert_str(config.get_value("preset.0", "exclude_filter")).is_equal(
+		"tests/*, addons/gdUnit4/*, native/*"
+	)
 
 
 func test_app_identity_and_vibrate() -> void:
