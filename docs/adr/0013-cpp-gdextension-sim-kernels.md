@@ -32,6 +32,13 @@ Status note (2026-10-13): §2 carries two dated status notes from P26h (after th
 reviews): the checked table's bool kind for FLOW's `complete`, and `FogGrid.listed`, which the
 stamp and the FOG kernel write in place with the dirty-list blocks.
 
+Status note (2026-10-13, P26i): after the P53 (#59) and P53b (#60) reviews and Michael's NDK
+answer, dated status notes from P26i sit in Context ("Pins and toolchain" and "The template's own
+NDK"), §4 (`-fwrapv`), §8 (the Android, Targets, Build profile and C++ format rows), §9 (the
+fallback and the fresh-clone proof), §12, "Open after this draft" and the acceptance note. Michael
+answered in chat on 2026-10-13, verbatim: **"NDK r29"**: the kernels are built with NDK
+29.0.14206865, not 28.1.13356709 (§8).
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -215,11 +222,26 @@ The facts:
   - the spike's Android job, uncached NDK install included, took 1m42s in total (run
     38245066556). That job exported a release APK on the probe branch (`--export-release`);
     `main` exports a debug APK, which §8 and §10 handle.
+
+  Status note (2026-10-13, P26i, P53 review): P53 measured a cold godot-cpp build (g++ 13.3.0,
+  `-j4`, 63 compile units) at 23-34 s wall on the 4-core VM, depending on the load from other
+  lanes, not "about ten seconds"; that holds wherever this ADR quotes the figure (§8's Build
+  profile row, Consequences). `build_profile.json` enables `OS` and `RefCounted` (§8's status
+  notes). NDK 28.1.13356709 stays what the spike proved; the kernels move to NDK 29.0.14206865
+  (Michael, 2026-10-13, §8).
 - **The template's own NDK** (read from `.note.android.ident` in the android-dev-latest APK,
   Godot 4.7.2): `libgodot_android.so` was built with NDK r29 (29.0.14206865) and the
   `libc++_shared.so` it ships with r28 (28.0.13004108), linked with LLD 21. Godot's own `.so`
   files have 16 KB-aligned LOAD segments. (From the first research run; not re-run and not in the
   evidence comment. P55a re-reads both in CI, see "Open after this draft".)
+
+  Status note (2026-10-13, P26i): the r28 reading of the template's `libc++_shared.so` does not
+  hold. P26l (`docs/licenses/llvm-libc++/README.md`) traced its `.note.android.ident` to NDK r28
+  sysroot objects linked into it: its `.comment` names Android clang 21.0.0 (r563880c) and LLD
+  21.0.0, its exported symbols match the LLVM 21 line of upstream's libc++ ABI list, and Godot
+  4.7.2 pins NDK 29.0.14206865 and copies `libc++_shared.so` out of that NDK. So the library is
+  r29 / LLVM 21, like `libgodot_android.so`, and Michael chose NDK 29.0.14206865 for the kernels
+  (§8's status notes).
 - **Spike review:**
   - a 200k-tick ASan and UBSan run of the whole mock tick in C++ was clean;
   - g++ -O3 and clang++ -O3 gave the same checksum (x86_64, one mock run);
@@ -647,6 +669,11 @@ absorbs next to the C++ phases.
   measures it on the mock. `-fwrapv` stays in every production build until Michael decides
   otherwise: above 5 % the lead brings the number to him in P53's review with a recommendation,
   and dropping it would need a new ADR that supersedes this rule.
+
+  Status note (2026-10-13, P26i, P53 review): P53 measured it on a scratch copy of the spike's
+  mock. The tick mean rose by at most 1.9 % (g++ `-O2`; its flow slice mean +4.1 %), by 0.5 %
+  with g++ `-O3` (slice +0.6 %), and fell by 1.6 % with clang++ `-O3`, the shipped build (slice
+  -0.1 %). That is under the 5 % rule, so nothing went to Michael and `-fwrapv` stays.
 - **Order:**
   - the same loops in the same ascending row order as the twin;
   - no unordered containers, no `std::hash`, no ordering by pointer value;
@@ -810,6 +837,27 @@ mode or inline in `SYNC`, with the same code. In addition:
 | Build profile | `native/sim_kernels/build_profile.json` binds only the classes the bind layer uses (the spike's `native/README.md`: a cold godot-cpp build of "about ten seconds"; P53 measures it) |
 | Caches | CI caches `native/godot-cpp` and `SCONS_CACHE`, keyed on the godot-cpp SHA, the SCons version, the compiler version, the platform and the target |
 
+Status notes (2026-10-13, P26i) on the rows above, which stay as accepted:
+- **Android.** Michael answered in chat on 2026-10-13, verbatim: **"NDK r29"**. The kernels are
+  built with NDK **29.0.14206865**, the NDK Godot 4.7.2's Android template is built with. Its
+  `libc++_shared.so` is LLVM 21 / Android clang r563880c (`docs/licenses/llvm-libc++/README.md`),
+  not r28: P26l traced the r28 in its `.note.android.ident` to r28 sysroot objects (Context's
+  status note). So the row's reason for 28.1 ("the same r28 release as the `libc++_shared.so` our
+  library links against") does not hold. P55a applies the pin: `NDK_VERSION` in
+  `scripts/build-native.sh`, which P55a's `scripts/ci/install-ndk.sh` reads. P55a's libc++ symbol check
+  stays. godot-cpp's own default at the pin stays 28.1.13356709 (`tools/android.py`);
+  `build-native.sh` passes `ndk_version=${NDK_VERSION}` to SCons, and building with r29 is P55a's
+  to prove in CI.
+- **Targets.** godot-cpp gives both targets `-DNDEBUG` (it sets it on every non-dev build), so
+  `template_debug` is `DEBUG_ENABLED` plus `NDEBUG`, and C++ `assert()` is compiled out in both
+  (P53 review; the header of `native/sim_kernels/SConstruct`).
+- **Build profile.** `build_profile.json` enables `OS` and `RefCounted`, and both are needed:
+  godot-cpp's `print_string.cpp` includes `os.hpp`. A cold godot-cpp build measured 23-34 s wall
+  on the 4-core VM (P53), not "about ten seconds".
+- **C++ format.** P53 chose `clang-format` **20.1.8**, the last 20.x patch (godot-cpp's own
+  pre-commit hook pins the 20 series), pinned in `scripts/ci/check-cpp-format.sh`, which exits 3
+  on any other version.
+
 - **The 4.5 against 4.7 API question.**
   - godot-cpp has no 4.6 or 4.7 tag. GDExtension is forward compatible, and the library built
     against 4.5 loaded in 4.7.2 on the x86_64 editor, on the release template and on the arm64
@@ -896,6 +944,9 @@ mode or inline in `SYNC`, with the same code. In addition:
 - **Fallback** if the list file's format changes: `--recovery-mode --import`, then `--import`.
   The first research run reported 0 of 10 on both passes, at about +5 s per job (not re-run);
   P53 measures it before relying on it.
+
+  Status note (2026-10-13, P26i, P53 review): P53 measured it at 0 of 10 failures, costing about
+  6-7 s per job. It is not used: the seed holds.
 - **Exit:** the seed goes only in a future Godot-bump ADR, after the minimal repro above, run 10
   times unseeded with fresh `--import`, crashes in 0 of 10 on the new version. Its baseline on
   4.7.2 is 20 of 20.
@@ -912,6 +963,11 @@ mode or inline in `SYNC`, with the same code. In addition:
     and 6 of 6 times with a build and the seed.
   - If that fails, the fallback is the spike's way: commit the `.gdextension` and build in every
     job that starts Godot, preview included.
+
+    Status note (2026-10-13, P26i, P53 review): proven, so the fallback is not taken. With `rm -rf
+    .godot` before each fresh `godot --headless --import` and no retry, P53 measured 6 of 6 clean
+    imports (exit 0, no error line) without a build and 6 of 6 with a build and the seed; the
+    control, a build with no seed, aborted 2 of 6 times (exit 134).
   - **`bash scripts/run-tests.sh` on such a checkout** does not build (it stays the gdUnit4-only
     command CLAUDE.md lists, with its flags unchanged). Before Godot starts, it checks for the
     generated `native/sim_kernels.gdextension` and the host library it names; if either is
@@ -1045,6 +1101,21 @@ mode or inline in `SYNC`, with the same code. In addition:
 
   P53 checks the build log: godot-cpp's compile lines carry neither `-Werror` nor `-fwrapv`, and
   ours carry both. `-Wconversion` forces the explicit cast at every int32 store (§4).
+
+  Status notes (2026-10-13, P26i, P53 review), the text above stays as accepted:
+  - **How the headers become `-isystem`.** godot-cpp fills `CPPEXTPATH`, but SCons 4.9.1's
+    compile commands never expand it. So `native/sim_kernels/SConstruct` adds each of godot-cpp's
+    include directories as an `-isystem` flag to `CCFLAGS` on the `env.Clone()`, and keeps them in
+    `CPPPATH` so that SCons still scans their headers (a compiler drops an `-I` directory that is
+    also an `-isystem` one). The outcome this section wants holds: 0 warnings with `-Werror` on
+    g++ 13.3.0 and clang++ 18.1.3. P53's build log showed godot-cpp's 61 compile lines without
+    `-Werror` and `-fwrapv` and our 2 with both.
+  - **The warning set gains `-Wsign-conversion`**, which is in clang's `-Wconversion` and not in
+    g++'s, so g++ (`verify.sh`) is as strict as the clang jobs.
+  - **The counts with plain `-I`**, re-counted for our two translation units under the warning set:
+    g++ 13.3.0 gives 200 warning lines (83 distinct), clang++ 18.1.3 333 (178 distinct). The 100
+    and 20 above were the first research run's.
+  - **Format:** the pinned version is `clang-format` 20.1.8 (§8's status note).
 - **Not in Phase 2:** clang-tidy and coverage tooling.
 - **Each kernel file** names its GDScript twin and its lockstep test in a header comment.
 - **The `godot-code-review` skill gains a C++ checklist** (at acceptance: in `rts-sim-conventions`
@@ -1337,6 +1408,20 @@ that approval.
   P53 re-proves the import facts in CI after acceptance, P54 the `check_world` and name facts,
   and P30n the in-place write, fork, scalar and no-op facts through the FLOW kernel.
 
+Status note (2026-10-13, P26i): P53 (#59) and P53b (#60) closed these items:
+- **the generated `.gdextension`:** proven, 6 of 6 fresh-clone imports without a build and 6 of 6
+  with a build and the seed (§9's status note);
+- **the cost of `-fwrapv`:** at most +1.9 % on the mock's tick mean (+4.1 % on one slice mean,
+  g++ `-O2`; clang++ `-O3`, the shipped build, -1.6 %), under the 5 % rule (§4's status note);
+- **the `clang-format` version:** 20.1.8, the last 20.x patch; godot-cpp's own pre-commit hook pins
+  the 20 series (§8's status note);
+- **the `--recovery-mode` fallback:** 0 of 10 failures at about +6-7 s per job, not used (§9);
+- **the plain `-I` warning counts:** 200 lines (83 distinct) on g++ 13.3.0 and 333 (178) on
+  clang++ 18.1.3 (§12's status note);
+- **the template's NDK notes:** the `libc++_shared.so` is r29 / LLVM 21, not r28 (P26l; Context's
+  status note); P55a still logs the notes and the 16 KB alignment from the APK it checks, with
+  the kernels built by NDK 29.0.14206865 (§8).
+
 ## Acceptance note (2026-10-12)
 Michael answered the four questions of the plan's amendment ("Open questions for Michael (ADR
 0013/0014)") in chat on 2026-10-12, verbatim: **"1 ja, 2 A, 3 ja, 4 ja"**.
@@ -1375,6 +1460,11 @@ P26b; nothing that waited for P26e waits any longer, and P53 now depends on P26b
 Two follow-ups stay as §14 named them: the lead puts the `clang-format` version number into
 `CLAUDE.md` in a one-line docs PR after P53 merges, and adds ADR 0007 §4's status line in a
 one-line docs PR only if P41g's rule fires.
+
+Status note (2026-10-13, P26i): the first follow-up is done. P26i changes CLAUDE.md's Stack line
+from "C++: `clang-format` the version `verify.sh` pins (P53)" to "C++: `clang-format` 20.1.8,
+pinned in `scripts/ci/check-cpp-format.sh`", and nothing else in CLAUDE.md. ADR 0007 §4's line
+still waits for P41g.
 
 **One correction to §12 and §14: the C++ review checklist lives in `rts-sim-conventions`, not in
 `godot-code-review`.** `godot-code-review` is one of the GodotPrompter skills copied unchanged

@@ -17,7 +17,7 @@ Source of truth: this file for rules, `docs/GDD.md` for game design,
 - 2D top-down, landscape only. Base size 1280x720, stretch mode `canvas_items`, aspect `expand`.
 - Tests: gdUnit4 in `tests/`, plus a CI-only C++ sanitizer harness in
   `native/sim_kernels/sanitizer/` (ADR 0013 §10). Format/lint: gdtoolkit 4 (`gdformat`,
-  `gdlint`). C++: `clang-format` the version `verify.sh` pins (P53)
+  `gdlint`). C++: `clang-format` 20.1.8, pinned in `scripts/ci/check-cpp-format.sh`
   (`native/sim_kernels/.clang-format`).
 - Ads: Poing Studios godot-admob plugin (Android + iOS) behind `game/ads/AdService.gd`.
 
