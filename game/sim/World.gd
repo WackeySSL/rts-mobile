@@ -4,8 +4,8 @@ extends RefCounted
 ## milli-tiles (1 tile = 1000). Units are rows in the per-unit arrays, ascending by id. Ids come
 ## from a counter that starts at 1 and are never reused. Removal keeps the rows in id order, so an
 ## id is found by binary search. The view and input read a World and never write to it. Every array
-## and scalar is declared here and listed in one shape list (ADR 0007 section 2); the hash follows
-## in a later World change.
+## and scalar is declared here and listed in one shape list (ADR 0007 section 2); the state hash
+## (ADR 0007 section 8) walks those lists.
 
 enum Order { IDLE = 0, ATTACK_MOVE = 1, MOVE = 2, ATTACK = 3 }
 enum Armour { INFANTRY = 0, LIGHT = 1, HEAVY = 2, BUILDING = 3 }
@@ -31,6 +31,8 @@ const TILE_CENTRE: int = 500
 const EVENT_STRIDE: int = 8
 ## The layout version of the hashed state.
 const STATE_FORMAT: int = 1
+## The hash sections that are not a ROW_ARRAYS column: header, map, projectiles and fog.
+const HASH_OTHER_SECTIONS: int = 4
 
 ## What prepare() fills a type table with for a type that has no entry. A padded type cannot
 ## fire, sees only its own tile and counts as tracked. These are not balance numbers.
@@ -132,13 +134,8 @@ const HASHED_SCALARS: Array[StringName] = [
 	&"proj_free_top",
 	&"map_version",
 ]
-## The other int properties: set up from the data (map size, rules) or only for the view.
-const UNHASHED_SCALARS: Array[StringName] = [
-	&"map_w",
-	&"map_h",
-	&"map_cols",
-	&"map_rows",
-	&"rows_version",
+## The rule ints, copied from RulesDef under the same names. defs_hash() covers them.
+const RULE_SCALARS: Array[StringName] = [
 	&"retarget_period_ticks",
 	&"fog_period_ticks",
 	&"line_check_period_ticks",
@@ -155,7 +152,34 @@ const UNHASHED_SCALARS: Array[StringName] = [
 	&"max_projectiles",
 	&"max_rows",
 ]
-
+## The other int properties: the map size, the view's rows_version, the map digest cache (it
+## follows from map_version and the grid) and the rule ints, which repeat RULE_SCALARS (a literal,
+## because `+` on typed constants gives an untyped Array; a test pins the repeat). None is in the
+## state hash.
+const UNHASHED_SCALARS: Array[StringName] = [
+	&"map_w",
+	&"map_h",
+	&"map_cols",
+	&"map_rows",
+	&"rows_version",
+	&"_map_digest",
+	&"_map_digest_version",
+	&"retarget_period_ticks",
+	&"fog_period_ticks",
+	&"line_check_period_ticks",
+	&"flow_cells_per_tick",
+	&"flow_cache_size",
+	&"separation_neighbours",
+	&"separation_scan",
+	&"separation_idle_share",
+	&"separation_push_max",
+	&"separation_coincident_divisor",
+	&"stall_ticks",
+	&"stall_range_spacings",
+	&"attack_rekey_milli",
+	&"max_projectiles",
+	&"max_rows"
+]
 var tick: int = 0
 ## Map size in milli-tiles.
 var map_w: int = 0
@@ -321,6 +345,11 @@ var events: PackedInt32Array = PackedInt32Array()
 ## int32 limit (one tick's work).
 var stats: PackedInt32Array = PackedInt32Array()
 
+## The cache of the map digest (the "map" section of the hash), valid while `_map_digest_version`
+## equals `map_version`. Derived, so unhashed.
+var _map_digest: int = 0
+var _map_digest_version: int = -1
+
 
 ## The rule ints start at the RulesDef script defaults, so a hand-built world is a valid world.
 func _init() -> void:
@@ -419,8 +448,9 @@ func index_of(id: int) -> int:
 ## capitalised type id), because Phase 1 code appends only the four Phase 1 tables. It also sizes
 ## the scratch arrays to max_rows, stats to the Stat count and the projectile slots to
 ## max_projectiles, and derives open grass from map_w and map_h when no map is loaded. Last it
-## configures the helpers, once, because configure() re-creates their arrays. Idempotent through
-## `prepared`, so Sim.step calls it every tick. Types, players and sizes are fixed before it.
+## configures the helpers, once, because configure() re-creates their arrays, and caches the map
+## digest of the hash. Idempotent through `prepared`, so Sim.step calls it every tick. Types,
+## players and sizes are fixed before it.
 func prepare() -> void:
 	if prepared:
 		return
@@ -453,6 +483,8 @@ func prepare() -> void:
 	flow.configure(map_cols, map_rows, MoveClass.size(), flow_cache_size)
 	sep_grid.configure(map_w, map_h, SEP_CELL_MILLI, max_rows)
 	target_grid.configure(map_w, map_h, TARGET_CELL_MILLI, max_rows)
+	_map_digest_version = -1  # The grid may be new without a map_version bump.
+	_map_digest_value()
 	prepared = true
 
 
@@ -730,3 +762,136 @@ func _weapon_for(weapon: WeaponDef) -> int:
 	for armour: int in Armour.size():
 		weapon_vs_armour.append(weapon.vs_armour[armour])
 	return weapon_ids.size() - 1
+
+
+## The state hash (ADR 0007 section 8): SHA-256 over the sections of hash_section_names(), in that
+## order, each block fed as its tag (the section index), its byte count and its bytes (little
+## endian); the first 8 digest bytes as a signed int64. It reads only the hashed lists: the header
+## ints and the stream, the map digest, the ROW_ARRAYS columns, the live projectile slots with the
+## used free stack, and FogGrid.HASHED. A hand-built world hashes before prepare() too (empty
+## helpers and map), to another value than after it.
+func state_hash() -> int:
+	var ctx: HashingContext = _start_hash()
+	for section: int in ROW_ARRAYS.size() + HASH_OTHER_SECTIONS:
+		_feed_section(ctx, section)
+	return ctx.finish().decode_s64(0)
+
+
+## One digest prefix per section, in hash_section_names() order, of the bytes state_hash() feeds.
+## For the failure message of a test that compares two hashes; it is not called in the tick.
+func hash_parts() -> PackedInt64Array:
+	var parts: PackedInt64Array = PackedInt64Array()
+	for section: int in ROW_ARRAYS.size() + HASH_OTHER_SECTIONS:
+		var ctx: HashingContext = _start_hash()
+		_feed_section(ctx, section)
+		parts.append(ctx.finish().decode_s64(0))
+	return parts
+
+
+## "header", "map", one name per ROW_ARRAYS entry, "projectiles", "fog".
+static func hash_section_names() -> PackedStringArray:
+	var names: PackedStringArray = PackedStringArray(["header", "map"])
+	names.append_array(PackedStringArray(ROW_ARRAYS))
+	names.append_array(PackedStringArray(["projectiles", "fog"]))
+	return names
+
+
+## `h` as 16 lower-case hex digits, its 8 bytes least significant first (ADR 0007 section 8).
+static func hash_hex(h: int) -> String:
+	var bytes: PackedByteArray = PackedByteArray()
+	bytes.resize(8)
+	bytes.encode_s64(0, h)
+	return bytes.hex_encode()
+
+
+## The hash of the type and weapon tables, their ids and the rule ints: what a replay needs to see
+## that it runs on other data. Call it on a prepared world, because prepare() pads the type tables.
+func defs_hash() -> int:
+	var ctx: HashingContext = _start_hash()
+	var tag: int = 0
+	for table_name: StringName in TYPE_ARRAYS + WEAPON_ARRAYS:
+		_feed(ctx, tag, _bytes_of(get(table_name)))
+		tag += 1
+	var rules: PackedInt64Array = PackedInt64Array()
+	for rule_name: StringName in RULE_SCALARS:
+		rules.append(get(rule_name))
+	_feed(ctx, tag, rules.to_byte_array())
+	_feed(ctx, tag + 1, PackedStringArray(type_ids).to_byte_array())
+	_feed(ctx, tag + 2, PackedStringArray(weapon_ids).to_byte_array())
+	return ctx.finish().decode_s64(0)
+
+
+## The digest of MAP_ARRAYS in list order, recomputed only when map_version has changed.
+func _map_digest_value() -> int:
+	if _map_digest_version != map_version:
+		var ctx: HashingContext = _start_hash()
+		for index: int in MAP_ARRAYS.size():
+			_feed(ctx, index, _bytes_of(get(MAP_ARRAYS[index])))
+		_map_digest = ctx.finish().decode_s64(0)
+		_map_digest_version = map_version
+	return _map_digest
+
+
+## Feeds the blocks of section `section`, an index into hash_section_names().
+func _feed_section(ctx: HashingContext, section: int) -> void:
+	var rows_end: int = 2 + ROW_ARRAYS.size()
+	if section == 0:
+		var header: PackedInt64Array = PackedInt64Array([STATE_FORMAT])
+		for scalar_name: StringName in HASHED_SCALARS:
+			header.append(get(scalar_name))
+		header.append_array(rng.state())
+		_feed(ctx, section, header.to_byte_array())
+	elif section == 1:
+		_feed(ctx, section, PackedInt64Array([_map_digest_value()]).to_byte_array())
+	elif section < rows_end:
+		_feed(ctx, section, _bytes_of(get(ROW_ARRAYS[section - 2])))
+	elif section == rows_end:
+		_feed_projectiles(ctx, section)
+	else:
+		for array_name: StringName in FogGrid.HASHED:
+			_feed(ctx, section, _bytes_of(fog.get(array_name)))
+
+
+## The live slots (index, then the fields in PROJECTILE_ARRAYS order), then the used free stack.
+func _feed_projectiles(ctx: HashingContext, section: int) -> void:
+	var columns: Array[PackedInt32Array] = []
+	for column_name: StringName in PROJECTILE_ARRAYS:
+		if column_name != &"proj_free":
+			columns.append(get(column_name))
+	var ids: PackedInt32Array = proj_id
+	var live_count: int = 0
+	for slot: int in ids.size():
+		if ids[slot] != 0:
+			live_count += 1
+	var live: PackedInt32Array = PackedInt32Array()
+	live.resize(live_count * (columns.size() + 1))  # One resize, then writes by index.
+	var at: int = 0
+	for slot: int in ids.size():
+		if ids[slot] != 0:
+			live[at] = slot
+			at += 1
+			for column: PackedInt32Array in columns:
+				live[at] = column[slot]
+				at += 1
+	_feed(ctx, section, live.to_byte_array())
+	_feed(ctx, section, proj_free.slice(0, proj_free_top).to_byte_array())
+
+
+static func _start_hash() -> HashingContext:
+	var ctx: HashingContext = HashingContext.new()
+	ctx.start(HashingContext.HASH_SHA256)
+	return ctx
+
+
+## One block: the tag and the byte count as two int64, then the bytes (update() refuses none).
+static func _feed(ctx: HashingContext, tag: int, bytes: PackedByteArray) -> void:
+	ctx.update(PackedInt64Array([tag, bytes.size()]).to_byte_array())
+	if not bytes.is_empty():
+		ctx.update(bytes)
+
+
+## A byte array as it is, any other Packed array little-endian (strings as null-terminated UTF-8).
+static func _bytes_of(table: Variant) -> PackedByteArray:
+	if table is PackedByteArray:
+		return table
+	return table.to_byte_array()

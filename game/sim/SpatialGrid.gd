@@ -6,6 +6,21 @@ extends RefCounted
 ## hashed. Everything a rebuild changes lives in Packed arrays and ints of this object (ADR 0013
 ## section 2), so a native kernel can later write it in place.
 
+## Nothing here is in the state hash; UNHASHED names every int and Packed array member once (ADR
+## 0007 section 8).
+const HASHED: Array[StringName] = []
+const UNHASHED: Array[StringName] = [
+	&"cols",
+	&"rows",
+	&"head",
+	&"next",
+	&"cell_milli",
+	&"_capacity",
+	&"_occupied",
+	&"_occupied_count",
+	&"_inserted",
+]
+
 ## Cells per row and rows of cells: the map rounded up, so the last cell of a row or a column may
 ## be partial. 0 for an empty map.
 var cols: int = 0
