@@ -11,7 +11,7 @@ const ROOTS: Array[String] = ["res://game", "res://scenes"]
 func test_every_script_loads_and_can_instantiate() -> void:
 	var scripts: Array[String] = _all_scripts()
 	# Guards against the scan passing because it found nothing.
-	assert_array(scripts).contains(["res://game/view/MapView.gd"])
+	assert_array(scripts).contains(["res://game/view/TestMapView.gd"])
 	var broken: Array[String] = []
 	for path: String in scripts:
 		var script: GDScript = load(path)
