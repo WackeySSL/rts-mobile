@@ -47,11 +47,13 @@ var level: int = 0
 var pending: int = 0
 
 
-## Sizes every array for a cols x rows map; a no-op while the padded size is unchanged.
+## Sizes every array for a cols x rows map; a no-op while the padded size is unchanged. A resize
+## ends `complete`: the old cost no longer fits the map, whatever key comes next.
 func reserve(cols: int, rows: int) -> void:
 	var padded: int = (maxi(cols, 0) + 2) * (maxi(rows, 0) + 2)
 	if cost.size() == padded:
 		return
+	complete = false
 	cost.resize(padded)
 	next.resize(padded)
 	pad_cost.resize(padded)
