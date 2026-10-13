@@ -5,8 +5,9 @@
 # checkout without a build is a plain GDScript project (ADR 0013 section 9). verify.sh runs it first.
 # Usage: bash scripts/build-native.sh [--platform linux|android] [--target template_debug|template_release]
 #                                     [--arch x86_64|arm64]
-#   linux builds the host architecture only; android builds arm64 only (CI only: a cloud session
-#   has no NDK, and scripts/ci/install-ndk.sh installs the NDK_VERSION below).
+#   --arch defaults to the one value a platform accepts: linux builds the host architecture only,
+#   android arm64 only (CI only: a cloud session has no NDK, and scripts/ci/install-ndk.sh installs
+#   the NDK_VERSION below).
 # Env:   SCONS=<binary> (default: scons; must be 4.9.1), SCONS_CACHE=<folder> (godot-cpp's CacheDir),
 #        ANDROID_NDK_ROOT=<NDK folder> (android; must be <sdk>/ndk/28.1.13356709, the layout that
 #        sdkmanager makes and that godot-cpp's tools/android.py reads as $ANDROID_HOME/ndk/<version>).
@@ -47,7 +48,7 @@ die() {
 
 platform="linux"
 target="template_debug"
-arch="x86_64"
+arch=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --platform | --target | --arch)
@@ -67,8 +68,10 @@ case "$target" in template_debug | template_release) ;; *) die 2 "--target must 
 host_arch="$(uname -m)"
 case "$host_arch" in aarch64 | arm64) host_arch="arm64" ;; esac
 if [ "$platform" = "android" ]; then
+  [ -n "$arch" ] || arch="arm64"
   [ "$arch" = "arm64" ] || die 2 "android builds arm64 only (the preset ships arm64-v8a), got --arch $arch"
 else
+  [ -n "$arch" ] || arch="$host_arch"
   [ "$arch" = "$host_arch" ] || die 2 "linux builds the host architecture only ($host_arch), got --arch $arch"
 fi
 

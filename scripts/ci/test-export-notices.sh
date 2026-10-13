@@ -29,6 +29,12 @@ mkdir -p "$root/bin" "$root/tmp" "$root/jdk/bin" "$root/sdk/platform-tools" "$ro
   "$root/apk/lib/arm64-v8a" "$root/apk/assets/scenes"
 cat >"$root/bin/godot" <<'STUB'
 #!/usr/bin/env bash
+# Every headless editor start needs the seeded extension list when the project has a .gdextension; the
+# real Godot 4.7.2 aborts with exit 134 without it (ADR 0013 section 9).
+if [ "$1" != "--version" ] && [ -f native/sim_kernels.gdextension ] && ! grep -Fq res://native/sim_kernels.gdextension .godot/extension_list.cfg 2>/dev/null; then
+  echo "stub godot: started without the seeded extension list" >&2
+  exit 134
+fi
 case "$*" in
   --version*) echo "4.7.2.stable.official.0000000" ;;
   *"--export-release Web "*)
@@ -71,7 +77,8 @@ done
 # tree NAME: a copy of the scripts and licence folders under $root/NAME. The scripts change into
 # the folder above their own, so they read and write inside the copy.
 tree() {
-  mkdir -p "$root/$1/scripts" "$root/$1/docs"
+  mkdir -p "$root/$1/scripts" "$root/$1/docs" "$root/$1/native"
+  touch "$root/$1/native/sim_kernels.gdextension"
   cp "$repo/scripts/export-web.sh" "$repo/scripts/export-android.sh" "$repo/scripts/seed-extension-list.sh" \
     "$repo/scripts/verify-allowlist.txt" "$root/$1/scripts/"
   cp -R "$repo/docs/licenses" "$root/$1/docs/licenses"

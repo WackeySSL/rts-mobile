@@ -248,10 +248,11 @@ if ! grep -qx dev_menu <<<"$features"; then
   die 1 "the pack lacks the dev_menu custom feature (preset custom_features, ADR 0002 section 6)"
 fi
 # The web preview runs the GDScript twins (ADR 0013 section 7): the Web preset excludes native/*.
-# Godot only warns about a packed .gdextension ("No wasm32 library found"), so search the pack.
+# Godot only warns about a packed .gdextension ("No wasm32 library found"), so search the pack. The
+# generated file's own comment line mentions .gdextension too, so the message quotes the res:// path.
 packed="$(strings "$out_abs/index.pck" | grep -F '.gdextension' || true)"
 if [ -n "$packed" ]; then
-  die 1 "the pack holds a .gdextension (the Web preset must exclude native/*): $(head -n 1 <<<"$packed")"
+  die 1 "the pack holds a .gdextension (the Web preset must exclude native/*): $(grep -F -m 1 'res://' <<<"$packed" || head -n 1 <<<"$packed")"
 fi
 
 rm -f "$log"
