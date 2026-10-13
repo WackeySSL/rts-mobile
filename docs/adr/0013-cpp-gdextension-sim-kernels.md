@@ -997,9 +997,9 @@ on 2026-10-13, verbatim, **"ja til install-android"** and **"ja til SDK-licens"*
   (the plan's P26k section).
 
 Status note (2026-10-13, P26l docs, P55b as merged, #69), on "Sessions" and the note above:
-- P55b adds `scripts/cloud/install-android.sh [--accept-android-sdk-licenses]` with its offline
-  test `scripts/ci/test-install-android.sh` (a verify-job step), never part of `setup.sh`, the
-  session-start hook or CI.
+- P55b adds `scripts/cloud/install-android.sh [--accept-android-sdk-licenses]`, never part of
+  `setup.sh`, the session-start hook or CI, with its offline test
+  `scripts/ci/test-install-android.sh` (a verify-job step).
 - The sdkmanager of cmdline-tools 23.0 records the licence acceptance by itself on any install,
   without asking. So the script's gate, before any sdkmanager call, is the only licence control
   (without the flag a missing SDK piece is exit 5), and `install-ndk.sh` gains `--check` for it.
