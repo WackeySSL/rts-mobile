@@ -4,8 +4,12 @@ extends GdUnitTestSuite
 ## FlowCache.run in GDScript and World B in C++, through 900 ticks of the same scripted requests (12
 ## keys over 8 slots, units taking and leaving fields), terrain changes (re-integration) and odd
 ## budgets, and the full state is compared after every call. Then the same on maps that are not
-## square (wide, then tall), where a mix-up of columns and rows shows.
+## square (wide, then tall), where a mix-up of columns and rows shows, and a crafted map where one
+## settled cell queues a diagonal and an orthogonal neighbour into the same bucket. That
+## FlowCache.run hands the phase to the kernel at all is pinned by the spy case in
+## tests/sim/test_kernel_dispatch.gd: without it this comparison would be GDScript against GDScript.
 
+const FlowRig: GDScript = preload("res://tests/sim/support/flow_rig.gd")
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const StateDiff: GDScript = preload("res://tests/sim/support/state_diff.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
@@ -20,6 +24,9 @@ const GROUPS: int = 10
 const FOOT: int = World.MoveClass.FOOT
 const TRACKED: int = World.MoveClass.TRACKED
 const GROUP_ROWS: int = 5
+## The cost of grass and of a terrain (1) that costs 14 for every class: a diagonal step onto grass
+## costs 10 * 14 / 10 = 14 as well, so the scan order of the neighbours decides the bucket order.
+const SCAN_COST: Array[int] = [10, 10, 10, 14, 14, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ## The ticks of a terrain change, which re-integrates the referenced fields.
 const REPAINT_TICKS: Array[int] = [200, 450, 700]
 ## The cost of grass, slow sand (255 tracked, the cap of the bucket ring), scrub (foot only), rock
@@ -100,6 +107,50 @@ func test_a_served_slot_re_keyed_by_hand_matches() -> void:
 			assert_str(StateDiff.first(worlds[0], worlds[1])).is_empty()
 
 
+## The goal in the middle of a 3x3 map, the four orthogonal neighbours costing 14 and the four
+## corners 10: settling the goal queues all eight at distance 14, in the scan order of FlowField.DX
+## and DY (north-west, north, north-east, west, east, south-west, south, south-east). A bucket pops
+## last in first out, so the chain of the bucket shows the order, which no other map has: a diagonal
+## step (14) never equals an orthogonal one in the 900-tick run, so swapping a diagonal with its
+## orthogonal neighbour in the scan changes nothing there. One cell of budget per call, from a
+## WAITING slot, so that the begin of the field is the first thing the kernel does.
+@warning_ignore("integer_division")
+func test_a_diagonal_and_an_orthogonal_neighbour_queue_in_scan_order() -> void:
+	var rigs: Array[RefCounted] = []
+	for impl: int in SimImpls.IMPLS:
+		var rig: RefCounted = FlowRig.new().setup(impl, 3, 3, 2)
+		assert_array(rig.problems).is_empty()
+		assert_bool(SimImpls.is_native(rig.world, FlowCache.PHASE_FLOW)).is_equal(
+			impl == SimImpls.Impl.NATIVE
+		)
+		rig.world.terrain_cost = PackedByteArray(SCAN_COST)
+		for cell: int in [1, 3, 5, 7]:
+			rig.world.set_terrain(cell, 1)
+		rig.acquire(4, FOOT, rig.world.map_version, 1)
+		rigs.append(rig)
+	var queued: Array[int] = []
+	var calls: int = 0
+	while not rigs[0].field(0).complete and calls < 12:
+		for rig: RefCounted in rigs:
+			assert_int(rig.run(1)).is_equal(1)
+		assert_str(StateDiff.first(rigs[0].world, rigs[1].world)).is_empty()
+		calls += 1
+		if calls == 1:
+			# The chain of bucket 14 from its head, in plain cell numbers (the padded map is 5 wide).
+			var field: FlowField = rigs[0].field(0)
+			var cell: int = field.bucket_head[14]
+			while cell != -1 and queued.size() < 9:
+				queued.append((cell / 5 - 1) * 3 + cell % 5 - 1)
+				cell = field.link_next[cell]
+	assert_array(queued).is_equal([8, 7, 6, 5, 3, 2, 1, 0])
+	assert_int(calls).is_equal(9)
+	for rig: RefCounted in rigs:
+		var served: Array[int] = []
+		for cell: int in 9:
+			served.append(rig.field(0).cost[(cell / 3 + 1) * 5 + cell % 3 + 1])
+		assert_array(served).is_equal([14, 14, 14, 14, 0, 14, 14, 14, 14])
+
+
 ## {diff: the first member that differed after a call ("" if none), settled: the cells integrated,
 ## served: the most fields served at once, again: the calls that found a served field being
 ## re-integrated}.
@@ -153,10 +204,14 @@ func _lockstep(scenario: ScenarioDef, ticks: int) -> Dictionary:
 	return run
 
 
-## The rows of `group`, counted from the end of the World (group 0 holds the last row), leave their
-## fields and take the field of `key` (goal cell, move class), or -1 when every slot is referenced.
+## The rows of `group` leave their fields and take the field of `key` (goal cell, move class), or -1
+## when every slot is referenced. Group 0 holds the last rows of the World, group 1 the rows before
+## them and so on; the last group holds the first rows, 0 to GROUP_ROWS - 1, so that a recount that
+## starts at row 1 shows.
 func _take_field(world: World, group: int, key: Vector2i) -> void:
-	var first: int = maxi(world.unit_count() - (group + 1) * GROUP_ROWS, 0)
+	var first: int = 0
+	if group < GROUPS - 1:
+		first = maxi(world.unit_count() - (group + 1) * GROUP_ROWS, 0)
 	for row: int in range(first, first + GROUP_ROWS):
 		world.field[row] = -1
 	var slot: int = world.flow.acquire(key.x, key.y, world.map_version, world.tick)

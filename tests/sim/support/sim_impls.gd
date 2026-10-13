@@ -55,7 +55,9 @@ static func use(world: World, impl: int, kernels: Object = null) -> Array[String
 
 
 ## Whether `phase` really runs in C++ on `world`: the kernels are a SimKernels and the bit is set.
-## A module's native pass asserts this, so that it cannot pass on the GDScript twin.
+## A module's native pass asserts this, so that it cannot pass on the GDScript twin. It reads the
+## World's two fields only; that the phase's entry (FlowCache.run) hands the call to the kernel at
+## all is guarded by the spy case of tests/sim/test_kernel_dispatch.gd (each port adds its own).
 static func is_native(world: World, phase: int) -> bool:
 	var kernels: Object = world.kernels
 	return (

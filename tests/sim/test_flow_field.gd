@@ -105,7 +105,8 @@ func _a_wall_with_one_gap_leads_through_the_gap(impl: int) -> void:
 	assert_int(_at(field, 9, 4, 2)).is_equal(54)
 	var chain: Array[int] = []
 	var cell: int = 36
-	while cell != -1:
+	# At most 45 cells: a field that loops fails the comparison below instead of never ending.
+	while cell != -1 and chain.size() < 45:
 		chain.append(cell)
 		cell = field.best_neighbour(cell)
 	# (0,4) (1,3) (2,3) (3,3) (4,3) (4,2) (4,1) (5,0) (6,0) (7,0) (8,0), as y * 9 + x.
@@ -201,7 +202,8 @@ func _slices_complete_in_whole_budgets_on_an_open_64_grid(impl: int) -> void:
 		var field: FlowField = rig.field(rig.acquire(0, FOOT, 0, 1))
 		assert_int(rig.advance(costs, 0) + rig.advance(costs, -5)).is_equal(0)
 		var calls: int = 0
-		while not field.complete:
+		# A kernel that stalls fails the count below after a few calls, never runs out of memory.
+		while not field.complete and calls < 4096 / budget + 2:
 			assert_int(rig.advance(costs, budget)).is_equal(budget)
 			calls += 1
 		assert_int(calls).is_equal(4096 / budget)
@@ -255,10 +257,16 @@ func _costs_match_a_brute_force_on_a_seeded_map_for_any_slicing(impl: int) -> vo
 		var rig: RefCounted = _rig(impl, rows)
 		var field: FlowField = rig.field(rig.acquire(300, FOOT, 0, 1))
 		var total: int = 0
-		while not field.complete:
+		var calls: int = 0
+		# Every call settles at least one cell, so `reached` calls end it; a stall stops there.
+		while not field.complete and calls < reached:
 			var settled: int = rig.advance(costs, budget)
 			assert_int(settled).is_between(1, budget)
+			if settled == 0:
+				break
 			total += settled
+			calls += 1
+		assert_bool(field.complete).is_true()
 		assert_int(total).is_equal(reached)
 		for cell: int in 576:
 			assert_int(_at(field, 24, cell % 24, cell / 24)).is_equal(brute[cell])
