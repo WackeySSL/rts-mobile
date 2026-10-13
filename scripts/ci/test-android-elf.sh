@@ -2,9 +2,10 @@
 # Offline test of scripts/ci/check-android-elf.sh (P55a2, ADR 0013 sections 8 and 10) on ELF fixtures that gcc
 # builds here: a good library, fake libc++_shared.so and libc.so files, and one failing variant per check and per
 # branch of the libc++ symbol rule. The fixtures have the host's machine unless a case patches e_machine; the real
-# arm64 run is the Android job's. Every case runs with GNU binutils and with llvm-readelf and llvm-nm (the NDK's
-# tools, or the ones on PATH). Without them the llvm half is skipped on a developer machine and fails under
-# CI (the CI variable is set), where install-ndk.sh has installed them.
+# arm64 run is the Android job's. Every case runs with GNU binutils and with llvm-readelf and llvm-nm: the NDK's
+# in ANDROID_NDK_ROOT, else (a developer machine) the ones on PATH. The llvm half prints which tools it ran and is
+# skipped without any; under CI (the CI variable is set) it takes the NDK's only and fails without them, because
+# install-ndk.sh has installed the NDK in an earlier step.
 # Needs: bash, gcc, binutils (readelf, nm, objcopy, dd). Exit: 0 all cases pass, 1 a case failed.
 set -euo pipefail
 repo="$(cd "$(dirname "$0")/../.." && pwd -P)"
@@ -124,23 +125,59 @@ poke "$root/4k.so" "$root/x86-4k.so" 18 62   # EM_X86_64, and 4 KB aligned too
 printf '\x08\0\0\0\x08\0\0\0\x01\0\0\0Android\0\x1d\0\0\0r29\0' >"$root/note.bin"
 objcopy --add-section .note.android.ident="$root/note.bin" "$root/good.so" "$root/noted.so"
 
+pick_llvm() { # NDK-BIN: sets llvm_readelf and llvm_nm to the tools the llvm half runs, or to paths that are no tools.
+  # The NDK's first: they are what check-android-elf.sh and export-android.sh run, and a runner image or a developer
+  # machine has other LLVM versions on PATH (18 here, against the NDK's 21). PATH serves a developer machine without
+  # an NDK only; under CI the NDK is required, because install-ndk.sh ran in an earlier step.
+  llvm_readelf="$1/llvm-readelf"
+  llvm_nm="$1/llvm-nm"
+  if [ -z "${CI:-}" ] && { [ ! -x "$llvm_readelf" ] || [ ! -x "$llvm_nm" ]; }; then
+    llvm_readelf="$(command -v llvm-readelf || echo none)"
+    llvm_nm="$(command -v llvm-nm || echo none)"
+  fi
+}
+selects() { # NAME WANTED CI NDK-BIN PATH: pick_llvm in a subshell with that CI value and PATH
+  local got
+  got="$(
+    CI="$3"
+    PATH="$5"
+    pick_llvm "$4"
+    echo "$llvm_readelf $llvm_nm"
+  )"
+  if [ "$got" = "$2" ]; then
+    echo "ok: select: $1"
+  else
+    echo "FAIL: select: $1 (wanted '$2', got '$got')" >&2
+    failures=$((failures + 1))
+  fi
+}
+stub_bin="$root/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin"
+mkdir -p "$root/pathtools" "$root/nopathtools"
+printf '#!/bin/sh\n' | tee "$root/pathtools/llvm-readelf" >"$root/pathtools/llvm-nm"
+chmod +x "$root"/pathtools/*
+selects "the NDK's tools win over the ones on PATH" "$stub_bin/llvm-readelf $stub_bin/llvm-nm" "" "$stub_bin" "$root/pathtools:$PATH"
+selects "the NDK's tools win over the ones on PATH under CI" "$stub_bin/llvm-readelf $stub_bin/llvm-nm" 1 "$stub_bin" "$root/pathtools:$PATH"
+selects "PATH serves a machine without an NDK" "$root/pathtools/llvm-readelf $root/pathtools/llvm-nm" "" "$root/nondk/bin" "$root/pathtools:$PATH"
+selects "no NDK and no tools on PATH leave nothing to run" "none none" "" "$root/nondk/bin" "$root/nopathtools"
+selects "CI never falls back to PATH" "$root/nondk/bin/llvm-readelf $root/nondk/bin/llvm-nm" 1 "$root/nondk/bin" "$root/pathtools:$PATH"
+
 m=(--machine "$machine")
 ndk_bin="${ANDROID_NDK_ROOT:-/nonexistent}/toolchains/llvm/prebuilt/linux-x86_64/bin"
 for flavour in gnu llvm; do
   label="$flavour"
   tools=()
   if [ "$flavour" = llvm ]; then
-    llvm_readelf="$(command -v llvm-readelf || echo "$ndk_bin/llvm-readelf")"
-    llvm_nm="$(command -v llvm-nm || echo "$ndk_bin/llvm-nm")"
+    pick_llvm "$ndk_bin"
     if [ ! -x "$llvm_readelf" ] || [ ! -x "$llvm_nm" ]; then
       if [ -n "${CI:-}" ]; then
-        echo "FAIL: llvm: llvm-readelf and llvm-nm are on neither PATH nor in ANDROID_NDK_ROOT, and CI installs the NDK" >&2
+        echo "FAIL: llvm: llvm-readelf and llvm-nm are not in ANDROID_NDK_ROOT ('${ANDROID_NDK_ROOT:-}'), and CI installs the NDK" >&2
         failures=$((failures + 1))
       else
         echo "skip: llvm: llvm-readelf and llvm-nm are on neither PATH nor in ANDROID_NDK_ROOT"
       fi
       continue
     fi
+    echo "llvm tools: $llvm_readelf, $("$llvm_readelf" --version | sed -n 's/^.*LLVM version /LLVM /p')"
     tools=(READELF="$llvm_readelf" NM="$llvm_nm")
   fi
   t "a good library passes, with the entry symbol of build-native.sh" 0 "OK good.so: $machine shared object, exports $entry, needs libc.so libc++_shared.so, $loads PT_LOAD" "${m[@]}" "$root/good.so" "$cxx"

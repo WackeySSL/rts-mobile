@@ -85,7 +85,8 @@ case "$1:$what" in
   -d:kernels) echo ' 0x01 (NEEDED)   Shared library: [libc++_shared.so]' ;;
   -lW:kernels) printf '  LOAD      0x0 0x0 0x0 0x10 0x10 R %s\n  GNU_RELRO 0x0 0xfed8 0xfed8 0x128 0x128 R 0x1\n' "$STUB_ALIGN" ;;
   -lW:*) printf '  LOAD      0x0 0x0 0x0 0x10 0x10 R 0x4000\n' ;;
-  -p:so | -p:libcxx) printf "String dump of section '.note.android.ident':\n  [     0]  Android\n  [     8]  r29\n" ;;
+  -p:so) printf "String dump of section '.note.android.ident':\n  [     0]  Android\n  [     8]  r29\n  [    18]  14206865\n" ;;
+  -p:libcxx) printf "String dump of section '.note.android.ident':\n  [     0]  Android\n  [     8]  r28\n  [    18]  13004108\n" ;;
 esac
 STUB
 cat >"$root/bin/nm" <<'STUB'
@@ -214,8 +215,11 @@ for call in "readelf -h .*$packed/$native <kernels>" "readelf -lW .*$packed/$nat
     fail "android: the stubs were not asked '$call' (log: $(tr '\n' ';' <"$root/ok.stub.log"))"
   fi
 done
-for name in libgodot_android.so libc++_shared.so; do
-  if grep -Fq "check-android-elf: $name: .note.android.ident: Android r29 ; PT_LOAD align: 0x4000" <<<"$android_out"; then
+# The notes of the real Godot 4.7.2 template: libgodot_android.so is built with NDK r29 (29.0.14206865), and the NDK
+# r29 ships a libc++_shared.so that is stamped r28 (28.0.13004108).
+for spec in "libgodot_android.so:r29 14206865" "libc++_shared.so:r28 13004108"; do
+  name="${spec%%:*}"
+  if grep -Fq "check-android-elf: $name: .note.android.ident: Android ${spec#*:} ; PT_LOAD align: 0x4000" <<<"$android_out"; then
     pass "android: the export prints the .note.android.ident and PT_LOAD alignment of the template's $name"
   else
     fail "android: the export output lacks the description of the template's $name"
