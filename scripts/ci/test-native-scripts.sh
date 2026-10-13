@@ -288,6 +288,37 @@ run in3 SDKMANAGER="$root/sdkm/sdkmanager" ANDROID_HOME="$sdk" bash scripts/ci/i
 check "ndk: a stale folder of the pinned name is installed over" 0 "install-ndk: OK $sdk/ndk/$ndk_pin"
 assert "ndk: sdkmanager ran once for the stale folder" test "$(cat "$root/in3/sdkmanager.args" 2>/dev/null)" = "--sdk_root=$sdk ndk;$ndk_pin"
 
+# --check (P55b) installs nothing: it answers whether the pinned NDK is complete, and it calls no sdkmanager even when one
+# is there and the NDK is not. The installer of cloud sessions asks it before sdkmanager, which records the SDK licence, may run.
+tree in4
+run in4 bash scripts/ci/install-ndk.sh --bogus
+check "ndk: an argument but --check" 2 "takes no arguments but --check, got '--bogus'"
+run in4 bash scripts/ci/install-ndk.sh --check
+check "ndk --check: no SDK folder is set" 3 "ANDROID_HOME is not set"
+new_sdk isdk8
+mkdir -p "$sdk/cmdline-tools/latest/bin" && cp "$root/sdkm/sdkmanager" "$sdk/cmdline-tools/latest/bin/"
+run in4 ANDROID_HOME="$sdk" bash scripts/ci/install-ndk.sh --check
+check "ndk --check: an SDK without the NDK" 1 "Android NDK $ndk_pin is not installed"
+assert "ndk --check: ... calls no sdkmanager and installs nothing" test ! -e "$root/in4/sdkmanager.args" -a ! -e "$sdk/ndk"
+run in4 ANDROID_HOME="$root/nowhere" bash scripts/ci/install-ndk.sh --check
+check "ndk --check: an SDK folder that does not exist" 1 "is not installed"
+mkdir -p "$sdk/ndk/$ndk_pin" && echo "Pkg.Revision = 28.1.13356709" >"$sdk/ndk/$ndk_pin/source.properties"
+run in4 ANDROID_HOME="$sdk" bash scripts/ci/install-ndk.sh --check
+check "ndk --check: a folder of the pinned name with another revision" 1 "'28.1.13356709'"
+for missing in clang++ llvm-readelf llvm-nm; do
+  new_sdk "isdk9-${missing//+/p}"
+  run in STUB_SDKM_TOOLS="${tools/$missing/}" SDKMANAGER="$root/sdkm/sdkmanager" ANDROID_HOME="$sdk" bash scripts/ci/install-ndk.sh
+  run in4 ANDROID_HOME="$sdk" bash scripts/ci/install-ndk.sh --check
+  check "ndk --check: an incomplete toolchain, no $missing" 1 "no $sdk/ndk/$ndk_pin/toolchains/llvm/prebuilt/linux-x86_64/bin/$missing"
+done
+: >"$root/github.env3"
+run in4 GITHUB_ENV="$root/github.env3" ANDROID_HOME="$root/sdk" bash scripts/ci/install-ndk.sh --check
+check "ndk --check: the NDK is installed" 0 "installed already"
+assert "ndk --check: ... it still sets ANDROID_NDK_ROOT" test "$(cat "$root/github.env3")" = "ANDROID_NDK_ROOT=$root/sdk/ndk/$ndk_pin"
+: >"$root/github.env4"
+run in4 GITHUB_ENV="$root/github.env4" ANDROID_HOME="$sdk" bash scripts/ci/install-ndk.sh --check
+assert "ndk --check: ... and it sets nothing when the NDK is missing" test ! -s "$root/github.env4"
+
 # (4) check-cpp-format.sh: the pinned clang-format, then every .cpp, .h and .hpp below native/sim_kernels,
 # in every folder (and nothing else). The stub fails only a BAD file, and only on --dry-run with --Werror.
 tree cf

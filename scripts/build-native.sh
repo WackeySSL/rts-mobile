@@ -7,8 +7,8 @@
 #                                     [--arch x86_64|arm64] [--compiler gcc|clang] [--optimize speed]
 #                                     [--print-cache-key]
 #   --arch defaults to the one value a platform accepts: linux builds the host architecture only,
-#   android arm64 only (CI only: a cloud session has no NDK, and scripts/ci/install-ndk.sh installs
-#   the NDK_VERSION below).
+#   android arm64 only (CI, or a cloud session after scripts/cloud/install-android.sh; scripts/ci/install-ndk.sh
+#   installs the NDK_VERSION below).
 #   --compiler clang adds use_llvm=yes (the native-clang CI job; the default gcc is the host g++, and android
 #   always uses the NDK's clang). --optimize speed adds optimize=speed (-O3; template_debug is -O2 without it).
 #   --print-cache-key prints the CI cache key (ADR 0013 section 8: platform, arch, target, compiler version,
@@ -123,7 +123,7 @@ if [ "$platform" = "linux" ]; then
   echo "build-native: $("$cxx" --version | head -n 1), scons ${scons_version}" >&2
 else
   ndk="${ANDROID_NDK_ROOT:-}"
-  [ -n "$ndk" ] || die 3 "ANDROID_NDK_ROOT is not set (Android NDK missing; a cloud session has none, CI sets it)"
+  [ -n "$ndk" ] || die 3 "ANDROID_NDK_ROOT is not set (Android NDK missing: CI sets it, a cloud session gets it from scripts/cloud/install-android.sh)"
   # godot-cpp reads the NDK as $ANDROID_HOME/ndk/<ndk_version> and falls back to ANDROID_NDK_ROOT only
   # when ANDROID_HOME is no option at all (a KeyError), so derive the SDK folder from the NDK folder.
   if [ "$(basename "$ndk")" != "$NDK_VERSION" ] || [ "$(basename "$(dirname "$ndk")")" != "ndk" ]; then

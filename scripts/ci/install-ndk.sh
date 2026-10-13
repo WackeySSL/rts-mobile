@@ -5,14 +5,20 @@
 # of build-native.sh, so the pin lives in that one place. Idempotent: an NDK that is installed already,
 # and passes the checks build-native.sh makes, is left alone and sdkmanager is not needed. The NDK is
 # never cached (the caches of ci.yml hold godot-cpp, the SCons objects and Godot): the download is the install.
-# Usage: bash scripts/ci/install-ndk.sh
+# Usage: bash scripts/ci/install-ndk.sh [--check]
+#   --check  installs nothing and calls no sdkmanager, so it needs neither one nor an existing SDK folder: the same
+#            exit 0 and the same GITHUB_ENV line when the pinned NDK is installed, exit 1 when it is not. The
+#            installer of cloud sessions asks it before it lets sdkmanager (which records the licence) run.
 # Env:   ANDROID_HOME=<Android SDK folder> (else ANDROID_SDK_ROOT; the runner image sets it),
 #        SDKMANAGER=<binary> (default: <sdk>/cmdline-tools/latest/bin/sdkmanager, else sdkmanager on PATH),
 #        GITHUB_ENV (CI: ANDROID_NDK_ROOT=<ndk folder> is appended for the later steps of the job).
 # Needs: network access to dl.google.com (first run only), a JDK for sdkmanager, and the SDK licence
-#        accepted in <sdk>/licenses (the runner image has it; this script never accepts a licence).
+#        accepted in <sdk>/licenses (the runner image has it; this script accepts none itself, but the sdkmanager of
+#        cmdline-tools 23.0 records it without asking, so scripts/cloud/install-android.sh runs this script as --check
+#        unless a person told it to accept the SDK licences).
 # Exit:  0 ok
-#        2 an argument was given, or build-native.sh has no single NDK_VERSION="<major>.<minor>.<build>" line
+#        1 --check only: the pinned NDK is not installed, or is incomplete (the reason is on stderr)
+#        2 an argument but --check was given, or build-native.sh has no single NDK_VERSION="<major>.<minor>.<build>" line
 #        3 tool missing: no SDK folder, or no sdkmanager
 #        4 sdkmanager failed, or what it left is not the pinned NDK (wrong revision or an incomplete toolchain)
 # Success prints "install-ndk: OK <ndk folder>". Bash 3.2 compatible.
@@ -26,7 +32,13 @@ die() {
   exit "$code"
 }
 
-[ $# -eq 0 ] || die 2 "takes no arguments, got '$1' (usage: bash scripts/ci/install-ndk.sh)"
+check=0
+for arg in "$@"; do
+  case "$arg" in
+    --check) check=1 ;;
+    *) die 2 "takes no arguments but --check, got '$arg' (usage: bash scripts/ci/install-ndk.sh [--check])" ;;
+  esac
+done
 pin_file="$ROOT/scripts/build-native.sh"
 pin_lines="$(grep -c '^NDK_VERSION=' "$pin_file" || true)"
 version="$(sed -n 's/^NDK_VERSION="\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)"$/\1/p' "$pin_file")"
@@ -36,7 +48,7 @@ version="$(sed -n 's/^NDK_VERSION="\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)"$/\
 sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
 sdk="${sdk%/}"
 [ -n "$sdk" ] || die 3 "ANDROID_HOME is not set (the Android SDK folder; the runner image sets it)"
-[ -d "$sdk" ] || die 3 "the Android SDK folder '$sdk' does not exist"
+[ "$check" = 1 ] || [ -d "$sdk" ] || die 3 "the Android SDK folder '$sdk' does not exist"
 ndk="$sdk/ndk/$version"
 toolchain="$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin"
 
@@ -52,6 +64,8 @@ ndk_problem() { # prints why $ndk is not the pinned NDK, nothing when it is
 
 if [ -z "$(ndk_problem)" ]; then
   echo "install-ndk: Android NDK $version is installed already"
+elif [ "$check" = 1 ]; then
+  die 1 "Android NDK $version is not installed: $(ndk_problem)"
 else
   sdkmanager="${SDKMANAGER:-}"
   if [ -z "$sdkmanager" ]; then
