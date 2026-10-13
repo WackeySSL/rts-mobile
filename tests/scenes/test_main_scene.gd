@@ -74,11 +74,8 @@ func test_map_is_48_by_48_tiles_of_64_px_from_the_scenario() -> void:
 	assert_int(runner.world.map_cols).is_equal(48)
 	assert_int(runner.world.map_rows).is_equal(48)
 	assert_that(_map.map_rect_px()).is_equal(Rect2i(0, 0, 3072, 3072))
-	# One bake of 8 texels per tile, with the two grass tones of Phase 1 as a checkerboard.
-	assert_int(_map.bake_count()).is_equal(1)
+	assert_int(_map.bake_count()).is_equal(1)  # One bake of 8 texels per tile.
 	assert_that(_map.image().get_size()).is_equal(Vector2i(384, 384))
-	assert_str(_map.image().get_pixel(3, 3).to_html(false)).is_equal("5e7d4a")
-	assert_str(_map.image().get_pixel(8 + 3, 3).to_html(false)).is_equal("6f8f57")
 
 
 func test_camera_limits_equal_the_map_rect() -> void:

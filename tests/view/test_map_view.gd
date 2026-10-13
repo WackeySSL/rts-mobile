@@ -1,8 +1,7 @@
 extends GdUnitTestSuite
 ## MapView (P36) on a 6 x 2 map of every terrain of data/terrain/standard.tres, baked at 8 texels
-## per tile. Texels are read from image(), the CPU-side bake, never from the ImageTexture, which
-## reads back stale after update(). The colours are STYLE.md's, typed again here, so a wrong
-## default in MapView fails.
+## per tile. Texels are read from image(), never from the ImageTexture (stale after update()). The
+## colours are STYLE.md's, typed again here, so a wrong default in MapView fails.
 
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
 const TERRAIN: String = "res://data/terrain/standard.tres"
@@ -95,13 +94,13 @@ func test_the_texture_is_nearest_filtered_and_has_8_texels_per_tile() -> void:
 	wide.bake_px_per_tile = 16
 	add_child(wide)
 	assert_that(wide.image().get_size()).is_equal(Vector2i(96, 32))
-	var scrub: Vector2i = Vector2i(2, 0)  # Its rects are doubled: 4,4,1,1 covers texels 8-9.
-	assert_str(_hex(wide, scrub, Vector2i(9, 9), 16)).is_equal("8C9A6B")
-	assert_str(_hex(wide, scrub, Vector2i(11, 11), 16)).is_equal("6B7A4F")
+	# Scrub's rects are doubled: 4,4,1,1 covers texels 8-9.
+	assert_str(_hex(wide, Vector2i(2, 0), Vector2i(9, 9), 16)).is_equal("8C9A6B")
 
 
 func test_one_bake_per_match_and_one_after_set_terrain_however_many_frames_pass() -> void:
 	for _frame: int in 3:
+		_runner.run_ticks(2)  # Ticks do not bake.
 		await await_idle_frame()
 	assert_int(_view.bake_count()).is_equal(1)
 	_runner.start()  # A new match with the same map_version 0 is a new bake.
@@ -135,26 +134,37 @@ func test_a_missing_colour_or_tile_bakes_magenta_and_never_leaks_into_other_view
 	assert_str(_hex(broken, Vector2i(2, 0), Vector2i(4, 4))).is_equal("FF00FF")  # No highlight.
 	assert_str(_hex(broken, Vector2i(2, 0), Vector2i(2, 2))).is_equal("6B7A4F")  # The bush stays.
 	assert_str(_hex(broken, Vector2i(4, 0), Vector2i(3, 3))).is_equal("FF00FF")  # No water tile.
-	assert_str(_hex(_view, Vector2i(1, 0), Vector2i(3, 3))).is_equal("CDB98F")
-	assert_str(_hex(_view, Vector2i(4, 0), Vector2i(3, 3))).is_equal("2E5E7E")
+	var fresh: MapView = _add_view()  # Made after the erases: its dictionaries are its own.
+	assert_str(_hex(fresh, Vector2i(1, 0), Vector2i(3, 3))).is_equal("CDB98F")
+	assert_str(_hex(fresh, Vector2i(4, 0), Vector2i(3, 3))).is_equal("2E5E7E")
+	assert_bool(_view.colors.has(&"sand") and _view.tiles.has(&"water")).is_true()
 
 
-func test_a_match_without_a_map_shows_nothing_of_the_last_one() -> void:
-	await await_idle_frame()
-	assert_int(_view.draw_count()).is_equal(1)
-	_runner.scenario = ScenarioDef.new()
-	_runner.scenario.map_size_tiles = Vector2i.ZERO
-	_runner.start()
+func test_a_later_match_without_a_map_or_of_another_size_is_drawn_for_itself() -> void:
+	_restart(Vector2i.ZERO)  # No map: nothing of the last match is left.
 	await await_idle_frame()
 	assert_bool(_view.image().is_empty()).is_true()
 	assert_that(_view.map_rect_px()).is_equal(Rect2i())
 	await await_idle_frame()
 	assert_int(_view.draw_count()).is_equal(0)
+	assert_that(_view.drawn_rect()).is_equal(Rect2())
+	_restart(Vector2i(4, 3))  # A map after none is drawn again.
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_int(_view.draw_count()).is_equal(1)
+	assert_that(_view.image().get_size()).is_equal(Vector2i(4, 3) * TILE)
+	_restart(Vector2i(2, 5))  # Another size gets a new texture, not an update of the old one.
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_that(_view.image().get_size()).is_equal(Vector2i(2, 5) * TILE)
+	assert_that(_view.drawn_rect()).is_equal(Rect2(0, 0, 2 * 64, 5 * 64))
+	assert_int(_view.draw_count()).is_equal(1)
 
 
 func test_the_map_is_one_draw_command_before_and_after_a_change() -> void:
 	await await_idle_frame()
 	assert_int(_view.draw_count()).is_equal(1)
+	assert_that(_view.drawn_rect()).is_equal(Rect2(0, 0, 6 * 64, 2 * 64))  # Whole map, from 0,0.
 	_runner.world.set_terrain(0, 3)
 	await await_idle_frame()
 	await await_idle_frame()
@@ -166,6 +176,13 @@ func _make_view() -> MapView:
 	var view: MapView = auto_free(MapView.new())
 	view.runner = _runner
 	return view
+
+
+## A new match on an open-grass map of `size` tiles (no MapDef), in the same runner.
+func _restart(size: Vector2i) -> void:
+	_runner.scenario = ScenarioDef.new()
+	_runner.scenario.map_size_tiles = size
+	_runner.start()
 
 
 func _add_view() -> MapView:

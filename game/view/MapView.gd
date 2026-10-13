@@ -42,6 +42,7 @@ var _world_id: int = 0  ## Instance id of the last baked World: a new one is a n
 var _version: int = -1
 var _bakes: int = 0
 var _draws: int = 0
+var _drawn: Rect2 = Rect2()
 var _image: Image = Image.new()
 var _texture: ImageTexture = null
 
@@ -75,6 +76,11 @@ func draw_count() -> int:
 	return _draws
 
 
+## The rect the last `_draw()` gave `draw_texture_rect`, empty when nothing was drawn.
+func drawn_rect() -> Rect2:
+	return _drawn
+
+
 ## The CPU-side bake that is uploaded. Tests read texels here, never from the ImageTexture, which
 ## reads back stale after `update()`.
 func image() -> Image:
@@ -84,8 +90,10 @@ func image() -> Image:
 
 func _draw() -> void:
 	_draws = 0
+	_drawn = Rect2()
 	if _texture != null:
-		draw_texture_rect(_texture, Rect2(map_rect_px()), false)
+		_drawn = Rect2(map_rect_px())
+		draw_texture_rect(_texture, _drawn, false)
 		_draws += 1
 
 
