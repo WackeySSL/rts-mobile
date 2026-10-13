@@ -145,13 +145,14 @@ for kind in web android; do
 done
 
 # (4) ADR 0013 section 7: a .gdextension in the web pack (the Web preset must exclude native/*) stops
-# export-web.sh with exit 1, which the engine itself only warns about.
+# export-web.sh with exit 1, which the engine itself only warns about. The pack holds the generated
+# file's comment line (it mentions .gdextension) before the path, and the message must quote the path.
 tree web-native
-STUB_PCK_EXTRA=res://native/sim_kernels.gdextension run web-native web
-if [ "$rc" = 1 ] && grep -Fq "the pack holds a .gdextension" <<<"$out"; then
-  pass "web: exit 1 when the pack holds a .gdextension"
+STUB_PCK_EXTRA=$'; build has no .gdextension and loads no library. Do not edit.\nres://native/sim_kernels.gdextension' run web-native web
+if [ "$rc" = 1 ] && grep -Fq "must exclude native/*): res://native/sim_kernels.gdextension" <<<"$out"; then
+  pass "web: exit 1 when the pack holds a .gdextension, and the message quotes its path"
 else
-  fail "web: wanted exit 1 and 'the pack holds a .gdextension', got exit $rc: $(tail -n 1 <<<"$out")"
+  fail "web: wanted exit 1 and 'the pack holds a .gdextension (...): res://native/sim_kernels.gdextension', got exit $rc: $(tail -n 1 <<<"$out")"
 fi
 
 if [ "$failures" -ne 0 ]; then

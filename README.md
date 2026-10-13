@@ -13,6 +13,7 @@ Status: pre-alpha. See [docs/ROADMAP.md](docs/ROADMAP.md).
   a pinned commit, not committed.
 - `bash scripts/build-native.sh` builds the Linux library and writes the git-ignored
   `native/sim_kernels.gdextension`; without it the project is plain GDScript.
+  `--platform android` (arm64) needs the Android NDK and runs in CI only.
 - `bash scripts/verify.sh` runs the native build, format, lint, import, tests, the C++ format check
   and a headless AI-vs-AI smoke run.
 - `bash scripts/run-tests.sh` runs the gdUnit4 tests only.

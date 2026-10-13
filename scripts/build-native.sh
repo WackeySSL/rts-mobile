@@ -32,7 +32,9 @@ GODOT_CPP_URL="https://github.com/godotengine/godot-cpp.git"
 GODOT_CPP_TAG="godot-4.5-stable"
 GODOT_CPP_SHA="e83fd0904c13356ed1d4c3d09f8bb9132bdc6b77"
 SCONS_VERSION="4.9.1"
-# godot-cpp godot-4.5-stable, tools/android.py: opts.Add("ndk_version", ..., "28.1.13356709").
+# godot-cpp godot-4.5-stable, tools/android.py: opts.Add("ndk_version", ..., "28.1.13356709"), ADR 0013
+# section 8's pin. Plan P55a (P26h) still has the NDK choice open (r28, or r29 as in Godot's Gradle
+# template): this line and the stub NDK of scripts/ci/test-native-scripts.sh are what change.
 # scripts/ci/install-ndk.sh reads this line, keep its shape.
 NDK_VERSION="28.1.13356709"
 ENTRY_SYMBOL="sim_kernels_library_init"
@@ -60,7 +62,7 @@ while [ $# -gt 0 ]; do
       esac
       shift 2
       ;;
-    *) die 2 "unknown argument '$1' (usage: bash scripts/build-native.sh [--platform linux] [--target template_debug|template_release] [--arch x86_64|arm64])" ;;
+    *) die 2 "unknown argument '$1' (usage: bash scripts/build-native.sh [--platform linux|android] [--target template_debug|template_release] [--arch x86_64|arm64])" ;;
   esac
 done
 case "$platform" in linux | android) ;; *) die 2 "--platform must be linux or android, got '$platform'" ;; esac
