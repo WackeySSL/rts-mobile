@@ -229,6 +229,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	assert_array(World.HASHED_SCALARS).is_equal(hashed)
 	var unhashed: Array[String] = ["map_w", "map_h", "map_cols", "map_rows", "rows_version"]
 	unhashed.append("flow_cells_per_tick")
+	unhashed.append_array(["_map_digest", "_map_digest_version"])  # The map digest cache (P31b).
 	unhashed.append_array(RULES.keys())
 	assert_array(World.UNHASHED_SCALARS).contains_exactly_in_any_order(unhashed)
 	var array_lists: Array = [World.ROW_ARRAYS, World.TYPE_ARRAYS, World.WEAPON_ARRAYS]
@@ -253,7 +254,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 		else:
 			others.append(column)
 	assert_int(packed.size()).is_equal(55)
-	assert_int(ints.size()).is_equal(29)
+	assert_int(ints.size()).is_equal(31)
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
 	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper
 	# objects and the bool `prepared`.

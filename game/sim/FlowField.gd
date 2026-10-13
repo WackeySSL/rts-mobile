@@ -23,6 +23,14 @@ const STEP_BASE: int = 10
 const STATE_ARRAYS: Array[StringName] = [
 	&"cost", &"next", &"pad_cost", &"bucket_head", &"link_next", &"link_prev"
 ]
+## Derived state, never in the state hash (ADR 0007 section 8): HASHED is empty, and UNHASHED names
+## every int, bool and Packed array member once, so the coverage walk finds nothing unlisted.
+const HASHED: Array[StringName] = []
+const UNHASHED: Array[StringName] = (
+	STATE_ARRAYS
+	+ [&"goal_cell", &"move_class", &"complete", &"grid_cols", &"cell_count"]
+	+ [&"stride", &"level", &"pending"]
+)
 
 var goal_cell: int = -1
 var move_class: int = 0
