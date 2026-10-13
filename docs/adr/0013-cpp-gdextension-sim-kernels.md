@@ -933,7 +933,10 @@ Android page size and Targets rows, which stay as accepted:
   library 14.3 s, Android `template_debug` 13.4 s and `template_release` 13.1 s. The CI
   android-debug-apk job of P55a's PR (run 38417308180) took 92 s in total, with the runner image
   already holding NDK 29.0.14206865 (`install-ndk.sh`'s installed path, no sdkmanager call) and
-  Godot signing with build-tools 36.0.0. This answers the row's open item.
+  Godot signing with build-tools 36.0.0. Cold on the runner, from the step times of the same run
+  (its first CI run; both Android keys were new, and their cache steps have no restore keys):
+  Android `template_debug` 28 s and `template_release` 18 s. Its host step (10 s) is not a cold
+  time, because the host key was not new in that PR. This answers the row's open item.
 
 Status note (2026-10-13, P26k) on "Sessions", which stays as accepted: Michael answered in chat
 on 2026-10-13, verbatim, **"ja til install-android"** and **"ja til SDK-licens"**.
