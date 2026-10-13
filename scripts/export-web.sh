@@ -10,11 +10,14 @@
 # Needs: the web export templates (version.txt, web_nothreads_debug.zip, web_nothreads_release.zip)
 #        in the Godot export_templates/4.7.2.stable folder of the platform.
 #        docs/licenses/godot-<version>/{LICENSE,COPYRIGHT}.txt, the engine's licence notices,
-#        which the script writes to <dir>/THIRD_PARTY_LICENSES.txt next to the build.
+#        and docs/licenses/llvm-libc++/LICENSE.TXT, the LLVM libc++ notice, which the script
+#        writes to <dir>/THIRD_PARTY_LICENSES.txt next to the build. export-android.sh writes
+#        the same notice text, so the two stay identical (ADR 0005 section 5).
 # Exit:  0 ok
 #        1 export failed, an error in this run's log, an artifact missing or empty, wasm of
 #          50 MiB or more, threads on, the dev_menu custom feature missing from the pack, or
-#          the licence notice sources or <dir>/THIRD_PARTY_LICENSES.txt missing or empty
+#          a licence notice source (Godot's or libc++'s) or <dir>/THIRD_PARTY_LICENSES.txt
+#          missing or empty
 #        2 usage error, or --out inside the project but not under build/
 #        3 Godot missing or not 4.7.2.stable (also: the strings tool is missing)
 #        4 export templates missing (the message names the folder and files)
@@ -32,6 +35,12 @@ TEMPLATE_FILES="version.txt web_nothreads_debug.zip web_nothreads_release.zip"
 # require their notices to travel with the binary. The upstream files of the pinned tag are
 # committed here and written next to the build.
 LICENSE_DIR="docs/licenses/godot-${GODOT_VERSION%.stable}"
+# The export template's C++ standard library is LLVM libc++ (Apache-2.0 WITH LLVM-exception), which
+# Godot's COPYRIGHT.txt does not name. Its upstream licence file sits in LIBCXX_DIR, from the LLVM
+# tag below (docs/licenses/llvm-libc++/README.md says why that tag). export-android.sh holds the
+# same tag and the same notice text.
+LIBCXX_DIR="docs/licenses/llvm-libc++"
+LIBCXX_TAG="llvmorg-21.1.0"
 NOTICE_NAME="THIRD_PARTY_LICENSES.txt"
 
 die() {
@@ -170,14 +179,18 @@ if [ -n "$errors" ]; then
   die 1 "Godot logged errors during the export (log: $log)"
 fi
 
-# (4b) Licence notice: a short header, then Godot's LICENSE.txt and COPYRIGHT.txt unchanged.
-# COPYRIGHT.txt lists the bundled components (FreeType, HarfBuzz, Open Sans, ...) and the
-# CC BY 4.0 notice for the Godot logo that the default boot splash shows.
+# (4b) Licence notice: a short header, then Godot's LICENSE.txt and COPYRIGHT.txt and LLVM's
+# libc++ LICENSE.TXT, each unchanged. COPYRIGHT.txt lists the bundled components (FreeType,
+# HarfBuzz, Open Sans, ...) and the CC BY 4.0 notice for the Godot logo that the default boot
+# splash shows.
 for source in LICENSE.txt COPYRIGHT.txt; do
   if [ ! -s "$LICENSE_DIR/$source" ]; then
     die 1 "licence notice source $LICENSE_DIR/$source is missing or empty"
   fi
 done
+if [ ! -s "$LIBCXX_DIR/LICENSE.TXT" ]; then
+  die 1 "licence notice source $LIBCXX_DIR/LICENSE.TXT is missing or empty"
+fi
 godot_tag="${GODOT_VERSION%.stable}-stable"
 {
   printf '%s\n' "rts-mobile web build: third-party licences"
@@ -190,6 +203,11 @@ godot_tag="${GODOT_VERSION%.stable}-stable"
   printf '%s\n' "licensed under the MIT licence and bundles third-party components under their own"
   printf '%s\n' "licences. Godot's LICENSE.txt and COPYRIGHT.txt for tag ${godot_tag} follow unchanged."
   printf '\n'
+  printf '%s\n' "This build also contains LLVM libc++, the C++ standard library that the Godot export"
+  printf '%s\n' "template links (on Android it is the file libc++_shared.so). libc++ is licensed under"
+  printf '%s\n' "the Apache License v2.0 with LLVM Exceptions. Its libcxx/LICENSE.TXT for tag"
+  printf '%s\n' "${LIBCXX_TAG} follows unchanged."
+  printf '\n'
   printf '%s\n' "--------------------------------------------------------------------------------"
   printf '%s\n' "Godot Engine ${godot_tag}: LICENSE.txt"
   printf '%s\n' "--------------------------------------------------------------------------------"
@@ -199,6 +217,11 @@ godot_tag="${GODOT_VERSION%.stable}-stable"
   printf '%s\n' "Godot Engine ${godot_tag}: COPYRIGHT.txt"
   printf '%s\n' "--------------------------------------------------------------------------------"
   cat "$LICENSE_DIR/COPYRIGHT.txt"
+  printf '\n'
+  printf '%s\n' "--------------------------------------------------------------------------------"
+  printf '%s\n' "LLVM libc++ ${LIBCXX_TAG}: LICENSE.TXT"
+  printf '%s\n' "--------------------------------------------------------------------------------"
+  cat "$LIBCXX_DIR/LICENSE.TXT"
 } >"$out_abs/$NOTICE_NAME"
 
 # (5) Artifacts.

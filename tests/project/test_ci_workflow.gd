@@ -9,6 +9,10 @@ const RELEASE_IF: String = (
 	"    if: github.event_name == 'push' && github.ref == 'refs/heads/main'"
 	+ " && !github.event.repository.fork"
 )
+const ANDROID_JOB: String = "  android-debug-apk:"
+const NOTICE_TEST_STEP: String = "      - name: Offline test of the export licence notices"
+const NOTICE_TEST_RUN: String = "        run: bash scripts/ci/test-export-notices.sh"
+const EXPORT_STEP: String = "      - name: Export debug APK"
 
 
 func _lines(file_name: String) -> PackedStringArray:
@@ -53,3 +57,22 @@ func test_every_action_is_pinned_by_sha() -> void:
 					. is_not_null()
 				)
 	assert_int(checked).is_greater(0)
+
+
+## P26l: both export scripts append the LLVM libc++ licence to their THIRD_PARTY_LICENSES.txt, and
+## this offline test is what fails when one of them stops (ADR 0005 section 5). It has to run in
+## the Android job, before the job exports the APK, or a regression would reach the release.
+func test_android_job_runs_the_offline_licence_notice_test_before_the_export() -> void:
+	var lines: PackedStringArray = _lines("ci.yml")
+	var job: int = lines.find(ANDROID_JOB)
+	var release: int = lines.find(RELEASE_JOB)
+	var step: int = lines.find(NOTICE_TEST_STEP)
+	var export_step: int = lines.find(EXPORT_STEP)
+	assert_int(job).is_greater(-1)
+	assert_int(step).is_greater(job)
+	assert_str(lines[step + 1]).is_equal(NOTICE_TEST_RUN)
+	# The run line ends the step (a blank line follows). A modifier after it, such as
+	# `continue-on-error: true` or `if: false`, would neuter the test and must fail here.
+	assert_str(lines[step + 2].strip_edges()).is_empty()
+	assert_int(export_step).is_greater(step)
+	assert_int(export_step).is_less(release)
