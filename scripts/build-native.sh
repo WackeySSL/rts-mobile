@@ -16,7 +16,7 @@
 #   It checks the toolchain first, so android needs the NDK installed already: the key serves the
 #   godot-cpp and SCons cache after install-ndk.sh, never a cache of the NDK itself (key that on NDK_VERSION).
 # Env:   SCONS=<binary> (default: scons; must be 4.9.1), SCONS_CACHE=<folder> (godot-cpp's CacheDir),
-#        ANDROID_NDK_ROOT=<NDK folder> (android; must be <sdk>/ndk/28.1.13356709, the layout that
+#        ANDROID_NDK_ROOT=<NDK folder> (android; must be <sdk>/ndk/29.0.14206865, the layout that
 #        sdkmanager makes and that godot-cpp's tools/android.py reads as $ANDROID_HOME/ndk/<version>).
 # Needs: git and network access to github.com (first run only), scons 4.9.1, g++ and binutils
 #        (readelf, nm) for linux (godot-cpp's SConstruct never reads CXX; use_llvm=yes picks clang).
@@ -39,11 +39,12 @@ GODOT_CPP_URL="https://github.com/godotengine/godot-cpp.git"
 GODOT_CPP_TAG="godot-4.5-stable"
 GODOT_CPP_SHA="e83fd0904c13356ed1d4c3d09f8bb9132bdc6b77"
 SCONS_VERSION="4.9.1"
-# godot-cpp godot-4.5-stable, tools/android.py: opts.Add("ndk_version", ..., "28.1.13356709"), ADR 0013
-# section 8's pin. Plan P55a (P26h) still has the NDK choice open (r28, or r29 as in Godot's Gradle
-# template): this line and the stub NDK of scripts/ci/test-native-scripts.sh are what change.
-# scripts/ci/install-ndk.sh reads this line, keep its shape.
-NDK_VERSION="28.1.13356709"
+# NDK r29, Michael's answer of 2026-10-13: the NDK Godot 4.7.2's Android template is built with, whose
+# libc++_shared.so our library links (ADR 0013 section 8's status note). godot-cpp godot-4.5-stable keeps its
+# own default (tools/android.py, "ndk_version", 28.1.13356709); the ndk_version flag below overrides it.
+# scripts/ci/install-ndk.sh reads this line, keep its shape; the stub NDK of scripts/ci/test-native-scripts.sh
+# follows it.
+NDK_VERSION="29.0.14206865"
 ENTRY_SYMBOL="sim_kernels_library_init"
 SCONS="${SCONS:-scons}"
 GODOT_CPP_DIR="$ROOT/native/godot-cpp"

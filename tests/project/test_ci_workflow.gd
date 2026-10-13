@@ -32,6 +32,45 @@ const GATE_RUN: String = (
 )
 const CACHE_STEP: String = "Cache godot-cpp and the SCons object cache"
 const CACHE_KEY: String = "key: ${{ steps.native-key.outputs.key }}"
+## P55a, the Android job (ADR 0013 sections 8 and 10).
+const NDK_STEP: String = "Install the Android NDK (install-ndk.sh)"
+const NDK_RUN: String = "run: bash scripts/ci/install-ndk.sh"
+const ANDROID_INSTALL_STEP: String = "Install the native toolchain (SCons, binutils)"
+const ANDROID_INSTALL_RUN: Array[String] = [
+	"run: |",
+	'pipx install "scons==${SCONS_VERSION}"',
+	"sudo apt-get install -y --no-install-recommends binutils",
+]
+const KEYS_STEP: String = "Read the native cache keys"
+## One key line per library, printed for the flags of its build step.
+const KEY_VAR: String = '%s="$(bash scripts/build-native.sh%s --print-cache-key)"'
+const KEYS_OUT: String = (
+	'{ echo "host=$host"; echo "android_debug=$android_debug";'
+	+ ' echo "android_release=$android_release"; } >> "$GITHUB_OUTPUT"'
+)
+const ANDROID_FLAGS: String = " --platform android --arch arm64 --target template_"
+## The libraries in the order the job builds them, the host's first. The id names the key's output
+## and its shell variable.
+const LIBRARIES: Array[Dictionary] = [
+	{
+		"id": "host",
+		"flags": "",
+		"cache": "Cache godot-cpp and the SCons object cache (host library)",
+		"build": "Build the host library (linux, template_debug)",
+	},
+	{
+		"id": "android_debug",
+		"flags": ANDROID_FLAGS + "debug",
+		"cache": "Cache godot-cpp and the SCons object cache (Android template_debug)",
+		"build": "Build the Android library (arm64, template_debug)",
+	},
+	{
+		"id": "android_release",
+		"flags": ANDROID_FLAGS + "release",
+		"cache": "Cache godot-cpp and the SCons object cache (Android template_release)",
+		"build": "Build the Android library (arm64, template_release)",
+	},
+]
 
 
 func _lines(file_name: String) -> PackedStringArray:
@@ -164,6 +203,48 @@ func test_native_caches_use_the_key_that_build_native_prints() -> void:
 		_assert_job_always_runs(job)
 
 
+## P55a (ADR 0013 sections 8 and 10): the Android job installs the NDK, reads three keys, restores
+## three caches and then builds the host's Linux library before the two Android ones, all before the
+## export. The generated .gdextension names all six libraries, so without the host library the
+## editor cannot load it. Each key is printed for exactly the flags of its build, and no cache step
+## holds anything but godot-cpp and the SCons objects, so the NDK is never cached.
+func test_android_job_installs_the_ndk_and_builds_the_host_library_first() -> void:
+	var job: PackedStringArray = _job(_lines("ci.yml"), ANDROID_JOB)
+	_assert_step(job, NDK_STEP, [NDK_RUN])
+	_assert_step(job, ANDROID_INSTALL_STEP, ANDROID_INSTALL_RUN)
+	var keys: Array = ["id: native-keys", "run: |"]
+	var caches: Array = []
+	var builds: Array = []
+	for library: Dictionary in LIBRARIES:
+		var id: String = library["id"]
+		var flags: String = library["flags"]
+		var cache_name: String = library["cache"]
+		var build_name: String = library["build"]
+		keys.append(KEY_VAR % [id, flags])
+		_assert_cache_step(job, cache_name, "key: ${{ steps.native-keys.outputs.%s }}" % id)
+		_assert_step(job, build_name, ["run: bash scripts/build-native.sh" + flags])
+		caches.append(cache_name)
+		builds.append(build_name)
+	keys.append(KEYS_OUT)
+	_assert_step(job, KEYS_STEP, keys)
+	var first: Array = ["Select JDK 17", NDK_STEP, ANDROID_INSTALL_STEP, KEYS_STEP]
+	_assert_order(job, first + caches + builds + ["Export debug APK"])
+	var cache_steps: int = 0
+	for line: String in job:
+		cache_steps += 1 if line.strip_edges().begins_with("uses: actions/cache@") else 0
+	assert_int(cache_steps).is_equal(1 + LIBRARIES.size())
+	_assert_job_always_runs(job)
+
+
+## Michael's "NDK r29" (2026-10-13): the NDK is pinned once, in build-native.sh. install-ndk.sh
+## reads that line and ci.yml names no NDK version, so none of the three can disagree.
+func test_the_ndk_is_pinned_once_in_build_native_sh() -> void:
+	assert_str(_pin("res://scripts/build-native.sh", "NDK_VERSION")).is_equal("29.0.14206865")
+	var version: RegEx = RegEx.create_from_string("\\d+\\.\\d+\\.\\d{6,}")
+	for path: String in ["res://scripts/ci/install-ndk.sh", "res://.github/workflows/ci.yml"]:
+		assert_object(version.search(FileAccess.get_file_as_string(path))).is_null()
+
+
 ## The lines of one job: from the line after its header to the next job (or the comment before it).
 func _job(lines: PackedStringArray, header: String) -> PackedStringArray:
 	var start: int = lines.find(header)
@@ -212,13 +293,15 @@ func _assert_job_always_runs(job: PackedStringArray) -> void:
 ## The cache step is actions/cache itself (not /restore, which never saves), whose SHA pin the test
 ## above checks, with exactly godot-cpp and the SCons cache folder under build-native.sh's key. An
 ## `if:` or `continue-on-error` would show as an extra line.
-func _assert_cache_step(job: PackedStringArray) -> void:
-	var step: Array = Array(_step(job, CACHE_STEP))
+func _assert_cache_step(
+	job: PackedStringArray, step_name: String = CACHE_STEP, key: String = CACHE_KEY
+) -> void:
+	var step: Array = Array(_step(job, step_name))
 	assert_array(step).has_size(7)
 	assert_str(step[1]).starts_with("uses: actions/cache@")
 	step.remove_at(1)
-	var wanted: Array = ["- name: " + CACHE_STEP, "with:", "path: |"]
-	wanted.append_array(["native/godot-cpp", "${{ env.SCONS_CACHE }}", CACHE_KEY])
+	var wanted: Array = ["- name: " + step_name, "with:", "path: |"]
+	wanted.append_array(["native/godot-cpp", "${{ env.SCONS_CACHE }}", key])
 	assert_array(step).contains_exactly(wanted)
 
 

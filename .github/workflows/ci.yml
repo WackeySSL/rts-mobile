@@ -2,7 +2,8 @@ name: CI
 
 # Four jobs. "verify" is the only required check: format, lint, import, tests, sim smoke and the web
 # export, all through the scripts a developer runs locally. "android-debug-apk" (ADR 0005) follows it,
-# and on a push to main "android-dev-release" publishes that APK as the rolling pre-release.
+# after it installs the NDK and builds the kernel libraries (ADR 0013 section 10), and on a push to main
+# "android-dev-release" publishes that APK as the rolling pre-release.
 # "native-clang" runs the native suites on a clang library (ADR 0013 section 10).
 on:
   pull_request:
@@ -56,7 +57,7 @@ jobs:
         run: pipx install "gdtoolkit==${GDTOOLKIT_VERSION}"
 
       # Offline, against stub tools: the seed, the library check, build-native.sh's exit codes and ELF
-      # checks and the C++ format check (ADR 0013 sections 8-10).
+      # checks, install-ndk.sh against a stub sdkmanager and the C++ format check (ADR 0013 sections 8-10).
       - name: Offline test of the native scripts
         run: bash scripts/ci/test-native-scripts.sh
 
@@ -214,6 +215,64 @@ jobs:
       # them before any Godot call (ANDROID_HOME is the runner image's SDK already).
       - name: Select JDK 17
         run: echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+
+      # The Android library is built with the NDK that build-native.sh pins (ADR 0013 section 8). install-ndk.sh
+      # reads that pin, installs it with the SDK's sdkmanager and appends ANDROID_NDK_ROOT to GITHUB_ENV for
+      # the steps below. The NDK itself is never cached: no cache step of this job has its folder in its path.
+      - name: Install the Android NDK (install-ndk.sh)
+        run: bash scripts/ci/install-ndk.sh
+
+      - name: Install the native toolchain (SCons, binutils)
+        run: |
+          pipx install "scons==${SCONS_VERSION}"
+          sudo apt-get install -y --no-install-recommends binutils
+
+      # One cache per library, each under the key build-native.sh prints for exactly the flags of its build
+      # step below (the Android keys carry NDK_VERSION). The host's key is the verify job's: a hit once it saved.
+      - name: Read the native cache keys
+        id: native-keys
+        run: |
+          host="$(bash scripts/build-native.sh --print-cache-key)"
+          android_debug="$(bash scripts/build-native.sh --platform android --arch arm64 --target template_debug --print-cache-key)"
+          android_release="$(bash scripts/build-native.sh --platform android --arch arm64 --target template_release --print-cache-key)"
+          { echo "host=$host"; echo "android_debug=$android_debug"; echo "android_release=$android_release"; } >> "$GITHUB_OUTPUT"
+
+      - name: Cache godot-cpp and the SCons object cache (host library)
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            native/godot-cpp
+            ${{ env.SCONS_CACHE }}
+          key: ${{ steps.native-keys.outputs.host }}
+
+      - name: Cache godot-cpp and the SCons object cache (Android template_debug)
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            native/godot-cpp
+            ${{ env.SCONS_CACHE }}
+          key: ${{ steps.native-keys.outputs.android_debug }}
+
+      - name: Cache godot-cpp and the SCons object cache (Android template_release)
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            native/godot-cpp
+            ${{ env.SCONS_CACHE }}
+          key: ${{ steps.native-keys.outputs.android_release }}
+
+      # The generated native/sim_kernels.gdextension names all six libraries (linux x86_64 and arm64, android
+      # arm64, each debug and release), so the host's Linux library comes first: without it the headless
+      # editor logs "Can't open dynamic library". --export-debug then packs android.debug.arm64 (the dev APK)
+      # and the release library is built for P51r's release export. P55a2 adds export-android.sh's checks.
+      - name: Build the host library (linux, template_debug)
+        run: bash scripts/build-native.sh
+
+      - name: Build the Android library (arm64, template_debug)
+        run: bash scripts/build-native.sh --platform android --arch arm64 --target template_debug
+
+      - name: Build the Android library (arm64, template_release)
+        run: bash scripts/build-native.sh --platform android --arch arm64 --target template_release
 
       - name: Cache Godot editor and export templates (web and Android debug)
         id: godot-cache
