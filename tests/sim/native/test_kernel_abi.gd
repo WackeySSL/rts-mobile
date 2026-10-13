@@ -5,11 +5,13 @@ extends GdUnitTestSuite
 ## the write cases land with FLOW (P30n). A real World's members are typed and refuse a wrong
 ## value, so the fault cases check a Mirror, which answers Object.get from a Dictionary. Numbers
 ## are literals: the status codes are world_status.h's, the phase ids SimProbe.Phase's (SimProbe
-## arrives with P33).
+## arrives with P33). The table is read from world_access.h itself (there is no test-only bound
+## entry), one X(owner, name, kind, size, phases) line per name, the line order being its index.
 
 const KernelSpy: GDScript = preload("res://tests/sim/support/kernel_spy.gd")
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
+const HEADER: String = "res://native/sim_kernels/src/bind/world_access.h"
 ## FLOW, TARGETING, SEPARATION, INTEGRATE and FOG.
 const PHASES: Array[int] = [1, 3, 5, 6, 10]
 ## The slots of the flow cache (flow_cache_size).
@@ -34,17 +36,68 @@ const KIND_TYPES: Dictionary[String, int] = {
 	"BYTES": TYPE_PACKED_BYTE_ARRAY,
 	"ARRAY": TYPE_ARRAY,
 }
+## The mask of each token of the table's phases column: 1 << the SimProbe.Phase id, PH_ALL all five.
+const PHASE_BITS: Dictionary[String, int] = {
+	"0": 0, "PH_F": 2, "PH_T": 8, "PH_S": 32, "PH_I": 64, "PH_G": 1024, "PH_ALL": 0x46A
+}
+## The arrays with no fixed length: the anchors of the size rules, the events and the fog masks
+## (only the sight radii size those). Every other array has a rule, and no scalar has one.
+const ANY_NAMES: Array[String] = [
+	"WORLD.events",
+	"WORLD.type_speed",
+	"WORLD.weapon_range",
+	"FOG.mask_start",
+	"FOG.mask_radius",
+	"FOG.mask_half"
+]
+## The phases of names that a swap of two masks would exchange, and the phase of each helper that
+## only one phase uses.
+const PHASES_OF: Dictionary[String, Array] = {
+	"WORLD.hp": [3],
+	"WORLD.fog_cell": [10],
+	"WORLD.map_version": [6],
+	"WORLD.events": [],
+	"WORLD.type_radius": [5],
+	"WORLD.type_spacing": [6],
+	"WORLD.type_sight": [10],
+	"WORLD.type_acquire": [3],
+	"WORLD.type_armour": [3],
+	"WORLD.type_move_class": [3, 5, 6],
+	"FLOW.requests": [6],
+	"FLOW.last_used": [6],
+	"SLOT.goal_cell": [1],
+	"SLOT.cell_count": [1, 6]
+}
+const OWNER_PHASE: Dictionary[String, int] = {"SEP": 5, "TARGET": 3, "FOG": 10}
 
 
 ## An Object whose members are the entries of `values`: Object.get falls back to _get, so a member
-## can hold a value of any type.
+## can hold a value of any type. With `fresh`, an object or Array it answers is a new copy on
+## every read, so the Variant that Object.get returns holds the only reference to it (a library
+## that keeps a bare pointer to what it fetched then reads freed memory).
 class Mirror:
 	extends RefCounted
 
 	var values: Dictionary = {}
+	var fresh: bool = false
 
 	func _get(property: StringName) -> Variant:
-		return values.get(property)
+		var value: Variant = values.get(property)
+		return _renewed(value) if fresh else value
+
+	func _renewed(value: Variant) -> Variant:
+		if value is Mirror:
+			var copy: Mirror = Mirror.new()
+			copy.fresh = true
+			for key: Variant in value.values:
+				copy.values[key] = _renewed(value.values[key])
+			return copy
+		if value is Array:
+			var items: Array = []
+			for item: Variant in value:
+				items.append(_renewed(item))
+			return items
+		return value
 
 
 func test_the_library_reports_its_abi_and_the_phases_it_implements() -> void:
@@ -66,28 +119,47 @@ func test_sim_impls_attaches_the_kernels_after_prepare_and_detaches_them() -> vo
 	assert_array(SimImpls.use(world, SimImpls.Impl.GDSCRIPT)).is_empty()
 	assert_object(world.kernels).is_null()
 	assert_int(world.native_phases).is_equal(0)
-	# A spy is no SimKernels: its bits do not make a phase native.
+	# A spy is no SimKernels: its bits do not make a phase native. The library's class with a bit
+	# set is native for that phase only.
 	world.kernels = KernelSpy.new()
 	world.native_phases = 0x7FF
 	assert_bool(SimImpls.is_native(world, 6)).is_false()
+	world.kernels = _kernels()
+	world.native_phases = 1 << 6
+	assert_bool(SimImpls.is_native(world, 6)).is_true()
+	assert_bool(SimImpls.is_native(world, 5)).is_false()
+
+
+## A caller that ignores the problems would run its native pass on the GDScript twin, so each one
+## is named: kernels of another class, and a mask other than EXPECTED_PHASES' (the spy has bits
+## no kernel sets). Both are still attached, as the problems say.
+func test_sim_impls_names_kernels_of_another_class_and_a_wrong_mask() -> void:
+	var spy: RefCounted = KernelSpy.new()
+	spy.reported_phases = 0x7FF
+	var world: World = World.new()
+	var problems: Array[String] = SimImpls.use(world, SimImpls.Impl.NATIVE, spy)
+	assert_int(problems.size()).is_equal(2)
+	assert_str(problems[0]).contains("RefCounted")
+	assert_str(problems[1]).contains("2047")
+	assert_object(world.kernels).is_same(spy)
+	assert_int(world.native_phases).is_equal(0x7FF)
+	# One bit per id: FLOW 1, TARGETING 3, SEPARATION 5, INTEGRATE 6 and FOG 10.
+	assert_int(SimImpls.expected_mask(PHASES)).is_equal(0x46A)
 
 
 func test_check_world_accepts_a_prepared_world_for_each_of_the_five_phases() -> void:
 	var kernels: Object = _kernels()
-	var empty: World = World.new()
-	empty.prepare()
-	for world: World in [_arena(), empty]:
+	for world: World in _clean_worlds():
 		for phase: int in PHASES:
 			var status: int = kernels.check_world(world, phase)
-			assert_int(status).override_failure_message("phase %d" % phase).is_equal(0)
+			var label: String = "phase %d on %dx%d" % [phase, world.map_cols, world.map_rows]
+			assert_int(status).override_failure_message(label).is_equal(0)
 
 
 ## The row count may be max_rows and not one more (a World built past its cap before prepare()).
 func test_check_world_allows_exactly_max_rows_rows_and_rejects_one_more() -> void:
 	var kernels: Object = _kernels()
-	var at: int = _table(kernels).find_custom(
-		func(e: Dictionary) -> bool: return e.name == "unit_id"
-	)
+	var at: int = _table().find_custom(func(e: Dictionary) -> bool: return e.name == "unit_id")
 	assert_int(at).is_greater(0)
 	for rows: int in [3, 4]:
 		var world: World = World.new()
@@ -116,7 +188,7 @@ func test_check_world_rejects_an_unprepared_world_and_leaves_it_unchanged() -> v
 
 func test_every_list_is_not_empty_and_every_name_exists_with_its_type() -> void:
 	var world: World = _arena()
-	var table: Array[Dictionary] = _table(_kernels())
+	var table: Array[Dictionary] = _table()
 	assert_int(table.size()).is_equal(106)
 	for phase: int in PHASES:
 		var size: int = _listed(table, phase).size()
@@ -150,12 +222,49 @@ func test_every_list_is_not_empty_and_every_name_exists_with_its_type() -> void:
 			flow_slot.append(StringName(table[index].name))
 	var wanted: Array = FlowField.STATE_ARRAYS + [&"stride", &"level", &"pending", &"complete"]
 	assert_array(flow_slot).contains(wanted)
-	assert_array(_names(table, "FOG")).contains(
-		[&"listed", &"dirty", &"dirty_count", &"dirty_full"]
-	)
+	var fog_blocks: Array = [&"listed", &"dirty", &"dirty_count", &"dirty_full"]
+	assert_array(_names(table, "FOG")).contains(fog_blocks)
 
 
-func test_no_bound_method_takes_a_packed_array() -> void:
+## The length rules and the phases are the table's data, so they are pinned here by literals: a
+## rule weakened to ANY or NONE, or a mask moved to another phase, fails. (A rule swapped for
+## another fails the length test below.)
+func test_the_table_pins_the_length_rule_and_the_phases_of_the_names() -> void:
+	for entry: Dictionary in _table():
+		var label: String = "%s.%s" % [entry.owner, entry.name]
+		var is_array: bool = entry.kind in ["I32", "BYTES", "ARRAY"]
+		var any: bool = ANY_NAMES.has(label)
+		assert_bool(entry.size == "ANY").override_failure_message(label).is_equal(any)
+		assert_bool(entry.size == "NONE").override_failure_message(label).is_equal(not is_array)
+		var phases: Array = PHASES_OF.get(label, [])
+		if OWNER_PHASE.has(entry.owner):
+			phases = [OWNER_PHASE[entry.owner]]
+		if PHASES_OF.has(label) or OWNER_PHASE.has(entry.owner):
+			var found: Array[int] = _phases_of(entry)
+			assert_array(found).override_failure_message(label).is_equal(phases)
+
+
+## Each size rule is the number its name says, computed here from the World's own members, on
+## worlds where two numbers of a rule differ (the arena is square and has a weapon per type).
+func test_every_array_has_the_length_its_rule_names_on_worlds_of_different_shapes() -> void:
+	var table: Array[Dictionary] = _table()
+	for world: World in _clean_worlds():
+		for entry: Dictionary in table:
+			if entry.size in ["NONE", "ANY", "ROWS_CAP"]:
+				continue
+			var want: int = _rule_length(world, entry.size)
+			for source: Object in _sources(world, entry.owner):
+				var length: int = source.get(entry.name).size()
+				var label: String = (
+					"%s.%s on %dx%d" % [entry.owner, entry.name, world.map_cols, world.map_rows]
+				)
+				assert_int(length).override_failure_message(label).is_equal(want)
+	var odd: World = _odd_world(40, 24)  # Three types with two weapons: no two rules coincide.
+	assert_int(odd.type_speed.size()).is_equal(3)
+	assert_int(odd.weapon_range.size()).is_equal(2)
+
+
+func test_the_bound_methods_are_the_contract_and_none_takes_a_packed_array() -> void:
 	var methods: Array[String] = []
 	for method: Dictionary in ClassDB.class_get_method_list(&"SimKernels", true):
 		methods.append(method.name)
@@ -164,19 +273,29 @@ func test_no_bound_method_takes_a_packed_array() -> void:
 			var packed: bool = kind >= TYPE_PACKED_BYTE_ARRAY and kind < TYPE_MAX
 			var label: String = "%s(%s)" % [method.name, argument.name]
 			assert_bool(packed).override_failure_message(label).is_false()
-	assert_array(methods).contains(["phases", "check_world", "checked_names"])
+	# No test-only entry (ADR 0013 section 2): a port adds its kernel's name here.
+	var bound: Array[String] = ["abi_version", "phases", "build_info", "check_world"]
+	assert_array(methods).contains_exactly_in_any_order(bound)
 
 
 ## Each name of each list with a wrong type, too long and too short, each helper object and the
 ## slot objects missing, a phase with no list and no World: the status names the first bad name.
+## Also when every object and Array the library fetches is a fresh copy that only the fetched
+## value keeps alive.
 func test_check_world_names_the_first_bad_name_and_what_is_wrong_with_it() -> void:
 	var kernels: Object = _kernels()
-	var cases: Array[Array] = _fault_cases(_arena(), _table(kernels))
+	var table: Array[Dictionary] = _table()
 	var tags: Array[String] = []
-	for entry: Array in cases:
-		var status: int = kernels.check_world(entry[0], entry[1])
-		assert_int(status).override_failure_message(entry[3]).is_equal(entry[2])
-		tags.append(entry[4])
+	for world: World in [_arena(), _odd_world(40, 24)]:
+		var cases: Array[Array] = _fault_cases(world, table)
+		for fresh: bool in [false, true]:
+			for entry: Array in cases:
+				if entry[0] != null:
+					entry[0].fresh = fresh
+				var status: int = kernels.check_world(entry[0], entry[1])
+				var label: String = "%s fresh %s" % [entry[3], fresh]
+				assert_int(status).override_failure_message(label).is_equal(entry[2])
+				tags.append(entry[4])
 	# Every kind meets each fault it can have, and the other faults happen.
 	for tag: String in ["INT/3", "BOOL/3", "I32/3", "I32/4", "BYTES/3", "BYTES/4", "ARRAY/3"]:
 		assert_array(tags).contains([tag])
@@ -186,7 +305,10 @@ func test_check_world_names_the_first_bad_name_and_what_is_wrong_with_it() -> vo
 
 func test_check_world_gives_the_same_statuses_on_a_worker_thread() -> void:
 	var kernels: Object = _kernels()
-	var cases: Array[Array] = _fault_cases(_arena(), _table(kernels))
+	var cases: Array[Array] = _fault_cases(_arena(), _table())
+	for world: World in _clean_worlds():  # The real World, read through its own members.
+		for phase: int in PHASES:
+			cases.append([world, phase, 0, "world phase %d" % phase, "world/0"])
 	var thread: Thread = Thread.new()
 	assert_int(thread.start(_check_all.bind(kernels, cases))).is_equal(OK)
 	var found: Array = thread.wait_to_finish()
@@ -323,14 +445,76 @@ func _arena() -> World:
 	return World.from_scenario(load(ARENA_PATH) as ScenarioDef)
 
 
-## SimKernels.checked_names() as {owner, name, kind, size, phases}, in table order.
-func _table(kernels: Object) -> Array[Dictionary]:
+## A World on a map of `cols` x `rows` tiles with three players, three types and two weapons (a
+## rifle twin shares the rifle), five rows and the cap of data/rules.tres.
+func _odd_world(cols: int, rows: int) -> World:
+	var tank: UnitDef = load("res://data/units/light_tank.tres") as UnitDef
+	var rifle: UnitDef = load("res://data/units/rifle_squad.tres") as UnitDef
+	var twin: UnitDef = rifle.duplicate() as UnitDef
+	twin.type_id = &"rifle_twin"
+	var spawn: SpawnDef = SpawnDef.new()
+	spawn.owner = 1
+	spawn.unit = tank
+	spawn.count = 5
+	spawn.origin_tile = Vector2i(2, 2)
+	spawn.columns = 3
+	var scenario: ScenarioDef = ScenarioDef.new()
+	scenario.map_size_tiles = Vector2i(cols, rows)
+	scenario.rules = load("res://data/rules.tres") as RulesDef
+	scenario.player_count = 3
+	scenario.roster.assign([tank, rifle, twin])
+	scenario.spawns.assign([spawn])
+	return World.from_scenario(scenario)
+
+
+## The prepared worlds that check_world accepts: the square arena, an empty World and two maps
+## that are not square (one wide, one tall).
+func _clean_worlds() -> Array[World]:
+	var empty: World = World.new()
+	empty.prepare()
+	return [_arena(), empty, _odd_world(40, 24), _odd_world(24, 40)]
+
+
+## The length rule `rule` asks for, from the World's own numbers and the structure constants.
+func _rule_length(world: World, rule: String) -> int:
+	var cells: int = world.map_cols * world.map_rows
+	var padded: int = (world.map_cols + 2) * (world.map_rows + 2)
+	var rules: Dictionary[String, int] = {
+		"ROWS": world.unit_id.size(),
+		"MAX_ROWS": world.max_rows,
+		"STATS": 7,
+		"TYPES": world.type_speed.size(),
+		"WEAPONS": world.weapon_range.size(),
+		"ARMOURS": 4 * world.weapon_range.size(),
+		"COSTS": 3 * cells,
+		"SLOTS": world.flow_cache_size,
+		"PADDED": padded,
+		"BUCKETS": 512,
+		"SEP_GRID": world.sep_grid.cols * world.sep_grid.rows,
+		"TARGET_GRID": world.target_grid.cols * world.target_grid.rows,
+		"FOG_CELLS": world.fog.player_count * cells,
+		"FOG_PLAYERS": world.fog.player_count,
+		"FOG_DIRTY": world.fog.player_count * (cells / 4),
+	}
+	return rules[rule]
+
+
+## The rows of SIM_CHECKED_TABLE in world_access.h as {owner, name, kind, size, phases}, in line
+## order. The pinned counts (106 names, LIST_SIZES) fail a parser that skips a line.
+func _table() -> Array[Dictionary]:
+	var row: RegEx = RegEx.create_from_string("^\\s*X\\((\\w+), (\\w+), (\\w+), (\\w+), ([^)]+)\\)")
 	var table: Array[Dictionary] = []
-	for line: String in kernels.checked_names():
-		var part: PackedStringArray = line.split(" ")
-		var entry: Dictionary = {"owner": part[0], "name": part[1], "kind": part[2]}
-		entry["size"] = part[3]
-		entry["phases"] = int(part[4])
+	for line: String in FileAccess.get_file_as_string(HEADER).split("\n"):
+		var found: RegExMatch = row.search(line)
+		if found == null:
+			continue
+		var entry: Dictionary = {"owner": found.get_string(1), "name": found.get_string(2)}
+		entry["kind"] = found.get_string(3)
+		entry["size"] = found.get_string(4)
+		var mask: int = 0
+		for token: String in found.get_string(5).split("|"):
+			mask |= PHASE_BITS[token.strip_edges()]
+		entry["phases"] = mask
 		table.append(entry)
 	return table
 
@@ -341,6 +525,15 @@ func _listed(table: Array[Dictionary], phase: int) -> Array[int]:
 	for index: int in table.size():
 		if ((table[index].phases >> phase) & 1) == 1:
 			found.append(index)
+	return found
+
+
+## The phases whose list holds `entry`.
+func _phases_of(entry: Dictionary) -> Array[int]:
+	var found: Array[int] = []
+	for phase: int in PHASES:
+		if ((entry.phases >> phase) & 1) == 1:
+			found.append(phase)
 	return found
 
 

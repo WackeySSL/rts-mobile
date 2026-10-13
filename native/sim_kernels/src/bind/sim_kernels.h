@@ -8,6 +8,7 @@
 
 #include <cstdint>
 
+#include "kernel_list.h"
 #include "world_access.h"
 
 class SimKernels : public godot::RefCounted {
@@ -25,8 +26,13 @@ public:
 	// 0 if `world` has every name of `phase`'s list with its type and size; else world_access.h's status.
 	// Pure: it logs nothing. `phase` is a SimProbe.Phase id; only the five ported phases have a list.
 	int64_t check_world(godot::Object *world, int64_t phase) const { return access_.check(world, phase); }
-	// The checked table, one line per name: "OWNER name KIND SIZE <phase bits>". The name test reads it.
-	godot::PackedStringArray checked_names() const;
+
+	// One method per line of kernel_list.h, each defined in its kernel_<phase>.cpp.
+#define SIM_KERNEL_DECLARE0(method, phase) void method(godot::Object *world) const;
+#define SIM_KERNEL_DECLARE1(method, phase, argument) void method(godot::Object *world, int64_t argument) const;
+	SIM_KERNEL_LIST(SIM_KERNEL_DECLARE0, SIM_KERNEL_DECLARE1)
+#undef SIM_KERNEL_DECLARE0
+#undef SIM_KERNEL_DECLARE1
 
 protected:
 	static void _bind_methods();

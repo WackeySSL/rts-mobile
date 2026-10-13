@@ -1,8 +1,9 @@
 // The checked table of every World member that the native kernels get or set, and the checks over it
-// (ADR 0013 section 2). The only file with the internal-pointer access (a kernel's fetch lands here with
-// the first kernel, P30n); check() is pure: it returns a status and never logs. MIT.
+// (ADR 0013 section 2). The internal-pointer access also lives here, and lands with the first kernel
+// that calls it (FLOW, P30n; the event resize with FIRE, P42n): no bound entry can test it before.
+// check() is pure: it returns a status and never logs. MIT.
 // Twin: the World's shape lists and the helpers' HASHED/UNHASHED lists in game/sim; test:
-// tests/sim/native/test_kernel_abi.gd (every name exists with its type, each check fails as expected).
+// tests/sim/native/test_kernel_abi.gd, which also reads the X(...) lines below as its table.
 #pragma once
 
 #include <godot_cpp/classes/object.hpp>
@@ -39,6 +40,10 @@ constexpr int64_t PH_G = int64_t(1) << PHASE_FOG;
 constexpr int64_t PH_ALL = PH_F | PH_T | PH_S | PH_I | PH_G;
 // The largest shift of a non-negative value (ADR 0013 section 4).
 constexpr int64_t SHIFT_MAX = 62;
+// Whether `phase` is one of the five that have a checked list, and so may have a kernel.
+constexpr bool has_list(int64_t phase) {
+	return phase >= 0 && phase <= SHIFT_MAX && ((PH_ALL >> phase) & 1) == 1;
+}
 
 // Mirrors of the twin's GDScript consts (the sizes that are structure, not balance).
 constexpr int64_t STAT_COUNT = 7; // World.Stat.size()
@@ -86,7 +91,10 @@ enum Size : int64_t {
 	S_FOG_CELLS, // a block of cells per player
 	S_FOG_PLAYERS, // one per player
 	S_FOG_DIRTY, // a dirty block per player
+	S_COUNT,
 };
+// The length of a rule that has not been asked for yet (-1 stands for one that cannot be read).
+constexpr int64_t LENGTH_UNKNOWN = -2;
 
 struct Entry {
 	const char *name;
@@ -94,7 +102,6 @@ struct Entry {
 	int64_t kind;
 	int64_t size;
 	int64_t phases; // the bits of the phases whose kernel gets or sets it
-	const char *text; // "OWNER name KIND SIZE", for SimKernels.checked_names()
 };
 
 // One line per name: X(owner, name, kind, length rule, phases). Table order is check order, so the
@@ -217,7 +224,7 @@ enum Id : int64_t {
 // clang-format on
 
 inline constexpr Entry TABLE[] = {
-#define SIM_ENTRY(owner, name, kind, size, phases) { #name, OWN_##owner, K_##kind, S_##size, phases, #owner " " #name " " #kind " " #size },
+#define SIM_ENTRY(owner, name, kind, size, phases) { #name, OWN_##owner, K_##kind, S_##size, phases },
 	SIM_CHECKED_TABLE(SIM_ENTRY)
 #undef SIM_ENTRY
 };
@@ -228,6 +235,25 @@ static_assert(sizeof(TABLE) / sizeof(TABLE[0]) == ID_COUNT, "one entry per Id");
 class WorldAccess {
 	StringName names_[ID_COUNT];
 	StringName owners_[OWN_COUNT];
+
+	// What one check() has fetched, kept alive by the Variants: an Object * taken from a Variant that
+	// is a temporary dangles when the Variant goes (a helper or a slot a getter makes fresh has no
+	// other owner). It lives in one call, so nothing is kept between calls (ADR 0013 section 2).
+	struct Held {
+		Object *world;
+		Variant helpers[OWN_COUNT]; // flow, fog, sep_grid and target_grid, fetched at first use
+		bool fetched[OWN_COUNT] = {};
+		Variant fields; // flow.fields: its Array keeps every slot alive
+		bool fields_fetched = false;
+		int64_t lengths[S_COUNT]; // each length rule, once
+
+		explicit Held(Object *world_) :
+				world(world_) {
+			for (int64_t rule = 0; rule < S_COUNT; rule++) {
+				lengths[rule] = LENGTH_UNKNOWN;
+			}
+		}
+	};
 
 	static bool is_kind(Variant::Type type, int64_t kind) {
 		switch (kind) {
@@ -271,34 +297,41 @@ class WorldAccess {
 	static int64_t add(int64_t a, int64_t b) { return a < 0 || b < 0 || a > INT64_MAX - b ? -1 : a + b; }
 	static int64_t mul(int64_t a, int64_t b) { return a < 0 || b < 0 || (a != 0 && b > INT64_MAX / a) ? -1 : a * b; }
 
-	// The object that holds the names of `owner`, or null: no World, no such member, or no object.
-	Object *owner_object(Object *world, int64_t owner) const {
-		if (owner == OWN_WORLD || world == nullptr) {
-			return world;
+	// The object that holds the names of `owner`, or null: no World, no such member, no object (a slot
+	// is reached by slot_object).
+	Object *owner_object(Held &held, int64_t owner) const {
+		if (owner == OWN_WORLD || held.world == nullptr) {
+			return held.world;
 		}
-		Variant helper = world->get(owners_[owner]);
-		if (helper.get_type() != Variant::OBJECT) {
+		if (owner == OWN_SLOT) {
 			return nullptr;
 		}
-		Object *object = helper;
+		if (!held.fetched[owner]) {
+			held.helpers[owner] = held.world->get(owners_[owner]);
+			held.fetched[owner] = true;
+		}
+		if (held.helpers[owner].get_type() != Variant::OBJECT) {
+			return nullptr;
+		}
+		Object *object = held.helpers[owner];
 		return object;
 	}
 
-	// Slot `index` of flow.fields (the typed Array of FlowField), or null.
-	Object *slot_object(Object *world, int64_t index) const {
-		Object *flow = owner_object(world, OWN_FLOW);
-		if (flow == nullptr) {
+	// Slot `index` of flow.fields (the typed Array of FlowField), or null. The Array is fetched once.
+	Object *slot_object(Held &held, int64_t index) const {
+		if (!held.fields_fetched) {
+			Object *flow = owner_object(held, OWN_FLOW);
+			held.fields = flow == nullptr ? Variant() : flow->get(names_[ID_FLOW_fields]);
+			held.fields_fetched = true;
+		}
+		if (held.fields.get_type() != Variant::ARRAY) {
 			return nullptr;
 		}
-		Variant fields = flow->get(names_[ID_FLOW_fields]);
-		if (fields.get_type() != Variant::ARRAY) {
-			return nullptr;
-		}
-		const Array slots = fields;
+		const Array slots = held.fields;
 		if (index < 0 || index >= slots.size()) {
 			return nullptr;
 		}
-		Variant slot = slots[index];
+		const Variant &slot = slots[index];
 		if (slot.get_type() != Variant::OBJECT) {
 			return nullptr;
 		}
@@ -307,60 +340,70 @@ class WorldAccess {
 	}
 
 	// An int member of its owner, or -1.
-	int64_t int_of(Object *world, int64_t id) const {
-		Object *object = owner_object(world, TABLE[id].owner);
-		Variant value = object == nullptr ? Variant() : object->get(names_[id]);
+	int64_t int_of(Held &held, int64_t id) const {
+		Object *object = owner_object(held, TABLE[id].owner);
+		if (object == nullptr) {
+			return -1;
+		}
+		const Variant value = object->get(names_[id]);
 		return value.get_type() == Variant::INT ? static_cast<int64_t>(value) : -1;
 	}
 
 	// The length of an array member of the World or of a helper, or -1.
-	int64_t length_at(Object *world, int64_t id) const {
-		Object *object = owner_object(world, TABLE[id].owner);
+	int64_t length_at(Held &held, int64_t id) const {
+		Object *object = owner_object(held, TABLE[id].owner);
 		return object == nullptr ? -1 : length_of(object->get(names_[id]), TABLE[id].kind);
 	}
 
 	// The length that rule `size` asks for, or -1 when a number it is made of cannot be read.
-	int64_t length_for(Object *world, int64_t size) const {
+	int64_t compute_length(Held &held, int64_t size) const {
 		switch (size) {
 			case S_ROWS:
-				return length_at(world, ID_WORLD_unit_id);
+				return length_at(held, ID_WORLD_unit_id);
 			case S_MAX_ROWS:
-				return int_of(world, ID_WORLD_max_rows);
+				return int_of(held, ID_WORLD_max_rows);
 			case S_STATS:
 				return STAT_COUNT;
 			case S_TYPES:
-				return length_at(world, ID_WORLD_type_speed);
+				return length_at(held, ID_WORLD_type_speed);
 			case S_WEAPONS:
-				return length_at(world, ID_WORLD_weapon_range);
+				return length_at(held, ID_WORLD_weapon_range);
 			case S_ARMOURS:
-				return mul(ARMOUR_COUNT, length_at(world, ID_WORLD_weapon_range));
+				return mul(ARMOUR_COUNT, length_at(held, ID_WORLD_weapon_range));
 			case S_COSTS:
-				return mul(MOVE_CLASSES, mul(int_of(world, ID_WORLD_map_cols), int_of(world, ID_WORLD_map_rows)));
+				return mul(MOVE_CLASSES, mul(int_of(held, ID_WORLD_map_cols), int_of(held, ID_WORLD_map_rows)));
 			case S_SLOTS:
-				return int_of(world, ID_WORLD_flow_cache_size);
+				return int_of(held, ID_WORLD_flow_cache_size);
 			case S_PADDED:
-				return mul(add(int_of(world, ID_FLOW_cols), PAD), add(int_of(world, ID_FLOW_rows), PAD));
+				return mul(add(int_of(held, ID_FLOW_cols), PAD), add(int_of(held, ID_FLOW_rows), PAD));
 			case S_BUCKETS:
 				return BUCKETS;
 			case S_SEP_GRID:
-				return mul(int_of(world, ID_SEP_cols), int_of(world, ID_SEP_rows));
+				return mul(int_of(held, ID_SEP_cols), int_of(held, ID_SEP_rows));
 			case S_TARGET_GRID:
-				return mul(int_of(world, ID_TARGET_cols), int_of(world, ID_TARGET_rows));
+				return mul(int_of(held, ID_TARGET_cols), int_of(held, ID_TARGET_rows));
 			case S_FOG_CELLS:
-				return mul(int_of(world, ID_FOG_player_count), int_of(world, ID_FOG_cells));
+				return mul(int_of(held, ID_FOG_player_count), int_of(held, ID_FOG_cells));
 			case S_FOG_PLAYERS:
-				return int_of(world, ID_FOG_player_count);
+				return int_of(held, ID_FOG_player_count);
 			case S_FOG_DIRTY:
-				return mul(int_of(world, ID_FOG_player_count), int_of(world, ID_FOG_dirty_capacity));
+				return mul(int_of(held, ID_FOG_player_count), int_of(held, ID_FOG_dirty_capacity));
 			default:
 				return -1;
 		}
 	}
 
+	int64_t length_for(Held &held, int64_t size) const {
+		if (held.lengths[size] == LENGTH_UNKNOWN) {
+			held.lengths[size] = compute_length(held, size);
+		}
+		return held.lengths[size];
+	}
+
 	// What is wrong with name `id` on `object`, FAULT_NONE if nothing.
-	int64_t fault_of(Object *world, Object *object, int64_t id) const {
+	int64_t fault_of(Held &held, Object *object, int64_t id) const {
 		const Entry &entry = TABLE[id];
-		Variant value = object->get(names_[id]);
+		const Variant value = object->get(names_[id]);
 		if (!is_kind(value.get_type(), entry.kind)) {
 			return FAULT_TYPE;
 		}
@@ -369,9 +412,9 @@ class WorldAccess {
 		}
 		const int64_t length = length_of(value, entry.kind);
 		if (entry.size == S_ROWS_CAP) {
-			return length <= int_of(world, ID_WORLD_max_rows) ? FAULT_NONE : FAULT_SIZE;
+			return length <= length_for(held, S_MAX_ROWS) ? FAULT_NONE : FAULT_SIZE;
 		}
-		return length == length_for(world, entry.size) ? FAULT_NONE : FAULT_SIZE;
+		return length == length_for(held, entry.size) ? FAULT_NONE : FAULT_SIZE;
 	}
 
 public:
@@ -386,11 +429,13 @@ public:
 	}
 
 	// Pure: the status of the first name of `phase`'s list that is wrong (status_of), 0 if all are right.
-	// `world` is the World (an Object); a slot name is checked on every slot of flow.fields.
+	// `world` is the World (an Object); a slot name is checked on every slot of flow.fields. Each helper,
+	// the slot Array and each length rule is fetched once per call.
 	int64_t check(Object *world, int64_t phase) const {
-		if (phase < 0 || phase > SHIFT_MAX || ((PH_ALL >> phase) & 1) == 0) {
+		if (!has_list(phase)) {
 			return status_of(0, FAULT_PHASE);
 		}
+		Held held(world);
 		for (int64_t id = 0; id < ID_COUNT; id++) {
 			const Entry &entry = TABLE[id];
 			if (((entry.phases >> phase) & 1) == 0) {
@@ -398,29 +443,21 @@ public:
 			}
 			int64_t fault = FAULT_NONE;
 			if (entry.owner == OWN_SLOT) {
-				const int64_t slots = int_of(world, ID_WORLD_flow_cache_size);
+				const int64_t slots = length_for(held, S_SLOTS);
 				fault = slots < 0 ? FAULT_OWNER : FAULT_NONE;
 				for (int64_t slot = 0; slot < slots && fault == FAULT_NONE; slot++) {
-					Object *object = slot_object(world, slot);
-					fault = object == nullptr ? FAULT_OWNER : fault_of(world, object, id);
+					Object *object = slot_object(held, slot);
+					fault = object == nullptr ? FAULT_OWNER : fault_of(held, object, id);
 				}
 			} else {
-				Object *object = owner_object(world, entry.owner);
-				fault = object == nullptr ? FAULT_OWNER : fault_of(world, object, id);
+				Object *object = owner_object(held, entry.owner);
+				fault = object == nullptr ? FAULT_OWNER : fault_of(held, object, id);
 			}
 			if (fault != FAULT_NONE) {
 				return status_of(id, fault);
 			}
 		}
 		return 0;
-	}
-
-	// The one resize a tick may make (ADR 0013 section 2): `events` grows by `ints` entries, once, after
-	// a kernel's loop; the caller fetches every pointer again afterwards. First used by FIRE (P42n).
-	void grow_events(Object *world, int64_t ints) const {
-		PackedInt32Array events = world->get(names_[ID_WORLD_events]);
-		events.resize(events.size() + ints);
-		world->set(names_[ID_WORLD_events], events);
 	}
 };
 

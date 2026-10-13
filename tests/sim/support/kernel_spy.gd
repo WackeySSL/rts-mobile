@@ -5,6 +5,12 @@ extends RefCounted
 
 ## One "name" or "name:budget" per call, in call order.
 var calls: Array[String] = []
+## What phases() answers: a spy can set bits no library has, to test what sim_impls.gd reports.
+var reported_phases: int = 0
+
+
+func phases() -> int:
+	return reported_phases
 
 
 func flow(_world: Object, budget: int) -> void:

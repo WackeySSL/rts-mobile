@@ -12,10 +12,10 @@ const IMPLS: Array[int] = [Impl.GDSCRIPT, Impl.NATIVE]
 const EXPECTED_PHASES: Array[int] = []
 
 
-## One bit per EXPECTED_PHASES entry, the mask the library has to report.
-static func expected_mask() -> int:
+## One bit per entry of `phases` (EXPECTED_PHASES), the mask the library has to report.
+static func expected_mask(phases: Array[int] = EXPECTED_PHASES) -> int:
 	var mask: int = 0
-	for phase: int in EXPECTED_PHASES:
+	for phase: int in phases:
 		mask |= 1 << phase
 	return mask
 
@@ -27,16 +27,19 @@ static func create_kernels() -> Object:
 	return ClassDB.instantiate(&"SimKernels")
 
 
-## Makes `world` run `impl`: NATIVE prepares it and attaches fresh kernels with `kernels.phases()`
-## as the mask (a hand-built World too); GDSCRIPT detaches both. Returns the problems, empty when
-## it worked: no library, a mask other than EXPECTED_PHASES, or kernels that are no SimKernels.
-static func use(world: World, impl: int) -> Array[String]:
+## Makes `world` run `impl`: NATIVE prepares it and attaches `kernels` (default: fresh ones) with
+## `kernels.phases()` as the mask (a hand-built World too); GDSCRIPT detaches both. Returns the
+## problems, empty when it worked: no library, a mask other than EXPECTED_PHASES, or kernels that
+## are no SimKernels. They are attached either way, so a caller asserts the result is empty;
+## ignoring it runs the native pass on the GDScript twin.
+static func use(world: World, impl: int, kernels: Object = null) -> Array[String]:
 	var problems: Array[String] = []
 	world.kernels = null
 	world.native_phases = 0
 	if impl == Impl.GDSCRIPT:
 		return problems
-	var kernels: Object = create_kernels()
+	if kernels == null:
+		kernels = create_kernels()
 	if kernels == null:
 		problems.append("SimKernels is not loaded: run bash scripts/build-native.sh")
 		return problems

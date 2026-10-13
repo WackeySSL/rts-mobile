@@ -1,4 +1,7 @@
 // What a check of the World found (ADR 0013 section 2): plain C++17, no Godot header. MIT.
+// core/ starts here, with a function that only bind/world_access.h calls and no kernel yet (the
+// scan must see core/, and the status encoding is shared); check_world's cases test it, the one
+// exception to "a core/ function lands with the kernel that calls it".
 // Tests: tests/sim/native/test_kernel_abi.gd, which pins these numbers as literals.
 #pragma once
 
