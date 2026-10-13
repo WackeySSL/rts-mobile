@@ -2,10 +2,10 @@ class_name FlowCache
 extends RefCounted
 ## The flow fields of a match (ADR 0008 section 3): FlowField slots keyed by (goal cell, move
 ## class, map version) and shared by every unit with that key. References are derived: recount()
-## counts the slots a `field` column points at, so nothing releases a slot. Derived state, never
-## hashed (ADR 0007 section 8). configure() allocates every slot's arrays; nothing allocates
-## after it, and all state advance() changes is Packed arrays, ints and FlowField members (ADR
-## 0013 section 2).
+## counts the slots a `field` column points at, so nothing releases a slot; acquire() adds a
+## provisional reference that the next recount() overwrites. Derived state, never hashed (ADR
+## 0007 section 8). configure() allocates every slot's arrays; nothing allocates after it, and
+## all state advance() changes is Packed arrays, ints and FlowField members (ADR 0013 section 2).
 
 ## WAITING: the key is set and integration starts at the slot's turn in advance(), the only call
 ## that has the costs. ACTIVE: begun, done once its field has no pending cells.
@@ -28,7 +28,7 @@ var key_class: PackedInt32Array = PackedInt32Array()
 var key_version: PackedInt32Array = PackedInt32Array()
 ## The tick of the slot's last acquire().
 var last_used: PackedInt32Array = PackedInt32Array()
-## Rows pointing at the slot at the last recount().
+## Rows pointing at the slot at the last recount(), plus one per acquire() of the slot since.
 var ref_count: PackedInt32Array = PackedInt32Array()
 ## The number of the slot's request; advance() serves the lowest first.
 var requested: PackedInt32Array = PackedInt32Array()
@@ -58,7 +58,10 @@ func configure(cols: int, rows: int, classes: int, slots: int) -> void:
 ## the least recently used slot with no references, ties to the lower slot. -1 when the goal is
 ## no cell of the map or the class is none of `classes`, or when every slot is referenced. A new
 ## key serves nothing (cost UNREACHED, `complete` false, also for the same key on another map
-## version) until advance() has integrated it.
+## version) until advance() has integrated it. The slot returned counts as referenced until the
+## next recount(), because the unit stores it in the column only after this call: no new key in
+## the same gap takes it. Call invalidate() with a new map version before the first acquire()
+## under it, or two slots can end up holding the same key.
 func acquire(goal_cell: int, move_class: int, map_version: int, tick: int) -> int:
 	if goal_cell < 0 or goal_cell >= cols * rows or move_class < 0 or move_class >= classes:
 		return -1
@@ -74,6 +77,7 @@ func acquire(goal_cell: int, move_class: int, map_version: int, tick: int) -> in
 			and key_version[slot] == map_version
 		):
 			last_used[slot] = tick
+			ref_count[slot] += 1
 			return slot
 		elif ref_count[slot] == 0 and (oldest == -1 or last_used[slot] < last_used[oldest]):
 			oldest = slot
@@ -84,6 +88,7 @@ func acquire(goal_cell: int, move_class: int, map_version: int, tick: int) -> in
 	key_class[pick] = move_class
 	key_version[pick] = map_version
 	last_used[pick] = tick
+	ref_count[pick] += 1
 	_request(pick)
 	fields[pick].complete = false
 	fields[pick].cost.fill(FlowField.UNREACHED)
@@ -102,7 +107,8 @@ func recount(field_column: PackedInt32Array, count: int) -> void:
 			counts[slot] += 1
 
 
-## The references counted at the last recount; 0 for a number that is no slot.
+## The references counted at the last recount() and the acquire() calls since; 0 for a number
+## that is no slot.
 func refs(slot: int) -> int:
 	return ref_count[slot] if slot >= 0 and slot < ref_count.size() else 0
 
@@ -130,7 +136,9 @@ func advance(costs: PackedByteArray, budget_cells: int) -> int:
 
 
 ## The map is now `map_version`: a referenced slot of another version re-integrates under the new
-## one (its field serves the old costs until the swap); one nobody references is dropped.
+## one (its field serves the old costs until the swap); one nobody references is dropped, which
+## spares a slot acquire() handed out since the last recount(). Call it as soon as the version
+## changes, before any acquire() under the new one (see acquire()).
 func invalidate(map_version: int) -> void:
 	for slot: int in status.size():
 		if status[slot] == Status.FREE or key_version[slot] == map_version:

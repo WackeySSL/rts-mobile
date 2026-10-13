@@ -78,18 +78,22 @@ func test_recount_derives_every_slots_references_from_the_field_column() -> void
 
 
 ## Free slots first, then the oldest unreferenced slot (ties to the lower), never a referenced
-## one; a full cache gives -1 but still shares a key, and a share refreshes the tick.
+## one; a full cache gives -1 but still shares a key, and a share refreshes the tick. An acquire()
+## counts as a reference until the next recount(), so each recount below says nobody points at
+## the slots handed out so far.
 func test_eviction_takes_the_oldest_unreferenced_slot_and_a_full_cache_gives_minus_one() -> void:
 	var cache: FlowCache = _cache(3)
 	assert_int(cache.acquire(1, FOOT, 0, 5)).is_equal(0)
 	assert_int(cache.acquire(2, FOOT, 0, 3)).is_equal(1)
 	# Slot 2 is free, so it is taken although slot 1 is older.
 	assert_int(cache.acquire(3, FOOT, 0, 3)).is_equal(2)
+	cache.recount(PackedInt32Array(), 0)
 	# Slots 1 and 2 are oldest (tick 3) and tie: the lower goes.
 	assert_int(cache.acquire(4, FOOT, 0, 6)).is_equal(1)
 	assert_int(cache.acquire(5, FOOT, 0, 6)).is_equal(2)
 	# Slot 0 is used again at tick 7, so slots 1 and 2 (tick 6) tie again.
 	assert_int(cache.acquire(1, FOOT, 0, 7)).is_equal(0)
+	cache.recount(PackedInt32Array(), 0)
 	assert_int(cache.acquire(6, FOOT, 0, 8)).is_equal(1)
 	# Slot 2 (tick 6) is the oldest but referenced: slot 0 (tick 7) goes.
 	cache.recount(PackedInt32Array([2]), 1)
@@ -118,6 +122,7 @@ func test_advance_serves_one_field_at_a_time_in_request_order() -> void:
 	assert_int(cache.advance(costs, BIG)).is_equal(0)
 	# The request order is the order of the acquire() calls, not the slot order: the oldest slots
 	# (2, then 1) take the new keys, so slot 2 is begun first.
+	cache.recount(PackedInt32Array(), 0)
 	assert_int(cache.acquire(40, FOOT, 0, 10)).is_equal(2)
 	assert_int(cache.acquire(50, FOOT, 0, 11)).is_equal(1)
 	assert_int(cache.advance(costs, 10)).is_equal(10)
@@ -172,6 +177,7 @@ func test_a_slot_recycled_for_the_same_key_on_another_map_version_serves_nothing
 	var cache: FlowCache = _cache(1)
 	cache.acquire(0, FOOT, 0, 1)
 	cache.advance(_costs(), BIG)
+	cache.recount(PackedInt32Array(), 0)
 	assert_int(cache.acquire(0, FOOT, 1, 2)).is_equal(0)
 	assert_bool(cache.field(0).complete).is_false()
 	assert_int(cache.field(0).cost.count(UNREACHED)).is_equal(100)
@@ -179,6 +185,139 @@ func test_a_slot_recycled_for_the_same_key_on_another_map_version_serves_nothing
 	var closed: PackedByteArray = _costs([1, 8, 9])
 	cache.advance(closed, BIG)
 	assert_array(cache.field(0).cost).is_equal(_lone(0, FOOT, closed))
+
+
+## The plan's path: a slot dropped by invalidate (FREE) and re-acquired for its old key on the new
+## map version must not serve the old map's finished costs.
+func test_a_slot_dropped_by_invalidate_and_re_acquired_for_its_old_key_serves_nothing() -> void:
+	var cache: FlowCache = _cache(2)
+	cache.acquire(0, FOOT, 0, 1)
+	cache.advance(_costs(), BIG)
+	assert_bool(cache.field(0).complete).is_true()
+	cache.recount(PackedInt32Array(), 0)
+	cache.invalidate(1)
+	assert_int(cache.status[0]).is_equal(FlowCache.Status.FREE)
+	assert_int(cache.acquire(0, FOOT, 1, 2)).is_equal(0)
+	assert_bool(cache.field(0).complete).is_false()
+	assert_int(cache.field(0).cost.count(UNREACHED)).is_equal(100)
+	assert_int(cache.field(0).best_neighbour(9)).is_equal(-1)
+	var closed: PackedByteArray = _costs([1, 8, 9])
+	cache.advance(closed, BIG)
+	assert_array(cache.field(0).cost).is_equal(_lone(0, FOOT, closed))
+
+
+## A slot acquire() handed out counts as referenced until the next recount() rewrites the counts
+## from the `field` column, so a unit that stored it never finds another goal's field there.
+func test_a_slot_handed_out_since_the_last_recount_is_never_given_to_another_key() -> void:
+	var cache: FlowCache = _cache(3)
+	var column: PackedInt32Array = [cache.acquire(10, FOOT, 0, 1)]
+	cache.recount(column, 1)
+	assert_int(cache.refs(0)).is_equal(1)
+	# Slots 1 and 2 are free; a new key in the same recount gap finds none to evict.
+	assert_int(cache.acquire(20, FOOT, 0, 5)).is_equal(1)
+	assert_int(cache.acquire(30, FOOT, 0, 5)).is_equal(2)
+	assert_int(cache.acquire(40, FOOT, 0, 5)).is_equal(-1)
+	assert_array(cache.key_goal).is_equal([10, 20, 30])
+	# A share counts too, and the recount starts from the column again.
+	assert_int(cache.acquire(20, FOOT, 0, 6)).is_equal(1)
+	assert_array(cache.ref_count).is_equal([1, 2, 1])
+	cache.recount(column, 1)
+	assert_array(cache.ref_count).is_equal([1, 0, 0])
+
+
+## Two new keys in one recount gap and one evictable slot: the first takes it, the second gets -1
+## and the first unit's slot still holds the first key.
+func test_two_new_keys_in_one_recount_gap_cannot_share_the_one_evictable_slot() -> void:
+	var cache: FlowCache = _cache(2)
+	cache.acquire(10, FOOT, 0, 1)
+	cache.acquire(20, FOOT, 0, 2)
+	cache.recount(PackedInt32Array([1]), 1)
+	var first: int = cache.acquire(30, FOOT, 0, 5)
+	var second: int = cache.acquire(40, FOOT, 0, 5)
+	assert_array([first, second]).is_equal([0, -1])
+	assert_array(cache.key_goal).is_equal([30, 20])
+	# The next recount sees the unit that stored `first`.
+	cache.recount(PackedInt32Array([1, first]), 2)
+	assert_int(cache.acquire(40, FOOT, 0, 6)).is_equal(-1)
+
+
+## invalidate() reads the same counts: a slot handed out since the last recount re-integrates
+## instead of being dropped under the unit that stored it.
+func test_invalidate_keeps_a_slot_handed_out_since_the_last_recount() -> void:
+	var cache: FlowCache = _cache(2)
+	cache.acquire(10, FOOT, 0, 1)
+	cache.advance(_costs(), BIG)
+	cache.recount(PackedInt32Array(), 0)
+	assert_int(cache.acquire(20, FOOT, 0, 2)).is_equal(1)
+	cache.invalidate(1)
+	assert_array(cache.status).is_equal([FlowCache.Status.FREE, FlowCache.Status.WAITING])
+	assert_array([cache.key_goal[1], cache.key_version[1]]).is_equal([20, 1])
+
+
+## A dropped slot whose integration was under way takes no more of advance()'s budget.
+func test_a_dropped_slot_that_was_still_integrating_takes_no_more_budget() -> void:
+	var costs: PackedByteArray = _costs()
+	var cache: FlowCache = _cache(2)
+	cache.acquire(5, FOOT, 0, 1)
+	cache.acquire(7, FOOT, 0, 1)
+	assert_int(cache.advance(costs, 20)).is_equal(20)
+	assert_bool(cache.field(0).pending > 0).is_true()
+	cache.recount(PackedInt32Array(), 0)
+	cache.invalidate(1)
+	assert_array(cache.status).is_equal([FlowCache.Status.FREE, FlowCache.Status.FREE])
+	assert_int(cache.advance(costs, BIG)).is_equal(0)
+
+
+## A re-integration takes the next request number like a new key, in slot order, whatever order
+## the slots were first requested in: slot 0 was re-keyed after slot 1 here.
+func test_invalidate_re_requests_referenced_slots_in_slot_order() -> void:
+	var costs: PackedByteArray = _costs()
+	var cache: FlowCache = _cache(2)
+	cache.acquire(1, FOOT, 0, 1)
+	cache.acquire(2, FOOT, 0, 2)
+	cache.advance(costs, BIG)
+	cache.recount(PackedInt32Array(), 0)
+	assert_int(cache.acquire(3, FOOT, 0, 3)).is_equal(0)
+	cache.recount(PackedInt32Array([0, 1]), 2)
+	assert_array(cache.requested).is_equal([3, 2])
+	cache.invalidate(1)
+	assert_array(cache.requested).is_equal([4, 5])
+	assert_int(cache.requests).is_equal(5)
+	cache.advance(costs, 5)
+	assert_array(cache.status).is_equal([FlowCache.Status.ACTIVE, FlowCache.Status.WAITING])
+
+
+## A map with more columns than rows (6 x 4, 24 cells): the cache hands its own cols and rows to
+## every integration and bounds a goal by cols * rows.
+func test_a_map_with_more_columns_than_rows_is_bounded_and_integrated_with_both() -> void:
+	var cache: FlowCache = FlowCache.new()
+	cache.configure(6, 4, 3, 2)
+	assert_array([cache.cols, cache.rows]).is_equal([6, 4])
+	assert_array([cache.acquire(23, FOOT, 0, 1), cache.acquire(24, FOOT, 0, 1)]).is_equal([0, -1])
+	assert_int(cache.acquire(0, TRACKED, 0, 1)).is_equal(1)
+	var costs: PackedByteArray = PackedByteArray()
+	costs.resize(3 * 24)
+	costs.fill(10)
+	costs[8] = 0
+	costs[9] = 0
+	costs[2 * 24 + 14] = 0
+	# Rock cells settle nothing: 22 cells for the FOOT field, 23 for the TRACKED one.
+	assert_int(cache.advance(costs, BIG)).is_equal(22 + 23)
+	for slot: int in 2:
+		var lone: FlowField = FlowField.new()
+		lone.begin(cache.key_goal[slot], cache.key_class[slot], costs, 6, 4)
+		lone.advance(BIG)
+		assert_array(cache.field(slot).cost).is_equal(lone.cost)
+		assert_int(cache.field(slot).cost.size()).is_equal(48)
+
+
+## A number that is no slot has no field, also on a cache that has slots: GDScript would read
+## Array[-1] from the end, and acquire() answers -1 when it finds no slot.
+func test_field_of_a_number_that_is_no_slot_is_null() -> void:
+	var cache: FlowCache = _cache(2)
+	assert_object(cache.field(-1)).is_null()
+	assert_object(cache.field(2)).is_null()
+	assert_object(cache.field(1)).is_not_null()
 
 
 func test_configure_sizes_every_slot_and_resets_the_cache() -> void:
