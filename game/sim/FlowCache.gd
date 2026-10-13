@@ -1,0 +1,161 @@
+class_name FlowCache
+extends RefCounted
+## The flow fields of a match (ADR 0008 section 3): FlowField slots keyed by (goal cell, move
+## class, map version) and shared by every unit with that key. References are derived: recount()
+## counts the slots a `field` column points at, so nothing releases a slot. Derived state, never
+## hashed (ADR 0007 section 8). configure() allocates every slot's arrays; nothing allocates
+## after it, and all state advance() changes is Packed arrays, ints and FlowField members (ADR
+## 0013 section 2).
+
+## WAITING: the key is set and integration starts at the slot's turn in advance(), the only call
+## that has the costs. ACTIVE: begun, done once its field has no pending cells.
+enum Status { FREE = 0, WAITING = 1, ACTIVE = 2 }
+
+## Every Packed array of the cache, one entry per slot.
+const STATE_ARRAYS: Array[StringName] = [
+	&"key_goal", &"key_class", &"key_version", &"last_used", &"ref_count", &"requested", &"status"
+]
+
+var cols: int = 0
+var rows: int = 0
+## A key's move class is 0..classes - 1.
+var classes: int = 0
+## Requests so far: a new key and a re-integration each take the next number.
+var requests: int = 0
+## The key of a slot that is not FREE.
+var key_goal: PackedInt32Array = PackedInt32Array()
+var key_class: PackedInt32Array = PackedInt32Array()
+var key_version: PackedInt32Array = PackedInt32Array()
+## The tick of the slot's last acquire().
+var last_used: PackedInt32Array = PackedInt32Array()
+## Rows pointing at the slot at the last recount().
+var ref_count: PackedInt32Array = PackedInt32Array()
+## The number of the slot's request; advance() serves the lowest first.
+var requested: PackedInt32Array = PackedInt32Array()
+var status: PackedInt32Array = PackedInt32Array()
+var fields: Array[FlowField] = []
+
+## Creates `slots` fields for a cols x rows map and `classes` move classes, all FREE. The only
+## place that allocates. The parameters keep the contract's names, so they shadow the members.
+@warning_ignore("shadowed_variable")
+func configure(cols: int, rows: int, classes: int, slots: int) -> void:
+	self.cols = maxi(cols, 0)
+	self.rows = maxi(rows, 0)
+	self.classes = maxi(classes, 0)
+	requests = 0
+	fields.clear()
+	for i: int in maxi(slots, 0):
+		var created: FlowField = FlowField.new()
+		created.reserve(self.cols, self.rows)
+		fields.append(created)
+	for array_name: StringName in STATE_ARRAYS:
+		var zeros: PackedInt32Array = PackedInt32Array()  # alloc-ok
+		zeros.resize(fields.size())
+		set(array_name, zeros)
+
+
+## The slot of the key: the one holding it (its last use becomes `tick`), else a free slot, else
+## the least recently used slot with no references, ties to the lower slot. -1 when the goal is
+## no cell of the map or the class is none of `classes`, or when every slot is referenced. A new
+## key serves nothing (cost UNREACHED, `complete` false, also for the same key on another map
+## version) until advance() has integrated it.
+func acquire(goal_cell: int, move_class: int, map_version: int, tick: int) -> int:
+	if goal_cell < 0 or goal_cell >= cols * rows or move_class < 0 or move_class >= classes:
+		return -1
+	var free: int = -1
+	var oldest: int = -1
+	for slot: int in status.size():
+		if status[slot] == Status.FREE:
+			if free == -1:
+				free = slot
+		elif (
+			key_goal[slot] == goal_cell
+			and key_class[slot] == move_class
+			and key_version[slot] == map_version
+		):
+			last_used[slot] = tick
+			return slot
+		elif ref_count[slot] == 0 and (oldest == -1 or last_used[slot] < last_used[oldest]):
+			oldest = slot
+	var pick: int = free if free != -1 else oldest
+	if pick == -1:
+		return -1
+	key_goal[pick] = goal_cell
+	key_class[pick] = move_class
+	key_version[pick] = map_version
+	last_used[pick] = tick
+	_request(pick)
+	fields[pick].complete = false
+	fields[pick].cost.fill(FlowField.UNREACHED)
+	return pick
+
+
+## Recounts every slot's references from the first `count` entries of the World's `field`
+## column; -1 and a number that is no slot count for nobody.
+func recount(field_column: PackedInt32Array, count: int) -> void:
+	var counts: PackedInt32Array = ref_count
+	counts.fill(0)
+	var slots: int = counts.size()
+	for row: int in mini(count, field_column.size()):
+		var slot: int = field_column[row]
+		if slot >= 0 and slot < slots:
+			counts[slot] += 1
+
+
+## The references counted at the last recount; 0 for a number that is no slot.
+func refs(slot: int) -> int:
+	return ref_count[slot] if slot >= 0 and slot < ref_count.size() else 0
+
+
+## The field of a slot, null for a number that is no slot.
+func field(slot: int) -> FlowField:
+	return fields[slot] if slot >= 0 and slot < fields.size() else null
+
+
+## Settles at most `budget_cells` cells and returns how many it settled. The field with the
+## lowest request number keeps the whole budget until it completes; a field that completes at
+## once (a key `costs` cannot integrate) settles nothing, so the next one is served in the same
+## call. `costs` is the World's `move_cost`.
+func advance(costs: PackedByteArray, budget_cells: int) -> int:
+	var settled: int = 0
+	while settled < budget_cells:
+		var slot: int = _oldest_request()
+		if slot == -1:
+			break
+		if status[slot] == Status.WAITING:
+			fields[slot].begin(key_goal[slot], key_class[slot], costs, cols, rows)
+			status[slot] = Status.ACTIVE
+		settled += fields[slot].advance(budget_cells - settled)
+	return settled
+
+
+## The map is now `map_version`: a referenced slot of another version re-integrates under the new
+## one (its field serves the old costs until the swap); one nobody references is dropped.
+func invalidate(map_version: int) -> void:
+	for slot: int in status.size():
+		if status[slot] == Status.FREE or key_version[slot] == map_version:
+			continue
+		if ref_count[slot] > 0:
+			key_version[slot] = map_version
+			_request(slot)
+		else:
+			status[slot] = Status.FREE
+
+
+## Gives the slot the next request number and its integration a (re)start.
+func _request(slot: int) -> void:
+	requests += 1
+	requested[slot] = requests
+	status[slot] = Status.WAITING
+
+
+## The slot with an integration to start or finish and the lowest request number, or -1.
+func _oldest_request() -> int:
+	var best: int = -1
+	for slot: int in status.size():
+		var work: bool = status[slot] == Status.WAITING
+		if status[slot] == Status.ACTIVE:
+			work = fields[slot].pending > 0
+		if work and (best == -1 or requested[slot] < requested[best]):
+			best = slot
+	return best
