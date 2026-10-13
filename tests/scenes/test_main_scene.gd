@@ -1,9 +1,9 @@
 extends GdUnitTestSuite
 ## The main scene (ROADMAP Phase 1 boxes 1 and 2): a MatchRunner on the controls_test scenario, a
-## 48x48 test map of 64 px tiles, 40 unit rigs, an RtsCamera driven by a TouchInput (both on
-## data/input_settings.tres), and the Dev button. Composition only: the camera and gesture rules
-## are tested in tests/view and tests/input. Fingers enter through the touch_events helper, which
-## converts base px to the window px that push_input takes.
+## 48x48 map of 64 px tiles drawn by MapView from the runner's World, 40 unit rigs, an RtsCamera
+## driven by a TouchInput (both on data/input_settings.tres), and the Dev button. Composition
+## only: the camera and gesture rules are tested in tests/view and tests/input. Fingers enter
+## through the touch_events helper, which converts base px to the window px that push_input takes.
 ##
 ## Every test starts at a 1280x720 window. The headless window is 64x64 by default, and GUI
 ## hit-tests silently miss until the window has the base size. Tests that resize the window reset
@@ -38,7 +38,7 @@ const MAP_POINT: Vector2 = Vector2(640, 360)
 var _window_size_before: Vector2i
 var _pressed_count: int = 0
 var _main: Node2D
-var _map: TestMapView
+var _map: MapView
 var _camera: RtsCamera
 var _touch: TouchInput
 
@@ -59,7 +59,7 @@ func before_test() -> void:
 	_main = auto_free(packed.instantiate())
 	add_child(_main)
 	await await_idle_frame()
-	_map = _main.get_node("TestMapView")
+	_map = _main.get_node("MapView")
 	_camera = _main.get_node("Camera") as RtsCamera
 	_touch = _main.get_node("TouchInput") as TouchInput
 	_touch.clock = func() -> int: return 0  # No long-press, however long the test stalls.
@@ -69,10 +69,16 @@ func test_map_is_48_by_48_tiles_of_64_px_from_the_scenario() -> void:
 	var scenario: ScenarioDef = load(SCENARIO_PATH)
 	assert_that(scenario.map_size_tiles).is_equal(Vector2i(48, 48))
 	assert_object(_main.get_node("MatchRunner").scenario).is_same(scenario)
-	assert_that(_map.size_tiles).is_equal(Vector2i(48, 48))
-	assert_int(_map.tile_px).is_equal(64)
-	assert_int(_map.tile_px).is_equal(ViewScale.PX_PER_TILE)
+	var runner: MatchRunner = _main.get_node("MatchRunner")
+	assert_object(_map.runner).is_same(runner)  # The scene wires the map to the match.
+	assert_int(runner.world.map_cols).is_equal(48)
+	assert_int(runner.world.map_rows).is_equal(48)
 	assert_that(_map.map_rect_px()).is_equal(Rect2i(0, 0, 3072, 3072))
+	# One bake of 8 texels per tile, drawn once over the whole map (no grid lines).
+	assert_int(_map.bake_count()).is_equal(1)
+	assert_that(_map.image().get_size()).is_equal(Vector2i(384, 384))
+	assert_int(_map.draw_count()).is_equal(1)
+	assert_that(_map.drawn_rect()).is_equal(Rect2(0, 0, 3072, 3072))
 
 
 func test_camera_limits_equal_the_map_rect() -> void:
