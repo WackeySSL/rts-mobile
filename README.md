@@ -34,9 +34,8 @@ Status: pre-alpha. See [docs/ROADMAP.md](docs/ROADMAP.md).
   `THIRD_PARTY_LICENSES.txt` next to `index.html`.
 - C++ bindings: the native sim kernels are built against godot-cpp (MIT), pinned at the commit of
   tag `godot-4.5-stable` and fetched at build time. Its licence text is in
-  [docs/licenses/godot-cpp-4.5-stable/](docs/licenses/godot-cpp-4.5-stable/); the
-  `THIRD_PARTY_LICENSES.txt` of the Android and web builds will include it once the Android build
-  packs the library.
+  [docs/licenses/godot-cpp-4.5-stable/](docs/licenses/godot-cpp-4.5-stable/), and the
+  `THIRD_PARTY_LICENSES.txt` of every Android and web build includes it.
 - C++ runtime: the Godot export templates use LLVM libc++ (Apache-2.0 WITH LLVM-exception), which
   every Android build ships as `libc++_shared.so`. Its licence text (LLVM `llvmorg-21.1.0`) is in
   [docs/licenses/llvm-libc++/](docs/licenses/llvm-libc++/), and the `THIRD_PARTY_LICENSES.txt` of

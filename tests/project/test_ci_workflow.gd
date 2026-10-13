@@ -41,6 +41,9 @@ const ANDROID_INSTALL_RUN: Array[String] = [
 	'pipx install "scons==${SCONS_VERSION}"',
 	"sudo apt-get install -y --no-install-recommends binutils",
 ]
+## P55a2: the ELF checks of export-android.sh, tested offline with the NDK's llvm tools.
+const ELF_STEP: String = "Offline test of the packed-library ELF checks"
+const ELF_RUN: String = "run: bash scripts/ci/test-android-elf.sh"
 const KEYS_STEP: String = "Read the native cache keys"
 ## One key line per library, printed for the flags of its build step.
 const KEY_VAR: String = '%s="$(bash scripts/build-native.sh%s --print-cache-key)"'
@@ -239,6 +242,15 @@ func test_android_job_installs_the_ndk_and_builds_the_host_library_first() -> vo
 	_assert_order(job, first + caches + builds + ["Export debug APK"])
 	_assert_ndk_is_never_cached(job)
 	_assert_job_always_runs(job)
+
+
+## P55a2 (ADR 0013 section 10): export-android.sh runs the ELF and libc++ symbol checks on the
+## packed library. This offline test of them runs in the job after the NDK install (it uses the
+## NDK's llvm tools too) and before the export, as a step with no `if:` or `continue-on-error`.
+func test_android_job_runs_the_offline_elf_test_between_the_ndk_install_and_the_export() -> void:
+	var job: PackedStringArray = _job(_lines("ci.yml"), ANDROID_JOB)
+	_assert_step(job, ELF_STEP, [ELF_RUN])
+	_assert_order(job, [NDK_STEP, ELF_STEP, "Export debug APK"])
 
 
 ## The NDK is never cached (ADR 0013 section 8). The job has the three library caches (godot-cpp and

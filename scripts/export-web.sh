@@ -11,14 +11,16 @@
 #        in the Godot export_templates/4.7.2.stable folder of the platform.
 #        docs/licenses/godot-<version>/{LICENSE,COPYRIGHT}.txt, the engine's licence notices,
 #        and docs/licenses/llvm-libc++/LICENSE.TXT, the LLVM libc++ notice, which the script
-#        writes to <dir>/THIRD_PARTY_LICENSES.txt next to the build. export-android.sh writes
-#        the same notice text, so the two stay identical (ADR 0005 section 5).
+#        writes to <dir>/THIRD_PARTY_LICENSES.txt next to the build, followed by the godot-cpp
+#        section that scripts/ci/godot-cpp-notice.sh prints (the web build packs no native library;
+#        ADR 0013 section 11). export-android.sh writes the same notice text, so the two stay
+#        identical (ADR 0005 section 5).
 # Exit:  0 ok
 #        1 export failed, an error in this run's log, an artifact missing or empty, wasm of
 #          50 MiB or more, threads on, the dev_menu custom feature missing from the pack, a
 #          .gdextension in the pack (the Web preset excludes native/*), or
-#          a licence notice source (Godot's or libc++'s) or <dir>/THIRD_PARTY_LICENSES.txt
-#          missing or empty
+#          a licence notice source (Godot's, libc++'s or godot-cpp's) or
+#          <dir>/THIRD_PARTY_LICENSES.txt missing or empty
 #        2 usage error, or --out inside the project but not under build/
 #        3 Godot missing or not 4.7.2.stable (also: the strings tool is missing)
 #        4 export templates missing (the message names the folder and files)
@@ -182,10 +184,10 @@ if [ -n "$errors" ]; then
   die 1 "Godot logged errors during the export (log: $log)"
 fi
 
-# (4b) Licence notice: a short header, then Godot's LICENSE.txt and COPYRIGHT.txt and LLVM's
-# libc++ LICENSE.TXT, each unchanged. COPYRIGHT.txt lists the bundled components (FreeType,
-# HarfBuzz, Open Sans, ...) and the CC BY 4.0 notice for the Godot logo that the default boot
-# splash shows.
+# (4b) Licence notice: a short header, then Godot's LICENSE.txt and COPYRIGHT.txt, LLVM's libc++
+# LICENSE.TXT and godot-cpp's LICENSE.md (with its tag and commit), each unchanged. COPYRIGHT.txt
+# lists the bundled components (FreeType, HarfBuzz, Open Sans, ...) and the CC BY 4.0 notice for the
+# Godot logo that the default boot splash shows.
 for source in LICENSE.txt COPYRIGHT.txt; do
   if [ ! -s "$LICENSE_DIR/$source" ]; then
     die 1 "licence notice source $LICENSE_DIR/$source is missing or empty"
@@ -225,6 +227,7 @@ godot_tag="${GODOT_VERSION%.stable}-stable"
   printf '%s\n' "LLVM libc++ ${LIBCXX_TAG}: LICENSE.TXT"
   printf '%s\n' "--------------------------------------------------------------------------------"
   cat "$LIBCXX_DIR/LICENSE.TXT"
+  bash scripts/ci/godot-cpp-notice.sh
 } >"$out_abs/$NOTICE_NAME"
 
 # (5) Artifacts.
