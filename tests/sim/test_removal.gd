@@ -87,6 +87,22 @@ func test_sim_step_clears_events_and_stats_and_removes_last() -> void:
 	assert_array(world.stats).is_equal([0, 0, 0, 0, 0, 0, 0])
 
 
+## remove_dead() prepares a hand-built world itself (ADR 0007 section 2: World.new() is a valid
+## world), so a test can call it before any Sim.step: stats is sized and the dead row is counted.
+func test_remove_dead_on_a_hand_built_world_prepares_it_first() -> void:
+	var world: World = World.new()
+	world.add_unit(1, 0, 1000, 1000)
+	world.add_unit(1, 0, 2000, 1000)
+	world.add_unit(2, 0, 3000, 1000)
+	assert_bool(world.prepared).is_false()
+	world.hp[0] = 0
+	world.remove_dead()
+	assert_bool(world.prepared).is_true()
+	assert_array(world.unit_id).is_equal([2, 3])
+	assert_int(world.stats[World.Stat.ROWS_COMPACTED]).is_equal(2)
+	assert_array(world.events.slice(24)).is_equal([World.Event.DIED, 1, 1000, 1000, 0, 1, 0, 0])
+
+
 ## A definition built by hand, with no max_hp set, keeps its unit alive through the removal at the
 ## end of each tick.
 func test_a_world_from_a_hand_built_unit_def_survives_ten_steps() -> void:

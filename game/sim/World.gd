@@ -533,10 +533,15 @@ func add_unit(owner: int, type_index: int, x: int, y: int) -> int:
 	return id
 
 
-## Appends the SPAWNED or DIED record of row `row` to `events` (ADR 0007 section 10), in place.
+## Appends the `kind` record (SPAWNED) of row `row` to `events` (ADR 0007 section 10), in place.
 func _push_unit_event(kind: int, row: int) -> void:
 	var at: int = events.size()
 	events.resize(at + EVENT_STRIDE)  # The last two ints of the record stay 0.
+	_write_unit_event(at, kind, row)
+
+
+## Writes the SPAWNED or DIED record of row `row` at `events[at]`, which is already sized.
+func _write_unit_event(at: int, kind: int, row: int) -> void:
 	events[at] = kind
 	events[at + 1] = unit_id[row]
 	events[at + 2] = pos_x[row]
@@ -548,9 +553,10 @@ func _push_unit_event(kind: int, row: int) -> void:
 ## Removes every row with hp of 0 or less, the last step of a tick (ADR 0007 section 3): a DIED
 ## record per dead row, in row order, then a stable compaction of every ROW_ARRAYS column, so the
 ## rows stay ascending by id. It bumps rows_version once and adds the rows that changed place to
-## stats[ROWS_COMPACTED]. A tick without a death costs one scan. Needs a prepared world, which
-## Sim.step makes sure of.
+## stats[ROWS_COMPACTED]. A tick without a death costs one scan. It prepares the world first
+## (O(1) once prepared), so a hand-built world works: stats is sized by prepare().
 func remove_dead() -> void:
+	prepare()
 	var count: int = unit_id.size()
 	var alive: PackedInt32Array = hp
 	var first: int = 0
@@ -562,7 +568,13 @@ func remove_dead() -> void:
 	for row: int in range(first, count):
 		if alive[row] <= 0:
 			dead += 1
-			_push_unit_event(Event.DIED, row)
+	# One resize for all the records, then the writes: the loops allocate nothing.
+	var at: int = events.size()
+	events.resize(at + dead * EVENT_STRIDE)  # The last two ints of each record stay 0.
+	for row: int in range(first, count):
+		if alive[row] <= 0:
+			_write_unit_event(at, Event.DIED, row)
+			at += EVENT_STRIDE
 	# hp is the test for every column, so it goes last.
 	for column_name: StringName in ROW_ARRAYS:
 		if column_name != &"hp":

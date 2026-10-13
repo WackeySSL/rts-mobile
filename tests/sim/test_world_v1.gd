@@ -535,9 +535,10 @@ func test_prepare_sizes_the_helpers_from_the_map_the_players_and_the_rules() -> 
 	)
 
 
-## A second prepare() changes no helper: every object and array stays the same buffer with the same
-## contents, after a rebuilt grid, a stamped fog and a finished flow slot. configure() would
-## re-create or clear each of them.
+## A second prepare() and a Sim.step (which prepares first) change no helper: every object and array
+## stays the same buffer with the same contents, after a rebuilt grid, a stamped fog and a finished
+## flow slot. configure() would re-create or clear each of them. The tick has no order and no
+## sight, so nothing else in it writes a helper yet; the first rule that does updates this case.
 func test_a_second_prepare_keeps_the_helper_state() -> void:
 	var world: World = World.new()
 	world.map_w = 6000
@@ -555,6 +556,7 @@ func test_a_second_prepare_keeps_the_helper_state() -> void:
 	var contents: Array = []
 	for item: Variant in before:
 		contents.append(item if item is Object else item.duplicate())
+	Sim.step(world, [])
 	world.prepare()
 	var after: Array = _helper_state(world, slot)
 	var changed: Array[int] = []
