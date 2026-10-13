@@ -27,8 +27,10 @@ kenv.Append(CCFLAGS=["-Wall", "-Wextra", "-Wshadow", "-Wconversion", "-Wsign-con
 # same tree keeps its objects instead of overwriting them.
 kenv["SHOBJSUFFIX"] = kenv["suffix"] + kenv["SHOBJSUFFIX"]
 if kenv["platform"] == "android":
-    # Google Play requires 16 KB page support from Android 15; godot-cpp sets no max-page-size.
-    kenv.Append(LINKFLAGS=["-Wl,-z,max-page-size=16384"])
+    # Google Play requires 16 KB page support from Android 15; godot-cpp sets no max-page-size. LLD ends
+    # PT_GNU_RELRO on common-page-size (4 KB unless set), and Google's RELRO check wants the 16 KB boundary
+    # (scripts/ci/check-android-elf.sh), so both sizes are set.
+    kenv.Append(LINKFLAGS=["-Wl,-z,max-page-size=16384", "-Wl,-z,common-page-size=16384"])
 # The build the library reports about itself (SimKernels.build_info()), as plain tokens.
 for name, value in (
     ("SIM_KERNELS_PLATFORM", kenv["platform"]),

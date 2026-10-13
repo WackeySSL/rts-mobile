@@ -230,6 +230,11 @@ jobs:
           pipx install "scons==${SCONS_VERSION}"
           sudo apt-get install -y --no-install-recommends binutils
 
+      # The ELF and libc++ symbol checks that export-android.sh runs on the packed library (ADR 0013 section 10),
+      # offline on gcc-built fixtures, once with binutils and once with the llvm tools of the NDK installed above.
+      - name: Offline test of the packed-library ELF checks
+        run: bash scripts/ci/test-android-elf.sh
+
       # One cache per library, each under the key build-native.sh prints for exactly the flags of its build
       # step below (the Android keys carry NDK_VERSION). The host's key is the verify job's: a hit once it saved.
       - name: Read the native cache keys
@@ -267,7 +272,8 @@ jobs:
       # The generated native/sim_kernels.gdextension names all six libraries (linux x86_64 and arm64, android
       # arm64, each debug and release), so the host's Linux library comes first: without it the headless
       # editor logs "Can't open dynamic library". --export-debug then packs android.debug.arm64 (the dev APK)
-      # and the release library is built for P51r's release export. P55a2 adds export-android.sh's checks.
+      # and the release library is built for P51r's release export. export-android.sh checks the packed
+      # debug library against the bytes built here (hash, ELF facts, libc++ symbols).
       - name: Build the host library (linux, template_debug)
         run: bash scripts/build-native.sh
 
