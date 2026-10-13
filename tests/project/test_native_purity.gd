@@ -7,17 +7,19 @@ extends GdUnitTestSuite
 ## int or long, integer literal other than 0 and 1 outside a `constexpr` variable with a comment of
 ## its own (on its line or alone on the line above: the mirror of a GDScript const), and raw int8
 ## or int32 pointer outside a `struct|class *View` body or used through `.name` or `->name` outside
-## it (the accessors belong in the body). bind/ (the only code that touches Godot types, so Godot
-## headers, heap use and int are fine): the float, time, randomness and thread bans (godot-cpp
+## it (the accessors belong in the body). The pointer names are collected over every core/ file
+## first, so a view in one header guards all the files, and a view pointer's name is not free for
+## another member of core/. bind/ (the only code that touches Godot types, so Godot headers, heap
+## use and int are fine): the float, time, randomness and thread bans (godot-cpp
 ## headers pull in <cmath> and <atomic>, so the words are banned too, not only the includes), no
 ## Packed*Array parameter by value or reference (the ADR bans those; a pointer is in place and
 ## legal), and reinterpret_cast or const_cast only in world_access.h. Both layers: no static
 ## Godot or std object (const or not: it is built lazily on the worker). Both scans pass while
 ## core/ is absent (P54 adds it, and its PR adds an assertion that core/ is seen). Every banned
 ## word is probed and counted, and the ADR-named bans are pinned by hand (PINNED) apart from the
-## word lists, so deleting a word fails; every rule has a flagged and a legal fixture. Blind
-## spots, left to review: a global without static or inline, and `static int64_t n(0);`. The
-## ClassDB and SimKernels bans are in test_sim_purity.
+## word lists, so deleting a word fails; every rule has a flagged and a legal fixture, and a
+## fixture of several files has a line `---` between them. A blind spot, left to review: a global
+## without static or inline. The ClassDB and SimKernels bans are in test_sim_purity.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const NATIVE_DIR: String = "res://native/sim_kernels/src"
@@ -33,30 +35,38 @@ const CORE_ONLY: Array[String] = [
 ]
 ## The number of banned words in RULES. A word dropped from a list fails the test until this line
 ## is edited with it, so a deletion is a decision in the diff and not a silent hole.
-const BANNED_WORDS: int = 276
+const BANNED_WORDS: int = 309
 ## A quoted include keeps its path (the Godot header rule reads it); the rest is blanked.
 const BLANKED: String = (
 	r'(#\s*include\s*"[^"\n]*")|"(?:[^"\\\n]|\\.)*"'
 	+ r"|(?<![0-9A-Za-z_])'(?:[^'\\\n]|\\.)+'|//[^\n]*|/\*[\s\S]*?\*/"
 )
-## A constexpr variable, not a function or `if constexpr`: no ( or { before its = or {.
-const CONSTEXPR_STATEMENT: String = r"\bconstexpr\b[^;(){}=]*(?:=|\{)[^;]*;"
+## A constexpr variable, not a function, `if constexpr` or lambda: no ( or { before its = or {,
+## and no `](` (a lambda introducer) in the initializer.
+const CONSTEXPR_STATEMENT: String = r"\bconstexpr\b(?![^;]*\]\s*\()[^;(){}=]*(?:=|\{)[^;]*;"
 ## The body of a view struct, where raw pointers belong, and the pointer names declared in it.
 const VIEW: String = r"\b(?:struct|class)\s+\w*View\b[^;{]*\{"
 const VIEW_POINTER: String = r"\bu?int(?:8|32)_t\b\s*(?:const\s*)?\*\s*(?:const\s+)?(\w+)"
 ## What ends a variable declaration: = ; { or a direct-init of a literal, `n("x")` (blanked).
 const VARIABLE_END: String = r"[^;(){}=]*(?:[=;{]|\((?:\s+|\s*[-+]?\d[\w']*\s*)\))"
+## A static with its initializer before any ( : `static auto n = StringName("x");`.
+const STATIC_INIT: String = r"^static\b[^;(){}=]*="
+## What precedes the `{` of a scope with members, not of a function body, lambda or block (no ( ):
+## a `static` in a block that is not a scope is a variable, never a function declaration.
+const SCOPE_HEAD: String = r"^[^()]*\b(?:namespace|struct|class|union)\b[^()]*$"
+## The line between the files of a fixture, which are scanned together.
+const FILE_BREAK: String = "\n---\n"
 
 ## How a list of words becomes a regex piece, and the probe that must trip it: [regex, probe].
 const SHAPES: Dictionary[String, Array] = {
 	"word": [r"\b(?:%s)\b", "%s"],
-	"call": [r"\b(?:%s)\s*\(", "%s(0)"],
+	"call": [r"\b(?:%s)[fl]?\s*\(", "%s(0)"],
 	"method": [r"\.(?:%s)\s*\(", "v.%s(0)"],
-	"std": [r"\bstd::(?:%s)\b", "std::%s"],
+	"std": [r"\bstd::(?:%s)[fl]?\b", "std::%s"],
 	"singleton": [r"\b(?:%s)::get_singleton\b", "%s::get_singleton()"],
 	"include": [r"#\s*include\s*<(?:%s)>", "#include <%s>"],
 	"path": [r'#\s*include\s*[<"][^>"]*(?:%s)', '#include "x/%s.h"'],
-	"static": [r"\bstatic\b[^;(){}=]*\b(?:%s)\b" + VARIABLE_END, "static const %s n = 0;"],
+	"static": [r"\bstatic\b[^;{}]*?\b(?:%s)\b", "static const %s n = 0;"],
 }
 ## Rows of "rule shape words", or "rule raw regex" (no spaces). A rule is its rows joined, each
 ## row's words filled into its shape. Words are regex text (`math\.h`). The test probes each word.
@@ -71,8 +81,13 @@ const RULES: Array[String] = [
 	"cmath std cbrt fma fmin fmax fdim modf ldexp frexp copysign nearbyint rint lrint",
 	"cmath std isnan isinf isfinite signbit",
 	"cmath call sqrt pow exp exp2 log log2 log10 sin cos tan atan atan2 floor ceil round trunc",
-	"cmath call lround fmod hypot fabs cbrt fma fmin fmax modf",
-	r"cmath raw \bMath::\w+|\b__builtin_(?:sqrt|pow|exp|log|sin|cos|tan|atan|floor|ceil)\w*",
+	"cmath call lround llround fmod hypot fabs cbrt fma fmin fmax modf lrint rint nearbyint",
+	"cmath call asin acos sinh cosh tanh expm1 log1p",
+	# The float helpers of Godot's UtilityFunctions (floorf, ceilf and roundf are the cmath names).
+	"cmath call lerpf snappedf absf signf wrapf clampf maxf minf fposmod smoothstep inverse_lerp",
+	"cmath call move_toward deg_to_rad rad_to_deg",
+	r"cmath raw \bMath(?:::|_)\w+",
+	r"cmath raw \b__builtin_(?:sqrt|pow|exp|log|sin|cos|tan|atan|floor|ceil)\w*",
 	r"cmath raw \b__builtin_(?:round|trunc|fabs|fmod|inf|nan|huge_val)\w*",
 	r"time include chrono ctime time\.h sys/time\.h",
 	"time std chrono",
@@ -83,6 +98,7 @@ const RULES: Array[String] = [
 	r"random raw \bstd::\w+_(?:engine|distribution)\b",
 	"random word RandomNumberGenerator",
 	"random call rand srand random srandom drand48 randi randf randi_range randf_range randomize",
+	"random call randfn rand_from_seed seed",
 	r"threads include thread atomic mutex shared_mutex future condition_variable semaphore",
 	r"threads include barrier latch stop_token pthread\.h omp\.h",
 	"threads std thread jthread atomic mutex recursive_mutex shared_mutex timed_mutex",
@@ -94,9 +110,12 @@ const RULES: Array[String] = [
 	r"threads raw \bstd::atomic\w*|\b(?:pthread_\w+|__atomic_\w+|__sync_\w+)\b|\b_Atomic\b",
 	r"threads raw #\s*pragma\s+omp\b",
 	"thread_local word thread_local __thread",
-	# A variable has no `(` before its `=`, `;` or `{`; a function does. _is_constant judges const.
-	r"mutable_static raw \b(?:static|inline)\b[^;(){}=]*[=;{]",
+	# A variable has no `(` before its `=`, `;` or `{` (`n(0)` aside); a function does.
+	# _is_constant judges const.
+	r"mutable_static raw \b(?:static|inline)\b" + VARIABLE_END,
 	# Built on first use, on the worker: const or not, no static Godot or heap object (ADR 0013 s6).
+	# _declares_object tells a variable from a function declaration that has such a type.
+	"static_object static HashMap HashSet Vector List LocalVector",
 	"static_object static StringName String Variant NodePath Array Dictionary Callable Signal",
 	"static_object static Object Ref RID TypedArray PackedByteArray PackedInt32Array",
 	"static_object static std::string std::vector std::map std::set std::list std::deque",
@@ -141,6 +160,12 @@ const FLAGGED: Array[String] = [
 	"float_literal|int64_t x = 0x1p3;",
 	"float_literal|auto x = 0x1.8p-1;",
 	"cmath|auto r = __builtin_sqrt(x);",
+	"cmath|auto r = __builtin_round(x);",
+	"cmath|auto r = sqrtf(x);\nauto s = powf(x, y);\nauto t = lroundf(x);",
+	"cmath|auto r = std::sqrtl;\nauto s = &std::lroundf;",
+	"cmath|auto r = UtilityFunctions::floorf(x);",
+	"cmath|auto r = Math_PI;",
+	"random|auto r = UtilityFunctions::randfn(0, 1);",
 	"random|std::normal_distribution<int64_t> d;",
 	"random|std::default_random_engine e;",
 	"godot_header|#include <godot_cpp/variant/variant.hpp>",
@@ -155,9 +180,19 @@ const FLAGGED: Array[String] = [
 	"mutable_static|int64_t f() {\n\tstatic int64_t calls = 0;\n\treturn calls;\n}",
 	"mutable_static|inline int64_t g_calls = 0;",
 	"mutable_static|static const int64_t *last = nullptr;",
+	"mutable_static|static int64_t n(0);",
+	"mutable_static|#ifdef __cpp_constexpr\nstatic int64_t counter = 0;\n#endif",
 	'static_object|static const StringName n = "cost";',
 	'static_object|StringName name() {\n\tstatic const StringName n("cost");\n\treturn n;\n}',
 	"static_object|void f() {\n\tstatic const Variant v(1);\n}",
+	"static_object|static const auto n = StringName(COST_NAME);",
+	'static_object|void f() {\n\tstatic const auto n = StringName("cost");\n}',
+	'static_object|void f() {\n\tstatic const StringName n("cost", true);\n}',
+	"static_object|void f() {\n\tstatic const StringName n(COST_NAME);\n}",
+	'static_object|void f() {\n\tstatic const StringName n(String("cost"));\n}',
+	"static_object|void f() {\n\tstatic const HashMap<int64_t, int64_t> m = make();\n}",
+	"static_object|auto f = [](int64_t x) {\n\tstatic const Variant v(COST);\n\treturn x;\n};",
+	"static_object|void f() {\n\tif (x) {\n\t} else {\n\t\tstatic const StringName n(COST);\n\t}\n}",
 	"alloc|delete p;",
 	"alloc|p = new Foo;  // not alloc-ok",
 	"simd|#include <immintrin.h>",
@@ -177,12 +212,25 @@ const FLAGGED: Array[String] = [
 	"int_literal|int64_t t = 0;  // note\nconstexpr int64_t H = 1000;",
 	"int_literal|// helper for cells\nconstexpr int64_t cell_of(int64_t x) {\n\treturn x / 1000;\n}",
 	"int_literal|int64_t f() {\n\tif constexpr (true) {  // fast\n\t\treturn 1000;\n\t}\n}",
+	"int_literal|constexpr auto scale = [](int64_t x) { return x * 1000; };  // scale",
+	"int_literal|constexpr int64_t K = 7; int64_t n = 1000;  // mirrors GDScript K",
 	"raw_pointer|const int32_t *px = nullptr;",
 	"raw_pointer|uint8_t *flags = nullptr;",
 	"raw_pointer|int32_t const *px = nullptr;",
 	"raw_pointer|struct WorldView {\n\tint64_t n;\n};\nuint8_t *flags = nullptr;",
 	"raw_pointer|struct WorldView {\n\tconst int32_t *px;\n};\nauto a = w.px[0];",
 	"raw_pointer|struct SlotView {\n\tint32_t *const cost;\n};\nauto *p = slot->cost;",
+	# The view is in one file, the use in another: in either order.
+	(
+		"raw_pointer|struct WorldView {\n\tconst int32_t *pos_x;\n\tint32_t *const cost;\n};"
+		+ FILE_BREAK
+		+ "auto a = w.pos_x[0] - w.pos_x[1];\nauto *p = slot->cost;"
+	),
+	(
+		"raw_pointer|auto a = w.pos_x[0];"
+		+ FILE_BREAK
+		+ "struct WorldView {\n\tconst int32_t *pos_x;\n};"
+	),
 	"packed_param|void flow(godot::PackedInt32Array p);",
 	"packed_param|Variant f(const PackedByteArray &p, int64_t n);",
 	"packed_param|void g(int64_t n,\n\tPackedInt64Array &p);",
@@ -198,6 +246,7 @@ const LEGAL: Array[String] = [
 	"float_literal|constexpr int64_t MASK = 0x1e3;  // mirrors GDScript MASK",
 	"cmath|#include <cstdint>\n#include <cstddef>\nauto e = std::experimental::foo;",
 	"cmath|int64_t math_floor_count = floor_div(1, 1);\nint64_t Mathematics = 0;",
+	"cmath|auto a = sqrtfx(1) + floorl_count(0);\nauto b = std::roundfx;",
 	"time|int64_t span = tick_time(1);",
 	"random|int64_t span = operand(1);",
 	"threads|int64_t atomic_count = 0;\nint64_t thread_count = 1;\nint64_t SpinLockCount = 0;",
@@ -206,7 +255,19 @@ const LEGAL: Array[String] = [
 	"mutable_static|static const int64_t L = 1;\nconstexpr static int64_t M = 0;",
 	"mutable_static|const static int64_t B = 1;\ninline constexpr int64_t U = 1;",
 	"mutable_static|static int64_t *const P = nullptr;",
+	"mutable_static|static int64_t g(int64_t);\nstatic const int64_t N(0);",
+	"mutable_static|constexpr static int64_t Q(1);\nstatic int64_t *const R(0);",
 	"static_object|static StringName name_of(int64_t row);\nstatic Variant none();",
+	(
+		"static_object|static int64_t index_of(const StringName &name);\nstruct Names {\n"
+		+ "\tstatic Variant none() { return Variant(); }\n"
+		+ "\tstatic void set(const Array &a = Array());\n};"
+	),
+	(
+		"static_object|namespace n {\nstatic Variant a();\n}\nstruct S {\n\tstatic Variant b();\n};\n"
+		+ "class C : public B {\n\tstatic Variant c() { return Variant(); }\n};\n"
+		+ "union U {\n\tstatic Variant d();\n};"
+	),
 	'static_object|class Names {\n\tStringName cost;\npublic:\n\tNames() : cost("cost") {}\n};',
 	"alloc|std::vector<int64_t> events;  // alloc-ok\nFoo(const Foo &) = delete;\nint64_t newest = 0;",
 	"unordered|int64_t unordered_count = 0;\nint64_t hashed = 1;",
@@ -228,6 +289,19 @@ const LEGAL: Array[String] = [
 		"raw_pointer|struct SlotView {\n\tint32_t *cost;\n"
 		+ "\tint64_t at(int64_t i) const { return cost[i]; }\n};\n"
 		+ "int64_t d(SlotView s, int64_t i) { return s.at(i) - s.cost_at(i); }"
+	),
+	# An accessor call is not a pointer use, even when another view's pointer has its name.
+	(
+		"raw_pointer|struct WorldView {\n\tconst int32_t *px;\n"
+		+ "\tint64_t pos_x(int64_t row) const { return px[row]; }\n};"
+		+ FILE_BREAK
+		+ "int64_t d(const WorldView &w) { return w.pos_x(1) - w.pos_x(0); }"
+	),
+	(
+		"raw_pointer|struct SlotView {\n\tint32_t *cost;\n};\nstruct WorldView {\n"
+		+ "\tint64_t cost(int64_t row) const;\n};"
+		+ FILE_BREAK
+		+ "int64_t d(const WorldView *w) { return w->cost(1); }"
 	),
 	"cast|auto v = static_cast<int32_t>(x);",
 	"packed_param|PackedInt32Array make(int64_t n);\nauto a = PackedByteArray();",
@@ -273,6 +347,10 @@ var _constexpr: RegEx
 var _view: RegEx
 var _view_pointer: RegEx
 var _const_word: RegEx
+var _constexpr_word: RegEx
+var _static_init: RegEx
+var _variable_end: RegEx
+var _scope_head: RegEx
 
 
 func before() -> void:
@@ -281,6 +359,10 @@ func before() -> void:
 	_view = _compile(VIEW)
 	_view_pointer = _compile(VIEW_POINTER)
 	_const_word = _compile(r"\bconst\b")
+	_constexpr_word = _compile(r"\bconstexpr\b")
+	_static_init = _compile(STATIC_INIT)
+	_variable_end = _compile("^" + VARIABLE_END)
+	_scope_head = _compile(SCOPE_HEAD)
 	var patterns: Dictionary[String, String] = _patterns()
 	for rule: String in patterns:
 		_regexes[rule] = _compile(patterns[rule])
@@ -330,7 +412,7 @@ func test_legal_fixtures_pass_in_both_layers() -> void:
 	var wrongly_flagged: Array[String] = []
 	for layer: String in [CORE, BIND]:
 		for entry: String in LEGAL:
-			for report: String in _violations(layer, "fixture.cpp", _source(entry)):
+			for report: String in _fixture_violations(layer, entry):
 				wrongly_flagged.append("%s: %s" % [layer, report])
 	assert_array(wrongly_flagged).is_empty()
 
@@ -397,7 +479,7 @@ func _misjudged(entries: Array, exact: bool) -> Array[String]:
 		for entry: String in entries:
 			var rule: String = entry.get_slice("|", 0)
 			var owned: bool = _has_rule(layer, rule)
-			var reports: Array[String] = _violations(layer, "fixture.cpp", _source(entry))
+			var reports: Array[String] = _fixture_violations(layer, entry)
 			var found: Array[String] = _names(reports, ": ", 1)
 			if found.has(rule) != owned or (owned and exact and found.size() != 1):
 				wrong.append("%s: %s -> %s" % [layer, entry, found])
@@ -413,10 +495,18 @@ func _sources(layer: String) -> Array[String]:
 
 
 func _scan_tree(layer: String) -> Array[String]:
-	var found: Array[String] = []
+	var files: Dictionary = {}
 	for path: String in _sources(layer):
-		found.append_array(_violations(layer, path, FileAccess.get_file_as_string(path)))
-	return found
+		files[path] = FileAccess.get_file_as_string(path)
+	return _scan_files(layer, files)
+
+
+## The files of a fixture (its source split at FILE_BREAK), scanned together.
+func _fixture_violations(layer: String, entry: String) -> Array[String]:
+	var files: Dictionary = {}
+	for source: String in _source(entry).split(FILE_BREAK):
+		files["fixture%d.cpp" % files.size()] = source
+	return _scan_files(layer, files)
 
 
 func _has_rule(layer: String, rule: String) -> bool:
@@ -441,19 +531,38 @@ func _names(items: Array, separator: String, index: int) -> Array[String]:
 	return names
 
 
-## "label:line: rule: text" for each line a rule flags in `source`, rule by rule.
+## "label:line: rule: text" for each line a rule flags in one source.
 func _violations(layer: String, label: String, source: String) -> Array[String]:
+	return _scan_files(layer, {label: source})
+
+
+## The same for several files ({label: source}) scanned together: the pointers that a view
+## declares in any of them are known to all.
+func _scan_files(layer: String, files: Dictionary) -> Array[String]:
+	var members: PackedStringArray = []
+	for source: String in files.values():
+		members.append_array(_view_members(_blank(source)))
+	var found: Array[String] = []
+	for label: String in files:
+		found.append_array(_file_violations(layer, label, files[label], members))
+	return found
+
+
+## The reports for one file, rule by rule. `members` are the view pointers of all the files.
+func _file_violations(
+	layer: String, label: String, source: String, members: PackedStringArray
+) -> Array[String]:
 	var raw: PackedStringArray = source.split("\n")
 	var code: String = _blank(source)
 	var views: Array[Vector2i] = _views(code)
-	var constants: Dictionary[int, bool] = _documented_constants(code, raw)
+	var constants: Array[Vector2i] = _documented_constants(code, raw)
 	var found: Array[String] = []
 	for rule: String in _regexes:
 		if not _has_rule(layer, rule):
 			continue
 		var hits: Array = _regexes[rule].search_all(code)
 		if rule == "raw_pointer":
-			hits.append_array(_member_uses(code, views))
+			hits.append_array(_member_uses(code, members))
 		for hit: RegExMatch in hits:
 			var at: int = hit.get_start(1) if hit.get_group_count() > 0 else -1
 			var line: int = code.substr(0, at if at >= 0 else hit.get_start()).count("\n") + 1
@@ -467,9 +576,14 @@ func _violations(layer: String, label: String, source: String) -> Array[String]:
 				"raw_pointer":
 					allowed = _inside(views, hit.get_start())
 				"int_literal":
-					allowed = hit.get_string().rstrip("uUlL") in ["0", "1"] or constants.has(line)
+					allowed = (
+						hit.get_string().rstrip("uUlL") in ["0", "1"]
+						or _inside(constants, hit.get_start())
+					)
 				"mutable_static":
 					allowed = _is_constant(_declaration(code, hit))
+				"static_object":
+					allowed = not _declares_object(code, hit)
 			var report: String = "%s:%d: %s: %s" % [label, line, rule, text.strip_edges()]
 			if not allowed and not found.has(report):
 				found.append(report)
@@ -510,16 +624,59 @@ func _inside(views: Array[Vector2i], at: int) -> bool:
 	return false
 
 
-## The `.name` and `->name` uses of the pointers that the views declare, wherever they are: a
-## pointer read outside the accessors is read without the widening of ADR 0013 section 4.
-func _member_uses(code: String, views: Array[Vector2i]) -> Array[RegExMatch]:
+## The names of the pointers declared in the views of `code`.
+func _view_members(code: String) -> PackedStringArray:
 	var names: PackedStringArray = []
-	for view: Vector2i in views:
+	for view: Vector2i in _views(code):
 		for member: RegExMatch in _view_pointer.search_all(code.substr(view.x, view.y - view.x)):
 			names.append(member.get_string(1))
-	if names.is_empty():
+	return names
+
+
+## The `.name` and `->name` uses of the view pointers `members`, wherever they are: a pointer read
+## outside the accessors is read without the widening of ADR 0013 section 4. A call (`.name(`) is
+## an accessor of another view with that name, not a pointer.
+func _member_uses(code: String, members: PackedStringArray) -> Array[RegExMatch]:
+	if members.is_empty():
 		return []
-	return _compile(r"(?:\.|->)\s*(?:%s)\b" % "|".join(names)).search_all(code)
+	return _compile(r"(?:\.|->)\s*(?:%s)\b(?!\s*\()" % "|".join(members)).search_all(code)
+
+
+## Does the `static` hit declare a variable of a banned type, not a function that has the type in
+## its signature? Inside a function body, always (a block-scope static is never a function).
+## Elsewhere an initializer says so: `= T(...)`, or with the type before any (, `T n("x")`, `T n;`.
+func _declares_object(code: String, hit: RegExMatch) -> bool:
+	var head: String = hit.get_string()
+	return (
+		_in_function(code, hit.get_start())
+		or _static_init.search(head) != null
+		or (
+			not head.contains("(") and _variable_end.search(code.substr(hit.get_end(), 200)) != null
+		)
+	)
+
+
+## Is `at` inside a function body, a lambda or a block in one? Some `{` around it is not the
+## opening of a namespace, struct, class or union.
+func _in_function(code: String, at: int) -> bool:
+	var depth: int = 0
+	for index: int in range(at - 1, -1, -1):
+		if code[index] == "}":
+			depth += 1
+		elif code[index] == "{":
+			if depth > 0:
+				depth -= 1
+			elif not _opens_scope(code, index):
+				return true
+	return false
+
+
+## Does the `{` at `brace` open a namespace, struct, class or union? Its head, from the last `;`,
+## `{` or `}`, names one and has no parenthesis.
+func _opens_scope(code: String, brace: int) -> bool:
+	var before: String = code.substr(0, brace)
+	var from: int = maxi(maxi(before.rfind(";"), before.rfind("{")), before.rfind("}"))
+	return _scope_head.search(before.substr(from + 1)) != null
 
 
 ## The declaration around a `static` or `inline` hit: from the last `;`, `{` or `}` to the hit.
@@ -531,17 +688,18 @@ func _declaration(code: String, hit: RegExMatch) -> String:
 	return code.substr(from + 1, hit.get_end() - from - 1)
 
 
-## Is the variable const? `constexpr` anywhere, or `const` after the last `*` (a `const T *p`
-## is a mutable pointer; `T *const p` is not).
+## Is the variable const? The word `constexpr` anywhere (not `__cpp_constexpr`), or `const` after
+## the last `*` (a `const T *p` is a mutable pointer; `T *const p` is not).
 func _is_constant(declaration: String) -> bool:
 	var tail: String = declaration.substr(declaration.rfind("*") + 1)
-	return declaration.contains("constexpr") or _const_word.search(tail) != null
+	return _constexpr_word.search(declaration) != null or _const_word.search(tail) != null
 
 
-## The lines (1-based) of `constexpr` variables that name their GDScript const in a comment of
-## their own: on one of their lines, or alone on the line above.
-func _documented_constants(code: String, raw: PackedStringArray) -> Dictionary[int, bool]:
-	var lines: Dictionary[int, bool] = {}
+## The character ranges of `constexpr` variables that name their GDScript const in a comment of
+## their own: on one of their lines, or alone on the line above. Only the variable is exempt, not
+## the rest of its line.
+func _documented_constants(code: String, raw: PackedStringArray) -> Array[Vector2i]:
+	var ranges: Array[Vector2i] = []
 	var code_lines: PackedStringArray = code.split("\n")
 	for hit: RegExMatch in _constexpr.search_all(code):
 		var first: int = code.substr(0, hit.get_start()).count("\n")
@@ -554,6 +712,5 @@ func _documented_constants(code: String, raw: PackedStringArray) -> Dictionary[i
 		for index: int in range(first, last + 1):
 			commented = commented or raw[index].contains("//") or raw[index].contains("/*")
 		if commented:
-			for index: int in range(first, last + 1):
-				lines[index + 1] = true
-	return lines
+			ranges.append(Vector2i(hit.get_start(), hit.get_end()))
+	return ranges
