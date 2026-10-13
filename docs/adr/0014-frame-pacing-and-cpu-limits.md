@@ -19,6 +19,14 @@ Revision 4, after the completeness check of revision 3: §3's reference-loop cla
 and corrected; each frame's sample now follows a discarded warm-up run). Michael accepted it
 on 2026-10-12, and the lead applied §7 (acceptance note).
 
+Status note (2026-10-13, calibration recorded in the acceptance note, docs PR P26g): C1 and C2
+hold; C3 and C4 fail on the class method and hold on the per-frame method. By §5's outcome "C3
+or C4 fails on the class method but holds on the per-frame method", the per-frame method is §3's
+formula from 2026-10-13 and P50a implements it; the class p25 factor stays printed as a
+diagnostic. No repeat and no load-pinned fallback: P50lp and `pin_busy_pct` are not taken. The
+sections this touches (§3, §4's CPU rows, `pin_busy_pct` and P50lp bullets, §5, §7) carry a
+dated status line in place.
+
 It does not depend on ADR 0013 (C++ kernels). Michael can accept either one, both or neither.
 The calibration run below needs only the GDScript modes of the never-merged probe branches; the C++
 mode is optional.
@@ -242,6 +250,9 @@ is how k is defined (below). Cancelling core placement there is intended.
   runs; the first is a warm-up and is discarded, the second is the frame's sample. Per class
   (all heavy frames, publish frames, fog frames), `ref_span` is the p25 of those samples. Both
   runs are excluded from `work`.
+  - Status (2026-10-13, see the acceptance note): the class `ref_span` is a diagnostic only
+    (`speed_main_pct`, §4); the verdicts normalise each frame by its own sample (the formula
+    below).
 - **Why the warm-up** (evidence comment on PR #41,
   https://github.com/WackeySSL/rts-mobile/pull/41#issuecomment-6128912281, section 6; cloud VM
   with no frequency scaling, official 4.7.2 editor, 60 fps): a single cold run per frame came out
@@ -255,6 +266,11 @@ is how k is defined (below). Cancelling core placement there is intended.
 - **Only on perf runs.** The burst and the samples run only while the perf card or a
   `TimingProbe` is active, never in player builds or ordinary matches.
 - **The formula:** normalised = raw × min(1, `ref_peak` / `ref_span`).
+  - Status (2026-10-13, calibration recorded; see the acceptance note): by §5's outcome "C3 or
+    C4 fails on the class method but holds on the per-frame method", the formula from 2026-10-13
+    is the per-frame method: per main-thread class, the p95 over frames of
+    `work_i × min(1, ref_peak / sample_i)`, where `sample_i` is frame i's sample. The class p25
+    factor above stays printed as a diagnostic.
 - **Normalised ≤ raw by construction.** A raw pass stays a pass. Normalisation can clear a failure
   that a low clock or a small core caused, never create one.
 - **Answer 1 still holds.** k is a ratio of peak single-core speeds (ADR 0011 Context), so
@@ -276,6 +292,10 @@ is how k is defined (below). Cancelling core placement there is intended.
     and fog. Job p95 and p99 stay raw only.
 
   Raw values stay on the card.
+
+  Status (2026-10-13, see the acceptance note): the normalised rows and the `_norm_` keys below
+  carry the per-frame method (§3's status line); `speed_main_pct`, `speed_tick_pct` and
+  `speed_fog_pct` (the class p25 factor) stay as diagnostics.
 - **`PerfHud.summary()` keys** (the plan's "Perf arena" contract row) and the copy report's JSON,
   which uses the same names:
   - `on_time_pct` and `heavy_on_time_pct` become `jitter_pct` and `heavy_jitter_pct`
@@ -299,6 +319,8 @@ is how k is defined (below). Cancelling core placement there is intended.
   - `pin_busy_pct` 85 only if §5's fallback applies (P50lp adds it to `PerfGateDef.gd` and
     `perf_gate.tres` under the plan's named exception 8, reviewed by the lead and qa-engineer,
     who own those files);
+    - Status (2026-10-13, see the acceptance note): not taken; `pin_busy_pct` enters neither
+      file;
   - `tests/project/test_cross_file_facts.gd` (P52) pins them.
 - **Plan PRs:**
   - P38t (`PerfGateDef` fields, `RefLoop`; about +30 lines);
@@ -315,6 +337,7 @@ is how k is defined (below). Cancelling core placement there is intended.
     again" runs the burst again but not the self-check; about +25, shared with ADR 0013's P50b
     row and counted once if both are accepted);
   - P50lp, only if §5's fallback applies (the load-pinned run, about +60);
+    - Status (2026-10-13, see the acceptance note): not taken;
   - P52 (about +15).
   - No change to `TimingProbe`, `TickJob` (P38j), the worker-file scan (P38j2) or late ticks
     (P38w2): the worker takes no reference samples.
@@ -357,6 +380,10 @@ implements the one formula that the note names. P26n2 needs only the spike branc
 minutes of Michael's time, and P50a is far down lane B, so the wait should cost no slot; if the
 note is still open when lane B reaches P50a, lane B first takes the later rows that do not need
 P50a (P45, P44a, P44b, P47, P47p), as lane A does for P54 in ADR 0013's plan.
+
+Status (2026-10-13, see the acceptance note): the run is recorded, so P50a waits for nothing
+outside its lane; the outcome is "C3 or C4 fails on the class method but holds on the per-frame
+method", and the other outcomes below did not apply.
 
 **Outcomes:**
 - **C1-C4 hold:** the normalised verdicts are final, and the lead records the run in this ADR's
@@ -413,6 +440,7 @@ only this list; if he accepts both, it holds both lists (ADR 0013 §14).
   `PerfGateDef` and "Perf arena" (the `summary()` keys of §4), P38t, P38p, P50a, P50a2, P50a3, P50b, P52, named exception 8, the
   gate procedure, the test plan and the risks, plus the calibration row P26n2 (and P50lp if §5's
   fallback applies).
+  - Status (2026-10-13, see the acceptance note): P50lp is not taken.
 - **This ADR's acceptance note** records Michael's answer and the citations (or corrections) that
   "Source facts not re-run" assigns to P26e; after the calibration run (§5) it also records C1-C5
   and which outcome applies.
@@ -549,8 +577,287 @@ needs no correction.
     https://developer.android.com/games/optimize/adpf/fixed-performance-mode: "your results won't
     be reliable if they aren't tested at fixed clock speeds" (Context quotes it verbatim).
 
-**Calibration (§5): open.** Michael runs P26n2 on his Pixel 9a (modes 1, 2, 4 and 5, 60 s each,
-battery saver off, not charging). The lead then records here C1-C5 with their values and which
-outcome of §5 applies (the class method, the per-frame method, a repeat, or the load-pinned
-fallback with P50lp). P50a's Depends cell waits for that record, so P50a implements the one
-formula named here. The pacing verdicts (§1) do not depend on it.
+**Calibration (§5): recorded 2026-10-13 (docs PR P26g).**
+- **The run.** Michael ran P26n2 on his Pixel 9a on 2026-10-13: build `db02f7f` on the
+  never-merged spike branch `claude/p26n-cpp-spike` (PR #41), release template, Godot
+  4.7.2-stable (official); modes 1, 2, 4 and 5 for 60 s each in one session, battery saver off,
+  not charging; every mode from start tick 3; mode 3 sat out (§5 does not use it). The four
+  reports Michael pasted are kept verbatim in "The four reports" at the end of this note, the
+  source of every value below. The lead's evidence comment on PR #41,
+  https://github.com/WackeySSL/rts-mobile/pull/41#issuecomment-6138576314, summarises them. Its
+  ranges are rounded and leave out the fog row (raw C3 spread "± 27 %", `speed_main` 19-30 %,
+  sample p25 71-112 µs, p50 82-179 µs), so they are narrower than the ones below, which follow
+  the reports.
+- **The checks** (values per mode 1 / 2 / 4 / 5 unless named). Both methods normalise with
+  `f_i = min(1, ref_peak / sample_i)`, where `sample_i` is frame i's sample. "Per-frame" applies
+  each frame's own factor: for C3 the p95 over other frames of `work_i × f_i`, for C4 the mean
+  over publish frames of `tick_i × f_i`. "Class" is §3's class p25 factor,
+  `min(1, ref_peak / ref_span)`, applied to the raw p95 (C3) or the raw mean (C4):
+
+| Check | Recorded | Result |
+| --- | --- | --- |
+| C1 | `refresh_hz` 60.00 at start and end in all four modes; median interval 16.657 / 16.693 / 16.674 / 16.675 ms, all ≥ 16.333 ms (P × 0.98) | holds |
+| C2 | `ref_peak` p25 = p95 = 21.0 µs in all four modes (burst n 9362-9433): 0 % spread | holds (limit ± 5 %) |
+| C3, raw | other-frame work p95, modes 1 / 4 / 5: 4.104 / 6.009 / 6.572 ms, mean 5.562: −26.2 % / +8.0 % / +18.2 % | no check |
+| C3, class | 1.002 / 1.127 / 1.232 ms, mean 1.120: −10.56 % / +0.60 % / +9.97 % | fails (mode 1; modes 4 and 5 within) |
+| C3, per-frame | 1.044 / 0.985 / 1.013 ms, mean 1.014: +3.0 % / −2.9 % / −0.1 % | holds |
+| C4, raw | in-frame tick mean, mode 1 → mode 2 (from start tick 3, 899 tick frames in both): 8.977 → 7.383 ms (−17.8 %) | no check |
+| C4, class | 1.683 → 1.891 ms (+12.4 %) | fails |
+| C4, per-frame | 1.739 → 1.693 ms (−2.6 %) | holds |
+| C5 | dropped 0 / 0 / 1 (0.03 %, one 36.49 ms interval) / 0; cadence 100.03 / 100.05 / 100.05 / 100.04 %; hitches 0 in all; extra slots 0/1/2/≥3: all intervals 0 except mode 4's one interval at 1; raw worker job mean / p95: mode 4 (GDScript) 11.147 / 19.442 ms, mode 5 (C++) 0.337 / 0.609 ms; late and held ticks 0 (modes 4 and 5) | recorded, no check |
+
+- **The outcome (§5):** C1 and C2 hold; C3 and C4 fail on the class method and hold on the
+  per-frame method. That is §5's outcome "C3 or C4 fails on the class method but holds on the
+  per-frame method": the per-frame method is the formula of §3 from 2026-10-13 (decided by §5,
+  so no new ADR), and P50a implements that one, with the same samples. The class p25 factor
+  (`ref_span` per class, `speed_main_pct`) stays printed as a diagnostic. No repeat (C1 and C2
+  hold), no load-pinned fallback: P50lp is not taken, and `pin_busy_pct` enters neither
+  `PerfGateDef.gd` nor `perf_gate.tres`. Normalised ≤ raw still holds, because every per-frame
+  factor is at most 1. The pacing verdicts (§1) did not depend on the run.
+- **Observations** (no decision rests on them):
+  - in frames the main thread ran at `speed_main` 18.6-29.6 % of the burst (frame-sample p25
+    71-113 µs, p50 82-181 µs over all four rows, fog included, against the burst's 21 µs),
+    while every mode met the pacing rules (C5);
+  - the discarded warm-up run is only 7-10 % slower than the frame sample (p25 78-123 µs
+    against the all-frames sample's 71-112 µs), while that sample is 3.4-5.3 × the burst, so the
+    slowdown is mostly the clock or the core placement, not cold caches;
+  - normalised to peak, the GDScript mock tick in the frame is about 1.7 ms (C4's per-frame
+    1.693-1.739 ms against 7.4-9.0 ms raw).
+
+**The four reports** (verbatim as Michael pasted them in the session on 2026-10-13; every
+value in the table and the observations above is read from them):
+
+<details><summary>Mode 1: sprite rings, GDScript tick in the frame</summary>
+
+```text
+PERF PROBE P26s | sprite rings | done
+tick impl: GDScript
+start tick 3 (a fresh tick in every mode)
+device Pixel 9a | Android | Godot 4.7.2-stable (official) release
+screen (2424, 1080) px | refresh_hz start 60.00, end 60.00 | max_fps 60
+frames 3601 in 60.0 s | jitter (<= 17.5 ms, diagnostic, was on time) 91.5 %
+frame interval (wall clock): p95 17.94, mean 16.66, max 24.76 ms
+process (_process start to draw): p95 14.25, mean 4.24, max 20.96 ms
+render CPU (viewport time): p95 1.93, mean 1.59, max 5.76 ms
+draw calls (monitor, HUD in): p95 13.00, mean 13.00, max 13.00 calls
+work, tick frames (process + render): p95 18.26, mean 12.89, max 23.88 ms
+work, other frames (process + render): p95 4.10, mean 3.48, max 7.70 ms
+mock tick (15 Hz, usec timer): p95 12.93, mean 8.98, max 17.86 ms
+flow slice 512 cells (usec timer): p95 4.01, mean 3.27, max 4.22 ms
+fog patch (bytes + set_data + update, 5 Hz): p95 0.35, mean 0.27, max 0.46 ms
+pacing, window = the whole timed run (heavy throughout): P 16.67 ms, V 16.67 ms, drop_ms 25.00
+dropped (interval > drop_ms) 0 of 3601 (0.00 %) | cadence 100.03 % | hitches (>= 66.7 ms) 0
+interval median 16.66, p99 20.35, max 24.76 ms | extra slots 0/1/2/>=3: 3601/0/0/0
+ref loop (1000 iterations): ref_peak p25 21.0, p95 21.0 us (400 ms burst, second half, n 9385) | warm-up p25 107.0 us (n 3602, discarded)
+cpu all frames, work: n 3601, ref_span p25 100.0 us (p50 112.0, p95 129.0), speed_main 21.0 % | p95 raw 15.907, norm class 3.340, norm frame 3.037 ms
+cpu tick frames, work: n 899, ref_span p25 112.0 us (p50 112.0, p95 138.0), speed_main 18.8 % | p95 raw 18.260, norm class 3.424, norm frame 3.501 ms
+cpu other frames, work: n 2702, ref_span p25 86.0 us (p50 112.0, p95 121.0), speed_main 24.4 % | p95 raw 4.104, norm class 1.002, norm frame 1.044 ms
+cpu fog patches: n 300, ref_span p25 112.0 us (p50 112.0, p95 150.0), speed_main 18.8 % | p95 raw 0.349, norm class 0.065, norm frame 0.079 ms
+in-frame tick mean: raw 8.977, norm class 1.683, norm frame 1.739 ms
+CALIBRATION P26n2 | mode 1 (sprite rings) | start_tick 3
+C1 refresh_hz_start=60.00
+C1 refresh_hz_end=60.00
+C1 max_fps=60
+C1 period_ms=16.667
+C1 median_ms=16.657
+C1 median_floor_ms=16.333
+C2 ref_peak_p25_us=21.0
+C2 ref_peak_p95_us=21.0
+C2 warmup_p25_us=107.0
+C3 other_ref_span_us=86.0
+C3 other_ref_p50_us=112.0
+C3 other_ref_p95_us=121.0
+C3 other_work_p95_raw_ms=4.104
+C3 other_work_p95_norm_class_ms=1.002
+C3 other_work_p95_norm_frame_ms=1.044
+C4 tick_ref_span_us=112.0
+C4 tick_ref_p50_us=112.0
+C4 tick_ref_p95_us=138.0
+C4 tick_mean_raw_ms=8.977
+C4 tick_mean_norm_class_ms=1.683
+C4 tick_mean_norm_frame_ms=1.739
+C5 frames=3601
+C5 dropped=0
+C5 dropped_pct=0.00
+C5 cadence_pct=100.03
+C5 hitches=0
+```
+
+</details>
+
+<details><summary>Mode 2: code rings, GDScript tick in the frame</summary>
+
+```text
+PERF PROBE P26s | code rings | done
+tick impl: GDScript
+start tick 3 (a fresh tick in every mode)
+device Pixel 9a | Android | Godot 4.7.2-stable (official) release
+screen (2424, 1080) px | refresh_hz start 60.00, end 60.00 | max_fps 60
+frames 3602 in 60.0 s | jitter (<= 17.5 ms, diagnostic, was on time) 89.2 %
+frame interval (wall clock): p95 18.76, mean 16.66, max 24.01 ms
+process (_process start to draw): p95 12.01, mean 3.53, max 17.12 ms
+render CPU (viewport time): p95 5.38, mean 4.35, max 7.10 ms
+draw calls (monitor, HUD in): p95 462.00, mean 462.00, max 462.00 calls
+work, tick frames (process + render): p95 18.39, mean 13.52, max 21.54 ms
+work, other frames (process + render): p95 7.08, mean 6.01, max 10.98 ms
+mock tick (15 Hz, usec timer): p95 11.01, mean 7.38, max 13.32 ms
+flow slice 512 cells (usec timer): p95 3.91, mean 3.09, max 4.14 ms
+fog patch (bytes + set_data + update, 5 Hz): p95 0.34, mean 0.26, max 0.46 ms
+pacing, window = the whole timed run (heavy throughout): P 16.67 ms, V 16.67 ms, drop_ms 25.00
+dropped (interval > drop_ms) 0 of 3602 (0.00 %) | cadence 100.05 % | hitches (>= 66.7 ms) 0
+interval median 16.69, p99 21.30, max 24.01 ms | extra slots 0/1/2/>=3: 3602/0/0/0
+ref loop (1000 iterations): ref_peak p25 21.0, p95 21.0 us (400 ms burst, second half, n 9387) | warm-up p25 78.0 us (n 3603, discarded)
+cpu all frames, work: n 3602, ref_span p25 71.0 us (p50 82.0, p95 113.0), speed_main 29.6 % | p95 raw 16.405, norm class 4.852, norm frame 3.864 ms
+cpu tick frames, work: n 899, ref_span p25 82.0 us (p50 83.0, p95 114.0), speed_main 25.6 % | p95 raw 18.391, norm class 4.710, norm frame 4.309 ms
+cpu other frames, work: n 2703, ref_span p25 71.0 us (p50 82.0, p95 113.0), speed_main 29.6 % | p95 raw 7.082, norm class 2.095, norm frame 2.583 ms
+cpu fog patches: n 300, ref_span p25 83.0 us (p50 100.0, p95 134.0), speed_main 25.3 % | p95 raw 0.340, norm class 0.086, norm frame 0.080 ms
+in-frame tick mean: raw 7.383, norm class 1.891, norm frame 1.693 ms
+CALIBRATION P26n2 | mode 2 (code rings) | start_tick 3
+C1 refresh_hz_start=60.00
+C1 refresh_hz_end=60.00
+C1 max_fps=60
+C1 period_ms=16.667
+C1 median_ms=16.693
+C1 median_floor_ms=16.333
+C2 ref_peak_p25_us=21.0
+C2 ref_peak_p95_us=21.0
+C2 warmup_p25_us=78.0
+C4 tick_ref_span_us=82.0
+C4 tick_ref_p50_us=83.0
+C4 tick_ref_p95_us=114.0
+C4 tick_mean_raw_ms=7.383
+C4 tick_mean_norm_class_ms=1.891
+C4 tick_mean_norm_frame_ms=1.693
+C5 frames=3602
+C5 dropped=0
+C5 dropped_pct=0.00
+C5 cadence_pct=100.05
+C5 hitches=0
+```
+
+</details>
+
+<details><summary>Mode 4: sprite rings, GDScript worker tick</summary>
+
+```text
+PERF PROBE P26s | sprite rings, worker tick | done
+tick impl: GDScript, worker from tick 3
+start tick 3 (a fresh tick in every mode)
+device Pixel 9a | Android | Godot 4.7.2-stable (official) release
+screen (2424, 1080) px | refresh_hz start 60.00, end 60.00 | max_fps 60
+frames 3602 in 60.0 s | jitter (<= 17.5 ms, diagnostic, was on time) 94.0 %
+frame interval (wall clock): p95 17.58, mean 16.66, max 36.49 ms
+process (_process start to draw): p95 3.85, mean 2.53, max 13.46 ms
+render CPU (viewport time): p95 2.81, mean 1.83, max 6.13 ms
+draw calls (monitor, HUD in): p95 13.00, mean 13.00, max 13.00 calls
+work, tick frames (process + render): p95 6.52, mean 4.59, max 10.13 ms
+work, other frames (process + render): p95 6.01, mean 4.28, max 14.72 ms
+mock tick (15 Hz, usec timer): p95 18.88, mean 10.90, max 23.56 ms
+flow slice 512 cells (usec timer): p95 4.19, mean 3.29, max 4.34 ms
+fog patch (bytes + set_data + update, 5 Hz): p95 0.62, mean 0.40, max 1.41 ms
+worker tick usec: mean 10897.5, p95 18884.0, max 23559.0 | flow slice usec: mean 3293.8, p95 4194.0, max 4343.0
+late ticks (job post to done above 66.7 ms): 0 of 900 ticks
+held ticks (boundary reached with the job running): 0 of 900 ticks
+job post to done (worker wake-up + tick + slice): p95 19.60, mean 11.40, max 24.68 ms
+worker job (tick + slice, wall clock on the worker): p95 19.44, mean 11.15, max 24.48 ms
+pacing, window = the whole timed run (heavy throughout): P 16.67 ms, V 16.67 ms, drop_ms 25.00
+dropped (interval > drop_ms) 1 of 3602 (0.03 %) | cadence 100.05 % | hitches (>= 66.7 ms) 0
+interval median 16.67, p99 19.80, max 36.49 ms | extra slots 0/1/2/>=3: 3601/1/0/0
+ref loop (1000 iterations): ref_peak p25 21.0, p95 21.0 us (400 ms burst, second half, n 9433) | warm-up p25 120.0 us (n 3603, discarded)
+cpu all frames, work: n 3602, ref_span p25 112.0 us (p50 113.0, p95 240.0), speed_main 18.8 % | p95 raw 6.136, norm class 1.150, norm frame 1.020 ms
+cpu tick frames, work: n 899, ref_span p25 112.0 us (p50 113.0, p95 232.0), speed_main 18.8 % | p95 raw 6.517, norm class 1.222, norm frame 1.095 ms
+cpu other frames, work: n 2703, ref_span p25 112.0 us (p50 113.0, p95 245.0), speed_main 18.8 % | p95 raw 6.009, norm class 1.127, norm frame 0.985 ms
+cpu fog patches: n 300, ref_span p25 112.0 us (p50 113.0, p95 213.0), speed_main 18.8 % | p95 raw 0.618, norm class 0.116, norm frame 0.102 ms
+CALIBRATION P26n2 | mode 4 (sprite rings, worker tick) | start_tick 3
+C1 refresh_hz_start=60.00
+C1 refresh_hz_end=60.00
+C1 max_fps=60
+C1 period_ms=16.667
+C1 median_ms=16.674
+C1 median_floor_ms=16.333
+C2 ref_peak_p25_us=21.0
+C2 ref_peak_p95_us=21.0
+C2 warmup_p25_us=120.0
+C3 other_ref_span_us=112.0
+C3 other_ref_p50_us=113.0
+C3 other_ref_p95_us=245.0
+C3 other_work_p95_raw_ms=6.009
+C3 other_work_p95_norm_class_ms=1.127
+C3 other_work_p95_norm_frame_ms=0.985
+C5 frames=3602
+C5 dropped=1
+C5 dropped_pct=0.03
+C5 cadence_pct=100.05
+C5 hitches=0
+C5 job_mean_ms=11.147
+C5 job_p95_ms=19.442
+C5 job_tick_mean_ms=10.897
+C5 job_tick_p95_ms=18.884
+C5 job_done_mean_ms=11.397
+C5 job_done_p95_ms=19.596
+```
+
+</details>
+
+<details><summary>Mode 5: sprite rings, C++ worker tick</summary>
+
+```text
+PERF PROBE P26s | sprite rings, C++ worker tick | done
+tick impl: C++ (android template_release arm64 -O3), worker from tick 3
+start tick 3 (a fresh tick in every mode)
+C++ matches GDScript: yes (60 ticks)
+device Pixel 9a | Android | Godot 4.7.2-stable (official) release
+screen (2424, 1080) px | refresh_hz start 60.00, end 60.00 | max_fps 60
+frames 3602 in 60.0 s | jitter (<= 17.5 ms, diagnostic, was on time) 94.9 %
+frame interval (wall clock): p95 17.51, mean 16.66, max 21.64 ms
+process (_process start to draw): p95 4.25, mean 2.98, max 9.76 ms
+render CPU (viewport time): p95 3.06, mean 2.07, max 10.88 ms
+draw calls (monitor, HUD in): p95 13.00, mean 13.00, max 13.00 calls
+work, tick frames (process + render): p95 7.60, mean 5.42, max 12.86 ms
+work, other frames (process + render): p95 6.57, mean 4.93, max 13.02 ms
+mock tick (15 Hz, usec timer): p95 0.47, mean 0.28, max 5.73 ms
+flow slice 512 cells (usec timer): p95 0.21, mean 0.11, max 0.24 ms
+fog patch (bytes + set_data + update, 5 Hz): p95 0.67, mean 0.40, max 0.95 ms
+worker tick usec: mean 279.6, p95 475.0, max 5727.0 | flow slice usec: mean 113.5, p95 212.0, max 244.0
+late ticks (job post to done above 66.7 ms): 0 of 900 ticks
+held ticks (boundary reached with the job running): 0 of 900 ticks
+job post to done (worker wake-up + tick + slice): p95 0.94, mean 0.50, max 5.89 ms
+worker job (tick + slice, wall clock on the worker): p95 0.61, mean 0.34, max 5.78 ms
+pacing, window = the whole timed run (heavy throughout): P 16.67 ms, V 16.67 ms, drop_ms 25.00
+dropped (interval > drop_ms) 0 of 3602 (0.00 %) | cadence 100.04 % | hitches (>= 66.7 ms) 0
+interval median 16.68, p99 18.34, max 21.64 ms | extra slots 0/1/2/>=3: 3602/0/0/0
+ref loop (1000 iterations): ref_peak p25 21.0, p95 21.0 us (400 ms burst, second half, n 9362) | warm-up p25 123.0 us (n 3603, discarded)
+cpu all frames, work: n 3602, ref_span p25 112.0 us (p50 179.0, p95 268.0), speed_main 18.8 % | p95 raw 6.827, norm class 1.280, norm frame 1.041 ms
+cpu tick frames, work: n 899, ref_span p25 112.0 us (p50 179.0, p95 267.0), speed_main 18.8 % | p95 raw 7.595, norm class 1.424, norm frame 1.097 ms
+cpu other frames, work: n 2703, ref_span p25 112.0 us (p50 179.0, p95 268.0), speed_main 18.8 % | p95 raw 6.572, norm class 1.232, norm frame 1.013 ms
+cpu fog patches: n 300, ref_span p25 113.0 us (p50 181.0, p95 272.0), speed_main 18.6 % | p95 raw 0.668, norm class 0.124, norm frame 0.102 ms
+CALIBRATION P26n2 | mode 5 (sprite rings, C++ worker tick) | start_tick 3
+C1 refresh_hz_start=60.00
+C1 refresh_hz_end=60.00
+C1 max_fps=60
+C1 period_ms=16.667
+C1 median_ms=16.675
+C1 median_floor_ms=16.333
+C2 ref_peak_p25_us=21.0
+C2 ref_peak_p95_us=21.0
+C2 warmup_p25_us=123.0
+C3 other_ref_span_us=112.0
+C3 other_ref_p50_us=179.0
+C3 other_ref_p95_us=268.0
+C3 other_work_p95_raw_ms=6.572
+C3 other_work_p95_norm_class_ms=1.232
+C3 other_work_p95_norm_frame_ms=1.013
+C5 frames=3602
+C5 dropped=0
+C5 dropped_pct=0.00
+C5 cadence_pct=100.04
+C5 hitches=0
+C5 job_mean_ms=0.337
+C5 job_p95_ms=0.609
+C5 job_tick_mean_ms=0.280
+C5 job_tick_p95_ms=0.475
+C5 job_done_mean_ms=0.501
+C5 job_done_p95_ms=0.935
+```
+
+</details>
