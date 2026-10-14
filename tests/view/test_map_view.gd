@@ -108,6 +108,7 @@ func test_one_bake_per_match_and_one_after_set_terrain_however_many_frames_pass(
 	assert_int(_view.bake_count()).is_equal(2)
 	_runner.world.set_terrain(0, 1)  # Two changes in one frame are one bake.
 	_runner.world.set_terrain(1, 0)
+	_runner.run_ticks(1)  # The view reads the snapshot, which shows a change from the next capture.
 	await await_idle_frame()
 	await await_idle_frame()
 	assert_int(_view.bake_count()).is_equal(3)
@@ -166,10 +167,24 @@ func test_the_map_is_one_draw_command_before_and_after_a_change() -> void:
 	assert_int(_view.draw_count()).is_equal(1)
 	assert_that(_view.drawn_rect()).is_equal(Rect2(0, 0, 6 * 64, 2 * 64))  # Whole map, from 0,0.
 	_runner.world.set_terrain(0, 3)
+	_runner.run_ticks(1)  # The change reaches the snapshot at the next capture.
 	await await_idle_frame()
 	await await_idle_frame()
+	assert_int(_view.bake_count()).is_equal(2)  # The change was baked, and drawn once.
 	assert_int(_view.draw_count()).is_equal(1)
 	assert_int(auto_free(MapView.new()).draw_count()).is_equal(0)
+
+
+func test_the_map_comes_from_the_snapshot_and_never_from_the_world() -> void:
+	await await_idle_frame()
+	assert_int(_view.bake_count()).is_equal(1)
+	_runner.world = World.new()  # Test-only: an empty World where the match's was.
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_that(_view.map_rect_px()).is_equal(Rect2i(0, 0, 6 * 64, 2 * 64))
+	assert_int(_view.bake_count()).is_equal(1)  # Nothing to bake again: same match, same version.
+	assert_that(_view.drawn_rect()).is_equal(Rect2(0, 0, 6 * 64, 2 * 64))
+	assert_int(_add_view().bake_count()).is_equal(1)  # A view made after the swap bakes the map.
 
 
 func _make_view() -> MapView:

@@ -131,9 +131,12 @@ func test_filling_a_snapshot_writes_the_rows_in_place_and_keeps_the_sizes() -> v
 	assert_that(snap.screen_pos[0]).is_equal(_camera.world_to_screen(Vector2(544, 1184)))
 	assert_that(snap.screen_pos[30]).is_equal(_layer.unit_screen_position(30))
 	assert_float(snap.radius_px[0]).is_equal(32.0)  # Art 32 px at zoom 1 beats dp(24) = 24 px.
-	var world: World = _layer.runner.world  # A second type, 1000 milli = 64 px, for row 5.
-	world.type_selection_radius.append(1000)
-	world.type_index[5] = 1
+	# A second type, 1000 milli = 64 px, for row 5. The layer reads the published snapshot, so the
+	# test writes that (allowed in SYNC, ADR 0012 section 3); a tick would not do, the sim has no
+	# speed for type 1.
+	var published: MatchSnapshot = _layer.runner.snapshot
+	published.type_selection_radius.append(1000)
+	published.type_index[5] = 1
 	_fill(snap)
 	var row_5: Array = [snap.type_index[5], snap.radius_px[5], snap.radius_px.count(32.0)]
 	assert_array(row_5).is_equal([1, 64.0, 39])  # The other 39 rows keep their 32 px.
