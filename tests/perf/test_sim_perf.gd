@@ -12,6 +12,12 @@ extends GdUnitTestSuite
 ## The enforced numbers are the minimum over the three seed-42 runs of each statistic (ADR 0011
 ## section 4, a fixed method and not a retry). RUN lines print every run, apart from the one
 ## `PERF` line that CI copies.
+##
+## The numbers that the line takes from the World (units, alive_end, the World.stats maxima, the
+## projectile peak and overflow) are zero or constant on today's arena, so two cases pin the code
+## that reads them without the sim's help: _play on a start that the test crafts, and _sample on a
+## hand-built world. They assert inequalities only, so P41's combat and P42's projectiles do not
+## break them.
 
 const PerfReport: GDScript = preload("res://tests/perf/support/perf_report.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
@@ -27,6 +33,8 @@ const RUNS: int = 3
 const REF_SAMPLES: int = 20
 ## Half of the thousandth of a ms that the report rounds each time to.
 const ROUNDING_MS: float = 0.0005
+## The projectile_overflow that the crafted start gives the World (a counter since match start).
+const CRAFTED_OVERFLOW: int = 3
 
 var _gate: PerfGateDef
 var _seed_42: Array[Run] = []
@@ -134,6 +142,45 @@ func test_each_run_timed_every_tick_of_the_arena() -> void:
 	assert_int(_report["units"]).is_equal(_seed_42[0].units)
 	assert_int(_report["alive_end"]).is_equal(_seed_42[0].alive_end)
 	assert_int(_report["proj_peak"]).is_equal(_seed_42[0].proj_peak)
+	assert_int(_report["projectile_overflow"]).is_equal(_seed_42[0].overflow)
+
+
+## What _play reads from the World after the ticks, on a start that the test crafts (the arena's own
+## values are 0 or constant today): one row fewer at tick 0, and the first row dies in tick 1, which
+## moves the rows behind it, so the compaction counts them. Inequalities only: how many more units
+## die later is the combat's to decide.
+func test_the_run_reads_units_rows_stats_and_overflow_from_the_world() -> void:
+	var run: Run = _play(SEED, _craft_a_death)
+	assert_int(run.units).is_equal(_seed_42[0].units - 1)
+	assert_int(run.start_pos.size()).is_equal(2 * run.units)
+	assert_int(run.alive_end).is_less(run.units)
+	assert_int(run.final_pos.size()).is_equal(2 * run.alive_end)
+	assert_int(run.stats_max[World.Stat.ROWS_COMPACTED]).is_greater(0)
+	assert_int(run.overflow).is_greater_equal(CRAFTED_OVERFLOW)
+
+
+## One tick's reads of the World, with no sim step: a stat is raised to its maximum and the peak
+## counts the slots in use, and neither falls on a quieter tick.
+func test_a_tick_sample_keeps_the_stats_maxima_and_the_projectile_peak() -> void:
+	var world: World = World.new()
+	world.max_projectiles = 4
+	world.prepare()
+	var run: Run = Run.new()
+	run.stats_max.resize(World.Stat.size())
+	world.stats[World.Stat.FLOW_CELLS] = 7
+	world.stats[World.Stat.PROJ_STEPS] = 3
+	world.proj_id[0] = 5
+	world.proj_id[2] = 6
+	_sample(run, world)
+	assert_int(run.stats_max[World.Stat.FLOW_CELLS]).is_equal(7)
+	assert_int(run.stats_max[World.Stat.PROJ_STEPS]).is_equal(3)
+	assert_int(run.stats_max[World.Stat.SEP_PAIRS]).is_equal(0)
+	assert_int(run.proj_peak).is_equal(2)
+	world.stats[World.Stat.FLOW_CELLS] = 2
+	world.proj_id[0] = 0
+	_sample(run, world)
+	assert_int(run.stats_max[World.Stat.FLOW_CELLS]).is_equal(7)
+	assert_int(run.proj_peak).is_equal(2)
 
 
 ## The phases are timed inside the step, so their means cannot add up to more than the tick mean
@@ -244,12 +291,16 @@ func test_sim_json_holds_the_numbers_of_the_line() -> void:
 
 ## Steps the arena for TICKS ticks from `match_seed` with the scenario's own orders only, and times
 ## each MatchLoop.step. The phases, stats and projectile peak are read after the clock stops.
-func _play(match_seed: int) -> Run:
+## `adjust` (optional) is called with the World right after MatchLoop.create and before anything is
+## read from it, to give a test a start of its own.
+func _play(match_seed: int, adjust: Callable = Callable()) -> Run:
 	var scenario: ScenarioDef = load(ARENA_PATH) as ScenarioDef
 	var world: World = World.from_scenario(
 		scenario, DetRandom.create(match_seed, DetRandom.STREAM_SIM)
 	)
 	var loop: MatchLoop = MatchLoop.create(scenario, ARENA_PATH, match_seed, world)
+	if adjust.is_valid():
+		adjust.call(world)
 	var probe: TimingProbe = TimingProbe.new()
 	var queued: Array[Command] = []
 	var run: Run = Run.new()
@@ -263,8 +314,7 @@ func _play(match_seed: int) -> Run:
 		loop.step(world, queued, probe)
 		run.tick_ms[tick] = (Time.get_ticks_usec() - started) / 1000.0
 		PerfReport.add_phases(run.phase_usec, probe.phase_usec)
-		PerfReport.raise_maxima(run.stats_max, world.stats)
-		run.proj_peak = maxi(run.proj_peak, PerfReport.live_projectiles(world))
+		_sample(run, world)
 	run.alive_end = world.unit_count()
 	run.overflow = world.projectile_overflow
 	run.final_pos = _positions(world)
@@ -272,6 +322,21 @@ func _play(match_seed: int) -> Run:
 	run.checkpoint_hashes = loop.replay.checkpoint_hashes
 	run.final_hash = world.state_hash()
 	return run
+
+
+## What a tick that just ran leaves in the World: the World.stats maxima and the projectile peak.
+func _sample(run: Run, world: World) -> void:
+	PerfReport.raise_maxima(run.stats_max, world.stats)
+	run.proj_peak = maxi(run.proj_peak, PerfReport.live_projectiles(world))
+
+
+## The crafted start of the case above: the last row is dead and removed before tick 0, the first
+## row is dead (it leaves in tick 1) and the overflow counter starts at CRAFTED_OVERFLOW.
+func _craft_a_death(world: World) -> void:
+	world.hp[world.unit_count() - 1] = 0
+	world.remove_dead()
+	world.hp[0] = 0
+	world.projectile_overflow = CRAFTED_OVERFLOW
 
 
 ## Times REF_SAMPLES calls of the reference loop (after one warm-up call) into _ref_usec. ref_ms is

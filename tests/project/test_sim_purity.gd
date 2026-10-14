@@ -312,6 +312,26 @@ const MUST_NOT_MATCH: Array[String] = [
 	"var gate: SemaphoreSlim",
 	"var stats: WorkerThreadPoolStats",
 	"# callable.call_deferred(), ResourceSaver.save(res, path)",
+	# A word that only ends in a ban, or ends in a ban plus letters, is not the ban either: the
+	# class names and `await` are whole words, so a rule that also takes a prefix (or a suffix)
+	# would flag these.
+	"var loader: SimResourceLoader",
+	"var saver: MyResourceSaver",
+	"var job: SimThread",
+	"var guard: MutexGuard",
+	"var gate: BinarySemaphore",
+	"var pool: SimWorkerThreadPool",
+	"var preawait: int",
+	# The same for the calls and the parsers: a longer name before or after the banned one.
+	"world.emitted_total(kind)",
+	"world.emit_signal_count(kind)",
+	"world.call_deferred_later(kind)",
+	"world.lazy_preload(ids)",
+	"world.preload_ids(ids)",
+	"var data: Variant = parse_bytes_to_var_with_objects(bytes)",
+	"var data: Variant = bytes_to_var_with_objects_safe(bytes)",
+	"var bytes: PackedByteArray = make_var_to_bytes_with_objects(data)",
+	"var bytes: PackedByteArray = var_to_bytes_with_objects_safe(data)",
 ]
 
 ## Rule 3 for game/ai: the only check there is randomness.
