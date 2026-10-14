@@ -1,12 +1,12 @@
 extends RefCounted
-## The match the replay and determinism tests (P35b) play: the perf arena with its jitter, and six
-## commands at fixed ticks. Player 1 owns ids 1-75 (1-30 tanks), player 2 ids 76-150 (76-105
-## tanks). Every call to commands_at makes new Command objects, because the loop stamps the ones
-## it is given. Not a test suite.
+## The match the replay and determinism tests (P35b) play: the perf arena with its jitter, and eight
+## commands at fixed ticks, two of them from one player on one tick. Player 1 owns ids 1-75 (1-30
+## tanks), player 2 ids 76-150 (76-105 tanks). Every call to commands_at makes new Command objects,
+## because the loop stamps the ones it is given. Not a test suite.
 
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
-## The ticks of the six commands, in the order commands_at lists them.
-const TICKS: Array[int] = [20, 45, 50, 100, 130, 160]
+## The ticks of the eight commands, in the order commands_at lists them.
+const TICKS: Array[int] = [20, 45, 50, 70, 70, 100, 130, 160]
 
 
 ## The arena with the jitter drawn from `match_seed`, the way the runner makes it.
@@ -23,9 +23,11 @@ static func loop(world: World, match_seed: int) -> MatchLoop:
 
 ## The commands queued on `tick`: none on most ticks.
 ## 20 MOVE (player 1, ids 1-10), 45 ATTACK_MOVE (player 2, ids 76-90), 50 STOP (player 1, ids
-## 1-5, still walking), 100 ATTACK (player 1's tanks 11-20 on unit 100), 130 a MOVE of player 1
-## that names three of player 2's units (Sim.step drops it: no valid id) and 160 an ATTACK_MOVE of
-## player 2 with 257 ids (over MAX_UNITS: Sim.step drops it).
+## 1-5, still walking), 70 two MOVEs of player 1 in this order (ids 21-30 to (30500, 20500), then
+## ids 25-35 to (10500, 40500): ids 25-30 are in both, so the later one, the second sequence of
+## the tick, decides where they go), 100 ATTACK (player 1's tanks 11-20 on unit 100), 130 a MOVE of
+## player 1 that names three of player 2's units (Sim.step drops it: no valid id) and 160 an
+## ATTACK_MOVE of player 2 with 257 ids (over MAX_UNITS: Sim.step drops it).
 static func commands_at(tick: int) -> Array[Command]:
 	var out: Array[Command] = []
 	match tick:
@@ -35,6 +37,9 @@ static func commands_at(tick: int) -> Array[Command]:
 			out.append(Command.attack_move(2, PackedInt32Array(range(76, 91)), 10500, 40500))
 		50:
 			out.append(Command.stop(1, PackedInt32Array(range(1, 6))))
+		70:
+			out.append(Command.move(1, PackedInt32Array(range(21, 31)), 30500, 20500))
+			out.append(Command.move(1, PackedInt32Array(range(25, 36)), 10500, 40500))
 		100:
 			out.append(Command.attack(1, PackedInt32Array(range(11, 21)), 100))
 		130:

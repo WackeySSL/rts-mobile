@@ -7,9 +7,10 @@ const MatchScript: GDScript = preload("res://tests/sim/support/match_script.gd")
 const HashReport: GDScript = preload("res://tests/sim/support/hash_report.gd")
 
 # Part 2 (P35b): Replay.play. The recording is the arena with its jitter and seed 7 (MatchScript):
-# the two scenario orders, then MOVE (tick 20), ATTACK_MOVE (45), STOP (50), ATTACK (100) and two
-# commands that Sim.step drops, a MOVE that names player 2's units (130) and an ATTACK_MOVE with 257
-# ids (160, over MAX_UNITS). Checkpoints are at 15, 30, ... 300: index k is tick 15 * (k + 1).
+# the two scenario orders, then MOVE (tick 20), ATTACK_MOVE (45), STOP (50), two overlapping MOVEs
+# of player 1 on one tick (70), ATTACK (100) and two commands that Sim.step drops, a MOVE that names
+# player 2's units (130) and an ATTACK_MOVE with 257 ids (160, over MAX_UNITS). Checkpoints are at
+# 15, 30, ... 300: index k is tick 15 * (k + 1).
 
 
 func test_play_on_a_fresh_world_matches_every_checkpoint_and_the_final_hash() -> void:
@@ -17,7 +18,7 @@ func test_play_on_a_fresh_world_matches_every_checkpoint_and_the_final_hash() ->
 	var replay: Replay = recording.replay
 	assert_array([replay.final_tick, replay.checkpoint_ticks.size()]).is_equal([300, 20])
 	assert_int(recording.world.dropped_commands).is_equal(2)
-	# The log holds the scenario orders first, then the six, the dropped two among them.
+	# The log holds the scenario orders first, then the eight, the dropped two among them.
 	var types: Array[int] = []
 	var ticks: Array[int] = []
 	var sequences: Array[int] = []
@@ -27,10 +28,10 @@ func test_play_on_a_fresh_world_matches_every_checkpoint_and_the_final_hash() ->
 		ticks.append(command.tick)
 		sequences.append(command.sequence)
 		counts.append(command.unit_ids.size())
-	assert_array(types).is_equal([1, 1, 2, 1, 4, 3, 2, 1])
-	assert_array(ticks).is_equal([0, 0, 20, 45, 50, 100, 130, 160])
-	assert_array(sequences).is_equal([0, 1, 2, 3, 4, 5, 6, 7])
-	assert_array(counts).is_equal([75, 75, 10, 15, 5, 10, 3, 257])
+	assert_array(types).is_equal([1, 1, 2, 1, 4, 2, 2, 3, 2, 1])
+	assert_array(ticks).is_equal([0, 0, 20, 45, 50, 70, 70, 100, 130, 160])
+	assert_array(sequences).is_equal([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+	assert_array(counts).is_equal([75, 75, 10, 15, 5, 10, 11, 10, 3, 257])
 	var fresh: World = _fresh(replay)
 	assert_int(Replay.play(replay, fresh, 300)).is_equal(-1)
 	assert_array([fresh.tick, fresh.dropped_commands]).is_equal([300, 2])
@@ -54,6 +55,7 @@ func test_a_changed_command_makes_play_return_the_first_checkpoint_after_it() ->
 	var cases: Dictionary[String, int] = {
 		"move_elsewhere": 30,
 		"stop_without_unit_5": 60,
+		"swap_same_tick_moves": 75,
 		"attack_unit_101": 105,
 		"remove_dropped_130": 135,
 		"remove_over_limit_160": 165,
@@ -72,6 +74,41 @@ func test_a_changed_command_makes_play_return_the_first_checkpoint_after_it() ->
 	var wrong: Replay = _edited(replay, "none")
 	wrong.checkpoint_hashes[4] ^= 1
 	assert_int(Replay.play(wrong, _fresh(replay), 300)).is_equal(75)
+
+
+## Two commands of one player on one tick are applied in log order, so the later one wins where
+## their groups overlap (ids 25-30 at tick 70 of the recording). play feeds a tick's records as the
+## log holds them and the loop gives them the sequences they had: a play that dropped, reversed or
+## sorted a tick's commands would end at 75, the first checkpoint after the tick. The case is not
+## vacuous: the later MOVE sends the shared units west, and the log with the two swapped sends them
+## east.
+func test_two_commands_of_one_player_on_one_tick_replay_in_log_order() -> void:
+	var recording: Recording = _record(150)
+	var replay: Replay = recording.replay
+	var logged: Array[Command] = _decode(replay)
+	assert_array([logged[5].tick, logged[5].sequence, logged[5].player_id]).is_equal([70, 5, 1])
+	assert_array([logged[6].tick, logged[6].sequence, logged[6].player_id]).is_equal([70, 6, 1])
+	assert_array([logged[5].target_x, logged[6].target_x]).is_equal([30500, 10500])
+	# The shared units 25-30 (rows 24-29: nobody has died by tick 75) go where the later MOVE says;
+	# unit 21, only in the earlier MOVE, goes east and unit 35, only in the later one, west.
+	var fresh: World = _fresh(replay)
+	assert_int(Replay.play(replay, fresh, 75)).is_equal(-1)
+	assert_int(fresh.unit_count()).is_equal(150)
+	assert_int(fresh.unit_id[24]).is_equal(25)
+	(
+		assert_array([fresh.goal_x[20] > 20000, fresh.goal_x[24] < 20000, fresh.goal_x[34] < 20000])
+		. is_equal([true, true, true])
+	)
+	assert_int(Replay.play(replay, _fresh(replay), 150)).is_equal(-1)
+	# Swapped in the log, the earlier MOVE comes second and wins the shared units.
+	var swapped: Replay = _edited(replay, "swap_same_tick_moves")
+	var world: World = _fresh(replay)
+	assert_int(Replay.play(swapped, world, 150)).is_equal(75)
+	assert_int(world.tick).is_equal(75)
+	(
+		assert_array([world.goal_x[20] > 20000, world.goal_x[24] > 20000, world.goal_x[34] < 20000])
+		. is_equal([true, true, true])
+	)
 
 
 ## The tick of the change decides the checkpoint: 14 shows at 15 (the state of tick 15 holds it),
@@ -181,7 +218,8 @@ func test_over_limit_commands_are_recorded_whole_and_dropped_again() -> void:
 ## A replay built in memory can hold a log that does not decode (from_bytes refuses one): play
 ## returns -3 at the record, and ends. A record behind the world's tick is the same failure. The
 ## world is stepped up to the record and no further, and a bound before it never reads it. A
-## checkpoint that no run reaches is found at its own tick.
+## checkpoint that no run reaches is found at its own tick. Checkpoint arrays of unequal sizes, and
+## a negative checkpoint tick, are -3 as well; the first before any step.
 func test_a_log_that_does_not_decode_returns_minus_3_and_ends() -> void:
 	# A MOVE of unit 1 at tick 2, ten ints.
 	var good: PackedInt32Array = PackedInt32Array([2, 1, 0, 2, 5500, 5500, 0, 1, 1, 0])
@@ -216,9 +254,9 @@ func test_a_log_that_does_not_decode_returns_minus_3_and_ends() -> void:
 	backwards[0] = 5
 	var unordered: Replay = _bare(backwards + good)
 	var walked: World = _fresh(unordered)
-	assert_int(Replay.play(unordered, walked, 1 << 40)).is_equal(-3)
+	assert_int(Replay.play(unordered, walked, 100)).is_equal(-3)
 	assert_int(walked.tick).is_equal(5)
-	# Checkpoints that no run reaches: off the 15-tick grid, out of order, and one array longer.
+	# Checkpoints that no run reaches: off the 15-tick grid and out of order.
 	var run: World = MatchScript.world(7)
 	var quiet: MatchLoop = MatchLoop.create(null, MatchScript.ARENA_PATH, 7, run)
 	for _tick: int in 45:
@@ -233,9 +271,21 @@ func test_a_log_that_does_not_decode_returns_minus_3_and_ends() -> void:
 	odd.checkpoint_ticks = PackedInt32Array([30, 15, 45])
 	odd.checkpoint_hashes = PackedInt64Array([real[1], real[0], real[2]])
 	assert_int(Replay.play(odd, _fresh(odd), 100)).is_equal(15)
-	odd.checkpoint_ticks = PackedInt32Array([15, 30, 45])
-	odd.checkpoint_hashes = PackedInt64Array([real[0]])
-	assert_int(Replay.play(odd, _fresh(odd), 100)).is_equal(-1)
+	# Arrays of unequal sizes are no replay, whichever is longer: -3 before any step, as from_bytes
+	# refuses them. Compared as a prefix, such a replay would have matched with checks unmade.
+	var uneven: Dictionary[String, Array] = {
+		"fewer hashes": [PackedInt32Array([15, 30, 45]), PackedInt64Array([real[0]])],
+		"no hashes": [PackedInt32Array([15, 30, 45]), PackedInt64Array()],
+		"more hashes": [PackedInt32Array([15]), PackedInt64Array([real[0], real[1], real[2]])],
+		"hashes only": [PackedInt32Array(), PackedInt64Array([real[0]])],
+	}
+	for label: String in uneven:
+		odd.checkpoint_ticks = uneven[label][0]
+		odd.checkpoint_hashes = uneven[label][1]
+		var untouched: World = _fresh(odd)
+		assert_int(Replay.play(odd, untouched, 100)).override_failure_message(label).is_equal(-3)
+		assert_int(untouched.tick).override_failure_message(label).is_equal(0)
+		assert_object(Replay.from_bytes(odd.to_bytes())).override_failure_message(label).is_null()
 	# A negative tick would read as a code (-1 is "matched"), so it is a bad replay.
 	for negative: int in [-1, -2, -3, -40]:
 		odd.checkpoint_ticks = PackedInt32Array([negative])
@@ -307,19 +357,24 @@ func _edited(replay: Replay, edit: String) -> Replay:
 
 ## Changes the decoded log of the recording: records 0 and 1 are the scenario orders and record
 ## k + 2 is the command of MatchScript.TICKS[k]; "move_elsewhere" changes record 2, the first
-## command after the scenario orders, in either recording.
+## command after the scenario orders, in either recording. "swap_same_tick_moves" exchanges the two
+## MOVEs of tick 70 (records 5 and 6), which keep the sequences they were recorded with.
 func _edit(all: Array[Command], edit: String) -> void:
 	match edit:
 		"move_elsewhere":
 			all[2].target_x += 3000
 		"stop_without_unit_5":
 			all[4].unit_ids = all[4].unit_ids.slice(0, 4)
+		"swap_same_tick_moves":
+			var later: Command = all[6]
+			all[6] = all[5]
+			all[5] = later
 		"attack_unit_101":
-			all[5].target_id = 101
+			all[7].target_id = 101
 		"remove_dropped_130":
-			all.remove_at(6)
+			all.remove_at(8)
 		"remove_over_limit_160":
-			all.remove_at(7)
+			all.remove_at(9)
 		"remove_scenario_order":
 			all.remove_at(0)
 		"add_move_200":

@@ -12,8 +12,8 @@ const CHECKPOINT_PERIOD: int = 15
 
 ## What `play` returns besides the tick of the first checkpoint that differs (a tick is never
 ## negative): every checkpoint up to `until_tick` matched, the world's defs_hash is not the
-## replay's, or the replay is malformed (a command that does not decode, a command out of tick
-## order, a checkpoint with a negative tick).
+## replay's, or the replay is malformed (checkpoint arrays of unequal sizes, a command that does
+## not decode, a command out of tick order, a checkpoint with a negative tick).
 const PLAY_MATCHED: int = -1
 const PLAY_DEFS_DIFFER: int = -2
 const PLAY_BAD_LOG: int = -3
@@ -92,22 +92,27 @@ func finish(world: World) -> void:
 ## when every checkpoint with a tick up to `until_tick` equals the replay's, else the tick of the
 ## first one that does not (a recorded checkpoint whose tick the loop never reaches counts as
 ## differing); PLAY_DEFS_DIFFER, before any step, when `world.defs_hash()` is not `defs_hash`; and
-## PLAY_BAD_LOG when the log has a command that does not decode, or one whose tick is behind the
-## world's tick when its turn comes (a log is in tick order), or a checkpoint has a negative tick.
-## It reads the log only as far as `until_tick` needs, steps at most `until_tick - world.tick`
-## ticks, and never crashes on bytes. Commands the log holds for ticks after `until_tick` are not
-## read, and the replay's `final_hash` is not checked: the caller compares that.
+## PLAY_BAD_LOG when the checkpoint arrays have unequal sizes (before any step, after the defs
+## check; from_bytes refuses such a replay too), or the log has a command that does not decode, or
+## one whose tick is behind the world's tick when its turn comes (a log is in tick order), or a
+## checkpoint has a negative tick. It reads the log only as far as `until_tick` needs, steps at
+## most `until_tick - world.tick` ticks, and never crashes on bytes. Commands the log holds for
+## ticks after `until_tick` are not read, and the replay's `final_hash` is not checked: the caller
+## compares that.
 static func play(replay: Replay, world: World, until_tick: int) -> int:
 	world.prepare()
 	if replay.defs_hash != world.defs_hash():
 		return PLAY_DEFS_DIFFER
+	var checkpoint_ticks: PackedInt32Array = replay.checkpoint_ticks
+	var checkpoint_hashes: PackedInt64Array = replay.checkpoint_hashes
+	var checkpoints: int = checkpoint_ticks.size()
+	# Two arrays of unequal sizes are no replay (the pairs would go unchecked); no step is made.
+	if checkpoints != checkpoint_hashes.size():
+		return PLAY_BAD_LOG
 	var loop: MatchLoop = MatchLoop.create(null, replay.scenario_path, replay.seed, world)
 	var data: PackedInt32Array = replay.commands
 	var data_size: int = data.size()
 	var at: int = 0
-	var checkpoint_ticks: PackedInt32Array = replay.checkpoint_ticks
-	var checkpoint_hashes: PackedInt64Array = replay.checkpoint_hashes
-	var checkpoints: int = mini(checkpoint_ticks.size(), checkpoint_hashes.size())
 	var checked: int = 0
 	var queued: Array[Command] = []
 	while world.tick < until_tick:

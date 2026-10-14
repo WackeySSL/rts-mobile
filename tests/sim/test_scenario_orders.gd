@@ -127,6 +127,31 @@ func test_no_scenario_and_a_null_order_give_no_orders() -> void:
 	assert_array(_fields(out[0]).slice(0, 4)).is_equal([1, Command.Type.MOVE, 3500, 4500])
 
 
+## A world built by hand has the type tables its builder filled and no more: here a walker with a
+## speed, and a tower type that has none. collect prepares the world first, which pads the speed
+## table (a type without an entry cannot move), so the tower is left out and nothing is read past
+## the end of a table.
+func test_a_hand_built_world_with_a_short_speed_table_is_prepared_first() -> void:
+	var world: World = World.new()
+	world.map_w = 20000
+	world.map_h = 20000
+	world.player_count = 1
+	world.type_ids.append(&"walker")
+	world.type_ids.append(&"tower")
+	world.type_speed.append(93)
+	world.add_unit(1, 0, 3500, 3500)
+	world.add_unit(1, 1, 5500, 3500)
+	world.add_unit(1, 0, 7500, 3500)
+	assert_array(world.type_speed).is_equal([93])
+	var scenario: ScenarioDef = ScenarioDef.new()
+	scenario.orders.append(_order(0, 1, Command.Type.MOVE, Vector2i(9, 9)))
+	var out: Array[Command] = []
+	ScenarioOrders.create(scenario).collect(world, out)
+	assert_int(out.size()).is_equal(1)
+	assert_array(_fields(out[0])).is_equal([1, Command.Type.MOVE, 9500, 9500, [1, 3], -1, 0, 0, []])
+	assert_array(world.type_speed).is_equal([93, 0])
+
+
 ## collect appends to what `out` holds and writes nothing to the world: the hash is the same.
 func test_collect_appends_and_leaves_the_world_alone() -> void:
 	var world: World = World.from_scenario(_scenario())

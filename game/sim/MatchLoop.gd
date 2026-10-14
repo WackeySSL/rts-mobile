@@ -37,15 +37,18 @@ static func create(
 ## Runs one tick. The scenario's orders for this tick come first, then `queued` in the order it
 ## holds them; each gets `world.tick` and the next sequence, is recorded in the replay as it is
 ## (so a command that Sim.step then drops, an over-limit one among them, is in the log too, and
-## drops again in a replay), and Sim.step runs. On a tick that Replay.CHECKPOINT_PERIOD divides
-## (after the step, so the first is tick 15) the state hash becomes a checkpoint and `last_hash`.
+## drops again in a replay), and Sim.step runs. When the tick after the step is one that
+## Replay.CHECKPOINT_PERIOD divides (the first is 15; none at tick 0) the state hash becomes a
+## checkpoint and `last_hash`. Inside Sim.step that tick is still `world.tick + 1`, because
+## Sim.step counts the tick last: a rule that must stay off the hashing step tests that.
 ##
 ## The commands in `queued` change hands here (ADR 0012 section 2): they are stamped in place, not
 ## copied, so the caller must not reuse or read them afterwards, and each one may appear once.
-## `queued` itself is only read: Sim.step sorts a list of the loop's own. A null in `queued` is
-## skipped: it is not recorded, takes no sequence and is not counted as dropped, in the run and
-## so in its replay (CommandQueue.submit ignores null, so none arrives from the runner). A tick
-## with no orders and no queued commands creates nothing.
+## `queued` itself is only read, never cleared (the caller, the runner, clears it after the step):
+## a command passed again is stamped again, recorded again and applied again. A
+## null in `queued` is skipped: it is not recorded, takes no sequence and is not counted as
+## dropped, in the run and so in its replay (CommandQueue.submit ignores null, so none arrives
+## from the runner). A tick with no orders and no queued commands creates nothing.
 func step(world: World, queued: Array[Command], probe: SimProbe = null) -> void:
 	var commands: Array[Command] = _commands
 	_orders.collect(world, commands)

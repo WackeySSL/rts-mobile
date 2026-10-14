@@ -229,7 +229,8 @@ func test_ticks_without_commands_keep_every_array_size() -> void:
 
 ## The commands in `queued` are the loop's from the call on (ADR 0012 section 2): it stamps those
 ## very objects and does not copy them, and it neither sorts nor empties the caller's array. The
-## list it hands Sim.step is its own and is empty again after the step.
+## list it hands Sim.step is its own and is empty again after the step. The array is the caller's to
+## clear: passed again, the same objects are stamped again, recorded again and applied again.
 func test_the_loop_stamps_the_callers_commands_in_place_and_leaves_the_array_alone() -> void:
 	var scenario: ScenarioDef = load(SCENARIO_PATH) as ScenarioDef
 	var world: World = _world(scenario, 1)
@@ -244,10 +245,14 @@ func test_the_loop_stamps_the_callers_commands_in_place_and_leaves_the_array_alo
 	assert_array([second.tick, second.sequence, first.tick, first.sequence]).is_equal([0, 0, 0, 1])
 	assert_array([queued[0].get_instance_id(), queued[1].get_instance_id()]).is_equal(ids)
 	assert_int(queued.size()).is_equal(2)
-	# A stale list would run both again with an old tick: dropped and counted.
-	loop.step(world, [])
-	assert_int(world.dropped_commands).is_equal(0)
-	assert_array([queued[0].sequence, queued[1].sequence, loop.next_sequence]).is_equal([0, 1, 2])
+	assert_array([loop.next_sequence, loop.replay.commands.size()]).is_equal([2, 20])
+	# A list passed again is not stale to the loop: it gets the new tick and the next sequences, is
+	# recorded a second time (4 records of 10 ints) and runs again. Nothing is dropped or refused.
+	loop.step(world, queued)
+	assert_array([second.tick, second.sequence, first.tick, first.sequence]).is_equal([1, 2, 1, 3])
+	assert_array([queued[0].get_instance_id(), queued[1].get_instance_id()]).is_equal(ids)
+	assert_array([world.dropped_commands, loop.next_sequence]).is_equal([0, 4])
+	assert_array([loop.replay.commands.size(), world.tick]).is_equal([40, 2])
 
 
 ## The list the loop hands Sim.step is one Array for the whole match (private, so it is read here
@@ -260,6 +265,7 @@ func test_the_loop_reuses_one_command_list() -> void:
 	var list: Array[Command] = loop._commands
 	var probe: ListProbe = ListProbe.new()
 	probe.loop = loop
+	probe.world = world
 	for tick: int in 6:
 		var queued: Array[Command] = []
 		if tick % 2 == 1:
@@ -269,6 +275,45 @@ func test_the_loop_reuses_one_command_list() -> void:
 		assert_int(loop._commands.size()).override_failure_message(str(tick)).is_equal(0)
 	assert_array(probe.sizes).is_equal([0, 1, 0, 1, 0, 1])
 	assert_int(loop.next_sequence).is_equal(3)
+
+
+## The checkpoint is taken on the tick after the step, but inside Sim.step the world is still on
+## the tick before: a rule that must stay off the hashing step (the flow slice, ADR 0012 section 5)
+## sees 14, 29 and 44 there, which is `world.tick + 1` divisible by 15. A probe reads it at begin().
+func test_a_checkpoint_step_starts_one_tick_before_the_checkpoint_tick() -> void:
+	var scenario: ScenarioDef = load(SCENARIO_PATH) as ScenarioDef
+	var world: World = _world(scenario, 1)
+	var loop: MatchLoop = MatchLoop.create(scenario, SCENARIO_PATH, 1, world)
+	var probe: ListProbe = ListProbe.new()
+	probe.loop = loop
+	probe.world = world
+	var seen: Array[int] = []
+	for _tick: int in 45:
+		var before: int = loop.replay.checkpoint_ticks.size()
+		loop.step(world, [], probe)
+		if loop.replay.checkpoint_ticks.size() > before:
+			seen.append(probe.ticks[-1])
+	assert_array(seen).is_equal([14, 29, 44])
+	assert_array(loop.replay.checkpoint_ticks).is_equal([15, 30, 45])
+	for began: int in probe.ticks:
+		assert_bool((began + 1) % Replay.CHECKPOINT_PERIOD == 0).is_equal(seen.has(began))
+
+
+## create prepares the world before it takes the header's defs_hash, because Replay.play prepares
+## its world before it compares: a hand-built world with short type tables (here the four Phase 1
+## tables for one type) would else be recorded with another hash and a replay of it would read -2.
+func test_create_prepares_a_hand_built_world_so_its_replay_plays() -> void:
+	var world: World = _hand_built()
+	assert_bool(world.prepared).is_false()
+	var loop: MatchLoop = MatchLoop.create(null, "hand-built", 1, world)
+	assert_bool(world.prepared).is_true()
+	assert_int(loop.replay.defs_hash).is_equal(world.defs_hash())
+	for _tick: int in 30:
+		loop.step(world, [])
+	loop.replay.finish(world)
+	var fresh: World = _hand_built()
+	assert_int(Replay.play(loop.replay, fresh, 30)).is_equal(-1)
+	assert_int(fresh.state_hash()).is_equal(loop.replay.final_hash)
 
 
 ## A null in `queued` is skipped before stamping: no record, no sequence, no dropped command, in
@@ -346,6 +391,23 @@ func _world(scenario: ScenarioDef, seed: int) -> World:
 	return World.from_scenario(scenario, DetRandom.create(seed, DetRandom.STREAM_SIM))
 
 
+## A world built by hand, not prepared: one walker type with only the four Phase 1 tables, and one
+## unit for each of two players.
+func _hand_built() -> World:
+	var world: World = World.new()
+	world.map_w = 20000
+	world.map_h = 20000
+	world.player_count = 2
+	world.type_ids.append(&"walker")
+	world.type_speed.append(93)
+	world.type_radius.append(400)
+	world.type_selection_radius.append(500)
+	world.type_spacing.append(1000)
+	world.add_unit(1, 0, 5500, 5500)
+	world.add_unit(2, 0, 9500, 9500)
+	return world
+
+
 ## The commands of the log, decoded.
 func _log(replay: Replay) -> Array[Command]:
 	var all: Array[Command] = []
@@ -369,11 +431,14 @@ func _array_sizes(world: World) -> Dictionary[String, int]:
 	return sizes
 
 
-## Writes down how many commands the loop's list holds when Sim.step starts.
+## Writes down how many commands the loop's list holds, and the world's tick, when Sim.step starts.
 class ListProbe:
 	extends SimProbe
 	var loop: MatchLoop
+	var world: World
 	var sizes: Array[int] = []
+	var ticks: Array[int] = []
 
 	func begin() -> void:
 		sizes.append(loop._commands.size())
+		ticks.append(world.tick)
