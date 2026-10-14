@@ -412,8 +412,9 @@ rules:
   names: the ten above plus `emit_signal`, each with one flagged and one legal fixture line, and
   it matches `get_node` as a prefix, so `get_node_or_null` and the other `get_node*` lookups are
   caught. `emit_signal` is banned in `game/sim` too: the purity bans as merged
-  (`BANNED_THREAD_RULES` in `tests/project/test_sim_purity.gd`, P38p) are the list above with
-  `signal` matched as a word on any line, plus `emit_signal(` and the object parsers
+  (`BANNED_THREAD_RULES` in `tests/project/test_sim_purity.gd`, P38p) are the
+  `test_sim_purity.gd` list of the first Guards bullet with `signal` matched as a word on any
+  line, plus `emit_signal(` and the object parsers
   `bytes_to_var_with_objects`, `var_to_bytes_with_objects` and `str_to_var` (ADR 0007 §9).
   Recorded in the Phase 2 plan, sections P38j and P38p and "Answers and follow-ups (P26r docs)".
 - A headless run of `main.tscn` with `tick_mode = WORKER` (plan P50w; `perf_arena.tscn` in P52)
