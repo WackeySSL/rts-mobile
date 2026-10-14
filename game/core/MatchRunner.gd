@@ -2,12 +2,14 @@ class_name MatchRunner
 extends Node
 ## Runs one match: builds the World from a scenario and the match seed, and steps it at
 ## Sim.TICK_RATE through a MatchLoop, which stamps, records and checkpoints (ADR 0003 section 7,
-## ADR 0007 sections 6 and 9). Frame delta lives only here; the sim never sees time. The view
-## interpolates between prev_pos_* and world.pos_* with alpha() (ADR 0011 section 2).
+## ADR 0007 sections 6 and 9). Frame delta lives only here; the sim never sees time. Each tick is a
+## TickJob that fills a new MatchSnapshot, which the runner publishes as `snapshot` (ADR 0012
+## sections 1 and 3, plan P38j); the view interpolates from its prev positions to its positions
+## with alpha() (ADR 0011 section 2).
 ## It needs the CommandQueue and DetRng autoloads, so a headless `godot -s` tool must load() this
 ## script at runtime; naming MatchRunner in the entry script does not compile.
 
-## Emitted after each tick with world.tick, the number of ticks played so far.
+## Emitted after each publish with the snapshot's tick, the number of ticks played so far.
 signal ticked(tick: int)
 
 ## A tick is split into this many parts, so the frame clock is an integer and frame lengths
@@ -27,30 +29,40 @@ var loop: MatchLoop
 var replay: Replay
 ## Counts the start() calls, so a view layer sees a restart without comparing World identity.
 var match_serial: int = 0
-## The state hash of the last checkpoint, `loop.last_hash`: 0 until tick 15, then the hash of the
-## last tick that 15 divides.
+## The published fields, set from each published snapshot. The state hash of the last checkpoint,
+## `loop.last_hash`: 0 until tick 15, then the hash of the last tick that 15 divides.
 var last_hash: int = 0
 ## Microseconds the last tick spent in Sim.step, without the checkpoint hash that MatchLoop.step
-## adds (ADR 0012 section 3), and in the whole runner tick, which includes that hash.
+## adds (ADR 0012 section 3), and in the whole tick job, which includes that hash and the capture.
 var last_tick_usec: int = 0
 var last_runner_tick_usec: int = 0
 ## A probe for the per-phase split, null unless a HUD sets one (P38t's TimingProbe). It gets every
 ## begin() and mark() of Sim.step; a probe changes no hash.
 var probe: SimProbe
-## Positions before the last tick, same indices as world.pos_x and world.pos_y.
-var prev_pos_x: PackedInt32Array = PackedInt32Array()
-var prev_pos_y: PackedInt32Array = PackedInt32Array()
+## The published snapshot: a new object from every tick and from start(), never written after its
+## publish (ADR 0012 section 3). A frame without a tick keeps the same object.
+var snapshot: MatchSnapshot
+## Positions before the last tick, aligned to the rows: read-only forwards to the snapshot's, for
+## Phase 1's UnitLayer until P40. Their identity changes with every tick.
+var prev_pos_x: PackedInt32Array:
+	get:
+		return snapshot.prev_pos_x if snapshot != null else PackedInt32Array()
+var prev_pos_y: PackedInt32Array:
+	get:
+		return snapshot.prev_pos_y if snapshot != null else PackedInt32Array()
 ## Stops _process from ticking, also between two ticks of one frame. run_ticks ignores it.
 var paused: bool = false
 
 var _micro_ticks: int = 0
 var _app_paused: bool = false
 ## Reused every tick, so a tick allocates no command list. MatchLoop.step stamps the commands in
-## place and never empties the list, so _tick does, after every step: a command left in it would
+## place and never empties the list, so the job does, after every step: a command left in it would
 ## be stamped, recorded and applied again on the next tick.
 var _commands: Array[Command] = []
-## Times Sim.step and passes every call on to `probe`; handed to every loop.step.
+## Times Sim.step and passes every call on to `probe`; handed to every loop.step through the job.
 var _step_probe: StepProbe = StepProbe.new()
+## Reused every tick; it holds no snapshot between ticks, so the old one is freed at publish.
+var _job: TickJob = TickJob.new()
 
 
 func _ready() -> void:
@@ -59,18 +71,20 @@ func _ready() -> void:
 
 
 ## Builds a new world from the scenario with the sim stream of `match_seed`, and a new MatchLoop:
-## empty queue, clock at zero, sequences from 0 again, no checkpoint yet.
+## empty queue, clock at zero, sequences from 0 again, no checkpoint yet. It publishes the tick-0
+## snapshot, without `ticked`: its match_serial and last_hash first, then a capture with no
+## previous one, so prev = current and nothing slides from the old match.
 func start() -> void:
 	world = World.from_scenario(scenario, DetRng.create(match_seed, DetRandom.STREAM_SIM))
 	var scenario_path: String = scenario.resource_path if scenario != null else ""
 	loop = MatchLoop.create(scenario, scenario_path, match_seed, world)
 	replay = loop.replay
 	match_serial += 1
-	last_hash = loop.last_hash
-	last_tick_usec = 0
-	last_runner_tick_usec = 0
-	prev_pos_x = world.pos_x.duplicate()
-	prev_pos_y = world.pos_y.duplicate()
+	var first: MatchSnapshot = MatchSnapshot.new()
+	first.match_serial = match_serial
+	first.last_hash = loop.last_hash
+	first.capture(world, null)
+	_publish(first)
 	_micro_ticks = 0
 	_commands.clear()
 	CommandQueue.clear()
@@ -112,23 +126,33 @@ func _notification(what: int) -> void:
 		_app_paused = false
 
 
+## One tick, run inline (SYNC): drain the queue, create the next snapshot with this match's serial
+## (set before the run, because capture() compares it with the published one's), hand the job the
+## current world, loop and StepProbe, run it, then publish and emit `ticked`.
 func _tick() -> void:
-	var started: int = Time.get_ticks_usec()
-	# Copied by index, not duplicate(), so the arrays keep their buffers. They only change size
-	# when a unit is added to a running world, which nothing does before P42a; re-alignment by id
-	# comes with MatchSnapshot (P38s).
-	var count: int = world.unit_count()
-	if prev_pos_x.size() != count:
-		prev_pos_x.resize(count)
-		prev_pos_y.resize(count)
-	for row: int in count:
-		prev_pos_x[row] = world.pos_x[row]
-		prev_pos_y[row] = world.pos_y[row]
 	CommandQueue.drain_into(_commands)
+	var next: MatchSnapshot = MatchSnapshot.new()
+	next.match_serial = match_serial
 	_step_probe.target = probe
-	loop.step(world, _commands, _step_probe)
-	_commands.clear()
-	last_hash = loop.last_hash
-	last_tick_usec = _step_probe.step_usec
-	last_runner_tick_usec = Time.get_ticks_usec() - started
-	ticked.emit(world.tick)
+	var job: TickJob = _job
+	job.world = world
+	job.loop = loop
+	job.probe = _step_probe
+	job.commands = _commands
+	job.snapshot = next
+	job.previous = snapshot
+	job.post_usec = Time.get_ticks_usec()
+	job.run()
+	job.snapshot = null
+	job.previous = null
+	_publish(next)
+	ticked.emit(next.tick)
+
+
+## Makes `published` the runner's snapshot and sets the published fields from it (ADR 0012
+## section 1).
+func _publish(published: MatchSnapshot) -> void:
+	snapshot = published
+	last_hash = published.last_hash
+	last_tick_usec = published.step_usec
+	last_runner_tick_usec = published.job_usec

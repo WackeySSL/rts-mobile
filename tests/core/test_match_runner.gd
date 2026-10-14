@@ -115,14 +115,16 @@ func test_process_stamps_commands_emits_ticked_and_keeps_prev_positions_on_both_
 
 func test_prev_arrays_keep_their_size_and_follow_a_unit_added_to_a_running_world() -> void:
 	CommandQueue.submit(_move(12500))
-	var x_before: PackedInt32Array = _runner.prev_pos_x
-	var y_before: PackedInt32Array = _runner.prev_pos_y
 	for _t: int in 10:
 		_runner.run_ticks(1)
 		assert_array([_runner.prev_pos_x.size(), _runner.prev_pos_y.size()]).is_equal([3, 3])
-	# Written in place: a duplicate() per tick would hand out new arrays.
+	# The prev arrays are the published snapshot's (plan P38j): a frame without a tick keeps the
+	# same snapshot object, and with it the same arrays.
+	var published: MatchSnapshot = _runner.snapshot
+	var x_before: PackedInt32Array = _runner.prev_pos_x
+	_runner._process(0.01)
+	assert_bool(is_same(published, _runner.snapshot)).is_true()
 	assert_bool(is_same(x_before, _runner.prev_pos_x)).is_true()
-	assert_bool(is_same(y_before, _runner.prev_pos_y)).is_true()
 	_runner.world.add_unit(1, 0, 7000, 8000)
 	_runner.run_ticks(1)
 	assert_array([_runner.prev_pos_x.size(), _runner.prev_pos_y.size()]).is_equal([4, 4])
