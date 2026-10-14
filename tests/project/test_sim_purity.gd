@@ -303,6 +303,15 @@ const MUST_NOT_MATCH: Array[String] = [
 	"var bytes: PackedByteArray = var_to_bytes(data)",
 	"var text: String = var_to_str(data)",
 	"var str_to_var_count: int = 0",
+	# call_deferred and ResourceSaver (and the other class-name bans) need a legal fixture of their
+	# own: a name that only contains them, a call of a longer name, and a comment with both.
+	"var call_deferred_count: int = 0",
+	"world.safe_call_deferred(kind)",
+	"var saver: ResourceSaverQueue",
+	"var cache: ResourceLoaderCache",
+	"var gate: SemaphoreSlim",
+	"var stats: WorkerThreadPoolStats",
+	"# callable.call_deferred(), ResourceSaver.save(res, path)",
 ]
 
 ## Rule 3 for game/ai: the only check there is randomness.

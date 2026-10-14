@@ -25,6 +25,8 @@ const OTHER_SEED: int = 43
 const RUNS: int = 3
 ## Timed calls of the reference loop; the smallest is ref_ms.
 const REF_SAMPLES: int = 20
+## Half of the thousandth of a ms that the report rounds each time to.
+const ROUNDING_MS: float = 0.0005
 
 var _gate: PerfGateDef
 var _seed_42: Array[Run] = []
@@ -164,11 +166,24 @@ func test_the_phase_split_is_the_best_of_the_three_runs() -> void:
 
 ## The estimates are computed from the ratios in perf_gate.tres (ADR 0012 section 4), not written by
 ## hand: the mean ratio and the p95 ratio differ, so using one for the other changes an estimate.
+## The ratios are read from the file again, past the resource cache, and not from the harness's own
+## `_gate`: a ratio that the harness overrides after loading (or a gate built in code) would
+## otherwise agree with itself and print an estimate that the file does not give. The tolerance is
+## the rounding of the report (a thousandth of a ms on the time, then on the product), so a ratio
+## that is 0.1 off shows as soon as the time is above a few hundredths of a ms.
 func test_the_phone_estimates_are_the_best_mean_and_p95_times_the_gate_ratios() -> void:
+	var file_gate: PerfGateDef = (
+		ResourceLoader.load(GATE_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as PerfGateDef
+	)
+	assert_object(file_gate).is_not_null()
 	var mean_ms: float = _report["mean_ms"]
 	var p95_ms: float = _report["p95_ms"]
-	assert_float(_report["est_phone_mean_ms"]).is_equal_approx(mean_ms * _gate.ci_ratio_mean, 0.01)
-	assert_float(_report["est_phone_p95_ms"]).is_equal_approx(p95_ms * _gate.ci_ratio_p95, 0.01)
+	assert_float(_report["est_phone_mean_ms"]).is_equal_approx(
+		mean_ms * file_gate.ci_ratio_mean, ROUNDING_MS * (1.0 + file_gate.ci_ratio_mean)
+	)
+	assert_float(_report["est_phone_p95_ms"]).is_equal_approx(
+		p95_ms * file_gate.ci_ratio_p95, ROUNDING_MS * (1.0 + file_gate.ci_ratio_p95)
+	)
 
 
 ## The line carries each measure once and in order, and the hash is the seed-42 final state.
