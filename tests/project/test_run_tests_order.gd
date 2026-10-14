@@ -5,8 +5,8 @@ extends GdUnitTestSuite
 ## another, and was green locally and red on CI. So the script turns each `-a <directory>` into one
 ## `-a <script>` per .gd file below it, in byte order of the path, and gdUnit4 runs the suites in
 ## the order it is given them (measured on 4.7.2: suites passed as -a files ran in that order, in
-## results.xml and in the console, and a whole run of tests/ ran the same 54 suites and 499 cases as
-## the directory scan did).
+## results.xml and in the console, and a whole run of tests/ ran the same suites with the same case
+## counts as the directory scan did).
 ##
 ## Tested without Godot: the real script runs in a scratch project against a stand-in `godot` that
 ## writes its arguments to a file. The listing order is varied three ways: the project built
