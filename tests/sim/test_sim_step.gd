@@ -3,8 +3,12 @@ extends GdUnitTestSuite
 ## type 1: speed 0, type 2: speed 60), so no data file can agree with a wrong rule. A push_error
 ## would fail verify, which scans the log.
 
+const RecordingProbe: GDScript = preload("res://tests/sim/recording_probe.gd")
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
 const MAP: int = 48000
+const GROUP_TYPES: Array[int] = [
+	Command.Type.ATTACK_MOVE, Command.Type.MOVE, Command.Type.ATTACK, Command.Type.STOP
+]
 
 
 func test_constants_match_the_contract_and_world() -> void:
@@ -159,6 +163,129 @@ func test_runs_are_identical_whatever_order_the_commands_are_listed_in() -> void
 	assert_int(first.dropped_commands).is_equal(1)
 
 
+## Command v1 drop rules (ADR 0007 section 5) for the four group types, in a world at tick 7 with
+## player 1's tanks 1..30, player 2's 31..40 and a neutral tank, 41: each bad command is counted
+## once and changes nothing. 256 ids and 16 payload ints are the most a command may hold.
+func test_each_group_drop_rule_counts_once_and_the_largest_command_is_kept() -> void:
+	for type: int in GROUP_TYPES:
+		_assert_dropped(
+			{
+				"player 0": _cmd(type, 0, [41]),
+				"player -1": _cmd(type, -1, [1]),
+				"above player_count": _cmd(type, 3, [1]),
+				"no ids": _cmd(type, 1, []),
+				"257 ids": _cmd(type, 1, _repeat(1, 257)),
+				"17 payload ints": _cmd(type, 1, [1], range(17)),
+				# Target 3 is player 1's, an enemy of player 2, so ATTACK reaches the owner rule.
+				"only the other player's units": _cmd(type, 2, [1, 2], [], 3),
+				"only a neutral unit": _cmd(type, 1, [41]),
+				"only unknown ids": _cmd(type, 1, [0, -3, 99, 999]),
+			},
+			"type %d: " % type
+		)
+		# The player bound alone: unit 1 is player 3's by hand, so the owner rule would pass it.
+		var third: World = _drop_world()
+		third.owner[0] = 3
+		Sim.step(third, [_cmd(type, 3, [1])])
+		assert_array([third.dropped_commands, third.order[0]]).is_equal([1, World.Order.IDLE])
+		for kept: Command in [_cmd(type, 1, _repeat(1, 256)), _cmd(type, 1, [1], range(16))]:
+			var world: World = _drop_world()
+			Sim.step(world, [kept])
+			assert_int(world.dropped_commands).is_equal(0)
+
+
+## NONE, 5-9, the reserved 10-19 and 20-29 and others are unknown whatever their ids: also with
+## no ids, or a unit that cannot move (type 1 has speed 0).
+func test_an_unknown_or_reserved_type_is_dropped_whatever_the_ids_are() -> void:
+	var wrong: Array[String] = []
+	for type: int in [0, 5, 9, 10, 19, 20, 29, 30, 99, -1]:
+		for ids: Array in [[], [1], [2], [1, 2]]:
+			var world: World = _make_world()
+			world.add_unit(1, 0, 10000, 10000)
+			world.add_unit(1, 1, 12000, 10000)
+			world.tick = 7
+			Sim.step(world, [_cmd(type, 1, ids)])
+			if [world.dropped_commands, world.order[0], world.order[1]] != [1, 0, 0]:
+				wrong.append("type %d ids %s" % [type, ids])
+	assert_array(wrong).is_empty()
+
+
+func test_attack_needs_an_enemy_target_and_an_armed_unit() -> void:
+	var attack: int = Command.Type.ATTACK
+	_assert_dropped(
+		{
+			"own unit": _cmd(attack, 1, [1], [], 2),
+			"neutral unit": _cmd(attack, 1, [1], [], 41),
+		}
+	)
+	# No neutral unit, so the last row is player 2's: only the row >= 0 guard drops these.
+	_assert_dropped(
+		{
+			"unknown id": _cmd(attack, 1, [1], [], 999),
+			"id 0": _cmd(attack, 1, [1], [], 0),
+			"negative id": _cmd(attack, 1, [1], [], -3),
+		},
+		"",
+		false
+	)
+	var world: World = _drop_world()
+	Sim.step(world, [_cmd(attack, 1, [1, 2, 41], [], 31)])
+	assert_int(world.dropped_commands).is_equal(0)
+	assert_array(world.order.slice(0, 3)).is_equal([3, 3, 0])
+	assert_array(world.order_target.slice(0, 3)).is_equal([31, 31, 0])
+	assert_array([world.order[40], world.order_target[40]]).is_equal([World.Order.IDLE, 0])
+	# Type 0 has a weapon and type 2 none (the pad is -1): unit 1 cannot attack, unit 2 can.
+	var armed: World = _make_world()
+	armed.type_weapon = PackedInt32Array([0, -1, -1])
+	armed.add_unit(1, 2, 10000, 10000)
+	armed.add_unit(1, 0, 12000, 10000)
+	armed.add_unit(2, 0, 14000, 10000)
+	Sim.step(armed, [_cmd(attack, 1, [1], [], 3, 0)])
+	Sim.step(armed, [_cmd(attack, 1, [1, 2], [], 3, 1)])
+	assert_array([armed.dropped_commands]).is_equal([1])
+	assert_array(armed.order).is_equal([World.Order.IDLE, World.Order.ATTACK, World.Order.IDLE])
+	assert_array(armed.order_target).is_equal([0, 3, 0])
+
+
+func test_probe_ids_and_names_are_fixed() -> void:
+	assert_array(SimProbe.Phase.values()).is_equal([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
+	var keys: Array = ["COMMANDS", "FLOW", "GRIDS", "TARGETING", "INTENTS", "SEPARATION"]
+	keys.append_array(["INTEGRATE", "PROJECTILES", "FIRE", "REMOVE", "FOG", "COUNT"])
+	assert_array(SimProbe.Phase.keys()).is_equal(keys)
+	assert_int(SimProbe.Phase.COUNT).is_equal(11)
+	var names: Array[String] = ["commands", "flow", "grids", "targeting", "intents", "separation"]
+	names.append_array(["integrate", "projectiles", "fire", "remove", "fog"])
+	assert_array(SimProbe.PHASE_NAMES).is_equal(names)
+
+
+## Every tick: begin() once, then the phases that exist today, ascending and once each. A later
+## phase PR adds its id here (P37a2 INTENTS, P37b FLOW, P39b GRIDS and SEPARATION, P41 TARGETING,
+## P42a FIRE, P42b PROJECTILES, P46 FOG).
+func test_a_probe_sees_begin_then_the_marks_in_ascending_order() -> void:
+	var probe: SimProbe = RecordingProbe.new()
+	var world: World = _scenario_world()
+	var per_tick: Array[int] = [-1, SimProbe.Phase.COMMANDS, SimProbe.Phase.INTEGRATE]
+	per_tick.append(SimProbe.Phase.REMOVE)
+	var expected: Array[int] = []
+	for _t: int in 3:
+		Sim.step(world, [], probe)
+		expected.append_array(per_tick)
+	assert_array(probe.calls).is_equal(expected)
+	assert_array(per_tick).is_equal([-1, 0, 6, 9])
+
+
+func test_hashes_are_equal_with_and_without_a_probe() -> void:
+	var probe: SimProbe = RecordingProbe.new()
+	var plain: World = _scenario_world()
+	var probed: World = _scenario_world()
+	var script: Array[Command] = _script()
+	for _t: int in 80:
+		Sim.step(plain, _due(script, plain.tick))
+		Sim.step(probed, _due(script, probed.tick), probe)
+		assert_int(probed.state_hash()).is_equal(plain.state_hash())
+	assert_int(probe.calls.size()).is_equal(80 * 4)
+
+
 ## Tick 0: two overlapping groups (the later sequence wins) and an enemy order. Tick 25: a
 ## re-order, and the same order from the wrong player, which is dropped.
 func _script() -> Array[Command]:
@@ -231,3 +358,48 @@ func _state(world: World) -> Array:
 	return [
 		world.pos_x, world.pos_y, world.goal_x, world.goal_y, world.order, world.dropped_commands
 	]
+
+
+## A command of any `type` for `tick`, built by hand so a type no factory makes works too.
+func _cmd(
+	type: int, player: int, ids: Array, payload: Array = [], target_id: int = 31, tick: int = 7
+) -> Command:
+	var command: Command = Command.new()
+	command.type = type
+	command.player_id = player
+	command.unit_ids = PackedInt32Array(ids)
+	command.payload = PackedInt32Array(payload)
+	command.target_id = target_id
+	command.tick = tick
+	return command
+
+
+## `count` copies of `value`.
+func _repeat(value: int, count: int) -> Array:
+	var values: Array = []
+	values.resize(count)
+	values.fill(value)
+	return values
+
+
+## The controls scenario at tick 7, plus a neutral tank, id 41, unless `neutral` is false.
+func _drop_world(neutral: bool = true) -> World:
+	var world: World = _scenario_world()
+	if neutral:
+		world.add_unit(0, 0, 30000, 30000)
+	world.tick = 7
+	return world
+
+
+## Each command alone in its own world at tick 7: counted once, no unit's order changed.
+func _assert_dropped(
+	cases: Dictionary[String, Command], prefix: String = "", neutral: bool = true
+) -> void:
+	var wrong: Array[String] = []
+	for label: String in cases:
+		var world: World = _drop_world(neutral)
+		var before: Array = [world.order.duplicate(), world.order_target.duplicate()]
+		Sim.step(world, [cases[label]])
+		if world.dropped_commands != 1 or [world.order, world.order_target] != before:
+			wrong.append(prefix + label)
+	assert_array(wrong).is_empty()

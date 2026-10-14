@@ -68,7 +68,7 @@ func test_maps_wider_and_taller_than_square_match() -> void:
 func test_keys_the_costs_cannot_integrate_match() -> void:
 	var worlds: Array[World] = [_world(_arena_scenario(null)), _world(_arena_scenario(null))]
 	assert_array(SimImpls.use(worlds[1], SimImpls.Impl.NATIVE)).is_empty()
-	assert_bool(SimImpls.is_native(worlds[1], FlowCache.PHASE_FLOW)).is_true()
+	assert_bool(SimImpls.is_native(worlds[1], SimProbe.Phase.FLOW)).is_true()
 	for world: World in worlds:
 		for slot: int in 5:
 			world.flow.acquire(100 + slot * 900, slot % 3, 0, 1)
@@ -89,7 +89,7 @@ func test_keys_the_costs_cannot_integrate_match() -> void:
 func test_a_served_slot_re_keyed_by_hand_matches() -> void:
 	var worlds: Array[World] = [_world(_arena_scenario(null)), _world(_arena_scenario(null))]
 	assert_array(SimImpls.use(worlds[1], SimImpls.Impl.NATIVE)).is_empty()
-	assert_bool(SimImpls.is_native(worlds[1], FlowCache.PHASE_FLOW)).is_true()
+	assert_bool(SimImpls.is_native(worlds[1], SimProbe.Phase.FLOW)).is_true()
 	for world: World in worlds:
 		world.flow.acquire(100, FOOT, 0, 1)
 		FlowCache.run(world, 100000)
@@ -120,7 +120,7 @@ func test_a_diagonal_and_an_orthogonal_neighbour_queue_in_scan_order() -> void:
 	for impl: int in SimImpls.IMPLS:
 		var rig: RefCounted = FlowRig.new().setup(impl, 3, 3, 2)
 		assert_array(rig.problems).is_empty()
-		assert_bool(SimImpls.is_native(rig.world, FlowCache.PHASE_FLOW)).is_equal(
+		assert_bool(SimImpls.is_native(rig.world, SimProbe.Phase.FLOW)).is_equal(
 			impl == SimImpls.Impl.NATIVE
 		)
 		rig.world.terrain_cost = PackedByteArray(SCAN_COST)
@@ -159,7 +159,7 @@ func _lockstep(scenario: ScenarioDef, ticks: int) -> Dictionary:
 	var b: World = _world(scenario)
 	assert_array(SimImpls.use(a, SimImpls.Impl.GDSCRIPT)).is_empty()
 	assert_array(SimImpls.use(b, SimImpls.Impl.NATIVE)).is_empty()
-	assert_bool(SimImpls.is_native(b, FlowCache.PHASE_FLOW)).is_true()
+	assert_bool(SimImpls.is_native(b, SimProbe.Phase.FLOW)).is_true()
 	var rng: DetRandom = DetRandom.create(42, 7)
 	var cells: int = a.map_cols * a.map_rows
 	var keys: Array[Vector2i] = []

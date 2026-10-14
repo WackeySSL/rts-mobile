@@ -7,9 +7,9 @@ extends RefCounted
 enum Impl { GDSCRIPT = 0, NATIVE = 1 }
 
 const IMPLS: Array[int] = [Impl.GDSCRIPT, Impl.NATIVE]
-## The SimProbe.Phase ids the library must report, one per line (SimProbe arrives with P33).
-## The ids are fixed: FLOW 1, TARGETING 3, SEPARATION 5, INTEGRATE 6, FOG 10.
-const EXPECTED_PHASES: Array[int] = [1]
+## The SimProbe.Phase ids the library must report (FLOW only until the next port). The ids are
+## fixed (SimProbe), and test_kernel_abi.gd checks the C++ mirrors of them.
+const EXPECTED_PHASES: Array[int] = [SimProbe.Phase.FLOW]
 
 
 ## One bit per entry of `phases` (EXPECTED_PHASES), the mask the library has to report.

@@ -39,7 +39,7 @@ func test_a_zero_mask_calls_no_kernel_while_the_tick_runs_every_phase_in_gdscrip
 ## with the budget and does nothing else; with the other four bits it runs the GDScript phase.
 func test_flow_run_calls_the_flow_kernel_once_and_skips_the_gdscript_phase() -> void:
 	var spy: RefCounted = KernelSpy.new()
-	var world: World = _moving_world(spy, 1 << FlowCache.PHASE_FLOW)
+	var world: World = _moving_world(spy, 1 << SimProbe.Phase.FLOW)
 	world.flow.acquire(0, 0, world.map_version, 1)
 	world.field[0] = 0
 	world.field[1] = 0
@@ -48,7 +48,7 @@ func test_flow_run_calls_the_flow_kernel_once_and_skips_the_gdscript_phase() -> 
 	assert_array(spy.calls).is_equal(["flow:7", "flow:0"])
 	# Untouched: the acquire() reference is not recounted (2 rows) and the field is still WAITING.
 	assert_array([world.flow.refs(0), world.flow.status[0]]).is_equal([1, 1])
-	world.native_phases = 0x46A & ~(1 << FlowCache.PHASE_FLOW)  # The other four phases of ADR 0013.
+	world.native_phases = 0x46A & ~(1 << SimProbe.Phase.FLOW)  # The other four phases of ADR 0013.
 	FlowCache.run(world, 7)
 	assert_array(spy.calls).is_equal(["flow:7", "flow:0"])
 	assert_array([world.flow.refs(0), world.stats[World.Stat.FLOW_CELLS]]).is_equal([2, 7])
