@@ -6,8 +6,11 @@ extends GdUnitTestSuite
 
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const HoldingProbe: GDScript = preload("res://tests/core/support/holding_probe.gd")
+const CapturingSnapshot: GDScript = preload("res://tests/core/support/capturing_snapshot.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const SEED: int = 42
+## How long before run() a late job is posted: far longer than any run, as a worker woken late.
+const LATE_USEC: int = 5_000_000
 ## The types a TickJob property may have, and the contract's fields with theirs.
 const ALLOWED_TYPES: Array[String] = [
 	"World", "MatchLoop", "SimProbe", "MatchSnapshot", "Array[Command]", "Semaphore", "int", "bool"
@@ -106,6 +109,41 @@ func test_the_property_list_holds_only_the_allowed_types_and_run_clears_the_comm
 	job.run()
 	assert_array([command.tick, command.sequence, job.loop.next_sequence]).is_equal([0, 2, 3])
 	assert_array([job.snapshot.tick, job.loop.replay.commands.size()]).is_equal([2, logged])
+
+
+## job_usec is the job's own wall clock on the thread that ran it (ADR 0012 section 1), not the wait
+## since the post: a job posted 5 s before run() keeps that post_usec, ends inside the run, and its
+## job_usec is at least Sim.step and at most the run.
+func test_job_usec_is_the_run_and_not_the_wait_since_the_post() -> void:
+	var job: TickJob = _arena_job()
+	var before: int = Time.get_ticks_usec()
+	job.post_usec = before - LATE_USEC
+	job.run()
+	var after: int = Time.get_ticks_usec()
+	var snap: MatchSnapshot = job.snapshot
+	assert_array([snap.post_usec, snap.end_usec]).is_equal([job.post_usec, job.end_usec])
+	assert_int(snap.end_usec).is_between(before, after)
+	assert_int(snap.end_usec - snap.post_usec).is_greater_equal(LATE_USEC)
+	assert_int(snap.step_usec).is_greater(0)
+	assert_int(snap.job_usec).is_between(snap.step_usec, after - before)
+
+
+## The timings come after the capture, and job_usec counts the capture with the step (ADR 0012
+## section 4): with a snapshot whose capture() takes 2 ms more and stamps where it returns, the
+## end is at or after that stamp, and job_usec holds Sim.step plus the whole capture.
+func test_the_timings_come_after_the_capture_and_count_it() -> void:
+	var job: TickJob = _arena_job()
+	var snap: MatchSnapshot = CapturingSnapshot.new()
+	snap.match_serial = 1
+	job.snapshot = snap
+	job.run()
+	var captured: int = snap.captured_usec
+	var capture_length: int = snap.capture_usec
+	assert_int(snap.tick).is_equal(1)
+	assert_int(captured).is_greater(0)
+	assert_int(snap.end_usec).is_greater_equal(captured)
+	assert_int(job.end_usec).is_equal(snap.end_usec)
+	assert_int(snap.job_usec).is_greater_equal(snap.step_usec + capture_length)
 
 
 ## The walk goes from a job on the prepared arena through script variables and Array and
