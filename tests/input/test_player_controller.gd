@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const TwoTypeLayer: GDScript = preload("res://tests/input/support/two_type_layer.gd")
 const PROFILES: Array[StringName] = [&"desktop", &"android_6in", &"web_tablet"]
 const CAMERA_START: Vector2 = Vector2(800, 1376)
 ## World px with no unit near it: milli (20016, 21516), where 20015.625 rounds up.
@@ -24,23 +25,6 @@ var _now_ms: int = 0
 var _sent: Array[Command] = []
 var _changes: Array[PackedInt32Array] = []
 var _buzzes: Array[int] = []
-
-
-## Phase 1 has one unit type, so this layer fakes the snapshot: own units 1 and 3 are type 0, own
-## unit 2 is type 1 and enemy 4 is type 0. These four are on screen, 200 px apart. Own unit 5 is
-## type 0 with its centre 10 px left of the screen.
-class TwoTypeLayer:
-	extends UnitLayer
-
-	func fill_pick_snapshot(snap: PickSnapshot, _min_radius_px: float) -> void:
-		snap.ids = PackedInt32Array([1, 2, 3, 4, 5])
-		snap.owners = PackedInt32Array([1, 1, 1, 2, 1])
-		snap.type_index = PackedInt32Array([0, 1, 0, 0, 0])
-		snap.screen_pos = PackedVector2Array()
-		snap.radius_px = PackedFloat32Array()
-		for x: int in [100, 300, 500, 700, -10]:
-			snap.screen_pos.append(Vector2(x, 300))
-			snap.radius_px.append(30.0)
 
 
 func before() -> void:
@@ -161,7 +145,7 @@ func test_double_tap_after_panning_half_the_block_away_selects_only_the_visible_
 
 
 func test_double_tap_selects_own_units_of_the_tapped_type_only() -> void:
-	var layer: TwoTypeLayer = auto_free(TwoTypeLayer.new())
+	var layer: UnitLayer = auto_free(TwoTypeLayer.new())
 	_controller.unit_layer = layer
 	var e: GestureEvent = GestureEvent.new(GestureEvent.Kind.DOUBLE_TAP)
 	e.position = Vector2(100, 300)
