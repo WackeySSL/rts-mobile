@@ -25,9 +25,15 @@ extends GdUnitTestSuite
 ## and a legal fixture, and a fixture of several files has a line `---` between them. Blind spots,
 ## left to review: a global without static or inline, and for views a method that returns the
 ## pointer, a `using` alias of it, a pointer in a struct nested in a view, a member defined
-## outside the view body (judged as outside: define the accessors and friends in the body) and a
-## view that VIEW does not name (`class [[nodiscard]] FooView`). The ClassDB and SimKernels bans
-## are in test_sim_purity.
+## outside the view body (judged as outside: define the accessors and friends in the body), a
+## view that VIEW does not name (`class [[nodiscard]] FooView`), a pointer whose declaration
+## starts with a parenthesised specifier (`alignas(1) const int64_t *raw;`, `decltype(x) *p;`:
+## the `(` makes it a function), a function-like macro invocation without `;` (it swallows the
+## next member: `VIEW_BASE(SpanView) const int64_t *raw;` is one member that starts with a `(`),
+## a pointer declared in a `#define` in a view body (the line is blanked, and `SPAN_PTR(raw);` is
+## a function), and a friend view that reads the private pointer of another view (a use in any
+## view body is allowed). A public `operator*=` is flagged as a pointer, a false positive on the
+## safe side. The ClassDB and SimKernels bans are in test_sim_purity.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const NATIVE_DIR: String = "res://native/sim_kernels/src"
