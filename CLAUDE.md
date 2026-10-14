@@ -90,7 +90,7 @@ injected only by the release workflow. UMP consent before any ad request. Detail
 ## Workflow
 - Multi-system feature: get a plan from the `architect` subagent first (`docs/plans/`),
   record decisions as ADRs in `docs/adr/NNNN-slug.md`.
-- Small PRs (under ~400 changed lines), one concern each, with tests.
+- Small PRs (under ~400 changed lines of production code; tests and fixtures don't count), one concern each, with tests.
 - PR description: what changed, the VERIFY SUMMARY block, how to test it on the phone preview.
 - Missing tool, secret or access: say exactly what is missing and stop. Never mock or work around.
 - Tick the checkbox in `docs/ROADMAP.md` when an acceptance criterion is met.

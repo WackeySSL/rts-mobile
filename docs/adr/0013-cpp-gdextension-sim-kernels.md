@@ -64,6 +64,12 @@ word in chat on 2026-10-14, verbatim: **"luk #35 og #41"**), §2 (`WorldView` as
 `sim_impls.gd`'s `use()` attaches) and §5 (Michael's port-size rule, in chat on 2026-10-14,
 verbatim: **"ja til port-reglen"**). No accepted text changed.
 
+Status note (2026-10-14, P26n docs): after the merges of P33 (#77), P56b (#78) and P26m (#79),
+dated status notes from "P26n docs" (a docs PR whose name repeats the spike P26n, #41) sit in §2
+(private view pointers and P56b's `view_pointer` rule supersede "a struct of raw pointers and
+sizes"; the P26m note there is rewrapped with no word changed) and §5 (P42n with both kernels).
+No accepted text changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -577,14 +583,13 @@ absorbs next to the C++ phases.
     `Slot` is one slot's aggregate, not a per-kernel one. The header says, in its own words: "A
     window over one of the World's arrays, for core/ (ADR 0013 section 2): the per-array piece of
     the contract's WorldView, with flow::Slot as the aggregate. The raw pointer is private, so
-    core/ reaches an
-    element only through get() and set(): an element is widened to int64_t on the way out and
-    narrowed with an explicit cast on the way in (section 4), and the compiler enforces that,
-    whatever the element type. An index outside the window reads 0 and writes nothing, so the
-    contents of a queue that check_world cannot vouch for never reach memory outside the array.
-    Only bind/world_access.h builds a view from a pointer." So §4's "through `WorldView`'s
-    accessors" reads `ArrayView<T>::get` and `set`, and the raw `int32_t`/`uint8_t` pointer and
-    its `static_cast` stay private to `ArrayView`.
+    core/ reaches an element only through get() and set(): an element is widened to int64_t on
+    the way out and narrowed with an explicit cast on the way in (section 4), and the compiler
+    enforces that, whatever the element type. An index outside the window reads 0 and writes
+    nothing, so the contents of a queue that check_world cannot vouch for never reach memory
+    outside the array. Only bind/world_access.h builds a view from a pointer." So §4's "through
+    `WorldView`'s accessors" reads `ArrayView<T>::get` and `set`, and the raw `int32_t`/`uint8_t`
+    pointer and its `static_cast` stay private to `ArrayView`.
   - **The fetch.** `world_access.h` holds `Borrowed<T>` (the Variant that keeps a Packed array
     alive, with its view) and `read_i32`/`read_bytes` (`ptr()`) and `write_i32`/`write_bytes`
     (`ptrw()`), steps 1-3 above; an empty array or a Variant of another type gives an empty
@@ -606,6 +611,20 @@ absorbs next to the C++ phases.
   - **The split.** P30n's part 1 held the whole kernel with the module's tests under both
     implementations, and part 2 (P30n2) the 900-tick lockstep, as "Every `core/` function lands
     with the kernel that calls it" above says for a split port.
+
+  Status note (2026-10-14, P26n docs, P56b as merged, #78), the text above stays as accepted:
+  "a struct of raw pointers and sizes" in "Two layers" is superseded. A `core/` view keeps its
+  raw pointer private (`ArrayView<T>`, P26m's note above), and `core/` reads only through the
+  view's `int64_t` accessors. P56b's `view_pointer` rule in `tests/project/test_native_purity.gd`
+  flags a raw pointer member of any element type (`T *`, `int64_t *`, a template parameter)
+  declared public or protected in a `core/` `*View` struct or class, templates included (a struct
+  is public until a `private:`, a class private until a `public:`), and its `raw_pointer` rule
+  flags a use of a view's pointer member outside the view, across `core/` files. Private
+  pointers, accessors and friends defined in the view body stay legal, and so do the merged
+  `array_view.h`, `flow.h`, `flow.cpp` and `world_status.h`. The scan header names the view
+  blind spots left to review (a method that returns the pointer, a `using` alias of it, a
+  pointer in a struct nested in a view, a member defined outside the view body, a view that
+  `VIEW` does not name); the qa follow-ups of P56b's review are the plan's row P56c.
 
 ### 3. Dispatch and the implementation switch
 - **`World` gains two members (P54):**
@@ -863,6 +882,14 @@ absorbs next to the C++ phases.
   P42n about 1,000 per kernel it holds), and each splits at the lockstep (part 2 is the
   lockstep test), as P30n and P30n2 did. This sizing rule is not §1's port rule, which is
   unchanged. The plan's rows, "Split triggers" and "Totals" carry it.
+
+  Status note (2026-10-14, P26n docs), the cost above and P26m's note stay: if both FIRE and
+  PROJECTILES meet §1's rule, P42n holds two kernels, about 2,000 changed lines (about 1,000 per
+  kernel). It is then split per kernel first and each part at its lockstep, in four parts: P42n
+  (the FIRE kernel with `test_combat` and `test_counter_triangle` under both implementations),
+  P42n2 (its lockstep test), P42n3 (the PROJECTILES kernel with the same module tests under
+  both) and P42n4 (its lockstep test). With one kernel it is P42n and P42n2, as P26m's note
+  says. The plan's P42n rows, "Split triggers" and lane-A notes carry the same split.
 - **Exit route:** web on C++ (§7, option B). It would allow deleting the twins and needs its own
   ADR after the Phase 2 gate. It is not adopted now.
 

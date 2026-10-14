@@ -11,7 +11,8 @@ and docs/GDD.md the game design.
 
 - Talk to me in Danish. Code, comments, commits and PR text are in English.
 - Work only on the current roadmap phase unless I say otherwise.
-- Branch from main, open one draft PR per thread and keep PRs under about 400 changed lines.
+- Branch from main, open one draft PR per thread and keep PRs under about 400 changed lines of
+  production code (tests and fixtures don't count).
 - Before calling work done, run the verify skill and paste its VERIFY SUMMARY in your final
   message and in the PR. If Godot is missing in the session, verify through CI with
   `gh run watch` and paste that result.
