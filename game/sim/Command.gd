@@ -11,6 +11,16 @@ enum Type { NONE = 0, ATTACK_MOVE = 1, MOVE = 2, ATTACK = 3, STOP = 4 }
 const MAX_UNITS: int = 256
 const MAX_PAYLOAD: int = 16
 
+## The int32 range. A PackedInt32Array holds only values in it (ADR 0007 section 1), and an
+## encoded command is one, so encode() saturates every int that is wider.
+const INT32_MIN: int = -2147483648
+const INT32_MAX: int = 2147483647
+## The ints an encoded command starts with: tick, player_id, sequence, type, target_x, target_y and
+## target_id. The unit count follows them.
+const ENCODED_HEADER: int = 7
+## The fewest ints an encoded command takes: the header, a unit count and a payload count, both 0.
+const ENCODED_MIN: int = ENCODED_HEADER + 2
+
 ## -1 until the runner stamps it.
 var tick: int = -1
 var player_id: int = 0
@@ -79,3 +89,65 @@ static func compare(a: Command, b: Command) -> bool:
 	if a.player_id != b.player_id:
 		return a.player_id < b.player_id
 	return a.sequence < b.sequence
+
+
+## Appends this command to `out` for the replay log (ADR 0007 section 9): tick, player_id,
+## sequence, type, target_x, target_y, target_id, the unit count, the ids, the payload count, the
+## payload. Every int is written as it is when it fits int32 and saturates to INT32_MIN or
+## INT32_MAX when it does not. That keeps a replay equal to the run in the one place it could
+## differ: Sim.step clamps a target to the map, and no id, player or type beyond int32 names
+## anything (a tick beyond int32 would be 4.5 years of play at 15 Hz). `tick` is -1 or in
+## 0..INT32_MAX, and so is `sequence`, which counts the commands of one match. The counts are the
+## array sizes as they are: a command over MAX_UNITS or MAX_PAYLOAD (Sim.step drops it) is
+## written whole and decode() refuses it.
+func encode(out: PackedInt32Array) -> void:
+	out.append(_fit(tick))
+	out.append(_fit(player_id))
+	out.append(_fit(sequence))
+	out.append(_fit(type))
+	out.append(_fit(target_x))
+	out.append(_fit(target_y))
+	out.append(_fit(target_id))
+	out.append(unit_ids.size())
+	out.append_array(unit_ids)
+	out.append(payload.size())
+	out.append_array(payload)
+
+
+## Reads the command that encode() wrote at offset `at` of `data` into `out` and returns the
+## offset after it, or -1 for malformed data: `out` null, `at` outside the data, a record cut
+## short, a negative count, a unit count above MAX_UNITS or a payload count above MAX_PAYLOAD.
+## It reads only inside `data`, writes nothing to `out` when it returns -1, and gives `out`
+## copies of the ids and the payload, so changing `data` or `out` afterwards does not reach the
+## other. The type is not judged: Sim.step drops an unknown one.
+static func decode(data: PackedInt32Array, at: int, out: Command) -> int:
+	var size: int = data.size()
+	# Compared as `at > size - ENCODED_MIN`, so a huge `at` cannot overflow.
+	if out == null or at < 0 or at > size - ENCODED_MIN:
+		return -1
+	var unit_count: int = data[at + ENCODED_HEADER]
+	if unit_count < 0 or unit_count > MAX_UNITS:
+		return -1
+	var payload_at: int = at + ENCODED_HEADER + 1 + unit_count
+	if payload_at >= size:
+		return -1
+	var payload_count: int = data[payload_at]
+	if payload_count < 0 or payload_count > MAX_PAYLOAD:
+		return -1
+	var end: int = payload_at + 1 + payload_count
+	if end > size:
+		return -1
+	out.tick = data[at]
+	out.player_id = data[at + 1]
+	out.sequence = data[at + 2]
+	out.type = data[at + 3]
+	out.target_x = data[at + 4]
+	out.target_y = data[at + 5]
+	out.target_id = data[at + 6]
+	out.unit_ids = data.slice(at + ENCODED_HEADER + 1, payload_at)
+	out.payload = data.slice(payload_at + 1, end)
+	return end
+
+
+static func _fit(value: int) -> int:
+	return clampi(value, INT32_MIN, INT32_MAX)
