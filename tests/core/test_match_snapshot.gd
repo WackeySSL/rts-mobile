@@ -100,29 +100,35 @@ func test_each_id_list_is_an_equal_typed_copy_of_the_worlds() -> void:
 		assert_bool(is_same(mine, theirs)).is_false()
 
 
-## Unit 100 dies in the tick; the targets are written by hand (the sim sets none before P41).
-## Rows: id 1 -> 76 (row 75), id 2 -> 150 (the last row, 148), id 80 -> 1 (row 0), ids 3 and 81
-## -> 100 (gone), every other unit -> 0 (none).
+## Units 100 and 150 (the highest id) die in the tick, which is captured with a previous snapshot
+## of the same match; the targets are written by hand (the sim sets none before P41). Rows: id 1
+## -> 76 (row 75), id 2 -> 149 (the last row, 147), id 80 -> 1 (row 0), ids 3 and 81 -> 100 (gone,
+## inside the id range), id 4 -> 150 (gone, above every id), every other unit -> 0 (none).
 func test_target_row_is_the_target_row_here_and_minus_one_for_none_or_gone() -> void:
 	_play(10)
+	var previous: MatchSnapshot = _capture(null, 1)
 	var targets: PackedInt32Array = _world.target
 	targets[_world.index_of(1)] = 76
-	targets[_world.index_of(2)] = 150
+	targets[_world.index_of(2)] = 149
 	targets[_world.index_of(80)] = 1
 	targets[_world.index_of(3)] = 100
 	targets[_world.index_of(81)] = 100
+	targets[_world.index_of(4)] = 150
 	_world.hp[_world.index_of(100)] = 0
+	_world.hp[_world.index_of(150)] = 0
 	_play(1)
-	var snap: MatchSnapshot = _capture(null, 1)
-	assert_int(snap.index_of(100)).is_equal(-1)
+	var snap: MatchSnapshot = _capture(previous, 1)
+	assert_array([snap.unit_count(), snap.index_of(100), snap.index_of(150)]).is_equal(
+		[148, -1, -1]
+	)
 	var expected: PackedInt32Array = PackedInt32Array()
 	for row: int in snap.unit_count():
 		expected.append(snap.index_of(snap.target[row]))
 	assert_array(snap.target_row).is_equal(expected)
 	var seen: Array[int] = []
-	for id: int in [1, 2, 80, 3, 81, 4, 150]:
+	for id: int in [1, 2, 80, 3, 81, 4, 5]:
 		seen.append(snap.target_row[snap.index_of(id)])
-	assert_array(seen).is_equal([75, 148, 0, -1, -1, -1, -1])
+	assert_array(seen).is_equal([75, 147, 0, -1, -1, -1, -1])
 	assert_int(snap.target_row.count(-1)).is_equal(snap.unit_count() - 3)
 
 
@@ -207,17 +213,23 @@ func test_a_snapshot_never_changes_after_its_capture() -> void:
 	assert_array(_fog_reads(_world.fog, cell)).is_not_equal(reads)
 
 
-## Units 1 (the first row) and 60 die in tick 11, and unit 151 is added after it.
+## Units 1 (the first row) and 60 die in tick 11, and units 151 and 152 are added after it: the
+## rows change, their count (150) does not. The previous snapshot has a previous of its own, whose
+## positions differ from its pos_*, so a walk over the wrong prev source fails.
 func test_prev_positions_follow_the_ids_across_deaths_and_spawns() -> void:
-	_play(10)
-	var previous: MatchSnapshot = _capture(null, 1)
+	_play(9)
+	var older: MatchSnapshot = _capture(null, 1)
+	_play(1)
+	var previous: MatchSnapshot = _capture(older, 1)
+	assert_bool(previous.prev_pos_x == previous.pos_x).is_false()
 	_world.hp[_world.index_of(1)] = 0
 	_world.hp[_world.index_of(60)] = 0
 	_play(1)
 	assert_int(_world.add_unit(2, 0, 30500, 20500)).is_equal(151)
+	assert_int(_world.add_unit(1, 0, 31500, 21500)).is_equal(152)
 	var snap: MatchSnapshot = _capture(previous, 1)
 	assert_int(snap.rows_version).is_not_equal(previous.rows_version)
-	assert_array([snap.unit_count(), snap.index_of(1), snap.index_of(60)]).is_equal([149, -1, -1])
+	assert_array([snap.unit_count(), snap.index_of(1), snap.index_of(60)]).is_equal([150, -1, -1])
 	var expected_x: PackedInt32Array = PackedInt32Array()
 	var expected_y: PackedInt32Array = PackedInt32Array()
 	var moved: int = 0
@@ -230,30 +242,47 @@ func test_prev_positions_follow_the_ids_across_deaths_and_spawns() -> void:
 	assert_array(snap.prev_pos_x).is_equal(expected_x)
 	assert_array(snap.prev_pos_y).is_equal(expected_y)
 	assert_int(moved).is_greater(0)
-	# Unit 2 moved up to row 0; the new unit starts where it stands.
+	# Unit 2 moved up to row 0; the new units start where they stand.
 	assert_array([snap.prev_pos_x[0], snap.prev_pos_y[0]]).is_equal(
 		[previous.pos_x[1], previous.pos_y[1]]
 	)
-	assert_array([snap.prev_pos_x[148], snap.prev_pos_y[148]]).is_equal([30500, 20500])
-	# The rows stay the same in the next tick: the prev arrays are the old snapshot's (no copy).
+	var spawned: Array[int] = [
+		snap.prev_pos_x[148], snap.prev_pos_y[148], snap.prev_pos_x[149], snap.prev_pos_y[149]
+	]
+	assert_array(spawned).is_equal([30500, 20500, 31500, 21500])
+	# The rows stay the same in the next tick: the prev arrays are the old snapshot's (no copy),
+	# and target_row still has a row per unit.
 	_play(1)
 	var next: MatchSnapshot = _capture(snap, 1)
 	assert_int(next.rows_version).is_equal(snap.rows_version)
 	assert_bool(is_same(next.prev_pos_x, snap.pos_x)).is_true()
 	assert_bool(is_same(next.prev_pos_y, snap.pos_y)).is_true()
+	assert_int(next.target_row.size()).is_equal(next.unit_count())
 
 
-## Slot 0 keeps projectile 7, which moves; slot 1 changes from projectile 8 to projectile 9.
+## Three captures of one match. Slot 0 keeps projectile 7, which moves from (500, 1500) to
+## (1000, 2000) to (1500, 2600); slot 1 holds projectile 6, then 8, then 9. The rows stay the
+## same up to the second capture; unit 5 dies in the third tick, so the third capture takes the
+## rows-changed path.
 func test_projectile_prevs_are_the_previous_snapshots_slots() -> void:
-	_play(3)
+	_play(2)
+	_put_projectile(0, 7, 500, 1500)
+	_put_projectile(1, 6, 2000, 3000)
+	var older: MatchSnapshot = _capture(null, 1)
+	_play(1)
 	_put_projectile(0, 7, 1000, 2000)
 	_put_projectile(1, 8, 3000, 4000)
-	var previous: MatchSnapshot = _capture(null, 1)
+	var previous: MatchSnapshot = _capture(older, 1)
+	assert_int(previous.rows_version).is_equal(older.rows_version)
+	assert_array([previous.prev_proj_id[1], previous.prev_proj_x[0]]).is_equal([6, 500])
+	_world.hp[_world.index_of(5)] = 0
 	_play(1)
 	_put_projectile(0, 7, 1500, 2600)
 	_put_projectile(1, 9, 5000, 6000)
 	var snap: MatchSnapshot = _capture(previous, 1)
+	assert_int(snap.rows_version).is_not_equal(previous.rows_version)
 	assert_array([snap.proj_id[0], snap.prev_proj_id[0]]).is_equal([7, 7])
+	# The previous snapshot's position: not the one before it (500, 1500), not the current one.
 	assert_array([snap.prev_proj_x[0], snap.prev_proj_y[0]]).is_equal([1000, 2000])
 	assert_array([snap.proj_x[0], snap.proj_y[0]]).is_equal([1500, 2600])
 	assert_array([snap.proj_id[1], snap.prev_proj_id[1]]).is_equal([9, 8])
@@ -296,6 +325,46 @@ func test_a_capture_without_previous_gives_prev_equal_current() -> void:
 	assert_array(snap.prev_proj_x).is_equal(snap.proj_x)
 	assert_array(snap.prev_proj_y).is_equal(snap.proj_y)
 	assert_int(snap.prev_proj_x[2]).is_equal(7000)
+	# Equal, not the same arrays: a test that writes the current ones to set up a view case (ADR
+	# 0012 section 3) leaves the prev alone.
+	var prev: Array[int] = [
+		snap.prev_pos_x[0],
+		snap.prev_pos_y[0],
+		snap.prev_proj_id[2],
+		snap.prev_proj_x[2],
+		snap.prev_proj_y[2],
+	]
+	snap.pos_x[0] += 400
+	snap.pos_y[0] += 400
+	snap.proj_id[2] = 6
+	snap.proj_x[2] += 400
+	snap.proj_y[2] += 400
+	var after: Array[int] = [
+		snap.prev_pos_x[0],
+		snap.prev_pos_y[0],
+		snap.prev_proj_id[2],
+		snap.prev_proj_x[2],
+		snap.prev_proj_y[2],
+	]
+	assert_array(after).is_equal(prev)
+	assert_int(snap.pos_x[0]).is_equal(prev[0] + 400)
+
+
+## capture() sets neither header field that the World does not hold: match_serial and last_hash
+## stay what the creator set (plan P38j), with no previous and with one of the same match.
+func test_capture_leaves_match_serial_and_last_hash_alone() -> void:
+	_play(2)
+	var previous: MatchSnapshot = _capture(null, 5)
+	_play(1)
+	var headers: Array = []
+	var befores: Array[MatchSnapshot] = [null, previous]
+	for before: MatchSnapshot in befores:
+		var snap: MatchSnapshot = MatchSnapshot.new()
+		snap.match_serial = 5
+		snap.last_hash = 123456
+		snap.capture(_world, before)
+		headers.append([snap.match_serial, snap.last_hash, snap.tick])
+	assert_array(headers).is_equal([[5, 123456, 3], [5, 123456, 3]])
 
 
 ## Report only (plan P38s): the cost of one capture on the arena at tick 450, with the previous

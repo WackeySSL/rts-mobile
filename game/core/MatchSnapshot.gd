@@ -164,9 +164,11 @@ func cell_of(x: int, y: int) -> int:
 
 
 ## Copies the World's tick into this snapshot, whose `match_serial` the caller has set. `previous`
-## is the last published snapshot, or null: when it is null or of another match, prev = current.
-## Otherwise prev_proj_* are its proj_*, and prev_pos_* are its pos_* while the rows are the same
-## (`rows_version` unchanged, no copy), else aligned by id.
+## is the last published snapshot, or null: when it is null or of another match, prev = current,
+## as copies (O(1)), so a test that writes this snapshot's pos_* or proj_* to set up a view case
+## (ADR 0012 section 3) leaves its prev_* alone. Otherwise prev_proj_* are its proj_*, and
+## prev_pos_* are its pos_* while the rows are the same (`rows_version` unchanged, no copy), else
+## aligned by id.
 func capture(world: World, previous: MatchSnapshot) -> void:
 	tick = world.tick
 	rows_version = world.rows_version
@@ -202,11 +204,11 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	world.fog.copy_into(fog)
 	_fill_target_rows()
 	if previous == null or previous.match_serial != match_serial:
-		prev_pos_x = pos_x
-		prev_pos_y = pos_y
-		prev_proj_id = proj_id
-		prev_proj_x = proj_x
-		prev_proj_y = proj_y
+		prev_pos_x = pos_x.duplicate()
+		prev_pos_y = pos_y.duplicate()
+		prev_proj_id = proj_id.duplicate()
+		prev_proj_x = proj_x.duplicate()
+		prev_proj_y = proj_y.duplicate()
 		return
 	prev_proj_id = previous.proj_id
 	prev_proj_x = previous.proj_x
