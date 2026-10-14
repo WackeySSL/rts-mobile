@@ -71,8 +71,9 @@ sizes"; the P26m note there is rewrapped with no word changed) and §5 (P42n wit
 No accepted text changed.
 
 Status note (2026-10-14, P26s docs): after the merge of P57 (#96, the sanitizer job), dated status
-notes from "P26s docs" sit in §8 (the cache key's sanitizer part) and §10 (the sanitizer job's
-decisions as merged, its blind spots, and the lead's row P57b). No accepted text changed.
+notes from "P26s docs" sit in §8 (the cache key's sanitizer part), §10 (the sanitizer job's
+decisions as merged, its blind spots, and the lead's row P57b) and "Open after this draft" (the
+sanitizer job's item closed). No accepted text changed.
 
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
@@ -1757,6 +1758,11 @@ bullet names another source:
   not by P53: the `libc++_shared.so` is r29 / LLVM 21, not r28 (Context's status note), and the
   kernels are built with NDK 29.0.14206865 (§8). Still to come: P55a re-reads the notes and the
   16 KB alignment in CI from the APK it checks.
+
+Status note (2026-10-14, P26s docs): the sanitizer job's item is closed by P57 (#96). The UBSan
+library runs the `tests/sim/native` suites inside headless Godot (the `sanitizers` job, green on
+the PR's last commit), and loading an ASan library there (`LD_PRELOAD`) was not taken; ASan runs
+only in the standalone harness over `core/` (§10's status note of P26s docs).
 
 ## Acceptance note (2026-10-12)
 Michael answered the four questions of the plan's amendment ("Open questions for Michael (ADR
