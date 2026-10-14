@@ -48,6 +48,10 @@ hash ticks" tests inside `Sim.step`; the rule is unchanged.
 Status note (2026-10-14, P26q docs): §2 carries a dated status note: the worker-file scan also
 covers `game/core/StepProbe.gd` (lead decision 2026-10-14).
 
+Status note (2026-10-14, P26r docs): §2 carries a dated status note on the bans as merged: the
+worker-file scan bans 11 names (also `emit_signal`; `get_node` as a prefix), and `game/sim` bans
+`emit_signal(` and the object parsers too.
+
 ## Context
 The Phase 2 plan (P26s) says that a contract the phone probe contradicts changes through a new ADR
 before P34 starts. The probe ran on 2026-10-12. The full reports are comments on PR #35.
@@ -402,6 +406,16 @@ rules:
   from P38j on `TickJob.run` passes it to `loop.step` on the worker (plan, contract row
   `TickJob`), so it runs there. Lead decision 2026-10-14, recorded in
   the Phase 2 plan by P26p docs (row and section P38j, "Answers and follow-ups (P26p docs)").
+
+  Status note (2026-10-14, P26r docs, after P38j, #91, and P38p, #92; the lists above stay as
+  accepted): the worker-file scan as merged (`BANNED` in `tests/core/test_tick_job.gd`) bans 11
+  names: the ten above plus `emit_signal`, each with one flagged and one legal fixture line, and
+  it matches `get_node` as a prefix, so `get_node_or_null` and the other `get_node*` lookups are
+  caught. `emit_signal` is banned in `game/sim` too: the purity bans as merged
+  (`BANNED_THREAD_RULES` in `tests/project/test_sim_purity.gd`, P38p) are the list above with
+  `signal` matched as a word on any line, plus `emit_signal(` and the object parsers
+  `bytes_to_var_with_objects`, `var_to_bytes_with_objects` and `str_to_var` (ADR 0007 §9).
+  Recorded in the Phase 2 plan, sections P38j and P38p and "Answers and follow-ups (P26r docs)".
 - A headless run of `main.tscn` with `tick_mode = WORKER` (plan P50w; `perf_arena.tscn` in P52)
   makes any write to an in-tree Node from the worker an `ERROR` line, which `verify.sh` fails on.
   Release builds have no such guard, which is why the structural checks stay.
