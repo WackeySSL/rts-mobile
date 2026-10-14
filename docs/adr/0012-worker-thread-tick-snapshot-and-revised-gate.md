@@ -627,8 +627,9 @@ period.
 
 Status note (2026-10-14, P26o docs, after P35b, #82; the text above stays as accepted): "the same
 `% Replay.CHECKPOINT_PERIOD` test on the same tick value" means the tick `MatchLoop` hashes, which
-is the tick after the step. `Sim.step` runs FLOW before `tick += 1`, and `MatchLoop` takes the
-checkpoint after `Sim.step` on the new tick, so inside `Sim.step` the checkpoint tick is
+is the tick after the step. `Sim.step` counts the tick last (`tick += 1` after every phase; the
+FLOW line P37b adds comes before it, ADR 0007 §4), and `MatchLoop` takes the checkpoint after
+`Sim.step` on the new tick, so inside `Sim.step` the checkpoint tick is
 `world.tick + 1`. "No slice on hash ticks" is therefore a budget of 0 when
 `(world.tick + 1) % Replay.CHECKPOINT_PERIOD == 0` (the first at the step from tick 14 to 15).
 P35b's `test_a_checkpoint_step_starts_one_tick_before_the_checkpoint_tick` pins that `Sim.step`

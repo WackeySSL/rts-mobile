@@ -475,9 +475,12 @@ accepted):
   reaches; `PLAY_DEFS_DIFFER` (-2) before any step; and the added `PLAY_BAD_LOG` (-3) for a record
   that does not decode or checkpoint arrays of unequal sizes (both only in a replay built in
   memory, since `from_bytes` refuses them; the second before any step), a record behind the
-  world's tick, or a negative checkpoint tick. It drives `MatchLoop.create(null, ...)`, feeds each
-  tick's records as `queued` in log order, steps at most `until_tick - world.tick` ticks, and
-  does not check `final_hash`; the caller compares it.
+  world's tick, or a negative checkpoint tick. The checkpoints are checked in array order as the
+  loop reaches each tick (a recorded log's ticks ascend), so a checkpoint behind an unreached
+  one, or any checkpoint when `until_tick <= world.tick`, is not examined. A record that does not
+  decode is found when the loop reaches its tick. It drives `MatchLoop.create(null, ...)`, feeds
+  each tick's records as `queued` in log order, steps at most `until_tick - world.tick` ticks,
+  and does not check `final_hash`; the caller compares it.
 
 ### 10. Events
 - `World.events` holds the events of the last tick. It is cleared in phase 1 and is not state.
