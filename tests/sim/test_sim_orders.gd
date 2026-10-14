@@ -50,23 +50,45 @@ func test_stop_makes_moving_units_idle_where_they_are() -> void:
 	assert_array(world.pos_x.slice(0, 10) + world.pos_y.slice(0, 10)).is_equal(halted)
 
 
-## The attacker (id 2, row 1, speed 60) is slower than its target (id 1, row 0, speed 120, owned
-## by player 2), which flees east. The target has the lower row, so its move this tick would show
-## if the goal were read after the movement: it is the position at the start of the tick.
+## The attacker (id 2, row 1) is slower than its target (id 1, row 0, player 2), which flees north
+## east: it never catches up, and its goal is still the target's position at the start of the tick.
 func test_attack_follows_a_moving_target_by_its_position_at_the_start_of_the_tick() -> void:
+	assert_int(_chase(1, 0)).is_equal(0)
+
+
+## A faster attacker catches the target. On arrival it snaps onto the target's position and keeps
+## the ATTACK order, so it goes on following the target instead of idling on top of it.
+func test_a_faster_attacker_catches_the_target_and_keeps_following_it() -> void:
+	assert_int(_chase(0, 1)).is_greater(50)
+
+
+## A target within one step: the attacker snaps onto it at once and stays on ATTACK.
+func test_an_attack_on_a_target_within_one_step_keeps_its_order() -> void:
 	var world: World = _duel_world()
-	world.add_unit(2, 0, 20000, 10000)
-	world.add_unit(1, 1, 10000, 10000)
-	Sim.step(world, [_stamp(Command.move(2, PackedInt32Array([1]), 40000, 10000), 0)])
-	Sim.step(world, [_stamp(Command.attack(1, PackedInt32Array([2]), 1), 1)])
-	assert_array([world.order[1], world.order_target[1]]).is_equal([World.Order.ATTACK, 1])
-	for _t: int in 20:
-		var seen: Vector2i = Vector2i(world.pos_x[0], world.pos_y[0])
-		Sim.step(world, [])
-		assert_array([world.goal_x[1], world.goal_y[1]]).is_equal([seen.x, seen.y])
-		assert_int(world.order[1]).is_equal(World.Order.ATTACK)
-	# 22 ticks at 120 for the target, 21 at 60 for the attacker (it starts moving in tick 1).
-	assert_array([world.pos_x[0], world.pos_x[1]]).is_equal([20000 + 22 * 120, 10000 + 21 * 60])
+	world.add_unit(1, 0, 10000, 10000)
+	world.add_unit(2, 1, 10050, 10000)
+	Sim.step(world, [_stamp(Command.attack(1, PackedInt32Array([1]), 2), 0)])
+	assert_array([world.order[0], world.pos_x[0], world.order_target[0]]).is_equal(
+		[World.Order.ATTACK, 10050, 2]
+	)
+
+
+## MOVE, ATTACK_MOVE and STOP need no weapon (only ATTACK does), so an unarmed unit takes them.
+func test_an_unarmed_unit_takes_move_attack_move_and_stop() -> void:
+	var world: World = _duel_world()
+	world.type_weapon[0] = -1
+	world.add_unit(1, 0, 10000, 10000)
+	var ids: PackedInt32Array = PackedInt32Array([1])
+	var commands: Array[Command] = [
+		Command.attack_move(1, ids, 20000, 10000), Command.move(1, ids, 20000, 10000)
+	]
+	var expected: Array[int] = [World.Order.ATTACK_MOVE, World.Order.MOVE]
+	for k: int in 2:
+		Sim.step(world, [_stamp(commands[k], world.tick)])
+		assert_array([world.dropped_commands, world.order[0]]).is_equal([0, expected[k]])
+	Sim.step(world, [_stamp(Command.stop(1, ids), world.tick)])
+	assert_array([world.dropped_commands, world.order[0]]).is_equal([0, World.Order.IDLE])
+	assert_array([world.goal_x[0], world.goal_y[0]]).is_equal([world.pos_x[0], world.pos_y[0]])
 
 
 ## A target that is gone leaves the units on attack-move to where it was last seen (ADR 0009).
@@ -105,6 +127,32 @@ func _duel_world() -> World:
 		world.type_spacing.append(1200)
 		world.type_weapon.append(0)
 	return world
+
+
+## Player 1's attacker of `attacker_type` (id 2, row 1) chases player 2's target of `target_type`
+## (id 1, row 0), which is ordered north east. The target has the lower row, so its move this tick
+## would show if the goal were read after the movement. Each tick the goal must be the target's
+## position at the start of the tick, on both axes, and the order must stay ATTACK. Returns the
+## number of ticks the attacker ended on its goal.
+func _chase(attacker_type: int, target_type: int) -> int:
+	var world: World = _duel_world()
+	world.add_unit(2, target_type, 20000, 10000)
+	world.add_unit(1, attacker_type, 16000, 13000)
+	var commands: Array[Command] = [
+		_stamp(Command.attack(1, PackedInt32Array([2]), 1), 0),
+		_stamp(Command.move(2, PackedInt32Array([1]), 40000, 3000), 0),
+	]
+	var on_goal: int = 0
+	for _t: int in 160:
+		var seen: Vector2i = Vector2i(world.pos_x[0], world.pos_y[0])
+		Sim.step(world, commands)
+		commands.clear()
+		assert_array([world.goal_x[1], world.goal_y[1]]).is_equal([seen.x, seen.y])
+		assert_array([world.order[1], world.order_target[1]]).is_equal([World.Order.ATTACK, 1])
+		if world.pos_x[1] == world.goal_x[1] and world.pos_y[1] == world.goal_y[1]:
+			on_goal += 1
+	assert_array([world.dropped_commands, world.pos_y[0] < 10000]).is_equal([0, true])
+	return on_goal
 
 
 func _stamp(command: Command, tick: int) -> Command:

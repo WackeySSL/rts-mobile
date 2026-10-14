@@ -176,11 +176,18 @@ func test_each_group_drop_rule_counts_once_and_the_largest_command_is_kept() -> 
 				"no ids": _cmd(type, 1, []),
 				"257 ids": _cmd(type, 1, _repeat(1, 257)),
 				"17 payload ints": _cmd(type, 1, [1], range(17)),
-				"only the other player's units": _cmd(type, 2, [1, 2]),
+				# Target 3 is player 1's, an enemy of player 2, so ATTACK reaches the owner rule.
+				"only the other player's units": _cmd(type, 2, [1, 2], [], 3),
+				"only a neutral unit": _cmd(type, 1, [41]),
 				"only unknown ids": _cmd(type, 1, [0, -3, 99, 999]),
 			},
 			"type %d: " % type
 		)
+		# The player bound alone: unit 1 is player 3's by hand, so the owner rule would pass it.
+		var third: World = _drop_world()
+		third.owner[0] = 3
+		Sim.step(third, [_cmd(type, 3, [1])])
+		assert_array([third.dropped_commands, third.order[0]]).is_equal([1, World.Order.IDLE])
 		for kept: Command in [_cmd(type, 1, _repeat(1, 256)), _cmd(type, 1, [1], range(16))]:
 			var world: World = _drop_world()
 			Sim.step(world, [kept])
@@ -209,16 +216,24 @@ func test_attack_needs_an_enemy_target_and_an_armed_unit() -> void:
 		{
 			"own unit": _cmd(attack, 1, [1], [], 2),
 			"neutral unit": _cmd(attack, 1, [1], [], 41),
+		}
+	)
+	# No neutral unit, so the last row is player 2's: only the row >= 0 guard drops these.
+	_assert_dropped(
+		{
 			"unknown id": _cmd(attack, 1, [1], [], 999),
 			"id 0": _cmd(attack, 1, [1], [], 0),
 			"negative id": _cmd(attack, 1, [1], [], -3),
-		}
+		},
+		"",
+		false
 	)
 	var world: World = _drop_world()
 	Sim.step(world, [_cmd(attack, 1, [1, 2, 41], [], 31)])
 	assert_int(world.dropped_commands).is_equal(0)
 	assert_array(world.order.slice(0, 3)).is_equal([3, 3, 0])
 	assert_array(world.order_target.slice(0, 3)).is_equal([31, 31, 0])
+	assert_array([world.order[40], world.order_target[40]]).is_equal([World.Order.IDLE, 0])
 	# Type 0 has a weapon and type 2 none (the pad is -1): unit 1 cannot attack, unit 2 can.
 	var armed: World = _make_world()
 	armed.type_weapon = PackedInt32Array([0, -1, -1])
@@ -367,19 +382,22 @@ func _repeat(value: int, count: int) -> Array:
 	return values
 
 
-## The controls scenario at tick 7 plus a neutral tank, id 41.
-func _drop_world() -> World:
+## The controls scenario at tick 7, plus a neutral tank, id 41, unless `neutral` is false.
+func _drop_world(neutral: bool = true) -> World:
 	var world: World = _scenario_world()
-	world.add_unit(0, 0, 30000, 30000)
+	if neutral:
+		world.add_unit(0, 0, 30000, 30000)
 	world.tick = 7
 	return world
 
 
 ## Each command alone in its own world at tick 7: counted once, no unit's order changed.
-func _assert_dropped(cases: Dictionary[String, Command], prefix: String = "") -> void:
+func _assert_dropped(
+	cases: Dictionary[String, Command], prefix: String = "", neutral: bool = true
+) -> void:
 	var wrong: Array[String] = []
 	for label: String in cases:
-		var world: World = _drop_world()
+		var world: World = _drop_world(neutral)
 		var before: Array = [world.order.duplicate(), world.order_target.duplicate()]
 		Sim.step(world, [cases[label]])
 		if world.dropped_commands != 1 or [world.order, world.order_target] != before:

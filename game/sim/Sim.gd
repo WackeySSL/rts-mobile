@@ -43,7 +43,9 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 
 ## Applies a command of the right tick by type (ADR 0007 section 5), or drops and counts it. Every
 ## type needs a player in 1..player_count and at most MAX_PAYLOAD payload ints; a type without a
-## branch (NONE, 5-29, anything else) is dropped as unknown before any id rule runs.
+## branch (NONE, 5-29, anything else) is dropped as unknown before any id rule runs. Each
+## `_apply_*` is the ADR's per-type validation: it checks the ids through the shared helpers and
+## applies the rows it accepted.
 static func _apply(world: World, command: Command) -> void:
 	var applied: bool = false
 	if (
@@ -149,27 +151,31 @@ static func _enemy_target(world: World, command: Command) -> bool:
 
 ## Before P41 an ATTACK unit's goal is where its target stood at the start of the tick (read before
 ## anyone moves, so row order cannot matter). A target that is gone makes it attack-move to the
-## last goal (ADR 0009 section 2).
+## last goal (ADR 0009 section 2). The lookup is inlined over the aliased ids (P41 replaces this).
 static func _follow_targets(world: World) -> void:
 	var orders: PackedInt32Array = world.order
 	var order_target: PackedInt32Array = world.order_target
+	var ids: PackedInt32Array = world.unit_id
 	var pos_x: PackedInt32Array = world.pos_x
 	var pos_y: PackedInt32Array = world.pos_y
 	var goal_x: PackedInt32Array = world.goal_x
 	var goal_y: PackedInt32Array = world.goal_y
-	for row: int in world.unit_count():
+	var count: int = ids.size()
+	for row: int in count:
 		if orders[row] != World.Order.ATTACK:
 			continue
-		var target_row: int = world.index_of(order_target[row])
-		if target_row < 0:
+		var at: int = ids.bsearch(order_target[row])
+		if at >= count or ids[at] != order_target[row]:
 			orders[row] = World.Order.ATTACK_MOVE
 		else:
-			goal_x[row] = pos_x[target_row]
-			goal_y[row] = pos_y[target_row]
+			goal_x[row] = pos_x[at]
+			goal_y[row] = pos_y[at]
 
 
 ## Each unit with an order steps towards its goal, in ascending id order. Within one step it
-## snaps to the goal and goes idle. Division truncates toward zero.
+## snaps to the goal and goes idle, except an ATTACK unit, which keeps its order and its target
+## (it ends only when the target is gone; P37a2 and P41 replace the arrival). Division truncates
+## toward zero.
 @warning_ignore("integer_division")
 static func _move_units(world: World) -> void:
 	for row: int in world.unit_count():
@@ -182,7 +188,8 @@ static func _move_units(world: World) -> void:
 		if d2 <= speed * speed:
 			world.pos_x[row] = world.goal_x[row]
 			world.pos_y[row] = world.goal_y[row]
-			world.order[row] = World.Order.IDLE
+			if world.order[row] != World.Order.ATTACK:
+				world.order[row] = World.Order.IDLE
 		else:
 			var distance: int = FixedMath.isqrt(d2)
 			world.pos_x[row] += dx * speed / distance
