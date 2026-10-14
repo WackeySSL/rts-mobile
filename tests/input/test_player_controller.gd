@@ -260,6 +260,17 @@ func test_all_army_reads_the_snapshot_and_never_the_world() -> void:
 	assert_array(_controller.selection.selected).is_empty()
 
 
+## A restart publishes a new snapshot without `ticked`, so a snapshot kept from the last tick is
+## already the old match's.
+func test_all_army_reads_the_snapshot_of_a_restarted_match_before_its_first_tick() -> void:
+	await _fresh_match(&"desktop")
+	_runner.run_ticks(1)
+	_runner.start()
+	_runner.snapshot.type_speed[0] = 0  # Only the restart's snapshot says every tank is a wall.
+	_controller.select_all_army()
+	assert_array(_controller.selection.selected).is_empty()
+
+
 func _assert_attack_move(command: Command, ids: Array, x: int, y: int) -> void:
 	assert_int(command.type).is_equal(Command.Type.ATTACK_MOVE)
 	assert_int(command.player_id).is_equal(1)

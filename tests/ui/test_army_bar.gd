@@ -168,7 +168,8 @@ func test_hold_assigns_a_group_and_tap_recalls_it_and_the_count_updates() -> voi
 	assert_array(_sent).is_empty()
 
 
-## The badge shows the units a group still has, and an empty group only its number.
+## The badge shows the units a group still has, and an empty group only its number. Nothing is
+## selected when the first units die, so a badge refresh that waited for a selection change fails.
 func test_a_groups_badge_shows_the_live_count_and_an_empty_group_only_its_number() -> void:
 	await _open(UiProfiles.by_name(&"android_6in"))
 	var runner: MatchRunner = _main.get_node("MatchRunner")
@@ -177,13 +178,17 @@ func test_a_groups_badge_shows_the_live_count_and_an_empty_group_only_its_number
 	_touch_button("Group1", 500)
 	_select([1, 2, 21])
 	_touch_button("Group2", 500)
-	assert_array(_badges()).is_equal(["1\n30", "2\n3", "3"])
+	_select([1, 21, 25])
+	_touch_button("Group3", 500)
+	_controller.selection.clear()  # No selection to lose a unit: the badges follow the deaths alone.
+	assert_array(_badges()).is_equal(["1\n30", "2\n3", "3\n3"])
 	for row: int in 20:  # Tanks 1-20 die in the next tick.
 		runner.world.hp[row] = 0
 	runner.run_ticks(1)
-	assert_array(_badges()).is_equal(["1\n10", "2\n1", "3"])
+	assert_array(_badges()).is_equal(["1\n10", "2\n1", "3\n2"])
 	assert_array(_controller.selection.group(1)).is_equal(range(21, 31))
 	assert_array(_controller.selection.group(2)).is_equal([21])
+	assert_array(_controller.selection.group(3)).is_equal([21, 25])
 	_controller.tap_group(1)  # A recalled group holds the survivors only.
 	assert_array(_controller.selection.selected).is_equal(range(21, 31))
 	for row: int in 10:  # The other ten tanks of the group die, group 2's last one with them.

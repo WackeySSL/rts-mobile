@@ -13,7 +13,9 @@ extends PanelContainer
 ## Its parent MarginContainer is the band between the ArmyBar and the sidebar zone (the right 20%,
 ## at least 200 dp, kept free for the build sidebar). The panel sets that band's margins and sits
 ## in its middle. A row is at most BAND_SHARE of the band's width (the safe area's inner width, the
-## band's own): a longer name is clipped with an ellipsis.
+## band's own): a longer name is clipped with an ellipsis. The cap bounds the panel's growth and
+## keeps it off the ArmyBar. It does not reserve the zone: where the screen is too narrow for the
+## panel and the zone (see `_fit_band`), the zone gives way, a long name or not.
 
 const ICON_DP: float = 40.0
 const MIN_HEIGHT_DP: float = 48.0

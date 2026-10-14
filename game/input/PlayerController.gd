@@ -2,8 +2,9 @@ class_name PlayerController
 extends Node
 ## Turns the selection gestures of TouchInput into selection changes and Commands (ADR 0004
 ## section 5). It reads the view and the published snapshot (ADR 0012 section 3), afresh at each
-## call and never kept, and never writes to the sim: an order leaves through `command_sink` as an
-## ATTACK_MOVE Command that carries the sorted selection (ADR 0003).
+## call and never kept (the enemy tap still reads the World for the target's position), and never
+## writes to the sim: an order leaves through `command_sink` as an ATTACK_MOVE Command that carries
+## the sorted selection (ADR 0003).
 ## A tap acts at once. A double-tap on an own unit selects its type on screen, a box selects the
 ## own units inside it, and an empty box clears the selection (the one way to deselect). Selection
 ## is not a Command, so it never reaches the sim. A unit that dies leaves the selection and the

@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ART: String = "res://assets/art/svg/units/light_tank_"
+const LONG_NAME: String = "Heavily Armoured Experimental Siege Tank Destroyer Mark Seven"
 
 var _window_size_before: Vector2i
 var _now_ms: int = 0
@@ -88,6 +89,10 @@ func test_two_types_get_a_row_each_and_a_total_and_the_rows_are_reused() -> void
 	assert_bool(_node("Rows/Total").visible).is_true()
 	assert_int(_node("Rows/Total").get_index()).is_equal(2)  # Below the rows.
 	assert_object((_node("Rows/Row1/Icon/Hull") as TextureRect).texture).is_null()  # No art.
+	await await_idle_frame()
+	for row_name: String in ["Row0", "Row1"]:  # Without a band there is no cap.
+		var title: Label = _node("Rows/%s/Name" % row_name)
+		assert_float(title.size.x).is_greater_equal(_text_px(title))
 	var row0: Node = _node("Rows/Row0")
 	_panel.set_selected(PackedInt32Array([4]))
 	assert_object(_node("Rows/Row0")).is_same(row0)  # Reused, now the scout.
@@ -172,6 +177,9 @@ func test_the_band_and_the_text_follow_a_window_resize() -> void:
 	var zone: float = maxf(get_viewport().get_visible_rect().size.x * 0.2, UiScale.dp(200.0))
 	assert_int(_panel.get_parent().get_theme_constant("margin_right")).is_equal(ceili(zone))
 	assert_int(_node("Rows/Row0/Name").get_theme_font_size("font_size")).is_equal(_px(16.0))
+	var title: Label = _node("Rows/Row0/Name")  # The cap is in px, so it is fitted again.
+	assert_str(title.text).is_equal("Light Tank")
+	assert_float(title.size.x).is_greater_equal(_text_px(title))
 
 
 ## "Light Tank" is also the capitalised type id, so a name written into the snapshot alone shows
@@ -193,9 +201,9 @@ func test_names_and_counts_come_from_the_snapshot_and_never_the_world() -> void:
 
 ## A row is at most 40% of the band (the safe area's inner width): a name past that is clipped
 ## with an ellipsis, and the icon and the count keep their room. "Light Tank" is not clipped.
+## web_phone_small is where the sidebar zone gives way to a long name; the cap holds there too.
 func test_a_long_name_is_clipped_at_the_cap_and_light_tank_is_not() -> void:
-	var long_name: String = "Heavily Armoured Experimental Siege Tank Destroyer Mark Seven"
-	for profile: StringName in [&"desktop", &"android_6in", &"web_tablet"]:
+	for profile: StringName in [&"desktop", &"android_6in", &"web_tablet", &"web_phone_small"]:
 		await _open(UiProfiles.by_name(profile))
 		_runner().paused = true
 		_select([1])
@@ -205,26 +213,53 @@ func test_a_long_name_is_clipped_at_the_cap_and_light_tank_is_not() -> void:
 		assert_float(title.size.x).override_failure_message(str(profile)).is_greater_equal(
 			_text_px(title)
 		)
-		_runner().snapshot.type_names[0] = long_name
+		_runner().snapshot.type_names[0] = LONG_NAME
 		_panel.set_selected(PackedInt32Array([1]))
 		await await_idle_frame()
-		var band_px: float = (_panel.get_parent() as Control).size.x
-		var row: Control = _node("Rows/Row0")
-		var count: Label = _node("Rows/Row0/Count")
-		var why: String = "%s: row %s, band %s" % [profile, row.size.x, band_px]
-		assert_str(title.text).is_equal(long_name)  # The text stays whole; the draw clips it.
-		assert_float(_text_px(title)).override_failure_message(why).is_greater(band_px * 0.4)
-		# The box layout rounds sizes to whole px, so the row is the cap to within a px or two.
-		assert_float(row.size.x).override_failure_message(why).is_less_equal(band_px * 0.4 + 1.5)
-		assert_float(row.size.x).override_failure_message(why).is_greater_equal(band_px * 0.4 - 1.5)
-		assert_float(title.size.x).override_failure_message(why).is_greater(UiScale.dp(16.0))
-		assert_float(count.size.x).override_failure_message(why).is_greater_equal(
-			count.get_combined_minimum_size().x
-		)
+		_assert_capped("Row0", str(profile))
 		(
 			assert_bool(_panel.get_global_rect().intersects(_hud("ArmyBar").get_global_rect()))
 			. is_false()
 		)
+
+
+## The cap is per row. The scenario gets a second type, the rifle squad (units 41 and 42), and the
+## names are written into the snapshot: both long, then only the second, then only the first.
+func test_every_row_is_capped_and_a_short_name_on_either_row_is_not() -> void:
+	await _open(UiProfiles.by_name(&"android_6in"))
+	var spawn: SpawnDef = SpawnDef.new()
+	spawn.owner = 1
+	spawn.unit = load("res://data/units/rifle_squad.tres")
+	spawn.count = 2
+	spawn.origin_tile = Vector2i(8, 14)
+	var scenario: ScenarioDef = _runner().scenario.duplicate()
+	scenario.spawns = scenario.spawns.duplicate()
+	scenario.spawns.append(spawn)
+	_runner().scenario = scenario
+	_runner().paused = true
+	_runner().start()
+	await await_idle_frame()
+	var snap: MatchSnapshot = _runner().snapshot
+	for names: Array in [
+		[LONG_NAME, LONG_NAME], ["Light Tank", LONG_NAME], [LONG_NAME, "Rifle Squad"]
+	]:
+		snap.type_names[0] = names[0]
+		snap.type_names[1] = names[1]
+		_panel.set_selected(PackedInt32Array([1, 41, 42]))
+		await await_idle_frame()
+		assert_bool(_node("Rows/Total").visible).is_true()
+		assert_str(_texts("Row1")[1]).is_equal("×2")
+		for at: int in 2:
+			var row_name: String = "Row%d" % at
+			var why: String = "%s, %s" % [names, row_name]
+			if names[at] == LONG_NAME:
+				_assert_capped(row_name, why)
+				continue
+			var title: Label = _node("Rows/%s/Name" % row_name)
+			assert_str(title.text).is_equal(names[at])
+			assert_float(title.size.x).override_failure_message(why).is_greater_equal(
+				_text_px(title)
+			)
 
 
 func test_the_count_drops_when_a_selected_tank_dies_and_the_panel_hides_with_the_last() -> void:
@@ -241,6 +276,24 @@ func test_the_count_drops_when_a_selected_tank_dies_and_the_panel_hides_with_the
 	_runner().run_ticks(1)
 	assert_bool(_panel.visible).override_failure_message("all dead").is_false()
 	assert_array(_sent).is_empty()
+
+
+## The row `row_name` is the cap wide, its name clipped, and its icon and count keep their room.
+func _assert_capped(row_name: String, why: String) -> void:
+	var band_px: float = (_panel.get_parent() as Control).size.x
+	var row: Control = _node("Rows/" + row_name)
+	var title: Label = _node("Rows/%s/Name" % row_name)
+	var count: Label = _node("Rows/%s/Count" % row_name)
+	var detail: String = "%s: row %s, band %s" % [why, row.size.x, band_px]
+	assert_str(title.text).is_equal(LONG_NAME)  # The text stays whole; the draw clips it.
+	assert_float(_text_px(title)).override_failure_message(detail).is_greater(band_px * 0.4)
+	# The box layout rounds sizes to whole px, so the row is the cap to within a px or two.
+	assert_float(row.size.x).override_failure_message(detail).is_less_equal(band_px * 0.4 + 1.5)
+	assert_float(row.size.x).override_failure_message(detail).is_greater_equal(band_px * 0.4 - 1.5)
+	assert_float(title.size.x).override_failure_message(detail).is_greater(UiScale.dp(16.0))
+	assert_float(count.size.x).override_failure_message(detail).is_greater_equal(
+		count.get_combined_minimum_size().x
+	)
 
 
 func _expect(step: String, count: String) -> void:
