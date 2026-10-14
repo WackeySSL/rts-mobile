@@ -198,9 +198,11 @@ bursty phase whose per-active-tick cost sets a headroom value. `COMMANDS`, `REMO
   per row; calling back into GDScript while holding a `ptrw()` pointer; resizing a held array.
   The only resizes in a tick are the event appends, one per appending kernel after its loop.
 - Two layers: `core/` is plain C++17 over the contract's `WorldView` and includes no Godot
-  header. `WorldView` is realised as `ArrayView<T>` per array (`core/array_view.h`) with an
-  aggregate per kernel (FLOW: `flow::Slot`); in the header's words, "The raw pointer is private,
-  so core/ reaches an element only through get() and set()", "An index outside the window reads
+  header. `WorldView` is realised as `ArrayView<T>` per array (`core/array_view.h`) "with
+  flow::Slot as the aggregate" (`core/flow.h`: one FlowField slot's views and scalars, loaded
+  and stored back per slot turn; the World and cache arrays reach `core/` as separate
+  `ArrayView`s and ints, so `Slot` is no per-kernel aggregate); in the header's words, "The raw
+  pointer is private, so core/ reaches an element only through get() and set()", "An index outside the window reads
   0 and writes nothing" and "Only bind/world_access.h builds a view from a pointer". `bind/`
   (`SimKernels`, `world_access.h`, `register_types`, one `kernel_<phase>.cpp` each, one line per
   kernel in `kernel_list.h`) is the only code that touches Godot types. A `core/` function lands

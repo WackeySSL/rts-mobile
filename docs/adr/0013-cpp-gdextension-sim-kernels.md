@@ -569,10 +569,15 @@ absorbs next to the C++ phases.
   Status note (2026-10-14, P26m, P30n as merged, #74, and P30n2, #75), the text above stays as
   accepted:
   - **`WorldView` as realised.** The struct of raw pointers and sizes that "Two layers" names is
-    `ArrayView<T>`, one per array (`src/core/array_view.h`), with an aggregate per kernel, for
-    FLOW `flow::Slot` (`src/core/flow.h`). The header says, in its own words: "A window over one
-    of the World's arrays, for core/ (ADR 0013 section 2): the per-array piece of the contract's
-    WorldView, with flow::Slot as the aggregate. The raw pointer is private, so core/ reaches an
+    `ArrayView<T>`, one per array (`src/core/array_view.h`), with `flow::Slot` as the aggregate
+    (`src/core/flow.h`: "One FlowField: its arrays as views and its int and bool members", which
+    the kernel loads from the slot object and stores back per slot turn). The kernel's World and
+    cache arrays (`unit_id`, `field`, `stats`, `move_cost`, `status`, `requested`, `ref_count`
+    and the others) reach `core/` as separate `ArrayView`s and ints, not inside a `Slot`, so
+    `Slot` is one slot's aggregate, not a per-kernel one. The header says, in its own words: "A
+    window over one of the World's arrays, for core/ (ADR 0013 section 2): the per-array piece of
+    the contract's WorldView, with flow::Slot as the aggregate. The raw pointer is private, so
+    core/ reaches an
     element only through get() and set(): an element is widened to int64_t on the way out and
     narrowed with an explicit cast on the way in (section 4), and the compiler enforces that,
     whatever the element type. An index outside the window reads 0 and writes nothing, so the
@@ -854,10 +859,10 @@ absorbs next to the C++ phases.
   implementations, which §2 requires to land with the kernel) plus 280 for its lockstep (P30n2,
   #75), against the plan's 340. Michael decided in chat on 2026-10-14, verbatim: **"ja til
   port-reglen"**: the native port rows P37n, P39n, P41n, P42n and P46n are re-estimated to their
-  real size, about 1,000 changed lines each (about 450 of C++ and about 600 of module tests),
-  and each splits at the lockstep (part 2 is the lockstep test), as P30n and P30n2 did. This
-  sizing rule is not §1's port rule, which is unchanged. The plan's rows, "Split triggers" and
-  "Totals" carry it.
+  real size, about 1,000 changed lines each (about 450 of C++ and about 600 of module tests;
+  P42n about 1,000 per kernel it holds), and each splits at the lockstep (part 2 is the
+  lockstep test), as P30n and P30n2 did. This sizing rule is not §1's port rule, which is
+  unchanged. The plan's rows, "Split triggers" and "Totals" carry it.
 - **Exit route:** web on C++ (§7, option B). It would allow deleting the twins and needs its own
   ADR after the Phase 2 gate. It is not adopted now.
 
