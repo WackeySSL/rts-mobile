@@ -5,29 +5,36 @@
 # checkout without a build is a plain GDScript project (ADR 0013 section 9). verify.sh runs it first.
 # Usage: bash scripts/build-native.sh [--platform linux|android] [--target template_debug|template_release]
 #                                     [--arch x86_64|arm64] [--compiler gcc|clang] [--optimize speed]
-#                                     [--print-cache-key]
+#                                     [--sanitize undefined] [--print-cache-key]
 #   --arch defaults to the one value a platform accepts: linux builds the host architecture only,
 #   android arm64 only (CI, or a cloud session after scripts/cloud/install-android.sh; scripts/ci/install-ndk.sh
 #   installs the NDK_VERSION below).
 #   --compiler clang adds use_llvm=yes (the native-clang CI job; the default gcc is the host g++, and android
 #   always uses the NDK's clang). --optimize speed adds optimize=speed (-O3; template_debug is -O2 without it).
+#   --sanitize undefined (the CI sanitizer job, ADR 0013 section 10) builds our sources with g++ -O1 -fsanitize=undefined
+#   -fno-sanitize-recover=all and without -fwrapv, so a signed overflow aborts; the library links the shared libubsan and
+#   keeps its name, so it replaces a plain build of the same platform, target and arch (Linux and g++ only). It fixes the
+#   optimisation at -O1, so it refuses --optimize.
 #   --print-cache-key prints the CI cache key (ADR 0013 section 8: platform, arch, target, compiler version,
-#   optimize, godot-cpp SHA, SCons version) alone on stdout and exits 0 before the fetch and the build.
+#   optimize, sanitize, godot-cpp SHA, SCons version) alone on stdout and exits 0 before the fetch and the build.
 #   It checks the toolchain first, so android needs the NDK installed already: the key serves the
 #   godot-cpp and SCons cache after install-ndk.sh, never a cache of the NDK itself (key that on NDK_VERSION).
 # Env:   SCONS=<binary> (default: scons; must be 4.9.1), SCONS_CACHE=<folder> (godot-cpp's CacheDir),
 #        ANDROID_NDK_ROOT=<NDK folder> (android; must be <sdk>/ndk/29.0.14206865, the layout that
 #        sdkmanager makes and that godot-cpp's tools/android.py reads as $ANDROID_HOME/ndk/<version>).
 # Needs: git and network access to github.com (first run only), scons 4.9.1, g++ and binutils
-#        (readelf, nm) for linux (godot-cpp's SConstruct never reads CXX; use_llvm=yes picks clang).
+#        (readelf, nm) for linux (godot-cpp's SConstruct never reads CXX; use_llvm=yes picks clang),
+#        and for --sanitize undefined g++'s libubsan.
 #        Flags: native/sim_kernels/SConstruct.
 # Exit:  0 ok
 #        2 bad flag or an impossible platform/arch/compiler combination
-#        3 tool missing (git, scons 4.9.1, g++ or clang, binutils, or the NDK and its toolchain), or an NDK of
-#          another version than the pinned one
+#        3 tool missing (git, scons 4.9.1, g++ or clang, binutils, libubsan, or the NDK and its toolchain), or an NDK
+#          of another version than the pinned one
 #        4 godot-cpp fetch or SHA check failed, or the build failed, produced no library, or the
 #          library fails the ELF check (machine, shared object, entry symbol, and on Android only
-#          system libraries or Godot's libc++_shared.so as dependencies)
+#          system libraries or Godot's libc++_shared.so as dependencies; a sanitized library must need the
+#          shared libubsan, call a signed-overflow handler (no -fwrapv), call fatal handlers only and have been
+#          compiled at -O1, which it reads back from the compile line the SConstruct records)
 # Success prints "build-native: OK <library> (<bytes> bytes)". Bash 3.2 compatible.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -61,10 +68,11 @@ target="template_debug"
 arch=""
 compiler=""
 optimize=""
+sanitize=""
 print_key=0
 while [ $# -gt 0 ]; do
   case "$1" in
-    --platform | --target | --arch | --compiler | --optimize)
+    --platform | --target | --arch | --compiler | --optimize | --sanitize)
       [ $# -ge 2 ] && [ -n "$2" ] || die 2 "$1 needs a value"
       case "$1" in
         --platform) platform="$2" ;;
@@ -72,17 +80,22 @@ while [ $# -gt 0 ]; do
         --arch) arch="$2" ;;
         --compiler) compiler="$2" ;;
         --optimize) optimize="$2" ;;
+        --sanitize) sanitize="$2" ;;
       esac
       shift 2
       ;;
     --print-cache-key) print_key=1; shift ;;
-    *) die 2 "unknown argument '$1' (usage: bash scripts/build-native.sh [--platform linux|android] [--target template_debug|template_release] [--arch x86_64|arm64] [--compiler gcc|clang] [--optimize speed] [--print-cache-key])" ;;
+    *) die 2 "unknown argument '$1' (usage: bash scripts/build-native.sh [--platform linux|android] [--target template_debug|template_release] [--arch x86_64|arm64] [--compiler gcc|clang] [--optimize speed] [--sanitize undefined] [--print-cache-key])" ;;
   esac
 done
 case "$platform" in linux | android) ;; *) die 2 "--platform must be linux or android, got '$platform'" ;; esac
 case "$target" in template_debug | template_release) ;; *) die 2 "--target must be template_debug or template_release, got '$target'" ;; esac
 case "$compiler" in "" | gcc | clang) ;; *) die 2 "--compiler must be gcc or clang, got '$compiler'" ;; esac
 case "$optimize" in "" | speed) ;; *) die 2 "--optimize must be speed, got '$optimize'" ;; esac
+case "$sanitize" in "" | undefined) ;; *) die 2 "--sanitize must be undefined, got '$sanitize'" ;; esac
+[ -z "$sanitize" ] || [ "$platform" = "linux" ] || die 2 "--sanitize builds the Linux library only (the phone never runs a sanitized one)"
+[ -z "$sanitize" ] || [ "$compiler" != "clang" ] || die 2 "--sanitize undefined builds with g++: clang links no UBSan runtime into a shared library"
+[ -z "$sanitize" ] || [ -z "$optimize" ] || die 2 "--sanitize undefined builds at -O1 whatever --optimize says: drop --optimize"
 host_arch="$(uname -m)"
 case "$host_arch" in aarch64 | arm64) host_arch="arm64" ;; esac
 if [ "$platform" = "android" ]; then
@@ -114,6 +127,9 @@ if [ "$platform" = "linux" ]; then
     cxx="g++"
     command -v g++ >/dev/null 2>&1 || die 3 "g++ is missing (install g++; the build uses it whatever CXX says)"
     cc_version="$(g++ -dumpfullversion 2>/dev/null || true)"
+    # -print-file-name answers the bare name when the file is not in the compiler's search path.
+    [ -z "$sanitize" ] || [ "$(g++ -print-file-name=libubsan.so 2>/dev/null)" != "libubsan.so" ] ||
+      die 3 "g++ has no libubsan (install libubsan1 and the sanitizer runtime of gcc)"
   fi
   [ -n "$cc_version" ] || die 3 "$cxx reports no version"
   for tool in readelf nm; do
@@ -144,8 +160,9 @@ else
   scons_args=("ndk_version=${NDK_VERSION}")
 fi
 [ -z "$optimize" ] || scons_args+=("optimize=${optimize}")
+[ -z "$sanitize" ] || scons_args+=("sanitize=${sanitize}")
 if [ "$print_key" = 1 ]; then
-  echo "native-${platform}-${arch}-${target}-${cc_id}${optimize:+-$optimize}-godotcpp-${GODOT_CPP_SHA}-scons${scons_version}"
+  echo "native-${platform}-${arch}-${target}-${cc_id}${optimize:+-$optimize}${sanitize:+-sanitize-$sanitize}-godotcpp-${GODOT_CPP_SHA}-scons${scons_version}"
   exit 0
 fi
 
@@ -176,7 +193,7 @@ fi
 # (3) Build. build_profile binds only the engine classes the bind layer uses instead of all ~1000,
 # which takes a cold godot-cpp build from minutes to seconds; it changes no compiler flag.
 jobs="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
-echo "build-native: ${platform} ${target} ${arch} (${cc_id}${optimize:+, optimize=${optimize}}), ${jobs} jobs"
+echo "build-native: ${platform} ${target} ${arch} (${cc_id}${optimize:+, optimize=${optimize}}${sanitize:+, sanitize=${sanitize}}), ${jobs} jobs"
 log="$(mktemp -t build-native.XXXXXX)"
 set +e
 (
@@ -226,7 +243,26 @@ if [ -n "$elf_allowed" ]; then
 fi
 elf_symbols="$("$elf_nm" -D --defined-only "$library" 2>&1)" || die 4 "$elf_nm -D failed on $elf_name: $elf_symbols"
 grep -Eq " T ${ENTRY_SYMBOL}\$" <<<"$elf_symbols" || die 4 "$elf_name does not export the entry symbol ${ENTRY_SYMBOL}"
-echo "build-native: ELF ok: ${elf_machine}, shared object, exports ${ENTRY_SYMBOL}, needs ${elf_needed:-nothing}"
+if [ -n "$sanitize" ]; then
+  # Instrumented and linked to the shared runtime: the handlers are undefined symbols that libubsan provides.
+  case " $elf_needed " in *" libubsan.so"*) ;; *) die 4 "$elf_name does not need the shared libubsan (needs: ${elf_needed:-nothing})" ;; esac
+  elf_undefined="$("$elf_nm" -D --undefined-only "$library" 2>&1)" || die 4 "$elf_nm -D --undefined-only failed on $elf_name: $elf_undefined"
+  grep -Eq ' U __ubsan_handle_' <<<"$elf_undefined" || die 4 "$elf_name calls no __ubsan_handle_ function: it was not instrumented"
+  # Signed overflow is checked only without -fwrapv, and a handler is fatal only with -fno-sanitize-recover=all (its name
+  # ends in _abort; the two that cannot return have no other kind): losing either flag would leave the library running
+  # green over the bugs it is there to find.
+  elf_handlers="$(grep -Eo '__ubsan_handle_[A-Za-z0-9_]+' <<<"$elf_undefined" || true)"
+  grep -Eq '^__ubsan_handle_(add|sub|mul)_overflow_abort$' <<<"$elf_handlers" ||
+    die 4 "$elf_name calls no fatal signed-overflow handler: -fwrapv is on, or the checks are not fatal"
+  elf_recoverable="$(grep -Ev '_abort$|^__ubsan_handle_(builtin_unreachable|missing_return)$' <<<"$elf_handlers" | tr '\n' ' ' || true)"
+  [ -z "$elf_recoverable" ] || die 4 "$elf_name calls handlers that return after a report (${elf_recoverable% }): -fno-sanitize-recover=all is off"
+  # -O1 follows godot-cpp's -O2 on the compile line and the last -O wins; the SConstruct's -frecord-gcc-switches keeps that
+  # line in the library, one per distinct command (our sources share one), so a build that lost the -O1 is seen here.
+  elf_opt="$("$elf_readelf" -p .GCC.command.line "$library" 2>/dev/null | awk '/GNU C\+\+/ { for (i = 1; i <= NF; i++) if ($i ~ /^-O/) last = $i; print (last == "" ? "none" : last); last = "" }' | sort -u | tr '\n' ' ')" || true
+  elf_opt="${elf_opt% }"
+  [ "$elf_opt" = "-O1" ] || die 4 "$elf_name was not compiled at -O1 (the last -O of its compile commands: ${elf_opt:-no .GCC.command.line recorded})"
+fi
+echo "build-native: ELF ok: ${elf_machine}, shared object, exports ${ENTRY_SYMBOL}, needs ${elf_needed:-nothing}${sanitize:+(instrumented: $sanitize)}"
 
 # (5) The generated .gdextension names every platform's library, whatever was built, so that its
 # content never depends on the build that wrote it; Godot loads its own platform's entry only.

@@ -5,7 +5,14 @@
 # godot-cpp's flags per target stay untouched: template_debug is -O2 with DEBUG_ENABLED, template_release
 # is -O3; both get NDEBUG (godot-cpp sets it on every non-dev build, so C++ assert() never fires);
 # no LTO, -fno-exceptions.
+# sanitize=undefined (scripts/build-native.sh --sanitize undefined, ADR 0013 section 10) changes our sources only: -O1
+# instead of -O2, every UBSan check fatal and no -fwrapv, so that a signed overflow aborts. The library keeps its name
+# and links the shared libubsan; the CI sanitizer job loads it into an uninstrumented headless Godot.
 
+# Taken out of ARGUMENTS first: godot-cpp's SConstruct would warn about a variable it does not know.
+sanitize = ARGUMENTS.pop("sanitize", "")
+if sanitize not in ("", "undefined"):
+    Exit("SConstruct: sanitize must be undefined, got '%s'" % sanitize)
 env = SConscript("../godot-cpp/SConstruct")
 
 # Our sources get their own clone (ADR 0013 section 12). SCons expands flags when a target is
@@ -22,10 +29,17 @@ kenv.Append(CPPPATH=["src"])
 # -fwrapv makes signed overflow a defined wrap in every production and test build (section 4).
 # -Wsign-conversion is in clang's -Wconversion and not in g++'s: it makes g++ (verify.sh) as strict as
 # the clang jobs (Android, native-clang), which also run with -Werror.
-kenv.Append(CCFLAGS=["-Wall", "-Wextra", "-Wshadow", "-Wconversion", "-Wsign-conversion", "-Wsign-compare", "-Werror", "-fwrapv"])
+kenv.Append(CCFLAGS=["-Wall", "-Wextra", "-Wshadow", "-Wconversion", "-Wsign-conversion", "-Wsign-compare", "-Werror"])
+if sanitize:
+    # The last -O wins over godot-cpp's -O2. g++ links its shared libubsan by default (-static-libubsan would not).
+    # -frecord-gcc-switches puts the compile line into the library, where build-native.sh reads the -O back.
+    kenv.Append(CCFLAGS=["-O1", "-fno-omit-frame-pointer", "-fsanitize=undefined", "-fno-sanitize-recover=all", "-frecord-gcc-switches"])
+    kenv.Append(LINKFLAGS=["-fsanitize=undefined"])
+else:
+    kenv.Append(CCFLAGS=["-fwrapv"])
 # Objects carry the build's suffix like godot-cpp's own, so that another platform, target or arch in the
 # same tree keeps its objects instead of overwriting them.
-kenv["SHOBJSUFFIX"] = kenv["suffix"] + kenv["SHOBJSUFFIX"]
+kenv["SHOBJSUFFIX"] = kenv["suffix"] + (".ubsan" if sanitize else "") + kenv["SHOBJSUFFIX"]
 if kenv["platform"] == "android":
     # Google Play requires 16 KB page support from Android 15; godot-cpp sets no max-page-size. LLD ends
     # PT_GNU_RELRO on common-page-size (4 KB unless set), and Google's RELRO check wants the 16 KB boundary
@@ -36,7 +50,7 @@ for name, value in (
     ("SIM_KERNELS_PLATFORM", kenv["platform"]),
     ("SIM_KERNELS_TARGET", kenv["target"]),
     ("SIM_KERNELS_ARCH", kenv["arch"]),
-    ("SIM_KERNELS_OPT", kenv["optimize"]),
+    ("SIM_KERNELS_OPT", "ubsan-O1" if sanitize else kenv["optimize"]),
 ):
     kenv.Append(CPPDEFINES=[(name, '\\"%s\\"' % value)])
 

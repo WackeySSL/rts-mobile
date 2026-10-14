@@ -3,7 +3,7 @@
 # fixture trees, the NATIVE LIBRARY MISSING check of run-tests.sh, build-native.sh's exit codes and
 # ELF checks against stub scons, git, g++, clang++, readelf and nm (and a stub NDK), check-cpp-format.sh
 # against a stub clang-format, install-ndk.sh against a stub sdkmanager (P55a), check-native-tests.sh on
-# fixtures, and the order of verify.sh's native steps. Needs no Godot, SCons, compiler, Android SDK, NDK or
+# fixtures, run-sanitizer-harness.sh against a stub Godot and g++ (P57), and the order of verify.sh's native steps. Needs no Godot, SCons, compiler, Android SDK, NDK or
 # network, and runs the scripts in a scrubbed environment on a stub uname (x86_64 unless a case
 # says otherwise), so the host changes no result. ci.yml runs it in the verify job.
 # Usage: bash scripts/ci/test-native-scripts.sh      Exit: 0 all cases pass, 1 a case failed.
@@ -46,16 +46,62 @@ echo "${ANDROID_HOME:-}" >../../scons.home # the SDK folder godot-cpp would read
 for a in "$@"; do case "$a" in platform=* | target=* | arch=*) eval "${a%%=*}=${a#*=}" ;; esac; done
 mkdir -p ../bin && echo stub >"../bin/libsim_kernels.${platform}.${target}.${arch}.so"
 STUB
-printf '#!/usr/bin/env bash\n[ "${1:-}" = -dumpfullversion ] && echo 13.3.0 || echo "g++ (stub) 13.3.0"\n' >"$root/bin/g++"
+# g++: its version, a runtime library that STUB_RUNTIME names as missing, and for the harness build (P57) the -o file,
+# a script that acts as STUB_HARNESS says: it refuses a dump of a format other than 1 unless that is "accept".
+cat >"$root/bin/g++" <<'STUB'
+#!/usr/bin/env bash
+case "${1:-}" in
+  -dumpfullversion) echo 13.3.0; exit 0 ;;
+  -print-file-name=*)
+    lib="${1#-print-file-name=}"
+    if [ "${STUB_RUNTIME:-}" = "$lib" ]; then echo "$lib"; else echo "/usr/lib/gcc/$lib"; fi
+    exit 0 ;;
+esac
+case " $* " in
+  *" -fsanitize=address,undefined "*)
+    [ "${STUB_GXX:-}" != fail ] || { echo "g++: error: stub" >&2; exit 1; }
+    prev=""
+    for arg in "$@"; do
+      if [ "$prev" = "-o" ]; then
+        cat >"$arg" <<'HARNESS'
+#!/usr/bin/env bash
+mode="${STUB_HARNESS:-ok}"
+[ "$mode" != find ] || { echo "sanitizer_harness: FINDING: stub" >&2; exit 1; }
+[ "$mode" != hang ] || exec sleep 30
+format="$(od -An -tu4 -j4 -N4 "$(find "$1" -name 'state_*.bin' | sort | sed -n 1p)" | tr -d ' ')"
+if [ "$format" != 1 ] && [ "$mode" != accept ]; then echo "sanitizer_harness: World.STATE_FORMAT $format is a layout this harness does not know" >&2; exit 2; fi
+# The run over the dumps is handed the folder of both dumps the stub Godot wrote (a file, or a folder short of one, is
+# a harness that checks part of the states); the refusal check is handed a folder with one patched copy.
+case "$1" in */unknown-format) ;; *) [ -f "$1/state_00015.bin" ] && [ -f "$1/state_00030.bin" ] || { echo "stub harness: $1 is not a folder of both dumps" >&2; exit 1; } ;; esac
+count="$(find "$1" -name 'state_*.bin' | wc -l | tr -d ' ')"
+[ "$mode" != short ] || count=$((count - 1)) # a harness that skips a dump of its folder
+echo "sanitizer_harness: flow: $count dumps, 1 calls settling 1; crafted, 1 calls settling 1"
+HARNESS
+        chmod +x "$arg"
+      fi
+      prev="$arg"
+    done ;;
+esac
+echo "g++ (stub) 13.3.0"
+STUB
 printf '#!/usr/bin/env bash\necho "${STUB_CLANGV:-Ubuntu clang version 18.1.3 (1ubuntu1)}"\n' | tee "$root/bin/clang" >"$root/bin/clang++"
 cat >"$root/bin/readelf" <<'STUB'
 #!/usr/bin/env bash
 case "$1" in
   -h) echo "  Machine:   ${STUB_MACHINE:-Advanced Micro Devices X86-64}"; echo "  Type:   ${STUB_TYPE:-DYN (Shared object file)}" ;;
   -d) for lib in ${STUB_NEEDED:-libc.so.6}; do echo " 0x01 (NEEDED)   Shared library: [$lib]"; done ;;
+  -p) [ "${STUB_SWITCHES-x}" != none ] || exit 0 # no such section: readelf only warns on stderr
+      echo "String dump of section '.GCC.command.line':"; echo "  [     0]  GNU C++17 13.3.0 -mtune=generic -march=x86-64 ${STUB_SWITCHES--O2 -O1} -std=c++17 -fPIC"
+      [ -z "${STUB_OTHER_SOURCE:-}" ] || echo "  [   180]  GNU C++17 13.3.0 -mtune=generic -march=x86-64 -O2 -std=c++17 -fPIC" ;; # a second compile command
 esac
 STUB
-printf '#!/usr/bin/env bash\necho "0000000000001000 T ${STUB_SYMBOL:-sim_kernels_library_init}"\n' >"$root/bin/nm"
+cat >"$root/bin/nm" <<'STUB'
+#!/usr/bin/env bash
+case " $* " in
+  *" --undefined-only "*) for symbol in ${STUB_UNDEF:-__ubsan_handle_add_overflow_abort}; do echo "                 U $symbol"; done ;;
+  *) echo "0000000000001000 T ${STUB_SYMBOL:-sim_kernels_library_init}" ;;
+esac
+STUB
 cat >"$root/bin/clang-format" <<'STUB'
 #!/usr/bin/env bash
 if [ "$1" = "--version" ]; then echo "clang-format version ${STUB_CF:-20.1.8}"; exit 0; fi
@@ -73,6 +119,21 @@ if [ -f native/sim_kernels.gdextension ] && ! grep -Fq res://native/sim_kernels.
   echo "stub godot: started without the seeded extension list" >&2
   exit 134
 fi
+# The dump step (godot ... -s <script> -- <out dir>, P57), as STUB_DUMP says it ends.
+case " $* " in
+  *" -s "*)
+    for arg; do out="$arg"; done
+    case "${STUB_DUMP:-ok}" in
+      ok) for tick in 00015 00030; do printf 'RTSD\001\000\000\000' >"$out/state_$tick.bin"; done; echo "dump_states: wrote 2 dumps to $out" ;;
+      fail) echo "dump_states: FAIL no dump caught a waiting field" >&2; exit 1 ;;
+      noline) printf 'RTSD\001\000\000\000' >"$out/state_00015.bin" ;;
+      error) printf 'RTSD\001\000\000\000' >"$out/state_00015.bin"; echo "dump_states: wrote 1 dumps"; echo "SCRIPT ERROR: Parse Error" ;;
+      engine_error) for tick in 00015 00030; do printf 'RTSD\001\000\000\000' >"$out/state_$tick.bin"; done; echo "dump_states: wrote 2 dumps to $out"
+        echo "ERROR: Index p_index = 150 is out of bounds (p_instance->size() = 150)." ;; # an engine error line: no SCRIPT ERROR, exit 0
+      empty) echo "dump_states: wrote 1 dumps" ;;
+      hang) exec sleep 30 ;;
+    esac ;;
+esac
 STUB
 chmod +x "$root"/bin/*
 ndk="$root/sdk/ndk/$ndk_pin"
@@ -85,7 +146,7 @@ cp "$root/bin/g++" "$tc/clang++" && cp "$root/bin/readelf" "$tc/llvm-readelf" &&
 tree() {
   mkdir -p "$root/$1/scripts/ci" "$root/$1/native/sim_kernels" "$root/$1/native/godot-cpp" "$root/$1/addons/gdUnit4/bin"
   cp "$repo"/scripts/{seed-extension-list,build-native,run-tests}.sh "$root/$1/scripts/"
-  cp "$repo"/scripts/ci/{check-cpp-format,check-native-tests,install-ndk}.sh "$root/$1/scripts/ci/"
+  cp "$repo"/scripts/ci/{check-cpp-format,check-native-tests,install-ndk,run-sanitizer-harness}.sh "$root/$1/scripts/ci/"
   touch "$root/$1/addons/gdUnit4/bin/GdUnitCmdTool.gd"
 }
 run() {
@@ -140,7 +201,7 @@ run bn STUB_SHA=0000 bash scripts/build-native.sh
 check "build: godot-cpp at another commit" 4 "not the pinned"
 run bn bash scripts/build-native.sh
 check "build: linux, stubs" 0 "ELF ok"
-assert "build: the defaults pass neither use_llvm nor optimize" test "$(grep -Ec 'use_llvm|optimize' "$root/bn/scons.args")" = 0
+assert "build: the defaults pass neither use_llvm, optimize nor sanitize" test "$(grep -Ec 'use_llvm|optimize|sanitize' "$root/bn/scons.args")" = 0
 grep -Fq 'android.release.arm64 = "res://native/bin/libsim_kernels.android.template_release.arm64.so"' "$root/bn/native/sim_kernels.gdextension" &&
   grep -Fq 'entry_symbol = "sim_kernels_library_init"' "$root/bn/native/sim_kernels.gdextension" &&
   echo "ok: build: the generated .gdextension names every platform's library" || { echo "FAIL: build: .gdextension" >&2; failures=$((failures + 1)); }
@@ -165,6 +226,47 @@ check "build: clang at speed" 0 "(clang18.1.3, optimize=speed)"
 assert "build: clang at speed passes use_llvm=yes and optimize=speed" grep -Eq 'use_llvm=yes.*optimize=speed' "$root/bn/scons.args"
 run bn STUB_CLANGV=nonsense bash scripts/build-native.sh --compiler clang
 check "build: clang without a readable version" 3 "clang++ reports no version"
+# --sanitize undefined (P57): g++ on Linux only, a library that needs the shared libubsan and calls its handlers.
+run bn bash scripts/build-native.sh --sanitize address
+check "build: unknown sanitize" 2 "--sanitize must be undefined"
+run bn bash scripts/build-native.sh --sanitize undefined --compiler clang
+check "build: sanitize takes g++ only" 2 "builds with g++"
+run bn bash scripts/build-native.sh --sanitize undefined --platform android
+check "build: sanitize is for the Linux library only" 2 "Linux library only"
+run bn STUB_RUNTIME=libubsan.so bash scripts/build-native.sh --sanitize undefined
+check "build: sanitize without libubsan" 3 "g++ has no libubsan"
+run bn bash scripts/build-native.sh --sanitize undefined
+check "build: sanitized library without the shared libubsan" 4 "does not need the shared libubsan"
+run bn STUB_NEEDED="libc.so.6 libubsan.so.1" STUB_UNDEF=memcpy bash scripts/build-native.sh --sanitize undefined
+check "build: sanitized library that calls no handler" 4 "was not instrumented"
+run bn bash scripts/build-native.sh --sanitize undefined --optimize speed
+check "build: sanitize fixes -O1, so --optimize is refused" 2 "drop --optimize"
+# Signed overflow is instrumented only without -fwrapv, and a report is fatal only with -fno-sanitize-recover=all
+# (every handler then ends in _abort, bar the two that cannot return): a library that lost either must fail the build.
+ubsan_run() { run bn STUB_NEEDED="libc.so.6 libubsan.so.1" "STUB_UNDEF=$1" bash scripts/build-native.sh --sanitize undefined; }
+ubsan_run "__ubsan_handle_type_mismatch_v1_abort"
+check "build: sanitized library with no signed-overflow handler (-fwrapv)" 4 "no fatal signed-overflow handler"
+ubsan_run "__ubsan_handle_add_overflow __ubsan_handle_type_mismatch_v1"
+check "build: sanitized library with recoverable handlers only" 4 "no fatal signed-overflow handler"
+ubsan_run "__ubsan_handle_mul_overflow_abort __ubsan_handle_type_mismatch_v1 __ubsan_handle_load_invalid_value"
+check "build: sanitized library with a recoverable handler among fatal ones" 4 "return after a report (__ubsan_handle_type_mismatch_v1 __ubsan_handle_load_invalid_value)"
+ubsan_run "__ubsan_handle_sub_overflow_abort __ubsan_handle_missing_return __ubsan_handle_builtin_unreachable"
+check "build: the two handlers that cannot return have no _abort kind" 0 "(instrumented: undefined)"
+# -O1 must be the last -O of the recorded compile command, after godot-cpp's -O2 (g++ takes the last): a build that lost it
+# keeps the instrumentation and the handlers, so only the recorded switches show it.
+for switches in "-O2" "-O1 -O2" "-O3 -O1 -O2" "-fPIC"; do
+  run bn STUB_NEEDED="libc.so.6 libubsan.so.1" "STUB_SWITCHES=$switches" bash scripts/build-native.sh --sanitize undefined
+  check "build: sanitized library compiled with '$switches' is not at -O1" 4 "was not compiled at -O1"
+done
+run bn STUB_NEEDED="libc.so.6 libubsan.so.1" STUB_OTHER_SOURCE=1 bash scripts/build-native.sh --sanitize undefined
+check "build: sanitized library with one more compile command at -O2 beside the -O1 one" 4 "(the last -O of its compile commands: -O1 -O2)"
+run bn STUB_NEEDED="libc.so.6 libubsan.so.1" STUB_SWITCHES="" bash scripts/build-native.sh --sanitize undefined
+check "build: sanitized library compiled with no -O at all" 4 "(the last -O of its compile commands: none)"
+run bn STUB_NEEDED="libc.so.6 libubsan.so.1" STUB_SWITCHES=none bash scripts/build-native.sh --sanitize undefined
+check "build: sanitized library with no switches recorded (no -frecord-gcc-switches)" 4 "(the last -O of its compile commands: no .GCC.command.line recorded)"
+run bn STUB_NEEDED="libc.so.6 libubsan.so.1" bash scripts/build-native.sh --sanitize undefined
+check "build: sanitize undefined" 0 "(instrumented: undefined)"
+assert "build: sanitize undefined passes sanitize=undefined to SCons" grep -Fq "sanitize=undefined" "$root/bn/scons.args"
 # --print-cache-key: ci.yml writes its stdout to $GITHUB_OUTPUT, so stdout holds the key alone (one line, the
 # info line goes to stderr), printed before the godot-cpp fetch (the cache restores it) and before the build.
 # The tree has no native/godot-cpp: a fetch would create it, and the build would write scons.args.
@@ -179,6 +281,9 @@ key_is() { # name, wanted key, ENV... -- script args: exit 0 and exactly the key
 }
 key_is "build: cache key (platform, arch, target, compiler version, godot-cpp SHA, SCons) alone on stdout" \
   "native-linux-x86_64-template_debug-gcc13.3.0-godotcpp-$sha-scons4.9.1" bash scripts/build-native.sh --print-cache-key
+key_is "build: cache key, sanitize undefined" \
+  "native-linux-x86_64-template_debug-gcc13.3.0-sanitize-undefined-godotcpp-$sha-scons4.9.1" \
+  bash scripts/build-native.sh --sanitize undefined --print-cache-key
 key_is "build: cache key, clang at speed, release" \
   "native-linux-x86_64-template_release-clang18.1.3-speed-godotcpp-$sha-scons4.9.1" \
   bash scripts/build-native.sh --compiler clang --optimize speed --target template_release --print-cache-key
@@ -423,6 +528,33 @@ nt
 check "natives: no suites with kernel_list.h (the floor)" 1 "kernel_list.h exists"
 nt --require test_golden_hashes
 check "natives: the floor holds with a --require suite too" 1 "kernel_list.h exists"
+
+# (4b) run-sanitizer-harness.sh (P57) against a stub Godot, whose dump step ends as STUB_DUMP says, and a stub g++,
+# whose harness acts as STUB_HARNESS says.
+tree sh
+touch "$root/sh/native/sim_kernels.gdextension" # the stub Godot then needs the extension list the runner seeds (ADR 0013 section 9)
+run sh bash scripts/ci/run-sanitizer-harness.sh
+check "harness: no work folder" 2 "usage"
+run sh GODOT=/nonexistent bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
+check "harness: Godot missing" 3 "Godot is missing"
+run sh STUB_RUNTIME=libasan.so bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
+check "harness: g++ without libasan" 3 "g++ has no libasan.so"
+run sh bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
+check "harness: dumps, builds, runs, and sees the unknown format refused" 0 "run-sanitizer-harness: OK"
+for case_ in "STUB_DUMP=fail:4:the dump step exited with 1" "STUB_DUMP=noline:4:did not report" "STUB_DUMP=error:4:Godot logged an error" \
+  "STUB_DUMP=engine_error:4:Godot logged an error" "STUB_DUMP=empty:4:wrote no state_*.bin" "STUB_GXX=fail:4:the harness did not build" "STUB_HARNESS=find:1:the harness failed with exit code 1" \
+  "STUB_HARNESS=accept:1:took a dump of an unknown" "STUB_HARNESS=short:1:checked '1' dump(s) but the dump step wrote 2"; do
+  run sh "${case_%%:*}" bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
+  want="${case_#*:}"
+  check "harness: ${case_%%:*}" "${want%%:*}" "${want#*:}"
+done
+# A loop that does not end gives no report: the dump step and the harness are stopped after SANITIZER_TIMEOUT seconds.
+run sh SANITIZER_TIMEOUT=0 bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
+check "harness: a time limit of 0 s" 2 "SANITIZER_TIMEOUT must be a number of seconds above 0"
+run sh SANITIZER_TIMEOUT=1 STUB_DUMP=hang bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
+check "harness: a dump step that does not end is stopped" 4 "the dump step ran longer than 1 s"
+run sh SANITIZER_TIMEOUT=1 STUB_HARNESS=hang bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
+check "harness: a harness that does not end is stopped" 1 "the harness ran longer than 1 s"
 
 # (5) verify.sh builds first, seeds before the import, tests after it and checks the C++ format last.
 prev=0
