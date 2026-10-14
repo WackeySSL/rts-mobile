@@ -56,7 +56,7 @@ const ROOTS: Array[String] = ["res://game", "res://tests"]
 ## could pass by finding nothing. A rename or a move of one fails the test, and the new place
 ## goes here.
 const KNOWN_SCRIPTS: Dictionary[String, String] = {
-	"res://game/view/UnitLayer.gd": "Node2D",
+	"res://game/view/UnitLayer.gd": "Sprite2D",  # Ring, a Node2D until P40 made it the ring sprite.
 	"res://game/view/MoveMarkerLayer.gd": "CanvasGroup",
 	"res://game/ui/SelectionPanel.gd": "HBoxContainer",
 	"res://tests/scenes/test_controls_flow.gd": "Logger",

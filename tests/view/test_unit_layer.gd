@@ -2,14 +2,23 @@ extends GdUnitTestSuite
 ## UnitLayer on data/scenarios/controls_test.tres: 40 rigs in World row order, ids 1-30 blue and
 ## 31-40 red. Tank 1 stands at px (544, 1184), tank 2 at (640, 1184) and tank 7 at (544, 1280).
 ## The runner is not in the tree, so only the calls here move time: runner._process() moves the
-## interpolation clock and layer._process() draws a frame.
+## interpolation clock and layer._process() draws a frame. Rigs that follow deaths and spawns by
+## unit id are in test_unit_layer_rows.gd.
 
+const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
 const ART: String = "res://assets/art/svg/units/light_tank_%s.svg"
 const BASE_SIZE: Vector2i = Vector2i(1280, 720)
 const BLUE: Color = Color("2F80ED")
 const RED: Color = Color("E5484D")
+const RING_ART: String = "res://assets/art/svg/ui/selection_ring.svg"
+## The ring texture's centre-line radius in px, typed again from STYLE.md so that a wrong
+## UnitLayer.RING_TEX_RADIUS_PX fails (tests/art pins the texture to the same number).
+const RING_CENTRE_PX: float = 72.0
+const UNITS: String = "res://assets/art/svg/units/"
 const TANK_1: PackedInt32Array = [1]
+const TANK_6: PackedInt32Array = [6]  ## Row 5, the east end of the block's first row.
+const TANK_30: PackedInt32Array = [30]  ## Row 29, the block's south-east corner.
 
 var _window_size_before: Vector2i
 var _runner: MatchRunner
@@ -41,6 +50,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	UiScale.clear_override()
 	CommandQueue.clear()
 
 
@@ -128,13 +138,15 @@ func test_a_restarted_match_gets_new_rigs_with_their_own_tint_and_heading() -> v
 
 
 func test_the_hull_eases_toward_where_the_tank_moves_and_keeps_its_heading_when_it_stops() -> void:
-	var hull: Sprite2D = _rig(0).get_node("Hull")
-	# 3 tiles (25 ticks) south-east on a 3-4-5 path, then west (127 degrees), then east (180).
-	var goals: Array[Vector2i] = [Vector2i(10300, 20900), Vector2i(7300, 20900)]
+	var hull: Sprite2D = _rig(29).get_node("Hull")
+	# Tank 30 (row 29, at (16000, 24500)) drives 3 tiles (25 ticks) south-east on a 3-4-5 path, then
+	# west (127 degrees), then east (180). It stands at the block's south-east corner, so no unit is
+	# within 800 milli of the path: separation (P39b) cannot push it.
+	var goals: Array[Vector2i] = [Vector2i(17800, 26900), Vector2i(14800, 26900)]
 	goals.append(goals[0])
 	var headings: Array[float] = [atan2(4.0, 3.0), PI, 0.0]
 	for leg: int in 3:
-		CommandQueue.submit(Command.attack_move(1, TANK_1, goals[leg].x, goals[leg].y))
+		CommandQueue.submit(Command.attack_move(1, TANK_30, goals[leg].x, goals[leg].y))
 		_runner.run_ticks(1)
 		var before: float = hull.rotation
 		_layer._process(0.05)  # 12 rad/s * 0.05 s = 0.6 rad.
@@ -142,21 +154,22 @@ func test_the_hull_eases_toward_where_the_tank_moves_and_keeps_its_heading_when_
 		_render(0.5)
 		assert_float(hull.rotation).is_equal_approx(headings[leg], 0.001)
 		_runner.run_ticks(40)
-		assert_int(_runner.world.order[0]).is_equal(World.Order.IDLE)
+		assert_int(_runner.world.order[29]).is_equal(World.Order.IDLE)
 		_render(0.5)
 		assert_float(hull.rotation).is_equal_approx(headings[leg], 0.001)
-		assert_float(_rig(0).get_node("Team").rotation).is_equal(hull.rotation)
-		assert_float(_rig(0).get_node("Turret").rotation).is_equal(hull.rotation)
+		assert_float(_rig(29).get_node("Team").rotation).is_equal(hull.rotation)
+		assert_float(_rig(29).get_node("Turret").rotation).is_equal(hull.rotation)
 
 
 func test_the_short_last_step_onto_the_goal_does_not_turn_the_hull() -> void:
-	# Tank 1 drives 5.5 tiles almost due east. Its last tick moves (1, 1) milli, which is 45 degrees.
-	CommandQueue.submit(Command.attack_move(1, TANK_1, 14021, 18540))
+	# Tank 6 (row 5, at (16000, 18500)) drives 5.5 tiles almost due east over open ground, the same
+	# vector as tank 1's Phase 1 drive. Its last tick moves (1, 1) milli, which is 45 degrees.
+	CommandQueue.submit(Command.attack_move(1, TANK_6, 21521, 18540))
 	for _tick: int in 50:  # 47 to arrive. Every tick is drawn, as on the phone.
 		_runner.run_ticks(1)
 		_layer._process(0.05)
-	assert_int(_runner.world.order[0]).is_equal(World.Order.IDLE)
-	assert_float(_rig(0).get_node("Hull").rotation).is_equal_approx(0.0, 0.02)
+	assert_int(_runner.world.order[5]).is_equal(World.Order.IDLE)
+	assert_float(_rig(5).get_node("Hull").rotation).is_equal_approx(0.0, 0.02)
 
 
 func test_unit_screen_position_is_the_rig_seen_through_the_camera() -> void:
@@ -165,6 +178,187 @@ func test_unit_screen_position_is_the_rig_seen_through_the_camera() -> void:
 	_camera.zoom = Vector2(1.5, 1.5)
 	_camera.position = Vector2(2000, 600)
 	assert_that(_layer.unit_screen_position(30)).is_equal(Vector2(952, 468))  # 640 + 208 * 1.5, ...
+	# The camera sees the rig's global position, so a layer that is not at the origin moves both
+	# this answer and the Picker's rows by its offset.
+	_layer.position = Vector2(64, 32)  # 96 px and 48 px on the screen.
+	assert_that(_layer.unit_screen_position(30)).is_equal(Vector2(1048, 516))
+	var pick: PickSnapshot = PickSnapshot.new()
+	_layer.fill_pick_snapshot(pick, 24.0)
+	assert_that(pick.screen_pos[30]).is_equal(Vector2(1048, 516))
+
+
+func test_a_type_without_turret_art_has_hull_and_team_only_and_still_turns() -> void:
+	assert_bool(ResourceLoader.exists(UNITS + "rifle_squad_turret.svg")).is_false()
+	assert_bool(ResourceLoader.exists(UNITS + "rocket_squad_turret.svg")).is_false()
+	assert_bool(ResourceLoader.exists(UNITS + "light_tank_turret.svg")).is_true()
+	var spawns: Array[SpawnDef] = [_spawn(1, "light_tank", 5, 5), _spawn(2, "rifle_squad", 8, 5)]
+	spawns.append(_spawn(1, "rocket_squad", 5, 8))
+	_start(spawns)
+	assert_int(_layer.rig_count()).is_equal(3)
+	assert_array(_names(_rig(0))).is_equal([&"Hull", &"Team", &"Turret"])
+	for row: int in [1, 2]:
+		assert_array(_names(_rig(row))).is_equal([&"Hull", &"Team"])
+	assert_str(_rig(1).get_node("Hull").texture.resource_path).is_equal(
+		UNITS + "rifle_squad_hull.svg"
+	)
+	assert_str(_rig(2).get_node("Team").texture.resource_path).is_equal(
+		UNITS + "rocket_squad_team.svg"
+	)
+	assert_that(_rig(1).get_node("Team").modulate).is_equal(RED)  # Owner 2.
+	assert_that(_rig(2).get_node("Team").modulate).is_equal(BLUE)
+	# Rifle squad 2 (speed 67) drives 4 tiles south: both its layers turn, with no turret to turn.
+	CommandQueue.submit(Command.attack_move(2, PackedInt32Array([2]), 8500, 9500))
+	_runner.run_ticks(1)
+	_render(0.5)
+	assert_float(_rig(1).get_node("Hull").rotation).is_equal_approx(PI / 2.0, 0.001)
+	assert_float(_rig(1).get_node("Team").rotation).is_equal(_rig(1).get_node("Hull").rotation)
+	assert_float(_rig(0).get_node("Hull").rotation).is_equal(0.0)
+	for layer: String in ["Hull", "Team"]:  # The layers of the rows after the rifle squad stay put.
+		assert_float(_rig(2).get_node(layer).rotation).is_equal(0.0)
+	# Rocket squad 3 (speed 60) drives 4 tiles south-east: a step of (42, 42) milli, 59 long. That
+	# turns it (half of its own step is 30) although it is under half a light tank step (60).
+	CommandQueue.submit(Command.attack_move(1, PackedInt32Array([3]), 9500, 12500))
+	_runner.run_ticks(1)
+	_render(0.5)
+	assert_float(_rig(2).get_node("Hull").rotation).is_equal_approx(PI / 4.0, 0.05)
+	assert_float(_rig(2).get_node("Team").rotation).is_equal(_rig(2).get_node("Hull").rotation)
+	assert_float(_rig(0).get_node("Hull").rotation).is_equal(0.0)
+
+
+func test_a_ring_is_the_sprite_subclass_with_the_ring_texture_made_at_the_first_selection() -> void:
+	for row: int in 40:
+		assert_array(_names(_rig(row))).is_equal([&"Hull", &"Team", &"Turret"])  # No ring yet.
+	_layer.set_selected(TANK_1)
+	var ring: Sprite2D = _rig(0).get_child(0)
+	assert_str(ring.name).is_equal("Ring")
+	assert_array(_names(_rig(0))).is_equal([&"Ring", &"Hull", &"Team", &"Turret"])
+	assert_str(ring.get_class()).is_equal("Sprite2D")
+	assert_str(ring.get_script().get_instance_base_type()).is_equal("Sprite2D")
+	assert_str(ring.texture.resource_path).is_equal(RING_ART)
+	assert_int(ring.z_index).is_equal(1)
+	assert_bool(ring.z_as_relative).is_false()
+	assert_that(ring.position).is_equal(Vector2.ZERO)
+	assert_bool(ring.centered).is_true()  # The texture's centre is the unit's centre.
+	assert_that(ring.offset).is_equal(Vector2.ZERO)
+	assert_that(ring.modulate).is_equal(Color.WHITE)  # The baked white and dark are not tinted.
+	assert_float(ring.rotation).is_equal(0.0)
+	assert_float(ring.radius).is_greater(0.0)
+	assert_float(UnitLayer.RING_TEX_RADIUS_PX).is_equal(RING_CENTRE_PX)
+	assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(ring.radius, 0.001)
+	for row: int in range(1, 40):
+		assert_int(_rig(row).get_child_count()).is_equal(3)
+	_layer.set_selected(PackedInt32Array())  # Hidden, and kept for the next selection.
+	assert_bool(ring.visible).is_false()
+	_layer.set_selected(TANK_1)
+	assert_bool(_rig(0).get_child(0) == ring and ring.visible).is_true()
+	assert_int(_rig(0).get_child_count()).is_equal(4)
+
+
+func test_a_ring_is_sized_for_the_selection_radius_of_its_own_unit_type() -> void:
+	UiScale.set_override(UiProfiles.by_name(&"desktop"))  # 1 dp is 1 px: 18 dp is under both rings.
+	var spawns: Array[SpawnDef] = [_spawn(1, "light_tank", 5, 5), _spawn(1, "rifle_squad", 8, 5)]
+	_start(spawns)
+	_layer.set_selected(PackedInt32Array([1, 2]))
+	# Selection radius 500 and 350 milli, 50 more, at 64 px per tile.
+	for want: Array in [[0, 35.2], [1, 25.6]]:
+		var ring: Sprite2D = _rig(want[0]).get_node("Ring")
+		assert_float(ring.radius).is_equal_approx(want[1], 0.001)
+		assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(want[1], 0.001)
+		assert_float(ring.scale.y).is_equal(ring.scale.x)
+	# A selection reads the dp again, also when no resize came in between: 1.75 px per dp, so the
+	# rifle squad's ring is at the 18 dp minimum (31.5 px) and the tank's keeps its art.
+	UiScale.set_override(UiProfiles.by_name(&"android_6in"))
+	_layer.set_selected(PackedInt32Array([1, 2]))
+	for want: Array in [[0, 35.2], [1, 31.5]]:
+		var ring: Sprite2D = _rig(want[0]).get_node("Ring")
+		assert_float(ring.unit).is_equal_approx(1.75, 0.0001)
+		assert_float(ring.radius).is_equal_approx(want[1], 0.001)
+		assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(want[1], 0.001)
+
+
+func test_every_layer_draws_at_the_z_of_its_batch_group_and_all_are_absolute() -> void:
+	# Rows alternate types and owners: tank/1, rifle/2, rifle/1, tank/2, tank/1, rifle/2.
+	var spawns: Array[SpawnDef] = [_spawn(1, "light_tank", 5, 5), _spawn(2, "rifle_squad", 8, 5)]
+	spawns.append_array([_spawn(1, "rifle_squad", 5, 8), _spawn(2, "light_tank", 8, 8)])
+	spawns.append_array([_spawn(1, "light_tank", 5, 11), _spawn(2, "rifle_squad", 8, 11)])
+	_start(spawns)
+	var snap: MatchSnapshot = _runner.snapshot
+	assert_array(snap.type_index).is_equal(PackedInt32Array([0, 1, 1, 0, 0, 1]))
+	assert_array(snap.owner).is_equal(PackedInt32Array([1, 2, 1, 2, 1, 2]))
+	for row: int in 6:
+		var type: int = snap.type_index[row]
+		var owner_id: int = snap.owner[row]
+		assert_int(_rig(row).get_node("Hull").z_index).is_equal(10 + type)
+		assert_int(_rig(row).get_node("Team").z_index).is_equal(20 + 8 * type + owner_id)
+		assert_bool(_rig(row).has_node("Turret")).is_equal(type == 0)
+		if type == 0:
+			assert_int(_rig(row).get_node("Turret").z_index).is_equal(100 + type)
+		for sprite: Sprite2D in _rig(row).get_children():
+			assert_bool(sprite.z_as_relative).override_failure_message(str(sprite.name)).is_false()
+	_layer.set_selected(PackedInt32Array([1, 2]))  # A ring is at 1 under every unit layer.
+	assert_int(_rig(0).get_child(0).z_index).is_equal(1)
+	# Beyond the bands (the published snapshot is edited, which SYNC allows, and a layer built
+	# from it): owner 9 and type index 12 take the last group of their band, owner 8 too.
+	snap.type_ids.resize(13)
+	snap.type_speed.resize(13)
+	snap.type_selection_radius.resize(13)
+	for type: int in range(2, 13):
+		snap.type_ids[type] = &"light_tank"
+	snap.owner[2] = 9  # Rifle squad: Hull 11, Team 99.
+	snap.type_index[3] = 12  # Tank of owner 2: Hull 19, Team 99, Turret 109.
+	snap.owner[4] = 8  # Tank of type 0: Hull 10, Team 99, Turret 100.
+	snap.type_index[5] = 9  # Owner 2, the last type with a group: Hull 19, Team 94, Turret 109.
+	var late: UnitLayer = _extra_layer()
+	# Per row: Hull, Team and Turret z (-1: no turret).
+	var expected: Array[Array] = [
+		[2, 11, 99, -1], [3, 19, 99, 109], [4, 10, 99, 100], [5, 19, 94, 109]
+	]
+	for want: Array in expected:
+		var rig: Node2D = late.get_child(want[0])
+		assert_int(rig.get_node("Hull").z_index).is_equal(want[1])
+		assert_int(rig.get_node("Team").z_index).is_equal(want[2])
+		assert_int(rig.get_node("Turret").z_index if want[3] >= 0 else -1).is_equal(want[3])
+	assert_int(late.get_child(0).get_node("Team").z_index).is_equal(21)  # Row 0 is unchanged.
+	# The thresholds themselves: type 9 and owner 7 are the last with a group of their own, type 10
+	# and owner 8 the first without. Hull, Team and Turret are layers 0, 1 and 2.
+	var groups: Array[Array] = [  # layer, type, owner, z
+		[0, 9, 0, 19],
+		[0, 10, 1, 19],
+		[2, 9, 0, 109],
+		[2, 10, 1, 109],
+		[1, 0, 7, 27],
+		[1, 1, 7, 35],
+		[1, 9, 7, 99],
+		[1, 0, 8, 99],
+		[1, 10, 0, 99],
+		[1, 0, 0, 20],
+	]
+	for group: Array in groups:
+		(
+			assert_int(UnitLayer.layer_z(group[0], group[1], group[2]))
+			. override_failure_message(str(group))
+			. is_equal(group[3])
+		)
+
+
+func test_the_layer_draws_from_the_published_snapshot_and_never_reads_the_world() -> void:
+	CommandQueue.submit(Command.attack_move(1, TANK_1, 11500, 20000))
+	_runner.run_ticks(1)
+	_camera.position = Vector2(500, 1100)
+	_runner.world = World.new()  # Test-only: an empty World where the match's was.
+	assert_int(_runner.world.unit_count()).is_equal(0)
+	_layer._process(0.0)
+	assert_int(_layer.rig_count()).is_equal(40)
+	assert_that(_rig(0).position).is_equal(Vector2(544, 1184))  # Alpha 0 shows the old tick.
+	_layer.set_selected(TANK_1)
+	assert_that(_rig(0).get_child(0).name).is_equal(&"Ring")
+	assert_float(_rig(0).get_child(0).radius).is_equal_approx(35.2, 0.001)
+	var pick: PickSnapshot = PickSnapshot.new()
+	_layer.fill_pick_snapshot(pick, 24.0)
+	assert_array(pick.ids).is_equal(PackedInt32Array(range(1, 41)))
+	assert_int(pick.owners.count(2)).is_equal(10)
+	assert_that(_layer.unit_screen_position(0)).is_equal(Vector2(684, 444))
+	assert_int(_extra_layer().rig_count()).is_equal(40)  # A layer made after the swap.
 
 
 func _rig(row: int) -> Node2D:
@@ -187,3 +381,35 @@ func _world_hash() -> int:
 	state.append_array([w.pos_x, w.pos_y, w.goal_x, w.goal_y, w.order])
 	state.append_array([_runner.prev_pos_x, _runner.prev_pos_y])
 	return hash(state)
+
+
+func _names(rig: Node2D) -> Array:
+	return rig.get_children().map(func(n: Node) -> StringName: return n.name)
+
+
+## One unit of `unit` (a file of data/units) for `owner_id` on tile (x, y).
+func _spawn(owner_id: int, unit: String, x: int, y: int) -> SpawnDef:
+	var spawn: SpawnDef = SpawnDef.new()
+	spawn.owner = owner_id
+	spawn.unit = load("res://data/units/%s.tres" % unit)
+	spawn.count = 1
+	spawn.origin_tile = Vector2i(x, y)
+	return spawn
+
+
+## A new match of `spawns` on open grass, drawn by the layer at once.
+func _start(spawns: Array[SpawnDef]) -> void:
+	_runner.scenario = ScenarioDef.new()
+	_runner.scenario.spawns = spawns
+	_runner.start()
+	_layer._process(0.0)
+
+
+## A second layer on the same runner, built from the snapshot as it is now.
+func _extra_layer() -> UnitLayer:
+	var layer: UnitLayer = auto_free(UnitLayer.new())
+	layer.runner = _runner
+	layer.camera = _camera
+	add_child(layer)
+	layer.set_process(false)
+	return layer

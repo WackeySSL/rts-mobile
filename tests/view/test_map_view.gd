@@ -108,6 +108,7 @@ func test_one_bake_per_match_and_one_after_set_terrain_however_many_frames_pass(
 	assert_int(_view.bake_count()).is_equal(2)
 	_runner.world.set_terrain(0, 1)  # Two changes in one frame are one bake.
 	_runner.world.set_terrain(1, 0)
+	_runner.run_ticks(1)  # The view reads the snapshot, which shows a change from the next capture.
 	await await_idle_frame()
 	await await_idle_frame()
 	assert_int(_view.bake_count()).is_equal(3)
@@ -166,10 +167,48 @@ func test_the_map_is_one_draw_command_before_and_after_a_change() -> void:
 	assert_int(_view.draw_count()).is_equal(1)
 	assert_that(_view.drawn_rect()).is_equal(Rect2(0, 0, 6 * 64, 2 * 64))  # Whole map, from 0,0.
 	_runner.world.set_terrain(0, 3)
+	_runner.run_ticks(1)  # The change reaches the snapshot at the next capture.
 	await await_idle_frame()
 	await await_idle_frame()
+	assert_int(_view.bake_count()).is_equal(2)  # The change was baked, and drawn once.
 	assert_int(_view.draw_count()).is_equal(1)
 	assert_int(auto_free(MapView.new()).draw_count()).is_equal(0)
+
+
+func test_the_map_comes_from_the_snapshot_and_never_from_the_world() -> void:
+	await await_idle_frame()
+	assert_int(_view.bake_count()).is_equal(1)
+	_runner.world = World.new()  # Test-only: an empty World where the match's was.
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_that(_view.map_rect_px()).is_equal(Rect2i(0, 0, 6 * 64, 2 * 64))
+	assert_int(_view.bake_count()).is_equal(1)  # Nothing to bake again: same match, same version.
+	assert_that(_view.drawn_rect()).is_equal(Rect2(0, 0, 6 * 64, 2 * 64))
+	var late: MapView = _add_view()  # A view made after the swap bakes the map of the snapshot.
+	assert_int(late.bake_count()).is_equal(1)
+	assert_that(late.map_rect_px()).is_equal(Rect2i(0, 0, 6 * 64, 2 * 64))
+	assert_that(late.image().get_size()).is_equal(Vector2i(6 * TILE, 2 * TILE))  # Not the World's.
+	assert_str(_hex(late, Vector2i(1, 0), Vector2i(3, 3))).is_equal("CDB98F")  # Sand.
+
+
+func test_a_view_with_no_runner_or_no_snapshot_bakes_nothing_until_it_has_one() -> void:
+	var waiting: MatchRunner = auto_free(MatchRunner.new())  # Not started: no snapshot yet.
+	waiting.scenario = _runner.scenario
+	var bare: MapView = auto_free(MapView.new())  # No runner at all.
+	var idle: MapView = auto_free(MapView.new())
+	idle.runner = waiting
+	for view: MapView in [bare, idle]:
+		add_child(view)  # _ready()
+		await await_idle_frame()
+		assert_int(view.bake_count()).is_equal(0)
+		assert_bool(view.image().is_empty()).is_true()
+		assert_that(view.map_rect_px()).is_equal(Rect2i())
+		assert_int(view.draw_count()).is_equal(0)
+	waiting.start()
+	await await_idle_frame()
+	assert_int(idle.bake_count()).is_equal(1)
+	assert_that(idle.map_rect_px()).is_equal(Rect2i(0, 0, 6 * 64, 2 * 64))
+	assert_int(bare.bake_count()).is_equal(0)
 
 
 func _make_view() -> MapView:

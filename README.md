@@ -16,6 +16,9 @@ Status: pre-alpha. See [docs/ROADMAP.md](docs/ROADMAP.md).
   `--platform android` (arm64) needs the Android NDK that `scripts/ci/install-ndk.sh` installs
   (the pinned `NDK_VERSION`, r29); it runs in CI, or in a cloud session after `scripts/cloud/install-android.sh`.
   `--compiler clang --optimize speed` builds it as the `native-clang` CI job does.
+  `--sanitize undefined` builds it with g++ under UBSan (the `sanitizers` CI job, on pull requests that touch
+  `native/`, `game/sim/`, `data/` or `tests/sim/native/`); `bash scripts/ci/run-sanitizer-harness.sh <folder>`
+  runs the AddressSanitizer harness over `core/` (needs g++ with libasan and libubsan).
 - `bash scripts/verify.sh` runs the native build, format, lint, import, tests, the C++ format check
   and a headless AI-vs-AI smoke run.
 - `bash scripts/run-tests.sh` runs the gdUnit4 tests only.

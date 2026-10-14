@@ -172,6 +172,17 @@ Mesa/llvmpipe with Xvfb, so draw-call counts are reliable and times are not):
   `SimProbe.Phase.COUNT` phases in id order as `name:ms` pairs from `SimProbe.PHASE_NAMES`,
   for example `phases=commands:0.05,flow:0.00,grids:0.04,...`, with 0 for a phase not yet in
   the tick (ADR 0007 §4); the hash comes from `World.hash_hex`), and the same numbers as JSON in `reports/perf/sim.json` (git-ignored).
+
+  Status note (2026-10-14, P26r docs, after P38p, #92; the text above stays as accepted): the
+  merged line has another key order than the template above, because `ref_ms`, ADR 0012 §4's
+  phone estimates and the `World.stats` maxima sit between its keys: `PERF sim units= ticks=
+  runs= mean_ms= p50_ms= p95_ms= p99_ms= max_ms= worst15_ms= ticks_per_s= ref_ms=
+  est_phone_mean_ms= est_phone_p95_ms= alive_end= proj_peak= projectile_overflow=
+  stats_max=<stat:max,…> phases=<phase:ms,…> hash=<16 hex>`, with three decimals. The method's
+  minimum covers every statistic on the line (also `p99_ms`, `max_ms` and `worst15_ms`) and every
+  phase mean, each taken separately over the three seed-42 runs, so the phase means sum to a
+  little less than `mean_ms` (the checkpoint hash is in no phase). Each run prints a `RUN sim `
+  line. Details: the Phase 2 plan, contract row "Perf test" and section P38p.
 - **Deterministic cost bounds (exact, cannot flake):** from `World.stats`, per tick: flow cells
   settled at most `flow_cells_per_tick`; separation pairs at most `separation_scan` x units; line
   checks at most the moving units; targeting candidates and fog cells stamped at most the bounds
