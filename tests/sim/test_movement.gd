@@ -9,6 +9,7 @@ extends GdUnitTestSuite
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
 const MovementV1: GDScript = preload("res://tests/sim/support/movement_v1.gd")
+const PhaseViewProbe: GDScript = preload("res://tests/sim/support/phase_view_probe.gd")
 const TRACKED: int = World.MoveClass.TRACKED
 const MOVE: int = World.Order.MOVE
 const ATTACK: int = World.Order.ATTACK
@@ -248,7 +249,9 @@ func test_hold_produces_no_intent() -> void:
 ## not at the goal; within one step it reaches the target's point without ending the order, and a
 ## goal within one step does not end it either (the unit is not steering at it). The target is found
 ## by id: unit 2 is removed first, so the target, id 3, is row 1. A target that is gone (an id no
-## row has, or 0) leaves the unit on its goal.
+## row has, or 0) leaves the unit on its goal. The tick is 4, unit 1's line-check tick ((4 + 1) % 5
+## is 0): a DIRECT unit with an unchecked line would check now, a CHASE unit never does, so nothing
+## is counted and its cell stays -1.
 func test_chase_steers_at_the_target() -> void:
 	var world: World = GridWorld.from_rows(GridWorld.grass(10, 10))
 	world.add_unit(1, 0, 2000, 2000)
@@ -257,6 +260,8 @@ func test_chase_steers_at_the_target() -> void:
 	world.hp[1] = 0
 	world.remove_dead()
 	assert_array(world.unit_id).is_equal([1, 3])
+	world.tick = 4
+	assert_int(world.line_check_period_ticks).is_equal(5)
 	world.order[0] = World.Order.ATTACK_MOVE
 	world.nav_mode[0] = World.NavMode.CHASE
 	world.target[0] = 3
@@ -301,6 +306,56 @@ func test_chase_steers_at_the_target() -> void:
 		assert_array([world.intent_x[0], world.intent_y[0]]).is_equal(
 			[expected.x - 2122, expected.y - 2276]
 		)
+	assert_int(world.stats[World.Stat.LINE_CHECKS]).is_equal(0)
+	assert_array([world.nav_cell[0], world.nav_mode[0]]).is_equal([-1, World.NavMode.CHASE])
+
+
+## A CHASE unit whose target is gone steers at its goal and, once there, still has its order and its
+## mode: `integrate` never ends a CHASE unit's order, and combat (P41) is what takes a unit out of
+## CHASE when its target goes (the fallback documented in Movement.run). A DIRECT unit in the next
+## lane, on the same errand, arrives and goes idle.
+func test_a_chase_unit_with_no_target_reaches_its_goal_and_keeps_its_order() -> void:
+	var world: World = GridWorld.from_rows(GridWorld.grass(10, 10))
+	world.add_unit(1, 0, 2000, 2000)
+	world.add_unit(1, 0, 2000, 4000)
+	for row: int in 2:
+		world.order[row] = World.Order.ATTACK_MOVE
+		world.goal_x[row] = 3000
+		world.goal_y[row] = world.pos_y[row]
+	world.nav_mode[0] = World.NavMode.CHASE
+	world.target[0] = 99
+	world.nav_mode[1] = DIRECT
+	for _tick: int in 20:
+		_step_phases(world)
+	assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([3000, 2000])
+	assert_array([world.order[0], world.nav_mode[0]]).is_equal(
+		[World.Order.ATTACK_MOVE, World.NavMode.CHASE]
+	)
+	assert_array([world.pos_x[1], world.pos_y[1], world.order[1]]).is_equal([3000, 4000, IDLE])
+
+
+## Sim.step marks INTENTS after `Movement.run` and INTEGRATE after `Movement.integrate`, so the PERF
+## split books the time of each under its own phase (the split compares between PRs, plan P38p). A
+## probe that reads the World at each mark sees it: at COMMANDS the MOVE order is applied and the
+## intent is not written, at INTENTS the intent is written and the unit has not moved, at INTEGRATE
+## the unit has moved.
+func test_the_intents_mark_follows_movement_run_and_the_integrate_mark_follows_the_move() -> void:
+	var world: World = GridWorld.from_rows(GridWorld.grass(10, 10))
+	world.add_unit(1, 0, 1000, 5000)
+	var probe: SimProbe = PhaseViewProbe.new()
+	probe.world = world
+	var command: Command = _stamped(Command.move(1, PackedInt32Array([1]), 8000, 5000), 0)
+	Sim.step(world, [command], probe)
+	assert_int(world.dropped_commands).is_equal(0)
+	var phases: Array[int] = [
+		SimProbe.Phase.COMMANDS,
+		SimProbe.Phase.INTENTS,
+		SimProbe.Phase.INTEGRATE,
+		SimProbe.Phase.REMOVE
+	]
+	assert_array(probe.phases).is_equal(phases)
+	assert_array(probe.intents_x).is_equal([0, 120, 120, 120])
+	assert_array(probe.positions_x).is_equal([1000, 1000, 1120, 1120])
 
 
 ## A new order makes the unit DIRECT with its line unchecked, whatever it was doing, and a STOP

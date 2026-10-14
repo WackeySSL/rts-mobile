@@ -5,11 +5,13 @@ extends RefCounted
 ## two phases separation writes its pushes (P39b); `integrate` adds intent and push, clamps the
 ## result to the map, slides along blocked ground and ends an order on arrival. Integers only: a
 ## step is truncated division by the floor of the distance, as ADR 0003 section 5 wrote it, so on
-## an open map every position equals Phase 1's tick by tick.
+## an open map every position equals Phase 1's tick by tick, for goals inside 0..map-1 (what
+## Formation gives for any type with a radius of 1 or more; a goal on the far edge itself, which a
+## radius of 0 allows, ends one milli short, as the clamp keeps every position in 0..map-1).
 ##
 ## Every number comes from the World: speed, move class and the tile grid from the type tables and
 ## the map (data/units, data/terrain), the line-check period from `line_check_period_ticks`
-## (data/rules.tres). The only constant here is the clamp bound of a world with no map.
+## (data/rules.tres). The only constant here is the upper clamp bound of a world with no map.
 ##
 ## Navigation modes (`nav_mode`): DIRECT steers straight at the goal; NONE on a unit with an order
 ## is a DIRECT unit that has not started (a hand-set order), and FIELD steers DIRECT too until P37b
@@ -18,7 +20,8 @@ extends RefCounted
 ## port later: keep it portable (typed locals, the World's arrays aliased before each loop, no
 ## allocation, helper calls only at event cadence).
 
-## The clamp bound of a world with no map (nothing to clamp to): the largest int32.
+## The upper clamp bound of a world with no map (nothing to clamp to above): the largest int32. The
+## lower bound stays 0 on every world, so a position never goes negative.
 const NO_BOUND: int = 0x7FFFFFFF
 
 
@@ -44,6 +47,11 @@ static func reset_nav(world: World, rows: PackedInt32Array, mode: int) -> void:
 ## into `nav_cell`, which ends the checking: a clear line stays clear on a static map. A blocked
 ## line also keeps the unit DIRECT, with the slide of `integrate`, until P37b gives it a field, so
 ## the result is not used yet.
+##
+## A CHASE unit whose target is gone steers at its goal, but `integrate` never ends a CHASE unit's
+## order, so it would stand on the goal with its order and mode for good: combat (P41) takes a unit
+## out of CHASE when it loses its target (ADR 0009 section 3), so this is a fallback no order relies
+## on. A test pins it.
 @warning_ignore("integer_division")
 static func run(world: World) -> void:
 	var ids: PackedInt32Array = world.unit_id
@@ -106,13 +114,15 @@ static func run(world: World) -> void:
 ## The INTEGRATE phase: every unit moves by its intent plus its push, clamped to the map. When the
 ## new point is on a tile its class cannot enter (cost 0), the x move alone is tried, then the y
 ## move alone, else the unit stays: a unit that steers into rock slides along it, and its centre
-## never enters a blocked tile. Only the destination is tested, so a unit that started on a
-## blocked tile (a changed map) may still move to a passable one. Arrival is Phase 1's: a unit
-## that steered at its goal (not in HOLD or CHASE) with an order other than ATTACK arrives on the
-## tick its goal is within one step at the start of the tick (d2 <= speed^2, the snap of `run`), so
-## its order goes IDLE and its navigation state is cleared, also when a push or the slide kept it
-## off the goal itself. An ATTACK unit keeps its order and its target until combat ends it (P41).
-## Rows are independent here, as the pushes were all written before this phase.
+## never enters a blocked tile. Only the destination is tested (ADR 0008 section 4), so a unit that
+## started on a blocked tile (a changed map) may still move to a passable one, and a diagonal step
+## may pass between two blocked orthogonal neighbours, which the flow field and `line_clear` forbid
+## (no corner cutting). A test pins that approximation, as ADR 0008 asks. Arrival is Phase 1's: a
+## unit that steered at its goal (not in HOLD or CHASE) with an order other than ATTACK arrives on
+## the tick its goal is within one step at the start of the tick (d2 <= speed^2, the snap of
+## `run`), so its order goes IDLE and its navigation state is cleared, also when a push or the slide
+## kept it off the goal itself. An ATTACK unit keeps its order and its target until combat ends it
+## (P41). Rows are independent here, as the pushes were all written before this phase.
 @warning_ignore("integer_division")
 static func integrate(world: World) -> void:
 	var orders: PackedInt32Array = world.order

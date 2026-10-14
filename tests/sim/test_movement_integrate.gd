@@ -10,6 +10,7 @@ const WHEELED: int = World.MoveClass.WHEELED
 const TRACKED: int = World.MoveClass.TRACKED
 ## The index of rock in the terrain of GridWorld (its GROUND string: grass, scrub, rock).
 const ROCK: int = 2
+const HOLD: int = World.NavMode.HOLD
 ## Every map here is 12 x 8 tiles, so a mix-up of columns and rows shows.
 const COLS: int = 12
 const ROWS: int = 8
@@ -19,6 +20,10 @@ const ROWS: int = 8
 ## blocked the x move alone is taken (5000, 4900) though the y move alone is open too; with (5, 4)
 ## blocked as well the y move alone; with both blocked it stays; with the destination open it
 ## takes the whole step. Each case is a list of the rock tiles and the position that follows.
+## Only the destination is tested (ADR 0008 section 4), so with both orthogonal neighbours of an
+## open destination blocked the unit still takes the diagonal step between them: the flow field and
+## `line_clear` call that corner cutting and forbid it. The last case pins the approximation (ADR
+## 0008, Consequences), so a later change to the slide shows.
 func test_the_slide_tries_the_x_move_then_the_y_move_then_stays() -> void:
 	var cases: Array[Array] = [
 		[[], Vector2i(5000, 5000)],
@@ -28,6 +33,8 @@ func test_the_slide_tries_the_x_move_then_the_y_move_then_stays() -> void:
 		[[[5, 5], [5, 4], [4, 5]], Vector2i(4900, 4900)],
 		# Rock beside the path, not on it, changes nothing.
 		[[[6, 6], [3, 3]], Vector2i(5000, 5000)],
+		# Rock on both sides of the corner and an open destination: the unit squeezes through.
+		[[[5, 4], [4, 5]], Vector2i(5000, 5000)],
 	]
 	for case: Array in cases:
 		var rock: Array[Vector2i] = GridWorld.tiles(case[0])
@@ -65,6 +72,60 @@ func test_the_push_is_added_to_the_intent_and_slides_at_rock_too() -> void:
 	assert_array([world.pos_x[1], world.pos_y[1]]).is_equal([2090, 3517])
 	assert_array([world.pos_x[2], world.pos_y[2]]).is_equal([2000, 5500])
 	assert_array([world.pos_x[3], world.pos_y[3]]).is_equal([4950, 3510])
+
+
+## A unit in HOLD or CHASE, the modes combat sets, is moved by its push like any other ("all units
+## separate, including enemies and idle units", ADR 0008 section 4): HOLD has no intent, CHASE adds
+## its own step. Neither is steering at its goal (here the point it stands on), so neither arrives
+## and each keeps its order and its mode.
+func test_a_hold_or_chase_unit_is_still_moved_by_its_push() -> void:
+	var world: World = GridWorld.from_rows(GridWorld.grass(COLS, ROWS))
+	GridWorld.add_block(world, 3, 1, 2000, 1500, 2000, 0)
+	var orders: Array[int] = [World.Order.MOVE, World.Order.ATTACK_MOVE, World.Order.ATTACK]
+	var modes: Array[int] = [HOLD, World.NavMode.CHASE, HOLD]
+	for row: int in 3:
+		world.order[row] = orders[row]
+		world.nav_mode[row] = modes[row]
+		world.push_x[row] = 30 - 10 * row
+		world.push_y[row] = -20 + 15 * row
+	world.intent_x[1] = 120
+	Movement.integrate(world)
+	assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([2030, 1480])
+	assert_array([world.pos_x[1], world.pos_y[1]]).is_equal([2140, 3495])
+	assert_array([world.pos_x[2], world.pos_y[2]]).is_equal([2010, 5510])
+	assert_array(world.order.slice(0, 3)).is_equal(orders)
+	assert_array(world.nav_mode.slice(0, 3)).is_equal(modes)
+
+
+## A unit whose goal is within one step at the start of the tick arrives on that tick, whatever
+## else moves it: a push (row 0, goal 100 east, pushed 30 further) or a slide that refuses the step
+## (row 1, goal on rock tile (5, 4)) leaves it off its goal with the order gone, the mode NONE and
+## the line unchecked. P39b's separation relies on this rule. Row 2, a step away, keeps its order.
+func test_a_unit_arrives_on_its_snap_tick_though_a_push_or_slide_keeps_it_off() -> void:
+	var world: World = GridWorld.from_rows(GridWorld.grass(COLS, ROWS, [Vector2i(5, 4)]))
+	world.add_unit(1, 0, 2000, 2000)
+	world.add_unit(1, 0, 4900, 4900)
+	world.add_unit(1, 0, 2000, 6000)
+	var goals: Array[Vector2i] = [Vector2i(2100, 2000), Vector2i(5000, 4900), Vector2i(2200, 6000)]
+	for row: int in 3:
+		world.order[row] = World.Order.MOVE
+		world.nav_mode[row] = World.NavMode.DIRECT
+		world.nav_cell[row] = 17
+		world.goal_x[row] = goals[row].x
+		world.goal_y[row] = goals[row].y
+	Movement.run(world)
+	world.push_x[0] = 30
+	Movement.integrate(world)
+	assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([2130, 2000])
+	assert_array([world.pos_x[1], world.pos_y[1]]).is_equal([4900, 4900])
+	assert_array([world.pos_x[2], world.pos_y[2]]).is_equal([2120, 6000])
+	for row: int in 2:
+		assert_array([world.order[row], world.nav_mode[row], world.nav_cell[row]]).is_equal(
+			[World.Order.IDLE, World.NavMode.NONE, -1]
+		)
+	assert_array([world.order[2], world.nav_mode[2], world.nav_cell[2]]).is_equal(
+		[World.Order.MOVE, World.NavMode.DIRECT, 17]
+	)
 
 
 ## The new point is clamped to 0..map-1 on each axis (11999 and 7999 on this 12 x 8 map), also when
@@ -146,9 +207,10 @@ func test_a_unit_on_a_blocked_tile_may_move_to_a_passable_one() -> void:
 	assert_array([world.pos_x[1], world.pos_y[1]]).is_equal([4950, 6500])
 
 
-## A world with no map (a hand-built one with a size of 0) has nothing to clamp to or to slide on:
-## the unit takes its step, far past any map.
-func test_a_world_with_no_map_moves_by_the_step_unclamped() -> void:
+## A world with no map (a hand-built one with a size of 0) has nothing to slide on and no upper
+## bound: the unit takes its step, far past any map. The lower bound is 0 on every world, so a step
+## below 0 ends at 0 on that axis only (the other axis keeps its step).
+func test_a_world_with_no_map_has_no_upper_bound_and_is_clamped_at_zero() -> void:
 	var world: World = World.new()
 	world.type_ids.append(&"tank")
 	world.type_speed.append(120)
@@ -156,9 +218,13 @@ func test_a_world_with_no_map_moves_by_the_step_unclamped() -> void:
 	world.type_selection_radius.append(500)
 	world.type_spacing.append(1200)
 	world.add_unit(1, 0, 90000, 70000)
+	world.add_unit(1, 0, 50, 30)
 	world.prepare()
 	assert_int(world.map_cols).is_equal(0)
 	world.intent_x[0] = 120
 	world.intent_y[0] = -99
+	world.intent_x[1] = -120
+	world.intent_y[1] = 99
 	Movement.integrate(world)
 	assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([90120, 69901])
+	assert_array([world.pos_x[1], world.pos_y[1]]).is_equal([0, 129])
