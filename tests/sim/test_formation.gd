@@ -1,8 +1,11 @@
 extends GdUnitTestSuite
 ## Formation.assign (ADR 0003 section 4): lattice slots around the target, the r*r <= 2*K*K
-## ring rule, map inset, greedy centre-out assignment and its tie rule. Hand-built worlds with
-## literal stats, so no data file can agree with a wrong rule by repeating it.
+## ring rule, map inset, greedy centre-out assignment and its tie rule, and from P37a that it
+## prepares the world and gives Phase 1's slots on an open map. Hand-built worlds with literal
+## stats, so no data file can agree with a wrong rule by repeating it. The tile rules (blocked
+## slots, a target on a blocked tile) are in test_formation_tiles.
 
+const FormationV1: GDScript = preload("res://tests/sim/support/formation_v1.gd")
 const SPACING: int = 1200
 const RADIUS: int = 400
 const MAP: int = 48000
@@ -151,6 +154,71 @@ func test_the_same_input_gives_the_same_goals_in_any_list_order() -> void:
 	Formation.assign(_world, rows, 30500, 21500)
 	assert_array(other.goal_x).is_equal(_world.goal_x)
 	assert_array(other.goal_y).is_equal(_world.goal_y)
+
+
+## P37a pin: an unprepared hand-built world (only the five Phase 1 type arrays) gets Phase 1's
+## goals, and assign has prepared it: the type tables are padded to the types. A read of an
+## unpadded `type_move_class` would be an out-of-bounds error line, which verify.sh fails.
+func test_assign_prepares_an_unprepared_world_and_gives_phase_1_goals() -> void:
+	var twin: World = _make_world(MAP)
+	_add_type(twin, SPACING, RADIUS)
+	var rows: PackedInt32Array = _add_block(_world, 30, 6, 8500, 18500, 1500, 0)
+	_add_block(twin, 30, 6, 8500, 18500, 1500, 0)
+	assert_bool(_world.prepared).is_false()
+	assert_int(_world.type_move_class.size()).is_equal(0)
+	Formation.assign(_world, rows, 30500, 21500)
+	FormationV1.assign(twin, rows, 30500, 21500)
+	assert_bool(_world.prepared).is_true()
+	assert_int(_world.type_move_class.size()).is_equal(_world.type_ids.size())
+	assert_array(_world.goal_x).is_equal(twin.goal_x)
+	assert_array(_world.goal_y).is_equal(twin.goal_y)
+	assert_int(_world.goal_x[0]).is_not_equal(8500)
+	# Prepared once: a second call leaves the tables as they are.
+	var padded: PackedInt32Array = _world.type_move_class.duplicate()
+	Formation.assign(_world, rows, 20000, 20000)
+	assert_array(_world.type_move_class).is_equal(padded)
+
+
+## On an open map the slots are Phase 1's: random groups of 1 to 150 units of two types (spacing
+## and radius differ), at random places and targets, also outside the map and on its edges, in a
+## shuffled list order, against Phase 1's code on a twin world.
+func test_on_an_open_map_the_slots_equal_phase_1s() -> void:
+	var rng: DetRandom = DetRandom.create(37, 4)
+	var sizes: Array[int] = [1, 2, 3, 7, 12, 30, 49, 75, 150]
+	var wrong: Array[String] = []
+	for case_index: int in 36:
+		var count: int = sizes[case_index % sizes.size()]
+		var worlds: Array[World] = [_make_world(MAP), _make_world(MAP)]
+		var rows: PackedInt32Array = PackedInt32Array()
+		for world: World in worlds:
+			_add_type(world, SPACING, RADIUS)
+			_add_type(world, 2000, 700)
+		for k: int in count:
+			var type: int = rng.next_int(2)
+			var x: int = rng.range_int(0, MAP)
+			var y: int = rng.range_int(0, MAP)
+			for world: World in worlds:
+				world.add_unit(1, type, x, y)
+			rows.append(k)
+		rng.shuffle(rows)
+		var target: Vector2i = Vector2i(
+			rng.range_int(-3000, MAP + 3000), rng.range_int(-3000, MAP + 3000)
+		)
+		Formation.assign(worlds[0], rows, target.x, target.y)
+		FormationV1.assign(worlds[1], rows, target.x, target.y)
+		if worlds[0].goal_x != worlds[1].goal_x or worlds[0].goal_y != worlds[1].goal_y:
+			wrong.append("%d units to %s" % [count, target])
+	assert_array(wrong).is_empty()
+
+
+## ADR 0012 section 2, the alias rule: assign runs on the worker, where a per-row `world.pos_x[row]`
+## read ran 1.8 times slower while the main thread moved rigs. The source holds no indexed read of
+## a World array: the columns are aliased into locals before the loops.
+func test_formation_reads_no_world_array_per_row() -> void:
+	var source: String = FileAccess.get_file_as_string("res://game/sim/Formation.gd")
+	var indexed: RegEx = RegEx.create_from_string(r"\bworld\.\w+\[")
+	assert_int(len(source)).is_greater(1000)
+	assert_array(indexed.search_all(source)).is_empty()
 
 
 func _make_world(map: int) -> World:
