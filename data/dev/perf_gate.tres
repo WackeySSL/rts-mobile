@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="PerfGateDef" format=3]
+
+[ext_resource type="Script" path="res://game/core/PerfGateDef.gd" id="1_gate"]
+
+[resource]
+script = ExtResource("1_gate")
+heavy_rigs = 135
+heavy_frames_min = 600
+work_p95_ms = 5.6
+work_tick_p95_ms = 5.6
+sim_p95_ms = 13.3
+job_p99_ms = 26.7
+late_ticks_max = 0
+fog_update_p95_ms = 0.4
+draw_calls_max = 60
+release_only = true
+ci_ratio_mean = 4.4
+ci_ratio_p95 = 5.9
+drop_slots = 0.5
+dropped_pct_max = 1.0
+cadence_pct_min = 99.0
+hitches_max = 0
+jitter_ms = 17.5
+median_tolerance_pct = 2.0
+refresh_tolerance_pct = 1.0
+ref_iterations = 1000
+ref_burst_ms = 400
+golden_ticks = PackedInt32Array()
+golden_hex = PackedStringArray()
