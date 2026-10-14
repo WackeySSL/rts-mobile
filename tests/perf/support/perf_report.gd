@@ -31,6 +31,9 @@ const LINE_KEYS: Array[String] = [
 const FACT_KEYS: Array[String] = [
 	"units", "ticks", "runs", "ref_ms", "alive_end", "proj_peak", "projectile_overflow", "hash"
 ]
+## ADR 0011 section 4: before P49 the only limit on the clock is a catastrophic cap on the best
+## mean tick. The wall-clock budget (P49b's budget.cfg) replaces it.
+const CATASTROPHIC_MEAN_MS: float = 20.0
 
 
 ## Mean, p50, p95, p99, max and the worst 15-tick window sum of one run's tick times in ms.
@@ -57,6 +60,28 @@ static func best_of(runs: Array[Dictionary]) -> Dictionary:
 			smallest = minf(smallest, run[key])
 		best[key] = smallest if not runs.is_empty() else 0.0
 	return best
+
+
+## True when the report's best mean tick is above `cap_ms`. Only the mean is capped: a slow tail
+## shows on the line and fails nothing before P49.
+static func over_cap(report: Dictionary, cap_ms: float) -> bool:
+	return report["mean_ms"] > cap_ms
+
+
+## Adds one tick's phase times in microseconds (TimingProbe.phase_usec) to the running sums.
+static func add_phases(sums: PackedInt64Array, tick_usec: PackedInt64Array) -> void:
+	for phase: int in mini(sums.size(), tick_usec.size()):
+		sums[phase] += tick_usec[phase]
+
+
+## The smallest sample, or 0 for none (ref_ms is the smallest timed call of the reference loop).
+static func smallest(samples: PackedInt64Array) -> int:
+	if samples.is_empty():
+		return 0
+	var low: int = samples[0]
+	for sample: int in samples:
+		low = mini(low, sample)
+	return low
 
 
 ## The mean ms per tick of every phase, from the sums in microseconds over `ticks` ticks.

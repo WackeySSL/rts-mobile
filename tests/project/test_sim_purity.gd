@@ -52,14 +52,16 @@ const BANNED_NAMES: String = (
 ## defs_hash() and hash_hex() legal.
 const BANNED_CALLS: String = r"\b(exp|log|ease|aspect|length|hash)\s*\(|\bJSON\.parse"
 ## ADR 0012 section 2: the tick runs on a worker thread, so game/sim holds no shared mutable
-## static (`static var`), no signal (a declaration at the start of a line, `.emit(`) and no
+## static (`static var`), no signal (the word `signal` anywhere in code, so also the form after an
+## annotation, a `;` or a one-line inner class, and `.emit(`, `emit_signal(`) and no
 ## `call_deferred(`, which belong to the main thread; no Resource load or save (`load(` and
 ## `preload(` as calls, `ResourceLoader`, `ResourceSaver`); no thread, lock or `await`. `payload(`,
-## `reload(` and `thread_id` stay legal. ADR 0007 section 9: a replay never builds an Object, so
-## `bytes_to_var_with_objects`, `var_to_bytes_with_objects` and `str_to_var` are banned by name
-## (P26o's follow-up); `bytes_to_var(` and `var_to_bytes(` stay legal.
+## `reload(`, `has_signal` and `thread_id` stay legal. ADR 0007 section 9: a replay never builds an
+## Object, so `bytes_to_var_with_objects`, `var_to_bytes_with_objects` and `str_to_var` are banned
+## by name (P26o's follow-up); `bytes_to_var(` and `var_to_bytes(` stay legal.
 const BANNED_THREAD_RULES: String = (
-	r"\bstatic\s+var\b|^\s*signal\b|\.emit\s*\(|\b(?:call_deferred|load|preload)\s*\("
+	r"\bstatic\s+var\b|\bsignal\b|\.emit\s*\(|\bemit_signal\s*\("
+	+ r"|\b(?:call_deferred|load|preload)\s*\("
 	+ r"|\b(?:ResourceLoader|ResourceSaver|Thread|Mutex|Semaphore|WorkerThreadPool|await)\b"
 	+ r"|\b(?:bytes_to_var_with_objects|var_to_bytes_with_objects|str_to_var)\b"
 )
@@ -193,8 +195,13 @@ const MUST_MATCH: Array[String] = [
 	"\tstatic  var total := 0",
 	"signal died(row: int)",
 	"\tsignal moved",
+	# Godot accepts a signal after an annotation and inside a one-line inner class too.
+	'@warning_ignore("unused_signal") signal died(row: int)',
+	"class Events: signal died",
 	"ticked.emit(world.tick)",
 	"ticked.emit (world.tick)",
+	'world.emit_signal(&"ticked", world.tick)',
+	"emit_signal (name)",
 	"callable.call_deferred()",
 	'var script: Script = load("res://data/rules.tres")',
 	"var script = load ('res://a.gd')",
@@ -273,9 +280,12 @@ const MUST_NOT_MATCH: Array[String] = [
 	"var signalled: bool = false",
 	"var has_signal: bool = false",
 	"var emit_count: int = 0",
+	"var emit_signal_count: int = 0",
+	"world.do_emit_signal(kind)",
 	"world.emits += 1",
 	"world._emit(kind)",
 	"var lock: RecursiveMutex",
+	"var queue: ThreadSafeQueue",
 	"var parsed: Variant = parse_str_to_var(text)",
 	"var packed: int = payload(command)",
 	"var size: int = command.payload_size()",

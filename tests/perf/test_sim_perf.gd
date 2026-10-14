@@ -4,7 +4,9 @@ extends GdUnitTestSuite
 ## seed 42 three times and seed 43 once. The suite prints the PERF line, writes
 ## reports/perf/sim.json and checks that the three seed-42 runs agree at every checkpoint, that
 ## seed 43 does not, and that the mean tick stays under a catastrophic cap. Nothing else about the
-## clock is asserted: the wall-clock budget is P49b's, and the deterministic cost bounds are P49a's.
+## clock is asserted: the wall-clock budget is P49b's, and the deterministic cost bounds (what the
+## arena's units and projectiles may do) are P49a's, so alive_end and the projectile numbers are
+## printed here and fail nothing.
 ## It times MatchLoop.step; P49a switches to TickJob.run().
 ##
 ## The enforced numbers are the minimum over the three seed-42 runs of each statistic (ADR 0011
@@ -15,20 +17,19 @@ const PerfReport: GDScript = preload("res://tests/perf/support/perf_report.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const GATE_PATH: String = "res://data/dev/perf_gate.tres"
 const REPORT_PATH: String = "res://reports/perf/sim.json"
+## reports/ is kept out of the import and the exports by this marker (run-tests.sh writes it too).
+const REPORT_IGNORE_PATH: String = "res://reports/.gdignore"
 const TICKS: int = 900
 const SEED: int = 42
 const OTHER_SEED: int = 43
 const RUNS: int = 3
-## ADR 0011 section 4: a catastrophic cap on the best mean, and nothing else is timed against a
-## limit until P49b adds budget.cfg. The wall-clock budget lives in this file only.
-const CATASTROPHIC_MEAN_MS: float = 20.0
 ## Timed calls of the reference loop; the smallest is ref_ms.
 const REF_SAMPLES: int = 20
 
 var _gate: PerfGateDef
 var _seed_42: Array[Run] = []
 var _seed_43: Run
-var _ref_ms: float = 0.0
+var _ref_usec: PackedInt64Array = PackedInt64Array()
 var _report: Dictionary = {}
 
 
@@ -43,6 +44,9 @@ class Run:
 	var alive_end: int = 0
 	var proj_peak: int = 0
 	var overflow: int = 0
+	## pos_x then pos_y of every unit, before the first tick and after the last.
+	var start_pos: PackedInt32Array = PackedInt32Array()
+	var final_pos: PackedInt32Array = PackedInt32Array()
 	var checkpoint_ticks: PackedInt32Array = PackedInt32Array()
 	var checkpoint_hashes: PackedInt64Array = PackedInt64Array()
 	var final_hash: int = 0
@@ -50,11 +54,11 @@ class Run:
 
 func before() -> void:
 	_gate = load(GATE_PATH) as PerfGateDef
-	_ref_ms = _reference_ms()
+	_time_reference()
 	for _run: int in RUNS:
 		_seed_42.append(_play(SEED))
 	_seed_43 = _play(OTHER_SEED)
-	_ref_ms = minf(_ref_ms, _reference_ms())
+	_time_reference()
 	_report = _make_report()
 	for index: int in _seed_42.size():
 		print(_run_line(SEED, index + 1, _seed_42[index]))
@@ -77,6 +81,8 @@ func test_the_three_seed_42_runs_match_at_every_15_ticks() -> void:
 		assert_array(run.checkpoint_ticks).is_equal(first.checkpoint_ticks)
 		assert_array(run.checkpoint_hashes).is_equal(first.checkpoint_hashes)
 		assert_int(run.final_hash).is_equal(first.final_hash)
+		assert_array(run.start_pos).is_equal(first.start_pos)
+		assert_array(run.final_pos).is_equal(first.final_pos)
 		assert_array(run.stats_max).is_equal(first.stats_max)
 	assert_int(first.final_hash).is_equal(first.checkpoint_hashes[-1])
 
@@ -91,6 +97,10 @@ func test_seed_43_differs_at_every_checkpoint_and_in_the_final_hash() -> void:
 			equal_at.append(same.checkpoint_ticks[index])
 	assert_array(equal_at).is_empty()
 	assert_int(_seed_43.final_hash).is_not_equal(same.final_hash)
+	# Not only the rng words in the hash: the seed gives the match other places for its units.
+	assert_int(_seed_43.start_pos.size()).is_equal(same.start_pos.size())
+	assert_array(_seed_43.start_pos).is_not_equal(same.start_pos)
+	assert_array(_seed_43.final_pos).is_not_equal(same.final_pos)
 
 
 ## Every statistic of the report is the smallest value that one of the three seed-42 runs had, to
@@ -109,18 +119,16 @@ func test_the_report_holds_the_minimum_of_each_statistic_over_the_three_runs() -
 
 
 func test_the_best_mean_stays_under_the_catastrophic_cap() -> void:
-	var mean_ms: float = _report["mean_ms"]
-	assert_float(mean_ms).is_greater(0.0)
-	assert_float(mean_ms).is_less_equal(CATASTROPHIC_MEAN_MS)
+	assert_float(_report["mean_ms"]).is_greater(0.0)
+	assert_bool(PerfReport.over_cap(_report, PerfReport.CATASTROPHIC_MEAN_MS)).is_false()
 
 
-func test_each_run_timed_every_tick_and_played_the_whole_match() -> void:
+## Harness checks only: what the units and projectiles do is printed, and bounded from P49a on.
+func test_each_run_timed_every_tick_of_the_arena() -> void:
 	for run: Run in _seed_42 + [_seed_43]:
 		assert_int(run.tick_ms.size()).is_equal(TICKS)
 		assert_int(run.tick_ms.count(0.0)).is_less(TICKS)
 		assert_int(run.units).is_greater(0)
-		assert_int(run.alive_end).is_between(1, run.units)
-		assert_int(run.overflow).is_equal(0)
 	assert_int(_report["units"]).is_equal(_seed_42[0].units)
 	assert_int(_report["alive_end"]).is_equal(_seed_42[0].alive_end)
 	assert_int(_report["proj_peak"]).is_equal(_seed_42[0].proj_peak)
@@ -137,6 +145,21 @@ func test_the_phase_split_is_part_of_the_tick() -> void:
 		sum += phase_ms
 	assert_float(sum).is_greater(0.0)
 	assert_float(sum).is_less_equal(float(_report["mean_ms"]) + 0.01)
+
+
+## Each phase of the report is the smallest mean that one of the three runs had, like the
+## statistics, so a phase left out of a run's sums or a report that read one run shows here.
+func test_the_phase_split_is_the_best_of_the_three_runs() -> void:
+	var wrong: Array[String] = []
+	var phases: Dictionary = _report["phases"]
+	for phase: int in SimProbe.Phase.COUNT:
+		var smallest: float = INF
+		for run: Run in _seed_42:
+			smallest = minf(smallest, PerfReport.phase_means_ms(run.phase_usec, TICKS)[phase])
+		var name: String = SimProbe.PHASE_NAMES[phase]
+		if absf(float(phases[name]) - smallest) > 0.0006:
+			wrong.append(name)
+	assert_array(wrong).is_empty()
 
 
 ## The estimates are computed from the ratios in perf_gate.tres (ADR 0012 section 4), not written by
@@ -164,7 +187,9 @@ func test_the_perf_line_prints_and_holds_every_measure_in_order() -> void:
 	var hash_text: String = text.get_slice("hash=", 1)
 	assert_str(hash_text).is_equal(World.hash_hex(_seed_42[0].final_hash))
 	assert_int(hash_text.length()).is_equal(16)
+	assert_int(_ref_usec.size()).is_equal(2 * REF_SAMPLES)
 	assert_float(_report["ref_ms"]).is_greater(0.0)
+	assert_float(_report["ref_ms"]).is_equal_approx(PerfReport.smallest(_ref_usec) / 1000.0, 0.0006)
 	assert_float(_report["p50_ms"]).is_less_equal(_report["p95_ms"])
 	assert_float(_report["p95_ms"]).is_less_equal(_report["p99_ms"])
 	assert_float(_report["p99_ms"]).is_less_equal(_report["max_ms"])
@@ -174,6 +199,8 @@ func test_the_perf_line_prints_and_holds_every_measure_in_order() -> void:
 func test_sim_json_holds_the_numbers_of_the_line() -> void:
 	var path: String = ProjectSettings.globalize_path(REPORT_PATH)
 	assert_int(DirAccess.make_dir_recursive_absolute(path.get_base_dir())).is_equal(OK)
+	_keep_reports_out_of_the_project()
+	assert_bool(FileAccess.file_exists(REPORT_IGNORE_PATH)).is_true()
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	assert_object(file).is_not_null()
 	file.store_string(PerfReport.json(_report))
@@ -215,35 +242,51 @@ func _play(match_seed: int) -> Run:
 	run.tick_ms.resize(TICKS)
 	run.phase_usec.resize(SimProbe.Phase.COUNT)
 	run.stats_max.resize(World.Stat.size())
+	run.start_pos = _positions(world)
 	for tick: int in TICKS:
 		var started: int = Time.get_ticks_usec()
 		loop.step(world, queued, probe)
 		run.tick_ms[tick] = (Time.get_ticks_usec() - started) / 1000.0
-		for phase: int in SimProbe.Phase.COUNT:
-			run.phase_usec[phase] += probe.phase_usec[phase]
+		PerfReport.add_phases(run.phase_usec, probe.phase_usec)
 		PerfReport.raise_maxima(run.stats_max, world.stats)
 		run.proj_peak = maxi(run.proj_peak, PerfReport.live_projectiles(world))
 	run.alive_end = world.unit_count()
 	run.overflow = world.projectile_overflow
+	run.final_pos = _positions(world)
 	run.checkpoint_ticks = loop.replay.checkpoint_ticks
 	run.checkpoint_hashes = loop.replay.checkpoint_hashes
 	run.final_hash = world.state_hash()
 	return run
 
 
-## ref_ms: the smallest of REF_SAMPLES timed calls of the reference loop (after one warm-up call),
-## in ms. The line's `ref_ms` is the smaller of the readings before and after the runs, so a
-## slow runner shows in it (ADR 0011 section 4: a proven runner-speed problem may switch to a
-## relative budget through a new ADR).
-func _reference_ms() -> float:
+## Times REF_SAMPLES calls of the reference loop (after one warm-up call) into _ref_usec. ref_ms is
+## the smallest sample of the readings before and after the runs, so a slow runner shows in it
+## (ADR 0011 section 4: a proven runner-speed problem may switch to a relative budget through a
+## new ADR).
+func _time_reference() -> void:
 	var sink: int = RefLoop.run(_gate.ref_iterations)
-	var smallest_usec: int = 1 << 40
 	for _sample: int in REF_SAMPLES:
 		var started: int = Time.get_ticks_usec()
 		sink += RefLoop.run(_gate.ref_iterations)
-		smallest_usec = mini(smallest_usec, Time.get_ticks_usec() - started)
+		_ref_usec.append(Time.get_ticks_usec() - started)
 	assert_int(sink).is_greater(0)
-	return smallest_usec / 1000.0
+
+
+## pos_x of every unit, then pos_y.
+func _positions(world: World) -> PackedInt32Array:
+	var all: PackedInt32Array = world.pos_x.duplicate()
+	all.append_array(world.pos_y)
+	return all
+
+
+## Makes sure reports/ holds the marker that keeps it out of the import and of the exports, as
+## run-tests.sh and run-sim-smoke.sh do, so a run that skipped them cannot pack sim.json.
+func _keep_reports_out_of_the_project() -> void:
+	var marker: String = ProjectSettings.globalize_path(REPORT_IGNORE_PATH)
+	if not FileAccess.file_exists(marker):
+		var file: FileAccess = FileAccess.open(marker, FileAccess.WRITE)
+		assert_object(file).is_not_null()
+		file.close()
 
 
 func _make_report() -> Dictionary:
@@ -257,7 +300,7 @@ func _make_report() -> Dictionary:
 		"units": first.units,
 		"ticks": TICKS,
 		"runs": RUNS,
-		"ref_ms": _ref_ms,
+		"ref_ms": PerfReport.smallest(_ref_usec) / 1000.0,
 		"alive_end": first.alive_end,
 		"proj_peak": first.proj_peak,
 		"projectile_overflow": first.overflow,
