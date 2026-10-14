@@ -23,12 +23,12 @@ Source of truth: this file for rules, `docs/GDD.md` for game design,
 
 ## Commands
 - `bash scripts/verify.sh` - full check (format, lint, import, tests, sim smoke). Run before every commit.
-- `bash scripts/build-native.sh` - builds the C++ kernels (scons 4.9.1, g++, binutils; the NDK for Android, CI only).
+- `bash scripts/build-native.sh` - builds the C++ kernels (scons 4.9.1, g++, binutils; the NDK for Android: CI, or a cloud session after `bash scripts/cloud/install-android.sh`).
   verify.sh runs it first and checks the C++ format with the pinned clang-format.
 - `bash scripts/run-tests.sh` - gdUnit4 only.
 - `bash scripts/run-sim-smoke.sh --matches N` - headless AI-vs-AI matches with fixed seeds.
 - `bash scripts/export-web.sh` - web build for the phone preview.
-- `bash scripts/export-android.sh` - Android debug APK (CI only; a cloud session has no Android SDK and exits 4).
+- `bash scripts/export-android.sh` - Android debug APK (CI, or a cloud session after `bash scripts/cloud/install-android.sh`; without the SDK it exits 4).
 Phase 0 created `run-tests.sh`, `run-sim-smoke.sh` and `export-web.sh`, Phase 1 `export-android.sh`;
 keep their flags stable because CI and skills call them.
 
@@ -90,7 +90,7 @@ injected only by the release workflow. UMP consent before any ad request. Detail
 ## Workflow
 - Multi-system feature: get a plan from the `architect` subagent first (`docs/plans/`),
   record decisions as ADRs in `docs/adr/NNNN-slug.md`.
-- Small PRs (under ~400 changed lines), one concern each, with tests.
+- Small PRs (under ~400 changed lines of production code; tests and fixtures don't count), one concern each, with tests.
 - PR description: what changed, the VERIFY SUMMARY block, how to test it on the phone preview.
 - Missing tool, secret or access: say exactly what is missing and stop. Never mock or work around.
 - Tick the checkbox in `docs/ROADMAP.md` when an acceptance criterion is met.

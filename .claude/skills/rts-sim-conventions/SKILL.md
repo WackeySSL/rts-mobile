@@ -131,10 +131,13 @@ because of these rules:
   `ROW_ARRAYS` entry in ID order, the live projectile slots and the fog. The hashed lists cover
   helper objects too (their `HASHED` lists), and a coverage test fails on an unlisted array.
 - `World.hash_hex(h)` is the only formatter for hashes in logs, reports and data.
-- `MatchLoop` adds a checkpoint every 15 ticks. Tests run the same seed and commands twice and
-  compare the checkpoints.
+- `MatchLoop` adds a checkpoint every `Replay.CHECKPOINT_PERIOD` (15) ticks: the state hash
+  taken after `Sim.step` when the new tick is a multiple of 15, the first at tick 15 (none at
+  tick 0). Inside `Sim.step` that tick is still `world.tick + 1`, so a rule that must stay off
+  the hashing step tests `(world.tick + 1) % Replay.CHECKPOINT_PERIOD == 0`. Tests run the same
+  seed and commands twice and compare the checkpoints.
 - Replay = scenario path, seed, `defs_hash`, command log and checkpoints;
-  `tests/sim/test_replay.gd` must reproduce the final hash.
+  `tests/sim/test_replay_play.gd` must reproduce the final hash.
 - Golden seed-42 perf-arena hashes in `data/dev/perf_gate.tres` catch drift across platforms. A
   PR that changes them on purpose says why.
 
@@ -148,6 +151,8 @@ because of these rules:
 - Helper calls only at event cadence: line checks, and `best_neighbour` stored into `nav_next`.
 - Use `len(s)` for a String's size: `test_sim_purity` bans `.length(` in `game/sim`, because
   `Vector2i.length()` returns a float.
+- Write a typed name list as one literal. Godot 4.7.2 drops the element type of a typed const
+  built with `+`: `const A: Array[StringName] = B + [...]` is untyped at runtime (P31b).
 
 ## Data
 - Units, buildings, weapons and AI profiles are custom Resources in `data/`. Load them once at
@@ -188,15 +193,28 @@ bursty phase whose per-active-tick cost sets a headroom value. `COMMANDS`, `REMO
 - FLOW (§2, "Arrays of helper objects"): fetch the typed slot `Array` once, then each touched
   slot's arrays and scalars once (bounded by `flow_cache_size`, never per row or cell). The
   buffer swap is two `set` calls, after which both pointers are fetched again; no slot array is
-  resized in a tick (P30b's `configure()` sizes them).
+  resized in a tick (P30b's `configure()` sizes them). One recorded exception (plan, P26m): the
+  slot pick re-reads `pending` of every `ACTIVE` slot per pick, because reading it once would
+  need a capacity literal.
 - Forbidden: a `Packed*Array` parameter anywhere in `bind/` (by value or by reference: both write
   to a silent copy); keeping a pointer, Variant, array or Object between calls; `get` or `set`
   per row; calling back into GDScript while holding a `ptrw()` pointer; resizing a held array.
   The only resizes in a tick are the event appends, one per appending kernel after its loop.
-- Two layers: `core/` is plain C++17 over `WorldView` and includes no Godot header; `bind/`
-  (`SimKernels`, `world_access.h`, `register_types`, one `kernel_<phase>.cpp` each, one line per
-  kernel in `kernel_list.h`) is the only code that touches Godot types. A `core/` function lands
-  only with the kernel that calls it, and that kernel's tests run in the same PR.
+- Two layers: `core/` is plain C++17 over the contract's `WorldView` and includes no Godot
+  header. `WorldView` is realised as `ArrayView<T>` per array (`core/array_view.h`) "with
+  flow::Slot as the aggregate" (`core/flow.h`: one FlowField slot's views and scalars, loaded
+  and stored back per slot turn). `Slot` aggregates one slot, not a whole kernel: the World and
+  cache arrays reach `core/` as separate `ArrayView`s and ints. In the header's words, "The raw
+  pointer is private, so core/ reaches an element only through get() and set()", "An index
+  outside the window reads 0 and writes nothing" and "Only bind/world_access.h builds a view
+  from a pointer". A view's raw pointer is private (ADR 0013 §2's status note of P26n docs:
+  "a struct of raw pointers and sizes" is superseded); `tests/project/test_native_purity.gd`'s
+  `view_pointer` rule (P56b, #78) flags a raw pointer member of any element type declared public
+  or protected in a `core/` `*View`, and its `raw_pointer` rule flags a use of a view's pointer
+  outside the view, across files. `bind/` (`SimKernels`, `world_access.h`, `register_types`, one
+  `kernel_<phase>.cpp` each, one line per kernel in `kernel_list.h`) is the only code that
+  touches Godot types. A `core/` function lands only with the kernel that calls it, and that
+  kernel's tests run in the same PR.
 - Rule ints and def columns come from the World on entry, never from a C++ literal. The only
   literals in `core/` are 0, 1, -1 and `constexpr` mirrors of a twin's GDScript `const`, each
   naming it.
@@ -216,9 +234,10 @@ bursty phase whose per-active-tick cost sets a headroom value. `COMMANDS`, `REMO
 
 **Determinism in C++ (§4).**
 - `int64_t` wherever GDScript holds an `int`. Every element read from an `int32` or `uint8` array
-  is widened to `int64_t` before any arithmetic (through `WorldView`'s accessors); raw
-  `int32_t`/`uint8_t` pointers appear only at the store, with an explicit `static_cast`. No
-  `char`, `short`, `int` or `long` as a type in `core/`.
+  is widened to `int64_t` before any arithmetic (through `ArrayView<T>::get`, which returns
+  `int64_t`); raw `int32_t`/`uint8_t` pointers stay private to `ArrayView`, whose `set` and
+  `fill` hold the explicit `static_cast` at the store. No `char`, `short`, `int` or `long` as a
+  type in `core/`.
 - No `float`, `double`, `<cmath>` or float literal. No undefined behaviour: no signed overflow,
   shifts only on non-negative values by 0-62, no division by zero or `INT64_MIN / -1`, no index
   past the size checked on entry, no uninitialised read, `reinterpret_cast`/`const_cast` only in
@@ -246,10 +265,37 @@ checklist lives here; load both skills for any PR that touches `native/`:
 - signatures: the World plus plain ints, no Packed parameter; the type and size check on every
   fetched array, through the checked table;
 - pointer lifetime: nothing held across calls, re-fetched after the FLOW swap and after an
-  event resize;
+  event resize; no `Object*` taken from a Variant that dies before the pointer's last use (the
+  use-after-free P54's review fixed, #70). Check this by eye: the freed memory is read inside
+  engine code, so the sanitizer job cannot see it (valgrind with a fresh-copy probe did);
+- views: a `core/` `*View` keeps its raw pointer private and hands out `int64_t` accessors; no
+  public or protected pointer member, no use of a view's pointer outside the view (P56b's
+  `view_pointer` and `raw_pointer` rules flag both; their blind spots are below);
 - integer widths: widened reads, `static_cast` at every int32/uint8 store;
 - undefined behaviour: overflow, shifts, division, bounds, uninitialised reads;
 - order: the twin's loops in the twin's row order, no unordered containers;
 - allocation: none inside a kernel except the event appends;
 - a line-by-line mirror of the GDScript twin, plus the lead's mutants and a 20,000-tick lockstep
   run.
+- what `tests/project/test_native_purity.gd` cannot see (P56 final check, 2026-10-13): check
+  these by eye. A hardening PR comes only if a port PR's review finds one in real code (lead
+  decision, 2026-10-13).
+  - a mutable static with a named or expression direct-init (`static int64_t calls(K);`);
+  - a `constexpr` lambda without a parameter list (`[] { ... }`), whose body the literal rule
+    exempts;
+  - for views, as the scan header names them since P56b (#78): a view method that returns the
+    raw pointer, a `using` alias of it, a pointer in a struct nested in a view, a member defined
+    outside the view body and a view that `VIEW` does not name (`class [[nodiscard]] FooView`);
+    P56b's PR text adds an `alignas(...)` specifier, a macro without a `;`, a friend view
+    reading another view's pointer and a contrived `operator*=`. Since P56b the scan reads every
+    declarator of a view's pointer list (`const int32_t *pos_x, *pos_y;`). The qa follow-ups of
+    P56b's review (the header's blind spots among them) are P56c's (plan, P26n docs);
+  - rarer float helpers missing from the word lists: `UtilityFunctions` `asinh`, `acosh`,
+    `atanh`, `is_nan`, `is_inf`, `ease`, `remap` and similar; `std::` `nextafter`, `erf`,
+    `tgamma` and similar;
+  - a namespace-scope `static const StringName n(NAME);` and a function-local
+    `static const auto x = make();` (static objects the scan does not see);
+  - `std::array<const T, N>`: a `const` among the template arguments reads as a const variable;
+  - false positives: static members inside `extern "C" { }` and `struct alignas(8) S { }` (the
+    scan does not read those heads as scopes);
+  - the blind spot the test's header names: a global without `static` or `inline`.

@@ -39,6 +39,37 @@ fallback and the fresh-clone proof), §12, "Open after this draft" and the accep
 answered in chat on 2026-10-13, verbatim: **"NDK r29"**: the kernels are built with NDK
 29.0.14206865, not 28.1.13356709 (§8).
 
+Status note (2026-10-13, P26j): after the P55 review (#63), dated status notes from P26j sit in
+§8 (the CI cache key) and §10 (`check-native-tests.sh` as merged).
+
+Status note (2026-10-13, P26k): after the real runs of P55a (#67) and P55a2 (#68), dated status
+notes from P26k sit in Context ("The template's own NDK"), §8 (NDK r29's clean build, the
+common-page-size flag, the measured build times, which answer the Targets row's "P55a measures
+it", and Michael's two answers of 2026-10-13 on "Sessions": **"ja til install-android"** and
+**"ja til SDK-licens"**) and §10 (the Android job as merged). In §8 the P26i and P26j status notes
+now follow the "Sessions" bullet, so the two accepted bullets before them no longer render inside
+a status note's list; no text changed.
+
+Status note (2026-10-13, P26l docs): after the merges and reviews of P55b (#69) and P54 (#70),
+dated status notes from "P26l docs" (a docs PR whose name repeats the licence row P26l, #55) sit
+in §2 (P54 as merged), §3 (`sim_impls.gd` returns its problems), §8 ("Sessions": P55b as
+merged), §10 (what the sanitizer job cannot see) and §14 (`CLAUDE.md`'s `build-native.sh` line,
+after Michael's answer in chat on 2026-10-13, verbatim: **"ok til CLAUDE.md-linjen"**). No
+accepted text changed.
+
+Status note (2026-10-14, P26m): after the merges of P30n (#74) and P30n2 (#75), the first kernel
+(FLOW), dated status notes from P26m sit in Context (PRs #35 and #41 closed unmerged on Michael's
+word in chat on 2026-10-14, verbatim: **"luk #35 og #41"**), §2 (`WorldView` as realised by
+`ArrayView<T>` and `flow::Slot`, the entry check, and one recorded exception), §3 (what
+`sim_impls.gd`'s `use()` attaches) and §5 (Michael's port-size rule, in chat on 2026-10-14,
+verbatim: **"ja til port-reglen"**). No accepted text changed.
+
+Status note (2026-10-14, P26n docs): after the merges of P33 (#77), P56b (#78) and P26m (#79),
+dated status notes from "P26n docs" (a docs PR whose name repeats the spike P26n, #41) sit in §2
+(private view pointers and P56b's `view_pointer` rule supersede "a struct of raw pointers and
+sizes"; the P26m note there is rewrapped with no word changed) and §5 (P42n with both kernels).
+No accepted text changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -121,6 +152,14 @@ code says the stretches differ in load ("the first 900 ticks are the lightest at
     GDScript;
   - CI compares the debug editor's GDScript VM with a `template_debug -O2` library;
   - the phone compares release GDScript with `-O3`.
+
+Status note (2026-10-14, P26m): the probe PR #35 (P26s) and the spike PR #41 (P26n, which also
+carried the calibration build P26n2) were closed unmerged on 2026-10-14 on Michael's word in
+chat, verbatim: **"luk #35 og #41"**. This ADR's records of them stay valid: the comments it
+links (the phone runs above, and the evidence comment on PR #41 that "Engineering facts" and §2,
+§6 and §9 cite) stay readable on the closed PRs, the calibration reports are embedded verbatim in
+ADR 0014's acceptance note, and the branches `claude/p26s-perf-probe` and `claude/p26n-cpp-spike`
+stay unmerged.
 
 ### What that means for the gate
 - `sim_p95_ms` is 13.3 ms (ADR 0012 §4).
@@ -243,6 +282,15 @@ The facts:
   4.7.2 pins NDK 29.0.14206865 and copies `libc++_shared.so` out of that NDK. So the library is
   r29 / LLVM 21, like `libgodot_android.so`, and Michael chose NDK 29.0.14206865 for the kernels
   (§8's status notes).
+
+  Status note (2026-10-13, P26k, P55a2's real run on an APK, #68): the Godot 4.7.2 template's
+  `libgodot_android.so` carries `.note.android.ident` "Android r29 14206865", so it is built with
+  exactly the pinned NDK, and its `libc++_shared.so` carries "Android r28 13004108". That r28
+  note is expected: the file is byte-identical to NDK r29's own sysroot `libc++_shared.so` after
+  `llvm-strip --strip-unneeded`, and that copy carries the same note. Both libraries have three
+  `PT_LOAD` segments aligned to 0x4000. Since P55a2, `export-android.sh` logs both notes and the
+  alignment (`check-android-elf.sh describe`, no verdict) on every Android export, CI's included,
+  which is the re-read that "Open after this draft" left to P55a ("Still to come").
 - **Spike review:**
   - a 200k-tick ASan and UBSan run of the whole mock tick in C++ was clean;
   - g++ -O3 and clang++ -O3 gave the same checksum (x86_64, one mock run);
@@ -495,6 +543,89 @@ absorbs next to the C++ phases.
   internal-pointer getter (interface since 4.4, "can be used to modify it in-place") and on the
   layout of the Variant's Packed array.
 
+  Status note (2026-10-13, P26l docs, P54 as merged, #70), the text above stays as accepted:
+  - `SimKernels.check_world(world, phase)` returns 0 or `table_index * 5 + fault`, where
+    `table_index` is the first bad name's index in the table (`status_of` and the `Fault` enum
+    in `src/core/world_status.h`): 1 unknown phase, 2 missing owner object, 3 wrong Variant
+    type, 4 wrong length. A null World gives fault 2 at the phase's first name. It prints
+    nothing.
+  - The five lists are one table, `SIM_CHECKED_TABLE` in `bind/world_access.h`: 106
+    `X(owner, name, kind, size, phases)` entries, each with a phase bitmask (FLOW 30 names,
+    TARGETING 32, SEPARATION 28, INTEGRATE 53, FOG 29). `tests/sim/native/test_kernel_abi.gd`
+    reads the table from `world_access.h` itself, so there is no test-only binding.
+  - `bind/kernel_list.h` is `SIM_KERNEL_LIST(K0, K1)`: each line generates the method's
+    declaration in `sim_kernels.h`, its `ClassDB` binding and its bit in `phases()` (with a
+    `static_assert` that the phase has a list). P54 has no line.
+  - `core/` starts with `world_status.h` (the `Fault` enum and `status_of`), which no kernel
+    calls yet; its header records this one exception to "every `core/` function lands with the
+    kernel that calls it" (the purity scan must see `core/`, and the status encoding is
+    shared). `WorldView` and the internal-pointer fetch (`ptr`/`ptrw`, steps 1-3 above) land
+    with P30n's first kernel. The event-resize helper ("Forbidden" above: the event appends go
+    through `world_access.h`) moves to P42n, with a case that the resized array is written back
+    and its pointer fetched again.
+  - `check_world` is a diagnostic, not a hot-path call: each call checks its phase's whole list,
+    fetching each helper, the slot `Array` and each length rule once (FLOW about 8.7 µs on the
+    arena, all five phases about 25 µs). Which check a kernel runs on entry ("The kernel calls
+    it on entry" above), given that cost, is open for P30n, the first kernel; no decision
+    here.
+  - The review fixed a use-after-free: an `Object*` taken from a Variant that died on return.
+    The merged check holds each helper's Variant for the whole call. §10's status note records
+    why the sanitizers cannot see that class.
+
+  Status note (2026-10-14, P26m, P30n as merged, #74, and P30n2, #75), the text above stays as
+  accepted:
+  - **`WorldView` as realised.** The struct of raw pointers and sizes that "Two layers" names is
+    `ArrayView<T>`, one per array (`src/core/array_view.h`), with `flow::Slot` as the aggregate
+    (`src/core/flow.h`: "One FlowField: its arrays as views and its int and bool members", which
+    the kernel loads from the slot object and stores back per slot turn). The kernel's World and
+    cache arrays (`unit_id`, `field`, `stats`, `move_cost`, `status`, `requested`, `ref_count`
+    and the others) reach `core/` as separate `ArrayView`s and ints, not inside a `Slot`, so
+    `Slot` is one slot's aggregate, not a per-kernel one. The header says, in its own words: "A
+    window over one of the World's arrays, for core/ (ADR 0013 section 2): the per-array piece of
+    the contract's WorldView, with flow::Slot as the aggregate. The raw pointer is private, so
+    core/ reaches an element only through get() and set(): an element is widened to int64_t on
+    the way out and narrowed with an explicit cast on the way in (section 4), and the compiler
+    enforces that, whatever the element type. An index outside the window reads 0 and writes
+    nothing, so the contents of a queue that check_world cannot vouch for never reach memory
+    outside the array. Only bind/world_access.h builds a view from a pointer." So §4's "through
+    `WorldView`'s accessors" reads `ArrayView<T>::get` and `set`, and the raw `int32_t`/`uint8_t`
+    pointer and its `static_cast` stay private to `ArrayView`.
+  - **The fetch.** `world_access.h` holds `Borrowed<T>` (the Variant that keeps a Packed array
+    alive, with its view) and `read_i32`/`read_bytes` (`ptr()`) and `write_i32`/`write_bytes`
+    (`ptrw()`), steps 1-3 above; an empty array or a Variant of another type gives an empty
+    view. FLOW's list holds the 26 names `SimKernels.flow` gets or sets: `max_rows`, `map_cols`,
+    `map_rows` and `flow_cache_size` lost FLOW's bit (the length rules of `check()` still read
+    them; the plan's "Answers and follow-ups (P26m)").
+  - **The entry check (the question the P26l docs note left open).** `SimKernels.flow` calls
+    `check_world` for FLOW on every call and, on a non-zero status, raises one `push_error`
+    naming the property and writes nothing, as "The kernel calls it on entry" says. P30n
+    measured an idle FLOW call as costlier natively than in GDScript for that reason, against
+    about 10x faster per call overall (0.025 against 0.25 ms on the arena) and about 15x on busy
+    calls (PR #74); the plan's row P38pn carries it.
+  - **One recorded exception** to "for each slot it touches, the slot's arrays and scalars once"
+    ("Arrays of helper objects"): to pick the next slot, the kernel reads `pending` of every
+    `ACTIVE` slot through `Object::get` on each pick (`flow::oldest_request` with `pending_of`),
+    bounded by `flow_cache_size`, never per row or cell. Reading each once would need a
+    capacity literal in C++, which CLAUDE.md rule 1 forbids. It stays; the plan's "Answers and
+    follow-ups (P26m)" records it.
+  - **The split.** P30n's part 1 held the whole kernel with the module's tests under both
+    implementations, and part 2 (P30n2) the 900-tick lockstep, as "Every `core/` function lands
+    with the kernel that calls it" above says for a split port.
+
+  Status note (2026-10-14, P26n docs, P56b as merged, #78), the text above stays as accepted:
+  "a struct of raw pointers and sizes" in "Two layers" is superseded. A `core/` view keeps its
+  raw pointer private (`ArrayView<T>`, P26m's note above), and `core/` reads only through the
+  view's `int64_t` accessors. P56b's `view_pointer` rule in `tests/project/test_native_purity.gd`
+  flags a raw pointer member of any element type (`T *`, `int64_t *`, a template parameter)
+  declared public or protected in a `core/` `*View` struct or class, templates included (a struct
+  is public until a `private:`, a class private until a `public:`), and its `raw_pointer` rule
+  flags a use of a view's pointer member outside the view, across `core/` files. Private
+  pointers, accessors and friends defined in the view body stay legal, and so do the merged
+  `array_view.h`, `flow.h`, `flow.cpp` and `world_status.h`. The scan header names the view
+  blind spots left to review (a method that returns the pointer, a `using` alias of it, a
+  pointer in a struct nested in a view, a member defined outside the view body, a view that
+  `VIEW` does not name); the qa follow-ups of P56b's review are the plan's row P56c.
+
 ### 3. Dispatch and the implementation switch
 - **`World` gains two members (P54):**
   - `kernels: Object`, where null means GDScript;
@@ -622,6 +753,21 @@ absorbs next to the C++ phases.
     and the mask-0 case; each port PR adds its phase's case.
   - Every lockstep test and `sim_impls.gd`'s native pass assert
     `world_b.kernels.get_class() == "SimKernels"` and that the phase's bit is set.
+
+  Status note (2026-10-13, P26l docs, P54 as merged, #70): `sim_impls.gd`'s
+  `use(world, impl, kernels)` returns its problems as an `Array[String]` (no library, a mask
+  other than `EXPECTED_PHASES`, kernels whose `get_class()` is not `SimKernels`) instead of
+  asserting, and attaches the kernels either way; `is_native(world, phase)` is the check of the
+  bullet above. So the module tests of P30n, P37n, P41n and P46n assert that `use()` returned an
+  empty list and that `is_native(world, phase)` holds (through the preload name `SimImpls`, as
+  `test_kernel_abi.gd` does).
+
+  Status note (2026-10-14, P26m) on the note above: "attaches the kernels either way" holds only
+  for kernels that exist. With a mask other than `EXPECTED_PHASES` or kernels of another class,
+  `use()` attaches them and the mask and lists the problem; with no library
+  (`create_kernels()` gives null) it attaches nothing, leaves `kernels` null and
+  `native_phases` 0, and returns its problem list. Either way a caller asserts the list is
+  empty.
 - **The bitmask** lets a lockstep test switch one phase at a time: World A runs all GDScript,
   World B runs only that phase in C++.
 - **On Android the library is required.** `export-android.sh` checks that the APK holds the
@@ -726,6 +872,24 @@ absorbs next to the C++ phases.
   - lane A gets 4 port rows plus P54 before P49a (up to 9 with splits), plus up to 3 conditional
     rows (5 with splits);
   - every later rule change in a hot phase is two edits.
+
+  Status note (2026-10-14, P26m), the cost above stays as accepted: P30n, the first port, came
+  to 1,089 changed lines (#74: about 460 of C++ and about 600 of the module's tests under both
+  implementations, which §2 requires to land with the kernel) plus 280 for its lockstep (P30n2,
+  #75), against the plan's 340. Michael decided in chat on 2026-10-14, verbatim: **"ja til
+  port-reglen"**: the native port rows P37n, P39n, P41n, P42n and P46n are re-estimated to their
+  real size, about 1,000 changed lines each (about 450 of C++ and about 600 of module tests;
+  P42n about 1,000 per kernel it holds), and each splits at the lockstep (part 2 is the
+  lockstep test), as P30n and P30n2 did. This sizing rule is not §1's port rule, which is
+  unchanged. The plan's rows, "Split triggers" and "Totals" carry it.
+
+  Status note (2026-10-14, P26n docs), the cost above and P26m's note stay: if both FIRE and
+  PROJECTILES meet §1's rule, P42n holds two kernels, about 2,000 changed lines (about 1,000 per
+  kernel). It is then split per kernel first and each part at its lockstep, in four parts: P42n
+  (the FIRE kernel with `test_combat` and `test_counter_triangle` under both implementations),
+  P42n2 (its lockstep test), P42n3 (the PROJECTILES kernel with the same module tests under
+  both) and P42n4 (its lockstep test). With one kernel it is P42n and P42n2, as P26m's note
+  says. The plan's P42n rows, "Split triggers" and lane-A notes carry the same split.
 - **Exit route:** web on C++ (§7, option B). It would allow deleting the twins and needs its own
   ADR after the Phase 2 gate. It is not adopted now.
 
@@ -838,27 +1002,6 @@ mode or inline in `SYNC`, with the same code. In addition:
 | Build profile | `native/sim_kernels/build_profile.json` binds only the classes the bind layer uses (the spike's `native/README.md`: a cold godot-cpp build of "about ten seconds"; P53 measures it) |
 | Caches | CI caches `native/godot-cpp` and `SCONS_CACHE`, keyed on the godot-cpp SHA, the SCons version, the compiler version, the platform and the target |
 
-Status notes (2026-10-13, P26i) on the rows above, which stay as accepted:
-- **Android.** Michael answered in chat on 2026-10-13, verbatim: **"NDK r29"**. The kernels are
-  built with NDK **29.0.14206865**, the NDK Godot 4.7.2's Android template is built with. Its
-  `libc++_shared.so` is LLVM 21 / Android clang r563880c (`docs/licenses/llvm-libc++/README.md`),
-  not r28: P26l attributed the r28 in its `.note.android.ident` (most likely) to r28 sysroot
-  objects linked into it (Context's status note). So the row's reason for 28.1 ("the same r28 release as the `libc++_shared.so` our
-  library links against") does not hold. P55a applies the pin: `NDK_VERSION` in
-  `scripts/build-native.sh`, which P55a's `scripts/ci/install-ndk.sh` reads. P55a's libc++ symbol check
-  stays. godot-cpp's own default at the pin stays 28.1.13356709 (`tools/android.py`);
-  `build-native.sh` passes `ndk_version=${NDK_VERSION}` to SCons, and building with r29 is P55a's
-  to prove in CI.
-- **Targets.** godot-cpp gives both targets `-DNDEBUG` (it sets it on every non-dev build), so
-  `template_debug` is `DEBUG_ENABLED` plus `NDEBUG`, and C++ `assert()` is compiled out in both
-  (P53 review; the header of `native/sim_kernels/SConstruct`).
-- **Build profile.** `build_profile.json` enables `OS` and `RefCounted`, and both are needed:
-  godot-cpp's `print_string.cpp` includes `os.hpp`. A cold godot-cpp build measured 23-34 s wall
-  on the 4-core VM (P53), not "about ten seconds".
-- **C++ format.** P53 chose `clang-format` **20.1.8**, the last 20.x patch (godot-cpp's own
-  pre-commit hook pins the 20 series), pinned in `scripts/ci/check-cpp-format.sh`, which exits 3
-  on any other version.
-
 - **The 4.5 against 4.7 API question.**
   - godot-cpp has no 4.6 or 4.7 tag. GDExtension is forward compatible, and the library built
     against 4.5 loaded in 4.7.2 on the x86_64 editor, on the release template and on the arm64
@@ -881,6 +1024,95 @@ Status notes (2026-10-13, P26i) on the rows above, which stay as accepted:
     after P53 merges.
   - These are part of accepting this ADR (question 1): accepting it without them would leave every
     session RED once P53 merges.
+
+Status notes (2026-10-13, P26i) on the rows above, which stay as accepted:
+- **Android.** Michael answered in chat on 2026-10-13, verbatim: **"NDK r29"**. The kernels are
+  built with NDK **29.0.14206865**, the NDK Godot 4.7.2's Android template is built with. Its
+  `libc++_shared.so` is LLVM 21 / Android clang r563880c (`docs/licenses/llvm-libc++/README.md`),
+  not r28: P26l attributed the r28 in its `.note.android.ident` (most likely) to r28 sysroot
+  objects linked into it (Context's status note). So the row's reason for 28.1 ("the same r28 release as the `libc++_shared.so` our
+  library links against") does not hold. P55a applies the pin: `NDK_VERSION` in
+  `scripts/build-native.sh`, which P55a's `scripts/ci/install-ndk.sh` reads. P55a's libc++ symbol check
+  stays. godot-cpp's own default at the pin stays 28.1.13356709 (`tools/android.py`);
+  `build-native.sh` passes `ndk_version=${NDK_VERSION}` to SCons, and building with r29 is P55a's
+  to prove in CI.
+- **Targets.** godot-cpp gives both targets `-DNDEBUG` (it sets it on every non-dev build), so
+  `template_debug` is `DEBUG_ENABLED` plus `NDEBUG`, and C++ `assert()` is compiled out in both
+  (P53 review; the header of `native/sim_kernels/SConstruct`).
+- **Build profile.** `build_profile.json` enables `OS` and `RefCounted`, and both are needed:
+  godot-cpp's `print_string.cpp` includes `os.hpp`. A cold godot-cpp build measured 23-34 s wall
+  on the 4-core VM (P53), not "about ten seconds".
+- **C++ format.** P53 chose `clang-format` **20.1.8**, the last 20.x patch (godot-cpp's own
+  pre-commit hook pins the 20 series), pinned in `scripts/ci/check-cpp-format.sh`, which exits 3
+  on any other version.
+
+Status note (2026-10-13, P26j, P55 review, #63) on the Caches row, which stays as accepted:
+- **The key.** `bash scripts/build-native.sh --print-cache-key` prints the CI cache key alone on
+  stdout and exits 0 before the fetch and the build (after the toolchain checks). Its fields:
+  the platform, the arch, the target, the compiler with its version (`gcc` or `clang` plus the
+  version on Linux, `ndk` plus the NDK revision on Android), `optimize` when set (`-speed`), the
+  godot-cpp SHA and the SCons version, as
+  `native-<platform>-<arch>-<target>-<compiler><version>[-speed]-godotcpp-<sha>-scons<version>`.
+  `ci.yml` reads it in a step of its own and passes it to `actions/cache` for `native/godot-cpp`
+  and `SCONS_CACHE`.
+- **No source hash.** No hash of `native/**` joins the key: the SCons cache is content-addressed,
+  so a changed source misses on its own objects and the rest still hit.
+- **`native-clang`** builds `template_debug` (the script's default target) with clang and
+  `optimize=speed` (`--compiler clang --optimize speed`), under its own key.
+
+Status notes (2026-10-13, P26k, from the real runs of P55a, #67, and P55a2, #68) on the Android,
+Android page size and Targets rows, which stay as accepted:
+- **Android.** NDK r29's clang 21 compiles the kernel sources under the `SConstruct` warning set
+  (with `-Werror`) with zero warnings, for `template_debug` and `template_release` (P55a). Every
+  undefined libc++ symbol of our library (14 of them) is defined by the template's
+  `libc++_shared.so` (P55a2's `check-android-elf.sh`).
+- **Android page size.** NDK r29's LLD already defaults max-page-size to 16 KB on arm64, but not
+  common-page-size, and LLD ends `PT_GNU_RELRO` on the common page size. `-z common-page-size=16384`
+  is the flag that ends it on a 16 KB boundary, so P55a2 added `-Wl,-z,common-page-size=16384`
+  next to `-Wl,-z,max-page-size=16384` in `native/sim_kernels/SConstruct`. A real build without
+  it ends RELRO at 0x6d000 and fails the RELRO check; with it RELRO ends at 0x70000 (debug) and
+  0x6c000 (release), and all three `PT_LOAD` segments have `p_align` at least 0x4000.
+- **Targets: the second cold NDK build's time** (the row's "P55a measures it"). Measured by P55a
+  on a 4-CPU VM with an empty SCons cache: the NDK install through sdkmanager 161.7 s, the host
+  library 14.3 s, Android `template_debug` 13.4 s and `template_release` 13.1 s. The CI
+  android-debug-apk job of P55a's PR (run 38417308180) took 92 s in total, with the runner image
+  already holding NDK 29.0.14206865 (`install-ndk.sh`'s installed path, no sdkmanager call) and
+  Godot signing with build-tools 36.0.0. Cold on the runner, from the step times of the same run
+  (its first CI run; both Android keys were new, and their cache steps have no restore keys):
+  Android `template_debug` 28 s and `template_release` 18 s. Its host step (10 s) is not a cold
+  time, because the host key was not new in that PR. This answers the row's open item.
+
+Status note (2026-10-13, P26k) on "Sessions", which stays as accepted: Michael answered in chat
+on 2026-10-13, verbatim, **"ja til install-android"** and **"ja til SDK-licens"**.
+- **"ja til install-android"**: the plan's row P55b (release-engineer, lane B right after P55a2)
+  adds `scripts/cloud/install-android.sh`, an on-demand installer of JDK 17, the Android SDK
+  pieces and the pinned NDK (through `scripts/ci/install-ndk.sh`), so a cloud session can build
+  and export Android. It is never part of `setup.sh`, the session-start hook or CI, so the
+  session tools above are unchanged.
+- **"ja til SDK-licens"**: AppCode ApS accepts the Android SDK License Agreement. The script
+  accepts the SDK licences only with an explicit flag, used only when a session needs Android;
+  `install-ndk.sh` itself still never accepts a licence.
+- P55b is in flight; this note records the two answers, not its code. How this meets ADR 0005 §7
+  ("Cloud sessions do not build APKs"), which "It keeps" above repeats, is open for the lead
+  (the plan's P26k section).
+
+Status note (2026-10-13, P26l docs, P55b as merged, #69), on "Sessions" and the note above:
+- P55b adds `scripts/cloud/install-android.sh [--accept-android-sdk-licenses]`, never part of
+  `setup.sh`, the session-start hook or CI, with its offline test
+  `scripts/ci/test-install-android.sh` (a verify-job step).
+- The sdkmanager of cmdline-tools 23.0 records the licence acceptance by itself on any install,
+  without asking. So the script's gate, before any sdkmanager call, is the only licence control
+  (without the flag a missing SDK piece is exit 5), and `install-ndk.sh` gains `--check` for it.
+  `install-ndk.sh` accepts no licence itself, but the sdkmanager it calls records one, as its
+  header now says.
+- The Android CLI that the sdkmanager shim runs is pinned by version and SHA-256 and passed in
+  through `ANDROID_CLI_BIN`.
+- The export runs with `XDG_CONFIG_HOME=<sdk>/.godot-config`, because Godot copies `JAVA_HOME`
+  and `ANDROID_HOME` only into a new settings file; that folder is one to delete if `JAVA_HOME`
+  or `ANDROID_HOME` change.
+- The real run, with the flag on Michael's consent: install exit 0 in 77 s, `export-android: OK`,
+  and a rerun in 0 s that downloads nothing. `CLAUDE.md`'s `build-native.sh` line now names the
+  installer (§14's status note).
 
 ### 9. The fresh-import crash, and a checkout without the library
 - **Root cause** (Godot 4.7.2 source; evidence comment on PR #41, section 3): the bug is in the
@@ -1010,6 +1242,18 @@ Status notes (2026-10-13, P26i) on the rows above, which stay as accepted:
   - so no later PR edits the script: a port PR's suite is required because its file exists.
     Deleting a suite file shows in the PR's diff, and the module tests under both implementations
     keep `sim_impls.gd`'s non-vacuity assert.
+
+  Status note (2026-10-13, P26j, P55 review, #63): as merged, `check-native-tests.sh` matches a
+  discovered suite by its base name plus its gdUnit4 package (the suite's folder, such as
+  `tests/sim/native`), so a suite elsewhere with the same base name is not counted for it; a
+  `--require` suite is matched by name alone. It fails when two discovered files share a base
+  name. `--list` prints the discovered suite files and exits 0 without reading `results.xml`
+  (`native-clang` uses it to decide whether its gdUnit4 step runs). It reads one `results.xml`
+  (`reports/gdunit/report_1/results.xml` by default), and `run-tests.sh` deletes `reports/gdunit`
+  on each call, so a `--require` suite must run in the same `run-tests.sh` call as the native
+  suites. Its exit codes: 0 ok; 1 a suite is missing, empty or not passed, the floor failed, or two
+  discovered files share a base name; 2 a bad argument; 3 Python (`python3`, or `PYTHON`) is
+  missing; 4 `results.xml` is missing, empty or not XML.
 - **`ci.yml`, verify job:** P53 installs SCons (pipx), the pinned `clang-format` and binutils,
   so P53's own verify job is green; P55 adds the caches (§8) and `check-native-tests.sh`.
 - **`ci.yml`, `native-clang` job** (P55): an x86_64 library built with clang at the release
@@ -1033,6 +1277,20 @@ Status notes (2026-10-13, P26i) on the rows above, which stay as accepted:
   - it then writes the notices (§11).
   - Phase 6's Gradle/AAB switch (ADR 0005) re-checks alignment with `zipalign -c -P 16` and
     bundletool. Optionally, one run on a 16 KB device or emulator image.
+
+  Status note (2026-10-13, P26k, as P55a, #67, and P55a2, #68, merged them; the text above stays
+  as accepted): the job installs the NDK with `scripts/ci/install-ndk.sh`, builds the host's
+  Linux library first and then Android arm64 `template_debug` and `template_release`. The APK
+  packs the library as `lib/arm64-v8a/<basename of the .gdextension entry>`
+  (`libsim_kernels.android.template_debug.arm64.so` in the debug APK); `export-android.sh`
+  compares those bytes with the built file, checks that `libc++_shared.so` is packed, runs
+  `scripts/ci/check-android-elf.sh check` on the packed copy (it reports every failing check,
+  then exits 1) and logs the template's two libraries with `describe` (Context's status note).
+  Both notices end with the godot-cpp section from `scripts/ci/godot-cpp-notice.sh`; P55a2's real
+  run measured them at 121,039 B (Android) and 121,029 B (web), identical apart from the header
+  line. The offline tests `scripts/ci/test-android-elf.sh` and `scripts/ci/test-export-notices.sh`
+  run in this job, not in `verify.sh` (an open item in the plan's P26k section). The real export
+  took 18.4 s with a throwaway debug keystore, and apksigner's v2/v3 verify passed.
 - **Sanitizer job** (P57). It runs on PRs that touch `native/**`, `game/sim/**`, `data/**` or
   `tests/sim/native/**`, because a World column, rule or twin change can break a kernel without
   touching `native/`:
@@ -1048,6 +1306,12 @@ Status notes (2026-10-13, P26i) on the rows above, which stay as accepted:
     gdUnit4 nor under `tests/`; it stays next to `core/` because it compiles `core/` without
     Godot. CLAUDE.md's Tests line names it (§14);
   - loading an ASan library into Godot (`LD_PRELOAD`) stays optional; P57 decides.
+
+  Status note (2026-10-13, P26l docs, P54 review, #70), the text above stays as accepted: the
+  job cannot see the use-after-free class P54 fixed (an `Object*` taken from a Variant that
+  died on return), because the freed memory is read inside engine code, which neither the UBSan
+  library nor the ASan harness over `core/` instruments. Valgrind with a fresh-copy probe found
+  it. The plan's row P57 records this; no decision on the job here.
 - **Preview (`preview.yml`):** unchanged with the generated `.gdextension`. With the fallback,
   the preview job builds the Linux library and seeds first, as the spike did. `export-web.sh`
   changes (§7).
@@ -1177,6 +1441,11 @@ Status notes (2026-10-13, P26i) on the rows above, which stay as accepted:
 - **CLAUDE.md, Commands:** a new line `bash scripts/build-native.sh - builds the C++ kernels
   (scons 4.9.1, g++, binutils; the NDK for Android, CI only). verify.sh runs it first and checks
   the C++ format with the pinned clang-format.`
+
+  Status note (2026-10-13, P26l docs), the text above stays as accepted: after P55b (#69),
+  Michael approved in chat on 2026-10-13, verbatim, **"ok til CLAUDE.md-linjen"**, so the line
+  now ends "(scons 4.9.1, g++, binutils; the NDK for Android: CI, or a cloud session after
+  `bash scripts/cloud/install-android.sh`)". Nothing else in `CLAUDE.md` changed.
 - **CLAUDE.md, Stack, the Format/lint line** gains: "C++: `clang-format` <pinned version>
   (`native/sim_kernels/.clang-format`)." P26e comes before P53, which chooses the version, so
   P26e writes "the version `verify.sh` pins (P53)" in its place. After P53 merges, the lead puts

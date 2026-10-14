@@ -1,6 +1,6 @@
 # CommandQueue autoload (ADR 0002 section 1). Node-side inbox where input and AI controllers
-# submit Commands; the match runner drains it into the sim's ordered per-tick command list.
-# API v0 is defined in ADR 0003 section 7. Phase 2 may extend it.
+# submit Commands; the match runner drains it into the list it hands MatchLoop.step every tick.
+# API v1 = v0 (ADR 0007 section 6): v0 is defined in ADR 0003 section 7 and Phase 2 keeps it.
 extends Node
 
 var _commands: Array[Command] = []

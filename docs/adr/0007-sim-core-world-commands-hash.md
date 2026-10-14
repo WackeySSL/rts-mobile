@@ -13,6 +13,19 @@ Status note (2026-10-12): §8 superseded in part by ADR 0013 §3 (accepted 2026-
 test, the hash walk and P38j2's reachability walk skip. `World.native_phases` is an
 `UNHASHED_SCALARS` entry, so the choice of implementation is never hashed.
 
+Status note (2026-10-13, P26j): §4 carries a dated status note on how the merged P31a (#62) runs
+steps 0, 1 and 11 (`prepare()`, the clear of `events` and `stats`, and `remove_dead()`).
+
+Status note (2026-10-13, P26k): §8 carries a dated status note with the hash cost P31b (#65)
+measured; the once-per-second cadence stands.
+
+Status note (2026-10-14, P26n docs): §5 carries a dated status note on how the merged P33 (#77)
+realises the per-type validation; no accepted text changed.
+
+Status note (2026-10-14, P26o docs): §5 and §9 carry dated status notes on how the merged P35a
+(#81) and P35b (#82) realise the encoding, the replay log, `Replay.play` and `MatchLoop`; no
+accepted text changed.
+
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state
 hash. Phase 1 shipped the v0 shapes of ADR 0003: a struct-of-arrays `World` that never removes a
@@ -237,6 +250,17 @@ passes a subclass (`game/core/TimingProbe.gd`) that reads the clock, so the per-
 measured without the sim ever referencing time. A probe never reads or writes the World. A test
 proves that the hashes with and without a probe are equal.
 
+Status note (2026-10-13, P26j, after the P31a review, #62; the text above stays as accepted):
+the merged `Sim.step` calls `world.prepare()`, then clears `events` (`events.clear()`) and
+`stats` (`stats.fill(0)`) at the start of every tick (steps 0 and 1). So the `SPAWNED` records
+that a hand-built world's setup wrote with `add_unit` are gone after tick 0; `from_scenario`
+already clears them before it returns. `remove_dead()` (step 11, §3) calls `prepare()` first
+(O(1) once prepared), so it works on a hand-built world that never stepped; then, on a tick with a
+death, it writes one `DIED` record per dead row (in row order), compacts every `ROW_ARRAYS` column
+stably, bumps `rows_version` once and adds the rows that changed place to
+`stats[Stat.ROWS_COMPACTED]`; a tick without a death changes nothing. §3's fog unstamping of a
+dead row is not in it yet: it stays in P46, which adds the fog update (plan row P46).
+
 ### 5. Command v1
 `Command` keeps every v0 field and gains `payload: PackedInt32Array` (type-specific ints, empty
 for Phase 2 types).
@@ -276,6 +300,36 @@ for Phase 2 types).
   type, target_x, target_y, target_id, unit count, ids..., payload count, payload...`.
   `static func decode(data: PackedInt32Array, at: int, out: Command) -> int` returns the next
   offset, or -1 for malformed data (a count past the end, or a negative count).
+
+Status note (2026-10-14, P26n docs, after P33, #77; the text above stays as accepted): the "one
+`_valid_*` function per type" is realised as `_apply_point` (`ATTACK_MOVE` and `MOVE`),
+`_apply_attack` and `_apply_stop` in `game/sim/Sim.gd`, each of which validates and applies.
+`Sim.step` drops a null command and one of another tick; `_apply`'s `match command.type` runs
+after the player range and the payload size checks, and a type without a branch is dropped as
+unknown before any id rule. The per-type functions share the helpers `_own_rows` and
+`_enemy_target`; `_enemy_target` is where P46b adds the visibility rule. Every drop is counted in
+`world.dropped_commands`, with no `push_error`. The validation behaves as this section says (a
+point is clamped to the map by `Formation.assign`, the v0 rule; the move to a passable tile comes
+with P37a's `Formation.gd`, which skips blocked slots and moves a blocked target), and every drop
+rule is pinned by a test in `tests/sim/test_sim_step.gd`:
+`test_invalid_commands_are_dropped_and_counted`,
+`test_each_group_drop_rule_counts_once_and_the_largest_command_is_kept`,
+`test_an_unknown_or_reserved_type_is_dropped_whatever_the_ids_are` and
+`test_attack_needs_an_enemy_target_and_an_armed_unit`. The encoding is P35a's.
+
+Status note (2026-10-14, P26o docs, after P35a, #81; the text above stays as accepted): the
+encoding is realised in `game/sim/Command.gd` with `const INT32_MIN: int = -2147483648`,
+`const INT32_MAX: int = 2147483647`, `const ENCODED_HEADER: int = 7` (tick, `player_id`,
+`sequence`, `type`, `target_x`, `target_y`, `target_id`) and `const ENCODED_MIN: int =
+ENCODED_HEADER + 2` (9: the header, a unit count and a payload count, both 0). `encode` saturates
+each of the seven header ints that is wider than int32 to `INT32_MIN` or `INT32_MAX` (§1: a
+`PackedInt32Array` holds only int32); `tick` and `sequence` are -1 or 0..2^31-1. `decode` returns
+-1 only for malformed data: the two cases above (a count past the end, a negative count), an
+offset outside the data and a null `out`. A command over `MAX_UNITS` or `MAX_PAYLOAD` is not
+malformed: `decode` reads it whole, so `Sim.step` drops it again on replay, and
+`dropped_commands`, which the state hash covers (§8), stays equal to the run's. On -1 `decode`
+leaves `out` untouched; otherwise it gives `out` copies of the ids and the payload, never a view
+of `data`.
 
 ### 6. Node-side services (`game/core`, ADR 0002 §1)
 - **`CommandQueue` API v1 = v0, unchanged:** `submit`, `drain_into`, `clear`, `pending`. Input,
@@ -358,6 +412,13 @@ for Phase 2 types).
   measured at 0.34-0.38 ms before the live-slot and map-digest savings, so it is re-measured in
   P31b), and tests compare those checkpoints. Nothing hashes inside `Sim.step`.
 
+Status note (2026-10-13, P26k, after P31b, #65; the text above stays as accepted): P31b measured
+the hash cost on the perf arena at tick 0 (150 rows, 64x64 map, headless, a loaded 4-CPU VM):
+`state_hash()` about 0.25-0.4 ms (per-run medians 0.27-0.38 ms), plus 0.05 ms for the first hash
+after a `map_version` bump (the map digest is recomputed); `hash_parts()` 0.27-0.37 ms (failure
+path only); `defs_hash()` 23-27 µs. Most of the cost is the fog (about 45 KB). The once-per-second
+cadence stands.
+
 ### 9. Match loop and replays
 - **`game/sim/MatchLoop.gd`** (pure `RefCounted`) is the one tick driver. It owns the sequence
   counter, `ScenarioOrders`, the `Replay`, a reused command list and the 15-tick checkpoints:
@@ -389,6 +450,37 @@ for Phase 2 types).
   may change freely (for example when Phase 3 adds per-match setup values).
 - A replay is valid only for the code that recorded it. The data side is protected by
   `defs_hash`. Cross-version replays are not a goal before multiplayer.
+
+Status note (2026-10-14, P26o docs, after P35a, #81, and P35b, #82; the text above stays as
+accepted):
+- **`MatchLoop`** (`game/sim/MatchLoop.gd`): "on `tick % 15 == 0`" is the tick after the step.
+  The checkpoint is `state_hash()` taken after `Sim.step` when the new tick is a multiple of
+  `Replay.CHECKPOINT_PERIOD` (15): the first at tick 15, none at tick 0 and none at a final tick
+  off the grid. `last_hash` is 0 until then, and `next_sequence` starts at 0. A null in `queued`
+  is skipped before stamping: it takes no sequence, is not recorded and is not counted as
+  dropped. The queued Commands change hands here (ADR 0012 §2): they are stamped in place, not
+  copied, and each object may be passed at most once per match. `queued` is only read; its owner
+  (`MatchRunner`, and `TickJob.run()` from P38j) clears it after the step, because a command
+  passed again is stamped, recorded and applied again.
+- **`Replay`** (`game/sim/Replay.gd`): `const KINDS: Dictionary[String, int]` lists the nine
+  keys above in this order with their Variant types (the array kind included). `to_bytes()` is
+  `var_to_bytes` of an untyped `Dictionary` in that key order. `from_bytes` first walks the
+  Godot 4.7.2 wire format (`_is_plain_dictionary`, `_wire_size`), because `bytes_to_var` prints
+  an engine `ERROR` line for every buffer it cannot decode, and refuses a String that is not
+  UTF-8 (`_is_utf8`); only then does it call `bytes_to_var`. Besides a wrong format and a missing
+  key it returns null for a value of another type or array kind, checkpoint arrays of unequal
+  sizes, trailing bytes, and a command log that `Command.decode` does not read to its exact end.
+- **`Replay.play`** returns `PLAY_MATCHED` (-1) when every recorded checkpoint with a tick <=
+  `until_tick` matched, else the tick of the first one that differs or that the loop never
+  reaches; `PLAY_DEFS_DIFFER` (-2) before any step; and the added `PLAY_BAD_LOG` (-3) for a record
+  that does not decode or checkpoint arrays of unequal sizes (both only in a replay built in
+  memory, since `from_bytes` refuses them; the second before any step), a record behind the
+  world's tick, or a negative checkpoint tick. The checkpoints are checked in array order as the
+  loop reaches each tick (a recorded log's ticks ascend), so a checkpoint behind an unreached
+  one, or any checkpoint when `until_tick <= world.tick`, is not examined. A record that does not
+  decode is found when the loop reaches its tick. It drives `MatchLoop.create(null, ...)`, feeds
+  each tick's records as `queued` in log order, steps at most `until_tick - world.tick` ticks,
+  and does not check `final_hash`; the caller compares it.
 
 ### 10. Events
 - `World.events` holds the events of the last tick. It is cleared in phase 1 and is not state.

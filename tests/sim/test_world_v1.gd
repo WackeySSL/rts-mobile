@@ -68,9 +68,10 @@ func test_a_hand_built_world_has_the_rule_defaults_and_the_default_stream() -> v
 	assert_array(world.rng.state()).is_equal(DetRandom.create(0, DetRandom.STREAM_SIM).state())
 	assert_int(world.next_projectile_id).is_equal(1)
 	var zeros: Array[String] = ["player_count", "spawn_refused", "projectile_overflow"]
-	zeros.append_array(["proj_free_top", "map_cols", "map_rows", "map_version"])
+	zeros.append_array(["proj_free_top", "map_cols", "map_rows", "map_version", "native_phases"])
 	for scalar: String in zeros:
 		assert_int(world.get(scalar)).override_failure_message(scalar).is_equal(0)
+	assert_object(world.kernels).is_null()  # A World runs the GDScript phases until told otherwise.
 	world.add_unit(1, 0, 1000, 1000)
 	assert_int(world.player_count).is_equal(1)
 	for player: int in [2, 1, 3, 1]:
@@ -228,7 +229,8 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	hashed.append("map_version")
 	assert_array(World.HASHED_SCALARS).is_equal(hashed)
 	var unhashed: Array[String] = ["map_w", "map_h", "map_cols", "map_rows", "rows_version"]
-	unhashed.append("flow_cells_per_tick")
+	unhashed.append_array(["flow_cells_per_tick", "native_phases"])  # The mask is never state (P54).
+	unhashed.append_array(["_map_digest", "_map_digest_version"])  # The map digest cache (P31b).
 	unhashed.append_array(RULES.keys())
 	assert_array(World.UNHASHED_SCALARS).contains_exactly_in_any_order(unhashed)
 	var array_lists: Array = [World.ROW_ARRAYS, World.TYPE_ARRAYS, World.WEAPON_ARRAYS]
@@ -239,6 +241,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	var ints: Array[String] = []
 	var not_int32: Array[String] = []
 	var others: Array[String] = []
+	var skipped: Array[String] = []
 	for info: Dictionary in World.new().get_property_list():
 		if (int(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) == 0:
 			continue
@@ -250,13 +253,18 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 			packed.append(column)
 			if kind != TYPE_PACKED_INT32_ARRAY:
 				not_int32.append(column)
+		elif World.NON_STATE_MEMBERS.has(StringName(column)):
+			skipped.append(column)
 		else:
 			others.append(column)
 	assert_int(packed.size()).is_equal(55)
-	assert_int(ints.size()).is_equal(29)
+	assert_int(ints.size()).is_equal(32)
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
 	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper
-	# objects and the bool `prepared`.
+	# objects and the bool `prepared`. The one non-state member, the kernels, is skipped by name, so
+	# any other object member still fails here (ADR 0013 section 3).
+	assert_array(World.NON_STATE_MEMBERS).is_equal([&"kernels"])
+	assert_array(skipped).is_equal(["kernels"])
 	var byte_tables: Array[String] = ["type_names", "terrain", "move_cost", "terrain_cost"]
 	assert_array(not_int32).contains_exactly_in_any_order(byte_tables)
 	var unlisted: Array[String] = ["type_ids", "weapon_ids", "terrain_ids", "rng", "prepared"]

@@ -7,8 +7,8 @@
 #                                     [--arch x86_64|arm64] [--compiler gcc|clang] [--optimize speed]
 #                                     [--print-cache-key]
 #   --arch defaults to the one value a platform accepts: linux builds the host architecture only,
-#   android arm64 only (CI only: a cloud session has no NDK, and scripts/ci/install-ndk.sh installs
-#   the NDK_VERSION below).
+#   android arm64 only (CI, or a cloud session after scripts/cloud/install-android.sh; scripts/ci/install-ndk.sh
+#   installs the NDK_VERSION below).
 #   --compiler clang adds use_llvm=yes (the native-clang CI job; the default gcc is the host g++, and android
 #   always uses the NDK's clang). --optimize speed adds optimize=speed (-O3; template_debug is -O2 without it).
 #   --print-cache-key prints the CI cache key (ADR 0013 section 8: platform, arch, target, compiler version,
@@ -16,7 +16,7 @@
 #   It checks the toolchain first, so android needs the NDK installed already: the key serves the
 #   godot-cpp and SCons cache after install-ndk.sh, never a cache of the NDK itself (key that on NDK_VERSION).
 # Env:   SCONS=<binary> (default: scons; must be 4.9.1), SCONS_CACHE=<folder> (godot-cpp's CacheDir),
-#        ANDROID_NDK_ROOT=<NDK folder> (android; must be <sdk>/ndk/28.1.13356709, the layout that
+#        ANDROID_NDK_ROOT=<NDK folder> (android; must be <sdk>/ndk/29.0.14206865, the layout that
 #        sdkmanager makes and that godot-cpp's tools/android.py reads as $ANDROID_HOME/ndk/<version>).
 # Needs: git and network access to github.com (first run only), scons 4.9.1, g++ and binutils
 #        (readelf, nm) for linux (godot-cpp's SConstruct never reads CXX; use_llvm=yes picks clang).
@@ -39,11 +39,12 @@ GODOT_CPP_URL="https://github.com/godotengine/godot-cpp.git"
 GODOT_CPP_TAG="godot-4.5-stable"
 GODOT_CPP_SHA="e83fd0904c13356ed1d4c3d09f8bb9132bdc6b77"
 SCONS_VERSION="4.9.1"
-# godot-cpp godot-4.5-stable, tools/android.py: opts.Add("ndk_version", ..., "28.1.13356709"), ADR 0013
-# section 8's pin. Plan P55a (P26h) still has the NDK choice open (r28, or r29 as in Godot's Gradle
-# template): this line and the stub NDK of scripts/ci/test-native-scripts.sh are what change.
-# scripts/ci/install-ndk.sh reads this line, keep its shape.
-NDK_VERSION="28.1.13356709"
+# NDK r29, Michael's answer of 2026-10-13: the NDK Godot 4.7.2's Android template is built with, whose
+# libc++_shared.so our library links (ADR 0013 section 8's status note). godot-cpp godot-4.5-stable keeps its
+# own default (tools/android.py, "ndk_version", 28.1.13356709); the ndk_version flag below overrides it.
+# scripts/ci/install-ndk.sh reads this line, keep its shape; the stub NDK of scripts/ci/test-native-scripts.sh
+# follows it.
+NDK_VERSION="29.0.14206865"
 ENTRY_SYMBOL="sim_kernels_library_init"
 SCONS="${SCONS:-scons}"
 GODOT_CPP_DIR="$ROOT/native/godot-cpp"
@@ -122,7 +123,7 @@ if [ "$platform" = "linux" ]; then
   echo "build-native: $("$cxx" --version | head -n 1), scons ${scons_version}" >&2
 else
   ndk="${ANDROID_NDK_ROOT:-}"
-  [ -n "$ndk" ] || die 3 "ANDROID_NDK_ROOT is not set (Android NDK missing; a cloud session has none, CI sets it)"
+  [ -n "$ndk" ] || die 3 "ANDROID_NDK_ROOT is not set (Android NDK missing: CI sets it, a cloud session gets it from scripts/cloud/install-android.sh)"
   # godot-cpp reads the NDK as $ANDROID_HOME/ndk/<ndk_version> and falls back to ANDROID_NDK_ROOT only
   # when ANDROID_HOME is no option at all (a KeyError), so derive the SDK folder from the NDK folder.
   if [ "$(basename "$ndk")" != "$NDK_VERSION" ] || [ "$(basename "$(dirname "$ndk")")" != "ndk" ]; then

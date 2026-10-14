@@ -3,7 +3,9 @@ extends GdUnitTestSuite
 ## input, no floats, no randomness except through a DetRandom passed in, no autoload.
 ##
 ## Four layers guard game/sim:
-## - Name and literal patterns on each line, after string literals and comments are stripped.
+## - Name and literal patterns on each line, after string literals and comments are stripped. They
+##   include the thread-safety rules of ADR 0012 section 2 and the replay rule of ADR 0007 section
+##   9 (no variant parser that can make an Object).
 ## - An identifier scan that asks ClassDB whether a capitalised word is an engine Node class or
 ##   a *Server singleton. Names alone cannot list the 200 Node classes.
 ## - A base type check: no sim script may extend a Node, directly or through a user base class.
@@ -49,6 +51,20 @@ const BANNED_NAMES: String = (
 ## number as float. hash() is engine defined (ADR 0007 section 1); `\b` keeps state_hash(),
 ## defs_hash() and hash_hex() legal.
 const BANNED_CALLS: String = r"\b(exp|log|ease|aspect|length|hash)\s*\(|\bJSON\.parse"
+## ADR 0012 section 2: the tick runs on a worker thread, so game/sim holds no shared mutable
+## static (`static var`), no signal (the word `signal` anywhere in code, so also the form after an
+## annotation, a `;` or a one-line inner class, and `.emit(`, `emit_signal(`) and no
+## `call_deferred(`, which belong to the main thread; no Resource load or save (`load(` and
+## `preload(` as calls, `ResourceLoader`, `ResourceSaver`); no thread, lock or `await`. `payload(`,
+## `reload(`, `has_signal` and `thread_id` stay legal. ADR 0007 section 9: a replay never builds an
+## Object, so `bytes_to_var_with_objects`, `var_to_bytes_with_objects` and `str_to_var` are banned
+## by name (P26o's follow-up); `bytes_to_var(` and `var_to_bytes(` stay legal.
+const BANNED_THREAD_RULES: String = (
+	r"\bstatic\s+var\b|\bsignal\b|\.emit\s*\(|\bemit_signal\s*\("
+	+ r"|\b(?:call_deferred|load|preload)\s*\("
+	+ r"|\b(?:ResourceLoader|ResourceSaver|Thread|Mutex|Semaphore|WorkerThreadPool|await)\b"
+	+ r"|\b(?:bytes_to_var_with_objects|var_to_bytes_with_objects|str_to_var)\b"
+)
 ## What to do about a banned call, appended to its report line.
 const HINTS: Dictionary[String, String] = {
 	r"\blength\s*\(": "use len() for a String size; Vector2i.length() is a float",
@@ -174,6 +190,33 @@ const MUST_MATCH: Array[String] = [
 	# The native kernels (ADR 0013 section 3) are reached through an untyped Object.
 	"var kernels: SimKernels",
 	"var ok: bool = ClassDB.class_exists(name)",
+	# ADR 0012 section 2, one line for each part of BANNED_THREAD_RULES.
+	"static var cache: int = 0",
+	"\tstatic  var total := 0",
+	"signal died(row: int)",
+	"\tsignal moved",
+	# Godot accepts a signal after an annotation and inside a one-line inner class too.
+	'@warning_ignore("unused_signal") signal died(row: int)',
+	"class Events: signal died",
+	"ticked.emit(world.tick)",
+	"ticked.emit (world.tick)",
+	'world.emit_signal(&"ticked", world.tick)',
+	"emit_signal (name)",
+	"callable.call_deferred()",
+	'var script: Script = load("res://data/rules.tres")',
+	"var script = load ('res://a.gd')",
+	'const Rules: Script = preload("res://a.gd")',
+	"var exists: bool = ResourceLoader.exists(path)",
+	"var err: int = ResourceSaver.save(res, path)",
+	"var worker: Thread",
+	"var lock: Mutex",
+	"var gate: Semaphore",
+	"var id: int = WorkerThreadPool.add_task(job)",
+	"await done",
+	# ADR 0007 section 9: no variant parser that makes an Object.
+	"var data: Variant = bytes_to_var_with_objects(bytes)",
+	"var bytes: PackedByteArray = var_to_bytes_with_objects(data)",
+	"var data: Variant = str_to_var(text)",
 ]
 const MUST_NOT_MATCH: Array[String] = [
 	"var delta: int = a - b",
@@ -226,6 +269,69 @@ const MUST_NOT_MATCH: Array[String] = [
 	"world.kernels.flow(world, budget)",
 	"var native_kernels_ready: bool = false",
 	'var s := "SimKernels ClassDB"  # SimKernels, ClassDB',
+	# The look-alikes of BANNED_THREAD_RULES: static functions and constants, a comment or a string
+	# with the words, names that only contain them, and the plain variant parser.
+	"static func clamp_row(row: int) -> int:",
+	"static func load_ids(ids: PackedInt32Array) -> void:",
+	"# static var cache, signal moved, ticked.emit(), load(), await done",
+	'var s := "static var Thread signal ResourceLoader load(await)"',
+	"var signal_count: int = 0",
+	"signal_count += 1",
+	"var signalled: bool = false",
+	"var has_signal: bool = false",
+	"var emit_count: int = 0",
+	"var emit_signal_count: int = 0",
+	"world.do_emit_signal(kind)",
+	"world.emits += 1",
+	"world._emit(kind)",
+	"var lock: RecursiveMutex",
+	"var queue: ThreadSafeQueue",
+	"var parsed: Variant = parse_str_to_var(text)",
+	"var packed: int = payload(command)",
+	"var size: int = command.payload_size()",
+	"var unloaded: bool = false",
+	"var loads: int = 0",
+	"world.reload(rules)",
+	"var preloaded: int = 0",
+	"var thread_id: int = 0",
+	"var worker_threads: int = 0",
+	"var mutex_count: int = 0",
+	"var semaphore_count: int = 0",
+	"var awaiting: bool = false",
+	"var loader_ready: bool = false",
+	"var data: Variant = bytes_to_var(bytes)",
+	"var bytes: PackedByteArray = var_to_bytes(data)",
+	"var text: String = var_to_str(data)",
+	"var str_to_var_count: int = 0",
+	# call_deferred and ResourceSaver (and the other class-name bans) need a legal fixture of their
+	# own: a name that only contains them, a call of a longer name, and a comment with both.
+	"var call_deferred_count: int = 0",
+	"world.safe_call_deferred(kind)",
+	"var saver: ResourceSaverQueue",
+	"var cache: ResourceLoaderCache",
+	"var gate: SemaphoreSlim",
+	"var stats: WorkerThreadPoolStats",
+	"# callable.call_deferred(), ResourceSaver.save(res, path)",
+	# A word that only ends in a ban, or ends in a ban plus letters, is not the ban either: the
+	# class names and `await` are whole words, so a rule that also takes a prefix (or a suffix)
+	# would flag these.
+	"var loader: SimResourceLoader",
+	"var saver: MyResourceSaver",
+	"var job: SimThread",
+	"var guard: MutexGuard",
+	"var gate: BinarySemaphore",
+	"var pool: SimWorkerThreadPool",
+	"var preawait: int",
+	# The same for the calls and the parsers: a longer name before or after the banned one.
+	"world.emitted_total(kind)",
+	"world.emit_signal_count(kind)",
+	"world.call_deferred_later(kind)",
+	"world.lazy_preload(ids)",
+	"world.preload_ids(ids)",
+	"var data: Variant = parse_bytes_to_var_with_objects(bytes)",
+	"var data: Variant = bytes_to_var_with_objects_safe(bytes)",
+	"var bytes: PackedByteArray = make_var_to_bytes_with_objects(data)",
+	"var bytes: PackedByteArray = var_to_bytes_with_objects_safe(data)",
 ]
 
 ## Rule 3 for game/ai: the only check there is randomness.
@@ -304,6 +410,7 @@ const DATA_BASES: Array[String] = [
 var _strings: RegEx
 var _banned: RegEx
 var _banned_calls: RegEx
+var _banned_threads: RegEx
 var _rand: RegEx
 var _floats: RegEx
 var _identifiers: RegEx
@@ -315,6 +422,7 @@ func before() -> void:
 	_strings = _compile(STRING_LITERAL)
 	_banned = _compile(BANNED_NAMES)
 	_banned_calls = _compile(BANNED_CALLS)
+	_banned_threads = _compile(BANNED_THREAD_RULES)
 	_rand = _compile(RAND_NAMES)
 	_floats = _compile(FLOAT_LITERAL)
 	_identifiers = _compile(CAPITALISED_IDENTIFIER)
@@ -515,6 +623,7 @@ func _is_sim_violation(line: String) -> bool:
 	return (
 		_banned.search(code) != null
 		or _banned_calls.search(code) != null
+		or _banned_threads.search(code) != null
 		or _rand.search(code) != null
 		or _floats.search(code) != null
 		or _names_engine_node_or_server(code)

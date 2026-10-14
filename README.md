@@ -13,7 +13,8 @@ Status: pre-alpha. See [docs/ROADMAP.md](docs/ROADMAP.md).
   a pinned commit, not committed.
 - `bash scripts/build-native.sh` builds the Linux library and writes the git-ignored
   `native/sim_kernels.gdextension`; without it the project is plain GDScript.
-  `--platform android` (arm64) needs the Android NDK and runs in CI only.
+  `--platform android` (arm64) needs the Android NDK that `scripts/ci/install-ndk.sh` installs
+  (the pinned `NDK_VERSION`, r29); it runs in CI, or in a cloud session after `scripts/cloud/install-android.sh`.
   `--compiler clang --optimize speed` builds it as the `native-clang` CI job does.
 - `bash scripts/verify.sh` runs the native build, format, lint, import, tests, the C++ format check
   and a headless AI-vs-AI smoke run.
@@ -22,6 +23,13 @@ Status: pre-alpha. See [docs/ROADMAP.md](docs/ROADMAP.md).
   (a stub until the simulation exists).
 - `bash scripts/export-web.sh` builds the web preview into `build/web`. It needs the Godot 4.7.2
   web export templates.
+- `bash scripts/export-android.sh` builds the debug APK into `build/android` (CI on every run). A cloud
+  session first runs `bash scripts/cloud/install-android.sh` (about 1.5 GB: JDK 17, the Android SDK and NDK,
+  Godot's Android template, a debug keystore; it prints the environment and the export command, and a
+  second run downloads nothing). Its first run needs `--accept-android-sdk-licenses`, which accepts the
+  Android SDK licences on behalf of AppCode ApS: pass it only with the owner's consent. Without the flag it
+  installs nothing through sdkmanager, and stops with exit 5 when cmdline-tools, platform-tools, build-tools
+  or the NDK is missing.
 
 ## Licence
 - Code: MIT, see [LICENSE](LICENSE).
@@ -33,9 +41,8 @@ Status: pre-alpha. See [docs/ROADMAP.md](docs/ROADMAP.md).
   `THIRD_PARTY_LICENSES.txt` next to `index.html`.
 - C++ bindings: the native sim kernels are built against godot-cpp (MIT), pinned at the commit of
   tag `godot-4.5-stable` and fetched at build time. Its licence text is in
-  [docs/licenses/godot-cpp-4.5-stable/](docs/licenses/godot-cpp-4.5-stable/); the
-  `THIRD_PARTY_LICENSES.txt` of the Android and web builds will include it once the Android build
-  packs the library.
+  [docs/licenses/godot-cpp-4.5-stable/](docs/licenses/godot-cpp-4.5-stable/), and the
+  `THIRD_PARTY_LICENSES.txt` of every Android and web build includes it.
 - C++ runtime: the Godot export templates use LLVM libc++ (Apache-2.0 WITH LLVM-exception), which
   every Android build ships as `libc++_shared.so`. Its licence text (LLVM `llvmorg-21.1.0`) is in
   [docs/licenses/llvm-libc++/](docs/licenses/llvm-libc++/), and the `THIRD_PARTY_LICENSES.txt` of

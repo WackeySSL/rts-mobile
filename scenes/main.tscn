@@ -1,6 +1,6 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://game/view/TestMapView.gd" id="1_map"]
+[ext_resource type="Script" path="res://game/view/MapView.gd" id="1_map"]
 [ext_resource type="Script" path="res://game/view/RtsCamera.gd" id="2_cam"]
 [ext_resource type="Script" path="res://game/ui/dev_menu_button.gd" id="3_dev"]
 [ext_resource type="Script" path="res://game/view/main_view.gd" id="4_main"]
@@ -20,20 +20,16 @@
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
 runner = NodePath("MatchRunner")
-map_view = NodePath("TestMapView")
+map_view = NodePath("MapView")
 camera = NodePath("Camera")
 
 [node name="MatchRunner" type="Node" parent="."]
 script = ExtResource("7_runner")
 scenario = ExtResource("8_scenario")
 
-[node name="TestMapView" type="Node2D" parent="."]
+[node name="MapView" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
 script = ExtResource("1_map")
-tile_px = 64
-tone_a = Color(0.36862746, 0.49019608, 0.2901961, 1)
-tone_b = Color(0.43529412, 0.56078434, 0.34117648, 1)
-grid_color = Color(0, 0, 0, 0.2)
-grid_width_px = 1.0
+runner = NodePath("../MatchRunner")
 
 [node name="UnitLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "camera")]
 script = ExtResource("9_units")

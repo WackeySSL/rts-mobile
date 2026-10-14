@@ -1,6 +1,8 @@
 // SimKernels: see sim_kernels.h. MIT licence, like the rest of rts-mobile.
 #include "sim_kernels.h"
 
+#include "kernel_list.h"
+
 using namespace godot;
 
 // Compiler family and plain version: __VERSION__ names no family under g++ and is long under clang.
@@ -17,8 +19,27 @@ String SimKernels::build_info() const {
 	return String(SIM_KERNELS_PLATFORM " " SIM_KERNELS_TARGET " " SIM_KERNELS_ARCH " " SIM_KERNELS_OPT " " SIM_KERNELS_COMPILER);
 }
 
+// The bit of every kernel_list.h line, and a build error for a phase with no checked list.
+int64_t SimKernels::phases() const {
+	int64_t mask = 0;
+#define SIM_KERNEL_BIT0(method, phase)                                                      \
+	static_assert(world_access::has_list(phase), #method " has no list in world_access.h"); \
+	mask |= int64_t(1) << (phase);
+#define SIM_KERNEL_BIT1(method, phase, argument) SIM_KERNEL_BIT0(method, phase)
+	SIM_KERNEL_LIST(SIM_KERNEL_BIT0, SIM_KERNEL_BIT1)
+#undef SIM_KERNEL_BIT0
+#undef SIM_KERNEL_BIT1
+	return mask;
+}
+
 void SimKernels::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("abi_version"), &SimKernels::abi_version);
 	ClassDB::bind_method(D_METHOD("phases"), &SimKernels::phases);
 	ClassDB::bind_method(D_METHOD("build_info"), &SimKernels::build_info);
+	ClassDB::bind_method(D_METHOD("check_world", "world", "phase"), &SimKernels::check_world);
+#define SIM_KERNEL_BIND0(method, phase) ClassDB::bind_method(D_METHOD(#method, "world"), &SimKernels::method);
+#define SIM_KERNEL_BIND1(method, phase, argument) ClassDB::bind_method(D_METHOD(#method, "world", #argument), &SimKernels::method);
+	SIM_KERNEL_LIST(SIM_KERNEL_BIND0, SIM_KERNEL_BIND1)
+#undef SIM_KERNEL_BIND0
+#undef SIM_KERNEL_BIND1
 }

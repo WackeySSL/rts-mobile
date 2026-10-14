@@ -42,6 +42,12 @@ of the acceptance note):
   "frame pacing" part of the "Unchanged" bullet is superseded by ADR 0014 §1 and §2 (the heavy
   window, the draw-call ceiling and the fog limit's value stay).
 
+Status note (2026-10-14, P26o docs): §5 carries a dated status note on which tick "no slice on
+hash ticks" tests inside `Sim.step`; the rule is unchanged.
+
+Status note (2026-10-14, P26q docs): §2 carries a dated status note: the worker-file scan also
+covers `game/core/StepProbe.gd` (lead decision 2026-10-14).
+
 ## Context
 The Phase 2 plan (P26s) says that a contract the phone probe contradicts changes through a new ADR
 before P34 starts. The probe ran on 2026-10-12. The full reports are comments on PR #35.
@@ -390,6 +396,12 @@ rules:
   - a source scan of the worker files in `game/core` (`TickJob.gd`, `MatchSnapshot.gd`,
     `TimingProbe.gd`) bans `get_tree`, `get_node`, `Engine.`, `Input.`, `OS.`, `CommandQueue`,
     `DetRng`, `signal `, `.emit(` and `call_deferred(`.
+
+  Status note (2026-10-14, P26q docs; the list above stays as accepted): the worker-file scan
+  also covers `game/core/StepProbe.gd`, the runner's forwarding probe from P38 (#85), because
+  from P38j on `TickJob.run` passes it to `loop.step` on the worker (plan, contract row
+  `TickJob`), so it runs there. Lead decision 2026-10-14, recorded in
+  the Phase 2 plan by P26p docs (row and section P38j, "Answers and follow-ups (P26p docs)").
 - A headless run of `main.tscn` with `tick_mode = WORKER` (plan P50w; `perf_arena.tscn` in P52)
   makes any write to an in-tree Node from the worker an `ERROR` line, which `verify.sh` fails on.
   Release builds have no such guard, which is why the structural checks stay.
@@ -621,6 +633,18 @@ period.
 - **On the card** (no verdict): `phases_ms` holds each phase's mean per tick over the run, and
   `flow_slice_p95_ms` is the p95 of the `FLOW` phase over the ticks whose `stats[FLOW_CELLS]`
   equals `flow_cells_per_tick`, so the slice's cost is checked on the real map.
+
+Status note (2026-10-14, P26o docs, after P35b, #82; the text above stays as accepted): "the same
+`% Replay.CHECKPOINT_PERIOD` test on the same tick value" means the tick `MatchLoop` hashes, which
+is the tick after the step. `Sim.step` counts the tick last (`tick += 1` after every phase; the
+FLOW line P37b adds comes before it, ADR 0007 §4), and `MatchLoop` takes the checkpoint after
+`Sim.step` on the new tick, so inside `Sim.step` the checkpoint tick is
+`world.tick + 1`. "No slice on hash ticks" is therefore a budget of 0 when
+`(world.tick + 1) % Replay.CHECKPOINT_PERIOD == 0` (the first at the step from tick 14 to 15).
+P35b's `test_a_checkpoint_step_starts_one_tick_before_the_checkpoint_tick` pins that `Sim.step`
+sees ticks 14, 29 and 44 on the steps that take checkpoints 15, 30 and 45. P37b's test steps
+through `MatchLoop` and asserts `stats[FLOW_CELLS] == 0` exactly on the steps after which
+`loop.replay.checkpoint_ticks` grows (plan, section P37b).
 
 ### 6. Team tints and unit textures keep batching
 - **Rule** (extends ADR 0011 §3): sprites at one absolute z batch only while consecutive sprites

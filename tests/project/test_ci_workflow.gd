@@ -12,6 +12,8 @@ const RELEASE_IF: String = (
 const ANDROID_JOB: String = "  android-debug-apk:"
 const NOTICE_TEST_STEP: String = "      - name: Offline test of the export licence notices"
 const NOTICE_TEST_RUN: String = "        run: bash scripts/ci/test-export-notices.sh"
+const INSTALLER_STEP: String = "Offline test of the cloud Android installer"
+const INSTALLER_RUN: String = "run: bash scripts/ci/test-install-android.sh"
 const EXPORT_STEP: String = "      - name: Export debug APK"
 const CHECK_STEP: String = "Check the native suites ran (check-native-tests.sh)"
 const CHECK_RUN: String = "run: bash scripts/ci/check-native-tests.sh"
@@ -32,6 +34,56 @@ const GATE_RUN: String = (
 )
 const CACHE_STEP: String = "Cache godot-cpp and the SCons object cache"
 const CACHE_KEY: String = "key: ${{ steps.native-key.outputs.key }}"
+## P55a, the Android job (ADR 0013 sections 8 and 10).
+const NDK_STEP: String = "Install the Android NDK (install-ndk.sh)"
+const NDK_RUN: String = "run: bash scripts/ci/install-ndk.sh"
+const ANDROID_INSTALL_STEP: String = "Install the native toolchain (SCons, binutils)"
+const ANDROID_INSTALL_RUN: Array[String] = [
+	"run: |",
+	'pipx install "scons==${SCONS_VERSION}"',
+	"sudo apt-get install -y --no-install-recommends binutils",
+]
+## P55a2: the ELF checks of export-android.sh, tested offline with the NDK's llvm tools.
+const ELF_STEP: String = "Offline test of the packed-library ELF checks"
+const ELF_RUN: String = "run: bash scripts/ci/test-android-elf.sh"
+const KEYS_STEP: String = "Read the native cache keys"
+## One key line per library, printed for the flags of its build step.
+const KEY_VAR: String = '%s="$(bash scripts/build-native.sh%s --print-cache-key)"'
+const KEYS_OUT: String = (
+	'{ echo "host=$host"; echo "android_debug=$android_debug";'
+	+ ' echo "android_release=$android_release"; } >> "$GITHUB_OUTPUT"'
+)
+const ANDROID_FLAGS: String = " --platform android --arch arm64 --target template_"
+## The fourth cache step of the job holds the Godot editor and templates, and nothing of the SDK.
+const GODOT_CACHE_STEP: String = "Cache Godot editor and export templates (web and Android debug)"
+const GODOT_CACHE_PATHS: Array[String] = [
+	"~/.local/opt/godot-${{ env.GODOT_VERSION }}",
+	"~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable",
+]
+## Any line of the job that names the NDK or the SDK folder (comments are skipped before the match).
+const SDK_WORDS: String = "(?i)ndk|ANDROID_HOME|ANDROID_SDK|lib/android"
+## The libraries in the order the job builds them, the host's first. The id names the key's output
+## and its shell variable.
+const LIBRARIES: Array[Dictionary] = [
+	{
+		"id": "host",
+		"flags": "",
+		"cache": "Cache godot-cpp and the SCons object cache (host library)",
+		"build": "Build the host library (linux, template_debug)",
+	},
+	{
+		"id": "android_debug",
+		"flags": ANDROID_FLAGS + "debug",
+		"cache": "Cache godot-cpp and the SCons object cache (Android template_debug)",
+		"build": "Build the Android library (arm64, template_debug)",
+	},
+	{
+		"id": "android_release",
+		"flags": ANDROID_FLAGS + "release",
+		"cache": "Cache godot-cpp and the SCons object cache (Android template_release)",
+		"build": "Build the Android library (arm64, template_release)",
+	},
+]
 
 
 func _lines(file_name: String) -> PackedStringArray:
@@ -127,6 +179,11 @@ func test_verify_job_runs_the_native_script_test() -> void:
 	assert_str(lines[step + 2].strip_edges()).is_empty()
 
 
+## P55b: the offline test of the cloud Android installer runs in the verify job, the required check.
+func test_verify_job_runs_the_cloud_installer_test() -> void:
+	_assert_step(_job(_lines("ci.yml"), "  verify:"), INSTALLER_STEP, [INSTALLER_RUN])
+
+
 ## ADR 0013 section 10: check-native-tests.sh is a step after verify.sh, never inside verify.sh.
 func test_verify_job_checks_the_native_suites_after_verify_sh() -> void:
 	var job: PackedStringArray = _job(_lines("ci.yml"), "  verify:")
@@ -162,6 +219,85 @@ func test_native_caches_use_the_key_that_build_native_prints() -> void:
 	for job: PackedStringArray in [verify, clang]:
 		_assert_cache_step(job)
 		_assert_job_always_runs(job)
+
+
+## P55a (ADR 0013 sections 8 and 10): the Android job installs the NDK, reads three keys, restores
+## three caches and then builds the host's Linux library before the two Android ones, all before the
+## export. The generated .gdextension names all six libraries, so without the host library the
+## editor cannot load it. Each key is printed for exactly the flags of its build, and the NDK is
+## never cached: see _assert_ndk_is_never_cached.
+func test_android_job_installs_the_ndk_and_builds_the_host_library_first() -> void:
+	var job: PackedStringArray = _job(_lines("ci.yml"), ANDROID_JOB)
+	_assert_step(job, NDK_STEP, [NDK_RUN])
+	_assert_step(job, ANDROID_INSTALL_STEP, ANDROID_INSTALL_RUN)
+	var keys: Array = ["id: native-keys", "run: |"]
+	var caches: Array = []
+	var builds: Array = []
+	for library: Dictionary in LIBRARIES:
+		var id: String = library["id"]
+		var flags: String = library["flags"]
+		var cache_name: String = library["cache"]
+		var build_name: String = library["build"]
+		keys.append(KEY_VAR % [id, flags])
+		_assert_cache_step(job, cache_name, "key: ${{ steps.native-keys.outputs.%s }}" % id)
+		_assert_step(job, build_name, ["run: bash scripts/build-native.sh" + flags])
+		caches.append(cache_name)
+		builds.append(build_name)
+	keys.append(KEYS_OUT)
+	_assert_step(job, KEYS_STEP, keys)
+	var first: Array = ["Select JDK 17", NDK_STEP, ANDROID_INSTALL_STEP, KEYS_STEP]
+	_assert_order(job, first + caches + builds + ["Export debug APK"])
+	_assert_ndk_is_never_cached(job)
+	_assert_job_always_runs(job)
+
+
+## P55a2 (ADR 0013 section 10): export-android.sh runs the ELF and libc++ symbol checks on the
+## packed library. This offline test of them runs in the job after the NDK install (it uses the
+## NDK's llvm tools too) and before the export, as a step with no `if:` or `continue-on-error`.
+func test_android_job_runs_the_offline_elf_test_between_the_ndk_install_and_the_export() -> void:
+	var job: PackedStringArray = _job(_lines("ci.yml"), ANDROID_JOB)
+	_assert_step(job, ELF_STEP, [ELF_RUN])
+	_assert_order(job, [NDK_STEP, ELF_STEP, "Export debug APK"])
+
+
+## The NDK is never cached (ADR 0013 section 8). The job has the three library caches (godot-cpp and
+## the SCons objects, pinned exactly above) and the Godot cache (the editor and templates, pinned
+## here), and no other step of any kind that restores or saves a cache, whatever its path: every
+## `uses: actions/cache` variant is counted. Beyond that, no line of the job outside its comments
+## names the NDK or the SDK folder except the install step, so no path or key can reach them.
+func _assert_ndk_is_never_cached(job: PackedStringArray) -> void:
+	var godot: Array = Array(_step(job, GODOT_CACHE_STEP))
+	assert_array(godot).has_size(8)
+	assert_str(godot[2]).starts_with("uses: actions/cache@")
+	assert_str(godot[7]).starts_with("key: godot-")
+	godot.remove_at(7)
+	godot.remove_at(2)
+	var wanted: Array = ["- name: " + GODOT_CACHE_STEP, "id: godot-cache", "with:", "path: |"]
+	assert_array(godot).contains_exactly(wanted + GODOT_CACHE_PATHS)
+	var sdk_words: RegEx = RegEx.create_from_string(SDK_WORDS)
+	var allowed: Array = ["- name: " + NDK_STEP, NDK_RUN]
+	var cache_steps: int = 0
+	for line: String in job:
+		var text: String = line.strip_edges().trim_prefix("- ")
+		if text.begins_with("#"):
+			continue
+		cache_steps += 1 if text.begins_with("uses: actions/cache") else 0
+		if sdk_words.search(line) != null:
+			(
+				assert_array(allowed)
+				. override_failure_message("A line names the NDK or the SDK folder: " + line)
+				. contains([line.strip_edges()])
+			)
+	assert_int(cache_steps).is_equal(1 + LIBRARIES.size())
+
+
+## Michael's "NDK r29" (2026-10-13): the NDK is pinned once, in build-native.sh. install-ndk.sh
+## reads that line and ci.yml names no NDK version, so none of the three can disagree.
+func test_the_ndk_is_pinned_once_in_build_native_sh() -> void:
+	assert_str(_pin("res://scripts/build-native.sh", "NDK_VERSION")).is_equal("29.0.14206865")
+	var version: RegEx = RegEx.create_from_string("\\d+\\.\\d+\\.\\d{6,}")
+	for path: String in ["res://scripts/ci/install-ndk.sh", "res://.github/workflows/ci.yml"]:
+		assert_object(version.search(FileAccess.get_file_as_string(path))).is_null()
 
 
 ## The lines of one job: from the line after its header to the next job (or the comment before it).
@@ -212,13 +348,15 @@ func _assert_job_always_runs(job: PackedStringArray) -> void:
 ## The cache step is actions/cache itself (not /restore, which never saves), whose SHA pin the test
 ## above checks, with exactly godot-cpp and the SCons cache folder under build-native.sh's key. An
 ## `if:` or `continue-on-error` would show as an extra line.
-func _assert_cache_step(job: PackedStringArray) -> void:
-	var step: Array = Array(_step(job, CACHE_STEP))
+func _assert_cache_step(
+	job: PackedStringArray, step_name: String = CACHE_STEP, key: String = CACHE_KEY
+) -> void:
+	var step: Array = Array(_step(job, step_name))
 	assert_array(step).has_size(7)
 	assert_str(step[1]).starts_with("uses: actions/cache@")
 	step.remove_at(1)
-	var wanted: Array = ["- name: " + CACHE_STEP, "with:", "path: |"]
-	wanted.append_array(["native/godot-cpp", "${{ env.SCONS_CACHE }}", CACHE_KEY])
+	var wanted: Array = ["- name: " + step_name, "with:", "path: |"]
+	wanted.append_array(["native/godot-cpp", "${{ env.SCONS_CACHE }}", key])
 	assert_array(step).contains_exactly(wanted)
 
 

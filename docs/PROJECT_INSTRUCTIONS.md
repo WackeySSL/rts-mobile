@@ -1,5 +1,10 @@
 # Project instructions
 
+> **Not in use** (2026-10-14, P26p docs, the lead's decision): Michael works in Claude Code cloud
+> sessions, not in a claude.ai Project, so nothing reads this file as live instructions. It is
+> kept only for an optional claude.ai Project. `CLAUDE.md` is the source of the rules; where this
+> text and `CLAUDE.md` differ, `CLAUDE.md` wins.
+
 Paste the text below the line into Project settings > Memory > Project instructions for the
 Claude Project "RTS". Replace <owner> with your GitHub user name.
 
@@ -11,7 +16,8 @@ and docs/GDD.md the game design.
 
 - Talk to me in Danish. Code, comments, commits and PR text are in English.
 - Work only on the current roadmap phase unless I say otherwise.
-- Branch from main, open one draft PR per thread and keep PRs under about 400 changed lines.
+- Branch from main, open one draft PR per thread and keep PRs under about 400 changed lines of
+  production code (tests and fixtures don't count).
 - Before calling work done, run the verify skill and paste its VERIFY SUMMARY in your final
   message and in the PR. If Godot is missing in the session, verify through CI with
   `gh run watch` and paste that result.

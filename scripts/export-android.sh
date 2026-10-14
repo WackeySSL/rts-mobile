@@ -8,24 +8,33 @@
 #        JAVA_HOME (JDK 17) and ANDROID_HOME (SDK with platform-tools and build-tools 36.x).
 #        GODOT_ANDROID_KEYSTORE_DEBUG_{PATH,USER,PASSWORD}: the debug keystore, all three.
 # Needs: version.txt and android_debug.apk in the Godot export_templates/4.7.2.stable folder
-#        (scripts/ci/install-godot.sh --android), docs/licenses/godot-<version>/{LICENSE,COPYRIGHT}.txt
-#        and docs/licenses/llvm-libc++/LICENSE.TXT (the licence notices written next to the APK;
-#        export-web.sh writes the same notice text, ADR 0005 section 5).
+#        (scripts/ci/install-godot.sh --android), the Android library of the export mode (entry
+#        android.debug.arm64 of native/sim_kernels.gdextension; scripts/build-native.sh --platform
+#        android --arch arm64 --target template_debug builds it), docs/licenses/godot-<version>/
+#        {LICENSE,COPYRIGHT}.txt, docs/licenses/llvm-libc++/LICENSE.TXT and the godot-cpp licence that
+#        scripts/ci/godot-cpp-notice.sh prints (the licence notices written next to the APK;
+#        export-web.sh writes the same notice text, ADR 0005 section 5), and readelf and nm (binutils,
+#        or the NDK's llvm tools) for scripts/ci/check-android-elf.sh.
 # Exit:  0 ok
-#        1 export failed, an error in this run's log, a check of the APK failed, or a licence
-#          notice source is missing or empty
+#        1 export failed, an error in this run's log, a check of the APK failed (the packed library
+#          is not the bytes CI built, libc++_shared.so is missing, the ELF or libc++ symbol checks
+#          fail), or a licence notice source is missing or empty
 #        2 usage error, or --out not under build/
 #        3 Godot missing or not 4.7.2.stable
-#        4 export template, JDK 17 or Android SDK piece missing (the message names each)
+#        4 export template, Android library, JDK 17 or Android SDK piece missing (the message names each)
 #        5 debug keystore variables incomplete or the keystore file missing
-# Success prints "export-android: OK <dir>/rts-mobile-debug.apk". Cloud sessions have no Android
-# SDK, so a local run ends with exit 4. CI (the android-debug-apk job) is the test bed.
+# Success prints "export-android: OK <dir>/rts-mobile-debug.apk". A cloud session has no Android SDK and ends
+# with exit 4 until scripts/cloud/install-android.sh has run (it prints the environment and the command to use).
+# CI (the android-debug-apk job) is the test bed.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 ROOT="$(pwd -P)"
 
 GODOT="${GODOT:-godot}"
 GODOT_VERSION="4.7.2.stable"
+# --export-debug packs the android.debug.arm64 entry of the generated .gdextension (ADR 0013 section 10);
+# a release export (P51r) packs android.release.arm64.
+EXPORT_MODE="debug"
 PATTERN='SCRIPT ERROR|^ERROR:|Parse Error'
 PACKAGE="dk.appcode.rts.dev"
 APK_NAME="rts-mobile-debug.apk"
@@ -75,6 +84,9 @@ missing=""
 for name in version.txt android_debug.apk; do
   [ -s "$template_dir/$name" ] || missing="$missing; template $template_dir/$name"
 done
+native_entry="$(sed -n "s|^android\.${EXPORT_MODE}\.arm64 = \"res://\(.*\)\"\$|\1|p" native/sim_kernels.gdextension 2>/dev/null || true)"
+[ -s "${native_entry:-/nonexistent}" ] ||
+  missing="$missing; the Android ${EXPORT_MODE} library (${native_entry:-no android.${EXPORT_MODE}.arm64 entry in native/sim_kernels.gdextension}): bash scripts/build-native.sh --platform android --arch arm64 --target template_${EXPORT_MODE}"
 java_version="$("${JAVA_HOME:-/nonexistent}/bin/java" -version 2>&1 || true)"
 grep -q 'version "17\.' <<<"$java_version" || missing="$missing; JDK 17 (JAVA_HOME='${JAVA_HOME:-}')"
 [ -x "${ANDROID_HOME:-/nonexistent}/platform-tools/adb" ] || missing="$missing; \$ANDROID_HOME/platform-tools/adb (ANDROID_HOME='${ANDROID_HOME:-}')"
@@ -154,6 +166,7 @@ EOF
   done
   printf '\n%s\nLLVM libc++ %s: LICENSE.TXT\n%s\n' "$rule" "$LIBCXX_TAG" "$rule"
   cat "$LIBCXX_DIR/LICENSE.TXT"
+  bash scripts/ci/godot-cpp-notice.sh # the same section export-web.sh appends (ADR 0013 section 11)
 } >"$out_abs/$NOTICE_NAME"
 
 # (7) The APK. Godot picks the build-tools version (the one that equals the target SDK, 36.0.0 on
@@ -178,6 +191,24 @@ grep -q "package=\"$PACKAGE\"" <<<"$manifest" || die 1 "the manifest package is 
 # Godot 4.7.2 maps the project's sensor landscape to userLandscape (11), not sensorLandscape (6).
 grep -Eq 'screenOrientation\(0x0101001e\)=11$' <<<"$manifest" || die 1 "the manifest screenOrientation is not 11 (userLandscape)"
 grep -q 'android.permission.VIBRATE' <<<"$manifest" || die 1 "the manifest lacks the VIBRATE permission"
+
+# (8) The kernels library (ADR 0013 section 10). The APK entry of the export mode holds the bytes CI built,
+# the APK ships libc++_shared.so, and the packed copy passes the ELF and libc++ symbol checks. The template's
+# own libraries are described with no verdict (ADR 0013 Context). Nothing here is faked: a missing piece fails.
+abi_dir="lib/arm64-v8a"
+native_packed="$abi_dir/$(basename "$native_entry")"
+for name in "$native_packed" "$abi_dir/libc++_shared.so"; do
+  grep -Fxq -- "$name" <<<"$listing" || die 1 "the APK lacks $name (its lib/ entries: $(grep '^lib/' <<<"$listing" | tr '\n' ' '))"
+done
+work="$(mktemp -d -t export-android-native.XXXXXX)"
+trap 'rm -rf "$work"' EXIT
+unzip -q "$apk" "$native_packed" "$abi_dir/libc++_shared.so" "$abi_dir/libgodot_android.so" -d "$work"
+cmp -s "$work/$native_packed" "$native_entry" ||
+  die 1 "the APK's $native_packed is not the library CI built ($native_entry): sha256 $(sha256sum <"$work/$native_packed" | cut -d' ' -f1), built $(sha256sum <"$native_entry" | cut -d' ' -f1)"
+bash scripts/ci/check-android-elf.sh describe "$work/$abi_dir/libgodot_android.so" "$work/$abi_dir/libc++_shared.so" || true
+bash scripts/ci/check-android-elf.sh check "$work/$native_packed" "$work/$abi_dir/libc++_shared.so" ||
+  die 1 "the packed $(basename "$native_entry") fails the ELF checks above"
+echo "export-android: $native_packed is the library CI built, sha256 $(sha256sum <"$native_entry" | cut -d' ' -f1)"
 
 rm -f "$log"
 echo "export-android: OK $out/$APK_NAME"
