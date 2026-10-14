@@ -395,6 +395,10 @@ func test_orders_reset_the_navigation_state() -> void:
 
 ## The same commands twice give the same hash after every one of 200 ticks, on a map with a wall,
 ## and the run is not trivial: units slid along the wall, some arrived, every ordered unit checked.
+## The equality of the hashes is the rule. The bounds on the count of arrived units pin this
+## phase's behaviour (units behind the wall slide and stay): P37b's flow fields make those units
+## arrive and P39b's separation moves others, so each of them re-pins the bounds and lists them as
+## a changed assertion.
 func test_two_runs_give_the_same_hashes() -> void:
 	var first: World = _run_script()
 	var first_hashes: PackedInt64Array = _hashes.duplicate()

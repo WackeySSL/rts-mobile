@@ -211,12 +211,7 @@ func test_a_unit_on_a_blocked_tile_may_move_to_a_passable_one() -> void:
 ## bound: the unit takes its step, far past any map. The lower bound is 0 on every world, so a step
 ## below 0 ends at 0 on that axis only (the other axis keeps its step).
 func test_a_world_with_no_map_has_no_upper_bound_and_is_clamped_at_zero() -> void:
-	var world: World = World.new()
-	world.type_ids.append(&"tank")
-	world.type_speed.append(120)
-	world.type_radius.append(400)
-	world.type_selection_radius.append(500)
-	world.type_spacing.append(1200)
+	var world: World = _world_with_no_map()
 	world.add_unit(1, 0, 90000, 70000)
 	world.add_unit(1, 0, 50, 30)
 	world.prepare()
@@ -228,3 +223,61 @@ func test_a_world_with_no_map_has_no_upper_bound_and_is_clamped_at_zero() -> voi
 	Movement.integrate(world)
 	assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([90120, 69901])
 	assert_array([world.pos_x[1], world.pos_y[1]]).is_equal([0, 129])
+
+
+## The upper bound of a world with no map is the largest int32 (what a position column can hold),
+## not some smaller number: a unit far out takes a whole step, and a step past the bound ends on it
+## (2147483647), on each axis alone.
+func test_a_world_with_no_map_is_bounded_by_the_largest_int32() -> void:
+	var world: World = _world_with_no_map()
+	world.add_unit(1, 0, 2000000000, 1500000000)
+	world.add_unit(1, 0, 2147483640, 2147483600)
+	world.prepare()
+	world.intent_x[0] = 120
+	world.intent_y[0] = 77
+	world.intent_x[1] = 120
+	world.intent_y[1] = 120
+	Movement.integrate(world)
+	assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([2000000120, 1500000077])
+	assert_array([world.pos_x[1], world.pos_y[1]]).is_equal([2147483647, 2147483647])
+
+
+## A hand-built world whose size is not whole tiles (5500 x 2500 milli-tiles: 6 x 3 tiles, the last
+## column and row half tiles) keeps every position in 0..map-1, the range the World contract gives,
+## not in the last whole tile (5999 and 2999). The clamp takes the smaller of the map's size and
+## its tiles' extent, on each axis alone: a step that would end at 5550 and 2550 ends at 5499 and
+## 2499, and a step inside the map is taken whole.
+func test_a_map_that_is_not_whole_tiles_clamps_to_its_size_not_its_tiles() -> void:
+	var world: World = _world_with_no_map()
+	world.map_w = 5500
+	world.map_h = 2500
+	var starts: Array[Vector2i] = [
+		Vector2i(5490, 2490), Vector2i(5490, 1000), Vector2i(1000, 2490), Vector2i(5400, 2400)
+	]
+	var steps: Array[Vector2i] = [
+		Vector2i(60, 60), Vector2i(60, 20), Vector2i(20, 60), Vector2i(60, 60)
+	]
+	for row: int in 4:
+		world.add_unit(1, 0, starts[row].x, starts[row].y)
+	world.prepare()
+	assert_array([world.map_cols, world.map_rows]).is_equal([6, 3])
+	for row: int in 4:
+		world.intent_x[row] = steps[row].x
+		world.intent_y[row] = steps[row].y
+	Movement.integrate(world)
+	assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([5499, 2499])
+	assert_array([world.pos_x[1], world.pos_y[1]]).is_equal([5499, 1020])
+	assert_array([world.pos_x[2], world.pos_y[2]]).is_equal([1020, 2499])
+	assert_array([world.pos_x[3], world.pos_y[3]]).is_equal([5460, 2460])
+
+
+## A World with the one tank type table and no map yet: the test sets a size and adds the units
+## before `prepare()` (a size of 0 on both axes leaves it with no map).
+func _world_with_no_map() -> World:
+	var world: World = World.new()
+	world.type_ids.append(&"tank")
+	world.type_speed.append(120)
+	world.type_radius.append(400)
+	world.type_selection_radius.append(500)
+	world.type_spacing.append(1200)
+	return world
