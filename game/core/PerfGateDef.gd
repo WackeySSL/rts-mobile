@@ -1,9 +1,9 @@
 class_name PerfGateDef
 extends Resource
 ## The perf gate's thresholds and golden hashes (ADR 0012 section 4 as ADR 0014 sections 1-4
-## change it). The instance is res://data/dev/perf_gate.tres; these defaults are the ADRs' values.
-## The CPU-time limits are the 2021 limits divided by k = 2.5 for the gate phone; the pacing values
-## are not divided. Times are milliseconds.
+## change it). The instance will be res://data/dev/perf_gate.tres (P38p); these defaults are the
+## ADRs' values. The CPU-time limits are the 2021 limits divided by k = 2.5 for the gate phone;
+## the pacing values are not divided. Times are milliseconds.
 
 ## The heavy window: frames that draw at least `heavy_rigs` rigs; it must hold `heavy_frames_min`.
 @export var heavy_rigs: int = 135

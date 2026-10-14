@@ -220,6 +220,27 @@ func test_ref_loop_takes_rank_95_of_a_hundred_frames() -> void:
 	assert_float(RefLoop.normalised_p95(work, samples, 0.0)).is_equal(95.0)
 
 
+## P50a's runs have any frame count, mostly one where 0.95 x n is no integer: the rank rounds up,
+## to 20 of 21 frames (19.95), 36 of 37 (35.15) and 38 of 39 (37.05). Peak 10: frame i has work
+## 2 x (i + 1) at half the peak's speed (sample 20), so it counts i + 1 and the p95 is the rank
+## itself; without a peak it is twice that. k extra entries in the scaled array (zeros, sorted
+## first) move the rank down by one when 0.95 x n has a fraction above 0 and at most 0.05 x k: one
+## extra does at 39 frames, five at 37 and 39. At 20 or 100 frames no k below 20 does.
+func test_ref_loop_rounds_the_rank_up_on_21_37_and_39_frames() -> void:
+	var p95_of: Dictionary[int, float] = {21: 20.0, 37: 36.0, 39: 38.0}
+	for frames: int in p95_of:
+		var work: PackedFloat64Array = PackedFloat64Array()
+		var samples: PackedFloat64Array = PackedFloat64Array()
+		for i: int in frames:
+			work.append(2.0 * (i + 1))
+			samples.append(20.0)
+		var label: String = str(frames)
+		var normalised: float = RefLoop.normalised_p95(work, samples, 10.0)
+		var raw: float = RefLoop.normalised_p95(work, samples, 0.0)
+		assert_float(normalised).override_failure_message(label).is_equal(p95_of[frames])
+		assert_float(raw).override_failure_message(label).is_equal(2.0 * p95_of[frames])
+
+
 ## The fixed loop: acc = (acc * 31 + i) & 0xFFFFFF from 1. Pinned, so the reference work behind
 ## ref_peak and every frame sample never changes silently.
 func test_ref_loop_run_is_the_fixed_integer_loop() -> void:
