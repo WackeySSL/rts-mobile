@@ -1,10 +1,10 @@
 extends GdUnitTestSuite
 ## Part 1 of the replay tests (P35a, ADR 0007 sections 5 and 9): the command round trip, the
 ## Replay log and its bytes. The layout, the limits and the int32 bound of Command.encode and
-## decode are in test_command. Replay.play and the MatchLoop cases come with P35b. The numbers
-## are literals, so no encoder can agree with its own decoder by being wrong. A push_error or an
-## engine ERROR line would fail verify, which scans the log: every malformed buffer below must be
-## refused before the engine tries to decode it.
+## decode are in test_command; Replay.play is in test_replay_play and MatchLoop in test_match_loop
+## (P35b). The numbers are literals, so no encoder can agree with its own decoder by being wrong. A
+## push_error or an engine ERROR line would fail verify, which scans the log: every malformed
+## buffer below must be refused before the engine tries to decode it.
 
 const Samples: GDScript = preload("res://tests/sim/support/command_samples.gd")
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"

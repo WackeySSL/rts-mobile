@@ -3,12 +3,20 @@ extends RefCounted
 ## The log of one match (ADR 0007 section 9): the scenario path, the seed, the defs hash, every
 ## command in stamping order and a checkpoint hash every CHECKPOINT_PERIOD ticks. The sim is a pure
 ## function of these. Pure sim code: no Node, no clock and no file access (the runner saves and
-## loads files). A replay is valid only for the code and data that recorded it. `play` comes with
-## MatchLoop in P35b.
+## loads files). A replay is valid only for the code and data that recorded it. `play` runs it
+## again through MatchLoop and finds where it stops matching.
 
 const FORMAT: int = 1
 ## Ticks between two checkpoints; MatchLoop adds one when `tick % CHECKPOINT_PERIOD == 0`.
 const CHECKPOINT_PERIOD: int = 15
+
+## What `play` returns besides the tick of the first checkpoint that differs (a tick is never
+## negative): every checkpoint up to `until_tick` matched, the world's defs_hash is not the
+## replay's, or the replay is malformed (a command that does not decode, a command out of tick
+## order, a checkpoint with a negative tick).
+const PLAY_MATCHED: int = -1
+const PLAY_DEFS_DIFFER: int = -2
+const PLAY_BAD_LOG: int = -3
 
 ## The keys of the dictionary that to_bytes() writes, with the Variant type each value must have.
 ## An array kind is part of the type: the commands and the tick list are PackedInt32Array, the
@@ -73,6 +81,62 @@ func add_checkpoint(tick: int, hash: int) -> void:
 func finish(world: World) -> void:
 	final_tick = world.tick
 	final_hash = world.state_hash()
+
+
+## Steps `world`, a fresh world of the replay's scenario made with the replay's seed, from its
+## tick up to `until_tick` and compares the checkpoints. The world goes through
+## MatchLoop.create(null, ...), which issues no scenario orders because the log already holds the
+## stamped ones, and every tick gets the commands the log holds for it as `queued`, in log order,
+## so the loop gives them the sequences they were recorded with. A command that Sim.step dropped
+## in the run (an over-limit one too) is in the log and is dropped again. Returns PLAY_MATCHED
+## when every checkpoint with a tick up to `until_tick` equals the replay's, else the tick of the
+## first one that does not (a recorded checkpoint whose tick the loop never reaches counts as
+## differing); PLAY_DEFS_DIFFER, before any step, when `world.defs_hash()` is not `defs_hash`; and
+## PLAY_BAD_LOG when the log has a command that does not decode, or one whose tick is behind the
+## world's tick when its turn comes (a log is in tick order), or a checkpoint has a negative tick.
+## It reads the log only as far as `until_tick` needs, steps at most `until_tick - world.tick`
+## ticks, and never crashes on bytes. Commands the log holds for ticks after `until_tick` are not
+## read, and the replay's `final_hash` is not checked: the caller compares that.
+static func play(replay: Replay, world: World, until_tick: int) -> int:
+	world.prepare()
+	if replay.defs_hash != world.defs_hash():
+		return PLAY_DEFS_DIFFER
+	var loop: MatchLoop = MatchLoop.create(null, replay.scenario_path, replay.seed, world)
+	var data: PackedInt32Array = replay.commands
+	var data_size: int = data.size()
+	var at: int = 0
+	var checkpoint_ticks: PackedInt32Array = replay.checkpoint_ticks
+	var checkpoint_hashes: PackedInt64Array = replay.checkpoint_hashes
+	var checkpoints: int = mini(checkpoint_ticks.size(), checkpoint_hashes.size())
+	var checked: int = 0
+	var queued: Array[Command] = []
+	while world.tick < until_tick:
+		queued.clear()
+		# The first int of a record is its tick. A record that is behind the world, or that does
+		# not decode, ends the play.
+		while at < data_size and data[at] <= world.tick:
+			if data[at] < world.tick:
+				return PLAY_BAD_LOG
+			var command: Command = Command.new()
+			var end: int = Command.decode(data, at, command)
+			if end < 0:
+				return PLAY_BAD_LOG
+			queued.append(command)
+			at = end
+		loop.step(world, queued)
+		while checked < checkpoints and checkpoint_ticks[checked] <= world.tick:
+			# A negative tick would read as one of the codes, so it is a bad replay instead.
+			if checkpoint_ticks[checked] < 0:
+				return PLAY_BAD_LOG
+			var reached: bool = (
+				checkpoint_ticks[checked] == world.tick
+				and world.tick % CHECKPOINT_PERIOD == 0
+				and checkpoint_hashes[checked] == loop.last_hash
+			)
+			if not reached:
+				return checkpoint_ticks[checked]
+			checked += 1
+	return PLAY_MATCHED
 
 
 ## The replay as bytes: var_to_bytes of a Dictionary with the KINDS keys in that order, so equal
