@@ -56,6 +56,7 @@ const ASLR_RUN: String = "run: sudo sysctl -w vm.mmap_rnd_bits=28"
 const HARNESS_STEP: String = "Dump the arena's states and run the ASan harness over core/"
 const HARNESS_RUN: String = 'run: bash scripts/ci/run-sanitizer-harness.sh "$RUNNER_TEMP/sanitizer"'
 const DUMP_STEP: String = "res://tests/sim/native/sanitizer/dump_states.gd"
+const DUMP_READER: String = "res://native/sim_kernels/sanitizer/dump.h"
 ## P55a2: the ELF checks of export-android.sh, tested offline with the NDK's llvm tools.
 const ELF_STEP: String = "Offline test of the packed-library ELF checks"
 const ELF_RUN: String = "run: bash scripts/ci/test-android-elf.sh"
@@ -330,7 +331,7 @@ func test_sanitizer_changes_job_filters_a_pull_request_by_the_four_folders() -> 
 			"PATTERN: '^(native/|game/sim/|data/|tests/sim/native/)'",
 			"run: |",
 			"relevant=true",
-			'if files="$(git diff --name-only HEAD^1 HEAD)"; then',
+			'if files="$(git diff --no-renames --name-only HEAD^1 HEAD)"; then',
 			'grep -Eq "$PATTERN" <<<"$files" || relevant=false',
 			"fi",
 			'echo "relevant=$relevant" >> "$GITHUB_OUTPUT"',
@@ -395,6 +396,20 @@ func test_the_dump_step_is_a_plain_script_and_no_gdunit_suite() -> void:
 	assert_str(script.get_instance_base_type()).is_equal("SceneTree")
 	assert_object(script.get_base_script()).is_null()
 	assert_bool(DUMP_STEP.get_file().begins_with("test_")).is_false()
+
+
+## P57: the harness refuses a dump of a World.STATE_FORMAT its reader does not know, and only the
+## sanitizer job (not a required check) would notice a bump of the number. So the number must be in
+## the reader's KNOWN_FORMATS: the pull request that bumps STATE_FORMAT updates the reader and the
+## dump step in the same pull request, under verify.
+func test_the_dump_reader_knows_the_state_format_of_the_world() -> void:
+	var line: RegEx = RegEx.create_from_string("KNOWN_FORMATS\\[\\] = \\{([\\d, ]+)\\}")
+	var found: RegExMatch = line.search(FileAccess.get_file_as_string(DUMP_READER))
+	assert_object(found).is_not_null()
+	var known: Array[int] = []
+	for number: String in found.get_string(1).split(","):
+		known.append(number.strip_edges().to_int())
+	assert_array(known).contains([World.STATE_FORMAT])
 
 
 ## The lines of one job: from the line after its header to the next job (or the comment before it).

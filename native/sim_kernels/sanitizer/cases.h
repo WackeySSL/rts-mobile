@@ -1,9 +1,10 @@
 // What a kernel's case file hands the harness (ADR 0013 section 10). Plain C++17, no Godot header. MIT.
 //
 // A later kernel (P37n INTEGRATE, P39n SEPARATION, P41n TARGETING, P42n/P46n FOG) adds one file here, say
-// integrate_cases.cpp, with its two functions below and one KernelCases constant, plus one pointer in KERNELS
-// (main.cpp) and the records it reads in tests/sim/native/sanitizer/dump_states.gd. Nothing else changes: the dump
-// reader, the driver and the build script stay as they are.
+// integrate_cases.cpp, with its two functions below and one KernelCases constant, plus the `extern` line of that
+// constant at the end of this file, one pointer in KERNELS (main.cpp) and the records it reads in
+// tests/sim/native/sanitizer/dump_states.gd. Nothing else changes: the dump reader, the driver and the build script
+// (which compiles every *.cpp of this folder) stay as they are.
 #pragma once
 
 #include <cstdint>

@@ -8,9 +8,14 @@
 // Exit:  0 ok; 1 a finding of the harness itself (a run that did not finish, or did nothing); 2 a bad argument, no
 //        dump, an unreadable dump or a World.STATE_FORMAT it does not know. A sanitizer report aborts the process with
 //        the sanitizer's own non-zero exit code.
-// Known blind spot: the sanitizers see core/ only. An Object* taken from a Variant that died, or memory read inside
-// the engine, is bind/'s class of bug (ADR 0013 section 10, row P57), and the harness has no Godot to show it.
+// Known blind spots (ADR 0013 section 10, row P57): the sanitizers see core/ only. An Object* taken from a Variant that
+// died, or memory read inside the engine, is bind/'s class of bug, and the harness has no Godot to show it. Next,
+// ArrayView clamps an index outside its window (reads 0, writes nothing), so a lone index bug in core/ is a wrong
+// answer that only the lockstep suites see and no report; the crafted case with a corrupted queue (flow_cases.cpp)
+// is what shows the clamp itself failing. Last, no sanitizer here sees a read of memory that was never written
+// (MemorySanitizer needs clang and an instrumented standard library, and the job is g++).
 #include <algorithm>
+#include <cstdint>
 #include <cstdio>
 #include <exception>
 #include <filesystem>
@@ -43,6 +48,46 @@ std::vector<std::string> dump_files(const std::string &argument) {
 	return files;
 }
 
+// The reader on a dump built in memory with records of every kind, empty arrays among them (a kernel whose input is
+// empty at a dump tick, say an event list, writes one), and on a dump that stops inside a record.
+void check_reader() {
+	std::vector<uint8_t> bytes = { 'R', 'T', 'S', 'D' };
+	const auto put = [&bytes](const void *from, size_t size) {
+		const uint8_t *first = static_cast<const uint8_t *>(from);
+		bytes.insert(bytes.end(), first, first + size);
+	};
+	const uint32_t header[] = { KNOWN_FORMATS[0], 7 };
+	put(header, sizeof(header));
+	const auto record = [&](char kind, const std::string &name, const std::vector<int64_t> &values, size_t unit) {
+		const uint16_t name_size = static_cast<uint16_t>(name.size());
+		const uint64_t count = values.size();
+		put(&kind, 1);
+		put(&name_size, sizeof(name_size));
+		put(name.data(), name.size());
+		put(&count, sizeof(count));
+		for (const int64_t value : values) {
+			put(&value, unit); // the low bytes of a little-endian int64, like the dump step's
+		}
+	};
+	record('S', "scalar", { 5 }, 8);
+	record('I', "no_ints", {}, 4);
+	record('B', "no_bytes", {}, 1);
+	record('I', "ints", { 1, -2, 3 }, 4);
+	record('B', "bytes", { 9 }, 1);
+	const Dump dump = Dump::parse(bytes, "in memory");
+	if (dump.tick != 7 || dump.scalar("scalar") != 5 || !dump.ints("no_ints").empty() || !dump.bytes("no_bytes").empty() ||
+			dump.ints("ints") != std::vector<int32_t>({ 1, -2, 3 }) || dump.bytes("bytes") != std::vector<uint8_t>({ 9 })) {
+		throw Finding("the dump reader read a dump built in memory wrongly");
+	}
+	bytes.pop_back();
+	try {
+		Dump::parse(bytes, "in memory");
+	} catch (const std::runtime_error &) {
+		return;
+	}
+	throw Finding("the dump reader took a dump that stops inside a record");
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
@@ -56,6 +101,7 @@ int main(int argc, char **argv) {
 		return 2;
 	}
 	try {
+		check_reader();
 		std::vector<Tally> on_dumps(std::size(KERNELS)), crafted(std::size(KERNELS));
 		for (const std::string &file : files) {
 			const Dump dump = Dump::read(file);

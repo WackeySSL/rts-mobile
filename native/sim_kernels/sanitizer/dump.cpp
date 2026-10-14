@@ -22,7 +22,10 @@ public:
 	}
 	void take_into(void *to, uint64_t size) {
 		need(size);
-		std::memcpy(to, bytes_.data() + at_, size);
+		// An empty record is legal, and an empty std::vector has no data(): memcpy takes no null pointer, even for 0 bytes.
+		if (size > 0) {
+			std::memcpy(to, bytes_.data() + at_, size);
+		}
 		at_ += size;
 	}
 	uint64_t left() const {
@@ -47,6 +50,10 @@ Dump Dump::read(const std::string &path) {
 		throw std::runtime_error("cannot open " + path);
 	}
 	const std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+	return parse(bytes, path);
+}
+
+Dump Dump::parse(const std::vector<uint8_t> &bytes, const std::string &path) {
 	Reader reader(bytes);
 	try {
 		char magic[4];
@@ -109,7 +116,9 @@ int64_t Dump::scalar(const std::string &name) const {
 std::vector<int32_t> Dump::ints(const std::string &name) const {
 	const Record &record = find(name, 'I');
 	std::vector<int32_t> values(record.count);
-	std::memcpy(values.data(), record.payload.data(), record.payload.size());
+	if (!record.payload.empty()) {
+		std::memcpy(values.data(), record.payload.data(), record.payload.size());
+	}
 	return values;
 }
 

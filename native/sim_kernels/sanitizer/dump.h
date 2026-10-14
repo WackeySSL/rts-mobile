@@ -18,6 +18,8 @@ public:
 	// Reads a whole file. Throws std::runtime_error for a missing or short file, a bad magic, a format number
 	// that is not in KNOWN_FORMATS or a record that runs past the end of the file.
 	static Dump read(const std::string &path);
+	// The same for bytes already in memory; `path` only names them in the error text.
+	static Dump parse(const std::vector<uint8_t> &bytes, const std::string &path);
 
 	uint32_t format = 0;
 	uint32_t tick = 0;

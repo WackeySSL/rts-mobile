@@ -13,7 +13,8 @@
 #   always uses the NDK's clang). --optimize speed adds optimize=speed (-O3; template_debug is -O2 without it).
 #   --sanitize undefined (the CI sanitizer job, ADR 0013 section 10) builds our sources with g++ -O1 -fsanitize=undefined
 #   -fno-sanitize-recover=all and without -fwrapv, so a signed overflow aborts; the library links the shared libubsan and
-#   keeps its name, so it replaces a plain build of the same platform, target and arch (Linux and g++ only).
+#   keeps its name, so it replaces a plain build of the same platform, target and arch (Linux and g++ only). It fixes the
+#   optimisation at -O1, so it refuses --optimize.
 #   --print-cache-key prints the CI cache key (ADR 0013 section 8: platform, arch, target, compiler version,
 #   optimize, sanitize, godot-cpp SHA, SCons version) alone on stdout and exits 0 before the fetch and the build.
 #   It checks the toolchain first, so android needs the NDK installed already: the key serves the
@@ -32,7 +33,7 @@
 #        4 godot-cpp fetch or SHA check failed, or the build failed, produced no library, or the
 #          library fails the ELF check (machine, shared object, entry symbol, and on Android only
 #          system libraries or Godot's libc++_shared.so as dependencies; a sanitized library must need the
-#          shared libubsan and call its handlers)
+#          shared libubsan, call a signed-overflow handler (no -fwrapv) and call fatal handlers only)
 # Success prints "build-native: OK <library> (<bytes> bytes)". Bash 3.2 compatible.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -93,6 +94,7 @@ case "$optimize" in "" | speed) ;; *) die 2 "--optimize must be speed, got '$opt
 case "$sanitize" in "" | undefined) ;; *) die 2 "--sanitize must be undefined, got '$sanitize'" ;; esac
 [ -z "$sanitize" ] || [ "$platform" = "linux" ] || die 2 "--sanitize builds the Linux library only (the phone never runs a sanitized one)"
 [ -z "$sanitize" ] || [ "$compiler" != "clang" ] || die 2 "--sanitize undefined builds with g++: clang links no UBSan runtime into a shared library"
+[ -z "$sanitize" ] || [ -z "$optimize" ] || die 2 "--sanitize undefined builds at -O1 whatever --optimize says: drop --optimize"
 host_arch="$(uname -m)"
 case "$host_arch" in aarch64 | arm64) host_arch="arm64" ;; esac
 if [ "$platform" = "android" ]; then
@@ -245,6 +247,14 @@ if [ -n "$sanitize" ]; then
   case " $elf_needed " in *" libubsan.so"*) ;; *) die 4 "$elf_name does not need the shared libubsan (needs: ${elf_needed:-nothing})" ;; esac
   elf_undefined="$("$elf_nm" -D --undefined-only "$library" 2>&1)" || die 4 "$elf_nm -D --undefined-only failed on $elf_name: $elf_undefined"
   grep -Eq ' U __ubsan_handle_' <<<"$elf_undefined" || die 4 "$elf_name calls no __ubsan_handle_ function: it was not instrumented"
+  # Signed overflow is checked only without -fwrapv, and a handler is fatal only with -fno-sanitize-recover=all (its name
+  # ends in _abort; the two that cannot return have no other kind): losing either flag would leave the library running
+  # green over the bugs it is there to find.
+  elf_handlers="$(grep -Eo '__ubsan_handle_[A-Za-z0-9_]+' <<<"$elf_undefined" || true)"
+  grep -Eq '^__ubsan_handle_(add|sub|mul)_overflow_abort$' <<<"$elf_handlers" ||
+    die 4 "$elf_name calls no fatal signed-overflow handler: -fwrapv is on, or the checks are not fatal"
+  elf_recoverable="$(grep -Ev '_abort$|^__ubsan_handle_(builtin_unreachable|missing_return)$' <<<"$elf_handlers" | tr '\n' ' ' || true)"
+  [ -z "$elf_recoverable" ] || die 4 "$elf_name calls handlers that return after a report (${elf_recoverable% }): -fno-sanitize-recover=all is off"
 fi
 echo "build-native: ELF ok: ${elf_machine}, shared object, exports ${ENTRY_SYMBOL}, needs ${elf_needed:-nothing}${sanitize:+(instrumented: $sanitize)}"
 

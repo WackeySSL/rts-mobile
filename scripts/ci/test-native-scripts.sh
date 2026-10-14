@@ -67,6 +67,7 @@ case " $* " in
 #!/usr/bin/env bash
 mode="${STUB_HARNESS:-ok}"
 [ "$mode" != find ] || { echo "sanitizer_harness: FINDING: stub" >&2; exit 1; }
+[ "$mode" != hang ] || exec sleep 30
 format="$(od -An -tu4 -j4 -N4 "$(find "$1" -name 'state_*.bin' | sort | sed -n 1p)" | tr -d ' ')"
 if [ "$format" != 1 ] && [ "$mode" != accept ]; then echo "sanitizer_harness: World.STATE_FORMAT $format is a layout this harness does not know" >&2; exit 2; fi
 HARNESS
@@ -88,7 +89,7 @@ STUB
 cat >"$root/bin/nm" <<'STUB'
 #!/usr/bin/env bash
 case " $* " in
-  *" --undefined-only "*) echo "                 U ${STUB_UNDEF:-__ubsan_handle_add_overflow}" ;;
+  *" --undefined-only "*) for symbol in ${STUB_UNDEF:-__ubsan_handle_add_overflow_abort}; do echo "                 U $symbol"; done ;;
   *) echo "0000000000001000 T ${STUB_SYMBOL:-sim_kernels_library_init}" ;;
 esac
 STUB
@@ -119,6 +120,7 @@ case " $* " in
       noline) printf 'RTSD\001\000\000\000' >"$out/state_00015.bin" ;;
       error) printf 'RTSD\001\000\000\000' >"$out/state_00015.bin"; echo "dump_states: wrote 1 dumps"; echo "SCRIPT ERROR: Parse Error" ;;
       empty) echo "dump_states: wrote 1 dumps" ;;
+      hang) exec sleep 30 ;;
     esac ;;
 esac
 STUB
@@ -226,6 +228,19 @@ run bn bash scripts/build-native.sh --sanitize undefined
 check "build: sanitized library without the shared libubsan" 4 "does not need the shared libubsan"
 run bn STUB_NEEDED="libc.so.6 libubsan.so.1" STUB_UNDEF=memcpy bash scripts/build-native.sh --sanitize undefined
 check "build: sanitized library that calls no handler" 4 "was not instrumented"
+run bn bash scripts/build-native.sh --sanitize undefined --optimize speed
+check "build: sanitize fixes -O1, so --optimize is refused" 2 "drop --optimize"
+# Signed overflow is instrumented only without -fwrapv, and a report is fatal only with -fno-sanitize-recover=all
+# (every handler then ends in _abort, bar the two that cannot return): a library that lost either must fail the build.
+ubsan_run() { run bn STUB_NEEDED="libc.so.6 libubsan.so.1" "STUB_UNDEF=$1" bash scripts/build-native.sh --sanitize undefined; }
+ubsan_run "__ubsan_handle_type_mismatch_v1_abort"
+check "build: sanitized library with no signed-overflow handler (-fwrapv)" 4 "no fatal signed-overflow handler"
+ubsan_run "__ubsan_handle_add_overflow __ubsan_handle_type_mismatch_v1"
+check "build: sanitized library with recoverable handlers only" 4 "no fatal signed-overflow handler"
+ubsan_run "__ubsan_handle_mul_overflow_abort __ubsan_handle_type_mismatch_v1 __ubsan_handle_load_invalid_value"
+check "build: sanitized library with a recoverable handler among fatal ones" 4 "return after a report (__ubsan_handle_type_mismatch_v1 __ubsan_handle_load_invalid_value)"
+ubsan_run "__ubsan_handle_sub_overflow_abort __ubsan_handle_missing_return __ubsan_handle_builtin_unreachable"
+check "build: the two handlers that cannot return have no _abort kind" 0 "(instrumented: undefined)"
 run bn STUB_NEEDED="libc.so.6 libubsan.so.1" bash scripts/build-native.sh --sanitize undefined
 check "build: sanitize undefined" 0 "(instrumented: undefined)"
 assert "build: sanitize undefined passes sanitize=undefined to SCons" grep -Fq "sanitize=undefined" "$root/bn/scons.args"
@@ -509,6 +524,13 @@ for case_ in "STUB_DUMP=fail:4:the dump step exited with 1" "STUB_DUMP=noline:4:
   want="${case_#*:}"
   check "harness: ${case_%%:*}" "${want%%:*}" "${want#*:}"
 done
+# A loop that does not end gives no report: the dump step and the harness are stopped after SANITIZER_TIMEOUT seconds.
+run sh SANITIZER_TIMEOUT=0 bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
+check "harness: a time limit of 0 s" 2 "SANITIZER_TIMEOUT must be a number of seconds above 0"
+run sh SANITIZER_TIMEOUT=1 STUB_DUMP=hang bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
+check "harness: a dump step that does not end is stopped" 4 "the dump step ran longer than 1 s"
+run sh SANITIZER_TIMEOUT=1 STUB_HARNESS=hang bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
+check "harness: a harness that does not end is stopped" 1 "the harness ran longer than 1 s"
 
 # (5) verify.sh builds first, seeds before the import, tests after it and checks the C++ format last.
 prev=0

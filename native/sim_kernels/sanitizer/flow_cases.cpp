@@ -5,6 +5,7 @@
 // SlotData). A change to that loop edits call() in the same PR. Dump records: tests/sim/native/sanitizer/dump_states.gd.
 #include <algorithm>
 #include <climits>
+#include <iterator>
 #include <string>
 #include <utility>
 #include <vector>
@@ -469,6 +470,41 @@ void reintegration(Tally &tally) {
 	}
 }
 
+// A queue whose contents check_world cannot vouch for: heads and links that name no cell, in every spelling of "outside
+// the array" (exactly its size, past it, below -1, both ends of int32), in a field caught mid-integration. ArrayView
+// must turn each into a read of 0 and a skipped write, so the run only finishes and AddressSanitizer stays quiet;
+// without the range check it reports the first such access. No -1 among them: that is the real "none", and the kernel
+// only ends because every pop uses up one of the cells that `pending` counts (it is not meant to survive a wrong
+// count), so a queue emptied by -1 links would leave advance() looking for a cell that is not there.
+void corrupted_queue(Tally &tally) {
+	const Map map = make_map(8, 8, open_cost);
+	const int64_t stride = map.cols + flow::PAD;
+	const int64_t padded = stride * (map.rows + flow::PAD);
+	const int32_t hostile[] = { int32_t(padded), int32_t(padded + 1), int32_t(padded - 1), INT32_MIN, INT32_MAX, -2, -3, 0, 1, int32_t(stride),
+		int32_t(padded - stride), int32_t(padded - 2), int32_t(stride + 1) };
+	const size_t hostile_count = std::size(hostile);
+	FlowState base = make_state(map, 1, 1);
+	request(base, 0, 3 * stride + 3, 0);
+	count(tally, call(base, 3));
+	if (base.slots[0].pending <= 0) {
+		throw Finding("corrupted queue: the field the case starts from is not half integrated");
+	}
+	for (size_t shift = 0; shift < hostile_count; shift++) {
+		for (const int64_t budget : { int64_t(1), int64_t(5), BIG }) {
+			FlowState state = base;
+			SlotData &slot = state.slots[0];
+			for (size_t at = 0; at < slot.bucket_head.size(); at++) {
+				slot.bucket_head[at] = hostile[(at + shift) % hostile_count];
+			}
+			for (size_t at = 0; at < slot.link_next.size(); at++) {
+				slot.link_next[at] = hostile[(at + shift) % hostile_count];
+				slot.link_prev[at] = hostile[(2 * at + shift) % hostile_count];
+			}
+			count(tally, call(state, budget));
+		}
+	}
+}
+
 void crafted(Tally &tally) {
 	tiny_maps_every_goal(tally);
 	edges_and_corners(tally);
@@ -479,6 +515,7 @@ void crafted(Tally &tally) {
 	recount_columns(tally);
 	budget_extremes(tally);
 	reintegration(tally);
+	corrupted_queue(tally);
 }
 
 } // namespace
