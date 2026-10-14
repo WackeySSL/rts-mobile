@@ -190,12 +190,18 @@ bursty phase whose per-active-tick cost sets a headroom value. `COMMANDS`, `REMO
 - FLOW (§2, "Arrays of helper objects"): fetch the typed slot `Array` once, then each touched
   slot's arrays and scalars once (bounded by `flow_cache_size`, never per row or cell). The
   buffer swap is two `set` calls, after which both pointers are fetched again; no slot array is
-  resized in a tick (P30b's `configure()` sizes them).
+  resized in a tick (P30b's `configure()` sizes them). One recorded exception (plan, P26m): the
+  slot pick re-reads `pending` of every `ACTIVE` slot per pick, because reading it once would
+  need a capacity literal.
 - Forbidden: a `Packed*Array` parameter anywhere in `bind/` (by value or by reference: both write
   to a silent copy); keeping a pointer, Variant, array or Object between calls; `get` or `set`
   per row; calling back into GDScript while holding a `ptrw()` pointer; resizing a held array.
   The only resizes in a tick are the event appends, one per appending kernel after its loop.
-- Two layers: `core/` is plain C++17 over `WorldView` and includes no Godot header; `bind/`
+- Two layers: `core/` is plain C++17 over the contract's `WorldView` and includes no Godot
+  header. `WorldView` is realised as `ArrayView<T>` per array (`core/array_view.h`) with an
+  aggregate per kernel (FLOW: `flow::Slot`); in the header's words, "The raw pointer is private,
+  so core/ reaches an element only through get() and set()", "An index outside the window reads
+  0 and writes nothing" and "Only bind/world_access.h builds a view from a pointer". `bind/`
   (`SimKernels`, `world_access.h`, `register_types`, one `kernel_<phase>.cpp` each, one line per
   kernel in `kernel_list.h`) is the only code that touches Godot types. A `core/` function lands
   only with the kernel that calls it, and that kernel's tests run in the same PR.
@@ -218,8 +224,9 @@ bursty phase whose per-active-tick cost sets a headroom value. `COMMANDS`, `REMO
 
 **Determinism in C++ (§4).**
 - `int64_t` wherever GDScript holds an `int`. Every element read from an `int32` or `uint8` array
-  is widened to `int64_t` before any arithmetic (through `WorldView`'s accessors); raw
-  `int32_t`/`uint8_t` pointers appear only at the store, with an explicit `static_cast`. No
+  is widened to `int64_t` before any arithmetic (through `ArrayView<T>::get`, which returns
+  `int64_t`); raw `int32_t`/`uint8_t` pointers stay private to `ArrayView`, whose `set` and
+  `fill` hold the explicit `static_cast` at the store. No
   `char`, `short`, `int` or `long` as a type in `core/`.
 - No `float`, `double`, `<cmath>` or float literal. No undefined behaviour: no signed overflow,
   shifts only on non-negative values by 0-62, no division by zero or `INT64_MIN / -1`, no index
