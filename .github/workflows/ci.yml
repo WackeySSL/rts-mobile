@@ -1,10 +1,11 @@
 name: CI
 
-# Four jobs. "verify" is the only required check: format, lint, import, tests, sim smoke and the web
+# "verify" is the only required check: format, lint, import, tests, sim smoke and the web
 # export, all through the scripts a developer runs locally. "android-debug-apk" (ADR 0005) follows it,
 # after it installs the NDK and builds the kernel libraries (ADR 0013 section 10), and on a push to main
 # "android-dev-release" publishes that APK as the rolling pre-release.
-# "native-clang" runs the native suites on a clang library (ADR 0013 section 10).
+# "native-clang" runs the native suites on a clang library (ADR 0013 section 10). "sanitizer-changes" and
+# "sanitizers" (P57) check the native code under UBSan and AddressSanitizer on pull requests that touch it.
 on:
   pull_request:
   push:
@@ -181,8 +182,9 @@ jobs:
       - name: Build the library (clang, optimize=speed)
         run: bash scripts/build-native.sh --compiler clang --optimize speed
 
-      # Everything under tests/sim/native runs, sanitizer/ included, while the check prunes it: P57 decides
-      # how its dump step stays out of the gdUnit4 runs (here and in verify.sh), once that step exists.
+      # The sanitizer job's dump step, tests/sim/native/sanitizer/dump_states.gd, is a plain script and no
+      # GdUnitTestSuite (P57): this run and verify.sh's (res://tests) load it and drop it, as they drop any
+      # script that is no suite, and the check prunes sanitizer/ from its discovery.
       # P51 adds the golden hashes to this one call (-a res://tests/perf/test_golden_hashes.gd): the check
       # reads one results.xml, and run-tests.sh deletes the report of an earlier call.
       - name: Run the native suites (gdUnit4), when discovery finds one
@@ -191,6 +193,99 @@ jobs:
 
       - name: Check the native suites ran (check-native-tests.sh)
         run: bash scripts/ci/check-native-tests.sh
+
+  # ADR 0013 section 10 (P57): the sanitizer job runs on a pull request that touches native/**, game/sim/**,
+  # data/** or tests/sim/native/**, because a World column, a rule or a twin change can break a kernel without
+  # touching native/. This job decides that from the files of the merge commit against its first parent (the
+  # base), so `sanitizers` ends skipped when nothing matches, and a push to main or a manual run skips both.
+  sanitizer-changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      relevant: ${{ steps.diff.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      # A diff that cannot be read counts as relevant.
+      - name: Does the pull request touch the native code or what it runs on
+        id: diff
+        env:
+          PATTERN: '^(native/|game/sim/|data/|tests/sim/native/)'
+        run: |
+          relevant=true
+          if files="$(git diff --name-only HEAD^1 HEAD)"; then
+            grep -Eq "$PATTERN" <<<"$files" || relevant=false
+          fi
+          echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
+
+  # Not required. UBSan in the engine: g++ -O1 library without -fwrapv and with every report fatal (shared
+  # libubsan), loaded by headless Godot, which plays the real tests/sim/native lockstep suites on it. ASan out of
+  # the engine: a harness over core/ with no Godot header, fed the states that a GDScript step dumps from the
+  # seed-42 arena, plus crafted cases. It cannot see a use-after-free inside the engine's code (ADR 0013 section 10).
+  # Loading an ASan library into Godot (LD_PRELOAD) is not taken (P57).
+  sanitizers:
+    needs: sanitizer-changes
+    if: needs.sanitizer-changes.outputs.relevant == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Cache Godot editor and web export templates
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.local/opt/godot-${{ env.GODOT_VERSION }}
+            ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64-web-${{ hashFiles('scripts/ci/install-godot.sh', 'scripts/ci/remote_zip.py') }}
+
+      - name: Install Godot (editor + web no-threads templates only)
+        run: bash scripts/ci/install-godot.sh
+
+      # g++ with libasan and libubsan is on the runner image.
+      - name: Install the native toolchain (SCons, binutils)
+        run: |
+          pipx install "scons==${SCONS_VERSION}"
+          sudo apt-get install -y --no-install-recommends binutils
+
+      - name: Read the native cache key
+        id: native-key
+        run: |
+          key="$(bash scripts/build-native.sh --sanitize undefined --print-cache-key)"
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+
+      - name: Cache godot-cpp and the SCons object cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            native/godot-cpp
+            ${{ env.SCONS_CACHE }}
+          key: ${{ steps.native-key.outputs.key }}
+
+      - name: Build the UBSan library (g++ -O1, shared libubsan)
+        run: bash scripts/build-native.sh --sanitize undefined
+
+      - name: Run the native suites on the UBSan library (gdUnit4)
+        run: bash scripts/run-tests.sh -a res://tests/sim/native
+
+      - name: Check the native suites ran (check-native-tests.sh)
+        run: bash scripts/ci/check-native-tests.sh
+
+      # The runner randomises mappings with 32 bits, more than the AddressSanitizer of g++ 13 can place its shadow
+      # memory around (actions/runner-images#9491); 28 bits is what it was built for.
+      - name: Lower the address randomisation for AddressSanitizer
+        run: sudo sysctl -w vm.mmap_rnd_bits=28
+
+      - name: Dump the arena's states and run the ASan harness over core/
+        run: bash scripts/ci/run-sanitizer-harness.sh "$RUNNER_TEMP/sanitizer"
 
   # ADR 0005: a debug APK for real-device testing. Not a required check; `verify` stays the only one.
   android-debug-apk:

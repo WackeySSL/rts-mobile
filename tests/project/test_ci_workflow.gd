@@ -43,6 +43,19 @@ const ANDROID_INSTALL_RUN: Array[String] = [
 	'pipx install "scons==${SCONS_VERSION}"',
 	"sudo apt-get install -y --no-install-recommends binutils",
 ]
+## P57 (ADR 0013 section 10): the sanitizer jobs.
+const CHANGES_JOB: String = "  sanitizer-changes:"
+const SANITIZER_JOB: String = "  sanitizers:"
+const DIFF_STEP: String = "Does the pull request touch the native code or what it runs on"
+const UBSAN_FLAGS: String = " --sanitize undefined"
+const UBSAN_BUILD_STEP: String = "Build the UBSan library (g++ -O1, shared libubsan)"
+const UBSAN_RUN_STEP: String = "Run the native suites on the UBSan library (gdUnit4)"
+const UBSAN_RUN: String = "run: bash scripts/run-tests.sh -a res://tests/sim/native"
+const ASLR_STEP: String = "Lower the address randomisation for AddressSanitizer"
+const ASLR_RUN: String = "run: sudo sysctl -w vm.mmap_rnd_bits=28"
+const HARNESS_STEP: String = "Dump the arena's states and run the ASan harness over core/"
+const HARNESS_RUN: String = 'run: bash scripts/ci/run-sanitizer-harness.sh "$RUNNER_TEMP/sanitizer"'
+const DUMP_STEP: String = "res://tests/sim/native/sanitizer/dump_states.gd"
 ## P55a2: the ELF checks of export-android.sh, tested offline with the NDK's llvm tools.
 const ELF_STEP: String = "Offline test of the packed-library ELF checks"
 const ELF_RUN: String = "run: bash scripts/ci/test-android-elf.sh"
@@ -298,6 +311,90 @@ func test_the_ndk_is_pinned_once_in_build_native_sh() -> void:
 	var version: RegEx = RegEx.create_from_string("\\d+\\.\\d+\\.\\d{6,}")
 	for path: String in ["res://scripts/ci/install-ndk.sh", "res://.github/workflows/ci.yml"]:
 		assert_object(version.search(FileAccess.get_file_as_string(path))).is_null()
+
+
+## P57: the sanitizer jobs run on pull requests only, the first decides from the files of the merge
+## commit against its first parent whether the second runs, and neither is a required check or a
+## dependency of one (`verify` is the only required check, and the Android jobs need it alone).
+func test_sanitizer_changes_job_filters_a_pull_request_by_the_four_folders() -> void:
+	var lines: PackedStringArray = _lines("ci.yml")
+	var job: PackedStringArray = _job(lines, CHANGES_JOB)
+	assert_str(job[0]).is_equal("    if: github.event_name == 'pull_request'")
+	assert_array(Array(job)).contains(["          fetch-depth: 2"])
+	_assert_step(
+		job,
+		DIFF_STEP,
+		[
+			"id: diff",
+			"env:",
+			"PATTERN: '^(native/|game/sim/|data/|tests/sim/native/)'",
+			"run: |",
+			"relevant=true",
+			'if files="$(git diff --name-only HEAD^1 HEAD)"; then',
+			'grep -Eq "$PATTERN" <<<"$files" || relevant=false',
+			"fi",
+			'echo "relevant=$relevant" >> "$GITHUB_OUTPUT"',
+		]
+	)
+	var needers: Array[String] = []
+	for i: int in lines.size():
+		if lines[i].contains("needs:") and lines[i].contains("sanitiz"):
+			needers.append(lines[i])
+	assert_array(needers).is_equal(["    needs: sanitizer-changes"])
+
+
+## P57: the UBSan library is built, the real native suites run on it and are checked, and the ASan
+## harness follows, in that order; every report is fatal (halt_on_error), and no step or job can
+## be switched off by an `if:` or `continue-on-error` beyond the job's own filter.
+func test_sanitizer_job_builds_the_ubsan_library_then_runs_the_suites_and_the_harness() -> void:
+	var job: PackedStringArray = _job(_lines("ci.yml"), SANITIZER_JOB)
+	(
+		assert_array(Array(job.slice(0, 3)))
+		. is_equal(
+			[
+				"    needs: sanitizer-changes",
+				"    if: needs.sanitizer-changes.outputs.relevant == 'true'",
+				"    runs-on: ubuntu-24.04",
+			]
+		)
+	)
+	assert_array(Array(job)).contains(["      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1"])
+	for line: String in job:
+		assert_bool(line.begins_with("    continue-on-error:")).is_false()
+		assert_bool(line.strip_edges().begins_with("continue-on-error:")).is_false()
+	_assert_step(job, ANDROID_INSTALL_STEP, ANDROID_INSTALL_RUN)
+	_assert_step(job, KEY_STEP, ["id: native-key", "run: |", KEY_ASSIGN % UBSAN_FLAGS, KEY_ECHO])
+	_assert_cache_step(job)
+	_assert_step(job, UBSAN_BUILD_STEP, ["run: bash scripts/build-native.sh" + UBSAN_FLAGS])
+	_assert_step(job, UBSAN_RUN_STEP, [UBSAN_RUN])
+	_assert_step(job, CHECK_STEP, [CHECK_RUN])
+	_assert_step(job, ASLR_STEP, [ASLR_RUN])
+	_assert_step(job, HARNESS_STEP, [HARNESS_RUN])
+	_assert_order(
+		job,
+		[
+			ANDROID_INSTALL_STEP,
+			KEY_STEP,
+			CACHE_STEP,
+			UBSAN_BUILD_STEP,
+			UBSAN_RUN_STEP,
+			CHECK_STEP,
+			ASLR_STEP,
+			HARNESS_STEP
+		]
+	)
+
+
+## P57 (lead decision, 2026-10-14): the dump step is a plain script and no gdUnit4 suite, so
+## that run-tests.sh (which hands gdUnit4 every .gd below the folder it is asked for, in verify.sh
+## and the native-clang job) never runs it, and check-native-tests.sh (which prunes sanitizer/)
+## never requires it. The proof that no suite named after it reaches results.xml is a run of both.
+func test_the_dump_step_is_a_plain_script_and_no_gdunit_suite() -> void:
+	var script: GDScript = load(DUMP_STEP) as GDScript
+	assert_object(script).is_not_null()
+	assert_str(script.get_instance_base_type()).is_equal("SceneTree")
+	assert_object(script.get_base_script()).is_null()
+	assert_bool(DUMP_STEP.get_file().begins_with("test_")).is_false()
 
 
 ## The lines of one job: from the line after its header to the next job (or the comment before it).
