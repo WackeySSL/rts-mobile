@@ -184,7 +184,11 @@ func test_the_map_comes_from_the_snapshot_and_never_from_the_world() -> void:
 	assert_that(_view.map_rect_px()).is_equal(Rect2i(0, 0, 6 * 64, 2 * 64))
 	assert_int(_view.bake_count()).is_equal(1)  # Nothing to bake again: same match, same version.
 	assert_that(_view.drawn_rect()).is_equal(Rect2(0, 0, 6 * 64, 2 * 64))
-	assert_int(_add_view().bake_count()).is_equal(1)  # A view made after the swap bakes the map.
+	var late: MapView = _add_view()  # A view made after the swap bakes the map of the snapshot.
+	assert_int(late.bake_count()).is_equal(1)
+	assert_that(late.map_rect_px()).is_equal(Rect2i(0, 0, 6 * 64, 2 * 64))
+	assert_that(late.image().get_size()).is_equal(Vector2i(6 * TILE, 2 * TILE))  # Not the World's.
+	assert_str(_hex(late, Vector2i(1, 0), Vector2i(3, 3))).is_equal("CDB98F")  # Sand.
 
 
 func _make_view() -> MapView:

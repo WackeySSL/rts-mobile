@@ -5,12 +5,16 @@ extends GdUnitTestSuite
 ## interpolation clock and layer._process() draws a frame. Rigs that follow deaths and spawns by
 ## unit id are in test_unit_layer_rows.gd.
 
+const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
 const ART: String = "res://assets/art/svg/units/light_tank_%s.svg"
 const BASE_SIZE: Vector2i = Vector2i(1280, 720)
 const BLUE: Color = Color("2F80ED")
 const RED: Color = Color("E5484D")
 const RING_ART: String = "res://assets/art/svg/ui/selection_ring.svg"
+## The ring texture's centre-line radius in px, typed again from STYLE.md so that a wrong
+## UnitLayer.RING_TEX_RADIUS_PX fails (tests/art pins the texture to the same number).
+const RING_CENTRE_PX: float = 72.0
 const UNITS: String = "res://assets/art/svg/units/"
 const TANK_1: PackedInt32Array = [1]
 const TANK_6: PackedInt32Array = [6]  ## Row 5, the east end of the block's first row.
@@ -46,6 +50,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	UiScale.clear_override()
 	CommandQueue.clear()
 
 
@@ -201,6 +206,8 @@ func test_a_type_without_turret_art_has_hull_and_team_only_and_still_turns() -> 
 	assert_float(_rig(1).get_node("Hull").rotation).is_equal_approx(PI / 2.0, 0.001)
 	assert_float(_rig(1).get_node("Team").rotation).is_equal(_rig(1).get_node("Hull").rotation)
 	assert_float(_rig(0).get_node("Hull").rotation).is_equal(0.0)
+	for layer: String in ["Hull", "Team"]:  # The layers of the rows after the rifle squad stay put.
+		assert_float(_rig(2).get_node(layer).rotation).is_equal(0.0)
 
 
 func test_a_ring_is_the_sprite_subclass_with_the_ring_texture_made_at_the_first_selection() -> void:
@@ -216,8 +223,13 @@ func test_a_ring_is_the_sprite_subclass_with_the_ring_texture_made_at_the_first_
 	assert_int(ring.z_index).is_equal(1)
 	assert_bool(ring.z_as_relative).is_false()
 	assert_that(ring.position).is_equal(Vector2.ZERO)
+	assert_bool(ring.centered).is_true()  # The texture's centre is the unit's centre.
+	assert_that(ring.offset).is_equal(Vector2.ZERO)
+	assert_that(ring.modulate).is_equal(Color.WHITE)  # The baked white and dark are not tinted.
+	assert_float(ring.rotation).is_equal(0.0)
 	assert_float(ring.radius).is_greater(0.0)
-	assert_float(ring.scale.x * UnitLayer.RING_TEX_RADIUS_PX).is_equal_approx(ring.radius, 0.001)
+	assert_float(UnitLayer.RING_TEX_RADIUS_PX).is_equal(RING_CENTRE_PX)
+	assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(ring.radius, 0.001)
 	for row: int in range(1, 40):
 		assert_int(_rig(row).get_child_count()).is_equal(3)
 	_layer.set_selected(PackedInt32Array())  # Hidden, and kept for the next selection.
@@ -225,6 +237,19 @@ func test_a_ring_is_the_sprite_subclass_with_the_ring_texture_made_at_the_first_
 	_layer.set_selected(TANK_1)
 	assert_bool(_rig(0).get_child(0) == ring and ring.visible).is_true()
 	assert_int(_rig(0).get_child_count()).is_equal(4)
+
+
+func test_a_ring_is_sized_for_the_selection_radius_of_its_own_unit_type() -> void:
+	UiScale.set_override(UiProfiles.by_name(&"desktop"))  # 1 dp is 1 px: 18 dp is under both rings.
+	var spawns: Array[SpawnDef] = [_spawn(1, "light_tank", 5, 5), _spawn(1, "rifle_squad", 8, 5)]
+	_start(spawns)
+	_layer.set_selected(PackedInt32Array([1, 2]))
+	# Selection radius 500 and 350 milli, 50 more, at 64 px per tile.
+	for want: Array in [[0, 35.2], [1, 25.6]]:
+		var ring: Sprite2D = _rig(want[0]).get_node("Ring")
+		assert_float(ring.radius).is_equal_approx(want[1], 0.001)
+		assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(want[1], 0.001)
+		assert_float(ring.scale.y).is_equal(ring.scale.x)
 
 
 func test_every_layer_draws_at_the_z_of_its_batch_group_and_all_are_absolute() -> void:
@@ -270,6 +295,26 @@ func test_every_layer_draws_at_the_z_of_its_batch_group_and_all_are_absolute() -
 		assert_int(rig.get_node("Team").z_index).is_equal(want[2])
 		assert_int(rig.get_node("Turret").z_index if want[3] >= 0 else -1).is_equal(want[3])
 	assert_int(late.get_child(0).get_node("Team").z_index).is_equal(21)  # Row 0 is unchanged.
+	# The thresholds themselves: type 9 and owner 7 are the last with a group of their own, type 10
+	# and owner 8 the first without. Hull, Team and Turret are layers 0, 1 and 2.
+	var groups: Array[Array] = [  # layer, type, owner, z
+		[0, 9, 0, 19],
+		[0, 10, 1, 19],
+		[2, 9, 0, 109],
+		[2, 10, 1, 109],
+		[1, 0, 7, 27],
+		[1, 1, 7, 35],
+		[1, 9, 7, 99],
+		[1, 0, 8, 99],
+		[1, 10, 0, 99],
+		[1, 0, 0, 20],
+	]
+	for group: Array in groups:
+		(
+			assert_int(UnitLayer.layer_z(group[0], group[1], group[2]))
+			. override_failure_message(str(group))
+			. is_equal(group[3])
+		)
 
 
 func test_the_layer_draws_from_the_published_snapshot_and_never_reads_the_world() -> void:

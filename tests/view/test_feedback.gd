@@ -8,6 +8,9 @@ const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const PROFILES: Array[StringName] = [&"desktop", &"android_6in", &"web_tablet"]
 const GROUND: Vector2 = Vector2(1281, 1377)  ## No unit near it: milli (20016, 21516).
 const RING_TEXTURE: String = "res://assets/art/svg/ui/selection_ring.svg"
+## The texture's centre-line radius in px, typed again from STYLE.md (not read from UnitLayer, so
+## that a wrong UnitLayer.RING_TEX_RADIUS_PX fails; tests/art pins the texture to the same number).
+const RING_CENTRE_PX: float = 72.0
 const DARK: Color = Color("1C2127")
 const AMBER: Color = Color("F5A524")
 const RED: Color = Color("E5484D")
@@ -73,7 +76,8 @@ func test_rings_show_for_exactly_the_selected_ids_and_are_31_5_35_2_and_52_8_px(
 	assert_float(first_ring.radius).is_equal_approx(35.2, 0.001)
 	assert_float(first_ring.unit).is_equal_approx(1.0, 0.0001)
 	assert_str(first_ring.texture.resource_path).is_equal(RING_TEXTURE)
-	assert_float(first_ring.scale.x * UnitLayer.RING_TEX_RADIUS_PX).is_equal_approx(35.2, 0.001)
+	assert_float(UnitLayer.RING_TEX_RADIUS_PX).is_equal(RING_CENTRE_PX)
+	assert_float(first_ring.scale.x * RING_CENTRE_PX).is_equal_approx(35.2, 0.001)
 	var rig_children: Array = _layer.get_child(2).get_children()
 	var names: Array = rig_children.map(func(n: Node) -> StringName: return n.name)
 	assert_array(names).is_equal([&"Ring", &"Hull", &"Team", &"Turret"])  # Under the layers.
@@ -92,14 +96,12 @@ func test_rings_show_for_exactly_the_selected_ids_and_are_31_5_35_2_and_52_8_px(
 		# with R/18 of dark on each side, which is 3 dp + 1 dp + 1 dp at the 18 dp minimum radius.
 		# So the checks are the dp (unit) and the scale that sizes the texture to the radius.
 		assert_float(ring.unit * z[0]).is_equal_approx(1.75, 0.0001)
-		assert_float(ring.scale.x * UnitLayer.RING_TEX_RADIUS_PX).is_equal_approx(
-			ring.radius, 0.001
-		)
+		assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(ring.radius, 0.001)
 		assert_float(ring.scale.y).is_equal(ring.scale.x)
 	await _use(&"desktop")  # A resize under a ring: 1 dp is now 1 px, and the art is larger.
 	assert_float(ring.unit * 1.5).is_equal_approx(1.0, 0.0001)
 	assert_float(ring.radius * 1.5).is_equal_approx(52.8, 0.001)
-	assert_float(ring.scale.x * UnitLayer.RING_TEX_RADIUS_PX).is_equal_approx(ring.radius, 0.001)
+	assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(ring.radius, 0.001)
 	_assert_no_allocation(func() -> void: _layer._process(0.016))
 	_controller.selection.clear()
 	assert_array(_ringed_ids()).is_empty()

@@ -75,6 +75,17 @@ func test_a_dead_unit_loses_its_rig_and_the_others_keep_their_position_heading_a
 	_render(0.5)
 	assert_float(turned.get_node("Hull").rotation).is_equal_approx(heading, 0.001)
 	assert_float(still.get_node("Hull").rotation).is_equal(0.0)
+	# A later order starts from the kept heading and aim: due east is 0.6 rad (12 rad/s * 0.05 s)
+	# nearer, on the survivor's own three layers and on no other rig's. A merge that lost the
+	# heading and the aim together would show no turn at all, the hull keeping its sprite angle.
+	CommandQueue.submit(Command.attack_move(1, TANK_30, 20800, 26900))
+	_runner.run_ticks(1)
+	_layer._process(0.05)
+	var hull: Sprite2D = turned.get_node("Hull")
+	assert_float(hull.rotation).is_equal_approx(heading - 0.6, 0.001)
+	assert_float(turned.get_node("Team").rotation).is_equal(hull.rotation)
+	assert_float(turned.get_node("Turret").rotation).is_equal(hull.rotation)
+	assert_float(_rig(27).get_node("Hull").rotation).is_equal(0.0)  # Tank 29, one row before it.
 	assert_array(_ringed_ids()).is_equal([2, 30])
 	assert_bool(still.get_child(0).name == &"Ring" and still.get_child(0).visible).is_true()
 	assert_int(turned.get_child_count()).is_equal(4)
@@ -110,6 +121,50 @@ func test_a_unit_spawned_mid_match_appears_at_its_position_with_its_tint_and_no_
 	)
 
 
+func test_a_death_and_a_spawn_in_one_tick_keep_the_row_count_and_still_remap_the_rigs() -> void:
+	var dead: Node2D = _rig(0)
+	var second: Node2D = _rig(1)
+	_runner.world.hp[0] = 0
+	assert_int(_runner.world.add_unit(2, 0, 30500, 12500)).is_equal(41)
+	_runner.run_ticks(1)
+	_layer._process(0.0)
+	assert_int(_runner.snapshot.unit_count()).is_equal(40)  # As many rows as before the tick.
+	assert_int(_layer.rig_count()).is_equal(40)
+	assert_int(_layer.get_child_count()).is_equal(40)
+	for row: int in 40:  # Units 2-41: every rig shows its own unit.
+		assert_str(_rig(row).name).is_equal("Unit%d" % (row + 2))
+	assert_bool(_rig(0) == second).is_true()
+	assert_that(_rig(39).get_node("Team").modulate).is_equal(RED)
+	assert_that(_rig(39).position).is_equal(Vector2(1952, 800))
+	await await_idle_frame()
+	assert_bool(is_instance_valid(dead)).is_false()
+
+
+func test_deaths_in_a_row_and_apart_with_a_spawn_keep_every_survivor_rig_and_add_the_new_one_last(
+) -> void:
+	var before: Array[Node] = _layer.get_children()
+	var dead_rows: Array[int] = [0, 1, 20]  # Units 1 and 2 side by side at the head, and unit 21.
+	for row: int in dead_rows:
+		_runner.world.hp[row] = 0
+	_runner.world.add_unit(2, 0, 30500, 12500)
+	_runner.run_ticks(1)
+	_layer._process(0.0)
+	assert_int(_layer.rig_count()).is_equal(38)
+	assert_int(_layer.get_child_count()).is_equal(38)
+	var row: int = 0
+	for old_row: int in 40:
+		if not dead_rows.has(old_row):
+			(
+				assert_bool(_rig(row) == before[old_row])
+				. override_failure_message("old row %d" % old_row)
+				. is_true()
+			)
+			row += 1
+	assert_str(_rig(37).name).is_equal("Unit41")
+	assert_bool(before.has(_rig(37))).is_false()
+	await await_idle_frame()
+
+
 func test_each_entry_point_alone_uses_the_new_rows_inside_ticked_right_after_a_death() -> void:
 	var seen: Dictionary[StringName, Variant] = {}
 	# Unit 1 dies, then unit 2, then unit 3: each time the first call after the tick is one entry
@@ -119,7 +174,7 @@ func test_each_entry_point_alone_uses_the_new_rows_inside_ticked_right_after_a_d
 		_layer.fill_pick_snapshot(snap, 24.0)
 		seen[&"ids"] = snap.ids.duplicate()
 		seen[&"first"] = snap.screen_pos[0]
-	# After the second death the last row is 37, unit 40; unit 3 is the one that has just died.
+	# After the second death the last row is 37, unit 40; unit 2 is the one that has just died.
 	var where: Callable = func() -> void: seen[&"last"] = _layer.unit_screen_position(37)
 	var ring: Callable = func() -> void: _layer.set_selected(PackedInt32Array([3, 4]))
 	_kill_first_and_call(pick)
@@ -193,8 +248,10 @@ func test_deaths_spawns_rings_and_restarts_leave_no_objects_behind() -> void:
 
 
 ## Tank 1, 2 or 3 (whichever is the first row) dies in a tick, and `entry` is the first call the
-## layer gets, inside `ticked`.
+## layer gets, inside `ticked`. The layer has drawn the frame before, as on the phone, so anything
+## it kept from that frame is a tick old by then.
 func _kill_first_and_call(entry: Callable) -> void:
+	_layer._process(0.0)
 	var handler: Callable = func(_tick: int) -> void: entry.call()
 	_runner.ticked.connect(handler)
 	_runner.world.hp[0] = 0

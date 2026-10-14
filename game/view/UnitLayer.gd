@@ -118,11 +118,17 @@ func set_selected(ids: PackedInt32Array) -> void:
 func fill_pick_snapshot(snap: PickSnapshot, min_radius_px: float) -> void:
 	var source: MatchSnapshot = _sync_rigs()
 	var count: int = 0 if source == null else _rigs.size()
-	snap.ids.resize(count)
-	snap.owners.resize(count)
-	snap.type_index.resize(count)
-	snap.screen_pos.resize(count)
-	snap.radius_px.resize(count)
+	# Packed arrays are shared, not copied, by an assignment: the writes land in the PickSnapshot.
+	var out_ids: PackedInt32Array = snap.ids
+	var out_owners: PackedInt32Array = snap.owners
+	var out_types: PackedInt32Array = snap.type_index
+	var out_pos: PackedVector2Array = snap.screen_pos
+	var out_radius: PackedFloat32Array = snap.radius_px
+	out_ids.resize(count)
+	out_owners.resize(count)
+	out_types.resize(count)
+	out_pos.resize(count)
+	out_radius.resize(count)
 	if count == 0:
 		return
 	var ids: PackedInt32Array = source.unit_id
@@ -134,11 +140,11 @@ func fill_pick_snapshot(snap: PickSnapshot, min_radius_px: float) -> void:
 	for row: int in count:
 		var type: int = types[row]
 		var art_px: float = ViewScale.milli_to_px(radii[type]) * zoom
-		snap.ids[row] = ids[row]
-		snap.owners[row] = owners[row]
-		snap.type_index[row] = type
-		snap.screen_pos[row] = camera.world_to_screen(rigs[row].global_position)
-		snap.radius_px[row] = maxf(min_radius_px, art_px)
+		out_ids[row] = ids[row]
+		out_owners[row] = owners[row]
+		out_types[row] = type
+		out_pos[row] = camera.world_to_screen(rigs[row].global_position)
+		out_radius[row] = maxf(min_radius_px, art_px)
 
 
 ## Reads `runner.snapshot` afresh and brings the rigs up to it: all new for another match_serial,
