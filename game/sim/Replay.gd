@@ -100,14 +100,14 @@ func to_bytes() -> PackedByteArray:
 ## past the end, ints after the last record). So the log of a loaded replay always decodes; one
 ## built in memory is for `play` (P35b) to judge. A command over MAX_UNITS or MAX_PAYLOAD is not
 ## malformed. It decodes with bytes_to_var, never the variant that makes objects, and only after
-## _is_plain_dictionary has walked the bytes: the engine prints an ERROR line for every buffer it
-## cannot decode, so truncated and random bytes must not reach it. A string whose bytes are not
-## UTF-8 still passes the walk and still makes the engine print that error, and from_bytes returns
-## null for it.
+## _is_plain_dictionary has walked the bytes, the UTF-8 of every String included: the engine prints
+## an ERROR line for every buffer it cannot decode, so truncated, random and corrupt bytes must not
+## reach it, and a refused buffer makes no engine output at all.
 static func from_bytes(bytes: PackedByteArray) -> Replay:
 	if not _is_plain_dictionary(bytes):
 		return null
 	var raw: Variant = bytes_to_var(bytes)
+	# A guard: the walk has made sure of one Dictionary, so this does not fail.
 	if typeof(raw) != TYPE_DICTIONARY:
 		return null
 	var data: Dictionary = raw
@@ -146,9 +146,9 @@ static func _log_decodes(ints: PackedInt32Array) -> bool:
 
 
 ## True when `bytes` is one Dictionary and nothing after it, whose keys and values are only ints,
-## Strings, PackedInt32Arrays and PackedInt64Arrays, each with a size that fits the buffer. That
-## is the whole of what to_bytes() writes, and bytes_to_var decodes such a buffer without an error.
-## It reads only inside `bytes` and ends at the first value that does not fit.
+## Strings (in UTF-8), PackedInt32Arrays and PackedInt64Arrays, each with a size that fits the
+## buffer. That is the whole of what to_bytes() writes, and bytes_to_var decodes such a buffer
+## without an error. It reads only inside `bytes` and ends at the first value that does not fit.
 static func _is_plain_dictionary(bytes: PackedByteArray) -> bool:
 	if bytes.size() < 8 or bytes.decode_u32(0) != TYPE_DICTIONARY:
 		return false
@@ -164,10 +164,11 @@ static func _is_plain_dictionary(bytes: PackedByteArray) -> bool:
 
 
 ## The bytes the Variant at `at` takes (its header included), or -1 when it is not one of the four
-## kinds, or does not end inside `bytes`. The wire form is a u32 header, then: 4 bytes for an int
-## (8 with WIRE_INT_64), and for a String or an array a u32 count and the elements (a String's
-## bytes padded to a multiple of 4; 4 bytes per element for PackedInt32Array, 8 for
-## PackedInt64Array). Header, counts and sizes are below 2^36, so nothing overflows.
+## kinds, does not end inside `bytes`, or is a String that is not UTF-8. The wire form is a u32
+## header, then: 4 bytes for an int (8 with WIRE_INT_64), and for a String or an array a u32 count
+## and the elements (a String's bytes padded to a multiple of 4; 4 bytes per element for
+## PackedInt32Array, 8 for PackedInt64Array). Header, counts and sizes are below 2^36, so nothing
+## overflows.
 static func _wire_size(bytes: PackedByteArray, at: int) -> int:
 	var end: int = bytes.size()
 	if at > end - 4:
@@ -178,8 +179,9 @@ static func _wire_size(bytes: PackedByteArray, at: int) -> int:
 	if header == WIRE_INT_64:
 		return 12 if at <= end - 12 else -1
 	var body: int = -1
+	var count: int = 0
 	if at <= end - 8:
-		var count: int = bytes.decode_u32(at + 4)
+		count = bytes.decode_u32(at + 4)
 		match header:
 			TYPE_STRING:
 				body = ((count + 3) >> 2) << 2
@@ -189,4 +191,43 @@ static func _wire_size(bytes: PackedByteArray, at: int) -> int:
 				body = count << 3
 	if body < 0 or at + 8 + body > end:
 		return -1
+	# The engine prints an ERROR for a String that is not UTF-8, and a key is a String too.
+	if header == TYPE_STRING and not _is_utf8(bytes, at + 8, at + 8 + count):
+		return -1
 	return 8 + body
+
+
+## True when bytes[from, to) are well formed UTF-8, which is what the engine's String decoding
+## (append_utf8, Godot 4.7.2) takes: a lead byte of 1 to 4 bytes, each continuation byte 10xxxxxx,
+## no overlong form, no surrogate (U+D800 to U+DFFF) and nothing above U+10FFFF. A NUL byte is ASCII
+## here, though the engine ends a string at one; to_bytes() never writes it.
+static func _is_utf8(bytes: PackedByteArray, from: int, to: int) -> bool:
+	var at: int = from
+	while at < to:
+		var lead: int = bytes[at]
+		at += 1
+		if lead < 0x80:
+			continue
+		# 80 to BF is a continuation byte, C0 and C1 start an overlong form, F5 to FF start a code
+		# point above U+10FFFF or a sequence of 5 or 6 bytes.
+		if lead < 0xC2 or lead > 0xF4:
+			return false
+		# The second byte is 80 to BF, narrowed after four leads; the others are always 80 to BF.
+		var low: int = 0x80
+		var high: int = 0xBF
+		if lead == 0xE0:
+			low = 0xA0  # E0 80 to 9F is an overlong form.
+		elif lead == 0xF0:
+			low = 0x90  # F0 80 to 8F is an overlong form.
+		elif lead == 0xED:
+			high = 0x9F  # ED A0 to BF is a surrogate.
+		elif lead == 0xF4:
+			high = 0x8F  # F4 90 to BF is above U+10FFFF.
+		var extra: int = 1 if lead < 0xE0 else (2 if lead < 0xF0 else 3)
+		if at + extra > to or bytes[at] < low or bytes[at] > high:
+			return false
+		for k: int in range(1, extra):
+			if (bytes[at + k] & 0xC0) != 0x80:
+				return false
+		at += extra
+	return true

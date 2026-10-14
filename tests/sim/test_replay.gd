@@ -91,7 +91,9 @@ func test_a_count_past_the_end_or_a_negative_count_is_malformed() -> void:
 
 ## Sim.step drops a command over MAX_UNITS ids or MAX_PAYLOAD payload ints and counts it in
 ## dropped_commands, which the state hash covers. The log holds it, a loaded replay still has it,
-## and the decoded command is dropped and counted exactly as the recorded one was.
+## and the decoded command is dropped and counted exactly as the recorded one was. A valid command
+## recorded after it is in the log too: decode reads the over-limit record whole and ends at the
+## next one, so no later record is lost.
 func test_an_over_limit_command_survives_the_log_and_is_dropped_the_same() -> void:
 	# (ids 1..n, payload ints, expected dropped_commands). Player 1's 30 tanks are ids 1..30, so
 	# 256 ids and 16 payload ints are applied, and only the limit drops the other two.
@@ -107,12 +109,19 @@ func test_an_over_limit_command_survives_the_log_and_is_dropped_the_same() -> vo
 			command.payload.append(k)
 		var replay: Replay = Replay.begin(SCENARIO_PATH, 1, 2)
 		replay.record(command)
-		assert_int(replay.commands.size()).is_equal(9 + shape.x + shape.y)
+		var after: Command = Samples.full(Command.Type.STOP, 1, 2)
+		replay.record(after)
+		var first_end: int = 9 + shape.x + shape.y
+		assert_int(replay.commands.size()).is_equal(first_end + 14)
 		var loaded: Replay = Replay.from_bytes(replay.to_bytes())
 		assert_object(loaded).override_failure_message(str(shape)).is_not_null()
 		var decoded: Command = Command.new()
-		assert_int(Command.decode(loaded.commands, 0, decoded)).is_equal(loaded.commands.size())
+		var next: int = Command.decode(loaded.commands, 0, decoded)
+		assert_int(next).override_failure_message(str(shape)).is_equal(first_end)
 		assert_array(Samples.fields(decoded)).is_equal(Samples.fields(command))
+		var tail: Command = Command.new()
+		assert_int(Command.decode(loaded.commands, next, tail)).is_equal(loaded.commands.size())
+		assert_array(Samples.fields(tail)).is_equal(Samples.fields(after))
 		var recorded: World = _world(0)
 		var replayed: World = _world(0)
 		Sim.step(recorded, [command] as Array[Command])
@@ -253,6 +262,13 @@ func test_from_bytes_gives_null_for_a_value_of_the_wrong_type_or_array_kind() ->
 	assert_object(_with("checkpoint_ticks", PackedInt32Array([15, 30]))).is_null()
 	assert_object(_with("checkpoint_ticks", PackedInt32Array([15, 30, 45, 60]))).is_null()
 	assert_object(_with("checkpoint_hashes", PackedInt64Array([1, 2]))).is_null()
+	# An empty array beside one that is not is unequal too; two empty arrays are a replay with none.
+	assert_object(_with("checkpoint_hashes", PackedInt64Array())).is_null()
+	assert_object(_with("checkpoint_ticks", PackedInt32Array())).is_null()
+	var none: Dictionary = bytes_to_var(_replay().to_bytes())
+	none["checkpoint_ticks"] = PackedInt32Array()
+	none["checkpoint_hashes"] = PackedInt64Array()
+	assert_object(Replay.from_bytes(var_to_bytes(none))).is_not_null()
 
 
 ## from_bytes also walks the command log with Command.decode, from 0 to exactly its size, so the
