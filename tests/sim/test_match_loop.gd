@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 
 const Samples: GDScript = preload("res://tests/sim/support/command_samples.gd")
 const RecordingProbe: GDScript = preload("res://tests/sim/recording_probe.gd")
+const ListProbe: GDScript = preload("res://tests/sim/support/list_probe.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
 const PACKED_KINDS: Array[int] = [
@@ -263,7 +264,7 @@ func test_the_loop_reuses_one_command_list() -> void:
 	var world: World = _world(scenario, 1)
 	var loop: MatchLoop = MatchLoop.create(scenario, SCENARIO_PATH, 1, world)
 	var list: Array[Command] = loop._commands
-	var probe: ListProbe = ListProbe.new()
+	var probe: SimProbe = ListProbe.new()
 	probe.loop = loop
 	probe.world = world
 	for tick: int in 6:
@@ -284,7 +285,7 @@ func test_a_checkpoint_step_starts_one_tick_before_the_checkpoint_tick() -> void
 	var scenario: ScenarioDef = load(SCENARIO_PATH) as ScenarioDef
 	var world: World = _world(scenario, 1)
 	var loop: MatchLoop = MatchLoop.create(scenario, SCENARIO_PATH, 1, world)
-	var probe: ListProbe = ListProbe.new()
+	var probe: SimProbe = ListProbe.new()
 	probe.loop = loop
 	probe.world = world
 	var seen: Array[int] = []
@@ -429,16 +430,3 @@ func _array_sizes(world: World) -> Dictionary[String, int]:
 		if PACKED_KINDS.has(int(info["type"])):
 			sizes[String(info["name"])] = int(world.get(info["name"]).size())
 	return sizes
-
-
-## Writes down how many commands the loop's list holds, and the world's tick, when Sim.step starts.
-class ListProbe:
-	extends SimProbe
-	var loop: MatchLoop
-	var world: World
-	var sizes: Array[int] = []
-	var ticks: Array[int] = []
-
-	func begin() -> void:
-		sizes.append(loop._commands.size())
-		ticks.append(world.tick)
