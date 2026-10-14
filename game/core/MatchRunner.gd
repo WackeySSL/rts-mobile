@@ -1,10 +1,11 @@
 class_name MatchRunner
 extends Node
-## Runs one match: builds the World from a scenario and steps it at Sim.TICK_RATE (ADR 0003
-## section 7). Frame delta lives only here; the sim never sees time. The view interpolates
-## between prev_pos_* and world.pos_* with alpha().
-## It needs the CommandQueue autoload, so a headless `godot -s` tool must load() this script at
-## runtime; naming MatchRunner in the entry script does not compile.
+## Runs one match: builds the World from a scenario and the match seed, and steps it at
+## Sim.TICK_RATE through a MatchLoop, which stamps, records and checkpoints (ADR 0003 section 7,
+## ADR 0007 sections 6 and 9). Frame delta lives only here; the sim never sees time. The view
+## interpolates between prev_pos_* and world.pos_* with alpha() (ADR 0011 section 2).
+## It needs the CommandQueue and DetRng autoloads, so a headless `godot -s` tool must load() this
+## script at runtime; naming MatchRunner in the entry script does not compile.
 
 ## Emitted after each tick with world.tick, the number of ticks played so far.
 signal ticked(tick: int)
@@ -14,10 +15,28 @@ signal ticked(tick: int)
 const MICRO_TICKS_PER_TICK: int = 1_000_000
 
 @export var scenario: ScenarioDef
+## The seed of the match, 0 to 2^31-1 (DetRandom masks it). start() makes the sim stream from it
+## and records it in the replay.
+@export var match_seed: int = 1
 ## Ticks one frame may play. Time beyond that is dropped, not carried to the next frame.
 @export var max_catch_up_ticks: int = 4
 
 var world: World
+## The match's tick driver (ADR 0007 section 9) and its log, `loop.replay`. start() makes both.
+var loop: MatchLoop
+var replay: Replay
+## Counts the start() calls, so a view layer sees a restart without comparing World identity.
+var match_serial: int = 0
+## The state hash of the last checkpoint, `loop.last_hash`: 0 until tick 15, then the hash of the
+## last tick that 15 divides.
+var last_hash: int = 0
+## Microseconds the last tick spent in Sim.step, without the checkpoint hash that MatchLoop.step
+## adds (ADR 0012 section 3), and in the whole runner tick, which includes that hash.
+var last_tick_usec: int = 0
+var last_runner_tick_usec: int = 0
+## A probe for the per-phase split, null unless a HUD sets one (P38t's TimingProbe). It gets every
+## begin() and mark() of Sim.step; a probe changes no hash.
+var probe: SimProbe
 ## Positions before the last tick, same indices as world.pos_x and world.pos_y.
 var prev_pos_x: PackedInt32Array = PackedInt32Array()
 var prev_pos_y: PackedInt32Array = PackedInt32Array()
@@ -26,10 +45,12 @@ var paused: bool = false
 
 var _micro_ticks: int = 0
 var _app_paused: bool = false
-## Runner-wide, so every command of a match gets its own; start() restarts it. 0 is "not stamped".
-var _next_sequence: int = 1
-## Reused every tick, so a tick allocates no command list.
+## Reused every tick, so a tick allocates no command list. MatchLoop.step stamps the commands in
+## place and never empties the list, so _tick does, after every step: a command left in it would
+## be stamped, recorded and applied again on the next tick.
 var _commands: Array[Command] = []
+## Times Sim.step and passes every call on to `probe`; handed to every loop.step.
+var _step_probe: StepProbe = StepProbe.new()
 
 
 func _ready() -> void:
@@ -37,13 +58,20 @@ func _ready() -> void:
 		start()
 
 
-## Builds a new world from the scenario: empty queue, clock at zero, sequence back at 1.
+## Builds a new world from the scenario with the sim stream of `match_seed`, and a new MatchLoop:
+## empty queue, clock at zero, sequences from 0 again, no checkpoint yet.
 func start() -> void:
-	world = World.from_scenario(scenario)
+	world = World.from_scenario(scenario, DetRng.create(match_seed, DetRandom.STREAM_SIM))
+	var scenario_path: String = scenario.resource_path if scenario != null else ""
+	loop = MatchLoop.create(scenario, scenario_path, match_seed, world)
+	replay = loop.replay
+	match_serial += 1
+	last_hash = loop.last_hash
+	last_tick_usec = 0
+	last_runner_tick_usec = 0
 	prev_pos_x = world.pos_x.duplicate()
 	prev_pos_y = world.pos_y.duplicate()
 	_micro_ticks = 0
-	_next_sequence = 1
 	_commands.clear()
 	CommandQueue.clear()
 
@@ -85,8 +113,10 @@ func _notification(what: int) -> void:
 
 
 func _tick() -> void:
+	var started: int = Time.get_ticks_usec()
 	# Copied by index, not duplicate(), so the arrays keep their buffers. They only change size
-	# when a unit is added to a running world, which Phase 1 never does.
+	# when a unit is added to a running world, which nothing does before P42a; re-alignment by id
+	# comes with MatchSnapshot (P38s).
 	var count: int = world.unit_count()
 	if prev_pos_x.size() != count:
 		prev_pos_x.resize(count)
@@ -95,10 +125,10 @@ func _tick() -> void:
 		prev_pos_x[row] = world.pos_x[row]
 		prev_pos_y[row] = world.pos_y[row]
 	CommandQueue.drain_into(_commands)
-	for command: Command in _commands:
-		command.tick = world.tick
-		command.sequence = _next_sequence
-		_next_sequence += 1
-	Sim.step(world, _commands)
+	_step_probe.target = probe
+	loop.step(world, _commands, _step_probe)
 	_commands.clear()
+	last_hash = loop.last_hash
+	last_tick_usec = _step_probe.step_usec
+	last_runner_tick_usec = Time.get_ticks_usec() - started
 	ticked.emit(world.tick)
