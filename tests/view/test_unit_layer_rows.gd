@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 ## not in the tree: only the calls here move time. The other cases of UnitLayer are in
 ## test_unit_layer.gd (gdlint allows 20 public methods per file).
 
+const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
 const BASE_SIZE: Vector2i = Vector2i(1280, 720)
 const RED: Color = Color("E5484D")
@@ -43,6 +44,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	UiScale.clear_override()
 	CommandQueue.clear()
 
 
@@ -93,6 +95,48 @@ func test_a_dead_unit_loses_its_rig_and_the_others_keep_their_position_heading_a
 	assert_array(_ringed_ids()).is_equal([2])
 	await await_idle_frame()  # The dead rig is freed.
 	assert_bool(is_instance_valid(dead)).is_false()
+
+
+func test_a_unit_that_is_mid_turn_when_another_dies_keeps_its_heading_and_aim_apart() -> void:
+	CommandQueue.submit(Command.attack_move(1, TANK_30, 17800, 26900))
+	_runner.run_ticks(1)
+	var hull: Sprite2D = _rig(29).get_node("Hull")
+	_layer._process(0.05)  # 12 rad/s * 0.05 s = 0.6 rad of the 0.927 to the south-east aim.
+	assert_float(hull.rotation).is_equal_approx(0.6, 0.001)
+	_runner.world.hp[0] = 0  # Tank 1 dies in the next tick, and tank 30 moves up to row 28.
+	_runner.run_ticks(1)
+	_layer._process(0.05)  # The merge keeps the heading 0.6 and the aim 0.927 apart: 0.6 more.
+	assert_int(_layer.rig_count()).is_equal(39)
+	assert_bool(_rig(28).get_node("Hull") == hull).is_true()
+	# A merge that gave the heading the aim (or the aim the heading) would write no turn at all:
+	# the hull would stay at 0.6 for good, with nothing left to turn to.
+	assert_float(hull.rotation).is_equal_approx(atan2(4.0, 3.0), 0.001)
+	assert_float(_rig(28).get_node("Team").rotation).is_equal(hull.rotation)
+	assert_float(_rig(28).get_node("Turret").rotation).is_equal(hull.rotation)
+	await await_idle_frame()
+
+
+func test_the_ringed_rows_are_the_last_selection_and_follow_their_units_through_a_death() -> void:
+	for _repeat: int in 3:  # The same selection again is not added to the list again.
+		_layer.set_selected(PackedInt32Array([2, 30]))
+	assert_array(_layer._ringed).is_equal(PackedInt32Array([1, 29]))
+	_layer.set_selected(PackedInt32Array([3]))  # The rings of 2 and 30 stay, hidden.
+	assert_array(_layer._ringed).is_equal(PackedInt32Array([2]))
+	_runner.world.hp[0] = 0  # Tank 1 dies: unit 3 moves up to row 1.
+	_runner.run_ticks(1)
+	_layer._process(0.0)
+	assert_array(_layer._ringed).is_equal(PackedInt32Array([1]))  # Not the hidden rings.
+	assert_array(_ringed_ids()).is_equal([3])
+	_layer.set_selected(PackedInt32Array([2, 30]))
+	assert_array(_layer._ringed).is_equal(PackedInt32Array([0, 28]))
+	_layer.set_selected(PackedInt32Array())
+	assert_array(_layer._ringed).is_empty()
+	_runner.world.hp[0] = 0  # Unit 2 dies, with its ring hidden: it leaves nothing behind.
+	_runner.run_ticks(1)
+	_layer._process(0.0)
+	assert_int(_layer.rig_count()).is_equal(38)
+	assert_array(_layer._ringed).is_empty()
+	await await_idle_frame()
 
 
 func test_a_unit_spawned_mid_match_appears_at_its_position_with_its_tint_and_no_heading_or_ring(
@@ -189,6 +233,24 @@ func test_each_entry_point_alone_uses_the_new_rows_inside_ticked_right_after_a_d
 	assert_int(_layer.rig_count()).is_equal(37)
 	assert_int(seen.size()).is_equal(3)
 	await await_idle_frame()
+
+
+func test_a_resize_between_a_death_and_the_next_frame_sizes_the_rings_of_the_new_rows() -> void:
+	var phone: UiMetrics = UiProfiles.by_name(&"android_6in")  # 1 dp is 1.75 px.
+	UiScale.set_override(UiProfiles.by_name(&"desktop"))  # 1 dp is 1 px.
+	_layer.set_selected(PackedInt32Array([2, 40]))  # Rows 1 and 39.
+	_runner.world.hp[0] = 0
+	_runner.run_ticks(1)  # 39 rows now, and no frame has brought the rigs up to them.
+	UiScale.set_override(phone)
+	get_window().size = phone.window_size
+	await await_idle_frame()  # size_changed: the rings are sized for the rows of the snapshot.
+	assert_int(_layer.rig_count()).is_equal(39)
+	assert_array(_layer._ringed).is_equal(PackedInt32Array([0, 38]))
+	for row: int in [0, 38]:
+		var ring: Sprite2D = _rig(row).get_node("Ring")
+		assert_float(ring.unit).is_equal_approx(1.75, 0.0001)
+		assert_float(ring.radius).is_equal_approx(35.2, 0.001)  # The art, over 18 dp = 31.5 px.
+	assert_array(_ringed_ids()).is_equal([2, 40])
 
 
 func test_another_match_rebuilds_every_rig_even_when_the_rows_version_is_the_same() -> void:

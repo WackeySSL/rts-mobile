@@ -178,6 +178,13 @@ func test_unit_screen_position_is_the_rig_seen_through_the_camera() -> void:
 	_camera.zoom = Vector2(1.5, 1.5)
 	_camera.position = Vector2(2000, 600)
 	assert_that(_layer.unit_screen_position(30)).is_equal(Vector2(952, 468))  # 640 + 208 * 1.5, ...
+	# The camera sees the rig's global position, so a layer that is not at the origin moves both
+	# this answer and the Picker's rows by its offset.
+	_layer.position = Vector2(64, 32)  # 96 px and 48 px on the screen.
+	assert_that(_layer.unit_screen_position(30)).is_equal(Vector2(1048, 516))
+	var pick: PickSnapshot = PickSnapshot.new()
+	_layer.fill_pick_snapshot(pick, 24.0)
+	assert_that(pick.screen_pos[30]).is_equal(Vector2(1048, 516))
 
 
 func test_a_type_without_turret_art_has_hull_and_team_only_and_still_turns() -> void:
@@ -208,6 +215,14 @@ func test_a_type_without_turret_art_has_hull_and_team_only_and_still_turns() -> 
 	assert_float(_rig(0).get_node("Hull").rotation).is_equal(0.0)
 	for layer: String in ["Hull", "Team"]:  # The layers of the rows after the rifle squad stay put.
 		assert_float(_rig(2).get_node(layer).rotation).is_equal(0.0)
+	# Rocket squad 3 (speed 60) drives 4 tiles south-east: a step of (42, 42) milli, 59 long. That
+	# turns it (half of its own step is 30) although it is under half a light tank step (60).
+	CommandQueue.submit(Command.attack_move(1, PackedInt32Array([3]), 9500, 12500))
+	_runner.run_ticks(1)
+	_render(0.5)
+	assert_float(_rig(2).get_node("Hull").rotation).is_equal_approx(PI / 4.0, 0.05)
+	assert_float(_rig(2).get_node("Team").rotation).is_equal(_rig(2).get_node("Hull").rotation)
+	assert_float(_rig(0).get_node("Hull").rotation).is_equal(0.0)
 
 
 func test_a_ring_is_the_sprite_subclass_with_the_ring_texture_made_at_the_first_selection() -> void:
@@ -250,6 +265,15 @@ func test_a_ring_is_sized_for_the_selection_radius_of_its_own_unit_type() -> voi
 		assert_float(ring.radius).is_equal_approx(want[1], 0.001)
 		assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(want[1], 0.001)
 		assert_float(ring.scale.y).is_equal(ring.scale.x)
+	# A selection reads the dp again, also when no resize came in between: 1.75 px per dp, so the
+	# rifle squad's ring is at the 18 dp minimum (31.5 px) and the tank's keeps its art.
+	UiScale.set_override(UiProfiles.by_name(&"android_6in"))
+	_layer.set_selected(PackedInt32Array([1, 2]))
+	for want: Array in [[0, 35.2], [1, 31.5]]:
+		var ring: Sprite2D = _rig(want[0]).get_node("Ring")
+		assert_float(ring.unit).is_equal_approx(1.75, 0.0001)
+		assert_float(ring.radius).is_equal_approx(want[1], 0.001)
+		assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(want[1], 0.001)
 
 
 func test_every_layer_draws_at_the_z_of_its_batch_group_and_all_are_absolute() -> void:
