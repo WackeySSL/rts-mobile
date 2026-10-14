@@ -191,6 +191,26 @@ func test_the_map_comes_from_the_snapshot_and_never_from_the_world() -> void:
 	assert_str(_hex(late, Vector2i(1, 0), Vector2i(3, 3))).is_equal("CDB98F")  # Sand.
 
 
+func test_a_view_with_no_runner_or_no_snapshot_bakes_nothing_until_it_has_one() -> void:
+	var waiting: MatchRunner = auto_free(MatchRunner.new())  # Not started: no snapshot yet.
+	waiting.scenario = _runner.scenario
+	var bare: MapView = auto_free(MapView.new())  # No runner at all.
+	var idle: MapView = auto_free(MapView.new())
+	idle.runner = waiting
+	for view: MapView in [bare, idle]:
+		add_child(view)  # _ready()
+		await await_idle_frame()
+		assert_int(view.bake_count()).is_equal(0)
+		assert_bool(view.image().is_empty()).is_true()
+		assert_that(view.map_rect_px()).is_equal(Rect2i())
+		assert_int(view.draw_count()).is_equal(0)
+	waiting.start()
+	await await_idle_frame()
+	assert_int(idle.bake_count()).is_equal(1)
+	assert_that(idle.map_rect_px()).is_equal(Rect2i(0, 0, 6 * 64, 2 * 64))
+	assert_int(bare.bake_count()).is_equal(0)
+
+
 func _make_view() -> MapView:
 	var view: MapView = auto_free(MapView.new())
 	view.runner = _runner

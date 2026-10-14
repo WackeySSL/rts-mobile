@@ -116,6 +116,70 @@ func test_a_unit_that_is_mid_turn_when_another_dies_keeps_its_heading_and_aim_ap
 	await await_idle_frame()
 
 
+func test_a_unit_that_stands_still_mid_turn_when_another_dies_still_finishes_the_turn() -> void:
+	# One full step south-east, (72, 96) milli: tank 30 arrives in one tick and then stands still,
+	# with the hull 0.6 rad into the 0.927 to its aim.
+	CommandQueue.submit(Command.attack_move(1, TANK_30, 16072, 24596))
+	_runner.run_ticks(1)
+	assert_int(_runner.world.order[29]).is_equal(World.Order.IDLE)
+	var hull: Sprite2D = _rig(29).get_node("Hull")
+	_layer._process(0.05)
+	assert_float(hull.rotation).is_equal_approx(0.6, 0.001)
+	# Tank 1 dies in the next tick, in which tank 30 does not move: the frame cannot take the aim
+	# from the snapshot, so the merge has to keep it apart from the heading (0.6).
+	_runner.world.hp[0] = 0
+	_runner.run_ticks(1)
+	_layer._process(0.05)
+	assert_int(_layer.rig_count()).is_equal(39)
+	assert_bool(_rig(28).get_node("Hull") == hull).is_true()
+	assert_float(hull.rotation).is_equal_approx(atan2(4.0, 3.0), 0.001)
+	assert_float(_rig(28).get_node("Team").rotation).is_equal(hull.rotation)
+	assert_float(_rig(28).get_node("Turret").rotation).is_equal(hull.rotation)
+	await await_idle_frame()
+
+
+func test_a_unit_with_no_speed_that_stands_still_keeps_its_aim() -> void:
+	# No type has speed 0 yet. For one that had, "moved at least half a step" holds for any move
+	# (4 * moved >= 0), so only the move itself keeps a standing unit from aiming at atan2(0, 0).
+	CommandQueue.submit(Command.attack_move(1, TANK_30, 16072, 24596))
+	_runner.run_ticks(1)
+	var hull: Sprite2D = _rig(29).get_node("Hull")
+	_layer._process(0.05)
+	assert_float(hull.rotation).is_equal_approx(0.6, 0.001)
+	_runner.run_ticks(1)  # Tank 30 stands still in this tick.
+	var snap: MatchSnapshot = _runner.snapshot
+	assert_int(snap.pos_x[29]).is_equal(snap.prev_pos_x[29])
+	snap.type_speed[snap.type_index[29]] = 0  # Test-only: written into the published snapshot.
+	_layer._process(0.05)
+	assert_float(hull.rotation).is_equal_approx(atan2(4.0, 3.0), 0.001)
+	await await_idle_frame()
+
+
+func test_a_layer_without_a_runner_or_on_a_runner_without_a_snapshot_draws_nothing() -> void:
+	var waiting: MatchRunner = auto_free(MatchRunner.new())  # Not started: no snapshot yet.
+	waiting.scenario = load(SCENARIO)
+	var layers: Array[UnitLayer] = [auto_free(UnitLayer.new()), auto_free(UnitLayer.new())]
+	layers[1].runner = waiting  # The first has no runner at all.
+	for layer: UnitLayer in layers:
+		layer.camera = _camera
+		add_child(layer)  # _ready()
+		layer.set_process(false)
+		layer._process(0.05)
+		layer.set_selected(PackedInt32Array([1, 2]))
+		var pick: PickSnapshot = PickSnapshot.new()
+		layer.fill_pick_snapshot(pick, 24.0)
+		assert_int(pick.ids.size()).is_equal(0)
+		assert_int(layer.rig_count()).is_equal(0)
+		assert_int(layer.get_child_count()).is_equal(0)
+	waiting.start()  # The rigs come with the first snapshot.
+	layers[1]._process(0.0)
+	assert_int(layers[1].rig_count()).is_equal(40)
+	assert_int(layers[1].get_child_count()).is_equal(40)
+	assert_int(layers[0].rig_count()).is_equal(0)
+	assert_array(layers[1]._ringed).is_empty()  # The selection made before the snapshot is lost.
+	await await_idle_frame()
+
+
 func test_the_ringed_rows_are_the_last_selection_and_follow_their_units_through_a_death() -> void:
 	for _repeat: int in 3:  # The same selection again is not added to the list again.
 		_layer.set_selected(PackedInt32Array([2, 30]))
