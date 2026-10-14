@@ -11,7 +11,8 @@ extends RefCounted
 ##
 ## Every number comes from the World: speed, move class and the tile grid from the type tables and
 ## the map (data/units, data/terrain), the line-check period from `line_check_period_ticks`
-## (data/rules.tres). The only constant here is the upper clamp bound of a world with no map.
+## (data/rules.tres). The only constants here are the upper clamp bound of a world with no map and
+## the `nav_next` mark "looked up, none".
 ##
 ## Navigation modes (`nav_mode`): DIRECT steers straight at the goal; NONE on a unit with an order
 ## is a DIRECT unit that has not started (a hand-set order); FIELD follows the flow field in
@@ -19,10 +20,19 @@ extends RefCounted
 ## steers straight at the unit in `target` (combat sets both, P41). This is the GDScript twin of
 ## the INTENTS and INTEGRATE kernels P37n and P37n2 port later: keep it portable (typed locals, the
 ## World's arrays aliased before each loop, no allocation, helper calls only at event cadence).
+## The split follows ADR 0013 section 1: `run` holds the steering and the line checks, with the
+## first acquire of a field (a GDScript caller of the cache); `integrate` holds the rest of what
+## follows a field: `nav_next` with `best_neighbour`, the stall and the ATTACK re-key.
 
 ## The upper clamp bound of a world with no map (nothing to clamp to above): the largest int32. The
 ## lower bound stays 0 on every world, so a position never goes negative.
 const NO_BOUND: int = 0x7FFFFFFF
+
+## `nav_next` of a FIELD unit whose field is complete and names no next tile for its cell: it stands
+## on the goal tile, or on ground the field does not reach. -1 is the other "none": no lookup made
+## yet (the field is pending, or the order is new). The mark keeps `best_neighbour` from running on
+## every tick of such a unit (ADR 0008 section 2: no per-tick call).
+const NO_NEXT: int = -2
 
 
 ## The navigation state a new order or a STOP gives `rows`: `mode` (DIRECT for an order, NONE for a
@@ -55,29 +65,17 @@ static func reset_nav(world: World, rows: PackedInt32Array, mode: int) -> void:
 ## Line checks (ADR 0008 section 2): a DIRECT unit whose `nav_cell` is -1 tests the line to its goal
 ## on its first tick where `(tick + id) % line_check_period_ticks == 0`, so a group order spreads
 ## its checks over the period. A clear line stays clear on a static map: the unit's cell goes into
-## `nav_cell`, which ends the checking. A blocked line asks the cache for a field of the unit's
-## class that serves the goal (_field_for: one that a group already holds, else the goal's own
-## tile): the unit is FIELD with that slot, or stays DIRECT and unchecked (it asks again on its
-## next turn) when every slot is referenced. A FIELD unit checks the line again each time it enters
-## a tile, and a clear line makes it DIRECT with no field. Every check counts in
-## `stats[LINE_CHECKS]`.
+## `nav_cell`, which ends the checking (`integrate` clears it again for a unit that the rock stops
+## dead, see there). A blocked line asks the cache for a field of the unit's class that serves the
+## goal (_field_for: one that a group already holds, else the goal's own tile; an ATTACK unit takes
+## the field of its goal's tile): the unit is FIELD with that slot, or stays DIRECT and unchecked
+## (it asks again on its next turn) when every slot is referenced. A FIELD unit checks the line
+## again each time it enters a tile, and a clear line makes it DIRECT with no field. Every check
+## counts in `stats[LINE_CHECKS]`, the sight checks of _field_for too.
 ##
-## A FIELD unit steers DIRECT while its field is pending. `nav_next`, the neighbour tile that
-## `best_neighbour` names (-1 for none), is set at event cadence: when the unit enters a tile, on
-## the first tick its field is complete, and on the unit's line-check turn, so that a field the
-## cache re-integrated after a map change (it serves the old costs until the swap, and stays
-## `complete`) sends the unit on within a period. At the goal tile and on ground the field does not
-## reach there is no next tile and the unit steers at its goal; `best_neighbour` then runs on every
-## tick of that unit, a lookup that gives -1 (the price of keeping no "done" column).
-## An ATTACK unit takes the field of its goal's tile when the goal has moved more than
-## `attack_rekey_milli` from the tile its field is keyed on (checked at those events).
-##
-## Stall (ADR 0008 section 2): a unit that steers at its goal for good (DIRECT after a clear line,
-## or FIELD on a complete field with no next tile) tracks `best_dist`, its smallest distance to the
-## goal while it is within `stall_range_spacings` of its type's formation spacing. When that has not
-## improved for `stall_ticks` ticks the unit goes IDLE where it stands. ATTACK units (their goal
-## walks away) and units of speed 0 do not stall, and neither do units that wait for a field or for
-## a free slot: they are not the crowd the rule ends.
+## A FIELD unit steers at the centre of its `nav_next` tile; with none (the field is pending, or
+## the unit stands where the field names no next tile) it steers DIRECT at its goal. `integrate`
+## sets `nav_next`.
 ##
 ## A CHASE unit whose target is gone steers at its goal, but `integrate` never ends a CHASE unit's
 ## order, so it would stand on the goal with its order and mode for good: combat (P41) takes a unit
@@ -91,12 +89,9 @@ static func run(world: World) -> void:
 	var checked: PackedInt32Array = world.nav_cell
 	var slot_of: PackedInt32Array = world.field
 	var next_of: PackedInt32Array = world.nav_next
-	var best_of: PackedInt32Array = world.best_dist
-	var stall_of: PackedInt32Array = world.stall
 	var targets: PackedInt32Array = world.target
 	var types: PackedInt32Array = world.type_index
 	var speeds: PackedInt32Array = world.type_speed
-	var spacings: PackedInt32Array = world.type_spacing
 	var classes: PackedInt32Array = world.type_move_class
 	var pos_x: PackedInt32Array = world.pos_x
 	var pos_y: PackedInt32Array = world.pos_y
@@ -104,20 +99,17 @@ static func run(world: World) -> void:
 	var goal_y: PackedInt32Array = world.goal_y
 	var intent_x: PackedInt32Array = world.intent_x
 	var intent_y: PackedInt32Array = world.intent_y
-	var slots: Array[FlowField] = world.flow.fields
+	var slot_count: int = world.flow.fields.size()
 	var count: int = ids.size()
 	var period: int = maxi(world.line_check_period_ticks, 1)
 	var tick: int = world.tick
 	var tile: int = World.MILLI_PER_TILE
 	var cols: int = world.map_cols
 	var last_row: int = world.map_rows - 1
-	var stall_ticks: int = world.stall_ticks
-	var reach: int = world.stall_range_spacings
 	intent_x.fill(0)
 	intent_y.fill(0)
 	for row: int in count:
-		var order: int = orders[row]
-		if order == World.Order.IDLE:
+		if orders[row] == World.Order.IDLE:
 			continue
 		var mode: int = modes[row]
 		if mode == World.NavMode.HOLD:
@@ -137,7 +129,7 @@ static func run(world: World) -> void:
 			if mode == World.NavMode.NONE:
 				mode = World.NavMode.DIRECT
 				modes[row] = mode
-			elif mode == World.NavMode.FIELD and (slot_of[row] < 0 or slot_of[row] >= slots.size()):
+			elif mode == World.NavMode.FIELD and (slot_of[row] < 0 or slot_of[row] >= slot_count):
 				# A FIELD unit with no slot (a hand-set mode) is a DIRECT unit that has not checked.
 				mode = World.NavMode.DIRECT
 				modes[row] = mode
@@ -148,42 +140,13 @@ static func run(world: World) -> void:
 				and (tick + ids[row]) % period == 0
 			):
 				mode = _check_line(world, row, x, y, aim_x, aim_y, classes[type])
-			var steady: bool = false
 			if mode == World.NavMode.FIELD:
 				var cell: int = clampi(y / tile, 0, last_row) * cols + clampi(x / tile, 0, cols - 1)
-				var entered: bool = cell != checked[row]
-				if entered:
+				if cell != checked[row]:
 					mode = _check_line(world, row, x, y, aim_x, aim_y, classes[type])
-				if mode == World.NavMode.FIELD:
-					var next: int = next_of[row]
-					var turn: bool = next == -1 or (tick + ids[row]) % period == 0
-					if entered or (turn and slots[slot_of[row]].complete):
-						_refresh_next(world, row, cell, classes[type])
-						next = next_of[row]
-					if next >= 0:
-						aim_x = next % cols * tile + World.TILE_CENTRE
-						aim_y = next / cols * tile + World.TILE_CENTRE
-					else:
-						steady = slots[slot_of[row]].complete
-			if mode == World.NavMode.DIRECT:
-				steady = checked[row] >= 0
-			if steady and speed > 0 and order != World.Order.ATTACK:
-				var gx: int = goal_x[row] - x
-				var gy: int = goal_y[row] - y
-				var to_goal: int = gx * gx + gy * gy
-				var span: int = spacings[type] * reach
-				if to_goal <= span * span:
-					var near: int = FixedMath.isqrt(to_goal)
-					if near < best_of[row]:
-						best_of[row] = near
-						stall_of[row] = 0
-					else:
-						stall_of[row] += 1
-						if stall_of[row] >= stall_ticks:
-							goal_x[row] = x
-							goal_y[row] = y
-							_end_order(world, row)
-							continue
+				if mode == World.NavMode.FIELD and next_of[row] >= 0:
+					aim_x = next_of[row] % cols * tile + World.TILE_CENTRE
+					aim_y = next_of[row] / cols * tile + World.TILE_CENTRE
 		var dx: int = aim_x - x
 		var dy: int = aim_y - y
 		var d2: int = dx * dx + dy * dy
@@ -198,7 +161,8 @@ static func run(world: World) -> void:
 
 ## One line check of unit `row` from (x, y) to its aim, counted in `stats[LINE_CHECKS]`. The unit's
 ## cell goes into `nav_cell`. A clear line makes it DIRECT with no field. A blocked line keeps the
-## field it follows, or takes the slot _field_for finds: FIELD with that slot, or DIRECT with the
+## field it follows, or takes one: an ATTACK unit the field of its goal's tile (ADR 0008 section 3),
+## any other the slot _field_for finds. The unit is then FIELD with that slot, or DIRECT with the
 ## line marked unchecked when every slot is referenced. Returns the unit's mode.
 static func _check_line(
 	world: World, row: int, x: int, y: int, aim_x: int, aim_y: int, move_class: int
@@ -210,25 +174,83 @@ static func _check_line(
 		world.field[row] = -1
 		world.nav_next[row] = -1
 		return World.NavMode.DIRECT
-	if world.field[row] >= 0:
-		return World.NavMode.FIELD
-	var slot: int = _field_for(world, aim_x, aim_y, move_class)
-	if slot < 0:
-		world.nav_cell[row] = -1
-		return World.NavMode.DIRECT
-	world.field[row] = slot
+	if world.field[row] < 0:
+		var slot: int = -1
+		if world.order[row] == World.Order.ATTACK:
+			var goal: int = world.cell_of(aim_x, aim_y)
+			slot = world.flow.acquire(goal, move_class, world.map_version, world.tick)
+		else:
+			slot = _field_for(world, aim_x, aim_y, move_class)
+		if slot < 0:
+			world.nav_cell[row] = -1
+			return World.NavMode.DIRECT
+		world.field[row] = slot
 	world.nav_mode[row] = World.NavMode.FIELD
 	return World.NavMode.FIELD
 
 
-## Sets `nav_next` of FIELD unit `row`, standing in `cell`: the neighbour tile its field names, -1
-## while the field is pending. An ATTACK unit takes the right field first (_rekey).
-static func _refresh_next(world: World, row: int, cell: int, move_class: int) -> void:
-	var slot: int = world.field[row]
+## The slot of the field for a unit of `move_class` whose goal is (goal_x, goal_y), -1 when every
+## slot is referenced. ADR 0008 section 3 keys it on "the goal tile of the group target", but the
+## World keeps no group target, only each unit's own slot, and the slots of a formation lie on
+## different tiles (a spacing of 1000 or more), so the goal's own tile would give a group of 12 a
+## field each. A field of the unit's class that the cache holds under this map version already
+## serves it when it is keyed within `attack_rekey_milli` (the distance ADR 0008 accepts for an
+## ATTACK field) and its tile centre is in sight of the goal: the unit follows it until its own
+## line to the goal is clear. The lowest such slot wins; else the field of the goal's own tile.
+## Each sight check counts in `stats[LINE_CHECKS]`.
+@warning_ignore("integer_division")
+static func _field_for(world: World, goal_x: int, goal_y: int, move_class: int) -> int:
+	var cache: FlowCache = world.flow
+	var status: PackedInt32Array = cache.status
+	var key_goal: PackedInt32Array = cache.key_goal
+	var key_class: PackedInt32Array = cache.key_class
+	var key_version: PackedInt32Array = cache.key_version
+	var stats: PackedInt32Array = world.stats
+	var cols: int = world.map_cols
+	var tile: int = World.MILLI_PER_TILE
+	var limit: int = world.attack_rekey_milli
+	for slot: int in status.size():
+		if (
+			status[slot] == FlowCache.Status.FREE
+			or key_class[slot] != move_class
+			or key_version[slot] != world.map_version
+		):
+			continue
+		var key_x: int = key_goal[slot] % cols * tile + World.TILE_CENTRE
+		var key_y: int = key_goal[slot] / cols * tile + World.TILE_CENTRE
+		var dx: int = key_x - goal_x
+		var dy: int = key_y - goal_y
+		if dx * dx + dy * dy > limit * limit:
+			continue
+		stats[World.Stat.LINE_CHECKS] += 1
+		if FixedMath.line_clear(world, goal_x, goal_y, key_x, key_y, move_class):
+			return cache.acquire(key_goal[slot], move_class, world.map_version, world.tick)
+	return cache.acquire(world.cell_of(goal_x, goal_y), move_class, world.map_version, world.tick)
+
+
+## Sets `nav_next` of FIELD unit `row`, standing in `cell`, from its field: the neighbour tile the
+## field names, NO_NEXT when the field is complete and names none, -1 while it is pending. An ATTACK
+## unit takes the right field first (_rekey). `slots`, `slot_of` and `next_of` are the World's
+## `flow.fields`, `field` and `nav_next`, aliased by the caller.
+static func _refresh_next(
+	world: World,
+	slots: Array[FlowField],
+	slot_of: PackedInt32Array,
+	next_of: PackedInt32Array,
+	row: int,
+	cell: int,
+	move_class: int
+) -> void:
+	var slot: int = slot_of[row]
 	if world.order[row] == World.Order.ATTACK:
 		slot = _rekey(world, row, slot, move_class)
-	var field: FlowField = world.flow.fields[slot]
-	world.nav_next[row] = field.best_neighbour(cell) if field.complete else -1
+	var field: FlowField = slots[slot]
+	var next: int = -1
+	if field.complete:
+		next = field.best_neighbour(cell)
+		if next < 0:
+			next = NO_NEXT
+	next_of[row] = next
 
 
 ## The slot of an ATTACK unit's field (ADR 0008 section 3). Its goal follows the target, so the
@@ -244,48 +266,12 @@ static func _rekey(world: World, row: int, slot: int, move_class: int) -> int:
 	var limit: int = world.attack_rekey_milli
 	if dx * dx + dy * dy <= limit * limit:
 		return slot
-	var fresh: int = _field_for(world, world.goal_x[row], world.goal_y[row], move_class)
+	var goal: int = world.cell_of(world.goal_x[row], world.goal_y[row])
+	var fresh: int = world.flow.acquire(goal, move_class, world.map_version, world.tick)
 	if fresh < 0:
 		return slot
 	world.field[row] = fresh
 	return fresh
-
-
-## The slot of the field for a unit of `move_class` whose goal is (goal_x, goal_y), -1 when every
-## slot is referenced. ADR 0008 section 3 keys it on "the goal tile of the group target", but the
-## World keeps no group target, only each unit's own slot, and the slots of a formation lie on
-## different tiles (a spacing of 1000 or more), so the goal's own tile would give a group of 12 a
-## field each. A field of the unit's class that the cache holds under this map version already
-## serves it when it is keyed within `attack_rekey_milli` (the distance ADR 0008 accepts for an
-## ATTACK field) and its tile centre is in sight of the goal: the unit follows it until its own
-## line to the goal is clear. The lowest such slot wins; else the field of the goal's own tile.
-@warning_ignore("integer_division")
-static func _field_for(world: World, goal_x: int, goal_y: int, move_class: int) -> int:
-	var cache: FlowCache = world.flow
-	var status: PackedInt32Array = cache.status
-	var key_goal: PackedInt32Array = cache.key_goal
-	var key_class: PackedInt32Array = cache.key_class
-	var key_version: PackedInt32Array = cache.key_version
-	var cols: int = world.map_cols
-	var tile: int = World.MILLI_PER_TILE
-	var limit: int = world.attack_rekey_milli
-	for slot: int in status.size():
-		if (
-			status[slot] == FlowCache.Status.FREE
-			or key_class[slot] != move_class
-			or key_version[slot] != world.map_version
-		):
-			continue
-		var key_x: int = key_goal[slot] % cols * tile + World.TILE_CENTRE
-		var key_y: int = key_goal[slot] / cols * tile + World.TILE_CENTRE
-		var dx: int = key_x - goal_x
-		var dy: int = key_y - goal_y
-		if (
-			dx * dx + dy * dy <= limit * limit
-			and FixedMath.line_clear(world, goal_x, goal_y, key_x, key_y, move_class)
-		):
-			return cache.acquire(key_goal[slot], move_class, world.map_version, world.tick)
-	return cache.acquire(world.cell_of(goal_x, goal_y), move_class, world.map_version, world.tick)
 
 
 ## Ends the order of unit `row`: IDLE where it stands, with its navigation state cleared. The field
@@ -312,12 +298,43 @@ static func _end_order(world: World, row: int) -> void:
 ## `run`), so its order goes IDLE and its navigation state is cleared, also when a push or the slide
 ## kept it off the goal itself. An ATTACK unit keeps its order and its target until combat ends it
 ## (P41). Rows are independent here, as the pushes were all written before this phase.
+##
+## The rest of what follows a field is here too (ADR 0013 section 1), all at event cadence:
+## - `nav_next` of a FIELD unit is set (_refresh_next) on the tick its field completes (`nav_next`
+##   is -1 and the field is complete, before the step), on the tick the step takes the unit into a
+##   new tile, and on the unit's line-check turn ((tick + id) % period), so that a field the cache
+##   re-integrated after a map change (it serves the old costs until the swap, and stays
+##   `complete`) sends the unit on within a period. All of it waits for a complete field: while it
+##   is pending there is nothing to look up and nothing to re-key. A lookup that names no tile
+##   leaves NO_NEXT, which ends the asking until the next tile or turn. The unit steers on it from
+##   the next tick's `run`.
+## - An ATTACK unit takes the field of its goal's tile when the goal has moved more than
+##   `attack_rekey_milli` from the tile its field is keyed on (checked at those events, so a field
+##   that is pending finishes first, and then the unit re-keys).
+## - Stall (ADR 0008 section 2): a unit that steers at its goal for good (DIRECT after a clear
+##   line, or FIELD on a complete field that names no next tile) tracks `best_dist`, its smallest
+##   distance to the goal while it is within `stall_range_spacings` of its type's formation
+##   spacing. When that has not improved for `stall_ticks` ticks the unit goes IDLE where it
+##   stands, without its intent. ATTACK units (their goal walks away) and units of speed 0 do not
+##   stall, and neither do units that wait for a field or for a free slot: they are not the crowd
+##   the rule ends.
+## - A DIRECT unit that the rock stops dead (no x move, no y move) gets its line checked again on
+##   its next turn: the line was clear when `run` checked it, but the truncated steps do not follow
+##   it (a shallow line moves no whole milli across), so the unit can press on a tile the check
+##   never saw. The new check finds the line blocked and gives the unit a field.
 @warning_ignore("integer_division")
 static func integrate(world: World) -> void:
+	var ids: PackedInt32Array = world.unit_id
 	var orders: PackedInt32Array = world.order
 	var modes: PackedInt32Array = world.nav_mode
+	var checked: PackedInt32Array = world.nav_cell
+	var slot_of: PackedInt32Array = world.field
+	var next_of: PackedInt32Array = world.nav_next
+	var best_of: PackedInt32Array = world.best_dist
+	var stall_of: PackedInt32Array = world.stall
 	var types: PackedInt32Array = world.type_index
 	var speeds: PackedInt32Array = world.type_speed
+	var spacings: PackedInt32Array = world.type_spacing
 	var classes: PackedInt32Array = world.type_move_class
 	var pos_x: PackedInt32Array = world.pos_x
 	var pos_y: PackedInt32Array = world.pos_y
@@ -328,15 +345,21 @@ static func integrate(world: World) -> void:
 	var push_x: PackedInt32Array = world.push_x
 	var push_y: PackedInt32Array = world.push_y
 	var cost: PackedByteArray = world.move_cost
+	var slots: Array[FlowField] = world.flow.fields
+	var slot_count: int = slots.size()
 	var cols: int = world.map_cols
 	var cells: int = cols * world.map_rows
 	var tile: int = World.MILLI_PER_TILE
+	var period: int = maxi(world.line_check_period_ticks, 1)
+	var tick: int = world.tick
+	var stall_ticks: int = world.stall_ticks
+	var reach: int = world.stall_range_spacings
 	var max_x: int = NO_BOUND
 	var max_y: int = NO_BOUND
 	if cells > 0:
 		max_x = mini(world.map_w, cols * tile) - 1
 		max_y = mini(world.map_h, world.map_rows * tile) - 1
-	for row: int in world.unit_id.size():
+	for row: int in ids.size():
 		var order: int = orders[row]
 		var step_x: int = intent_x[row] + push_x[row]
 		var step_y: int = intent_y[row] + push_y[row]
@@ -344,20 +367,66 @@ static func integrate(world: World) -> void:
 			continue
 		var x: int = pos_x[row]
 		var y: int = pos_y[row]
-		if order != World.Order.IDLE and order != World.Order.ATTACK:
-			var mode: int = modes[row]
-			if mode != World.NavMode.HOLD and mode != World.NavMode.CHASE:
-				var speed: int = speeds[types[row]]
-				var dx: int = goal_x[row] - x
-				var dy: int = goal_y[row] - y
-				if dx * dx + dy * dy <= speed * speed:
-					_end_order(world, row)
+		var mode: int = modes[row]
+		var type: int = types[row]
+		# The cell of a FIELD unit with a slot; -1 for any other unit.
+		var cell: int = -1
+		if (
+			mode == World.NavMode.FIELD
+			and order != World.Order.IDLE
+			and cells > 0
+			and slot_of[row] >= 0
+			and slot_of[row] < slot_count
+		):
+			cell = clampi(y, 0, max_y) / tile * cols + clampi(x, 0, max_x) / tile
+			if (
+				(next_of[row] == -1 or (tick + ids[row]) % period == 0)
+				and slots[slot_of[row]].complete
+			):
+				_refresh_next(world, slots, slot_of, next_of, row, cell, classes[type])
+		if (
+			order != World.Order.IDLE
+			and order != World.Order.ATTACK
+			and mode != World.NavMode.HOLD
+			and mode != World.NavMode.CHASE
+		):
+			var speed: int = speeds[type]
+			var dx: int = goal_x[row] - x
+			var dy: int = goal_y[row] - y
+			var to_goal: int = dx * dx + dy * dy
+			if to_goal <= speed * speed:
+				_end_order(world, row)
+				mode = World.NavMode.NONE
+			elif (
+				speed > 0
+				and (
+					(mode == World.NavMode.DIRECT and checked[row] >= 0)
+					or (cell >= 0 and next_of[row] == NO_NEXT)
+				)
+			):
+				var span: int = spacings[type] * reach
+				if to_goal <= span * span:
+					var near: int = FixedMath.isqrt(to_goal)
+					if near < best_of[row]:
+						best_of[row] = near
+						stall_of[row] = 0
+					else:
+						stall_of[row] += 1
+						if stall_of[row] >= stall_ticks:
+							goal_x[row] = x
+							goal_y[row] = y
+							intent_x[row] = 0
+							intent_y[row] = 0
+							step_x = push_x[row]
+							step_y = push_y[row]
+							_end_order(world, row)
+							mode = World.NavMode.NONE
 		if step_x == 0 and step_y == 0:
 			continue
 		var new_x: int = clampi(x + step_x, 0, max_x)
 		var new_y: int = clampi(y + step_y, 0, max_y)
 		if cells > 0:
-			var base: int = classes[types[row]] * cells
+			var base: int = classes[type] * cells
 			if cost[base + (new_y / tile) * cols + new_x / tile] == 0:
 				var own_column: int = clampi(x, 0, max_x) / tile
 				var own_line: int = clampi(y, 0, max_y) / tile
@@ -368,5 +437,11 @@ static func integrate(world: World) -> void:
 				else:
 					new_x = x
 					new_y = y
+				if new_x == x and new_y == y and mode == World.NavMode.DIRECT:
+					checked[row] = -1
 		pos_x[row] = new_x
 		pos_y[row] = new_y
+		if cell >= 0 and mode == World.NavMode.FIELD:
+			var entered: int = new_y / tile * cols + new_x / tile
+			if entered != cell and slots[slot_of[row]].complete:
+				_refresh_next(world, slots, slot_of, next_of, row, entered, classes[type])

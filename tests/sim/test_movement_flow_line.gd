@@ -15,9 +15,10 @@ const ROWS: int = 40
 ## a budget of 25 cells a tick: a field of about 1500 cells takes about 60 ticks, so it is pending
 ## across the checkpoints at ticks 15, 30, 45 and 60. On every step after which `loop.replay` has a
 ## new checkpoint `stats[FLOW_CELLS]` is exactly 0; on every other step while the field is pending
-## it is the budget, or what was left on the step that finished it; and the field completes with
-## every reachable cell settled once. A rule that tests `world.tick` instead of `world.tick + 1`
-## fails on the first checkpoint step (the budget would be 25 there).
+## it is exactly the budget, except on the one step that finishes the field, which settles what was
+## left; and the field completes with every reachable cell settled once. A rule that tests
+## `world.tick` instead of `world.tick + 1` fails on the first checkpoint step (the budget would be
+## 25 there).
 func test_no_flow_slice_runs_on_the_steps_that_take_a_checkpoint() -> void:
 	var world: World = _wall_world()
 	world.flow_cells_per_tick = BUDGET
@@ -25,6 +26,7 @@ func test_no_flow_slice_runs_on_the_steps_that_take_a_checkpoint() -> void:
 	var reachable: int = COLS * ROWS - world.move_cost.slice(0, COLS * ROWS).count(0)
 	var total: int = 0
 	var checkpoint_steps_pending: int = 0
+	var pending_steps: int = 0
 	var full_steps: int = 0
 	var finished_at: int = -1
 	for tick: int in 150:
@@ -43,6 +45,7 @@ func test_no_flow_slice_runs_on_the_steps_that_take_a_checkpoint() -> void:
 			assert_int(loop.replay.checkpoint_ticks[-1]).is_equal(world.tick)
 			checkpoint_steps_pending += 1 if pending else 0
 		elif pending:
+			pending_steps += 1
 			full_steps += 1 if cells == BUDGET else 0
 			assert_int(cells).override_failure_message(label).is_between(1, BUDGET)
 			if cells < BUDGET:
@@ -50,7 +53,8 @@ func test_no_flow_slice_runs_on_the_steps_that_take_a_checkpoint() -> void:
 		elif tick > 100:
 			assert_int(cells).override_failure_message(label).is_equal(0)
 	assert_int(checkpoint_steps_pending).is_equal(4)
-	assert_int(full_steps).is_greater(50)
+	assert_int(pending_steps).is_greater(50)
+	assert_int(full_steps).is_equal(pending_steps - 1)
 	assert_int(finished_at).is_greater(50)
 	assert_int(total).is_equal(reachable)
 	assert_bool(world.flow.field(0).complete).is_true()

@@ -15,29 +15,40 @@ const NONE: int = World.NavMode.NONE
 const RANGE: int = 2400
 
 
-## Two tanks are ordered along their own rows of an open map; once the first is within 2400 of its
-## goal a parked enemy pushes it back by exactly its step each tick, so it stays where it is. Its
-## distance is recorded at the first tick in range and does not improve, so after `stall_ticks`
-## (15) more ticks the unit goes IDLE where it stands: order IDLE, goal where it stands, no mode, no
-## field, stall 0. That is within stall_ticks + 1 of the first tick in range. The other tank,
-## unpushed, arrives on its goal.
+## Two tanks are ordered along their own rows of an open map, to goals 600 apart in x; once a tank
+## is within 2400 of its goal a parked enemy pushes it back by exactly its step each tick, so it
+## stays where it is. Its distance is recorded at its first tick in range and does not improve, so
+## after `stall_ticks` (15) more ticks that tank goes IDLE where it stands: order IDLE, goal where
+## it stands, no mode, no field, stall 0, no intent on its last tick. That is stall_ticks after the
+## tank's own first tick in range, within stall_ticks + 1, and the two tanks' first ticks differ by
+## the 5 ticks that 600 takes: the count is kept per unit.
 func test_units_held_back_in_range_of_their_slots_go_idle_within_stall_ticks() -> void:
 	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
 	GridWorld.add_block(world, 2, 1, 3040, 2000, 4000, 0)
-	var seen: Array[int] = _hold_back(world, RANGE)
-	var first_in_range: int = seen[0]
-	var idle_at: int = seen[1]
-	var stood_at: int = seen[2]
-	assert_int(first_in_range).is_greater(30)
-	assert_int(idle_at - first_in_range).is_equal(world.stall_ticks)
-	assert_int(idle_at - first_in_range).is_less_equal(world.stall_ticks + 1)
-	assert_int(seen[3]).is_equal(0)
-	assert_array([world.order[0], world.nav_mode[0], world.stall[0]]).is_equal([IDLE, NONE, 0])
-	assert_array([world.goal_x[0], world.goal_y[0]]).is_equal([stood_at, 2000])
-	assert_array([world.field[0], world.nav_next[0], world.nav_cell[0]]).is_equal([-1, -1, -1])
-	assert_int(world.best_dist[0]).is_equal(FlowField.UNREACHED)
-	assert_int(stood_at).is_between(10000 - RANGE, 10000 - 120)
-	assert_array([world.order[1], world.pos_x[1], world.pos_y[1]]).is_equal([IDLE, 10000, 6000])
+	var seen: Array[Array] = _hold_back(world, RANGE, 10600)
+	var goals: Array[int] = [10000, 10600]
+	for row: int in 2:
+		var first_in_range: int = seen[row][0]
+		var idle_at: int = seen[row][1]
+		var stood_at: int = seen[row][2]
+		var label: String = "unit %d" % (row + 1)
+		assert_int(first_in_range).override_failure_message(label).is_greater(30)
+		assert_int(idle_at - first_in_range).override_failure_message(label).is_equal(
+			world.stall_ticks
+		)
+		assert_int(idle_at - first_in_range).is_less_equal(world.stall_ticks + 1)
+		assert_int(seen[row][3]).override_failure_message(label).is_equal(0)
+		assert_array([world.order[row], world.nav_mode[row], world.stall[row]]).is_equal(
+			[IDLE, NONE, 0]
+		)
+		assert_array([world.goal_x[row], world.goal_y[row]]).is_equal([stood_at, 2000 + row * 4000])
+		assert_array([world.field[row], world.nav_next[row], world.nav_cell[row]]).is_equal(
+			[-1, -1, -1]
+		)
+		assert_int(world.best_dist[row]).is_equal(FlowField.UNREACHED)
+		assert_int(stood_at).is_between(goals[row] - RANGE, goals[row] - 120)
+	assert_int(seen[1][0] - seen[0][0]).is_equal(5)
+	assert_int(seen[1][1] - seen[0][1]).is_equal(5)
 
 
 ## The count and the range are the World's rules: with `stall_ticks` 6 and `stall_range_spacings`
@@ -46,14 +57,15 @@ func test_units_held_back_in_range_of_their_slots_go_idle_within_stall_ticks() -
 func test_stall_follows_the_rules_of_the_world() -> void:
 	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
 	GridWorld.add_block(world, 2, 1, 3040, 2000, 4000, 0)
-	var normal: Array[int] = _hold_back(world, RANGE)
+	var normal: Array[Array] = _hold_back(world, RANGE, 10000)
 	var other: World = GridWorld.from_rows(GridWorld.grass(20, 10))
 	GridWorld.add_block(other, 2, 1, 3040, 2000, 4000, 0)
 	other.stall_ticks = 6
 	other.stall_range_spacings = 3
-	var seen: Array[int] = _hold_back(other, 3600)
-	assert_int(seen[1] - seen[0]).is_equal(6)
-	assert_int(normal[0] - seen[0]).is_equal(10)
+	var seen: Array[Array] = _hold_back(other, 3600, 10000)
+	assert_int(seen[0][1] - seen[0][0]).is_equal(6)
+	assert_int(seen[1][1] - seen[1][0]).is_equal(6)
+	assert_int(normal[0][0] - seen[0][0]).is_equal(10)
 
 
 ## Progress resets the count. A tank is held back ten ticks in range, let go for one (it gains a
@@ -183,31 +195,29 @@ func test_a_unit_on_ground_the_field_does_not_reach_stalls_in_range_of_its_goal(
 	assert_array([world.goal_x[0], world.goal_y[0]]).is_equal([world.pos_x[0], world.pos_y[0]])
 
 
-## Orders unit 1 along row 2000 to x 10000 and unit 2 along row 6000, and from the first tick
-## unit 1 is within `reach` of its goal pushes it back by its whole step each tick. Runs 200 ticks
-## and returns [the first tick with a best distance, the tick unit 1 went IDLE, its x at the start
-## of that tick, its x intent at the end of it].
-func _hold_back(world: World, reach: int) -> Array[int]:
-	var first_in_range: int = -1
-	var idle_at: int = -1
-	var stood_at: int = -1
-	var intent: int = -1
+## Orders unit 1 along row 2000 to x 10000 and unit 2 along row 6000 to x `second_goal`, and from
+## the tick a unit is within `reach` of its goal a parked enemy pushes it back by its whole step
+## each tick. Runs 200 ticks and returns, for each unit, [the first tick with a best distance, the
+## tick the unit went IDLE, its x at the start of that tick, its x intent at the end of it].
+func _hold_back(world: World, reach: int, second_goal: int) -> Array[Array]:
+	var found: Array[Array] = [[-1, -1, -1, -1], [-1, -1, -1, -1]]
 	for tick: int in 200:
 		var commands: Array[Command] = []
 		if tick == 0:
 			commands.append(_stamped(Command.move(1, PackedInt32Array([1]), 10000, 2000), 0))
-			commands.append(_stamped(Command.move(1, PackedInt32Array([2]), 10000, 6000), 0))
-		var left: int = world.goal_x[0] - world.pos_x[0]
-		world.push_x[0] = -120 if tick > 0 and left <= reach and world.order[0] != IDLE else 0
-		var before: int = world.pos_x[0]
+			commands.append(_stamped(Command.move(1, PackedInt32Array([2]), second_goal, 6000), 0))
+		var before: Array[int] = [world.pos_x[0], world.pos_x[1]]
+		for row: int in 2:
+			var left: int = world.goal_x[row] - world.pos_x[row]
+			var held: bool = tick > 0 and left <= reach and world.order[row] != IDLE
+			world.push_x[row] = -120 if held else 0
 		Sim.step(world, commands)
-		if first_in_range == -1 and world.best_dist[0] != FlowField.UNREACHED:
-			first_in_range = tick
-		if idle_at == -1 and world.order[0] == IDLE:
-			idle_at = tick
-			stood_at = before
-			intent = world.intent_x[0]
-	return [first_in_range, idle_at, stood_at, intent]
+		for row: int in 2:
+			if found[row][0] == -1 and world.best_dist[row] != FlowField.UNREACHED:
+				found[row][0] = tick
+			if found[row][1] == -1 and world.order[row] == IDLE:
+				found[row] = [found[row][0], tick, before[row], world.intent_x[row]]
+	return found
 
 
 func _stamped(command: Command, tick: int) -> Command:

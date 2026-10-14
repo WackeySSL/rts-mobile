@@ -6,7 +6,7 @@ extends GdUnitTestSuite
 ## test_movement_stall.gd, the checkpoint ticks in test_movement_flow_line.gd.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
-const CountingField: GDScript = preload("res://tests/sim/support/counting_field.gd")
+const FieldCadence: GDScript = preload("res://tests/sim/support/field_cadence.gd")
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const FOOT: int = World.MoveClass.FOOT
 const TRACKED: int = World.MoveClass.TRACKED
@@ -179,12 +179,16 @@ func test_a_pending_field_leaves_units_steering_direct() -> void:
 	assert_int(held.pos_y[0]).is_equal(4500)
 
 
-## `nav_next` is set at event cadence. A counting slot shows it: the unit crosses a wall through a
-## gap (20 x 12 map, wall in column 8, rows 0 to 8) and `best_neighbour` is asked only on the tick
-## the unit enters a tile, on the tick its field completes, on its line-check turn ((tick + id) % 5,
-## the refresh for a map that changed under it) and while there is no next tile; never twice in a
-## tick. On those ticks of tile entry or completion `nav_next` equals `best_neighbour(cell)`, and on
-## the others it keeps its value. Over the whole run the asks are fewer than the ticks followed.
+## `nav_next` is set at event cadence, in INTEGRATE (ADR 0013 section 1). A counting slot shows it:
+## the unit crosses a wall through a gap (20 x 12 map, wall in column 8, rows 0 to 8) and
+## `best_neighbour` is asked once on the tick its field completes (`nav_next` -1 and the field
+## complete, before the step), once on the tick the step takes it into a new tile (for the new
+## tile), and once on its line-check turn ((tick + id) % 5, the refresh for a map that changed under
+## it); on every other tick not at all, and `nav_next` keeps its value (FieldCadence holds the
+## rule).
+## On the asked ticks `nav_next` equals `best_neighbour(cell)` of the tile the unit is in after the
+## step. Each kind of event happens in the run. Over the whole run the asks are fewer than the
+## ticks followed.
 func test_nav_next_is_set_at_event_cadence_only() -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 9:
@@ -192,52 +196,13 @@ func test_nav_next_is_set_at_event_cadence_only() -> void:
 	var world: World = GridWorld.from_rows(GridWorld.grass(20, 12, rock))
 	world.add_unit(1, 0, 3500, 2500)
 	world.flow_cells_per_tick = 25
-	var counting: CountingField = CountingField.new()
-	counting.reserve(world.map_cols, world.map_rows)
-	world.flow.fields[0] = counting
-	var previous_cell: int = -1
-	var followed: int = 0
-	var events: int = 0
-	var completed_at: int = -1
-	for tick: int in 400:
-		var commands: Array[Command] = []
-		if tick == 0:
-			commands.append(_stamped(Command.move(1, PackedInt32Array([1]), 14500, 2500), 0))
-		var cell: int = world.cell_of(world.pos_x[0], world.pos_y[0])
-		var next_before: int = world.nav_next[0]
-		var asked_before: int = counting.lookups
-		var complete_before: bool = counting.complete
-		Sim.step(world, commands)
-		var asked: int = counting.lookups - asked_before
-		var mode: int = world.nav_mode[0]
-		if mode != FIELD or world.field[0] != 0:
-			previous_cell = cell
-			if world.order[0] == IDLE:
-				break
-			continue
-		followed += 1
-		var completed_now: bool = counting.complete and not complete_before
-		completed_at = tick if completed_now else completed_at
-		var entered: bool = cell != previous_cell
-		var turn: bool = (tick + 1) % 5 == 0
-		var label: String = "tick %d" % tick
-		assert_int(asked).override_failure_message(label).is_less_equal(1)
-		if asked == 1:
-			var allowed: bool = entered or completed_now or turn or next_before == -1
-			assert_bool(allowed).override_failure_message(label).is_true()
-		if (entered or completed_now) and counting.complete:
-			events += 1
-			counting.counted = false
-			var expected: int = counting.best_neighbour(cell)
-			counting.counted = true
-			assert_int(world.nav_next[0]).override_failure_message(label).is_equal(expected)
-		elif not turn and next_before != -1:
-			assert_int(world.nav_next[0]).override_failure_message(label).is_equal(next_before)
-			assert_int(asked).override_failure_message(label).is_equal(0)
-		previous_cell = cell
-	assert_int(completed_at).is_greater(0)
-	assert_int(events).is_greater(5)
-	assert_int(counting.lookups).is_less(followed / 2)
+	var order: Command = Command.move(1, PackedInt32Array([1]), 14500, 2500)
+	var found: Dictionary = FieldCadence.run(world, order, 400)
+	assert_array(found["violations"]).is_empty()
+	assert_array([found["entry"] > 5, found["turn"] > 3, found["completion"]]).is_equal(
+		[true, true, 1]
+	)
+	assert_int(found["lookups"]).is_less(found["followed"] / 2)
 	assert_array([world.pos_x[0], world.pos_y[0], world.order[0]]).is_equal([14500, 2500, IDLE])
 
 
@@ -389,7 +354,9 @@ func test_a_group_shares_a_field_by_distance_and_sight() -> void:
 		world.goal_x[index] = goals[index].x
 		world.goal_y[index] = goals[index].y
 	Sim.step(world, [])
-	assert_int(world.stats[World.Stat.LINE_CHECKS]).is_equal(7)
+	# Seven first checks and three sight tests: units 2, 4 and 6 each find a key of their class
+	# within the distance (units 3 and 7 are too far from all of them, unit 5 has another class).
+	assert_int(world.stats[World.Stat.LINE_CHECKS]).is_equal(10)
 	assert_int(world.nav_mode.count(FIELD)).is_equal(7)
 	assert_array(world.field).is_equal([0, 0, 1, 2, 3, 0, 4])
 	var keys: Array[int] = [3 * 30 + 20, 3 * 30 + 27, 7 * 30 + 20, 3 * 30 + 21]

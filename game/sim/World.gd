@@ -314,6 +314,7 @@ var nav_mode: PackedInt32Array = PackedInt32Array()
 var field: PackedInt32Array = PackedInt32Array()
 ## Cells, -1 = none yet.
 var nav_cell: PackedInt32Array = PackedInt32Array()
+## A cell, -1 = none yet, -2 = looked up and none (Movement.NO_NEXT).
 var nav_next: PackedInt32Array = PackedInt32Array()
 ## A plain distance in milli, 0..0x3FFFFFFF.
 var best_dist: PackedInt32Array = PackedInt32Array()
