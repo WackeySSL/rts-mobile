@@ -278,6 +278,24 @@ func test_the_count_drops_when_a_selected_tank_dies_and_the_panel_hides_with_the
 	assert_array(_sent).is_empty()
 
 
+## With no snapshot to count from the panel hides, also when it was showing: a runner that has not
+## started a match (no scenario) has published none, and a panel may have no runner at all.
+func test_with_no_snapshot_to_count_from_the_panel_hides() -> void:
+	var runner: MatchRunner = auto_free(MatchRunner.new())  # No scenario: start() never runs.
+	add_child(runner)
+	assert_object(runner.snapshot).is_null()
+	_panel = auto_free(SelectionPanel.new())
+	_panel.runner = runner
+	add_child(_panel)
+	_panel.visible = true
+	_panel.set_selected(PackedInt32Array([1]))
+	assert_bool(_panel.visible).override_failure_message("no snapshot").is_false()
+	_panel.runner = null
+	_panel.visible = true
+	_panel.set_selected(PackedInt32Array([1]))
+	assert_bool(_panel.visible).override_failure_message("no runner").is_false()
+
+
 ## The row `row_name` is the cap wide, its name clipped, and its icon and count keep their room.
 func _assert_capped(row_name: String, why: String) -> void:
 	var band_px: float = (_panel.get_parent() as Control).size.x

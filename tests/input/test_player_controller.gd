@@ -260,6 +260,21 @@ func test_all_army_reads_the_snapshot_and_never_the_world() -> void:
 	assert_array(_controller.selection.selected).is_empty()
 
 
+## Unit ids are ascending and never reused, so after a death a row number is no longer the id: "All
+## army" must take the ids from the snapshot's unit_id column.
+func test_all_army_after_a_death_selects_the_surviving_ids_and_not_the_row_numbers() -> void:
+	await _fresh_match(&"android_6in")
+	_runner.world.hp[2] = 0  # Tank 3 dies in the next tick; the tanks after it move up one row.
+	_runner.run_ticks(1)
+	_controller.select_all_army()
+	var survivors: Array[int] = []
+	for id: int in range(1, 31):
+		if id != 3:
+			survivors.append(id)
+	assert_array(_controller.selection.selected).has_size(29)
+	assert_array(_controller.selection.selected).is_equal(survivors)
+
+
 ## A restart publishes a new snapshot without `ticked`, so a snapshot kept from the last tick is
 ## already the old match's.
 func test_all_army_reads_the_snapshot_of_a_restarted_match_before_its_first_tick() -> void:
