@@ -40,7 +40,7 @@ func _under_both(check: Callable) -> void:
 func _rig(impl: int, slots: int, cols: int = 8, rows: int = 8) -> RefCounted:
 	var rig: RefCounted = FlowRig.new().setup(impl, cols, rows, slots)
 	assert_array(rig.problems).is_empty()
-	var native: bool = SimImpls.is_native(rig.world, FlowCache.PHASE_FLOW)
+	var native: bool = SimImpls.is_native(rig.world, SimProbe.Phase.FLOW)
 	assert_bool(native).is_equal(impl == SimImpls.Impl.NATIVE)
 	return rig
 

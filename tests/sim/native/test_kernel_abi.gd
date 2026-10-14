@@ -5,9 +5,9 @@ extends GdUnitTestSuite
 ## section 2 through the FLOW kernel (P30n: FlowCache.run). A real World's members are typed and
 ## refuse a wrong value, so the fault cases check a Mirror, which answers Object.get from a
 ## Dictionary. Numbers are literals: the status codes are world_status.h's, the phase ids
-## SimProbe.Phase's (SimProbe arrives with P33). The table is read from world_access.h itself
-## (there is no test-only bound entry), one X(owner, name, kind, size, phases) line per name, the
-## line order being its index.
+## SimProbe.Phase's (one case checks world_access.h's mirrors of them). The table is read from
+## world_access.h itself (there is no test-only bound entry), one X(owner, name, kind, size,
+## phases) line per name, the line order being its index.
 
 const KernelSpy: GDScript = preload("res://tests/sim/support/kernel_spy.gd")
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
@@ -138,6 +138,34 @@ func test_the_library_reports_its_abi_and_the_phases_it_implements() -> void:
 	assert_str(kernels.get_class()).is_equal("SimKernels")
 	assert_int(kernels.abi_version()).is_equal(1)
 	assert_int(kernels.phases()).is_equal(SimImpls.expected_mask())
+
+
+## The constexpr mirrors in world_access.h (CLAUDE.md rule 1 allows a commented mirror of a
+## GDScript const) are read from the file: every PHASE_<name> is the id of SimProbe.Phase.<name>
+## and every PH_<letter> shifts the right one, so a renumbering cannot leave them behind.
+func test_the_phase_mirrors_in_world_access_h_equal_simprobe_phase() -> void:
+	var ids: Dictionary[String, int] = {}
+	var bits: Dictionary[String, String] = {}
+	var id_line: RegEx = RegEx.create_from_string("int64_t PHASE_(\\w+) = (\\d+);")
+	var bit_line: RegEx = RegEx.create_from_string(
+		"int64_t (PH_\\w) = int64_t\\(1\\) << PHASE_(\\w+);"
+	)
+	for line: String in FileAccess.get_file_as_string(HEADER).split("\n"):
+		var id: RegExMatch = id_line.search(line)
+		if id != null:
+			ids[id.get_string(1)] = id.get_string(2).to_int()
+		var bit: RegExMatch = bit_line.search(line)
+		if bit != null:
+			bits[bit.get_string(1)] = bit.get_string(2)
+	var named: Dictionary[String, int] = {"FLOW": SimProbe.Phase.FLOW}
+	named["TARGETING"] = SimProbe.Phase.TARGETING
+	named["SEPARATION"] = SimProbe.Phase.SEPARATION
+	named["INTEGRATE"] = SimProbe.Phase.INTEGRATE
+	named["FOG"] = SimProbe.Phase.FOG
+	assert_dict(ids).is_equal(named)
+	var letters: Dictionary[String, String] = {"PH_F": "FLOW", "PH_T": "TARGETING"}
+	letters.merge({"PH_S": "SEPARATION", "PH_I": "INTEGRATE", "PH_G": "FOG"})
+	assert_dict(bits).is_equal(letters)
 
 
 func test_sim_impls_attaches_the_kernels_after_prepare_and_detaches_them() -> void:
@@ -397,7 +425,7 @@ func _written(hold: bool) -> Dictionary:
 func _flow_pair() -> Array[World]:
 	var pair: Array[World] = [_arena(), _arena()]
 	assert_array(SimImpls.use(pair[0], SimImpls.Impl.NATIVE)).is_empty()
-	assert_bool(SimImpls.is_native(pair[0], FlowCache.PHASE_FLOW)).is_true()
+	assert_bool(SimImpls.is_native(pair[0], SimProbe.Phase.FLOW)).is_true()
 	for world: World in pair:
 		var slot: int = world.flow.acquire(2080, World.MoveClass.WHEELED, world.map_version, 1)
 		for row: int in 3:

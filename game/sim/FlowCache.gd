@@ -13,9 +13,6 @@ extends RefCounted
 ## that has the costs. ACTIVE: begun, done once its field has no pending cells.
 enum Status { FREE = 0, WAITING = 1, ACTIVE = 2 }
 
-## SimProbe.Phase.FLOW, whose ids are fixed (SimProbe arrives with P33): its bit in `native_phases`.
-const PHASE_FLOW: int = 1
-
 ## Every Packed array of the cache, one entry per slot.
 const STATE_ARRAYS: Array[StringName] = [
 	&"key_goal", &"key_class", &"key_version", &"last_used", &"ref_count", &"requested", &"status"
@@ -145,7 +142,7 @@ func field(slot: int) -> FlowField:
 ## `flow_cells_per_tick`, and 0 on the ticks `MatchLoop` hashes. The kernel does the same when its
 ## bit is set. No invalidate(): World.set_terrain() made it with the change.
 static func run(world: World, budget: int) -> void:
-	if ((world.native_phases >> PHASE_FLOW) & 1) == 1:
+	if ((world.native_phases >> SimProbe.Phase.FLOW) & 1) == 1:
 		world.kernels.flow(world, budget)
 		return
 	world.flow.recount(world.field, world.unit_count())
