@@ -1,0 +1,49 @@
+class_name PerfGateDef
+extends Resource
+## The perf gate's thresholds and golden hashes (ADR 0012 section 4 as ADR 0014 sections 1-4
+## change it). The instance is res://data/dev/perf_gate.tres; these defaults are the ADRs' values.
+## The CPU-time limits are the 2021 limits divided by k = 2.5 for the gate phone; the pacing values
+## are not divided. Times are milliseconds.
+
+## The heavy window: frames that draw at least `heavy_rigs` rigs; it must hold `heavy_frames_min`.
+@export var heavy_rigs: int = 135
+@export var heavy_frames_min: int = 600
+## Main-thread frame work p95, normalised (ADR 0014 section 3): all heavy-window frames, and the
+## heavy window's publish frames only.
+@export var work_p95_ms: float = 5.6
+@export var work_tick_p95_ms: float = 5.6
+## The worker job (`job_usec`), raw: p95 and p99.
+@export var sim_p95_ms: float = 13.3
+@export var job_p99_ms: float = 26.7
+## Jobs whose post-to-done time exceeds one tick period, over the whole run.
+@export var late_ticks_max: int = 0
+## The fog patch on the main thread, normalised p95.
+@export var fog_update_p95_ms: float = 0.4
+## Draw calls p95; a count, not divided.
+@export var draw_calls_max: int = 60
+## A card from a debug template fails the build verdict.
+@export var release_only: bool = true
+## Phone time / CI time of the tick, mean and p95, from the release run's worker mode. Printed
+## estimates, not thresholds.
+@export var ci_ratio_mean: float = 4.4
+@export var ci_ratio_p95: float = 5.9
+## Pacing (ADR 0014 section 1): a frame interval above P + drop_slots x V is dropped; at most
+## dropped_pct_max percent dropped and at least cadence_pct_min percent cadence, over the run and
+## the heavy window; at most hitches_max intervals of a tick period or more in the heavy window.
+@export var drop_slots: float = 0.5
+@export var dropped_pct_max: float = 1.0
+@export var cadence_pct_min: float = 99.0
+@export var hitches_max: int = 0
+## The share of intervals up to this length is printed as jitter, a diagnostic without a verdict.
+@export var jitter_ms: float = 17.5
+## INVALID (ADR 0014 section 2): a median interval below P less this percent (one-sided), and a
+## refresh rate that changes by more than this percent or lies this far below max_fps.
+@export var median_tolerance_pct: float = 2.0
+@export var refresh_tolerance_pct: float = 1.0
+## The reference loop (ADR 0014 section 3): iterations per RefLoop run, and the length of the
+## burst before every run, whose second half gives ref_peak.
+@export var ref_iterations: int = 1000
+@export var ref_burst_ms: int = 400
+## The golden seed-42 arena checkpoints: ticks and their World.hash_hex() text, index by index.
+@export var golden_ticks: PackedInt32Array = PackedInt32Array()
+@export var golden_hex: PackedStringArray = PackedStringArray()
