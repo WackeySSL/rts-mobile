@@ -131,10 +131,13 @@ because of these rules:
   `ROW_ARRAYS` entry in ID order, the live projectile slots and the fog. The hashed lists cover
   helper objects too (their `HASHED` lists), and a coverage test fails on an unlisted array.
 - `World.hash_hex(h)` is the only formatter for hashes in logs, reports and data.
-- `MatchLoop` adds a checkpoint every 15 ticks. Tests run the same seed and commands twice and
-  compare the checkpoints.
+- `MatchLoop` adds a checkpoint every `Replay.CHECKPOINT_PERIOD` (15) ticks: the state hash
+  taken after `Sim.step` when the new tick is a multiple of 15, the first at tick 15 (none at
+  tick 0). Inside `Sim.step` that tick is still `world.tick + 1`, so a rule that must stay off
+  the hashing step tests `(world.tick + 1) % Replay.CHECKPOINT_PERIOD == 0`. Tests run the same
+  seed and commands twice and compare the checkpoints.
 - Replay = scenario path, seed, `defs_hash`, command log and checkpoints;
-  `tests/sim/test_replay.gd` must reproduce the final hash.
+  `tests/sim/test_replay_play.gd` must reproduce the final hash.
 - Golden seed-42 perf-arena hashes in `data/dev/perf_gate.tres` catch drift across platforms. A
   PR that changes them on purpose says why.
 

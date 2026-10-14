@@ -22,6 +22,10 @@ measured; the once-per-second cadence stands.
 Status note (2026-10-14, P26n docs): §5 carries a dated status note on how the merged P33 (#77)
 realises the per-type validation; no accepted text changed.
 
+Status note (2026-10-14, P26o docs): §5 and §9 carry dated status notes on how the merged P35a
+(#81) and P35b (#82) realise the encoding, the replay log, `Replay.play` and `MatchLoop`; no
+accepted text changed.
+
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state
 hash. Phase 1 shipped the v0 shapes of ADR 0003: a struct-of-arrays `World` that never removes a
@@ -313,6 +317,20 @@ rule is pinned by a test in `tests/sim/test_sim_step.gd`:
 `test_an_unknown_or_reserved_type_is_dropped_whatever_the_ids_are` and
 `test_attack_needs_an_enemy_target_and_an_armed_unit`. The encoding is P35a's.
 
+Status note (2026-10-14, P26o docs, after P35a, #81; the text above stays as accepted): the
+encoding is realised in `game/sim/Command.gd` with `const INT32_MIN: int = -2147483648`,
+`const INT32_MAX: int = 2147483647`, `const ENCODED_HEADER: int = 7` (tick, `player_id`,
+`sequence`, `type`, `target_x`, `target_y`, `target_id`) and `const ENCODED_MIN: int =
+ENCODED_HEADER + 2` (9: the header, a unit count and a payload count, both 0). `encode` saturates
+each of the seven header ints that is wider than int32 to `INT32_MIN` or `INT32_MAX` (§1: a
+`PackedInt32Array` holds only int32); `tick` and `sequence` are -1 or 0..2^31-1. `decode` returns
+-1 only for malformed data: the two cases above (a count past the end, a negative count), an
+offset outside the data and a null `out`. A command over `MAX_UNITS` or `MAX_PAYLOAD` is not
+malformed: `decode` reads it whole, so `Sim.step` drops it again on replay, and
+`dropped_commands`, which the state hash covers (§8), stays equal to the run's. On -1 `decode`
+leaves `out` untouched; otherwise it gives `out` copies of the ids and the payload, never a view
+of `data`.
+
 ### 6. Node-side services (`game/core`, ADR 0002 §1)
 - **`CommandQueue` API v1 = v0, unchanged:** `submit`, `drain_into`, `clear`, `pending`. Input,
   and in Phase 4 the AI controllers, submit there. Nothing else does.
@@ -432,6 +450,34 @@ cadence stands.
   may change freely (for example when Phase 3 adds per-match setup values).
 - A replay is valid only for the code that recorded it. The data side is protected by
   `defs_hash`. Cross-version replays are not a goal before multiplayer.
+
+Status note (2026-10-14, P26o docs, after P35a, #81, and P35b, #82; the text above stays as
+accepted):
+- **`MatchLoop`** (`game/sim/MatchLoop.gd`): "on `tick % 15 == 0`" is the tick after the step.
+  The checkpoint is `state_hash()` taken after `Sim.step` when the new tick is a multiple of
+  `Replay.CHECKPOINT_PERIOD` (15): the first at tick 15, none at tick 0 and none at a final tick
+  off the grid. `last_hash` is 0 until then, and `next_sequence` starts at 0. A null in `queued`
+  is skipped before stamping: it takes no sequence, is not recorded and is not counted as
+  dropped. The queued Commands change hands here (ADR 0012 §2): they are stamped in place, not
+  copied, and each object may be passed at most once per match. `queued` is only read; its owner
+  (`MatchRunner`, and `TickJob.run()` from P38j) clears it after the step, because a command
+  passed again is stamped, recorded and applied again.
+- **`Replay`** (`game/sim/Replay.gd`): `const KINDS: Dictionary[String, int]` lists the nine
+  keys above in this order with their Variant types (the array kind included). `to_bytes()` is
+  `var_to_bytes` of an untyped `Dictionary` in that key order. `from_bytes` first walks the
+  Godot 4.7.2 wire format (`_is_plain_dictionary`, `_wire_size`), because `bytes_to_var` prints
+  an engine `ERROR` line for every buffer it cannot decode, and refuses a String that is not
+  UTF-8 (`_is_utf8`); only then does it call `bytes_to_var`. Besides a wrong format and a missing
+  key it returns null for a value of another type or array kind, checkpoint arrays of unequal
+  sizes, trailing bytes, and a command log that `Command.decode` does not read to its exact end.
+- **`Replay.play`** returns `PLAY_MATCHED` (-1) when every recorded checkpoint with a tick <=
+  `until_tick` matched, else the tick of the first one that differs or that the loop never
+  reaches; `PLAY_DEFS_DIFFER` (-2) before any step; and the added `PLAY_BAD_LOG` (-3) for a record
+  that does not decode or checkpoint arrays of unequal sizes (both only in a replay built in
+  memory, since `from_bytes` refuses them; the second before any step), a record behind the
+  world's tick, or a negative checkpoint tick. It drives `MatchLoop.create(null, ...)`, feeds each
+  tick's records as `queued` in log order, steps at most `until_tick - world.tick` ticks, and
+  does not check `final_hash`; the caller compares it.
 
 ### 10. Events
 - `World.events` holds the events of the last tick. It is cleared in phase 1 and is not state.
