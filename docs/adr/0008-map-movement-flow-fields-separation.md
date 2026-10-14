@@ -21,6 +21,16 @@ the inline notes in §3 give them in full:
 The allocation rule of the note above is the plan's revision-15 rule, and it is what P30b merged:
 `FlowCache.configure()` calls `FlowField.reserve()` on every slot, and nothing allocates after it.
 
+Status note (2026-10-14, P26p docs, from P37a as merged, #86): §1 and §2 are made precise by the
+merged `game/sim/FixedMath.gd` and `game/sim/Formation.gd`; the inline notes in §1 and §2 give
+the rules with quotes from the code. In short: a point is in the tile `World.cell_of` gives it
+(half-open tiles, the far map edge in the last tile); `line_clear` tests every tile the segment
+touches under that rule (along a tile edge only the tiles on its right or lower side; a corner
+crossed strictly between the ends also touches the two tiles beside it, matching `FlowField`'s
+no-corner-cutting rule); a group is blocked on a tile when any move class in it is blocked; a
+target on rock moves to the first open tile of §2's ring search, kept inside the radius-inset
+box. No decision changes.
+
 ## Context
 ROADMAP Phase 2 asks for "movement with flow fields and separation". Phase 1 moves units in
 straight lines to formation slots with no terrain and no collision (ADR 0003 §4-5), and its
@@ -90,6 +100,14 @@ Measurements (Godot 4.7.2 headless, 2026-10-11, Xeon cloud VM; mock code, not th
 - A cell index is `(y / 1000) * map_cols + x / 1000`, for positions clamped to `[0, map_w - 1]`
   and `[0, map_h - 1]`. Collision is by unit centre: a unit may stand on a tile only if its
   class cost there is above 0.
+
+  Status note (2026-10-14, P26p docs, from P37a as merged, #86): **the tile of a point.** A point
+  is in the tile `World.cell_of` gives it, which clamps the tile, not the position:
+  `clampi(x / MILLI_PER_TILE, 0, map_cols - 1)` and `clampi(y / MILLI_PER_TILE, 0, map_rows - 1)`.
+  So a tile is half-open, and in the words of `FixedMath.line_clear`'s header: "its left and top
+  edge belong to it, its right and bottom edge to the next tile, and the far edge of the map to
+  the last tile". `line_clear` and `Formation`'s slot check read a point by the same rule
+  (`Formation._slots`: "a point on the far edge of the map belongs to the last tile").
 - `map_version` increments whenever passability changes (buildings in Phase 3). Phase 2 maps are
   static, and tests change a tile through `World.set_terrain(cell, index)` to prove
   invalidation.
@@ -101,6 +119,18 @@ Measurements (Godot 4.7.2 headless, 2026-10-11, Xeon cloud VM; mock code, not th
   tiles around it, row by row, first hit wins. `Formation.assign` calls `world.prepare()` first
   (one bool check), because Phase 1 tests call it on an unprepared hand-built World whose
   `type_move_class` and tile grid exist only after `prepare()`.
+
+  Status note (2026-10-14, P26p docs, from P37a as merged, #86): **blocked for the group, and the
+  moved target.** A tile is blocked for the group when any move class in the group is blocked
+  there: `Formation.assign` collects one offset into `move_cost` per class of the group, and a
+  tile is open only if no class has cost 0 there (`_slots` tests `cost[base + cell] == 0` for
+  each offset). The target moves by `Formation._open_centre`: "the centre of the nearest open
+  tile whose centre is in the box [low, high]: rings of tiles around the point's tile, each ring
+  row by row (j, then i, ascending), and the first hit wins". The box is the target clamp, the
+  map inset by the largest radius in the group, so "the slot lattice always starts inside the
+  box"; when no such tile is open, the clamped point stays. "Nearest" in this section means the
+  first hit of that ring order. Only a cost of 0 blocks; tiles of cost 20 and 40 keep the target
+  and their slots.
 - Each moving unit has a `nav_mode`:
   - `DIRECT`: steer straight at the goal. This is Phase 1 movement.
   - `FIELD`: follow a flow field.
@@ -122,6 +152,20 @@ Measurements (Godot 4.7.2 headless, 2026-10-11, Xeon cloud VM; mock code, not th
   - A `FIELD` unit repeats the line check each time it enters a new tile (`nav_cell`). As soon
     as the line is clear it switches to `DIRECT` and sets `field = -1`. This is any-angle
     path smoothing at the cost of about one line check per unit every 8 ticks.
+
+  Status note (2026-10-14, P26p docs, from P37a as merged, #86): **the tiles a line touches.**
+  `FixedMath.line_clear(world, x0, y0, x1, y1, move_class)` reads each end point in the tile §1's
+  status note gives it ("Points are milli-tiles and are clamped into the grid") and tests every
+  tile the segment touches under that rule: "The segment touches the tiles of its points, and
+  where it crosses a tile corner exactly (the corner is between its ends, and the segment is along
+  no axis) it also touches the two tiles beside the corner, which keeps the flow field's rule
+  against cutting a corner" (§3: no diagonal step past a blocked orthogonal neighbour). "A
+  segment along an edge touches the tiles on one side only": the tile the edge belongs to, which
+  is the tile on its right (a vertical segment) or below it (a horizontal one), and the last tile
+  on the far map edge. So "a goal on an open tile is in reach of a clear line from every point of
+  its tile", and a unit standing on a rock tile's left or top edge is inside that tile, so its
+  line starts blocked. It reads the grid "like World.is_passable: true while no map is loaded,
+  false for a class that does not exist".
 - On an open map every line is clear. No field is ever computed, and Phase 1 movement stays
   exactly as it is.
 - **Field following:** the unit steers towards the centre of the neighbour tile with the lowest
@@ -136,6 +180,12 @@ Measurements (Godot 4.7.2 headless, 2026-10-11, Xeon cloud VM; mock code, not th
   `isqrt` per moving unit per tick. `isqrt` currently costs about 2 µs. The movement PR may
   replace its body with a faster exact method (for example Newton's method from a bit-length
   guess). The existing exhaustive `isqrt` test proves it is still exact.
+
+  Status note (2026-10-14, P26p docs, from P37a as merged, #86): `isqrt` is now "Newton's method
+  from above: a power of two at or over the root, found from the bit length of n, then x = (x + n
+  / x) / 2 until it no longer falls, which ends on the floor"; about 3 times faster than the old
+  digit method (0.37 µs against 1.15 µs in #86), with identical results and the exhaustive tests
+  unchanged.
 - **Arrival:** snap to the goal when `d2 <= speed * speed` (v0).
 - **Stall:** a moving unit tracks `best_dist`, its smallest distance to the goal so far (a plain
   distance in milli, at most about 91 000 on a 64x64 map, so int32 is safe). If that does not

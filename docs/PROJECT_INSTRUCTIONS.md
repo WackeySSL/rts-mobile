@@ -1,5 +1,10 @@
 # Project instructions
 
+> **Not in use** (2026-10-14, P26p docs, the lead's decision): Michael works in Claude Code cloud
+> sessions, not in a claude.ai Project, so nothing reads this file as live instructions. It is
+> kept only for an optional claude.ai Project. `CLAUDE.md` is the source of the rules; where this
+> text and `CLAUDE.md` differ, `CLAUDE.md` wins.
+
 Paste the text below the line into Project settings > Memory > Project instructions for the
 Claude Project "RTS". Replace <owner> with your GitHub user name.
 
