@@ -34,12 +34,17 @@ func test_percentile_takes_the_nearest_rank() -> void:
 
 ## The rank is integer arithmetic. On 100 values p 7 is rank 7, where the float product
 ## 7 / 100.0 * 100 is 7.000000000000001 and would round up to rank 8 (also p 14, 28, 55 and 56).
+## Where p x n is 1 above a multiple of 100 the rank rounds up by the smallest step: p 99 of 99
+## values (9801) is rank 99 and p 1 of 101 values (101) rank 2, never 98 and 1.
 ## p 95 of 20 values is rank 19. Out-of-range p clamps; one value is every percentile; no values
 ## give 0.0.
 func test_percentile_edges() -> void:
-	var hundred: PackedFloat64Array = PackedFloat64Array()
-	for i: int in 100:
-		hundred.append(float(i + 1))
+	var values: PackedFloat64Array = PackedFloat64Array()
+	for i: int in 101:
+		values.append(float(i + 1))
+	var hundred: PackedFloat64Array = values.slice(0, 100)
+	assert_float(PerfStats.percentile(values.slice(0, 99), 99)).is_equal(99.0)
+	assert_float(PerfStats.percentile(values, 1)).is_equal(2.0)
 	for p: int in [7, 14, 28, 55, 56]:
 		assert_float(PerfStats.percentile(hundred, p)).is_equal(float(p))
 	var twenty: PackedFloat64Array = hundred.slice(0, 20)

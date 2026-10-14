@@ -172,6 +172,21 @@ func test_ref_loop_normalises_each_frame_by_its_own_sample() -> void:
 	assert_float(RefLoop.normalised_p95(PackedFloat64Array(), samples, 20.0)).is_equal(0.0)
 
 
+## On twenty frames p 91 to p 95 all take rank 19; on a hundred each p has its own rank, which
+## pins p 95. Peak 10: frame i has work i + 1 at the peak's speed, except work 95 to 100 at half
+## speed (47.5 to 50) and work 51 sampled twice as fast as the peak (clamped to 51, not 102).
+## Sorted, ranks 91, 94, 95 and 96 hold 85, 88, 89 and 90, so the p95 is 89; the raw p95 is 95.
+func test_ref_loop_takes_rank_95_of_a_hundred_frames() -> void:
+	var work: PackedFloat64Array = PackedFloat64Array()
+	var samples: PackedFloat64Array = PackedFloat64Array()
+	for i: int in 100:
+		work.append(float(i + 1))
+		samples.append(20.0 if i >= 94 else 10.0)
+	samples[50] = 5.0
+	assert_float(RefLoop.normalised_p95(work, samples, 10.0)).is_equal(89.0)
+	assert_float(RefLoop.normalised_p95(work, samples, 0.0)).is_equal(95.0)
+
+
 ## The fixed loop: acc = (acc * 31 + i) & 0xFFFFFF from 1. Pinned, so the reference work behind
 ## ref_peak and every frame sample never changes silently.
 func test_ref_loop_run_is_the_fixed_integer_loop() -> void:
