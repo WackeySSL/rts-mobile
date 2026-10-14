@@ -30,7 +30,8 @@ static func create_kernels() -> Object:
 ## Makes `world` run `impl`: NATIVE prepares it and attaches `kernels` (default: fresh ones) with
 ## `kernels.phases()` as the mask (a hand-built World too); GDSCRIPT detaches both. Returns the
 ## problems, empty when it worked: no library, a mask other than EXPECTED_PHASES, or kernels that
-## are no SimKernels. They are attached either way, so a caller asserts the result is empty;
+## are no SimKernels. With no library nothing is attached (the World is not even prepared); in the
+## other two cases the kernels are attached all the same. So a caller asserts the result is empty;
 ## ignoring it runs the native pass on the GDScript twin.
 static func use(world: World, impl: int, kernels: Object = null) -> Array[String]:
 	var problems: Array[String] = []

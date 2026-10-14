@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # Run the gdUnit4 test suites headless. Works from any cwd, locally and in CI.
 # Usage: bash scripts/run-tests.sh [gdUnit4 args]   (default: -a res://tests)
+# Order: gdUnit4 scans a directory in the order the file system lists it, which differs between
+#        machines (P26n2: an exit leak that needs one suite to run before another was green locally
+#        and red on CI). So each `-a <directory>` becomes one `-a <script>` per .gd file below it,
+#        in byte order of the path (LC_ALL=C), and gdUnit4 runs the suites in the order it is
+#        given them. The arguments keep the caller's order; a file, a path that does not exist
+#        and every other flag pass as given.
 # Env:   GODOT=<binary> (default: godot)
 #        RUN_TESTS_SKIP_IMPORT=1 skips the import step when the caller just ran it.
 # Exit:  0 only if at least one test ran and none failed, errored or leaked orphans.
@@ -48,10 +54,52 @@ mkdir -p "$REPORT_DIR"
 ARGS=("$@")
 if [ ${#ARGS[@]} -eq 0 ]; then ARGS=(-a res://tests); fi
 
+# Appends `-a <script>` to GD_ARGS for each .gd file below the local directory $1, in byte order of
+# the path ($2 is the res:// prefix of the caller's argument, or empty). Like gdUnit4's own scan it
+# skips hidden entries, a directory with a .gdignore (reports/ has the one written above) and
+# gdUnit4's own bin/ and src/. A script that is no suite is dropped by gdUnit4 when it loads it,
+# as in a directory scan.
+add_scripts() {
+  local file
+  [ ! -e "$1/.gdignore" ] || return 0
+  while IFS= read -r file; do
+    file="${file#./}"
+    case "$file" in addons/gdUnit4/bin/* | addons/gdUnit4/src/*) continue ;; esac
+    GD_ARGS+=(-a "$2$file")
+  done < <(
+    find "$1" -mindepth 1 \
+      \( -name '.*' -o \( -type d -exec test -e '{}/.gdignore' ';' \) \) -prune -o \
+      -type f -name '*.gd' -print | LC_ALL=C sort
+  )
+}
+
+GD_ARGS=()
+i=0
+while [ "$i" -lt "${#ARGS[@]}" ]; do
+  arg="${ARGS[$i]}"
+  i=$((i + 1))
+  if { [ "$arg" = "-a" ] || [ "$arg" = "--add" ]; } && [ "$i" -lt "${#ARGS[@]}" ]; then
+    path="${ARGS[$i]}"
+    i=$((i + 1))
+    prefix=""
+    case "$path" in res://*) prefix="res://" ;; esac
+    dir="${path#res://}"
+    dir="${dir%/}"
+    if [ -z "$dir" ] && [ -n "$prefix" ]; then dir="."; fi
+    if [ -d "$dir" ]; then
+      add_scripts "$dir" "$prefix"
+    else
+      GD_ARGS+=("$arg" "$path")
+    fi
+  else
+    GD_ARGS+=("$arg")
+  fi
+done
+
 set +e
 "$GODOT" --headless --path . \
   -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd \
-  --ignoreHeadlessMode -c -rd "$REPORT_DIR" -rc 1 "${ARGS[@]}" 2>&1 |
+  --ignoreHeadlessMode -c -rd "$REPORT_DIR" -rc 1 ${GD_ARGS[@]+"${GD_ARGS[@]}"} 2>&1 |
   sed -e $'s/\x1b\\[2J//g' -e $'s/\x1b\\[H//g' # drop gdUnit4's clear-screen codes
 status=${PIPESTATUS[0]}
 set -e
