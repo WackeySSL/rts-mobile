@@ -4,9 +4,9 @@
 //   K0(method, phase)            void method(Object *world) const
 //   K1(method, phase, argument)  void method(Object *world, int64_t argument) const
 // `phase` is world_access.h's PHASE_* of the kernel's SimProbe.Phase; it needs a checked list there.
-// A port PR adds its line, for example K1(flow, world_access::PHASE_FLOW, budget), and defines the
-// method in its kernel_<phase>.cpp. P54 has none. The file's existence turns on
-// scripts/ci/check-native-tests.sh's floor. MIT.
+// A port PR adds its line and defines the method in its kernel_<phase>.cpp: FLOW (P30n) is the first.
+// The file's existence turns on scripts/ci/check-native-tests.sh's floor. MIT.
 #pragma once
 
-#define SIM_KERNEL_LIST(K0, K1)
+#define SIM_KERNEL_LIST(K0, K1) \
+	K1(flow, world_access::PHASE_FLOW, budget)

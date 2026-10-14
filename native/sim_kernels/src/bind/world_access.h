@@ -1,7 +1,6 @@
 // The checked table of every World member that the native kernels get or set, and the checks over it
-// (ADR 0013 section 2). The internal-pointer access also lives here, and lands with the first kernel
-// that calls it (FLOW, P30n; the event resize with FIRE, P42n): no bound entry can test it before.
-// check() is pure: it returns a status and never logs. MIT.
+// (ADR 0013 section 2). The internal-pointer access also lives here (since FLOW, P30n; the event resize
+// comes with FIRE, P42n). check() is pure: it returns a status and never logs. MIT.
 // Twin: the World's shape lists and the helpers' HASHED/UNHASHED lists in game/sim; test:
 // tests/sim/native/test_kernel_abi.gd, which also reads the X(...) lines below as its table.
 #pragma once
@@ -12,9 +11,12 @@
 #include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/string_name.hpp>
 #include <godot_cpp/variant/variant.hpp>
+#include <godot_cpp/variant/variant_internal.hpp>
 
 #include <cstdint>
 
+#include "core/array_view.h"
+#include "core/flow.h"
 #include "core/world_status.h"
 
 namespace world_access {
@@ -25,6 +27,7 @@ using godot::PackedByteArray;
 using godot::PackedInt32Array;
 using godot::StringName;
 using godot::Variant;
+using godot::VariantInternal;
 
 // SimProbe.Phase ids (game/sim/SimProbe.gd, fixed): the five phases that get a kernel (ADR 0013 section 1).
 constexpr int64_t PHASE_FLOW = 1;
@@ -49,8 +52,8 @@ constexpr bool has_list(int64_t phase) {
 constexpr int64_t STAT_COUNT = 7; // World.Stat.size()
 constexpr int64_t ARMOUR_COUNT = 4; // World.Armour.size(), the percents per weapon
 constexpr int64_t MOVE_CLASSES = 3; // World.MoveClass.size(), the cost lists of move_cost
-constexpr int64_t PAD = 2; // FlowField's padded grid: one blocked ring, so cols + 2 and rows + 2
-constexpr int64_t BUCKETS = 512; // FlowField.BUCKETS
+constexpr int64_t PAD = flow::PAD; // FlowField's padded grid: one blocked ring, so cols + 2 and rows + 2
+constexpr int64_t BUCKETS = flow::BUCKETS; // FlowField.BUCKETS
 
 // Who holds a name: the World, a helper reached through it by member name, or each slot of flow.fields.
 enum Owner : int64_t {
@@ -108,14 +111,14 @@ struct Entry {
 // ints that rules read come before the arrays they size, and `fields` before the slots.
 // clang-format off
 #define SIM_CHECKED_TABLE(X) \
-	X(WORLD, max_rows, INT, NONE, PH_ALL) \
-	X(WORLD, map_cols, INT, NONE, PH_ALL) \
-	X(WORLD, map_rows, INT, NONE, PH_ALL) \
+	X(WORLD, max_rows, INT, NONE, PH_T | PH_S | PH_I | PH_G) \
+	X(WORLD, map_cols, INT, NONE, PH_T | PH_S | PH_I | PH_G) \
+	X(WORLD, map_rows, INT, NONE, PH_T | PH_S | PH_I | PH_G) \
 	X(WORLD, map_w, INT, NONE, PH_S | PH_I) \
 	X(WORLD, map_h, INT, NONE, PH_S | PH_I) \
 	X(WORLD, map_version, INT, NONE, PH_I) \
 	X(WORLD, tick, INT, NONE, PH_T | PH_I | PH_G) \
-	X(WORLD, flow_cache_size, INT, NONE, PH_F | PH_I) \
+	X(WORLD, flow_cache_size, INT, NONE, PH_I) \
 	X(WORLD, retarget_period_ticks, INT, NONE, PH_T) \
 	X(WORLD, fog_period_ticks, INT, NONE, PH_G) \
 	X(WORLD, line_check_period_ticks, INT, NONE, PH_I) \
@@ -230,6 +233,14 @@ inline constexpr Entry TABLE[] = {
 };
 static_assert(sizeof(TABLE) / sizeof(TABLE[0]) == ID_COUNT, "one entry per Id");
 
+// A Packed array borrowed for one call: the Variant keeps it alive (a getter may hand out a fresh copy) and the view
+// points into it. Never kept between calls (ADR 0013 section 2).
+template <typename T>
+struct Borrowed {
+	Variant value;
+	ArrayView<T> view;
+};
+
 // The names as StringNames, made once on the main thread by the constructor of SimKernels and only
 // read afterwards (ADR 0013 section 6).
 class WorldAccess {
@@ -328,15 +339,7 @@ class WorldAccess {
 			return nullptr;
 		}
 		const Array slots = held.fields;
-		if (index < 0 || index >= slots.size()) {
-			return nullptr;
-		}
-		const Variant &slot = slots[index];
-		if (slot.get_type() != Variant::OBJECT) {
-			return nullptr;
-		}
-		Object *object = slot;
-		return object;
+		return slot_in(slots, index);
 	}
 
 	// An int member of its owner, or -1.
@@ -426,6 +429,79 @@ public:
 		for (int64_t owner = 0; owner < OWN_COUNT; owner++) {
 			owners_[owner] = StringName(OWNER_MEMBER[owner]);
 		}
+	}
+
+	// What a kernel fetches once check() has found the names of its phase right (ADR 0013 section 2): by table id,
+	// from the World, a helper (OWN_FLOW and the like) or a slot of flow.fields.
+	Variant helper(Object *world, int64_t owner) const { return world->get(owners_[owner]); }
+	Variant get(Object *object, int64_t id) const { return object->get(names_[id]); }
+	void set(Object *object, int64_t id, const Variant &value) const { object->set(names_[id], value); }
+	// The Object a Variant holds, null for any other type. The Variant keeps it alive.
+	static Object *object_in(const Variant &value) {
+		Object *object = nullptr;
+		if (value.get_type() == Variant::OBJECT) {
+			object = value;
+		}
+		return object;
+	}
+	// Slot `index` of the typed Array flow.fields (the Array keeps it alive), or null outside it or for a non-Object.
+	static Object *slot_in(const Array &slots, int64_t index) {
+		if (index < 0 || index >= slots.size()) {
+			return nullptr;
+		}
+		const Variant &slot = slots[index];
+		return object_in(slot);
+	}
+	// An int or bool member of `object`, 0 or false for a null Object or another type.
+	int64_t int_in(Object *object, int64_t id) const {
+		if (object == nullptr) {
+			return 0;
+		}
+		const Variant value = get(object, id);
+		return value.get_type() == Variant::INT ? static_cast<int64_t>(value) : 0;
+	}
+	bool bool_in(Object *object, int64_t id) const {
+		if (object == nullptr) {
+			return false;
+		}
+		const Variant value = get(object, id);
+		return value.get_type() == Variant::BOOL && static_cast<bool>(value);
+	}
+	// The in-place access to a member: ptr() for a read (it never forks), ptrw() for a write (it forks once when
+	// another copy of the array is held, and the copy keeps the old values). The engine logs an error for the
+	// pointer of an empty array, so an empty array, and a Variant of the wrong type (the internal getter's
+	// undefined behaviour), give an empty view.
+	Borrowed<const int32_t> read_i32(Object *object, int64_t id) const {
+		Borrowed<const int32_t> found = { get(object, id), {} };
+		if (found.value.get_type() == Variant::PACKED_INT32_ARRAY) {
+			const PackedInt32Array *array = VariantInternal::get_int32_array(&found.value);
+			found.view = { array->size() > 0 ? array->ptr() : nullptr, array->size() };
+		}
+		return found;
+	}
+	Borrowed<int32_t> write_i32(Object *object, int64_t id) const {
+		Borrowed<int32_t> found = { get(object, id), {} };
+		if (found.value.get_type() == Variant::PACKED_INT32_ARRAY) {
+			PackedInt32Array *array = VariantInternal::get_int32_array(&found.value);
+			found.view = { array->size() > 0 ? array->ptrw() : nullptr, array->size() };
+		}
+		return found;
+	}
+	Borrowed<const uint8_t> read_bytes(Object *object, int64_t id) const {
+		Borrowed<const uint8_t> found = { get(object, id), {} };
+		if (found.value.get_type() == Variant::PACKED_BYTE_ARRAY) {
+			const PackedByteArray *array = VariantInternal::get_byte_array(&found.value);
+			found.view = { array->size() > 0 ? array->ptr() : nullptr, array->size() };
+		}
+		return found;
+	}
+	Borrowed<uint8_t> write_bytes(Object *object, int64_t id) const {
+		Borrowed<uint8_t> found = { get(object, id), {} };
+		if (found.value.get_type() == Variant::PACKED_BYTE_ARRAY) {
+			PackedByteArray *array = VariantInternal::get_byte_array(&found.value);
+			found.view = { array->size() > 0 ? array->ptrw() : nullptr, array->size() };
+		}
+		return found;
 	}
 
 	// Pure: the status of the first name of `phase`'s list that is wrong (status_of), 0 if all are right.

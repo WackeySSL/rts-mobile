@@ -1,24 +1,27 @@
 extends GdUnitTestSuite
 ## The kernel boundary (ADR 0013 section 2, plan P54): what the library says about itself,
 ## SimKernels.check_world over the checked table of the five ported phases (on the main thread and
-## on a worker Thread), and the table's names against the World's lists. No kernel exists yet, so
-## the write cases land with FLOW (P30n). A real World's members are typed and refuse a wrong
-## value, so the fault cases check a Mirror, which answers Object.get from a Dictionary. Numbers
-## are literals: the status codes are world_status.h's, the phase ids SimProbe.Phase's (SimProbe
-## arrives with P33). The table is read from world_access.h itself (there is no test-only bound
-## entry), one X(owner, name, kind, size, phases) line per name, the line order being its index.
+## on a worker Thread), the table's names against the World's lists, and the write cases of ADR 0013
+## section 2 through the FLOW kernel (P30n: FlowCache.run). A real World's members are typed and
+## refuse a wrong value, so the fault cases check a Mirror, which answers Object.get from a
+## Dictionary. Numbers are literals: the status codes are world_status.h's, the phase ids
+## SimProbe.Phase's (SimProbe arrives with P33). The table is read from world_access.h itself
+## (there is no test-only bound entry), one X(owner, name, kind, size, phases) line per name, the
+## line order being its index.
 
 const KernelSpy: GDScript = preload("res://tests/sim/support/kernel_spy.gd")
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
+const StateDiff: GDScript = preload("res://tests/sim/support/state_diff.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const HEADER: String = "res://native/sim_kernels/src/bind/world_access.h"
+const FLOW_SOURCE: String = "res://native/sim_kernels/src/bind/kernel_flow.cpp"
 ## FLOW, TARGETING, SEPARATION, INTEGRATE and FOG.
 const PHASES: Array[int] = [1, 3, 5, 6, 10]
 ## The slots of the flow cache (flow_cache_size).
 const SLOTS: int = 8
 ## The names in each list, 106 in the table (a port adds names here, so a dropped or added name
 ## shows in a diff).
-const LIST_SIZES: Dictionary[int, int] = {1: 30, 3: 32, 5: 28, 6: 53, 10: 29}
+const LIST_SIZES: Dictionary[int, int] = {1: 26, 3: 32, 5: 28, 6: 53, 10: 29}
 ## A status is the table index of the first bad name times FAULT_COUNT, plus its fault.
 const FAULT_PHASE: int = 1
 const FAULT_OWNER: int = 2
@@ -49,6 +52,36 @@ const ANY_NAMES: Array[String] = [
 	"FOG.mask_start",
 	"FOG.mask_radius",
 	"FOG.mask_half"
+]
+## What the FLOW kernel gets or sets (P30n), in table order: the old list's max_rows, map_cols,
+## map_rows and flow_cache_size are neither read nor written by it.
+const FLOW_NAMES: Array[String] = [
+	"WORLD.unit_id",
+	"WORLD.field",
+	"WORLD.stats",
+	"WORLD.move_cost",
+	"FLOW.cols",
+	"FLOW.rows",
+	"FLOW.key_goal",
+	"FLOW.key_class",
+	"FLOW.ref_count",
+	"FLOW.requested",
+	"FLOW.status",
+	"FLOW.fields",
+	"SLOT.goal_cell",
+	"SLOT.move_class",
+	"SLOT.grid_cols",
+	"SLOT.cell_count",
+	"SLOT.stride",
+	"SLOT.level",
+	"SLOT.pending",
+	"SLOT.complete",
+	"SLOT.cost",
+	"SLOT.next",
+	"SLOT.pad_cost",
+	"SLOT.bucket_head",
+	"SLOT.link_next",
+	"SLOT.link_prev"
 ]
 ## The phases of names that a swap of two masks would exchange, and the phase of each helper that
 ## only one phase uses.
@@ -274,7 +307,7 @@ func test_the_bound_methods_are_the_contract_and_none_takes_a_packed_array() -> 
 			var label: String = "%s(%s)" % [method.name, argument.name]
 			assert_bool(packed).override_failure_message(label).is_false()
 	# No test-only entry (ADR 0013 section 2): a port adds its kernel's name here.
-	var bound: Array[String] = ["abi_version", "phases", "build_info", "check_world"]
+	var bound: Array[String] = ["abi_version", "phases", "build_info", "check_world", "flow"]
 	assert_array(methods).contains_exactly_in_any_order(bound)
 
 
@@ -303,6 +336,40 @@ func test_check_world_names_the_first_bad_name_and_what_is_wrong_with_it() -> vo
 		assert_array(tags).contains([tag])
 
 
+## The list of the table is FLOW_NAMES, and kernel_flow.cpp names those and no other: a name it
+## fetched outside the list would reach the engine without check_world's type test.
+func test_flow_gets_and_sets_exactly_the_names_of_its_list() -> void:
+	var table: Array[Dictionary] = _table()
+	var names: Array[String] = []
+	for index: int in _listed(table, 1):
+		names.append("%s.%s" % [table[index].owner, table[index].name])
+	assert_array(names).contains_exactly(FLOW_NAMES)
+	var used: Array[String] = []
+	var ids: RegEx = RegEx.create_from_string("\\bID_(WORLD|FLOW|SLOT)_(\\w+)")
+	for found: RegExMatch in ids.search_all(FileAccess.get_file_as_string(FLOW_SOURCE)):
+		var name: String = "%s.%s" % [found.get_string(1), found.get_string(2)]
+		if not used.has(name):
+			used.append(name)
+	assert_array(used).contains_exactly_in_any_order(FLOW_NAMES)
+
+
+## An array the call writes in place is seen through an alias taken before it, with no copy held
+## and with one (a duplicate() keeps its old values; the member forks once and writes in place
+## after that), the scalars arrive as the twin's, a budget-0 call writes nothing, and the call that
+## completes the field swaps cost and next and sets `complete`.
+func test_the_flow_kernel_writes_in_place_and_sets_what_the_twin_sets() -> void:
+	for hold: bool in [false, true]:
+		var seen: Dictionary = _write_case(_flow_pair(), hold)
+		assert_dict(seen).override_failure_message("hold %s" % hold).is_equal(_written(hold))
+
+
+func test_the_flow_write_cases_give_the_same_observations_on_a_worker_thread() -> void:
+	for hold: bool in [false, true]:
+		var thread: Thread = Thread.new()
+		assert_int(thread.start(_write_case.bind(_flow_pair(), hold))).is_equal(OK)
+		assert_dict(thread.wait_to_finish()).is_equal(_written(hold))
+
+
 func test_check_world_gives_the_same_statuses_on_a_worker_thread() -> void:
 	var kernels: Object = _kernels()
 	var cases: Array[Array] = _fault_cases(_arena(), _table())
@@ -315,6 +382,74 @@ func test_check_world_gives_the_same_statuses_on_a_worker_thread() -> void:
 	assert_int(found.size()).is_equal(cases.size())
 	for index: int in cases.size():
 		assert_int(found[index]).override_failure_message(cases[index][3]).is_equal(cases[index][2])
+
+
+## What _write_case sees: every observation true, and only a held copy keeps its old values.
+func _written(hold: bool) -> Dictionary:
+	var seen: Dictionary = {"settled": 5, "alias": true, "member": true, "scalars": true}
+	seen.merge({"again": true, "refs": true, "idle": true, "copy_kept": hold, "pending": true})
+	seen["done"] = true
+	return seen
+
+
+## The arena with one wheeled key taken on both Worlds, the first running C++ and the second the
+## twin. Rows 0 to 2 follow the field.
+func _flow_pair() -> Array[World]:
+	var pair: Array[World] = [_arena(), _arena()]
+	assert_array(SimImpls.use(pair[0], SimImpls.Impl.NATIVE)).is_empty()
+	assert_bool(SimImpls.is_native(pair[0], FlowCache.PHASE_FLOW)).is_true()
+	for world: World in pair:
+		var slot: int = world.flow.acquire(2080, World.MoveClass.WHEELED, world.map_version, 1)
+		for row: int in 3:
+			world.field[row] = slot
+	return pair
+
+
+## FlowCache.run on both Worlds with a budget below the field's cells, observed on the Thread that
+## calls it. `hold` keeps a duplicate() of `next` across the calls.
+static func _write_case(pair: Array[World], hold: bool) -> Dictionary:
+	var world: World = pair[0]
+	var twin: World = pair[1]
+	var field: FlowField = world.flow.field(0)
+	var served: FlowField = twin.flow.field(0)
+	var alias: PackedInt32Array = field.next
+	var copy: PackedInt32Array = field.next.duplicate() if hold else PackedInt32Array()
+	# Own storage: a duplicate() shares its buffer with `copy` until one of them is written.
+	var old_values: Array = Array(copy)
+	var seen: Dictionary = {}
+	FlowCache.run(world, 5)
+	FlowCache.run(twin, 5)
+	seen["settled"] = world.stats[World.Stat.FLOW_CELLS]
+	seen["alias"] = alias == served.next and alias.count(FlowField.UNREACHED) < alias.size()
+	seen["member"] = field.next == served.next
+	var scalars: Array[StringName] = [&"goal_cell", &"move_class", &"grid_cols", &"cell_count"]
+	scalars.append_array([&"stride", &"level", &"pending", &"complete"])
+	seen["scalars"] = field.pending > 0 and field.goal_cell == 2080
+	for scalar: StringName in scalars:
+		seen["scalars"] = seen["scalars"] and field.get(scalar) == served.get(scalar)
+	seen["refs"] = world.flow.ref_count == twin.flow.ref_count and world.flow.refs(0) == 3
+	FlowCache.run(world, 5)
+	FlowCache.run(twin, 5)
+	seen["again"] = alias == served.next and field.pending == served.pending
+	# Kept only if the write forked: a write through the held buffer would change `copy` as well.
+	seen["copy_kept"] = hold and Array(copy) == old_values and copy != field.next
+	# The flow cache is derived state and not hashed, so the hash only says the call touched no
+	# other state; StateDiff compares the flow cache and every slot with the twin's.
+	var hash_before: int = world.state_hash()
+	var snapshot: PackedInt32Array = field.next.duplicate()
+	world.stats.fill(0)
+	twin.stats.fill(0)
+	FlowCache.run(world, 0)
+	FlowCache.run(twin, 0)
+	seen["idle"] = world.state_hash() == hash_before and field.next == snapshot
+	seen["idle"] = seen["idle"] and StateDiff.first(world, twin) == ""
+	seen["pending"] = world.stats[World.Stat.FLOW_CELLS] == 0 and field.pending == served.pending
+	FlowCache.run(world, 100000)
+	FlowCache.run(twin, 100000)
+	seen["done"] = field.complete and field.pending == 0 and field.move_class == 1
+	seen["done"] = seen["done"] and field.cost == served.cost and field.cost != snapshot
+	seen["done"] = seen["done"] and StateDiff.first(world, twin) == ""
+	return seen
 
 
 ## The statuses of check_world for [world, phase, ...] cases, in order. Runs on a worker.

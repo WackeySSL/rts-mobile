@@ -5,7 +5,11 @@ extends RefCounted
 ## `cost` is served; completion swaps them. ADR 0013 section 2: all state advance() changes is in
 ## Packed arrays and int members, sized once by reserve(). Padded cell = (ty + 1) * (cols + 2) +
 ## tx + 1; every method argument and result is a plain cell ty * cols + tx.
+## begin() and advance() have a C++ twin, core/flow.cpp of native/sim_kernels (ADR 0013 section 5):
+## a change to either edits both and passes tests/sim/native/test_flow_lockstep.gd.
 
+## The padding ring around the map: one blocked cell on each side, so the stride is cols + PAD.
+const PAD: int = 2
 ## The cost of a cell no integration reached: rock, the padding ring, enclosed ground.
 const UNREACHED: int = 0x3FFFFFFF
 ## Dial's ring: a power of two above the largest step, 255 * 14 / 10 = 357.
@@ -69,7 +73,7 @@ var pending: int = 0
 ## Sizes every array for a cols x rows map; a no-op while the padded size is unchanged. A resize
 ## ends `complete`: the old cost no longer fits the map, whatever key comes next.
 func reserve(cols: int, rows: int) -> void:
-	var padded: int = (maxi(cols, 0) + 2) * (maxi(rows, 0) + 2)
+	var padded: int = (maxi(cols, 0) + PAD) * (maxi(rows, 0) + PAD)
 	if cost.size() == padded:
 		return
 	complete = false
@@ -95,7 +99,7 @@ func begin(goal_cell: int, move_class: int, costs: PackedByteArray, cols: int, r
 	self.move_class = move_class
 	grid_cols = maxi(cols, 0)
 	cell_count = grid_cols * maxi(rows, 0)
-	stride = grid_cols + 2
+	stride = grid_cols + PAD
 	if not complete:
 		cost.fill(UNREACHED)
 	next.fill(UNREACHED)
