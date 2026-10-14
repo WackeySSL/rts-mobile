@@ -11,7 +11,9 @@ const TRACKED: int = World.MoveClass.TRACKED
 ## The index of rock in the terrain of GridWorld (its GROUND string: grass, scrub, rock).
 const ROCK: int = 2
 const HOLD: int = World.NavMode.HOLD
-## Every map here is 12 x 8 tiles, so a mix-up of columns and rows shows.
+## Most maps here are 12 x 8 tiles, so a mix-up of columns and rows shows; the last three tests use
+## a tall and a wide map, where the axis of a bound or of the slide's own tile cannot be swapped
+## without a wrong result.
 const COLS: int = 12
 const ROWS: int = 8
 
@@ -269,6 +271,45 @@ func test_a_map_that_is_not_whole_tiles_clamps_to_its_size_not_its_tiles() -> vo
 	assert_array([world.pos_x[1], world.pos_y[1]]).is_equal([5499, 1020])
 	assert_array([world.pos_x[2], world.pos_y[2]]).is_equal([1020, 2499])
 	assert_array([world.pos_x[3], world.pos_y[3]]).is_equal([5460, 2460])
+
+
+## A tall map (8 x 12 tiles): the y bound is the map's height (11999), not its width (7999), so a
+## step down from 11990 ends on the last row's edge. Square and wide maps cannot tell the two
+## apart.
+func test_a_tall_map_clamps_y_to_its_height() -> void:
+	var world: World = GridWorld.from_rows(GridWorld.grass(8, 12))
+	world.add_unit(1, 0, 1000, 11990)
+	world.intent_y[0] = 60
+	Movement.integrate(world)
+	assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([1000, 11999])
+
+
+## The slide reads the unit's own row on a tall map: a unit at (3900, 9900), below y = 8000 (the
+## map's width), steps (+100, +100) into rock tile (4, 10). The x move alone ends in rock (4, 9)
+## and the y move alone in open (3, 10), so only the y part is taken. If the own row were bounded
+## by the map's width it would read row 7, find open ground there and take the x part instead.
+func test_a_tall_map_slide_reads_the_units_own_row() -> void:
+	var rock: Array[Vector2i] = GridWorld.tiles([[4, 10], [4, 9]])
+	var world: World = GridWorld.from_rows(GridWorld.grass(8, 12, rock))
+	world.add_unit(1, 0, 3900, 9900)
+	world.intent_x[0] = 100
+	world.intent_y[0] = 100
+	Movement.integrate(world)
+	assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([3900, 10000])
+
+
+## The slide reads the unit's own column on a wide map (12 x 8 tiles): a unit at (9900, 3900), east
+## of x = 8000 (the map's height), steps (+100, +100) into rock tile (10, 4); the x move alone ends
+## in rock (10, 3) and the y move alone in rock (9, 4), so it stays. If the own column were bounded
+## by the map's height it would read column 7, find open ground there and take the y part.
+func test_a_wide_map_slide_reads_the_units_own_column() -> void:
+	var rock: Array[Vector2i] = GridWorld.tiles([[10, 4], [10, 3], [9, 4]])
+	var world: World = GridWorld.from_rows(GridWorld.grass(12, 8, rock))
+	world.add_unit(1, 0, 9900, 3900)
+	world.intent_x[0] = 100
+	world.intent_y[0] = 100
+	Movement.integrate(world)
+	assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([9900, 3900])
 
 
 ## A World with the one tank type table and no map yet: the test sets a size and adds the units
