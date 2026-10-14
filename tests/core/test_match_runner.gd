@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 ## tick 0).
 
 const RecordingProbe: GDScript = preload("res://tests/sim/recording_probe.gd")
+const StampProbe: GDScript = preload("res://tests/core/support/stamp_probe.gd")
 const CONTROLS_PATH: String = "res://data/scenarios/controls_test.tres"
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 ## Frame lengths in seconds for the jittered run, used in turn: below a tick (1/15 s), a few far
@@ -276,11 +277,18 @@ func test_the_replay_of_a_run_plays_back_on_a_fresh_world() -> void:
 
 ## Every tick sets last_hash to the hash of the last checkpoint (0 until tick 15, then the state
 ## hash at 15 until tick 30 replaces it), last_tick_usec to Sim.step alone, the time the runner's
-## StepProbe took from begin() to the last mark (so a checkpoint's hash is not in it), and
-## last_runner_tick_usec to the whole tick, which is at least as long. start() sets all three
-## back to 0.
+## StepProbe took from begin() to the last mark, and last_runner_tick_usec to the whole tick, which
+## is at least as long, all before it emits `ticked`. A HUD probe that is a StepProbe too gets its
+## begin() before the runner's reads the clock and its last mark() after, so last_tick_usec never
+## exceeds the HUD's time; one that took in the checkpoint hash (ticks 15 and 30) would.
+## start() sets all three back to 0.
 func test_every_tick_sets_last_hash_and_the_tick_times() -> void:
 	var runner: MatchRunner = _data_runner(CONTROLS_PATH, 1)
+	var hud: StepProbe = StepProbe.new()
+	runner.probe = hud
+	var seen: Array = []
+	runner.ticked.connect(func(_tick: int) -> void: seen.append(_tick_fields(runner)))
+	var after: Array = []
 	CommandQueue.submit(Command.move(1, PackedInt32Array([1, 2, 3]), 20500, 20500))
 	var expected: int = 0
 	var hashes: Array[int] = []
@@ -297,6 +305,12 @@ func test_every_tick_sets_last_hash_and_the_tick_times() -> void:
 		assert_bool(runner.last_tick_usec > 0).override_failure_message(label).is_true()
 		assert_int(runner.last_runner_tick_usec).is_greater_equal(runner.last_tick_usec)
 		assert_int(runner.last_tick_usec).is_equal(runner._step_probe.step_usec)
+		assert_int(runner.last_tick_usec).override_failure_message(label).is_less_equal(
+			hud.step_usec
+		)
+		after.append(_tick_fields(runner))
+	# A `ticked` handler saw each tick's own values, the ones the runner holds after the tick.
+	assert_array(seen).is_equal(after)
 	assert_array(runner.replay.checkpoint_hashes).is_equal(hashes)
 	assert_bool(hashes.size() == 2 and hashes[0] != hashes[1]).is_true()
 	runner.start()
@@ -306,7 +320,10 @@ func test_every_tick_sets_last_hash_and_the_tick_times() -> void:
 
 
 ## The StepProbe times from begin() to the last mark(): a later mark extends it and a new begin()
-## sets it back to 0. It passes every call on to its target, and works without one.
+## sets it back to 0. It passes every call on to its target, and works without one. It reads the
+## clock after the target's begin() and before the target's mark(), so the target's own time is
+## not in step_usec: with a target that takes 2 ms in each, step_usec stays within the target's
+## stamps.
 func test_the_probe_times_to_the_last_mark_and_the_runners_probe_gets_every_call() -> void:
 	var timer: StepProbe = StepProbe.new()
 	timer.begin()
@@ -323,6 +340,11 @@ func test_the_probe_times_to_the_last_mark_and_the_runners_probe_gets_every_call
 	timer.mark(SimProbe.Phase.INTEGRATE)
 	timer.mark(SimProbe.Phase.REMOVE)
 	assert_array(target.calls).is_equal(PackedInt32Array([-1, 6, 9]))
+	var stamps: SimProbe = StampProbe.new()
+	timer.target = stamps
+	timer.begin()
+	timer.mark(SimProbe.Phase.REMOVE)
+	assert_int(timer.step_usec).is_less_equal(stamps.mark_entry_usec - stamps.begin_exit_usec)
 	# The runner hands its probe every begin() and mark() of Sim.step through its StepProbe: the
 	# calls a probe given to a MatchLoop directly gets, with the same checkpoint. Without a probe
 	# nothing is called.
@@ -346,8 +368,9 @@ func test_the_probe_times_to_the_last_mark_and_the_runners_probe_gets_every_call
 	assert_int(runner.last_tick_usec).is_greater(0)
 
 
-## Ticks without row changes keep every World column and both prev arrays: the same arrays
-## (is_same) with the same sizes, as in Phase 1. On ticks without commands no object is created
+## Ticks without row changes keep every World column: the same arrays (is_same) with the same
+## sizes, as in Phase 1 (the Phase 1 case above pins the prev arrays, whose identity P38j hands to
+## the snapshot, so they are not checked here). On ticks without commands no object is created
 ## either: the runner reuses its command list and its probe. MatchLoop stamps the queued commands
 ## in place and never empties the list, so the runner clears its list after every step: the
 ## command submitted once is stamped, recorded and applied once.
@@ -440,14 +463,19 @@ func _sim_stream(match_seed: int) -> DetRandom:
 	return DetRandom.create(match_seed, DetRandom.STREAM_SIM)
 
 
-## Every ROW_ARRAYS column of the runner's world, then prev_pos_x and prev_pos_y.
+## Every ROW_ARRAYS column of the runner's world.
 func _row_arrays(runner: MatchRunner) -> Array:
 	var arrays: Array = []
 	for column: StringName in World.ROW_ARRAYS:
 		arrays.append(runner.world.get(column))
-	arrays.append(runner.prev_pos_x)
-	arrays.append(runner.prev_pos_y)
 	return arrays
+
+
+## The tick and what the runner says about it: last_hash and both tick times.
+func _tick_fields(runner: MatchRunner) -> Array:
+	return [
+		runner.world.tick, runner.last_hash, runner.last_tick_usec, runner.last_runner_tick_usec
+	]
 
 
 func _sizes(arrays: Array) -> Array[int]:
