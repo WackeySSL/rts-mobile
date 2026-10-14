@@ -6,9 +6,13 @@ extends GdUnitTestSuite
 ## `// alloc-ok`, unordered container, std::hash, Godot header, SIMD intrinsic, cast, char, short,
 ## int or long, integer literal other than 0 and 1 outside a `constexpr` variable with a comment of
 ## its own (on its line or alone on the line above: the mirror of a GDScript const), and raw int8
-## or int32 pointer outside a `struct|class *View` body or used through `.name` or `->name` outside
-## it (the accessors belong in the body). The pointer names are collected over every core/ file
-## first, so a view in one header guards all the files, and a view pointer's name is not free for
+## or int32 pointer outside a `struct|class *View` body, a raw pointer of any element type (T *,
+## int64_t *, a template parameter) declared in a public section of a view (view_pointer: a
+## struct's members are public until a `private:`, a class's private until a `public:`, templates
+## included; ADR 0013 section 2 hands core/ int64_t accessors, never a pointer), and any view
+## pointer member used through `.name` or `->name` outside the view body (the accessors, and a
+## friend defined in the body, belong in it). The pointer names are collected over every core/
+## file first, so a view in one file guards all the files, and a view pointer's name is not free for
 ## another member of core/. bind/ (the only code that touches Godot types, so Godot headers, heap
 ## use and int are fine): the float, time, randomness and thread bans (godot-cpp
 ## headers pull in <cmath> and <atomic>, so the words are banned too, not only the includes), no
@@ -18,8 +22,10 @@ extends GdUnitTestSuite
 ## which asserts that the scan sees it and that a view in one file guards another. Every banned
 ## word is probed and counted, and the ADR-named bans are pinned by hand (PINNED) apart from the
 ## word lists, so deleting a word fails; every rule has a flagged and a legal fixture, and a
-## fixture of several files has a line `---` between them. A blind spot, left to review: a global
-## without static or inline. The ClassDB and SimKernels bans are in test_sim_purity.
+## fixture of several files has a line `---` between them. Blind spots, left to review: a global
+## without static or inline, and for views a method that returns the pointer, a `using` alias of
+## it and a pointer in a struct nested in a view. The ClassDB and SimKernels bans are in
+## test_sim_purity.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const NATIVE_DIR: String = "res://native/sim_kernels/src"
@@ -33,7 +39,14 @@ const EXTENSIONS: Array[String] = ["cpp", "h", "hpp"]
 const UNSCANNED: Array[String] = ["c", "cc", "cxx", "hh", "hxx", "inl", "inc", "ipp", "tpp"]
 ## The rules that bind/ does not have; packed_param is the one that core/ does not have.
 const CORE_ONLY: Array[String] = [
-	"alloc", "unordered", "godot_header", "simd", "plain_type", "int_literal", "raw_pointer"
+	"alloc",
+	"unordered",
+	"godot_header",
+	"simd",
+	"plain_type",
+	"int_literal",
+	"raw_pointer",
+	"view_pointer"
 ]
 ## The number of banned words in RULES. A word dropped from a list fails the test until this line
 ## is edited with it, so a deletion is a decision in the diff and not a silent hole.
@@ -46,9 +59,15 @@ const BLANKED: String = (
 ## A constexpr variable, not a function, `if constexpr` or lambda: no ( or { before its = or {,
 ## and no `](` (a lambda introducer) in the initializer.
 const CONSTEXPR_STATEMENT: String = r"\bconstexpr\b(?![^;]*\]\s*\()[^;(){}=]*(?:=|\{)[^;]*;"
-## The body of a view struct, where raw pointers belong, and the pointer names declared in it.
+## The body of a view struct, where raw pointers belong.
 const VIEW: String = r"\b(?:struct|class)\s+\w*View\b[^;{]*\{"
-const VIEW_POINTER: String = r"\bu?int(?:8|32)_t\b\s*(?:const\s*)?\*\s*(?:const\s+)?(\w+)"
+## The `*` of a pointer declarator of any element type (`T *p`, `T *const p`, `A<T *> p`); group 1
+## is its name, empty when there is none.
+const POINTER: String = r"\*\s*(?:const\s+)?(\w*)"
+## An access label in front of a member of a view.
+const ACCESS: String = r"\b(public|private|protected)\s*:"
+## What follows the `}` of a member initializer `a{1}` in a constructor: another one or the body.
+const INIT_LIST: String = r"\G\s*[,{]"
 ## What ends a variable declaration: = ; { or a direct-init of a literal, `n("x")` (blanked).
 const VARIABLE_END: String = r"[^;(){}=]*(?:[=;{]|\((?:\s+|\s*[-+]?\d[\w']*\s*)\))"
 ## A static with its initializer before any ( : `static auto n = StringName("x");`.
@@ -143,6 +162,8 @@ const RULES: Array[String] = [
 	"plain_type word char short int long signed unsigned wchar_t char8_t char16_t char32_t",
 	r"int_literal raw (?<![\w.])(?:0[xX][\da-fA-F']+|0[bB][01']+|\d[\d']*)[uUlL]*(?![\w.])",
 	r"raw_pointer raw \bu?int(?:8|32)_t\b\s*(?:const\s*)?\*",
+	# Found by _declared_pointers in the public sections of a view; the row registers the rule.
+	"view_pointer raw " + POINTER,
 	"cast word reinterpret_cast const_cast",
 	# The parameter (its type, const, :: and godot:: included) is group 1, so a report has its line.
 	(
@@ -220,18 +241,48 @@ const FLAGGED: Array[String] = [
 	"raw_pointer|uint8_t *flags = nullptr;",
 	"raw_pointer|int32_t const *px = nullptr;",
 	"raw_pointer|struct WorldView {\n\tint64_t n;\n};\nuint8_t *flags = nullptr;",
-	"raw_pointer|struct WorldView {\n\tconst int32_t *px;\n};\nauto a = w.px[0];",
-	"raw_pointer|struct SlotView {\n\tint32_t *const cost;\n};\nauto *p = slot->cost;",
+	"raw_pointer|class WorldView {\n\tconst int32_t *px;\n};\nauto a = w.px[0];",
+	"raw_pointer|class SlotView {\n\tint32_t *const cost;\n};\nauto *p = slot->cost;",
 	# The view is in one file, the use in another: in either order.
 	(
-		"raw_pointer|struct WorldView {\n\tconst int32_t *pos_x;\n\tint32_t *const cost;\n};"
+		"raw_pointer|class WorldView {\n\tconst int32_t *pos_x;\n\tint32_t *const cost;\n};"
 		+ FILE_BREAK
 		+ "auto a = w.pos_x[0] - w.pos_x[1];\nauto *p = slot->cost;"
 	),
 	(
 		"raw_pointer|auto a = w.pos_x[0];"
 		+ FILE_BREAK
-		+ "struct WorldView {\n\tconst int32_t *pos_x;\n};"
+		+ "class WorldView {\n\tconst int32_t *pos_x;\n};"
+	),
+	# A raw pointer member of any element type in a public section of a view (a struct's members are
+	# public until a `private:`, a class's private until a `public:`).
+	"view_pointer|template <typename T>\nstruct ArrayView {\n\tT *ptr;\n\tint64_t size = 0;\n};",
+	"view_pointer|template <typename T>\nclass SpanView {\npublic:\n\tT *ptr = nullptr;\n};",
+	"view_pointer|struct RowsView {\n\tconst int64_t *rows;\n};",
+	"view_pointer|class WorldView {\npublic:\n\tconst int32_t *px;\n};",
+	"view_pointer|class WorldView {\nprivate:\n\tint64_t n = 0;\npublic:\n\tconst int64_t *rows;\n};",
+	"view_pointer|struct SlotView {\nprivate:\n\tint64_t n = 0;\npublic:\n\tint64_t *const cost;\n};",
+	"view_pointer|struct SpanView {\n\tconst int64_t *ptr{nullptr};\n};",
+	"view_pointer|struct SpanView {\n\tint64_t n, *last;\n};",
+	"view_pointer|template <typename T>\nstruct SpanView {\n\tArrayView<T *> rows;\n};",
+	# The members after a constructor with brace initializers are still read.
+	"view_pointer|class SpanView {\npublic:\n\tSpanView() : n{0}, m{1} {}\n\tint64_t *ptr;\n};",
+	# A view pointer of any element type and section, read outside its view.
+	(
+		"raw_pointer|template <typename T>\nclass ArrayView {\n\tT *ptr_;\n"
+		+ "\tfriend int64_t peek(const ArrayView &v);\npublic:\n\tint64_t size() const;\n};"
+		+ FILE_BREAK
+		+ "int64_t peek(const ArrayView<int64_t> &v) { return v.ptr_[0]; }"
+	),
+	(
+		"raw_pointer|auto a = view->ptr[0];\nauto b = view.ptr[1];"
+		+ FILE_BREAK
+		+ "template <typename T>\nclass SpanView {\n\tT *ptr;\n};"
+	),
+	(
+		"raw_pointer|class RowsView {\n\tconst int64_t *first, *last;\n};"
+		+ FILE_BREAK
+		+ "auto n = w.last[0];"
 	),
 	"packed_param|void flow(godot::PackedInt32Array p);",
 	"packed_param|Variant f(const PackedByteArray &p, int64_t n);",
@@ -282,28 +333,70 @@ const LEGAL: Array[String] = [
 	"int_literal|// DX mirrors the twin's DX.\nconstexpr int64_t DX[4] = {\n\t0, 3,\n\t-3\n};",
 	"int_literal|/* FlowField.UNREACHED */\nconstexpr int64_t UNREACHED = 0x3FFFFFFF;",
 	"int_literal|constexpr int64_t V{7};  /* mirrors GDScript V */",
-	"raw_pointer|struct WorldView { const uint8_t *flags; };",
+	"raw_pointer|class WorldView { const uint8_t *flags; };",
 	(
-		"raw_pointer|struct WorldView {\n\tconst int32_t *px;\n"
+		"raw_pointer|class WorldView {\n\tconst int32_t *px;\n"
 		+ "\tint64_t pos_x(int64_t row) const { return px[row]; }\n\tuint8_t *flags;\n};"
 	),
 	(
-		"raw_pointer|struct SlotView {\n\tint32_t *cost;\n"
+		"raw_pointer|class SlotView {\n\tint32_t *cost;\n"
 		+ "\tint64_t at(int64_t i) const { return cost[i]; }\n};\n"
 		+ "int64_t d(SlotView s, int64_t i) { return s.at(i) - s.cost_at(i); }"
 	),
 	# An accessor call is not a pointer use, even when another view's pointer has its name.
 	(
-		"raw_pointer|struct WorldView {\n\tconst int32_t *px;\n"
+		"raw_pointer|class WorldView {\n\tconst int32_t *px;\n"
 		+ "\tint64_t pos_x(int64_t row) const { return px[row]; }\n};"
 		+ FILE_BREAK
 		+ "int64_t d(const WorldView &w) { return w.pos_x(1) - w.pos_x(0); }"
 	),
 	(
-		"raw_pointer|struct SlotView {\n\tint32_t *cost;\n};\nstruct WorldView {\n"
+		"raw_pointer|class SlotView {\n\tint32_t *cost;\n};\nclass WorldView {\n"
 		+ "\tint64_t cost(int64_t row) const;\n};"
 		+ FILE_BREAK
 		+ "int64_t d(const WorldView *w) { return w->cost(1); }"
+	),
+	# The shape of the merged ArrayView: a template, public accessors, the pointer private.
+	(
+		"view_pointer|template <typename T>\nclass ArrayView {\npublic:\n\tArrayView() = default;\n"
+		+ "\tArrayView(T *data, int64_t count) :\n\t\t\tptr_(data), size_(count) {}\n"
+		+ "\tint64_t get(int64_t i) const { return i >= 0 && i < size_ ? ptr_[i] : 0; }\n"
+		+ "private:\n\tT *ptr_ = nullptr;\n\tint64_t size_ = 0;\n};"
+	),
+	# A class is private until a `public:`; a struct is public until a `private:`.
+	(
+		"view_pointer|class WorldView {\n\tconst int32_t *px;\n\tuint8_t *flags;\n"
+		+ "public:\n\tint64_t n = 0;\n};"
+	),
+	(
+		"view_pointer|struct SlotView {\n\tint64_t n = 0;\nprivate:\n\tint64_t *cost = nullptr;\n"
+		+ "protected:\n\tconst int64_t *next = nullptr;\n};"
+	),
+	# Only data members count: a pointer parameter or local, a plain brace initializer, a `*` that
+	# multiplies in an initializer or an array bound.
+	(
+		"view_pointer|struct SpanView {\n\tint64_t n{1 * 1};\n\tint64_t both = 1 * 1;\n"
+		+ "\tint64_t grid[1 * 1] = {0};\n"
+		+ "\tint64_t sum(const int64_t *p) const { const int64_t *it = p; return *it; }\n};"
+	),
+	# Comments are blanked: a `public:` or a pointer in one changes nothing.
+	(
+		"view_pointer|template <typename T>\nclass ArrayView {\n\t// public: not a section, T *ptr;\n"
+		+ "\tT *ptr_ = nullptr;  // public: T *ptr;\n};"
+	),
+	# A pointer in template arguments has no name: an accessor call is still no pointer use.
+	(
+		"raw_pointer|template <typename T>\nclass SpanView {\n\tArrayView<T *> rows;\n};"
+		+ FILE_BREAK
+		+ "int64_t d(const SpanView<int64_t> &v) { return v.size() - 1; }"
+	),
+	# A friend or an accessor defined in the view reads its pointer where it belongs.
+	(
+		"raw_pointer|template <typename T>\nclass ArrayView {\n\tT *ptr_ = nullptr;\n"
+		+ "\tfriend bool same(const ArrayView &a, const ArrayView &b) { return a.ptr_ == b.ptr_; }\n"
+		+ "public:\n\tT get(int64_t i) const { return ptr_[i]; }\n};"
+		+ FILE_BREAK
+		+ "int64_t d(const ArrayView<int64_t> &v) { return v.get(1) - v.get(0); }"
 	),
 	"cast|auto v = static_cast<int32_t>(x);",
 	"packed_param|PackedInt32Array make(int64_t n);\nauto a = PackedByteArray();",
@@ -347,7 +440,9 @@ var _regexes: Dictionary[String, RegEx] = {}
 var _blanked: RegEx
 var _constexpr: RegEx
 var _view: RegEx
-var _view_pointer: RegEx
+var _pointer: RegEx
+var _access: RegEx
+var _init_list: RegEx
 var _const_word: RegEx
 var _constexpr_word: RegEx
 var _static_init: RegEx
@@ -359,7 +454,9 @@ func before() -> void:
 	_blanked = _compile(BLANKED)
 	_constexpr = _compile(CONSTEXPR_STATEMENT)
 	_view = _compile(VIEW)
-	_view_pointer = _compile(VIEW_POINTER)
+	_pointer = _compile(POINTER)
+	_access = _compile(ACCESS)
+	_init_list = _compile(INIT_LIST)
 	_const_word = _compile(r"\bconst\b")
 	_constexpr_word = _compile(r"\bconstexpr\b")
 	_static_init = _compile(STATIC_INIT)
@@ -386,6 +483,29 @@ func test_a_view_pointer_read_in_another_file_is_flagged_by_the_tree_scan() -> v
 		TREE_FIXTURE + "/core/use.cpp:2: raw_pointer: return w.pos_x[0] - w.pos_x[1];"
 	)
 	assert_array(_scan_tree(CORE, TREE_FIXTURE)).contains_exactly([report])
+
+
+## The scan sees the merged template view and its private pointer (a view that it cannot read
+## guards nothing).
+func test_the_scan_collects_the_pointer_of_the_template_view_of_core() -> void:
+	var source: String = FileAccess.get_file_as_string(NATIVE_DIR + "/core/array_view.h")
+	assert_array(_view_members(_blank(source))).contains(["ptr_"])
+
+
+## A section lasts up to the next label, and a struct and a class start in different ones.
+func test_only_the_public_sections_of_a_view_are_reported() -> void:
+	var source: String = (
+		"struct AView {\n\tconst int64_t *a;\nprivate:\n\tconst int64_t *b;\npublic:\n"
+		+ "\tconst int64_t *c;\nprotected:\n\tconst int64_t *d;\n};\n"
+		+ "class BView {\n\tconst int64_t *e;\nprotected:\n\tconst int64_t *f;\npublic:\n"
+		+ "\tconst int64_t *g;\nprivate:\n\tconst int64_t *h;\n};"
+	)
+	var expected: Array[String] = [
+		"f.h:2: view_pointer: const int64_t *a;",
+		"f.h:6: view_pointer: const int64_t *c;",
+		"f.h:15: view_pointer: const int64_t *g;",
+	]
+	assert_array(_violations(CORE, "f.h", source)).contains_exactly(expected)
 
 
 func test_bind_sources_follow_the_boundary_rules() -> void:
@@ -576,7 +696,11 @@ func _file_violations(
 	for rule: String in _regexes:
 		if not _has_rule(layer, rule):
 			continue
-		var hits: Array = _regexes[rule].search_all(code)
+		var hits: Array
+		if rule == "view_pointer":
+			hits = _declared_pointers(code, views, true)
+		else:
+			hits = _regexes[rule].search_all(code)
 		if rule == "raw_pointer":
 			hits.append_array(_member_uses(code, members))
 		for hit: RegExMatch in hits:
@@ -640,13 +764,49 @@ func _inside(views: Array[Vector2i], at: int) -> bool:
 	return false
 
 
-## The names of the pointers declared in the views of `code`.
+## The names of the pointers declared in the views of `code`, of any element type and section.
 func _view_members(code: String) -> PackedStringArray:
 	var names: PackedStringArray = []
-	for view: Vector2i in _views(code):
-		for member: RegExMatch in _view_pointer.search_all(code.substr(view.x, view.y - view.x)):
+	for member: RegExMatch in _declared_pointers(code, _views(code), false):
+		if not member.get_string(1).is_empty():
 			names.append(member.get_string(1))
 	return names
+
+
+## The pointer declarators (group 1 is the name) of the data members of the `views` of `code`:
+## those in a public section, or all. A member is a declaration at the top level of the view, up to
+## its first `=`, `(`, `[`, `{` or `;` (its head); a function has a `(` there, a method body or a
+## nested block is no member, and a brace initializer (`T *p{nullptr};`) belongs to the member
+## before it. A struct is public until a `private:`, a class private until a `public:`.
+func _declared_pointers(
+	code: String, views: Array[Vector2i], public_only: bool
+) -> Array[RegExMatch]:
+	var found: Array[RegExMatch] = []
+	for view: Vector2i in views:
+		var is_public: bool = code.substr(view.x, 6) == "struct"
+		var open: int = code.find("{", view.x)
+		var depth: int = 0
+		var start: int = open + 1
+		var head: int = -1
+		for at: int in range(open, view.y):
+			var symbol: String = code[at]
+			if depth == 1 and head < 0 and "=([{;".contains(symbol):
+				head = at
+			depth += int(symbol == "{") - int(symbol == "}")
+			if depth == 1 and (symbol == ";" or (symbol == "}" and _ends_function(code, head, at))):
+				for label: RegExMatch in _access.search_all(code, start, head):
+					is_public = label.get_string(1) == "public"
+				if code[head] != "(" and (is_public or not public_only):
+					found.append_array(_pointer.search_all(code, start, head))
+				start = at + 1
+				head = -1
+	return found
+
+
+## Does the `}` at `at` end a function (a `(` in its head) and not a member initializer of a
+## constructor (`: a{1}, b{2} {}`), which another initializer or the body follows?
+func _ends_function(code: String, head: int, at: int) -> bool:
+	return code[head] == "(" and _init_list.search(code, at + 1) == null
 
 
 ## The `.name` and `->name` uses of the view pointers `members`, wherever they are: a pointer read
