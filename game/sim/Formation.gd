@@ -12,10 +12,11 @@ const KEY_SHIFT: int = 1 << 20
 ## Sets goal_x/goal_y of the units at `unit_indices` (rows of `world`). The world is prepared
 ## first (one bool check; the tick has done it already), because the types' movement classes and
 ## the tile grid exist only after prepare(). The target is clamped to the map inset by the largest
-## radius in the group. On a tile that a class of the group cannot enter it moves to the centre of
-## the nearest tile that every class can (_open_centre). The slots are spaced by the largest
-## formation spacing in the group. Each slot, nearest to the target first, takes the nearest
-## unassigned unit, ties to the lower id. Units left without a slot get the clamped target.
+## radius in the group (the box [low, high] below). On a tile that a class of the group cannot
+## enter it moves to the centre of the nearest tile that every class can and whose centre is in the
+## box (_open_centre), so the slot lattice always starts inside the box. The slots are spaced by
+## the largest formation spacing in the group. Each slot, nearest to the target first, takes the
+## nearest unassigned unit, ties to the lower id. Units left without a slot get the clamped target.
 ## It runs on the worker, so the World's arrays are aliased into locals before the loops (ADR
 ## 0012 section 2).
 static func assign(
@@ -51,7 +52,11 @@ static func assign(
 	var low: Vector2i = Vector2i(mini(radius, world.map_w >> 1), mini(radius, world.map_h >> 1))
 	var high: Vector2i = Vector2i(world.map_w, world.map_h) - low
 	var centre: Vector2i = _open_centre(
-		world, bases, Vector2i(clampi(target_x, low.x, high.x), clampi(target_y, low.y, high.y))
+		world,
+		bases,
+		Vector2i(clampi(target_x, low.x, high.x), clampi(target_y, low.y, high.y)),
+		low,
+		high
 	)
 	for row: int in unit_indices:
 		goal_x[row] = centre.x
@@ -66,11 +71,16 @@ static func assign(
 
 
 ## `point` itself when its tile is open to every class in `bases` (the offsets into move_cost, see
-## assign) or when no tile is blocked at all. Otherwise the centre of the nearest open tile:
-## rings of tiles around the point's tile, each ring row by row (j, then i, ascending), and the
-## first hit wins. `point` again when no tile of the map is open.
+## assign) or when no tile is blocked at all. Otherwise the centre of the nearest open tile whose
+## centre is in the box [low, high]: rings of tiles around the point's tile, each ring row by row
+## (j, then i, ascending), and the first hit wins. A tile centre outside the box (a unit radius
+## above half a tile, or a map that is not a whole number of tiles wide) would put the slots
+## outside the radius inset, and _slots would find none. `point`, which is in the box, again when no
+## such tile is open.
 @warning_ignore("integer_division")
-static func _open_centre(world: World, bases: PackedInt32Array, point: Vector2i) -> Vector2i:
+static func _open_centre(
+	world: World, bases: PackedInt32Array, point: Vector2i, low: Vector2i, high: Vector2i
+) -> Vector2i:
 	if bases.is_empty():
 		return point
 	var cost: PackedByteArray = world.move_cost
@@ -92,13 +102,21 @@ static func _open_centre(world: World, bases: PackedInt32Array, point: Vector2i)
 					if cost[base + y * cols + x] == 0:
 						open = false
 						break
-				if open and ring == 0:
+				if not open:
+					continue
+				if ring == 0:
 					return point
-				if open:
-					return Vector2i(
-						x * World.MILLI_PER_TILE + World.TILE_CENTRE,
-						y * World.MILLI_PER_TILE + World.TILE_CENTRE
-					)
+				var centre: Vector2i = (
+					Vector2i(x, y) * World.MILLI_PER_TILE
+					+ Vector2i(World.TILE_CENTRE, World.TILE_CENTRE)
+				)
+				if (
+					centre.x >= low.x
+					and centre.x <= high.x
+					and centre.y >= low.y
+					and centre.y <= high.y
+				):
+					return centre
 	return point
 
 
@@ -125,8 +143,9 @@ static func _slots(
 	var keys: Array[int] = []
 	var last_ring: int = -1
 	var ring: int = 0
-	# A ring r point is r * spacing away from the centre on an axis, and the centre is in the box,
-	# so no ring beyond the box extent holds a point. This ends the loop on its own.
+	# A ring r point is r * spacing away from the centre on an axis, and the centre is in the box
+	# (assign clamps the target, and _open_centre keeps a moved one inside), so no ring beyond the
+	# box extent holds a point. This ends the loop on its own.
 	var extent: int = maxi(high.x - low.x, high.y - low.y)
 	while (last_ring < 0 or ring <= last_ring) and ring * spacing <= extent:
 		var inside: int = 0

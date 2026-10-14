@@ -211,14 +211,44 @@ func test_on_an_open_map_the_slots_equal_phase_1s() -> void:
 	assert_array(wrong).is_empty()
 
 
+## P37a fix 1: the world is prepared first, also for an empty group, which returns right after.
+func test_assign_prepares_the_world_for_an_empty_group_too() -> void:
+	assert_bool(_world.prepared).is_false()
+	Formation.assign(_world, PackedInt32Array(), 20000, 20000)
+	assert_bool(_world.prepared).is_true()
+	assert_int(_world.type_move_class.size()).is_equal(_world.type_ids.size())
+
+
+## P37a fix 1: a world with no map (map_w = 0, so no tile grid) blocks no tile: the goals are the
+## clamped target, with no read of a grid that is not there (an error line otherwise).
+func test_assign_on_a_world_without_a_map_gives_the_clamped_target() -> void:
+	var bare: World = World.new()
+	_add_type(bare, SPACING, RADIUS)
+	var rows: PackedInt32Array = _add_block(bare, 3, 3, 0, 0, 100, 0)
+	Formation.assign(bare, rows, 5000, -7000)
+	assert_int(bare.map_cols).is_equal(0)
+	for row: int in rows:
+		assert_that(_goal(bare, row)).is_equal(Vector2i(0, 0))
+
+
 ## ADR 0012 section 2, the alias rule: assign runs on the worker, where a per-row `world.pos_x[row]`
-## read ran 1.8 times slower while the main thread moved rigs. The source holds no indexed read of
-## a World array: the columns are aliased into locals before the loops.
-func test_formation_reads_no_world_array_per_row() -> void:
+## read ran 1.8 times slower while the main thread moved rigs. The source reads no World member
+## inside a loop or any other block: a line that names `world.` is at the top level of its function,
+## which is where the columns are aliased into locals. This is the source scan of the rule; the
+## behaviour cannot show it.
+func test_formation_reads_no_world_member_inside_a_block() -> void:
 	var source: String = FileAccess.get_file_as_string("res://game/sim/Formation.gd")
-	var indexed: RegEx = RegEx.create_from_string(r"\bworld\.\w+\[")
 	assert_int(len(source)).is_greater(1000)
-	assert_array(indexed.search_all(source)).is_empty()
+	var reads: int = 0
+	var inside: Array[String] = []
+	for line: String in source.split("\n"):
+		if line.strip_edges().begins_with("#") or not "world." in line:
+			continue
+		reads += 1
+		if line.begins_with("\t\t"):
+			inside.append(line.strip_edges())
+	assert_int(reads).is_greater(10)
+	assert_array(inside).is_empty()
 
 
 func _make_world(map: int) -> World:

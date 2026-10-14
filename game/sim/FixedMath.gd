@@ -53,17 +53,23 @@ static func step_toward(x: int, y: int, tx: int, ty: int, speed: int) -> Vector2
 
 
 ## Whether every tile that the segment (x0, y0)-(x1, y1) touches is passable for `move_class`
-## (ADR 0008 section 2). Points are milli-tiles and are clamped into the grid. The tiles are
-## closed squares, so a segment that only grazes a tile touches it: along an edge, or through a
-## corner, where a diagonal touches all four tiles around the corner. That is stricter than the
-## tiles whose interior it crosses, and it never cuts a corner that the flow field refuses.
+## (ADR 0008 section 2). Points are milli-tiles and are clamped into the grid. A point is in the
+## tile that World.cell_of gives it (ADR 0008 section 1), so a tile is a half-open square: its left
+## and top edge belong to it, its right and bottom edge to the next tile, and the far edge of the
+## map to the last tile. The segment touches the tiles of its points, and where it crosses a tile
+## corner exactly (the corner is between its ends, and the segment is along no axis) it also touches
+## the two tiles beside the corner, which keeps the flow field's rule against cutting a corner. A
+## segment along an edge touches the tiles on one side only: a unit that stands on that edge is in
+## that tile, so a goal on an open tile is in reach of a clear line from every point of its tile.
 ## It reads the grid like World.is_passable: true while no map is loaded, false for a class that
 ## does not exist. Callers use it at event cadence (a line check, ADR 0007 section 1).
 ##
 ## Column by column: in the strip of tile column c the segment spans the y range between its
 ## values at the strip's left and right edge. With dx = x1 - x0 > 0 that y is
-## (y0 * dx + dy * (x - x0)) / dx, so the numerators over dx * 1000 give tiles. The rows touched
-## run from ceil(low) - 1 to floor(high). A vertical segment is one or two columns of its y range.
+## (y0 * dx + dy * (x - x0)) / dx, so the numerators over dx * 1000 give tiles, and the rows
+## touched run from floor(low) to floor(high). The right edge of a strip is in the next column, so
+## when y rises there the strip ends one numerator short of it; a corner there adds the rows on
+## both sides of it, in both strips. A vertical segment is one column of its y range.
 @warning_ignore("integer_division")
 static func line_clear(world: World, x0: int, y0: int, x1: int, y1: int, move_class: int) -> bool:
 	var cols: int = world.map_cols
@@ -86,16 +92,25 @@ static func line_clear(world: World, x0: int, y0: int, x1: int, y1: int, move_cl
 	var dx: int = bx - ax
 	var dy: int = by - ay
 	var scale: int = dx * tile if dx > 0 else tile
-	for column: int in range(maxi((ax + tile - 1) / tile - 1, 0), mini(bx / tile, cols - 1) + 1):
-		var low: int = mini(ay, by)
-		var high: int = maxi(ay, by)
+	var last_column: int = mini(bx / tile, cols - 1)
+	for column: int in range(mini(ax / tile, cols - 1), last_column + 1):
+		var first_row: int = mini(ay, by) / tile
+		var last_row: int = maxi(ay, by) / tile
 		if dx > 0:
-			var left: int = ay * dx + dy * (maxi(column * tile, ax) - ax)
-			var right: int = ay * dx + dy * (mini((column + 1) * tile, bx) - ax)
-			low = mini(left, right)
-			high = maxi(left, right)
-		var last: int = mini(high / scale, rows - 1)
-		for row: int in range(maxi((low + scale - 1) / scale - 1, 0), last + 1):
+			var left_x: int = maxi(column * tile, ax)
+			var right_x: int = mini((column + 1) * tile, bx)
+			var left: int = ay * dx + dy * (left_x - ax)
+			var right: int = ay * dx + dy * (right_x - ax)
+			var open_end: int = 1 if dy > 0 and column < last_column else 0
+			first_row = mini(left, right) / scale
+			last_row = (maxi(left, right) - open_end) / scale
+			if dy != 0 and left_x > ax and left_x < bx and left % scale == 0:
+				first_row = mini(first_row, left / scale - 1)
+				last_row = maxi(last_row, left / scale)
+			if dy != 0 and right_x < bx and right % scale == 0:
+				first_row = mini(first_row, right / scale - 1)
+				last_row = maxi(last_row, right / scale)
+		for row: int in range(mini(first_row, rows - 1), mini(last_row, rows - 1) + 1):
 			if cost[base + row * cols + column] == 0:
 				return false
 	return true
