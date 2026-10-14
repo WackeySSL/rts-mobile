@@ -20,12 +20,14 @@ func before_test() -> void:
 
 
 ## A death in tick 30 gives the tick a DIED event, so `events` is not empty either, and a terrain
-## write (the same terrain) makes map_version 1.
+## write (the same terrain) makes map_version 1. Slot 0 holds a projectile whose id, owner and
+## weapon differ, so a projectile column copied from the wrong World column fails.
 func test_after_30_ticks_every_snapshot_array_equals_its_world_array() -> void:
 	_play(29)
 	_world.hp[_world.index_of(40)] = 0
 	_world.set_terrain(0, _world.terrain[0])
 	_play(1)
+	_put_projectile(0, 7, 500, 1500)
 	var snap: MatchSnapshot = _capture(null, 1)
 	var differ: Array[StringName] = []
 	for name: StringName in MatchSnapshot.COPIED + [&"events", &"stats"]:
@@ -158,16 +160,19 @@ func test_cell_of_is_the_world_formula_clamped_and_zero_without_a_map() -> void:
 	assert_int(none.count(0)).is_equal(none.size())
 
 
+## The previous snapshot is of match 2. Another match is any other serial: a later one (3) and an
+## earlier one (1) alike.
 func test_prev_is_current_for_another_match_and_the_old_positions_for_the_same() -> void:
 	_play(5)
-	var first: MatchSnapshot = _capture(null, 1)
+	var first: MatchSnapshot = _capture(null, 2)
 	_play(1)
-	var other: MatchSnapshot = _capture(first, 2)
-	assert_int(other.rows_version).is_equal(first.rows_version)
-	assert_bool(other.pos_x == first.pos_x).is_false()
-	assert_array(other.prev_pos_x).is_equal(other.pos_x)
-	assert_array(other.prev_pos_y).is_equal(other.pos_y)
-	var same: MatchSnapshot = _capture(first, 1)
+	for serial: int in [3, 1]:
+		var other: MatchSnapshot = _capture(first, serial)
+		assert_int(other.rows_version).is_equal(first.rows_version)
+		assert_bool(other.pos_x == first.pos_x).is_false()
+		assert_array(other.prev_pos_x).is_equal(other.pos_x)
+		assert_array(other.prev_pos_y).is_equal(other.pos_y)
+	var same: MatchSnapshot = _capture(first, 2)
 	assert_array(same.prev_pos_x).is_equal(first.pos_x)
 	assert_array(same.prev_pos_y).is_equal(first.pos_y)
 	var moved: int = 0
@@ -426,8 +431,12 @@ func _cell_points(w: int, h: int) -> Array[Vector2i]:
 	]
 
 
+## Projectile `id` in `slot` at (x, y), with owner 1 + id % 2 and weapon id % 3 (for id 7: 2 and
+## 1), so its id, owner and weapon columns hold different values.
 func _put_projectile(slot: int, id: int, x: int, y: int) -> void:
 	_world.proj_id[slot] = id
+	_world.proj_owner[slot] = 1 + id % 2
+	_world.proj_weapon[slot] = id % 3
 	_world.proj_x[slot] = x
 	_world.proj_y[slot] = y
 
