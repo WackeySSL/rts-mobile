@@ -50,6 +50,13 @@ it", and Michael's two answers of 2026-10-13 on "Sessions": **"ja til install-an
 now follow the "Sessions" bullet, so the two accepted bullets before them no longer render inside
 a status note's list; no text changed.
 
+Status note (2026-10-13, P26l docs): after the merges and reviews of P55b (#69) and P54 (#70),
+dated status notes from "P26l docs" (a docs PR whose name repeats the licence row P26l, #55) sit
+in §2 (P54 as merged), §3 (`sim_impls.gd` returns its problems), §8 ("Sessions": P55b as
+merged), §10 (what the sanitizer job cannot see) and §14 (`CLAUDE.md`'s `build-native.sh` line,
+after Michael's answer in chat on 2026-10-13, verbatim: **"ok til CLAUDE.md-linjen"**). No
+accepted text changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -515,6 +522,35 @@ absorbs next to the C++ phases.
   internal-pointer getter (interface since 4.4, "can be used to modify it in-place") and on the
   layout of the Variant's Packed array.
 
+  Status note (2026-10-13, P26l docs, P54 as merged, #70), the text above stays as accepted:
+  - `SimKernels.check_world(world, phase)` returns 0 or `table_index * 5 + fault`, where
+    `table_index` is the first bad name's index in the table (`status_of` and the `Fault` enum
+    in `src/core/world_status.h`): 1 unknown phase, 2 missing owner object, 3 wrong Variant
+    type, 4 wrong length. A null World gives fault 2 at the phase's first name. It prints
+    nothing.
+  - The five lists are one table, `SIM_CHECKED_TABLE` in `bind/world_access.h`: 106
+    `X(owner, name, kind, size, phases)` entries, each with a phase bitmask (FLOW 30 names,
+    TARGETING 32, SEPARATION 28, INTEGRATE 53, FOG 29). `tests/sim/native/test_kernel_abi.gd`
+    reads the table from `world_access.h` itself, so there is no test-only binding.
+  - `bind/kernel_list.h` is `SIM_KERNEL_LIST(K0, K1)`: each line generates the method's
+    declaration in `sim_kernels.h`, its `ClassDB` binding and its bit in `phases()` (with a
+    `static_assert` that the phase has a list). P54 has no line.
+  - `core/` starts with `world_status.h` (the `Fault` enum and `status_of`), which no kernel
+    calls yet; its header records this one exception to "every `core/` function lands with the
+    kernel that calls it" (the purity scan must see `core/`, and the status encoding is
+    shared). `WorldView` and the internal-pointer fetch (`ptr`/`ptrw`, steps 1-3 above) land
+    with P30n's first kernel. The event-resize helper ("Forbidden" above: the event appends go
+    through `world_access.h`) moves to P42n, with a case that the resized array is written back
+    and its pointer fetched again.
+  - `check_world` is a diagnostic, not a hot-path call: each call checks its phase's whole list,
+    fetching each helper, the slot `Array` and each length rule once (FLOW about 8.7 µs on the
+    arena, all five phases about 25 µs). Which check a kernel runs on entry ("The kernel calls
+    it on entry" above), given that cost, is open for P30n, the first kernel; no decision
+    here.
+  - The review fixed a use-after-free: an `Object*` taken from a Variant that died on return.
+    The merged check holds each helper's Variant for the whole call. §10's status note records
+    why the sanitizers cannot see that class.
+
 ### 3. Dispatch and the implementation switch
 - **`World` gains two members (P54):**
   - `kernels: Object`, where null means GDScript;
@@ -642,6 +678,14 @@ absorbs next to the C++ phases.
     and the mask-0 case; each port PR adds its phase's case.
   - Every lockstep test and `sim_impls.gd`'s native pass assert
     `world_b.kernels.get_class() == "SimKernels"` and that the phase's bit is set.
+
+  Status note (2026-10-13, P26l docs, P54 as merged, #70): `sim_impls.gd`'s
+  `use(world, impl, kernels)` returns its problems as an `Array[String]` (no library, a mask
+  other than `EXPECTED_PHASES`, kernels whose `get_class()` is not `SimKernels`) instead of
+  asserting, and attaches the kernels either way; `is_native(world, phase)` is the check of the
+  bullet above. So the module tests of P30n, P37n, P41n and P46n assert that `use()` returned an
+  empty list and that `is_native(world, phase)` holds (through the preload name `SimImpls`, as
+  `test_kernel_abi.gd` does).
 - **The bitmask** lets a lockstep test switch one phase at a time: World A runs all GDScript,
   World B runs only that phase in C++.
 - **On Android the library is required.** `export-android.sh` checks that the APK holds the
@@ -952,6 +996,24 @@ on 2026-10-13, verbatim, **"ja til install-android"** and **"ja til SDK-licens"*
   ("Cloud sessions do not build APKs"), which "It keeps" above repeats, is open for the lead
   (the plan's P26k section).
 
+Status note (2026-10-13, P26l docs, P55b as merged, #69), on "Sessions" and the note above:
+- P55b adds `scripts/cloud/install-android.sh [--accept-android-sdk-licenses]`, never part of
+  `setup.sh`, the session-start hook or CI, with its offline test
+  `scripts/ci/test-install-android.sh` (a verify-job step).
+- The sdkmanager of cmdline-tools 23.0 records the licence acceptance by itself on any install,
+  without asking. So the script's gate, before any sdkmanager call, is the only licence control
+  (without the flag a missing SDK piece is exit 5), and `install-ndk.sh` gains `--check` for it.
+  `install-ndk.sh` accepts no licence itself, but the sdkmanager it calls records one, as its
+  header now says.
+- The Android CLI that the sdkmanager shim runs is pinned by version and SHA-256 and passed in
+  through `ANDROID_CLI_BIN`.
+- The export runs with `XDG_CONFIG_HOME=<sdk>/.godot-config`, because Godot copies `JAVA_HOME`
+  and `ANDROID_HOME` only into a new settings file; that folder is one to delete if `JAVA_HOME`
+  or `ANDROID_HOME` change.
+- The real run, with the flag on Michael's consent: install exit 0 in 77 s, `export-android: OK`,
+  and a rerun in 0 s that downloads nothing. `CLAUDE.md`'s `build-native.sh` line now names the
+  installer (§14's status note).
+
 ### 9. The fresh-import crash, and a checkout without the library
 - **Root cause** (Godot 4.7.2 source; evidence comment on PR #41, section 3): the bug is in the
   editor's documentation code (EditorHelp). gdb on the official, stripped binary shows a
@@ -1144,6 +1206,12 @@ on 2026-10-13, verbatim, **"ja til install-android"** and **"ja til SDK-licens"*
     gdUnit4 nor under `tests/`; it stays next to `core/` because it compiles `core/` without
     Godot. CLAUDE.md's Tests line names it (§14);
   - loading an ASan library into Godot (`LD_PRELOAD`) stays optional; P57 decides.
+
+  Status note (2026-10-13, P26l docs, P54 review, #70), the text above stays as accepted: the
+  job cannot see the use-after-free class P54 fixed (an `Object*` taken from a Variant that
+  died on return), because the freed memory is read inside engine code, which neither the UBSan
+  library nor the ASan harness over `core/` instruments. Valgrind with a fresh-copy probe found
+  it. The plan's row P57 records this; no decision on the job here.
 - **Preview (`preview.yml`):** unchanged with the generated `.gdextension`. With the fallback,
   the preview job builds the Linux library and seeds first, as the spike did. `export-web.sh`
   changes (§7).
@@ -1273,6 +1341,11 @@ on 2026-10-13, verbatim, **"ja til install-android"** and **"ja til SDK-licens"*
 - **CLAUDE.md, Commands:** a new line `bash scripts/build-native.sh - builds the C++ kernels
   (scons 4.9.1, g++, binutils; the NDK for Android, CI only). verify.sh runs it first and checks
   the C++ format with the pinned clang-format.`
+
+  Status note (2026-10-13, P26l docs), the text above stays as accepted: after P55b (#69),
+  Michael approved in chat on 2026-10-13, verbatim, **"ok til CLAUDE.md-linjen"**, so the line
+  now ends "(scons 4.9.1, g++, binutils; the NDK for Android: CI, or a cloud session after
+  `bash scripts/cloud/install-android.sh`)". Nothing else in `CLAUDE.md` changed.
 - **CLAUDE.md, Stack, the Format/lint line** gains: "C++: `clang-format` <pinned version>
   (`native/sim_kernels/.clang-format`)." P26e comes before P53, which chooses the version, so
   P26e writes "the version `verify.sh` pins (P53)" in its place. After P53 merges, the lead puts
