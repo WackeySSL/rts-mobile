@@ -103,31 +103,50 @@ func test_decode_reads_at_the_offset_and_returns_the_next_one() -> void:
 	assert_array(Samples.fields(out)).is_equal(Samples.fields(second))
 
 
-func test_a_count_above_the_limits_is_malformed_even_when_the_data_is_there() -> void:
+## Sim.step drops a command over MAX_UNITS ids or MAX_PAYLOAD payload ints and adds 1 to
+## dropped_commands, which World.state_hash covers (ADR 0007 sections 5 and 9). The recorder logs
+## every stamped command before Sim.step, so the log of such a match is replayable only when
+## decode reads that command back whole: the limits belong to Sim.step, not to the encoding.
+func test_a_count_above_the_limits_round_trips_like_any_other() -> void:
 	assert_array([Command.MAX_UNITS, Command.MAX_PAYLOAD]).is_equal([256, 16])
-	var at_limit: Command = Samples.full(Command.Type.MOVE, 4, 1)
-	for k: int in 253:
-		at_limit.unit_ids.append(k + 100)
-	for k: int in 14:
-		at_limit.payload.append(k)
-	var data: PackedInt32Array = PackedInt32Array()
-	at_limit.encode(data)
-	var out: Command = Command.new()
-	assert_int(Command.decode(data, 0, out)).is_equal(data.size())
-	assert_array([out.unit_ids.size(), out.payload.size()]).is_equal([256, 16])
-	# One more id, or one more payload int, is refused although every int is in the buffer.
-	for extra: Vector2i in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]:
-		var longer: Command = Samples.full(Command.Type.MOVE, 4, 1)
-		longer.unit_ids = at_limit.unit_ids.duplicate()
-		longer.payload = at_limit.payload.duplicate()
-		if extra.x > 0:
-			longer.unit_ids.append(999)
-		if extra.y > 0:
-			longer.payload.append(999)
-		var over: PackedInt32Array = PackedInt32Array()
-		longer.encode(over)
-		assert_int(over.size()).is_equal(data.size() + extra.x + extra.y)
-		assert_int(Command.decode(over, 0, Command.new())).is_equal(-1)
+	# (ids, payload ints): at the limits, one over either, over both, and far over.
+	var sizes: Array[Vector2i] = [
+		Vector2i(256, 16), Vector2i(257, 0), Vector2i(0, 17), Vector2i(257, 17), Vector2i(3000, 400)
+	]
+	for size: Vector2i in sizes:
+		var command: Command = _counted(size.x, size.y)
+		var data: PackedInt32Array = PackedInt32Array([-9])
+		command.encode(data)
+		assert_int(data.size()).is_equal(1 + Command.ENCODED_MIN + size.x + size.y)
+		var out: Command = Samples.full(Command.Type.STOP, 1, 1)
+		assert_int(Command.decode(data, 1, out)).override_failure_message(str(size)).is_equal(
+			data.size()
+		)
+		assert_array(Samples.fields(out)).is_equal(Samples.fields(command))
+		assert_array([out.unit_ids.size(), out.payload.size()]).is_equal([size.x, size.y])
+
+
+## A count the data cannot hold is malformed whatever its size, and decode finds that out from the
+## counts and the buffer size alone: every slice comes after the bounds checks, so a count of
+## 2^31 - 1 in a short buffer reads and allocates nothing, and `out` stays as it was.
+func test_a_huge_count_in_short_data_is_malformed_and_touches_nothing() -> void:
+	var most: int = 2147483647
+	var head: Array = [1, 0, 0, 3, 0, 0, 0]
+	var out: Command = Samples.full(Command.Type.STOP, 3, 4)
+	var cases: Array[Array] = [
+		head + [most, 0],
+		head + [most, 5, 9, 40],
+		head + [Command.MAX_UNITS + 1, 5, 9, 40, 0],
+		head + [0, most],
+		head + [0, most, 7, 8],
+		head + [0, Command.MAX_PAYLOAD + 1, 7, 8],
+		head + [2, 5, 9, most, 7, 8],
+	]
+	for ints: Array in cases:
+		assert_int(Samples.decode(ints, out)).override_failure_message(str(ints)).is_equal(-1)
+	assert_array(Samples.fields(out)).is_equal(
+		Samples.fields(Samples.full(Command.Type.STOP, 3, 4))
+	)
 
 
 func test_an_offset_outside_the_data_or_a_record_cut_short_is_malformed() -> void:
@@ -228,3 +247,16 @@ func _stamped(tick: int, player_id: int, sequence: int) -> Command:
 func _assert_before(first: Command, second: Command) -> void:
 	assert_bool(Command.compare(first, second)).is_true()
 	assert_bool(Command.compare(second, first)).is_false()
+
+
+## A MOVE command with `units` distinct ids and `payload` payload ints, each different from the
+## next, and the other fields as in Samples.full.
+func _counted(units: int, payload: int) -> Command:
+	var command: Command = Samples.full(Command.Type.MOVE, 4, 1)
+	command.unit_ids.clear()
+	command.payload.clear()
+	for k: int in units:
+		command.unit_ids.append(100 + k)
+	for k: int in payload:
+		command.payload.append(-3 * k)
+	return command

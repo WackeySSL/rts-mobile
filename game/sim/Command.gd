@@ -7,7 +7,9 @@ extends RefCounted
 
 enum Type { NONE = 0, ATTACK_MOVE = 1, MOVE = 2, ATTACK = 3, STOP = 4 }
 
-## The most unit ids and payload ints a command may hold; a command over either is dropped.
+## The most unit ids and payload ints a command may hold; Sim.step drops a command over either.
+## Encoding is not validation: encode() writes and decode() reads such a command whole, because
+## the replay log holds every stamped command and the drop is counted in the state hash.
 const MAX_UNITS: int = 256
 const MAX_PAYLOAD: int = 16
 
@@ -98,8 +100,9 @@ static func compare(a: Command, b: Command) -> bool:
 ## differ: Sim.step clamps a target to the map, and no id, player or type beyond int32 names
 ## anything (a tick beyond int32 would be 4.5 years of play at 15 Hz). `tick` is -1 or in
 ## 0..INT32_MAX, and so is `sequence`, which counts the commands of one match. The counts are the
-## array sizes as they are: a command over MAX_UNITS or MAX_PAYLOAD (Sim.step drops it) is
-## written whole and decode() refuses it.
+## array sizes as they are: a command over MAX_UNITS or MAX_PAYLOAD is written whole, and
+## decode() reads it back whole. Sim.step drops it and adds 1 to dropped_commands, which the
+## state hash covers, so a log that skipped or cut it would not replay to the same hash.
 func encode(out: PackedInt32Array) -> void:
 	out.append(_fit(tick))
 	out.append(_fit(player_id))
@@ -115,24 +118,26 @@ func encode(out: PackedInt32Array) -> void:
 
 
 ## Reads the command that encode() wrote at offset `at` of `data` into `out` and returns the
-## offset after it, or -1 for malformed data: `out` null, `at` outside the data, a record cut
-## short, a negative count, a unit count above MAX_UNITS or a payload count above MAX_PAYLOAD.
-## It reads only inside `data`, writes nothing to `out` when it returns -1, and gives `out`
-## copies of the ids and the payload, so changing `data` or `out` afterwards does not reach the
-## other. The type is not judged: Sim.step drops an unknown one.
+## offset after it, or -1 for malformed data: `out` null, `at` outside the data, a count past the
+## end of `data` or a negative count. A count above MAX_UNITS or MAX_PAYLOAD is not malformed (see
+## encode). It reads only inside `data` and allocates nothing before every count is checked
+## against the size of `data`, so a count of 2^31 - 1 in a short buffer costs nothing. It writes
+## nothing to `out` when it returns -1, and gives `out` copies of the ids and the payload, so
+## changing `data` or `out` afterwards does not reach the other. The type is not judged: Sim.step
+## drops an unknown one.
 static func decode(data: PackedInt32Array, at: int, out: Command) -> int:
 	var size: int = data.size()
 	# Compared as `at > size - ENCODED_MIN`, so a huge `at` cannot overflow.
 	if out == null or at < 0 or at > size - ENCODED_MIN:
 		return -1
 	var unit_count: int = data[at + ENCODED_HEADER]
-	if unit_count < 0 or unit_count > MAX_UNITS:
+	if unit_count < 0:
 		return -1
 	var payload_at: int = at + ENCODED_HEADER + 1 + unit_count
 	if payload_at >= size:
 		return -1
 	var payload_count: int = data[payload_at]
-	if payload_count < 0 or payload_count > MAX_PAYLOAD:
+	if payload_count < 0:
 		return -1
 	var end: int = payload_at + 1 + payload_count
 	if end > size:

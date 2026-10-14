@@ -95,12 +95,15 @@ func to_bytes() -> PackedByteArray:
 
 ## The replay that to_bytes() wrote, or null for anything else: bytes that are not a Dictionary of
 ## ints, Strings and the two Packed arrays, a wrong `format`, a missing key, a value of another
-## type or array kind than KINDS says, or checkpoint arrays of unequal sizes. It decodes with
-## bytes_to_var, never the variant that makes objects, and only after _is_plain_dictionary has
-## walked the bytes: the engine prints an ERROR line for every buffer it cannot decode, so
-## truncated and random bytes must not reach it. A string whose bytes are not UTF-8 still passes
-## the walk and still makes the engine print that error, and from_bytes returns null for it.
-## Whether the commands in the log decode is for `play` to find out (Command.decode gives -1).
+## type or array kind than KINDS says, checkpoint arrays of unequal sizes, or a command log that
+## Command.decode cannot read from 0 to exactly its size (a cut record, a negative count, a count
+## past the end, ints after the last record). So the log of a loaded replay always decodes; one
+## built in memory is for `play` (P35b) to judge. A command over MAX_UNITS or MAX_PAYLOAD is not
+## malformed. It decodes with bytes_to_var, never the variant that makes objects, and only after
+## _is_plain_dictionary has walked the bytes: the engine prints an ERROR line for every buffer it
+## cannot decode, so truncated and random bytes must not reach it. A string whose bytes are not
+## UTF-8 still passes the walk and still makes the engine print that error, and from_bytes returns
+## null for it.
 static func from_bytes(bytes: PackedByteArray) -> Replay:
 	if not _is_plain_dictionary(bytes):
 		return null
@@ -124,7 +127,22 @@ static func from_bytes(bytes: PackedByteArray) -> Replay:
 	replay.final_hash = data["final_hash"]
 	if replay.checkpoint_ticks.size() != replay.checkpoint_hashes.size():
 		return null
+	if not _log_decodes(replay.commands):
+		return null
 	return replay
+
+
+## True when Command.decode reads `ints`, a command log, record after record from 0 and ends exactly
+## at its size. The empty log is one.
+static func _log_decodes(ints: PackedInt32Array) -> bool:
+	var scratch: Command = Command.new()
+	var at: int = 0
+	# Each record takes at least Command.ENCODED_MIN ints, so the loop ends.
+	while at < ints.size():
+		at = Command.decode(ints, at, scratch)
+		if at < 0:
+			return false
+	return true
 
 
 ## True when `bytes` is one Dictionary and nothing after it, whose keys and values are only ints,

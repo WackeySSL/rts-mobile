@@ -89,6 +89,39 @@ func test_a_count_past_the_end_or_a_negative_count_is_malformed() -> void:
 	assert_int(Samples.decode(head + [0, 2147483647, 7, 8, 9, 0])).is_equal(-1)
 
 
+## Sim.step drops a command over MAX_UNITS ids or MAX_PAYLOAD payload ints and counts it in
+## dropped_commands, which the state hash covers. The log holds it, a loaded replay still has it,
+## and the decoded command is dropped and counted exactly as the recorded one was.
+func test_an_over_limit_command_survives_the_log_and_is_dropped_the_same() -> void:
+	# (ids 1..n, payload ints, expected dropped_commands). Player 1's 30 tanks are ids 1..30, so
+	# 256 ids and 16 payload ints are applied, and only the limit drops the other two.
+	var cases: Array[Vector3i] = [Vector3i(256, 16, 0), Vector3i(257, 16, 1), Vector3i(30, 17, 1)]
+	for shape: Vector3i in cases:
+		var ids: PackedInt32Array = PackedInt32Array()
+		for id: int in range(1, shape.x + 1):
+			ids.append(id)
+		var command: Command = Command.move(1, ids, 20000, 20000)
+		command.tick = 0
+		command.sequence = 1
+		for k: int in shape.y:
+			command.payload.append(k)
+		var replay: Replay = Replay.begin(SCENARIO_PATH, 1, 2)
+		replay.record(command)
+		assert_int(replay.commands.size()).is_equal(9 + shape.x + shape.y)
+		var loaded: Replay = Replay.from_bytes(replay.to_bytes())
+		assert_object(loaded).override_failure_message(str(shape)).is_not_null()
+		var decoded: Command = Command.new()
+		assert_int(Command.decode(loaded.commands, 0, decoded)).is_equal(loaded.commands.size())
+		assert_array(Samples.fields(decoded)).is_equal(Samples.fields(command))
+		var recorded: World = _world(0)
+		var replayed: World = _world(0)
+		Sim.step(recorded, [command] as Array[Command])
+		Sim.step(replayed, [decoded] as Array[Command])
+		assert_int(recorded.dropped_commands).override_failure_message(str(shape)).is_equal(shape.z)
+		assert_int(replayed.dropped_commands).is_equal(shape.z)
+		assert_int(replayed.state_hash()).is_equal(recorded.state_hash())
+
+
 func test_record_appends_each_command_as_encoded_in_order() -> void:
 	var replay: Replay = Replay.begin(SCENARIO_PATH, 1, 2)
 	var first: Command = Samples.full(Command.Type.MOVE, 3, 1)
@@ -222,6 +255,51 @@ func test_from_bytes_gives_null_for_a_value_of_the_wrong_type_or_array_kind() ->
 	assert_object(_with("checkpoint_hashes", PackedInt64Array([1, 2]))).is_null()
 
 
+## from_bytes also walks the command log with Command.decode, from 0 to exactly its size, so the
+## log of a loaded replay always decodes. Each case is a well formed replay whose `commands` break
+## that, so only the walk can refuse it.
+func test_from_bytes_gives_null_for_a_command_log_that_does_not_decode() -> void:
+	var data: Dictionary = bytes_to_var(_replay().to_bytes())
+	var records: PackedInt32Array = data["commands"]
+	# Two commands of 14 ints each: tick, player, sequence, type, target x, y, id, then the unit
+	# count at 7, 3 ids, the payload count at 11, 2 payload ints.
+	assert_array([records.size(), records[7], records[11], records[21], records[25]]).is_equal(
+		[28, 3, 2, 3, 2]
+	)
+	assert_object(_with_log(data, records)).is_not_null()
+	assert_object(_with_log(data, PackedInt32Array())).is_not_null()
+	# Only the two whole-record lengths are logs: every other prefix ends inside a record.
+	var accepted: Array[int] = []
+	for length: int in records.size():
+		if _with_log(data, records.slice(0, length)) != null:
+			accepted.append(length)
+	assert_array(accepted).is_equal([0, 14])
+	# A count that is negative or past the end, in the first record or the last.
+	var broken: Array[Vector2i] = []
+	for index: int in [7, 11, 21, 25]:
+		for count: int in [-1, -2147483648, 2147483647]:
+			broken.append(Vector2i(index, count))
+	for edit: Vector2i in broken:
+		var bad: PackedInt32Array = records.duplicate()
+		bad[edit.x] = edit.y
+		(
+			assert_object(_with_log(data, bad))
+			. override_failure_message("records[%d] = %d" % [edit.x, edit.y])
+			. is_null()
+		)
+	# Ints after the last record: fewer than a record takes, or a record that is cut short.
+	for extra: int in range(1, Command.ENCODED_MIN):
+		var longer: PackedInt32Array = records.duplicate()
+		longer.resize(records.size() + extra)
+		assert_object(_with_log(data, longer)).override_failure_message(str(extra)).is_null()
+	var tail: PackedInt32Array = records + PackedInt32Array([1, 0, 0, 3, 0, 0, 0, 5, 1])
+	assert_object(_with_log(data, tail)).is_null()
+	# Nine zeros after the log are a third, whole command.
+	var third: PackedInt32Array = records.duplicate()
+	third.resize(records.size() + Command.ENCODED_MIN)
+	assert_object(_with_log(data, third)).is_not_null()
+
+
 func test_from_bytes_gives_null_for_bytes_that_are_not_a_replay_or_cut_short() -> void:
 	var values: Array = [null, 1, "replay", PackedInt32Array([1, 2]), [1, 2], {}, {"format": 1}]
 	for value: Variant in values:
@@ -340,6 +418,13 @@ func _replay() -> Replay:
 	replay.add_checkpoint(45, 1 << 40)
 	replay.finish(_world(2))
 	return replay
+
+
+## from_bytes of `data`, a dictionary that to_bytes() wrote, with its command log replaced.
+func _with_log(data: Dictionary, records: PackedInt32Array) -> Replay:
+	var copy: Dictionary = data.duplicate()
+	copy["commands"] = records
+	return Replay.from_bytes(var_to_bytes(copy))
 
 
 ## from_bytes of _replay() with one value of its dictionary replaced.
