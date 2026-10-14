@@ -3,11 +3,14 @@ extends RefCounted
 ## character per tile. Not a test suite.
 
 ## The terrain of each character, in the order of GROUND_COST (foot, wheeled, tracked per terrain):
-## open grass, scrub that only foot units cross, rock that nothing crosses, and two test terrains
-## that tell the vehicle classes apart: 'w' is open to foot and wheeled units, 't' to foot and
-## tracked units.
-const GROUND: String = ".^#wt"
-const GROUND_COST: Array[int] = [10, 10, 10, 10, 0, 0, 0, 0, 0, 10, 10, 0, 10, 0, 10]
+## open grass, scrub that only foot units cross, rock that nothing crosses, two test terrains
+## that tell the vehicle classes apart ('w' is open to foot and wheeled units, 't' to foot and
+## tracked units), and two that every class crosses at a move cost above grass's 10: '2' at 20 and
+## '4' at 40 (ADR 0008 section 1 allows costs from 10 to 40). Only a cost of 0 blocks a tile.
+const GROUND: String = ".^#wt24"
+const GROUND_COST: Array[int] = [
+	10, 10, 10, 10, 0, 0, 0, 0, 0, 10, 10, 0, 10, 0, 10, 20, 20, 20, 40, 40, 40
+]
 
 ## A prepared World of the map `rows`, with one unit type per entry of `move_classes` (type 0 is
 ## `move_classes[0]`). Every type has speed 120, radius 400, selection radius 500 and formation

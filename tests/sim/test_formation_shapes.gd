@@ -65,6 +65,33 @@ func test_a_target_on_rock_moves_to_the_first_open_tile_on_a_tall_map() -> void:
 		assert_that(goal).override_failure_message(str(case)).is_equal(case[2])
 
 
+## The ring search runs as many rings as the longer side of the map has tiles: rock everywhere but
+## one tile in the far corner, and a target in the corner on the other side, is 11 rings away on a
+## 12 x 6 map and on a 6 x 12 one, more than the shorter side (a search over min(cols, rows) rings,
+## or over one dimension only, leaves the target on the rock) and the last ring that the loop runs.
+func test_the_search_covers_the_longer_side_of_a_wide_and_a_tall_map() -> void:
+	var cases: Array[Array] = [
+		# the map, its open tile, the target, the goal of a lone unit
+		[Vector2i(12, 6), Vector2i(11, 0), Vector2i(0, 6000), Vector2i(11500, 500)],
+		[Vector2i(12, 6), Vector2i(0, 5), Vector2i(12000, 0), Vector2i(500, 5500)],
+		[Vector2i(6, 12), Vector2i(5, 11), Vector2i(0, 0), Vector2i(5500, 11500)],
+		[Vector2i(6, 12), Vector2i(0, 0), Vector2i(6000, 12000), Vector2i(500, 500)],
+		[Vector2i(6, 12), Vector2i(0, 11), Vector2i(6000, 0), Vector2i(500, 11500)],
+	]
+	for case: Array in cases:
+		var shape: Vector2i = case[0]
+		var open: Vector2i = case[1]
+		var rows: PackedStringArray = PackedStringArray()
+		for y: int in shape.y:
+			if y == open.y:
+				rows.append("#".repeat(open.x) + "." + "#".repeat(shape.x - open.x - 1))
+			else:
+				rows.append("#".repeat(shape.x))
+		for move_class: int in [FOOT, WHEELED, TRACKED]:
+			var goal: Vector2i = _lone(rows, case[2], [move_class])
+			assert_that(goal).override_failure_message(str(case)).is_equal(case[3])
+
+
 ## Slots on the far edge and below the number of columns are read in their own tile, on both
 ## shapes: the rock sits where a wrong stride or a clamp by the other dimension would look.
 func test_slots_are_read_in_their_own_tile_on_a_wide_and_a_tall_map() -> void:

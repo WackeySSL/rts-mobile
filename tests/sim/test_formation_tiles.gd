@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
 const FormationV1: GDScript = preload("res://tests/sim/support/formation_v1.gd")
 const FOOT: int = World.MoveClass.FOOT
+const WHEELED: int = World.MoveClass.WHEELED
 const TRACKED: int = World.MoveClass.TRACKED
 
 
@@ -231,6 +232,66 @@ func test_a_point_on_the_far_edge_belongs_to_the_last_tile() -> void:
 	Formation.assign(world, pair, 4000, 0)
 	var expected: Array[Vector2i] = [Vector2i(4000, 0), Vector2i(2800, 0)]
 	assert_array(GridWorld.goals(world, pair)).contains_exactly_in_any_order(expected)
+
+
+## A tile that costs more than grass is open: only a cost of 0 blocks (ADR 0008 section 1: 10 is
+## normal, 20 and 40 are slower ground). A target on such a tile stays where it is, for every
+## class, and the same tile as rock (cost 0) moves it to the first open tile in ring order.
+func test_a_target_on_slow_ground_stays_where_it_is() -> void:
+	var target: Vector2i = Vector2i(3400, 3600)
+	for symbol: String in ["2", "4", "#"]:
+		var map: PackedStringArray = GridWorld.grass(8, 8)
+		map[3] = "...%s...." % symbol
+		for move_class: int in [FOOT, WHEELED, TRACKED]:
+			var world: World = GridWorld.from_rows(map, [move_class])
+			var rows: PackedInt32Array = GridWorld.add_block(world, 1, 1, 7500, 7500, 0, 0)
+			Formation.assign(world, rows, target.x, target.y)
+			var expected: Vector2i = Vector2i(2500, 2500) if symbol == "#" else target
+			(
+				assert_that(GridWorld.goals(world, rows)[0])
+				. override_failure_message("tile '%s', class %d" % [symbol, move_class])
+				. is_equal(expected)
+			)
+
+
+## Slots on slow ground are used like those on grass: around the target (6500, 6500) the eight tiles
+## of ring 1 cost 20 and 40, and nine units take the nine slots of an open map, as a foot group, a
+## tank group and a mixed group. A slot on rock among them (cost 0) is skipped as before, and the
+## next slot in order, (6500, 4100), takes its place.
+@warning_ignore("integer_division")
+func test_slots_on_slow_ground_are_used_and_rock_among_them_is_skipped() -> void:
+	var slow: PackedStringArray = GridWorld.grass(14, 14)
+	slow[5] = ".....242......"
+	slow[6] = ".....4.4......"
+	slow[7] = ".....242......"
+	var rocky: PackedStringArray = slow.duplicate()
+	rocky[6] = ".....4.#......"
+	var ring_one: Array[Vector2i] = []
+	for j: int in range(-1, 2):
+		for i: int in range(-1, 2):
+			ring_one.append(Vector2i(6500, 6500) + Vector2i(i, j) * 1200)
+	var without_east: Array[Vector2i] = ring_one.duplicate()
+	without_east.erase(Vector2i(7700, 6500))
+	without_east.append(Vector2i(6500, 4100))
+	# the map, the unit types of the group (0 = foot, 1 = tracked), the nine goals
+	var cases: Array[Array] = [
+		[slow, [0, 0, 0, 0, 0, 0, 0, 0, 0], ring_one],
+		[slow, [1, 1, 1, 1, 1, 1, 1, 1, 1], ring_one],
+		[slow, [0, 1, 0, 1, 0, 1, 0, 1, 0], ring_one],
+		[rocky, [0, 0, 0, 0, 0, 0, 0, 0, 0], without_east],
+		[rocky, [0, 1, 0, 1, 0, 1, 0, 1, 0], without_east],
+	]
+	for case: Array in cases:
+		var world: World = GridWorld.from_rows(case[0], [FOOT, TRACKED])
+		var group: PackedInt32Array = PackedInt32Array()
+		for k: int in 9:
+			world.add_unit(1, int(case[1][k]), 11500 + (k % 3) * 300, 11500 + (k / 3) * 300)
+			group.append(k)
+		Formation.assign(world, group, 6500, 6500)
+		var goals: Array[Vector2i] = GridWorld.goals(world, group)
+		assert_array(goals).override_failure_message(str(case[1])).contains_exactly_in_any_order(
+			case[2]
+		)
 
 
 ## The nine slots around (6500, 6500) when ring 1 is out: the centre, the four axis points at
