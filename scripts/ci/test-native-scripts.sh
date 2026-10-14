@@ -128,6 +128,8 @@ case " $* " in
       fail) echo "dump_states: FAIL no dump caught a waiting field" >&2; exit 1 ;;
       noline) printf 'RTSD\001\000\000\000' >"$out/state_00015.bin" ;;
       error) printf 'RTSD\001\000\000\000' >"$out/state_00015.bin"; echo "dump_states: wrote 1 dumps"; echo "SCRIPT ERROR: Parse Error" ;;
+      engine_error) for tick in 00015 00030; do printf 'RTSD\001\000\000\000' >"$out/state_$tick.bin"; done; echo "dump_states: wrote 2 dumps to $out"
+        echo "ERROR: Index p_index = 150 is out of bounds (p_instance->size() = 150)." ;; # an engine error line: no SCRIPT ERROR, exit 0
       empty) echo "dump_states: wrote 1 dumps" ;;
       hang) exec sleep 30 ;;
     esac ;;
@@ -530,6 +532,7 @@ check "natives: the floor holds with a --require suite too" 1 "kernel_list.h exi
 # (4b) run-sanitizer-harness.sh (P57) against a stub Godot, whose dump step ends as STUB_DUMP says, and a stub g++,
 # whose harness acts as STUB_HARNESS says.
 tree sh
+touch "$root/sh/native/sim_kernels.gdextension" # the stub Godot then needs the extension list the runner seeds (ADR 0013 section 9)
 run sh bash scripts/ci/run-sanitizer-harness.sh
 check "harness: no work folder" 2 "usage"
 run sh GODOT=/nonexistent bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
@@ -539,7 +542,7 @@ check "harness: g++ without libasan" 3 "g++ has no libasan.so"
 run sh bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
 check "harness: dumps, builds, runs, and sees the unknown format refused" 0 "run-sanitizer-harness: OK"
 for case_ in "STUB_DUMP=fail:4:the dump step exited with 1" "STUB_DUMP=noline:4:did not report" "STUB_DUMP=error:4:Godot logged an error" \
-  "STUB_DUMP=empty:4:wrote no state_*.bin" "STUB_GXX=fail:4:the harness did not build" "STUB_HARNESS=find:1:the harness failed with exit code 1" \
+  "STUB_DUMP=engine_error:4:Godot logged an error" "STUB_DUMP=empty:4:wrote no state_*.bin" "STUB_GXX=fail:4:the harness did not build" "STUB_HARNESS=find:1:the harness failed with exit code 1" \
   "STUB_HARNESS=accept:1:took a dump of an unknown" "STUB_HARNESS=short:1:checked '1' dump(s) but the dump step wrote 2"; do
   run sh "${case_%%:*}" bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
   want="${case_#*:}"
