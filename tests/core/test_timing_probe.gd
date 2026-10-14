@@ -38,8 +38,10 @@ func after_test() -> void:
 	CommandQueue.clear()
 
 
+## A PackedInt64Array, the type of the copy in P38s's MatchSnapshot.phase_usec.
 func test_phase_usec_has_one_entry_per_phase_all_zero() -> void:
 	var timing: TimingProbe = TimingProbe.new()
+	assert_int(typeof(timing.phase_usec)).is_equal(TYPE_PACKED_INT64_ARRAY)
 	assert_int(timing.phase_usec.size()).is_equal(SimProbe.Phase.COUNT)
 	assert_int(timing.phase_usec.count(0)).is_equal(SimProbe.Phase.COUNT)
 
@@ -68,6 +70,32 @@ func test_fake_marks_put_the_time_between_two_marks_under_the_later_phase() -> v
 	assert_int(timing.phase_usec.count(0)).is_equal(SimProbe.Phase.COUNT - 2)
 	timing.begin()
 	assert_int(timing.phase_usec.count(0)).is_equal(SimProbe.Phase.COUNT)
+
+
+## begin(), then every phase id in order, with a wait before each mark: each phase keeps the time
+## since the mark before it (COMMANDS since begin()), so no id is skipped, timed from the wrong
+## start or overwritten by a later mark. The bounds are checked after the last mark.
+func test_fake_marks_on_every_phase_time_each_phase_under_its_own_id() -> void:
+	var timing: TimingProbe = TimingProbe.new()
+	var low: PackedInt64Array = PackedInt64Array()
+	var high: PackedInt64Array = PackedInt64Array()
+	var before: int = Time.get_ticks_usec()
+	timing.begin()
+	var after: int = Time.get_ticks_usec()
+	for phase: int in SimProbe.Phase.COUNT:
+		_busy(WAIT_USEC)
+		var mark_before: int = Time.get_ticks_usec()
+		timing.mark(phase)
+		var mark_after: int = Time.get_ticks_usec()
+		low.append(mark_before - after)
+		high.append(mark_after - before)
+		before = mark_before
+		after = mark_after
+	for phase: int in SimProbe.Phase.COUNT:
+		var label: String = SimProbe.PHASE_NAMES[phase]
+		assert_int(timing.phase_usec[phase]).override_failure_message(label).is_between(
+			low[phase], high[phase]
+		)
 
 
 ## As the runner's probe it gets every begin() and mark() of Sim.step through the runner's
@@ -133,6 +161,11 @@ func test_the_gate_def_defaults_are_the_contract_values() -> void:
 		assert_bool(value == GATE[name]).override_failure_message(name).is_true()
 	assert_array(gate.golden_ticks).is_empty()
 	assert_array(gate.golden_hex).is_empty()
+	# Another array type drops perf_gate.tres's golden values without an error when it loads, and
+	# perf_gate.tres loads only as a Resource.
+	assert_int(typeof(gate.golden_ticks)).is_equal(TYPE_PACKED_INT32_ARRAY)
+	assert_int(typeof(gate.golden_hex)).is_equal(TYPE_PACKED_STRING_ARRAY)
+	assert_str(gate.get_class()).is_equal("Resource")
 	var expected: Array[String] = ["golden_ticks", "golden_hex"]
 	for name: String in GATE:
 		expected.append(name)
