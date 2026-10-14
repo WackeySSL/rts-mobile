@@ -11,9 +11,9 @@ const MILLI_PER_TILE: int = 1000
 
 ## Prepares the world, clears the last tick's events and stats, sorts `commands` in place with
 ## Command.compare and applies those whose tick is `world.tick`. A null or any other command is
-## dropped and counted. Then ordered units move (intents, then integrate), dead rows leave, and the
-## tick counts. A probe gets `begin()` first and a `mark` after each phase that exists (ADR 0007
-## section 4); it never sees the World. FLOW is not stepped yet (P37b), so it is not marked.
+## dropped and counted. Then the flow cache advances (FLOW), ordered units move (intents, then
+## integrate), dead rows leave, and the tick counts. A probe gets `begin()` first and a `mark` after
+## each phase that exists (ADR 0007 section 4); it never sees the World.
 ## `_follow_targets` stands in for TARGETING until P41, so its time falls inside INTENTS.
 static func step(world: World, commands: Array[Command], probe: SimProbe = null) -> void:
 	if probe != null:
@@ -32,6 +32,12 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 			world.dropped_commands += 1
 	if probe != null:
 		probe.mark(SimProbe.Phase.COMMANDS)
+	# MatchLoop hashes after this step, on the tick this one counts last: no flow slice on that step
+	# (ADR 0012 section 5).
+	var hashing: bool = (world.tick + 1) % Replay.CHECKPOINT_PERIOD == 0
+	FlowCache.run(world, 0 if hashing else world.flow_cells_per_tick)
+	if probe != null:
+		probe.mark(SimProbe.Phase.FLOW)
 	_follow_targets(world)
 	Movement.run(world)
 	if probe != null:
@@ -112,15 +118,13 @@ static func _apply_stop(world: World, command: Command) -> bool:
 	var goal_y: PackedInt32Array = world.goal_y
 	var order_target: PackedInt32Array = world.order_target
 	var target: PackedInt32Array = world.target
-	var field: PackedInt32Array = world.field
 	for row: int in rows:
 		orders[row] = World.Order.IDLE
 		goal_x[row] = pos_x[row]
 		goal_y[row] = pos_y[row]
 		order_target[row] = 0
 		target[row] = 0
-		field[row] = -1
-	Movement.reset_nav(world, rows, World.NavMode.NONE)
+	Movement.reset_nav(world, rows, World.NavMode.NONE)  # Also drops the flow field.
 	return true
 
 
