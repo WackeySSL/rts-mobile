@@ -26,7 +26,7 @@ Tick a box in the PR that meets the criterion.
 
 ## Phase 2: Simulation core
 - [x] ADR for the World data model, Command format and state hash
-- [ ] 15 Hz fixed tick, FixedMath, DetRandom, Command queue, state hash and replay test
+- [x] 15 Hz fixed tick, FixedMath, DetRandom, Command queue, state hash and replay test
 - [ ] Movement with flow fields and separation; combat with projectiles, armour classes and death
 - [ ] Fog of war (visible and explored) and its rendering
 - [ ] View interpolation at the display frame rate
