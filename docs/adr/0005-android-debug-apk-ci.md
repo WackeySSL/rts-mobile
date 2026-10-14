@@ -10,6 +10,12 @@ identical, gaining the LLVM libc++ text in P26l and godot-cpp's in P55a. §7 is 
 `scripts/cloud/setup.sh` to install SCons and `clang-format`, and cloud sessions still build no
 APK. §8 is kept as ADR 0013's "It keeps" scopes it.
 
+Status note (2026-10-14, P26q docs; lead decision): §6's consent rule still holds: the
+`android-dev-release` job needs Michael's consent before it merges. Its source, cited as "project
+instructions: release workflows", is Michael's standing working method (merge and release changes
+only on his word), because `docs/PROJECT_INSTRUCTIONS.md` is not in use (Phase 2 plan, "Answers
+and follow-ups (P26p docs)" and "(P26q docs)"). The text of §6 stays as accepted.
+
 ## Context
 Phase 1 asks for "Android debug APK as a CI artifact for testing on a real device". The web
 preview (ADR 0002 §9) must keep working, so Michael can compare touch in the phone browser
@@ -107,7 +113,8 @@ Facts:
      same pattern as `toolchain-mirror.yml`. Michael gets one stable phone URL:
      `https://github.com/WackeySSL/rts-mobile/releases/download/android-dev-latest/rts-mobile-debug.apk`.
      This job needs Michael's consent before it merges (project instructions: release
-     workflows).
+     workflows). (Status note, 2026-10-14, P26q docs: the source is Michael's standing working
+     method, merge and release changes only on his word; see the status note at the top.)
    - Neither job is a required check in Phase 1. `verify` stays the only one.
 7. **Cloud sessions do not build APKs.** `toolchain-mirror.yml` and `scripts/cloud/setup.sh`
    are unchanged. Run locally without the SDK, `export-android.sh` exits 4 and names what is

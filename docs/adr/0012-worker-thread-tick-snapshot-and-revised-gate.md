@@ -45,6 +45,9 @@ of the acceptance note):
 Status note (2026-10-14, P26o docs): §5 carries a dated status note on which tick "no slice on
 hash ticks" tests inside `Sim.step`; the rule is unchanged.
 
+Status note (2026-10-14, P26q docs): §2 carries a dated status note: the worker-file scan also
+covers `game/core/StepProbe.gd` (lead decision 2026-10-14).
+
 ## Context
 The Phase 2 plan (P26s) says that a contract the phone probe contradicts changes through a new ADR
 before P34 starts. The probe ran on 2026-10-12. The full reports are comments on PR #35.
@@ -393,6 +396,12 @@ rules:
   - a source scan of the worker files in `game/core` (`TickJob.gd`, `MatchSnapshot.gd`,
     `TimingProbe.gd`) bans `get_tree`, `get_node`, `Engine.`, `Input.`, `OS.`, `CommandQueue`,
     `DetRng`, `signal `, `.emit(` and `call_deferred(`.
+
+  Status note (2026-10-14, P26q docs; the list above stays as accepted): the worker-file scan
+  also covers `game/core/StepProbe.gd`, the runner's forwarding probe from P38 (#85), because
+  from P38j on `TickJob.run` passes it to `loop.step` on the worker (plan, contract row
+  `TickJob`), so it runs there. Lead decision 2026-10-14, recorded in
+  the Phase 2 plan by P26p docs (row and section P38j, "Answers and follow-ups (P26p docs)").
 - A headless run of `main.tscn` with `tick_mode = WORKER` (plan P50w; `perf_arena.tscn` in P52)
   makes any write to an in-tree Node from the worker an `ERROR` line, which `verify.sh` fails on.
   Release builds have no such guard, which is why the structural checks stay.
