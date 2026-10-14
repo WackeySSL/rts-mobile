@@ -30,10 +30,12 @@ const WORKER_FILES: Array[String] = [
 	"res://game/core/StepProbe.gd",
 ]
 ## The banned names, each matched in code after string literals and comments are stripped, with a
-## line it must flag and a legal line it must pass, at the same index.
+## line it must flag and a legal line it must pass, at the same index. `get_node` is a prefix, so
+## get_node_or_null and the other get_node* lookups are banned too; emit_signal is a signal
+## emission like `.emit(`.
 const BANNED: Array[String] = [
 	r"\bget_tree\b",
-	r"\bget_node\b",
+	r"\bget_node",
 	r"\bEngine\.",
 	r"\bInput\.",
 	r"\bOS\.",
@@ -42,10 +44,11 @@ const BANNED: Array[String] = [
 	r"\bsignal\s",
 	r"\.emit\(",
 	r"\bcall_deferred\(",
+	r"\bemit_signal\b",
 ]
 const FLAGGED: Array[String] = [
 	"var tree: SceneTree = get_tree()",
-	'var hud: Node = get_node("Hud")',
+	'var hud: Node = holder.get_node_or_null("Hud")',
 	"var frame: int = Engine.get_process_frames()",
 	'if Input.is_action_pressed("ui_accept"):',
 	"OS.delay_msec(1)",
@@ -54,6 +57,7 @@ const FLAGGED: Array[String] = [
 	"signal published(tick: int)",
 	"published.emit(snapshot.tick)",
 	'call_deferred("publish")',
+	'emit_signal(&"published", snapshot.tick)',
 ]
 const LEGAL: Array[String] = [
 	"var budget_tree: int = 0",
@@ -66,6 +70,7 @@ const LEGAL: Array[String] = [
 	"var signal_count: int = 0",
 	"var count: int = probe.emitted(1)",
 	"var call_deferred_count: int = 0",
+	"var emit_signal_count: int = 0",
 ]
 const STRING_LITERAL: String = r"\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*'"
 
@@ -142,6 +147,9 @@ func test_nothing_reachable_from_a_job_is_a_node_or_a_resource() -> void:
 	assert_array(_engine_objects(job, {})).is_equal(["job.probe.target.held[0][inner]: Resource"])
 	holding.held = {resource: 1}
 	assert_array(_engine_objects(job, {})).is_equal(["job.probe.target.held.key: Resource"])
+	# A cycle ends at the visited set; without it the walk would recurse until the stack overflows.
+	holding.held = holding
+	assert_array(_engine_objects(job, {})).is_empty()
 	holding.held = null
 	job.world.kernels = node
 	assert_array(_engine_objects(job, {})).is_equal(["job.world.kernels: Node"])

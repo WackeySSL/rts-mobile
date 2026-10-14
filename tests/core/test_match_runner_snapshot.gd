@@ -80,9 +80,23 @@ func test_a_restart_with_the_same_rows_version_slides_nothing() -> void:
 	assert_array([runner.prev_pos_x, runner.prev_pos_y]).is_equal([snap.pos_x, snap.pos_y])
 
 
+## A restart frees the old match at once, before the first tick of the new one: nothing the runner
+## keeps, its reused TickJob included, still holds the old World, MatchLoop, Replay or snapshot, so
+## a restarted runner that stays paused does not keep the old match in memory.
+func test_a_restart_frees_the_old_match_at_once() -> void:
+	var runner: MatchRunner = _arena_runner()
+	runner.run_ticks(5)
+	var old: Array[WeakRef] = [weakref(runner.world), weakref(runner.loop), weakref(runner.replay)]
+	old.append(weakref(runner.snapshot))
+	runner.start()
+	for index: int in old.size():
+		assert_object(old[index].get_ref()).override_failure_message(str(index)).is_null()
+
+
 ## One snapshot per publish: the snapshot published at tick 20 keeps every array and its fog after
-## the next tick, which publishes a new object. The old snapshot is freed at publish, so the object
-## count after 20 ticks equals the count right after start().
+## the next tick, which publishes a new object. The arena's fog does not change in a tick before
+## the fog rules (P46b), so the test writes two fog cells of the World first. The old snapshot is
+## freed at publish, so the object count after 20 ticks equals the count right after start().
 func test_each_tick_publishes_a_new_snapshot_and_leaves_the_old_one_alone() -> void:
 	var runner: MatchRunner = _arena_runner()
 	var objects: int = int(Performance.get_monitor(Performance.OBJECT_COUNT))
@@ -90,6 +104,10 @@ func test_each_tick_publishes_a_new_snapshot_and_leaves_the_old_one_alone() -> v
 	assert_int(int(Performance.get_monitor(Performance.OBJECT_COUNT))).is_equal(objects)
 	var published: MatchSnapshot = runner.snapshot
 	var kept: Array = _values(published)
+	var fog: FogGrid = runner.world.fog
+	fog.visible[0] += 1
+	fog.explored[0] = 1 - fog.explored[0]
+	assert_bool(fog.visible[0] == published.fog.visible[0]).is_false()
 	runner.run_ticks(1)
 	assert_bool(is_same(runner.snapshot, published)).is_false()
 	assert_bool(runner.snapshot.pos_x == published.pos_x).is_false()

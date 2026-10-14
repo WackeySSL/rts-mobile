@@ -61,7 +61,8 @@ var _app_paused: bool = false
 var _commands: Array[Command] = []
 ## Times Sim.step and passes every call on to `probe`; handed to every loop.step through the job.
 var _step_probe: StepProbe = StepProbe.new()
-## Reused every tick; it holds no snapshot between ticks, so the old one is freed at publish.
+## Reused every tick. It holds no World, loop or snapshot between ticks, so the old snapshot is
+## freed at publish and a restart frees the old match at once, before its first tick.
 var _job: TickJob = TickJob.new()
 
 
@@ -128,7 +129,8 @@ func _notification(what: int) -> void:
 
 ## One tick, run inline (SYNC): drain the queue, create the next snapshot with this match's serial
 ## (set before the run, because capture() compares it with the published one's), hand the job the
-## current world, loop and StepProbe, run it, then publish and emit `ticked`.
+## current world, loop and StepProbe, run it, take the world, loop and snapshots back, then publish
+## and emit `ticked`.
 func _tick() -> void:
 	CommandQueue.drain_into(_commands)
 	var next: MatchSnapshot = MatchSnapshot.new()
@@ -143,6 +145,8 @@ func _tick() -> void:
 	job.previous = snapshot
 	job.post_usec = Time.get_ticks_usec()
 	job.run()
+	job.world = null
+	job.loop = null
 	job.snapshot = null
 	job.previous = null
 	_publish(next)

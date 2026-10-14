@@ -12,6 +12,8 @@ extends RefCounted
 var world: World
 var loop: MatchLoop
 ## The runner's StepProbe, whose target is the runner's probe (a HUD's TimingProbe, or null).
+## run() reads step_usec only from a StepProbe and phase_usec only from its TimingProbe target, so
+## a direct driver (a perf test) passes a StepProbe whose target is the TimingProbe.
 var probe: SimProbe
 ## This tick's commands in submission order. MatchLoop stamps them in place and only reads the
 ## list, so run() empties it after the step: a command passed again would be applied again.
