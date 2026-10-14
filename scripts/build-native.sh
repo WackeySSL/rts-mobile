@@ -33,7 +33,8 @@
 #        4 godot-cpp fetch or SHA check failed, or the build failed, produced no library, or the
 #          library fails the ELF check (machine, shared object, entry symbol, and on Android only
 #          system libraries or Godot's libc++_shared.so as dependencies; a sanitized library must need the
-#          shared libubsan, call a signed-overflow handler (no -fwrapv) and call fatal handlers only)
+#          shared libubsan, call a signed-overflow handler (no -fwrapv), call fatal handlers only and have been
+#          compiled at -O1, which it reads back from the compile line the SConstruct records)
 # Success prints "build-native: OK <library> (<bytes> bytes)". Bash 3.2 compatible.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -255,6 +256,11 @@ if [ -n "$sanitize" ]; then
     die 4 "$elf_name calls no fatal signed-overflow handler: -fwrapv is on, or the checks are not fatal"
   elf_recoverable="$(grep -Ev '_abort$|^__ubsan_handle_(builtin_unreachable|missing_return)$' <<<"$elf_handlers" | tr '\n' ' ' || true)"
   [ -z "$elf_recoverable" ] || die 4 "$elf_name calls handlers that return after a report (${elf_recoverable% }): -fno-sanitize-recover=all is off"
+  # -O1 follows godot-cpp's -O2 on the compile line and the last -O wins; the SConstruct's -frecord-gcc-switches keeps that
+  # line in the library, one per distinct command (our sources share one), so a build that lost the -O1 is seen here.
+  elf_opt="$("$elf_readelf" -p .GCC.command.line "$library" 2>/dev/null | awk '/GNU C\+\+/ { for (i = 1; i <= NF; i++) if ($i ~ /^-O/) last = $i; print (last == "" ? "none" : last); last = "" }' | sort -u | tr '\n' ' ')" || true
+  elf_opt="${elf_opt% }"
+  [ "$elf_opt" = "-O1" ] || die 4 "$elf_name was not compiled at -O1 (the last -O of its compile commands: ${elf_opt:-no .GCC.command.line recorded})"
 fi
 echo "build-native: ELF ok: ${elf_machine}, shared object, exports ${ENTRY_SYMBOL}, needs ${elf_needed:-nothing}${sanitize:+(instrumented: $sanitize)}"
 

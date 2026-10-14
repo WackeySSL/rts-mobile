@@ -70,6 +70,12 @@ mode="${STUB_HARNESS:-ok}"
 [ "$mode" != hang ] || exec sleep 30
 format="$(od -An -tu4 -j4 -N4 "$(find "$1" -name 'state_*.bin' | sort | sed -n 1p)" | tr -d ' ')"
 if [ "$format" != 1 ] && [ "$mode" != accept ]; then echo "sanitizer_harness: World.STATE_FORMAT $format is a layout this harness does not know" >&2; exit 2; fi
+# The run over the dumps is handed the folder of both dumps the stub Godot wrote (a file, or a folder short of one, is
+# a harness that checks part of the states); the refusal check is handed a folder with one patched copy.
+case "$1" in */unknown-format) ;; *) [ -f "$1/state_00015.bin" ] && [ -f "$1/state_00030.bin" ] || { echo "stub harness: $1 is not a folder of both dumps" >&2; exit 1; } ;; esac
+count="$(find "$1" -name 'state_*.bin' | wc -l | tr -d ' ')"
+[ "$mode" != short ] || count=$((count - 1)) # a harness that skips a dump of its folder
+echo "sanitizer_harness: flow: $count dumps, 1 calls settling 1; crafted, 1 calls settling 1"
 HARNESS
         chmod +x "$arg"
       fi
@@ -84,6 +90,8 @@ cat >"$root/bin/readelf" <<'STUB'
 case "$1" in
   -h) echo "  Machine:   ${STUB_MACHINE:-Advanced Micro Devices X86-64}"; echo "  Type:   ${STUB_TYPE:-DYN (Shared object file)}" ;;
   -d) for lib in ${STUB_NEEDED:-libc.so.6}; do echo " 0x01 (NEEDED)   Shared library: [$lib]"; done ;;
+  -p) [ "${STUB_SWITCHES-x}" != none ] || exit 0 # no such section: readelf only warns on stderr
+      echo "String dump of section '.GCC.command.line':"; echo "  [     0]  GNU C++17 13.3.0 -mtune=generic -march=x86-64 ${STUB_SWITCHES--O2 -O1} -std=c++17 -fPIC" ;;
 esac
 STUB
 cat >"$root/bin/nm" <<'STUB'
@@ -115,7 +123,7 @@ case " $* " in
   *" -s "*)
     for arg; do out="$arg"; done
     case "${STUB_DUMP:-ok}" in
-      ok) printf 'RTSD\001\000\000\000' >"$out/state_00015.bin"; echo "dump_states: wrote 1 dumps to $out" ;;
+      ok) for tick in 00015 00030; do printf 'RTSD\001\000\000\000' >"$out/state_$tick.bin"; done; echo "dump_states: wrote 2 dumps to $out" ;;
       fail) echo "dump_states: FAIL no dump caught a waiting field" >&2; exit 1 ;;
       noline) printf 'RTSD\001\000\000\000' >"$out/state_00015.bin" ;;
       error) printf 'RTSD\001\000\000\000' >"$out/state_00015.bin"; echo "dump_states: wrote 1 dumps"; echo "SCRIPT ERROR: Parse Error" ;;
@@ -241,6 +249,16 @@ ubsan_run "__ubsan_handle_mul_overflow_abort __ubsan_handle_type_mismatch_v1 __u
 check "build: sanitized library with a recoverable handler among fatal ones" 4 "return after a report (__ubsan_handle_type_mismatch_v1 __ubsan_handle_load_invalid_value)"
 ubsan_run "__ubsan_handle_sub_overflow_abort __ubsan_handle_missing_return __ubsan_handle_builtin_unreachable"
 check "build: the two handlers that cannot return have no _abort kind" 0 "(instrumented: undefined)"
+# -O1 must be the last -O of the recorded compile command, after godot-cpp's -O2 (g++ takes the last): a build that lost it
+# keeps the instrumentation and the handlers, so only the recorded switches show it.
+for switches in "-O2" "-O1 -O2" "-O3 -O1 -O2" "-fPIC"; do
+  run bn STUB_NEEDED="libc.so.6 libubsan.so.1" "STUB_SWITCHES=$switches" bash scripts/build-native.sh --sanitize undefined
+  check "build: sanitized library compiled with '$switches' is not at -O1" 4 "was not compiled at -O1"
+done
+run bn STUB_NEEDED="libc.so.6 libubsan.so.1" STUB_SWITCHES="" bash scripts/build-native.sh --sanitize undefined
+check "build: sanitized library compiled with no -O at all" 4 "(the last -O of its compile commands: none)"
+run bn STUB_NEEDED="libc.so.6 libubsan.so.1" STUB_SWITCHES=none bash scripts/build-native.sh --sanitize undefined
+check "build: sanitized library with no switches recorded (no -frecord-gcc-switches)" 4 "(the last -O of its compile commands: no .GCC.command.line recorded)"
 run bn STUB_NEEDED="libc.so.6 libubsan.so.1" bash scripts/build-native.sh --sanitize undefined
 check "build: sanitize undefined" 0 "(instrumented: undefined)"
 assert "build: sanitize undefined passes sanitize=undefined to SCons" grep -Fq "sanitize=undefined" "$root/bn/scons.args"
@@ -519,7 +537,7 @@ run sh bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
 check "harness: dumps, builds, runs, and sees the unknown format refused" 0 "run-sanitizer-harness: OK"
 for case_ in "STUB_DUMP=fail:4:the dump step exited with 1" "STUB_DUMP=noline:4:did not report" "STUB_DUMP=error:4:Godot logged an error" \
   "STUB_DUMP=empty:4:wrote no state_*.bin" "STUB_GXX=fail:4:the harness did not build" "STUB_HARNESS=find:1:the harness failed with exit code 1" \
-  "STUB_HARNESS=accept:1:took a dump of an unknown"; do
+  "STUB_HARNESS=accept:1:took a dump of an unknown" "STUB_HARNESS=short:1:checked '1' dump(s) but the dump step wrote 2"; do
   run sh "${case_%%:*}" bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
   want="${case_#*:}"
   check "harness: ${case_%%:*}" "${want%%:*}" "${want#*:}"

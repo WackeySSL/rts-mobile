@@ -32,7 +32,8 @@ kenv.Append(CPPPATH=["src"])
 kenv.Append(CCFLAGS=["-Wall", "-Wextra", "-Wshadow", "-Wconversion", "-Wsign-conversion", "-Wsign-compare", "-Werror"])
 if sanitize:
     # The last -O wins over godot-cpp's -O2. g++ links its shared libubsan by default (-static-libubsan would not).
-    kenv.Append(CCFLAGS=["-O1", "-fno-omit-frame-pointer", "-fsanitize=undefined", "-fno-sanitize-recover=all"])
+    # -frecord-gcc-switches puts the compile line into the library, where build-native.sh reads the -O back.
+    kenv.Append(CCFLAGS=["-O1", "-fno-omit-frame-pointer", "-fsanitize=undefined", "-fno-sanitize-recover=all", "-frecord-gcc-switches"])
     kenv.Append(LINKFLAGS=["-fsanitize=undefined"])
 else:
     kenv.Append(CCFLAGS=["-fwrapv"])

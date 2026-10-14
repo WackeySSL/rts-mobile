@@ -14,7 +14,8 @@
 #        few seconds each)
 # Exit:  0 ok
 #        1 the harness reported a finding or a sanitizer aborted (its report is above), or it took a dump of a format
-#          it does not know, or it ran out of time
+#          it does not know, or it checked fewer dumps than the dump step wrote (each kernel line of its output names
+#          the number it took), or it ran out of time
 #        2 bad argument
 #        3 Godot, g++, timeout or g++'s libasan or libubsan is missing
 #        4 the dump step failed (an exit code, out of time, a Godot error line, no "wrote N dumps" line or no file), or
@@ -55,7 +56,8 @@ cat "$work/dump.log"
 # timeout ends with 124 when it stopped the command, and with 137 when it had to kill it.
 [ "$status" -ne 124 ] && [ "$status" -ne 137 ] || die 4 "the dump step ran longer than ${limit} s and was stopped"
 [ "$status" -eq 0 ] || die 4 "the dump step exited with $status"
-grep -Eq '^dump_states: wrote [1-9][0-9]* dumps' "$work/dump.log" || die 4 "the dump step did not report 'wrote N dumps'"
+dumped="$(sed -n 's/^dump_states: wrote \([1-9][0-9]*\) dumps.*/\1/p' "$work/dump.log" | tail -n 1)"
+[ -n "$dumped" ] || die 4 "the dump step did not report 'wrote N dumps'"
 ! grep -Eq 'SCRIPT ERROR|^ERROR:' "$work/dump.log" || die 4 "Godot logged an error while dumping"
 first="$(find "$states" -name 'state_*.bin' -size +0 | LC_ALL=C sort | sed -n '1p')"
 [ -n "$first" ] || die 4 "the dump step wrote no state_*.bin file"
@@ -68,9 +70,14 @@ g++ -std=c++17 -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -fno-
 export ASAN_OPTIONS="halt_on_error=1:detect_leaks=1:strict_string_checks=1:detect_stack_use_after_return=1"
 export UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1"
 status=0
-timeout -k 10 "$limit" "$work/harness" "$states" || status=$?
+timeout -k 10 "$limit" "$work/harness" "$states" >"$work/harness.log" 2>&1 || status=$?
+cat "$work/harness.log"
 [ "$status" -ne 124 ] && [ "$status" -ne 137 ] || die 1 "the harness ran longer than ${limit} s and was stopped (a loop in core/ that does not end?)"
 [ "$status" -eq 0 ] || die 1 "the harness failed with exit code $status (a sanitizer report or a finding is above)"
+# Every dump the step wrote must have been checked: each kernel line of the harness ("<kernel>: N dumps, ...") names the
+# number of dumps it took, and a harness that was handed one file, or skipped some, would end green on a part of the states.
+counted="$(sed -n 's/^sanitizer_harness: [^:]*: \([0-9][0-9]*\) dumps,.*/\1/p' "$work/harness.log" | sort -u | tr '\n' ' ')"
+[ "$counted" = "$dumped " ] || die 1 "the harness checked '${counted% }' dump(s) but the dump step wrote $dumped (every dump must be checked)"
 
 # (3) It must refuse a format it does not know (the number is the u32 after the 4-byte magic).
 mkdir -p "$work/unknown-format"
