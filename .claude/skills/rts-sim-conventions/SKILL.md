@@ -248,7 +248,9 @@ checklist lives here; load both skills for any PR that touches `native/`:
 - signatures: the World plus plain ints, no Packed parameter; the type and size check on every
   fetched array, through the checked table;
 - pointer lifetime: nothing held across calls, re-fetched after the FLOW swap and after an
-  event resize;
+  event resize; no `Object*` taken from a Variant that dies before the pointer's last use (the
+  use-after-free P54's review fixed, #70). Check this by eye: the freed memory is read inside
+  engine code, so the sanitizer job cannot see it (valgrind with a fresh-copy probe did);
 - integer widths: widened reads, `static_cast` at every int32/uint8 store;
 - undefined behaviour: overflow, shifts, division, bounds, uninitialised reads;
 - order: the twin's loops in the twin's row order, no unordered containers;

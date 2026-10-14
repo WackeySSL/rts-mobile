@@ -23,7 +23,7 @@ Source of truth: this file for rules, `docs/GDD.md` for game design,
 
 ## Commands
 - `bash scripts/verify.sh` - full check (format, lint, import, tests, sim smoke). Run before every commit.
-- `bash scripts/build-native.sh` - builds the C++ kernels (scons 4.9.1, g++, binutils; the NDK for Android, CI only).
+- `bash scripts/build-native.sh` - builds the C++ kernels (scons 4.9.1, g++, binutils; the NDK for Android: CI, or a cloud session after `bash scripts/cloud/install-android.sh`).
   verify.sh runs it first and checks the C++ format with the pinned clang-format.
 - `bash scripts/run-tests.sh` - gdUnit4 only.
 - `bash scripts/run-sim-smoke.sh --matches N` - headless AI-vs-AI matches with fixed seeds.
