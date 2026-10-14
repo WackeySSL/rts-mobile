@@ -11,9 +11,10 @@ const MILLI_PER_TILE: int = 1000
 
 ## Prepares the world, clears the last tick's events and stats, sorts `commands` in place with
 ## Command.compare and applies those whose tick is `world.tick`. A null or any other command is
-## dropped and counted. Then ordered units move, dead rows leave, and the tick counts. A probe
-## gets `begin()` first and a `mark` after each phase that exists (ADR 0007 section 4); it never
-## sees the World. FLOW is not stepped yet (P37b), so it is not marked.
+## dropped and counted. Then ordered units move (intents, then integrate), dead rows leave, and the
+## tick counts. A probe gets `begin()` first and a `mark` after each phase that exists (ADR 0007
+## section 4); it never sees the World. FLOW is not stepped yet (P37b), so it is not marked.
+## `_follow_targets` stands in for TARGETING until P41, so its time falls inside INTENTS.
 static func step(world: World, commands: Array[Command], probe: SimProbe = null) -> void:
 	if probe != null:
 		probe.begin()
@@ -32,7 +33,10 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 	if probe != null:
 		probe.mark(SimProbe.Phase.COMMANDS)
 	_follow_targets(world)
-	_move_units(world)
+	Movement.run(world)
+	if probe != null:
+		probe.mark(SimProbe.Phase.INTENTS)
+	Movement.integrate(world)
 	if probe != null:
 		probe.mark(SimProbe.Phase.INTEGRATE)
 	world.remove_dead()
@@ -76,6 +80,7 @@ static func _apply_point(world: World, command: Command, order: int) -> bool:
 	var orders: PackedInt32Array = world.order
 	for row: int in rows:
 		orders[row] = order
+	Movement.reset_nav(world, rows, World.NavMode.DIRECT)
 	return true
 
 
@@ -91,6 +96,7 @@ static func _apply_attack(world: World, command: Command) -> bool:
 	for row: int in rows:
 		orders[row] = World.Order.ATTACK
 		order_target[row] = command.target_id
+	Movement.reset_nav(world, rows, World.NavMode.DIRECT)
 	return true
 
 
@@ -114,6 +120,7 @@ static func _apply_stop(world: World, command: Command) -> bool:
 		order_target[row] = 0
 		target[row] = 0
 		field[row] = -1
+	Movement.reset_nav(world, rows, World.NavMode.NONE)
 	return true
 
 
@@ -170,27 +177,3 @@ static func _follow_targets(world: World) -> void:
 		else:
 			goal_x[row] = pos_x[at]
 			goal_y[row] = pos_y[at]
-
-
-## Each unit with an order steps towards its goal, in ascending id order. Within one step it
-## snaps to the goal and goes idle, except an ATTACK unit, which keeps its order and its target
-## (it ends only when the target is gone; P37a2 and P41 replace the arrival). Division truncates
-## toward zero.
-@warning_ignore("integer_division")
-static func _move_units(world: World) -> void:
-	for row: int in world.unit_count():
-		if world.order[row] == World.Order.IDLE:
-			continue
-		var speed: int = world.type_speed[world.type_index[row]]
-		var dx: int = world.goal_x[row] - world.pos_x[row]
-		var dy: int = world.goal_y[row] - world.pos_y[row]
-		var d2: int = dx * dx + dy * dy
-		if d2 <= speed * speed:
-			world.pos_x[row] = world.goal_x[row]
-			world.pos_y[row] = world.goal_y[row]
-			if world.order[row] != World.Order.ATTACK:
-				world.order[row] = World.Order.IDLE
-		else:
-			var distance: int = FixedMath.isqrt(d2)
-			world.pos_x[row] += dx * speed / distance
-			world.pos_y[row] += dy * speed / distance
