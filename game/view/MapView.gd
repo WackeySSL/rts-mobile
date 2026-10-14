@@ -3,9 +3,9 @@ extends Node2D
 ## Draws the sim's terrain (ADR 0011 section 3, assets/art/STYLE.md "Fog and terrain"). The map is
 ## baked into one RGBA8 image of `bake_px_per_tile` texels per tile, once per match and once per
 ## `map_version`, and drawn as one textured rect with NEAREST filtering, so a texel is 8 x 8 world
-## px. The map has no grid (Michael, 2026-10-12): tiles meet edge to edge. Until P40 it reads
-## `runner.world`, and a new World object is a new match (P38 adds `match_serial`, which then
-## replaces the instance id).
+## px. The map has no grid (Michael, 2026-10-12): tiles meet edge to edge. It reads only
+## `runner.snapshot` (ADR 0012 section 3), afresh in every call, and a new `match_serial` is a new
+## match; a change of the map shows from the tick after it (the next capture).
 
 const TILE_GRID: int = 8  ## The grid the rects of `tiles` use, whatever the bake size.
 const MISSING: Color = Color.MAGENTA  ## Shown for a terrain or colour key the dictionaries lack.
@@ -38,7 +38,7 @@ const MISSING: Color = Color.MAGENTA  ## Shown for a terrain or colour key the d
 @export var bake_px_per_tile: int = 8
 @export var runner: MatchRunner
 
-var _world_id: int = 0  ## Instance id of the last baked World: a new one is a new match.
+var _serial: int = -1  ## match_serial of the last bake: another one is a new match.
 var _version: int = -1
 var _bakes: int = 0
 var _draws: int = 0
@@ -56,13 +56,13 @@ func _process(_delta: float) -> void:
 	_sync()
 
 
-## The map in world px, from the origin: columns and rows of the World times 64.
+## The map in world px, from the origin: columns and rows of the map times 64.
 func map_rect_px() -> Rect2i:
-	if runner == null or runner.world == null:
+	var snap: MatchSnapshot = runner.snapshot if runner != null else null
+	if snap == null:
 		return Rect2i()
-	var world: World = runner.world
 	return Rect2i(
-		0, 0, world.map_cols * ViewScale.PX_PER_TILE, world.map_rows * ViewScale.PX_PER_TILE
+		0, 0, snap.map_cols * ViewScale.PX_PER_TILE, snap.map_rows * ViewScale.PX_PER_TILE
 	)
 
 
@@ -98,17 +98,17 @@ func _draw() -> void:
 
 
 func _sync() -> void:
-	var world: World = runner.world if runner != null else null
-	if world != null and (world.get_instance_id() != _world_id or world.map_version != _version):
-		_bake(world)
+	var snap: MatchSnapshot = runner.snapshot if runner != null else null
+	if snap != null and (snap.match_serial != _serial or snap.map_version != _version):
+		_bake(snap)
 
 
-func _bake(world: World) -> void:
-	_world_id = world.get_instance_id()
-	_version = world.map_version
+func _bake(snap: MatchSnapshot) -> void:
+	_serial = snap.match_serial
+	_version = snap.map_version
 	_bakes += 1
-	var cols: int = world.map_cols
-	var rows: int = world.map_rows
+	var cols: int = snap.map_cols
+	var rows: int = snap.map_rows
 	if cols <= 0 or rows <= 0:  # No map: nothing to show, and nothing left of the last match.
 		_image = Image.new()
 		_texture = null
@@ -117,12 +117,12 @@ func _bake(world: World) -> void:
 	var px: int = maxi(bake_px_per_tile, 1)
 	# Two tiles per terrain, for even and odd x + y, built once and blitted per cell.
 	var kinds: Array[Image] = []
-	for id: StringName in world.terrain_ids:
+	for id: StringName in snap.terrain_ids:
 		kinds.append(_tile(id, px))
 		var odd: StringName = StringName(String(id) + "_b")
 		kinds.append(_tile(odd, px) if tiles.has(odd) else kinds[-1])
 	var image: Image = Image.create(cols * px, rows * px, false, Image.FORMAT_RGBA8)
-	var terrain: PackedByteArray = world.terrain
+	var terrain: PackedByteArray = snap.terrain
 	var tile_rect: Rect2i = Rect2i(0, 0, px, px)
 	var cell: int = 0
 	for y: int in rows:

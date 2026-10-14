@@ -37,6 +37,8 @@ runner = NodePath("../MatchRunner")
 camera = NodePath("../Camera")
 
 [node name="MarkerLayer" type="Node2D" parent="."]
+z_index = 150
+z_as_relative = false
 script = ExtResource("11_markers")
 settings = ExtResource("6_settings")
 
