@@ -77,3 +77,51 @@ func test_an_empty_or_unknown_group_does_not_change_the_selection() -> void:
 	_model.clear()
 	_model.assign_group(2)  # An empty selection empties the group.
 	assert_bool(_model.recall_group(2)).is_false()
+
+
+func test_remove_ids_takes_the_dead_out_of_the_selection_and_every_group_with_one_changed() -> void:
+	_model.set_ids(PackedInt32Array([1, 2, 3, 4]))
+	_model.assign_group(1)
+	_model.set_ids(PackedInt32Array([3, 4, 5, 6]))
+	_model.assign_group(2)
+	_model.set_ids(PackedInt32Array([8, 6, 4, 2]))
+	var seen: Array[String] = []  # The selection and the groups as a listener sees them.
+	_model.changed.connect(
+		func() -> void:
+			var lists: Array = [_model.selected, _model.group(1), _model.group(2), _model.group(3)]
+			seen.append("%s %s %s %s" % lists)
+	)
+	_changes = 0
+	var dead: PackedInt32Array = PackedInt32Array([6, 4, 99, 4])  # Unsorted, twice, one unknown.
+	_model.remove_ids(dead)
+	assert_array(dead).is_equal([6, 4, 99, 4])
+	assert_array(_model.selected).is_equal([2, 8])
+	assert_array(_model.group(1)).is_equal([1, 2, 3])
+	assert_array(_model.group(2)).is_equal([3, 5])
+	assert_array(_model.group(3)).is_empty()
+	assert_int(_changes).is_equal(1)
+	assert_array(seen).is_equal(["[2, 8] [1, 2, 3] [3, 5] []"])  # Groups done before `changed`.
+	assert_bool(_model.is_selected(4)).is_false()
+	assert_bool(_model.is_selected(8)).is_true()
+	assert_bool(_model.recall_group(2)).is_true()
+	assert_array(_model.selected).is_equal([3, 5])  # A recalled group holds no dead unit.
+
+
+func test_remove_ids_of_units_outside_the_selection_changes_no_selection() -> void:
+	_model.set_ids(PackedInt32Array([1, 2, 3]))
+	_model.assign_group(3)
+	_model.set_ids(PackedInt32Array([7, 9]))
+	_changes = 0
+	_model.remove_ids(PackedInt32Array())
+	_model.remove_ids(PackedInt32Array([40, 41]))  # In no list.
+	_model.remove_ids(PackedInt32Array([2]))  # In group 3 only: the group shrinks, `changed` stays.
+	assert_array(_model.group(3)).is_equal([1, 3])
+	assert_array(_model.selected).is_equal([7, 9])
+	assert_int(_changes).is_equal(0)
+	_model.remove_ids(PackedInt32Array([9, 7]))  # The whole selection at once.
+	assert_array(_model.selected).is_empty()
+	assert_int(_changes).is_equal(1)
+	_model.remove_ids(PackedInt32Array([1, 3]))  # The last of group 3: it is empty, not gone.
+	assert_array(_model.group(3)).is_empty()
+	assert_bool(_model.recall_group(3)).is_false()
+	assert_int(_changes).is_equal(1)

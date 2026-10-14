@@ -1,17 +1,19 @@
 class_name SelectionPanel
 extends PanelContainer
 ## What is selected and how many, at the bottom centre (read-only in Phase 1). One row per unit
-## type: its own art (hull, team layer in the owner colour, turret), its name (the type id,
-## capitalised) and "×N". With more than one type a last row shows the total. Hidden when nothing
-## is selected.
-## Fed by PlayerController.selection_changed (wired in the scene), so it works on a change only. It
-## reads the World through the runner and never writes to it. Rows are made once and reused.
+## type: its own art (hull, team layer in the owner colour, turret), its display name and "×N".
+## With more than one type a last row shows the total. Hidden when nothing is selected.
+## Fed by PlayerController.selection_changed (wired in the scene), so it works on a change only:
+## a selected unit that dies leaves the selection first (PlayerController), which refreshes the
+## counts. It reads `runner.snapshot` afresh at each call (ADR 0012 section 3), the names from its
+## `type_names`, and never writes to it. Rows are made once and reused.
 ## It keeps its touches (mouse_filter STOP), so a tap on it never becomes a ground order. ADR 0004
 ## section 1 says that of HUD buttons; this panel is none, so it widens the rule to any HUD Control
 ## (a pan, box or pinch finger that starts on it is lost too, which is why it is small).
 ## Its parent MarginContainer is the band between the ArmyBar and the sidebar zone (the right 20%,
 ## at least 200 dp, kept free for the build sidebar). The panel sets that band's margins and sits
-## in its middle. A name much longer than "Light Tank" needs a width cap before a second type lands.
+## in its middle. A row is at most BAND_SHARE of the band's width (the safe area's inner width, the
+## band's own): a longer name is clipped with an ellipsis.
 
 const ICON_DP: float = 40.0
 const MIN_HEIGHT_DP: float = 48.0
@@ -21,6 +23,7 @@ const PAD_DP: float = 8.0
 const GAP_DP: float = 8.0
 const SIDEBAR_SHARE: float = 0.2
 const SIDEBAR_MIN_DP: float = 200.0
+const BAND_SHARE: float = 0.4  ## The widest a row may be, of the band's width.
 const BACKDROP: Color = Color(0.06, 0.08, 0.11, 0.78)
 
 @export var runner: MatchRunner
@@ -59,19 +62,32 @@ class Row:
 			layers.append(layer)
 		title.name = "Name"
 		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		count.name = "Count"
 		for label: Label in [title, count]:
 			label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			add_child(label)
 
-	func show_type(id: StringName, number: int, tint: Color) -> void:
+	func show_type(id: StringName, label: String, number: int, tint: Color) -> void:
 		visible = true
 		for index: int in layers.size():  # A type without art shows a blank icon.
 			var path: String = "%s%s_%s.svg" % [UnitLayer.ART_DIR, id, UnitLayer.LAYER_FILES[index]]
 			layers[index].texture = load(path) if ResourceLoader.exists(path) else null
 		layers[UnitLayer.TEAM_LAYER].modulate = tint
-		title.text = String(id).capitalize()
+		title.text = label
 		count.text = "×%d" % number
+
+	## The name's width is its text's, or `row_px` less the icon, the count and the gaps when the
+	## row would be wider: the label clips the rest with an ellipsis.
+	func fit_name(row_px: float) -> void:
+		var font: Font = title.get_theme_font(&"font")
+		var font_px: int = title.get_theme_font_size(&"font_size")
+		var text_px: float = (
+			font.get_string_size(title.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_px).x
+		)
+		var gaps_px: int = 2 * roundi(UiScale.dp(GAP_DP))  # As apply_dp() sets them.
+		var fixed_px: float = UiScale.dp(ICON_DP) + gaps_px + count.get_combined_minimum_size().x
+		title.custom_minimum_size.x = minf(ceilf(text_px), maxf(row_px - fixed_px, 0.0))
 
 	func apply_dp() -> void:
 		add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
@@ -97,20 +113,21 @@ func _ready() -> void:
 	_apply_dp()
 
 
-## Shows the units in `ids` (World ids) by type, or hides the panel when none of them exists.
+## Shows the units in `ids` (unit ids) by type, or hides the panel when none of them exists.
 func set_selected(ids: PackedInt32Array) -> void:
-	var world: World = null if runner == null else runner.world
-	if world == null:
+	var snap: MatchSnapshot = null if runner == null else runner.snapshot
+	if snap == null:
 		visible = false
 		return
-	var types: int = world.type_ids.size()
+	var types: int = snap.type_ids.size()
+	var type_index: PackedInt32Array = snap.type_index
 	_counts.resize(types)
 	_counts.fill(0)
 	for id: int in ids:
-		var row: int = world.index_of(id)
+		var row: int = snap.index_of(id)
 		if row < 0:
 			continue
-		_counts[world.type_index[row]] += 1
+		_counts[type_index[row]] += 1
 	var tint: Color = unit_layer.team_color(runner.scenario.local_player)  # Own units only.
 	var shown: int = 0
 	var total: int = 0
@@ -119,7 +136,7 @@ func set_selected(ids: PackedInt32Array) -> void:
 			continue
 		if shown == _rows.size():
 			_add_row()
-		_rows[shown].show_type(world.type_ids[type], _counts[type], tint)
+		_rows[shown].show_type(snap.type_ids[type], snap.type_names[type], _counts[type], tint)
 		shown += 1
 		total += _counts[type]
 	for hidden: int in range(shown, _rows.size()):
@@ -157,10 +174,20 @@ func _fit_band() -> void:
 	var band: MarginContainer = get_parent() as MarginContainer
 	var safe: SafeAreaMargin = null if band == null else band.get_parent() as SafeAreaMargin
 	if safe == null or army_bar == null:
+		_fit_rows(INF)  # No band, no cap.
 		return
 	var width: float = get_viewport().get_visible_rect().size.x
 	var zone: float = maxf(width * SIDEBAR_SHARE, UiScale.dp(SIDEBAR_MIN_DP))
 	var left: int = ceili(army_bar.get_combined_minimum_size().x + UiScale.dp(GAP_DP))
-	var room: float = width - 2.0 * safe.apply().x - left - get_combined_minimum_size().x
+	var band_px: float = width - 2.0 * safe.apply().x
+	_fit_rows(BAND_SHARE * band_px)
+	var room: float = band_px - left - get_combined_minimum_size().x
 	band.add_theme_constant_override("margin_left", left)
 	band.add_theme_constant_override("margin_right", mini(ceili(zone), maxi(floori(room), 0)))
+
+
+## Caps the name of every shown row so that the row is at most `row_px` wide.
+func _fit_rows(row_px: float) -> void:
+	for row: Row in _rows:
+		if row.visible:
+			row.fit_name(row_px)

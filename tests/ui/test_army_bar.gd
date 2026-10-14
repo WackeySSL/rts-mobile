@@ -130,6 +130,7 @@ func test_all_army_selects_the_30_tanks_off_screen_too_and_skips_units_that_cann
 	assert_array(_controller.selection.selected).is_equal(range(1, 31))
 	assert_array(_sent).is_empty()  # Selecting orders nothing.
 	_main.get_node("MatchRunner").world.type_speed[0] = 0  # Every tank becomes a wall.
+	_main.get_node("MatchRunner").run_ticks(1)  # The snapshot holds it from the next tick on.
 	_touch_button("AllArmy")
 	assert_array(_controller.selection.selected).is_empty()
 
@@ -164,6 +165,32 @@ func test_hold_assigns_a_group_and_tap_recalls_it_and_the_count_updates() -> voi
 	_touch_button("Group1", 500)  # The empty selection empties the group, and nothing buzzes.
 	assert_str((_hud("Group1") as Button).text).is_equal("1")
 	assert_array(_buzzes).has_size(2)
+	assert_array(_sent).is_empty()
+
+
+## The badge shows the units a group still has, and an empty group only its number.
+func test_a_groups_badge_shows_the_live_count_and_an_empty_group_only_its_number() -> void:
+	await _open(UiProfiles.by_name(&"android_6in"))
+	var runner: MatchRunner = _main.get_node("MatchRunner")
+	runner.paused = true  # Only run_ticks() moves time.
+	_select(range(1, 31))
+	_touch_button("Group1", 500)
+	_select([1, 2, 21])
+	_touch_button("Group2", 500)
+	assert_array(_badges()).is_equal(["1\n30", "2\n3", "3"])
+	for row: int in 20:  # Tanks 1-20 die in the next tick.
+		runner.world.hp[row] = 0
+	runner.run_ticks(1)
+	assert_array(_badges()).is_equal(["1\n10", "2\n1", "3"])
+	assert_array(_controller.selection.group(1)).is_equal(range(21, 31))
+	assert_array(_controller.selection.group(2)).is_equal([21])
+	_controller.tap_group(1)  # A recalled group holds the survivors only.
+	assert_array(_controller.selection.selected).is_equal(range(21, 31))
+	for row: int in 10:  # The other ten tanks of the group die, group 2's last one with them.
+		runner.world.hp[row] = 0
+	runner.run_ticks(1)
+	assert_array(_badges()).is_equal(["1", "2", "3"])
+	assert_array(_controller.selection.selected).is_empty()
 	assert_array(_sent).is_empty()
 
 
@@ -220,3 +247,11 @@ func _open(metrics: UiMetrics) -> void:
 	(_main.get_node("TouchInput") as TouchInput).clock = func() -> int: return _now_ms
 	for slot: int in range(1, 4):
 		(_hud("Group%d" % slot) as HoldButton).clock = func() -> int: return _now_ms
+
+
+## The text of the three group buttons.
+func _badges() -> Array[String]:
+	var texts: Array[String] = []
+	for slot: int in range(1, 4):
+		texts.append((_hud("Group%d" % slot) as Button).text)
+	return texts

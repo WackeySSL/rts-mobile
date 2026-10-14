@@ -174,6 +174,75 @@ func test_the_band_and_the_text_follow_a_window_resize() -> void:
 	assert_int(_node("Rows/Row0/Name").get_theme_font_size("font_size")).is_equal(_px(16.0))
 
 
+## "Light Tank" is also the capitalised type id, so a name written into the snapshot alone shows
+## that the panel takes it from `type_names`. The World is swapped for an empty one after a tick:
+## the counts and the names must come from the published snapshot.
+func test_names_and_counts_come_from_the_snapshot_and_never_the_world() -> void:
+	await _open(UiProfiles.by_name(&"desktop"))
+	_runner().paused = true
+	_select([1, 2])
+	_expect("the data's display name", "×2")
+	_runner().run_ticks(1)
+	_runner().world = World.new()  # Test-only: an empty World where the match's was.
+	_runner().snapshot.type_names[0] = "Ironclad"
+	_panel.set_selected(PackedInt32Array([1, 2, 3, 999]))
+	assert_bool(_panel.visible).is_true()
+	assert_array(_texts("Row0")).is_equal(["Ironclad", "×3"])
+	assert_str(_panel.get_node("Rows/Row0/Name").text).is_not_equal("Light Tank")
+
+
+## A row is at most 40% of the band (the safe area's inner width): a name past that is clipped
+## with an ellipsis, and the icon and the count keep their room. "Light Tank" is not clipped.
+func test_a_long_name_is_clipped_at_the_cap_and_light_tank_is_not() -> void:
+	var long_name: String = "Heavily Armoured Experimental Siege Tank Destroyer Mark Seven"
+	for profile: StringName in [&"desktop", &"android_6in", &"web_tablet"]:
+		await _open(UiProfiles.by_name(profile))
+		_runner().paused = true
+		_select([1])
+		await await_idle_frame()
+		var title: Label = _node("Rows/Row0/Name")
+		assert_int(title.text_overrun_behavior).is_equal(TextServer.OVERRUN_TRIM_ELLIPSIS)
+		assert_float(title.size.x).override_failure_message(str(profile)).is_greater_equal(
+			_text_px(title)
+		)
+		_runner().snapshot.type_names[0] = long_name
+		_panel.set_selected(PackedInt32Array([1]))
+		await await_idle_frame()
+		var band_px: float = (_panel.get_parent() as Control).size.x
+		var row: Control = _node("Rows/Row0")
+		var count: Label = _node("Rows/Row0/Count")
+		var why: String = "%s: row %s, band %s" % [profile, row.size.x, band_px]
+		assert_str(title.text).is_equal(long_name)  # The text stays whole; the draw clips it.
+		assert_float(_text_px(title)).override_failure_message(why).is_greater(band_px * 0.4)
+		# The box layout rounds sizes to whole px, so the row is the cap to within a px or two.
+		assert_float(row.size.x).override_failure_message(why).is_less_equal(band_px * 0.4 + 1.5)
+		assert_float(row.size.x).override_failure_message(why).is_greater_equal(band_px * 0.4 - 1.5)
+		assert_float(title.size.x).override_failure_message(why).is_greater(UiScale.dp(16.0))
+		assert_float(count.size.x).override_failure_message(why).is_greater_equal(
+			count.get_combined_minimum_size().x
+		)
+		(
+			assert_bool(_panel.get_global_rect().intersects(_hud("ArmyBar").get_global_rect()))
+			. is_false()
+		)
+
+
+func test_the_count_drops_when_a_selected_tank_dies_and_the_panel_hides_with_the_last() -> void:
+	await _open(UiProfiles.by_name(&"desktop"))
+	_runner().paused = true
+	_select([1, 2, 3])
+	_expect("three", "×3")
+	_runner().world.hp[0] = 0  # Tank 1 dies in the next tick.
+	_runner().run_ticks(1)
+	_expect("tank 1 dead", "×2")
+	assert_array(_controller.selection.selected).is_equal([2, 3])
+	_runner().world.hp[0] = 0
+	_runner().world.hp[1] = 0
+	_runner().run_ticks(1)
+	assert_bool(_panel.visible).override_failure_message("all dead").is_false()
+	assert_array(_sent).is_empty()
+
+
 func _expect(step: String, count: String) -> void:
 	assert_bool(_panel.visible).override_failure_message(step).is_true()
 	assert_array(_texts("Row0")).override_failure_message(step).is_equal(["Light Tank", count])
@@ -230,3 +299,14 @@ func _open(metrics: UiMetrics) -> void:
 	_panel = _hud("SelectionPanel")
 	var touch: TouchInput = _main.get_node("TouchInput")
 	touch.clock = func() -> int: return _now_ms
+
+
+func _runner() -> MatchRunner:
+	return _main.get_node("MatchRunner")
+
+
+## The width of the label's whole text at its font size: what it would need without a cap.
+func _text_px(label: Label) -> float:
+	var font: Font = label.get_theme_font(&"font")
+	var font_px: int = label.get_theme_font_size(&"font_size")
+	return font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_px).x
