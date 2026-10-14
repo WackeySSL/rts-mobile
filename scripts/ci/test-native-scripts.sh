@@ -91,7 +91,8 @@ case "$1" in
   -h) echo "  Machine:   ${STUB_MACHINE:-Advanced Micro Devices X86-64}"; echo "  Type:   ${STUB_TYPE:-DYN (Shared object file)}" ;;
   -d) for lib in ${STUB_NEEDED:-libc.so.6}; do echo " 0x01 (NEEDED)   Shared library: [$lib]"; done ;;
   -p) [ "${STUB_SWITCHES-x}" != none ] || exit 0 # no such section: readelf only warns on stderr
-      echo "String dump of section '.GCC.command.line':"; echo "  [     0]  GNU C++17 13.3.0 -mtune=generic -march=x86-64 ${STUB_SWITCHES--O2 -O1} -std=c++17 -fPIC" ;;
+      echo "String dump of section '.GCC.command.line':"; echo "  [     0]  GNU C++17 13.3.0 -mtune=generic -march=x86-64 ${STUB_SWITCHES--O2 -O1} -std=c++17 -fPIC"
+      [ -z "${STUB_OTHER_SOURCE:-}" ] || echo "  [   180]  GNU C++17 13.3.0 -mtune=generic -march=x86-64 -O2 -std=c++17 -fPIC" ;; # a second compile command
 esac
 STUB
 cat >"$root/bin/nm" <<'STUB'
@@ -255,6 +256,8 @@ for switches in "-O2" "-O1 -O2" "-O3 -O1 -O2" "-fPIC"; do
   run bn STUB_NEEDED="libc.so.6 libubsan.so.1" "STUB_SWITCHES=$switches" bash scripts/build-native.sh --sanitize undefined
   check "build: sanitized library compiled with '$switches' is not at -O1" 4 "was not compiled at -O1"
 done
+run bn STUB_NEEDED="libc.so.6 libubsan.so.1" STUB_OTHER_SOURCE=1 bash scripts/build-native.sh --sanitize undefined
+check "build: sanitized library with one more compile command at -O2 beside the -O1 one" 4 "(the last -O of its compile commands: -O1 -O2)"
 run bn STUB_NEEDED="libc.so.6 libubsan.so.1" STUB_SWITCHES="" bash scripts/build-native.sh --sanitize undefined
 check "build: sanitized library compiled with no -O at all" 4 "(the last -O of its compile commands: none)"
 run bn STUB_NEEDED="libc.so.6 libubsan.so.1" STUB_SWITCHES=none bash scripts/build-native.sh --sanitize undefined
