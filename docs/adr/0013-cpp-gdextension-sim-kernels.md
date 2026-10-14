@@ -57,6 +57,13 @@ merged), §10 (what the sanitizer job cannot see) and §14 (`CLAUDE.md`'s `build
 after Michael's answer in chat on 2026-10-13, verbatim: **"ok til CLAUDE.md-linjen"**). No
 accepted text changed.
 
+Status note (2026-10-14, P26m): after the merges of P30n (#74) and P30n2 (#75), the first kernel
+(FLOW), dated status notes from P26m sit in Context (PRs #35 and #41 closed unmerged on Michael's
+word in chat on 2026-10-14, verbatim: **"luk #35 og #41"**), §2 (`WorldView` as realised by
+`ArrayView<T>` and `flow::Slot`, the entry check, and one recorded exception), §3 (what
+`sim_impls.gd`'s `use()` attaches) and §5 (Michael's port-size rule, in chat on 2026-10-14,
+verbatim: **"ja til port-reglen"**). No accepted text changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -139,6 +146,14 @@ code says the stretches differ in load ("the first 900 ticks are the lightest at
     GDScript;
   - CI compares the debug editor's GDScript VM with a `template_debug -O2` library;
   - the phone compares release GDScript with `-O3`.
+
+Status note (2026-10-14, P26m): the probe PR #35 (P26s) and the spike PR #41 (P26n, which also
+carried the calibration build P26n2) were closed unmerged on 2026-10-14 on Michael's word in
+chat, verbatim: **"luk #35 og #41"**. This ADR's records of them stay valid: the comments it
+links (the phone runs above, and the evidence comment on PR #41 that "Engineering facts" and §2,
+§6 and §9 cite) stay readable on the closed PRs, the calibration reports are embedded verbatim in
+ADR 0014's acceptance note, and the branches `claude/p26s-perf-probe` and `claude/p26n-cpp-spike`
+stay unmerged.
 
 ### What that means for the gate
 - `sim_p95_ms` is 13.3 ms (ADR 0012 §4).
@@ -551,6 +566,47 @@ absorbs next to the C++ phases.
     The merged check holds each helper's Variant for the whole call. §10's status note records
     why the sanitizers cannot see that class.
 
+  Status note (2026-10-14, P26m, P30n as merged, #74, and P30n2, #75), the text above stays as
+  accepted:
+  - **`WorldView` as realised.** The struct of raw pointers and sizes that "Two layers" names is
+    `ArrayView<T>`, one per array (`src/core/array_view.h`), with `flow::Slot` as the aggregate
+    (`src/core/flow.h`: "One FlowField: its arrays as views and its int and bool members", which
+    the kernel loads from the slot object and stores back per slot turn). The kernel's World and
+    cache arrays (`unit_id`, `field`, `stats`, `move_cost`, `status`, `requested`, `ref_count`
+    and the others) reach `core/` as separate `ArrayView`s and ints, not inside a `Slot`, so
+    `Slot` is one slot's aggregate, not a per-kernel one. The header says, in its own words: "A
+    window over one of the World's arrays, for core/ (ADR 0013 section 2): the per-array piece of
+    the contract's WorldView, with flow::Slot as the aggregate. The raw pointer is private, so
+    core/ reaches an
+    element only through get() and set(): an element is widened to int64_t on the way out and
+    narrowed with an explicit cast on the way in (section 4), and the compiler enforces that,
+    whatever the element type. An index outside the window reads 0 and writes nothing, so the
+    contents of a queue that check_world cannot vouch for never reach memory outside the array.
+    Only bind/world_access.h builds a view from a pointer." So §4's "through `WorldView`'s
+    accessors" reads `ArrayView<T>::get` and `set`, and the raw `int32_t`/`uint8_t` pointer and
+    its `static_cast` stay private to `ArrayView`.
+  - **The fetch.** `world_access.h` holds `Borrowed<T>` (the Variant that keeps a Packed array
+    alive, with its view) and `read_i32`/`read_bytes` (`ptr()`) and `write_i32`/`write_bytes`
+    (`ptrw()`), steps 1-3 above; an empty array or a Variant of another type gives an empty
+    view. FLOW's list holds the 26 names `SimKernels.flow` gets or sets: `max_rows`, `map_cols`,
+    `map_rows` and `flow_cache_size` lost FLOW's bit (the length rules of `check()` still read
+    them; the plan's "Answers and follow-ups (P26m)").
+  - **The entry check (the question the P26l docs note left open).** `SimKernels.flow` calls
+    `check_world` for FLOW on every call and, on a non-zero status, raises one `push_error`
+    naming the property and writes nothing, as "The kernel calls it on entry" says. P30n
+    measured an idle FLOW call as costlier natively than in GDScript for that reason, against
+    about 10x faster per call overall (0.025 against 0.25 ms on the arena) and about 15x on busy
+    calls (PR #74); the plan's row P38pn carries it.
+  - **One recorded exception** to "for each slot it touches, the slot's arrays and scalars once"
+    ("Arrays of helper objects"): to pick the next slot, the kernel reads `pending` of every
+    `ACTIVE` slot through `Object::get` on each pick (`flow::oldest_request` with `pending_of`),
+    bounded by `flow_cache_size`, never per row or cell. Reading each once would need a
+    capacity literal in C++, which CLAUDE.md rule 1 forbids. It stays; the plan's "Answers and
+    follow-ups (P26m)" records it.
+  - **The split.** P30n's part 1 held the whole kernel with the module's tests under both
+    implementations, and part 2 (P30n2) the 900-tick lockstep, as "Every `core/` function lands
+    with the kernel that calls it" above says for a split port.
+
 ### 3. Dispatch and the implementation switch
 - **`World` gains two members (P54):**
   - `kernels: Object`, where null means GDScript;
@@ -686,6 +742,13 @@ absorbs next to the C++ phases.
   bullet above. So the module tests of P30n, P37n, P41n and P46n assert that `use()` returned an
   empty list and that `is_native(world, phase)` holds (through the preload name `SimImpls`, as
   `test_kernel_abi.gd` does).
+
+  Status note (2026-10-14, P26m) on the note above: "attaches the kernels either way" holds only
+  for kernels that exist. With a mask other than `EXPECTED_PHASES` or kernels of another class,
+  `use()` attaches them and the mask and lists the problem; with no library
+  (`create_kernels()` gives null) it attaches nothing, leaves `kernels` null and
+  `native_phases` 0, and returns its problem list. Either way a caller asserts the list is
+  empty.
 - **The bitmask** lets a lockstep test switch one phase at a time: World A runs all GDScript,
   World B runs only that phase in C++.
 - **On Android the library is required.** `export-android.sh` checks that the APK holds the
@@ -790,6 +853,16 @@ absorbs next to the C++ phases.
   - lane A gets 4 port rows plus P54 before P49a (up to 9 with splits), plus up to 3 conditional
     rows (5 with splits);
   - every later rule change in a hot phase is two edits.
+
+  Status note (2026-10-14, P26m), the cost above stays as accepted: P30n, the first port, came
+  to 1,089 changed lines (#74: about 460 of C++ and about 600 of the module's tests under both
+  implementations, which §2 requires to land with the kernel) plus 280 for its lockstep (P30n2,
+  #75), against the plan's 340. Michael decided in chat on 2026-10-14, verbatim: **"ja til
+  port-reglen"**: the native port rows P37n, P39n, P41n, P42n and P46n are re-estimated to their
+  real size, about 1,000 changed lines each (about 450 of C++ and about 600 of module tests;
+  P42n about 1,000 per kernel it holds), and each splits at the lockstep (part 2 is the
+  lockstep test), as P30n and P30n2 did. This sizing rule is not §1's port rule, which is
+  unchanged. The plan's rows, "Split triggers" and "Totals" carry it.
 - **Exit route:** web on C++ (§7, option B). It would allow deleting the twins and needs its own
   ADR after the Phase 2 gate. It is not adopted now.
 
