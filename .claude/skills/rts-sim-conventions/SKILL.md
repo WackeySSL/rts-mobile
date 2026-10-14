@@ -200,13 +200,18 @@ bursty phase whose per-active-tick cost sets a headroom value. `COMMANDS`, `REMO
 - Two layers: `core/` is plain C++17 over the contract's `WorldView` and includes no Godot
   header. `WorldView` is realised as `ArrayView<T>` per array (`core/array_view.h`) "with
   flow::Slot as the aggregate" (`core/flow.h`: one FlowField slot's views and scalars, loaded
-  and stored back per slot turn; the World and cache arrays reach `core/` as separate
-  `ArrayView`s and ints, so `Slot` is no per-kernel aggregate); in the header's words, "The raw
-  pointer is private, so core/ reaches an element only through get() and set()", "An index outside the window reads
-  0 and writes nothing" and "Only bind/world_access.h builds a view from a pointer". `bind/`
-  (`SimKernels`, `world_access.h`, `register_types`, one `kernel_<phase>.cpp` each, one line per
-  kernel in `kernel_list.h`) is the only code that touches Godot types. A `core/` function lands
-  only with the kernel that calls it, and that kernel's tests run in the same PR.
+  and stored back per slot turn). `Slot` aggregates one slot, not a whole kernel: the World and
+  cache arrays reach `core/` as separate `ArrayView`s and ints. In the header's words, "The raw
+  pointer is private, so core/ reaches an element only through get() and set()", "An index
+  outside the window reads 0 and writes nothing" and "Only bind/world_access.h builds a view
+  from a pointer". A view's raw pointer is private (ADR 0013 §2's status note of P26n docs:
+  "a struct of raw pointers and sizes" is superseded); `tests/project/test_native_purity.gd`'s
+  `view_pointer` rule (P56b, #78) flags a raw pointer member of any element type declared public
+  or protected in a `core/` `*View`, and its `raw_pointer` rule flags a use of a view's pointer
+  outside the view, across files. `bind/` (`SimKernels`, `world_access.h`, `register_types`, one
+  `kernel_<phase>.cpp` each, one line per kernel in `kernel_list.h`) is the only code that
+  touches Godot types. A `core/` function lands only with the kernel that calls it, and that
+  kernel's tests run in the same PR.
 - Rule ints and def columns come from the World on entry, never from a C++ literal. The only
   literals in `core/` are 0, 1, -1 and `constexpr` mirrors of a twin's GDScript `const`, each
   naming it.
@@ -228,8 +233,8 @@ bursty phase whose per-active-tick cost sets a headroom value. `COMMANDS`, `REMO
 - `int64_t` wherever GDScript holds an `int`. Every element read from an `int32` or `uint8` array
   is widened to `int64_t` before any arithmetic (through `ArrayView<T>::get`, which returns
   `int64_t`); raw `int32_t`/`uint8_t` pointers stay private to `ArrayView`, whose `set` and
-  `fill` hold the explicit `static_cast` at the store. No
-  `char`, `short`, `int` or `long` as a type in `core/`.
+  `fill` hold the explicit `static_cast` at the store. No `char`, `short`, `int` or `long` as a
+  type in `core/`.
 - No `float`, `double`, `<cmath>` or float literal. No undefined behaviour: no signed overflow,
   shifts only on non-negative values by 0-62, no division by zero or `INT64_MIN / -1`, no index
   past the size checked on entry, no uninitialised read, `reinterpret_cast`/`const_cast` only in
@@ -260,6 +265,9 @@ checklist lives here; load both skills for any PR that touches `native/`:
   event resize; no `Object*` taken from a Variant that dies before the pointer's last use (the
   use-after-free P54's review fixed, #70). Check this by eye: the freed memory is read inside
   engine code, so the sanitizer job cannot see it (valgrind with a fresh-copy probe did);
+- views: a `core/` `*View` keeps its raw pointer private and hands out `int64_t` accessors; no
+  public or protected pointer member, no use of a view's pointer outside the view (P56b's
+  `view_pointer` and `raw_pointer` rules flag both; their blind spots are below);
 - integer widths: widened reads, `static_cast` at every int32/uint8 store;
 - undefined behaviour: overflow, shifts, division, bounds, uninitialised reads;
 - order: the twin's loops in the twin's row order, no unordered containers;
@@ -272,8 +280,13 @@ checklist lives here; load both skills for any PR that touches `native/`:
   - a mutable static with a named or expression direct-init (`static int64_t calls(K);`);
   - a `constexpr` lambda without a parameter list (`[] { ... }`), whose body the literal rule
     exempts;
-  - every declarator after the first in a view's pointer list (`const int32_t *pos_x, *pos_y;`
-    collects only `pos_x`), and a view method that returns the raw pointer;
+  - for views, as the scan header names them since P56b (#78): a view method that returns the
+    raw pointer, a `using` alias of it, a pointer in a struct nested in a view, a member defined
+    outside the view body and a view that `VIEW` does not name (`class [[nodiscard]] FooView`);
+    P56b's PR text adds an `alignas(...)` specifier, a macro without a `;`, a friend view
+    reading another view's pointer and a contrived `operator*=`. Since P56b the scan reads every
+    declarator of a view's pointer list (`const int32_t *pos_x, *pos_y;`). The qa follow-ups of
+    P56b's review (the header's blind spots among them) are P56c's (plan, P26n docs);
   - rarer float helpers missing from the word lists: `UtilityFunctions` `asinh`, `acosh`,
     `atanh`, `is_nan`, `is_inf`, `ease`, `remap` and similar; `std::` `nextafter`, `erf`,
     `tgamma` and similar;

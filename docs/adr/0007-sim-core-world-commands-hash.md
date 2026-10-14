@@ -19,6 +19,9 @@ steps 0, 1 and 11 (`prepare()`, the clear of `events` and `stats`, and `remove_d
 Status note (2026-10-13, P26k): §8 carries a dated status note with the hash cost P31b (#65)
 measured; the once-per-second cadence stands.
 
+Status note (2026-10-14, P26n docs): §5 carries a dated status note on how the merged P33 (#77)
+realises the per-type validation; no accepted text changed.
+
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state
 hash. Phase 1 shipped the v0 shapes of ADR 0003: a struct-of-arrays `World` that never removes a
@@ -293,6 +296,22 @@ for Phase 2 types).
   type, target_x, target_y, target_id, unit count, ids..., payload count, payload...`.
   `static func decode(data: PackedInt32Array, at: int, out: Command) -> int` returns the next
   offset, or -1 for malformed data (a count past the end, or a negative count).
+
+Status note (2026-10-14, P26n docs, after P33, #77; the text above stays as accepted): the "one
+`_valid_*` function per type" is realised as `_apply_point` (`ATTACK_MOVE` and `MOVE`),
+`_apply_attack` and `_apply_stop` in `game/sim/Sim.gd`, each of which validates and applies.
+`Sim.step` drops a null command and one of another tick; `_apply`'s `match command.type` runs
+after the player range and the payload size checks, and a type without a branch is dropped as
+unknown before any id rule. The per-type functions share the helpers `_own_rows` and
+`_enemy_target`; `_enemy_target` is where P46b adds the visibility rule. Every drop is counted in
+`world.dropped_commands`, with no `push_error`. The validation behaves as this section says (a
+point is clamped to the map by `Formation.assign`, the v0 rule; the move to a passable tile comes
+with P37a's `Formation.gd`, which skips blocked slots and moves a blocked target), and every drop
+rule is pinned by a test in `tests/sim/test_sim_step.gd`:
+`test_invalid_commands_are_dropped_and_counted`,
+`test_each_group_drop_rule_counts_once_and_the_largest_command_is_kept`,
+`test_an_unknown_or_reserved_type_is_dropped_whatever_the_ids_are` and
+`test_attack_needs_an_enemy_target_and_an_armed_unit`. The encoding is P35a's.
 
 ### 6. Node-side services (`game/core`, ADR 0002 §1)
 - **`CommandQueue` API v1 = v0, unchanged:** `submit`, `drain_into`, `clear`, `pending`. Input,
