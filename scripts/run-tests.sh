@@ -109,17 +109,22 @@ status=${PIPESTATUS[0]}
 set -e
 
 if [ "$status" -ne 0 ]; then
-  # The status is gdUnit4's result code, not a count (GdUnitTestCIRunner: 100 failures or errors, 101 orphans only,
-  # 105 script errors). The counts are on its "Overall Summary" line, in colour codes that are dropped here.
+  # The status is gdUnit4's result code, not a count (GdUnitTestSessionRunner: 100 failures or errors, 101 orphans only,
+  # 103 headless mode refused, 104 Godot version refused, 105 script errors). The counts are on its "Overall Summary" line,
+  # in colour codes that are dropped here.
   case "$status" in
     100) meaning="test failures or errors" ;;
     101) meaning="orphan nodes" ;;
+    103) meaning="headless mode not supported" ;;
+    104) meaning="Godot version not supported" ;;
     105) meaning="script errors" ;;
-    *) meaning="not a gdUnit4 result code" ;;
+    *) meaning="not a test-result code of gdUnit4" ;;
   esac
   counts="$(sed -e $'s/\x1b\\[[0-9;]*m//g' "$CONSOLE" 2>/dev/null |
     sed -n 's/^Overall Summary: \([0-9]*\) test cases | \([0-9]*\) errors | \([0-9]*\) failures | .* | \([0-9]*\) orphans |.*$/\1 test cases, \2 errors, \3 failures, \4 orphans/p' |
     tail -n 1 || true)"
+  # gdUnit4 also exits 100 when it rejects its command line, and then no test ran and there is no summary.
+  if [ "$status" = 100 ] && [ -z "$counts" ]; then meaning="test failures or errors, or a rejected argument"; fi
   echo "run-tests: gdUnit4 exited with code ${status} (${meaning}): ${counts:-no Overall Summary line in the gdUnit4 output above}" >&2
   exit "$status"
 fi

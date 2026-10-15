@@ -1,17 +1,18 @@
 extends GdUnitTestSuite
 ## The failure line of scripts/run-tests.sh (P56d). gdUnit4's exit status is a result code, not a
-## count: 100 means "some test failed or errored", 101 "orphan nodes and nothing else", 105 "script
-## errors". The old line, `gdUnit4 exited with 100 (100 failures/errors, 101 orphans, 105 script
-## errors)`, put those codes where a reader looks for counts. The line now names the status as a
-## code, says what it means, and gives the counts that gdUnit4 printed on its "Overall Summary"
-## line (or says that there was none, as after a script error or a crash).
+## count: 100 means "some test failed or errored", 101 "orphan nodes and nothing else", 103 and 104
+## "headless mode or this Godot version not supported", 105 "script errors". The old line,
+## `gdUnit4 exited with 100 (100 failures/errors, 101 orphans, 105 script errors)`, put those codes
+## where a reader looks for counts. The line now names the status as a code, says what it means,
+## and gives the counts that gdUnit4 printed on its "Overall Summary" line (or says that there was
+## none, as after a script error, a rejected argument or a crash).
 ##
 ## Tested without gdUnit4 running: the real script runs in a scratch project against a stand-in
 ## `godot` that prints a console file and exits with a chosen status. The summary line is the one
-## gdUnit4 4.x printed in a real run (checked on 2026-10-15 with two failing cases and one orphan:
-## colour codes around "Overall Summary:" and around the counts), with other numbers, all different,
-## so that a count read from the wrong place shows. The exit codes themselves are pinned by
-## test_run_tests_order.gd.
+## gdUnit4 6.2.2 (the vendored addon) printed in a real run (checked on 2026-10-15 with two failing
+## cases and one orphan: colour codes around "Overall Summary:" and around the counts), with other
+## numbers, all different, so that a count read from the wrong place shows. The exit codes
+## themselves are pinned by test_run_tests_order.gd.
 
 const SCRIPT: String = "res://scripts/run-tests.sh"
 const ESC: String = "\u001b"
@@ -28,6 +29,8 @@ const SUMMARY: String = (
 	+ "[0m"
 )
 const COUNTS: String = "7 test cases, 3 errors, 2 failures, 1 orphans"
+## What gdUnit4 prints when it stops before any test ran.
+const NO_RUN: String = "gdUnit4 did not run\n"
 const NO_SUMMARY: String = "no Overall Summary line in the gdUnit4 output above"
 ## `run-tests.sh` needs a gdUnit4 tool script, a library for the host (it checks the .gdextension)
 ## and the report that gdUnit4 writes.
@@ -84,12 +87,35 @@ func test_status_105_means_script_errors_and_a_missing_summary_is_said() -> void
 	assert_str(lines[-1]).is_equal(wanted + NO_SUMMARY)
 
 
-## Any other status (a crash gives 134 or 139, a kill 137) is named as not one of gdUnit4's codes.
+## gdUnit4 refuses to run on a Godot version it does not support (104) and without headless mode
+## (103, which the script's --ignoreHeadlessMode keeps from happening): both are its own codes.
+func test_the_refusals_of_gdunit4_are_named() -> void:
+	var wanted: String = "run-tests: gdUnit4 exited with code %d (%s): "
+	assert_str(_run(_project(NO_RUN), 103)[-1]).is_equal(
+		(wanted % [103, "headless mode not supported"]) + NO_SUMMARY
+	)
+	assert_str(_run(_project(NO_RUN), 104)[-1]).is_equal(
+		(wanted % [104, "Godot version not supported"]) + NO_SUMMARY
+	)
+
+
+## gdUnit4 also exits 100 when it rejects its command line, before any test ran: with no summary
+## line the wording does not claim that a test failed.
+func test_status_100_without_a_summary_does_not_say_that_a_test_failed() -> void:
+	var lines: Array[String] = _run(_project("Abnormal exit with 100\n"), 100)
+	var wanted: String = "run-tests: gdUnit4 exited with code 100 (%s): "
+	var meaning: String = "test failures or errors, or a rejected argument"
+	assert_str(lines[-1]).is_equal((wanted % meaning) + NO_SUMMARY)
+
+
+## Any other status (a crash gives 134 or 139, a kill 137) is named as not one of gdUnit4's
+## test-result codes.
 func test_any_other_status_is_not_called_a_gdunit_result() -> void:
 	for code: int in [1, 134]:
 		var lines: Array[String] = _run(_project(SUMMARY + "\n"), code)
-		var wanted: String = "run-tests: gdUnit4 exited with code %d (not a gdUnit4 result code): "
-		assert_str(lines[-1]).is_equal((wanted % code) + COUNTS)
+		var wanted: String = "run-tests: gdUnit4 exited with code %d (%s): "
+		var meaning: String = "not a test-result code of gdUnit4"
+		assert_str(lines[-1]).is_equal((wanted % [code, meaning]) + COUNTS)
 
 
 ## The summary is read from this run: a log from the run before is overwritten, so a run that

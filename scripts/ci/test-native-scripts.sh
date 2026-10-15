@@ -5,9 +5,9 @@
 # against a stub clang-format, install-ndk.sh against a stub sdkmanager (P55a), check-native-tests.sh on
 # fixtures, run-sanitizer-harness.sh against a stub Godot and g++ (P57), the compile flags of the SConstruct (run by
 # python3 on a stub SCons environment: the plain build keeps -fwrapv, the sanitized one lacks it), and the order of
-# verify.sh's native steps. Needs no Godot, SCons, compiler, Android SDK, NDK or
-# network, and runs the scripts in a scrubbed environment on a stub uname (x86_64 unless a case
-# says otherwise), so the host changes no result. ci.yml runs it in the verify job.
+# verify.sh's native steps. Needs python3 (for the SConstruct flags) but no Godot, SCons, compiler, Android SDK, NDK or
+# network, and runs the scripts in a scrubbed environment on a stub uname (x86_64 unless a case says otherwise), so the
+# host changes no result. ci.yml runs it in the verify job.
 # Usage: bash scripts/ci/test-native-scripts.sh      Exit: 0 all cases pass, 1 a case failed.
 set -euo pipefail
 repo="$(cd "$(dirname "$0")/../.." && pwd -P)"
@@ -50,7 +50,7 @@ mkdir -p ../bin && echo stub >"../bin/libsim_kernels.${platform}.${target}.${arc
 STUB
 # g++: its version, a runtime library that STUB_RUNTIME names as missing, and for the harness build (P57) the -o file,
 # a script that acts as STUB_HARNESS says: it refuses a dump of a format other than 1 with exit 2 and the words "does not
-# know", unless that is "accept" (takes it), "quiet" (exit 2 without the words) or "exit1" (the words, exit 1).
+# know", unless that is "accept" (takes it), "quiet" (exit 2 without the words), "exit1" or "exit3" (the words, exit 1 or 3).
 cat >"$root/bin/g++" <<'STUB'
 #!/usr/bin/env bash
 case "${1:-}" in
@@ -76,6 +76,7 @@ if [ "$format" != 1 ] && [ "$mode" != accept ]; then
   [ "$mode" != quiet ] || { echo "sanitizer_harness: World.STATE_FORMAT $format refused" >&2; exit 2; }
   echo "sanitizer_harness: World.STATE_FORMAT $format is a layout this harness does not know" >&2
   [ "$mode" != exit1 ] || exit 1
+  [ "$mode" != exit3 ] || exit 3
   exit 2
 fi
 # The run over the dumps is handed the folder of both dumps the stub Godot wrote (a file, or a folder short of one, is
@@ -316,6 +317,7 @@ else
   failures=$((failures + 1))
 fi
 assert "build: the plain library is compiled with -fwrapv" grep -Eq '(^| )-fwrapv( |$)' <<<"$flags_plain"
+assert "build: the plain library does not turn -fwrapv off again (the last switch wins)" test "$(grep -c -- -fno-wrapv <<<"$flags_plain")" = 0
 assert "build: the plain library is not instrumented" test "$(grep -c -- -fsanitize <<<"$flags_plain")" = 0
 assert "build: the sanitized library is compiled without -fwrapv" test "$(grep -Ec '(^| )-fwrapv( |$)' <<<"$flags_ubsan")" = 0
 # --print-cache-key: ci.yml writes its stdout to $GITHUB_OUTPUT, so stdout holds the key alone (one line, the
@@ -594,7 +596,7 @@ run sh bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
 check "harness: dumps, builds, runs, and sees the unknown format refused" 0 "run-sanitizer-harness: OK"
 for case_ in "STUB_DUMP=fail:4:the dump step exited with 1" "STUB_DUMP=noline:4:did not report" "STUB_DUMP=error:4:Godot logged an error" \
   "STUB_DUMP=engine_error:4:Godot logged an error" "STUB_DUMP=empty:4:wrote no state_*.bin" "STUB_GXX=fail:4:the harness did not build" "STUB_HARNESS=find:1:the harness failed with exit code 1" \
-  "STUB_HARNESS=accept:1:took a dump of an unknown" "STUB_HARNESS=quiet:1:took a dump of an unknown" "STUB_HARNESS=exit1:1:took a dump of an unknown" \
+  "STUB_HARNESS=accept:1:took a dump of an unknown" "STUB_HARNESS=quiet:1:took a dump of an unknown" "STUB_HARNESS=exit1:1:took a dump of an unknown" "STUB_HARNESS=exit3:1:took a dump of an unknown" \
   "STUB_HARNESS=short:1:checked '1' dump(s) but the dump step wrote 2"; do
   run sh "${case_%%:*}" bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
   want="${case_#*:}"

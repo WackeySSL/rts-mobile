@@ -187,13 +187,14 @@ func test_a_tick_sample_keeps_the_stats_maxima_and_the_projectile_peak() -> void
 ## every value (the arena's own units, alive_end, proj_peak and overflow are 150, 150, 0 and 0, and
 ## its stats maxima are zeros, so a fact read from the wrong place would agree with the right one).
 ## The facts, the hash and the World.stats maxima are the first run's; the statistics and the phases
-## are the best over all three, and so come from the second and the third here. Nothing is read
-## from the runs of the suite: its own timings are far from the 40 ms and 0.5 ms asserted below.
+## are the best over all three: the second run holds the smallest tick mean (40 ms) and the third
+## the smallest first phase (0.4 ms), so a report that skips the last run, or the second, shows.
+## Nothing is read from the runs of the suite: its own timings are far from the values asserted.
 func test_the_report_takes_each_value_from_the_runs_it_is_given() -> void:
 	var runs: Array[Run] = [
 		_hand_run(149, 148, 2, 3, 0x1234, 100.0, 900_000, 9001),
 		_hand_run(141, 140, 6, 7, 0x5678, 40.0, 450_000, 4004),
-		_hand_run(133, 132, 8, 9, 0x9ABC, 70.0, 720_000, 7007),
+		_hand_run(133, 132, 8, 9, 0x9ABC, 70.0, 360_000, 7007),
 	]
 	var report: Dictionary = _make_report(runs)
 	assert_int(report["units"]).is_equal(149)
@@ -207,7 +208,7 @@ func test_the_report_takes_each_value_from_the_runs_it_is_given() -> void:
 	assert_int(maxima[PerfReport.stat_names()[World.Stat.PROJ_STEPS]]).is_equal(9001)
 	assert_float(report["mean_ms"]).is_equal_approx(40.0, ROUNDING_MS)
 	var phases: Dictionary = report["phases"]
-	assert_float(phases[SimProbe.PHASE_NAMES[0]]).is_equal_approx(0.5, ROUNDING_MS)
+	assert_float(phases[SimProbe.PHASE_NAMES[0]]).is_equal_approx(0.4, ROUNDING_MS)
 
 
 ## The phases are timed inside the step, so their means cannot add up to more than the tick mean
