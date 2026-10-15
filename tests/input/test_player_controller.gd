@@ -197,6 +197,95 @@ func test_the_ordered_tanks_stand_idle_on_distinct_slots_around_the_point_after_
 		assert_int(world.order[30]).is_equal(World.Order.IDLE)
 
 
+func test_a_selected_tank_that_dies_leaves_the_selection_and_the_rings_in_the_same_frame() -> void:
+	for profile: StringName in PROFILES:
+		await _fresh_match(profile)
+		_controller.selection.set_ids(PackedInt32Array([3, 5, 7]))
+		assert_array(_ringed_ids()).is_equal([3, 5, 7])
+		_changes.clear()
+		_runner.world.hp[2] = 0  # Tank 3 dies in the next tick.
+		_runner.run_ticks(1)  # No frame runs after it: the handler works inside `ticked`.
+		assert_array(_controller.selection.selected).is_equal([5, 7])
+		assert_array(_changes).has_size(1)  # One change for the removal, not one per consumer.
+		assert_array(_changes[0]).is_equal([5, 7])
+		assert_int(_layer.rig_count()).is_equal(39)
+		assert_array(_ringed_ids()).is_equal([5, 7])
+		_controller.selection.assign_group(1)
+		_runner.world.hp[3] = 0  # Tank 5 is now row 3.
+		_runner.run_ticks(1)
+		assert_array(_controller.selection.selected).is_equal([7])
+		assert_array(_controller.selection.group(1)).is_equal([7])
+		assert_array(_ringed_ids()).is_equal([7])
+		assert_array(_sent).is_empty()  # A death orders nothing.
+
+
+## Only DIED records count, and they are read from the published snapshot: the World is swapped for
+## an empty one and the events are written into the snapshot (SYNC allows both in a test).
+func test_the_death_handling_reads_the_died_records_of_the_snapshot_and_not_the_world() -> void:
+	await _fresh_match(&"desktop")
+	_runner.run_ticks(1)
+	_controller.selection.set_ids(PackedInt32Array([3, 5, 7]))
+	_runner.world = World.new()
+	var records: PackedInt32Array = PackedInt32Array()
+	for record: Array in [
+		[World.Event.DIED, 5],
+		[World.Event.SHOT, 7],  # A shot names a unit too, and kills nothing.
+		[World.Event.DIED, 3],
+		[World.Event.SPAWNED, 7],
+	]:
+		records.append_array(PackedInt32Array(record + [0, 0, 0, 1, 0, 0]))
+	assert_int(records.size()).is_equal(4 * World.EVENT_STRIDE)
+	_runner.snapshot.events = records
+	_changes.clear()
+	_runner.ticked.emit(_runner.snapshot.tick)
+	assert_array(_controller.selection.selected).is_equal([7])
+	assert_array(_changes).has_size(1)
+	_runner.snapshot.events = PackedInt32Array()
+	_runner.ticked.emit(_runner.snapshot.tick)  # A tick with no events changes nothing.
+	assert_array(_controller.selection.selected).is_equal([7])
+	assert_array(_changes).has_size(1)
+	_controller.selection.set_ids(PackedInt32Array([3, 7]))  # Unit 3 died in an earlier tick.
+	_runner.ticked.emit(_runner.snapshot.tick)  # Only this tick's events count.
+	assert_array(_controller.selection.selected).is_equal([3, 7])
+
+
+func test_all_army_reads_the_snapshot_and_never_the_world() -> void:
+	await _fresh_match(&"android_6in")
+	_runner.run_ticks(1)
+	_runner.world = World.new()  # Test-only: an empty World where the match's was.
+	_controller.select_all_army()
+	assert_array(_controller.selection.selected).is_equal(range(1, 31))
+	_runner.snapshot.type_speed[0] = 0  # Every tank becomes a wall in the snapshot alone.
+	_controller.select_all_army()
+	assert_array(_controller.selection.selected).is_empty()
+
+
+## Unit ids are ascending and never reused, so after a death a row number is no longer the id: "All
+## army" must take the ids from the snapshot's unit_id column.
+func test_all_army_after_a_death_selects_the_surviving_ids_and_not_the_row_numbers() -> void:
+	await _fresh_match(&"android_6in")
+	_runner.world.hp[2] = 0  # Tank 3 dies in the next tick; the tanks after it move up one row.
+	_runner.run_ticks(1)
+	_controller.select_all_army()
+	var survivors: Array[int] = []
+	for id: int in range(1, 31):
+		if id != 3:
+			survivors.append(id)
+	assert_array(_controller.selection.selected).has_size(29)
+	assert_array(_controller.selection.selected).is_equal(survivors)
+
+
+## A restart publishes a new snapshot without `ticked`, so a snapshot kept from the last tick is
+## already the old match's.
+func test_all_army_reads_the_snapshot_of_a_restarted_match_before_its_first_tick() -> void:
+	await _fresh_match(&"desktop")
+	_runner.run_ticks(1)
+	_runner.start()
+	_runner.snapshot.type_speed[0] = 0  # Only the restart's snapshot says every tank is a wall.
+	_controller.select_all_army()
+	assert_array(_controller.selection.selected).is_empty()
+
+
 func _assert_attack_move(command: Command, ids: Array, x: int, y: int) -> void:
 	assert_int(command.type).is_equal(Command.Type.ATTACK_MOVE)
 	assert_int(command.player_id).is_equal(1)
@@ -257,3 +346,13 @@ func _pan(by: Vector2) -> void:
 	TouchEvents.press(get_viewport(), 0, from)
 	TouchEvents.drag(get_viewport(), 0, from + by, by)
 	TouchEvents.release(get_viewport(), 0, from + by)
+
+
+## The ids of the rigs whose Ring shows, in row order.
+func _ringed_ids() -> Array[int]:
+	var ids: Array[int] = []
+	for rig: Node in _layer.get_children():
+		var ring: Node2D = rig.get_node_or_null("Ring")
+		if ring != null and ring.visible:
+			ids.append(int(String(rig.name).trim_prefix("Unit")))
+	return ids
