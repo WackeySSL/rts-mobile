@@ -2,9 +2,9 @@ class_name PlayerController
 extends Node
 ## Turns the selection gestures of TouchInput into selection changes and Commands (ADR 0004
 ## section 5). It reads the view and the published snapshot (ADR 0012 section 3), afresh at each
-## call and never kept (the enemy tap still reads the World for the target's position), and never
-## writes to the sim: an order leaves through `command_sink` as an ATTACK_MOVE Command that carries
-## the sorted selection (ADR 0003).
+## call and never kept, and never writes to the sim: an order leaves through `command_sink` as one
+## Command that carries the sorted selection (ADR 0003), an ATTACK_MOVE to a ground point or an
+## ATTACK on an enemy's id.
 ## A tap acts at once. A double-tap on an own unit selects its type on screen, a box selects the
 ## own units inside it, and an empty box clears the selection (the one way to deselect). Selection
 ## is not a Command, so it never reaches the sim. A unit that dies leaves the selection and the
@@ -101,8 +101,8 @@ func _tap(pos: Vector2) -> void:
 	var hit: int = _pick(pos)
 	if hit >= 0 and _snap.owners[hit] == _local_player():
 		selection.set_ids(PackedInt32Array([_snap.ids[hit]]))
-	elif hit >= 0:  # An enemy: only picked while a selection exists. Attack-move to where it is.
-		_attack_move(runner.world.pos_x[hit], runner.world.pos_y[hit], true)
+	elif hit >= 0:  # An enemy: only picked while a selection exists.
+		_attack(hit)
 	elif not selection.selected.is_empty():
 		var world_px: Vector2 = camera.screen_to_world(pos)
 		_attack_move(ViewScale.px_to_milli(world_px.x), ViewScale.px_to_milli(world_px.y))
@@ -154,16 +154,20 @@ func _show_group_count(slot: int) -> void:
 		army_bar.set_group_count(slot, selection.group(slot).size())
 
 
-## Attack-move to a point in milli-tiles, with its marker: the diamond on an enemy, else chevrons.
-## The marker shows the point as ordered. Near a map edge the sim moves the formation inward by the
-## largest unit radius, so the units stop that much off the marker.
-func _attack_move(target_x: int, target_y: int, on_enemy: bool = false) -> void:
+## Attack-move to a point in milli-tiles, with the chevrons. The marker shows the point as ordered.
+## Near a map edge the sim moves the formation inward by the largest unit radius, so the units stop
+## that much off the marker.
+func _attack_move(target_x: int, target_y: int) -> void:
 	command_sink.call(Command.attack_move(_local_player(), selection.selected, target_x, target_y))
-	var at: Vector2 = ViewScale.milli_to_px_vec(target_x, target_y)
-	if on_enemy:
-		marker_layer.show_target(at)
-	else:
-		marker_layer.show_attack_move(at)
+	marker_layer.show_attack_move(ViewScale.milli_to_px_vec(target_x, target_y))
+
+
+## Attack the enemy at pick index `hit` (a row of the snapshot just read), by its id. The sim
+## takes the order only if the target is still a valid enemy there. The diamond marks the unit
+## where it is drawn.
+func _attack(hit: int) -> void:
+	command_sink.call(Command.attack(_local_player(), selection.selected, _snap.ids[hit]))
+	marker_layer.show_target(camera.screen_to_world(_snap.screen_pos[hit]))
 
 
 func _local_player() -> int:

@@ -100,22 +100,33 @@ func test_tap_ground_with_a_selection_sends_one_attack_move_and_without_one_noth
 		assert_array(_controller.selection.selected).is_equal([2, 9, 30])  # Ordering keeps it.
 
 
-func test_tap_an_enemy_with_a_selection_attack_moves_to_it_and_without_one_does_nothing() -> void:
+## The order names the enemy by its id, so the sim follows it when it moves, and the diamond sits on
+## the enemy and not on the finger (the tap is 20 dp to its left).
+func test_tap_an_enemy_with_a_selection_sends_one_attack_and_without_one_does_nothing() -> void:
+	var markers: MoveMarkerLayer = _main.get_node("MarkerLayer")
+	markers.clock = _touch.clock  # One fake clock: a mark of an earlier profile has expired.
 	for profile: StringName in PROFILES:
 		await _fresh_match(profile)
+		markers._process(0.0)
 		_camera.centre_on(Vector2(2208, 672))
 		var off_centre: Vector2 = _layer.unit_screen_position(30) - Vector2(UiScale.dp(20), 0)
 		_tap(off_centre)
 		assert_array(_sent).is_empty()
 		assert_array(_controller.selection.selected).is_empty()
+		assert_int(markers.active_count()).is_equal(0)
 		_controller.selection.set_ids(PackedInt32Array([2, 1]))
-		_tap(off_centre)  # Not the tap point: the enemy's own position.
+		_tap(off_centre)
 		assert_array(_sent).has_size(1)
-		_assert_attack_move(_sent[0], [1, 2], 34500, 10500)
+		_assert_attack(_sent[0], [1, 2], 31)
 		assert_array(_controller.selection.selected).is_equal([1, 2])
+		var marks: Array[MoveMarkerLayer.Mark] = _shown_marks(markers)
+		assert_array(marks).has_size(1)
+		assert_bool(marks[0].diamond).is_true()
+		assert_vector(marks[0].position).is_equal_approx(Vector2(2208, 672), Vector2(0.05, 0.05))
 		_double_tap(off_centre)  # An enemy is never selected by type: two taps, two orders.
 		assert_array(_sent).has_size(3)
-		_assert_attack_move(_sent[2], [1, 2], 34500, 10500)
+		_assert_attack(_sent[1], [1, 2], 31)
+		_assert_attack(_sent[2], [1, 2], 31)
 		assert_array(_controller.selection.selected).is_equal([1, 2])
 
 
@@ -284,6 +295,23 @@ func test_all_army_reads_the_snapshot_of_a_restarted_match_before_its_first_tick
 	_runner.snapshot.type_speed[0] = 0  # Only the restart's snapshot says every tank is a wall.
 	_controller.select_all_army()
 	assert_array(_controller.selection.selected).is_empty()
+
+
+func _assert_attack(command: Command, ids: Array, target_id: int) -> void:
+	assert_int(command.type).is_equal(Command.Type.ATTACK)
+	assert_int(command.player_id).is_equal(1)
+	assert_int(command.tick).is_equal(-1)  # MatchRunner stamps tick and sequence.
+	assert_int(command.sequence).is_equal(0)
+	assert_array(command.unit_ids).is_equal(ids)
+	assert_int(command.target_id).is_equal(target_id)
+
+
+func _shown_marks(markers: MoveMarkerLayer) -> Array[MoveMarkerLayer.Mark]:
+	var shown: Array[MoveMarkerLayer.Mark] = []
+	for mark: MoveMarkerLayer.Mark in markers.get_children():
+		if mark.visible:
+			shown.append(mark)
+	return shown
 
 
 func _assert_attack_move(command: Command, ids: Array, x: int, y: int) -> void:
