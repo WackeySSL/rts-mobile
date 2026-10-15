@@ -14,10 +14,10 @@ extends GdUnitTestSuite
 ## `PERF` line that CI copies.
 ##
 ## The numbers that the line takes from the World (units, alive_end, the World.stats maxima, the
-## projectile peak and overflow) are zero or constant on today's arena, so two cases pin the code
-## that reads them without the sim's help: _play on a start that the test crafts, and _sample on a
-## hand-built world. They assert inequalities only, so P41's combat and P42's projectiles do not
-## break them.
+## projectile peak and overflow) are zero or constant on today's arena, so three cases pin the code
+## that reads them without the sim's help: _play on a start that the test crafts, _sample on a
+## hand-built world, and _make_report on three runs made by hand. The first two assert inequalities
+## only, so P41's combat and P42's projectiles do not break them.
 
 const PerfReport: GDScript = preload("res://tests/perf/support/perf_report.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
@@ -69,7 +69,7 @@ func before() -> void:
 		_seed_42.append(_play(SEED))
 	_seed_43 = _play(OTHER_SEED)
 	_time_reference()
-	_report = _make_report()
+	_report = _make_report(_seed_42)
 	for index: int in _seed_42.size():
 		print(_run_line(SEED, index + 1, _seed_42[index]))
 	print(_run_line(OTHER_SEED, 1, _seed_43))
@@ -181,6 +181,34 @@ func test_a_tick_sample_keeps_the_stats_maxima_and_the_projectile_peak() -> void
 	_sample(run, world)
 	assert_int(run.stats_max[World.Stat.FLOW_CELLS]).is_equal(7)
 	assert_int(run.proj_peak).is_equal(2)
+
+
+## What _make_report takes from the runs it is given, on three runs made by hand that differ in
+## every value (the arena's own units, alive_end, proj_peak and overflow are 150, 150, 0 and 0, and
+## its stats maxima are zeros, so a fact read from the wrong place would agree with the right one).
+## The facts, the hash and the World.stats maxima are the first run's; the statistics and the phases
+## are the best over all three: the second run holds the smallest tick mean (40 ms) and the third
+## the smallest first phase (0.4 ms), so a report that skips the last run, or the second, shows.
+## Nothing is read from the runs of the suite: its own timings are far from the values asserted.
+func test_the_report_takes_each_value_from_the_runs_it_is_given() -> void:
+	var runs: Array[Run] = [
+		_hand_run(149, 148, 2, 3, 0x1234, 100.0, 900_000, 9001),
+		_hand_run(141, 140, 6, 7, 0x5678, 40.0, 450_000, 4004),
+		_hand_run(133, 132, 8, 9, 0x9ABC, 70.0, 360_000, 7007),
+	]
+	var report: Dictionary = _make_report(runs)
+	assert_int(report["units"]).is_equal(149)
+	assert_int(report["alive_end"]).is_equal(148)
+	assert_int(report["proj_peak"]).is_equal(2)
+	assert_int(report["projectile_overflow"]).is_equal(3)
+	assert_str(report["hash"]).is_equal(World.hash_hex(0x1234))
+	assert_int(report["ticks"]).is_equal(TICKS)
+	assert_int(report["runs"]).is_equal(RUNS)
+	var maxima: Dictionary = report["stats_max"]
+	assert_int(maxima[PerfReport.stat_names()[World.Stat.PROJ_STEPS]]).is_equal(9001)
+	assert_float(report["mean_ms"]).is_equal_approx(40.0, ROUNDING_MS)
+	var phases: Dictionary = report["phases"]
+	assert_float(phases[SimProbe.PHASE_NAMES[0]]).is_equal_approx(0.4, ROUNDING_MS)
 
 
 ## The phases are timed inside the step, so their means cannot add up to more than the tick mean
@@ -345,7 +373,7 @@ func _craft_a_death(world: World) -> void:
 ## new ADR).
 func _time_reference() -> void:
 	var sink: int = RefLoop.run(_gate.ref_iterations)
-	for _sample: int in REF_SAMPLES:
+	for _call: int in REF_SAMPLES:
 		var started: int = Time.get_ticks_usec()
 		sink += RefLoop.run(_gate.ref_iterations)
 		_ref_usec.append(Time.get_ticks_usec() - started)
@@ -369,13 +397,15 @@ func _keep_reports_out_of_the_project() -> void:
 		file.close()
 
 
-func _make_report() -> Dictionary:
+## The report of `runs`: the facts (units, alive_end, proj_peak, projectile_overflow, hash) and the
+## World.stats maxima are the first run's, the statistics and the phases the best of all of them.
+func _make_report(runs: Array[Run]) -> Dictionary:
 	var stats: Array[Dictionary] = []
 	var phases: Array[PackedFloat64Array] = []
-	for run: Run in _seed_42:
+	for run: Run in runs:
 		stats.append(PerfReport.run_stats(run.tick_ms))
 		phases.append(PerfReport.phase_means_ms(run.phase_usec, TICKS))
-	var first: Run = _seed_42[0]
+	var first: Run = runs[0]
 	var facts: Dictionary = {
 		"units": first.units,
 		"ticks": TICKS,
@@ -389,6 +419,32 @@ func _make_report() -> Dictionary:
 	return PerfReport.finish(
 		facts, PerfReport.best_of(stats), PerfReport.best_phases(phases), first.stats_max, _gate
 	)
+
+
+## A run that no match produced: two ticks of `tick_ms`, `phase_usec` in the first phase over all
+## the TICKS ticks, and `steps_max` as the World.stats maximum of the projectile steps.
+func _hand_run(
+	units: int,
+	alive_end: int,
+	proj_peak: int,
+	overflow: int,
+	final_hash: int,
+	tick_ms: float,
+	phase_usec: int,
+	steps_max: int
+) -> Run:
+	var run: Run = Run.new()
+	run.units = units
+	run.alive_end = alive_end
+	run.proj_peak = proj_peak
+	run.overflow = overflow
+	run.final_hash = final_hash
+	run.tick_ms = PackedFloat64Array([tick_ms, tick_ms])
+	run.phase_usec.resize(SimProbe.Phase.COUNT)
+	run.phase_usec[0] = phase_usec
+	run.stats_max.resize(World.Stat.size())
+	run.stats_max[World.Stat.PROJ_STEPS] = steps_max
+	return run
 
 
 func _run_line(match_seed: int, number: int, run: Run) -> String:

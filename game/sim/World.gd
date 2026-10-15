@@ -64,6 +64,7 @@ const ROW_ARRAYS: Array[StringName] = [
 	&"pos_y",
 	&"goal_x",
 	&"goal_y",
+	&"group_cell",
 	&"order",
 	&"hp",
 	&"order_target",
@@ -300,6 +301,9 @@ var pos_x: PackedInt32Array = PackedInt32Array()
 var pos_y: PackedInt32Array = PackedInt32Array()
 var goal_x: PackedInt32Array = PackedInt32Array()
 var goal_y: PackedInt32Array = PackedInt32Array()
+## The cell of the group target of a MOVE or ATTACK_MOVE order (Formation's centre), the key of the
+## field its units share; -1 = none (the unit's own goal tile, every ATTACK, every idle unit).
+var group_cell: PackedInt32Array = PackedInt32Array()
 var order: PackedInt32Array = PackedInt32Array()
 ## At most the type's max hp. It may go below 0 by at most one hit.
 var hp: PackedInt32Array = PackedInt32Array()
@@ -314,6 +318,7 @@ var nav_mode: PackedInt32Array = PackedInt32Array()
 var field: PackedInt32Array = PackedInt32Array()
 ## Cells, -1 = none yet.
 var nav_cell: PackedInt32Array = PackedInt32Array()
+## A cell, -1 = none yet, -2 = looked up and none (Movement.NO_NEXT).
 var nav_next: PackedInt32Array = PackedInt32Array()
 ## A plain distance in milli, 0..0x3FFFFFFF.
 var best_dist: PackedInt32Array = PackedInt32Array()
@@ -558,6 +563,7 @@ func add_unit(owner: int, type_index: int, x: int, y: int) -> int:
 	pos_y.append(y)
 	goal_x.append(x)
 	goal_y.append(y)
+	group_cell.append(-1)
 	order.append(Order.IDLE)
 	hp.append(maxi(type_max_hp[type_index], 1) if type_index < type_max_hp.size() else 1)
 	order_target.append(0)

@@ -6,8 +6,10 @@ extends GdUnitTestSuite
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 ## hash_hex(state_hash()) of controls_test at tick 0, seed 1. Change it only in a PR that changes
-## the hash layout or the scenario, and say so there.
-const TICK_0_SEED_1: String = "73341a6f5754b7b4"
+## the hash layout or the scenario, and say so there. P37b: the `group_cell` column joined
+## ROW_ARRAYS (STATE_FORMAT stays 1, no golden hash exists yet), so the digest changed from
+## 73341a6f5754b7b4.
+const TICK_0_SEED_1: String = "cf4af0c09a33ccf2"
 
 
 ## Every int, bool and Packed array member of a helper, private ones too, is in HASHED or UNHASHED
@@ -187,8 +189,8 @@ func test_hash_hex_is_sixteen_lower_case_digits_least_significant_byte_first() -
 func test_the_sections_are_named_in_hash_order() -> void:
 	var names: PackedStringArray = World.hash_section_names()
 	assert_array(names.slice(0, 4)).is_equal(["header", "map", "unit_id", "owner"])
-	assert_array(names.slice(20)).is_equal(["fog_cell", "projectiles", "fog"])
-	assert_array(names.slice(2, 21)).is_equal(World.ROW_ARRAYS)
+	assert_array(names.slice(21)).is_equal(["fog_cell", "projectiles", "fog"])
+	assert_array(names.slice(2, 22)).is_equal(World.ROW_ARRAYS)
 	assert_int(_world().hash_parts().size()).is_equal(names.size())
 
 

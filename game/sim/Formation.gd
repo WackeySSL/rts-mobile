@@ -9,7 +9,8 @@ extends RefCounted
 const KEY_SHIFT: int = 1 << 20
 
 
-## Sets goal_x/goal_y of the units at `unit_indices` (rows of `world`). The world is prepared
+## Sets goal_x/goal_y of the units at `unit_indices` (rows of `world`) and their `group_cell`, the
+## cell of the centre below, the key of their flow field (ADR 0008 section 3). The world is prepared
 ## first (one bool check; the tick has done it already), because the types' movement classes and
 ## the tile grid exist only after prepare(). The target is clamped to the map inset by the largest
 ## radius in the group (the box [low, high] below). On a tile that a class of the group cannot
@@ -34,6 +35,7 @@ static func assign(
 	var pos_y: PackedInt32Array = world.pos_y
 	var goal_x: PackedInt32Array = world.goal_x
 	var goal_y: PackedInt32Array = world.goal_y
+	var group_of: PackedInt32Array = world.group_cell
 	var ids: PackedInt32Array = world.unit_id
 	var spacing: int = 1
 	var radius: int = 0
@@ -58,9 +60,11 @@ static func assign(
 		low,
 		high
 	)
+	var centre_cell: int = world.cell_of(centre.x, centre.y)
 	for row: int in unit_indices:
 		goal_x[row] = centre.x
 		goal_y[row] = centre.y
+		group_of[row] = centre_cell
 	var taken: PackedByteArray = PackedByteArray()
 	taken.resize(count)
 	for slot: Vector2i in _slots(world, bases, count, centre, spacing, low, high):

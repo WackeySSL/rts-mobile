@@ -3,9 +3,11 @@
 # fixture trees, the NATIVE LIBRARY MISSING check of run-tests.sh, build-native.sh's exit codes and
 # ELF checks against stub scons, git, g++, clang++, readelf and nm (and a stub NDK), check-cpp-format.sh
 # against a stub clang-format, install-ndk.sh against a stub sdkmanager (P55a), check-native-tests.sh on
-# fixtures, run-sanitizer-harness.sh against a stub Godot and g++ (P57), and the order of verify.sh's native steps. Needs no Godot, SCons, compiler, Android SDK, NDK or
-# network, and runs the scripts in a scrubbed environment on a stub uname (x86_64 unless a case
-# says otherwise), so the host changes no result. ci.yml runs it in the verify job.
+# fixtures, run-sanitizer-harness.sh against a stub Godot and g++ (P57), the compile flags of the SConstruct (run by
+# python3 on a stub SCons environment: the plain build keeps -fwrapv, the sanitized one lacks it), and the order of
+# verify.sh's native steps. Needs python3 (for the SConstruct flags) but no Godot, SCons, compiler, Android SDK, NDK or
+# network, and runs the scripts in a scrubbed environment on a stub uname (x86_64 unless a case says otherwise), so the
+# host changes no result. ci.yml runs it in the verify job.
 # Usage: bash scripts/ci/test-native-scripts.sh      Exit: 0 all cases pass, 1 a case failed.
 set -euo pipefail
 repo="$(cd "$(dirname "$0")/../.." && pwd -P)"
@@ -47,7 +49,8 @@ for a in "$@"; do case "$a" in platform=* | target=* | arch=*) eval "${a%%=*}=${
 mkdir -p ../bin && echo stub >"../bin/libsim_kernels.${platform}.${target}.${arch}.so"
 STUB
 # g++: its version, a runtime library that STUB_RUNTIME names as missing, and for the harness build (P57) the -o file,
-# a script that acts as STUB_HARNESS says: it refuses a dump of a format other than 1 unless that is "accept".
+# a script that acts as STUB_HARNESS says: it refuses a dump of a format other than 1 with exit 2 and the words "does not
+# know", unless that is "accept" (takes it), "quiet" (exit 2 without the words), "exit1" or "exit3" (the words, exit 1 or 3).
 cat >"$root/bin/g++" <<'STUB'
 #!/usr/bin/env bash
 case "${1:-}" in
@@ -69,7 +72,13 @@ mode="${STUB_HARNESS:-ok}"
 [ "$mode" != find ] || { echo "sanitizer_harness: FINDING: stub" >&2; exit 1; }
 [ "$mode" != hang ] || exec sleep 30
 format="$(od -An -tu4 -j4 -N4 "$(find "$1" -name 'state_*.bin' | sort | sed -n 1p)" | tr -d ' ')"
-if [ "$format" != 1 ] && [ "$mode" != accept ]; then echo "sanitizer_harness: World.STATE_FORMAT $format is a layout this harness does not know" >&2; exit 2; fi
+if [ "$format" != 1 ] && [ "$mode" != accept ]; then
+  [ "$mode" != quiet ] || { echo "sanitizer_harness: World.STATE_FORMAT $format refused" >&2; exit 2; }
+  echo "sanitizer_harness: World.STATE_FORMAT $format is a layout this harness does not know" >&2
+  [ "$mode" != exit1 ] || exit 1
+  [ "$mode" != exit3 ] || exit 3
+  exit 2
+fi
 # The run over the dumps is handed the folder of both dumps the stub Godot wrote (a file, or a folder short of one, is
 # a harness that checks part of the states); the refusal check is handed a folder with one patched copy.
 case "$1" in */unknown-format) ;; *) [ -f "$1/state_00015.bin" ] && [ -f "$1/state_00030.bin" ] || { echo "stub harness: $1 is not a folder of both dumps" >&2; exit 1; } ;; esac
@@ -267,6 +276,50 @@ check "build: sanitized library with no switches recorded (no -frecord-gcc-switc
 run bn STUB_NEEDED="libc.so.6 libubsan.so.1" bash scripts/build-native.sh --sanitize undefined
 check "build: sanitize undefined" 0 "(instrumented: undefined)"
 assert "build: sanitize undefined passes sanitize=undefined to SCons" grep -Fq "sanitize=undefined" "$root/bn/scons.args"
+# The plain library keeps -fwrapv (ADR 0013 section 4: a signed overflow wraps in every production and test build), which
+# nothing else checks: the ELF checks above prove only that the sanitized library lacks it, and the plain one records no
+# compile line. So the SConstruct runs here under python3 with a stand-in for the SCons environment that records what the
+# script appends to the clone it compiles our sources with (P57 follow-up, P56d). Any other SCons call is a no-op.
+cat >"$root/sconstruct-flags.py" <<'PY'
+import copy, sys
+
+class Env(dict):
+    def __missing__(self, key):
+        return ""
+    def Clone(self):
+        return copy.deepcopy(self)
+    def Append(self, **values):
+        for key, value in values.items():
+            self.setdefault(key, []).extend(value)
+    def Flatten(self, items):
+        return list(items)
+    def __getattr__(self, name):
+        if name.startswith("__"):
+            raise AttributeError(name)
+        return lambda *args, **kwargs: []
+
+def exit_(message=""):
+    raise SystemExit("Exit: %s" % message)
+
+env = Env(CCFLAGS=["-O2"], CPPPATH=[])
+names = {"ARGUMENTS": {"sanitize": sys.argv[2]} if len(sys.argv) > 2 else {}, "SConscript": lambda path: env,
+         "Exit": exit_, "Glob": lambda pattern: [], "Default": lambda *args: None}
+exec(compile(open(sys.argv[1]).read(), sys.argv[1], "exec"), names)
+print("flags: " + " ".join(map(str, names["kenv"]["CCFLAGS"])))
+PY
+# Only the "flags:" line counts, so that an error message of the script (it names -fwrapv itself) is never read as a flag.
+flags_plain="$(python3 -I "$root/sconstruct-flags.py" "$repo/native/sim_kernels/SConstruct" 2>"$root/flags-plain.err" | sed -n 's/^flags: //p')" || true
+flags_ubsan="$(python3 -I "$root/sconstruct-flags.py" "$repo/native/sim_kernels/SConstruct" undefined 2>"$root/flags-ubsan.err" | sed -n 's/^flags: //p')" || true
+if grep -Fq -- -Werror <<<"$flags_plain" && grep -Fq -- -fsanitize=undefined <<<"$flags_ubsan"; then
+  echo "ok: build: the SConstruct runs under the stand-in environment (both builds)"
+else
+  echo "FAIL: build: the SConstruct did not run under the stand-in environment: $(tail -n 1 "$root/flags-plain.err" "$root/flags-ubsan.err")" >&2
+  failures=$((failures + 1))
+fi
+assert "build: the plain library is compiled with -fwrapv" grep -Eq '(^| )-fwrapv( |$)' <<<"$flags_plain"
+assert "build: the plain library does not turn -fwrapv off again (the last switch wins)" test "$(grep -c -- -fno-wrapv <<<"$flags_plain")" = 0
+assert "build: the plain library is not instrumented" test "$(grep -c -- -fsanitize <<<"$flags_plain")" = 0
+assert "build: the sanitized library is compiled without -fwrapv" test "$(grep -Ec '(^| )-fwrapv( |$)' <<<"$flags_ubsan")" = 0
 # --print-cache-key: ci.yml writes its stdout to $GITHUB_OUTPUT, so stdout holds the key alone (one line, the
 # info line goes to stderr), printed before the godot-cpp fetch (the cache restores it) and before the build.
 # The tree has no native/godot-cpp: a fetch would create it, and the build would write scons.args.
@@ -543,7 +596,8 @@ run sh bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
 check "harness: dumps, builds, runs, and sees the unknown format refused" 0 "run-sanitizer-harness: OK"
 for case_ in "STUB_DUMP=fail:4:the dump step exited with 1" "STUB_DUMP=noline:4:did not report" "STUB_DUMP=error:4:Godot logged an error" \
   "STUB_DUMP=engine_error:4:Godot logged an error" "STUB_DUMP=empty:4:wrote no state_*.bin" "STUB_GXX=fail:4:the harness did not build" "STUB_HARNESS=find:1:the harness failed with exit code 1" \
-  "STUB_HARNESS=accept:1:took a dump of an unknown" "STUB_HARNESS=short:1:checked '1' dump(s) but the dump step wrote 2"; do
+  "STUB_HARNESS=accept:1:took a dump of an unknown" "STUB_HARNESS=quiet:1:took a dump of an unknown" "STUB_HARNESS=exit1:1:took a dump of an unknown" "STUB_HARNESS=exit3:1:took a dump of an unknown" \
+  "STUB_HARNESS=short:1:checked '1' dump(s) but the dump step wrote 2"; do
   run sh "${case_%%:*}" bash scripts/ci/run-sanitizer-harness.sh "$root/sh/work"
   want="${case_#*:}"
   check "harness: ${case_%%:*}" "${want%%:*}" "${want#*:}"
