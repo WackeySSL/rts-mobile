@@ -411,16 +411,32 @@ made in three places, and the palette table above is the source for all three: c
 palette first, then the three places from it.
 1. **Units**: the SVG layers in `assets/art/svg/units/`, found by name: `<type>_hull.svg`,
    `<type>_team.svg` and `<type>_turret.svg` (`UnitLayer.ART_DIR`). Replace a unit's files under
-   the same names and keep the layer contract above. The selection ring
-   (`assets/art/svg/ui/selection_ring.svg`) is replaced in place the same way.
+   the same names and keep the layer contract above.
 2. **Terrain**: the `colors` and `tiles` exports of `game/view/MapView.gd`, with the gallery's
    copies and the "Fog and terrain" section above.
 3. **UI**: the central Theme of plan row P58 (`game/ui/theme.tres`, from P58 on), which holds
-   every HUD colour, font, font size and panel style.
+   every colour, font, font size and panel style of the HUD's Controls, the selection box and
+   anchor included. A new font goes under `assets/art/fonts/`, with a row in
+   `assets/CREDITS.md` (author, source URL, licence) and its licence text in the Licences
+   screen, and is referenced only from the theme. Until P58's review adds rows for the HUD
+   neutrals (the panel backdrop, text), the theme's neutral colours have no palette row.
 
-The team tints and the feedback marker colours are palette colours kept as constants or exports
-in `game/view` (`UnitLayer.team_colors`, `FeedbackStyle`, `MoveMarkerLayer`); a new palette
-updates them too. Renaming a unit or a unit type is a data change, not a reskin.
+Besides the three places, the same new look also replaces, in the same PR:
+- **The art without a naming convention**, in place. The selection ring
+  (`ui/selection_ring.svg`) is the layer contract's exception: it keeps its 168 px canvas, import
+  scale 1.0 and the 72 px centre-line radius, or `UnitLayer.RING_TEX_RADIUS_PX`, the gallery's
+  copy and the art test change with it. The effects atlas (`fx/effects_atlas.svg`, colours baked
+  in) keeps its 176x84 px size and the region table under "Combat effects", or the projectile
+  and effects layers' constants, the art test's `REGIONS` and that table change with it.
+- **The palette colours kept in `game/view`** as constants or exports: the team tints
+  (`UnitLayer.team_colors`), the feedback markers (`FeedbackStyle`, `MoveMarkerLayer`), and from
+  their PRs on the health bar, tracer and fog colours ("Health bars", "Combat effects", "Fog and
+  terrain"). The gallery's copies follow them: `art_gallery.gd`'s team colours and
+  `TERRAIN_COLORS`, and the `Grass` and `Sand` rects of `scenes/dev/art_gallery.tscn`.
+- **The tests that pin today's palette**: `tests/art/test_art_assets.gd` (`ATLAS_COLOURS`,
+  `REGIONS`, `SIDE_PX`, the ring, the terrain pictures) and `tests/view/test_feedback.gd`.
+
+Renaming a unit or a unit type is a data change, not a reskin.
 
 ## Open points for Michael
 - Approve the **(new)** rules: team-layer greys, elevation reads as lightness, rotating layers carry
