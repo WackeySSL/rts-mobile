@@ -361,6 +361,52 @@ func test_a_group_order_takes_one_field_per_class_keyed_on_the_group_target() ->
 	assert_array(used).is_equal([centre * 10 + TRACKED, centre * 10 + FOOT])
 
 
+## A group whose slots reach farther than `attack_rekey_milli` from the group target still shares
+## one field, MOVE and ATTACK_MOVE alike: the re-key distance is for ATTACK units only (ADR 0008
+## section 3), and a group unit's slot is as far from the target as the formation puts it. Sixty
+## tanks west of a wall with a gap (30 x 14, column 12, rows 6 and 7 open) are ordered to a point
+## east of it; the formation lays their slots on a lattice of 1200 around the centre, so the outer
+## ones are more than 4000 from it (every other group test has twelve units or fewer, within
+## 3400). After the first ticks every FIELD unit holds the one field, slot 0, keyed on the group
+## cell, and the cache holds no other.
+@warning_ignore("integer_division")
+func test_a_group_wider_than_the_rekey_distance_shares_one_field() -> void:
+	var rock: Array[Vector2i] = []
+	for row: int in 14:
+		if row != 6 and row != 7:
+			rock.append(Vector2i(12, row))
+	var ids: PackedInt32Array = PackedInt32Array(range(1, 61))
+	for attack_move: bool in [false, true]:
+		var world: World = GridWorld.from_rows(GridWorld.grass(30, 14, rock))
+		GridWorld.add_block(world, 60, 10, 1500, 1500, 1000, 0)
+		var order: Command = Command.move(1, ids, 22500, 6500)
+		if attack_move:
+			order = Command.attack_move(1, ids, 22500, 6500)
+		var given: Array[Command] = [_stamped(order, 0)]
+		var none: Array[Command] = []
+		for _tick: int in 20:
+			Sim.step(world, given if world.tick == 0 else none)
+		var label: String = "attack-move %s" % attack_move
+		var key: int = world.cell_of(22500, 6500)
+		var limit: int = world.attack_rekey_milli
+		var far: int = 0
+		for row: int in 60:
+			var dx: int = world.goal_x[row] - (key % 30 * 1000 + 500)
+			var dy: int = world.goal_y[row] - (key / 30 * 1000 + 500)
+			if dx * dx + dy * dy > limit * limit:
+				far += 1
+		assert_int(far).override_failure_message(label).is_greater(0)
+		assert_int(world.nav_mode.count(FIELD)).override_failure_message(label).is_greater(20)
+		var slots: Dictionary = {}
+		for row: int in 60:
+			if world.nav_mode[row] == FIELD:
+				slots[world.field[row]] = true
+		assert_array(slots.keys()).override_failure_message(label).is_equal([0])
+		assert_int(world.flow.key_goal[0]).override_failure_message(label).is_equal(key)
+		var used: int = world.flow.status.size() - world.flow.status.count(FlowCache.Status.FREE)
+		assert_int(used).override_failure_message(label).is_equal(1)
+
+
 ## The group target is the order's: two orders to points 3000 apart take a field each, and a third
 ## order to the first point shares the first one (the cache is keyed on the cell, whoever asks).
 ## `group_cell` follows the command: a unit given a new order has the new cell.

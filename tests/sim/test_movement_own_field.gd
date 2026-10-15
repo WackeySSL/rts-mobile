@@ -159,6 +159,35 @@ func test_an_attack_unit_that_outran_its_field_takes_the_field_of_its_goal_tile(
 	assert_int(world.order[0]).is_equal(World.Order.ATTACK)
 
 
+## A key that turned to rock is no next tile for a unit without a group cell either: an ATTACK unit,
+## and the ATTACK_MOVE unit its order becomes when the target dies (`_follow_targets` leaves
+## `group_cell` at -1), stand next to the key tile of their field with the goal 2000 from it, inside
+## `attack_rekey_milli` (no re-key). Each takes the field of its goal's tile instead of pressing on
+## the rock for good (an ATTACK unit never stalls). The blocked-key rule is for every unit that
+## follows a field, not for the ones with a group cell; the run end to end is in
+## test_movement_blocked_key.gd.
+func test_an_attack_unit_next_to_a_key_that_turned_to_rock_takes_the_field_of_its_goal() -> void:
+	for order: int in [World.Order.ATTACK, World.Order.ATTACK_MOVE]:
+		var world: World = _world(8)
+		var key: int = world.cell_of(12500, 4500)
+		_hold(world, 0, 11500, 4500, 14500, 4500, key)
+		world.order[0] = order
+		world.group_cell[0] = -1
+		(
+			assert_int(world.flow.field(world.field[0]).best_neighbour(world.cell_of(11500, 4500)))
+			. is_equal(key)
+		)
+		world.set_terrain(key, ROCK)
+		Movement.integrate(world)
+		var label: String = "order %d" % order
+		assert_array([world.field[0], world.nav_next[0]]).override_failure_message(label).is_equal(
+			[1, -1]
+		)
+		assert_int(world.flow.key_goal[1]).override_failure_message(label).is_equal(
+			world.cell_of(14500, 4500)
+		)
+
+
 ## The same end to end. Two walls (columns 10 and 20 of a 30 x 14 map, rows 0 to 9, so the way round
 ## each is south) and an enemy at (19500, 5500): the tank's first line check is blocked by the first
 ## wall, so its field is keyed on the enemy's tile (19, 5). On tick 20 the enemy is moved to

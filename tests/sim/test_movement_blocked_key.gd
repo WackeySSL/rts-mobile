@@ -61,6 +61,38 @@ func test_three_tanks_with_open_slots_arrive_when_the_group_tile_turns_to_rock()
 	assert_int(_assert_settled(world, goals, world.cell_of(12500, 2500))).is_greater(0)
 
 
+## An ATTACK unit follows the rule too (its order has no group cell). Two walls (columns 10 and 20
+## of a 30 x 14 map, rows 0 to 9, so the way round each is south), a tank at (3500, 5500) and an
+## enemy at (19500, 5500): the tank's field is keyed on the enemy's tile. On tick 20 that tile turns
+## to rock and the enemy moves to (21500, 5500), behind the second wall and 2000 from the key (no
+## re-key). The tank reaches the rock, finds no next tile, takes the field of the enemy's new tile
+## and goes round the wall: it ends east of it. Without the rule it presses on the rock at x 18933
+## for good, FIELD on the field of the rock key.
+func test_an_attack_unit_whose_key_tile_turned_to_rock_still_reaches_a_target_behind_a_second_wall(
+) -> void:
+	var rock: Array[Vector2i] = []
+	for row: int in 10:
+		rock.append(Vector2i(10, row))
+		rock.append(Vector2i(20, row))
+	var world: World = GridWorld.from_rows(GridWorld.grass(30, 14, rock))
+	world.player_count = 2
+	world.type_weapon[0] = 0
+	world.add_unit(1, 0, 3500, 5500)
+	world.add_unit(2, 0, 19500, 5500)
+	var key: int = world.cell_of(19500, 5500)
+	for tick: int in 900:
+		var commands: Array[Command] = []
+		if tick == 0:
+			commands.append(_stamped(Command.attack(1, PackedInt32Array([1]), 2), 0))
+		if tick == 20:
+			assert_int(world.flow.key_goal[world.field[0]]).is_equal(key)
+			world.set_terrain(key, ROCK)
+			world.pos_x[1] = 21500
+		Sim.step(world, commands)
+	assert_int(world.pos_x[0]).is_greater(21000)
+	assert_int(world.order[0]).is_equal(World.Order.ATTACK)
+
+
 ## Orders units 1 to `count` (already placed) to (x, y) on tick 0 and turns the tile of that point
 ## into rock on tick `close_at`, when every unit follows the field and has its group target. Runs
 ## until every unit is IDLE or `BOUND` ticks. Returns the goals the formation gave, read after the
