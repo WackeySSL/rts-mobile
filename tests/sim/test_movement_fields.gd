@@ -51,8 +51,8 @@ func test_twelve_tanks_reach_slots_through_the_gap_and_no_centre_is_on_rock() ->
 		assert_array(here).is_equal([world.goal_x[row], world.goal_y[row]])
 		assert_int(world.pos_x[row]).is_greater(13000)
 	assert_array([world.field.count(-1), world.nav_mode.count(FIELD)]).is_equal([12, 0])
-	# One field serves the group (see test_a_group_shares_a_field_by_distance_and_sight).
-	assert_int(slots_used).is_between(1, 3)
+	# One field serves the group (see test_a_group_order_takes_one_field_per_class_keyed_on_...).
+	assert_int(slots_used).is_equal(1)
 
 
 ## Scrub is open to infantry and blocked to tanks (data/terrain): a band of scrub across rows 0 to 8
@@ -314,118 +314,139 @@ func test_set_terrain_mid_move_keeps_the_old_field_until_the_new_one_swaps_in() 
 	assert_int(low_row).is_greater(9)
 
 
-## A group shares one field instead of taking one per slot (ADR 0008 section 3 keys it on "the goal
-## tile of the group target"; the World has no group target, so a field of the unit's class that
-## the cache already holds serves a goal within `attack_rekey_milli` of its key when the key's
-## tile centre is in sight of the goal). Seven units are ordered by hand over a wall (30 x 14, wall
-## in column 12 down to row 11) with a line-check period of 1, so every unit checks on tick 0, in
-## row order:
-## - unit 1 takes the field of its own tile (20, 3);
-## - unit 2, goal (21500, 4500), is 1414 from that tile's centre in clear sight, so it shares;
-## - unit 3, 7000 away, takes its own field;
-## - unit 4 is within the distance (4000) but a rock row lies between, so it takes its own too;
-## - unit 5 is a foot soldier with a goal one tile from unit 1's key, another class, so another
-##   field, keyed on its own tile;
-## - unit 6, goal (16500, 3500), is exactly 4000 from the key's centre in clear sight, so it shares
-##   (the limit is inclusive);
-## - unit 7, goal (16500, 2500), is 4000 sideways and 1000 up, 4123 away, and takes its own.
-func test_a_group_shares_a_field_by_distance_and_sight() -> void:
+## A group order takes one field per move class, keyed on the group target (ADR 0008 section 3), not
+## one per slot: eight tanks and four foot soldiers are ordered over a wall (30 x 14, wall in column
+## 12 down to row 11) to a point on the far side. Their twelve slots lie on twelve different tiles,
+## `group_cell` is the same cell for all of them (the cell of Formation's centre), and after the
+## first line checks the cache holds exactly two fields, both keyed on that cell, one per class.
+func test_a_group_order_takes_one_field_per_class_keyed_on_the_group_target() -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 12:
 		rock.append(Vector2i(12, row))
-	for column: int in range(17, 25):
-		rock.append(Vector2i(column, 5))
-	var map: PackedStringArray = GridWorld.grass(30, 14, rock)
-	var world: World = GridWorld.from_rows(map, [TRACKED, FOOT])
-	world.line_check_period_ticks = 1
-	var goals: Array[Vector2i] = [
-		Vector2i(20500, 3500),
-		Vector2i(21500, 4500),
-		Vector2i(27500, 3500),
-		Vector2i(20500, 7500),
-		Vector2i(21500, 3500),
-		Vector2i(16500, 3500),
-		Vector2i(16500, 2500)
+	var world: World = GridWorld.from_rows(GridWorld.grass(30, 14, rock), [TRACKED, FOOT])
+	GridWorld.add_block(world, 8, 4, 3000, 1500, 1000, 0)
+	GridWorld.add_block(world, 4, 4, 3000, 4500, 1000, 1)
+	var given: Array[Command] = [
+		_stamped(Command.move(1, PackedInt32Array(range(1, 13)), 22000, 3500), 0)
 	]
-	for index: int in goals.size():
-		var kind: int = 1 if index == 4 else 0
-		world.add_unit(1, kind, 3500, 500 + index * 1000)
-		world.order[index] = MOVE
-		world.goal_x[index] = goals[index].x
-		world.goal_y[index] = goals[index].y
-	Sim.step(world, [])
-	# Seven first checks and three sight tests: units 2, 4 and 6 each find a key of their class
-	# within the distance (units 3 and 7 are too far from all of them, unit 5 has another class).
-	assert_int(world.stats[World.Stat.LINE_CHECKS]).is_equal(10)
-	assert_int(world.nav_mode.count(FIELD)).is_equal(7)
-	assert_array(world.field).is_equal([0, 0, 1, 2, 3, 0, 4])
-	var keys: Array[int] = [3 * 30 + 20, 3 * 30 + 27, 7 * 30 + 20, 3 * 30 + 21]
-	assert_array(world.flow.key_goal.slice(0, 4)).is_equal(keys)
-	assert_array([world.flow.key_class[0], world.flow.key_class[3]]).is_equal([TRACKED, FOOT])
-	FlowCache.run(world, 0)
-	assert_array([world.flow.refs(0), world.flow.refs(1), world.flow.refs(3)]).is_equal([3, 1, 1])
+	var none: Array[Command] = []
+	for _tick: int in 6:
+		Sim.step(world, given if world.tick == 0 else none)
+	var centre: int = world.cell_of(22000, 3500)
+	var tiles: Dictionary = {}
+	for row: int in 12:
+		tiles[world.cell_of(world.goal_x[row], world.goal_y[row])] = true
+	assert_int(tiles.size()).is_equal(12)
+	assert_array(world.group_cell.slice(0, 12)).is_equal(
+		[
+			centre,
+			centre,
+			centre,
+			centre,
+			centre,
+			centre,
+			centre,
+			centre,
+			centre,
+			centre,
+			centre,
+			centre
+		]
+	)
+	assert_int(world.nav_mode.count(FIELD)).is_equal(12)
+	var used: Array[int] = []
+	for slot: int in world.flow.status.size():
+		if world.flow.status[slot] != FlowCache.Status.FREE:
+			used.append(world.flow.key_goal[slot] * 10 + world.flow.key_class[slot])
+	assert_array(used).is_equal([centre * 10 + TRACKED, centre * 10 + FOOT])
 
 
-## A unit that shares a held field takes a reference on it at once, so a new key asked in the same
-## tick cannot evict it. A cache of 2 slots holds the unreferenced fields of (14, 2) and (14, 8)
-## (20 x 12 map, wall in column 8, rows 0 to 9; slot 0 is the older). Units 1 and 6 check on tick 4,
-## unit 1 first. Its goal (14500, 3000) is 500 from the key of slot 0 in clear sight, so it shares
-## slot 0. Unit 6, goal (17500, 11500), is 4243 from the key of slot 1 and farther from the other,
-## so it needs a key of its own: the one slot nobody references, slot 1, which gets the key
-## (17, 11). Without the reference the older slot 0 would be the one evicted, and unit 1 would
-## follow a field to unit 6's goal.
-func test_a_unit_that_shares_a_field_keeps_it_from_a_new_key_asked_in_the_same_tick() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 12, _wall(10)))
-	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 2)
-	assert_int(world.flow.acquire(2 * 20 + 14, TRACKED, world.map_version, 0)).is_equal(0)
-	assert_int(world.flow.acquire(8 * 20 + 14, TRACKED, world.map_version, 1)).is_equal(1)
-	world.add_unit(1, 0, 3500, 4500)
-	GridWorld.add_block(world, 4, 1, 500, 11500, 0, 0)
-	world.add_unit(1, 0, 3500, 6500)
-	assert_array([world.unit_id[0], world.unit_id[5]]).is_equal([1, 6])
-	for row: int in [0, 5]:
-		world.order[row] = MOVE
-	world.goal_x[0] = 14500
-	world.goal_y[0] = 3000
-	world.goal_x[5] = 17500
-	world.goal_y[5] = 11500
-	Movement.reset_nav(world, PackedInt32Array([0, 5]), DIRECT)
-	world.tick = 4
-	Sim.step(world, [])
-	assert_array([world.nav_mode[0], world.nav_mode[5]]).is_equal([FIELD, FIELD])
-	assert_array([world.field[0], world.field[5]]).is_equal([0, 1])
-	assert_array(world.flow.key_goal).is_equal([2 * 20 + 14, 11 * 20 + 17])
-	# Two first checks and the one sight test of unit 1.
-	assert_int(world.stats[World.Stat.LINE_CHECKS]).is_equal(3)
+## The group target is the order's: two orders to points 3000 apart take a field each, and a third
+## order to the first point shares the first one (the cache is keyed on the cell, whoever asks).
+## `group_cell` follows the command: a unit given a new order has the new cell.
+func test_orders_to_different_points_take_a_field_each_and_the_same_point_shares() -> void:
+	var world: World = _gap_world()
+	GridWorld.add_block(world, 3, 3, 3000, 1500, 1000, 0)
+	GridWorld.add_block(world, 3, 3, 3000, 4500, 1000, 0)
+	GridWorld.add_block(world, 3, 3, 3000, 7500, 1000, 0)
+	var first: Command = _stamped(Command.move(1, PackedInt32Array([1, 2, 3]), 22000, 3000), 0)
+	var second: Command = _stamped(Command.move(1, PackedInt32Array([4, 5, 6]), 22000, 6000), 0)
+	second.sequence = 1
+	var both: Array[Command] = [first, second]
+	var none: Array[Command] = []
+	for _tick: int in 8:
+		Sim.step(world, both if world.tick == 0 else none)
+	assert_int(world.flow.status.count(FlowCache.Status.FREE)).is_equal(6)
+	assert_array([world.group_cell[0], world.group_cell[3]]).is_equal(
+		[world.cell_of(22000, 3000), world.cell_of(22000, 6000)]
+	)
+	var third: Array[Command] = [
+		_stamped(Command.move(1, PackedInt32Array([7, 8, 9]), 22000, 3000), world.tick)
+	]
+	for _tick: int in 8:
+		Sim.step(world, third if world.tick == third[0].tick else none)
+	assert_int(world.flow.status.count(FlowCache.Status.FREE)).is_equal(6)
+	assert_int(world.field[6]).is_equal(world.field[0])
 
 
-## The sight test of a shared field is made for the unit's own move class. Scrub is open to foot
-## units and closed to tanks (20 x 12 map: wall in column 8, rows 0 to 9, scrub in column 15, rows
-## 0 to 8). A field of (14, 2) is cached; a tank ordered to (16500, 2500), 2000 east of that key and
-## behind the scrub, cannot see it, so it takes a field of its own tile (16, 2) and arrives on its
-## goal, where the field of (14, 2) would have left it short of the scrub.
-func test_a_tank_does_not_share_a_field_whose_key_it_cannot_see_across_scrub() -> void:
-	var map: PackedStringArray = GridWorld.grass(20, 12, _wall(10))
-	for row: int in 9:
-		map[row] = map[row].left(15) + "^" + map[row].substr(16)
-	var world: World = GridWorld.from_rows(map)
-	world.flow.acquire(2 * 20 + 14, TRACKED, world.map_version, 0)
-	world.add_unit(1, 0, 3500, 2500)
-	world.order[0] = MOVE
-	world.goal_x[0] = 16500
-	world.goal_y[0] = 2500
-	Movement.reset_nav(world, PackedInt32Array([0]), DIRECT)
-	world.tick = 4
-	Sim.step(world, [])
-	assert_array([world.nav_mode[0], world.field[0]]).is_equal([FIELD, 1])
-	assert_int(world.flow.key_goal[1]).is_equal(2 * 20 + 16)
-	# The key is in range of the goal, so its sight was tested: two checks.
-	assert_int(world.stats[World.Stat.LINE_CHECKS]).is_equal(2)
-	for _tick: int in 400:
-		Sim.step(world, [])
-		if world.order[0] == IDLE:
+## A unit whose slot is behind a wall from the group target takes a field of its own tile: twelve
+## tanks are ordered to a point just west of a one tile thick wall (column 20, rows 0 to 9; the way
+## round is south of it), so part of the formation lies east of the wall. The group field leads
+## every unit to the group target; there the units with a slot across the wall find no next tile
+## (NO_NEXT) on a field keyed on another tile, and take the field of their own slot's tile. All
+## twelve arrive on their slots, and the cache held more than the group's field at some point.
+func test_a_unit_whose_slot_is_across_a_wall_from_the_group_target_takes_a_field_of_its_own(
+) -> void:
+	var world: World = _thin_wall_world(8)
+	var slots_used: int = 0
+	for tick: int in 700:
+		var commands: Array[Command] = []
+		if tick == 0:
+			commands.append(
+				_stamped(Command.move(1, PackedInt32Array(range(1, 13)), 19500, 5500), 0)
+			)
+		Sim.step(world, commands)
+		slots_used = maxi(slots_used, world.flow.status.size() - world.flow.status.count(0))
+		if world.order.count(IDLE) == 12:
 			break
-	assert_array([world.pos_x[0], world.pos_y[0], world.order[0]]).is_equal([16500, 2500, IDLE])
+	assert_int(world.order.count(IDLE)).is_equal(12)
+	for row: int in 12:
+		assert_array([world.pos_x[row], world.pos_y[row]]).is_equal(
+			[world.goal_x[row], world.goal_y[row]]
+		)
+	assert_int(slots_used).is_greater(1)
+
+
+## With every slot referenced a unit cannot take a field of its own tile, and it does not wait for
+## one for good: it keeps the group field, finds no next tile, and with no progress for
+## `stall_ticks`
+## its order ends where it stands and frees the slot. A cache of one slot, the thin wall, two tanks
+## given the same group target west of the wall (set by hand, as a command would) and slots east of
+## it: both reach the group target, each holds the only slot against the other's re-key, and both
+## end their orders west of the wall within `stall_ticks` of arriving there.
+func test_with_every_slot_referenced_units_across_the_wall_end_their_orders_and_free_the_slot(
+) -> void:
+	var rock: Array[Vector2i] = []
+	for row: int in 10:
+		rock.append(Vector2i(20, row))
+	var world: World = GridWorld.from_rows(GridWorld.grass(30, 14, rock))
+	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 1)
+	GridWorld.add_block(world, 2, 1, 3500, 5500, 1000, 0)
+	for row: int in 2:
+		world.order[row] = MOVE
+		world.goal_x[row] = 21500
+		world.goal_y[row] = 5500 + row * 1000
+	Movement.reset_nav(world, PackedInt32Array([0, 1]), DIRECT)
+	world.group_cell.fill(world.cell_of(19500, 5500))
+	for tick: int in 400:
+		Sim.step(world, [])
+		if world.order.count(IDLE) == 2:
+			break
+	assert_int(world.order.count(IDLE)).is_equal(2)
+	assert_bool(world.pos_x[0] < 20000 and world.pos_x[1] < 20000).is_true()
+	assert_array([world.field[0], world.field[1], world.group_cell[0]]).is_equal([-1, -1, -1])
+	FlowCache.run(world, 0)
+	assert_int(world.flow.refs(0)).is_equal(0)
 
 
 ## A unit whose mode was set to FIELD by hand, with no slot (-1) or with a number that is no slot
@@ -494,6 +515,18 @@ func _gap_world() -> World:
 		if row != 9 and row != 10:
 			rock.append(Vector2i(12, row))
 	return GridWorld.from_rows(GridWorld.grass(30, 14, rock))
+
+
+## 30 x 14, a one tile thick wall in column 20 (rows 0 to 9), twelve tanks west of it, a cache of
+## `slots` fields.
+func _thin_wall_world(slots: int) -> World:
+	var rock: Array[Vector2i] = []
+	for row: int in 10:
+		rock.append(Vector2i(20, row))
+	var world: World = GridWorld.from_rows(GridWorld.grass(30, 14, rock))
+	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), slots)
+	GridWorld.add_block(world, 12, 4, 3000, 1500, 1000, 0)
+	return world
 
 
 ## A wall in column 8, rows 0 to `rows` - 1.

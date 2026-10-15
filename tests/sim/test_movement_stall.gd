@@ -195,6 +195,39 @@ func test_a_unit_on_ground_the_field_does_not_reach_stalls_in_range_of_its_goal(
 	assert_array([world.goal_x[0], world.goal_y[0]]).is_equal([world.pos_x[0], world.pos_y[0]])
 
 
+## On ground the field does not reach the stall has no range (ADR 0008 section 5, P37b): a tank west
+## of a wall across the whole map (column 8) with its goal 6500 behind it, far out of the range,
+## presses on the wall; its field names no next tile, so with no progress for `stall_ticks` its
+## order ends where it stands and its slot is free. A tank on the same field that has a next tile
+## is not stalled by this.
+func test_a_unit_on_ground_the_field_does_not_reach_ends_its_order_at_any_distance() -> void:
+	var rock: Array[Vector2i] = []
+	for row: int in 10:
+		rock.append(Vector2i(8, row))
+	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10, rock))
+	world.add_unit(1, 0, 3500, 4500)
+	var pressed_at: int = -1
+	var idle_at: int = -1
+	for tick: int in 300:
+		var commands: Array[Command] = []
+		if tick == 0:
+			commands.append(_stamped(Command.move(1, PackedInt32Array([1]), 14500, 4500), 0))
+		Sim.step(world, commands)
+		if pressed_at == -1 and world.pos_x[0] >= 7800 and world.nav_next[0] == Movement.NO_NEXT:
+			pressed_at = tick
+		if world.order[0] == IDLE:
+			idle_at = tick
+			break
+	assert_int(pressed_at).is_greater(0)
+	assert_int(idle_at).is_between(
+		pressed_at + world.stall_ticks, pressed_at + world.stall_ticks + 3
+	)
+	assert_bool(world.pos_x[0] < 8000).is_true()
+	assert_array([world.field[0], world.nav_mode[0], world.group_cell[0]]).is_equal([-1, NONE, -1])
+	FlowCache.run(world, 0)
+	assert_int(world.flow.refs(0)).is_equal(0)
+
+
 ## The range of the stall is the formation spacing of the unit's own type, and the tick a unit goes
 ## IDLE it keeps its whole push and its goal is where it stood. Two tanks of different types
 ## (spacings 1200 and 3000, so ranges 2400 and 6000) stand 5000 from goals that lie off their rows

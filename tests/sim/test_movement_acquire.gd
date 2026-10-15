@@ -103,10 +103,11 @@ func test_an_attack_rekey_takes_the_field_of_the_units_class_at_both_events() ->
 
 
 ## The three ways a line check asks for a field, each at a tick above 0 on a World with a map
-## version above 0, for class TRACKED: a goal nobody has a field for takes the field of its own tile
-## (tick 4); a goal 1000 from a held key, in sight of it, shares that slot and refreshes its
-## `last_used` to the tick of the sharing (tick 8, not the tick of the first acquire); an ATTACK
-## unit takes the field of its goal's tile (tick 12). Unit n checks on the ticks where
+## version above 0, for class TRACKED: a goal with no group target takes the field of its own tile
+## (tick 4); a unit with a group target takes the field of that cell, which a unit of the same group
+## target holds already, so it shares the slot and refreshes its `last_used` to the tick of the
+## sharing (tick 8, not the tick of the first acquire), though its own goal is 1000 from that cell;
+## an ATTACK unit takes the field of its goal's tile (tick 12). Unit n checks on the ticks where
 ## (tick + n) % 5 == 0, and `Movement.run` is called on its own at the ticks chosen.
 func test_a_field_is_acquired_at_the_tick_and_map_version_of_the_check() -> void:
 	var world: World = GridWorld.from_rows(GridWorld.grass(20, 12, _wall(10)))
@@ -121,6 +122,8 @@ func test_a_field_is_acquired_at_the_tick_and_map_version_of_the_check() -> void
 		world.goal_x[index] = goals[index].x
 		world.goal_y[index] = goals[index].y
 	Movement.reset_nav(world, PackedInt32Array([0, 1, 2]), DIRECT)
+	world.group_cell[0] = world.cell_of(14500, 3500)
+	world.group_cell[1] = world.cell_of(14500, 3500)
 	var flow: FlowCache = world.flow
 	world.tick = 4
 	Movement.run(world)

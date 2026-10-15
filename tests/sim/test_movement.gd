@@ -98,18 +98,19 @@ func test_a_direct_unit_steering_into_a_wall_slides_and_is_never_on_a_blocked_ti
 	assert_bool(last.y > 6450 and last.y <= 6500).override_failure_message(str(last)).is_true()
 	# P37b: the blocked line gives it a field, which reaches nothing on its side of the wall, so it
 	# steers at its goal and slides on. One DIRECT check, then one per tile it enters (rows 3 to 6).
-	# The field names no next tile ("looked up, none"): the lookup is made once, not every tick.
-	assert_array([world.order[0], world.nav_mode[0], checks]).is_equal([MOVE, FIELD, 5])
-	assert_array([world.field[0], world.nav_next[0]]).is_equal([0, Movement.NO_NEXT])
+	# The field names no next tile (NO_NEXT) and the unit is 4000 from its goal, outside the stall
+	# range: with no progress for `stall_ticks` its order ends where it stands, field and all.
+	assert_array([world.order[0], world.nav_mode[0], checks]).is_equal([IDLE, NONE, 5])
+	assert_array([world.field[0], world.nav_next[0]]).is_equal([-1, -1])
 
 
 ## 150 tanks ordered at once: the first line checks of `(tick + id) % 5 == 0` units come one fifth
 ## per tick, 30 on each of the first five ticks and none after, so no tick checks all 150 and each
 ## unit checks first exactly once. Some of the lines cross the rock and some do not: a clear line
 ## stays clear and keeps the unit DIRECT, a blocked one makes it FIELD (P37b), and a FIELD unit
-## checks again each time it enters a tile. `stats[LINE_CHECKS]` counts every line test, the sight
-## tests that look for a field to share (Movement._field_for) too, so a tick stays within the first
-## checks and the tile entries, each with at most `flow_cache_size` sight tests.
+## checks again each time it enters a tile. `stats[LINE_CHECKS]` counts every line test, and a unit
+## that needs a field takes its group's, so there is no test beyond the first checks and the tile
+## entries.
 func test_a_150_unit_order_spreads_its_line_checks() -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in range(10, 30):
@@ -137,14 +138,15 @@ func test_a_150_unit_order_spreads_its_line_checks() -> void:
 		(
 			assert_int(checks)
 			. override_failure_message("tick %d checked %d, %d entered" % [tick, checks, entered])
-			. is_less_equal((first + entered) * (1 + world.flow_cache_size))
+			. is_less_equal(first + entered)
 		)
 		assert_int(checks).is_greater_equal(first)
 	assert_array(first_per_tick).is_equal([30, 30, 30, 30, 30, 0, 0, 0, 0, 0])
-	# The first five ticks hold the first checks and the sight tests of the blocked ones; after them
-	# only FIELD units checking again as they enter a tile (tick 9). Nobody waits for a slot
-	# (nav_cell -1) because the group shares a few fields.
-	assert_array(per_tick).is_equal([43, 50, 50, 53, 49, 0, 0, 0, 0, 4])
+	# The first five ticks hold the first checks; after them only FIELD units checking again as they
+	# enter a tile (tick 9). Nobody waits for a slot (nav_cell -1) because the group shares one field,
+	# which completes on tick 4: from then on all 103 FIELD units steer on tile centres and 26 of them
+	# cross a tile boundary on tick 9.
+	assert_array(per_tick).is_equal([30, 30, 30, 30, 30, 0, 0, 0, 0, 26])
 	assert_int(world.nav_cell.count(-1)).is_equal(0)
 	assert_int(world.nav_mode.count(DIRECT) + world.nav_mode.count(FIELD)).is_equal(150)
 	assert_int(world.nav_mode.count(FIELD)).is_equal(103)

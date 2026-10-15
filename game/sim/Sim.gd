@@ -99,9 +99,11 @@ static func _apply_attack(world: World, command: Command) -> bool:
 		return false
 	var orders: PackedInt32Array = world.order
 	var order_target: PackedInt32Array = world.order_target
+	var group_of: PackedInt32Array = world.group_cell
 	for row: int in rows:
 		orders[row] = World.Order.ATTACK
 		order_target[row] = command.target_id
+		group_of[row] = -1
 	Movement.reset_nav(world, rows, World.NavMode.DIRECT)
 	return true
 
@@ -118,10 +120,12 @@ static func _apply_stop(world: World, command: Command) -> bool:
 	var goal_y: PackedInt32Array = world.goal_y
 	var order_target: PackedInt32Array = world.order_target
 	var target: PackedInt32Array = world.target
+	var group_of: PackedInt32Array = world.group_cell
 	for row: int in rows:
 		orders[row] = World.Order.IDLE
 		goal_x[row] = pos_x[row]
 		goal_y[row] = pos_y[row]
+		group_of[row] = -1
 		order_target[row] = 0
 		target[row] = 0
 	Movement.reset_nav(world, rows, World.NavMode.NONE)  # Also drops the flow field.

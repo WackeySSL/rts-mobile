@@ -43,6 +43,7 @@ const COPIED: Array[StringName] = [
 const NOT_COPIED: Array[StringName] = [
 	&"goal_x",
 	&"goal_y",
+	&"group_cell",
 	&"order_target",
 	&"cooldown",
 	&"nav_mode",

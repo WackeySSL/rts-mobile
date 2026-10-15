@@ -134,6 +134,9 @@ func test_ground_the_field_does_not_reach_is_asked_on_turns_only() -> void:
 		world.goal_x[k] = 14500
 		world.goal_y[k] = world.pos_y[k]
 	Movement.reset_nav(world, rows, DIRECT)
+	# The stall ends such an order after `stall_ticks` without progress (test_movement_stall.gd);
+	# here it is out of reach, so that the asks are the only thing counted.
+	world.stall_ticks = 1000
 	var counters: Array[CountingField] = _count_slots(world)
 	var at_start: int = 0
 	var late_checks: int = 0
@@ -212,35 +215,6 @@ func test_a_blocked_line_keeps_the_field_of_a_direct_unit_and_makes_it_field() -
 		[FIELD, slot, 1]
 	)
 	assert_int(world.nav_cell[0]).is_equal(world.cell_of(3500, 2500))
-
-
-## A slot nobody holds (FREE) is no field to share, whatever key it was left with: a World that was
-## never given a map version (0) has FREE slots keyed on cell 0, class FOOT, version 0. A foot
-## soldier whose goal (1500, 500) lies within the distance of that key's tile centre, in sight of
-## it, behind a short wall (column 2, rows 0 to 2) from the soldier, takes the field of its own
-## goal tile (cell 1), not the stale slot 0 re-keyed on cell 0.
-func test_a_free_slot_with_a_stale_key_is_not_a_field_to_share() -> void:
-	var rock: Array[Vector2i] = []
-	for row: int in 3:
-		rock.append(Vector2i(2, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(12, 10, rock), [FOOT])
-	world.map_version = 0
-	assert_array(world.flow.status.slice(0, 2)).is_equal(
-		[FlowCache.Status.FREE, FlowCache.Status.FREE]
-	)
-	(
-		assert_array([world.flow.key_goal[0], world.flow.key_class[0], world.flow.key_version[0]])
-		. is_equal([0, FOOT, 0])
-	)
-	world.add_unit(1, 0, 4500, 500)
-	world.order[0] = MOVE
-	world.goal_x[0] = 1500
-	world.goal_y[0] = 500
-	Movement.reset_nav(world, PackedInt32Array([0]), DIRECT)
-	world.tick = 4
-	Movement.run(world)
-	assert_array([world.nav_mode[0], world.stats[World.Stat.LINE_CHECKS]]).is_equal([FIELD, 1])
-	assert_int(world.flow.key_goal[world.field[0]]).is_equal(1)
 
 
 ## A FIELD unit whose slot is no slot (-1, the first number past the slots, a larger one) is a state
