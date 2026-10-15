@@ -417,13 +417,57 @@ func test_a_unit_whose_slot_is_across_a_wall_from_the_group_target_takes_a_field
 	assert_int(slots_used).is_greater(1)
 
 
+## ATTACK_MOVE follows the same fields: the thin-wall case with the order ATTACK_MOVE (Formation
+## gives it a group target like MOVE). Every tank ends on its own slot, east of the wall or not; the
+## goals are read after the first step, since a stalled unit's goal is rewritten to where it stands
+## and would hide a tank that stopped short.
+func test_attack_move_units_across_a_thin_wall_take_their_own_field() -> void:
+	var world: World = _thin_wall_world(8)
+	var goals: Array[Vector2i] = []
+	for tick: int in 700:
+		var commands: Array[Command] = []
+		if tick == 0:
+			var ids: PackedInt32Array = PackedInt32Array(range(1, 13))
+			commands.append(_stamped(Command.attack_move(1, ids, 19500, 5500), 0))
+		Sim.step(world, commands)
+		if tick == 0:
+			goals = GridWorld.goals(world, PackedInt32Array(range(12)))
+		if world.order.count(IDLE) == 12:
+			break
+	assert_int(world.order.count(IDLE)).is_equal(12)
+	var east: int = 0
+	for row: int in 12:
+		assert_array([world.pos_x[row], world.pos_y[row]]).is_equal([goals[row].x, goals[row].y])
+		east += 1 if goals[row].x > 20000 else 0
+	assert_int(east).is_greater(0)
+
+
+## Two runs of the thin-wall case give the same state hash at every checkpoint tick, as MatchLoop
+## takes them (every `Replay.CHECKPOINT_PERIOD` ticks): the own-field switch and the stall that
+## follow a group field are decided by the World's columns alone. Not vacuous: units took a field of
+## their own (more than the group's slot was in use) and the hashes differ from checkpoint to
+## checkpoint.
+func test_the_thin_wall_run_gives_the_same_hashes_twice() -> void:
+	var first: Dictionary = _thin_wall_hashes()
+	var second: Dictionary = _thin_wall_hashes()
+	assert_array(second["hashes"]).is_equal(first["hashes"])
+	assert_int(first["slots_used"]).is_greater(1)
+	assert_int(first["hashes"].size()).is_equal(20)
+	var distinct: Dictionary = {}
+	for hashed: int in first["hashes"]:
+		distinct[hashed] = true
+	assert_int(distinct.size()).is_equal(20)
+
+
 ## With every slot referenced a unit cannot take a field of its own tile, and it does not wait for
 ## one for good: it keeps the group field, finds no next tile, and with no progress for
-## `stall_ticks`
-## its order ends where it stands and frees the slot. A cache of one slot, the thin wall, two tanks
-## given the same group target west of the wall (set by hand, as a command would) and slots east of
-## it: both reach the group target, each holds the only slot against the other's re-key, and both
-## end their orders west of the wall within `stall_ticks` of arriving there.
+## `stall_ticks` its order ends where it stands and frees the slot, at any distance from its goal.
+## A cache of one slot, the thin wall, two tanks side by side given the same group target west of
+## the wall (set by hand, as a command would) and slots 4000 and 5000 east of it, far out of the
+## stall range of 2400: both reach the group target, each holds the only slot against the other's
+## switch, and both end their orders on the west side, `stall_ticks` after their last gain on the
+## goal: they find no next tile on entering the key tile and still gain for the 9 ticks (at most)
+## it takes to cross the 1000 from the tile's west edge to the wall.
 func test_with_every_slot_referenced_units_across_the_wall_end_their_orders_and_free_the_slot(
 ) -> void:
 	var rock: Array[Vector2i] = []
@@ -431,18 +475,30 @@ func test_with_every_slot_referenced_units_across_the_wall_end_their_orders_and_
 		rock.append(Vector2i(20, row))
 	var world: World = GridWorld.from_rows(GridWorld.grass(30, 14, rock))
 	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 1)
-	GridWorld.add_block(world, 2, 1, 3500, 5500, 1000, 0)
+	GridWorld.add_block(world, 2, 2, 3500, 5500, 1000, 0)
 	for row: int in 2:
 		world.order[row] = MOVE
-		world.goal_x[row] = 21500
-		world.goal_y[row] = 5500 + row * 1000
+		world.goal_x[row] = 23500 + row * 1000
+		world.goal_y[row] = 5500
 	Movement.reset_nav(world, PackedInt32Array([0, 1]), DIRECT)
 	world.group_cell.fill(world.cell_of(19500, 5500))
+	var pressed_at: Array[int] = [-1, -1]
+	var idle_at: Array[int] = [-1, -1]
 	for tick: int in 400:
 		Sim.step(world, [])
+		for row: int in 2:
+			if pressed_at[row] == -1 and world.nav_next[row] == Movement.NO_NEXT:
+				pressed_at[row] = tick
+			if idle_at[row] == -1 and world.order[row] == IDLE:
+				idle_at[row] = tick
 		if world.order.count(IDLE) == 2:
 			break
 	assert_int(world.order.count(IDLE)).is_equal(2)
+	for row: int in 2:
+		assert_int(pressed_at[row]).is_greater(0)
+		assert_int(idle_at[row] - pressed_at[row]).is_between(
+			world.stall_ticks, world.stall_ticks + 10
+		)
 	assert_bool(world.pos_x[0] < 20000 and world.pos_x[1] < 20000).is_true()
 	assert_array([world.field[0], world.field[1], world.group_cell[0]]).is_equal([-1, -1, -1])
 	FlowCache.run(world, 0)
@@ -515,6 +571,24 @@ func _gap_world() -> World:
 		if row != 9 and row != 10:
 			rock.append(Vector2i(12, row))
 	return GridWorld.from_rows(GridWorld.grass(30, 14, rock))
+
+
+## 300 ticks of the thin-wall case (twelve tanks, eight slots) with the hash at each checkpoint:
+## "hashes" and "slots_used" (the most slots in use at once).
+func _thin_wall_hashes() -> Dictionary:
+	var world: World = _thin_wall_world(8)
+	var hashes: PackedInt64Array = PackedInt64Array()
+	var slots_used: int = 0
+	for tick: int in 300:
+		var commands: Array[Command] = []
+		if tick == 0:
+			var ids: PackedInt32Array = PackedInt32Array(range(1, 13))
+			commands.append(_stamped(Command.move(1, ids, 19500, 5500), 0))
+		Sim.step(world, commands)
+		slots_used = maxi(slots_used, world.flow.status.size() - world.flow.status.count(0))
+		if (tick + 1) % Replay.CHECKPOINT_PERIOD == 0:
+			hashes.append(world.state_hash())
+	return {"hashes": hashes, "slots_used": slots_used}
 
 
 ## 30 x 14, a one tile thick wall in column 20 (rows 0 to 9), twelve tanks west of it, a cache of

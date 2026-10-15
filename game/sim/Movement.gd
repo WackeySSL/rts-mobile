@@ -190,7 +190,11 @@ static func _check_line(
 
 ## Sets `nav_next` of FIELD unit `row`, standing in `cell`, from its field: the neighbour tile the
 ## field names, NO_NEXT when the field is complete and names none, -1 while it is pending. An ATTACK
-## unit takes the right field first (_rekey). `slots`, `slot_of` and `next_of` are the World's
+## unit takes the right field first (_rekey). The field's own key counts as none when its tile is
+## blocked for the unit's class now: the field seeds the key at cost 0 whatever the terrain, so
+## `best_neighbour` keeps naming a key that turned to rock (`set_terrain`, later a building) and
+## the unit would press on it for good. Only the key: any other blocked tile keeps the old field
+## until the cache swaps the new one in. `slots`, `slot_of` and `next_of` are the World's
 ## `flow.fields`, `field` and `nav_next`, aliased by the caller.
 static func _refresh_next(
 	world: World,
@@ -208,6 +212,8 @@ static func _refresh_next(
 	var next: int = -1
 	if field.complete:
 		next = field.best_neighbour(cell)
+		if next == world.flow.key_goal[slot] and not world.is_passable(next, move_class):
+			next = -1
 		if next < 0:
 			next = NO_NEXT
 			if _take_own_field(world, row, slot, move_class):
@@ -239,7 +245,9 @@ static func _rekey(world: World, row: int, slot: int, move_class: int) -> int:
 ## A FIELD unit whose complete field names no next tile, on a field keyed on a tile other than its
 ## goal's (a group's field, or an ATTACK field it has outrun), takes the field of its goal's tile
 ## and returns true; with every slot referenced it keeps the old one and asks again at its next
-## event.
+## event. The unit starts over on the new field, as `reset_nav` does for a new one: no best distance
+## and no stall count, because what it counted while it waited for a slot was not progress on this
+## field, and a stale count would end the order of a unit that has just started to gain.
 static func _take_own_field(world: World, row: int, slot: int, move_class: int) -> bool:
 	var own: int = world.cell_of(world.goal_x[row], world.goal_y[row])
 	if world.flow.key_goal[slot] == own:
@@ -248,6 +256,8 @@ static func _take_own_field(world: World, row: int, slot: int, move_class: int) 
 	if fresh < 0:
 		return false
 	world.field[row] = fresh
+	world.best_dist[row] = FlowField.UNREACHED
+	world.stall[row] = 0
 	return true
 
 
@@ -284,9 +294,10 @@ static func _end_order(world: World, row: int) -> void:
 ##   re-integrated after a map change (it serves the old costs until the swap, and stays
 ##   `complete`) sends the unit on within a period. All of it waits for a complete field: while it
 ##   is pending there is nothing to look up and nothing to re-key. A lookup that names no tile
-##   leaves NO_NEXT, which ends the asking until the next tile or turn; if the field is keyed on a
-##   tile other than the unit's goal's (a group's field), the unit then takes the field of its
-##   goal's tile (_take_own_field). The unit steers on it from the next tick's `run`.
+##   (or only the field's key, when that tile is blocked now) leaves NO_NEXT, which ends the asking
+##   until the next tile or turn; if the field is keyed on a tile other than the unit's goal's (a
+##   group's field), the unit then takes the field of its goal's tile (_take_own_field), with a
+##   fresh best distance and stall count. The unit steers on it from the next tick's `run`.
 ## - An ATTACK unit takes the field of its goal's tile when the goal has moved more than
 ##   `attack_rekey_milli` from the tile its field is keyed on (checked at those events, so a field
 ##   that is pending finishes first, and then the unit re-keys).

@@ -37,9 +37,72 @@ func test_eight_pocket_groups_do_not_starve_six_others_of_eight_slots() -> void:
 	_assert_outcome(played["world"], 8, 2)
 
 
+## The same run twice gives the same state hash at every checkpoint tick (every
+## `Replay.CHECKPOINT_PERIOD` ticks, as MatchLoop takes them): the stall, the waiting for a slot and
+## the slots the pocket tanks hand back are all decided by the World's columns, nothing else. Not
+## vacuous: the hashes differ from tick to tick.
+func test_the_pocket_run_gives_the_same_hashes_twice() -> void:
+	var first: PackedInt64Array = _play(2, 2, 1)["hashes"]
+	var second: PackedInt64Array = _play(2, 2, 1)["hashes"]
+	assert_int(first.size() * Replay.CHECKPOINT_PERIOD).is_equal(900)
+	assert_array(second).is_equal(first)
+	var distinct: Dictionary = {}
+	for hashed: int in first:
+		distinct[hashed] = true
+	assert_int(distinct.size()).is_greater(20)
+
+
+## A unit that waited for a slot and gets one starts over on the new field. A cache of two slots on
+## the thin-wall map (30 x 14, column 20, rows 0 to 9): twelve tanks are ordered to (19500, 5500)
+## and a thirteenth to (25500, 1500) takes the second slot, so the tank whose slot lies east of the
+## wall (21900, 5500) finds no free slot at the group target. It stands there, stalled (the count
+## is 12 when the thirteenth tank is stopped at tick 155 and its slot goes back), takes the field
+## of its own slot on tick 158 and must still reach it. The stall count and the best distance it
+## made on the group's field (the way round the wall is longer than the 2019 it stands from its
+## slot) are not carried over: it would otherwise end its order in front of its slot a few ticks
+## after the new field starts to lead it away from it.
+func test_a_unit_that_waited_for_a_slot_still_reaches_its_slot_when_it_gets_one() -> void:
+	var rock: Array[Vector2i] = []
+	for row: int in 10:
+		rock.append(Vector2i(20, row))
+	var world: World = GridWorld.from_rows(GridWorld.grass(30, 14, rock))
+	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 2)
+	GridWorld.add_block(world, 12, 4, 3000, 1500, 1000, 0)
+	world.add_unit(1, 0, 500, 1500)
+	var east: int = -1
+	var counted: int = 0
+	for tick: int in 700:
+		var commands: Array[Command] = []
+		if tick == 0:
+			var group: Command = Command.move(1, PackedInt32Array(range(1, 13)), 19500, 5500)
+			var holder: Command = Command.move(1, PackedInt32Array([13]), 25500, 1500)
+			group.tick = 0
+			holder.tick = 0
+			holder.sequence = 1
+			commands.append(group)
+			commands.append(holder)
+		if tick == 155:
+			var stop: Command = Command.stop(1, PackedInt32Array([13]))
+			stop.tick = tick
+			commands.append(stop)
+		Sim.step(world, commands)
+		if tick == 0:
+			for row: int in 12:
+				if world.goal_x[row] > 20000:
+					east = row
+		if east >= 0 and tick == 157:
+			counted = world.stall[east]
+	assert_int(east).is_greater_equal(0)
+	assert_int(counted).is_greater(10)
+	assert_array([world.pos_x[east], world.pos_y[east], world.order[east]]).is_equal(
+		[21900, 5500, IDLE]
+	)
+
+
 ## Runs the scenario for 900 ticks. Returns "world", "waiting" (the most tanks behind the pockets
-## that wait for a slot on a tick on which the cache has no free slot) and "last_idle" (the first
-## tick on which every unit is IDLE, -1 if none).
+## that wait for a slot on a tick on which the cache has no free slot), "last_idle" (the first
+## tick on which every unit is IDLE, -1 if none) and "hashes" (the state hash after every tick that
+## is a multiple of `Replay.CHECKPOINT_PERIOD`).
 func _play(slots: int, pockets: int, per_pocket: int) -> Dictionary:
 	var world: World = _pocket_world(slots, pockets)
 	var pocket_count: int = pockets * per_pocket
@@ -48,6 +111,7 @@ func _play(slots: int, pockets: int, per_pocket: int) -> Dictionary:
 	var waiting: int = 0
 	var last_idle: int = -1
 	var sequence: int = 0
+	var hashes: PackedInt64Array = PackedInt64Array()
 	for tick: int in 900:
 		var commands: Array[Command] = []
 		if tick == 0:
@@ -82,7 +146,9 @@ func _play(slots: int, pockets: int, per_pocket: int) -> Dictionary:
 			waiting = maxi(waiting, here)
 		if last_idle == -1 and world.order.count(IDLE) == world.unit_count():
 			last_idle = tick
-	return {"world": world, "waiting": waiting, "last_idle": last_idle}
+		if (tick + 1) % Replay.CHECKPOINT_PERIOD == 0:
+			hashes.append(world.state_hash())
+	return {"world": world, "waiting": waiting, "last_idle": last_idle, "hashes": hashes}
 
 
 ## The pocket tanks are IDLE, none inside a pocket, with no field and no group cell; the others

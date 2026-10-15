@@ -195,11 +195,10 @@ func test_a_unit_on_ground_the_field_does_not_reach_stalls_in_range_of_its_goal(
 	assert_array([world.goal_x[0], world.goal_y[0]]).is_equal([world.pos_x[0], world.pos_y[0]])
 
 
-## On ground the field does not reach the stall has no range (ADR 0008 section 5, P37b): a tank west
+## On ground the field does not reach the stall has no range (ADR 0008 section 2, P37b): a tank west
 ## of a wall across the whole map (column 8) with its goal 6500 behind it, far out of the range,
 ## presses on the wall; its field names no next tile, so with no progress for `stall_ticks` its
-## order ends where it stands and its slot is free. A tank on the same field that has a next tile
-## is not stalled by this.
+## order ends where it stands and its slot is free.
 func test_a_unit_on_ground_the_field_does_not_reach_ends_its_order_at_any_distance() -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 10:
@@ -226,6 +225,31 @@ func test_a_unit_on_ground_the_field_does_not_reach_ends_its_order_at_any_distan
 	assert_array([world.field[0], world.nav_mode[0], world.group_cell[0]]).is_equal([-1, NONE, -1])
 	FlowCache.run(world, 0)
 	assert_int(world.flow.refs(0)).is_equal(0)
+
+
+## An ATTACK unit does not stall on ground the field does not reach either: the same wall, a tank
+## ordered to attack an enemy 11000 behind it presses on the wall for 300 ticks with its order, its
+## mode and its field, and no next tile (its target may walk into reach, and combat ends the order,
+## P41). The rule that frees the slot of a MOVE unit is for orders that have a goal to arrive at.
+func test_an_attack_unit_on_ground_the_field_does_not_reach_keeps_its_order() -> void:
+	var rock: Array[Vector2i] = []
+	for row: int in 10:
+		rock.append(Vector2i(8, row))
+	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10, rock))
+	world.player_count = 2
+	world.type_weapon[0] = 0
+	world.add_unit(1, 0, 3500, 4500)
+	world.add_unit(2, 0, 14500, 4500)
+	for tick: int in 300:
+		var commands: Array[Command] = []
+		if tick == 0:
+			commands.append(_stamped(Command.attack(1, PackedInt32Array([1]), 2), 0))
+		Sim.step(world, commands)
+	assert_array([world.order[0], world.nav_mode[0], world.nav_next[0]]).is_equal(
+		[ATTACK, FIELD, Movement.NO_NEXT]
+	)
+	assert_array([world.stall[0], world.best_dist[0]]).is_equal([0, FlowField.UNREACHED])
+	assert_int(world.pos_x[0]).is_between(7500, 7999)
 
 
 ## The range of the stall is the formation spacing of the unit's own type, and the tick a unit goes
