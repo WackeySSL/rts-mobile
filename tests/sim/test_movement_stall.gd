@@ -195,6 +195,52 @@ func test_a_unit_on_ground_the_field_does_not_reach_stalls_in_range_of_its_goal(
 	assert_array([world.goal_x[0], world.goal_y[0]]).is_equal([world.pos_x[0], world.pos_y[0]])
 
 
+## The range of the stall is the formation spacing of the unit's own type, and the tick a unit goes
+## IDLE it keeps its whole push and its goal is where it stood. Two tanks of different types
+## (spacings 1200 and 3000, so ranges 2400 and 6000) stand 5000 from goals that lie off their rows
+## (4000 east, 3000 south of them, a step of (96, 72)); a parked enemy pushes both by (-120, -96)
+## each tick, which carries them away from the goal at about 34 a tick. The tank of type 1 is
+## within its range from tick 0 and goes IDLE `stall_ticks` ticks later; the tank of type 0 is out
+## of its own range and keeps its order, with no distance tracked. On the stall tick the unit of
+## type 1 has no intent on either axis, moves by the push on both axes and has its goal where it
+## stood, on both axes.
+func test_the_stall_range_is_the_spacing_of_the_units_type_and_the_push_is_kept() -> void:
+	var tracked: int = World.MoveClass.TRACKED
+	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10), [tracked, tracked])
+	world.type_spacing[1] = 3000
+	world.add_unit(1, 0, 3000, 2000)
+	world.add_unit(1, 1, 3000, 6000)
+	for row: int in 2:
+		world.order[row] = MOVE
+		world.goal_x[row] = 7000
+		world.goal_y[row] = world.pos_y[row] + 3000
+	Movement.reset_nav(world, PackedInt32Array([0, 1]), DIRECT)
+	for row: int in 2:
+		world.nav_cell[row] = world.cell_of(world.pos_x[row], world.pos_y[row])
+	var first_in_range: int = -1
+	var idle_at: int = -1
+	for tick: int in 40:
+		for row: int in 2:
+			world.push_x[row] = -120 if world.order[row] != IDLE else 0
+			world.push_y[row] = -96 if world.order[row] != IDLE else 0
+		var stood_at: Vector2i = Vector2i(world.pos_x[1], world.pos_y[1])
+		Sim.step(world, [])
+		if first_in_range == -1 and world.best_dist[1] != FlowField.UNREACHED:
+			first_in_range = tick
+		if idle_at == -1 and world.order[1] == IDLE:
+			idle_at = tick
+			assert_array([world.goal_x[1], world.goal_y[1]]).is_equal([stood_at.x, stood_at.y])
+			assert_array([world.pos_x[1], world.pos_y[1]]).is_equal(
+				[stood_at.x - 120, stood_at.y - 96]
+			)
+			assert_array([world.intent_x[1], world.intent_y[1]]).is_equal([0, 0])
+	assert_int(first_in_range).is_equal(0)
+	assert_int(idle_at - first_in_range).is_equal(world.stall_ticks)
+	assert_array([world.nav_mode[1], world.field[1], world.stall[1]]).is_equal([NONE, -1, 0])
+	assert_array([world.order[0], world.nav_mode[0], world.stall[0]]).is_equal([MOVE, DIRECT, 0])
+	assert_int(world.best_dist[0]).is_equal(FlowField.UNREACHED)
+
+
 ## Orders unit 1 along row 2000 to x 10000 and unit 2 along row 6000 to x `second_goal`, and from
 ## the tick a unit is within `reach` of its goal a parked enemy pushes it back by its whole step
 ## each tick. Runs 200 ticks and returns, for each unit, [the first tick with a best distance, the

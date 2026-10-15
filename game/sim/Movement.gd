@@ -209,11 +209,12 @@ static func _field_for(world: World, goal_x: int, goal_y: int, move_class: int) 
 	var cols: int = world.map_cols
 	var tile: int = World.MILLI_PER_TILE
 	var limit: int = world.attack_rekey_milli
+	var version: int = world.map_version
 	for slot: int in status.size():
 		if (
 			status[slot] == FlowCache.Status.FREE
 			or key_class[slot] != move_class
-			or key_version[slot] != world.map_version
+			or key_version[slot] != version
 		):
 			continue
 		var key_x: int = key_goal[slot] % cols * tile + World.TILE_CENTRE

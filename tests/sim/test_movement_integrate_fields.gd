@@ -118,7 +118,9 @@ func test_integrate_rekeys_an_attack_field_and_run_alone_does_not() -> void:
 ## tanks stand west of a wall across the whole map (column 8) with their goals behind it, on their
 ## own rows: they press on the wall 6500 from their goals (out of the stall range), FIELD on a
 ## complete field that names no next tile (`nav_next` is the "looked up, none" mark). Over 100 ticks
-## the asks are exactly their line-check turns, 20 for each unit: not one per unit and tick.
+## the asks are exactly their line-check turns, 20 for each unit: not one per unit and tick. A FIELD
+## unit that the wall stops dead does not have its line checked again (that is for a DIRECT unit
+## only): in those 100 ticks there is no line check at all, and no unit has its cell unchecked.
 func test_ground_the_field_does_not_reach_is_asked_on_turns_only() -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 12:
@@ -134,11 +136,16 @@ func test_ground_the_field_does_not_reach_is_asked_on_turns_only() -> void:
 	Movement.reset_nav(world, rows, DIRECT)
 	var counters: Array[CountingField] = _count_slots(world)
 	var at_start: int = 0
+	var late_checks: int = 0
 	for tick: int in 200:
 		Sim.step(world, [])
 		if tick == 99:
 			at_start = _lookups(counters)
+		if tick >= 100:
+			late_checks += world.stats[World.Stat.LINE_CHECKS]
 	assert_int(_lookups(counters) - at_start).is_equal(120)
+	assert_int(late_checks).is_equal(0)
+	assert_int(world.nav_cell.count(-1)).is_equal(0)
 	assert_int(world.nav_mode.count(FIELD)).is_equal(6)
 	assert_array(world.nav_next.slice(0, 6)).is_equal([-2, -2, -2, -2, -2, -2])
 	assert_int(world.nav_next[0]).is_equal(Movement.NO_NEXT)
@@ -240,9 +247,12 @@ func test_a_free_slot_with_a_stale_key_is_not_a_field_to_share() -> void:
 ## only a hand-set row can have, and the one an INTEGRATE kernel must bounds-check: `integrate`
 ## alone gives it no lookup (its `nav_next` is -1, which asks on a complete field), no stall count
 ## and no refresh on the tile it enters, moves it by its intent, and never indexes the cache with
-## the number (`run` sends such a unit DIRECT; this case calls `integrate` on its own).
+## the number (`run` sends such a unit DIRECT; this case calls `integrate` on its own). The last
+## slot of the cache holds a complete field, which is what a -1 would read if it indexed from the
+## end of the array.
 func test_integrate_gives_a_field_unit_with_no_such_slot_no_lookup() -> void:
 	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+	_complete_last_slot(world)
 	var numbers: Array[int] = [-1, world.flow.fields.size(), 99]
 	for index: int in numbers.size():
 		world.add_unit(1, 0, 2950, 1500 + index * 3000)
@@ -272,12 +282,63 @@ func test_integrate_gives_a_field_unit_with_no_such_slot_no_lookup() -> void:
 		)
 
 
+## A unit whose order ends in this call takes no lookup for the tile its last step enters: it is no
+## FIELD unit any more, its field is -1 and its `nav_next` stays -1. The last slot of the cache
+## holds a complete field, which a lookup through the cleared `field` would read. Two ways to end,
+## both on a tick whose step crosses a tile edge (x 3990 to 4090 under a push of 100; x 3950 to 4070
+## under an intent of 120):
+## - the stall: a FIELD unit on ground its field does not reach (`nav_next` NO_NEXT), 1510 from its
+##   goal, one count short of `stall_ticks`;
+## - the arrival: a FIELD unit with a next tile, 90 from its goal (within one step).
+func test_an_ended_order_takes_no_lookup_on_the_tile_its_last_step_enters() -> void:
+	for stalls: bool in [true, false]:
+		var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+		_complete_last_slot(world)
+		world.add_unit(1, 0, 3990 if stalls else 3950, 4500)
+		world.order[0] = MOVE
+		world.goal_x[0] = 5500 if stalls else 4040
+		world.goal_y[0] = 4500
+		world.nav_mode[0] = FIELD
+		world.field[0] = 0
+		world.nav_cell[0] = world.cell_of(world.pos_x[0], world.pos_y[0])
+		var label: String = "stall" if stalls else "arrival"
+		if stalls:
+			world.nav_next[0] = Movement.NO_NEXT
+			world.best_dist[0] = 1510
+			world.stall[0] = world.stall_ticks - 1
+			world.push_x[0] = 100
+		else:
+			world.nav_next[0] = 4 * 20 + 4
+			world.intent_x[0] = 120
+		Movement.integrate(world)
+		var moved_to: int = 4090 if stalls else 4070
+		assert_array([world.pos_x[0], world.pos_y[0]]).override_failure_message(label).is_equal(
+			[moved_to, 4500]
+		)
+		(
+			assert_array([world.order[0], world.nav_mode[0], world.field[0], world.nav_next[0]])
+			. override_failure_message(label)
+			. is_equal([IDLE, World.NavMode.NONE, -1, -1])
+		)
+
+
 ## A 20 x 12 map with a wall in column 8, rows 0 to 8 (a gap in rows 9 to 11).
 func _wall_world() -> World:
 	var rock: Array[Vector2i] = []
 	for row: int in 9:
 		rock.append(Vector2i(8, row))
 	return GridWorld.from_rows(GridWorld.grass(20, 12, rock))
+
+
+## Gives `world` a cache of 2 slots whose last one holds a complete field (goal tile 1, TRACKED),
+## the field a read from the end of the array would find. Slot 0 is complete too.
+func _complete_last_slot(world: World) -> void:
+	var flow: FlowCache = world.flow
+	flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 2)
+	assert_int(flow.acquire(0, World.MoveClass.TRACKED, world.map_version, 0)).is_equal(0)
+	assert_int(flow.acquire(1, World.MoveClass.TRACKED, world.map_version, 0)).is_equal(1)
+	FlowCache.run(world, 100000)
+	assert_bool(flow.field(0).complete and flow.field(1).complete).is_true()
 
 
 ## An open 20 x 10 map and a tank 1000 from its goal, DIRECT with a checked line, stall after 3.
