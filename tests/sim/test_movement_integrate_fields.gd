@@ -236,6 +236,42 @@ func test_a_free_slot_with_a_stale_key_is_not_a_field_to_share() -> void:
 	assert_int(world.flow.key_goal[world.field[0]]).is_equal(1)
 
 
+## A FIELD unit whose slot is no slot (-1, the first number past the slots, a larger one) is a state
+## only a hand-set row can have, and the one an INTEGRATE kernel must bounds-check: `integrate`
+## alone gives it no lookup (its `nav_next` is -1, which asks on a complete field), no stall count
+## and no refresh on the tile it enters, moves it by its intent, and never indexes the cache with
+## the number (`run` sends such a unit DIRECT; this case calls `integrate` on its own).
+func test_integrate_gives_a_field_unit_with_no_such_slot_no_lookup() -> void:
+	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+	var numbers: Array[int] = [-1, world.flow.fields.size(), 99]
+	for index: int in numbers.size():
+		world.add_unit(1, 0, 2950, 1500 + index * 3000)
+		world.order[index] = MOVE
+		world.goal_x[index] = 15500
+		world.goal_y[index] = world.pos_y[index]
+		world.nav_mode[index] = FIELD
+		world.field[index] = numbers[index]
+		world.nav_next[index] = -1
+		world.nav_cell[index] = 0
+		world.intent_x[index] = 100
+	Movement.integrate(world)
+	for index: int in numbers.size():
+		var label: String = "slot %d" % numbers[index]
+		(
+			assert_array([world.pos_x[index], world.pos_y[index]])
+			. override_failure_message(label)
+			. is_equal([3050, 1500 + index * 3000])
+		)
+		(
+			assert_array([world.nav_next[index], world.stall[index]])
+			. override_failure_message(label)
+			. is_equal([-1, 0])
+		)
+		assert_int(world.best_dist[index]).override_failure_message(label).is_equal(
+			FlowField.UNREACHED
+		)
+
+
 ## A 20 x 12 map with a wall in column 8, rows 0 to 8 (a gap in rows 9 to 11).
 func _wall_world() -> World:
 	var rock: Array[Vector2i] = []

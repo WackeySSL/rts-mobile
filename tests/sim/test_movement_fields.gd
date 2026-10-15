@@ -366,29 +366,91 @@ func test_a_group_shares_a_field_by_distance_and_sight() -> void:
 	assert_array([world.flow.refs(0), world.flow.refs(1), world.flow.refs(3)]).is_equal([3, 1, 1])
 
 
-## A unit whose mode was set to FIELD by hand, with no slot (-1) or with a number that is no slot,
-## is a DIRECT unit that has not checked: it steers at its goal, checks on its turn and goes on
-## from there (here the line is clear, so it is DIRECT with its cell written). Nothing indexes the
-## cache with the bad number.
+## A unit that shares a held field takes a reference on it at once, so a new key asked in the same
+## tick cannot evict it. A cache of 2 slots holds the unreferenced fields of (14, 2) and (14, 8)
+## (20 x 12 map, wall in column 8, rows 0 to 9; slot 0 is the older). Units 1 and 6 check on tick 4,
+## unit 1 first. Its goal (14500, 3000) is 500 from the key of slot 0 in clear sight, so it shares
+## slot 0. Unit 6, goal (17500, 11500), is 4243 from the key of slot 1 and farther from the other,
+## so it needs a key of its own: the one slot nobody references, slot 1, which gets the key
+## (17, 11). Without the reference the older slot 0 would be the one evicted, and unit 1 would
+## follow a field to unit 6's goal.
+func test_a_unit_that_shares_a_field_keeps_it_from_a_new_key_asked_in_the_same_tick() -> void:
+	var world: World = GridWorld.from_rows(GridWorld.grass(20, 12, _wall(10)))
+	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 2)
+	assert_int(world.flow.acquire(2 * 20 + 14, TRACKED, world.map_version, 0)).is_equal(0)
+	assert_int(world.flow.acquire(8 * 20 + 14, TRACKED, world.map_version, 1)).is_equal(1)
+	world.add_unit(1, 0, 3500, 4500)
+	GridWorld.add_block(world, 4, 1, 500, 11500, 0, 0)
+	world.add_unit(1, 0, 3500, 6500)
+	assert_array([world.unit_id[0], world.unit_id[5]]).is_equal([1, 6])
+	for row: int in [0, 5]:
+		world.order[row] = MOVE
+	world.goal_x[0] = 14500
+	world.goal_y[0] = 3000
+	world.goal_x[5] = 17500
+	world.goal_y[5] = 11500
+	Movement.reset_nav(world, PackedInt32Array([0, 5]), DIRECT)
+	world.tick = 4
+	Sim.step(world, [])
+	assert_array([world.nav_mode[0], world.nav_mode[5]]).is_equal([FIELD, FIELD])
+	assert_array([world.field[0], world.field[5]]).is_equal([0, 1])
+	assert_array(world.flow.key_goal).is_equal([2 * 20 + 14, 11 * 20 + 17])
+	# Two first checks and the one sight test of unit 1.
+	assert_int(world.stats[World.Stat.LINE_CHECKS]).is_equal(3)
+
+
+## The sight test of a shared field is made for the unit's own move class. Scrub is open to foot
+## units and closed to tanks (20 x 12 map: wall in column 8, rows 0 to 9, scrub in column 15, rows
+## 0 to 8). A field of (14, 2) is cached; a tank ordered to (16500, 2500), 2000 east of that key and
+## behind the scrub, cannot see it, so it takes a field of its own tile (16, 2) and arrives on its
+## goal, where the field of (14, 2) would have left it short of the scrub.
+func test_a_tank_does_not_share_a_field_whose_key_it_cannot_see_across_scrub() -> void:
+	var map: PackedStringArray = GridWorld.grass(20, 12, _wall(10))
+	for row: int in 9:
+		map[row] = map[row].left(15) + "^" + map[row].substr(16)
+	var world: World = GridWorld.from_rows(map)
+	world.flow.acquire(2 * 20 + 14, TRACKED, world.map_version, 0)
+	world.add_unit(1, 0, 3500, 2500)
+	world.order[0] = MOVE
+	world.goal_x[0] = 16500
+	world.goal_y[0] = 2500
+	Movement.reset_nav(world, PackedInt32Array([0]), DIRECT)
+	world.tick = 4
+	Sim.step(world, [])
+	assert_array([world.nav_mode[0], world.field[0]]).is_equal([FIELD, 1])
+	assert_int(world.flow.key_goal[1]).is_equal(2 * 20 + 16)
+	# The key is in range of the goal, so its sight was tested: two checks.
+	assert_int(world.stats[World.Stat.LINE_CHECKS]).is_equal(2)
+	for _tick: int in 400:
+		Sim.step(world, [])
+		if world.order[0] == IDLE:
+			break
+	assert_array([world.pos_x[0], world.pos_y[0], world.order[0]]).is_equal([16500, 2500, IDLE])
+
+
+## A unit whose mode was set to FIELD by hand, with no slot (-1) or with a number that is no slot
+## (the first number past the slots, a larger one), is a DIRECT unit that has not checked: it steers
+## at its goal, checks on its turn and goes on from there (here the line is clear, so it is DIRECT
+## with its cell written). Nothing indexes the cache with the bad number.
 func test_a_field_mode_without_a_slot_steers_direct_and_checks_again() -> void:
 	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
-	GridWorld.add_block(world, 2, 1, 2500, 2000, 4000, 0)
-	for row: int in 2:
+	GridWorld.add_block(world, 3, 1, 2500, 1500, 3000, 0)
+	var numbers: Array[int] = [-1, world.flow.fields.size(), 99]
+	for row: int in 3:
 		world.order[row] = MOVE
 		world.nav_mode[row] = FIELD
 		world.goal_x[row] = 12500
 		world.goal_y[row] = world.pos_y[row]
 		world.nav_cell[row] = 7
-	world.field[0] = -1
-	world.field[1] = 99
+		world.field[row] = numbers[row]
 	Sim.step(world, [])
-	assert_array(world.nav_mode.slice(0, 2)).is_equal([DIRECT, DIRECT])
-	assert_array(world.intent_x.slice(0, 2)).is_equal([120, 120])
-	assert_array(world.nav_cell.slice(0, 2)).is_equal([-1, -1])
+	assert_array(world.nav_mode.slice(0, 3)).is_equal([DIRECT, DIRECT, DIRECT])
+	assert_array(world.intent_x.slice(0, 3)).is_equal([120, 120, 120])
+	assert_array(world.nav_cell.slice(0, 3)).is_equal([-1, -1, -1])
 	for _tick: int in 6:
 		Sim.step(world, [])
-	assert_int(world.nav_cell[0]).is_not_equal(-1)
-	assert_int(world.nav_cell[1]).is_not_equal(-1)
+	for row: int in 3:
+		assert_int(world.nav_cell[row]).is_not_equal(-1)
 
 
 ## Two runs of the gap scenario give the same hash after every tick, and so does the run with the
@@ -432,6 +494,14 @@ func _gap_world() -> World:
 		if row != 9 and row != 10:
 			rock.append(Vector2i(12, row))
 	return GridWorld.from_rows(GridWorld.grass(30, 14, rock))
+
+
+## A wall in column 8, rows 0 to `rows` - 1.
+func _wall(rows: int) -> Array[Vector2i]:
+	var rock: Array[Vector2i] = []
+	for row: int in rows:
+		rock.append(Vector2i(8, row))
+	return rock
 
 
 func _stamped(command: Command, tick: int) -> Command:

@@ -279,6 +279,51 @@ func test_an_attack_unit_keeps_a_pending_field_until_it_completes_then_rekeys() 
 	assert_int(world.flow.key_goal[world.field[0]]).is_equal(world.cell_of(19500, 2500))
 
 
+## An ATTACK unit keeps its field when no slot is free for the re-key, and asks again at its next
+## event. A cache of 2 slots: the attacker holds the field of its target's tile, a MOVE unit the
+## other. The target walks 5000 away, past the re-key distance, and for 14 ticks (two line-check
+## turns at least) every ask finds both slots referenced: the attacker keeps its slot, its key and
+## FIELD, and never falls back to DIRECT. When the MOVE unit stops, its slot is free and the
+## attacker's next event takes it for the field of the target's new tile.
+func test_an_attack_unit_keeps_its_field_when_every_slot_is_referenced_and_asks_again() -> void:
+	var world: World = _attack_world()
+	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 2)
+	world.add_unit(1, 0, 500, 500)
+	var orders: Array[Command] = [
+		_stamped(Command.attack(1, PackedInt32Array([1]), 2), 0),
+		_stamped(Command.move(1, PackedInt32Array([3]), 19500, 500), 0)
+	]
+	Sim.step(world, orders)
+	for _tick: int in 30:
+		Sim.step(world, [])
+	var old_slot: int = world.field[0]
+	var other_slot: int = world.field[2]
+	assert_bool(old_slot >= 0 and other_slot >= 0 and old_slot != other_slot).is_true()
+	assert_array([world.nav_mode[0], world.nav_mode[2]]).is_equal([FIELD, FIELD])
+	assert_int(world.nav_next[0]).is_greater(-1)
+	var old_key: int = world.cell_of(14500, 2500)
+	assert_int(world.flow.key_goal[old_slot]).is_equal(old_key)
+	world.pos_x[1] = 19500
+	for tick: int in 14:
+		Sim.step(world, [])
+		var label: String = "tick %d" % tick
+		assert_array([world.field[0], world.nav_mode[0]]).override_failure_message(label).is_equal(
+			[old_slot, FIELD]
+		)
+		(
+			assert_array([world.field[2], world.flow.key_goal[old_slot]])
+			. override_failure_message(label)
+			. is_equal([other_slot, old_key])
+		)
+	assert_int(world.goal_x[0]).is_equal(19500)
+	var stop: Command = _stamped(Command.stop(1, PackedInt32Array([3])), world.tick)
+	Sim.step(world, [stop])
+	for _tick: int in 10:
+		Sim.step(world, [])
+	assert_array([world.field[0], world.nav_mode[0]]).is_equal([other_slot, FIELD])
+	assert_int(world.flow.key_goal[other_slot]).is_equal(world.cell_of(19500, 2500))
+
+
 ## An ATTACK unit asks `best_neighbour` at event cadence like any FIELD unit (FieldCadence holds the
 ## rule): on the tick its field completes, on a tile entered, and on its line-check turn; on every
 ## other tick not at all, and `nav_next` keeps its value. The target stands still, so the field is
