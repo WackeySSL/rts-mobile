@@ -31,6 +31,22 @@ func clear() -> void:
 	set_ids(PackedInt32Array())
 
 
+## Takes the units `ids` (any order, ids that are not here are ignored) out of the selection and
+## out of groups 1-3, as when they die. `changed` fires once, after the groups are updated too, and
+## only when the selection lost a unit.
+func remove_ids(ids: PackedInt32Array) -> void:
+	if ids.is_empty():
+		return
+	var gone: PackedInt32Array = ids.duplicate()
+	gone.sort()
+	for slot: int in _groups.keys():
+		_groups[slot] = _without(_groups[slot], gone)
+	var kept: PackedInt32Array = _without(selected, gone)
+	if kept.size() != selected.size():
+		selected = kept
+		changed.emit()
+
+
 func is_selected(id: int) -> bool:
 	var at: int = selected.bsearch(id)
 	return at < selected.size() and selected[at] == id
@@ -55,3 +71,13 @@ func recall_group(slot: int) -> bool:
 		return false
 	set_ids(ids)
 	return true
+
+
+## `list` without the ids in `gone` (sorted), in the same order.
+static func _without(list: PackedInt32Array, gone: PackedInt32Array) -> PackedInt32Array:
+	var kept: PackedInt32Array = PackedInt32Array()
+	for id: int in list:
+		var at: int = gone.bsearch(id)
+		if at == gone.size() or gone[at] != id:
+			kept.append(id)
+	return kept

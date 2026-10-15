@@ -21,13 +21,13 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Double-tap an own unit | Selects every own unit of that type on screen | yes |
 | Long-press, then drag | Draws a box while the finger moves; on release it selects the own units inside (`long_press_ms` in `data/input_settings.tres`) | yes |
 | Long-press and drag a box with no own unit inside | Clears the selection (the only way to deselect) | yes |
-| Any selection | The panel at the bottom centre shows each selected unit type with its icon, name and count, and a total for mixed types; it hides when nothing is selected. Tapping it does nothing | |
+| Any selection | The panel at the bottom centre shows each selected unit type with its icon, its display name (a very long name is cut short with an ellipsis) and its count, and a total for mixed types; it hides when nothing is selected. Tapping it does nothing | |
 
 ## Orders
 | Action | Result | Teach |
 |---|---|---|
 | With units selected, tap the ground | Attack-move: the units go there and fight what they meet; chevrons mark the point | yes |
-| With units selected, tap an enemy | Attack-move to the enemy; a diamond marks it and the enemy flashes | |
+| With units selected, tap an enemy | Attack: the units drive at that enemy; a diamond marks it | yes |
 
 ## Army bar (bottom left)
 | Action | Result | Teach |
@@ -39,3 +39,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 ## Not yet in the game
 Base building, harvesting, power, production, win and lose conditions, menus and rewards get
 their entries when their phase ships them (ROADMAP Phases 3-6).
+
+| Action | Result | Teach |
+|---|---|---|
+| Moving without fighting (retreat) | Every ground tap is an attack-move | |
