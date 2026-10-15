@@ -45,12 +45,14 @@ func test_flow_run_calls_the_flow_kernel_once_and_skips_the_gdscript_phase() -> 
 	world.field[1] = 0
 	FlowCache.run(world, 7)
 	FlowCache.run(world, 0)
-	assert_array(spy.calls).is_equal(["flow:7", "flow:0"])
+	# The first call is the FLOW line of the tick `_moving_world` ran (P37b): `Sim.step` passes
+	# `flow_cells_per_tick` (512) on a tick that MatchLoop does not hash.
+	assert_array(spy.calls).is_equal(["flow:512", "flow:7", "flow:0"])
 	# Untouched: the acquire() reference is not recounted (2 rows) and the field is still WAITING.
 	assert_array([world.flow.refs(0), world.flow.status[0]]).is_equal([1, 1])
 	world.native_phases = 0x46A & ~(1 << SimProbe.Phase.FLOW)  # The other four phases of ADR 0013.
 	FlowCache.run(world, 7)
-	assert_array(spy.calls).is_equal(["flow:7", "flow:0"])
+	assert_array(spy.calls).is_equal(["flow:512", "flow:7", "flow:0"])
 	assert_array([world.flow.refs(0), world.stats[World.Stat.FLOW_CELLS]]).is_equal([2, 7])
 
 

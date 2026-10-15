@@ -133,6 +133,7 @@ func test_add_unit_writes_every_column_at_its_spawn_value_and_one_spawned_record
 		&"pos_y": [4500],
 		&"goal_x": [3500],
 		&"goal_y": [4500],
+		&"group_cell": [-1],
 		&"order": [0],
 		&"hp": [300],
 		&"order_target": [0],
@@ -257,7 +258,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 			skipped.append(column)
 		else:
 			others.append(column)
-	assert_int(packed.size()).is_equal(55)
+	assert_int(packed.size()).is_equal(56)
 	assert_int(ints.size()).is_equal(32)
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
 	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper
