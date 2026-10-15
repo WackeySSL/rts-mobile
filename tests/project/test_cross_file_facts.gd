@@ -1,14 +1,17 @@
 extends GdUnitTestSuite
 ## Facts that live in two files and would drift apart without a word: the camera's zoom levels
 ## (data/input_settings.tres) and the art gallery's zoom row, the licence credit for the debug APKs'
-## default launcher icon (ADR 0005, plan risk 12), and the error scan's allowlist, which hides
-## engine errors from verify.sh and both export scripts: a new or widened entry must show up here.
+## default launcher icon (ADR 0005, plan risk 12), the selection ring's texture radius that the unit
+## layer and the art gallery each hold (P56d), and the error scan's allowlist, which hides engine
+## errors from verify.sh and both export scripts: a new or widened entry must show up here.
 
 const SETTINGS_PATH: String = "res://data/input_settings.tres"
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
 const CREDITS_PATH: String = "res://assets/CREDITS.md"
 const ALLOWLIST_PATH: String = "res://scripts/verify-allowlist.txt"
 const ZOOM_ROWS: Array[String] = ["Grass/ZoomRow", "Sand/ZoomRow"]
+## The gallery has no class_name: a preloaded script gives its constants.
+const ArtGallery: GDScript = preload("res://game/view/art_gallery.gd")
 
 
 func test_the_gallery_zoom_row_shows_the_camera_zoom_levels() -> void:
@@ -26,6 +29,13 @@ func test_the_gallery_zoom_row_shows_the_camera_zoom_levels() -> void:
 				scales.append(rig_scale.x)
 		scales.sort()
 		assert_array(scales).override_failure_message(row_path).is_equal(levels)
+
+
+## Both scale a ring by `radius / RING_TEX_RADIUS_PX`, so the gallery (art-director's) shows the
+## ring sizes of the game (touch-ux-dev's UnitLayer) only while the two constants agree. The
+## texture itself is pinned to the same 72 px by tests/art.
+func test_the_unit_layer_and_the_art_gallery_scale_the_ring_texture_by_the_same_radius() -> void:
+	assert_float(ArtGallery.RING_TEX_RADIUS_PX).is_equal(UnitLayer.RING_TEX_RADIUS_PX)
 
 
 ## Whitespace is normalised, so a re-wrapped line does not break the check.

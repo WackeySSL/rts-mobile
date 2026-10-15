@@ -12,13 +12,16 @@
 # Exit:  0 only if at least one test ran and none failed, errored or leaked orphans.
 #        1 no tests ran or results.xml is missing
 #        3 Godot, the gdUnit4 addon or the native library is missing (this script does not build)
-#        otherwise gdUnit4's own code (100 failures, 101 orphans, 105 script errors)
+#        otherwise gdUnit4's own code (100 failures or errors, 101 orphans, 105 script errors)
+#        and a last line "run-tests: gdUnit4 exited with code <status> (<what the code means>): <counts>", where the
+#        counts are read from gdUnit4's "Overall Summary" line (kept in reports/gdunit-console.log), never from the code.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 GODOT="${GODOT:-godot}"
 REPORT_DIR="reports/gdunit" # must be relative: gdUnit4 maps "/abs" to res://abs
 RESULTS="${REPORT_DIR}/report_1/results.xml"
+CONSOLE="reports/gdunit-console.log" # gdUnit4's console output, beside (not in) the report dir that it numbers
 
 if ! command -v "$GODOT" >/dev/null 2>&1; then
   echo "GODOT MISSING: '$GODOT' is not on PATH (set GODOT=/path/to/godot)." >&2
@@ -100,12 +103,29 @@ set +e
 "$GODOT" --headless --path . \
   -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd \
   --ignoreHeadlessMode -c -rd "$REPORT_DIR" -rc 1 ${GD_ARGS[@]+"${GD_ARGS[@]}"} 2>&1 |
-  sed -e $'s/\x1b\\[2J//g' -e $'s/\x1b\\[H//g' # drop gdUnit4's clear-screen codes
+  sed -e $'s/\x1b\\[2J//g' -e $'s/\x1b\\[H//g' | # drop gdUnit4's clear-screen codes
+  tee "$CONSOLE"
 status=${PIPESTATUS[0]}
 set -e
 
 if [ "$status" -ne 0 ]; then
-  echo "run-tests: gdUnit4 exited with ${status} (100 failures/errors, 101 orphans, 105 script errors)" >&2
+  # The status is gdUnit4's result code, not a count (GdUnitTestSessionRunner: 100 failures or errors, 101 orphans only,
+  # 103 headless mode refused, 104 Godot version refused, 105 script errors). The counts are on its "Overall Summary" line,
+  # in colour codes that are dropped here.
+  case "$status" in
+    100) meaning="test failures or errors" ;;
+    101) meaning="orphan nodes" ;;
+    103) meaning="headless mode not supported" ;;
+    104) meaning="Godot version not supported" ;;
+    105) meaning="script errors" ;;
+    *) meaning="not a test-result code of gdUnit4" ;;
+  esac
+  counts="$(sed -e $'s/\x1b\\[[0-9;]*m//g' "$CONSOLE" 2>/dev/null |
+    sed -n 's/^Overall Summary: \([0-9]*\) test cases | \([0-9]*\) errors | \([0-9]*\) failures | .* | \([0-9]*\) orphans |.*$/\1 test cases, \2 errors, \3 failures, \4 orphans/p' |
+    tail -n 1 || true)"
+  # gdUnit4 also exits 100 when it rejects its command line, and then no test ran and there is no summary.
+  if [ "$status" = 100 ] && [ -z "$counts" ]; then meaning="test failures or errors, or a rejected argument"; fi
+  echo "run-tests: gdUnit4 exited with code ${status} (${meaning}): ${counts:-no Overall Summary line in the gdUnit4 output above}" >&2
   exit "$status"
 fi
 # Exit 0 is also returned when the runner script fails to load or finds no tests.
