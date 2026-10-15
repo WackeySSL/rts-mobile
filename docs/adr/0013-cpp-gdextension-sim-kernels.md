@@ -70,6 +70,11 @@ dated status notes from "P26n docs" (a docs PR whose name repeats the spike P26n
 sizes"; the P26m note there is rewrapped with no word changed) and §5 (P42n with both kernels).
 No accepted text changed.
 
+Status note (2026-10-14, P26s docs): after the merge of P57 (#96, the sanitizer job), dated status
+notes from "P26s docs" sit in §8 (the cache key's sanitizer part), §10 (the sanitizer job's
+decisions as merged, its blind spots, and the lead's row P57b) and "Open after this draft" (the
+sanitizer job's item closed). No accepted text changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -1060,6 +1065,14 @@ Status note (2026-10-13, P26j, P55 review, #63) on the Caches row, which stays a
 - **`native-clang`** builds `template_debug` (the script's default target) with clang and
   `optimize=speed` (`--compiler clang --optimize speed`), under its own key.
 
+Status note (2026-10-14, P26s docs, P57 as merged, #96) on the Caches row and the P26j note above,
+which stay as written: the key gains the sanitizer part. `--print-cache-key` now prints
+`native-<platform>-<arch>-<target>-<compiler><version>[-speed][-sanitize-undefined]-godotcpp-<sha>-scons<version>`,
+so the sanitizer job's UBSan build (`--sanitize undefined`) caches `native/godot-cpp` and
+`SCONS_CACHE` under its own key. In the SCons build its objects also get a `.ubsan` suffix, and
+the library's build info gives `ubsan-O1` where a plain build gives its optimisation (§10's
+status note of P26s docs).
+
 Status notes (2026-10-13, P26k, from the real runs of P55a, #67, and P55a2, #68) on the Android,
 Android page size and Targets rows, which stay as accepted:
 - **Android.** NDK r29's clang 21 compiles the kernel sources under the `SConstruct` warning set
@@ -1312,6 +1325,50 @@ Status note (2026-10-13, P26l docs, P55b as merged, #69), on "Sessions" and the 
   died on return), because the freed memory is read inside engine code, which neither the UBSan
   library nor the ASan harness over `core/` instruments. Valgrind with a fresh-copy probe found
   it. The plan's row P57 records this; no decision on the job here.
+
+  Status note (2026-10-14, P26s docs, P57 as merged, #96), the text above stays as accepted:
+  - **`LD_PRELOAD` not taken.** No ASan library is loaded into Godot; ASan runs only in the
+    standalone harness over `core/`.
+  - **Two jobs, not a required check** (`verify` stays the only one). `sanitizer-changes` runs
+    on pull requests only and diffs the merge commit against its first parent with
+    `--no-renames --name-only` (a file moved out of a folder counts; a diff that cannot be read
+    counts as relevant) against `PATTERN: '^(native/|game/sim/|data/|tests/sim/native/)'`.
+    `sanitizers` needs it and runs only when it matched, so it ends skipped otherwise, and a
+    push to `main` or a manual run skips both. Its steps: build the UBSan library,
+    `run-tests.sh -a res://tests/sim/native` on it, `check-native-tests.sh`,
+    `sysctl -w vm.mmap_rnd_bits=28` (g++ 13's ASan cannot place its shadow under the runner's 32
+    bits), then `scripts/ci/run-sanitizer-harness.sh`.
+  - **The UBSan library** is `build-native.sh --sanitize undefined` (SConstruct
+    `sanitize=undefined`): g++ on Linux only (the script refuses clang, "clang links no UBSan
+    runtime into a shared library", and any other platform), our sources at `-O1` with
+    `-fsanitize=undefined`, `-fno-sanitize-recover=all` and no `-fwrapv`, linked to the shared
+    libubsan; it refuses `--optimize`. The library keeps the standard name, so it replaces a
+    plain build of the same platform, target and arch. The ELF check requires libubsan in
+    `NEEDED`, `__ubsan_handle_` calls, a fatal signed-overflow handler (no `-fwrapv`), no handler
+    that returns after a report (`-fno-sanitize-recover=all`) and `-O1` read back from the
+    compile line that `-frecord-gcc-switches` keeps in the library.
+  - **The dump step** is `tests/sim/native/sanitizer/dump_states.gd`, a plain
+    `extends SceneTree` script run with `godot --headless --path . -s
+    res://tests/sim/native/sanitizer/dump_states.gd -- <out dir>`, not a gdUnit4 suite, so
+    neither `verify.sh`'s run nor `native-clang`'s picks it up (verify's `results.xml` held 71
+    suites, none from it; `run-tests.sh -a res://tests/sim/native` runs 2). Until P37b steps
+    FLOW in `Sim.step`, it drives the flow cache itself with the stand-in of
+    `test_flow_lockstep.gd`.
+  - **The harness** (`native/sim_kernels/sanitizer/`) is built by the runner with g++
+    `-fsanitize=address,undefined`, `-fno-sanitize-recover=all` and no `-fwrapv`. It refuses a
+    `World.STATE_FORMAT` it does not know (exit 2), and the runner fails unless the harness took
+    every dump the step wrote. It takes 1024 x 1024 as the largest map, because no bound on the
+    map size is written down (the GDD plans 56 to 64 tiles).
+  - **Blind spots**, written down in `main.cpp` and `ci.yml`: `ArrayView` clamps an index
+    outside its window (reads 0, writes nothing), so a single index bug in `core/` is a wrong
+    answer that only the lockstep suites see, never an ASan report (the corrupted-queue crafted
+    case shows the clamp itself failing); engine-side use-after-free as in the note above; and no
+    sanitizer here sees a read of memory never written (MemorySanitizer needs clang).
+  - **Path filter** (lead decision, 2026-10-14, the plan's row P57b): the files that drive the
+    job are outside the four folders (`scripts/build-native.sh`,
+    `scripts/ci/run-sanitizer-harness.sh`, `.github/workflows/ci.yml`, `tests/sim/support/**`),
+    so a pull request that changes only those skips it. P57b widens the filter to them and
+    removes the dump step's FLOW stand-in once P37b has merged.
 - **Preview (`preview.yml`):** unchanged with the generated `.gdextension`. With the fallback,
   the preview job builds the Linux library and seeds first, as the spike did. `export-web.sh`
   changes (§7).
@@ -1701,6 +1758,11 @@ bullet names another source:
   not by P53: the `libc++_shared.so` is r29 / LLVM 21, not r28 (Context's status note), and the
   kernels are built with NDK 29.0.14206865 (§8). Still to come: P55a re-reads the notes and the
   16 KB alignment in CI from the APK it checks.
+
+Status note (2026-10-14, P26s docs): the sanitizer job's item is closed by P57 (#96). The UBSan
+library runs the `tests/sim/native` suites inside headless Godot (the `sanitizers` job, green on
+the PR's last commit), and loading an ASan library there (`LD_PRELOAD`) was not taken; ASan runs
+only in the standalone harness over `core/` (§10's status note of P26s docs).
 
 ## Acceptance note (2026-10-12)
 Michael answered the four questions of the plan's amendment ("Open questions for Michael (ADR

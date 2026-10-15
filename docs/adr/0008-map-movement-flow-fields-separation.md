@@ -31,6 +31,10 @@ no-corner-cutting rule); a group is blocked on a tile when any move class in it 
 target on rock moves to the first open tile of §2's ring search, kept inside the radius-inset
 box. No decision changes.
 
+Status note (2026-10-14, P26s docs, from P37a2 as merged, #94): §2's "Arrival" bullet carries a
+dated note: the merged arrival is the snap rule on the tick the goal is within one step, and a
+push or the slide can leave the arrived unit off the goal. No decision changes.
+
 ## Context
 ROADMAP Phase 2 asks for "movement with flow fields and separation". Phase 1 moves units in
 straight lines to formation slots with no terrain and no collision (ADR 0003 §4-5), and its
@@ -187,6 +191,18 @@ Measurements (Godot 4.7.2 headless, 2026-10-11, Xeon cloud VM; mock code, not th
   digit method (0.37 µs against 1.15 µs in #86), with identical results and the exhaustive tests
   unchanged.
 - **Arrival:** snap to the goal when `d2 <= speed * speed` (v0).
+
+  Status note (2026-10-14, P26s docs, from P37a2 as merged, #94), the text above stays as
+  accepted: the snap is the intent, not a position write. `Movement.run` gives a unit whose aim
+  is within one step the exact rest (`d2 <= speed^2`), and `Movement.integrate` ends the order on
+  that tick ("a unit that steered at its goal (not in HOLD or CHASE) with an order other than
+  ATTACK arrives on the tick its goal is within one step at the start of the tick"): `order`
+  `IDLE`, `nav_mode` `NONE`, `nav_cell` -1, "also when a push or the slide kept it off the goal
+  itself". So the unit lands on the goal only when no push and no slide move it; the order ends
+  either way. `HOLD` and `CHASE` units never arrive, and `ATTACK` keeps its order (P41 ends it).
+  The destination-tile rule of §4 holds as written: only the new point's tile is tested (so a
+  diagonal step may pass between two blocked orthogonal neighbours, which a test pins, as the
+  Consequences ask), and a unit that started on a blocked tile may move to a passable one.
 - **Stall:** a moving unit tracks `best_dist`, its smallest distance to the goal so far (a plain
   distance in milli, at most about 91 000 on a 64x64 map, so int32 is safe). If that does not
   improve for `stall_ticks` (rules, 15) while the unit is within `stall_range_spacings` (rules, 2)
