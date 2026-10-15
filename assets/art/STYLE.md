@@ -404,6 +404,24 @@ To add an asset:
   menu. While the gallery is open the script switches `SceneTree.quit_on_go_back` off (its default
   is on, which would quit the app) and restores it on exit.
 
+## Reskin
+Michael, 2026-10-15: the game's look must stay replaceable as a whole without touching game rules
+(plan `docs/plans/2026-10-11-phase-2.md`, "Answers and follow-ups (P26t docs)"). A new look is
+made in three places, and the palette table above is the source for all three: change the
+palette first, then the three places from it.
+1. **Units**: the SVG layers in `assets/art/svg/units/`, found by name: `<type>_hull.svg`,
+   `<type>_team.svg` and `<type>_turret.svg` (`UnitLayer.ART_DIR`). Replace a unit's files under
+   the same names and keep the layer contract above. The selection ring
+   (`assets/art/svg/ui/selection_ring.svg`) is replaced in place the same way.
+2. **Terrain**: the `colors` and `tiles` exports of `game/view/MapView.gd`, with the gallery's
+   copies and the "Fog and terrain" section above.
+3. **UI**: the central Theme of plan row P58 (`game/ui/theme.tres`, from P58 on), which holds
+   every HUD colour, font, font size and panel style.
+
+The team tints and the feedback marker colours are palette colours kept as constants or exports
+in `game/view` (`UnitLayer.team_colors`, `FeedbackStyle`, `MoveMarkerLayer`); a new palette
+updates them too. Renaming a unit or a unit type is a data change, not a reskin.
+
 ## Open points for Michael
 - Approve the **(new)** rules: team-layer greys, elevation reads as lightness, rotating layers carry
   no shadow and no one-sided light, the reading of "1.5 px vs 2 px", the feedback marker spec
@@ -453,3 +471,4 @@ To add an asset:
 | 2026-10-12 | v1.2 (P34b): selection ring texture and the draw-order rule, effects atlas, combat effects and health bars specs (weapon and class from snapshot columns, bars placed by sprite reach), the own and enemy cue. |
 | 2026-10-12 | v1.2 (P34c): terrain tiles with the scrub pattern, keyed by `MapView.colors` key, the fog alpha, the gallery terrain patch with squads on scrub. |
 | 2026-10-12 | v1.2 (P34c, Michael's answers): the map grid is removed, the rocket warhead stays #F5A524; the health bar overlap half-heights (14 and 21 world px) are recorded. |
+| 2026-10-15 | P26t docs (Michael's decision): the Reskin section names the three places a new look is made; no rule changed. |
