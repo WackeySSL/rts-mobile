@@ -192,7 +192,8 @@ Measurements (Godot 4.7.2 headless, 2026-10-11, Xeon cloud VM; mock code, not th
 
   Status note (2026-10-19, P26u docs, from P37b as merged, #101): **where and when.** FIELD
   following, the stall and the `ATTACK` re-key run in INTEGRATE (`Movement.integrate`, ADR 0013
-  §1); `Movement.run` (INTENTS) keeps the steering, the line checks and the first acquire of a
+  §1): following and the re-key at event cadence, the stall on every tick of a unit that tracks
+  it; `Movement.run` (INTENTS) keeps the steering, the line checks and the first acquire of a
   blocked line. `nav_next` has two "none" values: -1 = not looked up yet (a pending field or a
   new order), and `Movement.NO_NEXT` (-2) = looked up, and the complete field names no next tile
   (the goal tile, or ground the field does not reach), so such a unit does not ask
