@@ -16,6 +16,13 @@ instructions: release workflows", is Michael's standing working method (merge an
 only on his word), because `docs/PROJECT_INSTRUCTIONS.md` is not in use (Phase 2 plan, "Answers
 and follow-ups (P26p docs)" and "(P26q docs)"). The text of §6 stays as accepted.
 
+Status note (2026-10-19, P26v docs; ADR 0015, accepted 2026-10-19): §1's "Orientation comes from
+the project setting (`sensor_landscape`)" and the Amendment (P18)'s manifest value 11
+(`userLandscape`), which `scripts/export-android.sh` checks, are superseded for the future by ADR
+0015 and stay true until its flip row P64 merges. Orientation still comes from the project
+setting; P64 sets it to 6 (`sensor`), which Godot 4.7.2 writes as `screenOrientation` 13
+(`fullUser`), and changes the check to 13.
+
 ## Context
 Phase 1 asks for "Android debug APK as a CI artifact for testing on a real device". The web
 preview (ADR 0002 §9) must keep working, so Michael can compare touch in the phone browser
