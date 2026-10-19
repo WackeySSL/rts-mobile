@@ -75,6 +75,12 @@ notes from "P26s docs" sit in §8 (the cache key's sanitizer part), §10 (the sa
 decisions as merged, its blind spots, and the lead's row P57b) and "Open after this draft" (the
 sanitizer job's item closed). No accepted text changed.
 
+Status note (2026-10-19, P26x docs): after the merges of P57b (#104), P37n (#108, the second
+kernel, INTEGRATE) and P37n3 (#109, its lockstep), dated status notes from "P26x docs" sit in §2
+(the second recorded exception, INTEGRATE's slot reads; the `isqrt` shift table accepted as
+structure; the checked table's counts; `step_toward`) and §10 (the sanitizer job's path filter
+and dump step as P57b merged them). No accepted text changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -630,6 +636,34 @@ absorbs next to the C++ phases.
   blind spots left to review (a method that returns the pointer, a `using` alias of it, a
   pointer in a struct nested in a view, a member defined outside the view body, a view that
   `VIEW` does not name); the qa follow-ups of P56b's review are the plan's row P56c.
+
+  Status note (2026-10-19, P26x docs, P37n as merged, #108, and P37n3, #109), the text above
+  stays as accepted:
+  - **The second recorded exception** to "for each slot it touches, the slot's arrays and
+    scalars once" ("Arrays of helper objects"), beside FLOW's re-read of `pending` (P26m's note
+    above). The INTEGRATE pass asks a slot for `complete` once per slot and call and keeps the
+    answer in a 63-slot mask (`integrate::MEMO_SLOTS` in `core/integrate.h`,
+    `std::numeric_limits<int64_t>::digits`, pinned by
+    `tests/sim/native/test_integrate_kernel_slots.gd`, which reads the line as text and checks
+    `flow_cache_size` against it); a recycle (`flow::acquire` handing a slot a new key) updates
+    the answer. The rest of a slot (`cost`, `grid_cols`, `cell_count`, `stride`) is fetched at
+    event cadence, where a FIELD unit looks up its next tile. A slot past 63 is asked on each use
+    (`flow_cache_size` is 8 in `data/rules.tres`). No `Object::get` per row. The reason, in
+    `bind/kernel_integrate.cpp`'s header: holding the cost array of every slot for the whole call
+    needs room for as many as there are, and `flow_cache_size` has no upper bound to size it by.
+    The plan's section P37n "As merged" records it.
+  - **The `isqrt` shift table is accepted as structure, not a rule value.** `SHIFTS` in
+    `core/fixed_math.cpp` (32, 16, 8, 4 and 2) are the five steps that `FixedMath.isqrt` writes
+    as literals: they mirror the twin's code, not a rule int, and change only with it.
+  - **The checked table** holds 107 entries (P54's note above: 106). INTEGRATE's list holds the
+    49 names the kernel gets or sets (P54's note: 53): `max_rows`, `flow_cache_size`,
+    `order_target`, `target` and `stats` lost its bit, and `group_cell` (P37b) is new.
+  - **`step_toward`**, which §1 names among INTEGRATE's `core/` functions, is not in `core/`:
+    `Movement.integrate` does not call it (the step is `Movement.run`'s, in INTENTS), and a
+    `core/` function lands with the kernel that calls it, so it comes with P37n2 if INTENTS's
+    rule fires. `isqrt`, `best_neighbour` and `acquire` landed with INTEGRATE, and FLOW's
+    per-call loop moved into `core/flow.h` as `flow::run` (the plan's "Answers and follow-ups
+    (P26s docs)", decision 3).
 
 ### 3. Dispatch and the implementation switch
 - **`World` gains two members (P54):**
@@ -1369,6 +1403,27 @@ Status note (2026-10-13, P26l docs, P55b as merged, #69), on "Sessions" and the 
     `scripts/ci/run-sanitizer-harness.sh`, `.github/workflows/ci.yml`, `tests/sim/support/**`),
     so a pull request that changes only those skips it. P57b widens the filter to them and
     removes the dump step's FLOW stand-in once P37b has merged.
+
+  Status note (2026-10-19, P26x docs, P57b as merged, #104), the text above and the P26s note
+  stay as written:
+  - **The path filter as merged** (`.github/workflows/ci.yml`, pinned by
+    `tests/project/test_ci_workflow.gd`):
+    `PATTERN: '^(native/|game/sim/|data/|tests/sim/native/|tests/sim/support/|scripts/build-native\.sh$|scripts/ci/run-sanitizer-harness\.sh$|\.github/workflows/ci\.yml$)'`.
+    The other scripts the job runs stay out of `PATTERN`, because the required verify job runs
+    them on every pull request, as `ci.yml`'s comment on the job says: `install-godot.sh` (with
+    `remote_zip.py`), `run-tests.sh`, `check-native-tests.sh` and `seed-extension-list.sh`.
+  - **The dump step plays real orders.** `tests/sim/native/sanitizer/dump_states.gd` plays the
+    seed-42 arena through `MatchLoop` with the arena's own orders and, from tick 120 every 30
+    ticks (`WAVE_FIRST`, `WAVE_EVERY`), a wave of `MOVE` orders that sends about one in five
+    (`WAVE_SHARE`) of one player's units across the arena's rock wall; three `World.set_terrain`
+    repaints (`REPAINT_TICKS` 206, 446 and 701, each three ticks before a dump) re-integrate the
+    fields in use. `Sim.step` steps FLOW itself (P37b), so the step calls no `FlowCache`: the
+    FLOW stand-in is gone. The run fails if no dump caught a waiting, a half-integrated, a served
+    and a re-integrating field. Since P37n (#108) it also writes the INTEGRATE kernel's records
+    (`_write_integrate`).
+  - So the P26s note's "Until P37b steps FLOW in `Sim.step`, it drives the flow cache itself
+    with the stand-in of `test_flow_lockstep.gd`" and "P57b widens the filter to them and
+    removes the dump step's FLOW stand-in once P37b has merged" are done.
 - **Preview (`preview.yml`):** unchanged with the generated `.gdextension`. With the fallback,
   the preview job builds the Linux library and seeds first, as the spike did. `export-web.sh`
   changes (§7).
