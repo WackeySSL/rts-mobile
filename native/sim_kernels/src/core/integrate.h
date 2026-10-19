@@ -18,7 +18,9 @@
 namespace integrate {
 
 // The slots whose `complete` the pass asks the slot objects for once per call (and again only after a recycle): the value
-// bits of an int64_t, so that a slot's bit is a shift by 0 to 62. A slot past them is asked on each use.
+// bits of an int64_t, so that a slot's bit is a shift by 0 to 62. A slot past them is asked on each use. A smaller number
+// gives the same states and brings the Object::get per row back, so two tests pin it: test_integrate_kernel_slots.gd
+// reads this line as text (and against flow_cache_size), and the sanitizer harness counts asks against its own bound.
 inline constexpr int64_t MEMO_SLOTS = std::numeric_limits<int64_t>::digits;
 
 // The per-row columns of the World that the pass reads or writes (World.ROW_ARRAYS and the scratch arrays). A row

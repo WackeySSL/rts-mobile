@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <climits>
 #include <iterator>
+#include <limits>
 #include <string>
 #include <utility>
 #include <vector>
@@ -25,6 +26,10 @@ constexpr int64_t BIG = 1000000000; // a budget that finishes any field of a map
 constexpr int64_t BUCKET_COUNT = flow::BUCKETS;
 constexpr int64_t NAV_DIRECT = 1, NAV_FIELD = 2; // World.NavMode
 constexpr int64_t ORDER_ATTACK_MOVE = 1, ORDER_MOVE = 2, ORDER_ATTACK = 3; // World.Order
+// The slots the pass keeps an answer for: the value bits of an int64_t, a slot's bit being a shift by 0 to 62. It is
+// written here and not read from integrate::MEMO_SLOTS, so that a smaller MEMO_SLOTS is a Finding: the rows on the slots
+// between would pay an Object::get of `complete` each (the data/rules.tres cache has 8 slots).
+constexpr int64_t MEMOISED = std::numeric_limits<int64_t>::digits;
 
 // One FlowField as INTEGRATE sees it: the served cost and what indexes it.
 struct SlotData {
@@ -45,7 +50,7 @@ struct State {
 };
 
 // The slots of the state as the pass reaches them (bind/kernel_integrate.cpp's BoundSlots). The bind layer pays an
-// Object::get for each ask of `complete`, which ADR 0013 section 2 forbids per row, so a slot below integrate::MEMO_SLOTS
+// Object::get for each ask of `complete`, which ADR 0013 section 2 forbids per row, so a slot below MEMOISED
 // may be asked once, and again only after its recycle: a second ask is a Finding (the pass lost its memo).
 class VectorSlots final : public integrate::Slots {
 public:
@@ -54,7 +59,7 @@ public:
 
 	int64_t count() override { return static_cast<int64_t>(slots_.size()); }
 	bool complete(int64_t slot) override {
-		if (known(slot) && slot < integrate::MEMO_SLOTS) {
+		if (known(slot) && slot < MEMOISED) {
 			if (asked_[static_cast<size_t>(slot)]) {
 				throw Finding("integrate: the pass asked slot " + std::to_string(slot) + " for `complete` twice with no recycle between: a get per row in the bind layer");
 			}
@@ -417,11 +422,11 @@ void random_scenes(Tally &tally) {
 	}
 }
 
-// More slots than the pass keeps an answer for (integrate::MEMO_SLOTS): the slots past them are asked on each use, and
-// the ones below must not be mistaken for them (a shift past 62 is undefined).
+// More slots than the pass keeps an answer for (MEMOISED): the slots past them are asked on each use, and the ones
+// below must not be mistaken for them (a shift past 62 is undefined).
 void many_slots(Tally &tally) {
 	Stream stream = { 11 };
-	for (const int64_t slots : { integrate::MEMO_SLOTS - 1, integrate::MEMO_SLOTS, integrate::MEMO_SLOTS + 1, int64_t(2) * integrate::MEMO_SLOTS + 6 }) {
+	for (const int64_t slots : { MEMOISED - 1, MEMOISED, MEMOISED + 1, int64_t(2) * MEMOISED + 6 }) {
 		State state = make_scene(stream, 16, 16, slots, 120, 9);
 		play(state, 30, tally);
 	}

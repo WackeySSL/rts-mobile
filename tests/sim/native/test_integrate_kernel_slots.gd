@@ -21,6 +21,11 @@ const NO_NEXT: int = -2
 ## a look-up ran, because a look-up replaces it with a tile, NO_NEXT or -1.
 const MARK: int = -3
 const BIG: int = 100000
+const INTEGRATE_HEADER: String = "res://native/sim_kernels/src/core/integrate.h"
+## integrate::MEMO_SLOTS as core/integrate.h writes it, and its value: a slot's answer is a bit of
+## an int64_t, shifted by 0 to 62.
+const MEMO_EXPRESSION: String = "std::numeric_limits<int64_t>::digits"
+const MEMO_SLOTS: int = 63
 ## The slots of the wide cache: the last one the pass keeps an answer for is 62.
 const WIDE_SLOTS: int = 70
 const WIDE_COMPLETE: int = 65
@@ -96,6 +101,25 @@ func test_slots_past_the_answers_the_pass_keeps_are_asked_on_each_use() -> void:
 			)
 			assert_bool(world.nav_next[row] != MARK).override_failure_message(label).is_true()
 	assert_str(StateDiff.first(pair[0], pair[1])).is_empty()
+
+
+## The number of slots the pass keeps an answer for is the value bits of an int64_t (63), and it
+## covers the cache of data/rules.tres. The states are the same for any number (a slot past it is
+## asked on each use, correct and slower), so no state comparison sees a smaller one: with a
+## MEMO_SLOTS of 4 and the 8 slots of the rules, the rows on slots 4 to 7 would pay an Object::get
+## of `complete` each again, the per-row get that ADR 0013 section 2 forbids and that the next
+## kernels copy. The count of asks is the sanitizer harness's; here the constant is read as text.
+func test_the_slots_the_pass_keeps_an_answer_for_are_the_value_bits_of_an_int64() -> void:
+	var declaration: RegEx = RegEx.create_from_string(
+		"inline constexpr int64_t MEMO_SLOTS = ([^;]+);"
+	)
+	var found: RegExMatch = declaration.search(FileAccess.get_file_as_string(INTEGRATE_HEADER))
+	assert_object(found).is_not_null()
+	if found == null:
+		return
+	assert_str(found.get_string(1).strip_edges()).is_equal(MEMO_EXPRESSION)
+	var rules: RulesDef = load("res://data/rules.tres") as RulesDef
+	assert_int(rules.flow_cache_size).is_less_equal(MEMO_SLOTS)
 
 
 ## The pairs: a builder gives the same World twice, the first running the GDScript phase and the
