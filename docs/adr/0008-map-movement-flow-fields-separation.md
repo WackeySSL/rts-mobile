@@ -293,8 +293,9 @@ Measurements (Godot 4.7.2 headless, 2026-10-11, Xeon cloud VM; mock code, not th
   the row column `group_cell` (a cell, -1 = none, -1 at spawn), else the unit's own goal tile.
   `Formation.assign` writes the cell of the group's centre into every row of a `MOVE` or
   `ATTACK_MOVE` command; `Sim._apply_attack`, `Sim._apply_stop` and `Movement._end_order` write
-  -1, and `Movement.reset_nav` leaves it. A blocked line (`Movement._check_line`) asks the cache
-  for (`group_cell`, class), else (the cell of the unit's goal, class): one `acquire`, and with
+  -1, and `Movement.reset_nav` leaves it. A blocked line (`Movement._check_line`) of a unit with
+  no field asks the cache for (`group_cell`, class), else (the cell of the unit's goal, class); a
+  `FIELD` unit re-checking its line keeps the field it follows. One `acquire`, and with
   every slot referenced the unit stays `DIRECT` and asks again on its next turn. The column is
   hashed. Formation slots lie on different tiles, so a key per slot would take one field per
   unit from a cache of 8.
@@ -311,8 +312,8 @@ Measurements (Godot 4.7.2 headless, 2026-10-11, Xeon cloud VM; mock code, not th
     a unit whose goal is the key stalls (§2's note) and frees the slot. Only the key counts:
     another blocked tile keeps the old field until the cache swaps the new one in.
   - **Accepted behaviour.** With every slot referenced, a unit whose slot the group field does
-    not reach can end `IDLE` through the stall short of a reachable slot (maze fuzz: 55 of 5,600
-    units at 8 slots, 28% rock).
+    not reach can end `IDLE` through the stall short of a reachable slot (maze fuzz in the lead's
+    brief: 55 of 5,600 units at 8 slots, 28% rock).
 - **Invalidation:** when `map_version` changes, slots with references re-integrate into `next`
   (double buffer, so units keep following the old costs until the swap), and slots without
   references are dropped.
