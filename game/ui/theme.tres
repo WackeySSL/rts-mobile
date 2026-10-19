@@ -1,13 +1,23 @@
-; The HUD's one Theme (plan row P58, Michael's decision of 2026-10-15): every colour, font, font
-; size and panel style of the HUD's Controls lives here, so a new look is this file alone (STYLE.md
-; "Reskin"). main.tscn sets it on the Controls under Hud (Hud/SafeArea and Hud/BoxOverlay); every
-; Control below inherits it. A new font goes under assets/art/fonts/ (CREDITS.md row, Licences
-; screen) and is referenced from here only. Neutral colours here have no STYLE.md palette row yet.
+; The HUD's one Theme (plan row P58, Michael's decision of 2026-10-15): the look of the HUD's
+; Controls lives here, so a new look is this file alone (STYLE.md "Reskin"). It holds the font
+; sizes, the selection panel's backdrop and the colours of the selection box and anchor. The text
+; and button colours, the Button StyleBoxes and the HUD font are the engine's defaults and are
+; not in this file: a restyle adds them here (Label/colors/font_color, Button/styles/normal, a
+; Font) with no code change. main.tscn sets the theme on the Controls under Hud (Hud/SafeArea and
+; Hud/BoxOverlay); every Control below inherits it, and so does a HUD root added later with this
+; theme on it. A new font goes under assets/art/fonts/ (CREDITS.md row, Licences screen) and is
+; referenced from here only.
+; The backdrop has a palette row in STYLE.md ("HUD panel backdrop"); this file is its value of
+; record. BoxOverlay's fill and outline are also FeedbackStyle.FILL and OUTLINE, which the
+; world-space move markers draw with (game/view): a new palette changes both.
 ;
-; Sizes are dp: HudTheme.gd turns every font size and every StyleBox content margin and corner
-; radius into px on a resize and gives the HUD roots that copy as their theme. Border widths,
-; expand margins and shadows are not scaled yet: add them to HudTheme.scaled() before using one.
-; An entry that stays in base px is listed in metadata/base_px by its path in this file.
+; Sizes are dp: HudTheme.gd turns every font size and every StyleBox size (content margins,
+; corner radii, border widths, expand margins, shadows, skew, a line's thickness and grow) into px
+; on a resize and gives the HUD roots that copy as their theme. Not scaled: a StyleBoxTexture's
+; texture margins (they cut the picture, in texture px) and the theme's constants (a font's
+; outline_size too: layout stays in code, in dp through UiScale); scale a constant in
+; HudTheme.scaled() before putting one here. An entry that stays in base px is listed in
+; metadata/base_px by its path in this file.
 ; Type variations (DevButton, NumberLabel, SelectionPanel) are set by theme_type_variation on the
 ; node, once, in main.tscn or at build in the script.
 [gd_resource type="Theme" format=3]

@@ -238,9 +238,27 @@ func test_the_box_overlay_draws_with_the_three_colours_of_its_theme_type() -> vo
 	assert_that(colors[&"fill"]).is_equal(Color(0.1, 0.2, 0.3, 0.4))
 	assert_that(colors[&"outline"]).is_equal(Color(0.5, 0.6, 0.7, 0.8))
 	assert_that(colors[&"stroke"]).is_equal(Color(0.9, 0.8, 0.7, 0.6))
-	box.show_anchor(Vector2(300, 200))  # It still draws, from the new colours.
+	# What it paints is read through the plan (tests/ui/test_box_overlay_plan.gd pins the shapes):
+	# each shape's colour is one of the three new ones, in the order of the plan.
+	box.show_anchor(Vector2(300, 200))
 	box.show_rect(Rect2(300, 200, 100, 80))
-	await await_idle_frame()
+	var painted: Array[Color] = []
+	for step: BoxOverlay.Step in box.draw_plan():
+		painted.append(colors[step.item])
+	(
+		assert_array(painted)
+		. is_equal(
+			[
+				colors[&"fill"],
+				colors[&"outline"],
+				colors[&"stroke"],
+				colors[&"fill"],
+				colors[&"outline"],
+				colors[&"stroke"],
+			]
+		)
+	)
+	await await_idle_frame()  # `_draw` plays the plan once.
 	assert_bool(box.is_showing()).is_true()
 
 

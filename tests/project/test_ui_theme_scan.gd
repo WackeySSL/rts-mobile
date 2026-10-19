@@ -6,12 +6,17 @@ extends GdUnitTestSuite
 ##   `Color.WHITE`, and `Color.from_hsv`, `Color.html`);
 ## - a colour by reference from `game/view`: `FeedbackStyle.OUTLINE` and `FeedbackStyle.FILL`;
 ## - a literal `modulate`, `self_modulate` or `color`, in code and as a scene key of the subtree;
-## - a font: `FontFile`, `SystemFont`, `FontVariation`, a `.ttf`, `.otf`, `.woff` or `.woff2` path;
+## - a font: `FontFile`, `SystemFont`, `FontVariation`, a `.ttf`, `.otf`, `.woff`, `.woff2`, `.fnt`
+##   or `.fontdata` path;
+## - `LabelSettings`, the class and the `label_settings` scene key: a Label's own colour, font and
+##   size, which the theme would not see;
 ## - a StyleBox made in code;
-## - a theme override of a colour, font, font size or StyleBox, in code (`add_theme_*_override`)
-##   and as a scene key (`theme_override_colors/`, `_fonts/`, `_font_sizes/`, `_styles/`);
-## - a Theme or a StyleBox written in code (`set_font_size`, `set_stylebox`, a content margin or a
-##   corner radius setter), which only the dp step may do, on its scaled copy.
+## - a theme override of a colour, font, font size or StyleBox, in code (`add_theme_*_override`,
+##   or the `theme_override_*/` name given to `set`) and as a scene key (`theme_override_colors/`,
+##   `_fonts/`, `_font_sizes/`, `_styles/`);
+## - a Theme or a StyleBox written in code (`set_font_size`, `set_stylebox`, `set_color`,
+##   `set_font`, a content margin or a corner radius setter), which only the dp step may do, on its
+##   scaled copy.
 ## A constant override (`add_theme_constant_override`, `theme_override_constants/`) is layout,
 ## computed from the screen, and is allowed. The scan reads one line at a time, with the comments
 ## of a `.gd` file taken out first (a string stays: a font path is one). The developer scenes under
@@ -19,6 +24,10 @@ extends GdUnitTestSuite
 ## scene (`PerfHud.gd`, `perf_arena.gd`) is scanned like the others until it is listed in
 ## EXCEPTIONS with its reason. Every rule has fixture lines that it must flag, so a scan that
 ## matches nothing fails, and every exception must still be needed.
+## Known gaps: a line scan sees no data flow. It does not flag a colour or a size that reaches a
+## StyleBox through a variable (`style.bg_color = tint` on a box got from the theme), a Theme,
+## StyleBox or Font loaded from another resource file, or a name computed at run time. They need a
+## review of the diff, and a rule of their own once one is written.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const UI_DIR: String = "res://game/ui"
@@ -33,8 +42,13 @@ const LITERAL_MODULATE: String = (
 	r"\b(?:modulate|self_modulate|color)(?:\.[rgba])?\s*=(?!=)" + r"\s*(?:[-+]?\d|[\"']|Color\b)"
 )
 const THEME_WRITE: String = (
-	r"\.(?:set_font_size|set_stylebox|set_content_margin(?:_all)?|"
+	r"\.(?:set_font_size|set_stylebox|set_color|set_font|set_content_margin(?:_all)?|"
 	+ r"set_corner_radius(?:_all)?)\s*\("
+)
+## A font class, or the path of a font file (a bitmap font is `.fnt`, a font made by the editor
+## `.fontdata`).
+const FONT_FILE: String = (
+	r"\b(?:FontFile|SystemFont|FontVariation)\b|" + r"\.(?:ttf|otf|woff2?|fnt|fontdata)\b"
 )
 
 ## One rule per kind of file it reads: `name`, `kind`, the `regex` applied to a line, and the
@@ -93,7 +107,7 @@ const RULES: Array[Dictionary] = [
 	{
 		"name": "font",
 		"kind": GD,
-		"regex": r"\b(?:FontFile|SystemFont|FontVariation)\b|\.(?:ttf|otf|woff2?)\b",
+		"regex": FONT_FILE,
 		"fixtures":
 		[
 			"var font: FontFile = FontFile.new()",
@@ -103,17 +117,37 @@ const RULES: Array[Dictionary] = [
 			'var font: Font = preload("res://assets/art/fonts/a.otf")',
 			'var font: Font = load("res://assets/art/fonts/a.woff")',
 			'var font: Font = load("res://assets/art/fonts/a.woff2")',
+			'var font: Font = load("res://assets/art/fonts/a.fnt")',
+			'var font: Font = load("res://assets/art/fonts/a.fontdata")',
 		],
 	},
 	{
 		"name": "font",
 		"kind": TSCN,
-		"regex": r"\b(?:FontFile|SystemFont|FontVariation)\b|\.(?:ttf|otf|woff2?)\b",
+		"regex": FONT_FILE,
 		"fixtures":
 		[
 			'font = SubResource("FontVariation")',
 			'theme_override_fonts/font = ExtResource("a") ; res://a.ttf',
+			'font = ExtResource("a") ; res://assets/art/fonts/a.fnt',
 		],
+	},
+	{
+		"name": "label_settings",
+		"kind": GD,
+		"regex": r"\bLabelSettings\b|\blabel_settings\s*=(?!=)",
+		"fixtures":
+		[
+			"var look: LabelSettings = LabelSettings.new()",
+			"label.label_settings = look",
+			"label_settings = null",
+		],
+	},
+	{
+		"name": "label_settings",
+		"kind": TSCN,
+		"regex": r"^\s*label_settings\s*=|\bLabelSettings\b",
+		"fixtures": ['label_settings = SubResource("LabelSettings_a")', "label_settings = null"],
 	},
 	{
 		"name": "stylebox_in_code",
@@ -130,13 +164,19 @@ const RULES: Array[Dictionary] = [
 	{
 		"name": "theme_override",
 		"kind": GD,
-		"regex": r"\badd_theme_(?:color|font|font_size|stylebox)_override\b",
+		"regex":
+		(
+			r"\badd_theme_(?:color|font|font_size|stylebox)_override\b|"
+			+ r"\btheme_override_(?:colors|fonts|font_sizes|styles)/"
+		),
 		"fixtures":
 		[
 			'add_theme_color_override("font_color", tint)',
 			'add_theme_font_override("font", font)',
 			'add_theme_font_size_override("font_size", 18)',
 			'add_theme_stylebox_override("panel", style)',
+			'set("theme_override_font_sizes/font_size", 18)',
+			'label.set("theme_override_colors/font_color", tint)',
 		],
 	},
 	{
@@ -159,6 +199,8 @@ const RULES: Array[Dictionary] = [
 		[
 			'out.set_font_size("font_size", "Label", 28)',
 			'out.set_stylebox("panel", "SelectionPanel", box)',
+			'out.set_color("font_color", "Label", tint)',
+			'out.set_font("font", "Label", font)',
 			"box.set_content_margin(SIDE_LEFT, 14.0)",
 			"box.set_content_margin_all(14.0)",
 			"flat.set_corner_radius(CORNER_TOP_LEFT, 14)",
@@ -188,6 +230,12 @@ const CLEAN_GD: Array[String] = [
 	"var ring_color: Color = tint",
 	'const KEY: StringName = &"set_font_size"',
 	"var node_color: int = 3",
+	"var label_settings_count: int = 3",
+	'add_theme_constant_override("outline_size", 2)',
+	'const KEY: String = "theme_override_constants/separation"',
+	"if label_settings == other:",
+	"var font_name: String = path.get_file()",
+	'theme.set_constant(&"separation", &"Box", 4)',
 ]
 const CLEAN_TSCN: Array[String] = [
 	"theme_override_constants/separation = 8",
@@ -199,6 +247,7 @@ const CLEAN_TSCN: Array[String] = [
 	'text = "Dev"',
 	"anchor_right = 1.0",
 	"colorful = 1",
+	"label_text = 1",
 ]
 
 ## Files that may break a rule, each with the rules and the reason. The scan fails when one of the

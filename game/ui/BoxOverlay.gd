@@ -18,6 +18,22 @@ var _anchor_ms: int = -1  ## When the anchor appeared, or -1.
 var _dp_px: float = 1.0  ## Base px per dp, read when the overlay opens.
 
 
+## One shape of `_draw`: a `circle` (at `center`, of `radius`) or a `rect` (`area`), in the theme
+## colour `item`. `width` is the stroke in base px, and -1.0 fills the shape.
+class Step:
+	var shape: StringName
+	var item: StringName
+	var width: float
+	var center: Vector2 = Vector2.ZERO
+	var radius: float = 0.0
+	var area: Rect2 = Rect2()
+
+	func _init(p_shape: StringName, p_item: StringName, p_width: float) -> void:
+		shape = p_shape
+		item = p_item
+		width = p_width
+
+
 func show_anchor(pos: Vector2) -> void:
 	_open()
 	anchor = pos
@@ -54,6 +70,40 @@ func draw_colors() -> Dictionary[StringName, Color]:
 	return colors
 
 
+## The shapes `_draw` paints now, in the order it paints them: the anchor's fill, dark pass and
+## stroke, then the box's. `_draw` does nothing else, so tests read which colour each shape gets
+## and how wide it is here, as pixels cannot be read headless.
+func draw_plan() -> Array[Step]:
+	var steps: Array[Step] = []
+	var stroke: float = FeedbackStyle.STROKE_DP * _dp_px
+	var edge: float = FeedbackStyle.OUTLINE_DP * _dp_px
+	if _anchor_ms >= 0:
+		var radius: float = anchor_radius()
+		steps.append(_ring(&"fill", -1.0, radius))
+		steps.append(_ring(&"outline", stroke + edge, radius))
+		steps.append(_ring(&"stroke", stroke, radius))
+	if rect.has_area():
+		var line: Rect2 = rect.grow(-_dp_px)
+		var box_stroke: float = BOX_DP * _dp_px
+		steps.append(_box(&"fill", -1.0, rect))
+		steps.append(_box(&"outline", box_stroke + edge, line))
+		steps.append(_box(&"stroke", box_stroke, line))
+	return steps
+
+
+func _ring(item: StringName, width: float, radius: float) -> Step:
+	var step: Step = Step.new(&"circle", item, width)
+	step.center = anchor
+	step.radius = radius
+	return step
+
+
+func _box(item: StringName, width: float, area: Rect2) -> Step:
+	var step: Step = Step.new(&"rect", item, width)
+	step.area = area
+	return step
+
+
 func _open() -> void:
 	if not visible:
 		_dp_px = UiScale.base_px_per_dp()
@@ -66,16 +116,10 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-	var stroke: float = FeedbackStyle.STROKE_DP * _dp_px
-	var edge: float = FeedbackStyle.OUTLINE_DP * _dp_px
 	var colors: Dictionary[StringName, Color] = draw_colors()
-	if _anchor_ms >= 0:
-		var radius: float = anchor_radius()
-		draw_circle(anchor, radius, colors[&"fill"])
-		draw_circle(anchor, radius, colors[&"outline"], false, stroke + edge, true)
-		draw_circle(anchor, radius, colors[&"stroke"], false, stroke, true)
-	if rect.has_area():
-		var line: Rect2 = rect.grow(-_dp_px)
-		draw_rect(rect, colors[&"fill"])
-		draw_rect(line, colors[&"outline"], false, BOX_DP * _dp_px + edge, true)
-		draw_rect(line, colors[&"stroke"], false, BOX_DP * _dp_px, true)
+	for step: Step in draw_plan():
+		var filled: bool = step.width < 0.0
+		if step.shape == &"circle":
+			draw_circle(step.center, step.radius, colors[step.item], filled, step.width, not filled)
+		else:
+			draw_rect(step.area, colors[step.item], filled, step.width, not filled)
