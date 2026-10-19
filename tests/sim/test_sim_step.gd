@@ -4,6 +4,7 @@ extends GdUnitTestSuite
 ## would fail verify, which scans the log.
 
 const RecordingProbe: GDScript = preload("res://tests/sim/recording_probe.gd")
+const Rig: GDScript = preload("res://tests/sim/support/separation_rig.gd")
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
 const MAP: int = 48000
 const GROUP_TYPES: Array[int] = [
@@ -45,6 +46,9 @@ func test_a_goal_one_step_away_snaps_and_goes_idle() -> void:
 		assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([10000 + far.x, 10000 + far.y])
 
 
+## With separation in the tick (P39b) the last tank goes idle at tick 152 (150 before): the test
+## stops at 165, the measured tick rounded up to a multiple of 15. The tanks stand apart, none
+## closer than 90% of the radii sum (720), so no two share a spot.
 func test_thirty_tanks_reach_distinct_slots_and_enemies_never_move() -> void:
 	var world: World = _scenario_world()
 	var enemies: PackedInt32Array = world.pos_x.slice(30) + world.pos_y.slice(30)
@@ -52,14 +56,15 @@ func test_thirty_tanks_reach_distinct_slots_and_enemies_never_move() -> void:
 	for _t: int in 9:
 		Sim.step(world, [])
 	assert_int(world.order.count(World.Order.ATTACK_MOVE)).is_equal(30)
-	for _t: int in 140:
+	for _t: int in 155:
 		Sim.step(world, [])
-	assert_int(world.tick).is_equal(150)
+	assert_int(world.tick).is_equal(165)
 	assert_int(world.order.count(World.Order.IDLE)).is_equal(40)
 	var slots: Dictionary[Vector2i, bool] = {}
 	for row: int in 30:
 		slots[Vector2i(world.pos_x[row], world.pos_y[row])] = true
 	assert_int(slots.size()).is_equal(30)
+	assert_array(Rig.pairs_closer_than(world, 90)).is_empty()
 	assert_array(world.pos_x.slice(30) + world.pos_y.slice(30)).is_equal(enemies)
 
 
@@ -259,19 +264,22 @@ func test_probe_ids_and_names_are_fixed() -> void:
 
 
 ## Every tick: begin() once, then the phases that exist today, ascending and once each. A later
-## phase PR adds its id here (P39b GRIDS and SEPARATION, P41 TARGETING, P42a FIRE, P42b PROJECTILES,
-## P46 FOG). P37b added FLOW.
+## phase PR adds its id here (P41 TARGETING, P42a FIRE, P42b PROJECTILES, P46 FOG). P37b added
+## FLOW, P39b GRIDS and SEPARATION (the separation grid is rebuilt after FLOW, SEPARATION comes
+## after INTENTS and before INTEGRATE).
 func test_a_probe_sees_begin_then_the_marks_in_ascending_order() -> void:
 	var probe: SimProbe = RecordingProbe.new()
 	var world: World = _scenario_world()
 	var per_tick: Array[int] = [-1, SimProbe.Phase.COMMANDS, SimProbe.Phase.FLOW]
-	per_tick.append_array([SimProbe.Phase.INTENTS, SimProbe.Phase.INTEGRATE, SimProbe.Phase.REMOVE])
+	per_tick.append_array([SimProbe.Phase.GRIDS, SimProbe.Phase.INTENTS])
+	per_tick.append_array([SimProbe.Phase.SEPARATION, SimProbe.Phase.INTEGRATE])
+	per_tick.append(SimProbe.Phase.REMOVE)
 	var expected: Array[int] = []
 	for _t: int in 3:
 		Sim.step(world, [], probe)
 		expected.append_array(per_tick)
 	assert_array(probe.calls).is_equal(expected)
-	assert_array(per_tick).is_equal([-1, 0, 1, 4, 6, 9])
+	assert_array(per_tick).is_equal([-1, 0, 1, 2, 4, 5, 6, 9])
 
 
 func test_hashes_are_equal_with_and_without_a_probe() -> void:
@@ -283,7 +291,7 @@ func test_hashes_are_equal_with_and_without_a_probe() -> void:
 		Sim.step(plain, _due(script, plain.tick))
 		Sim.step(probed, _due(script, probed.tick), probe)
 		assert_int(probed.state_hash()).is_equal(plain.state_hash())
-	assert_int(probe.calls.size()).is_equal(80 * 6)
+	assert_int(probe.calls.size()).is_equal(80 * 8)
 
 
 ## Tick 0: two overlapping groups (the later sequence wins) and an enemy order. Tick 25: a
