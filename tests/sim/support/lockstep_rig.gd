@@ -7,7 +7,9 @@ extends RefCounted
 ## following a field, a field with no next tile, an ATTACK re-key, a unit's own field, an order
 ## that ended, every slot referenced, and what the slot tables did: a key taken by a free slot, a
 ## key found in its slot, a slot recycled for another key), so that a case can assert that it did
-## not pass by never reaching a rule. Not a test suite.
+## not pass by never reaching a rule. The rig is INTEGRATE's: pair() attaches that phase and the
+## TALLY counts movement. The lockstep of another port writes its own rig (or takes the phase and
+## its counts as parameters) instead of reusing this one with the wrong phase. Not a test suite.
 
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const StateDiff: GDScript = preload("res://tests/sim/support/state_diff.gd")
@@ -42,9 +44,11 @@ var tally: Dictionary[StringName, int] = {}
 ## The pair of `build` (a Callable that returns the same World each call): the twin, and a World
 ## with the kernels attached. With `integrate_only` the kernels' World runs INTEGRATE in C++ and
 ## FLOW in GDScript, so that a difference can only be the INTEGRATE kernel's. What SimImpls.attach
-## found wrong is added to `found_problems`.
+## found wrong (no library, a wrong mask, INTEGRATE not running where it was asked) is added to
+## `found_problems`, which the caller has to pass and to assert empty: left out, the native side
+## would run on the twin without a word.
 static func pair(
-	build: Callable, integrate_only: bool = false, found_problems: Array[String] = []
+	build: Callable, integrate_only: bool, found_problems: Array[String]
 ) -> Array[World]:
 	var found: Array[World] = []
 	for impl: int in SimImpls.IMPLS:

@@ -3,7 +3,9 @@
 // INTEGRATE kernel (plan P37n) adds the part of the cache that units use: best_neighbour and acquire. Plain C++17, no
 // Godot header.
 // Twin: game/sim/FlowField.gd and FlowCache.gd, in the twin's order, so that the full state matches after every call.
-// Test: tests/sim/native/test_flow_lockstep.gd and tests/sim/native/test_integrate_kernel.gd. MIT.
+// Tests: tests/sim/native/test_flow_lockstep.gd (the FLOW rules), tests/sim/native/test_integrate_kernel.gd and, for
+// best_neighbour and acquire, the INTEGRATE lockstep in test_integrate_lockstep.gd and test_integrate_lockstep_cases.gd (same
+// folder: the slot tables after every tick, the scan-order ties). MIT.
 #pragma once
 
 #include <cstdint>
