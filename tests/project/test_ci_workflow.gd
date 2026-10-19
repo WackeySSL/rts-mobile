@@ -47,6 +47,44 @@ const ANDROID_INSTALL_RUN: Array[String] = [
 const CHANGES_JOB: String = "  sanitizer-changes:"
 const SANITIZER_JOB: String = "  sanitizers:"
 const DIFF_STEP: String = "Does the pull request touch the native code or what it runs on"
+## P57b: the folders of ADR 0013 section 10 and, since the lead's decision of 2026-10-14, the files
+## that drive the job. `grep -Eq` reads it, so each dot of a file name is escaped.
+const CHANGES_PATTERN: String = (
+	"^(native/|game/sim/|data/|tests/sim/native/|tests/sim/support/"
+	+ "|scripts/build-native\\.sh$|scripts/ci/run-sanitizer-harness\\.sh$"
+	+ "|\\.github/workflows/ci\\.yml$)"
+)
+const CHANGES_TOUCHED: Array[String] = [
+	"native/sim_kernels/src/bind/kernel_flow.cpp",
+	"game/sim/Sim.gd",
+	"data/rules.tres",
+	"tests/sim/native/test_flow_lockstep.gd",
+	"tests/sim/support/match_script.gd",
+	"scripts/build-native.sh",
+	"scripts/ci/run-sanitizer-harness.sh",
+	".github/workflows/ci.yml",
+]
+## Near misses: other files of the same folders, a name that merely starts or ends like a driver,
+## and a name with another character where a dot stands.
+const CHANGES_UNTOUCHED: Array[String] = [
+	"README.md",
+	"docs/plans/2026-10-11-phase-2.md",
+	"game/view/Unit.gd",
+	"tests/sim/test_sim.gd",
+	"tests/sim/supported/x.gd",
+	"tests/project/test_ci_workflow.gd",
+	"scripts/verify.sh",
+	"scripts/build-native.sh.orig",
+	"scripts/build-native-sh",
+	"scripts/ci/run-sanitizer-harness.shx",
+	"scripts/ci/check-native-tests.sh",
+	"scripts/build-native.sh/x",
+	"x/scripts/build-native.sh",
+	".github/workflows/preview.yml",
+	".github/workflows/ci.yml.bak",
+	".github/workflows/ci-yml",
+	"x.github/workflows/ci.yml",
+]
 const UBSAN_FLAGS: String = " --sanitize undefined"
 const UBSAN_BUILD_STEP: String = "Build the UBSan library (g++ -O1, shared libubsan)"
 const UBSAN_RUN_STEP: String = "Run the native suites on the UBSan library (gdUnit4)"
@@ -317,7 +355,8 @@ func test_the_ndk_is_pinned_once_in_build_native_sh() -> void:
 ## P57: the sanitizer jobs run on pull requests only, the first decides from the files of the merge
 ## commit against its first parent whether the second runs, and neither is a required check or a
 ## dependency of one (`verify` is the only required check, and the Android jobs need it alone).
-func test_sanitizer_changes_job_filters_a_pull_request_by_the_four_folders() -> void:
+## P57b: the filter is the four folders and the files that drive the job.
+func test_sanitizer_changes_job_filters_a_pull_request_by_folders_and_driving_files() -> void:
 	var lines: PackedStringArray = _lines("ci.yml")
 	var job: PackedStringArray = _job(lines, CHANGES_JOB)
 	assert_str(job[0]).is_equal("    if: github.event_name == 'pull_request'")
@@ -328,7 +367,7 @@ func test_sanitizer_changes_job_filters_a_pull_request_by_the_four_folders() -> 
 		[
 			"id: diff",
 			"env:",
-			"PATTERN: '^(native/|game/sim/|data/|tests/sim/native/)'",
+			"PATTERN: '%s'" % CHANGES_PATTERN,
 			"run: |",
 			"relevant=true",
 			'if files="$(git diff --no-renames --name-only HEAD^1 HEAD)"; then',
@@ -342,6 +381,24 @@ func test_sanitizer_changes_job_filters_a_pull_request_by_the_four_folders() -> 
 		if lines[i].contains("needs:") and lines[i].contains("sanitiz"):
 			needers.append(lines[i])
 	assert_array(needers).is_equal(["    needs: sanitizer-changes"])
+
+
+## P57b: the pattern of the workflow takes the folders and the four driving files and nothing near
+## them, one path at a time as `grep -Eq "$PATTERN" <<<"$files"` reads a changed file. It reads the
+## pattern from ci.yml, so that it tests the workflow and not the constant above. Godot's RegEx
+## (PCRE) stands in for grep -E: the pattern only has anchors, groups, alternation and escaped dots,
+## which both read alike. (OS.execute expands a `$` in its arguments, as seen on 4.7.2 with the
+## output captured, so a grep run from here would not get the pattern as it is.)
+func test_the_sanitizer_filter_matches_what_drives_the_job_and_nothing_near_it() -> void:
+	var line: RegEx = RegEx.create_from_string("(?m)^ +PATTERN: '(.+)'$")
+	var found: RegExMatch = line.search(FileAccess.get_file_as_string(WORKFLOWS + "ci.yml"))
+	assert_object(found).is_not_null()
+	var filter: RegEx = RegEx.create_from_string(found.get_string(1))
+	assert_object(filter).is_not_null()
+	for path: String in CHANGES_TOUCHED:
+		assert_bool(filter.search(path) != null).override_failure_message(path).is_true()
+	for path: String in CHANGES_UNTOUCHED:
+		assert_bool(filter.search(path) != null).override_failure_message(path).is_false()
 
 
 ## P57: the UBSan library is built, the real native suites run on it and are checked, and the ASan
