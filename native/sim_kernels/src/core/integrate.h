@@ -6,7 +6,8 @@
 // through `Rules`, read from the World by the bind layer.
 // Twin: game/sim/Movement.gd (integrate, _refresh_next, _rekey, _take_own_field, _end_order) and game/sim/World.gd
 // (cell_of, is_passable, which integrate.cpp copies), in the twin's row order, so that the full state matches after every
-// call. Tests: tests/sim/test_movement*.gd under both implementations, tests/sim/native/test_integrate_kernel.gd. MIT.
+// call. Tests: tests/sim/test_movement*.gd under both implementations, tests/sim/native/test_integrate_kernel.gd and the lockstep
+// in test_integrate_lockstep.gd and test_integrate_lockstep_cases.gd (same folder). MIT.
 #pragma once
 
 #include <cstdint>

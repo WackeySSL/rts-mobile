@@ -6,7 +6,7 @@ extends GdUnitTestSuite
 ## the corner rule, opposite corners of the largest map) and acquire (the key held, a free slot, the
 ## least recently used slot, every slot referenced). Every case builds two identical Worlds, one
 ## running the GDScript phase and one the C++ kernel, and compares their full state (StateDiff) as
-## well as the values that the rule gives. The 900-tick lockstep is P37n3's.
+## well as the values that the rule gives. The 900-tick lockstep is test_integrate_lockstep.gd's.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
