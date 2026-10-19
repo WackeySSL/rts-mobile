@@ -40,6 +40,10 @@ const EQUAL_SHARE: int = 50
 ## idle ones. Each share is truncated toward zero. A unit's summed push is clamped to
 ## `separation_push_max` per axis. Each unit sums its own neighbours, so the caps can leave the
 ## two sides of a pair unequal.
+##
+## Range for the C++ port: `d2` is below `R*R`, at most 10^6 (every radius is at most 500), so
+## `d2 * divisor * divisor` stays below 2^63 for a divisor up to about 3 million (the rule is 4).
+## The port keeps the `maxi(divisor, 1)` guard and notes this range.
 @warning_ignore("integer_division")
 static func run(world: World) -> void:
 	var types: PackedInt32Array = world.type_index
@@ -65,6 +69,7 @@ static func run(world: World) -> void:
 	var pairs: int = 0
 	push_x.fill(0)
 	push_y.fill(0)
+	# No cells (an empty map): the clamps below would get swapped bounds, which C++ must not do.
 	if cols == 0:
 		return
 	for row: int in count:

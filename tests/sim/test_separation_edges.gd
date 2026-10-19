@@ -2,7 +2,8 @@ extends GdUnitTestSuite
 ## Separation.run, the cases beside test_separation.gd (P39): units of different radii, the rule
 ## ints read from the World (and kept in range), the neighbour and scan caps in scan order (the
 ## first 8 overlapping units and the first 16 looked at, cell by cell and by id inside a cell),
-## every row written, the work count, the map corners and positions outside the map.
+## every row written, the work count, the map corners and positions outside the map, the idle
+## share of the fixed push of a near-coincident pair, and units of different players.
 ## Single-tick cases rebuild the grid and call `Separation.run` (SeparationRig). Tanks have radius
 ## 400 and squads (type 1 here) 300.
 
@@ -401,3 +402,39 @@ func test_units_outside_the_map_are_scanned_from_the_edge_cell_of_the_grid() -> 
 		Rig.separate(world)
 		var away: Vector2i = case[2]
 		assert_array(_pushes(world)).override_failure_message(str(case)).is_equal([-away, away])
+
+
+## The idle share applies to the fixed push of a near-coincident pair as it does to the formula's:
+## a tank and an idle tank closer than C = 200 take the pair's fixed push of 60 as 45 for the idle
+## one and 15 for the moving one (75% and 25%), two moving tanks 30 each, whichever has the lower
+## id, 100 apart along x, along both axes, and on one point. Each case is the higher unit's point,
+## the intent along x of the lower and of the higher unit, then their pushes.
+func test_the_idle_share_applies_to_the_fixed_push_of_a_near_coincident_pair() -> void:
+	var cases: Array = [
+		[Vector2i(5100, 4000), 0, 120, Vector2i(-45, 0), Vector2i(15, 0)],
+		[Vector2i(5100, 4000), 120, 0, Vector2i(-15, 0), Vector2i(45, 0)],
+		[Vector2i(5100, 4000), 120, 120, Vector2i(-30, 0), Vector2i(30, 0)],
+		[Vector2i(5100, 4100), 0, 120, Vector2i(-45, -45), Vector2i(15, 15)],
+		[Vector2i(5000, 4000), 0, 120, Vector2i(-45, 0), Vector2i(15, 0)],
+		[Vector2i(5000, 4000), 120, 0, Vector2i(-15, 0), Vector2i(45, 0)],
+	]
+	for case: Array in cases:
+		var world: World = _tanks([Vector2i(5000, 4000), case[0]])
+		world.intent_x[0] = case[1]
+		world.intent_x[1] = case[2]
+		Rig.separate(world)
+		assert_array(_pushes(world)).override_failure_message(str(case)).is_equal(
+			[case[3], case[4]]
+		)
+
+
+## All units separate, enemies too (ADR 0008 section 4): a tank of player 1 and one of player 2, 600
+## apart, push 131 as a pair (65 each), cut to the cap of 60.
+func test_units_of_different_players_separate_too() -> void:
+	var world: World = GridWorld.from_rows(GridWorld.grass(COLS, ROWS))
+	world.player_count = 2
+	world.add_unit(1, 0, 5000, 4000)
+	world.add_unit(2, 0, 5600, 4000)
+	assert_int(world.unit_count()).is_equal(2)
+	Rig.separate(world)
+	assert_array(_pushes(world)).is_equal([Vector2i(-60, 0), Vector2i(60, 0)])
