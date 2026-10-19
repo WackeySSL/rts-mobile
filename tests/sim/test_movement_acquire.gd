@@ -230,4 +230,7 @@ func _both() -> Array[Array]:
 ## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
 func _in(world: World, impl: int) -> World:
 	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
+	# No pushes: these cases pin Movement's rules at exact positions, and the tick separates units
+	# since P39b (test_separation_tick.gd covers the crowd with the real pushes).
+	world.separation_push_max = 0
 	return world

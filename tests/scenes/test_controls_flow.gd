@@ -112,7 +112,9 @@ func test_tap_ground_450_ticks_idle_slots(profile: String, _test_parameters := P
 		assert_float(spots[-1].distance_to(Vector2(20016, 21516))).is_less(spacing * 3.17)
 	for a: int in 30:
 		for b: int in range(a + 1, 30):
-			assert_float(spots[a].distance_to(spots[b])).is_greater_equal(spacing)
+			# P39b: separation settles tanks just under their radii sum (800), not on the lattice;
+			# the bound is 90% of that sum, 720 milli (ADR 0008 section 4).
+			assert_float(spots[a].distance_to(spots[b])).is_greater_equal(720.0)
 	assert_int(world.pos_x[30]).is_equal(34500)  # The red tanks were not ordered.
 
 

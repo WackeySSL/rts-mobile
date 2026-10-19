@@ -11,9 +11,10 @@ const MILLI_PER_TILE: int = 1000
 
 ## Prepares the world, clears the last tick's events and stats, sorts `commands` in place with
 ## Command.compare and applies those whose tick is `world.tick`. A null or any other command is
-## dropped and counted. Then the flow cache advances (FLOW), ordered units move (intents, then
-## integrate), dead rows leave, and the tick counts. A probe gets `begin()` first and a `mark` after
-## each phase that exists (ADR 0007 section 4); it never sees the World.
+## dropped and counted. Then the flow cache advances (FLOW), the separation grid is rebuilt (GRIDS),
+## ordered units choose their steps (intents), overlapping units are pushed apart (SEPARATION), the
+## steps and pushes are integrated, dead rows leave, and the tick counts. A probe gets `begin()`
+## first and a `mark` after each phase that exists (ADR 0007 section 4); it never sees the World.
 ## `_follow_targets` stands in for TARGETING until P41, so its time falls inside INTENTS.
 static func step(world: World, commands: Array[Command], probe: SimProbe = null) -> void:
 	if probe != null:
@@ -38,10 +39,16 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 	FlowCache.run(world, 0 if hashing else world.flow_cells_per_tick)
 	if probe != null:
 		probe.mark(SimProbe.Phase.FLOW)
+	world.sep_grid.rebuild(world.pos_x, world.pos_y, world.unit_count())
+	if probe != null:
+		probe.mark(SimProbe.Phase.GRIDS)
 	_follow_targets(world)
 	Movement.run(world)
 	if probe != null:
 		probe.mark(SimProbe.Phase.INTENTS)
+	Separation.run(world)
+	if probe != null:
+		probe.mark(SimProbe.Phase.SEPARATION)
 	Movement.integrate(world)
 	if probe != null:
 		probe.mark(SimProbe.Phase.INTEGRATE)

@@ -149,9 +149,9 @@ func test_a_150_unit_order_spreads_its_line_checks(impl: int, _test_parameters :
 	assert_array(first_per_tick).is_equal([30, 30, 30, 30, 30, 0, 0, 0, 0, 0])
 	# The first five ticks hold the first checks; after them only FIELD units checking again as they
 	# enter a tile (tick 9). Nobody waits for a slot (nav_cell -1) because the group shares one field,
-	# which completes on tick 4: from then on all 103 FIELD units steer on tile centres and 26 of them
-	# cross a tile boundary on tick 9.
-	assert_array(per_tick).is_equal([30, 30, 30, 30, 30, 0, 0, 0, 0, 26])
+	# which completes on tick 4: from then on all 103 FIELD units steer on tile centres and 19 of them
+	# cross a tile boundary on tick 9 (26 before P39b: the pushes of the block moved the others).
+	assert_array(per_tick).is_equal([30, 30, 30, 30, 30, 0, 0, 0, 0, 19])
 	assert_int(world.nav_cell.count(-1)).is_equal(0)
 	assert_int(world.nav_mode.count(DIRECT) + world.nav_mode.count(FIELD)).is_equal(150)
 	assert_int(world.nav_mode.count(FIELD)).is_equal(103)
@@ -367,8 +367,9 @@ func test_a_chase_unit_with_no_target_reaches_its_goal_and_keeps_its_order(
 ## Sim.step marks INTENTS after `Movement.run` and INTEGRATE after `Movement.integrate`, so the PERF
 ## split books the time of each under its own phase (the split compares between PRs, plan P38p). A
 ## probe that reads the World at each mark sees it: at COMMANDS the MOVE order is applied and the
-## intent is not written, at FLOW (P37b) nothing has moved yet, at INTENTS the intent is written and
-## the unit has not moved, at INTEGRATE the unit has moved.
+## intent is not written, at FLOW (P37b) and GRIDS (P39b) nothing has moved yet, at INTENTS the
+## intent is written and the unit has not moved, and so at SEPARATION (P39b, which comes between
+## INTENTS and INTEGRATE), at INTEGRATE the unit has moved.
 func test_the_intents_mark_follows_movement_run_and_the_integrate_mark_follows_the_move(
 	impl: int, _test_parameters := _both()
 ) -> void:
@@ -382,13 +383,15 @@ func test_the_intents_mark_follows_movement_run_and_the_integrate_mark_follows_t
 	var phases: Array[int] = [
 		SimProbe.Phase.COMMANDS,
 		SimProbe.Phase.FLOW,
+		SimProbe.Phase.GRIDS,
 		SimProbe.Phase.INTENTS,
+		SimProbe.Phase.SEPARATION,
 		SimProbe.Phase.INTEGRATE,
 		SimProbe.Phase.REMOVE
 	]
 	assert_array(probe.phases).is_equal(phases)
-	assert_array(probe.intents_x).is_equal([0, 0, 120, 120, 120])
-	assert_array(probe.positions_x).is_equal([1000, 1000, 1000, 1120, 1120])
+	assert_array(probe.intents_x).is_equal([0, 0, 0, 120, 120, 120, 120])
+	assert_array(probe.positions_x).is_equal([1000, 1000, 1000, 1000, 1000, 1120, 1120])
 
 
 ## A new order makes the unit DIRECT with its line unchecked, whatever it was doing, and a STOP
@@ -429,10 +432,11 @@ func test_orders_reset_the_navigation_state(impl: int, _test_parameters := _both
 ## The same commands twice give the same hash after every one of 200 ticks, on a map with a wall,
 ## and the run is not trivial: units took their fields round the wall, some arrived, every ordered
 ## unit checked. The equality of the hashes is the rule. The count of arrived units pins this
-## phase's behaviour; P39b's separation moves others, so it re-pins the count and lists it as a
-## changed assertion. P37b changed it from 18 to 13: the tanks that were ordered back west at tick
-## 60 had followed their fields towards the wall's north end, so more of them are still on the way
-## at tick 200; no unit is still FIELD then (the infantry's lines are clear by tick 200).
+## phase's behaviour; P39b's separation moves others, so it re-pinned the count (13 to 12: with the
+## pushes of the crowd one unit fewer has arrived by tick 200, the rest are still on their way).
+## P37b changed it from 18 to 13: the tanks that were ordered back west at tick 60 had followed
+## their fields towards the wall's north end, so more of them are still on the way at tick 200; no
+## unit is still FIELD then (the infantry's lines are clear by tick 200).
 func test_two_runs_give_the_same_hashes(impl: int, _test_parameters := _both()) -> void:
 	var first: World = _run_script(impl)
 	var first_hashes: PackedInt64Array = _hashes.duplicate()
@@ -440,7 +444,7 @@ func test_two_runs_give_the_same_hashes(impl: int, _test_parameters := _both()) 
 	assert_array(_hashes).is_equal(first_hashes)
 	assert_array(second.pos_x).is_equal(first.pos_x)
 	assert_int(first_hashes.size()).is_equal(200)
-	assert_int(first.order.count(IDLE)).is_equal(13)
+	assert_int(first.order.count(IDLE)).is_equal(12)
 	assert_int(first.nav_mode.count(FIELD)).is_equal(0)
 	# Arrival clears the line check with the rest of the navigation state; nobody else is unchecked.
 	assert_int(first.nav_cell.count(-1)).is_equal(first.order.count(IDLE))

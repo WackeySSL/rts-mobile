@@ -4,6 +4,8 @@ extends GdUnitTestSuite
 ## armed in the duel world.
 
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
+## The radii sum of two tanks in the duel world (400 each): closer than this they overlap.
+const REACH: int = 800
 
 
 ## MOVE only differs by its order, so both groups reach the same slots on the same ticks.
@@ -16,7 +18,8 @@ func test_move_reaches_the_slots_attack_move_reaches() -> void:
 	Sim.step(by_move, [_stamp(Command.move(1, ids, 22250, 22250), 0)])
 	assert_int(by_attack_move.order.count(World.Order.ATTACK_MOVE)).is_equal(30)
 	assert_int(by_move.order.count(World.Order.MOVE)).is_equal(30)
-	for _t: int in 149:
+	# All idle by tick 152 with the pushes of the crowd (150 before P39b): tick 165, a multiple of 15.
+	for _t: int in 164:
 		Sim.step(by_attack_move, [])
 		Sim.step(by_move, [])
 	assert_int(by_move.order.count(World.Order.IDLE)).is_equal(40)
@@ -56,20 +59,23 @@ func test_attack_follows_a_moving_target_by_its_position_at_the_start_of_the_tic
 	assert_int(_chase(1, 0)).is_equal(0)
 
 
-## A faster attacker catches the target. On arrival it snaps onto the target's position and keeps
-## the ATTACK order, so it goes on following the target instead of idling on top of it.
+## A faster attacker catches the target. On arrival it keeps the ATTACK order, so it goes on
+## following the target instead of idling next to it. Since P39b it cannot snap onto the target's
+## point: SEPARATION holds the two 640 apart, inside the radii sum (800) that counts as caught.
 func test_a_faster_attacker_catches_the_target_and_keeps_following_it() -> void:
 	assert_int(_chase(0, 1)).is_greater(50)
 
 
-## A target within one step: the attacker snaps onto it at once and stays on ATTACK.
+## A target within one step: the attacker steps onto it at once and stays on ATTACK. Since P39b the
+## two overlap, 50 apart, so SEPARATION pushes the pair by the fixed 60 and the moving attacker
+## takes the 25% share: it ends 15 short of the target (10035, not 10050).
 func test_an_attack_on_a_target_within_one_step_keeps_its_order() -> void:
 	var world: World = _duel_world()
 	world.add_unit(1, 0, 10000, 10000)
 	world.add_unit(2, 1, 10050, 10000)
 	Sim.step(world, [_stamp(Command.attack(1, PackedInt32Array([1]), 2), 0)])
 	assert_array([world.order[0], world.pos_x[0], world.order_target[0]]).is_equal(
-		[World.Order.ATTACK, 10050, 2]
+		[World.Order.ATTACK, 10035, 2]
 	)
 
 
@@ -133,7 +139,7 @@ func _duel_world() -> World:
 ## (id 1, row 0), which is ordered north east. The target has the lower row, so its move this tick
 ## would show if the goal were read after the movement. Each tick the goal must be the target's
 ## position at the start of the tick, on both axes, and the order must stay ATTACK. Returns the
-## number of ticks the attacker ended on its goal.
+## number of ticks the attacker ended within REACH of that goal (it ended on it before P39b).
 func _chase(attacker_type: int, target_type: int) -> int:
 	var world: World = _duel_world()
 	world.add_unit(2, target_type, 20000, 10000)
@@ -142,17 +148,20 @@ func _chase(attacker_type: int, target_type: int) -> int:
 		_stamp(Command.attack(1, PackedInt32Array([2]), 1), 0),
 		_stamp(Command.move(2, PackedInt32Array([1]), 40000, 3000), 0),
 	]
-	var on_goal: int = 0
+	var caught: int = 0
 	for _t: int in 160:
 		var seen: Vector2i = Vector2i(world.pos_x[0], world.pos_y[0])
 		Sim.step(world, commands)
 		commands.clear()
 		assert_array([world.goal_x[1], world.goal_y[1]]).is_equal([seen.x, seen.y])
 		assert_array([world.order[1], world.order_target[1]]).is_equal([World.Order.ATTACK, 1])
-		if world.pos_x[1] == world.goal_x[1] and world.pos_y[1] == world.goal_y[1]:
-			on_goal += 1
+		var gap: Vector2i = Vector2i(
+			world.pos_x[1] - world.goal_x[1], world.pos_y[1] - world.goal_y[1]
+		)
+		if gap.x * gap.x + gap.y * gap.y < REACH * REACH:
+			caught += 1
 	assert_array([world.dropped_commands, world.pos_y[0] < 10000]).is_equal([0, true])
-	return on_goal
+	return caught
 
 
 func _stamp(command: Command, tick: int) -> Command:

@@ -1,7 +1,8 @@
 extends RefCounted
-## The separation part of the tick for the tests of P39 (`Sim.step` does not separate until
-## P39b): the phases in the pipeline order of ADR 0007 section 4, without the ones that do not
-## touch positions. Not a test suite.
+## The separation part of the tick for the tests of P39: the phases in the pipeline order of ADR
+## 0007 section 4, without the ones that do not touch positions (`Sim.step` has run them too since
+## P39b; the single-phase cases here call `Separation.run` on the units as they stand). Not a test
+## suite.
 
 
 ## The grid rebuild and `Separation.run`, as the GRIDS and SEPARATION phases will do them: the
@@ -32,3 +33,18 @@ static func distance2(world: World, a: int, b: int) -> int:
 	var dx: int = world.pos_x[a] - world.pos_x[b]
 	var dy: int = world.pos_y[a] - world.pos_y[b]
 	return dx * dx + dy * dy
+
+
+## The pairs of rows (a, b), a < b, that stand closer than `percent` percent of the sum of their two
+## radii, in ascending order: a test asserts the list is empty, so a failure names the pairs.
+static func pairs_closer_than(world: World, percent: int) -> Array[Vector2i]:
+	var found: Array[Vector2i] = []
+	var count: int = world.unit_count()
+	for a: int in count:
+		var radius: int = world.type_radius[world.type_index[a]]
+		for b: int in range(a + 1, count):
+			var reach: int = (radius + world.type_radius[world.type_index[b]]) * percent
+			# d < sum * percent / 100 is d2 * 10000 < (sum * percent) squared.
+			if distance2(world, a, b) * 10000 < reach * reach:
+				found.append(Vector2i(a, b))
+	return found

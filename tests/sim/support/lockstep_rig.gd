@@ -13,6 +13,7 @@ extends RefCounted
 
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const StateDiff: GDScript = preload("res://tests/sim/support/state_diff.gd")
+const HandPushProbe: GDScript = preload("res://tests/sim/support/hand_push_probe.gd")
 const INTEGRATE: int = SimProbe.Phase.INTEGRATE
 const FIELD: int = World.NavMode.FIELD
 const ATTACK: int = World.Order.ATTACK
@@ -35,6 +36,8 @@ const TALLY: Array[StringName] = [
 ## [the twin's World, the kernels' World].
 var worlds: Array[World] = []
 var loops: Array[MatchLoop] = []
+## One HandPushProbe per World with `hand_pushes` (see setup()), else empty.
+var probes: Array[SimProbe] = []
 ## What SimImpls.attach found wrong on either World: the test asserts it is empty.
 var problems: Array[String] = []
 ## The counts of the twin's side, by TALLY name.
@@ -79,11 +82,16 @@ static func ids_of(world: World, player: int) -> PackedInt32Array:
 	return ids
 
 
-## A rig over the pair of `build`; see pair(). Returns self.
-func setup(build: Callable, integrate_only: bool = false) -> RefCounted:
+## A rig over the pair of `build`; see pair(). Returns self. With `hand_pushes` the pushes that
+## `build` wrote into the Worlds stand in every tick (HandPushProbe) instead of the ones the
+## SEPARATION phase computes: a case that needs a push of its own (a unit of a move class that a
+## real push would send into the cost table) asks for it.
+func setup(build: Callable, integrate_only: bool = false, hand_pushes: bool = false) -> RefCounted:
 	worlds = pair(build, integrate_only, problems)
 	for world: World in worlds:
 		loops.append(MatchLoop.create(null, "", 0, world))
+		if hand_pushes:
+			probes.append(HandPushProbe.new(world))
 	for name: StringName in TALLY:
 		tally[name] = 0
 	return self
@@ -99,7 +107,7 @@ func step(orders: Callable = Callable()) -> String:
 		var queued: Array[Command] = []
 		if orders.is_valid():
 			queued = orders.call(world, world.tick)
-		loops[index].step(world, queued)
+		loops[index].step(world, queued, probes[index] if index < probes.size() else null)
 	_count(before)
 	var found: String = difference(worlds[0], worlds[1])
 	if found != "":

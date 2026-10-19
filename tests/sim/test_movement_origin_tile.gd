@@ -4,13 +4,15 @@ extends GdUnitTestSuite
 ## (`nav_cell`) are all valid at 0, and each test here fails on a `> 0` where Movement says
 ## `>= 0`. The crowd that P39b's separation pushes into the top-left corner is the case that
 ## matters: such a unit must still follow a field through the corner tile and must still stall.
-## Maps are built in code (GridWorld).
+## Maps are built in code (GridWorld). The held unit's push is written by hand, so that case steps
+## with a HandPushProbe (the tick computes the pushes itself since P39b).
 ## Every case runs under both implementations of the INTEGRATE phase (P37n), the GDScript twin and
 ## the C++ kernel, through SimImpls: gdUnit4 runs it once for each.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const FieldCadence: GDScript = preload("res://tests/sim/support/field_cadence.gd")
+const HandPushProbe: GDScript = preload("res://tests/sim/support/hand_push_probe.gd")
 const MOVE: int = World.Order.MOVE
 const IDLE: int = World.Order.IDLE
 const DIRECT: int = World.NavMode.DIRECT
@@ -83,11 +85,12 @@ func test_a_unit_held_in_the_corner_tile_stalls_whether_direct_or_following_a_fi
 			world.nav_cell[0] = 0
 			assert_int(world.flow.acquire(0, TRACKED, world.map_version, 0)).is_equal(0)
 			world.field[0] = 0
+		var probe: SimProbe = HandPushProbe.new(world)
 		var first: int = -1
 		var idle_at: int = -1
 		for tick: int in 60:
 			world.push_x[0] = -120
-			Sim.step(world, [])
+			Sim.step(world, [], probe)
 			var label: String = "%s, tick %d" % [kind, tick]
 			if first == -1 and world.best_dist[0] != FlowField.UNREACHED:
 				first = tick
