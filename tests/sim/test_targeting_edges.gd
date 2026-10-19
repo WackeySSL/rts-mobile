@@ -54,7 +54,10 @@ func test_cells_across_a_border_are_searched_and_the_range_edge_is_inclusive() -
 ## in an edge cell): the 10 x 6 tile map has 3 x 2 cells, the last of each row and column partial.
 ## A subject at (0, 0) and one at the far corner find a neighbour, so does one at (9500, 5500) in
 ## the partial cell, and so do subjects west of, east of and south of the map, which the grid
-## clamps to an edge cell and the search reaches through the same clamp.
+## clamps to an edge cell and the search reaches through the same clamp. Four subjects stand more
+## than a reach (4000) past the last cell of the grid (no match puts one there, as every position
+## is clamped to the map): the covering cells lie wholly past the grid, so both ends of the range
+## must clamp to the edge cell. Each finds an enemy at its own position.
 func test_corners_partial_cells_and_positions_outside_the_map() -> void:
 	var cases: Array[Array] = [
 		[Vector2i(0, 0), Vector2i(3000, 0)],
@@ -64,6 +67,10 @@ func test_corners_partial_cells_and_positions_outside_the_map() -> void:
 		[Vector2i(11000, 5500), Vector2i(8000, 5500)],
 		[Vector2i(9000, 7000), Vector2i(9000, 5500)],
 		[Vector2i(0, 0), Vector2i(0, 3999)],
+		[Vector2i(17000, 3000), Vector2i(17000, 3000)],
+		[Vector2i(3000, 12000), Vector2i(3000, 12000)],
+		[Vector2i(-8000, 3000), Vector2i(-8000, 3000)],
+		[Vector2i(3000, -8000), Vector2i(3000, -8000)],
 	]
 	for item: Array in cases:
 		var world: World = Rig.data_world(10, 6)
@@ -189,6 +196,19 @@ func test_the_work_count_is_the_rows_looked_at_and_a_kept_target_costs_none() ->
 	assert_int(world.stats[World.Stat.TARGET_CANDIDATES]).is_equal(3)
 
 
+## The work count is added to what the stat holds, not written over it: with 7 already in the stat,
+## one scan that looks at one row leaves 8 (a phase or a lockstep that counts into the same stat
+## before this one must not lose its count).
+func test_the_work_count_is_added_to_what_the_stat_holds() -> void:
+	var world: World = Rig.data_world()
+	world.add_unit(1, RIFLE, 10000, 6000)
+	world.add_unit(2, RIFLE, 12000, 6000)
+	world.prepare()
+	world.stats[World.Stat.TARGET_CANDIDATES] = 7
+	assert_int(Rig.target_of(world, 1)).is_equal(2)
+	assert_int(world.stats[World.Stat.TARGET_CANDIDATES]).is_equal(8)
+
+
 ## A World with no map has no grid cells: an armed unit with an enemy 140 away finds nothing and
 ## nothing fails (a World built by hand, with a weapon of range 4000 and no map size). The pass
 ## still runs over the rows: a stale target on a due idle row is replaced by 0, and a MOVE row
@@ -243,6 +263,28 @@ func test_a_target_at_exactly_the_reach_or_the_minimum_range_is_kept() -> void:
 		world.add_unit(2, 2, 13000, 6000)
 		var min_wanted: int = 3 if beyond == 1 else 2
 		assert_int(Rig.target_of(world, 1)).override_failure_message("minimum").is_equal(min_wanted)
+
+
+## An attack-moving unit judges its held target by the acquire range, not the weapon's: the keep
+## check uses the reach of the order, as the scan does (ADR 0009 section 2). A rifle squad (weapon
+## range 4000, acquire range 5000) holds an enemy 4500 away, out of weapon range and in reach, as a
+## unit does that chases a target before it holds. A nearer enemy (2000 away) arrives, and the held
+## target is kept at the next two due ticks, at 5000 too (the acquire range itself). At 5001 it is
+## out of reach, so the nearer enemy is taken. A check against the weapon range would drop the
+## target at 4500 and thrash. Each held target is inside the unit's sight.
+func test_an_attack_moving_unit_keeps_a_target_between_weapon_range_and_acquire_range() -> void:
+	for held_at: int in [4500, 5000, 5001]:
+		var world: World = Rig.data_world()
+		world.add_unit(1, RIFLE, 10000, 6000)
+		world.add_unit(2, RIFLE, 10000 + held_at, 6000)
+		world.order[0] = ATTACK_MOVE
+		world.target[0] = 2
+		world.add_unit(2, RIFLE, 12000, 6000)
+		var wanted: int = 2 if held_at <= 5000 else 3
+		var case_name: String = "held at %d" % held_at
+		assert_int(Rig.target_of(world, 1)).override_failure_message(case_name).is_equal(wanted)
+		assert_int(Rig.retarget(world, 1)).override_failure_message(case_name).is_equal(wanted)
+		assert_array(Rig.outside_sight(world)).override_failure_message(case_name).is_empty()
 
 
 ## Each table is read by its own index: the type tables (acquire range, armour) by the unit's type
