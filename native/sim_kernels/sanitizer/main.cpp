@@ -28,7 +28,7 @@
 namespace {
 
 // One pointer per kernel with a cases file.
-const KernelCases *const KERNELS[] = { &FLOW_CASES };
+const KernelCases *const KERNELS[] = { &FLOW_CASES, &INTEGRATE_CASES };
 
 // The dump files of an argument: itself, or the state_*.bin files of a folder in name order.
 std::vector<std::string> dump_files(const std::string &argument) {
@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
 		}
 		for (size_t kernel = 0; kernel < std::size(KERNELS); kernel++) {
 			KERNELS[kernel]->crafted(crafted[kernel]);
-			std::printf("sanitizer_harness: %s: %zu dumps, %lld calls settling %lld; crafted, %lld calls settling %lld\n", KERNELS[kernel]->name, files.size(),
+			std::printf("sanitizer_harness: %s: %zu dumps, %lld calls, work %lld; crafted, %lld calls, work %lld\n", KERNELS[kernel]->name, files.size(),
 					static_cast<long long>(on_dumps[kernel].runs), static_cast<long long>(on_dumps[kernel].work), static_cast<long long>(crafted[kernel].runs),
 					static_cast<long long>(crafted[kernel].work));
 			// A clean run that did nothing proves nothing.

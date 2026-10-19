@@ -196,12 +196,13 @@ jobs:
 
   # ADR 0013 section 10 (P57): the sanitizer job runs on a pull request that touches native/**, game/sim/**,
   # data/** or tests/sim/native/**, because a World column, a rule or a twin change can break a kernel without
-  # touching native/. This job decides that from the files of the merge commit against its first parent (the
-  # base), so `sanitizers` ends skipped when nothing matches, and a push to main or a manual run skips both.
-  # Known gap, as ADR 0013 section 10 draws the four folders: the files that drive the sanitizers are outside them
-  # (scripts/build-native.sh, scripts/ci/run-sanitizer-harness.sh, this file, tests/sim/support/), so a pull request
-  # that changes only those skips the job. The verify job's offline test of the scripts covers their control flow
-  # but runs no sanitizer. P26r decides whether to widen PATTERN.
+  # touching native/. P57b adds the files that drive the job: scripts/build-native.sh (the UBSan build),
+  # scripts/ci/run-sanitizer-harness.sh, this file and tests/sim/support/** (the helpers that the dump step and the
+  # native suites load), so a pull request that changes only one of them runs it too. The other scripts the job runs
+  # (install-godot.sh with remote_zip.py, run-tests.sh, check-native-tests.sh, seed-extension-list.sh) stay out of
+  # PATTERN: the required verify job runs them on every pull request. This job decides that from the files of the
+  # merge commit against its first parent (the base), so `sanitizers` ends skipped when nothing matches, and a push
+  # to main or a manual run skips both. tests/project/test_ci_workflow.gd pins PATTERN.
   sanitizer-changes:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
@@ -219,7 +220,7 @@ jobs:
       - name: Does the pull request touch the native code or what it runs on
         id: diff
         env:
-          PATTERN: '^(native/|game/sim/|data/|tests/sim/native/)'
+          PATTERN: '^(native/|game/sim/|data/|tests/sim/native/|tests/sim/support/|scripts/build-native\.sh$|scripts/ci/run-sanitizer-harness\.sh$|\.github/workflows/ci\.yml$)'
         run: |
           relevant=true
           if files="$(git diff --no-renames --name-only HEAD^1 HEAD)"; then

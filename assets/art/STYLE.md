@@ -35,8 +35,13 @@ phone. Not cartoonish, not photoreal. Pure top-down view, light from the top-lef
 | Ore | #F2B705, highlight #FFD84D, shade #A67C00 | |
 | Team A / team B / neutral | #2F80ED / #E5484D / #9AA5B1 | 116 / 120 / 163 |
 | UI accents: warning / danger / ok | #F5A524 / #E5484D / #30A46C | |
+| HUD panel backdrop | #0F141C at 78% | 19 |
 
 Luminance is 0.299 R + 0.587 G + 0.114 B. Use it when you judge the greyscale check below.
+
+The HUD panel backdrop is the one palette value that lives in the UI Theme (`game/ui/theme.tres`,
+`Color(0.06, 0.08, 0.11, 0.78)`, behind the selection panel). The hex is the 8-bit rounding of the
+theme's floats: the theme is the value of record, and `tests/ui/test_ui_theme.gd` pins the floats.
 
 **Team layer greys (new)**: white #FFFFFF, shade grey #BFBFBF, edge grey #4D4D4D. Every colour in
 a team layer has R = G = B, so the runtime tint stays clean.
@@ -414,12 +419,21 @@ palette first, then the three places from it.
    the same names and keep the layer contract above.
 2. **Terrain**: the `colors` and `tiles` exports of `game/view/MapView.gd`, with the gallery's
    copies and the "Fog and terrain" section above.
-3. **UI**: the central Theme of plan row P58 (`game/ui/theme.tres`, from P58 on), which holds
-   every colour, font, font size and panel style of the HUD's Controls, the selection box and
-   anchor included. A new font goes under `assets/art/fonts/`, with a row in
-   `assets/CREDITS.md` (author, source URL, licence) and its licence text in the Licences
-   screen, and is referenced only from the theme. Until P58's review adds rows for the HUD
-   neutrals (the panel backdrop, text), the theme's neutral colours have no palette row.
+3. **UI**: the central Theme of plan row P58, `game/ui/theme.tres`. It holds the HUD's font
+   sizes, the selection panel's backdrop (palette row "HUD panel backdrop") and the colours of the
+   selection box and anchor. The text and button colours, the Button StyleBoxes and the HUD font
+   are the engine's defaults and are not in the file: a restyle adds them there
+   (`Label/colors/font_color`, `Button/styles/normal`, a Font) with no code change, and gives the
+   neutrals a palette row then. The file is written in dp, and `game/ui/HudTheme.gd` is the dp
+   step: on a resize it gives the HUD roots a copy in px, scaling every font size and every
+   StyleBox size (content margins, corner radii, border widths, expand margins, shadows, a line's
+   thickness) but not a StyleBoxTexture's texture margins or the theme's constants (add one to
+   `HudTheme.scaled()` before using it). An entry that stays in base px is listed in the file's
+   `metadata/base_px`. The selection box and anchor take their fill and dark pass from the theme,
+   and the world-space move markers from `FeedbackStyle` in `game/view`: they share one fill and
+   one dark pass, so a new palette changes both places. A new font goes under `assets/art/fonts/`,
+   with a row in `assets/CREDITS.md` (author, source URL, licence) and its licence text in the
+   Licences screen, and is referenced only from the theme.
 
 Besides the three places, the same new look also replaces, in the same PR:
 - **The art without a naming convention**, in place. The selection ring
@@ -488,3 +502,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-10-12 | v1.2 (P34c): terrain tiles with the scrub pattern, keyed by `MapView.colors` key, the fog alpha, the gallery terrain patch with squads on scrub. |
 | 2026-10-12 | v1.2 (P34c, Michael's answers): the map grid is removed, the rocket warhead stays #F5A524; the health bar overlap half-heights (14 and 21 world px) are recorded. |
 | 2026-10-15 | P26t docs (Michael's decision): the Reskin section names the three places a new look is made; no rule changed. |
+| 2026-10-19 | P58 review (art-director): palette row for the HUD panel backdrop; Reskin item 3 says what the UI Theme holds and what the dp step scales. No rule changed. |

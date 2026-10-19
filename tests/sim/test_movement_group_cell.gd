@@ -5,8 +5,11 @@ extends GdUnitTestSuite
 ## a unit that has just spawned carry -1, which keys the field on the unit's own goal tile. The
 ## cases follow the column through the commands, the end of an order (arrival and stall) and the
 ## first line check that reads it. Maps are built in code (GridWorld).
+## Every case runs under both implementations of the INTEGRATE phase (P37n), the GDScript twin and
+## the C++ kernel, through SimImpls: gdUnit4 runs it once for each.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const FOOT: int = World.MoveClass.FOOT
 const TRACKED: int = World.MoveClass.TRACKED
 const MOVE: int = World.Order.MOVE
@@ -20,9 +23,11 @@ const FIELD: int = World.NavMode.FIELD
 ## 10 map, so the centre has moved to the first open tile of ring 1, (14, 4), row by row, and the
 ## cell is that tile's, not the target's. A unit outside the command keeps -1. Both order types are
 ## run, a tank and a foot soldier in one command (one cell for the command, whatever the classes).
-func test_move_and_attack_move_write_the_cell_of_the_centre_for_every_unit_of_the_command() -> void:
-	var world: World = GridWorld.from_rows(
-		GridWorld.grass(20, 10, [Vector2i(15, 5)]), [TRACKED, FOOT]
+func test_move_and_attack_move_write_the_cell_of_the_centre_for_every_unit_of_the_command(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(
+		GridWorld.from_rows(GridWorld.grass(20, 10, [Vector2i(15, 5)]), [TRACKED, FOOT]), impl
 	)
 	GridWorld.add_block(world, 3, 3, 3000, 2500, 1000, 0)
 	world.add_unit(1, 1, 3000, 4500)
@@ -48,8 +53,10 @@ func test_move_and_attack_move_write_the_cell_of_the_centre_for_every_unit_of_th
 
 ## A new MOVE overwrites the cell of its own units and of no others: unit 2 is re-ordered to
 ## another point, units 1 and 3 keep the cell of the first command.
-func test_a_new_point_order_overwrites_the_cell_of_its_own_units_only() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+func test_a_new_point_order_overwrites_the_cell_of_its_own_units_only(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10)), impl)
 	GridWorld.add_block(world, 3, 3, 3000, 2500, 1000, 0)
 	var first: Array[Command] = [
 		_stamped(Command.move(1, PackedInt32Array([1, 2, 3]), 15500, 5500), 0)
@@ -65,8 +72,10 @@ func test_a_new_point_order_overwrites_the_cell_of_its_own_units_only() -> void:
 ## ATTACK leaves -1 for the units it orders (they key on their target's tile, ADR 0008 section 3)
 ## and not for others: units 1 and 2 have a group target from a MOVE, unit 1 is given an ATTACK on
 ## the enemy unit 4.
-func test_attack_clears_the_cell_of_the_units_it_orders() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+func test_attack_clears_the_cell_of_the_units_it_orders(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10)), impl)
 	world.player_count = 2
 	world.type_weapon[0] = 0
 	GridWorld.add_block(world, 3, 3, 3000, 2500, 1000, 0)
@@ -84,8 +93,10 @@ func test_attack_clears_the_cell_of_the_units_it_orders() -> void:
 
 
 ## STOP leaves -1 for the units it stops and not for others.
-func test_stop_clears_the_cell_of_the_units_it_stops() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+func test_stop_clears_the_cell_of_the_units_it_stops(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10)), impl)
 	GridWorld.add_block(world, 3, 3, 3000, 2500, 1000, 0)
 	var moved: Array[Command] = [
 		_stamped(Command.move(1, PackedInt32Array([1, 2, 3]), 10500, 5500), 0)
@@ -102,8 +113,8 @@ func test_stop_clears_the_cell_of_the_units_it_stops() -> void:
 ## The end of an order by arrival leaves -1: a tank ordered 3000 along an open row is IDLE on its
 ## goal within 30 ticks and the column is -1 again, while a tank ordered farther away still holds
 ## the cell on the same tick.
-func test_arrival_clears_the_cell() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(30, 10))
+func test_arrival_clears_the_cell(impl: int, _test_parameters := _both()) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(30, 10)), impl)
 	world.add_unit(1, 0, 2500, 2500)
 	world.add_unit(1, 0, 2500, 6500)
 	var cell: int = world.cell_of(5500, 2500)
@@ -123,11 +134,11 @@ func test_arrival_clears_the_cell() -> void:
 ## The end of an order by stall leaves -1: a tank west of a wall across the map (column 8) with its
 ## goal behind it presses on the wall and goes IDLE where it stands, short of the wall, and the cell
 ## it was given goes with the order.
-func test_a_stall_clears_the_cell() -> void:
+func test_a_stall_clears_the_cell(impl: int, _test_parameters := _both()) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 10:
 		rock.append(Vector2i(8, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10, rock)), impl)
 	world.add_unit(1, 0, 3500, 4500)
 	var order: Array[Command] = [_stamped(Command.move(1, PackedInt32Array([1]), 14500, 4500), 0)]
 	Sim.step(world, order)
@@ -142,8 +153,8 @@ func test_a_stall_clears_the_cell() -> void:
 
 ## `reset_nav` is the navigation state, not the order: it leaves `group_cell` as it is (P41 resumes
 ## an order through it and the unit keeps its group target).
-func test_reset_nav_leaves_the_cell_alone() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+func test_reset_nav_leaves_the_cell_alone(impl: int, _test_parameters := _both()) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10)), impl)
 	GridWorld.add_block(world, 2, 2, 3000, 2500, 1000, 0)
 	world.group_cell[0] = 77
 	world.group_cell[1] = 0
@@ -158,8 +169,10 @@ func test_reset_nav_leaves_the_cell_alone() -> void:
 ## the cell of the unit's own goal. A group cell of 0 is a key like any other: the unit takes the
 ## field of cell 0 (the map's corner tile), not of its own goal's tile. A wall in column 8 (rows 0
 ## to 10 of a 20 x 12 map) blocks every line; every unit checks on tick 0 (period 1).
-func test_the_first_check_keys_on_the_group_cell_else_on_the_goal_tile() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 12, _wall(11)))
+func test_the_first_check_keys_on_the_group_cell_else_on_the_goal_tile(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 12, _wall(11))), impl)
 	world.line_check_period_ticks = 1
 	var goals: Array[Vector2i] = [
 		Vector2i(15500, 2500), Vector2i(15500, 4500), Vector2i(15500, 6500)
@@ -193,3 +206,14 @@ func _wall(rows: int) -> Array[Vector2i]:
 	for row: int in rows:
 		rock.append(Vector2i(8, row))
 	return rock
+
+
+## The parameter sets of a test that runs under both implementations (gdUnit4 calls it by name).
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
+	return world

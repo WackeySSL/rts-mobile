@@ -3,8 +3,12 @@ extends GdUnitTestSuite
 ## `flow_cells_per_tick`, and a budget of 0 on the step after which MatchLoop adds a checkpoint.
 ## Inside Sim.step that tick is `world.tick + 1`, because Sim.step counts the tick last. The cases
 ## step through MatchLoop, the only tick driver, on a map built in code (GridWorld).
+## Every case runs under both implementations of the INTEGRATE phase (P37n), the GDScript twin and
+## the C++ kernel, through SimImpls: gdUnit4 runs it once for each.
+## The case of the spy kernel stays as it is: it needs no library.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const KernelSpy: GDScript = preload("res://tests/sim/support/kernel_spy.gd")
 const BUDGET: int = 25
 const COLS: int = 40
@@ -19,8 +23,10 @@ const ROWS: int = 40
 ## left; and the field completes with every reachable cell settled once. A rule that tests
 ## `world.tick` instead of `world.tick + 1` fails on the first checkpoint step (the budget would be
 ## 25 there).
-func test_no_flow_slice_runs_on_the_steps_that_take_a_checkpoint() -> void:
-	var world: World = _wall_world()
+func test_no_flow_slice_runs_on_the_steps_that_take_a_checkpoint(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _wall_world(impl)
 	world.flow_cells_per_tick = BUDGET
 	var loop: MatchLoop = MatchLoop.create(null, "", 1, world)
 	var reachable: int = COLS * ROWS - world.move_cost.slice(0, COLS * ROWS).count(0)
@@ -66,7 +72,7 @@ func test_no_flow_slice_runs_on_the_steps_that_take_a_checkpoint() -> void:
 ## checkpoint, whose tick (the tick after the step) is a multiple of the period. No units needed.
 func test_the_budget_is_zero_exactly_when_the_tick_after_the_step_is_a_multiple_of_the_period(
 ) -> void:
-	var world: World = _wall_world()
+	var world: World = _wall_world(SimImpls.Impl.GDSCRIPT)
 	var spy: RefCounted = KernelSpy.new()
 	world.kernels = spy
 	world.native_phases = 1 << SimProbe.Phase.FLOW
@@ -86,11 +92,22 @@ func _pending(world: World) -> bool:
 
 
 ## 40 x 40 grass with rock in tile column 20 except rows 30 to 33, and one tank at (3500, 5500).
-func _wall_world() -> World:
+func _wall_world(impl: int) -> World:
 	var rock: Array[Vector2i] = []
 	for row: int in ROWS:
 		if row < 30 or row > 33:
 			rock.append(Vector2i(20, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(COLS, ROWS, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(COLS, ROWS, rock)), impl)
 	world.add_unit(1, 0, 3500, 5500)
+	return world
+
+
+## The parameter sets of a test that runs under both implementations (gdUnit4 calls it by name).
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
 	return world

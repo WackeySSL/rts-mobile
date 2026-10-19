@@ -2,6 +2,12 @@
 
 Status: accepted, 2026-10-10
 
+Status note (2026-10-19, P26v docs; ADR 0015, accepted 2026-10-19): §3's
+`window/handheld/orientation=4` (sensor_landscape) is superseded for the future by ADR 0015 (both
+orientations, the device's sensor picks) and stays true until ADR 0015's flip row P64 merges,
+which sets 6 (`sensor`). §3's base 1280x720 with `canvas_items` + `expand` stays; from P59 a
+portrait window uses the transposed base 720x1280 (ADR 0015 §2).
+
 ## Context
 Phase 0 of `docs/ROADMAP.md` sets up the project that every later phase builds on. Spikes on
 Godot 4.7.2 (macOS arm64) found facts that shape the setup:

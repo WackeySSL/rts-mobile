@@ -6,8 +6,12 @@ extends GdUnitTestSuite
 ## does what. Further cases pin the rules that keep the work at event cadence: no lookup on ground
 ## the field does not reach, and a line check again for a unit the rock stops dead. Maps are built
 ## in code (GridWorld).
+## Every case runs under both implementations of the INTEGRATE phase (P37n), the GDScript twin and
+## the C++ kernel, through SimImpls: gdUnit4 runs it once for each.
+## The cases that count the twin's `best_neighbour` calls stay on the twin.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const CountingField: GDScript = preload("res://tests/sim/support/counting_field.gd")
 const MOVE: int = World.Order.MOVE
 const IDLE: int = World.Order.IDLE
@@ -21,7 +25,7 @@ const FOOT: int = World.MoveClass.FOOT
 ## (the unit steers at its goal); `Movement.integrate` asks once, for the unit's tile, and sets
 ## `nav_next` to the answer. The intents are zeroed first, so the unit stays in its tile.
 func test_integrate_sets_nav_next_and_run_alone_asks_nothing() -> void:
-	var world: World = _wall_world()
+	var world: World = _wall_world(SimImpls.Impl.GDSCRIPT)
 	world.add_unit(1, 0, 3500, 2500)
 	var counting: CountingField = _count_slots(world)[0]
 	var order: Command = Command.move(1, PackedInt32Array([1]), 14500, 2500)
@@ -52,9 +56,11 @@ func test_integrate_sets_nav_next_and_run_alone_asks_nothing() -> void:
 ## the unit stands. On that call the unit has an intent of 100 and a push of 30: the stall drops the
 ## intent, the push still moves the unit (the unit is IDLE, but not nailed down). `Movement.run`
 ## alone, ten times, changes none of it.
-func test_integrate_counts_the_stall_and_run_alone_does_not() -> void:
-	var world: World = _stall_world()
-	var twin: World = _stall_world()
+func test_integrate_counts_the_stall_and_run_alone_does_not(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _stall_world(impl)
+	var twin: World = _stall_world(impl)
 	for _call: int in 10:
 		Movement.run(twin)
 	assert_array([twin.stall[0], twin.best_dist[0], twin.order[0]]).is_equal(
@@ -88,8 +94,10 @@ func test_integrate_counts_the_stall_and_run_alone_does_not() -> void:
 ## tile; the target's position (the goal) then moves 5000 away, and the unit's next lookup event
 ## (`nav_next` -1 on a complete field) takes the field of the new tile: `Movement.run` leaves the
 ## field alone, `Movement.integrate` re-keys it.
-func test_integrate_rekeys_an_attack_field_and_run_alone_does_not() -> void:
-	var world: World = _wall_world()
+func test_integrate_rekeys_an_attack_field_and_run_alone_does_not(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _wall_world(impl)
 	world.player_count = 2
 	world.type_weapon[0] = 0
 	world.add_unit(1, 0, 3500, 2500)
@@ -168,13 +176,15 @@ func test_ground_the_field_does_not_reach_is_asked_on_turns_only() -> void:
 ## along y 17965 into (30, 17) and stops there, DIRECT with a checked line. When the rock stops a
 ## DIRECT unit dead its line is marked unchecked, the next check finds the line blocked, and the
 ## field leads the unit round the tile: it arrives. Without that it stood there for good.
-func test_a_unit_the_rock_stops_on_a_clear_line_gets_a_field_and_arrives() -> void:
+func test_a_unit_the_rock_stops_on_a_clear_line_gets_a_field_and_arrives(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in range(18, 36):
 		rock.append(Vector2i(20, row))
 	rock.append(Vector2i(30, 17))
 	for speed: int in [80, 93, 120]:
-		var world: World = GridWorld.from_rows(GridWorld.grass(48, 36, rock))
+		var world: World = _in(GridWorld.from_rows(GridWorld.grass(48, 36, rock)), impl)
 		world.type_speed[0] = speed
 		world.add_unit(1, 0, 8500, 19500)
 		var order: Command = Command.move(1, PackedInt32Array([1]), 43114, 18075)
@@ -198,8 +208,10 @@ func test_a_unit_the_rock_stops_on_a_clear_line_gets_a_field_and_arrives() -> vo
 ## blocked line is FIELD in the column too, not only in the check's answer: the field is kept, the
 ## mode is written, the unit follows the slot. (Otherwise the row stays DIRECT with a slot, and the
 ## cache keeps counting a reference nothing follows.)
-func test_a_blocked_line_keeps_the_field_of_a_direct_unit_and_makes_it_field() -> void:
-	var world: World = _wall_world()
+func test_a_blocked_line_keeps_the_field_of_a_direct_unit_and_makes_it_field(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _wall_world(impl)
 	world.add_unit(1, 0, 3500, 2500)
 	world.order[0] = MOVE
 	world.goal_x[0] = 14500
@@ -224,8 +236,10 @@ func test_a_blocked_line_keeps_the_field_of_a_direct_unit_and_makes_it_field() -
 ## the number (`run` sends such a unit DIRECT; this case calls `integrate` on its own). The last
 ## slot of the cache holds a complete field, which is what a -1 would read if it indexed from the
 ## end of the array.
-func test_integrate_gives_a_field_unit_with_no_such_slot_no_lookup() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+func test_integrate_gives_a_field_unit_with_no_such_slot_no_lookup(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10)), impl)
 	_complete_last_slot(world)
 	var numbers: Array[int] = [-1, world.flow.fields.size(), 99]
 	for index: int in numbers.size():
@@ -264,9 +278,11 @@ func test_integrate_gives_a_field_unit_with_no_such_slot_no_lookup() -> void:
 ## - the stall: a FIELD unit on ground its field does not reach (`nav_next` NO_NEXT), 1510 from its
 ##   goal, one count short of `stall_ticks`;
 ## - the arrival: a FIELD unit with a next tile, 90 from its goal (within one step).
-func test_an_ended_order_takes_no_lookup_on_the_tile_its_last_step_enters() -> void:
+func test_an_ended_order_takes_no_lookup_on_the_tile_its_last_step_enters(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for stalls: bool in [true, false]:
-		var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+		var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10)), impl)
 		_complete_last_slot(world)
 		world.add_unit(1, 0, 3990 if stalls else 3950, 4500)
 		world.order[0] = MOVE
@@ -297,17 +313,18 @@ func test_an_ended_order_takes_no_lookup_on_the_tile_its_last_step_enters() -> v
 
 
 ## A 20 x 12 map with a wall in column 8, rows 0 to 8 (a gap in rows 9 to 11).
-func _wall_world() -> World:
+func _wall_world(impl: int) -> World:
 	var rock: Array[Vector2i] = []
 	for row: int in 9:
 		rock.append(Vector2i(8, row))
-	return GridWorld.from_rows(GridWorld.grass(20, 12, rock))
+	return _in(GridWorld.from_rows(GridWorld.grass(20, 12, rock)), impl)
 
 
 ## Gives `world` a cache of 2 slots whose last one holds a complete field (goal tile 1, TRACKED),
 ## the field a read from the end of the array would find. Slot 0 is complete too.
 func _complete_last_slot(world: World) -> void:
 	var flow: FlowCache = world.flow
+	world.flow_cache_size = 2  # The kernel checks the slot count against the rule.
 	flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 2)
 	assert_int(flow.acquire(0, World.MoveClass.TRACKED, world.map_version, 0)).is_equal(0)
 	assert_int(flow.acquire(1, World.MoveClass.TRACKED, world.map_version, 0)).is_equal(1)
@@ -316,8 +333,8 @@ func _complete_last_slot(world: World) -> void:
 
 
 ## An open 20 x 10 map and a tank 1000 from its goal, DIRECT with a checked line, stall after 3.
-func _stall_world() -> World:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+func _stall_world(impl: int) -> World:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10)), impl)
 	world.add_unit(1, 0, 5000, 2000)
 	world.order[0] = MOVE
 	world.goal_x[0] = 6000
@@ -353,3 +370,14 @@ func _lookups(counters: Array[CountingField]) -> int:
 	for counting: CountingField in counters:
 		total += counting.lookups
 	return total
+
+
+## The parameter sets of a test that runs under both implementations (gdUnit4 calls it by name).
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
+	return world

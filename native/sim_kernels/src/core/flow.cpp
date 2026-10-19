@@ -1,4 +1,5 @@
-// The FLOW kernel's rules, a mirror of FlowField.gd and FlowCache.gd: see flow.h. MIT.
+// The FLOW kernel's rules and the lookups of the INTEGRATE kernel, a mirror of FlowField.gd and FlowCache.gd: see
+// flow.h. MIT.
 #include "flow.h"
 
 namespace flow {
@@ -124,6 +125,104 @@ void recount(ArrayView<int32_t> ref_count, const ArrayView<const int32_t> &field
 			ref_count.set(slot, ref_count.get(slot) + 1);
 		}
 	}
+}
+
+Run run(const Call &call, int64_t budget, Turns &turns) {
+	recount(call.ref_count, call.field, call.units);
+	ArrayView<int32_t> status = call.status;
+	const auto pending_of = [&turns](int64_t slot) { return turns.pending_of(slot); };
+	Run result;
+	while (result.settled < budget) {
+		const int64_t pick = oldest_request(status, call.requested, pending_of);
+		if (pick == -1 || !turns.load(pick)) {
+			break;
+		}
+		Slot &slot = turns.slot();
+		const bool starts = status.get(pick) == WAITING;
+		if (starts) {
+			begin(slot, call.key_goal.get(pick), call.key_class.get(pick), call.costs, call.cols, call.rows);
+			status.set(pick, ACTIVE);
+		}
+		const int64_t advanced = advance(slot, budget - result.settled);
+		result.settled += advanced;
+		turns.store();
+		if (!starts && advanced == 0) {
+			result.stuck = true;
+			break;
+		}
+	}
+	return result;
+}
+
+int64_t best_neighbour(const Served &field, int64_t cell) {
+	// The twin divides by grid_cols and stride, which a begun field has above 0; a slot never begun has no cells.
+	if (cell < 0 || cell >= field.cell_count || field.grid_cols <= 0 || field.stride <= 0) {
+		return -1;
+	}
+	const int64_t here = (cell / field.grid_cols + 1) * field.stride + cell % field.grid_cols + 1;
+	int64_t best = field.cost.get(here);
+	if (best == UNREACHED) {
+		return -1;
+	}
+	int64_t pick = -1;
+	for (int64_t k = 0; k < NEIGHBOURS; k++) {
+		const int64_t other = here + DY[k] * field.stride + DX[k];
+		if (field.cost.get(other) >= best) {
+			continue;
+		}
+		if (STEP_PERCENT[k] != STEP_BASE) {
+			if (field.cost.get(here + DX[k]) == UNREACHED || field.cost.get(here + DY[k] * field.stride) == UNREACHED) {
+				continue;
+			}
+		}
+		best = field.cost.get(other);
+		pick = other;
+	}
+	if (pick == -1) {
+		return -1;
+	}
+	return (pick / field.stride - 1) * field.grid_cols + pick % field.stride - 1;
+}
+
+Acquired acquire(Keys &keys, int64_t goal_cell, int64_t move_class, int64_t map_version, int64_t tick) {
+	Acquired none;
+	if (goal_cell < 0 || goal_cell >= keys.cols * keys.rows || move_class < 0 || move_class >= keys.classes) {
+		return none;
+	}
+	int64_t free_slot = -1;
+	int64_t oldest = -1;
+	for (int64_t slot = 0; slot < keys.status.size(); slot++) {
+		if (keys.status.get(slot) == FREE) {
+			if (free_slot == -1) {
+				free_slot = slot;
+			}
+		} else if (keys.key_goal.get(slot) == goal_cell && keys.key_class.get(slot) == move_class && keys.key_version.get(slot) == map_version) {
+			keys.last_used.set(slot, tick);
+			keys.ref_count.set(slot, keys.ref_count.get(slot) + 1);
+			Acquired held;
+			held.slot = slot;
+			return held;
+		} else if (keys.ref_count.get(slot) == 0 && (oldest == -1 || keys.last_used.get(slot) < keys.last_used.get(oldest))) {
+			oldest = slot;
+		}
+	}
+	const int64_t pick = free_slot != -1 ? free_slot : oldest;
+	if (pick == -1) {
+		return none;
+	}
+	keys.key_goal.set(pick, goal_cell);
+	keys.key_class.set(pick, move_class);
+	keys.key_version.set(pick, map_version);
+	keys.last_used.set(pick, tick);
+	keys.ref_count.set(pick, keys.ref_count.get(pick) + 1);
+	// FlowCache._request: the next request number, and the slot waits for its integration.
+	keys.requests += 1;
+	keys.requested.set(pick, keys.requests);
+	keys.status.set(pick, WAITING);
+	Acquired fresh;
+	fresh.slot = pick;
+	fresh.recycled = true;
+	return fresh;
 }
 
 } // namespace flow

@@ -4,8 +4,11 @@ extends GdUnitTestSuite
 ## `stall_range_spacings` formation spacings of the goal. There is no separation in the tick yet
 ## (P39b), so a parked enemy is a push written by hand, the way test_movement_integrate.gd writes
 ## one. Maps are built in code (GridWorld): speed 120, spacing 1200, so the range is 2400.
+## Every case runs under both implementations of the INTEGRATE phase (P37n), the GDScript twin and
+## the C++ kernel, through SimImpls: gdUnit4 runs it once for each.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const MOVE: int = World.Order.MOVE
 const ATTACK: int = World.Order.ATTACK
 const IDLE: int = World.Order.IDLE
@@ -22,8 +25,10 @@ const RANGE: int = 2400
 ## it stands, no mode, no field, stall 0, no intent on its last tick. That is stall_ticks after the
 ## tank's own first tick in range, within stall_ticks + 1, and the two tanks' first ticks differ by
 ## the 5 ticks that 600 takes: the count is kept per unit.
-func test_units_held_back_in_range_of_their_slots_go_idle_within_stall_ticks() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+func test_units_held_back_in_range_of_their_slots_go_idle_within_stall_ticks(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10)), impl)
 	GridWorld.add_block(world, 2, 1, 3040, 2000, 4000, 0)
 	var seen: Array[Array] = _hold_back(world, RANGE, 10600)
 	var goals: Array[int] = [10000, 10600]
@@ -54,11 +59,11 @@ func test_units_held_back_in_range_of_their_slots_go_idle_within_stall_ticks() -
 ## The count and the range are the World's rules: with `stall_ticks` 6 and `stall_range_spacings`
 ## 3 (a range of 3600) the held unit goes IDLE after 6 ticks in range, and its first tick in range
 ## comes 10 ticks (1200 of 120 a tick) before it did with 2.
-func test_stall_follows_the_rules_of_the_world() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+func test_stall_follows_the_rules_of_the_world(impl: int, _test_parameters := _both()) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10)), impl)
 	GridWorld.add_block(world, 2, 1, 3040, 2000, 4000, 0)
 	var normal: Array[Array] = _hold_back(world, RANGE, 10000)
-	var other: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+	var other: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10)), impl)
 	GridWorld.add_block(other, 2, 1, 3040, 2000, 4000, 0)
 	other.stall_ticks = 6
 	other.stall_range_spacings = 3
@@ -72,8 +77,8 @@ func test_stall_follows_the_rules_of_the_world() -> void:
 ## step, a new best distance), held for ten again, and so on: its count climbs to 10 and falls back
 ## to 0, never reaching `stall_ticks` (15), and the tank arrives on its goal. Without the reset the
 ## second cycle would idle it.
-func test_progress_resets_the_stall_count() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+func test_progress_resets_the_stall_count(impl: int, _test_parameters := _both()) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10)), impl)
 	world.add_unit(1, 0, 3000, 2000)
 	var held: int = 0
 	var top: int = 0
@@ -98,9 +103,11 @@ func test_progress_resets_the_stall_count() -> void:
 ## ticks it keeps its order and its mode, and tracks no distance. An ATTACK unit in range does not
 ## stall either (its goal walks away with the target, and combat ends the order, P41), nor a unit of
 ## speed 0 (it has no step to be held back from).
-func test_units_out_of_range_or_attacking_or_unable_to_move_do_not_stall() -> void:
+func test_units_out_of_range_or_attacking_or_unable_to_move_do_not_stall(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var tracked: int = World.MoveClass.TRACKED
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10), [tracked, tracked])
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10), [tracked, tracked]), impl)
 	world.type_speed[1] = 0
 	world.player_count = 2
 	world.type_weapon[0] = 0
@@ -134,11 +141,13 @@ func test_units_out_of_range_or_attacking_or_unable_to_move_do_not_stall() -> vo
 ## and arrives (the stall did not take it). A unit that cannot get a slot (the cache has one, held
 ## by another goal) is DIRECT with an unchecked line, in range of its goal, and does not stall
 ## either.
-func test_a_unit_waiting_for_a_field_or_a_slot_does_not_stall() -> void:
+func test_a_unit_waiting_for_a_field_or_a_slot_does_not_stall(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 9:
 		rock.append(Vector2i(8, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10, rock)), impl)
 	world.flow_cells_per_tick = 0
 	world.add_unit(1, 0, 6500, 2500)
 	var order: Command = _stamped(Command.move(1, PackedInt32Array([1]), 9500, 2500), 0)
@@ -152,7 +161,8 @@ func test_a_unit_waiting_for_a_field_or_a_slot_does_not_stall() -> void:
 	for _tick: int in 400:
 		Sim.step(world, [])
 	assert_array([world.pos_x[0], world.pos_y[0], world.order[0]]).is_equal([9500, 2500, IDLE])
-	var tight: World = GridWorld.from_rows(GridWorld.grass(20, 10, rock))
+	var tight: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10, rock)), impl)
+	tight.flow_cache_size = 1
 	tight.flow.configure(tight.map_cols, tight.map_rows, World.MoveClass.size(), 1)
 	tight.flow_cells_per_tick = 0
 	tight.add_unit(1, 0, 6500, 2500)
@@ -173,11 +183,13 @@ func test_a_unit_waiting_for_a_field_or_a_slot_does_not_stall() -> void:
 ## is FIELD on a complete field with no next tile: it steers at its goal, presses on the wall within
 ## range of it, and stalls there like any unit that cannot get closer. It is IDLE after about
 ## `stall_ticks` ticks of pressing, on its side of the wall, with no field.
-func test_a_unit_on_ground_the_field_does_not_reach_stalls_in_range_of_its_goal() -> void:
+func test_a_unit_on_ground_the_field_does_not_reach_stalls_in_range_of_its_goal(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 10:
 		rock.append(Vector2i(8, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10, rock)), impl)
 	world.add_unit(1, 0, 3500, 4500)
 	var idle_at: int = -1
 	for tick: int in 300:
@@ -199,11 +211,13 @@ func test_a_unit_on_ground_the_field_does_not_reach_stalls_in_range_of_its_goal(
 ## of a wall across the whole map (column 8) with its goal 6500 behind it, far out of the range,
 ## presses on the wall; its field names no next tile, so with no progress for `stall_ticks` its
 ## order ends where it stands and its slot is free.
-func test_a_unit_on_ground_the_field_does_not_reach_ends_its_order_at_any_distance() -> void:
+func test_a_unit_on_ground_the_field_does_not_reach_ends_its_order_at_any_distance(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 10:
 		rock.append(Vector2i(8, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10, rock)), impl)
 	world.add_unit(1, 0, 3500, 4500)
 	var pressed_at: int = -1
 	var idle_at: int = -1
@@ -231,11 +245,13 @@ func test_a_unit_on_ground_the_field_does_not_reach_ends_its_order_at_any_distan
 ## ordered to attack an enemy 11000 behind it presses on the wall for 300 ticks with its order, its
 ## mode and its field, and no next tile (its target may walk into reach, and combat ends the order,
 ## P41). The rule that frees the slot of a MOVE unit is for orders that have a goal to arrive at.
-func test_an_attack_unit_on_ground_the_field_does_not_reach_keeps_its_order() -> void:
+func test_an_attack_unit_on_ground_the_field_does_not_reach_keeps_its_order(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 10:
 		rock.append(Vector2i(8, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10, rock)), impl)
 	world.player_count = 2
 	world.type_weapon[0] = 0
 	world.add_unit(1, 0, 3500, 4500)
@@ -261,9 +277,11 @@ func test_an_attack_unit_on_ground_the_field_does_not_reach_keeps_its_order() ->
 ## of its own range and keeps its order, with no distance tracked. On the stall tick the unit of
 ## type 1 has no intent on either axis, moves by the push on both axes and has its goal where it
 ## stood, on both axes.
-func test_the_stall_range_is_the_spacing_of_the_units_type_and_the_push_is_kept() -> void:
+func test_the_stall_range_is_the_spacing_of_the_units_type_and_the_push_is_kept(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var tracked: int = World.MoveClass.TRACKED
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10), [tracked, tracked])
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10), [tracked, tracked]), impl)
 	world.type_spacing[1] = 3000
 	world.add_unit(1, 0, 3000, 2000)
 	world.add_unit(1, 1, 3000, 6000)
@@ -326,3 +344,14 @@ func _hold_back(world: World, reach: int, second_goal: int) -> Array[Array]:
 func _stamped(command: Command, tick: int) -> Command:
 	command.tick = tick
 	return command
+
+
+## The parameter sets of a test that runs under both implementations (gdUnit4 calls it by name).
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
+	return world

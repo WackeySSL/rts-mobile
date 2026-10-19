@@ -9,7 +9,8 @@ funded by optional rewarded ads and capped post-match interstitials.
 
 ## Audience and platforms
 - Adults 20+ who played PC strategy games, and newcomers who want short, readable strategy.
-- Android first, iOS later. Landscape only.
+- Android first, iOS later. Landscape and portrait: the phone's sensor picks the orientation, also during a match
+  (Michael, 2026-10-19; ADR 0015).
 - English at launch; all strings in translation files from day one so Danish and German can follow.
 
 ## Pillars

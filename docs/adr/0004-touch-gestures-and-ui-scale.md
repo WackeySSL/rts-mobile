@@ -6,6 +6,17 @@ Status note (2026-10-12): §5 partly superseded by ADR 0009 (a tap on an enemy i
 §7 partly superseded by ADR 0011 §3 (selection rings are sprites of one ring texture, not drawn
 in code).
 
+Status note (2026-10-19, P26v docs; ADR 0015, accepted 2026-10-19): the text below stays as
+accepted. Where it assumes landscape it is superseded for the future by ADR 0015 and still true
+for every landscape window: the Context's stretch `min(w / 1280, h / 720)` and §3's examples
+("held landscape") hold in landscape; from P59 a portrait window uses the base size 720x1280, so
+its stretch is `min(w / 720, h / 1280)`, the same number as the same device in landscape (ADR 0015
+§2). §3's dp formula, `UiMetrics` and `set_override()` do not change. §3's 180 degree turn rule
+for `SafeAreaMargin` ("sensor landscape") holds in both orientations (ADR 0015 §3), and an
+orientation change cancels gestures in flight (ADR 0015 §3, P62). §6's camera gains the rotation
+rule of ADR 0015 §4 (P62). The Amendment (P21)'s right sidebar zone is the landscape zone; in
+portrait the zone is a bottom band (ADR 0015 §5, P61).
+
 ## Context
 Phase 1 is a go/no-go on controls. `touch-ui-rules` gives the gesture map and the 48 dp rule,
 but it leaves several things open: how tap, long-press, drag, pinch and double-tap are told

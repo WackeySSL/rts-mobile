@@ -3,8 +3,8 @@ extends GdUnitTestSuite
 ## and `native_phases` has one bit per SimProbe.Phase; a phase entry that finds its bit set calls
 ## the method of its phase on the kernels and skips the GDScript rule. A KernelSpy takes the place
 ## of the library here, so these cases need no build. P54 has the mask-0 case; a port PR adds one
-## case that sets its bit and asserts exactly its spy call (FLOW since P30n; the other entries have
-## no dispatch line yet).
+## case that sets its bit and asserts exactly its spy call (FLOW since P30n, INTEGRATE since P37n;
+## the other entries have no dispatch line yet).
 
 const KernelSpy: GDScript = preload("res://tests/sim/support/kernel_spy.gd")
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
@@ -54,6 +54,27 @@ func test_flow_run_calls_the_flow_kernel_once_and_skips_the_gdscript_phase() -> 
 	FlowCache.run(world, 7)
 	assert_array(spy.calls).is_equal(["flow:512", "flow:7", "flow:0"])
 	assert_array([world.flow.refs(0), world.stats[World.Stat.FLOW_CELLS]]).is_equal([2, 7])
+
+
+## INTEGRATE (P37n): Movement.integrate starts with the dispatch. With its bit set it calls the
+## kernel once and does nothing else (the unit that Movement.run gave an intent stays where it is);
+## with the other four bits it runs the GDScript phase.
+func test_integrate_calls_the_integrate_kernel_once_and_skips_the_gdscript_phase() -> void:
+	var spy: RefCounted = KernelSpy.new()
+	var world: World = _moving_world(spy, 1 << SimProbe.Phase.INTEGRATE)
+	# The first call is the INTEGRATE line of the tick `_moving_world` ran; the order was queued
+	# for tick 0, so Movement.run had given the tanks an intent, which nothing integrated.
+	assert_array(spy.calls).is_equal(["integrate"])
+	assert_int(world.intent_x[0] + world.intent_y[0]).is_not_equal(0)
+	var start: Vector2i = Vector2i(world.pos_x[0], world.pos_y[0])
+	Movement.integrate(world)
+	assert_array(spy.calls).is_equal(["integrate", "integrate"])
+	assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([start.x, start.y])
+	# The other four phases of ADR 0013.
+	world.native_phases = 0x46A & ~(1 << SimProbe.Phase.INTEGRATE)
+	Movement.integrate(world)
+	assert_array(spy.calls).is_equal(["integrate", "integrate"])
+	assert_array([world.pos_x[0], world.pos_y[0]]).is_not_equal([start.x, start.y])
 
 
 ## The controls scenario with `kernels` and `mask` attached after prepare(), and an attack-move

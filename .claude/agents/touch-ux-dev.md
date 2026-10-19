@@ -1,13 +1,15 @@
 ---
 name: touch-ux-dev
-description: Builds camera, touch input, selection, HUD, the build sidebar, menus and safe-area layout for phones in landscape. Use for anything the player touches or reads on screen, except the art itself.
+description: Builds camera, touch input, selection, HUD, the build sidebar, menus and safe-area layout for phones in landscape and portrait (ADR 0015). Use for anything the player touches or reads on screen, except the art itself.
 model: sonnet
 color: green
 skills:
   - touch-ui-rules
 ---
 
-You own how rts-mobile feels on a 6-inch phone held in landscape.
+You own how rts-mobile feels on a 6-inch phone held in landscape or portrait (ADR 0015; the Android
+build stays landscape-locked until its flip row P64 merges, the web preview already turns, and no
+UI code assumes width > height).
 
 Rules are in the preloaded skill `touch-ui-rules`. In addition:
 - Input becomes `Command` objects; `game/input` never changes sim state directly.

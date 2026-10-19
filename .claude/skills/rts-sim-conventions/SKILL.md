@@ -73,6 +73,17 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
   slot's arrays once; nothing resizes them afterwards (ADR 0013 §2). References are
   derived from the World's `field` column every tick, never released by hand. A group move
   shares one field.
+- Field keys and endings (P37b, ADR 0008 §2/§3 notes of 2026-10-19): a blocked line keys its field
+  on the row's `group_cell` (`Formation.assign`'s group centre for `MOVE` and `ATTACK_MOVE`; -1
+  from `Sim._apply_attack`, `Sim._apply_stop` and `Movement._end_order`), else on the unit's goal
+  tile. `nav_next` is -1 (not looked up), `Movement.NO_NEXT` (-2, none) or a cell, looked up in
+  INTEGRATE at events only; a next tile equal to the field's key and blocked for the class is
+  none. With none on a key other than its goal tile, `Movement._take_own_field` takes the goal
+  tile's field (`ATTACK` included) with a fresh `best_dist` and `stall`; a `FIELD` unit left with
+  none stalls at any distance
+  (`ATTACK` never stalls). Kernels mirror all of it: INTEGRATE (P37n) the own field, the blocked
+  key, the fresh counts and `_end_order`'s `group_cell` write, with `group_cell` in its checked
+  list; INTENTS (P37n2, if it fires) `_check_line`'s group key.
 - Two spatial grids as linked lists (`head` per cell, `next` per row), rebuilt once per tick in
   the grids phase: a 1-tile separation grid and a 4-tile targeting grid (not one 2-tile grid).
   Processed in ID order.

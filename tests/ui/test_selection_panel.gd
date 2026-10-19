@@ -5,6 +5,7 @@ extends GdUnitTestSuite
 ## 6-column block, and ids 1-30 are the player's.
 
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
+const HudThemes: GDScript = preload("res://tests/support/hud_theme.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ART: String = "res://assets/art/svg/units/light_tank_"
 const LONG_NAME: String = "Heavily Armoured Experimental Siege Tank Destroyer Mark Seven"
@@ -81,11 +82,18 @@ func test_two_types_get_a_row_each_and_a_total_and_the_rows_are_reused() -> void
 	_panel = auto_free(SelectionPanel.new())
 	_panel.runner = runner
 	_panel.unit_layer = auto_free(UnitLayer.new())
+	_panel.theme = HudThemes.scaled()  # Outside main.tscn nothing is inherited (P58).
 	add_child(_panel)
 	_panel.set_selected(PackedInt32Array([1, 2, 3, 4, 5, 999]))  # 999 is no unit.
 	assert_array(_texts("Row0")).is_equal(["Light Tank", "×2"])
 	assert_array(_texts("Row1")).is_equal(["Scout Test", "×3"])
 	assert_str((_node("Rows/Total") as Label).text).is_equal("Total ×5")
+	var sizes: Array[int] = []  # The look is the theme's: names 16 dp, counts and total 20 dp.
+	for path: String in ["Rows/Row0/Name", "Rows/Row0/Count", "Rows/Total"]:
+		sizes.append(_node(path).get_theme_font_size("font_size"))
+	assert_array(sizes).is_equal([_px(16.0), _px(20.0), _px(20.0)])
+	var backdrop: StyleBoxFlat = _panel.get_theme_stylebox("panel")
+	assert_that(backdrop.bg_color).is_equal(Color(0.06, 0.08, 0.11, 0.78))
 	assert_bool(_node("Rows/Total").visible).is_true()
 	assert_int(_node("Rows/Total").get_index()).is_equal(2)  # Below the rows.
 	assert_object((_node("Rows/Row1/Icon/Hull") as TextureRect).texture).is_null()  # No art.
@@ -286,6 +294,7 @@ func test_with_no_snapshot_to_count_from_the_panel_hides() -> void:
 	assert_object(runner.snapshot).is_null()
 	_panel = auto_free(SelectionPanel.new())
 	_panel.runner = runner
+	_panel.theme = HudThemes.scaled()  # Outside main.tscn nothing is inherited (P58).
 	add_child(_panel)
 	_panel.visible = true
 	_panel.set_selected(PackedInt32Array([1]))
