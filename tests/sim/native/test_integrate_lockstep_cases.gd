@@ -3,10 +3,11 @@ extends GdUnitTestSuite
 ## to reach one rule of Movement.integrate, each built twice (the GDScript twin and the C++ kernel,
 ## through tests/sim/support/lockstep_rig.gd) and compared after every tick or call: the state hash
 ## and the full state of StateDiff. The long runs on the arena and the random states are in
-## test_integrate_lockstep.gd; FIELD units off the map are in test_integrate_lockstep_off_map.gd
-## (this file is at gdlint's limit of 20 public methods). A case that runs ticks also counts what
-## it reached on the twin's side (the rig's tally), so that it cannot pass by never meeting its
-## rule; a case that builds a state by hand asserts the outcome that the twin's rule gives as well.
+## test_integrate_lockstep.gd; units off the map are in test_integrate_lockstep_off_map.gd and a
+## cache shaped unlike the map in test_integrate_lockstep_cache_shape.gd (this file is at gdlint's
+## limit of 20 public methods). A case that runs ticks also counts what it reached on the twin's
+## side (the rig's tally), so that it cannot pass by never meeting its rule; a case that builds a
+## state by hand asserts the outcome that the twin's rule gives as well.
 ##
 ## The cases: walls with gaps, on a wide and a tall map; belts that tell the three move classes
 ## apart (scrub, wheeled-only, tracked-only); a group target that turns to rock (the blocked key); a
