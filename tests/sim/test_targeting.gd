@@ -294,6 +294,26 @@ func test_the_scan_reads_the_grid_of_its_own_tick() -> void:
 	assert_array([world.tick, world.target[0]]).is_equal([5, 2])
 
 
+## The grid is rebuilt on every tick, odd or even. The case above scans at an even tick only, so a
+## rebuild that skips the odd ticks (when the rows only moved) would pass it. With a period of 1
+## every unit is due every tick, so the parity is free: unit 2 stands far away at the first step and
+## is moved next to unit 1 before the second, which runs at the other parity. The first tick is 2
+## (second step at 3) and 3 (second step at 4).
+func test_the_grid_is_rebuilt_on_every_tick_odd_or_even() -> void:
+	for first_tick: int in [2, 3]:
+		var world: World = Rig.data_world()
+		world.retarget_period_ticks = 1
+		world.add_unit(1, RIFLE, 5000, 3000)
+		world.add_unit(2, RIFLE, 15000, 3000)
+		world.tick = first_tick
+		Sim.step(world, [])
+		assert_int(world.target[0]).override_failure_message("far at %d" % first_tick).is_equal(0)
+		world.pos_x[1] = 8000
+		Sim.step(world, [])
+		var label: String = "scan at tick %d" % (first_tick + 1)
+		assert_int(world.target[0]).override_failure_message(label).is_equal(2)
+
+
 ## `_follow_targets` (the ATTACK stand-in until P41b) runs after the TARGETING mark, inside INTENTS:
 ## an ATTACK row's goal is still where it was at the TARGETING mark and is its target's position at
 ## the INTENTS mark. Row 0 stands at x 10000 with its goal there and attacks unit 2 at x 12000.
