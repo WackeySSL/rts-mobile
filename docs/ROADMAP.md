@@ -36,6 +36,11 @@ Tick a box in the PR that meets the criterion.
 ## Phase 3: Base building and economy
 - [ ] Buildings from the GDD with placement (ghost, valid and invalid tint, confirm and cancel)
 - [ ] Build sidebar with tabs, queues, cost and progress; power bar and low-power effects
+- [ ] Portrait and landscape on the battle screen (ADR 0015): the HUD, selection and build sidebar keep their dp sizes in both
+  orientations and follow ADR 0015 §5's layout; a turn during a match keeps the camera centre and the world size per dp
+  and queues no Command; UI and layout tests run at 1280x720, 2400x1080, 2048x1536, 720x1280, 1080x2400 and 1536x2048
+- [ ] The Android build follows the device's sensor (ADR 0015 §7: `window/handheld/orientation=6`, manifest
+  `screenOrientation` 13), as the last row of `docs/plans/2026-10-19-portrait.md`
 - [ ] Ore fields, harvester loop, refinery and credits
 - [ ] Production of all MVP units with rally points
 - [ ] Victory and defeat conditions and a result screen
@@ -62,6 +67,8 @@ Tick a box in the PR that meets the criterion.
   because Godot's Android template ships `libc++_shared.so` (Phase 2 plan, P26l), and godot-cpp's
   MIT licence (`docs/licenses/godot-cpp-4.5-stable/`) on builds that contain the C++ sim kernels
   (ADR 0013 §11), and the game's own boot splash instead of Godot's default
+- [ ] Every menu screen (main menu, map select, settings, tutorial, How to play, Licences) works in portrait and landscape
+  (ADR 0015 §5) and is tested at the six sizes of ADR 0015 §6
 - [ ] Second and third map
 - [ ] Gate: a new player finishes the tutorial without help, every entry in `docs/HOW_TO_PLAY.md` is
   covered by the tutorial or the How to play screen, and the median match takes 8-10 minutes
@@ -71,6 +78,8 @@ Tick a box in the PR that meets the criterion.
 - [ ] UMP consent flow and privacy options
 - [ ] Rewarded offers (double XP, starting credits), post-match interstitial, menu banner
 - [ ] Remove ads purchase with restore
+- [ ] The consent and ad screens (UMP form, rewarded offer, post-match interstitial, menu banner) work in portrait and
+  landscape and after a turn, checked on Michael's phone (ADR 0015 §5)
 - [ ] `android-internal.yml`: signed AAB on every push to `main`, uploaded to Play internal testing
 - [ ] Privacy policy text and Play Data safety answers drafted in `docs/store/`
 - [ ] Gate: the build is in Play internal testing on Michael's phone, ads show test creatives, and app-ads.txt on appcode.dk covers the app
