@@ -13,8 +13,9 @@ extends GdUnitTestSuite
 ## INTEGRATE kernel can differ) and on a cache of two slots, where the slot tables that the C++
 ## and the GDScript FlowCache.acquire produce are also compared on their own. The last case plays
 ## 600 seeded random states (a random map, cache and rows, garbage in the navigation columns).
-## The crafted cases are in test_integrate_lockstep_cases.gd. That Movement.integrate hands the
-## phase to the kernel at all is pinned by the spy case of tests/sim/test_kernel_dispatch.gd.
+## The crafted cases are in test_integrate_lockstep_cases.gd and test_integrate_lockstep_off_map.gd.
+## That Movement.integrate hands the phase to the kernel at all is pinned by the spy case of
+## tests/sim/test_kernel_dispatch.gd.
 
 const LockstepRig: GDScript = preload("res://tests/sim/support/lockstep_rig.gd")
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")

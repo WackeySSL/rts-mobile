@@ -3,9 +3,10 @@ extends GdUnitTestSuite
 ## to reach one rule of Movement.integrate, each built twice (the GDScript twin and the C++ kernel,
 ## through tests/sim/support/lockstep_rig.gd) and compared after every tick or call: the state hash
 ## and the full state of StateDiff. The long runs on the arena and the random states are in
-## test_integrate_lockstep.gd. A case that runs ticks also counts what it reached on the twin's
-## side (the rig's tally), so that it cannot pass by never meeting its rule; a case that builds a
-## state by hand asserts the outcome that the twin's rule gives as well.
+## test_integrate_lockstep.gd; FIELD units off the map are in test_integrate_lockstep_off_map.gd
+## (this file is at gdlint's limit of 20 public methods). A case that runs ticks also counts what
+## it reached on the twin's side (the rig's tally), so that it cannot pass by never meeting its
+## rule; a case that builds a state by hand asserts the outcome that the twin's rule gives as well.
 ##
 ## The cases: walls with gaps, on a wide and a tall map; belts that tell the three move classes
 ## apart (scrub, wheeled-only, tracked-only); a group target that turns to rock (the blocked key); a
@@ -286,13 +287,14 @@ func test_an_order_that_is_none_of_the_known_ones_is_no_attack_and_arrives_like_
 
 ## A served field that covers fewer cells than the map has (`cell_count` 100 of a 20 x 12 map): the
 ## unit on tile 150 gets no next tile (NO_NEXT, the lookup is outside the field), the one on tile 99
-## does (78, the diagonal). The guard is the twin's `cell >= cell_count`.
+## does (78, the diagonal), and the one on tile 100, the first cell past the count, gets none. The
+## guard is the twin's `cell >= cell_count`: a bound of `>` names a tile for tile 100 (81).
 func test_a_field_that_serves_fewer_cells_than_the_map_names_no_tile_beyond_them() -> void:
 	var pair: Array[World] = _pair(_short_field_world)
 	_integrate_all(pair)
 	_assert_same(pair)
 	for world: World in pair:
-		assert_array([world.nav_next[0], world.nav_next[1]]).is_equal([NO_NEXT, 78])
+		assert_array(Array(world.nav_next)).is_equal([NO_NEXT, 78, NO_NEXT])
 
 
 ## A cache that was sized for 10 rows of a 12-row map: `acquire` refuses a goal in the first cell
@@ -837,13 +839,14 @@ func _unknown_order_world() -> World:
 
 
 ## 20 x 12 with a complete field keyed on tile 42, whose `cell_count` is then set to 100: a tank on
-## tile 150 (10, 7), one on tile 99 (19, 4). Both MOVE, FIELD, `nav_next` -1.
+## tile 150 (10, 7), one on tile 99 (19, 4) and one on tile 100 (0, 5). All MOVE, FIELD, `nav_next`
+## -1.
 func _short_field_world() -> World:
 	var world: World = GridWorld.from_rows(GridWorld.grass(20, 12), [TRACKED])
 	assert_int(world.flow.acquire(42, TRACKED, world.map_version, 0)).is_equal(0)
 	FlowCache.run(world, BIG)
 	world.flow.field(0).cell_count = 100
-	for tile: Vector2i in [Vector2i(10, 7), Vector2i(19, 4)]:
+	for tile: Vector2i in [Vector2i(10, 7), Vector2i(19, 4), Vector2i(0, 5)]:
 		var row: int = world.add_unit(1, 0, tile.x * 1000 + 500, tile.y * 1000 + 500) - 1
 		world.order[row] = MOVE
 		world.nav_mode[row] = FIELD
