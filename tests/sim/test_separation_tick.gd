@@ -18,6 +18,7 @@ extends GdUnitTestSuite
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
 const Rig: GDScript = preload("res://tests/sim/support/separation_rig.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const ViewProbe: GDScript = preload("res://tests/sim/support/separation_view_probe.gd")
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
 ## 90% of the radii sum.
@@ -61,8 +62,10 @@ const GROUP_CENTRE_BOUND: int = 3400
 ## mover takes 25% of the pair push of 128, -32, the idle tank 75%, 96, cut to the 60 a unit may
 ## take; with the intents of the tick before, both idle, the mover would take -60); the positions
 ## move at INTEGRATE only, by intent plus push.
-func test_the_grid_is_rebuilt_after_flow_and_the_pushes_use_this_ticks_intents() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(10, 6))
+func test_the_grid_is_rebuilt_after_flow_and_the_pushes_use_this_ticks_intents(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(10, 6)), impl)
 	world.add_unit(1, 0, 5000, 3000)
 	world.add_unit(1, 0, 5300, 3000)
 	var probe: ViewProbe = ViewProbe.new(world)
@@ -88,8 +91,10 @@ func test_the_grid_is_rebuilt_after_flow_and_the_pushes_use_this_ticks_intents()
 ## one from the other end of the map is found in its new cell, shoves the idle tank aside (the
 ## idle tank takes 75% of the push) and ends idle at least 720 apart, where a grid built once, at
 ## the first tick, would leave the two on one point.
-func test_a_tank_that_drives_up_to_an_idle_one_is_pushed_off_it() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(12, 6))
+func test_a_tank_that_drives_up_to_an_idle_one_is_pushed_off_it(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(12, 6)), impl)
 	world.add_unit(1, 0, 2000, 3000)
 	world.add_unit(1, 0, 8000, 3000)
 	var order: Command = Command.move(1, PackedInt32Array([1]), 8000, 3000)
@@ -110,8 +115,10 @@ func test_a_tank_that_drives_up_to_an_idle_one_is_pushed_off_it() -> void:
 ## than 90% of the radii sum. The groups really met on the way (a tank of one overlapped a tank of
 ## the other), no pair stayed overlapped for more than MAX_OVERLAP_TICKS in a row, and the tick
 ## counted the pairs it looked at.
-func test_two_groups_of_15_on_crossing_paths_settle_with_no_pair_under_90_percent() -> void:
-	var world: World = _scenario_world()
+func test_two_groups_of_15_on_crossing_paths_settle_with_no_pair_under_90_percent(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _scenario_world(impl)
 	var commands: Array[Command] = _crossing_orders(world)
 	var met: bool = false
 	var most_pairs: int = 0
@@ -145,8 +152,10 @@ func test_two_groups_of_15_on_crossing_paths_settle_with_no_pair_under_90_percen
 ## are 1200 apart, so the end state alone would hold without separation (the tanks drive up to
 ## their slots through one another and stand 322 milli apart at the closest, tick 92): the tick
 ## must have looked at pairs (SEP_PAIRS) and no pair may have stayed overlapped for long.
-func test_the_controls_tap_ground_order_settles_apart_and_within_the_centre_bound() -> void:
-	var world: World = _scenario_world()
+func test_the_controls_tap_ground_order_settles_apart_and_within_the_centre_bound(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _scenario_world(impl)
 	var order: Command = Command.attack_move(1, _ids(1, 30), TAP_POINT.x, TAP_POINT.y)
 	order.tick = world.tick
 	var commands: Array[Command] = [order]
@@ -171,15 +180,17 @@ func test_the_controls_tap_ground_order_settles_apart_and_within_the_centre_boun
 			. override_failure_message("tank %d" % (row + 1))
 			. is_less(TAP_CENTRE_BOUND * TAP_CENTRE_BOUND)
 		)
-	var scenario: World = _scenario_world()
+	var scenario: World = _scenario_world(impl)
 	assert_array(world.pos_x.slice(30, 35)).is_equal(scenario.pos_x.slice(30, 35))
 
 
 ## The block driven into the red group: the red tanks are shoved aside (idle ones take 75% of a
 ## push against a mover), no pair stays overlapped for more than MAX_OVERLAP_TICKS in a row, and
 ## everything ends idle with no pair of the 40 closer than 90%.
-func test_driving_into_the_red_group_shoves_it_aside_and_ends_with_nobody_overlapping() -> void:
-	var world: World = _scenario_world()
+func test_driving_into_the_red_group_shoves_it_aside_and_ends_with_nobody_overlapping(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _scenario_world(impl)
 	var red_before: PackedInt32Array = world.pos_x.slice(30) + world.pos_y.slice(30)
 	var order: Command = Command.attack_move(1, _ids(1, 30), RED_POINT.x, RED_POINT.y)
 	order.tick = world.tick
@@ -201,8 +212,10 @@ func test_driving_into_the_red_group_shoves_it_aside_and_ends_with_nobody_overla
 ## drive through itself), the tick looked at pairs, and no pair stayed overlapped for long; the
 ## formation slots are 1200 apart, so only these checks tell a tick with separation from one
 ## without (it ends 798 at the closest with the pushes, 1200 without).
-func test_turning_the_block_back_through_itself_ends_apart() -> void:
-	var world: World = _scenario_world()
+func test_turning_the_block_back_through_itself_ends_apart(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _scenario_world(impl)
 	var out: Command = Command.attack_move(1, _ids(1, 30), OUT_POINT.x, OUT_POINT.y)
 	out.tick = world.tick
 	var commands: Array[Command] = [out]
@@ -236,10 +249,12 @@ func test_turning_the_block_back_through_itself_ends_apart() -> void:
 ## hashes after the Sim.step that starts at tick 14 (Replay.CHECKPOINT_PERIOD is 15) and FLOW takes
 ## no slice on it; a rebuild or `Separation.run` that copied that guard would leave a pair that
 ## overlaps on that tick unpushed. Two overlapping idle tanks move the same on tick 14 as on tick 0.
-func test_the_step_before_a_checkpoint_rebuilds_the_grid_and_pushes_like_any_other() -> void:
+func test_the_step_before_a_checkpoint_rebuilds_the_grid_and_pushes_like_any_other(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var by_tick: Array[World] = []
 	for start_tick: int in [0, Replay.CHECKPOINT_PERIOD - 1]:
-		var world: World = GridWorld.from_rows(GridWorld.grass(10, 6))
+		var world: World = _in(GridWorld.from_rows(GridWorld.grass(10, 6)), impl)
 		world.add_unit(1, 0, 5000, 3000)
 		world.add_unit(1, 0, 5300, 3000)
 		world.tick = start_tick
@@ -261,15 +276,17 @@ func test_the_step_before_a_checkpoint_rebuilds_the_grid_and_pushes_like_any_oth
 ## pushes the target never moves. P41 ends a chase in HOLD at weapon range, and its test flips
 ## this case: the attacker stops at range and the idle target stays at (34500, 10500). The cases
 ## of test_movement_acquire.gd switch the pushes off for this reason.
-func test_an_attack_on_an_idle_tank_shoves_it_to_the_map_corner_until_p41() -> void:
-	var pushed: World = _attack_the_first_red_tank(-1)
+func test_an_attack_on_an_idle_tank_shoves_it_to_the_map_corner_until_p41(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var pushed: World = _attack_the_first_red_tank(-1, impl)
 	var corner: Vector2i = Vector2i(pushed.map_w - 1, 0)
 	assert_array([pushed.pos_x[30], pushed.pos_y[30]]).is_equal([corner.x, corner.y])
 	assert_array([pushed.order[0], pushed.order_target[0]]).is_equal(
 		[World.Order.ATTACK, ATTACK_TARGET_ID]
 	)
 	assert_int(Rig.distance2(pushed, 0, 30)).is_less(REACH * REACH)
-	var still: World = _attack_the_first_red_tank(0)
+	var still: World = _attack_the_first_red_tank(0, impl)
 	assert_array([still.pos_x[30], still.pos_y[30]]).is_equal([34500, 10500])
 	assert_array([still.order[0], still.pos_x[0], still.pos_y[0]]).is_equal(
 		[World.Order.ATTACK, 34500, 10500]
@@ -278,20 +295,23 @@ func test_an_attack_on_an_idle_tank_shoves_it_to_the_map_corner_until_p41() -> v
 
 ## Two runs of the crossing groups give the same state hash at every checkpoint tick (every 15
 ## ticks), and the hashes are not the ones of a run without pushes: separation is part of the state.
-func test_two_runs_give_the_same_hashes() -> void:
-	var first: PackedInt64Array = _crossing_hashes(-1)
-	var second: PackedInt64Array = _crossing_hashes(-1)
+## The C++ run (the tick runs FLOW, SEPARATION and INTEGRATE in the kernels) has the hashes of the
+## GDScript run, the whole 180 ticks through.
+func test_two_runs_give_the_same_hashes(impl: int, _test_parameters := _both()) -> void:
+	var first: PackedInt64Array = _crossing_hashes(-1, impl)
+	var second: PackedInt64Array = _crossing_hashes(-1, impl)
 	assert_int(first.size()).is_equal(12)  # Every 15th tick of 180.
 	assert_array(second).is_equal(first)
-	var still: PackedInt64Array = _crossing_hashes(0)
+	assert_array(_crossing_hashes(-1, SimImpls.Impl.GDSCRIPT)).is_equal(first)
+	var still: PackedInt64Array = _crossing_hashes(0, impl)
 	assert_array(still).is_not_equal(first)
 	assert_int(still[-1]).is_not_equal(first[-1])
 
 
 ## The crossing run's state hash after each 15th tick; with `push_max` of 0 or more the world's
 ## `separation_push_max` is set to it first (0: no pushes).
-func _crossing_hashes(push_max: int) -> PackedInt64Array:
-	var world: World = _scenario_world()
+func _crossing_hashes(push_max: int, impl: int) -> PackedInt64Array:
+	var world: World = _scenario_world(impl)
 	if push_max >= 0:
 		world.separation_push_max = push_max
 	var commands: Array[Command] = _crossing_orders(world)
@@ -335,8 +355,8 @@ func _overlap_runs() -> PackedInt32Array:
 ## The scenario with the first blue tank (id 1) ordered to attack the first red tank (id 31, idle),
 ## after ATTACK_TICKS ticks; `push_max` of 0 or more is set as the world's `separation_push_max`
 ## first (0: no pushes).
-func _attack_the_first_red_tank(push_max: int) -> World:
-	var world: World = _scenario_world()
+func _attack_the_first_red_tank(push_max: int, impl: int) -> World:
+	var world: World = _scenario_world(impl)
 	if push_max >= 0:
 		world.separation_push_max = push_max
 	var order: Command = Command.attack(1, _ids(1, 1), ATTACK_TARGET_ID)
@@ -352,5 +372,16 @@ func _ids(first: int, last: int) -> PackedInt32Array:
 	return PackedInt32Array(range(first, last + 1))
 
 
-func _scenario_world() -> World:
-	return World.from_scenario(load(SCENARIO_PATH) as ScenarioDef)
+func _scenario_world(impl: int) -> World:
+	return _in(World.from_scenario(load(SCENARIO_PATH) as ScenarioDef), impl)
+
+
+## The parameter sets of a test that runs under both implementations (gdUnit4 calls it by name).
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and SEPARATION in the implementation asked for.
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.SEPARATION)).is_empty()
+	return world

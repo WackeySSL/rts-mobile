@@ -20,8 +20,8 @@ extends SceneTree
 ##   "RTSD", u32 World.STATE_FORMAT, u32 tick, then records until the end of the file:
 ##   u8 kind ('S' one int64, 'I' int32 array, 'B' byte array), u16 name length, name (ASCII),
 ##   u64 count (1 for 'S'), payload (count int64, int32 or bytes).
-## What a kernel needs goes in under the names below; a later kernel (P37n, P39n, P41n, P42n, P46n)
-## adds its records in a function of its own here and its case in native/sim_kernels/sanitizer/.
+## What a kernel needs goes in under the names below; a later kernel (P41n, P42n, P46n) adds its
+## records in a function of its own here and its case in native/sim_kernels/sanitizer/.
 ##   world.unit_count, world.flow_cells_per_tick (S), world.field, world.move_cost (I, B)
 ##   flow.cols, flow.rows, flow.slots (S), flow.key_goal, flow.key_class, flow.requested,
 ##   flow.ref_count, flow.status (I), and per slot i: flow.slot.<i>.cost, .next, .bucket_head,
@@ -35,6 +35,13 @@ extends SceneTree
 ##   world.unit_id, .type_index, .pos_x, .pos_y, .goal_x, .goal_y, .group_cell, .order, .nav_mode,
 ##   .nav_cell, .nav_next, .best_dist, .stall, .intent_x, .intent_y, .push_x, .push_y,
 ##   .type_speed, .type_spacing, .type_move_class, flow.key_version, flow.last_used (I).
+## The SEPARATION kernel (P39n) reads the unit_id, type_index, pos_x, pos_y, intent_x, intent_y,
+## push_x and push_y records of the INTEGRATE kernel, and adds, in _write_separation:
+##   world.separation_neighbours, .separation_scan, .separation_idle_share, .separation_push_max,
+##   .separation_coincident_divisor, sep.cols, sep.rows, sep.cell_milli (S); world.type_radius,
+##   sep.head, sep.next (I). The sep.* records are a grid built afresh from the dumped positions
+##   (the World's own grid is the one the step before moved the units off), so that its lists
+##   match the units the way the next tick's GRIDS phase makes them.
 ##
 ## Sim.step steps FLOW itself (P37b), so the step only plays and nothing here calls FlowCache. The
 ## fields come from real orders: the arena's own (both sides attack-move across its rock wall,
@@ -76,6 +83,13 @@ const INTEGRATE_SCALARS: Array[StringName] = [
 	&"stall_ticks",
 	&"stall_range_spacings",
 	&"attack_rekey_milli"
+]
+const SEPARATION_SCALARS: Array[StringName] = [
+	&"separation_neighbours",
+	&"separation_scan",
+	&"separation_idle_share",
+	&"separation_push_max",
+	&"separation_coincident_divisor"
 ]
 const INTEGRATE_COLUMNS: Array[StringName] = [
 	&"unit_id",
@@ -200,6 +214,7 @@ func _write(world: World, path: String) -> bool:
 	file.store_32(world.tick)
 	_write_flow(file, world)
 	_write_integrate(file, world)
+	_write_separation(file, world)
 	var ok: bool = file.get_error() == OK
 	file.close()
 	return ok
@@ -249,6 +264,22 @@ func _write_integrate(file: FileAccess, world: World) -> void:
 	_scalar(file, "flow.requests", world.flow.requests)
 	_ints(file, "flow.key_version", world.flow.key_version)
 	_ints(file, "flow.last_used", world.flow.last_used)
+
+
+## The SEPARATION kernel's inputs that the INTEGRATE records above do not hold: what
+## SimKernels.separation reads (bind/kernel_separation.cpp).
+func _write_separation(file: FileAccess, world: World) -> void:
+	for member: StringName in SEPARATION_SCALARS:
+		_scalar(file, "world.%s" % member, world.get(member))
+	_ints(file, "world.type_radius", world.type_radius)
+	var grid: SpatialGrid = SpatialGrid.new()
+	grid.configure(world.map_w, world.map_h, world.sep_grid.cell_milli, world.max_rows)
+	grid.rebuild(world.pos_x, world.pos_y, world.unit_count())
+	_scalar(file, "sep.cols", grid.cols)
+	_scalar(file, "sep.rows", grid.rows)
+	_scalar(file, "sep.cell_milli", grid.cell_milli)
+	_ints(file, "sep.head", grid.head)
+	_ints(file, "sep.next", grid.next)
 
 
 func _head(file: FileAccess, kind: String, record: String, count: int) -> void:

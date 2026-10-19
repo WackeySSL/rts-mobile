@@ -10,6 +10,7 @@ extends GdUnitTestSuite
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
 const Rig: GDScript = preload("res://tests/sim/support/separation_rig.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const COLS: int = 20
 const ROWS: int = 8
 ## The point of the higher id in every case.
@@ -34,8 +35,8 @@ func _pushes(world: World) -> Array[Vector2i]:
 
 
 ## The lower id `offset` from the higher one: it is pushed `lower`, the higher one the opposite.
-func _assert_pair(offset: Vector2i, lower: Vector2i) -> void:
-	var world: World = _tanks([HIGHER + offset, HIGHER])
+func _assert_pair(offset: Vector2i, lower: Vector2i, impl: int) -> void:
+	var world: World = _in(_tanks([HIGHER + offset, HIGHER]), impl)
 	Rig.separate(world)
 	(
 		assert_array(_pushes(world))
@@ -47,31 +48,39 @@ func _assert_pair(offset: Vector2i, lower: Vector2i) -> void:
 ## The lower id east of the higher one along x, 1, 2, 100 and 199 milli (the last just inside the
 ## limit of 200): it is pushed east and the higher one west, 30 each. A 1-milli pair is the nearest
 ## to one point that is not on it (d2 = 1), and it is not treated as the same point.
-func test_a_lower_id_east_of_the_higher_one_is_pushed_east() -> void:
+func test_a_lower_id_east_of_the_higher_one_is_pushed_east(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for gap: int in [1, 2, 100, 199]:
-		_assert_pair(Vector2i(gap, 0), Vector2i(SHARE, 0))
+		_assert_pair(Vector2i(gap, 0), Vector2i(SHARE, 0), impl)
 
 
 ## The lower id south of the higher one along y (y grows downwards), at the same distances: it is
 ## pushed south and the higher one north.
-func test_a_lower_id_south_of_the_higher_one_is_pushed_south() -> void:
+func test_a_lower_id_south_of_the_higher_one_is_pushed_south(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for gap: int in [1, 2, 100, 199]:
-		_assert_pair(Vector2i(0, gap), Vector2i(0, SHARE))
+		_assert_pair(Vector2i(0, gap), Vector2i(0, SHARE), impl)
 
 
 ## The same gaps with the lower id west and north, the cases the other suites have only in part (a
 ## 1-milli pair along y with the lower id north is in none): the push is still away from the other.
-func test_a_lower_id_west_or_north_of_the_higher_one_is_pushed_west_or_north() -> void:
+func test_a_lower_id_west_or_north_of_the_higher_one_is_pushed_west_or_north(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for gap: int in [1, 2, 100, 199]:
-		_assert_pair(Vector2i(-gap, 0), Vector2i(-SHARE, 0))
-		_assert_pair(Vector2i(0, -gap), Vector2i(0, -SHARE))
+		_assert_pair(Vector2i(-gap, 0), Vector2i(-SHARE, 0), impl)
+		_assert_pair(Vector2i(0, -gap), Vector2i(0, -SHARE), impl)
 
 
 ## A diagonal pair is signed on each axis by its own geometry, whichever of the four corners the
 ## lower id stands on: (1, 1), (2, 2), (100, 100) and the pairs that differ by 100 along one axis
 ## and 1 along the other. A sign taken from the ids on either axis would be wrong on two of the
 ## four corners.
-func test_a_diagonal_pair_is_signed_on_each_axis_by_its_geometry() -> void:
+func test_a_diagonal_pair_is_signed_on_each_axis_by_its_geometry(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var offsets: Array[Vector2i] = [
 		Vector2i(1, 1), Vector2i(2, 2), Vector2i(100, 100), Vector2i(100, 1), Vector2i(1, 100)
 	]
@@ -80,19 +89,33 @@ func test_a_diagonal_pair_is_signed_on_each_axis_by_its_geometry() -> void:
 			for sign_y: int in [-1, 1]:
 				_assert_pair(
 					Vector2i(sign_x * offset.x, sign_y * offset.y),
-					Vector2i(sign_x * SHARE, sign_y * SHARE)
+					Vector2i(sign_x * SHARE, sign_y * SHARE),
+					impl,
 				)
 
 
 ## The lower id south-east of the higher one with the higher id moving: the idle lower unit takes
 ## 75% of the fixed push of 60 (45) and is pushed away on both axes, the moving one 15. The share
 ## belongs to the unit, the direction to the geometry.
-func test_the_idle_share_of_a_pair_with_the_lower_id_south_east_follows_the_geometry() -> void:
-	var world: World = _tanks([HIGHER + Vector2i(100, 100), HIGHER])
+func test_the_idle_share_of_a_pair_with_the_lower_id_south_east_follows_the_geometry(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(_tanks([HIGHER + Vector2i(100, 100), HIGHER]), impl)
 	world.intent_x[1] = 120
 	Rig.separate(world)
 	assert_array(_pushes(world)).is_equal([Vector2i(45, 45), Vector2i(-15, -15)])
-	world = _tanks([HIGHER + Vector2i(100, 100), HIGHER])
+	world = _in(_tanks([HIGHER + Vector2i(100, 100), HIGHER]), impl)
 	world.intent_x[0] = 120
 	Rig.separate(world)
 	assert_array(_pushes(world)).is_equal([Vector2i(15, 15), Vector2i(-45, -45)])
+
+
+## The parameter sets of a test that runs under both implementations (gdUnit4 calls it by name).
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and SEPARATION in the implementation asked for.
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.SEPARATION)).is_empty()
+	return world

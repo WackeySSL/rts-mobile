@@ -9,10 +9,12 @@ extends RefCounted
 ## push to the intent. The pushes are Jacobi style, all computed from the positions at the start
 ## of the tick, so the result does not depend on which unit comes first.
 ##
-## This is the GDScript twin of the SEPARATION kernel P39n ports later: keep it portable
-## (integers only, the World's arrays aliased into typed locals before the loop, no allocation,
-## rows and grid lists in ascending id order). Every tuning number comes from the World's rule
-## ints (data/rules.tres); the constants below are structure, not balance.
+## `run` has a C++ twin, the SEPARATION kernel (native/sim_kernels, core/separation.cpp, ADR 0013
+## section 5): it hands the phase to it when the World's mask has its bit, and a change to `run`
+## edits both and passes the kernel's lockstep test. Keep it portable (integers only, the World's
+## arrays aliased into typed locals before the loop, no allocation, rows and grid lists in
+## ascending id order). Every tuning number comes from the World's rule ints (data/rules.tres);
+## the constants below are structure, not balance.
 
 ## The 3x3 block of cells around a unit's own, scanned row by row.
 const BLOCK_CELLS: int = 9
@@ -41,11 +43,16 @@ const EQUAL_SHARE: int = 50
 ## `separation_push_max` per axis. Each unit sums its own neighbours, so the caps can leave the
 ## two sides of a pair unequal.
 ##
-## Range for the C++ port: `d2` is below `R*R`, at most 10^6 (every radius is at most 500), so
-## `d2 * divisor * divisor` stays below 2^63 for a divisor up to about 3 million (the rule is 4).
-## The port keeps the `maxi(divisor, 1)` guard and notes this range.
+## Range (decided in P39n, which records it and clamps nothing; core/separation.h holds the full
+## statement): `d2` is below `R*R` at a hit, at most 10^6 (every radius is at most 500), so
+## `d2 * divisor * divisor` stays below 2^63 while `R * divisor` is at most 3,037,000,499, a
+## divisor up to about 3 million (the rule is 4). The `maxi(divisor, 1)` guard stays. The C++
+## kernel wraps like this twin in a production build (-fwrapv) and aborts in the sanitizer build.
 @warning_ignore("integer_division")
 static func run(world: World) -> void:
+	if ((world.native_phases >> SimProbe.Phase.SEPARATION) & 1) == 1:
+		world.kernels.separation(world)
+		return
 	var types: PackedInt32Array = world.type_index
 	var radii: PackedInt32Array = world.type_radius
 	var pos_x: PackedInt32Array = world.pos_x
@@ -70,7 +77,8 @@ static func run(world: World) -> void:
 	push_x.fill(0)
 	push_y.fill(0)
 	# No cells (an empty map): the clamps below would get swapped bounds, which C++ must not do.
-	if cols == 0:
+	# A cell side below 1 (configure() keeps it at 1 or more) would divide by zero.
+	if cols == 0 or side < 1:
 		return
 	for row: int in count:
 		var x: int = pos_x[row]
