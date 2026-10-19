@@ -28,26 +28,30 @@ extends SceneTree
 ##   .link_next, .link_prev (I), .pad_cost (B), .goal_cell, .move_class, .grid_cols, .cell_count,
 ##   .stride, .level, .pending, .complete (S).
 ##
-## Sim.step does not step FLOW yet (P37b), so nothing in the arena asks for a field. The step does
-## it as test_flow_lockstep.gd does: slow, scrub and rock cells painted in, and every REQUEST_EVERY
-## ticks a group of rows takes the field of the next of twelve keys, with three repaints that
-## re-integrate the fields in use. FlowCache.run is the GDScript twin (no kernels attached), at
-## SLICE cells a tick, so that fields are caught mid-integration. The run fails if no dump caught
-## a waiting, a half integrated, a served and a re-integrating field. Once P37b lands the arena
-## asks by itself and the stand-in can go.
+## Sim.step steps FLOW itself (P37b), so the step only plays and nothing here calls FlowCache. The
+## fields come from real orders: the arena's own (both sides attack-move across its rock wall,
+## where a blocked line asks for a field), and a wave every WAVE_EVERY ticks that sends units back
+## across the wall to new targets, all queued to the MatchLoop. Slow sand, scrub and rock are
+## painted in, so that the costs differ; and three repaints a few ticks before a dump
+## (World.set_terrain, as a building will) re-integrate the fields in use. The run fails if no
+## dump caught a waiting, a half integrated, a served and a re-integrating field.
 
 const MatchScript: GDScript = preload("res://tests/sim/support/match_script.gd")
 const MAGIC: String = "RTSD"
 const MATCH_SEED: int = 42
 const TICKS: int = 900
 const DUMP_EVERY: int = 15
-## Smaller than flow_cells_per_tick (512), so that a 64x64 field takes tens of ticks to integrate.
-const SLICE: int = 200
-const REQUEST_EVERY: int = 30
-const KEYS: int = 12
-const GROUPS: int = 10
-const GROUP_ROWS: int = 5
-const REPAINT_TICKS: Array[int] = [200, 450, 700]
+## The ticks of the repaints (a set_terrain after the step of that tick): each lies three ticks
+## before a dump, so that the two FLOW slices between them and the dump leave the fields in use half
+## integrated again (the step before a dump has no slice, ADR 0012 section 5).
+const REPAINT_TICKS: Array[int] = [206, 446, 701]
+## A wave: from WAVE_FIRST, every WAVE_EVERY ticks, one player's units on one side of the wall
+## (about one in WAVE_SHARE of them) move to a tile on the other side. Waves alternate between the
+## players and the sides. WALL_X lies between the two rock columns of the arena's wall.
+const WAVE_FIRST: int = 120
+const WAVE_EVERY: int = 30
+const WAVE_SHARE: int = 5
+const WALL_X: int = 32000
 ## The cost per terrain (grass, sand, scrub, rock, water) and class (foot, wheeled, tracked), as
 ## test_flow_lockstep.gd paints them: slow sand (255 is the cap of the bucket ring), scrub for
 ## foot only.
@@ -81,29 +85,24 @@ func _run(out_dir: String) -> int:
 	for _paint: int in cells / 10:
 		world.set_terrain(rng.next_int(cells), rng.next_int(5))
 	var loop: MatchLoop = MatchScript.loop(world, MATCH_SEED)
-	var keys: Array[Vector2i] = _keys(cells)
 	var repaints: Array[Vector2i] = []
 	for _tick: int in REPAINT_TICKS:
 		repaints.append(Vector2i(rng.next_int(cells), 3))
 	var seen: Dictionary[String, int] = {"waiting": 0, "half": 0, "served": 0, "again": 0}
 	var written: int = 0
 	for tick: int in TICKS:
-		loop.step(world, MatchScript.commands_at(world.tick))
-		if tick % REQUEST_EVERY == 0:
-			var request: int = tick / REQUEST_EVERY
-			_take_field(world, request % GROUPS, keys[request % KEYS])
+		loop.step(world, _orders_at(world))
 		if tick in REPAINT_TICKS:
 			var paint: Vector2i = repaints[REPAINT_TICKS.find(tick)]
 			world.set_terrain(paint.x, paint.y)
 		if world.tick % DUMP_EVERY == 0:
-			# The state the FLOW call of this tick would find.
+			# The state the FLOW call of the next tick finds.
 			var path: String = out_dir.path_join("state_%05d.bin" % world.tick)
 			if not _write(world, path):
 				printerr("dump_states: cannot write %s" % path)
 				return 1
 			written += 1
 			_count(world.flow, seen)
-		FlowCache.run(world, SLICE)
 	print("dump_states: wrote %d dumps to %s (%s)" % [written, out_dir, seen])
 	for kind: String in seen:
 		if seen[kind] == 0:
@@ -112,29 +111,27 @@ func _run(out_dir: String) -> int:
 	return 0
 
 
-## The twelve keys (goal cell, move class): the first two in opposite corners, whose fields cross
-## the whole map.
-func _keys(cells: int) -> Array[Vector2i]:
-	var rng: DetRandom = DetRandom.create(MATCH_SEED, 7)
-	var keys: Array[Vector2i] = []
-	for key: int in KEYS:
-		keys.append(Vector2i(rng.next_int(cells), key % 3))
-	keys[0] = Vector2i(0, keys[0].y)
-	keys[1] = Vector2i(cells - 1, keys[1].y)
-	return keys
-
-
-## The rows of `group` leave their fields and take the field of `key`, or -1 when every slot is
-## referenced. Group 0 holds the last rows of the World, group 1 the rows before them and so on.
-func _take_field(world: World, group: int, key: Vector2i) -> void:
-	var first: int = 0
-	if group < GROUPS - 1:
-		first = maxi(world.unit_count() - (group + 1) * GROUP_ROWS, 0)
-	for row: int in range(first, first + GROUP_ROWS):
-		world.field[row] = -1
-	var slot: int = world.flow.acquire(key.x, key.y, world.map_version, world.tick)
-	for row: int in range(first, first + GROUP_ROWS):
-		world.field[row] = slot
+## The orders of this tick: the match script's, and on the tick of a wave the wave's.
+@warning_ignore("integer_division")
+func _orders_at(world: World) -> Array[Command]:
+	var orders: Array[Command] = MatchScript.commands_at(world.tick)
+	var since: int = world.tick - WAVE_FIRST
+	if since < 0 or since % WAVE_EVERY != 0:
+		return orders
+	var wave: int = since / WAVE_EVERY
+	var player: int = 1 + wave % 2
+	var west: bool = wave % 4 < 2
+	var ids: PackedInt32Array = PackedInt32Array()
+	for row: int in world.unit_count():
+		var id: int = world.unit_id[row]
+		if world.owner[row] == player and (world.pos_x[row] < WALL_X) == west:
+			if (id + wave) % WAVE_SHARE == 0:
+				ids.append(id)
+	if not ids.is_empty():
+		var tile_x: int = (34 if west else 3) + wave * 7 % 27
+		var tile_y: int = 3 + wave * 11 % 58
+		orders.append(Command.move(player, ids, tile_x * 1000 + 500, tile_y * 1000 + 500))
+	return orders
 
 
 ## Adds to `seen` which kinds of field this cache holds.
