@@ -16,6 +16,8 @@
 [ext_resource type="Script" path="res://game/ui/DpMinSize.gd" id="13_dp"]
 [ext_resource type="Script" path="res://game/ui/ArmyBar.gd" id="14_army"]
 [ext_resource type="Script" path="res://game/ui/SelectionPanel.gd" id="15_selection"]
+[ext_resource type="Theme" path="res://game/ui/theme.tres" id="16_theme"]
+[ext_resource type="Script" path="res://game/ui/HudTheme.gd" id="17_hud_theme"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -64,11 +66,15 @@ controller = NodePath("../PlayerController")
 
 [node name="Hud" type="CanvasLayer" parent="."]
 
+[node name="HudTheme" type="Node" parent="Hud"]
+script = ExtResource("17_hud_theme")
+
 [node name="BoxOverlay" type="Control" parent="Hud"]
 visible = false
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
+theme = ExtResource("16_theme")
 script = ExtResource("12_box")
 
 [node name="SafeArea" type="MarginContainer" parent="Hud"]
@@ -78,12 +84,13 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme = ExtResource("16_theme")
 script = ExtResource("12_safe")
 
 [node name="DevButton" type="Button" parent="Hud/SafeArea"]
 size_flags_horizontal = 0
 size_flags_vertical = 0
-theme_override_font_sizes/font_size = 40
+theme_type_variation = &"DevButton"
 text = "Dev"
 script = ExtResource("3_dev")
 
