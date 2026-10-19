@@ -384,21 +384,31 @@ func test_sanitizer_changes_job_filters_a_pull_request_by_folders_and_driving_fi
 
 
 ## P57b: the pattern of the workflow takes the folders and the four driving files and nothing near
-## them, one path at a time as `grep -Eq "$PATTERN" <<<"$files"` reads a changed file. It reads the
-## pattern from ci.yml, so that it tests the workflow and not the constant above. Godot's RegEx
-## (PCRE) stands in for grep -E: the pattern only has anchors, groups, alternation and escaped dots,
-## which both read alike. (OS.execute expands a `$` in its arguments, as seen on 4.7.2 with the
-## output captured, so a grep run from here would not get the pattern as it is.)
+## them. It reads the pattern from ci.yml, so that it tests the workflow and not the constant above,
+## and runs the real `grep -E` that the job runs, over the changed paths one to a line as the job's
+## here-string lists them. The pattern goes in as a file (-f) and not as an argument, so that no
+## quoting of OS.execute can change it: the pattern ends two alternatives in a `$`, and a shell
+## expands a `$name` in an argument.
 func test_the_sanitizer_filter_matches_what_drives_the_job_and_nothing_near_it() -> void:
 	var line: RegEx = RegEx.create_from_string("(?m)^ +PATTERN: '(.+)'$")
 	var found: RegExMatch = line.search(FileAccess.get_file_as_string(WORKFLOWS + "ci.yml"))
 	assert_object(found).is_not_null()
-	var filter: RegEx = RegEx.create_from_string(found.get_string(1))
-	assert_object(filter).is_not_null()
-	for path: String in CHANGES_TOUCHED:
-		assert_bool(filter.search(path) != null).override_failure_message(path).is_true()
-	for path: String in CHANGES_UNTOUCHED:
-		assert_bool(filter.search(path) != null).override_failure_message(path).is_false()
+	var access: DirAccess = DirAccess.create_temp("ci_workflow_filter_")
+	var pattern_file: String = access.get_current_dir().path_join("pattern.txt")
+	var paths_file: String = access.get_current_dir().path_join("paths.txt")
+	_store(pattern_file, found.get_string(1) + "\n")
+	_store(paths_file, "\n".join(CHANGES_TOUCHED + CHANGES_UNTOUCHED) + "\n")
+	var output: Array = []
+	var code: int = OS.execute("grep", ["-E", "-f", pattern_file, paths_file], output, true)
+	(
+		assert_int(code)
+		. override_failure_message("grep exited %d (0 is a match, 1 none): %s" % [code, output])
+		. is_equal(0)
+	)
+	var matched: Array[String] = []
+	for path: String in String(output[0]).split("\n", false):
+		matched.append(path)
+	assert_array(matched).is_equal(CHANGES_TOUCHED)
 
 
 ## P57: the UBSan library is built, the real native suites run on it and are checked, and the ASan
@@ -533,3 +543,10 @@ func _pin(path: String, pin_name: String) -> String:
 	var rx: RegEx = RegEx.create_from_string("(?m)^\\s*" + pin_name + '[=:]\\s*"([^"]+)"')
 	var hit: RegExMatch = rx.search(FileAccess.get_file_as_string(path))
 	return hit.get_string(1) if hit != null else ""
+
+
+func _store(path: String, text: String) -> void:
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	assert_object(file).is_not_null()
+	file.store_string(text)
+	file.close()

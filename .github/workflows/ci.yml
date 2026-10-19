@@ -198,9 +198,11 @@ jobs:
   # data/** or tests/sim/native/**, because a World column, a rule or a twin change can break a kernel without
   # touching native/. P57b adds the files that drive the job: scripts/build-native.sh (the UBSan build),
   # scripts/ci/run-sanitizer-harness.sh, this file and tests/sim/support/** (the helpers that the dump step and the
-  # native suites load), so a pull request that changes only one of them runs it too. This job decides that from the
-  # files of the merge commit against its first parent (the base), so `sanitizers` ends skipped when nothing matches,
-  # and a push to main or a manual run skips both. tests/project/test_ci_workflow.gd pins PATTERN.
+  # native suites load), so a pull request that changes only one of them runs it too. The other scripts the job runs
+  # (install-godot.sh with remote_zip.py, run-tests.sh, check-native-tests.sh, seed-extension-list.sh) stay out of
+  # PATTERN: the required verify job runs them on every pull request. This job decides that from the files of the
+  # merge commit against its first parent (the base), so `sanitizers` ends skipped when nothing matches, and a push
+  # to main or a manual run skips both. tests/project/test_ci_workflow.gd pins PATTERN.
   sanitizer-changes:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
