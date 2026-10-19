@@ -35,6 +35,15 @@ Status note (2026-10-14, P26s docs, from P37a2 as merged, #94): §2's "Arrival" 
 dated note: the merged arrival is the snap rule on the tick the goal is within one step, and a
 push or the slide can leave the arrived unit off the goal. No decision changes.
 
+Status note (2026-10-19, P26u docs, from P37b as merged, #101): the lead's decisions of
+2026-10-15 refine §2 and §3; the dated inline notes in §2 ("Field following" and "Stall") and §3
+(at "Cache" and at the `ATTACK` fields bullet) give them in full. In short: the field key is the
+group target (the new row column `group_cell`), else the unit's own goal tile; a unit whose slot
+the group field does not reach takes its own goal's field when the group field names no next
+tile, and so does an `ATTACK` unit that has outrun its field; a blocked key tile counts as no
+next tile; a `FIELD` unit whose field names no next tile stalls at any distance. The accepted
+text stays as written; where it differs, the notes win.
+
 ## Context
 ROADMAP Phase 2 asks for "movement with flow fields and separation". Phase 1 moves units in
 straight lines to formation slots with no terrain and no collision (ADR 0003 §4-5), and its
@@ -180,6 +189,20 @@ Measurements (Godot 4.7.2 headless, 2026-10-11, Xeon cloud VM; mock code, not th
   the row column `nav_next` (hashed, -1 at spawn and on every new order), and the steering of
   the ticks in between reads only that column. No per-tick call and no per-row aliasing of a
   field's array is needed.
+
+  Status note (2026-10-19, P26u docs, from P37b as merged, #101): **where and when.** FIELD
+  following, the stall and the `ATTACK` re-key run in INTEGRATE (`Movement.integrate`, ADR 0013
+  §1); `Movement.run` (INTENTS) keeps the steering, the line checks and the first acquire of a
+  blocked line. `nav_next` has two "none" values: -1 = not looked up yet (a pending field or a
+  new order), and `Movement.NO_NEXT` (-2) = looked up, and the complete field names no next tile
+  (the goal tile, or ground the field does not reach), so such a unit does not ask
+  `best_neighbour` on every tick. Besides the tile entry and the first complete tick, `nav_next`
+  is also refreshed on the unit's line-check turn (`(tick + id) % line_check_period_ticks == 0`),
+  so a field re-integrated after a map change sends the unit on within a period. A next tile that
+  equals the field's key and is blocked for the unit's class counts as no next tile (the
+  blocked-key rule, §3's note). A `DIRECT` step that the slide refuses entirely (no x move, no y
+  move) unchecks the line (`nav_cell` -1), so the next turn checks it again: truncated steps do
+  not follow a shallow clear line.
 - **Steering:** `FixedMath.step_toward(x, y, tx, ty, speed)` (truncating, ADR 0003 §5), one
   `isqrt` per moving unit per tick. `isqrt` currently costs about 2 µs. The movement PR may
   replace its body with a faster exact method (for example Newton's method from a bit-length
@@ -208,6 +231,16 @@ Measurements (Godot 4.7.2 headless, 2026-10-11, Xeon cloud VM; mock code, not th
   improve for `stall_ticks` (rules, 15) while the unit is within `stall_range_spacings` (rules, 2)
   formation spacings of its goal, the unit goes `IDLE` where it stands. A crowd around a slot
   then ends instead of jittering forever.
+
+  Status note (2026-10-19, P26u docs, from P37b as merged, #101; the lead's decision 3 of
+  2026-10-15): a `FIELD` unit whose field names no next tile (`nav_next` `Movement.NO_NEXT`)
+  stalls at any distance, not only within `stall_range_spacings`, so a unit that cannot reach
+  its goal gives its slot back after `stall_ticks` without progress. A `DIRECT` unit stalls as
+  written: with a checked line, within `stall_range_spacings` times its type's formation spacing.
+  `ATTACK` units, units of speed 0 and units waiting for a field or for a slot do not stall. The
+  stall sets the goal to the unit's position and its intent to 0, and `Movement._end_order` ends
+  the order (also on arrival), clearing `group_cell`, the navigation state, `field`, `best_dist`
+  and `stall`.
 - FixedMath gains no sine table and no `dir_to` in Phase 2: no sim rule needs a direction (there
   is no facing; turret aim is view-only). They come with the first rule that needs facing.
 
@@ -252,6 +285,33 @@ Measurements (Godot 4.7.2 headless, 2026-10-11, Xeon cloud VM; mock code, not th
   already points at it. `acquire()` therefore counts the slot it hands out (a new key's, or a
   shared one's) as referenced until the next `recount()`, which overwrites every count from the
   rows; two new keys in one tick never share a slot. `FlowCache.gd` (P30b, #58) does this.
+
+  Status note (2026-10-19, P26u docs, from P37b as merged, #101): **the key** ("A group order
+  shares one field per class", and §2's "goal tile of the group target"). The lead's decision of
+  2026-10-15, after the architect's and gameplay-dev's evaluations: the key is the group target,
+  the row column `group_cell` (a cell, -1 = none, -1 at spawn), else the unit's own goal tile.
+  `Formation.assign` writes the cell of the group's centre into every row of a `MOVE` or
+  `ATTACK_MOVE` command; `Sim._apply_attack`, `Sim._apply_stop` and `Movement._end_order` write
+  -1, and `Movement.reset_nav` leaves it. A blocked line (`Movement._check_line`) asks the cache
+  for (`group_cell`, class), else (the cell of the unit's goal, class): one `acquire`, and with
+  every slot referenced the unit stays `DIRECT` and asks again on its next turn. The column is
+  hashed. Formation slots lie on different tiles, so a key per slot would take one field per
+  unit from a cache of 8.
+  - **The own field.** A unit whose slot the group field does not reach takes its own goal's
+    field when the group field names no next tile (`Movement._take_own_field`: a complete field
+    keyed on a tile other than the cell of the unit's goal), with a fresh `best_dist`
+    (`FlowField.UNREACHED`) and `stall` (0), so the ticks it counted on the group field do not
+    end the new one. With every slot referenced it keeps the old field and asks again at its next
+    event.
+  - **The blocked key.** A next tile that equals the field's key and is blocked for the unit's
+    class counts as no next tile (`Movement._refresh_next`): the field seeds its key at cost 0
+    whatever the terrain, so after `set_terrain` on the key tile (later a building)
+    `best_neighbour` keeps naming it. A unit with a reachable goal then takes its own field, and
+    a unit whose goal is the key stalls (§2's note) and frees the slot. Only the key counts:
+    another blocked tile keeps the old field until the cache swaps the new one in.
+  - **Accepted behaviour.** With every slot referenced, a unit whose slot the group field does
+    not reach can end `IDLE` through the stall short of a reachable slot (maze fuzz: 55 of 5,600
+    units at 8 slots, 28% rock).
 - **Invalidation:** when `map_version` changes, slots with references re-integrate into `next`
   (double buffer, so units keep following the old costs until the swap), and slots without
   references are dropped.
@@ -269,6 +329,16 @@ Measurements (Godot 4.7.2 headless, 2026-10-11, Xeon cloud VM; mock code, not th
 - Fields for `ATTACK` orders are keyed on the target's tile when the order is applied. They are
   re-keyed if the target moves more than `attack_rekey_milli` (rules, 4000) from that goal while
   the line stays blocked.
+
+  Status note (2026-10-19, P26u docs, from P37b as merged, #101): an `ATTACK` unit has no group
+  cell, so it keys on the target's tile at its first acquire (its goal follows the target), and
+  re-keys in INTEGRATE (`Movement._rekey`, at the `nav_next` events of §2's note) once its goal is
+  more than `attack_rekey_milli` from the centre of the key tile; with no free slot it keeps the
+  old field. LEAD DECISION (2026-10-15): `Movement._take_own_field` also re-keys an `ATTACK`
+  field that names no next tile (a unit that outran its field, the key tile still within
+  `attack_rekey_milli` of the goal), a second trigger besides `attack_rekey_milli`, kept because
+  the unit would otherwise stand idle on a tile the target has left. `ATTACK` units never stall
+  (§2's note).
 
 ### 4. Separation and sliding
 - `SpatialGrid` (`game/sim/SpatialGrid.gd`) is a linked-list bucket grid: `head` per cell (-1 =
