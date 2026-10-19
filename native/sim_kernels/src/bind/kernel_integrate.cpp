@@ -5,9 +5,12 @@
 // borrows the arrays once on entry and hands the pass the slot objects one call at a time.
 // Slots: ADR 0013 section 2 has a kernel fetch each slot it touches once per call, bounded by flow_cache_size. Holding the
 // cost array of every slot for the whole call needs room for as many as there are, and flow_cache_size has no upper
-// bound to size it by, so a slot is fetched where the pass asks for it, at event cadence (a FIELD unit's look-up, a recycle
-// of acquire), never per row or per cell. That is the second recorded exception to the rule, beside FLOW's re-read of
-// `pending` (plan, P37n).
+// bound to size it by, so a slot is fetched where the pass asks for it, never per row or per cell: its `complete` once
+// per slot and call (the pass keeps the answer, core/integrate.cpp's is_complete, and a recycle updates it; the rows that
+// wait for a pending field ask it on every tick, so a get per row would be forbidden), and the rest of the slot (cost,
+// grid_cols, cell_count, stride) at event cadence, where a FIELD unit looks up its next tile. A slot past
+// integrate::MEMO_SLOTS is asked on each use (flow_cache_size is 8 in data/rules.tres). That is the second recorded
+// exception to the rule, beside FLOW's re-read of `pending` (plan, P37n).
 // Twin: game/sim/Movement.gd (integrate). Tests: tests/sim/native/test_integrate_kernel.gd and the movement suites under both
 // implementations (tests/sim/test_movement*.gd); the lockstep over 900 ticks is P37n3. MIT.
 #include "sim_kernels.h"

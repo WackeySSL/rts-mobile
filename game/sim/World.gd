@@ -506,7 +506,9 @@ func prepare() -> void:
 
 ## The cell holding the point (x, y) in milli-tiles: `row * map_cols + column`. A point outside
 ## the map gives the nearest edge cell, so the result is never outside the map (negative values
-## divide toward zero and clamp to 0). With no map it is 0.
+## divide toward zero and clamp to 0). With no map it is 0. The INTEGRATE kernel has a C++ twin of
+## this (core/integrate.cpp, Pass::cell_of); a change here edits both and passes the kernel's tests
+## (tests/sim/native/test_integrate_kernel.gd).
 @warning_ignore("integer_division")
 func cell_of(x: int, y: int) -> int:
 	if map_cols == 0:
@@ -517,7 +519,9 @@ func cell_of(x: int, y: int) -> int:
 
 
 ## Whether a unit of `move_class` may stand on `cell`: its cost there is above 0. True while no
-## map is loaded, false for a cell outside the map or a class that does not exist.
+## map is loaded, false for a cell outside the map or a class that does not exist. The INTEGRATE
+## kernel has a C++ twin of this (core/integrate.cpp, Pass::is_passable): a rule that makes more
+## than the terrain block a tile (a building) edits both and passes the kernel's tests.
 func is_passable(cell: int, move_class: int) -> bool:
 	if map_cols == 0:
 		return true

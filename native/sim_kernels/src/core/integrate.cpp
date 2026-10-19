@@ -40,9 +40,14 @@ private:
 	Rules rules_;
 	flow::Keys &keys_;
 	Slots &slots_;
+	// Bit s of `known_`: the pass has seen slot s's `complete`; bit s of `done_` is that value (see is_complete).
+	int64_t known_ = 0;
+	int64_t done_ = 0;
 
 	int64_t cell_of(int64_t x, int64_t y) const;
 	bool is_passable(int64_t cell, int64_t move_class) const;
+	bool is_complete(int64_t slot);
+	void remember(int64_t slot, bool complete);
 	int64_t acquire(int64_t goal_cell, int64_t move_class);
 	void end_order(int64_t row);
 	bool take_own_field(int64_t row, int64_t slot, int64_t move_class);
@@ -72,11 +77,35 @@ bool Pass::is_passable(int64_t cell, int64_t move_class) const {
 	return move_cost_.get(move_class * cells + cell) > 0;
 }
 
-// FlowCache.acquire, with the clear of a recycled slot that the slot objects do.
+// slots[slot].complete, asked of the slot object once per slot and call. A FIELD unit that waits for a pending field
+// asks on every tick, and the bind layer's answer is an Object::get, which ADR 0013 section 2 forbids per row. Within a
+// call only a recycle changes `complete`, and remember() keeps the answer current, so the pass asks each slot once. A
+// slot at or past MEMO_SLOTS (flow_cache_size is 8 in data/rules.tres) is asked on every use: correct, and slower.
+bool Pass::is_complete(int64_t slot) {
+	if (slot < 0 || slot >= MEMO_SLOTS) {
+		return slots_.complete(slot);
+	}
+	if ((known_ & (int64_t(1) << slot)) == 0) {
+		remember(slot, slots_.complete(slot));
+	}
+	return (done_ & (int64_t(1) << slot)) != 0;
+}
+
+void Pass::remember(int64_t slot, bool complete) {
+	if (slot < 0 || slot >= MEMO_SLOTS) {
+		return;
+	}
+	const int64_t bit = int64_t(1) << slot;
+	known_ |= bit;
+	done_ = complete ? (done_ | bit) : (done_ & ~bit);
+}
+
+// FlowCache.acquire, with the clear of a recycled slot that the slot objects do (it leaves `complete` false).
 int64_t Pass::acquire(int64_t goal_cell, int64_t move_class) {
 	const flow::Acquired got = flow::acquire(keys_, goal_cell, move_class, rules_.map_version, rules_.tick);
 	if (got.recycled) {
 		slots_.recycle(got.slot);
+		remember(got.slot, false);
 	}
 	return got.slot;
 }
@@ -184,7 +213,7 @@ void Pass::run() {
 		int64_t cell = -1;
 		if (mode == NAV_FIELD && order != ORDER_IDLE && cells > 0 && rows_.field.get(row) >= 0 && rows_.field.get(row) < slot_count) {
 			cell = clamp(y, 0, max_y) / MILLI_PER_TILE * cols + clamp(x, 0, max_x) / MILLI_PER_TILE;
-			if ((rows_.nav_next.get(row) == -1 || (tick + rows_.unit_id.get(row)) % period == 0) && slots_.complete(rows_.field.get(row))) {
+			if ((rows_.nav_next.get(row) == -1 || (tick + rows_.unit_id.get(row)) % period == 0) && is_complete(rows_.field.get(row))) {
 				refresh_next(row, cell, move_class);
 			}
 		}
@@ -246,7 +275,7 @@ void Pass::run() {
 		rows_.pos_y.set(row, new_y);
 		if (cell >= 0 && mode == NAV_FIELD) {
 			const int64_t entered = new_y / MILLI_PER_TILE * cols + new_x / MILLI_PER_TILE;
-			if (entered != cell && slots_.complete(rows_.field.get(row))) {
+			if (entered != cell && is_complete(rows_.field.get(row))) {
 				refresh_next(row, entered, move_class);
 			}
 		}

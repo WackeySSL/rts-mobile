@@ -4,17 +4,22 @@
 // flow::best_neighbour at event cadence, an ATTACK unit re-keys its field, and a unit that waits for no free slot
 // takes the field of its own goal (flow::acquire). Plain C++17, no Godot header, no float. Rule values come in
 // through `Rules`, read from the World by the bind layer.
-// Twin: game/sim/Movement.gd (integrate, _refresh_next, _rekey, _take_own_field, _end_order), in the twin's row order,
-// so that the full state matches after every call. Tests: tests/sim/test_movement*.gd under both implementations,
-// tests/sim/native/test_integrate_kernel.gd. MIT.
+// Twin: game/sim/Movement.gd (integrate, _refresh_next, _rekey, _take_own_field, _end_order) and game/sim/World.gd
+// (cell_of, is_passable, which integrate.cpp copies), in the twin's row order, so that the full state matches after every
+// call. Tests: tests/sim/test_movement*.gd under both implementations, tests/sim/native/test_integrate_kernel.gd. MIT.
 #pragma once
 
 #include <cstdint>
+#include <limits>
 
 #include "array_view.h"
 #include "flow.h"
 
 namespace integrate {
+
+// The slots whose `complete` the pass asks the slot objects for once per call (and again only after a recycle): the value
+// bits of an int64_t, so that a slot's bit is a shift by 0 to 62. A slot past them is asked on each use.
+inline constexpr int64_t MEMO_SLOTS = std::numeric_limits<int64_t>::digits;
 
 // The per-row columns of the World that the pass reads or writes (World.ROW_ARRAYS and the scratch arrays). A row
 // is an index in ascending id order; the scratch arrays (intent, push) may be longer than the rows.
@@ -41,7 +46,8 @@ public:
 	virtual ~Slots() = default;
 	// The number of slots (fields.size()).
 	virtual int64_t count() = 0;
-	// slots[slot].complete; false for no such slot.
+	// slots[slot].complete; false for no such slot. The pass asks once per slot below MEMO_SLOTS and call, and again only
+	// after recycle() of that slot (a bind layer pays an Object::get for each ask, which ADR 0013 section 2 forbids per row).
 	virtual bool complete(int64_t slot) = 0;
 	// The served field of slots[slot]: the cost array and what indexes it; an empty field for no such slot.
 	virtual flow::Served served(int64_t slot) = 0;

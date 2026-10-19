@@ -44,14 +44,24 @@ struct State {
 	std::vector<SlotData> slots;
 };
 
-// The slots of the state as the pass reaches them (bind/kernel_integrate.cpp's BoundSlots).
+// The slots of the state as the pass reaches them (bind/kernel_integrate.cpp's BoundSlots). The bind layer pays an
+// Object::get for each ask of `complete`, which ADR 0013 section 2 forbids per row, so a slot below integrate::MEMO_SLOTS
+// may be asked once, and again only after its recycle: a second ask is a Finding (the pass lost its memo).
 class VectorSlots final : public integrate::Slots {
 public:
 	explicit VectorSlots(std::vector<SlotData> &slots) :
-			slots_(slots) {}
+			slots_(slots), asked_(slots.size(), false) {}
 
 	int64_t count() override { return static_cast<int64_t>(slots_.size()); }
-	bool complete(int64_t slot) override { return known(slot) && at(slot).complete; }
+	bool complete(int64_t slot) override {
+		if (known(slot) && slot < integrate::MEMO_SLOTS) {
+			if (asked_[static_cast<size_t>(slot)]) {
+				throw Finding("integrate: the pass asked slot " + std::to_string(slot) + " for `complete` twice with no recycle between: a get per row in the bind layer");
+			}
+			asked_[static_cast<size_t>(slot)] = true;
+		}
+		return known(slot) && at(slot).complete;
+	}
 	flow::Served served(int64_t slot) override {
 		flow::Served found;
 		if (known(slot)) {
@@ -67,6 +77,7 @@ public:
 		if (known(slot)) {
 			at(slot).complete = false;
 			std::fill(at(slot).cost.begin(), at(slot).cost.end(), static_cast<int32_t>(flow::UNREACHED));
+			asked_[static_cast<size_t>(slot)] = false;
 		}
 	}
 
@@ -75,6 +86,7 @@ private:
 	SlotData &at(int64_t slot) { return slots_[static_cast<size_t>(slot)]; }
 
 	std::vector<SlotData> &slots_;
+	std::vector<bool> asked_;
 };
 
 // What a pass changed in the rows that matter, for the harness's tally of work.
@@ -405,6 +417,16 @@ void random_scenes(Tally &tally) {
 	}
 }
 
+// More slots than the pass keeps an answer for (integrate::MEMO_SLOTS): the slots past them are asked on each use, and
+// the ones below must not be mistaken for them (a shift past 62 is undefined).
+void many_slots(Tally &tally) {
+	Stream stream = { 11 };
+	for (const int64_t slots : { integrate::MEMO_SLOTS - 1, integrate::MEMO_SLOTS, integrate::MEMO_SLOTS + 1, int64_t(2) * integrate::MEMO_SLOTS + 6 }) {
+		State state = make_scene(stream, 16, 16, slots, 120, 9);
+		play(state, 30, tally);
+	}
+}
+
 // A World with no map (cols 0): nothing to slide on, and an upper bound of the largest int32.
 void no_map(Tally &tally) {
 	Stream stream = { 7 };
@@ -519,6 +541,7 @@ void isqrt_cases(Tally &tally) {
 
 void crafted(Tally &tally) {
 	random_scenes(tally);
+	many_slots(tally);
 	no_map(tally);
 	rule_edges(tally);
 	hostile_references(tally);
