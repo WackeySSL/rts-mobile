@@ -5,8 +5,12 @@ extends SimProbe
 ## at the SEPARATION mark, right after `Separation.run`, so `Movement.integrate` sees the hand-set
 ## pushes as it did when nothing wrote them. The pushes stay between ticks: what the probe wrote
 ## back is what it copies at the next `begin()`. A probe of the game never reads or writes the
-## World; this one is a test's. Not a test suite. It is a file of its own, not an inner class,
-## because an inner class with a script base would name itself at run time.
+## World (ADR 0007 section 4); this one is a test's, a recorded exception: it needs the SEPARATION
+## mark to sit between `Separation.run` and `Movement.integrate`, where the ADR puts it, and it
+## replaces the real pushes of those cases, so the INTEGRATE lockstep on the random soup states
+## (test_integrate_lockstep.gd) feeds the kernel hand-written pushes only; the arena runs carry the
+## real ones. Not a test suite. It is a file of its own, not an inner class, because an inner class
+## with a script base would name itself at run time.
 
 var world: World
 var _held_x: PackedInt32Array = PackedInt32Array()

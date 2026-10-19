@@ -8,6 +8,13 @@ extends GdUnitTestSuite
 ## are the controls_test scenario: 30 blue tanks (ids 1 to 30) at (8000, 18500) in six columns 1500
 ## apart, 10 red tanks (ids 31 to 40) far to the east. The tick counts are measured and rounded up
 ## to a multiple of 15.
+##
+## Separation does not stop tanks from overlapping while they drive. A push is at most 60 milli a
+## tick, half a tank's speed of 120 (ADR 0008 section 4), so tanks on crossing paths still slide
+## through one another for a while and settle apart afterwards. The cases bound how long a pair
+## stays closer than 90% of the radii sum (MAX_OVERLAP_TICKS) and count the pairs the tick looked
+## at (SEP_PAIRS), so a tick without the rebuild or without `Separation.run` fails them, even where
+## the formation slots alone would end apart.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
 const Rig: GDScript = preload("res://tests/sim/support/separation_rig.gd")
@@ -15,6 +22,15 @@ const ViewProbe: GDScript = preload("res://tests/sim/support/separation_view_pro
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
 ## 90% of the radii sum.
 const APART_PERCENT: int = 90
+## The most ticks in a row that a pair of the 40 units may stand closer than 90% of the radii sum
+## while the crowds drive (3 s). Measured at most 34 ticks (2.3 s) with the pushes of the tick,
+## 47 to 123 ticks without them (separation_push_max = 0).
+const MAX_OVERLAP_TICKS: int = 45
+## The radii sum of two tanks: closer than this they overlap.
+const REACH: int = 800
+## The ATTACK case: the target is the first red tank (id 31, row 30) at (34500, 10500), 600 ticks.
+const ATTACK_TARGET_ID: int = 31
+const ATTACK_TICKS: int = 600
 ## Two groups of 15 whose paths cross: the north half of the block is sent south of the point, the
 ## south half north of it, 2000 apart, so the two destinations overlap and the groups drive through
 ## each other. All idle at tick 178.
@@ -87,24 +103,29 @@ func test_a_tank_that_drives_up_to_an_idle_one_is_pushed_off_it() -> void:
 	assert_bool(pushed_on_the_way).is_true()
 	assert_array(world.order).is_equal([World.Order.IDLE, World.Order.IDLE])
 	assert_array(Rig.pairs_closer_than(world, APART_PERCENT)).is_empty()
-	assert_int(Rig.distance2(world, 0, 1)).is_less_equal(800 * 800)
+	assert_int(Rig.distance2(world, 0, 1)).is_less_equal(REACH * REACH)
 
 
 ## Two groups of 15 on crossing paths: after both settle idle, no pair of the 40 units is closer
 ## than 90% of the radii sum. The groups really met on the way (a tank of one overlapped a tank of
-## the other) and the tick counted the pairs it looked at.
+## the other), no pair stayed overlapped for more than MAX_OVERLAP_TICKS in a row, and the tick
+## counted the pairs it looked at.
 func test_two_groups_of_15_on_crossing_paths_settle_with_no_pair_under_90_percent() -> void:
 	var world: World = _scenario_world()
 	var commands: Array[Command] = _crossing_orders(world)
 	var met: bool = false
 	var most_pairs: int = 0
+	var longest: int = 0
+	var runs: PackedInt32Array = _overlap_runs()
 	for _tick: int in CROSSING_TICKS:
 		Sim.step(world, commands)
 		commands.clear()
 		most_pairs = maxi(most_pairs, world.stats[World.Stat.SEP_PAIRS])
 		met = met or _groups_overlap(world)
+		longest = maxi(longest, Rig.track_overlaps(world, APART_PERCENT, runs))
 	assert_bool(met).is_true()
 	assert_int(most_pairs).is_greater(0)
+	assert_int(longest).is_less_equal(MAX_OVERLAP_TICKS)
 	assert_int(world.tick).is_equal(CROSSING_TICKS)
 	assert_int(world.order.count(World.Order.IDLE)).is_equal(40)
 	assert_array(Rig.pairs_closer_than(world, APART_PERCENT)).is_empty()
@@ -120,15 +141,25 @@ func test_two_groups_of_15_on_crossing_paths_settle_with_no_pair_under_90_percen
 
 ## The tap-ground order of test_controls_flow through Sim.step: 30 tanks to (20016, 21516), 450
 ## ticks. All idle, every pair at least 90% of the radii sum apart, every tank within the Phase 1
-## centre bound of the point, and the red tanks, far away, where they were.
+## centre bound of the point, and the red tanks, far away, where they were. The formation slots
+## are 1200 apart, so the end state alone would hold without separation (the tanks drive up to
+## their slots through one another and stand 322 milli apart at the closest, tick 92): the tick
+## must have looked at pairs (SEP_PAIRS) and no pair may have stayed overlapped for long.
 func test_the_controls_tap_ground_order_settles_apart_and_within_the_centre_bound() -> void:
 	var world: World = _scenario_world()
 	var order: Command = Command.attack_move(1, _ids(1, 30), TAP_POINT.x, TAP_POINT.y)
 	order.tick = world.tick
 	var commands: Array[Command] = [order]
+	var most_pairs: int = 0
+	var longest: int = 0
+	var runs: PackedInt32Array = _overlap_runs()
 	for _tick: int in TAP_TICKS:
 		Sim.step(world, commands)
 		commands.clear()
+		most_pairs = maxi(most_pairs, world.stats[World.Stat.SEP_PAIRS])
+		longest = maxi(longest, Rig.track_overlaps(world, APART_PERCENT, runs))
+	assert_int(most_pairs).is_greater(0)
+	assert_int(longest).is_less_equal(MAX_OVERLAP_TICKS)
 	assert_int(world.tick).is_equal(TAP_TICKS)
 	assert_int(world.dropped_commands).is_equal(0)
 	assert_int(world.order.count(World.Order.IDLE)).is_equal(40)
@@ -145,28 +176,40 @@ func test_the_controls_tap_ground_order_settles_apart_and_within_the_centre_boun
 
 
 ## The block driven into the red group: the red tanks are shoved aside (idle ones take 75% of a
-## push against a mover) and everything ends idle with no pair of the 40 closer than 90%.
-func test_driving_into_the_red_group_shoves_it_aside_and_nobody_overlaps() -> void:
+## push against a mover), no pair stays overlapped for more than MAX_OVERLAP_TICKS in a row, and
+## everything ends idle with no pair of the 40 closer than 90%.
+func test_driving_into_the_red_group_shoves_it_aside_and_ends_with_nobody_overlapping() -> void:
 	var world: World = _scenario_world()
 	var red_before: PackedInt32Array = world.pos_x.slice(30) + world.pos_y.slice(30)
 	var order: Command = Command.attack_move(1, _ids(1, 30), RED_POINT.x, RED_POINT.y)
 	order.tick = world.tick
 	var commands: Array[Command] = [order]
+	var longest: int = 0
+	var runs: PackedInt32Array = _overlap_runs()
 	for _tick: int in RED_TICKS:
 		Sim.step(world, commands)
 		commands.clear()
+		longest = maxi(longest, Rig.track_overlaps(world, APART_PERCENT, runs))
+	assert_int(longest).is_less_equal(MAX_OVERLAP_TICKS)
 	assert_int(world.order.count(World.Order.IDLE)).is_equal(40)
 	assert_array(Rig.pairs_closer_than(world, APART_PERCENT)).is_empty()
 	assert_bool(world.pos_x.slice(30) + world.pos_y.slice(30) == red_before).is_false()
 
 
 ## The block sent east and, at tick 200, back through where it stood: the tanks drive through each
-## other twice and still end idle, apart.
+## other twice and still end idle, apart. Some pair really overlaps after the turn (the block did
+## drive through itself), the tick looked at pairs, and no pair stayed overlapped for long; the
+## formation slots are 1200 apart, so only these checks tell a tick with separation from one
+## without (it ends 798 at the closest with the pushes, 1200 without).
 func test_turning_the_block_back_through_itself_ends_apart() -> void:
 	var world: World = _scenario_world()
 	var out: Command = Command.attack_move(1, _ids(1, 30), OUT_POINT.x, OUT_POINT.y)
 	out.tick = world.tick
 	var commands: Array[Command] = [out]
+	var met_after_the_turn: bool = false
+	var most_pairs: int = 0
+	var longest: int = 0
+	var runs: PackedInt32Array = _overlap_runs()
 	for tick: int in BACK_TICKS:
 		if tick == TURN_TICK:
 			var back: Command = Command.attack_move(1, _ids(1, 30), BACK_POINT.x, BACK_POINT.y)
@@ -174,10 +217,63 @@ func test_turning_the_block_back_through_itself_ends_apart() -> void:
 			commands.append(back)
 		Sim.step(world, commands)
 		commands.clear()
+		most_pairs = maxi(most_pairs, world.stats[World.Stat.SEP_PAIRS])
+		longest = maxi(longest, Rig.track_overlaps(world, APART_PERCENT, runs))
+		if tick >= TURN_TICK:
+			met_after_the_turn = (
+				met_after_the_turn or not Rig.pairs_closer_than(world, 100).is_empty()
+			)
+	assert_bool(met_after_the_turn).is_true()
+	assert_int(most_pairs).is_greater(0)
+	assert_int(longest).is_less_equal(MAX_OVERLAP_TICKS)
 	assert_int(world.order.count(World.Order.IDLE)).is_equal(40)
 	assert_array(Rig.pairs_closer_than(world, APART_PERCENT)).is_empty()
 	var home: Vector2i = Vector2i(world.pos_x[0] - BACK_POINT.x, world.pos_y[0] - BACK_POINT.y)
 	assert_int(home.x * home.x + home.y * home.y).is_less(GROUP_CENTRE_BOUND * GROUP_CENTRE_BOUND)
+
+
+## The step before a checkpoint is a step like any other for the grid and the pushes. MatchLoop
+## hashes after the Sim.step that starts at tick 14 (Replay.CHECKPOINT_PERIOD is 15) and FLOW takes
+## no slice on it; a rebuild or `Separation.run` that copied that guard would leave a pair that
+## overlaps on that tick unpushed. Two overlapping idle tanks move the same on tick 14 as on tick 0.
+func test_the_step_before_a_checkpoint_rebuilds_the_grid_and_pushes_like_any_other() -> void:
+	var by_tick: Array[World] = []
+	for start_tick: int in [0, Replay.CHECKPOINT_PERIOD - 1]:
+		var world: World = GridWorld.from_rows(GridWorld.grass(10, 6))
+		world.add_unit(1, 0, 5000, 3000)
+		world.add_unit(1, 0, 5300, 3000)
+		world.tick = start_tick
+		Sim.step(world, [])
+		assert_int(world.tick).is_equal(start_tick + 1)
+		assert_int(world.stats[World.Stat.SEP_PAIRS]).is_equal(2)
+		assert_array([world.pos_x[0], world.pos_x[1]]).is_not_equal([5000, 5300])
+		by_tick.append(world)
+	assert_array(by_tick[1].pos_x).is_equal(by_tick[0].pos_x)
+	assert_array(by_tick[1].pos_y).is_equal(by_tick[0].pos_y)
+
+
+## INTERIM, until P41: an ATTACK order on an idle enemy shoves the enemy to the map corner. The
+## attacker drives onto the target's point every tick (`Sim._follow_targets` sets the goal there
+## and Movement never ends ATTACK), and with separation in the tick each push of the pair moves
+## the idle target by its 75% share, away from the attacker, tick after tick, until the target is
+## stuck in the corner (47999, 0) with the attacker on top of it, 21 milli away, still on ATTACK.
+## This is what a tap on an enemy (docs/HOW_TO_PLAY.md, "tap an enemy") does since P39b. Without
+## pushes the target never moves. P41 ends a chase in HOLD at weapon range, and its test flips
+## this case: the attacker stops at range and the idle target stays at (34500, 10500). The cases
+## of test_movement_acquire.gd switch the pushes off for this reason.
+func test_an_attack_on_an_idle_tank_shoves_it_to_the_map_corner_until_p41() -> void:
+	var pushed: World = _attack_the_first_red_tank(-1)
+	var corner: Vector2i = Vector2i(pushed.map_w - 1, 0)
+	assert_array([pushed.pos_x[30], pushed.pos_y[30]]).is_equal([corner.x, corner.y])
+	assert_array([pushed.order[0], pushed.order_target[0]]).is_equal(
+		[World.Order.ATTACK, ATTACK_TARGET_ID]
+	)
+	assert_int(Rig.distance2(pushed, 0, 30)).is_less(REACH * REACH)
+	var still: World = _attack_the_first_red_tank(0)
+	assert_array([still.pos_x[30], still.pos_y[30]]).is_equal([34500, 10500])
+	assert_array([still.order[0], still.pos_x[0], still.pos_y[0]]).is_equal(
+		[World.Order.ATTACK, 34500, 10500]
+	)
 
 
 ## Two runs of the crossing groups give the same state hash at every checkpoint tick (every 15
@@ -224,9 +320,32 @@ func _crossing_orders(world: World) -> Array[Command]:
 func _groups_overlap(world: World) -> bool:
 	for a: int in range(0, 15):
 		for b: int in range(15, 30):
-			if Rig.distance2(world, a, b) < 800 * 800:
+			if Rig.distance2(world, a, b) < REACH * REACH:
 				return true
 	return false
+
+
+## One counter per pair of the 40 units for Rig.track_overlaps, all 0.
+func _overlap_runs() -> PackedInt32Array:
+	var runs: PackedInt32Array = PackedInt32Array()
+	runs.resize(40 * 40)
+	return runs
+
+
+## The scenario with the first blue tank (id 1) ordered to attack the first red tank (id 31, idle),
+## after ATTACK_TICKS ticks; `push_max` of 0 or more is set as the world's `separation_push_max`
+## first (0: no pushes).
+func _attack_the_first_red_tank(push_max: int) -> World:
+	var world: World = _scenario_world()
+	if push_max >= 0:
+		world.separation_push_max = push_max
+	var order: Command = Command.attack(1, _ids(1, 1), ATTACK_TARGET_ID)
+	order.tick = world.tick
+	var commands: Array[Command] = [order]
+	for _tick: int in ATTACK_TICKS:
+		Sim.step(world, commands)
+		commands.clear()
+	return world
 
 
 func _ids(first: int, last: int) -> PackedInt32Array:

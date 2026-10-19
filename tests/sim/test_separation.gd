@@ -2,11 +2,13 @@ extends GdUnitTestSuite
 ## Separation.run (P39, part 1; ADR 0008 section 4): the pushes of overlapping units. Single-tick
 ## cases rebuild the separation grid and call `Separation.run` once, then read `push_x` and
 ## `push_y`; multi-tick cases run `Movement.run`, the grid rebuild, `Separation.run` and
-## `Movement.integrate` in pipeline order (SeparationRig), because `Sim.step` does not separate
-## until P39b. Tanks have radius 400, so two of them overlap below a distance of 800 (R); the rules
-## are the shipped ones: a pair closer than R / 4 = 200 gets the fixed push of min(200, 60) = 60,
-## an idle unit takes 75% of a push against a moving one, a unit's push is at most 60 per axis, and
-## a unit looks at 16 others and uses the first 8 that overlap. Maps are built in code (GridWorld).
+## `Movement.integrate` in pipeline order (SeparationRig) instead of `Sim.step`, so that commands,
+## FLOW and the chase stay out of the way (`Sim.step` has separated since P39b;
+## test_separation_tick.gd runs the crowds through it). Tanks have radius 400, so two of them
+## overlap below a distance of 800 (R); the rules are the shipped ones: a pair closer than R / 4 =
+## 200 gets the fixed push of min(200, 60) = 60, an idle unit takes 75% of a push against a moving
+## one, a unit's push is at most 60 per axis, and a unit looks at 16 others and uses the first 8
+## that overlap. Maps are built in code (GridWorld).
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
 const Rig: GDScript = preload("res://tests/sim/support/separation_rig.gd")

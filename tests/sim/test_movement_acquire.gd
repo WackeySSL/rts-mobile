@@ -230,7 +230,9 @@ func _both() -> Array[Array]:
 ## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
 func _in(world: World, impl: int) -> World:
 	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
-	# No pushes: these cases pin Movement's rules at exact positions, and the tick separates units
-	# since P39b (test_separation_tick.gd covers the crowd with the real pushes).
+	# No pushes: these cases pin Movement's rules at exact positions. The reason that matters most:
+	# with the tick's separation (P39b) an ATTACK order drives onto its idle target's point and
+	# shoves the target ahead of it to the map corner, until P41 ends a chase in HOLD at range
+	# (test_separation_tick.gd pins that interim behaviour, with the real pushes).
 	world.separation_push_max = 0
 	return world

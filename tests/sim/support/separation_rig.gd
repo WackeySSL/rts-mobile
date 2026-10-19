@@ -5,8 +5,8 @@ extends RefCounted
 ## suite.
 
 
-## The grid rebuild and `Separation.run`, as the GRIDS and SEPARATION phases will do them: the
-## pushes of the units as they stand.
+## The grid rebuild and `Separation.run`, as the GRIDS and SEPARATION phases do them in `Sim.step`
+## since P39b: the pushes of the units as they stand.
 static func separate(world: World) -> void:
 	world.sep_grid.rebuild(world.pos_x, world.pos_y, world.unit_count())
 	Separation.run(world)
@@ -48,3 +48,24 @@ static func pairs_closer_than(world: World, percent: int) -> Array[Vector2i]:
 			if distance2(world, a, b) * 10000 < reach * reach:
 				found.append(Vector2i(a, b))
 	return found
+
+
+## How long pairs stay overlapped. `runs` holds one counter per pair of rows (index a * count + b,
+## a < b; `count * count` zeros at the start). Call it after each step: a pair that stands closer
+## than `percent` percent of its radii sum gets its counter raised by one, any other pair's counter
+## goes back to 0. Returns the longest run of any pair after this update, so a test keeps the
+## maximum over a drive.
+static func track_overlaps(world: World, percent: int, runs: PackedInt32Array) -> int:
+	var longest: int = 0
+	var count: int = world.unit_count()
+	for a: int in count:
+		var radius: int = world.type_radius[world.type_index[a]]
+		for b: int in range(a + 1, count):
+			var reach: int = (radius + world.type_radius[world.type_index[b]]) * percent
+			var index: int = a * count + b
+			if distance2(world, a, b) * 10000 < reach * reach:
+				runs[index] += 1
+				longest = maxi(longest, runs[index])
+			else:
+				runs[index] = 0
+	return longest
