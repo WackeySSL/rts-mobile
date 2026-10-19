@@ -37,8 +37,10 @@ Tick a box in the PR that meets the criterion.
 - [ ] Buildings from the GDD with placement (ghost, valid and invalid tint, confirm and cancel)
 - [ ] Build sidebar with tabs, queues, cost and progress; power bar and low-power effects
 - [ ] Portrait and landscape on the battle screen (ADR 0015): the HUD, selection and build sidebar keep their dp sizes in both
-  orientations and follow ADR 0015 §5's layout; a turn during a match keeps the camera centre and the world size per dp
-  and queues no Command; UI and layout tests run at 1280x720, 2400x1080, 2048x1536, 720x1280, 1080x2400 and 1536x2048
+  orientations and follow ADR 0015 §5's layout (the sidebar row sets the portrait bottom zone, so the ArmyBar moves above the
+  band); a turn during a match keeps the camera centre and the world size per dp and queues no Command; UI and layout tests
+  run at 1280x720, 2400x1080, 2048x1536, 720x1280, 1080x2400 and 1536x2048; checked on Michael's phone in portrait: build an
+  item with one hand, jump with the minimap, rotate during a placement
 - [ ] The Android build follows the device's sensor (ADR 0015 §7: `window/handheld/orientation=6`, manifest
   `screenOrientation` 13), as the last row of `docs/plans/2026-10-19-portrait.md`
 - [ ] Ore fields, harvester loop, refinery and credits

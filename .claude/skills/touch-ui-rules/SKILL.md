@@ -10,10 +10,11 @@ paths:
 
 # Touch UI rules
 
-Target: a 6-inch phone in landscape or portrait (ADR 0015), held with two thumbs. It must also work
-on tablets and in the desktop web preview, where the mouse emulates touch. The build stays
-landscape-locked until ADR 0015's flip row (P64) merges; until then, and after, no UI code
-assumes width > height.
+Target: a 6-inch phone in landscape or portrait (ADR 0015), held with two thumbs in landscape and
+often in one hand in portrait. It must also work on tablets and in the desktop web preview, where
+the mouse emulates touch. The Android build stays landscape-locked until ADR 0015's flip row (P64)
+merges; the web preview already turns with the phone. Until then, and after, no UI code assumes
+width > height.
 
 ## Gesture map
 | Gesture | Result |
@@ -62,12 +63,16 @@ Today's layout, unchanged by ADR 0015.
   Decide the shape only through `UiScale`'s orientation function (P59; height > width is
   portrait).
 - Build sidebar zone: a bottom band, the full safe width, 20% of the height and at least 200 dp.
-  Minimap at its right end; left of it credits and the power bar, the tabs and one row of build
-  icons (at least 64 dp) that scrolls sideways. Reserved and empty until Phase 3 builds it.
-- Bottom-left, directly above the band (on the safe bottom edge while the band is empty): "All
-  army" and groups 1-3.
-- Top line: the read-only selection panel, right of the top-left controls, one row (icon and count
-  per type, names only when the whole line fits); top-left: Dev button, pause and menu.
+  Minimap at its right end (square, at most 40% of the safe width); left of it, stacked, credits
+  and the power bar, icon-only tabs (48 dp) and one row of build icons (at least 64 dp) that
+  scrolls sideways: at least three whole icons on the 6-inch phone, two at 360 dp wide.
+- Until Phase 3's sidebar row the portrait zone is not reserved (height 0); that row sets it.
+- Bottom-left: "All army" and groups 1-3, on the safe bottom edge while the zone is 0, then
+  directly above the band.
+- Top line: the read-only selection panel, right of the top-left controls (8 dp gap), one row
+  high, never wider than that line. Fit levels, first that fits: names; icon and count; without
+  the Total; the first rows that fit and a "+N" chip for the types not shown. Top-left: Dev
+  button, pause and menu.
 - Taps players make often (army, groups, build, minimap) stay at the bottom; the bottom stack
   (band plus army line) takes at most 40% of the safe height, and the band gives way first.
 - No ads on this screen, ever.

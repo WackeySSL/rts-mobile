@@ -2,8 +2,8 @@
 
 Status: accepted, 2026-10-19 (Michael's decision of 2026-10-19 and the lead's frame decisions of
 the same day, both below as given). Docs PR P26v. The rows that carry it out are in
-`docs/plans/2026-10-19-portrait.md` (P59-P64). Until the last of them, P64, merges, the build
-stays landscape-locked (§7).
+`docs/plans/2026-10-19-portrait.md` (P59-P64). Until the last of them, P64, merges, the Android
+build (APK) stays landscape-locked; the web preview already turns with the phone (§7).
 
 ## Context
 Michael, 2026-10-19, verbatim: **"Tilføj til tema at spillet også skal kunne spilles vertikale og
@@ -11,25 +11,37 @@ ikke kun i landscape"**: the game shall be playable in portrait as well as lands
 two hard rules: `CLAUDE.md`'s Stack line "2D top-down, landscape only" (which changes only through
 a new ADR) and its Mobile UX rule "Landscape only".
 
-The lead's frame decisions (2026-10-19), recorded as given:
+The lead's frame decisions (2026-10-19), recorded as given (word for word):
 1. Both orientations for the whole game: battle screen, HUD, build sidebar, selection, menus, the
    ad and consent screens. The device's sensor picks the orientation and the player may rotate
-   during a match. Orientation is view-only: `game/sim`, Commands, replays and the state hash do
+   during a match. Orientation is view-only: game/sim, Commands, replays and the state hash do
    not change.
-2. Touch targets >= 48 dp, safe areas and the gesture set of `CLAUDE.md`'s Mobile UX hold in both
+2. Touch targets >= 48 dp, safe areas and the gesture set of CLAUDE.md's Mobile UX hold in both
    orientations.
 3. The UI must not shrink in portrait: the same phone gives the same dp size in both
-   orientations. This ADR picks the mechanism after reading ADR 0004 and the current code.
+   orientations. Today the stretch is base 1280x720, canvas_items, expand, so a 1080x2400 phone
+   in portrait would scale by 0.84 instead of 1.5. The ADR picks the mechanism after reading ADR
+   0004 and the current code (game/ui/SafeAreaMargin.gd, the TouchInput configure path, the dp
+   step and ui_profiles, project.godot's stretch and orientation settings, export_presets.cfg)
+   and checks it against the Godot 4.7.2 API.
 4. Camera on rotation: the world point at the screen centre stays at the centre and the zoom
-   keeps the same world size per dp; this ADR states it exactly, with the camera limits.
-5. Portrait layout per screen: this ADR states where each HUD element goes in portrait and names
-   the risks (a narrower map view, the HUD's larger share of the screen) with how the layout
-   limits them.
-6. Sequencing: the build stays landscape-locked until the rows that make scale, HUD, menus and
-   camera work in portrait are merged; flipping the orientation (with the export and manifest
-   checks and `tests/project/test_project_settings.gd`) is the last row, owned by
-   release-engineer. From this ADR's merge on, new UI code must not assume width > height.
-7. Tests: UI and layout tests run at landscape and portrait sizes; this ADR names the sizes (at
+   keeps the same world size per dp; the ADR states it exactly, with the camera limits.
+5. Portrait layout per screen: the ADR states where each HUD element goes in portrait (build
+   sidebar, ArmyBar, SelectionPanel, the Dev button, the minimap if planned) and names the risks
+   (a narrower map view, the HUD's larger share of the screen) with how the layout limits them.
+6. Sequencing: the build stays landscape-locked (project.godot window/handheld/orientation=4,
+   export_presets.cfg progressive_web_app/orientation=0, scripts/export-android.sh's manifest
+   check for 11) until the rows that make scale, HUD, menus and camera work in portrait are
+   merged; flipping the orientation (with the export and manifest checks and
+   tests/project/test_project_settings.gd) is the last row, owned by release-engineer. From this
+   PR's merge on, new UI code must not assume width > height.
+
+   Correction to frame decision 6 by this ADR: `progressive_web_app/orientation=0` is `Any` and
+   the PWA is off (see "What the code does today"), so it locks nothing. Only `project.godot`'s
+   `window/handheld/orientation=4` and the manifest check for 11 lock the build, and they lock
+   the Android build (APK) only; the web preview already turns with the phone. This ADR keeps 0
+   and pins it in P64 (§7). "This PR" is P26v, the docs PR that accepts this ADR.
+7. Tests: UI and layout tests run at landscape and portrait sizes; the ADR names the sizes (at
    least 2400x1080 and 1080x2400 next to the existing 1280x720 and 2048x1536).
 
 ### What the code does today (`main` at 32bfb89)
@@ -96,6 +108,13 @@ The lead's frame decisions (2026-10-19), recorded as given:
   1536x2048 (960x1280), 1.0 at 720x1280, 1.50139 at 1081x2402. Set back to 1280x720 in a
   landscape window it gives the old values (1.5 at 2400x1080, 1.6 at 2048x1536, 1.29450 at
   2400x932).
+- Under `expand` the engine floors the expanded base axis to whole base px, and the stretch
+  transform's `scale.x` (what `UiScale` reads) is the window width over the base width. So a
+  window and its transpose give the same scale only when the expanded axis is a whole number:
+  2402x1081 shows 1599x720 base px, scale.x 2402 / 1599 = 1.502189, and 1081x2402 gives
+  1081 / 720 = 1.501389; 2556x1179 gives 1.638462 and its transpose 1.637500 (ratio 1.000587);
+  2992x1344 1.867665 and 1.866667. 2400x1080 and 1080x2400 give exactly 1.5 both ways. The
+  difference stays under 0.1 % (review of P26v, headless on 4.7.2).
 - Setting `content_scale_size` emits the root viewport's `size_changed` once, synchronously.
   From inside a `size_changed` handler that emission is nested: every handler runs in it with the
   new stretch, and then the outer emission goes on with the handlers after the one that set it.
@@ -139,11 +158,13 @@ do not change and never read it. A rotation issues no Command: a gesture in flig
 - Stretch mode `canvas_items` and aspect `expand` stay. With the swap the stretch is
   `min(w / 1280, h / 720)` in landscape and `min(w / 720, h / 1280)` in portrait, which is the
   same number for the same device in both orientations (both are `min(long side / 1280, short
-  side / 720)`). So:
+  side / 720)`), up to the engine's rounding of the expanded axis to whole base px (under 0.1 %;
+  exactly the same at 2400x1080 and 1080x2400; Context). So:
   - every landscape value of today is unchanged (all profiles, `TARGET_SIZES`, ADR 0004's
     examples);
   - on one phone a dp size, a base-px size and the world px per dp are the same in both
-    orientations; only the visible base rect turns (1600x720 to 720x1600 on the 6-inch phone);
+    orientations (within that rounding); only the visible base rect turns (1600x720 to 720x1600
+    on the 6-inch phone);
   - the dp formula of ADR 0004 §3, `UiMetrics` and `UiScale`'s existing functions do not
     change (P59 only adds the orientation function);
   - where the window itself changes in the turn (a phone browser whose toolbar takes height in
@@ -151,7 +172,11 @@ do not change and never read it. A rotation issues no Command: a gesture in flig
     between the orientations as it does today on any resize; dp sizes stay right through
     `UiScale`, and §4 keeps the world size per dp.
 - Every handler of `size_changed` must recompute from the current metrics and be idempotent,
-  because a flip runs it twice (Context). P59 adds a case that proves it for the existing ones.
+  because a flip runs it twice (Context). P59 adds a flip case that proves it for all eight
+  existing handlers as they are today (`DpMinSize`, `SafeAreaMargin`, `TouchInput`, `ArmyBar`,
+  `SelectionPanel`, `UnitLayer._resize_rings`, `touch_probe.gd`, `RtsCamera`); a row that
+  rewrites a handler extends the case for it (P61 `SelectionPanel` and `ArmyBar`, P62
+  `RtsCamera` and `TouchInput`, P63 `touch_probe.gd`), and every later handler joins it.
 - The autoload covers every scene (the battle screen, dev scenes, the future menus and the ad and
   consent screens) without a per-scene step.
 
@@ -164,33 +189,57 @@ do not change and never read it. A rotation issues no Command: a gesture in flig
   resize, the same case as reverse landscape. Its doc comment drops "sensor-landscape" (P59).
 - An orientation change cancels every gesture in flight (`TouchInput` calls
   `_recognizer.cancel_all()`, as on focus loss), because the finger positions belong to the old
-  layout. It emits `BOX_CANCEL` or `CAMERA_END` as `cancel_all()` does today, and no `TAP`.
+  layout. The recognizer emits `BOX_CANCEL` or `CAMERA_END` as `cancel_all()` does today, and no
+  `TAP`. On a turn `TouchInput` routes the `BOX_CANCEL` to the `PlayerController` as usual but
+  drops the `CAMERA_END`: it never reaches `RtsCamera.end_gesture()`. That call would snap the
+  zoom to a level about `_anchor`, the last pinch or step point in the old view's base px (which
+  may lie outside the new view), and so move the centre point and undo §4's rescale. (Review of
+  P26v, headless on 4.7.2: a pinch at 2400x1080 to zoom 1.2, a turn, then `end_gesture()` gave
+  zoom 1.0 and moved the centre by (-173, +83) world px.) Focus loss keeps today's routing.
+- `TouchInput` finds the turn the same way as the camera (§4): it keeps the last orientation it
+  saw, through §2's orientation function, and updates it on every `size_changed`. So the result
+  does not depend on the order of the handlers: in `scenes/main.tscn` `Camera` comes before
+  `TouchInput` and connects first, but whichever runs first, no `CAMERA_END` from a turn's cancel
+  reaches the camera.
 - `TouchInput.configure()` keeps running on every `size_changed` (ADR 0004 §3).
 
 ### 4. Camera on rotation
-On a `size_changed` where the window's orientation (§2) differs from the one `RtsCamera` saw last:
+`RtsCamera` keeps two values from the last `size_changed` it handled: the window's orientation
+(§2's function) and `bppd`, `UiScale.base_px_per_dp()`. It updates both at the end of every
+`size_changed` handler run, a resize in the same orientation included, so a turn always compares
+with the metrics just before it. (A web phone whose toolbar hides first, 2400x932 to 2400x1080,
+changes `bppd` from 2.03 to 1.75; a value kept from before that resize would make the next turn
+jump the zoom by about 16 %.)
+
+On a `size_changed` where the window's orientation differs from the one `RtsCamera` saw last:
 1. A zoom snap in flight is stopped (`_stop_snap()`); the zoom stays where it is.
 2. `position`, the world point at the viewport centre, is kept.
-3. The zoom keeps the world size per dp: `zoom_new = zoom_old * bppd_new / bppd_old`, where
-   `bppd` is `UiScale.base_px_per_dp()` after and before the turn (the camera keeps the last
-   value it saw), clamped to the pinch bounds of `_zoom_about`
-   (`zoom_levels[0] * (1 - pinch_overshoot)` to the last level `* (1 + pinch_overshoot)`). It
-   does not snap to a level; the next `CAMERA_END` or wheel step snaps as today. Where the
-   window after the turn is the exact transpose of the one before, §2 makes the factor exactly
-   1.0, so the zoom does not change; where system bars or a browser toolbar take a different
-   share of the screen in each orientation, the factor corrects for it.
-4. Then `_clamp_to_map()` runs with the new visible size: on each axis `position` is clamped to
+3. The zoom keeps the world size per dp: `factor = bppd_new / bppd_old`, where `bppd_old` is the
+   kept value and `bppd_new` the current one. If `|factor - 1| < 0.001` the zoom does not change:
+   that is the engine's rounding of §2 (exactly 1.0 at 2400x1080 and 1080x2400, under 0.1 % on
+   other phones whose window turns to its exact transpose), so a zoom on a level stays on it.
+   Otherwise `zoom_new = zoom_old * factor`, clamped to the pinch bounds of `_zoom_about`
+   (`zoom_levels[0] * (1 - pinch_overshoot)` to the last level `* (1 + pinch_overshoot)`); this
+   is where system bars or a browser toolbar take a different share of the screen in each
+   orientation (`web_phone` 2400x932 to a 1080x2100 window: factor 1.75 / 2.028 = 0.863). It
+   does not snap to a level; the turn's `CAMERA_END` never reaches the camera (§3), so the zoom
+   stays off its level until the player's next gesture end or wheel step snaps it, as today.
+4. `_anchor` is set to the new view's centre, so a later snap before any new pinch or step zooms
+   about the centre and keeps the centre point.
+5. Then `_clamp_to_map()` runs with the new visible size: on each axis `position` is clamped to
    the map rect inset by half the visible world size, or set to the map centre where the map is
    smaller than the view on that axis. So the centre point stays at the centre except where the
    new view would cross a map edge.
-5. `limit_*` stays the map rect from `set_map_rect()`; a rotation does not touch it.
-6. There is no memory: turning back starts from the clamped position.
+6. `limit_*` stays the map rect from `set_map_rect()`; a rotation does not touch it.
+7. There is no memory: turning back starts from the clamped position.
 
 Other resizes (a browser toolbar in the same orientation, a desktop window drag) keep today's
-behaviour: the zoom stays and the clamp runs. The autoload of §2 connects before any scene node
-(autoloads enter the tree first), so in the double emission of a flip the camera sees the new
-stretch both times: it rescales on the first run, where the orientation differs from the one it
-saw last, and only clamps on the second.
+behaviour: the zoom stays and the clamp runs; the kept orientation and `bppd` are refreshed.
+The autoload of §2 connects before any scene node (autoloads enter the tree first), so in the
+double emission of a flip the camera sees the new stretch both times: it rescales on the first
+run, where the orientation differs from the one it saw last, and only clamps (and refreshes the
+same values) on the second. `TouchInput`'s drop of the turn's `CAMERA_END` (§3) does not depend
+on the order of the scene's handlers.
 
 ### 5. Layout
 General rules (both orientations, from this ADR's merge on):
@@ -203,8 +252,14 @@ General rules (both orientations, from this ADR's merge on):
 - The build sidebar zone is at the end of the long axis: the right edge in landscape (20 % of the
   width and at least 200 dp, today's rule), the bottom edge in portrait (20 % of the height and at
   least 200 dp, the full safe width). HUD elements stay out of the zone, as ADR 0004's Amendment
-  (P21) says for landscape; while the sidebar does not exist (until Phase 3) the zone is reserved
-  but empty.
+  (P21) says for landscape.
+- While the build sidebar does not exist (until Phase 3's sidebar row), the landscape zone stays
+  reserved but empty, as today, and the portrait zone is not reserved: its height is 0 and the
+  ArmyBar sits on the safe bottom edge, in thumb reach, not above an empty 200 dp strip. The HUD
+  layout reads the portrait zone's height from one place; Phase 3's sidebar row sets it to the
+  band's height, which moves the ArmyBar above the band (ROADMAP Phase 3). P61's tests set a
+  stand-in band height of 200 dp to prove "no control in the zone" and the 40 % limit before the
+  band exists.
 - In portrait, the controls a player taps often (army and groups, build, the minimap) sit in the
   bottom part of the screen; the top line holds only read-only information and the rare top-left
   controls (the Dev button now, pause and menu later).
@@ -214,29 +269,62 @@ Portrait layout of the battle screen (the 6-inch phone: 1080x2400 at 420 dpi, 72
 
 | Element | Landscape (today) | Portrait |
 | --- | --- | --- |
-| Build sidebar (Phase 3) | Right edge, 20 % of the width, at least 200 dp; minimap at the top, then credits and the power bar, then the tabs and the build icons (>= 64 dp) | Bottom band, the full safe width, 20 % of the height and at least 200 dp; the minimap at its right end (square, the band's height less the margins), and left of it the credits and power line, the tabs and one row of build icons (>= 64 dp) that scrolls sideways |
-| Minimap (Phase 3) | Top of the sidebar | Right end of the bottom band |
-| ArmyBar | Bottom-left | Bottom-left, directly above the build band (on the safe bottom edge while the band does not exist); same sizes (288x56 dp) |
-| SelectionPanel | Bottom centre, in the band between the ArmyBar and the sidebar zone | Top edge, right of the top-left controls, one line: the type rows side by side, the total last; the names show only when the whole line fits with them, else every row shows icon and count only; one row high (48 dp plus its padding) |
+| Build sidebar (Phase 3) | Right edge, 20 % of the width, at least 200 dp; minimap at the top, then credits and the power bar, then the tabs and the build icons (>= 64 dp) | Bottom band, the full safe width, 20 % of the height and at least 200 dp; the minimap at its right end; left of it, stacked: the credits and power line, the tabs (icon-only, 48x48 dp each), and one row of build icons (>= 64 dp) that scrolls sideways (budget below) |
+| Minimap (Phase 3) | Top of the sidebar | Right end of the bottom band: a square of the band's inner height (the band less 8 dp margins), but at most 40 % of the safe inner width |
+| ArmyBar | Bottom-left | Bottom-left on the safe bottom edge while the portrait zone is 0 (until Phase 3's sidebar row), then directly above the band (8 dp gap); same sizes (288x56 dp) |
+| SelectionPanel | Bottom centre, in the band between the ArmyBar and the sidebar zone | Top edge, right of the top-left controls (8 dp gap), one row high (48 dp plus its padding), with the fit levels below |
 | Dev button | Top-left | Top-left |
 | Pause and menu (later) | Top-left | Top-left |
 | Under-attack indicators (later) | Screen edges and a minimap ping | The same |
+
+The portrait SelectionPanel's fit levels. The panel never grows past its line: the space from
+the top-left controls' right edge plus 8 dp to the safe rect's right edge (280 dp on
+`web_phone_portrait`, 360 dp wide; 331 dp on the 6-inch phone). An overflow would grow the
+`SafeArea` MarginContainer and push the HUD off the screen (`SelectionPanel.gd`'s own warning).
+The first level whose line fits is used, for the whole line:
+1. every type row with icon, name and count, the Total last;
+2. every type row with icon and count only, the Total last;
+3. the same without the Total;
+4. the first K type rows (in the panel's row order) that fit with a "+N" chip after them, where N
+   is the number of types not shown; K is at least 1 (one row and the chip fit in about 150 dp at
+   3-digit counts).
+For scale (Godot's fallback font, 20 dp numbers, 40 dp icons, 8 dp gaps and padding): icon and
+count with the Total take 250 dp for 2 types and 329 dp for 3 at single-digit counts, 285 dp and
+375 dp at 2-digit counts, so a 360 dp phone reaches level 3 or 4 with 3 types, and every phone
+with all six MVP unit types does.
+
+The portrait build band's budget (Phase 3 builds it; these numbers hold). Inner height: 200 dp
+less 8 dp margins = 184 dp; stacked left part: credits and power 32 dp, tabs 48 dp, icons 64 dp,
+two 8 dp gaps = 160 dp. Inner width: 387 dp on the 6-inch phone, 336 dp at 360 dp. The minimap
+is at most 40 % of it (155 dp, 134 dp), which leaves 224 dp and 194 dp: three icon-only tabs
+(3 x 48 + 2 x 8 = 160 dp) fit both, and the icon row shows at least three whole 64 dp icons on
+the 6-inch phone and two at 360 dp, with part of the next one visible so the row reads as
+scrollable. The tab names show where the band is wide enough (landscape, tablets); in the
+portrait band the tabs are icon-only (shapes, not colour alone; `touch-ui-rules`).
 
 Risks and how the layout limits them:
 - **A narrower map view.** In portrait the 6-inch phone shows 720 world px across at zoom 1.0
   (11.25 tiles) instead of 1600 (25 tiles), and 960 px (15 tiles) at the widest level 0.75. The
   zoom levels stay the same in both orientations (one list in `data/input_settings.tres`); the
   minimap's tap-to-jump (Phase 3) and the under-attack indicators (when they come) are the remedy
-  for what lies beside the view. Double-tap's "all of that type on screen" picks from the narrower view, as the
-  rule says.
+  for what lies beside the view. Double-tap's "all of that type on screen" picks from the
+  narrower view, as the rule says.
 - **The HUD's larger share of the screen height.** On the 6-inch phone the bottom stack (band
   200 dp + 8 dp + ArmyBar 56 dp = 264 dp) is 29 % of the height, the top line with a selection
   64 dp more (7 %). By area that is about what landscape takes (the sidebar zone alone is 22 % of
   the area in both). Limits: the bottom stack takes at most 40 % of the safe height (every portrait
   profile of §6 stays within it); on a screen where it would not (under about 660 dp tall), the
   build band gives way first, never the ArmyBar, a 48 dp target or the 64 dp build icons; the
-  SelectionPanel is one line in portrait, so a mixed selection does not grow a column over the
-  map; and nothing but the band and the ArmyBar line sits at the bottom.
+  SelectionPanel is one line in portrait with the fit levels above, so a mixed selection grows
+  neither a column over the map nor the line past the screen; and nothing but the band and the
+  ArmyBar line sits at the bottom. Until Phase 3's band exists the bottom stack is the ArmyBar
+  line alone (56 dp plus the margin).
+- **Zoom with one hand.** The only zoom gesture is a two-finger pinch (frame decision 2 keeps the
+  gesture set), and portrait is often held in one hand, while the narrower view needs zoom-out
+  more; the minimap and the indicators that would help arrive after P64. P64's phone check tries
+  zooming out with one hand. If Michael finds it too hard, a one-finger zoom is an addition to
+  the gesture set and needs its own ADR (with how it differs from double-tap and long-press);
+  the wheel step stays desktop only. Michael decides after P64's check.
 - **Thumb reach at the top.** The SelectionPanel is read-only (it keeps its touches, ADR 0004's
   Amendment P21), so reach does not matter for it; tappable controls stay at the bottom, except
   the rare top-left ones.
@@ -271,6 +359,12 @@ Other screens:
   the window size from a literal instead of the shared list or a profile, and on a suite that runs
   only landscape sizes without an entry in the scan's pending list; each entry names the row that
   removes it (P61, P62, P63), and P64 requires the list to be empty.
+- Camera turn cases (P62): a gesture-free turn at 2400x1080 ↔ 1080x2400 and at 2556x1179 ↔
+  1179x2556 (the engine's rounding, §2) keeps the zoom on its level; a turn during a pinch (zoom
+  between levels, anchor off-centre in the old view) and during a pan with a factor other than 1
+  (`web_phone` 2400x932 to a 1080x2100 window) keeps the centre point and §4's zoom, and no snap
+  starts; a resize within landscape (2400x932 to 2400x1080) followed by a turn keeps the world px
+  per dp of before the resize within 0.1 %.
 - View-only proof (P62): the main scene run for a fixed number of ticks with a rotation in the
   middle of a pan, a box and a pinch queues no Command and ends with the same state hash as the
   run without the rotation.
@@ -283,8 +377,16 @@ Other screens:
   `scripts/export-android.sh` keeps its check for 11, and `tests/project/test_project_settings.gd`
   keeps 4. `export_presets.cfg`'s `progressive_web_app/orientation=0` is `Any` (Context) and stays
   0; P64 pins it and `progressive_web_app/enabled=false` in `tests/project/test_export_presets.gd`.
-- Because the web export does not lock the orientation, each row shows on the phone preview in
-  portrait as it merges; the APK stays landscape until P64.
+- Because the web export does not lock the orientation (the PWA is off, and the 4.7.x web
+  display server does not report the orientation feature, so the project's orientation setting
+  is not applied there; review of P26v, from the engine source), each row shows on the phone
+  preview in portrait as it merges; the APK stays landscape until P64. P59 changes the sentence
+  CI posts with each preview (`scripts/ci/pages-publish.sh`: "Open it on the phone in
+  landscape.") to say the preview turns with the phone and that a PR which changes layout says
+  which orientation to try.
+- P60 also points the touch-ux-dev agent's "Test every screen at" line and `touch-ui-rules`'
+  "Verify on three sizes" section at the six sizes of §6 (merged with the portrait section's
+  "Verify also" line), so the rows P61-P63 are written against them.
 - Order: P59 (base size and safe area) → P60 (test sizes) → P61 (HUD; also after P58, the central
   Theme), P62 (camera and gestures) and P63 (dev scenes) in any order → P64 (the flip,
   release-engineer). Each row is one concern and under about 400 production lines; the plan gives
@@ -318,8 +420,9 @@ Other screens:
 - Every `size_changed` handler, present and future, must be idempotent (a flip runs it twice).
 - The HUD gets orientation-aware layout code in `SafeArea`'s children (P61), and the Phase 3
   sidebar is built for both shapes from the start, which costs that row some lines.
-- The web preview turns with the phone from P59 on, so half-done portrait layouts are visible
-  there between P59 and P61; the APK is not affected until P64.
+- The web preview already turns with the phone and shows portrait at the right scale from P59
+  on, so half-done portrait layouts are visible there between P59 and P61; the APK is not
+  affected until P64.
 - A phone with auto-rotate off stays in the orientation it is in (`fullUser`); the game cannot
   force a turn, and the player cannot lock one orientation inside the game (no setting is planned).
 - iOS (later) reads the same project setting; its orientation list is checked when the iOS export
