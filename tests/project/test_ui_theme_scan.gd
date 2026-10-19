@@ -5,7 +5,12 @@ extends GdUnitTestSuite
 ## - a Color literal: `Color(`, `Color8(`, `Color.` and a name (the constants such as
 ##   `Color.WHITE`, and `Color.from_hsv`, `Color.html`);
 ## - a colour by reference from `game/view`: `FeedbackStyle.OUTLINE` and `FeedbackStyle.FILL`;
-## - a literal `modulate`, `self_modulate` or `color`, in code and as a scene key of the subtree;
+## - a literal `modulate`, `self_modulate` or `color`, whole or one part of it (`.a`, `[3]`,
+##   `["a"]`), in code and as a scene key of the subtree;
+## - a colour channel written with a literal on any variable (`tint.a = 0.5`, `tint.v *= 2`, the
+##   members `r g b a`, `r8 g8 b8 a8`, `h s v` and `ok_hsl_h ok_hsl_s ok_hsl_l`): the copy of a
+##   modulate that is changed and put back (`var tint: Color = modulate`, `tint.a = 0.5`,
+##   `modulate = tint`) shows at its middle line;
 ## - a font: `FontFile`, `SystemFont`, `FontVariation`, a `.ttf`, `.otf`, `.woff`, `.woff2`, `.fnt`
 ##   or `.fontdata` path;
 ## - `LabelSettings`, the class and the `label_settings` scene key: a Label's own colour, font and
@@ -25,12 +30,19 @@ extends GdUnitTestSuite
 ## scene (`PerfHud.gd`, `perf_arena.gd`) is scanned like the others until it is listed in
 ## EXCEPTIONS with its reason. Every rule has fixture lines that it must flag, so a scan that
 ## matches nothing fails, and every exception must still be needed.
-## Known gaps: a line scan sees no data flow. It does not flag a colour or a size that reaches a
-## StyleBox through a variable (`style.bg_color = tint` on a box got from the theme), a Theme,
-## StyleBox or Font loaded from another resource file, a name computed at run time, or a literal
-## that a call or a tween writes to a modulate (`modulate.a = lerpf(0.2, 0.8, t)`,
-## `tween_property(self, "modulate:a", 0.5, 0.2)`). They need a review of the diff, and a rule of
-## their own once one is written.
+## The scan is a line lint with documented gaps, not a proof that the look is in the theme alone.
+## What a line scan cannot see:
+## - data flow beyond the channel rule: a colour or a size that reaches a StyleBox, a Theme or a
+##   modulate through a variable or a call (`style.bg_color = tint` on a box got from the theme,
+##   `modulate.a = lerpf(0.2, 0.8, t)`), a Theme, StyleBox or Font loaded from another resource
+##   file, a name computed at run time;
+## - `set_indexed` and `set` with a property path (`set_indexed("modulate:a", 0.5)`,
+##   `set("modulate", tint)`);
+## - a tween (`tween_property(self, "modulate:a", 0.5, 0.2)`);
+## - BBCode colour or font tags in a string (a RichTextLabel text with a colour or a font size tag);
+## - a literal font size passed to `draw_string()`.
+## They need a review of the diff. An evasion that needs new code to be written is a later qa PR
+## with a rule of its own, and does not block the PR that finds it.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const UI_DIR: String = "res://game/ui"
@@ -39,13 +51,21 @@ const THEME_PATH: String = "res://game/ui/theme.tres"
 const GD: String = "gd"
 const TSCN: String = "tscn"
 
-## A `modulate`, `self_modulate` or `color`, or one part of it (`.a`, `.a8`, `.v`: any member),
-## set with `=` or a compound `+=`, `-=`, `*=`, `/=` to a number (`0.5`, `.5`, `-.5`, in a
-## parenthesis too), a string or a Color. A variable on the right is fine: the colour then comes
-## from somewhere else. `==`, `!=`, `<=` and `>=` are comparisons and do not match.
+## A `modulate`, `self_modulate` or `color`, or one part of it (`.a`, `.a8`, `.v`: any member, or
+## a subscript: `[3]`, `["a"]`), set with `=` or a compound `+=`, `-=`, `*=`, `/=` to a number
+## (`0.5`, `.5`, `-.5`, in a parenthesis too), a string or a Color. A variable on the right is
+## fine: the colour then comes from somewhere else. `==`, `!=`, `<=` and `>=` are comparisons and
+## do not match.
 const LITERAL_MODULATE: String = (
-	r"\b(?:modulate|self_modulate|color)(?:\.\w+)?\s*[-+*/]?=(?!=)"
+	r"\b(?:modulate|self_modulate|color)(?:\.\w+|\[[^\]]*\])?\s*[-+*/]?=(?!=)"
 	+ r"[\s(]*(?:[-+]?\.?\d|[\"']|Color\b)"
+)
+## A colour channel of any variable (`.r .g .b .a`, the 8-bit `.r8 .g8 .b8 .a8`, `.h .s .v` and
+## `.ok_hsl_h .ok_hsl_s .ok_hsl_l`) set with `=` or a compound operator to a number or a string:
+## the literal of LITERAL_MODULATE after the colour went through a variable. A variable or a call
+## on the right is fine, and so is a comparison.
+const COLOUR_CHANNEL: String = (
+	r"\.(?:[rgba]8?|[hsv]|ok_hsl_[hsl])\s*[-+*/]?=(?!=)" + r"[\s(]*(?:[-+]?\.?\d|[\"'])"
 )
 const THEME_WRITE: String = (
 	r"\.(?:set_font_size|set_stylebox|set_content_margin(?:_all)?|"
@@ -111,6 +131,40 @@ const RULES: Array[Dictionary] = [
 			"modulate.a8 = 128",
 			"self_modulate.v = 0.5",
 			"color.h = 0.3",
+			"modulate[3] = 0.5",
+			'modulate["a"] = 0.5',
+			"self_modulate[3] = 0.5",
+			'self_modulate["a"] = 0.5',
+			"self_modulate[3] *= 0.5",
+			'icon.modulate[&"a"] -= 0.1',
+			"color[0] = 1",
+			"modulate[3] = (.5)",
+		],
+	},
+	{
+		"name": "colour_channel",
+		"kind": GD,
+		"regex": COLOUR_CHANNEL,
+		"fixtures":
+		[
+			"tint.a = 0.5",
+			"tint.a = .5",
+			"tint.a = -.5",
+			"tint.a = (0.5)",
+			"tint.a *= 0.5",
+			"tint.r += 0.1",
+			"tint.g -= 1",
+			"tint.b /= 2",
+			"tint.r8 = 255",
+			"tint.a8 = 128",
+			"tint.h = 0.3",
+			"tint.s = 0.5",
+			"tint.v *= 2",
+			"tint.ok_hsl_h = 0.1",
+			"tint.ok_hsl_s = 1",
+			"tint.ok_hsl_l = 0.5",
+			'tint.a = "0.5"',
+			"modulate.a = 0.5",
 		],
 	},
 	{
@@ -249,6 +303,25 @@ const CLEAN_GD: Array[String] = [
 	"modulate.a = alpha",
 	"modulate.a *= fade",
 	"modulate = (tint)",
+	"modulate[3] = alpha",
+	"self_modulate[3] *= fade",
+	'modulate["a"] = alpha',
+	"if modulate[3] == 0.5:",
+	'if self_modulate["a"] <= 0.5:',
+	"if color[0] != 1:",
+	"var tint: Color = modulate",
+	"tint.a = alpha",
+	"tint.a *= fade",
+	"tint.ok_hsl_l = lightness",
+	"if tint.a == 0.5:",
+	"if tint.r <= 0.5:",
+	"if tint.h != 0:",
+	"var dimmed: float = tint.a * 0.5",
+	"var alpha: float = tint.a8 / 255.0",
+	"slider.value = 0.5",
+	"bar.hue = 3",
+	"bar.shade = 2",
+	"bar.alpha_scale = 0.5",
 	'colors[item] = get_theme_color(item, &"BoxOverlay")',
 	"var colors: Dictionary[StringName, Color] = {}",
 	"func show_type(id: StringName, label: String, number: int, tint: Color) -> void:",
@@ -355,6 +428,16 @@ func test_lines_the_theme_allows_are_not_flagged() -> void:
 		assert_array(_rules_hit(line, GD)).override_failure_message(line).is_empty()
 	for line: String in CLEAN_TSCN:
 		assert_array(_rules_hit(line, TSCN)).override_failure_message(line).is_empty()
+
+
+## A modulate written through a copy (the copy, one channel with a literal, the copy put back) is
+## seen at the channel write: the other two lines are lines of any script.
+func test_a_modulate_written_through_a_copy_is_flagged_at_its_channel_write() -> void:
+	var source: String = "var tint: Color = modulate\ntint.a = 0.5\nmodulate = tint\n"
+	var hits: Array[String] = []
+	for hit: Dictionary in _violations(source, GD):
+		hits.append("%s@%d" % [hit["rule"], hit["line"]])
+	assert_array(hits).is_equal(["colour_channel@2"])
 
 
 ## A comment is not code, and a string is: a font path in a string is a font.

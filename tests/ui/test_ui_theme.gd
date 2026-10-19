@@ -300,6 +300,35 @@ func test_the_override_check_sees_a_colour_font_size_or_style_and_lets_a_constan
 	)
 
 
+## The backdrop check compares every stored property of the box: an in-place write on any of them
+## (a border, its colour, a shadow, an expand margin, a flag) differs from the theme's own box,
+## and a box made the same way does not.
+func test_the_backdrop_check_sees_an_in_place_write_on_any_stored_property() -> void:
+	assert_array(_stored_differences(_scaled_backdrop(), _scaled_backdrop())).is_empty()
+	var writes: Dictionary[String, Callable] = {
+		"border_width_left": func(box: StyleBoxFlat) -> void: box.set_border_width_all(6),
+		"border_color": func(box: StyleBoxFlat) -> void: box.border_color = Color.RED,
+		"bg_color": func(box: StyleBoxFlat) -> void: box.bg_color.a = 0.5,
+		"expand_margin_top": func(box: StyleBoxFlat) -> void: box.set_expand_margin_all(3.0),
+		"shadow_size": func(box: StyleBoxFlat) -> void: box.shadow_size = 4,
+		"corner_detail": func(box: StyleBoxFlat) -> void: box.corner_detail = 3,
+		"corner_radius_top_left": func(box: StyleBoxFlat) -> void: box.set_corner_radius_all(1),
+		"content_margin_left": func(box: StyleBoxFlat) -> void: box.content_margin_left = 1.0,
+		"anti_aliasing": func(box: StyleBoxFlat) -> void: box.anti_aliasing = false,
+		"draw_center": func(box: StyleBoxFlat) -> void: box.draw_center = false,
+		"skew": func(box: StyleBoxFlat) -> void: box.skew = Vector2(0.1, 0.0),
+	}
+	for key: String in writes:
+		var box: StyleBoxFlat = _scaled_backdrop()
+		writes[key].call(box)
+		(
+			assert_array(_stored_differences(box, _scaled_backdrop()))
+			. override_failure_message(key)
+			. contains([key])
+		)
+	assert_array(_stored_differences(StyleBoxEmpty.new(), _scaled_backdrop())).is_equal(["class"])
+
+
 ## The Controls under `hud` resolve every font size and the panel's StyleBox as the theme says,
 ## which is what the code of main set before the theme existed (the numbers at the top).
 func _assert_hud_resolves(why: String) -> void:
@@ -337,6 +366,16 @@ func _assert_hud_resolves(why: String) -> void:
 		assert_int(backdrop.get_corner_radius(side)).override_failure_message(why).is_equal(
 			_px(PAD_DP)
 		)
+	# Every stored property, not the few above: the HUD shares this box with every script that gets
+	# it from get_theme_stylebox, so a write in place on it changes the look outside the theme.
+	var differing: Array[String] = _stored_differences(backdrop, _scaled_backdrop())
+	(
+		assert_array(differing)
+		. override_failure_message(
+			"%s: the backdrop differs from the theme's own in %s" % [why, differing]
+		)
+		. is_empty()
+	)
 	var box: BoxOverlay = _main.get_node("Hud/BoxOverlay")
 	assert_that(box.draw_colors()[&"fill"]).override_failure_message(why).is_equal(FILL)
 	assert_that(box.draw_colors()[&"outline"]).is_equal(OUTLINE)
@@ -347,6 +386,28 @@ func _assert_hud_resolves(why: String) -> void:
 			overrides.append("%s: %s" % [control.get_path(), override])
 	assert_array(overrides).override_failure_message(why).is_empty()
 	assert_array(_without_hud_theme(hud)).override_failure_message(why).is_empty()
+
+
+## The theme's own backdrop in base px at the current dp factor, made again from the file (not
+## from the resource cache, which a write in place would reach too): what the HUD roots hold.
+func _scaled_backdrop() -> StyleBoxFlat:
+	var scaled: Theme = HudTheme.scaled(HudThemes.pristine(), UiScale.base_px_per_dp())
+	return scaled.get_stylebox("panel", "SelectionPanel") as StyleBoxFlat
+
+
+## The names of the stored properties in which `shown` is not `expected`, or "class" alone when
+## they are of two classes.
+func _stored_differences(shown: Resource, expected: Resource) -> Array[String]:
+	var differing: Array[String] = []
+	if shown.get_class() != expected.get_class():
+		differing.append("class")
+		return differing
+	for property: Dictionary in expected.get_property_list():
+		var key: String = property["name"]
+		var stored: bool = ((property["usage"] as int) & PROPERTY_USAGE_STORAGE) != 0
+		if stored and shown.get(key) != expected.get(key):
+			differing.append(key)
+	return differing
 
 
 ## The theme overrides of `control` that are a colour, a font, a font size or a StyleBox, as the
