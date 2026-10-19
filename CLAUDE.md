@@ -14,7 +14,9 @@ Source of truth: this file for rules, `docs/GDD.md` for game design,
   0013), each with a GDScript twin in `game/sim/` that stays the reference and the web path.
   No C#.
 - Renderer: **Compatibility** (required for web export and low-end Android).
-- 2D top-down, landscape only. Base size 1280x720, stretch mode `canvas_items`, aspect `expand`.
+- 2D top-down, landscape and portrait (ADR 0015; the Android build stays landscape-locked until its
+  flip row P64 merges, the web preview already turns). Base size 1280x720, stretch mode
+  `canvas_items`, aspect `expand`.
 - Tests: gdUnit4 in `tests/`, plus a CI-only C++ sanitizer harness in
   `native/sim_kernels/sanitizer/` (ADR 0013 §10). Format/lint: gdtoolkit 4 (`gdformat`,
   `gdlint`). C++: `clang-format` 20.1.8, pinned in `scripts/ci/check-cpp-format.sh`
@@ -69,7 +71,9 @@ Details and patterns: skill `rts-sim-conventions`.
 When unsure, load the vendored skill `gdscript-patterns` before writing code.
 
 ## Mobile UX rules
-Touch targets >= 48 dp. Landscape only, respect safe areas. One finger drag = pan, pinch = zoom,
+Touch targets >= 48 dp. Landscape and portrait (ADR 0015; the Android build is landscape-locked
+until row P64 merges, the web preview already turns; UI code never assumes width > height),
+respect safe areas. One finger drag = pan, pinch = zoom,
 tap = select, tap ground = attack-move, long-press + drag = box select, double-tap = all of that type.
 Details: skill `touch-ui-rules`.
 

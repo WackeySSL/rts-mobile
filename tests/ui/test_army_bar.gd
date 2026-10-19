@@ -3,6 +3,7 @@ extends GdUnitTestSuite
 ## them. Fingers are touches through the real GUI, time is a fake clock. Ids 1-30 are the player's.
 
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
+const HudThemes: GDScript = preload("res://tests/support/hud_theme.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 
 var _window_size_before: Vector2i
@@ -28,12 +29,15 @@ func after_test() -> void:
 
 func test_a_tap_emits_tapped_and_a_hold_emits_held_and_not_tapped() -> void:
 	get_window().size = Vector2i(1280, 720)
+	await await_idle_frame()  # The stretch follows the window, and the theme's px follow the stretch.
 	var bar: ArmyBar = auto_free(ArmyBar.new())
+	bar.theme = HudThemes.scaled()  # Outside main.tscn nothing is inherited (P58).
 	bar.settings = InputSettings.new()
 	bar.settings.group_assign_ms = 700  # The hold time is data: the bar hands it to its buttons.
 	add_child(bar)
 	await await_idle_frame()
 	var button: HoldButton = bar.get_node("Group3")
+	assert_int(button.get_theme_font_size("font_size")).is_equal(roundi(UiScale.dp(18.0)))
 	assert_bool(button.is_processing()).is_false()  # Frames watch the clock only with a finger down.
 	assert_bool(button.clock == Callable(Time, &"get_ticks_msec")).is_true()
 	button.clock = func() -> int: return _now_ms

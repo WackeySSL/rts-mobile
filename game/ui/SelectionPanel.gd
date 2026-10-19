@@ -16,23 +16,23 @@ extends PanelContainer
 ## band's own): a longer name is clipped with an ellipsis. The cap bounds the panel's growth and
 ## keeps it off the ArmyBar. It does not reserve the zone: where the screen is too narrow for the
 ## panel and the zone (see `_fit_band`), the zone gives way, a long name or not.
+## Its look is the inherited theme's (`game/ui/theme.tres`, set on the HUD roots by main.tscn): the
+## backdrop is the `panel` style of the `SelectionPanel` variation (padding and corners in dp, in
+## px once `HudTheme` has run), a name is a `Label`, the counts and the total are `NumberLabel`.
 
 const ICON_DP: float = 40.0
 const MIN_HEIGHT_DP: float = 48.0
-const NAME_FONT_DP: float = 16.0  ## Body text is at least 14 sp (touch-ui-rules).
-const NUMBER_FONT_DP: float = 20.0  ## HUD numbers are at least 18 sp.
-const PAD_DP: float = 8.0
 const GAP_DP: float = 8.0
 const SIDEBAR_SHARE: float = 0.2
 const SIDEBAR_MIN_DP: float = 200.0
 const BAND_SHARE: float = 0.4  ## The widest a row may be, of the band's width.
-const BACKDROP: Color = Color(0.06, 0.08, 0.11, 0.78)
+const PANEL_VARIATION: StringName = &"SelectionPanel"
+const NUMBER_VARIATION: StringName = &"NumberLabel"
 
 @export var runner: MatchRunner
 @export var unit_layer: UnitLayer  ## Owner colours for the icons.
 @export var army_bar: ArmyBar  ## The band starts after it.
 
-var _style: StyleBoxFlat = StyleBoxFlat.new()
 var _list: VBoxContainer = VBoxContainer.new()
 var _total: Label = Label.new()
 var _rows: Array[Row] = []
@@ -66,6 +66,7 @@ class Row:
 		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		count.name = "Count"
+		count.theme_type_variation = NUMBER_VARIATION
 		for label: Label in [title, count]:
 			label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			add_child(label)
@@ -93,21 +94,19 @@ class Row:
 
 	func apply_dp() -> void:
 		add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
-		title.add_theme_font_size_override("font_size", roundi(UiScale.dp(NAME_FONT_DP)))
-		count.add_theme_font_size_override("font_size", roundi(UiScale.dp(NUMBER_FONT_DP)))
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
-	_style.bg_color = BACKDROP
-	add_theme_stylebox_override("panel", _style)
+	theme_type_variation = PANEL_VARIATION
 	var min_size: DpMinSize = DpMinSize.new()
 	min_size.min_dp = Vector2(0.0, MIN_HEIGHT_DP)
 	add_child(min_size)
 	_list.name = "Rows"
 	add_child(_list)
 	_total.name = "Total"
+	_total.theme_type_variation = NUMBER_VARIATION
 	_total.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_total.visible = false
 	_list.add_child(_total)
@@ -160,10 +159,7 @@ func _add_row() -> void:
 
 ## Sizes are dp, so they follow a resize like DpMinSize does.
 func _apply_dp() -> void:
-	_style.set_content_margin_all(UiScale.dp(PAD_DP))
-	_style.set_corner_radius_all(roundi(UiScale.dp(PAD_DP)))
 	_list.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
-	_total.add_theme_font_size_override("font_size", roundi(UiScale.dp(NUMBER_FONT_DP)))
 	for row: Row in _rows:
 		row.apply_dp()
 	_fit_band()
