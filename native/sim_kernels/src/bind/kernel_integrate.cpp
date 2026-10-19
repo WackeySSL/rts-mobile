@@ -12,7 +12,9 @@
 // integrate::MEMO_SLOTS is asked on each use (flow_cache_size is 8 in data/rules.tres). That is the second recorded
 // exception to the rule, beside FLOW's re-read of `pending` (plan, P37n).
 // Twin: game/sim/Movement.gd (integrate). Tests: tests/sim/native/test_integrate_kernel.gd and the movement suites under both
-// implementations (tests/sim/test_movement*.gd); the lockstep over 900 ticks is P37n3. MIT.
+// implementations (tests/sim/test_movement*.gd). Lockstep: tests/sim/native/test_integrate_lockstep.gd (900 arena ticks, changed
+// rules, random states), test_integrate_lockstep_cases.gd (crafted maps, ties and the edges of the numbers) and
+// test_integrate_lockstep_off_map.gd (FIELD units off the map). MIT.
 #include "sim_kernels.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
