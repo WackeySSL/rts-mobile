@@ -6,8 +6,11 @@ extends GdUnitTestSuite
 ## exactness cases use one unit per lane, or units that never come within their radii sum, so they
 ## stay valid when P39b adds separation (plan, "File ownership", the first audited table). The
 ## slide's per-class, clamp, push and no-map cases are in test_movement_integrate.gd.
+## Every case runs under both implementations of the INTEGRATE phase (P37n), the GDScript twin and
+## the C++ kernel, through SimImpls: gdUnit4 runs it once for each.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const MovementV1: GDScript = preload("res://tests/sim/support/movement_v1.gd")
 const PhaseViewProbe: GDScript = preload("res://tests/sim/support/phase_view_probe.gd")
 const TRACKED: int = World.MoveClass.TRACKED
@@ -28,7 +31,7 @@ var _hashes: PackedInt64Array = PackedInt64Array()
 ## truncating step on axes and diagonals, a goal that d2 puts a tick later than the rounded
 ## distance does ((1, 120) away), a speed 0 unit that never arrives, an ATTACK unit that keeps its
 ## order and a unit already on its goal.
-func test_on_an_open_map_every_tick_equals_phase_1() -> void:
+func test_on_an_open_map_every_tick_equals_phase_1(impl: int, _test_parameters := _both()) -> void:
 	var lanes: Array[Array] = [
 		# type, order, start, goal
 		[0, MOVE, Vector2i(500, 1500), Vector2i(7001, 1502)],
@@ -40,8 +43,8 @@ func test_on_an_open_map_every_tick_equals_phase_1() -> void:
 		[0, MOVE, Vector2i(5000, 19500), Vector2i(5000, 19500)],
 		[1, MOVE, Vector2i(9500, 25500), Vector2i(9200, 22400)],
 	]
-	var now: World = _lanes(lanes)
-	var then: World = _lanes(lanes)
+	var now: World = _lanes(lanes, impl)
+	var then: World = _lanes(lanes, impl)
 	for tick: int in 80:
 		Movement.run(now)
 		assert_bool(_within_speed(now)).override_failure_message("tick %d" % tick).is_true()
@@ -67,11 +70,13 @@ func test_on_an_open_map_every_tick_equals_phase_1() -> void:
 ## the goal's row against the wall. Its centre is on a passable tile after every tick, it never
 ## goes IDLE (the goal is behind the wall: part 3 gives it a field), and its blocked line keeps it
 ## DIRECT.
-func test_a_direct_unit_steering_into_a_wall_slides_and_is_never_on_a_blocked_tile() -> void:
+func test_a_direct_unit_steering_into_a_wall_slides_and_is_never_on_a_blocked_tile(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 8:
 		rock.append(Vector2i(5, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(12, 8, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(12, 8, rock)), impl)
 	world.add_unit(1, 0, 3500, 2500)
 	assert_bool(FixedMath.line_clear(world, 3500, 2500, 7500, 6500, TRACKED)).is_false()
 	var slid: int = 0
@@ -111,11 +116,11 @@ func test_a_direct_unit_steering_into_a_wall_slides_and_is_never_on_a_blocked_ti
 ## checks again each time it enters a tile. `stats[LINE_CHECKS]` counts every line test, and a unit
 ## that needs a field takes its group's, so there is no test beyond the first checks and the tile
 ## entries.
-func test_a_150_unit_order_spreads_its_line_checks() -> void:
+func test_a_150_unit_order_spreads_its_line_checks(impl: int, _test_parameters := _both()) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in range(10, 30):
 		rock.append(Vector2i(20, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(40, 40, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(40, 40, rock)), impl)
 	var rows: PackedInt32Array = GridWorld.add_block(world, 150, 15, 2000, 2000, 1000, 0)
 	var ids: PackedInt32Array = PackedInt32Array(range(1, 151))
 	var per_tick: Array[int] = []
@@ -156,8 +161,10 @@ func test_a_150_unit_order_spreads_its_line_checks() -> void:
 ## while it moves on to other tiles. Unit 5 checks on the order's tick (5 % 5 == 0), unit 1 on
 ## tick 4 ((4 + 1) % 5 == 0), from the tile it has reached by then. A new order marks the line
 ## unchecked again, and the next check follows the cadence of the tick it was given on.
-func test_a_line_check_writes_the_cell_and_a_new_order_marks_the_line_unchecked() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+func test_a_line_check_writes_the_cell_and_a_new_order_marks_the_line_unchecked(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10)), impl)
 	GridWorld.add_block(world, 5, 1, 2800, 2500, 1000, 0)
 	var ids: PackedInt32Array = PackedInt32Array([1, 5])
 	var counts: Array[int] = []
@@ -185,7 +192,7 @@ func test_a_line_check_writes_the_cell_and_a_new_order_marks_the_line_unchecked(
 	assert_array(counts).is_equal([1, 0, 0, 0, 1, 0, 0, 0, 0, 1])
 	assert_array(world.nav_cell.slice(1, 4)).is_equal([-1, -1, -1])
 	# A period of 0 (a hand-built rule) is read as 1: the unit checks on its first tick.
-	var every: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+	var every: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10)), impl)
 	every.line_check_period_ticks = 0
 	every.add_unit(1, 0, 2800, 2500)
 	every.order[0] = MOVE
@@ -199,8 +206,8 @@ func test_a_line_check_writes_the_cell_and_a_new_order_marks_the_line_unchecked(
 ## speed^2): the unit is on the goal, its navigation state is cleared. An ATTACK unit snaps to its
 ## goal and keeps its order and mode. A goal one milli further takes one more tick, because it is
 ## not within one step after the first.
-func test_arrival_sets_idle_at_the_goal() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(10, 10))
+func test_arrival_sets_idle_at_the_goal(impl: int, _test_parameters := _both()) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(10, 10)), impl)
 	GridWorld.add_block(world, 3, 1, 1000, 1000, 2000, 0)
 	for row: int in 3:
 		world.order[row] = MOVE
@@ -226,8 +233,8 @@ func test_arrival_sets_idle_at_the_goal() -> void:
 
 ## HOLD produces no intent: the unit keeps its order and its place, and a stale intent in the
 ## scratch arrays is overwritten, also on an idle row. Back to DIRECT it moves at once.
-func test_hold_produces_no_intent() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(10, 10))
+func test_hold_produces_no_intent(impl: int, _test_parameters := _both()) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(10, 10)), impl)
 	GridWorld.add_block(world, 3, 1, 1000, 1000, 2000, 0)
 	for row: int in 3:
 		world.intent_x[row] = 77
@@ -273,8 +280,8 @@ func test_hold_produces_no_intent() -> void:
 ## row has, or 0) leaves the unit on its goal. The tick is 4, unit 1's line-check tick ((4 + 1) % 5
 ## is 0): a DIRECT unit with an unchecked line would check now, a CHASE unit never does, so nothing
 ## is counted and its cell stays -1.
-func test_chase_steers_at_the_target() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(10, 10))
+func test_chase_steers_at_the_target(impl: int, _test_parameters := _both()) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(10, 10)), impl)
 	world.add_unit(1, 0, 2000, 2000)
 	world.add_unit(1, 0, 7000, 7000)
 	world.add_unit(1, 0, 2000, 5000)
@@ -335,8 +342,10 @@ func test_chase_steers_at_the_target() -> void:
 ## mode: `integrate` never ends a CHASE unit's order, and combat (P41) is what takes a unit out of
 ## CHASE when its target goes (the fallback documented in Movement.run). A DIRECT unit in the next
 ## lane, on the same errand, arrives and goes idle.
-func test_a_chase_unit_with_no_target_reaches_its_goal_and_keeps_its_order() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(10, 10))
+func test_a_chase_unit_with_no_target_reaches_its_goal_and_keeps_its_order(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(10, 10)), impl)
 	world.add_unit(1, 0, 2000, 2000)
 	world.add_unit(1, 0, 2000, 4000)
 	for row: int in 2:
@@ -360,8 +369,10 @@ func test_a_chase_unit_with_no_target_reaches_its_goal_and_keeps_its_order() -> 
 ## probe that reads the World at each mark sees it: at COMMANDS the MOVE order is applied and the
 ## intent is not written, at FLOW (P37b) nothing has moved yet, at INTENTS the intent is written and
 ## the unit has not moved, at INTEGRATE the unit has moved.
-func test_the_intents_mark_follows_movement_run_and_the_integrate_mark_follows_the_move() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(10, 10))
+func test_the_intents_mark_follows_movement_run_and_the_integrate_mark_follows_the_move(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(10, 10)), impl)
 	world.add_unit(1, 0, 1000, 5000)
 	var probe: SimProbe = PhaseViewProbe.new()
 	probe.world = world
@@ -383,8 +394,8 @@ func test_the_intents_mark_follows_movement_run_and_the_integrate_mark_follows_t
 ## A new order makes the unit DIRECT with its line unchecked, whatever it was doing, and a STOP
 ## makes it NONE. Units that are not in the command keep their state. The tick is 1, which is
 ## nobody's line-check tick for ids 1 and 2 ((1 + 1) % 5 and (1 + 2) % 5 are not 0).
-func test_orders_reset_the_navigation_state() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(10, 10))
+func test_orders_reset_the_navigation_state(impl: int, _test_parameters := _both()) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(10, 10)), impl)
 	world.player_count = 2
 	world.type_weapon[0] = 0
 	world.add_unit(1, 0, 1000, 1000)
@@ -422,10 +433,10 @@ func test_orders_reset_the_navigation_state() -> void:
 ## changed assertion. P37b changed it from 18 to 13: the tanks that were ordered back west at tick
 ## 60 had followed their fields towards the wall's north end, so more of them are still on the way
 ## at tick 200; no unit is still FIELD then (the infantry's lines are clear by tick 200).
-func test_two_runs_give_the_same_hashes() -> void:
-	var first: World = _run_script()
+func test_two_runs_give_the_same_hashes(impl: int, _test_parameters := _both()) -> void:
+	var first: World = _run_script(impl)
 	var first_hashes: PackedInt64Array = _hashes.duplicate()
-	var second: World = _run_script()
+	var second: World = _run_script(impl)
 	assert_array(_hashes).is_equal(first_hashes)
 	assert_array(second.pos_x).is_equal(first.pos_x)
 	assert_int(first_hashes.size()).is_equal(200)
@@ -438,12 +449,12 @@ func test_two_runs_give_the_same_hashes() -> void:
 ## 20 tanks and 20 infantry on a 30 x 30 map with a wall (tile column 15, rows 5 to 24), all ordered
 ## east behind the wall at tick 0 and the tanks back west at tick 60. Leaves the hash of every tick
 ## in `_hashes` and returns the world.
-func _run_script() -> World:
+func _run_script(impl: int) -> World:
 	var rock: Array[Vector2i] = []
 	for row: int in range(5, 25):
 		rock.append(Vector2i(15, row))
-	var world: World = GridWorld.from_rows(
-		GridWorld.grass(30, 30, rock), [TRACKED, World.MoveClass.FOOT]
+	var world: World = _in(
+		GridWorld.from_rows(GridWorld.grass(30, 30, rock), [TRACKED, World.MoveClass.FOOT]), impl
 	)
 	GridWorld.add_block(world, 20, 5, 2000, 8000, 1100, 0)
 	GridWorld.add_block(world, 20, 5, 2000, 14000, 1100, 1)
@@ -463,8 +474,10 @@ func _run_script() -> World:
 
 ## A World with one unit type per entry of the type column of `lanes` (speeds 120, 61 and 0), one
 ## unit per lane with its order and goal set by hand, on an open 30 x 30 map.
-func _lanes(lanes: Array[Array]) -> World:
-	var world: World = GridWorld.from_rows(GridWorld.grass(30, 30), [TRACKED, TRACKED, TRACKED])
+func _lanes(lanes: Array[Array], impl: int) -> World:
+	var world: World = _in(
+		GridWorld.from_rows(GridWorld.grass(30, 30), [TRACKED, TRACKED, TRACKED]), impl
+	)
 	world.type_speed[1] = 61
 	world.type_speed[2] = 0
 	for lane: Array in lanes:
@@ -504,3 +517,14 @@ func _cells(world: World) -> PackedInt32Array:
 func _stamped(command: Command, tick: int) -> Command:
 	command.tick = tick
 	return command
+
+
+## The parameter sets of a test that runs under both implementations (gdUnit4 calls it by name).
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
+	return world

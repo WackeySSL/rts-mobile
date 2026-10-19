@@ -28,7 +28,7 @@
 namespace {
 
 // One pointer per kernel with a cases file.
-const KernelCases *const KERNELS[] = { &FLOW_CASES };
+const KernelCases *const KERNELS[] = { &FLOW_CASES, &INTEGRATE_CASES };
 
 // The dump files of an argument: itself, or the state_*.bin files of a folder in name order.
 std::vector<std::string> dump_files(const std::string &argument) {

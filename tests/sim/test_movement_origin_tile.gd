@@ -5,8 +5,11 @@ extends GdUnitTestSuite
 ## `>= 0`. The crowd that P39b's separation pushes into the top-left corner is the case that
 ## matters: such a unit must still follow a field through the corner tile and must still stall.
 ## Maps are built in code (GridWorld).
+## Every case runs under both implementations of the INTEGRATE phase (P37n), the GDScript twin and
+## the C++ kernel, through SimImpls: gdUnit4 runs it once for each.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const FieldCadence: GDScript = preload("res://tests/sim/support/field_cadence.gd")
 const MOVE: int = World.Order.MOVE
 const IDLE: int = World.Order.IDLE
@@ -20,8 +23,10 @@ const TRACKED: int = World.MoveClass.TRACKED
 ## (the diagonal from (0, 1) to (1, 0) cuts the rock's corner). In (0, 1) its `nav_next` is cell 0,
 ## and it steers at the centre of that tile: it goes north, then east, and arrives. A `nav_next` of
 ## 0 taken for "none" would steer it straight at the goal, into the rock, for good.
-func test_a_unit_whose_field_leads_through_the_corner_tile_arrives() -> void:
-	var world: World = _corner_world()
+func test_a_unit_whose_field_leads_through_the_corner_tile_arrives(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _corner_world(impl)
 	var seen_zero: bool = false
 	var north_most: int = 1500
 	var arrived_at: int = -1
@@ -46,7 +51,7 @@ func test_a_unit_whose_field_leads_through_the_corner_tile_arrives() -> void:
 ## the answer. That includes the tick on which the unit leaves tile 0 for (1, 0): the tile it
 ## stood in has the number 0.
 func test_a_unit_leaving_the_corner_tile_asks_at_the_tile_it_enters() -> void:
-	var world: World = _corner_world()
+	var world: World = _corner_world(SimImpls.Impl.GDSCRIPT)
 	var order: Command = Command.move(1, PackedInt32Array([1]), 3500, 1500)
 	var found: Dictionary = FieldCadence.run(world, order, 300)
 	assert_array(found["violations"]).is_empty()
@@ -61,10 +66,12 @@ func test_a_unit_leaving_the_corner_tile_asks_at_the_tile_it_enters() -> void:
 ## checked its line in tile 0 (`nav_cell` is 0, not -1); a FIELD unit stands in tile 0 on a
 ## complete field that names no next tile (`nav_next` is NO_NEXT). Neither is vacuous: the DIRECT
 ## unit has `nav_cell` 0 and the FIELD unit `nav_next` NO_NEXT while it is held.
-func test_a_unit_held_in_the_corner_tile_stalls_whether_direct_or_following_a_field() -> void:
+func test_a_unit_held_in_the_corner_tile_stalls_whether_direct_or_following_a_field(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for mode: int in [DIRECT, FIELD]:
 		var kind: String = "DIRECT" if mode == DIRECT else "FIELD"
-		var world: World = GridWorld.from_rows(GridWorld.grass(5, 3))
+		var world: World = _in(GridWorld.from_rows(GridWorld.grass(5, 3)), impl)
 		world.add_unit(1, 0, 500, 500)
 		world.order[0] = MOVE
 		world.goal_x[0] = 900
@@ -104,8 +111,8 @@ func test_a_unit_held_in_the_corner_tile_stalls_whether_direct_or_following_a_fi
 
 
 ## The corner map: 5 x 2 tiles, rock at (1, 1), one tank at (500, 1500).
-func _corner_world() -> World:
-	var world: World = GridWorld.from_rows(GridWorld.grass(5, 2, [Vector2i(1, 1)]))
+func _corner_world(impl: int) -> World:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(5, 2, [Vector2i(1, 1)])), impl)
 	world.add_unit(1, 0, 500, 1500)
 	return world
 
@@ -113,3 +120,14 @@ func _corner_world() -> World:
 func _stamped(command: Command, tick: int) -> Command:
 	command.tick = tick
 	return command
+
+
+## The parameter sets of a test that runs under both implementations (gdUnit4 calls it by name).
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
+	return world

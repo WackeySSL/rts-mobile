@@ -17,9 +17,14 @@ extends RefCounted
 ## Navigation modes (`nav_mode`): DIRECT steers straight at the goal; NONE on a unit with an order
 ## is a DIRECT unit that has not started (a hand-set order); FIELD follows the flow field in
 ## `field` (the slot) and steers DIRECT while that field is pending; HOLD gives no intent; CHASE
-## steers straight at the unit in `target` (combat sets both, P41). This is the GDScript twin of
-## the INTENTS and INTEGRATE kernels P37n and P37n2 port later: keep it portable (typed locals, the
-## World's arrays aliased before each loop, no allocation, helper calls only at event cadence).
+## steers straight at the unit in `target` (combat sets both, P41). `integrate` has a C++ twin, the
+## INTEGRATE kernel (native/sim_kernels, core/integrate.cpp with core/flow.cpp's best_neighbour and
+## acquire and core/fixed_math.cpp's isqrt, ADR 0013 section 5): `integrate` hands the phase to it
+## when the World's mask has its bit, and a change to `integrate` or to the helpers it calls
+## (_refresh_next, _rekey, _take_own_field, _end_order) edits both and passes the kernel's lockstep
+## test. `run` is the twin of the INTENTS kernel that P37n2 may port later. Keep both portable
+## (typed locals, the World's arrays aliased before each loop, no allocation, helper calls only at
+## event cadence).
 ## The split follows ADR 0013 section 1: `run` holds the steering and the line checks, with the
 ## first acquire of a field (a GDScript caller of the cache); `integrate` holds the rest of what
 ## follows a field: `nav_next` with `best_neighbour`, the stall and the ATTACK re-key.
@@ -315,6 +320,9 @@ static func _end_order(world: World, row: int) -> void:
 ##   never saw. The new check finds the line blocked and gives the unit a field.
 @warning_ignore("integer_division")
 static func integrate(world: World) -> void:
+	if ((world.native_phases >> SimProbe.Phase.INTEGRATE) & 1) == 1:
+		world.kernels.integrate(world)
+		return
 	var ids: PackedInt32Array = world.unit_id
 	var orders: PackedInt32Array = world.order
 	var modes: PackedInt32Array = world.nav_mode

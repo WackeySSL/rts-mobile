@@ -5,8 +5,12 @@ extends GdUnitTestSuite
 ## it, and a slot nobody references is the one a new key takes. An ATTACK unit's field is keyed on
 ## the tile its target stood in and re-keyed when the target moves more than `attack_rekey_milli`.
 ## Maps are built in code (GridWorld).
+## Every case runs under both implementations of the INTEGRATE phase (P37n), the GDScript twin and
+## the C++ kernel, through SimImpls: gdUnit4 runs it once for each.
+## The case that counts the twin's `best_neighbour` calls stays on the twin.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const FieldCadence: GDScript = preload("res://tests/sim/support/field_cadence.gd")
 const MOVE: int = World.Order.MOVE
 const ATTACK: int = World.Order.ATTACK
@@ -24,13 +28,16 @@ const FIELD: int = World.NavMode.FIELD
 ## clear) is the one its next key takes; the slots with references keep their keys. Then STOP, a
 ## death and the arrival release the others. After every step the cache's counts equal the rows
 ## that point at each slot.
-func test_references_are_derived_and_an_unreferenced_slot_is_evicted_first() -> void:
+func test_references_are_derived_and_an_unreferenced_slot_is_evicted_first(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 12:
 		rock.append(Vector2i(18, row))
 		if row < 10:
 			rock.append(Vector2i(8, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(24, 12, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(24, 12, rock)), impl)
+	world.flow_cache_size = 3
 	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 3)
 	var goals: Array[Vector2i] = [
 		Vector2i(10500, 1500), Vector2i(16500, 4500), Vector2i(10500, 9500), Vector2i(19500, 5500)
@@ -114,11 +121,14 @@ func test_references_are_derived_and_an_unreferenced_slot_is_evicted_first() -> 
 ## 10000 apart, a cache of 2 slots); the first dies: the rows compact, the second keeps its slot in
 ## row 0, the dead unit's slot has no references after the next recount, and a third tank's new key
 ## takes that slot, not the one still in use.
-func test_a_death_releases_the_slot_of_the_unit_that_held_it() -> void:
+func test_a_death_releases_the_slot_of_the_unit_that_held_it(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 10:
 		rock.append(Vector2i(8, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 12, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 12, rock)), impl)
+	world.flow_cache_size = 2
 	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 2)
 	world.add_unit(1, 0, 3500, 1500)
 	world.add_unit(1, 0, 3500, 5500)
@@ -158,8 +168,10 @@ func test_a_death_releases_the_slot_of_the_unit_that_held_it() -> void:
 ## moves 4000 or less from the centre of that tile; beyond that the unit takes the field of the
 ## target's new tile at its next event (a tile entered, or its line-check turn), and the old slot
 ## is released. The map is 20 x 12 with a wall in column 8 and a gap in rows 10 and 11.
-func test_an_attack_field_is_keyed_on_the_targets_tile_and_rekeys_beyond_the_distance() -> void:
-	var world: World = _attack_world()
+func test_an_attack_field_is_keyed_on_the_targets_tile_and_rekeys_beyond_the_distance(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _attack_world(impl)
 	var old_slot: int = _attack_until_field(world)
 	assert_int(old_slot).is_greater(-1)
 	assert_array([world.order[0], world.nav_mode[0]]).is_equal([ATTACK, FIELD])
@@ -185,9 +197,11 @@ func test_an_attack_field_is_keyed_on_the_targets_tile_and_rekeys_beyond_the_dis
 
 ## The distance is "more than" `attack_rekey_milli` from the centre of the keyed tile: a target 4000
 ## away keeps the field, one milli further re-keys.
-func test_the_rekey_distance_is_more_than_attack_rekey_milli() -> void:
+func test_the_rekey_distance_is_more_than_attack_rekey_milli(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for far: int in [3999, 4000, 4001]:
-		var world: World = _attack_world()
+		var world: World = _attack_world(impl)
 		var slot: int = _attack_until_field(world)
 		world.pos_x[1] = 14500 + far
 		for _tick: int in 12:
@@ -199,8 +213,8 @@ func test_the_rekey_distance_is_more_than_attack_rekey_milli() -> void:
 
 ## The re-key distance is the World's `attack_rekey_milli`: with 2000, a target 2500 from the keyed
 ## tile's centre (which the default 4000 keeps) gets a field of its own tile.
-func test_the_rekey_distance_is_the_worlds_rule() -> void:
-	var world: World = _attack_world()
+func test_the_rekey_distance_is_the_worlds_rule(impl: int, _test_parameters := _both()) -> void:
+	var world: World = _attack_world(impl)
 	world.attack_rekey_milli = 2000
 	var slot: int = _attack_until_field(world)
 	world.pos_x[1] = 14500 + 2500
@@ -214,9 +228,11 @@ func test_the_rekey_distance_is_the_worlds_rule() -> void:
 ## south of the keyed tile's centre, with a rock tile (14, 4) between the target and that centre, so
 ## the key is out of the target's sight. 3000 and exactly 4000 keep the field (the limit is
 ## inclusive), 4001 takes the field of the target's tile.
-func test_the_rekey_keeps_a_key_within_the_distance_though_the_target_cannot_see_it() -> void:
+func test_the_rekey_keeps_a_key_within_the_distance_though_the_target_cannot_see_it(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for far: int in [3000, 4000, 4001]:
-		var world: World = _attack_world([Vector2i(14, 4)])
+		var world: World = _attack_world(impl, [Vector2i(14, 4)])
 		var slot: int = _attack_until_field(world)
 		assert_int(slot).is_greater(-1)
 		world.pos_y[1] = 2500 + far
@@ -234,11 +250,12 @@ func test_the_rekey_keeps_a_key_within_the_distance_though_the_target_cannot_see
 ## 2000 from that key's centre in clear sight, and still the attacker gets a field of its own,
 ## keyed on the target's tile (14, 4).
 func test_an_attack_takes_the_field_of_its_targets_tile_though_another_unit_holds_one_to_share(
+	impl: int, _test_parameters := _both()
 ) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 10:
 		rock.append(Vector2i(8, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 12, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 12, rock)), impl)
 	world.player_count = 2
 	world.type_weapon[0] = 0
 	world.line_check_period_ticks = 1
@@ -262,8 +279,10 @@ func test_an_attack_takes_the_field_of_its_targets_tile_though_another_unit_hold
 ## entries) the unit keeps its slot. When the budget comes back the field completes, and at that
 ## event the unit takes the field of its target's tile. (A target that keeps walking cannot starve
 ## the unit of a finished field: it follows the old one while the new one integrates.)
-func test_an_attack_unit_keeps_a_pending_field_until_it_completes_then_rekeys() -> void:
-	var world: World = _attack_world()
+func test_an_attack_unit_keeps_a_pending_field_until_it_completes_then_rekeys(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _attack_world(impl)
 	world.flow_cells_per_tick = 0
 	var slot: int = _attack_until_field(world)
 	assert_int(slot).is_greater(-1)
@@ -285,8 +304,11 @@ func test_an_attack_unit_keeps_a_pending_field_until_it_completes_then_rekeys() 
 ## turns at least) every ask finds both slots referenced: the attacker keeps its slot, its key and
 ## FIELD, and never falls back to DIRECT. When the MOVE unit stops, its slot is free and the
 ## attacker's next event takes it for the field of the target's new tile.
-func test_an_attack_unit_keeps_its_field_when_every_slot_is_referenced_and_asks_again() -> void:
-	var world: World = _attack_world()
+func test_an_attack_unit_keeps_its_field_when_every_slot_is_referenced_and_asks_again(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _attack_world(impl)
+	world.flow_cache_size = 2
 	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 2)
 	world.add_unit(1, 0, 500, 500)
 	var orders: Array[Command] = [
@@ -329,7 +351,7 @@ func test_an_attack_unit_keeps_its_field_when_every_slot_is_referenced_and_asks_
 ## other tick not at all, and `nav_next` keeps its value. The target stands still, so the field is
 ## never re-keyed; refreshing an ATTACK unit's `nav_next` on every tick would fail the count.
 func test_an_attack_unit_asks_best_neighbour_at_event_cadence_only() -> void:
-	var world: World = _attack_world()
+	var world: World = _attack_world(SimImpls.Impl.GDSCRIPT)
 	var order: Command = Command.attack(1, PackedInt32Array([1]), 2)
 	var found: Dictionary = FieldCadence.run(world, order, 300)
 	assert_array(found["violations"]).is_empty()
@@ -341,8 +363,10 @@ func test_an_attack_unit_asks_best_neighbour_at_event_cadence_only() -> void:
 
 
 ## An ATTACK on a target in the open needs no field at all: a clear line stays DIRECT.
-func test_an_attack_with_a_clear_line_needs_no_field() -> void:
-	var world: World = _attack_world()
+func test_an_attack_with_a_clear_line_needs_no_field(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _attack_world(impl)
 	world.pos_x[1] = 6500
 	for tick: int in 20:
 		var commands: Array[Command] = []
@@ -354,11 +378,11 @@ func test_an_attack_with_a_clear_line_needs_no_field() -> void:
 
 ## A 20 x 12 map with a wall in column 8 (gap in rows 10 and 11) and the `extra` rock tiles, a tank
 ## of player 1 at (3500, 2500) and an unarmed unit of player 2 at (14500, 2500).
-func _attack_world(extra: Array[Vector2i] = []) -> World:
+func _attack_world(impl: int, extra: Array[Vector2i] = []) -> World:
 	var rock: Array[Vector2i] = extra.duplicate()
 	for row: int in 10:
 		rock.append(Vector2i(8, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 12, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 12, rock)), impl)
 	world.player_count = 2
 	world.type_weapon[0] = 0
 	world.add_unit(1, 0, 3500, 2500)
@@ -396,3 +420,14 @@ func _assert_derived(world: World, label: String) -> void:
 func _stamped(command: Command, tick: int) -> Command:
 	command.tick = tick
 	return command
+
+
+## The parameter sets of a test that runs under both implementations (gdUnit4 calls it by name).
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
+	return world

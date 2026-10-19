@@ -1,6 +1,8 @@
 // FLOW, the native twin of FlowCache.run (ADR 0013 sections 2 and 3, plan P30n): the recount of the references from
 // the World's `field` column, then FlowCache.advance with FlowField.begin and advance, in place over the arrays of
-// the World, the cache and its slots. The rules are core/flow.h's, a mirror of FlowField.gd and FlowCache.gd.
+// the World, the cache and its slots. The rules and the loop of the call are core/flow.h's (flow::run, which the
+// sanitizer harness calls too), a mirror of FlowField.gd and FlowCache.gd; this file borrows the arrays and hands
+// run() the slots one turn at a time.
 // Twin: game/sim/FlowCache.gd (run). Lockstep test: tests/sim/native/test_flow_lockstep.gd. MIT.
 #include "sim_kernels.h"
 
@@ -69,6 +71,30 @@ void store_turn(const WorldAccess &access, const SlotTurn &turn) {
 	}
 }
 
+// The slots of flow.fields for flow::run: one turn at a time, loaded from the slot object and stored back.
+class FlowTurns final : public flow::Turns {
+public:
+	FlowTurns(const WorldAccess &access, const Array &fields) :
+			access_(access), fields_(fields) {}
+
+	int64_t pending_of(int64_t slot) override { return access_.int_in(WorldAccess::slot_in(fields_, slot), ID_SLOT_pending); }
+	bool load(int64_t slot) override {
+		Object *object = WorldAccess::slot_in(fields_, slot);
+		if (object == nullptr) {
+			return false;
+		}
+		turn_ = load_turn(access_, object);
+		return true;
+	}
+	flow::Slot &slot() override { return turn_.slot; }
+	void store() override { store_turn(access_, turn_); }
+
+private:
+	const WorldAccess &access_;
+	const Array &fields_;
+	SlotTurn turn_;
+};
+
 } // namespace
 
 void SimKernels::flow(Object *world, int64_t budget) const {
@@ -89,30 +115,21 @@ void SimKernels::flow(Object *world, int64_t budget) const {
 	const Borrowed<const int32_t> key_class = access.read_i32(cache, ID_FLOW_key_class);
 	const Borrowed<const int32_t> requested = access.read_i32(cache, ID_FLOW_requested);
 	const Borrowed<int32_t> refs = access.write_i32(cache, ID_FLOW_ref_count);
-	Borrowed<int32_t> state = access.write_i32(cache, ID_FLOW_status);
+	const Borrowed<int32_t> state = access.write_i32(cache, ID_FLOW_status);
 	Borrowed<int32_t> stats = access.write_i32(world, ID_WORLD_stats);
-	const int64_t cols = access.int_in(cache, ID_FLOW_cols);
-	const int64_t rows = access.int_in(cache, ID_FLOW_rows);
 
-	flow::recount(refs.view, field.view, unit_id.view.size());
-	const auto pending_of = [&](int64_t slot) { return access.int_in(WorldAccess::slot_in(fields, slot), ID_SLOT_pending); };
-	int64_t settled = 0;
-	while (settled < budget) {
-		const int64_t pick = flow::oldest_request(state.view, requested.view, pending_of);
-		if (pick == -1) {
-			break;
-		}
-		Object *object = WorldAccess::slot_in(fields, pick);
-		if (object == nullptr) {
-			break;
-		}
-		SlotTurn turn = load_turn(access, object);
-		if (state.view.get(pick) == flow::WAITING) {
-			flow::begin(turn.slot, key_goal.view.get(pick), key_class.view.get(pick), costs.view, cols, rows);
-			state.view.set(pick, flow::ACTIVE);
-		}
-		settled += flow::advance(turn.slot, budget - settled);
-		store_turn(access, turn);
-	}
-	stats.view.set(STAT_FLOW_CELLS, stats.view.get(STAT_FLOW_CELLS) + settled);
+	flow::Call call;
+	call.ref_count = refs.view;
+	call.status = state.view;
+	call.field = field.view;
+	call.requested = requested.view;
+	call.key_goal = key_goal.view;
+	call.key_class = key_class.view;
+	call.costs = costs.view;
+	call.units = unit_id.view.size();
+	call.cols = access.int_in(cache, ID_FLOW_cols);
+	call.rows = access.int_in(cache, ID_FLOW_rows);
+	FlowTurns turns(access, fields);
+	const flow::Run run = flow::run(call, budget, turns);
+	stats.view.set(STAT_FLOW_CELLS, stats.view.get(STAT_FLOW_CELLS) + run.settled);
 }

@@ -1,8 +1,8 @@
-// The FLOW kernel's cases for the sanitizer harness (ADR 0013 section 10): core/flow.h's begin, advance, recount and
-// oldest_request, called the way bind/kernel_flow.cpp calls them, over states the harness owns as plain std::vector
-// buffers, so that AddressSanitizer sees every array at its exact size. Plain C++17, no Godot header. MIT.
-// Twin: bind/kernel_flow.cpp (call() below mirrors SimKernels::flow, loop for loop, with the slot objects replaced by
-// SlotData). A change to that loop edits call() in the same PR. Dump records: tests/sim/native/sanitizer/dump_states.gd.
+// The FLOW kernel's cases for the sanitizer harness (ADR 0013 section 10): core/flow.h's run, begin, advance and
+// recount, called the way bind/kernel_flow.cpp calls them (call() below is the same flow::run, with the slot objects
+// replaced by SlotData), over states the harness owns as plain std::vector buffers, so that AddressSanitizer sees
+// every array at its exact size. Plain C++17, no Godot header. MIT.
+// Twin: bind/kernel_flow.cpp. Dump records: tests/sim/native/sanitizer/dump_states.gd.
 #include <algorithm>
 #include <climits>
 #include <iterator>
@@ -12,6 +12,7 @@
 
 #include "cases.h"
 #include "flow.h"
+#include "views.h"
 
 namespace {
 
@@ -35,16 +36,7 @@ struct FlowState {
 	std::vector<SlotData> slots;
 };
 
-template <typename T>
-ArrayView<T> view(std::vector<T> &values) {
-	return ArrayView<T>(values.data(), static_cast<int64_t>(values.size()));
-}
-template <typename T>
-ArrayView<const T> cview(const std::vector<T> &values) {
-	return ArrayView<const T>(values.data(), static_cast<int64_t>(values.size()));
-}
-
-flow::Slot load(SlotData &data) {
+flow::Slot load_slot(SlotData &data) {
 	flow::Slot slot;
 	slot.cost = view(data.cost);
 	slot.next = view(data.next);
@@ -63,8 +55,8 @@ flow::Slot load(SlotData &data) {
 	return slot;
 }
 
-// The exit of a turn, as store_turn: the scalars and, when the field completed, the swap of the two buffers.
-void store(SlotData &data, const flow::Slot &slot) {
+// The exit of a turn, as store_turn in bind/kernel_flow.cpp: the scalars and, when the field completed, the swap of the two buffers.
+void store_slot(SlotData &data, const flow::Slot &slot) {
 	data.goal_cell = slot.goal_cell;
 	data.move_class = slot.move_class;
 	data.grid_cols = slot.grid_cols;
@@ -78,34 +70,52 @@ void store(SlotData &data, const flow::Slot &slot) {
 	}
 }
 
+// The slots of the state as flow::run reaches them, one turn at a time (bind/kernel_flow.cpp's FlowTurns).
+class VectorTurns final : public flow::Turns {
+public:
+	explicit VectorTurns(FlowState &state) :
+			state_(state) {}
+
+	int64_t pending_of(int64_t slot) override { return known(slot) ? state_.slots[static_cast<size_t>(slot)].pending : int64_t(0); }
+	bool load(int64_t slot) override {
+		if (!known(slot)) {
+			return false;
+		}
+		current_ = &state_.slots[static_cast<size_t>(slot)];
+		turn_ = load_slot(*current_);
+		return true;
+	}
+	flow::Slot &slot() override { return turn_; }
+	void store() override { store_slot(*current_, turn_); }
+
+private:
+	bool known(int64_t slot) const { return slot >= 0 && slot < static_cast<int64_t>(state_.slots.size()); }
+
+	FlowState &state_;
+	SlotData *current_ = nullptr;
+	flow::Slot turn_;
+};
+
 // One call of the FLOW kernel with `budget` cells; returns the cells it settled.
 int64_t call(FlowState &state, int64_t budget) {
-	const int64_t slot_count = static_cast<int64_t>(state.slots.size());
-	flow::recount(view(state.ref_count), cview(state.field), state.units);
-	const auto pending_of = [&](int64_t slot) { return slot >= 0 && slot < slot_count ? state.slots[static_cast<size_t>(slot)].pending : int64_t(0); };
-	ArrayView<int32_t> status = view(state.status);
-	int64_t settled = 0;
-	while (settled < budget) {
-		const int64_t pick = flow::oldest_request(status, cview(state.requested), pending_of);
-		if (pick < 0 || pick >= slot_count) {
-			break;
-		}
-		SlotData &data = state.slots[static_cast<size_t>(pick)];
-		flow::Slot slot = load(data);
-		const bool starts = status.get(pick) == flow::WAITING;
-		if (starts) {
-			flow::begin(slot, cview(state.key_goal).get(pick), cview(state.key_class).get(pick), cview(state.move_cost), state.cols, state.rows);
-			status.set(pick, flow::ACTIVE);
-		}
-		const int64_t advanced = flow::advance(slot, budget - settled);
-		// The bind loop ends because every pick starts a field or settles a cell; one that does neither repeats forever.
-		if (!starts && advanced == 0) {
-			throw Finding("FLOW picked slot " + std::to_string(pick) + " and settled nothing: the kernel loop would never end");
-		}
-		settled += advanced;
-		store(data, slot);
+	flow::Call args;
+	args.ref_count = view(state.ref_count);
+	args.status = view(state.status);
+	args.field = cview(state.field);
+	args.requested = cview(state.requested);
+	args.key_goal = cview(state.key_goal);
+	args.key_class = cview(state.key_class);
+	args.costs = cview(state.move_cost);
+	args.units = state.units;
+	args.cols = state.cols;
+	args.rows = state.rows;
+	VectorTurns turns(state);
+	const flow::Run result = flow::run(args, budget, turns);
+	// The bind loop ends because every pick starts a field or settles a cell; one that does neither repeats forever.
+	if (result.stuck) {
+		throw Finding("FLOW picked a slot and settled nothing: the kernel loop would never end");
 	}
-	return settled;
+	return result.settled;
 }
 
 void count(Tally &tally, int64_t settled) {

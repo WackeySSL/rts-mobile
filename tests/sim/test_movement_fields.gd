@@ -4,6 +4,10 @@ extends GdUnitTestSuite
 ## clear sends the unit DIRECT again, and a pending field leaves it steering DIRECT. Maps are built
 ## in code (GridWorld). The stall, the references and the ATTACK fields are in
 ## test_movement_stall.gd, the checkpoint ticks in test_movement_flow_line.gd.
+## Every case runs under both implementations of the INTEGRATE phase (P37n), the GDScript twin and
+## the C++ kernel, through SimImpls: gdUnit4 runs it once for each.
+## The cases that count the twin's `best_neighbour` calls and the one that compares the
+## implementations itself stay on the twin.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
 const FieldCadence: GDScript = preload("res://tests/sim/support/field_cadence.gd")
@@ -22,8 +26,10 @@ const ROCK: int = 2
 ## stand north-west of the wall and are ordered to slots north-east of it (the straight lines cross
 ## the wall, so the way leads through the gap). Every tick no unit centre is on a blocked tile; at
 ## the end all twelve have arrived on their slots, and the run used FIELD (not vacuous).
-func test_twelve_tanks_reach_slots_through_the_gap_and_no_centre_is_on_rock() -> void:
-	var world: World = _gap_world()
+func test_twelve_tanks_reach_slots_through_the_gap_and_no_centre_is_on_rock(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _gap_world(impl)
 	var rows: PackedInt32Array = GridWorld.add_block(world, 12, 4, 3000, 1500, 1000, 0)
 	var field_ticks: int = 0
 	var slots_used: int = 0
@@ -60,11 +66,13 @@ func test_twelve_tanks_reach_slots_through_the_gap_and_no_centre_is_on_rock() ->
 ## rows. The infantry's line is clear (the class of the unit is the class the check uses), so it
 ## never needs a field and walks straight; the tank's line is blocked, so it follows a field south
 ## around the band and back, and arrives later. No tank centre is ever on scrub.
-func test_infantry_crosses_scrub_and_tanks_go_around() -> void:
+func test_infantry_crosses_scrub_and_tanks_go_around(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var map: PackedStringArray = GridWorld.grass(24, 12)
 	for row: int in 9:
 		map[row] = map[row].left(10) + "^^" + map[row].substr(12)
-	var world: World = GridWorld.from_rows(map, [TRACKED, FOOT])
+	var world: World = _in(GridWorld.from_rows(map, [TRACKED, FOOT]), impl)
 	world.add_unit(1, 0, 3500, 2500)
 	world.add_unit(1, 1, 3500, 4500)
 	var tank_south: int = 0
@@ -101,11 +109,13 @@ func test_infantry_crosses_scrub_and_tanks_go_around() -> void:
 ## end its line is clear: on the tile entry that finds it clear the unit is DIRECT with `field` -1
 ## and `nav_next` -1, it never checks again, the cache's reference count falls to 0 at the next
 ## recount, and it arrives. Not vacuous: it was FIELD before, with a next tile.
-func test_a_unit_whose_line_becomes_clear_switches_to_direct_and_drops_its_field() -> void:
+func test_a_unit_whose_line_becomes_clear_switches_to_direct_and_drops_its_field(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 7:
 		rock.append(Vector2i(8, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 12, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 12, rock)), impl)
 	world.add_unit(1, 0, 3500, 2500)
 	var first_field: int = -1
 	var switched: int = -1
@@ -144,12 +154,14 @@ func test_a_unit_whose_line_becomes_clear_switches_to_direct_and_drops_its_field
 ## exactly like a DIRECT unit of the same order on a twin world (marked as checked, so it never asks
 ## for a field). Both slide along the wall. Then the budget comes back and the same unit follows
 ## the field: it was not stuck waiting for it.
-func test_a_pending_field_leaves_units_steering_direct() -> void:
+func test_a_pending_field_leaves_units_steering_direct(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 9:
 		rock.append(Vector2i(8, row))
-	var held: World = GridWorld.from_rows(GridWorld.grass(20, 12, rock))
-	var plain: World = GridWorld.from_rows(GridWorld.grass(20, 12, rock))
+	var held: World = _in(GridWorld.from_rows(GridWorld.grass(20, 12, rock)), impl)
+	var plain: World = _in(GridWorld.from_rows(GridWorld.grass(20, 12, rock)), impl)
 	held.flow_cells_per_tick = 0
 	for world: World in [held, plain]:
 		world.add_unit(1, 0, 3500, 2500)
@@ -212,8 +224,10 @@ func test_nav_next_is_set_at_event_cadence_only() -> void:
 ## columns. (Such a unit is rare, since a clear line sends it DIRECT first, so the state is set by
 ## hand; the unit steers at its next tile, so it does not land on the goal, and arrival is only
 ## the end of the order.)
-func test_arrival_clears_the_navigation_state_and_the_field() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+func test_arrival_clears_the_navigation_state_and_the_field(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10)), impl)
 	world.add_unit(1, 0, 3500, 4500)
 	world.order[0] = MOVE
 	world.goal_x[0] = 3560
@@ -232,11 +246,11 @@ func test_arrival_clears_the_navigation_state_and_the_field() -> void:
 
 ## A new order resets `nav_next` to -1 and drops the field, whatever the unit was doing; the next
 ## order's check makes its own. The tick is chosen so that no unit checks on it ((tick + 1) % 5).
-func test_a_new_order_resets_nav_next_and_the_field() -> void:
+func test_a_new_order_resets_nav_next_and_the_field(impl: int, _test_parameters := _both()) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 9:
 		rock.append(Vector2i(8, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 12, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 12, rock)), impl)
 	world.add_unit(1, 0, 3500, 2500)
 	var tick: int = 0
 	while world.nav_next[0] == -1 and tick < 200:
@@ -266,12 +280,14 @@ func test_a_new_order_resets_nav_next_and_the_field() -> void:
 ## field is still complete, serving the old costs), presses against the new rock and never has its
 ## centre on it. When the new field swaps in, the unit re-routes through the far gap at its next
 ## line-check turn and arrives.
-func test_set_terrain_mid_move_keeps_the_old_field_until_the_new_one_swaps_in() -> void:
+func test_set_terrain_mid_move_keeps_the_old_field_until_the_new_one_swaps_in(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 14:
 		if not row in [2, 3, 10, 11]:
 			rock.append(Vector2i(12, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(30, 14, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl)
 	world.add_unit(1, 0, 3500, 6500)
 	var closed: bool = false
 	var pressed: bool = false
@@ -319,11 +335,15 @@ func test_set_terrain_mid_move_keeps_the_old_field_until_the_new_one_swaps_in() 
 ## 12 down to row 11) to a point on the far side. Their twelve slots lie on twelve different tiles,
 ## `group_cell` is the same cell for all of them (the cell of Formation's centre), and after the
 ## first line checks the cache holds exactly two fields, both keyed on that cell, one per class.
-func test_a_group_order_takes_one_field_per_class_keyed_on_the_group_target() -> void:
+func test_a_group_order_takes_one_field_per_class_keyed_on_the_group_target(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 12:
 		rock.append(Vector2i(12, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(30, 14, rock), [TRACKED, FOOT])
+	var world: World = _in(
+		GridWorld.from_rows(GridWorld.grass(30, 14, rock), [TRACKED, FOOT]), impl
+	)
 	GridWorld.add_block(world, 8, 4, 3000, 1500, 1000, 0)
 	GridWorld.add_block(world, 4, 4, 3000, 4500, 1000, 1)
 	var given: Array[Command] = [
@@ -370,14 +390,16 @@ func test_a_group_order_takes_one_field_per_class_keyed_on_the_group_target() ->
 ## 3400). After the first ticks every FIELD unit holds the one field, slot 0, keyed on the group
 ## cell, and the cache holds no other.
 @warning_ignore("integer_division")
-func test_a_group_wider_than_the_rekey_distance_shares_one_field() -> void:
+func test_a_group_wider_than_the_rekey_distance_shares_one_field(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 14:
 		if row != 6 and row != 7:
 			rock.append(Vector2i(12, row))
 	var ids: PackedInt32Array = PackedInt32Array(range(1, 61))
 	for attack_move: bool in [false, true]:
-		var world: World = GridWorld.from_rows(GridWorld.grass(30, 14, rock))
+		var world: World = _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl)
 		GridWorld.add_block(world, 60, 10, 1500, 1500, 1000, 0)
 		var order: Command = Command.move(1, ids, 22500, 6500)
 		if attack_move:
@@ -410,8 +432,10 @@ func test_a_group_wider_than_the_rekey_distance_shares_one_field() -> void:
 ## The group target is the order's: two orders to points 3000 apart take a field each, and a third
 ## order to the first point shares the first one (the cache is keyed on the cell, whoever asks).
 ## `group_cell` follows the command: a unit given a new order has the new cell.
-func test_orders_to_different_points_take_a_field_each_and_the_same_point_shares() -> void:
-	var world: World = _gap_world()
+func test_orders_to_different_points_take_a_field_each_and_the_same_point_shares(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _gap_world(impl)
 	GridWorld.add_block(world, 3, 3, 3000, 1500, 1000, 0)
 	GridWorld.add_block(world, 3, 3, 3000, 4500, 1000, 0)
 	GridWorld.add_block(world, 3, 3, 3000, 7500, 1000, 0)
@@ -442,8 +466,9 @@ func test_orders_to_different_points_take_a_field_each_and_the_same_point_shares
 ## (NO_NEXT) on a field keyed on another tile, and take the field of their own slot's tile. All
 ## twelve arrive on their slots, and the cache held more than the group's field at some point.
 func test_a_unit_whose_slot_is_across_a_wall_from_the_group_target_takes_a_field_of_its_own(
+	impl: int, _test_parameters := _both()
 ) -> void:
-	var world: World = _thin_wall_world(8)
+	var world: World = _thin_wall_world(8, impl)
 	var slots_used: int = 0
 	for tick: int in 700:
 		var commands: Array[Command] = []
@@ -467,8 +492,10 @@ func test_a_unit_whose_slot_is_across_a_wall_from_the_group_target_takes_a_field
 ## gives it a group target like MOVE). Every tank ends on its own slot, east of the wall or not; the
 ## goals are read after the first step, since a stalled unit's goal is rewritten to where it stands
 ## and would hide a tank that stopped short.
-func test_attack_move_units_across_a_thin_wall_take_their_own_field() -> void:
-	var world: World = _thin_wall_world(8)
+func test_attack_move_units_across_a_thin_wall_take_their_own_field(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _thin_wall_world(8, impl)
 	var goals: Array[Vector2i] = []
 	for tick: int in 700:
 		var commands: Array[Command] = []
@@ -493,9 +520,11 @@ func test_attack_move_units_across_a_thin_wall_take_their_own_field() -> void:
 ## follow a group field are decided by the World's columns alone. Not vacuous: units took a field of
 ## their own (more than the group's slot was in use) and the hashes differ from checkpoint to
 ## checkpoint.
-func test_the_thin_wall_run_gives_the_same_hashes_twice() -> void:
-	var first: Dictionary = _thin_wall_hashes()
-	var second: Dictionary = _thin_wall_hashes()
+func test_the_thin_wall_run_gives_the_same_hashes_twice(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var first: Dictionary = _thin_wall_hashes(impl)
+	var second: Dictionary = _thin_wall_hashes(impl)
 	assert_array(second["hashes"]).is_equal(first["hashes"])
 	assert_int(first["slots_used"]).is_greater(1)
 	assert_int(first["hashes"].size()).is_equal(20)
@@ -515,11 +544,13 @@ func test_the_thin_wall_run_gives_the_same_hashes_twice() -> void:
 ## goal: they find no next tile on entering the key tile and still gain for the 9 ticks (at most)
 ## it takes to cross the 1000 from the tile's west edge to the wall.
 func test_with_every_slot_referenced_units_across_the_wall_end_their_orders_and_free_the_slot(
+	impl: int, _test_parameters := _both()
 ) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 10:
 		rock.append(Vector2i(20, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(30, 14, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl)
+	world.flow_cache_size = 1
 	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 1)
 	GridWorld.add_block(world, 2, 2, 3500, 5500, 1000, 0)
 	for row: int in 2:
@@ -555,8 +586,10 @@ func test_with_every_slot_referenced_units_across_the_wall_end_their_orders_and_
 ## (the first number past the slots, a larger one), is a DIRECT unit that has not checked: it steers
 ## at its goal, checks on its turn and goes on from there (here the line is clear, so it is DIRECT
 ## with its cell written). Nothing indexes the cache with the bad number.
-func test_a_field_mode_without_a_slot_steers_direct_and_checks_again() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+func test_a_field_mode_without_a_slot_steers_direct_and_checks_again(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10)), impl)
 	GridWorld.add_block(world, 3, 1, 2500, 1500, 3000, 0)
 	var numbers: Array[int] = [-1, world.flow.fields.size(), 99]
 	for row: int in 3:
@@ -577,8 +610,9 @@ func test_a_field_mode_without_a_slot_steers_direct_and_checks_again() -> void:
 
 
 ## Two runs of the gap scenario give the same hash after every tick, and so does the run with the
-## FLOW phase in C++ (the kernel does the recount and the integration; the units' acquire() is
-## GDScript). Not vacuous: the units used a field, and the hashes are not all one value.
+## FLOW and INTEGRATE phases in C++ (the kernels do the recount, the integration and the look-ups;
+## the units' first acquire() is GDScript's). Not vacuous: the units used a field, and the hashes
+## are not all one value.
 func test_the_gap_run_gives_the_same_hashes_twice_and_under_both_flow_implementations() -> void:
 	var first: PackedInt64Array = _gap_hashes(SimImpls.Impl.GDSCRIPT)
 	var second: PackedInt64Array = _gap_hashes(SimImpls.Impl.GDSCRIPT)
@@ -594,7 +628,7 @@ func test_the_gap_run_gives_the_same_hashes_twice_and_under_both_flow_implementa
 
 ## 300 ticks of the gap scenario with six tanks; leaves nothing behind but the hash of each tick.
 func _gap_hashes(impl: int) -> PackedInt64Array:
-	var world: World = _gap_world()
+	var world: World = _gap_world(SimImpls.Impl.GDSCRIPT)
 	GridWorld.add_block(world, 6, 3, 3000, 1500, 1000, 0)
 	assert_array(SimImpls.use(world, impl)).is_empty()
 	var hashes: PackedInt64Array = PackedInt64Array()
@@ -611,18 +645,18 @@ func _gap_hashes(impl: int) -> PackedInt64Array:
 	return hashes
 
 
-func _gap_world() -> World:
+func _gap_world(impl: int) -> World:
 	var rock: Array[Vector2i] = []
 	for row: int in 14:
 		if row != 9 and row != 10:
 			rock.append(Vector2i(12, row))
-	return GridWorld.from_rows(GridWorld.grass(30, 14, rock))
+	return _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl)
 
 
 ## 300 ticks of the thin-wall case (twelve tanks, eight slots) with the hash at each checkpoint:
 ## "hashes" and "slots_used" (the most slots in use at once).
-func _thin_wall_hashes() -> Dictionary:
-	var world: World = _thin_wall_world(8)
+func _thin_wall_hashes(impl: int) -> Dictionary:
+	var world: World = _thin_wall_world(8, impl)
 	var hashes: PackedInt64Array = PackedInt64Array()
 	var slots_used: int = 0
 	for tick: int in 300:
@@ -639,11 +673,12 @@ func _thin_wall_hashes() -> Dictionary:
 
 ## 30 x 14, a one tile thick wall in column 20 (rows 0 to 9), twelve tanks west of it, a cache of
 ## `slots` fields.
-func _thin_wall_world(slots: int) -> World:
+func _thin_wall_world(slots: int, impl: int) -> World:
 	var rock: Array[Vector2i] = []
 	for row: int in 10:
 		rock.append(Vector2i(20, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(30, 14, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl)
+	world.flow_cache_size = slots
 	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), slots)
 	GridWorld.add_block(world, 12, 4, 3000, 1500, 1000, 0)
 	return world
@@ -660,3 +695,14 @@ func _wall(rows: int) -> Array[Vector2i]:
 func _stamped(command: Command, tick: int) -> Command:
 	command.tick = tick
 	return command
+
+
+## The parameter sets of a test that runs under both implementations (gdUnit4 calls it by name).
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
+	return world

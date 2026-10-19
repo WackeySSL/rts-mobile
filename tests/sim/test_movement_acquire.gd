@@ -7,8 +7,11 @@ extends GdUnitTestSuite
 ## set_terrain calls make it so) and at a tick above 0, so that a literal 0 in place of the World's
 ## value shows. Scrub is the terrain that tells the classes apart: open to foot units, closed to
 ## tanks. Maps are built in code (GridWorld).
+## Every case runs under both implementations of the INTEGRATE phase (P37n), the GDScript twin and
+## the C++ kernel, through SimImpls: gdUnit4 runs it once for each.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const FOOT: int = World.MoveClass.FOOT
 const TRACKED: int = World.MoveClass.TRACKED
 const MOVE: int = World.Order.MOVE
@@ -24,8 +27,10 @@ const FIELD: int = World.NavMode.FIELD
 ## where the tank stops for good. The first acquire is at the tick of the line check, for the
 ## target's tile, class TRACKED and the World's map version; the tank is never on scrub or rock
 ## and ends on its target.
-func test_an_attack_unit_takes_the_field_of_its_own_class_round_the_scrub() -> void:
-	var world: World = GridWorld.from_rows(_scrub_gate_map())
+func test_an_attack_unit_takes_the_field_of_its_own_class_round_the_scrub(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(_scrub_gate_map()), impl)
 	world.player_count = 2
 	world.type_weapon[0] = 0
 	world.add_unit(1, 0, 3500, 5500)
@@ -63,9 +68,11 @@ func test_an_attack_unit_takes_the_field_of_its_own_class_round_the_scrub() -> v
 ## complete field), or the tile the step enters. Each case calls `integrate` on a hand-set tank on
 ## a complete TRACKED field with its goal moved 5000 south, at tick 7 (no line-check turn for
 ## unit 1).
-func test_an_attack_rekey_takes_the_field_of_the_units_class_at_both_events() -> void:
+func test_an_attack_rekey_takes_the_field_of_the_units_class_at_both_events(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for on_entry: bool in [false, true]:
-		var world: World = GridWorld.from_rows(_scrub_gate_map())
+		var world: World = _in(GridWorld.from_rows(_scrub_gate_map()), impl)
 		world.add_unit(1, 0, 3950, 5500)
 		world.order[0] = ATTACK
 		world.goal_x[0] = 14500
@@ -109,8 +116,10 @@ func test_an_attack_rekey_takes_the_field_of_the_units_class_at_both_events() ->
 ## sharing (tick 8, not the tick of the first acquire), though its own goal is 1000 from that cell;
 ## an ATTACK unit takes the field of its goal's tile (tick 12). Unit n checks on the ticks where
 ## (tick + n) % 5 == 0, and `Movement.run` is called on its own at the ticks chosen.
-func test_a_field_is_acquired_at_the_tick_and_map_version_of_the_check() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 12, _wall(10)))
+func test_a_field_is_acquired_at_the_tick_and_map_version_of_the_check(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 12, _wall(10))), impl)
 	assert_int(world.map_version).is_greater(0)
 	var starts: Array[Vector2i] = [Vector2i(3500, 2500), Vector2i(3500, 4500), Vector2i(3500, 6500)]
 	var goals: Array[Vector2i] = [
@@ -149,11 +158,13 @@ func test_a_field_is_acquired_at_the_tick_and_map_version_of_the_check() -> void
 ## obstacle to them), so on that tile entry it is DIRECT with no field, at x 3185 and well before
 ## the scrub at 8000. Checked with the tank's class the scrub would block the line and keep the
 ## soldier on its field until it had passed the scrub.
-func test_a_unit_checks_its_line_for_its_own_class_when_it_enters_a_tile() -> void:
+func test_a_unit_checks_its_line_for_its_own_class_when_it_enters_a_tile(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var map: PackedStringArray = GridWorld.grass(14, 7, [Vector2i(4, 3)])
 	for row: int in 7:
 		map[row] = map[row].left(8) + "^^" + map[row].substr(10)
-	var world: World = GridWorld.from_rows(map, [TRACKED, FOOT])
+	var world: World = _in(GridWorld.from_rows(map, [TRACKED, FOOT]), impl)
 	world.add_unit(1, 1, 1500, 3500)
 	var order: Command = Command.move(1, PackedInt32Array([1]), 12500, 3500)
 	var fielded: bool = false
@@ -209,3 +220,14 @@ func _given(order: Command, tick: int) -> Array[Command]:
 		order.tick = 0
 		commands.append(order)
 	return commands
+
+
+## The parameter sets of a test that runs under both implementations (gdUnit4 calls it by name).
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
+	return world

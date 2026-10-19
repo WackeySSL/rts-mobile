@@ -8,8 +8,11 @@ extends GdUnitTestSuite
 ## The map: a wall in column 12 with a gap in rows 9 and 10, west of it the tanks, east of it the
 ## goals, and further east the pockets (eight rock tiles around one open tile each). Maps are built
 ## in code (GridWorld).
+## Every case runs under both implementations of the INTEGRATE phase (P37n), the GDScript twin and
+## the C++ kernel, through SimImpls: gdUnit4 runs it once for each.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const IDLE: int = World.Order.IDLE
 const DIRECT: int = World.NavMode.DIRECT
 ## The tick the tanks behind the pockets are ordered on: every pocket group has its slot by then.
@@ -20,8 +23,10 @@ const REACHABLE: int = 6
 ## A cache of two slots and two pockets, one tank for each: the pockets hold both slots. Six tanks
 ## ordered one by one (so six keys) at tick 6 find every slot referenced and wait. The pocket tanks
 ## end their orders where they stop gaining on their goals, and all six others arrive on theirs.
-func test_two_pocket_tanks_do_not_starve_six_others_of_two_slots() -> void:
-	var played: Dictionary = _play(2, 2, 1)
+func test_two_pocket_tanks_do_not_starve_six_others_of_two_slots(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var played: Dictionary = _play(2, 2, 1, impl)
 	assert_int(played["waiting"]).is_greater(0)
 	assert_int(played["last_idle"]).is_between(REACHABLE_TICK, 899)
 	_assert_outcome(played["world"], 2, 1)
@@ -30,8 +35,10 @@ func test_two_pocket_tanks_do_not_starve_six_others_of_two_slots() -> void:
 ## A cache of eight slots and eight pocket groups of two tanks each: every group holds a slot (its
 ## tanks share the pocket's field), the cache is full, and the six tanks ordered at tick 6 wait for
 ## a slot. They get one as the pocket tanks stall and free theirs, and all arrive.
-func test_eight_pocket_groups_do_not_starve_six_others_of_eight_slots() -> void:
-	var played: Dictionary = _play(8, 8, 2)
+func test_eight_pocket_groups_do_not_starve_six_others_of_eight_slots(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var played: Dictionary = _play(8, 8, 2, impl)
 	assert_int(played["waiting"]).is_greater(0)
 	assert_int(played["last_idle"]).is_between(REACHABLE_TICK, 899)
 	_assert_outcome(played["world"], 8, 2)
@@ -41,9 +48,11 @@ func test_eight_pocket_groups_do_not_starve_six_others_of_eight_slots() -> void:
 ## `Replay.CHECKPOINT_PERIOD` ticks, as MatchLoop takes them): the stall, the waiting for a slot and
 ## the slots the pocket tanks hand back are all decided by the World's columns, nothing else. Not
 ## vacuous: the hashes differ from tick to tick.
-func test_the_pocket_run_gives_the_same_hashes_twice() -> void:
-	var first: PackedInt64Array = _play(2, 2, 1)["hashes"]
-	var second: PackedInt64Array = _play(2, 2, 1)["hashes"]
+func test_the_pocket_run_gives_the_same_hashes_twice(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var first: PackedInt64Array = _play(2, 2, 1, impl)["hashes"]
+	var second: PackedInt64Array = _play(2, 2, 1, impl)["hashes"]
 	assert_int(first.size() * Replay.CHECKPOINT_PERIOD).is_equal(900)
 	assert_array(second).is_equal(first)
 	var distinct: Dictionary = {}
@@ -61,11 +70,14 @@ func test_the_pocket_run_gives_the_same_hashes_twice() -> void:
 ## made on the group's field (the way round the wall is longer than the 2019 it stands from its
 ## slot) are not carried over: it would otherwise end its order in front of its slot a few ticks
 ## after the new field starts to lead it away from it.
-func test_a_unit_that_waited_for_a_slot_still_reaches_its_slot_when_it_gets_one() -> void:
+func test_a_unit_that_waited_for_a_slot_still_reaches_its_slot_when_it_gets_one(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 10:
 		rock.append(Vector2i(20, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(30, 14, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl)
+	world.flow_cache_size = 2
 	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 2)
 	GridWorld.add_block(world, 12, 4, 3000, 1500, 1000, 0)
 	world.add_unit(1, 0, 500, 1500)
@@ -103,8 +115,8 @@ func test_a_unit_that_waited_for_a_slot_still_reaches_its_slot_when_it_gets_one(
 ## that wait for a slot on a tick on which the cache has no free slot), "last_idle" (the first
 ## tick on which every unit is IDLE, -1 if none) and "hashes" (the state hash after every tick that
 ## is a multiple of `Replay.CHECKPOINT_PERIOD`).
-func _play(slots: int, pockets: int, per_pocket: int) -> Dictionary:
-	var world: World = _pocket_world(slots, pockets)
+func _play(slots: int, pockets: int, per_pocket: int, impl: int) -> Dictionary:
+	var world: World = _pocket_world(slots, pockets, impl)
 	var pocket_count: int = pockets * per_pocket
 	GridWorld.add_block(world, pocket_count, 1, 3500, 500, 1000, 0)
 	GridWorld.add_block(world, REACHABLE, 1, 5500, 500, 1000, 0)
@@ -175,7 +187,7 @@ func _assert_outcome(world: World, pockets: int, per_pocket: int) -> void:
 ## 32 x 17 tiles: a wall in column 12 except rows 9 and 10, and `pockets` pockets in two columns of
 ## them, the interior tiles at (x, y) of `_pocket_x` and `_pocket_y`. A cache of `slots` fields.
 @warning_ignore("integer_division")
-func _pocket_world(slots: int, pockets: int) -> World:
+func _pocket_world(slots: int, pockets: int, impl: int) -> World:
 	var rock: Array[Vector2i] = []
 	for row: int in 17:
 		if row != 9 and row != 10:
@@ -188,7 +200,8 @@ func _pocket_world(slots: int, pockets: int) -> World:
 			rock.append(Vector2i(left + dx, top + 2))
 		rock.append(Vector2i(left, top + 1))
 		rock.append(Vector2i(left + 2, top + 1))
-	var world: World = GridWorld.from_rows(GridWorld.grass(32, 17, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(32, 17, rock)), impl)
+	world.flow_cache_size = slots
 	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), slots)
 	return world
 
@@ -201,3 +214,14 @@ func _pocket_x(pocket: int) -> int:
 @warning_ignore("integer_division")
 func _pocket_y(pocket: int) -> int:
 	return (2 + (pocket / 2) * 4) * 1000 + 500
+
+
+## The parameter sets of a test that runs under both implementations (gdUnit4 calls it by name).
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
+	return world

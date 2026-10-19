@@ -13,8 +13,11 @@ extends GdUnitTestSuite
 ## names only the first). The hand-set cases call `integrate` on its own (zero intents, so no unit
 ## leaves its tile); the whole run through a thin wall is in test_movement_fields.gd. Maps are
 ## built in code (GridWorld).
+## Every case runs under both implementations of the INTEGRATE phase (P37n), the GDScript twin and
+## the C++ kernel, through SimImpls: gdUnit4 runs it once for each.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const TRACKED: int = World.MoveClass.TRACKED
 const FOOT: int = World.MoveClass.FOOT
 const MOVE: int = World.Order.MOVE
@@ -28,8 +31,10 @@ const ROCK: int = 2
 ## complete and names no tile for the key tile itself, so the unit takes the field of its goal's
 ## tile: slot 1, keyed on that tile, `nav_next` -1. Once that field is complete the next event
 ## gives it a tile on the way (13, 4), and the unit keeps the field of its own tile from then on.
-func test_a_group_field_naming_no_tile_gives_the_unit_the_field_of_its_own_goal_tile() -> void:
-	var world: World = _world(8)
+func test_a_group_field_naming_no_tile_gives_the_unit_the_field_of_its_own_goal_tile(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _world(8, impl)
 	var key: int = world.cell_of(12500, 4500)
 	var own: int = world.cell_of(14500, 4500)
 	_hold(world, 0, 12500, 4500, 14500, 4500, key)
@@ -50,8 +55,10 @@ func test_a_group_field_naming_no_tile_gives_the_unit_the_field_of_its_own_goal_
 
 ## A unit on the field of its own goal's tile that finds no next tile (it stands on the tile, 400
 ## short of its goal) takes no other field: NO_NEXT stays, the slot stays, and no slot is taken.
-func test_a_unit_on_the_field_of_its_own_goal_tile_takes_no_other_field() -> void:
-	var world: World = _world(8)
+func test_a_unit_on_the_field_of_its_own_goal_tile_takes_no_other_field(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _world(8, impl)
 	_hold(world, 0, 12500, 4500, 12900, 4500, world.cell_of(12500, 4500))
 	Movement.integrate(world)
 	assert_array([world.field[0], world.nav_next[0]]).is_equal([0, Movement.NO_NEXT])
@@ -61,8 +68,10 @@ func test_a_unit_on_the_field_of_its_own_goal_tile_takes_no_other_field() -> voi
 ## The new slot may be slot 0: a cache of two slots, slot 0 held by a field nobody follows, the
 ## group's field in slot 1. The own goal tile takes the unreferenced slot 0 (the field in it is
 ## replaced), and the unit follows it.
-func test_the_unit_takes_slot_0_when_that_is_the_one_nobody_follows() -> void:
-	var world: World = _world(2)
+func test_the_unit_takes_slot_0_when_that_is_the_one_nobody_follows(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _world(2, impl)
 	(
 		assert_int(world.flow.acquire(world.cell_of(3500, 11500), TRACKED, world.map_version, 0))
 		. is_equal(0)
@@ -80,8 +89,10 @@ func test_the_unit_takes_slot_0_when_that_is_the_one_nobody_follows() -> void:
 ## field completes (3) and on its turn (4). Unit 2 then stops; a free slot is no reason to ask on
 ## tick 5, which is not a turn, and on tick 9, the next turn, unit 1 takes the field of its own
 ## goal tile in slot 1.
-func test_with_every_slot_referenced_the_unit_keeps_its_field_and_asks_again_on_its_turn() -> void:
-	var world: World = _world(2)
+func test_with_every_slot_referenced_the_unit_keeps_its_field_and_asks_again_on_its_turn(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _world(2, impl)
 	var key: int = world.cell_of(12500, 4500)
 	_hold(world, 0, 12500, 4500, 14500, 4500, key)
 	_hold(world, 1, 3500, 8500, 18500, 11500, world.cell_of(18500, 11500))
@@ -111,8 +122,10 @@ func test_with_every_slot_referenced_the_unit_keeps_its_field_and_asks_again_on_
 ## slots had one free) with a fresh best distance and a stall count of 0. With every slot referenced
 ## it keeps both and goes on counting: the best distance 1000 is below the 2000 to the goal, so the
 ## stall count 12 is 13 after the call.
-func test_taking_the_field_of_its_own_goal_starts_the_stall_count_over() -> void:
-	var world: World = _world(8)
+func test_taking_the_field_of_its_own_goal_starts_the_stall_count_over(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _world(8, impl)
 	_hold(world, 0, 12500, 4500, 14500, 4500, world.cell_of(12500, 4500))
 	world.best_dist[0] = 1000
 	world.stall[0] = 12
@@ -120,7 +133,7 @@ func test_taking_the_field_of_its_own_goal_starts_the_stall_count_over() -> void
 	assert_array([world.field[0], world.best_dist[0], world.stall[0]]).is_equal(
 		[1, FlowField.UNREACHED, 0]
 	)
-	var full: World = _world(1)
+	var full: World = _world(1, impl)
 	_hold(full, 0, 12500, 4500, 14500, 4500, full.cell_of(12500, 4500))
 	full.best_dist[0] = 1000
 	full.stall[0] = 12
@@ -131,8 +144,10 @@ func test_taking_the_field_of_its_own_goal_starts_the_stall_count_over() -> void
 
 ## ATTACK_MOVE takes the field of its own goal like MOVE (Formation gives it a group target the same
 ## way): the unit stands on the group target, 2000 from its goal.
-func test_an_attack_move_unit_takes_the_field_of_its_own_goal_tile() -> void:
-	var world: World = _world(8)
+func test_an_attack_move_unit_takes_the_field_of_its_own_goal_tile(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _world(8, impl)
 	_hold(world, 0, 12500, 4500, 14500, 4500, world.cell_of(12500, 4500))
 	world.order[0] = World.Order.ATTACK_MOVE
 	Movement.integrate(world)
@@ -147,8 +162,10 @@ func test_an_attack_move_unit_takes_the_field_of_its_own_goal_tile() -> void:
 ## (`group_cell` is -1 for an ATTACK unit), so it does not stand still on a tile the target has
 ## left until the target is 4000 away. This is the second trigger for an ATTACK unit's field
 ## besides the re-key.
-func test_an_attack_unit_that_outran_its_field_takes_the_field_of_its_goal_tile() -> void:
-	var world: World = _world(8)
+func test_an_attack_unit_that_outran_its_field_takes_the_field_of_its_goal_tile(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _world(8, impl)
 	_hold(world, 0, 12500, 4500, 14500, 4500, world.cell_of(12500, 4500))
 	world.order[0] = World.Order.ATTACK
 	world.group_cell[0] = -1
@@ -166,9 +183,11 @@ func test_an_attack_unit_that_outran_its_field_takes_the_field_of_its_goal_tile(
 ## the rock for good (an ATTACK unit never stalls). The blocked-key rule is for every unit that
 ## follows a field, not for the ones with a group cell; the run end to end is in
 ## test_movement_blocked_key.gd.
-func test_an_attack_unit_next_to_a_key_that_turned_to_rock_takes_the_field_of_its_goal() -> void:
+func test_an_attack_unit_next_to_a_key_that_turned_to_rock_takes_the_field_of_its_goal(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for order: int in [World.Order.ATTACK, World.Order.ATTACK_MOVE]:
-		var world: World = _world(8)
+		var world: World = _world(8, impl)
 		var key: int = world.cell_of(12500, 4500)
 		_hold(world, 0, 11500, 4500, 14500, 4500, key)
 		world.order[0] = order
@@ -194,12 +213,14 @@ func test_an_attack_unit_next_to_a_key_that_turned_to_rock_takes_the_field_of_it
 ## (21500, 5500), behind the second wall and 2000 from the key (no re-key). The tank follows the
 ## field to the key tile, finds no tile there, takes the field of the enemy's new tile and goes
 ## round the second wall: it ends east of it, next to the enemy.
-func test_an_attack_unit_whose_target_moved_across_a_wall_takes_its_own_field() -> void:
+func test_an_attack_unit_whose_target_moved_across_a_wall_takes_its_own_field(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 10:
 		rock.append(Vector2i(10, row))
 		rock.append(Vector2i(20, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(30, 14, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl)
 	world.player_count = 2
 	world.type_weapon[0] = 0
 	world.add_unit(1, 0, 3500, 5500)
@@ -224,8 +245,10 @@ func test_an_attack_unit_whose_target_moved_across_a_wall_takes_its_own_field() 
 ## A key tile that turned to rock names no tile: `best_neighbour` still names it (the field seeds
 ## its key at cost 0 whatever the terrain), and the unit next to it takes the field of its own
 ## goal's tile instead, which leads round the rock.
-func test_a_key_tile_that_turned_to_rock_gives_the_unit_the_field_of_its_own_goal() -> void:
-	var world: World = _world(8)
+func test_a_key_tile_that_turned_to_rock_gives_the_unit_the_field_of_its_own_goal(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _world(8, impl)
 	var key: int = world.cell_of(12500, 4500)
 	_hold(world, 0, 11500, 4500, 14500, 4500, key)
 	(
@@ -244,8 +267,10 @@ func test_a_key_tile_that_turned_to_rock_gives_the_unit_the_field_of_its_own_goa
 
 ## A unit whose goal is the rock key tile has no field to change to: NO_NEXT stays, the field stays
 ## and no slot is taken. It stalls like any unit that cannot get closer (test_movement_stall.gd).
-func test_a_unit_whose_goal_is_the_rock_key_tile_keeps_no_next_tile_and_takes_no_field() -> void:
-	var world: World = _world(8)
+func test_a_unit_whose_goal_is_the_rock_key_tile_keeps_no_next_tile_and_takes_no_field(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _world(8, impl)
 	var key: int = world.cell_of(12500, 4500)
 	_hold(world, 0, 11500, 4500, 12500, 4500, key)
 	world.set_terrain(key, ROCK)
@@ -258,8 +283,10 @@ func test_a_unit_whose_goal_is_the_rock_key_tile_keeps_no_next_tile_and_takes_no
 ## that a map change does not send every unit looking for a new field before the cache has swapped
 ## the re-integrated one in (test_movement_fields.gd runs that). The unit stands next to rock that
 ## is on the way to the key, two tiles on.
-func test_a_rock_tile_on_the_way_that_is_not_the_key_stays_the_next_tile() -> void:
-	var world: World = _world(8)
+func test_a_rock_tile_on_the_way_that_is_not_the_key_stays_the_next_tile(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _world(8, impl)
 	_hold(world, 0, 11500, 4500, 14500, 4500, world.cell_of(13500, 4500))
 	var on_the_way: int = world.cell_of(12500, 4500)
 	world.set_terrain(on_the_way, ROCK)
@@ -271,11 +298,16 @@ func test_a_rock_tile_on_the_way_that_is_not_the_key_stays_the_next_tile() -> vo
 ## foot soldier. Two units stand next to it on fields keyed on it, a tank (type 0) and a soldier
 ## (type 1): the tank finds no next tile and takes the field of its own goal's tile; the soldier
 ## goes on to the key.
-func test_a_key_tile_is_blocked_for_the_class_of_the_unit_that_asks() -> void:
+func test_a_key_tile_is_blocked_for_the_class_of_the_unit_that_asks(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 11:
 		rock.append(Vector2i(8, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 12, rock), [TRACKED, FOOT])
+	var world: World = _in(
+		GridWorld.from_rows(GridWorld.grass(20, 12, rock), [TRACKED, FOOT]), impl
+	)
+	world.flow_cache_size = 8
 	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 8)
 	var key: int = world.cell_of(12500, 4500)
 	_hold(world, 0, 11500, 4500, 14500, 4500, key, 0)
@@ -309,10 +341,22 @@ func _hold(
 
 
 ## 20 x 12, a wall in column 8 (rows 0 to 10), a cache of `slots` fields.
-func _world(slots: int) -> World:
+func _world(slots: int, impl: int) -> World:
 	var rock: Array[Vector2i] = []
 	for row: int in 11:
 		rock.append(Vector2i(8, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 12, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 12, rock)), impl)
+	world.flow_cache_size = slots
 	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), slots)
+	return world
+
+
+## The parameter sets of a test that runs under both implementations (gdUnit4 calls it by name).
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
 	return world

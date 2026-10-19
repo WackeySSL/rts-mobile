@@ -7,7 +7,9 @@ extends RefCounted
 ## 0007 section 8). configure() allocates every slot's arrays; nothing allocates after it, and
 ## all state advance() changes is Packed arrays, ints and FlowField members (ADR 0013 section 2).
 ## run() is the FLOW phase's entry: it hands the phase to the native kernel when the World's mask
-## has its bit. recount() and advance() have the same C++ twin as FlowField (core/flow.cpp).
+## has its bit. recount() and advance() have the same C++ twin as FlowField (core/flow.cpp), and so
+## has acquire(), which the INTEGRATE kernel calls for the ATTACK re-key and a unit's own field (the
+## GDScript callers in Movement.run keep calling this one): a change to it edits both twins.
 
 ## WAITING: the key is set and integration starts at the slot's turn in advance(), the only call
 ## that has the costs. ACTIVE: begun, done once its field has no pending cells.
