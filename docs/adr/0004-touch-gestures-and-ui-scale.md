@@ -147,7 +147,7 @@ Facts checked on Godot 4.7.2:
      Dev buttons at 120 base px still pass, because `dp(48)` stays below 120 base px on every
      profile in the test table.
 
-   Status note (2026-10-19, P26w docs, P58 as merged, #107), the text above stays as accepted:
+   Status note (2026-10-19, P26x docs, P58 as merged, #107), the text above stays as accepted:
    the HUD Theme's dp step is `game/ui/HudTheme.gd`. `game/ui/theme.tres` holds the HUD's font
    sizes and StyleBox sizes in dp, because a Theme stores fixed numbers. `HudTheme`, a `Node`
    and the first child of the `Hud` `CanvasLayer`, gives each HUD root a copy of its theme with

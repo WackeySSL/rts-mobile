@@ -205,7 +205,7 @@ bursty phase whose per-active-tick cost sets a headroom value. `COMMANDS`, `REMO
   buffer swap is two `set` calls, after which both pointers are fetched again; no slot array is
   resized in a tick (P30b's `configure()` sizes them). Two recorded exceptions. FLOW (plan,
   P26m): the slot pick re-reads `pending` of every `ACTIVE` slot per pick, because reading it
-  once would need a capacity literal. INTEGRATE (P37n; ADR 0013 §2's note of P26w docs): the
+  once would need a capacity literal. INTEGRATE (P37n; ADR 0013 §2's note of P26x docs): the
   pass asks a slot for `complete` once per slot and call and keeps the answer in a 63-slot mask
   (`integrate::MEMO_SLOTS`, pinned by `test_integrate_kernel_slots.gd`), which a recycle
   updates; the rest of a slot is fetched at event cadence, where a FIELD unit looks up its next

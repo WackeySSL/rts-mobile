@@ -75,8 +75,8 @@ notes from "P26s docs" sit in §8 (the cache key's sanitizer part), §10 (the sa
 decisions as merged, its blind spots, and the lead's row P57b) and "Open after this draft" (the
 sanitizer job's item closed). No accepted text changed.
 
-Status note (2026-10-19, P26w docs): after the merges of P57b (#104), P37n (#108, the second
-kernel, INTEGRATE) and P37n3 (#109, its lockstep), dated status notes from "P26w docs" sit in §2
+Status note (2026-10-19, P26x docs): after the merges of P57b (#104), P37n (#108, the second
+kernel, INTEGRATE) and P37n3 (#109, its lockstep), dated status notes from "P26x docs" sit in §2
 (the second recorded exception, INTEGRATE's slot reads; the `isqrt` shift table accepted as
 structure; the checked table's counts; `step_toward`) and §10 (the sanitizer job's path filter
 and dump step as P57b merged them). No accepted text changed.
@@ -637,7 +637,7 @@ absorbs next to the C++ phases.
   pointer in a struct nested in a view, a member defined outside the view body, a view that
   `VIEW` does not name); the qa follow-ups of P56b's review are the plan's row P56c.
 
-  Status note (2026-10-19, P26w docs, P37n as merged, #108, and P37n3, #109), the text above
+  Status note (2026-10-19, P26x docs, P37n as merged, #108, and P37n3, #109), the text above
   stays as accepted:
   - **The second recorded exception** to "for each slot it touches, the slot's arrays and
     scalars once" ("Arrays of helper objects"), beside FLOW's re-read of `pending` (P26m's note
@@ -1404,7 +1404,7 @@ Status note (2026-10-13, P26l docs, P55b as merged, #69), on "Sessions" and the 
     so a pull request that changes only those skips it. P57b widens the filter to them and
     removes the dump step's FLOW stand-in once P37b has merged.
 
-  Status note (2026-10-19, P26w docs, P57b as merged, #104), the text above and the P26s note
+  Status note (2026-10-19, P26x docs, P57b as merged, #104), the text above and the P26s note
   stay as written:
   - **The path filter as merged** (`.github/workflows/ci.yml`, pinned by
     `tests/project/test_ci_workflow.gd`):
