@@ -27,8 +27,10 @@ extends GdUnitTestSuite
 ## matches nothing fails, and every exception must still be needed.
 ## Known gaps: a line scan sees no data flow. It does not flag a colour or a size that reaches a
 ## StyleBox through a variable (`style.bg_color = tint` on a box got from the theme), a Theme,
-## StyleBox or Font loaded from another resource file, or a name computed at run time. They need a
-## review of the diff, and a rule of their own once one is written.
+## StyleBox or Font loaded from another resource file, a name computed at run time, or a literal
+## that a call or a tween writes to a modulate (`modulate.a = lerpf(0.2, 0.8, t)`,
+## `tween_property(self, "modulate:a", 0.5, 0.2)`). They need a review of the diff, and a rule of
+## their own once one is written.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const UI_DIR: String = "res://game/ui"
@@ -37,10 +39,13 @@ const THEME_PATH: String = "res://game/ui/theme.tres"
 const GD: String = "gd"
 const TSCN: String = "tscn"
 
-## A `modulate`, `self_modulate` or `color` (or one channel of it) set to a number, a string or a
-## Color. A variable on the right is fine: the colour then comes from somewhere else.
+## A `modulate`, `self_modulate` or `color`, or one part of it (`.a`, `.a8`, `.v`: any member),
+## set with `=` or a compound `+=`, `-=`, `*=`, `/=` to a number (`0.5`, `.5`, `-.5`, in a
+## parenthesis too), a string or a Color. A variable on the right is fine: the colour then comes
+## from somewhere else. `==`, `!=`, `<=` and `>=` are comparisons and do not match.
 const LITERAL_MODULATE: String = (
-	r"\b(?:modulate|self_modulate|color)(?:\.[rgba])?\s*=(?!=)" + r"\s*(?:[-+]?\d|[\"']|Color\b)"
+	r"\b(?:modulate|self_modulate|color)(?:\.\w+)?\s*[-+*/]?=(?!=)"
+	+ r"[\s(]*(?:[-+]?\.?\d|[\"']|Color\b)"
 )
 const THEME_WRITE: String = (
 	r"\.(?:set_font_size|set_stylebox|set_content_margin(?:_all)?|"
@@ -98,6 +103,14 @@ const RULES: Array[Dictionary] = [
 			"icon.color = Color.RED",
 			"self_modulate = 1",
 			'rect.modulate = "ff0000"',
+			"modulate.a = .5",
+			"modulate.a = -.5",
+			"modulate.a = (0.5)",
+			"modulate.a *= 0.5",
+			"self_modulate.a -= 0.1",
+			"modulate.a8 = 128",
+			"self_modulate.v = 0.5",
+			"color.h = 0.3",
 		],
 	},
 	{
@@ -231,6 +244,11 @@ const CLEAN_GD: Array[String] = [
 	"layers[UnitLayer.TEAM_LAYER].modulate = tint",
 	"modulate = tint",
 	"if modulate == tint:",
+	"if modulate.a <= 0.5:",
+	"if self_modulate.a != 1.0:",
+	"modulate.a = alpha",
+	"modulate.a *= fade",
+	"modulate = (tint)",
 	'colors[item] = get_theme_color(item, &"BoxOverlay")',
 	"var colors: Dictionary[StringName, Color] = {}",
 	"func show_type(id: StringName, label: String, number: int, tint: Color) -> void:",
