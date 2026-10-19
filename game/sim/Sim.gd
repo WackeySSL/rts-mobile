@@ -176,9 +176,9 @@ static func _enemy_target(world: World, command: Command) -> bool:
 	return row >= 0 and world.owner[row] != command.player_id and world.owner[row] != 0
 
 
-## Before P41 an ATTACK unit's goal is where its target stood at the start of the tick (read before
+## Until P41b an ATTACK unit's goal is where its target stood at the start of the tick (read before
 ## anyone moves, so row order cannot matter). A target that is gone makes it attack-move to the
-## last goal (ADR 0009 section 2). The lookup is inlined over the aliased ids (P41 replaces this).
+## last goal (ADR 0009 section 2). The lookup is inlined over the aliased ids (P41b replaces this).
 static func _follow_targets(world: World) -> void:
 	var orders: PackedInt32Array = world.order
 	var order_target: PackedInt32Array = world.order_target

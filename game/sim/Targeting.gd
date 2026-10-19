@@ -27,21 +27,23 @@ const IDLE: int = World.Order.IDLE
 ##   range when attack-moving and the weapon's range when idle.
 ## - A due row keeps its target while that unit still exists, is an enemy and is a candidate (below)
 ##   within reach: no switching for a nearer or better one. Otherwise it scans.
-## - The scan looks at every row in the grid cells that cover the reach (the 4-tile cells, read
-##   from `cell_milli`), itself excepted, and counts them in `stats[TARGET_CANDIDATES]`. A
-##   candidate is an enemy (an owner that is neither the row's own nor 0) with
+## - The scan looks at every row in the grid cells from `(pos - reach) / cell_milli` to
+##   `(pos + reach) / cell_milli` on each axis (integer division truncating toward zero, clamped to
+##   the grid, as the grid's own rebuild puts a point in a cell), itself excepted, and counts them
+##   in `stats[TARGET_CANDIDATES]` (3 x 3 to 4 x 4 cells with the shipped ranges, fewer at an
+##   edge). A candidate is an enemy (an owner that is neither the row's own nor 0) with
 ##   `min_range^2 <= d2 <= reach^2` and a damage percent above 0 against its armour. The best has
 ##   the highest percent, then the smallest `d2`, then the lowest row (rows ascend with the id). The
 ##   grid is visited cell by cell, not in id order, so the id tie-break is explicit. No candidate
 ##   writes 0.
+## - An empty map has no cells: the clear above still runs, and a due row that keeps no target
+##   writes 0 without a scan.
 ## A type whose weapon index is negative or past the weapon tables is unarmed (a hand-built World
 ## may name a weapon it has no table for).
 @warning_ignore("integer_division")
 static func run(world: World) -> void:
 	var grid: SpatialGrid = world.target_grid
 	var cols: int = grid.cols
-	if cols == 0:
-		return  # An empty map: no cells, so no candidate and no target.
 	var ids: PackedInt32Array = world.unit_id
 	var owners: PackedInt32Array = world.owner
 	var types: PackedInt32Array = world.type_index
@@ -96,6 +98,9 @@ static func run(world: World) -> void:
 					and weapon_vs[vs_base + type_armour[types[at]]] > 0
 				):
 					continue
+		if cols == 0:
+			targets[row] = 0  # An empty map: no cells, so no candidate and no target.
+			continue
 		var best: int = -1
 		var best_percent: int = 0
 		var best_d2: int = 0

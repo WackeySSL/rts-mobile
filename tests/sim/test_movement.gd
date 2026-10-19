@@ -339,7 +339,7 @@ func test_chase_steers_at_the_target(impl: int, _test_parameters := _both()) -> 
 
 
 ## A CHASE unit whose target is gone steers at its goal and, once there, still has its order and its
-## mode: `integrate` never ends a CHASE unit's order, and combat (P41) is what takes a unit out of
+## mode: `integrate` never ends a CHASE unit's order, and combat (P41b) is what takes a unit out of
 ## CHASE when its target goes (the fallback documented in Movement.run). A DIRECT unit in the next
 ## lane, on the same errand, arrives and goes idle.
 func test_a_chase_unit_with_no_target_reaches_its_goal_and_keeps_its_order(

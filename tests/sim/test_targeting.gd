@@ -62,15 +62,21 @@ func test_equal_percents_go_to_the_smaller_distance() -> void:
 		assert_array(Rig.outside_sight(world)).is_empty()
 
 
-## Equal percents and equal distances go to the lower id. The grid is visited cell by cell, west to
-## east and north to south, not in id order, so each arrangement puts the lower id in the cell that
-## is visited last: east of the west one, south of the north one, and a 3-4-5 triangle (all three
-## 5000 away, the rocket's range) where the lowest id stands in the last line of cells.
+## Equal percents and equal distances go to the lower id, wherever it stands. The grid is visited
+## cell by cell, west to east and north to south, not in id order, and a cell lists its rows in
+## ascending order. The first three arrangements put the lower id in the cell that is visited last:
+## east of the west one, south of the north one, and a 3-4-5 triangle (all three 5000 away, the
+## rocket's range) where the lowest id stands in the last line of cells. The last three put it in
+## the cell that is visited first (west of the east one, north of the south one) and have two units
+## on one point, where the lower id is also listed first: a later candidate that ties does not win.
 func test_equal_percents_and_distances_go_to_the_lower_id() -> void:
 	var cases: Array[Array] = [
 		[Vector2i(13000, 6000), Vector2i(7000, 6000), Vector2i(10000, 3000)],
 		[Vector2i(10000, 9000), Vector2i(10000, 3000), Vector2i(10000, 3000)],
 		[Vector2i(13000, 10000), Vector2i(15000, 6000), Vector2i(7000, 2000)],
+		[Vector2i(7000, 6000), Vector2i(13000, 6000)],
+		[Vector2i(10000, 3000), Vector2i(10000, 9000)],
+		[Vector2i(12000, 6000), Vector2i(12000, 6000)],
 	]
 	for item: Array in cases:
 		var world: World = Rig.data_world()
@@ -153,8 +159,10 @@ func test_a_valid_target_in_reach_is_kept_over_a_nearer_or_better_new_one() -> v
 	assert_array(Rig.outside_sight(world)).is_empty()
 
 
-## A target that is gone (its row removed), or no longer an enemy, is not valid: the next scan
-## replaces it, with 0 when nothing else is in reach.
+## A target that is gone (its row removed), or no longer an enemy (it became a friend or neutral),
+## is not valid: the next scan replaces it, with 0 when nothing else is in reach. The gone one is
+## first an id between two others (the lookup lands on a row of another id), then the highest id
+## (the lookup lands past the last row, the first death of a match to be the newest unit).
 func test_a_target_that_is_gone_is_replaced_at_the_next_due_tick() -> void:
 	var world: World = Rig.data_world()
 	world.add_unit(1, RIFLE, 10000, 6000)
@@ -167,6 +175,18 @@ func test_a_target_that_is_gone_is_replaced_at_the_next_due_tick() -> void:
 	assert_int(Rig.retarget(world, 1)).is_equal(3)
 	world.owner[1] = 1
 	assert_int(Rig.retarget(world, 1)).is_equal(0)
+	world.owner[1] = 2
+	assert_int(Rig.retarget(world, 1)).is_equal(3)
+	world.owner[1] = 0
+	assert_int(Rig.retarget(world, 1)).is_equal(0)
+	var newest: World = Rig.data_world()
+	newest.add_unit(1, RIFLE, 10000, 6000)
+	newest.add_unit(2, RIFLE, 12000, 6000)
+	assert_int(Rig.target_of(newest, 1)).is_equal(2)
+	newest.hp[1] = 0
+	newest.remove_dead()
+	assert_int(newest.unit_count()).is_equal(1)
+	assert_int(Rig.retarget(newest, 1)).is_equal(0)
 
 
 ## The reach depends on the order: an attack-moving unit looks as far as its acquire range, an idle
@@ -274,10 +294,52 @@ func test_the_scan_reads_the_grid_of_its_own_tick() -> void:
 	assert_array([world.tick, world.target[0]]).is_equal([5, 2])
 
 
+## `_follow_targets` (the ATTACK stand-in until P41b) runs after the TARGETING mark, inside INTENTS:
+## an ATTACK row's goal is still where it was at the TARGETING mark and is its target's position at
+## the INTENTS mark. Row 0 stands at x 10000 with its goal there and attacks unit 2 at x 12000.
+func test_the_attack_stand_in_follows_its_target_after_the_targeting_mark() -> void:
+	var world: World = Rig.data_world()
+	world.add_unit(1, RIFLE, 10000, 6000)
+	world.add_unit(2, RIFLE, 12000, 6000)
+	world.order[0] = ATTACK
+	world.order_target[0] = 2
+	world.goal_x[0] = 10000
+	var probe: ViewProbe = ViewProbe.new(world)
+	Sim.step(world, [], probe)
+	assert_int(probe.goals[probe.phases.find(SimProbe.Phase.GRIDS)]).is_equal(10000)
+	assert_int(probe.goals[probe.phases.find(SimProbe.Phase.TARGETING)]).is_equal(10000)
+	assert_int(probe.goals[probe.phases.find(SimProbe.Phase.INTENTS)]).is_equal(12000)
+
+
+## An ATTACK row whose target is gone becomes an attack-move in `_follow_targets`, after Targeting
+## has cleared the row: it is still ATTACK at the TARGETING mark and ATTACK_MOVE at the INTENTS
+## mark, and it takes no target in that step although it is due (tick 4 for unit 1) with an enemy
+## 2000 away. At its next due tick, 9, it does.
+func test_an_attack_row_with_a_gone_target_acquires_at_its_next_due_tick() -> void:
+	var world: World = Rig.data_world()
+	world.add_unit(1, RIFLE, 10000, 6000)
+	world.add_unit(2, RIFLE, 12000, 6000)
+	world.order[0] = ATTACK
+	world.order_target[0] = 99
+	world.tick = 4
+	var probe: ViewProbe = ViewProbe.new(world)
+	Sim.step(world, [], probe)
+	assert_int(probe.orders[probe.phases.find(SimProbe.Phase.TARGETING)]).is_equal(ATTACK)
+	assert_int(probe.orders[probe.phases.find(SimProbe.Phase.INTENTS)]).is_equal(ATTACK_MOVE)
+	assert_array(probe.targets).is_equal([0, 0, 0, 0, 0, 0, 0, 0])
+	assert_int(world.target[0]).is_equal(0)
+	for _tick: int in range(5, 9):
+		Sim.step(world, [])
+	assert_int(world.target[0]).is_equal(0)
+	Sim.step(world, [])
+	assert_array([world.tick, world.target[0]]).is_equal([10, 2])
+
+
 ## An idle unit never moves on its own. Two pairs of enemies, each inside the weapons' ranges of
 ## the other (rifle squad and rocket squad 3000 apart, tank and rifle squad 3500 apart), stand idle
 ## for 150 ticks: they all take their enemy as the target, and nobody's position, goal, order or
-## navigation changes.
+## intent changes, and nobody chases. The navigation mode is P41b's (it holds an idle unit that has
+## a target in weapon range), so only CHASE is excluded here.
 func test_idle_units_never_move_on_their_own() -> void:
 	var world: World = Rig.data_world()
 	world.add_unit(1, RIFLE, 3000, 3000)
@@ -298,8 +360,10 @@ func test_idle_units_never_move_on_their_own() -> void:
 	for k: int in 4:
 		assert_array(after[k]).is_equal(before[k])
 	assert_array(world.order).is_equal([IDLE, IDLE, IDLE, IDLE])
-	assert_array(world.nav_mode).is_equal([0, 0, 0, 0])
+	for mode: int in world.nav_mode:
+		assert_int(mode).is_not_equal(World.NavMode.CHASE)
 	assert_array(world.intent_x.slice(0, 4)).is_equal([0, 0, 0, 0])
+	assert_array(world.intent_y.slice(0, 4)).is_equal([0, 0, 0, 0])
 
 
 ## Two runs of the arena match (the same seed and commands) give the same state hash at every

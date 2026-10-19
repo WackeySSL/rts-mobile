@@ -5,10 +5,9 @@ extends GdUnitTestSuite
 ## after FLOW (P41's TARGETING follows it) and `Separation.run` after INTENTS and before INTEGRATE
 ## (the pushes use this tick's intents and move this tick's units), and crowds that cross, drive
 ## into other units or turn back settle idle with no pair closer than 90% of the radii sum (720
-## milli for two tanks). The crowds
-## are the controls_test scenario: 30 blue tanks (ids 1 to 30) at (8000, 18500) in six columns 1500
-## apart, 10 red tanks (ids 31 to 40) far to the east. The tick counts are measured and rounded up
-## to a multiple of 15.
+## milli for two tanks). The crowds are the controls_test scenario: 30 blue tanks (ids 1 to 30) at
+## (8000, 18500) in six columns 1500 apart, 10 red tanks (ids 31 to 40) far to the east. The tick
+## counts are measured and rounded up to a multiple of 15.
 ##
 ## Separation does not stop tanks from overlapping while they drive. A push is at most 60 milli a
 ## tick, half a tank's speed of 120 (ADR 0008 section 4), so tanks on crossing paths still slide

@@ -113,13 +113,3 @@ static func outside_sight(world: World, due_only: bool = false) -> Array[int]:
 		if dx * dx + dy * dy > sight * sight:
 			found.append(world.unit_id[row])
 	return found
-
-
-## The state hash after each 15th tick of `ticks` ticks of `Sim.step` on `world`, no commands.
-static func hashes(world: World, ticks: int) -> PackedInt64Array:
-	var found: PackedInt64Array = PackedInt64Array()
-	for _tick: int in ticks:
-		Sim.step(world, [])
-		if world.tick % Replay.CHECKPOINT_PERIOD == 0:
-			found.append(world.state_hash())
-	return found
