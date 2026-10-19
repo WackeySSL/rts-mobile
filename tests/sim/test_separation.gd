@@ -152,7 +152,9 @@ func test_overlapping_units_in_the_same_state_each_move_half_the_push() -> void:
 
 ## An idle unit next to a moving one takes 75% of the pair push (68 at a distance of 720) and the
 ## moving one the other 25%: -51 and 17 whichever of the two is first. Moving is a non-zero intent
-## on either axis, and two moving units split the push 50/50 again.
+## on either axis, and two moving units split the push 50/50 again. The shares apply on both axes:
+## 150 apart each way (d2 = 45000, above the fixed push's limit of 40000) the pair push is 69 per
+## axis, so the idle unit takes 51 and the moving one 17 along y as well as along x.
 func test_an_idle_unit_takes_75_percent_against_a_moving_one() -> void:
 	# The intent of the lower unit (x, y) and of the higher (x, y), then the pushes along x.
 	var cases: Array = [
@@ -176,12 +178,16 @@ func test_an_idle_unit_takes_75_percent_against_a_moving_one() -> void:
 			. override_failure_message(str(case))
 			. is_equal([case[4], case[5], 0, 0])
 		)
+	var diagonal: World = _tanks([Vector2i(5000, 4000), Vector2i(5150, 4150)])
+	diagonal.intent_x[1] = 120
+	Rig.separate(diagonal)
+	assert_array(_pushes(diagonal)).is_equal([Vector2i(-51, -51), Vector2i(17, 17)])
 
 
 ## A unit's push is at most 60 per axis, summed over its neighbours: one pair 600 apart pushes 131,
 ## 65 each, cut to 60; two neighbours 700 away on the same point give 41 each, so 82 together, cut
 ## to 60 (their own push on each other, 30 along x, and the 41 of the first unit stay); the same
-## on the y axis at the positive end.
+## on the y axis at the positive end (neighbours above) and at the negative end (neighbours below).
 func test_the_push_is_clamped_to_60_per_axis() -> void:
 	var world: World = _tanks([Vector2i(5000, 4000), Vector2i(5600, 4000)])
 	Rig.separate(world)
@@ -194,6 +200,9 @@ func test_the_push_is_clamped_to_60_per_axis() -> void:
 			Vector2i(9000, 4000),
 			Vector2i(9000, 3300),
 			Vector2i(9000, 3300),
+			Vector2i(13000, 4000),
+			Vector2i(13000, 4700),
+			Vector2i(13000, 4700),
 		]
 	)
 	Rig.separate(world)
@@ -207,6 +216,9 @@ func test_the_push_is_clamped_to_60_per_axis() -> void:
 				Vector2i(0, 60),
 				Vector2i(-30, -41),
 				Vector2i(30, -41),
+				Vector2i(0, -60),
+				Vector2i(-30, 41),
+				Vector2i(30, 41),
 			]
 		)
 	)
@@ -301,7 +313,8 @@ func test_units_resting_1200_apart_are_not_pushed_and_never_move() -> void:
 
 
 ## Two runs of the same crowd (30 tanks, ten of them ordered across it) give the same state hashes
-## at every 15th tick, and the state moves between them.
+## at every 15th tick, and the state moves between them: the ordered tanks make headway through the
+## crowd (the pushes are added to their intents, they do not replace them).
 func test_two_runs_of_the_pipeline_give_the_same_hashes() -> void:
 	var runs: Array[PackedInt64Array] = []
 	for _run: int in 2:
@@ -313,12 +326,20 @@ func test_two_runs_of_the_pipeline_give_the_same_hashes() -> void:
 			world.order[row] = World.Order.MOVE
 			world.goal_x[row] = 12000
 			world.goal_y[row] = 5000
+		var start_x: int = 0
+		for row: int in 10:
+			start_x += world.pos_x[row]
 		var hashes: PackedInt64Array = PackedInt64Array()
 		hashes.append(world.state_hash())
 		for _block: int in 4:
 			Rig.ticks(world, 15)
 			hashes.append(world.state_hash())
 		assert_int(world.stats[World.Stat.SEP_PAIRS]).is_greater(0)
+		var end_x: int = 0
+		for row: int in 10:
+			end_x += world.pos_x[row]
+		# The ordered tanks (speed 120) have crossed most of the 7 tiles the 60 ticks allow.
+		assert_int(end_x - start_x).is_greater(10 * 4000)
 		runs.append(hashes)
 	assert_array(runs[0]).is_equal(runs[1])
 	assert_int(runs[0][1]).is_not_equal(runs[0][0])

@@ -241,8 +241,67 @@ func test_the_cell_size_comes_from_the_grid() -> void:
 
 ## The formula's truncation is exact: 311 apart the pair push is 131 (131.9 before the cut, and
 ## 132 if the weight were one more), so a moving unit that takes 25% of it is pushed 32, not 33.
+## The weight is R*R - d2, not one less: 400 apart the pair push is exactly 150 (the cap lifted so
+## that it shows), 75 each, where a weight one less would give 149 and 74.
 func test_the_formula_push_truncates_exactly() -> void:
 	var world: World = _tanks([Vector2i(5000, 4000), Vector2i(5311, 4000)])
 	world.intent_x[0] = 120
 	Rig.separate(world)
 	assert_array(_pushes(world)).is_equal([Vector2i(-32, 0), Vector2i(60, 0)])
+	world = _tanks([Vector2i(5000, 4000), Vector2i(5400, 4000)])
+	world.separation_push_max = 1000
+	Rig.separate(world)
+	assert_array(_pushes(world)).is_equal([Vector2i(-75, 0), Vector2i(75, 0)])
+
+
+## The idle share is kept between 0 and 100 whatever the rule int says. 780 apart the pair push is
+## 19, and the second unit is moving: with a share of 100 or more the idle unit takes all of it and
+## the moving one nothing, with 0 or less the moving one takes all of it.
+func test_the_idle_share_is_kept_between_0_and_100() -> void:
+	# The rule int, then the pushes along x of the idle lower unit and of the moving higher one.
+	var cases: Array = [[100, -19, 0], [0, 0, 19], [150, -19, 0], [-10, 0, 19]]
+	for case: Array in cases:
+		var world: World = _tanks([Vector2i(5000, 4000), Vector2i(5780, 4000)])
+		world.intent_x[1] = 120
+		world.separation_idle_share = case[0]
+		Rig.separate(world)
+		assert_array(_pushes(world)).override_failure_message(str(case)).is_equal(
+			[Vector2i(case[1], 0), Vector2i(case[2], 0)]
+		)
+
+
+## `run` reads the grid and the intents and writes the pushes and the pair count, nothing else: it
+## does not rebuild the grid, it leaves the intents, the positions and every other work count as
+## they were, and it writes every row's push. Unit 1 is moved next to the others after the rebuild,
+## so the grid still lists it in its old cell: units 0 and 2 never find it, and it (scanning from
+## where it stands) finds them. A rebuilt grid would give different pushes and a different grid.
+func test_run_writes_only_the_pushes_and_the_pair_count() -> void:
+	var world: World = _tanks(
+		[Vector2i(5000, 4000), Vector2i(9400, 4000), Vector2i(5700, 4300), Vector2i(2000, 4000)]
+	)
+	world.intent_x[2] = 120
+	world.intent_y[2] = -35
+	world.sep_grid.rebuild(world.pos_x, world.pos_y, world.unit_count())
+	world.pos_x[1] = 5400
+	world.push_x.fill(99)
+	world.push_y.fill(-99)
+	var heads: PackedInt32Array = world.sep_grid.head.duplicate()
+	var links: PackedInt32Array = world.sep_grid.next.duplicate()
+	var intent_x: PackedInt32Array = world.intent_x.duplicate()
+	var intent_y: PackedInt32Array = world.intent_y.duplicate()
+	var stats: PackedInt32Array = world.stats.duplicate()
+	var hash_before: int = world.state_hash()
+	Separation.run(world)
+	# Unit 0 (idle) finds unit 2 (moving), 700 east and 300 south of it: the pair push (32, 14) is
+	# shared 75/25. Unit 1 (idle) finds both: 75 from unit 0, and from unit 2 -80 along x and -80
+	# along y, so its y push is cut to -60. Four pairs in all.
+	assert_array(_pushes(world)).is_equal(
+		[Vector2i(-24, -10), Vector2i(-5, -60), Vector2i(8, 3), Vector2i.ZERO]
+	)
+	stats[World.Stat.SEP_PAIRS] += 4
+	assert_array(world.stats).is_equal(stats)
+	assert_array(world.sep_grid.head).is_equal(heads)
+	assert_array(world.sep_grid.next).is_equal(links)
+	assert_array(world.intent_x).is_equal(intent_x)
+	assert_array(world.intent_y).is_equal(intent_y)
+	assert_int(world.state_hash()).is_equal(hash_before)
