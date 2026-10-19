@@ -12,6 +12,7 @@ const THEME_TYPE: StringName = &"BoxOverlay"
 const COLOR_ITEMS: Array[StringName] = [&"fill", &"outline", &"stroke"]
 
 var clock: Callable = Time.get_ticks_msec  ## Returns ms. Tests replace it.
+var painter: Callable = _paint  ## Paints one `Step` in a `Color`. Tests record the calls.
 var anchor: Vector2 = Vector2.ZERO
 var rect: Rect2 = Rect2()  ## Zero size while there is no box.
 var _anchor_ms: int = -1  ## When the anchor appeared, or -1.
@@ -62,7 +63,8 @@ func anchor_radius() -> float:
 
 
 ## The colours `_draw` draws with, by theme item: `fill` (the anchor and the box), `outline` (the
-## dark pass under a stroke) and `stroke`. Tests read them here: pixels cannot be read headless.
+## dark pass under a stroke) and `stroke`. Tests read them here, and read what `_draw` hands the
+## `painter`: pixels cannot be read headless.
 func draw_colors() -> Dictionary[StringName, Color]:
 	var colors: Dictionary[StringName, Color] = {}
 	for item: StringName in COLOR_ITEMS:
@@ -118,8 +120,12 @@ func _process(_delta: float) -> void:
 func _draw() -> void:
 	var colors: Dictionary[StringName, Color] = draw_colors()
 	for step: Step in draw_plan():
-		var filled: bool = step.width < 0.0
-		if step.shape == &"circle":
-			draw_circle(step.center, step.radius, colors[step.item], filled, step.width, not filled)
-		else:
-			draw_rect(step.area, colors[step.item], filled, step.width, not filled)
+		painter.call(step, colors[step.item])
+
+
+func _paint(step: Step, color: Color) -> void:
+	var filled: bool = step.width < 0.0
+	if step.shape == &"circle":
+		draw_circle(step.center, step.radius, color, filled, step.width, not filled)
+	else:
+		draw_rect(step.area, color, filled, step.width, not filled)

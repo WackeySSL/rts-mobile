@@ -14,8 +14,11 @@ extends Node
 ## scripts' own, and what they read from the theme on a resize (`SelectionPanel.Row.fit_name`
 ## measures the name with the font size) is already the new one.
 ## Not scaled: a StyleBoxTexture's texture margins (they cut the picture, in texture px), the
-## theme's constants (a font's `outline_size` too: layout stays in code, in dp through UiScale) and
-## colours. Add what a restyle needs of those to `scaled()` before it uses one.
+## theme's constants (a font's `outline_size` too: layout stays in code, in dp through UiScale),
+## colours, fonts and icons, and the properties of a StyleBox that are not sizes: `skew` (a shear
+## ratio, so the angle is the same on every screen), `corner_detail` (a count) and
+## `anti_aliasing_size` (the width of the soft edge, a sharpness setting that stays 1 px). Add what
+## a restyle needs of those to `scaled()` before it uses one.
 
 const BASE_PX_META: StringName = &"base_px"  ## On the theme: paths of entries kept in base px.
 const SOURCE_META: StringName = &"source"  ## On a scaled copy: the theme it was made from.
@@ -28,7 +31,6 @@ const PX_PROPERTIES: PackedStringArray = [
 	"expand_margin_",
 	"shadow_size",
 	"shadow_offset",
-	"skew",
 	"thickness",
 	"grow_",
 ]

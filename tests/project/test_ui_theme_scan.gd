@@ -14,9 +14,10 @@ extends GdUnitTestSuite
 ## - a theme override of a colour, font, font size or StyleBox, in code (`add_theme_*_override`,
 ##   or the `theme_override_*/` name given to `set`) and as a scene key (`theme_override_colors/`,
 ##   `_fonts/`, `_font_sizes/`, `_styles/`);
-## - a Theme or a StyleBox written in code (`set_font_size`, `set_stylebox`, `set_color`,
-##   `set_font`, a content margin or a corner radius setter), which only the dp step may do, on its
-##   scaled copy.
+## - a Theme or a StyleBox written in code (`set_font_size`, `set_stylebox`, a content margin or a
+##   corner radius setter), which only the dp step may do, on its scaled copy;
+## - a colour or a font written in code (`set_color`, `set_font`): not even the dp step may. It
+##   writes sizes, so its exception lists no such rule and a rule of this kind cannot be excepted.
 ## A constant override (`add_theme_constant_override`, `theme_override_constants/`) is layout,
 ## computed from the screen, and is allowed. The scan reads one line at a time, with the comments
 ## of a `.gd` file taken out first (a string stays: a font path is one). The developer scenes under
@@ -42,9 +43,11 @@ const LITERAL_MODULATE: String = (
 	r"\b(?:modulate|self_modulate|color)(?:\.[rgba])?\s*=(?!=)" + r"\s*(?:[-+]?\d|[\"']|Color\b)"
 )
 const THEME_WRITE: String = (
-	r"\.(?:set_font_size|set_stylebox|set_color|set_font|set_content_margin(?:_all)?|"
+	r"\.(?:set_font_size|set_stylebox|set_content_margin(?:_all)?|"
 	+ r"set_corner_radius(?:_all)?)\s*\("
 )
+## A colour or a font put into a Theme (or any other object) in code.
+const LOOK_WRITE: String = r"\.(?:set_color|set_font)\s*\("
 ## A font class, or the path of a font file (a bitmap font is `.fnt`, a font made by the editor
 ## `.fontdata`).
 const FONT_FILE: String = (
@@ -199,15 +202,28 @@ const RULES: Array[Dictionary] = [
 		[
 			'out.set_font_size("font_size", "Label", 28)',
 			'out.set_stylebox("panel", "SelectionPanel", box)',
-			'out.set_color("font_color", "Label", tint)',
-			'out.set_font("font", "Label", font)',
 			"box.set_content_margin(SIDE_LEFT, 14.0)",
 			"box.set_content_margin_all(14.0)",
 			"flat.set_corner_radius(CORNER_TOP_LEFT, 14)",
 			"flat.set_corner_radius_all(14)",
 		],
 	},
+	{
+		"name": "look_written_in_code",
+		"kind": GD,
+		"regex": LOOK_WRITE,
+		"fixtures":
+		[
+			'out.set_color("font_color", "Label", tint)',
+			'out.set_font("font", "Label", font)',
+			'\tout.set_color(&"font_color", &"Label", out.get_color(&"outline", &"BoxOverlay"))',
+			'\tout.set_font(&"font", &"Label", ThemeDB.fallback_font)',
+			'theme.set_color (&"fill", &"BoxOverlay", tint)',
+		],
+	},
 ]
+## Rules that no exception may list: the dp step writes sizes, never a look.
+const NEVER_EXCEPTED: Array[String] = ["look_written_in_code"]
 ## Lines the theme allows, by kind: layout constants, a modulate from a variable, the theme's own
 ## entries and a type variation, and text that only looks like a rule inside a comment (`.gd`).
 const CLEAN_GD: Array[String] = [
@@ -236,6 +252,10 @@ const CLEAN_GD: Array[String] = [
 	"if label_settings == other:",
 	"var font_name: String = path.get_file()",
 	'theme.set_constant(&"separation", &"Box", 4)',
+	'var tint: Color = out.get_color(&"fill", &"BoxOverlay")',
+	'var font: Font = out.get_font(&"font", &"Label")',
+	"func set_color_scheme(scheme: int) -> void:",
+	'const KEY: StringName = &"set_color"',
 ]
 const CLEAN_TSCN: Array[String] = [
 	"theme_override_constants/separation = 8",
@@ -269,7 +289,7 @@ const EXCEPTIONS: Dictionary[String, Dictionary] = {
 		(
 			"The dp step writes font sizes, StyleBoxes and their margins and radii on the scaled "
 			+ "copy of the theme (set_font_size, set_stylebox, the StyleBox setters). It sets no "
-			+ "node override, no colour and no font."
+			+ "node override, no colour and no font: look_written_in_code is never excepted."
 		),
 	},
 }
@@ -373,10 +393,8 @@ func test_the_scene_scan_reads_the_hud_subtree_and_nothing_else() -> void:
 func test_the_hud_look_is_in_the_theme_alone() -> void:
 	var problems: Array[String] = []
 	for path: String in _scanned_files():
-		var allowed: Array = EXCEPTIONS.get(path, {}).get("rules", [])
-		for hit: Dictionary in _scan(path):
-			if not allowed.has(hit["rule"]):
-				problems.append("%s:%d: %s" % [path, hit["line"], hit["rule"]])
+		for hit: Dictionary in _unexcused(path, _scan(path)):
+			problems.append("%s:%d: %s" % [path, hit["line"], hit["rule"]])
 	(
 		assert_array(problems)
 		. override_failure_message(
@@ -422,6 +440,7 @@ func test_each_exception_has_a_reason_and_is_still_needed() -> void:
 			hit_rules.append(hit["rule"])
 		for rule: String in exception["rules"]:
 			assert_array(known).override_failure_message(rule).contains([rule])
+			assert_array(NEVER_EXCEPTED).override_failure_message(path).not_contains([rule])
 			(
 				assert_array(hit_rules)
 				. override_failure_message(
@@ -430,6 +449,24 @@ func test_each_exception_has_a_reason_and_is_still_needed() -> void:
 				. contains([rule])
 			)
 		assert_array(exception["rules"]).is_not_empty()
+
+
+## The dp step may write a size on its copy and nothing else: a colour or a font that it writes
+## (the text colour, a font) is a violation of the look, whatever the exception for its sizes.
+func test_the_dp_steps_exception_covers_its_sizes_and_never_a_colour_or_a_font() -> void:
+	var path: String = "res://game/ui/HudTheme.gd"
+	var source: String = FileAccess.get_file_as_string(path)
+	assert_array(_unexcused(path, _violations(source, GD))).is_empty()
+	var size_write: String = '\tout.set_font_size(&"font_size", &"Label", 28)'
+	assert_array(_unexcused(path, _violations(source + "\n" + size_write, GD))).is_empty()
+	for line: String in [
+		'\tout.set_color(&"font_color", &"Label", out.get_color(&"outline", &"BoxOverlay"))',
+		'\tout.set_font(&"font", &"Label", ThemeDB.fallback_font)',
+	]:
+		var rules: Array[String] = []
+		for hit: Dictionary in _unexcused(path, _violations(source + "\n" + line, GD)):
+			rules.append(hit["rule"])
+		assert_array(rules).override_failure_message(line).is_equal(["look_written_in_code"])
 
 
 ## The project theme stays unset: it would restyle the developer scenes, which keep their looks.
@@ -451,6 +488,16 @@ func _scanned_files() -> Array[String]:
 func _scan(path: String) -> Array[Dictionary]:
 	var kind: String = TSCN if path.ends_with(".tscn") else GD
 	return _violations(FileAccess.get_file_as_string(path), kind)
+
+
+## The violations in `hits` of the file at `path` that none of its exceptions covers.
+func _unexcused(path: String, hits: Array[Dictionary]) -> Array[Dictionary]:
+	var allowed: Array = EXCEPTIONS.get(path, {}).get("rules", [])
+	var found: Array[Dictionary] = []
+	for hit: Dictionary in hits:
+		if not allowed.has(hit["rule"]):
+			found.append(hit)
+	return found
 
 
 ## The violations in `text` of a `kind` of file: dictionaries with the `rule` and the `line`

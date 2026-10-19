@@ -108,7 +108,6 @@ func test_the_dp_step_scales_every_size_a_stylebox_can_carry() -> void:
 	flat.expand_margin_bottom = 4.0
 	flat.shadow_size = 3
 	flat.shadow_offset = Vector2(2.0, -4.0)
-	flat.skew = Vector2(1.0, 0.0)
 	flat.set_corner_radius_all(5)
 	flat.set_content_margin_all(6.0)
 	flat.bg_color = Color(0.2, 0.4, 0.6, 0.8)
@@ -134,7 +133,6 @@ func test_the_dp_step_scales_every_size_a_stylebox_can_carry() -> void:
 	assert_array([box.expand_margin_right, box.expand_margin_bottom]).is_equal([6.0, 8.0])
 	assert_int(box.shadow_size).is_equal(6)
 	assert_that(box.shadow_offset).is_equal(Vector2(4.0, -8.0))
-	assert_that(box.skew).is_equal(Vector2(2.0, 0.0))
 	assert_int(box.get_corner_radius(CORNER_TOP_LEFT)).is_equal(10)
 	assert_float(box.get_content_margin(SIDE_LEFT)).is_equal(12.0)
 	assert_that(box.bg_color).is_equal(Color(0.2, 0.4, 0.6, 0.8))  # Colours are not sizes.
@@ -177,6 +175,89 @@ func test_a_whole_number_stylebox_size_is_rounded_to_whole_px() -> void:
 	assert_int(box.shadow_size).is_equal(4)
 	assert_int(box.get_corner_radius(CORNER_TOP_RIGHT)).is_equal(4)
 	assert_int((copy.get_stylebox("separator", "HSeparator") as StyleBoxLine).thickness).is_equal(4)
+
+
+## A StyleBox property that is not a size in px stays as it is: a shear ratio draws the same angle
+## on every screen (scaled, a `skew` of 0.25 was 0.17 at 0.667 px per dp and 0.33 at 1.333), a count
+## is a count, and the soft edge of a shape is a sharpness setting, 1 px at any scale.
+func test_the_dp_step_keeps_the_stylebox_properties_that_are_not_sizes() -> void:
+	var theme: Theme = Theme.new()
+	var flat: StyleBoxFlat = StyleBoxFlat.new()
+	flat.skew = Vector2(0.25, -0.125)
+	flat.corner_detail = 5
+	flat.anti_aliasing_size = 1.5
+	flat.anti_aliasing = false
+	flat.draw_center = false
+	flat.border_blend = true
+	flat.set_corner_radius_all(4)  # A size next to them: this one is scaled.
+	theme.set_stylebox("panel", "Window", flat)
+	for px_per_dp: float in [0.667, 1.0, 1.75, 2.0]:
+		var box: StyleBoxFlat = HudTheme.scaled(theme, px_per_dp).get_stylebox("panel", "Window")
+		var why: String = "at %s px per dp" % px_per_dp
+		assert_that(box.skew).override_failure_message(why).is_equal(Vector2(0.25, -0.125))
+		assert_int(box.corner_detail).override_failure_message(why).is_equal(5)
+		assert_float(box.anti_aliasing_size).override_failure_message(why).is_equal(1.5)
+		assert_bool(box.anti_aliasing).override_failure_message(why).is_false()
+		assert_bool(box.draw_center).override_failure_message(why).is_false()
+		assert_bool(box.border_blend).override_failure_message(why).is_true()
+		assert_int(box.get_corner_radius(CORNER_TOP_LEFT)).is_equal(roundi(4 * px_per_dp))
+
+
+## The step turns sizes into px and writes no colour, font, icon or constant: they come out as they
+## went in, and no entry is added or dropped. The scan cannot see a write through a variable, so
+## this is the case that sees one in `scaled()`.
+func test_the_dp_step_keeps_every_colour_font_icon_and_constant_of_the_source() -> void:
+	var theme: Theme = Theme.new()
+	var font: Font = auto_free(FontVariation.new())
+	var other_font: Font = auto_free(SystemFont.new())
+	var icon: Texture2D = auto_free(PlaceholderTexture2D.new())
+	theme.default_font = font
+	theme.set_color("font_color", "Label", Color(0.1, 0.2, 0.3, 0.4))
+	theme.set_color("font_outline_color", "Label", Color(0.4, 0.3, 0.2, 0.1))
+	theme.set_color("fill", "BoxOverlay", Color(0.5, 0.6, 0.7, 0.8))
+	theme.set_color("outline", "BoxOverlay", Color(0.9, 0.8, 0.7, 0.6))
+	theme.set_font("font", "Label", other_font)
+	theme.set_font("font", "Button", font)
+	theme.set_icon("icon", "Button", icon)
+	theme.set_constant("separation", "HBoxContainer", 7)
+	theme.set_constant("outline_size", "Label", 3)
+	theme.set_font_size("font_size", "Label", 10)  # The one thing here that is a size.
+	var copy: Theme = HudTheme.scaled(theme, 2.0)
+	assert_int(copy.get_font_size("font_size", "Label")).is_equal(20)
+	assert_object(copy.default_font).is_same(font)
+	assert_array(copy.get_type_list()).contains_exactly_in_any_order(theme.get_type_list())
+	for type: String in theme.get_type_list():
+		var at: String = "type %s" % type
+		(
+			assert_array(copy.get_color_list(type))
+			. override_failure_message(at)
+			. contains_exactly_in_any_order(theme.get_color_list(type))
+		)
+		(
+			assert_array(copy.get_font_list(type))
+			. override_failure_message(at)
+			. contains_exactly_in_any_order(theme.get_font_list(type))
+		)
+		(
+			assert_array(copy.get_icon_list(type))
+			. override_failure_message(at)
+			. contains_exactly_in_any_order(theme.get_icon_list(type))
+		)
+		(
+			assert_array(copy.get_constant_list(type))
+			. override_failure_message(at)
+			. contains_exactly_in_any_order(theme.get_constant_list(type))
+		)
+		for item: String in theme.get_color_list(type):
+			assert_that(copy.get_color(item, type)).is_equal(theme.get_color(item, type))
+		for item: String in theme.get_font_list(type):
+			assert_object(copy.get_font(item, type)).is_same(theme.get_font(item, type))
+		for item: String in theme.get_icon_list(type):
+			assert_object(copy.get_icon(item, type)).is_same(theme.get_icon(item, type))
+		for item: String in theme.get_constant_list(type):
+			assert_int(copy.get_constant(item, type)).is_equal(theme.get_constant(item, type))
+	assert_int(copy.get_constant("separation", "HBoxContainer")).is_equal(7)  # Not scaled.
+	assert_object(copy.get_font("font", "Label")).is_same(other_font)
 
 
 ## An entry marked as base px keeps all of its sizes, not only its margins.

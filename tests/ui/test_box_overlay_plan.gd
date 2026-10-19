@@ -109,6 +109,31 @@ func test_only_the_fills_have_the_width_of_a_fill() -> void:
 		assert_bool(filled).override_failure_message(str(step.item)).is_equal(step.item == &"fill")
 
 
+## `_draw` hands the painter each step of the plan, in order, with the theme colour of the step's
+## item: the three colours of a theme that tells them apart (a draw that took one colour for all
+## would show). Only the painter's own draw calls (`_paint`) are left to the screenshots.
+func test_draw_hands_the_painter_each_step_in_the_theme_colour_of_its_item() -> void:
+	var overlay: BoxOverlay = _overlay()
+	var look: Theme = Theme.new()
+	var fill: Color = Color(0.1, 0.2, 0.3, 0.4)
+	var outline: Color = Color(0.5, 0.6, 0.7, 0.8)
+	var stroke: Color = Color(0.9, 0.8, 0.7, 0.6)
+	look.set_color("fill", "BoxOverlay", fill)
+	look.set_color("outline", "BoxOverlay", outline)
+	look.set_color("stroke", "BoxOverlay", stroke)
+	overlay.theme = look
+	overlay.show_anchor(ANCHOR)
+	overlay.show_rect(BOX)
+	var kinds: Array[String] = []
+	var colors: Array[Color] = []
+	overlay.painter = func(step: BoxOverlay.Step, color: Color) -> void:
+		kinds.append("%s %s" % [step.shape, step.item])
+		colors.append(color)
+	overlay._draw()
+	assert_array(kinds).is_equal(_kinds(overlay))
+	assert_array(colors).is_equal([fill, outline, stroke, fill, outline, stroke])
+
+
 func _overlay() -> BoxOverlay:
 	var overlay: BoxOverlay = auto_free(BoxOverlay.new())
 	overlay.visible = false  # As main.tscn has it: opening it reads the dp factor.
