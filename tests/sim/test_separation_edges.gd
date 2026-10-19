@@ -3,7 +3,8 @@ extends GdUnitTestSuite
 ## ints read from the World (and kept in range), the neighbour and scan caps in scan order (the
 ## first 8 overlapping units and the first 16 looked at, cell by cell and by id inside a cell),
 ## every row written, the work count, the map corners and positions outside the map, the idle
-## share of the fixed push of a near-coincident pair, and units of different players.
+## share of the fixed push of a near-coincident pair and its rounding, and units of different
+## players. The direction of that push is test_separation_signs.gd's.
 ## Single-tick cases rebuild the grid and call `Separation.run` (SeparationRig). Tanks have radius
 ## 400 and squads (type 1 here) 300.
 
@@ -244,13 +245,18 @@ func test_the_edges_of_the_map_do_not_wrap() -> void:
 	assert_int(world.stats[World.Stat.SEP_PAIRS]).is_equal(0)
 
 
-## The cell size is the grid's: on a grid of 2-tile cells, two tanks 200 apart across a cell border
-## are each in the other's 3x3 cells.
+## The cell size is the grid's, for the column and for the line: on a grid of 2-tile cells, two
+## tanks 200 apart across a cell border are each in the other's 3x3 cells, on the line y = 4000
+## (cell line 2) and on the line y = 3000 (cell line 1, which a cell height of 1 tile would put on
+## line 3, past the cells the tanks are listed in).
 func test_the_cell_size_comes_from_the_grid() -> void:
-	var world: World = _tanks([Vector2i(1900, 4000), Vector2i(2100, 4000)])
-	world.sep_grid.configure(world.map_w, world.map_h, 2 * World.MILLI_PER_TILE, world.max_rows)
-	Rig.separate(world)
-	assert_array(_pushes(world)).is_equal([Vector2i(-46, 0), Vector2i(46, 0)])
+	for y: int in [4000, 3000]:
+		var world: World = _tanks([Vector2i(1900, y), Vector2i(2100, y)])
+		world.sep_grid.configure(world.map_w, world.map_h, 2 * World.MILLI_PER_TILE, world.max_rows)
+		Rig.separate(world)
+		assert_array(_pushes(world)).override_failure_message("y %d" % y).is_equal(
+			[Vector2i(-46, 0), Vector2i(46, 0)]
+		)
 
 
 ## The formula's truncation is exact: 311 apart the pair push is 131 (131.9 before the cut, and
@@ -354,6 +360,21 @@ func test_a_tank_and_a_squad_take_the_fixed_push_of_the_pair() -> void:
 				)
 				. is_equal([Vector2i(-87, 0), Vector2i(87, 0)])
 			)
+
+
+## The fixed push of a pair is R / divisor rounded down, not up: R = 805 (radii 402 and 403) with a
+## divisor of 4 and the cap lifted gives 201 for the pair (805 / 4 = 201.25), 100 each (the share
+## truncates 100.5), on one point and 100 apart alike, where rounding up would give 202 and 101.
+func test_the_fixed_push_of_a_pair_is_the_reach_over_the_divisor_rounded_down() -> void:
+	for second_x: int in [5000, 5100]:
+		var world: World = _mixed(0, Vector2i(5000, 4000), Vector2i(second_x, 4000))
+		world.type_radius[0] = 402
+		world.type_radius[1] = 403
+		world.separation_push_max = 1000
+		Rig.separate(world)
+		assert_array(_pushes(world)).override_failure_message("second x %d" % second_x).is_equal(
+			[Vector2i(-100, 0), Vector2i(100, 0)]
+		)
 
 
 ## The divisor is kept at 1 or more whatever the rule int says: 0 would make every pair
