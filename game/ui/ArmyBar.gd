@@ -10,7 +10,6 @@ signal group_assign_requested(slot: int)
 
 const ALL_ARMY_DP: Vector2 = Vector2(96, 56)
 const GROUP_DP: Vector2 = Vector2(56, 56)
-const FONT_DP: float = 18.0  ## HUD numbers (touch-ui-rules).
 const GAP_DP: float = 8.0
 
 @export var settings: InputSettings
@@ -52,8 +51,6 @@ func _add(button: Button, node_name: String, label: String, size_dp: Vector2) ->
 	add_child(button)
 
 
-## Text and gaps are dp, so they follow a resize like DpMinSize does.
+## The gaps are dp, so they follow a resize like DpMinSize does. The buttons' text is the theme's.
 func _apply_dp() -> void:
 	add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
-	for child: Node in get_children():
-		(child as Button).add_theme_font_size_override("font_size", roundi(UiScale.dp(FONT_DP)))
