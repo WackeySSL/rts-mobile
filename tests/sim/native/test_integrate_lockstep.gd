@@ -116,13 +116,18 @@ func test_a_cache_of_two_slots_gives_the_same_slot_tables_after_every_tick() -> 
 ## them), modes, slots (a number past the cache too), best distances, stall counts, `nav_next`
 ## and `nav_cell` marks, group targets and goals (off the map too), and random rule ints (a
 ## negative line-check period, a stall of no ticks, a re-key distance of 0) and a negative tick.
-## The twin takes every one of these without error, so a difference is the kernel's.
+## The twin takes every one of these without error, so a difference is the kernel's. The random
+## pushes stand in every tick (HandPushProbe) instead of the ones SEPARATION computes since P39b:
+## a real push would send a unit of an unknown move class into the cost table, which the twin does
+## not take (the arena runs above have the real pushes).
 func test_random_states_match() -> void:
 	var total: Dictionary[StringName, int] = {}
 	for name: StringName in LockstepRig.TALLY:
 		total[name] = 0
 	for index: int in SOUP_WORLDS:
-		var rig: RefCounted = LockstepRig.new().setup(_random_world.bind(index), index % 2 == 0)
+		var rig: RefCounted = LockstepRig.new().setup(
+			_random_world.bind(index), index % 2 == 0, true
+		)
 		assert_array(rig.problems).is_empty()
 		assert_str(rig.run(SOUP_TICKS)).override_failure_message("state %d" % index).is_empty()
 		for name: StringName in LockstepRig.TALLY:

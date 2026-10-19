@@ -146,6 +146,18 @@ Facts checked on Godot 4.7.2:
      "every tappable thing at least `UiScale.dp(48)` on each axis, at every test profile".
      Dev buttons at 120 base px still pass, because `dp(48)` stays below 120 base px on every
      profile in the test table.
+
+   Status note (2026-10-19, P26x docs, P58 as merged, #107), the text above stays as accepted:
+   the HUD Theme's dp step is `game/ui/HudTheme.gd`. `game/ui/theme.tres` holds the HUD's font
+   sizes and StyleBox sizes in dp, because a Theme stores fixed numbers. `HudTheme`, a `Node`
+   and the first child of the `Hud` `CanvasLayer`, gives each HUD root a copy of its theme with
+   every font size and every StyleBox size multiplied by `UiScale.base_px_per_dp()`, at `_ready`
+   and on every viewport `size_changed` (before the HUD scripts' own handlers, which may read
+   the theme), and to a root added later as it enters the tree. The copy is the root's `theme`,
+   never a node override; an entry kept in base px is listed in the theme's `metadata/base_px`
+   (today only the Dev button's font size, 40). So the theme is one more user of dp sizes that
+   recomputes on `size_changed`, beside `DpMinSize`, `SafeAreaMargin` and `TouchInput` above.
+   The Phase 2 plan's section P58 "As merged" has the details.
 4. **Hit testing.** A unit's hit radius in screen px is
    `max(dp(hit_radius_dp), ViewScale.milli_to_px(selection_radius) * zoom)`, with
    `selection_radius` in milli-tiles from the unit data. When hit areas

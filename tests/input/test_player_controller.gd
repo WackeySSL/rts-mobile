@@ -203,7 +203,11 @@ func test_the_ordered_tanks_stand_idle_on_distinct_slots_around_the_point_after_
 			assert_float(Vector2(spots[row]).distance_to(Vector2(20016, 21516))).is_less(3800.0)
 		for a: int in 30:
 			for b: int in range(a + 1, 30):
-				assert_float(Vector2(spots[a]).distance_to(Vector2(spots[b]))).is_greater(1199.0)
+				# P39b: separation settles tanks just under their radii sum (800), not on the lattice;
+				# the bound is 90% of that sum, 720 milli (ADR 0008 section 4).
+				assert_float(Vector2(spots[a]).distance_to(Vector2(spots[b]))).is_greater_equal(
+					720.0
+				)
 		assert_int(world.pos_x[30]).is_equal(34500)  # The red tanks were not ordered.
 		assert_int(world.order[30]).is_equal(World.Order.IDLE)
 

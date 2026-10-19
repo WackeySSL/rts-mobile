@@ -74,16 +74,15 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
   derived from the World's `field` column every tick, never released by hand. A group move
   shares one field.
 - Field keys and endings (P37b, ADR 0008 §2/§3 notes of 2026-10-19): a blocked line keys its field
-  on the row's `group_cell` (`Formation.assign`'s group centre for `MOVE` and `ATTACK_MOVE`; -1
-  from `Sim._apply_attack`, `Sim._apply_stop` and `Movement._end_order`), else on the unit's goal
-  tile. `nav_next` is -1 (not looked up), `Movement.NO_NEXT` (-2, none) or a cell, looked up in
-  INTEGRATE at events only; a next tile equal to the field's key and blocked for the class is
-  none. With none on a key other than its goal tile, `Movement._take_own_field` takes the goal
-  tile's field (`ATTACK` included) with a fresh `best_dist` and `stall`; a `FIELD` unit left with
-  none stalls at any distance
-  (`ATTACK` never stalls). Kernels mirror all of it: INTEGRATE (P37n) the own field, the blocked
-  key, the fresh counts and `_end_order`'s `group_cell` write, with `group_cell` in its checked
-  list; INTENTS (P37n2, if it fires) `_check_line`'s group key.
+  on the row's `group_cell` (`Formation.assign`'s group centre for `MOVE` and `ATTACK_MOVE`; -1 from
+  `Sim._apply_attack`, `Sim._apply_stop` and `Movement._end_order`), else on the unit's goal tile.
+  `nav_next` is -1 (not looked up), `Movement.NO_NEXT` (-2, none) or a cell, looked up in INTEGRATE
+  at events only; a next tile equal to the field's key and blocked for the class is none. With none
+  on a key other than its goal tile, `Movement._take_own_field` takes the goal tile's field
+  (`ATTACK` included) with a fresh `best_dist` and `stall`; a `FIELD` unit left with none stalls at
+  any distance (`ATTACK` never stalls). Kernels mirror all of it: INTEGRATE (P37n) the own field,
+  the blocked key, the fresh counts and `_end_order`'s `group_cell` write, with `group_cell` in its
+  checked list; INTENTS (P37n2, if it fires) `_check_line`'s group key.
 - Two spatial grids as linked lists (`head` per cell, `next` per row), rebuilt once per tick in
   the grids phase: a 1-tile separation grid and a 4-tile targeting grid (not one 2-tile grid).
   Processed in ID order.
@@ -204,9 +203,13 @@ bursty phase whose per-active-tick cost sets a headroom value. `COMMANDS`, `REMO
 - FLOW (§2, "Arrays of helper objects"): fetch the typed slot `Array` once, then each touched
   slot's arrays and scalars once (bounded by `flow_cache_size`, never per row or cell). The
   buffer swap is two `set` calls, after which both pointers are fetched again; no slot array is
-  resized in a tick (P30b's `configure()` sizes them). One recorded exception (plan, P26m): the
-  slot pick re-reads `pending` of every `ACTIVE` slot per pick, because reading it once would
-  need a capacity literal.
+  resized in a tick (P30b's `configure()` sizes them). Two recorded exceptions. FLOW (plan,
+  P26m): the slot pick re-reads `pending` of every `ACTIVE` slot per pick, because reading it
+  once would need a capacity literal. INTEGRATE (P37n; ADR 0013 §2's note of P26x docs): the
+  pass asks a slot for `complete` once per slot and call and keeps the answer in a 63-slot mask
+  (`integrate::MEMO_SLOTS`, pinned by `test_integrate_kernel_slots.gd`), which a recycle
+  updates; the rest of a slot is fetched at event cadence, where a FIELD unit looks up its next
+  tile; a slot past 63 is asked on each use. Never an `Object::get` per row.
 - Forbidden: a `Packed*Array` parameter anywhere in `bind/` (by value or by reference: both write
   to a silent copy); keeping a pointer, Variant, array or Object between calls; `get` or `set`
   per row; calling back into GDScript while holding a `ptrw()` pointer; resizing a held array.
@@ -242,6 +245,13 @@ bursty phase whose per-active-tick cost sets a headroom value. `COMMANDS`, `REMO
 - `MatchRunner.sim_impl` defaults to `GDSCRIPT`; scenes set `AUTO` from P50b. The mask always
   comes from `kernels.phases()`, and `tests/sim/support/sim_impls.gd` asserts it against
   `EXPECTED_PHASES`.
+- A module's tests run under both implementations through `sim_impls.gd` (preloaded as
+  `SimImpls`): the suite has `func _both() -> Array[Array]: return SimImpls.CASES.duplicate(true)`
+  and each test is `func test_x(impl: int, _test_parameters := _both())`. gdUnit4 reads the
+  parameter sets by calling the suite's member by name and writes into the sets it gets, so they
+  are never the constant itself. The World a test builds is attached with
+  `assert_array(SimImpls.attach(world, impl, SimProbe.Phase.X)).is_empty()`: `attach` is `use()`
+  plus the check that the phase really runs in the implementation asked for.
 
 **Determinism in C++ (§4).**
 - `int64_t` wherever GDScript holds an `int`. Every element read from an `int32` or `uint8` array

@@ -1,14 +1,16 @@
 extends GdUnitTestSuite
 ## Stall (P37b; ADR 0008 section 2): a unit that steers at its goal for good tracks `best_dist` and
 ## goes IDLE where it stands when that has not improved for `stall_ticks` ticks while it is within
-## `stall_range_spacings` formation spacings of the goal. There is no separation in the tick yet
-## (P39b), so a parked enemy is a push written by hand, the way test_movement_integrate.gd writes
-## one. Maps are built in code (GridWorld): speed 120, spacing 1200, so the range is 2400.
+## `stall_range_spacings` formation spacings of the goal. A parked enemy is a push written by hand,
+## the way test_movement_integrate.gd writes one; since P39b the tick computes the pushes itself, so
+## these cases step with a HandPushProbe that puts the hand-written pushes back after SEPARATION.
+## Maps are built in code (GridWorld): speed 120, spacing 1200, so the range is 2400.
 ## Every case runs under both implementations of the INTEGRATE phase (P37n), the GDScript twin and
 ## the C++ kernel, through SimImpls: gdUnit4 runs it once for each.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
+const HandPushProbe: GDScript = preload("res://tests/sim/support/hand_push_probe.gd")
 const MOVE: int = World.Order.MOVE
 const ATTACK: int = World.Order.ATTACK
 const IDLE: int = World.Order.IDLE
@@ -80,6 +82,7 @@ func test_stall_follows_the_rules_of_the_world(impl: int, _test_parameters := _b
 func test_progress_resets_the_stall_count(impl: int, _test_parameters := _both()) -> void:
 	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10)), impl)
 	world.add_unit(1, 0, 3000, 2000)
+	var probe: SimProbe = HandPushProbe.new(world)
 	var held: int = 0
 	var top: int = 0
 	for tick: int in 600:
@@ -91,7 +94,7 @@ func test_progress_resets_the_stall_count(impl: int, _test_parameters := _both()
 		if tick > 0 and left <= RANGE and left > 240:
 			held += 1
 			world.push_x[0] = 0 if held % 11 == 0 else -120
-		Sim.step(world, commands)
+		Sim.step(world, commands, probe)
 		top = maxi(top, world.stall[0])
 		if world.order[0] == IDLE:
 			break
@@ -124,8 +127,9 @@ func test_units_out_of_range_or_attacking_or_unable_to_move_do_not_stall(
 	world.goal_y[2] = 6000
 	world.push_x[0] = -120
 	world.push_x[1] = -120
+	var probe: SimProbe = HandPushProbe.new(world)
 	for _tick: int in 80:
-		Sim.step(world, [])
+		Sim.step(world, [], probe)
 	assert_array([world.order[0], world.nav_mode[0], world.stall[0]]).is_equal([MOVE, DIRECT, 0])
 	assert_int(world.best_dist[0]).is_equal(FlowField.UNREACHED)
 	assert_array([world.order[1], world.nav_mode[1], world.stall[1]]).is_equal([ATTACK, DIRECT, 0])
@@ -292,6 +296,7 @@ func test_the_stall_range_is_the_spacing_of_the_units_type_and_the_push_is_kept(
 	Movement.reset_nav(world, PackedInt32Array([0, 1]), DIRECT)
 	for row: int in 2:
 		world.nav_cell[row] = world.cell_of(world.pos_x[row], world.pos_y[row])
+	var probe: SimProbe = HandPushProbe.new(world)
 	var first_in_range: int = -1
 	var idle_at: int = -1
 	for tick: int in 40:
@@ -299,7 +304,7 @@ func test_the_stall_range_is_the_spacing_of_the_units_type_and_the_push_is_kept(
 			world.push_x[row] = -120 if world.order[row] != IDLE else 0
 			world.push_y[row] = -96 if world.order[row] != IDLE else 0
 		var stood_at: Vector2i = Vector2i(world.pos_x[1], world.pos_y[1])
-		Sim.step(world, [])
+		Sim.step(world, [], probe)
 		if first_in_range == -1 and world.best_dist[1] != FlowField.UNREACHED:
 			first_in_range = tick
 		if idle_at == -1 and world.order[1] == IDLE:
@@ -322,6 +327,7 @@ func test_the_stall_range_is_the_spacing_of_the_units_type_and_the_push_is_kept(
 ## tick the unit went IDLE, its x at the start of that tick, its x intent at the end of it].
 func _hold_back(world: World, reach: int, second_goal: int) -> Array[Array]:
 	var found: Array[Array] = [[-1, -1, -1, -1], [-1, -1, -1, -1]]
+	var probe: SimProbe = HandPushProbe.new(world)
 	for tick: int in 200:
 		var commands: Array[Command] = []
 		if tick == 0:
@@ -332,7 +338,7 @@ func _hold_back(world: World, reach: int, second_goal: int) -> Array[Array]:
 			var left: int = world.goal_x[row] - world.pos_x[row]
 			var held: bool = tick > 0 and left <= reach and world.order[row] != IDLE
 			world.push_x[row] = -120 if held else 0
-		Sim.step(world, commands)
+		Sim.step(world, commands, probe)
 		for row: int in 2:
 			if found[row][0] == -1 and world.best_dist[row] != FlowField.UNREACHED:
 				found[row][0] = tick
