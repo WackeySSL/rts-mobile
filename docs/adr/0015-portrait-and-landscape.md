@@ -364,7 +364,8 @@ Other screens:
   between levels, anchor off-centre in the old view) and during a pan with a factor other than 1
   (`web_phone` 2400x932 to a 1080x2100 window) keeps the centre point and §4's zoom, and no snap
   starts; a resize within landscape (2400x932 to 2400x1080) followed by a turn keeps the world px
-  per dp of before the resize within 0.1 %.
+  per dp of after the resize within 0.1 % (§4: the resize keeps the zoom and refreshes `bppd`, so
+  the value from before the resize is not the one kept).
 - View-only proof (P62): the main scene run for a fixed number of ticks with a rotation in the
   middle of a pan, a box and a pinch queues no Command and ends with the same state hash as the
   run without the rotation.
