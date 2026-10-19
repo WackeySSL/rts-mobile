@@ -1,9 +1,10 @@
 extends GdUnitTestSuite
 ## Separation.run, the cases beside test_separation.gd (P39): units of different radii, the rule
-## ints read from the World, the neighbour and scan caps in scan order (the first 8 overlapping
-## units and the first 16 looked at, cell by cell and by id inside a cell), every row written, the
-## work count, and the map corners. Single-tick cases rebuild the grid and call `Separation.run`
-## (SeparationRig). Tanks have radius 400 and squads (type 1 here) 300.
+## ints read from the World (and kept in range), the neighbour and scan caps in scan order (the
+## first 8 overlapping units and the first 16 looked at, cell by cell and by id inside a cell),
+## every row written, the work count, the map corners and positions outside the map.
+## Single-tick cases rebuild the grid and call `Separation.run` (SeparationRig). Tanks have radius
+## 400 and squads (type 1 here) 300.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
 const Rig: GDScript = preload("res://tests/sim/support/separation_rig.gd")
@@ -16,6 +17,18 @@ func _tanks(points: Array[Vector2i]) -> World:
 	var world: World = GridWorld.from_rows(GridWorld.grass(COLS, ROWS))
 	for point: Vector2i in points:
 		world.add_unit(1, 0, point.x, point.y)
+	return world
+
+
+## A prepared open map with a tank (type 0, radius 400) and a squad (type 1, radius 300) at the two
+## points, `first_type` the type of the first (the lower id).
+func _mixed(first_type: int, first: Vector2i, second: Vector2i) -> World:
+	var world: World = GridWorld.from_rows(
+		GridWorld.grass(COLS, ROWS), [World.MoveClass.TRACKED, World.MoveClass.FOOT]
+	)
+	world.type_radius[1] = 300
+	world.add_unit(1, first_type, first.x, first.y)
+	world.add_unit(1, 1 - first_type, second.x, second.y)
 	return world
 
 
@@ -305,3 +318,86 @@ func test_run_writes_only_the_pushes_and_the_pair_count() -> void:
 	assert_array(world.intent_x).is_equal(intent_x)
 	assert_array(world.intent_y).is_equal(intent_y)
 	assert_int(world.state_hash()).is_equal(hash_before)
+
+
+## The near-coincident limit and the fixed push belong to the pair, not to the unit that is
+## looking. A tank and a squad make R = 700 and C = 175: 160 apart both take the fixed push of 30
+## whichever of them has the lower id (a limit made from the unit's own radius would give the squad
+## the formula's 37), and at 175 the formula takes over for both (41). With the cap lifted the
+## fixed push of the pair is min(R / 4, cap) = 175, 87 each, 160 apart and on one point alike (not
+## 2 * radius / 4 for each unit).
+func test_a_tank_and_a_squad_take_the_fixed_push_of_the_pair() -> void:
+	for first_type: int in [0, 1]:
+		var world: World = _mixed(first_type, Vector2i(5000, 4000), Vector2i(5160, 4000))
+		Rig.separate(world)
+		(
+			assert_array(_pushes(world))
+			. override_failure_message("160 apart, first type %d" % first_type)
+			. is_equal([Vector2i(-30, 0), Vector2i(30, 0)])
+		)
+		world = _mixed(first_type, Vector2i(5000, 4000), Vector2i(5175, 4000))
+		Rig.separate(world)
+		(
+			assert_array(_pushes(world))
+			. override_failure_message("175 apart, first type %d" % first_type)
+			. is_equal([Vector2i(-41, 0), Vector2i(41, 0)])
+		)
+		for second_x: int in [5160, 5000]:
+			world = _mixed(first_type, Vector2i(5000, 4000), Vector2i(second_x, 4000))
+			world.separation_push_max = 1000
+			Rig.separate(world)
+			(
+				assert_array(_pushes(world))
+				. override_failure_message(
+					"cap lifted, x %d, first type %d" % [second_x, first_type]
+				)
+				. is_equal([Vector2i(-87, 0), Vector2i(87, 0)])
+			)
+
+
+## The divisor is kept at 1 or more whatever the rule int says: 0 would make every pair
+## near-coincident and divide by zero, and a negative one would change the limit. Two tanks 700
+## apart (R = 800) with a divisor of 0, 1 or -3 all take the fixed push min(R, 60) = 60, 30 each.
+func test_the_coincident_divisor_is_kept_at_1_or_more() -> void:
+	for divisor: int in [0, 1, -3]:
+		var world: World = _tanks([Vector2i(5000, 4000), Vector2i(5700, 4000)])
+		world.separation_coincident_divisor = divisor
+		Rig.separate(world)
+		assert_array(_pushes(world)).override_failure_message("divisor %d" % divisor).is_equal(
+			[Vector2i(-30, 0), Vector2i(30, 0)]
+		)
+
+
+## The push cap is kept at 0 or more whatever the rule int says: with a negative one the bounds of
+## the clamp would be swapped. With a cap of 0 or -5 nothing pushes, 700 apart (the formula) and on
+## one point (the fixed push) alike.
+func test_the_push_cap_is_kept_at_0_or_more() -> void:
+	for cap: int in [0, -5]:
+		for second_x: int in [5700, 5000]:
+			var world: World = _tanks([Vector2i(5000, 4000), Vector2i(second_x, 4000)])
+			world.separation_push_max = cap
+			Rig.separate(world)
+			(
+				assert_array(_pushes(world))
+				. override_failure_message("cap %d, x %d" % [cap, second_x])
+				. is_equal([Vector2i.ZERO, Vector2i.ZERO])
+			)
+
+
+## The cell of a unit is clamped into the map like the grid lists it. `add_unit` keeps a position
+## outside the map, and `rebuild` lists it in the nearest edge cell, so `run` must scan around
+## that cell too: two tanks 100 apart (the fixed push, 30 each, away from each other) beyond the
+## right edge, the left edge, the bottom edge and the top edge find each other.
+func test_units_outside_the_map_are_scanned_from_the_edge_cell_of_the_grid() -> void:
+	var cases: Array = [
+		[Vector2i(21000, 4000), Vector2i(21100, 4000), Vector2i(30, 0)],
+		[Vector2i(-2500, 4000), Vector2i(-2400, 4000), Vector2i(30, 0)],
+		[Vector2i(5000, 12000), Vector2i(5000, 12100), Vector2i(0, 30)],
+		[Vector2i(5000, -2500), Vector2i(5000, -2400), Vector2i(0, 30)],
+	]
+	for case: Array in cases:
+		var world: World = _tanks([case[0], case[1]])
+		assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([case[0].x, case[0].y])
+		Rig.separate(world)
+		var away: Vector2i = case[2]
+		assert_array(_pushes(world)).override_failure_message(str(case)).is_equal([-away, away])
