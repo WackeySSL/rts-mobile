@@ -3,8 +3,11 @@ extends GdUnitTestSuite
 ## pushes are written by hand, then one `integrate` call. The new point is intent plus push, clamped
 ## to the map; on a tile the unit's class cannot enter, the x move alone is tried, then the y move
 ## alone, else the unit stays. Maps are built in code (GridWorld).
+## Every case runs under both implementations of the INTEGRATE phase (P37n), the GDScript twin and
+## the C++ kernel, through SimImpls: gdUnit4 runs it once for each.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const FOOT: int = World.MoveClass.FOOT
 const WHEELED: int = World.MoveClass.WHEELED
 const TRACKED: int = World.MoveClass.TRACKED
@@ -26,7 +29,9 @@ const ROWS: int = 8
 ## open destination blocked the unit still takes the diagonal step between them: the flow field and
 ## `line_clear` call that corner cutting and forbid it. The last case pins the approximation (ADR
 ## 0008, Consequences), so a later change to the slide shows.
-func test_the_slide_tries_the_x_move_then_the_y_move_then_stays() -> void:
+func test_the_slide_tries_the_x_move_then_the_y_move_then_stays(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var cases: Array[Array] = [
 		[[], Vector2i(5000, 5000)],
 		[[[5, 5]], Vector2i(5000, 4900)],
@@ -40,7 +45,7 @@ func test_the_slide_tries_the_x_move_then_the_y_move_then_stays() -> void:
 	]
 	for case: Array in cases:
 		var rock: Array[Vector2i] = GridWorld.tiles(case[0])
-		var world: World = GridWorld.from_rows(GridWorld.grass(COLS, ROWS, rock))
+		var world: World = _in(GridWorld.from_rows(GridWorld.grass(COLS, ROWS, rock)), impl)
 		world.add_unit(1, 0, 4900, 4900)
 		world.intent_x[0] = 100
 		world.intent_y[0] = 100
@@ -54,8 +59,10 @@ func test_the_slide_tries_the_x_move_then_the_y_move_then_stays() -> void:
 
 ## The push counts like the intent: it moves an idle unit, adds to the intent of a moving one, and
 ## the sum slides at rock. A unit with neither stays where it is.
-func test_the_push_is_added_to_the_intent_and_slides_at_rock_too() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(COLS, ROWS, [Vector2i(5, 3)]))
+func test_the_push_is_added_to_the_intent_and_slides_at_rock_too(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(COLS, ROWS, [Vector2i(5, 3)])), impl)
 	GridWorld.add_block(world, 4, 1, 2000, 1500, 2000, 0)
 	# Row 0 is idle and pushed; row 1 steps 120 and is pushed back 30; row 2 has neither.
 	world.push_x[0] = 40
@@ -80,8 +87,10 @@ func test_the_push_is_added_to_the_intent_and_slides_at_rock_too() -> void:
 ## separate, including enemies and idle units", ADR 0008 section 4): HOLD has no intent, CHASE adds
 ## its own step. Neither is steering at its goal (here the point it stands on), so neither arrives
 ## and each keeps its order and its mode.
-func test_a_hold_or_chase_unit_is_still_moved_by_its_push() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(COLS, ROWS))
+func test_a_hold_or_chase_unit_is_still_moved_by_its_push(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(COLS, ROWS)), impl)
 	GridWorld.add_block(world, 3, 1, 2000, 1500, 2000, 0)
 	var orders: Array[int] = [World.Order.MOVE, World.Order.ATTACK_MOVE, World.Order.ATTACK]
 	var modes: Array[int] = [HOLD, World.NavMode.CHASE, HOLD]
@@ -103,8 +112,10 @@ func test_a_hold_or_chase_unit_is_still_moved_by_its_push() -> void:
 ## else moves it: a push (row 0, goal 100 east, pushed 30 further) or a slide that refuses the step
 ## (row 1, goal on rock tile (5, 4)) leaves it off its goal with the order gone, the mode NONE and
 ## the line unchecked. P39b's separation relies on this rule. Row 2, a step away, keeps its order.
-func test_a_unit_arrives_on_its_snap_tick_though_a_push_or_slide_keeps_it_off() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(COLS, ROWS, [Vector2i(5, 4)]))
+func test_a_unit_arrives_on_its_snap_tick_though_a_push_or_slide_keeps_it_off(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(COLS, ROWS, [Vector2i(5, 4)])), impl)
 	world.add_unit(1, 0, 2000, 2000)
 	world.add_unit(1, 0, 4900, 4900)
 	world.add_unit(1, 0, 2000, 6000)
@@ -133,8 +144,8 @@ func test_a_unit_arrives_on_its_snap_tick_though_a_push_or_slide_keeps_it_off() 
 ## The new point is clamped to 0..map-1 on each axis (11999 and 7999 on this 12 x 8 map), also when
 ## the push adds to the intent, and a unit at the far edge is in the last tile (no index past the
 ## grid).
-func test_the_new_point_is_clamped_to_the_map() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(COLS, ROWS))
+func test_the_new_point_is_clamped_to_the_map(impl: int, _test_parameters := _both()) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(COLS, ROWS)), impl)
 	GridWorld.add_block(world, 4, 1, 100, 100, 100, 0)
 	var starts: Array[Vector2i] = [
 		Vector2i(50, 50), Vector2i(11990, 7990), Vector2i(11950, 40), Vector2i(30, 7970)
@@ -162,7 +173,9 @@ func test_the_new_point_is_clamped_to_the_map() -> void:
 ## them, and costlier ground ('2') nobody. Three units, of the types tracked, foot and wheeled (so
 ## a type's index is not its class), step 120 east from x 4900 towards a column of each ground at
 ## tile 5; a refused step leaves the unit at 4900.
-func test_each_class_is_stopped_by_its_own_blocked_ground_only() -> void:
+func test_each_class_is_stopped_by_its_own_blocked_ground_only(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var cases: Array[Array] = [
 		# ground, then the x that the tracked, foot and wheeled unit end at (type 0, 1 and 2)
 		["^", [4900, 5020, 4900]],
@@ -177,7 +190,7 @@ func test_each_class_is_stopped_by_its_own_blocked_ground_only() -> void:
 		var rows: PackedStringArray = GridWorld.grass(COLS, ROWS)
 		for line: int in ROWS:
 			rows[line] = rows[line].left(5) + ground + rows[line].substr(6)
-		var world: World = GridWorld.from_rows(rows, [TRACKED, FOOT, WHEELED])
+		var world: World = _in(GridWorld.from_rows(rows, [TRACKED, FOOT, WHEELED]), impl)
 		for kind: int in 3:
 			world.add_unit(1, kind, 4900, 1500 + kind * 2000)
 			world.intent_x[kind] = 120
@@ -191,8 +204,10 @@ func test_each_class_is_stopped_by_its_own_blocked_ground_only() -> void:
 ## Only the destination is tested. A unit that started on a blocked tile (the map changed under it)
 ## moves to a passable tile, and a step that ends on another blocked tile is refused as for any
 ## unit, so it stays put.
-func test_a_unit_on_a_blocked_tile_may_move_to_a_passable_one() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(COLS, ROWS))
+func test_a_unit_on_a_blocked_tile_may_move_to_a_passable_one(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(COLS, ROWS)), impl)
 	world.add_unit(1, 0, 4950, 4500)
 	world.add_unit(1, 0, 4950, 6500)
 	world.set_terrain(4 * COLS + 4, ROCK)  # Tile (4, 4), under unit 0.
@@ -212,11 +227,14 @@ func test_a_unit_on_a_blocked_tile_may_move_to_a_passable_one() -> void:
 ## A world with no map (a hand-built one with a size of 0) has nothing to slide on and no upper
 ## bound: the unit takes its step, far past any map. The lower bound is 0 on every world, so a step
 ## below 0 ends at 0 on that axis only (the other axis keeps its step).
-func test_a_world_with_no_map_has_no_upper_bound_and_is_clamped_at_zero() -> void:
+func test_a_world_with_no_map_has_no_upper_bound_and_is_clamped_at_zero(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var world: World = _world_with_no_map()
 	world.add_unit(1, 0, 90000, 70000)
 	world.add_unit(1, 0, 50, 30)
 	world.prepare()
+	_in(world, impl)
 	assert_int(world.map_cols).is_equal(0)
 	world.intent_x[0] = 120
 	world.intent_y[0] = -99
@@ -230,11 +248,14 @@ func test_a_world_with_no_map_has_no_upper_bound_and_is_clamped_at_zero() -> voi
 ## The upper bound of a world with no map is the largest int32 (what a position column can hold),
 ## not some smaller number: a unit far out takes a whole step, and a step past the bound ends on it
 ## (2147483647), on each axis alone.
-func test_a_world_with_no_map_is_bounded_by_the_largest_int32() -> void:
+func test_a_world_with_no_map_is_bounded_by_the_largest_int32(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var world: World = _world_with_no_map()
 	world.add_unit(1, 0, 2000000000, 1500000000)
 	world.add_unit(1, 0, 2147483640, 2147483600)
 	world.prepare()
+	_in(world, impl)
 	world.intent_x[0] = 120
 	world.intent_y[0] = 77
 	world.intent_x[1] = 120
@@ -249,7 +270,9 @@ func test_a_world_with_no_map_is_bounded_by_the_largest_int32() -> void:
 ## not in the last whole tile (5999 and 2999). The clamp takes the smaller of the map's size and
 ## its tiles' extent, on each axis alone: a step that would end at 5550 and 2550 ends at 5499 and
 ## 2499, and a step inside the map is taken whole.
-func test_a_map_that_is_not_whole_tiles_clamps_to_its_size_not_its_tiles() -> void:
+func test_a_map_that_is_not_whole_tiles_clamps_to_its_size_not_its_tiles(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var world: World = _world_with_no_map()
 	world.map_w = 5500
 	world.map_h = 2500
@@ -262,6 +285,7 @@ func test_a_map_that_is_not_whole_tiles_clamps_to_its_size_not_its_tiles() -> vo
 	for row: int in 4:
 		world.add_unit(1, 0, starts[row].x, starts[row].y)
 	world.prepare()
+	_in(world, impl)
 	assert_array([world.map_cols, world.map_rows]).is_equal([6, 3])
 	for row: int in 4:
 		world.intent_x[row] = steps[row].x
@@ -276,8 +300,8 @@ func test_a_map_that_is_not_whole_tiles_clamps_to_its_size_not_its_tiles() -> vo
 ## A tall map (8 x 12 tiles): the y bound is the map's height (11999), not its width (7999), so a
 ## step down from 11990 ends on the last row's edge. Square and wide maps cannot tell the two
 ## apart.
-func test_a_tall_map_clamps_y_to_its_height() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(8, 12))
+func test_a_tall_map_clamps_y_to_its_height(impl: int, _test_parameters := _both()) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(8, 12)), impl)
 	world.add_unit(1, 0, 1000, 11990)
 	world.intent_y[0] = 60
 	Movement.integrate(world)
@@ -288,9 +312,9 @@ func test_a_tall_map_clamps_y_to_its_height() -> void:
 ## map's width), steps (+100, +100) into rock tile (4, 10). The x move alone ends in rock (4, 9)
 ## and the y move alone in open (3, 10), so only the y part is taken. If the own row were bounded
 ## by the map's width it would read row 7, find open ground there and take the x part instead.
-func test_a_tall_map_slide_reads_the_units_own_row() -> void:
+func test_a_tall_map_slide_reads_the_units_own_row(impl: int, _test_parameters := _both()) -> void:
 	var rock: Array[Vector2i] = GridWorld.tiles([[4, 10], [4, 9]])
-	var world: World = GridWorld.from_rows(GridWorld.grass(8, 12, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(8, 12, rock)), impl)
 	world.add_unit(1, 0, 3900, 9900)
 	world.intent_x[0] = 100
 	world.intent_y[0] = 100
@@ -302,9 +326,11 @@ func test_a_tall_map_slide_reads_the_units_own_row() -> void:
 ## of x = 8000 (the map's height), steps (+100, +100) into rock tile (10, 4); the x move alone ends
 ## in rock (10, 3) and the y move alone in rock (9, 4), so it stays. If the own column were bounded
 ## by the map's height it would read column 7, find open ground there and take the y part.
-func test_a_wide_map_slide_reads_the_units_own_column() -> void:
+func test_a_wide_map_slide_reads_the_units_own_column(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var rock: Array[Vector2i] = GridWorld.tiles([[10, 4], [10, 3], [9, 4]])
-	var world: World = GridWorld.from_rows(GridWorld.grass(12, 8, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(12, 8, rock)), impl)
 	world.add_unit(1, 0, 9900, 3900)
 	world.intent_x[0] = 100
 	world.intent_y[0] = 100
@@ -321,4 +347,15 @@ func _world_with_no_map() -> World:
 	world.type_radius.append(400)
 	world.type_selection_radius.append(500)
 	world.type_spacing.append(1200)
+	return world
+
+
+## The parameter sets of a test that runs under both implementations (gdUnit4 calls it by name).
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
 	return world

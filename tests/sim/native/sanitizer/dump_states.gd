@@ -27,6 +27,14 @@ extends SceneTree
 ##   flow.ref_count, flow.status (I), and per slot i: flow.slot.<i>.cost, .next, .bucket_head,
 ##   .link_next, .link_prev (I), .pad_cost (B), .goal_cell, .move_class, .grid_cols, .cell_count,
 ##   .stride, .level, .pending, .complete (S).
+## The INTEGRATE kernel (P37n) reads those too (world.field, world.move_cost, flow.cols, flow.rows,
+## the five key columns and the cost, grid_cols, cell_count, stride and complete of each slot) and
+## adds, in _write_integrate:
+##   world.map_cols, .map_rows, .map_w, .map_h, .map_version, .tick, .line_check_period_ticks,
+##   .stall_ticks, .stall_range_spacings, .attack_rekey_milli, flow.classes, flow.requests (S);
+##   world.unit_id, .type_index, .pos_x, .pos_y, .goal_x, .goal_y, .group_cell, .order, .nav_mode,
+##   .nav_cell, .nav_next, .best_dist, .stall, .intent_x, .intent_y, .push_x, .push_y,
+##   .type_speed, .type_spacing, .type_move_class, flow.key_version, flow.last_used (I).
 ##
 ## Sim.step steps FLOW itself (P37b), so the step only plays and nothing here calls FlowCache. The
 ## fields come from real orders: the arena's own (both sides attack-move across its rock wall,
@@ -56,6 +64,41 @@ const WALL_X: int = 32000
 ## test_flow_lockstep.gd paints them: slow sand (255 is the cap of the bucket ring), scrub for
 ## foot only.
 const GROUND_COST: Array[int] = [10, 10, 10, 12, 41, 255, 13, 0, 0, 0, 0, 0, 0, 0, 0]
+## The World members that the INTEGRATE kernel reads or writes, beyond those of the FLOW records.
+const INTEGRATE_SCALARS: Array[StringName] = [
+	&"map_cols",
+	&"map_rows",
+	&"map_w",
+	&"map_h",
+	&"map_version",
+	&"tick",
+	&"line_check_period_ticks",
+	&"stall_ticks",
+	&"stall_range_spacings",
+	&"attack_rekey_milli"
+]
+const INTEGRATE_COLUMNS: Array[StringName] = [
+	&"unit_id",
+	&"type_index",
+	&"pos_x",
+	&"pos_y",
+	&"goal_x",
+	&"goal_y",
+	&"group_cell",
+	&"order",
+	&"nav_mode",
+	&"nav_cell",
+	&"nav_next",
+	&"best_dist",
+	&"stall",
+	&"intent_x",
+	&"intent_y",
+	&"push_x",
+	&"push_y",
+	&"type_speed",
+	&"type_spacing",
+	&"type_move_class"
+]
 
 
 func _initialize() -> void:
@@ -156,6 +199,7 @@ func _write(world: World, path: String) -> bool:
 	file.store_32(World.STATE_FORMAT)
 	file.store_32(world.tick)
 	_write_flow(file, world)
+	_write_integrate(file, world)
 	var ok: bool = file.get_error() == OK
 	file.close()
 	return ok
@@ -192,6 +236,19 @@ func _write_flow(file: FileAccess, world: World) -> void:
 		_scalar(file, prefix + "level", field.level)
 		_scalar(file, prefix + "pending", field.pending)
 		_scalar(file, prefix + "complete", int(field.complete))
+
+
+## The INTEGRATE kernel's inputs that the FLOW records above do not hold: what
+## SimKernels.integrate reads and writes (bind/kernel_integrate.cpp).
+func _write_integrate(file: FileAccess, world: World) -> void:
+	for member: StringName in INTEGRATE_SCALARS:
+		_scalar(file, "world.%s" % member, world.get(member))
+	for member: StringName in INTEGRATE_COLUMNS:
+		_ints(file, "world.%s" % member, world.get(member))
+	_scalar(file, "flow.classes", world.flow.classes)
+	_scalar(file, "flow.requests", world.flow.requests)
+	_ints(file, "flow.key_version", world.flow.key_version)
+	_ints(file, "flow.last_used", world.flow.last_used)
 
 
 func _head(file: FileAccess, kind: String, record: String, count: int) -> void:

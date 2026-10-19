@@ -10,8 +10,12 @@ extends GdUnitTestSuite
 ##   that has not started; the x move alone keeps the unit's own y; a unit that finds every slot
 ##   referenced checks its line once on its turn.
 ## Maps are built in code (GridWorld).
+## Every case runs under both implementations of the INTEGRATE phase (P37n), the GDScript twin and
+## the C++ kernel, through SimImpls: gdUnit4 runs it once for each.
+## The cases that count the twin's `best_neighbour` calls stay on the twin.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const FieldCadence: GDScript = preload("res://tests/sim/support/field_cadence.gd")
 const MOVE: int = World.Order.MOVE
 const IDLE: int = World.Order.IDLE
@@ -49,10 +53,15 @@ func test_a_field_unit_south_of_the_map_width_on_a_tall_map_is_in_its_own_tile()
 
 ## A FIELD unit checks its line when it enters a tile, not every tick: over the run the checks are
 ## far fewer than the ticks followed (a wrong cell for the unit would re-check on every tick).
-func test_a_field_unit_far_from_the_map_origin_checks_on_tile_entries_only() -> void:
+func test_a_field_unit_far_from_the_map_origin_checks_on_tile_entries_only(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for wide: bool in [true, false]:
-		var world: World = GridWorld.from_rows(
-			GridWorld.grass(30 if wide else 10, 10 if wide else 30, _wall(22, 7, wide))
+		var world: World = _in(
+			GridWorld.from_rows(
+				GridWorld.grass(30 if wide else 10, 10 if wide else 30, _wall(22, 7, wide))
+			),
+			impl
 		)
 		world.add_unit(1, 0, 11500 if wide else 2500, 2500 if wide else 11500)
 		var order: Command = Command.move(
@@ -85,8 +94,11 @@ func test_a_field_unit_far_from_the_map_origin_checks_on_tile_entries_only() -> 
 ## entering tiles. Unit 4, ordered at tick 50 to the point unit 1 was ordered to (the same group
 ## target, so the same key), shares slot 1 and must get its next tile when it joins, though slot 0
 ## is pending. Every tile unit 1 enters has the lookup of slot 1 in `nav_next`.
-func test_a_unit_follows_its_own_slot_while_another_slot_is_pending() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(30, 14, _wall(12, 11, true)))
+func test_a_unit_follows_its_own_slot_while_another_slot_is_pending(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(30, 14, _wall(12, 11, true))), impl)
+	world.flow_cache_size = 2
 	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 2)
 	world.add_unit(1, 0, 3500, 1500)
 	world.add_unit(1, 0, 3500, 5500)
@@ -148,8 +160,11 @@ func test_a_unit_follows_its_own_slot_while_another_slot_is_pending() -> void:
 ## A unit that finds every slot referenced checks its line once on its turn, not twice. A cache of
 ## 1 slot (20 x 12 map, wall in column 8, rows 0 to 10); unit 2 (turn on tick 3) takes it, unit 1's
 ## first check (tick 4) finds none: one more line check, the unit stays DIRECT and unchecked.
-func test_a_starved_unit_checks_its_line_once_per_turn() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 12, _wall(8, 11, true)))
+func test_a_starved_unit_checks_its_line_once_per_turn(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 12, _wall(8, 11, true))), impl)
+	world.flow_cache_size = 1
 	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 1)
 	world.add_unit(1, 0, 3500, 2500)
 	world.add_unit(1, 0, 3500, 8500)
@@ -173,8 +188,10 @@ func test_a_starved_unit_checks_its_line_once_per_turn() -> void:
 
 ## A hand-set order (mode NONE) is a DIRECT unit that has not started: its first check waits for
 ## its turn like any other, and the unit is DIRECT, not FIELD, until then.
-func test_a_hand_set_order_waits_for_its_turn_to_check() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 12, _wall(8, 11, true)))
+func test_a_hand_set_order_waits_for_its_turn_to_check(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 12, _wall(8, 11, true))), impl)
 	world.add_unit(1, 0, 3500, 2500)
 	world.order[0] = MOVE
 	world.goal_x[0] = 14500
@@ -187,8 +204,11 @@ func test_a_hand_set_order_waits_for_its_turn_to_check() -> void:
 
 ## `integrate` on a World whose line-check period is 0 does not divide by it (the guard is the
 ## same as `run`'s): a FIELD unit with a lookup due takes its step.
-func test_integrate_guards_a_line_check_period_of_zero() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+func test_integrate_guards_a_line_check_period_of_zero(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10)), impl)
+	world.flow_cache_size = 2
 	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 2)
 	assert_int(world.flow.acquire(0, World.MoveClass.TRACKED, world.map_version, 0)).is_equal(0)
 	FlowCache.run(world, 100000)
@@ -209,9 +229,9 @@ func test_integrate_guards_a_line_check_period_of_zero() -> void:
 ## When the diagonal step ends on rock, the x move alone keeps the unit's own y. Rock at (5, 4), a
 ## unit at (4900, 3900) steps (+100, +100) to (5000, 4000), which is rock; the x move alone ends in
 ## tile (5, 3), which is open, and y stays 3900 (not 4000).
-func test_the_x_only_slide_keeps_the_units_own_y() -> void:
+func test_the_x_only_slide_keeps_the_units_own_y(impl: int, _test_parameters := _both()) -> void:
 	var rock: Array[Vector2i] = [Vector2i(5, 4)]
-	var world: World = GridWorld.from_rows(GridWorld.grass(12, 8, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(12, 8, rock)), impl)
 	world.add_unit(1, 0, 4900, 3900)
 	world.intent_x[0] = 100
 	world.intent_y[0] = 100
@@ -221,8 +241,8 @@ func test_the_x_only_slide_keeps_the_units_own_y() -> void:
 
 ## A map of one tile is a map: the position is clamped to it (999 at most on either axis), where a
 ## World with no map has no upper bound.
-func test_a_map_of_one_tile_clamps_the_position() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(1, 1))
+func test_a_map_of_one_tile_clamps_the_position(impl: int, _test_parameters := _both()) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(1, 1)), impl)
 	world.add_unit(1, 0, 500, 500)
 	world.intent_x[0] = 700
 	world.intent_y[0] = 900
@@ -231,8 +251,10 @@ func test_a_map_of_one_tile_clamps_the_position() -> void:
 
 
 ## A tile that is rock blocks a map of one tile too: the unit stays where it is.
-func test_a_map_of_one_rock_tile_stops_a_unit_with_a_step() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(1, 1, [Vector2i(0, 0)]))
+func test_a_map_of_one_rock_tile_stops_a_unit_with_a_step(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(1, 1, [Vector2i(0, 0)])), impl)
 	world.add_unit(1, 0, 500, 500)
 	world.intent_x[0] = 100
 	Movement.integrate(world)
@@ -241,8 +263,10 @@ func test_a_map_of_one_rock_tile_stops_a_unit_with_a_step() -> void:
 
 ## A FIELD unit on a map of one tile has its lookup: the field of the only tile names no next tile,
 ## so `nav_next` goes from -1 to NO_NEXT (the unit's goal is in the same tile, 400 away).
-func test_a_field_unit_on_a_map_of_one_tile_has_its_lookup() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(1, 1))
+func test_a_field_unit_on_a_map_of_one_tile_has_its_lookup(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(1, 1)), impl)
 	world.add_unit(1, 0, 500, 500)
 	world.order[0] = MOVE
 	world.goal_x[0] = 900
@@ -258,8 +282,8 @@ func test_a_field_unit_on_a_map_of_one_tile_has_its_lookup() -> void:
 
 ## A unit of speed 1 stalls like any other (only speed 0 does not): in range of its goal (2000 away,
 ## range 2400), a checked DIRECT line, no progress for `stall_ticks` (3) ends the order.
-func test_a_unit_of_speed_one_stalls() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10))
+func test_a_unit_of_speed_one_stalls(impl: int, _test_parameters := _both()) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10)), impl)
 	world.type_speed[0] = 1
 	world.add_unit(1, 0, 5000, 2000)
 	world.order[0] = MOVE
@@ -277,8 +301,10 @@ func test_a_unit_of_speed_one_stalls() -> void:
 ## tests the destination only for a unit with a step, and a DIRECT unit that the rock stops dead has
 ## its line checked again, so one with no step at all keeps the cell of its last check. Rock under
 ## the unit at (4500, 3500), a DIRECT order with a checked line and no intent or push.
-func test_a_unit_with_no_step_on_rock_keeps_its_checked_line() -> void:
-	var world: World = GridWorld.from_rows(GridWorld.grass(12, 8))
+func test_a_unit_with_no_step_on_rock_keeps_its_checked_line(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(12, 8)), impl)
 	world.add_unit(1, 0, 4500, 3500)
 	world.order[0] = MOVE
 	world.goal_x[0] = 10500
@@ -304,3 +330,14 @@ func _wall(at: int, length: int, vertical: bool) -> Array[Vector2i]:
 	for k: int in length:
 		rock.append(Vector2i(at, k) if vertical else Vector2i(k, at))
 	return rock
+
+
+## The parameter sets of a test that runs under both implementations (gdUnit4 calls it by name).
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
+	return world

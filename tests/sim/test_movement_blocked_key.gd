@@ -10,8 +10,11 @@ extends GdUnitTestSuite
 ## of that rule are in test_movement_own_field.gd; here the units are ordered by commands and the
 ## key tile is closed with `set_terrain` while they are on their way. Maps are built in code
 ## (GridWorld).
+## Every case runs under both implementations of the INTEGRATE phase (P37n), the GDScript twin and
+## the C++ kernel, through SimImpls: gdUnit4 runs it once for each.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const TRACKED: int = World.MoveClass.TRACKED
 const IDLE: int = World.Order.IDLE
 const FIELD: int = World.NavMode.FIELD
@@ -27,9 +30,11 @@ const BOUND: int = 1500
 ## the tile closed would slide along the rock and stall there). Every unit ends: the eleven whose
 ## own slot lies on another tile arrive on it (they take the field of their own goal tile), the
 ## one whose goal is the rock tile stalls short of it. No slot is referenced at the end.
-func test_twelve_tanks_end_their_orders_when_the_group_target_tile_turns_to_rock() -> void:
+func test_twelve_tanks_end_their_orders_when_the_group_target_tile_turns_to_rock(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for close_at: int in [10, 20, 30]:
-		var world: World = _gap_world()
+		var world: World = _gap_world(impl)
 		GridWorld.add_block(world, 12, 4, 3000, 1500, 1000, 0)
 		var goals: Array[Vector2i] = _close_and_run(world, 12, 22500, 6500, close_at)
 		var label: String = "closed at tick %d" % close_at
@@ -42,8 +47,10 @@ func test_twelve_tanks_end_their_orders_when_the_group_target_tile_turns_to_rock
 ## to a point behind the wall whose tile turns to rock on tick 40. The tank's goal is the rock tile:
 ## it goes round the wall's end, presses on the rock from the south and stalls there, IDLE with no
 ## field and its slot back in the cache, on open ground.
-func test_a_lone_tank_stalls_next_to_its_rock_goal_and_frees_its_slot() -> void:
-	var world: World = _wall_world(1)
+func test_a_lone_tank_stalls_next_to_its_rock_goal_and_frees_its_slot(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _wall_world(1, impl)
 	var goals: Array[Vector2i] = _close_and_run(world, 1, 12500, 2500, 40)
 	assert_int(world.order[0]).is_equal(IDLE)
 	assert_int(_assert_settled(world, goals, world.cell_of(12500, 2500))).is_equal(0)
@@ -54,8 +61,10 @@ func test_a_lone_tank_stalls_next_to_its_rock_goal_and_frees_its_slot() -> void:
 ## Three tanks in the same case: their slots differ, so the ones whose goal tile is open take the
 ## field of that tile and arrive, and the one whose goal is the rock tile (if the formation gives
 ## one) stalls. Every unit ends, no slot is referenced.
-func test_three_tanks_with_open_slots_arrive_when_the_group_tile_turns_to_rock() -> void:
-	var world: World = _wall_world(3)
+func test_three_tanks_with_open_slots_arrive_when_the_group_tile_turns_to_rock(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _wall_world(3, impl)
 	var goals: Array[Vector2i] = _close_and_run(world, 3, 12500, 2500, 40)
 	assert_int(world.order.count(IDLE)).is_equal(3)
 	assert_int(_assert_settled(world, goals, world.cell_of(12500, 2500))).is_greater(0)
@@ -69,12 +78,13 @@ func test_three_tanks_with_open_slots_arrive_when_the_group_tile_turns_to_rock()
 ## and goes round the wall: it ends east of it. Without the rule it presses on the rock at x 18933
 ## for good, FIELD on the field of the rock key.
 func test_an_attack_unit_whose_key_tile_turned_to_rock_still_reaches_a_target_behind_a_second_wall(
+	impl: int, _test_parameters := _both()
 ) -> void:
 	var rock: Array[Vector2i] = []
 	for row: int in 10:
 		rock.append(Vector2i(10, row))
 		rock.append(Vector2i(20, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(30, 14, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl)
 	world.player_count = 2
 	world.type_weapon[0] = 0
 	world.add_unit(1, 0, 3500, 5500)
@@ -144,20 +154,20 @@ func _assert_settled(world: World, goals: Array[Vector2i], key: int) -> int:
 
 
 ## 30 x 14 with a wall in column 12 and a gap of two tiles in rows 6 and 7.
-func _gap_world() -> World:
+func _gap_world(impl: int) -> World:
 	var rock: Array[Vector2i] = []
 	for row: int in 14:
 		if row != 6 and row != 7:
 			rock.append(Vector2i(12, row))
-	return GridWorld.from_rows(GridWorld.grass(30, 14, rock))
+	return _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl)
 
 
 ## 20 x 10 with a wall in column 8, rows 0 to 8, and `count` tanks stacked in column 3.
-func _wall_world(count: int) -> World:
+func _wall_world(count: int, impl: int) -> World:
 	var rock: Array[Vector2i] = []
 	for row: int in 9:
 		rock.append(Vector2i(8, row))
-	var world: World = GridWorld.from_rows(GridWorld.grass(20, 10, rock))
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10, rock)), impl)
 	for k: int in count:
 		world.add_unit(1, 0, 3500, 1500 + k * 1200)
 	return world
@@ -166,3 +176,14 @@ func _wall_world(count: int) -> World:
 func _stamped(command: Command, tick: int) -> Command:
 	command.tick = tick
 	return command
+
+
+## The parameter sets of a test that runs under both implementations (gdUnit4 calls it by name).
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
+	return world

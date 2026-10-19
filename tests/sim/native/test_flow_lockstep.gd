@@ -151,6 +151,28 @@ func test_a_diagonal_and_an_orthogonal_neighbour_queue_in_scan_order() -> void:
 		assert_array(served).is_equal([14, 14, 14, 14, 0, 14, 14, 14, 14])
 
 
+## A budget of 0, as Sim.step passes it on the ticks MatchLoop hashes, begins nothing and settles
+## nothing: the oldest request keeps WAITING (the loop runs while `settled < budget`; with `<=` it
+## would begin the field and leave it ACTIVE). A budget of 5 begins it and settles 5 cells, and a
+## 0 after that settles none. Both implementations, compared after each step.
+func test_a_budget_of_0_begins_no_field_and_a_budget_of_5_settles_5_cells() -> void:
+	var rigs: Array[RefCounted] = []
+	for impl: int in SimImpls.IMPLS:
+		var rig: RefCounted = FlowRig.new().setup(impl, 6, 6, 2)
+		assert_array(rig.problems).is_empty()
+		assert_int(rig.acquire(14, FOOT, rig.world.map_version, 1)).is_equal(0)
+		rigs.append(rig)
+	for rig: RefCounted in rigs:
+		assert_int(rig.run(0)).is_equal(0)
+		assert_int(rig.status[0]).is_equal(FlowCache.Status.WAITING)
+	assert_str(StateDiff.first(rigs[0].world, rigs[1].world)).is_empty()
+	for rig: RefCounted in rigs:
+		assert_int(rig.run(5)).is_equal(5)
+		assert_int(rig.status[0]).is_equal(FlowCache.Status.ACTIVE)
+		assert_int(rig.run(0)).is_equal(0)
+	assert_str(StateDiff.first(rigs[0].world, rigs[1].world)).is_empty()
+
+
 ## {diff: the first member that differed after a call ("" if none), settled: the cells integrated,
 ## served: the most fields served at once, again: the calls that found a served field being
 ## re-integrated}.

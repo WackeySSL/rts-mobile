@@ -19,9 +19,9 @@ const FLOW_SOURCE: String = "res://native/sim_kernels/src/bind/kernel_flow.cpp"
 const PHASES: Array[int] = [1, 3, 5, 6, 10]
 ## The slots of the flow cache (flow_cache_size).
 const SLOTS: int = 8
-## The names in each list, 106 in the table (a port adds names here, so a dropped or added name
-## shows in a diff).
-const LIST_SIZES: Dictionary[int, int] = {1: 26, 3: 32, 5: 28, 6: 53, 10: 29}
+## The names in each list, 107 in the table (a port adds names here, so a dropped or added name
+## shows in a diff). INTEGRATE's 49 are the names kernel_integrate.cpp gets or sets (P37n).
+const LIST_SIZES: Dictionary[int, int] = {1: 26, 3: 32, 5: 28, 6: 49, 10: 29}
 ## A status is the table index of the first bad name times FAULT_COUNT, plus its fault.
 const FAULT_PHASE: int = 1
 const FAULT_OWNER: int = 2
@@ -87,6 +87,10 @@ const FLOW_NAMES: Array[String] = [
 ## only one phase uses.
 const PHASES_OF: Dictionary[String, Array] = {
 	"WORLD.hp": [3],
+	"WORLD.order_target": [3],
+	"WORLD.target": [3],
+	"WORLD.group_cell": [6],
+	"WORLD.flow_cache_size": [],
 	"WORLD.fog_cell": [10],
 	"WORLD.map_version": [6],
 	"WORLD.events": [],
@@ -250,7 +254,7 @@ func test_check_world_rejects_an_unprepared_world_and_leaves_it_unchanged() -> v
 func test_every_list_is_not_empty_and_every_name_exists_with_its_type() -> void:
 	var world: World = _arena()
 	var table: Array[Dictionary] = _table()
-	assert_int(table.size()).is_equal(106)
+	assert_int(table.size()).is_equal(107)
 	for phase: int in PHASES:
 		var size: int = _listed(table, phase).size()
 		assert_int(size).override_failure_message("phase %d" % phase).is_equal(LIST_SIZES[phase])
@@ -336,6 +340,7 @@ func test_the_bound_methods_are_the_contract_and_none_takes_a_packed_array() -> 
 			assert_bool(packed).override_failure_message(label).is_false()
 	# No test-only entry (ADR 0013 section 2): a port adds its kernel's name here.
 	var bound: Array[String] = ["abi_version", "phases", "build_info", "check_world", "flow"]
+	bound.append("integrate")
 	assert_array(methods).contains_exactly_in_any_order(bound)
 
 
@@ -663,7 +668,7 @@ func _rule_length(world: World, rule: String) -> int:
 
 
 ## The rows of SIM_CHECKED_TABLE in world_access.h as {owner, name, kind, size, phases}, in line
-## order. The pinned counts (106 names, LIST_SIZES) fail a parser that skips a line.
+## order. The pinned counts (107 names, LIST_SIZES) fail a parser that skips a line.
 func _table() -> Array[Dictionary]:
 	var row: RegEx = RegEx.create_from_string("^\\s*X\\((\\w+), (\\w+), (\\w+), (\\w+), ([^)]+)\\)")
 	var table: Array[Dictionary] = []

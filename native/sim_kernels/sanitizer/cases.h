@@ -1,7 +1,7 @@
 // What a kernel's case file hands the harness (ADR 0013 section 10). Plain C++17, no Godot header. MIT.
 //
-// A later kernel (P37n INTEGRATE, P39n SEPARATION, P41n TARGETING, P42n/P46n FOG) adds one file here, say
-// integrate_cases.cpp, with its two functions below and one KernelCases constant, plus the `extern` line of that
+// A later kernel (P39n SEPARATION, P41n TARGETING, P42n/P46n FOG; FLOW and INTEGRATE have theirs) adds one file here, say
+// separation_cases.cpp, with its two functions below and one KernelCases constant, plus the `extern` line of that
 // constant at the end of this file, one pointer in KERNELS (main.cpp) and the records it reads in
 // tests/sim/native/sanitizer/dump_states.gd. Nothing else changes: the dump reader, the driver and the build script
 // (which compiles every *.cpp of this folder) stay as they are.
@@ -15,7 +15,7 @@
 // What a case file counts, so that the harness can tell a clean run from a run that did nothing.
 struct Tally {
 	int64_t runs = 0; // calls of the core/ functions that the kernel's bind layer makes
-	int64_t work = 0; // what they did, in the kernel's unit (FLOW: cells settled)
+	int64_t work = 0; // what they did, in the kernel's unit (FLOW: cells settled; INTEGRATE: rows changed)
 };
 
 // A result that is wrong for a reason a sanitizer cannot see (a run that never finished, a case that did nothing):
@@ -33,3 +33,4 @@ struct KernelCases {
 };
 
 extern const KernelCases FLOW_CASES;
+extern const KernelCases INTEGRATE_CASES;

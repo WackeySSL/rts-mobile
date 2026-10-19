@@ -2,7 +2,8 @@ class_name FixedMath
 extends RefCounted
 ## Integer math for the simulation (ADR 0003 section 2, ADR 0008 section 2): the integer square
 ## root, the truncating movement step and the supercover line test. No sine table and no dir_to in
-## Phase 2: no rule needs a direction, because a unit has no facing.
+## Phase 2: no rule needs a direction, because a unit has no facing. isqrt() has a C++ twin,
+## core/fixed_math.cpp, which the INTEGRATE kernel's stall calls (ADR 0013 section 5).
 
 ## The floor of the square root of n, or 0 when n <= 0. Newton's method from above: a power of
 ## two at or over the root, found from the bit length of n, then x = (x + n / x) / 2 until it no

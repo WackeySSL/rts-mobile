@@ -6,7 +6,9 @@ extends RefCounted
 ## Packed arrays and int members, sized once by reserve(). Padded cell = (ty + 1) * (cols + 2) +
 ## tx + 1; every method argument and result is a plain cell ty * cols + tx.
 ## begin() and advance() have a C++ twin, core/flow.cpp of native/sim_kernels (ADR 0013 section 5):
-## a change to either edits both and passes tests/sim/native/test_flow_lockstep.gd.
+## a change to either edits both and passes tests/sim/native/test_flow_lockstep.gd. So has
+## best_neighbour(), which the INTEGRATE kernel calls (core/flow.cpp; its tests are
+## tests/sim/native/test_integrate_kernel.gd and the movement suites under both implementations).
 
 ## The padding ring around the map: one blocked cell on each side, so the stride is cols + PAD.
 const PAD: int = 2
