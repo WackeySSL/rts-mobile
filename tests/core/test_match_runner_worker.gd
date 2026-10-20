@@ -1,14 +1,14 @@
 extends GdUnitTestSuite
 ## MatchRunner in WORKER mode, part 1 (plan P38w, ADR 0012 section 1): the hand-off table, the mode
-## rules, a WORKER runner in lockstep with a SYNC runner, one tick ahead and the held boundary,
-## start() during a job and run_ticks(). The runners are built the Phase 1 way (auto_free, never in
-## the tree) on the seed-42 perf arena and set WORKER explicitly, the exception to "headless tests
-## run SYNC" (headless, AUTO resolves to SYNC). The cases wait only through wait_idle() and fail
-## when it returns false; after_test releases every gated probe and then waits for every runner, so
-## a case that fails while a probe holds a job still leaves the worker free. One case lets a frame
-## take the token itself: it runs frames of zero length while a job is in flight, capped like
-## wait_idle() (lead decision, P38w fix round 1: neither a fixed sleep nor a try_wait() on the
-## runner's semaphores).
+## rules, a WORKER runner in lockstep with a SYNC runner and its clock beside a SYNC clock, one tick
+## ahead and the held boundary, start() during a job and run_ticks(). The runners are built the
+## Phase 1 way (auto_free, never in the tree) on the seed-42 perf arena and set WORKER explicitly,
+## the exception to "headless tests run SYNC" (headless, AUTO resolves to SYNC). The cases wait
+## only through wait_idle() and fail when it returns false; after_test releases every gated probe
+## and then waits for every runner, so a case that fails while a probe holds a job still leaves the
+## worker free. One case lets a frame take the token itself: it runs frames of zero length while a
+## job is in flight, capped like wait_idle() (lead decision, P38w fix round 1: neither a fixed
+## sleep nor a try_wait() on the runner's semaphores).
 
 const GatedProbe: GDScript = preload("res://tests/core/gated_probe.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
@@ -19,6 +19,10 @@ const TICKS: int = 300
 const FRAMES: Array[float] = [0.0167, 0.0121, 0.0213, 0.0158, 0.0175, 0.0098, 0.0236, 0.0166]
 ## A frame of exactly a quarter tick.
 const FRAME: float = 1.0 / 60.0
+## A steady frame of 17 ms, 0.255 of a tick: boundaries fall inside frames, so each one leaves a
+## part of a tick on the clock. The clock case plays this many of them: 153 ticks in SYNC.
+const STEADY: float = 0.017
+const STEADY_FRAMES: int = 600
 ## The tick whose publish the one-tick-ahead case stops at.
 const AHEAD: int = 5
 ## How long a delayed job waits in its probe's begin(): far longer than a frame call, and a shorter
@@ -97,8 +101,11 @@ func test_hand_off_is_the_table_of_adr_0012() -> void:
 			if state != RUNNING:
 				assert_int(found[state].y & WAIT).is_equal(0)
 		assert_array(found).override_failure_message(str(event)).is_equal(TABLE[event])
-	# A state or an event outside the enums keeps the state and does nothing.
-	for pair: Vector2i in [Vector2i(3, ON_FRAME), Vector2i(IDLE, 7), Vector2i(RUNNING, -1)]:
+	# A state or an event outside the enums keeps the state and does nothing (a negative state
+	# would otherwise index the table from its end).
+	var outside: Array[Vector2i] = [Vector2i(3, ON_FRAME), Vector2i(-1, ON_FRAME)]
+	outside.append_array([Vector2i(IDLE, 7), Vector2i(RUNNING, -1)])
+	for pair: Vector2i in outside:
 		assert_that(MatchRunner.hand_off(pair.x, pair.y)).is_equal(Vector2i(pair.x, NONE))
 	# wait_idle() twice: the second returns at once. wait_idle() with no job ever posted.
 	var twice: Array[Vector2i] = [Vector2i(FINISHED, WAIT), Vector2i(FINISHED, NONE)]
@@ -171,6 +178,35 @@ func test_a_worker_runner_publishes_what_a_sync_runner_does_tick_by_tick() -> vo
 	assert_int(expected.size()).is_equal(TICKS / 15)
 	for impl: int in [MatchRunner.SimImpl.GDSCRIPT, MatchRunner.SimImpl.NATIVE]:
 		_assert_lockstep(impl, expected)
+
+
+## The WORKER clock keeps the part of a tick at each boundary, as the SYNC clock does (ADR 0012
+## section 1). A SYNC and a WORKER runner on the arena play the same steady 17 ms frames, with
+## wait_idle() after every frame of the WORKER runner, so no boundary is held. The WORKER runner
+## trails by 0 or 1 tick at every frame, never more, because only its refill frame does not move
+## its clock: after 600 frames SYNC has published tick 153 and WORKER tick 152, with 0.745 of a
+## tick on its clock. A clock that dropped the part of a tick at each boundary would trail by 4. A
+## negative frame does not move the WORKER clock.
+func test_the_worker_clock_keeps_the_part_of_a_tick_like_the_sync_clock() -> void:
+	var sync: MatchRunner = _runner(SYNC)
+	var worker: MatchRunner = _runner(WORKER)
+	var lags: Vector2i = Vector2i.ZERO
+	var waited: bool = true
+	var frames: int = 0
+	while frames < STEADY_FRAMES and waited:
+		sync._process(STEADY)
+		worker._process(STEADY)
+		frames += 1
+		waited = worker.wait_idle()
+		var lag: int = sync.snapshot.tick - worker.snapshot.tick
+		lags = Vector2i(mini(lags.x, lag), maxi(lags.y, lag))
+	assert_array([waited, lags, sync.snapshot.tick, worker.snapshot.tick]).is_equal(
+		[true, Vector2i(0, 1), 153, 152]
+	)
+	var part: float = worker.alpha()
+	assert_float(part).is_equal_approx(0.745, 0.000001)
+	worker._process(-1.0)
+	assert_array([worker.snapshot.tick, worker.alpha()]).is_equal([152, part])
 
 
 ## With a gated probe holding job N + 1 from its begin(), the frame that publishes tick N has
@@ -362,6 +398,24 @@ func test_a_ticked_handler_that_restarts_in_sync_mode_gets_no_job_posted() -> vo
 		runner._process(FRAME)
 		frames += 1
 	assert_array(seen).is_equal([1, 2] + range(1, 16))
+	assert_int(runner.last_hash).is_equal(_pure_checkpoints(15)[0])
+
+
+## A `ticked(2)` handler that calls run_ticks(1) in WORKER mode: the boundary is IDLE inside the
+## handler, with no job in flight and none finished, so tick 3 runs inline and is published with
+## its own `ticked`, and the boundary posts job 4 after the handler. Ticks 1 to 15 arrive once
+## each, in order, and tick 15 has a fresh run's hash.
+func test_a_ticked_handler_that_calls_run_ticks_plays_the_tick_inline() -> void:
+	var runner: MatchRunner = _runner(WORKER)
+	var seen: Array[int] = []
+	runner.ticked.connect(
+		func(tick: int) -> void:
+			seen.append(tick)
+			if tick == 2:
+				runner.run_ticks(1)
+	)
+	assert_bool(_play_to(runner, 15)).is_true()
+	assert_array(seen).is_equal(range(1, 16))
 	assert_int(runner.last_hash).is_equal(_pure_checkpoints(15)[0])
 
 
