@@ -4,10 +4,10 @@ extends GdUnitTestSuite
 ## the two overlap inequalities of STYLE.md's sweep. Pixels cannot be read headless, so the tests
 ## read the layer's plan of rects (`rect_at`, `rect_color`), which `_draw` paints one for one
 ## (test_health_bar_frames.gd counts what it painted), and
-## `test_the_draw_code_paints_nothing_but_filled_rects` reads the script (the filled rects, and
-## each in its own colour). The fill of a damaged squad bar is in test_health_bar_squads.gd. When
-## a bar shows and how a hit is seen are in test_health_bar_hits.gd (gdlint allows 20 public
-## methods per file).
+## `test_the_draw_code_paints_nothing_but_filled_rects` reads the script (the filled rects, each in
+## its own colour, in the plan's order, which puts a bar's edge rects before its fill rects). The
+## fill of a damaged squad bar is in test_health_bar_squads.gd. When a bar shows and how a hit is
+## seen are in test_health_bar_hits.gd (gdlint allows 20 public methods per file).
 ## On data/scenarios/controls_test.tres: ids 1-30 are blue light tanks (max hp 300), 31-40 red; the
 ## perf arena has tanks, rifle squads (max hp 100) and rocket squads, both sides. The runner is not
 ## in the tree: only the calls here move time, so alpha is 0 and a unit stands at its prev position.
@@ -37,6 +37,14 @@ const ZOOMS: Array[float] = [0.75, 1.0, 1.5]
 ## top stays 5.6 px below the unit above at worst; a hair under, as those are rounded.
 const SIDE_GAP_DP: float = 2.2
 const ABOVE_GAP_PX: float = 5.5
+## The lines of HealthBarLayer._draw: the painted count, then one draw_rect per planned rect, in the
+## plan's order.
+const DRAW_BODY: Array[String] = [
+	"_drawn = 0",
+	"for index: int in _rects:",
+	"draw_rect(rect_at(index), rect_color(index))",
+	"_drawn += 1",
+]
 
 var _window_size_before: Vector2i
 var _runner: MatchRunner
@@ -327,6 +335,56 @@ func test_the_draw_code_paints_nothing_but_filled_rects() -> void:
 	# paint the whole plan in one colour, and the plan's colours cannot be told from the painted
 	# ones without pixels.
 	assert_int(source.count("draw_rect(rect_at(index), rect_color(index))")).is_equal(1)
+	# Paint order: a later rect is painted over an earlier one, so the order of the picture is the
+	# order of the plan (test_a_bars_edge_rects_come_before_its_fill_rects_in_the_plan), and
+	# _draw is this loop and nothing else: up over the plan, once. Run backwards it would paint
+	# every edge rect over the fill drawn before it and leave a dark box for each bar.
+	assert_array(_body_lines(source, "_draw")).is_equal(DRAW_BODY)
+
+
+func test_a_bars_edge_rects_come_before_its_fill_rects_in_the_plan() -> void:
+	# _draw paints rect 0 first (see the test above), so the edge rects of a bar come before its
+	# fill rects: the fill is then on top of the edge's box, and the notch of an enemy bar is not
+	# painted over. The colours of the rects of a bar in plan order, full and nearly dead.
+	_rebuild(ARENA)
+	var rows: Dictionary[StringName, int] = {
+		&"own_tank": _first_row_of(&"light_tank", 1),
+		&"enemy_tank": _first_row_of(&"light_tank", 2),
+		&"own_squad": _first_row_of(&"rifle_squad", 1),
+		&"enemy_squad": _first_row_of(&"rifle_squad", 2),
+	}
+	var ids: Array[int] = []
+	ids.assign(rows.values())
+	_units.set_selected(_ids(ids))
+	var full: Dictionary[StringName, Array] = {
+		&"own_tank": [EDGE, OWN],
+		&"enemy_tank": [EDGE, EDGE, EDGE, ENEMY, ENEMY, ENEMY],
+		&"own_squad": [EDGE, OWN],
+		&"enemy_squad": [EDGE, EDGE, EDGE, ENEMY, ENEMY, ENEMY],
+	}
+	# At 1 hp the fill is 1 dp wide: an enemy bar keeps the left shoulder and the strip, and the
+	# right shoulder (which starts past the fill) is not planned. The edge still comes first.
+	var nearly_dead: Dictionary[StringName, Array] = {
+		&"own_tank": [EDGE, OWN],
+		&"enemy_tank": [EDGE, EDGE, EDGE, ENEMY, ENEMY],
+		&"own_squad": [EDGE, OWN],
+		&"enemy_squad": [EDGE, EDGE, EDGE, ENEMY, ENEMY],
+	}
+	_frame()
+	for key: StringName in rows:
+		assert_array(_plan_colors(rows[key])).override_failure_message(str(key)).is_equal(full[key])
+	for key: StringName in rows:
+		_runner.snapshot.hp[rows[key]] = 1
+	_frame()
+	assert_int(_bars.bar_count()).is_equal(rows.size())
+	for key: StringName in rows:
+		var colors: Array[Color] = _plan_colors(rows[key])
+		assert_array(colors).override_failure_message(str(key)).is_equal(nearly_dead[key])
+	# The bars take the plan in turn, from rect 0 to the end, so a bar's range is its own rects.
+	assert_int(_bars.bar_first_rect(0)).is_equal(0)
+	for bar: int in _bars.bar_count() - 1:
+		assert_int(_bars.bar_end_rect(bar)).is_equal(_bars.bar_first_rect(bar + 1))
+	assert_int(_bars.bar_end_rect(_bars.bar_count() - 1)).is_equal(_bars.rect_count())
 
 
 func test_the_main_scene_has_the_layer_at_z_110_between_the_units_and_the_markers() -> void:
@@ -480,6 +538,31 @@ func _dp_rects(row: int, color: Color) -> Array[Rect2i]:
 			)
 		)
 	return found
+
+
+## The colours of bar `row`'s rects in the plan's order, which is the order they are painted in.
+func _plan_colors(row: int) -> Array[Color]:
+	var colors: Array[Color] = []
+	for bar: int in _bars.bar_count():
+		if _bars.bar_row(bar) == row:
+			for index: int in range(_bars.bar_first_rect(bar), _bars.bar_end_rect(bar)):
+				colors.append(_bars.rect_color(index))
+	return colors
+
+
+## The lines of the function `name` in `source` (comments already cut): the indented lines after
+## its "func" line, trimmed and without the blank ones, up to the next line that is not indented.
+func _body_lines(source: String, name: String) -> Array[String]:
+	var lines: Array[String] = []
+	var inside: bool = false
+	for line: String in source.split("\n"):
+		if line.begins_with("func %s(" % name):
+			inside = true
+		elif inside and not line.is_empty() and not line.begins_with("\t"):
+			break
+		elif inside and not line.strip_edges().is_empty():
+			lines.append(line.strip_edges())
+	return lines
 
 
 ## The number of arguments of the call whose "(" is at `open` in `source`: the top-level commas,

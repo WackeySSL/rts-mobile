@@ -99,9 +99,10 @@ static func layer_z(layer: int, type: int, owner_id: int) -> int:
 
 
 ## Brings the rigs, the hp last seen and the hit times up to `runner.snapshot`, the sync that
-## every other entry point starts with. Call it once before a loop over
-## `hit_time_ms` and `is_ringed`, which do not sync themselves: they answer for the rows as the
-## last entry point left them, and a synced accessor would cost 150 syncs a frame for the bars.
+## the frame, `set_selected`, `unit_screen_position` and `fill_pick_snapshot` start with. Call it
+## once before a loop over `hit_time_ms` and `is_ringed`, which do not sync themselves: they
+## answer for the rows as the last entry point left them, and a synced accessor would cost 150
+## syncs a frame for the bars.
 func sync_rows() -> void:
 	_sync_rigs()
 
