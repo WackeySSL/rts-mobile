@@ -10,10 +10,17 @@ const GATE_PATH: String = "res://data/dev/perf_gate.tres"
 const RATIO_PREFIX: String = "ci_ratio_"
 ## The golden arrays are P49a's: they only have to pair up.
 const GOLDEN_FIELDS: Array[String] = ["golden_ticks", "golden_hex"]
-## The fields that are exempt from equality and still need a line in the file. The native ratios
-## are not listed: P54r adds them to the script, but P38pn writes them to the file.
+## The ratios of the impl=native line (ADR 0013 section 15). P54r gave PerfGateDef their defaults
+## and P38pn wrote them to the file, so a missing line would load the same numbers.
+const NATIVE_RATIOS: Array[String] = ["ci_ratio_native_mean", "ci_ratio_native_p95"]
+## The fields that are exempt from equality and still need a line in the file.
 const EXEMPT_FIELDS_IN_FILE: Array[String] = [
-	"ci_ratio_mean", "ci_ratio_p95", "golden_ticks", "golden_hex"
+	"ci_ratio_mean",
+	"ci_ratio_p95",
+	"ci_ratio_native_mean",
+	"ci_ratio_native_p95",
+	"golden_ticks",
+	"golden_hex"
 ]
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 ## A line made from known inputs, with PerfGateDef's ratios 4.4 and 5.9: 1.5 x 4.4 and 3 x 5.9.
@@ -193,6 +200,38 @@ func test_the_line_is_exactly_the_known_text() -> void:
 	assert_str(PerfReport.line(_known_report(PerfGateDef.new()))).is_equal(_known_line())
 
 
+## The native line is the GDScript text with `impl=native` after `PERF sim` and the estimates of the
+## native ratios 9.4 and 14.0: 1.5 x 9.4 and 3 x 14. Everything else stays as it is.
+func test_the_native_line_is_the_known_text_with_impl_native_and_the_native_estimates() -> void:
+	var expected: String = _known_line().replace("PERF sim units=", "PERF sim impl=native units=")
+	expected = expected.replace(
+		"est_phone_mean_ms=6.600 est_phone_p95_ms=17.700",
+		"est_phone_mean_ms=14.100 est_phone_p95_ms=42.000"
+	)
+	assert_str(PerfReport.line(_known_report(PerfGateDef.new(), true))).is_equal(expected)
+
+
+## The native report reads ci_ratio_native_mean and ci_ratio_native_p95 and the GDScript report the
+## other two, from the same gate: ratios 7 and 11 give 10.5 and 33 where 4.4 and 5.9 give 6.6 and
+## 17.7, and neither report moves with the other pair.
+func test_the_estimates_of_each_line_come_from_its_own_ratios_of_the_gate_argument() -> void:
+	var gate: PerfGateDef = PerfGateDef.new()
+	gate.ci_ratio_native_mean = 7.0
+	gate.ci_ratio_native_p95 = 11.0
+	var native: Dictionary = _known_report(gate, true)
+	assert_float(native["est_phone_mean_ms"]).is_equal_approx(10.5, 0.0001)
+	assert_float(native["est_phone_p95_ms"]).is_equal_approx(33.0, 0.0001)
+	assert_str(native["impl"]).is_equal("native")
+	var gdscript: Dictionary = _known_report(gate)
+	assert_float(gdscript["est_phone_mean_ms"]).is_equal_approx(6.6, 0.0001)
+	assert_float(gdscript["est_phone_p95_ms"]).is_equal_approx(17.7, 0.0001)
+	assert_bool(gdscript.has("impl")).is_false()
+	gate.ci_ratio_mean = 2.0
+	gate.ci_ratio_p95 = 3.0
+	assert_float(_known_report(gate, true)["est_phone_mean_ms"]).is_equal_approx(10.5, 0.0001)
+	assert_float(_known_report(gate, true)["est_phone_p95_ms"]).is_equal_approx(33.0, 0.0001)
+
+
 ## The estimates read the gate they are given: ratios 2 and 3 instead of 4.4 and 5.9 give 3 and 9,
 ## and nothing else on the line moves.
 func test_the_estimates_come_from_the_gate_argument() -> void:
@@ -247,9 +286,10 @@ func test_the_gate_file_holds_the_contract_values() -> void:
 		elif gate.get(field) != defaults.get(field):
 			wrong.append(field + " (value)")
 	assert_array(wrong).is_empty()
-	# Not vacuous: the 19 thresholds and pacing values of the contract, and the two ratios.
+	# Not vacuous: the 19 thresholds and pacing values of the contract, and the ratios.
 	assert_int(compared.size()).is_greater_equal(19)
 	assert_array(ratios).contains(["ci_ratio_mean", "ci_ratio_p95"])
+	assert_array(ratios).contains(NATIVE_RATIOS)
 	for field: String in ratios:
 		assert_int(typeof(gate.get(field))).override_failure_message(field).is_equal(TYPE_FLOAT)
 		assert_float(gate.get(field)).override_failure_message(field).is_between(1.0, 100.0)
@@ -259,10 +299,10 @@ func test_the_gate_file_holds_the_contract_values() -> void:
 
 
 ## A line that is missing from the file loads as the script default, so it passes the test above,
-## and it follows a later change of that default. Each compared field, the two ratios and the
-## golden arrays have a `field = value` line in the file. The native ratios are left out until
-## P38pn writes them. Godot leaves out default-valued lines when the editor saves a resource, so
-## edit this file as text.
+## and it follows a later change of that default. Each compared field, the four ratios (the native
+## ones too, whose defaults P54r put in the script) and the golden arrays have a `field = value`
+## line in the file. Godot leaves out default-valued lines when the editor saves a resource, so edit
+## this file as text.
 func test_the_gate_file_has_a_line_for_every_contract_value() -> void:
 	var text: String = "\n" + FileAccess.get_file_as_string(GATE_PATH)
 	assert_str(text).is_not_equal("\n")
@@ -275,7 +315,31 @@ func test_the_gate_file_has_a_line_for_every_contract_value() -> void:
 		if not text.contains("\n" + field + " = "):
 			missing.append(field)
 	assert_array(missing).is_empty()
-	assert_int(required.size()).is_greater_equal(23)
+	assert_int(required.size()).is_greater_equal(25)
+
+
+## The native ratios come from the file: each has its `field = value` line, and the gate that loads
+## from the file (past the resource cache) holds the number the line says. P54r gave PerfGateDef the
+## same numbers as defaults, so a gate compared with `PerfGateDef.new()` could not tell. The numbers
+## are not pinned here: the lead re-derives them in the file alone (plan exception 5).
+func test_the_gate_file_writes_the_native_ratios_that_it_loads() -> void:
+	var gate: PerfGateDef = (
+		ResourceLoader.load(GATE_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as PerfGateDef
+	)
+	assert_object(gate).is_not_null()
+	var text: String = "\n" + FileAccess.get_file_as_string(GATE_PATH)
+	var wrong: Array[String] = []
+	for field: String in NATIVE_RATIOS:
+		var start: int = text.find("\n" + field + " = ")
+		if start < 0:
+			wrong.append(field + " (no line)")
+			continue
+		var written: String = text.substr(start + field.length() + 4).get_slice("\n", 0)
+		if not written.is_valid_float():
+			wrong.append(field + " (not a number: " + written + ")")
+		elif not is_equal_approx(float(gate.get(field)), written.to_float()):
+			wrong.append(field + " (loads " + str(gate.get(field)) + ", file says " + written + ")")
+	assert_array(wrong).is_empty()
 
 
 ## The names of the script variables of `gate`, in declaration order.
@@ -287,8 +351,9 @@ func _gate_fields(gate: PerfGateDef) -> Array[String]:
 	return fields
 
 
-## The report of the known line: statistics and facts as described at KNOWN_LINE.
-func _known_report(gate: PerfGateDef) -> Dictionary:
+## The report of the known line: statistics and facts as described at KNOWN_LINE. `native` makes it
+## the report of the impl=native line.
+func _known_report(gate: PerfGateDef, native: bool = false) -> Dictionary:
 	var best: Dictionary = {
 		"mean_ms": 1.5,
 		"p50_ms": 1.0,
@@ -314,7 +379,7 @@ func _known_report(gate: PerfGateDef) -> Dictionary:
 	maxima.resize(World.Stat.size())
 	for stat: int in maxima.size():
 		maxima[stat] = stat * 10
-	return PerfReport.finish(facts, best, phases, maxima, gate)
+	return PerfReport.finish(facts, best, phases, maxima, gate, native)
 
 
 ## KNOWN_LINE with the stats_max part put in before phases=. It is made from the World.Stat names
