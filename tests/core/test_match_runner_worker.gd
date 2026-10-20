@@ -231,6 +231,9 @@ func test_the_worker_runs_one_tick_ahead_and_holds_a_boundary_while_its_job_runs
 	assert_array([gated.begin_count, runner.job_in_flight(), runner.worker_active()]).is_equal(
 		[AHEAD + 1, true, true]
 	)
+	# The worker owns the World now: the rule for the runner's state refuses the main thread. The
+	# getter itself is not called, so nothing is logged.
+	assert_bool(MatchRunner.shared_access_allowed(runner._mode, runner._state)).is_false()
 	var held: MatchSnapshot = runner.snapshot
 	for _frame: int in 8:
 		runner._process(FRAME)
@@ -239,6 +242,7 @@ func test_the_worker_runs_one_tick_ahead_and_holds_a_boundary_while_its_job_runs
 	assert_array([gated.begin_count, runner.job_in_flight()]).is_equal([AHEAD + 1, true])
 	gated.release()
 	assert_bool(runner.wait_idle()).is_true()
+	assert_bool(MatchRunner.shared_access_allowed(runner._mode, runner._state)).is_true()
 	assert_array([runner.world.tick, runner.snapshot.tick]).is_equal([AHEAD + 1, AHEAD])
 	assert_bool(runner.job_in_flight()).is_false()
 	runner._process(FRAME)

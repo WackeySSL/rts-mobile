@@ -8,8 +8,8 @@ extends Node
 ## with alpha() (ADR 0011 section 2). In SYNC mode the job runs inline in the frame; in WORKER mode
 ## it runs on one worker thread, one tick ahead (plan P38w): at a boundary the runner publishes the
 ## finished job, emits `ticked`, then drains the queue and posts the next job. While a job runs,
-## the World, `loop`, `replay` and `probe` belong to the worker; the main thread reads the World
-## only inside `ticked` or after wait_idle().
+## the World, `loop`, `replay` and `probe` belong to the worker and their getters refuse the main
+## thread (plan P38w1b); it reads the World only inside `ticked` or after wait_idle().
 ## It needs the CommandQueue and DetRng autoloads, so a headless `godot -s` tool must load() this
 ## script at runtime; naming MatchRunner in the entry script does not compile.
 
@@ -101,6 +101,9 @@ const HAND_OFF_TABLE: Array[Array] = [
 	],
 ]
 
+## Started worker threads not joined yet, over every runner (live_workers()). Main thread only.
+static var _live_workers: int = 0
+
 @export var scenario: ScenarioDef
 ## The seed of the match, 0 to 2^31-1 (DetRandom masks it). start() makes the sim stream from it
 ## and records it in the replay.
@@ -115,11 +118,30 @@ const HAND_OFF_TABLE: Array[Array] = [
 @export var tick_mode: TickMode = TickMode.SYNC
 
 ## The World, `loop`, `replay` and `probe` belong to the worker while a job runs (ADR 0012
-## section 1): read or swap them in SYNC mode, inside `ticked` or after wait_idle().
-var world: World
+## section 1): read or swap them in SYNC mode, inside `ticked` or after wait_idle(). Each is a
+## property over a private field, guarded by shared_access_allowed(): in WORKER mode while a job is
+## RUNNING, its getter logs an error and returns null, and its setter logs an error and changes
+## nothing. A setter is needed because Godot ignores an assignment to a getter-only property
+## without a word. Tests swap in a World with it; the job gets the swap at the next run or post.
+var world: World:
+	get:
+		return _world if _shared(&"world") else null
+	set(value):
+		if _shared(&"world"):
+			_world = value
 ## The match's tick driver (ADR 0007 section 9) and its log, `loop.replay`. start() makes both.
-var loop: MatchLoop
-var replay: Replay
+var loop: MatchLoop:
+	get:
+		return _loop if _shared(&"loop") else null
+	set(value):
+		if _shared(&"loop"):
+			_loop = value
+var replay: Replay:
+	get:
+		return _replay if _shared(&"replay") else null
+	set(value):
+		if _shared(&"replay"):
+			_replay = value
 ## Counts the start() calls, so a view layer sees a restart without comparing World identity.
 var match_serial: int = 0
 ## The published fields, set from each published snapshot. The state hash of the last checkpoint,
@@ -130,8 +152,13 @@ var last_hash: int = 0
 var last_tick_usec: int = 0
 var last_runner_tick_usec: int = 0
 ## A probe for the per-phase split, null unless a HUD sets one (P38t's TimingProbe). It gets every
-## begin() and mark() of Sim.step; a probe changes no hash.
-var probe: SimProbe
+## begin() and mark() of Sim.step; a probe changes no hash. Guarded like `world`; setting it calls
+## set_probe().
+var probe: SimProbe:
+	get:
+		return _probe if _shared(&"probe") else null
+	set(value):
+		set_probe(value)
 ## The published snapshot: a new object from every tick and from start(), never written after its
 ## publish (ADR 0012 section 3). A frame without a tick keeps the same object.
 var snapshot: MatchSnapshot
@@ -164,6 +191,11 @@ var _start_failed: bool = false
 var _state: int = HandOff.IDLE
 ## The worker, made for the first job posted; null until then and after the join.
 var _thread: Thread
+## The fields behind `world`, `loop`, `replay` and `probe`. The runner itself uses only these.
+var _world: World
+var _loop: MatchLoop
+var _replay: Replay
+var _probe: SimProbe
 
 
 func _ready() -> void:
@@ -189,17 +221,17 @@ func start() -> void:
 	_mode = resolve_mode(tick_mode, threads, OS.has_feature("web"), headless)
 	if _start_failed:
 		_mode = TickMode.SYNC
-	world = World.from_scenario(scenario, DetRng.create(match_seed, DetRandom.STREAM_SIM))
+	_world = World.from_scenario(scenario, DetRng.create(match_seed, DetRandom.STREAM_SIM))
 	var kernels: Object = null if sim_impl == SimImpl.GDSCRIPT else NativeKernels.create()
-	_use_impl(world, kernels, OS.get_name())
+	_use_impl(_world, kernels, OS.get_name())
 	var scenario_path: String = scenario.resource_path if scenario != null else ""
-	loop = MatchLoop.create(scenario, scenario_path, match_seed, world)
-	replay = loop.replay
+	_loop = MatchLoop.create(scenario, scenario_path, match_seed, _world)
+	_replay = _loop.replay
 	match_serial += 1
 	var first: MatchSnapshot = MatchSnapshot.new()
 	first.match_serial = match_serial
-	first.last_hash = loop.last_hash
-	first.capture(world, null)
+	first.last_hash = _loop.last_hash
+	first.capture(_world, null)
 	_publish(first)
 	_micro_ticks = 0
 	_commands.clear()
@@ -211,7 +243,7 @@ func start() -> void:
 ## inline, so the published tick advances by exactly `n` (ADR 0012 section 1). The next frame
 ## refills.
 func run_ticks(n: int) -> void:
-	if world == null or n <= 0:
+	if _world == null or n <= 0:
 		return
 	var step: Vector2i = hand_off(_state, HandOffEvent.RUN_TICKS)
 	if step.y & HandOffStep.WAIT and not _take_done(WAIT_CAP_MSEC):
@@ -244,6 +276,14 @@ func job_in_flight() -> bool:
 ## True while a started worker thread has not been joined.
 func worker_active() -> bool:
 	return _thread != null and _thread.is_started()
+
+
+## Installs `new_probe` (null removes it) for the next job (ADR 0012 section 1). It waits idle
+## first, so the job in flight keeps the probe it was handed; if that wait reaches its cap, it logs
+## the error and installs nothing. The `probe` setter calls it.
+func set_probe(new_probe: SimProbe) -> void:
+	if wait_idle():
+		_probe = new_probe
 
 
 ## How far the clock is into the next tick, 0 to 1.
@@ -289,6 +329,21 @@ static func mode_after_start(mode: int, start_error: int) -> int:
 	return TickMode.SYNC if mode == TickMode.WORKER and start_error != OK else mode
 
 
+## Whether the main thread may touch the World, `loop`, `replay` and `probe` in `mode` (the resolved
+## TickMode) and `state` (a HandOff state): never in WORKER mode while a job is RUNNING, because the
+## worker owns them then (ADR 0012 section 1); always otherwise. Pure: the getters and setters ask
+## it with the runner's mode and state, and tests read it without the getters' error.
+static func shared_access_allowed(mode: int, state: int) -> bool:
+	return mode != TickMode.WORKER or state != HandOff.RUNNING
+
+
+## Started worker threads not joined yet, over every runner (ADR 0012 section 1, stop): a static
+## counter, main thread only. A test compares it before and after it frees a runner, so it proves
+## the join without calling the freed object.
+static func live_workers() -> int:
+	return _live_workers
+
+
 ## The next state and the steps (a HandOffStep bit set) for `event` in `state`: the table of ADR
 ## 0012 section 1. Pure: what a frame's try_wait() returned is part of the event (FRAME_TAKEN).
 static func hand_off(state: int, event: int) -> Vector2i:
@@ -298,7 +353,7 @@ static func hand_off(state: int, event: int) -> Vector2i:
 
 
 func _process(delta: float) -> void:
-	if world == null or paused or _app_paused:
+	if _world == null or paused or _app_paused:
 		return
 	if _mode == TickMode.WORKER:
 		_process_worker(delta)
@@ -377,6 +432,7 @@ func _post_next() -> void:
 			_tick()
 			return
 		_thread = thread
+		_live_workers += 1
 	CommandQueue.drain_into(_commands)
 	_hand_over()
 	_state = HandOff.RUNNING
@@ -411,6 +467,7 @@ func _join_worker() -> void:
 	_job.work.post()
 	_thread.wait_to_finish()
 	_thread = null
+	_live_workers -= 1
 	_release_job()
 	_state = step.x
 
@@ -427,14 +484,14 @@ func _tick() -> void:
 
 ## Hands the job the next snapshot, created with this match's serial (set before the run, because
 ## capture() compares it with the published one's), the published snapshot as `previous`, and the
-## current world, loop and StepProbe, whose target is the current probe: read at every run or post,
-## so a swap takes effect on the next tick.
+## current world, loop and StepProbe, whose target is the current probe: read from the private
+## fields at every run or post, so a setter's swap takes effect on the next tick.
 func _hand_over() -> void:
 	var next: MatchSnapshot = MatchSnapshot.new()
 	next.match_serial = match_serial
-	_step_probe.target = probe
-	_job.world = world
-	_job.loop = loop
+	_step_probe.target = _probe
+	_job.world = _world
+	_job.loop = _loop
 	_job.probe = _step_probe
 	_job.commands = _commands
 	_job.snapshot = next
@@ -480,6 +537,16 @@ func _use_impl(target: World, kernels: Object, os_name: String) -> void:
 	if resolved == SimImpl.NATIVE:
 		target.kernels = kernels
 		target.native_phases = kernels.phases()
+
+
+## The guard of `world`, `loop`, `replay` and `probe` (ADR 0012 section 1): true when
+## shared_access_allowed() gives the main thread the runner's mode and state; else an error that
+## names `what`, and false, so the getter returns null and the setter changes nothing.
+func _shared(what: StringName) -> bool:
+	if shared_access_allowed(_mode, _state):
+		return true
+	push_error("MatchRunner: %s used while a job runs on the worker (ADR 0012 section 1)" % what)
+	return false
 
 
 ## Makes `published` the runner's snapshot and sets the published fields from it (ADR 0012

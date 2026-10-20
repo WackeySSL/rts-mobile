@@ -76,6 +76,7 @@ func test_the_enemy_tap_reads_the_snapshot_and_never_the_world() -> void:
 		_stand_at(31, RED_31_MILLI)
 		_assert_sees(30, 31)
 		_runner.world = World.new()  # Test-only: an empty World where the match's was.
+		assert_int(_runner.world.unit_count()).is_equal(0)
 		_controller.selection.set_ids(PackedInt32Array([4, 2]))
 		_camera.centre_on(RED_31)
 		_tap(_off_centre(30))
