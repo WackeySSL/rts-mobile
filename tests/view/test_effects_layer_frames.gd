@@ -41,6 +41,14 @@ const ALLOCATING: Array[String] = [
 	".filter(",
 	"func(",
 	"{",
+	"[]",  # An array made empty, or a literal, in any place an expression can stand.
+	"= [",
+	"([",
+	", [",
+	"return [",
+	" in [",
+	": Array",  # A local or a parameter that holds an array: there is no reason for one here.
+	"Array[",
 ]
 
 var _window_size_before: Vector2i
@@ -189,7 +197,8 @@ func test_frames_that_make_and_expire_effects_leave_no_objects_behind() -> void:
 func test_the_frame_path_makes_no_array_and_grows_none() -> void:
 	# The object count above cannot see an array: Packed arrays, Arrays and Dictionaries are no
 	# Objects. So the functions that run every frame or tick may not name a call that makes,
-	# resizes or grows one; the ring made its arrays once, in `_make_ring`.
+	# resizes or grows one, nor write an array literal or an Array local; the ring made its arrays
+	# once, in `_make_ring`.
 	for func_name: String in FRAME_PATH:
 		var code: String = _code_of(func_name)
 		assert_int(code.count("\n")).is_greater(2)  # The function and not its first line.
@@ -212,9 +221,11 @@ func test_draw_hands_every_field_of_the_plan_to_its_draw_call() -> void:
 
 
 func test_records_the_tables_do_not_know_draw_something_sane_and_other_kinds_nothing() -> void:
-	# A weapon past the snapshot's tables gets the default flash and no tracer, a puff of the
-	# default size, and a type past them bursts. A SPAWNED record, or one of no kind, is ignored.
+	# A weapon past the snapshot's tables gets the default flash 13 px from its shooter and no
+	# tracer, a puff of the default size, and a type past them bursts. A SPAWNED record, or one of
+	# no kind, is ignored.
 	var at: Vector2i = Vector2i(5000, 5000)
+	var shooter: Vector2 = ViewScale.milli_to_px_vec(at.x, at.y)
 	for weapon: int in [99, -1]:
 		_now_ms += 1000
 		_deliver(Rig.shot(at, Vector2i(9000, 5000), weapon))
@@ -223,6 +234,9 @@ func test_records_the_tables_do_not_know_draw_something_sane_and_other_kinds_not
 		assert_int(_layer.quad_count()).is_equal(1)
 		assert_that(_layer.quad_region(0)).is_equal(FLASH)
 		assert_float(_layer.quad_rect(0).size.x).is_equal_approx(24.0, 0.001)
+		var muzzle: Vector2 = _layer.quad_rect(0).get_center()
+		assert_float(muzzle.distance_to(shooter)).is_equal_approx(13.0, 0.001)
+		assert_float(muzzle.y).is_equal_approx(shooter.y, 0.001)  # On the way to the target.
 		_now_ms += 1000
 		_deliver(Rig.impact(at, weapon))
 		_layer._process(0.0)
@@ -242,6 +256,22 @@ func test_records_the_tables_do_not_know_draw_something_sane_and_other_kinds_not
 	_deliver(PackedInt32Array())  # A tick without events adds nothing.
 	_layer._process(0.0)
 	assert_int(_layer.active_count()).is_equal(0)
+
+
+func test_a_weapon_of_minus_one_is_no_hitscan_weapon_even_when_the_last_one_is() -> void:
+	# GDScript counts a negative index from the end of an array, so without the check on the
+	# weapon, -1 would read the last row of the speed column. Make that row a hitscan weapon.
+	var last: int = _runner.snapshot.weapon_projectile_speed.size() - 1
+	_runner.snapshot.weapon_projectile_speed[last] = 0
+	var at: Vector2i = Vector2i(5000, 5000)
+	_deliver(Rig.shot(at, Vector2i(9000, 5000), last))
+	_layer._process(0.0)
+	assert_int(_layer.line_count()).is_equal(2)  # The fixture does what it says: a tracer.
+	_now_ms += 1000
+	_deliver(Rig.shot(at, Vector2i(9000, 5000), -1))
+	_layer._process(0.0)
+	assert_int(_layer.line_count()).is_equal(0)
+	assert_int(_layer.quad_count()).is_equal(1)  # Its flash, no tracer.
 
 
 func test_a_layer_without_a_runner_or_before_its_match_plans_nothing_and_raises_nothing() -> void:

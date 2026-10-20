@@ -17,9 +17,9 @@ extends Node2D
 ## plan: tracers as straight lines (butt caps: draw_line has no round ones, which STYLE.md asks
 ## for), everything else as quads of one atlas (ADR 0011 section 3, z 130 in ADR 0012 section 6).
 ##
-## A shell that overflowed the slot pool (P42b) has a SHOT and no IMPACT, and nothing in the
-## snapshot tells it from a shell in flight, so it gets what any projectile SHOT gets: the flash and
-## no puff. Its damage shows in the health bar. The shipped data keeps that count at 0.
+## A shell that overflowed the slot pool (P42b) has a SHOT and no IMPACT. The snapshot has no
+## overflow count and STYLE.md names no look for it, so it gets what any projectile SHOT gets: the
+## flash and no puff. Its damage shows in the health bar. The shipped data keeps that count at 0.
 
 enum Kind { FLASH, TRACER, PUFF, BURST, FADE }
 
