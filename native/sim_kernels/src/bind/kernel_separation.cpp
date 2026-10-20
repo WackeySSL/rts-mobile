@@ -3,7 +3,8 @@
 // tick (World.sep_grid: the GRIDS phase rebuilds it, this kernel never does). The rules are core/separation.h's, a mirror of
 // Separation.gd; this file borrows the arrays once on entry and adds the units looked at to stats[SEP_PAIRS] on exit.
 // Twin: game/sim/Separation.gd (run). Tests: tests/sim/test_separation*.gd under both implementations and
-// tests/sim/native/test_separation_kernel.gd; lockstep: the suites of P39n2 in tests/sim/native/. MIT.
+// tests/sim/native/test_separation_kernel.gd; lockstep (P39n2): test_separation_lockstep.gd (the arena), _cases.gd (crafted crowds)
+// and _random.gd (seeded random states) in tests/sim/native/. MIT.
 #include "sim_kernels.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
