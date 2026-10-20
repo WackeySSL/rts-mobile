@@ -423,7 +423,8 @@ func test_a_unit_on_a_move_order_does_not_fire_until_it_arrives() -> void:
 ## FIRE sits between PROJECTILES (P42b, after INTEGRATE) and REMOVE: at the INTEGRATE and
 ## PROJECTILES marks the mark (row 1) still has all its hp, at the FIRE mark it has lost 18 and the
 ## SHOT is written but the row is there, and at the REMOVE mark a mark of 10 hp is gone with its
-## DIED record. The shooter's cooldown is set at FIRE.
+## DIED record. The shooter's cooldown is set at FIRE. The FOG mark (P46) follows REMOVE and
+## changes none of these columns.
 func test_damage_is_done_at_the_fire_mark_and_the_row_leaves_at_the_remove_mark() -> void:
 	var tough: World = _duel(_weapon(&"gun", 30, 25, GUN_VS), LIGHT)
 	var probe: FireProbe = FireProbe.new(tough)
@@ -435,21 +436,22 @@ func test_damage_is_done_at_the_fire_mark_and_the_row_leaves_at_the_remove_mark(
 			SimProbe.Phase.INTEGRATE,
 			SimProbe.Phase.PROJECTILES,
 			SimProbe.Phase.FIRE,
-			SimProbe.Phase.REMOVE
+			SimProbe.Phase.REMOVE,
+			SimProbe.Phase.FOG
 		]
 	)
-	var after: Array[int] = [TOUGH, TOUGH, TOUGH - 18, TOUGH - 18]
+	var after: Array[int] = [TOUGH, TOUGH, TOUGH - 18, TOUGH - 18, TOUGH - 18]
 	assert_array(probe.hit_points.slice(at_integrate)).is_equal(after)
-	assert_array(probe.event_ints.slice(at_integrate)).is_equal([0, 0, STRIDE, STRIDE])
-	assert_array(probe.cooldowns.slice(at_integrate)).is_equal([0, 0, 25, 25])
+	assert_array(probe.event_ints.slice(at_integrate)).is_equal([0, 0, STRIDE, STRIDE, STRIDE])
+	assert_array(probe.cooldowns.slice(at_integrate)).is_equal([0, 0, 25, 25, 25])
 	var brittle: World = _duel(_weapon(&"gun", 30, 25, GUN_VS), LIGHT, 10)
 	var killing: FireProbe = FireProbe.new(brittle)
 	brittle.target[0] = 2
 	Sim.step(brittle, [], killing)
 	var rows: Array[int] = killing.rows.slice(killing.phases.find(SimProbe.Phase.INTEGRATE))
-	assert_array(rows).is_equal([2, 2, 2, 1])
+	assert_array(rows).is_equal([2, 2, 2, 1, 1])
 	var ints: Array[int] = killing.event_ints.slice(killing.phases.find(SimProbe.Phase.INTEGRATE))
-	assert_array(ints).is_equal([0, 0, STRIDE, 2 * STRIDE])
+	assert_array(ints).is_equal([0, 0, STRIDE, 2 * STRIDE, 2 * STRIDE])
 
 
 ## The orders of the Phase 1 tests on the controls map produce no SHOT within their tick counts, so

@@ -370,7 +370,8 @@ func test_a_chase_unit_with_no_target_reaches_its_goal_and_keeps_its_order(
 ## probe that reads the World at each mark sees it: at COMMANDS the MOVE order is applied and the
 ## intent is not written, at FLOW (P37b), GRIDS (P39b) and TARGETING (P41) nothing has moved yet,
 ## at INTENTS the intent is written and the unit has not moved, and so at SEPARATION (P39b, which
-## comes between INTENTS and INTEGRATE), at INTEGRATE the unit has moved.
+## comes between INTENTS and INTEGRATE), at INTEGRATE the unit has moved. The last mark, FOG (P46),
+## sees the same columns as REMOVE.
 func test_the_intents_mark_follows_movement_run_and_the_integrate_mark_follows_the_move(
 	impl: int, _test_parameters := _both()
 ) -> void:
@@ -391,11 +392,12 @@ func test_the_intents_mark_follows_movement_run_and_the_integrate_mark_follows_t
 		SimProbe.Phase.INTEGRATE,
 		SimProbe.Phase.PROJECTILES,
 		SimProbe.Phase.FIRE,
-		SimProbe.Phase.REMOVE
+		SimProbe.Phase.REMOVE,
+		SimProbe.Phase.FOG
 	]
 	assert_array(probe.phases).is_equal(phases)
-	assert_array(probe.intents_x).is_equal([0, 0, 0, 0, 120, 120, 120, 120, 120, 120])
-	var at_x: Array[int] = [1000, 1000, 1000, 1000, 1000, 1000, 1120, 1120, 1120, 1120]
+	assert_array(probe.intents_x).is_equal([0, 0, 0, 0, 120, 120, 120, 120, 120, 120, 120])
+	var at_x: Array[int] = [1000, 1000, 1000, 1000, 1000, 1000, 1120, 1120, 1120, 1120, 1120]
 	assert_array(probe.positions_x).is_equal(at_x)
 
 
