@@ -9,7 +9,7 @@ constexpr int64_t BLOCK_CELLS = 9; // Separation.BLOCK_CELLS
 constexpr int64_t BLOCK_SIDE = 3; // Separation.BLOCK_SIDE
 constexpr int64_t PERCENT = 100; // Separation.PERCENT
 constexpr int64_t EQUAL_SHARE = 50; // Separation.EQUAL_SHARE
-constexpr int64_t PAIR_DENOMINATOR = 2; // the 2 of `(2 * reach2)` in Separation.run's formula push
+constexpr int64_t PAIR_DENOMINATOR = 2; // Separation.PAIR_DENOMINATOR
 
 // GDScript's clampi: the lower bound is tested first, as in Godot's CLAMP.
 int64_t clamp(int64_t value, int64_t low, int64_t high) {

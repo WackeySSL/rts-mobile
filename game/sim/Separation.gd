@@ -23,6 +23,8 @@ const BLOCK_SIDE: int = 3
 const PERCENT: int = 100
 ## Two units in the same state (both moving or both not) split a pair push 50/50.
 const EQUAL_SHARE: int = 50
+## The 2 of the formula push `(dx, dy) * (R*R - d2) / (2 * R*R)`: structure, not balance.
+const PAIR_DENOMINATOR: int = 2
 
 ## For each unit in id order, scans the 3x3 cells around its own, row by row, each cell's list
 ## in ascending id order. It looks at most at `separation_scan` other units and uses the first
@@ -125,8 +127,8 @@ static func run(world: World) -> void:
 						pair_y = fixed_push * signi(dy)
 				else:
 					var weight: int = reach2 - d2
-					pair_x = dx * weight / (2 * reach2)
-					pair_y = dy * weight / (2 * reach2)
+					pair_x = dx * weight / (PAIR_DENOMINATOR * reach2)
+					pair_y = dy * weight / (PAIR_DENOMINATOR * reach2)
 				var share: int = EQUAL_SHARE
 				var other_moving: bool = intent_x[other] != 0 or intent_y[other] != 0
 				if moving != other_moving:

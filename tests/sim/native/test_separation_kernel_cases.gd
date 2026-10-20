@@ -3,7 +3,8 @@ extends GdUnitTestSuite
 ## get wrong where GDScript cannot. The four bound checks of the 3x3 scan (a read outside the grid
 ## is an error in GDScript and a wrapped or empty read in C++), the caps on looks and neighbours at
 ## every boundary and in scan order, the fixed push of near-coincident pairs signed by geometry
-## from every side, and the truncation of the pair push and of the shares for both signs. Every case
+## from every side, the truncation of the pair push and of the shares for both signs, the pair one
+## step inside the reach (a hit with a push of 0) and a negative reach. Every case
 ## runs on two identical Worlds, one with the GDScript phase and one with the kernel, and compares
 ## the pushes and the pair count; the values the rule gives are asserted where the case pins one.
 ## The module's own cases (test_separation*.gd) run under both implementations too; the 900-tick
@@ -196,11 +197,89 @@ func test_the_pair_push_and_the_shares_truncate_toward_zero_for_both_signs() -> 
 	assert_str(StateDiff.first(pair[0], pair[1])).is_empty()
 
 
+## A pair a hair inside the reach is a hit, and one that touches is not. Two radii of 400 and 401
+## make R = 801 and R*R = 641601, and 800 along one axis with 40 along the other makes d2 =
+## 641600, one less. (For an even R, as the shipped radii give, R*R - 1 is 3 modulo 4, which no sum
+## of two squares is: only an odd R has such a pair.) The pair push is 0 (weight 1, truncated), so
+## only the count of hits shows it: with one neighbour, the unit at the origin (row 0) finds that
+## pair first, uses up its neighbour and is not pushed, and the third unit (row 2, 100 away, which
+## would push it by 30) is not used. A pair that touches (801 apart on one axis) is no hit, so the
+## unit takes the fixed push from row 2, -30 along y. The twin and the kernel agree on the pushes
+## and on the looks in all 12 placements.
+func test_a_pair_one_step_inside_the_reach_is_a_hit_with_a_push_of_zero() -> void:
+	# [offset of row 1 from row 0, whether it is a hit]
+	var cases: Array[Array] = []
+	for sign_x: int in [1, -1]:
+		for sign_y: int in [1, -1]:
+			cases.append([Vector2i(800 * sign_x, 40 * sign_y), true])
+			cases.append([Vector2i(40 * sign_x, 800 * sign_y), true])
+		cases.append([Vector2i(801 * sign_x, 0), false])
+		cases.append([Vector2i(0, 801 * sign_x), false])
+	var differ: Array[String] = []
+	for case: Array in cases:
+		var pair: Array[World] = _pair(_edge_world.bind(case[0]))
+		var d2: int = Rig.distance2(pair[0], 0, 1)
+		assert_int(d2).override_failure_message("offset %s" % case[0]).is_equal(
+			641600 if case[1] else 641601
+		)
+		var found: String = _run_both(pair)
+		if found != "":
+			differ.append("offset %s: %s" % [case[0], found])
+		for world: World in pair:
+			var label: String = "offset %s, native %s" % [case[0], world.native_phases != 0]
+			var wanted: Vector2i = Vector2i.ZERO if case[1] else Vector2i(0, -30)
+			assert_object(_pushes(world)[0]).override_failure_message(label).is_equal(wanted)
+	assert_array(differ).is_empty()
+
+
+## A negative reach (a unit file with a negative radius: the data holds none, but RulesDef and
+## UnitDef have no @export_range) divides toward zero in `reach / divisor`, as the twin does:
+## -18 / 4 is -4, not -5. Two idle-share-0 units 3 and 2 apart, with radius -9 each (R = -18, R*R
+## = 324, d2 = 13, so the pair is near-coincident for the divisor 4): the fixed push is min(-4,
+## 60) = -4 on each axis, signed by the geometry, so the moving unit (which takes the whole of it
+## next to an idle one with a share of 0) gets 4 on both axes and the idle one 0.
+func test_a_negative_reach_divides_toward_zero_for_the_fixed_push() -> void:
+	var pair: Array[World] = _pair(_negative_world)
+	var found: String = _run_both(pair)
+	assert_str(found).is_empty()
+	for world: World in pair:
+		var label: String = "native %s" % (world.native_phases != 0)
+		assert_array(_pushes(world)).override_failure_message(label).is_equal(
+			[Vector2i(4, 4), Vector2i.ZERO]
+		)
+		assert_int(world.stats[World.Stat.SEP_PAIRS]).override_failure_message(label).is_equal(2)
+	assert_str(StateDiff.first(pair[0], pair[1])).is_empty()
+
+
 ## Row 0 of the far unit and row 1 of the unit at the edge, on a map of COLS x ROWS tiles whose
 ## units all have a radius that makes them overlap.
 func _far_world(far: Vector2i, edge: Vector2i) -> World:
 	var world: World = _tanks([far, edge])
 	world.type_radius[0] = HUGE_RADIUS
+	return world
+
+
+## Row 0 (radius 400) at (5000, 4000), row 1 (radius 401) at `offset` from it and row 2 (radius
+## 401) 100 south of row 0, one neighbour and the shipped rules otherwise.
+func _edge_world(offset: Vector2i) -> World:
+	var world: World = GridWorld.from_rows(
+		GridWorld.grass(COLS, ROWS), [World.MoveClass.TRACKED, World.MoveClass.TRACKED]
+	)
+	world.type_radius[1] = 401
+	world.add_unit(1, 0, 5000, 4000)
+	world.add_unit(1, 1, 5000 + offset.x, 4000 + offset.y)
+	world.add_unit(1, 1, 5000, 4100)
+	world.separation_neighbours = 1
+	return world
+
+
+## Two units of radius -9 at (5000, 4000) and (5003, 4002), the first moving, with an idle share
+## of 0 and the shipped divisor of 4.
+func _negative_world() -> World:
+	var world: World = _tanks([Vector2i(5000, 4000), Vector2i(5003, 4002)])
+	world.type_radius[0] = -9
+	world.separation_idle_share = 0
+	world.intent_x[0] = 120
 	return world
 
 

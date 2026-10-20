@@ -4,11 +4,13 @@ extends GdUnitTestSuite
 ## copy keeps its old values, the pair count is added to what the tick has counted, the grid is not
 ## rebuilt; also on a worker Thread), the guards that C++ cannot leave to the engine (a grid with
 ## no cells, a cell side below 1) and the ranges that core/separation.h records (positions of 10^9
-## in a map of one cell, the largest divisor of the data's radii). Every case builds two identical
+## in a map of one cell, the largest divisor of the data's radii, a reach of up to 2 million, and
+## the shipped data against the range). Every case builds two identical
 ## Worlds, one running the GDScript phase and one the C++ kernel, and compares their full state
 ## (StateDiff) as well as the values the rule gives. The crafted rule cases are in
 ## test_separation_kernel_cases.gd; the 900-tick lockstep is P39n2's.
 
+const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
 const Rig: GDScript = preload("res://tests/sim/support/separation_rig.gd")
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
@@ -22,6 +24,13 @@ const ROWS: int = 8
 ## radii (at most 500, a reach of at most 1000) allow: reach * divisor stays at or below 3037000499.
 const EDGE: int = 1000000000
 const LARGE_DIVISOR: int = 3037000
+## The other two limits of the range that core/separation.h records: a reach (the sum of two radii)
+## of at most 2^21 - 1, so that reach^3 stays below 2^63, and reach * divisor of at most the
+## integer square root of INT64_MAX.
+const REACH_MAX: int = 2097151
+const PRODUCT_MAX: int = 3037000499
+const UNITS_DIR: String = "res://data/units"
+const RULES_PATH: String = "res://data/rules.tres"
 ## What the kernel gets or sets, in table order: the rule ints, the columns of the World that the
 ## pass reads or writes, and the separation grid.
 const SEPARATION_NAMES: Array[String] = [
@@ -182,6 +191,57 @@ func test_the_largest_divisor_of_the_recorded_range_applies_the_formula_to_every
 		assert_str(StateDiff.first(pair[0], pair[1])).is_empty()
 
 
+## The reach of the recorded range, far above what the data's radii give (a reach of 1000): units
+## of radius 40,000 to 1,048,575 (a reach of 80,000 to 2,097,150, the top of the range) in a map of
+## one cell, with the cap lifted to 2 * 10^9 and the divisors 1, 2, 4 and 1000. Squared, a reach
+## above 46,341 does not fit 32 bits, and the weight R*R - d2 and the products with the divisor and
+## with the distance are wider still, so a pass that narrowed any of them gives other pushes than
+## the twin. Nothing here overflows 64 bits (the sanitizer build of the library checks that). Seven
+## units: four at the corners of a 1,200,000 x 1,500,000 box, two on one point and a third 100 east
+## of them, the second unit moving. Not vacuous: all 7 * 6 looks are made and something is pushed.
+func test_a_reach_far_above_32768_gives_the_pushes_of_the_twin() -> void:
+	# [radius, divisor]
+	var cases: Array[Array] = [
+		[1000000, 4],
+		[1000000, 1],
+		[60000, 4],
+		[40000, 4],
+		[1000000, 1000],
+		[1048575, 2],
+	]
+	for case: Array in cases:
+		var label: String = "radius %d, divisor %d" % case
+		var pair: Array[World] = _pair(_wide_world.bind(case[0], case[1]))
+		for world: World in pair:
+			Rig.separate(world)
+			assert_int(world.stats[World.Stat.SEP_PAIRS]).override_failure_message(label).is_equal(
+				7 * 6
+			)
+		assert_array(pair[1].push_x).override_failure_message(label).is_equal(pair[0].push_x)
+		assert_array(pair[1].push_y).override_failure_message(label).is_equal(pair[0].push_y)
+		assert_str(StateDiff.first(pair[0], pair[1])).override_failure_message(label).is_empty()
+		var pushed: bool = Array(pair[0].push_x).any(func(push: int) -> bool: return push != 0)
+		assert_bool(pushed).override_failure_message("%s pushes nothing" % label).is_true()
+
+
+## The recorded range against the shipped data (core/separation.h): the largest reach any two units
+## of data/units can make, and that reach times the rule's coincident divisor. test_defs_data keeps
+## every radius in 1..500 and pins the rule at 4; this is the relation the sanitizer build would
+## otherwise be the only one to check, so a rule or a unit file that leaves the range fails here.
+func test_the_shipped_radii_and_divisor_stay_inside_the_recorded_range() -> void:
+	var rules: RulesDef = load(RULES_PATH)
+	var largest: int = 0
+	var files: Array[String] = FileScan.list_files(UNITS_DIR, ".tres")
+	for path: String in files:
+		var unit: UnitDef = load(path)
+		largest = maxi(largest, unit.radius)
+	assert_int(files.size()).is_greater_equal(3)
+	var reach: int = 2 * largest
+	assert_int(reach).is_between(1, REACH_MAX)
+	assert_int(rules.separation_coincident_divisor).is_greater(0)
+	assert_int(reach * rules.separation_coincident_divisor).is_less_equal(PRODUCT_MAX)
+
+
 ## What `_write_case` finds when the kernel writes in place: every observation true, and only a
 ## held copy keeps its old values.
 func _written(hold: bool) -> Dictionary:
@@ -274,6 +334,30 @@ func _corner_world() -> World:
 		Vector2i(EDGE - 100, EDGE)
 	]:
 		world.add_unit(1, 0, corner.x, corner.y)
+	return world
+
+
+## Seven units of radius `radius` in a map of one cell (so that all are in one list), with the
+## cap, the neighbours and the looks lifted: rows 0 to 3 at the corners of a 1,200,000 x 1,500,000
+## box, rows 4 and 5 on one point (300000, 300000) and row 6 100 east of them; row 1 is moving.
+func _wide_world(radius: int, divisor: int) -> World:
+	var world: World = GridWorld.from_rows(GridWorld.grass(1, 1))
+	for point: Vector2i in [
+		Vector2i(0, 0),
+		Vector2i(1200000, 0),
+		Vector2i(0, 1500000),
+		Vector2i(1200000, 1500000),
+		Vector2i(300000, 300000),
+		Vector2i(300000, 300000),
+		Vector2i(300100, 300000)
+	]:
+		world.add_unit(1, 0, point.x, point.y)
+	world.type_radius[0] = radius
+	world.separation_push_max = 2000000000
+	world.separation_neighbours = 1000
+	world.separation_scan = 1000
+	world.separation_coincident_divisor = divisor
+	world.intent_x[1] = 120
 	return world
 
 
