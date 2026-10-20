@@ -32,6 +32,9 @@ var loops: Array[MatchLoop] = []
 var problems: Array[String] = []
 ## The probe of the twin's World; its `tally` holds the counts (TallyProbe.NAMES).
 var probe: TallyProbe
+## The rows the twin's World held when each stepped tick began (step() adds them): the tally's
+## `rows` has to equal it, since nothing joins or leaves between the start of a tick and SEPARATION.
+var rows_stepped: int = 0
 ## What stats[SEP_PAIRS] held before the phase that is being checked (0: Sim.step clears it).
 var _counted: int = 0
 
@@ -73,6 +76,7 @@ func tally() -> Dictionary[StringName, int]:
 ## or the difference.
 func step(orders: Callable = Callable()) -> String:
 	_counted = 0
+	rows_stepped += worlds[0].unit_count()
 	for index: int in worlds.size():
 		var world: World = worlds[index]
 		var queued: Array[Command] = []
