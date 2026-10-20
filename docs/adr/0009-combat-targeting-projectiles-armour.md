@@ -2,6 +2,12 @@
 
 Status: accepted, 2026-10-12 (Michael). Proposed 2026-10-11 (revision 2 after the five-lens plan review, same day).
 
+Status note (2026-10-20, P26y docs): after the merges of P41 (#112, acquisition) and P41b (#114,
+engagement), §2 and §3 carry dated status notes on how `game/sim/Targeting.gd` realises them
+(the scan's cell window in place of "5x5", the two meanings of "armed", the chase line's
+trigger, the inclusive acquire-range guard and the counted line checks). No accepted text
+changed.
+
 ## Context
 ROADMAP Phase 2 asks for "combat with projectiles, armour classes and death". The GDD lists six
 MVP units and four armour classes (infantry, light, heavy, building), and puts the damage
@@ -92,6 +98,39 @@ Three types are enough to prove what the box asks for:
 - In Phase 2 an idle unit hit from beyond its weapon range does not react. The Phase 4 AI
   handles that.
 
+Status note (2026-10-20, P26y docs, P41 as merged, #112, and P41b, #114; the text above stays as
+accepted). `Targeting.run` is the TARGETING phase's acquisition pass, one pass over the rows in
+ascending id order:
+- **The cells.** "5x5 for the Phase 2 ranges" does not hold. The scan's cell window is computed
+  from the reach: every row in the grid cells from `(pos - reach) / cell_milli` to
+  `(pos + reach) / cell_milli` on each axis (integer division truncating toward zero, clamped to
+  the grid), itself excepted. With the shipped ranges that is 3x3 to 4x4 cells, fewer at an edge.
+- **The count.** `stats[TARGET_CANDIDATES]` adds every row the scan looks at, friends and neutral
+  units included (only the scanning row itself is skipped). A kept target costs 0, because a row
+  that keeps its target does not scan.
+- **Ties.** The grid is visited cell by cell, not in id order, so the lower-id tie-break is an
+  explicit comparison (`other < best` at an equal percent and `d2`).
+- **Stickiness** as merged: a due row keeps its target while that unit exists, is an enemy and
+  is still a candidate within reach (`min_range^2 <= d2 <= reach^2` and a percent above 0).
+- **`MOVE`** rows drop their target on every tick, not only at acquisition.
+- **`ATTACK`** (P41b): `target` is the row's `order_target` while that unit exists and is an
+  enemy, and the row's goal is the target's position at the start of the tick. When the target
+  is gone the order becomes `ATTACK_MOVE` to the goal it left (the target's last position),
+  `order_target` and `target` are cleared, and the row goes through the same pass as an
+  attack-moving row: it scans in that pass if it is due on that tick. "Goes out of sight" waits
+  for the fog rules (P46b).
+- **Two meanings of "armed".** `Targeting` treats a type whose weapon index is negative or past
+  the weapon tables as unarmed: it acquires nothing and never holds or chases. `Sim._own_rows`,
+  which validates an `ATTACK` command, asks only for an index of 0 or more. So on a hand-built
+  World that names a weapon it has no table for, an `ATTACK` row locks its target and steers at
+  it for good.
+- **An empty map** (a grid with no cells): the `MOVE` clear and the `ATTACK` lock still run, and a
+  due row that keeps no target writes 0 without a scan.
+- **Owner 0.** The enemy test is "an owner that is neither the row's own nor 0", so an armed
+  neutral row (owner 0) would acquire every player's units. No Phase 2 scenario arms a neutral
+  unit; the plan records this as a design note for P42a, P44 (its rows P44a and P44b) and P46b,
+  whose per-player vision lookup must handle owner 0.
+
 ### 3. Engagement
 - With a valid target inside weapon range (`min_range <= d <= range`), the unit's `nav_mode` is
   `HOLD`: no movement intent, though separation still applies.
@@ -108,6 +147,29 @@ Three types are enough to prove what the box asks for:
 - With no target, an attack-moving unit resumes its path to its slot (its line check runs
   again).
 - There is no facing or turret turn time in the sim. The view turns turrets (ADR 0011).
+
+Status note (2026-10-20, P26y docs, P41b as merged, #114; the text above stays as accepted).
+Engagement is `Targeting._engage`, a second pass of the TARGETING phase after acquisition, on
+every tick, from the positions at the start of the tick; it writes navigation state only through
+`Movement.reset_row`, when a mode changes. Where it differs from the text above:
+- **The chase line's trigger.** The line is checked on the unit's line-check turn,
+  `(tick + id) % line_check_period_ticks == 0`, not "when the target is acquired and each time
+  the unit enters a new tile". With the shipped periods (both 5) that turn is also the unit's
+  acquisition turn. The first clear line starts the chase and the first blocked one ends it, so a unit
+  can stay in `CHASE` with a blocked line for up to `line_check_period_ticks` ticks (5),
+  pinned by `MOST_BLOCKED_CHASE_TICKS` in `tests/sim/test_engagement_rock.gd`.
+- **The acquire-range guard is inclusive**: an attack-moving unit tests the line only while
+  `d2 <= acquire_range^2`.
+- **Line checks are counted.** Each `FixedMath.line_clear` call of engagement adds 1 to
+  `stats[LINE_CHECKS]`, added after its loop, as `Movement._check_line` counts its own.
+- **`ATTACK`** never chases: its goal is the target's position, and its order's navigation takes
+  it to weapon range (`DIRECT` while the line is clear, else a field keyed on the target's tile).
+  Because that goal walks, on the unit's line-check turn a `DIRECT` unit whose line was marked
+  clear tests it again, and a blocked line sends it back through `Movement.run`'s check, which
+  takes the field on the same tick.
+- **`HOLD`** is left again when the target is out of weapon range (it moved, or the unit was
+  pushed). An idle unit holds too but never chases. A unit whose target is gone resumes its path:
+  `DIRECT` with its line unchecked and no field (`NONE` for an idle unit).
 
 ### 4. Firing, projectiles and damage
 - `cooldown` counts down by 1 per tick to 0. A unit with a target in weapon range and cooldown 0

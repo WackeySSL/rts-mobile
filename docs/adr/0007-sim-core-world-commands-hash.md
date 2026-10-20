@@ -26,6 +26,11 @@ Status note (2026-10-14, P26o docs): §5 and §9 carry dated status notes on how
 (#81) and P35b (#82) realise the encoding, the replay log, `Replay.play` and `MatchLoop`; no
 accepted text changed.
 
+Status note (2026-10-20, P26y docs): §4 carries a dated status note on the test-only probe that
+P39b (#111) added, `tests/sim/support/hand_push_probe.gd`, which writes the World at the
+`SEPARATION` mark, a recorded exception to "A probe never reads or writes the World"; no
+accepted text changed.
+
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state
 hash. Phase 1 shipped the v0 shapes of ADR 0003: a struct-of-arrays `World` that never removes a
@@ -260,6 +265,24 @@ death, it writes one `DIED` record per dead row (in row order), compacts every `
 stably, bumps `rows_version` once and adds the rows that changed place to
 `stats[Stat.ROWS_COMPACTED]`; a tick without a death changes nothing. §3's fog unstamping of a
 dead row is not in it yet: it stays in P46, which adds the fog update (plan row P46).
+
+Status note (2026-10-20, P26y docs, after P39b, #111; the text above stays as accepted): one
+test-only probe writes the World, a recorded exception to "A probe never reads or writes the
+World" (the plan's contract row `SimProbe` words it "A probe never touches the World"). Since
+P39b, `Sim.step` computes `push_x` and `push_y` itself (step 7 writes every row), so a push that a
+test writes before a step is lost. `tests/sim/support/hand_push_probe.gd` (`extends SimProbe`)
+copies `push_x` and `push_y` at `begin()` and writes them back at the `SEPARATION` mark, between
+`Separation.run` and `Movement.integrate`, so `Movement.integrate` sees the hand-set pushes. It is
+a test's probe, never the game's: `tests/sim/test_movement_stall.gd`,
+`tests/sim/test_movement_origin_tile.gd` and the INTEGRATE lockstep's random states
+(`tests/sim/native/test_integrate_lockstep.gd` through `tests/sim/support/lockstep_rig.gd`) use
+it, so those states feed the kernel hand-written pushes only, while the arena runs carry the real
+ones. The game's probes (`TimingProbe`, `StepProbe`) still never read or write the World, and the
+test that the hashes with and without a probe are equal stands. (Test probes that only read the
+World at a mark, such as `tests/sim/support/phase_view_probe.gd` and `separation_view_probe.gd`,
+call themselves a test's in their headers; this one is the first that writes.) Since P41b (#114),
+step 5 (the `TARGETING` mark) also holds engagement, `Targeting._engage` (the plan's section P41
+"As merged").
 
 ### 5. Command v1
 `Command` keeps every v0 field and gains `payload: PackedInt32Array` (type-specific ints, empty
