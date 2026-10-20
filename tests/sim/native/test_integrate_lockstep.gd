@@ -4,14 +4,15 @@ extends GdUnitTestSuite
 ## the second with the C++ kernels (SimImpls), each through its own MatchLoop with the same
 ## orders, and after every tick the state hash and the full state (StateDiff: every column, scalar,
 ## the flow cache and its slots) are compared. The orders keep INTEGRATE busy for the whole run:
-## the scenario's two attack-moves, MatchScript's eight commands and, from tick 160, a seeded
-## wave every 25 ticks (a group of one side sent to a point or at an enemy), so that units cross
-## the wall, follow fields, re-key ATTACK fields, take their own fields, stall and arrive. The run
-## repeats on the arena with slow ground, scrub, rock and water painted in (more blocked tiles,
-## more fields), on non-default rules (every rule int changed, so a rule value written as a C++
-## literal fails), with the kernels' World running INTEGRATE alone (FLOW in GDScript, so only the
-## INTEGRATE kernel can differ) and on a cache of two slots, where the slot tables that the C++
-## and the GDScript FlowCache.acquire produce are also compared on their own. The last case plays
+## the two attack-moves of the P27c rush (the scenario holds firing lines since P48), MatchScript's
+## eight commands and, from tick 160, a seeded wave every 25 ticks (a group of one side sent to a
+## point or at an enemy), so that units cross the wall, follow fields, re-key ATTACK fields, take
+## their own fields, stall and arrive. The run repeats on the arena with slow ground, scrub, rock
+## and water painted in (more blocked tiles, more fields), on non-default rules (every rule int
+## changed, so a rule value written as a C++ literal fails), with the kernels' World running
+## INTEGRATE alone (FLOW in GDScript, so only the INTEGRATE kernel can differ) and on a cache of two
+## slots, where the slot tables that the C++ and the GDScript FlowCache.acquire produce are also
+## compared on their own. The last case plays
 ## 600 seeded random states (a random map, cache and rows, garbage in the navigation columns).
 ## The crafted cases are in test_integrate_lockstep_cases.gd and test_integrate_lockstep_off_map.gd.
 ## Since P41b the units that meet hold (HOLD, and CHASE on the way: TARGETING's engagement, in
@@ -231,7 +232,9 @@ func _arena(rules: RulesDef = null, paint: bool = false) -> World:
 func _orders(world: World, tick: int) -> Array[Command]:
 	var out: Array[Command] = []
 	if tick == 0:
-		# The two orders of the scenario: each side attack-moves to the other's side of the wall.
+		# The P27c rush: each side attack-moves to the other side's spawn centre, so that units cross
+		# the wall and meet in the gaps. The shipped scenario holds firing lines since P48 (the pace
+		# the gate needs), so these two orders are the rig's own, not the scenario's.
 		out.append(Command.attack_move(1, LockstepRig.ids_of(world, 1), 39500, 32500))
 		out.append(Command.attack_move(2, LockstepRig.ids_of(world, 2), 24500, 32500))
 	out.append_array(MatchScript.commands_at(tick))

@@ -17,9 +17,10 @@ const TICKS: int = 600
 ## corner still sees every unit.
 const WINDOW_MIN: Vector2i = Vector2i(19500, 25000)
 const WINDOW_MAX: Vector2i = Vector2i(45000, 39500)
-## The heavy window the phone gate needs: heavy_rigs rows, for heavy_frames_min frames at 60 fps.
-const HEAVY_ROWS: int = 135
-const HEAVY_TICKS: int = 150
+## The heavy window the phone gate needs (ADR 0012 section 4): heavy_rigs rows for heavy_frames_min
+## frames of the gate's 60 fps, which the case reads from the gate and turns into ticks.
+const GATE_PATH: String = "res://data/dev/perf_gate.tres"
+const GATE_FPS: int = 60
 const MIN_DEATHS: int = 10
 ## The ridge is the rock of columns 31 and 32: x 31000 up to 33000. Its gaps by tile row, numbered
 ## 0 to 2 from the north.
@@ -132,9 +133,26 @@ func test_the_opening_orders_send_each_side_to_its_firing_line_before_the_ridge(
 func test_no_unit_centre_stands_on_a_blocked_tile_for_600_ticks() -> void:
 	assert_int(_run.rows_in_window.size()).is_equal(TICKS + 1)
 	assert_int(_run.blocked).is_equal(0)
-	# Not vacuous: tens of thousands of unit samples, and thousands of them beside the ridge.
-	assert_int(_run.samples).is_greater(60_000)
+	# Not vacuous, whatever the pace of the fight: every one of the 150 units is sampled for at
+	# least 60 ticks (the armies meet later than that), and thousands of samples are beside the ridge.
+	assert_int(_run.samples).is_greater(150 * 60)
 	assert_int(_run.near_ridge).is_greater(5_000)
+
+
+## The ridge itself, read from the map the world holds: columns 31 and 32 are rock, shut to every
+## movement class, on every row but the gap rows, where both tiles are open. A fourth opening (or a
+## closed gap) fails here, whether or not any unit ever walks through it.
+@warning_ignore("integer_division")
+func test_the_ridge_is_rock_on_every_row_but_the_gap_rows() -> void:
+	var world: World = _world(load(ARENA_PATH) as ScenarioDef)
+	var wrong: Array[Vector2i] = []
+	for y: int in world.map_rows:
+		for x: int in range(RIDGE_FROM_X / 1000, RIDGE_TO_X / 1000):
+			for move_class: int in World.MoveClass.size():
+				var open: bool = world.is_passable(y * world.map_cols + x, move_class)
+				if open != GAP_OF_ROW.has(y):
+					wrong.append(Vector2i(x, y))
+	assert_array(wrong).is_empty()
 
 
 func test_units_cross_the_ridge_only_through_the_three_gaps() -> void:
@@ -160,15 +178,25 @@ func test_at_least_10_units_die_by_tick_600_and_no_projectile_is_lost() -> void:
 	assert_int(_run.overflow).is_equal(0)
 
 
-## The rows inside the 26 x 15 window: at least 135 of the 150 for at least 150 ticks in a row.
-func test_the_window_holds_135_rows_for_150_consecutive_ticks() -> void:
+## The rows inside the 26 x 15 window: at least heavy_rigs of the 150 (135) for the ticks that
+## heavy_frames_min frames take (600 frames at 60 fps are 150 ticks), in a row. Both numbers are the
+## gate's own, so a retuned gate moves this case with it.
+@warning_ignore("integer_division")
+func test_the_window_holds_the_gates_heavy_rows_for_its_heavy_ticks_in_a_row() -> void:
+	var gate: PerfGateDef = load(GATE_PATH) as PerfGateDef
+	var heavy_rows: int = gate.heavy_rigs
+	var heavy_ticks: int = (gate.heavy_frames_min * Sim.TICK_RATE + GATE_FPS - 1) / GATE_FPS
 	assert_int(_run.rows_in_window[0]).is_equal(150)
 	var longest: int = 0
 	var current: int = 0
 	for rows: int in _run.rows_in_window:
-		current = current + 1 if rows >= HEAVY_ROWS else 0
+		current = current + 1 if rows >= heavy_rows else 0
 		longest = maxi(longest, current)
-	assert_int(longest).is_greater_equal(HEAVY_TICKS)
+	(
+		assert_int(longest)
+		. override_failure_message("%d rows for %d ticks" % [heavy_rows, heavy_ticks])
+		. is_greater_equal(heavy_ticks)
+	)
 
 
 func test_both_maps_pass_validate_and_have_their_sizes() -> void:

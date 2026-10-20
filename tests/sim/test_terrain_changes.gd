@@ -1,7 +1,12 @@
 extends GdUnitTestSuite
 ## A terrain change during a match (plan P48): set_terrain's range guard, and a live change that
-## MapView draws. The guard keeps `terrain` (one byte per cell) and the cost tables in step, so the
-## view never meets an index it has no tile for. Colours are STYLE.md's, typed again here.
+## MapView draws. Two bounds keep `terrain` (one byte per cell) and the cost tables in step: the
+## cost-row bound (an index whose terrain_cost row is missing is refused) and, new in P48, the byte
+## bound (TERRAIN_INDEX_MAX). The view never meets an index it has no tile for because a world from
+## a scenario keeps its ids, its cost rows and its cell bytes in one table, which the second case
+## pins; the byte bound alone only stops a truncated index on a hand-built table of more than 256
+## rows. MapView._bake has no fallback of its own for a byte at or above len(terrain_ids) (a
+## follow-up for touch-ux-dev). Colours are STYLE.md's, typed again here.
 
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
@@ -108,7 +113,9 @@ func test_a_set_terrain_during_a_match_is_drawn_by_map_view() -> void:
 	assert_str(_hex(view, EVEN_TILE + Vector2i(0, 1))).is_equal(GRASS_B_HEX)  # Its neighbour.
 	assert_int(view.draw_count()).is_equal(1)
 	assert_that(view.drawn_rect()).is_equal(Rect2(0, 0, 48 * 64, 48 * 64))
-	# A later change shows too: the water turns to sand, and a refused index changes nothing.
+	# A later change shows too: the water turns to sand, and a refused index changes nothing (256 is
+	# refused here by the cost-row bound of this 5-row table; the byte bound is proved by the first
+	# case, on a table of 300 rows).
 	world.set_terrain(water_cell, SAND)
 	world.set_terrain(water_cell, 256)
 	runner.run_ticks(1)

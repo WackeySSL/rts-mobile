@@ -19,6 +19,12 @@ const BAND_TO_X: int = 38000
 ## A tap on the far side of the band, beside the red group at tiles (26..30, 40).
 const FAR_SIDE: Vector2i = Vector2i(28500, 39500)
 const TICKS: int = 400
+## The tiles outside the area that earlier tests aim at (the P48 audit): tile 0, the field goal of
+## test_kernel_dispatch; (30, 30) and (5, 5), the targets of test_sim_step; (20, 30) and (8, 30),
+## those of test_unit_layer.
+const OFF_AREA_TILES: Array[Vector2i] = [
+	Vector2i(0, 0), Vector2i(5, 5), Vector2i(30, 30), Vector2i(20, 30), Vector2i(8, 30)
+]
 ## Blue's 30 tanks are ids 1-30; red's groups are ids 31-34, 35-37 and 38-40.
 const BLUE_IDS: int = 30
 const FIRST_FAR_RED: int = 38
@@ -39,6 +45,20 @@ func test_the_map_has_rock_water_and_scrub_and_keeps_all_of_them_out_of_the_test
 	assert_array(inside).is_empty()
 	for symbol: String in found:
 		assert_int(found[symbol]).override_failure_message(symbol).is_greater(20)
+
+
+## The map also has rock and water north of the area (rows 2 to 7) and west of it (columns 0 to 5),
+## not only south and east as the plan's placement sentence has it. The constraint is the rectangle,
+## so that is allowed, and the targets the audit found outside the rectangle stay on open ground for
+## every class.
+func test_the_tiles_that_earlier_tests_aim_at_outside_the_area_stay_open() -> void:
+	var world: World = _world()
+	var shut: Array[Vector2i] = []
+	for tile: Vector2i in OFF_AREA_TILES:
+		for move_class: int in World.MoveClass.size():
+			if not world.is_passable(tile.y * world.map_cols + tile.x, move_class):
+				shut.append(tile)
+	assert_array(shut).is_empty()
 
 
 func test_the_south_band_cuts_the_straight_line_from_the_blue_block_to_the_far_side() -> void:
