@@ -259,6 +259,64 @@ func test_draw_paints_every_planned_quad_and_none_once_the_last_slot_is_gone() -
 	assert_int(_layer.drawn_count()).is_equal(0)
 
 
+func test_a_full_pool_of_live_shells_is_planned_and_drawn_slot_for_slot() -> void:
+	# The edge of P42b: a full pool (data/rules.tres, 512 slots) is live at once, and the plan must
+	# hold one quad, with its three floats, for every slot of it. The even slots fire the shell
+	# weapon and the odd ones the rocket; slot s goes from (10 s, 4 s) milli 100 east and 50 north.
+	var snap: MatchSnapshot = _runner.snapshot
+	var by_name: Array[StringName] = [&"tank_cannon", &"rocket"]
+	snap.weapon_ids = by_name
+	var pool: int = snap.proj_id.size()
+	assert_int(pool).is_equal(_runner.world.max_projectiles)
+	for slot: int in pool:
+		var from: Vector2i = Vector2i(10 * slot, 4 * slot)
+		_set_slot(slot, 100 + slot, from, from + Vector2i(100, -50), 1, slot % 2)
+	_frame()
+	assert_int(_layer.active_count()).is_equal(pool)
+	var heading: float = atan2(-50.0, 100.0)
+	var wrong: Array[int] = []  # The quads that are not their slot's own, so that one assertion
+	for index: int in pool:  # covers all 512 of them.
+		var expected: Vector2 = Vector2(10 * index, 4 * index) * PX_PER_MILLI
+		if (
+			_layer.quad_slot(index) != index
+			or _layer.quad_position(index).distance_to(expected) > 0.01
+			or absf(_layer.quad_angle(index) - heading) > 0.0001
+			or _layer.quad_region(index) != (ROCKET if index % 2 == 1 else SHELL)
+		):
+			wrong.append(index)
+	assert_array(wrong).is_empty()
+	var last: int = pool - 1
+	assert_int(_layer.quad_slot(last)).is_equal(last)
+	assert_vector(_layer.quad_position(last)).is_equal_approx(
+		Vector2(10 * last, 4 * last) * PX_PER_MILLI, _eps()
+	)
+	assert_float(_layer.quad_angle(last)).is_equal_approx(heading, 0.0001)
+	await await_idle_frame()
+	assert_int(_layer.drawn_count()).is_equal(pool)
+
+
+func test_the_plan_grows_when_a_later_snapshot_has_more_slots_than_the_first() -> void:
+	# The pool is fixed for a run, but a layer meets the snapshot of another run (other rules, so
+	# another pool) and sizes its plan from the snapshot in front of it, not from the first it saw.
+	var full: MatchSnapshot = _runner.snapshot
+	_runner.snapshot = _small_snapshot(4, 3)
+	_frame()
+	assert_array(_slots()).is_equal([3])
+	var live: Array[int] = [0, 1, 2, 3, 4, 100, 300, full.proj_id.size() - 1]
+	_runner.snapshot = full  # 512 slots, of which these eight hold a shell.
+	for slot: int in live:
+		_set_slot(slot, 70 + slot, Vector2i(10 * slot, 0), Vector2i(10 * slot + 100, 0))
+	_frame()
+	assert_array(_slots()).is_equal(live)
+	var last: int = live.size() - 1
+	assert_vector(_layer.quad_position(last)).is_equal_approx(
+		Vector2(10 * live[last], 0) * PX_PER_MILLI, _eps()
+	)
+	_runner.snapshot = _small_snapshot(4, 3)  # And back to a short table: it is not outgrown.
+	_frame()
+	assert_array(_slots()).is_equal([3])
+
+
 func test_a_new_match_empties_the_layer_and_a_layer_without_a_snapshot_draws_nothing() -> void:
 	_set_slot(0, 51, Vector2i(1000, 1000), Vector2i(2000, 1000))
 	_frame()
@@ -351,6 +409,25 @@ func _set_slot(
 	snap.prev_proj_y[slot] = from.y
 	snap.proj_x[slot] = to.x
 	snap.proj_y[slot] = to.y
+
+
+## A snapshot of a pool of `slots` projectile slots (the other columns are empty), with slot `live`
+## holding a shell that has flown for two ticks, 1000 milli east.
+func _small_snapshot(slots: int, live: int) -> MatchSnapshot:
+	var snap: MatchSnapshot = MatchSnapshot.new()
+	snap.proj_id.resize(slots)
+	snap.prev_proj_id.resize(slots)
+	snap.proj_owner.resize(slots)
+	snap.proj_weapon.resize(slots)
+	snap.proj_x.resize(slots)
+	snap.proj_y.resize(slots)
+	snap.prev_proj_x.resize(slots)
+	snap.prev_proj_y.resize(slots)
+	snap.proj_id[live] = 9
+	snap.prev_proj_id[live] = 9
+	snap.proj_x[live] = 2000
+	snap.prev_proj_x[live] = 1000
+	return snap
 
 
 func _frame() -> void:

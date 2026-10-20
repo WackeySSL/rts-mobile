@@ -103,7 +103,6 @@ func test_the_hull_turns_on_the_move_while_the_turret_holds_its_target() -> void
 	var snap: MatchSnapshot = _runner.snapshot
 	snap.target[0] = snap.unit_id[1]  # The red tank, 10 tiles south: the turret bearing is south.
 	snap.target_row[0] = 1
-	snap.tick += 1  # Written as the next tick, so that the layer takes its bearings from it.
 	_frames(12)
 	assert_float(_part(0, "Turret").rotation).is_equal_approx(SOUTH, 0.001)
 	assert_float(_part(0, "Hull").rotation).is_equal(0.0)
