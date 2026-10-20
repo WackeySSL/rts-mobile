@@ -251,6 +251,41 @@ func test_a_negative_reach_divides_toward_zero_for_the_fixed_push() -> void:
 	assert_str(StateDiff.first(pair[0], pair[1])).is_empty()
 
 
+## The fixed push is `reach / divisor` truncated toward zero, and it shows when the cap does not
+## bind and the divisor does not divide the reach: the radii 400 and 403 make R = 803 (the shipped
+## data gives 600 to 800, which every shipped divisor of 4 divides, under a cap of 60 that always
+## binds). With the cap lifted to 1000, 803 / 4 is 200 (not the 201 of a rounded quotient or of a
+## ceiling), 803 / 3 is 267 (not 268), 803 / 2 is 401 (not 402), 803 / 1 is 803 and 803 / 7 is 114
+## (not 115). Unit 0 moves and unit 1 is idle 100 east of it with an idle share of 100, so the idle
+## unit takes the whole pair push, away from the mover along +x, and the mover none of it: the share
+## is exact, so it cannot hide a difference of 1 as the 50 percent of two idle units would
+## (803 / 4 = 200 or 201 is 100 after the share either way).
+func test_the_fixed_push_is_the_reach_truncated_for_a_divisor_that_does_not_divide_it() -> void:
+	# [divisor, the push of the idle unit]
+	var cases: Array[Array] = [[4, 200], [3, 267], [2, 401], [1, 803], [7, 114]]
+	for case: Array in cases:
+		var pair: Array[World] = _pair(_uneven_world.bind(case[0]))
+		for world: World in pair:
+			var d2: int = Rig.distance2(world, 0, 1)
+			var reach: int = world.type_radius[0] + world.type_radius[1]
+			# Near-coincident for this divisor, or the formula would give the push.
+			assert_bool(d2 * case[0] * case[0] < reach * reach).is_true()
+		var found: String = _run_both(pair)
+		assert_str(found).override_failure_message("divisor %d" % case[0]).is_empty()
+		for world: World in pair:
+			var label: String = "divisor %d, native %s" % [case[0], world.native_phases != 0]
+			assert_int(world.push_x[1]).override_failure_message(label).is_equal(case[1])
+			assert_int(world.push_x[0]).override_failure_message(label).is_equal(0)
+			assert_int(world.push_y[0] + world.push_y[1]).override_failure_message(label).is_equal(
+				0
+			)
+		(
+			assert_str(StateDiff.first(pair[0], pair[1]))
+			. override_failure_message("divisor %d" % case[0])
+			. is_empty()
+		)
+
+
 ## Row 0 of the far unit and row 1 of the unit at the edge, on a map of COLS x ROWS tiles whose
 ## units all have a radius that makes them overlap.
 func _far_world(far: Vector2i, edge: Vector2i) -> World:
@@ -270,6 +305,22 @@ func _edge_world(offset: Vector2i) -> World:
 	world.add_unit(1, 1, 5000 + offset.x, 4000 + offset.y)
 	world.add_unit(1, 1, 5000, 4100)
 	world.separation_neighbours = 1
+	return world
+
+
+## A mover of type 0 (radius 400) at (5000, 4000) and an idle unit of type 1 (radius 403) at (5100,
+## 4000), R = 803, with the push cap lifted to 1000, an idle share of 100 and the given divisor.
+func _uneven_world(divisor: int) -> World:
+	var world: World = GridWorld.from_rows(
+		GridWorld.grass(COLS, ROWS), [World.MoveClass.TRACKED, World.MoveClass.TRACKED]
+	)
+	world.type_radius[1] = 403
+	world.add_unit(1, 0, 5000, 4000)
+	world.add_unit(1, 1, 5100, 4000)
+	world.intent_x[0] = 120
+	world.separation_push_max = 1000
+	world.separation_idle_share = 100
+	world.separation_coincident_divisor = divisor
 	return world
 
 
