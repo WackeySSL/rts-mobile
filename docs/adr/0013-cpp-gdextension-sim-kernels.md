@@ -91,6 +91,10 @@ Status note (2026-10-20, P26z docs): after the merge of P54r (#116, `NativeKerne
 hash comparison sees of FLOW, and where the OS rule of the fallback lives). No accepted text
 changed.
 
+Status note (2026-10-20, P26aa docs): after the merge of P42b (#122, the PROJECTILES phase), a
+dated status note from "P26aa docs" sits in §1 (clause (a) read for `PROJECTILES` and `FIRE` at
+P42b's `PERF` line: P42n is not triggered there). No accepted text changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -370,6 +374,11 @@ absorbs next to the C++ phases.
   sets a headroom value. A phase that meets either clause gets its port row, already estimated
   in the plan (P37n2, P41g, P42n), in the slot right after that PR. A phase that meets neither
   stays GDScript.
+
+  Status note (2026-10-20, P26aa docs, P42b as merged, #122; the text above stays as accepted):
+  at P42b's `PERF` line (PR #122's run) `projectiles` is 0.028 ms and `fire` 0.015 ms, so clause
+  (a) gives about 0.12 and 0.07 ms against 0.67 ms for the two phases. P42n is not triggered at
+  P42b's line; both phases are read again at P46's line.
 - **GDScript only:**
   - `COMMANDS`: validation, `Formation.assign`;
   - `REMOVE`: `remove_dead`, a stable compaction over the shape lists through `get(name)`;
