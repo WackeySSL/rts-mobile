@@ -177,7 +177,7 @@ func test_an_attack_unit_that_outran_its_field_takes_the_field_of_its_goal_tile(
 
 
 ## A key that turned to rock is no next tile for a unit without a group cell either: an ATTACK unit,
-## and the ATTACK_MOVE unit its order becomes when the target dies (`_follow_targets` leaves
+## and the ATTACK_MOVE unit its order becomes when the target dies (`Targeting.run` leaves
 ## `group_cell` at -1), stand next to the key tile of their field with the goal 2000 from it, inside
 ## `attack_rekey_milli` (no re-key). Each takes the field of its goal's tile instead of pressing on
 ## the rock for good (an ATTACK unit never stalls). The blocked-key rule is for every unit that

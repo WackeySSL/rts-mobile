@@ -29,7 +29,7 @@ const ROCK: int = 2
 func test_twelve_tanks_reach_slots_through_the_gap_and_no_centre_is_on_rock(
 	impl: int, _test_parameters := _both()
 ) -> void:
-	var world: World = _gap_world(impl)
+	var world: World = _gap_world(impl, false)
 	var rows: PackedInt32Array = GridWorld.add_block(world, 12, 4, 3000, 1500, 1000, 0)
 	var field_ticks: int = 0
 	var slots_used: int = 0
@@ -468,7 +468,7 @@ func test_orders_to_different_points_take_a_field_each_and_the_same_point_shares
 func test_a_unit_whose_slot_is_across_a_wall_from_the_group_target_takes_a_field_of_its_own(
 	impl: int, _test_parameters := _both()
 ) -> void:
-	var world: World = _thin_wall_world(8, impl)
+	var world: World = _thin_wall_world(8, impl, false)
 	var slots_used: int = 0
 	for tick: int in 700:
 		var commands: Array[Command] = []
@@ -495,7 +495,7 @@ func test_a_unit_whose_slot_is_across_a_wall_from_the_group_target_takes_a_field
 func test_attack_move_units_across_a_thin_wall_take_their_own_field(
 	impl: int, _test_parameters := _both()
 ) -> void:
-	var world: World = _thin_wall_world(8, impl)
+	var world: World = _thin_wall_world(8, impl, false)
 	var goals: Array[Vector2i] = []
 	for tick: int in 700:
 		var commands: Array[Command] = []
@@ -549,7 +549,7 @@ func test_with_every_slot_referenced_units_across_the_wall_end_their_orders_and_
 	var rock: Array[Vector2i] = []
 	for row: int in 10:
 		rock.append(Vector2i(20, row))
-	var world: World = _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl)
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl, false)
 	world.flow_cache_size = 1
 	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 1)
 	GridWorld.add_block(world, 2, 2, 3500, 5500, 1000, 0)
@@ -646,12 +646,12 @@ func _gap_hashes(impl: int) -> PackedInt64Array:
 	return hashes
 
 
-func _gap_world(impl: int) -> World:
+func _gap_world(impl: int, pushes: bool = true) -> World:
 	var rock: Array[Vector2i] = []
 	for row: int in 14:
 		if row != 9 and row != 10:
 			rock.append(Vector2i(12, row))
-	return _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl)
+	return _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl, pushes)
 
 
 ## 300 ticks of the thin-wall case (twelve tanks, eight slots) with the hash at each checkpoint:
@@ -674,11 +674,11 @@ func _thin_wall_hashes(impl: int) -> Dictionary:
 
 ## 30 x 14, a one tile thick wall in column 20 (rows 0 to 9), twelve tanks west of it, a cache of
 ## `slots` fields.
-func _thin_wall_world(slots: int, impl: int) -> World:
+func _thin_wall_world(slots: int, impl: int, pushes: bool = true) -> World:
 	var rock: Array[Vector2i] = []
 	for row: int in 10:
 		rock.append(Vector2i(20, row))
-	var world: World = _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl)
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl, pushes)
 	world.flow_cache_size = slots
 	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), slots)
 	GridWorld.add_block(world, 12, 4, 3000, 1500, 1000, 0)
@@ -703,10 +703,12 @@ func _both() -> Array[Array]:
 	return SimImpls.CASES.duplicate(true)
 
 
-## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
-func _in(world: World, impl: int) -> World:
+## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for, with
+## the tick's separation as the rules have it. A case that pins the exact positions where a crowd
+## settles (the pushes of the tick move the units a little: test_separation_tick.gd covers the crowd
+## with the real pushes) asks for `pushes` false, which sets `separation_push_max` to 0.
+func _in(world: World, impl: int, pushes: bool = true) -> World:
 	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
-	# No pushes: these cases pin Movement's rules at exact positions, and the tick separates units
-	# since P39b (test_separation_tick.gd covers the crowd with the real pushes).
-	world.separation_push_max = 0
+	if not pushes:
+		world.separation_push_max = 0
 	return world

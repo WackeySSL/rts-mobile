@@ -1,9 +1,11 @@
 extends GdUnitTestSuite
 ## MatchSnapshot (plan P38s, ADR 0012 section 3, ADR 0011 section 2): the view's copy of a tick.
 ## The arena (seed 42) is stepped through MatchLoop: player 1 owns ids 1-75, player 2 ids 76-150,
-## and both attack-move from tick 0, so units move on every early tick. Before P41, P42b and P46
-## the sim writes no target, projectile or fog cell, so the cases write those into the World by
-## hand. Every capture gets its match_serial first, as the runner will (plan P38j).
+## and both attack-move from tick 0, so units move on every early tick. Before P42b and P46 the sim
+## writes no projectile or fog cell, so the cases write those into the World by hand, and the
+## target case writes its targets by hand too, with nobody due to scan (P41 writes targets from the
+## first contact, tick 15). Every capture gets its match_serial first, as the runner will (plan
+## P38j).
 
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const SEED: int = 42
@@ -103,10 +105,12 @@ func test_each_id_list_is_an_equal_typed_copy_of_the_worlds() -> void:
 
 
 ## Units 100 and 150 (the highest id) die in the tick, which is captured with a previous snapshot
-## of the same match; the targets are written by hand (the sim sets none before P41). Rows: id 1
+## of the same match; the targets are written by hand, and a period of a million ticks makes sure
+## that no unit is due to scan and replace them (the sim sets targets since P41). Rows: id 1
 ## -> 76 (row 75), id 2 -> 149 (the last row, 147), id 80 -> 1 (row 0), ids 3 and 81 -> 100 (gone,
 ## inside the id range), id 4 -> 150 (gone, above every id), every other unit -> 0 (none).
 func test_target_row_is_the_target_row_here_and_minus_one_for_none_or_gone() -> void:
+	_world.retarget_period_ticks = 1000000
 	_play(10)
 	var previous: MatchSnapshot = _capture(null, 1)
 	var targets: PackedInt32Array = _world.target

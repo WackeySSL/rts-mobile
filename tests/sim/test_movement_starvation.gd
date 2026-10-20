@@ -26,7 +26,7 @@ const REACHABLE: int = 6
 func test_two_pocket_tanks_do_not_starve_six_others_of_two_slots(
 	impl: int, _test_parameters := _both()
 ) -> void:
-	var played: Dictionary = _play(2, 2, 1, impl)
+	var played: Dictionary = _play(2, 2, 1, impl, false)
 	assert_int(played["waiting"]).is_greater(0)
 	assert_int(played["last_idle"]).is_between(REACHABLE_TICK, 899)
 	_assert_outcome(played["world"], 2, 1)
@@ -38,7 +38,7 @@ func test_two_pocket_tanks_do_not_starve_six_others_of_two_slots(
 func test_eight_pocket_groups_do_not_starve_six_others_of_eight_slots(
 	impl: int, _test_parameters := _both()
 ) -> void:
-	var played: Dictionary = _play(8, 8, 2, impl)
+	var played: Dictionary = _play(8, 8, 2, impl, false)
 	assert_int(played["waiting"]).is_greater(0)
 	assert_int(played["last_idle"]).is_between(REACHABLE_TICK, 899)
 	_assert_outcome(played["world"], 8, 2)
@@ -76,7 +76,7 @@ func test_a_unit_that_waited_for_a_slot_still_reaches_its_slot_when_it_gets_one(
 	var rock: Array[Vector2i] = []
 	for row: int in 10:
 		rock.append(Vector2i(20, row))
-	var world: World = _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl)
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl, false)
 	world.flow_cache_size = 2
 	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 2)
 	GridWorld.add_block(world, 12, 4, 3000, 1500, 1000, 0)
@@ -115,8 +115,8 @@ func test_a_unit_that_waited_for_a_slot_still_reaches_its_slot_when_it_gets_one(
 ## that wait for a slot on a tick on which the cache has no free slot), "last_idle" (the first
 ## tick on which every unit is IDLE, -1 if none) and "hashes" (the state hash after every tick that
 ## is a multiple of `Replay.CHECKPOINT_PERIOD`).
-func _play(slots: int, pockets: int, per_pocket: int, impl: int) -> Dictionary:
-	var world: World = _pocket_world(slots, pockets, impl)
+func _play(slots: int, pockets: int, per_pocket: int, impl: int, pushes: bool = true) -> Dictionary:
+	var world: World = _pocket_world(slots, pockets, impl, pushes)
 	var pocket_count: int = pockets * per_pocket
 	GridWorld.add_block(world, pocket_count, 1, 3500, 500, 1000, 0)
 	GridWorld.add_block(world, REACHABLE, 1, 5500, 500, 1000, 0)
@@ -187,7 +187,7 @@ func _assert_outcome(world: World, pockets: int, per_pocket: int) -> void:
 ## 32 x 17 tiles: a wall in column 12 except rows 9 and 10, and `pockets` pockets in two columns of
 ## them, the interior tiles at (x, y) of `_pocket_x` and `_pocket_y`. A cache of `slots` fields.
 @warning_ignore("integer_division")
-func _pocket_world(slots: int, pockets: int, impl: int) -> World:
+func _pocket_world(slots: int, pockets: int, impl: int, pushes: bool = true) -> World:
 	var rock: Array[Vector2i] = []
 	for row: int in 17:
 		if row != 9 and row != 10:
@@ -200,7 +200,7 @@ func _pocket_world(slots: int, pockets: int, impl: int) -> World:
 			rock.append(Vector2i(left + dx, top + 2))
 		rock.append(Vector2i(left, top + 1))
 		rock.append(Vector2i(left + 2, top + 1))
-	var world: World = _in(GridWorld.from_rows(GridWorld.grass(32, 17, rock)), impl)
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(32, 17, rock)), impl, pushes)
 	world.flow_cache_size = slots
 	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), slots)
 	return world
@@ -221,10 +221,12 @@ func _both() -> Array[Array]:
 	return SimImpls.CASES.duplicate(true)
 
 
-## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
-func _in(world: World, impl: int) -> World:
+## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for, with
+## the tick's separation as the rules have it. A case that pins the exact positions where a crowd
+## settles (the pushes of the tick move the units a little: test_separation_tick.gd covers the crowd
+## with the real pushes) asks for `pushes` false, which sets `separation_push_max` to 0.
+func _in(world: World, impl: int, pushes: bool = true) -> World:
 	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
-	# No pushes: these cases pin Movement's rules at exact positions, and the tick separates units
-	# since P39b (test_separation_tick.gd covers the crowd with the real pushes).
-	world.separation_push_max = 0
+	if not pushes:
+		world.separation_push_max = 0
 	return world
