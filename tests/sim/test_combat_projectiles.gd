@@ -563,6 +563,44 @@ func test_slots_go_back_on_the_stack_and_the_next_shots_take_them_last_in_first_
 	assert_int(world.next_projectile_id).is_equal(6)
 
 
+## A slot that lands on an EMPTY stack is written at the bottom of it, whatever stood there before
+## (the lockstep of the C++ twin compares `proj_free` below the top, and a full pool is the path a
+## small-pool run takes). A pool of 3 has the stack [2, 1, 0] (slot 0 on top); three shooters at
+## x 4000 fire in tick 0 at marks 4800, 1200 and 3000 east of them (speed 600: flights of 8, 2 and 5
+## ticks), take slots 0, 1 and 2, and leave the stack empty with the old bytes [2, 1, 0] in place.
+## Slot 1 lands in tick 2 onto the empty stack: top 1 and `proj_free[0]` 1 (not the stale 2, so a
+## write skipped on an empty stack shows, and the slot, so a zero written there shows). Slot 2 lands
+## in tick 5: top 2 and [1, 2] below it. Slot 0 lands in tick 8: top 3 and [1, 2, 0]. A pool of 2
+## would not tell the cases apart: the stale value under its bottom is the slot that lands.
+func test_a_slot_pushed_onto_an_empty_stack_is_written_at_the_bottom_of_it() -> void:
+	var defs: Array[UnitDef] = [
+		_def(&"gun", INFANTRY, TOUGH, _shell(600)), _def(&"mark", LIGHT, TOUGH)
+	]
+	var world: World = _world(defs, 3)
+	var gaps: Array[int] = [4800, 1200, 3000]
+	for k: int in 3:
+		world.add_unit(1, 0, 4000, 1000 + 3000 * k)
+	for k: int in 3:
+		world.add_unit(2, 1, 4000 + gaps[k], 1000 + 3000 * k)
+		world.target[k] = 4 + k
+	Sim.step(world, [])
+	assert_array(world.proj_ticks).is_equal([8, 2, 5])
+	assert_int(world.proj_free_top).is_equal(0)
+	assert_array(world.proj_free).is_equal([2, 1, 0])
+	for _tick: int in 2:
+		Sim.step(world, [])
+	assert_int(world.proj_free_top).is_equal(1)
+	assert_int(world.proj_free[0]).is_equal(1)
+	for _tick: int in 3:
+		Sim.step(world, [])
+	assert_int(world.proj_free_top).is_equal(2)
+	assert_array(world.proj_free.slice(0, 2)).is_equal([1, 2])
+	for _tick: int in 3:
+		Sim.step(world, [])
+	assert_int(world.proj_free_top).is_equal(3)
+	assert_array(world.proj_free).is_equal([1, 2, 0])
+
+
 ## The phase sits between INTEGRATE and FIRE: a probe sees the marks INTEGRATE, PROJECTILES, FIRE,
 ## REMOVE in that order, and the hash after a tick with shells in flight differs from the hash of
 ## the same state with one live slot's flight time one tick longer (the live slots are in the
