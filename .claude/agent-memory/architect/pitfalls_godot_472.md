@@ -16,3 +16,4 @@ Pitfalls a reviewer caught in the Phase 0 plan (2026-10-10); check new plans aga
 - `git diff --quiet` misses untracked `.uid`/`.import`; use `git status --porcelain` for clean-tree checks.
 - Purity regexes need fixture tests; the first draft missed randi_range, sqrt, float literals and banned legit `delta` ints.
 - Preview jobs must fail when the link is not live, or "green" proves nothing; enable Pages before the first PR.
+- (2026-10-13, P31b review) Godot 4.7.2: a `const X: Array[StringName] = A + [..]` (any const built by an expression) is UNTYPED at runtime (is_typed() false); assigning it to a typed var or passing it as a typed param fails only at runtime. Typed const lists must be literals (found in P31b review: World.UNHASHED_SCALARS, FlowField/FlowCache.UNHASHED).
