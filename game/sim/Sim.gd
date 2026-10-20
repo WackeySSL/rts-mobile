@@ -12,11 +12,11 @@ const MILLI_PER_TILE: int = 1000
 ## Prepares the world, clears the last tick's events and stats, sorts `commands` in place with
 ## Command.compare and applies those whose tick is `world.tick`. A null or any other command is
 ## dropped and counted. Then the flow cache advances (FLOW), the separation and targeting grids are
-## rebuilt (GRIDS), units that are due pick a target (TARGETING), ordered units choose their steps
-## (intents), overlapping units are pushed apart (SEPARATION), the steps and pushes are integrated,
-## dead rows leave, and the tick counts. A probe gets `begin()` first and a `mark` after each phase
-## that exists (ADR 0007 section 4); it never sees the World. `_follow_targets` stands in for the
-## engagement of an ATTACK order until P41b, so its time falls inside INTENTS.
+## rebuilt (GRIDS), units pick their targets and engage them (TARGETING: acquisition, the ATTACK
+## lock, holding and chasing), ordered units choose their steps (intents), overlapping units are
+## pushed apart (SEPARATION), the steps and pushes are integrated, dead rows leave, and the tick
+## counts. A probe gets `begin()` first and a `mark` after each phase that exists (ADR 0007 section
+## 4); it never sees the World.
 static func step(world: World, commands: Array[Command], probe: SimProbe = null) -> void:
 	if probe != null:
 		probe.begin()
@@ -47,7 +47,6 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 	Targeting.run(world)
 	if probe != null:
 		probe.mark(SimProbe.Phase.TARGETING)
-	_follow_targets(world)
 	Movement.run(world)
 	if probe != null:
 		probe.mark(SimProbe.Phase.INTENTS)
@@ -102,7 +101,7 @@ static func _apply_point(world: World, command: Command, order: int) -> bool:
 	return true
 
 
-## ATTACK: the armed valid units take the order and the target (the goal: _follow_targets).
+## ATTACK: the armed valid units take the order and the target (the goal: `Targeting.run`).
 static func _apply_attack(world: World, command: Command) -> bool:
 	if not _enemy_target(world, command):
 		return false
@@ -146,7 +145,8 @@ static func _apply_stop(world: World, command: Command) -> bool:
 
 ## Rows of the command's units, ascending and without duplicates; none when it holds more than
 ## MAX_UNITS ids. An id is valid when the unit exists, is the player's and can move (and, with
-## `armed`, has a weapon); other ids are skipped silently.
+## `armed`, names a weapon: an index of 0 or more, though a hand-built World may name one that its
+## weapon tables lack, which `Targeting` reads as unarmed); other ids are skipped silently.
 static func _own_rows(world: World, command: Command, armed: bool) -> PackedInt32Array:
 	var rows: PackedInt32Array = PackedInt32Array()
 	if command.unit_ids.size() > Command.MAX_UNITS:
@@ -174,26 +174,3 @@ static func _own_rows(world: World, command: Command, armed: bool) -> PackedInt3
 static func _enemy_target(world: World, command: Command) -> bool:
 	var row: int = world.index_of(command.target_id)
 	return row >= 0 and world.owner[row] != command.player_id and world.owner[row] != 0
-
-
-## Until P41b an ATTACK unit's goal is where its target stood at the start of the tick (read before
-## anyone moves, so row order cannot matter). A target that is gone makes it attack-move to the
-## last goal (ADR 0009 section 2). The lookup is inlined over the aliased ids (P41b replaces this).
-static func _follow_targets(world: World) -> void:
-	var orders: PackedInt32Array = world.order
-	var order_target: PackedInt32Array = world.order_target
-	var ids: PackedInt32Array = world.unit_id
-	var pos_x: PackedInt32Array = world.pos_x
-	var pos_y: PackedInt32Array = world.pos_y
-	var goal_x: PackedInt32Array = world.goal_x
-	var goal_y: PackedInt32Array = world.goal_y
-	var count: int = ids.size()
-	for row: int in count:
-		if orders[row] != World.Order.ATTACK:
-			continue
-		var at: int = ids.bsearch(order_target[row])
-		if at >= count or ids[at] != order_target[row]:
-			orders[row] = World.Order.ATTACK_MOVE
-		else:
-			goal_x[row] = pos_x[at]
-			goal_y[row] = pos_y[at]

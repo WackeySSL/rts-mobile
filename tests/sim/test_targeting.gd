@@ -4,7 +4,8 @@ extends GdUnitTestSuite
 ## (damage percent, then distance, then id), the stagger, stickiness, the reach by order, the
 ## position in the tick, idle units staying put, and the hashes. Cell borders, the range edges,
 ## minimum range, armour percents, owners, unarmed types and the work count are in
-## test_targeting_edges.gd. The engagement part (the ATTACK lock, chasing, holding) is P41b's.
+## test_targeting_edges.gd. The engagement part (the ATTACK lock and its fallback, chasing, holding)
+## is in test_engagement.gd and test_engagement_rock.gd (P41b).
 ##
 ## The worlds are the shipped unit types (TargetingRig.data_world): rifle squad 0, rocket squad 1,
 ## light tank 2 on a 20 x 12 tile map. Rifle: range 4000, acquire 5000, 100 / 10 percent against
@@ -24,7 +25,6 @@ const TANK: int = 2
 const IDLE: int = World.Order.IDLE
 const ATTACK_MOVE: int = World.Order.ATTACK_MOVE
 const MOVE: int = World.Order.MOVE
-const ATTACK: int = World.Order.ATTACK
 ## The arena match of the hash and sight cases: the sides meet in the first 100 ticks.
 const ARENA_TICKS: int = 300
 
@@ -238,26 +238,6 @@ func test_a_move_order_never_acquires_and_drops_its_target() -> void:
 	assert_int(Rig.retarget(world, 1)).is_equal(2)
 
 
-## The ATTACK order is the engagement part's (P41b), which locks the row to its `order_target`.
-## Until then an ATTACK row acquires nothing and holds no target, whatever stands 1000 away and
-## whatever it held before the order (here a stale id); `order_target` stays as the command set it.
-## P41b replaces this case with the lock.
-func test_an_attack_row_acquires_nothing_and_holds_no_target_until_the_lock() -> void:
-	var world: World = Rig.data_world()
-	world.add_unit(1, RIFLE, 10000, 6000)
-	world.add_unit(1, RIFLE, 10000, 8000)
-	world.add_unit(2, RIFLE, 11000, 6000)
-	world.order[0] = ATTACK
-	world.order_target[0] = 3
-	world.order[1] = ATTACK
-	world.order_target[1] = 3
-	world.target[1] = 3
-	for id: int in [1, 2]:
-		assert_int(Rig.target_of(world, id)).override_failure_message(str(id)).is_equal(0)
-	assert_array([world.order_target[0], world.order_target[1]]).is_equal([3, 3])
-	assert_array([world.order[0], world.order[1]]).is_equal([ATTACK, ATTACK])
-
-
 ## The marks of the tick, with the grid and the targets at each: the targeting grid holds the rows
 ## from GRIDS on (two cells for the two units), the subject's target is set at TARGETING and not
 ## before, and so are the candidates it looked at. Unit 1 is due at tick 4.
@@ -314,52 +294,10 @@ func test_the_grid_is_rebuilt_on_every_tick_odd_or_even() -> void:
 		assert_int(world.target[0]).override_failure_message(label).is_equal(2)
 
 
-## `_follow_targets` (the ATTACK stand-in until P41b) runs after the TARGETING mark, inside INTENTS:
-## an ATTACK row's goal is still where it was at the TARGETING mark and is its target's position at
-## the INTENTS mark. Row 0 stands at x 10000 with its goal there and attacks unit 2 at x 12000.
-func test_the_attack_stand_in_follows_its_target_after_the_targeting_mark() -> void:
-	var world: World = Rig.data_world()
-	world.add_unit(1, RIFLE, 10000, 6000)
-	world.add_unit(2, RIFLE, 12000, 6000)
-	world.order[0] = ATTACK
-	world.order_target[0] = 2
-	world.goal_x[0] = 10000
-	var probe: ViewProbe = ViewProbe.new(world)
-	Sim.step(world, [], probe)
-	assert_int(probe.goals[probe.phases.find(SimProbe.Phase.GRIDS)]).is_equal(10000)
-	assert_int(probe.goals[probe.phases.find(SimProbe.Phase.TARGETING)]).is_equal(10000)
-	assert_int(probe.goals[probe.phases.find(SimProbe.Phase.INTENTS)]).is_equal(12000)
-
-
-## An ATTACK row whose target is gone becomes an attack-move in `_follow_targets`, after Targeting
-## has cleared the row: it is still ATTACK at the TARGETING mark and ATTACK_MOVE at the INTENTS
-## mark, and it takes no target in that step although it is due (tick 4 for unit 1) with an enemy
-## 2000 away. At its next due tick, 9, it does.
-func test_an_attack_row_with_a_gone_target_acquires_at_its_next_due_tick() -> void:
-	var world: World = Rig.data_world()
-	world.add_unit(1, RIFLE, 10000, 6000)
-	world.add_unit(2, RIFLE, 12000, 6000)
-	world.order[0] = ATTACK
-	world.order_target[0] = 99
-	world.tick = 4
-	var probe: ViewProbe = ViewProbe.new(world)
-	Sim.step(world, [], probe)
-	assert_int(probe.orders[probe.phases.find(SimProbe.Phase.TARGETING)]).is_equal(ATTACK)
-	assert_int(probe.orders[probe.phases.find(SimProbe.Phase.INTENTS)]).is_equal(ATTACK_MOVE)
-	assert_array(probe.targets).is_equal([0, 0, 0, 0, 0, 0, 0, 0])
-	assert_int(world.target[0]).is_equal(0)
-	for _tick: int in range(5, 9):
-		Sim.step(world, [])
-	assert_int(world.target[0]).is_equal(0)
-	Sim.step(world, [])
-	assert_array([world.tick, world.target[0]]).is_equal([10, 2])
-
-
 ## An idle unit never moves on its own. Two pairs of enemies, each inside the weapons' ranges of
 ## the other (rifle squad and rocket squad 3000 apart, tank and rifle squad 3500 apart), stand idle
-## for 150 ticks: they all take their enemy as the target, and nobody's position, goal, order or
-## intent changes, and nobody chases. The navigation mode is P41b's (it holds an idle unit that has
-## a target in weapon range), so only CHASE is excluded here.
+## for 150 ticks: they all take their enemy as the target and hold (`HOLD`, P41b), and nobody's
+## position, goal, order or intent changes, and nobody chases.
 func test_idle_units_never_move_on_their_own() -> void:
 	var world: World = Rig.data_world()
 	world.add_unit(1, RIFLE, 3000, 3000)
@@ -380,8 +318,9 @@ func test_idle_units_never_move_on_their_own() -> void:
 	for k: int in 4:
 		assert_array(after[k]).is_equal(before[k])
 	assert_array(world.order).is_equal([IDLE, IDLE, IDLE, IDLE])
-	for mode: int in world.nav_mode:
-		assert_int(mode).is_not_equal(World.NavMode.CHASE)
+	assert_array(world.nav_mode).is_equal(
+		[World.NavMode.HOLD, World.NavMode.HOLD, World.NavMode.HOLD, World.NavMode.HOLD]
+	)
 	assert_array(world.intent_x.slice(0, 4)).is_equal([0, 0, 0, 0])
 	assert_array(world.intent_y.slice(0, 4)).is_equal([0, 0, 0, 0])
 

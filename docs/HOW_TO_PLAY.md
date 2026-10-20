@@ -27,7 +27,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Action | Result | Teach |
 |---|---|---|
 | With units selected, tap the ground | Attack-move: the units go there and fight what they meet; chevrons mark the point | yes |
-| With units selected, tap an enemy | Attack: the units drive at that enemy; a diamond marks it | yes |
+| With units selected, tap an enemy | Attack: the units drive to weapon range of that enemy and stop there, without shooting yet; a diamond marks it | yes |
 
 ## Army bar (bottom left)
 | Action | Result | Teach |

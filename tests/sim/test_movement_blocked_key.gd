@@ -34,7 +34,7 @@ func test_twelve_tanks_end_their_orders_when_the_group_target_tile_turns_to_rock
 	impl: int, _test_parameters := _both()
 ) -> void:
 	for close_at: int in [10, 20, 30]:
-		var world: World = _gap_world(impl)
+		var world: World = _gap_world(impl, false)
 		GridWorld.add_block(world, 12, 4, 3000, 1500, 1000, 0)
 		var goals: Array[Vector2i] = _close_and_run(world, 12, 22500, 6500, close_at)
 		var label: String = "closed at tick %d" % close_at
@@ -64,7 +64,7 @@ func test_a_lone_tank_stalls_next_to_its_rock_goal_and_frees_its_slot(
 func test_three_tanks_with_open_slots_arrive_when_the_group_tile_turns_to_rock(
 	impl: int, _test_parameters := _both()
 ) -> void:
-	var world: World = _wall_world(3, impl)
+	var world: World = _wall_world(3, impl, false)
 	var goals: Array[Vector2i] = _close_and_run(world, 3, 12500, 2500, 40)
 	assert_int(world.order.count(IDLE)).is_equal(3)
 	assert_int(_assert_settled(world, goals, world.cell_of(12500, 2500))).is_greater(0)
@@ -154,20 +154,20 @@ func _assert_settled(world: World, goals: Array[Vector2i], key: int) -> int:
 
 
 ## 30 x 14 with a wall in column 12 and a gap of two tiles in rows 6 and 7.
-func _gap_world(impl: int) -> World:
+func _gap_world(impl: int, pushes: bool = true) -> World:
 	var rock: Array[Vector2i] = []
 	for row: int in 14:
 		if row != 6 and row != 7:
 			rock.append(Vector2i(12, row))
-	return _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl)
+	return _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl, pushes)
 
 
 ## 20 x 10 with a wall in column 8, rows 0 to 8, and `count` tanks stacked in column 3.
-func _wall_world(count: int, impl: int) -> World:
+func _wall_world(count: int, impl: int, pushes: bool = true) -> World:
 	var rock: Array[Vector2i] = []
 	for row: int in 9:
 		rock.append(Vector2i(8, row))
-	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10, rock)), impl)
+	var world: World = _in(GridWorld.from_rows(GridWorld.grass(20, 10, rock)), impl, pushes)
 	for k: int in count:
 		world.add_unit(1, 0, 3500, 1500 + k * 1200)
 	return world
@@ -183,10 +183,12 @@ func _both() -> Array[Array]:
 	return SimImpls.CASES.duplicate(true)
 
 
-## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
-func _in(world: World, impl: int) -> World:
+## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for, with
+## the tick's separation as the rules have it. A case that pins the exact positions where a crowd
+## settles (the pushes of the tick move the units a little: test_separation_tick.gd covers the crowd
+## with the real pushes) asks for `pushes` false, which sets `separation_push_max` to 0.
+func _in(world: World, impl: int, pushes: bool = true) -> World:
 	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
-	# No pushes: these cases pin Movement's rules at exact positions, and the tick separates units
-	# since P39b (test_separation_tick.gd covers the crowd with the real pushes).
-	world.separation_push_max = 0
+	if not pushes:
+		world.separation_push_max = 0
 	return world

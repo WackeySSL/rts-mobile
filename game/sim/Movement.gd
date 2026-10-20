@@ -17,14 +17,15 @@ extends RefCounted
 ## Navigation modes (`nav_mode`): DIRECT steers straight at the goal; NONE on a unit with an order
 ## is a DIRECT unit that has not started (a hand-set order); FIELD follows the flow field in
 ## `field` (the slot) and steers DIRECT while that field is pending; HOLD gives no intent; CHASE
-## steers straight at the unit in `target` (combat sets both, P41). `integrate` has a C++ twin, the
-## INTEGRATE kernel (native/sim_kernels, core/integrate.cpp with core/flow.cpp's best_neighbour and
-## acquire and core/fixed_math.cpp's isqrt, ADR 0013 section 5): `integrate` hands the phase to it
-## when the World's mask has its bit, and a change to `integrate` or to the helpers it calls
-## (_refresh_next, _rekey, _take_own_field, _end_order) edits both and passes the kernel's lockstep
-## test. `run` is the twin of the INTENTS kernel that P37n2 may port later. Keep both portable
-## (typed locals, the World's arrays aliased before each loop, no allocation, helper calls only at
-## event cadence).
+## steers straight at the unit in `target` (combat sets both, `Targeting._engage` of P41b, through
+## `reset_row`). `integrate` has a C++ twin, the INTEGRATE kernel (native/sim_kernels,
+## core/integrate.cpp with core/flow.cpp's best_neighbour and acquire and core/fixed_math.cpp's
+## isqrt, ADR 0013 section 5): `integrate` hands the phase to it when the World's mask has its bit,
+## and a change to `integrate` or to the helpers it calls (_refresh_next, _rekey, _take_own_field,
+## _end_order) edits both and passes the kernel's lockstep test; `reset_row` is not one of them
+## (only `Targeting` calls it). `run` is the twin of the INTENTS kernel that P37n2 may port later.
+## Keep both portable (typed locals, the World's arrays aliased before each loop, no allocation,
+## helper calls only at event cadence).
 ## The split follows ADR 0013 section 1: `run` holds the steering and the line checks, with the
 ## first acquire of a field (a GDScript caller of the cache); `integrate` holds the rest of what
 ## follows a field: `nav_next` with `best_neighbour`, the stall and the ATTACK re-key.
@@ -61,6 +62,23 @@ static func reset_nav(world: World, rows: PackedInt32Array, mode: int) -> void:
 		stall_of[row] = 0
 
 
+## The navigation state combat gives unit `row` when it changes the unit's mode (P41b,
+## `Targeting._engage`): `mode` (`HOLD` at weapon range, `CHASE` on a clear line to the target,
+## `DIRECT` when the unit resumes the path of its order, `NONE` for an idle unit), a line to the
+## goal that is not checked yet (`nav_cell` -1), no field (nothing releases a slot by hand: the
+## cache recounts its references from the `field` column), no next tile and a fresh stall count:
+## what `reset_nav` gives a new order, for one row. `order`, `goal` and `group_cell` stay, so a
+## unit that resumes asks the cache again for its group's field. Event cadence only (a mode
+## change), so it reads the World's arrays itself instead of taking them aliased.
+static func reset_row(world: World, row: int, mode: int) -> void:
+	world.nav_mode[row] = mode
+	world.nav_cell[row] = -1
+	world.field[row] = -1
+	world.nav_next[row] = -1
+	world.best_dist[row] = FlowField.UNREACHED
+	world.stall[row] = 0
+
+
 ## The INTENTS phase: writes `intent_x` and `intent_y` of every row (the scratch arrays are not
 ## compacted with the rows, so all of them are cleared first): 0 for a unit with no order or in
 ## HOLD. A moving unit steps towards its aim by at most its speed and reaches a point within one
@@ -84,9 +102,9 @@ static func reset_nav(world: World, rows: PackedInt32Array, mode: int) -> void:
 ## sets `nav_next`.
 ##
 ## A CHASE unit whose target is gone steers at its goal, but `integrate` never ends a CHASE unit's
-## order, so it would stand on the goal with its order and mode for good: combat (P41) takes a unit
-## out of CHASE when it loses its target (ADR 0009 section 3), so this is a fallback no order relies
-## on. A test pins it.
+## order, so it would stand on the goal with its order and mode for good: combat
+## (`Targeting._engage`, P41b) takes a unit out of CHASE when it loses its target (ADR 0009 section
+## 3), so this is a fallback no order relies on. A test pins it.
 @warning_ignore("integer_division")
 static func run(world: World) -> void:
 	var ids: PackedInt32Array = world.unit_id

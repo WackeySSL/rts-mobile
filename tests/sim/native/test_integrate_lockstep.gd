@@ -14,6 +14,11 @@ extends GdUnitTestSuite
 ## and the GDScript FlowCache.acquire produce are also compared on their own. The last case plays
 ## 600 seeded random states (a random map, cache and rows, garbage in the navigation columns).
 ## The crafted cases are in test_integrate_lockstep_cases.gd and test_integrate_lockstep_off_map.gd.
+## Since P41b the units that meet hold (HOLD, and CHASE on the way: TARGETING's engagement, in
+## GDScript on both sides) and stand still until P42a lets them fire and die, so the arena runs
+## reach the movement rules less often than before (the lower bounds below are re-derived from the
+## runs, about 70% of what they reached) and also count the unit-ticks in HOLD and CHASE, which the
+## kernel meets in real runs for the first time.
 ## That Movement.integrate hands the phase to the kernel at all is pinned by the spy case of
 ## tests/sim/test_kernel_dispatch.gd.
 
@@ -54,7 +59,8 @@ func test_900_arena_ticks_match_after_every_tick() -> void:
 	var rig: RefCounted = LockstepRig.new().setup(_arena)
 	assert_array(rig.problems).is_empty()
 	assert_str(rig.run(TICKS, _orders)).is_empty()
-	_assert_reached(rig, {&"field": 20000, &"named": 15000, &"ended": 100, &"rekeys": 15})
+	_assert_reached(rig, {&"field": 14000, &"named": 11000, &"ended": 35, &"rekeys": 10})
+	_assert_reached(rig, {&"holding": 40000, &"chasing": 3000})
 	assert_int(rig.tally[&"own_fields"]).is_greater(0)
 	assert_int(rig.worlds[0].flow.requests).is_greater(30)
 
@@ -64,15 +70,15 @@ func test_the_same_run_with_only_integrate_in_c_plus_plus_matches() -> void:
 	assert_array(rig.problems).is_empty()
 	assert_bool(rig.worlds[1].native_phases == 1 << SimProbe.Phase.INTEGRATE).is_true()
 	assert_str(rig.run(TICKS, _orders)).is_empty()
-	_assert_reached(rig, {&"field": 20000, &"named": 15000, &"ended": 100, &"rekeys": 15})
+	_assert_reached(rig, {&"field": 14000, &"named": 11000, &"ended": 35, &"rekeys": 10})
 
 
 func test_900_ticks_on_the_arena_with_slow_ground_scrub_rock_and_water_painted_in_match() -> void:
 	var rig: RefCounted = LockstepRig.new().setup(_arena.bind(null, true))
 	assert_array(rig.problems).is_empty()
 	assert_str(rig.run(TICKS, _orders)).is_empty()
-	_assert_reached(rig, {&"field": 30000, &"named": 25000, &"no_next": 800, &"ended": 100})
-	_assert_reached(rig, {&"rekeys": 20, &"own_fields": 5, &"recycles": 1})
+	_assert_reached(rig, {&"field": 20000, &"named": 15000, &"no_next": 700, &"ended": 45})
+	_assert_reached(rig, {&"rekeys": 7, &"own_fields": 5, &"recycles": 1})
 
 
 func test_the_same_run_on_changed_rules_matches() -> void:
@@ -89,7 +95,7 @@ func test_the_same_run_on_changed_rules_matches() -> void:
 	var rig: RefCounted = LockstepRig.new().setup(_arena.bind(rules, true))
 	assert_array(rig.problems).is_empty()
 	assert_str(rig.run(TICKS, _orders)).is_empty()
-	_assert_reached(rig, {&"field": 20000, &"named": 20000, &"no_next": 500, &"ended": 100})
+	_assert_reached(rig, {&"field": 17000, &"named": 13000, &"no_next": 500, &"ended": 45})
 	_assert_reached(rig, {&"rekeys": 2, &"own_fields": 2})
 
 

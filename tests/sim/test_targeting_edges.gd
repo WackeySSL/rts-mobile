@@ -3,10 +3,11 @@ extends GdUnitTestSuite
 ## borders, the range edge, map corners, partial and outside cells), the filters of a candidate
 ## (minimum range, damage percent, owner), the edges of a kept target, types that cannot shoot
 ## (and the type and weapon tables each read by its own index), the work count, and what `run`
-## reads and writes (the grid as it stands, the target column and the work count only). The
-## priority, the stagger, stickiness and the position in the tick are in test_targeting.gd. The
-## worlds are those of TargetingRig: the shipped unit types as 0 rifle squad (range 4000, sight
-## 6000), 1 rocket squad and 2 light tank, or test-only types for a weapon the shipped ones lack.
+## reads and writes (the grid as it stands; the target column, the engagement columns and the work
+## count). The priority, the stagger, stickiness and the position in the tick are in
+## test_targeting.gd. The worlds are those of TargetingRig: the shipped unit types as 0 rifle squad
+## (range 4000, sight 6000), 1 rocket squad and 2 light tank, or test-only types for a weapon the
+## shipped ones lack.
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
@@ -17,6 +18,7 @@ const IDLE: int = World.Order.IDLE
 const ATTACK_MOVE: int = World.Order.ATTACK_MOVE
 const MOVE: int = World.Order.MOVE
 const ATTACK: int = World.Order.ATTACK
+const HOLD: int = World.NavMode.HOLD
 
 
 ## The cells that cover the reach: a rifle squad (reach 4000) finds an enemy exactly 4000 away on
@@ -346,11 +348,15 @@ func test_run_reads_the_grid_as_it_stands_and_never_rebuilds_it() -> void:
 	assert_int(world.target[0]).is_equal(2)
 
 
-## `run` writes the `target` column and the work count, nothing else: not the orders, the order
-## targets, the goals, the navigation, any other column of the rows, the other work counts or the
-## events. The rows: an idle rocket squad that acquires a tank, a MOVE row and an ATTACK row that
-## hold a stale target (cleared), and an idle rifle squad with nothing in reach (0).
-func test_run_writes_only_the_target_column_and_the_work_count() -> void:
+## `run` writes the `target` column, the columns of the engagement (P41b: the order and its target
+## and goal, the navigation mode) and the work count, nothing else: not the hit points, the
+## cooldown, the positions, the owners, the types, any other column of the rows, the other work
+## counts or the events. The rows: an idle rocket squad that acquires a tank (and holds), a MOVE
+## row that holds a stale target (cleared), an ATTACK row that locks its target (and holds, with its
+## goal on the target), an ATTACK row whose target is gone (an attack-move now, with no order
+## target) and an idle rifle squad with nothing in reach (0). The columns that changed are exactly
+## those six.
+func test_run_writes_only_the_target_and_engagement_columns_and_the_work_count() -> void:
 	var world: World = Rig.data_world()
 	world.add_unit(1, ROCKET, 10000, 6000)
 	world.add_unit(2, TANK, 12000, 6000)
@@ -358,11 +364,14 @@ func test_run_writes_only_the_target_column_and_the_work_count() -> void:
 	world.add_unit(1, RIFLE, 10000, 3000)
 	world.add_unit(1, RIFLE, 10000, 9000)
 	world.add_unit(1, RIFLE, 1000, 11000)
+	world.add_unit(1, RIFLE, 4000, 11000)
 	world.order[3] = MOVE
 	world.target[3] = 2
 	world.order[4] = ATTACK
 	world.order_target[4] = 3
 	world.target[4] = 3
+	world.order[6] = ATTACK
+	world.order_target[6] = 99
 	world.goal_x[0] = 7000
 	world.cooldown[0] = 5
 	world.tick = Rig.due_tick_for(world, 1)
@@ -373,12 +382,17 @@ func test_run_writes_only_the_target_column_and_the_work_count() -> void:
 	var events: PackedInt32Array = world.events.duplicate()
 	var tick: int = world.tick
 	Rig.acquire(world)
-	assert_array(world.target).is_equal([2, 0, 0, 0, 0, 0])
+	assert_array(world.target).is_equal([2, 0, 0, 0, 3, 0, 0])
+	var changed: Array[StringName] = []
 	for column: StringName in World.ROW_ARRAYS:
-		if column != &"target":
-			assert_array(world.get(column)).override_failure_message(str(column)).is_equal(
-				before[column]
-			)
+		if world.get(column) != before[column]:
+			changed.append(column)
+	assert_array(changed).contains_exactly_in_any_order(
+		[&"goal_x", &"goal_y", &"order", &"order_target", &"nav_mode", &"target"]
+	)
+	assert_array(world.nav_mode).is_equal([HOLD, 0, 0, 0, HOLD, 0, 0])
+	assert_array([world.goal_x[4], world.goal_y[4]]).is_equal([8000, 6000])
+	assert_array([world.order[6], world.order_target[6]]).is_equal([ATTACK_MOVE, 0])
 	assert_array(world.events).is_equal(events)
 	assert_int(world.tick).is_equal(tick)
 	assert_int(world.stats[World.Stat.TARGET_CANDIDATES]).is_greater(0)
