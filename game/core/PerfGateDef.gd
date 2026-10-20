@@ -27,6 +27,11 @@ extends Resource
 ## estimates, not thresholds.
 @export var ci_ratio_mean: float = 4.4
 @export var ci_ratio_p95: float = 5.9
+## The same for the native kernels (ADR 0013 section 15): the release worker job over the CI mock
+## tick, mean 0.44 / 0.047 and p95 0.88 / 0.063 ms, rounded up to one decimal. Printed estimates of
+## the impl=native PERF line (P38pn), not thresholds.
+@export var ci_ratio_native_mean: float = 9.4
+@export var ci_ratio_native_p95: float = 14.0
 ## Pacing (ADR 0014 section 1): a frame interval above P + drop_slots x V is dropped; at most
 ## dropped_pct_max percent dropped and at least cadence_pct_min percent cadence, over the run and
 ## the heavy window; at most hitches_max intervals of a tick period or more in the heavy window.

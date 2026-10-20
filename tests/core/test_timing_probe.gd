@@ -7,8 +7,8 @@ const RecordingProbe: GDScript = preload("res://tests/sim/recording_probe.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 ## Long enough that a time measured from the wrong start lies far outside the bounds.
 const WAIT_USEC: int = 3000
-## PerfGateDef's defaults, literally: the contract row with ADR 0014's changes (revision 15). The
-## types count: an int field stays an int in perf_gate.tres.
+## PerfGateDef's defaults, literally: the contract row with ADR 0014's changes and ADR 0013's
+## native ratios (revision 15, P54r). The types count: an int field stays an int in perf_gate.tres.
 const GATE: Dictionary = {
 	"heavy_rigs": 135,
 	"heavy_frames_min": 600,
@@ -22,6 +22,8 @@ const GATE: Dictionary = {
 	"release_only": true,
 	"ci_ratio_mean": 4.4,
 	"ci_ratio_p95": 5.9,
+	"ci_ratio_native_mean": 9.4,
+	"ci_ratio_native_p95": 14.0,
 	"drop_slots": 0.5,
 	"dropped_pct_max": 1.0,
 	"cadence_pct_min": 99.0,
