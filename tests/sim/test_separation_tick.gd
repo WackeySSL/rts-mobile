@@ -317,8 +317,8 @@ func test_an_attack_on_an_idle_tank_holds_at_weapon_range_and_does_not_shove_it(
 
 ## Two runs of the crossing groups give the same state hash at every checkpoint tick (every 15
 ## ticks), and the hashes are not the ones of a run without pushes: separation is part of the state.
-## The C++ run (the tick runs FLOW, SEPARATION and INTEGRATE in the kernels) has the hashes of the
-## GDScript run, the whole 180 ticks through.
+## The C++ run (the tick runs FLOW, TARGETING, SEPARATION and INTEGRATE in the kernels) has the
+## hashes of the GDScript run, the whole 180 ticks through.
 func test_two_runs_give_the_same_hashes(impl: int, _test_parameters := _both()) -> void:
 	var first: PackedInt64Array = _crossing_hashes(-1, impl)
 	var second: PackedInt64Array = _crossing_hashes(-1, impl)

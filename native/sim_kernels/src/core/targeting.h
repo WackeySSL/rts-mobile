@@ -13,7 +13,8 @@
 // state matches after every call. Tests: tests/sim/test_targeting*.gd and test_engagement*.gd under both implementations,
 // tests/sim/native/test_targeting_kernel.gd (the names, the in-place writes, the guards and the range), the crafted cases
 // in test_targeting_kernel_cases.gd (exact-distance ties, every state of the engagement pass, unarmed types, seeded random
-// states) and test_targeting_kernel_lines.gd (line_clear); the 900-tick lockstep is P41n2, later. MIT.
+// states), test_targeting_kernel_indexes.gd (the type, weapon and row indexes told apart) and test_targeting_kernel_lines.gd
+// (line_clear); the 900-tick lockstep is P41n2, later. MIT.
 //
 // Range. The pass is exact in int64 while the positions stay within 10^9 milli-tiles of the origin in both axes (a million
 // tiles; a map is a few hundred), so that d2 = dx*dx + dy*dy of any two units stays below 2^63 (at most 8 * 10^18), and while

@@ -183,30 +183,21 @@ func test_a_removed_target_is_not_read_as_the_next_higher_id(
 	assert_array([world.nav_mode[0], world.target[0]]).is_equal([HOLD, 3])
 
 
-## A period of 0 in either cadence rule (a bare World, or a rules file set to 0) is read as 1, as
-## `Movement.run` reads it: no modulo by zero in `Targeting.run` (the scan) or in the engagement
-## (the line-check turn). With the scan period at 0 every unit is due on every tick; with the
-## line-check period at 0 an attack-moving squad is on its turn on every tick. The squad chases the
-## enemy 4800 away and then holds, as it does with a period of 5.
-func test_a_cadence_of_zero_is_read_as_one(impl: int, _test_parameters := _both()) -> void:
-	for scan: int in [0, 5]:
-		for check: int in [0, 5]:
-			var world: World = _in(Rig.data_world(), impl)
-			world.retarget_period_ticks = scan
-			world.line_check_period_ticks = check
-			world.add_unit(1, RIFLE, 6000, 6000)
-			world.add_unit(2, RIFLE, 10800, 6000)
-			Sim.step(
-				world, [_order(Command.attack_move(1, PackedInt32Array([1]), 14000, 6000), world)]
-			)
-			var chased: bool = false
-			for _tick: int in 40:
-				Sim.step(world, [])
-				chased = chased or world.nav_mode[0] == CHASE
+## A period of 0 or less in either cadence rule (a bare World, or a rules file set to 0) is read as
+## 1, as `Movement.run` reads it: no modulo by zero in `Targeting.run` (the scan) or in the
+## engagement (the line-check turn), and no period of -3 that C++'s `%` (it takes the sign of the
+## dividend) would make a unit due every third tick. The squad chases the enemy 4800 away and then
+## holds, as it does with a period of 5, and a run with such a period is tick for tick the run with
+## a period of 1 in its place: the tick it first chases, and how it ends.
+func test_a_cadence_of_zero_or_less_is_read_as_one(impl: int, _test_parameters := _both()) -> void:
+	for scan: int in [-3, 0, 5]:
+		for check: int in [-3, 0, 5]:
 			var label: String = "scan period %d, line-check period %d" % [scan, check]
-			var ended: Array = [world.nav_mode[0], world.target[0]]
-			assert_bool(chased).override_failure_message(label).is_true()
-			assert_array(ended).override_failure_message(label).is_equal([HOLD, 2])
+			var ran: Array = _chase_run(impl, scan, check)
+			assert_int(ran[0]).override_failure_message(label).is_greater(0)
+			assert_array(ran.slice(1)).override_failure_message(label).is_equal([HOLD, 2])
+			var read: Array = _chase_run(impl, maxi(scan, 1), maxi(check, 1))
+			assert_array(ran).override_failure_message(label).is_equal(read)
 
 
 ## The reach of a chase is inclusive, as acquisition's is (a held target is kept at exactly the
@@ -229,6 +220,23 @@ func test_an_attack_moving_unit_chases_a_target_at_exactly_its_acquire_range(
 		assert_int(world.nav_mode[0]).override_failure_message("enemy %d away" % gap).is_equal(
 			CHASE if gap == 5000 else DIRECT
 		)
+
+
+## The rifle squad (id 1) attack-moves with the cadences given, an enemy 4800 away: 40 ticks, and
+## [the first tick the squad is in CHASE (-1 if it never is), its mode, its target] at the end.
+func _chase_run(impl: int, scan: int, check: int) -> Array:
+	var world: World = _in(Rig.data_world(), impl)
+	world.retarget_period_ticks = scan
+	world.line_check_period_ticks = check
+	world.add_unit(1, RIFLE, 6000, 6000)
+	world.add_unit(2, RIFLE, 10800, 6000)
+	Sim.step(world, [_order(Command.attack_move(1, PackedInt32Array([1]), 14000, 6000), world)])
+	var first: int = -1
+	for _tick: int in 40:
+		Sim.step(world, [])
+		if first < 0 and world.nav_mode[0] == CHASE:
+			first = world.tick
+	return [first, world.nav_mode[0], world.target[0]]
 
 
 ## `command` for the World's current tick.

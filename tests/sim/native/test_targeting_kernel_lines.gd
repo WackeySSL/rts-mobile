@@ -29,7 +29,13 @@ const PER_WORLD: int = 120
 ## The weapon range of the subjects, below the shortest segment that these cases care about: a
 ## segment of 100 or less is in range, and the unit holds instead of testing its line.
 const RANGE: int = 100
-const ACQUIRE: int = 60000
+## The acquire range of the subjects, past the diagonal of the largest shipped map (64 x 64 tiles,
+## 90,510 milli), so that a line test is run for every segment of every case.
+const ACQUIRE: int = 100000
+## The side of the largest shipped map, in tiles; and 2^31 - 1, which no product of line_clear's
+## numerators may wrap at.
+const WIDE_TILES: int = 64
+const INT32_MAX: int = 2147483647
 
 
 ## Random segments on maps of every shape the strips tell apart (one tile, a row, a column, wide,
@@ -90,6 +96,33 @@ func test_every_segment_between_the_lattice_points_of_a_small_map_agrees_with_th
 	# About 3400 chase, 2800 blocked, 1200 kept and 900 reset (the ATTACK rows are one in four).
 	for kind: String in seen:
 		assert_int(seen[kind]).override_failure_message(kind).is_greater(500)
+
+
+## Long segments on the largest shipped map (64 x 64 tiles), from the west half to the east half,
+## the west end in the south half: the numerators `ay * dx + dy * (x - ax)` of line_clear pass 2^31
+## (a 32-bit product would wrap) in about one segment in four. Sparse rock and the two test
+## terrains (one tile in fifty), so that both outcomes of the line test occur on a segment that
+## long, for the attack-moving rows and for the ATTACK rows.
+func test_long_segments_on_the_largest_map_agree_with_the_twin() -> void:
+	var rng: DetRandom = DetRandom.create(41, 5)
+	var shape: Vector2i = Vector2i(WIDE_TILES, WIDE_TILES)
+	var seen: Dictionary[String, int] = {"chase": 0, "blocked": 0, "kept": 0, "reset": 0}
+	var wide: int = 0
+	for _map: int in 8:
+		var terrain: PackedInt32Array = PackedInt32Array()
+		for _cell: int in WIDE_TILES * WIDE_TILES:
+			terrain.append([2, 3, 4][rng.next_int(3)] if rng.next_int(50) == 0 else 0)
+		var segments: Array[Array] = []
+		for _index: int in PER_WORLD:
+			var west: Vector2i = Vector2i(rng.next_int(30000), 34000 + rng.next_int(30000))
+			var east: Vector2i = Vector2i(34000 + rng.next_int(30000), rng.next_int(64000))
+			wide += 1 if west.y * (east.x - west.x) > INT32_MAX else 0
+			segments.append([west, east] if rng.next_int(2) == 0 else [east, west])
+		_compare(shape, terrain, segments, seen)
+	# About 400 chase, 320 blocked, 150 kept and 90 reset, and 230 segments of the 960 are wide.
+	for kind: String in seen:
+		assert_int(seen[kind]).override_failure_message(kind).is_greater(50)
+	assert_int(wide).is_greater(100)
 
 
 ## The move class is the unit's own: the same segment through a tile that only foot and wheeled

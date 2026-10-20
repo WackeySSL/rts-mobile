@@ -610,10 +610,10 @@ func test_a_field_mode_without_a_slot_steers_direct_and_checks_again(
 
 
 ## Two runs of the gap scenario give the same hash after every tick, and so does the run with the
-## ported phases in C++ (`SimImpls.use` turns on every phase the library has: the FLOW,
-## SEPARATION and INTEGRATE kernels do the recount, the pushes, the integration and the look-ups;
-## the units' first acquire() is GDScript's). Not vacuous: the units used a field, and the hashes
-## are not all one value.
+## ported phases in C++ (`SimImpls.use` turns on every phase the library has: the FLOW, TARGETING,
+## SEPARATION and INTEGRATE kernels do the recount, the scan (nobody to find), the pushes, the
+## integration and the look-ups; the units' first acquire() is GDScript's). Not vacuous: the units
+## used a field, and the hashes are not all one value.
 func test_the_gap_run_gives_the_same_hashes_twice_and_under_both_flow_implementations() -> void:
 	var first: PackedInt64Array = _gap_hashes(SimImpls.Impl.GDSCRIPT)
 	var second: PackedInt64Array = _gap_hashes(SimImpls.Impl.GDSCRIPT)

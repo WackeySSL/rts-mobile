@@ -254,9 +254,10 @@ func test_a_world_with_no_map_has_clear_lines() -> void:
 
 ## Seeded random Worlds, six calls each: 100 units of the three shipped types (some off the map)
 ## with random owners, orders, navigation modes, targets (valid, gone or itself), order targets,
-## goals and navigation columns, a random tick and random cadences, on a map with random rock, and
-## in one World of four a type that is unarmed. After every call the units walk a few steps, one
-## dies now and then (its id is gone, the rows close up) and the grid is rebuilt, as the tick does.
+## goals and navigation columns, a random tick and random cadences (some of them 0 or below, which
+## both read as 1), on a map with random rock, and in one World of four a type that is unarmed.
+## After every call the units walk a few steps, one dies now and then (its id is gone, the rows
+## close up) and the grid is rebuilt, as the tick does.
 ## The twin and the kernel end every call in the same state, and the work counts are not zero.
 func test_random_states_stepped_for_six_calls_agree_with_the_twin() -> void:
 	var rng: DetRandom = DetRandom.create(41, 2)
@@ -488,7 +489,7 @@ func _random_world(seed: int) -> World:
 		world.type_weapon[TANK] = -1
 	elif unarmed == 3:
 		world.type_weapon[ROCKET] = world.weapon_range.size() + rng.next_int(3)
-	var periods: Array[int] = [0, 1, 2, 3, 5]
+	var periods: Array[int] = [-3, -1, 0, 1, 2, 3, 5]
 	world.retarget_period_ticks = periods[rng.next_int(periods.size())]
 	world.line_check_period_ticks = periods[rng.next_int(periods.size())]
 	world.tick = rng.next_int(40)

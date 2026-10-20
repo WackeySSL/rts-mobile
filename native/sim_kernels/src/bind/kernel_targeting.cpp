@@ -5,8 +5,8 @@
 // line tests of the engagement pass to stats[LINE_CHECKS]. The rules are core/targeting.h's, a mirror of Targeting.gd, with
 // core/fixed_math.h's line_clear; this file borrows the arrays once on entry and adds the two counts on exit.
 // Twin: game/sim/Targeting.gd (run, _engage). Tests: tests/sim/test_targeting*.gd and tests/sim/test_engagement*.gd under both
-// implementations and tests/sim/native/test_targeting_kernel.gd, test_targeting_kernel_cases.gd and
-// test_targeting_kernel_lines.gd; lockstep (P41n2): later. MIT.
+// implementations and tests/sim/native/test_targeting_kernel.gd, test_targeting_kernel_cases.gd,
+// test_targeting_kernel_indexes.gd and test_targeting_kernel_lines.gd; lockstep (P41n2): later. MIT.
 #include "sim_kernels.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>

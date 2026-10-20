@@ -5,10 +5,11 @@ extends GdUnitTestSuite
 ## added to what the tick has counted, the grid is not rebuilt; also on a worker Thread), the
 ## guards that C++ cannot leave to the engine (a grid with no cells, no rows of cells or a cell
 ## side below 1) and the range that core/targeting.h records (positions of 10^9 and reaches of
-## 2 * 10^9). Every case builds two identical Worlds, one running the GDScript phase and one the
-## C++ kernel, and compares their full state (StateDiff) as well as the values the rule gives. The
-## crafted rule cases are in test_targeting_kernel_cases.gd, the line tests in
-## test_targeting_kernel_lines.gd; the 900-tick lockstep is P41n2. The module's own suites
+## 2 * 10^9; squared distances and ranges past 2^32 on the largest map). Every case builds two
+## identical Worlds, one running the GDScript phase and one the C++ kernel, and compares their full
+## state (StateDiff) as well as the values the rule gives. The crafted rule cases are in
+## test_targeting_kernel_cases.gd, the index cases in test_targeting_kernel_indexes.gd, the line
+## tests in test_targeting_kernel_lines.gd; the 900-tick lockstep is P41n2. The module's own suites
 ## (test_targeting*.gd, test_engagement*.gd) run under both implementations too.
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
@@ -19,9 +20,20 @@ const SOURCE: String = "res://native/sim_kernels/src/bind/kernel_targeting.cpp"
 const TARGETING: int = SimProbe.Phase.TARGETING
 const RIFLE: int = 0
 const ATTACK_MOVE: int = World.Order.ATTACK_MOVE
+const DIRECT: int = World.NavMode.DIRECT
+const HOLD: int = World.NavMode.HOLD
 const CHASE: int = World.NavMode.CHASE
 const CANDIDATES: int = World.Stat.TARGET_CANDIDATES
 const LINE_CHECKS: int = World.Stat.LINE_CHECKS
+## A `retarget_period_ticks` that no tick of a test reaches: nobody scans.
+const NEVER_DUE: int = 1000000
+## The types of the wide cases: a short gun, one whose range squared is 2^32, and one that cannot
+## fire at anything nearer than 65,536 milli.
+const NEAR: int = 0
+const FAR: int = 1
+const BLIND: int = 2
+## The largest shipped map, in tiles on a side.
+const WIDE_TILES: int = 64
 ## The side of the position range that core/targeting.h records, and the reach that makes two
 ## units on opposite sides of it exactly in reach: 2 * EDGE, whose square is 4 * 10^18.
 const EDGE: int = 1000000000
@@ -86,6 +98,13 @@ func test_targeting_gets_and_sets_exactly_the_names_of_its_list() -> void:
 		if not used.has(name):
 			used.append(name)
 	assert_array(used).contains_exactly_in_any_order(TARGETING_NAMES)
+	# And it asks the table about its own phase: a line copied from another kernel with that
+	# kernel's PHASE_ would check another list and leave the names above unchecked.
+	var asked: Array[String] = []
+	var phase: RegEx = RegEx.create_from_string("access_\\.check\\(world, (\\w+)\\)")
+	for found: RegExMatch in phase.search_all(FileAccess.get_file_as_string(SOURCE)):
+		asked.append(found.get_string(1))
+	assert_array(asked).is_equal(["PHASE_TARGETING"])
 
 
 ## An array the call writes in place is seen through an alias taken before it, with no copy held and
@@ -163,6 +182,36 @@ func test_units_ten_to_the_ninth_apart_do_not_overflow_the_squared_distance() ->
 		)
 		assert_int(world.stats[LINE_CHECKS]).override_failure_message(label).is_equal(3)
 	assert_str(StateDiff.first(pair[0], pair[1])).is_empty()
+
+
+## Squared distances and ranges past 2^32, on the largest shipped map (64 x 64 tiles). Two units
+## 46,341 milli apart on both axes are 2 * 46341^2 = 4,294,976,562 apart squared, which is 9,266
+## past 2^32 and wraps to 9,266 in 32 bits; a range of 65,536 squares to 2^32, which wraps to 0.
+## The rule is 64-bit throughout: a short gun neither holds on a target that far nor keeps it (the
+## first two cases); a gun of range 65,536 holds on a target 46,340 away on both axes (176,096
+## inside its squared range) and not on one at 46,341 (the next two); a gun with a minimum range of
+## 65,536 (squared, 2^32) neither takes a target nor holds on one 3000 away (the next two), and with
+## its acquire range of 70,000 (squared 4.9 * 10^9, which wraps to 605,032,704) it chases a target
+## 46,340 away on both axes (the last). The enemy is held by hand unless the case scans.
+func test_squared_distances_past_32_bits_are_not_wrapped() -> void:
+	# [label, type, offset of the enemy, scan period, held by hand, target after, mode after]
+	var cases: Array[Array] = [
+		["short gun, held, far", NEAR, Vector2i(46341, 46341), NEVER_DUE, true, 2, DIRECT],
+		["short gun, scanning, far", NEAR, Vector2i(46341, 46341), 1, true, 0, DIRECT],
+		["long gun, inside", FAR, Vector2i(46340, 46340), NEVER_DUE, true, 2, HOLD],
+		["long gun, outside", FAR, Vector2i(46341, 46341), NEVER_DUE, true, 2, DIRECT],
+		["blind gun, held, near", BLIND, Vector2i(3000, 0), NEVER_DUE, true, 2, CHASE],
+		["blind gun, scanning, near", BLIND, Vector2i(3000, 0), 1, false, 0, DIRECT],
+		["blind gun, held, far", BLIND, Vector2i(46340, 46340), NEVER_DUE, true, 2, CHASE],
+	]
+	for item: Array in cases:
+		var pair: Array[World] = _pair(_wide_world.bind(item[1], item[2], item[3], item[4]))
+		for world: World in pair:
+			Rig.acquire(world)
+			var label: String = "%s, native %s" % [item[0], world.native_phases != 0]
+			assert_int(world.target[0]).override_failure_message(label).is_equal(item[5])
+			assert_int(world.nav_mode[0]).override_failure_message(label).is_equal(item[6])
+		assert_str(StateDiff.first(pair[0], pair[1])).override_failure_message(item[0]).is_empty()
 
 
 ## What `_write_case` finds when the kernel writes in place: every observation true, and only a held
@@ -273,6 +322,26 @@ func _corner_world() -> World:
 	for index: int in 4:
 		world.add_unit(1 if index == 0 else 2, 0, corners[index].x, corners[index].y)
 		world.order[index] = ATTACK_MOVE
+	return world
+
+
+## The 64 x 64 tile map with the three wide guns (all with a 100% weapon): near (range 3000, acquire
+## range 5000), far (range 65,536, acquire range 5000) and blind (range 70,000, minimum range
+## 65,536, acquire range 70,000). An attack-moving unit of type `type` (id 1) at (2000, 2000) and an
+## enemy of the same type (id 2) `offset` from it; `held` has the unit hold the enemy by hand. Every
+## unit is due on every tick when `scan` is 1, and on its line-check turn on every tick.
+func _wide_world(type: int, offset: Vector2i, scan: int, held: bool) -> World:
+	var near: UnitDef = Rig.unit(&"near", 8000, 5000, 3000, 0, [100, 100, 100, 100])
+	var far: UnitDef = Rig.unit(&"far", 8000, 5000, 65536, 0, [100, 100, 100, 100])
+	var blind: UnitDef = Rig.unit(&"blind", 8000, 70000, 70000, 65536, [100, 100, 100, 100])
+	var world: World = Rig.world_of([near, far, blind], WIDE_TILES, WIDE_TILES)
+	world.retarget_period_ticks = scan
+	world.line_check_period_ticks = 1
+	world.add_unit(1, type, 2000, 2000)
+	world.add_unit(2, type, 2000 + offset.x, 2000 + offset.y)
+	world.order[0] = ATTACK_MOVE
+	world.target[0] = 2 if held else 0
+	world.nav_mode[0] = DIRECT
 	return world
 
 
