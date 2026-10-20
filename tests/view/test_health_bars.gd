@@ -1,0 +1,497 @@
+extends GdUnitTestSuite
+## What HealthBarLayer plans and draws (plan P45, assets/art/STYLE.md "Health bars"): the shape of
+## an own and an enemy bar, the fill, the size in dp at every zoom, the place over the unit, and
+## the two overlap inequalities of STYLE.md's sweep. Pixels cannot be read headless, so the tests
+## read the layer's plan of rects (`rect_at`, `rect_color`), which `_draw` paints one for one,
+## and `test_the_draw_code_paints_nothing_but_filled_rects` reads the script. When a bar shows and
+## how a hit is seen are in test_health_bar_hits.gd (gdlint allows 20 public methods per file).
+## On data/scenarios/controls_test.tres: ids 1-30 are blue light tanks (max hp 300), 31-40 red; the
+## perf arena has tanks, rifle squads (max hp 100) and rocket squads, both sides. The runner is not
+## in the tree: only the calls here move time, so alpha is 0 and a unit stands at its prev position.
+
+const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const CONTROLS: String = "res://data/scenarios/controls_test.tres"
+const ARENA: String = "res://data/scenarios/perf_arena.tres"
+const SCRIPT_PATH: String = "res://game/view/HealthBarLayer.gd"
+const BASE_SIZE: Vector2i = Vector2i(1280, 720)
+const PX_PER_TILE: float = 64.0
+## STYLE.md "Health bars": the edge and the two fills, and the team tints that they must not be.
+const EDGE: Color = Color("1C2127")
+const OWN: Color = Color("30A46C")
+const ENEMY: Color = Color("F5A524")
+const TEAM_TINTS: Array[Color] = [Color("9AA5B1"), Color("2F80ED"), Color("E5484D")]
+## STYLE.md, Class table: the box in dp and the sprite reach r in world px, vehicle and infantry.
+const WIDTH_DP: Dictionary[StringName, int] = {&"vehicle": 22, &"infantry": 16}
+const REACH_PX: Dictionary[StringName, float] = {&"vehicle": 26.0, &"infantry": 14.0}
+const HEIGHT_DP: int = 6
+## STYLE.md "Health bars", Overlap (P34b sweep): the formation spacing of a class in milli-tiles
+## and the half-height h of a unit that the sweep used, in world px ("14 world px for squads and
+## 21 for tanks", the values that give "at worst 5.6 px clear"). The layer never reads them.
+const SPACING_MILLI: Dictionary[StringName, int] = {&"vehicle": 1200, &"infantry": 900}
+const HALF_HEIGHT_PX: Dictionary[StringName, float] = {&"vehicle": 21.0, &"infantry": 14.0}
+const ZOOMS: Array[float] = [0.75, 1.0, 1.5]
+## STYLE.md: side by side the bars leave 2.2 dp (squads) and 2.3 dp (tanks) at worst, and a bar's
+## top stays 5.6 px below the unit above at worst; a hair under, as those are rounded.
+const SIDE_GAP_DP: float = 2.2
+const ABOVE_GAP_PX: float = 5.5
+
+var _window_size_before: Vector2i
+var _runner: MatchRunner
+var _camera: RtsCamera
+var _units: UnitLayer
+var _bars: HealthBarLayer
+
+
+func before() -> void:
+	_window_size_before = get_window().size
+
+
+func after() -> void:
+	get_window().size = _window_size_before
+
+
+func before_test() -> void:
+	UiScale.set_override(UiProfiles.by_name(&"android_6in"))  # 1 dp is 1.75 px.
+	_build(CONTROLS)
+
+
+func after_test() -> void:
+	UiScale.clear_override()
+	CommandQueue.clear()
+
+
+func test_an_own_tank_bar_is_the_plain_box_and_an_enemy_tank_bar_has_the_notch() -> void:
+	_units.set_selected(PackedInt32Array([2, 31]))  # Own tank 2 and enemy tank 31.
+	_frame()
+	var own: Array[Rect2i] = _dp_rects(1, EDGE)
+	var enemy: Array[Rect2i] = _dp_rects(30, EDGE)
+	assert_array(own).is_equal([Rect2i(0, 0, 22, 6)])
+	# a = (22 - 4) / 2 = 9: two shoulders and the foot of a notch 4 dp wide, 2 dp deep.
+	assert_array(enemy).is_equal([Rect2i(0, 0, 9, 6), Rect2i(13, 0, 9, 6), Rect2i(9, 2, 4, 4)])
+	assert_array(_dp_rects(1, OWN)).is_equal([Rect2i(1, 1, 20, 4)])
+	assert_array(_dp_rects(30, ENEMY)).is_equal(
+		[Rect2i(1, 1, 7, 2), Rect2i(14, 1, 7, 2), Rect2i(1, 3, 20, 2)]
+	)
+	assert_int(_bars.rect_count()).is_equal(1 + 1 + 3 + 3)  # Filled rects, nothing else.
+
+
+func test_an_infantry_bar_is_16_dp_wide_and_the_enemy_notch_is_the_same_4_dp() -> void:
+	_rebuild(ARENA)
+	var rifle: int = _first_row_of(&"rifle_squad", 1)
+	var red_rifle: int = _first_row_of(&"rifle_squad", 2)
+	_units.set_selected(_ids([rifle, red_rifle]))
+	_frame()
+	assert_array(_dp_rects(rifle, EDGE)).is_equal([Rect2i(0, 0, 16, 6)])
+	assert_array(_dp_rects(rifle, OWN)).is_equal([Rect2i(1, 1, 14, 4)])
+	# a = (16 - 4) / 2 = 6.
+	assert_array(_dp_rects(red_rifle, EDGE)).is_equal(
+		[Rect2i(0, 0, 6, 6), Rect2i(10, 0, 6, 6), Rect2i(6, 2, 4, 4)]
+	)
+	assert_array(_dp_rects(red_rifle, ENEMY)).is_equal(
+		[Rect2i(1, 1, 4, 2), Rect2i(11, 1, 4, 2), Rect2i(1, 3, 14, 2)]
+	)
+
+
+func test_the_class_comes_from_type_armour_and_nothing_else() -> void:
+	_rebuild(ARENA)
+	var tank: int = _first_row_of(&"light_tank", 1)
+	var rifle: int = _first_row_of(&"rifle_squad", 1)
+	var rocket: int = _first_row_of(&"rocket_squad", 1)
+	_units.set_selected(_ids([tank, rifle, rocket]))
+	_frame()
+	var armour: PackedInt32Array = _runner.snapshot.type_armour
+	var types: PackedInt32Array = _runner.snapshot.type_index
+	assert_int(armour[types[tank]]).is_equal(World.Armour.LIGHT)
+	assert_int(armour[types[rifle]]).is_equal(World.Armour.INFANTRY)
+	assert_int(armour[types[rocket]]).is_equal(World.Armour.INFANTRY)
+	assert_that(_box(tank).size).is_equal_approx(_size_px(22), Vector2(0.01, 0.01))
+	assert_that(_box(rifle).size).is_equal_approx(_size_px(16), Vector2(0.01, 0.01))
+	assert_that(_box(rocket).size).is_equal_approx(_size_px(16), Vector2(0.01, 0.01))
+	# The class is the armour column of the type, wherever the type has its name: a tank whose type
+	# is made INFANTRY in the snapshot gets the infantry bar, and a squad made HEAVY the tank bar.
+	_runner.snapshot.type_armour[types[tank]] = World.Armour.INFANTRY
+	_runner.snapshot.type_armour[types[rifle]] = World.Armour.HEAVY
+	_frame()
+	assert_that(_box(tank).size).is_equal_approx(_size_px(16), Vector2(0.01, 0.01))
+	assert_that(_box(rifle).size).is_equal_approx(_size_px(22), Vector2(0.01, 0.01))
+	assert_that(_box(rocket).size).is_equal_approx(_size_px(16), Vector2(0.01, 0.01))  # Its type.
+
+
+func test_the_fill_is_hp_over_max_hp_with_a_floor_of_one_dp() -> void:
+	_units.set_selected(PackedInt32Array([2, 31]))
+	# Interior 20 dp of max hp 300: 15 hp is 1 dp, 22 hp 1.47 and 23 hp 1.53 dp.
+	var expected: Dictionary[int, int] = {300: 20, 150: 10, 225: 15, 23: 2, 22: 1, 15: 1, 1: 1}
+	for hp: int in expected:
+		_runner.snapshot.hp[1] = hp
+		_runner.snapshot.hp[30] = hp
+		_frame()
+		var own: Array[Rect2i] = _dp_rects(1, OWN)
+		assert_array(own).is_equal([Rect2i(1, 1, expected[hp], 4)])
+		# The enemy fill is clipped at the same x: shoulders first, then the strip.
+		var end: int = 1 + expected[hp]
+		var enemy: Array[Rect2i] = []
+		for rect: Rect2i in [Rect2i(1, 1, 7, 2), Rect2i(14, 1, 7, 2), Rect2i(1, 3, 20, 2)]:
+			var right: int = mini(rect.end.x, end)
+			if right > rect.position.x:
+				enemy.append(Rect2i(rect.position.x, rect.position.y, right - rect.position.x, 2))
+		assert_array(_dp_rects(30, ENEMY)).is_equal(enemy)
+
+
+func test_a_bar_fills_from_the_left_and_a_living_unit_always_shows_a_dp() -> void:
+	_units.set_selected(PackedInt32Array([31]))
+	_runner.snapshot.hp[30] = 225  # 15 dp: the right shoulder (x 14..21) is cut at x 16.
+	_frame()
+	assert_array(_dp_rects(30, ENEMY)).is_equal(
+		[Rect2i(1, 1, 7, 2), Rect2i(14, 1, 2, 2), Rect2i(1, 3, 15, 2)]
+	)
+	_runner.snapshot.hp[30] = 1  # Nearly dead: 1 dp on each rect that starts at x 1.
+	_frame()
+	assert_array(_dp_rects(30, ENEMY)).is_equal([Rect2i(1, 1, 1, 2), Rect2i(1, 3, 1, 2)])
+	# The edge is the whole box whatever the hp.
+	assert_array(_dp_rects(30, EDGE)).is_equal(
+		[Rect2i(0, 0, 9, 6), Rect2i(13, 0, 9, 6), Rect2i(9, 2, 4, 4)]
+	)
+
+
+func test_fill_end_rounds_halves_up_and_keeps_a_dp_for_a_living_unit() -> void:
+	# A rifle squad (max hp 100) on a 16 dp bar: interior 14 dp, so 25 hp is exactly 3.5 dp.
+	assert_int(HealthBarLayer.fill_end_dp(25, 100, 16)).is_equal(1 + 4)
+	assert_int(HealthBarLayer.fill_end_dp(24, 100, 16)).is_equal(1 + 3)
+	assert_int(HealthBarLayer.fill_end_dp(100, 100, 16)).is_equal(1 + 14)
+	assert_int(HealthBarLayer.fill_end_dp(1, 100, 16)).is_equal(1 + 1)
+	assert_int(HealthBarLayer.fill_end_dp(0, 100, 16)).is_equal(1)  # Nothing to fill.
+	assert_int(HealthBarLayer.fill_end_dp(150, 100, 16)).is_equal(1 + 14)  # Never past the box.
+	assert_int(HealthBarLayer.fill_end_dp(5, 0, 16)).is_equal(1)  # No max hp, no fill.
+
+
+func test_neither_fill_is_a_team_colour_and_the_colours_do_not_depend_on_the_owner() -> void:
+	# Own bars of blue and red units, enemy bars of both: the owner picks the shape and the fill
+	# by local player only, so a red unit that is the local player's own keeps the own colours.
+	_units.set_selected(PackedInt32Array([2, 31]))
+	_frame()
+	for index: int in _bars.rect_count():
+		var color: Color = _bars.rect_color(index)
+		assert_bool([EDGE, OWN, ENEMY].has(color)).is_true()
+		assert_bool(TEAM_TINTS.has(color)).is_false()
+	assert_that(_bars.rect_color(0)).is_equal(EDGE)
+	assert_that(_bars.rect_color(1)).is_equal(OWN)
+	assert_that(_bars.rect_color(2)).is_equal(EDGE)
+	assert_that(_bars.rect_color(5)).is_equal(ENEMY)
+	_runner.scenario.local_player = 2  # Restored by the next test's load of the shared resource.
+	_frame()
+	assert_array(_dp_rects(1, EDGE)).is_equal(
+		[Rect2i(0, 0, 9, 6), Rect2i(13, 0, 9, 6), Rect2i(9, 2, 4, 4)]
+	)  # Blue tank 2 is the enemy now.
+	assert_array(_dp_rects(30, EDGE)).is_equal([Rect2i(0, 0, 22, 6)])
+	_runner.scenario.local_player = 1
+
+
+func test_a_bar_is_a_dp_size_at_every_zoom() -> void:
+	_units.set_selected(PackedInt32Array([2]))
+	for zoom: float in ZOOMS:
+		_camera.zoom = Vector2(zoom, zoom)
+		_frame()
+		var box: Rect2 = _box(1)
+		# On screen it is 22 x 6 dp whatever the zoom; in the world it is 1 / zoom of that.
+		var on_screen: Vector2 = box.size * zoom
+		assert_that(on_screen).is_equal_approx(Vector2(22.0, 6.0) * 1.75, Vector2(0.01, 0.01))
+		assert_float(box.size.x).is_equal_approx(22.0 * 1.75 / zoom, 0.01)
+
+
+func test_a_bar_is_centred_and_its_bottom_edge_is_r_zoom_plus_1_dp_above_the_unit() -> void:
+	_rebuild(ARENA)
+	var tank: int = _first_row_of(&"light_tank", 1)
+	var rifle: int = _first_row_of(&"rifle_squad", 1)
+	var red_tank: int = _first_row_of(&"light_tank", 2)
+	_units.set_selected(_ids([tank, rifle, red_tank]))
+	# Each screen of the three that every screen is tested at, with its own dp (the layer reads
+	# it again when the window changes) and each zoom.
+	for profile_name: StringName in [&"desktop", &"android_6in", &"web_tablet"]:
+		var profile: UiMetrics = UiProfiles.by_name(profile_name)
+		UiScale.set_override(profile)
+		get_window().size = profile.window_size
+		await await_idle_frame()  # size_changed: the layers read the dp again.
+		var dp_px: float = UiScale.base_px_per_dp()
+		for zoom: float in ZOOMS:
+			_camera.zoom = Vector2(zoom, zoom)
+			_frame()
+			for row: int in [tank, rifle, red_tank]:
+				var class_key: StringName = &"infantry" if row == rifle else &"vehicle"
+				var at: Vector2 = _units.unit_screen_position(row)
+				var top_left: Vector2 = _camera.world_to_screen(_box(row).position)
+				var bottom_right: Vector2 = _camera.world_to_screen(_box(row).end)
+				var note: String = "%s zoom %s row %d" % [profile_name, zoom, row]
+				# Centred on the unit, to the sub-pixel.
+				(
+					assert_float((top_left.x + bottom_right.x) * 0.5)
+					. override_failure_message("centre x, " + note)
+					. is_equal_approx(at.x, 0.05)
+				)
+				# The bottom edge is r x zoom + 1 dp above the unit on screen.
+				var gap: float = REACH_PX[class_key] * zoom + dp_px
+				(
+					assert_float(at.y - bottom_right.y)
+					. override_failure_message("bottom edge, " + note)
+					. is_equal_approx(gap, 0.05)
+				)
+				assert_float(bottom_right.y - top_left.y).is_equal_approx(HEIGHT_DP * dp_px, 0.05)
+				assert_float(bottom_right.x - top_left.x).is_equal_approx(
+					WIDTH_DP[class_key] * dp_px, 0.05
+				)
+
+
+func test_the_ring_does_not_place_the_bar() -> void:
+	# Zoom 1.5 on the 6-inch phone: the tank's ring reaches 35.2 px x 1.5 = 52.8 px from the unit
+	# (the selection radius 500 + 50 milli), the bar's bottom edge only 26 x 1.5 + 1.75 = 40.75 px.
+	_units.set_selected(PackedInt32Array([2]))
+	_camera.zoom = Vector2(1.5, 1.5)
+	_frame()
+	var ring: Sprite2D = _units.get_child(1).get_node("Ring")
+	var ring_on_screen: float = ring.radius * 1.5
+	assert_float(ring_on_screen).is_equal_approx(52.8, 0.01)
+	var at: Vector2 = _units.unit_screen_position(1)
+	var bottom: float = _camera.world_to_screen(_box(1).end).y
+	assert_float(at.y - bottom).is_equal_approx(26.0 * 1.5 + 1.75, 0.05)
+	assert_float(at.y - bottom).is_less(ring_on_screen - 10.0)
+
+
+func test_bars_of_neighbours_do_not_overlap_side_by_side() -> void:
+	_rebuild(ARENA)
+	for profile_name: StringName in UiProfiles.all():
+		UiScale.set_override(UiProfiles.by_name(profile_name))
+		_make_bars()
+		var dp_px: float = UiScale.base_px_per_dp()
+		assert_bool(dp_px >= 1.0 and dp_px <= 2.4).is_true()  # STYLE.md: 1.0 to 2.37 px per dp.
+		for zoom: float in ZOOMS:
+			_camera.zoom = Vector2(zoom, zoom)
+			for class_key: StringName in [&"vehicle", &"infantry"]:
+				var rows: Array[int] = _place_pair(class_key, Vector2i(SPACING_MILLI[class_key], 0))
+				_frame()
+				var left: Rect2 = _screen_box(rows[0])  # The second unit is east of the first.
+				var right: Rect2 = _screen_box(rows[1])
+				var note: String = "%s zoom %s %s" % [profile_name, zoom, class_key]
+				(
+					assert_float((right.position.x - left.end.x) / dp_px)
+					. override_failure_message("gap in dp, " + note)
+					. is_greater_equal(SIDE_GAP_DP)
+				)
+				assert_float(left.position.y).is_equal_approx(right.position.y, 0.05)
+
+
+func test_a_bar_stays_below_the_unit_above() -> void:
+	_rebuild(ARENA)
+	for profile_name: StringName in UiProfiles.all():
+		UiScale.set_override(UiProfiles.by_name(profile_name))
+		_make_bars()
+		for zoom: float in ZOOMS:
+			_camera.zoom = Vector2(zoom, zoom)
+			for class_key: StringName in [&"vehicle", &"infantry"]:
+				# rows[1] is the unit above, one spacing north of rows[0], whose bar is measured.
+				var rows: Array[int] = _place_pair(
+					class_key, Vector2i(0, -SPACING_MILLI[class_key])
+				)
+				_frame()
+				var above_bottom: float = (
+					_units.unit_screen_position(rows[1]).y + HALF_HEIGHT_PX[class_key] * zoom
+				)
+				var bar_top: float = _screen_box(rows[0]).position.y
+				var note: String = "%s zoom %s %s" % [profile_name, zoom, class_key]
+				(
+					assert_float(bar_top - above_bottom)
+					. override_failure_message("clear px, " + note)
+					. is_greater_equal(ABOVE_GAP_PX)
+				)
+
+
+func test_the_draw_code_paints_nothing_but_filled_rects() -> void:
+	# ADR 0011 section 3: one _draw(), filled rects only. Pixels cannot be read headless, so the
+	# script is: every draw call it makes is draw_rect with a rect and a colour and nothing else
+	# (a third argument would make it an outline), and there is one _draw().
+	var source: String = ""
+	for line: String in FileAccess.get_file_as_string(SCRIPT_PATH).split("\n"):
+		source += line.get_slice("#", 0) + "\n"
+	var calls: Array[String] = []
+	var at: int = source.find("draw_")
+	while at >= 0:
+		var open: int = source.find("(", at)
+		calls.append(source.substr(at, open - at))
+		assert_int(_top_level_arguments(source, open)).is_equal(2)  # The rect and the colour.
+		at = source.find("draw_", open)
+	assert_array(calls).is_equal(["draw_rect"])
+	assert_int(source.count("func _draw()")).is_equal(1)
+
+
+func test_the_main_scene_has_the_layer_at_z_110_between_the_units_and_the_markers() -> void:
+	var main: Node = auto_free(load("res://scenes/main.tscn").instantiate())
+	add_child(main)
+	await await_idle_frame()  # _ready: every export is wired and the match runs.
+	var layer: HealthBarLayer = main.get_node("HealthBarLayer") as HealthBarLayer
+	assert_object(layer).is_not_null()
+	assert_int(layer.z_index).is_equal(110)  # ADR 0012 section 6.
+	assert_bool(layer.z_as_relative).is_false()
+	assert_object(layer.runner).is_same(main.get_node("MatchRunner"))
+	assert_object(layer.unit_layer).is_same(main.get_node("UnitLayer"))
+	var order: Array[StringName] = []
+	for child: Node in main.get_children():
+		order.append(child.name)
+	assert_int(order.find(&"HealthBarLayer")).is_equal(order.find(&"UnitLayer") + 1)
+	assert_int(order.find(&"MarkerLayer")).is_greater(order.find(&"HealthBarLayer"))
+	assert_str(layer.get_script().resource_path).is_equal(SCRIPT_PATH)
+
+
+## Builds the match of `scenario_path` with the camera, the unit layer and the bar layer, as the
+## main scene wires them. Frames come only from _frame().
+func _build(scenario_path: String) -> void:
+	_runner = auto_free(MatchRunner.new())
+	_runner.scenario = load(scenario_path)
+	_runner.start()
+	_camera = auto_free(RtsCamera.new())
+	add_child(_camera)
+	_camera.position = Vector2(500, 1100)  # No map rect is set, so nothing clamps it.
+	_units = auto_free(UnitLayer.new())
+	_units.runner = _runner
+	_units.camera = _camera
+	add_child(_units)
+	_units.set_process(false)
+	_bars = null
+	_make_bars()
+
+
+## A new match for the next scenario: the old nodes go.
+func _rebuild(scenario_path: String) -> void:
+	for node: Node in [_bars, _units, _camera, _runner]:
+		node.free()
+	_build(scenario_path)
+
+
+## A fresh bar layer, which reads the dp that is in force now.
+func _make_bars() -> void:
+	if _bars != null:
+		_bars.free()
+	_bars = auto_free(HealthBarLayer.new())
+	_bars.runner = _runner
+	_bars.unit_layer = _units
+	add_child(_bars)
+	_bars.set_process(false)
+
+
+## One frame: the unit layer, then the bar layer, in the scene's order.
+func _frame() -> void:
+	_units._process(0.0)
+	_bars._process(0.0)
+
+
+## The unit ids of rows `rows`.
+func _ids(rows: Array[int]) -> PackedInt32Array:
+	var ids: PackedInt32Array = PackedInt32Array()
+	for row: int in rows:
+		ids.append(_runner.snapshot.unit_id[row])
+	return ids
+
+
+## The first row of type `type_id` owned by `owner_id`.
+func _first_row_of(type_id: StringName, owner_id: int) -> int:
+	var snap: MatchSnapshot = _runner.snapshot
+	for row: int in snap.unit_count():
+		if snap.type_ids[snap.type_index[row]] == type_id and snap.owner[row] == owner_id:
+			return row
+	return -1
+
+
+## Puts two own units of the class `class_key` in the published snapshot, the first at the tile
+## (20, 20) and the second `step` milli from it, selects both, points the camera at them and
+## returns their rows. Test-only writes into the snapshot (allowed in SYNC, ADR 0012 section 3).
+func _place_pair(class_key: StringName, step: Vector2i) -> Array[int]:
+	var type_id: StringName = &"light_tank" if class_key == &"vehicle" else &"rifle_squad"
+	var first: int = _first_row_of(type_id, 1)
+	var rows: Array[int] = [first, first + 1]
+	var snap: MatchSnapshot = _runner.snapshot
+	for index: int in 2:
+		var at: Vector2i = Vector2i(20000, 20000) + step * index
+		snap.pos_x[rows[index]] = at.x
+		snap.pos_y[rows[index]] = at.y
+		snap.prev_pos_x[rows[index]] = at.x
+		snap.prev_pos_y[rows[index]] = at.y
+	_units.set_selected(_ids(rows))
+	_camera.position = Vector2(20000, 20000) * PX_PER_TILE / 1000.0
+	return rows
+
+
+## World px of one dp: the base px per dp over the camera zoom.
+func _unit_px() -> float:
+	return UiScale.base_px_per_dp() / _camera.zoom.x
+
+
+func _size_px(dp_width: int) -> Vector2:
+	return Vector2(dp_width, HEIGHT_DP) * _unit_px()
+
+
+## Bar `row`'s rects of colour `color` in world px, in the plan's order.
+func _parts(row: int, color: Color) -> Array[Rect2]:
+	var found: Array[Rect2] = []
+	for bar: int in _bars.bar_count():
+		if _bars.bar_row(bar) == row:
+			for index: int in range(_bars.bar_first_rect(bar), _bars.bar_end_rect(bar)):
+				if _bars.rect_color(index) == color:
+					found.append(_bars.rect_at(index))
+	return found
+
+
+## The box of bar `row` (the union of its edge rects) in world px.
+func _box(row: int) -> Rect2:
+	var edges: Array[Rect2] = _parts(row, EDGE)
+	assert_int(edges.size()).is_greater(0)
+	var box: Rect2 = edges[0]
+	for rect: Rect2 in edges:
+		box = box.merge(rect)
+	return box
+
+
+## The same box on screen, in base px.
+func _screen_box(row: int) -> Rect2:
+	var box: Rect2 = _box(row)
+	var top_left: Vector2 = _camera.world_to_screen(box.position)
+	return Rect2(top_left, _camera.world_to_screen(box.end) - top_left)
+
+
+## Bar `row`'s rects of colour `color` in whole dp from the bar's top-left corner.
+func _dp_rects(row: int, color: Color) -> Array[Rect2i]:
+	var origin: Vector2 = _box(row).position
+	var unit: float = _unit_px()
+	var found: Array[Rect2i] = []
+	for rect: Rect2 in _parts(row, color):
+		var scaled: Rect2 = Rect2((rect.position - origin) / unit, rect.size / unit)
+		for value: float in [scaled.position.x, scaled.position.y, scaled.size.x, scaled.size.y]:
+			assert_float(value).is_equal_approx(roundf(value), 0.01)  # Whole dp.
+		found.append(
+			Rect2i(
+				roundi(scaled.position.x),
+				roundi(scaled.position.y),
+				roundi(scaled.size.x),
+				roundi(scaled.size.y)
+			)
+		)
+	return found
+
+
+## The number of arguments of the call whose "(" is at `open` in `source`: the top-level commas,
+## a trailing comma not counted.
+func _top_level_arguments(source: String, open: int) -> int:
+	var depth: int = 0
+	var count: int = 1
+	var last_comma: bool = false
+	for index: int in range(open, source.length()):
+		var character: String = source[index]
+		if character == "(" or character == "[":
+			depth += 1
+		elif character == ")" or character == "]":
+			depth -= 1
+			if depth == 0:
+				return count - 1 if last_comma else count
+		elif character == "," and depth == 1:
+			count += 1
+			last_comma = true
+			continue
+		if not character.strip_edges().is_empty():
+			last_comma = false
+	return -1

@@ -35,6 +35,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 |---|---|---|
 | Enemies come within weapon range of your units | The units fire at them on their own, without an order, until they are destroyed or out of range; a destroyed unit disappears from the map | |
 | Attack-moving units meet enemies | They stop to fight: they drive to weapon range of the enemy they picked, fire until it is destroyed, pick the next one, and go on to the tapped point when no enemy is left within their reach | yes |
+| A unit is selected, or has just been damaged | A health bar shows above it, filled by the hp it has left (a unit that lives always shows a little fill). Selected units keep their bar; a damaged unit shows it for a few seconds. Your bars are plain, enemy bars have a notch in the top edge, so you can tell them apart without colour | |
 
 ## Army bar (bottom left)
 | Action | Result | Teach |
@@ -51,3 +52,4 @@ their entries when their phase ships them (ROADMAP Phases 3-6).
 | Action | Result | Teach |
 |---|---|---|
 | Moving without fighting (retreat) | Every ground tap is an attack-move | |
+| An "under attack" warning at the screen edge | Not shown yet: nothing points at a unit that is hit off screen | |
