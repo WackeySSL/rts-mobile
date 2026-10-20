@@ -14,11 +14,17 @@ extends GdUnitTestSuite
 ## asserts it through `outside_sight`. A unit is due on the ticks where `(tick + id) % 5 == 0`;
 ## `target_of(world, id)` moves the tick to the unit's next due tick, runs the GRIDS and TARGETING
 ## phases and returns its target.
+##
+## Every case runs under both implementations (ADR 0013 section 3, P41n): the GDScript phase and the
+## C++ kernel, through `_both()` and `_in()`. The kernel-only cases are in
+## tests/sim/native/test_targeting_kernel*.gd.
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
 const ViewProbe: GDScript = preload("res://tests/sim/support/targeting_view_probe.gd")
 const SightProbe: GDScript = preload("res://tests/sim/support/targeting_sight_probe.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const MatchScript: GDScript = preload("res://tests/sim/support/match_script.gd")
+const TARGETING: int = SimProbe.Phase.TARGETING
 const RIFLE: int = 0
 const ROCKET: int = 1
 const TANK: int = 2
@@ -36,8 +42,10 @@ const TOUGH: int = 1000000
 ## squad prefers infantry (100%) to the tank (10%) that stands closer. The percent comes first, and
 ## a candidate out of range is not considered at all: with the tank 5500 away (rocket range 5000)
 ## the rocket squad takes the rifle squad.
-func test_the_highest_damage_percent_comes_before_the_distance() -> void:
-	var rocket: World = Rig.data_world()
+func test_the_highest_damage_percent_comes_before_the_distance(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var rocket: World = _in(Rig.data_world(), impl)
 	rocket.add_unit(1, ROCKET, 10000, 6000)
 	rocket.add_unit(2, RIFLE, 12000, 6000)
 	rocket.add_unit(2, TANK, 14500, 6000)
@@ -45,7 +53,7 @@ func test_the_highest_damage_percent_comes_before_the_distance() -> void:
 	assert_array(Rig.outside_sight(rocket)).is_empty()
 	rocket.pos_x[2] = 15500
 	assert_int(Rig.target_of(rocket, 1)).is_equal(2)
-	var rifle: World = Rig.data_world()
+	var rifle: World = _in(Rig.data_world(), impl)
 	rifle.add_unit(1, RIFLE, 10000, 6000)
 	rifle.add_unit(2, TANK, 12000, 6000)
 	rifle.add_unit(2, RIFLE, 13500, 6000)
@@ -55,9 +63,9 @@ func test_the_highest_damage_percent_comes_before_the_distance() -> void:
 
 ## Equal percents go to the smaller distance, whichever has the lower id: the rocket squad (20% on
 ## both rifle squads) takes the one 2000 away, in either order of ids.
-func test_equal_percents_go_to_the_smaller_distance() -> void:
+func test_equal_percents_go_to_the_smaller_distance(impl: int, _test_parameters := _both()) -> void:
 	for near_first: bool in [true, false]:
-		var world: World = Rig.data_world()
+		var world: World = _in(Rig.data_world(), impl)
 		world.add_unit(1, ROCKET, 10000, 6000)
 		world.add_unit(2, RIFLE, 12000 if near_first else 14000, 6000)
 		world.add_unit(2, RIFLE, 14000 if near_first else 12000, 6000)
@@ -72,7 +80,9 @@ func test_equal_percents_go_to_the_smaller_distance() -> void:
 ## rocket's range) where the lowest id stands in the last line of cells. The last three put it in
 ## the cell that is visited first (west of the east one, north of the south one) and have two units
 ## on one point, where the lower id is also listed first: a later candidate that ties does not win.
-func test_equal_percents_and_distances_go_to_the_lower_id() -> void:
+func test_equal_percents_and_distances_go_to_the_lower_id(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var cases: Array[Array] = [
 		[Vector2i(13000, 6000), Vector2i(7000, 6000), Vector2i(10000, 3000)],
 		[Vector2i(10000, 9000), Vector2i(10000, 3000), Vector2i(10000, 3000)],
@@ -82,7 +92,7 @@ func test_equal_percents_and_distances_go_to_the_lower_id() -> void:
 		[Vector2i(12000, 6000), Vector2i(12000, 6000)],
 	]
 	for item: Array in cases:
-		var world: World = Rig.data_world()
+		var world: World = _in(Rig.data_world(), impl)
 		world.add_unit(1, ROCKET, 10000, 6000)
 		for at: Vector2i in item:
 			world.add_unit(2, RIFLE, at.x, at.y)
@@ -94,8 +104,10 @@ func test_equal_percents_and_distances_go_to_the_lower_id() -> void:
 ## A unit scans only on the ticks where `(tick + id) % 5 == 0`. The target is cleared before every
 ## tick of 15, so it shows when the unit looked: unit 3 on ticks 2, 7 and 12, its enemy unit 4 on 1,
 ## 6 and 11. The other two units are far away and look at nothing.
-func test_a_unit_scans_only_on_the_ticks_its_id_makes_due() -> void:
-	var world: World = Rig.data_world()
+func test_a_unit_scans_only_on_the_ticks_its_id_makes_due(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(Rig.data_world(), impl)
 	world.add_unit(1, RIFLE, 1000, 11000)
 	world.add_unit(1, RIFLE, 1000, 9000)
 	world.add_unit(1, RIFLE, 5000, 3000)
@@ -116,8 +128,8 @@ func test_a_unit_scans_only_on_the_ticks_its_id_makes_due() -> void:
 ## The period is the rules' `retarget_period_ticks` (5 in data/rules.tres), read from the World:
 ## a period of 3 makes unit 3 due on ticks 0, 3, 6, 9 and 12, and a period below 1 is read as 1
 ## (every tick, no division by zero).
-func test_the_period_comes_from_the_rules() -> void:
-	var world: World = Rig.data_world()
+func test_the_period_comes_from_the_rules(impl: int, _test_parameters := _both()) -> void:
+	var world: World = _in(Rig.data_world(), impl)
 	assert_int(world.retarget_period_ticks).is_equal(5)
 	world.add_unit(1, RIFLE, 1000, 11000)
 	world.add_unit(1, RIFLE, 1000, 9000)
@@ -141,8 +153,10 @@ func test_the_period_comes_from_the_rules() -> void:
 ## away at tick 4; a rifle squad appears 1500 away and a tank 3606 away, and at tick 9 and 14 the
 ## target is still the first. When that one walks out of reach (6000 against 5000), the target is
 ## still it until the squad's next due tick, 19, and then it is the tank.
-func test_a_valid_target_in_reach_is_kept_over_a_nearer_or_better_new_one() -> void:
-	var world: World = Rig.data_world()
+func test_a_valid_target_in_reach_is_kept_over_a_nearer_or_better_new_one(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(Rig.data_world(), impl)
 	world.add_unit(1, ROCKET, 10000, 6000)
 	world.add_unit(2, RIFLE, 13000, 6000)
 	assert_int(Rig.target_of(world, 1)).is_equal(2)
@@ -166,8 +180,10 @@ func test_a_valid_target_in_reach_is_kept_over_a_nearer_or_better_new_one() -> v
 ## is not valid: the next scan replaces it, with 0 when nothing else is in reach. The gone one is
 ## first an id between two others (the lookup lands on a row of another id), then the highest id
 ## (the lookup lands past the last row, the first death of a match to be the newest unit).
-func test_a_target_that_is_gone_is_replaced_at_the_next_due_tick() -> void:
-	var world: World = Rig.data_world()
+func test_a_target_that_is_gone_is_replaced_at_the_next_due_tick(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(Rig.data_world(), impl)
 	world.add_unit(1, RIFLE, 10000, 6000)
 	world.add_unit(2, RIFLE, 12000, 6000)
 	world.add_unit(2, RIFLE, 8000, 6000)
@@ -182,7 +198,7 @@ func test_a_target_that_is_gone_is_replaced_at_the_next_due_tick() -> void:
 	assert_int(Rig.retarget(world, 1)).is_equal(3)
 	world.owner[1] = 0
 	assert_int(Rig.retarget(world, 1)).is_equal(0)
-	var newest: World = Rig.data_world()
+	var newest: World = _in(Rig.data_world(), impl)
 	newest.add_unit(1, RIFLE, 10000, 6000)
 	newest.add_unit(2, RIFLE, 12000, 6000)
 	assert_int(Rig.target_of(newest, 1)).is_equal(2)
@@ -196,7 +212,9 @@ func test_a_target_that_is_gone_is_replaced_at_the_next_due_tick() -> void:
 ## one as far as its weapon's range. Per type, an enemy just inside the weapon range is taken in
 ## both, one just inside the acquire range only when attack-moving, and one just outside the acquire
 ## range in neither: rifle squad (4000 / 5000), rocket squad (5000 / 5500), tank (4500 / 5500).
-func test_attack_move_reaches_as_far_as_acquire_range_and_idle_as_far_as_weapon_range() -> void:
+func test_attack_move_reaches_as_far_as_acquire_range_and_idle_as_far_as_weapon_range(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var cases: Array[Array] = [[RIFLE, 4000, 5000], [ROCKET, 5000, 5500], [TANK, 4500, 5500]]
 	for item: Array in cases:
 		var weapon_range: int = item[1]
@@ -205,7 +223,7 @@ func test_attack_move_reaches_as_far_as_acquire_range_and_idle_as_far_as_weapon_
 			[0, true, true], [1, false, true], [acquire_range - weapon_range, false, true]
 		]:
 			var distance: int = weapon_range + int(gap[0])
-			var world: World = Rig.data_world()
+			var world: World = _in(Rig.data_world(), impl)
 			world.add_unit(1, int(item[0]), 6000, 6000)
 			world.add_unit(2, RIFLE, 6000 + distance, 6000)
 			var label: String = "type %d at %d" % [item[0], distance]
@@ -217,7 +235,7 @@ func test_attack_move_reaches_as_far_as_acquire_range_and_idle_as_far_as_weapon_
 			var moving_target: int = Rig.target_of(world, 1)
 			assert_bool(moving_target == 2).override_failure_message(label).is_equal(gap[2])
 			assert_array(Rig.outside_sight(world)).is_empty()
-		var outside: World = Rig.data_world()
+		var outside: World = _in(Rig.data_world(), impl)
 		outside.add_unit(1, int(item[0]), 6000, 6000)
 		outside.add_unit(2, RIFLE, 6000 + acquire_range + 1, 6000)
 		outside.order[0] = ATTACK_MOVE
@@ -227,8 +245,10 @@ func test_attack_move_reaches_as_far_as_acquire_range_and_idle_as_far_as_weapon_
 ## A MOVE order never acquires, and a unit that gets one drops the target it had on the very next
 ## pass (not only on its due tick): a unit that moves does not fire. The same unit, idle again,
 ## takes the enemy 1000 away on its next due tick.
-func test_a_move_order_never_acquires_and_drops_its_target() -> void:
-	var world: World = Rig.data_world()
+func test_a_move_order_never_acquires_and_drops_its_target(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(Rig.data_world(), impl)
 	world.add_unit(1, RIFLE, 10000, 6000)
 	world.add_unit(2, RIFLE, 11000, 6000)
 	assert_int(Rig.target_of(world, 1)).is_equal(2)
@@ -244,8 +264,10 @@ func test_a_move_order_never_acquires_and_drops_its_target() -> void:
 ## The marks of the tick, with the grid and the targets at each: the targeting grid holds the rows
 ## from GRIDS on (two cells for the two units), the subject's target is set at TARGETING and not
 ## before, and so are the candidates it looked at. Unit 1 is due at tick 4.
-func test_the_grid_is_rebuilt_in_grids_and_targeting_follows_it() -> void:
-	var world: World = Rig.data_world()
+func test_the_grid_is_rebuilt_in_grids_and_targeting_follows_it(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(Rig.data_world(), impl)
 	world.add_unit(1, RIFLE, 5000, 3000)
 	world.add_unit(2, RIFLE, 8000, 3000)
 	world.tick = 4
@@ -272,8 +294,8 @@ func test_the_grid_is_rebuilt_in_grids_and_targeting_follows_it() -> void:
 ## The grid the scan reads is the one built in the same tick: unit 2 stands far away at tick 3 and
 ## is moved next to unit 1 between the ticks, and unit 1 (due at tick 4) takes it in that step. A
 ## grid from the tick before would list it in the far cell.
-func test_the_scan_reads_the_grid_of_its_own_tick() -> void:
-	var world: World = Rig.data_world()
+func test_the_scan_reads_the_grid_of_its_own_tick(impl: int, _test_parameters := _both()) -> void:
+	var world: World = _in(Rig.data_world(), impl)
 	world.add_unit(1, RIFLE, 5000, 3000)
 	world.add_unit(2, RIFLE, 15000, 3000)
 	world.tick = 3
@@ -289,9 +311,11 @@ func test_the_scan_reads_the_grid_of_its_own_tick() -> void:
 ## every unit is due every tick, so the parity is free: unit 2 stands far away at the first step and
 ## is moved next to unit 1 before the second, which runs at the other parity. The first tick is 2
 ## (second step at 3) and 3 (second step at 4).
-func test_the_grid_is_rebuilt_on_every_tick_odd_or_even() -> void:
+func test_the_grid_is_rebuilt_on_every_tick_odd_or_even(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for first_tick: int in [2, 3]:
-		var world: World = Rig.data_world()
+		var world: World = _in(Rig.data_world(), impl)
 		world.retarget_period_ticks = 1
 		world.add_unit(1, RIFLE, 5000, 3000)
 		world.add_unit(2, RIFLE, 15000, 3000)
@@ -310,8 +334,8 @@ func test_the_grid_is_rebuilt_on_every_tick_odd_or_even() -> void:
 ## position, goal, order or intent changes, and nobody chases. Since P42a they also shoot each other
 ## for the 150 ticks and would die (the rifle squad kills the rocket squad, the tank the other
 ## rifle squad), so the hp is raised and nobody does.
-func test_idle_units_never_move_on_their_own() -> void:
-	var world: World = Rig.data_world()
+func test_idle_units_never_move_on_their_own(impl: int, _test_parameters := _both()) -> void:
+	var world: World = _in(Rig.data_world(), impl)
 	world.add_unit(1, RIFLE, 3000, 3000)
 	world.add_unit(2, ROCKET, 6000, 3000)
 	world.add_unit(1, TANK, 14000, 9000)
@@ -342,12 +366,14 @@ func test_idle_units_never_move_on_their_own() -> void:
 ## checkpoint, and the hashes are not those of a run where nobody is ever due (a period of a
 ## million ticks): the targets are part of the state. The sides meet at about tick 15, so the
 ## hashes of the two differ from the first checkpoint on.
-func test_two_runs_give_the_same_hashes() -> void:
-	var first: PackedInt64Array = _arena_hashes(0)
-	var second: PackedInt64Array = _arena_hashes(0)
+func test_two_runs_give_the_same_hashes(impl: int, _test_parameters := _both()) -> void:
+	var first: PackedInt64Array = _arena_hashes(0, impl)
+	var second: PackedInt64Array = _arena_hashes(0, impl)
 	assert_int(first.size()).is_equal(ARENA_TICKS / Replay.CHECKPOINT_PERIOD)
 	assert_array(second).is_equal(first)
-	var silent: PackedInt64Array = _arena_hashes(1000000)
+	# The implementations agree: the native run's hashes are the GDScript run's.
+	assert_array(_arena_hashes(0, SimImpls.Impl.GDSCRIPT)).is_equal(first)
+	var silent: PackedInt64Array = _arena_hashes(1000000, impl)
 	assert_int(silent.size()).is_equal(first.size())
 	for k: int in first.size():
 		assert_int(silent[k]).override_failure_message("checkpoint %d" % k).is_not_equal(first[k])
@@ -356,8 +382,10 @@ func test_two_runs_give_the_same_hashes() -> void:
 ## The authoring rule of the fog PR on the shipped units: through the arena match, every target
 ## chosen at a scan stands inside the sight of the unit that chose it (acquire never exceeds sight
 ## in data/), and a good number are chosen. A SightProbe looks at the TARGETING mark of each tick.
-func test_every_target_of_the_arena_match_is_chosen_inside_its_acquirers_sight() -> void:
-	var world: World = MatchScript.world(42)
+func test_every_target_of_the_arena_match_is_chosen_inside_its_acquirers_sight(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(MatchScript.world(42), impl)
 	var match_loop: MatchLoop = MatchScript.loop(world, 42)
 	var probe: SightProbe = SightProbe.new(world)
 	for _tick: int in ARENA_TICKS:
@@ -368,10 +396,21 @@ func test_every_target_of_the_arena_match_is_chosen_inside_its_acquirers_sight()
 
 ## The checkpoint hashes of the arena match with `retarget_period_ticks` set to `period` (0 keeps
 ## the rules' own).
-func _arena_hashes(period: int) -> PackedInt64Array:
-	var world: World = MatchScript.world(42)
+func _arena_hashes(period: int, impl: int) -> PackedInt64Array:
+	var world: World = _in(MatchScript.world(42), impl)
 	if period > 0:
 		world.retarget_period_ticks = period
 	var match_loop: MatchLoop = MatchScript.loop(world, 42)
 	MatchScript.play(world, match_loop, ARENA_TICKS)
 	return match_loop.replay.checkpoint_hashes
+
+
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and the TARGETING phase really in the implementation
+## asked for (the problems of SimImpls.attach, none).
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, TARGETING)).is_empty()
+	return world

@@ -9,9 +9,15 @@ extends GdUnitTestSuite
 ## goal on the other side. The cases of test_engagement.gd cover the open ground. Acquisition,
 ## the line check and the cadence are the rules' own: `retarget_period_ticks` and
 ## `line_check_period_ticks` are 5, so a unit checks on the ticks where `(tick + id) % 5 == 0`.
+##
+## Every case runs under both implementations (ADR 0013 section 3, P41n): the GDScript phase and the
+## C++ kernel, through `_both()` and `_in()`. The kernel-only cases are in
+## tests/sim/native/test_targeting_kernel*.gd.
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
+const TARGETING: int = SimProbe.Phase.TARGETING
 const RIFLE: int = 0
 const TANK: int = 2
 const FOOT: int = World.MoveClass.FOOT
@@ -34,8 +40,10 @@ const MOST_BLOCKED_CHASE_TICKS: int = 5
 ## blocked, so neither chases. Id 2 scans first (tick 3, with its line-check turn): its target is
 ## id 1, its mode is not CHASE and it takes a flow field on that tick (the line to its goal is
 ## blocked too). Id 1 does the same at tick 4.
-func test_a_blocked_line_at_the_first_scan_keeps_the_path() -> void:
-	var world: World = _band_world()
+func test_a_blocked_line_at_the_first_scan_keeps_the_path(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _band_world(impl)
 	world.add_unit(1, RIFLE, 12500, 5500)
 	world.add_unit(2, RIFLE, 17500, 5500)
 	var orders: Array[Command] = [
@@ -61,8 +69,10 @@ func test_a_blocked_line_at_the_first_scan_keeps_the_path() -> void:
 ## with no flow field held (the cache's references are derived from the `field` column, so a holding
 ## unit pins no slot) and their orders and goals as given. They used a field on the way, and chased
 ## once the line was clear.
-func test_squads_on_opposite_sides_of_a_four_tile_band_use_the_gap_and_reach_weapon_range() -> void:
-	var world: World = _band_world()
+func test_squads_on_opposite_sides_of_a_four_tile_band_use_the_gap_and_reach_weapon_range(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _band_world(impl)
 	world.add_unit(1, RIFLE, 12500, 5500)
 	world.add_unit(2, RIFLE, 17500, 5500)
 	var orders: Array[Command] = [
@@ -108,9 +118,11 @@ func test_squads_on_opposite_sides_of_a_four_tile_band_use_the_gap_and_reach_wea
 ## that is not its turn, and it is not chasing then; at its turn, tick 9, it chases. The wall is put
 ## back before tick 10: it keeps chasing on the ticks that are not its turn (10 to 13) and leaves
 ## CHASE at tick 14, its next turn, for the field.
-func test_the_chase_starts_and_ends_on_the_units_turn_when_the_line_clears_or_blocks() -> void:
+func test_the_chase_starts_and_ends_on_the_units_turn_when_the_line_clears_or_blocks(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var gun: UnitDef = Rig.unit(&"gun", 6000, 5000, 1500, 0, [100, 100, 100, 100])
-	var world: World = Rig.world_of([gun], COLUMNS, 12)
+	var world: World = _in(Rig.world_of([gun], COLUMNS, 12), impl)
 	world.terrain_cost = PackedByteArray(GridWorld.GROUND_COST)
 	_set_wall(world, ROCK)
 	world.add_unit(1, 0, 5000, 5500)
@@ -145,8 +157,10 @@ func test_the_chase_starts_and_ends_on_the_units_turn_when_the_line_clears_or_bl
 ## An `ATTACK` order across the band: the tank drives at the idle tank on the far side by the
 ## navigation of its order (a field keyed on the target's tile, since the line is blocked), never
 ## `CHASE`, through the gap, and holds at 4500 or less from it. The target is not moved.
-func test_an_attack_across_the_band_follows_its_field_and_holds_at_range() -> void:
-	var world: World = _band_world()
+func test_an_attack_across_the_band_follows_its_field_and_holds_at_range(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _band_world(impl)
 	world.add_unit(1, TANK, 11500, 5500)
 	world.add_unit(2, TANK, 17500, 5500)
 	Sim.step(world, [_stamped(Command.attack(1, _ids([1]), 2), world)])
@@ -176,8 +190,10 @@ func test_an_attack_across_the_band_follows_its_field_and_holds_at_range() -> vo
 ## through the gap in the same tick, and it holds at 4500 or less from the target. The tank never
 ## steers into the band for more than one line-check period: no tick's intent ends on a tile its
 ## class cannot enter (the first version of P41b pressed into the band for 329 ticks).
-func test_an_attack_target_that_walks_behind_the_band_is_followed_through_the_gap() -> void:
-	var world: World = _band_world()
+func test_an_attack_target_that_walks_behind_the_band_is_followed_through_the_gap(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _band_world(impl)
 	world.type_sight[TANK] = 30000
 	world.add_unit(1, TANK, 8000, 11000)
 	world.add_unit(2, TANK, 19500, 11000)
@@ -217,8 +233,8 @@ func test_an_attack_target_that_walks_behind_the_band_is_followed_through_the_ga
 ## stands in `FIELD` on a slot with its line to the goal blocked, and its target comes into range
 ## (4230 away, the cannon's is 4500, on the far side of the band, which the line to it crosses), so
 ## the next tick it is `HOLD` with no field, no next tile and an unchecked line, and no intent.
-func test_a_unit_on_a_field_holds_with_no_field() -> void:
-	var world: World = _band_world()
+func test_a_unit_on_a_field_holds_with_no_field(impl: int, _test_parameters := _both()) -> void:
+	var world: World = _band_world(impl)
 	world.add_unit(1, TANK, 12900, 5500)
 	world.add_unit(2, RIFLE, 17100, 5000)
 	world.order[0] = ATTACK_MOVE
@@ -239,8 +255,10 @@ func test_a_unit_on_a_field_holds_with_no_field() -> void:
 ## and two attack-moving units 4800 to 4900 from it, a rifle squad (id 1) and a tank (id 2). At
 ## their first scans (ticks 4 and 3) the squad chases, the tank does not (it takes a field, and
 ## holds from tick 5, in range of its cannon).
-func test_the_chase_line_is_checked_for_the_units_own_move_class() -> void:
-	var world: World = Rig.data_world(COLUMNS, 12)
+func test_the_chase_line_is_checked_for_the_units_own_move_class(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(Rig.data_world(COLUMNS, 12), impl)
 	world.terrain_cost = PackedByteArray(GridWorld.GROUND_COST)
 	for column: int in [8, 9]:
 		for line: int in 12:
@@ -268,8 +286,10 @@ func test_the_chase_line_is_checked_for_the_units_own_move_class() -> void:
 ## the band (column 14, row 9) while the horizontal line at y 10500 is clear, so on the squad's turn
 ## (tick 4, scan switched off, the target given by hand) it does not chase but goes on `DIRECT`
 ## along the gap.
-func test_the_chase_line_runs_to_the_target_not_along_the_units_row() -> void:
-	var world: World = _band_world()
+func test_the_chase_line_runs_to_the_target_not_along_the_units_row(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _band_world(impl)
 	world.retarget_period_ticks = 1000000
 	world.add_unit(1, RIFLE, 12900, 10500)
 	world.add_unit(2, RIFLE, 17100, 8000)
@@ -289,8 +309,10 @@ func test_the_chase_line_runs_to_the_target_not_along_the_units_row() -> void:
 ## blocked, resets the tank, and `Movement.run` keys the field on the target's tile the same tick:
 ## `FIELD`, with a slot. A test along the tank's row would find the line clear and leave it `DIRECT`
 ## to press into the band.
-func test_an_attack_unit_retests_the_line_to_its_target_not_along_its_row() -> void:
-	var world: World = _band_world()
+func test_an_attack_unit_retests_the_line_to_its_target_not_along_its_row(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _band_world(impl)
 	world.add_unit(1, TANK, 12900, 10500)
 	world.add_unit(2, TANK, 17100, 8000)
 	world.order[0] = ATTACK
@@ -312,9 +334,11 @@ func test_an_attack_unit_retests_the_line_to_its_target_not_along_its_row() -> v
 ## it, whichever order it has: ADR 0009 section 3 ("keeps the path of its order") and ADR 0008
 ## section 3's re-key rule. `Movement` would take the same field again, so only this phase alone
 ## shows the unit untouched.
-func test_a_field_unit_keeps_its_navigation_when_engagement_checks_its_line() -> void:
+func test_a_field_unit_keeps_its_navigation_when_engagement_checks_its_line(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for order: int in [ATTACK_MOVE, ATTACK]:
-		var world: World = _band_world()
+		var world: World = _band_world(impl)
 		world.retarget_period_ticks = 1000000
 		world.add_unit(1, TANK, 12900, 5500)
 		world.add_unit(2, RIFLE, 17100, 3000)
@@ -348,18 +372,20 @@ func test_a_field_unit_keeps_its_navigation_when_engagement_checks_its_line() ->
 
 ## Two runs of the band fight give the same state hash at every checkpoint, and not the hashes of a
 ## run where nobody scans.
-func test_two_runs_give_the_same_hashes() -> void:
-	var first: PackedInt64Array = _band_hashes(0)
-	var second: PackedInt64Array = _band_hashes(0)
+func test_two_runs_give_the_same_hashes(impl: int, _test_parameters := _both()) -> void:
+	var first: PackedInt64Array = _band_hashes(0, impl)
+	var second: PackedInt64Array = _band_hashes(0, impl)
 	assert_int(first.size()).is_equal(10)
 	assert_array(second).is_equal(first)
-	assert_int(_band_hashes(1000000)[-1]).is_not_equal(first[-1])
+	# The implementations agree: the native run's hashes are the GDScript run's.
+	assert_array(_band_hashes(0, SimImpls.Impl.GDSCRIPT)).is_equal(first)
+	assert_int(_band_hashes(1000000, impl)[-1]).is_not_equal(first[-1])
 
 
 ## The state hash after each 15th tick of the first 150 ticks of the band deadlock; with `period`
 ## of 1 or more, `retarget_period_ticks` is set to it first.
-func _band_hashes(period: int) -> PackedInt64Array:
-	var world: World = _band_world()
+func _band_hashes(period: int, impl: int) -> PackedInt64Array:
+	var world: World = _band_world(impl)
 	if period > 0:
 		world.retarget_period_ticks = period
 	world.add_unit(1, RIFLE, 12500, 5500)
@@ -386,8 +412,8 @@ func _line_clear(world: World, from: int, to: int) -> bool:
 
 
 ## The open 30 x 12 tile map with the rock band in columns 13 to 16, rows 0 to 9.
-func _band_world() -> World:
-	var world: World = Rig.data_world(COLUMNS, 12)
+func _band_world(impl: int) -> World:
+	var world: World = _in(Rig.data_world(COLUMNS, 12), impl)
 	world.terrain_cost = PackedByteArray(GridWorld.GROUND_COST)
 	for column: int in range(13, 17):
 		for line: int in 10:
@@ -408,3 +434,14 @@ func _ids(ids: Array) -> PackedInt32Array:
 func _stamped(command: Command, world: World) -> Command:
 	command.tick = world.tick
 	return command
+
+
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and the TARGETING phase really in the implementation
+## asked for (the problems of SimImpls.attach, none).
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, TARGETING)).is_empty()
+	return world

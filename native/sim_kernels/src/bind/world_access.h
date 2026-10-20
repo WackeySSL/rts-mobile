@@ -111,7 +111,7 @@ struct Entry {
 // ints that rules read come before the arrays they size, and `fields` before the slots.
 // clang-format off
 #define SIM_CHECKED_TABLE(X) \
-	X(WORLD, max_rows, INT, NONE, PH_T | PH_G) \
+	X(WORLD, max_rows, INT, NONE, PH_G) \
 	X(WORLD, map_cols, INT, NONE, PH_T | PH_I | PH_G) \
 	X(WORLD, map_rows, INT, NONE, PH_T | PH_I | PH_G) \
 	X(WORLD, map_w, INT, NONE, PH_I) \
@@ -121,7 +121,7 @@ struct Entry {
 	X(WORLD, flow_cache_size, INT, NONE, 0) \
 	X(WORLD, retarget_period_ticks, INT, NONE, PH_T) \
 	X(WORLD, fog_period_ticks, INT, NONE, PH_G) \
-	X(WORLD, line_check_period_ticks, INT, NONE, PH_I) \
+	X(WORLD, line_check_period_ticks, INT, NONE, PH_T | PH_I) \
 	X(WORLD, stall_ticks, INT, NONE, PH_I) \
 	X(WORLD, stall_range_spacings, INT, NONE, PH_I) \
 	X(WORLD, attack_rekey_milli, INT, NONE, PH_I) \
@@ -139,15 +139,15 @@ struct Entry {
 	X(WORLD, goal_y, I32, ROWS, PH_T | PH_I) \
 	X(WORLD, group_cell, I32, ROWS, PH_I) \
 	X(WORLD, order, I32, ROWS, PH_T | PH_I) \
-	X(WORLD, hp, I32, ROWS, PH_T) \
+	X(WORLD, hp, I32, ROWS, 0) \
 	X(WORLD, order_target, I32, ROWS, PH_T) \
 	X(WORLD, target, I32, ROWS, PH_T) \
 	X(WORLD, nav_mode, I32, ROWS, PH_T | PH_I) \
-	X(WORLD, field, I32, ROWS, PH_F | PH_I) \
-	X(WORLD, nav_cell, I32, ROWS, PH_I) \
-	X(WORLD, nav_next, I32, ROWS, PH_I) \
-	X(WORLD, best_dist, I32, ROWS, PH_I) \
-	X(WORLD, stall, I32, ROWS, PH_I) \
+	X(WORLD, field, I32, ROWS, PH_F | PH_T | PH_I) \
+	X(WORLD, nav_cell, I32, ROWS, PH_T | PH_I) \
+	X(WORLD, nav_next, I32, ROWS, PH_T | PH_I) \
+	X(WORLD, best_dist, I32, ROWS, PH_T | PH_I) \
+	X(WORLD, stall, I32, ROWS, PH_T | PH_I) \
 	X(WORLD, fog_cell, I32, ROWS, PH_G) \
 	X(WORLD, intent_x, I32, MAX_ROWS, PH_S | PH_I) \
 	X(WORLD, intent_y, I32, MAX_ROWS, PH_S | PH_I) \
@@ -156,7 +156,7 @@ struct Entry {
 	X(WORLD, stats, I32, STATS, PH_F | PH_T | PH_S | PH_G) \
 	X(WORLD, events, I32, ANY, 0) \
 	X(WORLD, move_cost, BYTES, COSTS, PH_F | PH_T | PH_I) \
-	X(WORLD, type_speed, I32, ANY, PH_T | PH_I | PH_G) \
+	X(WORLD, type_speed, I32, ANY, PH_I | PH_G) \
 	X(WORLD, type_radius, I32, TYPES, PH_S) \
 	X(WORLD, type_spacing, I32, TYPES, PH_I) \
 	X(WORLD, type_armour, I32, TYPES, PH_T) \

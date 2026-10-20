@@ -42,6 +42,13 @@ extends SceneTree
 ##   sep.head, sep.next (I). The sep.* records are a grid built afresh from the dumped positions
 ##   (the World's own grid is the one the step before moved the units off), so that its lists
 ##   match the units the way the next tick's GRIDS phase makes them.
+## The TARGETING kernel (P41n) reads the unit_id, type_index, pos_x, pos_y, goal_x, goal_y, order,
+## nav_mode, nav_cell, nav_next, best_dist, stall and type_move_class records of the INTEGRATE
+## kernel, the world.field and world.move_cost records of FLOW, and adds, in _write_targeting:
+##   world.retarget_period_ticks, target.cols, target.rows, target.cell_milli (S);
+##   world.owner, .order_target, .target, .type_armour, .type_acquire, .type_weapon,
+##   .weapon_range, .weapon_min_range, .weapon_vs_armour, target.head, target.next (I). The
+##   target.* records are a grid built afresh from the dumped positions, as the sep.* ones are.
 ##
 ## Sim.step steps FLOW itself (P37b), so the step only plays and nothing here calls FlowCache. The
 ## fields come from real orders: the arena's own (both sides attack-move across its rock wall,
@@ -90,6 +97,19 @@ const SEPARATION_SCALARS: Array[StringName] = [
 	&"separation_idle_share",
 	&"separation_push_max",
 	&"separation_coincident_divisor"
+]
+## The World columns and tables that the TARGETING kernel reads or writes, beyond those of the
+## INTEGRATE records.
+const TARGETING_COLUMNS: Array[StringName] = [
+	&"owner",
+	&"order_target",
+	&"target",
+	&"type_armour",
+	&"type_acquire",
+	&"type_weapon",
+	&"weapon_range",
+	&"weapon_min_range",
+	&"weapon_vs_armour"
 ]
 const INTEGRATE_COLUMNS: Array[StringName] = [
 	&"unit_id",
@@ -215,6 +235,7 @@ func _write(world: World, path: String) -> bool:
 	_write_flow(file, world)
 	_write_integrate(file, world)
 	_write_separation(file, world)
+	_write_targeting(file, world)
 	var ok: bool = file.get_error() == OK
 	file.close()
 	return ok
@@ -280,6 +301,22 @@ func _write_separation(file: FileAccess, world: World) -> void:
 	_scalar(file, "sep.cell_milli", grid.cell_milli)
 	_ints(file, "sep.head", grid.head)
 	_ints(file, "sep.next", grid.next)
+
+
+## The TARGETING kernel's inputs that the INTEGRATE and FLOW records above do not hold: what
+## SimKernels.targeting reads and writes (bind/kernel_targeting.cpp).
+func _write_targeting(file: FileAccess, world: World) -> void:
+	_scalar(file, "world.retarget_period_ticks", world.retarget_period_ticks)
+	for member: StringName in TARGETING_COLUMNS:
+		_ints(file, "world.%s" % member, world.get(member))
+	var grid: SpatialGrid = SpatialGrid.new()
+	grid.configure(world.map_w, world.map_h, world.target_grid.cell_milli, world.max_rows)
+	grid.rebuild(world.pos_x, world.pos_y, world.unit_count())
+	_scalar(file, "target.cols", grid.cols)
+	_scalar(file, "target.rows", grid.rows)
+	_scalar(file, "target.cell_milli", grid.cell_milli)
+	_ints(file, "target.head", grid.head)
+	_ints(file, "target.next", grid.next)
 
 
 func _head(file: FileAccess, kind: String, record: String, count: int) -> void:
