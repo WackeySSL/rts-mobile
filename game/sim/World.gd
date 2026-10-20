@@ -636,7 +636,7 @@ func remove_dead() -> void:
 	var owners: PackedInt32Array = owner
 	var types: PackedInt32Array = type_index
 	var stamped: PackedInt32Array = fog_cell
-	var pad: int = fog.mask_start.size() - 1
+	var pad: int = type_sight.size()
 	var has_fog: bool = fog.cells > 0
 	for row: int in range(first, count):
 		if alive[row] <= 0:
@@ -655,17 +655,19 @@ func remove_dead() -> void:
 
 
 ## One sight mask per type, in type order, so a mask id is the type index (two types of equal sight
-## repeat their mask), and a last one of TYPE_PAD_SIGHT for a row whose type has no entry (the
-## fog code takes the smaller of the type index and the last mask id). Then the disc of every row
-## of a player (1..player_count) at its cell, so the first frame of a match shows each player's own
-## vision and the tick-0 hash includes it (ADR 0010 section 1). No map, no cells: nothing is
-## stamped. It counts nothing in `stats`.
+## repeat their mask), and the pad mask of TYPE_PAD_SIGHT after them, id `type_sight.size()`, for a
+## row whose type has no entry (the fog code takes the smaller of the type index and that id, so a
+## mask added later changes nothing). Then the disc of every row of a player (1..player_count) at
+## its cell, so the first frame of a match shows each player's own vision and the tick-0 hash
+## includes it (ADR 0010 section 1). No map, no cells: nothing is stamped. It counts nothing in
+## `stats`.
 func _stamp_fog() -> void:
 	for sight: int in type_sight:
 		fog.add_mask(sight)
-	var pad: int = fog.add_mask(TYPE_PAD_SIGHT)
+	fog.add_mask(TYPE_PAD_SIGHT)
 	if fog.cells == 0:
 		return
+	var pad: int = type_sight.size()
 	var owners: PackedInt32Array = owner
 	var types: PackedInt32Array = type_index
 	var stamped: PackedInt32Array = fog_cell

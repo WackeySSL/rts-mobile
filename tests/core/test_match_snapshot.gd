@@ -1,8 +1,9 @@
 extends GdUnitTestSuite
 ## MatchSnapshot (plan P38s, ADR 0012 section 3, ADR 0011 section 2): the view's copy of a tick.
 ## The arena (seed 42) is stepped through MatchLoop: player 1 owns ids 1-75, player 2 ids 76-150,
-## and both attack-move from tick 0, so units move on every early tick. Before P42b and P46 the sim
-## writes no projectile or fog cell, so the cases write those into the World by hand, and the
+## and both attack-move from tick 0, so units move on every early tick. The sim stamps the fog
+## (P46) and flies projectiles (P42b) from the first contact, but the cases write the projectile and
+## fog cells they check into the World by hand, so they do not depend on the movement, and the
 ## target case writes its targets by hand too, with nobody due to scan (P41 writes targets from the
 ## first contact, tick 15). Every capture gets its match_serial first, as the runner will (plan
 ## P38j).

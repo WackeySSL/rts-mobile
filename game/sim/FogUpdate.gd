@@ -7,8 +7,9 @@ extends RefCounted
 ## only the cells that really flip are listed in the dirty list (the status note of 2026-10-13 in
 ## ADR 0010 section 1; the final counts and `explored` are the same in either order). A dying row
 ## is unstamped by World.remove_dead before this phase. Integers only, no allocation. Written for
-## a C++ twin (plan row P46n): a mask id is the type index, or the last mask (sight 0) for a type
-## with no entry, and `fog_cell` is the cell last stamped.
+## a C++ twin (plan row P46n): a mask id is the type index, or `type_sight.size()`, the pad mask
+## (sight 0) that prepare() adds after one mask per type, for a type with no entry; and `fog_cell`
+## is the cell last stamped.
 
 
 ## Empties the dirty list of every player whose turn it is this tick. Sim.step calls it before
@@ -45,7 +46,7 @@ static func run(world: World) -> void:
 	var starts: PackedInt32Array = fog.mask_start
 	var radii: PackedInt32Array = fog.mask_radius
 	var half: PackedInt32Array = fog.mask_half
-	var pad: int = starts.size() - 1
+	var pad: int = world.type_sight.size()
 	var covered: int = 0
 	for row: int in owners.size():
 		var player: int = owners[row]

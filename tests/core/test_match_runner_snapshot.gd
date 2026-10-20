@@ -97,9 +97,10 @@ func test_a_restart_frees_the_old_match_at_once() -> void:
 
 
 ## One snapshot per publish: the snapshot published at tick 20 keeps every array and its fog after
-## the next tick, which publishes a new object. The arena's fog does not change in a tick before
-## the fog rules (P46b), so the test writes two fog cells of the World first. The old snapshot is
-## freed at publish, so the object count after 20 ticks equals the count right after start().
+## the next tick, which publishes a new object. The arena's fog changes while the units move (P46),
+## but the test writes two fog cells of the World by hand, so it does not depend on the movement.
+## The old snapshot is freed at publish, so the object count after 20 ticks equals the count right
+## after start().
 func test_each_tick_publishes_a_new_snapshot_and_leaves_the_old_one_alone() -> void:
 	var runner: MatchRunner = _arena_runner()
 	var objects: int = int(Performance.get_monitor(Performance.OBJECT_COUNT))
