@@ -262,6 +262,90 @@ func test_the_chase_line_is_checked_for_the_units_own_move_class() -> void:
 	assert_array(Rig.outside_sight(world)).is_empty()
 
 
+## The chase line runs from the unit to the target, not along the unit's row: rifle squad 1 stands
+## in the gap row (y 10500) and attack-moves east along it with enemy 2 idle at (17100, 8000), 4888
+## away (out of weapon range, inside acquire range) and up in the rock rows. The line to it crosses
+## the band (column 14, row 9) while the horizontal line at y 10500 is clear, so on the squad's turn
+## (tick 4, scan switched off, the target given by hand) it does not chase but goes on `DIRECT`
+## along the gap.
+func test_the_chase_line_runs_to_the_target_not_along_the_units_row() -> void:
+	var world: World = _band_world()
+	world.retarget_period_ticks = 1000000
+	world.add_unit(1, RIFLE, 12900, 10500)
+	world.add_unit(2, RIFLE, 17100, 8000)
+	world.order[0] = ATTACK_MOVE
+	world.goal_x[0] = 22500
+	world.goal_y[0] = 10500
+	world.target[0] = 2
+	world.tick = 4
+	assert_bool(_line_clear(world, 0, 1)).is_false()
+	Sim.step(world, [])
+	assert_array([world.nav_mode[0], world.target[0]]).is_equal([DIRECT, 2])
+
+
+## The `ATTACK` re-test runs along the line to the target too: tank 1 stands in the gap row with its
+## order's line marked clear (`DIRECT`, `nav_cell` set) and its target, idle tank 2, at (17100,
+## 8000), 4888 away and behind the band. On the tank's turn (tick 4) the re-test finds the line
+## blocked, resets the tank, and `Movement.run` keys the field on the target's tile the same tick:
+## `FIELD`, with a slot. A test along the tank's row would find the line clear and leave it `DIRECT`
+## to press into the band.
+func test_an_attack_unit_retests_the_line_to_its_target_not_along_its_row() -> void:
+	var world: World = _band_world()
+	world.add_unit(1, TANK, 12900, 10500)
+	world.add_unit(2, TANK, 17100, 8000)
+	world.order[0] = ATTACK
+	world.order_target[0] = 2
+	world.nav_mode[0] = DIRECT
+	world.nav_cell[0] = world.cell_of(12900, 10500)
+	world.tick = 4
+	Sim.step(world, [])
+	assert_int(world.nav_mode[0]).is_equal(FIELD)
+	assert_bool(world.field[0] >= 0).is_true()
+	assert_array([world.target[0], world.goal_x[0], world.goal_y[0]]).is_equal([2, 17100, 8000])
+
+
+## A unit on a field keeps the navigation of its order when engagement looks at its line: tank 1
+## follows a field keyed on (22500, 5500) (`FIELD`, a next tile, a best distance and a stall count)
+## with a target it holds by hand 4888 away behind the band, out of weapon range and inside acquire
+## range, on its turn (tick 4, `Targeting.run` alone, the scan off). Neither the chase test of an
+## `ATTACK_MOVE` unit nor the re-test of an `ATTACK` unit (which only a `DIRECT` unit takes) resets
+## it, whichever order it has: ADR 0009 section 3 ("keeps the path of its order") and ADR 0008
+## section 3's re-key rule. `Movement` would take the same field again, so only this phase alone
+## shows the unit untouched.
+func test_a_field_unit_keeps_its_navigation_when_engagement_checks_its_line() -> void:
+	for order: int in [ATTACK_MOVE, ATTACK]:
+		var world: World = _band_world()
+		world.retarget_period_ticks = 1000000
+		world.add_unit(1, TANK, 12900, 5500)
+		world.add_unit(2, RIFLE, 17100, 3000)
+		world.order[0] = order
+		world.order_target[0] = 2 if order == ATTACK else 0
+		world.goal_x[0] = 22500
+		world.goal_y[0] = 5500
+		world.target[0] = 2
+		var slot: int = world.flow.acquire(world.cell_of(22500, 5500), 2, world.map_version, 0)
+		world.field[0] = slot
+		world.nav_mode[0] = FIELD
+		world.nav_cell[0] = world.cell_of(12900, 5500)
+		world.nav_next[0] = 12 * COLUMNS + 12
+		world.best_dist[0] = 7000
+		world.stall[0] = 2
+		world.tick = 4
+		var label: String = "order %d" % order
+		assert_bool(_line_clear(world, 0, 1)).override_failure_message(label).is_false()
+		Rig.acquire(world)
+		var kept: Array = [FIELD, slot, world.cell_of(12900, 5500), 12 * COLUMNS + 12, 7000, 2]
+		var now: Array = [
+			world.nav_mode[0],
+			world.field[0],
+			world.nav_cell[0],
+			world.nav_next[0],
+			world.best_dist[0],
+			world.stall[0],
+		]
+		assert_array(now).override_failure_message(label).is_equal(kept)
+
+
 ## Two runs of the band fight give the same state hash at every checkpoint, and not the hashes of a
 ## run where nobody scans.
 func test_two_runs_give_the_same_hashes() -> void:

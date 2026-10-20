@@ -135,6 +135,81 @@ func test_a_new_ground_tap_does_not_move_a_unit_that_holds_an_enemy_in_range() -
 		)
 
 
+## A target that was removed is not read as the next unit up: rifle squad 1 holds enemy 2 (3000
+## away), enemy 3 stands 3162 away, in range too, and 2 is removed. Rows stay in ascending id order,
+## so the lookup of id 2 now lands on id 3's row, which is not id 2. Squad 1 resumes its path
+## (`DIRECT`, still holding the id it will replace) on the tick after the removal, which is not its
+## turn, instead of holding against the wrong unit until its next scan; at its turn, tick 14, it
+## picks the unit that is there and holds against it. Every other gone-target case removes the
+## last id, where the lookup runs off the end of the ids.
+func test_a_removed_target_is_not_read_as_the_next_higher_id() -> void:
+	var world: World = Rig.data_world()
+	world.add_unit(1, RIFLE, 6000, 6000)
+	world.add_unit(2, RIFLE, 9000, 6000)
+	world.add_unit(2, RIFLE, 9000, 7000)
+	Sim.step(world, [_order(Command.attack_move(1, PackedInt32Array([1]), 14000, 6000), world)])
+	while world.tick < 11:
+		Sim.step(world, [])
+	assert_array([world.nav_mode[0], world.target[0]]).is_equal([HOLD, 2])
+	world.hp[1] = 0
+	Sim.step(world, [])
+	assert_int(world.unit_count()).is_equal(2)
+	assert_array([world.nav_mode[0], world.target[0]]).is_equal([HOLD, 2])
+	Sim.step(world, [])
+	assert_int(world.tick).is_equal(13)
+	assert_int((world.tick - 1 + world.unit_id[0]) % 5).is_not_equal(0)
+	assert_array([world.nav_mode[0], world.target[0], world.nav_cell[0]]).is_equal([DIRECT, 2, -1])
+	while world.tick < 15:
+		Sim.step(world, [])
+	assert_array([world.nav_mode[0], world.target[0]]).is_equal([HOLD, 3])
+
+
+## A period of 0 in either cadence rule (a bare World, or a rules file set to 0) is read as 1, as
+## `Movement.run` reads it: no modulo by zero in `Targeting.run` (the scan) or in the engagement
+## (the line-check turn). With the scan period at 0 every unit is due on every tick; with the
+## line-check period at 0 an attack-moving squad is on its turn on every tick. The squad chases the
+## enemy 4800 away and then holds, as it does with a period of 5.
+func test_a_cadence_of_zero_is_read_as_one() -> void:
+	for scan: int in [0, 5]:
+		for check: int in [0, 5]:
+			var world: World = Rig.data_world()
+			world.retarget_period_ticks = scan
+			world.line_check_period_ticks = check
+			world.add_unit(1, RIFLE, 6000, 6000)
+			world.add_unit(2, RIFLE, 10800, 6000)
+			Sim.step(
+				world, [_order(Command.attack_move(1, PackedInt32Array([1]), 14000, 6000), world)]
+			)
+			var chased: bool = false
+			for _tick: int in 40:
+				Sim.step(world, [])
+				chased = chased or world.nav_mode[0] == CHASE
+			var label: String = "scan period %d, line-check period %d" % [scan, check]
+			var ended: Array = [world.nav_mode[0], world.target[0]]
+			assert_bool(chased).override_failure_message(label).is_true()
+			assert_array(ended).override_failure_message(label).is_equal([HOLD, 2])
+
+
+## The reach of a chase is inclusive, as acquisition's is (a held target is kept at exactly the
+## reach): a squad that holds enemy 2 by hand and attack-moves north chases it at exactly 5000
+## away, its acquire range, on its turn (tick 4), and does not at 5001.
+func test_an_attack_moving_unit_chases_a_target_at_exactly_its_acquire_range() -> void:
+	for gap: int in [5000, 5001]:
+		var world: World = Rig.data_world()
+		world.retarget_period_ticks = NEVER_DUE
+		world.add_unit(1, RIFLE, 6000, 6000)
+		world.add_unit(2, RIFLE, 6000 + gap, 6000)
+		world.order[0] = ATTACK_MOVE
+		world.goal_x[0] = 6000
+		world.goal_y[0] = 600
+		world.target[0] = 2
+		world.tick = 4
+		Sim.step(world, [])
+		assert_int(world.nav_mode[0]).override_failure_message("enemy %d away" % gap).is_equal(
+			CHASE if gap == 5000 else DIRECT
+		)
+
+
 ## `command` for the World's current tick.
 func _order(command: Command, world: World) -> Command:
 	command.tick = world.tick
