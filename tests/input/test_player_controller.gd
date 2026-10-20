@@ -241,6 +241,7 @@ func test_the_death_handling_reads_the_died_records_of_the_snapshot_and_not_the_
 	_runner.run_ticks(1)
 	_controller.selection.set_ids(PackedInt32Array([3, 5, 7]))
 	_runner.world = World.new()
+	assert_int(_runner.world.unit_count()).is_equal(0)
 	var records: PackedInt32Array = PackedInt32Array()
 	for record: Array in [
 		[World.Event.DIED, 5],
@@ -268,6 +269,7 @@ func test_all_army_reads_the_snapshot_and_never_the_world() -> void:
 	await _fresh_match(&"android_6in")
 	_runner.run_ticks(1)
 	_runner.world = World.new()  # Test-only: an empty World where the match's was.
+	assert_int(_runner.world.unit_count()).is_equal(0)
 	_controller.select_all_army()
 	assert_array(_controller.selection.selected).is_equal(range(1, 31))
 	_runner.snapshot.type_speed[0] = 0  # Every tank becomes a wall in the snapshot alone.

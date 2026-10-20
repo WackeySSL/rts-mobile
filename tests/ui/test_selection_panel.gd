@@ -200,6 +200,7 @@ func test_names_and_counts_come_from_the_snapshot_and_never_the_world() -> void:
 	_expect("the data's display name", "×2")
 	_runner().run_ticks(1)
 	_runner().world = World.new()  # Test-only: an empty World where the match's was.
+	assert_int(_runner().world.unit_count()).is_equal(0)
 	_runner().snapshot.type_names[0] = "Ironclad"
 	_panel.set_selected(PackedInt32Array([1, 2, 3, 999]))
 	assert_bool(_panel.visible).is_true()

@@ -6,11 +6,14 @@ extends GdUnitTestSuite
 ## idle first. live_workers() counts the started workers that are not joined, so a case proves the
 ## join of a freed runner without calling it. No case reads a getter while a job is RUNNING: its
 ## error would fail verify.sh's log scan, so the cases read the rule for the runner's state instead
-## (the one-tick-ahead case of test_match_runner_worker.gd too). The runners are built the Phase 1
-## way on the seed-42 perf arena; after_test releases every gated probe and then waits for every
-## runner still alive, so a case that fails while a probe holds a job still leaves the worker free.
+## (the one-tick-ahead case of test_match_runner_worker.gd too), and GuardRunner, whose guard
+## answers a flag and logs nothing, pins that the getters and setters ask it. The runners are built
+## the Phase 1 way on the seed-42 perf arena; after_test releases every gated probe and then waits
+## for every runner still alive, so a case that fails while a probe holds a job still leaves the
+## worker free.
 
 const GatedProbe: GDScript = preload("res://tests/core/gated_probe.gd")
+const GuardRunner: GDScript = preload("res://tests/core/support/guard_runner.gd")
 const RecordingProbe: GDScript = preload("res://tests/sim/recording_probe.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const SEED: int = 42
@@ -147,7 +150,9 @@ func test_a_runner_freed_during_a_job_outside_the_tree_joins_its_worker() -> voi
 	await _assert_freed_during_a_job_joins(false)
 
 
-## The same for a WORKER runner in the tree: its exit from the tree joins the worker.
+## The same for a WORKER runner in the tree. NOTIFICATION_PREDELETE reaches the script before the
+## runner leaves the tree, so the free joins the worker there too and _exit_tree() finds it joined;
+## the leaving-the-tree case of test_match_runner_worker.gd covers the join on a tree exit.
 func test_a_runner_freed_during_a_job_in_the_tree_joins_its_worker() -> void:
 	await _assert_freed_during_a_job_joins(true)
 
@@ -168,6 +173,59 @@ func test_a_sync_runner_starts_no_thread_and_frees_without_an_error() -> void:
 		await assert_error(func() -> void: runner.free()).is_success()
 		assert_bool(is_instance_valid(runner)).is_false()
 		assert_int(MatchRunner.live_workers()).is_equal(before)
+
+
+## live_workers() counts a runner's worker once, however many jobs it posts, and a free gives it
+## back with no job running too: a WORKER runner that published three ticks (four posts, one
+## thread) adds one, and freed in FINISHED after wait_idle(), so the join waits for nothing, it
+## gives that one back.
+func test_live_workers_counts_a_worker_once_and_a_free_with_no_job_running_gives_it_back() -> void:
+	var before: int = MatchRunner.live_workers()
+	var runner: MatchRunner = _runner(WORKER)
+	var frames: int = 0
+	while runner.snapshot.tick < 3 and frames < 64:
+		runner._process(FRAME)
+		assert_bool(runner.wait_idle()).is_true()
+		frames += 1
+	assert_array([runner.snapshot.tick, runner._state, runner.worker_active()]).is_equal(
+		[3, FINISHED, true]
+	)
+	assert_int(MatchRunner.live_workers()).is_equal(before + 1)
+	await assert_error(func() -> void: runner.free()).is_success()
+	assert_bool(is_instance_valid(runner)).is_false()
+	assert_int(MatchRunner.live_workers()).is_equal(before)
+
+
+## The four getters and the world, loop and replay setters ask the guard, _shared(): GuardRunner
+## closes it with no job in flight and no error. Closed, each getter gives null and each of the
+## three setters changes nothing; open again, the getters give the runner's own objects. `probe =`
+## goes through set_probe(), which waits idle instead.
+func test_the_getters_and_the_setters_ask_the_guard() -> void:
+	var runner: MatchRunner = auto_free(GuardRunner.new())
+	runner.scenario = load(ARENA_PATH) as ScenarioDef
+	runner.match_seed = SEED
+	var probe: SimProbe = RecordingProbe.new()
+	runner.probe = probe
+	runner.start()
+	var own: Array[Object] = [runner.world, runner.loop, runner.replay, runner.probe]
+	assert_bool(own.has(null)).is_false()
+	runner.allow = false
+	var closed: Array[bool] = [
+		runner.world == null, runner.loop == null, runner.replay == null, runner.probe == null
+	]
+	assert_array(closed).is_equal([true, true, true, true])
+	var other: MatchLoop = MatchLoop.create(null, "", SEED, World.new())
+	runner.world = World.new()
+	runner.loop = other
+	runner.replay = other.replay
+	runner.allow = true
+	var kept: Array[bool] = [
+		is_same(runner.world, own[0]),
+		is_same(runner.loop, own[1]),
+		is_same(runner.replay, own[2]),
+		is_same(runner.probe, probe),
+	]
+	assert_array(kept).is_equal([true, true, true, true])
 
 
 ## Frees a WORKER runner (in the tree when `in_tree`) while its delayed job is in flight.

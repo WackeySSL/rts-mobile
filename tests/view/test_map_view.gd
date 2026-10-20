@@ -179,6 +179,7 @@ func test_the_map_comes_from_the_snapshot_and_never_from_the_world() -> void:
 	await await_idle_frame()
 	assert_int(_view.bake_count()).is_equal(1)
 	_runner.world = World.new()  # Test-only: an empty World where the match's was.
+	assert_int(_runner.world.map_cols).is_equal(0)  # The swap took: an empty World has no map.
 	await await_idle_frame()
 	await await_idle_frame()
 	assert_that(_view.map_rect_px()).is_equal(Rect2i(0, 0, 6 * 64, 2 * 64))
