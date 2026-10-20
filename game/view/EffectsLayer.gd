@@ -14,8 +14,8 @@ extends Node2D
 ## armed neutral (owner 0) shoots like anyone, and the fog layer (P47) hides what is not seen.
 ##
 ## `_process` plans the frame's lines and quads into reused packed arrays and `_draw` paints that
-## plan: tracers as straight lines, everything else as quads of one atlas (ADR 0011 section 3, z 130
-## in ADR 0012 section 6). Tests read the plan (`line_*`, `quad_*`) and what was painted.
+## plan: tracers as straight lines (butt caps: draw_line has no round ones, which STYLE.md asks
+## for), everything else as quads of one atlas (ADR 0011 section 3, z 130 in ADR 0012 section 6).
 ##
 ## A shell that overflowed the slot pool (P42b) has a SHOT and no IMPACT, and nothing in the
 ## snapshot tells it from a shell in flight, so it gets what any projectile SHOT gets: the flash and
@@ -221,7 +221,7 @@ func _follow_match(snap: MatchSnapshot) -> void:
 
 
 ## One tick's events: a SHOT, an IMPACT or a DIED each add effects at the positions they carry.
-## All of them take the frame clock of this handler, also when the frame plays several ticks.
+## They are born at the clock read here, once per tick: a frame's earlier ticks start older.
 func _on_ticked(_tick: int) -> void:
 	var snap: MatchSnapshot = runner.snapshot
 	if snap == null:

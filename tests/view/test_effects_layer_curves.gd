@@ -156,6 +156,32 @@ func test_the_tracer_keeps_its_dp_width_at_every_zoom_on_every_screen() -> void:
 			assert_float(_layer.quad_rect(0).size.x).is_equal_approx(16.0, SIZE_TOL)
 
 
+func test_one_layer_follows_the_dp_when_the_window_changes_under_it() -> void:
+	# The tracer's width in dp has to follow the window of a running match (a resize, or the turn
+	# of the phone, ADR 0015): one layer stays through all three screens and reads the dp again.
+	get_window().size = Vector2i(1000, 700)  # None of the three, so each change below is one.
+	await await_idle_frame()
+	_make_layer()  # On the android_6in profile of before_test, 1.75 px per dp.
+	for screen: Array in SCREENS:
+		UiScale.set_override(UiProfiles.by_name(screen[1]))
+		get_window().size = screen[0]
+		await await_idle_frame()  # size_changed: the layer reads the dp again.
+		_now_ms += 1000
+		_deliver(Rig.shot(Vector2i(5000, 5000), Vector2i(9000, 5000), _weapon(&"rifle")))
+		_layer._process(0.0)
+		var note: String = "%s, %s px per dp" % [screen[1], screen[2]]
+		(
+			assert_float(_layer.line_width(1))
+			. override_failure_message("colour pass, " + note)
+			. is_equal_approx(1.5 * screen[2], SIZE_TOL)
+		)
+		(
+			assert_float(_layer.line_width(0))
+			. override_failure_message("outline pass, " + note)
+			. is_equal_approx(3.5 * screen[2], SIZE_TOL)
+		)
+
+
 func test_the_regions_are_the_atlas_table_of_style_md_and_lie_inside_the_atlas() -> void:
 	var atlas: Texture2D = load(ATLAS_PATH)
 	assert_that(atlas.get_size()).is_equal(Vector2(176, 84))  # Import scale 0.5 of 352x168.

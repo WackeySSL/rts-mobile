@@ -13,6 +13,35 @@ const BASE_SIZE: Vector2i = Vector2i(1280, 720)
 const FLASH: Rect2 = Rect2(144, 0, 32, 32)
 const PUFF: Rect2 = Rect2(84, 0, 56, 56)
 const BURST: Rect2 = Rect2(0, 0, 80, 80)
+const SCRIPT_PATH: String = "res://game/view/EffectsLayer.gd"
+## What runs every frame or every tick, and the calls that make or grow an array or a container.
+const FRAME_PATH: Array[String] = [
+	"_process",
+	"_plan",
+	"_plan_effect",
+	"_add_line",
+	"_add_quad",
+	"_draw",
+	"_on_ticked",
+	"_add_shot",
+	"_add_impact",
+	"_add_death",
+	"_push",
+	"_follow_match",
+	"_empty",
+]
+const ALLOCATING: Array[String] = [
+	"Array(",
+	".new(",
+	".append",
+	".push_back(",
+	".resize(",
+	".duplicate(",
+	".map(",
+	".filter(",
+	"func(",
+	"{",
+]
 
 var _window_size_before: Vector2i
 var _now_ms: int = 0
@@ -82,6 +111,35 @@ func test_run_ticks_gives_the_layer_every_ticks_events_once_too() -> void:
 	assert_int(_layer.active_count()).is_equal(_expected.reduce(_sum, 0))
 
 
+func test_each_ticks_effects_are_born_at_the_clock_of_that_ticks_own_emission() -> void:
+	# A frame that plays several ticks emits ticked once per tick, and the clock moves on between
+	# the emissions by the cost of the tick that ran between them: the earlier tick is the older.
+	var cannon: int = _weapon(&"tank_cannon")
+	_now_ms = 1000
+	_deliver(Rig.shot(Vector2i(5000, 5000), Vector2i(9000, 5000), cannon))
+	_now_ms = 1060
+	_deliver(Rig.shot(Vector2i(5000, 6000), Vector2i(9000, 6000), cannon))
+	_layer._process(0.0)
+	assert_int(_layer.quad_count()).is_equal(2)  # Oldest first.
+	assert_float(_layer.quad_alpha(0)).is_equal_approx(40.0 / 60.0, 0.0001)  # 60 ms into its fade.
+	assert_float(_layer.quad_alpha(1)).is_equal_approx(1.0, 0.0001)  # Born this instant.
+
+
+func test_the_default_clock_is_the_engine_clock_in_ms_and_a_flash_expires_by_it() -> void:
+	var layer: EffectsLayer = auto_free(EffectsLayer.new())  # Its clock is left at the default.
+	layer.runner = _runner
+	add_child(layer)
+	layer.set_process(false)
+	var before: int = Time.get_ticks_msec()
+	_deliver(Rig.shot(Vector2i(5000, 5000), Vector2i(9000, 5000), _weapon(&"tank_cannon")))
+	var after_tick: int = Time.get_ticks_msec()
+	assert_int(layer._born[0]).is_between(before, after_tick)  # Not usec, not a frame count.
+	OS.delay_msec(150)  # A flash lives 100 ms: a clock that stands still or counts otherwise keeps it.
+	layer._process(0.0)
+	assert_int(layer.active_count()).is_equal(0)
+	assert_int(layer.quad_count()).is_equal(0)
+
+
 func test_draw_paints_the_plan_and_paints_nothing_once_the_last_effect_is_gone() -> void:
 	await await_idle_frame()
 	assert_int(_layer.drawn_quads()).is_equal(0)
@@ -126,6 +184,31 @@ func test_frames_that_make_and_expire_effects_leave_no_objects_behind() -> void:
 	var after_frames: int = roundi(Performance.get_monitor(Performance.OBJECT_COUNT))
 	assert_int(after_frames).is_equal(before)
 	assert_int(_layer.active_count()).is_greater(0)
+
+
+func test_the_frame_path_makes_no_array_and_grows_none() -> void:
+	# The object count above cannot see an array: Packed arrays, Arrays and Dictionaries are no
+	# Objects. So the functions that run every frame or tick may not name a call that makes,
+	# resizes or grows one; the ring made its arrays once, in `_make_ring`.
+	for func_name: String in FRAME_PATH:
+		var code: String = _code_of(func_name)
+		assert_int(code.count("\n")).is_greater(2)  # The function and not its first line.
+		for token: String in ALLOCATING:
+			var note: String = "%s makes an array or grows one with %s" % [func_name, token]
+			assert_bool(code.contains(token)).override_failure_message(note).is_false()
+
+
+func test_draw_hands_every_field_of_the_plan_to_its_draw_call() -> void:
+	# Pixels cannot be read headless, so this step is pinned in the source, spaces aside: a line is
+	# painted from its two ends in its colour and width, a quad into its rect from its region with
+	# its alpha as the tint. A tint without the alpha, a region fixed in the call, a white line or
+	# a line that ends where it starts would each change this text.
+	var code: String = _code_of("_draw").replace(" ", "").replace("\t", "").replace("\n", "")
+	var line_args: String = "line_from(index),line_to(index),line_color(index),line_width(index),true"
+	var quad_args: String = "ATLAS,quad_rect(index),quad_region(index),tint"
+	assert_str(code).contains("draw_line(" + line_args + ")")
+	assert_str(code).contains("draw_texture_rect_region(" + quad_args + ")")
+	assert_str(code).contains("vartint:Color=Color(1.0,1.0,1.0,_quad_alpha[index])")
 
 
 func test_records_the_tables_do_not_know_draw_something_sane_and_other_kinds_nothing() -> void:
@@ -237,6 +320,20 @@ func _note_tick(tick: int) -> void:
 			effects += 1
 	_expected.append(effects)
 	_ticks.append(tick)
+
+
+## The code of the function `func_name` of EffectsLayer.gd, without its comments.
+func _code_of(func_name: String) -> String:
+	var source: String = FileAccess.get_file_as_string(SCRIPT_PATH)
+	var start: int = source.find("func %s(" % func_name)
+	assert_int(start).is_greater_equal(0)
+	var end: int = source.find("\n\n\n", start)  # Two blank lines end a function (gdformat).
+	if end < 0:
+		end = source.length()  # The last one.
+	var code: String = ""
+	for line: String in source.substr(start, end - start).split("\n"):
+		code += line.get_slice("#", 0) + "\n"  # Words in a comment make nothing.
+	return code
 
 
 func _sum(total: int, value: int) -> int:

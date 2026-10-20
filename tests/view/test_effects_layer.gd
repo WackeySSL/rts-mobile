@@ -115,6 +115,23 @@ func test_a_shot_of_a_projectile_weapon_draws_only_a_flash_out_at_its_muzzle() -
 		assert_vector(centre).is_equal_approx(from_px + Vector2(0.0, cases[weapon_id].y), TOL)
 
 
+func test_a_shot_has_a_tracer_when_its_weapons_projectile_speed_is_0_whatever_it_is_named() -> void:
+	# STYLE.md keys the hitscan rule on the weapon_projectile_speed column, as it keys the infantry
+	# rule on the armour column: swap the speeds of the rifle and the cannon and the tracer follows.
+	var rifle: int = _weapon(&"rifle")
+	var cannon: int = _weapon(&"tank_cannon")
+	_runner.snapshot.weapon_projectile_speed[rifle] = 600
+	_runner.snapshot.weapon_projectile_speed[cannon] = 0
+	_tick_with(Rig.shot(Vector2i(10000, 20000), Vector2i(14000, 20000), rifle))
+	assert_int(_layer.line_count()).is_equal(0)
+	assert_int(_layer.quad_count()).is_equal(1)  # Its flash only, with the rifle's size.
+	_now_ms += 1000
+	_tick_with(Rig.shot(Vector2i(10000, 20000), Vector2i(14000, 20000), cannon))
+	assert_int(_layer.line_count()).is_equal(2)
+	assert_int(_layer.quad_count()).is_equal(1)
+	assert_float(_layer.quad_rect(0).size.x).is_equal_approx(32.0, 0.001)  # The cannon's flash.
+
+
 func test_a_target_nearer_than_the_muzzle_leaves_the_muzzle_on_the_target() -> void:
 	var shooter: Vector2i = Vector2i(10000, 20000)
 	var target: Vector2i = Vector2i(10100, 20000)  # 6.4 px away, and the muzzle is 13 px out.
