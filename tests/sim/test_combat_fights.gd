@@ -33,16 +33,17 @@ const MEETING_TICKS: int = 700
 const BEFORE_DEATHS: int = 300
 
 
-## Opposing groups no longer hold for ever (the interim of P41b ends with P42a): three tanks a side
-## attack-move at each other, stop at weapon range and trade cannon fire; at tick 300 nobody has
-## died but all six hold and both sides are damaged. By tick 700 all six are gone: the two groups
-## are alike, so every tank has taken the same hits (102 hp at tick 300, 12 at tick 446) and five
-## of them are removed in tick 447, the first death; the sixth was left with 12 hp and a shell of a
-## tank that died in tick 447 lands on it in tick 448 (a shell outlives its shooter, P42b; with
-## every hit at once, in P42a, one blue tank was left). Every tank that left did so with one DIED
-## record in the tick it was removed (the ids removed from the rows are the ids in the records, so
-## the selection and the groups can follow them, P43a).
-func test_two_groups_that_meet_hold_and_fight_until_one_side_is_gone() -> void:
+## Opposing groups of equal strength no longer hold for ever (the interim of P41b ends with P42a):
+## three tanks a side attack-move at each other, stop at weapon range and trade cannon fire; at tick
+## 300 nobody has died but all six hold and both sides are damaged. By tick 700 all six are gone:
+## the two groups are alike, so every tank has taken the same hits (102 hp at tick 300, 12 at tick
+## 446) and five of them are removed in tick 447, the first death; the sixth was left with 12 hp and
+## a shell of a tank that died in tick 447 lands on it in tick 448 (a shell outlives its shooter,
+## P42b; with every hit at once, in P42a, one blue tank was left). Every tank that left did so with
+## one DIED record in the tick it was removed (the ids removed from the rows are the ids in the
+## records, so the selection and the groups can follow them, P43a). A group that outnumbers the
+## other is the next test.
+func test_two_equal_groups_that_meet_hold_and_fight_until_both_are_gone() -> void:
 	var world: World = _meeting()
 	var commands: Array[Command] = _meeting_orders(world)
 	var gone: Dictionary[int, int] = {}
@@ -72,6 +73,37 @@ func test_two_groups_that_meet_hold_and_fight_until_one_side_is_gone() -> void:
 	assert_array([gone.values().count(1), gone.values().count(2)]).is_equal([3, 3])
 	assert_int(world.unit_count()).is_equal(0)
 	assert_int(gone.size()).is_equal(6)
+
+
+## The group that outnumbers the other wins and goes on (the attack-move row of HOW_TO_PLAY, "they
+## stop to fight, then continue"): three blue tanks meet two red ones. The red tanks are removed in
+## ticks 247 and 322, one DIED record each, and no blue tank is lost (84, 138 and 300 hp are left);
+## by tick 404 the last shell has landed and each of the three has gone on to its place at the red
+## start (x 17000, 17000 and 16608, far beyond the 12200 where the fight was) and is idle with no
+## navigation mode and no target.
+func test_the_larger_group_of_a_meeting_wins_and_goes_on_to_its_goal() -> void:
+	var world: World = _meeting(2)
+	var commands: Array[Command] = _meeting_orders(world, 2)
+	var gone: Dictionary[int, int] = {}
+	var settled_at: int = -1
+	for tick: int in MEETING_TICKS:
+		Sim.step(world, commands)
+		commands.clear()
+		for record: Array in _records(world, DIED):
+			gone[record[1]] = record[5]
+		assert_array(_beyond_sight(world)).override_failure_message("tick %d" % tick).is_empty()
+		if world.owner.count(2) == 0 and world.order.count(IDLE) == world.unit_count():
+			settled_at = tick
+			break
+	assert_int(settled_at).is_equal(404)
+	assert_array([gone.values().count(1), gone.values().count(2)]).is_equal([0, 2])
+	assert_array(world.unit_id).is_equal([1, 2, 3])
+	assert_array(world.hp).is_equal([84, 138, 300])
+	assert_array(world.order).is_equal([IDLE, IDLE, IDLE])
+	assert_array(world.nav_mode).is_equal([NONE, NONE, NONE])
+	assert_array(world.target).is_equal([0, 0, 0])
+	assert_array(world.pos_x).is_equal([17000, 17000, 16608])
+	assert_int(world.max_projectiles - world.proj_free_top).is_equal(0)
 
 
 ## Two runs of the meeting give the same state hash after every tick, deaths and compaction
@@ -180,22 +212,26 @@ func test_a_ground_tap_is_followed_once_the_enemy_it_was_fighting_is_dead() -> v
 	assert_int(world.nav_mode[0]).is_equal(NONE)
 
 
-## Three tanks of each side on a 24 x 14 tile map: blue at x 3000, red at x 17000, in a column of
-## 1200 between tanks around y 6000.
-func _meeting() -> World:
+## Three blue tanks and `red_count` red ones on a 24 x 14 tile map: blue at x 3000, red at x 17000,
+## in a column of 1200 between tanks from y 4800.
+func _meeting(red_count: int = 3) -> World:
 	var world: World = Rig.data_world(24, 14)
 	for k: int in 3:
 		world.add_unit(1, TANK, 3000, 4800 + 1200 * k)
-	for k: int in 3:
+	for k: int in red_count:
 		world.add_unit(2, TANK, 17000, 4800 + 1200 * k)
 	return world
 
 
-## The two attack-moves of the meeting for the World's tick: blue to red's start, red to blue's.
-func _meeting_orders(world: World) -> Array[Command]:
+## The two attack-moves of the meeting for the World's tick: blue (ids 1 to 3) to red's start, red
+## (the `red_count` ids from 4) to blue's.
+func _meeting_orders(world: World, red_count: int = 3) -> Array[Command]:
+	var red: PackedInt32Array = PackedInt32Array()
+	for k: int in red_count:
+		red.append(4 + k)
 	var orders: Array[Command] = [
 		Command.attack_move(1, PackedInt32Array([1, 2, 3]), 17000, 6000),
-		Command.attack_move(2, PackedInt32Array([4, 5, 6]), 3000, 6000),
+		Command.attack_move(2, red, 3000, 6000),
 	]
 	for order: Command in orders:
 		order.tick = world.tick

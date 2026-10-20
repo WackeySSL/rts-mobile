@@ -32,12 +32,15 @@ extends GdUnitTestSuite
 ## lower bound below is about two thirds of the lower of the two (the way test_integrate_lockstep.gd
 ## derives its own), so that it holds on both trees. The three counts that the plain run does not
 ## reach on both are asserted by the arena cases that do: the cap on hits and the pair on one
-## point by the pile (389 and 47 on main, 277 and 12 with P42a) and the rows at the edge of the
-## grid by the pile in the corner of the map (10,375 and 4,107 in 400 ticks). The crafted cases of
-## test_separation_lockstep_cases.gd pin the same three whatever the arena does: a pile that fills
-## the cap on hits, near-coincident pairs with one pair on one point, and units at the four edges
-## and corners of the map. The rows that the probe scans are checked against the rows that the rig
-## stepped, so that a unit that dies is not counted as a row.
+## point by the pile (389 and 47 on main, 277 and 12 with P42a, 262 and 1 with P42b) and the rows
+## at the edge of the grid by the pile in the corner of the map (10,375 and 4,107 in 400 ticks).
+## The pile now meets the pair on one point once, so its floor is 1 and has no margin: a later arena
+## change may take it to 0. The crafted cases of test_separation_lockstep_cases.gd pin the same
+## three whatever the arena does: a pile that fills the cap on hits, near-coincident pairs with one
+## pair on one point, and units at the four edges and corners of the map. They are the real guard
+## of `same_point`, so when the pile drops it, its floor moves to the crafted case and the arena is
+## not tuned to bring the pair back. The rows that the probe scans are checked against the rows
+## that the rig stepped, so that a unit that dies is not counted as a row.
 
 const Rig: GDScript = preload("res://tests/sim/support/separation_lockstep_rig.gd")
 const LockstepRig: GDScript = preload("res://tests/sim/support/lockstep_rig.gd")

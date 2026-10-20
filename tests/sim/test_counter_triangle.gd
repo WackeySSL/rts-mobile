@@ -2,11 +2,14 @@ extends GdUnitTestSuite
 ## The counter triangle (P42b, the judge of ADR 0009 section 1: rifle squads beat rocket squads,
 ## rocket squads beat light tanks, light tanks beat rifle squads), on the shipped data and an open
 ## 32 x 16 tile map. Each duel is two groups in a column 1000 apart, 14000 between the columns,
-## each attack-moving to the other's start; the fight runs until one side has no unit left. The
-## duels of the plan:
+## each attack-moving to the other's start; the fight runs until one side has no unit left and no
+## shell is in flight (a shell outlives its shooter and still hits, so a side that looks like the
+## winner when the other's last unit dies may lose a unit to a shell already in the air; the
+## survivors are read only when the last shell has landed). The duels of the plan:
 ## - 6 rifle squads against 1 light tank: the tank wins (the rifles do 1 hp a hit to light armour,
 ##   the tank kills a squad in 5 shells);
-## - 2 rocket squads against 1 light tank: a squad wins (6 rockets kill the tank);
+## - 2 rocket squads against 1 light tank: a squad wins (6 rockets kill the tank; the tank's last
+##   shell still kills the second squad when the tank is dead, so one squad is left);
 ## - 6 rifle squads against 2 rocket squads: a rifle squad wins.
 ## Each is run in both orientations (the group named first as player 1, then as player 2, so that
 ## neither the lower owner nor the lower ids of a side decide it) and each run twice with the same
@@ -39,6 +42,8 @@ func test_six_rifle_squads_lose_to_one_light_tank() -> void:
 
 ## 2 rocket squads against 1 light tank: at least one squad wins and the tank is dead; the fight is
 ## short (the rockets kill a tank in 6 hits, 3 shots each, while the tank needs 5 shells a squad).
+## The tank's 5th shell is still in the air when the rockets kill it and lands after it: it kills
+## the squad that was down to 6 hp, so one squad is left and not two (read after the last shell).
 func test_two_rocket_squads_beat_one_light_tank() -> void:
 	for swapped: bool in [false, true]:
 		var label: String = "tank is player 1" if swapped else "tank is player 2"
@@ -87,7 +92,7 @@ func test_each_duel_gives_the_same_final_hash_twice_and_the_duels_differ() -> vo
 
 
 ## One duel run twice: the second result must equal the first (hash, survivors, hp, ticks), and
-## the fight must have ended before the cap. Returns the first.
+## the fight must have ended before the cap, with no shell left in flight. Returns the first.
 func _twice(
 	first_type: int, first_count: int, second_type: int, second_count: int, swapped: bool
 ) -> Dictionary:
@@ -98,14 +103,17 @@ func _twice(
 	assert_array(second["hp"]).is_equal(first["hp"])
 	assert_int(second["ticks"]).is_equal(first["ticks"])
 	assert_int(first["ticks"]).is_less(CAP)
+	assert_int(first["in_flight"]).is_equal(0)
 	assert_array(first["beyond_sight"]).is_empty()
 	return first
 
 
 ## One duel of `first_count` units of `first_type` against `second_count` of `second_type`. The
-## first group is player 1 unless `swapped`. It runs until one side has no unit, or CAP ticks, and
-## returns the ticks it took, the type index and hp of every unit left (row order), the state hash
-## after the last tick and the ids of the units that ever held a target beyond their sight.
+## first group is player 1 unless `swapped`. It runs until one side has no unit and no shell is in
+## flight (`_decided`), or CAP ticks, and returns the ticks it took, the type index and hp of every
+## unit left (row order), the state hash after the last tick, the number of shells still in flight
+## (0 unless the cap came first) and the ids of the units that ever held a target beyond their
+## sight.
 @warning_ignore("integer_division")
 func _duel(
 	first_type: int, first_count: int, second_type: int, second_count: int, swapped: bool
@@ -133,7 +141,7 @@ func _duel(
 		for id: int in _beyond_sight(world):
 			if not beyond.has(id):
 				beyond.append(id)
-		if world.owner.count(1) == 0 or world.owner.count(2) == 0:
+		if _decided(world):
 			break
 	var types: Array[int] = []
 	types.assign(world.type_index)
@@ -144,8 +152,16 @@ func _duel(
 		"types": types,
 		"hp": hp,
 		"hash": world.state_hash(),
+		"in_flight": world.max_projectiles - world.proj_free_top,
 		"beyond_sight": beyond,
 	}
+
+
+## True when one side has no unit left and every slot of the projectile pool is free again: a shell
+## outlives its shooter, so until the last one has landed the units left are not the survivors.
+func _decided(world: World) -> bool:
+	var side_gone: bool = world.owner.count(1) == 0 or world.owner.count(2) == 0
+	return side_gone and world.proj_free_top == world.max_projectiles
 
 
 ## `count` units of `type_index` of `owner_id` in a column at `x`, 1000 apart in y around 8000, and

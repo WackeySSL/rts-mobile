@@ -26,6 +26,9 @@ extends GdUnitTestSuite
 ## cannon and rocket hits land a flight time after the shot, so more units are hit before they die)
 ## the painted run reaches `no_next` 546 times, under the floor of 700 that P42a left, so its
 ## floor is 360 (two thirds of 546); the plain run has 0 and the other floors are met as before.
+## One floor keeps no margin: the painted run reaches `named` 15,064 times against a floor of
+## 15,000, where the rule keeps about two thirds. It does not fail, so it stays; the next lane that
+## moves the arena (P48, P46) re-derives it with the others, to about 10,000.
 ## That Movement.integrate hands the phase to the kernel at all is pinned by the spy case of
 ## tests/sim/test_kernel_dispatch.gd.
 

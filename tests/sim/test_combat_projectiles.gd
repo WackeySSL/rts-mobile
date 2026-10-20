@@ -214,6 +214,51 @@ func test_a_shell_follows_a_target_that_walks_away() -> void:
 	assert_int(world.hp[1]).is_equal(TOUGH - 18)
 
 
+## A shell homes on the y axis as well: the mark walks south, across the line from the shooter, at
+## 120 a tick (it takes its first step in the tick of the shot, 6000 to 6120, 3002.4 from the
+## shooter, which stands 3000 west of its column: 11 ticks at 300). After every tick the shell
+## flies, `proj_aim_x` and `proj_aim_y` are the mark's position, the aim is 120 further south than
+## the tick before, and the shell is further east and further south than the tick before. In the
+## 11th tick it lands where the mark then stands (6000 + 12 * 120 = 7440), 1320 south of the point
+## it was aimed at, and hits: 18 hp.
+func test_a_shell_follows_a_target_that_walks_across_its_line_of_fire() -> void:
+	var world: World = _duel(_shell(300), LIGHT, Vector2i(3000, 0))
+	world.target[0] = 2
+	var walk: Command = _order(Command.move(2, PackedInt32Array([2]), 11000, 11000), world)
+	var commands: Array[Command] = [walk]
+	Sim.step(world, commands)
+	commands.clear()
+	assert_array(world.events).is_equal([SHOT, 1, 8000, 6000, 2, 0, 11000, 6120])
+	assert_array(_slot(world, 0)).is_equal([1, 1, 0, 2, 8000, 6000, 11000, 6120, 11])
+	var shell_x: int = world.proj_x[0]
+	var shell_y: int = world.proj_y[0]
+	var aim_y: int = world.proj_aim_y[0]
+	var landed: int = -1
+	for tick: int in range(1, 20):
+		Sim.step(world, commands)
+		var label: String = "tick %d" % tick
+		if not _records(world, IMPACT).is_empty():
+			landed = tick
+			assert_array(world.events).override_failure_message(label).is_equal(
+				[IMPACT, 1, 11000, 7440, 2, 0, 0, 0]
+			)
+			break
+		(
+			assert_array([world.proj_aim_x[0], world.proj_aim_y[0]])
+			. override_failure_message(label)
+			. is_equal([world.pos_x[1], world.pos_y[1]])
+		)
+		assert_int(world.proj_aim_y[0]).override_failure_message(label).is_equal(aim_y + 120)
+		aim_y = world.proj_aim_y[0]
+		assert_int(world.proj_x[0]).override_failure_message(label).is_greater(shell_x)
+		assert_int(world.proj_y[0]).override_failure_message(label).is_greater(shell_y)
+		shell_x = world.proj_x[0]
+		shell_y = world.proj_y[0]
+	assert_int(landed).is_equal(11)
+	assert_array([world.pos_x[1], world.pos_y[1]]).is_equal([11000, 7440])
+	assert_int(world.hp[1]).is_equal(TOUGH - 18)
+
+
 ## A target that dies mid-flight gives an IMPACT with target 0 at the aim point, and hits nothing.
 ## The shell is fired in tick 0 at a mark 4800 east (16 ticks at 300); a rifleman 3000 north of the
 ## mark, with a cooldown that makes it fire in tick 4, kills the mark (50 hp) and REMOVE takes the
@@ -258,6 +303,38 @@ func test_a_target_that_dies_mid_flight_gives_an_impact_with_target_0_at_the_aim
 	assert_array(world.hp).is_equal([TOUGH, TOUGH, TOUGH])
 	assert_array(_slot(world, 0)).is_equal([0, 0, 0, 0, 0, 0, 0, 0, 0])
 	assert_int(world.proj_free_top).is_equal(POOL)
+
+
+## A live slot with no flight time left lands in the pass that finds it, as the whole rest of the
+## step and not as a division by 0: `Combat.fire` never writes a flight time under 1, but the
+## columns allow 0 (a slot placed by hand, a snapshot or a port that counts down differently). The
+## slot is taken off the stack by hand the way `fire` takes it, aimed at the mark 4800 east, which
+## is 12800 where it stands; one pass of `advance_projectiles` gives the IMPACT at the mark's point
+## with its id, the 18 hp of the weapon, a zeroed slot back on top of a full stack and one slot
+## stepped in `stats[PROJ_STEPS]`.
+func test_a_slot_with_no_flight_time_left_lands_in_the_pass_that_finds_it() -> void:
+	var world: World = _duel(_shell(300), LIGHT, Vector2i(4800, 0))
+	world.proj_free_top -= 1
+	var slot: int = world.proj_free[world.proj_free_top]
+	assert_int(slot).is_equal(0)
+	world.proj_id[slot] = 1
+	world.next_projectile_id = 2
+	world.proj_owner[slot] = 1
+	world.proj_weapon[slot] = 0
+	world.proj_target[slot] = 2
+	world.proj_x[slot] = 8000
+	world.proj_y[slot] = 6000
+	world.proj_aim_x[slot] = 9000
+	world.proj_aim_y[slot] = 7000
+	world.proj_ticks[slot] = 0
+	world.events.clear()
+	Combat.advance_projectiles(world)
+	assert_array(world.events).is_equal([IMPACT, 1, 12800, 6000, 2, 0, 0, 0])
+	assert_int(world.hp[1]).is_equal(TOUGH - 18)
+	assert_array(_slot(world, slot)).is_equal([0, 0, 0, 0, 0, 0, 0, 0, 0])
+	assert_int(world.proj_free_top).is_equal(POOL)
+	assert_int(world.proj_free[POOL - 1]).is_equal(slot)
+	assert_int(world.stats[PROJ_STEPS]).is_equal(1)
 
 
 ## A shell outlives its shooter and finds its target by id after the rows have moved: the shooter
@@ -349,9 +426,11 @@ func test_every_shell_that_arrives_in_the_tick_hits_a_target_an_earlier_one_has_
 ## A full pool turns a shot into a hitscan and counts `projectile_overflow`: with 2 slots, three
 ## shooters fire in tick 0 at three marks 4000 east; the first two take slots 0 and 1 (ids 1 and 2:
 ## the stack is empty, the next id is 3) and the third hits at once (its mark loses 18 in tick 0,
-## the other two nothing), with its SHOT written like the others and `projectile_overflow` 1. The
-## two shells land in tick 7 (4000 at 600), the stack has 2 slots again, the counter stays 1, and a
-## shot fired after that takes a slot again (id 3) without counting.
+## the other two nothing), with its SHOT written like the others and `projectile_overflow` 1, and
+## no IMPACT for it: tick 0 has none and tick 7 has the two of the shells (a view that draws a hit
+## from an IMPACT shows none for the overflowed shot). The two shells land in tick 7 (4000 at 600),
+## the stack has 2 slots again, the counter stays 1, and a shot fired after that takes a slot again
+## (id 3) without counting.
 func test_a_full_pool_turns_a_shot_into_a_hitscan_and_counts_the_overflow() -> void:
 	var defs: Array[UnitDef] = [
 		_def(&"gun", INFANTRY, TOUGH, _shell(600)), _def(&"mark", LIGHT, TOUGH)
@@ -374,6 +453,7 @@ func test_a_full_pool_turns_a_shot_into_a_hitscan_and_counts_the_overflow() -> v
 	for record: Array in _records(world, SHOT):
 		shooters.append(record[1])
 	assert_array(shooters).is_equal([1, 2, 3])
+	assert_array(_records(world, IMPACT)).is_empty()
 	for tick: int in range(1, 7):
 		Sim.step(world, [])
 		assert_array(world.hp.slice(3, 5)).override_failure_message("tick %d" % tick).is_equal(
@@ -381,6 +461,10 @@ func test_a_full_pool_turns_a_shot_into_a_hitscan_and_counts_the_overflow() -> v
 		)
 	Sim.step(world, [])
 	assert_array(world.hp.slice(3)).is_equal([TOUGH - 18, TOUGH - 18, TOUGH - 18])
+	var landed: Array[int] = []
+	for record: Array in _records(world, IMPACT):
+		landed.append(record[1])
+	assert_array(landed).is_equal([1, 2])
 	assert_int(world.proj_free_top).is_equal(2)
 	assert_int(world.projectile_overflow).is_equal(1)
 	world.cooldown[2] = 1

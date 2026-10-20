@@ -33,7 +33,8 @@ extends RefCounted
 ##     is ceil(dist / speed) for a whole speed, so no float and no rounding error enter;
 ##   - with no slot free (the pool is full) applies the damage as hitscan and adds 1 to
 ##     `projectile_overflow`. The performance test requires that count to stay 0 (ADR 0007 section
-##     3).
+##     3). The shot still writes its SHOT record and no IMPACT follows it: the damage landed in the
+##     shot's tick, so a view that draws a hit from an IMPACT shows none for that shot.
 ##
 ## `advance_projectiles` walks the slots in ascending slot order (a slot's number says nothing
 ## about its age once slots are reused). For each live slot (`proj_id` not 0):
