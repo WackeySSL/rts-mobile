@@ -15,10 +15,14 @@ extends GdUnitTestSuite
 ## world.native_phases = kernels.phases()), and the suite prints
 ## `PERF sim impl=native ...`, whose phone estimates read ci_ratio_native_mean and
 ## ci_ratio_native_p95. Without the library (the web, a build without native/bin) it prints one
-## plain note and no such line. Report only, like the GDScript line: no new threshold, and the
-## catastrophic cap stays the GDScript line's. Both implementations must end every checkpoint, the
-## last one included, on the same state hash. The GDScript line keeps its format exactly (P51
-## parses both lines).
+## plain note, from the native-line case, and no such line. Report only, like the GDScript line: no
+## new threshold, and the catastrophic cap stays the GDScript line's. Both implementations must end
+## every checkpoint, the last one included, on the same state hash. The GDScript line keeps its
+## format exactly (P51 parses both lines).
+## The order of the runs is G N G N G N (G the GDScript run, N the native one) and then seed 43, and
+## ref_ms is the smallest reading of the reference loop before and after all seven runs, one value
+## that both lines share. The RUN lines print grouped by implementation (the GDScript runs, seed 43,
+## then the native runs), not in the order in which the runs happened.
 ##
 ## The enforced numbers are the minimum over the three seed-42 runs of each statistic (ADR 0011
 ## section 4, a fixed method and not a retry). RUN lines print every run, apart from the `PERF`
@@ -107,8 +111,6 @@ func before() -> void:
 	print(_run_line(OTHER_SEED, 1, _seed_43))
 	for index: int in _native_42.size():
 		print(_run_line(SEED, index + 1, _native_42[index], true))
-	if not _native_loaded:
-		print(NATIVE_SKIPPED)
 
 
 func test_the_three_seed_42_runs_match_at_every_15_ticks() -> void:
@@ -360,7 +362,9 @@ func test_the_native_runs_end_on_the_gdscript_hash_at_every_checkpoint() -> void
 
 ## The second line is `PERF sim impl=native` and then the keys of the GDScript line in their order
 ## (P51 parses both), from the native runs: the same facts and the same final state as the first.
-## Without the library the suite prints the plain note instead and this case reads that.
+## Without the library this case prints the plain note instead of the line (the only place that
+## prints it, so it appears once) and reads that. verify.sh builds the library first, so that path
+## runs only when the library is hidden by hand.
 func test_the_native_line_has_impl_native_after_perf_sim_and_the_other_keys_in_order() -> void:
 	var text: String = _native_text(_native_report)
 	print(text)
@@ -374,7 +378,8 @@ func test_the_native_line_has_impl_native_after_perf_sim_and_the_other_keys_in_o
 	expected.append_array(["stats_max", "phases", "hash"])
 	assert_array(_keys_of(text)).is_equal(expected)
 	assert_str(text.get_slice("hash=", 1)).is_equal(World.hash_hex(_native_42[0].final_hash))
-	for key: String in ["units", "ticks", "runs", "alive_end", "hash"]:
+	# ref_ms is the one reference reading that both lines share (the header).
+	for key: String in ["units", "ticks", "runs", "ref_ms", "alive_end", "hash"]:
 		assert_that(_native_report[key]).override_failure_message(key).is_equal(_report[key])
 	assert_str(_native_report[PerfReport.IMPL_KEY]).is_equal(PerfReport.IMPL_NATIVE)
 	assert_bool(_report.has(PerfReport.IMPL_KEY)).is_false()
