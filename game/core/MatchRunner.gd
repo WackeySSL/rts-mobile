@@ -325,6 +325,9 @@ func _notification(what: int) -> void:
 		_join_worker()
 
 
+## Ends the worker. Its job in flight is dropped although the World has played that tick, so a
+## WORKER runner must not leave the tree during a match: its published ticks would skip one. Back
+## in the tree, start() a new match; its first job starts a new worker.
 func _exit_tree() -> void:
 	_join_worker()
 
@@ -332,7 +335,9 @@ func _exit_tree() -> void:
 ## One WORKER frame (ADR 0012 section 1): one try_wait() while a job runs; from IDLE the refill
 ## (drain, post, clock at 0, and this frame does not advance it); then each boundary the clock
 ## passes publishes the finished job and posts the next one, or holds while the job runs: nothing
-## published, no job started, the clock stopped at the boundary, so alpha() is 1.0.
+## published, no job started, the clock stopped at the boundary, so alpha() is 1.0. A `ticked`
+## handler that restarted the match in SYNC mode gets no job posted, so no job runs beside its
+## inline ticks.
 func _process_worker(delta: float) -> void:
 	var event: int = HandOffEvent.FRAME
 	if _state == HandOff.RUNNING and _job.done.try_wait():
@@ -350,6 +355,8 @@ func _process_worker(delta: float) -> void:
 			return
 		_micro_ticks -= MICRO_TICKS_PER_TICK
 		_publish_job()
+		if _mode != TickMode.WORKER:
+			return
 		_post_next()
 
 

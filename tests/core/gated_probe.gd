@@ -4,12 +4,14 @@ extends SimProbe
 ## Mutex and flags a job that begins before the one before it ended (its mark of REMOVE or a later
 ## phase). It can delay every job by a set number of ms, and hold one chosen job in begin() on the
 ## probe's own Semaphore until the test calls release(). The hold is a try_wait() loop with
-## OS.delay_msec(1) steps that gives up after about 5 s and lets the job end, because the runner's
-## join (wait_to_finish()) has no timeout and a worker left blocked would hang CI. release() is
-## idempotent. Not a test suite. It has its own file because an inner class may not extend a
-## script, and it never names itself (tests/project/test_inner_classes_extend_engine_classes.gd).
+## OS.delay_msec(1) steps that gives up after CAP_MSEC and lets the job end, because the runner's
+## join (wait_to_finish()) has no timeout and a worker left blocked would hang CI. CAP_MSEC is half
+## the runner's wait cap, so a runner freed over a held job still gets its job back before the
+## join's wait gives up with an error. release() is idempotent. Not a test suite. It has its own
+## file because an inner class may not extend a script, and it never names itself
+## (tests/project/test_inner_classes_extend_engine_classes.gd).
 
-const CAP_MSEC: int = 5000
+@warning_ignore("integer_division") const CAP_MSEC: int = MatchRunner.WAIT_CAP_MSEC / 2
 
 ## Jobs begun so far.
 var begin_count: int:
@@ -102,7 +104,7 @@ func mark(phase: int) -> void:
 		_mutex.unlock()
 
 
-## The capped hold: until release(), or about CAP_MSEC.
+## The capped hold: until release(), or CAP_MSEC.
 func _block() -> void:
 	var until: int = Time.get_ticks_msec() + CAP_MSEC
 	while not _gate.try_wait():

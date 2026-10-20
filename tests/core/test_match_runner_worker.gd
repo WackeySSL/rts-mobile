@@ -5,7 +5,10 @@ extends GdUnitTestSuite
 ## the tree) on the seed-42 perf arena and set WORKER explicitly, the exception to "headless tests
 ## run SYNC" (headless, AUTO resolves to SYNC). The cases wait only through wait_idle() and fail
 ## when it returns false; after_test releases every gated probe and then waits for every runner, so
-## a case that fails while a probe holds a job still leaves the worker free.
+## a case that fails while a probe holds a job still leaves the worker free. One case lets a frame
+## take the token itself: it runs frames of zero length while a job is in flight, capped like
+## wait_idle() (lead decision, P38w fix round 1: neither a fixed sleep nor a try_wait() on the
+## runner's semaphores).
 
 const GatedProbe: GDScript = preload("res://tests/core/gated_probe.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
@@ -121,8 +124,8 @@ func test_hand_off_is_the_table_of_adr_0012() -> void:
 
 ## resolve_mode() over every mode and (threads, web, headless): AUTO is WORKER only with threads,
 ## off the web and not headless, so the scene tests stay synchronous; SYNC and WORKER stay as asked;
-## anything else is SYNC. mode_after_start(): a failed Thread.start() makes WORKER SYNC. A runner
-## with AUTO started here (headless) ticks inline and starts no thread.
+## anything else is SYNC. mode_after_start(): any error from Thread.start() makes WORKER SYNC. A
+## runner with AUTO started here (headless) ticks inline and starts no thread.
 func test_resolve_mode_and_mode_after_start() -> void:
 	assert_array([SYNC, WORKER, AUTO]).is_equal([0, 1, 2])
 	var auto: Array[int] = []
@@ -140,10 +143,11 @@ func test_resolve_mode_and_mode_after_start() -> void:
 	var after: Array[int] = [
 		MatchRunner.mode_after_start(WORKER, OK),
 		MatchRunner.mode_after_start(WORKER, ERR_CANT_CREATE),
+		MatchRunner.mode_after_start(WORKER, FAILED),
 		MatchRunner.mode_after_start(SYNC, OK),
 		MatchRunner.mode_after_start(SYNC, ERR_CANT_CREATE),
 	]
-	assert_array(after).is_equal([WORKER, SYNC, SYNC, SYNC])
+	assert_array(after).is_equal([WORKER, SYNC, SYNC, SYNC, SYNC])
 	var runner: MatchRunner = auto_free(MatchRunner.new())
 	assert_int(runner.tick_mode).is_equal(SYNC)
 	runner = _runner(AUTO)
@@ -158,9 +162,10 @@ func test_resolve_mode_and_mode_after_start() -> void:
 ## is P38w2's). At every published tick up to 300 every snapshot field but the timings (the arrays,
 ## both prev_pos_*, prev_proj_*, events, stats, the header and the fog copy) is equal, and both
 ## replays hold the checkpoints of a pure MatchLoop run. `ticked` comes once per tick, in order, on
-## the main thread, with no job in flight and the World at that tick. Never two jobs: the gated
-## probe saw no job begin before the one before it ended, and never more jobs than the published
-## tick plus one. With the GDScript twins and with the native kernels.
+## the main thread, with no job in flight and the World at that tick. Every published snapshot is
+## a new object with its post and end times set, and still holds its tick at the end. Never two
+## jobs: the gated probe saw no job begin before the one before it ended, and never more jobs than
+## the published tick plus one. With the GDScript twins and with the native kernels.
 func test_a_worker_runner_publishes_what_a_sync_runner_does_tick_by_tick() -> void:
 	var expected: PackedInt64Array = _pure_checkpoints(TICKS)
 	assert_int(expected.size()).is_equal(TICKS / 15)
@@ -169,7 +174,8 @@ func test_a_worker_runner_publishes_what_a_sync_runner_does_tick_by_tick() -> vo
 
 
 ## With a gated probe holding job N + 1 from its begin(), the frame that publishes tick N has
-## posted it: N + 1 jobs began, one is in flight, and the snapshot is still tick N. Its boundary is
+## posted it: N + 1 jobs began, one is in flight, and the snapshot is still tick N. That is frame
+## 1 + 4N of quarter-tick frames, because the refill frame does not move the clock. Its boundary is
 ## held: frames publish nothing, start no job and keep alpha() at 1.0. After the release and
 ## wait_idle() the World is one tick ahead of the snapshot, and the next frame publishes it; the
 ## clock stopped at the held boundary, so the frame after that publishes nothing.
@@ -184,7 +190,7 @@ func test_the_worker_runs_one_tick_ahead_and_holds_a_boundary_while_its_job_runs
 		frames += 1
 		if runner.snapshot.tick < AHEAD:
 			assert_bool(runner.wait_idle()).is_true()
-	assert_int(runner.snapshot.tick).is_equal(AHEAD)
+	assert_array([runner.snapshot.tick, frames]).is_equal([AHEAD, 1 + 4 * AHEAD])
 	assert_bool(gated.wait_blocked()).is_true()
 	assert_array([gated.begin_count, runner.job_in_flight(), runner.worker_active()]).is_equal(
 		[AHEAD + 1, true, true]
@@ -244,7 +250,8 @@ func test_start_during_a_job_waits_for_it_and_drops_it() -> void:
 ## run_ticks(5) in WORKER mode advances the published tick by exactly 5 from each state: a job in
 ## flight (delayed 30 ms) is waited for and published as the first tick, a finished one is
 ## published without a wait, and from IDLE all five run inline. Every tick runs once and is
-## published once, in order, and tick 15 has a fresh run's hash. run_ticks(0) does nothing.
+## published once, in order, and tick 15 has a fresh run's hash. run_ticks(0) does nothing, with a
+## job in flight, with a finished one and from IDLE.
 func test_run_ticks_in_worker_mode_advances_the_published_tick_by_exactly_n() -> void:
 	var gated: SimProbe = _gated_probe()
 	gated.delay(DELAY_MSEC)
@@ -253,11 +260,15 @@ func test_run_ticks_in_worker_mode_advances_the_published_tick_by_exactly_n() ->
 	runner.ticked.connect(func(tick: int) -> void: seen.append(tick))
 	runner._process(FRAME)
 	assert_bool(runner.job_in_flight()).is_true()
+	runner.run_ticks(0)
+	assert_array([runner.snapshot.tick, runner.job_in_flight()]).is_equal([0, true])
 	runner.run_ticks(5)
 	assert_array(_published(runner)).is_equal([5, 5, false])
 	gated.delay(0)
 	runner._process(FRAME)
 	assert_bool(runner.wait_idle()).is_true()
+	assert_array(_published(runner)).is_equal([5, 6, false])
+	runner.run_ticks(0)
 	assert_array(_published(runner)).is_equal([5, 6, false])
 	runner.run_ticks(5)
 	assert_array(_published(runner)).is_equal([10, 10, false])
@@ -269,6 +280,117 @@ func test_run_ticks_in_worker_mode_advances_the_published_tick_by_exactly_n() ->
 	assert_array([gated.begin_count, gated.overlapped]).is_equal([15, false])
 
 
+## A frame takes the finished job's `done` token itself (FRAME_TAKEN), with no wait_idle(): frames
+## of zero length run while the job is in flight, capped like wait_idle(). The clock does not move,
+## so nothing is published. start() then drops the finished job without a wait: the second match's
+## tick-0 snapshot, no `ticked`, nothing in flight and the old World freed.
+func test_a_frame_takes_the_token_and_start_drops_the_finished_job_without_a_wait() -> void:
+	var gated: SimProbe = _gated_probe()
+	gated.delay(SHORT_DELAY_MSEC)
+	var runner: MatchRunner = _runner(WORKER, gated)
+	var seen: Array[int] = []
+	runner.ticked.connect(func(tick: int) -> void: seen.append(tick))
+	runner._process(FRAME)
+	assert_bool(runner.job_in_flight()).is_true()
+	var until: int = Time.get_ticks_msec() + MatchRunner.WAIT_CAP_MSEC
+	while runner.job_in_flight() and Time.get_ticks_msec() < until:
+		runner._process(0.0)
+	assert_bool(runner.job_in_flight()).is_false()
+	assert_array([runner.snapshot.tick, runner.world.tick]).is_equal([0, 1])
+	var old: WeakRef = weakref(runner.world)
+	runner.start()
+	assert_object(old.get_ref()).is_null()
+	var state: Array = [runner.match_serial, runner.snapshot.tick, runner.world.tick]
+	assert_array(state + [runner.job_in_flight(), seen.size()]).is_equal([2, 0, 0, false, 0])
+
+
+## A command submitted before the first frame (the refill drains it) and commands submitted in
+## `ticked(3)`, `ticked(7)` and `ticked(14)` get the same stamps in WORKER as in SYNC: 0, 3, 7 and
+## 14, because a boundary publishes and emits `ticked` before it drains (ADR 0012 section 1). The
+## replays and their checkpoints are equal. The two runners run one after the other, because the
+## CommandQueue is an autoload.
+func test_commands_get_the_same_stamps_in_both_modes() -> void:
+	var stamps: Array = []
+	var logs: Array[PackedInt32Array] = []
+	var hashes: Array[PackedInt64Array] = []
+	for mode: int in [SYNC, WORKER]:
+		var runner: MatchRunner = _runner(mode)
+		var sent: Array[Command] = [Command.move(1, PackedInt32Array([1, 2]), 20500, 30500)]
+		CommandQueue.submit(sent[0])
+		runner.ticked.connect(
+			func(tick: int) -> void:
+				if tick in [3, 7, 14]:
+					sent.append(
+						Command.move(1, PackedInt32Array([1, 2]), 20500 + tick * 500, 30500)
+					)
+					CommandQueue.submit(sent[-1])
+		)
+		assert_bool(_play_to(runner, 30)).is_true()
+		stamps.append(sent.map(func(command: Command) -> int: return command.tick))
+		logs.append(runner.replay.commands.duplicate())
+		hashes.append(runner.replay.checkpoint_hashes.duplicate())
+	assert_array(stamps).is_equal([[0, 3, 7, 14], [0, 3, 7, 14]])
+	assert_array(logs[1]).is_equal(logs[0])
+	assert_array(hashes[1]).is_equal(hashes[0])
+
+
+## A `ticked` handler that switches a WORKER runner to SYNC and restarts the match: the boundary
+## posts no job after the handler, so none is in flight once that frame returns and no job runs on
+## the worker beside the inline ticks. The new match publishes ticks 1 to 15 with a fresh run's
+## hash.
+func test_a_ticked_handler_that_restarts_in_sync_mode_gets_no_job_posted() -> void:
+	var runner: MatchRunner = _runner(WORKER)
+	var seen: Array[int] = []
+	runner.ticked.connect(
+		func(tick: int) -> void:
+			seen.append(tick)
+			if tick == 2 and runner.match_serial == 1:
+				runner.tick_mode = SYNC
+				runner.start()
+	)
+	var frames: int = 0
+	while runner.match_serial == 1 and frames < 100:
+		runner._process(FRAME)
+		frames += 1
+		if runner.match_serial == 1:
+			assert_bool(runner.wait_idle()).is_true()
+	assert_array([runner.match_serial, runner.snapshot.tick, runner.job_in_flight()]).is_equal(
+		[2, 0, false]
+	)
+	assert_bool(runner.wait_idle()).is_true()
+	while runner.snapshot.tick < 15 and frames < 200:
+		runner._process(FRAME)
+		frames += 1
+	assert_array(seen).is_equal([1, 2] + range(1, 16))
+	assert_int(runner.last_hash).is_equal(_pure_checkpoints(15)[0])
+
+
+## Leaving the tree joins the worker (ADR 0012 section 1, stop): the job in flight is waited for
+## and dropped, so the World has played a tick that is never published (why a WORKER runner must
+## not leave the tree during a match). Back in the tree, start() begins a new match whose first
+## job starts a new worker: it publishes ticks 1 to 3 in order, and leaving again joins it.
+func test_leaving_the_tree_joins_the_worker_and_a_restart_starts_a_new_one() -> void:
+	var gated: SimProbe = _gated_probe()
+	gated.delay(DELAY_MSEC)
+	var runner: MatchRunner = _runner(WORKER, gated)
+	add_child(runner)
+	runner._process(FRAME)
+	assert_array([runner.job_in_flight(), runner.worker_active()]).is_equal([true, true])
+	remove_child(runner)
+	assert_array([runner.job_in_flight(), runner.worker_active()]).is_equal([false, false])
+	assert_array([runner.snapshot.tick, runner.world.tick]).is_equal([0, 1])
+	add_child(runner)
+	gated.delay(0)
+	runner.start()
+	var seen: Array[int] = []
+	runner.ticked.connect(func(tick: int) -> void: seen.append(tick))
+	assert_bool(_play_to(runner, 3)).is_true()
+	assert_array([seen, runner.worker_active()]).is_equal([[1, 2, 3], true])
+	remove_child(runner)
+	assert_array([runner.job_in_flight(), runner.worker_active()]).is_equal([false, false])
+	assert_array([gated.begin_count, gated.overlapped]).is_equal([5, false])
+
+
 ## The lockstep of the WORKER and the SYNC runner with `impl` (see the case above).
 func _assert_lockstep(impl: int, expected: PackedInt64Array) -> void:
 	var label: String = "impl %d" % impl
@@ -278,11 +400,12 @@ func _assert_lockstep(impl: int, expected: PackedInt64Array) -> void:
 	var runners: Array[MatchRunner] = [sync, worker]
 	var pending: Array[Dictionary] = [{}, {}]
 	var ticks: Array = [[], []]
+	var kept: Array = [[], []]
 	var problems: Array[String] = []
 	for side: int in runners.size():
 		var runner: MatchRunner = runners[side]
 		runner.ticked.connect(
-			func(tick: int) -> void: _arrive(runner, side, tick, pending, ticks, problems)
+			func(tick: int) -> void: _arrive(runner, side, tick, pending, ticks, kept, problems)
 		)
 	var frames: int = 0
 	var over: int = 0
@@ -305,6 +428,13 @@ func _assert_lockstep(impl: int, expected: PackedInt64Array) -> void:
 	assert_array(pending[0].keys() + pending[1].keys()).is_empty()
 	for side: int in 2:
 		assert_array(ticks[side]).override_failure_message(label).is_equal(range(1, TICKS + 1))
+		var objects: Dictionary[int, int] = {}
+		var held: Array[int] = []
+		for snap: MatchSnapshot in kept[side]:
+			objects[snap.get_instance_id()] = snap.tick
+			held.append(snap.tick)
+		assert_array(held).override_failure_message(label).is_equal(range(1, TICKS + 1))
+		assert_int(objects.size()).override_failure_message(label).is_equal(TICKS)
 	assert_array([over, gated.begin_count, gated.overlapped]).is_equal([0, TICKS + 1, false])
 	for runner: MatchRunner in runners:
 		assert_array(runner.replay.checkpoint_hashes).override_failure_message(label).is_equal(
@@ -320,23 +450,28 @@ func _assert_lockstep(impl: int, expected: PackedInt64Array) -> void:
 	assert_array(names).not_contains(["job_usec", "fog"])
 
 
-## A `ticked(tick)` of runner `side` (0 SYNC, 1 WORKER): checks the thread, that no job is in flight
-## and that the World and the snapshot are at `tick`, then compares the snapshot with the other
-## runner's of the same tick, or keeps it until that one arrives.
+## A `ticked(tick)` of runner `side` (0 SYNC, 1 WORKER): keeps the snapshot, checks the thread, that
+## no job is in flight, that the World and the snapshot are at `tick` and the snapshot's post and
+## end times, then compares the snapshot with the other runner's of the same tick, or keeps its
+## values until that one arrives.
 func _arrive(
 	runner: MatchRunner,
 	side: int,
 	tick: int,
 	pending: Array[Dictionary],
 	ticks: Array,
+	snaps: Array,
 	problems: Array[String]
 ) -> void:
 	ticks[side].append(tick)
+	snaps[side].append(runner.snapshot)
 	var where: String = "side %d tick %d: " % [side, tick]
 	if OS.get_thread_caller_id() != _main_thread:
 		problems.append(where + "ticked off the main thread")
 	if runner.job_in_flight() or runner.world.tick != tick or runner.snapshot.tick != tick:
 		problems.append(where + "a job in flight, or the World or the snapshot at another tick")
+	if runner.snapshot.post_usec <= 0 or runner.snapshot.end_usec < runner.snapshot.post_usec:
+		problems.append(where + "no post time, or an end time before it")
 	var state: Dictionary = _state_of(runner.snapshot)
 	var other: Dictionary = pending[1 - side]
 	if not other.has(tick):
@@ -372,6 +507,18 @@ func _state_of(snap: MatchSnapshot) -> Dictionary:
 ## wait_idle() or with none in flight.
 func _published(runner: MatchRunner) -> Array:
 	return [runner.snapshot.tick, runner.world.tick, runner.job_in_flight()]
+
+
+## Plays `runner` with the jittered frames and wait_idle() after each until it publishes `tick`;
+## false when a wait reaches its cap or the frames run out.
+func _play_to(runner: MatchRunner, tick: int) -> bool:
+	var frames: int = 0
+	while runner.snapshot.tick < tick and frames < 8 * tick + 8:
+		runner._process(FRAMES[frames % FRAMES.size()])
+		frames += 1
+		if not runner.wait_idle():
+			return false
+	return runner.snapshot.tick == tick
 
 
 ## The states and steps hand_off() gives for `events` in turn, from `state`.
