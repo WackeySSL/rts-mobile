@@ -20,6 +20,7 @@
 [ext_resource type="Script" path="res://game/ui/HudTheme.gd" id="17_hud_theme"]
 [ext_resource type="Script" path="res://game/view/EffectsLayer.gd" id="19_effects"]
 [ext_resource type="Script" path="res://game/view/HealthBarLayer.gd" id="18_bars"]
+[ext_resource type="Script" path="res://game/view/ProjectileLayer.gd" id="19_projectiles"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -46,6 +47,12 @@ z_as_relative = false
 script = ExtResource("18_bars")
 runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
+
+[node name="ProjectileLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
+z_index = 120
+z_as_relative = false
+script = ExtResource("19_projectiles")
+runner = NodePath("../MatchRunner")
 
 [node name="EffectsLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
 z_index = 130
