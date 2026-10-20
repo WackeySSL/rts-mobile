@@ -103,6 +103,18 @@ func test_a_slot_is_drawn_at_the_lerp_of_its_two_positions_and_turned_along_the_
 	assert_vector(_layer.quad_position(1)).is_equal_approx(
 		Vector2(28500, 4000) * PX_PER_MILLI, _eps()
 	)
+	_runner._process(FRAME_QUARTER)  # Alpha 0.75: the last frame before the next tick.
+	assert_float(_runner.alpha()).is_equal(0.75)
+	_frame()
+	assert_vector(_layer.quad_position(0)).is_equal_approx(
+		Vector2(9250, 21000) * PX_PER_MILLI, _eps()
+	)
+	assert_vector(_layer.quad_position(1)).is_equal_approx(
+		Vector2(27750, 4000) * PX_PER_MILLI, _eps()
+	)
+	assert_vector(_layer.quad_position(2)).is_equal_approx(
+		Vector2(2000, 4000) * PX_PER_MILLI, _eps()
+	)
 
 
 func test_the_drawn_count_is_the_live_slots_that_are_not_new() -> void:

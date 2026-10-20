@@ -152,6 +152,47 @@ func test_a_squad_that_moves_faces_its_target_and_not_where_it_goes() -> void:
 	assert_float(_part(1, "Team").rotation).is_equal(_part(1, "Hull").rotation)
 
 
+func test_a_turret_takes_the_short_way_round_when_the_bearing_crosses_due_west() -> void:
+	_start([_spawn(1, "light_tank", 10, 10), _spawn(2, "light_tank", 10, 13)])
+	var snap: MatchSnapshot = _runner.snapshot
+	# The target 3 tiles west of the tank and a little north: bearing atan2(-500, -3000) = -2.976.
+	for column: PackedInt32Array in [snap.prev_pos_x, snap.pos_x]:
+		column[1] = snap.pos_x[0] - 3000
+	for column: PackedInt32Array in [snap.prev_pos_y, snap.pos_y]:
+		column[1] = snap.pos_y[0] - 500
+	snap.target[0] = snap.unit_id[1]
+	snap.target_row[0] = 1
+	_frames(12)
+	assert_float(_part(0, "Turret").rotation).is_equal_approx(atan2(-500.0, -3000.0), 0.001)
+	# The target is a little south of due west now: bearing +2.976, 0.33 rad from the turret across
+	# the west, not 5.95 rad the other way. One frame (0.6 rad) is enough.
+	for column: PackedInt32Array in [snap.prev_pos_y, snap.pos_y]:
+		column[1] = snap.pos_y[0] + 500
+	_layer._process(FRAME_SECONDS)
+	var want: float = atan2(500.0, -3000.0)
+	assert_float(absf(angle_difference(_part(0, "Turret").rotation, want))).is_less(0.001)
+
+
+func test_a_squad_takes_the_short_way_round_when_the_bearing_crosses_due_west() -> void:
+	# The red tank is row 0 and the blue squad row 1; the squad's target is row 0, west of it.
+	_start([_spawn(2, "light_tank", 10, 13), _spawn(1, "rifle_squad", 10, 10)])
+	var snap: MatchSnapshot = _runner.snapshot
+	for column: PackedInt32Array in [snap.prev_pos_x, snap.pos_x]:
+		column[0] = snap.pos_x[1] - 3000
+	for column: PackedInt32Array in [snap.prev_pos_y, snap.pos_y]:
+		column[0] = snap.pos_y[1] - 500
+	snap.target[1] = snap.unit_id[0]
+	snap.target_row[1] = 0
+	_frames(12)
+	assert_float(_part(1, "Hull").rotation).is_equal_approx(atan2(-500.0, -3000.0), 0.001)
+	for column: PackedInt32Array in [snap.prev_pos_y, snap.pos_y]:
+		column[0] = snap.pos_y[1] + 500
+	_layer._process(FRAME_SECONDS)
+	var want: float = atan2(500.0, -3000.0)
+	assert_float(absf(angle_difference(_part(1, "Hull").rotation, want))).is_less(0.001)
+	assert_float(_part(1, "Team").rotation).is_equal(_part(1, "Hull").rotation)
+
+
 func test_a_target_that_died_in_the_tick_leaves_the_turret_where_it_was() -> void:
 	_start([_spawn(1, "light_tank", 10, 10), _spawn(2, "light_tank", 10, 13)])
 	_run_until_target(0)
@@ -196,6 +237,26 @@ func test_with_no_target_left_the_turret_swings_back_onto_its_hull() -> void:
 	_runner.run_ticks(1)
 	_frames(12)
 	assert_float(_part(0, "Hull").rotation).is_equal_approx(-SOUTH, 0.001)
+	assert_float(_part(0, "Turret").rotation).is_equal(_part(0, "Hull").rotation)
+
+
+func test_with_no_target_the_turret_follows_the_hull_as_drawn_and_not_where_it_will_face() -> void:
+	_start([_spawn(1, "light_tank", 10, 10), _spawn(2, "light_tank", 10, 20)])
+	var snap: MatchSnapshot = _runner.snapshot
+	snap.target[0] = snap.unit_id[1]  # Aimed at the red tank, 10 tiles south.
+	snap.target_row[0] = 1
+	_frames(12)
+	assert_float(_part(0, "Turret").rotation).is_equal_approx(SOUTH, 0.001)
+	snap.target[0] = 0  # No target left, and the hull's last move was a full step due south:
+	snap.target_row[0] = -1  # the hull is to turn from east to south, the turret is already there.
+	snap.prev_pos_y[0] = snap.pos_y[0] - 120  # A full step (data/units/light_tank.tres).
+	_layer._process(FRAME_SECONDS)
+	# The hull has turned 0.6 rad and the turret follows that hull, not its end point, so it swings
+	# back by 0.6 rad too, and the two meet only when the hull is there.
+	assert_float(_part(0, "Hull").rotation).is_equal_approx(TURN_PER_FRAME, 0.001)
+	assert_float(_part(0, "Turret").rotation).is_equal_approx(SOUTH - TURN_PER_FRAME, 0.001)
+	_frames(12)
+	assert_float(_part(0, "Hull").rotation).is_equal_approx(SOUTH, 0.001)
 	assert_float(_part(0, "Turret").rotation).is_equal(_part(0, "Hull").rotation)
 
 
