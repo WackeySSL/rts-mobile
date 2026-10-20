@@ -81,6 +81,11 @@ kernel, INTEGRATE) and P37n3 (#109, its lockstep), dated status notes from "P26x
 structure; the checked table's counts; `step_toward`) and §10 (the sanitizer job's path filter
 and dump step as P57b merged them). No accepted text changed.
 
+Status note (2026-10-20, P26y docs): after the merge of P39n (#113, the third kernel,
+SEPARATION), a dated status note from "P26y docs" sits in §2 (SEPARATION's checked list trimmed
+from 28 to 20 names, the empty-grid return, the divisor's recorded range). No accepted text
+changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -664,6 +669,24 @@ absorbs next to the C++ phases.
     rule fires. `isqrt`, `best_neighbour` and `acquire` landed with INTEGRATE, and FLOW's
     per-call loop moved into `core/flow.h` as `flow::run` (the plan's "Answers and follow-ups
     (P26s docs)", decision 3).
+
+  Status note (2026-10-20, P26y docs, P39n as merged, #113), the text above stays as accepted:
+  - **SEPARATION's checked list** holds the 20 names `Separation.run` reads (P54's note above:
+    28): the five rule ints `separation_neighbours`, `separation_scan`, `separation_idle_share`,
+    `separation_push_max` and `separation_coincident_divisor`, the World's `unit_id`,
+    `type_index`, `type_radius`, `pos_x`, `pos_y`, `intent_x`, `intent_y`, `push_x`, `push_y` and
+    `stats`, and `sep_grid`'s `cols`, `rows`, `cell_milli`, `head` and `next`. `max_rows`,
+    `map_cols`, `map_rows`, `map_w`, `map_h`, `move_cost`, `type_speed` and `type_move_class`
+    lost its bit, as INTEGRATE's list was trimmed in P37n. No name was added; the table still
+    holds 107 entries.
+  - **The empty-grid return.** The twin and the kernel both return with every push 0 when the
+    grid has no cells or a cell side below 1 (`cols == 0 or side < 1`): in C++ a cell side below 1
+    would divide by zero.
+  - **The divisor's range is recorded, not clamped** (P39n's call, as the plan left it):
+    `core/separation.h` states the pass exact in `int64` while the positions stay within 10^9
+    milli-tiles, a pair's reach is at most 2,097,151 and `reach * coincident_divisor` is at most
+    3,037,000,499. Past that the production build wraps like the twin (`-fwrapv`) and the
+    sanitizer build aborts.
 
 ### 3. Dispatch and the implementation switch
 - **`World` gains two members (P54):**
