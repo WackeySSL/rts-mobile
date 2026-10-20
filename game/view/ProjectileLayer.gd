@@ -16,9 +16,9 @@ extends Node2D
 ## The layer reads `runner.snapshot` afresh in every frame and keeps nothing between frames but
 ## its plan, which `_process` rebuilds from the snapshot, so a new match (another `match_serial`)
 ## starts from an empty plan. `_process` writes the plan into reused packed arrays and `_draw`
-## paints it through the same accessors, so a frame creates no object, and tests read the plan
-## (`active_count`, `quad_slot`, `quad_position`, `quad_angle`, `quad_region`) and what was
-## painted (`drawn_count`). Only atlas quads are painted, in one `_draw()`.
+## paints the same arrays, so a frame creates no object. Tests read the plan through `active_count`
+## and the accessors `quad_slot`, `quad_position`, `quad_angle` and `quad_region`, and what was
+## painted through `drawn_count`. Only atlas quads are painted, in one `_draw()`.
 
 const ATLAS_ART: String = "res://assets/art/svg/fx/effects_atlas.svg"
 ## Regions of the atlas in the px of the imported texture (STYLE.md: SHELL 84,60,16,8 and ROCKET

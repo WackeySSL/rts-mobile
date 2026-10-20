@@ -6,10 +6,11 @@ extends Node2D
 ## between them: each frame a rig stands at prev + (cur - prev) * runner.alpha() in px, and the
 ## hull and team layers turn toward the last direction the unit moved in. A turret turns on its
 ## own toward the unit's target (`snapshot.target_row`, computed on the worker, so the layer never
-## searches for a row), at the bearing between the two positions of the snapshot, taken once per
-## tick; it follows the hull while the unit has no target and stays where it is for the ticks in
-## which the target is gone but not yet replaced. A rig without a turret (a squad) turns as a whole
-## toward its target instead. The turns are view effects and never touch the World.
+## searches for a row) as the target is drawn, at the bearing between the interpolated positions of
+## the two rigs (ADR 0011 section 2), in every frame; it follows the hull while the unit has no
+## target and stays where it is for the ticks in which the target is gone but not yet replaced. A
+## rig without a turret (a squad) turns as a whole toward its target instead. The turns are view
+## effects and never touch the World.
 ## Rigs are the children of this node in row order, so rig `i` shows unit row `i`, and they follow
 ## their unit by id: a death frees its rig, a new row gets a new one, a new match rebuilds all.
 ## A selected unit has a Ring as the first child of its rig, under the layers. Each layer draws at
@@ -38,7 +39,7 @@ const NEVER_HIT: int = -1  ## What hit_time_ms answers for a unit whose hp has n
 @export var team_colors: PackedColorArray = PackedColorArray(
 	[Color("9AA5B1"), Color("2F80ED"), Color("E5484D")]
 )
-## How fast a hull turns, in radians per second.
+## How fast a hull, a turret or a squad rig turns, in radians per second.
 @export var turn_rate: float = 12.0
 @export var runner: MatchRunner
 @export var camera: RtsCamera
@@ -56,10 +57,6 @@ var _layers: Array[Sprite2D] = []
 var _heading: PackedFloat64Array = PackedFloat64Array()  ## Angle the layers show now.
 var _aim: PackedFloat64Array = PackedFloat64Array()  ## Where the hull turns to. East is 0.
 var _turret: PackedFloat64Array = PackedFloat64Array()  ## Angle the Turret layer shows now.
-## Bearing of row `i` to its target (`snapshot.target_row`), valid where that is 0 or more, and the
-## tick of the snapshot it was made from.
-var _bearing: PackedFloat64Array = PackedFloat64Array()
-var _bearing_tick: int = -1
 var _rings: Array[Ring] = []  ## Ring of row `i`, made the first time that unit is selected.
 var _ringed: PackedInt32Array = PackedInt32Array()  ## Rows whose ring shows.
 ## hp of row `i` as the layer last saw it, and the clock at which it last fell (NEVER_HIT for
@@ -223,7 +220,6 @@ func _clear_rigs() -> void:
 	_last_hp.clear()
 	_hit_ms.clear()
 	_hp_tick = -1
-	_bearing_tick = -1
 
 
 ## Makes the rigs the rows of `snap` by a merge walk over the ascending ids: a unit that is still
@@ -381,27 +377,8 @@ func team_color(owner_id: int) -> Color:
 	return team_colors[owner_id if known else 0]
 
 
-## The bearing of each row to the target in its `target_row`, from the positions of `snap` (east is
-## 0), once per tick and not per frame: the turrets and squads ease toward it, and a unit moves a
-## step in a tick at most, so the interpolated positions would change the answer by less than the
-## step over the range. A row with no target keeps its old entry, which nothing reads.
-func _note_bearings(snap: MatchSnapshot) -> void:
-	_bearing_tick = snap.tick
-	var target_rows: PackedInt32Array = snap.target_row
-	var cur_x: PackedInt32Array = snap.pos_x
-	var cur_y: PackedInt32Array = snap.pos_y
-	_bearing.resize(target_rows.size())
-	var bearings: PackedFloat64Array = _bearing
-	for row: int in target_rows.size():
-		var seen: int = target_rows[row]
-		if seen >= 0:
-			bearings[row] = atan2(float(cur_y[seen] - cur_y[row]), float(cur_x[seen] - cur_x[row]))
-
-
 ## Places the rigs and turns the layers. Allocates nothing: it only sets properties.
 func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
-	if snap.tick != _bearing_tick:
-		_note_bearings(snap)
 	var alpha: float = runner.alpha()
 	var step: float = turn_rate * delta
 	var prev_x: PackedInt32Array = snap.prev_pos_x
@@ -412,7 +389,6 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 	var speeds: PackedInt32Array = snap.type_speed
 	var targets: PackedInt32Array = snap.target
 	var target_rows: PackedInt32Array = snap.target_row
-	var bearings: PackedFloat64Array = _bearing
 	var rigs: Array[Node2D] = _rigs
 	var layers: Array[Sprite2D] = _layers
 	var layer_count: int = LAYER_FILES.size()
@@ -432,8 +408,14 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 			_aim[row] = atan2(float(moved_y), float(moved_x))
 		var seen: int = target_rows[row]
 		var turret: Sprite2D = layers[row * layer_count + TURRET_LAYER]
-		if seen >= 0 and turret == null:
-			_aim[row] = bearings[row]  # No turret to swing: the whole rig faces its target.
+		var bearing: float = 0.0  # To the target as drawn, from rig to rig; east is 0.
+		if seen >= 0:
+			bearing = atan2(
+				lerpf(prev_y[seen], cur_y[seen], alpha) - lerpf(prev_y[row], cur_y[row], alpha),
+				lerpf(prev_x[seen], cur_x[seen], alpha) - lerpf(prev_x[row], cur_x[row], alpha)
+			)
+			if turret == null:
+				_aim[row] = bearing  # No turret to swing: the whole rig faces its target.
 		if _heading[row] != _aim[row]:
 			# Not rotate_toward: after a turn through +-PI it ends at the aim +- TAU, never equal.
 			var turn: float = angle_difference(_heading[row], _aim[row])
@@ -446,7 +428,7 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 		# A target that is gone but still held (`target` not yet replaced by the sim) leaves it.
 		var want: float = _heading[row]
 		if seen >= 0:
-			want = bearings[row]
+			want = bearing
 		elif targets[row] != 0:
 			want = _turret[row]
 		if _turret[row] != want:

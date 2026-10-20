@@ -1,14 +1,15 @@
 extends GdUnitTestSuite
 ## Where UnitLayer aims (plan P44a): a turret eases onto the bearing of the row in
-## `snapshot.target_row` (computed on the worker, never searched here) and a rig without a turret,
-## a squad, turns as a whole; a unit with no target keeps its turret on its hull; a target that is
-## gone but not yet replaced (`target_row` -1 while `target` is not 0) leaves the turret where it
-## was. Cases with exact numbers write positions and rows into the published snapshot (ADR 0012
-## section 3 allows it in SYNC mode); the others run the real sim: two units 3 tiles apart on open
-## grass, the second south of the first, so the bearing of the first to the second is PI / 2. The
-## hull turns at 12 rad/s, so a frame of 0.05 s turns it 0.6 rad. The runner is not in the tree, so
-## only the calls here move time. The rows, merges and heading of the layer are in
-## test_unit_layer.gd and test_unit_layer_rows.gd (gdlint allows 20 public methods per file).
+## `snapshot.target_row` (computed on the worker, never searched here), taken between the rigs as
+## they are drawn (ADR 0011 section 2), and a rig without a turret, a squad, turns as a whole; a
+## unit with no target keeps its turret on its hull; a target that is gone but not yet replaced
+## (`target_row` -1 while `target` is not 0) leaves the turret where it was. Cases with exact
+## numbers write positions and rows into the published snapshot (ADR 0012 section 3 allows it in
+## SYNC mode); the others run the real sim: two units 3 tiles apart on open grass, the second south
+## of the first, so the bearing of the first to the second is PI / 2. The hull turns at 12 rad/s,
+## so a frame of 0.05 s turns it 0.6 rad. The runner is not in the tree, so only the calls here
+## move time. The rows, merges and heading of the layer are in test_unit_layer.gd and
+## test_unit_layer_rows.gd (gdlint allows 20 public methods per file).
 
 const FRAME_SECONDS: float = 0.05
 const TURN_PER_FRAME: float = 0.6  ## 12 rad/s * FRAME_SECONDS.
@@ -49,45 +50,52 @@ func test_a_turret_eases_onto_its_target_while_the_hull_keeps_its_heading() -> v
 		assert_float(_part(row, "Team").rotation).is_equal(0.0)
 
 
-func test_the_bearing_is_taken_between_the_positions_of_the_tick_and_again_in_the_next() -> void:
+func test_the_bearing_follows_both_rigs_as_they_are_drawn_within_a_tick() -> void:
 	_start([_spawn(1, "light_tank", 10, 10), _spawn(2, "light_tank", 20, 20)])
 	var snap: MatchSnapshot = _runner.snapshot
 	snap.prev_pos_x[0] = 9000  # The tank itself moves from (9000, 9000) to (11000, 11000),
 	snap.prev_pos_y[0] = 9000
 	snap.pos_x[0] = 11000
 	snap.pos_y[0] = 11000
-	snap.prev_pos_x[1] = 13000  # and the target from (13000, 10000) to (13000, 16000).
+	snap.prev_pos_x[1] = 13000  # and the target from (13000, 10000) to (15000, 16000).
 	snap.prev_pos_y[1] = 10000
-	snap.pos_x[1] = 13000
+	snap.pos_x[1] = 15000
 	snap.pos_y[1] = 16000
 	snap.target[0] = snap.unit_id[1]
 	snap.target_row[0] = 1
-	snap.tick += 1  # Written as the next tick, so that the layer takes its bearings from it.
-	_runner._process(1.0 / 30.0)  # Half a tick on: alpha 0.5, which the bearing does not follow.
+	# No tick passes below: the snapshot stays the same one, and only alpha moves.
+	_frames(10)  # Alpha 0: the rigs stand on their previous positions, 4000 east and 1000 south.
+	assert_float(_part(0, "Turret").rotation).is_equal_approx(atan2(1000.0, 4000.0), 0.001)
+	_runner._process(1.0 / 30.0)  # Alpha 0.5: (10000, 10000) and (14000, 13000).
 	assert_float(_runner.alpha()).is_equal(0.5)
 	_frames(10)
-	assert_float(_part(0, "Turret").rotation).is_equal_approx(atan2(5000.0, 2000.0), 0.001)
-	snap.pos_x[1] = 8000  # The next tick: the target stands at (8000, 16000), north-west of
-	snap.tick += 1  # the tank's (11000, 11000), 3000 to the west and 5000 to the south.
+	var halfway: float = _part(0, "Turret").rotation
+	assert_float(halfway).is_equal_approx(atan2(3000.0, 4000.0), 0.001)
+	# The bearing between the positions of the tick, which the turret once took, is another one.
+	var of_the_tick: float = atan2(5000.0, 4000.0)
+	assert_float(absf(angle_difference(halfway, of_the_tick))).is_greater(0.2)
+	_runner._process(1.0 / 60.0)  # Alpha 0.75: (10500, 10500) and (14500, 14500).
+	assert_float(_runner.alpha()).is_equal(0.75)
 	_frames(10)
-	assert_float(_part(0, "Turret").rotation).is_equal_approx(atan2(5000.0, -3000.0), 0.001)
+	assert_float(_part(0, "Turret").rotation).is_equal_approx(PI / 4.0, 0.001)
+	# That is the bearing between the two rigs on the screen, which is what the player compares.
+	var between: Vector2 = _rig(1).position - _rig(0).position
+	assert_float(_part(0, "Turret").rotation).is_equal_approx(between.angle(), 0.001)
 
 
-func test_a_new_match_takes_the_bearings_again_even_at_the_same_tick() -> void:
+func test_the_turret_reads_target_row_and_never_looks_the_target_up_by_id() -> void:
+	# Columns the sim would not write, so that only the row of the worker can explain the result:
+	# row 0 has a row to aim at and no target id, row 1 has a target id and no row.
 	_start([_spawn(1, "light_tank", 10, 10), _spawn(2, "light_tank", 10, 13)])
 	var snap: MatchSnapshot = _runner.snapshot
-	snap.target[0] = snap.unit_id[1]  # Tick 7 of a match, the target 3000 to the south.
+	snap.target[0] = 0
 	snap.target_row[0] = 1
-	snap.tick = 7
-	_frames(10)
+	snap.target[1] = snap.unit_id[0]  # An id that is in the snapshot, with its row gone.
+	snap.target_row[1] = -1
+	_frames(12)
 	assert_float(_part(0, "Turret").rotation).is_equal_approx(SOUTH, 0.001)
-	_start([_spawn(1, "light_tank", 10, 10), _spawn(2, "light_tank", 13, 10)], false)
-	snap = _runner.snapshot  # Tick 7 of the next, the target 3000 to the east.
-	snap.target[0] = snap.unit_id[1]
-	snap.target_row[0] = 1
-	snap.tick = 7
-	_frames(10)
-	assert_float(_part(0, "Turret").rotation).is_equal_approx(0.0, 0.001)
+	assert_float(_part(1, "Turret").rotation).is_equal(0.0)  # Held where it was, east.
+	assert_float(_part(1, "Hull").rotation).is_equal(0.0)
 
 
 func test_the_hull_turns_on_the_move_while_the_turret_holds_its_target() -> void:
@@ -128,6 +136,21 @@ func test_a_squad_rig_turns_as_a_whole_toward_its_target() -> void:
 	assert_int(_runner.snapshot.target_row[0]).is_equal(-1)  # The squad is row 0 now.
 	_frames(10)
 	assert_float(_part(0, "Hull").rotation).is_equal_approx(SOUTH, 0.001)
+
+
+func test_a_squad_that_moves_faces_its_target_and_not_where_it_goes() -> void:
+	# The red tank is row 0 and the blue squad row 1. The squad's last move was a full step due
+	# east, its target is 3 tiles to the south: with no turret to swing, the rig faces the target.
+	_start([_spawn(2, "light_tank", 10, 13), _spawn(1, "rifle_squad", 10, 10)])
+	var snap: MatchSnapshot = _runner.snapshot
+	snap.target[1] = snap.unit_id[0]
+	snap.target_row[1] = 0
+	snap.prev_pos_x[1] = snap.pos_x[1] - snap.type_speed[snap.type_index[1]]
+	_frames(10)
+	var between: Vector2 = _rig(0).position - _rig(1).position  # The rigs on the screen.
+	assert_float(between.angle()).is_greater(1.4)  # South, so not the 0.0 of the move.
+	assert_float(_part(1, "Hull").rotation).is_equal_approx(between.angle(), 0.001)
+	assert_float(_part(1, "Team").rotation).is_equal(_part(1, "Hull").rotation)
 
 
 func test_a_target_that_died_in_the_tick_leaves_the_turret_where_it_was() -> void:

@@ -204,6 +204,7 @@ func test_the_regions_are_the_shell_and_the_rocket_of_an_atlas_that_keeps_its_si
 	assert_that(ProjectileLayer.SHELL_REGION).is_equal(SHELL)
 	assert_that(ProjectileLayer.ROCKET_REGION).is_equal(ROCKET)
 	assert_str(ProjectileLayer.ATLAS_ART).is_equal(ATLAS_PATH)
+	assert_str(_layer._atlas.resource_path).is_equal(ATLAS_PATH)  # The quads are cut from it.
 	var atlas: Texture2D = load(ATLAS_PATH)
 	assert_vector(atlas.get_size()).is_equal(ATLAS_SIZE)
 	for region: Rect2 in [SHELL, ROCKET]:
