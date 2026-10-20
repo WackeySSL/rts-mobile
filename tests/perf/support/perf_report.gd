@@ -8,6 +8,11 @@ extends RefCounted
 const WINDOW_TICKS: int = 15
 ## The statistics of one run, in the order of the `PERF` line.
 const STAT_KEYS: Array[String] = ["mean_ms", "p50_ms", "p95_ms", "p99_ms", "max_ms", "worst15_ms"]
+## The implementation key of the second `PERF` line (plan P38pn, ADR 0013 section 15): `impl=native`
+## sits right after `PERF sim`, and the other keys follow in the order of LINE_KEYS. The GDScript
+## line (P38p) has no impl key and keeps its format exactly, because P51 parses both lines.
+const IMPL_KEY: String = "impl"
+const IMPL_NATIVE: String = "native"
 ## The scalar keys of the `PERF` line in print order; `stats_max=`, `phases=` and `hash=` follow.
 const LINE_KEYS: Array[String] = [
 	"units",
@@ -129,13 +134,17 @@ static func stat_names() -> PackedStringArray:
 ## The report: the `facts` (FACT_KEYS), the best statistics, ticks per second, the phone estimates
 ## from the gate (mean x ci_ratio_mean, p95 x ci_ratio_p95, ADR 0012 section 4), the per-phase
 ## means and the World.stats maxima. Every float is rounded to a thousandth of a ms, the precision
-## the line prints, so the line, the JSON and the checks read the same numbers.
+## the line prints, so the line, the JSON and the checks read the same numbers. `native` is the
+## report of the run with the kernels attached (ADR 0013 section 15): its estimates read
+## ci_ratio_native_mean and ci_ratio_native_p95 instead, and it carries `impl` = IMPL_NATIVE, which
+## line() prints.
 static func finish(
 	facts: Dictionary,
 	best: Dictionary,
 	phases_ms: PackedFloat64Array,
 	stats_max: PackedInt32Array,
-	gate: PerfGateDef
+	gate: PerfGateDef,
+	native: bool = false
 ) -> Dictionary:
 	var report: Dictionary = {}
 	for key: String in FACT_KEYS:
@@ -144,8 +153,12 @@ static func finish(
 	for key: String in STAT_KEYS:
 		report[key] = _round(best[key])
 	report["ticks_per_s"] = _round(1000.0 / best["mean_ms"]) if best["mean_ms"] > 0.0 else 0.0
-	report["est_phone_mean_ms"] = _round(best["mean_ms"] * gate.ci_ratio_mean)
-	report["est_phone_p95_ms"] = _round(best["p95_ms"] * gate.ci_ratio_p95)
+	var ratio_mean: float = gate.ci_ratio_native_mean if native else gate.ci_ratio_mean
+	var ratio_p95: float = gate.ci_ratio_native_p95 if native else gate.ci_ratio_p95
+	report["est_phone_mean_ms"] = _round(best["mean_ms"] * ratio_mean)
+	report["est_phone_p95_ms"] = _round(best["p95_ms"] * ratio_p95)
+	if native:
+		report[IMPL_KEY] = IMPL_NATIVE
 	var phases: Dictionary = {}
 	for phase: int in SimProbe.Phase.COUNT:
 		phases[SimProbe.PHASE_NAMES[phase]] = _round(phases_ms[phase])
@@ -160,8 +173,11 @@ static func finish(
 
 ## The one `PERF` line of ADR 0011 section 4 with ref_ms, the phone estimates and the stats maxima:
 ## `PERF sim units=150 ticks=900 runs=3 mean_ms=... phases=commands:0.050,flow:0.000,... hash=...`.
+## A report with an `impl` (finish(..., true)) prints `impl=native` right after `PERF sim`.
 static func line(report: Dictionary) -> String:
 	var parts: PackedStringArray = PackedStringArray(["PERF sim"])
+	if report.has(IMPL_KEY):
+		parts.append("%s=%s" % [IMPL_KEY, report[IMPL_KEY]])
 	for key: String in LINE_KEYS:
 		parts.append("%s=%s" % [key, _text(report[key])])
 	parts.append("stats_max=" + _pairs(report["stats_max"]))

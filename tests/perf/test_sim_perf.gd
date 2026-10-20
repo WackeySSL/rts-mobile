@@ -9,15 +9,30 @@ extends GdUnitTestSuite
 ## printed here and fail nothing.
 ## It times MatchLoop.step; P49a switches to TickJob.run().
 ##
+## The second PERF line (plan P38pn, ADR 0013 section 15): when the SimKernels library is loaded,
+## seed 42 runs three more times, each after the GDScript run it pairs with, with the kernels
+## attached as MatchRunner attaches them (NativeKernels.create() and
+## world.native_phases = kernels.phases()), and the suite prints
+## `PERF sim impl=native ...`, whose phone estimates read ci_ratio_native_mean and
+## ci_ratio_native_p95. Without the library (the web, a build without native/bin) it prints one
+## plain note, from the native-line case, and no such line. Report only, like the GDScript line: no
+## new threshold, and the catastrophic cap stays the GDScript line's. Both implementations must end
+## every checkpoint, the last one included, on the same state hash. The GDScript line keeps its
+## format exactly (P51 parses both lines).
+## The order of the runs is G N G N G N (G the GDScript run, N the native one) and then seed 43, and
+## ref_ms is the smallest reading of the reference loop before and after all seven runs, one value
+## that both lines share. The RUN lines print grouped by implementation (the GDScript runs, seed 43,
+## then the native runs), not in the order in which the runs happened.
+##
 ## The enforced numbers are the minimum over the three seed-42 runs of each statistic (ADR 0011
-## section 4, a fixed method and not a retry). RUN lines print every run, apart from the one
-## `PERF` line that CI copies.
+## section 4, a fixed method and not a retry). RUN lines print every run, apart from the `PERF`
+## lines that CI copies.
 ##
 ## The numbers that the line takes from the World (units, alive_end, the World.stats maxima, the
-## projectile peak and overflow) are zero or constant on today's arena, so three cases pin the code
-## that reads them without the sim's help: _play on a start that the test crafts, _sample on a
-## hand-built world, and _make_report on three runs made by hand. The first two assert inequalities
-## only, so P41's combat and P42's projectiles do not break them.
+## projectile peak and overflow) follow the fight and the projectiles, which later PRs change, so
+## three cases pin the code that reads them without the sim's help: _play on a start that the test
+## crafts, _sample on a hand-built world, and _make_report on three runs made by hand. The first two
+## assert inequalities only, so the combat and the projectiles cannot break them.
 
 const PerfReport: GDScript = preload("res://tests/perf/support/perf_report.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
@@ -35,12 +50,24 @@ const REF_SAMPLES: int = 20
 const ROUNDING_MS: float = 0.0005
 ## The projectile_overflow that the crafted start gives the World (a counter since match start).
 const CRAFTED_OVERFLOW: int = 3
+## What the suite prints when the library is not loaded, in place of the native line. Plain text: it
+## does not start with `PERF ` (P51 copies those lines) and holds nothing verify.sh rejects.
+const NATIVE_SKIPPED: String = (
+	"perf: no native line, the SimKernels library is not loaded"
+	+ " (the web, or a build without it)"
+)
+## The lines that scripts/verify.sh rejects (its PATTERN), and the engine's warnings.
+const REJECTED_LINES: String = "SCRIPT ERROR|^ERROR:|Parse Error|^WARNING:"
 
 var _gate: PerfGateDef
 var _seed_42: Array[Run] = []
 var _seed_43: Run
+## Seed 42 with the kernels attached, three runs; empty when the library is not loaded.
+var _native_42: Array[Run] = []
+var _native_loaded: bool = false
 var _ref_usec: PackedInt64Array = PackedInt64Array()
 var _report: Dictionary = {}
+var _native_report: Dictionary = {}
 
 
 ## What one match leaves: the tick times, the per-phase sums, the World.stats maxima and the
@@ -54,6 +81,8 @@ class Run:
 	var alive_end: int = 0
 	var proj_peak: int = 0
 	var overflow: int = 0
+	## The phases that ran in C++ (World.native_phases after the last tick): 0 for a GDScript run.
+	var native_mask: int = 0
 	## pos_x then pos_y of every unit, before the first tick and after the last.
 	var start_pos: PackedInt32Array = PackedInt32Array()
 	var final_pos: PackedInt32Array = PackedInt32Array()
@@ -65,14 +94,23 @@ class Run:
 func before() -> void:
 	_gate = load(GATE_PATH) as PerfGateDef
 	_time_reference()
+	_native_loaded = NativeKernels.create() != null
+	# Each native run follows the GDScript run it pairs with, so that a slow stretch of the machine
+	# hits both lines alike (GDScript phases that no kernel replaces cost the same in both).
 	for _run: int in RUNS:
 		_seed_42.append(_play(SEED))
+		if _native_loaded:
+			_native_42.append(_play(SEED, _attach_native))
 	_seed_43 = _play(OTHER_SEED)
 	_time_reference()
 	_report = _make_report(_seed_42)
+	if _native_loaded:
+		_native_report = _make_report(_native_42, true)
 	for index: int in _seed_42.size():
 		print(_run_line(SEED, index + 1, _seed_42[index]))
 	print(_run_line(OTHER_SEED, 1, _seed_43))
+	for index: int in _native_42.size():
+		print(_run_line(SEED, index + 1, _native_42[index], true))
 
 
 func test_the_three_seed_42_runs_match_at_every_15_ticks() -> void:
@@ -117,15 +155,19 @@ func test_seed_43_differs_at_every_checkpoint_and_in_the_final_hash() -> void:
 ## the thousandth of a ms the report rounds to (ADR 0011 section 4: the minimum over the runs).
 func test_the_report_holds_the_minimum_of_each_statistic_over_the_three_runs() -> void:
 	var wrong: Array[String] = []
-	for key: String in PerfReport.STAT_KEYS:
-		var smallest: float = INF
-		for run: Run in _seed_42:
-			smallest = minf(smallest, PerfReport.run_stats(run.tick_ms)[key])
-		if absf(float(_report[key]) - smallest) > 0.0006:
-			wrong.append(key)
+	assert_int(_printed().size()).is_equal(2 if _native_loaded else 1)
+	for printed: Dictionary in _printed():
+		var report: Dictionary = printed["report"]
+		var runs: Array[Run] = printed["runs"]
+		for key: String in PerfReport.STAT_KEYS:
+			var smallest: float = INF
+			for run: Run in runs:
+				smallest = minf(smallest, PerfReport.run_stats(run.tick_ms)[key])
+			if absf(float(report[key]) - smallest) > 0.0006:
+				wrong.append("%s %s" % [report.get(PerfReport.IMPL_KEY, "gdscript"), key])
+		assert_int(report["runs"]).is_equal(runs.size())
+		assert_int(report["ticks"]).is_equal(TICKS)
 	assert_array(wrong).is_empty()
-	assert_int(_report["runs"]).is_equal(_seed_42.size())
-	assert_int(_report["ticks"]).is_equal(TICKS)
 
 
 func test_the_best_mean_stays_under_the_catastrophic_cap() -> void:
@@ -135,7 +177,7 @@ func test_the_best_mean_stays_under_the_catastrophic_cap() -> void:
 
 ## Harness checks only: what the units and projectiles do is printed, and bounded from P49a on.
 func test_each_run_timed_every_tick_of_the_arena() -> void:
-	for run: Run in _seed_42 + [_seed_43]:
+	for run: Run in _seed_42 + [_seed_43] + _native_42:
 		assert_int(run.tick_ms.size()).is_equal(TICKS)
 		assert_int(run.tick_ms.count(0.0)).is_less(TICKS)
 		assert_int(run.units).is_greater(0)
@@ -145,10 +187,11 @@ func test_each_run_timed_every_tick_of_the_arena() -> void:
 	assert_int(_report["projectile_overflow"]).is_equal(_seed_42[0].overflow)
 
 
-## What _play reads from the World after the ticks, on a start that the test crafts (the arena's own
-## values are 0 or constant today): one row fewer at tick 0, and the first row dies in tick 1, which
-## moves the rows behind it, so the compaction counts them. Inequalities only: how many more units
-## die later is the combat's to decide.
+## What _play reads from the World after the ticks, on a start that the test crafts (what the arena
+## itself leaves in these values is the combat's and the projectiles' to decide, and moves with
+## them): one row fewer at tick 0, and the first row dies in tick 1, which moves the rows behind it,
+## so the compaction counts them. Inequalities only: how many more units die later is the combat's
+## to decide.
 func test_the_run_reads_units_rows_stats_and_overflow_from_the_world() -> void:
 	var run: Run = _play(SEED, _craft_a_death)
 	assert_int(run.units).is_equal(_seed_42[0].units - 1)
@@ -184,8 +227,9 @@ func test_a_tick_sample_keeps_the_stats_maxima_and_the_projectile_peak() -> void
 
 
 ## What _make_report takes from the runs it is given, on three runs made by hand that differ in
-## every value (the arena's own units, alive_end, proj_peak and overflow are 150, 150, 0 and 0, and
-## its stats maxima are zeros, so a fact read from the wrong place would agree with the right one).
+## every value (on the arena the facts agree with each other or sit at 0 for as long as the fight
+## and the projectiles leave them there, so a fact read from the wrong place could agree with the
+## right one).
 ## The facts, the hash and the World.stats maxima are the first run's; the statistics and the phases
 ## are the best over all three: the second run holds the smallest tick mean (40 ms) and the third
 ## the smallest first phase (0.4 ms), so a report that skips the last run, or the second, shows.
@@ -214,28 +258,33 @@ func test_the_report_takes_each_value_from_the_runs_it_is_given() -> void:
 ## The phases are timed inside the step, so their means cannot add up to more than the tick mean
 ## (up to the rounding of the report), and a tick that does work has a phase that reads above 0.
 func test_the_phase_split_is_part_of_the_tick() -> void:
-	var phases: Dictionary = _report["phases"]
-	assert_array(phases.keys()).is_equal(SimProbe.PHASE_NAMES)
-	var sum: float = 0.0
-	for phase_ms: float in phases.values():
-		assert_float(phase_ms).is_greater_equal(0.0)
-		sum += phase_ms
-	assert_float(sum).is_greater(0.0)
-	assert_float(sum).is_less_equal(float(_report["mean_ms"]) + 0.01)
+	for printed: Dictionary in _printed():
+		var report: Dictionary = printed["report"]
+		var phases: Dictionary = report["phases"]
+		assert_array(phases.keys()).is_equal(SimProbe.PHASE_NAMES)
+		var sum: float = 0.0
+		for phase_ms: float in phases.values():
+			assert_float(phase_ms).is_greater_equal(0.0)
+			sum += phase_ms
+		assert_float(sum).is_greater(0.0)
+		assert_float(sum).is_less_equal(float(report["mean_ms"]) + 0.01)
 
 
 ## Each phase of the report is the smallest mean that one of the three runs had, like the
 ## statistics, so a phase left out of a run's sums or a report that read one run shows here.
 func test_the_phase_split_is_the_best_of_the_three_runs() -> void:
 	var wrong: Array[String] = []
-	var phases: Dictionary = _report["phases"]
-	for phase: int in SimProbe.Phase.COUNT:
-		var smallest: float = INF
-		for run: Run in _seed_42:
-			smallest = minf(smallest, PerfReport.phase_means_ms(run.phase_usec, TICKS)[phase])
-		var name: String = SimProbe.PHASE_NAMES[phase]
-		if absf(float(phases[name]) - smallest) > 0.0006:
-			wrong.append(name)
+	for printed: Dictionary in _printed():
+		var report: Dictionary = printed["report"]
+		var runs: Array[Run] = printed["runs"]
+		var phases: Dictionary = report["phases"]
+		for phase: int in SimProbe.Phase.COUNT:
+			var smallest: float = INF
+			for run: Run in runs:
+				smallest = minf(smallest, PerfReport.phase_means_ms(run.phase_usec, TICKS)[phase])
+			var name: String = SimProbe.PHASE_NAMES[phase]
+			if absf(float(phases[name]) - smallest) > 0.0006:
+				wrong.append("%s %s" % [report.get(PerfReport.IMPL_KEY, "gdscript"), name])
 	assert_array(wrong).is_empty()
 
 
@@ -267,13 +316,12 @@ func test_the_perf_line_prints_and_holds_every_measure_in_order() -> void:
 	print(text)
 	assert_str(text).starts_with("PERF sim units=")
 	assert_bool("\n" in text).is_false()
-	var keys: Array[String] = []
-	for field: String in text.split(" "):
-		keys.append(field.get_slice("=", 0))
+	# The format P38p fixed: no impl key, which only the native line carries.
+	assert_str(text).not_contains(PerfReport.IMPL_KEY + "=")
 	var expected: Array[String] = ["PERF", "sim"]
 	expected.append_array(PerfReport.LINE_KEYS)
 	expected.append_array(["stats_max", "phases", "hash"])
-	assert_array(keys).is_equal(expected)
+	assert_array(_keys_of(text)).is_equal(expected)
 	var hash_text: String = text.get_slice("hash=", 1)
 	assert_str(hash_text).is_equal(World.hash_hex(_seed_42[0].final_hash))
 	assert_int(hash_text.length()).is_equal(16)
@@ -284,6 +332,98 @@ func test_the_perf_line_prints_and_holds_every_measure_in_order() -> void:
 	assert_float(_report["p95_ms"]).is_less_equal(_report["p99_ms"])
 	assert_float(_report["p99_ms"]).is_less_equal(_report["max_ms"])
 	assert_float(_report["max_ms"]).is_less_equal(_report["worst15_ms"])
+
+
+## The runs with the kernels attached end where the GDScript runs do (ADR 0013 section 3): the same
+## state hash at every 15 ticks and after the last, and the same rows left. They ran with the mask
+## the library reports, FLOW, SEPARATION and INTEGRATE among its phases, and the GDScript runs with
+## 0, so a native run that attached nothing (or a GDScript run that did) shows here.
+func test_the_native_runs_end_on_the_gdscript_hash_at_every_checkpoint() -> void:
+	# The library is loaded wherever the tests run (verify.sh builds it): a suite that left the native
+	# runs out, or found the ABI wrong, would otherwise pass everything below on an empty list.
+	assert_bool(_native_loaded).is_equal(ClassDB.class_exists(&"SimKernels"))
+	assert_int(_native_42.size()).is_equal(RUNS if _native_loaded else 0)
+	for run: Run in _seed_42 + [_seed_43]:
+		assert_int(run.native_mask).is_equal(0)
+	var twin: Run = _seed_42[0]
+	for run: Run in _native_42:
+		assert_int(run.native_mask).is_equal(NativeKernels.create().phases())
+		for phase: int in [
+			SimProbe.Phase.FLOW, SimProbe.Phase.SEPARATION, SimProbe.Phase.INTEGRATE
+		]:
+			assert_int((run.native_mask >> phase) & 1).is_equal(1)
+		assert_int(run.checkpoint_hashes.size()).is_equal(TICKS / Replay.CHECKPOINT_PERIOD)
+		assert_array(run.checkpoint_ticks).is_equal(twin.checkpoint_ticks)
+		assert_array(run.checkpoint_hashes).is_equal(twin.checkpoint_hashes)
+		assert_int(run.final_hash).is_equal(twin.final_hash)
+		assert_int(run.alive_end).is_equal(twin.alive_end)
+		assert_array(run.final_pos).is_equal(twin.final_pos)
+
+
+## The second line is `PERF sim impl=native` and then the keys of the GDScript line in their order
+## (P51 parses both), from the native runs: the same facts and the same final state as the first.
+## Without the library this case prints the plain note instead of the line (the only place that
+## prints it, so it appears once) and reads that. verify.sh builds the library first, so that path
+## runs only when the library is hidden by hand.
+func test_the_native_line_has_impl_native_after_perf_sim_and_the_other_keys_in_order() -> void:
+	var text: String = _native_text(_native_report)
+	print(text)
+	if not _native_loaded:
+		assert_str(text).is_equal(NATIVE_SKIPPED)
+		return
+	assert_str(text).starts_with("PERF sim impl=native units=")
+	assert_bool("\n" in text).is_false()
+	var expected: Array[String] = ["PERF", "sim", PerfReport.IMPL_KEY]
+	expected.append_array(PerfReport.LINE_KEYS)
+	expected.append_array(["stats_max", "phases", "hash"])
+	assert_array(_keys_of(text)).is_equal(expected)
+	assert_str(text.get_slice("hash=", 1)).is_equal(World.hash_hex(_native_42[0].final_hash))
+	# ref_ms is the one reference reading that both lines share (the header).
+	for key: String in ["units", "ticks", "runs", "ref_ms", "alive_end", "hash"]:
+		assert_that(_native_report[key]).override_failure_message(key).is_equal(_report[key])
+	assert_str(_native_report[PerfReport.IMPL_KEY]).is_equal(PerfReport.IMPL_NATIVE)
+	assert_bool(_report.has(PerfReport.IMPL_KEY)).is_false()
+	# The RUN lines say which implementation ran, like the PERF line.
+	assert_str(_run_line(SEED, 2, _native_42[1], true)).starts_with(
+		"RUN sim impl=native seed=42 run=2 "
+	)
+	assert_str(_run_line(SEED, 2, _seed_42[1])).starts_with("RUN sim seed=42 run=2 ")
+
+
+## The native estimates are the native line's best mean and p95 times ci_ratio_native_mean and
+## ci_ratio_native_p95, read from the file again like the GDScript line's (past the resource cache),
+## so a line that used the GDScript ratios, or swapped the two, is off by far more than the
+## rounding.
+func test_the_native_estimates_are_the_native_times_and_the_native_ratios_of_the_file() -> void:
+	if not _native_loaded:
+		assert_dict(_native_report).is_empty()
+		return
+	var file_gate: PerfGateDef = (
+		ResourceLoader.load(GATE_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as PerfGateDef
+	)
+	assert_object(file_gate).is_not_null()
+	var mean_ms: float = _native_report["mean_ms"]
+	var p95_ms: float = _native_report["p95_ms"]
+	assert_float(_native_report["est_phone_mean_ms"]).is_equal_approx(
+		mean_ms * file_gate.ci_ratio_native_mean,
+		ROUNDING_MS * (1.0 + file_gate.ci_ratio_native_mean)
+	)
+	assert_float(_native_report["est_phone_p95_ms"]).is_equal_approx(
+		p95_ms * file_gate.ci_ratio_native_p95, ROUNDING_MS * (1.0 + file_gate.ci_ratio_native_p95)
+	)
+
+
+## Without the library the native line is skipped with a plain note: not a `PERF ` line (P51 copies
+## those) and none of the lines that scripts/verify.sh rejects or the engine warns with. With the
+## library the line is printed and the note is not.
+func test_a_missing_library_skips_the_native_line_with_a_plain_note() -> void:
+	var note: String = _native_text({})
+	assert_str(note).is_equal(NATIVE_SKIPPED)
+	assert_bool(note.begins_with("PERF ")).is_false()
+	assert_bool("\n" in note).is_false()
+	var rejected: RegEx = RegEx.create_from_string("(?m)" + REJECTED_LINES)
+	assert_object(rejected.search(note)).is_null()
+	assert_bool(_native_text(_native_report) == NATIVE_SKIPPED).is_equal(not _native_loaded)
 
 
 func test_sim_json_holds_the_numbers_of_the_line() -> void:
@@ -345,6 +485,7 @@ func _play(match_seed: int, adjust: Callable = Callable()) -> Run:
 		_sample(run, world)
 	run.alive_end = world.unit_count()
 	run.overflow = world.projectile_overflow
+	run.native_mask = world.native_phases
 	run.final_pos = _positions(world)
 	run.checkpoint_ticks = loop.replay.checkpoint_ticks
 	run.checkpoint_hashes = loop.replay.checkpoint_hashes
@@ -356,6 +497,38 @@ func _play(match_seed: int, adjust: Callable = Callable()) -> Run:
 func _sample(run: Run, world: World) -> void:
 	PerfReport.raise_maxima(run.stats_max, world.stats)
 	run.proj_peak = maxi(run.proj_peak, PerfReport.live_projectiles(world))
+
+
+## The adjust of a native run: new kernels from NativeKernels.create() (the ABI-checked library) and
+## the phases they report, as MatchRunner attaches them when sim_impl resolves to NATIVE.
+func _attach_native(world: World) -> void:
+	var kernels: Object = NativeKernels.create()
+	if kernels != null:
+		world.kernels = kernels
+		world.native_phases = kernels.phases()
+
+
+## The lines that were printed, each with its report and the runs it is made from: the GDScript one
+## always, the native one when the library is loaded.
+func _printed() -> Array[Dictionary]:
+	var printed: Array[Dictionary] = [{"report": _report, "runs": _seed_42}]
+	if _native_loaded:
+		printed.append({"report": _native_report, "runs": _native_42})
+	return printed
+
+
+## The native line of `report`, or the plain note when there is none (the library is not loaded).
+func _native_text(report: Dictionary) -> String:
+	return PerfReport.line(report) if not report.is_empty() else NATIVE_SKIPPED
+
+
+## The key of every space-separated field of a PERF line: `PERF`, `sim`, then each name before
+## its `=`.
+func _keys_of(text: String) -> Array[String]:
+	var keys: Array[String] = []
+	for field: String in text.split(" "):
+		keys.append(field.get_slice("=", 0))
+	return keys
 
 
 ## The crafted start of the case above: the last row is dead and removed before tick 0, the first
@@ -399,7 +572,9 @@ func _keep_reports_out_of_the_project() -> void:
 
 ## The report of `runs`: the facts (units, alive_end, proj_peak, projectile_overflow, hash) and the
 ## World.stats maxima are the first run's, the statistics and the phases the best of all of them.
-func _make_report(runs: Array[Run]) -> Dictionary:
+## `native` makes the report of the runs with the kernels attached (finish() reads the native
+## ratios).
+func _make_report(runs: Array[Run], native: bool = false) -> Dictionary:
 	var stats: Array[Dictionary] = []
 	var phases: Array[PackedFloat64Array] = []
 	for run: Run in runs:
@@ -417,7 +592,12 @@ func _make_report(runs: Array[Run]) -> Dictionary:
 		"hash": World.hash_hex(first.final_hash),
 	}
 	return PerfReport.finish(
-		facts, PerfReport.best_of(stats), PerfReport.best_phases(phases), first.stats_max, _gate
+		facts,
+		PerfReport.best_of(stats),
+		PerfReport.best_phases(phases),
+		first.stats_max,
+		_gate,
+		native
 	)
 
 
@@ -447,11 +627,14 @@ func _hand_run(
 	return run
 
 
-func _run_line(match_seed: int, number: int, run: Run) -> String:
+## The line of one run; a native run says so right after `RUN sim`, like the PERF line.
+func _run_line(match_seed: int, number: int, run: Run, native: bool = false) -> String:
 	var stats: Dictionary = PerfReport.run_stats(run.tick_ms)
+	var impl: String = PerfReport.IMPL_KEY + "=" + PerfReport.IMPL_NATIVE + " " if native else ""
 	return (
-		"RUN sim seed=%d run=%d mean_ms=%.3f p50_ms=%.3f p95_ms=%.3f max_ms=%.3f hash=%s"
+		"RUN sim %sseed=%d run=%d mean_ms=%.3f p50_ms=%.3f p95_ms=%.3f max_ms=%.3f hash=%s"
 		% [
+			impl,
 			match_seed,
 			number,
 			stats["mean_ms"],
