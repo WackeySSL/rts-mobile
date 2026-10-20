@@ -440,7 +440,11 @@ func test_from_scenario_copies_the_map_size_terrain_indexes_and_costs_per_class(
 
 
 func test_from_scenario_without_a_usable_map_is_open_grass_of_the_scenario_size() -> void:
-	var controls: World = World.from_scenario(load(SCENARIO_PATH) as ScenarioDef)
+	# controls_test has had a map since P48, so the case clears the map of a copy of it (the loaded
+	# resource is shared and stays as it is): what is left is the open grass of its 48 x 48 size.
+	var no_map: ScenarioDef = (load(SCENARIO_PATH) as ScenarioDef).duplicate()
+	no_map.map = null
+	var controls: World = World.from_scenario(no_map)
 	assert_array([controls.map_cols, controls.map_rows, controls.map_w]).is_equal([48, 48, MAP])
 	assert_array([controls.terrain.count(0), controls.move_cost.count(10)]).is_equal([2304, 6912])
 	var bad_symbol: ScenarioDef = _tile_scenario()

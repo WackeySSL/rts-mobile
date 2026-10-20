@@ -37,6 +37,11 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Attack-moving units meet enemies | They stop to fight: they drive to weapon range of the enemy they picked, fire until it is destroyed, pick the next one, and go on to the tapped point when no enemy is left within their reach | yes |
 | A unit is selected, or has just been damaged | A health bar shows above it, filled by the hp it has left (a unit that lives always shows a little fill). Selected units keep their bar; a damaged unit shows it for a few seconds. Your bars are plain, enemy bars have a notch in the top edge, so you can tell them apart without colour | |
 
+## Terrain
+| Action | Result | Teach |
+|---|---|---|
+| Send units across rock, water or scrub | Rock and water block all units, and scrub (the patterned ground) blocks vehicles; the units drive around them to the point you tapped | yes |
+
 ## Army bar (bottom left)
 | Action | Result | Teach |
 |---|---|---|

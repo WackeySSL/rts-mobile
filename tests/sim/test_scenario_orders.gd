@@ -44,8 +44,9 @@ func test_nothing_comes_out_at_other_ticks_and_the_later_order_at_its_own() -> v
 	assert_int(again.size()).is_equal(2)
 
 
-## The data: each side of the arena attack-moves to the centre of the other side's tile, with all
-## 75 of its rows (30 tanks, 27 rifle squads and 18 rocket squads), ids 1-75 and 76-150.
+## The data: each side of the arena attack-moves to the centre of its firing line before the ridge
+## (tiles 29 and 34 since P48; the P27c orders named tiles 39 and 24), with all 75 of its rows (30
+## tanks, 27 rifle squads and 18 rocket squads), ids 1-75 and 76-150.
 func test_the_arena_orders_name_all_75_rows_of_each_side_and_the_tile_centre() -> void:
 	var scenario: ScenarioDef = load(ARENA_PATH) as ScenarioDef
 	var world: World = World.from_scenario(scenario)
@@ -58,10 +59,10 @@ func test_the_arena_orders_name_all_75_rows_of_each_side_and_the_tile_centre() -
 		first.append(id + 1)
 		second.append(id + 76)
 	assert_array(_fields(out[0])).is_equal(
-		[1, Command.Type.ATTACK_MOVE, 39500, 32500, first, -1, 0, 0, []]
+		[1, Command.Type.ATTACK_MOVE, 29500, 32500, first, -1, 0, 0, []]
 	)
 	assert_array(_fields(out[1])).is_equal(
-		[2, Command.Type.ATTACK_MOVE, 24500, 32500, second, -1, 0, 0, []]
+		[2, Command.Type.ATTACK_MOVE, 34500, 32500, second, -1, 0, 0, []]
 	)
 
 
