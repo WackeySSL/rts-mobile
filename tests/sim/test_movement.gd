@@ -389,12 +389,14 @@ func test_the_intents_mark_follows_movement_run_and_the_integrate_mark_follows_t
 		SimProbe.Phase.INTENTS,
 		SimProbe.Phase.SEPARATION,
 		SimProbe.Phase.INTEGRATE,
+		SimProbe.Phase.PROJECTILES,
 		SimProbe.Phase.FIRE,
 		SimProbe.Phase.REMOVE
 	]
 	assert_array(probe.phases).is_equal(phases)
-	assert_array(probe.intents_x).is_equal([0, 0, 0, 0, 120, 120, 120, 120, 120])
-	assert_array(probe.positions_x).is_equal([1000, 1000, 1000, 1000, 1000, 1000, 1120, 1120, 1120])
+	assert_array(probe.intents_x).is_equal([0, 0, 0, 0, 120, 120, 120, 120, 120, 120])
+	var at_x: Array[int] = [1000, 1000, 1000, 1000, 1000, 1000, 1120, 1120, 1120, 1120]
+	assert_array(probe.positions_x).is_equal(at_x)
 
 
 ## A new order makes the unit DIRECT with its line unchecked, whatever it was doing, and a STOP

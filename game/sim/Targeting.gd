@@ -41,7 +41,8 @@ const CHASE: int = World.NavMode.CHASE
 ##   it stands at the start of the tick (read before anyone moves, so the row order cannot matter).
 ##   When the target is gone the order becomes `ATTACK_MOVE` to the goal it left, which is where
 ##   the target last stood: the row's `order_target` is cleared, and the row goes on as an
-##   attack-moving row from this tick (it scans on its next due tick). ADR 0009 section 2.
+##   attack-moving row from this tick (in this same pass it scans if it is due on this tick, else on
+##   its next due tick). ADR 0009 section 2.
 ## - `MOVE` rows acquire nothing and drop a target they held, every tick (a moving unit does not
 ##   fire).
 ## - An `ATTACK_MOVE` or `IDLE` row with a weapon is due when `(tick + id) % retarget_period_ticks`

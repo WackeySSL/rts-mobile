@@ -163,9 +163,11 @@ func test_900_ticks_of_the_arena_gathered_into_a_pile_match() -> void:
 	assert_str(rig.run(TICKS, _orders)).is_empty()
 	# 164,635 hits, 389 at the cap on hits, 30,721 at the cap on looks, 2,603 fixed, 47 pairs on one
 	# point, 35,833 mixed and 6,483 at the cap on main; 53,729, 277, 10,714, 1,070, 12, 11,074 and
-	# 4,047 with P42a.
+	# 4,047 with P42a; 47,779, 262, 10,900, 1,113, 1, 11,295 and 3,952 with P42b (a hit lands a
+	# flight time after the shot, so the pile thins out later). The pair on one point is met once
+	# now: its floor is 1, the least above 0, where the others stay at two thirds of P42a's.
 	_assert_reached(rig, {&"hits": 35000, &"hit_capped": 180, &"look_capped": 7100})
-	_assert_reached(rig, {&"fixed": 710, &"same_point": 8, &"mixed": 7300, &"at_cap": 2600})
+	_assert_reached(rig, {&"fixed": 710, &"same_point": 1, &"mixed": 7300, &"at_cap": 2600})
 	var again: RefCounted = Rig.new().setup(_arena.bind(true), Rig.WITH_INTEGRATE)
 	assert_array(again.problems).is_empty()
 	assert_str(again.run(SHORT_TICKS, _orders)).is_empty()

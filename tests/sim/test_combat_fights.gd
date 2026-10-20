@@ -1,15 +1,17 @@
 extends GdUnitTestSuite
-## Weapons, part 1 (P42a), the fights: what the FIRE phase changes in the engagement of P41b. Units
-## that held at weapon range and stood there for good (the interim of P41b, while nothing could
-## die) now shoot, lose hp and leave: a standoff ends, an `ATTACK` goes on until its target is gone,
-## and a ground tap that a held unit ignored is followed once the enemy it was fighting is dead. The
-## phase itself (cooldown, damage, the SHOT record, firing in the tick of death) is test_combat.gd.
+## Weapons, parts 1 and 2 (P42a, P42b), the fights: what the FIRE and PROJECTILES phases change in
+## the engagement of P41b. Units that held at weapon range and stood there for good (the interim of
+## P41b, while nothing could die) now shoot, lose hp and leave: a standoff ends, an `ATTACK` goes on
+## until its target is gone, and a ground tap that a held unit ignored is followed once the enemy it
+## was fighting is dead. The phases themselves (cooldown, damage, the SHOT record, firing in the
+## tick of death, the shells) are test_combat.gd and test_combat_projectiles.gd.
 ##
 ## The worlds are the shipped unit types (TargetingRig.data_world): rifle squad 0, rocket squad 1,
 ## light tank 2 (300 hp, range 4500, acquire 5500, sight 7000, 21 damage to infantry and 18 to a
-## light tank every 25 ticks; in P42a the cannon also hits at once). The authoring rule of the fog
-## PR (P46b) is kept and asserted: in the `ATTACK` case and in the meeting, no unit holds a target
-## that still has a row and stands beyond its sight, on any tick (`_beyond_sight`).
+## light tank every 25 ticks; the cannon shell flies 600 a tick, so a hit lands up to 8 ticks after
+## its shot). The authoring rule of the fog PR (P46b) is kept and asserted: in the `ATTACK` case and
+## in the meeting, no unit holds a target that still has a row and stands beyond its sight, on any
+## tick (`_beyond_sight`).
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
 const FireProbe: GDScript = preload("res://tests/sim/support/fire_view_probe.gd")
@@ -21,21 +23,25 @@ const ATTACK: int = World.Order.ATTACK
 const NONE: int = World.NavMode.NONE
 const HOLD: int = World.NavMode.HOLD
 const SHOT: int = World.Event.SHOT
+const IMPACT: int = World.Event.IMPACT
 const DIED: int = World.Event.DIED
 const STRIDE: int = World.EVENT_STRIDE
 ## The meeting: three tanks a side on a 24 x 14 tile map, 14000 apart on one row, 1200 between the
 ## tanks of a side (a tank's formation spacing), each side attack-moving to the other's start.
 const MEETING_TICKS: int = 700
-## Before this tick of the meeting nobody has died: the first death is at tick 439.
+## Before this tick of the meeting nobody has died: the first death is at tick 447.
 const BEFORE_DEATHS: int = 300
 
 
 ## Opposing groups no longer hold for ever (the interim of P41b ends with P42a): three tanks a side
 ## attack-move at each other, stop at weapon range and trade cannon fire; at tick 300 nobody has
-## died but all six hold and both sides are damaged; by tick 700 two blue tanks and all three red
-## ones are gone, the survivor is a blue tank that has gone on to its goal and is idle, and every
-## tank that left did so with one DIED record in the tick it was removed (the ids removed from the
-## rows are the ids in the records, so the selection and the groups can follow them, P43a).
+## died but all six hold and both sides are damaged. By tick 700 all six are gone: the two groups
+## are alike, so every tank has taken the same hits (102 hp at tick 300, 12 at tick 446) and five
+## of them are removed in tick 447, the first death; the sixth was left with 12 hp and a shell of a
+## tank that died in tick 447 lands on it in tick 448 (a shell outlives its shooter, P42b; with
+## every hit at once, in P42a, one blue tank was left). Every tank that left did so with one DIED
+## record in the tick it was removed (the ids removed from the rows are the ids in the records, so
+## the selection and the groups can follow them, P43a).
 func test_two_groups_that_meet_hold_and_fight_until_one_side_is_gone() -> void:
 	var world: World = _meeting()
 	var commands: Array[Command] = _meeting_orders(world)
@@ -62,12 +68,10 @@ func test_two_groups_that_meet_hold_and_fight_until_one_side_is_gone() -> void:
 			assert_int(world.nav_mode.count(HOLD)).is_equal(6)
 			assert_bool(world.hp.slice(0, 3) != PackedInt32Array([300, 300, 300])).is_true()
 			assert_bool(world.hp.slice(3, 6) != PackedInt32Array([300, 300, 300])).is_true()
-	assert_int(first_death).is_equal(439)
-	var lost_blue: int = gone.values().count(1)
-	assert_array([lost_blue, gone.values().count(2)]).is_equal([2, 3])
-	assert_int(world.unit_count()).is_equal(1)
-	assert_int(world.owner[0]).is_equal(1)
-	assert_array([world.order[0], world.nav_mode[0], world.target[0]]).is_equal([IDLE, NONE, 0])
+	assert_int(first_death).is_equal(447)
+	assert_array([gone.values().count(1), gone.values().count(2)]).is_equal([3, 3])
+	assert_int(world.unit_count()).is_equal(0)
+	assert_int(gone.size()).is_equal(6)
 
 
 ## Two runs of the meeting give the same state hash after every tick, deaths and compaction
@@ -102,9 +106,11 @@ func test_a_fight_gives_the_same_hash_twice_and_the_hp_is_part_of_it() -> void:
 ## An `ATTACK` goes on until its target is dead (the P43b tap, "chase that enemy and fire until it
 ## dies"): a tank ordered to attack an idle rifle squad 6500 away (inside the tank's sight of 7000)
 ## drives to 4400 of it (the squad's own reach is 4000, so it cannot answer), fires every 25 ticks,
-## 21 hp each (100 to 79, 58, 37, 16, -5, each read at the FIRE mark of its tick), and on the fifth
-## shot the squad is removed in that tick. The order falls back to an attack-move to the place the
-## squad stood, which the tank reaches and goes idle on. The tank is unhurt.
+## and each shell lands 8 ticks after its shot (4400 at 600 a tick) for 21 hp (100 to 79, 58, 37,
+## 16, -5, each read at the PROJECTILES mark of the landing tick); the fifth shot is the last, since
+## its shell lands before the sixth is due, and the squad is removed in that tick. The order falls
+## back to an attack-move to the place the squad stood, which the tank reaches and goes idle on.
+## The tank is unhurt.
 func test_an_attack_order_fires_until_the_target_dies_and_then_goes_to_where_it_stood() -> void:
 	var world: World = Rig.data_world()
 	world.add_unit(1, TANK, 4500, 6000)
@@ -113,6 +119,7 @@ func test_an_attack_order_fires_until_the_target_dies_and_then_goes_to_where_it_
 	order.tick = 0
 	var commands: Array[Command] = [order]
 	var shots: Array[int] = []
+	var landings: Array[int] = []
 	var squad_hp: Array[int] = []
 	for tick: int in 400:
 		var probe: FireProbe = FireProbe.new(world)
@@ -121,13 +128,17 @@ func test_an_attack_order_fires_until_the_target_dies_and_then_goes_to_where_it_
 		assert_array(_beyond_sight(world)).override_failure_message("tick %d" % tick).is_empty()
 		if not _records(world, SHOT).is_empty():
 			shots.append(tick)
-			squad_hp.append(probe.hit_points[probe.phases.find(SimProbe.Phase.FIRE)])
+			assert_int(world.order[0]).is_equal(ATTACK)
+		if not _records(world, IMPACT).is_empty():
+			landings.append(tick)
+			squad_hp.append(probe.hit_points[probe.phases.find(SimProbe.Phase.PROJECTILES)])
 			assert_int(world.order[0]).is_equal(ATTACK)
 		if world.unit_count() == 1 and world.order[0] == IDLE:
 			break
 	assert_int(shots.size()).is_equal(5)
 	for k: int in 4:
 		assert_int(shots[k + 1] - shots[k]).is_equal(25)
+	assert_array(landings).is_equal(shots.map(func(tick: int) -> int: return tick + 8))
 	assert_array(squad_hp).is_equal([79, 58, 37, 16, -5])
 	assert_int(world.unit_count()).is_equal(1)
 	assert_array([world.order[0], world.pos_x[0], world.pos_y[0]]).is_equal([IDLE, 11000, 6000])

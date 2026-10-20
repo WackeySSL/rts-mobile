@@ -436,9 +436,12 @@ func _cell_points(w: int, h: int) -> Array[Vector2i]:
 
 
 ## Projectile `id` in `slot` at (x, y), with owner 1 + id % 2 and weapon id % 3 (for id 7: 2 and
-## 1), so its id, owner and weapon columns hold different values.
+## 1), so its id, owner and weapon columns hold different values. It has 100 ticks of flight left:
+## since P42b a slot with none left lands in the next `_play` and its number goes back on the free
+## stack, which this helper does not take it from.
 func _put_projectile(slot: int, id: int, x: int, y: int) -> void:
 	_world.proj_id[slot] = id
+	_world.proj_ticks[slot] = 100
 	_world.proj_owner[slot] = 1 + id % 2
 	_world.proj_weapon[slot] = id % 3
 	_world.proj_x[slot] = x
