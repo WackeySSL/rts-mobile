@@ -3,8 +3,9 @@ extends Node
 ## Turns the selection gestures of TouchInput into selection changes and Commands (ADR 0004
 ## section 5). It reads the view and the published snapshot (ADR 0012 section 3), afresh at each
 ## call and never kept, and never writes to the sim: an order leaves through `command_sink` as one
-## Command that carries the sorted selection (ADR 0003), an ATTACK_MOVE to a ground point or an
-## ATTACK on an enemy's id.
+## Command that carries the sorted selection (ADR 0003), a MOVE to a ground point or an ATTACK on
+## an enemy's id. A ground tap moves and does not fight, also out of a fight (P43c): the sim drops
+## the units' targets and holds their fire until they arrive and stand idle again.
 ## A tap acts at once. A double-tap on an own unit selects its type on screen, a box selects the
 ## own units inside it, and an empty box clears the selection (the one way to deselect). Selection
 ## is not a Command, so it never reaches the sim. A unit that dies leaves the selection and the
@@ -105,7 +106,7 @@ func _tap(pos: Vector2) -> void:
 		_attack(hit)
 	elif not selection.selected.is_empty():
 		var world_px: Vector2 = camera.screen_to_world(pos)
-		_attack_move(ViewScale.px_to_milli(world_px.x), ViewScale.px_to_milli(world_px.y))
+		_move(ViewScale.px_to_milli(world_px.x), ViewScale.px_to_milli(world_px.y))
 
 
 func _double_tap(pos: Vector2) -> void:
@@ -154,11 +155,12 @@ func _show_group_count(slot: int) -> void:
 		army_bar.set_group_count(slot, selection.group(slot).size())
 
 
-## Attack-move to a point in milli-tiles, with the chevrons. The marker shows the point as ordered.
-## Near a map edge the sim moves the formation inward by the largest unit radius, so the units stop
-## that much off the marker.
-func _attack_move(target_x: int, target_y: int) -> void:
-	command_sink.call(Command.attack_move(_local_player(), selection.selected, target_x, target_y))
+## Move to a point in milli-tiles, with the chevrons. The units stop attacking and drive there in
+## formation; on arrival they fire at enemies within weapon range without moving. The marker shows
+## the point as ordered. Near a map edge the sim moves the formation inward by the largest unit
+## radius, so the units stop that much off the marker.
+func _move(target_x: int, target_y: int) -> void:
+	command_sink.call(Command.move(_local_player(), selection.selected, target_x, target_y))
 	marker_layer.show_attack_move(ViewScale.milli_to_px_vec(target_x, target_y))
 
 

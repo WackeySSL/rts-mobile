@@ -27,7 +27,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 ## Orders
 | Action | Result | Teach |
 |---|---|---|
-| With units selected, tap the ground | Attack-move: the units go there; a unit that meets an enemy drives to weapon range of it, stops and fights until that enemy is destroyed, then goes on; while an enemy is in its range a new ground tap does not move it, and it goes to the new point once the enemy is destroyed; chevrons mark the point | yes |
+| With units selected, tap the ground | Move: the units drive there without fighting, also out of a fight; on arrival they fire at enemies within weapon range without moving; chevrons mark the point | yes |
 | With units selected, tap an enemy | Attack: the units drive to weapon range of that enemy, stop there and fire at it until it is destroyed, then attack-move on to where it stood; a diamond marks it | yes |
 
 ## Combat
@@ -51,5 +51,4 @@ their entries when their phase ships them (ROADMAP Phases 3-6).
 
 | Action | Result | Teach |
 |---|---|---|
-| Moving without fighting (retreat) | Every ground tap is an attack-move | |
 | An "under attack" warning at the screen edge | Not shown yet: nothing points at a unit that is hit off screen | |

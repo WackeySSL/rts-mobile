@@ -21,7 +21,7 @@ width > height.
 | --- | --- |
 | Tap own unit | Select it, replacing the selection |
 | Tap own building | Select it; a production building opens its build tab |
-| Tap ground with units selected | Attack-move there |
+| Tap ground with units selected | Move there (stops an attack) |
 | Tap enemy with units selected | Attack it |
 | Tap enemy with nothing selected | Show its info card |
 | Double-tap own unit | Select all own units of that type on screen |

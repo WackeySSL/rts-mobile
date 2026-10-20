@@ -83,7 +83,7 @@ func test_the_first_tap_on_a_tank_selects_it() -> void:
 		assert_array(_sent).is_empty()  # Selecting orders nothing.
 
 
-func test_tap_ground_with_a_selection_sends_one_attack_move_and_without_one_nothing() -> void:
+func test_tap_ground_with_a_selection_sends_one_move_and_without_one_nothing() -> void:
 	for profile: StringName in PROFILES:
 		await _fresh_match(profile)
 		_tap(_camera.world_to_screen(GROUND))
@@ -91,12 +91,12 @@ func test_tap_ground_with_a_selection_sends_one_attack_move_and_without_one_noth
 		_tap(_layer.unit_screen_position(0))  # Select tank 1, then send it.
 		_tap(_camera.world_to_screen(GROUND), 300)  # Held: LONG_PRESS, BOX_CANCEL, then a TAP.
 		assert_array(_sent).has_size(1)
-		_assert_attack_move(_sent[0], [1], 20016, 21516)
+		_assert_move(_sent[0], [1], 20016, 21516)
 		assert_array(_controller.selection.selected).is_equal([1])
 		_controller.selection.set_ids(PackedInt32Array([30, 2, 9]))
 		_tap(_camera.world_to_screen(GROUND))
 		assert_array(_sent).has_size(2)
-		_assert_attack_move(_sent[1], [2, 9, 30], 20016, 21516)
+		_assert_move(_sent[1], [2, 9, 30], 20016, 21516)
 		assert_array(_controller.selection.selected).is_equal([2, 9, 30])  # Ordering keeps it.
 
 
@@ -137,7 +137,7 @@ func test_double_tap_a_tank_selects_all_30_when_all_are_on_screen() -> void:
 		assert_array(_controller.selection.selected).is_equal(range(1, 31))
 		_double_tap(_camera.world_to_screen(GROUND))  # On ground it is a tap, twice.
 		assert_array(_sent).has_size(2)
-		_assert_attack_move(_sent[1], range(1, 31), 20016, 21516)
+		_assert_move(_sent[1], range(1, 31), 20016, 21516)
 
 
 func test_double_tap_after_panning_half_the_block_away_selects_only_the_visible_tanks() -> void:
@@ -318,8 +318,8 @@ func _shown_marks(markers: MoveMarkerLayer) -> Array[MoveMarkerLayer.Mark]:
 	return shown
 
 
-func _assert_attack_move(command: Command, ids: Array, x: int, y: int) -> void:
-	assert_int(command.type).is_equal(Command.Type.ATTACK_MOVE)
+func _assert_move(command: Command, ids: Array, x: int, y: int) -> void:
+	assert_int(command.type).is_equal(Command.Type.MOVE)
 	assert_int(command.player_id).is_equal(1)
 	assert_int(command.tick).is_equal(-1)  # MatchRunner stamps tick and sequence.
 	assert_int(command.sequence).is_equal(0)

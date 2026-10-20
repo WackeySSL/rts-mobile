@@ -1,9 +1,10 @@
 class_name MoveMarkerLayer
 extends Node2D
-## Order feedback in world space (STYLE.md "Feedback markers"): four chevrons closing in on an
-## attack-move point, or a diamond flash on an enemy. `pool_size` marks are reused oldest first and
-## each lives `settings.marker_ms` by `clock`. A mark is scaled by dp / zoom every frame, so its dp
-## children keep their size on screen through a pinch. It fades as ONE group through
+## Order feedback in world space (STYLE.md "Feedback markers"): four chevrons closing in on the
+## point of a ground tap (a move since P43c; `show_attack_move` keeps its Phase 1 name), or a
+## diamond flash on an enemy. `pool_size` marks are reused oldest first and each lives
+## `settings.marker_ms` by `clock`. A mark is scaled by dp / zoom every frame, so its dp children
+## keep their size on screen through a pinch. It fades as ONE group through
 ## `CanvasGroup.self_modulate`: `modulate` would reach the lines too and blend twice, which turns
 ## the marker dark mid-fade.
 

@@ -179,6 +179,13 @@ Facts checked on Godot 4.7.2:
    - Group button tap: select that group. Hold for `group_assign_ms`: assign the current
      selection to the group. Sliding off the button first cancels the hold.
    - The selection is a sorted, unique `PackedInt32Array`. Commands carry it as `unit_ids`.
+
+   Status note (2026-10-20, P43c), the text above stays as accepted: since P43c a tap on the
+   ground with units selected issues `MOVE` (`Command.move`), not an attack-move, so it stops an
+   attack and the units drive to the point without fighting (Michael's decision of 2026-10-20:
+   selecting units and telling them to drive to another position must stop the attack). The
+   Consequences' double-tap line holds with "move" for "attack-move". No gesture issues
+   `ATTACK_MOVE` any more; scenario orders and the Phase 4 AI still may.
 6. **Camera** (`game/view/RtsCamera.gd`, replaces `camera_pan.gd`):
    - Pan: `position -= delta / zoom`.
    - Pinch: zoom about the centroid, so the world point under it stays under it. The zoom is
