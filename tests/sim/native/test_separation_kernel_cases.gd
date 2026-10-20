@@ -286,6 +286,118 @@ func test_the_fixed_push_is_the_reach_truncated_for_a_divisor_that_does_not_divi
 		)
 
 
+## A unit is moving when its intent is not 0 on either axis, whatever the sign: a unit driving west
+## or north is moving, as one driving east or south is. Two tanks 780 apart along x (R = 800, d2 =
+## 608400, so the formula gives a pair push of 19) split it 25/75 when one moves and the other is
+## idle (the mover takes 100 - 75 percent): 4 and 14 after the truncation, against the 9 and 9 of
+## two idle units. Each case sets one intent on the mover, row 0 or row 1. A test of `> 0` on the
+## intent, on the unit's own or on the other unit's, reads a west or north mover as idle and shows
+## as 9 and 9 (the intent 120 east and 60 south are in the cases too).
+func test_a_unit_moving_by_a_negative_intent_is_moving() -> void:
+	# [mover, intent_x, intent_y, push_x of row 0, push_x of row 1]
+	var cases: Array[Array] = [
+		[0, -120, 0, -4, 14],
+		[1, -120, 0, -14, 4],
+		[0, 0, -60, -4, 14],
+		[1, 0, -60, -14, 4],
+		[0, 120, 0, -4, 14],
+		[1, 120, 0, -14, 4],
+		[0, 0, 60, -4, 14],
+		[1, 0, 60, -14, 4],
+	]
+	var points: Array[Vector2i] = [Vector2i(5000, 4000), Vector2i(5780, 4000)]
+	for case: Array in cases:
+		var pair: Array[World] = _pair(_tanks.bind(points))
+		for world: World in pair:
+			assert_int(world.separation_idle_share).is_equal(75)
+			world.intent_x[case[0]] = case[1]
+			world.intent_y[case[0]] = case[2]
+		var label: String = "mover %d, intent (%d, %d)" % [case[0], case[1], case[2]]
+		assert_str(_run_both(pair)).override_failure_message(label).is_empty()
+		for world: World in pair:
+			var which: String = "%s, native %s" % [label, world.native_phases != 0]
+			assert_int(world.push_x[0]).override_failure_message(which).is_equal(case[3])
+			assert_int(world.push_x[1]).override_failure_message(which).is_equal(case[4])
+		assert_str(StateDiff.first(pair[0], pair[1])).override_failure_message(label).is_empty()
+
+
+## The cell a unit is scanned from, at the edge of a cell and at the clamp bounds. A tank scans the
+## 3x3 cells around its own, so two tanks 1500 apart (radius 400, they never overlap, so no push
+## shows) look at each other when their cells are neighbours (2 looks, one each) and not when they
+## are two cells apart (0), and the count of looks, stats[SEP_PAIRS], is all that shows it: a
+## unit at 3999 is in cell 3 and one at 4000 in cell 4, on x and on y; a unit in the last column or
+## line or in column or line 0 scans from there, not one cell further in; a unit one whole cell or
+## more outside the map on the left or the top scans from column or line 0, not from -1 (the
+## integration clamps positions to the map, so only a test places one there). The map is 20 x 8
+## tiles. The twin and the kernel agree on the looks and on the whole state.
+func test_the_cell_a_unit_is_scanned_from_is_pinned_at_every_cell_edge_and_clamp_bound() -> void:
+	# [label, unit A, unit B, the looks of both together]
+	var cases: Array[Array] = [
+		["y 3999 and cell 2 above", Vector2i(9500, 3999), Vector2i(9500, 2500), 2],
+		["y 3999 and cell 5 below", Vector2i(9500, 3999), Vector2i(9500, 5500), 0],
+		["y 4000 and cell 5 below", Vector2i(9500, 4000), Vector2i(9500, 5500), 2],
+		["y 4000 and cell 2 above", Vector2i(9500, 4000), Vector2i(9500, 2500), 0],
+		["x 3999 and cell 2 left", Vector2i(3999, 4000), Vector2i(2500, 4000), 2],
+		["x 3999 and cell 5 right", Vector2i(3999, 4000), Vector2i(5500, 4000), 0],
+		["x 4000 and cell 5 right", Vector2i(4000, 4000), Vector2i(5500, 4000), 2],
+		["x 4000 and cell 2 left", Vector2i(4000, 4000), Vector2i(2500, 4000), 0],
+		["last column", Vector2i(19500, 4000), Vector2i(17500, 4000), 0],
+		["last line", Vector2i(9500, 7500), Vector2i(9500, 5500), 0],
+		["first column", Vector2i(500, 4000), Vector2i(2500, 4000), 0],
+		["first line", Vector2i(9500, 500), Vector2i(9500, 2500), 0],
+		["a whole cell left of the map", Vector2i(-1000, 4000), Vector2i(1500, 4000), 2],
+		["two and a half cells left of the map", Vector2i(-2500, 4000), Vector2i(1500, 4000), 2],
+		["a whole cell above the map", Vector2i(9500, -1000), Vector2i(9500, 1500), 2],
+		["two and a half cells above the map", Vector2i(9500, -2500), Vector2i(9500, 1500), 2],
+	]
+	for case: Array in cases:
+		var points: Array[Vector2i] = [case[1], case[2]]
+		var pair: Array[World] = _pair(_tanks.bind(points))
+		assert_str(_run_both(pair)).override_failure_message(case[0]).is_empty()
+		for world: World in pair:
+			var label: String = "%s, native %s" % [case[0], world.native_phases != 0]
+			assert_int(world.stats[World.Stat.SEP_PAIRS]).override_failure_message(label).is_equal(
+				case[3]
+			)
+			assert_array(_pushes(world)).override_failure_message(label).is_equal(_zeros(2))
+		assert_str(StateDiff.first(pair[0], pair[1])).override_failure_message(case[0]).is_empty()
+
+
+## The idle share is clamped to 0..100 percent before it is used. Two tanks of radius 600 (R =
+## 1200) 400 apart give a pair push of 177 (d2 = 160000, the formula) under the cap lifted to 1000,
+## and the mover (row 0) and the idle unit (row 1) split it by the share: with a share of 0 or
+## below the mover takes all of it (-177), with 100 or above the idle unit does (177), and in
+## range each takes its part truncated toward zero (75: -44 and 132). A bound one off (the share
+## clamped to -1..100 or to 0..101) shows only at -1 and 101, and only for a pair push of 100 or
+## more: a share of -1 gives the idle unit -1 and the mover -178, and one of 101 gives 178 and 1.
+func test_the_idle_share_is_clamped_to_zero_and_a_hundred_percent() -> void:
+	# [the rule, push_x of the mover (row 0), push_x of the idle unit (row 1)]
+	var cases: Array[Array] = [
+		[-1000, -177, 0],
+		[-1, -177, 0],
+		[0, -177, 0],
+		[75, -44, 132],
+		[100, 0, 177],
+		[101, 0, 177],
+		[1000, 0, 177],
+	]
+	var points: Array[Vector2i] = [Vector2i(5000, 4000), Vector2i(5400, 4000)]
+	for case: Array in cases:
+		var pair: Array[World] = _pair(_tanks.bind(points))
+		for world: World in pair:
+			world.type_radius[0] = 600
+			world.separation_push_max = 1000
+			world.separation_idle_share = case[0]
+			world.intent_x[0] = 120
+		var label: String = "idle share %d" % case[0]
+		assert_str(_run_both(pair)).override_failure_message(label).is_empty()
+		for world: World in pair:
+			var which: String = "%s, native %s" % [label, world.native_phases != 0]
+			assert_int(world.push_x[0]).override_failure_message(which).is_equal(case[1])
+			assert_int(world.push_x[1]).override_failure_message(which).is_equal(case[2])
+		assert_str(StateDiff.first(pair[0], pair[1])).override_failure_message(label).is_empty()
+
+
 ## Row 0 of the far unit and row 1 of the unit at the edge, on a map of COLS x ROWS tiles whose
 ## units all have a radius that makes them overlap.
 func _far_world(far: Vector2i, edge: Vector2i) -> World:
