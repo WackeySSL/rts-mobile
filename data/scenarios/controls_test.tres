@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://game/sim/defs/SpawnDef.gd" id="2_nxdor"]
 [ext_resource type="Resource" path="res://data/units/light_tank.tres" id="3_i0wkg"]
 [ext_resource type="Resource" path="res://data/rules.tres" id="4_rules"]
+[ext_resource type="Resource" path="res://data/maps/controls_test.tres" id="5_map"]
 
 [sub_resource type="Resource" id="Resource_8l7rg"]
 script = ExtResource("2_nxdor")
@@ -47,3 +48,4 @@ map_size_tiles = Vector2i(48, 48)
 camera_start_tile = Vector2i(12, 21)
 spawns = Array[ExtResource("2_nxdor")]([SubResource("Resource_8l7rg"), SubResource("Resource_apqgn"), SubResource("Resource_raywj"), SubResource("Resource_oubyb")])
 rules = ExtResource("4_rules")
+map = ExtResource("5_map")

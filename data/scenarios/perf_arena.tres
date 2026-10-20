@@ -66,12 +66,12 @@ jitter = 300
 [sub_resource type="Resource" id="Order_p1"]
 script = ExtResource("3_order")
 player = 1
-target_tile = Vector2i(39, 32)
+target_tile = Vector2i(29, 32)
 
 [sub_resource type="Resource" id="Order_p2"]
 script = ExtResource("3_order")
 player = 2
-target_tile = Vector2i(24, 32)
+target_tile = Vector2i(34, 32)
 
 [resource]
 script = ExtResource("1_scenario")
