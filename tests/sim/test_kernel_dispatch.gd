@@ -3,8 +3,8 @@ extends GdUnitTestSuite
 ## and `native_phases` has one bit per SimProbe.Phase; a phase entry that finds its bit set calls
 ## the method of its phase on the kernels and skips the GDScript rule. A KernelSpy takes the place
 ## of the library here, so these cases need no build. P54 has the mask-0 case; a port PR adds one
-## case that sets its bit and asserts exactly its spy call (FLOW since P30n, INTEGRATE since P37n;
-## the other entries have no dispatch line yet).
+## case that sets its bit and asserts exactly its spy call (FLOW since P30n, INTEGRATE since P37n,
+## SEPARATION since P39n; the other entries have no dispatch line yet).
 
 const KernelSpy: GDScript = preload("res://tests/sim/support/kernel_spy.gd")
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
@@ -75,6 +75,33 @@ func test_integrate_calls_the_integrate_kernel_once_and_skips_the_gdscript_phase
 	Movement.integrate(world)
 	assert_array(spy.calls).is_equal(["integrate", "integrate"])
 	assert_array([world.pos_x[0], world.pos_y[0]]).is_not_equal([start.x, start.y])
+
+
+## SEPARATION (P39n): Separation.run starts with the dispatch. With its bit set it calls the kernel
+## once and does nothing else (the pushes the GDScript phase wrote stay what they were, even
+## though two tanks on one point were there to be pushed); with the other four bits it runs the
+## GDScript phase.
+func test_separation_calls_the_separation_kernel_once_and_skips_the_gdscript_phase() -> void:
+	var spy: RefCounted = KernelSpy.new()
+	var world: World = _moving_world(spy, 1 << SimProbe.Phase.SEPARATION)
+	# The first call is the SEPARATION line of the tick `_moving_world` ran.
+	assert_array(spy.calls).is_equal(["separation"])
+	world.pos_x[1] = world.pos_x[0]
+	world.pos_y[1] = world.pos_y[0]
+	world.sep_grid.rebuild(world.pos_x, world.pos_y, world.unit_count())
+	world.push_x.fill(7)
+	world.stats[World.Stat.SEP_PAIRS] = 0
+	Separation.run(world)
+	assert_array(spy.calls).is_equal(["separation", "separation"])
+	assert_array([world.push_x[0], world.push_x[1], world.stats[World.Stat.SEP_PAIRS]]).is_equal(
+		[7, 7, 0]
+	)
+	# The other four phases of ADR 0013.
+	world.native_phases = 0x46A & ~(1 << SimProbe.Phase.SEPARATION)
+	Separation.run(world)
+	assert_array(spy.calls).is_equal(["separation", "separation"])
+	assert_array([world.push_x[0], world.push_x[1]]).is_not_equal([7, 7])
+	assert_int(world.stats[World.Stat.SEP_PAIRS]).is_greater(1)
 
 
 ## The controls scenario with `kernels` and `mask` attached after prepare(), and an attack-move

@@ -20,8 +20,11 @@ const PHASES: Array[int] = [1, 3, 5, 6, 10]
 ## The slots of the flow cache (flow_cache_size).
 const SLOTS: int = 8
 ## The names in each list, 107 in the table (a port adds names here, so a dropped or added name
-## shows in a diff). INTEGRATE's 49 are the names kernel_integrate.cpp gets or sets (P37n).
-const LIST_SIZES: Dictionary[int, int] = {1: 26, 3: 32, 5: 28, 6: 49, 10: 29}
+## shows in a diff). INTEGRATE's 49 are the names kernel_integrate.cpp gets or sets (P37n) and
+## SEPARATION's 20 those of kernel_separation.cpp (P39n; it was 28, with the eight that Separation
+## does not read: max_rows, map_cols, map_rows, map_w, map_h, move_cost, type_speed and
+## type_move_class).
+const LIST_SIZES: Dictionary[int, int] = {1: 26, 3: 32, 5: 20, 6: 49, 10: 29}
 ## A status is the table index of the first bad name times FAULT_COUNT, plus its fault.
 const FAULT_PHASE: int = 1
 const FAULT_OWNER: int = 2
@@ -99,7 +102,7 @@ const PHASES_OF: Dictionary[String, Array] = {
 	"WORLD.type_sight": [10],
 	"WORLD.type_acquire": [3],
 	"WORLD.type_armour": [3],
-	"WORLD.type_move_class": [3, 5, 6],
+	"WORLD.type_move_class": [3, 6],
 	"FLOW.requests": [6],
 	"FLOW.last_used": [6],
 	"SLOT.goal_cell": [1],
@@ -340,7 +343,7 @@ func test_the_bound_methods_are_the_contract_and_none_takes_a_packed_array() -> 
 			assert_bool(packed).override_failure_message(label).is_false()
 	# No test-only entry (ADR 0013 section 2): a port adds its kernel's name here.
 	var bound: Array[String] = ["abi_version", "phases", "build_info", "check_world", "flow"]
-	bound.append("integrate")
+	bound.append_array(["separation", "integrate"])
 	assert_array(methods).contains_exactly_in_any_order(bound)
 
 
