@@ -2,12 +2,12 @@ extends GdUnitTestSuite
 ## Separation in the tick (P39b; ADR 0007 section 4, ADR 0008 section 4), through Sim.step. The
 ## pushes themselves are pinned in test_separation.gd, test_separation_edges.gd and
 ## test_separation_signs.gd; this suite pins what the tick does with them: the GRIDS rebuild comes
-## after FLOW and `Separation.run` after INTENTS and before INTEGRATE (the pushes use this tick's
-## intents and move this tick's units), and crowds that cross, drive into other units or turn back
-## settle idle with no pair closer than 90% of the radii sum (720 milli for two tanks). The crowds
-## are the controls_test scenario: 30 blue tanks (ids 1 to 30) at (8000, 18500) in six columns 1500
-## apart, 10 red tanks (ids 31 to 40) far to the east. The tick counts are measured and rounded up
-## to a multiple of 15.
+## after FLOW (P41's TARGETING follows it) and `Separation.run` after INTENTS and before INTEGRATE
+## (the pushes use this tick's intents and move this tick's units), and crowds that cross, drive
+## into other units or turn back settle idle with no pair closer than 90% of the radii sum (720
+## milli for two tanks). The crowds are the controls_test scenario: 30 blue tanks (ids 1 to 30) at
+## (8000, 18500) in six columns 1500 apart, 10 red tanks (ids 31 to 40) far to the east. The tick
+## counts are measured and rounded up to a multiple of 15.
 ##
 ## Separation does not stop tanks from overlapping while they drive. A push is at most 60 milli a
 ## tick, half a tank's speed of 120 (ADR 0008 section 4), so tanks on crossing paths still slide
@@ -60,7 +60,8 @@ const GROUP_CENTRE_BOUND: int = 3400
 ## GRIDS on; the pushes appear at SEPARATION, with the intent that INTENTS wrote this tick (the
 ## mover takes 25% of the pair push of 128, -32, the idle tank 75%, 96, cut to the 60 a unit may
 ## take; with the intents of the tick before, both idle, the mover would take -60); the positions
-## move at INTEGRATE only, by intent plus push.
+## move at INTEGRATE only, by intent plus push. P41's TARGETING mark sits between GRIDS and INTENTS
+## and changes none of the columns.
 func test_the_grid_is_rebuilt_after_flow_and_the_pushes_use_this_ticks_intents() -> void:
 	var world: World = GridWorld.from_rows(GridWorld.grass(10, 6))
 	world.add_unit(1, 0, 5000, 3000)
@@ -70,18 +71,19 @@ func test_the_grid_is_rebuilt_after_flow_and_the_pushes_use_this_ticks_intents()
 	order.tick = world.tick
 	Sim.step(world, [order], probe)
 	var phases: Array[int] = [SimProbe.Phase.COMMANDS, SimProbe.Phase.FLOW, SimProbe.Phase.GRIDS]
-	phases.append_array([SimProbe.Phase.INTENTS, SimProbe.Phase.SEPARATION])
+	phases.append_array([SimProbe.Phase.TARGETING, SimProbe.Phase.INTENTS])
+	phases.append(SimProbe.Phase.SEPARATION)
 	phases.append_array([SimProbe.Phase.INTEGRATE, SimProbe.Phase.REMOVE])
 	assert_array(probe.phases).is_equal(phases)
-	assert_array(probe.occupied).is_equal([0, 0, 1, 1, 1, 1, 1])
+	assert_array(probe.occupied).is_equal([0, 0, 1, 1, 1, 1, 1, 1])
 	var none: Vector2i = Vector2i.ZERO
 	var pushed: Vector2i = Vector2i(-32, 60)
-	assert_array(probe.pushes).is_equal([none, none, none, none, pushed, pushed, pushed])
-	assert_array(probe.intents).is_equal([0, 0, 0, 120, 120, 120, 120])
+	assert_array(probe.pushes).is_equal([none, none, none, none, none, pushed, pushed, pushed])
+	assert_array(probe.intents).is_equal([0, 0, 0, 0, 120, 120, 120, 120])
 	var start: Vector2i = Vector2i(5000, 5300)
 	var moved: Vector2i = Vector2i(5000 + 120 - 32, 5300 + 60)
-	assert_array(probe.positions).is_equal([start, start, start, start, start, moved, moved])
-	assert_array(probe.pairs).is_equal([0, 0, 0, 0, 2, 2, 2])
+	assert_array(probe.positions).is_equal([start, start, start, start, start, start, moved, moved])
+	assert_array(probe.pairs).is_equal([0, 0, 0, 0, 0, 2, 2, 2])
 
 
 ## The grid is rebuilt every tick from where the units are then: a tank that drives up to an idle
