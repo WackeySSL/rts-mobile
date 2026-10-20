@@ -2,8 +2,9 @@ class_name TickJob
 extends RefCounted
 ## One tick of a match (ADR 0012 sections 1 to 3, plan P38j): MatchLoop.step on the World, the
 ## capture into the new MatchSnapshot, then the timings. MatchRunner runs it inline in SYNC mode,
-## the only mode until P38w runs it on a worker thread. The runner hands it its current world, loop
-## and StepProbe before every run, so a swap takes effect on the next tick.
+## and on its worker thread through serve() in WORKER mode (plan P38w). The runner hands it its
+## current world, loop and StepProbe before every run or post, so a swap takes effect on the next
+## tick.
 ##
 ## It touches only those objects, the command list and the two snapshots, and none of them is a
 ## Node or a Resource (tests/core/test_tick_job.gd walks them). It reads the clock and nothing else
@@ -25,6 +26,23 @@ var previous: MatchSnapshot
 ## Time.get_ticks_usec() when the runner handed the job over, and when run() ended.
 var post_usec: int = 0
 var end_usec: int = 0
+## The worker's hand-off (ADR 0012 section 1), set by the runner before it starts the thread: one
+## `work` token per job posted, one `done` token per job run, and `quit`, read after a `work`
+## token, ends serve(). The two semaphores are the only synchronisation between the threads.
+var work: Semaphore
+var done: Semaphore
+var quit: bool = false
+
+
+## The worker thread's loop: wait for `work`, return once `quit` is set, run one job, post `done`.
+## The fields run() reads are set before each `work` post and read back after the `done` token.
+func serve() -> void:
+	while true:
+		work.wait()
+		if quit:
+			return
+		run()
+		done.post()
 
 
 ## One tick: the step, the hash of the last checkpoint, the capture, then the timings: Sim.step from
