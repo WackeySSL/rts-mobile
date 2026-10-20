@@ -22,12 +22,19 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Long-press, then drag | Draws a box while the finger moves; on release it selects the own units inside (`long_press_ms` in `data/input_settings.tres`) | yes |
 | Long-press and drag a box with no own unit inside | Clears the selection (the only way to deselect) | yes |
 | Any selection | The panel at the bottom centre shows each selected unit type with its icon, its display name (a very long name is cut short with an ellipsis) and its count, and a total for mixed types; it hides when nothing is selected. Tapping it does nothing | |
+| A selected unit is destroyed | It leaves the selection, and the count in the panel drops | |
 
 ## Orders
 | Action | Result | Teach |
 |---|---|---|
-| With units selected, tap the ground | Attack-move: the units go there; a unit that meets an enemy drives to weapon range of it and stops, without shooting yet, and while that enemy stays in range a new ground tap does not move it; chevrons mark the point | yes |
-| With units selected, tap an enemy | Attack: the units drive to weapon range of that enemy and stop there, without shooting yet; a diamond marks it | yes |
+| With units selected, tap the ground | Attack-move: the units go there; a unit that meets an enemy drives to weapon range of it, stops and fights until that enemy is destroyed, then goes on; while an enemy is in its range a new ground tap does not move it, and it goes to the new point once the enemy is destroyed; chevrons mark the point | yes |
+| With units selected, tap an enemy | Attack: the units drive to weapon range of that enemy, stop there and fire at it until it is destroyed, then attack-move on to where it stood; a diamond marks it | yes |
+
+## Combat
+| Action | Result | Teach |
+|---|---|---|
+| Enemies come within weapon range of your units | The units fire at them on their own, without an order, until they are destroyed or out of range; a destroyed unit disappears from the map | |
+| Attack-moving units meet enemies | They stop to fight: they drive to weapon range of the enemy they picked, fire until it is destroyed, pick the next one, and go on to the tapped point when no enemy is left within their reach | yes |
 
 ## Army bar (bottom left)
 | Action | Result | Teach |
@@ -35,6 +42,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Tap "All army" | Selects every own unit that can move, anywhere on the map | |
 | Tap a group (1-3) | Selects the units stored in that group | |
 | Hold a group (1-3) | Stores the current selection in that group; the phone buzzes and the count shows (`group_assign_ms` in `data/input_settings.tres`) | yes |
+| A grouped unit is destroyed | It leaves the group; the group's badge shows the new count, and an empty group shows only its number | |
 
 ## Not yet in the game
 Base building, harvesting, power, production, win and lose conditions, menus and rewards get

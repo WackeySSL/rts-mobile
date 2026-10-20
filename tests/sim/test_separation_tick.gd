@@ -35,6 +35,10 @@ const REACH: int = 800
 const ATTACK_TARGET_ID: int = 31
 const ATTACK_TICKS: int = 600
 const ATTACK_SIGHT: int = 30000
+## P42a: the pair fire at each other for the 600 ticks (18 damage a shot, 25 ticks apart), and a
+## tank has 300 hp, so one would die before the end. The hp is raised so that nothing dies here and
+## the case stays about the pushes; the deaths are test_combat's.
+const ATTACK_HP: int = 1000000
 ## A `retarget_period_ticks` that no tick of a test reaches: nobody scans.
 const NEVER_DUE: int = 1000000
 ## Two groups of 15 whose paths cross: the north half of the block is sent south of the point, the
@@ -81,17 +85,19 @@ func test_the_grid_is_rebuilt_after_flow_and_the_pushes_use_this_ticks_intents(
 	var phases: Array[int] = [SimProbe.Phase.COMMANDS, SimProbe.Phase.FLOW, SimProbe.Phase.GRIDS]
 	phases.append_array([SimProbe.Phase.TARGETING, SimProbe.Phase.INTENTS])
 	phases.append(SimProbe.Phase.SEPARATION)
-	phases.append_array([SimProbe.Phase.INTEGRATE, SimProbe.Phase.REMOVE])
+	phases.append_array([SimProbe.Phase.INTEGRATE, SimProbe.Phase.FIRE, SimProbe.Phase.REMOVE])
 	assert_array(probe.phases).is_equal(phases)
-	assert_array(probe.occupied).is_equal([0, 0, 1, 1, 1, 1, 1, 1])
+	assert_array(probe.occupied).is_equal([0, 0, 1, 1, 1, 1, 1, 1, 1])
 	var none: Vector2i = Vector2i.ZERO
 	var pushed: Vector2i = Vector2i(-32, 60)
-	assert_array(probe.pushes).is_equal([none, none, none, none, none, pushed, pushed, pushed])
-	assert_array(probe.intents).is_equal([0, 0, 0, 0, 120, 120, 120, 120])
+	var pushes: Array[Vector2i] = [none, none, none, none, none, pushed, pushed, pushed, pushed]
+	assert_array(probe.pushes).is_equal(pushes)
+	assert_array(probe.intents).is_equal([0, 0, 0, 0, 120, 120, 120, 120, 120])
 	var start: Vector2i = Vector2i(5000, 5300)
 	var moved: Vector2i = Vector2i(5000 + 120 - 32, 5300 + 60)
-	assert_array(probe.positions).is_equal([start, start, start, start, start, start, moved, moved])
-	assert_array(probe.pairs).is_equal([0, 0, 0, 0, 0, 2, 2, 2])
+	var positions: Array[Vector2i] = [start, start, start, start, start, start, moved, moved, moved]
+	assert_array(probe.positions).is_equal(positions)
+	assert_array(probe.pairs).is_equal([0, 0, 0, 0, 0, 2, 2, 2, 2])
 
 
 ## The grid is rebuilt every tick from where the units are then: a tank that drives up to an idle
@@ -371,6 +377,7 @@ func _overlap_runs() -> PackedInt32Array:
 func _attack_the_first_red_tank(push_max: int, impl: int) -> World:
 	var world: World = _scenario_world(impl)
 	world.type_sight.fill(ATTACK_SIGHT)
+	world.hp.fill(ATTACK_HP)
 	if push_max >= 0:
 		world.separation_push_max = push_max
 	var order: Command = Command.attack(1, _ids(1, 1), ATTACK_TARGET_ID)

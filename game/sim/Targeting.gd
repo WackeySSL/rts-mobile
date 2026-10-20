@@ -3,8 +3,8 @@ extends RefCounted
 ## The TARGETING phase (ADR 0007 section 4 step 5, ADR 0009 sections 2 and 3). Two passes over the
 ## rows, in ascending id order: acquisition (and the `ATTACK` lock), then engagement. Together they
 ## write `target`, and for the rows that fight the order, its target, the goal and the navigation
-## columns (below); they move nothing, fire nothing and write no other column. A shot needs the
-## weapons PR (P42a).
+## columns (below); they move nothing, fire nothing and write no other column. The shot at the
+## target is `Combat.fire`'s (P42a).
 ##
 ## Acquisition (P41): every unit that is due picks the enemy it will shoot at and writes its id into
 ## `world.target` (0 = none). It reads `world.target_grid`, which the caller has rebuilt from this

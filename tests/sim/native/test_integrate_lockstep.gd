@@ -15,10 +15,13 @@ extends GdUnitTestSuite
 ## 600 seeded random states (a random map, cache and rows, garbage in the navigation columns).
 ## The crafted cases are in test_integrate_lockstep_cases.gd and test_integrate_lockstep_off_map.gd.
 ## Since P41b the units that meet hold (HOLD, and CHASE on the way: TARGETING's engagement, in
-## GDScript on both sides) and stand still until P42a lets them fire and die, so the arena runs
-## reach the movement rules less often than before (the lower bounds below are re-derived from the
-## runs, about 70% of what they reached) and also count the unit-ticks in HOLD and CHASE, which the
-## kernel meets in real runs for the first time.
+## GDScript on both sides), so the arena runs reach the movement rules less often than before (the
+## lower bounds below are re-derived from the runs, about 70% of what they reached) and also count
+## the unit-ticks in HOLD and CHASE, which the kernel meets in real runs for the first time. Since
+## P42a (FIRE) the units that hold also fire and die: 46 of the 150 are left at tick 900, the rows
+## compact in real runs (World.remove_dead, GDScript on both sides, so the two Worlds' rows move
+## together), and the unit-ticks in HOLD and CHASE drop (19,000 and 2,600 in the plain run; the
+## bounds on them are re-derived the same way).
 ## That Movement.integrate hands the phase to the kernel at all is pinned by the spy case of
 ## tests/sim/test_kernel_dispatch.gd.
 
@@ -60,7 +63,7 @@ func test_900_arena_ticks_match_after_every_tick() -> void:
 	assert_array(rig.problems).is_empty()
 	assert_str(rig.run(TICKS, _orders)).is_empty()
 	_assert_reached(rig, {&"field": 14000, &"named": 11000, &"ended": 35, &"rekeys": 10})
-	_assert_reached(rig, {&"holding": 40000, &"chasing": 3000})
+	_assert_reached(rig, {&"holding": 13000, &"chasing": 1800})
 	assert_int(rig.tally[&"own_fields"]).is_greater(0)
 	assert_int(rig.worlds[0].flow.requests).is_greater(30)
 
@@ -96,7 +99,7 @@ func test_the_same_run_on_changed_rules_matches() -> void:
 	assert_array(rig.problems).is_empty()
 	assert_str(rig.run(TICKS, _orders)).is_empty()
 	_assert_reached(rig, {&"field": 17000, &"named": 13000, &"no_next": 500, &"ended": 45})
-	_assert_reached(rig, {&"rekeys": 2, &"own_fields": 2})
+	_assert_reached(rig, {&"rekeys": 1, &"own_fields": 2})
 
 
 ## The arena with a cache of two slots, so that the units of a wave ask for more fields than the
@@ -210,9 +213,11 @@ func _chase_orders(world: World, tick: int) -> Array[Command]:
 		var player: int = 1 + tick / 20 % 2
 		var mine: PackedInt32Array = LockstepRig.ids_of(world, player)
 		var theirs: PackedInt32Array = LockstepRig.ids_of(world, 3 - player)
-		var first: int = rng.next_int(mine.size() - 10)
-		var group: PackedInt32Array = mine.slice(first, first + 10)
-		out.append(Command.attack(player, group, theirs[rng.next_int(theirs.size())]))
+		# Units die since P42a: a side may be down to 10 units, or gone, and sends no order then.
+		if mine.size() > 10 and not theirs.is_empty():
+			var first: int = rng.next_int(mine.size() - 10)
+			var group: PackedInt32Array = mine.slice(first, first + 10)
+			out.append(Command.attack(player, group, theirs[rng.next_int(theirs.size())]))
 	return out
 
 

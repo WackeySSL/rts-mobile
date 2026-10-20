@@ -14,9 +14,10 @@ const MILLI_PER_TILE: int = 1000
 ## dropped and counted. Then the flow cache advances (FLOW), the separation and targeting grids are
 ## rebuilt (GRIDS), units pick their targets and engage them (TARGETING: acquisition, the ATTACK
 ## lock, holding and chasing), ordered units choose their steps (intents), overlapping units are
-## pushed apart (SEPARATION), the steps and pushes are integrated, dead rows leave, and the tick
-## counts. A probe gets `begin()` first and a `mark` after each phase that exists (ADR 0007 section
-## 4); it never sees the World.
+## pushed apart (SEPARATION), the steps and pushes are integrated, armed units with a target in
+## range fire (FIRE: `Combat.fire`, hitscan damage), dead rows leave, and the tick counts. A probe
+## gets `begin()` first and a `mark` after each phase that exists (ADR 0007 section 4); it never
+## sees the World.
 static func step(world: World, commands: Array[Command], probe: SimProbe = null) -> void:
 	if probe != null:
 		probe.begin()
@@ -56,6 +57,9 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 	Movement.integrate(world)
 	if probe != null:
 		probe.mark(SimProbe.Phase.INTEGRATE)
+	Combat.fire(world)
+	if probe != null:
+		probe.mark(SimProbe.Phase.FIRE)
 	world.remove_dead()
 	if probe != null:
 		probe.mark(SimProbe.Phase.REMOVE)

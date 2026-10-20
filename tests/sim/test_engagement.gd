@@ -6,7 +6,8 @@ extends GdUnitTestSuite
 ## it (`CHASE`) while the line is clear, and a unit that loses its target resumes its path. The
 ## rock cases (a line that is blocked) are in test_engagement_rock.gd; acquisition is in
 ## test_targeting.gd.
-## No shots yet (P42a): the cases assert range, mode and position, not damage.
+## Units in range fire since P42a (FIRE), and none of these cases runs long enough for anyone to
+## die: the cases assert range, mode and position, not damage (the fights: test_combat_fights.gd).
 ##
 ## The worlds are the shipped unit types (TargetingRig.data_world): rifle squad 0 (range 4000,
 ## acquire 5000, sight 6000, speed 67), rocket squad 1, light tank 2 (range 4500, acquire 5500,

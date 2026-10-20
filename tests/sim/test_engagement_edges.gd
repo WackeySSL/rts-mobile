@@ -110,7 +110,8 @@ func test_an_attack_moving_unit_chases_only_a_target_inside_its_acquire_range() 
 ## order keeps the unit's target (the order's tick resets the navigation, `DIRECT`), the scan keeps
 ## the target it holds, and the same tick's engagement puts the unit back in `HOLD` before
 ## Movement steers it, so it never takes a step, whichever way the tap points. This is what the
-## attack-move row of docs/HOW_TO_PLAY.md says.
+## attack-move row of docs/HOW_TO_PLAY.md says. The 12 ticks end before anyone dies; since P42a the
+## unit goes on to the tap once the enemy is dead (test_combat_fights.gd).
 func test_a_new_ground_tap_does_not_move_a_unit_that_holds_an_enemy_in_range() -> void:
 	for goal: Vector2i in [Vector2i(14000, 6000), Vector2i(2000, 6000), Vector2i(6000, 600)]:
 		var world: World = Rig.data_world()

@@ -27,6 +27,9 @@ const ATTACK_MOVE: int = World.Order.ATTACK_MOVE
 const MOVE: int = World.Order.MOVE
 ## The arena match of the hash and sight cases: the sides meet in the first 100 ticks.
 const ARENA_TICKS: int = 300
+## P42a: units that hold also fire. A case that watches idle units for a long run raises their hp
+## so that nobody dies in it (the deaths are test_combat's).
+const TOUGH: int = 1000000
 
 
 ## A rocket squad prefers the tank (100%) to the rifle squad (20%) that stands closer, and a rifle
@@ -251,12 +254,17 @@ func test_the_grid_is_rebuilt_in_grids_and_targeting_follows_it() -> void:
 	var phases: Array[int] = [SimProbe.Phase.COMMANDS, SimProbe.Phase.FLOW, SimProbe.Phase.GRIDS]
 	phases.append_array([SimProbe.Phase.TARGETING, SimProbe.Phase.INTENTS])
 	phases.append_array(
-		[SimProbe.Phase.SEPARATION, SimProbe.Phase.INTEGRATE, SimProbe.Phase.REMOVE]
+		[
+			SimProbe.Phase.SEPARATION,
+			SimProbe.Phase.INTEGRATE,
+			SimProbe.Phase.FIRE,
+			SimProbe.Phase.REMOVE
+		]
 	)
 	assert_array(probe.phases).is_equal(phases)
-	assert_array(probe.occupied).is_equal([0, 0, 2, 2, 2, 2, 2, 2])
-	assert_array(probe.targets).is_equal([0, 0, 0, 2, 2, 2, 2, 2])
-	assert_array(probe.candidates).is_equal([0, 0, 0, 1, 1, 1, 1, 1])
+	assert_array(probe.occupied).is_equal([0, 0, 2, 2, 2, 2, 2, 2, 2])
+	assert_array(probe.targets).is_equal([0, 0, 0, 2, 2, 2, 2, 2, 2])
+	assert_array(probe.candidates).is_equal([0, 0, 0, 1, 1, 1, 1, 1, 1])
 
 
 ## The grid the scan reads is the one built in the same tick: unit 2 stands far away at tick 3 and
@@ -297,13 +305,16 @@ func test_the_grid_is_rebuilt_on_every_tick_odd_or_even() -> void:
 ## An idle unit never moves on its own. Two pairs of enemies, each inside the weapons' ranges of
 ## the other (rifle squad and rocket squad 3000 apart, tank and rifle squad 3500 apart), stand idle
 ## for 150 ticks: they all take their enemy as the target and hold (`HOLD`, P41b), and nobody's
-## position, goal, order or intent changes, and nobody chases.
+## position, goal, order or intent changes, and nobody chases. Since P42a they also shoot each other
+## for the 150 ticks and would die (the rifle squad kills the rocket squad, the tank the other
+## rifle squad), so the hp is raised and nobody does.
 func test_idle_units_never_move_on_their_own() -> void:
 	var world: World = Rig.data_world()
 	world.add_unit(1, RIFLE, 3000, 3000)
 	world.add_unit(2, ROCKET, 6000, 3000)
 	world.add_unit(1, TANK, 14000, 9000)
 	world.add_unit(2, RIFLE, 14000, 5500)
+	world.hp.fill(TOUGH)
 	var before: Array[PackedInt32Array] = [
 		world.pos_x.duplicate(),
 		world.pos_y.duplicate(),

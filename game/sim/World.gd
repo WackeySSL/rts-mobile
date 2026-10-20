@@ -305,7 +305,8 @@ var goal_y: PackedInt32Array = PackedInt32Array()
 ## field its units share; -1 = none (the unit's own goal tile, every ATTACK, every idle unit).
 var group_cell: PackedInt32Array = PackedInt32Array()
 var order: PackedInt32Array = PackedInt32Array()
-## At most the type's max hp. It may go below 0 by at most one hit.
+## At most the type's max hp. It may go below 0 by the hits of one tick (every shooter hits a unit
+## that an earlier shooter has already brought to 0, so one hit per shooter, ADR 0009 section 4).
 var hp: PackedInt32Array = PackedInt32Array()
 ## Unit ids, 0 = none.
 var order_target: PackedInt32Array = PackedInt32Array()
