@@ -74,7 +74,7 @@ When unsure, load the vendored skill `gdscript-patterns` before writing code.
 Touch targets >= 48 dp. Landscape and portrait (ADR 0015; the Android build is landscape-locked
 until row P64 merges, the web preview already turns; UI code never assumes width > height),
 respect safe areas. One finger drag = pan, pinch = zoom,
-tap = select, tap ground = attack-move, long-press + drag = box select, double-tap = all of that type.
+tap = select, tap ground = move (stops an attack), long-press + drag = box select, double-tap = all of that type.
 Details: skill `touch-ui-rules`.
 
 ## Monetization rules

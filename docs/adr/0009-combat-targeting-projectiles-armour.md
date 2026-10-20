@@ -266,3 +266,7 @@ and `Combat.fire` phase 10. As merged:
 - Players cannot disengage in Phase 2: every ground tap is an attack-move, and `MOVE` has no
   gesture yet. This is a known limitation, recorded in `HOW_TO_PLAY.md`; a gesture for it is on
   the Phase 3 plan's agenda.
+  Status note (2026-10-20, P43c): the limitation is lifted. A ground tap issues `MOVE` (Michael's
+  decision of 2026-10-20, quoted verbatim in row P43c of `docs/plans/2026-10-11-phase-2.md`),
+  which drops the units' targets and holds their fire until they arrive and stand idle, where
+  §2's idle reach (the weapon's range) applies; a tap on an enemy still issues `ATTACK`.

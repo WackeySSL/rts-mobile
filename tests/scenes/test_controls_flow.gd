@@ -91,7 +91,7 @@ func test_tap_ground_450_ticks_idle_slots(profile: String, _test_parameters := P
 	await _tap(_camera.world_to_screen(GROUND))
 	assert_array(_sent).has_size(1)
 	var command: Command = _sent[0]
-	assert_int(command.type).is_equal(Command.Type.ATTACK_MOVE)
+	assert_int(command.type).is_equal(Command.Type.MOVE)  # P43c: a ground tap moves.
 	assert_int(command.player_id).is_equal(1)
 	assert_array(command.unit_ids).is_equal(range(1, 31))
 	assert_int(command.target_x).is_equal(20016)
