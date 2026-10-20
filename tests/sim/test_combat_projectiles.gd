@@ -602,10 +602,10 @@ func test_a_slot_pushed_onto_an_empty_stack_is_written_at_the_bottom_of_it() -> 
 
 
 ## The phase sits between INTEGRATE and FIRE: a probe sees the marks INTEGRATE, PROJECTILES, FIRE,
-## REMOVE in that order, and the hash after a tick with shells in flight differs from the hash of
-## the same state with one live slot's flight time one tick longer (the live slots are in the
-## hash), while a freed slot's columns are not (a slot zeroed by hand but already free hashes as
-## before).
+## REMOVE and FOG (P46) in that order, and the hash after a tick with shells in flight differs from
+## the hash of the same state with one live slot's flight time one tick longer (the live slots are
+## in the hash), while a freed slot's columns are not (a slot zeroed by hand but already free
+## hashes as before).
 func test_the_phase_is_marked_between_integrate_and_fire_and_the_slots_are_in_the_hash() -> void:
 	var world: World = _slot_world()
 	var probe: RecordingProbe = RecordingProbe.new()
@@ -617,7 +617,8 @@ func test_the_phase_is_marked_between_integrate_and_fire_and_the_slots_are_in_th
 			SimProbe.Phase.INTEGRATE,
 			SimProbe.Phase.PROJECTILES,
 			SimProbe.Phase.FIRE,
-			SimProbe.Phase.REMOVE
+			SimProbe.Phase.REMOVE,
+			SimProbe.Phase.FOG
 		]
 	)
 	Sim.step(world, [])

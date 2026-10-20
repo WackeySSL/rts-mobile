@@ -10,8 +10,11 @@ const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 ## ROW_ARRAYS (STATE_FORMAT stays 1, no golden hash exists yet), so the digest changed from
 ## 73341a6f5754b7b4. P48: controls_test got its map (data/maps/controls_test.tres), so only the
 ## "map" section changed (the digest of terrain, move_cost and terrain_cost); the scenario without
-## the map still hashes to the previous cf4af0c09a33ccf2.
-const TICK_0_SEED_1: String = "d7d4de335b7cdde2"
+## the map still hashes to the previous cf4af0c09a33ccf2. P46: prepare() stamps every row's sight
+## disc, so only the "fog" section (counts and explored bytes) and the "fog_cell" column changed;
+## with the fog cleared and the column back at -1 the world still hashes to the previous
+## d7d4de335b7cdde2.
+const TICK_0_SEED_1: String = "1657fe4c8868f2a6"
 
 
 ## Every int, bool and Packed array member of a helper, private ones too, is in HASHED or UNHASHED

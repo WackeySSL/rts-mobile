@@ -551,8 +551,10 @@ func test_prepare_sizes_the_helpers_from_the_map_the_players_and_the_rules() -> 
 ## A second prepare() and a Sim.step (which prepares first) change no helper: every object and array
 ## stays the same buffer with the same contents, after a rebuilt grid, a stamped fog and a finished
 ## flow slot. configure() would re-create or clear each of them. The tick has no order and no
-## sight, so nothing else in it writes a helper yet, except the separation grid, which the tick
-## rebuilds from the same positions (P39b); the first rule that writes more updates this case.
+## move, so it writes no helper, except the separation grid, which it rebuilds from the same
+## positions (P39b), and player 1's fog update (P46), which at tick 0 empties its dirty list: the
+## counts, the `listed` marks and the flag change, so the case reads the `dirty` block (an update
+## never clears an entry of it) and not `listed`. The first rule that writes more updates this case.
 func test_a_second_prepare_keeps_the_helper_state() -> void:
 	var world: World = World.new()
 	world.map_w = 6000
@@ -686,11 +688,12 @@ func _phase1_world() -> World:
 	return world
 
 
-## The helper objects and the arrays that configure() would re-create: the fog grids, both spatial
-## grids, the cache's state arrays and the cost array of slot `slot`.
+## The helper objects and the arrays that configure() would re-create: the fog grids (the dirty
+## block, not its marks, see above), both spatial grids, the cache's state arrays and the cost
+## array of slot `slot`.
 func _helper_state(world: World, slot: int) -> Array:
 	var state: Array = [world.fog, world.flow, world.sep_grid, world.target_grid]
-	state.append_array([world.fog.visible, world.fog.explored, world.fog.listed])
+	state.append_array([world.fog.visible, world.fog.explored, world.fog.dirty])
 	state.append_array([world.sep_grid.head, world.sep_grid.next])
 	state.append_array([world.target_grid.head, world.target_grid.next])
 	state.append_array([world.flow.key_goal, world.flow.status, world.flow.fields[slot].cost])
