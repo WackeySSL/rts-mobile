@@ -86,6 +86,11 @@ SEPARATION), a dated status note from "P26y docs" sits in §2 (SEPARATION's chec
 from 28 to 20 names, the empty-grid return, the divisor's recorded range). No accepted text
 changed.
 
+Status note (2026-10-20, P26z docs): after the merge of P54r (#116, `NativeKernels` and
+`MatchRunner.sim_impl`), a dated status note from "P26z docs" sits in §3 (what `self_check`'s
+hash comparison sees of FLOW, and where the OS rule of the fallback lives). No accepted text
+changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -844,6 +849,23 @@ absorbs next to the C++ phases.
   `NATIVE` gives `impl: FAIL (gdscript)`, and a self-check other than a match gives
   `impl: FAIL (self-check mismatch)`; either makes `GATE: FAIL`. Elsewhere the line reads
   `impl: n/a`.
+
+  Status note (2026-10-20, P26z docs, P54r as merged, #116), the text above stays as accepted:
+  `NativeKernels.self_check` compares `state_hash()` after every tick, as written. `FlowCache`
+  and `FlowField` are derived state that the hash leaves out (their `HASHED` lists are empty), so
+  a divergence in FLOW alone shows in the self-check only once it changes a route, that is a
+  unit's step; `tests/sim/native/test_flow_lockstep.gd`, which compares the full state after
+  every call, stays the per-call check of the FLOW kernel. The OS rule of the fallback lives in
+  a second pure function: `MatchRunner.resolve_impl(impl, has_library, _os_name)` does not use
+  the OS name (the web runs the twins because its export packs no library), and
+  `MatchRunner.fallback_log(impl, resolved, os_name)` returns an `ImplLog` (`NONE`, `WARNING`,
+  `ERROR`): `NATIVE` without the library is an error on every OS, and `AUTO`'s fallback is an
+  error on Android, nothing on the web and a warning elsewhere. So "the platform where
+  `resolve_impl` treats a missing library as an error" above reads `fallback_log`. `start()`
+  logs through the seam `MatchRunner._use_impl(target, kernels, os_name)`, and the ABI check is
+  `NativeKernels.abi_matches` (`ABI_VERSION = 1`) behind the seam
+  `NativeKernels._create(kernel_class)`; plan contract rows `MatchRunner` v1 and Native kernels,
+  "P54r as merged".
 
 ### 4. Determinism rules for C++
 - **Language and types:**
