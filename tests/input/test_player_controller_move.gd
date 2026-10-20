@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## The ground tap of PlayerController (P43c) through the real CommandQueue and sim: it is a MOVE, so
-## it takes units out of a fight. Michael, 2026-10-20: selecting units and telling them to drive to
-## another position must stop the attack and drive them there. The cases in
+## it takes units out of a fight. Michael, 2026-10-20 (his words, verbatim, are in row P43c of
+## docs/plans/2026-10-11-phase-2.md): selecting units and telling them to drive to another position
+## must stop the attack and drive them there. The cases in
 ## test_player_controller.gd and test_controls_flow.gd pin the Command a tap sends; these play it.
 ## Fingers enter as window-px touch events through the real TouchInput with a fake clock, at
 ## 1280x720 (desktop), 2400x1080 (android_6in, 20:9 phone) and 2048x1536 (web_tablet, 4:3).
@@ -92,6 +93,8 @@ func test_a_ground_tap_stops_a_fight_and_the_units_drive_away_then_fire_without_
 			var sent: int = _sent.size()
 			_tap(_camera.world_to_screen(RETREAT))
 			assert_array(_sent).has_size(sent + 1)
+			if _sent.size() <= sent:
+				continue  # No MOVE to look at; the next variant still runs.
 			_assert_move(_sent[sent], PAIR, RETREAT_MILLI)
 			_assert_one_chevron_mark_at(RETREAT)  # The diamond of the enemy tap has faded.
 			var arrived: int = -1
@@ -131,6 +134,9 @@ func test_a_ground_tap_releases_the_attack_lock_and_a_later_enemy_tap_attacks_ag
 			assert_int(world.order_target[world.index_of(id)]).is_equal(RED)
 			assert_int(world.target[world.index_of(id)]).is_equal(RED)
 		_tap(_camera.world_to_screen(RETREAT))
+		assert_array(_sent).has_size(2)
+		if _sent.size() < 2:
+			continue
 		_assert_move(_sent[1], PAIR, RETREAT_MILLI)
 		_runner.run_ticks(1)
 		for id: int in PAIR:
@@ -141,6 +147,8 @@ func test_a_ground_tap_releases_the_attack_lock_and_a_later_enemy_tap_attacks_ag
 		_layer._process(0.0)
 		_tap(_off_centre(world.index_of(RED)))
 		assert_array(_sent).has_size(3)
+		if _sent.size() < 3:
+			continue
 		_assert_attack(_sent[2])
 		_runner.run_ticks(1)
 		for id: int in PAIR:
@@ -195,6 +203,8 @@ func _assert_idle_pair_fires_on_a_visitor(label: String) -> void:
 		if not fired.is_empty():
 			break
 	assert_array(fired).override_failure_message(label + ": no shot at the red tank").is_not_empty()
+	if fired.is_empty():
+		return
 	var shot: PackedInt32Array = fired[0]
 	assert_int(shot[4]).is_equal(RED)  # Its target.
 	var apart: float = Vector2(shot[2], shot[3]).distance_to(Vector2(shot[6], shot[7]))
@@ -216,6 +226,8 @@ func _open_fire(opening: StringName) -> void:
 func _attack_red() -> void:
 	_tap(_off_centre(_runner.world.index_of(RED)))
 	assert_array(_sent).has_size(1)
+	if _sent.is_empty():
+		return
 	_assert_attack(_sent[0])
 	_markers._process(0.0)  # The diamond is a second old by now, past its lifetime.
 
@@ -282,6 +294,8 @@ func _assert_one_chevron_mark_at(world_px: Vector2) -> void:
 		if mark.visible:
 			shown.append(mark)
 	assert_array(shown).has_size(1)
+	if shown.is_empty():
+		return
 	assert_bool(shown[0].diamond).is_false()
 	assert_vector(shown[0].position).is_equal_approx(world_px, TOL)
 

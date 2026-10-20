@@ -224,6 +224,6 @@ every tick, from the positions at the start of the tick; it writes navigation st
   gesture yet. This is a known limitation, recorded in `HOW_TO_PLAY.md`; a gesture for it is on
   the Phase 3 plan's agenda.
   Status note (2026-10-20, P43c): the limitation is lifted. A ground tap issues `MOVE` (Michael's
-  decision of 2026-10-20), which drops the units' targets and holds their fire until they arrive
-  and stand idle, where §2's idle reach (the weapon's range) applies; a tap on an enemy still
-  issues `ATTACK`.
+  decision of 2026-10-20, quoted verbatim in row P43c of `docs/plans/2026-10-11-phase-2.md`),
+  which drops the units' targets and holds their fire until they arrive and stand idle, where
+  §2's idle reach (the weapon's range) applies; a tap on an enemy still issues `ATTACK`.

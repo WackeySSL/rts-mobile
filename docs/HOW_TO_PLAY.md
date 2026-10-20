@@ -33,8 +33,8 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 ## Combat
 | Action | Result | Teach |
 |---|---|---|
-| Enemies come within weapon range of your units | The units fire at them on their own, without an order, until they are destroyed or out of range; a destroyed unit disappears from the map | |
-| Attack-moving units meet enemies | They stop to fight: they drive to weapon range of the enemy they picked, fire until it is destroyed, pick the next one, and go on to the tapped point when no enemy is left within their reach | yes |
+| Enemies come within weapon range of your standing units | The units fire at them on their own, without an order, until they are destroyed or out of range; units on a move order do not fire until they have arrived; a destroyed unit disappears from the map | |
+| Units that finish an attack meet more enemies | They stop to fight: they drive to weapon range of the enemy they picked, fire until it is destroyed, pick the next one, and go on to where the enemy you tapped stood when no enemy is left within their reach | yes |
 | A unit is selected, or has just been damaged | A health bar shows above it, filled by the hp it has left (a unit that lives always shows a little fill). Selected units keep their bar; a damaged unit shows it for a few seconds. Your bars are plain, enemy bars have a notch in the top edge, so you can tell them apart without colour | |
 
 ## Army bar (bottom left)

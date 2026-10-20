@@ -182,8 +182,9 @@ Facts checked on Godot 4.7.2:
 
    Status note (2026-10-20, P43c), the text above stays as accepted: since P43c a tap on the
    ground with units selected issues `MOVE` (`Command.move`), not an attack-move, so it stops an
-   attack and the units drive to the point without fighting (Michael's decision of 2026-10-20:
-   selecting units and telling them to drive to another position must stop the attack). The
+   attack and the units drive to the point without fighting (Michael's decision of 2026-10-20,
+   quoted verbatim in row P43c of `docs/plans/2026-10-11-phase-2.md`: selecting units and telling
+   them to drive to another position must stop the attack). The
    Consequences' double-tap line holds with "move" for "attack-move". No gesture issues
    `ATTACK_MOVE` any more; scenario orders and the Phase 4 AI still may.
 6. **Camera** (`game/view/RtsCamera.gd`, replaces `camera_pan.gd`):
