@@ -89,26 +89,30 @@ func test_two_commands_of_one_player_on_one_tick_replay_in_log_order() -> void:
 	assert_array([logged[5].tick, logged[5].sequence, logged[5].player_id]).is_equal([70, 5, 1])
 	assert_array([logged[6].tick, logged[6].sequence, logged[6].player_id]).is_equal([70, 6, 1])
 	assert_array([logged[5].target_x, logged[6].target_x]).is_equal([30500, 10500])
-	# The shared units 25-30 (rows 24-29: nobody has died by tick 75) go where the later MOVE says;
-	# unit 21, only in the earlier MOVE, goes east and unit 35, only in the later one, west.
+	# The shared units 25-30 go where the later MOVE says; unit 21, only in the earlier MOVE, goes
+	# east and unit 35, only in the later one, west. Units fight and die in the arena since P42a
+	# (one has by tick 75, so the rows have moved up): the rows are found by id.
 	var fresh: World = _fresh(replay)
 	assert_int(Replay.play(replay, fresh, 75)).is_equal(-1)
-	assert_int(fresh.unit_count()).is_equal(150)
-	assert_int(fresh.unit_id[24]).is_equal(25)
-	(
-		assert_array([fresh.goal_x[20] > 20000, fresh.goal_x[24] < 20000, fresh.goal_x[34] < 20000])
-		. is_equal([true, true, true])
-	)
+	assert_int(fresh.unit_count()).is_equal(149)
+	var east: int = fresh.index_of(21)
+	var shared: int = fresh.index_of(25)
+	var west: int = fresh.index_of(35)
+	assert_array([east >= 0, shared >= 0, west >= 0]).is_equal([true, true, true])
+	assert_array([fresh.goal_x[east] > 20000, fresh.goal_x[shared] < 20000]).is_equal([true, true])
+	assert_bool(fresh.goal_x[west] < 20000).is_true()
 	assert_int(Replay.play(replay, _fresh(replay), 150)).is_equal(-1)
 	# Swapped in the log, the earlier MOVE comes second and wins the shared units.
 	var swapped: Replay = _edited(replay, "swap_same_tick_moves")
 	var world: World = _fresh(replay)
 	assert_int(Replay.play(swapped, world, 150)).is_equal(75)
 	assert_int(world.tick).is_equal(75)
-	(
-		assert_array([world.goal_x[20] > 20000, world.goal_x[24] > 20000, world.goal_x[34] < 20000])
-		. is_equal([true, true, true])
+	var rows: Array[int] = [world.index_of(21), world.index_of(25), world.index_of(35)]
+	assert_array(rows.map(func(row: int) -> bool: return row >= 0)).is_equal([true, true, true])
+	assert_array([world.goal_x[rows[0]] > 20000, world.goal_x[rows[1]] > 20000]).is_equal(
+		[true, true]
 	)
+	assert_bool(world.goal_x[rows[2]] < 20000).is_true()
 
 
 ## The tick of the change decides the checkpoint: 14 shows at 15 (the state of tick 15 holds it),

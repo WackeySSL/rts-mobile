@@ -15,10 +15,14 @@ extends GdUnitTestSuite
 ## 600 seeded random states (a random map, cache and rows, garbage in the navigation columns).
 ## The crafted cases are in test_integrate_lockstep_cases.gd and test_integrate_lockstep_off_map.gd.
 ## Since P41b the units that meet hold (HOLD, and CHASE on the way: TARGETING's engagement, in
-## GDScript on both sides) and stand still until P42a lets them fire and die, so the arena runs
-## reach the movement rules less often than before (the lower bounds below are re-derived from the
-## runs, about 70% of what they reached) and also count the unit-ticks in HOLD and CHASE, which the
-## kernel meets in real runs for the first time.
+## GDScript on both sides), so the arena runs reach the movement rules less often than before (the
+## lower bounds below are re-derived from the runs, about 70% of what they reached) and also count
+## the unit-ticks in HOLD and CHASE, which the kernel meets in real runs for the first time. Since
+## P42a (FIRE) the units that hold also fire and die: 46 of the 150 are left at tick 900, the rows
+## compact in real runs (World.remove_dead, GDScript on both sides, so the two Worlds' rows move
+## together), and the unit-ticks in HOLD and CHASE drop (19,000 and 2,600 in the plain run; the
+## bounds on them are re-derived the same way). Every arena run asserts that at least 70 rows left
+## (the runs lose about 100), so a sim in which nobody dies turns the suite red.
 ## That Movement.integrate hands the phase to the kernel at all is pinned by the spy case of
 ## tests/sim/test_kernel_dispatch.gd.
 
@@ -60,7 +64,7 @@ func test_900_arena_ticks_match_after_every_tick() -> void:
 	assert_array(rig.problems).is_empty()
 	assert_str(rig.run(TICKS, _orders)).is_empty()
 	_assert_reached(rig, {&"field": 14000, &"named": 11000, &"ended": 35, &"rekeys": 10})
-	_assert_reached(rig, {&"holding": 40000, &"chasing": 3000})
+	_assert_reached(rig, {&"holding": 13000, &"chasing": 1800, &"lost": 70})
 	assert_int(rig.tally[&"own_fields"]).is_greater(0)
 	assert_int(rig.worlds[0].flow.requests).is_greater(30)
 
@@ -71,6 +75,7 @@ func test_the_same_run_with_only_integrate_in_c_plus_plus_matches() -> void:
 	assert_bool(rig.worlds[1].native_phases == 1 << SimProbe.Phase.INTEGRATE).is_true()
 	assert_str(rig.run(TICKS, _orders)).is_empty()
 	_assert_reached(rig, {&"field": 14000, &"named": 11000, &"ended": 35, &"rekeys": 10})
+	_assert_reached(rig, {&"lost": 70})
 
 
 func test_900_ticks_on_the_arena_with_slow_ground_scrub_rock_and_water_painted_in_match() -> void:
@@ -78,7 +83,7 @@ func test_900_ticks_on_the_arena_with_slow_ground_scrub_rock_and_water_painted_i
 	assert_array(rig.problems).is_empty()
 	assert_str(rig.run(TICKS, _orders)).is_empty()
 	_assert_reached(rig, {&"field": 20000, &"named": 15000, &"no_next": 700, &"ended": 45})
-	_assert_reached(rig, {&"rekeys": 7, &"own_fields": 5, &"recycles": 1})
+	_assert_reached(rig, {&"rekeys": 7, &"own_fields": 5, &"recycles": 1, &"lost": 70})
 
 
 func test_the_same_run_on_changed_rules_matches() -> void:
@@ -96,7 +101,7 @@ func test_the_same_run_on_changed_rules_matches() -> void:
 	assert_array(rig.problems).is_empty()
 	assert_str(rig.run(TICKS, _orders)).is_empty()
 	_assert_reached(rig, {&"field": 17000, &"named": 13000, &"no_next": 500, &"ended": 45})
-	_assert_reached(rig, {&"rekeys": 2, &"own_fields": 2})
+	_assert_reached(rig, {&"rekeys": 1, &"own_fields": 2, &"lost": 70})
 
 
 ## The arena with a cache of two slots, so that the units of a wave ask for more fields than the
@@ -113,7 +118,9 @@ func test_a_cache_of_two_slots_gives_the_same_slot_tables_after_every_tick() -> 
 	for _tick: int in TICKS:
 		assert_str(rig.step(_chase_orders)).is_empty()
 		assert_array(_tables(rig.worlds[1])).is_equal(_tables(rig.worlds[0]))
-	_assert_reached(rig, {&"contended": 500, &"fresh": 2, &"holds": 10, &"recycles": 1})
+	_assert_reached(
+		rig, {&"contended": 500, &"fresh": 2, &"holds": 10, &"recycles": 1, &"lost": 70}
+	)
 
 
 ## 600 random states, each stepped 6 ticks: a map of 3 to 14 columns and 3 to 12 rows of mostly
@@ -140,6 +147,35 @@ func test_random_states_match() -> void:
 			total[name] += rig.tally[name]
 	for name: StringName in TALLY_REACHED:
 		assert_int(total[name]).override_failure_message(String(name)).is_greater(10)
+
+
+## The orders of a wave need units to send and, for an ATTACK, an enemy to hit. With every unit of
+## side 2 dead (since P42a a side can be wiped out in a run) the waves of side 2 send nothing, the
+## waves of side 1 send a MOVE or an ATTACK_MOVE but never an ATTACK, and none indexes past the ids
+## (an out-of-bounds read in the helper would end the whole suite in a script error).
+func test_a_wave_sends_no_order_that_it_has_no_unit_or_no_enemy_for() -> void:
+	var world: World = _arena()
+	for row: int in world.unit_count():
+		if world.owner[row] == 2:
+			world.hp[row] = 0
+	world.remove_dead()
+	assert_array(LockstepRig.ids_of(world, 2)).is_empty()
+	var none: int = 0
+	var types: Array[int] = []
+	for tick: int in range(
+		WAVE_FIRST + WAVE_AT, WAVE_FIRST + WAVE_AT + 60 * WAVE_EVERY, WAVE_EVERY
+	):
+		var wave: Command = _wave(world, tick)
+		if wave == null:
+			none += 1
+		else:
+			assert_int(wave.player_id).is_equal(1)
+			types.append(wave.type)
+	assert_int(none).is_greater(10)
+	assert_int(types.size()).is_greater(10)
+	assert_int(types.count(Command.Type.ATTACK)).is_equal(0)
+	assert_int(types.count(Command.Type.MOVE)).is_greater(0)
+	assert_int(types.count(Command.Type.ATTACK_MOVE)).is_greater(0)
 
 
 func _rules() -> RulesDef:
@@ -194,7 +230,9 @@ func _orders(world: World, tick: int) -> Array[Command]:
 		out.append(Command.attack_move(2, LockstepRig.ids_of(world, 2), 24500, 32500))
 	out.append_array(MatchScript.commands_at(tick))
 	if tick >= WAVE_FIRST and tick % WAVE_EVERY == WAVE_AT:
-		out.append(_wave(world, tick))
+		var wave: Command = _wave(world, tick)
+		if wave != null:
+			out.append(wave)
 	return out
 
 
@@ -210,19 +248,26 @@ func _chase_orders(world: World, tick: int) -> Array[Command]:
 		var player: int = 1 + tick / 20 % 2
 		var mine: PackedInt32Array = LockstepRig.ids_of(world, player)
 		var theirs: PackedInt32Array = LockstepRig.ids_of(world, 3 - player)
-		var first: int = rng.next_int(mine.size() - 10)
-		var group: PackedInt32Array = mine.slice(first, first + 10)
-		out.append(Command.attack(player, group, theirs[rng.next_int(theirs.size())]))
+		# Units die since P42a: a side may be down to 10 units, or gone, and sends no order then.
+		if mine.size() > 10 and not theirs.is_empty():
+			var first: int = rng.next_int(mine.size() - 10)
+			var group: PackedInt32Array = mine.slice(first, first + 10)
+			out.append(Command.attack(player, group, theirs[rng.next_int(theirs.size())]))
 	return out
 
 
 ## One seeded order of a side: 6 to 20 consecutive ids of its units, sent (MOVE or ATTACK_MOVE) to
 ## a point anywhere on the map, rock and wall included, or (ATTACK) at one unit of the other side.
+## Units die since P42a, so a side may have no unit left to send, or the other side none to attack:
+## null (no order) then, never an index past the ids. A side with fewer units than the group sends
+## all it has.
 func _wave(world: World, tick: int) -> Command:
 	var rng: DetRandom = DetRandom.create(42, 500 + tick)
 	var player: int = 1 + rng.next_int(2)
 	var mine: PackedInt32Array = LockstepRig.ids_of(world, player)
 	var theirs: PackedInt32Array = LockstepRig.ids_of(world, 3 - player)
+	if mine.is_empty():
+		return null
 	var count: int = 6 + rng.next_int(15)
 	var first: int = rng.next_int(mine.size() - count)
 	var group: PackedInt32Array = mine.slice(first, first + count)
@@ -233,6 +278,8 @@ func _wave(world: World, tick: int) -> Command:
 			return Command.move(player, group, x, y)
 		1:
 			return Command.attack_move(player, group, x, y)
+	if theirs.is_empty():
+		return null
 	return Command.attack(player, group, theirs[rng.next_int(theirs.size())])
 
 
