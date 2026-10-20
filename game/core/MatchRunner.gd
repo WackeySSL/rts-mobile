@@ -22,7 +22,7 @@ enum ImplLog { NONE = 0, WARNING = 1, ERROR = 2 }
 ## that add up to whole ticks (four times 1/60 s) step exactly.
 const MICRO_TICKS_PER_TICK: int = 1_000_000
 ## OS.get_name() of the platform that requires the library (ADR 0013 section 3) and of the web
-## preview, which runs the GDScript twins (section 7).
+## preview, which packs no library (section 7) and falls back silently.
 const OS_ANDROID: String = "Android"
 const OS_WEB: String = "Web"
 
@@ -91,7 +91,8 @@ func _ready() -> void:
 ## implementation that sim_impl resolves to on this platform (_use_impl()).
 func start() -> void:
 	world = World.from_scenario(scenario, DetRng.create(match_seed, DetRandom.STREAM_SIM))
-	_use_impl(world)
+	var kernels: Object = null if sim_impl == SimImpl.GDSCRIPT else NativeKernels.create()
+	_use_impl(world, kernels, OS.get_name())
 	var scenario_path: String = scenario.resource_path if scenario != null else ""
 	loop = MatchLoop.create(scenario, scenario_path, match_seed, world)
 	replay = loop.replay
@@ -120,15 +121,14 @@ func alpha() -> float:
 
 
 ## The implementation that runs for `impl` (ADR 0013 section 3): NATIVE when NATIVE or AUTO is
-## asked, the library is loaded (`has_library`: NativeKernels.create() gives kernels) and
-## `os_name` (OS.get_name()) is not the web, whose preview runs the GDScript twins (section 7);
-## GDSCRIPT otherwise, never AUTO. Pure, so tests pass any OS name; start() logs a fallback
-## (fallback_log()).
-static func resolve_impl(impl: int, has_library: bool, os_name: String) -> int:
+## asked and the library is loaded (`has_library`: NativeKernels.create() gives kernels), on every
+## OS, since AUTO means NATIVE whenever the class exists; GDSCRIPT otherwise, never AUTO. The web
+## runs the twins because its export packs no library (section 7), not by a rule here, so the OS
+## name (OS.get_name(), part of the contract) does not change the result. Pure; start() logs a
+## fallback (fallback_log()).
+static func resolve_impl(impl: int, has_library: bool, _os_name: String) -> int:
 	var asks_native: bool = impl == SimImpl.NATIVE or impl == SimImpl.AUTO
-	if asks_native and has_library and os_name != OS_WEB:
-		return SimImpl.NATIVE
-	return SimImpl.GDSCRIPT
+	return SimImpl.NATIVE if asks_native and has_library else SimImpl.GDSCRIPT
 
 
 ## What start() logs when `impl` resolved to `resolved` on `os_name` (ADR 0013 section 3): nothing
@@ -192,12 +192,11 @@ func _tick() -> void:
 	ticked.emit(next.tick)
 
 
-## Resolves sim_impl on this platform and logs a fallback; on NATIVE it attaches new kernels to
-## `target` with the phases the library reports (ADR 0013 section 3). A GDSCRIPT World keeps no
-## kernels and the mask 0. It runs before the first tick, so the choice holds for the whole match.
-func _use_impl(target: World) -> void:
-	var kernels: Object = null if sim_impl == SimImpl.GDSCRIPT else NativeKernels.create()
-	var os_name: String = OS.get_name()
+## Resolves sim_impl for `kernels` (NativeKernels.create(), or null) on `os_name` (OS.get_name())
+## and logs a fallback; on NATIVE it attaches `kernels` to `target` with the phases they report
+## (ADR 0013 section 3). A GDSCRIPT World keeps no kernels and the mask 0. start() calls it before
+## the first tick, so the choice holds for the whole match; tests pass both arguments.
+func _use_impl(target: World, kernels: Object, os_name: String) -> void:
 	var resolved: int = resolve_impl(sim_impl, kernels != null, os_name)
 	var level: int = fallback_log(sim_impl, resolved, os_name)
 	if level != ImplLog.NONE:

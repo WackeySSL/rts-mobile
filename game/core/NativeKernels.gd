@@ -17,9 +17,15 @@ const ABI_VERSION: int = 1
 ## New kernels, or null when the library is not loaded or reports another ABI version. It logs
 ## nothing: MatchRunner.start() reports a fallback, and the perf card its verdict.
 static func create() -> Object:
-	if not ClassDB.class_exists(CLASS_NAME):
+	return _create(CLASS_NAME)
+
+
+## create() for the class `kernel_class`: a new instance when ClassDB has the class and the
+## instance passes the ABI check, null otherwise. Tests pass engine classes in place of the library.
+static func _create(kernel_class: StringName) -> Object:
+	if not ClassDB.class_exists(kernel_class):
 		return null
-	var kernels: Object = ClassDB.instantiate(CLASS_NAME)
+	var kernels: Object = ClassDB.instantiate(kernel_class)
 	return kernels if abi_matches(kernels) else null
 
 

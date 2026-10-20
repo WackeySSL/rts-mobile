@@ -1,9 +1,11 @@
 extends GdUnitTestSuite
 ## MatchRunner.sim_impl (ADR 0013 section 3, plan P54r): resolve_impl() and fallback_log() as
 ## tables over every implementation, library state and OS name (passed in, so no case logs the
-## Android error), and runners on the seed-42 perf arena with the library loaded (verify.sh always
-## builds it): GDSCRIPT by default with no kernels, NATIVE and AUTO with the library's kernels and
-## mask, and the same hashes as a GDSCRIPT runner. A suite of its own: test_match_runner.gd holds
+## Android error), start()'s seam _use_impl() with the kernels and the OS name passed in (the
+## warning and the silent fallback; the errors stay in the table, as verify.sh rejects ERROR:
+## lines), and runners on the seed-42 perf arena with the library loaded (verify.sh always builds
+## it): GDSCRIPT by default with no kernels, NATIVE and AUTO with the library's kernels and mask,
+## and the same hashes as a GDSCRIPT runner. A suite of its own: test_match_runner.gd holds
 ## gdlint's 20 public methods.
 
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
@@ -18,13 +20,14 @@ const WARN: int = MatchRunner.ImplLog.WARNING
 const ERROR: int = MatchRunner.ImplLog.ERROR
 const OS_NAMES: Array[String] = ["Android", "Linux", "Windows", "macOS", "Web"]
 ## resolve_impl per OS name, for GDSCRIPT, NATIVE and AUTO in turn, each without and with the
-## library. The web runs the twins whatever is asked (ADR 0013 section 7).
+## library. The same on every OS: AUTO means NATIVE whenever the class exists (ADR 0013 section 3);
+## the web runs the twins because its export packs no library (section 7).
 const RESOLVED: Dictionary[String, Array] = {
 	"Android": [G, G, G, N, G, N],
 	"Linux": [G, G, G, N, G, N],
 	"Windows": [G, G, G, N, G, N],
 	"macOS": [G, G, G, N, G, N],
-	"Web": [G, G, G, G, G, G],
+	"Web": [G, G, G, N, G, N],
 }
 ## fallback_log per OS name, for GDSCRIPT, NATIVE and AUTO asked in turn, each resolved to GDSCRIPT
 ## and to NATIVE: NATIVE without the library is an error everywhere, AUTO's fallback an error on
@@ -36,6 +39,11 @@ const LOGGED: Dictionary[String, Array] = {
 	"macOS": [NONE, NONE, ERROR, NONE, WARN, NONE],
 	"Web": [NONE, NONE, ERROR, NONE, NONE, NONE],
 }
+## What _use_impl() pushes for AUTO without the library on Linux.
+const AUTO_LINUX_WARNING: String = (
+	"MatchRunner: sim_impl AUTO runs the GDScript twins on Linux: "
+	+ "no SimKernels library of ABI 1"
+)
 
 
 func after_test() -> void:
@@ -79,7 +87,8 @@ func test_fallback_log_for_every_impl_resolution_and_os() -> void:
 			for resolved: int in [G, N]:
 				found.append(MatchRunner.fallback_log(impl, resolved, os_name))
 		assert_array(found).override_failure_message(os_name).is_equal(LOGGED[os_name])
-		# What start() logs for each request without the library, through both functions.
+		# The level for each request without the library, through both functions (what start()
+		# pushes for it: the _use_impl cases below).
 		var missing: Array[int] = []
 		for impl: int in [G, N, A]:
 			var resolved: int = MatchRunner.resolve_impl(impl, false, os_name)
@@ -128,6 +137,44 @@ func test_an_auto_runner_with_the_library_runs_native() -> void:
 	assert_int(auto_runner.last_hash).is_equal(twin.last_hash)
 
 
+## start()'s seam without the library: AUTO falls back to the twins with one warning on a desktop
+## and silently on the web, and so does GDSCRIPT on Android; the World keeps no kernels and the
+## mask 0. gdUnit4 fails a case on a push it does not expect, so the silent ones push nothing.
+func test_use_impl_without_the_library_warns_on_a_desktop_only() -> void:
+	var runner: MatchRunner = auto_free(MatchRunner.new())
+	runner.sim_impl = MatchRunner.SimImpl.AUTO
+	var desktop: World = _world()
+	await (
+		assert_error(func() -> void: runner._use_impl(desktop, null, "Linux"))
+		. is_push_warning(AUTO_LINUX_WARNING)
+	)
+	var web: World = _world()
+	await assert_error(func() -> void: runner._use_impl(web, null, "Web")).is_success()
+	runner.sim_impl = MatchRunner.SimImpl.GDSCRIPT
+	var android: World = _world()
+	await assert_error(func() -> void: runner._use_impl(android, null, "Android")).is_success()
+	for world: World in [desktop, web, android]:
+		assert_object(world.kernels).is_null()
+		assert_int(world.native_phases).is_equal(0)
+
+
+## start()'s seam with the library: AUTO and NATIVE attach the kernels and their mask silently on
+## every OS, the web included; GDSCRIPT attaches nothing.
+func test_use_impl_with_the_library_runs_native_on_every_os() -> void:
+	var runner: MatchRunner = auto_free(MatchRunner.new())
+	for impl: int in [A, N, G]:
+		runner.sim_impl = impl
+		for os_name: String in OS_NAMES:
+			var world: World = _world()
+			var kernels: Object = NativeKernels.create()
+			await (
+				assert_error(func() -> void: runner._use_impl(world, kernels, os_name)).is_success()
+			)
+			var native: bool = impl != G
+			assert_object(world.kernels).is_same(kernels if native else null)
+			assert_int(world.native_phases).is_equal(SimImpls.expected_mask() if native else 0)
+
+
 ## A started runner on the seed-42 arena with `impl`.
 func _runner(impl: int) -> MatchRunner:
 	var runner: MatchRunner = auto_free(MatchRunner.new())
@@ -136,6 +183,12 @@ func _runner(impl: int) -> MatchRunner:
 	runner.sim_impl = impl
 	runner.start()
 	return runner
+
+
+## The seed-42 arena at tick 0, as start() builds it, for the seam cases.
+func _world() -> World:
+	var arena: ScenarioDef = load(ARENA_PATH) as ScenarioDef
+	return World.from_scenario(arena, DetRandom.create(SEED, DetRandom.STREAM_SIM))
 
 
 ## The runner's World holds SimKernels with the mask the library reports, which is
