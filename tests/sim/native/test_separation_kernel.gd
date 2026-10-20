@@ -8,7 +8,7 @@ extends GdUnitTestSuite
 ## the shipped data against the range). Every case builds two identical
 ## Worlds, one running the GDScript phase and one the C++ kernel, and compares their full state
 ## (StateDiff) as well as the values the rule gives. The crafted rule cases are in
-## test_separation_kernel_cases.gd; the 900-tick lockstep is P39n2's.
+## test_separation_kernel_cases.gd; the 900-tick lockstep is test_separation_lockstep.gd (P39n2).
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")

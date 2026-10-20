@@ -7,7 +7,7 @@
 // `Rules`, read from the World by the bind layer.
 // Twin: game/sim/Separation.gd (run), in the twin's row order, so that the full state matches after every call. Tests:
 // tests/sim/test_separation*.gd under both implementations, tests/sim/native/test_separation_kernel.gd (crafted cases and
-// the names), and the lockstep of P39n2 (same folder). MIT.
+// the names), and the lockstep of P39n2: test_separation_lockstep.gd, _cases.gd and _random.gd (same folder). MIT.
 //
 // Range (the decision of P39n, which records it and clamps nothing). The pass is exact in int64 while
 //   - the positions stay within 10^9 milli-tiles of the origin in both axes (a million tiles; a map is a few hundred), so
@@ -19,6 +19,8 @@
 //     2,000,000 would allow a divisor of 1518.
 // Past that range the production build wraps like the twin (-fwrapv), so the two still agree, on a meaningless push; the
 // sanitizer build, which has no -fwrapv, aborts. RulesDef and UnitDef have no @export_range for any of it.
+// A row's sums are int64 up to the clamp, with no bound on the table: max_rows is a rule int with no range, and 1,025 hits of the
+// widest reach already pass 2^31 (test_separation_lockstep_cases.gd holds a table of 1,100 rows for it).
 #pragma once
 
 #include <cstdint>

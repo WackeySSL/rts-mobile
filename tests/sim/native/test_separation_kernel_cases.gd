@@ -8,7 +8,8 @@ extends GdUnitTestSuite
 ## runs on two identical Worlds, one with the GDScript phase and one with the kernel, and compares
 ## the pushes and the pair count; the values the rule gives are asserted where the case pins one.
 ## The module's own cases (test_separation*.gd) run under both implementations too; the 900-tick
-## lockstep and the random states are P39n2's. Tanks have radius 400 (R = 800).
+## lockstep and the random states are test_separation_lockstep*.gd (P39n2). Tanks have radius 400
+## (R = 800).
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
 const Rig: GDScript = preload("res://tests/sim/support/separation_rig.gd")
