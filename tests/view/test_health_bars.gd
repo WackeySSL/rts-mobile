@@ -4,8 +4,10 @@ extends GdUnitTestSuite
 ## the two overlap inequalities of STYLE.md's sweep. Pixels cannot be read headless, so the tests
 ## read the layer's plan of rects (`rect_at`, `rect_color`), which `_draw` paints one for one
 ## (test_health_bar_frames.gd counts what it painted), and
-## `test_the_draw_code_paints_nothing_but_filled_rects` reads the script. When a bar shows and
-## how a hit is seen are in test_health_bar_hits.gd (gdlint allows 20 public methods per file).
+## `test_the_draw_code_paints_nothing_but_filled_rects` reads the script (the filled rects, and
+## each in its own colour). The fill of a damaged squad bar is in test_health_bar_squads.gd. When
+## a bar shows and how a hit is seen are in test_health_bar_hits.gd (gdlint allows 20 public
+## methods per file).
 ## On data/scenarios/controls_test.tres: ids 1-30 are blue light tanks (max hp 300), 31-40 red; the
 ## perf arena has tanks, rifle squads (max hp 100) and rocket squads, both sides. The runner is not
 ## in the tree: only the calls here move time, so alpha is 0 and a unit stands at its prev position.
@@ -321,6 +323,10 @@ func test_the_draw_code_paints_nothing_but_filled_rects() -> void:
 		at = source.find("draw_", open)
 	assert_array(calls).is_equal(["draw_rect"])
 	assert_int(source.count("func _draw()")).is_equal(1)
+	# Rect i is painted with rect i's colour: a draw with a fixed index (`rect_color(0)`) would
+	# paint the whole plan in one colour, and the plan's colours cannot be told from the painted
+	# ones without pixels.
+	assert_int(source.count("draw_rect(rect_at(index), rect_color(index))")).is_equal(1)
 
 
 func test_the_main_scene_has_the_layer_at_z_110_between_the_units_and_the_markers() -> void:
