@@ -34,6 +34,10 @@ extends RefCounted
 ## apart from the event append, rows in ascending order. Every number comes from the World's weapon
 ## tables (data/). Range: positions are below 2^16, so a squared distance stays below 2^33 and the
 ## damage `damage * percent` (a percent is at most 200) stays far below 2^62 in an int64.
+## The twin grows `events` once per shot, inside the row loop. A port may not (ADR 0013 section 2:
+## one resize per appending kernel, after its loop): it records the shots first and resizes once.
+## No decision here depends on an earlier shot (its `hp` or its record), so only the order of the
+## records and the ints written have to match.
 
 ## The event kind this phase writes, as the World's int.
 const SHOT: int = World.Event.SHOT

@@ -7,10 +7,12 @@ extends GdUnitTestSuite
 ##
 ## The worlds are the shipped unit types (TargetingRig.data_world): rifle squad 0, rocket squad 1,
 ## light tank 2 (300 hp, range 4500, acquire 5500, sight 7000, 21 damage to infantry and 18 to a
-## light tank every 25 ticks; in P42a the cannon also hits at once). Every `ATTACK` target stands
-## inside its attacker's sight, the authoring rule of the fog PR (P46b).
+## light tank every 25 ticks; in P42a the cannon also hits at once). The authoring rule of the fog
+## PR (P46b) is kept and asserted: in the `ATTACK` case and in the meeting, no unit holds a target
+## that still has a row and stands beyond its sight, on any tick (`_beyond_sight`).
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
+const FireProbe: GDScript = preload("res://tests/sim/support/fire_view_probe.gd")
 const RIFLE: int = 0
 const TANK: int = 2
 const IDLE: int = World.Order.IDLE
@@ -52,6 +54,7 @@ func test_two_groups_that_meet_hold_and_fight_until_one_side_is_gone() -> void:
 			recorded.append(record[1])
 			gone[record[1]] = record[5]
 		assert_array(recorded).override_failure_message("tick %d" % tick).is_equal(left)
+		assert_array(_beyond_sight(world)).override_failure_message("tick %d" % tick).is_empty()
 		if not left.is_empty() and first_death < 0:
 			first_death = tick
 		if tick == BEFORE_DEATHS - 1:
@@ -65,30 +68,46 @@ func test_two_groups_that_meet_hold_and_fight_until_one_side_is_gone() -> void:
 	assert_int(world.unit_count()).is_equal(1)
 	assert_int(world.owner[0]).is_equal(1)
 	assert_array([world.order[0], world.nav_mode[0], world.target[0]]).is_equal([IDLE, NONE, 0])
-	assert_array(Rig.outside_sight(world)).is_empty()
 
 
 ## Two runs of the meeting give the same state hash after every tick, deaths and compaction
-## included, and the fight is part of the state: the hash at tick 300 (all alive, hp lowered) is not
-## the hash of the same run with the cannons silenced (a damage percent of 0 against light armour).
+## included, and the hp the fight leaves is part of that hash: two Worlds run to tick 300 (all six
+## alive, hp lowered) have the same hash, and when one of them has its hp put back to the type's 300
+## (every position, order, navigation mode and target the same) the hashes differ.
 func test_a_fight_gives_the_same_hash_twice_and_the_hp_is_part_of_it() -> void:
-	var first: PackedInt64Array = _meeting_hashes(false)
-	var second: PackedInt64Array = _meeting_hashes(false)
+	var first: PackedInt64Array = _meeting_hashes()
+	var second: PackedInt64Array = _meeting_hashes()
 	assert_int(first.size()).is_equal(MEETING_TICKS)
 	assert_array(second).is_equal(first)
-	var silent: PackedInt64Array = _meeting_hashes(true)
-	assert_int(silent[BEFORE_DEATHS - 1]).is_not_equal(first[BEFORE_DEATHS - 1])
-	assert_int(silent[-1]).is_not_equal(first[-1])
+	var hurt: World = _meeting_at(BEFORE_DEATHS)
+	var healed: World = _meeting_at(BEFORE_DEATHS)
+	assert_int(hurt.state_hash()).is_equal(first[BEFORE_DEATHS - 1])
+	assert_int(healed.state_hash()).is_equal(first[BEFORE_DEATHS - 1])
+	assert_bool(hurt.hp.count(300) < hurt.unit_count()).is_true()
+	healed.hp.fill(300)
+	assert_array(healed.hp).is_not_equal(hurt.hp)
+	for column: Array in [
+		[healed.unit_id, hurt.unit_id],
+		[healed.pos_x, hurt.pos_x],
+		[healed.pos_y, hurt.pos_y],
+		[healed.order, hurt.order],
+		[healed.nav_mode, hurt.nav_mode],
+		[healed.target, hurt.target],
+		[healed.cooldown, hurt.cooldown],
+	]:
+		assert_array(column[0]).is_equal(column[1])
+	assert_int(healed.state_hash()).is_not_equal(hurt.state_hash())
 
 
 ## An `ATTACK` goes on until its target is dead (the P43b tap, "chase that enemy and fire until it
-## dies"): a tank ordered to attack an idle rifle squad drives to 4400 of it (the squad's own reach
-## is 4000, so it cannot answer), fires every 25 ticks, 21 hp each (100 to 79, 58, 37, 16, -5), and
-## on the fifth shot the squad is removed in that tick. The order falls back to an attack-move to
-## the place the squad stood, which the tank reaches and goes idle on. The tank is unhurt.
+## dies"): a tank ordered to attack an idle rifle squad 6500 away (inside the tank's sight of 7000)
+## drives to 4400 of it (the squad's own reach is 4000, so it cannot answer), fires every 25 ticks,
+## 21 hp each (100 to 79, 58, 37, 16, -5, each read at the FIRE mark of its tick), and on the fifth
+## shot the squad is removed in that tick. The order falls back to an attack-move to the place the
+## squad stood, which the tank reaches and goes idle on. The tank is unhurt.
 func test_an_attack_order_fires_until_the_target_dies_and_then_goes_to_where_it_stood() -> void:
 	var world: World = Rig.data_world()
-	world.add_unit(1, TANK, 3000, 6000)
+	world.add_unit(1, TANK, 4500, 6000)
 	world.add_unit(2, RIFLE, 11000, 6000)
 	var order: Command = Command.attack(1, PackedInt32Array([1]), 2)
 	order.tick = 0
@@ -96,11 +115,13 @@ func test_an_attack_order_fires_until_the_target_dies_and_then_goes_to_where_it_
 	var shots: Array[int] = []
 	var squad_hp: Array[int] = []
 	for tick: int in 400:
-		Sim.step(world, commands)
+		var probe: FireProbe = FireProbe.new(world)
+		Sim.step(world, commands, probe)
 		commands.clear()
+		assert_array(_beyond_sight(world)).override_failure_message("tick %d" % tick).is_empty()
 		if not _records(world, SHOT).is_empty():
 			shots.append(tick)
-			squad_hp.append(world.hp[1] if world.unit_count() > 1 else -5)
+			squad_hp.append(probe.hit_points[probe.phases.find(SimProbe.Phase.FIRE)])
 			assert_int(world.order[0]).is_equal(ATTACK)
 		if world.unit_count() == 1 and world.order[0] == IDLE:
 			break
@@ -149,12 +170,9 @@ func test_a_ground_tap_is_followed_once_the_enemy_it_was_fighting_is_dead() -> v
 
 
 ## Three tanks of each side on a 24 x 14 tile map: blue at x 3000, red at x 17000, in a column of
-## 1200 between tanks around y 6000. With `silenced` the cannon has a percent of 0 against light
-## armour.
-func _meeting(silenced: bool = false) -> World:
+## 1200 between tanks around y 6000.
+func _meeting() -> World:
 	var world: World = Rig.data_world(24, 14)
-	if silenced:
-		world.weapon_vs_armour[2 * World.Armour.size() + World.Armour.LIGHT] = 0
 	for k: int in 3:
 		world.add_unit(1, TANK, 3000, 4800 + 1200 * k)
 	for k: int in 3:
@@ -173,10 +191,19 @@ func _meeting_orders(world: World) -> Array[Command]:
 	return orders
 
 
-## The state hash after each tick of the meeting; with `silenced` the cannon does no damage to light
-## armour (its percent is 0), so the tanks hold and shoot for nothing.
-func _meeting_hashes(silenced: bool) -> PackedInt64Array:
-	var world: World = _meeting(silenced)
+## The meeting after `ticks` ticks.
+func _meeting_at(ticks: int) -> World:
+	var world: World = _meeting()
+	var commands: Array[Command] = _meeting_orders(world)
+	for _tick: int in ticks:
+		Sim.step(world, commands)
+		commands.clear()
+	return world
+
+
+## The state hash after each tick of the meeting.
+func _meeting_hashes() -> PackedInt64Array:
+	var world: World = _meeting()
 	var commands: Array[Command] = _meeting_orders(world)
 	var hashes: PackedInt64Array = PackedInt64Array()
 	for _tick: int in MEETING_TICKS:
@@ -184,6 +211,17 @@ func _meeting_hashes(silenced: bool) -> PackedInt64Array:
 		commands.clear()
 		hashes.append(world.state_hash())
 	return hashes
+
+
+## The ids of the units whose target still has a row and stands beyond their sight. The rig's
+## `outside_sight` also lists a unit whose target was removed in the tick: the unit finds that out
+## at its next scan (ADR 0007 section 3), so it is not a unit that sees too little.
+func _beyond_sight(world: World) -> Array[int]:
+	var found: Array[int] = []
+	for id: int in Rig.outside_sight(world):
+		if world.index_of(world.target[world.index_of(id)]) >= 0:
+			found.append(id)
+	return found
 
 
 ## The records of `kind` in the events of the last tick, each as the 8 ints.

@@ -5,12 +5,13 @@ extends RefCounted
 ## state hash and the full state of StateDiff (every shape list, every scalar, the flow cache and
 ## its slots). While it steps, the rig counts on the twin's side what the run reached (a unit
 ## following a field, a field with no next tile, an ATTACK re-key, a unit's own field, an order
-## that ended, a unit holding or chasing (set by the engagement of TARGETING, P41b), every slot
-## referenced, and what the slot tables did: a key taken by a free slot, a key found in its slot, a
-## slot recycled for another key), so that a case can assert that it did not pass by never reaching
-## a rule. The rig is INTEGRATE's: pair() attaches that phase and the
-## TALLY counts movement. The lockstep of another port writes its own rig (or takes the phase and
-## its counts as parameters) instead of reusing this one with the wrong phase. Not a test suite.
+## that ended, a unit holding or chasing (set by the engagement of TARGETING, P41b), a row that
+## left (a unit killed in FIRE and removed in REMOVE, P42a), every slot referenced, and what the
+## slot tables did: a key taken by a free slot, a key found in its slot, a slot recycled for another
+## key), so that a case can assert that it did not pass by never reaching a rule. The rig is
+## INTEGRATE's: pair() attaches that phase and the TALLY counts movement. The lockstep of another
+## port writes its own rig (or takes the phase and its counts as parameters) instead of reusing this
+## one with the wrong phase. Not a test suite.
 
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const StateDiff: GDScript = preload("res://tests/sim/support/state_diff.gd")
@@ -32,6 +33,7 @@ const TALLY: Array[StringName] = [
 	&"ended",
 	&"holding",
 	&"chasing",
+	&"lost",
 	&"contended",
 	&"fresh",
 	&"holds",
@@ -148,7 +150,9 @@ func _count(before: Dictionary[StringName, PackedInt32Array]) -> void:
 	_count_slots(before)
 	var rows: int = world.unit_count()
 	if rows != before[&"ids"].size():
-		return  # Rows left or joined: the rows no longer line up with the snapshot.
+		# Rows left (units die since P42a) or joined: the rows no longer line up with the snapshot.
+		tally[&"lost"] += maxi(before[&"ids"].size() - rows, 0)
+		return
 	var old_order: PackedInt32Array = before[&"order"]
 	var old_field: PackedInt32Array = before[&"field"]
 	var orders: PackedInt32Array = world.order

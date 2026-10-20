@@ -30,6 +30,10 @@ const HOLD: int = World.NavMode.HOLD
 const TOUGH: int = 100000
 ## The cannon's reach: its range of 4500 milli, squared.
 const REACH: int = 4500
+## The cases that compare a SHOT record put the mark this far off the shooter's row in y, so that
+## the record's two y fields are not the same number (a shooter's y read for the mark's, or the
+## other way round, would show).
+const SIDE: int = 500
 ## The shooter's weapon when a case does not name one: damage 30 against (70, 60, 35, 40) percent,
 ## so 18 against a light target (30 * 60 / 100), a cooldown of 25.
 const GUN_VS: Array[int] = [70, 60, 35, 40]
@@ -66,12 +70,13 @@ func test_an_idle_unit_fires_on_the_tick_it_acquires_a_target_in_range() -> void
 
 
 ## A unit that chases fires on the first tick it is in range, without waiting for HOLD: the tank
-## attack-moves towards an unarmed mark 12000 away, acquires it at 5500 (CHASE), and in the tick its
-## step takes it inside 4500 the shot is fired from the position it ended on, still in CHASE. The
-## tick before it was out of range. HOLD follows on the next tick, and the next shot 25 ticks later.
+## attack-moves towards an unarmed mark 12000 away (and 500 off its row), acquires it at 5500
+## (CHASE), and in the tick its step takes it inside 4500 the shot is fired from the position it
+## ended on, still in CHASE. The tick before it was out of range. HOLD follows on the next tick, and
+## the next shot 25 ticks later.
 func test_a_chasing_unit_fires_in_the_tick_its_step_brings_it_into_range() -> void:
-	var world: World = _duel(_weapon(&"gun", 30, 25, GUN_VS), LIGHT, TOUGH, 12000)
-	var order: Command = Command.attack_move(1, PackedInt32Array([1]), 16000, 6000)
+	var world: World = _duel(_weapon(&"gun", 30, 25, GUN_VS), LIGHT, TOUGH, 12000, SIDE)
+	var order: Command = Command.attack_move(1, PackedInt32Array([1]), 16000, 6000 + SIDE)
 	order.tick = 0
 	var commands: Array[Command] = [order]
 	var shots: Array[int] = []
@@ -103,14 +108,15 @@ func test_a_chasing_unit_fires_in_the_tick_its_step_brings_it_into_range() -> vo
 ## The hit lands in the tick of the shot, and the SHOT record holds both positions as they are in
 ## FIRE: the mark walks 120 east in INTEGRATE of the same tick (8000 to 8120), so the record has
 ## 8120 and not the 8000 it started the tick on. It is `[SHOT, shooter id, shooter x, y, target id,
-## weapon index, target x, y]` and the only event of the tick. The mark takes 18 hp (30 * 60 / 100).
+## weapon index, target x, y]` and the only event of the tick; the mark stands 500 off the shooter's
+## row, so the two y fields differ. The mark takes 18 hp (30 * 60 / 100).
 func test_a_hit_lands_in_the_tick_of_the_shot_and_the_record_holds_both_positions() -> void:
-	var world: World = _duel(_weapon(&"gun", 30, 25, GUN_VS), LIGHT)
+	var world: World = _duel(_weapon(&"gun", 30, 25, GUN_VS), LIGHT, TOUGH, 4000, SIDE)
 	world.target[0] = 2
-	Sim.step(world, [_order(Command.move(2, PackedInt32Array([2]), 12000, 6000), world)])
+	Sim.step(world, [_walk_east(world)])
 	assert_int(world.pos_x[1]).is_equal(8120)
 	assert_int(world.hp[1]).is_equal(TOUGH - 18)
-	assert_array(world.events).is_equal([SHOT, 1, 4000, 6000, 2, 0, 8120, 6000])
+	assert_array(world.events).is_equal([SHOT, 1, 4000, 6000, 2, 0, 8120, 6000 + SIDE])
 	assert_int(world.cooldown[0]).is_equal(25)
 
 
@@ -124,13 +130,14 @@ func test_a_kill_shot_still_carries_the_targets_position_after_the_row_is_remove
 	Combat.fire(direct)
 	assert_int(direct.hp[1]).is_equal(10 - 18)
 	assert_int(direct.unit_count()).is_equal(2)
-	var world: World = _duel(_weapon(&"gun", 30, 25, GUN_VS), LIGHT, 10)
+	var world: World = _duel(_weapon(&"gun", 30, 25, GUN_VS), LIGHT, 10, 4000, SIDE)
 	world.target[0] = 2
-	Sim.step(world, [_order(Command.move(2, PackedInt32Array([2]), 12000, 6000), world)])
+	Sim.step(world, [_walk_east(world)])
 	assert_int(world.unit_count()).is_equal(1)
 	assert_int(world.index_of(2)).is_equal(-1)
+	var y: int = 6000 + SIDE
 	assert_array(world.events).is_equal(
-		[SHOT, 1, 4000, 6000, 2, 0, 8120, 6000, DIED, 2, 8120, 6000, 1, 2, 0, 0]
+		[SHOT, 1, 4000, 6000, 2, 0, 8120, y, DIED, 2, 8120, y, 1, 2, 0, 0]
 	)
 	assert_int(world.target[0]).is_equal(2)
 	Sim.step(world, [])
@@ -180,12 +187,13 @@ func test_damage_is_the_percent_of_the_weapon_for_each_of_the_four_armour_classe
 ## targets and shoot for 21 (30 * 70 / 100 against infantry). Unit 1 fires first and takes unit 2
 ## to -11; unit 2, already at -11 but still in its row, fires as well; both are removed after.
 ## Both SHOTs are written before both DIEDs, in row order, and swapping the owners changes nothing.
+## The second unit stands 500 off the first one's row, so each record's two y fields differ.
 func test_a_unit_fires_in_the_tick_it_dies_whatever_its_id() -> void:
 	for swapped: bool in [false, true]:
 		var gun: WeaponDef = _weapon(&"gun", 30, 25, GUN_VS)
 		var world: World = Rig.world_of([_def(&"duellist", INFANTRY, 10, gun)])
 		world.add_unit(2 if swapped else 1, 0, 4000, 6000)
-		world.add_unit(1 if swapped else 2, 0, 7000, 6000)
+		world.add_unit(1 if swapped else 2, 0, 7000, 6000 + SIDE)
 		world.target[0] = 2
 		world.target[1] = 1
 		Sim.step(world, [])
@@ -193,9 +201,9 @@ func test_a_unit_fires_in_the_tick_it_dies_whatever_its_id() -> void:
 		assert_int(world.unit_count()).override_failure_message(label).is_equal(0)
 		assert_array(world.events).override_failure_message(label).is_equal(
 			(
-				[SHOT, 1, 4000, 6000, 2, 0, 7000, 6000, SHOT, 2, 7000, 6000, 1, 0, 4000, 6000]
+				[SHOT, 1, 4000, 6000, 2, 0, 7000, 6500, SHOT, 2, 7000, 6500, 1, 0, 4000, 6000]
 				+ [DIED, 1, 4000, 6000, 0, 2 if swapped else 1, 0, 0]
-				+ [DIED, 2, 7000, 6000, 0, 1 if swapped else 2, 0, 0]
+				+ [DIED, 2, 7000, 6500, 0, 1 if swapped else 2, 0, 0]
 			)
 		)
 
@@ -259,9 +267,12 @@ func test_removal_after_fire_keeps_the_rows_in_id_order() -> void:
 ## The reach is inclusive at both ends, in squared distance: a weapon of range 4500 and minimum
 ## range 2000 fires at 4500 along an axis and along the diagonal (2700, 3600), and at 2000, and not
 ## at 4501 or at 1999. The minimum range keeps a unit that stands too close from firing; no unit
-## backs away.
+## backs away. The shooter's weapon is index 1, behind a decoy weapon of index 0 (range 9000, no
+## minimum range, damage 5, cooldown 3), so the range, the minimum range, the damage and the
+## cooldown are read by the shooter's own weapon index.
 func test_the_range_and_the_minimum_range_are_inclusive() -> void:
 	var gun: WeaponDef = _weapon(&"gun", 30, 25, GUN_VS, REACH, 2000)
+	var decoy: WeaponDef = _weapon(&"decoy", 5, 3, [100, 100, 100, 100], 9000, 0)
 	var cases: Dictionary[Vector2i, bool] = {
 		Vector2i(4500, 0): true,
 		Vector2i(2700, 3600): true,
@@ -272,18 +283,22 @@ func test_the_range_and_the_minimum_range_are_inclusive() -> void:
 		Vector2i(1200, 1599): false,
 	}
 	for offset: Vector2i in cases:
-		var world: World = _duel(gun, LIGHT)
+		var world: World = _duel_second(decoy, gun, LIGHT)
 		world.pos_x[1] = world.pos_x[0] + offset.x
 		world.pos_y[1] = world.pos_y[0] + offset.y
 		world.target[0] = 2
 		Combat.fire(world)
 		var label: String = "offset %s" % offset
-		assert_bool(not _records(world, SHOT).is_empty()).override_failure_message(label).is_equal(
-			cases[offset]
-		)
+		var shots: Array[Array] = _records(world, SHOT)
+		assert_bool(not shots.is_empty()).override_failure_message(label).is_equal(cases[offset])
 		assert_int(world.hp[1]).override_failure_message(label).is_equal(
 			TOUGH - (18 if cases[offset] else 0)
 		)
+		assert_int(world.cooldown[0]).override_failure_message(label).is_equal(
+			25 if cases[offset] else 0
+		)
+		if cases[offset]:
+			assert_int(shots[0][5]).override_failure_message(label).is_equal(1)
 
 
 ## Who fires, in the phase alone: a unit with no weapon (type_weapon -1), one whose weapon index is
@@ -330,6 +345,29 @@ func test_only_an_armed_unit_with_an_enemy_target_in_reach_fires() -> void:
 		assert_int(world.hp[1]).override_failure_message(label).is_equal(
 			TOUGH - (18 if cases[label] else 0)
 		)
+
+
+## A target id that is gone is not hit through the row that now stands where the id search ends: the
+## shooter (id 1) aims at id 3, which was removed, and the rows left are ids 1, 2 and 4, the two
+## others enemies in reach. The search for 3 ends on the row of id 4, whose id is not 3, so nothing
+## is hit, no SHOT is written and the cooldown is not set (the shooter waits for its next scan to
+## drop the dead id).
+func test_a_removed_target_is_not_hit_through_the_row_after_it() -> void:
+	var world: World = _duel(_weapon(&"gun", 30, 25, GUN_VS), LIGHT)
+	world.add_unit(2, 1, 4000, 8000)
+	world.add_unit(2, 1, 4000, 4000)
+	world.hp[2] = 0
+	world.remove_dead()
+	assert_array(world.unit_id).is_equal([1, 2, 4])
+	world.target[0] = 3
+	Combat.fire(world)
+	assert_array(_records(world, SHOT)).is_empty()
+	assert_array(world.hp).is_equal([TOUGH, TOUGH, TOUGH])
+	assert_int(world.cooldown[0]).is_equal(0)
+	world.target[0] = 4
+	Combat.fire(world)
+	assert_int(_records(world, SHOT).size()).is_equal(1)
+	assert_array(world.hp).is_equal([TOUGH, TOUGH, TOUGH - 18])
 
 
 ## The cooldown counts down by 1 a tick whether or not the unit has a target (25 with no target for
@@ -440,15 +478,40 @@ func test_the_orders_of_the_phase_1_tests_on_the_controls_map_produce_no_shot() 
 
 
 ## A World on the open 20 x 12 tile map with the shooter (type 0, owner 1, id 1) at (4000, 6000) and
-## a mark (type 1, owner 2, id 2, of `armour` and `mark_hp`) `gap` milli east of it.
-func _duel(weapon: WeaponDef, armour: int, mark_hp: int = TOUGH, gap: int = 4000) -> World:
+## a mark (type 1, owner 2, id 2, of `armour` and `mark_hp`) `gap` milli east and `side` milli south
+## of it.
+func _duel(
+	weapon: WeaponDef, armour: int, mark_hp: int = TOUGH, gap: int = 4000, side: int = 0
+) -> World:
 	var defs: Array[UnitDef] = [
 		_def(&"gun", INFANTRY, TOUGH, weapon), _def(&"mark", armour, mark_hp)
 	]
 	var world: World = Rig.world_of(defs)
 	world.add_unit(1, 0, 4000, 6000)
-	world.add_unit(2, 1, 4000 + gap, 6000)
+	world.add_unit(2, 1, 4000 + gap, 6000 + side)
 	return world
+
+
+## `_duel` with a decoy type first in the roster: the decoy's weapon is index 0, the shooter's
+## (`weapon`) is index 1 and the mark is type 2, so a column that FIRE reads by the shooter's weapon
+## and not by 0 shows. The ids are the same as in `_duel`.
+func _duel_second(decoy: WeaponDef, weapon: WeaponDef, armour: int) -> World:
+	var defs: Array[UnitDef] = [
+		_def(&"decoy", INFANTRY, TOUGH, decoy),
+		_def(&"gun", INFANTRY, TOUGH, weapon),
+		_def(&"mark", armour, TOUGH)
+	]
+	var world: World = Rig.world_of(defs)
+	world.add_unit(1, 1, 4000, 6000)
+	world.add_unit(2, 2, 8000, 6000)
+	return world
+
+
+## A MOVE order, stamped for the World's tick, that walks the mark (id 2, 500 south of the shooter's
+## row) east along its row.
+func _walk_east(world: World) -> Command:
+	var walk: Command = Command.move(2, PackedInt32Array([2]), 12000, 6000 + SIDE)
+	return _order(walk, world)
 
 
 ## A weapon of the given numbers (hitscan: no projectile speed), vs the four armour percents.
