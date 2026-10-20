@@ -151,7 +151,8 @@ ascending id order:
 Status note (2026-10-20, P26y docs, P41b as merged, #114; the text above stays as accepted).
 Engagement is `Targeting._engage`, a second pass of the TARGETING phase after acquisition, on
 every tick, from the positions at the start of the tick; it writes navigation state only through
-`Movement.reset_row`, when a mode changes. Where it differs from the text above:
+`Movement.reset_row`, when a mode changes or an `ATTACK` unit's line must be checked again (a
+`DIRECT` row reset to `DIRECT`, see `ATTACK` below). Where it differs from the text above:
 - **The chase line's trigger.** The line is checked on the unit's line-check turn,
   `(tick + id) % line_check_period_ticks == 0`, not "when the target is acquired and each time
   the unit enters a new tile". With the shipped periods (both 5) that turn is also the unit's
