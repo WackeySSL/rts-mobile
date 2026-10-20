@@ -4,9 +4,10 @@ extends GdUnitTestSuite
 ## the second with the C++ kernel (SimImpls), each through its own MatchLoop with the same orders,
 ## and after every tick the state hash and the full state (StateDiff: every column, scalar and
 ## helper, the grid and the pushes among them) are compared. The orders keep the units meeting for
-## the whole run: the scenario's two attack-moves, MatchScript's eight commands and, from tick 160,
-## a seeded wave every 25 ticks (a group of one side sent to a point or at an enemy), so that units
-## cross the wall, bunch up at the gaps, stop beside movers and push each other.
+## the whole run: the two attack-moves of the P27c rush (the scenario holds firing lines since P48),
+## MatchScript's eight commands and, from tick 160, a seeded wave every 25 ticks (a group of one
+## side sent to a point or at an enemy), so that units cross the wall, bunch up at the gaps, stop
+## beside movers and push each other.
 ## The run repeats with the kernel alone in C++, with SEPARATION and INTEGRATE in C++ (the pushes
 ## the kernel wrote are what the C++ INTEGRATE adds to the steps) and with every phase the library
 ## has, on the arena with its 150 units gathered into a pile of 3 x 3 tiles (in the middle of the
@@ -267,7 +268,9 @@ func _arena(
 func _orders(world: World, tick: int) -> Array[Command]:
 	var out: Array[Command] = []
 	if tick == 0:
-		# The two orders of the scenario: each side attack-moves to the other's side of the wall.
+		# The P27c rush: each side attack-moves to the other side's spawn centre, so that units cross
+		# the wall and meet in the gaps. The shipped scenario holds firing lines since P48 (the pace
+		# the gate needs), so these two orders are the rig's own, not the scenario's.
 		out.append(Command.attack_move(1, LockstepRig.ids_of(world, 1), 39500, 32500))
 		out.append(Command.attack_move(2, LockstepRig.ids_of(world, 2), 24500, 32500))
 	out.append_array(MatchScript.commands_at(tick))

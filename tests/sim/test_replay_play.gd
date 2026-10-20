@@ -90,11 +90,12 @@ func test_two_commands_of_one_player_on_one_tick_replay_in_log_order() -> void:
 	assert_array([logged[6].tick, logged[6].sequence, logged[6].player_id]).is_equal([70, 6, 1])
 	assert_array([logged[5].target_x, logged[6].target_x]).is_equal([30500, 10500])
 	# The shared units 25-30 go where the later MOVE says; unit 21, only in the earlier MOVE, goes
-	# east and unit 35, only in the later one, west. Units fight and die in the arena since P42a
-	# (one has by tick 75, so the rows have moved up): the rows are found by id.
+	# east and unit 35, only in the later one, west. Units fight and die in the arena since P42a, and
+	# the rows are found by id. Since P48 the armies hold a firing line and the first death is at
+	# tick 95, so all 150 rows are still there at tick 75 (149 before the orders changed).
 	var fresh: World = _fresh(replay)
 	assert_int(Replay.play(replay, fresh, 75)).is_equal(-1)
-	assert_int(fresh.unit_count()).is_equal(149)
+	assert_int(fresh.unit_count()).is_equal(150)
 	var east: int = fresh.index_of(21)
 	var shared: int = fresh.index_of(25)
 	var west: int = fresh.index_of(35)

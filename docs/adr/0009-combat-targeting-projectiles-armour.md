@@ -8,6 +8,11 @@ engagement), §2 and §3 carry dated status notes on how `game/sim/Targeting.gd`
 trigger, the inclusive acquire-range guard and the counted line checks). No accepted text
 changed.
 
+Status note (2026-10-20, P26aa docs): after the merge of P42b (#122, projectile slots, homing and
+the counter triangle), §1 and §4 carry dated status notes on the triangle as the shipped data
+plays it and on how `game/sim/Combat.gd` realises the projectile rules. No accepted text changed,
+and no balance value changed.
+
 ## Context
 ROADMAP Phase 2 asks for "combat with projectiles, armour classes and death". The GDD lists six
 MVP units and four armour classes (infantry, light, heavy, building), and puts the damage
@@ -71,6 +76,19 @@ Three types are enough to prove what the box asks for:
   - every percent in 0..200 and `damage >= 1`;
   - cooldown at least 1;
   - unique `type_id` and weapon `id`.
+
+Status note (2026-10-20, P26aa docs, P42b as merged, #122; the text above stays as accepted).
+`tests/sim/test_counter_triangle.gd` is the judge: on an open 32 x 16 tile map, each duel in both
+orientations and twice with the same final hash, the survivors read only when no unit of one side
+is left and no shell is in flight. The shipped data passes all three duels and no value changed.
+Measured for PR #122 (the suite asserts the verdicts, not these figures): 6 rifle squads against
+1 light tank, the tank wins (tick 783, 135 of its 300 hp left); 2 rocket squads against 1 light
+tank, the tank dies at tick 156 and one squad is left at 90 hp; 6 rifle squads against 2 rocket
+squads, all six rifle squads survive (one at 60 hp). The second line of the hand calculation
+("before it lands the 5 shots that kill one squad") no longer holds in that form: the tank fires
+its 5th shell at a squad before the rockets kill it, and that shell, still in flight, lands at
+tick 163 and kills the squad, because a shell outlives its shooter (§4's note). The verdict is
+unchanged: rocket squads beat a light tank.
 
 ### 2. Targeting
 - Acquisition runs for a unit on the ticks where `(tick + id) % retarget_period == 0` (rules, 5).
@@ -193,6 +211,31 @@ every tick, from the positions at the start of the tick; it writes navigation st
   is no wreck, kill credit or experience in Phase 2.
 - **Splash** damage and **min range** use come with artillery in Phase 3/4. `min_range` already
   excludes candidates (section 2).
+
+Status note (2026-10-20, P26aa docs, P42b as merged, #122; the text above stays as accepted).
+`Combat.advance_projectiles` is phase 9 (`PROJECTILES`, its mark between `INTEGRATE` and `FIRE`)
+and `Combat.fire` phase 10. As merged:
+- **Launch.** A weapon with a projectile speed of 0 hits at once. A speed above 0 takes the slot on
+  top of the free stack (`proj_free[proj_free_top - 1]`) with the next projectile id, the shooter's
+  owner and weapon, the target's id, the shooter's position and the target's position as the aim.
+  The flight time is the ceiling of the real distance over the speed, at least 1: one
+  `FixedMath.isqrt(d2)`, raised by 1 when its square is below `d2`, then
+  `max(1, (dist + speed - 1) / speed)`. The `SHOT` record is written at the moment of firing.
+- **A full pool.** With no slot free the shot hits at once, as a hitscan, and adds 1 to
+  `projectile_overflow`; it writes its `SHOT` and no `IMPACT` follows.
+- **Flight.** The slots are walked in ascending slot order, live slots only. While the target has
+  a row the aim follows its position after INTEGRATE; a target that is gone leaves the aim where it
+  last was. The step `(aim - pos) / proj_ticks` truncates toward zero on each axis (a slot with
+  `proj_ticks` 0 is stepped as if 1 were left), so the shell is on the aim point when it lands.
+- **Landing.** The target, if it still has a row, takes the damage (a row already at 0 or below is
+  still hit). The record is `[IMPACT, projectile id, x, y, target id or 0, weapon, 0, 0]` at the
+  landing point (`World.Event.IMPACT` is 4), the target id 0 when the target was gone. The slot is
+  zeroed in every column and pushed back on the free stack, last in, first out, in the tick it
+  lands.
+- **The shooter.** A shell does not look at its shooter: it flies on and hits when the shooter has
+  died.
+- **The count.** `stats[PROJ_STEPS]` adds the live slots stepped in the pass.
+- **The arena** (seed 42, 900 ticks): `proj_peak` 35 of the 512 slots and `projectile_overflow` 0.
 
 ### 5. Proof
 `tests/sim` proves:

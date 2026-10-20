@@ -318,7 +318,11 @@ func test_the_perf_arena_scenario_spawns_150_units_inside_the_window_on_open_gro
 	assert_int(drifted).is_equal(0)
 
 
-func test_the_perf_arena_orders_send_each_side_to_the_centre_of_the_other() -> void:
+## P48 tuned the opening orders: each side attack-moves to a firing line two tiles before the
+## ridge on its own side (columns 29 and 34), not to the other side's spawn centre (tiles 39 and
+## 24), because the rush into the enemy ended the heavy window (135 rows in the 26 x 15 window)
+## after 136 ticks, and the gate needs 150. test_scenarios pins the pace.
+func test_the_perf_arena_orders_send_each_side_to_a_firing_line_before_the_ridge() -> void:
 	var scenario: ScenarioDef = load(ARENA_PATH)
 	var orders: Array = []
 	for order: OrderDef in scenario.orders:
@@ -327,14 +331,20 @@ func test_the_perf_arena_orders_send_each_side_to_the_centre_of_the_other() -> v
 		assert_array(orders)
 		. is_equal(
 			[
-				[0, 1, Command.Type.ATTACK_MOVE, Vector2i(39, 32)],
-				[0, 2, Command.Type.ATTACK_MOVE, Vector2i(24, 32)],
+				[0, 1, Command.Type.ATTACK_MOVE, Vector2i(29, 32)],
+				[0, 2, Command.Type.ATTACK_MOVE, Vector2i(34, 32)],
 			]
 		)
 	)
 	for order: OrderDef in scenario.orders:
+		# On its own side of the ridge (columns 31 and 32), with the other side's units across it.
 		var enemy_centre: Vector2i = _spawn_centre_tile(scenario, 3 - order.player)
-		assert_that(order.target_tile).is_equal(enemy_centre)
+		var own_side: bool = (
+			order.target_tile.x < 31 if order.player == 1 else order.target_tile.x > 32
+		)
+		var enemy_side: bool = enemy_centre.x > 32 if order.player == 1 else enemy_centre.x < 31
+		assert_bool(own_side).override_failure_message("own side of %d" % order.player).is_true()
+		assert_bool(enemy_side).override_failure_message("enemy of %d" % order.player).is_true()
 
 
 ## The ridge cuts the map in two: with every gap shut the two spawn centres are cut off, and with
@@ -345,15 +355,17 @@ func test_each_perf_arena_gap_alone_lets_foot_and_tracked_units_cross_the_ridge(
 	var map: MapDef = scenario.map
 	var gaps: Array = [[26, 27], [31, 32, 33], [37, 38]]  # the runs of gap rows pinned above
 	for order: OrderDef in scenario.orders:
+		# P48: the goal is the other side's spawn centre, which the orders no longer name.
 		var start: Vector2i = _spawn_centre_tile(scenario, order.player)
+		var goal: Vector2i = _spawn_centre_tile(scenario, 3 - order.player)
 		for move_class: int in [FOOT, TRACKED]:
-			for tile: Vector2i in [start, order.target_tile]:
+			for tile: Vector2i in [start, goal]:
 				var enter: int = _cost(map, tile.x, tile.y, move_class)
 				assert_int(enter).override_failure_message("enter %s" % [tile]).is_greater(0)
-			var shut: bool = _reaches(map, start, order.target_tile, move_class, [])
+			var shut: bool = _reaches(map, start, goal, move_class, [])
 			assert_bool(shut).override_failure_message("all gaps shut").is_false()
 			for rows: Array in gaps:
-				var crossed: bool = _reaches(map, start, order.target_tile, move_class, rows)
+				var crossed: bool = _reaches(map, start, goal, move_class, rows)
 				assert_bool(crossed).override_failure_message("rows %s" % [rows]).is_true()
 
 

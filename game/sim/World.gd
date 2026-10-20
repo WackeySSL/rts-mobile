@@ -50,6 +50,9 @@ const GRASS_COST: int = 10
 ## The id of open grass, the one terrain of a map without a MapDef. It equals the first terrain of
 ## data/terrain/standard.tres, which a test pins.
 const GRASS_ID: StringName = &"grass"
+## The largest terrain index. `terrain` keeps one byte per cell and the view picks its tile by it,
+## so a larger index would be stored as another terrain's and drawn as that one (P48).
+const TERRAIN_INDEX_MAX: int = 255
 ## The cell sides of the spatial grids (ADR 0008 section 4, ADR 0009): structural, not balance
 ## numbers, so not in RulesDef. Targeting reads `target_grid.cell_milli`, never a second 4000.
 const SEP_CELL_MILLI: int = MILLI_PER_TILE
@@ -534,11 +537,14 @@ func is_passable(cell: int, move_class: int) -> bool:
 
 ## Makes `cell` the terrain `terrain_index` (an index into terrain_ids) with that terrain's cost
 ## for each class, and bumps map_version, also when the terrain is the same. A cell outside the
-## map or an unknown terrain index changes nothing.
+## map, an index above TERRAIN_INDEX_MAX (a byte, P48) or an unknown terrain index (one whose
+## `terrain_cost` row is missing) changes nothing. Any other writer of `terrain`, `move_cost` or
+## `terrain_cost` must bump map_version itself, because the map digest of the hash follows
+## map_version alone (_map_digest_value).
 func set_terrain(cell: int, terrain_index: int) -> void:
 	var classes: int = MoveClass.size()
 	var cells: int = map_cols * map_rows
-	if cell < 0 or cell >= cells or terrain_index < 0:
+	if cell < 0 or cell >= cells or terrain_index < 0 or terrain_index > TERRAIN_INDEX_MAX:
 		return
 	if (terrain_index + 1) * classes > terrain_cost.size():
 		return

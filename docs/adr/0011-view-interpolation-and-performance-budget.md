@@ -158,6 +158,19 @@ Mesa/llvmpipe with Xvfb, so draw-call counts are reliable and times are not):
     armies inside that window (player 1 west of the ridge, player 2 east), spawn jitter 300 milli;
   - opening orders at tick 0: each side attack-moves to the other side's spawn centre.
 
+  Status note (2026-10-20, P48, Michael's decision; the text above stays as accepted): the
+  opening orders are now an attack-move to a firing line two tiles before the ridge on each side
+  (tiles (29, 32) for player 1 and (34, 32) for player 2). With the rush to the other side's spawn
+  centre the first 15 deaths fall at about tick 150 whatever the layout, so the 26 x 15 window holds
+  135 or more units for only 136 ticks on seed 42 (131 and 132 on seeds 41 and 43), short of the
+  10 s heavy window of §5 (150 ticks at 15 Hz; P48 swept layouts, belts, moats and ponds, and only
+  the order target moves the pace). The firing lines hold it for 185 ticks (184 and 177). Trade-off,
+  accepted: the armies hold their lines and fight across the ridge, so separation in the gaps is no
+  longer the main load (sep_pairs max 1868 to 1231), while more units stay alive and in view (alive
+  at tick 900: 7 to 71; GDScript sim mean about 0.66 to 0.87 ms on the VM). The gap path is still
+  proved: `tests/sim/test_scenarios.gd` runs the rush orders on a copy of the scenario (every gap
+  crossed, none off a gap), and the sanitizer dump drives waves of orders across the ridge.
+
   The run therefore uses flow fields, separation in the gaps, targeting, hitscan, projectiles,
   deaths and fog, with the whole fight on screen.
 - **Run:** through `MatchLoop` (ADR 0007 §9), the same driver as the runner, with seed 42. Each
