@@ -146,13 +146,19 @@ func test_a_hit_is_an_hp_drop_and_not_a_shot_event_or_a_heal_or_a_spawn() -> voi
 	_runner.run_ticks(1)
 	_frame()
 	assert_int(_units.hit_time_ms(6)).is_equal(100)  # Not 200.
+	# The healed hp is the one the layer compares with: a drop to 240 is below 250 but not below
+	# the 200 of before the heal, and it is a hit.
+	_now_ms = 250
+	_hit(6, 10)
+	_frame()
+	assert_int(_units.hit_time_ms(6)).is_equal(250)
 	# A unit that appears is not hit, whatever its hp, and nor is a neighbour.
 	_now_ms = 300
 	_runner.world.add_unit(2, 0, 30500, 12500)
 	_runner.run_ticks(1)
 	_frame()
 	assert_int(_units.hit_time_ms(40)).is_equal(UnitLayer.NEVER_HIT)
-	assert_int(_units.hit_time_ms(6)).is_equal(100)
+	assert_int(_units.hit_time_ms(6)).is_equal(250)
 	# Hits between two frames, however many ticks, are one stamp of the frame that saw them.
 	_now_ms = 400
 	_hit(8, 10)
@@ -238,6 +244,14 @@ func test_a_unit_hit_and_destroyed_in_one_tick_leaves_no_bar() -> void:
 
 
 func test_rows_that_do_not_exist_have_no_hit_and_no_ring() -> void:
+	# A packed array counts a negative index from its end, so the last row (39) is hit and ringed:
+	# row -1 must still answer "none" and not read it.
+	_units.set_selected(PackedInt32Array([40]))
+	_now_ms = 500
+	_hit(39, 40)
+	_frame()
+	assert_int(_units.hit_time_ms(39)).is_equal(500)
+	assert_bool(_units.is_ringed(39)).is_true()
 	for row: int in [-1, 40, 1000]:
 		assert_int(_units.hit_time_ms(row)).is_equal(UnitLayer.NEVER_HIT)
 		assert_bool(_units.is_ringed(row)).is_false()

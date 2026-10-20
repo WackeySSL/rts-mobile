@@ -6,14 +6,15 @@ extends Node2D
 ## Own bars are plain, enemy bars have a notch in the top edge, which is the cue that does not
 ## rely on colour. Every bar is filled rects only and is drawn in one `_draw()` (ADR 0011 section
 ## 3, z 110 in ADR 0012 section 6). The layer reads `runner.snapshot` and the unit layer's
-## per-row answers, and it runs after the unit layer in the tree, which has brought its rows up
-## to the snapshot by then.
+## per-row answers, and it brings the unit layer's rows up to the snapshot once at the start of a
+## frame (`sync_rows`), so the tree order of the two layers does not matter.
 ##
 ## A bar is sized in dp, so it looks the same at every zoom: world px per dp is the base px per dp
 ## over the camera zoom. It is centred on its unit, and its bottom edge is r x zoom + 1 dp above
 ## the unit on screen, r the reach of the sprite of its class. The ring does not place it.
-## `_process` plans the rects of the frame in reused packed arrays and `_draw` paints that plan,
-## so a frame creates no object and tests read the plan (`rect_count`, `rect_at`).
+## `_process` plans the rects of the frame in reused packed arrays and `_draw` paints that plan
+## through the same accessors, so a frame creates no object and tests read the plan (`rect_count`,
+## `rect_at`) and what was painted (`drawn_count`).
 
 const VEHICLE_WIDTH_DP: int = 22
 const INFANTRY_WIDTH_DP: int = 16
@@ -46,6 +47,7 @@ var _bars: PackedInt32Array = PackedInt32Array()
 var _bar_first: PackedInt32Array = PackedInt32Array()
 var _rects: int = 0
 var _bar_count: int = 0
+var _drawn: int = 0  ## Rects the last _draw painted.
 ## The four shapes, own and enemy for each class (index 2 x enemy + infantry), made once: their
 ## rects (SHAPE_STRIDE ints each), the rect count and the width in dp.
 var _shapes: Array[PackedInt32Array] = []
@@ -88,6 +90,11 @@ static func fill_end_dp(hp: int, max_hp: int, width: int) -> int:
 ## Rects planned for the last frame, and the bars they belong to.
 func rect_count() -> int:
 	return _rects
+
+
+## Rects the last `_draw` painted: the plan of the frame it ran after.
+func drawn_count() -> int:
+	return _drawn
 
 
 func bar_count() -> int:
@@ -156,8 +163,10 @@ func _plan() -> void:
 	var snap: MatchSnapshot = runner.snapshot if runner != null else null
 	if snap == null or unit_layer == null or unit_layer.camera == null:
 		return
+	unit_layer.sync_rows()  # One sync for the loop: the per-row answers below do not sync.
 	var count: int = snap.unit_id.size()
-	if _bars.size() < count:
+	# Sized by _bar_first, which the closing write below reaches at [bar count] even for 0 units.
+	if _bar_first.size() < count + 1:
 		_bars.resize(count)
 		_bar_first.resize(count + 1)
 		_geometry.resize(count * MAX_RECTS_PER_BAR * 4)
@@ -217,10 +226,7 @@ func _plan() -> void:
 
 
 func _draw() -> void:
-	var geometry: PackedFloat32Array = _geometry
-	var colors: PackedColorArray = _colors
+	_drawn = 0
 	for index: int in _rects:
-		var at: int = index * 4
-		draw_rect(
-			Rect2(geometry[at], geometry[at + 1], geometry[at + 2], geometry[at + 3]), colors[index]
-		)
+		draw_rect(rect_at(index), rect_color(index))
+		_drawn += 1

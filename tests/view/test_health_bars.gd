@@ -2,8 +2,9 @@ extends GdUnitTestSuite
 ## What HealthBarLayer plans and draws (plan P45, assets/art/STYLE.md "Health bars"): the shape of
 ## an own and an enemy bar, the fill, the size in dp at every zoom, the place over the unit, and
 ## the two overlap inequalities of STYLE.md's sweep. Pixels cannot be read headless, so the tests
-## read the layer's plan of rects (`rect_at`, `rect_color`), which `_draw` paints one for one,
-## and `test_the_draw_code_paints_nothing_but_filled_rects` reads the script. When a bar shows and
+## read the layer's plan of rects (`rect_at`, `rect_color`), which `_draw` paints one for one
+## (test_health_bar_frames.gd counts what it painted), and
+## `test_the_draw_code_paints_nothing_but_filled_rects` reads the script. When a bar shows and
 ## how a hit is seen are in test_health_bar_hits.gd (gdlint allows 20 public methods per file).
 ## On data/scenarios/controls_test.tres: ids 1-30 are blue light tanks (max hp 300), 31-40 red; the
 ## perf arena has tanks, rifle squads (max hp 100) and rocket squads, both sides. The runner is not

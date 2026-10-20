@@ -98,12 +98,18 @@ static func layer_z(layer: int, type: int, owner_id: int) -> int:
 	return Z_FIRST[layer] + (type * Z_OWNERS + owner_id if layer == TEAM_LAYER else type)
 
 
+## Brings the rigs, the hp last seen and the hit times up to `runner.snapshot`, the sync that
+## every other entry point starts with. Call it once before a loop over
+## `hit_time_ms` and `is_ringed`, which do not sync themselves: they answer for the rows as the
+## last entry point left them, and a synced accessor would cost 150 syncs a frame for the bars.
+func sync_rows() -> void:
+	_sync_rigs()
+
+
 ## The frame clock (`clock`, ms) at which unit row `row` last lost hp, as seen between two
 ## snapshots, or NEVER_HIT. A health bar shows for a few seconds after it (STYLE.md "Health bars").
-## Like `is_ringed`, it answers for the rows as the last frame or entry point left them: a caller
-## that needs the rows of a snapshot that is newer than that (inside `ticked`, before a frame)
-## goes through `_process`, `set_selected`, `fill_pick_snapshot` or `unit_screen_position`
-## first. A per-row accessor that synced would cost 150 syncs a frame for the bars.
+## No sync (see `sync_rows`): a caller that loops over rows of a snapshot that may be newer than
+## the last frame (inside `ticked`, or in a layer that runs before this one) calls it first.
 func hit_time_ms(row: int) -> int:
 	return _hit_ms[row] if row >= 0 and row < _hit_ms.size() else NEVER_HIT
 
