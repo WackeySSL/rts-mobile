@@ -178,13 +178,14 @@ func test_neither_fill_is_a_team_colour_and_the_colours_do_not_depend_on_the_own
 	assert_that(_bars.rect_color(1)).is_equal(OWN)
 	assert_that(_bars.rect_color(2)).is_equal(EDGE)
 	assert_that(_bars.rect_color(5)).is_equal(ENEMY)
-	_runner.scenario.local_player = 2  # Restored by the next test's load of the shared resource.
+	var scenario: ScenarioDef = _runner.scenario.duplicate()  # Never the shared, cached resource.
+	scenario.local_player = 2
+	_runner.scenario = scenario
 	_frame()
 	assert_array(_dp_rects(1, EDGE)).is_equal(
 		[Rect2i(0, 0, 9, 6), Rect2i(13, 0, 9, 6), Rect2i(9, 2, 4, 4)]
 	)  # Blue tank 2 is the enemy now.
 	assert_array(_dp_rects(30, EDGE)).is_equal([Rect2i(0, 0, 22, 6)])
-	_runner.scenario.local_player = 1
 
 
 func test_a_bar_is_a_dp_size_at_every_zoom() -> void:
