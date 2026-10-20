@@ -475,6 +475,59 @@ func test_a_full_pool_turns_a_shot_into_a_hitscan_and_counts_the_overflow() -> v
 	assert_int(world.proj_id[1]).is_equal(3)
 
 
+## Every shot that finds the pool full adds 1 to `projectile_overflow`, however many there are in
+## the tick and in whatever tick (the lockstep of the C++ twin and the performance test's
+## `projectile_overflow` of 0 read the counter). A pool of 1 and three shooters fire in tick 0 at
+## three marks 4000 east: shooter 1 takes the slot (7 ticks at 600), the other two hit at once, so
+## the counter is 2 after tick 0 (not 1): three SHOTs, no IMPACT, 18 off marks 5 and 6, and the
+## overflowed shots take no projectile id. Nothing is added in the two ticks that follow. Shooters 2
+## and 3 get a cooldown of 3, so both fire again in tick 3, with the shell still in the air and the
+## pool still full: the counter is 4 (neither 3, one shot of the two, nor 2, tick 0 only), the marks
+## have lost 36, and the shell's landing in tick 7 leaves the counter at 4.
+func test_every_overflowed_shot_adds_one_to_the_counter_in_the_tick_it_is_fired() -> void:
+	var defs: Array[UnitDef] = [
+		_def(&"gun", INFANTRY, TOUGH, _shell(600)), _def(&"mark", LIGHT, TOUGH)
+	]
+	var world: World = _world(defs, 1)
+	for k: int in 3:
+		world.add_unit(1, 0, 4000, 2000 + 3000 * k)
+	for k: int in 3:
+		world.add_unit(2, 1, 8000, 2000 + 3000 * k)
+		world.target[k] = 4 + k
+	Sim.step(world, [])
+	assert_int(world.projectile_overflow).is_equal(2)
+	assert_array(world.proj_id).is_equal([1])
+	assert_int(world.next_projectile_id).is_equal(2)
+	assert_int(world.proj_free_top).is_equal(0)
+	assert_array(world.hp.slice(3)).is_equal([TOUGH, TOUGH - 18, TOUGH - 18])
+	assert_array(_records(world, SHOT)).has_size(3)
+	assert_array(_records(world, IMPACT)).is_empty()
+	world.cooldown[1] = 3
+	world.cooldown[2] = 3
+	for tick: int in range(1, 3):
+		Sim.step(world, [])
+		assert_int(world.projectile_overflow).override_failure_message("tick %d" % tick).is_equal(2)
+		assert_array(world.events).override_failure_message("tick %d" % tick).is_empty()
+	Sim.step(world, [])
+	assert_int(world.projectile_overflow).is_equal(4)
+	var shooters: Array[int] = []
+	for record: Array in _records(world, SHOT):
+		shooters.append(record[1])
+	assert_array(shooters).is_equal([2, 3])
+	assert_array(_records(world, IMPACT)).is_empty()
+	assert_array(world.hp.slice(3)).is_equal([TOUGH, TOUGH - 36, TOUGH - 36])
+	assert_int(world.next_projectile_id).is_equal(2)
+	assert_int(world.proj_free_top).is_equal(0)
+	for _tick: int in range(4, 7):
+		Sim.step(world, [])
+		assert_int(world.projectile_overflow).is_equal(4)
+	Sim.step(world, [])
+	assert_array(_records(world, IMPACT)).has_size(1)
+	assert_int(world.hp[3]).is_equal(TOUGH - 18)
+	assert_int(world.proj_free_top).is_equal(1)
+	assert_int(world.projectile_overflow).is_equal(4)
+
+
 ## Slots are reused from the free stack, last in first out, through `proj_free_top`, and shells are
 ## processed in slot order, not in id order. Three shooters (ids 1 to 3) fire in tick 0 into slots
 ## 0, 1, 2 (shells 1, 2, 3; flights 1, 3 and 1 ticks at 1000 a tick); in tick 1 shells 1 and 3
@@ -561,7 +614,9 @@ func test_shells_in_flight_give_the_same_hash_twice() -> void:
 ## of the target, with the weapon the shell was fired from (slot weapon, not the first weapon of
 ## the tables): 30 against (70, 60, 35, 40) loses 21, 18, 10 and 12; 12 against (100, 10, 5, 0)
 ## loses 12, 1, 1 (0.6 raised to 1) and 0, and the percent of 0 still writes the IMPACT, naming the
-## target. The weapon of the shot is index 1 (the second type) behind a decoy weapon of index 0.
+## target. The weapon of the shot is index 1 (the second type) behind a decoy weapon of index 0, so
+## the landing slot, which must come back as nine zeros, shows a weapon column it did not zero (a
+## stale 1; the other cases' weapon is index 0, which a stale column cannot be told from zero).
 func test_a_shell_does_the_percent_damage_of_its_own_weapon_for_each_armour_class() -> void:
 	var lost: Array[Array] = [[21, 18, 10, 12], [12, 1, 1, 0]]
 	var weapons: Array[WeaponDef] = [
@@ -588,6 +643,9 @@ func test_a_shell_does_the_percent_damage_of_its_own_weapon_for_each_armour_clas
 			var impact: Array = _records(world, IMPACT)[0]
 			assert_array(impact).override_failure_message(label).is_equal(
 				[IMPACT, 1, 8000, 6000, 2, 1, 0, 0]
+			)
+			assert_array(_slot(world, 0)).override_failure_message(label).is_equal(
+				[0, 0, 0, 0, 0, 0, 0, 0, 0]
 			)
 
 
