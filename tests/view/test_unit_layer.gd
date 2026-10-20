@@ -3,7 +3,8 @@ extends GdUnitTestSuite
 ## 31-40 red. Tank 1 stands at px (544, 1184), tank 2 at (640, 1184) and tank 7 at (544, 1280).
 ## The runner is not in the tree, so only the calls here move time: runner._process() moves the
 ## interpolation clock and layer._process() draws a frame. Rigs that follow deaths and spawns by
-## unit id are in test_unit_layer_rows.gd.
+## unit id are in test_unit_layer_rows.gd, and where turrets and squads aim in
+## test_unit_layer_aim.gd.
 
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
