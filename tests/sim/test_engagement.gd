@@ -198,6 +198,32 @@ func test_an_attack_unit_drives_to_weapon_range_and_holds_and_the_target_stays_p
 	assert_array(Rig.outside_sight(world)).is_empty()
 
 
+## An `ATTACK` unit leaves `HOLD` when its target steps out of weapon range, as an attack-moving
+## one does: tank 1 holds at 4500 or less from idle tank 2, the target is moved by hand to 4800
+## from it (inside the 7000 of its sight), and on the next tick the tank is `DIRECT` with the
+## navigation of a new order (no field, line unchecked) and steps towards the target, then holds
+## again once it is back in range, still on its `ATTACK` order and target.
+func test_an_attack_unit_leaves_hold_when_its_target_steps_out_of_range() -> void:
+	var world: World = Rig.data_world()
+	world.add_unit(1, TANK, 2000, 6000)
+	world.add_unit(2, TANK, 8500, 6000)
+	Sim.step(world, [_order(Command.attack(1, PackedInt32Array([1]), 2), world)])
+	for _tick: int in 60:
+		Sim.step(world, [])
+	assert_int(world.nav_mode[0]).is_equal(HOLD)
+	var held_x: int = world.pos_x[0]
+	world.pos_x[1] = held_x + 4800
+	Sim.step(world, [])
+	assert_array([world.nav_mode[0], world.field[0], world.order[0]]).is_equal([DIRECT, -1, ATTACK])
+	assert_int(world.intent_x[0]).is_equal(120)
+	assert_int(world.pos_x[0]).is_equal(held_x + 120)
+	for _tick: int in 4:
+		Sim.step(world, [])
+	assert_array([world.nav_mode[0], world.target[0], world.intent_x[0]]).is_equal([HOLD, 2, 0])
+	assert_int(world.pos_x[1] - world.pos_x[0]).is_between(4500 - 120 + 1, 4500)
+	assert_array(Rig.outside_sight(world)).is_empty()
+
+
 ## An attack-moving rifle squad that acquires an enemy out of weapon range (4800 away, acquire is
 ## 5000, range 4000) chases it: `CHASE` from the acquiring tick (4, which is also its line-check
 ## turn), then `HOLD` the first tick the enemy is within 4000, and it stays there: its position and

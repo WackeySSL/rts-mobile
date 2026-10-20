@@ -169,14 +169,58 @@ func test_an_attack_across_the_band_follows_its_field_and_holds_at_range() -> vo
 	assert_array(Rig.outside_sight(world)).is_empty()
 
 
+## An `ATTACK` target that walks from the gap row to behind the band: the line to it is clear when
+## the tank first tests it, so the tank steers `DIRECT`, and its goal walks away with the target.
+## The line is tested again on the tank's turns (a clear line stays clear only while the goal stays
+## put), the first test that finds it blocked sends the tank to a field keyed on the target's tile
+## through the gap in the same tick, and it holds at 4500 or less from the target. The tank never
+## steers into the band for more than one line-check period: no tick's intent ends on a tile its
+## class cannot enter (the first version of P41b pressed into the band for 329 ticks).
+func test_an_attack_target_that_walks_behind_the_band_is_followed_through_the_gap() -> void:
+	var world: World = _band_world()
+	world.type_sight[TANK] = 30000
+	world.add_unit(1, TANK, 8000, 11000)
+	world.add_unit(2, TANK, 19500, 11000)
+	var orders: Array[Command] = [
+		_stamped(Command.attack(1, _ids([1]), 2), world),
+		_stamped(Command.move(2, _ids([2]), 19500, 2000), world),
+	]
+	var cells: int = world.map_cols * world.map_rows
+	var pressing: int = 0
+	var longest: int = 0
+	var seen: Dictionary[int, int] = {}
+	for _tick: int in 400:
+		Sim.step(world, orders)
+		orders.clear()
+		seen[world.nav_mode[0]] = world.tick
+		var next_x: int = world.pos_x[0] + world.intent_x[0]
+		var next_y: int = world.pos_y[0] + world.intent_y[0]
+		var into_rock: bool = (
+			world.move_cost[2 * cells + next_y / 1000 * COLUMNS + next_x / 1000] == 0
+		)
+		pressing = pressing + 1 if into_rock else 0
+		longest = maxi(longest, pressing)
+		if world.nav_mode[0] == HOLD:
+			break
+	assert_int(longest).is_less_equal(MOST_BLOCKED_CHASE_TICKS)
+	assert_bool(seen.has(DIRECT) and seen.has(FIELD)).is_true()
+	assert_bool(seen.has(CHASE)).is_false()
+	assert_array([world.nav_mode[0], world.order[0], world.field[0]]).is_equal([HOLD, ATTACK, -1])
+	assert_array([world.pos_x[1], world.pos_y[1]]).is_equal([19500, 2000])
+	var dx: int = world.pos_x[1] - world.pos_x[0]
+	var dy: int = world.pos_y[1] - world.pos_y[0]
+	assert_int(dx * dx + dy * dy).is_less_equal(4500 * 4500)
+	assert_array(Rig.outside_sight(world)).is_empty()
+
+
 ## A unit that follows a field and has a target in weapon range holds without the field: the tank
 ## stands in `FIELD` on a slot with its line to the goal blocked, and its target comes into range
-## (4300 away, the cannon's is 4500, the band is between them), so the next tick it is `HOLD` with
-## no field, no next tile and an unchecked line, and no intent.
+## (4230 away, the cannon's is 4500, on the far side of the band, which the line to it crosses), so
+## the next tick it is `HOLD` with no field, no next tile and an unchecked line, and no intent.
 func test_a_unit_on_a_field_holds_with_no_field() -> void:
 	var world: World = _band_world()
-	world.add_unit(1, TANK, 12500, 5500)
-	world.add_unit(2, RIFLE, 16800, 4500)
+	world.add_unit(1, TANK, 12900, 5500)
+	world.add_unit(2, RIFLE, 17100, 5000)
 	world.order[0] = ATTACK_MOVE
 	world.goal_x[0] = 22500
 	world.goal_y[0] = 5500

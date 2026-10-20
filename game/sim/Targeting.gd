@@ -186,33 +186,44 @@ static func run(world: World) -> void:
 ## The engagement pass (ADR 0009 section 3), after acquisition and on every tick: each row that has
 ## a target decides between holding, chasing and following the path of its order, from the positions
 ## at the start of the tick. It writes only through `Movement.reset_row`, at the moment a mode
-## changes.
+## changes, and adds its line checks to `stats[LINE_CHECKS]` (one per `FixedMath.line_clear` call,
+## after the loop, as `Movement._check_line` counts its own).
 ## - A target that is gone (the row held it from an earlier scan) counts as none: a unit that held
 ##   or chased resumes its path (`DIRECT`, line unchecked, no field; an idle unit goes back to
 ##   `NONE`). `target` itself is left for the next scan to replace.
 ## - A target in weapon range (`min_range^2 <= d2 <= range^2`) puts the unit in `HOLD`, whatever its
 ##   order: no intent, though separation still pushes it. An idle unit holds too. A target that is
 ##   out of range (it moved, or the unit was pushed) takes the unit out of `HOLD` again.
-## - Out of range, an `ATTACK_MOVE` unit chases: `CHASE` while the straight line to the target is
-##   clear for its class, else it keeps the path of its order (`DIRECT` or `FIELD` to its goal) and
-##   holds when the target comes into range, so it uses the gaps in the rock and never presses into
-##   it. The line is checked on the unit's line-check turn ((tick + id) %
+## - Out of range, an `ATTACK_MOVE` unit chases while the target is inside its acquire range (the
+##   reach of ADR 0009 section 3) and the straight line to it is clear for its class: `CHASE`. With
+##   a blocked line, or a target beyond reach, it keeps the path of its order (`DIRECT` or `FIELD`
+##   to its goal) and holds when the target comes into range, so it uses the gaps in the rock and
+##   never presses into it. The line is checked on the unit's line-check turn ((tick + id) %
 ##   `line_check_period_ticks`, so a crowd spreads its checks), which is the tick it acquires a
 ##   target when the two periods are equal (5); the first clear line starts the chase and the first
-##   blocked one ends it. An `ATTACK` unit needs no chase: its goal is its target's position, and
-##   the navigation of the order (`DIRECT` while the line is clear, else a field keyed on the
-##   target's tile, `Movement._rekey`) takes it to weapon range. An idle unit never moves.
-## A target inside `min_range` is not in range, and no unit backs away from it (no Phase 2 weapon
-## has a minimum range). A type without a weapon table row is unarmed here as in `run`.
+##   blocked one ends it (up to `line_check_period_ticks` ticks of `CHASE` with a blocked line).
+## - An `ATTACK` unit never chases: its goal is its target's position, and the navigation of the
+##   order takes it to weapon range (`DIRECT` while the line is clear, else a field keyed on the
+##   target's tile, `Movement._rekey`). `Movement` checks a `DIRECT` unit's line once, because a
+##   clear line stays clear on a static map, but this goal walks, so on the unit's line-check turn
+##   a `DIRECT` unit whose line was marked clear tests it again, and a blocked line sends it back
+##   through `Movement.run`'s check (unchecked `DIRECT`, so the same tick takes the field) instead
+##   of steering into the rock for as long as the target stays behind it. A `FIELD` unit already
+##   checks its line each time it enters a tile.
+## An idle unit never moves. A target inside `min_range` is not in range, and no unit backs away
+## from it (no Phase 2 weapon has a minimum range). A type without a weapon table row is unarmed
+## here as in `run`.
 static func _engage(world: World) -> void:
 	var ids: PackedInt32Array = world.unit_id
 	var orders: PackedInt32Array = world.order
 	var modes: PackedInt32Array = world.nav_mode
 	var targets: PackedInt32Array = world.target
+	var checked: PackedInt32Array = world.nav_cell
 	var types: PackedInt32Array = world.type_index
 	var classes: PackedInt32Array = world.type_move_class
 	var pos_x: PackedInt32Array = world.pos_x
 	var pos_y: PackedInt32Array = world.pos_y
+	var type_acquire: PackedInt32Array = world.type_acquire
 	var type_weapon: PackedInt32Array = world.type_weapon
 	var weapon_range: PackedInt32Array = world.weapon_range
 	var weapon_min_range: PackedInt32Array = world.weapon_min_range
@@ -220,6 +231,7 @@ static func _engage(world: World) -> void:
 	var count: int = ids.size()
 	var tick: int = world.tick
 	var period: int = maxi(world.line_check_period_ticks, 1)
+	var checks: int = 0
 	for row: int in count:
 		var mode: int = modes[row]
 		var order: int = orders[row]
@@ -251,10 +263,21 @@ static func _engage(world: World) -> void:
 		if mode == HOLD:
 			mode = NONE if order == IDLE else DIRECT
 			Movement.reset_row(world, row, mode)
-		if order != ATTACK_MOVE or (tick + ids[row]) % period != 0:
+		if (order != ATTACK_MOVE and order != ATTACK) or (tick + ids[row]) % period != 0:
 			continue
-		var clear: bool = FixedMath.line_clear(world, x, y, pos_x[at], pos_y[at], classes[type])
+		if order == ATTACK:
+			if mode == DIRECT and checked[row] >= 0:
+				checks += 1
+				if not FixedMath.line_clear(world, x, y, pos_x[at], pos_y[at], classes[type]):
+					Movement.reset_row(world, row, DIRECT)
+			continue
+		var clear: bool = false
+		var acquire: int = type_acquire[type]
+		if d2 <= acquire * acquire:
+			checks += 1
+			clear = FixedMath.line_clear(world, x, y, pos_x[at], pos_y[at], classes[type])
 		if clear and mode != CHASE:
 			Movement.reset_row(world, row, CHASE)
 		elif not clear and mode == CHASE:
 			Movement.reset_row(world, row, DIRECT)
+	world.stats[World.Stat.LINE_CHECKS] += checks

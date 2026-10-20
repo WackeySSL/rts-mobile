@@ -90,12 +90,14 @@ static func reset_row(world: World, row: int, mode: int) -> void:
 ## on its first tick where `(tick + id) % line_check_period_ticks == 0`, so a group order spreads
 ## its checks over the period. A clear line stays clear on a static map: the unit's cell goes into
 ## `nav_cell`, which ends the checking (`integrate` clears it again for a unit that the rock stops
-## dead, see there). A blocked line asks the cache for a field of the unit's class keyed on the
-## order's group target (`group_cell`, Formation's centre: the whole group shares it), else on the
-## tile of the unit's goal (an ATTACK unit, or a hand-set order): the unit is FIELD with that slot,
-## or stays DIRECT and unchecked (it asks again on its next turn) when every slot is referenced. A
-## FIELD unit checks the line again each time it enters a tile, and a clear line makes it DIRECT
-## with no field. Every check counts in `stats[LINE_CHECKS]`.
+## dead, see there; so does `Targeting._engage` for an ATTACK unit whose target walked behind rock,
+## because that goal moves: P41b). A blocked line asks the cache for a field of the unit's class
+## keyed on the order's group target (`group_cell`, Formation's centre: the whole group shares it),
+## else on the tile of the unit's goal (an ATTACK unit, or a hand-set order): the unit is FIELD with
+## that slot, or stays DIRECT and unchecked (it asks again on its next turn) when every slot is
+## referenced. A FIELD unit checks the line again each time it enters a tile, and a clear line makes
+## it DIRECT with no field. Every check counts in `stats[LINE_CHECKS]`, `Targeting`'s (the chase
+## and the ATTACK re-test, which add theirs after their loop) included.
 ##
 ## A FIELD unit steers at the centre of its `nav_next` tile; with none (the field is pending, or
 ## the unit stands where the field names no next tile) it steers DIRECT at its goal. `integrate`
