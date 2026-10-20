@@ -12,9 +12,19 @@ extends Node
 ## Emitted after each publish with the snapshot's tick, the number of ticks played so far.
 signal ticked(tick: int)
 
+## What runs the ported phases (ADR 0013 section 3): the GDScript twins, the native kernels, or
+## the kernels whenever the library is loaded. start() resolves it with resolve_impl().
+enum SimImpl { GDSCRIPT = 0, NATIVE = 1, AUTO = 2 }
+## What start() logs about the implementation it resolved (fallback_log()).
+enum ImplLog { NONE = 0, WARNING = 1, ERROR = 2 }
+
 ## A tick is split into this many parts, so the frame clock is an integer and frame lengths
 ## that add up to whole ticks (four times 1/60 s) step exactly.
 const MICRO_TICKS_PER_TICK: int = 1_000_000
+## OS.get_name() of the platform that requires the library (ADR 0013 section 3) and of the web
+## preview, which runs the GDScript twins (section 7).
+const OS_ANDROID: String = "Android"
+const OS_WEB: String = "Web"
 
 @export var scenario: ScenarioDef
 ## The seed of the match, 0 to 2^31-1 (DetRandom masks it). start() makes the sim stream from it
@@ -22,6 +32,9 @@ const MICRO_TICKS_PER_TICK: int = 1_000_000
 @export var match_seed: int = 1
 ## Ticks one frame may play. Time beyond that is dropped, not carried to the next frame.
 @export var max_catch_up_ticks: int = 4
+## The implementation of the ported phases. GDSCRIPT by default, as tick modes default to SYNC: a
+## runner a test builds runs the twins unless it asks otherwise. The scenes set AUTO from P50b.
+@export var sim_impl: SimImpl = SimImpl.GDSCRIPT
 
 var world: World
 ## The match's tick driver (ADR 0007 section 9) and its log, `loop.replay`. start() makes both.
@@ -74,9 +87,11 @@ func _ready() -> void:
 ## Builds a new world from the scenario with the sim stream of `match_seed`, and a new MatchLoop:
 ## empty queue, clock at zero, sequences from 0 again, no checkpoint yet. It publishes the tick-0
 ## snapshot, without `ticked`: its match_serial and last_hash first, then a capture with no
-## previous one, so prev = current and nothing slides from the old match.
+## previous one, so prev = current and nothing slides from the old match. The World runs the
+## implementation that sim_impl resolves to on this platform (_use_impl()).
 func start() -> void:
 	world = World.from_scenario(scenario, DetRng.create(match_seed, DetRandom.STREAM_SIM))
+	_use_impl(world)
 	var scenario_path: String = scenario.resource_path if scenario != null else ""
 	loop = MatchLoop.create(scenario, scenario_path, match_seed, world)
 	replay = loop.replay
@@ -102,6 +117,30 @@ func run_ticks(n: int) -> void:
 ## How far the clock is into the next tick, 0 to 1.
 func alpha() -> float:
 	return clampf(float(_micro_ticks) / float(MICRO_TICKS_PER_TICK), 0.0, 1.0)
+
+
+## The implementation that runs for `impl` (ADR 0013 section 3): NATIVE when NATIVE or AUTO is
+## asked, the library is loaded (`has_library`: NativeKernels.create() gives kernels) and
+## `os_name` (OS.get_name()) is not the web, whose preview runs the GDScript twins (section 7);
+## GDSCRIPT otherwise, never AUTO. Pure, so tests pass any OS name; start() logs a fallback
+## (fallback_log()).
+static func resolve_impl(impl: int, has_library: bool, os_name: String) -> int:
+	var asks_native: bool = impl == SimImpl.NATIVE or impl == SimImpl.AUTO
+	if asks_native and has_library and os_name != OS_WEB:
+		return SimImpl.NATIVE
+	return SimImpl.GDSCRIPT
+
+
+## What start() logs when `impl` resolved to `resolved` on `os_name` (ADR 0013 section 3): nothing
+## when NATIVE runs or GDSCRIPT was asked; an error when NATIVE was asked, and when AUTO falls
+## back on Android, where the library is required; nothing for AUTO on the web; a warning for AUTO
+## on the other platforms. Pure: tests pass the OS name, so no test logs the Android error.
+static func fallback_log(impl: int, resolved: int, os_name: String) -> int:
+	if resolved == SimImpl.NATIVE or (impl != SimImpl.NATIVE and impl != SimImpl.AUTO):
+		return ImplLog.NONE
+	if impl == SimImpl.NATIVE or os_name == OS_ANDROID:
+		return ImplLog.ERROR
+	return ImplLog.NONE if os_name == OS_WEB else ImplLog.WARNING
 
 
 func _process(delta: float) -> void:
@@ -151,6 +190,28 @@ func _tick() -> void:
 	job.previous = null
 	_publish(next)
 	ticked.emit(next.tick)
+
+
+## Resolves sim_impl on this platform and logs a fallback; on NATIVE it attaches new kernels to
+## `target` with the phases the library reports (ADR 0013 section 3). A GDSCRIPT World keeps no
+## kernels and the mask 0. It runs before the first tick, so the choice holds for the whole match.
+func _use_impl(target: World) -> void:
+	var kernels: Object = null if sim_impl == SimImpl.GDSCRIPT else NativeKernels.create()
+	var os_name: String = OS.get_name()
+	var resolved: int = resolve_impl(sim_impl, kernels != null, os_name)
+	var level: int = fallback_log(sim_impl, resolved, os_name)
+	if level != ImplLog.NONE:
+		var text: String = (
+			"MatchRunner: sim_impl %s runs the GDScript twins on %s: no SimKernels library of ABI %d"
+			% [SimImpl.keys()[sim_impl], os_name, NativeKernels.ABI_VERSION]
+		)
+		if level == ImplLog.ERROR:
+			push_error(text)
+		else:
+			push_warning(text)
+	if resolved == SimImpl.NATIVE:
+		target.kernels = kernels
+		target.native_phases = kernels.phases()
 
 
 ## Makes `published` the runner's snapshot and sets the published fields from it (ADR 0012
