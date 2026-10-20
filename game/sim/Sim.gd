@@ -16,7 +16,9 @@ const MILLI_PER_TILE: int = 1000
 ## lock, holding and chasing), ordered units choose their steps (intents), overlapping units are
 ## pushed apart (SEPARATION), the steps and pushes are integrated, shells in flight move and those
 ## that arrive hit (PROJECTILES: `Combat.advance_projectiles`), armed units with a target in range
-## fire (FIRE: `Combat.fire`, a hitscan hit or a new shell), dead rows leave, and the tick counts.
+## fire (FIRE: `Combat.fire`, a hitscan hit or a new shell), dead rows leave and their vision ends
+## (REMOVE), the players whose turn it is move their fog (FOG: `FogUpdate.run`, every
+## `fog_period_ticks`, after `FogUpdate.begin` emptied their dirty lists), and the tick counts.
 ## A probe gets `begin()` first and a `mark` after each phase that exists (ADR 0007 section 4); it
 ## never sees the World.
 static func step(world: World, commands: Array[Command], probe: SimProbe = null) -> void:
@@ -64,9 +66,13 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 	Combat.fire(world)
 	if probe != null:
 		probe.mark(SimProbe.Phase.FIRE)
+	FogUpdate.begin(world)
 	world.remove_dead()
 	if probe != null:
 		probe.mark(SimProbe.Phase.REMOVE)
+	FogUpdate.run(world)
+	if probe != null:
+		probe.mark(SimProbe.Phase.FOG)
 	world.tick += 1
 
 

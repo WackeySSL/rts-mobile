@@ -468,9 +468,9 @@ func index_of(id: int) -> int:
 ## capitalised type id), because Phase 1 code appends only the four Phase 1 tables. It also sizes
 ## the scratch arrays to max_rows, stats to the Stat count and the projectile slots to
 ## max_projectiles, and derives open grass from map_w and map_h when no map is loaded. Last it
-## configures the helpers, once, because configure() re-creates their arrays, and caches the map
-## digest of the hash. Idempotent through `prepared`, so Sim.step calls it every tick. Types,
-## players and sizes are fixed before it.
+## configures the helpers, once, because configure() re-creates their arrays, stamps the fog of the
+## rows that exist (_stamp_fog) and caches the map digest of the hash. Idempotent through
+## `prepared`, so Sim.step calls it every tick. Types, players and sizes are fixed before it.
 func prepare() -> void:
 	if prepared:
 		return
@@ -500,6 +500,7 @@ func prepare() -> void:
 	if map_cols == 0:
 		_derive_open_grass()
 	fog.configure(map_cols, map_rows, player_count)
+	_stamp_fog()
 	flow.configure(map_cols, map_rows, MoveClass.size(), flow_cache_size)
 	sep_grid.configure(map_w, map_h, SEP_CELL_MILLI, max_rows)
 	target_grid.configure(map_w, map_h, TARGET_CELL_MILLI, max_rows)
@@ -610,9 +611,9 @@ func _write_unit_event(at: int, kind: int, row: int) -> void:
 	events[at + 5] = owner[row]
 
 
-## Removes every row with hp of 0 or less, the last step of a tick (ADR 0007 section 3): a DIED
-## record per dead row, in row order, then a stable compaction of every ROW_ARRAYS column, so the
-## rows stay ascending by id. It bumps rows_version once and adds the rows that changed place to
+## Removes every row with hp of 0 or less (ADR 0007 section 3): a DIED record per dead row, in row
+## order, and its fog unstamped, then a stable compaction of every ROW_ARRAYS column, so the rows
+## stay ascending by id. It bumps rows_version once and adds the rows that changed place to
 ## stats[ROWS_COMPACTED]. A tick without a death costs one scan. It prepares the world first
 ## (O(1) once prepared), so a hand-built world works: stats is sized by prepare().
 func remove_dead() -> void:
@@ -628,13 +629,21 @@ func remove_dead() -> void:
 	for row: int in range(first, count):
 		if alive[row] <= 0:
 			dead += 1
-	# One resize for all the records, then the writes: the loops allocate nothing.
+	# One resize for all the records, then the writes: the loops allocate nothing. A stamped row's
+	# vision ends here (ADR 0010 section 1); `explored` stays.
 	var at: int = events.size()
 	events.resize(at + dead * EVENT_STRIDE)  # The last two ints of each record stay 0.
+	var owners: PackedInt32Array = owner
+	var types: PackedInt32Array = type_index
+	var stamped: PackedInt32Array = fog_cell
+	var pad: int = type_sight.size()
+	var has_fog: bool = fog.cells > 0
 	for row: int in range(first, count):
 		if alive[row] <= 0:
 			_write_unit_event(at, Event.DIED, row)
 			at += EVENT_STRIDE
+			if has_fog and stamped[row] >= 0:
+				fog.stamp(owners[row], stamped[row], mini(types[row], pad), -1)
 	# hp is the test for every column, so it goes last.
 	for column_name: StringName in ROW_ARRAYS:
 		if column_name != &"hp":
@@ -643,6 +652,31 @@ func remove_dead() -> void:
 	_compact(alive, alive, first, count)
 	stats[Stat.ROWS_COMPACTED] += count - first - dead
 	rows_version += 1
+
+
+## One sight mask per type, in type order, so a mask id is the type index (two types of equal sight
+## repeat their mask), and the pad mask of TYPE_PAD_SIGHT after them, id `type_sight.size()`, for a
+## row whose type has no entry (the fog code takes the smaller of the type index and that id, so a
+## mask added later changes nothing). Then the disc of every row of a player (1..player_count) at
+## its cell, so the first frame of a match shows each player's own vision and the tick-0 hash
+## includes it (ADR 0010 section 1). No map, no cells: nothing is stamped. It counts nothing in
+## `stats`.
+func _stamp_fog() -> void:
+	for sight: int in type_sight:
+		fog.add_mask(sight)
+	fog.add_mask(TYPE_PAD_SIGHT)
+	if fog.cells == 0:
+		return
+	var pad: int = type_sight.size()
+	var owners: PackedInt32Array = owner
+	var types: PackedInt32Array = type_index
+	var stamped: PackedInt32Array = fog_cell
+	for row: int in owners.size():
+		var player: int = owners[row]
+		if player >= 1 and player <= player_count:
+			var cell: int = cell_of(pos_x[row], pos_y[row])
+			fog.stamp(player, cell, mini(types[row], pad), 1)
+			stamped[row] = cell
 
 
 ## The start point of a unit whose grid point is (x, y) and whose spawn has a `jitter` above 0: the
