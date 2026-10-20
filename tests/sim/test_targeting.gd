@@ -257,14 +257,15 @@ func test_the_grid_is_rebuilt_in_grids_and_targeting_follows_it() -> void:
 		[
 			SimProbe.Phase.SEPARATION,
 			SimProbe.Phase.INTEGRATE,
+			SimProbe.Phase.PROJECTILES,
 			SimProbe.Phase.FIRE,
 			SimProbe.Phase.REMOVE
 		]
 	)
 	assert_array(probe.phases).is_equal(phases)
-	assert_array(probe.occupied).is_equal([0, 0, 2, 2, 2, 2, 2, 2, 2])
-	assert_array(probe.targets).is_equal([0, 0, 0, 2, 2, 2, 2, 2, 2])
-	assert_array(probe.candidates).is_equal([0, 0, 0, 1, 1, 1, 1, 1, 1])
+	assert_array(probe.occupied).is_equal([0, 0, 2, 2, 2, 2, 2, 2, 2, 2])
+	assert_array(probe.targets).is_equal([0, 0, 0, 2, 2, 2, 2, 2, 2, 2])
+	assert_array(probe.candidates).is_equal([0, 0, 0, 1, 1, 1, 1, 1, 1, 1])
 
 
 ## The grid the scan reads is the one built in the same tick: unit 2 stands far away at tick 3 and

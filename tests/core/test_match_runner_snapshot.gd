@@ -56,13 +56,16 @@ func test_start_publishes_the_tick_0_snapshot_without_ticked() -> void:
 
 
 ## A restart after 10 ticks of the arena, in which no unit died, so both matches have the same
-## rows_version. The old match also held a projectile in slot 0. The new tick-0 snapshot has prev =
+## rows_version. The old match also held a projectile in slot 0, in flight for 100 more ticks (a
+## slot with no flight time left lands in the next tick since P42b, and a slot that the free stack
+## does not know would put its number on a full stack). The new tick-0 snapshot has prev =
 ## pos for every row and prev_proj_* = proj_*, so no rig slides from the old match's positions, and
 ## the next tick interpolates from the new tick-0 positions.
 func test_a_restart_with_the_same_rows_version_slides_nothing() -> void:
 	var runner: MatchRunner = _arena_runner()
 	runner.run_ticks(9)
 	runner.world.proj_id[0] = 7
+	runner.world.proj_ticks[0] = 100
 	runner.world.proj_x[0] = 500
 	runner.world.proj_y[0] = 1500
 	runner.run_ticks(1)

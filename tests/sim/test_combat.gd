@@ -1,10 +1,11 @@
 extends GdUnitTestSuite
 ## Weapons, part 1 (P42a; ADR 0009 section 4, ADR 0007 sections 3, 4 and 10): `Combat.fire` in the
-## FIRE phase of `Sim.step`, between INTEGRATE and REMOVE. Cooldowns count down, a unit with a
-## ready weapon and its target in reach fires, the damage lands in the same tick (hitscan; the
-## projectile slots are P42b, until then a weapon with a projectile speed also hits at once), and a
-## `SHOT` record holds both positions. Rows die in REMOVE, after every unit has fired. The group
-## fights (the standoffs that end, an `ATTACK` until the target dies) are in test_combat_fights.gd.
+## FIRE phase of `Sim.step`, after PROJECTILES and before REMOVE. Cooldowns count down, a unit with
+## a ready weapon and its target in reach fires, the damage lands in the same tick (hitscan: every
+## weapon of this suite has no projectile speed; the shells of a weapon with one are
+## test_combat_projectiles.gd's), and a `SHOT` record holds both positions. Rows die in REMOVE,
+## after every unit has fired. The group fights (the standoffs that end, an `ATTACK` until the
+## target dies) are in test_combat_fights.gd.
 ##
 ## The worlds are test-built types (Rig.world_of): a shooter (type 0, infantry, 100000 hp) with a
 ## weapon the case builds, and an unarmed mark (type 1) of the armour class and hp the case names,
@@ -419,9 +420,10 @@ func test_a_unit_on_a_move_order_does_not_fire_until_it_arrives() -> void:
 	assert_int(shots).is_greater(0)
 
 
-## FIRE sits between INTEGRATE and REMOVE: at the INTEGRATE mark the mark (row 1) still has all its
-## hp, at the FIRE mark it has lost 18 and the SHOT is written but the row is there, and at the
-## REMOVE mark a mark of 10 hp is gone with its DIED record. The shooter's cooldown is set at FIRE.
+## FIRE sits between PROJECTILES (P42b, after INTEGRATE) and REMOVE: at the INTEGRATE and
+## PROJECTILES marks the mark (row 1) still has all its hp, at the FIRE mark it has lost 18 and the
+## SHOT is written but the row is there, and at the REMOVE mark a mark of 10 hp is gone with its
+## DIED record. The shooter's cooldown is set at FIRE.
 func test_damage_is_done_at_the_fire_mark_and_the_row_leaves_at_the_remove_mark() -> void:
 	var tough: World = _duel(_weapon(&"gun", 30, 25, GUN_VS), LIGHT)
 	var probe: FireProbe = FireProbe.new(tough)
@@ -429,20 +431,25 @@ func test_damage_is_done_at_the_fire_mark_and_the_row_leaves_at_the_remove_mark(
 	Sim.step(tough, [], probe)
 	var at_integrate: int = probe.phases.find(SimProbe.Phase.INTEGRATE)
 	assert_array(probe.phases.slice(at_integrate)).is_equal(
-		[SimProbe.Phase.INTEGRATE, SimProbe.Phase.FIRE, SimProbe.Phase.REMOVE]
+		[
+			SimProbe.Phase.INTEGRATE,
+			SimProbe.Phase.PROJECTILES,
+			SimProbe.Phase.FIRE,
+			SimProbe.Phase.REMOVE
+		]
 	)
-	var after: Array[int] = [TOUGH, TOUGH - 18, TOUGH - 18]
+	var after: Array[int] = [TOUGH, TOUGH, TOUGH - 18, TOUGH - 18]
 	assert_array(probe.hit_points.slice(at_integrate)).is_equal(after)
-	assert_array(probe.event_ints.slice(at_integrate)).is_equal([0, STRIDE, STRIDE])
-	assert_array(probe.cooldowns.slice(at_integrate)).is_equal([0, 25, 25])
+	assert_array(probe.event_ints.slice(at_integrate)).is_equal([0, 0, STRIDE, STRIDE])
+	assert_array(probe.cooldowns.slice(at_integrate)).is_equal([0, 0, 25, 25])
 	var brittle: World = _duel(_weapon(&"gun", 30, 25, GUN_VS), LIGHT, 10)
 	var killing: FireProbe = FireProbe.new(brittle)
 	brittle.target[0] = 2
 	Sim.step(brittle, [], killing)
 	var rows: Array[int] = killing.rows.slice(killing.phases.find(SimProbe.Phase.INTEGRATE))
-	assert_array(rows).is_equal([2, 2, 1])
+	assert_array(rows).is_equal([2, 2, 2, 1])
 	var ints: Array[int] = killing.event_ints.slice(killing.phases.find(SimProbe.Phase.INTEGRATE))
-	assert_array(ints).is_equal([0, STRIDE, 2 * STRIDE])
+	assert_array(ints).is_equal([0, 0, STRIDE, 2 * STRIDE])
 
 
 ## The orders of the Phase 1 tests on the controls map produce no SHOT within their tick counts, so

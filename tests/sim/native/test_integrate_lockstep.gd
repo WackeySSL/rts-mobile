@@ -22,7 +22,13 @@ extends GdUnitTestSuite
 ## compact in real runs (World.remove_dead, GDScript on both sides, so the two Worlds' rows move
 ## together), and the unit-ticks in HOLD and CHASE drop (19,000 and 2,600 in the plain run; the
 ## bounds on them are re-derived the same way). Every arena run asserts that at least 70 rows left
-## (the runs lose about 100), so a sim in which nobody dies turns the suite red.
+## (the runs lose about 100), so a sim in which nobody dies turns the suite red. Since P42b (the
+## cannon and rocket hits land a flight time after the shot, so more units are hit before they die)
+## the painted run reaches `no_next` 546 times, under the floor of 700 that P42a left, so its
+## floor is 360 (two thirds of 546); the plain run has 0 and the other floors are met as before.
+## One floor keeps no margin: the painted run reaches `named` 15,064 times against a floor of
+## 15,000, where the rule keeps about two thirds. It does not fail, so it stays; the next lane that
+## moves the arena (P48, P46) re-derives it with the others, to about 10,000.
 ## That Movement.integrate hands the phase to the kernel at all is pinned by the spy case of
 ## tests/sim/test_kernel_dispatch.gd.
 
@@ -82,7 +88,7 @@ func test_900_ticks_on_the_arena_with_slow_ground_scrub_rock_and_water_painted_i
 	var rig: RefCounted = LockstepRig.new().setup(_arena.bind(null, true))
 	assert_array(rig.problems).is_empty()
 	assert_str(rig.run(TICKS, _orders)).is_empty()
-	_assert_reached(rig, {&"field": 20000, &"named": 15000, &"no_next": 700, &"ended": 45})
+	_assert_reached(rig, {&"field": 20000, &"named": 15000, &"no_next": 360, &"ended": 45})
 	_assert_reached(rig, {&"rekeys": 7, &"own_fields": 5, &"recycles": 1, &"lost": 70})
 
 
