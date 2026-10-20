@@ -3,6 +3,7 @@
 // arena and on crafted cases. Build and run: scripts/ci/run-sanitizer-harness.sh (g++ -fsanitize=address,undefined
 // -fno-sanitize-recover=all, no -fwrapv, the sanitizer job of .github/workflows/ci.yml). CI-only: it is the one test
 // that is neither gdUnit4 nor under tests/. A later kernel adds its cases file and one pointer to KERNELS (cases.h).
+// (FLOW, SEPARATION, INTEGRATE and TARGETING have theirs.)
 //
 // Usage: sanitizer_harness <dump file or folder of state_*.bin>...
 // Exit:  0 ok; 1 a finding of the harness itself (a run that did not finish, or did nothing); 2 a bad argument, no
@@ -28,7 +29,7 @@
 namespace {
 
 // One pointer per kernel with a cases file.
-const KernelCases *const KERNELS[] = { &FLOW_CASES, &SEPARATION_CASES, &INTEGRATE_CASES };
+const KernelCases *const KERNELS[] = { &FLOW_CASES, &SEPARATION_CASES, &INTEGRATE_CASES, &TARGETING_CASES };
 
 // The dump files of an argument: itself, or the state_*.bin files of a folder in name order.
 std::vector<std::string> dump_files(const std::string &argument) {

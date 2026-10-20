@@ -8,8 +8,14 @@ extends GdUnitTestSuite
 ## unit types (TargetingRig.data_world): rifle squad 0 (range 4000, acquire 5000, sight 6000, speed
 ## 67), light tank 2 (range 4500, sight 7000, speed 120) on an open 20 x 12 tile map, as in
 ## test_engagement.gd. A unit's turn is the tick where `(tick + id) % 5 == 0`.
+##
+## Every case runs under both implementations (ADR 0013 section 3, P41n): the GDScript phase and the
+## C++ kernel, through `_both()` and `_in()`. The kernel-only cases are in
+## tests/sim/native/test_targeting_kernel*.gd.
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
+const TARGETING: int = SimProbe.Phase.TARGETING
 const RIFLE: int = 0
 const TANK: int = 2
 const IDLE: int = World.Order.IDLE
@@ -27,8 +33,10 @@ const NEVER_DUE: int = 1000000
 ## one check; ticks 5 to 8 are not its turn; tick 9 is its turn and it is still out of weapon range
 ## (4532 away, the range is 4000), so one more. Movement checks nothing meanwhile (the unit is in
 ## `CHASE`).
-func test_an_attack_moving_chaser_counts_its_line_checks_on_its_turns() -> void:
-	var world: World = Rig.data_world()
+func test_an_attack_moving_chaser_counts_its_line_checks_on_its_turns(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(Rig.data_world(), impl)
 	world.add_unit(1, RIFLE, 6000, 6000)
 	world.add_unit(2, RIFLE, 10800, 6000)
 	var counted: PackedInt32Array = PackedInt32Array()
@@ -45,8 +53,10 @@ func test_an_attack_moving_chaser_counts_its_line_checks_on_its_turns() -> void:
 ## drives at idle tank 2 (6500 away, inside its sight). Its first check is Movement's, at tick 4
 ## (the order's line is unchecked, `nav_cell` -1); from then on the line is marked clear, and the
 ## check of tick 9 is the engagement's. One count each, none on the ticks between.
-func test_an_attack_unit_on_a_clear_line_tests_it_again_on_its_turns() -> void:
-	var world: World = Rig.data_world()
+func test_an_attack_unit_on_a_clear_line_tests_it_again_on_its_turns(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(Rig.data_world(), impl)
 	world.add_unit(1, TANK, 2000, 6000)
 	world.add_unit(2, TANK, 8500, 6000)
 	var counted: PackedInt32Array = PackedInt32Array()
@@ -64,8 +74,10 @@ func test_an_attack_unit_on_a_clear_line_tests_it_again_on_its_turns() -> void:
 ## squad chases within, and the line is clear), and stays `NONE` where it stands through two of its
 ## turns (ticks 4 and 9). With the shipped periods the scan on the same tick drops such a target
 ## first, so only a scan period apart from the line-check period reaches this rule.
-func test_an_idle_unit_never_chases_a_target_it_holds_out_of_range() -> void:
-	var world: World = Rig.data_world()
+func test_an_idle_unit_never_chases_a_target_it_holds_out_of_range(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(Rig.data_world(), impl)
 	world.retarget_period_ticks = NEVER_DUE
 	world.add_unit(1, RIFLE, 6000, 6000)
 	world.add_unit(2, RIFLE, 10300, 6000)
@@ -84,9 +96,11 @@ func test_an_idle_unit_never_chases_a_target_it_holds_out_of_range() -> void:
 ## a scan it will not repeat, and walks north to its goal (67 a tick, so 4807 or 5207 away at its
 ## turns of ticks 4 and 9, from 4800 or 5200). At 4800 it chases at tick 4; at 5200 it never does,
 ## and stays on the path of its order.
-func test_an_attack_moving_unit_chases_only_a_target_inside_its_acquire_range() -> void:
+func test_an_attack_moving_unit_chases_only_a_target_inside_its_acquire_range(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for gap: int in [4800, 5200]:
-		var world: World = Rig.data_world()
+		var world: World = _in(Rig.data_world(), impl)
 		world.retarget_period_ticks = NEVER_DUE
 		world.add_unit(1, RIFLE, 6000, 6000)
 		world.add_unit(2, RIFLE, 6000 + gap, 6000)
@@ -112,9 +126,11 @@ func test_an_attack_moving_unit_chases_only_a_target_inside_its_acquire_range() 
 ## Movement steers it, so it never takes a step, whichever way the tap points. This is what the
 ## attack-move row of docs/HOW_TO_PLAY.md says. The 12 ticks end before anyone dies; since P42a the
 ## unit goes on to the tap once the enemy is dead (test_combat_fights.gd).
-func test_a_new_ground_tap_does_not_move_a_unit_that_holds_an_enemy_in_range() -> void:
+func test_a_new_ground_tap_does_not_move_a_unit_that_holds_an_enemy_in_range(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for goal: Vector2i in [Vector2i(14000, 6000), Vector2i(2000, 6000), Vector2i(6000, 600)]:
-		var world: World = Rig.data_world()
+		var world: World = _in(Rig.data_world(), impl)
 		world.add_unit(1, RIFLE, 6000, 6000)
 		world.add_unit(2, RIFLE, 9000, 6000)
 		for _tick: int in 10:
@@ -143,8 +159,10 @@ func test_a_new_ground_tap_does_not_move_a_unit_that_holds_an_enemy_in_range() -
 ## turn, instead of holding against the wrong unit until its next scan; at its turn, tick 14, it
 ## picks the unit that is there and holds against it. Every other gone-target case removes the
 ## last id, where the lookup runs off the end of the ids.
-func test_a_removed_target_is_not_read_as_the_next_higher_id() -> void:
-	var world: World = Rig.data_world()
+func test_a_removed_target_is_not_read_as_the_next_higher_id(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(Rig.data_world(), impl)
 	world.add_unit(1, RIFLE, 6000, 6000)
 	world.add_unit(2, RIFLE, 9000, 6000)
 	world.add_unit(2, RIFLE, 9000, 7000)
@@ -170,10 +188,10 @@ func test_a_removed_target_is_not_read_as_the_next_higher_id() -> void:
 ## (the line-check turn). With the scan period at 0 every unit is due on every tick; with the
 ## line-check period at 0 an attack-moving squad is on its turn on every tick. The squad chases the
 ## enemy 4800 away and then holds, as it does with a period of 5.
-func test_a_cadence_of_zero_is_read_as_one() -> void:
+func test_a_cadence_of_zero_is_read_as_one(impl: int, _test_parameters := _both()) -> void:
 	for scan: int in [0, 5]:
 		for check: int in [0, 5]:
-			var world: World = Rig.data_world()
+			var world: World = _in(Rig.data_world(), impl)
 			world.retarget_period_ticks = scan
 			world.line_check_period_ticks = check
 			world.add_unit(1, RIFLE, 6000, 6000)
@@ -194,9 +212,11 @@ func test_a_cadence_of_zero_is_read_as_one() -> void:
 ## The reach of a chase is inclusive, as acquisition's is (a held target is kept at exactly the
 ## reach): a squad that holds enemy 2 by hand and attack-moves north chases it at exactly 5000
 ## away, its acquire range, on its turn (tick 4), and does not at 5001.
-func test_an_attack_moving_unit_chases_a_target_at_exactly_its_acquire_range() -> void:
+func test_an_attack_moving_unit_chases_a_target_at_exactly_its_acquire_range(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for gap: int in [5000, 5001]:
-		var world: World = Rig.data_world()
+		var world: World = _in(Rig.data_world(), impl)
 		world.retarget_period_ticks = NEVER_DUE
 		world.add_unit(1, RIFLE, 6000, 6000)
 		world.add_unit(2, RIFLE, 6000 + gap, 6000)
@@ -215,3 +235,14 @@ func test_an_attack_moving_unit_chases_a_target_at_exactly_its_acquire_range() -
 func _order(command: Command, world: World) -> Command:
 	command.tick = world.tick
 	return command
+
+
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and the TARGETING phase really in the implementation
+## asked for (the problems of SimImpls.attach, none).
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, TARGETING)).is_empty()
+	return world

@@ -8,9 +8,15 @@ extends GdUnitTestSuite
 ## test_targeting.gd. The worlds are those of TargetingRig: the shipped unit types as 0 rifle squad
 ## (range 4000, sight 6000), 1 rocket squad and 2 light tank, or test-only types for a weapon the
 ## shipped ones lack.
+##
+## Every case runs under both implementations (ADR 0013 section 3, P41n): the GDScript phase and the
+## C++ kernel, through `_both()` and `_in()`. The kernel-only cases are in
+## tests/sim/native/test_targeting_kernel*.gd.
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
+const TARGETING: int = SimProbe.Phase.TARGETING
 const RIFLE: int = 0
 const ROCKET: int = 1
 const TANK: int = 2
@@ -25,7 +31,9 @@ const HOLD: int = World.NavMode.HOLD
 ## the other side of a border of the 4000-milli cells, whichever side it stands, along an axis and
 ## along a diagonal (2800 each way, 3960 away), and none that is 4001 away. Each case is a subject
 ## and an enemy position and whether it is found.
-func test_cells_across_a_border_are_searched_and_the_range_edge_is_inclusive() -> void:
+func test_cells_across_a_border_are_searched_and_the_range_edge_is_inclusive(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var cases: Array[Array] = [
 		[Vector2i(3999, 3999), Vector2i(7999, 3999), true],
 		[Vector2i(4000, 4000), Vector2i(0, 4000), true],
@@ -43,7 +51,7 @@ func test_cells_across_a_border_are_searched_and_the_range_edge_is_inclusive() -
 		[Vector2i(4000, 7999), Vector2i(4000, 3999), true],
 	]
 	for item: Array in cases:
-		var world: World = Rig.data_world()
+		var world: World = _in(Rig.data_world(), impl)
 		var at: Vector2i = item[0]
 		var other: Vector2i = item[1]
 		world.add_unit(1, RIFLE, at.x, at.y)
@@ -60,7 +68,9 @@ func test_cells_across_a_border_are_searched_and_the_range_edge_is_inclusive() -
 ## than a reach (4000) past the last cell of the grid (no match puts one there, as every position
 ## is clamped to the map): the covering cells lie wholly past the grid, so both ends of the range
 ## must clamp to the edge cell. Each finds an enemy at its own position.
-func test_corners_partial_cells_and_positions_outside_the_map() -> void:
+func test_corners_partial_cells_and_positions_outside_the_map(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var cases: Array[Array] = [
 		[Vector2i(0, 0), Vector2i(3000, 0)],
 		[Vector2i(9999, 5999), Vector2i(7999, 5999)],
@@ -75,7 +85,7 @@ func test_corners_partial_cells_and_positions_outside_the_map() -> void:
 		[Vector2i(3000, -8000), Vector2i(3000, -8000)],
 	]
 	for item: Array in cases:
-		var world: World = Rig.data_world(10, 6)
+		var world: World = _in(Rig.data_world(10, 6), impl)
 		var at: Vector2i = item[0]
 		var other: Vector2i = item[1]
 		world.add_unit(1, RIFLE, at.x, at.y)
@@ -86,9 +96,11 @@ func test_corners_partial_cells_and_positions_outside_the_map() -> void:
 ## The minimum range keeps close candidates out, the edge included: an enemy at exactly the minimum
 ## range (2000) is a candidate, one at 1500 is not, even though it is nearer. A target held at 1500
 ## is not valid either, so the scan replaces it. With only the near one, nothing is found.
-func test_a_candidate_inside_the_minimum_range_is_not_taken() -> void:
+func test_a_candidate_inside_the_minimum_range_is_not_taken(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var gun: UnitDef = Rig.unit(&"gun", 8000, 8000, 6000, 2000, [100, 100, 100, 100])
-	var world: World = Rig.world_of([gun])
+	var world: World = _in(Rig.world_of([gun]), impl)
 	world.add_unit(1, 0, 10000, 6000)
 	world.add_unit(2, 0, 11500, 6000)
 	world.add_unit(2, 0, 12000, 6000)
@@ -105,11 +117,15 @@ func test_a_candidate_inside_the_minimum_range_is_not_taken() -> void:
 ## percent of each of the four armour classes is read from its own column: a weapon with 60 against
 ## one class and 20 against the others takes the unit of that class, whether the distances grow
 ## with the class or shrink with it (so the distance does not decide).
-func test_a_zero_percent_is_no_candidate_and_each_armour_class_has_its_own_column() -> void:
+func test_a_zero_percent_is_no_candidate_and_each_armour_class_has_its_own_column(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var sniper: UnitDef = Rig.unit(&"sniper", 8000, 8000, 6000, 0, [100, 0, 0, 0])
 	var light: UnitDef = Rig.unit(&"armoured", 8000, 8000, 0, 0, [])
 	light.armour = World.Armour.LIGHT
-	var world: World = Rig.world_of([sniper, light, Rig.unit(&"grunt", 8000, 8000, 0, 0, [])])
+	var world: World = _in(
+		Rig.world_of([sniper, light, Rig.unit(&"grunt", 8000, 8000, 0, 0, [])]), impl
+	)
 	world.add_unit(1, 0, 10000, 6000)
 	world.add_unit(2, 1, 11500, 6000)
 	world.add_unit(2, 2, 13000, 6000)
@@ -124,7 +140,7 @@ func test_a_zero_percent_is_no_candidate_and_each_armour_class_has_its_own_colum
 				var dummy: UnitDef = Rig.unit(StringName("class%d" % armour), 8000, 8000, 0, 0, [])
 				dummy.armour = armour
 				classes.append(dummy)
-			var classed: World = Rig.world_of(classes)
+			var classed: World = _in(Rig.world_of(classes), impl)
 			classed.add_unit(1, 0, 10000, 6000)
 			var directions: Array[Vector2i] = [
 				Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)
@@ -142,8 +158,10 @@ func test_a_zero_percent_is_no_candidate_and_each_armour_class_has_its_own_colum
 ## Friends and neutral units are never candidates, however near: the rifle squad passes its
 ## neighbour of its own player and a neutral unit (owner 0) for the enemy farther off, and with
 ## only those two around it takes nothing.
-func test_friends_and_neutral_units_are_never_candidates() -> void:
-	var world: World = Rig.data_world()
+func test_friends_and_neutral_units_are_never_candidates(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(Rig.data_world(), impl)
 	world.add_unit(1, RIFLE, 10000, 6000)
 	world.add_unit(1, RIFLE, 10500, 6000)
 	world.add_unit(0, RIFLE, 11000, 6000)
@@ -156,17 +174,17 @@ func test_friends_and_neutral_units_are_never_candidates() -> void:
 ## A type without a weapon never acquires: a scout (no weapon, so the pad -1) stays at 0 whether
 ## idle or attack-moving with an enemy 1000 away. A hand-built World whose type names weapon 0
 ## without having a weapon table is read as unarmed too, and `Targeting.run` raises no error for it.
-func test_a_type_without_a_weapon_acquires_nothing() -> void:
+func test_a_type_without_a_weapon_acquires_nothing(impl: int, _test_parameters := _both()) -> void:
 	var scout: UnitDef = Rig.unit(&"scout", 6000, 5000, 0, 0, [])
 	var rifle: UnitDef = load(Rig.RIFLE_PATH) as UnitDef
-	var world: World = Rig.world_of([scout, rifle])
+	var world: World = _in(Rig.world_of([scout, rifle]), impl)
 	world.add_unit(1, 0, 10000, 6000)
 	world.add_unit(2, 1, 11000, 6000)
 	assert_int(Rig.target_of(world, 1)).is_equal(0)
 	world.order[0] = ATTACK_MOVE
 	assert_int(Rig.retarget(world, 1)).is_equal(0)
 	assert_int(Rig.target_of(world, 2)).is_equal(1)
-	var bare: World = GridWorld.from_rows(GridWorld.grass(10, 6))
+	var bare: World = _in(GridWorld.from_rows(GridWorld.grass(10, 6)), impl)
 	bare.player_count = 2
 	bare.type_weapon[0] = 0
 	bare.add_unit(1, 0, 3000, 3000)
@@ -180,8 +198,10 @@ func test_a_type_without_a_weapon_acquires_nothing() -> void:
 ## whoever they belong to (3 here: the enemy, a friend and a neutral unit in the 3 x 3 cells around
 ## unit 1; the enemy in the next column of cells is not looked at). A kept target costs nothing: the
 ## unit does not scan again.
-func test_the_work_count_is_the_rows_looked_at_and_a_kept_target_costs_none() -> void:
-	var world: World = Rig.data_world()
+func test_the_work_count_is_the_rows_looked_at_and_a_kept_target_costs_none(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(Rig.data_world(), impl)
 	world.add_unit(1, RIFLE, 10000, 6000)
 	world.add_unit(2, RIFLE, 12000, 6000)
 	world.add_unit(1, RIFLE, 7000, 3000)
@@ -201,8 +221,10 @@ func test_the_work_count_is_the_rows_looked_at_and_a_kept_target_costs_none() ->
 ## The work count is added to what the stat holds, not written over it: with 7 already in the stat,
 ## one scan that looks at one row leaves 8 (a phase or a lockstep that counts into the same stat
 ## before this one must not lose its count).
-func test_the_work_count_is_added_to_what_the_stat_holds() -> void:
-	var world: World = Rig.data_world()
+func test_the_work_count_is_added_to_what_the_stat_holds(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(Rig.data_world(), impl)
 	world.add_unit(1, RIFLE, 10000, 6000)
 	world.add_unit(2, RIFLE, 12000, 6000)
 	world.prepare()
@@ -215,7 +237,7 @@ func test_the_work_count_is_added_to_what_the_stat_holds() -> void:
 ## nothing fails (a World built by hand, with a weapon of range 4000 and no map size). The pass
 ## still runs over the rows: a stale target on a due idle row is replaced by 0, and a MOVE row
 ## holds no target (the rule of every World, here a target written by hand).
-func test_a_world_without_a_map_has_no_targets() -> void:
+func test_a_world_without_a_map_has_no_targets(impl: int, _test_parameters := _both()) -> void:
 	var world: World = World.new()
 	world.type_ids.append(&"type")
 	world.type_weapon.append(0)
@@ -227,6 +249,7 @@ func test_a_world_without_a_map_has_no_targets() -> void:
 	world.add_unit(2, 0, 200, 200)
 	world.add_unit(1, 0, 300, 300)
 	world.prepare()
+	_in(world, impl)
 	assert_int(world.target_grid.cols).is_equal(0)
 	world.order[2] = MOVE
 	world.target[2] = 2
@@ -244,9 +267,11 @@ func test_a_world_without_a_map_has_no_targets() -> void:
 ## 2000 away and keeps it when a light unit arrives 3000 away. The same targets, one milli beyond
 ## the reach or inside the minimum range, are not valid (nor candidates), so the tank and the light
 ## unit are taken.
-func test_a_target_at_exactly_the_reach_or_the_minimum_range_is_kept() -> void:
+func test_a_target_at_exactly_the_reach_or_the_minimum_range_is_kept(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for beyond: int in [0, 1]:
-		var rocket: World = Rig.data_world()
+		var rocket: World = _in(Rig.data_world(), impl)
 		rocket.add_unit(1, ROCKET, 10000, 6000)
 		rocket.add_unit(2, RIFLE, 15000 + beyond, 6000)
 		rocket.target[0] = 2
@@ -258,7 +283,9 @@ func test_a_target_at_exactly_the_reach_or_the_minimum_range_is_kept() -> void:
 		var gun: UnitDef = Rig.unit(&"gun", 8000, 8000, 6000, 2000, [20, 100, 100, 100])
 		var plate: UnitDef = Rig.unit(&"plate", 8000, 8000, 0, 0, [])
 		plate.armour = World.Armour.LIGHT
-		var world: World = Rig.world_of([gun, Rig.unit(&"grunt", 8000, 8000, 0, 0, []), plate])
+		var world: World = _in(
+			Rig.world_of([gun, Rig.unit(&"grunt", 8000, 8000, 0, 0, []), plate]), impl
+		)
 		world.add_unit(1, 0, 10000, 6000)
 		world.add_unit(2, 1, 12000 - beyond, 6000)
 		world.target[0] = 2
@@ -274,9 +301,11 @@ func test_a_target_at_exactly_the_reach_or_the_minimum_range_is_kept() -> void:
 ## target is kept at the next two due ticks, at 5000 too (the acquire range itself). At 5001 it is
 ## out of reach, so the nearer enemy is taken. A check against the weapon range would drop the
 ## target at 4500 and thrash. Each held target is inside the unit's sight.
-func test_an_attack_moving_unit_keeps_a_target_between_weapon_range_and_acquire_range() -> void:
+func test_an_attack_moving_unit_keeps_a_target_between_weapon_range_and_acquire_range(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for held_at: int in [4500, 5000, 5001]:
-		var world: World = Rig.data_world()
+		var world: World = _in(Rig.data_world(), impl)
 		world.add_unit(1, RIFLE, 10000, 6000)
 		world.add_unit(2, RIFLE, 10000 + held_at, 6000)
 		world.order[0] = ATTACK_MOVE
@@ -294,10 +323,12 @@ func test_an_attack_moving_unit_keeps_a_target_between_weapon_range_and_acquire_
 ## range of 3000, type 1 a gun (weapon 0) with an acquire range of 5000 and a weapon range of 3000.
 ## An attack-moving gun finds an enemy 4500 away (the acquire range of type 1), an idle one does
 ## not (the weapon range of weapon 0).
-func test_acquire_is_read_by_type_and_the_weapon_by_weapon_index() -> void:
+func test_acquire_is_read_by_type_and_the_weapon_by_weapon_index(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var scout: UnitDef = Rig.unit(&"scout", 8000, 3000, 0, 0, [])
 	var gun: UnitDef = Rig.unit(&"gun", 8000, 5000, 3000, 0, [100, 100, 100, 100])
-	var world: World = Rig.world_of([scout, gun])
+	var world: World = _in(Rig.world_of([scout, gun]), impl)
 	world.add_unit(1, 1, 10000, 6000)
 	world.add_unit(2, 1, 14500, 6000)
 	world.order[0] = ATTACK_MOVE
@@ -313,8 +344,10 @@ func test_acquire_is_read_by_type_and_the_weapon_by_weapon_index() -> void:
 ## the 20 x 12 tile map (5 x 3 cells) with one enemy 3000 away; neutral units stand in the three
 ## far cells that a wrapped column or line would read (the last cell, the last cell of the first
 ## line, the first cell of the last line). The count is the one row of the covering cells.
-func test_a_corner_subject_looks_only_at_the_covering_cells() -> void:
-	var world: World = Rig.data_world()
+func test_a_corner_subject_looks_only_at_the_covering_cells(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(Rig.data_world(), impl)
 	world.add_unit(1, RIFLE, 0, 0)
 	world.add_unit(2, RIFLE, 3000, 0)
 	world.add_unit(0, RIFLE, 19500, 11500)
@@ -329,8 +362,10 @@ func test_a_corner_subject_looks_only_at_the_covering_cells() -> void:
 ## moved next to unit 1 after the rebuild, so the grid still lists it in its old cell, 8000 away,
 ## and unit 1 does not find it; the grid and the work count are left as they were. A pass that
 ## rebuilt the grid would find it, as the caller's own rebuild does in the last step.
-func test_run_reads_the_grid_as_it_stands_and_never_rebuilds_it() -> void:
-	var world: World = Rig.data_world()
+func test_run_reads_the_grid_as_it_stands_and_never_rebuilds_it(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(Rig.data_world(), impl)
 	world.add_unit(1, RIFLE, 10000, 6000)
 	world.add_unit(2, RIFLE, 18000, 6000)
 	world.tick = Rig.due_tick_for(world, 1)
@@ -356,8 +391,10 @@ func test_run_reads_the_grid_as_it_stands_and_never_rebuilds_it() -> void:
 ## goal on the target), an ATTACK row whose target is gone (an attack-move now, with no order
 ## target) and an idle rifle squad with nothing in reach (0). The columns that changed are exactly
 ## those six.
-func test_run_writes_only_the_target_and_engagement_columns_and_the_work_count() -> void:
-	var world: World = Rig.data_world()
+func test_run_writes_only_the_target_and_engagement_columns_and_the_work_count(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(Rig.data_world(), impl)
 	world.add_unit(1, ROCKET, 10000, 6000)
 	world.add_unit(2, TANK, 12000, 6000)
 	world.add_unit(2, RIFLE, 8000, 6000)
@@ -405,3 +442,14 @@ func _column(chosen: int) -> Array[int]:
 	var percents: Array[int] = [20, 20, 20, 20]
 	percents[chosen] = 60
 	return percents
+
+
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and the TARGETING phase really in the implementation
+## asked for (the problems of SimImpls.attach, none).
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, TARGETING)).is_empty()
+	return world

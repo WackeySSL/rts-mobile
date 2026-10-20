@@ -17,14 +17,18 @@ extends RefCounted
 ## position) and holds at range. A unit that loses its target (or its target steps out of range)
 ## resumes its path. See `_engage`.
 ##
-## This is the GDScript twin of the TARGETING kernel P41n ports later: keep it portable (integers
-## only, the World's arrays aliased into typed locals before the loop, no allocation, rows and grid
-## lists visited in a fixed order). Every number comes from the World's rule ints and type tables
-## (data/); the constants below are structure, not balance.
+## `run` has a C++ twin, the TARGETING kernel (native/sim_kernels, core/targeting.cpp, ADR 0013
+## section 5): it hands both passes to it when the World's mask has its bit, and a change to
+## `run`, `_engage` or `Movement.reset_row` edits both and passes the kernel's tests. Keep it
+## portable (integers only, the World's arrays aliased into typed locals before the loop, no
+## allocation, rows and grid lists visited in a fixed order). Every number comes from the World's
+## rule ints and type tables (data/); the constants below are structure, not balance.
 ##
-## Range for the C++ port: positions are below 2^16 and a reach below 2^14, so a squared distance
-## stays below 2^33 in an int64 and `weapon * World.Armour.size() + armour` (4 armour classes per
-## weapon) indexes `weapon_vs_armour`.
+## Range (core/targeting.h holds the full statement): positions within 10^9 milli-tiles and a
+## reach below 2^31 keep every squared distance inside an int64 (the shipped ones are below 2^16
+## and 2^14, so below 2^33), and `weapon * World.Armour.size() + armour` (4 armour classes per
+## weapon) indexes `weapon_vs_armour`. The kernel wraps like this twin in a production build
+## (-fwrapv) and aborts in the sanitizer build.
 
 ## The orders and navigation modes the phase reads and writes, as the World's ints.
 const ATTACK_MOVE: int = World.Order.ATTACK_MOVE
@@ -60,13 +64,17 @@ const CHASE: int = World.NavMode.CHASE
 ##   grid is visited cell by cell, not in id order, so the id tie-break is explicit. No candidate
 ##   writes 0.
 ## - An empty map has no cells: the clear above still runs, and a due row that keeps no target
-##   writes 0 without a scan.
+##   writes 0 without a scan. So does a grid with no rows of cells or a cell side below 1 (P41n:
+##   the kernel cannot divide by the side, and `SpatialGrid.configure` never makes such a grid).
 ## A type whose weapon index is negative or past the weapon tables is unarmed (a hand-built World
 ## may name a weapon it has no table for): it acquires nothing and never holds or chases, while an
 ## `ATTACK` command still accepts it (`Sim._own_rows` asks only for a weapon index of 0 or more), so
 ## such an `ATTACK` row locks its target and steers at it for good.
 @warning_ignore("integer_division")
 static func run(world: World) -> void:
+	if ((world.native_phases >> SimProbe.Phase.TARGETING) & 1) == 1:
+		world.kernels.targeting(world)
+		return
 	var grid: SpatialGrid = world.target_grid
 	var cols: int = grid.cols
 	var ids: PackedInt32Array = world.unit_id
@@ -89,6 +97,10 @@ static func run(world: World) -> void:
 	var links: PackedInt32Array = grid.next
 	var lines: int = grid.rows
 	var side: int = grid.cell_milli
+	# A grid with no cells, no rows of them or a cell side below 1 (SpatialGrid.configure keeps it
+	# at 1 or more) finds nobody: C++ could not divide by the side, and the scan would index a
+	# cell that is not there.
+	var cells: bool = cols >= 1 and lines >= 1 and side >= 1
 	var weapons: int = weapon_range.size()
 	var armour_classes: int = World.Armour.size()
 	var tick: int = world.tick
@@ -138,7 +150,7 @@ static func run(world: World) -> void:
 					and weapon_vs[vs_base + type_armour[types[at]]] > 0
 				):
 					continue
-		if cols == 0:
+		if not cells:
 			targets[row] = 0  # An empty map: no cells, so no candidate and no target.
 			continue
 		var best: int = -1
@@ -187,8 +199,10 @@ static func run(world: World) -> void:
 ## The engagement pass (ADR 0009 section 3), after acquisition and on every tick: each row that has
 ## a target decides between holding, chasing and following the path of its order, from the positions
 ## at the start of the tick. It writes only through `Movement.reset_row`, at the moment a mode
-## changes, and adds its line checks to `stats[LINE_CHECKS]` (one per `FixedMath.line_clear` call,
-## after the loop, as `Movement._check_line` counts its own).
+## changes and on the `ATTACK` re-test below (which resets a `DIRECT` row to `DIRECT`, so the call
+## has no `mode != new_mode` guard, and nor has the kernel's), and adds its line checks to
+## `stats[LINE_CHECKS]` (one per `FixedMath.line_clear` call, after the loop, as
+## `Movement._check_line` counts its own).
 ## - A target that is gone (the row held it from an earlier scan) counts as none: a unit that held
 ##   or chased resumes its path (`DIRECT`, line unchecked, no field; an idle unit goes back to
 ##   `NONE`). `target` itself is left for the next scan to replace.

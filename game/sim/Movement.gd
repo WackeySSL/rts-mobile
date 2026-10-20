@@ -69,7 +69,9 @@ static func reset_nav(world: World, rows: PackedInt32Array, mode: int) -> void:
 ## cache recounts its references from the `field` column), no next tile and a fresh stall count:
 ## what `reset_nav` gives a new order, for one row. `order`, `goal` and `group_cell` stay, so a
 ## unit that resumes asks the cache again for its group's field. Event cadence only (a mode
-## change), so it reads the World's arrays itself instead of taking them aliased.
+## change, and the `ATTACK` re-test, which resets a `DIRECT` row to `DIRECT`), so it reads the
+## World's arrays itself instead of taking them aliased. The TARGETING kernel writes the same six
+## columns (core/targeting.cpp, `Pass::reset_row`), so a change here edits both.
 static func reset_row(world: World, row: int, mode: int) -> void:
 	world.nav_mode[row] = mode
 	world.nav_cell[row] = -1

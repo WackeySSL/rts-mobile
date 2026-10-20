@@ -4,7 +4,7 @@ extends GdUnitTestSuite
 ## the method of its phase on the kernels and skips the GDScript rule. A KernelSpy takes the place
 ## of the library here, so these cases need no build. P54 has the mask-0 case; a port PR adds one
 ## case that sets its bit and asserts exactly its spy call (FLOW since P30n, INTEGRATE since P37n,
-## SEPARATION since P39n; the other entries have no dispatch line yet).
+## SEPARATION since P39n, TARGETING since P41n; the other entry has no dispatch line yet).
 
 const KernelSpy: GDScript = preload("res://tests/sim/support/kernel_spy.gd")
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
@@ -102,6 +102,28 @@ func test_separation_calls_the_separation_kernel_once_and_skips_the_gdscript_pha
 	assert_array(spy.calls).is_equal(["separation", "separation"])
 	assert_array([world.push_x[0], world.push_x[1]]).is_not_equal([7, 7])
 	assert_int(world.stats[World.Stat.SEP_PAIRS]).is_greater(1)
+
+
+## TARGETING (P41n): Targeting.run starts with the dispatch, and the one call covers acquisition and
+## engagement. With its bit set it calls the kernel once and does nothing else (a MOVE row, whose
+## target the GDScript phase clears on every tick, keeps the target written by hand); with the other
+## four bits it runs the GDScript phase and clears it.
+func test_targeting_calls_the_targeting_kernel_once_and_skips_the_gdscript_phase() -> void:
+	var spy: RefCounted = KernelSpy.new()
+	var world: World = _moving_world(spy, 1 << SimProbe.Phase.TARGETING)
+	# The first call is the TARGETING line of the tick `_moving_world` ran.
+	assert_array(spy.calls).is_equal(["targeting"])
+	world.order[0] = World.Order.MOVE
+	world.target[0] = 7
+	world.stats[World.Stat.LINE_CHECKS] = 0
+	Targeting.run(world)
+	assert_array(spy.calls).is_equal(["targeting", "targeting"])
+	assert_array([world.target[0], world.stats[World.Stat.TARGET_CANDIDATES]]).is_equal([7, 0])
+	# The other four phases of ADR 0013.
+	world.native_phases = 0x46A & ~(1 << SimProbe.Phase.TARGETING)
+	Targeting.run(world)
+	assert_array(spy.calls).is_equal(["targeting", "targeting"])
+	assert_int(world.target[0]).is_equal(0)
 
 
 ## The controls scenario with `kernels` and `mask` attached after prepare(), and an attack-move
