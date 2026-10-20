@@ -3,10 +3,10 @@ extends SimProbe
 ## outside: the phase, the cells of the targeting grid that hold a row, the target, the order and
 ## the goal x of row 0, and the TARGET_CANDIDATES count. It shows where the GRIDS and TARGETING
 ## marks sit relative to the phases around them (the goal and the order of an ATTACK row change
-## in `Sim._follow_targets`, which runs after the TARGETING mark). A probe of the game never reads
-## the World; this one is a test's. Not a test suite; test_targeting.gd preloads it. It is a file of
-## its own, not an inner class, because an inner class with a script base would name itself at run
-## time.
+## in `Targeting.run`, so at the TARGETING mark and not before). A probe of the game never reads
+## the World; this one is a test's. Not a test suite; test_targeting.gd and test_engagement.gd
+## preload it. It is a file of its own, not an inner class, because an inner class with a script
+## base would name itself at run time.
 
 var world: World
 var phases: Array[int] = []

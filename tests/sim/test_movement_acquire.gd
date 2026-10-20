@@ -30,7 +30,7 @@ const FIELD: int = World.NavMode.FIELD
 func test_an_attack_unit_takes_the_field_of_its_own_class_round_the_scrub(
 	impl: int, _test_parameters := _both()
 ) -> void:
-	var world: World = _in(GridWorld.from_rows(_scrub_gate_map()), impl)
+	var world: World = _in(GridWorld.from_rows(_scrub_gate_map()), impl, false)
 	world.player_count = 2
 	world.type_weapon[0] = 0
 	world.add_unit(1, 0, 3500, 5500)
@@ -227,12 +227,13 @@ func _both() -> Array[Array]:
 	return SimImpls.CASES.duplicate(true)
 
 
-## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for.
-func _in(world: World, impl: int) -> World:
+## `world` running `impl`: the kernels attached and INTEGRATE in the implementation asked for, with
+## the tick's separation as the rules have it. The one case that needs the pushes off asks for
+## `pushes` false, which sets `separation_push_max` to 0: its world has no weapon tables, so its
+## ATTACK unit is unarmed for TARGETING (P41b) and drives onto its target for good, which with the
+## pushes on shoves the idle target ahead of it.
+func _in(world: World, impl: int, pushes: bool = true) -> World:
 	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
-	# No pushes: these cases pin Movement's rules at exact positions. The reason that matters most:
-	# with the tick's separation (P39b) an ATTACK order drives onto its idle target's point and
-	# shoves the target ahead of it to the map corner, until P41 ends a chase in HOLD at range
-	# (test_separation_tick.gd pins that interim behaviour, with the real pushes).
-	world.separation_push_max = 0
+	if not pushes:
+		world.separation_push_max = 0
 	return world

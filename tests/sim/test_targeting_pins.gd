@@ -94,3 +94,33 @@ func test_the_search_reads_the_cell_size_of_the_grid() -> void:
 	world.target_grid.configure(world.map_w, world.map_h, 2000, world.max_rows)
 	assert_int(world.target_grid.cell_milli).is_equal(2000)
 	assert_int(Rig.target_of(world, 1)).is_equal(2)
+
+
+## A held target is dropped when it is out of reach along y alone: the enemy stands 6000 above the
+## unit (the same x), past the reach of an idle rifle squad (weapon range 4000) and of an
+## attack-moving one (acquire range 5000). A keep check that left y out of the distance would find
+## it 0 away and keep it. With no other enemy the unit has no target after its next due tick.
+func test_a_held_target_6000_away_in_y_only_is_dropped_at_the_next_due_tick() -> void:
+	for order: int in [World.Order.IDLE, World.Order.ATTACK_MOVE]:
+		var world: World = Rig.data_world()
+		world.add_unit(1, RIFLE, 10000, 3000)
+		world.add_unit(2, RIFLE, 10000, 9000)
+		world.order[0] = order
+		world.target[0] = 2
+		assert_int(Rig.target_of(world, 1)).override_failure_message("order %d" % order).is_equal(0)
+
+
+## A type that names weapon 1 when the weapon tables hold one row is unarmed, not an error: its
+## unit acquires nothing, with an enemy 1000 away, and the run reads no entry past the tables
+## (`weapon_range[1]`), through acquisition and engagement both.
+func test_a_type_naming_weapon_1_with_one_weapon_table_row_gets_no_target() -> void:
+	var gun: UnitDef = Rig.unit(&"gun", 8000, 5000, 4000, 0, [100, 100, 100, 100])
+	var world: World = Rig.world_of([gun])
+	assert_int(world.weapon_range.size()).is_equal(1)
+	world.type_weapon[0] = 1
+	world.add_unit(1, 0, 10000, 6000)
+	world.add_unit(2, 0, 11000, 6000)
+	world.order[0] = World.Order.ATTACK_MOVE
+	assert_int(Rig.target_of(world, 1)).is_equal(0)
+	assert_int(Rig.retarget(world, 1)).is_equal(0)
+	assert_int(world.nav_mode[0]).is_equal(World.NavMode.NONE)
