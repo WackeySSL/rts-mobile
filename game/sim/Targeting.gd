@@ -1,6 +1,6 @@
 class_name Targeting
 extends RefCounted
-## The TARGETING phase, acquisition (ADR 0007 section 4 step 4, ADR 0009 section 2): every unit
+## The TARGETING phase, acquisition (ADR 0007 section 4 step 5, ADR 0009 section 2): every unit
 ## that is due picks the enemy it will shoot at, and writes its id into `world.target` (0 = none).
 ## It reads `world.target_grid`, which the caller has rebuilt from this tick's positions (the GRIDS
 ## phase, P41): `run` never rebuilds a grid. It moves nothing, fires nothing and writes only
@@ -13,9 +13,10 @@ extends RefCounted
 ## (data/); the constants below are structure, not balance.
 ##
 ## Range for the C++ port: positions are below 2^16 and a reach below 2^14, so a squared distance
-## stays below 2^33 in an int64 and `weapon * ARMOUR_CLASSES + armour` indexes `weapon_vs_armour`.
+## stays below 2^33 in an int64 and `weapon * World.Armour.size() + armour` (4 armour classes per
+## weapon) indexes `weapon_vs_armour`.
 
-## The orders that acquire, as the World's ints (the ADR 0009 section 2 table, "By order").
+## The orders that acquire, as the World's ints (the ADR 0009 section 2 list, "By order").
 const ATTACK_MOVE: int = World.Order.ATTACK_MOVE
 const IDLE: int = World.Order.IDLE
 
