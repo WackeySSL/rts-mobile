@@ -12,9 +12,11 @@ extends GdUnitTestSuite
 ## scan stops in the middle of a cell, with the caps in either order); near-coincident pairs at 59
 ## offsets in every direction, with the lower id on either side, one pair on one point and pairs a
 ## little inside and outside the limit; units at the four edges and corners of the map, and
-## outside it; a map with no cells and a cell side below 1; types of radius 0, 1 and 1000 and a
-## negative one; the five rules at the ends of their range and at the edges of their guards; wide
-## and tall maps; a table of 256 rows (the capacity); rows that die in the middle of the run.
+## outside it, and wide units past the edges whose neighbours stand in the second cell from the
+## edge; a map with no cells and a cell side below 1; types of radius 0, 1 and 1000 and a negative
+## one; the five rules at the ends of their range and at the edges of their guards; wide and tall
+## maps; a table of 256 rows (the capacity) and one of 1,100 rows whose sums leave 32 bits; rows
+## that die in the middle of the run.
 
 const Rig: GDScript = preload("res://tests/sim/support/separation_lockstep_rig.gd")
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
@@ -45,6 +47,15 @@ const FIXED_OFFSETS: int = 53
 ## The pairs of the offsets' world stand 2000 apart, 12 to a row, on a map of 24 x 20 tiles.
 const PAIR_STEP: int = 2000
 const PAIRS_PER_ROW: int = 12
+## The big table: rows, the radius that gives the widest reach core/separation.h records (two of
+## them, 2,097,150) and the push cap, below 2^31 so that a sum of 2.3 * 10^9 is cut to it.
+const BIG_ROWS: int = 1100
+const BIG_RADIUS: int = 1048575
+const BIG_PUSH_MAX: int = 2000000000
+## The radius of the wide units at the edges (a reach of 2200) and the distance in milli that they
+## stand outside the map.
+const WIDE_RADIUS: int = 1100
+const WIDE_OUT: int = 100
 ## Rule values around the shipped ones and at the ends of the range of an int. The divisor stops at
 ## 3,037,000, where reach * divisor (2.4 * 10^9 for tanks) is still inside the recorded range of
 ## core/separation.h: a larger divisor overflows d2 * divisor * divisor for a pair that is apart.
@@ -125,11 +136,12 @@ func test_near_coincident_pairs_at_every_offset_with_either_unit_first_match() -
 
 
 ## Piles of five tanks on the four corners and the four edge middles of a map of 12 x 8 tiles, the
-## corner ones on the very last milli-tile (11,999 and 7,999) where the grid has its last cell, are
-## scanned from a cell at the edge of the grid. A second world has the same piles a little outside
-## the map: the grid lists such a unit in the cell nearest it, the scan reads the cells of the
-## block that exist and no other, and the unit comes back onto the map as it moves. The even ids
-## are sent to the middle of the map.
+## corner ones within 100 milli of the last milli-tile (11,999 and 7,999, which the jitter is taken
+## from at the right and bottom edges) where the grid has its last cell, are scanned from a cell at
+## the edge of the grid. A second world has the same piles 350 milli outside the map: the grid
+## lists such a unit in the cell nearest it, the scan reads the cells of the block that exist and
+## no other, and the unit comes back onto the map as it moves. The even ids are sent to the middle
+## of the map.
 func test_units_at_the_four_edges_and_corners_and_outside_the_map_match() -> void:
 	for outside: int in [0, 350]:
 		var label: String = "outside by %d" % outside
@@ -142,6 +154,27 @@ func test_units_at_the_four_edges_and_corners_and_outside_the_map_match() -> voi
 		var found: String = rig.run(80, _send_evens.bind(6000, 4000))
 		assert_str(found).override_failure_message(label).is_empty()
 		assert_int(rig.tally()[&"edge_rows"]).override_failure_message(label).is_greater(100)
+
+
+## Five pairs of wide units (radius 1100, a reach of 2200) with one unit of each pair outside the
+## map and the other in the second cell from that edge, so that a pair overlaps only if the scan of
+## the outside unit starts from the edge cell of the grid (where the grid lists it) and reads the
+## cell beside it: past the left edge (x -1100, a tile and 100 milli out: x / side truncates to
+## -1, which the column clamp raises to 0) with the other at x 1000, past the right edge (12,100)
+## with the other at 10,999, the last milli of the second cell from the right, the same at the top
+## and the bottom, and the bottom-right corner on both axes. A column or a row clamped to the
+## number of cells, or only from above, scans the wrong cells; the tanks of the piles above (a
+## reach of 800) never reach so far. Every pair is 2 hits and 2 pushed rows; in every other pair the
+## inside unit has the lower id. The run that follows sends the even ids to the middle.
+func test_wide_units_past_the_edges_scan_the_cell_beside_the_edge_cell() -> void:
+	var rig: RefCounted = Rig.new().setup(_wide_edges_world)
+	assert_array(rig.problems).is_empty()
+	assert_int(rig.worlds[0].unit_count()).is_equal(10)
+	assert_str(rig.once()).is_empty()
+	assert_int(rig.tally()[&"hits"]).is_equal(10)
+	assert_int(rig.tally()[&"pushed"]).is_equal(10)
+	assert_int(rig.tally()[&"edge_rows"]).is_equal(5)
+	assert_str(rig.run(40, _send_evens.bind(6000, 4000))).is_empty()
 
 
 ## A map with no cells (nothing to scan: zero pushes and zero looks, the units stand wherever they
@@ -309,6 +342,31 @@ func test_a_table_of_256_rows_matches() -> void:
 		assert_int(rig.tally()[&"hit_capped"]).is_greater(100)
 
 
+## A table of 1,100 rows: max_rows is a rule int (256 as shipped, with no range), so a row can hold
+## more hits than a sum of 32 bits takes. All the rows stand in the one cell of a map of one tile,
+## of the widest reach core/separation.h records (2,097,150), 500 to 600 milli apart, so that every
+## pair takes the fixed push at its full reach (the divisor is 1) and the caps (5000) stop nothing.
+## The first row and the last move and the 1,098 between them stand idle (idle share 0: the mover
+## takes the whole of each pair): the first sits at the low corner of the crowd and the last at
+## the high one, so each gets the same sign from all 1,099 of its pairs, and its sum of 2.3 * 10^9
+## in each axis is cut by the push cap of 2 * 10^9. A sum held in 32 bits would wrap at the 1,025th
+## pair and the cut would read the other sign.
+func test_a_table_of_1100_rows_with_the_widest_reach_sums_past_32_bits() -> void:
+	var rig: RefCounted = Rig.new().setup(_big_table_world)
+	assert_array(rig.problems).is_empty()
+	assert_int(rig.worlds[0].unit_count()).is_equal(BIG_ROWS)
+	assert_str(rig.once()).is_empty()
+	var pairs: int = BIG_ROWS * (BIG_ROWS - 1)
+	assert_int(rig.tally()[&"looks"]).is_equal(pairs)
+	assert_int(rig.tally()[&"hits"]).is_equal(pairs)
+	assert_int(rig.tally()[&"fixed"]).is_equal(pairs)
+	for world: World in rig.worlds:
+		assert_int(world.push_x[0]).is_equal(-BIG_PUSH_MAX)
+		assert_int(world.push_y[0]).is_equal(-BIG_PUSH_MAX)
+		assert_int(world.push_x[BIG_ROWS - 1]).is_equal(BIG_PUSH_MAX)
+		assert_int(world.push_y[BIG_ROWS - 1]).is_equal(BIG_PUSH_MAX)
+
+
 ## Rows that die in the middle of the run: every 4th tick from tick 3 three units of a crowd of 64
 ## are left with no hit points, and the tick removes them (the rows close up, the ids no longer run
 ## 1 to n, and the grid is rebuilt from the rows that are left). The comparison goes on after each
@@ -390,7 +448,9 @@ func _pairs_world() -> World:
 
 
 ## Eight piles of five tanks, 100 milli across: the four corners at the last milli-tile, then the
-## four edge middles; each `outside` milli further out of the map.
+## four edge middles; each `outside` milli further out of the map. The jitter leans into the map:
+## it is taken from the right and bottom anchors, so that with 0 outside the corner piles stand
+## within 100 milli of the last milli-tile.
 @warning_ignore("integer_division")
 func _edges_world(outside: int) -> World:
 	var world: World = _map(12, 8)
@@ -412,11 +472,62 @@ func _edges_world(outside: int) -> World:
 			signi(anchor.x * 2 - right) if anchor.x in [0, right] else 0,
 			signi(anchor.y * 2 - bottom) if anchor.y in [0, bottom] else 0
 		)
+		var lean: Vector2i = Vector2i(
+			-1 if anchor.x == right else 1, -1 if anchor.y == bottom else 1
+		)
 		for _unit: int in 5:
-			var at: Vector2i = (
-				anchor + out * outside + Vector2i(rng.next_int(100), rng.next_int(100))
-			)
+			var jitter: Vector2i = Vector2i(rng.next_int(100), rng.next_int(100))
+			var at: Vector2i = anchor + out * outside + jitter * lean
 			world.add_unit(1, 0, at.x, at.y)
+	return world
+
+
+## The ten units of the wide pairs: [outside, inside] for the left, right, top and bottom edges and
+## the bottom-right corner (see the test); every other pair lists the inside unit first.
+func _wide_edges_world() -> World:
+	var world: World = _map(12, 8, [WIDE_RADIUS])
+	var right: int = world.map_w
+	var bottom: int = world.map_h
+	var pairs: Array[Array] = [
+		[Vector2i(-1000 - WIDE_OUT, 4000), Vector2i(1000, 4100)],
+		[Vector2i(right + WIDE_OUT, 2000), Vector2i(right - 1001, 2100)],
+		[Vector2i(6000, -1000 - WIDE_OUT), Vector2i(6100, 1000)],
+		[Vector2i(6000, bottom + WIDE_OUT), Vector2i(6100, bottom - 1001)],
+		[Vector2i(right + WIDE_OUT, bottom + WIDE_OUT), Vector2i(right - 1001, bottom - 1001)],
+	]
+	for k: int in pairs.size():
+		for side: int in 2:
+			var at: Vector2i = pairs[k][side if k % 2 == 0 else 1 - side]
+			world.add_unit(1, 0, at.x, at.y)
+	return world
+
+
+## BIG_ROWS tanks of the widest reach in the one cell of a map of one tile, the rules lifted so that
+## nothing caps a pair or a row (see the test). Row 0 stands at (500, 500) and the last row at
+## (600, 600); between them the rows stand at (501 to 597, 501 to 589). Those two move.
+func _big_table_world() -> World:
+	var world: World = World.new()
+	world.max_rows = BIG_ROWS
+	world.map_w = World.MILLI_PER_TILE
+	world.map_h = World.MILLI_PER_TILE
+	world.type_ids.append(&"wide")
+	world.type_speed.append(120)
+	world.type_radius.append(BIG_RADIUS)
+	world.type_selection_radius.append(500)
+	world.type_spacing.append(1200)
+	world.player_count = 1
+	world.prepare()
+	world.add_unit(1, 0, 500, 500)
+	for k: int in range(1, BIG_ROWS - 1):
+		world.add_unit(1, 0, 501 + k % 97, 501 + k % 89)
+	world.add_unit(1, 0, 600, 600)
+	world.intent_x[0] = 5
+	world.intent_x[BIG_ROWS - 1] = 5
+	world.separation_neighbours = 5000
+	world.separation_scan = 5000
+	world.separation_idle_share = 0
+	world.separation_push_max = BIG_PUSH_MAX
+	world.separation_coincident_divisor = 1
 	return world
 
 

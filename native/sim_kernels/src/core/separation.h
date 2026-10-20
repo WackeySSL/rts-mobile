@@ -19,6 +19,8 @@
 //     2,000,000 would allow a divisor of 1518.
 // Past that range the production build wraps like the twin (-fwrapv), so the two still agree, on a meaningless push; the
 // sanitizer build, which has no -fwrapv, aborts. RulesDef and UnitDef have no @export_range for any of it.
+// A row's sums are int64 up to the clamp, with no bound on the table: max_rows is a rule int with no range, and 1,025 hits of the
+// widest reach already pass 2^31 (test_separation_lockstep_cases.gd holds a table of 1,100 rows for it).
 #pragma once
 
 #include <cstdint>

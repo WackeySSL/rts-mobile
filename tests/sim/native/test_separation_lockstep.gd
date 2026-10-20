@@ -9,13 +9,16 @@ extends GdUnitTestSuite
 ## cross the wall, bunch up at the gaps, stop beside movers and push each other.
 ## The run repeats with the kernel alone in C++, with SEPARATION and INTEGRATE in C++ (the pushes
 ## the kernel wrote are what the C++ INTEGRATE adds to the steps) and with every phase the library
-## has, on the arena with its 150 units gathered into a pile of 3 x 3 tiles, and on five sets of
-## rules that move all five separation rules (every rule int changed, so a value written as a C++
-## literal fails; the caps at 1 and at 20 and 40; the guards: an idle share of 150 and -20, a push
-## cap below 0, a divisor below 1). The SeparationTallyProbe counts what each run reached, so that
-## none passes by never meeting a rule. The crafted crowds are in test_separation_lockstep_cases.gd
-## and the seeded random states in test_separation_lockstep_random.gd. That Separation.run hands
-## the phase to the kernel at all is pinned by the spy case of tests/sim/test_kernel_dispatch.gd.
+## has, on the arena with its 150 units gathered into a pile of 3 x 3 tiles, on changed rules (every
+## rule int +3 and the five separation rules moved, so a value written as a C++ literal fails) and
+## on six sets of rules that move the five separation rules across their guards (hit caps 1, 3,
+## 12 and 20, look caps 1, 5 and 40; an idle share of 150 and -20; a divisor of -3 and 0, each
+## beside a push cap and a hit cap that leave the divisor something to do; a push cap below 0).
+## The SeparationTallyProbe counts what each run reached, so that none passes by never meeting a
+## rule. The crafted crowds, with the rules at the ends of an int, are in
+## test_separation_lockstep_cases.gd and the seeded random states in
+## test_separation_lockstep_random.gd. That Separation.run hands the phase to the kernel at all is
+## pinned by the spy case of tests/sim/test_kernel_dispatch.gd.
 
 const Rig: GDScript = preload("res://tests/sim/support/separation_lockstep_rig.gd")
 const LockstepRig: GDScript = preload("res://tests/sim/support/lockstep_rig.gd")
@@ -32,7 +35,9 @@ const WAVE_AT: int = 7
 const PILE_AT: int = 10000
 const PILE_SIDE: int = 3000
 ## The rule sets of the last case, each a dictionary of World members (the arena's rules are the
-## shipped ones: 8 hits, 16 looks, idle share 75, cap 60, divisor 4).
+## shipped ones: 8 hits, 16 looks, idle share 75, cap 60, divisor 4). A divisor below 1 acts only
+## beside a push cap above 0 and a hit cap above 0 (a cap below 0 cuts every push to 0, and a hit
+## cap of 0 looks at nobody), so sets 2 and 4 have both.
 const RULE_SETS: Array[Dictionary] = [
 	{
 		&"separation_neighbours": 3,
@@ -52,7 +57,7 @@ const RULE_SETS: Array[Dictionary] = [
 		&"separation_neighbours": 1,
 		&"separation_scan": 1,
 		&"separation_idle_share": 150,
-		&"separation_push_max": -5,
+		&"separation_push_max": 40,
 		&"separation_coincident_divisor": -3
 	},
 	{
@@ -63,11 +68,18 @@ const RULE_SETS: Array[Dictionary] = [
 		&"separation_coincident_divisor": 7
 	},
 	{
-		&"separation_neighbours": 0,
+		&"separation_neighbours": 12,
 		&"separation_scan": 16,
 		&"separation_idle_share": 100,
 		&"separation_push_max": 60,
 		&"separation_coincident_divisor": 0
+	},
+	{
+		&"separation_neighbours": 8,
+		&"separation_scan": 16,
+		&"separation_idle_share": 75,
+		&"separation_push_max": -5,
+		&"separation_coincident_divisor": 4
 	},
 ]
 
@@ -163,8 +175,8 @@ func test_the_rule_sets_that_move_every_separation_rule_and_the_guards_match() -
 		)
 		for name: StringName in rig.tally():
 			reached[name] = reached.get(name, 0) + rig.tally()[name]
-	# The guards change what the phase does: a push cap below 0 is 0, a divisor of 0 is 1, an idle
-	# share past 100 is 100.
+	# The guards change what the phase does: a push cap below 0 is 0, a divisor of 0 or -3 is 1 (sets
+	# 2 and 4 have a push cap and a hit cap for it to act on), an idle share past 100 is 100.
 	assert_int(reached[&"hits"]).is_greater(100000)
 	assert_int(reached[&"hit_capped"]).is_greater(1000)
 	assert_int(reached[&"look_capped"]).is_greater(10000)
