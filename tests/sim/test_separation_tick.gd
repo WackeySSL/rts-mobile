@@ -2,12 +2,12 @@ extends GdUnitTestSuite
 ## Separation in the tick (P39b; ADR 0007 section 4, ADR 0008 section 4), through Sim.step. The
 ## pushes themselves are pinned in test_separation.gd, test_separation_edges.gd and
 ## test_separation_signs.gd; this suite pins what the tick does with them: the GRIDS rebuild comes
-## after FLOW and `Separation.run` after INTENTS and before INTEGRATE (the pushes use this tick's
-## intents and move this tick's units), and crowds that cross, drive into other units or turn back
-## settle idle with no pair closer than 90% of the radii sum (720 milli for two tanks). The crowds
-## are the controls_test scenario: 30 blue tanks (ids 1 to 30) at (8000, 18500) in six columns 1500
-## apart, 10 red tanks (ids 31 to 40) far to the east. The tick counts are measured and rounded up
-## to a multiple of 15.
+## after FLOW (P41's TARGETING follows it) and `Separation.run` after INTENTS and before INTEGRATE
+## (the pushes use this tick's intents and move this tick's units), and crowds that cross, drive
+## into other units or turn back settle idle with no pair closer than 90% of the radii sum (720
+## milli for two tanks). The crowds are the controls_test scenario: 30 blue tanks (ids 1 to 30) at
+## (8000, 18500) in six columns 1500 apart, 10 red tanks (ids 31 to 40) far to the east. The tick
+## counts are measured and rounded up to a multiple of 15.
 ##
 ## Separation does not stop tanks from overlapping while they drive. A push is at most 60 milli a
 ## tick, half a tank's speed of 120 (ADR 0008 section 4), so tanks on crossing paths still slide
@@ -30,8 +30,13 @@ const MAX_OVERLAP_TICKS: int = 45
 ## The radii sum of two tanks: closer than this they overlap.
 const REACH: int = 800
 ## The ATTACK case: the target is the first red tank (id 31, row 30) at (34500, 10500), 600 ticks.
+## The tank's sight is raised above the 27,700 milli between the two, so that the vision check of
+## the fog PR (P46b) leaves the case green (its authoring rule).
 const ATTACK_TARGET_ID: int = 31
 const ATTACK_TICKS: int = 600
+const ATTACK_SIGHT: int = 30000
+## A `retarget_period_ticks` that no tick of a test reaches: nobody scans.
+const NEVER_DUE: int = 1000000
 ## Two groups of 15 whose paths cross: the north half of the block is sent south of the point, the
 ## south half north of it, 2000 apart, so the two destinations overlap and the groups drive through
 ## each other. All idle at tick 178.
@@ -61,7 +66,8 @@ const GROUP_CENTRE_BOUND: int = 3400
 ## GRIDS on; the pushes appear at SEPARATION, with the intent that INTENTS wrote this tick (the
 ## mover takes 25% of the pair push of 128, -32, the idle tank 75%, 96, cut to the 60 a unit may
 ## take; with the intents of the tick before, both idle, the mover would take -60); the positions
-## move at INTEGRATE only, by intent plus push.
+## move at INTEGRATE only, by intent plus push. P41's TARGETING mark sits between GRIDS and INTENTS
+## and changes none of the columns.
 func test_the_grid_is_rebuilt_after_flow_and_the_pushes_use_this_ticks_intents(
 	impl: int, _test_parameters := _both()
 ) -> void:
@@ -73,18 +79,19 @@ func test_the_grid_is_rebuilt_after_flow_and_the_pushes_use_this_ticks_intents(
 	order.tick = world.tick
 	Sim.step(world, [order], probe)
 	var phases: Array[int] = [SimProbe.Phase.COMMANDS, SimProbe.Phase.FLOW, SimProbe.Phase.GRIDS]
-	phases.append_array([SimProbe.Phase.INTENTS, SimProbe.Phase.SEPARATION])
+	phases.append_array([SimProbe.Phase.TARGETING, SimProbe.Phase.INTENTS])
+	phases.append(SimProbe.Phase.SEPARATION)
 	phases.append_array([SimProbe.Phase.INTEGRATE, SimProbe.Phase.REMOVE])
 	assert_array(probe.phases).is_equal(phases)
-	assert_array(probe.occupied).is_equal([0, 0, 1, 1, 1, 1, 1])
+	assert_array(probe.occupied).is_equal([0, 0, 1, 1, 1, 1, 1, 1])
 	var none: Vector2i = Vector2i.ZERO
 	var pushed: Vector2i = Vector2i(-32, 60)
-	assert_array(probe.pushes).is_equal([none, none, none, none, pushed, pushed, pushed])
-	assert_array(probe.intents).is_equal([0, 0, 0, 120, 120, 120, 120])
+	assert_array(probe.pushes).is_equal([none, none, none, none, none, pushed, pushed, pushed])
+	assert_array(probe.intents).is_equal([0, 0, 0, 0, 120, 120, 120, 120])
 	var start: Vector2i = Vector2i(5000, 5300)
 	var moved: Vector2i = Vector2i(5000 + 120 - 32, 5300 + 60)
-	assert_array(probe.positions).is_equal([start, start, start, start, start, moved, moved])
-	assert_array(probe.pairs).is_equal([0, 0, 0, 0, 2, 2, 2])
+	assert_array(probe.positions).is_equal([start, start, start, start, start, start, moved, moved])
+	assert_array(probe.pairs).is_equal([0, 0, 0, 0, 0, 2, 2, 2])
 
 
 ## The grid is rebuilt every tick from where the units are then: a tank that drives up to an idle
@@ -186,11 +193,15 @@ func test_the_controls_tap_ground_order_settles_apart_and_within_the_centre_boun
 
 ## The block driven into the red group: the red tanks are shoved aside (idle ones take 75% of a
 ## push against a mover), no pair stays overlapped for more than MAX_OVERLAP_TICKS in a row, and
-## everything ends idle with no pair of the 40 closer than 90%.
+## everything ends idle with no pair of the 40 closer than 90%. Acquisition is off (a retarget
+## period that no tick reaches): since P41b an attack-moving tank stops at weapon range of the
+## enemy it meets, so with targeting on the block would hold short of the red group and never push
+## it, and this case is about the crowd driving through.
 func test_driving_into_the_red_group_shoves_it_aside_and_ends_with_nobody_overlapping(
 	impl: int, _test_parameters := _both()
 ) -> void:
 	var world: World = _scenario_world(impl)
+	world.retarget_period_ticks = NEVER_DUE
 	var red_before: PackedInt32Array = world.pos_x.slice(30) + world.pos_y.slice(30)
 	var order: Command = Command.attack_move(1, _ids(1, 30), RED_POINT.x, RED_POINT.y)
 	order.tick = world.tick
@@ -267,30 +278,32 @@ func test_the_step_before_a_checkpoint_rebuilds_the_grid_and_pushes_like_any_oth
 	assert_array(by_tick[1].pos_y).is_equal(by_tick[0].pos_y)
 
 
-## INTERIM, until P41: an ATTACK order on an idle enemy shoves the enemy to the map corner. The
-## attacker drives onto the target's point every tick (`Sim._follow_targets` sets the goal there
-## and Movement never ends ATTACK), and with separation in the tick each push of the pair moves
-## the idle target by its 75% share, away from the attacker, tick after tick, until the target is
-## stuck in the corner (47999, 0) with the attacker on top of it, 21 milli away, still on ATTACK.
-## This is what a tap on an enemy (docs/HOW_TO_PLAY.md, "tap an enemy") does since P39b. Without
-## pushes the target never moves. P41 ends a chase in HOLD at weapon range, and its test flips
-## this case: the attacker stops at range and the idle target stays at (34500, 10500). The cases
-## of test_movement_acquire.gd switch the pushes off for this reason.
-func test_an_attack_on_an_idle_tank_shoves_it_to_the_map_corner_until_p41(
+## An ATTACK order on an idle enemy (P41b): the attacker drives to the cannon's range of 4500 and
+## holds there (`HOLD`, intent 0, still on its `ATTACK` order and target), and the idle target
+## stays at (34500, 10500), holding too, with the pushes of the tick on and off alike: the pair
+## never comes within the radii sum, so the attacker's pushes do not reach the target (the attacker
+## itself is pushed a little on its way by the tanks of the block it starts in, so its end point
+## differs between the two runs).
+## Until P41b the attacker drove onto the target's point every tick (`Sim._follow_targets` set the
+## goal there and Movement never ends ATTACK) and, with separation in the tick, each push of the
+## pair moved the idle target by its 75% share, away from the attacker, tick after tick, until it
+## was stuck in the corner (47999, 0) with the attacker on top of it, still on ATTACK: what a tap on
+## an enemy did from P39b to P41b.
+func test_an_attack_on_an_idle_tank_holds_at_weapon_range_and_does_not_shove_it(
 	impl: int, _test_parameters := _both()
 ) -> void:
 	var pushed: World = _attack_the_first_red_tank(-1, impl)
-	var corner: Vector2i = Vector2i(pushed.map_w - 1, 0)
-	assert_array([pushed.pos_x[30], pushed.pos_y[30]]).is_equal([corner.x, corner.y])
-	assert_array([pushed.order[0], pushed.order_target[0]]).is_equal(
-		[World.Order.ATTACK, ATTACK_TARGET_ID]
-	)
-	assert_int(Rig.distance2(pushed, 0, 30)).is_less(REACH * REACH)
 	var still: World = _attack_the_first_red_tank(0, impl)
-	assert_array([still.pos_x[30], still.pos_y[30]]).is_equal([34500, 10500])
-	assert_array([still.order[0], still.pos_x[0], still.pos_y[0]]).is_equal(
-		[World.Order.ATTACK, 34500, 10500]
-	)
+	for world: World in [pushed, still]:
+		assert_array([world.pos_x[30], world.pos_y[30]]).is_equal([34500, 10500])
+		assert_array([world.order[0], world.order_target[0], world.target[0]]).is_equal(
+			[World.Order.ATTACK, ATTACK_TARGET_ID, ATTACK_TARGET_ID]
+		)
+		assert_array([world.nav_mode[0], world.intent_x[0], world.intent_y[0]]).is_equal(
+			[World.NavMode.HOLD, 0, 0]
+		)
+		assert_int(world.nav_mode[30]).is_equal(World.NavMode.HOLD)
+		assert_int(Rig.distance2(world, 0, 30)).is_between(4380 * 4380, 4500 * 4500)
 
 
 ## Two runs of the crossing groups give the same state hash at every checkpoint tick (every 15
@@ -357,6 +370,7 @@ func _overlap_runs() -> PackedInt32Array:
 ## first (0: no pushes).
 func _attack_the_first_red_tank(push_max: int, impl: int) -> World:
 	var world: World = _scenario_world(impl)
+	world.type_sight.fill(ATTACK_SIGHT)
 	if push_max >= 0:
 		world.separation_push_max = push_max
 	var order: Command = Command.attack(1, _ids(1, 1), ATTACK_TARGET_ID)

@@ -5,9 +5,10 @@ extends RefCounted
 ## state hash and the full state of StateDiff (every shape list, every scalar, the flow cache and
 ## its slots). While it steps, the rig counts on the twin's side what the run reached (a unit
 ## following a field, a field with no next tile, an ATTACK re-key, a unit's own field, an order
-## that ended, every slot referenced, and what the slot tables did: a key taken by a free slot, a
-## key found in its slot, a slot recycled for another key), so that a case can assert that it did
-## not pass by never reaching a rule. The rig is INTEGRATE's: pair() attaches that phase and the
+## that ended, a unit holding or chasing (set by the engagement of TARGETING, P41b), every slot
+## referenced, and what the slot tables did: a key taken by a free slot, a key found in its slot, a
+## slot recycled for another key), so that a case can assert that it did not pass by never reaching
+## a rule. The rig is INTEGRATE's: pair() attaches that phase and the
 ## TALLY counts movement. The lockstep of another port writes its own rig (or takes the phase and
 ## its counts as parameters) instead of reusing this one with the wrong phase. Not a test suite.
 
@@ -16,6 +17,8 @@ const StateDiff: GDScript = preload("res://tests/sim/support/state_diff.gd")
 const HandPushProbe: GDScript = preload("res://tests/sim/support/hand_push_probe.gd")
 const INTEGRATE: int = SimProbe.Phase.INTEGRATE
 const FIELD: int = World.NavMode.FIELD
+const HOLD: int = World.NavMode.HOLD
+const CHASE: int = World.NavMode.CHASE
 const ATTACK: int = World.Order.ATTACK
 const IDLE: int = World.Order.IDLE
 ## The names of the counts (each starts at 0).
@@ -27,6 +30,8 @@ const TALLY: Array[StringName] = [
 	&"rekeys",
 	&"own_fields",
 	&"ended",
+	&"holding",
+	&"chasing",
 	&"contended",
 	&"fresh",
 	&"holds",
@@ -151,6 +156,10 @@ func _count(before: Dictionary[StringName, PackedInt32Array]) -> void:
 	var modes: PackedInt32Array = world.nav_mode
 	var next_of: PackedInt32Array = world.nav_next
 	for row: int in rows:
+		if modes[row] == HOLD:
+			tally[&"holding"] += 1
+		elif modes[row] == CHASE:
+			tally[&"chasing"] += 1
 		if modes[row] == FIELD:
 			tally[&"field"] += 1
 			if next_of[row] >= 0:
