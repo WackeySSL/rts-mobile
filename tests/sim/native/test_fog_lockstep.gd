@@ -34,8 +34,9 @@ extends GdUnitTestSuite
 ## overflows (the 64 x 64 map has a block of 1,024 cells per player, and the flips of one update
 ## stay below it), no disc cut at the east or the south side or at a corner (a few units get to
 ## the west and the north edges), no type with no sight entry, no player above 2 and no row off
-## the map. The walkers' run reaches all of them, the controls_test runs the east and south
-## sides, and the cases of test_fog_lockstep_cases.gd and the states of
+## the map. The walkers' run reaches all of them but a type with no sight entry and a player above
+## 2 (it adds units of players 1 and 2 and of the arena's types only), the controls_test runs the
+## east and south sides, and the cases of test_fog_lockstep_cases.gd and the states of
 ## test_fog_lockstep_random.gd reach each on its own.
 ##
 ## P46b adds the vision of a candidate to both Targeting versions and so changes what the arena's
@@ -93,7 +94,7 @@ const ARENA_FLOORS: Dictionary[StringName, int] = {
 ## combined check of 2026-10-21, c8cd7a6): 35,815 turns, 29,127 stays, 6,688 restamps, 6,688
 ## unstamps, 1,764,628 covered, 876,093 overlap_stamps, 877,384 overlap_unstamps, 6,221 flips_on,
 ## 4,930 flips_off, 2,605 explored_new, 10,984 listed, 167 relisted, 2,918 version_flips, 10,458
-## quiet_stamps, 72 deaths, 72 deaths_stamped, 19 death_on_turn.
+## quiet_stamps, 72 deaths, 72 deaths_stamped, 19 death_on_turn, 28 clipped, 24 clip_w, 4 clip_e.
 const WAVES_FLOORS: Dictionary[StringName, int] = {
 	&"turns": 23000,
 	&"stays": 18000,
@@ -261,7 +262,8 @@ func test_the_same_run_with_every_phase_the_library_has_in_c_plus_plus_matches()
 
 ## The arena under a seeded wave every 6 ticks from tick 1: 1 to 24 consecutive ids of a side get a
 ## MOVE (3 in 10), an ATTACK_MOVE (4), a STOP (1) or an ATTACK at an enemy (2; one in ten names a
-## unit of its own side, which Sim.step drops), to a point anywhere on the map or off it. The units
+## unit of its own side, which Sim.step drops, and with P46b's vision rule Sim.step also drops an
+## ATTACK at an enemy its player does not see), to a point anywhere on the map or off it. The units
 ## keep changing course, so the rows that step to a new tile are not the rush's.
 func test_900_ticks_of_random_command_waves_match() -> void:
 	var rig: RefCounted = Rig.new().setup(Worlds.arena, Rig.ALL)
@@ -307,10 +309,10 @@ func test_the_same_run_on_changed_rules_matches() -> void:
 ## The arena's 150 rows walk at random (fog_orders.gd): they step a tile, jump anywhere on the map,
 ## to its edges and corners and off it, stack on one tile, die and are replaced by new units. The
 ## 64 x 64 map has a dirty block of 1,024 cells per player, which the jumps overflow at about half
-## of the updates (296 full blocks, measured, in the 600 updates of the run: 2 players at the
-## shipped cadence of 3 over 900 ticks), so this is the run that reaches the full blocks, the
-## corners and all four sides of the map, the rows stamped for the first time and the rows past the
-## map, with the other ports in C++ as well.
+## of the updates (296 full blocks measured on 5984880, 363 with P46b's vision rule, in the 600
+## updates of the run: 2 players at the shipped cadence of 3 over 900 ticks), so this is the run
+## that reaches the full blocks, the corners and all four sides of the map, the rows stamped for the
+## first time and the rows past the map, with the other ports in C++ as well.
 func test_900_ticks_of_random_walkers_on_the_arena_match() -> void:
 	var rig: RefCounted = Rig.new().setup(Worlds.arena, Rig.ALL)
 	assert_array(rig.problems).is_empty()
