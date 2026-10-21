@@ -2,7 +2,9 @@ class_name PickSnapshot
 extends RefCounted
 ## What the Picker needs to know about every unit, on or off screen, as parallel arrays in World
 ## row order (ascending id). UnitLayer.fill_pick_snapshot() fills it and resizes the arrays in
-## place, so one snapshot can be refilled every frame without allocating.
+## place, so one snapshot can be refilled every frame without allocating. A hidden enemy (one the
+## local player's fog hides, P47) is in the arrays like any other unit, but its `pickable` entry is
+## 0, so no tap and no box reaches it.
 
 var ids: PackedInt32Array = PackedInt32Array()
 var owners: PackedInt32Array = PackedInt32Array()
@@ -10,6 +12,9 @@ var type_index: PackedInt32Array = PackedInt32Array()
 var screen_pos: PackedVector2Array = PackedVector2Array()  ## Unit centres, base px.
 ## Hit radius in base px: the larger of the minimum (dp) and the unit's selection radius on screen.
 var radius_px: PackedFloat32Array = PackedFloat32Array()
+## 0 for a row the Picker must skip (an enemy the fog hides), 1 for every other row. A row with no
+## entry (`row >= pickable.size()`, as in a snapshot built by hand) is pickable.
+var pickable: PackedByteArray = PackedByteArray()
 
 
 func size() -> int:

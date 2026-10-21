@@ -228,6 +228,10 @@ func test_orders_rings_anchor_and_box_follow_the_fingers_at_every_profile() -> v
 		_tap(_camera.world_to_screen(GROUND))
 		assert_bool(_mark_at(GROUND).get_child(0).visible).is_true()  # Chevrons.
 		_camera.centre_on(Vector2(2208, 672))
+		# The diamond is the subject, not the fog: red tank 31 is hidden at the start and a tap on a
+		# hidden enemy is a ground tap. Picking under fog is proven in test_player_controller.gd
+		# (the hidden-enemy cases) and test_picker.gd.
+		_layer.reveal_enemies = true
 		_tap(_layer.unit_screen_position(30) - Vector2(UiScale.dp(20), 0))  # An enemy.
 		assert_bool(_mark_at(Vector2(2208, 672)).get_child(4).visible).is_true()  # The diamond.
 		assert_int(_markers.active_count()).is_equal(2)

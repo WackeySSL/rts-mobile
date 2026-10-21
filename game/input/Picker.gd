@@ -2,7 +2,9 @@ class_name Picker
 extends RefCounted
 ## Turns a touch point or a box into unit choices, from a PickSnapshot (ADR 0004 sections 4-5).
 ## Pure and static. A unit is hit when the point is within its `radius_px` of its centre. Any owner
-## but `local_player` is an enemy. Box queries use unit centres and return ascending ids.
+## but `local_player` is an enemy. Box queries use unit centres and return ascending ids. A row
+## whose `pickable` entry is 0 (an enemy the fog hides, P47p) is skipped by every query, even at
+## distance 0 or inside a box; the index `pick` returns is still the row of the snapshot.
 
 const _ANY_TYPE: int = -1
 
@@ -14,7 +16,11 @@ static func pick(snap: PickSnapshot, pos: Vector2, local_player: int, has_select
 	var best: int = -1
 	var best_enemy: bool = false
 	var best_d2: float = INF
+	var pickable: PackedByteArray = snap.pickable
+	var marked: int = pickable.size()  # A row from here on has no entry and is pickable.
 	for i: int in snap.size():
+		if i < marked and pickable[i] == 0:
+			continue
 		var enemy: bool = snap.owners[i] != local_player
 		var d2: float = snap.screen_pos[i].distance_squared_to(pos)
 		if (enemy and not has_selection) or d2 > snap.radius_px[i] * snap.radius_px[i]:
@@ -47,7 +53,11 @@ static func _collect(
 	snap: PickSnapshot, type_index: int, rect: Rect2, local_player: int, out: PackedInt32Array
 ) -> void:
 	out.clear()
+	var pickable: PackedByteArray = snap.pickable
+	var marked: int = pickable.size()
 	for i: int in snap.size():
+		if i < marked and pickable[i] == 0:
+			continue
 		var wanted: bool = type_index == _ANY_TYPE or snap.type_index[i] == type_index
 		if snap.owners[i] == local_player and wanted and rect.has_point(snap.screen_pos[i]):
 			out.append(snap.ids[i])
