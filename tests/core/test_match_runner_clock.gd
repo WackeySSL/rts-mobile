@@ -8,18 +8,23 @@ extends GdUnitTestSuite
 ## resets the three.
 ##
 ## The runners are built the Phase 1 way (auto_free, never in the tree) on the seed-42 perf arena
-## and set WORKER explicitly, the exception to "headless tests run SYNC". A test frame is a direct
-## _process(delta) call: it moves the clock by `delta` but costs microseconds, while a job takes
-## real milliseconds. So every case that asserts held_ticks 0, one publish per boundary or a hash
-## per published tick calls wait_idle() after each frame, and its result depends on the clock rule
-## only, never on the machine's speed (a fast arena job takes a few ms, more than 50 ms under the
-## period). late_ticks 0 is asserted where the plan names it (the first frame, the hitch) and for
-## the one job a case is about, read as a difference, so a fast job starved on a loaded machine
-## fails no other case. Only the overlap, held, late, counter and forced-slow cases make the gated
-## probe hold or delay a job on purpose. The cases wait only through wait_idle() and the probe's
-## capped wait_blocked(), never a fixed sleep, and fail when a wait returns false; after_test
-## releases every gated probe and then waits for every runner, so a case that fails while a probe
-## holds a job still leaves the worker free.
+## and set WORKER explicitly, the exception to "headless tests run SYNC". Every runner has a gated
+## probe installed (a plain one unless the case sets up its own), and after_test asserts of every
+## probe that no job began before the one before it ended and that no hold reached its cap. A test
+## frame is a direct _process(delta) call: it moves the clock by `delta` but costs microseconds,
+## while a job takes real milliseconds. So every case that asserts held_ticks 0, one publish per
+## boundary or a hash per published tick calls wait_idle() after each frame, and its result depends
+## on the clock rule only, never on the machine's speed. A late or not-late count that a case is
+## about never rests on a fast job's real time: the late-count and held cases write the timings
+## into the finished job's snapshot after wait_idle() and before the frame that publishes it, and
+## the late, counter and forced-slow cases delay a job far past the period. late_ticks 0 for real
+## fast jobs is asserted only where the plan names it (the first frame, the hitch), with more than
+## 50 ms of margin (a fast arena job takes a few ms). Only the overlap, held, pause-during-a-hold,
+## late, counter and forced-slow cases make the gated probe hold or delay a job on purpose. The
+## cases wait only through wait_idle(), the probe's capped wait_blocked() and frame loops capped at
+## WAIT_CAP_MSEC, never a fixed sleep or a wall-clock spin, and fail when a wait returns false;
+## after_test releases every gated probe and then waits for every runner, so a case that fails
+## while a probe holds a job still leaves the worker free.
 
 const GatedProbe: GDScript = preload("res://tests/core/gated_probe.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
@@ -33,9 +38,14 @@ const FRAMES: Array[float] = [0.0167, 0.0121, 0.0213, 0.0158, 0.0175, 0.0098, 0.
 const LONG: float = 1.0
 const FIRST: float = 0.2
 const HITCH: float = 0.15
-## How long the held case keeps its job held after the hold starts, in microseconds: far under the
-## tick period, so the held job is not late.
+## The post-to-done time the held case writes into its held job (10 ms, far under the tick period,
+## so the job is not late however long the hold lasted), and how many frames it runs while the
+## job is held past its boundary.
 const HOLD_USEC: int = 10_000
+const HOLD_FRAMES: int = 8
+## The late-count case writes every job's post this long before the frames that reach its
+## boundary, so a publish comes far more than a period after its post.
+const POSTED_AGO_USEC: int = 500_000
 ## A job delayed this long is late (more than a period after its post); the forced-slow cases
 ## delay every job by SLOW_MSEC, also more than a period, for SLOW_TICKS published ticks.
 const LATE_MSEC: int = 100
@@ -65,6 +75,8 @@ func after_test() -> void:
 	for runner: MatchRunner in _runners:
 		if is_instance_valid(runner):
 			assert_bool(runner.wait_idle()).is_true()
+	for probe: SimProbe in _probes:
+		assert_array([probe.overlapped, probe.gave_up]).is_equal([false, false])
 	_probes.clear()
 	_runners.clear()
 	CommandQueue.clear()
@@ -123,19 +135,32 @@ func test_a_hitch_publishes_one_tick_and_keeps_the_part_of_a_tick() -> void:
 	assert_array([runner.held_ticks, runner.late_ticks]).is_equal([0, 0])
 
 
-## The clock restarts at 0 on a resume (ADR 0012 section 1). `paused` half a tick into the period:
-## the paused frames do nothing (the job in flight finishes, nothing is published), and the first
-## frame after the pause sets the clock to 0 without advancing it, so the next boundary comes four
-## quarter-tick frames after it. An application pause has no frames at all: the first frame after
-## RESUMED carries the background time (about 0.14 s, two ticks) and also only restarts the clock.
+## The clock restarts at 0 on a resume (ADR 0012 section 1). A pause before the first frame: the
+## first frame after it is the refill, which also uses up the resume, so tick 1 comes on the fourth
+## quarter-tick frame after it (a refill that left the resume to the next frame would make it the
+## fifth). `paused` half a tick into the period: the paused frames do nothing (the job in flight
+## finishes, nothing is published), and the first frame after the pause sets the clock to 0
+## without advancing it, so the next boundary comes four quarter-tick frames after it. A command
+## submitted during that pause is drained at that boundary and stamped 3, one tick after the stamp
+## SYNC gives it (2): the job in flight at the pause drained the queue before the pause, so a
+## mid-run pause keeps the one-tick WORKER input latency. An application pause has no frames at
+## all: the first frame after RESUMED carries the background time (about 0.14 s, two ticks) and
+## also only restarts the clock.
 func test_a_resume_restarts_the_clock_at_zero() -> void:
 	var runner: MatchRunner = _runner(WORKER)
+	runner.paused = true
+	assert_array(_frames(runner, _quarters(3))).is_equal([0, 0, 0])
+	runner.paused = false
+	assert_array(_frames(runner, _quarters(5))).is_equal([0, 0, 0, 0, 1])
 	assert_bool(_play_to(runner, 2)).is_true()
 	assert_array(_frames(runner, _quarters(2))).is_equal([2, 2])
 	runner.paused = true
+	var command: Command = Command.move(1, PackedInt32Array([1, 2]), 20500, MARK_Y)
+	CommandQueue.submit(command)
 	assert_array(_frames(runner, _quarters(3))).is_equal([2, 2, 2])
 	runner.paused = false
 	assert_array(_frames(runner, _quarters(5))).is_equal([2, 2, 2, 2, 3])
+	assert_int(command.tick).is_equal(3)
 	assert_array(_frames(runner, _quarters(2))).is_equal([3, 3])
 	runner.notification(NOTIFICATION_APPLICATION_PAUSED)
 	runner.notification(NOTIFICATION_APPLICATION_RESUMED)
@@ -145,42 +170,92 @@ func test_a_resume_restarts_the_clock_at_zero() -> void:
 	assert_int(runner.held_ticks).is_equal(0)
 
 
-## A job held past its boundary and released 10 ms after the hold starts is held, not late:
-## held_ticks 1 however many frames the hold lasts, late_ticks 0 although its post-to-done time is
-## above 10 ms, alpha() 1.0 and the snapshot unchanged during the hold. The frame after the release
-## publishes it and restarts the clock at 0, so the next publish comes one full period (four
-## quarter-tick frames) later, with no catch-up burst.
+## A job held past its boundary is held, not late: held_ticks 1 however many frames the hold lasts,
+## alpha() 1.0 and the snapshot unchanged during the hold, and late_ticks 0 for a held job whose
+## post-to-done time is 10 ms (HOLD_USEC), as for one released 10 ms after its post: the case
+## writes that time into the job's snapshot after wait_idle(), so the count rests on the timings
+## and not on how long the hold took on this machine. The frame after the release publishes it and
+## restarts the clock at 0, so the next publish comes one full period (four quarter-tick frames)
+## later, with no catch-up burst.
 func test_a_held_boundary_counts_one_held_tick_and_is_not_late() -> void:
 	var gated: SimProbe = _gated_probe()
 	gated.hold(3)
 	var runner: MatchRunner = _runner(WORKER, gated)
 	assert_bool(_play_to(runner, 2, false)).is_true()
 	assert_bool(gated.wait_blocked()).is_true()
+	# Jobs 1 and 2 were published before the hold; only the held job's count is read, from before
+	# the frames that reach its boundary.
+	var late: int = runner.late_ticks
 	var held: MatchSnapshot = runner.snapshot
 	for _frame: int in 4:
 		runner._process(FRAME)
 	assert_array([runner.held_ticks, runner.alpha(), runner.job_in_flight()]).is_equal(
 		[1, 1.0, true]
 	)
-	var started: int = Time.get_ticks_usec()
-	var frames: int = 0
 	var moved: int = 0
-	while Time.get_ticks_usec() - started < HOLD_USEC:
+	for _frame: int in HOLD_FRAMES:
 		runner._process(FRAME)
-		frames += 1
 		if runner.held_ticks != 1 or runner.alpha() != 1.0 or not is_same(runner.snapshot, held):
 			moved += 1
-	assert_array([moved, frames > 0]).is_equal([0, true])
-	# Jobs 1 and 2 were published before the hold; only the held job's count is read.
-	var late: int = runner.late_ticks
+	assert_array([moved, runner.late_ticks - late]).is_equal([0, 0])
 	gated.release()
 	assert_bool(runner.wait_idle()).is_true()
+	var done: MatchSnapshot = runner._job.snapshot
+	done.post_usec = done.end_usec - HOLD_USEC
 	runner._process(FRAME)
 	var counts: Array = [runner.snapshot.tick, runner.held_ticks, runner.late_ticks - late]
 	assert_array(counts).is_equal([3, 1, 0])
 	assert_int(runner.latency_usec_max).is_greater_equal(HOLD_USEC)
 	assert_array(_frames(runner, _quarters(8))).is_equal([3, 3, 3, 4, 4, 4, 4, 5])
 	assert_array([runner.held_ticks, gated.gave_up]).is_equal([1, false])
+
+
+## A pause during a hold (ADR 0012 section 1): the held job finishes while paused, and the first
+## frame after the pause is both the resume frame and the frame that ends the hold. It publishes
+## the held job with the clock at 0, does not advance it and uses up the resume, so the next publish
+## comes on the fourth quarter-tick frame after it (a resume left to the next frame would make it
+## the fifth), and held_ticks stays 1.
+func test_a_pause_during_a_hold_ends_in_the_first_frame_after_it() -> void:
+	var gated: SimProbe = _gated_probe()
+	gated.hold(3)
+	var runner: MatchRunner = _runner(WORKER, gated)
+	assert_bool(_play_to(runner, 2, false)).is_true()
+	assert_bool(gated.wait_blocked()).is_true()
+	for _frame: int in 4:
+		runner._process(FRAME)
+	assert_array([runner.held_ticks, runner.alpha()]).is_equal([1, 1.0])
+	runner.paused = true
+	for _frame: int in 2:
+		runner._process(FRAME)
+	gated.release()
+	assert_bool(runner.wait_idle()).is_true()
+	runner.paused = false
+	assert_array(_frames(runner, _quarters(6))).is_equal([3, 3, 3, 3, 4, 4])
+	assert_int(runner.held_ticks).is_equal(1)
+
+
+## late_ticks and latency_usec_max read a job's post-to-done time, end_usec - post_usec, and a job
+## is late only when that is above TICK_USEC. The case writes both timings into every finished
+## job's snapshot after wait_idle() and before its boundary: the post POSTED_AGO_USEC (0.5 s)
+## before the frames that reach the boundary, so the publish comes far more than a period after
+## the post while the job's own run time is far under one, and post-to-done times of 40 ms,
+## exactly TICK_USEC, TICK_USEC + 1 and 5 ms in turn. start() reset the counts and every published
+## job is one of the four, so no count depends on the machine's speed.
+func test_a_late_tick_is_counted_from_its_post_to_done_time() -> void:
+	var runner: MatchRunner = _runner(WORKER)
+	runner._process(FRAME)
+	var tick_usec: int = MatchRunner.TICK_USEC
+	var counts: Array[Array] = []
+	for span: int in [40_000, tick_usec, tick_usec + 1, 5_000]:
+		assert_bool(runner.wait_idle()).is_true()
+		var done: MatchSnapshot = runner._job.snapshot
+		done.post_usec = Time.get_ticks_usec() - POSTED_AGO_USEC
+		done.end_usec = done.post_usec + span
+		var tick: int = runner.snapshot.tick
+		assert_array(_frames(runner, _quarters(4))).is_equal([tick, tick, tick, tick + 1])
+		counts.append([runner.late_ticks, runner.latency_usec_max])
+	var expected: Array = [[0, 40_000], [0, tick_usec], [1, tick_usec + 1], [1, tick_usec + 1]]
+	assert_array(counts).is_equal(expected)
 
 
 ## A job delayed 100 ms is late: its post-to-done time is above TICK_USEC (the period from
@@ -245,10 +320,13 @@ func test_start_resets_the_held_and_late_counts() -> void:
 
 
 ## A published snapshot is never written (ADR 0012 section 3): with job N + 1 held, 30 frames
-## digest every field of the published snapshot (hash() per value, the fog's fields one by one);
-## after the release, frames keep digesting it while the job captures from it as its `previous`
-## until a frame publishes the job, and then digest that one while job N + 2 runs. After
-## wait_idle() both digests are unchanged.
+## digest every field of the published snapshot (hash() per value, the fog's fields one by one).
+## After the release, quarter-tick frames with no wait_idle() keep digesting it while the job
+## captures from it as its `previous`, until the first frame whose own try_wait() finds the job
+## finished publishes it (ADR 0012 section 1: every frame of a hold polls); then frames that do
+## not move the clock digest that one while job N + 2 runs. After wait_idle() both digests are
+## unchanged, and the polled publish restarted the clock at 0: the next boundary comes on the
+## fourth quarter-tick frame.
 func test_a_published_snapshot_is_never_written_while_the_next_job_runs() -> void:
 	var gated: SimProbe = _gated_probe()
 	gated.hold(AHEAD + 1)
@@ -265,7 +343,7 @@ func test_a_published_snapshot_is_never_written_while_the_next_job_runs() -> voi
 	gated.release()
 	var until: int = Time.get_ticks_msec() + MatchRunner.WAIT_CAP_MSEC
 	while is_same(runner.snapshot, held) and Time.get_ticks_msec() < until:
-		runner._process(0.0)
+		runner._process(FRAME)
 		changed += int(_digest(held) != digest)
 	var next: MatchSnapshot = runner.snapshot
 	var next_digest: Dictionary = _digest(next)
@@ -276,6 +354,26 @@ func test_a_published_snapshot_is_never_written_while_the_next_job_runs() -> voi
 	assert_array([next.tick, changed]).is_equal([AHEAD + 1, 0])
 	assert_bool(_digest(held) == digest and _digest(next) == next_digest).is_true()
 	assert_array([gated.begin_count, gated.overlapped]).is_equal([AHEAD + 2, false])
+	var after: int = AHEAD + 1
+	assert_array(_frames(runner, _quarters(4))).is_equal([after, after, after, after + 1])
+
+
+## The gated probe ends a job's overlap window at the last mark of its tick (LAST_MARK, FOG since
+## P46), not at REMOVE: a job that begins after the one before it marked REMOVE but not FOG overlaps
+## it, and one that begins after every mark of a tick, in id order, does not. These two probes
+## belong to no runner, so after_test does not check them.
+func test_the_gated_probe_ends_a_job_at_the_last_mark_of_its_tick() -> void:
+	var early: SimProbe = GatedProbe.new()
+	early.begin()
+	early.mark(SimProbe.Phase.REMOVE)
+	early.begin()
+	var whole: SimProbe = GatedProbe.new()
+	whole.begin()
+	for phase: int in SimProbe.Phase.COUNT:
+		whole.mark(phase)
+	whole.begin()
+	var flags: Array = [early.overlapped, whole.overlapped, whole.begin_count]
+	assert_array(flags).is_equal([true, false, 2])
 
 
 ## A runner whose Thread.start() failed before (_start_failed) resolves WORKER to SYNC at start():
@@ -287,6 +385,7 @@ func test_a_runner_whose_thread_failed_runs_its_frames_inline() -> void:
 	runner.scenario = load(ARENA_PATH) as ScenarioDef
 	runner.match_seed = SEED
 	runner.tick_mode = WORKER
+	runner.probe = _gated_probe()
 	runner._start_failed = true
 	runner.start()
 	_runners.append(runner)
@@ -334,11 +433,12 @@ func test_forced_slow_jobs_with_commands_record_each_command_once() -> void:
 	assert_int(_replayed(runner)).is_equal(Replay.PLAY_MATCHED)
 
 
-## A command submitted while paused before the first frame is drained by the refill after the
-## resume, and one submitted in a `ticked(30)` handler by that boundary, so both get the same stamps
-## in SYNC and WORKER (0 and 30), and the checkpoints are equal. The two runners run one after the
+## A command submitted while paused before the first frame, with no job in flight, is drained by
+## the refill after the resume, and one submitted in a `ticked(30)` handler by that boundary, so
+## both get the same stamps in SYNC and WORKER (0 and 30), and the checkpoints are equal. (After a
+## mid-run pause WORKER stamps one tick later: the resume case.) The two runners run one after the
 ## other, because the CommandQueue is an autoload.
-func test_commands_from_ticked_and_while_paused_get_the_same_stamps_in_both_modes() -> void:
+func test_commands_from_ticked_and_a_pause_before_any_job_stamp_alike_in_both_modes() -> void:
 	var stamps: Array = []
 	var hashes: Array[PackedInt64Array] = []
 	for mode: int in [SYNC, WORKER]:
@@ -511,13 +611,14 @@ func _replayed(runner: MatchRunner) -> int:
 	return Replay.play(runner.replay, world, runner.world.tick)
 
 
-## A started runner on the seed-42 arena in `mode`, with `probe` installed before start().
+## A started runner on the seed-42 arena in `mode`, with `probe` installed before start(), or a
+## plain gated probe (no hold, no delay) when the case gives none.
 func _runner(mode: int, probe: SimProbe = null) -> MatchRunner:
 	var runner: MatchRunner = auto_free(MatchRunner.new())
 	runner.scenario = load(ARENA_PATH) as ScenarioDef
 	runner.match_seed = SEED
 	runner.tick_mode = mode
-	runner.probe = probe
+	runner.probe = probe if probe != null else _gated_probe()
 	runner.start()
 	_runners.append(runner)
 	return runner
