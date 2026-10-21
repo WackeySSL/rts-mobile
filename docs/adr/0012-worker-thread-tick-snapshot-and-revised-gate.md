@@ -56,6 +56,14 @@ Status note (2026-10-21, P26ac docs): §1 carries a dated status note on the gua
 P38w1b (#131) merged it: a refused getter returns null and a refused setter assigns nothing,
 both after one `push_error`; `set_probe` installs nothing at the cap. No accepted text changed.
 
+Status note (2026-10-21, P26ad docs): §1 carries a dated status note on the clock and the
+counters as P38w2 (#135) merged them, with the lead's decisions of 2026-10-21: "a command queued
+while paused or before the first job gets the same stamp in both modes" is limited to a pause
+with no job in flight (after a mid-run pause `WORKER` stamps one tick later); the resume's restart
+at 0 steps the `WORKER` view back by up to one tick once per resume (accepted for now, P50b's
+phone check); `late_ticks` and `latency_usec_max` also count inline ticks, and the
+`late_ticks_max` verdict is meaningful for a `WORKER` run. No accepted text changed.
+
 ## Context
 The Phase 2 plan (P26s) says that a contract the phone probe contradicts changes through a new ADR
 before P34 starts. The probe ran on 2026-10-12. The full reports are comments on PR #35.
@@ -373,6 +381,36 @@ release-template facts on the official `linux_release` template):
   prove the join without calling a freed object. Tests need not add the runner to the tree.
 - **Pause** (`paused` or an application pause): the job in flight finishes, and nothing publishes
   until the clock runs again.
+
+  Status note (2026-10-21, P26ad docs, after P38w2, #135; the text above stays as accepted): the
+  clock and the counters as merged in `game/core/MatchRunner.gd`, with the lead's decisions of
+  2026-10-21.
+  - **The counters.** `const TICK_USEC: int = 1_000_000 / Sim.TICK_RATE`. `late_ticks` and
+    `latency_usec_max` are counted in `_publish_job()` from the published snapshot's
+    `end_usec - post_usec`, before `ticked` is emitted, so a `ticked` handler reads them up to
+    date; `held_ticks` rises once per held job, in the frame whose boundary holds. `start()`
+    resets all three. `_publish_job()` also publishes the inline ticks of `SYNC` mode and
+    `run_ticks()`, whose post is the start of the run, so `late_ticks` and `latency_usec_max`
+    count inline ticks as well. The lead's decision: the `late_ticks_max` verdict of §4 is
+    meaningful for a `WORKER` run (the plan's contract row `MatchRunner` v1 and row P50a).
+  - **The clock.** At most one publish per frame, the whole ticks owed after it dropped and the
+    part of a tick kept, as above. The clock restarts at 0, and that frame does not advance it, in
+    three kinds of frame: the refill from `IDLE`, the first frame that finds a held job finished
+    (it publishes and posts) and the first frame after a pause, whether `paused` or an
+    application pause (`NOTIFICATION_APPLICATION_PAUSED`) stopped the frames.
+  - **"a command queued while paused or before the first job gets the same stamp in both modes"**
+    (Command latency, above) holds only with no job in flight, the lead's decision: a command
+    queued before the first job, or while paused with no job in flight, is drained by the refill
+    and stamped alike in both modes. After a mid-run pause the job that was in flight at the pause
+    had already drained the queue, so the command is drained at the first boundary after the
+    resume and `WORKER` stamps it one tick later than `SYNC` (the one-tick input latency of a
+    command between boundaries); the plan's `tests/core/test_match_runner_clock.gd` pins 3
+    against 2 (`test_a_resume_restarts_the_clock_at_zero`).
+  - **The view on a resume.** The restart at 0 on a resume makes the `WORKER` view step back by
+    up to one tick of motion once per resume (`alpha()` falls to 0 from where the paused frame
+    left it). The lead's decision: accepted for now; P50b's phone check looks at it.
+  - The plan's section P38w2 "As merged" and contract row `MatchRunner` v1 ("P38w2 as merged")
+    hold the details.
 
 ### 2. Thread-safety rules for the sim
 The sim stays free of Node, SceneTree, autoloads, Input, rendering, OS time and frame delta
