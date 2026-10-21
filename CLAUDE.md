@@ -117,9 +117,11 @@ injected only by the release workflow. UMP consent before any ad request. Detail
   2 review lenses, docs PRs 1 lens and no rounds. Mutation testing only for PRs that touch
   `game/sim/` or `native/`, at most about 10 chosen mutants. A suite runs 3 times in a row only
   for thread or clock tests.
-- One lane in work at a time (one row, one small, well-defined task, one PR) until Michael lifts the
-  limit. A PR that only waits for CI or Michael's merge does not count. When more than one PR waits
-  for the same merge, verify their combined tree once before the merge.
+- Run as many lanes in parallel as the plan's dependencies allow, to keep the pace (Michael,
+  2026-10-21; it replaces the one-lane limit of the same day). Each lane is one row, one small,
+  well-defined task and one PR. Before PRs that wait for the same merge are merged, verify their
+  combined tree once; a read-only interaction review (one agent) only when two of them touch the
+  same system.
 
 ## Subagents and review
 architect, gameplay-dev, ai-dev, touch-ux-dev, art-director, monetization-dev, qa-engineer,
