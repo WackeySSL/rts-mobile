@@ -2,7 +2,8 @@ extends GdUnitTestSuite
 ## PerfHud part 2 (plan P50a2, ADR 0011 section 5), the card: it is hidden while a run records (so
 ## it adds no draw call to a measured frame), shows at `run_ticks` with the verdict and the run on
 ## top and pauses the runner, and `restart()` hides it and resumes the runner. Its rows are the
-## verdict lines, the rows without a verdict and GATE last, and every format of the table prints.
+## verdict lines, the rows without a verdict (the flow line and the phase means among them) and GATE
+## last, and every format of the table prints.
 ## The layout cases put it in a SafeAreaMargin, as the HUD roots are, at every UiProfiles entry and
 ## on Michael's phone (2424x1080 with the cutout Rect2i(152, 0, 2272, 1080), as test_army_bar and
 ## test_selection_panel build it): the whole card lies inside the safe area, its text is 14 sp or
@@ -80,18 +81,52 @@ func test_the_card_rows_are_the_verdicts_then_the_rows_without_a_verdict_and_gat
 	Rig.run(hud)
 	var lines: PackedStringArray = hud.card_lines()
 	var verdicts: int = hud.summary()["verdicts"].size()
-	# The run line, the verdicts, held_ticks, the implementation line, the table, the phases and GATE.
-	assert_int(lines.size()).is_equal(1 + verdicts + 1 + 1 + PerfHud.CARD_ROWS.size() + 1 + 1)
+	# The run line, the verdicts, held_ticks, the implementation line, the table, the phase means,
+	# the phase p95s and GATE.
+	assert_int(lines.size()).is_equal(1 + verdicts + 1 + 1 + PerfHud.CARD_ROWS.size() + 2 + 1)
 	assert_str(lines[0]).starts_with("PERF run 1 |")
 	assert_str(lines[lines.size() - 1]).is_equal("GATE: PASS")
 	for line: String in lines.slice(1 + verdicts, lines.size() - 1):
 		assert_bool(line.contains(": PASS (") or line.contains(": FAIL (")).is_false()
 	var text: String = "\n".join(lines)
 	for part: String in [
-		"refresh 60.00 to 60.00 Hz", "extra slots [", "ref peak 25.0 us", "latency max"
+		"refresh 60.00 to 60.00 Hz",
+		"extra slots [",
+		"ref peak 25.0 us",
+		"latency max",
+		"Sim.step ms p50 8.00 p95 8.00 max 8.00 | flow slice p95 0.00 ms | render CPU p95 1.00 ms",
+		"phase means per tick (ms): ",
 	]:
 		assert_str(text).contains(part)
 	assert_str(text).contains("job ms mean 10.00 p50 10.00 p95 10.00 p99 10.00 max 10.00")
+
+
+## ADR 0012 sections 4 and 5: the flow line (the p95 of the FLOW phase over the ticks that settled a
+## whole slice, so the slice's cost is checked on the real map) and each phase's mean per tick,
+## both without a verdict.
+func test_the_card_prints_the_flow_slice_p95_and_the_phase_means() -> void:
+	var hud: PerfHud = auto_free(Rig.hud())
+	Rig.pass_frames(hud)
+	for tick: int in range(1, 901):
+		var snap: MatchSnapshot = Rig.snapshot(tick)
+		snap.phase_usec = PackedInt64Array()
+		snap.phase_usec.resize(SimProbe.Phase.COUNT)
+		snap.phase_usec.fill(100)
+		snap.phase_usec[SimProbe.Phase.FLOW] = 2000 if tick % 2 == 0 else 300
+		snap.stats.resize(World.Stat.ROWS_COMPACTED + 1)  # Even ticks settle a whole slice.
+		snap.stats[World.Stat.FLOW_CELLS] = hud.flow_cells_per_tick if tick % 2 == 0 else 100
+		hud.record_snapshot(snap)
+	var means: PackedStringArray = PackedStringArray()
+	for phase: int in SimProbe.Phase.COUNT:  # The FLOW mean is (2000 + 300) / 2 us.
+		var mean: float = 1.15 if phase == SimProbe.Phase.FLOW else 0.1
+		means.append("%s %.2f" % [SimProbe.PHASE_NAMES[phase], mean])
+	var lines: Array = Array(hud.card_lines())
+	assert_array(lines).contains(["phase means per tick (ms): %s" % ", ".join(means)])
+	var flow: Array = lines.filter(func(l: String) -> bool: return l.contains("flow slice p95"))
+	assert_array(flow).has_size(1)
+	assert_str(flow[0]).contains("| flow slice p95 2.00 ms |")  # Not the 1.15 ms of every tick.
+	for line: String in flow + lines.filter(func(l: String) -> bool: return l.contains("means")):
+		assert_bool(line.contains(PerfHud.PASS) or line.contains(PerfHud.FAIL)).is_false()
 
 
 func test_the_look_is_the_perf_card_variation_of_the_theme() -> void:

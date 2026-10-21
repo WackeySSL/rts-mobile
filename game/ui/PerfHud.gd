@@ -116,6 +116,17 @@ const CARD_ROWS: Array = [
 		"latency_usec_max",
 	],
 	[
+		(
+			"Sim.step ms p50 %.2f p95 %.2f max %.2f | flow slice p95 %.2f ms | "
+			+ "render CPU p95 %.2f ms"
+		),
+		"tick_p50_ms",
+		"tick_p95_ms",
+		"tick_max_ms",
+		"flow_slice_p95_ms",
+		"render_cpu_p95_ms",
+	],
+	[
 		"p95 ms without checkpoint ticks: job %.2f | job minus step: checkpoint %.2f, other %.2f",
 		"job_p95_noncp_ms",
 		"job_minus_step_p95_cp_ms",
@@ -199,6 +210,7 @@ var _preflight_reason: String = ""
 var _asked_impl: int = MatchRunner.SimImpl.GDSCRIPT
 var _sim_impl: int = MatchRunner.SimImpl.GDSCRIPT
 var _native_phases: Array = []
+var _native_build: String = ""
 var _self_check_result: String = SELF_CHECK_NOT_RUN
 ## The frame in progress: its interval (-1 until the second frame after restart()), the clock at the
 ## top of the last frame, after the reference runs and at the draw, its reference sample.
@@ -393,9 +405,9 @@ func run_preflight(job_in_flight: bool, with_self_check: bool) -> void:
 	if with_self_check:
 		var kernels: Object = kernels_source.call()
 		_sim_impl = MatchRunner.resolve_impl(_asked_impl, kernels != null, os_name)
-		_native_phases = (
-			_phase_names(kernels.phases()) if _sim_impl == MatchRunner.SimImpl.NATIVE else []
-		)
+		var native: bool = _sim_impl == MatchRunner.SimImpl.NATIVE
+		_native_phases = _phase_names(kernels.phases()) if native else []
+		_native_build = str(kernels.build_info()) if native else ""
 		_self_check_result = SELF_CHECK_NOT_RUN
 		if self_check_step.is_valid():
 			_self_check_result = self_check_step.call()
@@ -568,6 +580,7 @@ func summary() -> Dictionary:
 		"tick_mode": WORKER if worker_mode else SYNC,
 		"sim_impl": MatchRunner.SimImpl.keys()[_sim_impl],
 		"native_phases": _native_phases,
+		"native_build": _native_build,
 		"self_check": _self_check_result,
 		"alive": _alive,
 		"hash_hex": World.hash_hex(_last_hash) if _last_hash != 0 else "",
@@ -607,21 +620,31 @@ func card_lines() -> PackedStringArray:
 			"%s (%d ticks)"
 			% ["yes" if s["self_check"] == SELF_CHECK_MATCH else "NO", SELF_CHECK_TICKS]
 		)
-	var phases: String = ", ".join(PackedStringArray(s["native_phases"]))
-	lines.append(
-		(
-			"sim impl: %s, phases %s | C++ matches GDScript: %s"
-			% [s["sim_impl"], phases if phases != "" else "none", lockstep]
-		)
-	)
+	lines.append(_impl_line(s, lockstep))
 	for row: Array in CARD_ROWS:
 		lines.append(row[0] % row.slice(1).map(func(key: String) -> Variant: return s[key]))
-	var plain: PackedStringArray = PackedStringArray()
-	for phase: int in SimProbe.Phase.COUNT:
-		plain.append("%s %.2f" % [SimProbe.PHASE_NAMES[phase], s["phases_p95_noncp_ms"][phase]])
-	lines.append("p95 per phase without checkpoint ticks (ms): %s" % ", ".join(plain))
+	lines.append(_phase_line("phase means per tick", s["phases_ms"]))
+	lines.append(_phase_line("p95 per phase without checkpoint ticks", s["phases_p95_noncp_ms"]))
 	lines.append("GATE: %s" % (PASS if s["gate_pass"] else FAIL))
 	return lines
+
+
+## ADR 0013 section 3's line: the implementation that runs, for the library its build and phases,
+## and the self-check text.
+func _impl_line(s: Dictionary, lockstep: String) -> String:
+	var impl: String = "gdscript"
+	if _sim_impl == MatchRunner.SimImpl.NATIVE:
+		var phases: String = ", ".join(PackedStringArray(s["native_phases"]))
+		impl = "native (%s, phases %s)" % [s["native_build"], phases if phases != "" else "none"]
+	return "sim impl: %s | C++ matches GDScript: %s" % [impl, lockstep]
+
+
+## One phase value per phase, in id order: `title` and `values` (ms).
+func _phase_line(title: String, values: Array) -> String:
+	var parts: PackedStringArray = PackedStringArray()
+	for phase: int in SimProbe.Phase.COUNT:
+		parts.append("%s %.2f" % [SimProbe.PHASE_NAMES[phase], values[phase]])
+	return "%s (ms): %s" % [title, ", ".join(parts)]
 
 
 ## The run is over: the verdict (with the rows that failed, so a small screen need not scroll for

@@ -12,18 +12,22 @@ extends GdUnitTestSuite
 ## reaches the Android `push_error` of the runner.
 
 const Rig: GDScript = preload("res://tests/ui/support/perf_hud_rig.gd")
-## The phases a fake library reports: FLOW (1), SEPARATION (5) and FOG (10).
+## The phases a fake library reports: FLOW (1), SEPARATION (5) and FOG (10), and its build info.
 const FAKE_PHASES: int = (1 << 1) | (1 << 5) | (1 << 10)
+const FAKE_BUILD: String = "Android, template_release, arm64, O2, clang 17"
 
 var _calls: Array[String] = []
 
 
-## A library that reports `FAKE_PHASES`: the one method the HUD reads.
+## A library that reports `FAKE_PHASES` and `FAKE_BUILD`: the two methods the HUD reads.
 class FakeKernels:
 	extends RefCounted
 
 	func phases() -> int:
 		return FAKE_PHASES
+
+	func build_info() -> String:
+		return FAKE_BUILD
 
 
 func after_test() -> void:
@@ -85,12 +89,13 @@ func test_a_refused_preflight_calls_no_seam_and_restart_keeps_the_self_check() -
 
 
 func test_preflight_reads_the_runners_implementation_and_the_library() -> void:
-	var cases: Array = [  # asked, library, OS, the resolved name, the phases
-		[MatchRunner.SimImpl.GDSCRIPT, true, "Linux", "GDSCRIPT", []],
-		[MatchRunner.SimImpl.NATIVE, true, "Linux", "NATIVE", ["flow", "separation", "fog"]],
-		[MatchRunner.SimImpl.AUTO, true, "Android", "NATIVE", ["flow", "separation", "fog"]],
-		[MatchRunner.SimImpl.AUTO, false, "Web", "GDSCRIPT", []],  # The web packs no library.
-		[MatchRunner.SimImpl.AUTO, false, "Linux", "GDSCRIPT", []],
+	var flow: Array = ["flow", "separation", "fog"]
+	var cases: Array = [  # asked, library, OS, the resolved name, the phases, the build
+		[MatchRunner.SimImpl.GDSCRIPT, true, "Linux", "GDSCRIPT", [], ""],
+		[MatchRunner.SimImpl.NATIVE, true, "Linux", "NATIVE", flow, FAKE_BUILD],
+		[MatchRunner.SimImpl.AUTO, true, "Android", "NATIVE", flow, FAKE_BUILD],
+		[MatchRunner.SimImpl.AUTO, false, "Web", "GDSCRIPT", [], ""],  # The web packs no library.
+		[MatchRunner.SimImpl.AUTO, false, "Linux", "GDSCRIPT", [], ""],
 	]
 	for c: Array in cases:
 		var hud: PerfHud = _preflighted(c[0], c[1], c[2], "match")
@@ -98,6 +103,7 @@ func test_preflight_reads_the_runners_implementation_and_the_library() -> void:
 		var label: String = str(c)
 		assert_str(s["sim_impl"]).override_failure_message(label).is_equal(c[3])
 		assert_array(s["native_phases"]).override_failure_message(label).is_equal(c[4])
+		assert_str(s["native_build"]).override_failure_message(label).is_equal(c[5])
 		assert_str(s["os"]).is_equal(c[2])
 
 
@@ -140,27 +146,28 @@ func test_off_android_the_impl_line_is_not_applicable_whatever_runs() -> void:
 
 
 func test_the_card_prints_the_implementation_phases_and_the_self_check_line() -> void:
+	var native: String = "sim impl: native (%s, phases flow, separation, fog)" % FAKE_BUILD
 	var cases: Array = [  # asked, library, OS, the self-check, the line
 		[
 			MatchRunner.SimImpl.NATIVE,
 			true,
 			"Android",
 			"match",
-			"sim impl: NATIVE, phases flow, separation, fog | C++ matches GDScript: yes (60 ticks)",
+			native + " | C++ matches GDScript: yes (60 ticks)",
 		],
 		[
 			MatchRunner.SimImpl.NATIVE,
 			true,
 			"Android",
 			"mismatch",
-			"sim impl: NATIVE, phases flow, separation, fog | C++ matches GDScript: NO (60 ticks)",
+			native + " | C++ matches GDScript: NO (60 ticks)",
 		],
 		[
 			MatchRunner.SimImpl.GDSCRIPT,
 			false,
 			"Linux",
 			"not run",
-			"sim impl: GDSCRIPT, phases none | C++ matches GDScript: not run",
+			"sim impl: gdscript | C++ matches GDScript: not run",
 		],
 	]
 	for c: Array in cases:
@@ -181,6 +188,8 @@ func test_the_default_seam_runs_the_real_lockstep_on_the_native_library() -> voi
 	assert_str(s["sim_impl"]).is_equal("NATIVE")
 	assert_str(s["self_check"]).is_equal("match")
 	assert_int(s["native_phases"].size()).is_greater(0)
+	assert_str(s["native_build"]).is_equal(str(library.build_info()))  # What the library reports.
+	assert_str(s["native_build"]).is_not_empty()
 	for phase: String in s["native_phases"]:
 		assert_array(SimProbe.PHASE_NAMES).contains([phase])
 	runner.sim_impl = MatchRunner.SimImpl.GDSCRIPT  # The twins run: nothing to compare.
@@ -188,6 +197,7 @@ func test_the_default_seam_runs_the_real_lockstep_on_the_native_library() -> voi
 	assert_str(hud.summary()["sim_impl"]).is_equal("GDSCRIPT")
 	assert_str(hud.summary()["self_check"]).is_equal("not run")
 	assert_array(hud.summary()["native_phases"]).is_empty()
+	assert_str(hud.summary()["native_build"]).is_empty()
 	assert_float(hud.summary()["ref_peak_us"]).is_equal(25.0)  # The rig's burst, after both.
 
 
