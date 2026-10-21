@@ -8,6 +8,9 @@ extends GdUnitTestSuite
 ## The timed span is what the perf card's fog update reads (`last_update_usec()`, gate 0.4 ms): a
 ## clock that records what the layer has done at each read shows that the first read comes before
 ## the paint and the second after the upload.
+## A layer whose runner has no snapshot yet draws nothing and takes the first one it finds (round
+## 3): the P50b perf arena builds its layers, whose `_ready` and first frame come before the
+## scene script starts the match. A layer with no runner at all draws nothing either.
 ## Exact cases write one update into the published snapshot's fog, as ADR 0012 section 3 lets a
 ## SYNC test do, and emit `ticked`. The runner is not in the tree.
 
@@ -92,3 +95,32 @@ func _record_reads() -> Array[Vector3i]:
 		reads.append(Vector3i(_fog._bytes[at], pixel.a8, _fog.upload_count()))
 		return reads.size() * 10
 	return reads
+
+
+func test_a_layer_whose_runner_has_no_snapshot_yet_draws_nothing_until_it_has_one() -> void:
+	var idle: MatchRunner = auto_free(MatchRunner.new())  # Not started: no snapshot.
+	var fog: FogLayer = auto_free(FogLayer.new())
+	fog.runner = idle
+	add_child(fog)  # `_ready` looks once.
+	fog.set_process(false)
+	assert_object(idle.snapshot).is_null()
+	fog._process(0.0)
+	assert_object(fog.texture).is_null()
+	assert_int(fog.upload_count()).is_equal(0)
+	assert_int(fog.rebuild_count()).is_equal(0)
+	idle.scenario = Rig.scenario(1)
+	idle.start()  # Publishes tick 0 with no `ticked`.
+	fog._process(0.0)
+	assert_int(fog.rebuild_count()).is_equal(1)
+	assert_int(fog.upload_count()).is_equal(1)
+	assert_array(Rig.mismatches(fog.image(), idle.snapshot.fog, 1)).is_empty()
+
+
+func test_a_layer_with_no_runner_draws_nothing() -> void:
+	var bare: FogLayer = auto_free(FogLayer.new())
+	add_child(bare)  # `_ready` has no runner to connect to or look at.
+	bare.set_process(false)
+	bare._process(0.0)
+	assert_object(bare.texture).is_null()
+	assert_int(bare.upload_count()).is_equal(0)
+	assert_int(bare.rebuild_count()).is_equal(0)

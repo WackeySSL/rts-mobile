@@ -4,7 +4,8 @@ extends GdUnitTestSuite
 ## not square (the block of its grid starts at cells, and cols * cols is not cells), a neutral
 ## owner 0 (an enemy to the fog: hidden on an unseen tile, and a death there is not an own
 ## unit's), and a local player the fog has no grid for (nothing to hide behind: everything shows),
-## also a fog sized for players and no tiles. A layer whose runner never started shows no row.
+## also a fog sized for players and no tiles. A layer whose runner never started shows no row, and
+## on a started one a row out of range (below 0 or past the last) is not shown.
 ## Exact cases write the published snapshot's fog, positions and owners (allowed in SYNC, ADR 0012
 ## section 3). The runner is not in the tree; pixels cannot be read headless, so the cases read
 ## `UnitLayer.is_shown`, the rigs' `visible`, the projectile plan and the effect ring.
@@ -122,6 +123,16 @@ func test_a_layer_whose_runner_never_started_shows_no_row() -> void:
 	assert_object(idle.snapshot).is_null()
 	assert_bool(layer.is_shown(0)).is_false()
 	assert_bool(layer.is_shown(-1)).is_false()
+
+
+func test_a_row_out_of_range_is_not_shown_on_a_started_runner() -> void:
+	var snap: MatchSnapshot = _runner.snapshot
+	var last: int = snap.owner.size() - 1  # Red tank 40, an enemy: shown only by its tile.
+	snap.pos_x[last] = SEEN.x  # Tank 1's own tile: seen. A row that wraps round to it says true.
+	snap.pos_y[last] = SEEN.y
+	assert_bool(_units.is_shown(last)).is_true()
+	assert_bool(_units.is_shown(-1)).is_false()
+	assert_bool(_units.is_shown(last + 1)).is_false()
 
 
 func test_a_fog_sized_for_players_and_no_tiles_covers_nobody_and_everything_is_seen() -> void:
