@@ -390,8 +390,9 @@ release-template facts on the official `linux_release` template):
     `end_usec - post_usec`, before `ticked` is emitted, so a `ticked` handler reads them up to
     date; `held_ticks` rises once per held job, in the frame whose boundary holds. `start()`
     resets all three. `_publish_job()` also publishes the inline ticks of `SYNC` mode and
-    `run_ticks()`, whose post is the start of the run, so `late_ticks` and `latency_usec_max`
-    count inline ticks as well. The lead's decision: the `late_ticks_max` verdict of §4 is
+    `run_ticks()`; each inline tick's post is the start of its own run (`_tick()` sets
+    `post_usec` just before `job.run()`), so `late_ticks` and `latency_usec_max` count inline
+    ticks as well. The lead's decision: the `late_ticks_max` verdict of §4 is
     meaningful for a `WORKER` run (the plan's contract row `MatchRunner` v1 and row P50a).
   - **The clock.** At most one publish per frame, the whole ticks owed after it dropped and the
     part of a tick kept, as above. The clock restarts at 0, and that frame does not advance it, in
@@ -404,8 +405,9 @@ release-template facts on the official `linux_release` template):
     and stamped alike in both modes. After a mid-run pause the job that was in flight at the pause
     had already drained the queue, so the command is drained at the first boundary after the
     resume and `WORKER` stamps it one tick later than `SYNC` (the one-tick input latency of a
-    command between boundaries); the plan's `tests/core/test_match_runner_clock.gd` pins 3
-    against 2 (`test_a_resume_restarts_the_clock_at_zero`).
+    command between boundaries); the plan's `tests/core/test_match_runner_clock.gd` asserts
+    `WORKER`'s stamp 3 (`test_a_resume_restarts_the_clock_at_zero`; its doc comment gives
+    `SYNC`'s 2, which no case asserts).
   - **The view on a resume.** The restart at 0 on a resume makes the `WORKER` view step back by
     up to one tick of motion once per resume (`alpha()` falls to 0 from where the paused frame
     left it). The lead's decision: accepted for now; P50b's phone check looks at it.
