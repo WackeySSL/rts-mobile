@@ -42,6 +42,11 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 |---|---|---|
 | Send units across rock, water or scrub | Rock and water block all units, and scrub (the patterned ground) blocks vehicles; the units drive around them to the point you tapped | yes |
 
+## Fog
+| Action | Result | Teach |
+|---|---|---|
+| Look at the map | Black ground has never been seen. Dimmed ground was seen before, but enemies there are not shown. Ground that one of your units sees now is clear, and the enemies on it show, with their shots and blasts. Driving out lights new ground and leaves a dimmed trail behind; your own units always show | yes |
+
 ## Army bar (bottom left)
 | Action | Result | Teach |
 |---|---|---|

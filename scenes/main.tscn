@@ -21,6 +21,7 @@
 [ext_resource type="Script" path="res://game/view/EffectsLayer.gd" id="19_effects"]
 [ext_resource type="Script" path="res://game/view/HealthBarLayer.gd" id="18_bars"]
 [ext_resource type="Script" path="res://game/view/ProjectileLayer.gd" id="19_projectiles"]
+[ext_resource type="Script" path="res://game/view/FogLayer.gd" id="20_fog"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -58,6 +59,12 @@ runner = NodePath("../MatchRunner")
 z_index = 130
 z_as_relative = false
 script = ExtResource("19_effects")
+runner = NodePath("../MatchRunner")
+
+[node name="FogLayer" type="Sprite2D" parent="." node_paths=PackedStringArray("runner")]
+z_index = 140
+z_as_relative = false
+script = ExtResource("20_fog")
 runner = NodePath("../MatchRunner")
 
 [node name="MarkerLayer" type="Node2D" parent="."]

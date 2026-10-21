@@ -10,8 +10,15 @@ extends Node2D
 ## The effects live in a fixed ring of `capacity` slots in packed arrays (ADR 0011 section 3): the
 ## newest overwrites the oldest and an effect costs no object. An effect lives its lifetime on
 ## `clock`, the frame clock in ms, and is drawn at the event's own positions, which a SHOT carries
-## for both units, so a tracer shows after either is gone. Nothing filters by owner or by fog: an
-## armed neutral (owner 0) shoots like anyone, and the fog layer (P47) hides what is not seen.
+## for both units, so a tracer shows after either is gone. Nothing filters by owner: an armed
+## neutral (owner 0) shoots like anyone.
+##
+## The fog hides an effect as it is born (ADR 0010 section 2), by the tile of the point it is at
+## (`snapshot.cell_of`) in that tick's fog: an effect on a tile the local player does not see is
+## never added, so a fight in the dark takes no slot of the ring either. A SHOT shows its muzzle
+## flash when the shooter's tile is seen and its tracer when either end is, the death of an own unit
+## always shows (its sight ends with it, so its own tile can be dark in that very tick), and
+## `reveal_enemies` adds everything (the perf arena, and tests whose subject is not fog).
 ##
 ## `_process` plans the frame's lines and quads into reused packed arrays and `_draw` paints that
 ## plan: tracers as straight lines (butt caps: draw_line has no round ones, which STYLE.md asks
@@ -59,6 +66,8 @@ const GEO_STRIDE: int = 5  ## A slot's x, y, end x, end y and size, in world px.
 		capacity = maxi(value, 1)
 		_make_ring()
 @export var runner: MatchRunner
+## Adds the effects on tiles the fog hides too: the perf arena, and tests that are not about fog.
+@export var reveal_enemies: bool = false
 ## The look: palette colours, exports of this world-space layer like the other view layers'.
 @export var tracer_color: Color = Color("FFD84D")
 @export var edge_color: Color = FeedbackStyle.OUTLINE
@@ -239,11 +248,21 @@ func _on_ticked(_tick: int) -> void:
 			_add_death(snap, at, now)
 
 
+## Whether the point (x, y), in milli-tiles, is on a tile that the fog does not hide from the
+## local player in `snap`.
+func _seen(snap: MatchSnapshot, x: int, y: int) -> bool:
+	return reveal_enemies or FogLayer.is_seen(snap, FogLayer.local_player_of(runner), x, y)
+
+
 ## [SHOT, shooter id, shooter x, shooter y, target id, weapon, target x, target y]: a flash at
 ## the muzzle, which is on the way to the target and no farther than it, and for a hitscan weapon
-## a tracer from there to the target's position. The ends are the event's, not the rows'.
+## a tracer from there to the target's position. The ends are the event's, not the rows'. The
+## flash needs the shooter's tile seen, the tracer either end's.
 func _add_shot(snap: MatchSnapshot, at: int, now: int) -> void:
 	var events: PackedInt32Array = snap.events
+	var from_seen: bool = _seen(snap, events[at + 2], events[at + 3])
+	if not (from_seen or _seen(snap, events[at + 6], events[at + 7])):
+		return
 	var weapon: int = events[at + 5]
 	var weapon_id: StringName = _weapon_id(snap, weapon)
 	var shooter: Vector2 = ViewScale.milli_to_px_vec(events[at + 2], events[at + 3])
@@ -253,12 +272,15 @@ func _add_shot(snap: MatchSnapshot, at: int, now: int) -> void:
 	var speeds: PackedInt32Array = snap.weapon_projectile_speed
 	if weapon >= 0 and weapon < speeds.size() and speeds[weapon] == 0:
 		_push(Kind.TRACER, now, muzzle, target, 0.0)
-	_push(Kind.FLASH, now, muzzle, Vector2.ZERO, flash_px.get(weapon_id, FLASH_DEFAULT_PX))
+	if from_seen:
+		_push(Kind.FLASH, now, muzzle, Vector2.ZERO, flash_px.get(weapon_id, FLASH_DEFAULT_PX))
 
 
 ## [IMPACT, projectile id, x, y, target id or 0, weapon, 0, 0]: a puff where the shell came down.
 func _add_impact(snap: MatchSnapshot, at: int, now: int) -> void:
 	var events: PackedInt32Array = snap.events
+	if not _seen(snap, events[at + 2], events[at + 3]):
+		return
 	var weapon_id: StringName = _weapon_id(snap, events[at + 5])
 	var landing: Vector2 = ViewScale.milli_to_px_vec(events[at + 2], events[at + 3])
 	_push(Kind.PUFF, now, landing, Vector2.ZERO, puff_px.get(weapon_id, PUFF_DEFAULT_PX))
@@ -268,6 +290,9 @@ func _add_impact(snap: MatchSnapshot, at: int, now: int) -> void:
 ## infantry, a building too) and a fade for infantry.
 func _add_death(snap: MatchSnapshot, at: int, now: int) -> void:
 	var events: PackedInt32Array = snap.events
+	var own: bool = events[at + 5] == FogLayer.local_player_of(runner)
+	if not (own or _seen(snap, events[at + 2], events[at + 3])):
+		return
 	var type: int = events[at + 4]
 	var armours: PackedInt32Array = snap.type_armour
 	var infantry: bool = (

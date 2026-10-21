@@ -380,6 +380,7 @@ func _build(scenario: ScenarioDef) -> void:
 	_runner.start()
 	_layer = auto_free(EffectsLayer.new())
 	_layer.runner = _runner
+	_layer.reveal_enemies = true  # The effects are the subject, not the fog (test_fog_hiding.gd).
 	_layer.clock = func() -> int: return _now_ms
 	add_child(_layer)
 	_layer.set_process(false)

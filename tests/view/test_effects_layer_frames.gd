@@ -296,6 +296,7 @@ func test_the_main_scene_has_the_layer_at_z_130_between_the_health_bars_and_the_
 	var runner: MatchRunner = main.get_node("MatchRunner")
 	runner.paused = true
 	var layer: EffectsLayer = main.get_node("EffectsLayer")
+	layer.reveal_enemies = true  # Tile (5, 5) is in the dark at the start of the match.
 	assert_int(layer.z_index).is_equal(130)
 	assert_bool(layer.z_as_relative).is_false()
 	assert_object(layer.runner).is_same(runner)

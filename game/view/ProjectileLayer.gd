@@ -13,6 +13,10 @@ extends Node2D
 ## The tick a shell lands its slot is already free in the snapshot, so its last step is not drawn
 ## either (the impact puff marks the landing).
 ##
+## A projectile on a tile that the local player does not see is not drawn (ADR 0010 section 2): the
+## tile is the one of its position in the tick, from `snapshot.cell_of`, so the flag changes per
+## tick. `reveal_enemies` draws every one (the perf arena, and tests whose subject is not fog).
+##
 ## The layer reads `runner.snapshot` afresh in every frame and keeps nothing between frames but
 ## its plan, which `_process` rebuilds from the snapshot, so a new match (another `match_serial`)
 ## starts from an empty plan. `_process` writes the plan into reused packed arrays and `_draw`
@@ -34,6 +38,8 @@ const KIND_ROCKET: int = 1
 const FLOATS_PER_QUAD: int = 3  ## x and y in world px, then the heading in radians.
 
 @export var runner: MatchRunner
+## Draws the projectiles on tiles the fog hides too: the perf arena, tests that are not about fog.
+@export var reveal_enemies: bool = false
 
 var _atlas: Texture2D = load(ATLAS_ART)
 ## The plan of the frame: quad `i` is projectile slot `_slots[i]`, drawn of kind `_kinds[i]` at the
@@ -104,6 +110,11 @@ func _plan() -> void:
 	var alpha: float = runner.alpha()
 	var px_per_milli: float = ViewScale.milli_to_px(1)
 	var geometry: PackedFloat32Array = _geometry
+	var player: int = FogLayer.local_player_of(runner)
+	var fog: FogGrid = snap.fog
+	var fogged: bool = not reveal_enemies and FogLayer.covers(fog, player)
+	var counts: PackedInt32Array = fog.visible
+	var counts_at: int = (player - 1) * fog.cells
 	# The scan stops at the last live slot, so a quiet frame costs one count and a fight the
 	# slots up to its highest one (the sim hands out the lowest never-used slot first).
 	var live: int = slots - ids.count(0)
@@ -120,6 +131,8 @@ func _plan() -> void:
 		var from_y: int = prev_y[slot]
 		var to_x: int = cur_x[slot]
 		var to_y: int = cur_y[slot]
+		if fogged and counts[counts_at + snap.cell_of(to_x, to_y)] <= 0:
+			continue  # On a tile the local player does not see.
 		var out: int = _quads * FLOATS_PER_QUAD
 		geometry[out] = lerpf(from_x, to_x, alpha) * px_per_milli
 		geometry[out + 1] = lerpf(from_y, to_y, alpha) * px_per_milli
