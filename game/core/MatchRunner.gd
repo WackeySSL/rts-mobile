@@ -53,6 +53,9 @@ const OS_ANDROID: String = "Android"
 const OS_WEB: String = "Web"
 ## Every wait for a job gives up after this long, with an error (ADR 0012 section 1).
 const WAIT_CAP_MSEC: int = 5000
+## The tick period in microseconds, 66 666 (ADR 0012 section 1): a job whose post-to-done time is
+## above it is late. Derived from the tick rate, never a literal.
+@warning_ignore("integer_division") const TICK_USEC: int = 1_000_000 / Sim.TICK_RATE
 ## hand_off()'s table (ADR 0012 section 1): per HandOffEvent, the next state and the steps from
 ## IDLE, RUNNING and FINISHED in turn. A cell the runner never reaches (FRAME_TAKEN without a poll,
 ## a boundary in IDLE, which the refill comes before) keeps the state and does nothing.
@@ -151,6 +154,14 @@ var last_hash: int = 0
 ## adds (ADR 0012 section 3), and in the whole tick job, which includes that hash and the capture.
 var last_tick_usec: int = 0
 var last_runner_tick_usec: int = 0
+## The diagnostics of ADR 0012 section 1, reset by start(). held_ticks: boundaries the WORKER clock
+## reached while their job still ran, one per held job. late_ticks: published jobs whose
+## post-to-done time (end_usec - post_usec) was above TICK_USEC, a slow job rather than a held
+## boundary, and latency_usec_max: the largest post-to-done time. An inline tick (SYNC mode,
+## run_ticks()) counts too: its post is the start of its run.
+var held_ticks: int = 0
+var late_ticks: int = 0
+var latency_usec_max: int = 0
 ## A probe for the per-phase split, null unless a HUD sets one (P38t's TimingProbe). It gets every
 ## begin() and mark() of Sim.step; a probe changes no hash. Guarded like `world`; setting it calls
 ## set_probe().
@@ -171,11 +182,17 @@ var prev_pos_x: PackedInt32Array:
 var prev_pos_y: PackedInt32Array:
 	get:
 		return snapshot.prev_pos_y if snapshot != null else PackedInt32Array()
-## Stops _process from ticking, also between two ticks of one frame. run_ticks ignores it.
+## Stops _process from ticking, also between two ticks of one frame. run_ticks ignores it. In
+## WORKER mode the job in flight finishes, and the clock restarts at 0 in the first frame after it.
 var paused: bool = false
 
 var _micro_ticks: int = 0
 var _app_paused: bool = false
+## Set by a frame that a pause skipped, and by an application pause: the next WORKER frame restarts
+## the clock at 0.
+var _resumed: bool = false
+## True from a held boundary until the frame that publishes the held job.
+var _held: bool = false
 ## Reused every tick, so a tick allocates no command list. MatchLoop.step stamps the commands in
 ## place and never empties the list, so the job does, after every step: a command left in it would
 ## be stamped, recorded and applied again on the next tick.
@@ -204,12 +221,13 @@ func _ready() -> void:
 
 
 ## Builds a new world from the scenario with the sim stream of `match_seed`, and a new MatchLoop:
-## empty queue, clock at zero, sequences from 0 again, no checkpoint yet. It publishes the tick-0
-## snapshot, without `ticked`: its match_serial and last_hash first, then a capture with no
-## previous one, so prev = current and nothing slides from the old match. The World runs the
-## implementation that sim_impl resolves to on this platform (_use_impl()), and the ticks run in the
-## mode tick_mode resolves to (resolve_mode()). A job in flight is waited for and dropped first; if
-## that wait reaches its cap, start() logs it and returns with the old match.
+## empty queue, clock at zero, held_ticks, late_ticks and latency_usec_max at zero, sequences from
+## 0 again, no checkpoint yet. It publishes the tick-0 snapshot, without `ticked`: its match_serial
+## and last_hash first, then a capture with no previous one, so prev = current and nothing slides
+## from the old match. The World runs the implementation that sim_impl resolves to on this platform
+## (_use_impl()), and the ticks run in the mode tick_mode resolves to (resolve_mode()). A job in
+## flight is waited for and dropped first; if that wait reaches its cap, start() logs it and
+## returns with the old match.
 func start() -> void:
 	var step: Vector2i = hand_off(_state, HandOffEvent.START)
 	if step.y & HandOffStep.WAIT and not _take_done(WAIT_CAP_MSEC):
@@ -234,6 +252,9 @@ func start() -> void:
 	first.capture(_world, null)
 	_publish(first)
 	_micro_ticks = 0
+	held_ticks = 0
+	late_ticks = 0
+	latency_usec_max = 0
 	_commands.clear()
 	CommandQueue.clear()
 
@@ -354,6 +375,7 @@ static func hand_off(state: int, event: int) -> Vector2i:
 
 func _process(delta: float) -> void:
 	if _world == null or paused or _app_paused:
+		_resumed = true
 		return
 	if _mode == TickMode.WORKER:
 		_process_worker(delta)
@@ -370,10 +392,12 @@ func _process(delta: float) -> void:
 
 
 ## On a phone no frame runs between PAUSED and RESUMED. The background time reaches the first
-## frame after RESUMED, which the engine caps at about 0.14 s, so it plays about two ticks.
+## frame after RESUMED, which the engine caps at about 0.14 s, so in SYNC mode it plays about two
+## ticks; in WORKER mode that frame restarts the clock at 0 instead (ADR 0012 section 1).
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED:
 		_app_paused = true
+		_resumed = true
 	elif what == NOTIFICATION_APPLICATION_RESUMED:
 		_app_paused = false
 	elif what == NOTIFICATION_PREDELETE:
@@ -387,31 +411,55 @@ func _exit_tree() -> void:
 	_join_worker()
 
 
-## One WORKER frame (ADR 0012 section 1): one try_wait() while a job runs; from IDLE the refill
-## (drain, post, clock at 0, and this frame does not advance it); then each boundary the clock
-## passes publishes the finished job and posts the next one, or holds while the job runs: nothing
-## published, no job started, the clock stopped at the boundary, so alpha() is 1.0. A `ticked`
-## handler that restarted the match in SYNC mode gets no job posted, so no job runs beside its
-## inline ticks.
+## One WORKER frame (ADR 0012 section 1): one try_wait() while a job runs, then the clock. Three
+## kinds of frame set the clock to 0 and do not advance it: the refill from IDLE (drain and post);
+## the first frame that finds a held job finished, which publishes it and posts the next one; and
+## the first frame after a pause. Any other frame advances the clock, and at a boundary it publishes
+## the finished job and posts the next one, dropping the whole ticks still owed and keeping the part
+## of a tick (at most one publish per frame, as SYNC drops its backlog), or holds while the job
+## runs: nothing published, no job started, the clock stopped at the boundary, so alpha() is 1.0
+## until the hold ends, and held_ticks counts the held job once.
 func _process_worker(delta: float) -> void:
 	var event: int = HandOffEvent.FRAME
 	if _state == HandOff.RUNNING and _job.done.try_wait():
 		event = HandOffEvent.FRAME_TAKEN
 	var step: Vector2i = hand_off(_state, event)
 	_state = step.x
+	var resumed: bool = _resumed
+	_resumed = false
 	if step.y & HandOffStep.POST:
+		_held = false
 		_micro_ticks = 0
 		_post_next()
 		return
-	_micro_ticks += roundi(maxf(delta, 0.0) * float(Sim.TICK_RATE * MICRO_TICKS_PER_TICK))
-	while _micro_ticks >= MICRO_TICKS_PER_TICK:
+	if _held:
 		if hand_off(_state, HandOffEvent.BOUNDARY).y & HandOffStep.HOLD:
-			_micro_ticks = MICRO_TICKS_PER_TICK
 			return
-		_micro_ticks -= MICRO_TICKS_PER_TICK
-		_publish_job()
-		if _mode != TickMode.WORKER:
-			return
+		_held = false
+		_micro_ticks = 0
+		_publish_and_post()
+		return
+	if resumed:
+		_micro_ticks = 0
+		return
+	_micro_ticks += roundi(maxf(delta, 0.0) * float(Sim.TICK_RATE * MICRO_TICKS_PER_TICK))
+	if _micro_ticks < MICRO_TICKS_PER_TICK:
+		return
+	if hand_off(_state, HandOffEvent.BOUNDARY).y & HandOffStep.HOLD:
+		_micro_ticks = MICRO_TICKS_PER_TICK
+		_held = true
+		held_ticks += 1
+		return
+	_micro_ticks %= MICRO_TICKS_PER_TICK
+	_publish_and_post()
+
+
+## A boundary with the job finished (ADR 0012 section 1): publishes it with `ticked`, then drains
+## and posts the next job. A `ticked` handler that restarted the match in SYNC mode gets no job
+## posted, so no job runs beside its inline ticks.
+func _publish_and_post() -> void:
+	_publish_job()
+	if _mode == TickMode.WORKER:
 		_post_next()
 
 
@@ -499,12 +547,17 @@ func _hand_over() -> void:
 
 
 ## Step 1 of a boundary (ADR 0012 section 1): takes the finished job's snapshot and the World, loop
-## and snapshots back from the job, publishes the snapshot and emits `ticked`. No job is in flight
-## inside a `ticked` handler, so the World there equals the published snapshot.
+## and snapshots back from the job, counts its post-to-done time into late_ticks and
+## latency_usec_max, publishes the snapshot and emits `ticked`. No job is in flight inside a
+## `ticked` handler, so the World there equals the published snapshot.
 func _publish_job() -> void:
 	var next: MatchSnapshot = _job.snapshot
 	_release_job()
 	_state = HandOff.IDLE
+	var latency: int = next.end_usec - next.post_usec
+	latency_usec_max = maxi(latency_usec_max, latency)
+	if latency > TICK_USEC:
+		late_ticks += 1
 	_publish(next)
 	ticked.emit(next.tick)
 
