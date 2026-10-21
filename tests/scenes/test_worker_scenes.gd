@@ -13,16 +13,20 @@ extends GdUnitTestSuite
 ## from the worker is refused by the debug build with an ERROR too; both are caught by the log scan
 ## that every case ends with, as is any other error or script error the engine logs.
 ## One order script plays in both: all 30 blue tanks attack-move toward the red group at tile
-## (34, 10), five of them stop, half of them move on, so that the rigs turn and move, the fog
-## opens, shots fly and tanks die. The orders go through the real CommandQueue, each one just
-## before the frame that drains it, so the two runners never share a queue entry. A command is
-## stamped with the number of frames the instance made before it (the refill frame counts: it
-## posts the job of tick 1), which is the same stamp in both modes.
+## (34, 10) while four of its tanks come out to meet them, five blue tanks stop, half of them move
+## on, so that the rigs turn and move, the fog opens, shots fly and tanks die. The orders go
+## through the real CommandQueue, each one just before the frame that drains it, so the two
+## runners never share a queue entry. A command is stamped with the number of frames the instance
+## made before it (the refill frame counts: it posts the job of tick 1), which is the same stamp
+## in both modes.
 ## Per published tick the cases compare the rig count and names, every rig's position, visibility
-## and hull and turret turns, the fog image and the checkpoints; `ticked` must come from the main
-## thread. The WORKER candidate also runs with sim_impl NATIVE against the GDScript reference
+## and Hull, Team and Turret turns, the fog image and the checkpoints; `ticked` must come from the
+## main thread. The WORKER candidate also runs with sim_impl NATIVE against the GDScript reference
 ## (ADR 0013 section 3: the checkpoints and every view equal), a held tick and a start() during a
-## job. The suite waits only through wait_idle() and the gated probe's capped wait_blocked().
+## job. The suite waits only through wait_idle() and the gated probe's capped wait_blocked(), and
+## every loop that plays frames has a frame budget, so a runner that stops publishing fails the
+## case by name where an unbounded loop would hang the job (gdUnit4's case timeout is a scene-tree
+## timer and cannot fire inside a synchronous loop).
 
 const GatedProbe: GDScript = preload("res://tests/core/gated_probe.gd")
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
@@ -48,6 +52,11 @@ const STOPPED_UNITS: int = 5
 const MOVED_UNITS: int = 15
 const GOAL: Vector2i = Vector2i(34000, 10000)
 const DETOUR: Vector2i = Vector2i(26000, 14000)
+## Red's group at tile (34, 10) (ids 31 to 34) goes out to meet blue at the same stamp, so the
+## armies close from both sides and the first shots come early in the run.
+const RED_FIRST: int = 31
+const RED_UNITS: int = 4
+const MEETING: Vector2i = Vector2i(24000, 14000)
 ## The held case holds the job of this tick, keeps the candidate in the hold for HOLD_FRAMES
 ## frames (the first one reaches the boundary) and plays AFTER_RESUME frames once it is released.
 ## A held frame posts nothing, so the candidate's frame count runs ahead of its stamps after a
@@ -60,6 +69,9 @@ const AFTER_RESUME: int = 8
 const RESTART_AT: int = 40
 const JOB_MSEC: int = 30
 const CHECKPOINT_TICK: int = Replay.CHECKPOINT_PERIOD
+## Frames a play may take beyond one per tick: the refill frame of a WORKER start, which publishes
+## nothing, and one more.
+const SLACK_FRAMES: int = 2
 
 var _scenes: Array[MainScene] = []
 var _probes: Array[SimProbe] = []
@@ -218,14 +230,16 @@ class MainScene:
 		if rig.position != twin.position or rig.visible != twin.visible:
 			return "rig %s position or visibility" % rig.name
 		if turns(rig) != turns(twin):
-			return "rig %s hull or turret turn" % rig.name
+			return "rig %s hull, team or turret turn" % rig.name
 		return ""
 
-	## The turns of a rig's Hull and Turret layers (0 for a type without a turret).
-	static func turns(rig: Node2D) -> Vector2:
+	## The turns of a rig's Hull, Team and Turret layers (0 for a type without a turret).
+	static func turns(rig: Node2D) -> Vector3:
 		var turret: Node2D = rig.get_node_or_null("Turret") as Node2D
-		return Vector2(
-			(rig.get_node("Hull") as Node2D).rotation, 0.0 if turret == null else turret.rotation
+		return Vector3(
+			(rig.get_node("Hull") as Node2D).rotation,
+			(rig.get_node("Team") as Node2D).rotation,
+			0.0 if turret == null else turret.rotation
 		)
 
 	## The orders stamped `stamp`: blue attack-moves at ATTACK_AT, five tanks stop at STOP_AT and
@@ -234,6 +248,8 @@ class MainScene:
 		var found: Array[Command] = []
 		if stamp == ATTACK_AT:
 			found.append(Command.attack_move(1, _ids(BLUE_UNITS), GOAL.x, GOAL.y))
+			var red: PackedInt32Array = PackedInt32Array(range(RED_FIRST, RED_FIRST + RED_UNITS))
+			found.append(Command.attack_move(2, red, MEETING.x, MEETING.y))
 		elif stamp == STOP_AT:
 			found.append(Command.stop(1, _ids(STOPPED_UNITS)))
 		elif stamp == MOVE_AT:
@@ -416,20 +432,28 @@ func _gated_probe() -> SimProbe:
 	return probe
 
 
-## Steps `reference` until it has published the tick `worker` has. False when a wait hits the cap.
+## Steps `reference` until it has published the tick `worker` has, one frame per tick. False when a
+## wait hits the cap or a frame publishes nothing (the loop would not end).
 func _catch_up(reference: MainScene, worker: MainScene) -> bool:
 	while reference.tick() < worker.tick():
-		if not reference.step():
+		var before: int = reference.tick()
+		if not reference.step() or reference.tick() == before:
 			return false
 	return true
 
 
 ## Plays `worker` from its refill frame until it has published `ticks`, waiting after each frame,
 ## catches `reference` up to it and compares the two after every frame. The first difference, or "".
+## A frame of one tick period publishes one tick, so SLACK_FRAMES beyond the ticks and the refill
+## is the budget: a clock that stops publishing fails here and does not loop.
 func _play(worker: MainScene, reference: MainScene, ticks: int) -> String:
+	var budget: int = ticks - worker.tick() + SLACK_FRAMES
 	while worker.tick() < ticks:
+		if budget == 0:
+			return "tick %d was not published within the frame budget" % (worker.tick() + 1)
+		budget -= 1
 		if not worker.step() or not _catch_up(reference, worker):
-			return "a wait reached its cap at tick %d" % worker.tick()
+			return "a wait reached its cap or a frame published nothing at tick %d" % worker.tick()
 		var found: String = worker.diff(reference)
 		if not found.is_empty():
 			return found
@@ -452,4 +476,5 @@ func _assert_alike_runs(worker: MainScene, reference: MainScene) -> void:
 	assert_array(worker.runner.replay.commands).is_equal(reference.runner.replay.commands)
 	assert_int(worker.runner.replay.commands.size()).is_greater(0)
 	assert_int(reference.fog.upload_count()).is_greater(10)
-	assert_int(reference.units.rig_count()).is_less(UNITS)
+	var quiet: String = "no rig died in %d ticks: re-check the orders and TICKS" % TICKS
+	assert_int(reference.units.rig_count()).override_failure_message(quiet).is_less(UNITS)
