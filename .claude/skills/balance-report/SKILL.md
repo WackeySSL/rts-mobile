@@ -8,6 +8,9 @@ argument-hint: "[number of matches, default 100]"
 
 Number of matches: `$ARGUMENTS` (use 100 if empty). Seeds are 1..N, so reports stay comparable.
 
+The matches run only in GitHub Actions (the nightly balance job), never in a session (CLAUDE.md,
+Token budget). In a session, read the latest report in `docs/balance/` instead of running step 1.
+
 1. Run `bash scripts/run-sim-smoke.sh --matches N --report build/balance.json`.
 2. Write `docs/balance/<yyyy-mm-dd>.md` with:
    - win rate per side and per difficulty pairing, with N,

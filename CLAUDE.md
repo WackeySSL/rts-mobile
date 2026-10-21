@@ -24,11 +24,12 @@ Source of truth: this file for rules, `docs/GDD.md` for game design,
 - Ads: Poing Studios godot-admob plugin (Android + iOS) behind `game/ads/AdService.gd`.
 
 ## Commands
-- `bash scripts/verify.sh` - full check (format, lint, import, tests, sim smoke). Run before every commit.
+- `bash scripts/verify.sh` - full check (format, lint, import, tests, sim smoke). Run once per PR head,
+  right before the push (see Token budget).
 - `bash scripts/build-native.sh` - builds the C++ kernels (scons 4.9.1, g++, binutils; the NDK for Android: CI, or a cloud session after `bash scripts/cloud/install-android.sh`).
   verify.sh runs it first and checks the C++ format with the pinned clang-format.
 - `bash scripts/run-tests.sh` - gdUnit4 only.
-- `bash scripts/run-sim-smoke.sh --matches N` - headless AI-vs-AI matches with fixed seeds.
+- `bash scripts/run-sim-smoke.sh --matches N` - headless AI-vs-AI matches with fixed seeds (balance runs: GitHub Actions only).
 - `bash scripts/export-web.sh` - web build for the phone preview.
 - `bash scripts/export-android.sh` - Android debug APK (CI, or a cloud session after `bash scripts/cloud/install-android.sh`; without the SDK it exits 4).
 Phase 0 created `run-tests.sh`, `run-sim-smoke.sh` and `export-web.sh`, Phase 1 `export-android.sh`;
@@ -100,6 +101,25 @@ injected only by the release workflow. UMP consent before any ad request. Detail
 - Tick the checkbox in `docs/ROADMAP.md` when an acceptance criterion is met.
 - Player-facing feature or control: add or update its entry in `docs/HOW_TO_PLAY.md` in the same PR.
   Phase 5 builds the tutorial and the How to play screen from that list.
+
+## Token budget (Michael, 2026-10-21)
+- `scripts/verify.sh` runs once per PR head, right before the push, not after every edit. While
+  working, run only the touched suites (`bash scripts/run-tests.sh -a res://tests/<path>.gd`) and
+  gdformat/gdlint on the changed files. Read the VERIFY SUMMARY and the failing lines, not whole logs.
+- No timing runs in a session: never run `tests/perf/` again to measure or compare times (timings
+  here are noise; CI reports them). The perf suites still run inside verify.sh, because their golden
+  hashes and bounds are deterministic. No AI-vs-AI balance runs in a session: they run only in
+  GitHub Actions. verify.sh's smoke step stays.
+- Red CI: read the CI log, run the failing suite alone, fix that failure, then verify.sh once
+  before the push. Never rerun the full suite locally to find the failure.
+- qa-engineer only when a test fails or a new test is needed.
+- Review: at most 2 rounds. Nits go to the lead's follow-up list, not into a new round. Code PRs get
+  2 review lenses, docs PRs 1 lens and no rounds. Mutation testing only for PRs that touch
+  `game/sim/` or `native/`, at most about 10 chosen mutants. A suite runs 3 times in a row only
+  for thread or clock tests.
+- One lane in work at a time (one row, one small, well-defined task, one PR) until Michael lifts the
+  limit. A PR that only waits for CI or Michael's merge does not count. When more than one PR waits
+  for the same merge, verify their combined tree once before the merge.
 
 ## Subagents and review
 architect, gameplay-dev, ai-dev, touch-ux-dev, art-director, monetization-dev, qa-engineer,

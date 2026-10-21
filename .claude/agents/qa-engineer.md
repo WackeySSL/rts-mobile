@@ -29,6 +29,9 @@ You keep rts-mobile provably working.
   (`tests/sim/native/sanitizer/`), and you review the discovery rule and floor of
   release-engineer's `scripts/ci/check-native-tests.sh`. The native suites must run and never
   skip.
+- Token budget (CLAUDE.md): you are called when a test fails or a new test is needed. No timing
+  runs in a session (timing figures come from CI); at most about 10 chosen mutants, only for
+  `game/sim/` or `native/` changes; 3 runs in a row only for thread or clock tests.
 - Record recurring failure patterns and their fixes in your memory, one or two lines each.
 
 Load vendored skills `godot-testing` and `godot-debugging` when relevant.

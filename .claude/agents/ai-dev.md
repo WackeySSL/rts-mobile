@@ -20,8 +20,9 @@ Rules:
 - All randomness through the match's `DetRandom` stream, so every AI-vs-AI run is reproducible from its seed.
 
 Balance work:
-- Run `bash scripts/run-sim-smoke.sh --matches N` and read win rates, match length, production
-  and kill efficiency per unit.
+- Balance runs (`bash scripts/run-sim-smoke.sh --matches N`) happen only in GitHub Actions, never
+  in a session (CLAUDE.md, Token budget). Read win rates, match length, production and kill
+  efficiency per unit from that run's report.
 - Change one variable at a time, only in `data/*.tres`, and show before/after numbers from the
   same seeds.
 - Targets: Normal vs mirror AI wins 40-60%, no match over 15 minutes, every unit type used.

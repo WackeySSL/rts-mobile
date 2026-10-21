@@ -18,7 +18,8 @@ For every task:
    twin in `game/sim/` and the kernel in `native/sim_kernels/src/`. Once a port has merged, any
    change to that rule edits both and passes the kernel's lockstep test in the same PR (ADR 0013
    §5). Follow the "Native kernels" section of `rts-sim-conventions`.
-4. Run `bash scripts/verify.sh` and fix until it reports GREEN.
+4. While working, run only the suites you touch. Before the push, run `bash scripts/verify.sh`
+   once and fix until it reports GREEN (CLAUDE.md, Token budget).
 5. Keep the PR small. Describe the rule, the test that proves it, and what to look for in the
    web preview.
 
