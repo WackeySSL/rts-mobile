@@ -69,6 +69,10 @@ and the worker scene test as P50w (#140) merged them, and §4 one on the perf ca
 as P50a (#142) merged it (`INVALID` only for a refused preflight, `late_ticks_max` n/a in `SYNC`,
 the fail-closed rows). No accepted text changed.
 
+Status note (2026-10-21, P26af docs): §4 carries a dated status note on the CI budget as P49b
+(#150) merged it (`budget.cfg` at 1.5 x the worst of 11 calibration runs of the native tick, the
+runner-speed risk). No accepted text changed.
+
 ## Context
 The Phase 2 plan (P26s) says that a contract the phone probe contradicts changes through a new ADR
 before P34 starts. The probe ran on 2026-10-12. The full reports are comments on PR #35.
@@ -708,6 +712,20 @@ shows it as n/a), because `late_ticks` also counts inline ticks. `INVALID` cover
 refused with a job in flight (`preflight_job_in_flight`); the zero-monitor rule above, the pause
 rule, the golden comparison and the `impl` verdict come with plan row P50a2. The card shows
 `held_ticks` without a verdict, as above. The plan's section P50a "As merged" holds the keys.
+
+Status note (2026-10-21, P26af docs, after P49b, #150; the text above stays as accepted): the CI
+budget as merged. `tests/perf/budget.cfg` holds `[sim] mean_ms=0.4575`, `p95_ms=0.8475`,
+`ticks=900`, `units=150`: 1.5 x the worst min-of-3 (0.305 ms mean and 0.565 ms p95, native) of
+11 CI runs of the P49a harness on the sim of `main` at `6cae39b` (six `workflow_dispatch` runs on
+temporary branches `calib/p49b-1` to `calib/p49b-6`, the push run of `main`, three PR #144 runs
+and the PR #146 run). Over those runs `ref_ms` read 0.014 to 0.035 and the native mean 0.150 to
+0.305, so most of the spread is runner speed (about 2x); `est_phone_p95_ms` at the budget limit
+is 0.8475 x 14.0 = 11.87 against 13.3 (printed, never asserted). The budget judges the native
+line only (`impl=native`, the `job_usec` of `TickJob.run()`): the GDScript line stays report
+only, and without the library only the 20 ms catastrophic cap is judged, which stays on both
+lines. Risk (recorded, not a decision): a runner slower than every calibrated one can fail the
+budget with no regression; a budget relative to `ref_ms` needs a new ADR, as ADR 0011 §4 says.
+The plan's section P49b "As merged" holds the names.
 
 ### 5. Flow fields on the worker
 - **Flow ticks sit inside the job p95.** At 256 cells a field takes 16 ticks, and the arena

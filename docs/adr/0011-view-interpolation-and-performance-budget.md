@@ -32,6 +32,10 @@ line-check bound, the catastrophic cap on both `PERF` lines, the two places a si
 on P46b (#144), which re-pinned nothing; the §4 note's last bullet, on §5's view time, carries a
 sentence on P50a's `view_p95_ms` (#142). No accepted text changed.
 
+Status note (2026-10-21, P26af docs): §5 carries a dated status note on the card as P50a2 (#151),
+P50a3 (#152) and P50b (#154) merged it: about 30 rows in a scrolling body under a `GATE` header,
+not "about 8 grouped lines". No accepted text changed.
+
 ## Context
 ROADMAP Phase 2 asks for three things:
 - "View interpolation at the display frame rate";
@@ -356,6 +360,17 @@ above stay as accepted and as dated):
   `data/dev/perf_gate.tres`.
 - Debug APKs run GDScript slower than release, so the gate errs on the safe side. The web
   preview's numbers are reported but do not gate; its hashes must match.
+
+Status note (2026-10-21, P26af docs, after P50a2, #151, P50a3, #152, and P50b, #154; the text
+above stays as accepted): "about 8 grouped lines" is not what merged. The rows that ADR 0012
+(§4's verdicts and the flow line), ADR 0013 (§3's `impl` line, §15's four keys) and ADR 0014
+(the pacing rows) added make the card about 30 rows, so `PerfHud` puts a header (`GATE: PASS` or
+`GATE: FAIL` with the rows that failed, then the run line) above a body in a `ScrollContainer`;
+the layout tests (`tests/ui/test_perf_hud_card.gd`, `tests/ui/test_perf_arena_layout.gd`) keep
+the whole card and its two buttons ("Copy report", "Run again", at least `dp(48)`) inside the safe
+area. The card is hidden while a run records and shows at `run_ticks` with the runner paused. In
+the perf arena the card sits under a bar with the back and layers buttons
+(`Hud/SafeArea/Layout`). The plan's sections P50a2 and P50b "As merged" hold the names.
 
 ### 6. When the budget is missed
 In order (the card's per-phase and per-layer numbers pick the step):

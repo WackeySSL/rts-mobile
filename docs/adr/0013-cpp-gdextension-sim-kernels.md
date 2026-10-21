@@ -114,6 +114,11 @@ notes from "P26ae docs" sit in §2 (TARGETING's checked list grows from 35 to 40
 covers FOG's unhashed outputs in CI; the device side stays open) and §15 (its four summary keys
 land in P50a2, not P50a; P49a's watch lines use their names). No accepted text changed.
 
+Status note (2026-10-21, P26af docs): after the merges of P51b (#149, the arm64 determinism job)
+and P51r (#153, the release-template perf APK), a dated status note from "P26af docs" sits in §10
+on its line "`install-godot.sh`: unchanged" (the script now picks the editor per architecture and
+fetches the release template on request). No accepted text changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -1594,6 +1599,20 @@ Status note (2026-10-13, P26l docs, P55b as merged, #69), on "Sessions" and the 
   the preview job builds the Linux library and seeds first, as the spike did. `export-web.sh`
   changes (§7).
 - **`install-godot.sh`:** unchanged. The dlink templates come only with option B.
+
+  Status note (2026-10-21, P26af docs, after P51b, #149, and P51r, #153; the line above stays as
+  accepted): `scripts/ci/install-godot.sh` did change, twice, and neither change adds dlink
+  templates. P51b: it picks the editor from `uname` (the Linux arm64 build on an arm64 Linux
+  machine, the Linux x86_64 build everywhere else), each pinned by SHA-512
+  (`EDITOR_SHA512_X86_64`, `EDITOR_SHA512_ARM64`, the lines of the official godot-builds
+  4.7.2-stable `SHA512-SUMS.txt`); `scripts/ci/test-native-scripts.sh` repeats both SHAs as
+  literals and checks the pick per architecture against a stub `curl`. P51r: `--android-release`
+  also fetches `templates/android_release.apk` under a SHA-256 pin (`ANDROID_RELEASE_SUM`), the
+  template of the perf APK. The arm64 item of the bullet below as merged: the job
+  `determinism-arm64` on `ubuntu-24.04-arm` (not required, no job needs it) builds the library
+  with `build-native.sh --arch arm64 --compiler clang --optimize speed` and runs
+  `tests/sim/native`, `test_determinism.gd`, `test_world_hash.gd` and
+  `tests/perf/test_golden_hashes.gd` in one `run-tests.sh` call (plan section P51b "As merged").
 - **Determinism suites:** golden hashes under both implementations on x86_64 with g++ (P49a),
   on x86_64 with clang `-O3` (`native-clang`), and on arm64 Linux with clang `-O3` (P51b, which
   builds a Linux arm64 library).
