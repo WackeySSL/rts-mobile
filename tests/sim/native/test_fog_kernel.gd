@@ -11,7 +11,7 @@ extends GdUnitTestSuite
 ## GDScript phase and one the C++ kernel, and compares their full state (StateDiff) as well as the
 ## values the rule gives. The module's own suites (test_fog.gd, test_fog_edges.gd and
 ## test_fog_grid.gd) run under both implementations too; the 900-tick lockstep and the crafted
-## stamp cases are P46n2.
+## stamp cases are test_fog_lockstep.gd, test_fog_lockstep_cases.gd and test_fog_lockstep_random.gd.
 
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const StateDiff: GDScript = preload("res://tests/sim/support/state_diff.gd")

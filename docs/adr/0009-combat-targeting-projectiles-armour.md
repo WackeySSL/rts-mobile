@@ -13,6 +13,10 @@ the counter triangle), §1 and §4 carry dated status notes on the triangle as t
 plays it and on how `game/sim/Combat.gd` realises the projectile rules. No accepted text changed,
 and no balance value changed.
 
+Status note (2026-10-21, P26ad docs): §2 carries a dated status note with the lead's decision for
+P46b (the fog rules) on the owner-0 design note: a neutral subject has no fog grid and is treated
+as seeing every cell. No accepted text changed.
+
 ## Context
 ROADMAP Phase 2 asks for "combat with projectiles, armour classes and death". The GDD lists six
 MVP units and four armour classes (infantry, light, heavy, building), and puts the damage
@@ -148,6 +152,14 @@ ascending id order:
   neutral row (owner 0) would acquire every player's units. No Phase 2 scenario arms a neutral
   unit; the plan records this as a design note for P42a, P44 (its rows P44a and P44b) and P46b,
   whose per-player vision lookup must handle owner 0.
+
+Status note (2026-10-21, P26ad docs; the text and the note above stay as accepted and as dated).
+The lead's decision for P46b, which adds "its cell is visible to the unit's owner" to the valid
+target (above) in both `Targeting` versions: a subject of owner 0 (neutral) has no fog grid
+(ADR 0010 §1: players are 1..`player_count`, neutral 0 has no grid) and is treated as seeing every
+cell, so neutral behaviour is unchanged by the fog rules. The shipped data holds no armed neutral
+(no unit of owner 0 in `data/scenarios/`). P46b is running; the plan's row and section P46b hold
+the decision, and this note records nothing of its outcome.
 
 ### 3. Engagement
 - With a valid target inside weapon range (`min_range <= d <= range`), the unit's `nav_mode` is

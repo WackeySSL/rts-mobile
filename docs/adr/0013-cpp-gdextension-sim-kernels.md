@@ -102,6 +102,12 @@ reading of P46's `PERF` line: only TARGETING meets clause (a) and P41n ports it,
 TARGETING's checked list of 35 names, `line_clear` in `core/`, the empty-grid guard). No accepted
 text changed.
 
+Status note (2026-10-21, P26ad docs): after the merge of P46n (#134, the fifth kernel, FOG),
+dated status notes from "P26ad docs" sit in §2 (the library's mask is now 0x46A, FOG's checked
+list of 25 names, the mask pick and the twin's guard; the P26ac note's mask 0x6A and its "no
+library reports it" were true on `f1494a5` and stay as dated records) and §3 (what `self_check`'s
+hash comparison cannot see of FOG on a device: an open item). No accepted text changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -745,6 +751,35 @@ absorbs next to the C++ phases.
     the `ERROR` line), as P26y docs' note recorded for three. The plan's section P41n "As merged"
     holds the details.
 
+  Status note (2026-10-21, P26ad docs, P46n as merged, #134), the text and the notes above stay
+  as accepted and as dated:
+  - **The fifth kernel.** `bind/kernel_list.h` gains `K0(fog, world_access::PHASE_FOG)`, so the
+    library's phase mask is 0x46A (FLOW 1, TARGETING 3, SEPARATION 5, INTEGRATE 6, FOG 10), the
+    mask of `tests/sim/support/sim_impls.gd`'s five `EXPECTED_PHASES`. The P41n note's "the
+    library's phase mask is 0x6A" and "no library reports it" (0x46A) were true on `main` at
+    `f1494a5`; since P46n the library reports 0x46A. The first line of `FogUpdate.run` is the
+    dispatch (bit 10). `FogUpdate.begin`, `World.remove_dead`'s unstamp, `World.prepare()`'s
+    initial stamp and `FogGrid.begin_update` stay GDScript (REMOVE is not a ported phase) and
+    keep calling `FogGrid.stamp`, which stays the reference; its C++ twin is `fog::stamp` in
+    `core/fog.cpp`, which writes the visible counts, the explored bytes, the fixed dirty-list
+    blocks with their counts and flags, the `listed` marks and the version in place (P26h's
+    note above).
+  - **FOG's checked list** holds the 25 names the kernel gets or sets (P54's note above: 29):
+    `max_rows`, `map_cols`, `map_rows` and `type_speed` lose its bit, so `max_rows` now carries no
+    phase bit. `type_sight` keeps it: `run` reads only its size, the id of the pad mask. The
+    table still holds 107 entries.
+  - **The mask pick** is the twin's `mini(type_index, type_sight.size())` (in C++
+    `smaller(type_index, rules.pad_mask)`, with `pad_mask` the size of `type_sight`): the pad
+    mask's id is fixed at `prepare()`, so a mask added after it changes no id.
+  - **The twin's guard.** `FogUpdate.run`'s `fog.cells == 0` test became "the sides make the
+    cells" (`cols >= 1`, `rows >= 1` and `cells == cols x rows`, tested by division so that it
+    cannot overflow; `usable(grid)` in `core/fog.cpp` is the same test), because C++ cannot divide
+    by a side of 0. `FogGrid.configure` never makes such a grid. It is the one change to the
+    twin's rule.
+  - Native timing (PR #134's text, seed-42 arena): the FOG phase about 0.054 -> 0.010 ms, the
+    native `est_phone_p95_ms` about 8.9 -> 6.2. The plan's section P46n "As merged" holds the
+    details; the 900-tick lockstep and the crafted cases are P46n2's.
+
 ### 3. Dispatch and the implementation switch
 - **`World` gains two members (P54):**
   - `kernels: Object`, where null means GDScript;
@@ -918,6 +953,16 @@ absorbs next to the C++ phases.
   `NativeKernels.abi_matches` (`ABI_VERSION = 1`) behind the seam
   `NativeKernels._create(kernel_class)`; plan contract rows `MatchRunner` v1 and Native kernels,
   "P54r as merged".
+
+  Status note (2026-10-21, P26ad docs, after P46n, #134; the text above stays as accepted): like
+  FLOW (the P26z note above), FOG has outputs that the hash leaves out. `self_check` compares only
+  `state_hash()`, and of the fog the hash covers `visible` and `explored` (`FogGrid.HASHED`);
+  `version`, the dirty lists (`dirty`, `dirty_count`), `dirty_full` and `listed` are unhashed.
+  On a device the self-check therefore cannot see a fault of the FOG kernel in those outputs,
+  which `FogLayer` reads (`version_of`, `dirty_cells`, `dirty_overflowed`; `listed` decides what
+  the lists hold). In CI they are P46n2's to cover (the plan's row P46n: the 900-tick lockstep of
+  `visible`, `explored`, `version`, the dirty lists and `listed`). The device side is an open
+  item: no decision here; a later core PR or a later note takes it.
 
 ### 4. Determinism rules for C++
 - **Language and types:**
