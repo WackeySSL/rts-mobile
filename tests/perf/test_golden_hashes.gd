@@ -5,8 +5,12 @@ extends GdUnitTestSuite
 ## and its checkpoints every 150 ticks and its final hash must equal the literals in
 ## data/dev/perf_gate.tres (golden_ticks and golden_hex): one set of hashes for both, because the
 ## choice of implementation is never hashed. The first checkpoint that differs fails the case,
-## and the message names its tick and the parts of the state at that tick (World.hash_parts()
-## under World.hash_section_names()), so the section that moved is read off the message.
+## and the message names its tick, the golden and the real hash and the parts of the run's state at
+## that tick (World.hash_parts() under World.hash_section_names()). The gate file holds only the
+## combined hash of each checkpoint, so the parts are the run's own: the section that moved is
+## found by comparing them with the same message from a run on the base commit. The message ends
+## with the two lines of the gate file that would pin the run, to paste over the old ones, so a
+## re-pin (exception 3) needs one failing run and not one for each checkpoint.
 ##
 ## The suite reads no clock and attaches no probe, so it can run alone by path on another
 ## architecture (P51b runs it on arm64) and the native-clang CI job runs it beside the native
@@ -22,6 +26,18 @@ const SEED: int = 42
 const GOLDEN_STEP: int = 150
 ## What a golden hash looks like in the file: World.hash_hex(), 16 lower-case hex digits.
 const HEX_FORM: String = "^[0-9a-f]{16}$"
+## How the two arrays begin in the gate file, which is how a failure prints the lines to paste.
+const TICKS_LINE: String = "golden_ticks = PackedInt32Array("
+const HEX_LINE: String = "golden_hex = PackedStringArray("
+## The checkpoints of the runs made by hand. World.hash_hex() writes the lowest byte of a hash
+## first, so these differ in both ends of the 16 digits, and a comparison that reads part of a
+## hash shows; the two flips change the first two digits and the last two.
+const HAND_TICKS: Array[int] = [150, 300, 450, 600]
+const HAND_HASHES: Array[int] = [
+	0x1000000000000001, 0x2000000000000002, 0x3000000000000003, 0x4000000000000004
+]
+const FIRST_DIGITS_FLIP: int = 0x1
+const LAST_DIGITS_FLIP: int = 0x7 << 56
 ## Names that would put a clock or a probe into this file. Written in pieces here, so that the scan
 ## of the case below does not find itself; a probe or a timing driver belongs in test_sim_perf.gd.
 const BANNED_PARTS: Array[Array] = [
@@ -60,9 +76,28 @@ func test_the_arena_ends_on_the_golden_hashes_under_both_implementations(
 	assert_int(played.native_phases).is_equal(
 		SimImpls.expected_mask() if impl == SimImpls.Impl.NATIVE else 0
 	)
+	# A failure names the parts of the state at its tick, so the run took them at every golden tick.
+	var taken: Array[int] = []
+	taken.assign(played.parts.keys())
+	assert_array(taken).is_equal(Array(gate.golden_ticks))
+	for tick: int in played.parts:
+		assert_int(played.parts[tick].size()).is_equal(World.hash_section_names().size())
 	var problem: String = _first_difference(gate, played)
 	var label: String = "native" if impl == SimImpls.Impl.NATIVE else "gdscript"
 	assert_str(problem).override_failure_message("%s: %s" % [label, problem]).is_empty()
+	# The lines that a failure would print are the lines of the file when the run matches it (no
+	# second failure, and not the whole file in the message, when it does not).
+	if problem.is_empty():
+		assert_str(FileAccess.get_file_as_string(GATE_PATH)).contains(_repin_text(played))
+
+
+## The test above runs once for each parameter set, so a `_both()` that dropped one would leave the
+## suite green with one implementation unchecked: the sets are the two implementations, once each.
+func test_the_parameter_sets_are_both_implementations_once_each() -> void:
+	var seen: Array[int] = []
+	for parameters: Array in _both():
+		seen.append(parameters[0])
+	assert_array(seen).is_equal(SimImpls.IMPLS)
 
 
 ## The file holds a hash for every 150 ticks up to the last tick of the run, each one a hash and
@@ -84,38 +119,78 @@ func test_the_gate_file_holds_a_golden_hash_every_150_ticks_and_the_final() -> v
 
 
 ## The comparison names what a developer needs: the first checkpoint that differs and only that
-## one, with the parts of the state at its tick; a final hash, an empty gate and a golden tick that
-## the run has no checkpoint at are failures of their own. The run here is made by hand.
+## one, with the golden and the real hash and the parts of the state at its tick. Each of the four
+## checkpoints of a run made by hand is the one that differs in turn, in the first and in the last
+## digits of its hash (the others stay equal), and when two differ the first one is named.
 func test_the_first_differing_checkpoint_is_named_with_the_parts_of_the_state() -> void:
 	var names: PackedStringArray = World.hash_section_names()
 	var played: Played = _hand_played(names.size())
-	var gate: PerfGateDef = _hand_gate([150, 300], [0x1111, 0x2222])
-	assert_str(_first_difference(gate, played)).is_empty()
-	# The second checkpoint differs: its tick, the golden and the real hash, every section name.
-	gate = _hand_gate([150, 300], [0x1111, 0x2223])
-	var message: String = _first_difference(gate, played)
-	assert_str(message).contains("tick 300").contains(World.hash_hex(0x2223))
-	assert_str(message).contains(World.hash_hex(0x2222)).not_contains("tick 150")
-	for index: int in names.size():
-		assert_str(message).contains("%s=%s" % [names[index], World.hash_hex(300 + index)])
-	# Both differ: the first one is named, and the second is not.
-	gate = _hand_gate([150, 300], [0x1112, 0x2223])
-	message = _first_difference(gate, played)
-	assert_str(message).contains("tick 150").not_contains("tick 300")
-	# The final hash is checked after the checkpoints, and the last golden tick must be the last.
+	assert_str(_first_difference(_hand_gate(HAND_TICKS, HAND_HASHES), played)).is_empty()
+	for index: int in HAND_TICKS.size():
+		for flip: int in [FIRST_DIGITS_FLIP, LAST_DIGITS_FLIP]:
+			var hashes: Array[int] = HAND_HASHES.duplicate()
+			hashes[index] ^= flip
+			var tick: int = HAND_TICKS[index]
+			var message: String = _first_difference(_hand_gate(HAND_TICKS, hashes), played)
+			assert_str(message).contains(_differing(tick)).contains(
+				(
+					"golden %s, got %s"
+					% [World.hash_hex(hashes[index]), World.hash_hex(HAND_HASHES[index])]
+				)
+			)
+			for other: int in HAND_TICKS:
+				if other != tick:
+					assert_str(message).not_contains(_differing(other))
+			for section: int in names.size():
+				assert_str(message).contains(
+					"%s=%s" % [names[section], World.hash_hex(tick + section)]
+				)
+	var two: Array[int] = HAND_HASHES.duplicate()
+	two[1] ^= LAST_DIGITS_FLIP
+	two[3] ^= FIRST_DIGITS_FLIP
+	var both: String = _first_difference(_hand_gate(HAND_TICKS, two), played)
+	assert_str(both).contains(_differing(300)).not_contains(_differing(600))
+
+
+## The failures that are not a differing checkpoint: a final hash that is not the last
+## checkpoint's, a last golden tick that is not the run's last, a golden tick the run has no
+## checkpoint at, a gate that holds nothing and arrays that do not pair up.
+func test_the_other_ways_a_gate_can_fail_are_named() -> void:
+	var played: Played = _hand_played(World.hash_section_names().size())
 	played.final_hash = 0x3334
-	message = _first_difference(_hand_gate([150, 300], [0x1111, 0x2222]), played)
-	assert_str(message).contains("final").contains(World.hash_hex(0x3334))
-	played.final_hash = 0x2222
-	message = _first_difference(_hand_gate([150], [0x1111]), played)
-	assert_str(message).contains("final").contains("tick 300")
-	# A golden tick the run has no checkpoint at, and a gate that holds nothing.
-	message = _first_difference(_hand_gate([150, 301], [0x1111, 0x2222]), played)
-	assert_str(message).contains("tick 301").contains("no checkpoint")
+	var message: String = _first_difference(_hand_gate(HAND_TICKS, HAND_HASHES), played)
+	assert_str(message).contains("final hash at tick 600").contains(World.hash_hex(0x3334))
+	played = _hand_played(World.hash_section_names().size())
+	message = _first_difference(_hand_gate(HAND_TICKS.slice(0, 3), HAND_HASHES.slice(0, 3)), played)
+	assert_str(message).contains("last golden tick 450").contains("last tick 600")
+	var ticks: Array[int] = [150, 300, 450, 601]
+	message = _first_difference(_hand_gate(ticks, HAND_HASHES), played)
+	assert_str(message).contains("tick 601").contains("no checkpoint")
 	message = _first_difference(_hand_gate([], []), played)
 	assert_str(message).contains("no golden")
-	message = _first_difference(_hand_gate([150, 300], [0x1111]), played)
+	message = _first_difference(_hand_gate(HAND_TICKS, HAND_HASHES.slice(0, 3)), played)
 	assert_str(message).contains("pair")
+
+
+## Every failure ends with the two lines that would pin the run: the checkpoints every 150 ticks
+## up to its last tick, in the form of the gate file (the real run is held to that form by the
+## case that runs the arena). A re-pin is then a paste, whatever the failure was.
+func test_a_failure_ends_with_the_two_lines_that_would_pin_the_run() -> void:
+	var played: Played = _hand_played(World.hash_section_names().size())
+	var quoted: PackedStringArray = PackedStringArray()
+	for hash_value: int in HAND_HASHES:
+		quoted.append('"%s"' % World.hash_hex(hash_value))
+	var lines: String = "%s150, 300, 450, 600)\n%s%s)" % [TICKS_LINE, HEX_LINE, ", ".join(quoted)]
+	assert_str(_repin_text(played)).is_equal(lines)
+	var wrong: Array[int] = HAND_HASHES.duplicate()
+	wrong[1] ^= FIRST_DIGITS_FLIP
+	for gate: PerfGateDef in [
+		_hand_gate(HAND_TICKS, wrong), _hand_gate([], []), _hand_gate(HAND_TICKS, wrong.slice(0, 3))
+	]:
+		assert_str(_first_difference(gate, played)).is_not_empty().ends_with(lines)
+	# A run that stopped at tick 300 can pin only what it did.
+	played.final_tick = 300
+	assert_str(_repin_text(played)).starts_with(TICKS_LINE + "150, 300)\n")
 
 
 ## No clock and no probe in this file (the header's promise to P51b), by a scan of its own source.
@@ -170,14 +245,19 @@ func _play(impl: int, gate: PerfGateDef) -> Played:
 ## "" when every golden checkpoint of `gate` equals the run's and its last tick is the run's final
 ## tick with the final hash; else the first thing that is wrong, named: a gate that holds nothing or
 ## whose arrays do not pair, a golden tick the run has no checkpoint at, the first checkpoint whose
-## hash differs (its tick, both hashes and the parts of the state at that tick), then the final.
+## hash differs (its tick, both hashes and the parts of the state at that tick), then the final;
+## the problem is followed by the lines that would pin the run (_repin_text).
 func _first_difference(gate: PerfGateDef, played: Played) -> String:
 	var problem: String = _gate_problem(gate)
 	if problem.is_empty():
 		problem = _checkpoint_problem(gate, played)
 	if problem.is_empty():
 		problem = _final_problem(gate, played)
-	return problem
+	if problem.is_empty():
+		return ""
+	return (
+		"%s\nlines of %s that would pin this run:\n%s" % [problem, GATE_PATH, _repin_text(played)]
+	)
 
 
 ## What is wrong with the gate's arrays alone: nothing in them, or unequal sizes.
@@ -201,9 +281,9 @@ func _checkpoint_problem(gate: PerfGateDef, played: Played) -> String:
 		var got: String = World.hash_hex(played.checkpoint_hashes[at])
 		if got != gate.golden_hex[index]:
 			return (
-				"first differing checkpoint, tick %d: golden %s, got %s; parts at that tick: %s"
+				"%s golden %s, got %s; parts at that tick: %s"
 				% [
-					tick,
+					_differing(tick),
 					gate.golden_hex[index],
 					got,
 					_parts_text(played.parts.get(tick, PackedInt64Array()))
@@ -228,6 +308,24 @@ func _final_problem(gate: PerfGateDef, played: Played) -> String:
 	return ""
 
 
+## How the message of a differing checkpoint begins.
+func _differing(tick: int) -> String:
+	return "first differing checkpoint, tick %d:" % tick
+
+
+## The two lines of the gate file that would pin `played`: its checkpoints every GOLDEN_STEP ticks
+## up to its last tick, in the form of the file (a missing checkpoint is left out).
+func _repin_text(played: Played) -> String:
+	var ticks: PackedStringArray = PackedStringArray()
+	var hexes: PackedStringArray = PackedStringArray()
+	for tick: int in range(GOLDEN_STEP, played.final_tick + 1, GOLDEN_STEP):
+		var at: int = played.checkpoint_ticks.find(tick)
+		if at >= 0:
+			ticks.append(str(tick))
+			hexes.append('"%s"' % World.hash_hex(played.checkpoint_hashes[at]))
+	return "%s%s)\n%s%s)" % [TICKS_LINE, ", ".join(ticks), HEX_LINE, ", ".join(hexes)]
+
+
 ## The parts of a state as `name=hex` pairs under World.hash_section_names(), in that order.
 func _parts_text(parts: PackedInt64Array) -> String:
 	var names: PackedStringArray = World.hash_section_names()
@@ -237,16 +335,16 @@ func _parts_text(parts: PackedInt64Array) -> String:
 	return " ".join(pairs) if not pairs.is_empty() else "(not taken)"
 
 
-## A run that no match produced: checkpoints at ticks 150 and 300 with the hashes 0x1111 and 0x2222,
-## the final tick 300 with 0x2222 and, at each, parts that name their tick (150 + index, 300 +
-## index).
+## A run that no match produced: a checkpoint at each of HAND_TICKS with the HAND_HASHES, the final
+## tick 600 with the last hash and, at each checkpoint, parts that name their tick (the tick plus
+## the index of the section).
 func _hand_played(section_count: int) -> Played:
 	var played: Played = Played.new()
-	played.checkpoint_ticks = PackedInt32Array([150, 300])
-	played.checkpoint_hashes = PackedInt64Array([0x1111, 0x2222])
-	played.final_tick = 300
-	played.final_hash = 0x2222
-	for tick: int in [150, 300]:
+	played.checkpoint_ticks = PackedInt32Array(HAND_TICKS)
+	played.checkpoint_hashes = PackedInt64Array(HAND_HASHES)
+	played.final_tick = HAND_TICKS[-1]
+	played.final_hash = HAND_HASHES[-1]
+	for tick: int in HAND_TICKS:
 		var parts: PackedInt64Array = PackedInt64Array()
 		for index: int in section_count:
 			parts.append(tick + index)

@@ -12,8 +12,8 @@ extends GdUnitTestSuite
 ## about the clock is asserted, because the CI wall-clock budget is P49b's. What the suite does
 ## enforce is deterministic (plan P49a): the cost bounds from World.stats, the 150 units at tick 0,
 ## no projectile overflow, the pinned alive_end and projectile peak, and the growth of static
-## memory (tests/perf/support/perf_bounds.gd holds the bounds and test_perf_bounds.gd pins them);
-## the golden hashes are checked by test_golden_hashes.gd.
+## memory (tests/perf/support/perf_bounds.gd holds the bounds, perf_run.gd applies them to a run and
+## test_perf_bounds.gd pins both); the golden hashes are checked by test_golden_hashes.gd.
 ##
 ## The second PERF line (plan P38pn, ADR 0013 section 15): when the SimKernels library is loaded,
 ## seed 42 runs three more times, each after the GDScript run it pairs with, with the kernels
@@ -48,6 +48,9 @@ extends GdUnitTestSuite
 
 const PerfReport: GDScript = preload("res://tests/perf/support/perf_report.gd")
 const PerfBounds: GDScript = preload("res://tests/perf/support/perf_bounds.gd")
+## What one match leaves: the tick times, the per-phase sums, the World.stats maxima, the
+## checkpoints and the readings the bounds judge (tests/perf/support/perf_run.gd).
+const Run: GDScript = preload("res://tests/perf/support/perf_run.gd")
 ## The run-outcome pins (plan P49a, ADR 0011 section 4): what the seed-42 arena ends on at
 ## 4eb974e71b2107be, 71 of its 150 units alive at tick 900 and at most 28 projectile slots in use at
 ## once. A run must end within PerfBounds.MARGIN_PERCENT (25 %, rounded up) of each, so alive_end in
@@ -99,42 +102,6 @@ var _report: Dictionary = {}
 var _native_report: Dictionary = {}
 ## The crafted order of the COMMANDS watch line (_craft_a_large_order), made once.
 var _crafted: Dictionary = {}
-
-
-## What one match leaves: the tick times (the job, and Sim.step inside it), the per-phase sums, the
-## World.stats maxima and the checkpoints. An engine base class, so it may sit inside this file
-## (P56c).
-class Run:
-	extends RefCounted
-	## TickJob.run() of each tick, in ms (the snapshot's job_usec), and Sim.step alone (step_usec).
-	var tick_ms: PackedFloat64Array = PackedFloat64Array()
-	var step_ms: PackedFloat64Array = PackedFloat64Array()
-	## The COMMANDS phase of each tick in microseconds, and the replay's command log, which says
-	## which tick ordered the most units.
-	var commands_usec: PackedInt64Array = PackedInt64Array()
-	var order_log: PackedInt32Array = PackedInt32Array()
-	var phase_usec: PackedInt64Array = PackedInt64Array()
-	var stats_max: PackedInt32Array = PackedInt32Array()
-	var units: int = 0
-	var alive_end: int = 0
-	var proj_peak: int = 0
-	var overflow: int = 0
-	## The rules the World ran with that bound the cost counters.
-	var flow_budget: int = 0
-	var sep_scan: int = 0
-	## Performance.MEMORY_STATIC after tick PerfBounds.MEMORY_FIRST_TICK and MEMORY_LAST_TICK.
-	var memory_first: int = 0
-	var memory_last: int = 0
-	## The ticks whose snapshot has prev_pos_x other than pos_x (it slid from the previous one).
-	var slid_ticks: int = 0
-	## The phases that ran in C++ (World.native_phases after the last tick): 0 for a GDScript run.
-	var native_mask: int = 0
-	## pos_x then pos_y of every unit, before the first tick and after the last.
-	var start_pos: PackedInt32Array = PackedInt32Array()
-	var final_pos: PackedInt32Array = PackedInt32Array()
-	var checkpoint_ticks: PackedInt32Array = PackedInt32Array()
-	var checkpoint_hashes: PackedInt64Array = PackedInt64Array()
-	var final_hash: int = 0
 
 
 func before() -> void:
@@ -258,6 +225,15 @@ func test_each_run_timed_every_tick_of_the_arena() -> void:
 		assert_int(inside).is_equal(TICKS)
 		assert_float(job_sum).is_greater(step_sum)
 		assert_int(run.slid_ticks).is_greater(TICKS / 3)
+		# The COMMANDS time of each tick (the watch line reads one of them) is the COMMANDS phase of
+		# the snapshots and no other: it adds up to the phase's sum over the run, exactly, because
+		# both come from the same snapshots. This is no timing assertion, and a read from another
+		# phase or another field gives another sum.
+		var commands_sum: int = 0
+		for usec: int in run.commands_usec:
+			commands_sum += usec
+		assert_int(commands_sum).is_greater(0)
+		assert_int(commands_sum).is_equal(run.phase_usec[SimProbe.Phase.COMMANDS])
 	assert_int(_report["units"]).is_equal(_seed_42[0].units)
 	assert_int(_report["alive_end"]).is_equal(_seed_42[0].alive_end)
 	assert_int(_report["proj_peak"]).is_equal(_seed_42[0].proj_peak)
@@ -269,34 +245,15 @@ func test_each_run_timed_every_tick_of_the_arena() -> void:
 ## World.stats under its bound, 150 units at tick 0, no projectile overflow, alive_end and the
 ## projectile peak within the margin of their pins, and the static memory (debug builds). A bounded
 ## counter that reads 0 fails too, so a sample that read nothing cannot pass. PerfBounds is pinned
-## by test_perf_bounds.gd; the wall clock is not bounded here (P49b).
+## by test_perf_bounds.gd, which also pins what Run.bound_lines applies (each bound, on a run made
+## by hand); the wall clock is not bounded here (P49b).
 func test_the_arena_stays_inside_its_cost_load_and_memory_bounds() -> void:
 	var found: Array[String] = []
 	for printed: Dictionary in _printed():
 		var label: String = printed["report"].get(PerfReport.IMPL_KEY, "gdscript")
 		var runs: Array[Run] = printed["runs"]
 		for run: Run in runs:
-			var bounds: Dictionary[int, int] = PerfBounds.cost_bounds(
-				run.flow_budget, run.sep_scan, run.units
-			)
-			var lines: Array[String] = PerfBounds.cost_violations(run.stats_max, bounds)
-			for stat: int in bounds:
-				if run.stats_max[stat] <= 0:
-					lines.append("%s reads 0" % PerfReport.stat_names()[stat])
-			lines.append_array(
-				PerfBounds.load_violations(
-					run.units,
-					run.overflow,
-					run.alive_end,
-					run.proj_peak,
-					ALIVE_END_PIN,
-					PROJ_PEAK_PIN
-				)
-			)
-			lines.append_array(
-				PerfBounds.memory_violations(run.memory_first, run.memory_last, OS.is_debug_build())
-			)
-			for line: String in lines:
+			for line: String in run.bound_lines(ALIVE_END_PIN, PROJ_PEAK_PIN):
 				var entry: String = "%s: %s" % [label, line]
 				if not found.has(entry):
 					found.append(entry)
@@ -333,12 +290,17 @@ func test_the_step_and_watch_lines_read_the_runs_and_the_arena_orders() -> void:
 	assert_float(commands["crafted_commands_ms"]).is_equal_approx(12.345, 0.0001)
 	var overhead: Dictionary = _overhead_values(runs)
 	assert_array(overhead.keys()).is_equal(
-		["checkpoint_ticks", "p95_checkpoint_ms", "other_ticks", "p95_other_ms"]
+		[
+			"checkpoint_ticks",
+			"job_minus_step_p95_cp_ms",
+			"other_ticks",
+			"job_minus_step_p95_noncp_ms"
+		]
 	)
 	assert_int(overhead["checkpoint_ticks"]).is_equal(2)
-	assert_float(overhead["p95_checkpoint_ms"]).is_equal_approx(4.0, 0.0001)
+	assert_float(overhead["job_minus_step_p95_cp_ms"]).is_equal_approx(4.0, 0.0001)
 	assert_int(overhead["other_ticks"]).is_equal(28)
-	assert_float(overhead["p95_other_ms"]).is_equal_approx(1.5, 0.0001)
+	assert_float(overhead["job_minus_step_p95_noncp_ms"]).is_equal_approx(1.5, 0.0001)
 	# The arena itself.
 	var order: Vector2i = PerfReport.largest_order_tick(_seed_42[0].order_log)
 	assert_array([order.x, order.y]).is_equal([0, 2 * 75])
@@ -351,8 +313,8 @@ func test_the_step_and_watch_lines_read_the_runs_and_the_arena_orders() -> void:
 		var arena: Dictionary = _overhead_values(watched)
 		assert_int(arena["checkpoint_ticks"]).is_equal(TICKS / Replay.CHECKPOINT_PERIOD)
 		assert_int(arena["other_ticks"]).is_equal(TICKS - TICKS / Replay.CHECKPOINT_PERIOD)
-		assert_float(arena["p95_checkpoint_ms"]).is_greater(0.0)
-		assert_float(arena["p95_other_ms"]).is_greater(0.0)
+		assert_float(arena["job_minus_step_p95_cp_ms"]).is_greater(0.0)
+		assert_float(arena["job_minus_step_p95_noncp_ms"]).is_greater(0.0)
 		assert_float(_commands_values(watched, _crafted)["commands_ms"]).is_greater(0.0)
 		var arena_step: Dictionary = _step_values(watched)
 		assert_float(arena_step["mean_ms"]).is_greater(0.0)
@@ -747,7 +709,9 @@ func _commands_values(runs: Array[Run], crafted: Dictionary) -> Dictionary:
 
 
 ## The values of the job-minus-step watch line: how many checkpoint and other ticks a run has, and
-## the p95 of the job's time outside Sim.step on each kind, the smallest over the runs.
+## the p95 of the job's time outside Sim.step on each kind, the smallest over the runs. The two p95
+## keys are ADR 0013 section 15's names (the ones PerfHud.summary() carries from P50a), so that a
+## CI line and a card are compared key by key.
 func _overhead_values(runs: Array[Run]) -> Dictionary:
 	var first: Run = runs[0]
 	var best_checkpoint: float = INF
@@ -763,9 +727,9 @@ func _overhead_values(runs: Array[Run]) -> Dictionary:
 		best_others = minf(best_others, PerfReport.p95(elsewhere))
 	return {
 		"checkpoint_ticks": PerfReport.job_minus_step_ms(first.tick_ms, first.step_ms, true).size(),
-		"p95_checkpoint_ms": best_checkpoint,
+		"job_minus_step_p95_cp_ms": best_checkpoint,
 		"other_ticks": PerfReport.job_minus_step_ms(first.tick_ms, first.step_ms, false).size(),
-		"p95_other_ms": best_others,
+		"job_minus_step_p95_noncp_ms": best_others,
 	}
 
 

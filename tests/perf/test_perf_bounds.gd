@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 
 const PerfBounds: GDScript = preload("res://tests/perf/support/perf_bounds.gd")
 const PerfReport: GDScript = preload("res://tests/perf/support/perf_report.gd")
+const Run: GDScript = preload("res://tests/perf/support/perf_run.gd")
 ## The pins of test_sim_perf.gd, as the load cases use them: any pair will do for the edges.
 const ALIVE_PIN: int = 71
 const PROJ_PIN: int = 28
@@ -116,8 +117,9 @@ func test_the_run_must_start_with_150_units_and_end_within_the_margin_of_its_pin
 
 
 ## The static memory may grow by 64 KiB between tick 100 and tick 900 and no more; a shrink is
-## fine; a reading of 0 in a debug build means the monitor is not live and fails; a release build
-## (no monitor) is not judged at all.
+## fine; a reading of 0 at either tick in a debug build means the monitor is not live, or the run
+## never reached that tick, and fails (a missing last reading is no shrink); a release build (no
+## monitor) is not judged at all.
 func test_static_memory_may_grow_by_64_kib_in_a_debug_build_and_is_not_judged_otherwise() -> void:
 	assert_int(PerfBounds.MEMORY_FIRST_TICK).is_equal(100)
 	assert_int(PerfBounds.MEMORY_LAST_TICK).is_equal(900)
@@ -131,9 +133,89 @@ func test_static_memory_may_grow_by_64_kib_in_a_debug_build_and_is_not_judged_ot
 	assert_str(found[0]).contains("65537").contains("tick 100").contains("tick 900")
 	found = PerfBounds.memory_violations(0, 0, true)
 	assert_int(found.size()).is_equal(1)
-	assert_str(found[0]).contains("MEMORY_STATIC reads 0")
+	assert_str(found[0]).contains("MEMORY_STATIC reads 0 at tick 100 and 0 at tick 900")
+	# One missing reading is enough, whichever tick it is: the last one missing is no shrink.
+	found = PerfBounds.memory_violations(first, 0, true)
+	assert_int(found.size()).is_equal(1)
+	assert_str(found[0]).contains("reads %d at tick 100 and 0 at tick 900" % first)
+	found = PerfBounds.memory_violations(0, first, true)
+	assert_int(found.size()).is_equal(1)
+	assert_str(found[0]).contains("reads 0 at tick 100 and %d at tick 900" % first)
+	assert_int(PerfBounds.memory_violations(first, -1, true).size()).is_equal(1)
+	assert_array(PerfBounds.memory_violations(first, 0, false)).is_empty()
 	assert_array(PerfBounds.memory_violations(0, 0, false)).is_empty()
 	assert_array(PerfBounds.memory_violations(first, first + 10_000_000, false)).is_empty()
+
+
+## Run.bound_lines, which test_sim_perf.gd applies to the arena, passes the readings of a run to
+## every bound above and nothing else, tried on a run made by hand that sits on all of them (each
+## cost counter on its bound, the pins, 150 units, the memory unchanged): that run has no line, and
+## each move over one bound gives exactly one line, so a bound that is left out of bound_lines, a
+## reading taken from the wrong field and a memory check that is switched off show. The memory is
+## judged in a debug build only, as the engine counts it there only.
+func test_a_run_is_judged_by_every_bound_and_a_move_over_one_gives_one_line() -> void:
+	var run: Run = _run_on_its_bounds()
+	assert_array(run.bound_lines(ALIVE_PIN, PROJ_PIN)).is_empty()
+	var bounds: Dictionary[int, int] = PerfBounds.cost_bounds(run.flow_budget, run.sep_scan, 150)
+	var names: PackedStringArray = PerfReport.stat_names()
+	for stat: int in bounds:
+		run = _run_on_its_bounds()
+		run.stats_max[stat] += 1
+		assert_str(_only(run.bound_lines(ALIVE_PIN, PROJ_PIN))).contains(names[stat]).contains(
+			"above"
+		)
+		run = _run_on_its_bounds()
+		run.stats_max[stat] = 0
+		assert_str(_only(run.bound_lines(ALIVE_PIN, PROJ_PIN))).contains(names[stat]).contains(
+			"reads 0"
+		)
+	# The units also move the bound of the separation pairs, upwards, so the pairs stay inside it.
+	run = _run_on_its_bounds()
+	run.units += 1
+	assert_str(_only(run.bound_lines(ALIVE_PIN, PROJ_PIN))).contains("151 units")
+	run = _run_on_its_bounds()
+	run.overflow = 1
+	assert_str(_only(run.bound_lines(ALIVE_PIN, PROJ_PIN))).contains("projectile_overflow")
+	run = _run_on_its_bounds()
+	run.alive_end = 0
+	assert_str(_only(run.bound_lines(ALIVE_PIN, PROJ_PIN))).contains("alive_end")
+	run = _run_on_its_bounds()
+	run.proj_peak = 0
+	assert_str(_only(run.bound_lines(ALIVE_PIN, PROJ_PIN))).contains("projectile peak")
+	# The pins are the caller's: the same run is outside another pair.
+	assert_int(_run_on_its_bounds().bound_lines(ALIVE_PIN + 40, PROJ_PIN).size()).is_equal(1)
+	assert_int(_run_on_its_bounds().bound_lines(ALIVE_PIN, PROJ_PIN + 40).size()).is_equal(1)
+	var judged: int = 1 if OS.is_debug_build() else 0
+	run = _run_on_its_bounds()
+	run.memory_last = run.memory_first + PerfBounds.MEMORY_GROWTH_MAX + 1
+	assert_int(run.bound_lines(ALIVE_PIN, PROJ_PIN).size()).is_equal(judged)
+	run = _run_on_its_bounds()
+	run.memory_last = 0
+	assert_int(run.bound_lines(ALIVE_PIN, PROJ_PIN).size()).is_equal(judged)
+	run = _run_on_its_bounds()
+	run.memory_first = 0
+	assert_int(run.bound_lines(ALIVE_PIN, PROJ_PIN).size()).is_equal(judged)
+
+
+## A run that no match produced and that is inside every bound: 150 units, the rules of the arena
+## (512 flow cells a tick, a separation scan of 16), every bounded counter on its bound, alive_end
+## and the projectile peak on their pins and the static memory unchanged.
+func _run_on_its_bounds() -> Run:
+	var run: Run = Run.new()
+	run.units = PerfBounds.ARENA_UNITS
+	run.flow_budget = 512
+	run.sep_scan = 16
+	run.alive_end = ALIVE_PIN
+	run.proj_peak = PROJ_PIN
+	run.memory_first = 48_000_000
+	run.memory_last = run.memory_first
+	run.stats_max.resize(World.Stat.size())
+	var bounds: Dictionary[int, int] = PerfBounds.cost_bounds(
+		run.flow_budget, run.sep_scan, run.units
+	)
+	for stat: int in bounds:
+		run.stats_max[stat] = bounds[stat]
+	return run
 
 
 func _load(units: int, overflow: int, alive_end: int, proj_peak: int) -> Array[String]:

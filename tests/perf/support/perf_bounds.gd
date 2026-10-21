@@ -21,6 +21,10 @@ const MARGIN_PERCENT: int = 25
 ## The maxima of the World.stats counters over the 900 ticks of the seed-42 arena with fog in the
 ## tick (PR #129, equal under both implementations): the per-tick maxima of line_checks,
 ## target_candidates and fog_cells. flow_cells (512) and sep_pairs (1,231) have a rule instead.
+## The line checks follow the brief and the plan's list of P49a (34 plus the margin, 43), which is
+## stricter than the "at most the moving units" of ADR 0011 section 4: engagement line checks are
+## counted in LINE_CHECKS, so a change to who fires (P46b) is the likeliest to reach this bound.
+## The ADR's wording is for the lead's next docs PR to bring in line with the pin.
 const MEASURED_LINE_CHECKS: int = 34
 const MEASURED_TARGET_CANDIDATES: int = 2193
 const MEASURED_FOG_CELLS: int = 7798
@@ -95,14 +99,19 @@ static func load_violations(
 
 ## The growth of Performance.MEMORY_STATIC from `first` (read at MEMORY_FIRST_TICK) to `last` (at
 ## MEMORY_LAST_TICK). The monitor exists in debug builds only, so a release build (`debug_build`
-## false) is not judged; in a debug build a reading of 0 means the monitor is not live and fails.
+## false) is not judged; in a debug build a reading of 0 at either tick means the monitor is not
+## live, or the run never reached the tick, and fails (a missing `last` would otherwise read as a
+## shrink and pass).
 static func memory_violations(first: int, last: int, debug_build: bool) -> Array[String]:
 	var found: Array[String] = []
 	if not debug_build:
 		return found
-	if first <= 0:
+	if first <= 0 or last <= 0:
 		found.append(
-			"MEMORY_STATIC reads %d at tick %d in a debug build" % [first, MEMORY_FIRST_TICK]
+			(
+				"MEMORY_STATIC reads %d at tick %d and %d at tick %d in a debug build"
+				% [first, MEMORY_FIRST_TICK, last, MEMORY_LAST_TICK]
+			)
 		)
 	elif last - first > MEMORY_GROWTH_MAX:
 		found.append(
