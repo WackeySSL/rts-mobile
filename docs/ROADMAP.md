@@ -30,7 +30,7 @@ Tick a box in the PR that meets the criterion.
 - [x] Movement with flow fields and separation; combat with projectiles, armour classes and death
 - [x] Fog of war (visible and explored) and its rendering
 - [ ] View interpolation at the display frame rate
-- [ ] Performance test: 150 units for 900 ticks, ms per tick reported and the budget enforced
+- [x] Performance test: 150 units for 900 ticks, ms per tick reported and the budget enforced
 - [ ] Gate: 150 units at 60 fps on a mid-range Android phone, and the same seed gives the same match
 
 ## Phase 3: Base building and economy

@@ -8,11 +8,14 @@ extends GdUnitTestSuite
 ## line, the STEP sub-line and the two WATCH lines, writes reports/perf/sim.json and checks that
 ## the three seed-42 runs agree at every checkpoint and that seed 43 does not.
 ##
-## The wall clock is report only: apart from the catastrophic cap on the best mean (20 ms) nothing
-## about the clock is asserted, because the CI wall-clock budget is P49b's. What the suite does
-## enforce is deterministic (plan P49a): the cost bounds from World.stats, the 150 units at tick 0,
-## no projectile overflow, the pinned alive_end and projectile peak, and the growth of static
-## memory (tests/perf/support/perf_bounds.gd holds the bounds, perf_run.gd applies them to a run and
+## The wall clock is judged twice (plan P49b): the catastrophic cap on the best mean (20 ms) for
+## both lines, and the regression ratchet of tests/perf/budget.cfg on the best mean and p95 of the
+## native line (tests/perf/support/perf_budget.gd reads and applies it, test_perf_budget.gd pins
+## that). The ratchet is calibrated on the native tick, so the GDScript line stays report only, and
+## a run without the library judges nothing but the cap. What the suite enforces besides is
+## deterministic (plan P49a): the cost bounds from World.stats, the 150 units at tick 0, no
+## projectile overflow, the pinned alive_end and projectile peak, and the growth of static memory
+## (tests/perf/support/perf_bounds.gd holds the bounds, perf_run.gd applies them to a run and
 ## test_perf_bounds.gd pins both); the golden hashes are checked by test_golden_hashes.gd.
 ##
 ## The second PERF line (plan P38pn, ADR 0013 section 15): when the SimKernels library is loaded,
@@ -48,6 +51,7 @@ extends GdUnitTestSuite
 
 const PerfReport: GDScript = preload("res://tests/perf/support/perf_report.gd")
 const PerfBounds: GDScript = preload("res://tests/perf/support/perf_bounds.gd")
+const PerfBudget: GDScript = preload("res://tests/perf/support/perf_budget.gd")
 ## What one match leaves: the tick times, the per-phase sums, the World.stats maxima, the
 ## checkpoints and the readings the bounds judge (tests/perf/support/perf_run.gd).
 const Run: GDScript = preload("res://tests/perf/support/perf_run.gd")
@@ -194,11 +198,25 @@ func test_the_report_holds_the_minimum_of_each_statistic_over_the_three_runs() -
 	assert_array(wrong).is_empty()
 
 
-func test_the_best_mean_stays_under_the_catastrophic_cap() -> void:
+## The two limits on the clock. The catastrophic cap (ADR 0011 section 4) holds for both lines: no
+## best mean above 20 ms. The budget (plan P49b, ADR 0012 section 4) holds for the native line
+## only: its best mean and p95 at most the limits of budget.cfg (1.5 x the worst calibrated
+## min-of-3), on the workload they are calibrated on. The GDScript tick is several times slower
+## than the native one, so the native budget would fail the same code; without the library the case
+## judges the cap alone and prints the plain note. PerfBudget.status_line prints the headroom, or
+## that note, from the one statement that both paths run.
+func test_the_best_mean_stays_under_the_cap_and_the_native_tick_under_the_budget() -> void:
 	for printed: Dictionary in _printed():
 		var report: Dictionary = printed["report"]
 		assert_float(report["mean_ms"]).is_greater(0.0)
 		assert_bool(PerfReport.over_cap(report, PerfReport.CATASTROPHIC_MEAN_MS)).is_false()
+	var budget: Dictionary = PerfBudget.read()
+	print(PerfBudget.status_line(_native_report, budget))
+	# The report is empty exactly when the library is absent (an independent source, not the suite's
+	# own flag), so a suite that lost its native runs cannot pass the budget on an empty report.
+	assert_bool(_native_report.is_empty()).is_equal(not ClassDB.class_exists(&"SimKernels"))
+	if not _native_report.is_empty():
+		assert_array(PerfBudget.violations(_native_report, budget)).is_empty()
 
 
 ## What a run took from TickJob.run(): every tick has a job time, a Sim.step time inside it and a
@@ -208,24 +226,32 @@ func test_the_best_mean_stays_under_the_catastrophic_cap() -> void:
 ## last published snapshot fails the count, and so does a first snapshot of another match than the
 ## one published before the loop); and Sim.step and the phases come from the StepProbe and its
 ## TimingProbe.
+## And the job time is a time that a clock gave: inside the harness's own reading of the call
+## (wall_ms, from the post stamp to just after run()), which the job's two clock reads lie within,
+## so a tick above it is a constant added to job_usec (a clock relation, not a timing bound: it
+## holds exactly, on every tick).
 ## Which units live and which projectiles fly is bounded by the case after.
 func test_each_run_timed_every_tick_of_the_arena() -> void:
 	for run: Run in _seed_42 + [_seed_43] + _native_42:
 		assert_int(run.tick_ms.size()).is_equal(TICKS)
 		assert_int(run.step_ms.size()).is_equal(TICKS)
+		assert_int(run.wall_ms.size()).is_equal(TICKS)
 		assert_int(run.commands_usec.size()).is_equal(TICKS)
 		assert_int(run.tick_ms.count(0.0)).is_less(TICKS)
 		assert_int(run.step_ms.count(0.0)).is_less(TICKS)
 		assert_int(run.units).is_greater(0)
 		var inside: int = 0
+		var over_wall: int = 0
 		var job_sum: float = 0.0
 		var step_sum: float = 0.0
 		for tick: int in TICKS:
 			inside += 1 if run.tick_ms[tick] >= run.step_ms[tick] else 0
+			over_wall += 1 if run.tick_ms[tick] > run.wall_ms[tick] else 0
 			job_sum += run.tick_ms[tick]
 			step_sum += run.step_ms[tick]
 		# The job holds the step on every tick, and the capture and the hash on top of it.
 		assert_int(inside).is_equal(TICKS)
+		assert_int(over_wall).is_equal(0)
 		assert_float(job_sum).is_greater(step_sum)
 		assert_int(run.slid_ticks).is_greater(TICKS / 3)
 		assert_bool(run.first_slid).is_true()
@@ -250,7 +276,7 @@ func test_each_run_timed_every_tick_of_the_arena() -> void:
 ## projectile peak within the margin of their pins, and the static memory (debug builds). A bounded
 ## counter that reads 0 fails too, so a sample that read nothing cannot pass. PerfBounds is pinned
 ## by test_perf_bounds.gd, which also pins what Run.bound_lines applies (each bound, on a run made
-## by hand); the wall clock is not bounded here (P49b).
+## by hand); the wall clock is bounded by the cap and budget case (P49b).
 func test_the_arena_stays_inside_its_cost_load_and_memory_bounds() -> void:
 	var found: Array[String] = []
 	for printed: Dictionary in _printed():
@@ -626,6 +652,7 @@ func _play(match_seed: int, adjust: Callable = Callable()) -> Run:
 	run.sep_scan = world.separation_scan
 	run.tick_ms.resize(TICKS)
 	run.step_ms.resize(TICKS)
+	run.wall_ms.resize(TICKS)
 	run.commands_usec.resize(TICKS)
 	run.phase_usec.resize(SimProbe.Phase.COUNT)
 	run.stats_max.resize(World.Stat.size())
@@ -641,6 +668,7 @@ func _play(match_seed: int, adjust: Callable = Callable()) -> Run:
 		var before_x: PackedInt32Array = world.pos_x.duplicate()
 		job.post_usec = Time.get_ticks_usec()
 		job.run()
+		run.wall_ms[tick] = (Time.get_ticks_usec() - job.post_usec) / 1000.0
 		run.tick_ms[tick] = next.job_usec / 1000.0
 		run.step_ms[tick] = next.step_usec / 1000.0
 		run.commands_usec[tick] = next.phase_usec[SimProbe.Phase.COMMANDS]

@@ -4,7 +4,8 @@
 # ELF checks against stub scons, git, g++, clang++, readelf and nm (and a stub NDK), check-cpp-format.sh
 # against a stub clang-format, install-ndk.sh against a stub sdkmanager (P55a), check-native-tests.sh on
 # fixtures, run-sanitizer-harness.sh against a stub Godot and g++ (P57), the compile flags of the SConstruct (run by
-# python3 on a stub SCons environment: the plain build keeps -fwrapv, the sanitized one lacks it), and the order of
+# python3 on a stub SCons environment: the plain build keeps -fwrapv, the sanitized one lacks it), the arm64 clang build
+# and install-godot.sh's choice of editor per architecture against a stub curl (P51b), and the order of
 # verify.sh's native steps. Needs python3 (for the SConstruct flags) but no Godot, SCons, compiler, Android SDK, NDK or
 # network, and runs the scripts in a scrubbed environment on a stub uname (x86_64 unless a case says otherwise), so the
 # host changes no result. ci.yml runs it in the verify job.
@@ -34,7 +35,7 @@ assert() { if "${@:2}"; then echo "ok: $1"; else echo "FAIL: $1" >&2; failures=$
 mkdir -p "$root/bin" "$root/tmp"
 cat >"$root/bin/uname" <<'STUB'
 #!/usr/bin/env bash
-if [ "${1:-}" = "-m" ]; then echo "${STUB_UNAME:-x86_64}"; else command -p uname "$@"; fi
+case "${1:-}" in -m) echo "${STUB_UNAME:-x86_64}" ;; -s) echo "${STUB_UNAME_S:-Linux}" ;; *) command -p uname "$@" ;; esac
 STUB
 cat >"$root/bin/git" <<STUB
 #!/usr/bin/env bash
@@ -233,6 +234,12 @@ check "build: android takes clang only" 2 "NDK's clang"
 run bn bash scripts/build-native.sh --compiler clang --optimize speed
 check "build: clang at speed" 0 "(clang18.1.3, optimize=speed)"
 assert "build: clang at speed passes use_llvm=yes and optimize=speed" grep -Eq 'use_llvm=yes.*optimize=speed' "$root/bn/scons.args"
+# P51b: the determinism-arm64 job builds this on an arm64 host, and passes --arch arm64 so that another host refuses.
+run bn STUB_UNAME=aarch64 STUB_MACHINE=AArch64 bash scripts/build-native.sh --arch arm64 --compiler clang --optimize speed
+check "build: clang at speed on an arm64 host" 0 "OK native/bin/libsim_kernels.linux.template_debug.arm64.so"
+assert "build: ... passes arch=arm64, use_llvm=yes and optimize=speed" grep -Eq 'arch=arm64.*use_llvm=yes.*optimize=speed' "$root/bn/scons.args"
+run bn bash scripts/build-native.sh --arch arm64 --compiler clang --optimize speed
+check "build: --arch arm64 on an x86_64 host" 2 "host architecture only (x86_64)"
 run bn STUB_CLANGV=nonsense bash scripts/build-native.sh --compiler clang
 check "build: clang without a readable version" 3 "clang++ reports no version"
 # --sanitize undefined (P57): g++ on Linux only, a library that needs the shared libubsan and calls its handlers.
@@ -340,6 +347,9 @@ key_is "build: cache key, sanitize undefined" \
 key_is "build: cache key, clang at speed, release" \
   "native-linux-x86_64-template_release-clang18.1.3-speed-godotcpp-$sha-scons4.9.1" \
   bash scripts/build-native.sh --compiler clang --optimize speed --target template_release --print-cache-key
+key_is "build: cache key, clang at speed on an arm64 host (determinism-arm64's key)" \
+  "native-linux-arm64-template_debug-clang18.1.3-speed-godotcpp-$sha-scons4.9.1" \
+  STUB_UNAME=aarch64 bash scripts/build-native.sh --arch arm64 --compiler clang --optimize speed --print-cache-key
 key_is "build: cache key, android (the NDK installed first)" \
   "native-android-arm64-template_debug-ndk$ndk_pin-godotcpp-$sha-scons4.9.1" \
   ANDROID_NDK_ROOT="$ndk" bash scripts/build-native.sh --platform android --print-cache-key
@@ -619,6 +629,25 @@ for step in scripts/build-native.sh scripts/seed-extension-list.sh --import scri
   prev="${at:-$prev}"
 done
 if [ "$order" = ok ]; then echo "ok: verify.sh runs build, seed, import, tests, C++ format in that order"; else echo "FAIL: verify.sh step order: $order" >&2; failures=$((failures + 1)); fi
+
+# (6) install-godot.sh picks the editor build of the host (P51b). A stub curl answers every download with junk, so the
+# SHA-512 check stops the script, and its message names the zip it fetched and the pin it compared with. The pins are
+# the lines of the official godot-builds 4.7.2-stable SHA512-SUMS.txt, repeated here so that a mistyped one fails.
+x86_pin="9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65"
+arm_pin="dd59918da086bd49bde2f5450b5e567ff8650cbde9abbd7b8f4ca1197ff8c609baa38834666d032deafb47099078d7822279e2a0e06e5665745468f26533e7e2"
+mkdir -p "$root/ig/scripts/ci" "$root/curlbin"
+cp "$repo"/scripts/ci/{install-godot.sh,remote_zip.py} "$root/ig/scripts/ci/"
+printf '#!/usr/bin/env bash\nwhile [ $# -gt 0 ]; do [ "$1" != -o ] || echo junk >"$2"; shift; done\n' >"$root/curlbin/curl"
+chmod +x "$root/curlbin/curl"
+godot_run() { run ig PATH="$root/curlbin:$root/bin:$PATH" "$@" bash scripts/ci/install-godot.sh; }
+godot_run
+check "install-godot: an x86_64 Linux host gets the x86_64 editor" 1 "SHA-512 mismatch for Godot_v4.7.2-stable_linux.x86_64.zip"
+assert "install-godot: ... and its pin" test "$(grep -Fc "pinned:   $x86_pin" <<<"$out")" = 1
+godot_run STUB_UNAME=aarch64
+check "install-godot: an arm64 Linux host gets the arm64 editor" 1 "SHA-512 mismatch for Godot_v4.7.2-stable_linux.arm64.zip"
+assert "install-godot: ... and its pin" test "$(grep -Fc "pinned:   $arm_pin" <<<"$out")" = 1
+godot_run STUB_UNAME=arm64 STUB_UNAME_S=Darwin
+check "install-godot: a Mac keeps the x86_64 editor, which it only unpacks" 1 "SHA-512 mismatch for Godot_v4.7.2-stable_linux.x86_64.zip"
 
 if [ "$failures" -ne 0 ]; then
   echo "test-native-scripts: $failures case(s) failed" >&2
