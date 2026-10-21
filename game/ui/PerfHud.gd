@@ -11,7 +11,9 @@ extends PanelContainer
 ## and pauses the runner. Put it in a SafeAreaMargin (a full-rect child of a CanvasLayer, as the HUD
 ## roots are): it fills what that margin leaves, so it lies inside the safe area at any size, and
 ## its text scrolls. Its look is the inherited theme's (`game/ui/theme.tres`, the `PerfCard`
-## variation). P50a3 adds the copy report and "Run again"; P50b the scene that sets the seams below.
+## variation). Under the text sit two buttons: "Copy report" (the summary as JSON to the clipboard)
+## and "Run again" (the burst again, then a new match and a new run). P50b is the scene that sets
+## the seams below.
 
 const PASS: String = "PASS"
 const FAIL: String = "FAIL"
@@ -41,6 +43,9 @@ const CHECKPOINT_EVERY: int = 150
 const CARD_VARIATION: StringName = &"PerfCard"
 const HEADER_VARIATION: StringName = &"NumberLabel"
 const GAP_DP: float = 8.0
+const COPY_TEXT: String = "Copy report"
+const COPIED_TEXT: String = "Copied"
+const AGAIN_TEXT: String = "Run again"
 ## The verdict rows that compare one summary key with one PerfGateDef field: the row's name, the
 ## key judged, the field, the unit printed, and whether the key must be at least the field (else at
 ## most).
@@ -170,6 +175,9 @@ var render_source: Callable = _render_ms
 var calls_source: Callable = _draw_calls
 var rigs_source: Callable = func() -> int: return 0
 var fog_source: Callable = func() -> int: return -1
+## Where "Copy report" sends the JSON text. The headless display server cannot read a clipboard
+## back (and logs an error when asked), so a test injects its own.
+var clipboard_sink: Callable = DisplayServer.clipboard_set
 ## The build the verdict `build` judges; a release template is false.
 var debug_build: bool = OS.is_debug_build()
 ## The runner's counts and resolved mode, copied at each publish. late_ticks and latency_usec_max
@@ -194,6 +202,9 @@ var _timing: TimingProbe = TimingProbe.new()
 var _column: VBoxContainer = VBoxContainer.new()
 var _header: Label = Label.new()
 var _body: Label = Label.new()
+var _buttons: HBoxContainer = HBoxContainer.new()
+var _copy: Button = Button.new()
+var _again: Button = Button.new()
 var _app_paused: bool = false
 var _viewport: RID
 var _max_fps: int = 0
@@ -236,10 +247,14 @@ func _init() -> void:
 	scroll.name = "Scroll"
 	_header.name = "Header"
 	_body.name = "Body"
+	_buttons.name = "Buttons"
 	add_child(_column)
 	_column.add_child(_header)
 	_column.add_child(scroll)
+	_column.add_child(_buttons)
 	scroll.add_child(_body)
+	_add_button(_copy, "CopyReport", COPY_TEXT, copy_report)
+	_add_button(_again, "RunAgain", AGAIN_TEXT, run_again)
 	_phase_sum.resize(SimProbe.Phase.COUNT)
 
 
@@ -293,6 +308,7 @@ func _process(_delta: float) -> void:
 func restart() -> void:
 	_runs += 1
 	_app_paused = false
+	_copy.text = COPY_TEXT
 	visible = false
 	if runner != null:
 		runner.paused = false
@@ -317,6 +333,25 @@ func restart() -> void:
 	if runner != null and runner.scenario != null:
 		rules = runner.scenario.rules
 	flow_cells_per_tick = (rules if rules != null else RulesDef.new()).flow_cells_per_tick
+
+
+## "Copy report": the summary, every key of it (the checkpoint hashes and the INVALID reasons
+## among them), as one JSON text with its keys sorted, to `clipboard_sink`. The button says so.
+func copy_report() -> void:
+	clipboard_sink.call(JSON.stringify(summary(), "", true))
+	_copy.text = COPIED_TEXT
+
+
+## "Run again": the same seed, a new run. The runner's job ends first (a preflight refuses with one
+## in flight), then the burst seam alone measures `ref_peak` again (the self-check does not repeat),
+## then the match starts and the run restarts. So each run normalises against a peak measured right
+## before it, with no job in flight and outside every timed window (ADR 0014 section 3).
+func run_again() -> void:
+	if runner != null:
+		runner.wait_idle()
+		preflight(runner, false)
+		runner.start()
+	restart()
 
 
 ## One frame, microseconds unless noted: the interval since the previous frame, the main thread's
@@ -667,9 +702,22 @@ func _show_card() -> void:
 		runner.paused = true
 
 
+## A button of the row under the text: at least 48 dp, sharing the width, its text the theme's.
+func _add_button(button: Button, node_name: String, label: String, on_press: Callable) -> void:
+	button.add_child(DpMinSize.new())
+	button.name = node_name
+	button.text = label
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.focus_mode = Control.FOCUS_NONE  # No focus ring left behind after a tap.
+	button.pressed.connect(on_press)
+	_buttons.add_child(button)
+
+
 ## Sizes are dp, so they follow a resize like DpMinSize does.
 func _apply_dp() -> void:
-	_column.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
+	var gap: int = roundi(UiScale.dp(GAP_DP))
+	_column.add_theme_constant_override("separation", gap)
+	_buttons.add_theme_constant_override("separation", gap)
 
 
 func _on_ticked(_tick_number: int) -> void:
