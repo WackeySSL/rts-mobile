@@ -240,9 +240,10 @@ func test_a_pause_during_a_hold_ends_in_the_first_frame_after_it() -> void:
 ## job's snapshot after wait_idle() and before its boundary: the post POSTED_AGO_USEC (0.5 s)
 ## before the frames that reach the boundary, so the publish comes far more than a period after
 ## the post while the job's own run time is far under one, and post-to-done times of 40 ms,
-## exactly TICK_USEC, TICK_USEC + 1 and 5 ms in turn. start() reset the counts and every published
-## job is one of the four, so no count depends on the machine's speed. The counts are final before
-## `ticked`: a handler reads the same counts as the case after the frame, the published job in.
+## exactly TICK_USEC, TICK_USEC + 1, three periods and 5 ms in turn. A late job counts once
+## however many periods it took. start() reset the counts and every published job is one of the
+## five, so no count depends on the machine's speed. The counts are final before `ticked`: a
+## handler reads the same counts as the case after the frame, the published job in.
 func test_a_late_tick_is_counted_from_its_post_to_done_time() -> void:
 	var runner: MatchRunner = _runner(WORKER)
 	var inside: Array[Array] = []
@@ -252,7 +253,7 @@ func test_a_late_tick_is_counted_from_its_post_to_done_time() -> void:
 	runner._process(FRAME)
 	var tick_usec: int = MatchRunner.TICK_USEC
 	var counts: Array[Array] = []
-	for span: int in [40_000, tick_usec, tick_usec + 1, 5_000]:
+	for span: int in [40_000, tick_usec, tick_usec + 1, 3 * tick_usec, 5_000]:
 		assert_bool(runner.wait_idle()).is_true()
 		var done: MatchSnapshot = runner._job.snapshot
 		done.post_usec = Time.get_ticks_usec() - POSTED_AGO_USEC
@@ -260,7 +261,10 @@ func test_a_late_tick_is_counted_from_its_post_to_done_time() -> void:
 		var tick: int = runner.snapshot.tick
 		assert_array(_frames(runner, _quarters(4))).is_equal([tick, tick, tick, tick + 1])
 		counts.append([runner.late_ticks, runner.latency_usec_max])
-	var expected: Array = [[0, 40_000], [0, tick_usec], [1, tick_usec + 1], [1, tick_usec + 1]]
+	var periods: int = 3 * tick_usec
+	var expected: Array = [
+		[0, 40_000], [0, tick_usec], [1, tick_usec + 1], [2, periods], [2, periods]
+	]
 	assert_array(counts).is_equal(expected)
 	assert_array(inside).is_equal(expected)
 
@@ -426,9 +430,10 @@ func test_a_runner_whose_thread_failed_runs_its_frames_inline() -> void:
 
 
 ## Every job delayed 80 ms, more than a period, for 30 published ticks, with frames that wait only
-## when a boundary holds: every job is late, holds happen, the published ticks come 1 to 30 once
-## each in order, and the 15-tick checkpoints equal those of a SYNC run of the same scenario and
-## seed, also without commands.
+## when a boundary holds: every job is late, more than one boundary holds (the four frames to a
+## boundary cost microseconds against an 80 ms job, so nearly every one does) and held_ticks adds
+## them up, the published ticks come 1 to 30 once each in order, and the 15-tick checkpoints equal
+## those of a SYNC run of the same scenario and seed, also without commands.
 func test_forced_slow_jobs_publish_every_tick_once_with_the_sync_checkpoints() -> void:
 	var gated: SimProbe = _gated_probe()
 	var runner: MatchRunner = _runner(WORKER, gated)
@@ -438,7 +443,7 @@ func test_forced_slow_jobs_publish_every_tick_once_with_the_sync_checkpoints() -
 	var sent: Array[int] = []
 	assert_bool(_play_slow(runner, false, sent) and runner.wait_idle()).is_true()
 	assert_array(seen).is_equal(range(1, SLOW_TICKS + 1))
-	assert_array([runner.late_ticks, runner.held_ticks > 0]).is_equal([SLOW_TICKS, true])
+	assert_array([runner.late_ticks, runner.held_ticks > 1]).is_equal([SLOW_TICKS, true])
 	var sync: MatchRunner = _runner(SYNC)
 	sync.run_ticks(SLOW_TICKS)
 	assert_int(sync.replay.checkpoint_hashes.size()).is_equal(SLOW_TICKS / 15)
