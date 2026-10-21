@@ -32,6 +32,8 @@ camera = NodePath("Camera")
 [node name="MatchRunner" type="Node" parent="."]
 script = ExtResource("7_runner")
 scenario = ExtResource("8_scenario")
+sim_impl = 2
+tick_mode = 2
 
 [node name="MapView" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
 script = ExtResource("1_map")

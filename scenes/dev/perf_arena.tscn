@@ -1,0 +1,132 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://game/ui/perf_arena.gd" id="1_arena"]
+[ext_resource type="Resource" path="res://data/scenarios/perf_arena.tres" id="2_scenario"]
+[ext_resource type="Script" path="res://game/core/MatchRunner.gd" id="3_runner"]
+[ext_resource type="Script" path="res://game/view/MapView.gd" id="4_map"]
+[ext_resource type="Script" path="res://game/view/UnitLayer.gd" id="5_units"]
+[ext_resource type="Script" path="res://game/view/HealthBarLayer.gd" id="6_bars"]
+[ext_resource type="Script" path="res://game/view/ProjectileLayer.gd" id="7_projectiles"]
+[ext_resource type="Script" path="res://game/view/EffectsLayer.gd" id="8_effects"]
+[ext_resource type="Script" path="res://game/view/FogLayer.gd" id="9_fog"]
+[ext_resource type="Script" path="res://game/view/RtsCamera.gd" id="10_cam"]
+[ext_resource type="Script" path="res://game/input/TouchInput.gd" id="11_touch"]
+[ext_resource type="Resource" path="res://data/input_settings.tres" id="12_settings"]
+[ext_resource type="Script" path="res://game/ui/HudTheme.gd" id="13_hud_theme"]
+[ext_resource type="Script" path="res://game/ui/SafeAreaMargin.gd" id="14_safe"]
+[ext_resource type="Theme" path="res://game/ui/theme.tres" id="15_theme"]
+[ext_resource type="Script" path="res://game/ui/DpMinSize.gd" id="16_dp"]
+[ext_resource type="Script" path="res://game/ui/PerfHud.gd" id="17_hud"]
+[ext_resource type="Resource" path="res://data/dev/perf_gate.tres" id="18_gate"]
+
+[node name="PerfArena" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "unit_layer", "bar_layer", "projectile_layer", "effects_layer", "fog_layer", "camera", "hud", "back_button", "layers_button", "layout", "bar")]
+script = ExtResource("1_arena")
+scenario = ExtResource("2_scenario")
+runner = NodePath("MatchRunner")
+map_view = NodePath("MapView")
+unit_layer = NodePath("UnitLayer")
+bar_layer = NodePath("HealthBarLayer")
+projectile_layer = NodePath("ProjectileLayer")
+effects_layer = NodePath("EffectsLayer")
+fog_layer = NodePath("FogLayer")
+camera = NodePath("Camera")
+hud = NodePath("Hud/SafeArea/Layout/PerfHud")
+back_button = NodePath("Hud/SafeArea/Layout/Bar/BackButton")
+layers_button = NodePath("Hud/SafeArea/Layout/Bar/LayersButton")
+layout = NodePath("Hud/SafeArea/Layout")
+bar = NodePath("Hud/SafeArea/Layout/Bar")
+
+[node name="MatchRunner" type="Node" parent="."]
+script = ExtResource("3_runner")
+match_seed = 42
+sim_impl = 2
+tick_mode = 2
+
+[node name="MapView" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
+script = ExtResource("4_map")
+runner = NodePath("../MatchRunner")
+
+[node name="UnitLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "camera")]
+script = ExtResource("5_units")
+runner = NodePath("../MatchRunner")
+camera = NodePath("../Camera")
+reveal_enemies = true
+
+[node name="HealthBarLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "unit_layer")]
+z_index = 110
+z_as_relative = false
+script = ExtResource("6_bars")
+runner = NodePath("../MatchRunner")
+unit_layer = NodePath("../UnitLayer")
+
+[node name="ProjectileLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
+z_index = 120
+z_as_relative = false
+script = ExtResource("7_projectiles")
+runner = NodePath("../MatchRunner")
+reveal_enemies = true
+
+[node name="EffectsLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
+z_index = 130
+z_as_relative = false
+script = ExtResource("8_effects")
+runner = NodePath("../MatchRunner")
+reveal_enemies = true
+
+[node name="FogLayer" type="Sprite2D" parent="." node_paths=PackedStringArray("runner")]
+z_index = 140
+z_as_relative = false
+script = ExtResource("9_fog")
+runner = NodePath("../MatchRunner")
+
+[node name="Camera" type="Camera2D" parent="."]
+script = ExtResource("10_cam")
+settings = ExtResource("12_settings")
+
+[node name="TouchInput" type="Node" parent="." node_paths=PackedStringArray("camera")]
+script = ExtResource("11_touch")
+settings = ExtResource("12_settings")
+camera = NodePath("../Camera")
+
+[node name="Hud" type="CanvasLayer" parent="."]
+
+[node name="HudTheme" type="Node" parent="Hud"]
+script = ExtResource("13_hud_theme")
+
+[node name="SafeArea" type="MarginContainer" parent="Hud"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("15_theme")
+script = ExtResource("14_safe")
+
+[node name="Layout" type="VBoxContainer" parent="Hud/SafeArea"]
+mouse_filter = 2
+
+[node name="Bar" type="HBoxContainer" parent="Hud/SafeArea/Layout"]
+mouse_filter = 2
+
+[node name="BackButton" type="Button" parent="Hud/SafeArea/Layout/Bar"]
+size_flags_vertical = 0
+text = "Back"
+
+[node name="DpMinSize" type="Node" parent="Hud/SafeArea/Layout/Bar/BackButton"]
+script = ExtResource("16_dp")
+min_dp = Vector2(96, 56)
+
+[node name="LayersButton" type="Button" parent="Hud/SafeArea/Layout/Bar"]
+size_flags_vertical = 0
+text = "Layers: all"
+
+[node name="DpMinSize" type="Node" parent="Hud/SafeArea/Layout/Bar/LayersButton"]
+script = ExtResource("16_dp")
+min_dp = Vector2(96, 56)
+
+[node name="PerfHud" type="PanelContainer" parent="Hud/SafeArea/Layout" node_paths=PackedStringArray("runner")]
+size_flags_vertical = 3
+script = ExtResource("17_hud")
+runner = NodePath("../../../../MatchRunner")
+gate = ExtResource("18_gate")

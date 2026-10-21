@@ -1,6 +1,7 @@
 class_name DevRoutes
 extends RefCounted
-## Scene paths and gating for the developer-only screens (dev menu, art gallery, touch probe).
+## Scene paths and gating for the developer-only screens (dev menu, art gallery, touch probe, perf
+## arena).
 ##
 ## The dev menu is available in debug builds and in any export that sets the custom feature
 ## `dev_menu` (the Web preview preset does). Store presets must not set it.
@@ -9,6 +10,7 @@ const MAIN_SCENE: String = "res://scenes/main.tscn"
 const DEV_MENU_SCENE: String = "res://scenes/dev/dev_menu.tscn"
 const ART_GALLERY_SCENE: String = "res://scenes/dev/art_gallery.tscn"
 const TOUCH_PROBE_SCENE: String = "res://scenes/dev/touch_probe.tscn"
+const PERF_ARENA_SCENE: String = "res://scenes/dev/perf_arena.tscn"
 
 
 static func is_enabled() -> bool:
