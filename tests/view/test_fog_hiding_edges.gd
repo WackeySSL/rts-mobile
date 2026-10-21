@@ -3,7 +3,8 @@ extends GdUnitTestSuite
 ## which gdlint's limit of 20 public methods per file keeps full). Local player 2 on a map that is
 ## not square (the block of its grid starts at cells, and cols * cols is not cells), a neutral
 ## owner 0 (an enemy to the fog: hidden on an unseen tile, and a death there is not an own
-## unit's), and a local player the fog has no grid for (nothing to hide behind: everything shows).
+## unit's), and a local player the fog has no grid for (nothing to hide behind: everything shows),
+## also a fog sized for players and no tiles. A layer whose runner never started shows no row.
 ## Exact cases write the published snapshot's fog, positions and owners (allowed in SYNC, ADR 0012
 ## section 3). The runner is not in the tree; pixels cannot be read headless, so the cases read
 ## `UnitLayer.is_shown`, the rigs' `visible`, the projectile plan and the effect ring.
@@ -110,6 +111,27 @@ func test_a_local_player_the_fog_has_no_grid_for_sees_everything_in_every_layer(
 	assert_int(_effects.active_count()).is_equal(1)
 	_tick_with(EffectsRig.died(DARK, 0, 5, 2))
 	assert_int(_effects.active_count()).is_equal(2)
+
+
+func test_a_layer_whose_runner_never_started_shows_no_row() -> void:
+	var idle: MatchRunner = auto_free(MatchRunner.new())  # No snapshot yet.
+	var layer: UnitLayer = auto_free(UnitLayer.new())
+	layer.runner = idle
+	add_child(layer)
+	layer.set_process(false)
+	assert_object(idle.snapshot).is_null()
+	assert_bool(layer.is_shown(0)).is_false()
+	assert_bool(layer.is_shown(-1)).is_false()
+
+
+func test_a_fog_sized_for_players_and_no_tiles_covers_nobody_and_everything_is_seen() -> void:
+	var fog: FogGrid = FogGrid.new()
+	fog.configure(0, 0, 2)  # What a World with two players and no map gives: no cell to index.
+	assert_bool(FogLayer.covers(fog, 1)).is_false()
+	assert_bool(FogLayer.covers(fog, 2)).is_false()
+	var snap: MatchSnapshot = MatchSnapshot.new()
+	snap.fog = fog
+	assert_bool(FogLayer.is_seen(snap, 1, 0, 0)).is_true()
 
 
 func _build(scenario: ScenarioDef) -> void:

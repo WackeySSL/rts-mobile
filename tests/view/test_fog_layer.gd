@@ -139,7 +139,8 @@ func test_a_dirty_update_patches_the_listed_cells_and_nothing_else() -> void:
 	Rig.set_seen(snap, 1, Vector2i(5, 40), true)  # Changed in the grid and not listed.
 	_runner.ticked.emit(snap.tick)
 	# A patch updates the texture it has, and makes no new one (`update()` reads back stale, so
-	# that it did run is for the phone check).
+	# the pixels are checked on `image()`; that `update()` ran is the texture's `changed` signal,
+	# counted in test_fog_layer_update.gd).
 	assert_object(_fog.texture).is_same(texture)
 	var image: Image = _fog.image()
 	assert_int(image.get_pixel(30, 30).a8).is_equal(0)
