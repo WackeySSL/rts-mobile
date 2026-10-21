@@ -199,6 +199,7 @@ func _new_units() -> UnitLayer:
 	var units: UnitLayer = auto_free(UnitLayer.new())
 	units.runner = _runner
 	units.camera = _camera
+	units.reveal_enemies = true  # The enemy bars are the subject, not the fog (test_fog_hiding.gd).
 	units.clock = func() -> int: return _now_ms
 	add_child(units)
 	units.set_process(false)

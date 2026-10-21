@@ -17,6 +17,9 @@ extends Node2D
 ## one absolute z per batch group (layer_z), so mixed types and owners still batch (ADR 0012
 ## section 6). The layer also keeps, per row, the hp it last saw and the frame clock of the last hp
 ## drop (`hit_time_ms`), which the health bars read together with `is_ringed`.
+## An enemy rig stands on a tile its owner's opponent may not see: the local player's fog hides it
+## there (`is_shown`, ADR 0010 section 2) by its `visible` flag alone, so a hidden rig keeps its
+## position, heading and tint and still answers `unit_screen_position`. Own rigs are always shown.
 
 const ART_DIR: String = "res://assets/art/svg/units/"
 const RING_ART: String = "res://assets/art/svg/ui/selection_ring.svg"
@@ -43,6 +46,8 @@ const NEVER_HIT: int = -1  ## What hit_time_ms answers for a unit whose hp has n
 @export var turn_rate: float = 12.0
 @export var runner: MatchRunner
 @export var camera: RtsCamera
+## Shows every enemy rig whatever the fog says: the perf arena, and tests whose subject is not fog.
+@export var reveal_enemies: bool = false
 
 ## The frame clock in ms that hit times are stamped by (the frame that saw the hp drop). Tests
 ## replace it.
@@ -124,6 +129,22 @@ func hit_time_ms(row: int) -> int:
 ## Whether unit row `row` is in the selection as last given to `set_selected`.
 func is_ringed(row: int) -> bool:
 	return row >= 0 and row < _rings.size() and _rings[row] != null and _rings[row].visible
+
+
+## Whether unit row `row` of `runner.snapshot` is drawn: an own unit always, an enemy one when its
+## tile is visible to the local player (the tile from `snapshot.cell_of`, at the unit's position
+## in the tick) or `reveal_enemies` is set. Both are read at the call, nothing is cached. Like
+## `hit_time_ms` it does not sync, and a row out of range is not shown.
+func is_shown(row: int) -> bool:
+	var snap: MatchSnapshot = runner.snapshot if runner != null else null
+	if snap == null or row < 0 or row >= snap.owner.size():
+		return false
+	var player: int = FogLayer.local_player_of(runner)
+	return (
+		reveal_enemies
+		or snap.owner[row] == player
+		or FogLayer.is_seen(snap, player, snap.pos_x[row], snap.pos_y[row])
+	)
 
 
 ## Where unit row `index` is on screen, in base px.
@@ -392,12 +413,25 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 	var rigs: Array[Node2D] = _rigs
 	var layers: Array[Sprite2D] = _layers
 	var layer_count: int = LAYER_FILES.size()
+	# The fog hides an enemy rig on a tile the local player does not see. The tile is the one of
+	# the unit's position in this tick (`snapshot.cell_of`), so the flag changes per tick.
+	var owners: PackedInt32Array = snap.owner
+	var player: int = FogLayer.local_player_of(runner)
+	var fog: FogGrid = snap.fog
+	var fogged: bool = not reveal_enemies and FogLayer.covers(fog, player)
+	var counts: PackedInt32Array = fog.visible
+	var counts_at: int = (player - 1) * fog.cells
 	for row: int in rigs.size():
 		var from: Vector2 = ViewScale.milli_to_px_vec(prev_x[row], prev_y[row])
 		var to: Vector2 = ViewScale.milli_to_px_vec(cur_x[row], cur_y[row])
 		var at: Vector2 = from.lerp(to, alpha)
 		if rigs[row].position != at:
 			rigs[row].position = at
+		var shown: bool = true
+		if fogged and owners[row] != player:
+			shown = counts[counts_at + snap.cell_of(cur_x[row], cur_y[row])] > 0
+		if rigs[row].visible != shown:
+			rigs[row].visible = shown
 		# A unit that stood still last tick keeps its heading. So does one that moved under half a
 		# full step: the step onto its goal is an integer remainder and can point anywhere.
 		var moved_x: int = cur_x[row] - prev_x[row]

@@ -64,6 +64,7 @@ func before_test() -> void:
 	_runner.start()
 	_layer = auto_free(ProjectileLayer.new())
 	_layer.runner = _runner
+	_layer.reveal_enemies = true  # The geometry is the subject, not the fog (test_fog_hiding.gd).
 	add_child(_layer)
 	_layer.set_process(false)  # Frames come only from _frame().
 
@@ -381,6 +382,7 @@ func test_the_main_scene_has_the_layer_after_the_bars_at_z_120_in_world_space_at
 	assert_int(at).is_greater(names.find(&"HealthBarLayer"))
 	assert_int(at).is_less(names.find(&"MarkerLayer"))
 	var layer: ProjectileLayer = main.get_node("ProjectileLayer")
+	layer.reveal_enemies = true  # The middle of the map is in the dark at the start of the match.
 	var runner: MatchRunner = main.get_node("MatchRunner")
 	var camera: RtsCamera = main.get_node("Camera")
 	assert_int(layer.z_index).is_equal(120)

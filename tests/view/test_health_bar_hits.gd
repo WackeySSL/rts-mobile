@@ -42,6 +42,7 @@ func before_test() -> void:
 	_units = auto_free(UnitLayer.new())
 	_units.runner = _runner
 	_units.camera = _camera
+	_units.reveal_enemies = true  # The enemy bars are the subject, not the fog (test_fog_hiding.gd).
 	_units.clock = func() -> int: return _now_ms
 	add_child(_units)
 	_units.set_process(false)

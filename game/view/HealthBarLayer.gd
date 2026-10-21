@@ -9,6 +9,8 @@ extends Node2D
 ## per-row answers, and it brings the unit layer's rows up to the snapshot once at the start of a
 ## frame (`sync_rows`), so the tree order of the two layers does not matter.
 ##
+## A unit that the unit layer does not show (an enemy in the fog) gets no bar, whatever its hp did.
+##
 ## A bar is sized in dp, so it looks the same at every zoom: world px per dp is the base px per dp
 ## over the camera zoom. It is centred on its unit, and its bottom edge is r x zoom + 1 dp above
 ## the unit on screen, r the reach of the sprite of its class. The ring does not place it.
@@ -191,6 +193,8 @@ func _plan() -> void:
 		var hit: int = unit_layer.hit_time_ms(row)
 		if not (unit_layer.is_ringed(row) or (hit >= 0 and hit >= recent_since)):
 			continue
+		if not unit_layer.is_shown(row):
+			continue  # A rig the fog hides has no bar either (ADR 0010 section 2).
 		var type: int = types[row]
 		var infantry: int = 1 if armours[type] == World.Armour.INFANTRY else 0
 		var shape: int = (2 if owners[row] != local_player else 0) + infantry
