@@ -7,7 +7,9 @@ extends RefCounted
 ## small field of the three shipped types on points of a 1000 milli lattice, so that several
 ## enemies stand at the same squared distance. open_field: a big map with sparse rock and two
 ## sides far apart. scouts: the roster of test_targeting_kernel_indexes.gd (an unarmed scout first,
-## so type_weapon is [-1, 0, 1]) on a field with a little rock.
+## so type_weapon is [-1, 0, 1]) on a field with a little rock. pair: two units, the second at an
+## offset from the first, for the edges of a reach (offsets_at() lists them). random: a seeded
+## random state. A World that is built with add_unit() starts blind (stamp_fog() gives it sight).
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
@@ -19,6 +21,11 @@ const TANK: int = 2
 ## The fourth type of open_field(), and how many of each side have it.
 const LONG_GUN: int = 3
 const LONG_GUNS: int = 6
+## The sight of the long gun, milli: above the diagonal of the map (64 * sqrt(2) tiles, 90,510), so
+## that a side with a long gun alive sees every enemy, and an ATTACK across the map names a target
+## within sight (the authoring rule of the fog PR, row P46b: an ATTACK on an unseen enemy is
+## dropped).
+const LONG_GUN_SIGHT: int = 91000
 ## The index of rock in GridWorld.GROUND ('#').
 const ROCK: int = 2
 ## The indexes in GridWorld.GROUND of '^' (scrub: foot only), 'w' (not tracked) and 't' (not
@@ -73,17 +80,61 @@ static func lattice(
 	return world
 
 
+## Two units of the shipped type `type` on a field of 20 x 12 open tiles, player 1 at (10000, 6000)
+## and player 2 `dx` and `dy` milli from it, both with `order` (ATTACK_MOVE in the DIRECT mode, or
+## IDLE in NONE) and the two cadences at 1, so that each is due, and tests its line, on every tick.
+## For the edges of a reach: a target exactly at the reach, one milli inside it and one beyond.
+static func pair(type: int, order: int, dx: int, dy: int) -> World:
+	var world: World = Rig.data_world(20, 12)
+	world.retarget_period_ticks = 1
+	world.line_check_period_ticks = 1
+	var first: int = world.index_of(world.add_unit(1, type, 10000, 6000))
+	var second: int = world.index_of(world.add_unit(2, type, 10000 + dx, 6000 + dy))
+	for row: int in [first, second]:
+		world.order[row] = order
+		world.goal_x[row] = 19500
+		world.goal_y[row] = 11500
+		world.nav_mode[row] = World.NavMode.DIRECT if order == World.Order.ATTACK_MOVE else 0
+	return world
+
+
+## The offsets (dx, dy) that put a point at a distance of exactly `reach` milli, which is a multiple
+## of 5 so that (3, 4, 5) times a fifth of it gives whole numbers: the eight diagonals of 3-4-5 in
+## both orders, and the four axes. Then the points one milli short and one beyond: on an axis, and
+## beside the diagonal (3k, 4k - 1) and (3k, 4k + 1), whose squared distances are not squares.
+@warning_ignore("integer_division")
+static func offsets_at(reach: int) -> Array[Vector2i]:
+	var fifth: int = reach / 5
+	var out: Array[Vector2i] = []
+	for sign_x: int in [1, -1]:
+		for sign_y: int in [1, -1]:
+			out.append(Vector2i(3 * fifth * sign_x, 4 * fifth * sign_y))
+			out.append(Vector2i(4 * fifth * sign_x, 3 * fifth * sign_y))
+		out.append(Vector2i(5 * fifth * sign_x, 0))
+		out.append(Vector2i(0, 5 * fifth * sign_x))
+	out.append(Vector2i(reach - 1, 0))
+	out.append(Vector2i(reach + 1, 0))
+	out.append(Vector2i(0, -reach - 1))
+	out.append(Vector2i(3 * fifth, 4 * fifth - 1))
+	out.append(Vector2i(3 * fifth, 4 * fifth + 1))
+	return out
+
+
 ## A field of `cols` x `rows` tiles with `rock_percent` of its tiles rock, and `per_side` units of
 ## each player in the first and the last two columns of the lower fifth of the map (so that the
 ## sides are `cols` tiles apart, and the segments between them are wide): the first `LONG_GUNS` of
 ## each side are a fourth type, a gun with a range and an acquire range of 60,000 milli (a squared
-## distance of 3.6 * 10^9 is in reach, past 2^31), the others are the three shipped types.
+## distance of 3.6 * 10^9 is in reach, past 2^31) and a sight of LONG_GUN_SIGHT (the sides see each
+## other across the map, from the first tick: the fog is stamped, see stamp_fog()), the others are
+## the three shipped types.
 @warning_ignore("integer_division")
 static func open_field(
 	salt: int, cols: int = 64, rows: int = 64, rock_percent: int = 4, per_side: int = 30
 ) -> World:
 	var rng: DetRandom = DetRandom.create(salt, 32)
-	var long_gun: UnitDef = Rig.unit(&"long_gun", 60000, 60000, 60000, 0, [100, 100, 100, 100])
+	var long_gun: UnitDef = Rig.unit(
+		&"long_gun", LONG_GUN_SIGHT, 60000, 60000, 0, [100, 100, 100, 100]
+	)
 	long_gun.weapon.damage = 1  # A shot from across the map is a pin prick: the field lasts.
 	var units: Array[UnitDef] = [
 		load(Rig.RIFLE_PATH) as UnitDef,
@@ -102,7 +153,25 @@ static func open_field(
 			var line: int = rows - 1 - rng.next_int(maxi(rows / 5, 1))
 			var type: int = LONG_GUN if unit < LONG_GUNS else rng.next_int(3)
 			world.add_unit(player, type, column * 1000 + 500, line * 1000 + 500)
+	stamp_fog(world)
 	return world
+
+
+## Stamps the sight of every unstamped row into the fog, the way World.prepare() does for the rows
+## that exist when it runs: a unit that is added to a prepared World starts with `fog_cell` -1 and
+## sees nothing until its player's first FOG update (tick 0 or 1), so a World built with add_unit()
+## starts blind. The open field calls this, so that the far attacks of its first wave name targets
+## in sight (the authoring rule of the fog PR, row P46b).
+static func stamp_fog(world: World) -> void:
+	world.prepare()
+	var pad: int = world.type_sight.size()
+	for row: int in world.unit_count():
+		var player: int = world.owner[row]
+		if world.fog_cell[row] >= 0 or player < 1 or player > world.player_count:
+			continue
+		var cell: int = world.cell_of(world.pos_x[row], world.pos_y[row])
+		world.fog.stamp(player, cell, mini(world.type_index[row], pad), 1)
+		world.fog_cell[row] = cell
 
 
 ## The roster of test_targeting_kernel_indexes.gd on a field of `cols` x `rows` tiles with a little
@@ -152,7 +221,10 @@ static func scout_roster() -> Array[UnitDef]:
 ## (some below 0) and cadences from -3 to 9. One state in three has a targeting grid of another cell
 ## side (500 to 12,000 milli, which changes the cells a reach covers). With `garbage` the
 ## navigation columns hold any value too (a state for one TARGETING phase, the rig's once());
-## without, they hold what a unit can hold (a state to step through Sim.step).
+## without, they hold what a unit can hold (a state to step through Sim.step). The work counts
+## `stats[TARGET_CANDIDATES]` and `stats[LINE_CHECKS]` start above 0 (a tick clears them first; a
+## phase run by hand with `keep_counts` adds to them), drawn from a stream of their own so that no
+## other draw of the state moves.
 @warning_ignore("integer_division")
 static func random(salt: int, garbage: bool = false) -> World:
 	var rng: DetRandom = DetRandom.create(salt, 34)
@@ -214,6 +286,9 @@ static func random(salt: int, garbage: bool = false) -> World:
 		world.target_grid.configure(
 			world.map_w, world.map_h, sides[rng.next_int(sides.size())], world.max_rows
 		)
+	var counts: DetRandom = DetRandom.create(salt, 37)
+	world.stats[World.Stat.TARGET_CANDIDATES] = 1 + counts.next_int(200)
+	world.stats[World.Stat.LINE_CHECKS] = 1 + counts.next_int(50)
 	return world
 
 

@@ -23,14 +23,23 @@ extends GdUnitTestSuite
 ## The plain arena run reaches 262,688 rows looked at, 14,240 candidates (enemies in range with a
 ## damage percent), 5,046 locked ATTACK rows and 50 fallbacks to ATTACK_MOVE, 98 MOVE rows that
 ## dropped a target, 10,662 due rows (5,439 kept their target; 5,223 scanned and 1,200 took one),
-## 4,770 candidates that beat the best by a smaller distance and 317 by a better percent from
-## farther away, 27,578 unit-ticks in HOLD (1,561 starts, 1,357 ends) and 2,995 in CHASE (468 and
-## 456), and 1,339 line tests (171 ATTACK re-tests; 996 clear, 343 blocked). It reaches no exact tie
-## (two candidates at the same percent and the same squared distance: the units of the arena are
-## jittered) and no segment whose `ay * dx` passes 2^31 (a chase tests only a target inside its
-## acquire range, and the ATTACK units of the arena stand near theirs). Those two are the lattice's
-## and the 64 x 64 map's, in the other two suites, so a later change to the arena (P47, P46b)
-## re-derives the floors here and leaves those alone.
+## 2,585 candidates that beat the best by a smaller distance at the same percent and 317 by a better
+## percent from farther away, 27,578 unit-ticks in HOLD (1,561 starts, 1,357 ends) and 2,995 in
+## CHASE (468 and 456), and 1,339 line tests (171 ATTACK re-tests; 996 clear, 343 blocked). It
+## reaches no exact tie (two candidates at the same percent and the same squared distance: the units
+## of the arena are jittered), no chase line test at exactly the acquire range, and no segment whose
+## `ay * dx` passes 2^31 (a chase tests only a target inside its acquire range, and the ATTACK units
+## of the arena stand near theirs). The ties are the lattices', the acquire-range edge is the pairs'
+## (test_targeting_lockstep_cases.gd) and the wide segments are the 64 x 64 map's
+## (test_targeting_lockstep_rules.gd).
+##
+## For P46b, which adds the vision of a candidate to both Targeting versions and re-runs these
+## suites: the probe's count() takes the same rule (the rig holds the probe to the phase, so a probe
+## that leaves it out fails the case wherever it changes a pick), the floors of this arena are
+## re-derived, and so are the floors of every case whose orders can name an enemy out of sight (the
+## random waves and the attack-then-kill case send ATTACKs at any enemy, which that PR drops). The
+## open field of the rules suite is built to stay in force: its long guns see the whole map and its
+## fog is stamped from tick 0, and the case asserts that every far attack names a target in sight.
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_lockstep_rig.gd")
 const Orders: GDScript = preload("res://tests/sim/support/targeting_orders.gd")
@@ -52,7 +61,7 @@ const ARENA_ACQUISITION: Dictionary[StringName, int] = {
 	&"kept": 3600,
 	&"scans": 3400,
 	&"found": 800,
-	&"nearer_wins": 3100,
+	&"nearer_wins": 1720,
 	&"farther_wins": 210
 }
 const ARENA_ENGAGEMENT: Dictionary[StringName, int] = {
@@ -153,6 +162,8 @@ func test_the_same_run_with_the_other_ported_phases_in_c_plus_plus_matches() -> 
 	_assert_reached(rig.tally(), ARENA_ENGAGEMENT)
 
 
+## The mask that the library reports is the one of the case before until the FOG port merges (row
+## P46n), and then FOG runs in C++ here as well.
 func test_the_same_run_with_every_phase_the_library_has_in_c_plus_plus_matches() -> void:
 	var rig: RefCounted = Rig.new().setup(Worlds.arena, Rig.ALL)
 	assert_array(rig.problems).is_empty()

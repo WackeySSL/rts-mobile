@@ -10,12 +10,14 @@ extends RefCounted
 ##
 ## While it steps, a TargetingTallyProbe on the twin's World counts what the run reached (rows
 ## scanned, ties, fallbacks, holds, chases, line tests, long segments), so that a case can assert
-## that it did not pass by never reaching a rule; the rig also checks the probe's count of the rows
-## looked at and of the line tests against the phase's own (`stats[TARGET_CANDIDATES]` and
-## `stats[LINE_CHECKS]`) after every tick, so a probe that works the rule out another way than the
-## rule fails the case instead of vouching for it. P46b adds a vision rule to both Targeting
-## versions and re-runs these suites: it changes the probe's count() the same way, and everything
-## else here, the fog included, is compared already. Not a test suite.
+## that it did not pass by never reaching a rule. The probe works the acquisition pass out again,
+## and after every tick the rig holds it to the phase: the rows looked at and the line tests against
+## the phase's own (`stats[TARGET_CANDIDATES]` and `stats[LINE_CHECKS]`), and the target, the
+## order, its target and the goal of every row against what the probe says the rule leaves in them
+## (`last_mismatches`), so a probe that works the rule out another way than the rule fails the case
+## instead of vouching for it. P46b adds a vision rule to both Targeting versions and re-runs these
+## suites: it changes the probe's count() the same way, and everything else here, the fog included,
+## is compared already. Not a test suite.
 
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const LockstepRig: GDScript = preload("res://tests/sim/support/lockstep_rig.gd")
@@ -23,7 +25,8 @@ const TallyProbe: GDScript = preload("res://tests/sim/support/targeting_tally_pr
 const TARGETING: int = SimProbe.Phase.TARGETING
 ## The phases that the kernels' World runs in C++: TARGETING alone (so that a difference can only
 ## be the TARGETING kernel's), TARGETING with the other ports that have merged (FLOW, SEPARATION and
-## INTEGRATE; a later port is in ALL), or ALL (the mask the library reports).
+## INTEGRATE; a later port is in ALL), or ALL (the mask the library reports: the same as
+## WITH_PORTED until the FOG port merges, then FOG as well).
 const ONLY: int = 1 << TARGETING
 const WITH_PORTED: int = (
 	(1 << TARGETING)
@@ -136,9 +139,11 @@ func compare(where: String) -> String:
 	return "" if found == "" else "%s: %s" % [where, found]
 
 
-## compare(), and then whether the probe's counts are the phase's own: a probe that works the rule
-## out another way fails the case instead of vouching for it. The phase's counts are the ones the
-## probe read at the TARGETING mark (INTENTS adds its own line tests to the second one later).
+## compare(), and then whether the probe's work is the phase's own: its counts of the rows looked at
+## and of the line tests, and its pick for every row (the columns the acquisition pass writes). A
+## probe that works the rule out another way fails the case instead of vouching for it. The phase's
+## counts are the ones the probe read at the TARGETING mark (INTENTS adds its own line tests to the
+## second one later).
 func _checked(where: String) -> String:
 	var found: String = compare(where)
 	if found != "":
@@ -153,6 +158,11 @@ func _checked(where: String) -> String:
 	if probe.last_checks != checks:
 		return (
 			"%s: the probe counts %d line tests, the phase %d" % [where, probe.last_checks, checks]
+		)
+	if probe.last_mismatches != 0:
+		return (
+			"%s: the phase differs from the rule in %d cells, first: %s"
+			% [where, probe.last_mismatches, probe.first_mismatch]
 		)
 	return ""
 

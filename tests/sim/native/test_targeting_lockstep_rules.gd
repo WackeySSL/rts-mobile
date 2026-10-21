@@ -11,7 +11,9 @@ extends GdUnitTestSuite
 ##   fifth of the map, ordered to attack each other from across the map: an ATTACK unit with a clear
 ##   line re-tests it on its turn however far its target is, so the segments are up to 63 tiles long
 ##   and `ay * dx` of FixedMath.line_clear passes 2^31 (a 32-bit product would wrap); six units a
-##   side have a gun of 60,000 milli, whose scans look at units 3.6 * 10^9 squared milli away;
+##   side have a gun of 60,000 milli, whose scans look at units 3.6 * 10^9 squared milli away. The
+##   guns also see 91,000 milli (the map's diagonal is 90,510), so that every ATTACK across the map
+##   names a target within sight, as the fog PR (P46b) will want, and the case stays in force;
 ## - the empty grid: a grid with no cells for a whole run, and grids with no rows of cells or a cell
 ##   side below 1 in the middle of a fight (a due row that keeps no target writes 0 without a scan;
 ##   the rest of the pass, the ATTACK lock and the engagement, still runs).
@@ -30,8 +32,9 @@ const LATTICE_TICKS: int = 150
 const ARENA_TICKS: int = 300
 const SCOUT_TICKS: int = 400
 const OPEN_TICKS: int = 600
+const FAR_WAVES: int = 15
 ## The 25 lattice runs together (the points of a lattice are corners of tiles in the even ones),
-## measured: 152,863 looks, 44,165 candidates, 4,727 scans, 4,462 found, 1,093 ties (142 swaps), 31
+## measured: 152,863 looks, 44,165 candidates, 4,727 scans, 4,462 found, 653 ties (79 swaps), 31
 ## candidates on the edge of the scan window, 139 fallbacks, 1,122 dropped, 103,138 holding, 2,182
 ## chasing, 640 chase starts, 3,398 line tests, 1,633 re-tests, no blocked line.
 const LATTICE_FLOORS: Dictionary[StringName, int] = {
@@ -39,8 +42,8 @@ const LATTICE_FLOORS: Dictionary[StringName, int] = {
 	&"cands": 29500,
 	&"scans": 3150,
 	&"found": 2970,
-	&"ties": 728,
-	&"tie_swaps": 94,
+	&"ties": 435,
+	&"tie_swaps": 52,
 	&"window_edge": 20,
 	&"fallbacks": 92,
 	&"dropped": 748,
@@ -97,6 +100,8 @@ const OPEN_FLOORS: Dictionary[StringName, int] = {
 	&"holding": 15000,
 	&"cands": 5200
 }
+## The ATTACK commands that the open-field runs checked for sight (see _seen_far_attacks()).
+var _attacks_seen: int = 0
 
 
 func test_the_two_cadences_at_every_pair_of_values_match_on_a_lattice_in_a_fight() -> void:
@@ -158,9 +163,36 @@ func test_a_map_of_64_by_64_tiles_with_sparse_rock_matches_segments_that_pass_2_
 		assert_array(rig.problems).is_empty()
 		assert_int(rig.worlds[1].map_cols).is_equal(64)
 		assert_int(rig.worlds[1].map_rows).is_equal(64)
-		assert_str(rig.run(OPEN_TICKS, Orders.far_attacks)).is_empty()
+		assert_str(rig.run(OPEN_TICKS, _seen_far_attacks)).is_empty()
 		Rig.add_to(total, rig.tally())
 	_assert_reached(total, OPEN_FLOORS)
+	# Orders.far_attacks sends an ATTACK of each side every 40 ticks from tick 0 (15 times in 600
+	# ticks), to each of the two Worlds of the three runs: 180 commands, all of which were checked.
+	assert_int(_attacks_seen).is_equal(FAR_WAVES * 2 * 2 * 3)
+
+
+## Orders.far_attacks, with each ATTACK checked first: its target stands in a cell that its player
+## sees. That is the authoring rule of the fog PR (row P46b: an ATTACK on an unseen enemy is
+## dropped), and the long guns of the open field have the sight that keeps the far side in view, so
+## after P46b the far attacks are still issued and the lines still cross the map.
+func _seen_far_attacks(world: World, tick: int) -> Array[Command]:
+	world.prepare()
+	var out: Array[Command] = Orders.far_attacks(world, tick)
+	for command: Command in out:
+		var row: int = world.index_of(command.target_id)
+		var cell: int = world.cell_of(world.pos_x[row], world.pos_y[row])
+		(
+			assert_bool(world.fog.is_visible(command.player_id, cell))
+			. override_failure_message(
+				(
+					"tick %d: player %d attacks unit %d, which it does not see"
+					% [tick, command.player_id, command.target_id]
+				)
+			)
+			. is_true()
+		)
+		_attacks_seen += 1
+	return out
 
 
 ## A grid with no cells for the whole run (no columns: the rebuild inserts nothing, every tick): a
