@@ -211,14 +211,8 @@ func test_the_fill_marks_exactly_the_enemies_that_is_shown_denies_and_reads_the_
 
 
 func test_local_player_2_hides_the_blue_tanks_and_picks_through_its_own_fog() -> void:
-	var runner: MatchRunner = auto_free(MatchRunner.new())
-	runner.scenario = Rig.scenario(2)
-	runner.start()
-	var layer: UnitLayer = auto_free(UnitLayer.new())
-	layer.runner = runner
-	layer.camera = _camera
-	add_child(layer)
-	layer.set_process(false)
+	var layer: UnitLayer = _layer_of(Rig.scenario(2))
+	var runner: MatchRunner = layer.runner
 	var snap: PickSnapshot = PickSnapshot.new()
 	layer.fill_pick_snapshot(snap, UiScale.dp(_settings.hit_radius_dp))
 	assert_int(snap.pickable.slice(0, 30).count(0)).is_equal(30)  # Blue is the enemy now.
@@ -231,6 +225,39 @@ func test_local_player_2_hides_the_blue_tanks_and_picks_through_its_own_fog() ->
 	assert_int(snap.pickable[0]).is_equal(1)
 	assert_int(snap.pickable.slice(1, 30).count(0)).is_equal(29)
 	assert_int(Picker.pick(snap, on_tank_1, 2, true)).is_equal(0)
+
+
+func test_a_local_player_the_fog_has_no_grid_for_or_a_fog_with_no_tiles_picks_every_row() -> void:
+	# Two players: the fog has no grid for a third, so it hides nothing from it (as for is_shown).
+	# The fill must not index the fog for that player, which would read past the end of `visible`.
+	var layer: UnitLayer = _layer_of(Rig.scenario(3))
+	var snap: PickSnapshot = PickSnapshot.new()
+	layer.fill_pick_snapshot(snap, UiScale.dp(_settings.hit_radius_dp))
+	assert_int(snap.pickable.count(1)).is_equal(40)
+	assert_array(_marks_against_is_shown(snap, layer)).is_empty()
+	# A fog sized for the players and no tiles (a snapshot with no map) hides nothing either.
+	var no_tiles: FogGrid = FogGrid.new()
+	no_tiles.configure(0, 0, 2)
+	_layer.runner.snapshot.fog = no_tiles
+	_fill(snap)
+	assert_int(snap.pickable.count(1)).is_equal(40)
+	assert_array(_marks_against_is_shown(snap)).is_empty()
+
+
+func test_a_refill_from_a_layer_with_no_rows_empties_every_array_of_the_snapshot() -> void:
+	var snap: PickSnapshot = _fill(PickSnapshot.new())
+	assert_int(snap.pickable.size()).is_equal(40)
+	var idle: UnitLayer = auto_free(UnitLayer.new())  # Its runner has no snapshot yet.
+	idle.runner = auto_free(MatchRunner.new())
+	idle.camera = _camera
+	add_child(idle)
+	idle.set_process(false)
+	idle.fill_pick_snapshot(snap, UiScale.dp(_settings.hit_radius_dp))
+	var sizes: Array[int] = [snap.ids.size(), snap.owners.size(), snap.type_index.size()]
+	sizes.append_array([snap.screen_pos.size(), snap.radius_px.size(), snap.pickable.size()])
+	assert_array(sizes).is_equal([0, 0, 0, 0, 0, 0])  # The arrays stay parallel: none is stale.
+	_fill(snap)  # And the same snapshot takes the rows of a layer that has them again.
+	assert_array([snap.size(), snap.pickable.size(), snap.pickable.count(1)]).is_equal([40, 40, 30])
 
 
 func test_filling_a_snapshot_writes_the_rows_in_place_and_keeps_the_sizes() -> void:
@@ -276,13 +303,28 @@ func test_filling_a_snapshot_writes_the_rows_in_place_and_keeps_the_sizes() -> v
 	assert_float(snap.radius_px[0]).is_equal(48.0)  # Art 32 px * 1.5.
 
 
-## The rows whose `pickable` entry is not what the layer's `is_shown` says (an own unit always is).
-func _marks_against_is_shown(snap: PickSnapshot) -> Array[int]:
+## The rows whose `pickable` entry is not what `is_shown` says (of `layer`, else the suite's own; an
+## own unit always is shown).
+func _marks_against_is_shown(snap: PickSnapshot, layer: UnitLayer = null) -> Array[int]:
+	var judge: UnitLayer = layer if layer != null else _layer
 	var wrong: Array[int] = []
 	for row: int in snap.size():
-		if (snap.pickable[row] == 1) != _layer.is_shown(row):
+		if (snap.pickable[row] == 1) != judge.is_shown(row):
 			wrong.append(row)
 	return wrong
+
+
+## A layer on its own started match of `scenario`, apart from the suite's `_layer`.
+func _layer_of(scenario: ScenarioDef) -> UnitLayer:
+	var runner: MatchRunner = auto_free(MatchRunner.new())
+	runner.scenario = scenario
+	runner.start()
+	var layer: UnitLayer = auto_free(UnitLayer.new())
+	layer.runner = runner
+	layer.camera = _camera
+	add_child(layer)
+	layer.set_process(false)
+	return layer
 
 
 func _fill(snap: PickSnapshot) -> PickSnapshot:
