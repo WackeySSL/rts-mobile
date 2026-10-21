@@ -8,7 +8,8 @@ const PerfReport: GDScript = preload("res://tests/perf/support/perf_report.gd")
 const GATE_PATH: String = "res://data/dev/perf_gate.tres"
 ## Every field with this prefix is a printed phone / CI ratio, not a threshold (plan exception 5).
 const RATIO_PREFIX: String = "ci_ratio_"
-## The golden arrays are P49a's: they only have to pair up.
+## The golden arrays hold the arena's hashes, which test_golden_hashes.gd (P49a) checks: here they
+## only have to pair up.
 const GOLDEN_FIELDS: Array[String] = ["golden_ticks", "golden_hex"]
 ## The ratios of the impl=native line (ADR 0013 section 15). P54r gave PerfGateDef their defaults
 ## and P38pn wrote them to the file, so a missing line would load the same numbers.
@@ -267,7 +268,7 @@ func test_the_json_is_the_report_with_sorted_keys_and_a_final_newline() -> void:
 ## types (an int field stays an int). Two groups are exempt from equality. Every ratio (ci_ratio_*,
 ## also the native ones that P54r adds to the script) is a printed estimate that the lead's
 ## one-value PR changes in this file alone (plan exception 5), so it only has to be a sensible
-## float. The golden arrays are P49a's, so they only have to pair up.
+## float. The golden arrays are test_golden_hashes.gd's (P49a), so they only have to pair up.
 func test_the_gate_file_holds_the_contract_values() -> void:
 	var gate: PerfGateDef = load(GATE_PATH) as PerfGateDef
 	assert_object(gate).is_not_null()

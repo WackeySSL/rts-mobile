@@ -1,13 +1,19 @@
 extends GdUnitTestSuite
-## The perf harness on the arena, report only (plan P38p, ADR 0011 section 4, ADR 0012 section 4).
-## The perf arena is stepped through MatchLoop with a TimingProbe for 900 ticks, every tick timed:
-## seed 42 three times and seed 43 once. The suite prints the PERF line, writes
-## reports/perf/sim.json and checks that the three seed-42 runs agree at every checkpoint, that
-## seed 43 does not, and that the mean tick stays under a catastrophic cap. Nothing else about the
-## clock is asserted: the wall-clock budget is P49b's, and the deterministic cost bounds (what the
-## arena's units and projectiles may do) are P49a's, so alive_end and the projectile numbers are
-## printed here and fail nothing.
-## It times MatchLoop.step; P49a switches to TickJob.run().
+## The perf harness on the arena (plan P38p and P49a, ADR 0011 section 4, ADR 0012 section 4, ADR
+## 0013 sections 3 and 15). The perf arena is run for 900 ticks through TickJob.run() in SYNC, the
+## way MatchRunner runs a tick: a new MatchSnapshot for each tick, the published one as `previous`,
+## and a StepProbe whose target is a TimingProbe. A tick takes what the gate's job_usec takes, the
+## step, the capture and the copies of the first write, and Sim.step (step_usec) and the phases
+## are read from the same job. Seed 42 runs three times and seed 43 once; the suite prints the PERF
+## line, the STEP sub-line and the two WATCH lines, writes reports/perf/sim.json and checks that
+## the three seed-42 runs agree at every checkpoint and that seed 43 does not.
+##
+## The wall clock is report only: apart from the catastrophic cap on the best mean (20 ms) nothing
+## about the clock is asserted, because the CI wall-clock budget is P49b's. What the suite does
+## enforce is deterministic (plan P49a): the cost bounds from World.stats, the 150 units at tick 0,
+## no projectile overflow, the pinned alive_end and projectile peak, and the growth of static
+## memory (tests/perf/support/perf_bounds.gd holds the bounds, perf_run.gd applies them to a run and
+## test_perf_bounds.gd pins both); the golden hashes are checked by test_golden_hashes.gd.
 ##
 ## The second PERF line (plan P38pn, ADR 0013 section 15): when the SimKernels library is loaded,
 ## seed 42 runs three more times, each after the GDScript run it pairs with, with the kernels
@@ -15,14 +21,20 @@ extends GdUnitTestSuite
 ## world.native_phases = kernels.phases()), and the suite prints
 ## `PERF sim impl=native ...`, whose phone estimates read ci_ratio_native_mean and
 ## ci_ratio_native_p95. Without the library (the web, a build without native/bin) it prints one
-## plain note, from the native-line case, and no such line. Report only, like the GDScript line: no
-## new threshold, and the catastrophic cap stays the GDScript line's. Both implementations must end
-## every checkpoint, the last one included, on the same state hash. The GDScript line keeps its
-## format exactly (P51 parses both lines).
+## plain note, from the native-line case, and no such line. The native line is the timing that the
+## phone runs (the gate's job is native), the GDScript line is report only; the catastrophic cap
+## holds for both. Both implementations must end every checkpoint, the last one included, on the
+## same state hash. The GDScript line keeps its format exactly (P51 parses both lines).
 ## The order of the runs is G N G N G N (G the GDScript run, N the native one) and then seed 43, and
 ## ref_ms is the smallest reading of the reference loop before and after all seven runs, one value
 ## that both lines share. The RUN lines print grouped by implementation (the GDScript runs, seed 43,
 ## then the native runs), not in the order in which the runs happened.
+##
+## The two watch lines have no bound (ADR 0013 section 15's named watch items): the COMMANDS phase
+## on the arena's largest order tick plus the same phase for one crafted order of all 150 units
+## (Formation.assign), and the p95 of the job minus Sim.step on the checkpoint ticks and on the
+## others (the capture and the state hash, which a port cannot speed up). They read the native
+## runs, or the GDScript ones when the library is not loaded.
 ##
 ## The enforced numbers are the minimum over the three seed-42 runs of each statistic (ADR 0011
 ## section 4, a fixed method and not a retry). RUN lines print every run, apart from the `PERF`
@@ -35,6 +47,19 @@ extends GdUnitTestSuite
 ## assert inequalities only, so the combat and the projectiles cannot break them.
 
 const PerfReport: GDScript = preload("res://tests/perf/support/perf_report.gd")
+const PerfBounds: GDScript = preload("res://tests/perf/support/perf_bounds.gd")
+## What one match leaves: the tick times, the per-phase sums, the World.stats maxima, the
+## checkpoints and the readings the bounds judge (tests/perf/support/perf_run.gd).
+const Run: GDScript = preload("res://tests/perf/support/perf_run.gd")
+## The run-outcome pins (plan P49a, ADR 0011 section 4): what the seed-42 arena ends on at
+## 4eb974e71b2107be, 71 of its 150 units alive at tick 900 and at most 28 projectile slots in use at
+## once. A run must end within PerfBounds.MARGIN_PERCENT (25 %, rounded up) of each, so alive_end in
+## 53..89 and the peak in 21..35: a balance change that empties the fight or stops the shooting
+## would otherwise shrink the measured load unseen. The first sim PR that moves the arena run (P46b)
+## re-pins these two numbers, and the golden hashes of data/dev/perf_gate.tres, in one place each,
+## only if the new values fall outside (plan exception 3), with a note that says why they moved.
+const ALIVE_END_PIN: int = 71
+const PROJ_PEAK_PIN: int = 28
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const GATE_PATH: String = "res://data/dev/perf_gate.tres"
 const REPORT_PATH: String = "res://reports/perf/sim.json"
@@ -44,6 +69,13 @@ const TICKS: int = 900
 const SEED: int = 42
 const OTHER_SEED: int = 43
 const RUNS: int = 3
+## The serial of the match's snapshots (the runner counts one for each start).
+const MATCH_SERIAL: int = 1
+## The crafted order of the watch line: every unit of the arena, ordered by player 1 (the units of
+## player 2 are given to player 1 first), to the middle of the map, where the two armies meet. No
+## unit starts on its own slot there, so every row ends the tick with the order (a unit that starts
+## on its slot is idle at once, which the count of the case would read as a refused row).
+const CRAFTED_TARGET: Vector2i = Vector2i(32, 32)
 ## Timed calls of the reference loop; the smallest is ref_ms.
 const REF_SAMPLES: int = 20
 ## Half of the thousandth of a ms that the report rounds each time to.
@@ -68,27 +100,8 @@ var _native_loaded: bool = false
 var _ref_usec: PackedInt64Array = PackedInt64Array()
 var _report: Dictionary = {}
 var _native_report: Dictionary = {}
-
-
-## What one match leaves: the tick times, the per-phase sums, the World.stats maxima and the
-## checkpoints. An engine base class, so it may sit inside this file (P56c).
-class Run:
-	extends RefCounted
-	var tick_ms: PackedFloat64Array = PackedFloat64Array()
-	var phase_usec: PackedInt64Array = PackedInt64Array()
-	var stats_max: PackedInt32Array = PackedInt32Array()
-	var units: int = 0
-	var alive_end: int = 0
-	var proj_peak: int = 0
-	var overflow: int = 0
-	## The phases that ran in C++ (World.native_phases after the last tick): 0 for a GDScript run.
-	var native_mask: int = 0
-	## pos_x then pos_y of every unit, before the first tick and after the last.
-	var start_pos: PackedInt32Array = PackedInt32Array()
-	var final_pos: PackedInt32Array = PackedInt32Array()
-	var checkpoint_ticks: PackedInt32Array = PackedInt32Array()
-	var checkpoint_hashes: PackedInt64Array = PackedInt64Array()
-	var final_hash: int = 0
+## The crafted order of the COMMANDS watch line (_craft_a_large_order), made once.
+var _crafted: Dictionary = {}
 
 
 func before() -> void:
@@ -106,11 +119,22 @@ func before() -> void:
 	_report = _make_report(_seed_42)
 	if _native_loaded:
 		_native_report = _make_report(_native_42, true)
+	_crafted = _craft_a_large_order(_native_loaded)
 	for index: int in _seed_42.size():
 		print(_run_line(SEED, index + 1, _seed_42[index]))
 	print(_run_line(OTHER_SEED, 1, _seed_43))
 	for index: int in _native_42.size():
 		print(_run_line(SEED, index + 1, _native_42[index], true))
+	for printed: Dictionary in _printed():
+		var native: bool = printed["report"].has(PerfReport.IMPL_KEY)
+		print(PerfReport.sub_line(PerfReport.STEP_HEAD, _step_values(printed["runs"]), native))
+	var watched: Array[Run] = _native_42 if _native_loaded else _seed_42
+	print(
+		PerfReport.sub_line(
+			PerfReport.COMMANDS_HEAD, _commands_values(watched, _crafted), _native_loaded
+		)
+	)
+	print(PerfReport.sub_line(PerfReport.OVERHEAD_HEAD, _overhead_values(watched), _native_loaded))
 
 
 func test_the_three_seed_42_runs_match_at_every_15_ticks() -> void:
@@ -171,20 +195,138 @@ func test_the_report_holds_the_minimum_of_each_statistic_over_the_three_runs() -
 
 
 func test_the_best_mean_stays_under_the_catastrophic_cap() -> void:
-	assert_float(_report["mean_ms"]).is_greater(0.0)
-	assert_bool(PerfReport.over_cap(_report, PerfReport.CATASTROPHIC_MEAN_MS)).is_false()
+	for printed: Dictionary in _printed():
+		var report: Dictionary = printed["report"]
+		assert_float(report["mean_ms"]).is_greater(0.0)
+		assert_bool(PerfReport.over_cap(report, PerfReport.CATASTROPHIC_MEAN_MS)).is_false()
 
 
-## Harness checks only: what the units and projectiles do is printed, and bounded from P49a on.
+## What a run took from TickJob.run(): every tick has a job time, a Sim.step time inside it and a
+## COMMANDS time, so the quantity is the gate's job_usec and not the step alone; the job ran on a
+## new snapshot with the published one as `previous` (a snapshot slid when its prev_pos_x are the
+## positions the World had before that tick's step, so a `previous` of null or one that is not the
+## last published snapshot fails the count, and so does a first snapshot of another match than the
+## one published before the loop); and Sim.step and the phases come from the StepProbe and its
+## TimingProbe.
+## Which units live and which projectiles fly is bounded by the case after.
 func test_each_run_timed_every_tick_of_the_arena() -> void:
 	for run: Run in _seed_42 + [_seed_43] + _native_42:
 		assert_int(run.tick_ms.size()).is_equal(TICKS)
+		assert_int(run.step_ms.size()).is_equal(TICKS)
+		assert_int(run.commands_usec.size()).is_equal(TICKS)
 		assert_int(run.tick_ms.count(0.0)).is_less(TICKS)
+		assert_int(run.step_ms.count(0.0)).is_less(TICKS)
 		assert_int(run.units).is_greater(0)
+		var inside: int = 0
+		var job_sum: float = 0.0
+		var step_sum: float = 0.0
+		for tick: int in TICKS:
+			inside += 1 if run.tick_ms[tick] >= run.step_ms[tick] else 0
+			job_sum += run.tick_ms[tick]
+			step_sum += run.step_ms[tick]
+		# The job holds the step on every tick, and the capture and the hash on top of it.
+		assert_int(inside).is_equal(TICKS)
+		assert_float(job_sum).is_greater(step_sum)
+		assert_int(run.slid_ticks).is_greater(TICKS / 3)
+		assert_bool(run.first_slid).is_true()
+		# The COMMANDS time of each tick (the watch line reads one of them) is the COMMANDS phase of
+		# the snapshots and no other: it adds up to the phase's sum over the run, exactly, because
+		# both come from the same snapshots. This is no timing assertion, and a read from another
+		# phase or another field gives another sum.
+		var commands_sum: int = 0
+		for usec: int in run.commands_usec:
+			commands_sum += usec
+		assert_int(commands_sum).is_greater(0)
+		assert_int(commands_sum).is_equal(run.phase_usec[SimProbe.Phase.COMMANDS])
 	assert_int(_report["units"]).is_equal(_seed_42[0].units)
 	assert_int(_report["alive_end"]).is_equal(_seed_42[0].alive_end)
 	assert_int(_report["proj_peak"]).is_equal(_seed_42[0].proj_peak)
 	assert_int(_report["projectile_overflow"]).is_equal(_seed_42[0].overflow)
+
+
+## The deterministic bounds of plan P49a (ADR 0011 section 4) hold for every seed-42 run, the
+## GDScript twins and the C++ kernels alike (they measure the same numbers): each cost counter of
+## World.stats under its bound, 150 units at tick 0, no projectile overflow, alive_end and the
+## projectile peak within the margin of their pins, and the static memory (debug builds). A bounded
+## counter that reads 0 fails too, so a sample that read nothing cannot pass. PerfBounds is pinned
+## by test_perf_bounds.gd, which also pins what Run.bound_lines applies (each bound, on a run made
+## by hand); the wall clock is not bounded here (P49b).
+func test_the_arena_stays_inside_its_cost_load_and_memory_bounds() -> void:
+	var found: Array[String] = []
+	for printed: Dictionary in _printed():
+		var label: String = printed["report"].get(PerfReport.IMPL_KEY, "gdscript")
+		var runs: Array[Run] = printed["runs"]
+		for run: Run in runs:
+			for line: String in run.bound_lines(ALIVE_END_PIN, PROJ_PEAK_PIN):
+				var entry: String = "%s: %s" % [label, line]
+				if not found.has(entry):
+					found.append(entry)
+	assert_array(found).is_empty()
+
+
+## The values of the STEP line and the two WATCH lines come from the runs they are given, and the
+## arena gives them what the plan says. Three runs made by hand have each value best in another
+## run (Sim.step and the COMMANDS time in the second, the checkpoint overhead in the third, the
+## overhead of the other ticks in the first), with a COMMANDS time that names its tick, so a value
+## read from the wrong run or the wrong tick shows. The arena: both players order their 75 movers
+## in tick 0, so tick 0 is the largest order tick with 150 units; the crafted order puts all 150
+## into one command, and every row takes it and nothing is dropped, in a World with the kernels of
+## the native line (none without the library); there are 60 checkpoint ticks and 840 others, and
+## every value of the lines is above 0.
+func test_the_step_and_watch_lines_read_the_runs_and_the_arena_orders() -> void:
+	var runs: Array[Run] = [
+		_timed_run(3.0, 9.0, 1.5, 900),
+		_timed_run(1.0, 6.0, 3.0, 700),
+		_timed_run(2.0, 4.0, 2.0, 800),
+	]
+	var step: Dictionary = _step_values(runs)
+	assert_array(step.keys()).is_equal(PerfReport.STEP_KEYS)
+	for key: String in PerfReport.STEP_KEYS:
+		assert_float(step[key]).override_failure_message(key).is_equal_approx(1.0, 0.0001)
+	var crafted: Dictionary = {"units": 150, "usec": 12345}
+	var commands: Dictionary = _commands_values(runs, crafted)
+	assert_array(commands.keys()).is_equal(
+		["order_tick", "order_units", "commands_ms", "crafted_units", "crafted_commands_ms"]
+	)
+	assert_int(commands["order_tick"]).is_equal(3)
+	assert_int(commands["order_units"]).is_equal(45)
+	assert_float(commands["commands_ms"]).is_equal_approx(7.003, 0.0001)
+	assert_int(commands["crafted_units"]).is_equal(150)
+	assert_float(commands["crafted_commands_ms"]).is_equal_approx(12.345, 0.0001)
+	var overhead: Dictionary = _overhead_values(runs)
+	assert_array(overhead.keys()).is_equal(
+		[
+			"checkpoint_ticks",
+			"job_minus_step_p95_cp_ms",
+			"other_ticks",
+			"job_minus_step_p95_noncp_ms"
+		]
+	)
+	assert_int(overhead["checkpoint_ticks"]).is_equal(2)
+	assert_float(overhead["job_minus_step_p95_cp_ms"]).is_equal_approx(4.0, 0.0001)
+	assert_int(overhead["other_ticks"]).is_equal(28)
+	assert_float(overhead["job_minus_step_p95_noncp_ms"]).is_equal_approx(1.5, 0.0001)
+	# The arena itself.
+	var order: Vector2i = PerfReport.largest_order_tick(_seed_42[0].order_log)
+	assert_array([order.x, order.y]).is_equal([0, 2 * 75])
+	assert_array([_crafted["units"], _crafted["applied"], _crafted["dropped"]]).is_equal(
+		[150, 150, 0]
+	)
+	assert_int(_crafted["usec"]).is_greater(0)
+	# The crafted order runs with the kernels exactly when the WATCH line says impl=native.
+	assert_int(_crafted["native_mask"]).is_equal(_native_42[0].native_mask if _native_loaded else 0)
+	for printed: Dictionary in _printed():
+		var watched: Array[Run] = printed["runs"]
+		var arena: Dictionary = _overhead_values(watched)
+		assert_int(arena["checkpoint_ticks"]).is_equal(TICKS / Replay.CHECKPOINT_PERIOD)
+		assert_int(arena["other_ticks"]).is_equal(TICKS - TICKS / Replay.CHECKPOINT_PERIOD)
+		assert_float(arena["job_minus_step_p95_cp_ms"]).is_greater(0.0)
+		assert_float(arena["job_minus_step_p95_noncp_ms"]).is_greater(0.0)
+		assert_float(_commands_values(watched, _crafted)["commands_ms"]).is_greater(0.0)
+		var arena_step: Dictionary = _step_values(watched)
+		assert_float(arena_step["mean_ms"]).is_greater(0.0)
+		assert_float(arena_step["p50_ms"]).is_less_equal(arena_step["p95_ms"])
+		assert_float(arena_step["p95_ms"]).is_less_equal(arena_step["max_ms"])
 
 
 ## What _play reads from the World after the ticks, on a start that the test crafts (what the arena
@@ -457,8 +599,11 @@ func test_sim_json_holds_the_numbers_of_the_line() -> void:
 	)
 
 
-## Steps the arena for TICKS ticks from `match_seed` with the scenario's own orders only, and times
-## each MatchLoop.step. The phases, stats and projectile peak are read after the clock stops.
+## Steps the arena for TICKS ticks from `match_seed` with the scenario's own orders only, each tick
+## as MatchRunner runs one in SYNC: TickJob.run() with a new snapshot, the last published one as its
+## `previous`, and a StepProbe whose target is the TimingProbe (a bare TimingProbe would leave
+## step_usec 0 and phase_usec empty). The tick takes the snapshot's job_usec, the quantity the gate
+## judges; the stats, the projectile peak and the memory are read after the clock stops.
 ## `adjust` (optional) is called with the World right after MatchLoop.create and before anything is
 ## read from it, to give a test a start of its own.
 func _play(match_seed: int, adjust: Callable = Callable()) -> Run:
@@ -469,26 +614,54 @@ func _play(match_seed: int, adjust: Callable = Callable()) -> Run:
 	var loop: MatchLoop = MatchLoop.create(scenario, ARENA_PATH, match_seed, world)
 	if adjust.is_valid():
 		adjust.call(world)
-	var probe: TimingProbe = TimingProbe.new()
-	var queued: Array[Command] = []
+	var step_probe: StepProbe = StepProbe.new()
+	step_probe.target = TimingProbe.new()
+	var job: TickJob = TickJob.new()
+	var published: MatchSnapshot = MatchSnapshot.new()
+	published.match_serial = MATCH_SERIAL
+	published.capture(world, null)
 	var run: Run = Run.new()
 	run.units = world.unit_count()
+	run.flow_budget = world.flow_cells_per_tick
+	run.sep_scan = world.separation_scan
 	run.tick_ms.resize(TICKS)
+	run.step_ms.resize(TICKS)
+	run.commands_usec.resize(TICKS)
 	run.phase_usec.resize(SimProbe.Phase.COUNT)
 	run.stats_max.resize(World.Stat.size())
 	run.start_pos = _positions(world)
 	for tick: int in TICKS:
-		var started: int = Time.get_ticks_usec()
-		loop.step(world, queued, probe)
-		run.tick_ms[tick] = (Time.get_ticks_usec() - started) / 1000.0
-		PerfReport.add_phases(run.phase_usec, probe.phase_usec)
+		var next: MatchSnapshot = MatchSnapshot.new()
+		next.match_serial = MATCH_SERIAL
+		job.world = world
+		job.loop = loop
+		job.probe = step_probe
+		job.snapshot = next
+		job.previous = published
+		var before_x: PackedInt32Array = world.pos_x.duplicate()
+		job.post_usec = Time.get_ticks_usec()
+		job.run()
+		run.tick_ms[tick] = next.job_usec / 1000.0
+		run.step_ms[tick] = next.step_usec / 1000.0
+		run.commands_usec[tick] = next.phase_usec[SimProbe.Phase.COMMANDS]
+		PerfReport.add_phases(run.phase_usec, next.phase_usec)
 		_sample(run, world)
+		var slid: bool = next.prev_pos_x != next.pos_x and next.prev_pos_x == before_x
+		run.slid_ticks += 1 if slid else 0
+		if tick == 0:
+			run.first_slid = slid
+		published = next
+		if world.tick == PerfBounds.MEMORY_FIRST_TICK:
+			run.memory_first = Run.static_memory()
+		elif world.tick == PerfBounds.MEMORY_LAST_TICK:
+			run.memory_last = Run.static_memory()
 	run.alive_end = world.unit_count()
 	run.overflow = world.projectile_overflow
 	run.native_mask = world.native_phases
 	run.final_pos = _positions(world)
 	run.checkpoint_ticks = loop.replay.checkpoint_ticks
 	run.checkpoint_hashes = loop.replay.checkpoint_hashes
+	run.order_log = loop.replay.commands
 	run.final_hash = world.state_hash()
 	return run
 
@@ -506,6 +679,105 @@ func _attach_native(world: World) -> void:
 	if kernels != null:
 		world.kernels = kernels
 		world.native_phases = kernels.phases()
+
+
+## The Sim.step statistics of `runs` as the values of a STEP sub-line: each one the smallest over
+## the runs, like the statistics of the PERF line.
+func _step_values(runs: Array[Run]) -> Dictionary:
+	var stats: Array[Dictionary] = []
+	for run: Run in runs:
+		stats.append(PerfReport.run_stats(run.step_ms))
+	var best: Dictionary = PerfReport.best_of(stats)
+	var values: Dictionary = {}
+	for key: String in PerfReport.STEP_KEYS:
+		values[key] = best[key]
+	return values
+
+
+## The values of the COMMANDS watch line: the tick of `runs` that ordered the most units (from the
+## first run's command log, the same in every run), the units it ordered, the smallest COMMANDS time
+## that any run took on that tick, and the same for the `crafted` order (_craft_a_large_order).
+func _commands_values(runs: Array[Run], crafted: Dictionary) -> Dictionary:
+	var order: Vector2i = PerfReport.largest_order_tick(runs[0].order_log)
+	var best_usec: int = 0
+	if order.x >= 0:
+		best_usec = runs[0].commands_usec[order.x]
+		for run: Run in runs:
+			best_usec = mini(best_usec, run.commands_usec[order.x])
+	return {
+		"order_tick": order.x,
+		"order_units": order.y,
+		"commands_ms": best_usec / 1000.0,
+		"crafted_units": crafted["units"],
+		"crafted_commands_ms": crafted["usec"] / 1000.0,
+	}
+
+
+## The values of the job-minus-step watch line: how many checkpoint and other ticks a run has, and
+## the p95 of the job's time outside Sim.step on each kind, the smallest over the runs. The two p95
+## keys are ADR 0013 section 15's names (the ones PerfHud.summary() carries from P50a), so that a
+## CI line and a card are compared key by key.
+func _overhead_values(runs: Array[Run]) -> Dictionary:
+	var first: Run = runs[0]
+	var best_checkpoint: float = INF
+	var best_others: float = INF
+	for run: Run in runs:
+		var at_checkpoint: PackedFloat64Array = PerfReport.job_minus_step_ms(
+			run.tick_ms, run.step_ms, true
+		)
+		var elsewhere: PackedFloat64Array = PerfReport.job_minus_step_ms(
+			run.tick_ms, run.step_ms, false
+		)
+		best_checkpoint = minf(best_checkpoint, PerfReport.p95(at_checkpoint))
+		best_others = minf(best_others, PerfReport.p95(elsewhere))
+	return {
+		"checkpoint_ticks": PerfReport.job_minus_step_ms(first.tick_ms, first.step_ms, true).size(),
+		"job_minus_step_p95_cp_ms": best_checkpoint,
+		"other_ticks": PerfReport.job_minus_step_ms(first.tick_ms, first.step_ms, false).size(),
+		"job_minus_step_p95_noncp_ms": best_others,
+	}
+
+
+## One order for every unit of the arena, applied in the first tick of a World that is otherwise the
+## arena's start (no scenario order: Sim.step is called on its own): the units of player 2 are
+## given to player 1 first, so that one attack-move command of 150 ids is valid. Times its
+## COMMANDS phase (Formation.assign for 150 units) RUNS times with a fresh World and keeps the
+## smallest. With `native` the World runs with the kernels, as the arena runs of the native line do.
+## Returns `units` (the ids in the command), `applied` (the rows that took the order), `dropped`
+## (World.dropped_commands), `native_mask` (World.native_phases of the World that took it) and
+## `usec`.
+func _craft_a_large_order(native: bool) -> Dictionary:
+	var best: int = -1
+	var result: Dictionary = {"units": 0, "applied": 0, "dropped": -1, "native_mask": -1, "usec": 0}
+	for _sample_number: int in RUNS:
+		var scenario: ScenarioDef = load(ARENA_PATH) as ScenarioDef
+		var world: World = World.from_scenario(
+			scenario, DetRandom.create(SEED, DetRandom.STREAM_SIM)
+		)
+		world.prepare()
+		if native:
+			_attach_native(world)
+		var ids: PackedInt32Array = world.unit_id.duplicate()
+		world.owner.fill(1)
+		var command: Command = Command.attack_move(
+			1,
+			ids,
+			CRAFTED_TARGET.x * World.MILLI_PER_TILE + World.TILE_CENTRE,
+			CRAFTED_TARGET.y * World.MILLI_PER_TILE + World.TILE_CENTRE
+		)
+		command.tick = world.tick
+		var timing: TimingProbe = TimingProbe.new()
+		var queued: Array[Command] = [command]
+		Sim.step(world, queued, timing)
+		var usec: int = timing.phase_usec[SimProbe.Phase.COMMANDS]
+		if best < 0 or usec < best:
+			best = usec
+		result["units"] = ids.size()
+		result["applied"] = world.order.count(World.Order.ATTACK_MOVE)
+		result["dropped"] = world.dropped_commands
+		result["native_mask"] = world.native_phases
+	result["usec"] = maxi(best, 0)
+	return result
 
 
 ## The lines that were printed, each with its report and the runs it is made from: the GDScript one
@@ -624,6 +896,28 @@ func _hand_run(
 	run.phase_usec[0] = phase_usec
 	run.stats_max.resize(World.Stat.size())
 	run.stats_max[World.Stat.PROJ_STEPS] = steps_max
+	return run
+
+
+## A run that no match produced, for the STEP and WATCH lines: 30 ticks, two of them checkpoints.
+## Sim.step takes `step` ms on every tick; the job takes `checkpoint_extra` ms more on a checkpoint
+## tick and `other_extra` more on the others; the COMMANDS time of tick i is `commands_base` * 10 +
+## i microseconds; the command log orders 25 and 20 units in tick 3 and 40 in tick 7.
+func _timed_run(
+	step: float, checkpoint_extra: float, other_extra: float, commands_base: int
+) -> Run:
+	var run: Run = Run.new()
+	for index: int in 30:
+		var checkpoint: bool = (index + 1) % Replay.CHECKPOINT_PERIOD == 0
+		run.step_ms.append(step)
+		run.tick_ms.append(step + (checkpoint_extra if checkpoint else other_extra))
+		run.commands_usec.append(commands_base * 10 + index)
+	for order: Array in [[3, 25], [3, 20], [7, 40]]:
+		var ids: PackedInt32Array = PackedInt32Array()
+		ids.resize(order[1])
+		var command: Command = Command.attack_move(1, ids, 0, 0)
+		command.tick = order[0]
+		command.encode(run.order_log)
 	return run
 
 
