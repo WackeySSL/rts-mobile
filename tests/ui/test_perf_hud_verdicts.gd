@@ -42,6 +42,7 @@ func test_a_passing_run_prints_every_verdict_and_gate_pass() -> void:
 	assert_array(s["verdicts"]).contains(["build: PASS (release template)"])
 	var card: PackedStringArray = hud.card_lines()
 	assert_str(card[card.size() - 1]).is_equal("GATE: PASS")
+	assert_str(card[0]).starts_with("PERF run 1 |")  # The run number: the rig restarts once.
 	assert_str(card[0]).contains("WORKER")  # tick_mode and build are on the card.
 	assert_str(card[0]).contains("release")
 
