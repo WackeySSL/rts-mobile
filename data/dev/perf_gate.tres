@@ -27,5 +27,5 @@ median_tolerance_pct = 2.0
 refresh_tolerance_pct = 1.0
 ref_iterations = 1000
 ref_burst_ms = 400
-golden_ticks = PackedInt32Array()
-golden_hex = PackedStringArray()
+golden_ticks = PackedInt32Array(150, 300, 450, 600, 750, 900)
+golden_hex = PackedStringArray("b4226708074c1267", "7ac6e4f33c448a73", "e9df4e2ede39392d", "cb4ada68d1a52ad3", "381aa20ae02bc399", "4eb974e71b2107be")

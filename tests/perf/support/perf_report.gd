@@ -36,6 +36,15 @@ const LINE_KEYS: Array[String] = [
 const FACT_KEYS: Array[String] = [
 	"units", "ticks", "runs", "ref_ms", "alive_end", "proj_peak", "projectile_overflow", "hash"
 ]
+## The sub-lines of plan P49a, printed beside the `PERF` lines: `STEP sim` holds the statistics of
+## Sim.step alone (the part of TickJob.run() before the capture and the hash, one line for each
+## implementation, `impl=native` after the head on the native one) and the two `WATCH sim` lines
+## are the watch items of ADR 0013 section 15, with no bound. None of them starts with `PERF `, so
+## the two `PERF` lines that P51 selects stay the only ones it copies.
+const STEP_HEAD: String = "STEP sim"
+const STEP_KEYS: Array[String] = ["mean_ms", "p50_ms", "p95_ms", "p99_ms", "max_ms"]
+const COMMANDS_HEAD: String = "WATCH sim commands"
+const OVERHEAD_HEAD: String = "WATCH sim job_minus_step"
 ## ADR 0011 section 4: before P49 the only limit on the clock is a catastrophic cap on the best
 ## mean tick. The wall-clock budget (P49b's budget.cfg) replaces it.
 const CATASTROPHIC_MEAN_MS: float = 20.0
@@ -189,6 +198,61 @@ static func line(report: Dictionary) -> String:
 ## The same numbers as JSON, keys sorted, for reports/perf/sim.json.
 static func json(report: Dictionary) -> String:
 	return JSON.stringify(report, "\t") + "\n"
+
+
+## The tick that orders the most units, from a replay's command log (Replay.commands, the layout
+## of Command.encode): (tick, units), the units counted over all the commands of that tick; the
+## lowest tick on a tie, and (-1, 0) for a log with no command or no unit. A log that stops
+## in the middle of a command is read as far as it goes.
+static func largest_order_tick(log: PackedInt32Array) -> Vector2i:
+	var units_at: Dictionary[int, int] = {}
+	var scratch: Command = Command.new()
+	var at: int = 0
+	while at < log.size():
+		var end: int = Command.decode(log, at, scratch)
+		if end < 0:
+			break
+		units_at[scratch.tick] = units_at.get(scratch.tick, 0) + scratch.unit_ids.size()
+		at = end
+	var best: Vector2i = Vector2i(-1, 0)
+	for tick: int in units_at:
+		if units_at[tick] > best.y or (units_at[tick] == best.y and best.y > 0 and tick < best.x):
+			best = Vector2i(tick, units_at[tick])
+	return best
+
+
+## The time of each tick of a run that TickJob.run() spent outside Sim.step (the capture, the timing
+## copies and, on a checkpoint tick, the state hash), in ms: `job_ms` minus `step_ms`, for the ticks
+## that are checkpoints (the step that makes the world tick a multiple of Replay.CHECKPOINT_PERIOD)
+## when `checkpoint` is true, and for all the others when it is false. Index i is the step that
+## ends on tick i + 1.
+static func job_minus_step_ms(
+	job_ms: PackedFloat64Array, step_ms: PackedFloat64Array, checkpoint: bool
+) -> PackedFloat64Array:
+	var out: PackedFloat64Array = PackedFloat64Array()
+	for index: int in mini(job_ms.size(), step_ms.size()):
+		var is_checkpoint: bool = (index + 1) % Replay.CHECKPOINT_PERIOD == 0
+		if is_checkpoint == checkpoint:
+			out.append(job_ms[index] - step_ms[index])
+	return out
+
+
+## The nearest-rank 95th percentile of `values` in any order (0.0 for none).
+static func p95(values: PackedFloat64Array) -> float:
+	var sorted: PackedFloat64Array = values.duplicate()
+	sorted.sort()
+	return PerfStats.percentile(sorted, 95)
+
+
+## One sub-line: `head`, then `impl=native` for the native run, then `key=value` for each entry of
+## `values` in its order (floats with three decimals, like the `PERF` line).
+static func sub_line(head: String, values: Dictionary, native: bool) -> String:
+	var parts: PackedStringArray = PackedStringArray([head])
+	if native:
+		parts.append("%s=%s" % [IMPL_KEY, IMPL_NATIVE])
+	for key: String in values:
+		parts.append("%s=%s" % [key, _text(values[key])])
+	return " ".join(parts)
 
 
 static func _pairs(values: Dictionary) -> String:
