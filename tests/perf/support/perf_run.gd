@@ -39,6 +39,15 @@ var checkpoint_hashes: PackedInt64Array = PackedInt64Array()
 var final_hash: int = 0
 
 
+## Performance.MEMORY_STATIC in bytes, the live reading that the memory bound judges: the engine
+## counts it in debug builds only, 0 otherwise. Not MEMORY_STATIC_MAX, which keeps the peak of the
+## whole process (63.1 MB at tick 100 and at tick 900 of the arena, set before it starts, against a
+## live reading of 48.2 MB) and so reads a run that keeps memory as no growth. test_perf_bounds.gd
+## pins it on a buffer that is held and released.
+static func static_memory() -> int:
+	return int(Performance.get_monitor(Performance.MEMORY_STATIC))
+
+
 ## The lines that say this run is outside the deterministic bounds of plan P49a: a cost counter
 ## above its bound or reading 0, the run itself (units, overflow, alive_end and the projectile peak
 ## against their pins `alive_pin` and `proj_pin`) and the growth of the static memory, which only a

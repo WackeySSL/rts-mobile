@@ -11,6 +11,8 @@ const Run: GDScript = preload("res://tests/perf/support/perf_run.gd")
 ## The pins of test_sim_perf.gd, as the load cases use them: any pair will do for the edges.
 const ALIVE_PIN: int = 71
 const PROJ_PIN: int = 28
+## The buffer of the static memory test: 1 MiB.
+const HELD_BYTES: int = 1 << 20
 
 
 ## A quarter of the measured value, rounded up, in integer arithmetic: the measured maxima of the
@@ -172,6 +174,7 @@ func test_a_run_is_judged_by_every_bound_and_a_move_over_one_gives_one_line() ->
 	# The units also move the bound of the separation pairs, upwards, so the pairs stay inside it.
 	run = _run_on_its_bounds()
 	run.units += 1
+	run.stats_max[World.Stat.SEP_PAIRS] = run.sep_scan * run.units
 	assert_str(_only(run.bound_lines(ALIVE_PIN, PROJ_PIN))).contains("151 units")
 	run = _run_on_its_bounds()
 	run.overflow = 1
@@ -195,6 +198,25 @@ func test_a_run_is_judged_by_every_bound_and_a_move_over_one_gives_one_line() ->
 	run = _run_on_its_bounds()
 	run.memory_first = 0
 	assert_int(run.bound_lines(ALIVE_PIN, PROJ_PIN).size()).is_equal(judged)
+
+
+## Run.static_memory, the reading that test_sim_perf.gd takes at tick 100 and tick 900, is the live
+## static memory, so it falls when memory is released. A buffer of 1 MiB is allocated and filled,
+## read, released and read again, and the reading falls by at least half of the buffer (the margin
+## is for the engine's own small allocations in between; the fall measured is the buffer plus 32
+## bytes). The high-water mark MEMORY_STATIC_MAX never falls and reads 0 here: it holds the peak of
+## the whole process, so a run that keeps memory from tick 100 to tick 900 would read as no growth
+## and pass the memory bound. Debug builds only: the engine has no monitor elsewhere.
+func test_the_static_memory_reading_is_the_live_one_and_falls_when_memory_is_released() -> void:
+	if not OS.is_debug_build():
+		return
+	var buffer: PackedByteArray = PackedByteArray()
+	buffer.resize(HELD_BYTES)
+	buffer.fill(1)
+	var held: int = Run.static_memory()
+	buffer = PackedByteArray()
+	var released: int = held - Run.static_memory()
+	assert_int(released).is_greater_equal(HELD_BYTES >> 1)
 
 
 ## A run that no match produced and that is inside every bound: 150 units, the rules of the arena

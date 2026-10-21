@@ -32,9 +32,10 @@ const MEASURED_FOG_CELLS: int = 7798
 ## them. The arena run does not grow it: the static memory of the 900 ticks through TickJob falls
 ## by 2.5 KB with the kernels and by 63.6 KB with the GDScript twins between tick 100 and tick 900
 ## (the rows of the dead units and the projectile slots in flight shrink), the same bytes in every
-## run. The bound is 64 KiB, so a run that keeps even a little for each tick (a snapshot or a
-## copy of a World array kept, 82 bytes a tick) is over it, with room for the engine's own
-## allocations to move the reading.
+## run. The bound is 64 KiB of growth on top of that fall, so a run that keeps memory for each tick
+## (a snapshot or a copy of a World array kept) is over it from about 85 bytes a tick with the
+## kernels ((65,536 + 2,524) / 800 ticks) and from about 161 bytes a tick in GDScript-only code
+## ((65,536 + 63,604) / 800), with room for the engine's own allocations to move the reading.
 const MEMORY_FIRST_TICK: int = 100
 const MEMORY_LAST_TICK: int = 900
 const MEMORY_GROWTH_MAX: int = 65536

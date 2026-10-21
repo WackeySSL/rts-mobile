@@ -266,8 +266,9 @@ func test_the_arena_stays_inside_its_cost_load_and_memory_bounds() -> void:
 ## overhead of the other ticks in the first), with a COMMANDS time that names its tick, so a value
 ## read from the wrong run or the wrong tick shows. The arena: both players order their 75 movers
 ## in tick 0, so tick 0 is the largest order tick with 150 units; the crafted order puts all 150
-## into one command, and every row takes it and nothing is dropped; there are 60 checkpoint
-## ticks and 840 others, and every value of the lines is above 0.
+## into one command, and every row takes it and nothing is dropped, in a World with the kernels of
+## the native line (none without the library); there are 60 checkpoint ticks and 840 others, and
+## every value of the lines is above 0.
 func test_the_step_and_watch_lines_read_the_runs_and_the_arena_orders() -> void:
 	var runs: Array[Run] = [
 		_timed_run(3.0, 9.0, 1.5, 900),
@@ -308,6 +309,8 @@ func test_the_step_and_watch_lines_read_the_runs_and_the_arena_orders() -> void:
 		[150, 150, 0]
 	)
 	assert_int(_crafted["usec"]).is_greater(0)
+	# The crafted order runs with the kernels exactly when the WATCH line says impl=native.
+	assert_int(_crafted["native_mask"]).is_equal(_native_42[0].native_mask if _native_loaded else 0)
 	for printed: Dictionary in _printed():
 		var watched: Array[Run] = printed["runs"]
 		var arena: Dictionary = _overhead_values(watched)
@@ -642,9 +645,9 @@ func _play(match_seed: int, adjust: Callable = Callable()) -> Run:
 			run.slid_ticks += 1
 		published = next
 		if world.tick == PerfBounds.MEMORY_FIRST_TICK:
-			run.memory_first = _static_memory()
+			run.memory_first = Run.static_memory()
 		elif world.tick == PerfBounds.MEMORY_LAST_TICK:
-			run.memory_last = _static_memory()
+			run.memory_last = Run.static_memory()
 	run.alive_end = world.unit_count()
 	run.overflow = world.projectile_overflow
 	run.native_mask = world.native_phases
@@ -669,11 +672,6 @@ func _attach_native(world: World) -> void:
 	if kernels != null:
 		world.kernels = kernels
 		world.native_phases = kernels.phases()
-
-
-## Performance.MEMORY_STATIC in bytes: the engine counts it in debug builds only, 0 otherwise.
-func _static_memory() -> int:
-	return int(Performance.get_monitor(Performance.MEMORY_STATIC))
 
 
 ## The Sim.step statistics of `runs` as the values of a STEP sub-line: each one the smallest over
@@ -737,11 +735,13 @@ func _overhead_values(runs: Array[Run]) -> Dictionary:
 ## arena's start (no scenario order: Sim.step is called on its own): the units of player 2 are
 ## given to player 1 first, so that one attack-move command of 150 ids is valid. Times its
 ## COMMANDS phase (Formation.assign for 150 units) RUNS times with a fresh World and keeps the
-## smallest. Returns `units` (the ids in the command), `applied` (the rows that took the order),
-## `dropped` (World.dropped_commands) and `usec`.
+## smallest. With `native` the World runs with the kernels, as the arena runs of the native line do.
+## Returns `units` (the ids in the command), `applied` (the rows that took the order), `dropped`
+## (World.dropped_commands), `native_mask` (World.native_phases of the World that took it) and
+## `usec`.
 func _craft_a_large_order(native: bool) -> Dictionary:
 	var best: int = -1
-	var result: Dictionary = {"units": 0, "applied": 0, "dropped": -1, "usec": 0}
+	var result: Dictionary = {"units": 0, "applied": 0, "dropped": -1, "native_mask": -1, "usec": 0}
 	for _sample_number: int in RUNS:
 		var scenario: ScenarioDef = load(ARENA_PATH) as ScenarioDef
 		var world: World = World.from_scenario(
@@ -768,6 +768,7 @@ func _craft_a_large_order(native: bool) -> Dictionary:
 		result["units"] = ids.size()
 		result["applied"] = world.order.count(World.Order.ATTACK_MOVE)
 		result["dropped"] = world.dropped_commands
+		result["native_mask"] = world.native_phases
 	result["usec"] = maxi(best, 0)
 	return result
 
