@@ -8,7 +8,8 @@ extends GdUnitTestSuite
 ## on Michael's phone (2424x1080 with the cutout Rect2i(152, 0, 2272, 1080), as test_army_bar and
 ## test_selection_panel build it): the whole card lies inside the safe area, its text is 14 sp or
 ## more, every button of it is at least dp(48), and a finger drag scrolls the text. The look is the
-## `PerfCard` variation of game/ui/theme.tres. "Copy report" and "Run again" are P50a3's.
+## `PerfCard` variation of game/ui/theme.tres. The two buttons under the text, "Copy report" and
+## "Run again" (P50a3), are laid out here; what they do is test_perf_hud_copy.gd's.
 
 const Rig: GDScript = preload("res://tests/ui/support/perf_hud_rig.gd")
 const HudThemes: GDScript = preload("res://tests/support/hud_theme.gd")
@@ -189,7 +190,9 @@ func _check_layout(metrics: UiMetrics) -> void:
 	assert_float(card.size.x).override_failure_message(label).is_greater(0.7 * safe.size.x)
 	assert_float(card.size.y).override_failure_message(label).is_greater(0.7 * safe.size.y)
 	var column: Node = hud.get_node("Column")
-	for child: Control in [column.get_node("Header"), column.get_node("Scroll")]:
+	for child: Control in [
+		column.get_node("Header"), column.get_node("Scroll"), column.get_node("Buttons")
+	]:
 		(
 			assert_bool(card.encloses(child.get_global_rect()))
 			. override_failure_message(label)
@@ -203,10 +206,21 @@ func _check_layout(metrics: UiMetrics) -> void:
 		var size_px: int = text.get_theme_font_size("font_size")
 		assert_int(size_px).override_failure_message(label).is_greater_equal(floor_px)
 	var touch_px: float = UiScale.dp(48.0)
-	for button: BaseButton in hud.find_children("*", "BaseButton", true, false):
+	var buttons: Array[Node] = hud.find_children("*", "BaseButton", true, false)
+	assert_int(buttons.size()).override_failure_message(label).is_equal(2)  # Copy and Run again.
+	for button: Button in buttons:
 		var rect: Vector2 = button.get_global_rect().size
 		assert_bool(rect.x >= touch_px - 0.5 and rect.y >= touch_px - 0.5).is_true()
 		assert_bool(card.encloses(button.get_global_rect())).is_true()
+		var size_px: int = button.get_theme_font_size("font_size")
+		assert_int(size_px).override_failure_message(label).is_greater_equal(floor_px)
+		(
+			assert_bool(
+				column.get_node("Scroll").get_global_rect().intersects(button.get_global_rect())
+			)
+			. override_failure_message(label)
+			. is_false()
+		)  # Under the text, not over it.
 
 
 ## A finished run on a card in a new SafeAreaMargin, at `metrics`, after two frames of layout.
