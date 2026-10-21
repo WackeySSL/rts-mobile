@@ -6,10 +6,15 @@ extends RefCounted
 ## only when its cell changed, and stamps the new disc (+1) before it unstamps the old one (-1):
 ## only the cells that really flip are listed in the dirty list (the status note of 2026-10-13 in
 ## ADR 0010 section 1; the final counts and `explored` are the same in either order). A dying row
-## is unstamped by World.remove_dead before this phase. Integers only, no allocation. Written for
-## a C++ twin (plan row P46n): a mask id is the type index, or `type_sight.size()`, the pad mask
-## (sight 0) that prepare() adds after one mask per type, for a type with no entry; and `fog_cell`
-## is the cell last stamped.
+## is unstamped by World.remove_dead before this phase. Integers only, no allocation. A mask id is
+## the type index, or `type_sight.size()`, the pad mask (sight 0) that prepare() adds after one mask
+## per type, for a type with no entry; and `fog_cell` is the cell last stamped.
+##
+## `run` has a C++ twin, the FOG kernel (native/sim_kernels, core/fog.cpp, ADR 0013 section 5):
+## it hands the whole phase to it when the World's mask has its bit, and a change to `run`,
+## `_covered` or `FogGrid.stamp` edits both and passes the kernel's tests. `begin`, the unstamp of
+## World.remove_dead and the initial stamp of World.prepare stay GDScript and call `FogGrid.stamp`
+## themselves, which is why that function stays the reference.
 
 
 ## Empties the dirty list of every player whose turn it is this tick. Sim.step calls it before
@@ -27,15 +32,21 @@ static func begin(world: World) -> void:
 ## One FOG phase: the rows of the players whose turn it is move their disc from `fog_cell` to the
 ## cell of their position (a row not stamped yet, -1, only stamps), and stats[FOG_CELLS] grows by
 ## the cells those stamps cover, clipped to the map. A row of owner 0 or past player_count has no
-## fog. The cell is World.cell_of inlined.
+## fog, and a grid with no cells or sides that do not make its cells has none at all.
+## The cell is World.cell_of inlined.
 @warning_ignore("integer_division")
 static func run(world: World) -> void:
+	if ((world.native_phases >> SimProbe.Phase.FOG) & 1) == 1:
+		world.kernels.fog(world)
+		return
 	var fog: FogGrid = world.fog
 	var cols: int = fog.cols
 	var map_rows: int = fog.rows
-	if fog.cells == 0:
-		return
 	var players: int = fog.player_count
+	# No fog: no map, or sides that do not make the cells (configure() always does; the kernel
+	# cannot divide by a side of 0, so both versions take the same test).
+	if cols < 1 or map_rows < 1 or fog.cells % cols != 0 or fog.cells / cols != map_rows:
+		return
 	var period: int = maxi(world.fog_period_ticks, 1)
 	var tick: int = world.tick
 	var owners: PackedInt32Array = world.owner

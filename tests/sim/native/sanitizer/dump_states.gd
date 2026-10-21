@@ -50,6 +50,14 @@ extends SceneTree
 ##   .weapon_range, .weapon_min_range, .weapon_vs_armour, target.head, target.next (I). The
 ##   target.* records are a grid built afresh from the dumped positions, as the sep.* ones are.
 ##
+## The FOG kernel (P46n) reads the unit_id, owner, type_index, pos_x, pos_y and tick records of the
+## kernels above, and adds, in _write_fog:
+##   world.fog_period_ticks, fog.cols, fog.rows, fog.cells, fog.player_count and
+##   fog.dirty_capacity (S); world.fog_cell, world.type_sight, fog.visible, fog.version, fog.dirty,
+##   fog.dirty_count, fog.dirty_full, fog.mask_start, fog.mask_radius and fog.mask_half (I);
+##   fog.explored and fog.listed (B). The dump is the state the next FOG phase finds: the rows of
+##   the player whose turn comes have moved since their last stamp.
+##
 ## Sim.step steps FLOW itself (P37b), so the step only plays and nothing here calls FlowCache. The
 ## fields come from real orders: the arena's own (both sides attack-move across its rock wall,
 ## where a blocked line asks for a field), and a wave every WAVE_EVERY ticks that sends units back
@@ -110,6 +118,21 @@ const TARGETING_COLUMNS: Array[StringName] = [
 	&"weapon_range",
 	&"weapon_min_range",
 	&"weapon_vs_armour"
+]
+## The FogGrid members that the FOG kernel reads or writes: its sizes, and its Packed int32 arrays
+## (the visible counts, the version, the dirty lists and the masks).
+const FOG_SCALARS: Array[StringName] = [
+	&"cols", &"rows", &"cells", &"player_count", &"dirty_capacity"
+]
+const FOG_ARRAYS: Array[StringName] = [
+	&"visible",
+	&"version",
+	&"dirty",
+	&"dirty_count",
+	&"dirty_full",
+	&"mask_start",
+	&"mask_radius",
+	&"mask_half"
 ]
 const INTEGRATE_COLUMNS: Array[StringName] = [
 	&"unit_id",
@@ -236,6 +259,7 @@ func _write(world: World, path: String) -> bool:
 	_write_integrate(file, world)
 	_write_separation(file, world)
 	_write_targeting(file, world)
+	_write_fog(file, world)
 	var ok: bool = file.get_error() == OK
 	file.close()
 	return ok
@@ -317,6 +341,21 @@ func _write_targeting(file: FileAccess, world: World) -> void:
 	_scalar(file, "target.cell_milli", grid.cell_milli)
 	_ints(file, "target.head", grid.head)
 	_ints(file, "target.next", grid.next)
+
+
+## The FOG kernel's inputs that the records above do not hold: what SimKernels.fog reads and writes
+## (bind/kernel_fog.cpp).
+func _write_fog(file: FileAccess, world: World) -> void:
+	var fog: FogGrid = world.fog
+	_scalar(file, "world.fog_period_ticks", world.fog_period_ticks)
+	for member: StringName in FOG_SCALARS:
+		_scalar(file, "fog.%s" % member, fog.get(member))
+	_ints(file, "world.fog_cell", world.fog_cell)
+	_ints(file, "world.type_sight", world.type_sight)
+	for member: StringName in FOG_ARRAYS:
+		_ints(file, "fog.%s" % member, fog.get(member))
+	_bytes(file, "fog.explored", fog.explored)
+	_bytes(file, "fog.listed", fog.listed)
 
 
 func _head(file: FileAccess, kind: String, record: String, count: int) -> void:

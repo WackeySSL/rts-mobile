@@ -192,14 +192,14 @@ func _world() -> World:
 
 
 ## The runner's World holds SimKernels with the mask the library reports, which is
-## EXPECTED_PHASES', and the four ported phases run in C++.
+## EXPECTED_PHASES', and the five ported phases run in C++.
 func _assert_native(runner: MatchRunner) -> void:
 	var world: World = runner.world
 	assert_object(world.kernels).is_not_null()
 	assert_str(world.kernels.get_class()).is_equal("SimKernels")
 	assert_int(world.native_phases).is_equal(world.kernels.phases())
 	assert_int(world.native_phases).is_equal(SimImpls.expected_mask())
-	for phase: int in [SimProbe.Phase.FLOW, SimProbe.Phase.SEPARATION, SimProbe.Phase.INTEGRATE]:
+	for phase: int in SimImpls.EXPECTED_PHASES:
 		(
 			assert_bool(SimImpls.is_native(world, phase))
 			. override_failure_message("%d" % phase)
