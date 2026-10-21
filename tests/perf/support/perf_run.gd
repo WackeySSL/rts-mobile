@@ -27,8 +27,11 @@ var sep_scan: int = 0
 ## Performance.MEMORY_STATIC after tick PerfBounds.MEMORY_FIRST_TICK and MEMORY_LAST_TICK.
 var memory_first: int = 0
 var memory_last: int = 0
-## The ticks whose snapshot has prev_pos_x other than pos_x (it slid from the previous one).
+## The ticks whose snapshot slid from the step before: prev_pos_x other than pos_x, and equal to the
+## positions the World had before that tick's step (the last published snapshot was `previous`).
 var slid_ticks: int = 0
+## Whether tick 0's snapshot slid from the start positions (the snapshot published before the loop).
+var first_slid: bool = false
 ## The phases that ran in C++ (World.native_phases after the last tick): 0 for a GDScript run.
 var native_mask: int = 0
 ## pos_x then pos_y of every unit, before the first tick and after the last.

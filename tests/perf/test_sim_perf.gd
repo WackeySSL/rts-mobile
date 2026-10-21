@@ -203,8 +203,11 @@ func test_the_best_mean_stays_under_the_catastrophic_cap() -> void:
 
 ## What a run took from TickJob.run(): every tick has a job time, a Sim.step time inside it and a
 ## COMMANDS time, so the quantity is the gate's job_usec and not the step alone; the job ran on a
-## new snapshot with the published one as `previous` (the snapshots slid, which they cannot with a
-## `previous` of null); and Sim.step and the phases come from the StepProbe and its TimingProbe.
+## new snapshot with the published one as `previous` (a snapshot slid when its prev_pos_x are the
+## positions the World had before that tick's step, so a `previous` of null or one that is not the
+## last published snapshot fails the count, and so does a first snapshot of another match than the
+## one published before the loop); and Sim.step and the phases come from the StepProbe and its
+## TimingProbe.
 ## Which units live and which projectiles fly is bounded by the case after.
 func test_each_run_timed_every_tick_of_the_arena() -> void:
 	for run: Run in _seed_42 + [_seed_43] + _native_42:
@@ -225,6 +228,7 @@ func test_each_run_timed_every_tick_of_the_arena() -> void:
 		assert_int(inside).is_equal(TICKS)
 		assert_float(job_sum).is_greater(step_sum)
 		assert_int(run.slid_ticks).is_greater(TICKS / 3)
+		assert_bool(run.first_slid).is_true()
 		# The COMMANDS time of each tick (the watch line reads one of them) is the COMMANDS phase of
 		# the snapshots and no other: it adds up to the phase's sum over the run, exactly, because
 		# both come from the same snapshots. This is no timing assertion, and a read from another
@@ -634,6 +638,7 @@ func _play(match_seed: int, adjust: Callable = Callable()) -> Run:
 		job.probe = step_probe
 		job.snapshot = next
 		job.previous = published
+		var before_x: PackedInt32Array = world.pos_x.duplicate()
 		job.post_usec = Time.get_ticks_usec()
 		job.run()
 		run.tick_ms[tick] = next.job_usec / 1000.0
@@ -641,8 +646,10 @@ func _play(match_seed: int, adjust: Callable = Callable()) -> Run:
 		run.commands_usec[tick] = next.phase_usec[SimProbe.Phase.COMMANDS]
 		PerfReport.add_phases(run.phase_usec, next.phase_usec)
 		_sample(run, world)
-		if next.prev_pos_x != next.pos_x:
-			run.slid_ticks += 1
+		var slid: bool = next.prev_pos_x != next.pos_x and next.prev_pos_x == before_x
+		run.slid_ticks += 1 if slid else 0
+		if tick == 0:
+			run.first_slid = slid
 		published = next
 		if world.tick == PerfBounds.MEMORY_FIRST_TICK:
 			run.memory_first = Run.static_memory()
