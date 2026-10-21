@@ -113,6 +113,9 @@ jobs:
         run: |
           out="$(git status --porcelain)"; [ -z "$out" ] || { echo "::error::import/test/export changed the tree"; echo "$out"; exit 1; }
 
+      # P51: the two PERF lines of tests/perf/test_sim_perf.gd, the GDScript one (PERF sim units=) and the native
+      # one (PERF sim impl=native), copied from the verify log. Without the SimKernels library the suite prints a
+      # plain note, which is no PERF line, so only the first shows.
       - name: Job summary
         if: always()
         env:
@@ -128,6 +131,10 @@ jobs:
               echo "no VERIFY SUMMARY block (verify.sh did not finish)"
             fi
             echo '```'
+            echo
+            echo '```'
+            grep -a -E '^PERF sim (units=|impl=native)' "$RUNNER_TEMP/verify.log" 2>/dev/null || echo "no PERF line (the perf suite did not run)"
+            echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload web build
@@ -140,7 +147,8 @@ jobs:
 
   # ADR 0013 section 10: a clang -O3 library (the shipped build is NDK clang -O3, the other runs g++ -O2)
   # running the tests/sim/native suites. Not required. gdUnit4 runs only when a suite exists
-  # (run-tests.sh exits 1 when no test ran): before P54 only the check runs. P51 adds the golden hashes.
+  # (run-tests.sh exits 1 when no test ran): before P54 only the check runs. The golden hashes (P51) run in the
+  # same call, and the check requires them.
   native-clang:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -185,14 +193,14 @@ jobs:
       # The sanitizer job's dump step, tests/sim/native/sanitizer/dump_states.gd, is a plain script and no
       # GdUnitTestSuite (P57): this run and verify.sh's (res://tests) load it and drop it, as they drop any
       # script that is no suite, and the check prunes sanitizer/ from its discovery.
-      # P51 adds the golden hashes to this one call (-a res://tests/perf/test_golden_hashes.gd): the check
-      # reads one results.xml, and run-tests.sh deletes the report of an earlier call.
+      # P51: the golden hashes (tests/perf/test_golden_hashes.gd, no clock and no probe) are in this one call:
+      # the check reads one results.xml, and run-tests.sh deletes the report of an earlier call.
       - name: Run the native suites (gdUnit4), when discovery finds one
         run: |
-          if [ -n "$(bash scripts/ci/check-native-tests.sh --list)" ]; then bash scripts/run-tests.sh -a res://tests/sim/native; fi
+          if [ -n "$(bash scripts/ci/check-native-tests.sh --list)" ]; then bash scripts/run-tests.sh -a res://tests/sim/native -a res://tests/perf/test_golden_hashes.gd; fi
 
       - name: Check the native suites ran (check-native-tests.sh)
-        run: bash scripts/ci/check-native-tests.sh
+        run: bash scripts/ci/check-native-tests.sh --require test_golden_hashes
 
   # ADR 0013 section 10 (P57): the sanitizer job runs on a pull request that touches native/**, game/sim/**,
   # data/** or tests/sim/native/**, because a World column, a rule or a twin change can break a kernel without

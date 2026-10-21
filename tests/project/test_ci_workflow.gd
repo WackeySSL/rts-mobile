@@ -28,9 +28,22 @@ const KEY_ASSIGN: String = 'key="$(bash scripts/build-native.sh%s --print-cache-
 const KEY_ECHO: String = 'echo "key=$key" >> "$GITHUB_OUTPUT"'
 const BUILD_STEP: String = "Build the library (clang, optimize=speed)"
 const GATE_STEP: String = "Run the native suites (gdUnit4), when discovery finds one"
+## P51: the golden hashes (P49a) join the one run-tests.sh call, and the check requires them.
 const GATE_RUN: String = (
 	'if [ -n "$(bash scripts/ci/check-native-tests.sh --list)" ]; then'
-	+ " bash scripts/run-tests.sh -a res://tests/sim/native; fi"
+	+ " bash scripts/run-tests.sh -a res://tests/sim/native"
+	+ " -a res://tests/perf/test_golden_hashes.gd; fi"
+)
+const GATE_CHECK_RUN: String = CHECK_RUN + " --require test_golden_hashes"
+## P51: the verify job's summary copies the PERF lines of the verify log.
+const SUMMARY_STEP: String = "Job summary"
+const PERF_PATTERN: String = "^PERF sim (units=|impl=native)"
+const PERF_GREP: String = (
+	"grep -a -E '"
+	+ PERF_PATTERN
+	+ "' "
+	+ '"$RUNNER_TEMP/verify.log" 2>/dev/null'
+	+ ' || echo "no PERF line (the perf suite did not run)"'
 )
 const CACHE_STEP: String = "Cache godot-cpp and the SCons object cache"
 const CACHE_KEY: String = "key: ${{ steps.native-key.outputs.key }}"
@@ -246,15 +259,49 @@ func test_verify_job_checks_the_native_suites_after_verify_sh() -> void:
 	assert_bool(verify_sh.contains("check-native-tests")).is_false()
 
 
+## P51: the summary of the verify job copies the GDScript and the impl=native PERF line, after the
+## VERIFY SUMMARY block, in a step that runs when verify.sh failed too.
+func test_verify_job_summary_copies_the_two_perf_lines() -> void:
+	var job: PackedStringArray = _job(_lines("ci.yml"), "  verify:")
+	var step: Array = Array(_step(job, SUMMARY_STEP))
+	assert_array(step).contains(["if: always()", PERF_GREP])
+	_assert_order(job, [VERIFY_STEP, SUMMARY_STEP])
+	var block: int = step.find(
+		"sed -n '/===== VERIFY SUMMARY =====/,$p' " + '"$RUNNER_TEMP/verify.log"'
+	)
+	assert_int(block).is_greater(-1)
+	assert_int(step.find(PERF_GREP)).is_greater(block)
+	var selected: Array[String] = [
+		"PERF sim units=150 ticks=900 runs=3 mean_ms=1.020 hash=4eb974e71b2107be",
+		"PERF sim impl=native units=150 ticks=900 runs=3 mean_ms=0.308 hash=4eb974e71b2107be",
+	]
+	for line: String in selected:
+		assert_bool(_perf_selected(line)).is_true()
+	# The note without the library, the per-run lines and the sub-lines are no PERF line, and a PERF
+	# line starts at the start of a line in the log.
+	var skipped: Array[String] = [
+		"perf: no native line, the SimKernels library is not loaded",
+		"RUN sim seed=42 run=0 mean_ms=1.020 hash=4eb974e71b2107be",
+		"RUN sim impl=native seed=42 run=0 mean_ms=0.308 hash=4eb974e71b2107be",
+		"STEP sim mean_ms=0.900 p50_ms=0.800",
+		"STEP sim impl=native mean_ms=0.300 p50_ms=0.200",
+		"WATCH sim commands order_tick=0 commands_ms=1.235 crafted_units=150",
+		" PERF sim units=150 ticks=900",
+	]
+	for line: String in skipped:
+		assert_bool(_perf_selected(line)).is_false()
+
+
 ## P55: native-clang builds with the flags its cache key names; gdUnit4 runs only if a suite exists,
-## and the check comes last, once the gated run has written its results.xml.
+## and the check comes last, once the gated run has written its results.xml. P51: the golden hashes
+## run in that one call and the check requires them.
 func test_native_clang_job_builds_with_clang_at_speed_and_gates_gdunit4_on_discovery() -> void:
 	var job: PackedStringArray = _job(_lines("ci.yml"), "  native-clang:")
 	var flags: String = " --compiler clang --optimize speed"
 	_assert_step(job, KEY_STEP, ["id: native-key", "run: |", KEY_ASSIGN % flags, KEY_ECHO])
 	_assert_step(job, BUILD_STEP, ["run: bash scripts/build-native.sh" + flags])
 	_assert_step(job, GATE_STEP, ["run: |", GATE_RUN])
-	_assert_step(job, CHECK_STEP, [CHECK_RUN])
+	_assert_step(job, CHECK_STEP, [GATE_CHECK_RUN])
 	_assert_order(job, [KEY_STEP, CACHE_STEP, BUILD_STEP, GATE_STEP, CHECK_STEP])
 
 
@@ -537,6 +584,10 @@ func _assert_cache_step(
 	var wanted: Array = ["- name: " + step_name, "with:", "path: |"]
 	wanted.append_array(["native/godot-cpp", "${{ env.SCONS_CACHE }}", key])
 	assert_array(step).contains_exactly(wanted)
+
+
+func _perf_selected(line: String) -> bool:
+	return RegEx.create_from_string(PERF_PATTERN).search(line) != null
 
 
 func _pin(path: String, pin_name: String) -> String:
