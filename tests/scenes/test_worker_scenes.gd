@@ -27,10 +27,15 @@ extends GdUnitTestSuite
 ## every loop that plays frames has a frame budget, so a runner that stops publishing fails the
 ## case by name where an unbounded loop would hang the job (gdUnit4's case timeout is a scene-tree
 ## timer and cannot fire inside a synchronous loop).
+## The perf arena (plan P52) plays the same way with the card's slow seams replaced (ArenaRig) and
+## no order script, for the gate's 900 ticks: the native worker arena against the GDScript sync
+## arena at every published tick, and both on the golden checkpoints of data/dev/perf_gate.tres.
 
 const GatedProbe: GDScript = preload("res://tests/core/gated_probe.gd")
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
+const ArenaRig: GDScript = preload("res://tests/ui/support/arena_rig.gd")
 const MAIN_SCENE: String = "res://scenes/main.tscn"
+const GATE_PATH: String = "res://data/dev/perf_gate.tres"
 ## The delta of a frame that moves the runner's clock by exactly one tick (the runner rounds it to
 ## 1_000_000 micro ticks).
 const PERIOD: float = 1.0 / Sim.TICK_RATE
@@ -77,6 +82,7 @@ var _scenes: Array[MainScene] = []
 var _probes: Array[SimProbe] = []
 var _scan: LogScan
 var _workers_before: int = 0
+var _max_fps_before: int = 0
 
 
 ## The errors the engine logs while a case plays, from any thread: the lines scripts/verify.sh scans
@@ -122,14 +128,19 @@ class MainScene:
 	var published: Array[int] = []
 	var off_main: int = 0
 	var frames: int = 0
+	## Whether the order script plays (the main scene); the arena's orders are its scenario's.
+	var scripted: bool = true
+	## The rigs the scene starts with.
+	var rigs_at_start: int = 0
 	## Frames in which a job was in flight when the layers ran (every WORKER frame, no SYNC one).
 	var in_flight_frames: int = 0
 	var _nodes: Array[Node] = []
 
 	## Puts the scene under `parent` with `mode` and `impl` set on its runner before _ready, which
-	## starts the match, and turns the processing of every node off: only frame() runs them.
-	func open(parent: Node, mode: int, impl: int) -> void:
-		main = (load(MAIN_SCENE) as PackedScene).instantiate() as Node2D
+	## starts the match, and turns the processing of every node off: only frame() runs them. The
+	## scene is main.tscn, or `root` (an instance not yet in the tree) when one is given.
+	func open(parent: Node, mode: int, impl: int, root: Node2D = null) -> void:
+		main = root if root != null else (load(MAIN_SCENE) as PackedScene).instantiate() as Node2D
 		runner = main.get_node("MatchRunner") as MatchRunner
 		runner.tick_mode = mode
 		runner.sim_impl = impl
@@ -142,18 +153,29 @@ class MainScene:
 			if node.is_processing():
 				_nodes.append(node)
 				node.set_process(false)
+		if main.is_processing():  # The arena's root follows the runner, before the layers.
+			_nodes.push_front(main)
+			main.set_process(false)
+		rigs_at_start = units.rig_count()
 
 	## One frame of exactly a tick period: the orders stamped with the frame number, the runner,
 	## then the other nodes. A WORKER runner has a job in flight when the layers run.
 	func frame() -> void:
-		for command: Command in orders(frames):
-			CommandQueue.submit(command)
+		if scripted:
+			for command: Command in orders(frames):
+				CommandQueue.submit(command)
 		frames += 1
 		runner._process(PERIOD)
 		if runner.job_in_flight():
 			in_flight_frames += 1
 		for node: Node in _nodes:
 			node.call(&"_process", PERIOD)
+
+	## One frame of every node but the runner at the delta 0, as the engine's first frame draws the
+	## snapshot of tick 0: the runner does not tick.
+	func draw_first_frame() -> void:
+		for node: Node in _nodes:
+			node.call(&"_process", 0.0)
 
 	## frame(), then wait_idle(): false when the wait reached its cap.
 	func step() -> bool:
@@ -268,25 +290,29 @@ class MainScene:
 func before_test() -> void:
 	CommandQueue.clear()
 	_workers_before = MatchRunner.live_workers()
+	_max_fps_before = Engine.max_fps
 	_scan = LogScan.new()
 	OS.add_logger(_scan)
 
 
 ## Releases every gated probe, waits for every runner so no worker is left holding a job, frees
 ## the scenes (which joins their workers), and asserts that nothing matches the error scan, that
-## no job began before the one before it ended, that no hold reached its cap and that every worker
-## is joined. The logger and the queue are global and must not outlive the case.
+## no job began before the one before it ended, that no hold reached its cap, that every worker
+## is joined and that the frame cap is as it was (an arena sets it while it is in the tree). The
+## scenes go in the reverse order of their opening, so each arena puts back the cap that it found.
+## The logger and the queue are global and must not outlive the case.
 func after_test() -> void:
 	for probe: SimProbe in _probes:
 		probe.release()
 	for scene: MainScene in _scenes:
 		if is_instance_valid(scene.main):
 			assert_bool(scene.runner.wait_idle()).is_true()
-	for scene: MainScene in _scenes:
-		scene.close()
+	for at: int in range(_scenes.size() - 1, -1, -1):
+		_scenes[at].close()
 	for probe: SimProbe in _probes:
 		assert_array([probe.overlapped, probe.gave_up]).is_equal([false, false])
 	assert_int(MatchRunner.live_workers()).is_equal(_workers_before)
+	assert_int(Engine.max_fps).is_equal(_max_fps_before)
 	assert_array(_scan.hits()).is_empty()
 	OS.remove_logger(_scan)
 	_probes.clear()
@@ -409,6 +435,27 @@ func test_start_during_a_job_rebuilds_every_rig_and_matches_a_fresh_run() -> voi
 	assert_int(worker.off_main).is_equal(0)
 
 
+## The perf arena of the gate, 150 units for the gate's 900 ticks, on the C++ kernels on the worker
+## against the GDScript twins in sync: the same rigs, fog image, last hash and checkpoints at every
+## published tick, and both runs end on the golden checkpoints of perf_gate.tres (the hashes that
+## the APK and the web build must match). Nothing can enter the arena, so no order plays; the
+## units meet and fight as their scenario orders. The card's run is longer than the case, so it
+## does not finish inside it.
+func test_the_native_worker_arena_shows_what_the_sync_arena_shows_and_holds_the_golden_hashes(
+) -> void:
+	var gate: PerfGateDef = load(GATE_PATH) as PerfGateDef
+	var ticks: int = gate.golden_ticks[gate.golden_ticks.size() - 1]
+	var reference: MainScene = _open_arena(SYNC, GDSCRIPT, ticks)
+	var native: MainScene = _open_arena(WORKER, NATIVE, ticks)
+	assert_int(native.rigs_at_start).is_equal(reference.rigs_at_start)
+	assert_str(_play(native, reference, ticks)).is_empty()
+	_assert_alike_runs(native, reference, ticks)
+	assert_bool(native.runner.worker_active()).is_true()
+	assert_int(native.runner.world.native_phases).is_equal(SimImpls.expected_mask())
+	for scene: MainScene in [native, reference]:
+		assert_array(_golden_diff(scene, gate)).is_empty()
+
+
 ## The error scan sees an error from any thread and leaves a warning alone.
 func test_the_error_scan_flags_an_error_and_not_a_warning() -> void:
 	var scan: LogScan = LogScan.new()
@@ -424,6 +471,35 @@ func _open(mode: int, impl: int) -> MainScene:
 	scene.open(self, mode, impl)
 	_scenes.append(scene)
 	return scene
+
+
+## An instance of the perf arena for a run of `ticks` ticks. Its card's seams are replaced, so the
+## 60-tick self-check and the 0.4 s burst do not run in its `_ready`, and its run is longer than
+## the case. The arena starts its match in its own `_ready`, after its layers' (the main scene's
+## runner comes first), so the fog layer builds its image on its first frame: both instances draw
+## that frame before they are compared at tick 0.
+func _open_arena(mode: int, impl: int, ticks: int) -> MainScene:
+	var scene: MainScene = MainScene.new()
+	scene.scripted = false
+	var calls: Array[String] = []
+	scene.open(self, mode, impl, ArenaRig.make(calls, 2 * ticks))
+	scene.draw_first_frame()
+	_scenes.append(scene)
+	return scene
+
+
+## The golden checkpoints of `gate` that `scene`'s replay does not hold, as "tick: hash, golden
+## hash" lines; empty when each one is there and equal (World.hash_hex() text).
+func _golden_diff(scene: MainScene, gate: PerfGateDef) -> Array[String]:
+	var found: Array[String] = []
+	var replay: Replay = scene.runner.replay
+	for at: int in gate.golden_ticks.size():
+		var tick: int = gate.golden_ticks[at]
+		var index: int = replay.checkpoint_ticks.find(tick)
+		var hex: String = "none" if index < 0 else World.hash_hex(replay.checkpoint_hashes[index])
+		if hex != gate.golden_hex[at]:
+			found.append("tick %d: %s, golden %s" % [tick, hex, gate.golden_hex[at]])
+	return found
 
 
 func _gated_probe() -> SimProbe:
@@ -463,18 +539,20 @@ func _play(worker: MainScene, reference: MainScene, ticks: int) -> String:
 ## What a whole run has in common: `ticked` once per tick in order and always on the main thread,
 ## no held tick, a job in flight whenever the candidate's layers ran, the same commands in the
 ## replay, the fog rebuilt once (the match start) and patched the same number of times, and a run
-## that was not idle: rigs died and the fog opened.
-func _assert_alike_runs(worker: MainScene, reference: MainScene) -> void:
+## that was not idle: rigs died and the fog opened. `ticks` is the length of the run.
+func _assert_alike_runs(worker: MainScene, reference: MainScene, ticks: int = TICKS) -> void:
 	for scene: MainScene in [worker, reference]:
-		assert_array(scene.published).is_equal(range(1, TICKS + 1))
+		assert_array(scene.published).is_equal(range(1, ticks + 1))
 		assert_int(scene.off_main).is_equal(0)
 		assert_int(scene.fog.rebuild_count()).is_equal(1)
 	assert_int(worker.runner.held_ticks).is_equal(0)
-	assert_array([worker.in_flight_frames, worker.frames]).is_equal([TICKS + 1, TICKS + 1])
+	assert_array([worker.in_flight_frames, worker.frames]).is_equal([ticks + 1, ticks + 1])
 	assert_int(reference.in_flight_frames).is_equal(0)
 	assert_int(worker.fog.upload_count()).is_equal(reference.fog.upload_count())
 	assert_array(worker.runner.replay.commands).is_equal(reference.runner.replay.commands)
-	assert_int(worker.runner.replay.commands.size()).is_greater(0)
+	if worker.scripted:
+		assert_int(worker.runner.replay.commands.size()).is_greater(0)
 	assert_int(reference.fog.upload_count()).is_greater(10)
-	var quiet: String = "no rig died in %d ticks: re-check the orders and TICKS" % TICKS
-	assert_int(reference.units.rig_count()).override_failure_message(quiet).is_less(UNITS)
+	var quiet: String = "no rig died in %d ticks: re-check the orders and the ticks" % ticks
+	var rigs: int = reference.units.rig_count()
+	assert_int(rigs).override_failure_message(quiet).is_less(reference.rigs_at_start)
