@@ -12,6 +12,11 @@ Status note (2026-10-21, P26ac docs): §1 carries a dated status note on P46 (#1
 where the sim clears a dirty list (`FogUpdate.begin` before `remove_dead()`), the masks one per
 type plus a pad mask, and the stamping as merged; no accepted text changed.
 
+Status note (2026-10-21, P26ad docs): §2 carries a dated status note on P47 (#136) and P47p (#137)
+as merged: the rebuild triggers beyond a new match and an overflow, the sync in `_process` next to
+`ticked`, the hiding rule of every draw layer and of picking, and the lead's decision that the
+death of an own unit always shows; no accepted text changed.
+
 ## Context
 ROADMAP Phase 2 asks for "fog of war (visible and explored) and its rendering". The GDD says:
 - unexplored is black;
@@ -159,6 +164,43 @@ merged in `game/sim/FogUpdate.gd`, `World.gd` and `Sim.gd`.
   only the perf arena sets it; a test whose subject is not fog (a Phase 1 enemy-tap case, for
   example) may set it on `UnitLayer`, which also makes those enemies pickable, while the fog
   picking rule keeps its own cases.
+
+Status note (2026-10-21, P26ad docs, after P47, #136, and P47p, #137; the text above stays as
+accepted): §2 as merged in `game/view/FogLayer.gd`, the other draw layers, `game/input/` and
+`scenes/main.tscn`.
+- **Draw order.** `scenes/main.tscn` sets `z_index = 140` and `z_as_relative = false` on the
+  `FogLayer` node, with its `runner` path; the script sets no z, so another scene that uses the
+  layer (the perf arena) sets them on its own node.
+- **Updates.** The layer syncs in the `ticked` handler and also in `_process`, because a new
+  match's tick-0 snapshot comes with no `ticked`. Beyond "a new match (`runner.match_serial`
+  changed) or when the dirty list overflowed", a full rebuild also comes at the start of a match
+  (the first snapshot the layer sees), for another local player and for another `explored_alpha`;
+  and, when `version_of(local_player)` has changed, for a gap in the ticks (a snapshot whose tick
+  is not the one after the last the layer looked at). Otherwise a changed version patches the
+  cells of `dirty_cells(local_player)`, and an unchanged one does nothing; each rebuild or patch
+  is uploaded. With no grid for the local player (no map, or a player past `fog.player_count`)
+  the layer draws nothing. The update time is `last_update_usec()`, kept until the next update,
+  so a sampler takes one reading per update, on a frame where `upload_count()` rose.
+- **Hiding.** One test of a tile for every layer and for picking, in `FogLayer`'s statics
+  `local_player_of`, `covers` and `is_seen`, with the cell from `snapshot.cell_of` at the
+  position of the tick; a local player the fog has no grid for sees everything. A unit of any
+  owner but the local player (a neutral owner 0 included) is hidden on a tile the local player
+  does not see: `UnitLayer.is_shown(row)` decides a rig (hiding sets only `visible`),
+  `HealthBarLayer` draws a bar only where `is_shown`, and `UnitLayer.fill_pick_snapshot` marks
+  such a unit unpickable (`PickSnapshot.pickable`). `ProjectileLayer` skips every projectile on
+  an unseen tile, whatever its owner. `EffectsLayer` filters each effect as it is born, whatever
+  its owner: an impact by its landing tile, a muzzle flash by the shooter's tile, a tracer when
+  either end is seen (as above) and a death by its tile, with the one exception below.
+- **An own unit's death always shows** (the lead's decision, 2026-10-21): its sight ends that
+  tick (`remove_dead()` unstamps it, §1), so its own tile can be dark in the very tick it dies,
+  and the death burst is shown whatever the fog says. A neutral death in the dark does not show.
+- **`reveal_enemies`** is an export of `UnitLayer`, `ProjectileLayer` and `EffectsLayer`, as
+  above; besides the perf arena, tests whose subject is not fog set it (the two Phase 1 enemy-tap
+  cases and seven Phase 2 view suites; the plan's second audited table).
+- The plan's contract rows `FogLayer`, `UnitLayer` v2, `HealthBarLayer`, `ProjectileLayer`,
+  `EffectsLayer` and `PickSnapshot`, `Picker`, and its sections P47 and P47p "As merged", hold
+  the details. The look (the fog colour, the soft edge, alpha 140 on the phone, an own unit's
+  death on a dark tile) is recorded there as follow-ups for the art lens; STYLE.md is unchanged.
 
 ### 3. Data
 `RulesDef.fog_period_ticks` (3). `TerrainDef` has no sight effect in Phase 2. The explored alpha
