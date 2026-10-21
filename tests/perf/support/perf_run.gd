@@ -11,6 +11,9 @@ const PerfReport: GDScript = preload("res://tests/perf/support/perf_report.gd")
 ## TickJob.run() of each tick, in ms (the snapshot's job_usec), and Sim.step alone (step_usec).
 var tick_ms: PackedFloat64Array = PackedFloat64Array()
 var step_ms: PackedFloat64Array = PackedFloat64Array()
+## The harness's own reading of each call of run(), in ms: from the post stamp to just after the
+## call. The job's clock is inside it, so a tick time above it is a number that no clock produced.
+var wall_ms: PackedFloat64Array = PackedFloat64Array()
 ## The COMMANDS phase of each tick in microseconds, and the replay's command log, which says
 ## which tick ordered the most units.
 var commands_usec: PackedInt64Array = PackedInt64Array()
