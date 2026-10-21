@@ -64,6 +64,11 @@ at 0 steps the `WORKER` view back by up to one tick once per resume (accepted fo
 phone check); `late_ticks` and `latency_usec_max` also count inline ticks, and the
 `late_ticks_max` verdict is meaningful for a `WORKER` run. No accepted text changed.
 
+Status note (2026-10-21, P26ae docs): §3 carries a dated status note on the snapshot-only scan
+and the worker scene test as P50w (#140) merged them, and §4 one on the perf card's measuring half
+as P50a (#142) merged it (`INVALID` only for a refused preflight, `late_ticks_max` n/a in `SYNC`,
+the fail-closed rows). No accepted text changed.
+
 ## Context
 The Phase 2 plan (P26s) says that a contract the phone probe contradicts changes through a new ADR
 before P34 starts. The probe ran on 2026-10-12. The full reports are comments on PR #35.
@@ -574,6 +579,19 @@ test proves it.
   `Performance.OBJECT_COUNT` stays flat (packed arrays are not Objects). The `MEMORY_STATIC` check
   of plan P38w runs on CI only, because that monitor reads 0 on release builds.
 
+Status note (2026-10-21, P26ae docs, after P50w, #140; the text above stays as accepted):
+- **The scan** is `tests/project/test_view_reads_snapshot.gd`. It reads the whole text of every
+  `.gd` file of the four folders after taking comments out and blanking strings, so a chain that
+  gdformat wraps (`runner` and `. world` on two lines) is caught, and it also fails on a member
+  variable typed `World` in any of them. Its documented gap: a name given as a string,
+  `runner.get("world")` or `runner["world"]`, is not flagged; the guarded getters (§1) are the
+  second line, met at run time by the scene test below while a job is in flight.
+- **The scene test** is `tests/scenes/test_worker_scenes.gd`: `scenes/main.tscn` in `WORKER`
+  against `SYNC`, and with the native kernels against GDScript, equal at every published tick up
+  to 300 (rigs, fog image, checkpoints, `ticked` on the main thread), plus a held tick and
+  `start()` during a job, with a `Logger` scan that fails on any error. The perf arena joins it
+  later (plan rows P50b and P52).
+
 ### 4. Gate and budget (replaces ADR 0011's acceptance-note values where the probe contradicts them)
 **Gate runs** use the release-template perf APK (plan P51r) in `WORKER` mode, three runs in a
 row, on Michael's phone.
@@ -677,6 +695,19 @@ bounds, golden hashes, `ref_ms`):
 
 No gate threshold waits for the release run: each one follows from k, the 2021 limits and the
 period.
+
+Status note (2026-10-21, P26ae docs, after P50a, #142; the text above stays as accepted): the
+card's measuring half (`game/ui/PerfHud.gd`) as merged. The verdict rows judge `heavy_frames_min`,
+the dropped and cadence rows (ADR 0014), `hitches_max`, `work_p95_ms` and `work_tick_p95_ms` on
+the normalised values (ADR 0014 §3), `sim_p95_ms` on `job_p95_ms`, `job_p99_ms`,
+`draw_calls_max`, `late_ticks_max`, `fog_update_p95_ms` and `build`. A row without samples of its
+own fails (no publish frame in the heavy window, no published tick, no fog update), and `GATE:
+PASS` needs a finished run that is not `INVALID`. `late_ticks_max` is judged for a `WORKER` run
+only (`worker_active()` at each publish; an `AUTO` run that resolves to `SYNC` is a `SYNC` run and
+shows it as n/a), because `late_ticks` also counts inline ticks. `INVALID` covers only a preflight
+refused with a job in flight (`preflight_job_in_flight`); the zero-monitor rule above, the pause
+rule, the golden comparison and the `impl` verdict come with plan row P50a2. The card shows
+`held_ticks` without a verdict, as above. The plan's section P50a "As merged" holds the keys.
 
 ### 5. Flow fields on the worker
 - **Flow ticks sit inside the job p95.** At 256 cells a field takes 16 ticks, and the arena
