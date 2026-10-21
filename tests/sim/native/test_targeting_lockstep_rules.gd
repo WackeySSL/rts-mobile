@@ -17,9 +17,11 @@ extends GdUnitTestSuite
 ## - the empty grid: a grid with no cells for a whole run, and grids with no rows of cells or a cell
 ##   side below 1 in the middle of a fight (a due row that keeps no target writes 0 without a scan;
 ##   the rest of the pass, the ATTACK lock and the engagement, still runs).
-## The floors are measured on main at f1494a5 and set at about two thirds of the figure measured;
-## the measurements are beside each one. The seeds and the maps are listed in tests/sim/support/
-## targeting_worlds.gd, the orders in targeting_orders.gd.
+## The floors are measured on the tree of P46b (the vision rule) and set at about two thirds of the
+## figure measured, rounded down to three digits; the measurements are beside each one. The lattice
+## figures, the open-field figures and the 64 x 64 figures are those of f1494a5 unchanged: the
+## fights there stand inside the sight of the units. The seeds and the maps are listed in
+## tests/sim/support/targeting_worlds.gd, the orders in targeting_orders.gd.
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_lockstep_rig.gd")
 const Orders: GDScript = preload("res://tests/sim/support/targeting_orders.gd")
@@ -31,6 +33,7 @@ const ARENA_PAIRS: Array[Array] = [[-3, 9], [0, 4], [1, 1], [4, 0], [9, -3]]
 const LATTICE_TICKS: int = 150
 const ARENA_TICKS: int = 300
 const SCOUT_TICKS: int = 400
+const SHORT_TICKS: int = 300
 const OPEN_TICKS: int = 600
 const FAR_WAVES: int = 15
 ## The 25 lattice runs together (the points of a lattice are corners of tiles in the even ones),
@@ -53,38 +56,58 @@ const LATTICE_FLOORS: Dictionary[StringName, int] = {
 	&"line_checks": 2260,
 	&"retests": 1080
 }
-## The five arena runs together, measured: 2,847,323 looks, 50,457 candidates, 42,219 scans, 3,942
-## found, 46 fallbacks, 89,863 holding, 10,114 chasing, 2,153 chase starts, 10,317 line tests, 165
-## re-tests, 2,789 blocked.
+## The five arena runs together, measured: 2,848,661 looks, 50,483 candidates, 42,245 scans, 3,952
+## found, 46 fallbacks, 89,941 holding, 10,085 chasing, 2,153 chase starts, 10,203 line tests, 80
+## re-tests, 2,789 blocked (f1494a5: 2,847,323; 50,457; 42,219; 3,942; 46; 89,863; 10,114; 2,153;
+## 10,317; 165 re-tests; 2,789: the ATTACKs on an enemy out of sight are dropped now).
 const ARENA_FLOORS: Dictionary[StringName, int] = {
-	&"looks": 1900000,
-	&"cands": 33000,
-	&"scans": 28000,
-	&"found": 2600,
+	&"looks": 1890000,
+	&"cands": 33600,
+	&"scans": 28100,
+	&"found": 2630,
 	&"fallbacks": 30,
-	&"holding": 59000,
-	&"chasing": 6700,
-	&"chase_starts": 1435,
+	&"holding": 59900,
+	&"chasing": 6720,
+	&"chase_starts": 1430,
 	&"line_checks": 6800,
-	&"retests": 110,
+	&"retests": 53,
 	&"blocked": 1850
 }
-## The four scout runs together, measured: 1,891 unarmed rows on their turn, 26,283 looks, 713
-## candidates, 2,306 scans, 279 found, 42 fallbacks, 1,114 holding, 598 chasing, 84 chase starts,
-## 503 line tests, 133 re-tests, 227 blocked.
+## The four scout runs together, measured: 2,012 unarmed rows on their turn, 32,748 looks, 664
+## candidates, 2,771 scans, 308 found, 76 fallbacks (11 for a target out of sight), 1,097 holding,
+## 801 chasing, 113 chase starts, 557 line tests, 99 re-tests, 260 blocked (f1494a5: 1,891; 26,283;
+## 713; 2,306; 279; 42; 1,114; 598; 84; 503; 133; 227).
 const SCOUT_FLOORS: Dictionary[StringName, int] = {
-	&"unarmed": 1260,
-	&"looks": 17500,
-	&"cands": 475,
-	&"scans": 1530,
-	&"found": 186,
-	&"fallbacks": 28,
-	&"holding": 740,
-	&"chasing": 398,
-	&"chase_starts": 56,
-	&"line_checks": 335,
-	&"retests": 88,
-	&"blocked": 151
+	&"unarmed": 1340,
+	&"looks": 21800,
+	&"cands": 442,
+	&"scans": 1840,
+	&"found": 205,
+	&"fallbacks": 50,
+	&"holding": 731,
+	&"chasing": 534,
+	&"chase_starts": 75,
+	&"line_checks": 371,
+	&"retests": 66,
+	&"blocked": 173
+}
+## The six short-sighted runs together (Worlds.short_sighted: guns that see 3,000 and 2,000 milli
+## and reach 5,000 and 4,500; new with P46b), measured: 43,632 looks, 793 candidates, 2,917 enemies
+## in reach and out of sight that the rule refused (`unseen`), 5,998 scans, 580 found, 173 locked,
+## 22 fallbacks (13 of them for a target out of sight), 44 held targets let go because they left
+## sight, 3,302 holding, 497 chasing and 154 line tests.
+const SHORT_FLOORS: Dictionary[StringName, int] = {
+	&"unseen": 1940,
+	&"sight_lost": 8,
+	&"sight_drops": 29,
+	&"cands": 520,
+	&"found": 380,
+	&"locked": 115,
+	&"fallbacks": 14,
+	&"scans": 3990,
+	&"holding": 2200,
+	&"chasing": 330,
+	&"line_checks": 100
 }
 ## The three open-field runs together, measured: 951 segments with `ay * dx` over 2^31 and 8,521
 ## rows looked at over 2^31 squared milli apart (the long guns), 3,201 line tests (3,097 re-tests,
@@ -195,6 +218,23 @@ func _seen_far_attacks(world: World, tick: int) -> Array[Command]:
 	return out
 
 
+## Guns that see less than they reach (Worlds.short_sighted), under random waves of every order,
+## the FOG kernel in C++ next to the TARGETING kernel in every other run: the vision rule refuses
+## candidates in reach, lets go of held targets and ends ATTACK locks all through the run, in the
+## kernel as in the twin.
+func test_guns_that_see_less_than_they_reach_match_under_random_waves() -> void:
+	var total: Dictionary[StringName, int] = Rig.empty_tally()
+	for salt: int in 6:
+		var mask: int = Rig.ALL if salt % 2 == 1 else Rig.ONLY
+		var rig: RefCounted = Rig.new().setup(Worlds.short_sighted.bind(salt + 1), mask)
+		assert_array(rig.problems).is_empty()
+		var found: String = rig.run(SHORT_TICKS, Orders.random_waves.bind(salt + 20, 6))
+		assert_str(found).override_failure_message("run %d" % salt).is_empty()
+		assert_int(rig.loops[1].last_hash).is_equal(rig.loops[0].last_hash)
+		Rig.add_to(total, rig.tally())
+	_assert_reached(total, SHORT_FLOORS)
+
+
 ## A grid with no cells for the whole run (no columns: the rebuild inserts nothing, every tick): a
 ## due row that keeps no target writes 0 without a scan, so nobody acquires a target. The rest of
 ## the pass still runs: ATTACK rows lock their target and hold or walk to it, MOVE rows drop theirs.
@@ -203,17 +243,20 @@ func test_a_grid_with_no_cells_finds_nobody_for_a_whole_run() -> void:
 	assert_array(rig.problems).is_empty()
 	for world: World in rig.worlds:
 		assert_int(world.target_grid.cols).is_equal(0)
-	assert_str(rig.run(400, Orders.random_waves.bind(9, 4))).is_empty()
+	assert_str(rig.run(400, Orders.random_waves.bind(4, 4))).is_empty()
 	var tally: Dictionary[StringName, int] = rig.tally()
-	assert_int(tally[&"due"]).is_greater(4900)
+	assert_int(tally[&"due"]).is_greater(5800)
 	assert_int(tally[&"scans"]).is_equal(0)
 	assert_int(tally[&"looks"]).is_equal(0)
 	assert_int(tally[&"found"]).is_equal(0)
-	# 5,379 locked, 7,420 due (4 kept), 122 holding and 225 re-tests in the run that measured these:
-	# the ATTACK commands still lock, hold and test their line.
+	# 5,376 locked, 8,718 due, 2,212 holding and 434 re-tests in the run that measured these (wave
+	# seed 4; with the vision rule of P46b the ATTACKs of seed 9 on an enemy out of sight are
+	# dropped, and its run holds nobody, so the seed moved; at f1494a5 seed 9 gave 5,379 locked,
+	# 7,420 due, 122 holding and 225 re-tests): the ATTACK commands still lock, hold and test their
+	# line.
 	assert_int(tally[&"locked"]).is_greater(3500)
-	assert_int(tally[&"holding"]).is_greater(80)
-	assert_int(tally[&"retests"]).is_greater(150)
+	assert_int(tally[&"holding"]).is_greater(1400)
+	assert_int(tally[&"retests"]).is_greater(280)
 
 
 ## Grids taken apart or shrunk in the middle of a fight, on a lattice of 30 units a side (the

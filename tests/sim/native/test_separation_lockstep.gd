@@ -35,13 +35,14 @@ extends GdUnitTestSuite
 ## reach on both are asserted by the arena cases that do: the cap on hits and the pair on one
 ## point by the pile (389 and 47 on main, 277 and 12 with P42a, 262 and 1 with P42b) and the rows
 ## at the edge of the grid by the pile in the corner of the map (10,375 and 4,107 in 400 ticks).
-## The pile now meets the pair on one point once, so its floor is 1 and has no margin: a later arena
-## change may take it to 0. The crafted cases of test_separation_lockstep_cases.gd pin the same
-## three whatever the arena does: a pile that fills the cap on hits, near-coincident pairs with one
-## pair on one point, and units at the four edges and corners of the map. They are the real guard
-## of `same_point`, so when the pile drops it, its floor moves to the crafted case and the arena is
-## not tuned to bring the pair back. The rows that the probe scans are checked against the rows
-## that the rig stepped, so that a unit that dies is not counted as a row.
+## The pile met the pair on one point once with P42b, so its floor was 1 and had no margin; with
+## P46b (the vision rule: the ATTACKs on an enemy out of sight are dropped) it meets it 0 times, and
+## the floor is gone from the pile. The crafted cases of test_separation_lockstep_cases.gd pin the
+## same three whatever the arena does: a pile that fills the cap on hits, near-coincident pairs with
+## one pair on one point, and units at the four edges and corners of the map. They are the real
+## guard of `same_point`, so when the pile drops it, its floor moves to the crafted case and the
+## arena is not tuned to bring the pair back. The rows that the probe scans are checked against the
+## rows that the rig stepped, so that a unit that dies is not counted as a row.
 
 const Rig: GDScript = preload("res://tests/sim/support/separation_lockstep_rig.gd")
 const LockstepRig: GDScript = preload("res://tests/sim/support/lockstep_rig.gd")
@@ -168,10 +169,11 @@ func test_900_ticks_of_the_arena_gathered_into_a_pile_match() -> void:
 	# 164,635 hits, 389 at the cap on hits, 30,721 at the cap on looks, 2,603 fixed, 47 pairs on one
 	# point, 35,833 mixed and 6,483 at the cap on main; 53,729, 277, 10,714, 1,070, 12, 11,074 and
 	# 4,047 with P42a; 47,779, 262, 10,900, 1,113, 1, 11,295 and 3,952 with P42b (a hit lands a
-	# flight time after the shot, so the pile thins out later). The pair on one point is met once
-	# now: its floor is 1, the least above 0, where the others stay at two thirds of P42a's.
+	# flight time after the shot, so the pile thins out later); 46,536, 203, 10,686, 935, 0, 10,469
+	# and 3,430 with P46b. The pair on one point is no longer met (the crafted case of
+	# test_separation_lockstep_cases.gd holds it), and the others stay at two thirds of P42a's.
 	_assert_reached(rig, {&"hits": 35000, &"hit_capped": 180, &"look_capped": 7100})
-	_assert_reached(rig, {&"fixed": 710, &"same_point": 1, &"mixed": 7300, &"at_cap": 2600})
+	_assert_reached(rig, {&"fixed": 710, &"mixed": 7300, &"at_cap": 2600})
 	var again: RefCounted = Rig.new().setup(_arena.bind(true), Rig.WITH_INTEGRATE)
 	assert_array(again.problems).is_empty()
 	assert_str(again.run(SHORT_TICKS, _orders)).is_empty()

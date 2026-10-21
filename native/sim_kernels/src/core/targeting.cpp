@@ -1,4 +1,5 @@
-// The TARGETING kernel's rules, a mirror of Targeting.run and Targeting._engage in game/sim/Targeting.gd: see targeting.h. MIT.
+// The TARGETING kernel's rules, a mirror of Targeting.run, Targeting.sees and Targeting._engage in game/sim/Targeting.gd: see
+// targeting.h. MIT.
 #include "targeting.h"
 
 #include "fixed_math.h"
@@ -16,6 +17,7 @@ constexpr int64_t DIRECT = 1; // Targeting.DIRECT (World.NavMode.DIRECT)
 constexpr int64_t HOLD = 3; // Targeting.HOLD (World.NavMode.HOLD)
 constexpr int64_t CHASE = 4; // Targeting.CHASE (World.NavMode.CHASE)
 constexpr int64_t ARMOUR_CLASSES = 4; // World.Armour.size()
+constexpr int64_t TILE = 1000; // Targeting.TILE (World.MILLI_PER_TILE): the side of a fog cell
 
 // GDScript's clampi: the lower bound is tested first, as in Godot's CLAMP.
 int64_t clamp(int64_t value, int64_t low, int64_t high) {
@@ -38,11 +40,20 @@ int64_t bsearch(const ArrayView<const int32_t> &values, int64_t value) {
 	return low;
 }
 
+// Whether the fog has cells to look in: sides that make its cells (FogGrid.configure always does), tested by division so that
+// the product cannot overflow, as Targeting.run and the FOG kernel test it. A fog that is not one sees every cell.
+bool has_cells(const Fog &fog) {
+	if (fog.cols < 1 || fog.rows < 1) {
+		return false;
+	}
+	return fog.cells % fog.cols == 0 && fog.cells / fog.cols == fog.rows;
+}
+
 // One call of Targeting.run: the World's columns, tables and rules.
 class Pass {
 public:
-	Pass(const Rows &rows, const Types &types, const Weapons &weapons, const Grid &grid, const Map &map, const Rules &rules) :
-			rows_(rows), types_(types), weapons_(weapons), grid_(grid), map_(map), rules_(rules) {}
+	Pass(const Rows &rows, const Types &types, const Weapons &weapons, const Grid &grid, const Map &map, const Fog &fog, const Rules &rules) :
+			rows_(rows), types_(types), weapons_(weapons), grid_(grid), map_(map), fog_(fog), fogged_(has_cells(fog)), rules_(rules) {}
 
 	int64_t acquire();
 	int64_t engage();
@@ -53,12 +64,18 @@ private:
 	Weapons weapons_;
 	Grid grid_;
 	Map map_;
+	Fog fog_;
+	bool fogged_;
 	Rules rules_;
 
 	void reset_row(int64_t row, int64_t mode);
+	int64_t veil_of(int64_t owner) const;
+	bool seen(int64_t veil, int64_t x, int64_t y) const;
 };
 
-// Movement.reset_row: the navigation state combat gives a unit when it changes the unit's mode.
+// Movement.reset_row: the navigation state combat gives a unit when it changes the unit's mode. Only the engagement pass calls
+// it: when a mode changes, and on the ATTACK re-test, which resets a DIRECT row to DIRECT, so (as in the twin) the call has no
+// `mode != new_mode` guard of its own.
 void Pass::reset_row(int64_t row, int64_t mode) {
 	rows_.nav_mode.set(row, mode);
 	rows_.nav_cell.set(row, -1);
@@ -66,6 +83,19 @@ void Pass::reset_row(int64_t row, int64_t mode) {
 	rows_.nav_next.set(row, -1);
 	rows_.best_dist.set(row, flow::UNREACHED);
 	rows_.stall.set(row, 0);
+}
+
+// Targeting.run's `veil`: the offset of `owner`'s block in `visible`, or -1 for a player with no grid (the neutral 0, one past
+// player_count, or a fog with no cells), which sees every cell.
+int64_t Pass::veil_of(int64_t owner) const {
+	return fogged_ && owner >= 1 && owner <= fog_.player_count ? (owner - 1) * fog_.cells : -1;
+}
+
+// Targeting.sees, inlined by the twin's loops: whether the cell that holds (x, y) (the nearest edge cell for a point off the
+// map; `/` truncates toward zero as in GDScript) is covered by a sight disc in the block at `veil`, which is 0 or more.
+bool Pass::seen(int64_t veil, int64_t x, int64_t y) const {
+	const int64_t cell = clamp(y / TILE, 0, fog_.rows - 1) * fog_.cols + clamp(x / TILE, 0, fog_.cols - 1);
+	return fog_.visible.get(veil + cell) > 0;
 }
 
 // Targeting.run before its call of _engage: returns the rows the scans looked at.
@@ -101,14 +131,18 @@ int64_t Pass::acquire() {
 	int64_t looked = 0;
 	for (int64_t row = 0; row < count; row++) {
 		int64_t order = orders.get(row);
+		const int64_t own = owners.get(row);
+		const int64_t veil = veil_of(own);
 		if (order == ATTACK) {
 			const int64_t locked = order_targets.get(row);
 			const int64_t at = bsearch(ids, locked);
-			if (at < count && ids.get(at) == locked && owners.get(at) != owners.get(row) && owners.get(at) != 0) {
-				targets.set(row, locked);
-				goal_x.set(row, pos_x.get(at));
-				goal_y.set(row, pos_y.get(at));
-				continue;
+			if (at < count && ids.get(at) == locked && owners.get(at) != own && owners.get(at) != 0) {
+				if (veil < 0 || seen(veil, pos_x.get(at), pos_y.get(at))) {
+					targets.set(row, locked);
+					goal_x.set(row, pos_x.get(at));
+					goal_y.set(row, pos_y.get(at));
+					continue;
+				}
 			}
 			orders.set(row, ATTACK_MOVE);
 			order_targets.set(row, 0);
@@ -131,7 +165,6 @@ int64_t Pass::acquire() {
 		const int64_t reach2 = reach * reach;
 		const int64_t min2 = weapon_min_range.get(weapon) * weapon_min_range.get(weapon);
 		const int64_t vs_base = weapon * ARMOUR_CLASSES;
-		const int64_t own = owners.get(row);
 		const int64_t x = pos_x.get(row);
 		const int64_t y = pos_y.get(row);
 		const int64_t held = targets.get(row);
@@ -142,7 +175,9 @@ int64_t Pass::acquire() {
 				const int64_t held_y = pos_y.get(at) - y;
 				const int64_t held_d2 = held_x * held_x + held_y * held_y;
 				if (held_d2 <= reach2 && held_d2 >= min2 && weapon_vs.get(vs_base + type_armour.get(types.get(at))) > 0) {
-					continue;
+					if (veil < 0 || seen(veil, pos_x.get(at), pos_y.get(at))) {
+						continue;
+					}
 				}
 			}
 		}
@@ -180,6 +215,9 @@ int64_t Pass::acquire() {
 					}
 					const int64_t percent = weapon_vs.get(vs_base + type_armour.get(types.get(other)));
 					if (percent <= 0) {
+						continue;
+					}
+					if (veil >= 0 && !seen(veil, pos_x.get(other), pos_y.get(other))) {
 						continue;
 					}
 					if (percent > best_percent || (percent == best_percent && (d2 < best_d2 || (d2 == best_d2 && other < best)))) {
@@ -283,8 +321,8 @@ int64_t Pass::engage() {
 
 } // namespace
 
-Counts run(const Rows &rows, const Types &types, const Weapons &weapons, const Grid &grid, const Map &map, const Rules &rules) {
-	Pass pass(rows, types, weapons, grid, map, rules);
+Counts run(const Rows &rows, const Types &types, const Weapons &weapons, const Grid &grid, const Map &map, const Fog &fog, const Rules &rules) {
+	Pass pass(rows, types, weapons, grid, map, fog, rules);
 	Counts counts;
 	counts.candidates = pass.acquire();
 	counts.line_checks = pass.engage();

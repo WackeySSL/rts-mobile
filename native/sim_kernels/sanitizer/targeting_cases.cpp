@@ -5,8 +5,10 @@
 // from crafted scenes. Sanitizers judge memory and undefined behaviour, not answers: the targets and modes of the rules
 // are the gdUnit4 suites' (test_targeting*.gd and test_engagement*.gd under both implementations,
 // test_targeting_kernel*.gd), and only what needs no second implementation is checked here (a MOVE row ends with no
-// target, no count past the rows, a grid with no cells finds nobody). The build has no -fwrapv, so the range that
+// target, no count past the rows, a grid with no cells finds nobody, a fog that sees nothing leaves no row of a player with a
+// grid a target, and a fog with no grid sees every cell). The build has no -fwrapv, so the range that
 // core/targeting.h records is run at its edges: positions of 10^9 and reaches of 2 * 10^9. Plain C++17, no Godot header. MIT.
+// The fog (P46b): the sight counts of a dump are the dump's own; the crafted scenes get counts of their own.
 // Twin: bind/kernel_targeting.cpp (call() below is the same targeting::run, with the arrays of the World replaced by
 // vectors). A change to that call edits call() in the same PR.
 #include <algorithm>
@@ -36,6 +38,8 @@ struct State {
 	std::vector<int32_t> armour, acquire, weapon, move_class, range, min_range, vs_armour;
 	std::vector<uint8_t> move_cost;
 	std::vector<int32_t> head, next;
+	targeting::Fog fog; // the sides and the player count of World.fog; `visible` is the vector below
+	std::vector<int32_t> visible;
 };
 
 int64_t units_of(const State &state) {
@@ -98,7 +102,9 @@ targeting::Counts call(State &state) {
 	map.cols = state.map_cols;
 	map.rows = state.map_rows;
 	map.move_cost = cview(state.move_cost);
-	return targeting::run(rows, types, weapons, grid, map, state.rules);
+	targeting::Fog fog = state.fog;
+	fog.visible = cview(state.visible);
+	return targeting::run(rows, types, weapons, grid, map, fog, state.rules);
 }
 
 // The answers that need no second implementation: no count past what the rows can make (a row looks at the others at most
@@ -166,6 +172,11 @@ State from_dump(const Dump &dump) {
 		(state.*column.column) = dump.ints(column.name);
 	}
 	state.move_cost = dump.bytes("world.move_cost");
+	state.visible = dump.ints("fog.visible");
+	state.fog.cols = dump.scalar("fog.cols");
+	state.fog.rows = dump.scalar("fog.rows");
+	state.fog.cells = dump.scalar("fog.cells");
+	state.fog.player_count = dump.scalar("fog.player_count");
 	state.map_cols = dump.scalar("world.map_cols");
 	state.map_rows = dump.scalar("world.map_rows");
 	state.cols = dump.scalar("target.cols");
@@ -189,6 +200,9 @@ State from_dump(const Dump &dump) {
 	}
 	if (static_cast<int64_t>(state.move_cost.size()) != 3 * state.map_cols * state.map_rows) {
 		throw std::runtime_error("the move costs of the dump are not three lists of the map's cells");
+	}
+	if (static_cast<int64_t>(state.visible.size()) != state.fog.player_count * state.fog.cells) {
+		throw std::runtime_error("the sight counts of the dump are not one block of the fog's cells per player");
 	}
 	if (static_cast<int64_t>(state.head.size()) != state.cols * state.rows || state.next.size() < units) {
 		throw std::runtime_error("the targeting grid of the dump does not have the size of its cells and rows");
@@ -284,6 +298,19 @@ struct Stream {
 	}
 };
 
+// A fog over the map of `state` for `players` players: one block of the map's cells each, a cell covered by no disc (one in
+// three) or by one or two. The fog of a World that FogGrid.configure made, so its sides make its cells.
+void give_fog(Stream &stream, State &state, int64_t players) {
+	state.fog.cols = state.map_cols;
+	state.fog.rows = state.map_rows;
+	state.fog.cells = state.map_cols * state.map_rows;
+	state.fog.player_count = players;
+	state.visible.assign(static_cast<size_t>(players * state.fog.cells), 0);
+	for (int32_t &count : state.visible) {
+		count = stream.next(3) == 0 ? 0 : static_cast<int32_t>(1 + stream.next(2));
+	}
+}
+
 // A scene: a map of `cols` x `rows` tiles with a quarter of the tiles rock for each of three movement classes, a grid of
 // cells of 4000 over it, four unit types (the weapon indexes 0, 1 and 2, and one that names no weapon) and `units` rows
 // scattered over the map and a margin of 3000 around it, with owners 0 to 2 and a random order, mode, target and line
@@ -307,6 +334,7 @@ State make_scene(Stream &stream, int64_t cols, int64_t rows, int64_t units) {
 	state.min_range = { 0, 1000, 2000 };
 	state.vs_armour = { 100, 10, 0, 40, 20, 100, 50, 0, 70, 60, 80, 100 };
 	state.head.assign(static_cast<size_t>(state.cols * state.rows), -1);
+	give_fog(stream, state, 2);
 	const size_t slack = static_cast<size_t>(units + 8);
 	state.next.assign(slack, -1);
 	for (int64_t row = 0; row < units; row++) {
@@ -395,6 +423,7 @@ void no_cells(Tally &tally) {
 void range_edges(Tally &tally) {
 	Stream stream = { 8 };
 	State corners = make_scene(stream, 1, 1, 0);
+	corners.visible.assign(corners.visible.size(), 1); // the one cell is seen by both players
 	corners.armour = { 0 };
 	corners.acquire = { static_cast<int32_t>(TOP) };
 	corners.weapon = { 0 };
@@ -478,11 +507,87 @@ void hostile_references(Tally &tally) {
 	}
 }
 
+// The columns the vision rule can change in a call: the target, the order, its target and the goal.
+bool same_picks(const State &a, const State &b) {
+	return a.target == b.target && a.order == b.order && a.order_target == b.order_target && a.goal_x == b.goal_x && a.goal_y == b.goal_y;
+}
+
+// The vision rule at its edges (P46b), on armed rows of every owner (0 to 2) that are all due: a fog that sees nothing leaves
+// no row of a player with a grid holding a target, a fog that sees everything is the same as a fog with no grid (sides that
+// do not make its cells, or no players: every cell is seen), an owner past the player count sees every cell, and rows
+// scattered up to 10^9 off the map are looked up in the nearest edge cell (`/` truncates toward zero).
+void fog_edges(Tally &tally) {
+	Stream stream = { 12 };
+	State base = make_scene(stream, 12, 8, 60);
+	base.rules.retarget_period_ticks = 1;
+	base.rules.line_check_period_ticks = 1;
+	std::fill(base.type_index.begin(), base.type_index.end(), 0);
+	State blind = base;
+	blind.visible.assign(blind.visible.size(), 0);
+	play(blind, tally, "blind");
+	for (size_t row = 0; row < blind.owner.size(); row++) {
+		if (blind.owner[row] >= 1 && blind.owner[row] <= 2 && blind.target[row] != 0) {
+			throw Finding(std::string("targeting: blind: row ") + std::to_string(row) + " of player " + std::to_string(blind.owner[row]) + " holds the target " + std::to_string(blind.target[row]));
+		}
+	}
+	State open = base;
+	open.visible.assign(open.visible.size(), 1);
+	play(open, tally, "open");
+	const struct {
+		const char *what;
+		int64_t cols, rows, cells, players;
+	} bare[] = {
+		{ "no columns", 0, 8, 96, 2 },
+		{ "no rows", 12, 0, 96, 2 },
+		{ "negative sides", -12, -8, 96, 2 },
+		{ "a cell too many", 12, 8, 97, 2 },
+		{ "a cell too few", 12, 8, 95, 2 },
+		{ "no cells", 12, 8, 0, 2 },
+		{ "sides past the cells", INT64_MAX, INT64_MAX, 96, 2 },
+		{ "no players", 12, 8, 96, 0 },
+		{ "negative players", 12, 8, 96, -4 },
+	};
+	for (const auto &item : bare) {
+		State state = base;
+		state.fog.cols = item.cols;
+		state.fog.rows = item.rows;
+		state.fog.cells = item.cells;
+		state.fog.player_count = item.players;
+		play(state, tally, item.what);
+		if (!same_picks(state, open)) {
+			throw Finding(std::string("targeting: ") + item.what + ": a fog with no grid does not see every cell");
+		}
+	}
+	// One player of two: the owner past the player count sees every cell, as the neutral does.
+	for (const int64_t players : { int64_t(1), int64_t(2), int64_t(3) }) {
+		State state = base;
+		state.fog.player_count = players;
+		state.visible.assign(static_cast<size_t>(players * state.fog.cells), 0);
+		for (size_t at = 0; at < state.visible.size(); at += 2) {
+			state.visible[at] = 1;
+		}
+		play(state, tally, "players");
+	}
+	// Rows far off the map, up to the range that core/targeting.h records, in the corners and on the edge midpoints.
+	for (const int64_t far : { int64_t(1), int64_t(5000), int64_t(1000000), EDGE }) {
+		State state = base;
+		for (size_t row = 0; row < state.pos_x.size(); row++) {
+			const int64_t sign_x = (row % 3 == 0) ? -1 : 1;
+			const int64_t sign_y = (row % 2 == 0) ? -1 : 1;
+			state.pos_x[row] = static_cast<int32_t>(sign_x * (row % 4 == 0 ? far : far / 7));
+			state.pos_y[row] = static_cast<int32_t>(sign_y * (row % 5 == 0 ? far : far / 3));
+		}
+		state.rules.retarget_period_ticks = 1;
+		play(state, tally, "far off the map");
+	}
+}
+
 void crafted(Tally &tally) {
 	random_scenes(tally);
 	no_cells(tally);
 	range_edges(tally);
 	hostile_references(tally);
+	fog_edges(tally);
 }
 
 } // namespace

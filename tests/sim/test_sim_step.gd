@@ -7,6 +7,13 @@ const RecordingProbe: GDScript = preload("res://tests/sim/recording_probe.gd")
 const Rig: GDScript = preload("res://tests/sim/support/separation_rig.gd")
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
 const MAP: int = 48000
+## The sight of the hand-built types: a unit sees the target of an ATTACK 4000 away (the authoring
+## rule of the fog PR, P46b).
+const SIGHT: int = 6000
+## Where `_drop_world` puts red tank 31, 4500 east of the blue block's east edge (x 16000, y 18500
+## to 24500): inside the sight of the blue tanks (7000), where it starts at (34500, 10500), outside
+## every blue disc.
+const SEEN_AT: Vector2i = Vector2i(20500, 20500)
 const GROUP_TYPES: Array[int] = [
 	Command.Type.ATTACK_MOVE, Command.Type.MOVE, Command.Type.ATTACK, Command.Type.STOP
 ]
@@ -318,7 +325,8 @@ func _scenario_world() -> World:
 	return World.from_scenario(load(SCENARIO_PATH) as ScenarioDef)
 
 
-## Type 0: tank (speed 120, radius 400, spacing 1200). Type 1 cannot move. Type 2 has speed 60.
+## Type 0: tank (speed 120, radius 400, spacing 1200). Type 1 cannot move. Type 2 has speed 60. All
+## three see SIGHT.
 func _make_world() -> World:
 	var world: World = World.new()
 	world.map_w = MAP
@@ -329,6 +337,7 @@ func _make_world() -> World:
 		world.type_radius.append(400)
 		world.type_selection_radius.append(500)
 		world.type_spacing.append(1200)
+		world.type_sight.append(SIGHT)
 	return world
 
 
@@ -392,9 +401,13 @@ func _repeat(value: int, count: int) -> Array:
 	return values
 
 
-## The controls scenario at tick 7, plus a neutral tank, id 41, unless `neutral` is false.
+## The controls scenario at tick 7, plus a neutral tank, id 41, unless `neutral` is false. Red tank
+## 31 (row 30, the default target of `_cmd`) stands at SEEN_AT, in sight of the blue tanks, so that
+## an ATTACK on it passes the vision check of the fog PR (P46b).
 func _drop_world(neutral: bool = true) -> World:
 	var world: World = _scenario_world()
+	world.pos_x[30] = SEEN_AT.x
+	world.pos_y[30] = SEEN_AT.y
 	if neutral:
 		world.add_unit(0, 0, 30000, 30000)
 	world.tick = 7

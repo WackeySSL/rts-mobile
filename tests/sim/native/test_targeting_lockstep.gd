@@ -5,10 +5,11 @@ extends GdUnitTestSuite
 ## every tick the state hash and the full state (StateDiff: every column, scalar and helper, the
 ## targets, orders, goals and navigation columns among them, both grids and the fog) are compared.
 ## The seed-42 perf arena runs for 900 ticks with TARGETING alone in C++ (so a difference can only
-## be its kernel's), with the other ports that have merged (FLOW, SEPARATION and INTEGRATE) and with
-## every phase the library has; the arena also runs under seeded random waves of MOVE, ATTACK_MOVE,
-## STOP and ATTACK, the controls_test scenario runs under four seeds, and one run uses changed rules
-## (every rule int +3 and both cadences moved, so a value written as a C++ literal fails). The
+## be its kernel's), with the ports before FOG (FLOW, SEPARATION and INTEGRATE; FOG runs only in
+## ALL) and with every phase the library has; the arena also runs under seeded random waves of
+## MOVE, ATTACK_MOVE, STOP and ATTACK, the controls_test scenario runs under four seeds, and one
+## run uses changed rules (every rule int +3 and both cadences moved, so a value written as a C++
+## literal fails). The
 ## orders of the arena are the P27c rush (the scenario holds firing lines since P48), MatchScript's
 ## eight commands and, from tick 160, a seeded wave every 25 ticks (targeting_orders.gd). The
 ## cadences, the weapon-versus-type roster, the 64 x 64 maps and the empty grid are in
@@ -17,29 +18,36 @@ extends GdUnitTestSuite
 ## pinned by the spy case of tests/sim/test_kernel_dispatch.gd.
 ##
 ## What the runs reach, and the lower bounds of the cases. A TargetingTallyProbe counts what each
-## run reached, so that none passes by never meeting a rule. The floors are measured on main at
-## f1494a5 (P41n, P46, P38w1b and everything before) and set at about two thirds of the figure
-## measured (the way test_integrate_lockstep.gd and test_separation_lockstep.gd derive their own).
-## The plain arena run reaches 262,688 rows looked at, 14,240 candidates (enemies in range with a
-## damage percent), 5,046 locked ATTACK rows and 50 fallbacks to ATTACK_MOVE, 98 MOVE rows that
-## dropped a target, 10,662 due rows (5,439 kept their target; 5,223 scanned and 1,200 took one),
-## 2,585 candidates that beat the best by a smaller distance at the same percent and 317 by a better
-## percent from farther away, 27,578 unit-ticks in HOLD (1,561 starts, 1,357 ends) and 2,995 in
-## CHASE (468 and 456), and 1,339 line tests (171 ATTACK re-tests; 996 clear, 343 blocked). It
-## reaches no exact tie (two candidates at the same percent and the same squared distance: the units
-## of the arena are jittered), no chase line test at exactly the acquire range, and no segment whose
-## `ay * dx` passes 2^31 (a chase tests only a target inside its acquire range, and the ATTACK units
-## of the arena stand near theirs). The ties are the lattices', the acquire-range edge is the pairs'
-## (test_targeting_lockstep_cases.gd) and the wide segments are the 64 x 64 map's
-## (test_targeting_lockstep_rules.gd).
+## run reached, so that none passes by never meeting a rule. The floors are measured on the tree of
+## P46b (the vision rule of both Targeting versions) and set at about two thirds of the figure
+## measured, rounded down to three digits (the way test_integrate_lockstep.gd and
+## test_separation_lockstep.gd derive their own); the figures of f1494a5 (P41n, P46, P38w1b and
+## everything before) are beside them where they moved. The plain arena run reaches 259,898 rows
+## looked at (262,688 at f1494a5), 14,255 candidates (enemies in range with a damage percent that
+## the player sees; 14,240), 4,992 locked ATTACK rows (5,046) and 38 fallbacks to ATTACK_MOVE (50),
+## 120 MOVE rows that dropped a target (98), 10,589 due rows (10,662; 5,437 kept their target and
+## 5,152 scanned, 1,181 of them took one), 2,583 candidates that beat the best by a smaller distance
+## at the same percent and 312 by a better percent from farther away, 27,311 unit-ticks in HOLD
+## (1,551 starts, 1,335 ends) and 2,906 in CHASE (455 and 448), and 1,314 line tests (173 ATTACK
+## re-tests; 970 clear, 344 blocked). It moved because the ATTACK orders of the run (MatchScript's
+## and the waves') that name an enemy out of sight are dropped now. It reaches no exact tie (two
+## candidates at the same percent and the same squared distance: the units of the arena are
+## jittered), no chase line test at exactly the acquire range, and no segment whose `ay * dx` passes
+## 2^31 (a chase tests only a target inside its acquire range, and the ATTACK units of the arena
+## stand near theirs). It reaches no candidate that the vision rule refuses either (`unseen`,
+## `sight_lost` and `sight_drops` are 0: the units see 6,000 and 7,000 milli against acquire ranges
+## of 5,000 and 5,500, and an ATTACK is validated against the same fog), so the refusals of the rule
+## are the random states' (test_targeting_lockstep_cases.gd) and the short-sighted guns'
+## (test_targeting_lockstep_rules.gd). The ties are the lattices', the acquire-range edge is the
+## pairs' and the wide segments are the 64 x 64 map's.
 ##
-## For P46b, which adds the vision of a candidate to both Targeting versions and re-runs these
+## For P46b, which added the vision of a candidate to both Targeting versions and re-ran these
 ## suites: the probe's count() takes the same rule (the rig holds the probe to the phase, so a probe
 ## that leaves it out fails the case wherever it changes a pick), the floors of this arena are
 ## re-derived, and so are the floors of every case whose orders can name an enemy out of sight (the
 ## random waves and the attack-then-kill case send ATTACKs at any enemy, which that PR drops). The
-## open field of the rules suite is built to stay in force: its long guns see the whole map and its
-## fog is stamped from tick 0, and the case asserts that every far attack names a target in sight.
+## open field of the rules suite stays in force: its long guns see the whole map and its fog is
+## stamped from tick 0, and the case asserts that every far attack names a target in sight.
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_lockstep_rig.gd")
 const Orders: GDScript = preload("res://tests/sim/support/targeting_orders.gd")
@@ -52,83 +60,88 @@ const CONTROLS_SEEDS: Array[int] = [1, 2, 3, 4]
 const CONTROLS_MASKS: Array[int] = [Rig.ONLY, Rig.ONLY, Rig.WITH_PORTED, Rig.ALL]
 ## The floors of the plain arena run, in two groups: acquisition, then engagement.
 const ARENA_ACQUISITION: Dictionary[StringName, int] = {
-	&"looks": 175000,
+	&"looks": 173000,
 	&"cands": 9500,
-	&"locked": 3300,
-	&"fallbacks": 33,
-	&"dropped": 65,
-	&"due": 7100,
-	&"kept": 3600,
-	&"scans": 3400,
-	&"found": 800,
+	&"locked": 3320,
+	&"fallbacks": 25,
+	&"dropped": 80,
+	&"due": 7050,
+	&"kept": 3620,
+	&"scans": 3430,
+	&"found": 787,
 	&"nearer_wins": 1720,
-	&"farther_wins": 210
+	&"farther_wins": 208
 }
 const ARENA_ENGAGEMENT: Dictionary[StringName, int] = {
-	&"holding": 18000,
-	&"hold_starts": 1000,
-	&"hold_ends": 900,
-	&"chasing": 2000,
-	&"chase_starts": 300,
-	&"chase_ends": 300,
-	&"line_checks": 890,
-	&"retests": 110,
-	&"clear": 660,
-	&"blocked": 220
+	&"holding": 18200,
+	&"hold_starts": 1030,
+	&"hold_ends": 890,
+	&"chasing": 1930,
+	&"chase_starts": 303,
+	&"chase_ends": 298,
+	&"line_checks": 876,
+	&"retests": 115,
+	&"clear": 646,
+	&"blocked": 229
 }
-## The arena under random waves (WITH_PORTED), measured: 313,842 looks, 5,445 candidates, 10,662
-## locked, 33 fallbacks, 297 dropped, 8,585 scans, 803 found, 17,891 holding, 1,244 chasing, 229
-## chase starts, 1,171 line tests, 495 re-tests, 328 blocked.
+## The arena under random waves (WITH_PORTED), measured: 365,823 looks, 3,865 candidates, 4,043
+## locked, 19 fallbacks, 158 dropped, 10,498 scans, 795 found, 17,944 holding, 1,844 chasing, 290
+## chase starts, 1,088 line tests, 287 re-tests, 303 blocked (f1494a5: 313,842; 5,445; 10,662; 33;
+## 297; 8,585; 803; 17,891; 1,244; 229; 1,171; 495; 328; the waves' ATTACKs on an enemy out of sight
+## are dropped now, so the rows that lock are fewer).
 const WAVES_FLOORS: Dictionary[StringName, int] = {
-	&"looks": 200000,
-	&"cands": 3600,
-	&"locked": 7000,
-	&"fallbacks": 22,
-	&"dropped": 195,
-	&"scans": 5700,
+	&"looks": 243000,
+	&"cands": 2570,
+	&"locked": 2690,
+	&"fallbacks": 12,
+	&"dropped": 105,
+	&"scans": 6990,
 	&"found": 530,
 	&"holding": 11900,
-	&"chasing": 830,
-	&"chase_starts": 150,
-	&"line_checks": 780,
-	&"retests": 330,
-	&"blocked": 218
+	&"chasing": 1220,
+	&"chase_starts": 193,
+	&"line_checks": 725,
+	&"retests": 191,
+	&"blocked": 202
 }
-## The controls_test runs of the four seeds together, measured: 102,211 looks, 774 candidates,
-## 13,068 locked, 47 fallbacks, 198 dropped, 6,263 scans, 333 found, 9,759 holding, 783 chasing, 183
-## chase starts, 1,634 line tests, 1,352 re-tests, 32 blocked.
+## The controls_test runs of the four seeds together, measured: 132,228 looks, 488 candidates,
+## 3,341 locked, 8 fallbacks, 71 dropped, 8,088 scans, 181 found, 7,589 holding, 705 chasing, 138
+## chase starts, 568 line tests, 344 re-tests, 20 blocked (f1494a5: 102,211; 774; 13,068; 47; 198;
+## 6,263; 333; 9,759; 783; 183; 1,634; 1,352; 32: the red tanks start 18 tiles from the block, and
+## an ATTACK on one that no blue tank sees is dropped).
 const CONTROLS_FLOORS: Dictionary[StringName, int] = {
-	&"looks": 68000,
-	&"cands": 515,
-	&"locked": 8700,
-	&"fallbacks": 31,
-	&"dropped": 132,
-	&"scans": 4100,
-	&"found": 222,
-	&"holding": 6500,
-	&"chasing": 520,
-	&"chase_starts": 122,
-	&"line_checks": 1089,
-	&"retests": 900,
-	&"blocked": 21
+	&"looks": 88100,
+	&"cands": 325,
+	&"locked": 2220,
+	&"fallbacks": 5,
+	&"dropped": 47,
+	&"scans": 5390,
+	&"found": 120,
+	&"holding": 5050,
+	&"chasing": 470,
+	&"chase_starts": 92,
+	&"line_checks": 378,
+	&"retests": 229,
+	&"blocked": 13
 }
-## The arena on changed rules, measured: 355,165 looks, 12,995 candidates, 8,179 locked, 32
-## fallbacks, 120 dropped, 7,436 scans, 1,038 found, 28,716 holding, 3,302 chasing, 411 chase
-## starts, 1,166 line tests, 338 re-tests, 151 blocked.
+## The arena on changed rules, measured: 344,455 looks, 12,878 candidates, 4,415 locked, 29
+## fallbacks, 100 dropped, 6,785 scans, 1,056 found, 29,526 holding, 3,335 chasing, 438 chase
+## starts, 1,139 line tests, 302 re-tests, 140 blocked (f1494a5: 355,165; 12,995; 8,179; 32; 120;
+## 7,436; 1,038; 28,716; 3,302; 411; 1,166; 338; 151).
 const CHANGED_FLOORS: Dictionary[StringName, int] = {
-	&"looks": 236000,
-	&"cands": 8600,
-	&"locked": 5400,
-	&"fallbacks": 21,
-	&"dropped": 80,
-	&"scans": 4900,
-	&"found": 690,
-	&"holding": 19000,
-	&"chasing": 2200,
-	&"chase_starts": 274,
-	&"line_checks": 777,
-	&"retests": 225,
-	&"blocked": 100
+	&"looks": 229000,
+	&"cands": 8580,
+	&"locked": 2940,
+	&"fallbacks": 19,
+	&"dropped": 66,
+	&"scans": 4520,
+	&"found": 704,
+	&"holding": 19600,
+	&"chasing": 2220,
+	&"chase_starts": 292,
+	&"line_checks": 759,
+	&"retests": 201,
+	&"blocked": 93
 }
 
 
@@ -162,8 +175,8 @@ func test_the_same_run_with_the_other_ported_phases_in_c_plus_plus_matches() -> 
 	_assert_reached(rig.tally(), ARENA_ENGAGEMENT)
 
 
-## The mask that the library reports is the one of the case before until the FOG port merges (row
-## P46n), and then FOG runs in C++ here as well.
+## The mask that the library reports is the one of the case before and FOG: the vision rule reads
+## the fog that the FOG kernel writes, so this is the run where both run in C++.
 func test_the_same_run_with_every_phase_the_library_has_in_c_plus_plus_matches() -> void:
 	var rig: RefCounted = Rig.new().setup(Worlds.arena, Rig.ALL)
 	assert_array(rig.problems).is_empty()
@@ -178,7 +191,7 @@ func test_the_same_run_with_every_phase_the_library_has_in_c_plus_plus_matches()
 ## MOVE (3 in 10), an ATTACK_MOVE (4), a STOP (1) or an ATTACK at an enemy (2; one in ten names a
 ## unit of its own side, which Sim.step drops), to a point anywhere on the map or off it. The orders
 ## keep changing under the units, so rows go from ATTACK to ATTACK_MOVE and from MOVE to IDLE, and
-## targets are dropped and taken again all the time. The other ports run in C++ too.
+## targets are dropped and taken again all the time. The ports before FOG run in C++ too.
 func test_900_ticks_of_random_command_waves_match() -> void:
 	var rig: RefCounted = Rig.new().setup(Worlds.arena, Rig.WITH_PORTED)
 	assert_array(rig.problems).is_empty()

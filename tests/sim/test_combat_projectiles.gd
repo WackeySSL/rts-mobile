@@ -758,7 +758,11 @@ func _world(defs: Array[UnitDef], pool: int = POOL) -> World:
 	scenario.player_count = 2
 	scenario.rules = rules
 	scenario.roster.assign(defs)
-	return World.from_scenario(scenario)
+	var world: World = World.from_scenario(scenario)
+	# A row added to a prepared World starts blind until its player's first FOG update, and the cases
+	# set targets by hand and fire from tick 0 (P46b).
+	Rig.reveal(world)
+	return world
 
 
 ## The shooter (type 0, owner 1, id 1) at `shooter` and a mark (type 1, owner 2, id 2, of `armour`

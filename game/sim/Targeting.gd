@@ -10,6 +10,14 @@ extends RefCounted
 ## `world.target` (0 = none). It reads `world.target_grid`, which the caller has rebuilt from this
 ## tick's positions (the GRIDS phase): `run` never rebuilds a grid.
 ##
+## Vision (P46b, ADR 0010 section 1 "Users", ADR 0009 section 2): a unit acts only on enemies its
+## player sees. An enemy is seen when the visible count of the cell holding it is above 0 in the
+## player's block of `world.fog.visible` (`sees` is the rule; the loops inline it). A candidate
+## that is not seen is not one, a held target that is not seen is not kept, and an `ATTACK` lock on
+## an enemy that is not seen falls back to `ATTACK_MOVE` to its last seen position. A subject of
+## owner 0 (an armed neutral: none ships) has no grid and sees every cell, so a neutral unit acts
+## as it did before the fog rules (lead decision, P26y's design note).
+##
 ## Engagement (P41b): a unit with a target in weapon range holds (`HOLD`, no movement intent); an
 ## attack-moving unit with a target out of range chases it (`CHASE`) while the line to it is clear,
 ## else it keeps the path of its order, so units use the gaps in the rock and never press into it;
@@ -22,7 +30,9 @@ extends RefCounted
 ## `run`, `_engage` or `Movement.reset_row` edits both and passes the kernel's tests. Keep it
 ## portable (integers only, the World's arrays aliased into typed locals before the loop, no
 ## allocation, rows and grid lists visited in a fixed order). Every number comes from the World's
-## rule ints and type tables (data/); the constants below are structure, not balance.
+## rule ints and type tables (data/); the constants below are structure, not balance. The vision
+## rule is in both versions: the kernel reads the fog's `cols`, `rows`, `cells`, `player_count` and
+## `visible` from the World (the TARGETING checked list).
 ##
 ## Range (core/targeting.h holds the full statement): positions within 10^9 milli-tiles and a
 ## reach below 2^31 keep every squared distance inside an int64 (the shipped ones are below 2^16
@@ -38,22 +48,27 @@ const NONE: int = World.NavMode.NONE
 const DIRECT: int = World.NavMode.DIRECT
 const HOLD: int = World.NavMode.HOLD
 const CHASE: int = World.NavMode.CHASE
+## Same value as World.MILLI_PER_TILE: the side of a fog cell.
+const TILE: int = World.MILLI_PER_TILE
 
 ## The acquisition pass: one pass over the rows in ascending id order, then `_engage`.
 ## - An `ATTACK` row locks its target (P41b): `target` is its `order_target` for as long as that
-##   unit exists and is an enemy, wherever it stands, and the row's goal is the target's position as
-##   it stands at the start of the tick (read before anyone moves, so the row order cannot matter).
-##   When the target is gone the order becomes `ATTACK_MOVE` to the goal it left, which is where
-##   the target last stood: the row's `order_target` is cleared, and the row goes on as an
-##   attack-moving row from this tick (in this same pass it scans if it is due on this tick, else on
-##   its next due tick). ADR 0009 section 2.
+##   unit exists, is an enemy and (P46b) stands in a cell the row's player sees, wherever it
+##   stands, and the row's goal is the target's position as it stands at the start of the tick (read
+##   before anyone moves, so the row order cannot matter). When the target is gone, or out of
+##   sight, the order becomes `ATTACK_MOVE` to the goal it left, which is where the target last
+##   stood in sight: the row's `order_target` is cleared, and the row goes on as an attack-moving
+##   row from this tick (in this same pass it scans if it is due on this tick, else on its next due
+##   tick). The lock tests the sight on every tick, not on the row's turn. ADR 0009 section 2.
 ## - `MOVE` rows acquire nothing and drop a target they held, every tick (a moving unit does not
 ##   fire).
 ## - An `ATTACK_MOVE` or `IDLE` row with a weapon is due when `(tick + id) % retarget_period_ticks`
 ##   is 0 (a fifth of the rows each tick with the shipped 5). Its reach is the type's acquire
 ##   range when attack-moving and the weapon's range when idle.
-## - A due row keeps its target while that unit still exists, is an enemy and is a candidate (below)
-##   within reach: no switching for a nearer or better one. Otherwise it scans.
+## - A due row keeps its target while that unit still exists, is an enemy, is seen (P46b) and is a
+##   candidate (below) within reach: no switching for a nearer or better one. Otherwise it scans.
+##   The sight of a held target is tested on the row's turn, like its range, so a target that walks
+##   out of sight stays held until the row's next turn (up to `retarget_period_ticks` - 1 ticks).
 ## - The scan looks at every row in the grid cells from `(pos - reach) / cell_milli` to
 ##   `(pos + reach) / cell_milli` on each axis (integer division truncating toward zero, clamped to
 ##   the grid, as the grid's own rebuild puts a point in a cell), itself excepted, and counts them
@@ -62,7 +77,9 @@ const CHASE: int = World.NavMode.CHASE
 ##   `min_range^2 <= d2 <= reach^2` and a damage percent above 0 against its armour. The best has
 ##   the highest percent, then the smallest `d2`, then the lowest row (rows ascend with the id). The
 ##   grid is visited cell by cell, not in id order, so the id tie-break is explicit. No candidate
-##   writes 0.
+##   writes 0. A candidate must also be seen (P46b, above): the test comes last, after the damage
+##   percent, and an enemy that is in reach but unseen counts in `stats[TARGET_CANDIDATES]` as any
+##   row the scan looked at does.
 ## - An empty map has no cells: the clear above still runs, and a due row that keeps no target
 ##   writes 0 without a scan. So does a grid with no rows of cells or a cell side below 1 (P41n:
 ##   the kernel cannot divide by the side, and `SpatialGrid.configure` never makes such a grid).
@@ -107,16 +124,43 @@ static func run(world: World) -> void:
 	var period: int = maxi(world.retarget_period_ticks, 1)
 	var count: int = ids.size()
 	var looked: int = 0
+	# The vision rule (see the top of the file). A fog whose sides do not make its cells (never
+	# after configure(), the guard of FogUpdate.run) has no grid, so every cell is seen; `veil` is
+	# the offset of the subject's block in `seen`, or -1 for a subject with no grid.
+	var fog: FogGrid = world.fog
+	var seen: PackedInt32Array = fog.visible
+	var fog_cols: int = fog.cols
+	var fog_lines: int = fog.rows
+	var fog_cells: int = fog.cells
+	var fog_players: int = fog.player_count
+	var fogged: bool = (
+		fog_cols >= 1
+		and fog_lines >= 1
+		and fog_cells % fog_cols == 0
+		and fog_cells / fog_cols == fog_lines
+	)
 	for row: int in count:
 		var order: int = orders[row]
+		var own: int = owners[row]
+		var veil: int = -1
+		if fogged and own >= 1 and own <= fog_players:
+			veil = (own - 1) * fog_cells
 		if order == ATTACK:
 			var locked: int = order_targets[row]
 			var at: int = ids.bsearch(locked)
-			if at < count and ids[at] == locked and owners[at] != owners[row] and owners[at] != 0:
-				targets[row] = locked
-				goal_x[row] = pos_x[at]
-				goal_y[row] = pos_y[at]
-				continue
+			if at < count and ids[at] == locked and owners[at] != own and owners[at] != 0:
+				var in_sight: bool = veil < 0
+				if not in_sight:
+					var lock_cell: int = (
+						clampi(pos_y[at] / TILE, 0, fog_lines - 1) * fog_cols
+						+ clampi(pos_x[at] / TILE, 0, fog_cols - 1)
+					)
+					in_sight = seen[veil + lock_cell] > 0
+				if in_sight:
+					targets[row] = locked
+					goal_x[row] = pos_x[at]
+					goal_y[row] = pos_y[at]
+					continue
 			orders[row] = ATTACK_MOVE
 			order_targets[row] = 0
 			targets[row] = 0
@@ -134,7 +178,6 @@ static func run(world: World) -> void:
 		var reach2: int = reach * reach
 		var min2: int = weapon_min_range[weapon] * weapon_min_range[weapon]
 		var vs_base: int = weapon * armour_classes
-		var own: int = owners[row]
 		var x: int = pos_x[row]
 		var y: int = pos_y[row]
 		var held: int = targets[row]
@@ -149,7 +192,15 @@ static func run(world: World) -> void:
 					and held_d2 >= min2
 					and weapon_vs[vs_base + type_armour[types[at]]] > 0
 				):
-					continue
+					var held_seen: bool = veil < 0
+					if not held_seen:
+						var held_cell: int = (
+							clampi(pos_y[at] / TILE, 0, fog_lines - 1) * fog_cols
+							+ clampi(pos_x[at] / TILE, 0, fog_cols - 1)
+						)
+						held_seen = seen[veil + held_cell] > 0
+					if held_seen:
+						continue
 		if not cells:
 			targets[row] = 0  # An empty map: no cells, so no candidate and no target.
 			continue
@@ -181,6 +232,13 @@ static func run(world: World) -> void:
 					var percent: int = weapon_vs[vs_base + type_armour[types[other]]]
 					if percent <= 0:
 						continue
+					if veil >= 0:
+						var other_cell: int = (
+							clampi(pos_y[other] / TILE, 0, fog_lines - 1) * fog_cols
+							+ clampi(pos_x[other] / TILE, 0, fog_cols - 1)
+						)
+						if seen[veil + other_cell] <= 0:
+							continue
 					if (
 						percent > best_percent
 						or (
@@ -194,6 +252,32 @@ static func run(world: World) -> void:
 		targets[row] = ids[best] if best >= 0 else 0
 	world.stats[World.Stat.TARGET_CANDIDATES] += looked
 	_engage(world)
+
+
+## Whether `player` sees the point (x, y), in milli-tiles (ADR 0010 section 1, "Users"): the visible
+## count of the cell that holds it is above 0 in the player's block of the fog. The cell follows
+## `World.cell_of` on the fog's own sides (a point off the map is in the nearest edge cell). A
+## player with no grid (the neutral 0, or one past `player_count`) sees everything, and so does
+## every player of a fog whose sides do not make its cells (`FogUpdate.run`'s guard; never after
+## `configure()`). This is the reference of the rule at event cadence (`Sim._enemy_target`); the
+## loops of `run` inline it, and the kernel mirrors it.
+@warning_ignore("integer_division")
+static func sees(world: World, player: int, x: int, y: int) -> bool:
+	var fog: FogGrid = world.fog
+	var cols: int = fog.cols
+	var lines: int = fog.rows
+	var cells: int = fog.cells
+	if (
+		player < 1
+		or player > fog.player_count
+		or cols < 1
+		or lines < 1
+		or cells % cols != 0
+		or cells / cols != lines
+	):
+		return true
+	var cell: int = clampi(y / TILE, 0, lines - 1) * cols + clampi(x / TILE, 0, cols - 1)
+	return fog.visible[(player - 1) * cells + cell] > 0
 
 
 ## The engagement pass (ADR 0009 section 3), after acquisition and on every tick: each row that has

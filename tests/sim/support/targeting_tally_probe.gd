@@ -14,11 +14,13 @@ extends SimProbe
 ## instead of vouching for it: its count of the rows looked at and of the line tests against the
 ## phase's own `stats[TARGET_CANDIDATES]` and `stats[LINE_CHECKS]`, and, row by row, the five
 ## columns that the acquisition pass writes (the target, the order, its target and the goal) against
-## what the probe says the rule leaves in them (`last_mismatches`). A rule that P46b adds to both
-## Targeting versions (the vision of a candidate) goes into count() as well; a probe that leaves it
-## out gets a different pick wherever that rule changes one, and the mismatch names the row. The
-## mismatch check does not see a rule that changes no pick in the cases that run, so P46b's PR adds
-## a case where it does.
+## what the probe says the rule leaves in them (`last_mismatches`). The vision rule that P46b added
+## to both Targeting versions (a unit acts only on an enemy that its player sees) is in count() too,
+## worked out through FogGrid.is_visible and World.cell_of and not through Targeting.sees or the
+## kernel's lookup; a probe that left it out would get a different pick wherever the rule changes
+## one, and the mismatch names the row. The mismatch check does not see a rule that changes no pick
+## in the cases that run, so the tallies `unseen`, `sight_lost` and `sight_drops` count the times
+## the rule refused something, and the suites hold them above a floor.
 
 ## The names of the counts (each starts at 0); see count() for what each one holds.
 const NAMES: Array[StringName] = [
@@ -35,6 +37,9 @@ const NAMES: Array[StringName] = [
 	&"empty",
 	&"looks",
 	&"cands",
+	&"unseen",
+	&"sight_lost",
+	&"sight_drops",
 	&"nearer_wins",
 	&"farther_wins",
 	&"ties",
@@ -114,12 +119,17 @@ func before() -> void:
 
 ## Adds one TARGETING phase of `world` (before() taken, the phase run) to `tally`. ticks: phases;
 ## rows: rows in the table. Acquisition: locked: ATTACK rows that locked their target; fallbacks:
-## ATTACK rows whose target is gone or no enemy, which fell back to ATTACK_MOVE; dropped: rows of
+## ATTACK rows whose target is gone, no enemy or not seen, which fell back to ATTACK_MOVE; dropped:
+## rows of
 ## another order (MOVE) that held a target; unarmed: rows on their turn whose weapon index is out of
 ## the tables; due: rows that scan or keep (an armed ATTACK_MOVE or IDLE row on its turn); kept: of
 ## those, rows that kept their target; scans: the others (on a grid with cells); found and empty:
 ## scans that took a target or none; looks: rows looked at (the phase's own count); cands: of those,
-## enemies in range with a damage percent above 0; nearer_wins: a candidate that beat the best so
+## enemies in range with a damage percent above 0 that the row's player sees; unseen: enemies in
+## range with a damage percent that the player does not see (refused for that alone); sight_lost:
+## of the fallbacks, ATTACK rows whose target is an enemy that exists but is not seen; sight_drops:
+## due rows whose held target is an enemy in reach with a damage percent that is not seen (they
+## scan instead of keeping it); nearer_wins: a candidate that beat the best so
 ## far by a smaller distance at the same percent; farther_wins: by a better percent from farther
 ## away; ties: a candidate at the same percent and the same squared distance as the best so far
 ## (the lower row wins; a candidate at a lower percent is no tie, whatever its distance); tie_swaps:
@@ -176,12 +186,16 @@ func count() -> void:
 		if order == ATTACK:
 			var locked: int = _order_targets[row]
 			var at: int = ids.bsearch(locked)
-			if at < rows and ids[at] == locked and owners[at] != owners[row] and owners[at] != 0:
+			var enemy: bool = (
+				at < rows and ids[at] == locked and owners[at] != owners[row] and owners[at] != 0
+			)
+			if enemy and _sees(owners[row], pos_x[at], pos_y[at]):
 				tally[&"locked"] += 1
 				want_target[row] = locked
 				want_goal_x[row] = pos_x[at]
 				want_goal_y[row] = pos_y[at]
 				continue
+			tally[&"sight_lost"] += int(enemy)
 			tally[&"fallbacks"] += 1
 			order = ATTACK_MOVE
 			held = 0
@@ -215,8 +229,10 @@ func count() -> void:
 				var held_d2: int = held_x * held_x + held_y * held_y
 				var held_percent: int = weapon_vs[vs_base + type_armour[types[at]]]
 				if held_d2 <= reach2 and held_d2 >= min2 and held_percent > 0:
-					tally[&"kept"] += 1
-					continue
+					if _sees(own, pos_x[at], pos_y[at]):
+						tally[&"kept"] += 1
+						continue
+					tally[&"sight_drops"] += 1
 		if not cells:
 			want_target[row] = 0
 			continue
@@ -243,13 +259,16 @@ func count() -> void:
 						var d2: int = dx * dx + dy * dy
 						tally[&"wide_d2"] += int(d2 > INT32_MAX)
 						var percent: int = weapon_vs[vs_base + type_armour[types[other]]]
-						if (
+						var in_reach: bool = (
 							other_owner != own
 							and other_owner != 0
 							and d2 <= reach2
 							and d2 >= min2
 							and percent > 0
-						):
+						)
+						if in_reach and not _sees(own, other_x, other_y):
+							tally[&"unseen"] += 1
+						elif in_reach:
 							tally[&"cands"] += 1
 							var on_edge: bool = (
 								(other_x == x + reach and (x + reach) % side == 0)
@@ -287,6 +306,17 @@ func count() -> void:
 	_compare(&"goal_x", want_goal_x, world.goal_x)
 	_compare(&"goal_y", want_goal_y, world.goal_y)
 	_count_engagement()
+
+
+## Whether `player` sees the point (x, y): the cell of the map that holds it is visible in the
+## player's block of the fog. A player with no grid (the neutral 0, one past the fog's player count)
+## and a fog with no cells see every cell. Worked out through FogGrid.is_visible and World.cell_of,
+## the other way round than Targeting.sees and the kernel's lookup.
+func _sees(player: int, x: int, y: int) -> bool:
+	var fog: FogGrid = world.fog
+	if player < 1 or player > fog.player_count or fog.cells < 1:
+		return true
+	return fog.is_visible(player, world.cell_of(x, y))
 
 
 ## Counts the rows where the column `name` of the World is not what the probe worked out (`want`)

@@ -23,8 +23,14 @@ extends GdUnitTestSuite
 ## - The rig itself: it names a state that differs in the fog, in a row column or in a work count,
 ##   and a World that does not run TARGETING in C++; and the probe names a phase that leaves other
 ##   than the rule says in a column.
-## The floors are measured on main at f1494a5 and set at about two thirds of the figure measured;
-## the measurements are beside each one (they hold for every mask: the twin's World is the same).
+## The floors are measured on the tree of P46b (the vision rule) and set at about two thirds of the
+## figure measured, rounded down to three digits; the measurements are beside each one (they hold
+## for every mask: the twin's World is the same). The idle-lattice and attack-then-kill figures are
+## those of f1494a5 unchanged (the fights stand inside the sight of the units, and the attack-then-
+## kill orders name enemies that the fog shows); the random states are new draws (their fog is
+## stamped for a share of the rows only, so that the rule refuses candidates, held targets and
+## locks), and the lattices under waves moved a little (ATTACKs on an enemy out of sight are
+## dropped).
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_lockstep_rig.gd")
 const LockstepRig: GDScript = preload("res://tests/sim/support/lockstep_rig.gd")
@@ -53,86 +59,100 @@ const IDLE_FLOORS: Dictionary[StringName, int] = {
 	&"holding": 80000,
 	&"hold_starts": 2100
 }
-## The 30 lattices under random waves (the odd ones on the corners of tiles), measured: 14,936
-## locked, 331 fallbacks, 1,869 dropped, 5,232 scans, 4,975 found, 274 ties (48 swaps), 16
-## candidates on the edge of the scan window, 83,129 holding, 1,722 chasing, 424 chase starts,
-## 1,297 line tests, 734 re-tests.
+## The 30 lattices under random waves (the odd ones on the corners of tiles), measured: 14,766
+## locked, 331 fallbacks, 1,857 dropped, 5,236 scans, 4,976 found, 274 ties (48 swaps), 16
+## candidates on the edge of the scan window, 83,119 holding, 1,752 chasing, 428 chase starts,
+## 1,288 line tests, 717 re-tests (f1494a5: 14,936; 331; 1,869; 5,232; 4,975; 274; 48; 16; 83,129;
+## 1,722; 424; 1,297; 734).
 const WAVES_FLOORS: Dictionary[StringName, int] = {
-	&"locked": 9900,
+	&"locked": 9840,
 	&"fallbacks": 220,
-	&"dropped": 1240,
-	&"scans": 3480,
-	&"found": 3300,
+	&"dropped": 1230,
+	&"scans": 3490,
+	&"found": 3310,
 	&"ties": 182,
 	&"tie_swaps": 32,
 	&"window_edge": 10,
-	&"holding": 55000,
-	&"chasing": 1140,
-	&"chase_starts": 280,
-	&"line_checks": 860,
-	&"retests": 488
+	&"holding": 55400,
+	&"chasing": 1160,
+	&"chase_starts": 285,
+	&"line_checks": 858,
+	&"retests": 478
 }
-## The 1,500 states of one phase, measured: 5,113 locked, 20,750 fallbacks, 15,371 dropped, 11,042
-## unarmed rows on their turn, 33,455 due (1,136 kept), 32,319 scans (31,230 found, 1,089 empty),
-## 326,451 candidates (52,749 by a smaller distance at the same percent, 4,001 by a better percent),
-## 118 ties (3 swaps), 13 on the edge of the scan window, 35,979 holding (27,503 starts, 12,326
-## ends), 3,711 chasing (539 starts, 17,551 ends), 1,372 line tests (220 re-tests, 758 clear, 614
-## blocked).
+## The 1,500 states of one phase, measured: 4,242 locked, 21,621 fallbacks (871 for a target out of
+## sight), 15,371 dropped, 11,160 unarmed rows on their turn, 33,875 due (936 kept; 200 more held a
+## target that was out of sight and scanned), 32,939 scans (25,672 found, 7,267 empty), 272,444
+## candidates that the row's player sees (43,636 by a smaller distance at the same percent, 3,274 by
+## a better percent) and 61,242 more in range that it does not see, 110 ties (3 swaps), 10 on the
+## edge of the scan window, 30,236 holding (22,995 starts, 13,561 ends), 3,492 chasing (475 starts,
+## 17,706 ends), 1,208 line tests (180 re-tests, 660 clear, 548 blocked). The states are new draws
+## since P46b: their fog is stamped for every row in one state in four and for a share of 0, 25, 50
+## or 75 in 100 of the rows in the others (Worlds.random), so the rule has candidates to refuse. At
+## f1494a5, with every row blind to the rule, they reached 5,113 locked, 20,750 fallbacks, 31,230
+## found and 326,451 candidates.
 const PHASE_FLOORS: Dictionary[StringName, int] = {
-	&"locked": 3400,
-	&"fallbacks": 13800,
+	&"locked": 2820,
+	&"fallbacks": 14400,
 	&"dropped": 10200,
-	&"unarmed": 7360,
-	&"due": 22300,
-	&"kept": 750,
-	&"scans": 21500,
-	&"found": 20800,
-	&"empty": 720,
-	&"cands": 217000,
-	&"nearer_wins": 35100,
-	&"farther_wins": 2660,
-	&"ties": 78,
+	&"unarmed": 7440,
+	&"due": 22500,
+	&"kept": 624,
+	&"scans": 21900,
+	&"found": 17100,
+	&"empty": 4840,
+	&"cands": 181000,
+	&"nearer_wins": 29000,
+	&"farther_wins": 2180,
+	&"ties": 73,
 	&"tie_swaps": 2,
-	&"window_edge": 8,
-	&"holding": 23900,
-	&"hold_starts": 18300,
-	&"hold_ends": 8200,
-	&"chasing": 2470,
-	&"chase_starts": 359,
-	&"chase_ends": 11700,
-	&"line_checks": 914,
-	&"retests": 146,
-	&"clear": 505,
-	&"blocked": 409
+	&"window_edge": 6,
+	&"holding": 20100,
+	&"hold_starts": 15300,
+	&"hold_ends": 9040,
+	&"chasing": 2320,
+	&"chase_starts": 316,
+	&"chase_ends": 11800,
+	&"line_checks": 805,
+	&"retests": 120,
+	&"clear": 440,
+	&"blocked": 365,
+	&"unseen": 40800,
+	&"sight_lost": 580,
+	&"sight_drops": 133
 }
-## The 300 states stepped 10 ticks, measured: 14,781 locked, 3,921 fallbacks, 4,653 dropped, 20,857
-## unarmed, 15,999 scans (13,320 found, 2,679 empty), 129,150 candidates, 21,168 nearer, 1,485
-## farther, 31 ties, 8 on the edge of the scan window, 82,935 holding, 7,117 chasing, 11,656 hold
-## starts, 4,291 hold ends, 500 chase starts, 4,561 chase ends, 4,237 line tests (1,649 re-tests,
-## 2,929 clear, 1,308 blocked).
+## The 300 states stepped 10 ticks, measured: 12,927 locked, 4,098 fallbacks (181 for a target out
+## of sight), 4,616 dropped, 21,175 unarmed, 18,109 scans (13,304 found, 4,805 empty), 129,366
+## candidates that the row's player sees and 22,996 that it does not (the rule refused them), 44,174
+## kept targets and 47 more let go for sight, 21,234 nearer, 1,476 farther, 29 ties, 7 on the edge
+## of the scan window, 80,843 holding, 6,880 chasing, 11,795 hold starts, 4,514 hold ends, 505
+## chase starts, 4,606 chase ends, 4,063 line tests (1,512 re-tests, 2,783 clear, 1,280 blocked)
+## (f1494a5: 14,781 locked, 3,921 fallbacks, 15,999 scans, 129,150 candidates, 4,237 line tests).
 const RUN_FLOORS: Dictionary[StringName, int] = {
-	&"locked": 9800,
-	&"fallbacks": 2600,
-	&"dropped": 3100,
-	&"unarmed": 13900,
-	&"scans": 10600,
-	&"found": 8880,
-	&"empty": 1780,
-	&"cands": 86000,
+	&"locked": 8610,
+	&"fallbacks": 2730,
+	&"dropped": 3070,
+	&"unarmed": 14100,
+	&"scans": 12000,
+	&"found": 8860,
+	&"empty": 3200,
+	&"cands": 86200,
 	&"nearer_wins": 14100,
-	&"farther_wins": 990,
-	&"ties": 20,
-	&"window_edge": 5,
-	&"holding": 55000,
-	&"chasing": 4740,
-	&"hold_starts": 7770,
-	&"hold_ends": 2860,
-	&"chase_starts": 333,
-	&"chase_ends": 3040,
-	&"line_checks": 2820,
-	&"retests": 1090,
-	&"clear": 1950,
-	&"blocked": 870
+	&"farther_wins": 984,
+	&"ties": 19,
+	&"window_edge": 4,
+	&"holding": 53800,
+	&"chasing": 4580,
+	&"hold_starts": 7860,
+	&"hold_ends": 3000,
+	&"chase_starts": 336,
+	&"chase_ends": 3070,
+	&"line_checks": 2700,
+	&"retests": 1000,
+	&"clear": 1850,
+	&"blocked": 853,
+	&"unseen": 15300,
+	&"sight_lost": 120,
+	&"sight_drops": 31
 }
 
 
@@ -180,7 +200,8 @@ func test_attack_rows_whose_target_dies_fall_back_to_attack_move() -> void:
 		assert_str(found).override_failure_message("lattice %d" % salt).is_empty()
 		Rig.add_to(total, rig.tally())
 	# 1,260 ATTACK rows locked and 180 fell back in the six runs that measured these, and 726 scans
-	# took a target: the floors are two thirds of them.
+	# took a target, the same at f1494a5 and with the vision rule (the orders name an enemy that the
+	# fog shows): the floors are two thirds of them.
 	assert_int(total[&"fallbacks"]).is_greater(119)
 	assert_int(total[&"locked"]).is_greater(839)
 	assert_int(total[&"scans"]).is_greater(480)
@@ -322,20 +343,29 @@ func test_the_rig_names_a_difference_in_the_fog_a_column_a_count_or_the_grid() -
 
 
 ## The orders of the ATTACK-then-kill case: at tick 0 every group of 8 units of side 1 (by id) is
-## sent at the lowest-numbered unit of side 2 that is not yet someone's target, and at tick 6 every
-## unit of side 2 that was named has its hit points set to 0 (the same on both Worlds).
+## sent at the lowest-numbered unit of side 2 that side 1 sees (the authoring rule of the fog PR,
+## P46b: an ATTACK on an enemy that is not seen is dropped) and that is not yet someone's target,
+## and at tick 6 every unit of side 2 that an ATTACK row of side 1 names has its hit points set to 0
+## (the same on both Worlds).
 @warning_ignore("integer_division")
 func _attack_then_kill(world: World, tick: int) -> Array[Command]:
 	var out: Array[Command] = []
-	var mine: PackedInt32Array = LockstepRig.ids_of(world, 1)
-	var theirs: PackedInt32Array = LockstepRig.ids_of(world, 2)
-	var groups: int = mini((mine.size() + 7) / 8, theirs.size())
-	for group: int in groups:
-		if tick == 0:
+	if tick == 0:
+		var mine: PackedInt32Array = LockstepRig.ids_of(world, 1)
+		var seen: PackedInt32Array = PackedInt32Array()
+		for id: int in LockstepRig.ids_of(world, 2):
+			var row: int = world.index_of(id)
+			if Targeting.sees(world, 1, world.pos_x[row], world.pos_y[row]):
+				seen.append(id)
+		var groups: int = mini((mine.size() + 7) / 8, seen.size())
+		for group: int in groups:
 			var ids: PackedInt32Array = mine.slice(group * 8, group * 8 + 8)
-			out.append(Command.attack(1, ids, theirs[group]))
-		elif tick == 6:
-			world.hp[world.index_of(theirs[group])] = 0
+			out.append(Command.attack(1, ids, seen[group]))
+	elif tick == 6:
+		for row: int in world.unit_count():
+			var named: int = world.index_of(world.order_target[row])
+			if world.owner[row] == 1 and world.order[row] == World.Order.ATTACK and named >= 0:
+				world.hp[named] = 0
 	return out
 
 

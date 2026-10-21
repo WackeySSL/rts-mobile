@@ -7,6 +7,13 @@ extends RefCounted
 ## and 5500 with 20/100, tank 4500 and 5500 with 70/60; sight is 6000 or 7000. Targets within
 ## 6000 of their unit are inside its sight, which is the authoring rule of the fog PR (P46b). Units
 ## are the test's to add, owner 1 and 2 (`player_count` is 2).
+##
+## The vision rule (P46b) needs a stamped fog, and a row that is added to a prepared World starts
+## blind (`fog_cell` -1) until its player's first FOG update (ADR 0010 section 1: tick 0 for
+## player 1, tick 1 for player 2). The cases of the other suites add their units after the builder
+## returns and order, attack and step from tick 0, so the builders reveal the map (`reveal`): every
+## player sees every cell from the start, as the authoring rule would give them. The fog suites and
+## the lockstep worlds pass `revealed` false and stamp real discs (`Worlds.stamp_fog`).
 
 const RULES_PATH: String = "res://data/rules.tres"
 const RIFLE_PATH: String = "res://data/units/rifle_squad.tres"
@@ -17,23 +24,38 @@ const ROCKET: int = 1
 const TANK: int = 2
 
 
-## A World of `cols` x `rows` open tiles with the shipped rules and the three shipped types.
-static func data_world(cols: int = 20, rows: int = 12) -> World:
+## A World of `cols` x `rows` open tiles with the shipped rules and the three shipped types, with
+## the map revealed to both players unless `revealed` is false (see the top of the file).
+static func data_world(cols: int = 20, rows: int = 12, revealed: bool = true) -> World:
 	var units: Array[UnitDef] = [
 		load(RIFLE_PATH) as UnitDef, load(ROCKET_PATH) as UnitDef, load(TANK_PATH) as UnitDef
 	]
-	return world_of(units, cols, rows)
+	return world_of(units, cols, rows, revealed)
 
 
 ## A World of `cols` x `rows` open tiles with the shipped rules, one type per entry of `units`
-## (type 0 is `units[0]`) and two players.
-static func world_of(units: Array, cols: int = 20, rows: int = 12) -> World:
+## (type 0 is `units[0]`) and `players` players (two, as the shipped scenarios), with the map
+## revealed to all of them unless `revealed` is false (see the top of the file).
+static func world_of(
+	units: Array, cols: int = 20, rows: int = 12, revealed: bool = true, players: int = 2
+) -> World:
 	var scenario: ScenarioDef = ScenarioDef.new()
 	scenario.map_size_tiles = Vector2i(cols, rows)
-	scenario.player_count = 2
+	scenario.player_count = players
 	scenario.rules = load(RULES_PATH) as RulesDef
 	scenario.roster.assign(units)
-	return World.from_scenario(scenario)
+	var world: World = World.from_scenario(scenario)
+	if revealed:
+		reveal(world)
+	return world
+
+
+## Makes every cell visible to every player for good: each visible count starts at 1, so a disc
+## that is stamped or unstamped later (FOG updates, removals) never brings a cell to 0. `explored`
+## and the dirty lists are left alone.
+static func reveal(world: World) -> void:
+	world.prepare()
+	world.fog.visible.fill(1)
 
 
 ## A unit type for a test: a 300 radius, `sight` and `acquire` as given, and a weapon of `range`,

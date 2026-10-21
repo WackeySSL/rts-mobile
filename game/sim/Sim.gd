@@ -115,7 +115,8 @@ static func _apply_point(world: World, command: Command, order: int) -> bool:
 	return true
 
 
-## ATTACK: the armed valid units take the order and the target (the goal: `Targeting.run`).
+## ATTACK: the armed valid units take the order and the target (the goal: `Targeting.run`), when
+## the target is an enemy their player sees (`_enemy_target`).
 static func _apply_attack(world: World, command: Command) -> bool:
 	if not _enemy_target(world, command):
 		return false
@@ -184,7 +185,12 @@ static func _own_rows(world: World, command: Command, armed: bool) -> PackedInt3
 	return rows
 
 
-## Whether `target_id` is a unit of another, non-neutral player (from P46b on: a visible one).
+## Whether `target_id` is a unit of another, non-neutral player that the command's player sees
+## (P46b, ADR 0010 section 1 "Users": the cell it stands in is visible to that player, by the fog as
+## the previous tick left it; `Targeting.sees`). An ATTACK on an unseen enemy is dropped and counted
+## like any invalid command.
 static func _enemy_target(world: World, command: Command) -> bool:
 	var row: int = world.index_of(command.target_id)
-	return row >= 0 and world.owner[row] != command.player_id and world.owner[row] != 0
+	if row < 0 or world.owner[row] == command.player_id or world.owner[row] == 0:
+		return false
+	return Targeting.sees(world, command.player_id, world.pos_x[row], world.pos_y[row])

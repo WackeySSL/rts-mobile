@@ -39,7 +39,8 @@ const WIDE_TILES: int = 64
 ## units on opposite sides of it exactly in reach: 2 * EDGE, whose square is 4 * 10^18.
 const EDGE: int = 1000000000
 ## What the kernel gets or sets, in table order: the ints, the columns of the World that the pass
-## reads or writes, the type and weapon tables, and the targeting grid.
+## reads or writes, the type and weapon tables, the targeting grid and (P46b, the vision rule) the
+## sides, the player count and the visible counts of the fog.
 const TARGETING_NAMES: Array[String] = [
 	"WORLD.map_cols",
 	"WORLD.map_rows",
@@ -75,7 +76,12 @@ const TARGETING_NAMES: Array[String] = [
 	"TARGET.rows",
 	"TARGET.cell_milli",
 	"TARGET.head",
-	"TARGET.next"
+	"TARGET.next",
+	"FOG.cols",
+	"FOG.rows",
+	"FOG.cells",
+	"FOG.player_count",
+	"FOG.visible"
 ]
 
 
@@ -93,7 +99,7 @@ func test_targeting_gets_and_sets_exactly_the_names_of_its_list() -> void:
 				names.append("%s.%s" % [found.get_string(1), found.get_string(2)])
 	assert_array(names).contains_exactly_in_any_order(TARGETING_NAMES)
 	var used: Array[String] = []
-	var ids: RegEx = RegEx.create_from_string("\\bID_(WORLD|TARGET)_(\\w+)")
+	var ids: RegEx = RegEx.create_from_string("\\bID_(WORLD|TARGET|FOG)_(\\w+)")
 	for found: RegExMatch in ids.search_all(FileAccess.get_file_as_string(SOURCE)):
 		var name: String = "%s.%s" % [found.get_string(1), found.get_string(2)]
 		if not used.has(name):
