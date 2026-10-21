@@ -451,7 +451,9 @@ func test_the_native_worker_arena_shows_what_the_sync_arena_shows_and_holds_the_
 	assert_str(_play(native, reference, ticks)).is_empty()
 	_assert_alike_runs(native, reference, ticks)
 	assert_bool(native.runner.worker_active()).is_true()
+	assert_object(native.runner.world.kernels).is_not_null()
 	assert_int(native.runner.world.native_phases).is_equal(SimImpls.expected_mask())
+	assert_object(reference.runner.world.kernels).is_null()
 	for scene: MainScene in [native, reference]:
 		assert_array(_golden_diff(scene, gate)).is_empty()
 
