@@ -6,7 +6,9 @@
 // core/fixed_math.h's line_clear; this file borrows the arrays once on entry and adds the two counts on exit.
 // Twin: game/sim/Targeting.gd (run, _engage). Tests: tests/sim/test_targeting*.gd and tests/sim/test_engagement*.gd under both
 // implementations and tests/sim/native/test_targeting_kernel.gd, test_targeting_kernel_cases.gd,
-// test_targeting_kernel_indexes.gd and test_targeting_kernel_lines.gd; lockstep (P41n2): later. MIT.
+// test_targeting_kernel_indexes.gd and test_targeting_kernel_lines.gd; lockstep (P41n2): test_targeting_lockstep.gd (the arena,
+// random waves, the controls_test seeds, changed rules), _rules.gd (the cadences, the weapon roster, 64 x 64 maps, the empty
+// grid) and _cases.gd (ties on a lattice, fallbacks, seeded random states) in tests/sim/native/. MIT.
 #include "sim_kernels.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
