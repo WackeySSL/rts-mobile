@@ -9,6 +9,7 @@ const RELEASE_IF: String = (
 	"    if: github.event_name == 'push' && github.ref == 'refs/heads/main'"
 	+ " && !github.event.repository.fork"
 )
+const PERF_RELEASE_JOB: String = "  android-perf-release:"
 const ANDROID_JOB: String = "  android-debug-apk:"
 const NOTICE_TEST_STEP: String = "      - name: Offline test of the export licence notices"
 const NOTICE_TEST_RUN: String = "        run: bash scripts/ci/test-export-notices.sh"
@@ -195,15 +196,21 @@ func test_release_job_runs_only_on_a_push_to_main() -> void:
 	assert_str(lines[job + 2]).is_equal(RELEASE_IF)
 
 
-func test_only_the_release_job_can_write_contents() -> void:
+## Only the two release jobs hold contents: write: android-dev-release, then android-perf-release
+## (P51r), whose other rules tests/project/test_ci_perf_apk.gd pins.
+func test_only_the_two_release_jobs_can_write_contents() -> void:
 	var lines: PackedStringArray = _lines("ci.yml")
 	var job: int = lines.find(RELEASE_JOB)
+	var perf_job: int = lines.find(PERF_RELEASE_JOB)
 	var writers: Array[int] = []
 	for i: int in lines.size():
 		if lines[i].strip_edges() == "contents: write":
 			writers.append(i)
-	assert_array(writers).has_size(1)
-	assert_int(writers[0]).is_greater(job)
+	assert_array(writers).has_size(2)
+	assert_int(job).is_greater(-1)
+	assert_int(perf_job).is_greater(job)
+	assert_int(writers[0]).is_between(job, perf_job)
+	assert_int(writers[1]).is_greater(perf_job)
 
 
 func test_every_action_is_pinned_by_sha() -> void:

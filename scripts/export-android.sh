@@ -1,16 +1,23 @@
 #!/usr/bin/env bash
 # Export the Android debug APK (no Gradle, arm64 only, ADR 0005) and check the result. Godot exits
 # 0 after export configuration errors, so the log is scanned and the APK is inspected.
-# Usage: bash scripts/export-android.sh [--out DIR]
+# Usage: bash scripts/export-android.sh [--release] [--out DIR]
+#   --release  the perf APK of the gate instead (P51r, ADR 0012 section 4): preset "Android perf" (custom
+#              feature dev_menu), --export-release, the release template and the release keystore variables,
+#              the library entry android.release.arm64 and build/android/rts-mobile-perf-release.apk. Three
+#              more checks: aapt2 dump badging shows no application-debuggable, the pack holds the dev_menu
+#              feature and the engine library is the release template's. Nothing else changes.
 #   --out DIR  output directory (default: build/android), relative to the repository root and
 #              build/ or below.
 # Env:   GODOT=<binary> (default: godot). Must be version 4.7.2.stable.
 #        JAVA_HOME (JDK 17) and ANDROID_HOME (SDK with platform-tools and build-tools 36.x).
-#        GODOT_ANDROID_KEYSTORE_DEBUG_{PATH,USER,PASSWORD}: the debug keystore, all three.
-# Needs: version.txt and android_debug.apk in the Godot export_templates/4.7.2.stable folder
-#        (scripts/ci/install-godot.sh --android), the Android library of the export mode (entry
-#        android.debug.arm64 of native/sim_kernels.gdextension; scripts/build-native.sh --platform
-#        android --arch arm64 --target template_debug builds it), docs/licenses/godot-<version>/
+#        GODOT_ANDROID_KEYSTORE_DEBUG_{PATH,USER,PASSWORD}: the debug keystore, all three
+#        (with --release: GODOT_ANDROID_KEYSTORE_RELEASE_{PATH,USER,PASSWORD}, a key generated for the run).
+# Needs: version.txt and android_debug.apk (--release: android_release.apk) in the Godot
+#        export_templates/4.7.2.stable folder (scripts/ci/install-godot.sh --android, or --android-release),
+#        the Android library of the export mode (entry android.debug.arm64 of native/sim_kernels.gdextension,
+#        android.release.arm64 with --release; scripts/build-native.sh --platform android --arch arm64
+#        --target template_debug (template_release) builds it), docs/licenses/godot-<version>/
 #        {LICENSE,COPYRIGHT}.txt, docs/licenses/llvm-libc++/LICENSE.TXT and the godot-cpp licence that
 #        scripts/ci/godot-cpp-notice.sh prints (the licence notices written next to the APK;
 #        export-web.sh writes the same notice text, ADR 0005 section 5), and readelf and nm (binutils,
@@ -22,9 +29,10 @@
 #        2 usage error, or --out not under build/
 #        3 Godot missing or not 4.7.2.stable
 #        4 export template, Android library, JDK 17 or Android SDK piece missing (the message names each)
-#        5 debug keystore variables incomplete or the keystore file missing
-# Success prints "export-android: OK <dir>/rts-mobile-debug.apk". A cloud session has no Android SDK and ends
-# with exit 4 until scripts/cloud/install-android.sh has run (it prints the environment and the command to use).
+#        5 keystore variables of the export mode incomplete or the keystore file missing
+# Success prints "export-android: OK <dir>/rts-mobile-debug.apk" (rts-mobile-perf-release.apk with --release).
+# A cloud session has no Android SDK and ends with exit 4 until scripts/cloud/install-android.sh has run (it
+# prints the environment and the command to use).
 # CI (the android-debug-apk job) is the test bed.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -33,8 +41,10 @@ ROOT="$(pwd -P)"
 GODOT="${GODOT:-godot}"
 GODOT_VERSION="4.7.2.stable"
 # --export-debug packs the android.debug.arm64 entry of the generated .gdextension (ADR 0013 section 10);
-# a release export (P51r) packs android.release.arm64.
+# --release (P51r) exports the preset "Android perf" with --export-release and packs android.release.arm64.
 EXPORT_MODE="debug"
+PRESET="Android"
+BUILD_LABEL="debug"
 PATTERN='SCRIPT ERROR|^ERROR:|Parse Error'
 PACKAGE="dk.appcode.rts.dev"
 APK_NAME="rts-mobile-debug.apk"
@@ -57,12 +67,19 @@ die() {
 out="build/android"
 while [ $# -gt 0 ]; do
   case "$1" in
+    --release)
+      EXPORT_MODE="release"
+      PRESET="Android perf"
+      BUILD_LABEL="perf (release template)"
+      APK_NAME="rts-mobile-perf-release.apk"
+      shift
+      ;;
     --out)
       [ $# -ge 2 ] && [ -n "$2" ] || die 2 "--out needs a directory"
       out="${2%/}"
       shift 2
       ;;
-    *) die 2 "unknown argument '$1' (usage: bash scripts/export-android.sh [--out DIR])" ;;
+    *) die 2 "unknown argument '$1' (usage: bash scripts/export-android.sh [--release] [--out DIR])" ;;
   esac
 done
 case "$out" in
@@ -81,7 +98,7 @@ version="$("$GODOT" --version 2>/dev/null | head -n 1 | cut -d. -f1-4 || true)"
 # unexpected tool (ADR 0005 section 3).
 template_dir="${XDG_DATA_HOME:-$HOME/.local/share}/godot/export_templates/${GODOT_VERSION}"
 missing=""
-for name in version.txt android_debug.apk; do
+for name in version.txt "android_${EXPORT_MODE}.apk"; do
   [ -s "$template_dir/$name" ] || missing="$missing; template $template_dir/$name"
 done
 native_entry="$(sed -n "s|^android\.${EXPORT_MODE}\.arm64 = \"res://\(.*\)\"\$|\1|p" native/sim_kernels.gdextension 2>/dev/null || true)"
@@ -99,11 +116,13 @@ for tool in apksigner aapt2; do
 done
 [ -z "$missing" ] || die 4 "missing${missing#;}"
 
-# (3) Debug keystore (all three variables, and the file). The values are never printed.
-for name in GODOT_ANDROID_KEYSTORE_DEBUG_PATH GODOT_ANDROID_KEYSTORE_DEBUG_USER GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD; do
+# (3) The keystore of the export mode (all three variables, and the file). The values are never printed.
+keystore_var="GODOT_ANDROID_KEYSTORE_$(tr '[:lower:]' '[:upper:]' <<<"$EXPORT_MODE")"
+for name in "${keystore_var}_PATH" "${keystore_var}_USER" "${keystore_var}_PASSWORD"; do
   [ -n "${!name:-}" ] || die 5 "$name is not set (path, user and password must all be set)"
 done
-[ -s "$GODOT_ANDROID_KEYSTORE_DEBUG_PATH" ] || die 5 "the debug keystore file is missing or empty"
+keystore_file="${keystore_var}_PATH"
+[ -s "${!keystore_file}" ] || die 5 "the $EXPORT_MODE keystore file is missing or empty"
 
 # (4) Fresh output folder. build/.gdignore keeps the next import away from the exported files.
 apk="$out_abs/$APK_NAME"
@@ -116,7 +135,7 @@ rm -f "$apk" "$apk.idsig" "$out_abs/$NOTICE_NAME"
 bash scripts/seed-extension-list.sh
 log="$(mktemp -t export-android.XXXXXX)"
 set +e
-{ "$GODOT" --headless --path . --import && "$GODOT" --headless --path . --export-debug Android "$apk"; } 2>&1 | tee "$log"
+{ "$GODOT" --headless --path . --import && "$GODOT" --headless --path . "--export-$EXPORT_MODE" "$PRESET" "$apk"; } 2>&1 | tee "$log"
 status=${PIPESTATUS[0]}
 set -e
 [ "$status" -eq 0 ] || die 1 "Godot export failed with exit code ${status} (log: $log)"
@@ -145,7 +164,7 @@ godot_tag="${GODOT_VERSION%.stable}-stable"
 rule="--------------------------------------------------------------------------------"
 {
   cat <<EOF
-rts-mobile Android debug build: third-party licences
+rts-mobile Android ${BUILD_LABEL} build: third-party licences
 ============================================
 
 rts-mobile's own code is licensed under the MIT licence: see the file LICENSE in the
@@ -209,6 +228,25 @@ bash scripts/ci/check-android-elf.sh describe "$work/$abi_dir/libgodot_android.s
 bash scripts/ci/check-android-elf.sh check "$work/$native_packed" "$work/$abi_dir/libc++_shared.so" ||
   die 1 "the packed $(basename "$native_entry") fails the ELF checks above"
 echo "export-android: $native_packed is the library CI built, sha256 $(sha256sum <"$native_entry" | cut -d' ' -f1)"
+
+# (9) --release only (P51r): the APK is what the gate measures. aapt2 dump badging lists application-debuggable for a
+# debuggable manifest (its package line proves that the output is the APK's and not empty), and the manifest dump
+# of (7) shows debuggable=true for one, so a change in either output format cannot hide it. The pack must hold the
+# dev_menu custom feature, which opens the dev menu where OS.is_debug_build() is false: a plain grep for dev_menu would
+# match file paths, so as in export-web.sh the feature list is read behind the _custom_features key of project.binary,
+# the project settings as the APK packs them. The engine library must be the release template's, byte for byte.
+if [ "$EXPORT_MODE" = release ]; then
+  badging="$("$(dirname "$signer")/aapt2" dump badging "$apk")" || die 1 "aapt2 dump badging failed on the APK"
+  grep -q "name='$PACKAGE'" <<<"$badging" || die 1 "aapt2 dump badging does not show the package $PACKAGE"
+  ! grep -q 'application-debuggable' <<<"$badging" || die 1 "the APK is debuggable (aapt2 dump badging shows application-debuggable)"
+  ! grep -Eq 'debuggable\(0x0101000f\)=.*(true|0xffffffff)' <<<"$manifest" || die 1 "the manifest is debuggable (aapt2 dump xmltree)"
+  grep -qx 'assets/project.binary' <<<"$listing" || die 1 "the APK lacks assets/project.binary"
+  features="$(unzip -p "$apk" assets/project.binary | strings | grep -A1 -x _custom_features || true)"
+  grep -qx dev_menu <<<"$features" || die 1 "the APK lacks the dev_menu custom feature (preset 'Android perf', custom_features)"
+  unzip -p "$template_dir/android_release.apk" "$abi_dir/libgodot_android.so" | cmp -s - "$work/$abi_dir/libgodot_android.so" ||
+    die 1 "the APK's libgodot_android.so is not the one of the release template ($template_dir/android_release.apk)"
+  echo "export-android: release template confirmed: not debuggable, dev_menu packed, engine library is the template's"
+fi
 
 rm -f "$log"
 echo "export-android: OK $out/$APK_NAME"

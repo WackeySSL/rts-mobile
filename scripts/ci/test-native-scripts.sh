@@ -649,6 +649,37 @@ assert "install-godot: ... and its pin" test "$(grep -Fc "pinned:   $arm_pin" <<
 godot_run STUB_UNAME=arm64 STUB_UNAME_S=Darwin
 check "install-godot: a Mac keeps the x86_64 editor, which it only unpacks" 1 "SHA-512 mismatch for Godot_v4.7.2-stable_linux.x86_64.zip"
 
+# (7) install-godot.sh fetches templates/android_release.apk only with --android-release (P51r), and android_debug.apk only
+# with --android. A stub python3 records the members that remote_zip.py is asked for and fails; the editor is "installed".
+mkdir -p "$root/ig-home"
+printf '#!/usr/bin/env bash\n' >"$root/ig-home/Godot_v4.7.2-stable_linux.x86_64"
+chmod +x "$root/ig-home/Godot_v4.7.2-stable_linux.x86_64"
+printf '#!/usr/bin/env bash\necho "$*" >"$STUB_MEMBERS"\nexit 7\n' >"$root/curlbin/python3"
+chmod +x "$root/curlbin/python3"
+members_run() { # FLAGS...: runs the script, which records the members it asks remote_zip.py for in $root/ig-members
+  rm -rf "$root/ig-templates" "$root/ig-members"
+  run ig PATH="$root/curlbin:$root/bin:$PATH" GODOT_HOME="$root/ig-home" GODOT_BIN_DIR="$root/ig-bin" \
+    TEMPLATES_DIR="$root/ig-templates" STUB_MEMBERS="$root/ig-members" bash scripts/ci/install-godot.sh "$@"
+}
+asked() { grep -Fq -- "$1" "$root/ig-members" 2>/dev/null; }
+not_asked() { ! asked "$1"; }
+members_run
+check "install-godot: no flag goes on to the extraction" 7 ""
+assert "install-godot: ... for the web templates" asked templates/web_nothreads_release.zip
+assert "install-godot: ... and for no Android template" not_asked templates/android_
+members_run --android-release
+check "install-godot: --android-release goes on to the extraction" 7 ""
+assert "install-godot: ... for android_release.apk" asked templates/android_release.apk
+assert "install-godot: ... and not for android_debug.apk" not_asked templates/android_debug.apk
+members_run --android
+assert "install-godot: --android asks for android_debug.apk" asked templates/android_debug.apk
+assert "install-godot: ... and not for android_release.apk" not_asked templates/android_release.apk
+members_run --android --android-release
+assert "install-godot: both flags ask for android_debug.apk ..." asked templates/android_debug.apk
+assert "install-godot: ... and android_release.apk" asked templates/android_release.apk
+members_run --bogus
+check "install-godot: an unknown flag is a usage error that names --android-release" 2 "[--android] [--android-release]"
+
 if [ "$failures" -ne 0 ]; then
   echo "test-native-scripts: $failures case(s) failed" >&2
   exit 1

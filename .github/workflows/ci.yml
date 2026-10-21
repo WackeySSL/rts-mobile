@@ -4,6 +4,9 @@ name: CI
 # export, all through the scripts a developer runs locally. "android-debug-apk" (ADR 0005) follows it,
 # after it installs the NDK and builds the kernel libraries (ADR 0013 section 10), and on a push to main
 # "android-dev-release" publishes that APK as the rolling pre-release.
+# "android-perf-apk" (P51r) follows verify on a push to main and on a manual run and exports the release-template perf
+# APK of the gate, and on a push to main "android-perf-release" publishes it as the rolling pre-release
+# android-perf-release.
 # "native-clang" runs the native suites on a clang library (ADR 0013 section 10) and "determinism-arm64" (P51b) the
 # determinism suites on an arm64 Linux runner. "sanitizer-changes" and
 # "sanitizers" (P57) check the native code under UBSan and AddressSanitizer on pull requests that touch it.
@@ -453,8 +456,9 @@ jobs:
       # The generated native/sim_kernels.gdextension names all six libraries (linux x86_64 and arm64, android
       # arm64, each debug and release), so the host's Linux library comes first: without it the headless
       # editor logs "Can't open dynamic library". --export-debug then packs android.debug.arm64 (the dev APK)
-      # and the release library is built for P51r's release export. export-android.sh checks the packed
-      # debug library against the bytes built here (hash, ELF facts, libc++ symbols).
+      # and the release library is built for P51r's release export (android-perf-apk builds it again, under
+      # the same cache key). export-android.sh checks the packed debug library against the bytes built here
+      # (hash, ELF facts, libc++ symbols).
       - name: Build the host library (linux, template_debug)
         run: bash scripts/build-native.sh
 
@@ -582,3 +586,162 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           KEY_KIND: ${{ needs.android-debug-apk.outputs.key_kind }}
         run: bash scripts/ci/publish-dev-release.sh "$RUNNER_TEMP/apk"
+
+  # P51r (ADR 0012 section 4, ADR 0013 section 10): the perf APK that the gate measures, built with the release
+  # template as players get it, with the preset "Android perf" (custom feature dev_menu, so the dev menu is reachable
+  # where OS.is_debug_build() is false) and the kernels library of android.release.arm64. It runs after verify on a
+  # push to main and on a manual run, never on a pull request, and takes no real ad ID and no store key (monetization
+  # rules). The key is generated for the run and passed as the release keystore. export-android.sh --release checks the
+  # APK itself: the packed library is the one built here, no application-debuggable in aapt2 dump badging, the
+  # dev_menu feature in the pack and the engine library of the release template. Not a required check.
+  android-perf-apk:
+    needs: verify
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Godot copies JAVA_HOME and ANDROID_HOME into its editor settings on its first run, so set them before any
+      # Godot call (ANDROID_HOME is the runner image's SDK already).
+      - name: Select JDK 17
+        run: echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+
+      - name: Install the Android NDK (install-ndk.sh)
+        run: bash scripts/ci/install-ndk.sh
+
+      - name: Install the native toolchain (SCons, binutils)
+        run: |
+          pipx install "scons==${SCONS_VERSION}"
+          sudo apt-get install -y --no-install-recommends binutils
+
+      # The generated .gdextension names all six libraries, so the host's Linux library comes first (as in
+      # android-debug-apk), then the one library this export packs: android.release.arm64 (template_release).
+      - name: Read the native cache keys
+        id: native-keys
+        run: |
+          host="$(bash scripts/build-native.sh --print-cache-key)"
+          android_release="$(bash scripts/build-native.sh --platform android --arch arm64 --target template_release --print-cache-key)"
+          { echo "host=$host"; echo "android_release=$android_release"; } >> "$GITHUB_OUTPUT"
+
+      - name: Cache godot-cpp and the SCons object cache (host library)
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            native/godot-cpp
+            ${{ env.SCONS_CACHE }}
+          key: ${{ steps.native-keys.outputs.host }}
+
+      - name: Cache godot-cpp and the SCons object cache (Android template_release)
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            native/godot-cpp
+            ${{ env.SCONS_CACHE }}
+          key: ${{ steps.native-keys.outputs.android_release }}
+
+      - name: Build the host library (linux, template_debug)
+        run: bash scripts/build-native.sh
+
+      - name: Build the Android library (arm64, template_release)
+        run: bash scripts/build-native.sh --platform android --arch arm64 --target template_release
+
+      - name: Cache Godot editor and export templates (web and Android release)
+        id: godot-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.local/opt/godot-${{ env.GODOT_VERSION }}
+            ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64-android-release-${{ hashFiles('scripts/ci/install-godot.sh', 'scripts/ci/remote_zip.py') }}
+
+      - name: Install Godot (editor, web and Android release templates)
+        run: bash scripts/ci/install-godot.sh --android-release
+
+      # The key is generated for this run and exists only in $RUNNER_TEMP (no secret is read; the stable key of the
+      # debug build is never used here). Godot reads it from the three GODOT_ANDROID_KEYSTORE_RELEASE_* variables. The
+      # password is random and masked, and reaches keytool and the script by env only. The last step deletes the file.
+      - name: Export perf APK (release template)
+        run: |
+          umask 077
+          keystore="$RUNNER_TEMP/perf.keystore"
+          password="$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          PERF_KEY_PASSWORD="$password" keytool -genkeypair -keystore "$keystore" -alias perfkey -keyalg RSA \
+            -keysize 2048 -validity 10000 -storepass:env PERF_KEY_PASSWORD -keypass:env PERF_KEY_PASSWORD \
+            -dname "CN=rts-mobile perf"
+          GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$keystore" \
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER="perfkey" \
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$password" \
+          bash scripts/export-android.sh --release
+
+      # Same check as in verify: the import and the export must not change the tree.
+      - name: Clean-tree check
+        if: success()
+        run: |
+          out="$(git status --porcelain)"; [ -z "$out" ] || { echo "::error::import/export changed the tree"; echo "$out"; exit 1; }
+
+      - name: Job summary
+        if: always()
+        env:
+          CACHE_HIT: ${{ steps.godot-cache.outputs.cache-hit }}
+        run: |
+          apk=build/android/rts-mobile-perf-release.apk
+          {
+            echo "Godot cache hit: ${CACHE_HIT:-false}"
+            if [ -s "$apk" ]; then
+              echo "- Perf APK (release template, dev menu): $(stat -c %s "$apk") bytes, SHA-256 \`$(sha256sum "$apk" | cut -d' ' -f1)\`, package dk.appcode.rts.dev"
+              echo "- Signed with a key generated for this run: uninstall the old rts-mobile build first."
+              echo "- On the phone: Dev, Perf arena; the card shows build: release."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload perf APK
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rts-mobile-perf-release-apk-${{ github.sha }}
+          path: |
+            build/android/rts-mobile-perf-release.apk
+            build/android/THIRD_PARTY_LICENSES.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Delete perf keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/perf.keystore"
+
+  # Michael's answer 3 in the Phase 2 plan (ADR 0012 section 4): android-perf-release is a rolling pre-release,
+  # updated on every merge to main like android-dev-latest and by the same rules (ADR 0005 section 6): only a push to
+  # main of the repository itself, after android-perf-apk, with contents: write on this job only. It publishes the APK
+  # that android-perf-apk built in this same run, and never rebuilds it.
+  android-perf-release:
+    needs: android-perf-apk
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !github.event.repository.fork
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: android-perf-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/ci
+
+      - name: Download the perf APK of this run
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: rts-mobile-perf-release-apk-${{ github.sha }}
+          path: ${{ runner.temp }}/apk
+
+      # Deletes and recreates the pre-release, then downloads the stable URL and compares SHA-256.
+      - name: Replace the android-perf-release pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/ci/publish-dev-release.sh "$RUNNER_TEMP/apk" perf
