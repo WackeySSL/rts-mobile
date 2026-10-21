@@ -52,6 +52,7 @@ func test_entering_caps_the_frame_rate_and_keeps_the_screen_on_and_leaving_resto
 	Engine.max_fps = OTHER_FPS
 	var kept: Array[bool] = []
 	var arena: Node2D = _make()
+	arena.keep_on_source = func() -> bool: return true  # The engine's default: the screen is on.
 	arena.keep_on_sink = func(on: bool) -> void: kept.append(on)
 	assert_int(Engine.max_fps).is_equal(OTHER_FPS)  # Not in the tree yet.
 	assert_array(kept).is_empty()
@@ -60,13 +61,28 @@ func test_entering_caps_the_frame_rate_and_keeps_the_screen_on_and_leaving_resto
 	assert_array(kept).is_equal([true])
 	remove_child(arena)
 	assert_int(Engine.max_fps).is_equal(OTHER_FPS)
-	assert_array(kept).is_equal([true, false])
+	assert_array(kept).is_equal([true, true])  # Put back as found: not switched off.
 	arena.free()
 	Engine.max_fps = _max_fps_before
 
 
+func test_leaving_puts_the_keep_screen_on_state_back_as_it_was_found() -> void:
+	for before: bool in [true, false]:
+		var kept: Array[bool] = []
+		var arena: Node2D = _make()
+		arena.keep_on_source = func() -> bool: return before
+		arena.keep_on_sink = func(on: bool) -> void: kept.append(on)
+		add_child(arena)
+		assert_array(kept).is_equal([true])  # On while the arena is up, whatever it was.
+		remove_child(arena)
+		assert_array(kept).override_failure_message("found %s" % before).is_equal([true, before])
+		arena.free()
+
+
 func test_every_player_1_unit_starts_selected_and_no_command_is_submitted() -> void:
 	var arena: Node2D = _open()
+	# Before any frame: a Command that _ready submitted after the runner's start is still queued.
+	assert_int(CommandQueue.pending()).is_equal(0)
 	await await_idle_frame()
 	await await_idle_frame()
 	var runner: MatchRunner = arena.runner
@@ -79,7 +95,11 @@ func test_every_player_1_unit_starts_selected_and_no_command_is_submitted() -> v
 		assert_bool(units.is_ringed(row)).override_failure_message("row %d" % row).is_equal(own)
 		ringed += int(own)
 	assert_int(ringed).is_equal(75)
+	# A tick drains the queue into the match, so the queue alone proves little: one more tick makes
+	# any Command a frame submitted reach the match, whose replay records every one it stepped.
+	runner.run_ticks(1)
 	assert_int(CommandQueue.pending()).is_equal(0)
+	_assert_the_log_holds_only_the_scenario_orders(runner)
 	assert_array(arena.find_children("*", "PlayerController", true, false)).is_empty()
 	var touch: TouchInput = arena.get_node("TouchInput")
 	assert_object(touch.controller).is_null()  # A finger pans and zooms; it issues nothing.
@@ -180,7 +200,9 @@ func test_run_again_runs_the_burst_alone_before_the_runner_restarts_on_the_same_
 	var snap: MatchSnapshot = runner.snapshot
 	for row: int in snap.unit_count():  # The new match's rigs are selected again.
 		assert_bool(units.is_ringed(row)).is_equal(snap.owner[row] == 1)
+	runner.run_ticks(1)  # Whatever a frame of the restarted match queued reaches the match.
 	assert_int(CommandQueue.pending()).is_equal(0)
+	_assert_the_log_holds_only_the_scenario_orders(runner)  # The restarted match took none either.
 
 
 func test_the_layer_mode_selector_switches_layers_without_touching_the_hash() -> void:
@@ -229,6 +251,26 @@ func test_the_layers_button_steps_the_mode_and_every_step_is_a_new_run() -> void
 		mode = Rig.ArenaScript.next_mode(mode)
 		order_of_modes.append(mode)
 	assert_array(order_of_modes).is_equal(["no fog", "no bars", "no effects", "rigs only", "all"])
+
+
+## The replay of the runner's match holds the scenario's own orders (an attack-move for each
+## player at tick 0) and nothing else: a Command that the arena submitted and a tick applied would
+## be one more entry.
+func _assert_the_log_holds_only_the_scenario_orders(runner: MatchRunner) -> void:
+	var data: PackedInt32Array = runner.replay.commands
+	var orders: Array[OrderDef] = runner.scenario.orders
+	var logged: Array[Command] = []
+	var at: int = 0
+	while at >= 0 and at < data.size():
+		var command: Command = Command.new()
+		at = Command.decode(data, at, command)
+		logged.append(command)
+	assert_int(at).override_failure_message("the log does not decode").is_equal(data.size())
+	assert_int(logged.size()).is_equal(orders.size())
+	for index: int in mini(logged.size(), orders.size()):
+		var seen: Array[int] = [logged[index].tick, logged[index].player_id, logged[index].type]
+		var want: Array[int] = [orders[index].tick, orders[index].player, orders[index].type]
+		assert_array(seen).override_failure_message("order %d" % index).is_equal(want)
 
 
 ## An arena in the tree with its seams logging into `_calls`; freed with the case.

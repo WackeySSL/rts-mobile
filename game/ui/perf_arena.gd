@@ -7,7 +7,8 @@ extends Node2D
 ## run SYNC. `TouchInput` has no controller, so a finger pans and zooms and no Command can enter.
 ##
 ## On entry: `Engine.max_fps` 60 (a 90 or 120 Hz panel is judged at 60 fps) and the screen kept on
-## through `keep_on_sink`; leaving restores both. `_ready` runs the card's preflight first (the
+## through `keep_on_sink`; leaving puts both back as they were (the engine keeps the screen on by
+## default, so leaving does not switch it off). `_ready` runs the card's preflight first (the
 ## self-check and the burst, with no World and no job, so its long frame lies in no timed window),
 ## then sets the scenario and starts the runner, then starts the card's first run. Every player-1
 ## unit is selected for the view (rings are part of what is measured), again after each new match.
@@ -46,12 +47,15 @@ const GAP_DP: float = 8.0
 @export var layout: BoxContainer
 @export var bar: BoxContainer
 
-## Keeps the screen on while the arena is up. Tests replace it: headless `screen_is_kept_on()`
-## stays false, so they assert on the sink.
+## Keeps the screen on while the arena is up, and the state it found on entry that leaving puts
+## back. Tests replace both: headless `screen_is_kept_on()` stays false, so they inject the state
+## and assert on the sink.
 var keep_on_sink: Callable = DisplayServer.screen_set_keep_on
+var keep_on_source: Callable = DisplayServer.screen_is_kept_on
 var layer_mode: String = MODE_ALL
 
 var _max_fps_before: int = 0
+var _keep_on_before: bool = false
 var _serial: int = -1  ## match_serial the selection was made for.
 var _fog_uploads: int = 0  ## upload_count() at the last fog_update_usec().
 
@@ -64,12 +68,13 @@ static func next_mode(mode: String) -> String:
 func _enter_tree() -> void:
 	_max_fps_before = Engine.max_fps
 	Engine.max_fps = max_fps
+	_keep_on_before = keep_on_source.call()
 	keep_on_sink.call(true)
 
 
 func _exit_tree() -> void:
 	Engine.max_fps = _max_fps_before
-	keep_on_sink.call(false)
+	keep_on_sink.call(_keep_on_before)
 
 
 func _ready() -> void:
