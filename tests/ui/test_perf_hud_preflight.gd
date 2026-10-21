@@ -152,9 +152,10 @@ func test_the_default_burst_keeps_the_second_half_of_its_back_to_back_runs() -> 
 	assert_float(kept[kept.size() - 1]).is_equal(20.0)
 	assert_int(_calls.size()).is_equal(1500)  # Every run of the burst, kept or not,
 	assert_str(_calls[0]).is_equal("ref 7")  # on the gate's ref_iterations.
-	# The real clock: the default seam fills ref_peak with the time of a RefLoop run.
+	# The real clock: the default seam fills ref_peak with the time of a RefLoop run. The second half
+	# of the burst is 20 ms, so a single stall of a few ms on a loaded machine cannot cover it.
 	var real: PerfHud = auto_free(PerfHud.new())
-	real.gate.ref_burst_ms = 10
+	real.gate.ref_burst_ms = 40
 	real.run_preflight(false, true)
 	assert_float(real.summary()["ref_peak_us"]).is_greater(0.0)
 	assert_float(real.summary()["ref_peak_p95_us"]).is_greater_equal(real.summary()["ref_peak_us"])

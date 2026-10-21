@@ -158,10 +158,37 @@ func test_an_empty_run_has_no_cadence_and_fails_closed() -> void:
 			"cadence_pct_min",
 			"heavy_cadence_pct",
 			"work_tick_p95_ms",
+			"sim_p95_ms",
+			"job_p99_ms",
 			"fog_update_p95_ms"
 		]
 	)
 	assert_bool(s["gate_pass"]).is_false()
+
+
+func test_frames_without_a_published_tick_fail_the_job_rows_and_a_partial_run_is_no_pass() -> void:
+	var hud: PerfHud = auto_free(Rig.hud())
+	Rig.pass_frames(hud)
+	var s: Dictionary = hud.summary()
+	assert_int(s["job_ticks"]).is_equal(0)
+	assert_array(Rig.failed(s)).is_equal(["sim_p95_ms", "job_p99_ms"])
+	assert_array(s["verdicts"]).contains(
+		["sim_p95_ms: FAIL (no job_ticks)", "job_p99_ms: FAIL (no job_ticks)"]
+	)
+	assert_bool(s["gate_pass"]).is_false()
+	# 300 of the 900 ticks: every row has samples and passes, yet the run is not over.
+	Rig.ticks(hud, 300)
+	s = hud.summary()
+	assert_int(s["job_ticks"]).is_equal(300)
+	assert_array(Rig.failed(s)).is_empty()
+	assert_bool(s["finished"]).is_false()
+	assert_bool(s["gate_pass"]).is_false()
+	# Tick 900 ends the run, and now it passes.
+	hud.record_snapshot(Rig.snapshot(hud.run_ticks))
+	s = hud.summary()
+	assert_bool(s["finished"]).is_true()
+	assert_array(Rig.failed(s)).is_empty()
+	assert_bool(s["gate_pass"]).is_true()
 
 
 func test_a_fog_update_of_zero_us_counts_and_no_update_does_not() -> void:

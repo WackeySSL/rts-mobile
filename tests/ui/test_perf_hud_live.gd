@@ -1,11 +1,13 @@
 extends GdUnitTestSuite
 ## PerfHud part 1 (plan P50a, ADR 0014 sections 1 and 3), the live path and `restart()`: which frame
 ## is a publish frame, the interval anchor that `restart()` resets, every sample column it clears,
-## the runner counts that freeze with the run, the reference runs on the gate's iterations and the
-## wiring of `_ready`. Headless Godot never emits `frame_pre_draw` or `frame_post_draw` (no frame is
-## drawn), so these cases call `_process`, `_on_pre_draw` and `_on_post_draw` themselves, in the
-## order of a real frame, on a scripted clock. The samples are in test_perf_hud.gd, the verdicts in
-## test_perf_hud_verdicts.gd and test_perf_hud_gate.gd, the normalisation in test_perf_hud_norm.gd.
+## the runner counts that freeze with the run, the reference runs on the gate's iterations, the
+## frame's own reference sample, the units of the render and draw-call readings, the wiring of
+## `_ready` and what a HUD without a runner or outside the tree does. Headless Godot never emits
+## `frame_pre_draw` or `frame_post_draw` (no frame is drawn), so these cases call `_process`,
+## `_on_pre_draw` and `_on_post_draw` themselves, in the order of a real frame, on a scripted clock.
+## The samples are in test_perf_hud.gd, the verdicts in test_perf_hud_verdicts.gd and
+## test_perf_hud_gate.gd, the normalisation in test_perf_hud_norm.gd.
 
 const Rig: GDScript = preload("res://tests/ui/support/perf_hud_rig.gd")
 
@@ -167,6 +169,64 @@ func test_the_reference_runs_use_the_gates_iterations() -> void:
 	hud._process(0.0)
 	hud._process(0.0)
 	assert_array(_log).is_equal(["clock", "clock", "ref 7", "clock", "ref 7", "clock"])
+
+
+func test_a_frame_files_its_own_reference_sample_and_the_normalisation_uses_it() -> void:
+	var hud: PerfHud = _live(_arena_runner())  # The rig's burst peak is 25 us.
+	hud.fog_source = func() -> int: return 250
+	# Frame 2: top at 17667, warm-up to 17700, the sample from 17700 to 17750 (50 us: half the speed
+	# of the burst, unlike the 25 us of every other case), 4 ms of work, drawn at 21750.
+	_times = [1000, 17667, 17700, 17750, 21750]
+	hud._process(0.0)
+	hud._process(0.0)
+	hud._on_pre_draw()
+	hud._on_post_draw()
+	var s: Dictionary = hud.summary()
+	assert_int(s["frames"]).is_equal(1)
+	assert_float(s["work_p95_ms"]).is_equal_approx(4.0, 0.0001)
+	assert_float(s["work_p95_norm_ms"]).is_equal_approx(2.0, 0.0001)  # x 25 / 50.
+	assert_float(s["fog_update_p95_norm_ms"]).is_equal_approx(0.125, 0.0001)
+	assert_float(s["speed_main_pct"]).is_equal_approx(50.0, 0.0001)
+
+
+func test_the_render_and_draw_call_readings_enter_the_frame_in_their_own_units() -> void:
+	var hud: PerfHud = _live(_arena_runner())
+	hud.render_source = func() -> float: return 2.5  # ms, as the viewport reports it.
+	hud.calls_source = func() -> int: return 55
+	_times = [1000, 17667, 17700, 17725, 21725]  # 4 ms between the sample and the draw.
+	hud._process(0.0)
+	hud._process(0.0)
+	hud._on_pre_draw()
+	hud._on_post_draw()
+	var s: Dictionary = hud.summary()
+	assert_float(s["render_cpu_p95_ms"]).is_equal_approx(2.5, 0.0001)
+	assert_float(s["view_p95_ms"]).is_equal_approx(4.0, 0.0001)
+	assert_float(s["work_p95_ms"]).is_equal_approx(6.5, 0.0001)  # Process plus render.
+	assert_int(s["draw_calls_p95"]).is_equal(55)
+
+
+func test_a_hud_without_a_runner_in_the_tree_stays_inactive() -> void:
+	var hud: PerfHud = auto_free(Rig.hud())  # The card's layout cases place one so.
+	hud.clock = func() -> int:
+		_log.append("clock")
+		return 1
+	add_child(hud)
+	assert_int(hud.process_priority).is_equal(-1000)
+	hud._process(0.0)
+	hud._on_post_draw()
+	assert_array(_log).is_empty()
+	assert_int(hud.summary()["frames"]).is_equal(0)
+
+
+func test_a_hud_that_leaves_the_tree_takes_no_more_frames() -> void:
+	var hud: PerfHud = _live(_arena_runner())
+	remove_child(hud)
+	_times = [1000, 2000, 3000, 4000]
+	hud._process(0.0)
+	hud._process(0.0)
+	hud._on_post_draw()
+	assert_array(_log).is_empty()
+	assert_int(hud.summary()["frames"]).is_equal(0)
 
 
 func _scripted_clock() -> int:

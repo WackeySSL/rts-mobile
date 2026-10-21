@@ -27,6 +27,8 @@ const KEYS: PackedStringArray = [
 	"heavy_frames",
 	"heavy_publish_frames",
 	"fog_updates",
+	"job_ticks",
+	"finished",
 	"invalid_reasons",
 	"refresh_hz_start",
 	"refresh_hz_end",
@@ -376,6 +378,46 @@ func test_summary_holds_every_listed_key_and_none_of_the_renamed_ones() -> void:
 	assert_str(s["tick_mode"]).is_equal("WORKER")
 	assert_bool(s["debug"]).is_false()
 	assert_str(s["layer_mode"]).is_equal("all")
+	assert_int(s["job_ticks"]).is_equal(900)
+	assert_bool(s["finished"]).is_true()
+
+
+func test_the_descriptive_fields_pass_through_summary_and_the_card() -> void:
+	var hud: PerfHud = auto_free(Rig.hud())
+	hud.layer_mode = "units only"  # P50b sets both; the copy report names the mode it measured.
+	hud.zoom = 0.75
+	Rig.run(hud)
+	var s: Dictionary = hud.summary()
+	var size: Vector2i = DisplayServer.screen_get_size()
+	assert_str(s["layer_mode"]).is_equal("units only")
+	assert_float(s["zoom"]).is_equal(0.75)
+	assert_str(s["os"]).is_equal(OS.get_name())
+	assert_str(s["model"]).is_equal(OS.get_model_name())
+	assert_str(s["engine"]).is_equal(Engine.get_version_info()["string"])
+	assert_str(s["screen"]).is_equal("%dx%d" % [size.x, size.y])
+	assert_str(hud.card_lines()[0]).contains("units only")
+
+
+func test_the_flow_slice_is_the_scenarios_rule_and_the_default_without_one() -> void:
+	var hud: PerfHud = auto_free(Rig.hud())
+	var runner: MatchRunner = auto_free(MatchRunner.new())
+	runner.scenario = ScenarioDef.new()
+	runner.scenario.rules = RulesDef.new()
+	runner.scenario.rules.flow_cells_per_tick = 64
+	hud.runner = runner
+	hud.restart()
+	assert_int(hud.flow_cells_per_tick).is_equal(64)
+	# A tick that settled 64 cells is a slice sample, one that settled the default is not.
+	hud.record_snapshot(_flow_snapshot(1, 64, 2000))
+	hud.record_snapshot(_flow_snapshot(2, RulesDef.new().flow_cells_per_tick, 9000))
+	assert_float(hud.summary()["flow_slice_p95_ms"]).is_equal_approx(2.0, 0.00001)
+	runner.scenario.rules = null  # A scenario without rules plays the default ones.
+	hud.restart()
+	assert_int(hud.flow_cells_per_tick).is_equal(RulesDef.new().flow_cells_per_tick)
+	runner.scenario = null
+	hud.flow_cells_per_tick = 64
+	hud.restart()
+	assert_int(hud.flow_cells_per_tick).is_equal(RulesDef.new().flow_cells_per_tick)
 
 
 func test_restart_resets_every_sample_and_the_counts() -> void:
@@ -393,6 +435,9 @@ func test_restart_resets_every_sample_and_the_counts() -> void:
 	assert_int(s["runs"]).is_equal(2)
 	for key: String in ["frames", "heavy_frames", "dropped", "hitches", "alive", "fog_updates"]:
 		assert_int(s[key]).override_failure_message(key).is_equal(0)
+	assert_int(s["job_ticks"]).is_equal(0)
+	assert_bool(before["finished"]).is_true()
+	assert_bool(s["finished"]).is_false()
 	for key: String in ["frame_p50_ms", "work_p95_ms", "work_p95_norm_ms", "job_mean_ms"]:
 		assert_float(s[key]).override_failure_message(key).is_equal(0.0)
 	for key: String in ["job_p99_ms", "tick_max_ms", "flow_slice_p95_ms", "speed_main_pct"]:
@@ -412,3 +457,14 @@ func test_restart_resets_every_sample_and_the_counts() -> void:
 func _scripted_clock() -> int:
 	_log.append("clock")
 	return _times.pop_front()
+
+
+## Published tick `tick` that settled `cells` flow cells, its FLOW phase taking `flow_usec`.
+func _flow_snapshot(tick: int, cells: int, flow_usec: int) -> MatchSnapshot:
+	var snap: MatchSnapshot = Rig.snapshot(tick)
+	snap.phase_usec = PackedInt64Array()
+	snap.phase_usec.resize(SimProbe.Phase.COUNT)
+	snap.phase_usec[SimProbe.Phase.FLOW] = flow_usec
+	snap.stats.resize(World.Stat.ROWS_COMPACTED + 1)
+	snap.stats[World.Stat.FLOW_CELLS] = cells
+	return snap

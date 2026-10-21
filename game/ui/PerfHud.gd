@@ -36,8 +36,11 @@ const ROWS: Array = [
 ]
 ## Rows that fail without samples of their own (a missing measurement never passes): the row's name
 ## and the summary key that counts its samples. The publish frames of the heavy window are a class
-## apart, so a run in which no frame published leaves the window full and the class empty.
-const NEEDS: Dictionary = {"work_tick_p95_ms": "heavy_publish_frames"}
+## apart, so a run in which no frame published leaves the window full and the class empty. The job
+## rows read published ticks: frames alone leave them empty.
+const NEEDS: Dictionary = {
+	"work_tick_p95_ms": "heavy_publish_frames", "sim_p95_ms": "job_ticks", "job_p99_ms": "job_ticks"
+}
 
 @export var runner: MatchRunner
 @export var gate: PerfGateDef = PerfGateDef.new()
@@ -47,14 +50,18 @@ const NEEDS: Dictionary = {"work_tick_p95_ms": "heavy_publish_frames"}
 var layer_mode: String = "all"
 var zoom: float = 1.0
 ## Seams: clock (us), ref_step (one reference run), refresh_source (the panel rate in Hz, -1
-## headless), burst_step (the kept second half of a burst, in us). P50b sets the last two:
-## rigs_source (rows shown and inside the camera now) and fog_source (the fog layer's update time
-## in us when it uploaded since the last call, else -1: one FogLayer.upload_count() rise each).
+## headless), max_fps_source, burst_step (the kept second half of a burst, in us), render_source
+## (the viewport's render CPU time of the frame just drawn, in ms: 0 headless) and calls_source
+## (its draw calls: 0 headless). P50b sets the last two: rigs_source (rows shown and inside the
+## camera now) and fog_source (the fog layer's update time in us when it uploaded since the last
+## call, else -1: one FogLayer.upload_count() rise each).
 var clock: Callable = Time.get_ticks_usec
 var ref_step: Callable = RefLoop.run
 var refresh_source: Callable = DisplayServer.screen_get_refresh_rate
 var max_fps_source: Callable = Engine.get_max_fps
 var burst_step: Callable = _burst
+var render_source: Callable = _render_ms
+var calls_source: Callable = _draw_calls
 var rigs_source: Callable = func() -> int: return 0
 var fog_source: Callable = func() -> int: return -1
 ## The build the verdict `build` judges; a release template is false.
@@ -280,7 +287,7 @@ func drop_ms() -> float:
 
 ## Everything the card shows, one entry per key (the copy report of P50a3 writes them all). Raw and
 ## normalised main-thread values sit side by side. `verdicts` are the lines of the card and
-## `gate_pass` is its GATE.
+## `gate_pass` is its GATE: never true before the run has `finished` (a partial run is no pass).
 func summary() -> Dictionary:
 	var period: float = period_ms()
 	var drop: float = drop_ms()
@@ -333,6 +340,7 @@ func summary() -> Dictionary:
 		"fog_update_p95_ms": _p(_col(&"fog"), 95),
 		"fog_update_p95_norm_ms": _norm_fog(),
 		"fog_updates": _col(&"fog").size(),
+		"job_ticks": _col(&"job").size(),
 		# The main thread's whole process time, not the layers' own _process time that ADR 0011
 		# section 5 means: a layer-time seam can narrow it (P50b).
 		"view_p95_ms": _p(_take(&"process", heavy), 95),
@@ -371,10 +379,11 @@ func summary() -> Dictionary:
 		"os": OS.get_name(),
 		"engine": Engine.get_version_info()["string"],
 		"debug": debug_build,
+		"finished": _finished,
 	}
 	var lines: Array[String] = _verdicts(out)
 	out["verdicts"] = lines
-	out["gate_pass"] = not out["invalid"] and not lines.any(_failed)
+	out["gate_pass"] = _finished and not out["invalid"] and not lines.any(_failed)
 	return out
 
 
@@ -404,23 +413,29 @@ func _on_pre_draw() -> void:
 	_pre_draw_usec = int(clock.call())
 
 
-## The frame is drawn: files its samples. The two seams run after the work window.
+## The frame is drawn: files its samples. The four seams run after the work window.
 func _on_post_draw() -> void:
 	if not _active or _finished or _interval_usec < 0:
 		return
-	var render_ms: float = RenderingServer.viewport_get_measured_render_time_cpu(_viewport)
-	var calls: int = int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
 	record_frame(
 		_interval_usec,
 		_pre_draw_usec - _work_start_usec,
-		roundi(render_ms * 1000.0),
-		calls,
+		roundi(float(render_source.call()) * 1000.0),
+		int(calls_source.call()),
 		int(rigs_source.call()),
 		_published,
 		_ref_usec,
 		int(fog_source.call())
 	)
 	_interval_usec = -1
+
+
+func _render_ms() -> float:
+	return RenderingServer.viewport_get_measured_render_time_cpu(_viewport)
+
+
+func _draw_calls() -> int:
+	return int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
 
 
 ## The back-to-back RefLoop runs of one burst (`ref_burst_ms`), keeping the second half: their
