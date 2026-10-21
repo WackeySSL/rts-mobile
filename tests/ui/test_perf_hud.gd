@@ -232,6 +232,7 @@ func test_checkpoints_are_the_published_hashes_every_150_ticks_as_world_hash_hex
 	assert_str(s["checkpoints"][1]["hash_hex"]).is_equal(World.hash_hex(300 * 1000 + 7))
 	assert_str(s["hash_hex"]).is_equal(World.hash_hex(449 * 1000 + 7))
 	assert_float(s["refresh_hz_end"]).is_equal(60.0)  # The start rate until the run ends.
+	assert_float(hud.period_ms()).is_equal_approx(1000.0 / 60.0, 0.0001)
 	hud.refresh_source = func() -> float: return 59.94
 	hud.record_snapshot(Rig.snapshot(450))  # Reaches run_ticks: the run ends with its checkpoint.
 	hud.record_snapshot(Rig.snapshot(451, 99_000))  # Nothing after the end is recorded.
@@ -240,6 +241,9 @@ func test_checkpoints_are_the_published_hashes_every_150_ticks_as_world_hash_hex
 	assert_str(s["checkpoints"][2]["hash_hex"]).is_equal(World.hash_hex(450 * 1000 + 7))
 	assert_float(s["refresh_hz_start"]).is_equal(60.0)  # Read again when the run ended.
 	assert_float(s["refresh_hz_end"]).is_equal(59.94)
+	# P and V stay at the start rate (a rate change above 1 % is P50a2's INVALID, below it moot).
+	assert_float(hud.period_ms()).is_equal_approx(1000.0 / 60.0, 0.0001)
+	assert_float(hud.drop_ms()).is_equal_approx(25.0, 0.0001)  # P + 1.5 V, V = 1000 / 60.
 	assert_float(s["job_max_ms"]).is_equal(10.0)
 
 

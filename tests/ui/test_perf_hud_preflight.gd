@@ -55,6 +55,7 @@ func test_the_burst_seam_gives_ref_peak_from_the_p25_and_p95_of_its_kept_samples
 func test_a_job_in_flight_refuses_the_preflight_and_marks_the_run_invalid() -> void:
 	var hud: PerfHud = auto_free(Rig.hud())
 	Rig.run(hud)
+	assert_float(hud.summary()["ref_peak_p95_us"]).is_equal(25.0)  # The rig's burst.
 	hud.burst_step = func() -> PackedFloat64Array:
 		_calls.append("burst")
 		return PackedFloat64Array([99.0])
@@ -63,7 +64,8 @@ func test_a_job_in_flight_refuses_the_preflight_and_marks_the_run_invalid() -> v
 	assert_array(_calls).is_empty()  # No seam was called.
 	assert_bool(s["invalid"]).is_true()
 	assert_array(s["invalid_reasons"]).is_equal(["preflight_job_in_flight"])
-	assert_float(s["ref_peak_us"]).is_equal(0.0)  # The refused call dropped the old results too.
+	assert_float(s["ref_peak_us"]).is_equal(0.0)  # The refused call dropped the old results too:
+	assert_float(s["ref_peak_p95_us"]).is_equal(0.0)  # P50a3's copy report writes both.
 	assert_str(s["verdicts"][0]).is_equal("INVALID: preflight_job_in_flight")
 	assert_bool(s["gate_pass"]).is_false()  # A run that passed everything else.
 	assert_str(hud.card_lines()[-1]).is_equal("GATE: FAIL")

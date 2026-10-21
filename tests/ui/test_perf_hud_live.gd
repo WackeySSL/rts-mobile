@@ -229,6 +229,28 @@ func test_a_hud_that_leaves_the_tree_takes_no_more_frames() -> void:
 	assert_int(hud.summary()["frames"]).is_equal(0)
 
 
+func test_an_auto_runner_that_resolved_to_sync_is_a_sync_run() -> void:
+	var runner: MatchRunner = auto_free(MatchRunner.new())
+	runner.scenario = load(Rig.ARENA)
+	runner.match_seed = 42
+	runner.tick_mode = MatchRunner.TickMode.AUTO  # P50b sets AUTO: SYNC headless and on web.
+	runner.start()
+	assert_bool(runner.worker_active()).is_false()
+	var hud: PerfHud = auto_free(Rig.hud())
+	hud.runner = runner
+	add_child(hud)
+	hud.restart()
+	runner.late_ticks = 3  # An inline tick counted late; the gate allows 0.
+	runner.run_ticks(1)
+	var s: Dictionary = hud.summary()
+	assert_str(s["tick_mode"]).is_equal("SYNC")  # The resolved mode, not the requested one.
+	assert_int(s["late_ticks"]).is_equal(3)
+	assert_bool(Rig.failed(s).has("late_ticks_max")).is_false()
+	assert_array(s["verdicts"]).contains(
+		["late_ticks_max: n/a (SYNC: late_ticks counts inline ticks)"]
+	)
+
+
 func _scripted_clock() -> int:
 	_log.append("clock")
 	return _times.pop_front()

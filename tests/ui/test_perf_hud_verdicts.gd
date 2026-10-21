@@ -130,6 +130,18 @@ func test_work_p95_covers_all_heavy_frames_and_work_tick_p95_the_publish_frames_
 	assert_array(Rig.failed(s)).is_equal(["work_tick_p95_ms"])
 
 
+func test_the_card_lists_every_verdict_line_between_the_header_and_gate() -> void:
+	var hud: PerfHud = auto_free(Rig.hud())
+	Rig.run(hud)
+	var lines: PackedStringArray = hud.card_lines()
+	var verdicts: Array = hud.summary()["verdicts"]
+	assert_int(verdicts.size()).is_equal(ROWS.size())
+	for line: String in verdicts:
+		assert_bool(lines.has(line)).override_failure_message(line).is_true()
+	assert_str(lines[lines.size() - 1]).is_equal("GATE: PASS")
+	assert_int(lines.size()).is_equal(verdicts.size() + 3)  # Header, held_ticks, verdicts, GATE.
+
+
 func test_late_ticks_are_judged_for_a_worker_run_and_not_applicable_for_a_sync_run() -> void:
 	var worker: PerfHud = auto_free(Rig.hud())
 	Rig.run(worker)
