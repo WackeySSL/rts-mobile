@@ -25,10 +25,11 @@ const SLOTS: int = 8
 ## does not read: max_rows, map_cols, map_rows, map_w, map_h, move_cost, type_speed and
 ## type_move_class). TARGETING's 35 are the names kernel_targeting.cpp gets or sets (P41n; it was
 ## 32: max_rows, hp and type_speed lose its bit, and line_check_period_ticks, nav_cell, field,
-## nav_next, best_dist and stall gain it). FOG's 25 are the names kernel_fog.cpp gets or sets
+## nav_next, best_dist and stall gain it); since P46b it is 40: the vision rule reads the fog's
+## cols, rows, cells, player_count and visible. FOG's 25 are the names kernel_fog.cpp gets or sets
 ## (P46n; it was 29: max_rows, map_cols, map_rows and type_speed lose its bit, type_sight stays
 ## because the pad mask is the size of that table).
-const LIST_SIZES: Dictionary[int, int] = {1: 26, 3: 35, 5: 20, 6: 49, 10: 25}
+const LIST_SIZES: Dictionary[int, int] = {1: 26, 3: 40, 5: 20, 6: 49, 10: 25}
 ## A status is the table index of the first bad name times FAULT_COUNT, plus its fault.
 const FAULT_PHASE: int = 1
 const FAULT_OWNER: int = 2
@@ -118,7 +119,12 @@ const PHASES_OF: Dictionary[String, Array] = {
 	"FLOW.requests": [6],
 	"FLOW.last_used": [6],
 	"SLOT.goal_cell": [1],
-	"SLOT.cell_count": [1, 6]
+	"SLOT.cell_count": [1, 6],
+	"FOG.cols": [3, 10],
+	"FOG.rows": [3, 10],
+	"FOG.cells": [3, 10],
+	"FOG.player_count": [3, 10],
+	"FOG.visible": [3, 10]
 }
 const OWNER_PHASE: Dictionary[String, int] = {"SEP": 5, "TARGET": 3, "FOG": 10}
 
@@ -317,7 +323,7 @@ func test_the_table_pins_the_length_rule_and_the_phases_of_the_names() -> void:
 		assert_bool(entry.size == "ANY").override_failure_message(label).is_equal(any)
 		assert_bool(entry.size == "NONE").override_failure_message(label).is_equal(not is_array)
 		var phases: Array = PHASES_OF.get(label, [])
-		if OWNER_PHASE.has(entry.owner):
+		if OWNER_PHASE.has(entry.owner) and not PHASES_OF.has(label):
 			phases = [OWNER_PHASE[entry.owner]]
 		if PHASES_OF.has(label) or OWNER_PHASE.has(entry.owner):
 			var found: Array[int] = _phases_of(entry)

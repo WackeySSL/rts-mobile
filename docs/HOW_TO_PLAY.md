@@ -47,6 +47,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 |---|---|---|
 | Look at the map | Black ground has never been seen. Dimmed ground was seen before, but enemies there are not shown. Ground that one of your units sees now is clear, and the enemies on it show, with their shots and blasts. Driving out lights new ground and leaves a dimmed trail behind; your own units always show | yes |
 | With units selected, tap near an enemy the fog hides | It counts as a tap on the ground: the units move to the point you tapped, with chevrons, and the hidden enemy is not attacked. Once one of your units sees it, the same tap attacks it | |
+| Fight in the fog | Your units only attack enemies your side can see, whichever of your units sees them. An enemy that slips out of sight is no longer attacked: units you sent against it move to where it was last seen, and the others look for a new target | |
 
 ## Army bar (bottom left)
 | Action | Result | Teach |

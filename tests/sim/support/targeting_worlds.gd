@@ -8,8 +8,12 @@ extends RefCounted
 ## enemies stand at the same squared distance. open_field: a big map with sparse rock and two
 ## sides far apart. scouts: the roster of test_targeting_kernel_indexes.gd (an unarmed scout first,
 ## so type_weapon is [-1, 0, 1]) on a field with a little rock. pair: two units, the second at an
-## offset from the first, for the edges of a reach (offsets_at() lists them). random: a seeded
-## random state. A World that is built with add_unit() starts blind (stamp_fog() gives it sight).
+## offset from the first, for the edges of a reach (offsets_at() lists them). short_sighted: two
+## gun types that see less than they reach, so that the vision rule refuses candidates and locks
+## all the time. random: a seeded
+## random state. A World that is built with add_unit() starts blind (stamp_fog() gives it sight):
+## the builders here stamp real sight discs for the vision rule of the fog PR (P46b), where the
+## builders of targeting_rig.gd reveal the map.
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
@@ -68,7 +72,7 @@ static func lattice(
 	salt: int, per_side: int = 24, members: Dictionary = {}, aligned: bool = false
 ) -> World:
 	var rng: DetRandom = DetRandom.create(salt, 31)
-	var world: World = Rig.data_world(20, 12)
+	var world: World = Rig.data_world(20, 12, false)
 	for member: StringName in members:
 		world.set(member, members[member])
 	var offset: int = 0 if aligned else World.TILE_CENTRE
@@ -77,13 +81,38 @@ static func lattice(
 			var column: int = 9 - rng.next_int(3) if player == 1 else 10 + rng.next_int(3)
 			var line: int = rng.next_int(12)
 			world.add_unit(player, rng.next_int(3), column * 1000 + offset, line * 1000 + offset)
+	stamp_fog(world)
+	return world
+
+
+## A field of 30 x 20 open tiles with `per_side` units of each player at random points, of two guns
+## that see less than they reach (the vision rule of the fog PR, P46b, refuses what is in reach and
+## out of sight): type 0 sees 3000, acquires at 5000 and shoots 4000 (percents 100, 40, 100 and 100
+## against infantry, light, heavy and building armour); type 1 is light armour, sees 2000, acquires
+## at 4500 and shoots 3500 (60, 100, 100, 100). The fog is real: every unit is stamped
+## (stamp_fog). Under random waves the units walk in and out of each other's sight, so that the
+## candidates, the held targets and the ATTACK locks all meet the rule.
+static func short_sighted(salt: int, per_side: int = 24) -> World:
+	var rng: DetRandom = DetRandom.create(salt, 39)
+	var gun_a: UnitDef = Rig.unit(&"gun_a", 3000, 5000, 4000, 0, [100, 40, 100, 100])
+	var gun_b: UnitDef = Rig.unit(&"gun_b", 2000, 4500, 3500, 0, [60, 100, 100, 100])
+	gun_b.armour = World.Armour.LIGHT
+	var units: Array[UnitDef] = [gun_a, gun_b]
+	var world: World = Rig.world_of(units, 30, 20, false)
+	for player: int in [1, 2]:
+		for _unit: int in per_side:
+			world.add_unit(player, rng.next_int(2), rng.next_int(30000), rng.next_int(20000))
+	stamp_fog(world)
 	return world
 
 
 ## Two units of the shipped type `type` on a field of 20 x 12 open tiles, player 1 at (10000, 6000)
 ## and player 2 `dx` and `dy` milli from it, both with `order` (ATTACK_MOVE in the DIRECT mode, or
 ## IDLE in NONE) and the two cadences at 1, so that each is due, and tests its line, on every tick.
-## For the edges of a reach: a target exactly at the reach, one milli inside it and one beyond.
+## For the edges of a reach: a target exactly at the reach, one milli inside it and one beyond. The
+## map is revealed to both players (targeting_rig.gd): the case is about the edges of a reach, and
+## a reach of 5500 on a 3-4-5 diagonal can stand 7 tiles away in tile steps, beyond the sight disc
+## of 6 tiles that the vision rule tests (the units stand on the corners of tiles).
 static func pair(type: int, order: int, dx: int, dy: int) -> World:
 	var world: World = Rig.data_world(20, 12)
 	world.retarget_period_ticks = 1
@@ -142,7 +171,7 @@ static func open_field(
 		load(Rig.TANK_PATH) as UnitDef,
 		long_gun
 	]
-	var world: World = Rig.world_of(units, cols, rows)
+	var world: World = Rig.world_of(units, cols, rows, false)
 	world.terrain_cost = PackedByteArray(GridWorld.GROUND_COST)
 	for tile: int in cols * rows:
 		if rng.next_int(100) < rock_percent:
@@ -161,13 +190,16 @@ static func open_field(
 ## that exist when it runs: a unit that is added to a prepared World starts with `fog_cell` -1 and
 ## sees nothing until its player's first FOG update (tick 0 or 1), so a World built with add_unit()
 ## starts blind. The open field calls this, so that the far attacks of its first wave name targets
-## in sight (the authoring rule of the fog PR, row P46b).
-static func stamp_fog(world: World) -> void:
+## in sight (the authoring rule of the fog PR, row P46b). With `rng`, a row is stamped with a chance
+## of `percent` in 100 and left blind otherwise (the random states of the vision rule).
+static func stamp_fog(world: World, percent: int = 100, rng: DetRandom = null) -> void:
 	world.prepare()
 	var pad: int = world.type_sight.size()
 	for row: int in world.unit_count():
 		var player: int = world.owner[row]
 		if world.fog_cell[row] >= 0 or player < 1 or player > world.player_count:
+			continue
+		if rng != null and rng.next_int(100) >= percent:
 			continue
 		var cell: int = world.cell_of(world.pos_x[row], world.pos_y[row])
 		world.fog.stamp(player, cell, mini(world.type_index[row], pad), 1)
@@ -181,7 +213,7 @@ static func stamp_fog(world: World) -> void:
 @warning_ignore("integer_division")
 static func scouts(salt: int, cols: int = 30, rows: int = 16, per_side: int = 20) -> World:
 	var rng: DetRandom = DetRandom.create(salt, 33)
-	var world: World = Rig.world_of(scout_roster(), cols, rows)
+	var world: World = Rig.world_of(scout_roster(), cols, rows, false)
 	world.terrain_cost = PackedByteArray(GridWorld.GROUND_COST)
 	for tile: int in cols * rows:
 		if rng.next_int(100) < 5:
@@ -196,6 +228,7 @@ static func scouts(salt: int, cols: int = 30, rows: int = 16, per_side: int = 20
 				column * 1000 + rng.next_int(1000),
 				rng.next_int(rows) * 1000 + rng.next_int(1000)
 			)
+	stamp_fog(world)
 	return world
 
 
@@ -224,7 +257,10 @@ static func scout_roster() -> Array[UnitDef]:
 ## without, they hold what a unit can hold (a state to step through Sim.step). The work counts
 ## `stats[TARGET_CANDIDATES]` and `stats[LINE_CHECKS]` start above 0 (a tick clears them first; a
 ## phase run by hand with `keep_counts` adds to them), drawn from a stream of their own so that no
-## other draw of the state moves.
+## other draw of the state moves. The fog (P46b) is stamped for a quarter of the states in full, and
+## for the others for each row with a chance of 0, 25, 50 or 75 in 100, from a stream of its own:
+## the blind rows leave cells that their player does not see, so the vision rule meets candidates
+## and targets it has to refuse.
 @warning_ignore("integer_division")
 static func random(salt: int, garbage: bool = false) -> World:
 	var rng: DetRandom = DetRandom.create(salt, 34)
@@ -232,7 +268,9 @@ static func random(salt: int, garbage: bool = false) -> World:
 	var rows: int = 4 + rng.next_int(20)
 	var scouts_roster: bool = rng.next_int(2) == 0
 	var world: World = (
-		Rig.world_of(scout_roster(), cols, rows) if scouts_roster else Rig.data_world(cols, rows)
+		Rig.world_of(scout_roster(), cols, rows, false)
+		if scouts_roster
+		else Rig.data_world(cols, rows, false)
 	)
 	world.terrain_cost = PackedByteArray(GridWorld.GROUND_COST)
 	var rock: int = rng.next_int(13)
@@ -289,6 +327,8 @@ static func random(salt: int, garbage: bool = false) -> World:
 	var counts: DetRandom = DetRandom.create(salt, 37)
 	world.stats[World.Stat.TARGET_CANDIDATES] = 1 + counts.next_int(200)
 	world.stats[World.Stat.LINE_CHECKS] = 1 + counts.next_int(50)
+	var sight: DetRandom = DetRandom.create(salt, 38)
+	stamp_fog(world, 100 if sight.next_int(4) == 0 else 25 * sight.next_int(4), sight)
 	return world
 
 

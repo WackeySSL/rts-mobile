@@ -6,6 +6,10 @@ extends GdUnitTestSuite
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
 ## The radii sum of two tanks in the duel world (400 each): closer than this they overlap.
 const REACH: int = 800
+## The sight of both duel types: the map's width, so that the target of an ATTACK stays in sight
+## wherever it runs (the authoring rule of the fog PR, P46b: an ATTACK on an unseen enemy is
+## dropped, and a target that leaves sight ends the order).
+const SIGHT: int = 48000
 
 
 ## MOVE only differs by its order, so both groups reach the same slots on the same ticks.
@@ -120,7 +124,7 @@ func _scenario_world() -> World:
 	return World.from_scenario(load(SCENARIO_PATH) as ScenarioDef)
 
 
-## No units yet: type 0 (speed 120) and type 1 (speed 60), both with a weapon.
+## No units yet: type 0 (speed 120) and type 1 (speed 60), both with a weapon and SIGHT.
 func _duel_world() -> World:
 	var world: World = World.new()
 	world.map_w = 48000
@@ -132,6 +136,7 @@ func _duel_world() -> World:
 		world.type_selection_radius.append(500)
 		world.type_spacing.append(1200)
 		world.type_weapon.append(0)
+		world.type_sight.append(SIGHT)
 	return world
 
 

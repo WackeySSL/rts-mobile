@@ -30,6 +30,15 @@ extends GdUnitTestSuite
 ## One floor keeps no margin: the painted run reaches `named` 15,064 times against a floor of
 ## 15,000, where the rule keeps about two thirds. It does not fail, so it stays; the next lane that
 ## moves the arena (P48, P46) re-derives it with the others, to about 10,000.
+## P46b (the vision rule): an ATTACK on an enemy that the player does not see is dropped, and an
+## ATTACK lock ends when its target leaves sight, so MatchScript's and the waves' ATTACKs steer
+## fewer units after targets. The floors that the runs no longer met are re-derived to about 70% of
+## the figures measured on this tree: the plain run reaches `field` 13,928, `named` 10,697, `ended`
+## 57 and `rekeys` 6 (floors 9,700, 7,400, 40 and 4, where the tree before met 14,000, 11,000, 35
+## and 10); the painted run `field` 20,046, `named` 14,063, `no_next` 811 and `ended` 82 (floors
+## 14,000, 9,800, 560 and 55, where `named` was 15,000 and `no_next` 360); the changed-rules run
+## `field` 21,096, `named` 15,517, `no_next` 395 and `ended` 82 (floors 14,700, 10,800, 270 and 55,
+## where `field` was 17,000, `named` 13,000 and `no_next` 500).
 ## That Movement.integrate hands the phase to the kernel at all is pinned by the spy case of
 ## tests/sim/test_kernel_dispatch.gd.
 
@@ -70,7 +79,7 @@ func test_900_arena_ticks_match_after_every_tick() -> void:
 	var rig: RefCounted = LockstepRig.new().setup(_arena)
 	assert_array(rig.problems).is_empty()
 	assert_str(rig.run(TICKS, _orders)).is_empty()
-	_assert_reached(rig, {&"field": 14000, &"named": 11000, &"ended": 35, &"rekeys": 10})
+	_assert_reached(rig, {&"field": 9700, &"named": 7400, &"ended": 40, &"rekeys": 4})
 	_assert_reached(rig, {&"holding": 13000, &"chasing": 1800, &"lost": 70})
 	assert_int(rig.tally[&"own_fields"]).is_greater(0)
 	assert_int(rig.worlds[0].flow.requests).is_greater(30)
@@ -81,7 +90,7 @@ func test_the_same_run_with_only_integrate_in_c_plus_plus_matches() -> void:
 	assert_array(rig.problems).is_empty()
 	assert_bool(rig.worlds[1].native_phases == 1 << SimProbe.Phase.INTEGRATE).is_true()
 	assert_str(rig.run(TICKS, _orders)).is_empty()
-	_assert_reached(rig, {&"field": 14000, &"named": 11000, &"ended": 35, &"rekeys": 10})
+	_assert_reached(rig, {&"field": 9700, &"named": 7400, &"ended": 40, &"rekeys": 4})
 	_assert_reached(rig, {&"lost": 70})
 
 
@@ -89,7 +98,7 @@ func test_900_ticks_on_the_arena_with_slow_ground_scrub_rock_and_water_painted_i
 	var rig: RefCounted = LockstepRig.new().setup(_arena.bind(null, true))
 	assert_array(rig.problems).is_empty()
 	assert_str(rig.run(TICKS, _orders)).is_empty()
-	_assert_reached(rig, {&"field": 20000, &"named": 15000, &"no_next": 360, &"ended": 45})
+	_assert_reached(rig, {&"field": 14000, &"named": 9800, &"no_next": 560, &"ended": 55})
 	_assert_reached(rig, {&"rekeys": 7, &"own_fields": 5, &"recycles": 1, &"lost": 70})
 
 
@@ -107,7 +116,7 @@ func test_the_same_run_on_changed_rules_matches() -> void:
 	var rig: RefCounted = LockstepRig.new().setup(_arena.bind(rules, true))
 	assert_array(rig.problems).is_empty()
 	assert_str(rig.run(TICKS, _orders)).is_empty()
-	_assert_reached(rig, {&"field": 17000, &"named": 13000, &"no_next": 500, &"ended": 45})
+	_assert_reached(rig, {&"field": 14700, &"named": 10800, &"no_next": 270, &"ended": 55})
 	_assert_reached(rig, {&"rekeys": 1, &"own_fields": 2, &"lost": 70})
 
 

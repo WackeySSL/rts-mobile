@@ -203,12 +203,12 @@ struct Entry {
 	X(TARGET, cell_milli, INT, NONE, PH_T) \
 	X(TARGET, head, I32, TARGET_GRID, PH_T) \
 	X(TARGET, next, I32, MAX_ROWS, PH_T) \
-	X(FOG, cols, INT, NONE, PH_G) \
-	X(FOG, rows, INT, NONE, PH_G) \
-	X(FOG, cells, INT, NONE, PH_G) \
-	X(FOG, player_count, INT, NONE, PH_G) \
+	X(FOG, cols, INT, NONE, PH_T | PH_G) \
+	X(FOG, rows, INT, NONE, PH_T | PH_G) \
+	X(FOG, cells, INT, NONE, PH_T | PH_G) \
+	X(FOG, player_count, INT, NONE, PH_T | PH_G) \
 	X(FOG, dirty_capacity, INT, NONE, PH_G) \
-	X(FOG, visible, I32, FOG_CELLS, PH_G) \
+	X(FOG, visible, I32, FOG_CELLS, PH_T | PH_G) \
 	X(FOG, explored, BYTES, FOG_CELLS, PH_G) \
 	X(FOG, listed, BYTES, FOG_CELLS, PH_G) \
 	X(FOG, version, I32, FOG_PLAYERS, PH_G) \

@@ -30,8 +30,10 @@ const MAX_OVERLAP_TICKS: int = 45
 ## The radii sum of two tanks: closer than this they overlap.
 const REACH: int = 800
 ## The ATTACK case: the target is the first red tank (id 31, row 30) at (34500, 10500), 600 ticks.
-## The tank's sight is raised above the 27,700 milli between the two, so that the vision check of
-## the fog PR (P46b) leaves the case green (its authoring rule).
+## The tank's sight_range is raised above the 27,700 milli between the two before the World is built
+## (`_sighted_world`), so that the sight discs of the fog are wide enough for the vision check of
+## the fog PR (P46b) to leave the case green (its authoring rule). Raising `type_sight` after the
+## World is built would change no disc: the masks are made when it is prepared.
 const ATTACK_TARGET_ID: int = 31
 const ATTACK_TICKS: int = 600
 const ATTACK_SIGHT: int = 30000
@@ -378,8 +380,7 @@ func _overlap_runs() -> PackedInt32Array:
 ## after ATTACK_TICKS ticks; `push_max` of 0 or more is set as the world's `separation_push_max`
 ## first (0: no pushes).
 func _attack_the_first_red_tank(push_max: int, impl: int) -> World:
-	var world: World = _scenario_world(impl)
-	world.type_sight.fill(ATTACK_SIGHT)
+	var world: World = _sighted_world(impl)
 	world.hp.fill(ATTACK_HP)
 	if push_max >= 0:
 		world.separation_push_max = push_max
@@ -398,6 +399,25 @@ func _ids(first: int, last: int) -> PackedInt32Array:
 
 func _scenario_world(impl: int) -> World:
 	return _in(World.from_scenario(load(SCENARIO_PATH) as ScenarioDef), impl)
+
+
+## The scenario's World with every unit type seeing ATTACK_SIGHT: copies of the spawns with copies
+## of their unit defs, whose sight_range is raised, in a copy of the scenario (the loaded resources
+## stay as they are).
+func _sighted_world(impl: int) -> World:
+	var scenario: ScenarioDef = (load(SCENARIO_PATH) as ScenarioDef).duplicate() as ScenarioDef
+	var spawns: Array[SpawnDef] = []
+	var seeing: Dictionary[UnitDef, UnitDef] = {}
+	for spawn: SpawnDef in scenario.spawns:
+		if not seeing.has(spawn.unit):
+			var def: UnitDef = spawn.unit.duplicate() as UnitDef
+			def.sight_range = ATTACK_SIGHT
+			seeing[spawn.unit] = def
+		var copy: SpawnDef = spawn.duplicate() as SpawnDef
+		copy.unit = seeing[spawn.unit]
+		spawns.append(copy)
+	scenario.spawns = spawns
+	return _in(World.from_scenario(scenario), impl)
 
 
 ## The parameter sets of a test that runs under both implementations (gdUnit4 calls it by name).

@@ -4,9 +4,10 @@ extends RefCounted
 ## each stepped by its own MatchLoop with the same orders, and compared after every tick: the
 ## state hash and the full state of StateDiff (every shape list, every scalar, the helpers: the
 ## flow cache, both grids and the fog). It is TARGETING's: pair() attaches that phase, and the
-## kernels' World runs TARGETING alone, with the other phases that have kernels (`WITH_PORTED`), or
-## with every phase the library has (`native_mask`). The INTEGRATE rig (lockstep_rig.gd) and the
-## SEPARATION rig (separation_lockstep_rig.gd) are left as they are; this one is a sibling.
+## kernels' World runs TARGETING alone, with the ports before FOG (`WITH_PORTED`: FLOW, SEPARATION
+## and INTEGRATE), or with every phase the library has (`ALL`: FOG as well; `native_mask`). The
+## INTEGRATE rig (lockstep_rig.gd) and the SEPARATION rig (separation_lockstep_rig.gd) are left as
+## they are; this one is a sibling.
 ##
 ## While it steps, a TargetingTallyProbe on the twin's World counts what the run reached (rows
 ## scanned, ties, fallbacks, holds, chases, line tests, long segments), so that a case can assert
@@ -15,18 +16,18 @@ extends RefCounted
 ## the phase's own (`stats[TARGET_CANDIDATES]` and `stats[LINE_CHECKS]`), and the target, the
 ## order, its target and the goal of every row against what the probe says the rule leaves in them
 ## (`last_mismatches`), so a probe that works the rule out another way than the rule fails the case
-## instead of vouching for it. P46b adds a vision rule to both Targeting versions and re-runs these
-## suites: it changes the probe's count() the same way, and everything else here, the fog included,
-## is compared already. Not a test suite.
+## instead of vouching for it. The vision rule of both Targeting versions (P46b) is in the probe's
+## count() the same way, and everything else here, the fog included, is compared already. Not a
+## test suite.
 
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const LockstepRig: GDScript = preload("res://tests/sim/support/lockstep_rig.gd")
 const TallyProbe: GDScript = preload("res://tests/sim/support/targeting_tally_probe.gd")
 const TARGETING: int = SimProbe.Phase.TARGETING
 ## The phases that the kernels' World runs in C++: TARGETING alone (so that a difference can only
-## be the TARGETING kernel's), TARGETING with the other ports that have merged (FLOW, SEPARATION and
-## INTEGRATE; a later port is in ALL), or ALL (the mask the library reports: the same as
-## WITH_PORTED until the FOG port merges, then FOG as well).
+## be the TARGETING kernel's), TARGETING with the ports before FOG (FLOW, SEPARATION and
+## INTEGRATE: FOG runs only in ALL), or ALL (the mask the library reports,
+## SimImpls.expected_mask(): WITH_PORTED and FOG).
 const ONLY: int = 1 << TARGETING
 const WITH_PORTED: int = (
 	(1 << TARGETING)

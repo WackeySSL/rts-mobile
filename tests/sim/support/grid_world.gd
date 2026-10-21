@@ -15,7 +15,10 @@ const GROUND_COST: Array[int] = [
 ## A prepared World of the map `rows`, with one unit type per entry of `move_classes` (type 0 is
 ## `move_classes[0]`). Every type has speed 120, radius 400, selection radius 500 and formation
 ## spacing 1200; a test may change those tables. `player_count` is 1, so units of player 1 can be
-## added after the call. Units are the test's to add.
+## added after the call. Units are the test's to add. The player sees every cell from the start
+## (each visible count is 1, so no stamp or unstamp brings a cell to 0): a row added to a prepared
+## World starts blind until its player's first FOG update, and the cases that order an `ATTACK` or
+## wait for a target do so from tick 0 (P46b).
 @warning_ignore("integer_division")
 static func from_rows(
 	rows: PackedStringArray, move_classes: Array = [World.MoveClass.TRACKED]
@@ -37,6 +40,7 @@ static func from_rows(
 	world.terrain_cost = PackedByteArray(GROUND_COST)
 	for cell: int in cols * rows.size():
 		world.set_terrain(cell, GROUND.find(rows[cell / cols][cell % cols]))
+	world.fog.visible.fill(1)
 	return world
 
 
