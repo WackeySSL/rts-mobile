@@ -3,9 +3,13 @@ extends GdUnitTestSuite
 ## tick and drawn-rig samples give the right percentiles (through PerfStats), pacing shares, heavy
 ## window counts and averages; the live path times a frame with a scripted clock; a runner run
 ## installs the probe and reads only the published snapshot; `summary()` holds every key and
-## `restart()` resets every sample. The verdicts are in test_perf_hud_verdicts.gd and the
-## preflight in test_perf_hud_preflight.gd (gdlint allows 20 public methods per file). Nothing
-## here logs an error: gdUnit4 fails a test that does (`push_error`), and so does verify.sh.
+## `restart()` resets every sample. The verdicts are in test_perf_hud_verdicts.gd (the lines), in
+## test_perf_hud_gate.gd (the gate's fields and the windows) and in test_perf_hud_norm.gd (the
+## per-frame normalisation), the live path and `restart()` in depth in test_perf_hud_live.gd and the
+## preflight in test_perf_hud_preflight.gd (gdlint allows 20 public methods per file). Nothing here
+## logs an error: gdUnit4 fails a test that does (`push_error`), and so does verify.sh. Headless
+## Godot draws no frame and so never emits `frame_pre_draw` or `frame_post_draw`: the cases that
+## need a frame call `_process`, `_on_pre_draw` and `_on_post_draw` themselves.
 
 const Rig: GDScript = preload("res://tests/ui/support/perf_hud_rig.gd")
 ## Every key P50a's summary holds: the plan's "Perf arena" row with ADR 0014 section 4's renames
@@ -21,6 +25,9 @@ const KEYS: PackedStringArray = [
 	"jitter_pct",
 	"heavy_jitter_pct",
 	"heavy_frames",
+	"heavy_publish_frames",
+	"fog_updates",
+	"invalid_reasons",
 	"refresh_hz_start",
 	"refresh_hz_end",
 	"period_ms",
@@ -265,9 +272,14 @@ func test_a_runner_run_installs_the_probe_and_records_published_ticks_from_the_s
 	for ms: float in s["phases_ms"]:
 		phase_total += ms
 	assert_float(phase_total).is_greater(0.0)
+	# The HUD holds what the runner held at the publish. The tick itself ran inline and timed, so
+	# a stall may have counted it late: compare with the runner's counts after the tick.
 	assert_array([s["late_ticks"], s["held_ticks"], s["latency_usec_max"]]).is_equal(
-		[2, 4, 900_000]
+		[runner.late_ticks, runner.held_ticks, runner.latency_usec_max]
 	)
+	assert_int(s["late_ticks"]).is_greater_equal(2)
+	assert_int(s["held_ticks"]).is_greater_equal(4)
+	assert_int(s["latency_usec_max"]).is_greater_equal(900_000)
 	runner.run_ticks(5)  # The finished run takes no more.
 	assert_float(hud.summary()["job_max_ms"]).is_equal(s["job_max_ms"])
 

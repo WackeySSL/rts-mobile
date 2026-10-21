@@ -5,7 +5,9 @@ extends GdUnitTestSuite
 ## normalised work; the pacing rules judge the intervals (steady 24 ms frames fail the cadence, one
 ## 70 ms interval in the heavy window the hitch rule). Thresholds come from the gate, never from a
 ## literal in the HUD, so each case moves one gate field or one sample. The samples are in
-## test_perf_hud.gd and the preflight in test_perf_hud_preflight.gd.
+## test_perf_hud.gd, the gate's own fields and the windows in test_perf_hud_gate.gd, the
+## normalisation by frames of different speeds in test_perf_hud_norm.gd and the preflight in
+## test_perf_hud_preflight.gd.
 
 const Rig: GDScript = preload("res://tests/ui/support/perf_hud_rig.gd")
 ## The verdict rows in card order (INVALID rows come before them).
@@ -113,7 +115,8 @@ func test_work_p95_covers_all_heavy_frames_and_work_tick_p95_the_publish_frames_
 	for i: int in 30:
 		slow[i * 4] = {"process": 7000}
 	Rig.pass_frames(hud, {}, slow)
-	Rig.frames(hud, 500, {"rigs": 100, "process": 29000})  # Outside the heavy window: not judged.
+	# Outside the heavy window, publish frames among them: judged by no row.
+	Rig.frames(hud, 500, {"rigs": 100, "process": 29000, "published": true})
 	Rig.ticks(hud, 900)
 	var s: Dictionary = hud.summary()
 	assert_int(s["heavy_frames"]).is_equal(1000)
@@ -226,6 +229,6 @@ func test_pacing_and_the_fog_verdict_fail_closed_without_their_measurements() ->
 		["dropped_pct_max", "heavy_dropped_pct", "cadence_pct_min", "heavy_cadence_pct"]
 	)
 	var no_fog: PerfHud = auto_free(Rig.hud())
-	Rig.frames(no_fog, 1000)
+	Rig.pass_frames(no_fog, {"fog": -1})
 	Rig.ticks(no_fog, 900)
 	assert_array(Rig.failed(no_fog.summary())).is_equal(["fog_update_p95_ms"])

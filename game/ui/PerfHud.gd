@@ -34,6 +34,10 @@ const ROWS: Array = [
 	["job_p99_ms", "job_p99_ms", "job_p99_ms", "ms raw job p99", false],
 	["draw_calls_max", "draw_calls_p95", "draw_calls_max", "calls p95", false],
 ]
+## Rows that fail without samples of their own (a missing measurement never passes): the row's name
+## and the summary key that counts its samples. The publish frames of the heavy window are a class
+## apart, so a run in which no frame published leaves the window full and the class empty.
+const NEEDS: Dictionary = {"work_tick_p95_ms": "heavy_publish_frames"}
 
 @export var runner: MatchRunner
 @export var gate: PerfGateDef = PerfGateDef.new()
@@ -204,13 +208,14 @@ func record_snapshot(snap: MatchSnapshot) -> void:
 		return
 	_col(&"job").append(snap.job_usec / 1000.0)
 	_col(&"step").append(snap.step_usec / 1000.0)
-	if snap.phase_usec.size() == SimProbe.Phase.COUNT:
+	var usec: PackedInt64Array = snap.phase_usec
+	if usec.size() == SimProbe.Phase.COUNT:
 		for phase: int in SimProbe.Phase.COUNT:
-			_phase_sum[phase] += snap.phase_usec[phase]
+			_phase_sum[phase] += usec[phase]
 		_phase_ticks += 1
 		var cells: int = snap.stats[World.Stat.FLOW_CELLS] if not snap.stats.is_empty() else -1
 		if cells == flow_cells_per_tick:
-			_col(&"flow").append(snap.phase_usec[SimProbe.Phase.FLOW] / 1000.0)
+			_col(&"flow").append(usec[SimProbe.Phase.FLOW] / 1000.0)
 	_alive = snap.unit_count()
 	_last_hash = snap.last_hash
 	if snap.tick % CHECKPOINT_EVERY == 0:
@@ -307,6 +312,7 @@ func summary() -> Dictionary:
 		"dropped": _count(everything, drop, 1),
 		"dropped_pct": _pct(_count(everything, drop, 1), everything.size()),
 		"heavy_frames": heavy.size(),
+		"heavy_publish_frames": publish.size(),
 		"heavy_dropped": _count(heavy_ms, drop, 1),
 		"heavy_dropped_pct": _pct(_count(heavy_ms, drop, 1), heavy.size()),
 		"cadence_pct": 100.0 * period / mean_ms if mean_ms > 0.0 else 0.0,
@@ -327,6 +333,8 @@ func summary() -> Dictionary:
 		"fog_update_p95_ms": _p(_col(&"fog"), 95),
 		"fog_update_p95_norm_ms": _norm_fog(),
 		"fog_updates": _col(&"fog").size(),
+		# The main thread's whole process time, not the layers' own _process time that ADR 0011
+		# section 5 means: a layer-time seam can narrow it (P50b).
 		"view_p95_ms": _p(_take(&"process", heavy), 95),
 		"render_cpu_p95_ms": _p(_take(&"render", heavy), 95),
 		"draw_calls_p95": roundi(_p(_take(&"calls", heavy), 95)),
@@ -440,7 +448,11 @@ func _verdicts(s: Dictionary) -> Array[String]:
 	for reason: String in invalid_reasons():
 		rows.append("INVALID: %s" % reason)
 	for row: Array in ROWS:
-		rows.append(_judge(row[0], s[row[1]], gate.get(row[2]), row[3], row[4]))
+		var needs: String = NEEDS.get(row[0], "")
+		if needs != "" and s[needs] == 0:
+			rows.append(_check(row[0], false, "no %s" % needs))
+		else:
+			rows.append(_judge(row[0], s[row[1]], gate.get(row[2]), row[3], row[4]))
 	if s["tick_mode"] == WORKER:
 		rows.append(_judge("late_ticks_max", late_ticks, gate.late_ticks_max, "late ticks"))
 	else:
@@ -474,8 +486,9 @@ func _rows(heavy: bool, published: int) -> PackedInt32Array:
 	var rows: PackedInt32Array = PackedInt32Array()
 	var rigs: PackedFloat64Array = _col(&"rigs")
 	var flags: PackedFloat64Array = _col(&"published")
+	var heavy_rigs: int = gate.heavy_rigs
 	for i: int in rigs.size():
-		if (not heavy or rigs[i] >= gate.heavy_rigs) and (published < 0 or flags[i] == published):
+		if (not heavy or rigs[i] >= heavy_rigs) and (published < 0 or flags[i] == published):
 			rows.append(i)
 	return rows
 
@@ -528,8 +541,9 @@ func _pct(count: int, total: int) -> float:
 func _extra_slots(intervals: PackedFloat64Array, period: float) -> Array:
 	var bins: Array = [0, 0, 0, 0]
 	var slot: float = _slot_ms()
+	var slots: float = gate.drop_slots
 	for interval: float in intervals:
-		var extra: int = floori((interval - period) / slot + gate.drop_slots) if slot > 0.0 else 0
+		var extra: int = floori((interval - period) / slot + slots) if slot > 0.0 else 0
 		bins[clampi(extra, 0, 3)] += 1
 	return bins
 

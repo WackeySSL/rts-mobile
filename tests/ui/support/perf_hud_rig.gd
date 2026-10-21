@@ -20,14 +20,15 @@ const FRAME: Dictionary = {
 const BURST: PackedFloat64Array = [25.0, 25.0, 25.0, 25.0]
 
 
-## A HUD on `gate` (the script defaults without one), restarted and preflighted.
-static func hud(gate: PerfGateDef = null) -> PerfHud:
+## A HUD on `gate` (the script defaults without one), restarted and preflighted on the kept samples
+## of `burst`.
+static func hud(gate: PerfGateDef = null, burst: PackedFloat64Array = BURST) -> PerfHud:
 	var out: PerfHud = PerfHud.new()
 	if gate != null:
 		out.gate = gate
 	out.refresh_source = func() -> float: return 60.0
 	out.max_fps_source = func() -> int: return 0
-	out.burst_step = func() -> PackedFloat64Array: return BURST
+	out.burst_step = func() -> PackedFloat64Array: return burst
 	out.debug_build = false
 	out.restart()
 	out.run_preflight(false, true)
