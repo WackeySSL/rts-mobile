@@ -9,8 +9,9 @@ extends GdUnitTestSuite
 ## identical Worlds, one running the GDScript phase and one the C++ kernel, and compares their full
 ## state (StateDiff) as well as the values the rule gives. The crafted rule cases are in
 ## test_targeting_kernel_cases.gd, the index cases in test_targeting_kernel_indexes.gd, the line
-## tests in test_targeting_kernel_lines.gd; the 900-tick lockstep is P41n2. The module's own suites
-## (test_targeting*.gd, test_engagement*.gd) run under both implementations too.
+## tests in test_targeting_kernel_lines.gd; the 900-tick lockstep (P41n2) is in
+## test_targeting_lockstep*.gd. The module's own suites (test_targeting*.gd, test_engagement*.gd)
+## run under both implementations too.
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")

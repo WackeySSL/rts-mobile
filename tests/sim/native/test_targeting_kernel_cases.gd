@@ -12,7 +12,7 @@ extends GdUnitTestSuite
 ## two identical Worlds, one with the GDScript phase and one with the kernel, and compares the
 ## whole state (StateDiff); the values the rule gives are asserted where the case pins one. The
 ## module's own cases (test_targeting*.gd, test_engagement*.gd) run under both implementations too;
-## the 900-tick lockstep is P41n2.
+## the 900-tick lockstep (P41n2) is in test_targeting_lockstep*.gd.
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
