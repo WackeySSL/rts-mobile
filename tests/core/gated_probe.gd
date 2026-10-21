@@ -1,17 +1,20 @@
 extends SimProbe
-## A SimProbe for the worker tests (plan P38w), installed as a runner's `probe`, so it gets every
-## begin() and mark() of Sim.step on the thread that runs the job. begin() counts the jobs under a
-## Mutex and flags a job that begins before the one before it ended (its mark of REMOVE or a later
-## phase). It can delay every job by a set number of ms, and hold one chosen job in begin() on the
-## probe's own Semaphore until the test calls release(). The hold is a try_wait() loop with
-## OS.delay_msec(1) steps that gives up after CAP_MSEC and lets the job end, because the runner's
-## join (wait_to_finish()) has no timeout and a worker left blocked would hang CI. CAP_MSEC is half
-## the runner's wait cap, so a runner freed over a held job still gets its job back before the
-## join's wait gives up with an error. release() is idempotent. Not a test suite. It has its own
-## file because an inner class may not extend a script, and it never names itself
+## A SimProbe for the worker tests (plans P38w and P38w2), installed as a runner's `probe`, so it
+## gets every begin() and mark() of Sim.step on the thread that runs the job. begin() counts the
+## jobs under a Mutex and flags a job that begins before the one before it ended (its mark of
+## LAST_MARK, the last phase of a tick). It can delay every job by a set number of ms, and hold one
+## chosen job in begin() on the probe's own Semaphore until the test calls release(). The hold is a
+## try_wait() loop with OS.delay_msec(1) steps that gives up after CAP_MSEC and lets the job end,
+## because the runner's join (wait_to_finish()) has no timeout and a worker left blocked would hang
+## CI. CAP_MSEC is half the runner's wait cap, so a runner freed over a held job still gets its job
+## back before the join's wait gives up with an error. release() is idempotent. Not a test suite.
+## It has its own file because an inner class may not extend a script, and it never names itself
 ## (tests/project/test_inner_classes_extend_engine_classes.gd).
 
 @warning_ignore("integer_division") const CAP_MSEC: int = MatchRunner.WAIT_CAP_MSEC / 2
+## The last mark of a tick: Sim.step marks every phase in id order, the last one before COUNT last
+## (FOG since P46), so a job's window ends there.
+const LAST_MARK: int = SimProbe.Phase.COUNT - 1
 
 ## Jobs begun so far.
 var begin_count: int:
@@ -98,7 +101,7 @@ func begin() -> void:
 
 
 func mark(phase: int) -> void:
-	if phase >= SimProbe.Phase.REMOVE:
+	if phase >= LAST_MARK:
 		_mutex.lock()
 		_inside = false
 		_mutex.unlock()

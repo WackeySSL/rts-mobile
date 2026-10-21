@@ -3,6 +3,9 @@ extends RefCounted
 ## The fog of war of every player (ADR 0010 section 1); players are 1..player_count, blocks are
 ## indexed player - 1. All state stamp() changes lives in Packed arrays or int members, sized by
 ## configure() and add_mask(), so a C++ kernel can write it in place (ADR 0013 section 2).
+## stamp() has a C++ twin in the FOG kernel (core/fog.cpp, P46n), which FogUpdate.run calls when
+## the World runs that phase natively; the GDScript stamp stays for World.prepare(), the unstamp of
+## World.remove_dead and the web path, and a change to it edits both and passes the kernel's tests.
 
 ## Same value as World.MILLI_PER_TILE (a test pins the pair).
 const MILLI_PER_TILE: int = 1000

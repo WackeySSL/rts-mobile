@@ -25,8 +25,10 @@ const SLOTS: int = 8
 ## does not read: max_rows, map_cols, map_rows, map_w, map_h, move_cost, type_speed and
 ## type_move_class). TARGETING's 35 are the names kernel_targeting.cpp gets or sets (P41n; it was
 ## 32: max_rows, hp and type_speed lose its bit, and line_check_period_ticks, nav_cell, field,
-## nav_next, best_dist and stall gain it).
-const LIST_SIZES: Dictionary[int, int] = {1: 26, 3: 35, 5: 20, 6: 49, 10: 29}
+## nav_next, best_dist and stall gain it). FOG's 25 are the names kernel_fog.cpp gets or sets
+## (P46n; it was 29: max_rows, map_cols, map_rows and type_speed lose its bit, type_sight stays
+## because the pad mask is the size of that table).
+const LIST_SIZES: Dictionary[int, int] = {1: 26, 3: 35, 5: 20, 6: 49, 10: 25}
 ## A status is the table index of the first bad name times FAULT_COUNT, plus its fault.
 const FAULT_PHASE: int = 1
 const FAULT_OWNER: int = 2
@@ -92,8 +94,8 @@ const FLOW_NAMES: Array[String] = [
 ## only one phase uses.
 const PHASES_OF: Dictionary[String, Array] = {
 	"WORLD.hp": [],
-	"WORLD.max_rows": [10],
-	"WORLD.type_speed": [6, 10],
+	"WORLD.max_rows": [],
+	"WORLD.type_speed": [6],
 	"WORLD.line_check_period_ticks": [3, 6],
 	"WORLD.order_target": [3],
 	"WORLD.target": [3],
@@ -353,7 +355,7 @@ func test_the_bound_methods_are_the_contract_and_none_takes_a_packed_array() -> 
 			assert_bool(packed).override_failure_message(label).is_false()
 	# No test-only entry (ADR 0013 section 2): a port adds its kernel's name here.
 	var bound: Array[String] = ["abi_version", "phases", "build_info", "check_world", "flow"]
-	bound.append_array(["separation", "integrate", "targeting"])
+	bound.append_array(["separation", "integrate", "targeting", "fog"])
 	assert_array(methods).contains_exactly_in_any_order(bound)
 
 
