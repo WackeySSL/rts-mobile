@@ -4,7 +4,8 @@ name: CI
 # export, all through the scripts a developer runs locally. "android-debug-apk" (ADR 0005) follows it,
 # after it installs the NDK and builds the kernel libraries (ADR 0013 section 10), and on a push to main
 # "android-dev-release" publishes that APK as the rolling pre-release.
-# "native-clang" runs the native suites on a clang library (ADR 0013 section 10). "sanitizer-changes" and
+# "native-clang" runs the native suites on a clang library (ADR 0013 section 10) and "determinism-arm64" (P51b) the
+# determinism suites on an arm64 Linux runner. "sanitizer-changes" and
 # "sanitizers" (P57) check the native code under UBSan and AddressSanitizer on pull requests that touch it.
 on:
   pull_request:
@@ -201,6 +202,67 @@ jobs:
 
       - name: Check the native suites ran (check-native-tests.sh)
         run: bash scripts/ci/check-native-tests.sh --require test_golden_hashes
+
+  # P51b (ADR 0013 section 10): the determinism suites on arm64 Linux, the architecture of the phone. The official
+  # Godot 4.7.2 Linux arm64 editor (install-godot.sh picks it on an arm64 host) loads a library that build-native.sh
+  # builds for the host with clang at the release optimisation (use_llvm=yes, optimize=speed). One run-tests.sh call
+  # plays the tests/sim/native suites, the two determinism suites and the golden hashes under both implementations
+  # (none of them reads a clock, so this job times nothing and prints no PERF line), and the check requires the
+  # three suites that live outside tests/sim/native. Not required. Whether the repository may use the
+  # ubuntu-24.04-arm runner is shown by the run of this job.
+  determinism-arm64:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The key names the architecture: the editor differs, the web templates beside it do not.
+      - name: Cache Godot editor and web export templates
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.local/opt/godot-${{ env.GODOT_VERSION }}
+            ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
+          key: godot-${{ env.GODOT_VERSION }}-linux-arm64-web-${{ hashFiles('scripts/ci/install-godot.sh', 'scripts/ci/remote_zip.py') }}
+
+      - name: Install Godot (arm64 editor + web no-threads templates only)
+        run: bash scripts/ci/install-godot.sh
+
+      - name: Install the native toolchain (SCons, clang, binutils)
+        run: |
+          pipx install "scons==${SCONS_VERSION}"
+          sudo apt-get install -y --no-install-recommends binutils clang
+
+      # --arch arm64 is the host's architecture: build-native.sh exits 2 on another one, so a runner that
+      # is not arm64 fails here and not in the editor.
+      - name: Read the native cache key
+        id: native-key
+        run: |
+          key="$(bash scripts/build-native.sh --arch arm64 --compiler clang --optimize speed --print-cache-key)"
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+
+      - name: Cache godot-cpp and the SCons object cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            native/godot-cpp
+            ${{ env.SCONS_CACHE }}
+          key: ${{ steps.native-key.outputs.key }}
+
+      - name: Build the library (arm64, clang, optimize=speed)
+        run: bash scripts/build-native.sh --arch arm64 --compiler clang --optimize speed
+
+      # One call, because check-native-tests.sh reads one results.xml and run-tests.sh deletes the report of an
+      # earlier call. No discovery gate as in native-clang: the suites exist since P54, and a folder that lost them
+      # fails the check's floor.
+      - name: Run the determinism suites (gdUnit4)
+        run: |
+          bash scripts/run-tests.sh -a res://tests/sim/native -a res://tests/sim/test_determinism.gd -a res://tests/sim/test_world_hash.gd -a res://tests/perf/test_golden_hashes.gd
+
+      - name: Check the native suites ran (check-native-tests.sh)
+        run: bash scripts/ci/check-native-tests.sh --require test_golden_hashes --require test_determinism --require test_world_hash
 
   # ADR 0013 section 10 (P57): the sanitizer job runs on a pull request that touches native/**, game/sim/**,
   # data/** or tests/sim/native/**, because a World column, a rule or a twin change can break a kernel without

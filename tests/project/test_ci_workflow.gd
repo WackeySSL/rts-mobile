@@ -35,6 +35,36 @@ const GATE_RUN: String = (
 	+ " -a res://tests/perf/test_golden_hashes.gd; fi"
 )
 const GATE_CHECK_RUN: String = CHECK_RUN + " --require test_golden_hashes"
+## P51b: the determinism job on arm64 Linux (ADR 0013 section 10).
+const ARM64_JOB: String = "  determinism-arm64:"
+const ARM64_RUNNER: String = "    runs-on: ubuntu-24.04-arm"
+## --arch arm64 is the host's architecture, which build-native.sh refuses to build on any other.
+const ARM64_FLAGS: String = " --arch arm64 --compiler clang --optimize speed"
+const ARM64_CACHE_STEP: String = "Cache Godot editor and web export templates"
+const ARM64_CACHE_KEY: String = (
+	"key: godot-${{ env.GODOT_VERSION }}-linux-arm64-web-"
+	+ "${{ hashFiles('scripts/ci/install-godot.sh', 'scripts/ci/remote_zip.py') }}"
+)
+const ARM64_GODOT_STEP: String = "Install Godot (arm64 editor + web no-threads templates only)"
+const ARM64_INSTALL_RUN: Array[String] = [
+	"run: |",
+	'pipx install "scons==${SCONS_VERSION}"',
+	"sudo apt-get install -y --no-install-recommends binutils clang",
+]
+const ARM64_BUILD_STEP: String = "Build the library (arm64, clang, optimize=speed)"
+const ARM64_RUN_STEP: String = "Run the determinism suites (gdUnit4)"
+## The native suites and the three suites of the plan, in the one run-tests.sh call that the
+## check reads.
+const ARM64_SUITES: Array[String] = [
+	"res://tests/sim/native",
+	"res://tests/sim/test_determinism.gd",
+	"res://tests/sim/test_world_hash.gd",
+	"res://tests/perf/test_golden_hashes.gd",
+]
+const ARM64_CHECK_RUN: String = (
+	CHECK_RUN + " --require test_golden_hashes --require test_determinism --require test_world_hash"
+)
+const GODOT_SCRIPT: String = "res://scripts/ci/install-godot.sh"
 ## P51: the verify job's summary copies the PERF lines of the verify log.
 const SUMMARY_STEP: String = "Job summary"
 const PERF_PATTERN: String = "^PERF sim (units=|impl=native)"
@@ -303,6 +333,53 @@ func test_native_clang_job_builds_with_clang_at_speed_and_gates_gdunit4_on_disco
 	_assert_step(job, GATE_STEP, ["run: |", GATE_RUN])
 	_assert_step(job, CHECK_STEP, [GATE_CHECK_RUN])
 	_assert_order(job, [KEY_STEP, CACHE_STEP, BUILD_STEP, GATE_STEP, CHECK_STEP])
+
+
+## P51b (ADR 0013 section 10): the arm64 job runs on the arm64 runner, installs the arm64 editor
+## under a cache key that names the architecture, builds the library for its own host with clang
+## at speed, plays the native suites, the two determinism suites and the golden hashes in one
+## call, and the check requires the three suites outside tests/sim/native. None of the three
+## reads a clock (the job times nothing), and install-godot.sh holds a pin for each editor build.
+func test_arm64_job_builds_a_clang_library_and_runs_the_determinism_suites() -> void:
+	var lines: PackedStringArray = _lines("ci.yml")
+	var job: PackedStringArray = _job(lines, ARM64_JOB)
+	assert_str(job[0]).is_equal(ARM64_RUNNER)
+	var cache: Array = Array(_step(job, ARM64_CACHE_STEP))
+	assert_array(cache).has_size(7)
+	assert_str(cache[1]).starts_with("uses: actions/cache@")
+	cache.remove_at(1)
+	var wanted: Array = ["- name: " + ARM64_CACHE_STEP, "with:", "path: |"]
+	assert_array(cache).contains_exactly(wanted + GODOT_CACHE_PATHS + [ARM64_CACHE_KEY])
+	_assert_step(job, ARM64_GODOT_STEP, ["run: bash scripts/ci/install-godot.sh"])
+	_assert_step(job, INSTALL_STEP % "clang", ARM64_INSTALL_RUN)
+	var key: Array = ["id: native-key", "run: |", KEY_ASSIGN % ARM64_FLAGS, KEY_ECHO]
+	_assert_step(job, KEY_STEP, key)
+	_assert_cache_step(job)
+	_assert_step(job, ARM64_BUILD_STEP, ["run: bash scripts/build-native.sh" + ARM64_FLAGS])
+	var run: String = "bash scripts/run-tests.sh -a " + " -a ".join(ARM64_SUITES)
+	_assert_step(job, ARM64_RUN_STEP, ["run: |", run])
+	_assert_step(job, CHECK_STEP, [ARM64_CHECK_RUN])
+	var steps: Array = [ARM64_CACHE_STEP, ARM64_GODOT_STEP, INSTALL_STEP % "clang", KEY_STEP]
+	_assert_order(job, steps + [CACHE_STEP, ARM64_BUILD_STEP, ARM64_RUN_STEP, CHECK_STEP])
+	_assert_job_always_runs(job)
+	for line: String in lines:
+		assert_bool(line.contains("needs:") and line.contains("determinism")).is_false()
+	var clock: RegEx = RegEx.create_from_string("\\bTime\\.|get_ticks_")
+	assert_bool(DirAccess.dir_exists_absolute(ARM64_SUITES[0])).is_true()
+	for suite: String in ARM64_SUITES.slice(1):
+		assert_bool(FileAccess.file_exists(suite)).is_true()
+		var found: RegExMatch = clock.search(FileAccess.get_file_as_string(suite))
+		(
+			assert_object(found)
+			. override_failure_message("%s reads a clock, and this job times nothing" % suite)
+			. is_null()
+		)
+	var x86_pin: String = _pin(GODOT_SCRIPT, "EDITOR_SHA512_X86_64")
+	var arm_pin: String = _pin(GODOT_SCRIPT, "EDITOR_SHA512_ARM64")
+	var sha512: RegEx = RegEx.create_from_string("^[0-9a-f]{128}$")
+	assert_object(sha512.search(x86_pin)).is_not_null()
+	assert_object(sha512.search(arm_pin)).is_not_null()
+	assert_str(arm_pin).is_not_equal(x86_pin)
 
 
 ## ADR 0013 section 8: both jobs cache godot-cpp and SCons objects under build-native.sh's key. The
