@@ -95,6 +95,16 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
 - Chase a target only while the line to it is clear; otherwise keep the order's path.
 - Projectiles fly in their slots with an integer flight time. Rifles are hitscan.
 - Damage = base x armour-modifier percent from `data/`.
+- Vision (P46b, ADR 0010 §1): a unit acquires, keeps and locks (`ATTACK`) only an enemy whose
+  cell its player sees; `Targeting.sees(world, player, x, y)` is the rule, and the hot loops
+  inline it on aliased `fog.visible`. A held target is re-tested on the row's turn, an `ATTACK`
+  lock every tick (unseen: `ATTACK_MOVE` to the last seen position), and `Sim._enemy_target` drops
+  an `ATTACK` on an unseen enemy. Owner 0 and players past `fog.player_count` see every cell.
+- In tests: a row added after `prepare()` is blind (`fog_cell` -1) until its player's first FOG
+  update, so stamp the fog (`stamp_fog` in `tests/sim/support/targeting_worlds.gd`) or reveal it
+  before acting from tick 0. The shared builders (`targeting_rig.gd`'s `data_world` and
+  `world_of`, `grid_world.gd`'s `from_rows`) reveal the map by default; a fog case passes
+  `revealed = false`.
 
 ## Fog of war
 - Per player `visible` counts (not bit grids) and `explored` bytes, stamped from precomputed sight

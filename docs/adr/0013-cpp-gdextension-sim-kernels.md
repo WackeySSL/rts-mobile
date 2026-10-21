@@ -108,6 +108,12 @@ list of 25 names, the mask pick and the twin's guard; the P26ac note's mask 0x6A
 library reports it" were true on `f1494a5` and stay as dated records) and §3 (what `self_check`'s
 hash comparison cannot see of FOG on a device: an open item). No accepted text changed.
 
+Status note (2026-10-21, P26ae docs): after the merges of P46n2 (#141, the FOG lockstep), P46b
+(#144, the fog rules in both `Targeting` versions), P49a (#143) and P50a (#142), dated status
+notes from "P26ae docs" sit in §2 (TARGETING's checked list grows from 35 to 40 names), §3 (P46n2
+covers FOG's unhashed outputs in CI; the device side stays open) and §15 (its four summary keys
+land in P50a2, not P50a; P49a's watch lines use their names). No accepted text changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -780,6 +786,19 @@ absorbs next to the C++ phases.
     native `est_phone_p95_ms` about 8.9 -> 6.2. The plan's section P46n "As merged" holds the
     details; the 900-tick lockstep and the crafted cases are P46n2's.
 
+  Status note (2026-10-21, P26ae docs, P46n2 as merged, #141, and P46b as merged, #144), the text
+  and the notes above stay as accepted and as dated:
+  - **TARGETING's checked list** holds 40 names (the P41n note above: 35): FOG's `cols`, `rows`,
+    `cells`, `player_count` and `visible` gain `PH_T`, because the kernel applies P46b's vision
+    rule and reads them from the World (`bind/kernel_targeting.cpp`); `core/` holds no fog
+    literal, only the `TILE` mirror of `Targeting.TILE`. The twin and the kernel see every cell
+    for owner 0, an owner past `player_count` and a fog whose sides do not make its cells.
+    `tests/sim/native/test_kernel_abi.gd` pins the list sizes (`LIST_SIZES`).
+  - **The FOG lockstep** (P46n2): `tests/sim/native/test_fog_lockstep.gd`,
+    `test_fog_lockstep_cases.gd` and `test_fog_lockstep_random.gd` compare the twin and the kernel
+    after every tick, the full fog state included; `bind/kernel_fog.cpp` and `core/fog.h` name
+    them. The plan's sections P46n2 and P46b "As merged" hold the details.
+
 ### 3. Dispatch and the implementation switch
 - **`World` gains two members (P54):**
   - `kernels: Object`, where null means GDScript;
@@ -963,6 +982,11 @@ absorbs next to the C++ phases.
   the lists hold). In CI they are P46n2's to cover (the plan's row P46n: the 900-tick lockstep of
   `visible`, `explored`, `version`, the dirty lists and `listed`). The device side is an open
   item: no decision here; a later core PR or a later note takes it.
+
+  Status note (2026-10-21, P26ae docs, after P46n2, #141; the text and the note above stay as
+  accepted and as dated): P46n2 merged, so CI covers those outputs (its rig compares the whole
+  fog after every tick). The device side is unchanged and open: a small `game/core` follow-up
+  that compares the `FogGrid` arrays when FOG is in the mask would close it; no decision here.
 
 ### 4. Determinism rules for C++
 - **Language and types:**
@@ -1810,6 +1834,16 @@ that approval.
   ADR 0012's 10 % rule, on the same quantities.
 - **ADR 0012 §1-§3:** unchanged.
 - **The P46 decision point** ("start drafting the GDExtension ADR above 26.6 ms") is dropped.
+
+Status note (2026-10-21, P26ae docs, after P50a, #142, and P49a, #143; the text above stays as
+accepted): "summary keys that P50a adds" reads P50a2. P50a took its named split up front (the
+lead's decision of P26ad docs), and as merged `PerfHud.summary()` holds `phases_ms` but none of
+the four keys (`phases_p95_noncp_ms`, `job_p95_noncp_ms`, `job_minus_step_p95_cp_ms`,
+`job_minus_step_p95_noncp_ms`); P50a2 adds them, with the checkpoint split on
+`Replay.CHECKPOINT_PERIOD` as `PerfReport.job_minus_step_ms` (`tests/perf/support/perf_report.gd`)
+does. P49a's `WATCH sim job_minus_step` line already prints the two `job_minus_step` keys under
+these names, so a CI line and a card compare key by key; `WATCH sim commands` is the watch line of
+`Formation.assign` above.
 
 ## Options considered
 1. **Stay GDScript (ADR 0012 remedy steps 1 and 2 only).** Rejected. The mock alone misses
