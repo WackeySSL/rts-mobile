@@ -19,7 +19,7 @@
 ; skew (a shear ratio, the same angle on every screen), corner_detail (a count) and
 ; anti_aliasing_size (the soft edge, 1 px). Scale a constant in HudTheme.scaled() before putting
 ; one here. An entry that stays in base px is listed in metadata/base_px by its path in this file.
-; Type variations (DevButton, NumberLabel, SelectionPanel) are set by theme_type_variation on the
+; Type variations (DevButton, NumberLabel, SelectionPanel, PerfCard) are set by theme_type_variation on the
 ; node, once, in main.tscn or at build in the script.
 [gd_resource type="Theme" format=3]
 
@@ -51,4 +51,7 @@ NumberLabel/font_sizes/font_size = 20
 ; The selection panel's backdrop.
 SelectionPanel/base_type = &"PanelContainer"
 SelectionPanel/styles/panel = SubResource("StyleBoxFlat_backdrop")
+; The perf card's backdrop (PerfHud.gd, a developer tool): the same box as the selection panel's.
+PerfCard/base_type = &"PanelContainer"
+PerfCard/styles/panel = SubResource("StyleBoxFlat_backdrop")
 metadata/base_px = PackedStringArray("DevButton/font_sizes/font_size")

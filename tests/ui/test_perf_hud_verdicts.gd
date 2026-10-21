@@ -26,6 +26,8 @@ const ROWS: PackedStringArray = [
 	"late_ticks_max",
 	"fog_update_p95_ms",
 	"build",
+	"impl",
+	"golden_hashes",
 ]
 
 
@@ -36,8 +38,10 @@ func test_a_passing_run_prints_every_verdict_and_gate_pass() -> void:
 	var names: Array[String] = []
 	for line: String in s["verdicts"]:
 		names.append(line.get_slice(":", 0))
-		assert_str(line).override_failure_message(line).contains(": PASS (")
+		if not line.begins_with("impl:"):  # n/a off Android.
+			assert_str(line).override_failure_message(line).contains(": PASS (")
 	assert_array(names).is_equal(Array(ROWS))
+	assert_array(s["verdicts"]).contains(["impl: n/a (only Android requires the library)"])
 	assert_bool(s["gate_pass"]).is_true()
 	assert_array(s["verdicts"]).contains(["build: PASS (release template)"])
 	var card: PackedStringArray = hud.card_lines()
@@ -131,7 +135,7 @@ func test_work_p95_covers_all_heavy_frames_and_work_tick_p95_the_publish_frames_
 	assert_array(Rig.failed(s)).is_equal(["work_tick_p95_ms"])
 
 
-func test_the_card_lists_every_verdict_line_between_the_header_and_gate() -> void:
+func test_the_card_lists_every_verdict_line_after_the_header_and_ends_with_gate() -> void:
 	var hud: PerfHud = auto_free(Rig.hud())
 	Rig.run(hud)
 	var lines: PackedStringArray = hud.card_lines()
@@ -140,7 +144,8 @@ func test_the_card_lists_every_verdict_line_between_the_header_and_gate() -> voi
 	for line: String in verdicts:
 		assert_bool(lines.has(line)).override_failure_message(line).is_true()
 	assert_str(lines[lines.size() - 1]).is_equal("GATE: PASS")
-	assert_int(lines.size()).is_equal(verdicts.size() + 3)  # Header, held_ticks, verdicts, GATE.
+	assert_array(Array(lines.slice(1, 1 + verdicts.size()))).is_equal(verdicts)  # Right after it.
+	assert_array(Array(lines)).contains(["held_ticks 0 (no verdict)"])
 
 
 func test_late_ticks_are_judged_for_a_worker_run_and_not_applicable_for_a_sync_run() -> void:
