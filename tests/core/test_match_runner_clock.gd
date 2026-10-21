@@ -4,8 +4,9 @@ extends GdUnitTestSuite
 ## whole ticks still owed after it, keeping the part of a tick; it is at 0 after every refill and
 ## resume, and those frames do not advance it; it stops at a held boundary and restarts at 0 in the
 ## frame that publishes the held job. held_ticks counts each held job once, late_ticks the jobs
-## whose post-to-done time is above TICK_USEC, latency_usec_max the largest such time, and start()
-## resets the three.
+## whose post-to-done time is above TICK_USEC, latency_usec_max the largest such time, both counted
+## before `ticked` (a handler reads them with the published job in, and a start() in it leaves the
+## new match uncounted), and start() resets the three.
 ##
 ## The runners are built the Phase 1 way (auto_free, never in the tree) on the seed-42 perf arena
 ## and set WORKER explicitly, the exception to "headless tests run SYNC". Every runner has a gated
@@ -15,16 +16,16 @@ extends GdUnitTestSuite
 ## while a job takes real milliseconds. So every case that asserts held_ticks 0, one publish per
 ## boundary or a hash per published tick calls wait_idle() after each frame, and its result depends
 ## on the clock rule only, never on the machine's speed. A late or not-late count that a case is
-## about never rests on a fast job's real time: the late-count and held cases write the timings
-## into the finished job's snapshot after wait_idle() and before the frame that publishes it, and
-## the late, counter and forced-slow cases delay a job far past the period. late_ticks 0 for real
-## fast jobs is asserted only where the plan names it (the first frame, the hitch), with more than
-## 50 ms of margin (a fast arena job takes a few ms). Only the overlap, held, pause-during-a-hold,
-## late, counter and forced-slow cases make the gated probe hold or delay a job on purpose. The
-## cases wait only through wait_idle(), the probe's capped wait_blocked() and frame loops capped at
-## WAIT_CAP_MSEC, never a fixed sleep or a wall-clock spin, and fail when a wait returns false;
-## after_test releases every gated probe and then waits for every runner, so a case that fails
-## while a probe holds a job still leaves the worker free.
+## about never rests on a fast job's real time: the late-count, restart and held cases write the
+## timings into the finished job's snapshot after wait_idle() and before the frame that publishes
+## it, and the late, counter and forced-slow cases delay a job far past the period. late_ticks 0
+## for real fast jobs is asserted only where the plan names it (the first frame, the hitch), with
+## more than 50 ms of margin (a fast arena job takes a few ms). Only the overlap, held,
+## pause-during-a-hold, late, counter and forced-slow cases make the gated probe hold or delay a job
+## on purpose. The cases wait only through wait_idle(), the probe's capped wait_blocked() and frame
+## loops capped at WAIT_CAP_MSEC, never a fixed sleep or a wall-clock spin, and fail when a wait
+## returns false; after_test releases every gated probe and then waits for every runner, so a case
+## that fails while a probe holds a job still leaves the worker free.
 
 const GatedProbe: GDScript = preload("res://tests/core/gated_probe.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
@@ -240,9 +241,14 @@ func test_a_pause_during_a_hold_ends_in_the_first_frame_after_it() -> void:
 ## before the frames that reach the boundary, so the publish comes far more than a period after
 ## the post while the job's own run time is far under one, and post-to-done times of 40 ms,
 ## exactly TICK_USEC, TICK_USEC + 1 and 5 ms in turn. start() reset the counts and every published
-## job is one of the four, so no count depends on the machine's speed.
+## job is one of the four, so no count depends on the machine's speed. The counts are final before
+## `ticked`: a handler reads the same counts as the case after the frame, the published job in.
 func test_a_late_tick_is_counted_from_its_post_to_done_time() -> void:
 	var runner: MatchRunner = _runner(WORKER)
+	var inside: Array[Array] = []
+	runner.ticked.connect(
+		func(_tick: int) -> void: inside.append([runner.late_ticks, runner.latency_usec_max])
+	)
 	runner._process(FRAME)
 	var tick_usec: int = MatchRunner.TICK_USEC
 	var counts: Array[Array] = []
@@ -256,6 +262,31 @@ func test_a_late_tick_is_counted_from_its_post_to_done_time() -> void:
 		counts.append([runner.late_ticks, runner.latency_usec_max])
 	var expected: Array = [[0, 40_000], [0, tick_usec], [1, tick_usec + 1], [1, tick_usec + 1]]
 	assert_array(counts).is_equal(expected)
+	assert_array(inside).is_equal(expected)
+
+
+## A `ticked` handler that calls start() gets a new match with held_ticks, late_ticks and
+## latency_usec_max at 0: the publish counted its late job (post-to-done TICK_USEC + 1, written as
+## in the late-count case) into the old match before `ticked`, so nothing of it lands in the new
+## one. The handler restarts once; the frame then posts the new match's first job.
+func test_a_start_inside_ticked_leaves_the_new_match_uncounted() -> void:
+	var runner: MatchRunner = _runner(WORKER)
+	var serial: int = runner.match_serial
+	runner.ticked.connect(
+		func(_tick: int) -> void:
+			if runner.match_serial == serial:
+				runner.start()
+	)
+	runner._process(FRAME)
+	assert_bool(runner.wait_idle()).is_true()
+	var done: MatchSnapshot = runner._job.snapshot
+	done.post_usec = Time.get_ticks_usec() - POSTED_AGO_USEC
+	done.end_usec = done.post_usec + MatchRunner.TICK_USEC + 1
+	assert_array(_frames(runner, _quarters(4))).is_equal([0, 0, 0, 0])
+	var counts: Array = [runner.held_ticks, runner.late_ticks, runner.latency_usec_max]
+	assert_array(counts + [runner.match_serial - serial]).is_equal([0, 0, 0, 1])
+	var posted: MatchSnapshot = runner._job.snapshot
+	assert_array([posted.tick, posted.match_serial - serial]).is_equal([1, 1])
 
 
 ## A job delayed 100 ms is late: its post-to-done time is above TICK_USEC (the period from
