@@ -5,7 +5,8 @@
 // World.remove_dead's unstamp and World.prepare's initial stamp stay GDScript. The rules are core/fog.h's, a mirror of
 // FogUpdate.gd and FogGrid.gd; this file borrows the arrays once on entry and adds the count on exit.
 // Twin: game/sim/FogUpdate.gd (run). Tests: tests/sim/test_fog.gd, test_fog_edges.gd and test_fog_grid.gd under both
-// implementations and tests/sim/native/test_fog_kernel.gd; lockstep (P46n2): later. MIT.
+// implementations and tests/sim/native/test_fog_kernel.gd; lockstep (P46n2): tests/sim/native/test_fog_lockstep.gd,
+// test_fog_lockstep_cases.gd and test_fog_lockstep_random.gd. MIT.
 #include "sim_kernels.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
