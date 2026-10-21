@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 # Replace the rolling pre-release android-dev-latest (ADR 0005 section 6) with the debug APK that
-# the android-debug-apk job of THIS run built. Only the android-dev-release job of ci.yml calls it
-# (push to main). It deletes and recreates the release, so the caller must serialize runs: ci.yml
-# does with a concurrency group. Running it again after a failure is safe, it starts from scratch.
-# Usage: bash scripts/ci/publish-dev-release.sh DIR
-#   DIR  the downloaded CI artifact: rts-mobile-debug.apk and THIRD_PARTY_LICENSES.txt
+# the android-debug-apk job of THIS run built. Only the release jobs of ci.yml call it (push to main):
+# android-dev-release as above, and android-perf-release with the profile perf, which replaces the rolling
+# pre-release android-perf-release with the release-template perf APK of the android-perf-apk job (P51r,
+# Michael's answer 3 in the Phase 2 plan), by the same rules.
+# It deletes and recreates the release, so the caller must serialize runs: ci.yml does with a concurrency
+# group. Running it again after a failure is safe, it starts from scratch.
+# Usage: bash scripts/ci/publish-dev-release.sh DIR [dev|perf]
+#   DIR  the downloaded CI artifact: rts-mobile-debug.apk (perf: rts-mobile-perf-release.apk) and
+#        THIRD_PARTY_LICENSES.txt
+#   dev|perf  the profile, dev by default. perf is always signed with a key generated for the run (no store key).
 # Env (required): GH_TOKEN (contents: write), GITHUB_REPOSITORY, GITHUB_SHA, GITHUB_SERVER_URL and
 #   GITHUB_RUN_ID (the runner sets the last four).
-# Env (optional): KEY_KIND stable|generated|unknown (default unknown; goes into the notes),
+# Env (optional): KEY_KIND stable|generated|unknown (default unknown; goes into the notes; perf ignores it),
 #   GITHUB_STEP_SUMMARY.
 # If the live release is already on a newer commit than GITHUB_SHA (an old run re-run after a newer
 # one published), it keeps that release and exits 0, so the stable URL never goes back in time.
@@ -16,8 +21,6 @@
 # Exit: 0 ok or kept a newer release; 1 failed (a file, a gh call or a check); 2 bad usage or env.
 set -euo pipefail
 
-TAG="android-dev-latest"
-APK_NAME="rts-mobile-debug.apk"
 NOTICE_NAME="THIRD_PARTY_LICENSES.txt"
 
 die() {
@@ -27,13 +30,32 @@ die() {
   exit "$code"
 }
 
-[ $# -eq 1 ] && [ -n "$1" ] || die 2 "usage: bash scripts/ci/publish-dev-release.sh DIR"
+[ $# -ge 1 ] && [ $# -le 2 ] && [ -n "$1" ] || die 2 "usage: bash scripts/ci/publish-dev-release.sh DIR [dev|perf]"
 dir="${1%/}"
+profile="${2:-dev}"
+case "$profile" in
+  dev)
+    TAG="android-dev-latest"
+    APK_NAME="rts-mobile-debug.apk"
+    TITLE="Android dev build (latest main)"
+    intro="Rolling debug build of \`main\`. Every push to \`main\` replaces this pre-release (ADR 0005)."
+    build="debug build"
+    ;;
+  perf)
+    TAG="android-perf-release"
+    APK_NAME="rts-mobile-perf-release.apk"
+    TITLE="Android perf build (release template, latest main)"
+    intro="Rolling release-template build of \`main\` for the perf gate (ADR 0012 section 4), with the dev menu. Every push to \`main\` replaces this pre-release. It is no store build: no real ad ID and no store key."
+    build="release template with the dev menu"
+    ;;
+  *) die 2 "the profile must be dev or perf, not '$profile'" ;;
+esac
 for v in GH_TOKEN GITHUB_REPOSITORY GITHUB_SHA GITHUB_SERVER_URL GITHUB_RUN_ID; do
   [ -n "${!v:-}" ] || die 2 "$v is not set"
 done
 [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || die 2 "GITHUB_SHA is not a full commit SHA"
 key_kind="${KEY_KIND:-unknown}"
+[ "$profile" = dev ] || key_kind=generated
 case "$key_kind" in
   stable | generated | unknown) ;;
   *) die 2 "KEY_KIND must be stable, generated or unknown, not '$key_kind'" ;;
@@ -54,14 +76,14 @@ trap 'rm -rf "${work:?}"' EXIT
 if [ "$key_kind" = stable ]; then
   key_note="stable debug key: installs over an earlier android-dev-latest build signed with the same key; uninstall a PR or generated-key build first."
 else
-  key_note="key generated for this run: uninstall the previous dev build before installing."
+  key_note="key generated for this run: uninstall the previous rts-mobile build before installing."
 fi
 cat >"$work/notes.md" <<EOF
-Rolling debug build of \`main\`. Every push to \`main\` replaces this pre-release (ADR 0005).
+$intro
 
 - Commit: [\`$GITHUB_SHA\`]($repo_url/commit/$GITHUB_SHA)
 - Run: $repo_url/actions/runs/$GITHUB_RUN_ID
-- Package \`dk.appcode.rts.dev\`, arm64, debug build. SHA-256 of $APK_NAME: \`$sha256\`
+- Package \`dk.appcode.rts.dev\`, arm64, $build. SHA-256 of $APK_NAME: \`$sha256\`
 - Signing: $key_note
 - $NOTICE_NAME lists the licences of the bundled engine and must stay with the APK.
 - Download: $download_url
@@ -88,7 +110,7 @@ fi
 gh release create "$TAG" "$apk" "$notice" \
   --repo "$GITHUB_REPOSITORY" \
   --target "$GITHUB_SHA" \
-  --title "Android dev build (latest main)" \
+  --title "$TITLE" \
   --notes-file "$work/notes.md" \
   --prerelease
 

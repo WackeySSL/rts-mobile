@@ -8,7 +8,10 @@
 # the README and build-native.sh record, and that each script exits 1 when either licence file is missing or
 # empty. For export-android.sh it checks that the APK's library holds the built bytes, that libc++_shared.so is
 # required, that a failing ELF check fails the export and, from the stubs' log, which files the checks and the
-# description ran on. ci.yml runs it in android-debug-apk, next to the offline test of publish-dev-release.sh.
+# description ran on. For export-android.sh --release (P51r, the perf APK of the gate) it checks the preset and
+# the template it exports with, the release keystore variables, the library entry android.release.arm64 and the
+# three checks of that mode: not debuggable, the dev_menu feature in the pack and the release template's engine
+# library. ci.yml runs it in android-debug-apk, next to the offline test of publish-dev-release.sh.
 # Needs: bash, zip, unzip, strings (binutils), sha256sum.
 # Usage: bash scripts/ci/test-export-notices.sh      Exit: 0 all cases pass, 1 a case failed.
 set -euo pipefail
@@ -46,7 +49,7 @@ case "$*" in
     echo wasm >"$dir/index.wasm"
     printf 'project\n_custom_features\ndev_menu\n%s\n' "$STUB_PCK_EXTRA" >"$dir/index.pck"
     ;;
-  *"--export-debug Android "*)
+  *"--export-debug Android "* | *"--export-release Android perf "*)
     echo "$ANDROID_HOME/build-tools/36.0.0/apksigner sign --ks stub"
     cp "$STUB_APK" "${!#}"
     ;;
@@ -58,6 +61,12 @@ echo 'openjdk version "17.0.12" 2024-07-16' >&2
 STUB
 cat >"$root/sdk/build-tools/36.0.0/aapt2" <<'STUB'
 #!/usr/bin/env bash
+if [ "$2" = badging ]; then
+  echo "package: name='dk.appcode.rts.dev' versionCode='1' versionName=''"
+  case "$STUB_DEBUGGABLE" in badging | all) echo "application-debuggable" ;; esac
+  exit 0
+fi
+case "$STUB_DEBUGGABLE" in xmltree | all) echo 'A: http://schemas.android.com/apk/res/android:debuggable(0x0101000f)=true' ;; esac
 echo 'A: package="dk.appcode.rts.dev"'
 echo 'A: http://schemas.android.com/apk/res/android:screenOrientation(0x0101001e)=11'
 echo 'A: http://schemas.android.com/apk/res/android:name="android.permission.VIBRATE"'
@@ -68,6 +77,7 @@ echo so >"$root/apk/lib/arm64-v8a/libgodot_android.so"
 echo remap >"$root/apk/assets/scenes/main.tscn.remap"
 # The kernels library of the debug export (tree() writes its .gdextension entry and the built copy) and libc++.
 native="libsim_kernels.android.template_debug.arm64.so"
+native_release="libsim_kernels.android.template_release.arm64.so"
 echo kernels >"$root/apk/lib/arm64-v8a/$native"
 echo libcxx >"$root/apk/lib/arm64-v8a/libc++_shared.so"
 # readelf and nm answer by the content of the file they are given (scripts/ci/test-android-elf.sh tests the checks
@@ -112,6 +122,22 @@ variant() { # NAME [FILE]: stub.apk as NAME.apk, with FILE (under apk/) removed,
 variant badbytes
 variant nocxx lib/arm64-v8a/libc++_shared.so
 variant nolib "lib/arm64-v8a/$native"
+# The perf APK of the release export (P51r): the release library instead of the debug one, and the project settings
+# that carry the custom features (assets/project.binary). The engine library "so" must be the release template's.
+rapk() { # NAME [ENGINE-LIBRARY-BYTES [FEATURE]]: the release APK as NAME.apk
+  rm -rf "$root/r" && cp -R "$root/apk" "$root/r"
+  rm "$root/r/lib/arm64-v8a/$native"
+  echo kernels >"$root/r/lib/arm64-v8a/$native_release"
+  echo "${2:-so}" >"$root/r/lib/arm64-v8a/libgodot_android.so"
+  printf 'project\n_custom_features\n%s\n' "${3:-dev_menu}" >"$root/r/assets/project.binary"
+  (cd "$root/r" && zip -q -r -D "$root/$1.apk" lib assets)
+}
+rapk release
+rapk release-wrong-engine sa
+rapk release-no-feature so other
+mkdir -p "$root/tpl/lib/arm64-v8a"
+echo so >"$root/tpl/lib/arm64-v8a/libgodot_android.so"
+(cd "$root/tpl" && zip -q -r -D "$root/android_release.apk" lib)
 echo keystore >"$root/keystore"
 for dir in "$root/home/.local/share/godot/export_templates/4.7.2.stable" \
   "$root/home/Library/Application Support/Godot/export_templates/4.7.2.stable"; do
@@ -119,29 +145,42 @@ for dir in "$root/home/.local/share/godot/export_templates/4.7.2.stable" \
   for name in version.txt web_nothreads_debug.zip web_nothreads_release.zip android_debug.apk; do
     echo stub >"$dir/$name"
   done
+  cp "$root/android_release.apk" "$dir/android_release.apk"
 done
+cp -R "$root/home" "$root/home-no-release"
+rm "$root/home-no-release/.local/share/godot/export_templates/4.7.2.stable/android_release.apk"
 
 # tree NAME: a copy of the scripts and licence folders under $root/NAME. The scripts change into
 # the folder above their own, so they read and write inside the copy.
 tree() {
   mkdir -p "$root/$1/scripts/ci" "$root/$1/docs" "$root/$1/native/bin"
-  printf 'android.debug.arm64 = "res://native/bin/%s"\n' "$native" >"$root/$1/native/sim_kernels.gdextension"
+  printf 'android.debug.arm64 = "res://native/bin/%s"\nandroid.release.arm64 = "res://native/bin/%s"\n' "$native" "$native_release" \
+    >"$root/$1/native/sim_kernels.gdextension"
   echo kernels >"$root/$1/native/bin/$native"
+  echo kernels >"$root/$1/native/bin/$native_release"
   cp "$repo/scripts/export-web.sh" "$repo/scripts/export-android.sh" "$repo/scripts/seed-extension-list.sh" \
     "$repo/scripts/build-native.sh" "$repo/scripts/verify-allowlist.txt" "$root/$1/scripts/"
   cp "$repo/scripts/ci/check-android-elf.sh" "$repo/scripts/ci/godot-cpp-notice.sh" "$root/$1/scripts/ci/"
   cp -R "$repo/docs/licenses" "$root/$1/docs/licenses"
 }
 
-# run NAME web|android: runs the export script in the tree NAME and sets rc and out.
+# run NAME web|android|release: runs the export script in the tree NAME (release: export-android.sh --release, with the
+# release keystore variables unless NO_RELEASE_KEYS is set) and sets rc and out.
 run() {
   rc=0
   : >"$root/$1.stub.log"
-  out="$(cd "$root/$1" && env -i PATH="$root/bin:$PATH" HOME="$root/home" TMPDIR="$root/tmp" GODOT="$root/bin/godot" \
-    JAVA_HOME="$root/jdk" ANDROID_HOME="$root/sdk" STUB_APK="${STUB_APK:-$root/stub.apk}" STUB_ALIGN="${STUB_ALIGN:-0x4000}" \
-    STUB_PCK_EXTRA="${STUB_PCK_EXTRA:-}" STUB_LOG="$root/$1.stub.log" \
+  script="$2" args="" apk="$root/stub.apk" keys=()
+  if [ "$2" = release ]; then
+    script=android args=--release apk="$root/release.apk"
+    if [ -z "${NO_RELEASE_KEYS:-}" ]; then
+      keys=(GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$root/keystore" GODOT_ANDROID_KEYSTORE_RELEASE_USER=u GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=p)
+    fi
+  fi
+  out="$(cd "$root/$1" && env -i PATH="$root/bin:$PATH" HOME="${STUB_HOME:-$root/home}" TMPDIR="$root/tmp" GODOT="$root/bin/godot" \
+    JAVA_HOME="$root/jdk" ANDROID_HOME="$root/sdk" STUB_APK="${STUB_APK:-$apk}" STUB_ALIGN="${STUB_ALIGN:-0x4000}" \
+    STUB_PCK_EXTRA="${STUB_PCK_EXTRA:-}" STUB_DEBUGGABLE="${STUB_DEBUGGABLE:-}" STUB_LOG="$root/$1.stub.log" \
     GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$root/keystore" GODOT_ANDROID_KEYSTORE_DEBUG_USER=u \
-    GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=p bash "scripts/export-$2.sh" 2>&1)" || rc=$?
+    GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=p ${keys[@]+"${keys[@]}"} bash "scripts/export-$script.sh" $args 2>&1)" || rc=$?
 }
 
 # (1) Both scripts run through with the stubs and write a notice that ends with the godot-cpp licence, after
@@ -286,6 +325,48 @@ if [ "$rc" = 4 ] && grep -Fq "bash scripts/build-native.sh --platform android --
 else
   fail "android: wanted exit 4 and the build-native.sh command, got exit $rc: $(tail -n 1 <<<"$out")"
 fi
+
+# (6) P51r: export-android.sh --release exports the preset "Android perf" with the release template, the release keystore
+# and the library entry android.release.arm64, and then runs the checks of that mode. Each case changes one thing.
+release_case() { # TREE WANTED-EXIT WANTED-TEXT, with STUB_APK, STUB_DEBUGGABLE, STUB_HOME or NO_RELEASE_KEYS in the environment
+  tree "$1"
+  run "$1" release
+  if [ "$rc" = "$2" ] && grep -Fq -- "$3" <<<"$out"; then
+    pass "release: $1"
+  else
+    fail "release: $1 (wanted exit $2 and '$3', got exit $rc: $(tail -n 2 <<<"$out" | tr '\n' ' '))"
+  fi
+}
+release_case "the perf APK is exported and checked" 0 "export-android: OK build/android/rts-mobile-perf-release.apk"
+grep -Fq "release template confirmed: not debuggable, dev_menu packed" <<<"$out" ||
+  fail "release: the output does not say that the release template is confirmed"
+grep -Fq "lib/arm64-v8a/$native_release is the library CI built" <<<"$out" ||
+  fail "release: the packed library is not the release one ($native_release)"
+perf="$root/the perf APK is exported and checked/build/android"
+[ ! -e "$perf/rts-mobile-debug.apk" ] || fail "release: a debug APK was written"
+if head -n 1 "$perf/THIRD_PARTY_LICENSES.txt" | grep -Fxq "rts-mobile Android perf (release template) build: third-party licences" &&
+  cmp -s <(tail -n +2 "$root/ok/build/web/THIRD_PARTY_LICENSES.txt") <(tail -n +2 "$perf/THIRD_PARTY_LICENSES.txt"); then
+  pass "release: the notice names the perf build and agrees with the web build's after its header line"
+else
+  fail "release: the notice header or content is wrong"
+fi
+STUB_DEBUGGABLE=badging release_case "a debuggable badging fails" 1 "the APK is debuggable"
+STUB_DEBUGGABLE=xmltree release_case "a debuggable manifest dump fails" 1 "the manifest is debuggable"
+STUB_APK="$root/release-no-feature.apk" release_case "a pack without the dev_menu feature fails" 1 "the APK lacks the dev_menu custom feature"
+STUB_APK="$root/release-wrong-engine.apk" release_case "an engine library that is not the release template's fails" 1 "is not the one of the release template"
+STUB_APK="$root/stub.apk" release_case "a debug-library APK fails the packed-library check" 1 "the APK lacks lib/arm64-v8a/$native_release"
+STUB_HOME="$root/home-no-release" release_case "the release template is required" 4 "android_release.apk"
+NO_RELEASE_KEYS=1 release_case "the release keystore variables are required" 5 "GODOT_ANDROID_KEYSTORE_RELEASE_PATH is not set"
+tree release-no-built
+rm "$root/release-no-built/native/bin/$native_release"
+run release-no-built release
+if [ "$rc" = 4 ] && grep -Fq "bash scripts/build-native.sh --platform android --arch arm64 --target template_release" <<<"$out"; then
+  pass "release: exit 4 when the release library was not built, and the message says how"
+else
+  fail "release: wanted exit 4 and the template_release build command, got exit $rc: $(tail -n 1 <<<"$out")"
+fi
+# The debug export runs none of those checks: the dev APK is debuggable and has no dev_menu feature in its pack.
+STUB_DEBUGGABLE=all native_case "the debug export does not run the release checks" 0 "export-android: OK build/android/rts-mobile-debug.apk"
 
 if [ "$failures" -ne 0 ]; then
   echo "test-export-notices: $failures case(s) failed" >&2
