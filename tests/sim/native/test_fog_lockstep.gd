@@ -25,9 +25,10 @@ extends GdUnitTestSuite
 ## held to the rule: the rig fails a case when an array that the phase writes (visible, explored,
 ## listed, the dirty blocks and counts and flags, the versions, `fog_cell` and the cells covered)
 ## is not what the probe leaves. The floors are measured on main at 5984880 (P47p, P46n, P41n2
-## and everything before) and set at about two thirds of the figure measured (the way
-## test_targeting_lockstep.gd and the other lockstep suites derive their own); the figures are
-## beside each floor.
+## and everything before) and in the combined tree of the batch with P46b's vision rule (c8cd7a6),
+## and set at about two thirds of the lower of the two figures (the way test_targeting_lockstep.gd
+## and the other lockstep suites derive their own, from one figure); the figures of both are beside
+## each floor, so that each floor holds in either tree, whichever of the two PRs merges first.
 ##
 ## The plain arena run reaches no first stamp (prepare() stamps every row), no block that
 ## overflows (the 64 x 64 map has a block of 1,024 cells per player, and the flips of one update
@@ -37,10 +38,12 @@ extends GdUnitTestSuite
 ## sides, and the cases of test_fog_lockstep_cases.gd and the states of
 ## test_fog_lockstep_random.gd reach each on its own.
 ##
-## For P46b, which adds the vision of a candidate to both Targeting versions and so changes what
-## the arena's units do (where they go, who dies and when): the floors of the arena runs, the
-## waves, the controls and the changed rules are re-derived there, and the crafted cases and the
-## random states are not affected, as they do not run Targeting on units that fight.
+## P46b adds the vision of a candidate to both Targeting versions and so changes what the arena's
+## units do (where they go, who dies and when). The floors of the arena runs, the waves, the
+## controls, the changed rules and the walkers hold both without and with that rule (measured in
+## both trees), so P46b re-derives nothing here. The crafted cases and the random states are not
+## affected, as they do not run Targeting on units that fight (their types have no weapon; their
+## tallies, measured in both trees, are the same).
 
 const Rig: GDScript = preload("res://tests/sim/support/fog_lockstep_rig.gd")
 const Orders: GDScript = preload("res://tests/sim/support/fog_orders.gd")
@@ -52,10 +55,15 @@ const CONTROLS_TICKS: int = 450
 const CONTROLS_SEEDS: Array[int] = [1, 2, 3, 4]
 const CONTROLS_MASKS: Array[int] = [Rig.ONLY, Rig.ONLY, Rig.WITH_PORTED, Rig.ALL]
 ## The plain arena run (the same figures with the other ports, and with the library, in C++),
-## measured: 25,855 turns, 21,397 stays, 4,458 restamps, 4,458 unstamps, 1,168,008 covered,
-## 578,260 overlap_stamps, 579,332 overlap_unstamps, 5,744 flips_on, 4,672 flips_off, 2,270
-## explored_new, 10,224 listed, 192 relisted, 2,451 version_flips, 6,465 quiet_stamps, 101
-## deaths, 101 deaths_stamped, 34 death_on_turn, 102 clipped, 88 clip_w, 14 clip_n.
+## measured on 5984880: 25,855 turns, 21,397 stays, 4,458 restamps, 4,458 unstamps, 1,168,008
+## covered, 578,260 overlap_stamps, 579,332 overlap_unstamps, 5,744 flips_on, 4,672 flips_off, 2,270
+## explored_new, 10,224 listed, 192 relisted, 2,451 version_flips, 6,465 quiet_stamps, 101 deaths,
+## 101 deaths_stamped, 34 death_on_turn, 102 clipped, 88 clip_w, 14 clip_n; with P46b's vision rule
+## (the combined check of 2026-10-21, c8cd7a6): 25,926 turns, 21,478 stays, 4,448 restamps, 4,448
+## unstamps, 1,163,817 covered, 576,127 overlap_stamps, 577,211 overlap_unstamps, 5,765 flips_on,
+## 4,714 flips_off, 2,279 explored_new, 10,304 listed, 175 relisted, 2,460 version_flips, 6,436
+## quiet_stamps, 98 deaths, 98 deaths_stamped, 29 death_on_turn, 117 clipped, 103 clip_w, the rest
+## unchanged.
 const ARENA_FLOORS: Dictionary[StringName, int] = {
 	&"turns": 17000,
 	&"stays": 14000,
@@ -68,20 +76,24 @@ const ARENA_FLOORS: Dictionary[StringName, int] = {
 	&"flips_off": 3100,
 	&"explored_new": 1500,
 	&"listed": 6800,
-	&"relisted": 120,
+	&"relisted": 110,
 	&"version_flips": 1600,
-	&"quiet_stamps": 4300,
-	&"deaths": 67,
-	&"deaths_stamped": 67,
-	&"death_on_turn": 22,
+	&"quiet_stamps": 4200,
+	&"deaths": 65,
+	&"deaths_stamped": 65,
+	&"death_on_turn": 19,
 	&"clipped": 68,
 	&"clip_w": 58,
 	&"clip_n": 9
 }
-## The arena under random waves, measured: 34,588 turns, 28,429 stays, 6,159 restamps, 6,159
-## unstamps, 1,610,454 covered, 799,407 overlap_stamps, 800,486 overlap_unstamps, 5,820 flips_on,
-## 4,741 flips_off, 2,265 explored_new, 10,411 listed, 150 relisted, 2,567 version_flips, 9,751
-## quiet_stamps, 79 deaths, 79 deaths_stamped, 27 death_on_turn.
+## The arena under random waves, measured on 5984880: 34,588 turns, 28,429 stays, 6,159 restamps,
+## 6,159 unstamps, 1,610,454 covered, 799,407 overlap_stamps, 800,486 overlap_unstamps, 5,820
+## flips_on, 4,741 flips_off, 2,265 explored_new, 10,411 listed, 150 relisted, 2,567 version_flips,
+## 9,751 quiet_stamps, 79 deaths, 79 deaths_stamped, 27 death_on_turn; with P46b's vision rule (the
+## combined check of 2026-10-21, c8cd7a6): 35,815 turns, 29,127 stays, 6,688 restamps, 6,688
+## unstamps, 1,764,628 covered, 876,093 overlap_stamps, 877,384 overlap_unstamps, 6,221 flips_on,
+## 4,930 flips_off, 2,605 explored_new, 10,984 listed, 167 relisted, 2,918 version_flips, 10,458
+## quiet_stamps, 72 deaths, 72 deaths_stamped, 19 death_on_turn.
 const WAVES_FLOORS: Dictionary[StringName, int] = {
 	&"turns": 23000,
 	&"stays": 18000,
@@ -97,43 +109,55 @@ const WAVES_FLOORS: Dictionary[StringName, int] = {
 	&"relisted": 100,
 	&"version_flips": 1700,
 	&"quiet_stamps": 6500,
-	&"deaths": 52,
-	&"deaths_stamped": 52,
-	&"death_on_turn": 18
+	&"deaths": 48,
+	&"deaths_stamped": 48,
+	&"death_on_turn": 12
 }
-## The controls_test runs of the four seeds together, measured: 23,359 turns, 16,987 stays, 6,372
-## restamps, 6,372 unstamps, 1,893,855 covered, 934,354 overlap_stamps, 935,559 overlap_unstamps,
-## 12,575 flips_on, 11,367 flips_off, 5,266 explored_new, 23,677 listed, 265 relisted, 5,023
-## version_flips, 7,721 quiet_stamps, 19 deaths, 19 deaths_stamped, 7 death_on_turn, 400 clipped,
-## 328 clip_w, 28 clip_e, 42 clip_n, 2 clip_s.
+## The controls_test runs of the four seeds together, measured on 5984880: 23,359 turns, 16,987
+## stays, 6,372 restamps, 6,372 unstamps, 1,893,855 covered, 934,354 overlap_stamps, 935,559
+## overlap_unstamps, 12,575 flips_on, 11,367 flips_off, 5,266 explored_new, 23,677 listed, 265
+## relisted, 5,023 version_flips, 7,721 quiet_stamps, 19 deaths, 19 deaths_stamped, 7 death_on_turn,
+## 400 clipped, 328 clip_w, 28 clip_e, 42 clip_n, 2 clip_s; with P46b's vision rule (the combined
+## check of 2026-10-21, c8cd7a6): 23,719 turns, 17,590 stays, 6,129 restamps, 6,129 unstamps,
+## 1,818,468 covered, 896,704 overlap_stamps, 897,673 overlap_unstamps, 12,528 flips_on, 11,563
+## flips_off, 4,871 explored_new, 23,768 listed, 323 relisted, 5,062 version_flips, 7,196
+## quiet_stamps, 9 deaths, 9 deaths_stamped, 4 death_on_turn, 560 clipped, 358 clip_w, 136 clip_n,
+## 38 clip_s, the rest unchanged. With the rule the four runs reach 9 deaths (1, 3, 0 and 5 in the
+## seeds 1 to 4) and 4 on a turn (0, 3, 0 and 1), the lowest figures of the five sets; the floors
+## of 6 and 2 are two thirds of them, so a set of runs with no death on a turn still fails.
 const CONTROLS_FLOORS: Dictionary[StringName, int] = {
 	&"turns": 15000,
 	&"stays": 11000,
-	&"restamps": 4200,
-	&"unstamps": 4200,
+	&"restamps": 4000,
+	&"unstamps": 4000,
 	&"covered": 1200000,
-	&"overlap_stamps": 620000,
-	&"overlap_unstamps": 620000,
+	&"overlap_stamps": 590000,
+	&"overlap_unstamps": 590000,
 	&"flips_on": 8300,
 	&"flips_off": 7500,
-	&"explored_new": 3500,
+	&"explored_new": 3200,
 	&"listed": 15000,
 	&"relisted": 170,
 	&"version_flips": 3300,
-	&"quiet_stamps": 5100,
-	&"deaths": 12,
-	&"deaths_stamped": 12,
-	&"death_on_turn": 4,
+	&"quiet_stamps": 4700,
+	&"deaths": 6,
+	&"deaths_stamped": 6,
+	&"death_on_turn": 2,
 	&"clipped": 260,
 	&"clip_w": 210,
 	&"clip_e": 18,
 	&"clip_n": 28,
 	&"clip_s": 1
 }
-## The arena on changed rules, measured: 19,474 turns, 15,068 stays, 4,406 restamps, 4,406
-## unstamps, 1,146,880 covered, 568,886 overlap_stamps, 569,690 overlap_unstamps, 4,554 flips_on,
-## 3,750 flips_off, 1,751 explored_new, 8,089 listed, 215 relisted, 2,153 version_flips, 6,659
-## quiet_stamps, 100 deaths, 100 deaths_stamped, 25 death_on_turn, 80 clipped, 80 clip_w.
+## The arena on changed rules, measured on 5984880: 19,474 turns, 15,068 stays, 4,406 restamps,
+## 4,406 unstamps, 1,146,880 covered, 568,886 overlap_stamps, 569,690 overlap_unstamps, 4,554
+## flips_on, 3,750 flips_off, 1,751 explored_new, 8,089 listed, 215 relisted, 2,153 version_flips,
+## 6,659 quiet_stamps, 100 deaths, 100 deaths_stamped, 25 death_on_turn, 80 clipped, 80 clip_w; with
+## P46b's vision rule (the combined check of 2026-10-21, c8cd7a6): 19,839 turns, 15,300 stays, 4,539
+## restamps, 4,539 unstamps, 1,190,812 covered, 590,496 overlap_stamps, 591,724 overlap_unstamps,
+## 4,910 flips_on, 3,682 flips_off, 2,102 explored_new, 8,397 listed, 195 relisted, 2,096
+## version_flips, 6,982 quiet_stamps, 96 deaths, 96 deaths_stamped, 26 death_on_turn, 88 clipped, 88
+## clip_w.
 const CHANGED_FLOORS: Dictionary[StringName, int] = {
 	&"turns": 12000,
 	&"stays": 10000,
@@ -143,24 +167,30 @@ const CHANGED_FLOORS: Dictionary[StringName, int] = {
 	&"overlap_stamps": 370000,
 	&"overlap_unstamps": 370000,
 	&"flips_on": 3000,
-	&"flips_off": 2500,
+	&"flips_off": 2400,
 	&"explored_new": 1100,
 	&"listed": 5300,
-	&"relisted": 140,
-	&"version_flips": 1400,
+	&"relisted": 130,
+	&"version_flips": 1300,
 	&"quiet_stamps": 4400,
-	&"deaths": 66,
-	&"deaths_stamped": 66,
+	&"deaths": 64,
+	&"deaths_stamped": 64,
 	&"death_on_turn": 16,
 	&"clipped": 53,
 	&"clip_w": 53
 }
-## The arena under random walkers, measured: 16,032 turns, 3,596 stays, 12,236 restamps, 12,236
-## unstamps, 2,303,958 covered, 821,005 overlap_stamps, 821,667 overlap_unstamps, 335,165
+## The arena under random walkers, measured on 5984880: 16,032 turns, 3,596 stays, 12,236 restamps,
+## 12,236 unstamps, 2,303,958 covered, 821,005 overlap_stamps, 821,667 overlap_unstamps, 335,165
 ## flips_on, 326,121 flips_off, 7,376 explored_new, 501,783 listed, 49,517 relisted, 15,781
 ## version_flips, 8,891 quiet_stamps, 342 deaths, 341 deaths_stamped, 133 death_on_turn, 14,764
 ## clipped, 7,089 clip_w, 4,722 clip_e, 7,199 clip_n, 4,795 clip_s, 9,041 clip_corner, 109,986
-## overflows, 296 full_blocks, 200 first_stamps, 799 off_map.
+## overflows, 296 full_blocks, 200 first_stamps, 799 off_map; with P46b's vision rule (the combined
+## check of 2026-10-21, c8cd7a6): 17,706 turns, 3,925 stays, 13,551 restamps, 13,551 unstamps,
+## 2,574,942 covered, 923,538 overlap_stamps, 923,056 overlap_unstamps, 369,360 flips_on, 358,988
+## flips_off, 535,000 listed, 54,774 relisted, 17,568 version_flips, 9,764 quiet_stamps, 370 deaths,
+## 369 deaths_stamped, 16,095 clipped, 7,679 clip_w, 5,208 clip_e, 7,812 clip_n, 5,267 clip_s, 9,871
+## clip_corner, 138,574 overflows, 363 full_blocks, 230 first_stamps, 901 off_map, the rest
+## unchanged.
 const WALKERS_FLOORS: Dictionary[StringName, int] = {
 	&"turns": 10000,
 	&"stays": 2300,
