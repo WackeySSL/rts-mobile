@@ -102,9 +102,8 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
   an `ATTACK` on an unseen enemy. Owner 0 and players past `fog.player_count` see every cell.
 - In tests: a row added after `prepare()` is blind (`fog_cell` -1) until its player's first FOG
   update, so stamp the fog (`stamp_fog` in `tests/sim/support/targeting_worlds.gd`) or reveal it
-  before acting from tick 0. The shared builders (`targeting_rig.gd`'s `data_world` and
-  `world_of`, `grid_world.gd`'s `from_rows`) reveal the map by default; a fog case passes
-  `revealed = false`.
+  before acting from tick 0. `targeting_rig.gd`'s `data_world` and `world_of` reveal the map
+  unless a fog case passes `revealed = false`; `grid_world.gd`'s `from_rows` always reveals.
 
 ## Fog of war
 - Per player `visible` counts (not bit grids) and `explored` bytes, stamped from precomputed sight

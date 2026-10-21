@@ -29,8 +29,8 @@ jitter diagnostic.
 
 Status note (2026-10-21, P26ae docs): §4 carries a dated status note on P49a (#143) as merged (the
 line-check bound, the catastrophic cap on both `PERF` lines, the two places a sim PR re-pins) and
-on P46b (#144), which re-pinned nothing; §5's view time carries a sentence on P50a's
-`view_p95_ms` (#142). No accepted text changed.
+on P46b (#144), which re-pinned nothing; the §4 note's last bullet, on §5's view time, carries a
+sentence on P50a's `view_p95_ms` (#142). No accepted text changed.
 
 ## Context
 ROADMAP Phase 2 asks for three things:
