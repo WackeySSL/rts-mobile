@@ -34,12 +34,14 @@ static func data_world(cols: int = 20, rows: int = 12, revealed: bool = true) ->
 
 
 ## A World of `cols` x `rows` open tiles with the shipped rules, one type per entry of `units`
-## (type 0 is `units[0]`) and two players, with the map revealed to both unless `revealed` is
-## false (see the top of the file).
-static func world_of(units: Array, cols: int = 20, rows: int = 12, revealed: bool = true) -> World:
+## (type 0 is `units[0]`) and `players` players (two, as the shipped scenarios), with the map
+## revealed to all of them unless `revealed` is false (see the top of the file).
+static func world_of(
+	units: Array, cols: int = 20, rows: int = 12, revealed: bool = true, players: int = 2
+) -> World:
 	var scenario: ScenarioDef = ScenarioDef.new()
 	scenario.map_size_tiles = Vector2i(cols, rows)
-	scenario.player_count = 2
+	scenario.player_count = players
 	scenario.rules = load(RULES_PATH) as RulesDef
 	scenario.roster.assign(units)
 	var world: World = World.from_scenario(scenario)

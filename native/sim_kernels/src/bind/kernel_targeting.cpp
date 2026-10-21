@@ -8,10 +8,11 @@
 // and adds the two counts on exit.
 // Twin: game/sim/Targeting.gd (run, sees, _engage). Tests: tests/sim/test_targeting*.gd and tests/sim/test_engagement*.gd under
 // both implementations, tests/sim/test_fog_rules.gd (the vision rule) and tests/sim/native/test_targeting_kernel.gd,
-// test_targeting_kernel_cases.gd, test_targeting_kernel_indexes.gd and test_targeting_kernel_lines.gd; lockstep (P41n2, P46b):
-// test_targeting_lockstep.gd (the arena, random waves, the controls_test seeds, changed rules), _rules.gd (the cadences, the
-// weapon roster, 64 x 64 maps, the empty grid) and _cases.gd (ties on a lattice, fallbacks, seeded random states, the vision
-// cases) in tests/sim/native/. MIT.
+// test_targeting_kernel_cases.gd, test_targeting_kernel_indexes.gd and test_targeting_kernel_lines.gd, with
+// tests/sim/test_fog_rules_shapes.gd (wide and tall maps); lockstep (P41n2, P46b): test_targeting_lockstep.gd (the arena, random
+// waves, the controls_test seeds, changed rules), _rules.gd (the cadences, the weapon roster, 64 x 64 maps, the empty grid), _cases.gd
+// (ties on a lattice, fallbacks, seeded random states, the vision cases) and _fog.gd (fogs whose sides do not make their cells, the
+// fog's player count, a layout other than the map's) in tests/sim/native/. MIT.
 #include "sim_kernels.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>

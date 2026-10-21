@@ -15,6 +15,9 @@ extends GdUnitTestSuite
 ## - a neutral subject (owner 0, an armed neutral: none ships) has no grid and sees every cell;
 ## - `Targeting.sees`, the reference of the rule, at the edges of the grid;
 ## - two runs give the same hashes, and the C++ run gives those of the GDScript run.
+## Every map here is square, so the cell rule on a wide and a tall map, and on a fog whose sides do
+## not make its cells, is test_fog_rules_shapes.gd's (and the two versions against each other on
+## those fogs, tests/sim/native/test_targeting_lockstep_fog.gd's).
 ##
 ## Hand-built worlds on a 30 x 30 map with literal numbers. A gun (type 0) sees 3000, acquires at
 ## 5000 and shoots 4000; its sight disc is the tiles with dx^2 + dy^2 <= 9 from its own tile, so the
