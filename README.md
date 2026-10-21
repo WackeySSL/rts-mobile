@@ -34,6 +34,12 @@ Status: pre-alpha. See [docs/ROADMAP.md](docs/ROADMAP.md).
   Android SDK licences on behalf of AppCode ApS: pass it only with the owner's consent. Without the flag it
   installs nothing through sdkmanager, and stops with exit 5 when cmdline-tools, platform-tools, build-tools
   or the NDK is missing.
+- `bash scripts/export-android.sh --release` builds the perf APK of the gate into `build/android`: the release
+  template with the dev menu (preset "Android perf"), signed with a key that CI generates for each run and
+  checked for debuggability, the `dev_menu` feature and the release engine library. CI builds it after
+  `verify` on a push to `main` and on a manual run; `android-perf-release` is its rolling pre-release. It
+  needs the release keystore variables (`GODOT_ANDROID_KEYSTORE_RELEASE_PATH`, `_USER`, `_PASSWORD`) and
+  `bash scripts/ci/install-godot.sh --android-release`.
 
 ## Licence
 - Code: MIT, see [LICENSE](LICENSE).
