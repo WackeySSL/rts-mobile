@@ -13,7 +13,7 @@ extends GdUnitTestSuite
 
 const Rig: GDScript = preload("res://tests/ui/support/perf_hud_rig.gd")
 ## Every key P50a's summary holds: the plan's "Perf arena" row with ADR 0014 section 4's renames
-## and additions. The golden, `impl` and ADR 0013 keys come with P50a2.
+## and additions, then P50a2's golden, implementation and ADR 0013 section 15 keys.
 const KEYS: PackedStringArray = [
 	"runs",
 	"frames",
@@ -78,6 +78,16 @@ const KEYS: PackedStringArray = [
 	"alive",
 	"hash_hex",
 	"checkpoints",
+	"golden_match",
+	"golden_checked",
+	"golden_mismatch_tick",
+	"sim_impl",
+	"native_phases",
+	"self_check",
+	"phases_p95_noncp_ms",
+	"job_p95_noncp_ms",
+	"job_minus_step_p95_cp_ms",
+	"job_minus_step_p95_noncp_ms",
 	"invalid",
 	"layer_mode",
 	"screen",
@@ -241,7 +251,7 @@ func test_checkpoints_are_the_published_hashes_every_150_ticks_as_world_hash_hex
 	assert_str(s["checkpoints"][2]["hash_hex"]).is_equal(World.hash_hex(450 * 1000 + 7))
 	assert_float(s["refresh_hz_start"]).is_equal(60.0)  # Read again when the run ended.
 	assert_float(s["refresh_hz_end"]).is_equal(59.94)
-	# P and V stay at the start rate (a rate change above 1 % is P50a2's INVALID, below it moot).
+	# P and V stay at the start rate (a rate change above 1 % is INVALID, below it moot).
 	assert_float(hud.period_ms()).is_equal_approx(1000.0 / 60.0, 0.0001)
 	assert_float(hud.drop_ms()).is_equal_approx(25.0, 0.0001)  # P + 1.5 V, V = 1000 / 60.
 	assert_float(s["job_max_ms"]).is_equal(10.0)
@@ -257,16 +267,17 @@ func test_a_runner_run_installs_the_probe_and_records_published_ticks_from_the_s
 	hud.run_ticks = 150
 	add_child(hud)  # _ready installs the TimingProbe with set_probe() and listens to `ticked`.
 	hud.restart()
-	var label: Label = hud.get_child(0)
-	assert_str(label.text).contains("recording 150 ticks")
+	var header: Label = hud.get_node("Column/Header")
+	assert_bool(hud.visible).is_false()  # The card shows at the end of the run, not before.
 	runner.run_ticks(149)
-	assert_str(label.text).contains("recording")
+	assert_bool(hud.visible).is_false()
 	runner.late_ticks = 2  # The runner's counts, copied at the publish.
 	runner.held_ticks = 4
 	runner.latency_usec_max = 900_000
 	runner.run_ticks(1)  # Tick 150: the checkpoint, and the end of the run.
 	var s: Dictionary = hud.summary()
-	assert_str(label.text).contains("GATE:")
+	assert_bool(hud.visible).is_true()
+	assert_str(header.text).contains("GATE:")
 	assert_str(s["tick_mode"]).is_equal("SYNC")
 	assert_array(s["checkpoints"]).has_size(1)
 	assert_int(s["checkpoints"][0]["tick"]).is_equal(150)
