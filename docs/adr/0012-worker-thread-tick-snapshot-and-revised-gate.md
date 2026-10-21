@@ -52,6 +52,10 @@ Status note (2026-10-14, P26r docs): §2 carries a dated status note on the bans
 worker-file scan bans 11 names (also `emit_signal`; `get_node` as a prefix), and `game/sim` bans
 `emit_signal(` and the object parsers too.
 
+Status note (2026-10-21, P26ac docs): §1 carries a dated status note on the guarded access as
+P38w1b (#131) merged it: a refused getter returns null and a refused setter assigns nothing,
+both after one `push_error`; `set_probe` installs nothing at the cap. No accepted text changed.
+
 ## Context
 The Phase 2 plan (P26s) says that a contract the phone probe contradicts changes through a new ADR
 before P34 starts. The probe ran on 2026-10-12. The full reports are comments on PR #35.
@@ -340,6 +344,21 @@ release-template facts on the official `linux_release` template):
   so a test that installs a probe or swaps in a World would stop doing it without a word. The
   `world`, `loop` and `replay` setters assign the private field under the getters' rule (for
   tests: main thread, no job `RUNNING`); the `probe` setter calls `set_probe()`.
+
+  Status note (2026-10-21, P26ac docs, after P38w1b, #131; the text above stays as accepted):
+  as merged in `game/core/MatchRunner.gd`, `world`, `loop`, `replay` and `probe` are properties
+  over the private fields `_world`, `_loop`, `_replay` and `_probe`, each guarded by
+  `_shared(what)`, which asks the pure static `shared_access_allowed(mode, state)` (`mode !=
+  TickMode.WORKER or state != HandOff.RUNNING`) with the runner's resolved mode and state. A
+  refused getter returns null with one `push_error` naming the property; a refused `world`,
+  `loop` or `replay` setter logs the same error and assigns nothing (the text above says only
+  that the getters call `push_error`). The probe is installed through
+  `set_probe(new_probe: SimProbe)` (the parameter name avoids shadowing the property), which
+  waits through `wait_idle()` and installs nothing when that wait reaches its cap.
+  `static func live_workers() -> int` reads a static counter that a thread's start raises and
+  its join lowers. Tests close the guard without the error through the seam
+  `tests/core/support/guard_runner.gd`, which overrides `_shared`; no test triggers the error
+  itself. The plan's contract row `MatchRunner` v1 ("P38w1b as merged") holds the details.
 - **`start()`** (both modes) waits for and discards a job in flight, builds the World and the
   `MatchLoop`, increments `match_serial`, creates a new snapshot, sets its `match_serial` and
   `last_hash` (from the new `MatchLoop`), captures the tick-0 snapshot into it with

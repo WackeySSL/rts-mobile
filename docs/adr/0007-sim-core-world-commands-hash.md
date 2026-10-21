@@ -31,6 +31,10 @@ P39b (#111) added, `tests/sim/support/hand_push_probe.gd`, which writes the Worl
 `SEPARATION` mark, a recorded exception to "A probe never reads or writes the World"; no
 accepted text changed.
 
+Status note (2026-10-21, P26ac docs): §4 carries a dated status note on steps 11 and 12 as P46
+(#129) merged them: the fog update is two calls, `FogUpdate.begin` before `remove_dead()` and
+`FogUpdate.run` after the `REMOVE` mark; no accepted text changed.
+
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state
 hash. Phase 1 shipped the v0 shapes of ADR 0003: a struct-of-arrays `World` that never removes a
@@ -283,6 +287,20 @@ World at a mark, such as `tests/sim/support/phase_view_probe.gd` and `separation
 call themselves a test's in their headers; this one is the first that writes.) Since P41b (#114),
 step 5 (the `TARGETING` mark) also holds engagement, `Targeting._engage` (the plan's section P41
 "As merged").
+
+Status note (2026-10-21, P26ac docs, after P46, #129; the text above stays as accepted): steps 11
+and 12 as merged. Step 12 is two calls, not one: `Sim.step` calls `FogUpdate.begin(world)` right
+before `world.remove_dead()` (it empties the dirty list of each player whose turn it is this
+tick), and `FogUpdate.run(world)`, followed by `probe.mark(Phase.FOG)`, after the `REMOVE` mark.
+A single call after `REMOVE` would empty the list that a death on the owner's own update tick had
+just filled (one in three deaths with two players and a period of 3), and the view would keep
+those cells visible; `test_the_cells_of_a_death_on_the_owners_update_tick_stay_listed` in
+`tests/sim/test_fog.gd` pins it. Step 11's `remove_dead()` now unstamps a dying row's sight disc
+(§3's fog unstamping, which the P26j note above left to P46) when the fog has cells and the row
+was stamped (`fog_cell >= 0`); `explored` stays. A probe sees `FogUpdate.begin` inside the span
+that the `REMOVE` mark closes. The marks keep their order (`FOG` is the last), and no phase id
+changes. The plan's contract rows `Sim` and `FogUpdate` and its section P46 "As merged" hold the
+details.
 
 ### 5. Command v1
 `Command` keeps every v0 field and gains `payload: PackedInt32Array` (type-specific ints, empty

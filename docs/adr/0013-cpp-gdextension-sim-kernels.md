@@ -95,6 +95,13 @@ Status note (2026-10-20, P26aa docs): after the merge of P42b (#122, the PROJECT
 dated status note from "P26aa docs" sits in §1 (clause (a) read for `PROJECTILES` and `FIRE` at
 P42b's `PERF` line: P42n is not triggered there). No accepted text changed.
 
+Status note (2026-10-21, P26ac docs): after the merges of P46 (#129, the fog update) and P41n
+(#132, the fourth kernel, TARGETING), dated status notes from "P26ac docs" sit in §1 (the lead's
+reading of P46's `PERF` line: only TARGETING meets clause (a) and P41n ports it, FOG meets clause
+(b) and P46n ports it, P37n2, P41g and P42n are not triggered) and §2 (the library's mask 0x6A,
+TARGETING's checked list of 35 names, `line_clear` in `core/`, the empty-grid guard). No accepted
+text changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -379,6 +386,18 @@ absorbs next to the C++ phases.
   at P42b's `PERF` line (PR #122's run) `projectiles` is 0.028 ms and `fire` 0.015 ms, so clause
   (a) gives about 0.12 and 0.07 ms against 0.67 ms for the two phases. P42n is not triggered at
   P42b's line; both phases are read again at P46's line.
+
+  Status note (2026-10-21, P26ac docs, P46 as merged, #129; the text above stays as accepted):
+  the lead's decision at P46's `PERF` line, the first with the full tick (both lines, the seed-42
+  arena with fog, PR #129's clause (a) table). Only `TARGETING` sits on clause (a)'s line
+  (0.146-0.161 ms, a phase mean x 4.4 of about 0.64-0.71 ms against 0.67 ms), and P41n (#132)
+  ports it. `INTENTS` (about 0.021 ms), `GRIDS` (0.045), `FIRE` (0.017) and `PROJECTILES` (0.027)
+  stay far below, so the conditional rows P37n2, P41g and P42n are not triggered, and by the rule
+  above those four phases stay GDScript. `FOG` misses (a) on its mean (0.060 ms) but meets
+  clause (b): it is bursty (an active-tick mean of 0.29 ms and a p95 of 0.74 ms; it adds about
+  0.3-0.4 ms to the CI p95, which is +2.5-4.5 ms on `est_phone_p95_ms`), and P46n ports it
+  unconditionally, as planned. The plan's rows P37n2, P41g and P42n and its section P46 "As
+  merged" record it.
 - **GDScript only:**
   - `COMMANDS`: validation, `Formation.assign`;
   - `REMOVE`: `remove_dead`, a stable compaction over the shape lists through `get(name)`;
@@ -701,6 +720,30 @@ absorbs next to the C++ phases.
     milli-tiles, a pair's reach is at most 2,097,151 and `reach * coincident_divisor` is at most
     3,037,000,499. Past that the production build wraps like the twin (`-fwrapv`) and the
     sanitizer build aborts.
+
+  Status note (2026-10-21, P26ac docs, P41n as merged, #132), the text above stays as accepted:
+  - **The fourth kernel.** `bind/kernel_list.h` gains `K0(targeting,
+    world_access::PHASE_TARGETING)`, so the library's phase mask is 0x6A (FLOW 1, TARGETING 3,
+    SEPARATION 5, INTEGRATE 6), the mask `tests/sim/support/sim_impls.gd`'s `EXPECTED_PHASES`
+    gives. 0x46A is this ADR's five-phase mask with FOG (bit 10): `tests/sim/test_kernel_dispatch.gd`
+    uses it, less one phase's bit, as a spy mask, and `tests/sim/native/test_kernel_abi.gd` pins
+    it as the table's `PH_ALL` and as the mask of the five phases; no library reports it.
+  - **TARGETING's checked list** holds the 35 names the kernel gets or sets (it held 32 before P41n):
+    `nav_cell`, `field`, `nav_next`, `best_dist`, `stall` and `line_check_period_ticks` gain
+    `PH_T`, and `max_rows`, `hp` and `type_speed`, which the kernel never reads, lose it, as
+    INTEGRATE's and SEPARATION's lists were trimmed in P37n and P39n. The table still holds 107
+    entries, and `hp` now carries no phase bit.
+  - **`line_clear` in `core/`.** `FixedMath.line_clear` landed with the kernel that calls it, in
+    `native/sim_kernels/src/core/fixed_math.h` and `.cpp`; an INTENTS port (P37n2, not triggered
+    at P46's line, §1's note above) would take it as it is.
+  - **The empty-grid guard.** The twin's empty-map test changed from `cols == 0` to `cols >= 1
+    and lines >= 1 and side >= 1` (`cells` in `Targeting.run`, and the same `cells` in
+    `Pass::acquire` of `core/targeting.cpp`): a grid with no rows of cells or a cell side below 1
+    finds nobody, because C++ cannot divide by the side; `SpatialGrid.configure` never makes such
+    a grid. It is the one change to the twin's rule.
+  - The `check_world` refusal path has no test for any of the four kernels (the log scan rejects
+    the `ERROR` line), as P26y docs' note recorded for three. The plan's section P41n "As merged"
+    holds the details.
 
 ### 3. Dispatch and the implementation switch
 - **`World` gains two members (P54):**
