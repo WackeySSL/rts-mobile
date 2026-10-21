@@ -3,7 +3,8 @@ extends RefCounted
 ## has a native kernel: `use(world, impl)` makes a World run the GDScript phases or the C++ ones,
 ## and a test loops over IMPLS. Not a test suite. A port PR adds its phase to EXPECTED_PHASES and
 ## its line to native/sim_kernels/src/bind/kernel_list.h; FLOW (P30n) is the first,
-## INTEGRATE (P37n) the second, SEPARATION (P39n) the third, TARGETING (P41n) the fourth.
+## INTEGRATE (P37n) the second, SEPARATION (P39n) the third, TARGETING (P41n) the fourth,
+## FOG (P46n) the fifth.
 
 enum Impl { GDSCRIPT = 0, NATIVE = 1 }
 
@@ -14,13 +15,15 @@ const IMPLS: Array[int] = [Impl.GDSCRIPT, Impl.NATIVE]
 ## `func _both() -> Array[Array]: return SimImpls.CASES.duplicate(true)` and its tests are
 ## `func test_x(impl: int, _test_parameters := _both())`, which gdformat may wrap.
 const CASES: Array[Array] = [[Impl.GDSCRIPT], [Impl.NATIVE]]
-## The SimProbe.Phase ids the library must report (FLOW, TARGETING, SEPARATION and INTEGRATE until
-## the next port). The ids are fixed (SimProbe), and test_kernel_abi.gd checks the C++ mirrors.
+## The SimProbe.Phase ids the library must report (FLOW, TARGETING, SEPARATION, INTEGRATE and FOG
+## until the next port). The ids are fixed (SimProbe), and test_kernel_abi.gd checks the C++
+## mirrors.
 const EXPECTED_PHASES: Array[int] = [
 	SimProbe.Phase.FLOW,
 	SimProbe.Phase.TARGETING,
 	SimProbe.Phase.SEPARATION,
-	SimProbe.Phase.INTEGRATE
+	SimProbe.Phase.INTEGRATE,
+	SimProbe.Phase.FOG
 ]
 
 

@@ -111,9 +111,9 @@ struct Entry {
 // ints that rules read come before the arrays they size, and `fields` before the slots.
 // clang-format off
 #define SIM_CHECKED_TABLE(X) \
-	X(WORLD, max_rows, INT, NONE, PH_G) \
-	X(WORLD, map_cols, INT, NONE, PH_T | PH_I | PH_G) \
-	X(WORLD, map_rows, INT, NONE, PH_T | PH_I | PH_G) \
+	X(WORLD, max_rows, INT, NONE, 0) \
+	X(WORLD, map_cols, INT, NONE, PH_T | PH_I) \
+	X(WORLD, map_rows, INT, NONE, PH_T | PH_I) \
 	X(WORLD, map_w, INT, NONE, PH_I) \
 	X(WORLD, map_h, INT, NONE, PH_I) \
 	X(WORLD, map_version, INT, NONE, PH_I) \
@@ -156,7 +156,7 @@ struct Entry {
 	X(WORLD, stats, I32, STATS, PH_F | PH_T | PH_S | PH_G) \
 	X(WORLD, events, I32, ANY, 0) \
 	X(WORLD, move_cost, BYTES, COSTS, PH_F | PH_T | PH_I) \
-	X(WORLD, type_speed, I32, ANY, PH_I | PH_G) \
+	X(WORLD, type_speed, I32, ANY, PH_I) \
 	X(WORLD, type_radius, I32, TYPES, PH_S) \
 	X(WORLD, type_spacing, I32, TYPES, PH_I) \
 	X(WORLD, type_armour, I32, TYPES, PH_T) \

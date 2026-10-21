@@ -4,7 +4,12 @@ extends GdUnitTestSuite
 ## row, and the hash. Hand-built worlds on a 30 x 30 map with literal numbers; the expected
 ## cells come from a brute force over the whole map, never from FogGrid. Units stand idle (speed
 ## 0) and the tests move them by writing the position between steps.
+##
+## Every case runs under both implementations (ADR 0013 section 3, P46n): the GDScript phase and
+## the C++ kernel, through `_both()` and `_in()`; the hash case also compares the two runs.
 
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
+const FOG: int = SimProbe.Phase.FOG
 const COLS: int = 30
 const MAP: int = 30000
 ## Type indexes: 0 sees 6000 (113 cells), 1 sees 2000 (13 cells).
@@ -14,13 +19,16 @@ const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
 const FogProbe: GDScript = preload("res://tests/sim/support/fog_view_probe.gd")
 
 
-func test_prepare_stamps_every_players_vision_with_the_mask_of_its_type() -> void:
+func test_prepare_stamps_every_players_vision_with_the_mask_of_its_type(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var world: World = _world()
 	world.add_unit(1, SCOUT, _centre(10), _centre(10))
 	world.add_unit(1, SCOUT, _centre(12), _centre(10))
 	world.add_unit(2, POST, _centre(20), _centre(5))
 	world.add_unit(0, SCOUT, _centre(3), _centre(3))
 	world.prepare()
+	_in(world, impl)
 	assert_array(world.fog_cell).is_equal([310, 312, 170, -1])
 	var overlap: PackedInt32Array = _counts([_disc(10, 10, 6000), _disc(12, 10, 6000)])
 	assert_array(_block(world, 1)).is_equal(overlap)
@@ -36,12 +44,15 @@ func test_prepare_stamps_every_players_vision_with_the_mask_of_its_type() -> voi
 	assert_array(world.fog.mask_radius).is_equal([6, 2, 0])
 
 
-func test_a_type_with_no_entry_sees_its_own_tile_and_a_world_without_a_map_has_no_fog() -> void:
+func test_a_type_with_no_entry_sees_its_own_tile_and_a_world_without_a_map_has_no_fog(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var lost: World = World.new()
 	lost.map_w = MAP
 	lost.map_h = MAP
 	lost.add_unit(1, 4, _centre(7), _centre(9))
 	lost.prepare()
+	_in(lost, impl)
 	assert_array(_block(lost, 1)).is_equal(_counts([_disc(7, 9, 0)]))
 	assert_int(lost.fog_cell[0]).is_equal(9 * COLS + 7)
 	lost.pos_x[0] = _centre(8)
@@ -51,6 +62,7 @@ func test_a_type_with_no_entry_sees_its_own_tile_and_a_world_without_a_map_has_n
 	var bare: World = World.new()
 	bare.type_ids.append(&"scout")
 	bare.add_unit(1, 0, 4500, 4500)
+	_in(bare, impl)
 	for _t: int in 4:
 		Sim.step(bare, [])
 	assert_array([bare.fog.cells, bare.fog_cell[0], bare.stats[World.Stat.FOG_CELLS]]).is_equal(
@@ -63,11 +75,14 @@ func test_a_type_with_no_entry_sees_its_own_tile_and_a_world_without_a_map_has_n
 
 ## Every tick both units step to a new tile, so every update has work: a unit is stamped at its new
 ## cell only on its player's ticks, and a tick of nobody's (2, 5, 8) stamps nothing.
-func test_player_1_updates_on_ticks_0_3_6_and_player_2_on_1_4_7() -> void:
+func test_player_1_updates_on_ticks_0_3_6_and_player_2_on_1_4_7(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var world: World = _world()
 	world.add_unit(1, SCOUT, _centre(8), _centre(10))
 	world.add_unit(2, SCOUT, _centre(8), _centre(20))
 	world.prepare()
+	_in(world, impl)
 	var ticks: Array[PackedInt32Array] = [PackedInt32Array(), PackedInt32Array()]
 	var stamped: PackedInt32Array = PackedInt32Array()
 	for tick: int in 9:
@@ -85,11 +100,14 @@ func test_player_1_updates_on_ticks_0_3_6_and_player_2_on_1_4_7() -> void:
 
 
 ## With four players 1 and 4 share a tick (tick % 3 == (p - 1) % 3), and 2 and 3 have their own.
-func test_with_four_players_players_1_and_4_share_their_ticks() -> void:
+func test_with_four_players_players_1_and_4_share_their_ticks(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var world: World = _world()
 	for player: int in range(1, 5):
 		world.add_unit(player, POST, _centre(2), _centre(player * 6))
 	world.prepare()
+	_in(world, impl)
 	var ticks: Array[PackedInt32Array] = [PackedInt32Array(), PackedInt32Array()]
 	ticks.append_array([PackedInt32Array(), PackedInt32Array()])
 	for tick: int in 6:
@@ -114,11 +132,12 @@ func test_with_four_players_players_1_and_4_share_their_ticks() -> void:
 ## Tick 0 is player 1's. Unit 1 moves inside its tile, unit 2 one tile, unit 3 not at all: only
 ## unit 2 re-stamps, and stats[FOG_CELLS] counts the cells of its two discs (113 each). The next
 ## update has no mover and stamps nothing; the version of the player does not grow either.
-func test_only_units_that_changed_tile_restamp() -> void:
+func test_only_units_that_changed_tile_restamp(impl: int, _test_parameters := _both()) -> void:
 	var world: World = _world()
 	for column: int in [10, 14, 18]:
 		world.add_unit(1, SCOUT, _centre(column), _centre(15))
 	world.prepare()
+	_in(world, impl)
 	var before: int = world.fog.version_of(1)
 	world.pos_x[0] += 300
 	world.pos_x[1] += 1000
@@ -135,11 +154,12 @@ func test_only_units_that_changed_tile_restamp() -> void:
 
 ## The count is the cells each stamp walks, clipped to the map: a unit in the corner and one that
 ## steps off an edge, against a brute force of the discs.
-func test_fog_cells_count_the_clipped_discs() -> void:
+func test_fog_cells_count_the_clipped_discs(impl: int, _test_parameters := _both()) -> void:
 	var world: World = _world()
 	world.add_unit(1, SCOUT, _centre(0), _centre(0))
 	world.add_unit(1, SCOUT, _centre(29), _centre(14))
 	world.prepare()
+	_in(world, impl)
 	world.pos_x[0] = _centre(1)
 	world.pos_y[1] = _centre(15)
 	Sim.step(world, [])
@@ -154,10 +174,13 @@ func test_fog_cells_count_the_clipped_discs() -> void:
 ## stamped first, so only the cells that change are listed: 26 and 34, where unstamping first
 ## lists 126 and 130 (the other order, run on a FogGrid beside it). Counts and explored are the
 ## same in either order.
-func test_a_restamp_stamps_the_new_disc_first_and_lists_only_the_flipped_cells() -> void:
+func test_a_restamp_stamps_the_new_disc_first_and_lists_only_the_flipped_cells(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for step: Vector2i in [Vector2i(1, 0), Vector2i(1, 1)]:
 		var world: World = _world()
 		world.add_unit(2, SCOUT, _centre(15), _centre(15))
+		_in(world, impl)
 		Sim.step(world, [])
 		world.pos_x[0] += step.x * 1000
 		world.pos_y[0] += step.y * 1000
@@ -190,12 +213,15 @@ func test_a_restamp_stamps_the_new_disc_first_and_lists_only_the_flipped_cells()
 ## Dying units' discs (a scout and a post, two masks) are unstamped by remove_dead in the tick of
 ## their death, whoever's turn it is (tick 1 is player 2's): their cells go dark and are listed,
 ## nothing else of player 1 changes, and the explored bytes stay.
-func test_a_dying_units_vision_ends_that_tick_and_explored_stays() -> void:
+func test_a_dying_units_vision_ends_that_tick_and_explored_stays(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var world: World = _world()
 	world.add_unit(1, SCOUT, _centre(10), _centre(10))
 	world.add_unit(1, POST, _centre(25), _centre(25))
 	world.add_unit(1, POST, _centre(5), _centre(25))
 	world.add_unit(2, POST, _centre(20), _centre(5))
+	_in(world, impl)
 	Sim.step(world, [])
 	var gone: PackedInt32Array = _disc(10, 10, 6000) + _disc(25, 25, 2000)
 	for cell: int in gone:
@@ -221,11 +247,14 @@ func test_a_dying_units_vision_ends_that_tick_and_explored_stays() -> void:
 ## Player 1 dies on its own update tick (tick 0), after its list was emptied at the start of the
 ## tick: the cells the dead disc flips are still listed when the update has run (the view patches
 ## them), and the survivors' stamps do not remove them.
-func test_the_cells_of_a_death_on_the_owners_update_tick_stay_listed() -> void:
+func test_the_cells_of_a_death_on_the_owners_update_tick_stay_listed(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var world: World = _world()
 	world.add_unit(1, SCOUT, _centre(10), _centre(10))
 	world.add_unit(1, POST, _centre(25), _centre(25))
 	world.prepare()
+	_in(world, impl)
 	world.hp[0] = 0
 	world.pos_x[1] += 1000
 	Sim.step(world, [])
@@ -242,11 +271,14 @@ func test_the_cells_of_a_death_on_the_owners_update_tick_stay_listed() -> void:
 ## The fog update is the last phase: at the REMOVE mark the dead row is gone and its disc is dark
 ## while the mover (player 1's turn, tick 0) still stands in its old cell, and at the FOG mark it
 ## has moved. Before REMOVE both rows are stamped where they were.
-func test_the_fog_update_follows_the_removal_in_the_tick() -> void:
+func test_the_fog_update_follows_the_removal_in_the_tick(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var world: World = _world()
 	world.add_unit(1, SCOUT, _centre(10), _centre(10))
 	world.add_unit(1, SCOUT, _centre(20), _centre(10))
 	world.prepare()
+	_in(world, impl)
 	world.hp[0] = 0
 	world.pos_x[1] += 1000
 	var probe: SimProbe = FogProbe.new(world)
@@ -268,11 +300,14 @@ func test_the_fog_update_follows_the_removal_in_the_tick() -> void:
 ## The list is the flips of the last update and lives until that player's next one: kept on the
 ## ticks in between (also while the other player updates), emptied by the next update even when
 ## nothing moves. Then a death between updates is added to the list.
-func test_the_dirty_list_keeps_the_last_updates_flips_until_the_players_next_update() -> void:
+func test_the_dirty_list_keeps_the_last_updates_flips_until_the_players_next_update(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var world: World = _world()
 	world.add_unit(1, SCOUT, _centre(10), _centre(10))
 	world.add_unit(2, SCOUT, _centre(20), _centre(20))
 	world.prepare()
+	_in(world, impl)
 	world.pos_x[0] += 1000
 	world.pos_x[1] += 1000
 	Sim.step(world, [])
@@ -296,10 +331,13 @@ func test_the_dirty_list_keeps_the_last_updates_flips_until_the_players_next_upd
 	assert_int(world.fog.dirty_cells(1).size()).is_equal(113)
 
 
-func test_a_row_added_later_is_stamped_at_its_players_next_update_and_a_neutral_row_never() -> void:
+func test_a_row_added_later_is_stamped_at_its_players_next_update_and_a_neutral_row_never(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var world: World = _world()
 	world.add_unit(1, POST, _centre(5), _centre(5))
 	world.add_unit(2, POST, _centre(5), _centre(25))
+	_in(world, impl)
 	Sim.step(world, [])
 	Sim.step(world, [])
 	world.add_unit(1, SCOUT, _centre(15), _centre(15))
@@ -320,10 +358,13 @@ func test_a_row_added_later_is_stamped_at_its_players_next_update_and_a_neutral_
 
 ## The hash covers visible and explored: one changed explored byte, or one count, changes the fog
 ## section and nothing else, and the change goes back with the byte.
-func test_the_hash_changes_when_an_explored_byte_or_a_count_changes() -> void:
+func test_the_hash_changes_when_an_explored_byte_or_a_count_changes(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var world: World = _world()
 	world.add_unit(1, SCOUT, _centre(10), _centre(10))
 	world.add_unit(2, POST, _centre(20), _centre(20))
+	_in(world, impl)
 	Sim.step(world, [])
 	var hash_before: int = world.state_hash()
 	var parts: PackedInt64Array = world.hash_parts()
@@ -346,30 +387,49 @@ func test_the_hash_changes_when_an_explored_byte_or_a_count_changes() -> void:
 
 
 ## Two runs of the same scenario and orders give the same hash on every tick, and the fog is in
-## it: the fog section and the fog_cell column differ between tick 0 and the end of the run.
-func test_two_runs_give_the_same_hashes_and_the_fog_moves_with_the_units() -> void:
-	var runs: Array[PackedInt64Array] = [PackedInt64Array(), PackedInt64Array()]
-	var parts: Array[PackedInt64Array] = []
-	for run: int in 2:
-		var world: World = World.from_scenario(load(SCENARIO_PATH) as ScenarioDef)
-		var order: Command = Command.attack_move(1, PackedInt32Array(range(1, 31)), 22250, 22250)
-		order.tick = 0
-		runs[run].append(world.state_hash())
-		if run == 0:
-			parts.append(world.hash_parts())
-		var commands: Array[Command] = [order]
-		for _t: int in 90:
-			Sim.step(world, commands)
-			commands.clear()
-			runs[run].append(world.state_hash())
-		if run == 0:
-			parts.append(world.hash_parts())
-	assert_array(runs[0]).is_equal(runs[1])
-	assert_int(runs[0].size()).is_equal(91)
+## it: the fog section and the fog_cell column differ between tick 0 and the end of the run. The
+## native run gives the hashes of the GDScript run, tick for tick.
+func test_two_runs_give_the_same_hashes_and_the_fog_moves_with_the_units(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var first: Array = _hash_run(impl)
+	var second: Array = _hash_run(impl)
+	assert_array(first[0]).is_equal(second[0])
+	assert_int(first[0].size()).is_equal(91)
 	var names: PackedStringArray = World.hash_section_names()
 	for section: String in ["fog", "fog_cell", "pos_x"]:
 		var part: int = names.find(section)
-		assert_bool(parts[0][part] != parts[1][part]).override_failure_message(section).is_true()
+		assert_bool(first[1][part] != first[2][part]).override_failure_message(section).is_true()
+	if impl == SimImpls.Impl.NATIVE:
+		assert_array(first[0]).is_equal(_hash_run(SimImpls.Impl.GDSCRIPT)[0])
+
+
+## The state hash at tick 0 and after each of 90 ticks of the controls scenario with thirty tanks
+## ordered across the map, as [hashes, hash parts at tick 0, hash parts at the end].
+func _hash_run(impl: int) -> Array:
+	var world: World = _in(World.from_scenario(load(SCENARIO_PATH) as ScenarioDef), impl)
+	var order: Command = Command.attack_move(1, PackedInt32Array(range(1, 31)), 22250, 22250)
+	order.tick = 0
+	var hashes: PackedInt64Array = PackedInt64Array([world.state_hash()])
+	var start: PackedInt64Array = world.hash_parts()
+	var commands: Array[Command] = [order]
+	for _t: int in 90:
+		Sim.step(world, commands)
+		commands.clear()
+		hashes.append(world.state_hash())
+	return [hashes, start, world.hash_parts()]
+
+
+## gdUnit4's parameter sets: the GDScript phase and the C++ kernel, a case each (SimImpls.CASES).
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## `world` running `impl`: the kernels attached and the FOG phase really in the implementation
+## asked for (the problems of SimImpls.attach, none).
+func _in(world: World, impl: int) -> World:
+	assert_array(SimImpls.attach(world, impl, FOG)).is_empty()
+	return world
 
 
 func _world() -> World:

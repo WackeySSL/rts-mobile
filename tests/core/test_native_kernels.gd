@@ -2,10 +2,11 @@ extends GdUnitTestSuite
 ## NativeKernels (ADR 0013 section 3, plan P54r): the ABI check and the on-device self-check, with
 ## the library loaded (verify.sh always builds it). The self-check runs the seed-42 perf arena, as
 ## the perf card does, on the library's kernels and on GDScript spies in their place: one moves
-## unit row 0 instead of running FLOW, TARGETING, SEPARATION or INTEGRATE (the mutated kernel of the
-## ADR, once per bit of the mask), one runs the twin and makes the hash differ after a single tick:
-## the first, the last, and two neighbours that no checkpoint ends, so a check that compares on a
-## stride of 2 or more (at any offset), at the checkpoints or at the end only misses one of them.
+## unit row 0 instead of running FLOW, TARGETING, SEPARATION, INTEGRATE or FOG (the mutated kernel
+## of the ADR, once per bit of the mask), one runs the twin and makes the hash differ after a
+## single tick: the first, the last, and two neighbours that no checkpoint ends, so a check that
+## compares on a stride of 2 or more (at any offset), at the checkpoints or at the end only misses
+## one of them.
 
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const HEADER: String = "res://native/sim_kernels/src/bind/sim_kernels.h"
@@ -25,8 +26,8 @@ class AbiKernels:
 		return version
 
 
-## Stands in for the library on FLOW, TARGETING, SEPARATION and INTEGRATE: each method moves unit
-## row 0 one milli-tile instead of running its phase, and counts its calls per SimProbe.Phase.
+## Stands in for the library on FLOW, TARGETING, SEPARATION, INTEGRATE and FOG: each method moves
+## unit row 0 one milli-tile instead of running its phase, and counts its calls per SimProbe.Phase.
 class ShiftingKernels:
 	extends RefCounted
 
@@ -46,6 +47,9 @@ class ShiftingKernels:
 
 	func integrate(world: World) -> void:
 		_shift(world, SimProbe.Phase.INTEGRATE)
+
+	func fog(world: World) -> void:
+		_shift(world, SimProbe.Phase.FOG)
 
 	func _shift(world: World, phase: int) -> void:
 		calls[phase] += 1
@@ -121,8 +125,8 @@ func test_the_abi_check_takes_only_the_int_abi_version() -> void:
 	assert_bool(NativeKernels.abi_matches(NativeKernels.create())).is_true()
 
 
-## The perf card's case: 60 arena ticks on every phase the library reports, which holds the four
-## ported phases on main (FLOW, TARGETING, SEPARATION and INTEGRATE).
+## The perf card's case: 60 arena ticks on every phase the library reports, which holds the five
+## ported phases on main (FLOW, TARGETING, SEPARATION, INTEGRATE and FOG).
 func test_the_arena_matches_for_60_ticks_on_the_phases_of_the_library() -> void:
 	var kernels: Object = NativeKernels.create()
 	assert_str(kernels.get_class()).is_equal("SimKernels")
@@ -180,7 +184,7 @@ func test_a_difference_that_lasts_one_tick_is_a_mismatch(
 	assert_int(blip.ordered_max).is_greater(0)
 
 
-## gdUnit4's parameter sets: the four ported phases on main, one case each.
+## gdUnit4's parameter sets: the five ported phases on main, one case each.
 func _ported() -> Array[Array]:
 	var cases: Array[Array] = []
 	for phase: int in _ported_phases():
@@ -194,7 +198,8 @@ func _ported_phases() -> Array[int]:
 		SimProbe.Phase.FLOW,
 		SimProbe.Phase.TARGETING,
 		SimProbe.Phase.SEPARATION,
-		SimProbe.Phase.INTEGRATE
+		SimProbe.Phase.INTEGRATE,
+		SimProbe.Phase.FOG
 	]
 
 

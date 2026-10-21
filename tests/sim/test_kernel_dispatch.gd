@@ -4,7 +4,7 @@ extends GdUnitTestSuite
 ## the method of its phase on the kernels and skips the GDScript rule. A KernelSpy takes the place
 ## of the library here, so these cases need no build. P54 has the mask-0 case; a port PR adds one
 ## case that sets its bit and asserts exactly its spy call (FLOW since P30n, INTEGRATE since P37n,
-## SEPARATION since P39n, TARGETING since P41n; the other entry has no dispatch line yet).
+## SEPARATION since P39n, TARGETING since P41n, FOG since P46n).
 
 const KernelSpy: GDScript = preload("res://tests/sim/support/kernel_spy.gd")
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
@@ -124,6 +124,33 @@ func test_targeting_calls_the_targeting_kernel_once_and_skips_the_gdscript_phase
 	Targeting.run(world)
 	assert_array(spy.calls).is_equal(["targeting", "targeting"])
 	assert_int(world.target[0]).is_equal(0)
+
+
+## FOG (P46n): FogUpdate.run starts with the dispatch. With its bit set it calls the kernel once and
+## does nothing else (the unit that moved a tile keeps the cell it was stamped at); with the other
+## four bits it runs the GDScript phase and stamps the new cell. FogUpdate.begin has no dispatch
+## and runs with the bit set (it empties the dirty list of the player whose turn it is).
+func test_fog_calls_the_fog_kernel_once_and_skips_the_gdscript_phase() -> void:
+	var spy: RefCounted = KernelSpy.new()
+	var world: World = _moving_world(spy, 1 << SimProbe.Phase.FOG)
+	# The first call is the FOG line of the tick `_moving_world` ran.
+	assert_array(spy.calls).is_equal(["fog"])
+	var stamped: int = world.fog_cell[0]
+	world.pos_x[0] += 3000
+	world.tick = 3  # Player 1's turn again.
+	world.fog.dirty_count[0] = 5
+	world.stats[World.Stat.FOG_CELLS] = 0
+	FogUpdate.begin(world)
+	assert_int(world.fog.dirty_count[0]).is_equal(0)
+	FogUpdate.run(world)
+	assert_array(spy.calls).is_equal(["fog", "fog"])
+	assert_array([world.fog_cell[0], world.stats[World.Stat.FOG_CELLS]]).is_equal([stamped, 0])
+	# The other four phases of ADR 0013.
+	world.native_phases = 0x46A & ~(1 << SimProbe.Phase.FOG)
+	FogUpdate.run(world)
+	assert_array(spy.calls).is_equal(["fog", "fog"])
+	assert_int(world.fog_cell[0]).is_not_equal(stamped)
+	assert_int(world.stats[World.Stat.FOG_CELLS]).is_greater(0)
 
 
 ## The controls scenario with `kernels` and `mask` attached after prepare(), and an attack-move
