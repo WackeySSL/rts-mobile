@@ -12,7 +12,8 @@
 // GDScript (REMOVE and PREPARE are not ported phases): they call FogGrid.stamp, which therefore stays the reference.
 // Tests: tests/sim/test_fog.gd, test_fog_edges.gd and test_fog_grid.gd under both implementations (the last through
 // tests/sim/support/fog_stamper.gd, as there is no test-only bound entry) and tests/sim/native/test_fog_kernel.gd (the names,
-// the in-place writes, the guards and the range); the 900-tick lockstep and the crafted cases are P46n2, later. MIT.
+// the in-place writes, the guards and the range); lockstep (P46n2, the 900-tick arena runs and the crafted cases):
+// tests/sim/native/test_fog_lockstep.gd, test_fog_lockstep_cases.gd and test_fog_lockstep_random.gd. MIT.
 //
 // Range. The pass is exact in int64 while `tick - player + 1` stays inside int64 (a match counter, a few million at the
 // most), and while the sides of the grid make its cells (configure() does): the sizes of the arrays are checked against
