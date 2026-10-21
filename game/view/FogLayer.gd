@@ -18,8 +18,9 @@ extends Sprite2D
 ##
 ## The CPU-side image is `image()`: tests read it, never the texture, which reads back stale after
 ## `update()`. The static helpers are the one place that decides what a player sees, for the layers
-## that hide what the fog covers (`UnitLayer`, `ProjectileLayer`, `EffectsLayer`): a snapshot with
-## no map, or a player the fog has no grid for, has nothing to hide behind, so everything is seen.
+## that hide what the fog covers (`UnitLayer`, `ProjectileLayer`, `EffectsLayer`, and the picking of
+## the input lane): a snapshot with no map, or a player the fog has no grid for, has nothing to hide
+## behind, so everything is seen.
 
 const UNEXPLORED_ALPHA: int = 255
 const VISIBLE_ALPHA: int = 0
@@ -29,6 +30,9 @@ const ALPHA_BYTE: int = 3
 @export var runner: MatchRunner
 ## The alpha of a tile that was seen and is not now (STYLE.md). One value to change by eye.
 @export var explored_alpha: int = 140
+
+## The microsecond clock that times an update. Tests replace it.
+var usec_clock: Callable = Time.get_ticks_usec
 
 var _serial: int = -1  ## match_serial of the image.
 var _player: int = 0  ## The local player the image shows.
@@ -92,7 +96,9 @@ func rebuild_count() -> int:
 	return _rebuilds
 
 
-## Microseconds the last update took, a rebuild or a patch (the perf card's fog update).
+## Microseconds the last update took, a rebuild or a patch (the perf card's fog update). It keeps
+## its value until the next update, so a sampler takes one reading per update, on a frame where
+## `upload_count()` rose, and not one per frame.
 func last_update_usec() -> int:
 	return _update_usec
 
@@ -125,7 +131,7 @@ func _sync() -> void:
 	_tick = snap.tick
 	if not other and version == _version:
 		return
-	var began: int = Time.get_ticks_usec()
+	var began: int = int(usec_clock.call())
 	if other or fog.dirty_overflowed(player) or snap.tick != previous_tick + 1:
 		_rebuild(fog, player, shade)
 		_serial = snap.match_serial
@@ -136,7 +142,7 @@ func _sync() -> void:
 		_paint(fog, player, shade, fog.dirty_cells(player))
 	_version = version
 	_upload()
-	_update_usec = Time.get_ticks_usec() - began
+	_update_usec = int(usec_clock.call()) - began
 
 
 ## No grid to draw: no texture, and a later grid rebuilds from nothing.

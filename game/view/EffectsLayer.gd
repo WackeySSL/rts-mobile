@@ -10,8 +10,9 @@ extends Node2D
 ## The effects live in a fixed ring of `capacity` slots in packed arrays (ADR 0011 section 3): the
 ## newest overwrites the oldest and an effect costs no object. An effect lives its lifetime on
 ## `clock`, the frame clock in ms, and is drawn at the event's own positions, which a SHOT carries
-## for both units, so a tracer shows after either is gone. Nothing filters by owner: an armed
-## neutral (owner 0) shoots like anyone.
+## for both units, so a tracer shows after either is gone. Shots and impacts are not filtered by
+## owner (an armed neutral, owner 0, shoots like anyone); only the fog filter below exempts an own
+## unit's death.
 ##
 ## The fog hides an effect as it is born (ADR 0010 section 2), by the tile of the point it is at
 ## (`snapshot.cell_of`) in that tick's fog: an effect on a tile the local player does not see is

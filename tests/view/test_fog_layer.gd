@@ -102,6 +102,10 @@ func test_explored_alpha_is_the_export_and_a_change_repaints_at_the_next_frame()
 	_fog.explored_alpha = 999  # An alpha is a byte.
 	_fog._process(0.0)
 	assert_int(_fog.image().get_pixel(2, 20).a8).is_equal(255)
+	_fog.explored_alpha = -5
+	_fog._process(0.0)
+	assert_int(_fog.image().get_pixel(2, 20).a8).is_equal(0)
+	assert_int(_fog.image().get_pixel(47, 47).a8).is_equal(255)  # Never seen stays black.
 
 
 func test_uploads_rise_only_when_the_local_players_version_changes() -> void:
@@ -130,16 +134,19 @@ func test_a_dirty_update_patches_the_listed_cells_and_nothing_else() -> void:
 	var snap: MatchSnapshot = _runner.snapshot
 	var uploads: int = _fog.upload_count()
 	var rebuilds: int = _fog.rebuild_count()
+	var texture: Texture2D = _fog.texture
 	Rig.flip(snap, 1, [Vector2i(30, 30), Vector2i(31, 30)] as Array[Vector2i], true)
 	Rig.set_seen(snap, 1, Vector2i(5, 40), true)  # Changed in the grid and not listed.
 	_runner.ticked.emit(snap.tick)
+	# A patch updates the texture it has, and makes no new one (`update()` reads back stale, so
+	# that it did run is for the phone check).
+	assert_object(_fog.texture).is_same(texture)
 	var image: Image = _fog.image()
 	assert_int(image.get_pixel(30, 30).a8).is_equal(0)
 	assert_int(image.get_pixel(31, 30).a8).is_equal(0)
 	assert_int(image.get_pixel(5, 40).a8).is_equal(255)  # A patch writes the list and no more.
 	assert_int(_fog.upload_count()).is_equal(uploads + 1)
 	assert_int(_fog.rebuild_count()).is_equal(rebuilds)
-	assert_int(_fog.last_update_usec()).is_greater_equal(0)
 	# Going dark again dims the tile (it was seen), and the frame's call changes nothing.
 	Rig.flip(snap, 1, [Vector2i(30, 30)] as Array[Vector2i], false)
 	_runner.ticked.emit(snap.tick)
@@ -252,6 +259,8 @@ func test_a_player_the_fog_has_no_grid_for_gets_no_fog_and_sees_everything() -> 
 	assert_bool(FogLayer.covers(FogGrid.new(), 1)).is_false()  # A snapshot with no map.
 	assert_bool(FogLayer.is_seen(snap, 3, 40000, 40000)).is_true()
 	assert_bool(FogLayer.is_seen(MatchSnapshot.new(), 1, 0, 0)).is_true()
+	assert_int(FogLayer.local_player_of(_runner)).is_equal(1)
+	assert_int(FogLayer.local_player_of(auto_free(MatchRunner.new()))).is_equal(1)  # No scenario.
 	_runner.scenario.local_player = 3
 	_fog._process(0.0)
 	assert_object(_fog.texture).is_null()
@@ -280,14 +289,28 @@ func test_a_new_match_on_another_map_resizes_the_image_and_the_texture() -> void
 	assert_array(Rig.mismatches(_fog.image(), _runner.snapshot.fog, 1)).is_empty()
 
 
-func test_a_rebuild_and_a_patch_each_record_their_time() -> void:
-	assert_int(_fog.last_update_usec()).is_greater(0)  # The first rebuild of 2,304 tiles.
+func test_a_rebuild_and_a_patch_each_record_their_own_time_and_an_idle_frame_none() -> void:
+	assert_int(_fog.last_update_usec()).is_greater(0)  # The first rebuild, on the real clock.
+	# A clock that reads 0 and 500 for a rebuild, 1,000 and 1,007 for a patch, and fails past that.
+	var times: Array[int] = [0, 500, 1000, 1007]
+	var reads: Array[int] = [0]
+	_fog.usec_clock = func() -> int:
+		reads[0] += 1
+		return times[reads[0] - 1]
+	_fog.explored_alpha = 90  # Another alpha repaints everything: a rebuild.
+	_fog._process(0.0)
+	assert_int(_fog.rebuild_count()).is_equal(2)
+	assert_int(_fog.last_update_usec()).is_equal(500)
+	_fog._process(0.0)  # Nothing changed: no update, no read of the clock, the time is kept.
+	assert_int(reads[0]).is_equal(2)
+	assert_int(_fog.last_update_usec()).is_equal(500)
 	var snap: MatchSnapshot = _runner.snapshot
 	Rig.flip(snap, 1, [Vector2i(30, 30)] as Array[Vector2i], true)
 	_runner.ticked.emit(snap.tick)
-	assert_int(_fog.last_update_usec()).is_greater_equal(0)
-	assert_int(_fog.rebuild_count()).is_equal(1)
-	assert_int(_fog.upload_count()).is_equal(2)
+	assert_int(_fog.rebuild_count()).is_equal(2)  # A patch.
+	assert_int(_fog.upload_count()).is_equal(3)
+	assert_int(_fog.last_update_usec()).is_equal(7)
+	assert_int(reads[0]).is_equal(4)
 
 
 func test_the_main_scene_draws_the_fog_at_z_140_over_the_effects_and_covers_the_map_at_every_size(
