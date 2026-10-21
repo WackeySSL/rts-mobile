@@ -175,7 +175,9 @@ func set_selected(ids: PackedInt32Array) -> void:
 
 ## Fills `snap` for the Picker with every unit in row order: id, owner, type, centre on screen (base
 ## px) and hit radius, the larger of `min_radius_px` and the type's selection radius at the camera
-## zoom. The snapshot's arrays are resized in place, so refilling one allocates nothing.
+## zoom. An enemy that `is_shown` would not draw is filled like any other row, with its `pickable`
+## entry 0, so the Picker skips it (P47p). The snapshot's arrays are resized in place, so refilling
+## one allocates nothing.
 func fill_pick_snapshot(snap: PickSnapshot, min_radius_px: float) -> void:
 	var source: MatchSnapshot = _sync_rigs()
 	var count: int = 0 if source == null else _rigs.size()
@@ -185,11 +187,13 @@ func fill_pick_snapshot(snap: PickSnapshot, min_radius_px: float) -> void:
 	var out_types: PackedInt32Array = snap.type_index
 	var out_pos: PackedVector2Array = snap.screen_pos
 	var out_radius: PackedFloat32Array = snap.radius_px
+	var out_pickable: PackedByteArray = snap.pickable
 	out_ids.resize(count)
 	out_owners.resize(count)
 	out_types.resize(count)
 	out_pos.resize(count)
 	out_radius.resize(count)
+	out_pickable.resize(count)
 	if count == 0:
 		return
 	var ids: PackedInt32Array = source.unit_id
@@ -198,6 +202,15 @@ func fill_pick_snapshot(snap: PickSnapshot, min_radius_px: float) -> void:
 	var radii: PackedInt32Array = source.type_selection_radius
 	var rigs: Array[Node2D] = _rigs
 	var zoom: float = camera.zoom.x
+	# is_shown's rule with the arrays aliased: an enemy is hidden when the tile of its position in
+	# this tick (`snapshot.cell_of`) is not visible to the local player.
+	var pos_x: PackedInt32Array = source.pos_x
+	var pos_y: PackedInt32Array = source.pos_y
+	var player: int = FogLayer.local_player_of(runner)
+	var fog: FogGrid = source.fog
+	var fogged: bool = not reveal_enemies and FogLayer.covers(fog, player)
+	var counts: PackedInt32Array = fog.visible
+	var counts_at: int = (player - 1) * fog.cells
 	for row: int in count:
 		var type: int = types[row]
 		var art_px: float = ViewScale.milli_to_px(radii[type]) * zoom
@@ -206,6 +219,10 @@ func fill_pick_snapshot(snap: PickSnapshot, min_radius_px: float) -> void:
 		out_types[row] = type
 		out_pos[row] = camera.world_to_screen(rigs[row].global_position)
 		out_radius[row] = maxf(min_radius_px, art_px)
+		var seen: bool = not fogged or owners[row] == player
+		if not seen:
+			seen = counts[counts_at + source.cell_of(pos_x[row], pos_y[row])] > 0
+		out_pickable[row] = 1 if seen else 0
 
 
 ## Reads `runner.snapshot` afresh and brings the rigs up to it: all new for another match_serial,
