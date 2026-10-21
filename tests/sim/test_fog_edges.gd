@@ -2,10 +2,11 @@ extends GdUnitTestSuite
 ## The edges of the fog update (P46 fix 1), the cases test_fog.gd leaves open: the unstamp of a
 ## dying row for every kind of row (a mover that left its stamped tile, a player 2 row, a row never
 ## stamped, a row on cell 0), the clipping of FOG_CELLS on the bottom edge and on a map that is not
-## square, a position on or past the map edge, the cadence at other periods than 3, and the pad
-## mask of a type with no entry after a mask was added. Hand-built worlds with literal numbers; the
-## expected cells come from a brute force over the whole map, never from FogGrid. Units stand idle
-## (speed 0) and the tests move them by writing the position between steps.
+## square, a position on or past the map edge (and past one edge of a map that is not square), the
+## cadence at other periods than 3, and the pad mask of a type with no entry after a mask was added.
+## Hand-built worlds with literal numbers; the expected cells come from a brute force over the whole
+## map, never from FogGrid. Units stand idle (speed 0) and the tests move them by writing the
+## position between steps.
 ##
 ## Every case runs under both implementations (ADR 0013 section 3, P46n): the GDScript phase and
 ## the C++ kernel, through `_both()` and `_in()`.
@@ -197,6 +198,37 @@ func test_a_position_on_or_past_the_map_edge_stamps_the_nearest_cell(
 		SQUARE, SQUARE, [_disc(SQUARE, SQUARE, 29, 29, 2000), _disc(SQUARE, SQUARE, 0, 0, 2000)]
 	)
 	assert_array(_block(world, 1)).is_equal(expected)
+
+
+## Each axis clamps to its own side of a map that is not square: a position far past the right edge
+## stamps column cols - 1 and one far below the bottom edge row rows - 1, on a map wider than it is
+## tall (40 x 20) and on one taller than it is wide (20 x 40). The square map of the case above
+## cannot tell cols from rows apart, and neither can an in-map position.
+func test_each_axis_of_a_map_that_is_not_square_clamps_to_its_own_side(
+	impl: int, _test_parameters := _both()
+) -> void:
+	for size: Vector2i in [Vector2i(40, 20), Vector2i(20, 40)]:
+		var world: World = _world(size.x, size.y)
+		world.add_unit(1, POST, _centre(3), _centre(3))
+		world.add_unit(1, POST, _centre(4), _centre(5))
+		world.prepare()
+		_in(world, impl)
+		world.pos_x[0] = size.x * 1000 + 7000
+		world.pos_y[1] = size.y * 1000 + 7000
+		Sim.step(world, [])
+		var right: int = 3 * size.x + size.x - 1
+		var bottom: int = (size.y - 1) * size.x + 4
+		assert_array(world.fog_cell).override_failure_message("map %s" % size).is_equal(
+			[right, bottom]
+		)
+		assert_int(world.fog_cell[0]).is_equal(world.cell_of(world.pos_x[0], world.pos_y[0]))
+		assert_int(world.fog_cell[1]).is_equal(world.cell_of(world.pos_x[1], world.pos_y[1]))
+		var edge: Array[PackedInt32Array] = [
+			_disc(size.x, size.y, size.x - 1, 3, 2000), _disc(size.x, size.y, 4, size.y - 1, 2000)
+		]
+		assert_array(_block(world, 1)).override_failure_message("map %s" % size).is_equal(
+			_counts(size.x, size.y, edge)
+		)
 
 
 ## The period is the rule int of the World, not 3: with 2 and with 4, player 1 updates on ticks

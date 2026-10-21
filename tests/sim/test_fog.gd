@@ -42,6 +42,18 @@ func test_prepare_stamps_every_players_vision_with_the_mask_of_its_type(
 	assert_int(world.stats[World.Stat.FOG_CELLS]).is_equal(0)
 	# One mask per type, in type order, and a last one of sight 0 for a type with no entry.
 	assert_array(world.fog.mask_radius).is_equal([6, 2, 0])
+	# prepare() is GDScript under both implementations, so the first updates (player 1 on tick 0,
+	# player 2 on tick 1) are what runs the phase in the implementation asked for: every row stands
+	# on the cell prepare() stamped, so the phase finds `fog_cell` equal to its cell and re-stamps
+	# nothing, no count, no version and no stat moves.
+	var versions: Array[int] = [world.fog.version_of(1), world.fog.version_of(2)]
+	for _t: int in 2:
+		Sim.step(world, [])
+		assert_int(world.stats[World.Stat.FOG_CELLS]).is_equal(0)
+	assert_array(world.fog_cell).is_equal([310, 312, 170, -1])
+	assert_array(_block(world, 1)).is_equal(overlap)
+	assert_array(_block(world, 2)).is_equal(_counts([_disc(20, 5, 2000)]))
+	assert_array([world.fog.version_of(1), world.fog.version_of(2)]).is_equal(versions)
 
 
 func test_a_type_with_no_entry_sees_its_own_tile_and_a_world_without_a_map_has_no_fog(
