@@ -45,8 +45,8 @@ const STEP_HEAD: String = "STEP sim"
 const STEP_KEYS: Array[String] = ["mean_ms", "p50_ms", "p95_ms", "p99_ms", "max_ms"]
 const COMMANDS_HEAD: String = "WATCH sim commands"
 const OVERHEAD_HEAD: String = "WATCH sim job_minus_step"
-## ADR 0011 section 4: before P49 the only limit on the clock is a catastrophic cap on the best
-## mean tick. The wall-clock budget (P49b's budget.cfg) replaces it.
+## ADR 0011 section 4: the catastrophic cap on the best mean tick, for both lines. The wall-clock
+## budget (P49b's budget.cfg) is far tighter and judges the native line; the cap stays beside it.
 const CATASTROPHIC_MEAN_MS: float = 20.0
 
 

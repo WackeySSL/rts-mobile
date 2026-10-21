@@ -160,7 +160,8 @@ func test_an_empty_run_has_no_cadence_and_fails_closed() -> void:
 			"work_tick_p95_ms",
 			"sim_p95_ms",
 			"job_p99_ms",
-			"fog_update_p95_ms"
+			"fog_update_p95_ms",
+			"golden_hashes"  # No checkpoint to compare: a missing measurement never passes.
 		]
 	)
 	assert_bool(s["gate_pass"]).is_false()
@@ -171,7 +172,7 @@ func test_frames_without_a_published_tick_fail_the_job_rows_and_a_partial_run_is
 	Rig.pass_frames(hud)
 	var s: Dictionary = hud.summary()
 	assert_int(s["job_ticks"]).is_equal(0)
-	assert_array(Rig.failed(s)).is_equal(["sim_p95_ms", "job_p99_ms"])
+	assert_array(Rig.failed(s)).is_equal(["sim_p95_ms", "job_p99_ms", "golden_hashes"])
 	assert_array(s["verdicts"]).contains(
 		["sim_p95_ms: FAIL (no job_ticks)", "job_p99_ms: FAIL (no job_ticks)"]
 	)
@@ -184,7 +185,8 @@ func test_frames_without_a_published_tick_fail_the_job_rows_and_a_partial_run_is
 	assert_bool(s["finished"]).is_false()
 	assert_bool(s["gate_pass"]).is_false()
 	# Tick 900 ends the run, and now it passes.
-	hud.record_snapshot(Rig.snapshot(hud.run_ticks))
+	for tick: int in range(301, hud.run_ticks + 1):
+		hud.record_snapshot(Rig.snapshot(tick))
 	s = hud.summary()
 	assert_bool(s["finished"]).is_true()
 	assert_array(Rig.failed(s)).is_empty()
