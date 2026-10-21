@@ -498,16 +498,28 @@ func test_a_grid_whose_sides_do_not_make_its_cells_stamps_nothing_in_either_vers
 	for how: String in BENDS:
 		var build: Callable = _bent.bind(how)
 		var rig: RefCounted = _rig(build)
+		var first: World = rig.worlds[0]
+		var cells: PackedInt32Array = first.fog_cell.duplicate()
+		var xs: PackedInt32Array = first.pos_x.duplicate()
+		var ys: PackedInt32Array = first.pos_y.duplicate()
 		var found: String = rig.run(24, Orders.walkers.bind(33, 0, 0))
 		assert_str(found).override_failure_message(how).is_empty()
 		var tally: Dictionary[StringName, int] = rig.tally()
 		assert_int(tally[&"ticks"]).is_equal(24)
 		assert_array([tally[&"turns"], tally[&"covered"], tally[&"listed"]]).is_equal([0, 0, 0])
-		# The rows moved, but no row's cell did.
+		# The rows moved (walkers neither kills nor adds a row here, so the copies line up), onto
+		# cells other than the ones they were stamped on, which a whole grid would have restamped at
+		# the owners' turns; but no row's cell moved, in either version.
+		assert_int(first.unit_count()).override_failure_message(how).is_equal(cells.size())
 		var moved: int = 0
-		for row: int in rig.worlds[0].unit_count():
-			moved += int(rig.worlds[0].fog_cell[row] != Worlds.centre(0))
-		assert_int(moved).is_greater(0)
+		var due: int = 0
+		for row: int in cells.size():
+			moved += int(first.pos_x[row] != xs[row] or first.pos_y[row] != ys[row])
+			due += int(first.cell_of(first.pos_x[row], first.pos_y[row]) != first.fog_cell[row])
+		assert_int(moved).override_failure_message(how).is_greater(0)
+		assert_int(due).override_failure_message(how).is_greater(0)
+		for world: World in rig.worlds:
+			assert_array(world.fog_cell).override_failure_message(how).is_equal(cells)
 
 
 func test_two_to_four_players_on_maps_that_are_not_square_match() -> void:

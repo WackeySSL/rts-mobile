@@ -276,10 +276,11 @@ func test_the_same_run_on_changed_rules_matches() -> void:
 
 ## The arena's 150 rows walk at random (fog_orders.gd): they step a tile, jump anywhere on the map,
 ## to its edges and corners and off it, stack on one tile, die and are replaced by new units. The
-## 64 x 64 map has a dirty block of 1,024 cells per player, which the jumps overflow at almost
-## every update, so this is the run that reaches the full blocks, the corners and all four sides
-## of the map, the rows stamped for the first time and the rows past the map, with the other ports
-## in C++ as well.
+## 64 x 64 map has a dirty block of 1,024 cells per player, which the jumps overflow at about half
+## of the updates (296 full blocks, measured, in the 600 updates of the run: 2 players at the
+## shipped cadence of 3 over 900 ticks), so this is the run that reaches the full blocks, the
+## corners and all four sides of the map, the rows stamped for the first time and the rows past the
+## map, with the other ports in C++ as well.
 func test_900_ticks_of_random_walkers_on_the_arena_match() -> void:
 	var rig: RefCounted = Rig.new().setup(Worlds.arena, Rig.ALL)
 	assert_array(rig.problems).is_empty()
