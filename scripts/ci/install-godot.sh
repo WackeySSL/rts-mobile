@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Installs the official Godot Linux editor and the web (no-threads) export templates; --android adds more.
+# Installs the official Godot Linux editor (x86_64; arm64 on an arm64 Linux machine, P51b) and the web
+# (no-threads) export templates, which are the same on both; --android adds more.
 # Usage: bash scripts/ci/install-godot.sh [--android]
 #   --android  also fetch templates/android_debug.apk (127 MB, ADR 0005 section 2)
 # Shared by .github/workflows/ci.yml and preview.yml. Idempotent: on an actions/cache hit it only
@@ -24,9 +25,11 @@ done
 
 GODOT_VERSION="${GODOT_VERSION:-4.7.2}"
 PINNED_VERSION="4.7.2"
-# SHA-512 of Godot_v4.7.2-stable_linux.x86_64.zip: the line in the official godot-builds
-# 4.7.2-stable SHA512-SUMS.txt. The live file is compared with it below as well.
-EDITOR_SHA512="9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65"
+# SHA-512 of Godot_v4.7.2-stable_linux.x86_64.zip and of Godot_v4.7.2-stable_linux.arm64.zip (P51b, the
+# determinism job on ubuntu-24.04-arm): the lines in the official godot-builds 4.7.2-stable SHA512-SUMS.txt.
+# The live file is compared with them below as well.
+EDITOR_SHA512_X86_64="9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65"
+EDITOR_SHA512_ARM64="dd59918da086bd49bde2f5450b5e567ff8650cbde9abbd7b8f4ca1197ff8c609baa38834666d032deafb47099078d7822279e2a0e06e5665745468f26533e7e2"
 # SHA-256 of the members as stored in Godot_v4.7.2-stable_export_templates.tpz.
 TEMPLATE_SUMS="38885c88f75abbc797a1db7559719800279a00cfb9fa8b2e2868a7f6f84bad2e  version.txt
 d3ee2f08cef0cf3cf6678a6355a92a8db48ccdd35cbd2e8bfd5f0e8a0b4032a0  web_nothreads_release.zip
@@ -46,8 +49,15 @@ if [ "$GODOT_VERSION" != "$PINNED_VERSION" ]; then
 fi
 
 BASE="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable"
-ZIP="Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
-BIN_NAME="Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+# The editor of the host: the Linux arm64 build on an arm64 Linux machine, the Linux x86_64 build everywhere else
+# (elsewhere than on Linux, local tests of this script, the editor is only unpacked and never run).
+EDITOR_ARCH="x86_64"
+EDITOR_SHA512="$EDITOR_SHA512_X86_64"
+if [ "$(uname -s)" = "Linux" ]; then
+  case "$(uname -m)" in aarch64 | arm64) EDITOR_ARCH="arm64"; EDITOR_SHA512="$EDITOR_SHA512_ARM64" ;; esac
+fi
+ZIP="Godot_v${GODOT_VERSION}-stable_linux.${EDITOR_ARCH}.zip"
+BIN_NAME="Godot_v${GODOT_VERSION}-stable_linux.${EDITOR_ARCH}"
 GODOT_HOME="${GODOT_HOME:-$HOME/.local/opt/godot-${GODOT_VERSION}}"
 GODOT_BIN_DIR="${GODOT_BIN_DIR:-$HOME/.local/bin}"
 TEMPLATES_DIR="${TEMPLATES_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/godot/export_templates/${GODOT_VERSION}.stable}"

@@ -17,6 +17,10 @@ as merged: the rebuild triggers beyond a new match and an overflow, the sync in 
 `ticked`, the hiding rule of every draw layer and of picking, and the lead's decision that the
 death of an own unit always shows; no accepted text changed.
 
+Status note (2026-10-21, P26ae docs): §1 carries a dated status note on its "Users" as P46b
+(#144) merged them (target acquisition and `ATTACK` validation read the fog through
+`Targeting.sees`) and on rows added after `prepare()`; no accepted text changed.
+
 ## Context
 ROADMAP Phase 2 asks for "fog of war (visible and explored) and its rendering". The GDD says:
 - unexplored is black;
@@ -124,6 +128,21 @@ merged in `game/sim/FogUpdate.gd`, `World.gd` and `Sim.gd`.
   stamped row. The period is read as `maxi(fog_period_ticks, 1)`. `stats[FOG_CELLS]` counts the
   cells the update's stamps cover, not the initial stamp or a death's unstamp.
 - The plan's contract row `FogUpdate` and its section P46 "As merged" hold the details.
+
+Status note (2026-10-21, P26ae docs, after P46b, #144; the text and the note above stay as
+accepted and as dated): the two Phase 2 "Users" as merged.
+- **Target acquisition and `ATTACK` validation** read the fog through `Targeting.sees(world,
+  player, x, y)`: the cell by `World.cell_of`'s rule on the fog's own sides, visible when the
+  count at `(player - 1) * cells + cell` of `fog.visible` is above 0. `Targeting.run` inlines it
+  on the aliased array (a candidate, a held target on the row's turn, an `ATTACK` lock on every
+  tick); `Sim._enemy_target` calls it, so an `ATTACK` on an unseen enemy is dropped and counted.
+  Owner 0, an owner past `player_count` and a fog whose sides do not make its cells see every
+  cell (the lead's decision of 2026-10-21). ADR 0009 §2's note of P26ae docs.
+- **Rows added after `prepare()`** stay unstamped (`fog_cell` -1) until their player's first
+  update, as the note above says, so under the vision rule their player sees nothing through
+  them before then. Tests that act from tick 0 stamp the fog or reveal it; the shared test
+  builders reveal it by default (the plan's contract row `World` v1, "P46b as merged").
+- The ROADMAP box "Fog of war (visible and explored) and its rendering" was ticked by P46b.
 
 ### 2. View rendering (`game/view/FogLayer.gd`)
 - A `Sprite2D` with an `ImageTexture` of `map_cols x map_rows` pixels in `FORMAT_RGBA8`,

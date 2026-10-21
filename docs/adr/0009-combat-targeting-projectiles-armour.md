@@ -17,6 +17,11 @@ Status note (2026-10-21, P26ad docs): §2 carries a dated status note with the l
 P46b (the fog rules) on the owner-0 design note: a neutral subject has no fog grid and is treated
 as seeing every cell. No accepted text changed.
 
+Status note (2026-10-21, P26ae docs): §2 carries a dated status note on P46b (#144) as merged: a
+unit acquires, keeps and locks only an enemy its player sees (`Targeting.sees`), when the sight of
+a held target and of an `ATTACK` lock is tested, and who sees every cell (the lead's decision of
+2026-10-21). No accepted text changed.
+
 ## Context
 ROADMAP Phase 2 asks for "combat with projectiles, armour classes and death". The GDD lists six
 MVP units and four armour classes (infantry, light, heavy, building), and puts the damage
@@ -160,6 +165,28 @@ target (above) in both `Targeting` versions: a subject of owner 0 (neutral) has 
 cell, so neutral behaviour is unchanged by the fog rules. The shipped data holds no armed neutral
 (no unit of owner 0 in `data/scenarios/`). P46b is running; the plan's row and section P46b hold
 the decision, and this note records nothing of its outcome.
+
+Status note (2026-10-21, P26ae docs, after P46b, #144; the text and the notes above stay as
+accepted and as dated). The fog rules as merged in both `Targeting` versions and in
+`Sim._enemy_target`:
+- **Vision.** A valid target is also an enemy whose cell the unit's player sees:
+  `Targeting.sees(world, player, x, y)` is true when the visible count of the cell holding the
+  point, by `World.cell_of`'s rule on the fog's own sides, is above 0 at `(player - 1) * cells +
+  cell` of `fog.visible`. `run` inlines it; the test of a candidate comes last, after the damage
+  percent, so an unseen enemy in reach still counts as a candidate looked at.
+- **Stickiness.** A held target is kept only while it is seen, tested on the row's turn like its
+  range, so a target that leaves sight can stay held up to `retarget_period_ticks` - 1 ticks.
+  `Combat.fire` has no fog check; with the shipped data (weapon range at most the acquire range,
+  at most the sight) such a target is out of range by then (the lead's reading).
+- **`ATTACK`.** The lock needs sight on every tick; an unseen target ends it as "gone" does above:
+  `ATTACK_MOVE` to the goal it left, the last seen position. `Sim._enemy_target` drops a new
+  `ATTACK` on an enemy its player does not see and counts it in `dropped_commands`.
+- **Who sees every cell** (the lead's decision of 2026-10-21, the owner-0 decision of P26ad docs
+  extended): owner 0, an owner past `fog.player_count`, and every player of a fog whose sides do
+  not make its cells. Neutral behaviour is unchanged.
+- The seed-42 perf arena is bit-identical under the rule (no `ATTACK` order, every acquired
+  target inside sight), so no golden hash moved. The plan's contract row `Targeting` and section
+  P46b "As merged" hold the details.
 
 ### 3. Engagement
 - With a valid target inside weapon range (`min_range <= d <= range`), the unit's `nav_mode` is

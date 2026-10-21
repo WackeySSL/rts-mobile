@@ -27,6 +27,11 @@ pacing rule "interval at most 17.5 ms for 95 % of frames" and the acceptance not
 1 %, cadence at least 99 %, no hitch in the heavy window); the 17.5 ms share stays only as a
 jitter diagnostic.
 
+Status note (2026-10-21, P26ae docs): §4 carries a dated status note on P49a (#143) as merged (the
+line-check bound, the catastrophic cap on both `PERF` lines, the two places a sim PR re-pins) and
+on P46b (#144), which re-pinned nothing; the §4 note's last bullet, on §5's view time, carries a
+sentence on P50a's `view_p95_ms` (#142). No accepted text changed.
+
 ## Context
 ROADMAP Phase 2 asks for three things:
 - "View interpolation at the display frame rate";
@@ -240,6 +245,31 @@ Mesa/llvmpipe with Xvfb, so draw-call counts are reliable and times are not):
   A small arm64 Linux job runs the determinism suites and `test_golden_hashes.gd` by path, if an
   official arm64
   Linux editor build of 4.7.2 exists (P51b checks this first).
+
+Status note (2026-10-21, P26ae docs, after P49a, #143, and P46b, #144; the text and the notes
+above stay as accepted and as dated):
+- **Line checks.** The bound is the measured maximum 34 plus 25 % rounded up, 43
+  (`tests/perf/support/perf_bounds.gd`), not "at most the moving units" above: engagement line
+  checks count in `LINE_CHECKS` too. Targeting candidates 2,742 and fog cells 9,748 are the
+  measured 2,193 and 7,798 plus 25 %; flow cells and separation pairs keep their rules. A bounded
+  counter that reads 0 fails.
+- **The catastrophic cap** (20 ms mean) now holds for both `PERF` lines, the GDScript one and
+  `impl=native`. The `PERF` line format is unchanged; `STEP sim` and two `WATCH sim` lines, which
+  do not start with `PERF `, sit beside it. The test times `TickJob.run()` in `SYNC` (ADR 0012
+  §4), not `MatchLoop.step`.
+- **Re-pinning.** "A sim PR after P49 that changes the arena run (the fog rules, P46b, ...)"
+  above: P46b did not change it. The seed-42 arena has no `ATTACK` order and every acquired
+  target stands inside sight, so the run is bit-identical (`4eb974e71b2107be`, `alive_end` 71,
+  `proj_peak` 28) and the rule passes to the next sim PR that moves the run. That PR edits two
+  places: `ALIVE_END_PIN` and `PROJ_PEAK_PIN` at the top of `tests/perf/test_sim_perf.gd`, and
+  `golden_ticks` and `golden_hex` in `data/dev/perf_gate.tres`. The cost bounds and
+  `tests/perf/test_perf_bounds.gd`'s literals are qa-engineer's only.
+- **Memory.** `MEMORY_STATIC` may grow by at most 64 KiB from tick 100 to tick 900 in debug
+  builds; a reading of 0 at either tick fails.
+- The Phase 2 plan's contract row "Perf test" and section P49a "As merged" hold the details.
+- (§5, P50a as merged, #142.) The card's `view_p95_ms` is the heavy window's p95 of the main
+  thread's whole process time, not the layers' own `_process` time that §5's "view time" means;
+  a layer-time seam can narrow it (plan row P50b).
 
 ### 5. Phone measurement
 - **Gate device (Michael, 2026-10-12): Michael's own phone**, permanently (2424x1080, 420 dpi,
