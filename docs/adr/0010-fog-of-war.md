@@ -8,6 +8,10 @@ its dirty lists from the World: it reads them from `runner.snapshot.fog`.
 Status note (2026-10-13): §1's stamping order is amended (the new disc before the old one); see the
 status note under "Stamping" in §1.
 
+Status note (2026-10-21, P26ac docs): §1 carries a dated status note on P46 (#129) as merged:
+where the sim clears a dirty list (`FogUpdate.begin` before `remove_dead()`), the masks one per
+type plus a pad mask, and the stamping as merged; no accepted text changed.
+
 ## Context
 ROADMAP Phase 2 asks for "fog of war (visible and explored) and its rendering". The GDD says:
 - unexplored is black;
@@ -92,6 +96,29 @@ Measurements (Godot 4.7.2, Xeon cloud VM):
   cells, events filtered to visible cells), with a scan test over `game/ai` like the randomness
   scan. The per-player last-seen memory will live inside `FogGrid` and be hashed. Both arrive
   with the first AI code (Phase 3 dummy opponent), not in Phase 2.
+
+Status note (2026-10-21, P26ac docs, after P46, #129; the text above stays as accepted): §1 as
+merged in `game/sim/FogUpdate.gd`, `World.gd` and `Sim.gd`.
+- **Where the sim clears a dirty list.** "The sim clears a player's list at the start of that
+  player's update" holds in this form: `FogUpdate.begin(world)` empties the list of each player
+  whose turn it is right before `remove_dead()`, and `FogUpdate.run(world)`, the update, runs
+  after it. A death on the owner's own update tick therefore stays listed (its unstamp's flips
+  are added after the clear), where a single clear inside the update would have dropped them
+  (one in three deaths with a period of 3) and left those cells visible in the view. Pinned by
+  `test_the_cells_of_a_death_on_the_owners_update_tick_stay_listed`. Each player's first update
+  (player 1 at tick 0, player 2 at tick 1) empties the list that the initial stamp of
+  `prepare()` filled.
+- **Sight masks.** One mask per type in type order (a mask id is the type index; two types of
+  equal sight repeat their mask) and one last pad mask of sight 0 for a type with no entry, so a
+  World has `mask_start.size()` = types + 1 and a row's mask is `mini(type_index,
+  type_sight.size())`; not "one per distinct `sight_range`" as above. The disc rule (tile centre
+  to tile centre, row spans clipped to the map) is unchanged.
+- **Stamping and cadence** as above and as the status note of 2026-10-13 amends it: the new
+  disc before the old one, only for a row whose cell changed, a row added later (`fog_cell`
+  -1) stamped at its player's next update; `remove_dead()` unstamps only with a map and a
+  stamped row. The period is read as `maxi(fog_period_ticks, 1)`. `stats[FOG_CELLS]` counts the
+  cells the update's stamps cover, not the initial stamp or a death's unstamp.
+- The plan's contract row `FogUpdate` and its section P46 "As merged" hold the details.
 
 ### 2. View rendering (`game/view/FogLayer.gd`)
 - A `Sprite2D` with an `ImageTexture` of `map_cols x map_rows` pixels in `FORMAT_RGBA8`,
