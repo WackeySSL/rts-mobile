@@ -23,6 +23,10 @@ func test_autoload_entries_use_res_paths() -> void:
 	assert_str(_setting("autoload/CommandQueue")).is_equal(
 		"*res://game/core/command_queue_service.gd"
 	)
+	# ADR 0015 section 2: the base size per orientation, for every scene.
+	assert_str(_setting("autoload/UiOrientation")).is_equal(
+		"*res://game/ui/ui_orientation_service.gd"
+	)
 
 
 func test_untyped_declarations_are_errors() -> void:

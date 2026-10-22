@@ -1,10 +1,12 @@
 extends GdUnitTestSuite
 ## The autoload contract of ADR 0002 section 1. The autoloads are Node-side bridges with no
 ## class_name: a class_name equal to an autoload name is a silent parse error (exit code 0).
+## UiOrientation (ADR 0015 section 2) is a screen concern and lives in game/ui.
 
 const SERVICE_SCRIPTS: Dictionary = {
 	"DetRng": "res://game/core/det_rng_service.gd",
 	"CommandQueue": "res://game/core/command_queue_service.gd",
+	"UiOrientation": "res://game/ui/ui_orientation_service.gd",
 }
 const SIM_DIR: String = "res://game/sim/"
 

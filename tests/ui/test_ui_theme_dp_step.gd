@@ -72,6 +72,36 @@ func test_a_root_added_later_follows_the_next_resize() -> void:
 	assert_object(late.theme).is_same((hud.get_node("SafeArea") as Control).theme)
 
 
+## A portrait profile gets the sizes of its landscape twin (ADR 0015 section 2: one device, one dp),
+## and web_phone_portrait, a phone browser held upright, has 2.0 base px per dp. The window is
+## portrait, so the stretch the profile names is the one the engine has with the turned base size.
+func test_the_dp_step_at_a_portrait_profile_gives_the_font_sizes_of_its_landscape_twin() -> void:
+	var cases: Array[Array] = [
+		[&"android_6in_portrait", &"android_6in", 32],  # 18 dp at 1.75 px per dp.
+		[&"web_tablet_portrait", &"web_tablet", 23],  # 22.5 px, rounded.
+		[&"desktop_portrait", &"desktop", 18],
+		[&"web_phone_portrait", &"", 36],  # 2.0 px per dp.
+	]
+	for case: Array in cases:
+		var main: Node = await _open_main(case[0])
+		var size: int = (
+			(main.get_node("Hud/SafeArea/ArmyBar/AllArmy") as Button)
+			. get_theme_font_size("font_size")
+		)
+		assert_int(size).override_failure_message(str(case[0])).is_equal(case[2])
+		main.get_parent().remove_child(main)
+		main.free()
+		if case[1] != &"":
+			main = await _open_main(case[1])
+			var twin_size: int = (
+				(main.get_node("Hud/SafeArea/ArmyBar/AllArmy") as Button)
+				. get_theme_font_size("font_size")
+			)
+			assert_int(twin_size).override_failure_message(str(case[1])).is_equal(case[2])
+			main.get_parent().remove_child(main)
+			main.free()
+
+
 ## What the step has nothing to scale it for stays as it was: no theme, no Control, a theme that
 ## is not the HUD's (it is scaled like any other; the check of the roots names it).
 func test_a_late_node_without_a_theme_or_a_control_is_left_alone() -> void:
