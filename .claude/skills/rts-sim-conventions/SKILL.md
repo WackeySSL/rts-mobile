@@ -48,10 +48,11 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
   target point in milli-tiles and no payload.
 - Applied at the start of their tick in (tick, player_id, sequence) order. Invalid commands are
   dropped and counted; they never crash the sim.
-- Validation is per type (`match command.type`). Unknown and reserved types (10-29) are dropped
-  as unknown. ADR 0017 §4 fixes `PLACE` 10, `QUEUE` 11, `CANCEL` 12, `RALLY` 13, `HARVEST` 14 and
-  `SURRENDER` 20 (P70); each stays dropped and counted until its row lands its `apply_*`. They
-  also need an undefeated player, and after `match_end_tick` every Command is dropped.
+- Validation is per type (`match command.type`). Unknown and reserved types (5-9, 15-19, 21-29)
+  are dropped as unknown. ADR 0017 §4 fixes `PLACE` 10, `QUEUE` 11, `CANCEL` 12, `RALLY` 13,
+  `HARVEST` 14 and `SURRENDER` 20 (P70b); `Sim._apply` gates each on an undefeated player
+  (`_playing`), and each stays dropped and counted until its row (P73-P76) fills its module's
+  `apply_*`. From P76 on, every Command is dropped once `match_end_tick` is above 0.
 - `MatchLoop` stamps tick and sequence and records the command; it is the only tick driver
   (runner, replays, perf test, headless matches).
 - Input and AI never touch entities directly.
@@ -251,7 +252,8 @@ bursty phase whose per-active-tick cost sets a headroom value. `COMMANDS`, `REMO
 - On entry it fetches each array once through `bind/world_access.h`: `Object::get(name)`, then a
   type and size check, then `ptrw()` for an array it writes and `ptr()` for one it only reads.
   Every name it gets or sets is in that header's checked table (`Object::set` on an unknown name
-  fails silently). `check_world(world, phase)` is pure and returns a status; a kernel that gets a
+  fails silently). The header's `STAT_COUNT` mirrors `World.Stat.size()` and moves with it: a stat
+  added to `World` without it makes every kernel refuse the World (P70 moved it from 7 to 10). `check_world(world, phase)` is pure and returns a status; a kernel that gets a
   non-zero status logs one error and returns without writing. No mismatch message is ever
   allowlisted.
 - FLOW (§2, "Arrays of helper objects"): fetch the typed slot `Array` once, then each touched
