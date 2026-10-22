@@ -32,8 +32,9 @@ extends Resource
 @export var max_projectiles: int = 512
 @export var max_rows: int = 256
 
-## Phase 3 economy, production and building rules (ADR 0018 section 9). World does not copy these
-## yet (plan row P70 adds them to World.RULE_SCALARS), so no rule reads them before then.
+## Phase 3 economy, production and building rules (ADR 0018 section 9). World copies them like the
+## ints above (World.RULE_SCALARS, plan row P70); the rules that read them come with plan rows P73
+## to P77.
 ## Credits: a player starts with start_credits.
 @export var start_credits: int = 2000
 ## Ore fields: every ore cell starts with ore_start units, holds at most ore_cell_max and gains

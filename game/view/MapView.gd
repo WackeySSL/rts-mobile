@@ -24,6 +24,7 @@ const MISSING: Color = Color.MAGENTA  ## Shown for a terrain or colour key the d
 	&"rock_c": Color("4F4B48"),
 	&"water": Color("2E5E7E"),
 	&"water_b": Color("3C7396"),
+	&"ore": Color("8A6F4D"),
 }
 ## STYLE.md tiles: per terrain id the filled rects "x,y,w,h,key" in drawing order, the first being
 ## the base. A key `<id>_b` is the same terrain's tile on tiles with x + y odd (grass has one).
@@ -34,6 +35,7 @@ const MISSING: Color = Color.MAGENTA  ## Shown for a terrain or colour key the d
 	&"scrub": "0,0,8,8,scrub 1,1,3,3,scrub_b 4,4,3,3,scrub_b 1,1,1,1,scrub_c 4,4,1,1,scrub_c",
 	&"rock": "0,0,8,8,rock 0,0,8,1,rock_b 0,0,1,8,rock_b 0,7,8,1,rock_c 7,0,1,8,rock_c",
 	&"water": "0,0,8,8,water 1,2,4,1,water_b 4,6,4,1,water_b",
+	&"ore": "0,0,8,8,ore",
 }
 @export var bake_px_per_tile: int = 8
 @export var runner: MatchRunner

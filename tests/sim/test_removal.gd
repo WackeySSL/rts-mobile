@@ -80,11 +80,11 @@ func test_sim_step_clears_events_and_stats_and_removes_last() -> void:
 	Sim.step(world, commands)
 	assert_array(world.unit_id).is_equal([1, 3])
 	assert_array(world.events).is_equal([World.Event.DIED, 2, 10120, 20000, 0, 1, 0, 0])
-	assert_array(world.stats).is_equal([0, 0, 0, 0, 0, 0, 1])
+	assert_array(world.stats).is_equal([0, 0, 0, 0, 0, 0, 1, 0, 0, 0])
 	assert_array([world.tick, world.dropped_commands, world.rows_version]).is_equal([1, 0, 4])
 	Sim.step(world, [])
 	assert_array(world.events).is_empty()
-	assert_array(world.stats).is_equal([0, 0, 0, 0, 0, 0, 0])
+	assert_array(world.stats).is_equal([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
 
 ## remove_dead() prepares a hand-built world itself (ADR 0007 section 2: World.new() is a valid

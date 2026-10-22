@@ -263,7 +263,8 @@ func test_a_move_order_never_acquires_and_drops_its_target(
 
 ## The marks of the tick, with the grid and the targets at each: the targeting grid holds the rows
 ## from GRIDS on (two cells for the two units), the subject's target is set at TARGETING and not
-## before, and so are the candidates it looked at. Unit 1 is due at tick 4.
+## before, and so are the candidates it looked at. Unit 1 is due at tick 4. The marks after FOG
+## (P70: ECONOMY, PRODUCTION, MEMORY) see the same state as FOG.
 func test_the_grid_is_rebuilt_in_grids_and_targeting_follows_it(
 	impl: int, _test_parameters := _both()
 ) -> void:
@@ -282,13 +283,16 @@ func test_the_grid_is_rebuilt_in_grids_and_targeting_follows_it(
 			SimProbe.Phase.PROJECTILES,
 			SimProbe.Phase.FIRE,
 			SimProbe.Phase.REMOVE,
-			SimProbe.Phase.FOG
+			SimProbe.Phase.FOG,
+			SimProbe.Phase.ECONOMY,
+			SimProbe.Phase.PRODUCTION,
+			SimProbe.Phase.MEMORY
 		]
 	)
 	assert_array(probe.phases).is_equal(phases)
-	assert_array(probe.occupied).is_equal([0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2])
-	assert_array(probe.targets).is_equal([0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2])
-	assert_array(probe.candidates).is_equal([0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1])
+	assert_array(probe.occupied).is_equal([0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
+	assert_array(probe.targets).is_equal([0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
+	assert_array(probe.candidates).is_equal([0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
 
 ## The grid the scan reads is the one built in the same tick: unit 2 stands far away at tick 3 and

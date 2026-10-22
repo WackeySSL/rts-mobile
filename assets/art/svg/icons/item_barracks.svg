@@ -1,0 +1,20 @@
+<!-- Barracks build icon: palette colours, no team colour, drawn on a clear canvas for a tile of 64 dp or more. -->
+<!-- Silhouette: a U of three long olive pitched roofs round a bare metal yard that opens to the bottom, a raised ridge along each and a dark door at the head of the yard. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- yard -->
+  <rect x="38" y="38" width="52" height="80" fill="#7D8893" stroke="#1C2127" stroke-width="3"/>
+  <rect x="58" y="40" width="12" height="12" fill="#1C2127"/>
+  <line x1="64" y1="60" x2="64" y2="112" stroke="#A9B4BE" stroke-width="3" stroke-dasharray="8 6"/>
+  <!-- the U of roofs -->
+  <polygon points="10,10 118,10 118,118 90,118 90,38 38,38 38,118 10,118" fill="#6B7A4F" stroke="#1C2127" stroke-width="4" stroke-linejoin="round"/>
+  <!-- shade facets along the inner side of each roof -->
+  <polygon points="38,38 90,38 90,28 28,28 28,118 38,118" fill="#4E5A3A"/>
+  <polygon points="90,38 90,118 100,118 100,28" fill="#4E5A3A"/>
+  <!-- ridges -->
+  <g stroke="#8C9A6B" stroke-width="4" stroke-linecap="round">
+    <line x1="20" y1="20" x2="108" y2="20"/>
+    <line x1="19" y1="30" x2="19" y2="110"/>
+    <line x1="109" y1="30" x2="109" y2="110"/>
+  </g>
+  <polygon points="10,10 118,10 118,118 90,118 90,38 38,38 38,118 10,118" fill="none" stroke="#1C2127" stroke-width="4" stroke-linejoin="round"/>
+</svg>

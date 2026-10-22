@@ -1,0 +1,16 @@
+<!-- Under attack glyph: white and grey only, tinted at run time (the edge arrow and the minimap ping); points east, the HUD turns it. -->
+<!-- Shape: a fat block arrow, a stubby square tail and a wide triangular head, with an exclamation mark cut into the head. It sits on a dark round disc with a white rim, so the HUD can turn it. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- seat: a dark disc with a white rim, so the glyph reads on any ground and can be turned -->
+  <circle cx="64" cy="64" r="60" fill="#4D4D4D"/>
+  <circle cx="64" cy="64" r="55" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+  <g transform="translate(64 64) scale(0.8) translate(-64 -64)">
+    <polygon points="118,64 62,12 62,42 12,42 12,86 62,86 62,116" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+    <!-- shade on the lower half of the head and tail -->
+    <polygon points="62,64 118,64 62,116 62,86 12,86 12,64" fill="#BFBFBF"/>
+    <polygon points="118,64 62,12 62,42 12,42 12,86 62,86 62,116" fill="none" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+    <!-- exclamation mark in the head: a bar and a dot -->
+    <rect x="76" y="38" width="10" height="28" rx="3" fill="#4D4D4D"/>
+    <circle cx="81" cy="80" r="6" fill="#4D4D4D"/>
+  </g>
+</svg>

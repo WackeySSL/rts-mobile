@@ -1,0 +1,11 @@
+<!-- Vehicles rally flag, team layer: white and grey only, tinted at run time; the cloth and the ground frame. -->
+<!-- Shape: a wide square banner with a notched swallowtail end flying to the right from the top of the pole, over a square frame on the ground around the foot. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- ground frame: edge grey under, white over -->
+  <rect x="36" y="36" width="56" height="56" rx="6" fill="none" stroke="#4D4D4D" stroke-width="9" stroke-linejoin="round"/>
+  <rect x="36" y="36" width="56" height="56" rx="6" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+  <!-- banner -->
+  <polygon points="68,14 116,14 104,30 116,46 68,46" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round"/>
+  <polygon points="68,32 108,32 104,30 116,46 68,46" fill="#BFBFBF"/>
+  <polygon points="68,14 116,14 104,30 116,46 68,46" fill="none" stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round"/>
+</svg>

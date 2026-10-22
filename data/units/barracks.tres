@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/BuildingDef.gd" id="1_building"]
+[ext_resource type="Resource" path="res://data/units/power_plant.tres" id="2_requires"]
+
+[resource]
+script = ExtResource("1_building")
+type_id = &"barracks"
+display_name = "Barracks"
+max_hp = 1000
+armour = 3
+sight_range = 5000
+cost = 400
+build_ticks = 150
+tab = 0
+requires = ExtResource("2_requires")
+footprint = Vector2i(2, 2)
+power = -20
+produces = 1
+exit = Vector2i(1, 2)

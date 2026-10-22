@@ -30,7 +30,8 @@ const KNOWN_LINE: String = (
 	+ " max_ms=5.000 worst15_ms=20.000 ticks_per_s=666.667 ref_ms=0.250 est_phone_mean_ms=6.600"
 	+ " est_phone_p95_ms=17.700 alive_end=148 proj_peak=7 projectile_overflow=0"
 	+ " phases=commands:0.100,flow:0.200,grids:0.300,targeting:0.400,intents:0.500,"
-	+ "separation:0.600,integrate:0.700,projectiles:0.800,fire:0.900,remove:1.000,fog:1.100"
+	+ "separation:0.600,integrate:0.700,projectiles:0.800,fire:0.900,remove:1.000,fog:1.100,"
+	+ "economy:1.200,production:1.300,memory:1.400"
 	+ " hash=0123456789abcdef"
 )
 

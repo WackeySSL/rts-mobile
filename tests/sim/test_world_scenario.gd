@@ -14,10 +14,12 @@ const CLASS_COSTS: Dictionary[String, Array] = {".": [10, 10, 10], "t": [0, 0, 1
 ## The tables hold what the shipped unit and weapon files say (ADR 0009 section 1), in the order of
 ## first appearance in the spawns; the terrain ids follow the terrain set.
 func test_from_scenario_copies_the_unit_weapon_and_terrain_tables_of_the_arena() -> void:
-	var world: World = World.from_scenario(load(ARENA_PATH) as ScenarioDef)
+	var arena: ScenarioDef = load(ARENA_PATH) as ScenarioDef
+	var world: World = World.from_scenario(arena)
 	assert_array(world.type_ids).is_equal([&"light_tank", &"rifle_squad", &"rocket_squad"])
 	assert_array(world.weapon_ids).is_equal([&"tank_cannon", &"rifle", &"rocket"])
-	assert_array(world.terrain_ids).is_equal([&"grass", &"sand", &"scrub", &"rock", &"water"])
+	var terrain_ids: Array[StringName] = [&"grass", &"sand", &"scrub", &"rock", &"water", &"ore"]
+	assert_array(world.terrain_ids).is_equal(terrain_ids)
 	var expected: Dictionary[StringName, Array] = {
 		&"type_speed": [120, 67, 60],
 		&"type_radius": [400, 300, 300],
@@ -30,6 +32,23 @@ func test_from_scenario_copies_the_unit_weapon_and_terrain_tables_of_the_arena()
 		&"type_acquire": [5500, 5000, 5500],
 		&"type_weapon": [0, 1, 2],
 		&"type_names": ["Light Tank", "Rifle Squad", "Rocket Squad"],
+		# The arena has no building and no harvester: the building tables pad. The production
+		# columns are what the three unit files say (P72 sets them), read from the spawned
+		# definitions; test_world_v2 pins the literals with hand-built definitions.
+		&"type_foot_w": [0, 0, 0],
+		&"type_foot_h": [0, 0, 0],
+		&"type_cost": _spawned_column(arena, &"cost"),
+		&"type_build_ticks": _spawned_column(arena, &"build_ticks"),
+		&"type_tab": _spawned_column(arena, &"tab"),
+		&"type_requires": [-1, -1, -1],
+		&"type_produces": [-1, -1, -1],
+		&"type_power": [0, 0, 0],
+		&"type_harvest": [0, 0, 0],
+		&"type_free_unit": [-1, -1, -1],
+		&"type_dock_x": [0, 0, 0],
+		&"type_dock_y": [0, 0, 0],
+		&"type_exit_x": [0, 0, 0],
+		&"type_exit_y": [0, 0, 0],
 		&"weapon_range": [4500, 4000, 5000],
 		&"weapon_min_range": [0, 0, 0],
 		&"weapon_damage": [30, 12, 50],
@@ -47,7 +66,7 @@ func test_from_scenario_copies_the_unit_weapon_and_terrain_tables_of_the_arena()
 
 func test_the_rules_come_from_the_scenario_else_the_defaults_and_size_the_fixed_arrays() -> void:
 	var fields: Array[String] = _rule_fields()
-	assert_int(fields.size()).is_equal(15)
+	assert_int(fields.size()).is_equal(33)
 	var defaults: RulesDef = RulesDef.new()
 	var rules: RulesDef = RulesDef.new()
 	for i: int in fields.size():
@@ -234,7 +253,7 @@ func test_from_scenario_ends_with_prepare_and_drops_the_spawn_events() -> void:
 		var world: World = World.from_scenario(scenario)
 		assert_array(world.events).is_empty()
 		assert_array([world.intent_x.size(), world.proj_id.size(), world.stats.size()]).is_equal(
-			[256, 512, 7]
+			[256, 512, 10]
 		)
 	var controls: World = World.from_scenario(load(SCENARIO_PATH) as ScenarioDef)
 	assert_array([controls.unit_count(), controls.rows_version, controls.next_id]).is_equal(
@@ -291,13 +310,23 @@ func _weapon(id: StringName, damage: int) -> WeaponDef:
 	return weapon
 
 
-## The RulesDef ints that World copies (the 18 of Phase 3 join them with plan row P70).
+## `field` of each distinct unit definition the spawns name, in the order of first appearance,
+## which is the type order of the prepared world.
+func _spawned_column(scenario: ScenarioDef, field: StringName) -> Array:
+	var column: Array = []
+	var seen: Array[StringName] = []
+	for spawn: SpawnDef in scenario.spawns:
+		if not seen.has(spawn.unit.type_id):
+			seen.append(spawn.unit.type_id)
+			column.append(spawn.unit.get(field))
+	return column
+
+
 func _rule_fields() -> Array[String]:
 	var fields: Array[String] = []
 	for info: Dictionary in RulesDef.new().get_property_list():
 		if (int(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0:
-			if World.RULE_SCALARS.has(StringName(info["name"])):
-				fields.append(String(info["name"]))
+			fields.append(String(info["name"]))
 	return fields
 
 

@@ -8,7 +8,14 @@ const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
 const UNIT_ART: String = "res://assets/art/svg/units/%s_%s.svg"
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
-const SIDE_PX: Dictionary[String, int] = {"light_tank": 64, "rifle_squad": 32, "rocket_squad": 32}
+const SIDE_PX: Dictionary[String, int] = {
+	"light_tank": 64,
+	"rifle_squad": 32,
+	"rocket_squad": 32,
+	"heavy_tank": 64,
+	"artillery": 64,
+	"harvester": 80,
+}
 ## Words the plain `grep` of STYLE.md forbids (comments too); the elements allowed besides `svg`.
 const FORBIDDEN: Array[String] = ["text", "image", "filter", "mask", "href", "style", "script"]
 const OK_TAGS: String = " g path rect circle ellipse polygon polyline line linearGradient stop "
@@ -22,6 +29,7 @@ const PICTURES: Dictionary[StringName, String] = {
 	&"scrub": "00000000/02110000/01110000/01110000/00002110/00001110/00001110/00000000",
 	&"rock": "11111112/10000002/10000002/10000002/10000002/10000002/10000002/22222222",
 	&"water": "00000000/00000000/01111000/00000000/00000000/00000000/00001111/00000000",
+	&"ore": "00000000/00000000/00000000/00000000/00000000/00000000/00000000/00000000",
 }
 ## Rec. 601 luminance of the 8-bit texels of a whole tile (STYLE.md): "mean spread fogged", the
 ## spread being the standard deviation and fogged the mean under the explored fog (alpha 140).
@@ -32,6 +40,7 @@ const GREYSCALE: Dictionary[StringName, String] = {
 	&"scrub": "92.2 15.9 42",
 	&"rock": "105.4 19.9 48",
 	&"water": "85.7 6.4 39",
+	&"ore": "115.2 0.0 52",
 }
 ## The map patch of the gallery's terrain row, left to right, rows 0 and 1 (grass by x + y parity).
 const PATCH_TILES: Array[Array] = [

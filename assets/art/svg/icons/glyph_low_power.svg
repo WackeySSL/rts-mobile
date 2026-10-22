@@ -1,0 +1,8 @@
+<!-- Low power glyph: white and grey only, tinted at run time (the warning look of the power bar). -->
+<!-- Shape: a rounded warning triangle, point up, with a dark lightning bolt cut into its middle. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <polygon points="64,12 116,106 12,106" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="14" stroke-linejoin="round"/>
+  <polygon points="64,12 116,106 12,106" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+  <!-- bolt, in the edge grey so it reads as a cut-out -->
+  <polygon points="70,40 48,76 62,76 56,98 80,66 66,66 76,40" fill="#4D4D4D" stroke="#4D4D4D" stroke-width="2" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,55 @@
+<!-- Heavy tank, hull layer: faces east, drawn first, holds the ground shadow of the whole vehicle. -->
+<!-- Silhouette: a squat armoured slab, two broad flat-sided track pods with chamfered fronts joined by a deep deck whose lit wedge nose pokes out ahead of them. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- ground shadow, offset (4,4), flattened as one group -->
+  <g transform="translate(4 4)" opacity="0.25" fill="#000000">
+    <path d="M12 16 L88 16 L100 28 L100 42 L6 42 L6 22 Q6 16 12 16 Z"/>
+    <path d="M12 112 L88 112 L100 100 L100 86 L6 86 L6 106 Q6 112 12 112 Z"/>
+    <polygon points="14,42 88,42 108,54 108,74 88,86 14,86"/>
+  </g>
+  <!-- track pods -->
+  <g fill="#5B6670" stroke="#1C2127" stroke-width="3" stroke-linejoin="round">
+    <path d="M12 16 L88 16 L100 28 L100 42 L6 42 L6 22 Q6 16 12 16 Z"/>
+    <path d="M12 112 L88 112 L100 100 L100 86 L6 86 L6 106 Q6 112 12 112 Z"/>
+  </g>
+  <!-- tread bars -->
+  <g stroke="#1C2127" stroke-width="1.5" stroke-linecap="round">
+    <line x1="14" y1="21" x2="14" y2="37"/>
+    <line x1="24" y1="21" x2="24" y2="37"/>
+    <line x1="34" y1="21" x2="34" y2="37"/>
+    <line x1="44" y1="21" x2="44" y2="37"/>
+    <line x1="54" y1="21" x2="54" y2="37"/>
+    <line x1="64" y1="21" x2="64" y2="37"/>
+    <line x1="74" y1="21" x2="74" y2="37"/>
+    <line x1="84" y1="21" x2="84" y2="37"/>
+    <line x1="94" y1="26" x2="94" y2="37"/>
+    <line x1="14" y1="91" x2="14" y2="107"/>
+    <line x1="24" y1="91" x2="24" y2="107"/>
+    <line x1="34" y1="91" x2="34" y2="107"/>
+    <line x1="44" y1="91" x2="44" y2="107"/>
+    <line x1="54" y1="91" x2="54" y2="107"/>
+    <line x1="64" y1="91" x2="64" y2="107"/>
+    <line x1="74" y1="91" x2="74" y2="107"/>
+    <line x1="84" y1="91" x2="84" y2="107"/>
+    <line x1="94" y1="91" x2="94" y2="102"/>
+  </g>
+  <!-- highlight on the top edge of the upper pod and its chamfer, and on the rear edge -->
+  <g stroke="#A9B4BE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <polyline points="11,18.5 87,18.5 97,28"/>
+    <line x1="9" y1="22" x2="9" y2="38"/>
+  </g>
+  <!-- hull deck: the lowest plane, so the darkest olive -->
+  <polygon points="14,42 88,42 108,54 108,74 88,86 14,86" fill="#4E5A3A" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <!-- light edge on the top and rear sides -->
+  <polyline points="18,82 18,46 87,46" fill="none" stroke="#6B7A4F" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <polyline points="18.5,81 18.5,46.5 86,46.5" fill="none" stroke="#8C9A6B" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- engine grille at the rear: three louvres beside the turret bustle -->
+  <g stroke="#1C2127" stroke-width="2" stroke-linecap="round">
+    <line x1="34" y1="52" x2="34" y2="76"/>
+    <line x1="39" y1="52" x2="39" y2="76"/>
+  </g>
+  <!-- front plate: upper facet lit, lower facet in shade, ridge between -->
+  <polygon points="88,42 108,54 108,64 88,64" fill="#6B7A4F" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round"/>
+  <polygon points="88,64 108,64 108,74 88,86" fill="#4E5A3A" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round"/>
+  <line x1="91" y1="46" x2="105" y2="54.5" stroke="#8C9A6B" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

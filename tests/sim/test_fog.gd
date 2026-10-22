@@ -280,9 +280,10 @@ func test_the_cells_of_a_death_on_the_owners_update_tick_stay_listed(
 	assert_int(listed.size()).is_equal(113 + 10)
 
 
-## The fog update is the last phase: at the REMOVE mark the dead row is gone and its disc is dark
+## The fog update follows the removal: at the REMOVE mark the dead row is gone and its disc is dark
 ## while the mover (player 1's turn, tick 0) still stands in its old cell, and at the FOG mark it
-## has moved. Before REMOVE both rows are stamped where they were.
+## has moved. Before REMOVE both rows are stamped where they were. The marks after FOG (ECONOMY,
+## PRODUCTION and MEMORY, P70) run no rule yet.
 func test_the_fog_update_follows_the_removal_in_the_tick(
 	impl: int, _test_parameters := _both()
 ) -> void:
@@ -297,9 +298,9 @@ func test_the_fog_update_follows_the_removal_in_the_tick(
 	Sim.step(world, [], probe)
 	var fire: int = probe.phases.find(SimProbe.Phase.FIRE)
 	var remove: int = probe.phases.find(SimProbe.Phase.REMOVE)
-	assert_array(probe.phases.slice(fire)).is_equal(
-		[SimProbe.Phase.FIRE, SimProbe.Phase.REMOVE, SimProbe.Phase.FOG]
-	)
+	var phases: Array[int] = [SimProbe.Phase.FIRE, SimProbe.Phase.REMOVE, SimProbe.Phase.FOG]
+	phases.append_array([SimProbe.Phase.ECONOMY, SimProbe.Phase.PRODUCTION, SimProbe.Phase.MEMORY])
+	assert_array(probe.phases.slice(fire)).is_equal(phases)
 	assert_array(probe.stamped[fire]).is_equal([10 * COLS + 10, 10 * COLS + 20])
 	assert_array(probe.stamped[remove]).is_equal([10 * COLS + 20])
 	assert_array(probe.stamped[remove + 1]).is_equal([10 * COLS + 21])

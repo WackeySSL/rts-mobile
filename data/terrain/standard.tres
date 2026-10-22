@@ -8,12 +8,14 @@ script = ExtResource("2_terrain")
 symbol = "."
 id = &"grass"
 cost = PackedInt32Array(10, 10, 10)
+buildable = true
 
 [sub_resource type="Resource" id="Resource_sand"]
 script = ExtResource("2_terrain")
 symbol = ":"
 id = &"sand"
 cost = PackedInt32Array(10, 10, 10)
+buildable = true
 
 [sub_resource type="Resource" id="Resource_scrub"]
 script = ExtResource("2_terrain")
@@ -33,6 +35,12 @@ symbol = "~"
 id = &"water"
 cost = PackedInt32Array(0, 0, 0)
 
+[sub_resource type="Resource" id="Resource_ore"]
+script = ExtResource("2_terrain")
+symbol = "o"
+id = &"ore"
+cost = PackedInt32Array(10, 10, 10)
+
 [resource]
 script = ExtResource("1_set")
-terrains = Array[ExtResource("2_terrain")]([SubResource("Resource_grass"), SubResource("Resource_sand"), SubResource("Resource_scrub"), SubResource("Resource_rock"), SubResource("Resource_water")])
+terrains = Array[ExtResource("2_terrain")]([SubResource("Resource_grass"), SubResource("Resource_sand"), SubResource("Resource_scrub"), SubResource("Resource_rock"), SubResource("Resource_water"), SubResource("Resource_ore")])

@@ -438,6 +438,24 @@ func test_check_world_gives_the_same_statuses_on_a_worker_thread() -> void:
 		assert_int(found[index]).override_failure_message(cases[index][3]).is_equal(cases[index][2])
 
 
+## The lockstep oracle and the checked table's lists cover the four Phase 3 lists (ADR 0017 section
+## 3): an extra entry in any one array names that array, and the table may name each of them.
+func test_the_oracle_and_the_table_lists_cover_the_phase_3_lists() -> void:
+	var phase_3: Array[StringName] = []
+	phase_3.assign(
+		World.PLAYER_ARRAYS + World.ORE_ARRAYS + World.GHOST_ARRAYS + World.DERIVED_ARRAYS
+	)
+	for member: StringName in phase_3:
+		var other: World = _arena()
+		var column: PackedInt32Array = other.get(member)
+		column.append(7)
+		other.set(member, column)
+		assert_str(StateDiff.first(_arena(), other)).override_failure_message(member).is_equal(
+			String(member)
+		)
+		assert_array(_lists("WORLD")).override_failure_message(member).contains([member])
+
+
 ## What _write_case sees: every observation true, and only a held copy keeps its old values.
 func _written(hold: bool) -> Dictionary:
 	var seen: Dictionary = {"settled": 5, "alias": true, "member": true, "scalars": true}
@@ -671,7 +689,7 @@ func _rule_length(world: World, rule: String) -> int:
 	var rules: Dictionary[String, int] = {
 		"ROWS": world.unit_id.size(),
 		"MAX_ROWS": world.max_rows,
-		"STATS": 7,
+		"STATS": 10,  # World.Stat.size(): the three counters of P70 are written by no kernel.
 		"TYPES": world.type_speed.size(),
 		"WEAPONS": world.weapon_range.size(),
 		"ARMOURS": 4 * world.weapon_range.size(),
@@ -756,4 +774,6 @@ func _lists(owner: String) -> Array:
 		return lists[owner]
 	var world_lists: Array = World.ROW_ARRAYS + World.TYPE_ARRAYS + World.WEAPON_ARRAYS
 	world_lists += World.PROJECTILE_ARRAYS + World.MAP_ARRAYS + World.SCRATCH_ARRAYS
+	world_lists += World.PLAYER_ARRAYS + World.ORE_ARRAYS + World.GHOST_ARRAYS
+	world_lists += World.DERIVED_ARRAYS
 	return world_lists + World.RUNTIME_ARRAYS + World.HASHED_SCALARS + World.UNHASHED_SCALARS

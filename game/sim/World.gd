@@ -1,19 +1,29 @@
+# This file is past gdlint's 1000 lines: ADR 0007 section 2 and ADR 0017 section 3 keep every
+# column, list and rule int of the state in one class. Splitting its code (the hash, the scenario
+# loader) is a refactor of its own and changes no rule (plan row P70, requests).
+# gdlint: disable=max-file-lines
 class_name World
 extends RefCounted
-## Simulation state v1 (ADR 0007 section 2): struct-of-arrays, integers only. Positions are
-## milli-tiles (1 tile = 1000). Units are rows in the per-unit arrays, ascending by id. Ids come
-## from a counter that starts at 1 and are never reused. Removal keeps the rows in id order, so an
-## id is found by binary search. The view and input read a World and never write to it. Every array
-## and scalar is declared here and listed in one shape list (ADR 0007 section 2); the state hash
-## (ADR 0007 section 8) walks those lists.
+## Simulation state v2 (ADR 0007 section 2, ADR 0017 section 3): struct-of-arrays, integers only.
+## Positions are milli-tiles (1 tile = 1000). Units and buildings are rows in the per-unit arrays,
+## ascending by id. Ids come from a counter that starts at 1 and are never reused. Removal keeps the
+## rows in id order, so an id is found by binary search. The view and input read a World and never
+## write to it. Every array and scalar is declared here and listed in one shape list (ADR 0007
+## section 2); the state hash (ADR 0007 section 8) walks those lists.
 
 enum Order { IDLE = 0, ATTACK_MOVE = 1, MOVE = 2, ATTACK = 3 }
 enum Armour { INFANTRY = 0, LIGHT = 1, HEAVY = 2, BUILDING = 3 }
 enum MoveClass { FOOT = 0, WHEELED = 1, TRACKED = 2 }
 enum Event { SPAWNED = 1, DIED = 2, SHOT = 3, IMPACT = 4 }
 enum NavMode { NONE = 0, DIRECT = 1, FIELD = 2, HOLD = 3, CHASE = 4 }
+## The production tabs (ADR 0017 section 3): a queue, a rally point and a buildable type's `tab`.
+enum Tab { STRUCTURES = 0, INFANTRY = 1, VEHICLES = 2 }
+## What a harvester is doing (ADR 0018 section 3); IDLE is under the player's control.
+enum HarvestMode { IDLE = 0, SEEK = 1, MINE = 2, RETURN = 3, UNLOAD = 4 }
 ## The indexes of `stats`: flow cells settled, line checks, separation pairs tested, targeting
-## candidates tested, fog cells stamped, projectile steps and rows moved by a compaction.
+## candidates tested, fog cells stamped, projectile steps, rows moved by a compaction, ore cells
+## looked at, exit cells walked and last-seen checks (the last three: Phase 3, ADR 0017 section 3).
+## The native kernels check `stats` against this size (`STAT_COUNT` in bind/world_access.h).
 enum Stat {
 	FLOW_CELLS = 0,
 	LINE_CHECKS = 1,
@@ -22,6 +32,9 @@ enum Stat {
 	FOG_CELLS = 4,
 	PROJ_STEPS = 5,
 	ROWS_COMPACTED = 6,
+	ORE_SCANNED = 7,
+	EXIT_SCANNED = 8,
+	MEMORY_CHECKS = 9,
 }
 
 ## Same value as Sim.MILLI_PER_TILE, which P3 adds. World cannot read it from Sim (Sim reads World).
@@ -29,11 +42,15 @@ const MILLI_PER_TILE: int = 1000
 const TILE_CENTRE: int = 500
 ## Ints per record in `events`.
 const EVENT_STRIDE: int = 8
+## The production tabs: the second index of the per-tab arrays is `player * TABS + tab`.
+const TABS: int = 3
 ## The layout version of the hashed state. 2: fog.visible left the hash, because the rows it is
-## derived from stay in it (ADR 0016).
-const STATE_FORMAT: int = 2
-## The hash sections that are not a ROW_ARRAYS column: header, map, projectiles and fog.
-const HASH_OTHER_SECTIONS: int = 4
+## derived from stay in it (ADR 0016). 3: Phase 3's state joined it (ADR 0017 section 7): four row
+## columns, the sections players, ore and ghosts, and the scalars match_end_tick and winner.
+const STATE_FORMAT: int = 3
+## The hash sections that are not a ROW_ARRAYS column: header, map, projectiles, fog, players, ore
+## and ghosts.
+const HASH_OTHER_SECTIONS: int = 7
 
 ## What prepare() fills a type table with for a type that has no entry. A padded type cannot
 ## fire, sees only its own tile and counts as tracked. These are not balance numbers.
@@ -43,14 +60,22 @@ const TYPE_PAD_MOVE_CLASS: int = MoveClass.TRACKED
 const TYPE_PAD_SIGHT: int = 0
 const TYPE_PAD_ACQUIRE: int = 0
 const TYPE_PAD_WEAPON: int = -1
-## For the four Phase 1 tables (speed, radius, selection radius, spacing).
+## For the four Phase 1 tables (speed, radius, selection radius, spacing), and for the Phase 3
+## tables whose pad is 0: footprint, cost, build ticks, power, cargo capacity, dock and exit.
 const TYPE_PAD_V0: int = 0
+## For the Phase 3 tables whose "none" is -1: tab, requirement, produced tab and free unit.
+const TYPE_PAD_NONE: int = -1
 ## The cost of open grass for every class, 10 = normal ground (ADR 0008 section 1). It equals the
 ## default TerrainDef.cost, which a test pins: prepare() may run in the tick and reads no Resource.
 const GRASS_COST: int = 10
 ## The id of open grass, the one terrain of a map without a MapDef. It equals the first terrain of
 ## data/terrain/standard.tres, which a test pins.
 const GRASS_ID: StringName = &"grass"
+## Whether open grass is buildable (1) or not (0), the one terrain of a map without a MapDef. It
+## equals the `buildable` flag of the first terrain of data/terrain/standard.tres (a test pins it).
+const GRASS_BUILDABLE: int = 1
+## The id of the ore terrain (ADR 0018 section 2): `_load_map` lists its cells in `ore_cell`.
+const ORE_ID: StringName = &"ore"
 ## The largest terrain index. `terrain` keeps one byte per cell and the view picks its tile by it,
 ## so a larger index would be stored as another terrain's and drawn as that one (P48).
 const TERRAIN_INDEX_MAX: int = 255
@@ -81,6 +106,10 @@ const ROW_ARRAYS: Array[StringName] = [
 	&"best_dist",
 	&"stall",
 	&"fog_cell",
+	&"harvest_mode",
+	&"cargo",
+	&"harvest_slot",
+	&"home",
 ]
 ## The per-type tables, one entry per type_ids entry once prepare() has run.
 const TYPE_ARRAYS: Array[StringName] = [
@@ -95,6 +124,20 @@ const TYPE_ARRAYS: Array[StringName] = [
 	&"type_acquire",
 	&"type_weapon",
 	&"type_names",
+	&"type_foot_w",
+	&"type_foot_h",
+	&"type_cost",
+	&"type_build_ticks",
+	&"type_tab",
+	&"type_requires",
+	&"type_produces",
+	&"type_power",
+	&"type_harvest",
+	&"type_free_unit",
+	&"type_dock_x",
+	&"type_dock_y",
+	&"type_exit_x",
+	&"type_exit_y",
 ]
 ## The weapon tables, one entry per weapon (weapon_vs_armour has four).
 const WEAPON_ARRAYS: Array[StringName] = [
@@ -118,16 +161,51 @@ const PROJECTILE_ARRAYS: Array[StringName] = [
 	&"proj_ticks",
 	&"proj_free",
 ]
-## The tile grid: the terrain index per cell, the move cost per class and cell, and the cost per
-## terrain and class that set_terrain copies into it.
-const MAP_ARRAYS: Array[StringName] = [&"terrain", &"move_cost", &"terrain_cost"]
+## The per-player state (ADR 0017 section 3), sized by prepare(): the first seven have an entry per
+## player (index 0 is neutral and unused), the next four one per player and tab (`player * TABS +
+## tab`) and `queue_type` one per queue slot (`(player * TABS + tab) * queue_slots + slot`). Hashed,
+## one block per array, in the section `players`.
+const PLAYER_ARRAYS: Array[StringName] = [
+	&"credits",
+	&"defeated_tick",
+	&"had_producer",
+	&"stat_built",
+	&"stat_lost_units",
+	&"stat_lost_buildings",
+	&"stat_harvested",
+	&"queue_count",
+	&"queue_progress",
+	&"rally_x",
+	&"rally_y",
+	&"queue_type",
+]
+## The ore left in each ore cell, one entry per `ore_cell` entry. Hashed, in the section `ore`.
+const ORE_ARRAYS: Array[StringName] = [&"ore_amount"]
+## The last-seen building records (ADR 0017 section 3): record `i` of player `p` is entry
+## `p * ghost_cap + i` of the four record arrays, live below `ghost_count[p]`. Hashed, live records
+## only, in the section `ghosts`.
+const GHOST_ARRAYS: Array[StringName] = [
+	&"ghost_id", &"ghost_type", &"ghost_owner", &"ghost_cell", &"ghost_count"
+]
+## State that follows from the hashed state (ADR 0016), rebuilt when `rows_version` moves and in
+## no hash section: the power totals per player and the ascending rows of buildings and harvesters.
+const DERIVED_ARRAYS: Array[StringName] = [
+	&"power_made", &"power_used", &"building_rows", &"harvester_rows"
+]
+## The tile grid: the terrain index per cell, the move cost per class and cell, the cost per
+## terrain and class that set_terrain copies into it, the buildable flag per terrain and the
+## ascending cells of the ore terrain (fixed at load).
+const MAP_ARRAYS: Array[StringName] = [
+	&"terrain", &"move_cost", &"terrain_cost", &"terrain_buildable", &"ore_cell"
+]
 ## Per-row working space, max_rows entries each, rewritten every tick. Not state.
 const SCRATCH_ARRAYS: Array[StringName] = [&"intent_x", &"intent_y", &"push_x", &"push_y"]
 ## Rewritten every tick, neither hashed nor compacted.
 const RUNTIME_ARRAYS: Array[StringName] = [&"events", &"stats"]
 
 ## The int properties that go into the state hash, in hash order: the header ints, then
-## map_version (the map grid itself goes in as a cached digest). rng.state() follows them.
+## map_version (the map grid itself goes in as a cached digest), then the match end. rng.state()
+## follows them.
 const HASHED_SCALARS: Array[StringName] = [
 	&"tick",
 	&"next_id",
@@ -138,6 +216,8 @@ const HASHED_SCALARS: Array[StringName] = [
 	&"player_count",
 	&"proj_free_top",
 	&"map_version",
+	&"match_end_tick",
+	&"winner",
 ]
 ## The rule ints, copied from RulesDef under the same names. defs_hash() covers them.
 const RULE_SCALARS: Array[StringName] = [
@@ -156,6 +236,24 @@ const RULE_SCALARS: Array[StringName] = [
 	&"attack_rekey_milli",
 	&"max_projectiles",
 	&"max_rows",
+	&"start_credits",
+	&"ore_start",
+	&"ore_cell_max",
+	&"ore_regrow_ticks",
+	&"credits_per_ore",
+	&"harvest_ticks_per_ore",
+	&"unload_ticks_per_ore",
+	&"harvest_reach_milli",
+	&"dock_reach_milli",
+	&"harvest_retry_ticks",
+	&"harvest_resume_ticks",
+	&"harvest_pick_milli",
+	&"low_power_percent",
+	&"queue_slots",
+	&"build_reach_tiles",
+	&"unit_cap",
+	&"building_cap",
+	&"ghost_cap",
 ]
 ## The other int properties: the map size, the view's rows_version, native_phases (which
 ## implementation runs a phase is never state, ADR 0013 section 3), the map digest cache (it
@@ -185,7 +283,25 @@ const UNHASHED_SCALARS: Array[StringName] = [
 	&"stall_range_spacings",
 	&"attack_rekey_milli",
 	&"max_projectiles",
-	&"max_rows"
+	&"max_rows",
+	&"start_credits",
+	&"ore_start",
+	&"ore_cell_max",
+	&"ore_regrow_ticks",
+	&"credits_per_ore",
+	&"harvest_ticks_per_ore",
+	&"unload_ticks_per_ore",
+	&"harvest_reach_milli",
+	&"dock_reach_milli",
+	&"harvest_retry_ticks",
+	&"harvest_resume_ticks",
+	&"harvest_pick_milli",
+	&"low_power_percent",
+	&"queue_slots",
+	&"build_reach_tiles",
+	&"unit_cap",
+	&"building_cap",
+	&"ghost_cap"
 ]
 ## The members that are not state (ADR 0013 section 3): the coverage test, the state hash and the
 ## reachability walk skip exactly these. `kernels` is the native kernels object, or null.
@@ -206,6 +322,11 @@ var spawn_refused: int = 0
 var player_count: int = 0
 ## The top of the projectile free stack, 0..max_projectiles.
 var proj_free_top: int = 0
+## 0 = the match is running; else the tick the ending step produces (`tick + 1`, so an end on the
+## first step reads 1, ADR 0018 section 7).
+var match_end_tick: int = 0
+## The winning player; 0 = none yet, or a draw once `match_end_tick` is set.
+var winner: int = 0
 ## Bumped whenever rows are added or removed, so the view can tell when rows moved.
 var rows_version: int = 0
 ## The sim's random stream (spawn jitter). Never null.
@@ -244,6 +365,26 @@ var stall_range_spacings: int = 0
 var attack_rekey_milli: int = 0
 var max_projectiles: int = 0
 var max_rows: int = 0
+## Phase 3 (ADR 0018 section 9; RulesDef holds the meanings): credits and ore, harvesting, power,
+## production, building and the last-seen records.
+var start_credits: int = 0
+var ore_start: int = 0
+var ore_cell_max: int = 0
+var ore_regrow_ticks: int = 0
+var credits_per_ore: int = 0
+var harvest_ticks_per_ore: int = 0
+var unload_ticks_per_ore: int = 0
+var harvest_reach_milli: int = 0
+var dock_reach_milli: int = 0
+var harvest_retry_ticks: int = 0
+var harvest_resume_ticks: int = 0
+var harvest_pick_milli: int = 0
+var low_power_percent: int = 0
+var queue_slots: int = 0
+var build_reach_tiles: int = 0
+var unit_cap: int = 0
+var building_cap: int = 0
+var ghost_cap: int = 0
 
 ## Per type. The index is the order of first appearance in the scenario's spawns, then its roster.
 ## The ranges named on these tables and the weapon tables hold for data that passes test_defs_data;
@@ -266,6 +407,30 @@ var type_acquire: PackedInt32Array = PackedInt32Array()
 var type_weapon: PackedInt32Array = PackedInt32Array()
 ## The display name, or the capitalised type id when the definition has none.
 var type_names: PackedStringArray = PackedStringArray()
+## Phase 3 (ADR 0017 section 3). A building type has a footprint in tiles (`type_foot_w` and
+## `type_foot_h` above 0, at most 3), a mobile type has 0 and 0.
+var type_foot_w: PackedInt32Array = PackedInt32Array()
+var type_foot_h: PackedInt32Array = PackedInt32Array()
+## Credits, and ticks to build at 15 Hz; 0 for a type that is not buildable.
+var type_cost: PackedInt32Array = PackedInt32Array()
+var type_build_ticks: PackedInt32Array = PackedInt32Array()
+## The tab whose queue builds the type (a Tab), -1 = not buildable.
+var type_tab: PackedInt32Array = PackedInt32Array()
+## The type index that must be owned before this one is queued, -1 = none.
+var type_requires: PackedInt32Array = PackedInt32Array()
+## The tab a building lets its owner queue (a Tab), -1 = none.
+var type_produces: PackedInt32Array = PackedInt32Array()
+## Power made (above 0) or used (below 0) by a building.
+var type_power: PackedInt32Array = PackedInt32Array()
+## A harvester's cargo capacity in credits, 0 = not a harvester.
+var type_harvest: PackedInt32Array = PackedInt32Array()
+## The type index of the unit that comes with a placed building, -1 = none.
+var type_free_unit: PackedInt32Array = PackedInt32Array()
+## Tile offsets from a building's origin tile: where a harvester unloads and where a unit appears.
+var type_dock_x: PackedInt32Array = PackedInt32Array()
+var type_dock_y: PackedInt32Array = PackedInt32Array()
+var type_exit_x: PackedInt32Array = PackedInt32Array()
+var type_exit_y: PackedInt32Array = PackedInt32Array()
 
 ## Per weapon, in the order of first appearance in the unit types. The index is `type_weapon`.
 var weapon_ids: Array[StringName] = []
@@ -297,6 +462,12 @@ var move_cost: PackedByteArray = PackedByteArray()
 ## up to 40 (MapDef.validate keeps them in 0..40). Open grass has the one terrain 0. Only
 ## from_scenario and prepare() write it, so it is constant during a match.
 var terrain_cost: PackedByteArray = PackedByteArray()
+## Entry `terrain`: 1 if a building may stand on that terrain (TerrainDef.buildable), else 0. Only
+## from_scenario and prepare() write it, so it is constant during a match.
+var terrain_buildable: PackedByteArray = PackedByteArray()
+## The cells of the ore terrain (`ORE_ID`), ascending, listed at load. `set_terrain` does not touch
+## it: a cell is an ore cell for the whole match.
+var ore_cell: PackedInt32Array = PackedInt32Array()
 
 ## Per unit, ascending by id.
 var unit_id: PackedInt32Array = PackedInt32Array()
@@ -332,6 +503,48 @@ var best_dist: PackedInt32Array = PackedInt32Array()
 var stall: PackedInt32Array = PackedInt32Array()
 ## The cell last stamped into the fog, -1 = not stamped.
 var fog_cell: PackedInt32Array = PackedInt32Array()
+## A HarvestMode (IDLE for every row until the harvest rows), the cargo in credits, the index into
+## `ore_cell` of the cell the row works (-1 = none) and the id of the refinery it returns to
+## (0 = none). All start at those values, and a row that is no harvester keeps them.
+var harvest_mode: PackedInt32Array = PackedInt32Array()
+var cargo: PackedInt32Array = PackedInt32Array()
+var harvest_slot: PackedInt32Array = PackedInt32Array()
+var home: PackedInt32Array = PackedInt32Array()
+
+## Per player (index 0 = neutral, unused; prepare() sizes them to player_count + 1): the credits
+## (start_credits), the tick the defeating step produced (0 = still playing), 1 once the player has
+## owned a building that produces a tab, and the result-screen counts.
+var credits: PackedInt32Array = PackedInt32Array()
+var defeated_tick: PackedInt32Array = PackedInt32Array()
+var had_producer: PackedInt32Array = PackedInt32Array()
+var stat_built: PackedInt32Array = PackedInt32Array()
+var stat_lost_units: PackedInt32Array = PackedInt32Array()
+var stat_lost_buildings: PackedInt32Array = PackedInt32Array()
+var stat_harvested: PackedInt32Array = PackedInt32Array()
+## Per player and tab (index `player * TABS + tab`): the items in the queue, the progress of its
+## head in hundredths of a tick, and the rally point in milli-tiles (-1 = none).
+var queue_count: PackedInt32Array = PackedInt32Array()
+var queue_progress: PackedInt32Array = PackedInt32Array()
+var rally_x: PackedInt32Array = PackedInt32Array()
+var rally_y: PackedInt32Array = PackedInt32Array()
+## Per queue slot (index `(player * TABS + tab) * queue_slots + slot`): the queued type index, -1
+## for a slot with no item.
+var queue_type: PackedInt32Array = PackedInt32Array()
+## The ore units left, one per `ore_cell` entry.
+var ore_amount: PackedInt32Array = PackedInt32Array()
+## The last-seen building records, `ghost_cap` per player (see GHOST_ARRAYS), and the live count per
+## player.
+var ghost_id: PackedInt32Array = PackedInt32Array()
+var ghost_type: PackedInt32Array = PackedInt32Array()
+var ghost_owner: PackedInt32Array = PackedInt32Array()
+var ghost_cell: PackedInt32Array = PackedInt32Array()
+var ghost_count: PackedInt32Array = PackedInt32Array()
+## Derived from the rows (ADR 0016), never hashed: the power made and used per player, and the
+## ascending rows of the buildings and of the harvesters.
+var power_made: PackedInt32Array = PackedInt32Array()
+var power_used: PackedInt32Array = PackedInt32Array()
+var building_rows: PackedInt32Array = PackedInt32Array()
+var harvester_rows: PackedInt32Array = PackedInt32Array()
 
 ## Projectile slots, max_projectiles entries each. Valid while proj_id is not 0.
 ## Ids come from next_projectile_id.
@@ -396,6 +609,24 @@ func _copy_rules(rules: RulesDef) -> void:
 	attack_rekey_milli = rules.attack_rekey_milli
 	max_projectiles = rules.max_projectiles
 	max_rows = rules.max_rows
+	start_credits = rules.start_credits
+	ore_start = rules.ore_start
+	ore_cell_max = rules.ore_cell_max
+	ore_regrow_ticks = rules.ore_regrow_ticks
+	credits_per_ore = rules.credits_per_ore
+	harvest_ticks_per_ore = rules.harvest_ticks_per_ore
+	unload_ticks_per_ore = rules.unload_ticks_per_ore
+	harvest_reach_milli = rules.harvest_reach_milli
+	dock_reach_milli = rules.dock_reach_milli
+	harvest_retry_ticks = rules.harvest_retry_ticks
+	harvest_resume_ticks = rules.harvest_resume_ticks
+	harvest_pick_milli = rules.harvest_pick_milli
+	low_power_percent = rules.low_power_percent
+	queue_slots = rules.queue_slots
+	build_reach_tiles = rules.build_reach_tiles
+	unit_cap = rules.unit_cap
+	building_cap = rules.building_cap
+	ghost_cap = rules.ghost_cap
 
 
 ## Reads the scenario and its definitions once and returns a prepared world; a null scenario gives
@@ -469,7 +700,8 @@ func index_of(id: int) -> int:
 ## Gives every type table one entry per type_ids entry, with the TYPE_PAD_* values (a name is the
 ## capitalised type id), because Phase 1 code appends only the four Phase 1 tables. It also sizes
 ## the scratch arrays to max_rows, stats to the Stat count and the projectile slots to
-## max_projectiles, and derives open grass from map_w and map_h when no map is loaded. Last it
+## max_projectiles, sizes the player, ore and ghost state at its start values (_size_match_state),
+## and derives open grass from map_w and map_h when no map is loaded. Last it
 ## configures the helpers, once, because configure() re-creates their arrays, stamps the fog of the
 ## rows that exist (_stamp_fog) and caches the map digest of the hash. Idempotent through
 ## `prepared`, so Sim.step calls it every tick. Types, players and sizes are fixed before it.
@@ -487,6 +719,20 @@ func prepare() -> void:
 	_pad(type_sight, types, TYPE_PAD_SIGHT)
 	_pad(type_acquire, types, TYPE_PAD_ACQUIRE)
 	_pad(type_weapon, types, TYPE_PAD_WEAPON)
+	_pad(type_foot_w, types, TYPE_PAD_V0)
+	_pad(type_foot_h, types, TYPE_PAD_V0)
+	_pad(type_cost, types, TYPE_PAD_V0)
+	_pad(type_build_ticks, types, TYPE_PAD_V0)
+	_pad(type_tab, types, TYPE_PAD_NONE)
+	_pad(type_requires, types, TYPE_PAD_NONE)
+	_pad(type_produces, types, TYPE_PAD_NONE)
+	_pad(type_power, types, TYPE_PAD_V0)
+	_pad(type_harvest, types, TYPE_PAD_V0)
+	_pad(type_free_unit, types, TYPE_PAD_NONE)
+	_pad(type_dock_x, types, TYPE_PAD_V0)
+	_pad(type_dock_y, types, TYPE_PAD_V0)
+	_pad(type_exit_x, types, TYPE_PAD_V0)
+	_pad(type_exit_y, types, TYPE_PAD_V0)
 	var ids: Array[StringName] = type_ids
 	var names: PackedStringArray = type_names
 	for i: int in range(names.size(), types):
@@ -501,6 +747,7 @@ func prepare() -> void:
 		_reset_projectile_slots()
 	if map_cols == 0:
 		_derive_open_grass()
+	_size_match_state()
 	fog.configure(map_cols, map_rows, player_count)
 	_stamp_fog()
 	flow.configure(map_cols, map_rows, MoveClass.size(), flow_cache_size)
@@ -509,6 +756,42 @@ func prepare() -> void:
 	_map_digest_version = -1  # The grid may be new without a map_version bump.
 	_map_digest_value()
 	prepared = true
+
+
+## Sizes the player, ore and ghost state at its start values (ADR 0017 section 3), from the player
+## count and the rule ints, so that no later row moves the hash through a start value: credits at
+## start_credits for players 1..player_count, rally points and queue slots at -1 (none), every ore
+## cell at ore_start, the rest 0. Entry 0 of a per-player array is the neutral player.
+func _size_match_state() -> void:
+	var players: int = player_count + 1
+	var queues: int = players * TABS
+	var ghosts: int = players * ghost_cap
+	credits.resize(players)
+	for player: int in range(1, players):
+		credits[player] = start_credits
+	defeated_tick.resize(players)
+	had_producer.resize(players)
+	stat_built.resize(players)
+	stat_lost_units.resize(players)
+	stat_lost_buildings.resize(players)
+	stat_harvested.resize(players)
+	queue_count.resize(queues)
+	queue_progress.resize(queues)
+	rally_x.resize(queues)
+	rally_x.fill(-1)
+	rally_y.resize(queues)
+	rally_y.fill(-1)
+	queue_type.resize(queues * queue_slots)
+	queue_type.fill(-1)
+	ore_amount.resize(ore_cell.size())
+	ore_amount.fill(ore_start)
+	ghost_id.resize(ghosts)
+	ghost_type.resize(ghosts)
+	ghost_owner.resize(ghosts)
+	ghost_cell.resize(ghosts)
+	ghost_count.resize(players)
+	power_made.resize(players)
+	power_used.resize(players)
 
 
 ## The cell holding the point (x, y) in milli-tiles: `row * map_cols + column`. A point outside
@@ -541,9 +824,10 @@ func is_passable(cell: int, move_class: int) -> bool:
 ## Makes `cell` the terrain `terrain_index` (an index into terrain_ids) with that terrain's cost
 ## for each class, and bumps map_version, also when the terrain is the same. A cell outside the
 ## map, an index above TERRAIN_INDEX_MAX (a byte, P48) or an unknown terrain index (one whose
-## `terrain_cost` row is missing) changes nothing. Any other writer of `terrain`, `move_cost` or
-## `terrain_cost` must bump map_version itself, because the map digest of the hash follows
-## map_version alone (_map_digest_value).
+## `terrain_cost` row is missing) changes nothing. It leaves `ore_cell` as the load made it. Any
+## other writer of `terrain`, `move_cost`, `terrain_cost`, `terrain_buildable` or `ore_cell` must
+## bump map_version itself, because the map digest of the hash follows map_version alone
+## (_map_digest_value).
 func set_terrain(cell: int, terrain_index: int) -> void:
 	var classes: int = MoveClass.size()
 	var cells: int = map_cols * map_rows
@@ -590,6 +874,10 @@ func add_unit(owner: int, type_index: int, x: int, y: int) -> int:
 	best_dist.append(0x3FFFFFFF)  # No distance yet; equals FlowField.UNREACHED.
 	stall.append(0)
 	fog_cell.append(-1)
+	harvest_mode.append(HarvestMode.IDLE)
+	cargo.append(0)
+	harvest_slot.append(-1)
+	home.append(0)
 	_push_unit_event(Event.SPAWNED, unit_id.size() - 1)
 	rows_version += 1
 	player_count = maxi(player_count, owner)
@@ -730,19 +1018,28 @@ func _derive_open_grass() -> void:
 	terrain_cost.fill(GRASS_COST)
 	terrain_ids.resize(1)  # In place, so a later prepare() allocates nothing.
 	terrain_ids[0] = GRASS_ID
+	terrain_buildable.resize(1)
+	terrain_buildable[0] = GRASS_BUILDABLE
+	ore_cell.clear()
 
 
 ## Copies a map that validate() accepted: its size, the terrain index of each tile and the cost
-## per class of each terrain and tile. The terrain index is the position in the terrain set.
+## per class and the buildable flag of each terrain and tile, and lists the cells of the first
+## terrain with the id ORE_ID, ascending. The terrain index is the position in the terrain set.
 func _load_map(map: MapDef) -> void:
 	var defs: Array[TerrainDef] = map.terrain.terrains
 	var rows: PackedStringArray = map.rows
 	var classes: int = MoveClass.size()
 	var index_of_symbol: Dictionary[int, int] = {}
 	terrain_cost.resize(defs.size() * classes)
+	terrain_buildable.resize(defs.size())
+	var ore_index: int = -1
 	for index: int in defs.size():
 		var def: TerrainDef = defs[index]
 		terrain_ids.append(def.id)
+		terrain_buildable[index] = 1 if def.buildable else 0
+		if def.id == ORE_ID and ore_index < 0:
+			ore_index = index
 		if len(def.symbol) == 1:
 			index_of_symbol[def.symbol.unicode_at(0)] = index
 		for move_class: int in classes:
@@ -764,6 +1061,8 @@ func _load_map(map: MapDef) -> void:
 			var cell: int = ty * size.x + tx
 			var kind: int = index_of_symbol[line.unicode_at(tx)]
 			kind_at[cell] = kind
+			if kind == ore_index:
+				ore_cell.append(cell)
 			for move_class: int in classes:
 				cost_at[move_class * cells + cell] = costs[kind * classes + move_class]
 
@@ -787,7 +1086,10 @@ static func _pad(table: PackedInt32Array, size: int, value: int) -> void:
 
 
 ## The type index for `unit`'s type_id. A type seen for the first time is copied in, so each
-## definition is read once however many spawns use it.
+## definition is read once however many spawns use it. A BuildingDef also fills the footprint,
+## power, produced tab, free unit, dock and exit tables (a UnitDef pads them); the type it
+## `requires` and the `free_unit` of a building are copied in too, after it, when no earlier type
+## was theirs.
 func _type_for(unit: UnitDef) -> int:
 	var found: int = type_ids.find(unit.type_id)
 	if found >= 0:
@@ -805,7 +1107,28 @@ func _type_for(unit: UnitDef) -> int:
 	type_weapon.append(_weapon_for(unit.weapon))
 	var label: String = unit.display_name
 	type_names.append(label if not label.is_empty() else String(unit.type_id).capitalize())
-	return type_ids.size() - 1
+	type_cost.append(unit.cost)
+	type_build_ticks.append(unit.build_ticks)
+	type_tab.append(unit.tab)
+	type_requires.append(TYPE_PAD_NONE)
+	type_harvest.append(unit.harvest_capacity)
+	var building: BuildingDef = unit as BuildingDef
+	type_foot_w.append(building.footprint.x if building != null else TYPE_PAD_V0)
+	type_foot_h.append(building.footprint.y if building != null else TYPE_PAD_V0)
+	type_produces.append(building.produces if building != null else TYPE_PAD_NONE)
+	type_power.append(building.power if building != null else TYPE_PAD_V0)
+	type_free_unit.append(TYPE_PAD_NONE)
+	type_dock_x.append(building.dock.x if building != null else TYPE_PAD_V0)
+	type_dock_y.append(building.dock.y if building != null else TYPE_PAD_V0)
+	type_exit_x.append(building.exit.x if building != null else TYPE_PAD_V0)
+	type_exit_y.append(building.exit.y if building != null else TYPE_PAD_V0)
+	# The other types last, so that this type is complete before they are read.
+	var index: int = type_ids.size() - 1
+	if unit.requires != null:
+		type_requires[index] = _type_for(unit.requires)
+	if building != null and building.free_unit != null:
+		type_free_unit[index] = _type_for(building.free_unit)
+	return index
 
 
 ## The weapon index for `weapon`, -1 for none. A weapon is known by its id like a type by its
@@ -832,9 +1155,10 @@ func _weapon_for(weapon: WeaponDef) -> int:
 ## order, each block fed as its tag (the section index), its byte count and its bytes (little
 ## endian); the first 8 digest bytes as a signed int64. It reads only the hashed lists: the header
 ## ints and the stream, the map digest, the ROW_ARRAYS columns, the live projectile slots with the
-## used free stack, and FogGrid.HASHED (the explored bytes: the visible counts are derived from the
-## hashed rows and not fed, ADR 0016). A hand-built world hashes before prepare() too (empty
-## helpers and map), to another value than after it.
+## used free stack, FogGrid.HASHED (the explored bytes: the visible counts are derived from the
+## hashed rows and not fed, ADR 0016), the PLAYER_ARRAYS and ORE_ARRAYS arrays and the live ghost
+## records. The DERIVED_ARRAYS and the type tables stay out. A hand-built world hashes before
+## prepare() too (empty helpers and map), to another value than after it.
 func state_hash() -> int:
 	var ctx: HashingContext = _start_hash()
 	for section: int in ROW_ARRAYS.size() + HASH_OTHER_SECTIONS:
@@ -853,12 +1177,14 @@ func hash_parts() -> PackedInt64Array:
 	return parts
 
 
-## "header", "map", one name per ROW_ARRAYS entry, "projectiles", "fog". The "fog" section feeds
-## FogGrid.HASHED, which is `explored` alone since STATE_FORMAT 2; the name stays.
+## "header", "map", one name per ROW_ARRAYS entry, "projectiles", "fog", "players", "ore", "ghosts".
+## The "fog" section feeds FogGrid.HASHED, which is `explored` alone since STATE_FORMAT 2; the name
+## stays. "players" feeds one block per PLAYER_ARRAYS array, "ore" one per ORE_ARRAYS array and
+## "ghosts" two (_feed_ghosts); they come after "fog" since STATE_FORMAT 3.
 static func hash_section_names() -> PackedStringArray:
 	var names: PackedStringArray = PackedStringArray(["header", "map"])
 	names.append_array(PackedStringArray(ROW_ARRAYS))
-	names.append_array(PackedStringArray(["projectiles", "fog"]))
+	names.append_array(PackedStringArray(["projectiles", "fog", "players", "ore", "ghosts"]))
 	return names
 
 
@@ -913,9 +1239,17 @@ func _feed_section(ctx: HashingContext, section: int) -> void:
 		_feed(ctx, section, _bytes_of(get(ROW_ARRAYS[section - 2])))
 	elif section == rows_end:
 		_feed_projectiles(ctx, section)
-	else:
+	elif section == rows_end + 1:
 		for array_name: StringName in FogGrid.HASHED:
 			_feed(ctx, section, _bytes_of(fog.get(array_name)))
+	elif section == rows_end + 2:
+		for array_name: StringName in PLAYER_ARRAYS:
+			_feed(ctx, section, _bytes_of(get(array_name)))
+	elif section == rows_end + 3:
+		for array_name: StringName in ORE_ARRAYS:
+			_feed(ctx, section, _bytes_of(get(array_name)))
+	else:
+		_feed_ghosts(ctx, section)
 
 
 ## The live slots (index, then the fields in PROJECTILE_ARRAYS order), then the used free stack.
@@ -941,6 +1275,34 @@ func _feed_projectiles(ctx: HashingContext, section: int) -> void:
 				at += 1
 	_feed(ctx, section, live.to_byte_array())
 	_feed(ctx, section, proj_free.slice(0, proj_free_top).to_byte_array())
+
+
+## The live last-seen records (ADR 0017 section 3): the count of each player, then the four fields
+## of each live record (record `i` of player `p` is entry `p * ghost_cap + i`), players ascending.
+## A record at or above its player's count is not state.
+func _feed_ghosts(ctx: HashingContext, section: int) -> void:
+	var counts: PackedInt32Array = ghost_count
+	var ids: PackedInt32Array = ghost_id
+	var types: PackedInt32Array = ghost_type
+	var owners: PackedInt32Array = ghost_owner
+	var cells: PackedInt32Array = ghost_cell
+	var cap: int = ghost_cap
+	var total: int = 0
+	for count: int in counts:
+		total += count
+	var live: PackedInt32Array = PackedInt32Array()
+	live.resize(total * 4)  # One resize, then writes by index.
+	var at: int = 0
+	for player: int in counts.size():
+		for record: int in counts[player]:
+			var entry: int = player * cap + record
+			live[at] = ids[entry]
+			live[at + 1] = types[entry]
+			live[at + 2] = owners[entry]
+			live[at + 3] = cells[entry]
+			at += 4
+	_feed(ctx, section, counts.to_byte_array())
+	_feed(ctx, section, live.to_byte_array())
 
 
 static func _start_hash() -> HashingContext:

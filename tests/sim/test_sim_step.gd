@@ -260,21 +260,27 @@ func test_attack_needs_an_enemy_target_and_an_armed_unit() -> void:
 
 
 func test_probe_ids_and_names_are_fixed() -> void:
-	assert_array(SimProbe.Phase.values()).is_equal([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
+	assert_array(SimProbe.Phase.values()).is_equal(
+		[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+	)
 	var keys: Array = ["COMMANDS", "FLOW", "GRIDS", "TARGETING", "INTENTS", "SEPARATION"]
-	keys.append_array(["INTEGRATE", "PROJECTILES", "FIRE", "REMOVE", "FOG", "COUNT"])
+	keys.append_array(["INTEGRATE", "PROJECTILES", "FIRE", "REMOVE", "FOG"])
+	keys.append_array(["ECONOMY", "PRODUCTION", "MEMORY", "COUNT"])  # Phase 3, ADR 0017 section 5.
 	assert_array(SimProbe.Phase.keys()).is_equal(keys)
-	assert_int(SimProbe.Phase.COUNT).is_equal(11)
+	assert_int(SimProbe.Phase.COUNT).is_equal(14)
 	var names: Array[String] = ["commands", "flow", "grids", "targeting", "intents", "separation"]
 	names.append_array(["integrate", "projectiles", "fire", "remove", "fog"])
+	names.append_array(["economy", "production", "memory"])
 	assert_array(SimProbe.PHASE_NAMES).is_equal(names)
+	assert_int(SimProbe.PHASE_NAMES.size()).is_equal(SimProbe.Phase.COUNT)
 
 
 ## Every tick: begin() once, then every phase, ascending and once each. A later phase PR adds its id
 ## here. P37b added FLOW, P39b GRIDS and SEPARATION (the separation grid is rebuilt after FLOW,
 ## SEPARATION comes after INTENTS and before INTEGRATE), P41 TARGETING (the targeting grid is
 ## rebuilt in GRIDS, TARGETING follows it), P42a FIRE and P42b PROJECTILES (INTEGRATE, PROJECTILES,
-## FIRE, REMOVE) and P46 FOG, the last mark: the 12 calls of a tick are begin() and the 11 phases.
+## FIRE, REMOVE), P46 FOG and P70 ECONOMY, PRODUCTION and MEMORY (ADR 0017 section 5), the last
+## marks: the 15 calls of a tick are begin() and the 14 phases.
 func test_a_probe_sees_begin_then_the_marks_in_ascending_order() -> void:
 	var probe: SimProbe = RecordingProbe.new()
 	var world: World = _scenario_world()
@@ -283,12 +289,15 @@ func test_a_probe_sees_begin_then_the_marks_in_ascending_order() -> void:
 	per_tick.append_array([SimProbe.Phase.INTENTS, SimProbe.Phase.SEPARATION])
 	per_tick.append_array([SimProbe.Phase.INTEGRATE, SimProbe.Phase.PROJECTILES])
 	per_tick.append_array([SimProbe.Phase.FIRE, SimProbe.Phase.REMOVE, SimProbe.Phase.FOG])
+	per_tick.append_array(
+		[SimProbe.Phase.ECONOMY, SimProbe.Phase.PRODUCTION, SimProbe.Phase.MEMORY]
+	)
 	var expected: Array[int] = []
 	for _t: int in 3:
 		Sim.step(world, [], probe)
 		expected.append_array(per_tick)
 	assert_array(probe.calls).is_equal(expected)
-	assert_array(per_tick).is_equal([-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+	assert_array(per_tick).is_equal([-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
 
 
 func test_hashes_are_equal_with_and_without_a_probe() -> void:
@@ -300,7 +309,7 @@ func test_hashes_are_equal_with_and_without_a_probe() -> void:
 		Sim.step(plain, _due(script, plain.tick))
 		Sim.step(probed, _due(script, probed.tick), probe)
 		assert_int(probed.state_hash()).is_equal(plain.state_hash())
-	assert_int(probe.calls.size()).is_equal(80 * 12)
+	assert_int(probe.calls.size()).is_equal(80 * 15)
 
 
 ## Tick 0: two overlapping groups (the later sequence wins) and an enemy order. Tick 25: a
