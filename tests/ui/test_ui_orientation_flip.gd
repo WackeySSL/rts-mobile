@@ -14,6 +14,13 @@ const Rig: GDScript = preload("res://tests/ui/support/arena_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const MAIN_SCENE: String = "res://scenes/main.tscn"
+const SCENARIO: String = "res://data/scenarios/controls_test.tres"
+## Rifle squads (units 41 and 42) and rocket squads (43 and 44) join the tanks, so the main scene's
+## SelectionPanel has a mixed selection to lay out in both orientations (P61).
+const EXTRA_UNITS: Array[String] = [
+	"res://data/units/rifle_squad.tres", "res://data/units/rocket_squad.tres"
+]
+const MIXED: Array[int] = [1, 2, 41, 42, 43, 44]
 const PROBE_SCENE: String = "res://scenes/dev/touch_probe.tscn"
 const RUN_TICKS: int = 15
 
@@ -32,9 +39,17 @@ func after() -> void:
 func after_test() -> void:
 	_calls.clear()
 	CommandQueue.clear()
+	HudLayout.bottom_zone_dp = 0.0
 
 
 func test_the_main_scene_handlers_end_in_the_state_of_a_fresh_scene() -> void:
+	await _check_flips(&"main")
+
+
+## The ArmyBar's lift above a bottom zone is part of the main scene's state (P61): a stand-in band
+## height makes the bar's band margin differ between the two orientations.
+func test_the_army_bar_lift_ends_in_the_state_of_a_fresh_scene_with_a_bottom_zone() -> void:
+	HudLayout.bottom_zone_dp = 200.0
 	await _check_flips(&"main")
 
 
@@ -74,6 +89,20 @@ func _flips() -> Array[Array]:
 		[ScreenSizes.LANDSCAPE[1], ScreenSizes.PORTRAIT[1]],
 		[_web_phone(), _web_phone_portrait()],
 	]
+
+
+## The scenario of the main scene with two more types of the player's units after the tanks.
+func _mixed_scenario() -> ScenarioDef:
+	var scenario: ScenarioDef = (load(SCENARIO) as ScenarioDef).duplicate()
+	scenario.spawns = scenario.spawns.duplicate()
+	for index: int in EXTRA_UNITS.size():
+		var spawn: SpawnDef = SpawnDef.new()
+		spawn.owner = 1
+		spawn.unit = load(EXTRA_UNITS[index])
+		spawn.count = 2
+		spawn.origin_tile = Vector2i(8 + 4 * index, 14)
+		scenario.spawns.append(spawn)
+	return scenario
 
 
 func _web_phone() -> Vector2i:
@@ -120,11 +149,12 @@ func _open(kind: StringName) -> Node:
 	match kind:
 		&"main":
 			scene = (load(MAIN_SCENE) as PackedScene).instantiate()
+			scene.get_node("MatchRunner").scenario = _mixed_scenario()
 			add_child(scene)
 			await await_idle_frame()
 			(scene.get_node("UnitLayer") as UnitLayer).set_selected(PackedInt32Array([2, 40]))
 			var panel: SelectionPanel = scene.get_node("Hud/SafeArea/SelectionBand/SelectionPanel")
-			panel.set_selected(PackedInt32Array([1, 2]))
+			panel.set_selected(PackedInt32Array(MIXED))
 		&"probe":
 			scene = (load(PROBE_SCENE) as PackedScene).instantiate()
 			add_child(scene)
@@ -160,7 +190,7 @@ func _read(kind: StringName, scene: Node) -> Dictionary:
 
 func _read_main(main: Node) -> Dictionary:
 	var safe: Control = main.get_node("Hud/SafeArea")
-	var army: Control = main.get_node("Hud/SafeArea/ArmyBar")
+	var army: Control = main.get_node("Hud/SafeArea/ArmyBand/ArmyBar")
 	var band: Control = main.get_node("Hud/SafeArea/SelectionBand")
 	var panel: SelectionPanel = main.get_node("Hud/SafeArea/SelectionBand/SelectionPanel")
 	var recognizer: GestureRecognizer = (main.get_node("TouchInput") as TouchInput)._recognizer
@@ -178,11 +208,30 @@ func _read_main(main: Node) -> Dictionary:
 		"band_margins":
 		[band.get_theme_constant("margin_left"), band.get_theme_constant("margin_right")],
 		"panel_gap": panel._list.get_theme_constant("separation"),
+		"panel_line": _panel_line(panel),
+		"army_lift": army.get_parent().get_theme_constant("margin_bottom"),
 		"font_size": army.get_node("AllArmy").get_theme_font_size("font_size"),
 		"slops": [recognizer._slop_px, recognizer._double_tap_slop_px, recognizer._min_pinch_px],
 		"rings": rings,
 		"bar_dp": main.get_node("HealthBarLayer")._dp_px,
 		"effects_dp": main.get_node("EffectsLayer")._dp_px,
+	}
+
+
+## How the SelectionPanel is laid out: the column or the line, its fit level and what shows, its
+## size flags and the "+N" chip. The rects are the layout's to settle, so what is read is the
+## state the handler sets.
+func _panel_line(panel: SelectionPanel) -> Dictionary:
+	var shown: Array[bool] = []
+	for row: SelectionPanel.Row in panel._rows:
+		shown.append(row.visible and row.title.visible)
+	return {
+		"vertical": panel._list.vertical,
+		"level": panel._level,
+		"names": shown,
+		"total": panel._total.visible,
+		"chip": "" if panel._chip == null or not panel._chip.visible else panel._chip.text,
+		"flags": [panel.size_flags_horizontal, panel.size_flags_vertical],
 	}
 
 

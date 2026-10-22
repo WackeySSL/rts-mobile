@@ -15,14 +15,18 @@ const MAIN_SCENE: String = "res://scenes/main.tscn"
 const SETTINGS_PATH: String = "res://data/input_settings.tres"
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
 const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
-## The landscape screens every screen is tested at: base, 20:9 phone and 4:3 tablet. The portrait
-## ones join in P61 (ScreenSizes.ALL).
-const TARGET_SIZES: Array[Vector2i] = ScreenSizes.LANDSCAPE
-## The lowest camera position at each of them: half the visible size (1280x720, 1600x720, 1280x960).
+## The screens every screen is tested at: base, 20:9 phone and 4:3 tablet, each held both ways.
+const TARGET_SIZES: Array[Vector2i] = ScreenSizes.ALL
+## The lowest camera position at each of them: half the visible size. The UiOrientation autoload
+## turns the base size with the window, so a portrait window shows the transposed rect: 1280x720,
+## 1600x720 and 1280x960 in landscape; 720x1280, 720x1600 and 960x1280 in portrait.
 const LOWEST: Dictionary[Vector2i, Vector2] = {
 	ScreenSizes.LANDSCAPE[0]: Vector2(640, 360),
 	ScreenSizes.LANDSCAPE[1]: Vector2(800, 360),
 	ScreenSizes.LANDSCAPE[2]: Vector2(640, 480),
+	ScreenSizes.PORTRAIT[0]: Vector2(360, 640),
+	ScreenSizes.PORTRAIT[1]: Vector2(360, 800),
+	ScreenSizes.PORTRAIT[2]: Vector2(480, 640),
 }
 ## Bigger than the map, so the camera must stop at its limit.
 const OVERSCROLL_PX: float = 5000.0
