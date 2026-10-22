@@ -87,7 +87,7 @@ camera = NodePath("../Camera")
 settings = ExtResource("6_settings")
 marker_layer = NodePath("../MarkerLayer")
 box_overlay = NodePath("../Hud/BoxOverlay")
-army_bar = NodePath("../Hud/SafeArea/ArmyBar")
+army_bar = NodePath("../Hud/SafeArea/ArmyBand/ArmyBar")
 
 [node name="TouchInput" type="Node" parent="." node_paths=PackedStringArray("camera", "controller")]
 script = ExtResource("5_touch")
@@ -128,7 +128,10 @@ script = ExtResource("3_dev")
 [node name="DpMinSize" type="Node" parent="Hud/SafeArea/DevButton"]
 script = ExtResource("13_dp")
 
-[node name="ArmyBar" type="HBoxContainer" parent="Hud/SafeArea"]
+[node name="ArmyBand" type="MarginContainer" parent="Hud/SafeArea"]
+mouse_filter = 2
+
+[node name="ArmyBar" type="HBoxContainer" parent="Hud/SafeArea/ArmyBand"]
 size_flags_horizontal = 0
 size_flags_vertical = 8
 script = ExtResource("14_army")
@@ -137,14 +140,15 @@ settings = ExtResource("6_settings")
 [node name="SelectionBand" type="MarginContainer" parent="Hud/SafeArea"]
 mouse_filter = 2
 
-[node name="SelectionPanel" type="PanelContainer" parent="Hud/SafeArea/SelectionBand" node_paths=PackedStringArray("runner", "unit_layer", "army_bar")]
+[node name="SelectionPanel" type="PanelContainer" parent="Hud/SafeArea/SelectionBand" node_paths=PackedStringArray("runner", "unit_layer", "army_bar", "top_left")]
 visible = false
 size_flags_horizontal = 4
 size_flags_vertical = 8
 script = ExtResource("15_selection")
 runner = NodePath("../../../../MatchRunner")
 unit_layer = NodePath("../../../../UnitLayer")
-army_bar = NodePath("../../ArmyBar")
+army_bar = NodePath("../../ArmyBand/ArmyBar")
+top_left = NodePath("../../DevButton")
 
 [connection signal="selection_changed" from="PlayerController" to="UnitLayer" method="set_selected"]
 [connection signal="selection_changed" from="PlayerController" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="set_selected"]

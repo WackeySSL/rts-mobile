@@ -1,0 +1,149 @@
+# ADR 0020: The dummy opponent, `PlayerView` and where AI runs in the tick
+
+Status: accepted, 2026-10-22 (Michael: 1 ja, 2 ja). Proposed 2026-10-22. Docs PR P68 (with
+`docs/plans/2026-10-22-phase-3.md`), accepted by the lead's row P68b on the same PR (#166). The
+Phase 3 gate is "a full match can be played against a dummy opponent that only builds and
+defends"; this ADR decides how that opponent sees the match, where its code runs, and how it is
+proven deterministic. Phase 4's real AI uses the same hook.
+
+## Acceptance note (2026-10-22)
+Michael answered the questions of ADRs 0017-0021 in chat on 2026-10-22, verbatim "Ja til alle
+anbefalinger" (yes to all recommendations), which the lead records for this ADR as "1 ja, 2 ja":
+1. **ja:** AI controllers run inside the tick job, before `loop.step` (on the worker in `WORKER`),
+   see the match only through `PlayerView`, think every `think_period` (15) ticks, and their
+   Commands are stamped and recorded like a player's (§2, §3). This supersedes ADR 0012 §1's and
+   §2's plan to run the AI on the main thread in `ticked`, and ADR 0012 §3's scan allowance of
+   `.world` in `game/ai`, and only those (ADR 0012 carries dated status notes).
+2. **ja:** `scripts/run-sim-smoke.sh` runs three dummy-vs-dummy matches of 1 800 ticks with fixed
+   seeds from Phase 3 on (plan row P95), with its flags, exit codes and report schema unchanged.
+   It runs wherever `scripts/verify.sh` runs: in CI's verify job and in each session's one
+   verify run before a push (§5). Balance runs stay in GitHub Actions only (CLAUDE.md, Token
+   budget).
+
+The decision below is unchanged by the acceptance. P68b corrected §5's "in CI" (verify.sh runs
+the smoke step in every session too). §3's "and only those" names ADR 0012 §1 and §2; its last
+bullet also ends ADR 0012 §3's scan allowance of `.world` in `game/ai`, which the supersession
+covers too (ADR 0012 §3 carries a dated status note). Nothing here is applied in code yet:
+plan rows P78, P78q, P81-P83b and P95 apply it. The line for `.claude/agents/ai-dev.md` (AI code
+reads only `PlayerView` and runs in the tick job) waits for Michael's explicit yes to that agent
+file.
+
+## Context
+- CLAUDE.md rule 4: humans and AI act only through `Command` objects. Rule 3: randomness only
+  through per-match `DetRandom` streams; `game/sim/DetRandom.gd` says "AI controllers use
+  STREAM_AI_BASE plus the player id" (`STREAM_AI_BASE` is 100).
+- ADR 0010 §1 reserves `game/sim/PlayerView.gd` (visible enemy rows, own rows, explored cells),
+  "with a scan test over `game/ai` like the randomness scan", built by the first AI code.
+- ADR 0012 §1 and §2 expected the AI on the main thread: "A command submitted inside a
+  `ticked(N)` handler is stamped N in both modes. The Phase 4 AI acts there", and "The main thread
+  reads the World only inside a `ticked` handler or after `wait_idle()` ... Phase 4's AI and
+  `PlayerView` read it there". `tests/project/test_view_reads_snapshot.gd` therefore allows `.world`
+  in `game/ai`.
+- ADR 0014 judges the main thread's work p95 over the heavy window and over its publish frames
+  (5.6 ms each on the gate phone). A think every 15 ticks falls on 1 publish frame in 15 (6.7 %),
+  more than the 5 % a p95 ignores, so a think of more than a few ms on the main thread would show
+  in that verdict. On the worker, the job p95 limit is 13.3 ms and the gate runs measured 5.6-6.0
+  ms (ADR 0016's table).
+- ADR 0007 §9: `MatchLoop` is the one tick driver; `TickJob.run` calls `loop.step` on whichever
+  thread runs the job, and `tests/core/test_tick_job.gd` walks the job's objects and fails on a
+  Node or a Resource.
+- `.claude/agents/ai-dev.md`: decide every 15 ticks, each decision under 1 ms on CI, all randomness
+  through the match's stream, difficulty as data.
+- `scripts/run-sim-smoke.sh` is a stub that prints "no sim yet"; `scripts/verify.sh` runs it with
+  `--matches 3`; its real body is the Phase 4 box "runs real headless AI-vs-AI matches".
+
+## Decision
+
+### 1. `PlayerView` (game/sim, pure)
+One player's legal view of a World, made per think by `PlayerView.of(world, player)`. It gives:
+own rows and their columns; the enemy rows the player sees (the `Targeting.sees` rule: the cell
+holding the row is visible) and only their public columns (owner, type, position, hp); the
+player's credits, queues, power and rally points; whether a cell is explored; the last-seen
+records (ADR 0017 §3); `Placement.reason` for the player; and the World constants the AI needs
+(tabs, harvest modes) re-exported, so `game/ai` never names `World`. An accessor asked about a
+row the player does not see answers as if the row did not exist.
+
+### 2. `AiController` and the driver
+- `game/ai/AiController.gd` (ai-dev): `class_name AiController extends RefCounted`, with
+  `player_id`, `think_period` and `think_offset` ints and
+  `func think(view: PlayerView, out: Array[Command]) -> void`. A controller copies its `AiDef`'s
+  values into ints and arrays when it is made and keeps no Resource and no Node, so the job's walk
+  stays green.
+- `game/core/AiDriver.gd` (lead, pure): `static func think_all(world: World, controllers:
+  Array[AiController], out: Array[Command]) -> void` calls, in ascending player order, every
+  controller with `(world.tick + think_offset) % think_period == 0`, each with a fresh `PlayerView`.
+  It is the only code that hands a World to the AI side.
+- `think_period` is 15 (data). `think_offset` puts the think on a tick whose step does not end in
+  a checkpoint (a checkpoint hashes after the step that starts at `tick % 15 == 14`): the dummy of
+  player p thinks at `tick % 15 == 7 + p - 2` for p in 2..4.
+
+### 3. Where it runs: inside the tick job
+This supersedes ADR 0012 §1's "The Phase 4 AI acts there" and §2's "Phase 4's AI and
+`PlayerView` read it there" (the main thread in `ticked`), and only those:
+- `TickJob.run` calls `AiDriver.think_all(world, controllers, commands)` before `loop.step`, on
+  the thread that runs the job (the worker in `WORKER`, the main thread in `SYNC`). The human's
+  commands drained by the runner are already in the list, so the AI's follow them; `MatchLoop`
+  stamps every command with this tick and records it in the replay.
+- The result equals ADR 0012's plan: the AI reads state N and its commands are stamped N, in both
+  modes. The cost moves off the main thread.
+- Every headless driver (the suites, the perf harness if it ever runs AI, `run-sim-smoke.sh`) calls
+  `AiDriver.think_all` before `MatchLoop.step`, so the phone and CI cannot drift.
+- A replay holds the AI's commands like a player's: `Replay.play` needs no AI.
+- `MatchRunner` gets `@export var opponents: Array[AiDef]` (player 2 upward) and builds the
+  controllers at `start()`, each with its stream from
+  `DetRng.create(match_seed, DetRandom.STREAM_AI_BASE + player)`; the job gets them with the World.
+- `game/ai` joins the thread rules of ADR 0012 §2 (no Node, no autoload, no engine singleton, no
+  clock) and the purity scan's rules for the sim; `test_view_reads_snapshot.gd` drops its `.world`
+  allowance for `game/ai`, and a new rule fails on the name `World` there.
+
+### 4. The dummy opponent
+`DummyAi extends AiController`, driven by `data/ai/dummy.tres` (`AiDef`):
+- **Build:** it follows the def's build order (a list of types), queuing the next affordable item
+  whose requirement it owns, keeping each queue at most `queue_target` long; it places a ready
+  structure at the first tile of a fixed spiral around its Headquarters where `Placement.reason`
+  is `OK`; it keeps `harvesters_wanted` harvesters per refinery and rebuilds lost buildings in
+  build-order order.
+- **Defend:** when it sees an enemy row within `defend_radius_tiles` of one of its buildings, it
+  sends its idle combat units there with `ATTACK_MOVE`; with none in that radius, it sends them back
+  to a guard point beside its Headquarters. It never sends a unit farther than `defend_radius_tiles`
+  from its buildings, so it never attacks.
+- It uses no random number (it gets its stream for Phase 4's use), no information beyond
+  `PlayerView`, and no bonus.
+- Cost: one think visits its own rows, the seen enemy rows and at most `place_tries` spiral tiles.
+  Tests count that work (no clock in a session); the ai-dev rule of 1 ms on CI is read from CI's
+  log only.
+
+### 5. Proof
+- A dummy-vs-dummy match of 9 000 ticks (10 minutes) run twice from one seed gives the same
+  checkpoint hashes, and its replay replays to them.
+- A scripted attacker (scenario orders) against the dummy ends in the attacker's victory, and in a
+  dummy-vs-dummy match `dropped_commands` stays 0 (the dummy never sends an invalid Command).
+- `PlayerView` never returns a row the player does not see (a crafted World with hidden rows).
+- The scan over `game/ai` (§3).
+- `run-sim-smoke.sh` (question 2, ja): it runs 3 dummy-vs-dummy matches of 1 800 ticks each with
+  fixed seeds and writes the report JSON's schema. `scripts/verify.sh` calls it with
+  `--matches 3`, so it runs in CI's verify job and in each session's verify run before a push;
+  balance runs (many matches) stay in GitHub Actions. Phase 4 swaps in the real AI and the longer
+  matches for its box.
+
+## Consequences
+- The AI's think cost lands in the job p95 on 1 tick in 15, which the job limit (13.3 ms) has room
+  for; the main thread's verdicts do not see it.
+- `ticked` keeps working for the view; no AI code waits for it.
+- Phase 4 adds strategy, scouting and attack waves behind the same `think` call and `AiDef` data.
+
+## Alternatives considered
+- **The AI in `ticked` on the main thread** (ADR 0012's plan): equal results, but its cost lands
+  in the main thread's publish-frame p95 (Context).
+- **The AI inside `Sim.step`:** it would make `game/sim` depend on `game/ai` and put AI code under
+  the sim's kernel rules.
+- **A dummy that cheats** (full vision, free credits): breaks GDD pillar 4 and would teach Phase 4
+  nothing.
+
+## Questions for Michael
+1. The dummy opponent runs inside the sim's own tick on the sim thread, thinks once a second, sees
+   only what its side sees, and its orders are saved in the replay like yours. Do you accept that
+   (it changes ADR 0012's plan to run the AI on the main thread)? (ja/nej; recommended: ja)
+2. From Phase 3 on, should `scripts/run-sim-smoke.sh` run three short dummy-vs-dummy matches in
+   CI (about 2 minutes of game each), instead of printing "no sim yet" until Phase 4? (ja/nej;
+   recommended: ja)

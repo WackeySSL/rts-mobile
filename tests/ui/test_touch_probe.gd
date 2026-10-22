@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
-## The touch probe (ADR 0004 section 3): the numbers it shows, a square that is exactly dp(48) base
-## px per side and stays so after a resize, live touch points and Back. The real 7.6 mm is for
-## Michael's ruler. This proves the square is dp(48) and not some other size.
+## The touch probe (ADR 0004 section 3): the numbers it shows, with the window's orientation and the
+## base size it is stretched from (ADR 0015, plan P63), a square that is exactly dp(48) base px per
+## side and stays so after a resize or a turn, live touch points and Back, in both orientations.
+## The real 7.6 mm is for Michael's ruler. This proves the square is dp(48) and not some other size.
 
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -9,8 +10,11 @@ const ANDROID: StringName = &"android_6in"
 const SAFE_AREA: Rect2i = Rect2i(60, 0, 2280, 1080)  ## A landscape cutout on the left.
 const ANDROID_TEXT: String = (
 	"OS: Android\ndpi: 420\nscreen scale: 1.000\nstretch scale: 1.500\nwindow: 2400 x 1080 px\n"
-	+ "safe area: [P: (60, 0), S: (2280, 1080)] px\nbase px per dp: 1.750\ndp(48): 84.0 base px"
+	+ "base 1280 x 720 (landscape)\nsafe area: 60,0 2280x1080 px\n"
+	+ "base px per dp: 1.750\ndp(48): 84.0 base px"
 )
+## The ADR's phone held upright, with a cutout at the top and the gesture bar at the bottom.
+const PORTRAIT_CUTOUT: Rect2i = Rect2i(0, 100, 1080, 2237)
 
 var _window_size_before: Vector2i
 var _now_ms: int = 0
@@ -45,12 +49,23 @@ func test_it_shows_the_numbers_of_the_profile() -> void:
 	assert_float(_control(probe, "Column").get_global_rect().position.x).is_equal(61.0)
 
 
-## Covers 1280x720 (desktop), 2400x1080 (android_6in) and 2048x1536 (web_tablet), and the phone
-## browsers. The square is dp(48) on each side. The column, the square and the Back button stay on
-## screen.
+## Covers the six sizes of ADR 0015 section 6 through the profiles that have them (desktop 1280x720
+## and 720x1280, android_6in 2400x1080 and 1080x2400, web_tablet 2048x1536 and 1536x2048) and the
+## phone browsers in both orientations, then the 6-inch phone with a cutout in each orientation.
+## The square is dp(48) on each side. The column, the square, the gesture log and the Back button
+## (at least dp(48) each way) lie inside the safe area and apart.
 func test_every_profile_has_an_exact_square_and_a_layout_that_fits() -> void:
-	for profile_name: StringName in UiProfiles.all():
-		var probe: Control = await _open(UiProfiles.by_name(profile_name))
+	var cases: Dictionary[String, UiMetrics] = {}
+	for profiles: Dictionary[StringName, UiMetrics] in [UiProfiles.all(), UiProfiles.portrait()]:
+		for profile_name: StringName in profiles:
+			cases[str(profile_name)] = profiles[profile_name]
+	var phone: UiMetrics = UiProfiles.by_name(&"android_6in")
+	cases["cutout left"] = UiProfiles.with_safe_area(phone, SAFE_AREA)
+	cases["cutout top"] = UiProfiles.with_safe_area(
+		UiProfiles.by_name(&"android_6in_portrait"), PORTRAIT_CUTOUT
+	)
+	for label: String in cases:
+		var probe: Control = await _open(cases[label])
 		var square: Control = _control(probe, "Square")
 		var column: Rect2 = _control(probe, "Column").get_global_rect()
 		var back: Rect2 = _control(probe, "BackButton").get_global_rect()
@@ -59,18 +74,61 @@ func test_every_profile_has_an_exact_square_and_a_layout_that_fits() -> void:
 		_drag(1, Vector2(500, 100))
 		await await_idle_frame()
 		var log_rect: Rect2 = _control(probe, "GestureLog").get_global_rect()
-		var label: String = str(profile_name)
-		var fits: bool = Rect2(Vector2.ZERO, probe.size).encloses(
-			column.merge(back).merge(log_rect)
-		)
+		var safe: Rect2 = UiScale.safe_rect_base()
+		var fits: bool = safe.encloses(column.merge(back).merge(log_rect))
 		fits = fits and column.encloses(square.get_global_rect()) and square.is_visible_in_tree()
 		var apart: bool = not (column.intersects(back) or log_rect.intersects(back))
 		apart = apart and not column.intersects(log_rect)
-		assert_bool(fits and apart).override_failure_message(label).is_true()
+		var where: String = (
+			"%s: column %s back %s log %s safe %s" % [label, column, back, log_rect, safe]
+		)
+		assert_bool(fits and apart).override_failure_message(where).is_true()
+		var touch_px: float = UiScale.dp(48.0) - 0.5
+		(
+			assert_bool(back.size.x >= touch_px and back.size.y >= touch_px)
+			. override_failure_message(label + " Back is " + str(back.size))
+			. is_true()
+		)
 		assert_vector(square.size).override_failure_message(label).is_equal_approx(
 			UiScale.dp_vec(48.0, 48.0), Vector2.ONE * 0.001
 		)
 		probe.free()  # One at a time: probes alive together restore quit_on_go_back in a bad order.
+		UiScale.clear_override()
+
+
+## The readout names the window and, next to it, the base size and the orientation, one pair per
+## size of the list: the first three are landscape on the project's base size, the last three
+## portrait on its transpose.
+func test_the_readout_names_the_orientation_and_the_base_size_at_the_six_sizes() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		var portrait: bool = ScreenSizes.PORTRAIT.has(size)
+		var probe: Control = await _open(_profile_with_window(size))
+		var text: String = (_control(probe, "MetricsLabel") as Label).text
+		var base: String = (
+			"base 720 x 1280 (portrait)" if portrait else "base 1280 x 720 (landscape)"
+		)
+		var window: String = "window: %d x %d px\n%s\n" % [size.x, size.y, base]
+		assert_str(text).override_failure_message(str(size)).contains(window)
+		probe.free()
+		UiScale.clear_override()
+
+
+## The readout follows the window through a turn, on the engine's own metrics (no override): the
+## autoload turns the base size, and the probe shows what the engine uses now.
+func test_the_readout_follows_a_turn_of_the_window() -> void:
+	var probe: Control = await _open(UiProfiles.by_name(&"android_6in"))
+	UiScale.clear_override()
+	var metrics: Label = _control(probe, "MetricsLabel") as Label
+	for step: Array in [
+		[ScreenSizes.PORTRAIT[1], "base 720 x 1280 (portrait)"],
+		[ScreenSizes.LANDSCAPE[1], "base 1280 x 720 (landscape)"],
+	]:
+		var size: Vector2i = step[0]
+		get_window().size = size
+		await await_idle_frame()
+		var expected: String = "window: %d x %d px\n%s\n" % [size.x, size.y, step[1]]
+		assert_str(metrics.text).override_failure_message(str(size)).contains(expected)
+	probe.free()
 
 
 func test_the_square_and_the_numbers_follow_a_window_resize() -> void:
@@ -114,6 +172,22 @@ func test_touch_points_follow_the_fingers_in_base_px() -> void:
 	assert_dict(probe.touches).is_equal({0: Vector2(800, 360)})
 	_touch(0, Vector2(1200, 540), false)
 	assert_dict(probe.touches).is_empty()
+
+
+## The same fingers in portrait: the window px are divided by the stretch (1.5 here, as in
+## landscape), the thresholds are the same dp, and the log names the same gestures.
+func test_touch_points_and_gestures_are_in_base_px_in_portrait_too() -> void:
+	var probe: Control = await _open(UiProfiles.by_name(&"android_6in_portrait"))
+	probe.clock = func() -> int: return _now_ms
+	_touch(0, Vector2(900, 1800), true)  # Base 600,1200.
+	assert_dict(probe.touches).is_equal({0: Vector2(600, 1200)})
+	_drag(0, Vector2(930, 1800))  # 20 base px: inside the 21 base px slop, a tap
+	_touch(0, Vector2(930, 1800), false)
+	assert_dict(probe.touches).is_empty()
+	_touch(0, Vector2(900, 1800), true)
+	_drag(0, Vector2(900, 2100))  # 200 base px down: a pan
+	_touch(0, Vector2(900, 2100), false)
+	assert_array(probe.log_lines).is_equal(["TAP 600,1200", "PAN move 0,200", "CAMERA_END"])
 
 
 ## At 1.75 base px per dp (stretch 1.5), so 12 dp is 21 base px and the thresholds are in dp.
@@ -203,6 +277,15 @@ func _open(profile: UiMetrics) -> Control:
 	add_child(probe)
 	await await_idle_frame()
 	return probe
+
+
+## The profile whose window is `size`, among the landscape and the portrait ones.
+func _profile_with_window(size: Vector2i) -> UiMetrics:
+	for profiles: Dictionary[StringName, UiMetrics] in [UiProfiles.all(), UiProfiles.portrait()]:
+		for profile_name: StringName in profiles:
+			if profiles[profile_name].window_size == size:
+				return profiles[profile_name]
+	return null
 
 
 func _control(probe: Control, node_name: String) -> Control:

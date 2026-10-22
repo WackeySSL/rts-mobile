@@ -1,6 +1,10 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://game/ui/dev_menu.gd" id="1_menu"]
+[ext_resource type="Script" path="res://game/ui/HudTheme.gd" id="2_hud_theme"]
+[ext_resource type="Script" path="res://game/ui/SafeAreaMargin.gd" id="3_safe"]
+[ext_resource type="Theme" path="res://game/ui/theme.tres" id="4_theme"]
+[ext_resource type="Script" path="res://game/ui/DpMinSize.gd" id="5_dp"]
 
 [node name="DevMenu" type="Control"]
 layout_mode = 3
@@ -10,6 +14,9 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_menu")
+
+[node name="HudTheme" type="Node" parent="."]
+script = ExtResource("2_hud_theme")
 
 [node name="Background" type="ColorRect" parent="."]
 layout_mode = 1
@@ -21,49 +28,67 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.10980392, 0.12941177, 0.15294118, 1)
 
-[node name="Center" type="CenterContainer" parent="."]
+[node name="SafeArea" type="MarginContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 2
+theme = ExtResource("4_theme")
+script = ExtResource("3_safe")
 
-[node name="Column" type="VBoxContainer" parent="Center"]
+[node name="Scroll" type="ScrollContainer" parent="SafeArea"]
 layout_mode = 2
-theme_override_constants/separation = 24
+horizontal_scroll_mode = 0
 
-[node name="Title" type="Label" parent="Center/Column"]
+[node name="Center" type="CenterContainer" parent="SafeArea/Scroll"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 48
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Column" type="VBoxContainer" parent="SafeArea/Scroll/Center"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Title" type="Label" parent="SafeArea/Scroll/Center/Column"]
+layout_mode = 2
+theme_type_variation = &"NumberLabel"
 text = "Dev menu"
 horizontal_alignment = 1
 
-[node name="TestMapButton" type="Button" parent="Center/Column"]
+[node name="TestMapButton" type="Button" parent="SafeArea/Scroll/Center/Column"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(360, 120)
 layout_mode = 2
-theme_override_font_sizes/font_size = 40
 text = "Test map"
 
-[node name="GalleryButton" type="Button" parent="Center/Column"]
+[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/TestMapButton"]
+script = ExtResource("5_dp")
+min_dp = Vector2(240, 56)
+
+[node name="GalleryButton" type="Button" parent="SafeArea/Scroll/Center/Column"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(360, 120)
 layout_mode = 2
-theme_override_font_sizes/font_size = 40
 text = "Art gallery"
 
-[node name="TouchProbeButton" type="Button" parent="Center/Column"]
+[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/GalleryButton"]
+script = ExtResource("5_dp")
+min_dp = Vector2(240, 56)
+
+[node name="TouchProbeButton" type="Button" parent="SafeArea/Scroll/Center/Column"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(360, 120)
 layout_mode = 2
-theme_override_font_sizes/font_size = 40
 text = "Touch probe"
 
-[node name="PerfArenaButton" type="Button" parent="Center/Column"]
+[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/TouchProbeButton"]
+script = ExtResource("5_dp")
+min_dp = Vector2(240, 56)
+
+[node name="PerfArenaButton" type="Button" parent="SafeArea/Scroll/Center/Column"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(360, 120)
 layout_mode = 2
-theme_override_font_sizes/font_size = 40
 text = "Perf arena"
+
+[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/PerfArenaButton"]
+script = ExtResource("5_dp")
+min_dp = Vector2(240, 56)

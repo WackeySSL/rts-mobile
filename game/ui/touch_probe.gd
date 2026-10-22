@@ -1,9 +1,13 @@
 extends Control
 ## Touch probe (developer scene, ADR 0004 section 3): what the engine reports about the screen,
-## what `UiScale` makes of it, a square that should measure 7.6 mm (48 dp) with a ruler, the
-## live touch points (base px) and the last 8 gestures a `GestureRecognizer` makes of them. The
-## square is exactly `UiScale.dp(48)` per side, kept so by `DpMinSize` on resize. It sits in a
-## plain Control, because a BoxContainer rounds the heights of its children up to whole px.
+## what `UiScale` makes of it (the base size it is stretched from and the window's orientation,
+## ADR 0015), a square that should measure 7.6 mm (48 dp) with a ruler, the live touch points (base
+## px) and the last 8 gestures a `GestureRecognizer` makes of them. The square is exactly
+## `UiScale.dp(48)` per side, kept so by `DpMinSize` on resize. It sits in a plain Control, because
+## a BoxContainer rounds the heights of its children up to whole px.
+## The layout fits a 360 dp wide screen held upright (the column and Back side by side) and a
+## 304 dp tall one held sideways (a phone browser): the ruler's text sits beside the square, and no
+## line is wider than about 30 characters.
 
 const SQUARE_DP: float = 48.0
 const TOUCH_RADIUS_DP: float = 24.0  ## A finger-sized circle: 48 dp across.
@@ -28,8 +32,9 @@ var _events: Array[GestureEvent] = []
 var _previous_quit_on_go_back: bool = true
 
 @onready var _column: VBoxContainer = $Margin/Column
+@onready var _square_row: HBoxContainer = $Margin/Column/SquareRow
 @onready var _metrics_label: Label = $Margin/Column/MetricsLabel
-@onready var _square_label: Label = $Margin/Column/SquareLabel
+@onready var _square_label: Label = $Margin/Column/SquareRow/SquareLabel
 @onready var _back_button: Button = $Margin/BackButton
 @onready var _log_label: Label = $Margin/GestureLog
 
@@ -131,13 +136,15 @@ func _show_log() -> void:
 func _refresh() -> void:
 	_recognizer.configure(SETTINGS, UiScale.base_px_per_dp())
 	var m: UiMetrics = UiScale.current()
+	var base: Vector2i = get_window().content_scale_size
 	var lines: PackedStringArray = [
 		"OS: %s" % m.os_name,
 		"dpi: %d" % m.dpi,
 		"screen scale: %.3f" % m.screen_scale,
 		"stretch scale: %.3f" % m.stretch_scale,
 		"window: %d x %d px" % [m.window_size.x, m.window_size.y],
-		"safe area: %s px" % m.safe_area,
+		"base %d x %d (%s)" % [base.x, base.y, _orientation_name(m)],
+		"safe area: %s px" % _compact(m.safe_area),
 		"base px per dp: %.3f" % UiScale.base_px_per_dp(),
 		"dp(%d): %.1f base px" % [roundi(SQUARE_DP), UiScale.dp(SQUARE_DP)],
 	]
@@ -146,7 +153,18 @@ func _refresh() -> void:
 	for control: Control in [_metrics_label, _square_label, _back_button, _log_label]:
 		control.add_theme_font_size_override("font_size", font_size)
 	_column.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
+	_square_row.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
 	queue_redraw()
+
+
+## A rectangle as "x,y WxH": the engine's own text of a Rect2i is too wide for a 360 dp screen.
+static func _compact(rect: Rect2i) -> String:
+	return "%d,%d %dx%d" % [rect.position.x, rect.position.y, rect.size.x, rect.size.y]
+
+
+## The window's orientation by UiScale's one rule (ADR 0015 section 2).
+static func _orientation_name(m: UiMetrics) -> String:
+	return "portrait" if UiScale.is_portrait_size(m.window_size) else "landscape"
 
 
 func _go_back() -> void:

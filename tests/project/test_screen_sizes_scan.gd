@@ -40,18 +40,12 @@ const SCANNED_DIRS: Array[String] = ["res://tests/ui", "res://tests/scenes", "re
 const ROWS: Array[String] = ["P61", "P62", "P63"]
 
 ## The suites that run only landscape sizes today, each with the row that makes it run portrait
-## too. The plan's file lists name the P61 suites (the HUD, the theme and the main scene),
-## test_rts_camera and test_controls_flow (P62, whose scene case is the view-only proof) and
+## too. P61's suites (the HUD, the theme and the main scene) have left it. The plan's file lists
+## name test_rts_camera and test_controls_flow (P62, whose scene case is the view-only proof) and
 ## test_touch_probe (P63). The other view suites and the two perf arena suites are in no row's file
 ## list yet: they stand under the row of their layer (P62 the view, P63 the dev scenes) until the
 ## lead places them.
 const PORTRAIT_PENDING: Dictionary[String, String] = {
-	"res://tests/ui/test_army_bar.gd": "P61",
-	"res://tests/ui/test_selection_panel.gd": "P61",
-	"res://tests/ui/test_touch_target_sizes.gd": "P61",
-	"res://tests/ui/test_ui_theme.gd": "P61",
-	"res://tests/scenes/test_main_scene.gd": "P61",
-	"res://tests/view/test_rts_camera.gd": "P62",
 	"res://tests/view/test_effects_layer_curves.gd": "P62",
 	"res://tests/view/test_feedback.gd": "P62",
 	"res://tests/view/test_fog_hiding.gd": "P62",
@@ -60,9 +54,6 @@ const PORTRAIT_PENDING: Dictionary[String, String] = {
 	"res://tests/view/test_health_bars.gd": "P62",
 	"res://tests/view/test_projectile_layer.gd": "P62",
 	"res://tests/scenes/test_controls_flow.gd": "P62",
-	"res://tests/ui/test_touch_probe.gd": "P63",
-	"res://tests/ui/test_perf_arena_layout.gd": "P63",
-	"res://tests/ui/test_perf_hud_card.gd": "P63",
 }
 
 ## A window size assigned from a literal: `size = Vector2i(<digits>` or `set_size(Vector2i(<digits>`
