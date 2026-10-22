@@ -21,6 +21,10 @@ Status note (2026-10-21, P26ae docs): §1 carries a dated status note on its "Us
 (#144) merged them (target acquisition and `ATTACK` validation read the fog through
 `Targeting.sees`) and on rows added after `prepare()`; no accepted text changed.
 
+Status note (2026-10-22, ADR 0016 accepted): §1 and "Consequences" carry dated status notes on
+ADR 0016's decision that P65 will take `visible` out of `FogGrid.HASHED`; no accepted text
+changed.
+
 ## Context
 ROADMAP Phase 2 asks for "fog of war (visible and explored) and its rendering". The GDD says:
 - unexplored is black;
@@ -144,6 +148,19 @@ accepted and as dated): the two Phase 2 "Users" as merged.
   builders reveal it by default (the plan's contract row `World` v1, "P46b as merged").
 - The ROADMAP box "Fog of war (visible and explored) and its rendering" was ticked by P46b.
 
+Status note (2026-10-22, ADR 0016 accepted; the text and the notes above stay as accepted and as
+dated): ADR 0016 (Michael's answer 1) decides that P65 will take `visible` out of the hash; until
+it merges, the text above describes `main`.
+- After P65, `const HASHED` will be `[&"explored"]` and `visible` will join `UNHASHED`.
+  `visible` stays sim state with the same layout, rules and users; only the state hash stops
+  covering it directly (ADR 0007 §8's note of the same date).
+- Why: the counts are derived from hashed state (`owner`, `type_index` and `fog_cell` in the
+  rows, the sight tables in `defs_hash`), and they are most of the bytes hashed every checkpoint.
+- `explored` is history, not derived, and stays hashed. The per-player last-seen memory that
+  Phase 3 adds is history too, so it "will live inside `FogGrid` and be hashed" as written.
+- `FogGrid.copy_into` duplicates every array of `HASHED` and `UNHASHED`, so the snapshot keeps
+  `visible`.
+
 ### 2. View rendering (`game/view/FogLayer.gd`)
 - A `Sprite2D` with an `ImageTexture` of `map_cols x map_rows` pixels in `FORMAT_RGBA8`,
   `centered = false` at the map origin, scaled by `ViewScale.PX_PER_TILE`, `texture_filter =
@@ -238,3 +255,9 @@ and the edge look are in `assets/art/STYLE.md` § "Fog and terrain" (art-directo
   hides it.
 - A shader-based smooth fog (interpolating between two textures over the 3-tick update) is
   polish for Phase 5, if Michael wants it.
+
+Status note (2026-10-22, ADR 0016 accepted; the bullets above stay as accepted): after P65, the
+second bullet holds for `explored` directly and, through the hashed rows, for everything a
+`visible` count changes. The counts themselves will be covered by the kernel locksteps (full
+state), by `NativeKernels.self_check`, which will compare `fog.visible`, and by P65's test that
+rebuilds them from the rows and compares. Until P65 merges, the bullet describes `main`.

@@ -149,6 +149,10 @@ because of these rules:
 - `World.state_hash()` is SHA-256 through `HashingContext` over the header, the map, every
   `ROW_ARRAYS` entry in ID order, the live projectile slots and the fog. The hashed lists cover
   helper objects too (their `HASHED` lists), and a coverage test fails on an unlisted array.
+- Derived state stays out of the state hash, with a test that rebuilds it from hashed state and
+  compares (ADR 0016): hash the state a rebuild starts from (rows, history such as `explored`,
+  credits or ore left), list the derived arrays (caches, counts rebuilt from rows) as `UNHASHED`.
+  `fog.visible` is the one exception on `main` until P65 takes it out.
 - `World.hash_hex(h)` is the only formatter for hashes in logs, reports and data.
 - `MatchLoop` adds a checkpoint every `Replay.CHECKPOINT_PERIOD` (15) ticks: the state hash
   taken after `Sim.step` when the new tick is a multiple of 15, the first at tick 15 (none at
