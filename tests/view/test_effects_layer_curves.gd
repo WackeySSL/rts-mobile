@@ -7,16 +7,20 @@ extends GdUnitTestSuite
 ## out here and not read from the layer.
 
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const Rig: GDScript = preload("res://tests/view/support/effects_rig.gd")
 const ATLAS_PATH: String = "res://assets/art/svg/fx/effects_atlas.svg"
 const ALPHA_TOL: float = 0.0001
 const SIZE_TOL: float = 0.001
-## The three screens, each with its profile and the base px of one dp on it.
+## The three landscape screens (ScreenSizes.LANDSCAPE, entry by entry), each with its profile and
+## the base px of one dp on it.
 const SCREENS: Array[Array] = [
-	[Vector2i(1280, 720), &"desktop", 1.0],
-	[Vector2i(2400, 1080), &"android_6in", 1.75],
-	[Vector2i(2048, 1536), &"web_tablet", 1.25],
+	[ScreenSizes.LANDSCAPE[0], &"desktop", 1.0],
+	[ScreenSizes.LANDSCAPE[1], &"android_6in", 1.75],
+	[ScreenSizes.LANDSCAPE[2], &"web_tablet", 1.25],
 ]
+## A window that is none of the three screens, so a change to any of them is a change.
+const ODD_SIZE: Vector2i = Vector2i(1000, 700)
 const ZOOMS: Array[float] = [0.75, 1.0, 1.5]
 
 var _window_size_before: Vector2i
@@ -126,6 +130,18 @@ func test_a_flash_is_drawn_over_the_effects_that_are_older_than_it() -> void:
 	assert_that(_layer.quad_region(2)).is_equal(Rect2(144, 0, 32, 32))  # The flash, the newest.
 
 
+## The table pairs each profile with a size by position: it stays in step with the shared list.
+func test_the_screens_are_the_landscape_sizes_of_the_shared_list_with_their_profiles() -> void:
+	var sizes: Array[Vector2i] = []
+	for screen: Array in SCREENS:
+		sizes.append(screen[0])
+		var profile: UiMetrics = UiProfiles.by_name(screen[1])
+		assert_that(profile.window_size).override_failure_message(str(screen[1])).is_equal(
+			screen[0]
+		)
+	assert_array(sizes).is_equal(ScreenSizes.LANDSCAPE)
+
+
 func test_the_tracer_keeps_its_dp_width_at_every_zoom_on_every_screen() -> void:
 	var camera: RtsCamera = auto_free(RtsCamera.new())
 	add_child(camera)
@@ -159,7 +175,7 @@ func test_the_tracer_keeps_its_dp_width_at_every_zoom_on_every_screen() -> void:
 func test_one_layer_follows_the_dp_when_the_window_changes_under_it() -> void:
 	# The tracer's width in dp has to follow the window of a running match (a resize, or the turn
 	# of the phone, ADR 0015): one layer stays through all three screens and reads the dp again.
-	get_window().size = Vector2i(1000, 700)  # None of the three, so each change below is one.
+	get_window().size = ODD_SIZE  # None of the three, so each change below is one.
 	await await_idle_frame()
 	_make_layer()  # On the android_6in profile of before_test, 1.75 px per dp.
 	for screen: Array in SCREENS:

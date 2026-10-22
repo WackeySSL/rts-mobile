@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const HudThemes: GDScript = preload("res://tests/support/hud_theme.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const ART: String = "res://assets/art/svg/units/light_tank_"
 const LONG_NAME: String = "Heavily Armoured Experimental Siege Tank Destroyer Mark Seven"
 
@@ -129,7 +130,9 @@ func test_the_panel_is_dp_sized_and_sits_between_the_army_bar_and_the_sidebar_zo
 	var michael: UiMetrics = UiMetrics.create(
 		"Android", 420, 1.0, 1.5, Vector2i(2424, 1080), Rect2i(152, 0, 2272, 1080)
 	)
-	var xhdpi: UiMetrics = UiMetrics.create("Android", 320, 1.0, 1.0, Vector2i(1280, 720), Rect2i())
+	var xhdpi: UiMetrics = UiMetrics.create(
+		"Android", 320, 1.0, 1.0, ScreenSizes.LANDSCAPE[0], Rect2i()
+	)
 	var cases: Array[UiMetrics] = [michael, xhdpi]  # xhdpi is 2 base px per dp: the tightest fit.
 	for profile_name: StringName in UiProfiles.all():
 		var m: UiMetrics = UiProfiles.by_name(profile_name)

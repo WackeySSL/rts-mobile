@@ -6,44 +6,46 @@ extends GdUnitTestSuite
 ## test_ui_orientation_flip.gd.
 
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const SERVICE: String = "res://game/ui/ui_orientation_service.gd"
-const LANDSCAPE_BASE: Vector2i = Vector2i(1280, 720)
-const PORTRAIT_BASE: Vector2i = Vector2i(720, 1280)
+## The project's base size and its transpose: the first window size of each list has stretch 1.
+const LANDSCAPE_BASE: Vector2i = ScreenSizes.LANDSCAPE[0]
+const PORTRAIT_BASE: Vector2i = ScreenSizes.PORTRAIT[0]
 ## Window, base size, stretch scale and the visible rect in base px: the six sizes of ADR 0015
 ## section 6 (the 6-inch phone, a 4:3 tablet and the base size, each in both orientations).
 const SIZES: Array[Dictionary] = [
 	{
-		"window": Vector2i(1280, 720),
+		"window": ScreenSizes.LANDSCAPE[0],
 		"base": LANDSCAPE_BASE,
 		"stretch": 1.0,
 		"visible": Vector2(1280, 720)
 	},
 	{
-		"window": Vector2i(2400, 1080),
+		"window": ScreenSizes.LANDSCAPE[1],
 		"base": LANDSCAPE_BASE,
 		"stretch": 1.5,
 		"visible": Vector2(1600, 720)
 	},
 	{
-		"window": Vector2i(2048, 1536),
+		"window": ScreenSizes.LANDSCAPE[2],
 		"base": LANDSCAPE_BASE,
 		"stretch": 1.6,
 		"visible": Vector2(1280, 960)
 	},
 	{
-		"window": Vector2i(720, 1280),
+		"window": ScreenSizes.PORTRAIT[0],
 		"base": PORTRAIT_BASE,
 		"stretch": 1.0,
 		"visible": Vector2(720, 1280)
 	},
 	{
-		"window": Vector2i(1080, 2400),
+		"window": ScreenSizes.PORTRAIT[1],
 		"base": PORTRAIT_BASE,
 		"stretch": 1.5,
 		"visible": Vector2(720, 1600)
 	},
 	{
-		"window": Vector2i(1536, 2048),
+		"window": ScreenSizes.PORTRAIT[2],
 		"base": PORTRAIT_BASE,
 		"stretch": 1.6,
 		"visible": Vector2(960, 1280)
@@ -108,9 +110,9 @@ func test_the_content_scale_size_and_the_stretch_follow_the_window_at_every_size
 func test_the_same_phone_has_the_same_base_px_per_dp_in_both_orientations() -> void:
 	assert_bool(UiScale.has_override()).override_failure_message("override leaked").is_false()
 	var twins: Array[Array] = [
-		[Vector2i(2400, 1080), Vector2i(1080, 2400)],
-		[Vector2i(2048, 1536), Vector2i(1536, 2048)],
-		[Vector2i(1280, 720), Vector2i(720, 1280)],
+		[ScreenSizes.LANDSCAPE[1], ScreenSizes.PORTRAIT[1]],
+		[ScreenSizes.LANDSCAPE[2], ScreenSizes.PORTRAIT[2]],
+		[ScreenSizes.LANDSCAPE[0], ScreenSizes.PORTRAIT[0]],
 	]
 	for twin: Array in twins:
 		var values: Array[float] = []
@@ -123,10 +125,10 @@ func test_the_same_phone_has_the_same_base_px_per_dp_in_both_orientations() -> v
 		)
 	# A window that is not the exact transpose (a browser toolbar takes height in landscape) keeps
 	# today's stretch, and the dp stays right through UiScale: 1080x2100 is 1.5, 2400x932 1.2945.
-	get_window().size = Vector2i(1080, 2100)
+	get_window().size = UiProfiles.by_name(&"web_phone_portrait").window_size  # 1080x2100.
 	await await_idle_frame()
 	assert_float(get_window().get_stretch_transform().get_scale().x).is_equal_approx(1.5, 0.0001)
-	get_window().size = Vector2i(2400, 932)
+	get_window().size = UiProfiles.by_name(&"web_phone").window_size  # 2400x932.
 	await await_idle_frame()
 	assert_float(get_window().get_stretch_transform().get_scale().x).is_equal_approx(
 		932.0 / 720.0, 0.0001
@@ -138,10 +140,10 @@ func test_the_base_sizes_are_the_project_settings_and_their_transpose() -> void:
 	var width: int = ProjectSettings.get_setting("display/window/size/viewport_width")
 	var height: int = ProjectSettings.get_setting("display/window/size/viewport_height")
 	assert_that(Vector2i(width, height)).is_equal(LANDSCAPE_BASE)
-	get_window().size = Vector2i(2400, 1080)
+	get_window().size = ScreenSizes.LANDSCAPE[1]
 	await await_idle_frame()
 	assert_that(get_window().content_scale_size).is_equal(Vector2i(width, height))
-	get_window().size = Vector2i(1080, 2400)
+	get_window().size = ScreenSizes.PORTRAIT[1]
 	await await_idle_frame()
 	assert_that(get_window().content_scale_size).is_equal(Vector2i(height, width))
 	# The mode and the aspect are the project's: only the size turns.
@@ -153,17 +155,17 @@ func test_the_base_sizes_are_the_project_settings_and_their_transpose() -> void:
 ## `size_changed`: a resize within one orientation emits once, a turn twice, and an unchanged size
 ## not at all.
 func test_the_content_scale_size_is_set_only_when_it_differs() -> void:
-	get_window().size = Vector2i(2400, 1080)
+	get_window().size = ScreenSizes.LANDSCAPE[1]
 	await await_idle_frame()
 	var counter: Callable = _count_emissions
 	get_tree().root.size_changed.connect(counter)
 	var emissions: Array[int] = []
 	for size: Vector2i in [
-		Vector2i(2048, 1536),  # Landscape to landscape.
-		Vector2i(2048, 1536),  # No change.
-		Vector2i(1080, 2400),  # A turn.
-		Vector2i(1536, 2048),  # Portrait to portrait.
-		Vector2i(2400, 1080),  # A turn back.
+		ScreenSizes.LANDSCAPE[2],  # Landscape to landscape.
+		ScreenSizes.LANDSCAPE[2],  # No change.
+		ScreenSizes.PORTRAIT[1],  # A turn.
+		ScreenSizes.PORTRAIT[2],  # Portrait to portrait.
+		ScreenSizes.LANDSCAPE[1],  # A turn back.
 	]:
 		_seen.clear()
 		get_window().size = size
@@ -176,15 +178,15 @@ func test_the_content_scale_size_is_set_only_when_it_differs() -> void:
 ## A handler that connects after the autoload runs with the new base size and stretch in both runs
 ## of a turn (the setter is connected first), so it never sees a stretch of the old orientation.
 func test_both_runs_of_a_turn_see_the_new_stretch() -> void:
-	get_window().size = Vector2i(2400, 1080)
+	get_window().size = ScreenSizes.LANDSCAPE[1]
 	await await_idle_frame()
 	get_tree().root.size_changed.connect(_count_emissions)
-	get_window().size = Vector2i(1080, 2400)
+	get_window().size = ScreenSizes.PORTRAIT[1]
 	await await_idle_frame()
 	get_tree().root.size_changed.disconnect(_count_emissions)
 	assert_array(_seen).has_size(2)
 	for seen: Dictionary in _seen:
-		assert_that(seen["window"]).is_equal(Vector2i(1080, 2400))
+		assert_that(seen["window"]).is_equal(ScreenSizes.PORTRAIT[1])
 		assert_that(seen["base"]).is_equal(PORTRAIT_BASE)
 		assert_float(seen["stretch"]).is_equal_approx(1.5, 0.0001)
 
@@ -195,7 +197,7 @@ func test_a_window_that_starts_in_portrait_gets_the_portrait_base_in_ready() -> 
 	var live: Node = get_tree().root.get_node("UiOrientation")
 	var handler: Callable = Callable(live, &"_apply")
 	get_tree().root.size_changed.disconnect(handler)  # The live node sleeps for this case.
-	get_window().size = Vector2i(1080, 2400)
+	get_window().size = ScreenSizes.PORTRAIT[1]
 	await await_idle_frame()
 	assert_that(get_window().content_scale_size).is_equal(LANDSCAPE_BASE)  # Nothing turned it.
 	var fresh: Node = (load(SERVICE) as GDScript).new()
@@ -204,7 +206,7 @@ func test_a_window_that_starts_in_portrait_gets_the_portrait_base_in_ready() -> 
 	get_tree().root.remove_child(fresh)
 	fresh.free()
 	get_tree().root.size_changed.connect(handler)
-	get_window().size = Vector2i(2400, 1080)
+	get_window().size = ScreenSizes.LANDSCAPE[1]
 	await await_idle_frame()
 	assert_that(get_window().content_scale_size).is_equal(LANDSCAPE_BASE)
 

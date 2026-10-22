@@ -11,15 +11,11 @@ extends GdUnitTestSuite
 ## touch probe). The engine's own metrics are used, no override: the stretch has to follow.
 
 const Rig: GDScript = preload("res://tests/ui/support/arena_rig.gd")
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
+const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const PROBE_SCENE: String = "res://scenes/dev/touch_probe.tscn"
 const RUN_TICKS: int = 15
-## [start, other]: the flip of the plan (the stretch is 1.5 both ways), and a phone browser whose
-## toolbar takes height in landscape (1.2945 to 1.5), where the state differs between the two.
-const FLIPS: Array[Array] = [
-	[Vector2i(2400, 1080), Vector2i(1080, 2400)],
-	[Vector2i(2400, 932), Vector2i(1080, 2100)],
-]
 
 var _window_size_before: Vector2i
 var _calls: Array[String] = []
@@ -54,27 +50,46 @@ func test_the_perf_arena_ends_in_the_state_of_a_fresh_scene() -> void:
 ## further run of the handler changes nothing, and turning back starts from the clamped position
 ## (there is no memory, ADR 0015 section 4). P62 rewrites this case with the turn rule.
 func test_the_camera_position_after_the_clamp_does_not_move_on_a_second_run() -> void:
-	await _resize(Vector2i(2400, 932))  # Landscape: half the view is 927 by 360 world px.
+	await _resize(_web_phone())  # Landscape: half the view is 927 by 360 world px.
 	var main: Node = await _open(&"main")
 	var camera: RtsCamera = main.get_node("Camera")
 	camera.position = Vector2(1000, 400)
-	await _resize(Vector2i(1080, 2100))  # Portrait: 720 base px wide, 1.5 wide as the stretch.
+	await _resize(_web_phone_portrait())  # Portrait: 720 base px wide, 1.5 wide as the stretch.
 	# Half the height of the visible rect, whatever whole number of base px the engine floors to.
 	var clamped: Vector2 = Vector2(1000.0, get_window().get_visible_rect().size.y * 0.5)
 	assert_float(clamped.y).is_between(699.0, 700.0)
 	assert_that(camera.position).is_equal(clamped)
 	get_tree().root.size_changed.emit()  # A third run, as after a flip's two.
 	assert_that(camera.position).is_equal(clamped)
-	await _resize(Vector2i(2400, 932))
+	await _resize(_web_phone())
 	assert_that(camera.position).is_equal(clamped)
 	_close(main)
+
+
+## [start, other]: the flip of the plan (the 6-inch phone, the stretch is 1.5 both ways), and a
+## phone browser whose toolbar takes height in landscape (1.2945 to 1.5), where the state differs
+## between the two.
+func _flips() -> Array[Array]:
+	return [
+		[ScreenSizes.LANDSCAPE[1], ScreenSizes.PORTRAIT[1]],
+		[_web_phone(), _web_phone_portrait()],
+	]
+
+
+func _web_phone() -> Vector2i:
+	return UiProfiles.by_name(&"web_phone").window_size
+
+
+func _web_phone_portrait() -> Vector2i:
+	return UiProfiles.by_name(&"web_phone_portrait").window_size
 
 
 ## Each pair of sizes: the scene turned and turned back equals a fresh scene at the start size,
 ## the scene turned equals a fresh one at the other size, and where the stretch differs the two
 ## states differ from each other (so the comparison is not between two equal constants).
 func _check_flips(kind: StringName) -> void:
-	for flip: Array in FLIPS:
+	var flips: Array[Array] = _flips()
+	for flip: Array in flips:
 		var start: Vector2i = flip[0]
 		var other: Vector2i = flip[1]
 		var label: String = "%s %s -> %s -> %s" % [kind, start, other, start]
@@ -90,7 +105,7 @@ func _check_flips(kind: StringName) -> void:
 		var fresh_other: Dictionary = await _fresh(kind)
 		assert_dict(back).override_failure_message(label + " back").is_equal(fresh_start)
 		assert_dict(turned).override_failure_message(label + " turned").is_equal(fresh_other)
-		if flip == FLIPS[1]:
+		if flip == flips[1]:
 			assert_dict(turned).override_failure_message(label + " vacuous").is_not_equal(back)
 
 

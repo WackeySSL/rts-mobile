@@ -79,8 +79,6 @@ Today's layout, unchanged by ADR 0015.
 - Safe areas: the same `SafeAreaMargin` rule (both sides of an axis get the larger inset).
 - A turn keeps the camera centre and the world size per dp (ADR 0015 §4) and cancels gestures in
   flight; it never issues a Command.
-- Verify also at 720x1280, 1080x2400 and 1536x2048 (ADR 0015 §6), with screenshots in PRs that
-  change the layout.
 
 ## Text and feedback
 - At least 14 sp body text and 18 sp HUD numbers. Never use colour alone for meaning; team
@@ -95,6 +93,11 @@ Today's layout, unchanged by ADR 0015.
 - `input_devices/pointing/emulate_touch_from_mouse = true`, `emulate_mouse_from_touch = false`
 - Stretch mode `canvas_items`, aspect `expand`, base size 1280x720.
 
-## Verify on three sizes
-1280x720, 2400x1080 (20:9) and 2048x1536 (4:3). Attach screenshots of each to PRs that change
-the layout.
+## Verify on six sizes
+Landscape 1280x720, 2400x1080 (20:9) and 2048x1536 (4:3), and portrait 720x1280, 1080x2400 and
+1536x2048 (ADR 0015 §6). Attach screenshots of each to PRs that change the layout. UI and layout
+tests read the sizes from `tests/support/screen_sizes.gd` (`ScreenSizes.LANDSCAPE`, `PORTRAIT`,
+`ALL`) or from a profile of `tests/support/ui_profiles.gd`, never from a literal.
+`tests/project/test_screen_sizes_scan.gd` fails on a literal window size and on a suite that runs
+only landscape sizes unless its `PORTRAIT_PENDING` entry names the row (P61, P62, P63) that adds
+the portrait ones; P64 requires the list to be empty.

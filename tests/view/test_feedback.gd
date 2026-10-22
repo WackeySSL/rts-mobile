@@ -5,6 +5,7 @@ extends GdUnitTestSuite
 
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const PROFILES: Array[StringName] = [&"desktop", &"android_6in", &"web_tablet"]
 const GROUND: Vector2 = Vector2(1281, 1377)  ## No unit near it: milli (20016, 21516).
 const RING_TEXTURE: String = "res://assets/art/svg/ui/selection_ring.svg"
@@ -38,7 +39,7 @@ func after() -> void:
 
 
 func before_test() -> void:
-	get_window().size = Vector2i(1280, 720)
+	get_window().size = ScreenSizes.LANDSCAPE[0]
 	await await_idle_frame()
 	var main: Node2D = auto_free((load("res://scenes/main.tscn") as PackedScene).instantiate())
 	add_child(main)

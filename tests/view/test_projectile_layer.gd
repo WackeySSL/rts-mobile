@@ -12,6 +12,7 @@ extends GdUnitTestSuite
 ## move time: runner._process() moves the interpolation clock (a 1/60 s frame is alpha 0.25) and
 ## layer._process() draws a frame.
 
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const SCRIPT_PATH: String = "res://game/view/ProjectileLayer.gd"
 const ATLAS_PATH: String = "res://assets/art/svg/fx/effects_atlas.svg"
 const MAIN_SCENE: String = "res://scenes/main.tscn"
@@ -22,9 +23,9 @@ const ROCKET: Rect2 = Rect2(84.0, 72.0, 36.0, 12.0)
 const ATLAS_SIZE: Vector2 = Vector2(176.0, 84.0)
 const PX_PER_MILLI: float = 0.064  ## A tile is 64 px and 1000 milli-tiles.
 const FRAME_QUARTER: float = 1.0 / 60.0  ## Seconds: a quarter of a 15 Hz tick.
-const BASE_SIZE: Vector2i = Vector2i(1280, 720)
-## The sizes every screen is tested at: base, 20:9 phone and 4:3 tablet.
-const SIZES: Array[Vector2i] = [Vector2i(1280, 720), Vector2i(2400, 1080), Vector2i(2048, 1536)]
+const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
+## The landscape sizes every screen is tested at: base, 20:9 phone and 4:3 tablet.
+const SIZES: Array[Vector2i] = ScreenSizes.LANDSCAPE
 ## What each of them shows in base px (stretch canvas_items, aspect expand): 1280x720, 1600x720
 ## and 1280x960.
 const VIEWS: Array[Vector2] = [Vector2(1280, 720), Vector2(1600, 720), Vector2(1280, 960)]

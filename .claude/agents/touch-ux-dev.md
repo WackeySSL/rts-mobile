@@ -13,7 +13,10 @@ UI code assumes width > height).
 
 Rules are in the preloaded skill `touch-ui-rules`. In addition:
 - Input becomes `Command` objects; `game/input` never changes sim state directly.
-- Test every screen at 1280x720, 2400x1080 (20:9 phone) and 2048x1536 (4:3 tablet).
+- Test every screen at the six sizes of ADR 0015 section 6: landscape 1280x720, 2400x1080 (20:9 phone)
+  and 2048x1536 (4:3 tablet), portrait 720x1280, 1080x2400 and 1536x2048. Read them from
+  `tests/support/screen_sizes.gd` (`ScreenSizes.ALL`) or a profile of `tests/support/ui_profiles.gd`,
+  never as a literal (`tests/project/test_screen_sizes_scan.gd` fails on one).
 - Write gesture tests that feed `InputEventScreenTouch` and `InputEventScreenDrag` sequences into
   the gesture recognizer headlessly (tap, long-press box select, double-tap, pinch, pan).
 - Every PR that changes feel states exactly what to try on the phone preview, for example:

@@ -16,13 +16,10 @@ extends GdUnitTestSuite
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const Rig: GDScript = preload("res://tests/view/support/fog_rig.gd")
 const EffectsRig: GDScript = preload("res://tests/view/support/effects_rig.gd")
-const BASE_SIZE: Vector2i = Vector2i(1280, 720)
-## The three screens every screen is tested at: base, 20:9 phone and 4:3 tablet.
-const TARGET_SIZES: Array[Vector2i] = [
-	Vector2i(1280, 720),
-	Vector2i(2400, 1080),
-	Vector2i(2048, 1536),
-]
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
+const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
+## The landscape screens every screen is tested at: base, 20:9 phone and 4:3 tablet.
+const TARGET_SIZES: Array[Vector2i] = ScreenSizes.LANDSCAPE
 const RED: Color = Color("E5484D")
 ## Milli-tile points: a seen tile (tank 1's, tile (8, 18)), an unseen one (tile (40, 40)) and red
 ## tank 31's own tile (34, 10).
