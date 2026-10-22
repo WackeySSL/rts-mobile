@@ -143,23 +143,24 @@ func test_a_second_visit_finds_the_restored_orientation_and_locks_again() -> voi
 	arena.free()
 
 
-## The default seams are the display server's own, so the APK reaches it, and where it has no
-## orientation feature (headless, the web) an arena that comes and goes asks it nothing.
-func test_the_defaults_are_the_display_servers_and_a_bare_arena_leaves_the_orientation_alone(
+## The default seams are the display server's own, so the APK reaches it. Headless has no
+## orientation feature (`has_feature` answers false for every feature) and setting an orientation
+## is a silent no-op there, so what the defaults do cannot be seen from their effect: the case
+## pins which method each Callable is and which feature the check asks for (a check bound to
+## another feature would drop the lock on the phone and pass every spy case). That nothing is
+## asked where the feature is missing is
+## `test_without_the_feature_neither_the_source_nor_the_sink_is_called`.
+func test_the_defaults_are_the_display_servers_and_the_check_asks_for_the_orientation_feature(
 ) -> void:
 	var arena: Node2D = Rig.make(_calls)
 	_arenas.append(arena)
+	assert_bool(arena.orientation_feature.is_valid()).is_true()
+	assert_str(arena.orientation_feature.get_method()).is_equal("has_feature")
+	assert_array(arena.orientation_feature.get_bound_arguments()).is_equal(
+		[DisplayServer.FEATURE_ORIENTATION]
+	)
 	assert_str(arena.orientation_source.get_method()).is_equal("screen_get_orientation")
 	assert_str(arena.orientation_sink.get_method()).is_equal("screen_set_orientation")
-	assert_bool(arena.orientation_feature.is_valid()).is_true()
-	var feature: bool = DisplayServer.has_feature(DisplayServer.FEATURE_ORIENTATION)
-	assert_bool(arena.orientation_feature.call()).is_equal(feature)
-	if feature:
-		return  # A display server that can turn the screen is the phone's: no headless claim.
-	var before: int = DisplayServer.screen_get_orientation()
-	add_child(arena)
-	remove_child(arena)
-	assert_int(DisplayServer.screen_get_orientation()).is_equal(before)
 
 
 ## An arena outside the tree whose orientation seams answer `_has_feature` and `_found` and log
