@@ -20,20 +20,21 @@ three remedies, each through its own ADR and never a port row: fewer copied arra
 §3), fewer hashed bytes, or a longer `CHECKPOINT_PERIOD` (ADR 0007).
 
 The Phase 2 gate runs (Pixel 9a, release template, `WORKER`, `NATIVE`, perf arena seed 42, 150
-units, 900 ticks; the issue gives runs 1 and 3):
+units, 900 ticks; issue #157 gives runs 1, 3 and 4):
 
-| Key (ms) | Run 1 | Run 3 | Gate limit |
-|---|---|---|---|
-| `job_minus_step_p95_cp_ms` | 3.325 | 3.587 | watch line 3.325 |
-| `job_minus_step_p95_noncp_ms` | 0.752 | 0.771 | watch line 3.325 |
-| `job_p95_ms` (`sim_p95_ms` verdict) | 5.834 | 5.988 | 13.3 |
-| `job_p95_noncp_ms` | 5.366 | 5.41 | - |
-| `job_mean_ms` | 3.070 | 2.992 | - |
-| `job_p99_ms` | 7.341 | 7.302 | 26.7 |
-| `job_max_ms` | 13.905 | 16.952 | - |
+| Key (ms) | Run 1 | Run 3 | Run 4 | Gate limit |
+|---|---|---|---|---|
+| `job_minus_step_p95_cp_ms` | 3.325 | 3.587 | 3.411 | watch line 3.325 |
+| `job_minus_step_p95_noncp_ms` | 0.752 | 0.771 | 0.772 | watch line 3.325 |
+| `job_p95_ms` (`sim_p95_ms` verdict) | 5.834 | 5.988 | 5.577 | 13.3 |
+| `job_p95_noncp_ms` | 5.366 | 5.41 | 5.368 | - |
+| `job_mean_ms` | 3.070 | 2.992 | 2.991 | - |
+| `job_p99_ms` | 7.341 | 7.302 | 7.050 | 26.7 |
+| `job_max_ms` | 13.905 | 16.952 | 12.992 | - |
 
-Run 3 is 0.26 ms above the line. Run 1 sits exactly on 3.325 ms: it meets "at or below 25 %"
-and misses the rounded 3.3. The non-checkpoint half is far below on both.
+Run 3 is 0.26 ms and run 4 0.09 ms above the line. Run 1 sits exactly on 3.325 ms: it meets "at
+or below 25 %" and misses the rounded 3.3. (Run 4's gate verdict failed `heavy_frames_min`
+because the camera had been panned; its sim and job numbers are unaffected.) The non-checkpoint half is far below on both.
 
 CI (x86_64 runner, P49a's `WATCH sim job_minus_step impl=native` line, 11 calibration runs, 60
 checkpoint ticks and 840 others each): `job_minus_step_p95_cp_ms` 0.200-0.415 (median 0.335),
@@ -324,10 +325,11 @@ checkpoint half is still above the line, P66 and P66b follow (question 4).
 1. The fog's visibility counts are about 60 % of the bytes hashed every second, and they can be
    rebuilt from the units, which stay in the hash. Do you accept leaving them out (P65), which
    changes the six golden hashes once? (ja/nej)
-2. The watch line is an early warning, not a gate verdict, and the gate passes with about twice
-   the headroom either way. Which rule for checkpoint ticks? A: keep 3.3 ms. B: 6.65 ms on
-   checkpoint ticks only. C: drop the checkpoint half and watch the hashed-byte count in CI
-   instead.
+2. The watch line is an early warning, not a gate verdict: the gate's own sim limit (job p95
+   13.3 ms) is met with more than twice the margin (5.6-6.0 ms on the gate phone). Which rule
+   for checkpoint ticks? A: keep 3.325 ms (25 % of 13.3; run 1 sat exactly on it, runs 3 and 4
+   were 0.09-0.26 ms above). B: 6.65 ms on checkpoint ticks only. C: drop the checkpoint half
+   and watch the hashed-byte count in CI instead.
 3. P65 changes the golden hashes that the gate card compares against. Should it wait until you
    have confirmed the Phase 2 gate? (ja/nej)
 4. P66 and P66b only add timing numbers to the card, so the next step can be chosen from
