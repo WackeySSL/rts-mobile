@@ -17,7 +17,9 @@ path to multiplayer.
 
 Decisions behind these rules: ADR 0003 (Phase 1 skeleton), ADRs 0007-0011 (Phase 2 core,
 accepted 2026-10-12), ADR 0012 (worker-thread tick and view snapshot, accepted 2026-10-12) and
-ADR 0013 (C++ kernels for the hot phases with GDScript twins, accepted 2026-10-12).
+ADR 0013 (C++ kernels for the hot phases with GDScript twins, accepted 2026-10-12), ADR 0016
+(derived state out of the hash) and ADRs 0017-0021 (Phase 3: buildings, economy, the AI hook,
+accepted 2026-10-22; plan `docs/plans/2026-10-22-phase-3.md`, rows from P69 on).
 Where this file and an ADR disagree, the ADR wins; fix this file.
 
 ## Time and units
@@ -47,7 +49,9 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
 - Applied at the start of their tick in (tick, player_id, sequence) order. Invalid commands are
   dropped and counted; they never crash the sim.
 - Validation is per type (`match command.type`). Unknown and reserved types (10-29) are dropped
-  as unknown.
+  as unknown. ADR 0017 §4 fixes `PLACE` 10, `QUEUE` 11, `CANCEL` 12, `RALLY` 13, `HARVEST` 14 and
+  `SURRENDER` 20 (P70); each stays dropped and counted until its row lands its `apply_*`. They
+  also need an undefeated player, and after `match_end_tick` every Command is dropped.
 - `MatchLoop` stamps tick and sequence and records the command; it is the only tick driver
   (runner, replays, perf test, headless matches).
 - Input and AI never touch entities directly.
@@ -59,6 +63,43 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
   compaction over `ROW_ARRAYS` (no swap-remove), so rows stay in ascending ID order.
 - Projectiles live in fixed slots (`max_projectiles`) with a free stack.
 - A full table counts `spawn_refused` or `projectile_overflow` instead of raising an error.
+
+## Buildings and economy (ADRs 0017-0020, Phase 3)
+- **Buildings are rows** of a type with a footprint (`type_foot_w`, `type_foot_h` above 0; data
+  gives speed 0, radius 0, armour `BUILDING`). The position is the footprint centre; the origin is
+  derived, never stored. `World.add_building` appends through `add_unit`, writes `move_cost` 0 on
+  every footprint cell for every class, bumps `map_version` once and invalidates the flow cache;
+  `remove_dead` restores the cells from `terrain_cost`. No kernel reads a footprint: blocking goes
+  through `move_cost`. Mobile radii stay in 1..500 (a data test), which keeps separation off
+  buildings.
+- An `ATTACK` on a building aims at a passable ring cell (`Sim._apply_attack` writes it); the
+  TARGETING twins rewrite the goal only for targets with `type_speed` above 0 (P71).
+- Placement is one pure function, `Placement.reason(PlacementInput, ...)`, shared by the sim and
+  the ghost; never in a per-tick loop.
+- **New lists** (P70, each name in exactly one): `ROW_ARRAYS` + `harvest_mode`, `cargo`,
+  `harvest_slot`, `home`; `PLAYER_ARRAYS` (per player, per player and tab `player * TABS + tab`,
+  per queue slot); `ORE_ARRAYS` (`ore_amount`); `GHOST_ARRAYS` (last-seen records, in the World,
+  not `FogGrid`); `MAP_ARRAYS` + `terrain_buildable`, `ore_cell`; `TYPE_ARRAYS` and
+  `RULE_SCALARS` appended (in `defs_hash`); `HASHED_SCALARS` + `match_end_tick`, `winner`;
+  `DERIVED_ARRAYS` (`power_made`, `power_used`, `building_rows`, `harvester_rows`).
+- **Hashed versus derived:** credits, queues, rally points, harvest state, ore left, the ghost
+  records (live entries only), defeat ticks, `had_producer` and the stats are hashed (sections
+  `players`, `ore`, `ghosts` after `fog`, `STATE_FORMAT` 3). The power totals and the building
+  and harvester lists are derived, rebuilt when `rows_version` moves, out of the hash, with a
+  rebuild test at every checkpoint. `move_cost` stays in the map digest.
+- **Three phases after FOG** (marks ascend): `ECONOMY` 11 (`Power.run`, `Harvest.run`),
+  `PRODUCTION` 12 (`Production.run`, then `Outcome.run`), `MEMORY` 13 (`LastSeen.run`), then
+  `tick += 1`. Loops go players, tabs, rows by id and ore cells ascending; no Phase 3 rule draws
+  a random number. A placement in COMMANDS of tick t counts for power in t's ECONOMY; a produced
+  unit enters the grids in t+1.
+- Ticks of an outcome are stored as `tick + 1` (0 = playing or running). Only a player whose
+  `had_producer` is 1 can lose by the producer rule, so unit-only worlds never end on their own.
+- Sim rules give orders as the unit-group commands do (`order`, goal, `group_cell` -1,
+  `Movement.reset_nav`), never through `reset_row` (Targeting's, with a C++ twin).
+- **AI:** `game/ai` reads the World only through `PlayerView` (own rows, seen enemy rows, own
+  economy, explored cells, `Placement` for its player). `AiDriver.think_all` calls the controllers
+  inside the tick job before `loop.step`, so their Commands are stamped and recorded like a
+  player's. A controller copies its `AiDef` into ints and arrays and keeps no Resource or Node.
 
 ## Movement and pathfinding
 - Tile grid with passability per movement class (foot, wheeled, tracked).
@@ -111,8 +152,8 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
   the view which cells changed. Each player's dirty list is a fixed block of one flat
   `PackedInt32Array` with count and "full" arrays, sized in `configure()`; `begin_update` resets
   a count and never resizes (ADR 0013 §2).
-- AI code reads the World only through `PlayerView` once it exists (reserved by ADR 0010). Easy
-  and Normal AI read only their own player's visibility.
+- AI code reads the World only through `PlayerView` (ADR 0010, ADR 0020 §1; P78). Easy and
+  Normal AI read only their own player's visibility.
 
 ## Threading (ADR 0012 §2)
 On Android and desktop `MatchRunner` runs each tick as a `TickJob` on one worker thread; `SYNC`
@@ -183,8 +224,9 @@ because of these rules:
   defaults equal the file.
 
 ## Probe
-- `SimProbe.Phase` ids are fixed (`COMMANDS` 0 to `FOG` 10, `COUNT` 11). A new phase takes an id
-  in pipeline order through an ADR, never by renumbering.
+- `SimProbe.Phase` ids are fixed (`COMMANDS` 0 to `FOG` 10, `COUNT` 11; from P70 `ECONOMY` 11,
+  `PRODUCTION` 12, `MEMORY` 13, `COUNT` 14, ADR 0017 §5). A new phase takes an id in pipeline
+  order through an ADR, never by renumbering.
 - A probe never reads or writes the World; hashes are equal with and without one.
 
 ## Native kernels (ADR 0013)

@@ -77,6 +77,12 @@ Status note (2026-10-22, P26ag docs): §4 carries a dated status note: the Phase
 (issue #157, Michael's "bestået" of 2026-10-22), with the final series' numbers against §4's
 thresholds. No accepted text changed.
 
+Status note (2026-10-22, P68b docs; ADR 0020 accepted 2026-10-22): §1, §2 and §3 carry dated
+status notes: the AI runs inside the tick job, not in a `ticked` handler on the main thread, and
+reads no World (ADR 0020 §3 supersedes §1's "The Phase 4 AI acts there", §2's "Phase 4's AI and
+`PlayerView` read it there" and §3's scan allowance for `game/ai` "(whose World reads inside
+`ticked` are allowed and guarded at runtime)", and only those). No accepted text changed.
+
 ## Context
 The Phase 2 plan (P26s) says that a contract the phone probe contradicts changes through a new ADR
 before P34 starts. The probe ran on 2026-10-12. The full reports are comments on PR #35.
@@ -427,6 +433,15 @@ release-template facts on the official `linux_release` template):
   - The plan's section P38w2 "As merged" and contract row `MatchRunner` v1 ("P38w2 as merged")
     hold the details.
 
+Status note (2026-10-22, P68b docs, ADR 0020 accepted; the text and the notes above stay as
+accepted): ADR 0020 §3 supersedes "The Phase 4 AI acts there" under "Command latency", and only
+that. AI controllers think inside the tick job: `TickJob.run` calls `AiDriver.think_all(world,
+controllers, commands)` before `loop.step`, on the thread that runs the job (the worker in
+`WORKER`, the main thread in `SYNC`), after the human's drained commands. `MatchLoop` stamps the
+AI's commands with the tick they read, N, in both modes, so the outcome this section promised
+holds (AI-vs-AI runs are equal in both modes), and the AI's cost lands in the job, not on the main
+thread. `MatchRunner.opponents` builds the controllers at `start()` (plan rows P81, P82).
+
 ### 2. Thread-safety rules for the sim
 The sim stays free of Node, SceneTree, autoloads, Input, rendering, OS time and frame delta
 (CLAUDE.md rule 1). That is what makes `Sim.step` safe to run on a worker. It also needs these
@@ -496,6 +511,17 @@ rules:
 Determinism and replays do not change: the thread changes when a tick runs, not what it computes.
 The golden hashes (seed and scenario orders, no human commands) are equal in both modes, and a
 test proves it.
+
+Status note (2026-10-22, P68b docs, ADR 0020 accepted; the text and the notes above stay as
+accepted): ADR 0020 §3 supersedes "Phase 4's AI and `PlayerView` read it there" in the bullet on
+the main thread's World reads, and in §3 the scan's `.world` allowance for `game/ai` (see the
+note there), and only those. AI code reads the World only through
+`PlayerView.of(world, player)`, made by `game/core/AiDriver.gd` inside the tick job, never in a
+`ticked` handler. `game/ai` joins these rules (no Node, no autoload, no engine singleton, no
+clock) and the sim's purity scan; `tests/project/test_view_reads_snapshot.gd` drops its `.world`
+allowance for `game/ai` and fails on the name `World` there (plan row P78q). A controller copies
+its `AiDef` into ints and arrays, so the job's walk in `tests/core/test_tick_job.gd` still finds no
+Node or Resource (P82).
 
 ### 3. What the view reads: `MatchSnapshot`
 - **`game/core/MatchSnapshot.gd`**, a pure `RefCounted` with no Node. It holds the view's copy of
@@ -580,6 +606,13 @@ test proves it.
   - A scan (plan P50w, before any scene runs the worker) rejects `.world`, `.loop`, `.replay` and
     `.probe` in `game/view`, `game/input` and `game/ui`, and `.loop`, `.replay` and `.probe` in
     `game/ai` (whose World reads inside `ticked` are allowed and guarded at runtime).
+
+    Status note (2026-10-22, P68b docs, ADR 0020 accepted; the bullet above stays as accepted):
+    from plan row P78q, `game/ai` reads no World (ADR 0020 §3, which supersedes this bullet's
+    allowance for `game/ai`, and only that). `tests/project/test_view_reads_snapshot.gd`, which
+    cites the allowance as "ADR 0012 section 3", then rejects `.world` in `game/ai` like in the
+    three view folders, and a new rule fails on the name `World` there. AI code reads the match
+    only through `PlayerView`, made by `game/core/AiDriver.gd` inside the tick job.
 - **Allocation:** per tick, the main thread creates two objects (the snapshot and its
   `FogGrid`), `capture` makes one wrapper per copied array, and the next tick's first writes
   reallocate about 15 arrays (about 70 KB; the fog's `visible` at 32 KB is the largest) inside
