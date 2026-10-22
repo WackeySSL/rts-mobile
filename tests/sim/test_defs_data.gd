@@ -50,21 +50,26 @@ func test_weapon_files_hold_the_adr_0009_starting_stats() -> void:
 	)
 
 
-func test_the_standard_terrain_set_is_grass_sand_scrub_rock_water_in_that_order() -> void:
-	# symbol, id, then the cost for foot, wheeled and tracked. Scrub is the foot-only ground.
+func test_the_standard_terrain_set_is_grass_sand_scrub_rock_water_ore_in_that_order() -> void:
+	# symbol, id, the cost for foot, wheeled and tracked, then whether a building may stand there
+	# (grass and sand only; ore is passable for every class and not buildable, ADR 0018 section 2).
+	# Scrub is the foot-only ground.
 	var terrains: TerrainSetDef = load(TERRAIN_PATH)
 	var rows: Array = []
 	for terrain: TerrainDef in terrains.terrains:
-		rows.append([terrain.symbol, String(terrain.id)] + Array(terrain.cost))
+		rows.append(
+			[terrain.symbol, String(terrain.id)] + Array(terrain.cost) + [terrain.buildable]
+		)
 	(
 		assert_array(rows)
 		. is_equal(
 			[
-				[".", "grass", 10, 10, 10],
-				[":", "sand", 10, 10, 10],
-				["^", "scrub", 10, 0, 0],
-				["#", "rock", 0, 0, 0],
-				["~", "water", 0, 0, 0],
+				[".", "grass", 10, 10, 10, true],
+				[":", "sand", 10, 10, 10, true],
+				["^", "scrub", 10, 0, 0, false],
+				["#", "rock", 0, 0, 0, false],
+				["~", "water", 0, 0, 0, false],
+				["o", "ore", 10, 10, 10, false],
 			]
 		)
 	)

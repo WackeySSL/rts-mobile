@@ -15,8 +15,11 @@ const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 ## with the fog cleared and the column back at -1 the world still hashes to the previous
 ## d7d4de335b7cdde2. P65 (ADR 0016, exception 10): fog.visible left the hash and STATE_FORMAT became
 ## 2, so the header and the "fog" section changed (the fog feeds explored alone), and the digest
-## changed from 1657fe4c8868f2a6; the other sections are as they were.
-const TICK_0_SEED_1: String = "3449fd90a4f3fe60"
+## changed from 1657fe4c8868f2a6; the other sections are as they were. P70 (ADR 0017 section 7,
+## exception 10): STATE_FORMAT became 3 and Phase 3's layout joined the hash (four row columns, the
+## sections "players", "ore" and "ghosts", the scalars match_end_tick and winner, and the map digest
+## of the six-terrain set with its buildable flags), so the digest changed from 3449fd90a4f3fe60.
+const TICK_0_SEED_1: String = "a9dc4b12c176bc8f"
 
 
 ## Every int, bool and Packed array member of a helper, private ones too, is in HASHED or UNHASHED
@@ -43,18 +46,15 @@ func test_every_helper_member_is_listed_once() -> void:
 		)
 
 
-## The rule ints defs_hash covers are the RulesDef ints (UNHASHED_SCALARS holds them by name),
-## except the 18 of Phase 3 (plan P69) that World copies from plan row P70 on: that row appends them
-## to RULE_SCALARS and this test goes back to comparing the two lists whole.
+## The rule ints defs_hash covers are the RulesDef ints (UNHASHED_SCALARS holds them by name): the
+## 15 of Phase 2 and the 18 of Phase 3 (ADR 0018 section 9), 33 names in all.
 func test_the_rule_scalars_are_the_rules_def_ints() -> void:
-	var copied: Array[StringName] = []
-	var not_copied: Array[StringName] = []
+	var rule_ints: Array[StringName] = []
 	for info: Dictionary in RulesDef.new().get_property_list():
 		if (int(info.usage) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0 and info.type == TYPE_INT:
-			var rule_name: StringName = StringName(info.name)
-			(copied if World.RULE_SCALARS.has(rule_name) else not_copied).append(rule_name)
-	assert_array(World.RULE_SCALARS).contains_exactly_in_any_order(copied)
-	assert_int(not_copied.size()).is_equal(18)
+			rule_ints.append(StringName(info.name))
+	assert_array(World.RULE_SCALARS).contains_exactly_in_any_order(rule_ints)
+	assert_int(rule_ints.size()).is_equal(33)
 
 
 ## A `+` on typed constants gives an untyped Array (Godot 4.7.2), which a typed local or parameter
@@ -72,7 +72,7 @@ func test_every_shape_scalar_and_hashed_list_is_a_typed_string_name_array() -> v
 				var typed: bool = list.is_typed() and list.get_typed_builtin() == TYPE_STRING_NAME
 				assert_bool(typed).override_failure_message(label).is_true()
 				checked += 1
-	assert_int(checked).is_equal(20)
+	assert_int(checked).is_equal(24)
 
 
 ## The literal UNHASHED lists repeat the names of STATE_ARRAYS and RULE_SCALARS; this keeps the
@@ -161,7 +161,7 @@ func test_changing_an_unhashed_member_leaves_the_hash_unchanged() -> void:
 	var world: World = _world()
 	var baseline: int = world.state_hash()
 	var unhashed: Array = World.UNHASHED_SCALARS + World.TYPE_ARRAYS + World.WEAPON_ARRAYS
-	unhashed.append_array(World.SCRATCH_ARRAYS + World.RUNTIME_ARRAYS)
+	unhashed.append_array(World.SCRATCH_ARRAYS + World.RUNTIME_ARRAYS + World.DERIVED_ARRAYS)
 	var targets: Array[Array] = _helpers(world)
 	targets.append([world, "world", [], unhashed])
 	for target: Array in targets:
@@ -179,7 +179,7 @@ func test_attaching_kernels_and_a_phase_mask_changes_no_section_of_the_hash() ->
 	var baseline: int = world.state_hash()
 	var parts: PackedInt64Array = world.hash_parts()
 	world.kernels = RefCounted.new()
-	world.native_phases = 0x7FF
+	world.native_phases = 0x3FFF
 	assert_int(world.state_hash()).is_equal(baseline)
 	assert_array(world.hash_parts()).is_equal(parts)
 	assert_bool(World.UNHASHED_SCALARS.has(&"native_phases")).is_true()
@@ -191,14 +191,18 @@ func test_set_terrain_changes_the_header_and_the_map_digest() -> void:
 	_assert_sections(_arena(), world, ["header", "map"])
 
 
-## The digest covers all three MAP_ARRAYS, is recomputed when map_version changes and not before,
-## and does not depend on map_version itself (a bump alone changes only the header).
+## The digest covers all five MAP_ARRAYS, is recomputed when map_version changes and not before,
+## and does not depend on map_version itself (a bump alone changes only the header). The arena has
+## no ore, so its `ore_cell` is empty and gets an entry instead of a changed one.
 func test_each_map_array_changes_the_map_part_once_the_version_is_bumped() -> void:
 	var base: World = _arena()
 	for array_name: StringName in World.MAP_ARRAYS:
 		var world: World = _arena()
-		var column: PackedByteArray = world.get(array_name)
-		column[column.size() - 1] += 1
+		var column: Variant = world.get(array_name)
+		if column.is_empty():
+			column.append(1)
+		else:
+			column[column.size() - 1] += 1
 		_assert_sections(base, world, [], array_name)
 		world.map_version += 1
 		_assert_sections(base, world, ["header", "map"], array_name)
@@ -223,8 +227,10 @@ func test_hash_hex_is_sixteen_lower_case_digits_least_significant_byte_first() -
 func test_the_sections_are_named_in_hash_order() -> void:
 	var names: PackedStringArray = World.hash_section_names()
 	assert_array(names.slice(0, 4)).is_equal(["header", "map", "unit_id", "owner"])
-	assert_array(names.slice(21)).is_equal(["fog_cell", "projectiles", "fog"])
-	assert_array(names.slice(2, 22)).is_equal(World.ROW_ARRAYS)
+	assert_array(names.slice(25)).is_equal(
+		["home", "projectiles", "fog", "players", "ore", "ghosts"]
+	)
+	assert_array(names.slice(2, 26)).is_equal(World.ROW_ARRAYS)
 	assert_int(_world().hash_parts().size()).is_equal(names.size())
 
 

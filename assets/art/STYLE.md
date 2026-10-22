@@ -450,6 +450,7 @@ the tile centre would show the scrub's highlight, so it is named per key:
 | `rock_c` | #4F4B48 | shade edge, bottom and right (new) | 7,3 |
 | `water` | #2E5E7E | base | 3,3 |
 | `water_b` | #3C7396 | ripple | 2,2 |
+| `ore` | #8A6F4D | base, the dirt under the ore tiles | 3,3 |
 
 A tile is 8x8 texels of filled rects `x,y,w,h,key`, in drawing order. The first rect is the base,
 the whole tile, and the other rects are drawn over it:
@@ -461,6 +462,7 @@ the whole tile, and the other rects are drawn over it:
 | `scrub` | `0,0,8,8,scrub 1,1,3,3,scrub_b 4,4,3,3,scrub_b 1,1,1,1,scrub_c 4,4,1,1,scrub_c` |
 | `rock` | `0,0,8,8,rock 0,0,8,1,rock_b 0,0,1,8,rock_b 0,7,8,1,rock_c 7,0,1,8,rock_c` |
 | `water` | `0,0,8,8,water 1,2,4,1,water_b 4,6,4,1,water_b` |
+| `ore` | `0,0,8,8,ore` |
 
 There is no grid (Michael, 2026-10-12): no band, no line and nothing darkened on row 0 or column 0
 of a tile, on any terrain. `MapView` (P36) bakes no grid. Fog is black on a texture of one texel per

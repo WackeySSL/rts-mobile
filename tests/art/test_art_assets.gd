@@ -22,6 +22,7 @@ const PICTURES: Dictionary[StringName, String] = {
 	&"scrub": "00000000/02110000/01110000/01110000/00002110/00001110/00001110/00000000",
 	&"rock": "11111112/10000002/10000002/10000002/10000002/10000002/10000002/22222222",
 	&"water": "00000000/00000000/01111000/00000000/00000000/00000000/00001111/00000000",
+	&"ore": "00000000/00000000/00000000/00000000/00000000/00000000/00000000/00000000",
 }
 ## Rec. 601 luminance of the 8-bit texels of a whole tile (STYLE.md): "mean spread fogged", the
 ## spread being the standard deviation and fogged the mean under the explored fog (alpha 140).
@@ -32,6 +33,7 @@ const GREYSCALE: Dictionary[StringName, String] = {
 	&"scrub": "92.2 15.9 42",
 	&"rock": "105.4 19.9 48",
 	&"water": "85.7 6.4 39",
+	&"ore": "115.2 0.0 52",
 }
 ## The map patch of the gallery's terrain row, left to right, rows 0 and 1 (grass by x + y parity).
 const PATCH_TILES: Array[Array] = [

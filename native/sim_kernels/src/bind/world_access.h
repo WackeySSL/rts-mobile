@@ -49,7 +49,7 @@ constexpr bool has_list(int64_t phase) {
 }
 
 // Mirrors of the twin's GDScript consts (the sizes that are structure, not balance).
-constexpr int64_t STAT_COUNT = 7; // World.Stat.size()
+constexpr int64_t STAT_COUNT = 10; // World.Stat.size(): 7 until P70 (ADR 0017 section 3), which added three counters no kernel writes
 constexpr int64_t ARMOUR_COUNT = 4; // World.Armour.size(), the percents per weapon
 constexpr int64_t MOVE_CLASSES = 3; // World.MoveClass.size(), the cost lists of move_cost
 constexpr int64_t PAD = flow::PAD; // FlowField's padded grid: one blocked ring, so cols + 2 and rows + 2

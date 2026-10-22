@@ -60,6 +60,7 @@ const TERRAIN_COLORS: Dictionary[StringName, Color] = {
 	&"rock_c": Color("4F4B48"),
 	&"water": Color("2E5E7E"),
 	&"water_b": Color("3C7396"),
+	&"ore": Color("8A6F4D"),
 }
 ## The map tiles, 8x8 texels, as filled rects "x,y,w,h,key" (a `TERRAIN_COLORS` key) in drawing
 ## order: the base, then the pattern rects. There is no grid. Grass has one per parity of x + y.
@@ -70,6 +71,7 @@ const TERRAIN_TILES: Dictionary[StringName, String] = {
 	&"scrub": "0,0,8,8,scrub 1,1,3,3,scrub_b 4,4,3,3,scrub_b 1,1,1,1,scrub_c 4,4,1,1,scrub_c",
 	&"rock": "0,0,8,8,rock 0,0,8,1,rock_b 0,0,1,8,rock_b 0,7,8,1,rock_c 7,0,1,8,rock_c",
 	&"water": "0,0,8,8,water 1,2,4,1,water_b 4,6,4,1,water_b",
+	&"ore": "0,0,8,8,ore",
 }
 ## The terrain row's map patch: one terrain id per column, the same in every row, and the fog over
 ## the rows after the first. Scrub is two tiles wide, so both teams' squads stand on it.

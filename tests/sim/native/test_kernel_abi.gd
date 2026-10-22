@@ -671,7 +671,7 @@ func _rule_length(world: World, rule: String) -> int:
 	var rules: Dictionary[String, int] = {
 		"ROWS": world.unit_id.size(),
 		"MAX_ROWS": world.max_rows,
-		"STATS": 7,
+		"STATS": 10,  # World.Stat.size(): the three counters of P70 are written by no kernel.
 		"TYPES": world.type_speed.size(),
 		"WEAPONS": world.weapon_range.size(),
 		"ARMOURS": 4 * world.weapon_range.size(),

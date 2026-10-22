@@ -73,7 +73,7 @@ const GROUP_CENTRE_BOUND: int = 3400
 ## mover takes 25% of the pair push of 128, -32, the idle tank 75%, 96, cut to the 60 a unit may
 ## take; with the intents of the tick before, both idle, the mover would take -60); the positions
 ## move at INTEGRATE only, by intent plus push. P41's TARGETING mark sits between GRIDS and INTENTS
-## and changes none of the columns.
+## and changes none of the columns, nor do the marks after FOG (P70: ECONOMY, PRODUCTION, MEMORY).
 func test_the_grid_is_rebuilt_after_flow_and_the_pushes_use_this_ticks_intents(
 	impl: int, _test_parameters := _both()
 ) -> void:
@@ -89,20 +89,22 @@ func test_the_grid_is_rebuilt_after_flow_and_the_pushes_use_this_ticks_intents(
 	phases.append(SimProbe.Phase.SEPARATION)
 	phases.append_array([SimProbe.Phase.INTEGRATE, SimProbe.Phase.PROJECTILES])
 	phases.append_array([SimProbe.Phase.FIRE, SimProbe.Phase.REMOVE, SimProbe.Phase.FOG])
+	phases.append_array([SimProbe.Phase.ECONOMY, SimProbe.Phase.PRODUCTION, SimProbe.Phase.MEMORY])
 	assert_array(probe.phases).is_equal(phases)
-	assert_array(probe.occupied).is_equal([0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+	assert_array(probe.occupied).is_equal([0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 	var none: Vector2i = Vector2i.ZERO
 	var pushed: Vector2i = Vector2i(-32, 60)
 	var pushes: Array[Vector2i] = [none, none, none, none, none, pushed, pushed, pushed, pushed]
-	pushes.append_array([pushed, pushed])
+	pushes.append_array([pushed, pushed, pushed, pushed, pushed])
 	assert_array(probe.pushes).is_equal(pushes)
-	assert_array(probe.intents).is_equal([0, 0, 0, 0, 120, 120, 120, 120, 120, 120, 120])
+	var intents: Array[int] = [0, 0, 0, 0, 120, 120, 120, 120, 120, 120, 120, 120, 120, 120]
+	assert_array(probe.intents).is_equal(intents)
 	var start: Vector2i = Vector2i(5000, 5300)
 	var moved: Vector2i = Vector2i(5000 + 120 - 32, 5300 + 60)
 	var positions: Array[Vector2i] = [start, start, start, start, start, start, moved, moved, moved]
-	positions.append_array([moved, moved])
+	positions.append_array([moved, moved, moved, moved, moved])
 	assert_array(probe.positions).is_equal(positions)
-	assert_array(probe.pairs).is_equal([0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2])
+	assert_array(probe.pairs).is_equal([0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2])
 
 
 ## The grid is rebuilt every tick from where the units are then: a tank that drives up to an idle

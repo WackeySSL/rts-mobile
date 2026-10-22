@@ -119,7 +119,7 @@ func test_one_bake_per_match_and_one_after_set_terrain_however_many_frames_pass(
 
 func test_every_terrain_of_the_data_set_has_a_base_colour_and_a_tile() -> void:
 	var terrains: TerrainSetDef = load(TERRAIN)
-	assert_int(terrains.terrains.size()).is_equal(5)
+	assert_int(terrains.terrains.size()).is_equal(6)
 	for def: TerrainDef in terrains.terrains:
 		assert_bool(_view.colors.has(def.id)).override_failure_message(str(def.id)).is_true()
 		assert_bool(_view.tiles.has(def.id)).override_failure_message(str(def.id)).is_true()

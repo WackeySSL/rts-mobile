@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## Phase 3 definitions (plan P69, ADR 0018 section 9): the script defaults of the new UnitDef,
 ## BuildingDef and TerrainDef fields. The 18 new RulesDef ints are pinned in test_defs and their
-## file in test_defs_data. World does not read any of this yet (plan row P70), so no rule moves.
+## file in test_defs_data. World copies these fields into its tables (plan row P70, test_world_v2)
+## and no rule reads them before its row, so no rule moves.
 
 ## The names UnitDef gained and BuildingDef adds, in declaration order.
 const UNIT_FIELDS: Array[String] = ["cost", "build_ticks", "tab", "requires", "harvest_capacity"]

@@ -66,7 +66,7 @@ func test_a_scenario_world_keeps_ids_costs_and_cell_bytes_in_one_table() -> void
 	for path: String in [SCENARIO_PATH, ARENA_PATH]:
 		var world: World = World.from_scenario(load(path) as ScenarioDef)
 		var classes: int = World.MoveClass.size()
-		assert_int(world.terrain_ids.size()).is_equal(5)
+		assert_int(world.terrain_ids.size()).is_equal(6)
 		assert_int(world.terrain_cost.size()).is_equal(world.terrain_ids.size() * classes)
 		assert_int(world.terrain.size()).is_equal(world.map_cols * world.map_rows)
 		var top: int = 0
