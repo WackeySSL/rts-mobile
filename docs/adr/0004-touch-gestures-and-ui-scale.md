@@ -17,6 +17,20 @@ orientation change cancels gestures in flight (ADR 0015 §3, P62). §6's camera 
 rule of ADR 0015 §4 (P62). The Amendment (P21)'s right sidebar zone is the landscape zone; in
 portrait the zone is a bottom band (ADR 0015 §5, P61).
 
+Status note (2026-10-22, P68b docs; ADR 0019 accepted 2026-10-22, Michael's answer 1 B): the text
+below stays as accepted. ADR 0019 §2 adds placement mode to the gesture map, a local input state
+of `PlacementController` (plan row P86 of `docs/plans/2026-10-22-phase-3.md`). While it is on, a
+one-finger drag that starts on the ghost (its footprint plus a grab margin) moves the ghost,
+which follows the finger 64 dp above the touch point and snaps to tiles; a one-finger drag that
+starts elsewhere pans as §2 says; a tap on the ground moves the ghost to that tile; pinch and
+two-finger pan are unchanged; `LONG_PRESS` starts no box; dragging the ghost near the view's edge
+pans the camera. Nothing is sent until the check mark confirms (`PLACE`). The recognizer's states
+and thresholds do not change; the mode decides what its events mean. ADR 0019 §3 also changes
+§5's ground tap while a building is selected: with an own barracks or vehicle factory selected it
+sends `RALLY`, with another own building selected it clears the selection; with harvesters
+selected a tap on ore sends `HARVEST` (P87). A long-press on a sidebar tile is a HUD control's
+own gesture (`CANCEL`, P85b), not the recognizer's.
+
 ## Context
 Phase 1 is a go/no-go on controls. `touch-ui-rules` gives the gesture map and the 48 dp rule,
 but it leaves several things open: how tap, long-press, drag, pinch and double-tap are told

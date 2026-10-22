@@ -69,6 +69,7 @@ func test_a_tap_emits_tapped_and_a_hold_emits_held_and_not_tapped() -> void:
 
 func test_hud_buttons_have_their_sizes_in_dp_at_every_profile() -> void:
 	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
+	profiles.merge(UiProfiles.portrait())
 	for profile_name: StringName in profiles:
 		await _open(profiles[profile_name])
 		var all_army: Vector2 = _rect("AllArmy").size
@@ -83,9 +84,13 @@ func test_hud_stays_inside_the_safe_area_with_a_100_px_cutout_and_on_michaels_ph
 		"Android", 420, 1.0, 1.5, Vector2i(2424, 1080), Rect2i(152, 0, 2272, 1080)
 	)
 	var cases: Array[UiMetrics] = [michael]
-	for profile_name: StringName in UiProfiles.all():
-		var m: UiMetrics = UiProfiles.by_name(profile_name)
+	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
+	profiles.merge(UiProfiles.portrait())
+	for profile_name: StringName in profiles:
+		var m: UiMetrics = profiles[profile_name]
 		var cutout: Rect2i = Rect2i(100, 0, m.window_size.x - 100, m.window_size.y)
+		if UiScale.is_portrait_size(m.window_size):  # The camera is at the top.
+			cutout = Rect2i(0, 100, m.window_size.x, m.window_size.y - 100)
 		cases.append(UiProfiles.with_safe_area(m, cutout))
 	for m: UiMetrics in cases:
 		await _open(m)

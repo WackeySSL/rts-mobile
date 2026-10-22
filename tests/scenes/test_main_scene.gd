@@ -15,14 +15,18 @@ const MAIN_SCENE: String = "res://scenes/main.tscn"
 const SETTINGS_PATH: String = "res://data/input_settings.tres"
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
 const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
-## The landscape screens every screen is tested at: base, 20:9 phone and 4:3 tablet. The portrait
-## ones join in P61 (ScreenSizes.ALL).
-const TARGET_SIZES: Array[Vector2i] = ScreenSizes.LANDSCAPE
-## The lowest camera position at each of them: half the visible size (1280x720, 1600x720, 1280x960).
+## The screens every screen is tested at: base, 20:9 phone and 4:3 tablet, each held both ways.
+const TARGET_SIZES: Array[Vector2i] = ScreenSizes.ALL
+## The lowest camera position at each of them: half the visible size. The UiOrientation autoload
+## turns the base size with the window, so a portrait window shows the transposed rect: 1280x720,
+## 1600x720 and 1280x960 in landscape; 720x1280, 720x1600 and 960x1280 in portrait.
 const LOWEST: Dictionary[Vector2i, Vector2] = {
 	ScreenSizes.LANDSCAPE[0]: Vector2(640, 360),
 	ScreenSizes.LANDSCAPE[1]: Vector2(800, 360),
 	ScreenSizes.LANDSCAPE[2]: Vector2(640, 480),
+	ScreenSizes.PORTRAIT[0]: Vector2(360, 640),
+	ScreenSizes.PORTRAIT[1]: Vector2(360, 800),
+	ScreenSizes.PORTRAIT[2]: Vector2(480, 640),
 }
 ## Bigger than the map, so the camera must stop at its limit.
 const OVERSCROLL_PX: float = 5000.0
@@ -98,6 +102,7 @@ func test_camera_starts_on_the_scenario_camera_tile_and_sees_all_30_tanks_at_eve
 	for size: Vector2i in TARGET_SIZES:
 		get_window().size = size
 		await await_idle_frame()
+		_camera.zoom = Vector2.ONE  # A turn rescales the zoom (ADR 0015 section 4); count at zoom 1.
 		assert_that(_camera.position).is_equal(Vector2(800, 1376))  # The centre of tile (12, 21).
 		assert_that(_camera.get_screen_center_position()).is_equal(Vector2(800, 1376))
 		for row: int in 30:
@@ -138,6 +143,7 @@ func test_one_finger_pan_stops_exactly_at_the_map_edge_at_every_target_resolutio
 	for size: Vector2i in TARGET_SIZES:
 		get_window().size = size
 		await await_idle_frame()
+		_camera.zoom = Vector2.ONE  # A turn rescales the zoom (ADR 0015 section 4); count at zoom 1.
 		assert_that(_expected_low()).is_equal(LOWEST[size])
 		_camera.centre_on(MAP_CENTRE)
 		await _pan(Vector2(100, 40))
