@@ -26,7 +26,8 @@ extends GdUnitTestSuite
 ##   the constant is a name a reviewer sees;
 ## - a landscape sweep that goes through a table of the suite's own (a dictionary keyed by
 ##   `ScreenSizes.LANDSCAPE[0]`, `[1]` and `[2]` and no read of the whole list), and a list of
-##   profile names in plain strings or split over lines: list the suite by hand;
+##   profile names split over lines or with a value after each name (`[&"desktop", 32]`): list the
+##   suite by hand;
 ## - `tests/input`, `tests/core` and the other test folders: only the three above are read.
 ## What it still catches is the default way to write a new suite: a literal window size, a copy of
 ## the list, or a loop over the landscape sizes.
@@ -40,9 +41,10 @@ const ROWS: Array[String] = ["P61", "P62", "P63"]
 
 ## The suites that run only landscape sizes today, each with the row that makes it run portrait
 ## too. The plan's file lists name the P61 suites (the HUD, the theme and the main scene),
-## test_rts_camera (P62) and test_touch_probe (P63). The other view suites and the two perf arena
-## suites are in no row's file list yet: they stand under the row of their layer (P62 the view, P63
-## the dev scenes) until the lead places them.
+## test_rts_camera and test_controls_flow (P62, whose scene case is the view-only proof) and
+## test_touch_probe (P63). The other view suites and the two perf arena suites are in no row's file
+## list yet: they stand under the row of their layer (P62 the view, P63 the dev scenes) until the
+## lead places them.
 const PORTRAIT_PENDING: Dictionary[String, String] = {
 	"res://tests/ui/test_army_bar.gd": "P61",
 	"res://tests/ui/test_selection_panel.gd": "P61",
@@ -57,6 +59,7 @@ const PORTRAIT_PENDING: Dictionary[String, String] = {
 	"res://tests/view/test_health_bar_squads.gd": "P62",
 	"res://tests/view/test_health_bars.gd": "P62",
 	"res://tests/view/test_projectile_layer.gd": "P62",
+	"res://tests/scenes/test_controls_flow.gd": "P62",
 	"res://tests/ui/test_touch_probe.gd": "P63",
 	"res://tests/ui/test_perf_arena_layout.gd": "P63",
 	"res://tests/ui/test_perf_hud_card.gd": "P63",
@@ -147,6 +150,8 @@ const LANDSCAPE_ONLY_FIXTURES: Array[String] = [
 	'for profile: StringName in [&"desktop", &"android_6in"]:\n\tpass\n',
 	'for profile: StringName in [&"android_6in", &"web_phone_small"]:\n\tpass\n',
 	"for a in ScreenSizes.LANDSCAPE:\n\tpass\nvar one: Vector2i = ScreenSizes.LANDSCAPE[1]\n",
+	'const PROFILES: Array = [["android_6in"], ["web_phone"]]\n',
+	'const PROFILES: Array[String] = ["desktop", "web_tablet"]\n',
 ]
 ## Sources that it must leave alone.
 const LANDSCAPE_ONLY_CLEAN: Array[String] = [
@@ -160,6 +165,9 @@ const LANDSCAPE_ONLY_CLEAN: Array[String] = [
 	'for pair: Array in [[&"android_6in_portrait", &"android_6in", 32]]:\n\tpass\n',
 	'var one: Array[StringName] = [&"desktop"]\n',
 	'var both: Array[StringName] = [&"desktop_portrait", &"desktop"]\n',
+	'const WIDTHS: Dictionary[String, float] = {"android_6in": 1600.0, "web_phone": 1854.0}\n',
+	'const PROFILES: Array = [["android_6in"]]\n',
+	'const PROFILES: Array = [["android_6in_portrait"], ["android_6in"]]\n',
 	"# in ScreenSizes.LANDSCAPE:\n## UiProfiles.all()\nvar x: int = 1  # UiProfiles.all()\n",
 	'var s: String = "x"\n',
 ]
@@ -405,13 +413,14 @@ func _restated_rule() -> Dictionary:
 	}
 
 
-## Two landscape profiles named side by side in one list: `&"desktop", &"android_6in"`.
+## Two landscape profiles named side by side in one list: `&"desktop", &"android_6in"`, the same in
+## plain strings, or as one-name rows (`["android_6in"], ["web_phone"]`).
 func _profile_pair_pattern() -> String:
 	var names: PackedStringArray = PackedStringArray()
 	for profile_name: StringName in UiProfiles.all():
 		names.append(str(profile_name))
-	var one: String = '&"(?:%s)"' % "|".join(names)
-	return one + "\\s*,\\s*" + one
+	var one: String = '&?"(?:%s)"' % "|".join(names)
+	return one + "\\s*\\]?\\s*,\\s*\\[?\\s*" + one
 
 
 ## Every `.gd` file under the scanned folders, rigs included.
