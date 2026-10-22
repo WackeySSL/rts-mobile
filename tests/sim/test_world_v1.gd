@@ -48,7 +48,8 @@ func test_the_enums_and_the_event_stride_are_the_contract() -> void:
 	assert_dict(World.Event).is_equal({"SPAWNED": 1, "DIED": 2, "SHOT": 3, "IMPACT": 4})
 	var nav: Dictionary = {"NONE": 0, "DIRECT": 1, "FIELD": 2, "HOLD": 3, "CHASE": 4}
 	assert_dict(World.NavMode).is_equal(nav)
-	assert_array([World.EVENT_STRIDE, World.STATE_FORMAT]).is_equal([8, 1])
+	# 2 since P65 (ADR 0016, exception 10): fog.visible left the state hash.
+	assert_array([World.EVENT_STRIDE, World.STATE_FORMAT]).is_equal([8, 2])
 
 
 ## A Phase 1-shaped world: the rule ints and the stream exist, player_count follows the owners
