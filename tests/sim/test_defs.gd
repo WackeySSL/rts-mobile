@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
-## Phase 2 definitions (plan P27a): the script defaults of the new Resources and fields, the 15
-## RulesDef starting values, and MapDef.size_tiles() and validate(). World does not read the new
-## fields yet, and the data files that fill them come with P27b.
+## Phase 2 definitions (plan P27a): the script defaults of the new Resources and fields, the
+## RulesDef starting values (15 of Phase 2, 18 more of Phase 3), and MapDef.size_tiles() and
+## validate(). The Phase 3 fields are in test_defs_v3.
 
 
 func test_unit_def_defaults_are_an_unarmed_unit_that_does_not_spawn_dead() -> void:
@@ -28,7 +28,7 @@ func test_weapon_def_defaults_deal_full_damage_to_every_armour_class() -> void:
 	assert_array(weapon.vs_armour).is_equal([100, 100, 100, 100])
 
 
-func test_rules_def_has_exactly_the_fifteen_starting_ints() -> void:
+func test_rules_def_has_exactly_the_thirty_three_starting_ints() -> void:
 	var expected: Dictionary[String, int] = {
 		"retarget_period_ticks": 5,
 		"fog_period_ticks": 3,
@@ -45,6 +45,24 @@ func test_rules_def_has_exactly_the_fifteen_starting_ints() -> void:
 		"attack_rekey_milli": 4000,
 		"max_projectiles": 512,
 		"max_rows": 256,
+		"start_credits": 2000,
+		"ore_start": 20,
+		"ore_cell_max": 20,
+		"ore_regrow_ticks": 150,
+		"credits_per_ore": 25,
+		"harvest_ticks_per_ore": 3,
+		"unload_ticks_per_ore": 1,
+		"harvest_reach_milli": 1200,
+		"dock_reach_milli": 1500,
+		"harvest_retry_ticks": 15,
+		"harvest_resume_ticks": 75,
+		"harvest_pick_milli": 3000,
+		"low_power_percent": 50,
+		"queue_slots": 5,
+		"build_reach_tiles": 4,
+		"unit_cap": 75,
+		"building_cap": 40,
+		"ghost_cap": 40,
 	}
 	var rules: RulesDef = RulesDef.new()
 	var fields: Array[String] = []
@@ -52,7 +70,7 @@ func test_rules_def_has_exactly_the_fifteen_starting_ints() -> void:
 		if (int(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0:
 			fields.append(String(info["name"]))
 			assert_int(int(info["type"])).is_equal(TYPE_INT)
-	assert_int(fields.size()).is_equal(15)
+	assert_int(fields.size()).is_equal(33)
 	assert_array(fields).contains_exactly_in_any_order(expected.keys())
 	for field: String in expected:
 		assert_that(rules.get(field)).override_failure_message(field).is_equal(expected[field])
@@ -186,6 +204,7 @@ func test_order_def_defaults_to_an_attack_move_at_tick_0_for_no_player() -> void
 func test_every_def_field_is_exported_so_a_resave_of_a_data_file_keeps_it() -> void:
 	var defs: Array[Resource] = [
 		UnitDef.new(),
+		BuildingDef.new(),
 		WeaponDef.new(),
 		TerrainDef.new(),
 		TerrainSetDef.new(),

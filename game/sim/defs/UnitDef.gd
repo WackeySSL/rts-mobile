@@ -22,3 +22,15 @@ extends Resource
 @export var acquire_range: int = 0
 ## Null = unarmed.
 @export var weapon: WeaponDef
+
+## Production (ADR 0018 section 9). Credits and ticks at 15 Hz. A type with tab -1 is not buildable
+## (a scenario places it), which is every unit file of Phase 2 and the Headquarters.
+@export var cost: int = 0
+@export var build_ticks: int = 0
+## The sidebar tab that builds this type: -1 none, else a World.Tab (0 Structures, 1 Infantry,
+## 2 Vehicles).
+@export_enum("None:-1", "Structures:0", "Infantry:1", "Vehicles:2") var tab: int = -1
+## The type the player must own a building of before this one can be queued. Null = none.
+@export var requires: UnitDef
+## Cargo capacity in credits. 0 = not a harvester; else a multiple of RulesDef.credits_per_ore.
+@export var harvest_capacity: int = 0
