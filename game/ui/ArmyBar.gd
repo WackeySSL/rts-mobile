@@ -3,6 +3,8 @@ extends HBoxContainer
 ## The bottom-left army controls (touch-ui-rules): "All army" and groups 1-3. It reports presses and
 ## shows the counts it is given; PlayerController decides what a press does. A tap on a group asks
 ## to recall it, a hold of `settings.group_assign_ms` asks to assign the selection.
+## It sits on the safe area's bottom edge in both orientations, and in portrait directly above the
+## build band once Phase 3 gives the bottom zone a height (`HudLayout`, ADR 0015 section 5).
 
 signal all_army_pressed
 signal group_tapped(slot: int)
@@ -54,3 +56,17 @@ func _add(button: Button, node_name: String, label: String, size_dp: Vector2) ->
 ## The gaps are dp, so they follow a resize like DpMinSize does. The buttons' text is the theme's.
 func _apply_dp() -> void:
 	add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
+	_lift()
+
+
+## Sets the bottom margin of the band around the bar (`ArmyBand` in main.tscn, a MarginContainer
+## that fills the safe area): 0 puts the bar on the safe area's bottom edge, as in landscape, and
+## in portrait with a bottom zone (HudLayout) it lifts the bar to a gap above the zone. The bar
+## sits at the band's bottom (size flag SHRINK_END), so a call from a stale state is harmless.
+func _lift() -> void:
+	var band: MarginContainer = get_parent() as MarginContainer
+	if band == null:
+		return
+	var zone: float = HudLayout.bottom_zone_px() if HudLayout.is_portrait() else 0.0
+	var lift: int = ceili(zone + UiScale.dp(GAP_DP)) if zone > 0.0 else 0
+	band.add_theme_constant_override("margin_bottom", lift)
