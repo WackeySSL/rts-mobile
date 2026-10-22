@@ -54,9 +54,6 @@ const PORTRAIT_PENDING: Dictionary[String, String] = {
 	"res://tests/view/test_health_bars.gd": "P62",
 	"res://tests/view/test_projectile_layer.gd": "P62",
 	"res://tests/scenes/test_controls_flow.gd": "P62",
-	"res://tests/ui/test_touch_probe.gd": "P63",
-	"res://tests/ui/test_perf_arena_layout.gd": "P63",
-	"res://tests/ui/test_perf_hud_card.gd": "P63",
 }
 
 ## A window size assigned from a literal: `size = Vector2i(<digits>` or `set_size(Vector2i(<digits>`
