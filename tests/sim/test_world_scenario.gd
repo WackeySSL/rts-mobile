@@ -14,7 +14,8 @@ const CLASS_COSTS: Dictionary[String, Array] = {".": [10, 10, 10], "t": [0, 0, 1
 ## The tables hold what the shipped unit and weapon files say (ADR 0009 section 1), in the order of
 ## first appearance in the spawns; the terrain ids follow the terrain set.
 func test_from_scenario_copies_the_unit_weapon_and_terrain_tables_of_the_arena() -> void:
-	var world: World = World.from_scenario(load(ARENA_PATH) as ScenarioDef)
+	var arena: ScenarioDef = load(ARENA_PATH) as ScenarioDef
+	var world: World = World.from_scenario(arena)
 	assert_array(world.type_ids).is_equal([&"light_tank", &"rifle_squad", &"rocket_squad"])
 	assert_array(world.weapon_ids).is_equal([&"tank_cannon", &"rifle", &"rocket"])
 	var terrain_ids: Array[StringName] = [&"grass", &"sand", &"scrub", &"rock", &"water", &"ore"]
@@ -31,12 +32,14 @@ func test_from_scenario_copies_the_unit_weapon_and_terrain_tables_of_the_arena()
 		&"type_acquire": [5500, 5000, 5500],
 		&"type_weapon": [0, 1, 2],
 		&"type_names": ["Light Tank", "Rifle Squad", "Rocket Squad"],
-		# The arena has no building, no buildable type and no harvester: every Phase 3 table pads.
+		# The arena has no building and no harvester: the building tables pad. The production
+		# columns are what the three unit files say (P72 sets them), read from the spawned
+		# definitions; test_world_v2 pins the literals with hand-built definitions.
 		&"type_foot_w": [0, 0, 0],
 		&"type_foot_h": [0, 0, 0],
-		&"type_cost": [0, 0, 0],
-		&"type_build_ticks": [0, 0, 0],
-		&"type_tab": [-1, -1, -1],
+		&"type_cost": _spawned_column(arena, &"cost"),
+		&"type_build_ticks": _spawned_column(arena, &"build_ticks"),
+		&"type_tab": _spawned_column(arena, &"tab"),
 		&"type_requires": [-1, -1, -1],
 		&"type_produces": [-1, -1, -1],
 		&"type_power": [0, 0, 0],
@@ -305,6 +308,18 @@ func _weapon(id: StringName, damage: int) -> WeaponDef:
 	weapon.id = id
 	weapon.damage = damage
 	return weapon
+
+
+## `field` of each distinct unit definition the spawns name, in the order of first appearance,
+## which is the type order of the prepared world.
+func _spawned_column(scenario: ScenarioDef, field: StringName) -> Array:
+	var column: Array = []
+	var seen: Array[StringName] = []
+	for spawn: SpawnDef in scenario.spawns:
+		if not seen.has(spawn.unit.type_id):
+			seen.append(spawn.unit.type_id)
+			column.append(spawn.unit.get(field))
+	return column
 
 
 func _rule_fields() -> Array[String]:

@@ -9,6 +9,7 @@ extends RefCounted
 static func first(a: World, b: World) -> String:
 	var lists: Array = World.ROW_ARRAYS + World.TYPE_ARRAYS + World.WEAPON_ARRAYS
 	lists += World.PROJECTILE_ARRAYS + World.MAP_ARRAYS + World.SCRATCH_ARRAYS
+	lists += World.PLAYER_ARRAYS + World.ORE_ARRAYS + World.GHOST_ARRAYS + World.DERIVED_ARRAYS
 	lists += World.RUNTIME_ARRAYS + World.HASHED_SCALARS + World.UNHASHED_SCALARS
 	for member: StringName in lists:
 		if member != &"native_phases" and a.get(member) != b.get(member):
