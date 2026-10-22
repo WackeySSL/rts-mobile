@@ -6,8 +6,19 @@ extends GdUnitTestSuite
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
-const PROFILES: Array[StringName] = [&"desktop", &"android_6in", &"web_tablet"]
+## The six screens of the shared list (ScreenSizes.ALL, entry by entry), each with its profile.
+const PROFILES: Array[StringName] = [
+	&"desktop",
+	&"android_6in",
+	&"web_tablet",
+	&"desktop_portrait",
+	&"android_6in_portrait",
+	&"web_tablet_portrait",
+]
 const GROUND: Vector2 = Vector2(1281, 1377)  ## No unit near it: milli (20016, 21516).
+## The same in a portrait view, which is 720 base px wide at the narrowest and so cannot show both
+## tank 1 (x 544) and GROUND (x 1281): south of the tank block instead, milli (8500, 26500).
+const GROUND_PORTRAIT: Vector2 = Vector2(544, 1696)
 const RING_TEXTURE: String = "res://assets/art/svg/ui/selection_ring.svg"
 ## The texture's centre-line radius in px, typed again from STYLE.md (not read from UnitLayer, so
 ## that a wrong UnitLayer.RING_TEX_RADIUS_PX fails; tests/art pins the texture to the same number).
@@ -210,6 +221,14 @@ func test_the_pool_never_grows_past_pool_size_and_reuses_the_oldest_mark() -> vo
 	assert_bool(_markers.get_child(0).get_child(4).visible).is_true()  # Reused as a flash.
 
 
+## The table pairs each profile with a size by position: it stays in step with the shared list.
+func test_the_profiles_are_the_six_sizes_of_the_shared_list() -> void:
+	var sizes: Array[Vector2i] = []
+	for profile: StringName in PROFILES:
+		sizes.append(UiProfiles.by_name(profile).window_size)
+	assert_array(sizes).is_equal(ScreenSizes.ALL)
+
+
 func test_orders_rings_anchor_and_box_follow_the_fingers_at_every_profile() -> void:
 	assert_int(_markers.get_index()).is_greater(_layer.get_index())
 	assert_int(_box.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)  # A second finger reaches us.
@@ -222,12 +241,15 @@ func test_orders_rings_anchor_and_box_follow_the_fingers_at_every_profile() -> v
 		_controller.selection.clear()
 		_now_ms += 5000
 		_markers._process(0.0)  # Earlier marks have expired.
-		_tap(_camera.world_to_screen(GROUND))  # Nothing selected: nothing happens.
+		var ground: Vector2 = (
+			GROUND_PORTRAIT if UiScale.is_portrait_size(get_window().size) else GROUND
+		)
+		_tap(_camera.world_to_screen(ground))  # Nothing selected: nothing happens.
 		assert_int(_markers.active_count()).is_equal(0)
 		_tap(_layer.unit_screen_position(0))  # The first tap selects, and the ring is there at once.
 		assert_array(_ringed_ids()).is_equal([1])
-		_tap(_camera.world_to_screen(GROUND))
-		assert_bool(_mark_at(GROUND).get_child(0).visible).is_true()  # Chevrons.
+		_tap(_camera.world_to_screen(ground))
+		assert_bool(_mark_at(ground).get_child(0).visible).is_true()  # Chevrons.
 		_camera.centre_on(Vector2(2208, 672))
 		# The diamond is the subject, not the fog: red tank 31 is hidden at the start and a tap on a
 		# hidden enemy is a ground tap. Picking under fog is proven in test_player_controller.gd
@@ -315,6 +337,8 @@ func _use(profile: StringName) -> void:
 
 
 func _tap(at: Vector2) -> void:
+	var view: Rect2 = get_viewport().get_visible_rect()
+	assert_bool(view.has_point(at)).override_failure_message("tap off screen: %s" % at).is_true()
 	TouchEvents.press(get_viewport(), 0, at)
 	_now_ms += 50
 	TouchEvents.release(get_viewport(), 0, at)

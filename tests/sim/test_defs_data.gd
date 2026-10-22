@@ -183,6 +183,16 @@ func test_every_rule_accepts_its_edge_values_and_reports_the_next_ones() -> void
 	var unarmed: UnitDef = _fine_unit()
 	unarmed.weapon = null
 	assert_array(_unit_problems("tank.tres", unarmed)).is_empty()
+	# The radius rule is for mobile units: a building (speed 0) has radius 0 and passes here, and
+	# the smallest speed that moves (2) brings the rule back.
+	var building: UnitDef = _fine_unit()
+	building.speed = 0
+	building.radius = 0
+	assert_array(_unit_problems("tank.tres", building)).is_empty()
+	building.speed = 2
+	assert_array(_unit_problems("tank.tres", building)).is_equal(
+		["tank.tres: radius is not in 1..500"]
+	)
 
 
 func test_the_rules_file_keeps_the_phase_3_numbers_in_bounds() -> void:
@@ -234,8 +244,8 @@ func test_every_weapon_file_reaches_the_ring_corner_of_a_three_by_three_building
 		assert_int(weapon.range).override_failure_message(path).is_greater_equal(RING_CORNER_MILLI)
 
 
-## The Phase 3 rules of every unit file, buildings included; empty today because no building file
-## exists yet (plan row P72 adds the roster and its exact numbers).
+## The Phase 3 rules of every unit file, buildings included (the roster of plan row P72). Its exact
+## numbers and the rules that span files are test_defs_roster's.
 func test_every_unit_file_keeps_the_phase_3_rules() -> void:
 	var rules: RulesDef = load(RULES_PATH)
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
@@ -274,7 +284,6 @@ func test_the_phase_3_unit_and_building_rules_accept_their_edge_values_and_repor
 	unit.requires = null  # A reference cycle would never be freed.
 	# A plain unit is not held to the building rules: a mobile unit has speed and a radius.
 	var tank: UnitDef = _fine_unit()
-	tank.speed = 120
 	assert_array(_economy_problems("tank.tres", tank, RulesDef.new())).is_empty()
 
 
@@ -521,8 +530,9 @@ func _unit_problems(file: String, unit: UnitDef) -> PackedStringArray:
 	var broken: Dictionary[String, bool] = {
 		"type_id differs from the file name": String(unit.type_id) != file.get_basename(),
 		"max_hp is below 1": unit.max_hp < 1,
-		# The 1-tile separation grid finds contact pairs only when every radius is at most 500.
-		"radius is not in 1..500": unit.radius < 1 or unit.radius > 500,
+		# The 1-tile separation grid finds contact pairs only when every mobile radius is at most
+		# 500. A building (speed 0) has radius 0, which _economy_problems pins (ADR 0017 section 1).
+		"radius is not in 1..500": unit.speed > 0 and (unit.radius < 1 or unit.radius > 500),
 		"speed is neither 0 nor at least 2": unit.speed < 0 or unit.speed == 1,
 		"armour is not an armour class": unit.armour < 0 or unit.armour > 3,
 		"move_class is not a movement class": unit.move_class < 0 or unit.move_class > 2,
@@ -549,7 +559,8 @@ func _unit_problems(file: String, unit: UnitDef) -> PackedStringArray:
 	return problems
 
 
-## A unit that breaks no rule when its file is tank.tres. Its weapon has the default percents.
+## A unit that breaks no rule when its file is tank.tres. It is mobile (speed above 0), so the
+## radius rule applies to it. Its weapon has the default percents.
 func _fine_unit() -> UnitDef:
 	var weapon: WeaponDef = WeaponDef.new()
 	weapon.id = &"tank"
@@ -557,6 +568,7 @@ func _fine_unit() -> UnitDef:
 	weapon.damage = 1
 	var unit: UnitDef = UnitDef.new()
 	unit.type_id = &"tank"
+	unit.speed = 120
 	unit.radius = 300
 	unit.sight_range = 6000
 	unit.acquire_range = 5000
@@ -574,8 +586,8 @@ func _fine_building() -> BuildingDef:
 
 
 ## One text per broken Phase 3 rule of a unit or building file; empty when the file is fine. The
-## rules of ADR 0018 section 9 that need the whole roster (the requirement chains reach the
-## Headquarters) wait for plan row P72.
+## rules of ADR 0018 section 9 that span files (the requirement chains reach the Headquarters) are
+## test_defs_roster's.
 func _economy_problems(file: String, unit: UnitDef, rules: RulesDef) -> PackedStringArray:
 	var broken: Dictionary[String, bool] = {
 		"cost is negative": unit.cost < 0,

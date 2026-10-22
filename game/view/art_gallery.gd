@@ -21,10 +21,16 @@ extends Control
 ## `_add_rings_and_atlas` adds a ring row (the team A tank with its selection ring at the three
 ## zooms, at the 6-inch phone's ring radius) and the effects atlas at scale 1 to each ground.
 ##
-## The button at the top right turns the pages: Units (all of the above), Build and Ground. Build
-## (`_add_buildings_page`) shows the six buildings at gameplay zoom in all four slots, grass and
-## sand, team A and team B. Ground (`_add_ground_page`) shows the ore cells by level, a mixed ore
-## field, and the ghost looks of STYLE.md ("Ghosts"). Both are built in code and start hidden.
+## The button at the top right turns the pages: Units (all of the above), Build, Ground, Vehicles
+## and Icons. Build (`_add_buildings_page`) shows the six buildings at gameplay zoom in all four
+## slots, grass and sand, team A and team B. Ground (`_add_ground_page`) shows the ore cells by
+## level, a mixed ore field, and the ghost looks of STYLE.md ("Ghosts"), the one that does not fit
+## with its reason glyph. Vehicles
+## (`_add_vehicles_page`) shows the light tank beside the heavy tank, the artillery and the
+## harvester at gameplay zoom, on grass and sand, in both team colours. Icons (`_add_icons_page`)
+## shows the sidebar's tab and item icons and the HUD glyphs at their size in dp on a dark HUD
+## panel, and the glyphs and rally flags that sit on the map on grass and sand. All are built in
+## code and start hidden.
 ##
 ## To add an asset: add its layers as a rig on both backgrounds, put the rig in a team group and
 ## keep the layer names. See assets/art/STYLE.md.
@@ -85,7 +91,7 @@ const FRAME_COLOR: Color = Color("1C2127")
 const SQUAD_TILE_OFFSET_PX: float = 16.0  ## A squad pair fills one tile: 2 x 32 px.
 const TERRAIN_ROW_TOP: float = 0.02
 ## The pages the button at the top right cycles through; the button shows the page it is on.
-const PAGES: Array[String] = ["Units", "Build", "Ground"]
+const PAGES: Array[String] = ["Units", "Build", "Ground", "Vehicles", "Icons"]
 const BUILDING_ART: String = "res://assets/art/svg/buildings/%s_%s.svg"
 ## The six buildings (STYLE.md, "Buildings"), by file name. The small row holds the 2x2 buildings
 ## and the 1x1 turret, the large row the 3x3 ones. Only the defence turret has a `Turret` layer.
@@ -117,6 +123,97 @@ const GHOST_WASH_ALPHA: float = 0.3
 const GHOST_HATCH_ALPHA: float = 0.8
 const GHOST_DOTS_ALPHA: float = 0.7
 const GHOST_FRAME_PX: float = 3.0
+## The reason glyph the "Blocked" ghost shows, at the size of a glyph on the map (STYLE.md: the
+## "Blocked" of a pending ghost uses the occupied glyph).
+const GHOST_REASON_GLYPH: String = "glyph_reason_occupied"
+## The Vehicles page (STYLE.md, "Heavy tank, artillery and harvester"): the light tank for scale and
+## the three new units, by art id, left to right. Row tops are the team A row and the team B row.
+const VEHICLE_IDS: Array[String] = ["light_tank", "heavy_tank", "artillery", "harvester"]
+const VEHICLE_LABELS: Array[String] = ["Light tank", "Heavy tank", "Artillery", "Harvester"]
+const VEHICLE_SPINNERS: Array[String] = ["harvester"]  ## Unarmed: the whole rig turns, as a squad.
+const VEHICLE_GAP_PX: float = 156.0
+const VEHICLE_ROW_TOPS: Array[float] = [190.0, 410.0]
+const VEHICLE_LABEL_COLOR: Color = Color("1C2127")
+const VEHICLE_LABEL_PX: int = 20
+const TILE_MARKER_COLOR: Color = Color(0.0, 0.0, 0.0, 0.12)
+## The Icons page (STYLE.md, "Icons and glyphs"). Icons are `icons/<name>.svg`, 128 px, import scale
+## 1.0, shown at their size in dp: a build tile icon 64 dp, a tab 48 dp, a HUD glyph 48 dp and a
+## glyph on the map 32 dp, at the 6-inch phone's 1.75 base px per dp.
+const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
+const FLAG_ART: String = "res://assets/art/svg/flags/%s_%s.svg"
+const TAB_ICONS: Array[String] = ["tab_structures", "tab_infantry", "tab_vehicles"]
+const ITEM_ICONS: Array[String] = [
+	"item_power_plant",
+	"item_refinery",
+	"item_barracks",
+	"item_vehicle_factory",
+	"item_defence_turret",
+	"item_rifle_squad",
+	"item_rocket_squad",
+	"item_light_tank",
+	"item_heavy_tank",
+	"item_artillery",
+	"item_harvester",
+]
+const HUD_GLYPHS: Array[String] = [
+	"glyph_credits",
+	"glyph_power",
+	"glyph_low_power",
+	"glyph_lock",
+	"glyph_check",
+	"glyph_cross",
+]
+const EMBLEMS: Array[String] = ["glyph_victory", "glyph_defeat", "glyph_draw"]
+const MAP_GLYPHS: Array[String] = [
+	"glyph_reason_outside",
+	"glyph_reason_ground",
+	"glyph_reason_occupied",
+	"glyph_reason_unexplored",
+	"glyph_reason_too_far",
+	"glyph_reason_cap",
+	"glyph_offline",
+]
+const ARROW_GLYPH: String = "glyph_under_attack"  ## At least 48 dp on screen (ADR 0019 section 5).
+const RALLY_FLAGS: Array[String] = ["rally_infantry", "rally_vehicles"]
+const ITEM_ICON_DP: float = 64.0
+const TAB_ICON_DP: float = 48.0
+const HUD_GLYPH_DP: float = 48.0
+const MAP_GLYPH_DP: float = 32.0
+const ICON_GAP_PX: float = 10.0
+const ITEM_COLUMNS: int = 4
+const HUD_BACKDROP: Color = Color("0F141C")  ## STYLE.md: the HUD panel backdrop, here opaque.
+const TILE_BACKDROP: Color = Color("1B2430")  ## A build tile's own panel, a step lighter.
+const TILE_MARGIN_PX: float = 4.0
+## The tint the HUD gives a glyph (STYLE.md): a palette colour by state; a glyph not listed stays
+## white. The tabs show the first one selected, the others at rest.
+const GLYPH_TINTS: Dictionary[String, Color] = {
+	"tab_infantry": Color("9AA5B1"),
+	"tab_vehicles": Color("9AA5B1"),
+	"glyph_credits": Color("F2B705"),
+	"glyph_power": Color("30A46C"),
+	"glyph_low_power": Color("F5A524"),
+	"glyph_lock": Color("9AA5B1"),
+	"glyph_check": Color("30A46C"),
+	"glyph_cross": Color("E5484D"),
+	"glyph_victory": Color("30A46C"),
+	"glyph_defeat": Color("E5484D"),
+	"glyph_draw": Color("9AA5B1"),
+	"glyph_reason_outside": Color("E5484D"),
+	"glyph_reason_ground": Color("E5484D"),
+	"glyph_reason_occupied": Color("E5484D"),
+	"glyph_reason_unexplored": Color("E5484D"),
+	"glyph_reason_too_far": Color("E5484D"),
+	"glyph_reason_cap": Color("E5484D"),
+	"glyph_offline": Color("F5A524"),
+	"glyph_under_attack": Color("E5484D"),
+}
+## Rows of the Icons page, in base px from the top of their half: the HUD panel (left) holds the
+## tabs, the item tiles, the HUD glyphs and the result emblems; the grass and sand strips (right)
+## each hold the map glyphs, then the arrow and the rally flags. Rows under the corner buttons,
+## which cover 24 to 144 px from the top and from the left or right edge.
+const HUD_ROW_TOPS: Array[float] = [12.0, 152.0, 520.0, 612.0]
+const MAP_ROW_TOPS: Dictionary[String, Array] = {"Grass": [152.0, 250.0], "Sand": [24.0, 132.0]}
+const FLAG_GAP_PX: float = 24.0
 
 @export var team_a_color: Color = Color("2F80ED")
 @export var team_b_color: Color = Color("E5484D")
@@ -132,6 +229,8 @@ var _page: int = 0
 var _unit_page: Array[CanvasItem] = []
 var _buildings_page: Control = null
 var _ground_page: Control = null
+var _vehicles_page: Control = null
+var _icons_page: Control = null
 
 @onready var _back_button: Button = %BackButton
 @onready var _page_button: Button = %PageButton
@@ -157,6 +256,8 @@ func _ready() -> void:
 		_unit_page.append(get_node(node_name) as CanvasItem)
 	_add_buildings_page()
 	_add_ground_page()
+	_add_vehicles_page()
+	_add_icons_page()
 	_tint_team_layers(TEAM_A_GROUP, team_a_color)
 	_tint_team_layers(TEAM_B_GROUP, team_b_color)
 	for node: Node in find_children(TURRET_LAYER, "Sprite2D", true, false):
@@ -449,8 +550,8 @@ func _add_ghost_row(row: Control) -> void:
 
 
 ## A ghost: own team's building at a fade and a wash with a solid frame when it fits; the same in
-## danger red with the hatch tile when it does not; a building of the other team under the dots and
-## the explored fog when it was last seen.
+## danger red with the hatch tile and a reason glyph on top when it does not; a building of the
+## other team under the dots and the explored fog when it was last seen.
 func _build_ghost(cell: Control, kind: String) -> void:
 	var rig: CanvasGroup = CanvasGroup.new()
 	rig.name = "Rig"
@@ -489,6 +590,13 @@ func _build_ghost(cell: Control, kind: String) -> void:
 	frame.border_width = GHOST_FRAME_PX
 	frame.size = cell.size
 	cell.add_child(frame)
+	if kind == "Blocked":
+		# The glyph on the hatch it is read against: it is tinted danger red like the hatch, so the
+		# seat in its file (STYLE.md, "Icons and glyphs") is what keeps it apart from the bands.
+		var size_px: float = MAP_GLYPH_DP * PX_PER_DP
+		cell.add_child(
+			_icon_rect(GHOST_REASON_GLYPH, size_px, (cell.size - Vector2.ONE * size_px) / 2.0)
+		)
 
 
 ## The two pattern tiles on their own, repeated over a rect, so the seams can be judged.
@@ -556,6 +664,158 @@ func _pixel_row(ground: Control, row_name: String, top: float) -> Control:
 	return row
 
 
+## The Vehicles page: the light tank for scale and the three new units at scale 1, a row per team on
+## grass (left) and sand (right). An armed unit's `Turret` turns like the others'; the harvester has
+## none and turns as a whole, like a squad.
+func _add_vehicles_page() -> void:
+	_vehicles_page = _page_root("VehiclesPage")
+	for ground_name: String in ["Grass", "Sand"]:
+		var ground: ColorRect = _page_ground(_vehicles_page, ground_name)
+		for index: int in VEHICLE_ROW_TOPS.size():
+			var is_team_a: bool = index == 0
+			var row: Control = _pixel_row(
+				ground, "TeamA" if is_team_a else "TeamB", VEHICLE_ROW_TOPS[index]
+			)
+			for i: int in VEHICLE_IDS.size():
+				var centre: float = (i - (VEHICLE_IDS.size() - 1) / 2.0) * VEHICLE_GAP_PX
+				_add_vehicle_cell(row, i, centre, is_team_a)
+
+
+## One cell of a vehicle row: a faint tile square, the rig on its centre and the unit's name below.
+func _add_vehicle_cell(row: Control, index: int, centre: float, is_team_a: bool) -> void:
+	var id: String = VEHICLE_IDS[index]
+	var marker: ColorRect = ColorRect.new()
+	marker.name = "Tile" + id.to_pascal_case()
+	marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	marker.color = TILE_MARKER_COLOR
+	marker.position = Vector2(centre - TILE_PX / 2.0, 8.0)
+	marker.size = Vector2.ONE * TILE_PX
+	row.add_child(marker)
+	var rig: Node2D = _unit_rig(id, is_team_a)
+	rig.position = Vector2(centre, 8.0 + TILE_PX / 2.0)
+	row.add_child(rig)
+	if VEHICLE_SPINNERS.has(id):
+		_spinners.append(rig)
+	var label: Label = Label.new()
+	label.name = "Label" + id.to_pascal_case()
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.text = VEHICLE_LABELS[index]
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override(&"font_size", VEHICLE_LABEL_PX)
+	label.add_theme_color_override(&"font_color", VEHICLE_LABEL_COLOR)
+	label.position = Vector2(centre - VEHICLE_GAP_PX / 2.0, 8.0 + TILE_PX + 40.0)
+	label.size = Vector2(VEHICLE_GAP_PX, 28.0)
+	row.add_child(label)
+
+
+## A unit as a rig with the layers `Hull`, `Team` and, for a gun, `Turret`.
+func _unit_rig(id: String, is_team_a: bool) -> Node2D:
+	var rig: Node2D = Node2D.new()
+	rig.name = id.to_pascal_case()
+	rig.add_to_group(TEAM_A_GROUP if is_team_a else TEAM_B_GROUP)
+	for layer: String in ["hull", "team", "turret"]:
+		var path: String = UNIT_ART % [id, layer]
+		if ResourceLoader.exists(path):
+			rig.add_child(_layer_sprite(layer, path))
+	return rig
+
+
+## The Icons page. Left, a HUD panel (the dark backdrop of the sidebar) with the three tab icons at
+## 48 dp, the eleven item icons on their tiles at 64 dp, the HUD glyphs and the result emblems at
+## 48 dp. Right, the glyphs that sit on the map at 32 dp, the under-attack arrow at 48 dp and the
+## rally flags of both teams, on grass (top) and sand (bottom).
+func _add_icons_page() -> void:
+	_icons_page = _page_root("IconsPage")
+	var hud: ColorRect = _icons_half(_icons_page, "Hud", HUD_BACKDROP, Rect2(0.0, 0.0, 0.5, 1.0))
+	_icon_grid(_pixel_row(hud, "Tabs", HUD_ROW_TOPS[0]), TAB_ICONS, TAB_ICON_DP, TAB_ICONS.size())
+	_icon_grid(
+		_pixel_row(hud, "Items", HUD_ROW_TOPS[1]), ITEM_ICONS, ITEM_ICON_DP, ITEM_COLUMNS, true
+	)
+	_icon_grid(
+		_pixel_row(hud, "Glyphs", HUD_ROW_TOPS[2]), HUD_GLYPHS, HUD_GLYPH_DP, HUD_GLYPHS.size()
+	)
+	_icon_grid(_pixel_row(hud, "Emblems", HUD_ROW_TOPS[3]), EMBLEMS, HUD_GLYPH_DP, EMBLEMS.size())
+	for ground_name: String in ["Grass", "Sand"]:
+		var is_grass: bool = ground_name == "Grass"
+		var colour: Color = TERRAIN_COLORS[&"grass_b"] if is_grass else TERRAIN_COLORS[&"sand"]
+		var anchors: Rect2 = Rect2(0.5, 0.0 if is_grass else 0.5, 0.5, 0.5)
+		var ground: ColorRect = _icons_half(_icons_page, ground_name, colour, anchors)
+		var tops: Array = MAP_ROW_TOPS[ground_name]
+		var glyphs: Control = _pixel_row(ground, "MapGlyphs", tops[0])
+		_icon_grid(glyphs, MAP_GLYPHS, MAP_GLYPH_DP, MAP_GLYPHS.size())
+		_add_flag_row(_pixel_row(ground, "Flags", tops[1]))
+
+
+## A coloured rectangle of the Icons page, placed by its anchors (a fraction of the page).
+func _icons_half(page: Control, node_name: String, colour: Color, anchors: Rect2) -> ColorRect:
+	var half: ColorRect = ColorRect.new()
+	half.name = node_name
+	half.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	half.color = colour
+	half.anchor_left = anchors.position.x
+	half.anchor_top = anchors.position.y
+	half.anchor_right = anchors.end.x
+	half.anchor_bottom = anchors.end.y
+	page.add_child(half)
+	return half
+
+
+## Icons of `dp` dp in lines of `columns`, each line centred on the row. An item icon sits on its
+## tile, a step lighter than the panel, the way the sidebar draws it.
+func _icon_grid(
+	row: Control, icons: Array[String], dp: float, columns: int, tiles: bool = false
+) -> void:
+	var size_px: float = dp * PX_PER_DP
+	for i: int in icons.size():
+		var line: int = floori(float(i) / float(columns))
+		var in_line: int = mini(columns, icons.size() - line * columns)
+		var x: float = (i % columns - (in_line - 1) / 2.0) * (size_px + ICON_GAP_PX) - size_px / 2.0
+		var at: Vector2 = Vector2(x, line * (size_px + ICON_GAP_PX))
+		if tiles:
+			var tile: ColorRect = ColorRect.new()
+			tile.name = "Tile" + icons[i].to_pascal_case()
+			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tile.color = TILE_BACKDROP
+			tile.position = at - Vector2.ONE * TILE_MARGIN_PX
+			tile.size = Vector2.ONE * (size_px + 2.0 * TILE_MARGIN_PX)
+			row.add_child(tile)
+		row.add_child(_icon_rect(icons[i], size_px, at))
+
+
+## An icon file as a square `TextureRect` of `size_px` at `at`, tinted as the HUD tints it.
+func _icon_rect(icon: String, size_px: float, at: Vector2) -> TextureRect:
+	var rect: TextureRect = TextureRect.new()
+	rect.name = icon.to_pascal_case()
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rect.texture = load(ICON_ART % icon)
+	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	rect.position = at
+	rect.size = Vector2.ONE * size_px
+	rect.modulate = GLYPH_TINTS[icon] if GLYPH_TINTS.has(icon) else Color.WHITE
+	return rect
+
+
+## The under-attack arrow at 48 dp, then the rally flag of each tab in team A and team B.
+func _add_flag_row(row: Control) -> void:
+	var arrow_px: float = HUD_GLYPH_DP * PX_PER_DP
+	var flags: int = RALLY_FLAGS.size() * 2
+	var total: float = arrow_px + flags * (TILE_PX + FLAG_GAP_PX)
+	var left: float = -total / 2.0
+	row.add_child(_icon_rect(ARROW_GLYPH, arrow_px, Vector2(left, 0.0)))
+	var centre: float = left + arrow_px + FLAG_GAP_PX + TILE_PX / 2.0
+	for flag: String in RALLY_FLAGS:
+		for is_team_a: bool in [true, false]:
+			var rig: Node2D = Node2D.new()
+			rig.name = flag.to_pascal_case() + ("A" if is_team_a else "B")
+			rig.add_to_group(TEAM_A_GROUP if is_team_a else TEAM_B_GROUP)
+			for layer: String in ["hull", "team"]:
+				rig.add_child(_layer_sprite(layer, FLAG_ART % [flag, layer]))
+			rig.position = Vector2(centre, arrow_px / 2.0)
+			row.add_child(rig)
+			centre += TILE_PX + FLAG_GAP_PX
+
+
 func _next_page() -> void:
 	_show_page((_page + 1) % PAGES.size())
 
@@ -566,6 +826,8 @@ func _show_page(index: int) -> void:
 		node.visible = index == 0
 	_buildings_page.visible = index == 1
 	_ground_page.visible = index == 2
+	_vehicles_page.visible = index == 3
+	_icons_page.visible = index == 4
 	_page_button.text = PAGES[index]
 
 

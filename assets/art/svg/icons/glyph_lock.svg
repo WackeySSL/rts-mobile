@@ -1,0 +1,14 @@
+<!-- Lock glyph: white and grey only, tinted at run time (a locked build tile). -->
+<!-- Shape: a padlock, a wide rounded body with a keyhole under a tall rounded shackle. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- shackle: edge grey under, white over -->
+  <path d="M40 58 V40 A24 24 0 0 1 88 40 V58" fill="none" stroke="#4D4D4D" stroke-width="22" stroke-linejoin="round"/>
+  <path d="M40 58 V40 A24 24 0 0 1 88 40 V58" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linejoin="round"/>
+  <!-- body -->
+  <rect x="18" y="56" width="92" height="64" rx="12" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="22" y="100" width="84" height="16" rx="8" fill="#BFBFBF"/>
+  <rect x="18" y="56" width="92" height="64" rx="12" fill="none" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- keyhole -->
+  <circle cx="64" cy="82" r="9" fill="#4D4D4D"/>
+  <polygon points="58,86 70,86 73,104 55,104" fill="#4D4D4D"/>
+</svg>

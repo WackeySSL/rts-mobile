@@ -1,0 +1,13 @@
+<!-- Placement reason glyph, OCCUPIED (something stands there): white and grey only, tinted at run time. -->
+<!-- Shape: two squares that overlap at a corner, a white one at the top left and a grey one at the bottom right on top of it. It sits on a dark rounded plate with a white rim. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- seat: a dark plate with a white rim, so the glyph reads on grass, sand and the red ghost -->
+  <rect x="6" y="6" width="116" height="116" rx="22" fill="#4D4D4D"/>
+  <rect x="11" y="11" width="106" height="106" rx="17" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+  <g transform="translate(64 64) scale(0.8) translate(-64 -64)">
+    <rect x="10" y="10" width="68" height="68" rx="6" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+    <rect x="50" y="50" width="68" height="68" rx="6" fill="#BFBFBF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+    <!-- the overlap, picked out -->
+    <rect x="54" y="54" width="20" height="20" rx="2" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+</svg>

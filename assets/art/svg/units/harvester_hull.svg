@@ -1,0 +1,81 @@
+<!-- Harvester, hull layer: faces east, drawn first, holds the ground shadow of the whole vehicle. The ore bin interior is the rectangle x 32 to 90, y 56 to 104. -->
+<!-- Silhouette: a combine-like ore hauler, two long round-ended track pods either side of one big square open bin, a small cab in front of it and a wide toothed reel bar across the nose. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <!-- ground shadow, offset (4,4), flattened as one group -->
+  <g transform="translate(4 4)" opacity="0.25" fill="#000000">
+    <rect x="10" y="16" width="106" height="26" rx="10"/>
+    <rect x="10" y="118" width="106" height="26" rx="10"/>
+    <polygon points="18,42 118,42 124,48 124,112 118,118 18,118"/>
+    <rect x="124" y="14" width="18" height="132" rx="7"/>
+    <polygon points="142,20 152,26 142,32 142,32 152,38 142,44 152,50 142,56 152,62 142,68 152,74 142,80 152,86 142,92 152,98 142,104 152,110 142,116 152,122 142,128 152,134 142,140"/>
+  </g>
+  <!-- track pods -->
+  <g fill="#5B6670" stroke="#1C2127" stroke-width="3" stroke-linejoin="round">
+    <rect x="10" y="16" width="106" height="26" rx="10"/>
+    <rect x="10" y="118" width="106" height="26" rx="10"/>
+  </g>
+  <!-- tread bars -->
+  <g stroke="#1C2127" stroke-width="1.5" stroke-linecap="round">
+    <line x1="22" y1="21" x2="22" y2="37"/>
+    <line x1="32" y1="21" x2="32" y2="37"/>
+    <line x1="42" y1="21" x2="42" y2="37"/>
+    <line x1="52" y1="21" x2="52" y2="37"/>
+    <line x1="62" y1="21" x2="62" y2="37"/>
+    <line x1="72" y1="21" x2="72" y2="37"/>
+    <line x1="82" y1="21" x2="82" y2="37"/>
+    <line x1="92" y1="21" x2="92" y2="37"/>
+    <line x1="102" y1="21" x2="102" y2="37"/>
+    <line x1="22" y1="123" x2="22" y2="139"/>
+    <line x1="32" y1="123" x2="32" y2="139"/>
+    <line x1="42" y1="123" x2="42" y2="139"/>
+    <line x1="52" y1="123" x2="52" y2="139"/>
+    <line x1="62" y1="123" x2="62" y2="139"/>
+    <line x1="72" y1="123" x2="72" y2="139"/>
+    <line x1="82" y1="123" x2="82" y2="139"/>
+    <line x1="92" y1="123" x2="92" y2="139"/>
+    <line x1="102" y1="123" x2="102" y2="139"/>
+  </g>
+  <!-- highlight on the top edge of each pod -->
+  <line x1="20" y1="18.5" x2="106" y2="18.5" stroke="#A9B4BE" stroke-width="2" stroke-linecap="round"/>
+  <line x1="20" y1="120.5" x2="106" y2="120.5" stroke="#A9B4BE" stroke-width="2" stroke-linecap="round"/>
+  <!-- chassis deck between the pods: the lowest plane, so the darkest olive -->
+  <polygon points="18,42 118,42 124,48 124,112 118,118 18,118" fill="#4E5A3A" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <!-- ore bin: a raised plane, so mid olive, with the bin interior sunk in dirt-dark -->
+  <path d="M28 46 L94 46 Q100 46 100 52 L100 108 Q100 114 94 114 L28 114 Q22 114 22 108 L22 52 Q22 46 28 46 Z" fill="#6B7A4F" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <line x1="28" y1="49.5" x2="94" y2="49.5" stroke="#8C9A6B" stroke-width="2" stroke-linecap="round"/>
+  <line x1="25.5" y1="54" x2="25.5" y2="106" stroke="#8C9A6B" stroke-width="2" stroke-linecap="round"/>
+  <rect x="32" y="56" width="58" height="48" rx="3" fill="#6F583B" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round"/>
+  <line x1="35" y1="59" x2="87" y2="59" stroke="#A3865E" stroke-width="2" stroke-linecap="round"/>
+  <line x1="35" y1="63" x2="35" y2="101" stroke="#A3865E" stroke-width="2" stroke-linecap="round"/>
+  <!-- cab: a raised plane, mid olive, dark windscreen slit and a glint -->
+  <polygon points="98,62 114,62 120,68 120,92 114,98 98,98" fill="#6B7A4F" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <rect x="113" y="70" width="4" height="20" rx="1.5" fill="#1C2127"/>
+  <line x1="115" y1="72" x2="115" y2="78" stroke="#A9B4BE" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- reel bar across the nose: a metal drum with cross bars, then the teeth -->
+  <rect x="124" y="14" width="18" height="132" rx="7" fill="#7D8893" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <g stroke="#1C2127" stroke-width="1.5" stroke-linecap="round">
+    <line x1="129" y1="26" x2="137" y2="26"/>
+    <line x1="129" y1="38" x2="137" y2="38"/>
+    <line x1="129" y1="50" x2="137" y2="50"/>
+    <line x1="129" y1="62" x2="137" y2="62"/>
+    <line x1="129" y1="74" x2="137" y2="74"/>
+    <line x1="129" y1="86" x2="137" y2="86"/>
+    <line x1="129" y1="98" x2="137" y2="98"/>
+    <line x1="129" y1="110" x2="137" y2="110"/>
+    <line x1="129" y1="122" x2="137" y2="122"/>
+    <line x1="129" y1="134" x2="137" y2="134"/>
+  </g>
+  <line x1="127.5" y1="22" x2="127.5" y2="138" stroke="#A9B4BE" stroke-width="2" stroke-linecap="round"/>
+  <g fill="#A9B4BE" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round">
+    <polygon points="142,20 152,26 142,32"/>
+    <polygon points="142,32 152,38 142,44"/>
+    <polygon points="142,44 152,50 142,56"/>
+    <polygon points="142,56 152,62 142,68"/>
+    <polygon points="142,68 152,74 142,80"/>
+    <polygon points="142,80 152,86 142,92"/>
+    <polygon points="142,92 152,98 142,104"/>
+    <polygon points="142,104 152,110 142,116"/>
+    <polygon points="142,116 152,122 142,128"/>
+    <polygon points="142,128 152,134 142,140"/>
+  </g>
+</svg>

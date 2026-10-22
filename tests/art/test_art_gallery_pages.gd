@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## The Build and Ground pages of the art gallery (plan row P91): the six buildings at gameplay zoom
 ## on grass and sand in both team colours, the ore patches, the three ghosts and the two pattern
-## tiles, and the button that turns the pages. The gallery opens on the Units page, which
+## tiles, and the button that turns the pages (the Vehicles and Icons pages of plan row P92 are in
+## test_art_gallery_icon_pages.gd). The gallery opens on the Units page, which
 ## tests/art/test_art_assets.gd covers.
 
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
@@ -29,10 +30,11 @@ func test_the_gallery_opens_on_units_and_the_button_turns_through_the_pages() ->
 	var button: Button = gallery.get_node("%PageButton")
 	assert_str(button.text).is_equal("Units")
 	_assert_page(gallery, 0)
-	for step: int in 3:
+	var pages: int = Gallery.PAGES.size()
+	for step: int in pages:
 		button.pressed.emit()
-		_assert_page(gallery, (step + 1) % 3)
-		assert_str(button.text).is_equal(Gallery.PAGES[(step + 1) % 3])
+		_assert_page(gallery, (step + 1) % pages)
+		assert_str(button.text).is_equal(Gallery.PAGES[(step + 1) % pages])
 	assert_str(button.text).is_equal("Units")
 
 
@@ -44,6 +46,8 @@ func test_the_back_and_page_buttons_stay_above_every_page() -> void:
 	assert_int(gallery.get_node("%BackButton").get_index()).is_equal(last - 1)
 	assert_int(gallery.get_node("BuildingsPage").get_index()).is_less(last - 1)
 	assert_int(gallery.get_node("GroundPage").get_index()).is_less(last - 1)
+	assert_int(gallery.get_node("VehiclesPage").get_index()).is_less(last - 1)
+	assert_int(gallery.get_node("IconsPage").get_index()).is_less(last - 1)
 	for button: Control in [gallery.get_node("%PageButton"), gallery.get_node("%BackButton")]:
 		assert_vector(button.size).is_greater_equal(Vector2(120, 120))
 
@@ -147,8 +151,9 @@ func test_the_ground_page_has_the_ore_patches_the_ghosts_and_the_swatches() -> v
 
 
 ## Valid: the own team's building at a fade, a green wash and a solid green frame. Blocked: the same
-## in red with the hatch tile over it. Seen: the other team's building under the dots and the
-## explored fog, with no frame and no wash.
+## in red with the hatch tile over it and the occupied glyph, 32 dp and red like the hatch, in the
+## middle of the footprint. Seen: the other team's building under the dots and the explored fog,
+## with no frame and no wash.
 func test_the_three_ghosts_are_drawn_as_the_style_guide_says() -> void:
 	var gallery: Control = await _open_gallery()
 	for ground: String in ["Grass", "Sand"]:
@@ -168,7 +173,7 @@ func test_the_three_ghosts_are_drawn_as_the_style_guide_says() -> void:
 			)
 		assert_array(valid.get_children().map(_node_name)).is_equal(["Rig", "Wash", "Frame"])
 		assert_array(blocked.get_children().map(_node_name)).is_equal(
-			["Rig", "Wash", "PatternHatch", "Frame"]
+			["Rig", "Wash", "PatternHatch", "Frame", "GlyphReasonOccupied"]
 		)
 		assert_array(seen.get_children().map(_node_name)).is_equal(
 			["Rig", "PatternSeen", "ExploredFog"]
@@ -206,6 +211,15 @@ func test_the_three_ghosts_are_drawn_as_the_style_guide_says() -> void:
 		assert_that((seen.get_node("ExploredFog") as ColorRect).color).is_equal(
 			Color(0.0, 0.0, 0.0, 140.0 / 255.0)
 		)
+		# The reason glyph is on top of the frame, red like the hatch (its seat keeps it apart from
+		# the bands, STYLE.md "Icons and glyphs"), at the 32 dp of a glyph on the map (1.75 base px
+		# per dp), centred in the 128 px footprint.
+		var glyph: TextureRect = blocked.get_node("GlyphReasonOccupied")
+		assert_str(glyph.texture.resource_path).ends_with("icons/glyph_reason_occupied.svg")
+		assert_vector(glyph.size).is_equal(Vector2(56, 56))
+		assert_vector(glyph.position).is_equal(Vector2(36, 36))
+		assert_that(glyph.modulate).is_equal(Gallery.GHOST_DANGER)
+		assert_that(glyph.modulate).is_equal(Gallery.GLYPH_TINTS["glyph_reason_occupied"])
 		# Own team's ghost in team A, the last seen enemy building in team B.
 		assert_that((valid.get_node("Rig/Team") as Sprite2D).modulate).is_equal(TEAM_A)
 		assert_that((blocked.get_node("Rig/Team") as Sprite2D).modulate).is_equal(TEAM_A)
@@ -264,6 +278,8 @@ func _assert_page(gallery: Control, page: int) -> void:
 		)
 	assert_bool(gallery.get_node("BuildingsPage").visible).is_equal(page == 1)
 	assert_bool(gallery.get_node("GroundPage").visible).is_equal(page == 2)
+	assert_bool(gallery.get_node("VehiclesPage").visible).is_equal(page == 3)
+	assert_bool(gallery.get_node("IconsPage").visible).is_equal(page == 4)
 
 
 func _turn_to(gallery: Control, page: int) -> void:

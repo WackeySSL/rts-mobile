@@ -1,0 +1,23 @@
+<!-- Defence turret build icon: palette colours, no team colour, drawn on a clear canvas for a tile of 64 dp or more. -->
+<!-- Silhouette: a round gun pit ringed by eight fat sandbags, with a squat round gun head on top and one thick barrel with a wide muzzle block that leaves the ring to the right. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- sandbag ring -->
+  <g fill="#CDB98F" stroke="#1C2127" stroke-width="3.5">
+    <circle cx="104" cy="64" r="14"/>
+    <circle cx="92.3" cy="92.3" r="14"/>
+    <circle cx="64" cy="104" r="14"/>
+    <circle cx="35.7" cy="92.3" r="14"/>
+    <circle cx="24" cy="64" r="14"/>
+    <circle cx="35.7" cy="35.7" r="14"/>
+    <circle cx="64" cy="24" r="14"/>
+    <circle cx="92.3" cy="35.7" r="14"/>
+  </g>
+  <!-- pit -->
+  <circle cx="64" cy="64" r="30" fill="#5B6670" stroke="#1C2127" stroke-width="3"/>
+  <!-- barrel and muzzle block -->
+  <rect x="70" y="56" width="42" height="16" fill="#A9B4BE" stroke="#1C2127" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="104" y="51" width="16" height="26" rx="3" fill="#5B6670" stroke="#1C2127" stroke-width="4" stroke-linejoin="round"/>
+  <!-- gun head -->
+  <circle cx="60" cy="64" r="22" fill="#7D8893" stroke="#1C2127" stroke-width="4"/>
+  <circle cx="54" cy="58" r="6" fill="#A9B4BE" stroke="#1C2127" stroke-width="2.5"/>
+</svg>

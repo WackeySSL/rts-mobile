@@ -24,11 +24,19 @@ const ATLAS_SIZE: Vector2 = Vector2(176.0, 84.0)
 const PX_PER_MILLI: float = 0.064  ## A tile is 64 px and 1000 milli-tiles.
 const FRAME_QUARTER: float = 1.0 / 60.0  ## Seconds: a quarter of a 15 Hz tick.
 const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
-## The landscape sizes every screen is tested at: base, 20:9 phone and 4:3 tablet.
-const SIZES: Array[Vector2i] = ScreenSizes.LANDSCAPE
-## What each of them shows in base px (stretch canvas_items, aspect expand): 1280x720, 1600x720
-## and 1280x960.
-const VIEWS: Array[Vector2] = [Vector2(1280, 720), Vector2(1600, 720), Vector2(1280, 960)]
+## The sizes every screen is tested at: base, 20:9 phone and 4:3 tablet, each held both ways.
+const SIZES: Array[Vector2i] = ScreenSizes.ALL
+## What each of them shows in base px (stretch canvas_items, aspect expand; a portrait window uses
+## the base size 720x1280, ADR 0015 section 2): 1280x720, 1600x720 and 1280x960, then 720x1280,
+## 720x1600 and 960x1280.
+const VIEWS: Array[Vector2] = [
+	Vector2(1280, 720),
+	Vector2(1600, 720),
+	Vector2(1280, 960),
+	Vector2(720, 1280),
+	Vector2(720, 1600),
+	Vector2(960, 1280),
+]
 ## The lines of ProjectileLayer._draw: the painted count, then for each planned quad the transform
 ## that places and turns it and one atlas quad of its region, centred and as big as the region.
 const DRAW_BODY: Array[String] = [
