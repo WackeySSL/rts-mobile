@@ -13,6 +13,16 @@ const EXPECTED_DP48: Dictionary[StringName, float] = {
 	&"web_phone_small": 113.7,
 	&"web_tablet": 60.0,
 	&"desktop": 48.0,
+	&"android_6in_portrait": 84.0,
+	&"web_tablet_portrait": 60.0,
+	&"desktop_portrait": 48.0,
+	&"web_phone_portrait": 96.0,
+}
+## Each portrait profile and its landscape twin, which give the same dp(48) (ADR 0015 section 2).
+const PORTRAIT_TWINS: Dictionary[StringName, StringName] = {
+	&"android_6in_portrait": &"android_6in",
+	&"web_tablet_portrait": &"web_tablet",
+	&"desktop_portrait": &"desktop",
 }
 const TOLERANCE_PX: float = 0.5
 ## The android_6in window (2400x1080) at stretch 1.5 shows 1600x720 base px.
@@ -40,10 +50,11 @@ func after_test() -> void:
 	UiScale.clear_override()
 
 
-## Each profile holds the stretch scale the engine computes at its window size, and gives its
-## dp(48) in base px.
+## Each profile, landscape and portrait, holds the stretch scale the engine computes at its window
+## size (with the base size turned for a portrait window), and gives its dp(48) in base px.
 func test_each_profile_matches_the_engine_and_gives_its_dp_48() -> void:
 	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
+	profiles.merge(UiProfiles.portrait())
 	assert_array(profiles.keys()).contains_exactly_in_any_order(EXPECTED_DP48.keys())
 	for profile_name: StringName in profiles:
 		var profile: UiMetrics = profiles[profile_name]
@@ -56,6 +67,71 @@ func test_each_profile_matches_the_engine_and_gives_its_dp_48() -> void:
 		assert_that(UiScale.dp_vec(48.0, 24.0)).is_equal(
 			Vector2(UiScale.dp(48.0), UiScale.dp(24.0))
 		)
+
+
+## A portrait profile gives the dp of its landscape twin, and `by_name` finds both kinds.
+func test_a_portrait_profile_gives_the_dp_of_its_landscape_twin() -> void:
+	for portrait_name: StringName in PORTRAIT_TWINS:
+		var portrait: UiMetrics = UiProfiles.by_name(portrait_name)
+		var twin: UiMetrics = UiProfiles.by_name(PORTRAIT_TWINS[portrait_name])
+		assert_that(portrait.window_size).is_equal(Vector2i(twin.window_size.y, twin.window_size.x))
+		assert_bool(UiScale.is_portrait_size(portrait.window_size)).is_true()
+		UiScale.set_override(portrait)
+		var portrait_dp: float = UiScale.dp(48.0)
+		UiScale.set_override(twin)
+		_assert_near(portrait_dp, UiScale.dp(48.0), 0.0001, str(portrait_name))
+	(
+		assert_array(UiProfiles.portrait().keys())
+		. contains_exactly_in_any_order(
+			[
+				&"android_6in_portrait",
+				&"web_tablet_portrait",
+				&"desktop_portrait",
+				&"web_phone_portrait",
+			]
+		)
+	)
+	for portrait_name: StringName in UiProfiles.portrait():  # all() stays landscape.
+		assert_bool(UiProfiles.all().has(portrait_name)).is_false()
+
+
+## The one orientation rule (ADR 0015 section 2): taller than wide is portrait, anything else,
+## a square window too, is landscape.
+func test_the_orientation_rule_is_height_over_width() -> void:
+	var cases: Array[Array] = [
+		[Vector2i(1080, 2400), true],
+		[Vector2i(2400, 1080), false],
+		[Vector2i(1000, 1000), false],
+		[Vector2i(1000, 1001), true],
+		[Vector2i(1001, 1000), false],
+		[Vector2i(720, 1280), true],
+		[Vector2i(1536, 2048), true],
+		[Vector2i.ZERO, false],
+	]
+	for case: Array in cases:
+		(
+			assert_bool(UiScale.is_portrait_size(case[0]))
+			. override_failure_message(str(case[0]))
+			. is_equal(case[1])
+		)
+
+
+## The base size is the project's and its transpose in a portrait window; it only reads the shape.
+func test_the_base_size_is_the_landscape_base_or_its_transpose() -> void:
+	var cases: Array[Array] = [
+		[Vector2i(2400, 1080), Vector2i(1280, 720)],
+		[Vector2i(1000, 1000), Vector2i(1280, 720)],
+		[Vector2i(1080, 2400), Vector2i(720, 1280)],
+		[Vector2i(1536, 2048), Vector2i(720, 1280)],
+		[Vector2i(64, 64), Vector2i(1280, 720)],
+	]
+	for case: Array in cases:
+		var base: Vector2i = UiScale.base_size_for(case[0], BASE_SIZE)
+		assert_that(base).override_failure_message(str(case[0])).is_equal(case[1])
+	# Not the literal 1280x720: another landscape base turns the same way.
+	assert_that(UiScale.base_size_for(Vector2i(100, 200), Vector2i(800, 600))).is_equal(
+		Vector2i(600, 800)
+	)
 
 
 ## Cases are [os_name, dpi, screen_scale, window px per dp].

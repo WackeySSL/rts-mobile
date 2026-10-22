@@ -3,8 +3,10 @@ extends MarginContainer
 ## A MarginContainer whose margins are the platform safe-area inset (camera cutout, rounded
 ## corners) plus `margin_dp`, so what sits inside stays clear of both. Everything is in base px
 ## (ADR 0004 section 3) and is recomputed when the viewport changes size. Both sides of an axis get
-## the larger inset: turning a sensor-landscape phone 180 degrees moves the cutout to the other side
-## without a resize. Make it a full-rect child of a CanvasLayer.
+## the larger inset: turning the phone 180 degrees moves the cutout to the other side without a
+## resize. In portrait the cutout is at the top and the gesture bar at the bottom, so top and
+## bottom get the larger of the two (ADR 0015 section 3). Make it a full-rect child of a
+## CanvasLayer.
 
 @export var margin_dp: float = 12
 

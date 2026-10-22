@@ -231,7 +231,7 @@ case "$cmd" in
     requested=0
     while true; do
       if is_live; then
-        upsert_comment "**Web preview** for \`$short\`: $PAGES_URL"$'\n\n'"Open it on the phone in landscape. Pages caches files for up to 10 min; the build id served at ${PAGES_URL}build.txt must be \`$HEAD_SHA\`."
+        upsert_comment "**Web preview** for \`$short\`: $PAGES_URL"$'\n\n'"Open it on the phone; it turns with the phone. A PR that changes layout says which orientation to try. Pages caches files for up to 10 min; the build id served at ${PAGES_URL}build.txt must be \`$HEAD_SHA\`."
         exit 0
       fi
       if [ "$waited" -ge "$LIVE_TIMEOUT" ]; then break; fi

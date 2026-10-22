@@ -36,6 +36,21 @@ static func safe_rect_base_for(m: UiMetrics) -> Rect2:
 	return Rect2(Vector2(safe.position) / stretch, Vector2(safe.size) / stretch)
 
 
+## The one place that tells the orientation of a window (ADR 0015 section 2): portrait is taller
+## than wide. Any other window, a square one too, is landscape. No other code compares the sides.
+static func is_portrait_size(size: Vector2i) -> bool:
+	return size.y > size.x
+
+
+## The base size the stretch uses for a window of `window_size`: `landscape_base` (the project's
+## 1280x720) in a landscape window and its transpose in a portrait one, so the stretch is the same
+## number for the same device in both orientations (ADR 0015 section 2).
+static func base_size_for(window_size: Vector2i, landscape_base: Vector2i) -> Vector2i:
+	if is_portrait_size(window_size):
+		return Vector2i(landscape_base.y, landscape_base.x)
+	return landscape_base
+
+
 ## The override when one is set, else what the engine reports now.
 static func current() -> UiMetrics:
 	return _override if _override != null else _engine_metrics()
