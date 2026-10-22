@@ -202,12 +202,12 @@ func test_the_line_is_exactly_the_known_text() -> void:
 
 
 ## The native line is the GDScript text with `impl=native` after `PERF sim` and the estimates of the
-## native ratios 9.4 and 14.0: 1.5 x 9.4 and 3 x 14. Everything else stays as it is.
+## native ratios 11.1 and 12.1: 1.5 x 11.1 and 3 x 12.1. Everything else stays as it is.
 func test_the_native_line_is_the_known_text_with_impl_native_and_the_native_estimates() -> void:
 	var expected: String = _known_line().replace("PERF sim units=", "PERF sim impl=native units=")
 	expected = expected.replace(
 		"est_phone_mean_ms=6.600 est_phone_p95_ms=17.700",
-		"est_phone_mean_ms=14.100 est_phone_p95_ms=42.000"
+		"est_phone_mean_ms=16.650 est_phone_p95_ms=36.300"
 	)
 	assert_str(PerfReport.line(_known_report(PerfGateDef.new(), true))).is_equal(expected)
 
