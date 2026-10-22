@@ -29,7 +29,10 @@ extends GdUnitTestSuite
 ##   the start;
 ## - the cells covered, added to a count the tick already holds;
 ## - the rig and the probe name a difference in every array the phase writes, so that a case that
-##   passes is not one whose check looks at nothing.
+##   passes is not one whose check looks at nothing;
+## - fog.visible is not in the state hash (P65, ADR 0016), so after every tick of these cases (the
+##   grid that is not whole excepted: it has no fog) the rig rebuilds the counts from the rows
+##   (owner, type_index, fog_cell and the sight of the type) and holds both Worlds to them.
 ## The floors are the figures that the cases reach, measured on main at 5984880 and set at about
 ## two thirds of them, beside each one. That each case is on a World with a fog at all, and that
 ## the phase runs in the implementation asked for, is asserted by the rig.
@@ -498,6 +501,7 @@ func test_a_grid_whose_sides_do_not_make_its_cells_stamps_nothing_in_either_vers
 	for how: String in BENDS:
 		var build: Callable = _bent.bind(how)
 		var rig: RefCounted = _rig(build)
+		rig.derive_every = 0  # No fog to rebuild: the phase does nothing on this grid.
 		var first: World = rig.worlds[0]
 		var cells: PackedInt32Array = first.fog_cell.duplicate()
 		var xs: PackedInt32Array = first.pos_x.duplicate()
@@ -612,6 +616,24 @@ func test_the_rig_and_the_probe_name_a_difference_in_every_array_the_phase_write
 		assert_str(probed.probe.first_mismatch).override_failure_message(label).starts_with(name)
 
 
+## fog.visible is out of the state hash (P65), so the rebuild from the rows is the one check that
+## sees a count the rows do not say. Both Worlds get the same wrong count (the lockstep compare and
+## the probe, which works from the counts it finds, let it pass), and the next step names it; a rig
+## with derive_every 0 lets it pass.
+func test_the_rig_names_a_count_that_the_rows_do_not_say() -> void:
+	var quiet: RefCounted = _rig(_two_units)
+	quiet.derive_every = 0
+	var loud: RefCounted = _rig(_two_units)
+	for rig: RefCounted in [quiet, loud]:
+		assert_str(rig.run(2)).is_empty()
+		for world: World in rig.worlds:
+			world.fog.visible[world.fog.visible.size() - 1] += 1
+	assert_str(quiet.run(1)).is_empty()
+	var found: String = loud.run(1)
+	assert_str(found).contains("fog.visible of the twin's World is not what its rows say")
+	assert_str(found).contains("player 2, tile 107")
+
+
 ## The 4 x 4 map of test_full_blocks_match(): the block of player 1 is exactly full after two
 ## steps (4 flips of 4), overflows after three and is empty at the update after that.
 func _exactly_full_block(members: Dictionary) -> void:
@@ -710,10 +732,14 @@ func _anchors(size: Vector2i) -> Array[Vector2i]:
 	return out
 
 
-## A rig over `build` with FOG alone in C++; nothing went wrong in attaching the kernels.
+## A rig over `build` with FOG alone in C++; nothing went wrong in attaching the kernels. It holds
+## both Worlds to the rows after every tick (P65): fog.visible is out of the state hash, so the
+## counts rebuilt from owner, type_index and fog_cell have to equal it in the twin and in the
+## kernels' World. A case with a grid that is not whole switches that off.
 func _rig(build: Callable, mask: int = Rig.ONLY) -> RefCounted:
 	var rig: RefCounted = Rig.new().setup(build, mask)
 	assert_array(rig.problems).is_empty()
+	rig.derive_every = 1
 	return rig
 
 

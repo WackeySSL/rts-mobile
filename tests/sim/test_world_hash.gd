@@ -13,8 +13,10 @@ const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 ## the map still hashes to the previous cf4af0c09a33ccf2. P46: prepare() stamps every row's sight
 ## disc, so only the "fog" section (counts and explored bytes) and the "fog_cell" column changed;
 ## with the fog cleared and the column back at -1 the world still hashes to the previous
-## d7d4de335b7cdde2.
-const TICK_0_SEED_1: String = "1657fe4c8868f2a6"
+## d7d4de335b7cdde2. P65 (ADR 0016, exception 10): fog.visible left the hash and STATE_FORMAT became
+## 2, so the header and the "fog" section changed (the fog feeds explored alone), and the digest
+## changed from 1657fe4c8868f2a6; the other sections are as they were.
+const TICK_0_SEED_1: String = "3449fd90a4f3fe60"
 
 
 ## Every int, bool and Packed array member of a helper, private ones too, is in HASHED or UNHASHED
@@ -22,7 +24,9 @@ const TICK_0_SEED_1: String = "1657fe4c8868f2a6"
 func test_every_helper_member_is_listed_once() -> void:
 	var world: World = _world()
 	assert_int(world.flow.fields.size()).is_equal(8)
-	assert_array(FogGrid.HASHED).is_equal([&"visible", &"explored"])
+	# P65 (ADR 0016): visible is derived from the rows and left the hash; explored is history.
+	assert_array(FogGrid.HASHED).is_equal([&"explored"])
+	assert_array(FogGrid.UNHASHED).contains([&"visible"])
 	for derived: Array in [FlowCache.HASHED, FlowField.HASHED, SpatialGrid.HASHED]:
 		assert_array(derived).is_empty()
 	for helper: Array in _helpers(world):
@@ -123,6 +127,26 @@ func test_the_fog_arrays_change_the_fog_section() -> void:
 		var grid: Variant = world.fog.get(array_name)
 		grid[grid.size() - 1] += 1  # The last cell of the last player.
 		_assert_sections(base, world, ["fog"], array_name)
+
+
+## fog.visible is derived state and out of the hash (P65, ADR 0016): a count changed anywhere, in
+## any player's block, moves no section; the explored bytes beside it do move the "fog" section.
+## The rows it is derived from stay in the hash: moving a row's `fog_cell` moves its column.
+@warning_ignore("integer_division")
+func test_fog_visible_is_out_of_the_hash_while_explored_and_the_rows_are_in() -> void:
+	var base: World = _world()
+	var size: int = base.fog.visible.size()
+	assert_int(size).is_greater(0)
+	for at: int in [0, size / 2, size - 1]:
+		var world: World = _world()
+		world.fog.visible[at] += 1
+		_assert_sections(base, world, [], "visible[%d]" % at)
+	var seen: World = _world()
+	seen.fog.explored[0] += 1
+	_assert_sections(base, seen, ["fog"], "explored")
+	var stamped: World = _world()
+	stamped.fog_cell[0] += 1
+	_assert_sections(base, stamped, ["fog_cell"], "fog_cell")
 
 
 ## One case per helper (fog, the cache, each slot, both grids) and one for World: every unhashed
