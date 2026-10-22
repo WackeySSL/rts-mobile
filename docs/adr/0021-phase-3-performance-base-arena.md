@@ -16,8 +16,9 @@ anbefalinger" (yes to all recommendations), which the lead records for this ADR 
    the perf arena and the base arena, with Phase 2's limits (§3, §5).
 
 The decision below is unchanged by the acceptance. P68b named the two new fields of §2 as
-exports of the lead's `game/core/PerfGateDef.gd` (the plan's exception 15). Nothing here is
-applied in code yet.
+exports of the lead's `game/core/PerfGateDef.gd`, whose exact field list the lead's
+`tests/core/test_timing_probe.gd` pins and so gains the two names in the same row (the plan's
+exception 15). Nothing here is applied in code yet.
 
 ## Context
 - CLAUDE.md rule 6: 150 units at 60 fps on a mid-range 2021 Android phone; the gate phone is
@@ -60,7 +61,8 @@ numbers and the reason (the three new phases' idle cost on the arena is the expe
 - CI (qa-engineer): a `PERF bases` line (GDScript and native, the same keys as `PERF sim`),
   report-only at first; its own six golden hashes (`bases_golden_ticks`, `bases_golden_hex` in
   `perf_gate.tres`, two new exports of the lead's `game/core/PerfGateDef.gd` beside `golden_ticks`
-  and `golden_hex`, which plan row P93 adds under the plan's exception 15); deterministic cost
+  and `golden_hex`, which plan row P93 adds under the plan's exception 15, together with their
+  names in the field contract of the lead's `tests/core/test_timing_probe.gd`); deterministic cost
   bounds for the new `Stat` counters; and a `WATCH bases hash_bytes` line beside P65q's. After the
   last Phase 3 sim row, a `[bases]` section in `budget.cfg`, calibrated as P49b did (1.5 x the worst
   native min-of-3 of 11 runs).

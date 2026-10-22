@@ -12,8 +12,8 @@ anbefalinger" (yes to all recommendations), which the lead records for this ADR 
 1. **ja:** AI controllers run inside the tick job, before `loop.step` (on the worker in `WORKER`),
    see the match only through `PlayerView`, think every `think_period` (15) ticks, and their
    Commands are stamped and recorded like a player's (§2, §3). This supersedes ADR 0012 §1's and
-   §2's plan to run the AI on the main thread in `ticked`, and only that (ADR 0012 carries dated
-   status notes).
+   §2's plan to run the AI on the main thread in `ticked`, and ADR 0012 §3's scan allowance of
+   `.world` in `game/ai`, and only those (ADR 0012 carries dated status notes).
 2. **ja:** `scripts/run-sim-smoke.sh` runs three dummy-vs-dummy matches of 1 800 ticks with fixed
    seeds from Phase 3 on (plan row P95), with its flags, exit codes and report schema unchanged.
    It runs wherever `scripts/verify.sh` runs: in CI's verify job and in each session's one
@@ -21,9 +21,12 @@ anbefalinger" (yes to all recommendations), which the lead records for this ADR 
    budget).
 
 The decision below is unchanged by the acceptance. P68b corrected §5's "in CI" (verify.sh runs
-the smoke step in every session too). Nothing here is applied in code yet: plan rows P78, P78q,
-P81-P83b and P95 apply it. The line for `.claude/agents/ai-dev.md` (AI code reads only
-`PlayerView` and runs in the tick job) waits for Michael's explicit yes to that agent file.
+the smoke step in every session too). §3's "and only those" names ADR 0012 §1 and §2; its last
+bullet also ends ADR 0012 §3's scan allowance of `.world` in `game/ai`, which the supersession
+covers too (ADR 0012 §3 carries a dated status note). Nothing here is applied in code yet:
+plan rows P78, P78q, P81-P83b and P95 apply it. The line for `.claude/agents/ai-dev.md` (AI code
+reads only `PlayerView` and runs in the tick job) waits for Michael's explicit yes to that agent
+file.
 
 ## Context
 - CLAUDE.md rule 4: humans and AI act only through `Command` objects. Rule 3: randomness only
