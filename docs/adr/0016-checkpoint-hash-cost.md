@@ -82,7 +82,7 @@ Bytes fed at the perf arena (64x64 map, 2 players, `max_projectiles` 512, `rng.s
 | **Total** | **55,544** | **49,332** | |
 
 Over the 60 checkpoints the total is 49,260 to 56,040 bytes; live projectiles peak at 28. The
-fog is 40,960 bytes, 73-83 % of each checkpoint, and `visible` alone is 59-66 %. ADR 0007 §8's
+fog is 40,960 bytes, 73-83 % of each checkpoint, and `visible` alone is 58-67 %. ADR 0007 §8's
 P31b status note found the same on the VM: "Most of the cost is the fog".
 
 ### What `MatchSnapshot.capture` does on every published tick (`game/core/MatchSnapshot.gd`)
@@ -127,6 +127,7 @@ The watch-line number is the per-checkpoint p95 of `job_usec - step_usec`.
 | (b) MD5 or SHA-1 through `HashingContext` | Only the digest's share; unmeasured | Change once | tiny |
 | (b') Our own 64-bit hash, GDScript and C++ | GDScript: no, slower; C++: see (e) | Change | medium |
 | (c) Hash off the job, after publish | Yes, to about the non-checkpoint level | Unchanged | large, 2-3 PRs |
+| (c2) Spread the hash over the period | Yes, but every other tick pays a share | 1: unchanged; 2: change | large |
 | (d) Longer `CHECKPOINT_PERIOD` | **No** | Change (the flow skip moves) | tiny |
 | (e) Native state hash, GDScript twin | Only the GDScript share; unmeasured | Unchanged if the bytes stay | about one port |
 | (f) Change the line itself | The yardstick moves, not the cost | Unchanged | docs |
@@ -137,7 +138,8 @@ unstamps dying rows. So each count is the number of a player's live rows whose d
 `fog_cell`, covers the cell. Those inputs are all hashed (`owner`, `type_index`, `fog_cell` in
 `ROW_ARRAYS`), and the sight tables are in `defs_hash`. `explored` is history, not derived, and
 stays. Leaving `visible` out:
-- cuts the bytes per checkpoint to 16,492-23,272, and drops the largest `to_byte_array()` copy;
+- cuts the bytes per checkpoint to 16,476-23,256 (25 blocks: the fog section feeds one), and
+  drops the largest `to_byte_array()` copy;
 - costs one bump of `STATE_FORMAT` to 2 and a single re-pin;
 - changes nothing on x86_64, arm64 or the web: same algorithm, same little-endian bytes, the
   twin is the only implementation, and ADR 0013 is not touched;
@@ -151,8 +153,8 @@ Three things keep it covered:
   comparison;
 - a new derivation test rebuilds the counts from the rows at every checkpoint of the arena.
 
-The p95 drop is not predictable from the code. The per-call costs stay (26 blocks, the
-1,024-iteration projectile walk); only the byte-proportional share falls, by 59-66 %. The line
+The p95 drop is not predictable from the code. The per-call costs stay (25 of the 26 blocks, the
+1,024-iteration projectile walk); only the byte-proportional share falls, by 58-67 %. The line
 needs at least 0.26 ms off run 3.
 
 **(b) A cheaper digest.** `HashingContext` offers `HASH_MD5`, `HASH_SHA1` and `HASH_SHA256`: the
@@ -182,6 +184,26 @@ for one checkpoint is the drift ADR 0007 §9 exists to prevent, and the snapshot
 hash's own tick. The line would be met by moving the cost out of the measured window, not by
 removing it. The flow skip of ADR 0012 §5 would lose its reason, and dropping it would change the
 run. Worth it only if checkpoint ticks ever threaten the sim verdicts themselves.
+
+**(c2) Spread the hash over the period.** Two forms:
+1. On the checkpoint tick, take an O(1) copy-on-write capture of every hashed array (as above),
+   then feed one or two of the 24 sections per tick on the job and finish before the next
+   checkpoint. The checkpoint keeps its meaning and its values, so nothing is re-pinned. The
+   checkpoint half falls toward the non-checkpoint level, but each of the 14 ticks between pays
+   on average about 1/14 of the hash (0.18-0.20 ms from the 2.573-2.816 ms estimate), and more on
+   the tick that feeds the fog, which is 73-83 % of the bytes, unless that block is sliced too.
+   The next tick's writes copy the captured columns the snapshot does not hold, inside
+   `step_usec`. `MatchLoop` and `Replay.play` would get the hash up to 14 ticks late, while
+   `Replay.play` compares `loop.last_hash` right after the step, and the last tick of a run must
+   still hash at once: the deferred second path ADR 0007 §9 exists to prevent.
+2. Hash the live state in parts, one part per tick on the job, and finish on the checkpoint tick.
+   The path stays synchronous and single, but the checkpoint mixes ticks: it no longer equals
+   `state_hash()` of the World at its tick (which `NativeKernels.self_check` and the hash tests
+   use), the values change and are re-pinned (exception 10), and a mismatch can no longer be
+   recomputed from one saved state.
+
+Both spread the cost rather than remove it, raise every tick's floor, and leave the flow skip
+without its reason. Rejected for the same reasons as (c).
 
 **(d) A longer `CHECKPOINT_PERIOD`.** This **does not lower the watch-line number**: each
 checkpoint hashes the same bytes. It changes how often the cost comes, and which ticks
@@ -218,7 +240,7 @@ from state that stays hashed. It is the smallest change that lowers the watch-li
 re-pin, no change of algorithm, no new code path, no ADR 0013 exception, and the web path gains
 too. Before it, add CI's deterministic byte count, so Phase 3's growth shows up in every PR's log
 rather than on the next phone card. Keep (b), (e) and a measurement behind the next card. Reject
-(c) and (d) for now. Keep the line as written unless Michael picks otherwise (question 2).
+(c), (c2) and (d) for now. Keep the line as written unless Michael picks otherwise (question 2).
 
 ### 3. PRs and order
 P-numbers continue the shared sequence: the portrait plan holds P59-P64, so the next free number
@@ -230,8 +252,8 @@ extend.
 | P65q | qa-engineer | 0 (about 80 test lines) | - | The `WATCH sim job_minus_step` line, or a sibling `WATCH sim hash_bytes`, prints the bytes `state_hash` feeds per checkpoint: min and max over the run, counted from the shape lists in `tests/perf/support`, no clock. Report-only, like P49a's watch lines. Lands first, so P65's drop shows in CI. |
 | P65 | gameplay-dev | about 40-60 (tests about 150) | P65q; Michael's gate confirmation if question 3 is "ja" | `FogGrid.HASHED` becomes `[&"explored"]` and `visible` joins `UNHASHED`; `World.STATE_FORMAT` 2; the doc comments of `state_hash` and `hash_section_names` (the `"fog"` section keeps its name). `NativeKernels.self_check` compares `fog.visible` as well. New test: at every checkpoint of the seed-42 arena, and in the fog lockstep's crafted cases, counts rebuilt from `owner`, `type_index` and `fog_cell` equal `fog.visible`. Re-pins under exception 10. Touches `native/`, so it gets the native checklist and its mutants. |
 | P66 (conditional) | lead | about 50 | P65's card | Only if the first card after P65 is above the line. `TickJob` reads the clock after `loop.step` and after `capture`. The snapshot gains `loop_usec` and `capture_usec` beside `step_usec`. |
-| P66b (conditional) | touch-ux-dev | about 70 | P66 | The card and `summary()` print `loop_minus_step_p95_cp_ms`, `loop_minus_step_p95_noncp_ms` and `capture_p95_ms`, with no verdict. Their cp-minus-noncp difference is the hash alone. |
-| P67 (conditional) | decided in a status note here | - | P66b's card | If the digest dominates: (b) as a one-constant change plus a re-pin under exception 10. If the GDScript blocks dominate: (e), through its own ADR. |
+| P66b (conditional) | touch-ux-dev | about 110 | P66 | The card and `summary()` print `loop_minus_step_p95_cp_ms`, `loop_minus_step_p95_noncp_ms` and `capture_p95_ms`, with no verdict. Their cp-minus-noncp difference estimates the hash's cost (a difference of two p95s, as in Context). P66 cannot split that estimate further: `state_hash` lives in `game/sim`, which reads no clock. So `PerfHud.run_preflight` (main thread, no job, before the run, beside the `ref_peak` burst) also times `HashingContext` with `HASH_SHA256`, `HASH_MD5` and `HASH_SHA1` over one `PackedByteArray` as large as P65q's maximum byte count, and the card prints `digest_sha256_us`, `digest_md5_us` and `digest_sha1_us`, with no verdict. |
+| P67 (conditional) | decided in a status note here | - | P66b's card | Digest share: the preflight's SHA-256 time; GDScript share: P66b's hash estimate minus it (the block building and the per-block `update()` calls). Both are estimates: the probe runs on the main thread over one buffer, not on the worker over 25 blocks. If the digest dominates: (b), MD5 or SHA-1 by the probe's times, as a one-constant change plus a re-pin under exception 10. If the GDScript share dominates: (e), through its own ADR. |
 
 **Exception 10** (new, a named one-line exception like 1-9 of the plan). A PR that changes the
 state hash's layout re-pins, with a note saying why:
@@ -253,7 +275,7 @@ On each of the three runs, at the commit after P65:
 - `impl: PASS`, with a self-check that now compares `visible`;
 - every verdict that passes today still passing.
 
-CI's P65q line shows the byte drop (at most 23,272 per checkpoint at the arena). If the
+CI's P65q line shows the byte drop (at most 23,256 per checkpoint at the arena). If the
 checkpoint half is still above the line, P66 and P66b follow (question 4).
 
 ## Consequences
@@ -273,10 +295,12 @@ checkpoint half is still above the line, P66 and P66b follow (question 4).
 - **(c) Hash after publish.** Rejected for now: the largest change, a second checkpoint path
   beside `MatchLoop`, and the cost moves rather than shrinks. Revisit if checkpoint ticks approach
   `sim_p95_ms` or `job_p99_ms`.
+- **(c2) Spread the hash over the period.** Rejected: it spreads the cost onto every tick, and
+  either delays the checkpoint (a second path) or changes what a checkpoint means.
 - **(d) A longer `CHECKPOINT_PERIOD`.** Rejected: it leaves the watch-line number as it is,
   changes the run (the flow skip) and coarsens the replay check.
-- **(b) and (e) now.** Deferred: either one is a guess without the P66 split, and (b) would cost a
-  second re-pin.
+- **(b) and (e) now.** Deferred: choosing between them needs P66b's digest probe beside the P66
+  split, and (b) would cost a second re-pin.
 - **(b') A GDScript 64-bit hash.** Rejected: slower than the engine digest in the twin and on the
   web.
 - **Bit-packing `explored` in the hash.** Rejected for now: it saves 7,168 bytes of digest input
