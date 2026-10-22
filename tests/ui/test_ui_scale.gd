@@ -3,9 +3,10 @@ extends GdUnitTestSuite
 ## test override, and DpMinSize (ADR 0004 section 3).
 
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const ANDROID: StringName = &"android_6in"
 const TABLET: StringName = &"web_tablet"
-const BASE_SIZE: Vector2i = Vector2i(1280, 720)
+const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
 ## dp(48) in base px for each profile (plan Phase 1, "Test profiles").
 const EXPECTED_DP48: Dictionary[StringName, float] = {
 	&"android_6in": 84.0,
@@ -99,13 +100,13 @@ func test_a_portrait_profile_gives_the_dp_of_its_landscape_twin() -> void:
 ## a square window too, is landscape.
 func test_the_orientation_rule_is_height_over_width() -> void:
 	var cases: Array[Array] = [
-		[Vector2i(1080, 2400), true],
-		[Vector2i(2400, 1080), false],
+		[ScreenSizes.PORTRAIT[1], true],
+		[ScreenSizes.LANDSCAPE[1], false],
 		[Vector2i(1000, 1000), false],
 		[Vector2i(1000, 1001), true],
 		[Vector2i(1001, 1000), false],
-		[Vector2i(720, 1280), true],
-		[Vector2i(1536, 2048), true],
+		[ScreenSizes.PORTRAIT[0], true],
+		[ScreenSizes.PORTRAIT[2], true],
 		[Vector2i.ZERO, false],
 	]
 	for case: Array in cases:
@@ -119,11 +120,11 @@ func test_the_orientation_rule_is_height_over_width() -> void:
 ## The base size is the project's and its transpose in a portrait window; it only reads the shape.
 func test_the_base_size_is_the_landscape_base_or_its_transpose() -> void:
 	var cases: Array[Array] = [
-		[Vector2i(2400, 1080), Vector2i(1280, 720)],
-		[Vector2i(1000, 1000), Vector2i(1280, 720)],
-		[Vector2i(1080, 2400), Vector2i(720, 1280)],
-		[Vector2i(1536, 2048), Vector2i(720, 1280)],
-		[Vector2i(64, 64), Vector2i(1280, 720)],
+		[ScreenSizes.LANDSCAPE[1], BASE_SIZE],
+		[Vector2i(1000, 1000), BASE_SIZE],
+		[ScreenSizes.PORTRAIT[1], ScreenSizes.PORTRAIT[0]],
+		[ScreenSizes.PORTRAIT[2], ScreenSizes.PORTRAIT[0]],
+		[Vector2i(64, 64), BASE_SIZE],
 	]
 	for case: Array in cases:
 		var base: Vector2i = UiScale.base_size_for(case[0], BASE_SIZE)
@@ -199,14 +200,14 @@ func test_override_wins_until_cleared_and_then_the_engine_is_read() -> void:
 	UiScale.set_override(metrics)
 	assert_object(UiScale.current()).is_same(metrics)
 	UiScale.clear_override()
-	get_window().size = Vector2i(2400, 1080)
+	get_window().size = ScreenSizes.LANDSCAPE[1]
 	await await_idle_frame()
 	var current: UiMetrics = UiScale.current()
 	assert_object(current).is_not_same(metrics)
 	assert_str(current.os_name).is_equal(OS.get_name())
 	assert_int(current.dpi).is_equal(DisplayServer.screen_get_dpi())
 	assert_float(current.screen_scale).is_equal(DisplayServer.screen_get_scale())
-	assert_that(current.window_size).is_equal(Vector2i(2400, 1080))
+	assert_that(current.window_size).is_equal(ScreenSizes.LANDSCAPE[1])
 	assert_float(current.stretch_scale).is_equal(1.5)
 
 

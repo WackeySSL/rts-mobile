@@ -13,14 +13,11 @@ extends GdUnitTestSuite
 
 const Rig: GDScript = preload("res://tests/view/support/fog_rig.gd")
 const EffectsRig: GDScript = preload("res://tests/view/support/effects_rig.gd")
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const MAIN_SCENE: String = "res://scenes/main.tscn"
-const BASE_SIZE: Vector2i = Vector2i(1280, 720)
-## The three screens every screen is tested at: base, 20:9 phone and 4:3 tablet.
-const TARGET_SIZES: Array[Vector2i] = [
-	Vector2i(1280, 720),
-	Vector2i(2400, 1080),
-	Vector2i(2048, 1536),
-]
+const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
+## The landscape screens every screen is tested at: base, 20:9 phone and 4:3 tablet.
+const TARGET_SIZES: Array[Vector2i] = ScreenSizes.LANDSCAPE
 ## STYLE.md / ADR 0012 section 6: the z of the layers around the fog, bottom to top.
 const Z_BARS: int = 110
 const Z_PROJECTILES: int = 120

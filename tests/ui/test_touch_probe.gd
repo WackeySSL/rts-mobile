@@ -4,6 +4,7 @@ extends GdUnitTestSuite
 ## Michael's ruler. This proves the square is dp(48) and not some other size.
 
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const ANDROID: StringName = &"android_6in"
 const SAFE_AREA: Rect2i = Rect2i(60, 0, 2280, 1080)  ## A landscape cutout on the left.
 const ANDROID_TEXT: String = (
@@ -92,11 +93,11 @@ func test_the_square_and_the_numbers_follow_a_window_resize() -> void:
 	# Without an override it follows what the engine reports, as on a phone. The stretch scale
 	# goes from 1.0 to 1.5 here, so the same dp is fewer base px.
 	UiScale.clear_override()
-	get_window().size = Vector2i(1280, 720)
+	get_window().size = ScreenSizes.LANDSCAPE[0]
 	await await_idle_frame()
 	var at_base_size: float = square.size.x
 	assert_float(at_base_size).is_equal_approx(UiScale.dp(48.0), 0.001)
-	get_window().size = Vector2i(2400, 1080)
+	get_window().size = ScreenSizes.LANDSCAPE[1]
 	await await_idle_frame()
 	assert_float(square.size.x).is_equal_approx(UiScale.dp(48.0), 0.001)
 	assert_float(square.size.x * 1.5).is_equal_approx(at_base_size, 0.001)

@@ -6,9 +6,9 @@ extends GdUnitTestSuite
 ## BACKDROP, the Dev button's 40 base px, BoxOverlay's Color.WHITE with FeedbackStyle.OUTLINE and
 ## FILL), so a changed theme value fails here and changes in the same PR as a new look.
 
-const MainSceneTests: GDScript = preload("res://tests/scenes/test_main_scene.gd")
 const HudThemes: GDScript = preload("res://tests/support/hud_theme.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const ARMY_FONT_DP: float = 18.0
 const NAME_FONT_DP: float = 16.0
@@ -128,7 +128,7 @@ func test_the_dp_step_walks_every_type_variation_and_stylebox_of_a_theme() -> vo
 ## What the HUD resolves is what it was: the sizes of the code of main before P58, from the theme,
 ## with no override left, at the three screen sizes and at every profile of ui_profiles.gd.
 func test_the_hud_resolves_the_values_it_had_before_at_the_three_screen_sizes() -> void:
-	for size: Vector2i in MainSceneTests.TARGET_SIZES:
+	for size: Vector2i in ScreenSizes.LANDSCAPE:
 		await _open(size)
 		_assert_hud_resolves(str(size))
 
@@ -141,7 +141,7 @@ func test_the_hud_resolves_the_values_it_had_before_at_every_profile() -> void:
 
 
 func test_a_resize_gives_the_hud_the_new_dp_values_before_its_scripts_read_them() -> void:
-	await _open(Vector2i(1280, 720), UiProfiles.by_name(&"desktop"))
+	await _open(ScreenSizes.LANDSCAPE[0], UiProfiles.by_name(&"desktop"))
 	var phone: UiMetrics = UiProfiles.by_name(&"android_6in")
 	UiScale.set_override(phone)
 	get_window().size = phone.window_size
@@ -164,7 +164,7 @@ func test_a_resize_gives_the_hud_the_new_dp_values_before_its_scripts_read_them(
 
 
 func test_every_control_that_is_a_child_of_the_hud_has_the_hud_theme() -> void:
-	await _open(Vector2i(1280, 720))
+	await _open(ScreenSizes.LANDSCAPE[0])
 	var hud: Node = _main.get_node("Hud")
 	assert_array(_without_hud_theme(hud)).is_empty()
 	for root: Control in _roots(hud):
@@ -196,7 +196,7 @@ func test_the_dp_step_gives_each_root_its_own_scaled_copy_and_leaves_what_has_no
 	first.set_font_size("font_size", "Label", 10)
 	var second: Theme = Theme.new()
 	second.set_font_size("font_size", "Label", 20)
-	get_window().size = Vector2i(2400, 1080)  # The resize below must be a change.
+	get_window().size = ScreenSizes.LANDSCAPE[1]  # The resize below must be a change.
 	await await_idle_frame()
 	var layer: CanvasLayer = auto_free(CanvasLayer.new())
 	layer.add_child(HudTheme.new())
@@ -214,14 +214,14 @@ func test_the_dp_step_gives_each_root_its_own_scaled_copy_and_leaves_what_has_no
 	assert_object(roots[3].theme).is_null()
 	assert_int(first.get_font_size("font_size", "Label")).is_equal(10)  # The sources stay in dp.
 	UiScale.set_override(UiProfiles.by_name(&"desktop"))  # A resize starts from the source again.
-	get_window().size = Vector2i(1280, 720)
+	get_window().size = ScreenSizes.LANDSCAPE[0]
 	await await_idle_frame()
 	assert_int(roots[0].theme.get_font_size("font_size", "Label")).is_equal(10)
 	assert_int(roots[2].theme.get_font_size("font_size", "Label")).is_equal(20)
 
 
 func test_the_box_overlay_draws_with_the_three_colours_of_its_theme_type() -> void:
-	await _open(Vector2i(1280, 720))
+	await _open(ScreenSizes.LANDSCAPE[0])
 	var box: BoxOverlay = _main.get_node("Hud/BoxOverlay")
 	var colors: Dictionary[StringName, Color] = box.draw_colors()
 	assert_array(colors.keys()).contains_exactly([&"fill", &"outline", &"stroke"])
@@ -265,7 +265,7 @@ func test_the_box_overlay_draws_with_the_three_colours_of_its_theme_type() -> vo
 ## A restyle changes the theme only: the panel, the labels and the buttons follow, and no script
 ## holds a copy of the look.
 func test_a_theme_with_another_look_restyles_the_whole_hud_from_the_file_alone() -> void:
-	await _open(Vector2i(1280, 720))
+	await _open(ScreenSizes.LANDSCAPE[0])
 	var other: Theme = HudThemes.scaled()
 	var backdrop: StyleBoxFlat = other.get_stylebox("panel", "SelectionPanel")
 	backdrop.bg_color = Color(0.9, 0.1, 0.1, 0.5)

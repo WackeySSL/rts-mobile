@@ -8,8 +8,9 @@ extends GdUnitTestSuite
 
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const Rig: GDScript = preload("res://tests/view/support/effects_rig.gd")
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const MAIN_SCENE: String = "res://scenes/main.tscn"
-const BASE_SIZE: Vector2i = Vector2i(1280, 720)
+const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
 const FLASH: Rect2 = Rect2(144, 0, 32, 32)
 const PUFF: Rect2 = Rect2(84, 0, 56, 56)
 const BURST: Rect2 = Rect2(0, 0, 80, 80)

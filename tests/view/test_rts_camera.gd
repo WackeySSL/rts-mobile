@@ -2,15 +2,18 @@ extends GdUnitTestSuite
 ## RtsCamera on the 48x48 tile map (3072 px): clamp cases at the three target screens, pan, pinch,
 ## the zoom levels, screen/world maths. Snaps are immediate unless a test sets `zoom_snap_ms`.
 
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const MAP: Rect2 = Rect2(0, 0, 3072, 3072)
-const BASE_SIZE: Vector2i = Vector2i(1280, 720)
-const PHONE_SIZE: Vector2i = Vector2i(2400, 1080)
+const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
+const PHONE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[1]
+## A window as high as the base size and 320 px wider: it shows 1600x720 base px at stretch 1.
+const WIDE_SIZE: Vector2i = Vector2i(1600, 720)
 ## Window size -> [lowest, highest] camera position at zoom 1: the map inset by half the visible
 ## size. Visible: 1280x720, 1600x720 (20:9 at stretch 1.5), 1280x960 (4:3 at 1.6).
 const BOUNDS: Dictionary[Vector2i, Array] = {
-	Vector2i(1280, 720): [Vector2(640, 360), Vector2(2432, 2712)],
-	Vector2i(2400, 1080): [Vector2(800, 360), Vector2(2272, 2712)],
-	Vector2i(2048, 1536): [Vector2(640, 480), Vector2(2432, 2592)],
+	ScreenSizes.LANDSCAPE[0]: [Vector2(640, 360), Vector2(2432, 2712)],
+	ScreenSizes.LANDSCAPE[1]: [Vector2(800, 360), Vector2(2272, 2712)],
+	ScreenSizes.LANDSCAPE[2]: [Vector2(640, 480), Vector2(2432, 2592)],
 }
 const OVERSCROLL: float = 5000.0
 const LEVELS: Array[float] = [0.75, 1.0, 1.5]
@@ -66,7 +69,7 @@ func test_set_map_rect_sets_the_limits_reclamps_and_centres_a_narrow_map() -> vo
 
 
 func test_position_stops_exactly_at_the_corners_with_no_dead_zone_at_every_target_size() -> void:
-	for size: Vector2i in BOUNDS:
+	for size: Vector2i in ScreenSizes.LANDSCAPE:
 		var low: Vector2 = BOUNDS[size][0]
 		var high: Vector2 = BOUNDS[size][1]
 		get_window().size = size
@@ -86,7 +89,7 @@ func test_position_stops_exactly_at_the_corners_with_no_dead_zone_at_every_targe
 
 func test_reclamps_when_the_viewport_resizes() -> void:
 	_camera.pan_by_screen(Vector2(OVERSCROLL, OVERSCROLL))
-	get_window().size = Vector2i(1600, 720)
+	get_window().size = WIDE_SIZE
 	await await_idle_frame()
 	_near(_camera.position, Vector2(800, 360))
 

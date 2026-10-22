@@ -8,8 +8,9 @@ extends GdUnitTestSuite
 ## test_unit_layer.gd (gdlint allows 20 public methods per file).
 
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
-const BASE_SIZE: Vector2i = Vector2i(1280, 720)
+const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
 const RED: Color = Color("E5484D")
 const TANK_30: PackedInt32Array = [30]
 

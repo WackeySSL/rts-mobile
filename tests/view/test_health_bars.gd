@@ -13,10 +13,11 @@ extends GdUnitTestSuite
 ## in the tree: only the calls here move time, so alpha is 0 and a unit stands at its prev position.
 
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const CONTROLS: String = "res://data/scenarios/controls_test.tres"
 const ARENA: String = "res://data/scenarios/perf_arena.tres"
 const SCRIPT_PATH: String = "res://game/view/HealthBarLayer.gd"
-const BASE_SIZE: Vector2i = Vector2i(1280, 720)
+const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
 const PX_PER_TILE: float = 64.0
 ## STYLE.md "Health bars": the edge and the two fills, and the team tints that they must not be.
 const EDGE: Color = Color("1C2127")

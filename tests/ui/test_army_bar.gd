@@ -5,6 +5,7 @@ extends GdUnitTestSuite
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const HudThemes: GDScript = preload("res://tests/support/hud_theme.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 
 var _window_size_before: Vector2i
 var _now_ms: int = 0
@@ -28,7 +29,7 @@ func after_test() -> void:
 
 
 func test_a_tap_emits_tapped_and_a_hold_emits_held_and_not_tapped() -> void:
-	get_window().size = Vector2i(1280, 720)
+	get_window().size = ScreenSizes.LANDSCAPE[0]
 	await await_idle_frame()  # The stretch follows the window, and the theme's px follow the stretch.
 	var bar: ArmyBar = auto_free(ArmyBar.new())
 	bar.theme = HudThemes.scaled()  # Outside main.tscn nothing is inherited (P58).

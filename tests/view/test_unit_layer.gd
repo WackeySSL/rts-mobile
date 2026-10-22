@@ -7,9 +7,10 @@ extends GdUnitTestSuite
 ## test_unit_layer_aim.gd.
 
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
 const ART: String = "res://assets/art/svg/units/light_tank_%s.svg"
-const BASE_SIZE: Vector2i = Vector2i(1280, 720)
+const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
 const BLUE: Color = Color("2F80ED")
 const RED: Color = Color("E5484D")
 const RING_ART: String = "res://assets/art/svg/ui/selection_ring.svg"

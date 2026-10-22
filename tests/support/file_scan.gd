@@ -1,5 +1,16 @@
 extends RefCounted
-## Recursive file listing for the contract tests. Not a test suite (no GdUnitTestSuite base).
+## Recursive file listing and comment stripping for the contract tests. Not a test suite (no
+## GdUnitTestSuite base).
+
+## What a comment or a string looks like in GDScript, read from the left so that a comment hides the
+## quote in it and a string hides the "#" in it. Group-free: the whole match is the token.
+const TOKEN: String = (
+	r'(?s)"""(?:[^\\]|\\.)*?"""|'
+	+ r"'''(?:[^\\]|\\.)*?'''|"
+	+ r'"(?:[^"\\]|\\.)*"|'
+	+ r"'(?:[^'\\]|\\.)*'|"
+	+ r"#[^\n]*"
+)
 
 
 ## All files under `dir` (a res:// path) whose name ends with `extension`. Sorted by path, so a
@@ -9,6 +20,21 @@ static func list_files(dir: String, extension: String) -> Array[String]:
 	_collect(dir, extension, found)
 	found.sort()
 	return found
+
+
+## The lines of a GDScript source with its comments taken out. A string stays (a path in a string
+## is code), and so does every line break, so a line keeps its number. A docstring in triple quotes
+## is a string and stays.
+static func code_lines(text: String) -> PackedStringArray:
+	var token: RegEx = RegEx.create_from_string(TOKEN)
+	var out: String = ""
+	var at: int = 0
+	for found: RegExMatch in token.search_all(text):
+		out += text.substr(at, found.get_start() - at)
+		if not found.get_string().begins_with("#"):
+			out += found.get_string()
+		at = found.get_end()
+	return (out + text.substr(at)).split("\n")
 
 
 static func _collect(dir: String, extension: String, found: Array[String]) -> void:
