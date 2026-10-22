@@ -16,8 +16,8 @@ const EffectsRig: GDScript = preload("res://tests/view/support/effects_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
-## The landscape screens every screen is tested at: base, 20:9 phone and 4:3 tablet.
-const TARGET_SIZES: Array[Vector2i] = ScreenSizes.LANDSCAPE
+## The screens every screen is tested at: base, 20:9 phone and 4:3 tablet, each held both ways.
+const TARGET_SIZES: Array[Vector2i] = ScreenSizes.ALL
 ## STYLE.md / ADR 0012 section 6: the z of the layers around the fog, bottom to top.
 const Z_BARS: int = 110
 const Z_PROJECTILES: int = 120
@@ -345,6 +345,11 @@ func test_the_main_scene_draws_the_fog_at_z_140_over_the_effects_and_covers_the_
 	for size: Vector2i in TARGET_SIZES:
 		get_window().size = size
 		await await_idle_frame()
+		# The view turned with the window, so the portrait sizes are run as portrait.
+		var view: Vector2 = camera.get_viewport_rect().size
+		assert_bool(view.y > view.x).override_failure_message(str(size)).is_equal(
+			UiScale.is_portrait_size(size)
+		)
 		# The sprite is the map, whatever the screen: its rect in world px, and the camera at both
 		# ends of its range (it clamps to the map) never shows a point beyond it.
 		var rect: Rect2 = fog.get_global_transform() * fog.get_rect()

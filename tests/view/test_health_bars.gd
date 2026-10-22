@@ -34,6 +34,15 @@ const HEIGHT_DP: int = 6
 const SPACING_MILLI: Dictionary[StringName, int] = {&"vehicle": 1200, &"infantry": 900}
 const HALF_HEIGHT_PX: Dictionary[StringName, float] = {&"vehicle": 21.0, &"infantry": 14.0}
 const ZOOMS: Array[float] = [0.75, 1.0, 1.5]
+## The six screens of the shared list (ScreenSizes.ALL, entry by entry), each with its profile.
+const SCREEN_PROFILES: Array[StringName] = [
+	&"desktop",
+	&"android_6in",
+	&"web_tablet",
+	&"desktop_portrait",
+	&"android_6in_portrait",
+	&"web_tablet_portrait",
+]
 ## STYLE.md: side by side the bars leave 2.2 dp (squads) and 2.3 dp (tanks) at worst, and a bar's
 ## top stays 5.6 px below the unit above at worst; a hair under, as those are rounded.
 const SIDE_GAP_DP: float = 2.2
@@ -217,9 +226,9 @@ func test_a_bar_is_centred_and_its_bottom_edge_is_r_zoom_plus_1_dp_above_the_uni
 	var rifle: int = _first_row_of(&"rifle_squad", 1)
 	var red_tank: int = _first_row_of(&"light_tank", 2)
 	_units.set_selected(_ids([tank, rifle, red_tank]))
-	# Each screen of the three that every screen is tested at, with its own dp (the layer reads
-	# it again when the window changes) and each zoom.
-	for profile_name: StringName in [&"desktop", &"android_6in", &"web_tablet"]:
+	# Each of the six screens that every screen is tested at, with its own dp (the layer reads it
+	# again when the window changes) and each zoom.
+	for profile_name: StringName in SCREEN_PROFILES:
 		var profile: UiMetrics = UiProfiles.by_name(profile_name)
 		UiScale.set_override(profile)
 		get_window().size = profile.window_size
@@ -253,6 +262,14 @@ func test_a_bar_is_centred_and_its_bottom_edge_is_r_zoom_plus_1_dp_above_the_uni
 				)
 
 
+## The table pairs each profile with a size by position: it stays in step with the shared list.
+func test_the_screen_profiles_are_the_six_sizes_of_the_shared_list() -> void:
+	var sizes: Array[Vector2i] = []
+	for profile_name: StringName in SCREEN_PROFILES:
+		sizes.append(UiProfiles.by_name(profile_name).window_size)
+	assert_array(sizes).is_equal(ScreenSizes.ALL)
+
+
 func test_the_ring_does_not_place_the_bar() -> void:
 	# Zoom 1.5 on the 6-inch phone: the tank's ring reaches 35.2 px x 1.5 = 52.8 px from the unit
 	# (the selection radius 500 + 50 milli), the bar's bottom edge only 26 x 1.5 + 1.75 = 40.75 px.
@@ -270,7 +287,7 @@ func test_the_ring_does_not_place_the_bar() -> void:
 
 func test_bars_of_neighbours_do_not_overlap_side_by_side() -> void:
 	_rebuild(ARENA)
-	for profile_name: StringName in UiProfiles.all():
+	for profile_name: StringName in _both_orientations():
 		UiScale.set_override(UiProfiles.by_name(profile_name))
 		_make_bars()
 		var dp_px: float = UiScale.base_px_per_dp()
@@ -293,7 +310,7 @@ func test_bars_of_neighbours_do_not_overlap_side_by_side() -> void:
 
 func test_a_bar_stays_below_the_unit_above() -> void:
 	_rebuild(ARENA)
-	for profile_name: StringName in UiProfiles.all():
+	for profile_name: StringName in _both_orientations():
 		UiScale.set_override(UiProfiles.by_name(profile_name))
 		_make_bars()
 		for zoom: float in ZOOMS:
@@ -441,6 +458,13 @@ func _make_bars() -> void:
 	_bars.unit_layer = _units
 	add_child(_bars)
 	_bars.set_process(false)
+
+
+## The names of every profile of both orientations: UiProfiles.all() and its portrait twins.
+func _both_orientations() -> Array[StringName]:
+	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
+	profiles.merge(UiProfiles.portrait())
+	return profiles.keys()
 
 
 ## One frame: the unit layer, then the bar layer, in the scene's order.

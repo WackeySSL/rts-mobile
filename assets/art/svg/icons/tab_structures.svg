@@ -1,0 +1,16 @@
+<!-- Structures tab glyph: white and grey only, tinted at run time (the first build tab). -->
+<!-- Shape: a wide workshop seen from the front, a sawtooth roof of three teeth, a tall chimney on the right and a dark doorway. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- chimney, behind the hall -->
+  <rect x="92" y="14" width="20" height="56" rx="3" fill="#BFBFBF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- hall with its sawtooth roof -->
+  <polygon points="10,116 10,40 38,66 38,40 66,66 66,40 94,66 118,66 118,116" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- shade on the slopes of the roof -->
+  <g fill="#BFBFBF">
+    <polygon points="14,48 34,66 14,66"/>
+    <polygon points="42,48 62,66 42,66"/>
+    <polygon points="70,48 90,66 70,66"/>
+  </g>
+  <!-- doorway -->
+  <rect x="46" y="84" width="36" height="32" fill="#4D4D4D"/>
+</svg>

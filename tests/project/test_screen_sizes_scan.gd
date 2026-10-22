@@ -15,9 +15,11 @@ extends GdUnitTestSuite
 ##   or lists two of the landscape profiles by name, and reads none of `ScreenSizes.PORTRAIT`,
 ##   `ScreenSizes.ALL` and `UiProfiles.portrait()`.
 ## PORTRAIT_PENDING holds each suite that is landscape-only today, with the row that makes it run
-## portrait too (P61 the HUD, P62 the camera and the view, P63 the dev scenes). An entry goes in the
-## row that removes the suite's landscape-only part, and the scan fails on an entry whose suite
-## already reads a portrait size. P64 (the orientation flip) requires the list to be empty.
+## portrait too. It is empty since P62b (P61 the HUD, P62 the camera, P62b the last view and scene
+## suites, P63 the dev scenes took their entries out), and an empty list is legal: P64 (the
+## orientation flip) requires it. An entry that returns names the row that will remove it, and that
+## row joins ROWS in the same change; the scan fails on an entry whose suite already reads a
+## portrait size.
 ## Every rule has fixture lines that it must flag and lines that it must leave alone, so a scan
 ## that matches nothing fails.
 ## The scan is a line lint with documented gaps, not a proof that every case runs portrait:
@@ -36,25 +38,13 @@ const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const SCANNED_DIRS: Array[String] = ["res://tests/ui", "res://tests/scenes", "res://tests/view"]
-## The rows that may remove an entry (docs/plans/2026-10-19-portrait.md).
-const ROWS: Array[String] = ["P61", "P62", "P63"]
+## The rows that may remove an entry (docs/plans/2026-10-19-portrait.md). None is left: P61, P62,
+## P62b and P63 have removed theirs.
+const ROWS: Array[String] = []
 
 ## The suites that run only landscape sizes today, each with the row that makes it run portrait
-## too. P61's suites (the HUD, the theme and the main scene) have left it. The plan's file lists
-## name test_rts_camera and test_controls_flow (P62, whose scene case is the view-only proof) and
-## test_touch_probe (P63). The other view suites and the two perf arena suites are in no row's file
-## list yet: they stand under the row of their layer (P62 the view, P63 the dev scenes) until the
-## lead places them.
-const PORTRAIT_PENDING: Dictionary[String, String] = {
-	"res://tests/view/test_effects_layer_curves.gd": "P62",
-	"res://tests/view/test_feedback.gd": "P62",
-	"res://tests/view/test_fog_hiding.gd": "P62",
-	"res://tests/view/test_fog_layer.gd": "P62",
-	"res://tests/view/test_health_bar_squads.gd": "P62",
-	"res://tests/view/test_health_bars.gd": "P62",
-	"res://tests/view/test_projectile_layer.gd": "P62",
-	"res://tests/scenes/test_controls_flow.gd": "P62",
-}
+## too. None is left (P62b); see the comment at the top.
+const PORTRAIT_PENDING: Dictionary[String, String] = {}
 
 ## A window size assigned from a literal: `size = Vector2i(<digits>` or `set_size(Vector2i(<digits>`
 ## (also `window_set_size`). `content_scale_size` and `min_size` have no word boundary before

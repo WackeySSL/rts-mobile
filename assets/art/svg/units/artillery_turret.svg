@@ -1,0 +1,28 @@
+<!-- Artillery, turret layer: faces east, pivot at the canvas centre, drawn last; shaded symmetrically because it rotates. -->
+<!-- Silhouette: a squarish open-topped gun house with a sloped front shield, a fat recoil sleeve and one very long thin barrel ending in a small flat muzzle block, a sight block off the gun line. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- barrel -->
+  <rect x="98" y="59" width="22" height="10" fill="#7D8893" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <line x1="102" y1="64" x2="118" y2="64" stroke="#A9B4BE" stroke-width="2" stroke-linecap="round"/>
+  <!-- muzzle block, one 2 px slot -->
+  <rect x="116" y="55" width="10" height="18" rx="2" fill="#5B6670" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <line x1="121" y1="58" x2="121" y2="70" stroke="#1C2127" stroke-width="2"/>
+  <!-- recoil sleeve -->
+  <rect x="82" y="54" width="18" height="20" rx="4" fill="#A9B4BE" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <line x1="88" y1="59" x2="88" y2="69" stroke="#5B6670" stroke-width="2" stroke-linecap="round"/>
+  <line x1="94" y1="59" x2="94" y2="69" stroke="#5B6670" stroke-width="2" stroke-linecap="round"/>
+  <!-- gun house: a raised plane, so mid olive -->
+  <polygon points="42,43 72,43 82,53 82,75 72,85 42,85" fill="#6B7A4F" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <!-- open top: the floor is a lower plane, so the darkest olive -->
+  <polygon points="48,49 68,49 76,56 76,72 68,79 48,79" fill="#4E5A3A" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round"/>
+  <line x1="45" y1="45.5" x2="70" y2="45.5" stroke="#8C9A6B" stroke-width="2" stroke-linecap="round"/>
+  <line x1="45" y1="82.5" x2="70" y2="82.5" stroke="#8C9A6B" stroke-width="2" stroke-linecap="round"/>
+  <!-- breech block on the gun line -->
+  <rect x="53" y="58" width="18" height="12" rx="3" fill="#7D8893" stroke="#1C2127" stroke-width="1.5"/>
+  <!-- gun shield -->
+  <rect x="78" y="50" width="8" height="28" rx="2" fill="#5B6670" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <!-- sight block, upper side only -->
+  <rect x="50" y="51" width="12" height="5" rx="1.5" fill="#A9B4BE" stroke="#1C2127" stroke-width="1.5"/>
+  <!-- turret ring marker at the pivot -->
+  <circle cx="64" cy="64" r="2" fill="#1C2127"/>
+</svg>

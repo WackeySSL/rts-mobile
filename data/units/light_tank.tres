@@ -17,3 +17,6 @@ move_class = 2
 sight_range = 7000
 acquire_range = 5500
 weapon = ExtResource("2_weapon")
+cost = 600
+build_ticks = 225
+tab = 2

@@ -1,0 +1,20 @@
+<!-- Artillery, team layer: white and grey only, tinted at run time, drawn between hull and turret. -->
+<!-- Shape: a strip down the spade, a broad plate across the rear deck, a plate on the cab roof and a thin strip along each deck edge, all clear of the gun house. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <g stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round">
+    <!-- spade strip, 2 px in from the plate edge so the spade highlight stays visible beside it -->
+    <rect x="9.5" y="26" width="7" height="76" rx="2" fill="#FFFFFF"/>
+    <!-- rear deck plate -->
+    <rect x="22" y="38" width="18" height="52" rx="3" fill="#FFFFFF"/>
+    <!-- cab roof plate -->
+    <rect x="82" y="46" width="11" height="36" rx="3" fill="#FFFFFF"/>
+    <!-- deck edge strips, above and below the gun house -->
+    <rect x="42" y="35" width="38" height="6" rx="2" fill="#FFFFFF"/>
+    <rect x="42" y="87" width="38" height="6" rx="2" fill="#FFFFFF"/>
+  </g>
+  <!-- grey shade on the front edge of the rear plate and the cab plate -->
+  <g fill="#BFBFBF">
+    <rect x="36.5" y="39" width="2.5" height="50"/>
+    <rect x="90" y="47" width="2.5" height="34"/>
+  </g>
+</svg>

@@ -1,0 +1,33 @@
+<!-- Artillery build icon: palette colours, one neutral grey team mark, drawn on a clear canvas for a tile of 64 dp or more. -->
+<!-- Silhouette: a long narrow wheeled carrier with three fat tyres a side and a wide spade plate across the back, a squarish open gun house in the middle and one very long thin barrel to the right. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- tyres -->
+  <g fill="#5B6670" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round">
+    <rect x="22" y="18" width="18" height="16" rx="4"/>
+    <rect x="48" y="18" width="18" height="16" rx="4"/>
+    <rect x="74" y="18" width="18" height="16" rx="4"/>
+    <rect x="22" y="94" width="18" height="16" rx="4"/>
+    <rect x="48" y="94" width="18" height="16" rx="4"/>
+    <rect x="74" y="94" width="18" height="16" rx="4"/>
+  </g>
+  <!-- chassis and cab -->
+  <polygon points="16,30 92,30 102,40 102,88 92,98 16,98" fill="#4E5A3A" stroke="#1C2127" stroke-width="4" stroke-linejoin="round"/>
+  <polygon points="78,42 94,42 100,48 100,80 94,86 78,86" fill="#6B7A4F" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <!-- neutral team plates -->
+  <g fill="#9AA5B1" stroke="#1C2127" stroke-width="2" stroke-linejoin="round">
+    <rect x="22" y="38" width="18" height="52" rx="3"/>
+    <rect x="82" y="46" width="11" height="36" rx="3"/>
+  </g>
+  <!-- spade -->
+  <rect x="4" y="18" width="14" height="92" rx="3" fill="#7D8893" stroke="#1C2127" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="8" y1="24" x2="8" y2="104" stroke="#A9B4BE" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- barrel, muzzle block and recoil sleeve -->
+  <rect x="98" y="59" width="18" height="10" fill="#7D8893" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
+  <rect x="111" y="54" width="11" height="20" rx="2" fill="#5B6670" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
+  <rect x="82" y="54" width="18" height="20" rx="4" fill="#A9B4BE" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
+  <!-- gun house with its open floor -->
+  <polygon points="42,43 72,43 82,53 82,75 72,85 42,85" fill="#6B7A4F" stroke="#1C2127" stroke-width="4" stroke-linejoin="round"/>
+  <polygon points="49,50 68,50 75,57 75,71 68,78 49,78" fill="#4E5A3A" stroke="#1C2127" stroke-width="2" stroke-linejoin="round"/>
+  <rect x="54" y="58" width="16" height="12" rx="3" fill="#7D8893" stroke="#1C2127" stroke-width="2"/>
+  <rect x="78" y="50" width="8" height="28" rx="2" fill="#5B6670" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
+</svg>

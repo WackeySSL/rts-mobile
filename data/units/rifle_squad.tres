@@ -15,3 +15,6 @@ max_hp = 100
 sight_range = 6000
 acquire_range = 5000
 weapon = ExtResource("2_weapon")
+cost = 100
+build_ticks = 75
+tab = 1

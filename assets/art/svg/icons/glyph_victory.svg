@@ -1,0 +1,9 @@
+<!-- Victory emblem: white and grey only, tinted at run time (the result screen). -->
+<!-- Shape: a fat five-pointed star, point up, shaded on its lower right arms. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <polygon points="64,10 77,46 116,48 86,73 96,112 64,90 32,112 42,73 12,48 51,46" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- shade on the lower right half -->
+  <polygon points="64,64 86,73 96,112 64,90" fill="#BFBFBF"/>
+  <polygon points="64,64 116,48 86,73" fill="#BFBFBF"/>
+  <polygon points="64,10 77,46 116,48 86,73 96,112 64,90 32,112 42,73 12,48 51,46" fill="none" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+</svg>

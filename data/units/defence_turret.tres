@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/BuildingDef.gd" id="1_building"]
+[ext_resource type="Resource" path="res://data/weapons/turret_gun.tres" id="2_weapon"]
+[ext_resource type="Resource" path="res://data/units/barracks.tres" id="3_requires"]
+
+[resource]
+script = ExtResource("1_building")
+type_id = &"defence_turret"
+display_name = "Defence Turret"
+max_hp = 900
+armour = 3
+sight_range = 7000
+acquire_range = 5500
+weapon = ExtResource("2_weapon")
+cost = 600
+build_ticks = 225
+tab = 0
+requires = ExtResource("3_requires")
+power = -20
