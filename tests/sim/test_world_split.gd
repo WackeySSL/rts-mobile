@@ -38,7 +38,7 @@ func test_each_hash_wrapper_returns_what_its_helper_returns() -> void:
 
 ## World.from_scenario is WorldLoad.from_scenario: the same hash, definitions hash and stream for a
 ## map scenario, a jittered one, none at all, and one that is a roster of buildings only (a type
-## chain whose links are copied in after it, and one that points back at itself).
+## chain whose links are copied in after it, one of them a type that an earlier link copied in).
 func test_from_scenario_builds_the_world_the_loader_builds() -> void:
 	var scenarios: Array[ScenarioDef] = [
 		load(ARENA_PATH) as ScenarioDef,
@@ -60,7 +60,7 @@ func test_from_scenario_builds_the_world_the_loader_builds() -> void:
 	var chain: World = World.from_scenario(_building_roster())
 	assert_array(chain.type_ids).is_equal([&"refinery", &"plant", &"harvester"])
 	assert_array(chain.type_requires).is_equal([1, -1, -1])
-	assert_array(chain.type_free_unit).is_equal([2, 0, -1])
+	assert_array(chain.type_free_unit).is_equal([2, 2, -1])
 
 
 ## The map digest cache is the World's `_map_digest` and `_map_digest_version`: prepare() fills it
@@ -116,8 +116,10 @@ func _loaded(path: String, seed_value: int) -> World:
 	)
 
 
-## A scenario with a roster of one refinery that requires a plant and gives a harvester. The plant's
-## own free unit is the refinery, a type known by then, so that copy ends and the link is index 0.
+## A scenario with a roster of one refinery that requires a plant and gives a harvester. The plant
+## gives the harvester too: the copy order is refinery (0), its required plant (1), the plant's
+## harvester (2), and the refinery's own free unit then finds the harvester already copied in. The
+## defs form no cycle, so nothing is left standing when the suite ends.
 func _building_roster() -> ScenarioDef:
 	var harvester: UnitDef = UnitDef.new()
 	harvester.type_id = &"harvester"
@@ -130,7 +132,7 @@ func _building_roster() -> ScenarioDef:
 	refinery.footprint = Vector2i(3, 3)
 	refinery.requires = plant
 	refinery.free_unit = harvester
-	plant.free_unit = refinery
+	plant.free_unit = harvester
 	var scenario: ScenarioDef = ScenarioDef.new()
 	scenario.roster.append(refinery)
 	return scenario
