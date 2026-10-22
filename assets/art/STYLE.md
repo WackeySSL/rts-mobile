@@ -159,8 +159,14 @@ dirt on both sides of the join and the map keeps its "no grid" rule.
 | `ore_4a.svg`, `ore_4b.svg` | 4 | two large, two medium and two small, packed | 606 and 604 |
 
 There is no team layer: ore is neutral. The tiles are opaque, so they cover whatever colour
-`MapView` bakes for the terrain `ore`; that colour is `MapView`'s to choose (P84b), and its colour
-key goes into the terrain table and the gallery's `TERRAIN_COLORS` in the same PR as the key.
+`MapView` bakes for the terrain `ore`, but the key must exist from the day the terrain does: P70 adds
+the id `ore` to `data/terrain/standard.tres`, and the same tree must carry the key `ore` in
+`MapView.colors` and `MapView.tiles`, the gallery's `TERRAIN_COLORS` and `TERRAIN_TILES`, the two
+terrain tables under "Fog and terrain" and the terrain lists of `tests/art`, because `tests/project`
+(every terrain id has a colour and a tile in both map views; `MapView` and the gallery hold the same
+keys) goes red without them. The proposal is the dirt the tiles are filled with: key `ore` #8A6F4D,
+tile `0,0,8,8,ore`, probe 3,3. The key is not in this PR's tables because `MapView` is another
+owner's file (see "Open points", the request for P70).
 Greyscale check: the dirt (115) is as bright as grass (110 and 127), so the nuggets carry the field:
 gold 180 to 212 with a 3 px outline at 32. At 32 px per tile in greyscale the five levels read apart
 by the number and size of the nuggets alone, and level 0 by its dark pits.
@@ -182,8 +188,9 @@ fits.
 | Does not fit | own team colour, faded as one group | #E5484D | `ghost_hatch.svg` tinted #E5484D | solid, #E5484D |
 | Last seen | the other team's colour, not faded | none | `ghost_seen.svg` tinted #9AA5B1 | none, no health bar |
 
-The numbers: sprite alpha 0.7 (the whole rig in one `CanvasGroup`, so the hull does not show
-through a team plate), wash alpha 0.3, hatch alpha 0.8, dots alpha 0.7 and a frame 3 dp wide
+The numbers: sprite alpha 0.7 (the whole rig in one `CanvasGroup`, faded through its
+`CanvasGroup.self_modulate`: `modulate` would reach the hull and team sprites too and blend twice,
+so the hull would show through a team plate, as `MoveMarkerLayer` notes), wash alpha 0.3, hatch alpha 0.8, dots alpha 0.7 and a frame 3 dp wide
 (the marker stroke rule, dp over zoom in world space; the gallery draws 3 base px). A last-seen
 ghost is drawn under the fog like any explored tile, so it is dimmed by the explored fog alpha (140)
 and carries no other dimming. The reason's glyph for a placement that does not fit is P92's.
@@ -608,6 +615,16 @@ Renaming a unit or a unit type is a data change, not a reskin.
   - opaque ore tiles with five levels, the level formula under "Ore" and two layouts per level;
   - the ghost look under "Ghosts": its two pattern tiles, the alphas and the colours;
   - the Build and Ground gallery pages.
+- For the lead, before P70 starts (request from P91): the terrain id `ore` that P70 adds to
+  `data/terrain/standard.tres` turns `tests/project/test_cross_file_facts.gd` red (every terrain id has
+  a colour and a tile in both map views, and `MapView` and the gallery hold the same keys) until
+  `MapView.colors` and `MapView.tiles` (the script defaults and the node of `main.tscn`), the gallery's
+  `TERRAIN_COLORS` and `TERRAIN_TILES`, the two terrain tables in this file and the terrain lists of
+  `tests/art` all carry `ore` in one tree. `MapView` is touch-ux-dev's, and the plan's P70 row and its
+  exceptions 11 to 15 do not name it, so the plan needs a named one-line exception for P70 (add the key
+  `ore` #8A6F4D and the tile `0,0,8,8,ore` to those places, as proposed under "Ore") or a joint art and
+  view row before P70. P84b comes too late. P91 leaves the key out of the gallery on purpose: `MapView`
+  would then lack a key the gallery has, and P52's comparison would go red in this PR.
 - For the lead, before P36 starts: the plan's `MapView` row allows the keys `<id>` and `<id>_b`
   and holds no tile rects, but this spec has three tones for scrub and rock and rect patterns for
   scrub, rock and water (ADR 0011 section 3 asks for the scrub pattern). The row needs `_c` keys, a

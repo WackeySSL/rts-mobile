@@ -161,6 +161,7 @@ func test_the_three_ghosts_are_drawn_as_the_style_guide_says() -> void:
 		var seen: Node = row.get_node("GhostSeen")
 		for cell: Control in [valid, blocked, seen]:
 			var rig: CanvasGroup = cell.get_node("Rig")
+			assert_that(rig.modulate).is_equal(Color.WHITE)
 			assert_vector(cell.size).is_equal(Vector2(128, 128))
 			assert_str((rig.get_node("Hull") as Sprite2D).texture.resource_path).ends_with(
 				"barracks_hull.svg"
@@ -172,9 +173,11 @@ func test_the_three_ghosts_are_drawn_as_the_style_guide_says() -> void:
 		assert_array(seen.get_children().map(_node_name)).is_equal(
 			["Rig", "PatternSeen", "ExploredFog"]
 		)
-		assert_that(valid.get_node("Rig").modulate).is_equal(
-			Color(1, 1, 1, Gallery.GHOST_SPRITE_ALPHA)
-		)
+		# The fade goes through `self_modulate` of the group: `modulate` would reach the Hull and
+		# the Team sprite too, blend twice and show the hull through the team plate.
+		var faded: Color = Color(1, 1, 1, Gallery.GHOST_SPRITE_ALPHA)
+		assert_that((valid.get_node("Rig") as CanvasGroup).self_modulate).is_equal(faded)
+		assert_that((blocked.get_node("Rig") as CanvasGroup).self_modulate).is_equal(faded)
 		assert_that(valid.get_node("Wash").color).is_equal(
 			Color(Gallery.GHOST_OK, Gallery.GHOST_WASH_ALPHA)
 		)
@@ -207,7 +210,7 @@ func test_the_three_ghosts_are_drawn_as_the_style_guide_says() -> void:
 		assert_that((valid.get_node("Rig/Team") as Sprite2D).modulate).is_equal(TEAM_A)
 		assert_that((blocked.get_node("Rig/Team") as Sprite2D).modulate).is_equal(TEAM_A)
 		assert_that((seen.get_node("Rig/Team") as Sprite2D).modulate).is_equal(TEAM_B)
-		assert_that(seen.get_node("Rig").modulate).is_equal(Color.WHITE)
+		assert_that((seen.get_node("Rig") as CanvasGroup).self_modulate).is_equal(Color.WHITE)
 
 
 func test_the_swatches_show_each_pattern_tile_whole_times_over() -> void:

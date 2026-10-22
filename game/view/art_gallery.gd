@@ -457,7 +457,9 @@ func _build_ghost(cell: Control, kind: String) -> void:
 	for layer: String in ["hull", "team"]:
 		rig.add_child(_layer_sprite(layer, BUILDING_ART % [GHOST_BUILDING, layer]))
 	if kind != "Seen":
-		rig.modulate = Color(1.0, 1.0, 1.0, GHOST_SPRITE_ALPHA)
+		# `self_modulate`, not `modulate`: modulate reaches the Hull and Team children too and the
+		# fade blends twice, so the hull shows through the team plate (as MoveMarkerLayer notes).
+		rig.self_modulate = Color(1.0, 1.0, 1.0, GHOST_SPRITE_ALPHA)
 	cell.add_child(rig)
 	if kind == "Seen":
 		cell.add_child(_pattern_rect(cell.size, "seen", GHOST_NEUTRAL, GHOST_DOTS_ALPHA))

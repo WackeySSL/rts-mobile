@@ -46,6 +46,12 @@ const PALETTE: PackedStringArray = [
 ]
 const GROUND_BASE: String = "8a6f4d"  ## The dirt every ore tile is filled with, edge to edge.
 const GOLD: PackedStringArray = ["f2b705", "ffd84d"]  ## The bright ore colours.
+## The sight hatch of the gun head (centre 27,28 and radius 3 at 64 px) and its mirror image,
+## x 23..30, y 24..39: the one place where the two sides of the gun line may differ.
+const HATCH_BOX: Rect2i = Rect2i(23, 24, 8, 16)
+## The head body (#7D8893) has luminance 0.53; the hatch ring (#5B6670) and its outline are darker.
+const HEAD_LUMINANCE: float = 0.5
+const HATCH_MIN_PIXELS: int = 8
 const SHARE_MIN: float = 0.20
 const SHARE_MAX: float = 0.35
 
@@ -112,19 +118,39 @@ func test_the_defence_turret_gun_sticks_out_of_the_pit_as_its_own_shape() -> voi
 
 
 ## The gun head turns about the canvas centre, so its shading is the same either side of the gun
-## line (STYLE.md, "Rotating layers"): the raster is its own mirror image about the middle row, to
-## within the antialiasing of one level.
-func test_the_gun_head_is_mirrored_about_the_gun_line() -> void:
+## line (STYLE.md, "Rotating layers"): outside the box of the sight hatch and its mirror image the
+## raster is its own mirror image about the middle row, to within the antialiasing of one level.
+func test_the_gun_head_is_mirrored_about_the_gun_line_but_for_its_sight_hatch() -> void:
 	var gun: Image = _image(BUILDING_ART % ["defence_turret", "turret"])
 	var wrong: int = 0
 	for y: int in 32:
 		for x: int in 64:
-			var up: Color = gun.get_pixel(x, y)
-			var down: Color = gun.get_pixel(x, 63 - y)
-			wrong += int(
-				absf(up.a - down.a) > 0.1 or absf(up.get_luminance() - down.get_luminance()) > 0.1
-			)
+			if (
+				not HATCH_BOX.has_point(Vector2i(x, y))
+				and not HATCH_BOX.has_point(Vector2i(x, 63 - y))
+			):
+				wrong += int(_differs(gun.get_pixel(x, y), gun.get_pixel(x, 63 - y)))
 	assert_int(wrong).is_equal(0)
+
+
+## The same rule asks for one off-axis detail so the heading reads: inside that box the two sides
+## differ, because the hatch sits on the upper side only, and the box holds nothing else.
+func test_the_gun_head_has_one_off_axis_sight_hatch_on_the_upper_side() -> void:
+	var gun: Image = _image(BUILDING_ART % ["defence_turret", "turret"])
+	var differing: int = 0
+	var dark: Array[int] = [0, 0]  ## Hatch pixels darker than the head, upper and lower half.
+	for y: int in range(HATCH_BOX.position.y, HATCH_BOX.position.y + HATCH_BOX.size.y):
+		for x: int in range(HATCH_BOX.position.x, HATCH_BOX.end.x):
+			if y < 32:
+				differing += int(_differs(gun.get_pixel(x, y), gun.get_pixel(x, 63 - y)))
+			dark[0 if y < 32 else 1] += int(gun.get_pixel(x, y).get_luminance() < HEAD_LUMINANCE)
+	assert_int(differing).is_greater_equal(HATCH_MIN_PIXELS)
+	assert_int(dark[0]).is_greater_equal(HATCH_MIN_PIXELS)
+	assert_int(dark[1]).is_less(dark[0] / 2)
+
+
+func _differs(a: Color, b: Color) -> bool:
+	return absf(a.a - b.a) > 0.1 or absf(a.get_luminance() - b.get_luminance()) > 0.1
 
 
 func test_every_new_svg_names_its_shape_in_one_line_and_uses_palette_colours_only() -> void:
@@ -260,6 +286,7 @@ func test_the_style_guide_quotes_the_ghost_look_the_gallery_draws() -> void:
 	var flat: String = section.replace("\n", " ")
 	for line: String in [
 		"sprite alpha %s" % Gallery.GHOST_SPRITE_ALPHA,
+		"`CanvasGroup.self_modulate`",
 		"wash alpha %s" % Gallery.GHOST_WASH_ALPHA,
 		"hatch alpha %s" % Gallery.GHOST_HATCH_ALPHA,
 		"dots alpha %s" % Gallery.GHOST_DOTS_ALPHA,
