@@ -123,6 +123,10 @@ Status note (2026-10-22, ADR 0016 accepted): a dated status note sits in §15 on
 watch line (Michael's answer 2A keeps 3.325 ms; two corrections; a native state hash only by its
 own ADR). No accepted text changed.
 
+Status note (2026-10-22, P26ag docs): after the Phase 2 gate (issue #157) and PR #158, a dated
+status note from "P26ag docs" sits in §15: the native ratios re-derived to 11.1 and 12.1 by the
+plan's exception 5, and the two rules' readings on the gate cards. No accepted text changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -1887,6 +1891,19 @@ runs of issue #157 put `job_minus_step_p95_cp_ms` at 3.325-3.587 ms.
 - **A native state hash**, if ever, comes by its own ADR with a kernel row (locksteps, the
   sanitizer, the twin rule of §5), not as a port row under this ADR: §1 lists `state_hash` as
   GDScript-only, and the remedies above stay "never a port row".
+
+Status note (2026-10-22, P26ag docs, after the Phase 2 gate, issue #157, and PR #158; the text and
+the notes above stay as accepted):
+- **The native ratios** ("The first release perf-arena card re-derives both by ADR 0012's 10 %
+  rule"): done by plan exception 5 in PR #158 (`80c4006`). The first release card (run 1 on the
+  perf APK of `2a0ffe0`) against CI run 370 of the same commit (native 0.277 ms mean, 0.484 ms
+  p95): job mean 3.070 / 0.277 = 11.08 and job p95 5.834 / 0.484 = 12.05, so
+  `ci_ratio_native_mean` 9.4 -> 11.1 and `ci_ratio_native_p95` 14.0 -> 12.1, rounded up to one
+  decimal. They stay printed estimates, not thresholds, and no `budget.cfg` value moved.
+- **The two rules on the gate cards:** the port trigger never fired (`COMMANDS` about
+  0.09-0.14 ms, `REMOVE` 0.66-0.83 ms, against 25 % of `job_p95_noncp_ms`). The watch line
+  `job_minus_step_p95_cp_ms` read 3.31-4.02 ms against 3.325 ms (non-checkpoint 0.61-0.80 ms),
+  answered by ADR 0016 (the note above).
 
 ## Options considered
 1. **Stay GDScript (ADR 0012 remedy steps 1 and 2 only).** Rejected. The mock alone misses

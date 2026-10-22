@@ -368,9 +368,10 @@ func test_a_row_added_later_is_stamped_at_its_players_next_update_and_a_neutral_
 	assert_int(_block(world, 1).count(0) + _block(world, 2).count(0)).is_equal(1800 - 13 - 13 - 113)
 
 
-## The hash covers visible and explored: one changed explored byte, or one count, changes the fog
-## section and nothing else, and the change goes back with the byte.
-func test_the_hash_changes_when_an_explored_byte_or_a_count_changes(
+## The hash covers explored and not visible (P65, ADR 0016: the counts are derived from the rows):
+## one changed explored byte changes the fog section and nothing else, and the change goes back with
+## the byte; one changed count changes no section.
+func test_the_hash_changes_when_an_explored_byte_changes_and_not_when_a_count_does(
 	impl: int, _test_parameters := _both()
 ) -> void:
 	var world: World = _world()
@@ -393,9 +394,9 @@ func test_the_hash_changes_when_an_explored_byte_or_a_count_changes(
 	world.fog.explored[corner] = 0
 	assert_int(world.state_hash()).is_equal(hash_before)
 	world.fog.visible[corner] = 1
-	assert_int(world.state_hash()).is_not_equal(hash_before)
-	world.fog.visible[corner] = 0
 	assert_int(world.state_hash()).is_equal(hash_before)
+	assert_array(world.hash_parts()).is_equal(parts)
+	world.fog.visible[corner] = 0
 
 
 ## Two runs of the same scenario and orders give the same hash on every tick, and the fog is in
