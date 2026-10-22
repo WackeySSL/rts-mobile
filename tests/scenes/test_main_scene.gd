@@ -102,6 +102,7 @@ func test_camera_starts_on_the_scenario_camera_tile_and_sees_all_30_tanks_at_eve
 	for size: Vector2i in TARGET_SIZES:
 		get_window().size = size
 		await await_idle_frame()
+		_camera.zoom = Vector2.ONE  # A turn rescales the zoom (ADR 0015 section 4); count at zoom 1.
 		assert_that(_camera.position).is_equal(Vector2(800, 1376))  # The centre of tile (12, 21).
 		assert_that(_camera.get_screen_center_position()).is_equal(Vector2(800, 1376))
 		for row: int in 30:
@@ -142,6 +143,7 @@ func test_one_finger_pan_stops_exactly_at_the_map_edge_at_every_target_resolutio
 	for size: Vector2i in TARGET_SIZES:
 		get_window().size = size
 		await await_idle_frame()
+		_camera.zoom = Vector2.ONE  # A turn rescales the zoom (ADR 0015 section 4); count at zoom 1.
 		assert_that(_expected_low()).is_equal(LOWEST[size])
 		_camera.centre_on(MAP_CENTRE)
 		await _pan(Vector2(100, 40))
