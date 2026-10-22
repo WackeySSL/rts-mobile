@@ -3,8 +3,10 @@ extends GdUnitTestSuite
 ## describes it: the three tab icons, the eleven item icons and the seventeen glyphs, 128 px
 ## canvases at import scale 1.0, tab and glyph files in greys only, item icons in palette colours,
 ## nothing on the outer pixel, and icons that read apart at 32 px in greyscale over the HUD
-## backdrop; and the two rally flags, a hull and a grey team layer each, with the foot of the pole
-## at the canvas centre. The gallery pages that show them are in test_art_gallery_icon_pages.gd.
+## backdrop; the eight glyphs of the map on a dark seat that keeps them apart from grass, sand and
+## the red ghost, read apart as the HUD tints them; and the two rally flags, a hull and a grey team
+## layer each, with the foot of the pole at the canvas centre. The gallery pages that show them are
+## in test_art_gallery_icon_pages.gd.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
@@ -79,13 +81,28 @@ const HUD_BACKDROP: Color = Color("0F141C")
 const ITEM_DIFFERENCE_MIN: float = 20.0
 const TAB_DIFFERENCE_MIN: float = 40.0
 const HUD_DIFFERENCE_MIN: float = 25.0
-const MAP_DIFFERENCE_MIN: float = 35.0
+## A map glyph is seen tinted, on a ground, and every one shares its seat, which is about three
+## quarters of the canvas, so the mean over the canvas is smaller than for the HUD groups.
+const MAP_DIFFERENCE_MIN: float = 9.0
+## A map glyph must stand out from the ground under it: this share of its ink at 32 px differs from
+## the ground by more than MAP_CONTRAST_LUMINANCE in luminance (0 to 255), on every ground below.
+const MAP_CONTRAST_MIN: float = 0.5
+const MAP_CONTRAST_LUMINANCE: float = 25.0
+## The seat of a map glyph is #4D4D4D with a white rim; a plate, or a disc for the arrow that the
+## HUD turns. Its dark edge is 3 px wide and the white rim inside it is 4 px wide.
+const SEAT_GREY: float = 77.0 / 255.0
+const SEAT_EDGE_PX: int = 3
+const SEAT_RIM_PX: int = 4
 ## An icon covers a fifth to four fifths of its canvas, and its ink is clearly brighter than the
 ## backdrop (luminance 19): an item icon at least 60 of 255, a tab or glyph at least 140.
 const COVER_MIN: float = 0.18
 const COVER_MAX: float = 0.82
 const ITEM_LUMINANCE_MIN: float = 60.0
 const GLYPH_LUMINANCE_MIN: float = 140.0
+## A map glyph's ink is its dark seat (#4D4D4D, luminance 77) and its light drawing, 120 to 150 on
+## average, so it is below a tab's; what sets it apart from the ground is tested on the ground
+## (MAP_CONTRAST_MIN).
+const SEAT_LUMINANCE_MIN: float = 100.0
 
 
 func test_the_icon_folder_holds_exactly_the_files_the_style_guide_lists() -> void:
@@ -189,9 +206,11 @@ func test_each_icon_covers_a_good_share_of_its_canvas_in_ink_that_stands_out_fro
 					luminance += 255.0 * (0.299 * pixel.r + 0.587 * pixel.g + 0.114 * pixel.b)
 		var cover: float = count / 16384.0
 		assert_float(cover).override_failure_message(icon).is_between(COVER_MIN, COVER_MAX)
-		var floor_value: float = (
-			ITEM_LUMINANCE_MIN if icon.begins_with("item_") else GLYPH_LUMINANCE_MIN
-		)
+		var floor_value: float = GLYPH_LUMINANCE_MIN
+		if icon.begins_with("item_"):
+			floor_value = ITEM_LUMINANCE_MIN
+		elif _map_glyphs().has(icon):
+			floor_value = SEAT_LUMINANCE_MIN
 		assert_float(luminance / count).override_failure_message(icon).is_greater(floor_value)
 
 
@@ -209,12 +228,71 @@ func test_the_hud_glyphs_and_result_emblems_read_apart_at_32_px_in_greyscale() -
 	assert_float(_closest_pair(HUD_GLYPHS)).is_greater_equal(HUD_DIFFERENCE_MIN)
 
 
+## The eight glyphs of the map are never seen white on the HUD: they are tinted (the gallery's
+## `GLYPH_TINTS`) and lie on terrain or on the red ghost, so that is how they are compared.
 func test_the_map_glyphs_and_the_placement_reasons_read_apart_at_32_px_in_greyscale() -> void:
-	var names: Array[String] = []
-	for reason: String in REASONS:
-		names.append("glyph_reason_" + reason)
-	names.append_array(MAP_GLYPHS)
-	assert_float(_closest_pair(names)).is_greater_equal(MAP_DIFFERENCE_MIN)
+	var grounds: Dictionary[String, Color] = _map_grounds()
+	for ground_name: String in grounds:
+		var closest: float = _closest_pair(_map_glyphs(), grounds[ground_name], true)
+		assert_float(closest).override_failure_message(ground_name).is_greater_equal(
+			MAP_DIFFERENCE_MIN
+		)
+
+
+## What the style guide's check "identifiable at 32 px in greyscale" means for a glyph on the map:
+## tinted, over the ground it sits on, a good share of its ink differs from that ground. Without
+## the seat the white body of a danger-tinted glyph (luminance 114) is as bright as grass (110) and
+## only its thin edge sets it apart: on its worst ground 24 to 56 % of a glyph's ink stood out,
+## and 56 % or more does now.
+func test_the_map_glyphs_stand_out_from_every_ground_they_sit_on() -> void:
+	var problems: Array[String] = []
+	var grounds: Dictionary[String, Color] = _map_grounds()
+	for icon: String in _map_glyphs():
+		for ground_name: String in grounds:
+			var share: float = _standing_out(icon, grounds[ground_name])
+			if share < MAP_CONTRAST_MIN:
+				problems.append("%s on %s: %.2f" % [icon, ground_name, share])
+	assert_array(problems).is_empty()
+
+
+## The seat is in the file: from each of the four sides, the first ink along the middle line is a
+## dark edge and then the white rim. A plate for the reasons and the offline glyph (its corners are
+## round and filled), a disc for the arrow (the corner at 16 px is clear). The corners of the canvas
+## are clear. So a glyph is the same badge on any ground and keeps its seat when the HUD turns it.
+func test_every_map_glyph_sits_on_a_dark_seat_with_a_white_rim() -> void:
+	var sides: Array[Vector2i] = [Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1), Vector2i(-1, 0)]
+	var corners: Array[Vector2i] = [
+		Vector2i(4, 4), Vector2i(123, 4), Vector2i(4, 123), Vector2i(123, 123)
+	]
+	for icon: String in _map_glyphs():
+		var image: Image = _image(ICON_ART % icon)
+		for step: Vector2i in sides:
+			var at: Vector2i = (Vector2i(64, 64) - step * 64).clamp(
+				Vector2i.ZERO, Vector2i(127, 127)
+			)
+			while image.get_pixel(at.x, at.y).a <= 0.5:
+				at += step
+			var edge: Vector2i = at + step * (SEAT_EDGE_PX - 2)
+			var rim: Vector2i = at + step * (SEAT_EDGE_PX + SEAT_RIM_PX / 2)
+			var label: String = "%s from %s" % [icon, step]
+			var edge_pixel: Color = image.get_pixel(edge.x, edge.y)
+			var rim_pixel: Color = image.get_pixel(rim.x, rim.y)
+			assert_float(edge_pixel.r).override_failure_message(label).is_equal_approx(
+				SEAT_GREY, 0.01
+			)
+			assert_float(edge_pixel.a).override_failure_message(label).is_equal(1.0)
+			assert_float(rim_pixel.r).override_failure_message(label).is_equal(1.0)
+			assert_float(rim_pixel.a).override_failure_message(label).is_equal(1.0)
+		for corner: Vector2i in corners:
+			(
+				assert_float(image.get_pixel(corner.x, corner.y).a)
+				. override_failure_message(icon)
+				. is_less(0.05)
+			)
+		var is_disc: bool = icon == "glyph_under_attack"
+		var inner_corner: float = image.get_pixel(16, 16).a
+		assert_bool(inner_corner < 0.05).override_failure_message(icon).is_equal(is_disc)
+		assert_bool(inner_corner > 0.5).override_failure_message(icon).is_equal(not is_disc)
 
 
 ## An item icon is named by the art id of what it builds: a building's `buildings/<id>_hull.svg`
@@ -276,6 +354,31 @@ func test_the_style_guide_names_every_icon_and_flag_file_and_the_tints_the_galle
 		assert_array(_all_icons()).override_failure_message(icon).contains([icon])
 	assert_str(section).contains("Import scale 1.0 (new)")
 	assert_str(section).contains("glyph_reason_<reason>")
+	assert_str(section).contains("Map glyphs sit on a seat")
+
+
+## The six placement reasons' glyphs and the other two glyphs of the map.
+func _map_glyphs() -> Array[String]:
+	var icons: Array[String] = []
+	for reason: String in REASONS:
+		icons.append("glyph_reason_" + reason)
+	icons.append_array(MAP_GLYPHS)
+	return icons
+
+
+## The grounds a map glyph is seen on: the base colour of each terrain tile (a 1 texel edge line of
+## a tile is not a ground) and the two areas of the ghost that does not fit, as the gallery draws
+## it: the danger wash over grass, and the hatch band over that wash (STYLE.md, "Ghosts").
+func _map_grounds() -> Dictionary[String, Color]:
+	var grounds: Dictionary[String, Color] = {}
+	for terrain: StringName in [&"grass", &"grass_b", &"sand", &"scrub", &"rock", &"water"]:
+		grounds[String(terrain)] = Gallery.TERRAIN_COLORS[terrain]
+	var wash: Color = Gallery.TERRAIN_COLORS[&"grass_b"].lerp(
+		Gallery.GHOST_DANGER, Gallery.GHOST_WASH_ALPHA
+	)
+	grounds["ghost wash"] = wash
+	grounds["ghost hatch"] = wash.lerp(Gallery.GHOST_DANGER, Gallery.GHOST_HATCH_ALPHA)
+	return grounds
 
 
 func _all_icons() -> Array[String]:
@@ -307,26 +410,59 @@ func _image(path: String) -> Image:
 	return image
 
 
-## The icon at 32 px (scale 0.25 of its 128 px canvas, as the readability check does), over the
-## HUD backdrop, as the luminance of each pixel, 0 to 255.
-func _grey_at_32(icon: String) -> PackedFloat32Array:
+## The icon at 32 px (scale 0.25 of its 128 px canvas, as the readability check does), as RGBA8.
+func _raster_32(icon: String) -> Image:
 	var image: Image = Image.new()
 	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(ICON_ART % icon)
 	assert_int(image.load_svg_from_buffer(bytes, 0.25)).is_equal(OK)
 	image.convert(Image.FORMAT_RGBA8)
+	return image
+
+
+## The icon at 32 px over `ground` (the HUD backdrop unless given), tinted as the HUD tints it if
+## `tinted`, as the luminance of each pixel, 0 to 255.
+func _grey_at_32(
+	icon: String, ground: Color = HUD_BACKDROP, tinted: bool = false
+) -> PackedFloat32Array:
+	var image: Image = _raster_32(icon)
+	var tint: Color = Gallery.GLYPH_TINTS[icon] if tinted else Color.WHITE
 	var grey: PackedFloat32Array = PackedFloat32Array()
 	for y: int in image.get_height():
 		for x: int in image.get_width():
-			var pixel: Color = HUD_BACKDROP.lerp(image.get_pixel(x, y), image.get_pixel(x, y).a)
-			grey.append(255.0 * (0.299 * pixel.r + 0.587 * pixel.g + 0.114 * pixel.b))
+			var pixel: Color = image.get_pixel(x, y)
+			grey.append(_luminance(ground.lerp(pixel * tint, pixel.a)))
 	return grey
 
 
-## The smallest mean absolute difference between the 32 px greyscale rasters of two of `names`.
-func _closest_pair(names: Array[String]) -> float:
+## The share of the glyph's ink at 32 px, tinted as the HUD tints it, whose luminance differs from
+## that of `ground` by more than MAP_CONTRAST_LUMINANCE.
+func _standing_out(icon: String, ground: Color) -> float:
+	var image: Image = _raster_32(icon)
+	var tint: Color = Gallery.GLYPH_TINTS[icon]
+	var ink: int = 0
+	var apart: int = 0
+	for y: int in image.get_height():
+		for x: int in image.get_width():
+			var pixel: Color = image.get_pixel(x, y)
+			if pixel.a > 0.5:
+				ink += 1
+				var seen: float = _luminance(ground.lerp(pixel * tint, pixel.a))
+				apart += int(absf(seen - _luminance(ground)) > MAP_CONTRAST_LUMINANCE)
+	return float(apart) / float(ink)
+
+
+func _luminance(colour: Color) -> float:
+	return 255.0 * (0.299 * colour.r + 0.587 * colour.g + 0.114 * colour.b)
+
+
+## The smallest mean absolute difference between the 32 px greyscale rasters of two of `names`,
+## over the HUD backdrop untinted unless `ground` and `tinted` say how they are seen.
+func _closest_pair(
+	names: Array[String], ground: Color = HUD_BACKDROP, tinted: bool = false
+) -> float:
 	var rasters: Array[PackedFloat32Array] = []
 	for icon: String in names:
-		rasters.append(_grey_at_32(icon))
+		rasters.append(_grey_at_32(icon, ground, tinted))
 	var closest: float = 255.0
 	for i: int in names.size():
 		for j: int in range(i + 1, names.size()):

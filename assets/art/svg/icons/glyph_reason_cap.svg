@@ -1,13 +1,18 @@
 <!-- Placement reason glyph, CAP (the building limit is reached): white and grey only, tinted at run time. -->
-<!-- Shape: a stack of three blocks pressed up under a wide ceiling bar, with a small down-pointing wedge at each end of the bar. -->
+<!-- Shape: a stack of three blocks pressed up under a wide ceiling bar, with a small down-pointing wedge at each end of the bar. It sits on a dark rounded plate with a white rim. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <!-- ceiling bar -->
-  <rect x="8" y="10" width="112" height="18" rx="5" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
-  <!-- wedges pressing down -->
-  <polygon points="12,40 28,40 20,56" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
-  <polygon points="100,40 116,40 108,56" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
-  <!-- three stacked blocks, the lowest in shade -->
-  <rect x="32" y="36" width="64" height="24" rx="4" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
-  <rect x="32" y="64" width="64" height="24" rx="4" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
-  <rect x="32" y="92" width="64" height="24" rx="4" fill="#BFBFBF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- seat: a dark plate with a white rim, so the glyph reads on grass, sand and the red ghost -->
+  <rect x="6" y="6" width="116" height="116" rx="22" fill="#4D4D4D"/>
+  <rect x="11" y="11" width="106" height="106" rx="17" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+  <g transform="translate(64 64) scale(0.8) translate(-64 -64)">
+    <!-- ceiling bar -->
+    <rect x="8" y="10" width="112" height="18" rx="5" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+    <!-- wedges pressing down -->
+    <polygon points="12,40 28,40 20,56" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+    <polygon points="100,40 116,40 108,56" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+    <!-- three stacked blocks, the lowest in shade -->
+    <rect x="32" y="36" width="64" height="24" rx="4" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+    <rect x="32" y="64" width="64" height="24" rx="4" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+    <rect x="32" y="92" width="64" height="24" rx="4" fill="#BFBFBF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  </g>
 </svg>

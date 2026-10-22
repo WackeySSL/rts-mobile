@@ -24,7 +24,8 @@ extends Control
 ## The button at the top right turns the pages: Units (all of the above), Build, Ground, Vehicles
 ## and Icons. Build (`_add_buildings_page`) shows the six buildings at gameplay zoom in all four
 ## slots, grass and sand, team A and team B. Ground (`_add_ground_page`) shows the ore cells by
-## level, a mixed ore field, and the ghost looks of STYLE.md ("Ghosts"). Vehicles
+## level, a mixed ore field, and the ghost looks of STYLE.md ("Ghosts"), the one that does not fit
+## with its reason glyph. Vehicles
 ## (`_add_vehicles_page`) shows the light tank beside the heavy tank, the artillery and the
 ## harvester at gameplay zoom, on grass and sand, in both team colours. Icons (`_add_icons_page`)
 ## shows the sidebar's tab and item icons and the HUD glyphs at their size in dp on a dark HUD
@@ -120,6 +121,9 @@ const GHOST_WASH_ALPHA: float = 0.3
 const GHOST_HATCH_ALPHA: float = 0.8
 const GHOST_DOTS_ALPHA: float = 0.7
 const GHOST_FRAME_PX: float = 3.0
+## The reason glyph the "Blocked" ghost shows, at the size of a glyph on the map (STYLE.md: the
+## "Blocked" of a pending ghost uses the occupied glyph).
+const GHOST_REASON_GLYPH: String = "glyph_reason_occupied"
 ## The Vehicles page (STYLE.md, "Heavy tank, artillery and harvester"): the light tank for scale and
 ## the three new units, by art id, left to right. Row tops are the team A row and the team B row.
 const VEHICLE_IDS: Array[String] = ["light_tank", "heavy_tank", "artillery", "harvester"]
@@ -544,8 +548,8 @@ func _add_ghost_row(row: Control) -> void:
 
 
 ## A ghost: own team's building at a fade and a wash with a solid frame when it fits; the same in
-## danger red with the hatch tile when it does not; a building of the other team under the dots and
-## the explored fog when it was last seen.
+## danger red with the hatch tile and a reason glyph on top when it does not; a building of the
+## other team under the dots and the explored fog when it was last seen.
 func _build_ghost(cell: Control, kind: String) -> void:
 	var rig: CanvasGroup = CanvasGroup.new()
 	rig.name = "Rig"
@@ -584,6 +588,13 @@ func _build_ghost(cell: Control, kind: String) -> void:
 	frame.border_width = GHOST_FRAME_PX
 	frame.size = cell.size
 	cell.add_child(frame)
+	if kind == "Blocked":
+		# The glyph on the hatch it is read against: it is tinted danger red like the hatch, so the
+		# seat in its file (STYLE.md, "Icons and glyphs") is what keeps it apart from the bands.
+		var size_px: float = MAP_GLYPH_DP * PX_PER_DP
+		cell.add_child(
+			_icon_rect(GHOST_REASON_GLYPH, size_px, (cell.size - Vector2.ONE * size_px) / 2.0)
+		)
 
 
 ## The two pattern tiles on their own, repeated over a rect, so the seams can be judged.

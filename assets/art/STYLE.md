@@ -197,7 +197,10 @@ so the hull would show through a team plate, as `MoveMarkerLayer` notes), wash a
 (the marker stroke rule, dp over zoom in world space; the gallery draws 3 base px). A last-seen
 ghost is drawn under the fog like any explored tile, so it is dimmed by the explored fog alpha (140)
 and carries no other dimming. The reason's glyph for a placement that does not fit is
-`icons/glyph_reason_<reason>.svg` (see "Icons and glyphs"); the view of P86 places it.
+`icons/glyph_reason_<reason>.svg` (see "Icons and glyphs"). It is drawn on top of the frame at
+32 dp and tinted danger red like the hatch under it, so its file carries a dark seat of its own:
+a glyph without one has the hatch's fill and the hatch's edge. The gallery centres
+`glyph_reason_occupied` on the ghost that does not fit; the view of P86 places it.
 The gallery's `GHOST_*` constants hold these values and `tests/art` pins this paragraph to them;
 the values are a proposal for touch-ux-dev to tune with Michael.
 
@@ -282,6 +285,19 @@ section 5 and ADR 0019 section 1), a tab icon 32 to 48 dp inside its 48 dp tab, 
 48 dp, a glyph on the map 32 dp, and the under-attack arrow at least 48 dp. The gallery shows the
 tabs at 48, the items at 64, the HUD glyphs at 48 and the map glyphs at 32 dp, and the arrow at 48.
 
+**Map glyphs sit on a seat (new).** The eight glyphs that are drawn over the map, the six
+`glyph_reason_<reason>`, `glyph_offline` and `glyph_under_attack`, carry their own seat in the file:
+#4D4D4D with a 4 px white rim inside a 3 px dark edge, and the drawing scaled to 0.8 into it, so
+that no ink touches the rim. The reasons and the offline glyph sit on a rounded plate (6 to 122 px,
+corner radius 22); the arrow, which the HUD turns, on a disc (radius 60) that looks the same turned.
+The HUD tints the seat with the glyph, so it is a dark red (luminance 36) or amber (53) plate with a
+light rim on any ground: the glyph is one badge whatever lies under it. Why it is in the file: a
+danger-tinted glyph lies on the hatch of the ghost that does not fit, which has the same red, the
+same white band and the same #4D4D4D edge, and on grass, which is as bright as a red-tinted white
+(110 against 114), so its thin edge was all that set it apart. The tabs and the HUD glyphs are seen
+on the dark HUD panel and have no seat. The seat keeps the file at 79.5 % cover (the arrow 69 %),
+under the 82 % bound for an icon.
+
 | File | Silhouette |
 | --- | --- |
 | `tab_structures.svg` | A wide workshop from the front, a sawtooth roof of three teeth, a tall chimney on the right and a dark doorway. |
@@ -316,6 +332,9 @@ tabs at 48, the items at 64, the HUD glyphs at 48 and the map glyphs at 32 dp, a
 | `glyph_defeat.svg` | A heater shield with a pointed foot, split by a dark zigzag crack. |
 | `glyph_draw.svg` | A round disc with two level bars across it, an equals sign. |
 
+The line names the symbol. Each of the eight map glyphs (the six reasons, offline and under attack)
+is drawn on the seat described above, and its file header says so.
+
 Each meaning has its own shape (see "Shape as second cue"): the state of a tile is never the tint
 alone. The glyphs of one group differ by silhouette, not by hue: the three tabs, the six placement
 reasons, the three results.
@@ -323,16 +342,25 @@ reasons, the three results.
 Results (P92, scratch script, imported scale 0.5 and 0.25, alpha above 0.5): every tab and glyph
 file has no non-grey pixel and no ink in the outer 1 px of its 64 px raster, and neither has an
 item icon. At 64 px an item icon covers 32 to 77 % of the canvas and the mean luminance of its
-ink is 72 to 110 against the HUD backdrop's 19 (a tab or glyph: 160 to 200). The icons were rasterised at 32 px
+ink is 72 to 110 against the HUD backdrop's 19 (a tab or HUD glyph: 160 to 200, a seated map glyph
+120 to 150). The icons were rasterised at 32 px
 in greyscale over the HUD backdrop and compared pair by pair (mean absolute luminance difference,
 0 to 255): the eleven item icons differ by 26 or more (the rifle and rocket squads are the
-closest pair), the three tabs by 56, the six HUD glyphs and
-three result emblems by 29 and the eight map glyphs by 43. At 32 px the eleven tile icons read apart by
+closest pair), the three tabs by 56 and the six HUD glyphs and
+three result emblems by 29. At 32 px the eleven tile icons read apart by
 silhouette and interior: drums, silos and a gold funnel, the U, the stripes over a bay, the sandbag
-ring, four soldiers, two tubes, and the four vehicles by pods, turret and gun. A danger-tinted
-glyph (luminance 120) is as bright as grass (110 and 127), so on the map its dark edge is what
-separates it in greyscale, the way the marker outline does; the view may seat a map glyph on a dark
-disc (#1C2127, the marker outline) if the phone check says it needs it.
+ring, four soldiers, two tubes, and the four vehicles by pods, turret and gun.
+
+The eight map glyphs are never white on the HUD, so they are checked as they are seen: tinted, over
+the base colour of each terrain (grass, grass_b, sand, scrub, rock, water) and over the two areas of
+the ghost that does not fit (the wash over grass, and the hatch band over the wash). They differ
+pair by pair by 12.0 or more (outside and too far are the closest pair; every glyph shares the seat,
+about four fifths of the canvas, so the mean is smaller than for the groups above; 25.6 untinted
+over the HUD backdrop, which is how P92 first measured them, 42.6 before the seat). The check that
+matters is the ground: a danger-tinted white (luminance 114) is as bright as grass (110 and 127), so
+before the seat only 24 to 56 % of a glyph's ink stood out from its worst ground by more than 25 in
+luminance at 32 px, the white body of the occupied glyph hardly at all (24 % on grass). With the
+seat it is 56 to 73 % (`tests/art` pins at least 50 %), on every one of those grounds.
 
 ## Rally flags
 Each producing tab has a rally flag (ADR 0019 section 3). Two layers share one 128x128 canvas at
@@ -676,7 +704,10 @@ as it was.
   layout is made for landscape (the Units page is too).
 - **Ground** shows, on each ground, the ore levels (five tiles by two variants, side by side with
   no gap), a mixed ore field of 6 x 3 tiles to judge the joins, the three ghosts of a barracks (fits,
-  does not fit, last seen) and the two pattern tiles repeated three by two times.
+  does not fit, last seen) and the two pattern tiles repeated three by two times. The ghost that
+  does not fit carries `glyph_reason_occupied` at 32 dp in the middle of its footprint (a
+  `TextureRect` named `GlyphReasonOccupied`, tinted danger red, on top of the frame): this is where
+  a reason glyph is seen, on the red wash and the hatch, so judge it there.
 - **Vehicles** shows the light tank for scale beside the heavy tank, the artillery and the
   harvester at scale 1, a row for team A and a row for team B on each ground, each on a faint tile
   square with its name below. Every unit is a rig `Node2D` named by its id in PascalCase with
@@ -802,6 +833,8 @@ Renaming a unit or a unit type is a data change, not a reskin.
     art, like the selection ring;
   - the glyph contract (white, #BFBFBF and #4D4D4D greys, tinted by the HUD from the palette, the
     tint table under "Icons and glyphs") and the neutral grey team mark on a unit's item icon;
+  - the seat of the eight map glyphs (a #4D4D4D plate with a white rim, a disc for the arrow that the
+    HUD turns), judged on the Ground page's ghost that does not fit and on the Icons page;
   - the two rally flags, a ring with a pennant for Infantry and a square frame with a notched banner
     for Vehicles;
   - the naming contract `item_<type_id>`, `tab_<tab>` and `glyph_reason_<reason>` that the sidebar
@@ -810,9 +843,9 @@ Renaming a unit or a unit type is a data change, not a reskin.
   - the Vehicles and Icons gallery pages.
 - For touch-ux-dev (requests from P92): the HUD finds each icon by name as above and tints it with
   `modulate`; `UnitLayer` and the selection panel already skip a missing `turret` layer (the squads
-  have none), which the harvester relies on too. A danger-tinted glyph is as bright as grass, so on the map it
-  is its dark edge that separates it: look at it in the phone check of P86 and P89 and seat it on a
-  dark disc if it needs one.
+  have none), which the harvester relies on too. A map glyph brings its own seat (a dark plate, for
+  the arrow a disc, in the file): draw it as it is, tinted, with no backing of your own, and turn
+  the arrow about the canvas centre.
 - For the lead, before P70 starts (request from P91): the terrain id `ore` that P70 adds to
   `data/terrain/standard.tres` turns `tests/project/test_cross_file_facts.gd` red (every terrain id has
   a colour and a tile in both map views, and `MapView` and the gallery hold the same keys) until
@@ -846,4 +879,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-10-15 | P26t docs (Michael's decision): the Reskin section names the three places a new look is made; no rule changed. |
 | 2026-10-19 | P58 review (art-director): palette row for the HUD panel backdrop; Reskin item 3 says what the UI Theme holds and what the dp step scales. No rule changed. |
 | 2026-10-22 | v1.3 (P91, art-director): the six buildings with their layer contract, the ore cells and their levels, the two ghost patterns and the ghost look, two dirt tones (new), the Build and Ground gallery pages. |
-| 2026-10-22 | v1.4 (P92, art-director): the heavy tank, the artillery and the harvester, the tab, item and glyph icons with the glyph contract (import scale 1.0, new), the two rally flags, the Vehicles and Icons gallery pages. |
+| 2026-10-22 | v1.4 (P92, art-director): the heavy tank, the artillery and the harvester, the tab, item and glyph icons with the glyph contract (import scale 1.0, new) and the seat of the eight map glyphs (new), the two rally flags, the Vehicles and Icons gallery pages, the reason glyph on the Ground page's ghost. |

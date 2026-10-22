@@ -1,11 +1,16 @@
 <!-- Placement reason glyph, OUTSIDE (not on the map): white and grey only, tinted at run time. -->
-<!-- Shape: an open square bracket, the map edge, with a fat arrow running out through its open side. -->
+<!-- Shape: an open square bracket, the map edge, with a fat arrow running out through its open side. It sits on a dark rounded plate with a white rim. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <!-- map edge: edge grey under, white over -->
-  <polyline points="62,22 20,22 20,106 62,106" fill="none" stroke="#4D4D4D" stroke-width="22" stroke-linejoin="round" stroke-linecap="round"/>
-  <polyline points="62,22 20,22 20,106 62,106" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>
-  <!-- arrow leaving it -->
-  <polygon points="122,64 88,34 88,52 40,52 40,76 88,76 88,94" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
-  <polygon points="88,64 122,64 88,94 88,76 40,76 40,64" fill="#BFBFBF"/>
-  <polygon points="122,64 88,34 88,52 40,52 40,76 88,76 88,94" fill="none" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- seat: a dark plate with a white rim, so the glyph reads on grass, sand and the red ghost -->
+  <rect x="6" y="6" width="116" height="116" rx="22" fill="#4D4D4D"/>
+  <rect x="11" y="11" width="106" height="106" rx="17" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+  <g transform="translate(64 64) scale(0.8) translate(-64 -64)">
+    <!-- map edge: edge grey under, white over -->
+    <polyline points="62,22 20,22 20,106 62,106" fill="none" stroke="#4D4D4D" stroke-width="22" stroke-linejoin="round" stroke-linecap="round"/>
+    <polyline points="62,22 20,22 20,106 62,106" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>
+    <!-- arrow leaving it -->
+    <polygon points="122,64 88,34 88,52 40,52 40,76 88,76 88,94" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+    <polygon points="88,64 122,64 88,94 88,76 40,76 40,64" fill="#BFBFBF"/>
+    <polygon points="122,64 88,34 88,52 40,52 40,76 88,76 88,94" fill="none" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  </g>
 </svg>
