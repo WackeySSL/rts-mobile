@@ -35,12 +35,31 @@ const RULES: Dictionary[String, int] = {
 	"attack_rekey_milli": 4000,
 	"max_projectiles": 512,
 	"max_rows": 256,
+	"start_credits": 2000,
+	"ore_start": 20,
+	"ore_cell_max": 20,
+	"ore_regrow_ticks": 150,
+	"credits_per_ore": 25,
+	"harvest_ticks_per_ore": 3,
+	"unload_ticks_per_ore": 1,
+	"harvest_reach_milli": 1200,
+	"dock_reach_milli": 1500,
+	"harvest_retry_ticks": 15,
+	"harvest_resume_ticks": 75,
+	"harvest_pick_milli": 3000,
+	"low_power_percent": 50,
+	"queue_slots": 5,
+	"build_reach_tiles": 4,
+	"unit_cap": 75,
+	"building_cap": 40,
+	"ghost_cap": 40,
 }
 
 
 func test_the_enums_and_the_event_stride_are_the_contract() -> void:
 	var stat: Dictionary = {"FLOW_CELLS": 0, "LINE_CHECKS": 1, "SEP_PAIRS": 2}
 	stat.merge({"TARGET_CANDIDATES": 3, "FOG_CELLS": 4, "PROJ_STEPS": 5, "ROWS_COMPACTED": 6})
+	stat.merge({"ORE_SCANNED": 7, "EXIT_SCANNED": 8, "MEMORY_CHECKS": 9})
 	assert_dict(World.Stat).is_equal(stat)
 	assert_dict(World.Order).is_equal({"IDLE": 0, "ATTACK_MOVE": 1, "MOVE": 2, "ATTACK": 3})
 	assert_dict(World.Armour).is_equal({"INFANTRY": 0, "LIGHT": 1, "HEAVY": 2, "BUILDING": 3})
@@ -48,8 +67,9 @@ func test_the_enums_and_the_event_stride_are_the_contract() -> void:
 	assert_dict(World.Event).is_equal({"SPAWNED": 1, "DIED": 2, "SHOT": 3, "IMPACT": 4})
 	var nav: Dictionary = {"NONE": 0, "DIRECT": 1, "FIELD": 2, "HOLD": 3, "CHASE": 4}
 	assert_dict(World.NavMode).is_equal(nav)
-	# 2 since P65 (ADR 0016, exception 10): fog.visible left the state hash.
-	assert_array([World.EVENT_STRIDE, World.STATE_FORMAT]).is_equal([8, 2])
+	# 2 since P65 (ADR 0016, exception 10): fog.visible left the state hash. 3 since P70 (ADR 0017
+	# section 7, exception 10): Phase 3's state joined it.
+	assert_array([World.EVENT_STRIDE, World.STATE_FORMAT]).is_equal([8, 3])
 
 
 ## A Phase 1-shaped world: the rule ints and the stream exist, player_count follows the owners
@@ -59,10 +79,9 @@ func test_a_hand_built_world_has_the_rule_defaults_and_the_default_stream() -> v
 	var defaults: RulesDef = RulesDef.new()
 	var fields: Array[String] = []
 	for info: Dictionary in defaults.get_property_list():
-		# The 18 ints of Phase 3 are not World's until plan row P70.
-		if World.RULE_SCALARS.has(StringName(info["name"])):
+		if (int(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0:
 			fields.append(String(info["name"]))
-	assert_int(fields.size()).is_equal(15)
+	assert_int(fields.size()).is_equal(33)
 	for field: String in fields:
 		assert_that(world.get(field)).override_failure_message(field).is_equal(defaults.get(field))
 	for field: String in RULES:
@@ -117,6 +136,20 @@ func test_prepare_pads_every_type_table_to_the_type_count_and_keeps_entries() ->
 		&"type_acquire": [5500, 0, 0],
 		&"type_weapon": [4, -1, -1],
 		&"type_names": ["Mark 2", "Scout Test", "Rifle Squad"],
+		&"type_foot_w": [0, 0, 0],
+		&"type_foot_h": [0, 0, 0],
+		&"type_cost": [0, 0, 0],
+		&"type_build_ticks": [0, 0, 0],
+		&"type_tab": [-1, -1, -1],
+		&"type_requires": [-1, -1, -1],
+		&"type_produces": [-1, -1, -1],
+		&"type_power": [0, 0, 0],
+		&"type_harvest": [0, 0, 0],
+		&"type_free_unit": [-1, -1, -1],
+		&"type_dock_x": [0, 0, 0],
+		&"type_dock_y": [0, 0, 0],
+		&"type_exit_x": [0, 0, 0],
+		&"type_exit_y": [0, 0, 0],
 	}
 	assert_array(World.TYPE_ARRAYS).is_equal(expected.keys())
 	for _pass: int in 2:
@@ -148,6 +181,10 @@ func test_add_unit_writes_every_column_at_its_spawn_value_and_one_spawned_record
 		&"best_dist": [0x3FFFFFFF],
 		&"stall": [0],
 		&"fog_cell": [-1],
+		&"harvest_mode": [0],
+		&"cargo": [0],
+		&"harvest_slot": [-1],
+		&"home": [0],
 	}
 	assert_array(World.ROW_ARRAYS).is_equal(expected.keys())
 	assert_int(world.add_unit(2, 0, 3500, 4500)).is_equal(1)
@@ -224,12 +261,13 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	var slots: Array[String] = ["proj_id", "proj_owner", "proj_weapon", "proj_target", "proj_x"]
 	slots.append_array(["proj_y", "proj_aim_x", "proj_aim_y", "proj_ticks", "proj_free"])
 	assert_array(World.PROJECTILE_ARRAYS).is_equal(slots)
-	assert_array(World.MAP_ARRAYS).is_equal(["terrain", "move_cost", "terrain_cost"])
+	var map: Array[String] = ["terrain", "move_cost", "terrain_cost", "terrain_buildable"]
+	assert_array(World.MAP_ARRAYS).is_equal(map + ["ore_cell"])
 	assert_array(World.SCRATCH_ARRAYS).is_equal(["intent_x", "intent_y", "push_x", "push_y"])
 	assert_array(World.RUNTIME_ARRAYS).is_equal(["events", "stats"])
 	var hashed: Array[String] = ["tick", "next_id", "next_projectile_id", "dropped_commands"]
 	hashed.append_array(["projectile_overflow", "spawn_refused", "player_count", "proj_free_top"])
-	hashed.append("map_version")
+	hashed.append_array(["map_version", "match_end_tick", "winner"])
 	assert_array(World.HASHED_SCALARS).is_equal(hashed)
 	var unhashed: Array[String] = ["map_w", "map_h", "map_cols", "map_rows", "rows_version"]
 	unhashed.append_array(["flow_cells_per_tick", "native_phases"])  # The mask is never state (P54).
@@ -238,7 +276,8 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	assert_array(World.UNHASHED_SCALARS).contains_exactly_in_any_order(unhashed)
 	var array_lists: Array = [World.ROW_ARRAYS, World.TYPE_ARRAYS, World.WEAPON_ARRAYS]
 	array_lists.append_array([World.PROJECTILE_ARRAYS, World.MAP_ARRAYS, World.SCRATCH_ARRAYS])
-	array_lists.append(World.RUNTIME_ARRAYS)
+	array_lists.append_array([World.RUNTIME_ARRAYS, World.PLAYER_ARRAYS, World.ORE_ARRAYS])
+	array_lists.append_array([World.GHOST_ARRAYS, World.DERIVED_ARRAYS])
 	var scalar_lists: Array = [World.HASHED_SCALARS, World.UNHASHED_SCALARS]
 	var packed: Array[String] = []
 	var ints: Array[String] = []
@@ -260,8 +299,8 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 			skipped.append(column)
 		else:
 			others.append(column)
-	assert_int(packed.size()).is_equal(56)
-	assert_int(ints.size()).is_equal(32)
+	assert_int(packed.size()).is_equal(98)
+	assert_int(ints.size()).is_equal(52)
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
 	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper
 	# objects and the bool `prepared`. The one non-state member, the kernels, is skipped by name, so
@@ -269,6 +308,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	assert_array(World.NON_STATE_MEMBERS).is_equal([&"kernels"])
 	assert_array(skipped).is_equal(["kernels"])
 	var byte_tables: Array[String] = ["type_names", "terrain", "move_cost", "terrain_cost"]
+	byte_tables.append("terrain_buildable")
 	assert_array(not_int32).contains_exactly_in_any_order(byte_tables)
 	var unlisted: Array[String] = ["type_ids", "weapon_ids", "terrain_ids", "rng", "prepared"]
 	unlisted.append_array(["fog", "flow", "sep_grid", "target_grid"])
@@ -285,7 +325,7 @@ func test_prepare_sizes_the_fixed_capacity_arrays_and_a_second_call_keeps_them()
 	for column: StringName in World.SCRATCH_ARRAYS:
 		assert_int(world.get(column).size()).is_equal(0)
 	world.prepare()
-	assert_int(world.stats.size()).is_equal(7)
+	assert_int(world.stats.size()).is_equal(10)
 	for column: StringName in World.SCRATCH_ARRAYS:
 		assert_int(world.get(column).size()).override_failure_message(column).is_equal(256)
 	for column: StringName in World.PROJECTILE_ARRAYS:
@@ -323,7 +363,7 @@ func test_prepare_sizes_the_fixed_capacity_arrays_and_a_second_call_keeps_them()
 		var column: PackedInt32Array = small.get(column_name)
 		var wanted: int = sentinels[column_name]
 		assert_int(column[2]).override_failure_message(column_name).is_equal(wanted)
-	assert_array([small.stats[5], small.stats.size()]).is_equal([9, 7])
+	assert_array([small.stats[5], small.stats.size()]).is_equal([9, 10])
 	for column_name: StringName in World.SCRATCH_ARRAYS:
 		assert_int(small.get(column_name).size()).override_failure_message(column_name).is_equal(6)
 	for column_name: StringName in World.PROJECTILE_ARRAYS:
@@ -472,7 +512,8 @@ func test_the_perf_arena_map_is_loaded_into_the_world() -> void:
 	var size: Array[int] = [world.map_cols, world.map_rows, world.map_w, world.map_h]
 	assert_array(size).is_equal([64, 64, 64000, 64000])
 	assert_array([world.terrain.size(), world.move_cost.size()]).is_equal([4096, 12288])
-	assert_array(world.terrain_cost).is_equal([10, 10, 10, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0])
+	var costs: Array[int] = [10, 10, 10, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0]
+	assert_array(world.terrain_cost).is_equal(costs + [10, 10, 10])  # The sixth terrain is ore.
 	# x, y (a tile centre), terrain, the classes that can stand there
 	var spots: Array[Array] = [[31500, 500, 3, ""], [32500, 63500, 3, ""], [31500, 27500, 0, "FWT"]]
 	for spot: Array in spots:

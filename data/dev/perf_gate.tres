@@ -28,4 +28,4 @@ refresh_tolerance_pct = 1.0
 ref_iterations = 1000
 ref_burst_ms = 400
 golden_ticks = PackedInt32Array(150, 300, 450, 600, 750, 900)
-golden_hex = PackedStringArray("4cb6fe7fcb617388", "09a20e35c6fee15f", "b50abbc9b6ea9f85", "3bb10b7715d1ed59", "323ac281a44f3128", "a9ef4c82b26ed395")
+golden_hex = PackedStringArray("dc481bfff259384a", "dde9139caad00e63", "9a4d1606e1b20928", "14e1fdb2cc348634", "03241fae067013a8", "f334a5526c115d8c")

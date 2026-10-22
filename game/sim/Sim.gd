@@ -20,7 +20,8 @@ const MILLI_PER_TILE: int = 1000
 ## (REMOVE), the players whose turn it is move their fog (FOG: `FogUpdate.run`, every
 ## `fog_period_ticks`, after `FogUpdate.begin` emptied their dirty lists), and the tick counts.
 ## A probe gets `begin()` first and a `mark` after each phase that exists (ADR 0007 section 4); it
-## never sees the World.
+## never sees the World. ECONOMY, PRODUCTION and MEMORY (ADR 0017 section 5) are marked after FOG
+## and run nothing yet: their rules come with plan rows P73 to P77.
 static func step(world: World, commands: Array[Command], probe: SimProbe = null) -> void:
 	if probe != null:
 		probe.begin()
@@ -73,6 +74,9 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 	FogUpdate.run(world)
 	if probe != null:
 		probe.mark(SimProbe.Phase.FOG)
+		probe.mark(SimProbe.Phase.ECONOMY)
+		probe.mark(SimProbe.Phase.PRODUCTION)
+		probe.mark(SimProbe.Phase.MEMORY)
 	world.tick += 1
 
 

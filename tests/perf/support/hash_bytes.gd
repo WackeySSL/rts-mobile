@@ -1,7 +1,8 @@
 extends RefCounted
 ## The bytes that World.state_hash() feeds its digest at one checkpoint (plan P65q, ADR 0016): the
 ## stream is rebuilt here from the shape lists (World.hash_section_names(), HASHED_SCALARS,
-## PROJECTILE_ARRAYS, MAP_ARRAYS and FogGrid.HASHED) and not by calling the World's feed code, so a
+## PROJECTILE_ARRAYS, MAP_ARRAYS, FogGrid.HASHED, PLAYER_ARRAYS, ORE_ARRAYS and the ghost records
+## of GHOST_ARRAYS) and not by calling the World's feed code, so a
 ## test can feed it to its own SHA-256 and compare the result with state_hash(): the count is
 ## exact exactly when the two values are equal. Each block is a 16-byte header (the section's
 ## index and the byte count, two little-endian int64) and its bytes, in the order of the sections.
@@ -30,6 +31,15 @@ static func stream(world: World) -> PackedByteArray:
 			"fog":
 				for array_name: StringName in FogGrid.HASHED:
 					_append(out, tag, bytes_of(world.fog.get(array_name)))
+			"players":
+				for array_name: StringName in World.PLAYER_ARRAYS:
+					_append(out, tag, bytes_of(world.get(array_name)))
+			"ore":
+				for array_name: StringName in World.ORE_ARRAYS:
+					_append(out, tag, bytes_of(world.get(array_name)))
+			"ghosts":
+				_append(out, tag, bytes_of(world.ghost_count))
+				_append(out, tag, _live_ghosts(world))
 			_:
 				_append(out, tag, bytes_of(world.get(StringName(names[tag]))))
 	return out
@@ -81,6 +91,19 @@ static func _map_digest(world: World) -> int:
 	for tag: int in World.MAP_ARRAYS.size():
 		_append(grids, tag, bytes_of(world.get(World.MAP_ARRAYS[tag])))
 	return digest(grids)
+
+
+## Each live last-seen record (record `i` of player `p` is entry `p * ghost_cap + i`, `i` below
+## ghost_count[p]): its fields in GHOST_ARRAYS order, players ascending.
+static func _live_ghosts(world: World) -> PackedByteArray:
+	var live: PackedInt32Array = PackedInt32Array()
+	for player: int in world.ghost_count.size():
+		for record: int in world.ghost_count[player]:
+			for column_name: StringName in World.GHOST_ARRAYS:
+				if column_name != &"ghost_count":
+					var column: PackedInt32Array = world.get(column_name)
+					live.append(column[player * world.ghost_cap + record])
+	return live.to_byte_array()
 
 
 ## Each live slot (id other than 0): its index, then its fields in PROJECTILE_ARRAYS order.

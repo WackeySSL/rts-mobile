@@ -5,7 +5,8 @@ extends RefCounted
 ## the clock. A probe never sees the World. The ids are fixed and never renumbered; a phase that
 ## does not exist yet is not marked and keeps its id; marks come in ascending id order, each phase
 ## at most once per tick. COMMANDS covers prepare, the clear and the commands; FLOW to FOG are the
-## next ten steps in order; the tick counter is not timed.
+## next ten steps in order; ECONOMY, PRODUCTION and MEMORY (ADR 0017 section 5) follow FOG; the tick
+## counter is not timed.
 
 enum Phase {
 	COMMANDS = 0,
@@ -19,7 +20,10 @@ enum Phase {
 	FIRE = 8,
 	REMOVE = 9,
 	FOG = 10,
-	COUNT = 11
+	ECONOMY = 11,
+	PRODUCTION = 12,
+	MEMORY = 13,
+	COUNT = 14
 }
 
 ## One name per phase, in id order.
@@ -34,7 +38,10 @@ const PHASE_NAMES: Array[String] = [
 	"projectiles",
 	"fire",
 	"remove",
-	"fog"
+	"fog",
+	"economy",
+	"production",
+	"memory"
 ]
 
 
