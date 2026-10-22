@@ -119,6 +119,10 @@ and P51r (#153, the release-template perf APK), a dated status note from "P26af 
 on its line "`install-godot.sh`: unchanged" (the script now picks the editor per architecture and
 fetches the release template on request). No accepted text changed.
 
+Status note (2026-10-22, ADR 0016 accepted): a dated status note sits in §15 on its engine-side
+watch line (Michael's answer 2A keeps 3.325 ms; two corrections; a native state hash only by its
+own ADR). No accepted text changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -1863,6 +1867,26 @@ the four keys (`phases_p95_noncp_ms`, `job_p95_noncp_ms`, `job_minus_step_p95_cp
 does. P49a's `WATCH sim job_minus_step` line already prints the two `job_minus_step` keys under
 these names, so a CI line and a card compare key by key; `WATCH sim commands` is the watch line of
 `Formation.assign` above.
+
+Status note (2026-10-22, ADR 0016 accepted; the text and the note above stay as accepted): ADR
+0016 (`docs/adr/0016-checkpoint-hash-cost.md`) answers the engine-side watch line after the gate
+runs of issue #157 put `job_minus_step_p95_cp_ms` at 3.325-3.587 ms.
+- **The line** (Michael's answer 2A): it stays 25 % of `sim_p95_ms`, 3.325 ms (the "3.3 ms"
+  above, unrounded), on both `job_minus_step_p95_cp_ms` and `job_minus_step_p95_noncp_ms`. It
+  stays a watch line without a verdict, applied by the lead in each card's review.
+- **Correction 1:** "fewer copied arrays" acts mostly on `step_usec`, not on this line.
+  `MatchSnapshot.capture`'s `duplicate()` calls are O(1) copy-on-write, so the buffer copies land
+  in the next tick's `Sim.step`.
+- **Correction 2:** "already run in the engine's C++, so a port cannot speed them up" holds only
+  for the digest and the `duplicate()` calls. `state_hash` builds the blocks the digest reads in
+  GDScript.
+- **The remedy chosen** is "fewer hashed bytes": P65 will take the derived `fog.visible` out of
+  the hash (ADR 0007 §8's note of the same date). If the first gate card after P65 is still above
+  the line, P66 and P66b add the timing split (answer 4), and P67 then chooses between a cheaper
+  digest and a native state hash.
+- **A native state hash**, if ever, comes by its own ADR with a kernel row (locksteps, the
+  sanitizer, the twin rule of §5), not as a port row under this ADR: §1 lists `state_hash` as
+  GDScript-only, and the remedies above stay "never a port row".
 
 ## Options considered
 1. **Stay GDScript (ADR 0012 remedy steps 1 and 2 only).** Rejected. The mock alone misses

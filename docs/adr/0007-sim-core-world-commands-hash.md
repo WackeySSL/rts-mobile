@@ -35,6 +35,10 @@ Status note (2026-10-21, P26ac docs): §4 carries a dated status note on steps 1
 (#129) merged them: the fog update is two calls, `FogUpdate.begin` before `remove_dead()` and
 `FogUpdate.run` after the `REMOVE` mark; no accepted text changed.
 
+Status note (2026-10-22, ADR 0016 accepted): §8 carries a dated status note on ADR 0016's
+decision that `fog.visible` will leave the state hash in P65 (`STATE_FORMAT` 2, a rebuild test);
+no accepted text changed.
+
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state
 hash. Phase 1 shipped the v0 shapes of ADR 0003: a struct-of-arrays `World` that never removes a
@@ -459,6 +463,25 @@ the hash cost on the perf arena at tick 0 (150 rows, 64x64 map, headless, a load
 after a `map_version` bump (the map digest is recomputed); `hash_parts()` 0.27-0.37 ms (failure
 path only); `defs_hash()` 23-27 µs. Most of the cost is the fog (about 45 KB). The once-per-second
 cadence stands.
+
+Status note (2026-10-22, ADR 0016 accepted; the text and the note above stay as accepted): ADR
+0016 (Michael's answer 1) decides that `fog.visible` will leave the state hash in P65, a decision
+that P65 will apply; until it merges, the text above describes `main`.
+- After P65, `FogGrid.HASHED` will be `[&"explored"]` and `visible` will join
+  `FogGrid.UNHASHED`. The last section keeps its name, `"fog"`, and will feed one block instead
+  of two, and `World.STATE_FORMAT` will be 2. The golden hashes and the other pins move once,
+  under the Phase 2 plan's exception 10.
+- Why: the counts are derived state. Each count is the number of a player's live rows whose
+  disc, stamped at `fog_cell`, covers the cell; `owner`, `type_index` and `fog_cell` are hashed
+  `ROW_ARRAYS` entries, and the sight tables are in `defs_hash`. At the perf arena they are
+  58-67 % of the 49,260-56,040 bytes fed per checkpoint (ADR 0016 Context), the bulk of "most of
+  the cost is the fog" above. `explored` is history and stays hashed.
+- The test: P65 adds one that rebuilds the counts from the rows at every checkpoint of the
+  seed-42 arena and in the fog lockstep's crafted cases and compares them with `fog.visible`.
+  `NativeKernels.self_check` will compare `fog.visible` as well as `state_hash()`, and the
+  kernel locksteps already compare it through the full state.
+- The cadence (`Replay.CHECKPOINT_PERIOD` 15) stays: ADR 0016 rejects a longer period, because
+  each checkpoint would still hash the same bytes.
 
 ### 9. Match loop and replays
 - **`game/sim/MatchLoop.gd`** (pure `RefCounted`) is the one tick driver. It owns the sequence

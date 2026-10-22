@@ -1,9 +1,27 @@
 # ADR 0016: What a checkpoint costs on the worker job, and how to bring it under the watch line
 
-Status: proposed, 2026-10-22 (the lead's gate issue #157). Docs PR "ADR 0016". Nothing here applies
-until Michael answers the questions at the end and the lead records an acceptance note. This ADR
-does not hold the Phase 2 gate: the gate's verdicts pass, and the line it is about is a watch
-line, not a verdict (ADR 0013 §15).
+Status: accepted, 2026-10-22 (Michael: 1 ja, 2 A, 3 ja, 4 ja). Proposed 2026-10-22 (the lead's
+gate issue #157). Docs PR "ADR 0016". This ADR does not hold the Phase 2 gate: the gate's
+verdicts pass, and the line it is about is a watch line, not a verdict (ADR 0013 §15).
+
+## Acceptance note (2026-10-22)
+Michael answered the four questions at the end in chat on 2026-10-22, verbatim "Ja dine
+anbefalinger" (yes to the lead's recommendations), which the lead records as "1 ja, 2 A, 3 ja,
+4 ja":
+1. **ja:** `fog.visible` leaves the state hash in P65. The golden hashes change once, re-pinned
+   under the plan's new exception 10 (§3), and `World.STATE_FORMAT` becomes 2.
+2. **A:** the watch line stays 3.325 ms (25 % of `sim_p95_ms` 13.3) on both halves,
+   `job_minus_step_p95_cp_ms` and `job_minus_step_p95_noncp_ms`. It stays a watch line without a
+   verdict, as ADR 0013 §15 has it.
+3. **ja:** P65 waits until Michael has confirmed the Phase 2 gate (issue #157), so the gate is
+   judged against today's golden hashes. P65q changes no hash and may land before.
+4. **ja:** if the first gate card after P65 is still above the line, the lead adds P66 and P66b
+   without asking again. P67 is then decided from P66b's card in a dated status note here.
+
+The decision below is unchanged by the acceptance; only review fixes to its wording were made
+before it. The rows are in `docs/plans/2026-10-11-phase-2.md`, "Amendment (ADR 0016)", and
+exception 10 is in that plan's "File ownership". Nothing here is applied in code yet: P65q and
+P65 apply it.
 
 Code facts are from `main` at 80c4006. Byte counts come from a headless scratch probe on that
 commit (GDScript phases, seed 42, the perf arena, 900 ticks through `MatchLoop`; it counted bytes
@@ -142,8 +160,9 @@ stays. Leaving `visible` out:
 - cuts the bytes per checkpoint to 16,476-23,256 (25 blocks: the fog section feeds one), and
   drops the largest `to_byte_array()` copy;
 - costs one bump of `STATE_FORMAT` to 2 and a single re-pin;
-- changes nothing on x86_64, arm64 or the web: same algorithm, same little-endian bytes, the
-  twin is the only implementation, and ADR 0013 is not touched;
+- changes nothing on x86_64, arm64 or the web: same algorithm, same little-endian bytes,
+  `state_hash` has no native version (the GDScript function builds the blocks on every target,
+  and the engine's `HashingContext` digests them), and ADR 0013 is not touched;
 - has no main-thread cost.
 
 What it gives up: a `visible` bug that never reaches a row stops showing in the checkpoint hash.
@@ -166,8 +185,8 @@ only the digest's share, so it is worth a re-pin only after a measurement says t
 dominates.
 
 **(b') Our own 64-bit hash.** In GDScript, this is a VM loop over 49,260-56,040 bytes (one step
-per byte or per int) every checkpoint. That is slower than the engine digest on the web path and in the twin. It is only
-worth having inside (e).
+per byte or per int) every checkpoint. That is slower than the engine digest on the web path and
+in the GDScript twin that (e) would keep. It is only worth having inside (e).
 
 **(c) Hash off the job.** The published snapshot cannot be hashed as it is: it carries only the
 COPIED columns. `goal_x`, `goal_y`, the `nav_*` columns, `cooldown`, `proj_target`, `proj_free`,
@@ -225,10 +244,11 @@ feeds the same bytes in the same order, with today's `state_hash()` as the twin 
 - It is only worth doing if a measurement shows the GDScript share dominates.
 
 **(f) The line itself.** The 25 % share is the same for a cost paid on every tick and one paid on 1
-tick in 15. The gate's own verdicts already read checkpoint ticks:
-- they are 60 of 900 ticks (6.7 %, ADR 0013 §15's own reason for the split), so `job_p95_ms` and
-  `job_p99_ms` land on them;
-- both pass with room: 5.988 against 13.3, and 7.302 against 26.7;
+tick in 15. The gate's own sim verdict already reads checkpoint ticks:
+- they are 60 of 900 ticks (6.7 %, more than the 5 % a p95 ignores; ADR 0013 §15's own reason
+  for the split), and `job_p95_ms` reads them: it is 0.21-0.58 ms above `job_p95_noncp_ms` on
+  runs 1, 3 and 4;
+- it passes with room: at most 5.988 against 13.3;
 - the cost is on the worker, about once a second, against a 66.7 ms tick (`late_ticks` 0).
 
 So the checkpoint half is an early warning for growth, not a pacing risk today. Raising it to 50 %
@@ -245,26 +265,31 @@ rather than on the next phone card. Keep (b), (e) and a measurement behind the n
 
 ### 3. PRs and order
 P-numbers continue the shared sequence: the portrait plan holds P59-P64, so the next free number
-is P65. The rows go into the Phase 2 plan's PR table, beside P49a and P50a2, whose keys they
-extend.
+is P65. The rows go into the Phase 2 plan's PR table, after its Gate row (P65 waits for the
+gate, answer 3); they extend P49a's and P50a2's keys.
 
 | Row | Owner | Size (production lines) | Depends | What |
 |---|---|---|---|---|
-| P65q | qa-engineer | 0 (about 80 test lines) | - | The `WATCH sim job_minus_step` line, or a sibling `WATCH sim hash_bytes`, prints the bytes `state_hash` feeds per checkpoint: min and max over the run, counted from the shape lists in `tests/perf/support`, no clock. Report-only, like P49a's watch lines. Lands first, so P65's drop shows in CI. |
-| P65 | gameplay-dev | about 40-60 (tests about 150) | P65q; Michael's gate confirmation if question 3 is "ja" | `FogGrid.HASHED` becomes `[&"explored"]` and `visible` joins `UNHASHED`; `World.STATE_FORMAT` 2; the doc comments of `state_hash` and `hash_section_names` (the `"fog"` section keeps its name). `NativeKernels.self_check` compares `fog.visible` as well. New test: at every checkpoint of the seed-42 arena, and in the fog lockstep's crafted cases, counts rebuilt from `owner`, `type_index` and `fog_cell` equal `fog.visible`. Re-pins under exception 10. Touches `native/`, so it gets the native checklist and its mutants. |
+| P65q | qa-engineer | 0 (about 80 test lines) | - | The `WATCH sim job_minus_step` line, or a sibling `WATCH sim hash_bytes`, prints the bytes `state_hash` feeds per checkpoint: min and max over the run. Test code counts the exact byte stream `state_hash` feeds (every section's blocks plus each block's 16-byte tag and size header) and proves the count by rebuilding that stream and checking that its SHA-256 gives `world.state_hash()` (the first 8 digest bytes, `decode_s64(0)`) at the checkpoints. No clock, no production code. Report-only, like P49a's watch lines. Lands first, so P65's drop shows in CI. |
+| P65 | gameplay-dev | about 40-60 (tests about 150) | P65q; Michael's confirmation of the Phase 2 gate (issue #157; answer 3) | `FogGrid.HASHED` becomes `[&"explored"]` and `visible` joins `UNHASHED`; `World.STATE_FORMAT` 2; the doc comments of `state_hash` and `hash_section_names` (the `"fog"` section keeps its name). `NativeKernels.self_check` (`game/core/NativeKernels.gd`, the lead's file, under exception 10) compares `fog.visible` as well. New test: at every checkpoint of the seed-42 arena, and in the fog lockstep's crafted cases, counts rebuilt from `owner`, `type_index` and `fog_cell` equal `fog.visible`. Re-pins under exception 10, which also lets it change the fog line of `rts-sim-conventions`' "Determinism checks" to `fog.explored`. Touches `native/`, so it gets the native checklist and its mutants. |
 | P66 (conditional) | lead | about 50 | P65's card | Only if the first card after P65 is above the line. `TickJob` reads the clock after `loop.step` and after `capture`. The snapshot gains `loop_usec` and `capture_usec` beside `step_usec`. |
 | P66b (conditional) | touch-ux-dev | about 110 | P66 | The card and `summary()` print `loop_minus_step_p95_cp_ms`, `loop_minus_step_p95_noncp_ms` and `capture_p95_ms`, with no verdict. Their cp-minus-noncp difference estimates the hash's cost (a difference of two p95s, as in Context). P66 cannot split that estimate further: `state_hash` lives in `game/sim`, which reads no clock. So `PerfHud.run_preflight` (main thread, no job, before the run, beside the `ref_peak` burst) also times `HashingContext` with `HASH_SHA256`, `HASH_MD5` and `HASH_SHA1` over one `PackedByteArray` as large as P65q's maximum byte count, and the card prints `digest_sha256_us`, `digest_md5_us` and `digest_sha1_us`, with no verdict. |
 | P67 (conditional) | decided in a status note here | - | P66b's card | Digest share: the preflight's SHA-256 time; GDScript share: P66b's hash estimate minus it (the block building and the per-block `update()` calls). Both are estimates: the probe runs on the main thread over one buffer, not on the worker over 25 blocks. If the digest dominates: (b), MD5 or SHA-1 by the probe's times, as a one-constant change plus a re-pin under exception 10. If the GDScript share dominates: (e), through its own ADR. |
 
 **Exception 10** (new, a named one-line exception like 1-9 of the plan). A PR that changes the
-state hash's layout re-pins, with a note saying why:
+state hash's layout or algorithm re-pins, with a note saying why:
 - `golden_hex` in `data/dev/perf_gate.tres` (`golden_ticks` stays);
 - `TICK_0_SEED_1` in `tests/sim/test_world_hash.gd`, with its history comment;
 - the `STATE_FORMAT` pin in `tests/sim/test_world_v1.gd`;
 - `KNOWN_FORMATS` in `native/sim_kernels/sanitizer/dump.h`, which
   `tests/project/test_ci_workflow.gd` requires to know `World.STATE_FORMAT`.
 
-The owner of each file reviews its line. Exception 3's run-outcome pins (`ALIVE_END_PIN`,
+The owner of each file reviews its line. P65, the first such PR, also changes two of the lead's
+files, and the lead reviews them: `game/core/NativeKernels.gd`, whose `self_check` compares
+`fog.visible` as well as `state_hash()` (with its case in the lead's
+`tests/core/test_native_kernels.gd`), and the fog line of
+`.claude/skills/rts-sim-conventions/SKILL.md`'s "Determinism checks", which then names
+`fog.explored` only. Exception 3's run-outcome pins (`ALIVE_END_PIN`,
 `PROJ_PEAK_PIN`) do not move, because the run does not change. No replay is stored before Phase 5
 (ADR 0007 §9 "Storage"), so none breaks.
 
@@ -290,7 +315,8 @@ checkpoint half is still above the line, P66 and P66b follow (question 4).
   is history (the last-seen memory, ore left, credits) is hashed.
 - CI shows hashed-byte growth on every PR (P65q), before a phone card does.
 - §15's "fewer copied arrays" remedy is recorded as acting mostly on `step_usec`, and its "a port
-  cannot speed them up" as true only for the digest.
+  cannot speed them up" as true only for the digest and the `duplicate()` calls: the blocks the
+  digest reads are built in GDScript (Context).
 
 ## Alternatives considered
 - **(c) Hash after publish.** Rejected for now: the largest change, a second checkpoint path
@@ -302,14 +328,16 @@ checkpoint half is still above the line, P66 and P66b follow (question 4).
   changes the run (the flow skip) and coarsens the replay check.
 - **(b) and (e) now.** Deferred: choosing between them needs P66b's digest probe beside the P66
   split, and (b) would cost a second re-pin.
-- **(b') A GDScript 64-bit hash.** Rejected: slower than the engine digest in the twin and on the
-  web.
+- **(b') A GDScript 64-bit hash.** Rejected: in GDScript, which (e)'s twin and the web path would
+  run, it is slower than the engine digest.
 - **Bit-packing `explored` in the hash.** Rejected for now: it saves 7,168 bytes of digest input
   but needs a GDScript loop over 8,192 cells per checkpoint, and nothing has measured which of
   the two costs more.
 - **Do nothing.** Possible under answer 2C; then P65q still lands, as Phase 3's early warning.
 
 ## On acceptance
+Done 2026-10-22 with the acceptance; the notes record decisions that P65 will apply, not done
+facts. The skill's fog line is P65's (exception 10).
 - `docs/plans/2026-10-11-phase-2.md`: an "Amendment (ADR 0016)" section with rows P65q, P65,
   P66, P66b and P67 as in §3, and exception 10 after exception 9.
 - ADR 0007 §8: a dated status note (`FogGrid.HASHED` is `[explored]`, `STATE_FORMAT` 2, why
@@ -317,8 +345,8 @@ checkpoint half is still above the line, P66 and P66b follow (question 4).
 - ADR 0010 §1 and Consequences: a dated status note on the hashed fog arrays.
 - ADR 0013 §15: a dated status note with Michael's answer to question 2, the two corrections in
   "Consequences", and that a native hash, if ever, comes by its own ADR.
-- `.claude/skills/rts-sim-conventions/SKILL.md`, "Determinism checks": the fog line says
-  `explored` only, plus the rule "derived state stays out of the hash, with a rebuild test".
+- `.claude/skills/rts-sim-conventions/SKILL.md`, "Determinism checks": the rule "derived state
+  stays out of the hash, with a rebuild test". The fog line says `explored` only from P65 on.
 - No `docs/ROADMAP.md` box and no `CLAUDE.md` line changes.
 
 ## Questions for Michael
