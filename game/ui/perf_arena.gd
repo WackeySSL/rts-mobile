@@ -12,6 +12,10 @@ extends Node2D
 ## self-check and the burst, with no World and no job, so its long frame lies in no timed window),
 ## then sets the scenario and starts the runner, then starts the card's first run. Every player-1
 ## unit is selected for the view (rings are part of what is measured), again after each new match.
+## Every run starts at the scenario's framing (P50c): the first, and each one "Run again" or a
+## layer-mode step starts, because the heavy window counts the rigs inside the camera. A finger
+## still pans and zooms (to inspect on the preview), but a move while a run records makes it
+## INVALID (`PerfHud.REASON_CAMERA_MOVED`): keep the phone on the table.
 ## The look is the theme's (`game/ui/theme.tres`): the scene sets it on the margin the controls sit
 ## in, and this script sets no colour, font or style.
 
@@ -84,17 +88,15 @@ func _ready() -> void:
 	_apply_dp()
 	hud.rigs_source = drawn_rigs
 	hud.fog_source = fog_update_usec
+	hud.camera_source = camera.visible_world_rect
+	hud.before_restart = frame_camera
 	set_layer_mode(MODE_ALL)
 	# The runner has no scenario in the scene, so its own _ready started nothing: the preflight
 	# sees no World and no job.
 	hud.preflight(runner)
 	runner.scenario = scenario
 	runner.start()
-	camera.set_map_rect(Rect2(map_view.map_rect_px()))
-	camera.zoom = Vector2.ONE * start_zoom
-	camera.centre_on(
-		(Vector2(scenario.camera_start_tile) + Vector2(0.5, 0.5)) * ViewScale.PX_PER_TILE
-	)
+	frame_camera()
 	_select_own_units()
 	hud.restart()
 
@@ -118,6 +120,16 @@ func set_layer_mode(mode: String) -> void:
 	projectile_layer.visible = shots
 	effects_layer.visible = shots
 	layers_button.text = LAYERS_TEXT % mode
+
+
+## The scenario's framing: the start zoom, centred on its camera tile, inside the map. A run begins
+## here (`_ready` and `PerfHud.before_restart`), wherever a finger left the camera.
+func frame_camera() -> void:
+	camera.set_map_rect(Rect2(map_view.map_rect_px()))
+	camera.zoom = Vector2.ONE * start_zoom
+	camera.centre_on(
+		(Vector2(scenario.camera_start_tile) + Vector2(0.5, 0.5)) * ViewScale.PX_PER_TILE
+	)
 
 
 ## The rows shown and inside the camera's visible world rect now (`PerfHud.rigs_source`).
