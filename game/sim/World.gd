@@ -1,7 +1,3 @@
-# This file is past gdlint's 1000 lines: ADR 0007 section 2 and ADR 0017 section 3 keep every
-# column, list and rule int of the state in one class. Splitting its code (the hash, the scenario
-# loader) is a refactor of its own and changes no rule (plan row P70, requests).
-# gdlint: disable=max-file-lines
 class_name World
 extends RefCounted
 ## Simulation state v2 (ADR 0007 section 2, ADR 0017 section 3): struct-of-arrays, integers only.
@@ -9,7 +5,8 @@ extends RefCounted
 ## ascending by id. Ids come from a counter that starts at 1 and are never reused. Removal keeps the
 ## rows in id order, so an id is found by binary search. The view and input read a World and never
 ## write to it. Every array and scalar is declared here and listed in one shape list (ADR 0007
-## section 2); the state hash (ADR 0007 section 8) walks those lists.
+## section 2); the state hash (ADR 0007 section 8) walks those lists. The hash code is WorldHash and
+## the scenario loader WorldLoad (P70c); the methods of this class that name them are wrappers.
 
 enum Order { IDLE = 0, ATTACK_MOVE = 1, MOVE = 2, ATTACK = 3 }
 enum Armour { INFANTRY = 0, LIGHT = 1, HEAVY = 2, BUILDING = 3 }
@@ -74,7 +71,7 @@ const GRASS_ID: StringName = &"grass"
 ## Whether open grass is buildable (1) or not (0), the one terrain of a map without a MapDef. It
 ## equals the `buildable` flag of the first terrain of data/terrain/standard.tres (a test pins it).
 const GRASS_BUILDABLE: int = 1
-## The id of the ore terrain (ADR 0018 section 2): `_load_map` lists its cells in `ore_cell`.
+## The id of the ore terrain (ADR 0018 section 2): WorldLoad lists its cells in `ore_cell`.
 const ORE_ID: StringName = &"ore"
 ## The largest terrain index. `terrain` keeps one byte per cell and the view picks its tile by it,
 ## so a larger index would be stored as another terrain's and drawn as that one (P48).
@@ -581,7 +578,7 @@ var events: PackedInt32Array = PackedInt32Array()
 var stats: PackedInt32Array = PackedInt32Array()
 
 ## The cache of the map digest (the "map" section of the hash), valid while `_map_digest_version`
-## equals `map_version`. Derived, so unhashed.
+## equals `map_version`. Derived, so unhashed; WorldHash.map_digest() fills it.
 var _map_digest: int = 0
 var _map_digest_version: int = -1
 
@@ -631,58 +628,11 @@ func _copy_rules(rules: RulesDef) -> void:
 
 ## Reads the scenario and its definitions once and returns a prepared world; a null scenario gives
 ## an empty one. The rules come from `scenario.rules`, else they stay the RulesDef defaults. A null
-## `rng` keeps the default stream. The map grid comes from `scenario.map`, which also sets the map
-## size; without a map, or with one that fails validate(), the world is open grass of
-## `map_size_tiles`. Types come from the spawns (one without a unit is skipped), then the roster.
-## `player_count` is the scenario's value, raised to the highest spawn owner. A spawn with a jitter
-## draws two values per unit (see _jittered). The SPAWNED events of the setup are dropped. Spawns
-## run before prepare(), so no row is refused here: data keeps their total within `max_rows`.
+## `rng` keeps the default stream. WorldLoad.from_scenario has the rest of the rule: the map grid,
+## the types, the spawns and their jitter, and the dropped setup events.
 @warning_ignore("shadowed_variable")
 static func from_scenario(scenario: ScenarioDef, rng: DetRandom = null) -> World:
-	var world: World = World.new()
-	if rng != null:
-		world.rng = rng
-	if scenario == null:
-		world.prepare()
-		return world
-	if scenario.rules != null:
-		world._copy_rules(scenario.rules)
-	world.player_count = maxi(scenario.player_count, 0)
-	var map: MapDef = scenario.map
-	if map != null and map.validate().is_empty():
-		world._load_map(map)
-	else:
-		world.map_w = scenario.map_size_tiles.x * MILLI_PER_TILE
-		world.map_h = scenario.map_size_tiles.y * MILLI_PER_TILE
-		world._derive_open_grass()
-	for spawn: SpawnDef in scenario.spawns:
-		if spawn == null or spawn.unit == null:
-			continue
-		var type: int = world._type_for(spawn.unit)
-		var move_class: int = world.type_move_class[type]
-		var columns: int = maxi(spawn.columns, 1)
-		var start_x: int = spawn.origin_tile.x * MILLI_PER_TILE + TILE_CENTRE
-		var start_y: int = spawn.origin_tile.y * MILLI_PER_TILE + TILE_CENTRE
-		var column: int = 0
-		var row: int = 0
-		for _slot: int in spawn.count:
-			var x: int = start_x + column * spawn.spacing
-			var y: int = start_y + row * spawn.spacing
-			if spawn.jitter > 0:
-				var at: Vector2i = world._jittered(x, y, spawn.jitter, move_class)
-				x = at.x
-				y = at.y
-			world.add_unit(spawn.owner, type, x, y)
-			column += 1
-			if column == columns:
-				column = 0
-				row += 1
-	for unit: UnitDef in scenario.roster:
-		if unit != null:
-			world._type_for(unit)
-	world.prepare()
-	world.events.clear()
-	return world
+	return WorldLoad.from_scenario(scenario, rng)
 
 
 func unit_count() -> int:
@@ -746,7 +696,7 @@ func prepare() -> void:
 	if proj_id.size() != max_projectiles:
 		_reset_projectile_slots()
 	if map_cols == 0:
-		_derive_open_grass()
+		WorldLoad.derive_open_grass(self)
 	_size_match_state()
 	fog.configure(map_cols, map_rows, player_count)
 	_stamp_fog()
@@ -754,7 +704,7 @@ func prepare() -> void:
 	sep_grid.configure(map_w, map_h, SEP_CELL_MILLI, max_rows)
 	target_grid.configure(map_w, map_h, TARGET_CELL_MILLI, max_rows)
 	_map_digest_version = -1  # The grid may be new without a map_version bump.
-	_map_digest_value()
+	WorldHash.map_digest(self)
 	prepared = true
 
 
@@ -827,7 +777,7 @@ func is_passable(cell: int, move_class: int) -> bool:
 ## `terrain_cost` row is missing) changes nothing. It leaves `ore_cell` as the load made it. Any
 ## other writer of `terrain`, `move_cost`, `terrain_cost`, `terrain_buildable` or `ore_cell` must
 ## bump map_version itself, because the map digest of the hash follows map_version alone
-## (_map_digest_value).
+## (WorldHash.map_digest).
 func set_terrain(cell: int, terrain_index: int) -> void:
 	var classes: int = MoveClass.size()
 	var cells: int = map_cols * map_rows
@@ -969,22 +919,6 @@ func _stamp_fog() -> void:
 			stamped[row] = cell
 
 
-## The start point of a unit whose grid point is (x, y) and whose spawn has a `jitter` above 0: the
-## point moved by -jitter..jitter on each axis (always two draws, x then y), clamped into the map,
-## and kept only when its tile is passable for `move_class`. Otherwise the unit starts on the grid
-## point. Data keeps every grid point inside the map and passable (test_defs_data), so the unit is
-## never more than `jitter` away on an axis; a grid point that is not, is not repaired here.
-func _jittered(x: int, y: int, jitter: int, move_class: int) -> Vector2i:
-	var moved_x: int = x + rng.range_int(-jitter, jitter)
-	var moved_y: int = y + rng.range_int(-jitter, jitter)
-	if map_cols > 0:
-		moved_x = clampi(moved_x, 0, map_w - 1)
-		moved_y = clampi(moved_y, 0, map_h - 1)
-		if not is_passable(cell_of(moved_x, moved_y), move_class):
-			return Vector2i(x, y)
-	return Vector2i(moved_x, moved_y)
-
-
 ## Sizes every projectile slot array to max_projectiles, all slots free. Only the first prepare()
 ## calls it (the sizes match afterwards). Changing max_projectiles after prepare() is not supported.
 func _reset_projectile_slots() -> void:
@@ -997,74 +931,6 @@ func _reset_projectile_slots() -> void:
 	for i: int in slots:
 		stack[i] = slots - 1 - i
 	proj_free_top = slots
-
-
-## Open grass over map_w x map_h rounded up to whole tiles (ADR 0007 section 2): terrain 0 on
-## every cell, normal ground for every class. A size of 0 or less on either axis leaves no map:
-## both counts are 0, never a grid with columns and no rows.
-@warning_ignore("integer_division")
-func _derive_open_grass() -> void:
-	map_cols = (map_w + MILLI_PER_TILE - 1) / MILLI_PER_TILE
-	map_rows = (map_h + MILLI_PER_TILE - 1) / MILLI_PER_TILE
-	if map_cols <= 0 or map_rows <= 0:
-		map_cols = 0
-		map_rows = 0
-	var cells: int = map_cols * map_rows
-	var classes: int = MoveClass.size()
-	terrain.resize(cells)
-	move_cost.resize(classes * cells)
-	move_cost.fill(GRASS_COST)
-	terrain_cost.resize(classes)
-	terrain_cost.fill(GRASS_COST)
-	terrain_ids.resize(1)  # In place, so a later prepare() allocates nothing.
-	terrain_ids[0] = GRASS_ID
-	terrain_buildable.resize(1)
-	terrain_buildable[0] = GRASS_BUILDABLE
-	ore_cell.clear()
-
-
-## Copies a map that validate() accepted: its size, the terrain index of each tile and the cost
-## per class and the buildable flag of each terrain and tile, and lists the cells of the first
-## terrain with the id ORE_ID, ascending. The terrain index is the position in the terrain set.
-func _load_map(map: MapDef) -> void:
-	var defs: Array[TerrainDef] = map.terrain.terrains
-	var rows: PackedStringArray = map.rows
-	var classes: int = MoveClass.size()
-	var index_of_symbol: Dictionary[int, int] = {}
-	terrain_cost.resize(defs.size() * classes)
-	terrain_buildable.resize(defs.size())
-	var ore_index: int = -1
-	for index: int in defs.size():
-		var def: TerrainDef = defs[index]
-		terrain_ids.append(def.id)
-		terrain_buildable[index] = 1 if def.buildable else 0
-		if def.id == ORE_ID and ore_index < 0:
-			ore_index = index
-		if len(def.symbol) == 1:
-			index_of_symbol[def.symbol.unicode_at(0)] = index
-		for move_class: int in classes:
-			terrain_cost[index * classes + move_class] = def.cost[move_class]
-	var size: Vector2i = map.size_tiles()
-	map_cols = size.x
-	map_rows = size.y
-	map_w = size.x * MILLI_PER_TILE
-	map_h = size.y * MILLI_PER_TILE
-	var cells: int = size.x * size.y
-	terrain.resize(cells)
-	move_cost.resize(classes * cells)
-	var kind_at: PackedByteArray = terrain
-	var costs: PackedByteArray = terrain_cost
-	var cost_at: PackedByteArray = move_cost
-	for ty: int in size.y:
-		var line: String = rows[ty]
-		for tx: int in size.x:
-			var cell: int = ty * size.x + tx
-			var kind: int = index_of_symbol[line.unicode_at(tx)]
-			kind_at[cell] = kind
-			if kind == ore_index:
-				ore_cell.append(cell)
-			for move_class: int in classes:
-				cost_at[move_class * cells + cell] = costs[kind * classes + move_class]
 
 
 ## Moves the entries of `col` whose `alive` is above 0 down over the dead ones, in order, and cuts
@@ -1085,241 +951,30 @@ static func _pad(table: PackedInt32Array, size: int, value: int) -> void:
 		table.append(value)
 
 
-## The type index for `unit`'s type_id. A type seen for the first time is copied in, so each
-## definition is read once however many spawns use it. A BuildingDef also fills the footprint,
-## power, produced tab, free unit, dock and exit tables (a UnitDef pads them); the type it
-## `requires` and the `free_unit` of a building are copied in too, after it, when no earlier type
-## was theirs.
-func _type_for(unit: UnitDef) -> int:
-	var found: int = type_ids.find(unit.type_id)
-	if found >= 0:
-		return found
-	type_ids.append(unit.type_id)
-	type_speed.append(unit.speed)
-	type_radius.append(unit.radius)
-	type_selection_radius.append(unit.selection_radius)
-	type_spacing.append(unit.formation_spacing)
-	type_max_hp.append(maxi(unit.max_hp, 1))
-	type_armour.append(unit.armour)
-	type_move_class.append(unit.move_class)
-	type_sight.append(unit.sight_range)
-	type_acquire.append(unit.acquire_range)
-	type_weapon.append(_weapon_for(unit.weapon))
-	var label: String = unit.display_name
-	type_names.append(label if not label.is_empty() else String(unit.type_id).capitalize())
-	type_cost.append(unit.cost)
-	type_build_ticks.append(unit.build_ticks)
-	type_tab.append(unit.tab)
-	type_requires.append(TYPE_PAD_NONE)
-	type_harvest.append(unit.harvest_capacity)
-	var building: BuildingDef = unit as BuildingDef
-	type_foot_w.append(building.footprint.x if building != null else TYPE_PAD_V0)
-	type_foot_h.append(building.footprint.y if building != null else TYPE_PAD_V0)
-	type_produces.append(building.produces if building != null else TYPE_PAD_NONE)
-	type_power.append(building.power if building != null else TYPE_PAD_V0)
-	type_free_unit.append(TYPE_PAD_NONE)
-	type_dock_x.append(building.dock.x if building != null else TYPE_PAD_V0)
-	type_dock_y.append(building.dock.y if building != null else TYPE_PAD_V0)
-	type_exit_x.append(building.exit.x if building != null else TYPE_PAD_V0)
-	type_exit_y.append(building.exit.y if building != null else TYPE_PAD_V0)
-	# The other types last, so that this type is complete before they are read.
-	var index: int = type_ids.size() - 1
-	if unit.requires != null:
-		type_requires[index] = _type_for(unit.requires)
-	if building != null and building.free_unit != null:
-		type_free_unit[index] = _type_for(building.free_unit)
-	return index
-
-
-## The weapon index for `weapon`, -1 for none. A weapon is known by its id like a type by its
-## type_id: the first definition of an id is copied in and wins. A definition has four percents
-## (a data test pins it for the shipped ones), so each weapon takes four table entries.
-func _weapon_for(weapon: WeaponDef) -> int:
-	if weapon == null:
-		return -1
-	var found: int = weapon_ids.find(weapon.id)
-	if found >= 0:
-		return found
-	weapon_ids.append(weapon.id)
-	weapon_range.append(weapon.range)
-	weapon_min_range.append(weapon.min_range)
-	weapon_damage.append(weapon.damage)
-	weapon_cooldown.append(weapon.cooldown_ticks)
-	weapon_projectile_speed.append(weapon.projectile_speed)
-	for armour: int in Armour.size():
-		weapon_vs_armour.append(weapon.vs_armour[armour])
-	return weapon_ids.size() - 1
-
-
-## The state hash (ADR 0007 section 8): SHA-256 over the sections of hash_section_names(), in that
-## order, each block fed as its tag (the section index), its byte count and its bytes (little
-## endian); the first 8 digest bytes as a signed int64. It reads only the hashed lists: the header
-## ints and the stream, the map digest, the ROW_ARRAYS columns, the live projectile slots with the
-## used free stack, FogGrid.HASHED (the explored bytes: the visible counts are derived from the
-## hashed rows and not fed, ADR 0016), the PLAYER_ARRAYS and ORE_ARRAYS arrays and the live ghost
-## records. The DERIVED_ARRAYS and the type tables stay out. A hand-built world hashes before
-## prepare() too (empty helpers and map), to another value than after it.
+## The state hash (ADR 0007 section 8): SHA-256 over the sections of hash_section_names(). The walk
+## is WorldHash.state_hash().
 func state_hash() -> int:
-	var ctx: HashingContext = _start_hash()
-	for section: int in ROW_ARRAYS.size() + HASH_OTHER_SECTIONS:
-		_feed_section(ctx, section)
-	return ctx.finish().decode_s64(0)
+	return WorldHash.state_hash(self)
 
 
-## One digest prefix per section, in hash_section_names() order, of the bytes state_hash() feeds.
-## For the failure message of a test that compares two hashes; it is not called in the tick.
+## One digest prefix per section, in hash_section_names() order, for the failure message of a test
+## that compares two hashes; it is not called in the tick (WorldHash.hash_parts).
 func hash_parts() -> PackedInt64Array:
-	var parts: PackedInt64Array = PackedInt64Array()
-	for section: int in ROW_ARRAYS.size() + HASH_OTHER_SECTIONS:
-		var ctx: HashingContext = _start_hash()
-		_feed_section(ctx, section)
-		parts.append(ctx.finish().decode_s64(0))
-	return parts
+	return WorldHash.hash_parts(self)
 
 
-## "header", "map", one name per ROW_ARRAYS entry, "projectiles", "fog", "players", "ore", "ghosts".
-## The "fog" section feeds FogGrid.HASHED, which is `explored` alone since STATE_FORMAT 2; the name
-## stays. "players" feeds one block per PLAYER_ARRAYS array, "ore" one per ORE_ARRAYS array and
-## "ghosts" two (_feed_ghosts); they come after "fog" since STATE_FORMAT 3.
+## "header", "map", one name per ROW_ARRAYS entry, "projectiles", "fog", "players", "ore", "ghosts"
+## (WorldHash.hash_section_names has what each section feeds).
 static func hash_section_names() -> PackedStringArray:
-	var names: PackedStringArray = PackedStringArray(["header", "map"])
-	names.append_array(PackedStringArray(ROW_ARRAYS))
-	names.append_array(PackedStringArray(["projectiles", "fog", "players", "ore", "ghosts"]))
-	return names
+	return WorldHash.hash_section_names()
 
 
 ## `h` as 16 lower-case hex digits, its 8 bytes least significant first (ADR 0007 section 8).
 static func hash_hex(h: int) -> String:
-	var bytes: PackedByteArray = PackedByteArray()
-	bytes.resize(8)
-	bytes.encode_s64(0, h)
-	return bytes.hex_encode()
+	return WorldHash.hash_hex(h)
 
 
 ## The hash of the type and weapon tables, their ids and the rule ints: what a replay needs to see
 ## that it runs on other data. Call it on a prepared world, because prepare() pads the type tables.
 func defs_hash() -> int:
-	var ctx: HashingContext = _start_hash()
-	var tag: int = 0
-	for table_name: StringName in TYPE_ARRAYS + WEAPON_ARRAYS:
-		_feed(ctx, tag, _bytes_of(get(table_name)))
-		tag += 1
-	var rules: PackedInt64Array = PackedInt64Array()
-	for rule_name: StringName in RULE_SCALARS:
-		rules.append(get(rule_name))
-	_feed(ctx, tag, rules.to_byte_array())
-	_feed(ctx, tag + 1, PackedStringArray(type_ids).to_byte_array())
-	_feed(ctx, tag + 2, PackedStringArray(weapon_ids).to_byte_array())
-	return ctx.finish().decode_s64(0)
-
-
-## The digest of MAP_ARRAYS in list order, recomputed only when map_version has changed.
-func _map_digest_value() -> int:
-	if _map_digest_version != map_version:
-		var ctx: HashingContext = _start_hash()
-		for index: int in MAP_ARRAYS.size():
-			_feed(ctx, index, _bytes_of(get(MAP_ARRAYS[index])))
-		_map_digest = ctx.finish().decode_s64(0)
-		_map_digest_version = map_version
-	return _map_digest
-
-
-## Feeds the blocks of section `section`, an index into hash_section_names().
-func _feed_section(ctx: HashingContext, section: int) -> void:
-	var rows_end: int = 2 + ROW_ARRAYS.size()
-	if section == 0:
-		var header: PackedInt64Array = PackedInt64Array([STATE_FORMAT])
-		for scalar_name: StringName in HASHED_SCALARS:
-			header.append(get(scalar_name))
-		header.append_array(rng.state())
-		_feed(ctx, section, header.to_byte_array())
-	elif section == 1:
-		_feed(ctx, section, PackedInt64Array([_map_digest_value()]).to_byte_array())
-	elif section < rows_end:
-		_feed(ctx, section, _bytes_of(get(ROW_ARRAYS[section - 2])))
-	elif section == rows_end:
-		_feed_projectiles(ctx, section)
-	elif section == rows_end + 1:
-		for array_name: StringName in FogGrid.HASHED:
-			_feed(ctx, section, _bytes_of(fog.get(array_name)))
-	elif section == rows_end + 2:
-		for array_name: StringName in PLAYER_ARRAYS:
-			_feed(ctx, section, _bytes_of(get(array_name)))
-	elif section == rows_end + 3:
-		for array_name: StringName in ORE_ARRAYS:
-			_feed(ctx, section, _bytes_of(get(array_name)))
-	else:
-		_feed_ghosts(ctx, section)
-
-
-## The live slots (index, then the fields in PROJECTILE_ARRAYS order), then the used free stack.
-func _feed_projectiles(ctx: HashingContext, section: int) -> void:
-	var columns: Array[PackedInt32Array] = []
-	for column_name: StringName in PROJECTILE_ARRAYS:
-		if column_name != &"proj_free":
-			columns.append(get(column_name))
-	var ids: PackedInt32Array = proj_id
-	var live_count: int = 0
-	for slot: int in ids.size():
-		if ids[slot] != 0:
-			live_count += 1
-	var live: PackedInt32Array = PackedInt32Array()
-	live.resize(live_count * (columns.size() + 1))  # One resize, then writes by index.
-	var at: int = 0
-	for slot: int in ids.size():
-		if ids[slot] != 0:
-			live[at] = slot
-			at += 1
-			for column: PackedInt32Array in columns:
-				live[at] = column[slot]
-				at += 1
-	_feed(ctx, section, live.to_byte_array())
-	_feed(ctx, section, proj_free.slice(0, proj_free_top).to_byte_array())
-
-
-## The live last-seen records (ADR 0017 section 3): the count of each player, then the four fields
-## of each live record (record `i` of player `p` is entry `p * ghost_cap + i`), players ascending.
-## A record at or above its player's count is not state.
-func _feed_ghosts(ctx: HashingContext, section: int) -> void:
-	var counts: PackedInt32Array = ghost_count
-	var ids: PackedInt32Array = ghost_id
-	var types: PackedInt32Array = ghost_type
-	var owners: PackedInt32Array = ghost_owner
-	var cells: PackedInt32Array = ghost_cell
-	var cap: int = ghost_cap
-	var total: int = 0
-	for count: int in counts:
-		total += count
-	var live: PackedInt32Array = PackedInt32Array()
-	live.resize(total * 4)  # One resize, then writes by index.
-	var at: int = 0
-	for player: int in counts.size():
-		for record: int in counts[player]:
-			var entry: int = player * cap + record
-			live[at] = ids[entry]
-			live[at + 1] = types[entry]
-			live[at + 2] = owners[entry]
-			live[at + 3] = cells[entry]
-			at += 4
-	_feed(ctx, section, counts.to_byte_array())
-	_feed(ctx, section, live.to_byte_array())
-
-
-static func _start_hash() -> HashingContext:
-	var ctx: HashingContext = HashingContext.new()
-	ctx.start(HashingContext.HASH_SHA256)
-	return ctx
-
-
-## One block: the tag and the byte count as two int64, then the bytes (update() refuses none).
-static func _feed(ctx: HashingContext, tag: int, bytes: PackedByteArray) -> void:
-	ctx.update(PackedInt64Array([tag, bytes.size()]).to_byte_array())
-	if not bytes.is_empty():
-		ctx.update(bytes)
-
-
-## A byte array as it is, any other Packed array little-endian (strings as null-terminated UTF-8).
-static func _bytes_of(table: Variant) -> PackedByteArray:
-	if table is PackedByteArray:
-		return table
-	return table.to_byte_array()
+	return WorldHash.defs_hash(self)
