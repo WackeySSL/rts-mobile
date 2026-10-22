@@ -7,6 +7,15 @@ extends Camera2D
 ## `limit_*` clamps only the rendered view, not `position`, which would leave a dead zone after
 ## overscrolling. So after every move or zoom `position` is clamped to the map rect inset by half
 ## the visible size.
+##
+## A turn of the phone (ADR 0015 section 4) keeps the world point at the centre and the world size
+## per dp: the camera remembers the window's orientation and `UiScale.base_px_per_dp()` from its
+## last `size_changed`, and when the orientation differs it stops the snap, rescales the zoom by
+## the ratio of the two and puts the snap anchor at the new view centre.
+
+## A ratio of base px per dp this close to 1 is the engine rounding the expanded axis of the
+## stretch to whole base px (ADR 0015 section 2), not another screen: the zoom stays on its level.
+const TURN_ROUNDING: float = 0.001
 
 @export var settings: InputSettings
 
@@ -14,6 +23,8 @@ var _map_rect: Rect2 = Rect2()
 var _anchor: Vector2 = Vector2.ZERO  ## Screen point of the last pinch or step, kept for the snap.
 var _snap: Tween = null
 var _snap_level: int = -1  ## Level the snap in flight heads for, else -1.
+var _portrait: bool = false  ## The window's orientation at the last size_changed.
+var _bppd: float = 1.0  ## `UiScale.base_px_per_dp()` at the last size_changed.
 
 
 func _ready() -> void:
@@ -22,7 +33,9 @@ func _ready() -> void:
 	var start: float = settings.zoom_levels[clampi(settings.zoom_start_index, 0, _last_level())]
 	zoom = Vector2(start, start)
 	_anchor = _view_size() * 0.5
-	get_viewport().size_changed.connect(_clamp_to_map)
+	_portrait = UiScale.is_portrait_size(get_tree().root.size)
+	_bppd = UiScale.base_px_per_dp()
+	get_viewport().size_changed.connect(_on_size_changed)
 	_clamp_to_map()
 
 
@@ -97,6 +110,31 @@ func _view_size() -> Vector2:
 	return get_viewport_rect().size
 
 
+## Every resize: a turn first (the orientation differs from the last one seen), then the clamp.
+## The orientation and base px per dp are refreshed on a same-orientation resize too, so the next
+## turn compares with the metrics just before it. A flip runs this twice; the second run only
+## clamps and refreshes the same values.
+func _on_size_changed() -> void:
+	var portrait: bool = UiScale.is_portrait_size(get_tree().root.size)
+	var bppd: float = UiScale.base_px_per_dp()
+	if portrait != _portrait:
+		_turn(bppd / _bppd)
+	_portrait = portrait
+	_bppd = bppd
+	_clamp_to_map()
+
+
+## The turn rule of ADR 0015 section 4. `position`, the world point at the centre, is not touched
+## and the clamp that follows moves it only as far as the new view needs. A turn does not snap to
+## a level: the next gesture end or wheel step does.
+func _turn(bppd_ratio: float) -> void:
+	_stop_snap()
+	if absf(bppd_ratio - 1.0) >= TURN_ROUNDING:
+		var turned: float = _bounded_zoom(zoom.x * bppd_ratio)
+		zoom = Vector2(turned, turned)
+	_anchor = _view_size() * 0.5
+
+
 func _last_level() -> int:
 	return settings.zoom_levels.size() - 1
 
@@ -128,12 +166,17 @@ func _stop_snap() -> void:
 ## Sets the zoom so the world point under screen point `at` stays under it.
 func _zoom_about(new_zoom: float, at: Vector2) -> void:
 	var world: Vector2 = screen_to_world(at)
-	var lowest: float = settings.zoom_levels[0] * (1.0 - settings.pinch_overshoot)
-	var highest: float = settings.zoom_levels[_last_level()] * (1.0 + settings.pinch_overshoot)
-	var clamped: float = clampf(new_zoom, lowest, highest)
+	var clamped: float = _bounded_zoom(new_zoom)
 	zoom = Vector2(clamped, clamped)
 	position = world - (at - _view_size() * 0.5) / zoom
 	_clamp_to_map()
+
+
+## `value` within the outer levels widened by `pinch_overshoot`: the bounds of a pinch.
+func _bounded_zoom(value: float) -> float:
+	var lowest: float = settings.zoom_levels[0] * (1.0 - settings.pinch_overshoot)
+	var highest: float = settings.zoom_levels[_last_level()] * (1.0 + settings.pinch_overshoot)
+	return clampf(value, lowest, highest)
 
 
 func _clamp_to_map() -> void:

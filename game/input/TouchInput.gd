@@ -7,6 +7,9 @@ extends Node
 ## and release are taken in `_input` and marked handled, so a pan that crosses a HUD button keeps
 ## panning and never presses it. A touch that starts on a Control stays with it. Mouse buttons and
 ## motion are ignored (desktop clicks arrive as emulated touches); only the wheel steps the zoom.
+## A turn of the phone cancels every gesture in flight (ADR 0015 section 3): the finger positions
+## belong to the old layout. A box is cancelled for the controller, the camera never hears the end
+## of a pan or pinch (it would snap the zoom about a stale anchor), and no tap is made.
 
 @export var settings: InputSettings
 @export var camera: RtsCamera
@@ -18,6 +21,7 @@ var clock: Callable = Time.get_ticks_msec
 var vibrate: Callable = Input.vibrate_handheld
 
 var _recognizer: GestureRecognizer = GestureRecognizer.new()
+var _portrait: bool = false  ## The window's orientation at the last size_changed.
 var _events: Array[GestureEvent] = []
 ## Fingers that started on the map and are still down. The values are unused.
 var _owned: Dictionary[int, bool] = {}
@@ -26,13 +30,32 @@ var _owned: Dictionary[int, bool] = {}
 func _ready() -> void:
 	if settings == null:
 		settings = InputSettings.new()  # The script defaults are the ADR table.
-	get_viewport().size_changed.connect(configure)
+	_portrait = UiScale.is_portrait_size(get_tree().root.size)
+	get_viewport().size_changed.connect(_on_size_changed)
 	configure()
 
 
 ## Reads the thresholds again: dp is a different number of base px after a resize.
 func configure() -> void:
 	_recognizer.configure(settings, UiScale.base_px_per_dp())
+
+
+## Every resize reads the thresholds again, and a turn (another orientation than at the last
+## resize) ends the gestures. The first run of a flip's two sees the turn, the second finds the
+## orientation in place and changes nothing, whatever the order of the handlers.
+func _on_size_changed() -> void:
+	configure()
+	var portrait: bool = UiScale.is_portrait_size(get_tree().root.size)
+	if portrait == _portrait:
+		return
+	_portrait = portrait
+	_recognizer.cancel_all()
+	if _recognizer.take_events(_events) == 0:
+		return
+	for e: GestureEvent in _events:
+		if e.kind != GestureEvent.Kind.CAMERA_END:  # Its snap would undo the camera's turn rule.
+			_route(e)
+	_events.clear()
 
 
 func _process(_delta: float) -> void:

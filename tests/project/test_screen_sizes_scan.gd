@@ -51,7 +51,6 @@ const PORTRAIT_PENDING: Dictionary[String, String] = {
 	"res://tests/ui/test_touch_target_sizes.gd": "P61",
 	"res://tests/ui/test_ui_theme.gd": "P61",
 	"res://tests/scenes/test_main_scene.gd": "P61",
-	"res://tests/view/test_rts_camera.gd": "P62",
 	"res://tests/view/test_effects_layer_curves.gd": "P62",
 	"res://tests/view/test_feedback.gd": "P62",
 	"res://tests/view/test_fog_hiding.gd": "P62",
