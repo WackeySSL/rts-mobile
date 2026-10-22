@@ -9,11 +9,13 @@ extends RefCounted
 
 ## Same value as World.MILLI_PER_TILE (a test pins the pair).
 const MILLI_PER_TILE: int = 1000
-## The arrays the state hash covers.
-const HASHED: Array[StringName] = [&"visible", &"explored"]
-## Every other int and Packed array of the class: the sizes, the version, the dirty-list blocks
-## and the masks (ADR 0007 section 8 lists each one exactly once).
+## The arrays the state hash covers: `explored` is history. `visible` is derived from the rows (see
+## its doc) and left out since STATE_FORMAT 2 (ADR 0016).
+const HASHED: Array[StringName] = [&"explored"]
+## Every other int and Packed array of the class: `visible`, the sizes, the version, the dirty-list
+## blocks and the masks (ADR 0007 section 8 lists each one exactly once).
 const UNHASHED: Array[StringName] = [
+	&"visible",
 	&"cols",
 	&"rows",
 	&"cells",
@@ -37,7 +39,9 @@ var player_count: int = 0
 ## Entries in one player's dirty block: a quarter of the cells (ADR 0010 section 1).
 var dirty_capacity: int = 0
 
-## The number of sight discs covering each cell, at (player - 1) * cells + cell.
+## The number of sight discs covering each cell, at (player - 1) * cells + cell. Derived state, not
+## hashed (ADR 0016): it equals the discs of the player's rows (owner, type_index and fog_cell,
+## which are hashed) stamped at their cells, and a test rebuilds it from them.
 var visible: PackedInt32Array = PackedInt32Array()
 ## 1 once any disc of the player has covered the cell, same layout. Never cleared.
 var explored: PackedByteArray = PackedByteArray()

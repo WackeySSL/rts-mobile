@@ -15,11 +15,15 @@ extends RefCounted
 ## again from its definition, and after every tick the rig holds the twin to it (`last_mismatches`:
 ## visible, explored, listed, the dirty blocks, counts and flags, versions, `fog_cell` and the cells
 ## covered), so a probe that works the rule out another way than the rule fails the case instead of
-## vouching for it. Not a test suite.
+## vouching for it. A case can also switch on `derive_every` (plan P65, ADR 0016): `visible` is not
+## in the state hash, so the rig then rebuilds it from the rows of each World (fog_derivation.gd)
+## and fails the case when it is not what the rows say, for the twin and for the kernels alike.
+## Not a test suite.
 
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const LockstepRig: GDScript = preload("res://tests/sim/support/lockstep_rig.gd")
 const TallyProbe: GDScript = preload("res://tests/sim/support/fog_tally_probe.gd")
+const Derivation: GDScript = preload("res://tests/sim/support/fog_derivation.gd")
 const FOG: int = SimProbe.Phase.FOG
 ## The phases that the kernels' World runs in C++: FOG alone (so that a difference can only be the
 ## FOG kernel's), FOG with the other ports (FLOW, TARGETING, SEPARATION and INTEGRATE: the five that
@@ -46,6 +50,11 @@ var probe: TallyProbe
 ## it (step() and once() add them): the tally's `rows` and `deaths` have to add up to it, since only
 ## a death takes a row out between that and the FOG phase.
 var rows_stepped: int = 0
+## Every how many ticks (World.tick) the counts of both Worlds are rebuilt from their rows and
+## compared with fog.visible; 0 = never (the default: a rebuild costs the rows times the area of a
+## disc). The phase that is driven by hand (once()) checks at every call. A World whose grid is
+## not whole (Worlds.bend) has no fog to rebuild, so a case with one leaves it at 0.
+var derive_every: int = 0
 
 
 ## The pair of `build` (a Callable that returns the same World each call): the twin, and a World
@@ -136,7 +145,8 @@ func compare(where: String) -> String:
 
 
 ## compare(), and then whether the probe's work is the phase's own: every array the phase writes
-## against what the probe says the rule leaves in it.
+## against what the probe says the rule leaves in it, and, with derive_every, whether fog.visible of
+## each World is what its rows say.
 func _checked(where: String) -> String:
 	var found: String = compare(where)
 	if found != "":
@@ -146,6 +156,15 @@ func _checked(where: String) -> String:
 			"%s: the phase differs from the rule in %d arrays, first: %s"
 			% [where, probe.last_mismatches, probe.first_mismatch]
 		)
+	if derive_every > 0 and worlds[0].tick % derive_every == 0:
+		for index: int in worlds.size():
+			found = Derivation.mismatch(worlds[index])
+			if found != "":
+				var side: String = "kernels'" if index == 1 else "twin's"
+				return (
+					"%s: fog.visible of the %s World is not what its rows say: %s"
+					% [where, side, found]
+				)
 	return ""
 
 

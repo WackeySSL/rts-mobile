@@ -73,6 +73,10 @@ Status note (2026-10-21, P26af docs): §4 carries a dated status note on the CI 
 (#150) merged it (`budget.cfg` at 1.5 x the worst of 11 calibration runs of the native tick, the
 runner-speed risk). No accepted text changed.
 
+Status note (2026-10-22, P26ag docs): §4 carries a dated status note: the Phase 2 gate passed
+(issue #157, Michael's "bestået" of 2026-10-22), with the final series' numbers against §4's
+thresholds. No accepted text changed.
+
 ## Context
 The Phase 2 plan (P26s) says that a contract the phone probe contradicts changes through a new ADR
 before P34 starts. The probe ran on 2026-10-12. The full reports are comments on PR #35.
@@ -726,6 +730,26 @@ only, and without the library only the 20 ms catastrophic cap is judged, which s
 lines. Risk (recorded, not a decision): a runner slower than every calibrated one can fail the
 budget with no regression; a budget relative to `ref_ms` needs a new ADR, as ADR 0011 §4 says.
 The plan's section P49b "As merged" holds the names.
+
+Status note (2026-10-22, P26ag docs, after the Phase 2 gate, issue #157; the text and the notes
+above stay as accepted): the gate passed. Michael wrote "bestået" on 2026-10-22, and the lead
+ticked ROADMAP Phase 2 box 7. The final series: the perf APK of `main` `326c4f4`, Pixel 9a, release
+template, `WORKER`, `NATIVE` (self-check match), three runs in a row, each `GATE: PASS` with 16/16
+verdicts and none `INVALID`. Against this section's thresholds (runs 1 / 2 / 3):
+- `sim_p95_ms` 13.3: job p95 4.84 / 5.23 / 5.27 ms;
+- `job_p99_ms` 26.7: job p99 6.93 / 7.34 / 7.20 ms;
+- `late_ticks_max` 0: 0 late ticks;
+- `work_p95_ms` 5.6 and `work_tick_p95_ms` 5.6 (normalised, ADR 0014 §3): 1.43 / 1.54 / 1.34 ms
+  and 1.73 / 1.68 / 1.64 ms;
+- `fog_update_p95_ms` 0.4 (normalised): 0.16 / 0.18 / 0.15 ms;
+- `heavy_frames_min` 600: 739 / 738 / 738 heavy frames; `draw_calls_max` 60: draw calls p95 21;
+- `release_only`: release template; golden hashes `MATCH` x6 (final `4eb974e71b2107be`).
+
+The pacing rows of ADR 0014 §1 passed as well (dropped 0.03 / 0.00 / 0.00 %, cadence 100.02 /
+99.88 / 100.01 %, heavy cadence 100.04 / 99.93 / 99.92 %, no heavy hitch). The web card's hashes
+matched x6 on the GDScript twins (`SYNC`). Exception 5 re-derived only the native ratios (PR
+#158, ADR 0013 §15's note of the same date); `ci_ratio_mean` 4.4 and `ci_ratio_p95` 5.9 are
+unchanged. The plan's section "Gate record (2026-10-22, issue #157)" holds the record.
 
 ### 5. Flow fields on the worker
 - **Flow ticks sit inside the job p95.** At 256 cells a field takes 16 ticks, and the arena
