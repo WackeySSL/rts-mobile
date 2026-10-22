@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/BuildingDef.gd" id="1_building"]
+[ext_resource type="Resource" path="res://data/units/refinery.tres" id="2_requires"]
+
+[resource]
+script = ExtResource("1_building")
+type_id = &"vehicle_factory"
+display_name = "Vehicle Factory"
+max_hp = 1600
+armour = 3
+sight_range = 5000
+cost = 1800
+build_ticks = 450
+tab = 0
+requires = ExtResource("2_requires")
+footprint = Vector2i(3, 3)
+power = -40
+produces = 2
+exit = Vector2i(1, 3)

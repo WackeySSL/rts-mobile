@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/BuildingDef.gd" id="1_building"]
+[ext_resource type="Resource" path="res://data/units/power_plant.tres" id="2_requires"]
+[ext_resource type="Resource" path="res://data/units/harvester.tres" id="3_free_unit"]
+
+[resource]
+script = ExtResource("1_building")
+type_id = &"refinery"
+display_name = "Refinery"
+max_hp = 1500
+armour = 3
+sight_range = 5000
+cost = 1400
+build_ticks = 375
+tab = 0
+requires = ExtResource("2_requires")
+footprint = Vector2i(3, 3)
+power = -30
+free_unit = ExtResource("3_free_unit")
+dock = Vector2i(1, 3)
