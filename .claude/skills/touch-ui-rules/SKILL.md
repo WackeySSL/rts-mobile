@@ -22,6 +22,9 @@ width > height.
 | Tap own unit | Select it, replacing the selection |
 | Tap own building | Select it; a production building opens its build tab |
 | Tap ground with units selected | Move there (stops an attack) |
+| Tap ground with an own barracks or vehicle factory selected | Set that tab's rally point (`RALLY`) and show its flag |
+| Tap ground with another own building selected | Clear the selection |
+| Tap ore with harvesters selected | Harvest there (`HARVEST`) |
 | Tap enemy with units selected | Attack it |
 | Tap enemy with nothing selected | Show its info card |
 | Double-tap own unit | Select all own units of that type on screen |
@@ -31,8 +34,13 @@ width > height.
 | Two-finger drag | Pan, always |
 | Tap minimap | Move the camera there |
 | Long-press minimap with units selected | Move the units there |
+| Tap a build icon | Queue one (`QUEUE`, paid at once) |
+| Long-press a build icon with items queued | Cancel the last queued item of that type (`CANCEL`, refunded) |
 
 Thresholds live in `data/input_settings.tres`, never in code.
+
+Buildings never join a box, a double-tap selection or "All army". "All army" and a box that
+holds any combat unit leave harvesters out; a box with only harvesters selects them (ADR 0019 §3).
 
 ## Sizes in dp, not pixels
 - Convert with `game/ui/UiScale.gd` (`dp(value)`), which uses `DisplayServer.screen_get_dpi()`
@@ -43,9 +51,21 @@ Thresholds live in `data/input_settings.tres`, never in code.
   selected, enemies win over own units.
 
 ## Building placement
-- The ghost follows the finger 64 dp above the touch point, so the finger never hides it.
-- Valid tiles are tinted green, invalid red. Confirm with a check-mark button, cancel with an X.
-  Never place a building on touch release alone.
+ADR 0019 §2 (Michael's answer 1 B). Placement mode is local input state; no Command until confirm.
+- The ghost starts at the tile under the view centre. A one-finger drag that starts on the ghost
+  (its footprint plus a grab margin) moves it; it follows the finger 64 dp above the touch point,
+  so the finger never hides it, and snaps to tiles. A one-finger drag that starts elsewhere pans
+  as usual; a tap on the ground moves the ghost there; pinch and two-finger pan are unchanged;
+  the long-press box select is off. Dragging the ghost near the view's edge pans the camera. The
+  grab margin, the edge band and the pan speed live in `data/input_settings.tres`.
+- Valid tiles are tinted green with a solid outline, invalid red with a hatch and the reason's
+  glyph (never colour alone), from `Placement.reason` on the snapshot. Confirm with a check-mark
+  button, cancel with an X, each at least 64 dp, in the sidebar zone in place of the item row;
+  the check mark is disabled while the ghost is invalid. Never place a building on touch release
+  alone.
+- After confirm the ghost waits ("pending") until the snapshot shows the building; if the
+  structure is still ready one published tick after the Command's tick, it turns invalid with
+  "Blocked". Cancel keeps the structure ready. A turn keeps the ghost's tile and sends nothing.
 
 ## Layout in landscape
 Today's layout, unchanged by ADR 0015.

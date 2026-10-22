@@ -126,15 +126,17 @@ func test_the_dp_step_walks_every_type_variation_and_stylebox_of_a_theme() -> vo
 
 
 ## What the HUD resolves is what it was: the sizes of the code of main before P58, from the theme,
-## with no override left, at the three screen sizes and at every profile of ui_profiles.gd.
-func test_the_hud_resolves_the_values_it_had_before_at_the_three_screen_sizes() -> void:
-	for size: Vector2i in ScreenSizes.LANDSCAPE:
+## with no override left, at the six screen sizes and at every profile of ui_profiles.gd, in both
+## orientations (the HUD's px follow the dp factor, which is the same when the phone is turned).
+func test_the_hud_resolves_the_values_it_had_before_at_the_six_screen_sizes() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
 		_assert_hud_resolves(str(size))
 
 
 func test_the_hud_resolves_the_values_it_had_before_at_every_profile() -> void:
 	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
+	profiles.merge(UiProfiles.portrait())
 	for profile_name: StringName in profiles:
 		await _open(profiles[profile_name].window_size, profiles[profile_name])
 		_assert_hud_resolves(str(profile_name))

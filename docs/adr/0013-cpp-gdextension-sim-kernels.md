@@ -127,6 +127,10 @@ Status note (2026-10-22, P26ag docs): after the Phase 2 gate (issue #157) and PR
 status note from "P26ag docs" sits in §15: the native ratios re-derived to 11.1 and 12.1 by the
 plan's exception 5, and the two rules' readings on the gate cards. No accepted text changed.
 
+Status note (2026-10-22, P68b docs; ADRs 0017 and 0021 accepted 2026-10-22): §1 carries a dated
+status note: Phase 3's three new phases start as GDScript, and the lead reads the port clauses at
+the Phase 3 plan's row P93. No accepted text changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -433,6 +437,16 @@ absorbs next to the C++ phases.
   - all of `game/core`, `game/view`, `game/input`, `game/ui`, `game/ai` and `game/meta`.
 - **Later ports** (Phase 3 onwards) follow both clauses above for hot phases and the trigger in
   §15 for the GDScript-only phases. They need a plan row under this ADR's rules, not a new ADR.
+
+  Status note (2026-10-22, P68b docs, ADRs 0017 and 0021 accepted; the text and the notes above
+  stay as accepted): Phase 3 adds `ECONOMY` (11), `PRODUCTION` (12) and `MEMORY` (13) as GDScript
+  phases (ADR 0017 §5, §8); `COMMANDS` grows by the new Command types and stays GDScript only.
+  The lead applies clauses (a) and (b) to the three at the first `PERF bases` line with all three
+  filled (the base arena, `docs/plans/2026-10-22-phase-3.md` row P93, ADR 0021 §4), and §15's
+  trigger on the base-arena gate cards; a phase that meets one gets a port row right after P93.
+  The one planned twin change of Phase 3 is the `ATTACK` goal on a building in `TARGETING` (both
+  twins, a lockstep case, §5; ADR 0017 §1, plan row P71); every other kernel gets building-world
+  lockstep cases only.
 
 ### 2. Data across the boundary: the World stays GDScript
 - **The merged P29a World stays valid, unchanged.** It stays the GDScript class

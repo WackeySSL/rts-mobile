@@ -9,11 +9,15 @@ const PHONE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[1]
 ## A window as high as the base size and 320 px wider: it shows 1600x720 base px at stretch 1.
 const WIDE_SIZE: Vector2i = Vector2i(1600, 720)
 ## Window size -> [lowest, highest] camera position at zoom 1: the map inset by half the visible
-## size. Visible: 1280x720, 1600x720 (20:9 at stretch 1.5), 1280x960 (4:3 at 1.6).
+## size. Visible: 1280x720, 1600x720 (20:9 at stretch 1.5), 1280x960 (4:3 at 1.6), and the portrait
+## three, turned: 720x1280, 720x1600 and 960x1280 (the base size turns with the window, ADR 0015).
 const BOUNDS: Dictionary[Vector2i, Array] = {
 	ScreenSizes.LANDSCAPE[0]: [Vector2(640, 360), Vector2(2432, 2712)],
 	ScreenSizes.LANDSCAPE[1]: [Vector2(800, 360), Vector2(2272, 2712)],
 	ScreenSizes.LANDSCAPE[2]: [Vector2(640, 480), Vector2(2432, 2592)],
+	ScreenSizes.PORTRAIT[0]: [Vector2(360, 640), Vector2(2712, 2432)],
+	ScreenSizes.PORTRAIT[1]: [Vector2(360, 800), Vector2(2712, 2272)],
+	ScreenSizes.PORTRAIT[2]: [Vector2(480, 640), Vector2(2592, 2432)],
 }
 const OVERSCROLL: float = 5000.0
 const LEVELS: Array[float] = [0.75, 1.0, 1.5]
@@ -69,11 +73,12 @@ func test_set_map_rect_sets_the_limits_reclamps_and_centres_a_narrow_map() -> vo
 
 
 func test_position_stops_exactly_at_the_corners_with_no_dead_zone_at_every_target_size() -> void:
-	for size: Vector2i in ScreenSizes.LANDSCAPE:
+	for size: Vector2i in ScreenSizes.ALL:
 		var low: Vector2 = BOUNDS[size][0]
 		var high: Vector2 = BOUNDS[size][1]
 		get_window().size = size
 		await await_idle_frame()
+		_camera.zoom = Vector2.ONE  # A turn rescales the zoom (ADR 0015 section 4); the bounds are for 1.
 		_camera.pan_by_screen(Vector2(OVERSCROLL, OVERSCROLL))
 		_near(_camera.position, low, str(size))
 		# Back by 1000 px: an overscrolled position would leave the view where it was.

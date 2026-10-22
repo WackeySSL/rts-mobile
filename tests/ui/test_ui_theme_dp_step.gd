@@ -85,7 +85,7 @@ func test_the_dp_step_at_a_portrait_profile_gives_the_font_sizes_of_its_landscap
 	for case: Array in cases:
 		var main: Node = await _open_main(case[0])
 		var size: int = (
-			(main.get_node("Hud/SafeArea/ArmyBar/AllArmy") as Button)
+			(main.get_node("Hud/SafeArea/ArmyBand/ArmyBar/AllArmy") as Button)
 			. get_theme_font_size("font_size")
 		)
 		assert_int(size).override_failure_message(str(case[0])).is_equal(case[2])
@@ -94,7 +94,7 @@ func test_the_dp_step_at_a_portrait_profile_gives_the_font_sizes_of_its_landscap
 		if case[1] != &"":
 			main = await _open_main(case[1])
 			var twin_size: int = (
-				(main.get_node("Hud/SafeArea/ArmyBar/AllArmy") as Button)
+				(main.get_node("Hud/SafeArea/ArmyBand/ArmyBar/AllArmy") as Button)
 				. get_theme_font_size("font_size")
 			)
 			assert_int(twin_size).override_failure_message(str(case[1])).is_equal(case[2])

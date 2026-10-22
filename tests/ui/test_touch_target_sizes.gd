@@ -39,6 +39,7 @@ func test_required_scenes_exist() -> void:
 func test_every_visible_button_is_at_least_dp_48_at_every_profile() -> void:
 	var too_small: Array[String] = []
 	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
+	profiles.merge(UiProfiles.portrait())
 	for profile_name: StringName in profiles:
 		var profile: UiMetrics = profiles[profile_name]
 		UiScale.set_override(profile)

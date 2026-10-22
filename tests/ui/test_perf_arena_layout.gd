@@ -1,11 +1,13 @@
 extends GdUnitTestSuite
 ## The perf arena's screen (plan P50b, ADR 0011 section 5, touch-ui-rules) at 1280x720, 2400x1080
-## (20:9) and 2048x1536 (4:3), and on Michael's phone with its cutout: the Back button and the
-## layer-mode button are at least dp(48) with 14 sp text and lie inside the safe area, the card
-## fills what is left under them and covers neither, the HUD takes its look from the theme (a
-## HudTheme first under the CanvasLayer, the theme file on the margin), the camera starts at the
-## lowest zoom on the centre of the fight, and the two sampling seams the card reads (rows drawn
-## and the fog update) report what the view shows. What the scene does is test_perf_arena.gd's.
+## (20:9) and 2048x1536 (4:3), their portrait turns (720x1280, 1080x2400 and 1536x2048) and a phone
+## browser held upright (plan P63, ADR 0015 section 5), and on Michael's phone with its cutout: the
+## Back button and the layer-mode button are at least dp(48) with 14 sp text and lie inside the
+## safe area, the card fills what is left under them and covers neither, the HUD takes its look
+## from the theme (a HudTheme first under the CanvasLayer, the theme file on the margin), the
+## camera starts at the lowest zoom on the centre of the fight, and the two sampling seams the card
+## reads (rows drawn and the fog update) report what the view shows. What the scene does is
+## test_perf_arena.gd's.
 
 const Rig: GDScript = preload("res://tests/ui/support/arena_rig.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -38,8 +40,8 @@ func after_test() -> void:
 
 
 func test_the_buttons_are_big_and_inside_the_safe_area_and_the_card_fills_the_rest() -> void:
-	for profile_name: StringName in PROFILES:
-		await _check_layout(UiProfiles.by_name(profile_name))
+	for metrics: UiMetrics in _every_profile():
+		await _check_layout(metrics)
 	var michael: UiMetrics = UiMetrics.create(
 		"Android", 420, 1.0, 1.5, MICHAEL["window"], MICHAEL["safe"]
 	)
@@ -63,8 +65,9 @@ func test_the_look_is_the_theme_with_the_dp_step_first_under_the_hud() -> void:
 
 
 func test_the_camera_starts_at_the_lowest_zoom_on_the_fight_at_every_size() -> void:
-	for profile_name: StringName in PROFILES:
-		var arena: Node2D = await _open(UiProfiles.by_name(profile_name))
+	for metrics: UiMetrics in _every_profile():
+		var profile_name: String = str(metrics.window_size)
+		var arena: Node2D = await _open(metrics)
 		var camera: RtsCamera = arena.camera
 		assert_vector(camera.zoom).is_equal(Vector2(0.75, 0.75))
 		assert_vector(camera.position).is_equal(CENTRE)
@@ -78,8 +81,13 @@ func test_the_camera_starts_at_the_lowest_zoom_on_the_fight_at_every_size() -> v
 			inside += int(view.has_point(at))
 		var heavy: int = arena.hud.gate.heavy_rigs
 		var label: String = "%s: %d of 150 rows in %s" % [profile_name, inside, view]
-		# The heavy window needs `heavy_rigs` rows in view: the arena frames the fight.
-		assert_int(inside).override_failure_message(label).is_greater_equal(heavy)
+		# The heavy window needs `heavy_rigs` rows in view: the arena frames the fight for a
+		# landscape view (ADR 0011 section 5). A portrait view is 0.45 as wide at the same zoom and
+		# shows 69 to 112 rows, so a gate run in portrait cannot reach the heavy window: the gate
+		# is a landscape measurement until ADR 0011 says otherwise (plan P63, requests).
+		if not UiScale.is_portrait_size(metrics.window_size):
+			assert_int(inside).override_failure_message(label).is_greater_equal(heavy)
+		assert_int(inside).override_failure_message(label).is_greater(0)
 		assert_int(arena.drawn_rigs()).override_failure_message(label).is_equal(inside)
 		assert_object(arena.hud.rigs_source).is_not_null()
 		assert_int(int(arena.hud.rigs_source.call())).is_equal(inside)
@@ -118,6 +126,15 @@ func test_the_fog_update_is_read_once_per_upload_and_kept_between_updates() -> v
 	assert_int(arena.fog_update_usec()).is_equal(FOG_US)  # The last update, once for the frame.
 	assert_int(arena.fog_update_usec()).is_equal(-1)
 	assert_object(arena.hud.fog_source).is_not_null()
+
+
+## The landscape profiles of PROFILES, then the portrait ones.
+func _every_profile() -> Array[UiMetrics]:
+	var every: Array[UiMetrics] = []
+	for profile_name: StringName in PROFILES:
+		every.append(UiProfiles.by_name(profile_name))
+	every.append_array(UiProfiles.portrait().values())
+	return every
 
 
 ## The arena at `metrics` in the tree, a run of RUN_TICKS ticks, after two frames of layout.

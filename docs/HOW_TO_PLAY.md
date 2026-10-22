@@ -21,7 +21,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Double-tap an own unit | Selects every own unit of that type on screen | yes |
 | Long-press, then drag | Draws a box while the finger moves; on release it selects the own units inside (`long_press_ms` in `data/input_settings.tres`) | yes |
 | Long-press and drag a box with no own unit inside | Clears the selection (the only way to deselect) | yes |
-| Any selection | The panel at the bottom centre shows each selected unit type with its icon, its display name (a very long name is cut short with an ellipsis) and its count, and a total for mixed types; it hides when nothing is selected. Tapping it does nothing | |
+| Any selection | The panel at the bottom centre; at the top in portrait, in one line right of the Dev button. It shows each selected unit type with its icon, its display name (a very long name is cut short with an ellipsis) and its count, and a total for mixed types; it hides when nothing is selected. Tapping it does nothing. In portrait the line never grows past the screen: when the types do not fit it drops the names, then the total, and then shows the first types with a "+N" for the types it leaves out | |
 | A selected unit is destroyed | It leaves the selection, and the count in the panel drops | |
 
 ## Orders

@@ -126,7 +126,7 @@ func test_a_tap_on_the_panel_orders_nothing_and_keeps_the_selection() -> void:
 	assert_array(_sent).has_size(1)
 
 
-func test_the_panel_is_dp_sized_and_sits_between_the_army_bar_and_the_sidebar_zone() -> void:
+func test_the_panel_is_dp_sized_and_sits_in_its_band_in_both_orientations() -> void:
 	var michael: UiMetrics = UiMetrics.create(
 		"Android", 420, 1.0, 1.5, Vector2i(2424, 1080), Rect2i(152, 0, 2272, 1080)
 	)
@@ -134,9 +134,13 @@ func test_the_panel_is_dp_sized_and_sits_between_the_army_bar_and_the_sidebar_zo
 		"Android", 320, 1.0, 1.0, ScreenSizes.LANDSCAPE[0], Rect2i()
 	)
 	var cases: Array[UiMetrics] = [michael, xhdpi]  # xhdpi is 2 base px per dp: the tightest fit.
-	for profile_name: StringName in UiProfiles.all():
-		var m: UiMetrics = UiProfiles.by_name(profile_name)
+	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
+	profiles.merge(UiProfiles.portrait())
+	for profile_name: StringName in profiles:
+		var m: UiMetrics = profiles[profile_name]
 		var cutout: Rect2i = Rect2i(100, 0, m.window_size.x - 100, m.window_size.y)
+		if UiScale.is_portrait_size(m.window_size):  # The camera is at the top.
+			cutout = Rect2i(0, 100, m.window_size.x, m.window_size.y - 100)
 		cases.append(m)
 		cases.append(UiProfiles.with_safe_area(m, cutout))
 	for m: UiMetrics in cases:
@@ -167,6 +171,11 @@ func test_the_panel_is_dp_sized_and_sits_between_the_army_bar_and_the_sidebar_zo
 		var area: Rect2 = (_hud("SafeArea") as Control).get_global_rect()  # It must not grow.
 		assert_that(area).override_failure_message(why).is_equal(get_viewport().get_visible_rect())
 		assert_bool(rect.intersects(bar)).override_failure_message(why).is_false()
+		if UiScale.is_portrait_size(m.window_size):  # The top line, level with the Dev button.
+			assert_float(rect.position.y).override_failure_message(why).is_equal_approx(
+				dev.position.y, 0.5
+			)
+			continue  # The rest is the landscape band (test_selection_panel_portrait has the line).
 		assert_float(rect.end.y).override_failure_message(why).is_equal_approx(bar.end.y, 0.5)
 		if m == xhdpi:  # No room for the whole zone beside the panel: the zone gives way.
 			continue
