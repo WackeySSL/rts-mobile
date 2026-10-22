@@ -2,7 +2,13 @@ extends Control
 ## Developer menu: jump to the test map, the art gallery, the touch probe or the perf arena. When
 ## the dev menu is not enabled (a release export without the `dev_menu` feature) it opens the main
 ## scene instead.
+## One column of buttons that are at least 56 dp tall, in the safe area, in either orientation
+## (ADR 0015 section 5). A window too short for the column (a phone browser held sideways) scrolls
+## it. The look is the theme's, sized in dp by the `HudTheme` node; the gap is dp here.
 
+const GAP_DP: float = 12.0
+
+@onready var _column: VBoxContainer = %Column
 @onready var _test_map_button: Button = %TestMapButton
 @onready var _gallery_button: Button = %GalleryButton
 @onready var _probe_button: Button = %TouchProbeButton
@@ -21,6 +27,13 @@ func _ready() -> void:
 	_gallery_button.pressed.connect(_on_gallery_pressed)
 	_probe_button.pressed.connect(_on_probe_pressed)
 	_arena_button.pressed.connect(_on_arena_pressed)
+	get_viewport().size_changed.connect(_apply_dp)
+	_apply_dp()
+
+
+## Sizes are dp, so they follow a resize and a turn.
+func _apply_dp() -> void:
+	_column.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
 
 
 func _open_main() -> void:

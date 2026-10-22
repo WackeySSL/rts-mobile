@@ -24,22 +24,28 @@ size_flags_vertical = 0
 [node name="MetricsLabel" type="Label" parent="Margin/Column"]
 layout_mode = 2
 
-[node name="SquareSlot" type="Control" parent="Margin/Column"]
+[node name="SquareRow" type="HBoxContainer" parent="Margin/Column"]
 layout_mode = 2
 
-[node name="DpMinSize" type="Node" parent="Margin/Column/SquareSlot"]
+[node name="SquareSlot" type="Control" parent="Margin/Column/SquareRow"]
+layout_mode = 2
+
+[node name="DpMinSize" type="Node" parent="Margin/Column/SquareRow/SquareSlot"]
 script = ExtResource("2_dp")
 
-[node name="Square" type="ColorRect" parent="Margin/Column/SquareSlot"]
+[node name="Square" type="ColorRect" parent="Margin/Column/SquareRow/SquareSlot"]
 layout_mode = 0
 color = Color(0.9607843, 0.64705884, 0.14509805, 1)
 
-[node name="DpMinSize" type="Node" parent="Margin/Column/SquareSlot/Square"]
+[node name="DpMinSize" type="Node" parent="Margin/Column/SquareRow/SquareSlot/Square"]
 script = ExtResource("2_dp")
 
-[node name="SquareLabel" type="Label" parent="Margin/Column"]
+[node name="SquareLabel" type="Label" parent="Margin/Column/SquareRow"]
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
 text = "should measure 7.6 mm"
+autowrap_mode = 3
 
 [node name="GestureLog" type="Label" parent="Margin"]
 layout_mode = 2

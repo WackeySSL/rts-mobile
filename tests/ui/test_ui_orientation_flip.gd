@@ -6,9 +6,10 @@ extends GdUnitTestSuite
 ## a scene opened at that size; the middle step is compared with a fresh scene too. The handlers
 ## are the ones of main.tscn (DpMinSize, SafeAreaMargin, HudTheme, TouchInput, ArmyBar,
 ## SelectionPanel, UnitLayer's rings, HealthBarLayer, EffectsLayer and RtsCamera), of the touch
-## probe and of the perf arena (PerfHud and the arena's own). A handler that a later row rewrites
-## extends its case there (P61 SelectionPanel and ArmyBar, P62 RtsCamera and TouchInput, P63 the
-## touch probe). The engine's own metrics are used, no override: the stretch has to follow.
+## probe, of the dev menu (P63) and of the perf arena (PerfHud and the arena's own). A handler that
+## a later row rewrites extends its case there (P61 SelectionPanel and ArmyBar, P62 RtsCamera and
+## TouchInput, P63 the touch probe). The engine's own metrics are used, no override: the stretch
+## has to follow.
 
 const Rig: GDScript = preload("res://tests/ui/support/arena_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -40,6 +41,10 @@ func test_the_main_scene_handlers_end_in_the_state_of_a_fresh_scene() -> void:
 
 func test_the_touch_probe_ends_in_the_state_of_a_fresh_scene() -> void:
 	await _check_flips(&"probe")
+
+
+func test_the_dev_menu_ends_in_the_state_of_a_fresh_scene() -> void:
+	await _check_flips(&"menu")
 
 
 func test_the_perf_arena_ends_in_the_state_of_a_fresh_scene() -> void:
@@ -128,6 +133,9 @@ func _open(kind: StringName) -> Node:
 		&"probe":
 			scene = (load(PROBE_SCENE) as PackedScene).instantiate()
 			add_child(scene)
+		&"menu":
+			scene = (load(DevRoutes.DEV_MENU_SCENE) as PackedScene).instantiate()
+			add_child(scene)
 		&"arena":
 			scene = Rig.open(self, _calls, RUN_TICKS)
 			await await_idle_frame()
@@ -155,6 +163,8 @@ func _read(kind: StringName, scene: Node) -> Dictionary:
 			return _read_main(scene)
 		&"probe":
 			return _read_probe(scene)
+		&"menu":
+			return _read_menu(scene)
 	return _read_arena(scene as Node2D)
 
 
@@ -190,13 +200,31 @@ func _read_probe(probe: Control) -> Dictionary:
 	var square: Control = probe.find_child("Square", true, false)
 	var label: Label = probe.find_child("MetricsLabel", true, false)
 	var recognizer: GestureRecognizer = probe._recognizer
+	var base: Vector2i = probe.get_window().content_scale_size
+	# The readout shows the base size the engine uses now, not one from before the turn.
+	assert_str(label.text).contains("\nbase %d x %d (" % [base.x, base.y])
 	return {
+		"base_size": base,
 		"square": square.size,
 		"metrics": label.text,
 		"font_size": label.get_theme_font_size("font_size"),
 		"gap": probe.find_child("Column", true, false).get_theme_constant("separation"),
+		"row_gap": probe.find_child("SquareRow", true, false).get_theme_constant("separation"),
 		"margins": _margins(probe.find_child("Margin", true, false)),
 		"slop": recognizer._slop_px,
+	}
+
+
+func _read_menu(menu: Control) -> Dictionary:
+	var buttons: Array[Vector2] = []
+	for button: Node in menu.find_children("*", "Button", true, false):
+		buttons.append((button as Button).custom_minimum_size)
+	return {
+		"button_sizes": buttons,
+		"font_size":
+		(menu.find_child("TestMapButton", true, false) as Button).get_theme_font_size("font_size"),
+		"gap": menu.find_child("Column", true, false).get_theme_constant("separation"),
+		"safe_margins": _margins(menu.find_child("SafeArea", true, false)),
 	}
 
 
