@@ -62,10 +62,15 @@ A harvester is a mobile row whose type has `type_harvest` above 0 (cargo capacit
   nearest to the point, within `harvest_pick_milli` (3 000) of it, and SEEK it; no such cell: the
   command is dropped.
 - A refinery placed with `PLACE` spawns its type's `type_free_unit` (the harvester) at its dock,
-  in SEEK with `home` set; the unit cap (§5) does not hold it back, `max_rows` does.
+  in SEEK with `home` set. The free harvester counts against the unit cap (§5) like any mobile
+  row: a refinery placed while the player has `unit_cap` mobile rows, or while `max_rows` is full,
+  comes without it (nothing is held or owed), so a side never has more than `unit_cap` mobile rows.
 - A harvester spawned by a scenario or by a factory starts in SEEK with no `home`.
-The loop gives orders only through the same order columns and `Movement.reset_row` that the
-unit-group commands use; it reads no input. That is a sim rule, like target acquisition, not a
+The loop gives orders the way the unit-group commands do: it writes `order` (`MOVE`), `goal_x`,
+`goal_y` and `group_cell` (-1, so a blocked line keys the field on the goal's tile) and calls
+`Movement.reset_nav` with `DIRECT`, as `Sim._apply_point` does after `Formation.assign`
+(`Movement.reset_row` is Targeting's per-row helper, with a C++ twin in the TARGETING kernel, and
+the loop does not call it); it reads no input. That is a sim rule, like target acquisition, not a
 player action, so CLAUDE.md rule 4 holds.
 
 ### 4. Power
@@ -114,12 +119,19 @@ clamped to the map and becomes that tab's rally point. Without one, new units st
 separation spreads them.
 
 ### 7. Defeat, victory and the end of a match
-- In PRODUCTION, after the queues, a player still playing who owns no building that produces a tab
-  (no Headquarters, barracks or vehicle factory) is defeated: `defeated_tick` is set. A ready
-  structure in the queue does not save the player.
+- **Only a side that has owned a producer can lose it.** `World.add_building` sets the owner's
+  `had_producer` to 1 when the type produces a tab (scenario buildings too); nothing resets it.
+  In PRODUCTION, after the queues, a player still playing whose `had_producer` is 1 and who owns no
+  building that produces a tab (no Headquarters, barracks or vehicle factory) is defeated. A ready
+  structure in the queue does not save the player. A side that never owned a producer (the perf
+  arena, `controls_test.tres`, a hand-built test World with units only) is never defeated by this
+  rule, so those worlds keep running and keep applying Commands; only `SURRENDER` ends them.
 - **`SURRENDER`** (Command 20) defeats its player at once.
 - When at most one player is still playing, the match ends: `match_end_tick` is set and `winner` is
   that player, or 0 when the last players fell on the same tick (a draw).
+- Both ticks hold the tick the step produces, `world.tick + 1` (the World's tick once the step has
+  run; `SURRENDER` in COMMANDS writes the same value), so a defeat or an end on the first step of a
+  match reads 1, and 0 keeps meaning "playing" and "running".
 - After the end, `Sim.step` drops every Command (ADR 0017 §4), and the runner stops ticking
   (P81).
 - Per player, for the result screen: `stat_built` (units produced and buildings placed),
@@ -148,8 +160,10 @@ ranges; artillery's weapon has `min_range` 3 tiles. Artillery has no splash dama
   refinery 1500, barracks 1000, vehicle factory 1600, defence turret 900.
 - Data tests: every building has speed 0, radius 0, armour `BUILDING` and a footprint of at most
   3x3; `harvest_capacity` is a multiple of `credits_per_ore`; `unit_cap` and `building_cap` times
-  the players fit in `max_rows` (2 x (75 + 40) = 230 of 256); every requirement chain reaches the
-  Headquarters.
+  the players fit in `max_rows` (2 x (75 + 40) = 230 of 256; the free harvester is inside the 75,
+  §3); every requirement chain reaches the Headquarters; every weapon's `range` reaches the ring
+  corner cell of a 3x3 footprint from its centre (`range` of at least 2 829, ADR 0017 §1's
+  approach point).
 
 ## Consequences
 - Harvesters, production and defeat are sim rules on hashed state, so AI-vs-AI runs, replays and
@@ -158,6 +172,7 @@ ranges; artillery's weapon has `min_range` 3 tiles. Artillery has no splash dama
   is sent, and a cancel is a plain refund.
 - A destroyed refinery sends its harvesters to the nearest other refinery, or leaves them waiting.
 - A player who loses every producer loses at once, even with an army left; this matches the GDD.
+  A scenario without producers (the perf arena, the controls test) never ends on its own.
 
 ## Alternatives considered
 - **Pay as it builds** (credits drained per tick, production pauses at 0): more state (a paid

@@ -70,12 +70,38 @@ What the code does today (`main` at 7185a91):
   and calls `flow.invalidate(map_version)`. `from_scenario` places scenario buildings through it.
 - `remove_dead` restores each dead building's footprint cells from `terrain_cost` (what
   `set_terrain` would write) and bumps `map_version` once on a tick with a building death.
-- Why no kernel changes: every ported kernel reads the blocked cells through `move_cost` (FLOW,
-  INTEGRATE's `is_passable` twin), the radii (SEPARATION: with radius 0, a pair with a building
-  needs a mobile row closer than its own radius to the building's centre, which a blocked footprint
-  and a radius of at most 500 rule out), the rows as candidates (TARGETING) and the rows' cells
-  (FOG). P71 adds a building-world case to each kernel's lockstep suite to prove it on both
-  implementations. A later rule that needs a kernel change edits both twins (ADR 0013 §5).
+- **An `ATTACK` on a building aims at an approach point, not at the centre.** Today the TARGETING
+  phase writes an `ATTACK` row's goal from its target's position every tick (`Targeting.gd` and
+  `core/targeting.cpp`), and `Sim._apply_attack` sets `group_cell` -1, so the field is keyed on the
+  goal's cell. For a 3x3 footprint that cell is the centre, whose eight neighbours are all footprint
+  cells (`move_cost` 0): `FlowField.advance` reaches no other cell, `_take_own_field` finds the key
+  equal to the goal's cell, and the unit steers DIRECT into the wall. The rule (P71):
+  - `Sim._apply_attack` (COMMANDS, GDScript only, command cadence): when the target's type has a
+    footprint, it writes each row's `goal_x`, `goal_y` to the row's approach point: the centre of
+    the ring cell (the cells 8-adjacent to the footprint and outside it, inside the map) that is
+    passable for the row's class and nearest to the row's position (squared distance, then the
+    lower cell index). A row with no passable ring cell is left out; none left: the command is
+    dropped and counted.
+  - TARGETING (both twins: `Targeting.gd` and `core/targeting.cpp`): an `ATTACK` lock writes the goal
+    from the target's position only when the target's `type_speed` is above 0, so a building
+    target keeps the approach point; the lock's line re-test tests the line to the goal instead of
+    the target's position. For a mobile target the goal equals the target's position at that
+    point of the pass, so Phase 2 state does not move (the arenas stay bit-identical). The kernel
+    fetches `type_speed` on entry (one more name in its checked list).
+  - `World.add_building` re-picks the approach point of every `ATTACK` row whose goal cell lies in
+    the new footprint (event cadence, bounded by `max_rows` per placement).
+  - Unchanged: INTENTS (`_check_line`) and INTEGRATE (`_rekey`, `_take_own_field`) key on the goal's
+    cell, which is now a passable ring cell, so the field grows from it and the keys agree. Range
+    and the HOLD at range still measure to the target's position (the footprint centre); a data
+    test (ADR 0018 §9) keeps every weapon's range above the distance from a 3x3 centre to its ring
+    corner cell (2 829), so the approach point is always within range.
+- Why no other kernel changes: every ported kernel reads the blocked cells through `move_cost`
+  (FLOW, INTEGRATE's `is_passable` twin), the radii (SEPARATION: with radius 0, a pair with a
+  building needs a mobile row closer than its own radius to the building's centre, which a blocked
+  footprint and a radius of at most 500 rule out), the rows as candidates (TARGETING, apart from
+  the `ATTACK` goal above) and the rows' cells (FOG). P71 adds a building-world case to each
+  kernel's lockstep suite to prove it on both implementations, among them an `ATTACK` on a 3x3
+  building behind rock. A later rule that needs a kernel change edits both twins (ADR 0013 §5).
 - `_own_rows` already filters speed-0 rows, so no unit-group Command moves a building.
 
 ### 2. Placement validity is one pure function
@@ -101,13 +127,13 @@ later rows fill rules without moving any arena hash again (§7):
 | List | Names | Hashed |
 | --- | --- | --- |
 | `ROW_ARRAYS` (appended) | `harvest_mode`, `cargo`, `harvest_slot` (index into `ore_cell`, -1), `home` (refinery id, 0) | yes (one section each, as today) |
-| `PLAYER_ARRAYS` (new) | per player, index 0..`player_count` (0 unused): `credits`, `defeated_tick` (0 = playing), `stat_built`, `stat_lost_units`, `stat_lost_buildings`, `stat_harvested`; per player and tab, index `player * TABS + tab`: `queue_count`, `queue_progress`, `rally_x`, `rally_y` (-1 = none); per queue slot, index `(player * TABS + tab) * queue_slots + slot`: `queue_type` | yes (new section `players`, one block per array) |
+| `PLAYER_ARRAYS` (new) | per player, index 0..`player_count` (0 unused): `credits`, `defeated_tick` (0 = playing; else the tick the defeating step produces, `tick + 1`), `had_producer` (1 once the player has owned a building that produces a tab, ADR 0018 §7), `stat_built`, `stat_lost_units`, `stat_lost_buildings`, `stat_harvested`; per player and tab, index `player * TABS + tab`: `queue_count`, `queue_progress`, `rally_x`, `rally_y` (-1 = none); per queue slot, index `(player * TABS + tab) * queue_slots + slot`: `queue_type` | yes (new section `players`, one block per array) |
 | `ORE_ARRAYS` (new) | `ore_amount`, one per `ore_cell` entry | yes (new section `ore`) |
 | `GHOST_ARRAYS` (new) | per player, capacity `ghost_cap`: `ghost_id`, `ghost_type`, `ghost_owner`, `ghost_cell`; and `ghost_count` per player | yes, live entries only (new section `ghosts`, like the projectile slots) |
 | `MAP_ARRAYS` (appended) | `terrain_buildable` (byte per terrain index), `ore_cell` (ascending cells of the ore terrain, fixed at load) | through the map digest |
 | `TYPE_ARRAYS` (appended) | `type_foot_w`, `type_foot_h`, `type_cost`, `type_build_ticks`, `type_tab` (-1 = not buildable), `type_requires` (type index, -1), `type_produces` (tab, -1), `type_power`, `type_harvest` (cargo capacity in credits, 0), `type_free_unit` (type index, -1), `type_dock_x`, `type_dock_y`, `type_exit_x`, `type_exit_y` (tile offsets from the origin) | no (`defs_hash`) |
 | `DERIVED_ARRAYS` (new) | `power_made`, `power_used` (per player), `building_rows`, `harvester_rows` (ascending rows), rebuilt when `rows_version` moves | no; a rebuild test (ADR 0016) |
-| `HASHED_SCALARS` (appended) | `match_end_tick` (0 = running), `winner` (0 = none or a draw) | yes |
+| `HASHED_SCALARS` (appended) | `match_end_tick` (0 = running; else the tick the ending step produces, `tick + 1`, so an end on the first step reads 1), `winner` (0 = none or a draw) | yes |
 | `RULE_SCALARS` (appended) | the economy and production ints of ADR 0018 §9 | no (`defs_hash`) |
 
 - New enums: `Tab { STRUCTURES = 0, INFANTRY = 1, VEHICLES = 2 }` with `const TABS: int = 3`, and
@@ -175,7 +201,13 @@ are `duplicate()` (O(1); the next write copies the buffer, inside `step_usec`, A
   `STATE_FORMAT` 3), so it re-pins the golden hashes under exception 10. The perf arena has no
   building, ore or queue, and every new array starts at a value that no later row changes for it,
   so from P70 on every Phase 3 row must leave the arena's golden hashes bit-identical; a row that
-  moves them is a bug or a rule change that says why under exception 3.
+  moves them is a bug or a rule change that says why under exception 3. Two inputs of the arena's
+  state come from shared data and must land with the re-pin, so P70 carries them: the `ore`
+  terrain appended to `data/terrain/standard.tres` (it lengthens `terrain_cost`, which is in
+  `MAP_ARRAYS`) and the terrains' `buildable` flags (`terrain_buildable`); `rules.tres` gets every
+  Phase 3 rule value in P69, before the re-pin, and no rule value is in the state hash. The arena has
+  no building that produces a tab, so its players never set `had_producer` and are never defeated
+  (ADR 0018 §7): `defeated_tick`, `match_end_tick` and `winner` stay 0 through all 900 ticks.
 - Estimated growth at the perf arena (150 rows at tick 15, 71 at tick 900, 2 players): about 2.5 KB
   of new row columns at tick 15 and 1.2 KB at tick 900, about 0.6 KB for `players` and 48 bytes of
   block headers for the empty `ore` and `ghosts`. P65q's line will show the real numbers.
@@ -217,9 +249,9 @@ Phase 3 tick (the base arena, ADR 0021, plan row P93), and §15's port trigger o
 1. A new building must stand on explored, buildable ground with no unit on it and within a few
    tiles of one of your buildings (`build_reach_tiles`, starting at 4). Do you accept this placement
    rule? (ja/nej; recommended: ja)
-2. A match never holds more than 150 units if each side has at most 75 units (harvesters count)
-   and 40 buildings, both values in `data/rules.tres`. Do you accept these caps? (ja/nej;
-   recommended: ja)
+2. A match never holds more than 150 units if each side has at most 75 units (harvesters count,
+   the free harvester of a new refinery too: at the cap the refinery comes without it) and 40
+   buildings, both values in `data/rules.tres`. Do you accept these caps? (ja/nej; recommended: ja)
 3. ADR 0010 promised that enemy buildings you have seen stay on the map as "last seen" markers in
    the fog. Should the sim keep that memory already in Phase 3 (it is small and hashed)? (ja/nej;
    recommended: ja)
