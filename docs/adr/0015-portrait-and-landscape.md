@@ -5,6 +5,10 @@ the same day, both below as given). Docs PR P26v. The rows that carry it out are
 `docs/plans/2026-10-19-portrait.md` (P59-P64). Until the last of them, P64, merges, the Android
 build (APK) stays landscape-locked; the web preview already turns with the phone (§7).
 
+Status note (2026-10-22, P68b docs; ADR 0019 accepted 2026-10-22): §5 carries a dated status
+note: Phase 3's sidebar row is P85 of `docs/plans/2026-10-22-phase-3.md`, and the Surrender
+button joins the top-left controls. No accepted text changed.
+
 ## Context
 Michael, 2026-10-19, verbatim: **"Tilføj til tema at spillet også skal kunne spilles vertikale og
 ikke kun i landscape"**: the game shall be playable in portrait as well as landscape. That changes
@@ -342,6 +346,17 @@ Other screens:
   Phase 6 checks on the phone, in both orientations, that each SDK screen shows and closes, and
   whether the menu banner must be reloaded after a rotation (an adaptive banner is sized for the
   width it was loaded at; not checked here).
+
+Status note (2026-10-22, P68b docs, ADR 0019 accepted; the text above stays as accepted): "Phase
+3's sidebar row" is P85 of `docs/plans/2026-10-22-phase-3.md` (ADR 0019 §1): `BuildSidebar` sets
+the portrait zone's height through P61's one place, which moves the ArmyBar above the band, and
+turns P61's stand-in band cases into real-band cases; P85b adds the item row, P88 the minimap
+(ADR 0019 §4) and P89 the under-attack indicators (ADR 0019 §5), at the places the table above
+gives them. During placement the check mark and X (64 dp) take the item row's place in the zone
+(ADR 0019 §2, P86). The "Surrender" button (ADR 0019 §6, P90) is one more rare top-left control,
+so the SelectionPanel's portrait line starts after it and gets shorter; P90 re-runs P61's worst
+case (six types, 3-digit counts, 360 dp) with it. On 757b5f9 P59 (#164) and P60 (#165) are open
+PRs and P61-P63 have started.
 
 ### 6. Tests
 - Window sizes for UI and layout tests: landscape 1280x720, 2400x1080 and 2048x1536 (today's),

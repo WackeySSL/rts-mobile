@@ -1,0 +1,18 @@
+---
+name: project-phase3-decisions
+description: Phase 3 plan (P68, 2026-10-22, accepted the same day in P68b) and ADRs 0017-0021 - buildings as rows, World v2, Commands 10-14/20, probe ids 11-13, per-tab queues, dummy AI in the tick job, base arena
+metadata:
+  type: project
+---
+
+- P68 (2026-10-22, base 7185a91, PROPOSED, not accepted): `docs/plans/2026-10-22-phase-3.md` + ADRs 0017 (sim model), 0018 (rules), 0019 (UI), 0020 (dummy/AI hook), 0021 (perf). Rows P68-P96 (+P68b, P73b, P75b, P78q, P83b, P84b, P84c ghosts, P85b, P93b, P93c; named splits P70b, P73c, P75c, P83c, P84d, P85c, P86b, P88b); exceptions 11-13; next free P-number P97, next exception 14. MEMORY.md index line not added (brief: new files only).
+- Recommended answers: 0017 1-4 ja; 0018 1 A (sidebar then place), 2 A (pay at queue), 3 ja (harvester auto-resume), 4 ja (splash to Phase 4); 0019 1 B (drag on ghost moves, else pan), 2-4 ja; 0020 1-2 ja; 0021 1-2 ja.
+- Key design: buildings = rows (speed 0, radius 0, BUILDING) blocking `move_cost` (no kernel edit); `Placement.reason(PlacementInput,...)` shared by sim and ghost; per-player-per-tab queues and rally; derived power/lists out of hash; ghosts in World not FogGrid (supersedes ADR 0010 wording); one re-pin in P70 (STATE_FORMAT 3) after P65.
+- Pitfall: new SimProbe ids must run AFTER FOG (marks ascend, ADR 0007 §4) - so Phase 3 phases are 11-13 at the tick's end.
+- Pitfall: ADR 0012 §1/§2 planned the AI on the main thread in `ticked`; a think every 15 ticks is 6.7 % of publish frames, inside ADR 0014's publish-frame p95 - ADR 0020 moves it into TickJob before loop.step (same stamps).
+- Pitfall: `MatchSnapshot`'s coverage test spans only ROW/TYPE/WEAPON/PROJECTILE/MAP lists; a World layout PR must classify new names there (lead's file -> named exception).
+- Pitfall: `TickJob`'s walk test fails on any Resource - AI controllers must copy AiDef into ints.
+- Plan fix 1 (2026-10-22, review of c5f6678): defeat only after `had_producer` (hashed, set by add_building) so unit-only worlds (perf arena, controls_test, test Worlds) never end; `defeated_tick`/`match_end_tick` store `tick + 1`; exception 14 = P70 teaches hash_bytes.gd the sections players/ore/ghosts; ore terrain + `buildable` move P72 -> P70 (terrain_cost is in the map digest); ATTACK on a building aims at an approach ring cell written by `_apply_attack`, TARGETING twins skip the goal write for speed-0 targets (P71, split P71b); free harvester counts against unit_cap (skipped at cap); harvest orders via `reset_nav` (reset_row is Targeting's). Next free exception 15.
+- Pitfall: any shared data file a perf-arena scenario loads (terrain set, rules copied into hashed arrays) moves the golden hashes; check `MAP_ARRAYS`/map digest before calling a data row hash-neutral.
+- Pitfall: a field keyed on a blocked cell whose 8 neighbours are blocked (3x3 footprint centre) never grows; goals must be passable cells.
+- ACCEPTED 2026-10-22 (Michael "Ja til alle anbefalinger"; P68b on #166, base 757b5f9): 0017 1-4 ja; 0018 1 A, 2 A, 3 ja, 4 ja; 0019 1 B, 2-4 ja; 0020 1-2 ja (P95 a plain row); 0021 1-2 ja. P68b nits: exception 15 = P93 adds `bases_golden_ticks`/`bases_golden_hex` to lead's PerfGateDef.gd; P93c after P93; snapshot copies `power_made`/`power_used`; radius 1..500 rule narrowed to mobile units in P72; P90 re-checks P61's SelectionPanel worst case with Surrender. ai-dev.md line awaits Michael's explicit yes. Next free exception 16. Pitfall: verify.sh runs the smoke in every session too (only balance runs are CI-only).

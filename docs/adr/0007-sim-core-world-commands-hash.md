@@ -39,6 +39,11 @@ Status note (2026-10-22, ADR 0016 accepted): §8 carries a dated status note on 
 decision that `fog.visible` will leave the state hash in P65 (`STATE_FORMAT` 2, a rebuild test);
 no accepted text changed.
 
+Status note (2026-10-22, P68b docs; ADRs 0017-0021 accepted 2026-10-22): §2, §4 and §5 carry
+dated status notes on what ADR 0017 fixes for Phase 3: the side arrays and per-player arrays are
+its shape lists, the probe ids 11-13 follow FOG, and Command types 10-14 and 20 are fixed; no
+accepted text changed.
+
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state
 hash. Phase 1 shipped the v0 shapes of ADR 0003: a struct-of-arrays `World` that never removes a
@@ -194,6 +199,17 @@ It has these sections:
 - **Spawn jitter** draws exactly two values per unit (x then y) from `world.rng` if and only if
   the spawn's `jitter > 0`. A scenario with no jitter consumes no draws.
 
+Status note (2026-10-22, P68b docs, ADR 0017 accepted; the text above stays as accepted): "the
+Phase 3 ADR" of the buildings bullet is ADR 0017. Buildings are rows with a footprint type (speed
+0, radius 0, armour `BUILDING`) that block their tiles through `move_cost` (ADR 0017 §1). Its §3
+registers the side arrays in the shape lists: four `ROW_ARRAYS` columns (harvest state), the new
+lists `PLAYER_ARRAYS` (credits, queues, rally points, defeat and stats, indexed by player, by
+player and tab, or by queue slot), `ORE_ARRAYS`, `GHOST_ARRAYS` and `DERIVED_ARRAYS` (power totals
+and row lists, unhashed with a rebuild test, ADR 0016), and appended `MAP_ARRAYS`, `TYPE_ARRAYS`,
+`HASHED_SCALARS` and `RULE_SCALARS`. There is no footprint column (the origin is derived from the
+position) and no queue or rally point per building: one queue and one rally point per player and
+tab (ADR 0018 §5, §6). Plan row P70 declares them, `docs/plans/2026-10-22-phase-3.md`.
+
 ### 3. Ids, rows and removal
 - Ids come from `next_id`, start at 1 and are never reused (ADR 0003). New rows are appended,
   and a new id is always the largest, so rows stay sorted by id and `index_of` stays a binary
@@ -306,6 +322,13 @@ that the `REMOVE` mark closes. The marks keep their order (`FOG` is the last), a
 changes. The plan's contract rows `Sim` and `FogUpdate` and its section P46 "As merged" hold the
 details.
 
+Status note (2026-10-22, P68b docs, ADR 0017 accepted; the text and the notes above stay as
+accepted): ADR 0017 §5 gives Phase 3's phases their ids under this section's rule: `ECONOMY` 11,
+`PRODUCTION` 12 and `MEMORY` 13, `COUNT` 14. Because marks ascend, they run after FOG (step 12)
+and before `tick += 1` (step 13): power and the harvest loop, then the queues and the outcome
+check, then the last-seen memory. No Phase 2 id changes. Plan row P70 adds the ids and the
+skeleton; rows P73-P77 fill the phases.
+
 ### 5. Command v1
 `Command` keeps every v0 field and gains `payload: PackedInt32Array` (type-specific ints, empty
 for Phase 2 types).
@@ -375,6 +398,14 @@ malformed: `decode` reads it whole, so `Sim.step` drops it again on replay, and
 `dropped_commands`, which the state hash covers (§8), stays equal to the run's. On -1 `decode`
 leaves `out` untouched; otherwise it gives `out` copies of the ids and the payload, never a view
 of `data`.
+
+Status note (2026-10-22, P68b docs, ADR 0017 accepted; the text and the notes above stay as
+accepted): ADR 0017 §4 fixes the reserved slots as planned in the table: `PLACE` 10, `QUEUE` 11,
+`CANCEL` 12, `RALLY` 13, `HARVEST` 14 and `SURRENDER` 20, with their fields, payloads and
+factories; ADR 0018 fixes their per-type rules. Every new type also needs a player who is not
+defeated, and once `match_end_tick` is above 0 every Command of any type is dropped and counted.
+15-19 and 21-29 stay reserved. Until each type's plan row lands its `apply_*`, the type is
+dropped and counted as today (plan row P70).
 
 ### 6. Node-side services (`game/core`, ADR 0002 §1)
 - **`CommandQueue` API v1 = v0, unchanged:** `submit`, `drain_into`, `clear`, `pending`. Input,

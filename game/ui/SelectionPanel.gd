@@ -1,8 +1,9 @@
 class_name SelectionPanel
 extends PanelContainer
-## What is selected and how many, at the bottom centre (read-only in Phase 1). One row per unit
-## type: its own art (hull, team layer in the owner colour, turret), its display name and "×N".
-## With more than one type a last row shows the total. Hidden when nothing is selected.
+## What is selected and how many (read-only in Phase 1): at the bottom centre in landscape, and in
+## portrait the top line, right of the top-left controls. One row per unit type: its own art (hull,
+## team layer in the owner colour, turret), its display name and "×N". With more than one type a
+## last row shows the total. Hidden when nothing is selected.
 ## Fed by PlayerController.selection_changed (wired in the scene), so it works on a change only:
 ## a selected unit that dies leaves the selection first (PlayerController), which refreshes the
 ## counts. It reads `runner.snapshot` afresh at each call (ADR 0012 section 3), the names from its
@@ -10,12 +11,21 @@ extends PanelContainer
 ## It keeps its touches (mouse_filter STOP), so a tap on it never becomes a ground order. ADR 0004
 ## section 1 says that of HUD buttons; this panel is none, so it widens the rule to any HUD Control
 ## (a pan, box or pinch finger that starts on it is lost too, which is why it is small).
-## Its parent MarginContainer is the band between the ArmyBar and the sidebar zone (the right 20%,
-## at least 200 dp, kept free for the build sidebar). The panel sets that band's margins and sits
-## in its middle. A row is at most BAND_SHARE of the band's width (the safe area's inner width, the
-## band's own): a longer name is clipped with an ellipsis. The cap bounds the panel's growth and
-## keeps it off the ArmyBar. It does not reserve the zone: where the screen is too narrow for the
-## panel and the zone (see `_fit_band`), the zone gives way, a long name or not.
+## Its parent MarginContainer is the band the panel sits in, and the panel sets the band's margins
+## and its own size flags by the orientation of the window (`HudLayout.is_portrait`), on a change
+## of the selection and on a resize. A flip runs it twice, so every call lays out from the state
+## it finds.
+## Landscape: the band lies between the ArmyBar and the sidebar zone (the right 20%, at least 200
+## dp, kept free for the build sidebar) and the panel sits in its middle, at the bottom. A row is at
+## most BAND_SHARE of the band's width (the safe area's inner width, the band's own): a longer name
+## is clipped with an ellipsis. The cap bounds the panel's growth and keeps it off the ArmyBar. It
+## does not reserve the zone: where the screen is too narrow for the panel and the zone (see
+## `_fit_zone`), the zone gives way, a long name or not.
+## Portrait (ADR 0015 section 5): the rows stand side by side in one line at the top, after the
+## `top_left` control and a gap. The panel never grows past the line (an overflow would grow the
+## SafeArea and push the HUD off the screen); it takes the first of four fit levels whose line
+## fits (`_fit_line`): the names; icon and count; without the total; the first rows that fit and
+## a "+N" chip for the types left out.
 ## Its look is the inherited theme's (`game/ui/theme.tres`, set on the HUD roots by main.tscn): the
 ## backdrop is the `panel` style of the `SelectionPanel` variation (padding and corners in dp, in
 ## px once `HudTheme` has run), a name is a `Label`, the counts and the total are `NumberLabel`.
@@ -23,19 +33,27 @@ extends PanelContainer
 const ICON_DP: float = 40.0
 const MIN_HEIGHT_DP: float = 48.0
 const GAP_DP: float = 8.0
-const SIDEBAR_SHARE: float = 0.2
-const SIDEBAR_MIN_DP: float = 200.0
 const BAND_SHARE: float = 0.4  ## The widest a row may be, of the band's width.
 const PANEL_VARIATION: StringName = &"SelectionPanel"
 const NUMBER_VARIATION: StringName = &"NumberLabel"
+## The fit levels of the portrait line, the first that fits: the names; icon and count, the total
+## last; the same without the total; the first rows that fit and a "+N" chip.
+const LEVEL_NAMED: int = 1
+const LEVEL_ICONS: int = 2
+const LEVEL_NO_TOTAL: int = 3
+const LEVEL_CHIP: int = 4
 
 @export var runner: MatchRunner
 @export var unit_layer: UnitLayer  ## Owner colours for the icons.
-@export var army_bar: ArmyBar  ## The band starts after it.
+@export var army_bar: ArmyBar  ## The landscape band starts after it.
+@export var top_left: Control  ## The portrait line starts after it (the Dev button).
 
-var _list: VBoxContainer = VBoxContainer.new()
+var _list: BoxContainer = BoxContainer.new()  ## A column in landscape, a line in portrait.
 var _total: Label = Label.new()
+var _chip: Label = null  ## "+N", made when a line first needs it (level 4).
 var _rows: Array[Row] = []
+var _shown: int = 0  ## The rows that hold a type: the first `_shown` of `_rows`.
+var _level: int = LEVEL_NAMED  ## The fit level of the last layout (landscape: always the first).
 var _counts: PackedInt32Array = PackedInt32Array()  ## Selected units per type index.
 
 
@@ -104,6 +122,7 @@ func _ready() -> void:
 	min_size.min_dp = Vector2(0.0, MIN_HEIGHT_DP)
 	add_child(min_size)
 	_list.name = "Rows"
+	_list.vertical = true
 	add_child(_list)
 	_total.name = "Total"
 	_total.theme_type_variation = NUMBER_VARIATION
@@ -140,12 +159,10 @@ func set_selected(ids: PackedInt32Array) -> void:
 		_rows[shown].show_type(snap.type_ids[type], snap.type_names[type], _counts[type], tint)
 		shown += 1
 		total += _counts[type]
-	for hidden: int in range(shown, _rows.size()):
-		_rows[hidden].visible = false
+	_shown = shown
 	_total.text = "Total ×%d" % total
-	_total.visible = shown > 1
 	visible = shown > 0
-	_fit_band()  # The panel's width follows the name and the count.
+	_fit_band()  # Which rows show, and the panel's width, follow the name and the count.
 
 
 func _add_row() -> void:
@@ -165,23 +182,86 @@ func _apply_dp() -> void:
 	_fit_band()
 
 
-## The band's margins: the ArmyBar on the left, the sidebar zone on the right. The band's minimum
-## width counts both, so on a screen too narrow for all three the zone gives way and the panel sits
-## in the still empty zone, instead of growing the SafeArea and pushing the HUD off the screen.
+## Lays the panel out for the window's orientation: all rows with their names first (the cap of
+## every name is set on that), then the landscape band or the portrait line.
 func _fit_band() -> void:
+	_show_level(LEVEL_NAMED, _shown)
 	var band: MarginContainer = get_parent() as MarginContainer
 	var safe: SafeAreaMargin = null if band == null else band.get_parent() as SafeAreaMargin
 	if safe == null or army_bar == null:
 		_fit_rows(INF)  # No band, no cap.
 		return
+	var portrait: bool = HudLayout.is_portrait()
+	_list.vertical = not portrait
 	var width: float = get_viewport().get_visible_rect().size.x
-	var zone: float = maxf(width * SIDEBAR_SHARE, UiScale.dp(SIDEBAR_MIN_DP))
-	var left: int = ceili(army_bar.get_combined_minimum_size().x + UiScale.dp(GAP_DP))
 	var band_px: float = width - 2.0 * safe.apply().x
-	_fit_rows(BAND_SHARE * band_px)
+	if portrait:
+		_fit_line(band, band_px)
+	else:
+		_fit_rows(BAND_SHARE * band_px)
+		_fit_zone(band, width, band_px)
+
+
+## Landscape: the band's margins are the ArmyBar on the left and the sidebar zone on the right. The
+## band's minimum width counts both, so on a screen too narrow for all three the zone gives way and
+## the panel sits in the still empty zone, instead of growing the SafeArea and pushing the HUD off
+## the screen.
+func _fit_zone(band: MarginContainer, width: float, band_px: float) -> void:
+	size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	size_flags_vertical = Control.SIZE_SHRINK_END
+	var zone: float = HudLayout.right_zone_px(width)
+	var left: int = ceili(army_bar.get_combined_minimum_size().x + UiScale.dp(GAP_DP))
 	var room: float = band_px - left - get_combined_minimum_size().x
 	band.add_theme_constant_override("margin_left", left)
 	band.add_theme_constant_override("margin_right", mini(ceili(zone), maxi(floori(room), 0)))
+
+
+## Portrait: the line runs from the `top_left` control's right edge plus a gap to the band's right
+## edge, and the panel takes the first fit level whose width fits it. A name may take the whole
+## line (one row is cut at its end, not at BAND_SHARE of the width, which would cut "Light Tank" on
+## a narrow phone); with more rows the next level takes the names away. Level 4 drops rows from the
+## end, one at a time, until the rest and the chip fit; the first row always stays. Only a line
+## narrower than any phone leaves the panel wider than the line.
+func _fit_line(band: MarginContainer, band_px: float) -> void:
+	size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	var left: int = 0
+	if top_left != null and top_left.visible:
+		left = ceili(top_left.get_combined_minimum_size().x + UiScale.dp(GAP_DP))
+	band.add_theme_constant_override("margin_left", left)
+	band.add_theme_constant_override("margin_right", 0)
+	var line: float = band_px - left
+	_fit_rows(line - get_theme_stylebox(&"panel").get_minimum_size().x)  # A row may take the line.
+	var level: int = LEVEL_NAMED
+	var rows: int = _shown
+	while get_combined_minimum_size().x > line:
+		if level < LEVEL_NO_TOTAL:
+			level += 1
+		elif rows > 1:
+			level = LEVEL_CHIP
+			rows -= 1
+		else:
+			break
+		_show_level(level, rows)
+
+
+## Shows the first `rows` type rows at fit `level`: names at the first level, the total (with more
+## than one type) at the first two, and at the last the chip for the types left out.
+func _show_level(level: int, rows: int) -> void:
+	_level = level
+	for index: int in _rows.size():
+		_rows[index].visible = index < mini(rows, _shown)
+		_rows[index].title.visible = level == LEVEL_NAMED
+	_total.visible = _shown > 1 and level <= LEVEL_ICONS
+	var left_out: int = maxi(_shown - rows, 0) if level == LEVEL_CHIP else 0
+	if left_out > 0 and _chip == null:
+		_chip = Label.new()
+		_chip.name = "More"
+		_chip.theme_type_variation = NUMBER_VARIATION
+		_list.add_child(_chip)
+	if _chip != null:
+		_chip.visible = left_out > 0
+		_chip.text = "+%d" % left_out
 
 
 ## Caps the name of every shown row so that the row is at most `row_px` wide.

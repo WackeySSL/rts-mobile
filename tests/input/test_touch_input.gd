@@ -5,9 +5,11 @@ extends GdUnitTestSuite
 
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const GestureSpy: GDScript = preload("res://tests/input/support/gesture_spy.gd")
 const MAP: Rect2 = Rect2(0, 0, 3072, 3072)
 const BUTTON: Rect2 = Rect2(40, 40, 120, 120)  ## Base px, in the top-left corner.
 const AWAY: Vector2 = Vector2(800, 400)  ## A map point clear of the button.
+const INSIDE: Vector2 = Vector2(300, 400)  ## A map point clear of the button in either view.
 const UP: int = MOUSE_BUTTON_WHEEL_UP
 const DOWN: int = MOUSE_BUTTON_WHEEL_DOWN
 
@@ -217,6 +219,112 @@ func test_long_press_comes_at_300_ms_from_process_and_buzzes_when_haptics_are_on
 	_now_ms = 2300
 	await await_idle_frame()
 	assert_array(_buzzes).has_size(1)
+
+
+## A turn of the phone ends every gesture in flight (ADR 0015 section 3, plan P62). The zoom is
+## between levels, so a CAMERA_END that reached the camera would snap it, and a lift after the turn
+## must make no tap and no box. The turn is 2400x1080 to 1080x2400: the stretch is 1.5 both ways, so
+## the camera keeps the zoom and only the gesture handling is under test.
+func test_a_turn_during_a_pan_ends_it_with_no_snap_and_its_lift_is_nothing() -> void:
+	var spy: GestureSpy = _spy()
+	_camera.zoom = Vector2(1.2, 1.2)
+	TouchEvents.press(_vp, 0, INSIDE)
+	TouchEvents.drag(_vp, 0, INSIDE + Vector2(100, 0), Vector2(100, 0))
+	assert_int(_touch._recognizer.state()).is_equal(GestureRecognizer.State.PAN)
+	await _use_profile(&"android_6in_portrait")
+	assert_int(_touch._recognizer.state()).is_equal(GestureRecognizer.State.IDLE)
+	_zoom_is(1.2)  # A CAMERA_END would have snapped it to 1.0.
+	var at: Vector2 = _camera.position
+	TouchEvents.drag(_vp, 0, INSIDE + Vector2(300, 0), Vector2(200, 0))  # The finger goes on.
+	TouchEvents.release(_vp, 0, INSIDE + Vector2(300, 0))
+	assert_vector(_camera.position).is_equal(at)
+	_zoom_is(1.2)
+	assert_array(spy.kinds).is_empty()
+
+
+func test_a_turn_during_a_box_cancels_it_for_the_controller_and_its_lift_is_no_box_end() -> void:
+	var spy: GestureSpy = _spy()
+	_now_ms = 1000
+	TouchEvents.press(_vp, 0, INSIDE)
+	_now_ms = 1300
+	await await_idle_frame()  # The frame that sees the hold.
+	TouchEvents.drag(_vp, 0, INSIDE + Vector2(100, 60), Vector2(100, 60))
+	var started: Array[int] = [GestureEvent.Kind.LONG_PRESS, GestureEvent.Kind.BOX_UPDATE]
+	assert_array(spy.kinds).is_equal(started)
+	await _use_profile(&"android_6in_portrait")
+	assert_array(spy.kinds).is_equal(started + [GestureEvent.Kind.BOX_CANCEL])
+	TouchEvents.release(_vp, 0, INSIDE + Vector2(100, 60))
+	await await_idle_frame()
+	assert_array(spy.kinds).has_size(3)  # No BOX_END and no TAP.
+	assert_int(_touch._recognizer.state()).is_equal(GestureRecognizer.State.IDLE)
+
+
+func test_a_turn_during_a_pinch_leaves_the_zoom_off_its_level_and_the_lifts_are_nothing() -> void:
+	var spy: GestureSpy = _spy()
+	TouchEvents.press(_vp, 0, INSIDE - Vector2(50, 0))
+	TouchEvents.press(_vp, 1, INSIDE + Vector2(150, 0))  # 200 apart.
+	TouchEvents.drag(_vp, 1, INSIDE + Vector2(230, 0), Vector2(80, 0))  # x1.4
+	_zoom_is(1.4)
+	await _use_profile(&"android_6in_portrait")
+	assert_int(_touch._recognizer.state()).is_equal(GestureRecognizer.State.IDLE)
+	_zoom_is(1.4)  # A CAMERA_END would have snapped it to 1.5.
+	var at: Vector2 = _camera.position
+	TouchEvents.release(_vp, 1, INSIDE + Vector2(230, 0))
+	TouchEvents.release(_vp, 0, INSIDE - Vector2(50, 0))
+	assert_vector(_camera.position).is_equal(at)
+	_zoom_is(1.4)
+	assert_array(spy.kinds).is_empty()
+
+
+func test_a_press_that_has_not_moved_is_no_tap_after_a_turn() -> void:
+	var spy: GestureSpy = _spy()
+	TouchEvents.press(_vp, 0, INSIDE)
+	await _use_profile(&"android_6in_portrait")
+	TouchEvents.release(_vp, 0, INSIDE)
+	assert_array(spy.kinds).is_empty()
+	TouchEvents.press(_vp, 0, INSIDE)  # The next touch is a tap as ever.
+	TouchEvents.release(_vp, 0, INSIDE)
+	assert_array(spy.kinds).is_equal([GestureEvent.Kind.TAP])
+
+
+## The camera connects before TouchInput in main.tscn and a camera built after it runs after it:
+## either way no CAMERA_END reaches the camera, because TouchInput keeps its own orientation.
+func test_the_camera_is_spared_whichever_handler_runs_first() -> void:
+	_camera = auto_free(RtsCamera.new())  # Connected after TouchInput's handler now.
+	_camera.settings = _settings
+	add_child(_camera)
+	_camera.set_map_rect(MAP)
+	_camera.centre_on(MAP.get_center())
+	_touch.camera = _camera
+	_camera.zoom = Vector2(1.2, 1.2)
+	TouchEvents.press(_vp, 0, INSIDE)
+	TouchEvents.drag(_vp, 0, INSIDE + Vector2(100, 0), Vector2(100, 0))
+	await _use_profile(&"android_6in_portrait")
+	_zoom_is(1.2)
+	assert_int(_touch._recognizer.state()).is_equal(GestureRecognizer.State.IDLE)
+	await _use_profile(&"android_6in")  # And turning back is a turn again.
+	TouchEvents.press(_vp, 0, INSIDE)
+	TouchEvents.drag(_vp, 0, INSIDE + Vector2(100, 0), Vector2(100, 0))
+	await _use_profile(&"android_6in_portrait")
+	_zoom_is(1.2)
+
+
+## A browser toolbar or a window drag is not a turn: the gesture goes on and the slop follows.
+func test_a_resize_within_one_orientation_leaves_the_gesture_alone() -> void:
+	TouchEvents.press(_vp, 0, INSIDE)
+	TouchEvents.drag(_vp, 0, INSIDE + Vector2(100, 0), Vector2(100, 0))
+	var at: Vector2 = _camera.position
+	await _use_profile(&"web_tablet")
+	assert_int(_touch._recognizer.state()).is_equal(GestureRecognizer.State.PAN)
+	TouchEvents.drag(_vp, 0, INSIDE + Vector2(150, 0), Vector2(50, 0))
+	assert_vector(_camera.position).is_not_equal(at)  # Still panning.
+
+
+func _spy() -> GestureSpy:
+	var spy: GestureSpy = auto_free(GestureSpy.new())
+	add_child(spy)
+	_touch.controller = spy
+	return spy
 
 
 func _use_profile(profile_name: StringName) -> void:
