@@ -14,6 +14,13 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Drag one finger | Pans the map | |
 | Pinch | Zooms about the fingers; on release it settles on the nearest of three zoom levels (`zoom_levels` in `data/input_settings.tres`) | |
 
+## Turn the phone
+| Action | Result | Teach |
+|---|---|---|
+| Turn the phone, on a menu or during a match | The game plays in portrait and in landscape and follows the phone's sensor. A match goes on while you turn: nothing restarts and no order is given, the map keeps its centre and the size of what is on it, and the controls keep their size and move to the layout of the other orientation | |
+| Turn the phone while a finger is on the screen (a drag, a box or a pinch) | That gesture is cancelled, never turned into a tap or an order: no unit is selected or sent. Lift the finger and start the gesture again | |
+| Auto-rotate is off in the phone's settings | The game stays in the orientation the phone is in. The game cannot force a turn and has no lock of its own | |
+
 ## Selection
 | Action | Result | Teach |
 |---|---|---|

@@ -42,8 +42,8 @@ func test_display() -> void:
 	assert_int(_setting("display/window/size/viewport_height")).is_equal(720)
 	assert_str(_setting("display/window/stretch/mode")).is_equal("canvas_items")
 	assert_str(_setting("display/window/stretch/aspect")).is_equal("expand")
-	# 4 = sensor landscape
-	assert_int(_setting("display/window/handheld/orientation")).is_equal(4)
+	# 6 = sensor (ADR 0015 section 7); the Android manifest gets fullUser (13)
+	assert_int(_setting("display/window/handheld/orientation")).is_equal(6)
 
 
 func test_rendering_is_compatibility() -> void:

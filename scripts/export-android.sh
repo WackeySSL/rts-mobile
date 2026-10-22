@@ -207,8 +207,9 @@ test_files="$(grep -E '^assets/(tests|addons/gdUnit4)/' <<<"$listing" || true)"
 "$signer" verify --print-certs "$apk" || die 1 "apksigner verify failed"
 manifest="$("$(dirname "$signer")/aapt2" dump xmltree --file AndroidManifest.xml "$apk")"
 grep -q "package=\"$PACKAGE\"" <<<"$manifest" || die 1 "the manifest package is not $PACKAGE"
-# Godot 4.7.2 maps the project's sensor landscape to userLandscape (11), not sensorLandscape (6).
-grep -Eq 'screenOrientation\(0x0101001e\)=11$' <<<"$manifest" || die 1 "the manifest screenOrientation is not 11 (userLandscape)"
+# Godot 4.7.2 maps the project's orientation 6 (sensor) to fullUser (13): the phone's sensor picks the orientation
+# and auto-rotate off keeps the current one (ADR 0015 section 7).
+grep -Eq 'screenOrientation\(0x0101001e\)=13$' <<<"$manifest" || die 1 "the manifest screenOrientation is not 13 (fullUser)"
 grep -q 'android.permission.VIBRATE' <<<"$manifest" || die 1 "the manifest lacks the VIBRATE permission"
 
 # (8) The kernels library (ADR 0013 section 10). The APK entry of the export mode holds the bytes CI built,
