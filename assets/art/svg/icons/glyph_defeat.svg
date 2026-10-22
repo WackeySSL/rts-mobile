@@ -1,0 +1,10 @@
+<!-- Defeat emblem: white and grey only, tinted at run time (the result screen). -->
+<!-- Shape: a heater shield with a pointed foot, split down the middle by a dark zigzag crack. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <path d="M18 14 H110 V62 Q110 94 64 118 Q18 94 18 62 Z" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- shade on the right half -->
+  <path d="M64 14 H110 V62 Q110 94 64 118 Z" fill="#BFBFBF"/>
+  <path d="M18 14 H110 V62 Q110 94 64 118 Q18 94 18 62 Z" fill="none" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- the crack -->
+  <polyline points="70,14 56,44 76,64 58,90 66,116" fill="none" stroke="#4D4D4D" stroke-width="8" stroke-linejoin="miter"/>
+</svg>

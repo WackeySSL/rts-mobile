@@ -1,0 +1,50 @@
+<!-- Harvester build icon: palette colours, one neutral grey team mark, drawn on a clear canvas for a tile of 64 dp or more. -->
+<!-- Silhouette: a combine-like ore hauler, two long round-ended track pods either side of one big square open bin, a small cab in front of it and a wide toothed reel bar across the nose. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- track pods -->
+  <g fill="#5B6670" stroke="#1C2127" stroke-width="4" stroke-linejoin="round">
+    <rect x="8" y="14" width="86" height="22" rx="9"/>
+    <rect x="8" y="92" width="86" height="22" rx="9"/>
+  </g>
+  <g stroke="#A9B4BE" stroke-width="2.5" stroke-linecap="round">
+    <line x1="16" y1="18" x2="86" y2="18"/>
+    <line x1="16" y1="96" x2="86" y2="96"/>
+  </g>
+  <!-- deck -->
+  <polygon points="14,36 92,36 98,42 98,86 92,92 14,92" fill="#4E5A3A" stroke="#1C2127" stroke-width="4" stroke-linejoin="round"/>
+  <!-- neutral team plates -->
+  <g fill="#9AA5B1" stroke="#1C2127" stroke-width="2" stroke-linejoin="round">
+    <rect x="16" y="20" width="66" height="9" rx="3"/>
+    <rect x="16" y="99" width="66" height="9" rx="3"/>
+  </g>
+  <!-- ore bin with its dark dirt floor -->
+  <path d="M22 38 L74 38 Q80 38 80 44 L80 84 Q80 90 74 90 L22 90 Q16 90 16 84 L16 44 Q16 38 22 38 Z" fill="#6B7A4F" stroke="#1C2127" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="25" y="46" width="47" height="36" rx="3" fill="#6F583B" stroke="#1C2127" stroke-width="2" stroke-linejoin="round"/>
+  <line x1="28" y1="49" x2="69" y2="49" stroke="#A3865E" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- cab -->
+  <polygon points="78,50 90,50 96,56 96,72 90,78 78,78" fill="#6B7A4F" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
+  <rect x="89" y="56" width="4" height="16" rx="1.5" fill="#1C2127"/>
+  <!-- toothed reel bar -->
+  <g fill="#A9B4BE" stroke="#1C2127" stroke-width="2.5" stroke-linejoin="round">
+    <polygon points="114,10 123,16 114,22"/>
+    <polygon points="114,22 123,28 114,34"/>
+    <polygon points="114,34 123,40 114,46"/>
+    <polygon points="114,46 123,52 114,58"/>
+    <polygon points="114,58 123,64 114,70"/>
+    <polygon points="114,70 123,76 114,82"/>
+    <polygon points="114,82 123,88 114,94"/>
+    <polygon points="114,94 123,100 114,106"/>
+    <polygon points="114,106 123,112 114,118"/>
+  </g>
+  <rect x="98" y="8" width="16" height="112" rx="6" fill="#7D8893" stroke="#1C2127" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="103" y1="16" x2="103" y2="112" stroke="#A9B4BE" stroke-width="2.5" stroke-linecap="round"/>
+  <g stroke="#1C2127" stroke-width="2" stroke-linecap="round">
+    <line x1="106" y1="26" x2="110" y2="26"/>
+    <line x1="106" y1="40" x2="110" y2="40"/>
+    <line x1="106" y1="54" x2="110" y2="54"/>
+    <line x1="106" y1="68" x2="110" y2="68"/>
+    <line x1="106" y1="82" x2="110" y2="82"/>
+    <line x1="106" y1="96" x2="110" y2="96"/>
+    <line x1="106" y1="110" x2="110" y2="110"/>
+  </g>
+</svg>

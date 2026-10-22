@@ -1,0 +1,21 @@
+<!-- Refinery build icon: palette colours, no team colour, drawn on a clear canvas for a tile of 64 dp or more. -->
+<!-- Silhouette: one fat round silo and two small ones stepping off to the right above a wide hall, with a gold-filled funnel jutting out of the middle of its front. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- silos -->
+  <circle cx="40" cy="38" r="30" fill="#7D8893" stroke="#1C2127" stroke-width="4"/>
+  <circle cx="40" cy="38" r="19" fill="#A9B4BE" stroke="#1C2127" stroke-width="3"/>
+  <circle cx="40" cy="38" r="7" fill="#5B6670" stroke="#1C2127" stroke-width="2"/>
+  <circle cx="94" cy="26" r="16" fill="#7D8893" stroke="#1C2127" stroke-width="4"/>
+  <circle cx="94" cy="26" r="8" fill="#A9B4BE" stroke="#1C2127" stroke-width="2.5"/>
+  <circle cx="104" cy="60" r="16" fill="#7D8893" stroke="#1C2127" stroke-width="4"/>
+  <circle cx="104" cy="60" r="8" fill="#A9B4BE" stroke="#1C2127" stroke-width="2.5"/>
+  <!-- hall -->
+  <rect x="8" y="72" width="112" height="30" rx="6" fill="#5B6670" stroke="#1C2127" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="14" y1="77" x2="114" y2="77" stroke="#A9B4BE" stroke-width="2" stroke-linecap="round"/>
+  <rect x="16" y="82" width="38" height="14" rx="2" fill="#7D8893" stroke="#1C2127" stroke-width="2"/>
+  <rect x="74" y="82" width="38" height="14" rx="2" fill="#7D8893" stroke="#1C2127" stroke-width="2"/>
+  <!-- gold funnel -->
+  <polygon points="36,100 92,100 82,122 46,122" fill="#F2B705" stroke="#1C2127" stroke-width="4" stroke-linejoin="round"/>
+  <polygon points="42,112 86,112 82,119 46,119" fill="#A67C00"/>
+  <line x1="42" y1="105" x2="86" y2="105" stroke="#FFD84D" stroke-width="3" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,6 @@
+<!-- Check glyph: white and grey only, tinted at run time (confirm a placement). -->
+<!-- Shape: one bold check mark, a short stroke down to the left and a long stroke up to the right, round at every end. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <polyline points="20,68 50,98 108,32" fill="none" stroke="#4D4D4D" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="20,68 50,98 108,32" fill="none" stroke="#FFFFFF" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

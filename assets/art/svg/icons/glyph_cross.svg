@@ -1,0 +1,12 @@
+<!-- Cross glyph: white and grey only, tinted at run time (cancel a placement). -->
+<!-- Shape: a bold X of two crossing strokes, round at every end. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <g fill="none" stroke="#4D4D4D" stroke-width="34" stroke-linecap="round">
+    <line x1="26" y1="26" x2="102" y2="102"/>
+    <line x1="102" y1="26" x2="26" y2="102"/>
+  </g>
+  <g fill="none" stroke="#FFFFFF" stroke-width="24" stroke-linecap="round">
+    <line x1="26" y1="26" x2="102" y2="102"/>
+    <line x1="102" y1="26" x2="26" y2="102"/>
+  </g>
+</svg>

@@ -1,0 +1,27 @@
+<!-- Rifle squad build icon: palette colours, one neutral grey team mark, drawn on a clear canvas for a tile of 64 dp or more. -->
+<!-- Silhouette: four soldiers in a loose diamond, each a broad-shouldered oval with a round grey helmet cover and a short stubby rifle held out to the right of the head. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- the soldiers sit at (78,64), (52,26), (52,102) and (24,64), as in the sprite at twice the size; each: rifle, shoulders, helmet -->
+  <g stroke="#1C2127" stroke-width="4" stroke-linejoin="round">
+    <g transform="translate(24 64)">
+      <rect x="6" y="1" width="30" height="11" rx="2" fill="#7D8893"/>
+      <ellipse rx="12" ry="19" fill="#6B7A4F"/>
+      <circle cx="1" cy="0" r="8" fill="#9AA5B1" stroke-width="3"/>
+    </g>
+    <g transform="translate(52 26)">
+      <rect x="6" y="1" width="30" height="11" rx="2" fill="#7D8893"/>
+      <ellipse rx="12" ry="19" fill="#6B7A4F"/>
+      <circle cx="1" cy="0" r="8" fill="#9AA5B1" stroke-width="3"/>
+    </g>
+    <g transform="translate(52 102)">
+      <rect x="6" y="1" width="30" height="11" rx="2" fill="#7D8893"/>
+      <ellipse rx="12" ry="19" fill="#6B7A4F"/>
+      <circle cx="1" cy="0" r="8" fill="#9AA5B1" stroke-width="3"/>
+    </g>
+    <g transform="translate(78 64)">
+      <rect x="6" y="1" width="30" height="11" rx="2" fill="#7D8893"/>
+      <ellipse rx="12" ry="19" fill="#6B7A4F"/>
+      <circle cx="1" cy="0" r="8" fill="#9AA5B1" stroke-width="3"/>
+    </g>
+  </g>
+</svg>
