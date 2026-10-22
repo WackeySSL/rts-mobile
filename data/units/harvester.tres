@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="UnitDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/UnitDef.gd" id="1_unit"]
+
+[resource]
+script = ExtResource("1_unit")
+type_id = &"harvester"
+display_name = "Harvester"
+speed = 73
+radius = 450
+selection_radius = 650
+formation_spacing = 1400
+max_hp = 800
+armour = 1
+move_class = 2
+sight_range = 5000
+cost = 1200
+build_ticks = 300
+tab = 2
+harvest_capacity = 500
