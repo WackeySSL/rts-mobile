@@ -18,10 +18,12 @@ const MILLI_PER_TILE: int = 1000
 ## that arrive hit (PROJECTILES: `Combat.advance_projectiles`), armed units with a target in range
 ## fire (FIRE: `Combat.fire`, a hitscan hit or a new shell), dead rows leave and their vision ends
 ## (REMOVE), the players whose turn it is move their fog (FOG: `FogUpdate.run`, every
-## `fog_period_ticks`, after `FogUpdate.begin` emptied their dirty lists), and the tick counts.
-## A probe gets `begin()` first and a `mark` after each phase that exists (ADR 0007 section 4); it
-## never sees the World. ECONOMY, PRODUCTION and MEMORY (ADR 0017 section 5) are marked after FOG
-## and run nothing yet: their rules come with plan rows P73 to P77.
+## `fog_period_ticks`, after `FogUpdate.begin` emptied their dirty lists), the economy runs
+## (ECONOMY: `Power.run`, `Harvest.run`), the queues advance and the match outcome is checked
+## (PRODUCTION: `Production.run`, `Outcome.run`), the last-seen records update (MEMORY:
+## `LastSeen.run`; ADR 0017 section 5), and the tick counts. Those five modules are skeletons that
+## run nothing until plan rows P73 to P77. A probe gets `begin()` first and a `mark` after each
+## phase that exists (ADR 0007 section 4); it never sees the World.
 static func step(world: World, commands: Array[Command], probe: SimProbe = null) -> void:
 	if probe != null:
 		probe.begin()
@@ -74,17 +76,26 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 	FogUpdate.run(world)
 	if probe != null:
 		probe.mark(SimProbe.Phase.FOG)
+	Power.run(world)
+	Harvest.run(world)
+	if probe != null:
 		probe.mark(SimProbe.Phase.ECONOMY)
+	Production.run(world)
+	Outcome.run(world)
+	if probe != null:
 		probe.mark(SimProbe.Phase.PRODUCTION)
+	LastSeen.run(world)
+	if probe != null:
 		probe.mark(SimProbe.Phase.MEMORY)
 	world.tick += 1
 
 
 ## Applies a command of the right tick by type (ADR 0007 section 5), or drops and counts it. Every
 ## type needs a player in 1..player_count and at most MAX_PAYLOAD payload ints; a type without a
-## branch (NONE, 5-29, anything else) is dropped as unknown before any id rule runs. Each
-## `_apply_*` is the ADR's per-type validation: it checks the ids through the shared helpers and
-## applies the rows it accepted.
+## branch (NONE, 5-9, 15-19, 21-29, anything else) is dropped as unknown before any id rule runs.
+## The Phase 3 types (ADR 0017 section 4) also need a player who is not defeated. Each `_apply_*`
+## and each module's `apply_*` is the ADR's per-type validation: it checks the ids through the
+## shared helpers and applies the rows it accepted.
 static func _apply(world: World, command: Command) -> void:
 	var applied: bool = false
 	if (
@@ -101,6 +112,18 @@ static func _apply(world: World, command: Command) -> void:
 				applied = _apply_attack(world, command)
 			Command.Type.STOP:
 				applied = _apply_stop(world, command)
+			Command.Type.PLACE:
+				applied = _playing(world, command) and Production.apply_place(world, command)
+			Command.Type.QUEUE:
+				applied = _playing(world, command) and Production.apply_queue(world, command)
+			Command.Type.CANCEL:
+				applied = _playing(world, command) and Production.apply_cancel(world, command)
+			Command.Type.RALLY:
+				applied = _playing(world, command) and Outcome.apply_rally(world, command)
+			Command.Type.HARVEST:
+				applied = _playing(world, command) and Harvest.apply_harvest(world, command)
+			Command.Type.SURRENDER:
+				applied = _playing(world, command) and Outcome.apply_surrender(world, command)
 	if not applied:
 		world.dropped_commands += 1
 
@@ -116,6 +139,7 @@ static func _apply_point(world: World, command: Command, order: int) -> bool:
 	for row: int in rows:
 		orders[row] = order
 	Movement.reset_nav(world, rows, World.NavMode.DIRECT)
+	Harvest.release(world, rows)
 	return true
 
 
@@ -159,7 +183,15 @@ static func _apply_stop(world: World, command: Command) -> bool:
 		order_target[row] = 0
 		target[row] = 0
 	Movement.reset_nav(world, rows, World.NavMode.NONE)  # Also drops the flow field.
+	Harvest.release(world, rows)
 	return true
+
+
+## Whether the command's player has not been defeated (`defeated_tick` 0). False for a player past
+## the arrays, which a hand-built world may have raised `player_count` to after prepare().
+static func _playing(world: World, command: Command) -> bool:
+	var defeated: PackedInt32Array = world.defeated_tick
+	return command.player_id < defeated.size() and defeated[command.player_id] == 0
 
 
 ## Rows of the command's units, ascending and without duplicates; none when it holds more than

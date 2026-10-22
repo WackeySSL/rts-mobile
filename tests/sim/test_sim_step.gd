@@ -206,11 +206,12 @@ func test_each_group_drop_rule_counts_once_and_the_largest_command_is_kept() -> 
 			assert_int(world.dropped_commands).is_equal(0)
 
 
-## NONE, 5-9, the reserved 10-19 and 20-29 and others are unknown whatever their ids: also with
-## no ids, or a unit that cannot move (type 1 has speed 0).
+## NONE, 5-9, the reserved 15-19 and 21-29 and others are unknown whatever their ids: also with
+## no ids, or a unit that cannot move (type 1 has speed 0). The Phase 3 types 10-14 and 20 are
+## known and refused until their rows (test_sim_phases_v2).
 func test_an_unknown_or_reserved_type_is_dropped_whatever_the_ids_are() -> void:
 	var wrong: Array[String] = []
-	for type: int in [0, 5, 9, 10, 19, 20, 29, 30, 99, -1]:
+	for type: int in [0, 5, 9, 15, 19, 21, 29, 30, 99, -1]:
 		for ids: Array in [[], [1], [2], [1, 2]]:
 			var world: World = _make_world()
 			world.add_unit(1, 0, 10000, 10000)
