@@ -329,7 +329,9 @@ func test_copy_into_answers_as_the_source_and_shares_nothing() -> void:
 
 
 func test_every_int_and_packed_array_is_listed_once() -> void:
-	assert_array(FogGrid.HASHED).is_equal([&"visible", &"explored"])
+	# P65 (ADR 0016): visible is derived from the rows and left the hash; explored is history.
+	assert_array(FogGrid.HASHED).is_equal([&"explored"])
+	assert_array(FogGrid.UNHASHED).contains([&"visible"])
 	var found: Array[StringName] = []
 	for info: Dictionary in FogGrid.new().get_property_list():
 		var kind: int = info.type
