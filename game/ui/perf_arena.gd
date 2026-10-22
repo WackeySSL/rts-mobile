@@ -16,8 +16,14 @@ extends Node2D
 ## cannot lock the screen, a run that sees a portrait view is INVALID (`PerfHud.REASON_PORTRAIT`).
 ## `_ready` runs the card's preflight first (the self-check and the burst, with no World and no job,
 ## so its long frame lies in no timed window), then sets the scenario and starts the runner, then
-## starts the card's first run. Every player-1 unit is selected for the view (rings are part of what
-## is measured), again after each new match.
+## starts the card's first run. When entry asked for the landscape lock and the view is still
+## portrait (a phone held upright: Android turns the window a few frames after the request, and a
+## run that began before it would be INVALID for the moved camera and the portrait view), the
+## runner's start, the framing and the card's first run wait for the viewport's `size_changed` that
+## makes it landscape, at most `LANDSCAPE_WAIT_FRAMES` frames (plan P63c): then the run starts
+## anyway and `PerfHud.REASON_PORTRAIT` marks it. Without the lock (the web preview, headless) or
+## in a landscape view the first run starts at once. Every player-1 unit is selected for the view
+## (rings are part of what is measured), again after each new match.
 ## Every run starts at the scenario's framing (P50c): the first, and each one "Run again" or a
 ## layer-mode step starts, because the heavy window counts the rigs inside the camera. A finger
 ## still pans and zooms (to inspect on the preview), but a move while a run records makes it
@@ -36,6 +42,12 @@ const MODES: PackedStringArray = [
 ]
 const LAYERS_TEXT: String = "Layers: %s"
 const GAP_DP: float = 8.0
+## How long the first run waits for the window to turn to landscape: 120 frames, 2 s at the arena's
+## 60 fps cap. Android turns the window a few frames after `screen_set_orientation` (P63b's review
+## saw `_ready` finish first), so 2 s is many times that and covers a slow turn, yet stays short
+## for a window that never turns (split screen, a system that refuses the request): its run then
+## starts anyway and `portrait` marks it, as on the web preview.
+const LANDSCAPE_WAIT_FRAMES: int = 120
 
 @export var scenario: ScenarioDef
 ## The frame cap of the arena (ADR 0011 section 5).
@@ -73,6 +85,7 @@ var orientation_source: Callable = DisplayServer.screen_get_orientation
 var orientation_sink: Callable = DisplayServer.screen_set_orientation
 var layer_mode: String = MODE_ALL
 
+var _wait_left: int = 0  ## Frames the first run may still wait for landscape; 0: not waiting.
 var _max_fps_before: int = 0
 var _keep_on_before: bool = false
 var _orientation_locked: bool = false  ## The sink was called on entry, so leaving calls it too.
@@ -103,12 +116,14 @@ func _exit_tree() -> void:
 	if _orientation_locked:
 		orientation_sink.call(_orientation_before)
 		_orientation_locked = false
+	_wait_left = 0  # An arena that left the tree starts no run.
 
 
 func _ready() -> void:
 	back_button.pressed.connect(_on_back_pressed)
 	layers_button.pressed.connect(_on_layers_pressed)
 	get_viewport().size_changed.connect(_apply_dp)
+	get_viewport().size_changed.connect(_on_view_resized)
 	_apply_dp()
 	hud.rigs_source = drawn_rigs
 	hud.fog_source = fog_update_usec
@@ -119,13 +134,17 @@ func _ready() -> void:
 	# sees no World and no job.
 	hud.preflight(runner)
 	runner.scenario = scenario
-	runner.start()
-	frame_camera()
-	_select_own_units()
-	hud.restart()
+	if _orientation_locked and _view_is_portrait():
+		_wait_left = LANDSCAPE_WAIT_FRAMES
+	else:
+		_start_first_run()
 
 
 func _process(_delta: float) -> void:
+	if _wait_left > 0:
+		_wait_left -= 1
+		if _wait_left == 0:
+			_start_first_run()
 	hud.zoom = camera.zoom.x
 	_select_own_units()
 
@@ -154,6 +173,31 @@ func frame_camera() -> void:
 	camera.centre_on(
 		(Vector2(scenario.camera_start_tile) + Vector2(0.5, 0.5)) * ViewScale.PX_PER_TILE
 	)
+
+
+## The first run (plan P63c), in the order "Run again" keeps: the match starts, the view is framed
+## (it needs the match's map), then the card's run begins and reads the view it is judged against.
+func _start_first_run() -> void:
+	_wait_left = 0
+	runner.start()
+	frame_camera()
+	_select_own_units()
+	hud.restart()
+
+
+## Whether the card would judge the view portrait now: its own seam and rule, so the arena waits
+## for exactly what would mark the run.
+func _view_is_portrait() -> bool:
+	return (
+		hud.view_size_source.is_valid()
+		and UiScale.is_portrait_size(Vector2i(hud.view_size_source.call()))
+	)
+
+
+## The turn the first run waits for. A flip emits twice; the second finds the run started.
+func _on_view_resized() -> void:
+	if _wait_left > 0 and not _view_is_portrait():
+		_start_first_run()
 
 
 ## The rows shown and inside the camera's visible world rect now (`PerfHud.rigs_source`).
