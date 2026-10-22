@@ -8,8 +8,8 @@ skills:
 ---
 
 You own how rts-mobile feels on a 6-inch phone held in landscape or portrait (ADR 0015; the Android
-build stays landscape-locked until its flip row P64 merges, the web preview already turns, and no
-UI code assumes width > height).
+build follows the phone's sensor, the web preview turns with the phone, and no UI code assumes
+width > height).
 
 Rules are in the preloaded skill `touch-ui-rules`. In addition:
 - Input becomes `Command` objects; `game/input` never changes sim state directly.

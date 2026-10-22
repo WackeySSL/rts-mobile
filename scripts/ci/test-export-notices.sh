@@ -68,7 +68,7 @@ if [ "$2" = badging ]; then
 fi
 case "$STUB_DEBUGGABLE" in xmltree | all) echo 'A: http://schemas.android.com/apk/res/android:debuggable(0x0101000f)=true' ;; esac
 echo 'A: package="dk.appcode.rts.dev"'
-echo 'A: http://schemas.android.com/apk/res/android:screenOrientation(0x0101001e)=11'
+echo "A: http://schemas.android.com/apk/res/android:screenOrientation(0x0101001e)=${STUB_ORIENTATION:-13}"
 echo 'A: http://schemas.android.com/apk/res/android:name="android.permission.VIBRATE"'
 STUB
 printf '#!/usr/bin/env bash\nexit 0\n' | tee "$root/sdk/platform-tools/adb" >"$root/sdk/build-tools/36.0.0/apksigner"
@@ -178,7 +178,7 @@ run() {
   fi
   out="$(cd "$root/$1" && env -i PATH="$root/bin:$PATH" HOME="${STUB_HOME:-$root/home}" TMPDIR="$root/tmp" GODOT="$root/bin/godot" \
     JAVA_HOME="$root/jdk" ANDROID_HOME="$root/sdk" STUB_APK="${STUB_APK:-$apk}" STUB_ALIGN="${STUB_ALIGN:-0x4000}" \
-    STUB_PCK_EXTRA="${STUB_PCK_EXTRA:-}" STUB_DEBUGGABLE="${STUB_DEBUGGABLE:-}" STUB_LOG="$root/$1.stub.log" \
+    STUB_PCK_EXTRA="${STUB_PCK_EXTRA:-}" STUB_DEBUGGABLE="${STUB_DEBUGGABLE:-}" STUB_ORIENTATION="${STUB_ORIENTATION:-}" STUB_LOG="$root/$1.stub.log" \
     GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$root/keystore" GODOT_ANDROID_KEYSTORE_DEBUG_USER=u \
     GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=p ${keys[@]+"${keys[@]}"} bash "scripts/export-$script.sh" $args 2>&1)" || rc=$?
 }
@@ -309,6 +309,10 @@ STUB_APK="$root/badbytes.apk" native_case "the APK's library is not the built on
 STUB_APK="$root/nocxx.apk" native_case "the APK lacks libc++_shared.so" 1 "the APK lacks lib/arm64-v8a/libc++_shared.so"
 STUB_APK="$root/nolib.apk" native_case "the APK lacks the library" 1 "the APK lacks lib/arm64-v8a/$native"
 STUB_ALIGN=0x1000 native_case "the ELF checks fail on a 4 KB aligned library" 1 "p_align below 0x4000"
+# ADR 0015 section 7 (P64): the manifest must say fullUser (13). A landscape lock (11, userLandscape) or the plain
+# sensor value (6) means the project setting or the engine's mapping changed, and the build would not turn.
+STUB_ORIENTATION=11 native_case "a landscape-locked manifest (11) fails" 1 "the manifest screenOrientation is not 13 (fullUser)"
+STUB_ORIENTATION=6 native_case "a manifest with the plain sensor value (6) fails" 1 "the manifest screenOrientation is not 13 (fullUser)"
 tree no-entry
 : >"$root/no-entry/native/sim_kernels.gdextension"
 run no-entry android

@@ -37,6 +37,17 @@ func test_web_preset_excludes_native() -> void:
 	)
 
 
+## ADR 0015 section 7: the web preview turns with the phone. The PWA is off and its orientation is
+## Any (0), so the exported page locks nothing; the project's orientation setting is not applied on
+## the web, and a PWA manifest with an orientation would be the only thing that could lock it.
+func test_web_preset_does_not_lock_the_orientation() -> void:
+	var config: ConfigFile = _config()
+	var options: String = "preset.0.options"
+	assert_str(config.get_value("preset.0", "name")).is_equal("Web")
+	assert_bool(config.get_value(options, "progressive_web_app/enabled")).is_false()
+	assert_int(config.get_value(options, "progressive_web_app/orientation")).is_equal(0)
+
+
 func test_app_identity_and_vibrate() -> void:
 	var config: ConfigFile = _config()
 	assert_str(config.get_value(OPTIONS, "package/unique_name")).is_equal("dk.appcode.rts.dev")

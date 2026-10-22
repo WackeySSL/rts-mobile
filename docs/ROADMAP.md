@@ -41,7 +41,7 @@ Tick a box in the PR that meets the criterion.
   band); a turn during a match keeps the camera centre and the world size per dp and queues no Command; UI and layout tests
   run at 1280x720, 2400x1080, 2048x1536, 720x1280, 1080x2400 and 1536x2048; checked on Michael's phone in portrait: build an
   item with one hand, jump with the minimap, rotate during a placement
-- [ ] The Android build follows the device's sensor (ADR 0015 §7: `window/handheld/orientation=6`, manifest
+- [x] The Android build follows the device's sensor (ADR 0015 §7: `window/handheld/orientation=6`, manifest
   `screenOrientation` 13), as the last row of `docs/plans/2026-10-19-portrait.md`
 - [ ] Ore fields, harvester loop, refinery and credits
 - [ ] Production of all MVP units with rally points

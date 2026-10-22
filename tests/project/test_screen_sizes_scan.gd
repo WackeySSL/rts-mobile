@@ -16,10 +16,11 @@ extends GdUnitTestSuite
 ##   `ScreenSizes.ALL` and `UiProfiles.portrait()`.
 ## PORTRAIT_PENDING holds each suite that is landscape-only today, with the row that makes it run
 ## portrait too. It is empty since P62b (P61 the HUD, P62 the camera, P62b the last view and scene
-## suites, P63 the dev scenes took their entries out), and an empty list is legal: P64 (the
-## orientation flip) requires it. An entry that returns names the row that will remove it, and that
-## row joins ROWS in the same change; the scan fails on an entry whose suite already reads a
-## portrait size.
+## suites, P63 the dev scenes took their entries out), and since P64 (the orientation flip) the scan
+## requires it to stay empty: the Android build follows the sensor, so a suite that runs only
+## landscape sizes has no row to wait for. An entry would need a plan change first, naming the row
+## that will remove it, which joins ROWS in the same change; the scan fails on an entry whose suite
+## already reads a portrait size.
 ## Every rule has fixture lines that it must flag and lines that it must leave alone, so a scan
 ## that matches nothing fails.
 ## The scan is a line lint with documented gaps, not a proof that every case runs portrait:
@@ -39,11 +40,11 @@ const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const SCANNED_DIRS: Array[String] = ["res://tests/ui", "res://tests/scenes", "res://tests/view"]
 ## The rows that may remove an entry (docs/plans/2026-10-19-portrait.md). None is left: P61, P62,
-## P62b and P63 have removed theirs.
+## P62b and P63 have removed theirs, and P64 requires the list to stay empty.
 const ROWS: Array[String] = []
 
 ## The suites that run only landscape sizes today, each with the row that makes it run portrait
-## too. None is left (P62b); see the comment at the top.
+## too. None is left (P62b), and P64 requires it empty; see the comment at the top.
 const PORTRAIT_PENDING: Dictionary[String, String] = {}
 
 ## A window size assigned from a literal: `size = Vector2i(<digits>` or `set_size(Vector2i(<digits>`
@@ -276,6 +277,18 @@ func test_no_suite_runs_landscape_sizes_only_unless_it_is_pending() -> void:
 					% "\n".join(unlisted)
 				)
 			)
+		)
+		. is_empty()
+	)
+
+
+## ADR 0015 section 7 (P64): the build turns with the phone, so every UI and layout suite runs the
+## portrait sizes now and the pending list has nothing left to hold.
+func test_no_suite_is_pending_since_the_orientation_flip() -> void:
+	(
+		assert_dict(PORTRAIT_PENDING)
+		. override_failure_message(
+			"PORTRAIT_PENDING must be empty since P64 (the orientation flip): %s" % PORTRAIT_PENDING
 		)
 		. is_empty()
 	)

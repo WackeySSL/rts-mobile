@@ -12,9 +12,8 @@ paths:
 
 Target: a 6-inch phone in landscape or portrait (ADR 0015), held with two thumbs in landscape and
 often in one hand in portrait. It must also work on tablets and in the desktop web preview, where
-the mouse emulates touch. The Android build stays landscape-locked until ADR 0015's flip row (P64)
-merges; the web preview already turns with the phone. Until then, and after, no UI code assumes
-width > height.
+the mouse emulates touch. The Android build follows the phone's sensor and the web preview turns
+with the phone; no UI code assumes width > height.
 
 ## Gesture map
 | Gesture | Result |
@@ -108,8 +107,7 @@ Today's layout, unchanged by ADR 0015.
 - Under attack: edge-of-screen indicator and a minimap ping.
 
 ## Project settings
-- `display/window/handheld/orientation = sensor_landscape` until ADR 0015's flip row (P64), then
-  `sensor` (6, Android manifest `fullUser`)
+- `display/window/handheld/orientation = sensor` (6, Android manifest `fullUser`, ADR 0015)
 - `input_devices/pointing/emulate_touch_from_mouse = true`, `emulate_mouse_from_touch = false`
 - Stretch mode `canvas_items`, aspect `expand`, base size 1280x720.
 
