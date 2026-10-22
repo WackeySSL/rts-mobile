@@ -1,0 +1,10 @@
+<!-- Defence turret, team layer: white and grey only, tinted at run time, drawn between hull and head. -->
+<!-- Shape: every second sandbag of the ring, four in all, so the colour shows at any heading of the gun. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <g fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5">
+    <ellipse cx="64" cy="27" rx="16" ry="10" transform="rotate(22.5 64 64)"/>
+    <ellipse cx="64" cy="27" rx="16" ry="10" transform="rotate(112.5 64 64)"/>
+    <ellipse cx="64" cy="27" rx="16" ry="10" transform="rotate(202.5 64 64)"/>
+    <ellipse cx="64" cy="27" rx="16" ry="10" transform="rotate(292.5 64 64)"/>
+  </g>
+</svg>

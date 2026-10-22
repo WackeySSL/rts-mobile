@@ -1,0 +1,18 @@
+<!-- Refinery, team layer: white and grey only, tinted at run time, drawn over the hull. -->
+<!-- Shape: a big plate on the left and a smaller one on the right of the belt across the hall roof, and a flat ring on the lid of each silo. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="384" viewBox="0 0 384 384">
+  <g fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round">
+    <!-- hall plates, 3 px inside their plinths -->
+    <rect x="33" y="203" width="130" height="92" rx="3"/>
+    <rect x="221" y="203" width="82" height="92" rx="3"/>
+    <!-- silo rings: an outer and an inner circle, filled between them -->
+    <path fill-rule="evenodd" d="M46 104 A60 60 0 0 1 166 104 A60 60 0 0 1 46 104 Z M70 104 A36 36 0 0 1 142 104 A36 36 0 0 1 70 104 Z"/>
+    <path fill-rule="evenodd" d="M232 74 A30 30 0 0 1 292 74 A30 30 0 0 1 232 74 Z M244 74 A18 18 0 0 1 280 74 A18 18 0 0 1 244 74 Z"/>
+    <path fill-rule="evenodd" d="M292 142 A30 30 0 0 1 352 142 A30 30 0 0 1 292 142 Z M304 142 A18 18 0 0 1 340 142 A18 18 0 0 1 304 142 Z"/>
+  </g>
+  <!-- grey shade on the lower edge of each hall plate -->
+  <g fill="#BFBFBF">
+    <rect x="34" y="290" width="128" height="4"/>
+    <rect x="222" y="290" width="80" height="4"/>
+  </g>
+</svg>

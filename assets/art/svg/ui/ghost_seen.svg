@@ -1,0 +1,24 @@
+<!-- Ghost memory dots, a seamless tile: white and grey only, tinted at run time (neutral grey over a building last seen). -->
+<!-- Pattern: small round dots 32 apart along each row, every second row shifted by half a step, so a repeat shows no seam. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <g fill="#FFFFFF" stroke="#4D4D4D" stroke-width="2">
+    <circle cx="16" cy="16" r="7"/>
+    <circle cx="48" cy="16" r="7"/>
+    <circle cx="80" cy="16" r="7"/>
+    <circle cx="112" cy="16" r="7"/>
+    <circle cx="0" cy="48" r="7"/>
+    <circle cx="32" cy="48" r="7"/>
+    <circle cx="64" cy="48" r="7"/>
+    <circle cx="96" cy="48" r="7"/>
+    <circle cx="128" cy="48" r="7"/>
+    <circle cx="16" cy="80" r="7"/>
+    <circle cx="48" cy="80" r="7"/>
+    <circle cx="80" cy="80" r="7"/>
+    <circle cx="112" cy="80" r="7"/>
+    <circle cx="0" cy="112" r="7"/>
+    <circle cx="32" cy="112" r="7"/>
+    <circle cx="64" cy="112" r="7"/>
+    <circle cx="96" cy="112" r="7"/>
+    <circle cx="128" cy="112" r="7"/>
+  </g>
+</svg>

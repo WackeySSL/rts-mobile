@@ -1,0 +1,22 @@
+<!-- Vehicle factory, team layer: white and grey only, tinted at run time, drawn over the hull. -->
+<!-- Shape: a long plate on the roof of the first, third and fifth tooth, a lid on each crate and a flat ring round the mouth of the tank. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="384" viewBox="0 0 384 384">
+  <g fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round">
+    <!-- tooth plates, 2 px inside their panels -->
+    <rect x="34" y="28" width="316" height="30" rx="2"/>
+    <rect x="34" y="116" width="316" height="30" rx="2"/>
+    <rect x="34" y="204" width="316" height="30" rx="2"/>
+    <!-- crate lids, 3 px inside the crates -->
+    <rect x="31" y="267" width="38" height="28" rx="2"/>
+    <rect x="31" y="309" width="38" height="28" rx="2"/>
+    <rect x="51" y="349" width="26" height="14" rx="2"/>
+    <!-- tank ring: an outer and an inner circle, filled between them -->
+    <path fill-rule="evenodd" d="M300 304 A30 30 0 0 1 360 304 A30 30 0 0 1 300 304 Z M308 304 A22 22 0 0 1 352 304 A22 22 0 0 1 308 304 Z"/>
+  </g>
+  <!-- grey shade on the lower edge of each tooth plate -->
+  <g fill="#BFBFBF">
+    <rect x="35" y="54" width="314" height="3"/>
+    <rect x="35" y="142" width="314" height="3"/>
+    <rect x="35" y="230" width="314" height="3"/>
+  </g>
+</svg>

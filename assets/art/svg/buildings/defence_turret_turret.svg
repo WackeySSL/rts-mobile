@@ -1,0 +1,27 @@
+<!-- Defence turret, gun head layer: faces east, turns about the canvas centre, no shadow, shading mirrored about the gun line. -->
+<!-- Silhouette: a squat wedge with a flat back and cut front corners, one long barrel with a wide recoil sleeve at its root and a broad slotted muzzle block at its tip. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- barrel, drawn under the head -->
+  <rect x="84" y="58" width="36" height="12" fill="#5B6670" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <!-- muzzle block with two slots -->
+  <rect x="112" y="53" width="14" height="22" rx="2" fill="#7D8893" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <g stroke="#1C2127" stroke-width="2" stroke-linecap="round">
+    <line x1="117" y1="58" x2="117" y2="70"/>
+    <line x1="121" y1="58" x2="121" y2="70"/>
+  </g>
+  <!-- rear box -->
+  <rect x="34" y="52" width="12" height="24" rx="3" fill="#5B6670" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- head -->
+  <polygon points="42,46 74,46 86,55 86,73 74,82 42,82" fill="#7D8893" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <!-- recoil sleeve over the root of the barrel -->
+  <rect x="86" y="54" width="14" height="20" rx="2" fill="#A9B4BE" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- ridge along the gun line and one vent on each side -->
+  <line x1="50" y1="64" x2="82" y2="64" stroke="#A9B4BE" stroke-width="2" stroke-linecap="round"/>
+  <g fill="#5B6670" stroke="#1C2127" stroke-width="1.5">
+    <rect x="62" y="49" width="10" height="5"/>
+    <rect x="62" y="74" width="10" height="5"/>
+  </g>
+  <!-- sight hatch, off the middle so the heading reads -->
+  <circle cx="54" cy="64" r="6" fill="#5B6670" stroke="#1C2127" stroke-width="1.5"/>
+  <circle cx="54" cy="64" r="2.5" fill="#A9B4BE"/>
+</svg>

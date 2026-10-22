@@ -1,0 +1,34 @@
+<!-- Ore cell 0: one opaque tile, no team colour. -->
+<!-- Silhouette: Empty cell: bare dirt with three dug-out pits and a few dull flecks, where ore will grow back. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" fill="#8A6F4D"/>
+  <g fill="#6F583B">
+    <ellipse cx="22" cy="20" rx="8" ry="4"/>
+    <ellipse cx="108" cy="112" rx="9" ry="4"/>
+    <ellipse cx="112" cy="26" rx="6" ry="3"/>
+    <ellipse cx="18" cy="110" rx="7" ry="3"/>
+  </g>
+  <g fill="#A3865E">
+    <polygon points="38,12 46,12 44,16 36,16"/>
+    <polygon points="94,116 104,116 102,120 92,120"/>
+    <polygon points="10,60 16,58 18,64 12,66"/>
+    <polygon points="112,70 118,68 120,74 114,76"/>
+  </g>
+  <!-- pits: dark hole, lit lip on the lower right -->
+  <g stroke="#1C2127" stroke-width="1.5">
+    <ellipse cx="42" cy="46" rx="16" ry="11" fill="#6F583B"/>
+    <ellipse cx="88" cy="62" rx="13" ry="9" fill="#6F583B"/>
+    <ellipse cx="54" cy="92" rx="14" ry="9" fill="#6F583B"/>
+  </g>
+  <g fill="none" stroke="#A3865E" stroke-width="2" stroke-linecap="round">
+    <path d="M30 54 A16 11 0 0 0 52 56"/>
+    <path d="M78 68 A13 9 0 0 0 98 68"/>
+    <path d="M44 99 A14 9 0 0 0 64 99"/>
+  </g>
+  <!-- dull flecks that hint at the ore to come -->
+  <g fill="#A67C00">
+    <polygon points="70,30 75,34 70,38 65,34"/>
+    <polygon points="100,92 105,96 100,100 95,96"/>
+    <polygon points="22,72 27,76 22,80 17,76"/>
+  </g>
+</svg>

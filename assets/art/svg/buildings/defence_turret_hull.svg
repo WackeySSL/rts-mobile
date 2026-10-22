@@ -1,0 +1,25 @@
+<!-- Defence turret, hull layer: drawn first, holds the ground shadow of the whole emplacement. -->
+<!-- Silhouette: a round gun pit ringed by eight fat sandbags, with a squat wedge-shaped gun head on top whose single long barrel ends in a wide muzzle block. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- ground shadow, offset (4,4), flattened as one group -->
+  <g transform="translate(4 4)" opacity="0.25" fill="#000000">
+    <circle cx="64" cy="64" r="48"/>
+  </g>
+  <!-- pit: the lowest plane -->
+  <circle cx="64" cy="64" r="48" fill="#5B6670" stroke="#1C2127" stroke-width="3"/>
+  <path d="M22 64 A42 42 0 0 1 64 22" fill="none" stroke="#7D8893" stroke-width="2" stroke-linecap="round"/>
+  <!-- sandbags: eight, tangent to the ring; the team layer covers every second one -->
+  <g stroke="#1C2127" stroke-width="1.5">
+    <ellipse cx="64" cy="27" rx="16" ry="10" fill="#6B7A4F" transform="rotate(22.5 64 64)"/>
+    <ellipse cx="64" cy="27" rx="16" ry="10" fill="#4E5A3A" transform="rotate(67.5 64 64)"/>
+    <ellipse cx="64" cy="27" rx="16" ry="10" fill="#6B7A4F" transform="rotate(112.5 64 64)"/>
+    <ellipse cx="64" cy="27" rx="16" ry="10" fill="#4E5A3A" transform="rotate(157.5 64 64)"/>
+    <ellipse cx="64" cy="27" rx="16" ry="10" fill="#6B7A4F" transform="rotate(202.5 64 64)"/>
+    <ellipse cx="64" cy="27" rx="16" ry="10" fill="#8C9A6B" transform="rotate(247.5 64 64)"/>
+    <ellipse cx="64" cy="27" rx="16" ry="10" fill="#6B7A4F" transform="rotate(292.5 64 64)"/>
+    <ellipse cx="64" cy="27" rx="16" ry="10" fill="#8C9A6B" transform="rotate(337.5 64 64)"/>
+  </g>
+  <!-- gun race: what is left of the pit under the head -->
+  <circle cx="64" cy="64" r="26" fill="#4E5A3A" stroke="#1C2127" stroke-width="1.5"/>
+  <circle cx="64" cy="64" r="18" fill="#5B6670" stroke="#1C2127" stroke-width="1.5"/>
+</svg>

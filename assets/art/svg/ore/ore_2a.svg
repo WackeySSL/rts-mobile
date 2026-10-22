@@ -1,0 +1,44 @@
+<!-- Ore cell 2a: one opaque tile, no team colour. -->
+<!-- Silhouette: One medium and three small gold nuggets on dirt. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" fill="#8A6F4D"/>
+  <g fill="#6F583B">
+    <ellipse cx="22" cy="20" rx="8" ry="4"/>
+    <ellipse cx="108" cy="112" rx="9" ry="4"/>
+    <ellipse cx="112" cy="26" rx="6" ry="3"/>
+    <ellipse cx="18" cy="110" rx="7" ry="3"/>
+  </g>
+  <g fill="#A3865E">
+    <polygon points="38,12 46,12 44,16 36,16"/>
+    <polygon points="94,116 104,116 102,120 92,120"/>
+    <polygon points="10,60 16,58 18,64 12,66"/>
+    <polygon points="112,70 118,68 120,74 114,76"/>
+  </g>
+  <!-- ground shadow of the nuggets, offset (4,4), flattened as one group -->
+  <g transform="translate(4 4)" opacity="0.25" fill="#000000">
+    <polygon transform="translate(92 40)" points="-11,2 -6,-9 5,-10 12,-1 8,8 -4,10"/>
+    <polygon transform="translate(34 92)" points="-11,2 -6,-9 5,-10 12,-1 8,8 -4,10"/>
+    <polygon transform="translate(84 92)" points="-11,2 -6,-9 5,-10 12,-1 8,8 -4,10"/>
+    <polygon transform="translate(46 46)" points="-17,3 -9,-14 8,-16 19,-2 12,13 -7,15"/>
+  </g>
+  <g transform="translate(92 40)">
+    <polygon points="-11,2 -6,-9 5,-10 12,-1 8,8 -4,10" fill="#F2B705" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+    <polygon points="-11,2 -6,-9 5,-10 0,0" fill="#FFD84D"/>
+    <polygon points="12,-1 8,8 -4,10 0,0" fill="#A67C00"/>
+  </g>
+  <g transform="translate(46 46)">
+    <polygon points="-17,3 -9,-14 8,-16 19,-2 12,13 -7,15" fill="#F2B705" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+    <polygon points="-17,3 -9,-14 8,-16 0,-1" fill="#FFD84D"/>
+    <polygon points="19,-2 12,13 -7,15 0,-1" fill="#A67C00"/>
+  </g>
+  <g transform="translate(34 92)">
+    <polygon points="-11,2 -6,-9 5,-10 12,-1 8,8 -4,10" fill="#F2B705" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+    <polygon points="-11,2 -6,-9 5,-10 0,0" fill="#FFD84D"/>
+    <polygon points="12,-1 8,8 -4,10 0,0" fill="#A67C00"/>
+  </g>
+  <g transform="translate(84 92)">
+    <polygon points="-11,2 -6,-9 5,-10 12,-1 8,8 -4,10" fill="#F2B705" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+    <polygon points="-11,2 -6,-9 5,-10 0,0" fill="#FFD84D"/>
+    <polygon points="12,-1 8,8 -4,10 0,0" fill="#A67C00"/>
+  </g>
+</svg>

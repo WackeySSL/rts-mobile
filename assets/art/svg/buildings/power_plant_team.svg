@@ -1,0 +1,17 @@
+<!-- Power plant, team layer: white and grey only, tinted at run time, drawn over the hull. -->
+<!-- Shape: a plate across the hall roof, a flat ring round the mouth of each drum and a lid on each box of the yard. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <g fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round">
+    <!-- hall plate, 3 px inside its plinth -->
+    <rect x="31" y="155" width="116" height="48" rx="3"/>
+    <!-- drum rings: an outer and an inner circle, filled between them -->
+    <path fill-rule="evenodd" d="M30 84 A50 50 0 0 1 130 84 A50 50 0 0 1 30 84 Z M38 84 A42 42 0 0 1 122 84 A42 42 0 0 1 38 84 Z"/>
+    <path fill-rule="evenodd" d="M164 68 A34 34 0 0 1 232 68 A34 34 0 0 1 164 68 Z M170 68 A28 28 0 0 1 226 68 A28 28 0 0 1 170 68 Z"/>
+    <!-- lids of the yard boxes, 3 px inside the boxes -->
+    <rect x="179" y="129" width="46" height="24" rx="2"/>
+    <rect x="179" y="165" width="46" height="24" rx="2"/>
+    <rect x="179" y="201" width="46" height="24" rx="2"/>
+  </g>
+  <!-- grey shade on the lower edge of the hall plate -->
+  <rect x="32" y="198" width="114" height="4" fill="#BFBFBF"/>
+</svg>
