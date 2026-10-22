@@ -274,6 +274,29 @@ func test_a_building_def_fills_the_phase_3_tables_and_its_links_become_types() -
 		assert_int(world.get(table).size()).override_failure_message(table).is_equal(4)
 
 
+## A footprint that is not square keeps its width in type_foot_w and its height in type_foot_h, and
+## the dock and the exit keep their columns apart (x in _x, y in _y). Every other case uses a
+## square footprint, where a width read from the height would pass.
+func test_a_non_square_footprint_and_distinct_offsets_keep_each_column() -> void:
+	var depot: BuildingDef = _building(&"depot", Vector2i(2, 3), 0, -1)
+	depot.dock = Vector2i(0, 3)
+	depot.exit = Vector2i(2, 1)
+	var scenario: ScenarioDef = ScenarioDef.new()
+	scenario.roster.append(depot)
+	var world: World = World.from_scenario(scenario)
+	assert_array(world.type_ids).is_equal([&"depot"])
+	var expected: Dictionary[StringName, int] = {
+		&"type_foot_w": 2,
+		&"type_foot_h": 3,
+		&"type_dock_x": 0,
+		&"type_dock_y": 3,
+		&"type_exit_x": 2,
+		&"type_exit_y": 1,
+	}
+	for table: StringName in expected:
+		assert_array(world.get(table)).override_failure_message(table).is_equal([expected[table]])
+
+
 ## Two defs that require each other make two types, each pointing at the other, and the copy ends.
 ## The two defs are reference counted, so the cycle is cut as soon as the copy is done: a cycle left
 ## standing keeps the UnitDef script in use at exit, which verify.sh reads as a leak.
