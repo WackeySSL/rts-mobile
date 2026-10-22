@@ -46,7 +46,6 @@ const ROWS: Array[String] = ["P61", "P62", "P63"]
 ## list yet: they stand under the row of their layer (P62 the view, P63 the dev scenes) until the
 ## lead places them.
 const PORTRAIT_PENDING: Dictionary[String, String] = {
-	"res://tests/view/test_rts_camera.gd": "P62",
 	"res://tests/view/test_effects_layer_curves.gd": "P62",
 	"res://tests/view/test_feedback.gd": "P62",
 	"res://tests/view/test_fog_hiding.gd": "P62",
