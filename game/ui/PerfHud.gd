@@ -21,7 +21,9 @@ const SYNC: String = "SYNC"
 const WORKER: String = "WORKER"
 ## Why a run is INVALID (a measurement fault, never a verdict): a preflight refused with a job in
 ## flight; the app paused or lost focus; ADR 0014 section 2's refresh and median rules; ADR 0012
-## section 4's monitors that read 0 (a release template compiles them out).
+## section 4's monitors that read 0 (a release template compiles them out); the camera moved while
+## the run recorded (P50c: the heavy window counts the rigs inside the camera, so a pan or a zoom
+## changes what a run measures).
 const REASON_JOB_IN_FLIGHT: String = "preflight_job_in_flight"
 const REASON_APP_PAUSED: String = "app_paused"
 const REASON_REFRESH_CHANGED: String = "refresh_changed"
@@ -29,6 +31,7 @@ const REASON_REFRESH_BELOW_CAP: String = "refresh_below_max_fps"
 const REASON_MEDIAN_BELOW_PERIOD: String = "median_below_period"
 const REASON_NO_DRAW_CALLS: String = "draw_calls_p95_zero"
 const REASON_NO_RENDER_CPU: String = "render_cpu_p95_zero"
+const REASON_CAMERA_MOVED: String = "camera_moved"
 ## The self-check seam's results (ADR 0013 section 3): the 60-tick lockstep of the seed-42 arena.
 const SELF_CHECK_MATCH: String = "match"
 const SELF_CHECK_MISMATCH: String = "mismatch"
@@ -160,9 +163,14 @@ var zoom: float = 1.0
 ## (the viewport's render CPU time of the frame just drawn, in ms: 0 headless) and calls_source
 ## (its draw calls: 0 headless). P50b sets the last two: rigs_source (rows shown and inside the
 ## camera now) and fog_source (the fog layer's update time in us when it uploaded since the last
-## call, else -1: one FogLayer.upload_count() rise each). Preflight seams: self_check_step (the
-## 60-tick lockstep, a SELF_CHECK_ text) runs before burst_step; kernels_source gives the library's
-## kernels or null; os_name is the platform the `impl` verdict judges.
+## call, else -1: one FogLayer.upload_count() rise each). camera_source (P50c) gives the view the
+## run is measured at, any value that changes when the camera pans or zooms (the arena gives its
+## visible world rect): restart() keeps it and every recorded frame compares with it, any change
+## being a move. The null Callable is no rule. before_restart is called by run_again() after the
+## runner's start and before restart(), so the scene can put the view back where a run starts.
+## Preflight seams: self_check_step (the 60-tick lockstep, a SELF_CHECK_ text) runs before
+## burst_step; kernels_source gives the library's kernels or null; os_name is the platform the
+## `impl` verdict judges.
 var clock: Callable = Time.get_ticks_usec
 var ref_step: Callable = RefLoop.run
 var refresh_source: Callable = DisplayServer.screen_get_refresh_rate
@@ -175,6 +183,8 @@ var render_source: Callable = _render_ms
 var calls_source: Callable = _draw_calls
 var rigs_source: Callable = func() -> int: return 0
 var fog_source: Callable = func() -> int: return -1
+var camera_source: Callable = Callable()
+var before_restart: Callable = Callable()
 ## Where "Copy report" sends the JSON text. The headless display server cannot read a clipboard
 ## back (and logs an error when asked), so a test injects its own.
 var clipboard_sink: Callable = DisplayServer.clipboard_set
@@ -231,6 +241,10 @@ var _work_start_usec: int = 0
 var _pre_draw_usec: int = 0
 var _ref_usec: int = 0
 var _published: bool = false
+## The camera's view at restart() and whether a recorded frame saw another (latched, so a pan away
+## and back is still a move).
+var _camera_start: Variant = null
+var _camera_moved: bool = false
 
 
 func _init() -> void:
@@ -308,6 +322,8 @@ func _process(_delta: float) -> void:
 func restart() -> void:
 	_runs += 1
 	_app_paused = false
+	_camera_moved = false
+	_camera_start = camera_source.call() if camera_source.is_valid() else null
 	_copy.text = COPY_TEXT
 	visible = false
 	if runner != null:
@@ -344,19 +360,23 @@ func copy_report() -> void:
 
 ## "Run again": the same seed, a new run. The runner's job ends first (a preflight refuses with one
 ## in flight), then the burst seam alone measures `ref_peak` again (the self-check does not repeat),
-## then the match starts and the run restarts. So each run normalises against a peak measured right
-## before it, with no job in flight and outside every timed window (ADR 0014 section 3).
+## then the match starts, `before_restart` puts the view back and the run restarts. So each run
+## normalises against a peak measured right before it, with no job in flight and outside every
+## timed window (ADR 0014 section 3), and starts at the framing the scene gives it (P50c).
 func run_again() -> void:
 	if runner != null:
 		runner.wait_idle()
 		preflight(runner, false)
 		runner.start()
+	if before_restart.is_valid():
+		before_restart.call()
 	restart()
 
 
 ## One frame, microseconds unless noted: the interval since the previous frame, the main thread's
 ## process and render CPU time (frame work is their sum), draw calls, rigs drawn, whether a tick
-## published in it, its reference sample (0 without one) and the fog update (-1 when none ran).
+## published in it, its reference sample (0 without one) and the fog update (-1 when none ran). It
+## also reads `camera_source` and latches a view other than the run's start.
 func record_frame(
 	interval_usec: int,
 	process_usec: int,
@@ -369,6 +389,8 @@ func record_frame(
 ) -> void:
 	if _finished:
 		return
+	if camera_source.is_valid() and camera_source.call() != _camera_start:
+		_camera_moved = true
 	_col(&"interval").append(interval_usec / 1000.0)
 	_col(&"process").append(process_usec / 1000.0)
 	_col(&"render").append(render_usec / 1000.0)
@@ -460,8 +482,9 @@ static func preflight_allowed(job_in_flight: bool) -> bool:
 
 ## Why the run is INVALID, empty when it is not (a measurement fault, so no verdict can stand): a
 ## refused preflight, a pause, a refresh rate that changed or lies below the frame cap, a median
-## interval below P (ADR 0014 section 2: one-sided, slow frames are judged) and a heavy window
-## whose draw calls or render CPU read 0 (ADR 0012 section 4). A rule needs samples to judge.
+## interval below P (ADR 0014 section 2: one-sided, slow frames are judged), a heavy window
+## whose draw calls or render CPU read 0 (ADR 0012 section 4) and a camera that moved while the run
+## recorded (P50c). A rule needs samples to judge.
 func invalid_reasons() -> PackedStringArray:
 	var start: float = refresh_hz_start
 	var tolerance: float = gate.refresh_tolerance_pct / 100.0
@@ -476,6 +499,7 @@ func invalid_reasons() -> PackedStringArray:
 		[REASON_MEDIAN_BELOW_PERIOD, not frames.is_empty() and _p(frames, 50) < floor_ms],
 		[REASON_NO_DRAW_CALLS, not heavy.is_empty() and _p(_take(&"calls", heavy), 95) == 0.0],
 		[REASON_NO_RENDER_CPU, not heavy.is_empty() and _p(_take(&"render", heavy), 95) == 0.0],
+		[REASON_CAMERA_MOVED, _camera_moved],
 	]
 	var out: PackedStringArray = PackedStringArray()
 	for fault: Array in faults:
