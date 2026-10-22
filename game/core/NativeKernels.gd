@@ -41,9 +41,10 @@ static func abi_matches(kernels: Object) -> bool:
 ## The on-device lockstep (ADR 0013 section 3). Two Worlds from `scenario` with the sim stream of
 ## `seed`: A runs the GDScript twins and B `kernels` on the phases of `mask` (one bit per
 ## SimProbe.Phase). Each is stepped by its own MatchLoop, inline (SYNC), for `ticks` ticks with the
-## scenario's orders and nothing queued. True when state_hash() agrees after every tick; false at
-## the first tick where it differs, and for a mask with no kernels. It builds its own Worlds and
-## touches no runner, World or snapshot of the match.
+## scenario's orders and nothing queued. True when state_hash() and fog.visible agree after every
+## tick (visible is derived state and not in the hash since STATE_FORMAT 2, ADR 0016, so it is
+## compared on its own); false at the first tick where either differs, and for a mask with no
+## kernels. It builds its own Worlds and touches no runner, World or snapshot of the match.
 @warning_ignore("shadowed_global_identifier")
 static func self_check(
 	scenario: ScenarioDef, seed: int, ticks: int, kernels: Object, mask: int
@@ -66,6 +67,6 @@ static func self_check(
 	for _tick: int in ticks:
 		loops[0].step(twin, none)
 		loops[1].step(native, none)
-		if twin.state_hash() != native.state_hash():
+		if twin.state_hash() != native.state_hash() or twin.fog.visible != native.fog.visible:
 			return false
 	return true

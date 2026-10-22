@@ -29,8 +29,9 @@ const MILLI_PER_TILE: int = 1000
 const TILE_CENTRE: int = 500
 ## Ints per record in `events`.
 const EVENT_STRIDE: int = 8
-## The layout version of the hashed state.
-const STATE_FORMAT: int = 1
+## The layout version of the hashed state. 2: fog.visible left the hash, because the rows it is
+## derived from stay in it (ADR 0016).
+const STATE_FORMAT: int = 2
 ## The hash sections that are not a ROW_ARRAYS column: header, map, projectiles and fog.
 const HASH_OTHER_SECTIONS: int = 4
 
@@ -210,7 +211,8 @@ var rows_version: int = 0
 ## The sim's random stream (spawn jitter). Never null.
 var rng: DetRandom
 ## The helper objects (ADR 0007 section 2): empty from the start, sized by the first prepare().
-## Only `fog` is state; the others are derived. Objects sit in no shape list.
+## Only `fog` is state (its `explored` bytes; its `visible` counts are derived from the rows); the
+## others are derived. Objects sit in no shape list.
 var fog: FogGrid = FogGrid.new()
 var flow: FlowCache = FlowCache.new()
 var sep_grid: SpatialGrid = SpatialGrid.new()
@@ -830,7 +832,8 @@ func _weapon_for(weapon: WeaponDef) -> int:
 ## order, each block fed as its tag (the section index), its byte count and its bytes (little
 ## endian); the first 8 digest bytes as a signed int64. It reads only the hashed lists: the header
 ## ints and the stream, the map digest, the ROW_ARRAYS columns, the live projectile slots with the
-## used free stack, and FogGrid.HASHED. A hand-built world hashes before prepare() too (empty
+## used free stack, and FogGrid.HASHED (the explored bytes: the visible counts are derived from the
+## hashed rows and not fed, ADR 0016). A hand-built world hashes before prepare() too (empty
 ## helpers and map), to another value than after it.
 func state_hash() -> int:
 	var ctx: HashingContext = _start_hash()
@@ -850,7 +853,8 @@ func hash_parts() -> PackedInt64Array:
 	return parts
 
 
-## "header", "map", one name per ROW_ARRAYS entry, "projectiles", "fog".
+## "header", "map", one name per ROW_ARRAYS entry, "projectiles", "fog". The "fog" section feeds
+## FogGrid.HASHED, which is `explored` alone since STATE_FORMAT 2; the name stays.
 static func hash_section_names() -> PackedStringArray:
 	var names: PackedStringArray = PackedStringArray(["header", "map"])
 	names.append_array(PackedStringArray(ROW_ARRAYS))
