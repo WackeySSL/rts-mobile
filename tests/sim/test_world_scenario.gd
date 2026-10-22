@@ -291,11 +291,13 @@ func _weapon(id: StringName, damage: int) -> WeaponDef:
 	return weapon
 
 
+## The RulesDef ints that World copies (the 18 of Phase 3 join them with plan row P70).
 func _rule_fields() -> Array[String]:
 	var fields: Array[String] = []
 	for info: Dictionary in RulesDef.new().get_property_list():
 		if (int(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0:
-			fields.append(String(info["name"]))
+			if World.RULE_SCALARS.has(StringName(info["name"])):
+				fields.append(String(info["name"]))
 	return fields
 
 

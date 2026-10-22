@@ -8,3 +8,6 @@ extends Resource
 ## Movement cost per UnitDef.move_class: foot, wheeled, tracked. 0 is blocked, 10 is normal and
 ## above 10 is slower ground for pathing, up to 40.
 @export var cost: PackedInt32Array = PackedInt32Array([10, 10, 10])
+## Whether a building may stand on this ground (ADR 0017 section 2). Off by default: the data names
+## the ground that is buildable, so a new terrain never allows a building by accident.
+@export var buildable: bool = false

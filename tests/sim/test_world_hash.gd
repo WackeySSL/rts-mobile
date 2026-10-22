@@ -43,13 +43,18 @@ func test_every_helper_member_is_listed_once() -> void:
 		)
 
 
-## The rule ints defs_hash covers are the RulesDef ints (UNHASHED_SCALARS holds them by name).
+## The rule ints defs_hash covers are the RulesDef ints (UNHASHED_SCALARS holds them by name),
+## except the 18 of Phase 3 (plan P69) that World copies from plan row P70 on: that row appends them
+## to RULE_SCALARS and this test goes back to comparing the two lists whole.
 func test_the_rule_scalars_are_the_rules_def_ints() -> void:
-	var rule_ints: Array[StringName] = []
+	var copied: Array[StringName] = []
+	var not_copied: Array[StringName] = []
 	for info: Dictionary in RulesDef.new().get_property_list():
 		if (int(info.usage) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0 and info.type == TYPE_INT:
-			rule_ints.append(StringName(info.name))
-	assert_array(World.RULE_SCALARS).contains_exactly_in_any_order(rule_ints)
+			var rule_name: StringName = StringName(info.name)
+			(copied if World.RULE_SCALARS.has(rule_name) else not_copied).append(rule_name)
+	assert_array(World.RULE_SCALARS).contains_exactly_in_any_order(copied)
+	assert_int(not_copied.size()).is_equal(18)
 
 
 ## A `+` on typed constants gives an untyped Array (Godot 4.7.2), which a typed local or parameter

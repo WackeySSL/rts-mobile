@@ -21,6 +21,10 @@ const WINDOW_MAX: Vector2i = Vector2i(45000, 39500)
 ## The movement classes of the unit files (World.MoveClass from P29a).
 const FOOT: int = 0
 const TRACKED: int = 2
+## The farthest ring cell of a 3x3 footprint from its centre: sqrt(8) tiles, rounded up.
+const RING_CORNER_MILLI: int = 2829
+## Phase 3 is a two-player game (ADR 0018 section 9 sizes the caps for it).
+const PLAYERS: int = 2
 
 
 func test_unit_files_hold_the_adr_0009_starting_stats() -> void:
@@ -66,7 +70,8 @@ func test_the_standard_terrain_set_is_grass_sand_scrub_rock_water_in_that_order(
 	)
 
 
-func test_rules_file_holds_the_fifteen_starting_ints_and_the_script_defaults_equal_it() -> void:
+func test_rules_file_holds_the_thirty_three_starting_ints_and_the_script_defaults_equal_it(
+) -> void:
 	var expected: Dictionary[String, int] = {
 		"retarget_period_ticks": 5,
 		"fog_period_ticks": 3,
@@ -83,6 +88,25 @@ func test_rules_file_holds_the_fifteen_starting_ints_and_the_script_defaults_equ
 		"attack_rekey_milli": 4000,
 		"max_projectiles": 512,
 		"max_rows": 256,
+		# Phase 3 (ADR 0018 section 9).
+		"start_credits": 2000,
+		"ore_start": 20,
+		"ore_cell_max": 20,
+		"ore_regrow_ticks": 150,
+		"credits_per_ore": 25,
+		"harvest_ticks_per_ore": 3,
+		"unload_ticks_per_ore": 1,
+		"harvest_reach_milli": 1200,
+		"dock_reach_milli": 1500,
+		"harvest_retry_ticks": 15,
+		"harvest_resume_ticks": 75,
+		"harvest_pick_milli": 3000,
+		"low_power_percent": 50,
+		"queue_slots": 5,
+		"build_reach_tiles": 4,
+		"unit_cap": 75,
+		"building_cap": 40,
+		"ghost_cap": 40,
 	}
 	var rules: RulesDef = load(RULES_PATH)
 	var defaults: RulesDef = RulesDef.new()
@@ -154,6 +178,99 @@ func test_every_rule_accepts_its_edge_values_and_reports_the_next_ones() -> void
 	var unarmed: UnitDef = _fine_unit()
 	unarmed.weapon = null
 	assert_array(_unit_problems("tank.tres", unarmed)).is_empty()
+
+
+func test_the_rules_file_keeps_the_phase_3_numbers_in_bounds() -> void:
+	assert_array(_rule_problems(load(RULES_PATH))).is_empty()
+
+
+func test_every_phase_3_rule_accepts_its_edge_values_and_reports_the_next_ones() -> void:
+	# Property of RulesDef, values that pass, values that fail, and the rule they break.
+	var fit: String = "unit_cap and building_cap of 2 players do not fit max_rows"
+	var below_1: String = "%s is below 1"
+	var rows: Array = [
+		["start_credits", [0, 1], [-1], "start_credits is negative"],
+		["ore_start", [0, 20], [-1, 21], "ore_start is not in 0..ore_cell_max"],
+		["ore_cell_max", [20, 21], [19, -1], "ore_start is not in 0..ore_cell_max"],
+		["credits_per_ore", [1], [0, -1], below_1 % "credits_per_ore"],
+		["ore_regrow_ticks", [1], [0], below_1 % "ore_regrow_ticks"],
+		["harvest_ticks_per_ore", [1], [0], below_1 % "harvest_ticks_per_ore"],
+		["unload_ticks_per_ore", [1], [0], below_1 % "unload_ticks_per_ore"],
+		["harvest_retry_ticks", [1], [0], below_1 % "harvest_retry_ticks"],
+		["queue_slots", [1], [0], below_1 % "queue_slots"],
+		["harvest_resume_ticks", [0, 1], [-1], "harvest_resume_ticks is negative"],
+		["low_power_percent", [0, 100], [-1, 101], "low_power_percent is not in 0..100"],
+		["harvest_reach_milli", [0], [-1], "a reach is negative"],
+		["dock_reach_milli", [0], [-1], "a reach is negative"],
+		["harvest_pick_milli", [0], [-1], "a reach is negative"],
+		["build_reach_tiles", [0], [-1], "a reach is negative"],
+		["unit_cap", [0, 88], [89], fit],
+		["building_cap", [0, 53], [54], fit],
+		["max_rows", [230, 256], [229], fit],
+		["unit_cap", [], [-1], "a cap is negative"],
+		["ghost_cap", [0], [-1], "a cap is negative"],
+	]
+	for row: Array in rows:
+		for value: int in row[1] + row[2]:
+			var rules: RulesDef = RulesDef.new()
+			rules.set(row[0], value)
+			var want: Array = [] if row[1].has(value) else ["rules: " + row[3]]
+			var got: PackedStringArray = _rule_problems(rules)
+			assert_array(got).override_failure_message("%s = %d" % [row[0], value]).is_equal(want)
+
+
+## Every weapon reaches the ring corner of a 3x3 building from its centre, so the approach point of
+## an ATTACK on a building (ADR 0017 section 1) is always within range.
+func test_every_weapon_file_reaches_the_ring_corner_of_a_three_by_three_building() -> void:
+	var files: Array[String] = FileScan.list_files(WEAPONS_DIR, ".tres")
+	assert_int(files.size()).is_greater_equal(3)
+	for path: String in files:
+		var weapon: WeaponDef = load(path)
+		assert_int(weapon.range).override_failure_message(path).is_greater_equal(RING_CORNER_MILLI)
+
+
+## The Phase 3 rules of every unit file, buildings included; empty today because no building file
+## exists yet (plan row P72 adds the roster and its exact numbers).
+func test_every_unit_file_keeps_the_phase_3_rules() -> void:
+	var rules: RulesDef = load(RULES_PATH)
+	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
+		var unit: UnitDef = load(path)
+		var file: String = path.get_file()
+		assert_array(_economy_problems(file, unit, rules)).is_empty()
+
+
+func test_the_phase_3_unit_and_building_rules_accept_their_edge_values_and_report_the_next(
+) -> void:
+	# Property path from a building, values that pass, values that fail, and the rule they break.
+	var foot: String = "footprint is not 1..3"
+	var rows: Array = [
+		["cost", [0, 1], [-1], "cost is negative"],
+		["build_ticks", [0, 1], [-1], "build_ticks is negative"],
+		["tab", [-1, 0, 2], [-2, 3], "tab is not -1..2"],
+		["harvest_capacity", [0, 25, 500], [-25, 1, 510], "harvest_capacity is not a multiple"],
+		["speed", [0], [2], "speed is not 0"],
+		["radius", [0], [1], "radius is not 0"],
+		["armour", [3], [0, 2], "armour is not Building"],
+		["footprint", [Vector2i(1, 1), Vector2i(3, 3)], [Vector2i(0, 1), Vector2i(1, 0)], foot],
+		["footprint", [], [Vector2i(1, 4), Vector2i(4, 1), Vector2i(-1, 2)], foot],
+		["produces", [-1, 0, 2], [-2, 3], "produces is not -1..2"],
+	]
+	for row: Array in rows:
+		for value: Variant in row[1] + row[2]:
+			var building: BuildingDef = _fine_building()
+			building.set_indexed(row[0], value)
+			var got: PackedStringArray = _economy_problems("depot.tres", building, RulesDef.new())
+			var want: Array = [] if row[1].has(value) else ["depot.tres: " + row[3]]
+			assert_array(got).override_failure_message("%s = %s" % [row[0], value]).is_equal(want)
+	var unit: UnitDef = _fine_building()
+	unit.requires = unit
+	var got_self: PackedStringArray = _economy_problems("depot.tres", unit, RulesDef.new())
+	assert_array(got_self).is_equal(["depot.tres: requires is the unit itself"])
+	unit.requires = null  # A reference cycle would never be freed.
+	# A plain unit is not held to the building rules: a mobile unit has speed and a radius.
+	var tank: UnitDef = _fine_unit()
+	tank.speed = 120
+	assert_array(_economy_problems("tank.tres", tank, RulesDef.new())).is_empty()
 
 
 ## from_scenario swaps a map that fails validate() for open grass without a message (gdUnit4
@@ -440,6 +557,84 @@ func _fine_unit() -> UnitDef:
 	unit.acquire_range = 5000
 	unit.weapon = weapon
 	return unit
+
+
+## A building that breaks no rule when its file is depot.tres: 2x2, speed 0, radius 0, armour
+## Building, not buildable by the player (tab -1).
+func _fine_building() -> BuildingDef:
+	var building: BuildingDef = BuildingDef.new()
+	building.footprint = Vector2i(2, 2)
+	building.armour = 3
+	return building
+
+
+## One text per broken Phase 3 rule of a unit or building file; empty when the file is fine. The
+## rules of ADR 0018 section 9 that need the whole roster (the requirement chains reach the
+## Headquarters) wait for plan row P72.
+func _economy_problems(file: String, unit: UnitDef, rules: RulesDef) -> PackedStringArray:
+	var broken: Dictionary[String, bool] = {
+		"cost is negative": unit.cost < 0,
+		"build_ticks is negative": unit.build_ticks < 0,
+		"tab is not -1..2": unit.tab < -1 or unit.tab > 2,
+		"harvest_capacity is not a multiple":
+		unit.harvest_capacity < 0 or unit.harvest_capacity % rules.credits_per_ore != 0,
+		"requires is the unit itself": unit.requires == unit,
+	}
+	if unit is BuildingDef:
+		var building: BuildingDef = unit
+		broken["speed is not 0"] = building.speed != 0
+		broken["radius is not 0"] = building.radius != 0
+		broken["armour is not Building"] = building.armour != 3
+		broken["footprint is not 1..3"] = (
+			building.footprint.x < 1
+			or building.footprint.x > 3
+			or building.footprint.y < 1
+			or building.footprint.y > 3
+		)
+		broken["produces is not -1..2"] = building.produces < -1 or building.produces > 2
+	var problems: PackedStringArray = PackedStringArray()
+	for message: String in broken:
+		if broken[message]:
+			problems.append("%s: %s" % [file, message])
+	return problems
+
+
+## One text per broken Phase 3 rule of a RulesDef; empty when the numbers are fine. The divisors
+## are at least 1 because the sim takes a tick number modulo them.
+func _rule_problems(rules: RulesDef) -> PackedStringArray:
+	var broken: Dictionary[String, bool] = {
+		"start_credits is negative": rules.start_credits < 0,
+		"ore_start is not in 0..ore_cell_max":
+		rules.ore_start < 0 or rules.ore_start > rules.ore_cell_max,
+		"harvest_resume_ticks is negative": rules.harvest_resume_ticks < 0,
+		"low_power_percent is not in 0..100":
+		rules.low_power_percent < 0 or rules.low_power_percent > 100,
+		"a reach is negative":
+		(
+			mini(
+				mini(rules.harvest_reach_milli, rules.dock_reach_milli),
+				mini(rules.harvest_pick_milli, rules.build_reach_tiles)
+			)
+			< 0
+		),
+		"a cap is negative": mini(mini(rules.unit_cap, rules.building_cap), rules.ghost_cap) < 0,
+		"unit_cap and building_cap of 2 players do not fit max_rows":
+		PLAYERS * (rules.unit_cap + rules.building_cap) > rules.max_rows,
+	}
+	for divisor: String in [
+		"credits_per_ore",
+		"ore_regrow_ticks",
+		"harvest_ticks_per_ore",
+		"unload_ticks_per_ore",
+		"harvest_retry_ticks",
+		"queue_slots",
+	]:
+		broken["%s is below 1" % divisor] = int(rules.get(divisor)) < 1
+	var problems: PackedStringArray = PackedStringArray()
+	for message: String in broken:
+		if broken[message]:
+			problems.append("rules: " + message)
+	return problems
 
 
 ## Where unit k of a block starts before jitter (the SpawnDef rule), in milli-tiles.

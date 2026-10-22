@@ -59,7 +59,8 @@ func test_a_hand_built_world_has_the_rule_defaults_and_the_default_stream() -> v
 	var defaults: RulesDef = RulesDef.new()
 	var fields: Array[String] = []
 	for info: Dictionary in defaults.get_property_list():
-		if (int(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0:
+		# The 18 ints of Phase 3 are not World's until plan row P70.
+		if World.RULE_SCALARS.has(StringName(info["name"])):
 			fields.append(String(info["name"]))
 	assert_int(fields.size()).is_equal(15)
 	for field: String in fields:
