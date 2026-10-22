@@ -5,11 +5,15 @@ extends GdUnitTestSuite
 ## stays at its start values through a run of the perf arena (no later Phase 3 row may move the
 ## arena's golden hashes), and the map digest covers the ore cells and the buildable flags.
 
+const HashBytes: GDScript = preload("res://tests/perf/support/hash_bytes.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const TERRAIN_PATH: String = "res://data/terrain/standard.tres"
 const TICKS: int = 150
 ## The index of the first record of player 1: `player * ghost_cap`, with the rule default of 40.
 const GHOSTS_OF_PLAYER_1: int = 40
+## The four live records of _arena_with_ghosts: two of player 1 and two of player 2 (entries 40, 41,
+## 80 and 81 of each record array).
+const LIVE_GHOST_ENTRIES: Array[int] = [40, 41, 80, 81]
 
 
 ## One element (the last) of each PLAYER_ARRAYS array changes the "players" section and no other.
@@ -58,6 +62,26 @@ func test_a_ghost_record_is_state_only_below_its_players_count() -> void:
 		var column: PackedInt32Array = other.get(column_name)
 		column[2 * GHOSTS_OF_PLAYER_1] = column[GHOSTS_OF_PLAYER_1]
 	_assert_sections(seen, other, ["ghosts"], "player 2")
+
+
+## Every field of every live record is state, whatever its place in its player's block: with two
+## records for each of two players, changing any one field of any of the four moves the "ghosts"
+## section alone, and the byte stream that the perf suite's helper rebuilds from the shape lists (an
+## independent walk) hashes to state_hash() for the base world and for each of those worlds. A
+## record that read its first sibling's entry, or a block that wrote the next record over the last
+## field, would leave a field out of the hash and fail here.
+func test_every_field_of_every_live_record_is_state() -> void:
+	var base: World = _arena_with_ghosts()
+	assert_int(HashBytes.digest(HashBytes.stream(base))).is_equal(base.state_hash())
+	for entry: int in LIVE_GHOST_ENTRIES:
+		for column_name: StringName in [&"ghost_id", &"ghost_type", &"ghost_owner", &"ghost_cell"]:
+			var label: String = "%s of entry %d" % [column_name, entry]
+			var world: World = _arena_with_ghosts()
+			var column: PackedInt32Array = world.get(column_name)
+			column[entry] += 1
+			_assert_sections(base, world, ["ghosts"], label)
+			var rebuilt: int = HashBytes.digest(HashBytes.stream(world))
+			assert_int(rebuilt).override_failure_message(label).is_equal(world.state_hash())
 
 
 ## The derived arrays (ADR 0016) and the Phase 3 type tables are not in the state hash: changing
@@ -136,6 +160,23 @@ func _arena_with_ghost() -> World:
 	world.ghost_type[GHOSTS_OF_PLAYER_1] = 2
 	world.ghost_owner[GHOSTS_OF_PLAYER_1] = 2
 	world.ghost_cell[GHOSTS_OF_PLAYER_1] = 99
+	return world
+
+
+## The arena with two live records for each of players 1 and 2, every field of every record a
+## different value (ids 7 to 10, types 2 to 5, owners 2, 1, 1, 2 and cells 99 to 102, in the order
+## of LIVE_GHOST_ENTRIES).
+func _arena_with_ghosts() -> World:
+	var world: World = _arena()
+	world.ghost_count[1] = 2
+	world.ghost_count[2] = 2
+	var owners: Array[int] = [2, 1, 1, 2]
+	for i: int in LIVE_GHOST_ENTRIES.size():
+		var entry: int = LIVE_GHOST_ENTRIES[i]
+		world.ghost_id[entry] = 7 + i
+		world.ghost_type[entry] = 2 + i
+		world.ghost_owner[entry] = owners[i]
+		world.ghost_cell[entry] = 99 + i
 	return world
 
 

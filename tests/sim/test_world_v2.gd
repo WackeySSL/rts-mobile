@@ -275,6 +275,8 @@ func test_a_building_def_fills_the_phase_3_tables_and_its_links_become_types() -
 
 
 ## Two defs that require each other make two types, each pointing at the other, and the copy ends.
+## The two defs are reference counted, so the cycle is cut as soon as the copy is done: a cycle left
+## standing keeps the UnitDef script in use at exit, which verify.sh reads as a leak.
 func test_defs_that_require_each_other_are_copied_once() -> void:
 	var first: UnitDef = _unit(&"first", 0, 0, -1)
 	var second: UnitDef = _unit(&"second", 0, 0, -1)
@@ -283,6 +285,8 @@ func test_defs_that_require_each_other_are_copied_once() -> void:
 	var scenario: ScenarioDef = ScenarioDef.new()
 	scenario.roster.append(first)
 	var world: World = World.from_scenario(scenario)
+	first.requires = null
+	second.requires = null
 	assert_array(world.type_ids).is_equal([&"first", &"second"])
 	assert_array(world.type_requires).is_equal([1, 0])
 
