@@ -1,0 +1,59 @@
+<!-- Power plant, hull layer: drawn first, holds the ground shadow of the whole building. -->
+<!-- Silhouette: one big and one small round drum with dark open mouths over a low ribbed hall on the left and a tall yard of three boxes on the right, on a rounded square pad. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- ground shadow, offset (4,4), flattened as one group -->
+  <g transform="translate(4 4)" opacity="0.25" fill="#000000">
+    <rect x="6" y="6" width="244" height="244" rx="14"/>
+  </g>
+  <!-- pad: the lowest plane -->
+  <rect x="6" y="6" width="244" height="244" rx="14" fill="#5B6670" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <polyline points="11,236 11,22 22,11 236,11" fill="none" stroke="#7D8893" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- pipes: drum to drum and big drum to hall -->
+  <g fill="#5B6670" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round">
+    <rect x="130" y="60" width="30" height="16"/>
+    <rect x="68" y="130" width="24" height="26"/>
+  </g>
+  <!-- hall roof -->
+  <rect x="22" y="148" width="134" height="88" rx="6" fill="#7D8893" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <polyline points="26,232 26,152 152,152" fill="none" stroke="#A9B4BE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- plinth for the hall's team plate, darkest olive -->
+  <rect x="28" y="152" width="122" height="54" rx="3" fill="#4E5A3A" stroke="#1C2127" stroke-width="1.5"/>
+  <!-- roof ribs on the part of the hall that the team plate leaves open -->
+  <g stroke="#5B6670" stroke-width="2" stroke-linecap="round">
+    <line x1="36" y1="212" x2="36" y2="230"/>
+    <line x1="54" y1="212" x2="54" y2="230"/>
+    <line x1="72" y1="212" x2="72" y2="230"/>
+    <line x1="90" y1="212" x2="90" y2="230"/>
+    <line x1="108" y1="212" x2="108" y2="230"/>
+    <line x1="126" y1="212" x2="126" y2="230"/>
+    <line x1="144" y1="212" x2="144" y2="230"/>
+  </g>
+  <!-- transformer yard -->
+  <rect x="166" y="116" width="72" height="120" rx="6" fill="#4E5A3A" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <g fill="#7D8893" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round">
+    <rect x="176" y="126" width="52" height="30" rx="3"/>
+    <rect x="176" y="162" width="52" height="30" rx="3"/>
+    <rect x="176" y="198" width="52" height="30" rx="3"/>
+  </g>
+  <!-- drums: rim, dark mouth, fan -->
+  <g stroke="#1C2127">
+    <circle cx="80" cy="84" r="56" fill="#7D8893" stroke-width="3"/>
+    <circle cx="198" cy="68" r="38" fill="#7D8893" stroke-width="3"/>
+    <circle cx="80" cy="84" r="40" fill="#4E5A3A" stroke-width="1.5"/>
+    <circle cx="198" cy="68" r="26" fill="#4E5A3A" stroke-width="1.5"/>
+  </g>
+  <g fill="none" stroke="#A9B4BE" stroke-width="2" stroke-linecap="round">
+    <path d="M26 84 A54 54 0 0 1 80 30"/>
+    <path d="M162 68 A36 36 0 0 1 198 32"/>
+  </g>
+  <g stroke="#6B7A4F" stroke-width="6" stroke-linecap="round">
+    <line x1="64" y1="68" x2="96" y2="100"/>
+    <line x1="96" y1="68" x2="64" y2="100"/>
+    <line x1="187" y1="57" x2="209" y2="79"/>
+    <line x1="209" y1="57" x2="187" y2="79"/>
+  </g>
+  <g fill="#8C9A6B" stroke="#1C2127" stroke-width="1.5">
+    <circle cx="80" cy="84" r="10"/>
+    <circle cx="198" cy="68" r="7"/>
+  </g>
+</svg>

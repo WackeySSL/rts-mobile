@@ -1,0 +1,27 @@
+<!-- Headquarters, team layer: white and grey only, tinted at run time, drawn over the hull. -->
+<!-- Shape: a plate on the end of each roof arm and a square plate on each corner deck, all clear of the dome. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="384" viewBox="0 0 384 384">
+  <g stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round" fill="#FFFFFF">
+    <!-- arm-end plates, 3 px inside their plinths -->
+    <rect x="143" y="35" width="98" height="58" rx="3"/>
+    <rect x="291" y="143" width="58" height="98" rx="3"/>
+    <rect x="143" y="291" width="98" height="58" rx="3"/>
+    <rect x="35" y="143" width="58" height="98" rx="3"/>
+    <!-- corner deck plates, 4 px inside their decks -->
+    <rect x="44" y="44" width="48" height="48" rx="3"/>
+    <rect x="292" y="44" width="48" height="48" rx="3"/>
+    <rect x="44" y="292" width="48" height="48" rx="3"/>
+    <rect x="292" y="292" width="48" height="48" rx="3"/>
+  </g>
+  <!-- grey shade on the lower or outer edge of each plate -->
+  <g fill="#BFBFBF">
+    <rect x="144" y="88" width="96" height="4"/>
+    <rect x="344" y="144" width="4" height="96"/>
+    <rect x="144" y="344" width="96" height="4"/>
+    <rect x="36" y="144" width="4" height="96"/>
+    <rect x="45" y="87" width="46" height="4"/>
+    <rect x="293" y="87" width="46" height="4"/>
+    <rect x="45" y="335" width="46" height="4"/>
+    <rect x="293" y="335" width="46" height="4"/>
+  </g>
+</svg>

@@ -1,0 +1,11 @@
+<!-- Ghost hatch, a seamless tile: white and grey only, tinted at run time (danger red for a placement that does not fit). -->
+<!-- Pattern: bold diagonal bands rising to the right, 28 wide and 64 apart along the axis of the tile, so a repeat shows no seam. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <g fill="#FFFFFF" stroke="#4D4D4D" stroke-width="3" stroke-linejoin="miter">
+    <polygon points="86,-100 114,-100 -186,200 -214,200"/>
+    <polygon points="150,-100 178,-100 -122,200 -150,200"/>
+    <polygon points="214,-100 242,-100 -58,200 -86,200"/>
+    <polygon points="278,-100 306,-100 6,200 -22,200"/>
+    <polygon points="342,-100 370,-100 70,200 42,200"/>
+  </g>
+</svg>

@@ -6,7 +6,8 @@ Update this file when Michael approves a change; the skill stays the short check
 
 Status: v1, written in Phase 0 with the light tank sample. v1.1 (Phase 1, P12) adds the feedback
 markers and the gallery zoom row. v1.2 (Phase 2, P34) adds the rifle and rocket squads, the selection ring
-texture, the effects atlas and the specs for combat effects, health bars, fog and terrain. Rules marked **(new)**
+texture, the effects atlas and the specs for combat effects, health bars, fog and terrain. v1.3 (Phase 3, P91) adds
+the six buildings, the ore cells and the two ghost patterns, and two more gallery pages. Rules marked **(new)**
 go beyond the skill and are waiting for Michael's approval (list at the end).
 
 ## Look
@@ -16,7 +17,7 @@ phone. Not cartoonish, not photoreal. Pure top-down view, light from the top-lef
 ## Scale
 - 1 tile = 64 px in game at zoom 1. Author at 2x: 1 tile = 128 px in the SVG.
 - Canvas at 2x: infantry squad 64x64, light vehicles 96x96, **tanks 128x128**, harvester 160x160,
-  buildings 256x256 (2x2 tiles) or 384x384 (3x3 tiles).
+  buildings 128x128 (1x1 tile), 256x256 (2x2 tiles) or 384x384 (3x3 tiles), an ore cell 128x128.
 - Godot rasterises an SVG once, at import. Showing a sprite above scale 1 therefore looks soft.
   The gallery's main row shows scale 1. Its zoom row shows the light tank at 0.75, 1.0 and 1.5.
 
@@ -31,6 +32,7 @@ phone. Not cartoonish, not photoreal. Pure top-down view, light from the top-lef
 | Grass (map) | #5E7D4A / #6F8F57 | grass 127 |
 | Dirt / rock | #8A6F4D / #6E6A66 | |
 | Rock lit / shade (new) | #8C8782 / #4F4B48 | 136 / 76 |
+| Dirt shade / highlight (new) | #6F583B / #A3865E | 92 / 138 (the dirt itself, #8A6F4D, is 115) |
 | Water | #2E5E7E / #3C7396 | |
 | Ore | #F2B705, highlight #FFD84D, shade #A67C00 | |
 | Team A / team B / neutral | #2F80ED / #E5484D / #9AA5B1 | 116 / 120 / 163 |
@@ -109,6 +111,92 @@ Vehicles are drawn from three layers that share one canvas size:
   facing east. The team layer holds one marker per soldier (a helmet cover; also a band on each rocket
   tube), clear of the shoulders and weapons so it shows at any heading.
 
+## Buildings
+Six buildings, drawn from above on a pad that covers their whole footprint, so the sprite's box is
+the blocked cells (ADR 0017). Each has one canvas per layer, one tile (128 px at 2x) per footprint
+tile: 3x3 is 384x384, 2x2 is 256x256 and the 1x1 defence turret 128x128. Import scale **0.5**, so
+the sprite is 64 px per footprint tile in game. The pad's outline starts 6 px inside the canvas and
+the shadow (offset 4,4) ends inside it.
+- Files: `buildings/<id>_hull.svg` and `buildings/<id>_team.svg` by building id, the names of the
+  unit layers, so one loader reads both. `hull` is the building's body: pad, roof and the ground
+  shadow. `team` is white and grey marks tinted at run time, under the same rules as a unit's. Only
+  the defence turret has `turret`, a gun head that turns about the canvas centre under the rules
+  for rotating layers (no shadow, shading mirrored about the gun line, one off-axis detail).
+- The hull draws a neutral plinth under every team mark (the darkest olive, or a metal deck), so it
+  looks finished without its team layer, and the team mark sits 3 to 4 px inside it with its own
+  #4D4D4D edge. Buildings never overlap, so the draw-order rule for rigs holds trivially.
+- The team-coloured share is 20-35 % of the building's visible body (the shadow left out) at every
+  quarter turn of the gun head. The team marks are large roof plates and rings, because a building
+  is big: they say who owns it from one tile away.
+- Use seen from above: a refinery or a vehicle factory shows what it is for. The refinery's gold
+  funnel and the factory's bay with its two arrows both sit in the middle of the south wall. The
+  art therefore assumes the dock and the exit are the middle cell south of the footprint: offsets
+  (1, 3) for the 3x3 buildings. The barracks' yard opens south, so its exit is (0, 2) or (1, 2).
+  The offsets are data (`BuildingDef`, P72); this is what the sprites show.
+- The view dims a building on low power with `modulate` on the whole rig. Health bars, the offline
+  glyph and damage are the view's and P92's, not part of these files.
+- The hazard arrows of the vehicle factory are the UI warning accent #F5A524 (palette), the refinery
+  funnel holds the ore colours; nothing else in a building uses either.
+
+## Ore
+Nine opaque tiles, `ore/ore_<level>[a|b].svg`, 128x128 at 2x, import scale 0.5, so one tile is
+64 px. Each tile is dirt #8A6F4D to every edge, with speckles in the two new dirt tones and gold
+nuggets in the ore colours (outline, highlight on the top left, shade on the lower right, shadow
+offset 4,4). Nothing reaches the outer 4 px (2 px imported), so two tiles side by side show bare
+dirt on both sides of the join and the map keeps its "no grid" rule.
+- The level of a cell is 0 when `ore_amount` is 0 and `1 + (amount - 1) * 4 / ore_cell_max`
+  (integer division) above it, so 1 to 5 is level 1, 6 to 10 level 2, 11 to 15 level 3 and 16 to 20
+  level 4 at `ore_cell_max` 20. A cell that regrows climbs the levels one at a time.
+- A tile name is its level, plus `a` or `b` from level 1 up: two layouts of the same gold, so a
+  field does not repeat. The suggested pick is `(col + row) % 2`, so neighbours differ.
+
+| File | Level | Look | Bright gold at 64 px |
+| --- | --- | --- | --- |
+| `ore_0.svg` | 0 | bare dirt, three dug-out pits with a lit lip, three dull flecks of gold | 0 |
+| `ore_1a.svg`, `ore_1b.svg` | 1 | three small nuggets | 63 |
+| `ore_2a.svg`, `ore_2b.svg` | 2 | one medium and three small | 137 |
+| `ore_3a.svg`, `ore_3b.svg` | 3 | one large crystal, two medium and one small | 377 |
+| `ore_4a.svg`, `ore_4b.svg` | 4 | two large, two medium and two small, packed | 606 and 604 |
+
+There is no team layer: ore is neutral. The tiles are opaque, so they cover whatever colour
+`MapView` bakes for the terrain `ore`, but the key must exist from the day the terrain does: P70 adds
+the id `ore` to `data/terrain/standard.tres`, and the same tree must carry the key `ore` in
+`MapView.colors` and `MapView.tiles`, the gallery's `TERRAIN_COLORS` and `TERRAIN_TILES`, the two
+terrain tables under "Fog and terrain" and the terrain lists of `tests/art`, because `tests/project`
+(every terrain id has a colour and a tile in both map views; `MapView` and the gallery hold the same
+keys) goes red without them. The proposal is the dirt the tiles are filled with: key `ore` #8A6F4D,
+tile `0,0,8,8,ore`, probe 3,3. The key is not in this PR's tables because `MapView` is another
+owner's file (see "Open points", the request for P70).
+Greyscale check: the dirt (115) is as bright as grass (110 and 127), so the nuggets carry the field:
+gold 180 to 212 with a 3 px outline at 32. At 32 px per tile in greyscale the five levels read apart
+by the number and size of the nuggets alone, and level 0 by its dark pits.
+
+## Ghosts
+A ghost is a building drawn as a plan: where the player is about to place one (ADR 0019 section
+2), and a building last seen (ADR 0017 section 3, plan P84c). Two pattern tiles do the work, both
+seamless, white and grey only and tinted at run time like a team layer: `ui/ghost_hatch.svg` and
+`ui/ghost_seen.svg`, 128x128 at 2x, import scale 0.5, so 64 px. They are drawn tiled
+(`TextureRect` with `stretch_mode` TILE, or a tiled `draw_texture_rect`) over the **footprint
+rectangle**, not the sprite's outline, because the hatch also shows which cells are blocked.
+Each meaning has its own shape (see "Shape as second cue"): bold diagonal bands rising to the right
+mean it does not fit, fine staggered dots mean last seen, and a solid frame and no pattern mean it
+fits.
+
+| Ghost | Building | Wash | Pattern | Frame |
+| --- | --- | --- | --- | --- |
+| Fits | own team colour, faded as one group | #30A46C | none | solid, #30A46C |
+| Does not fit | own team colour, faded as one group | #E5484D | `ghost_hatch.svg` tinted #E5484D | solid, #E5484D |
+| Last seen | the other team's colour, not faded | none | `ghost_seen.svg` tinted #9AA5B1 | none, no health bar |
+
+The numbers: sprite alpha 0.7 (the whole rig in one `CanvasGroup`, faded through its
+`CanvasGroup.self_modulate`: `modulate` would reach the hull and team sprites too and blend twice,
+so the hull would show through a team plate, as `MoveMarkerLayer` notes), wash alpha 0.3, hatch alpha 0.8, dots alpha 0.7 and a frame 3 dp wide
+(the marker stroke rule, dp over zoom in world space; the gallery draws 3 base px). A last-seen
+ghost is drawn under the fog like any explored tile, so it is dimmed by the explored fog alpha (140)
+and carries no other dimming. The reason's glyph for a placement that does not fit is P92's.
+The gallery's `GHOST_*` constants hold these values and `tests/art` pins this paragraph to them;
+the values are a proposal for touch-ux-dev to tune with Michael.
+
 ## Originality
 Describe each silhouette in one line before drawing, in your own words. The catalogue below holds
 the line for the unit and each SVG header holds the line for its layer. No recognisable designs
@@ -121,6 +209,15 @@ in doubt, choose a plainer real-world form.
 | Light tank | A plain light tank shaped like an H on its side: two long round-ended track pods joined by a short flat deck, a compact rounded-rear turret, and one long vented barrel leaving through the front bay. | `units/light_tank_{hull,team,turret}.svg`, 128x128 |
 | Rifle squad | Four soldiers in a loose pinwheel diamond, each a broad-shouldered oval with a round helmet cover and a short stubby rifle held out to the right of the head. | `units/rifle_squad_{hull,team}.svg`, 64x64, no turret |
 | Rocket squad | Two staggered soldiers, each carrying a long fat launch tube over the right shoulder, flared at the back and ending in a rounded orange warhead: the squad reads as two parallel bars. | `units/rocket_squad_{hull,team}.svg`, 64x64, no turret |
+| Headquarters | A square pad with cut corners carrying a plus-shaped roof, a round dome where the four arms cross and a small square deck in each corner. | `buildings/headquarters_{hull,team}.svg`, 384x384 |
+| Power plant | One big and one small round drum with dark open mouths over a low ribbed hall on the left and a tall yard of three boxes on the right, on a rounded square pad. | `buildings/power_plant_{hull,team}.svg`, 256x256 |
+| Refinery | One fat round silo and two small ones stepping off to the right behind a wide hall, with a belt rising from a gold-filled funnel that juts out of the middle of the front. | `buildings/refinery_{hull,team}.svg`, 384x384 |
+| Barracks | A U of three long olive pitched roofs round a bare yard that opens to the front, a raised metal spine along the ridge of all three, on a square pad. | `buildings/barracks_{hull,team}.svg`, 256x256 |
+| Vehicle factory | One wide hall with a five-tooth sawtooth roof across the back, a dark doorway in its front wall and an open bay with two arrows pointing out, crates on the left and a round tank on the right. | `buildings/vehicle_factory_{hull,team}.svg`, 384x384 |
+| Defence turret | A round gun pit ringed by eight fat sandbags, with a squat wedge-shaped gun head on top whose single long barrel ends in a wide muzzle block. | `buildings/defence_turret_{hull,team,turret}.svg`, 128x128 |
+| Ore cell | A square of dirt, bare or holding three to six gold nuggets and crystals by level. | `ore/ore_<level>[a\|b].svg`, 128x128, see "Ore" |
+| Ghost hatch | Bold diagonal bands rising to the right, a seamless tile. | `ui/ghost_hatch.svg`, 128x128, see "Ghosts" |
+| Ghost dots | Small round dots in a staggered lattice, a seamless tile. | `ui/ghost_seen.svg`, 128x128, see "Ghosts" |
 
 ## Readability check (every asset)
 1. Rasterise each layer at 32 px with `Image.load_svg_from_buffer` (scale = 32 / canvas, so 0.25 for
@@ -155,6 +252,19 @@ union, same canvas). Composited on grass and sand in greyscale at headings 0, 90
 degrees, the pinwheel and the two bars stay apart and the heading reads. Detail check at 2x: 2 px
 of metal between the rifle outlines, 1.9 units (1 px at 32 px) between each rifle tip and the next
 soldier, and on each helmet cover a full 1.5 px edge with a 2.0 px grey shade, both at the minimum.
+
+Building results (P91, scratch script, imported scale 0.5, alpha above 0.5): the six team layers
+have no non-grey pixel. The visible team share, by the tank's definition (shadow left out, nothing
+under the gun head), is 24.8 % (headquarters), 22.6 % (power plant), 22.7 % (refinery), 24.2 %
+(barracks), 23.2 % (vehicle factory) and 26.0 % (defence turret, the same at 0, 90, 180 and 270
+degrees). The silhouette of each was drawn at 32 px for its longest side, in greyscale on grass and
+sand, and at 48 px per tile (the camera's 0.75 zoom). At 32 px the six read apart: the cut-corner
+cross with its dome, the two drums beside a yard of three boxes, the three silos over a bright gold
+funnel, the U, the five roof stripes over a dark bay, and the ring with a gun. In the pure
+silhouette the defence turret's gun is its own shape: the muzzle block leaves the pit 4 px by 6 px
+at 32 px (7 by 12 at 64). Both ground tones keep every building apart because of the outline (32)
+and the pad, which is darker (100) than the grass (110 and 127) and the sand (186) under it. The
+ore tiles at 32 px per tile in greyscale read by nugget count and size (see "Ore").
 
 ## Feedback markers (new)
 The target flash, the attack-move marker, the long-press anchor and the box are drawn in code
@@ -399,6 +509,19 @@ levels, at the ring radius of the 6-inch phone, and each ground carries the effe
 A terrain row at the top shows a patch of 8 x 2 map tiles at 64 px in a dark frame, so every tile
 edge shows on both grounds: grass, scrub, rock, water and sand. Team A's and team B's
 squads stand on the two scrub tiles, and the second row of the patch is under the explored fog alpha.
+A button at the top right (120x120 base px, labelled with the page it is on) turns the pages: **Units**
+(everything above), **Build** and **Ground**, and the Back button leaves from any of them. The new
+pages are built by `art_gallery.gd` and start hidden, so the Units page is as it was.
+- **Build** shows the six buildings at scale 1 on grass (left) and sand (right). Each ground has four
+  rows: the small ones first (power plant, barracks, defence turret), team A then team B, then the
+  3x3 ones (headquarters, refinery, vehicle factory), team A then team B. Every building is a rig
+  `Node2D` named by its id in PascalCase, with `Hull`, `Team` and, for the turret, `Turret`, in the
+  team group; the turret's gun head turns slowly like the tanks'. The rows are centred and the
+  layout is made for landscape (the Units page is too).
+- **Ground** shows, on each ground, the ore levels (five tiles by two variants, side by side with
+  no gap), a mixed ore field of 6 x 3 tiles to judge the joins, the three ghosts of a barracks (fits,
+  does not fit, last seen) and the two pattern tiles repeated three by two times.
+
 To add an asset:
 - Add its layers as one rig `Node2D` under each of the four slots (grass A, grass B, sand A, sand B).
 - Put the rig in the group `gallery_team_a` or `gallery_team_b`, and name the layers `Hull`, `Team`
@@ -481,6 +604,27 @@ Renaming a unit or a unit type is a data change, not a reskin.
   shade colours are new, and scrub shares the unit olive, so judge the squads on it in the patch.
   The explored fog (alpha 140) leaves terrain at 45 % brightness: check that explored ground stays
   readable; it is one value (`FogLayer.explored_alpha`) to change.
+- P91 (Phase 3), please approve the **(new)** items and judge them on the phone (Dev, Art gallery,
+  button at the top right: Build, then Ground):
+  - the two dirt tones #6F583B and #A3865E beside the palette's dirt colour;
+  - the building layers, named like the unit layers (`hull` is the body of the building) and sized one
+    tile per footprint tile, with team marks that are large roof plates and rings (a team share of
+    20-35 % of the visible body, 22.6 to 26.0 % measured);
+  - that the dock of the refinery and the exit of the factory are the middle cell south of the
+    footprint, where the art draws the funnel and the bay;
+  - opaque ore tiles with five levels, the level formula under "Ore" and two layouts per level;
+  - the ghost look under "Ghosts": its two pattern tiles, the alphas and the colours;
+  - the Build and Ground gallery pages.
+- For the lead, before P70 starts (request from P91): the terrain id `ore` that P70 adds to
+  `data/terrain/standard.tres` turns `tests/project/test_cross_file_facts.gd` red (every terrain id has
+  a colour and a tile in both map views, and `MapView` and the gallery hold the same keys) until
+  `MapView.colors` and `MapView.tiles` (the script defaults and the node of `main.tscn`), the gallery's
+  `TERRAIN_COLORS` and `TERRAIN_TILES`, the two terrain tables in this file and the terrain lists of
+  `tests/art` all carry `ore` in one tree. `MapView` is touch-ux-dev's, and the plan's P70 row and its
+  exceptions 11 to 15 do not name it, so the plan needs a named one-line exception for P70 (add the key
+  `ore` #8A6F4D and the tile `0,0,8,8,ore` to those places, as proposed under "Ore") or a joint art and
+  view row before P70. P84b comes too late. P91 leaves the key out of the gallery on purpose: `MapView`
+  would then lack a key the gallery has, and P52's comparison would go red in this PR.
 - For the lead, before P36 starts: the plan's `MapView` row allows the keys `<id>` and `<id>_b`
   and holds no tile rects, but this spec has three tones for scrub and rock and rect patterns for
   scrub, rock and water (ADR 0011 section 3 asks for the scrub pattern). The row needs `_c` keys, a
@@ -503,3 +647,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-10-12 | v1.2 (P34c, Michael's answers): the map grid is removed, the rocket warhead stays #F5A524; the health bar overlap half-heights (14 and 21 world px) are recorded. |
 | 2026-10-15 | P26t docs (Michael's decision): the Reskin section names the three places a new look is made; no rule changed. |
 | 2026-10-19 | P58 review (art-director): palette row for the HUD panel backdrop; Reskin item 3 says what the UI Theme holds and what the dp step scales. No rule changed. |
+| 2026-10-22 | v1.3 (P91, art-director): the six buildings with their layer contract, the ore cells and their levels, the two ghost patterns and the ghost look, two dirt tones (new), the Build and Ground gallery pages. |

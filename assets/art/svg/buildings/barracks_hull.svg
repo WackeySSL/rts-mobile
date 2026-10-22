@@ -1,0 +1,45 @@
+<!-- Barracks, hull layer: drawn first, holds the ground shadow of the whole building. -->
+<!-- Silhouette: a U of three long olive pitched roofs round a bare yard that opens to the front, a raised metal spine along the ridge of all three, on a square pad. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- ground shadow, offset (4,4), flattened as one group -->
+  <g transform="translate(4 4)" opacity="0.25" fill="#000000">
+    <rect x="6" y="6" width="244" height="244" rx="4"/>
+  </g>
+  <!-- pad: the lowest plane -->
+  <rect x="6" y="6" width="244" height="244" rx="4" fill="#5B6670" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <polyline points="11,246 11,11 246,11" fill="none" stroke="#7D8893" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- yard floor -->
+  <rect x="90" y="90" width="76" height="152" fill="#7D8893" stroke="#1C2127" stroke-width="1.5"/>
+  <line x1="128" y1="116" x2="128" y2="236" stroke="#A9B4BE" stroke-width="2" stroke-dasharray="10 8"/>
+  <!-- the U of roofs, slopes that face the east and the south in shade -->
+  <polygon points="22,22 234,22 234,226 166,226 166,90 90,90 90,226 22,226" fill="#4E5A3A" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <!-- slopes that face the north and the west, one tone lighter -->
+  <g fill="#6B7A4F" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round">
+    <polygon points="22,22 234,22 200,56 56,56"/>
+    <polygon points="22,22 56,56 56,226 22,226"/>
+    <polygon points="166,90 200,90 200,226 166,226"/>
+  </g>
+  <!-- light along the eaves that face the top left -->
+  <g fill="none" stroke="#8C9A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="26,222 26,26 230,26"/>
+    <polyline points="170,222 170,94"/>
+  </g>
+  <!-- ridge spine: metal, raised above the roofs, plinth for the team plate -->
+  <polygon points="38,38 218,38 218,218 182,218 182,74 74,74 74,218 38,218" fill="#7D8893" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round"/>
+  <polyline points="41,215 41,41 215,41" fill="none" stroke="#A9B4BE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- skylights on the slopes beside the spine -->
+  <g fill="#A9B4BE" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round">
+    <rect x="77" y="100" width="9" height="16"/>
+    <rect x="77" y="128" width="9" height="16"/>
+    <rect x="77" y="156" width="9" height="16"/>
+    <rect x="77" y="184" width="9" height="16"/>
+    <rect x="170" y="100" width="9" height="16"/>
+    <rect x="170" y="128" width="9" height="16"/>
+    <rect x="170" y="156" width="9" height="16"/>
+    <rect x="170" y="184" width="9" height="16"/>
+    <rect x="100" y="78" width="16" height="9"/>
+    <rect x="140" y="78" width="16" height="9"/>
+  </g>
+  <!-- door into the yard -->
+  <rect x="116" y="90" width="24" height="12" fill="#1C2127"/>
+</svg>

@@ -1,0 +1,12 @@
+<!-- Barracks, team layer: white and grey only, tinted at run time, drawn over the hull. -->
+<!-- Shape: one U-shaped plate that follows the ridge of the three roofs. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <polygon points="41,41 215,41 215,215 185,215 185,71 71,71 71,215 41,215" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- grey shade on the lower and the right-hand edges -->
+  <g fill="#BFBFBF">
+    <rect x="42" y="212" width="28" height="3"/>
+    <rect x="186" y="212" width="28" height="3"/>
+    <rect x="211" y="42" width="3" height="170"/>
+    <rect x="72" y="67" width="112" height="3"/>
+  </g>
+</svg>

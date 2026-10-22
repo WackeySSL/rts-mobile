@@ -221,7 +221,7 @@ func test_the_gallery_ring_row_draws_the_team_a_ring_under_the_hull_at_31_5_35_2
 
 func test_the_gallery_keeps_every_ring_clear_of_the_other_sprites() -> void:
 	var gallery: Node = await _open_gallery()
-	var sprites: Array[Node] = gallery.find_children("*", "Sprite2D", true, false)
+	var sprites: Array[Node] = _shown_sprites(gallery)
 	var rings: Array[Node] = gallery.find_children("Ring", "Sprite2D", true, false)
 	assert_int(rings.size()).is_equal(6)
 	for ring: Node in rings:
@@ -247,7 +247,7 @@ func test_each_ground_carries_the_atlas_at_scale_1_clear_of_the_back_button_and_
 		assert_vector(box.size).is_equal(Vector2(176, 84))
 		assert_bool(ground.get_global_rect().encloses(box)).is_true()
 		assert_bool(box.intersects(back)).override_failure_message(ground_name).is_false()
-		for sprite: Node in gallery.find_children("*", "Sprite2D", true, false):
+		for sprite: Node in _shown_sprites(gallery):
 			(
 				assert_bool(box.intersects(_box(sprite)))
 				. override_failure_message("%s over %s" % [ground_name, sprite.get_path()])
@@ -484,7 +484,7 @@ func test_the_gallery_terrain_row_is_inside_and_clear_of_the_back_button_atlases
 			avoid.append((gallery.get_node(ground + "/EffectsAtlas") as Control).get_global_rect())
 		for label: Node in gallery.find_children("*", "Label", true, false):
 			avoid.append((label as Control).get_global_rect())
-		for sprite: Node in gallery.find_children("*", "Sprite2D", true, false):
+		for sprite: Node in _shown_sprites(gallery):
 			if not row.is_ancestor_of(sprite):
 				avoid.append(_box(sprite))
 		assert_int(avoid.size()).is_greater(20)
@@ -537,6 +537,14 @@ func _spread(lums: Array[float]) -> float:
 	for lum: float in lums:
 		variance += (lum - mean) * (lum - mean) / lums.size()
 	return sqrt(variance)
+
+
+## The sprites the player sees: the gallery opens on the Units page, and the sprites of the Build
+## and Ground pages stay hidden until the button turns to them (tests/art/test_building_art.gd).
+func _shown_sprites(gallery: Node) -> Array[Node]:
+	return gallery.find_children("*", "Sprite2D", true, false).filter(
+		func(node: Node) -> bool: return (node as CanvasItem).is_visible_in_tree()
+	)
 
 
 ## The bounding box of a sprite on screen.
