@@ -253,9 +253,10 @@ bursty phase whose per-active-tick cost sets a headroom value. `COMMANDS`, `REMO
   type and size check, then `ptrw()` for an array it writes and `ptr()` for one it only reads.
   Every name it gets or sets is in that header's checked table (`Object::set` on an unknown name
   fails silently). The header's `STAT_COUNT` mirrors `World.Stat.size()` and moves with it: a stat
-  added to `World` without it makes every kernel refuse the World (P70 moved it from 7 to 10). `check_world(world, phase)` is pure and returns a status; a kernel that gets a
-  non-zero status logs one error and returns without writing. No mismatch message is ever
-  allowlisted.
+  added to `World` without it makes every kernel that reads `stats` (all but INTEGRATE) refuse the
+  World (P70 moved it from 7 to 10). `check_world(world, phase)` is pure and returns a status; a
+  kernel that gets a non-zero status logs one error and returns without writing. No mismatch
+  message is ever allowlisted.
 - FLOW (§2, "Arrays of helper objects"): fetch the typed slot `Array` once, then each touched
   slot's arrays and scalars once (bounded by `flow_cache_size`, never per row or cell). The
   buffer swap is two `set` calls, after which both pointers are fetched again; no slot array is
