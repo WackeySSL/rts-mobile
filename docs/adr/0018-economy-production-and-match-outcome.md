@@ -1,9 +1,26 @@
 # ADR 0018: Economy, power, production and the match outcome
 
-Status: proposed, 2026-10-22. Docs PR P68 (with `docs/plans/2026-10-22-phase-3.md`). Builds on ADR
-0017 (the data model, the Commands and the tick phases); this ADR fixes the rules. Every number
-below is a starting value in `data/*.tres` (CLAUDE.md rule 5) for Phase 4's balance runs, never a
-literal in code.
+Status: accepted, 2026-10-22 (Michael: 1 A, 2 A, 3 ja, 4 ja). Proposed 2026-10-22. Docs PR P68
+(with `docs/plans/2026-10-22-phase-3.md`), accepted by the lead's row P68b on the same PR (#166).
+Builds on ADR 0017 (the data model, the Commands and the tick phases); this ADR fixes the rules.
+Every number below is a starting value in `data/*.tres` (CLAUDE.md rule 5) for Phase 4's balance
+runs, never a literal in code.
+
+## Acceptance note (2026-10-22)
+Michael answered the questions of ADRs 0017-0021 in chat on 2026-10-22, verbatim "Ja til alle
+anbefalinger" (yes to all recommendations), which the lead records for this ADR as "1 A, 2 A,
+3 ja, 4 ja":
+1. **A:** structures are built in the sidebar first and placed when ready, complete on placement
+   (§5). No construction site (option B) in Phase 3.
+2. **A:** the full cost is paid when an item is queued and fully refunded on cancel (§1, §5). No
+   payment while building (option B).
+3. **ja:** a harvester the player moved, or one left idle, goes back to harvesting on its own
+   after `harvest_resume_ticks` (75 ticks, 5 seconds; §3).
+4. **ja:** artillery ships without splash damage (§8); Phase 4's balance work decides on splash.
+
+The decision below is unchanged by the acceptance. P68b added one data test to §9 that the
+separation argument of ADR 0017 §1 relies on (every mobile unit's radius at most 500). Nothing
+here is applied in code yet: plan rows P69-P80 apply it.
 
 ## Context
 - `docs/GDD.md`, "Match setup": one Headquarters, 2 000 credits and 2 rifle squads at the start;
@@ -159,7 +176,10 @@ ranges; artillery's weapon has `min_range` 3 tiles. Artillery has no splash dama
   factory 450, defence turret 225. Starting building hp: Headquarters 2000, power plant 800,
   refinery 1500, barracks 1000, vehicle factory 1600, defence turret 900.
 - Data tests: every building has speed 0, radius 0, armour `BUILDING` and a footprint of at most
-  3x3; `harvest_capacity` is a multiple of `credits_per_ore`; `unit_cap` and `building_cap` times
+  3x3; every mobile unit (speed above 0) keeps a radius in 1..500 (today's rule in
+  `tests/sim/test_defs_data.gd` covers every unit file and is narrowed to mobile units when the
+  buildings join `data/units/`, plan row P72; ADR 0017 §1's separation argument needs it);
+  `harvest_capacity` is a multiple of `credits_per_ore`; `unit_cap` and `building_cap` times
   the players fit in `max_rows` (2 x (75 + 40) = 230 of 256; the free harvester is inside the 75,
   §3); every requirement chain reaches the Headquarters; every weapon's `range` reaches the ring
   corner cell of a 3x3 footprint from its centre (`range` of at least 2 829, ADR 0017 §1's

@@ -1,9 +1,27 @@
 # ADR 0019: Build sidebar, placement mode, building orders, minimap and the result screen
 
-Status: proposed, 2026-10-22. Docs PR P68 (with `docs/plans/2026-10-22-phase-3.md`). Builds on ADR
-0004 (gestures, `UiScale`), ADR 0015 §5 (layout in both orientations), ADR 0017 (`Placement`) and
-ADR 0018 (the rules the UI shows). The UI only reads the snapshot and sends Commands (ADR 0012 §3,
-CLAUDE.md rule 4).
+Status: accepted, 2026-10-22 (Michael: 1 B, 2 ja, 3 ja, 4 ja). Proposed 2026-10-22. Docs PR P68
+(with `docs/plans/2026-10-22-phase-3.md`), accepted by the lead's row P68b on the same PR (#166).
+Builds on ADR 0004 (gestures, `UiScale`), ADR 0015 §5 (layout in both orientations), ADR 0017
+(`Placement`) and ADR 0018 (the rules the UI shows). The UI only reads the snapshot and sends
+Commands (ADR 0012 §3, CLAUDE.md rule 4).
+
+## Acceptance note (2026-10-22)
+Michael answered the questions of ADRs 0017-0021 in chat on 2026-10-22, verbatim "Ja til alle
+anbefalinger" (yes to all recommendations), which the lead records for this ADR as "1 B, 2 ja,
+3 ja, 4 ja":
+1. **B:** in placement mode a one-finger drag that starts on the ghost moves it; any other
+   one-finger drag pans as usual (§2). Option A (every drag moves the ghost, two fingers pan) is
+   not taken.
+2. **ja:** a long-press on a sidebar item cancels the last queued item of that type, with a full
+   refund (§1).
+3. **ja:** a "Surrender" button at the top left behind a confirm dialog (§6).
+4. **ja:** a Phase 3 match starts from Dev → Skirmish; the preview keeps opening on the controls
+   test until Phase 5's main menu (§7).
+
+The decision below is unchanged by the acceptance. P68b added one sentence to §6: the Surrender
+button narrows the portrait SelectionPanel's line, so its row re-checks that panel's worst case.
+Nothing here is applied in code yet: plan rows P84-P90 apply it.
 
 ## Context
 - `touch-ui-rules` already fixes, in its gesture table and its "Building placement" section: tap an
@@ -96,7 +114,9 @@ per area and interval (values in `data/input_settings.tres`).
   lost, credits harvested. Buttons: "Play again" (the same scenario, a new match) and "Back" (the
   dev menu). No ad, ever, on the battle screen; Phase 6 decides what comes after this screen.
 - A "Surrender" button (at least 48 dp) at the top left, beside the Dev button, opens a confirm
-  dialog; yes sends `SURRENDER` (question 3).
+  dialog; yes sends `SURRENDER` (question 3). In portrait it is one more top-left control, so the
+  SelectionPanel's top line (ADR 0015 §5: from the top-left controls' right edge plus 8 dp) gets
+  shorter; the row that adds the button re-checks the panel's worst case at 360 dp (plan row P90).
 
 ### 7. Where a match starts in Phase 3
 A dev route "Skirmish" loads the battle scene with the skirmish scenario and the dummy opponent as

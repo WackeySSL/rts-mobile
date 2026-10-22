@@ -1,8 +1,30 @@
 # ADR 0017: Buildings and match state in the sim (World v2, Commands 10-14 and 20, tick phases 11-13)
 
-Status: proposed, 2026-10-22. Docs PR P68 (with `docs/plans/2026-10-22-phase-3.md`). Code facts are
-from `main` at 7185a91. P65 (ADR 0016) has not merged there: `World.STATE_FORMAT` is 1 and
-`FogGrid.HASHED` is `[&"visible", &"explored"]` on that commit; P65 makes them 2 and `[&"explored"]`.
+Status: accepted, 2026-10-22 (Michael: 1 ja, 2 ja, 3 ja, 4 ja). Proposed 2026-10-22. Docs PR P68
+(with `docs/plans/2026-10-22-phase-3.md`), accepted by the lead's row P68b on the same PR (#166).
+Code facts are from `main` at 757b5f9, where P68b re-checked them (the proposal was written
+against 7185a91). P65 (ADR 0016) merged as 757b5f9 (#163): `World.STATE_FORMAT` is 2 and
+`FogGrid.HASHED` is `[&"explored"]`.
+
+## Acceptance note (2026-10-22)
+Michael answered the questions of ADRs 0017-0021 in chat on 2026-10-22, verbatim "Ja til alle
+anbefalinger" (yes to all recommendations), which the lead records for this ADR as "1 ja, 2 ja,
+3 ja, 4 ja":
+1. **ja:** the placement rule of §2 holds: a new building stands on explored, buildable ground
+   with no mobile unit on it, within `build_reach_tiles` (4) of an own building and below
+   `building_cap`.
+2. **ja:** at most `unit_cap` (75) mobile rows and `building_cap` (40) buildings per side, both
+   in `data/rules.tres`; the refinery's free harvester counts against the 75, and at the cap the
+   refinery comes without it (ADR 0018 §3).
+3. **ja:** the last-seen building memory ships in Phase 3 (plan row P77), hashed, in the World's
+   `GHOST_ARRAYS` (§3), not in `FogGrid`.
+4. **ja:** P70 re-pins the golden hashes once more (`STATE_FORMAT` 3) under the Phase 2 plan's
+   exception 10, after P65's re-pin to 2, which has merged.
+
+The decision below is unchanged by the acceptance. P68b fixed three review points in its
+wording: the source of a quote in the Context (`game/core/MatchSnapshot.gd`, not ADR 0012 §3),
+the power totals the snapshot copies (§6), and the totals of the hash-growth estimate (§7).
+Nothing here is applied in code yet: plan rows P69-P81 apply it.
 
 Companion ADRs: 0018 (economy and production rules), 0019 (build UI), 0020 (dummy opponent and the
 AI hook), 0021 (Phase 3 performance gate). This ADR fixes the data model and the plumbing; 0018
@@ -35,9 +57,11 @@ What earlier ADRs already decided for Phase 3:
 - **ADR 0012 §3:** the view reads only `MatchSnapshot`; `MatchSnapshot.COPIED` and `NOT_COPIED`
   split `ROW_ARRAYS`, `TYPE_ARRAYS`, `WEAPON_ARRAYS`, `PROJECTILE_ARRAYS` and `MAP_ARRAYS` exactly
   once (`test_copied_and_not_copied_split_the_world_shape_lists_exactly_once` in
-  `tests/core/test_match_snapshot.gd`), "so a new World column fails until it is classified".
+  `tests/core/test_match_snapshot.gd`), so that a Phase 3 column "fails the test until it is
+  classified" (ADR 0012 §3); the doc comment of `NOT_COPIED` in `game/core/MatchSnapshot.gd` says
+  the same: "so a new World column fails until it is classified".
 
-What the code does today (`main` at 7185a91):
+What the code does today (`main` at 757b5f9):
 - `Sim.step` runs COMMANDS, FLOW, GRIDS, TARGETING, INTENTS, SEPARATION, INTEGRATE, PROJECTILES,
   FIRE, REMOVE (with `FogUpdate.begin` first) and FOG, then `tick += 1`. `SimProbe.Phase` holds
   ids 0-10 and `COUNT = 11`.
@@ -98,7 +122,8 @@ What the code does today (`main` at 7185a91):
 - Why no other kernel changes: every ported kernel reads the blocked cells through `move_cost`
   (FLOW, INTEGRATE's `is_passable` twin), the radii (SEPARATION: with radius 0, a pair with a
   building needs a mobile row closer than its own radius to the building's centre, which a blocked
-  footprint and a radius of at most 500 rule out), the rows as candidates (TARGETING, apart from
+  footprint and a radius of at most 500 rule out; a data test pins that radius bound for
+  every mobile unit, plan row P72), the rows as candidates (TARGETING, apart from
   the `ATTACK` goal above) and the rows' cells (FOG). P71 adds a building-world case to each
   kernel's lockstep suite to prove it on both implementations, among them an `ATTACK` on a 3x3
   building behind rock. A later rule that needs a kernel change edits both twins (ADR 0013 §5).
@@ -144,7 +169,7 @@ later rows fill rules without moving any arena hash again (§7):
   "will live inside `FogGrid`", and only that): its records are per building, not per cell, and
   keeping them out of `FogGrid` leaves the FOG kernel's checked list as it is. It stays history and
   hashed, as ADR 0010 and ADR 0016 say.
-- `STATE_FORMAT` becomes 3 (P65 makes it 2). `HASH_OTHER_SECTIONS` becomes 7; the new sections
+- `STATE_FORMAT` becomes 3 (P65 made it 2). `HASH_OTHER_SECTIONS` becomes 7; the new sections
   come after `fog` in the order `players`, `ore`, `ghosts`, and `hash_section_names()` names them.
 
 ### 4. Commands 10-14 and 20
@@ -192,9 +217,12 @@ ascending; no Phase 3 rule draws a random number.
 P70 lists every new `ROW_ARRAYS`, `TYPE_ARRAYS` and `MAP_ARRAYS` name in `MatchSnapshot.NOT_COPIED`
 (the plan's named exception 11), so the coverage test stays green. P81 (the lead) moves what the
 view reads to `COPIED` (including `move_cost` and `type_radius`, which the ghost check needs),
-copies `PLAYER_ARRAYS`, `ORE_ARRAYS`, `GHOST_ARRAYS` and the two new scalars, extends the coverage
-test to the new lists, and makes the runner stop ticking once `match_end_tick` is set. All copies
-are `duplicate()` (O(1); the next write copies the buffer, inside `step_usec`, ADR 0016's Context).
+copies `PLAYER_ARRAYS`, `ORE_ARRAYS`, `GHOST_ARRAYS`, the derived power totals `power_made` and
+`power_used` (the sidebar's power bar and the low-power cues show them, ADR 0019 §1 and §5; ECONOMY
+has rebuilt them by the end of the step) and the two new scalars, lists `building_rows` and
+`harvester_rows` as not copied, extends the coverage test to the new lists (`DERIVED_ARRAYS`
+included), and makes the runner stop ticking once `match_end_tick` is set. All copies are
+`duplicate()` (O(1); the next write copies the buffer, inside `step_usec`, ADR 0016's Context).
 
 ### 7. The state hash
 - One re-pin: P70 changes the layout (four row columns, three sections, two scalars,
@@ -210,7 +238,8 @@ are `duplicate()` (O(1); the next write copies the buffer, inside `step_usec`, A
   (ADR 0018 §7): `defeated_tick`, `match_end_tick` and `winner` stay 0 through all 900 ticks.
 - Estimated growth at the perf arena (150 rows at tick 15, 71 at tick 900, 2 players): about 2.5 KB
   of new row columns at tick 15 and 1.2 KB at tick 900, about 0.6 KB for `players` and 48 bytes of
-  block headers for the empty `ore` and `ghosts`. P65q's line will show the real numbers.
+  block headers for the empty `ore` and `ghosts`: in all about +3.1 KB per checkpoint at tick 15
+  and +1.8 KB at tick 900. P65q's line will show the real numbers.
 - Derived and unhashed, each with a rebuild test: `power_made`, `power_used`, `building_rows`,
   `harvester_rows`. `move_cost` is derived from the terrain and the buildings but stays in the map
   digest, as today; a placement or a building death recomputes the digest at the next checkpoint

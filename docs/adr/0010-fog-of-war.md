@@ -25,6 +25,10 @@ Status note (2026-10-22, ADR 0016 accepted): §1 and "Consequences" carry dated 
 ADR 0016's decision that P65 will take `visible` out of `FogGrid.HASHED`; no accepted text
 changed.
 
+Status note (2026-10-22, P68b docs; ADR 0017 accepted 2026-10-22): §1 carries a dated status note:
+the per-player last-seen building memory lives in the World (ADR 0017 §3, `GHOST_ARRAYS`), not in
+`FogGrid`, and `PlayerView` arrives in plan row P78 (ADR 0020 §1); no accepted text changed.
+
 ## Context
 ROADMAP Phase 2 asks for "fog of war (visible and explored) and its rendering". The GDD says:
 - unexplored is black;
@@ -160,6 +164,17 @@ it merges, the text above describes `main`.
   Phase 3 adds is history too, so it "will live inside `FogGrid` and be hashed" as written.
 - `FogGrid.copy_into` duplicates every array of `HASHED` and `UNHASHED`, so the snapshot keeps
   `visible`.
+
+Status note (2026-10-22, P68b docs, ADRs 0017 and 0020 accepted; the text and the notes above stay
+as accepted): P65 merged as 757b5f9 (#163): `FogGrid.HASHED` is `[&"explored"]` on `main`. ADR
+0017 §3 supersedes one point of this section, where the last-seen memory lives: it is history and
+hashed as written, but it lives in the World's `GHOST_ARRAYS` (`ghost_id`, `ghost_type`,
+`ghost_owner`, `ghost_cell` per player up to `ghost_cap`, and `ghost_count`; the `ghosts` hash
+section, live entries only), not inside `FogGrid`. The records are per building, not per cell, and
+keeping them out of `FogGrid` leaves the FOG kernel's checked list as it is. The MEMORY phase
+(id 13) updates them on each player's fog turn (plan row P77). `PlayerView`
+(`game/sim/PlayerView.gd`, pure) arrives in plan row P78 with the shape §1 reserves (ADR 0020 §1),
+and the scan over `game/ai` in P78q.
 
 ### 2. View rendering (`game/view/FogLayer.gd`)
 - A `Sprite2D` with an `ImageTexture` of `map_cols x map_rows` pixels in `FORMAT_RGBA8`,

@@ -1,9 +1,29 @@
 # ADR 0020: The dummy opponent, `PlayerView` and where AI runs in the tick
 
-Status: proposed, 2026-10-22. Docs PR P68 (with `docs/plans/2026-10-22-phase-3.md`). The Phase 3
-gate is "a full match can be played against a dummy opponent that only builds and defends"; this
-ADR decides how that opponent sees the match, where its code runs, and how it is proven
-deterministic. Phase 4's real AI uses the same hook.
+Status: accepted, 2026-10-22 (Michael: 1 ja, 2 ja). Proposed 2026-10-22. Docs PR P68 (with
+`docs/plans/2026-10-22-phase-3.md`), accepted by the lead's row P68b on the same PR (#166). The
+Phase 3 gate is "a full match can be played against a dummy opponent that only builds and
+defends"; this ADR decides how that opponent sees the match, where its code runs, and how it is
+proven deterministic. Phase 4's real AI uses the same hook.
+
+## Acceptance note (2026-10-22)
+Michael answered the questions of ADRs 0017-0021 in chat on 2026-10-22, verbatim "Ja til alle
+anbefalinger" (yes to all recommendations), which the lead records for this ADR as "1 ja, 2 ja":
+1. **ja:** AI controllers run inside the tick job, before `loop.step` (on the worker in `WORKER`),
+   see the match only through `PlayerView`, think every `think_period` (15) ticks, and their
+   Commands are stamped and recorded like a player's (§2, §3). This supersedes ADR 0012 §1's and
+   §2's plan to run the AI on the main thread in `ticked`, and only that (ADR 0012 carries dated
+   status notes).
+2. **ja:** `scripts/run-sim-smoke.sh` runs three dummy-vs-dummy matches of 1 800 ticks with fixed
+   seeds from Phase 3 on (plan row P95), with its flags, exit codes and report schema unchanged.
+   It runs wherever `scripts/verify.sh` runs: in CI's verify job and in each session's one
+   verify run before a push (§5). Balance runs stay in GitHub Actions only (CLAUDE.md, Token
+   budget).
+
+The decision below is unchanged by the acceptance. P68b corrected §5's "in CI" (verify.sh runs
+the smoke step in every session too). Nothing here is applied in code yet: plan rows P78, P78q,
+P81-P83b and P95 apply it. The line for `.claude/agents/ai-dev.md` (AI code reads only
+`PlayerView` and runs in the tick job) waits for Michael's explicit yes to that agent file.
 
 ## Context
 - CLAUDE.md rule 4: humans and AI act only through `Command` objects. Rule 3: randomness only
@@ -97,9 +117,11 @@ This supersedes ADR 0012 §1's "The Phase 4 AI acts there" and §2's "Phase 4's 
   dummy-vs-dummy match `dropped_commands` stays 0 (the dummy never sends an invalid Command).
 - `PlayerView` never returns a row the player does not see (a crafted World with hidden rows).
 - The scan over `game/ai` (§3).
-- `run-sim-smoke.sh` (question 2): if Michael says ja, it runs 3 dummy-vs-dummy matches of 1 800
-  ticks each with fixed seeds in CI and writes the report JSON's schema; Phase 4 swaps in the real
-  AI and the longer matches for its box.
+- `run-sim-smoke.sh` (question 2, ja): it runs 3 dummy-vs-dummy matches of 1 800 ticks each with
+  fixed seeds and writes the report JSON's schema. `scripts/verify.sh` calls it with
+  `--matches 3`, so it runs in CI's verify job and in each session's verify run before a push;
+  balance runs (many matches) stay in GitHub Actions. Phase 4 swaps in the real AI and the longer
+  matches for its box.
 
 ## Consequences
 - The AI's think cost lands in the job p95 on 1 tick in 15, which the job limit (13.3 ms) has room
