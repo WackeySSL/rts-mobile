@@ -23,7 +23,9 @@ const WORKER: String = "WORKER"
 ## flight; the app paused or lost focus; ADR 0014 section 2's refresh and median rules; ADR 0012
 ## section 4's monitors that read 0 (a release template compiles them out); the camera moved while
 ## the run recorded (P50c: the heavy window counts the rigs inside the camera, so a pan or a zoom
-## changes what a run measures).
+## changes what a run measures); the viewport was portrait at a recorded frame (P63b: the gate is a
+## landscape measurement and a portrait view shows too few rigs for the heavy window; the APK holds
+## landscape, the web preview cannot).
 const REASON_JOB_IN_FLIGHT: String = "preflight_job_in_flight"
 const REASON_APP_PAUSED: String = "app_paused"
 const REASON_REFRESH_CHANGED: String = "refresh_changed"
@@ -32,6 +34,7 @@ const REASON_MEDIAN_BELOW_PERIOD: String = "median_below_period"
 const REASON_NO_DRAW_CALLS: String = "draw_calls_p95_zero"
 const REASON_NO_RENDER_CPU: String = "render_cpu_p95_zero"
 const REASON_CAMERA_MOVED: String = "camera_moved"
+const REASON_PORTRAIT: String = "portrait"
 ## The self-check seam's results (ADR 0013 section 3): the 60-tick lockstep of the seed-42 arena.
 const SELF_CHECK_MATCH: String = "match"
 const SELF_CHECK_MISMATCH: String = "mismatch"
@@ -166,8 +169,11 @@ var zoom: float = 1.0
 ## call, else -1: one FogLayer.upload_count() rise each). camera_source (P50c) gives the view the
 ## run is measured at, any value that changes when the camera pans or zooms (the arena gives its
 ## visible world rect): restart() keeps it and every recorded frame compares with it, any change
-## being a move. The null Callable is no rule. before_restart is called by run_again() after the
-## runner's start and before restart(), so the scene can put the view back where a run starts.
+## being a move. The null Callable is no rule. view_size_source (P63b) gives the viewport's visible
+## size (a Vector2i in base px; the default reads it, and is (0, 0) outside the tree): a recorded
+## frame at which `UiScale.is_portrait_size()` holds latches the run INVALID, a null Callable is no
+## rule. before_restart is called by run_again() after the runner's start and before restart(), so
+## the scene can put the view back where a run starts.
 ## Preflight seams: self_check_step (the 60-tick lockstep, a SELF_CHECK_ text) runs before
 ## burst_step; kernels_source gives the library's kernels or null; os_name is the platform the
 ## `impl` verdict judges.
@@ -184,6 +190,7 @@ var calls_source: Callable = _draw_calls
 var rigs_source: Callable = func() -> int: return 0
 var fog_source: Callable = func() -> int: return -1
 var camera_source: Callable = Callable()
+var view_size_source: Callable = _visible_size
 var before_restart: Callable = Callable()
 ## Where "Copy report" sends the JSON text. The headless display server cannot read a clipboard
 ## back (and logs an error when asked), so a test injects its own.
@@ -245,6 +252,8 @@ var _published: bool = false
 ## and back is still a move).
 var _camera_start: Variant = null
 var _camera_moved: bool = false
+## Whether a recorded frame of this run saw a portrait viewport (latched like `_camera_moved`).
+var _portrait_seen: bool = false
 
 
 func _init() -> void:
@@ -323,6 +332,7 @@ func restart() -> void:
 	_runs += 1
 	_app_paused = false
 	_camera_moved = false
+	_portrait_seen = false
 	_camera_start = camera_source.call() if camera_source.is_valid() else null
 	_copy.text = COPY_TEXT
 	visible = false
@@ -376,7 +386,8 @@ func run_again() -> void:
 ## One frame, microseconds unless noted: the interval since the previous frame, the main thread's
 ## process and render CPU time (frame work is their sum), draw calls, rigs drawn, whether a tick
 ## published in it, its reference sample (0 without one) and the fog update (-1 when none ran). It
-## also reads `camera_source` and latches a view other than the run's start.
+## also reads `camera_source` and latches a view other than the run's start, and reads
+## `view_size_source` and latches a portrait one.
 func record_frame(
 	interval_usec: int,
 	process_usec: int,
@@ -391,6 +402,8 @@ func record_frame(
 		return
 	if camera_source.is_valid() and camera_source.call() != _camera_start:
 		_camera_moved = true
+	if view_size_source.is_valid() and UiScale.is_portrait_size(Vector2i(view_size_source.call())):
+		_portrait_seen = true
 	_col(&"interval").append(interval_usec / 1000.0)
 	_col(&"process").append(process_usec / 1000.0)
 	_col(&"render").append(render_usec / 1000.0)
@@ -484,7 +497,8 @@ static func preflight_allowed(job_in_flight: bool) -> bool:
 ## refused preflight, a pause, a refresh rate that changed or lies below the frame cap, a median
 ## interval below P (ADR 0014 section 2: one-sided, slow frames are judged), a heavy window
 ## whose draw calls or render CPU read 0 (ADR 0012 section 4) and a camera that moved while the run
-## recorded (P50c). A rule needs samples to judge.
+## recorded (P50c), and a portrait viewport at a recorded frame (P63b). A rule needs samples to
+## judge.
 func invalid_reasons() -> PackedStringArray:
 	var start: float = refresh_hz_start
 	var tolerance: float = gate.refresh_tolerance_pct / 100.0
@@ -500,6 +514,7 @@ func invalid_reasons() -> PackedStringArray:
 		[REASON_NO_DRAW_CALLS, not heavy.is_empty() and _p(_take(&"calls", heavy), 95) == 0.0],
 		[REASON_NO_RENDER_CPU, not heavy.is_empty() and _p(_take(&"render", heavy), 95) == 0.0],
 		[REASON_CAMERA_MOVED, _camera_moved],
+		[REASON_PORTRAIT, _portrait_seen],
 	]
 	var out: PackedStringArray = PackedStringArray()
 	for fault: Array in faults:
@@ -774,6 +789,12 @@ func _on_post_draw() -> void:
 		int(fog_source.call())
 	)
 	_interval_usec = -1
+
+
+## The default of `view_size_source`: the viewport's visible rect, (0, 0) while outside the tree (a
+## size that is not portrait, so a HUD a test builds has no such fault).
+func _visible_size() -> Vector2i:
+	return Vector2i(get_viewport().get_visible_rect().size) if is_inside_tree() else Vector2i.ZERO
 
 
 func _render_ms() -> float:
