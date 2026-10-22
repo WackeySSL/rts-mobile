@@ -6,12 +6,18 @@ extends Node2D
 ## runs the sim on the worker with the C++ kernels while the web preview and every headless test
 ## run SYNC. `TouchInput` has no controller, so a finger pans and zooms and no Command can enter.
 ##
-## On entry: `Engine.max_fps` 60 (a 90 or 120 Hz panel is judged at 60 fps) and the screen kept on
-## through `keep_on_sink`; leaving puts both back as they were (the engine keeps the screen on by
-## default, so leaving does not switch it off). `_ready` runs the card's preflight first (the
-## self-check and the burst, with no World and no job, so its long frame lies in no timed window),
-## then sets the scenario and starts the runner, then starts the card's first run. Every player-1
-## unit is selected for the view (rings are part of what is measured), again after each new match.
+## On entry: `Engine.max_fps` 60 (a 90 or 120 Hz panel is judged at 60 fps), the screen kept on
+## through `keep_on_sink` and, where the display server has `FEATURE_ORIENTATION` (the APK), the
+## screen held in sensor landscape (plan P63b, ADR 0015: the gate is a landscape measurement, and a
+## phone held upright shows fewer than `heavy_rigs` rigs). Leaving puts all three back as found
+## (the engine keeps the screen on by default, so leaving does not switch it off, and the
+## orientation put back is the one found, so the game follows the phone again). The web preview and
+## headless have no such feature: neither orientation seam is called there, and since the preview
+## cannot lock the screen, a run that sees a portrait view is INVALID (`PerfHud.REASON_PORTRAIT`).
+## `_ready` runs the card's preflight first (the self-check and the burst, with no World and no job,
+## so its long frame lies in no timed window), then sets the scenario and starts the runner, then
+## starts the card's first run. Every player-1 unit is selected for the view (rings are part of what
+## is measured), again after each new match.
 ## Every run starts at the scenario's framing (P50c): the first, and each one "Run again" or a
 ## layer-mode step starts, because the heavy window counts the rigs inside the camera. A finger
 ## still pans and zooms (to inspect on the preview), but a move while a run records makes it
@@ -56,10 +62,21 @@ const GAP_DP: float = 8.0
 ## and assert on the sink.
 var keep_on_sink: Callable = DisplayServer.screen_set_keep_on
 var keep_on_source: Callable = DisplayServer.screen_is_kept_on
+## Holds the screen in landscape while the arena is up (plan P63b): the feature check, the source
+## of the orientation found on entry and the sink that sets it and puts it back. Tests replace all
+## three with spies; the default feature check is false headless and on the web, so neither of the
+## other two is called there (the engine would print a warning).
+var orientation_feature: Callable = DisplayServer.has_feature.bind(
+	DisplayServer.FEATURE_ORIENTATION
+)
+var orientation_source: Callable = DisplayServer.screen_get_orientation
+var orientation_sink: Callable = DisplayServer.screen_set_orientation
 var layer_mode: String = MODE_ALL
 
 var _max_fps_before: int = 0
 var _keep_on_before: bool = false
+var _orientation_locked: bool = false  ## The sink was called on entry, so leaving calls it too.
+var _orientation_before: int = DisplayServer.SCREEN_LANDSCAPE
 var _serial: int = -1  ## match_serial the selection was made for.
 var _fog_uploads: int = 0  ## upload_count() at the last fog_update_usec().
 
@@ -74,11 +91,18 @@ func _enter_tree() -> void:
 	Engine.max_fps = max_fps
 	_keep_on_before = keep_on_source.call()
 	keep_on_sink.call(true)
+	_orientation_locked = bool(orientation_feature.call())
+	if _orientation_locked:
+		_orientation_before = int(orientation_source.call())
+		orientation_sink.call(DisplayServer.SCREEN_SENSOR_LANDSCAPE)
 
 
 func _exit_tree() -> void:
 	Engine.max_fps = _max_fps_before
 	keep_on_sink.call(_keep_on_before)
+	if _orientation_locked:
+		orientation_sink.call(_orientation_before)
+		_orientation_locked = false
 
 
 func _ready() -> void:
