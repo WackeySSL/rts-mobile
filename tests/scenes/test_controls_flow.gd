@@ -1,7 +1,9 @@
 extends GdUnitTestSuite
 ## Phase 1 controls end to end (plan P20): the main scene on a 6-inch Android phone (2400x1080) and
-## a phone browser (2400x932). Fingers are window-px touches pushed into the viewport, through
-## TouchInput, the GestureRecognizer and the PlayerController (HUD buttons through the GUI). Time is
+## a phone browser (2400x932), each held flat and held upright (1080x2400 and 1080x2100, plan P62b).
+## Upright the view is 720 base px wide, so a few world points move (the *_PORTRAIT constants).
+## Fingers are window-px touches pushed into the viewport, through TouchInput, the
+## GestureRecognizer and the PlayerController (HUD buttons through the GUI). Time is
 ## a fake clock, only run_ticks() moves the sim and Commands go through the real CommandQueue. Tank
 ## n is row n - 1 of the 6-column block, ids 1-30 are blue (the player's), 31-40 red. No map touch
 ## starts on the SelectionPanel, the ArmyBar or the Dev button: they keep their touches. Timings,
@@ -9,16 +11,35 @@ extends GdUnitTestSuite
 
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
-const PROFILES: Array = [["android_6in"], ["web_phone"]]
-## Base px across the view at each profile (720 high, the window's aspect ratio).
-const VIEW_WIDTH: Dictionary[String, float] = {"android_6in": 1600.0, "web_phone": 1854.0}
+const PROFILES: Array = [
+	["android_6in"], ["web_phone"], ["android_6in_portrait"], ["web_phone_portrait"]
+]
+## Base px across the view at each profile: flat the window's aspect ratio at 720 high, upright the
+## base width 720 (ADR 0015 section 2).
+const VIEW_WIDTH: Dictionary[String, float] = {
+	"android_6in": 1600.0,
+	"web_phone": 1854.0,
+	"android_6in_portrait": 720.0,
+	"web_phone_portrait": 720.0,
+}
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
 ## World px with no unit near it: milli (20016, 21516), where 20015.625 rounds up.
 const GROUND: Vector2 = Vector2(1281, 1377)
+## The same upright, where the view is 720 base px wide and cannot show tank 1 (x 544) and GROUND
+## (x 1281) together: south of the tank block, milli (8500, 27500).
+const GROUND_PORTRAIT: Vector2 = Vector2(544, 1760)
+## A box with no tank in it, in base px: left of the block flat; upright the block starts at x 104,
+## so above it (its first row is at y 448 in the 1280 high view and lower in the taller ones).
+const EMPTY_BOX: Rect2 = Rect2(80, 300, 220, 200)
+const EMPTY_BOX_PORTRAIT: Rect2 = Rect2(80, 200, 220, 200)
+## The middle of a pinch, clear of the tanks and the HUD.
+const PINCH_CENTRE: Vector2 = Vector2(1200, 300)
+const PINCH_CENTRE_PORTRAIT: Vector2 = Vector2(360, 1000)
 const RED: Color = Color("E5484D")
 const IDLE: int = World.Order.IDLE
 
 var _window_size_before: Vector2i
+var _upright: bool = false  ## The profile of `_open` is a portrait window.
 var _now_ms: int = 0
 var _main: Node2D
 var _runner: MatchRunner
@@ -88,14 +109,15 @@ func test_first_tap_selects_a_lone_tank(profile: String, _test_parameters := PRO
 func test_tap_ground_450_ticks_idle_slots(profile: String, _test_parameters := PROFILES) -> void:
 	await _open(profile)
 	await _double_tap(_layer.unit_screen_position(0))
-	await _tap(_camera.world_to_screen(GROUND))
+	await _tap(_camera.world_to_screen(_ground()))
 	assert_array(_sent).has_size(1)
 	var command: Command = _sent[0]
+	var target: Vector2i = _ground_milli()
 	assert_int(command.type).is_equal(Command.Type.MOVE)  # P43c: a ground tap moves.
 	assert_int(command.player_id).is_equal(1)
 	assert_array(command.unit_ids).is_equal(range(1, 31))
-	assert_int(command.target_x).is_equal(20016)
-	assert_int(command.target_y).is_equal(21516)
+	assert_int(command.target_x).is_equal(target.x)
+	assert_int(command.target_y).is_equal(target.y)
 	assert_int(CommandQueue.pending()).is_equal(1)
 	_runner.run_ticks(450)
 	var world: World = _runner.world
@@ -109,7 +131,7 @@ func test_tap_ground_450_ticks_idle_slots(profile: String, _test_parameters := P
 		assert_int(world.order[row]).override_failure_message("tank %d" % id).is_equal(IDLE)
 		spots.append(Vector2(world.pos_x[row], world.pos_y[row]))
 		# The nearest 30 slots of a lattice reach sqrt(10) * spacing, here 3795 milli.
-		assert_float(spots[-1].distance_to(Vector2(20016, 21516))).is_less(spacing * 3.17)
+		assert_float(spots[-1].distance_to(Vector2(target))).is_less(spacing * 3.17)
 	for a: int in 30:
 		for b: int in range(a + 1, 30):
 			# P39b: separation settles tanks just under their radii sum (800), not on the lattice;
@@ -124,8 +146,11 @@ func test_double_tap_selects_visible_tanks(profile: String, _test_parameters := 
 	await _double_tap(_layer.unit_screen_position(0))
 	assert_array(_controller.selection.selected).is_equal(range(1, 31))
 	_assert_panel("×30")
-	# Drag the map left by 784 px: columns 0-2 (x 544, 640, 736) leave the screen, 3-5 stay.
-	await _drag(Vector2(VIEW_WIDTH[profile] - 60.0, 400.0), Vector2(-784.0, 0.0))
+	# Drag the map left by the middle of columns 2 and 3: 784 px flat (columns 0-2 at x 544, 640 and
+	# 736 leave the screen, 3-5 stay), 344 upright (they start at x 104, 200 and 296).
+	var by: float = (_layer.unit_screen_position(2).x + _layer.unit_screen_position(3).x) * 0.5
+	assert_float(by).is_equal_approx(344.0 if _upright else 784.0, 0.5)
+	await _drag(Vector2(VIEW_WIDTH[profile] - 60.0, 400.0), Vector2(-by, 0.0))
 	assert_float(_layer.unit_screen_position(0).x).is_less(0.0)
 	await _double_tap(_layer.unit_screen_position(3))  # Tank 4, column 3 of row 0.
 	var visible_columns: Array = [4, 5, 6, 10, 11, 12, 16, 17, 18, 22, 23, 24, 28, 29, 30]
@@ -143,7 +168,8 @@ func test_long_press_box_selects_its_tanks(profile: String, _test_parameters := 
 	assert_array(_controller.selection.selected).is_equal([1, 2, 3, 4, 5, 6])
 	_assert_panel("×6")
 	assert_array(_buzzes).is_equal([_touch.settings.haptic_ms])  # The long-press, once.
-	await _box(Vector2(80, 300), Vector2(300, 500))  # Left of the block: no tank in it.
+	var empty: Rect2 = EMPTY_BOX_PORTRAIT if _upright else EMPTY_BOX
+	await _box(empty.position, empty.end)  # Clear of the block: no tank in it.
 	assert_array(_controller.selection.selected).is_empty()
 	assert_bool(_panel.visible).is_false()
 	assert_array(_sent).is_empty()
@@ -177,7 +203,7 @@ func test_pinch_levels_then_tap_at_0_75(profile: String, _test_parameters := PRO
 	await _open(profile)
 	await _tap(_layer.unit_screen_position(0))
 	assert_float(_camera.zoom.x).is_equal(1.0)
-	var middle: Vector2 = Vector2(1200, 300)  # Clear of the tanks and the HUD.
+	var middle: Vector2 = PINCH_CENTRE_PORTRAIT if _upright else PINCH_CENTRE
 	# Finger half-distances before and after, and the level the lift snaps to: x1.7 is 1.7, then
 	# 0.997 and 0.7 on the way down. None is a level, so only the snap puts the zoom on one.
 	for step: Array in [[100.0, 170.0, 1.5, 2], [170.0, 113.0, 1.0, 1], [100.0, 70.0, 0.75, 0]]:
@@ -187,11 +213,11 @@ func test_pinch_levels_then_tap_at_0_75(profile: String, _test_parameters := PRO
 	await _tap(_layer.unit_screen_position(1))  # Tank 2 at 0.75.
 	assert_array(_controller.selection.selected).is_equal([2])
 	_assert_panel("×1")
-	await _tap(_camera.world_to_screen(GROUND))  # The same world point as at zoom 1.0.
+	await _tap(_camera.world_to_screen(_ground()))  # The same world point as at zoom 1.0.
 	assert_array(_sent).has_size(1)
 	assert_array(_sent[0].unit_ids).is_equal([2])
-	assert_int(_sent[0].target_x).is_equal(20016)
-	assert_int(_sent[0].target_y).is_equal(21516)
+	assert_int(_sent[0].target_x).is_equal(_ground_milli().x)
+	assert_int(_sent[0].target_y).is_equal(_ground_milli().y)
 
 
 ## The case deferred from the P15 and P21 reviews: nothing in the input path, the order or the panel
@@ -218,6 +244,19 @@ func test_player_2_selects_orders_tints(profile: String, _test_parameters := PRO
 	_assert_panel("×10")
 	_assert_red_icon()
 	assert_array(_sent).has_size(1)
+
+
+## The suite runs two phones, each held flat and held upright: the name of a profile, its window
+## and its view width agree.
+func test_the_profiles_are_two_phones_each_flat_and_upright() -> void:
+	assert_int(PROFILES.size()).is_equal(4)
+	for row: Array in PROFILES:
+		var profile: String = row[0]
+		var upright: bool = profile.ends_with("_portrait")
+		var metrics: UiMetrics = UiProfiles.by_name(StringName(profile))
+		assert_bool(UiProfiles.portrait().has(StringName(profile))).is_equal(upright)
+		assert_bool(UiScale.is_portrait_size(metrics.window_size)).is_equal(upright)
+		assert_bool(VIEW_WIDTH.has(profile)).is_true()
 
 
 func _assert_panel(count: String) -> void:
@@ -250,9 +289,19 @@ func _assert_off_hud(at: Vector2) -> void:
 		assert_bool(under).override_failure_message(why).is_false()
 
 
+## The ground point that a case taps, and the milli target that its MOVE must carry.
+func _ground() -> Vector2:
+	return GROUND_PORTRAIT if _upright else GROUND
+
+
+func _ground_milli() -> Vector2i:
+	return Vector2i(8500, 27500) if _upright else Vector2i(20016, 21516)
+
+
 ## A new main scene on `profile` with the fake clock; Commands and buzzes are caught on their way.
 func _open(profile: String, scenario: ScenarioDef = null) -> void:
 	var metrics: UiMetrics = UiProfiles.by_name(StringName(profile))
+	_upright = UiScale.is_portrait_size(metrics.window_size)
 	UiScale.set_override(metrics)
 	get_window().size = metrics.window_size
 	await await_idle_frame()

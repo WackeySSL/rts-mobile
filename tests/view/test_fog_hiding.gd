@@ -18,8 +18,8 @@ const Rig: GDScript = preload("res://tests/view/support/fog_rig.gd")
 const EffectsRig: GDScript = preload("res://tests/view/support/effects_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
-## The landscape screens every screen is tested at: base, 20:9 phone and 4:3 tablet.
-const TARGET_SIZES: Array[Vector2i] = ScreenSizes.LANDSCAPE
+## The screens every screen is tested at: base, 20:9 phone and 4:3 tablet, each held both ways.
+const TARGET_SIZES: Array[Vector2i] = ScreenSizes.ALL
 const RED: Color = Color("E5484D")
 ## Milli-tile points: a seen tile (tank 1's, tile (8, 18)), an unseen one (tile (40, 40)) and red
 ## tank 31's own tile (34, 10).
@@ -137,6 +137,10 @@ func test_hiding_changes_only_visible_a_hidden_rig_keeps_its_place_tint_and_scre
 		get_window().size = size
 		await await_idle_frame()
 		var view: Vector2 = _camera.get_viewport_rect().size
+		# The view turned with the window, so the portrait sizes are run as portrait.
+		assert_bool(view.y > view.x).override_failure_message(str(size)).is_equal(
+			UiScale.is_portrait_size(size)
+		)
 		var expected: Vector2 = (_rig(30).global_position - _camera.position) * _camera.zoom
 		assert_vector(_units.unit_screen_position(30)).is_equal_approx(
 			expected + view * 0.5, Vector2(0.01, 0.01)

@@ -51,7 +51,9 @@ func test_a_damaged_own_squad_fills_by_its_14_dp_interior_on_every_profile() -> 
 	# Interior 14 dp: x_end = 1 + max(1, round(14 x hp / 100)), halves up (25 hp is 3.5 dp). A
 	# bar that took the tank's 20 dp interior would show 10 dp at 50 hp, and 5 at 25.
 	var expected: Dictionary[int, int] = {100: 14, 50: 7, 25: 4, 24: 3, 10: 1, 1: 1}
-	for profile_name: StringName in UiProfiles.all():
+	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
+	profiles.merge(UiProfiles.portrait())  # The bar is dp sized in both orientations.
+	for profile_name: StringName in profiles:
 		UiScale.set_override(UiProfiles.by_name(profile_name))
 		_make_bars()  # Reads the dp that is in force now.
 		_select([rifle])
