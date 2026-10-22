@@ -1,0 +1,14 @@
+---
+name: project-phase3-decisions
+description: Phase 3 plan (P68, 2026-10-22, proposed) and ADRs 0017-0021 - buildings as rows, World v2, Commands 10-14/20, probe ids 11-13, per-tab queues, dummy AI in the tick job, base arena
+metadata:
+  type: project
+---
+
+- P68 (2026-10-22, base 7185a91, PROPOSED, not accepted): `docs/plans/2026-10-22-phase-3.md` + ADRs 0017 (sim model), 0018 (rules), 0019 (UI), 0020 (dummy/AI hook), 0021 (perf). Rows P68-P96 (+P68b, P73b, P75b, P78q, P83b, P84b, P84c ghosts, P85b, P93b, P93c; named splits P70b, P73c, P75c, P83c, P84d, P85c, P86b, P88b); exceptions 11-13; next free P-number P97, next exception 14. MEMORY.md index line not added (brief: new files only).
+- Recommended answers: 0017 1-4 ja; 0018 1 A (sidebar then place), 2 A (pay at queue), 3 ja (harvester auto-resume), 4 ja (splash to Phase 4); 0019 1 B (drag on ghost moves, else pan), 2-4 ja; 0020 1-2 ja; 0021 1-2 ja.
+- Key design: buildings = rows (speed 0, radius 0, BUILDING) blocking `move_cost` (no kernel edit); `Placement.reason(PlacementInput,...)` shared by sim and ghost; per-player-per-tab queues and rally; derived power/lists out of hash; ghosts in World not FogGrid (supersedes ADR 0010 wording); one re-pin in P70 (STATE_FORMAT 3) after P65.
+- Pitfall: new SimProbe ids must run AFTER FOG (marks ascend, ADR 0007 §4) - so Phase 3 phases are 11-13 at the tick's end.
+- Pitfall: ADR 0012 §1/§2 planned the AI on the main thread in `ticked`; a think every 15 ticks is 6.7 % of publish frames, inside ADR 0014's publish-frame p95 - ADR 0020 moves it into TickJob before loop.step (same stamps).
+- Pitfall: `MatchSnapshot`'s coverage test spans only ROW/TYPE/WEAPON/PROJECTILE/MAP lists; a World layout PR must classify new names there (lead's file -> named exception).
+- Pitfall: `TickJob`'s walk test fails on any Resource - AI controllers must copy AiDef into ints.
