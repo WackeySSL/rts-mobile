@@ -1,0 +1,11 @@
+<!-- Infantry rally flag, team layer: white and grey only, tinted at run time; the cloth and the ground ring. -->
+<!-- Shape: a small triangular pennant flying to the right from the top of the pole, over a round ring on the ground around the foot. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- ground ring: edge grey under, white over -->
+  <circle cx="64" cy="64" r="30" fill="none" stroke="#4D4D4D" stroke-width="9"/>
+  <circle cx="64" cy="64" r="30" fill="none" stroke="#FFFFFF" stroke-width="6"/>
+  <!-- pennant -->
+  <polygon points="68,18 114,32 68,48" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round"/>
+  <polygon points="68,33 114,32 68,48" fill="#BFBFBF"/>
+  <polygon points="68,18 114,32 68,48" fill="none" stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round"/>
+</svg>

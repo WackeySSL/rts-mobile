@@ -1,0 +1,18 @@
+<!-- Vehicle factory build icon: palette colours, no team colour, drawn on a clear canvas for a tile of 64 dp or more. -->
+<!-- Silhouette: one wide hall whose roof is four bright stripes, with a dark open bay under it carrying two orange arrows that point out. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- roof hall -->
+  <rect x="8" y="8" width="112" height="68" rx="7" fill="#5B6670" stroke="#1C2127" stroke-width="4" stroke-linejoin="round"/>
+  <g fill="#A9B4BE" stroke="#1C2127" stroke-width="2.5" stroke-linejoin="round">
+    <rect x="15" y="15" width="98" height="10" rx="2"/>
+    <rect x="15" y="31" width="98" height="10" rx="2"/>
+    <rect x="15" y="47" width="98" height="10" rx="2"/>
+    <rect x="15" y="63" width="98" height="8" rx="2"/>
+  </g>
+  <!-- bay -->
+  <rect x="18" y="82" width="92" height="38" rx="5" fill="#4E5A3A" stroke="#1C2127" stroke-width="4" stroke-linejoin="round"/>
+  <g fill="none" stroke="#F5A524" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="40,92 64,102 88,92"/>
+    <polyline points="40,105 64,115 88,105"/>
+  </g>
+</svg>

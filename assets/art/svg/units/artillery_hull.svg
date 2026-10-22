@@ -1,0 +1,59 @@
+<!-- Artillery, hull layer: faces east, drawn first, holds the ground shadow of the whole vehicle. -->
+<!-- Silhouette: a long narrow wheeled carrier with three fat tyres a side, a short armoured cab at the front and a wide folded spade plate across the back that makes the rear a T. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- ground shadow, offset (4,4), flattened as one group -->
+  <g transform="translate(4 4)" opacity="0.25" fill="#000000">
+    <rect x="22" y="22" width="18" height="14" rx="4"/>
+    <rect x="48" y="22" width="18" height="14" rx="4"/>
+    <rect x="74" y="22" width="18" height="14" rx="4"/>
+    <rect x="22" y="92" width="18" height="14" rx="4"/>
+    <rect x="48" y="92" width="18" height="14" rx="4"/>
+    <rect x="74" y="92" width="18" height="14" rx="4"/>
+    <polygon points="16,32 92,32 102,42 102,86 92,96 16,96"/>
+    <rect x="4" y="22" width="14" height="84" rx="3"/>
+  </g>
+  <!-- tyres -->
+  <g fill="#5B6670" stroke="#1C2127" stroke-width="3" stroke-linejoin="round">
+    <rect x="22" y="22" width="18" height="14" rx="4"/>
+    <rect x="48" y="22" width="18" height="14" rx="4"/>
+    <rect x="74" y="22" width="18" height="14" rx="4"/>
+    <rect x="22" y="92" width="18" height="14" rx="4"/>
+    <rect x="48" y="92" width="18" height="14" rx="4"/>
+    <rect x="74" y="92" width="18" height="14" rx="4"/>
+  </g>
+  <!-- tread cuts -->
+  <g stroke="#1C2127" stroke-width="1.5" stroke-linecap="round">
+    <line x1="28" y1="25" x2="28" y2="32"/>
+    <line x1="34" y1="25" x2="34" y2="32"/>
+    <line x1="54" y1="25" x2="54" y2="32"/>
+    <line x1="60" y1="25" x2="60" y2="32"/>
+    <line x1="80" y1="25" x2="80" y2="32"/>
+    <line x1="86" y1="25" x2="86" y2="32"/>
+    <line x1="28" y1="96" x2="28" y2="103"/>
+    <line x1="34" y1="96" x2="34" y2="103"/>
+    <line x1="54" y1="96" x2="54" y2="103"/>
+    <line x1="60" y1="96" x2="60" y2="103"/>
+    <line x1="80" y1="96" x2="80" y2="103"/>
+    <line x1="86" y1="96" x2="86" y2="103"/>
+  </g>
+  <!-- highlight on the top edge of each upper tyre -->
+  <g stroke="#A9B4BE" stroke-width="2" stroke-linecap="round">
+    <line x1="26" y1="24.5" x2="36" y2="24.5"/>
+    <line x1="52" y1="24.5" x2="62" y2="24.5"/>
+    <line x1="78" y1="24.5" x2="88" y2="24.5"/>
+  </g>
+  <!-- chassis deck: the lowest plane, so the darkest olive -->
+  <polygon points="16,32 92,32 102,42 102,86 92,96 16,96" fill="#4E5A3A" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <!-- light edge on the top and rear sides -->
+  <polyline points="20,92 20,36 91,36" fill="none" stroke="#6B7A4F" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <polyline points="20.5,91 20.5,36.5 90,36.5" fill="none" stroke="#8C9A6B" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- armoured cab: a raised plane, so mid olive, with a dark windscreen slit and a glint -->
+  <polygon points="78,42 94,42 100,48 100,80 94,86 78,86" fill="#6B7A4F" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <rect x="93" y="54" width="4" height="20" rx="1.5" fill="#1C2127"/>
+  <line x1="95" y1="56" x2="95" y2="62" stroke="#A9B4BE" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- folded spade across the back, with two arms to the chassis -->
+  <rect x="14" y="48" width="6" height="10" fill="#5B6670" stroke="#1C2127" stroke-width="1.5"/>
+  <rect x="14" y="70" width="6" height="10" fill="#5B6670" stroke="#1C2127" stroke-width="1.5"/>
+  <rect x="4" y="22" width="14" height="84" rx="3" fill="#7D8893" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <line x1="7.5" y1="26" x2="7.5" y2="102" stroke="#A9B4BE" stroke-width="2" stroke-linecap="round"/>
+</svg>

@@ -7,8 +7,9 @@ Update this file when Michael approves a change; the skill stays the short check
 Status: v1, written in Phase 0 with the light tank sample. v1.1 (Phase 1, P12) adds the feedback
 markers and the gallery zoom row. v1.2 (Phase 2, P34) adds the rifle and rocket squads, the selection ring
 texture, the effects atlas and the specs for combat effects, health bars, fog and terrain. v1.3 (Phase 3, P91) adds
-the six buildings, the ore cells and the two ghost patterns, and two more gallery pages. Rules marked **(new)**
-go beyond the skill and are waiting for Michael's approval (list at the end).
+the six buildings, the ore cells and the two ghost patterns, and two more gallery pages. v1.4 (Phase 3, P92) adds
+the heavy tank, the artillery and the harvester, the tab, item and glyph icons, the two rally flags, and two more
+gallery pages. Rules marked **(new)** go beyond the skill and are waiting for Michael's approval (list at the end).
 
 ## Look
 Clean, flat, top-down "military map" style with strong silhouettes, readable at small size on a
@@ -17,7 +18,9 @@ phone. Not cartoonish, not photoreal. Pure top-down view, light from the top-lef
 ## Scale
 - 1 tile = 64 px in game at zoom 1. Author at 2x: 1 tile = 128 px in the SVG.
 - Canvas at 2x: infantry squad 64x64, light vehicles 96x96, **tanks 128x128**, harvester 160x160,
-  buildings 128x128 (1x1 tile), 256x256 (2x2 tiles) or 384x384 (3x3 tiles), an ore cell 128x128.
+  buildings 128x128 (1x1 tile), 256x256 (2x2 tiles) or 384x384 (3x3 tiles), an ore cell 128x128,
+  a rally flag 128x128. **Icons and glyphs are 128x128 with import scale 1.0 (new)**, because they
+  are drawn at 24 to 64 dp, not in tiles (see "Icons and glyphs").
 - Godot rasterises an SVG once, at import. Showing a sprite above scale 1 therefore looks soft.
   The gallery's main row shows scale 1. Its zoom row shows the light tank at 0.75, 1.0 and 1.5.
 
@@ -193,9 +196,155 @@ The numbers: sprite alpha 0.7 (the whole rig in one `CanvasGroup`, faded through
 so the hull would show through a team plate, as `MoveMarkerLayer` notes), wash alpha 0.3, hatch alpha 0.8, dots alpha 0.7 and a frame 3 dp wide
 (the marker stroke rule, dp over zoom in world space; the gallery draws 3 base px). A last-seen
 ghost is drawn under the fog like any explored tile, so it is dimmed by the explored fog alpha (140)
-and carries no other dimming. The reason's glyph for a placement that does not fit is P92's.
+and carries no other dimming. The reason's glyph for a placement that does not fit is
+`icons/glyph_reason_<reason>.svg` (see "Icons and glyphs"); the view of P86 places it.
 The gallery's `GHOST_*` constants hold these values and `tests/art` pins this paragraph to them;
 the values are a proposal for touch-ux-dev to tune with Michael.
+
+## Heavy tank, artillery and harvester
+Three vehicles of Phase 3 (plan row P92), drawn under the layer contract above. Their file names are
+the type ids of P72's data files (`heavy_tank`, `artillery`, `harvester`), so `UnitLayer` finds them
+as it finds the light tank. The art says what each is for from above; every number is in
+`data/units/`. The ground shadow lives in the hull, a turret layer has none and is shaded the same
+either side of the gun line, and each turret has one off-axis detail, as under "Layer contract".
+
+| Unit | Canvas (2x) | Layers | What turns | Team marks (white and grey) |
+| --- | --- | --- | --- | --- |
+| Heavy tank | 128x128 | hull, team, turret | the turret, about the canvas centre | a plate on each track pod, two wedges on the nose, a strip on each rear corner of the deck |
+| Artillery | 128x128 | hull, team, turret | the gun house, about the canvas centre | a strip down the spade, a plate across the rear deck, a plate on the cab roof, a strip along each deck edge |
+| Harvester | 160x160 | hull, team | the whole rig, like a squad: it is unarmed and has no turret | a plate on each track pod, a strip along the top, bottom and rear rim of the bin, the cab roof, a cap on each end of the reel bar |
+
+- In game (import scale 0.5) the tanks are 64x64 px, one tile, and the harvester is 80x80 px.
+- **Heavy tank**: the broad one. Its track pods are flat-sided slabs with chamfered fronts, not the
+  light tank's round-ended capsules, and its hull is 96 high against the light tank's 80 (at 2x).
+  Its barrel is the thickest of the three guns: 12 plus the outline, with a fat fume bulge and a
+  cross-bar muzzle brake. One barrel only.
+- **Artillery**: the only wheeled vehicle. Three fat tyres a side give it a comb outline, and a wide
+  folded spade plate across the back makes the rear a T. Its gun is the longest and the thinnest.
+  The open gun house is nearly square (40x42 at 2x), so the plates round it stay covered about the
+  same at every heading.
+- **Harvester**: a combine. Two track pods either side of one square open bin, a small cab in front
+  of it, and a reel bar wider than the pods with a row of ten teeth across the nose.
+- **The bin for the cargo cue (P84b).** The hull draws the bin empty: a dirt-dark floor (#6F583B)
+  with a lit lip (#A3865E). The floor is the rectangle x 32 to 90, y 56 to 104 of the 160 px canvas,
+  which is x 16 to 45, y 28 to 52 in imported px (29x24): its centre is 9.5 px behind the unit's
+  centre. The view fills it in the ore colours by the cargo carried; there is no cargo layer.
+- Silhouettes in greyscale at 32 px: the light tank is an H with round ends; the heavy tank a
+  chamfered slab with an eight-sided turret; the artillery a comb with a T at the back; the
+  harvester an H with a toothed bar across the nose.
+
+Results (P92, scratch script, imported scale 0.5, alpha above 0.5): the team layers have no
+non-grey pixel. The visible team share, by the tank's definition (shadow left out, nothing under the
+turret), is 30.0 / 22.8 / 30.0 / 22.8 % for the heavy tank and 27.7 / 26.9 / 23.9 / 26.9 % for the
+artillery at turret headings 0 / 90 / 180 / 270 degrees, and 24.0 % for the harvester. The heavy
+tank's gun leaves the hull 9 px long and 12 px thick (the muzzle brake) and the artillery's 12 px
+long and 6 px thick, which is 4.5 by 6 and 6 by 3 px at 32 px, over the 3 by 3 minimum. At 32 px
+greyscale on grass and sand the three read apart from each other and from the light tank, and
+the turret and gun of each keep their own shape at all four headings.
+
+## Icons and glyphs
+Icons live in `assets/art/svg/icons/`, named `<kind>_<name>.svg`, three kinds, all 128x128 with a
+clear background. **Import scale 1.0 (new)**: an icon is drawn from 24 to 64 dp (42 to 152 base px
+across the phone profiles), not in map tiles, so one sharp 128 px raster serves every size, as the
+selection ring does. The world art (units, buildings, flags) keeps scale 0.5.
+- `tab_<tab>`: the build tabs, Structures, Infantry and Vehicles, named by the tab.
+- `item_<type_id>`: a build tile's icon, one per buildable type, named by P72's type id. The eleven
+  types are the five buildings the player builds and the six units. The Headquarters is not
+  buildable and has none.
+- `glyph_<name>`: HUD, map and result glyphs. A placement reason's glyph is
+  `glyph_reason_<reason>`, the `Placement.Reason` name in lower case (`outside`, `ground`,
+  `occupied`, `unexplored`, `too_far`, `cap`); the view finds it by name. `OK` has none, and the
+  "Blocked" of a pending ghost uses `glyph_reason_occupied`.
+
+**Item icons** are in palette colours, top-down like the sprites and simplified for a small size,
+with a 4 px outline, thin inner details at 2 to 3 px and no drop shadow, on a clear canvas: the
+tile draws its own panel. A unit carries one neutral grey (#9AA5B1, the palette's neutral) where
+its sprite has team plates, and a building carries none: a build tile is not a team's.
+
+**Tab and glyph icons** are drawn in the team layer greys, white #FFFFFF, shade #BFBFBF and edge
+#4D4D4D, every colour R = G = B, and are tinted at run time with `modulate`, so the HUD says the
+state with a palette colour and the shape says the rest. A thick stroke is two strokes, the edge
+grey under and white over. Light is from the top left, with the shade on the lower right facets.
+The tints the HUD gives them (the gallery's `GLYPH_TINTS` holds the same values):
+
+| Glyph | Tint |
+| --- | --- |
+| tab, selected | none (white) |
+| tab, at rest | #9AA5B1 |
+| `glyph_credits` | #F2B705 |
+| `glyph_power`, `glyph_check`, `glyph_victory` | #30A46C |
+| `glyph_low_power`, `glyph_offline` | #F5A524 |
+| `glyph_under_attack`, `glyph_cross`, `glyph_defeat`, every `glyph_reason_<reason>` | #E5484D |
+| `glyph_lock`, `glyph_draw` | #9AA5B1 |
+
+Sizes in dp (1 dp = 1.75 base px on the 6-inch phone): an item icon fills its 64 dp tile (ADR 0015
+section 5 and ADR 0019 section 1), a tab icon 32 to 48 dp inside its 48 dp tab, a HUD glyph 24 to
+48 dp, a glyph on the map 32 dp, and the under-attack arrow at least 48 dp. The gallery shows the
+tabs at 48, the items at 64, the HUD glyphs at 48 and the map glyphs at 32 dp, and the arrow at 48.
+
+| File | Silhouette |
+| --- | --- |
+| `tab_structures.svg` | A wide workshop from the front, a sawtooth roof of three teeth, a tall chimney on the right and a dark doorway. |
+| `tab_infantry.svg` | A soldier from the chest up, a round helmet with a wide brim over a grey face, on sloping shoulders. |
+| `tab_vehicles.svg` | A tank from the side, a long track pod with four grey wheels, a sloped hull, a boxy turret and one long barrel. |
+| `item_power_plant.svg` | One big and one small round drum with dark open mouths, side by side over a low wide ribbed hall. |
+| `item_refinery.svg` | One fat round silo and two small ones stepping off to the right above a wide hall, a gold-filled funnel jutting out of its front. |
+| `item_barracks.svg` | A U of three long olive roofs round a bare metal yard that opens to the bottom, a dark door at its head. |
+| `item_vehicle_factory.svg` | One wide hall whose roof is four bright stripes, a dark open bay under it with two orange arrows pointing out. |
+| `item_defence_turret.svg` | A round gun pit ringed by eight fat sandbags, a round gun head with one thick barrel and a wide muzzle block leaving to the right. |
+| `item_rifle_squad.svg` | Four soldiers in a loose diamond, each a broad oval with a grey helmet cover and a short stubby rifle to the right. |
+| `item_rocket_squad.svg` | Two staggered soldiers, each with a long fat launch tube flared at the back and ending in an orange warhead: two parallel bars. |
+| `item_light_tank.svg` | An H on its side: two long round-ended track pods, a flat deck, a compact turret and one long barrel. |
+| `item_heavy_tank.svg` | A chamfered slab of two broad pods and a deep deck, a eight-sided turret, one thick barrel with a bulge and a cross-bar brake. |
+| `item_artillery.svg` | A comb of six fat tyres round a long chassis, a wide spade across the back, a square open gun house, one very long thin barrel. |
+| `item_harvester.svg` | Two long track pods either side of one big square open bin, a small cab, a toothed reel bar across the nose. |
+| `glyph_credits.svg` | A short stack of three coins from the side, the top coin turned up as an ellipse with a second ring. |
+| `glyph_power.svg` | One fat zigzag lightning bolt leaning right, flat on top and pointed at the foot. |
+| `glyph_low_power.svg` | A rounded warning triangle, point up, with a dark lightning bolt in its middle. |
+| `glyph_offline.svg` | A grey lightning bolt struck through by one thick white slash from top left to bottom right. |
+| `glyph_under_attack.svg` | A fat block arrow pointing right with a stubby tail and a wide head carrying an exclamation mark. |
+| `glyph_lock.svg` | A padlock: a wide rounded body with a keyhole under a tall rounded shackle. |
+| `glyph_check.svg` | One bold check mark, a short stroke down to the left and a long stroke up to the right. |
+| `glyph_cross.svg` | A bold X of two crossing strokes. |
+| `glyph_reason_outside.svg` | An open square bracket, the map edge, with a fat arrow running out through its open side. |
+| `glyph_reason_ground.svg` | Two jagged mountain peaks side by side on one base line, a small one in front of a tall one. |
+| `glyph_reason_occupied.svg` | Two squares overlapping at a corner, a white one behind and a grey one in front. |
+| `glyph_reason_unexplored.svg` | An almond eye with a round iris, crossed out by one thick slash from top right to bottom left. |
+| `glyph_reason_too_far.svg` | A long fat arrow from a small square base that stops against a tall wall bar. |
+| `glyph_reason_cap.svg` | A stack of three blocks pressed up under a wide ceiling bar with a down-pointing wedge at each end. |
+| `glyph_victory.svg` | A fat five-pointed star, point up. |
+| `glyph_defeat.svg` | A heater shield with a pointed foot, split by a dark zigzag crack. |
+| `glyph_draw.svg` | A round disc with two level bars across it, an equals sign. |
+
+Each meaning has its own shape (see "Shape as second cue"): the state of a tile is never the tint
+alone. The glyphs of one group differ by silhouette, not by hue: the three tabs, the six placement
+reasons, the three results.
+
+Results (P92, scratch script, imported scale 0.5 and 0.25, alpha above 0.5): every tab and glyph
+file has no non-grey pixel and no ink in the outer 1 px of its 64 px raster, and neither has an
+item icon. At 64 px an item icon covers 32 to 77 % of the canvas and the mean luminance of its
+ink is 72 to 110 against the HUD backdrop's 19 (a tab or glyph: 160 to 200). The icons were rasterised at 32 px
+in greyscale over the HUD backdrop and compared pair by pair (mean absolute luminance difference,
+0 to 255): the eleven item icons differ by 26 or more (the rifle and rocket squads are the
+closest pair), the three tabs by 56, the six HUD glyphs and
+three result emblems by 29 and the eight map glyphs by 43. At 32 px the eleven tile icons read apart by
+silhouette and interior: drums, silos and a gold funnel, the U, the stripes over a bay, the sandbag
+ring, four soldiers, two tubes, and the four vehicles by pods, turret and gun. A danger-tinted
+glyph (luminance 120) is as bright as grass (110 and 127), so on the map its dark edge is what
+separates it in greyscale, the way the marker outline does; the view may seat a map glyph on a dark
+disc (#1C2127, the marker outline) if the phone check says it needs it.
+
+## Rally flags
+Each producing tab has a rally flag (ADR 0019 section 3). Two layers share one 128x128 canvas at
+import scale 0.5, so 64 px in game, and the **foot of the pole is the canvas centre**: centre the
+sprite on the point the player tapped.
+- `flags/rally_<tab>_hull.svg`: the ground shadow, a foot plate, the pole and its finial.
+- `flags/rally_<tab>_team.svg`: white and grey only, tinted with the owner's colour: the cloth and a
+  ground marker round the foot, so it is read from above.
+- The shape says which tab, not the colour: Infantry has a small triangular pennant over a **ring**
+  on the ground, Vehicles a wide notched banner over a **square frame**.
+- The line from the building to the flag is drawn in code (the marker stroke rule, ADR 0019
+  section 3); it is not part of these files.
 
 ## Originality
 Describe each silhouette in one line before drawing, in your own words. The catalogue below holds
@@ -215,6 +364,12 @@ in doubt, choose a plainer real-world form.
 | Barracks | A U of three long olive pitched roofs round a bare yard that opens to the front, a raised metal spine along the ridge of all three, on a square pad. | `buildings/barracks_{hull,team}.svg`, 256x256 |
 | Vehicle factory | One wide hall with a five-tooth sawtooth roof across the back, a dark doorway in its front wall and an open bay with two arrows pointing out, crates on the left and a round tank on the right. | `buildings/vehicle_factory_{hull,team}.svg`, 384x384 |
 | Defence turret | A round gun pit ringed by eight fat sandbags, with a squat wedge-shaped gun head on top whose single long barrel ends in a wide muzzle block. | `buildings/defence_turret_{hull,team,turret}.svg`, 128x128 |
+| Heavy tank | A squat armoured slab: two broad flat-sided track pods with chamfered fronts joined by a deep deck whose lit wedge nose pokes out ahead of them, a wide eight-sided turret with a boxy rear bustle, and one thick barrel with a fat fume bulge and a cross-bar muzzle brake. | `units/heavy_tank_{hull,team,turret}.svg`, 128x128 |
+| Artillery | A long narrow wheeled carrier with three fat tyres a side, a short armoured cab at the front and a wide folded spade plate across the back that makes the rear a T, carrying a squarish open-topped gun house with a sloped front shield, a fat recoil sleeve and one very long thin barrel. | `units/artillery_{hull,team,turret}.svg`, 128x128 |
+| Harvester | A combine-like ore hauler: two long round-ended track pods either side of one big square open bin, a small cab in front of it and a wide toothed reel bar across the nose. | `units/harvester_{hull,team}.svg`, 160x160, no turret |
+| Infantry rally flag | A slim metal pole standing up from a round foot plate with a small triangular pennant, over a round ring on the ground. | `flags/rally_infantry_{hull,team}.svg`, 128x128 |
+| Vehicles rally flag | A slim metal pole standing up from a square foot plate with a wide notched swallowtail banner, over a square frame on the ground. | `flags/rally_vehicles_{hull,team}.svg`, 128x128 |
+| Tab, item and glyph icons | Three tab pictograms, eleven build tile icons and seventeen glyphs, one silhouette each. | `icons/<kind>_<name>.svg`, 128x128, import scale 1.0, see "Icons and glyphs" |
 | Ore cell | A square of dirt, bare or holding three to six gold nuggets and crystals by level. | `ore/ore_<level>[a\|b].svg`, 128x128, see "Ore" |
 | Ghost hatch | Bold diagonal bands rising to the right, a seamless tile. | `ui/ghost_hatch.svg`, 128x128, see "Ghosts" |
 | Ghost dots | Small round dots in a staggered lattice, a seamless tile. | `ui/ghost_seen.svg`, 128x128, see "Ghosts" |
@@ -510,8 +665,9 @@ A terrain row at the top shows a patch of 8 x 2 map tiles at 64 px in a dark fra
 edge shows on both grounds: grass, scrub, rock, water and sand. Team A's and team B's
 squads stand on the two scrub tiles, and the second row of the patch is under the explored fog alpha.
 A button at the top right (120x120 base px, labelled with the page it is on) turns the pages: **Units**
-(everything above), **Build** and **Ground**, and the Back button leaves from any of them. The new
-pages are built by `art_gallery.gd` and start hidden, so the Units page is as it was.
+(everything above), **Build**, **Ground**, **Vehicles** and **Icons**, and the Back button leaves
+from any of them. The new pages are built by `art_gallery.gd` and start hidden, so the Units page is
+as it was.
 - **Build** shows the six buildings at scale 1 on grass (left) and sand (right). Each ground has four
   rows: the small ones first (power plant, barracks, defence turret), team A then team B, then the
   3x3 ones (headquarters, refinery, vehicle factory), team A then team B. Every building is a rig
@@ -521,6 +677,19 @@ pages are built by `art_gallery.gd` and start hidden, so the Units page is as it
 - **Ground** shows, on each ground, the ore levels (five tiles by two variants, side by side with
   no gap), a mixed ore field of 6 x 3 tiles to judge the joins, the three ghosts of a barracks (fits,
   does not fit, last seen) and the two pattern tiles repeated three by two times.
+- **Vehicles** shows the light tank for scale beside the heavy tank, the artillery and the
+  harvester at scale 1, a row for team A and a row for team B on each ground, each on a faint tile
+  square with its name below. Every unit is a rig `Node2D` named by its id in PascalCase with
+  `Hull`, `Team` and `Turret` where it has one, in the team group. The turrets turn slowly; the
+  harvester has none, so its whole rig turns, as a squad's does.
+- **Icons** has two halves. The left half is the HUD's dark panel (#0F141C, here opaque): the three
+  tab icons at 48 dp, the eleven item icons on their tiles at 64 dp (four to a line), the six HUD
+  glyphs and the three result emblems at 48 dp, each tinted as the HUD tints it (see "Icons and
+  glyphs"). The right half is grass above and sand below, each with the seven map glyphs at 32 dp,
+  the under-attack arrow at 48 dp and the two rally flags in team A and team B at scale 1. Every
+  icon is a `TextureRect` named by its file in PascalCase (`TabInfantry`, `ItemHeavyTank`,
+  `GlyphReasonTooFar`); a flag is a rig `Node2D` (`RallyInfantryA`) with `Hull` and `Team`. All of it
+  sits clear of the two corner buttons, which cover 24 to 144 px from the top and the left or right.
 
 To add an asset:
 - Add its layers as one rig `Node2D` under each of the four slots (grass A, grass B, sand A, sand B).
@@ -528,6 +697,9 @@ To add an asset:
   and `Turret` (a unit without a turret leaves `Turret` out).
 - The script `game/view/art_gallery.gd` tints `Team` and turns `Turret`. The team colours are exported
   properties of the scene root.
+- An icon goes on the Icons page: add its file name to the list of its kind in `art_gallery.gd`
+  (`TAB_ICONS`, `ITEM_ICONS`, `HUD_GLYPHS`, `EMBLEMS`, `MAP_GLYPHS`) and, if the HUD tints it, to
+  `GLYPH_TINTS`.
 - The Back button (120x120 base px, top-left) and the Android back request both return to the dev
   menu. While the gallery is open the script switches `SceneTree.quit_on_go_back` off (its default
   is on, which would quit the app) and restores it on exit.
@@ -564,14 +736,19 @@ Besides the three places, the same new look also replaces, in the same PR:
   scale 1.0 and the 72 px centre-line radius, or `UnitLayer.RING_TEX_RADIUS_PX`, the gallery's
   copy and the art test change with it. The effects atlas (`fx/effects_atlas.svg`, colours baked
   in) keeps its 176x84 px size and the region table under "Combat effects", or the projectile
-  and effects layers' constants, the art test's `REGIONS` and that table change with it.
+  and effects layers' constants, the art test's `REGIONS` and that table change with it. The icons
+  (`icons/<kind>_<name>.svg`, found by name: `item_<type_id>`, `glyph_reason_<reason>`) and the
+  rally flags (`flags/rally_<tab>_{hull,team}.svg`) are replaced under the same names, keeping the
+  128 px canvas, import scale 1.0 for icons and 0.5 for flags, the grey contract of the glyphs and
+  the tint table under "Icons and glyphs", whose copy is the gallery's `GLYPH_TINTS`.
 - **The palette colours kept in `game/view`** as constants or exports: the team tints
   (`UnitLayer.team_colors`), the feedback markers (`FeedbackStyle`, `MoveMarkerLayer`), and from
   their PRs on the health bar, tracer and fog colours ("Health bars", "Combat effects", "Fog and
   terrain"). The gallery's copies follow them: `art_gallery.gd`'s team colours and
   `TERRAIN_COLORS`, and the `Grass` and `Sand` rects of `scenes/dev/art_gallery.tscn`.
 - **The tests that pin today's palette**: `tests/art/test_art_assets.gd` (`ATLAS_COLOURS`,
-  `REGIONS`, `SIDE_PX`, the ring, the terrain pictures) and `tests/view/test_feedback.gd`.
+  `REGIONS`, `SIDE_PX`, the ring, the terrain pictures), `tests/art/test_vehicle_art.gd`,
+  `tests/art/test_icon_art.gd` and `tests/view/test_feedback.gd`.
 
 Renaming a unit or a unit type is a data change, not a reskin.
 
@@ -615,6 +792,27 @@ Renaming a unit or a unit type is a data change, not a reskin.
   - opaque ore tiles with five levels, the level formula under "Ore" and two layouts per level;
   - the ghost look under "Ghosts": its two pattern tiles, the alphas and the colours;
   - the Build and Ground gallery pages.
+- P92 (Phase 3), please approve the **(new)** items and judge them on the phone (Dev, Art gallery,
+  button at the top right: Vehicles, then Icons):
+  - the silhouettes of the heavy tank, the artillery (wheeled, with a spade) and the harvester
+    (a combine with a toothed reel bar), and their team marks (a share of 20-35 % of the visible
+    body, 22.8 to 30.0 % measured);
+  - the harvester's empty bin, a 29x24 px rectangle that the cargo cue of P84b fills;
+  - **icons and glyphs at 128 px with import scale 1.0**, an exception to the half-scale rule for UI
+    art, like the selection ring;
+  - the glyph contract (white, #BFBFBF and #4D4D4D greys, tinted by the HUD from the palette, the
+    tint table under "Icons and glyphs") and the neutral grey team mark on a unit's item icon;
+  - the two rally flags, a ring with a pennant for Infantry and a square frame with a notched banner
+    for Vehicles;
+  - the naming contract `item_<type_id>`, `tab_<tab>` and `glyph_reason_<reason>` that the sidebar
+    and the placement view find the icons by, and `glyph_reason_occupied` for a pending ghost that
+    turns "Blocked";
+  - the Vehicles and Icons gallery pages.
+- For touch-ux-dev (requests from P92): the HUD finds each icon by name as above and tints it with
+  `modulate`; `UnitLayer` and the selection panel already skip a missing `turret` layer (the squads
+  have none), which the harvester relies on too. A danger-tinted glyph is as bright as grass, so on the map it
+  is its dark edge that separates it: look at it in the phone check of P86 and P89 and seat it on a
+  dark disc if it needs one.
 - For the lead, before P70 starts (request from P91): the terrain id `ore` that P70 adds to
   `data/terrain/standard.tres` turns `tests/project/test_cross_file_facts.gd` red (every terrain id has
   a colour and a tile in both map views, and `MapView` and the gallery hold the same keys) until
@@ -648,3 +846,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-10-15 | P26t docs (Michael's decision): the Reskin section names the three places a new look is made; no rule changed. |
 | 2026-10-19 | P58 review (art-director): palette row for the HUD panel backdrop; Reskin item 3 says what the UI Theme holds and what the dp step scales. No rule changed. |
 | 2026-10-22 | v1.3 (P91, art-director): the six buildings with their layer contract, the ore cells and their levels, the two ghost patterns and the ghost look, two dirt tones (new), the Build and Ground gallery pages. |
+| 2026-10-22 | v1.4 (P92, art-director): the heavy tank, the artillery and the harvester, the tab, item and glyph icons with the glyph contract (import scale 1.0, new), the two rally flags, the Vehicles and Icons gallery pages. |

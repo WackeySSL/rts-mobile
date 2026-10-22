@@ -8,7 +8,14 @@ const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
 const UNIT_ART: String = "res://assets/art/svg/units/%s_%s.svg"
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
-const SIDE_PX: Dictionary[String, int] = {"light_tank": 64, "rifle_squad": 32, "rocket_squad": 32}
+const SIDE_PX: Dictionary[String, int] = {
+	"light_tank": 64,
+	"rifle_squad": 32,
+	"rocket_squad": 32,
+	"heavy_tank": 64,
+	"artillery": 64,
+	"harvester": 80,
+}
 ## Words the plain `grep` of STYLE.md forbids (comments too); the elements allowed besides `svg`.
 const FORBIDDEN: Array[String] = ["text", "image", "filter", "mask", "href", "style", "script"]
 const OK_TAGS: String = " g path rect circle ellipse polygon polyline line linearGradient stop "

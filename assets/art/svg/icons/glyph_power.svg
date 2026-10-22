@@ -1,0 +1,8 @@
+<!-- Power glyph: white and grey only, tinted at run time (the HUD's power line). -->
+<!-- Shape: one fat zigzag lightning bolt leaning to the right, flat on top and pointed at the foot. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <polygon points="76,8 28,70 58,70 46,120 100,52 70,52 90,8" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- shade on the lower right facet -->
+  <polygon points="70,52 100,52 46,120 60,70 58,70" fill="#BFBFBF"/>
+  <polygon points="76,8 28,70 58,70 46,120 100,52 70,52 90,8" fill="none" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+</svg>

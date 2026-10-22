@@ -1,0 +1,8 @@
+<!-- Placement reason glyph, OCCUPIED (something stands there): white and grey only, tinted at run time. -->
+<!-- Shape: two squares that overlap at a corner, a white one at the top left and a grey one at the bottom right on top of it. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect x="10" y="10" width="68" height="68" rx="6" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="50" y="50" width="68" height="68" rx="6" fill="#BFBFBF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- the overlap, picked out -->
+  <rect x="54" y="54" width="20" height="20" rx="2" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="2.5" stroke-linejoin="round"/>
+</svg>

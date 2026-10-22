@@ -1,0 +1,10 @@
+<!-- Placement reason glyph, UNEXPLORED (not yet seen): white and grey only, tinted at run time. -->
+<!-- Shape: an almond eye with a round iris and pupil, crossed out by one thick slash from the top right to the bottom left. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <path d="M8 64 Q64 8 120 64 Q64 120 8 64 Z" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <circle cx="64" cy="64" r="24" fill="#BFBFBF" stroke="#4D4D4D" stroke-width="4"/>
+  <circle cx="64" cy="64" r="10" fill="#4D4D4D"/>
+  <!-- slash: edge grey under, white over -->
+  <line x1="110" y1="16" x2="18" y2="112" stroke="#4D4D4D" stroke-width="22" stroke-linecap="round"/>
+  <line x1="110" y1="16" x2="18" y2="112" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,23 @@
+<!-- Harvester, team layer: white and grey only, tinted at run time, drawn above the hull. -->
+<!-- Shape: a long plate on top of each track pod, a strip along the top, bottom and rear rim of the bin, a plate on the cab roof and a cap on each end of the reel bar. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <g stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round">
+    <!-- track plates, set in from the pod edge so the pod highlight stays visible -->
+    <rect x="20" y="21.5" width="84" height="12" rx="3" fill="#FFFFFF"/>
+    <rect x="20" y="126.5" width="84" height="12" rx="3" fill="#FFFFFF"/>
+    <!-- bin rim strips -->
+    <rect x="28" y="51.5" width="66" height="5" rx="2" fill="#FFFFFF"/>
+    <rect x="28" y="103.5" width="66" height="5" rx="2" fill="#FFFFFF"/>
+    <rect x="24.5" y="58" width="5" height="44" rx="2" fill="#FFFFFF"/>
+    <!-- cab roof plate -->
+    <rect x="100" y="66" width="10" height="28" rx="3" fill="#FFFFFF"/>
+    <!-- reel bar caps -->
+    <rect x="127" y="18" width="12" height="9" rx="3" fill="#FFFFFF"/>
+    <rect x="127" y="133" width="12" height="9" rx="3" fill="#FFFFFF"/>
+  </g>
+  <!-- grey shade on the lower edge of each track plate -->
+  <g fill="#BFBFBF">
+    <rect x="21" y="30" width="82" height="2.5" rx="1"/>
+    <rect x="21" y="135" width="82" height="2.5" rx="1"/>
+  </g>
+</svg>

@@ -1,0 +1,12 @@
+<!-- Credits glyph: white and grey only, tinted at run time (the HUD's credits line). -->
+<!-- Shape: a short stack of three coins seen from the side, the top coin turned up as a bright ellipse with a second ring inside it. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- stack body: the lower plane, so grey -->
+  <path d="M26 40 V92 A38 16 0 0 0 102 92 V40 Z" fill="#BFBFBF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- coin seams -->
+  <path d="M26 58 A38 16 0 0 0 102 58" fill="none" stroke="#4D4D4D" stroke-width="3"/>
+  <path d="M26 75 A38 16 0 0 0 102 75" fill="none" stroke="#4D4D4D" stroke-width="3"/>
+  <!-- top coin face: the raised plane, so white -->
+  <ellipse cx="64" cy="40" rx="38" ry="16" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4"/>
+  <ellipse cx="64" cy="40" rx="24" ry="9" fill="none" stroke="#BFBFBF" stroke-width="4"/>
+</svg>

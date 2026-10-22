@@ -1,0 +1,8 @@
+<!-- Offline glyph: white and grey only, tinted at run time (a defence that has no power). -->
+<!-- Shape: a grey lightning bolt struck through by one thick white slash from the top left to the bottom right. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <polygon points="76,10 32,68 58,68 48,118 98,52 72,52 90,10" fill="#BFBFBF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- slash: edge grey under, white over -->
+  <line x1="18" y1="18" x2="110" y2="110" stroke="#4D4D4D" stroke-width="24" stroke-linecap="round"/>
+  <line x1="18" y1="18" x2="110" y2="110" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round"/>
+</svg>

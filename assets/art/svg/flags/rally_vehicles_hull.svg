@@ -1,0 +1,17 @@
+<!-- Vehicles rally flag, hull layer: pole and foot, drawn first; the foot is the canvas centre, the point on the ground that the flag marks. -->
+<!-- Shape: a slim metal pole standing up the page from a square foot plate, with a flat cap on top. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- ground shadow, offset (4,4), flattened as one group -->
+  <g transform="translate(4 4)" opacity="0.25" fill="#000000">
+    <rect x="52" y="52" width="24" height="24" rx="3"/>
+    <rect x="61" y="12" width="6" height="54" rx="3"/>
+    <rect x="57" y="8" width="14" height="8" rx="2"/>
+  </g>
+  <!-- foot plate -->
+  <rect x="52" y="52" width="24" height="24" rx="3" fill="#5B6670" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <rect x="59" y="59" width="10" height="10" rx="1.5" fill="#7D8893" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- pole -->
+  <rect x="61" y="12" width="6" height="54" rx="3" fill="#A9B4BE" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <!-- cap -->
+  <rect x="57" y="8" width="14" height="8" rx="2" fill="#7D8893" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+</svg>

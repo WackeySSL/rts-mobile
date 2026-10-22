@@ -1,0 +1,12 @@
+<!-- Placement reason glyph, TOO_FAR (out of build reach): white and grey only, tinted at run time. -->
+<!-- Shape: a long fat arrow running right and stopping against a tall wall bar, with a small square base at its tail. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- the wall: edge grey under, white over -->
+  <rect x="104" y="16" width="16" height="96" rx="4" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- the base the reach is measured from -->
+  <rect x="8" y="48" width="28" height="32" rx="4" fill="#BFBFBF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- the arrow -->
+  <polygon points="96,64 66,36 66,52 40,52 40,76 66,76 66,92" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <polygon points="66,64 96,64 66,92 66,76 40,76 40,64" fill="#BFBFBF"/>
+  <polygon points="96,64 66,36 66,52 40,52 40,76 66,76 66,92" fill="none" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+</svg>

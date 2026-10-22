@@ -1,0 +1,14 @@
+<!-- Placement reason glyph, GROUND (terrain that cannot be built on): white and grey only, tinted at run time. -->
+<!-- Shape: two jagged mountain peaks side by side, a small one at the front left and a tall one behind it on the right, standing on one flat base line. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- tall peak behind -->
+  <polygon points="48,108 86,22 122,108" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <polygon points="86,22 122,108 86,108" fill="#BFBFBF"/>
+  <polygon points="48,108 86,22 122,108" fill="none" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="86" y1="26" x2="86" y2="106" stroke="#4D4D4D" stroke-width="2.5"/>
+  <!-- small peak in front -->
+  <polygon points="6,108 34,50 62,108" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <polygon points="34,50 62,108 34,108" fill="#BFBFBF"/>
+  <polygon points="6,108 34,50 62,108" fill="none" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="34" y1="54" x2="34" y2="106" stroke="#4D4D4D" stroke-width="2.5"/>
+</svg>

@@ -1,0 +1,13 @@
+<!-- Placement reason glyph, CAP (the building limit is reached): white and grey only, tinted at run time. -->
+<!-- Shape: a stack of three blocks pressed up under a wide ceiling bar, with a small down-pointing wedge at each end of the bar. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- ceiling bar -->
+  <rect x="8" y="10" width="112" height="18" rx="5" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- wedges pressing down -->
+  <polygon points="12,40 28,40 20,56" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <polygon points="100,40 116,40 108,56" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- three stacked blocks, the lowest in shade -->
+  <rect x="32" y="36" width="64" height="24" rx="4" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="32" y="64" width="64" height="24" rx="4" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="32" y="92" width="64" height="24" rx="4" fill="#BFBFBF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+</svg>
