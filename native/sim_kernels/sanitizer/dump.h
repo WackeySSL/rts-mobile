@@ -10,8 +10,10 @@
 #include <vector>
 
 // The World.STATE_FORMAT numbers whose dump layout this harness reads. read() refuses every other number: a new
-// layout adds its number here, with its reader, and never edits what an old number means.
-inline constexpr uint32_t KNOWN_FORMATS[] = { 1 };
+// layout adds its number here, with its reader, and never edits what an old number means. 2 (P65, ADR 0016, plan
+// exception 10): fog.visible left the state hash; the dump holds the same records as 1 (the kernels still read the
+// counts), so 1 stays known.
+inline constexpr uint32_t KNOWN_FORMATS[] = { 1, 2 };
 
 class Dump {
 public:

@@ -14,6 +14,7 @@ const SEED: int = 42
 ## The perf card's self-check length.
 const TICKS: int = 60
 const INTEGRATE_BIT: int = 1 << SimProbe.Phase.INTEGRATE
+const FOG_BIT: int = 1 << SimProbe.Phase.FOG
 
 
 ## Stands in for the library: abi_version() answers `version`.
@@ -83,6 +84,30 @@ class BlipKernels:
 			world.dropped_commands += 1
 		elif world.tick == blip_tick + 1:
 			world.dropped_commands -= 1
+
+
+## Stands in for the library on FOG: it runs the GDScript twin, and in the step of `blip_tick` it
+## adds 1 to the last visible count of the fog (a cell of the last player, where nothing stands),
+## which the next call takes back before its phase, so the two Worlds differ after that tick in
+## fog.visible alone, and never in the state hash (visible is derived state, ADR 0016). It counts
+## its calls.
+class VisibleKernels:
+	extends RefCounted
+
+	var blip_tick: int = -1
+	var calls: int = 0
+
+	func fog(world: World) -> void:
+		calls += 1
+		var counts: PackedInt32Array = world.fog.visible
+		if world.tick == blip_tick + 1:
+			counts[counts.size() - 1] -= 1
+		var mask: int = world.native_phases
+		world.native_phases = 0
+		FogUpdate.run(world)
+		world.native_phases = mask
+		if world.tick == blip_tick:
+			counts[counts.size() - 1] += 1
 
 
 ## New kernels of the library on every call, at the ABI of the C++ constant: both sides of the
@@ -182,6 +207,29 @@ func test_a_difference_that_lasts_one_tick_is_a_mismatch(
 	assert_array(blip.first_pos_x).is_equal(_arena_world(SEED).pos_x)
 	assert_array(blip.first_pos_x).is_not_equal(_arena_world(SEED + 1).pos_x)
 	assert_int(blip.ordered_max).is_greater(0)
+
+
+## fog.visible is compared as well as the hash (P65, ADR 0016): the hash does not hold it, so a
+## count that differs in one tick and nowhere else in the state (the spy changes a cell that no row
+## sees) is a mismatch, found after that tick, while the same spy matches over the ticks before it.
+## The control shows that the hash alone would not see it: one count more in a World leaves
+## state_hash() as it was.
+func test_a_difference_in_fog_visible_alone_is_a_mismatch(
+	blip_tick: int, _test_parameters := _blip_ticks()
+) -> void:
+	var control: World = _arena_world(SEED)
+	control.prepare()
+	var hashed: int = control.state_hash()
+	control.fog.visible[control.fog.visible.size() - 1] += 1
+	assert_int(control.state_hash()).is_equal(hashed)
+	var before: VisibleKernels = VisibleKernels.new()
+	before.blip_tick = blip_tick
+	assert_bool(NativeKernels.self_check(_arena(), SEED, blip_tick, before, FOG_BIT)).is_true()
+	assert_int(before.calls).is_equal(blip_tick)
+	var blip: VisibleKernels = VisibleKernels.new()
+	blip.blip_tick = blip_tick
+	assert_bool(NativeKernels.self_check(_arena(), SEED, TICKS, blip, FOG_BIT)).is_false()
+	assert_int(blip.calls).is_equal(blip_tick + 1)
 
 
 ## gdUnit4's parameter sets: the five ported phases on main, one case each.
