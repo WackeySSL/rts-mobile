@@ -350,7 +350,7 @@ func test_every_command_is_recorded_as_stamped_even_when_sim_step_drops_it() -> 
 	var world: World = _world(scenario, 1)
 	var loop: MatchLoop = MatchLoop.create(scenario, SCENARIO_PATH, 1, world)
 	var foreign: Command = Command.move(1, PackedInt32Array([31]), 5000, 5000)
-	var reserved: Command = Samples.full(12, -1, 9)
+	var reserved: Command = Samples.full(17, -1, 9)
 	var crowd: Command = Command.move(1, PackedInt32Array(range(1, 258)), 5000, 5000)
 	var heavy: Command = Command.move(1, PackedInt32Array([1]), 5000, 5000)
 	heavy.payload = PackedInt32Array(range(17))

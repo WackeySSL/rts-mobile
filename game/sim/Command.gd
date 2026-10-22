@@ -2,10 +2,24 @@ class_name Command
 extends RefCounted
 ## One order to the simulation (ADR 0003 section 2, ADR 0007 section 5). Integers only. The
 ## target is a point in milli-tiles, not a cell. Sim.step applies a command at the start of the
-## tick that equals `tick`, in `compare` order. 10-19 are reserved for Phase 3 and 20-29 for
-## match-level commands: every type without a branch in Sim.step is dropped as unknown.
+## tick that equals `tick`, in `compare` order. PLACE, QUEUE, CANCEL, RALLY and HARVEST (10-14) are
+## the Phase 3 economy and production commands and SURRENDER (20) the first match-level one (ADR
+## 0017 section 4); 15-19 and 21-29 stay reserved. Every type without a branch in Sim.step is
+## dropped as unknown.
 
-enum Type { NONE = 0, ATTACK_MOVE = 1, MOVE = 2, ATTACK = 3, STOP = 4 }
+enum Type {
+	NONE = 0,
+	ATTACK_MOVE = 1,
+	MOVE = 2,
+	ATTACK = 3,
+	STOP = 4,
+	PLACE = 10,
+	QUEUE = 11,
+	CANCEL = 12,
+	RALLY = 13,
+	HARVEST = 14,
+	SURRENDER = 20,
+}
 
 ## The most unit ids and payload ints a command may hold; Sim.step drops a command over either.
 ## Encoding is not validation: encode() writes and decode() reads such a command whole, because
@@ -32,9 +46,10 @@ var type: int = Type.NONE
 var unit_ids: PackedInt32Array = PackedInt32Array()
 var target_x: int = 0
 var target_y: int = 0
-## The unit an ATTACK goes after, 0 = none.
+## The unit an ATTACK goes after, or the production building a RALLY sets, 0 = none.
 var target_id: int = 0
-## Type-specific ints, empty for the Phase 2 types.
+## Type-specific ints (ADR 0017 section 4): QUEUE `[type_index]`, CANCEL `[tab, slot]`, empty for
+## every other type.
 var payload: PackedInt32Array = PackedInt32Array()
 
 ## An attack-move order. Every factory copies the ids it is given (a command changes hands once,
@@ -73,6 +88,59 @@ static func attack(player_id: int, unit_ids: PackedInt32Array, target_id: int) -
 @warning_ignore("shadowed_variable")
 static func stop(player_id: int, unit_ids: PackedInt32Array) -> Command:
 	return _of(Type.STOP, player_id, unit_ids)
+
+
+## Place the ready head of the player's STRUCTURES queue, its footprint's origin tile being the tile
+## of the point (milli-tiles).
+@warning_ignore("shadowed_variable")
+static func place(player_id: int, target_x: int, target_y: int) -> Command:
+	var command: Command = _of(Type.PLACE, player_id, PackedInt32Array())
+	command.target_x = target_x
+	command.target_y = target_y
+	return command
+
+
+## Queue one unit or building of World type `type_index`; the payload is [type_index].
+@warning_ignore("shadowed_variable")
+static func queue(player_id: int, type_index: int) -> Command:
+	var command: Command = _of(Type.QUEUE, player_id, PackedInt32Array())
+	command.payload = PackedInt32Array([type_index])
+	return command
+
+
+## Cancel the item in `slot` of the queue of `tab` (a World.Tab); the payload is [tab, slot].
+@warning_ignore("shadowed_variable")
+static func cancel(player_id: int, tab: int, slot: int) -> Command:
+	var command: Command = _of(Type.CANCEL, player_id, PackedInt32Array())
+	command.payload = PackedInt32Array([tab, slot])
+	return command
+
+
+## Set the rally point of the tab that the own production building `building_id` produces.
+@warning_ignore("shadowed_variable")
+static func rally(player_id: int, building_id: int, target_x: int, target_y: int) -> Command:
+	var command: Command = _of(Type.RALLY, player_id, PackedInt32Array())
+	command.target_id = building_id
+	command.target_x = target_x
+	command.target_y = target_y
+	return command
+
+
+## Send harvesters to the ore near a point.
+@warning_ignore("shadowed_variable")
+static func harvest(
+	player_id: int, unit_ids: PackedInt32Array, target_x: int, target_y: int
+) -> Command:
+	var command: Command = _of(Type.HARVEST, player_id, unit_ids)
+	command.target_x = target_x
+	command.target_y = target_y
+	return command
+
+
+## Lose the match at once.
+@warning_ignore("shadowed_variable")
+static func surrender(player_id: int) -> Command:
+	return _of(Type.SURRENDER, player_id, PackedInt32Array())
 
 
 @warning_ignore("shadowed_variable")

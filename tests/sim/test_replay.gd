@@ -41,7 +41,8 @@ func test_the_contract_numbers_and_begin() -> void:
 
 
 func test_every_type_with_ids_and_payload_round_trips() -> void:
-	# Phase 2's five types, two reserved ones and a negative one: decode does not judge the type.
+	# Phase 2's five types, a Phase 3 one (12), a reserved one and a negative one: decode does not
+	# judge the type.
 	var types: Array[int] = [0, 1, 2, 3, 4, 12, 25, -3]
 	var data: PackedInt32Array = PackedInt32Array()
 	for k: int in types.size():
