@@ -1,9 +1,10 @@
 extends GdUnitTestSuite
 ## The power totals (plan row P74, ADR 0018 section 4, ADR 0017 sections 5 and 7, ADR 0016):
 ## `power_made` and `power_used` per player are summed over the building rows by `Power.run` in
-## ECONOMY, only when `rows_version` has moved since the totals were last built, whoever rebuilt the
-## derived lists in between; they are in no hash section, and a rebuild from the rows restores them
-## at every checkpoint of a match with buildings. `Power.is_low` is `power_used > power_made`.
+## ECONOMY, from the rows alone (every ECONOMY: no stamp, so whoever rebuilt the derived lists in
+## between, and a moved type table, leave nothing stale); they are in no hash section, and a rebuild
+## from the rows restores them at every checkpoint of a match with buildings. `Power.is_low` is
+## `power_used > power_made`.
 ## The expected numbers come from the World's `type_power` table, so a retuned data file does not
 ## break a case; the shipped signs are pinned once.
 
@@ -90,7 +91,6 @@ func test_low_power_is_used_above_made_and_equal_is_not_low() -> void:
 	assert_array(_totals(tied, 2)).is_equal([tied.type_power[plant], tied.type_power[plant]])
 	assert_bool(Power.is_low(tied, 2)).is_false()
 	tied.type_power[barracks] -= 1  # One more used than made.
-	tied._power_version = -1  # The table moved, not the rows: ask for the rebuild.
 	_step(tied)
 	assert_bool(Power.is_low(tied, 2)).is_true()
 
@@ -126,16 +126,15 @@ func test_a_building_that_dies_leaves_the_totals_in_the_same_ticks_economy() -> 
 	assert_bool(Power.is_low(world, 1)).is_true()
 
 
-func test_the_totals_are_rebuilt_only_when_the_rows_version_moved() -> void:
+func test_the_totals_are_summed_from_the_rows_in_every_economy() -> void:
 	var world: World = Rig.base()
 	_step(world)
 	var honest: Array[int] = _totals(world, 1)
-	world.power_made[1] = 12345  # Corrupted by hand: a rebuild would put the honest sum back.
+	var version: int = world.rows_version
+	world.power_made[1] = 12345  # Corrupted by hand: the next ECONOMY puts the honest sum back.
+	world.power_used[1] = 54321
 	_step(world)
-	_step(world)
-	assert_int(world.power_made[1]).is_equal(12345)
-	world.add_unit(1, Worlds.type_of(world, "rifle_squad"), 15500, 9500)  # A row joins.
-	_step(world)
+	assert_int(world.rows_version).is_equal(version)  # No row moved, and the sum is still rebuilt.
 	assert_array(_totals(world, 1)).is_equal(honest)
 
 
@@ -179,11 +178,9 @@ func test_neutral_buildings_and_players_past_the_arrays_get_no_entry() -> void:
 func test_run_on_a_world_that_is_not_prepared_writes_nothing_and_builds_later() -> void:
 	var world: World = World.new()
 	Power.run(world)
-	assert_int(world._power_version).is_equal(-1)  # No stamp: the arrays are not sized yet.
-	assert_array(world.power_made).is_empty()
+	assert_array(world.power_made).is_empty()  # Not sized yet: nothing to write.
 	assert_bool(Power.is_low(world, 1)).is_false()
 	var made: World = Rig.base()
-	made._power_version = -1
 	Power.run(made)  # Prepared, so it builds, without a step.
 	assert_array(_totals(made, 1)).is_equal(_scan(made, 1))
 
@@ -199,7 +196,6 @@ func test_the_totals_are_in_no_hash_section_and_a_rebuild_from_the_rows_restores
 	twin.power_used.fill(555)
 	assert_int(twin.state_hash()).is_equal(world.state_hash())  # Derived: no section reads them.
 	assert_array(twin.hash_parts()).is_equal(world.hash_parts())
-	twin._power_version = -1
 	Power.run(twin)
 	assert_array(twin.power_made).is_equal(world.power_made)
 	assert_array(twin.power_used).is_equal(world.power_used)
@@ -208,14 +204,13 @@ func test_the_totals_are_in_no_hash_section_and_a_rebuild_from_the_rows_restores
 		assert_bool(World.ROW_ARRAYS.has(name)).is_false()
 		assert_bool(World.PLAYER_ARRAYS.has(name)).is_false()
 		assert_bool(World.hash_section_names().has(String(name))).is_false()
-	assert_bool(World.UNHASHED_SCALARS.has(&"_power_version")).is_true()
 
 
 ## One match of two bases with buildings that are placed and destroyed while the armies fight: a
 ## second turret for player 1 at tick 60, its plant dying at tick 150 (low power) and a new one at
 ## tick 300 (enough again), a plant of player 2 dying at tick 210. At every checkpoint the totals
-## are compared with a scan of the rows and with a rebuild from the rows (wiped, stamp reset, run
-## again), and the state hash is the same before and after the rebuild.
+## are compared with a scan of the rows and with a rebuild from the rows (wiped, run again), and the
+## state hash is the same before and after the rebuild.
 func test_every_checkpoint_of_a_match_with_buildings_equals_a_rebuild_from_the_rows() -> void:
 	var world: World = Worlds.fight()
 	var loop: MatchLoop = MatchLoop.create(null, "", 0, world)
@@ -256,7 +251,6 @@ func test_every_checkpoint_of_a_match_with_buildings_equals_a_rebuild_from_the_r
 		var wiped: Array[Array] = [_totals(world, 1), _totals(world, 2)]
 		world.power_made.fill(-1)
 		world.power_used.fill(-1)
-		world._power_version = -1
 		Power.run(world)
 		(
 			assert_array([_totals(world, 1), _totals(world, 2)])

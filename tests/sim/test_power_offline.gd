@@ -186,8 +186,7 @@ func test_a_defence_whose_player_uses_exactly_what_it_makes_fires() -> void:
 	assert_bool(Power.is_low(world, 1)).is_false()
 	assert_bool(shot).is_true()
 	world.type_power[turret] -= 1  # One more used than made.
-	world._power_version = -1  # The table moved, not the rows: ask for the rebuild.
-	_step(world, 2)  # The totals are rebuilt in ECONOMY; the next FIRE finds the turret offline.
+	_step(world, 2)  # ECONOMY sums the moved table; the next FIRE finds the turret offline.
 	assert_bool(Power.is_low(world, 1)).is_true()
 	for _tick: int in 60:
 		_step(world)

@@ -267,7 +267,6 @@ const UNHASHED_SCALARS: Array[StringName] = [
 	&"_map_digest",
 	&"_map_digest_version",
 	&"_lists_version",
-	&"_power_version",
 	&"retarget_period_ticks",
 	&"fog_period_ticks",
 	&"line_check_period_ticks",
@@ -583,10 +582,8 @@ var stats: PackedInt32Array = PackedInt32Array()
 ## equals `map_version`. Derived, so unhashed; WorldHash.map_digest() fills it.
 var _map_digest: int = 0
 var _map_digest_version: int = -1
-## The `rows_version` the derived row lists and the power totals were last built at (-1: never);
-## unhashed like them. `Power.run` stamps the totals itself: a rebuild of the lists is not one.
+## The `rows_version` the derived row lists were last rebuilt at (-1: never); unhashed like them.
 var _lists_version: int = -1
-var _power_version: int = -1
 
 
 ## The rule ints start at the RulesDef script defaults, so a hand-built world is a valid world.

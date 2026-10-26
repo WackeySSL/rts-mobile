@@ -1,12 +1,14 @@
 class_name Power
 extends RefCounted
 ## Power (ADR 0017 section 5, ADR 0018 section 4). `run` is the first half of ECONOMY: it brings the
-## derived row lists up to date (Buildings.rebuild_lists) and, when `rows_version` has moved since
-## the totals were last built, sums `type_power` over the building rows into `power_made` (the
-## positive entries) and `power_used` (the negative ones, as positive numbers) per player. Both are
-## derived (ADR 0016): in no hash section, rebuilt from the rows, and compared with a scan at every
-## checkpoint by `tests/sim/test_power.gd`. A building placed or lost in tick t counts in t's
-## ECONOMY (the totals are built after REMOVE), so PRODUCTION of tick t and FIRE of tick t+1 see it.
+## derived row lists up to date (Buildings.rebuild_lists) and sums `type_power` over the building
+## rows into `power_made` (the positive entries) and `power_used` (the negative ones, as positive
+## numbers) per player, every ECONOMY: one pass over the building rows, so there is no stamp to
+## keep (and no field in the World) and nothing that a rebuild of the lists by someone else, or a
+## moved type table, can leave stale. Both are derived (ADR 0016): in no hash section, rebuilt from
+## the rows, and compared with a scan at every checkpoint by `tests/sim/test_power.gd`. A building
+## placed or lost in tick t counts in t's ECONOMY (the totals are built after REMOVE), so PRODUCTION
+## of tick t and FIRE of tick t+1 see it.
 ##
 ## Low power is `power_used > power_made` (`is_low`; equal is not low). Its two effects are
 ## elsewhere: the queues of a low player advance at `low_power_percent` (`scaled`, called by
@@ -19,17 +21,15 @@ const PERCENT: int = 100
 
 ## ECONOMY, first half. The lists are rebuilt first (a no-op when `Production.producer_row` has
 ## already done it in COMMANDS or PRODUCTION since the rows last moved), and its answer is not
-## asked: the totals have a stamp of their own, `_power_version`, the `rows_version` they were built
-## at, so a rebuild of the lists by someone else never leaves them stale.
+## asked: the totals are summed from the rows whatever it says.
 static func run(world: World) -> void:
 	Buildings.rebuild_lists(world)
 	var made: PackedInt32Array = world.power_made
 	var used: PackedInt32Array = world.power_used
 	var players: int = mini(made.size(), used.size())
-	# Not sized yet (prepare() has not run): nothing to write, and no stamp, so a later call builds.
-	if world._power_version == world.rows_version or players == 0:
+	# Not sized yet (prepare() has not run): nothing to write.
+	if players == 0:
 		return
-	world._power_version = world.rows_version
 	made.fill(0)
 	used.fill(0)
 	var owners: PackedInt32Array = world.owner
