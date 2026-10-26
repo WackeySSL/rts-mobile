@@ -43,8 +43,9 @@ const EVENT_STRIDE: int = 8
 const TABS: int = 3
 ## The layout version of the hashed state. 2: fog.visible left the hash, because the rows it is
 ## derived from stay in it (ADR 0016). 3: Phase 3's state joined it (ADR 0017 section 7): four row
-## columns, the sections players, ore and ghosts, and the scalars match_end_tick and winner.
-const STATE_FORMAT: int = 3
+## columns, the sections players, ore and ghosts, and the scalars match_end_tick and winner. 4: the
+## strike state joined it (ADR 0023 section 10): two row columns and three player arrays.
+const STATE_FORMAT: int = 4
 ## The hash sections that are not a ROW_ARRAYS column: header, map, projectiles, fog, players, ore
 ## and ghosts.
 const HASH_OTHER_SECTIONS: int = 7
@@ -60,7 +61,8 @@ const TYPE_PAD_WEAPON: int = -1
 ## For the four Phase 1 tables (speed, radius, selection radius, spacing), and for the Phase 3
 ## tables whose pad is 0: footprint, cost, build ticks, power, cargo capacity, dock and exit.
 const TYPE_PAD_V0: int = 0
-## For the Phase 3 tables whose "none" is -1: tab, requirement, produced tab, free unit, faction.
+## For the Phase 3 tables whose "none" is -1: tab, requirement, produced tab, free unit, faction and
+## strike weapon.
 const TYPE_PAD_NONE: int = -1
 ## The cost of open grass for every class, 10 = normal ground (ADR 0008 section 1). It equals the
 ## default TerrainDef.cost, which a test pins: prepare() may run in the tick and reads no Resource.
@@ -107,6 +109,8 @@ const ROW_ARRAYS: Array[StringName] = [
 	&"cargo",
 	&"harvest_slot",
 	&"home",
+	&"ready_tick",
+	&"offline_until",
 ]
 ## The per-type tables, one entry per type_ids entry once prepare() has run.
 const TYPE_ARRAYS: Array[StringName] = [
@@ -136,6 +140,12 @@ const TYPE_ARRAYS: Array[StringName] = [
 	&"type_exit_x",
 	&"type_exit_y",
 	&"type_faction",
+	&"type_strike_kind",
+	&"type_charge_ticks",
+	&"type_strike_radius",
+	&"type_strike_delay",
+	&"type_strike_ticks",
+	&"type_strike_weapon",
 ]
 ## The weapon tables, one entry per weapon (weapon_vs_armour has four).
 const WEAPON_ARRAYS: Array[StringName] = [
@@ -161,8 +171,9 @@ const PROJECTILE_ARRAYS: Array[StringName] = [
 ]
 ## The per-player state (ADR 0017 section 3), sized by prepare(): the first seven have an entry per
 ## player (index 0 is neutral and unused), the next four one per player and tab (`player * TABS +
-## tab`) and `queue_type` one per queue slot (`(player * TABS + tab) * queue_slots + slot`). Hashed,
-## one block per array, in the section `players`.
+## tab`), `queue_type` one per queue slot (`(player * TABS + tab) * queue_slots + slot`) and the
+## last three (the pending strike, P109) one per player again. Hashed, one block per array, in the
+## section `players`.
 const PLAYER_ARRAYS: Array[StringName] = [
 	&"credits",
 	&"defeated_tick",
@@ -176,6 +187,9 @@ const PLAYER_ARRAYS: Array[StringName] = [
 	&"rally_x",
 	&"rally_y",
 	&"queue_type",
+	&"strike_x",
+	&"strike_y",
+	&"strike_tick",
 ]
 ## The ore left in each ore cell, one entry per `ore_cell` entry. Hashed, in the section `ore`.
 const ORE_ARRAYS: Array[StringName] = [&"ore_amount"]
@@ -430,6 +444,16 @@ var type_exit_x: PackedInt32Array = PackedInt32Array()
 var type_exit_y: PackedInt32Array = PackedInt32Array()
 var faction_ids: Array[StringName] = []  # In order of first appearance in the unit types.
 var type_faction: PackedInt32Array = PackedInt32Array()  # An index into faction_ids, -1 = none.
+## The strike columns (ADR 0023 section 10), from BuildingDef's strike exports; 0 for a type that is
+## no strike building: the kind (0 none, 1 rupture, 2 blackout), the ticks to charge, the radius in
+## milli-tiles, the rupture's delay and the blackout's length in ticks, and the rupture's weapon
+## (an index into the weapon tables, -1 = none).
+var type_strike_kind: PackedInt32Array = PackedInt32Array()
+var type_charge_ticks: PackedInt32Array = PackedInt32Array()
+var type_strike_radius: PackedInt32Array = PackedInt32Array()
+var type_strike_delay: PackedInt32Array = PackedInt32Array()
+var type_strike_ticks: PackedInt32Array = PackedInt32Array()
+var type_strike_weapon: PackedInt32Array = PackedInt32Array()
 
 ## Per weapon, in the order of first appearance in the unit types. The index is `type_weapon`.
 var weapon_ids: Array[StringName] = []
@@ -509,6 +533,10 @@ var harvest_mode: PackedInt32Array = PackedInt32Array()
 var cargo: PackedInt32Array = PackedInt32Array()
 var harvest_slot: PackedInt32Array = PackedInt32Array()
 var home: PackedInt32Array = PackedInt32Array()
+## The tick a strike building may fire (0 for every other row) and the tick a blacked-out building
+## comes back (0 = on), ADR 0023 section 10. Strike writes them (P110, P111).
+var ready_tick: PackedInt32Array = PackedInt32Array()
+var offline_until: PackedInt32Array = PackedInt32Array()
 
 ## Per player (index 0 = neutral, unused; prepare() sizes them to player_count + 1): the credits
 ## (start_credits), the tick the defeating step produced (0 = still playing), 1 once the player has
@@ -529,6 +557,11 @@ var rally_y: PackedInt32Array = PackedInt32Array()
 ## Per queue slot (index `(player * TABS + tab) * queue_slots + slot`): the queued type index, -1
 ## for a slot with no item.
 var queue_type: PackedInt32Array = PackedInt32Array()
+## Per player (index 0 unused): the pending rupture, its point in milli-tiles and the tick it lands,
+## 0 = none (ADR 0023 section 10).
+var strike_x: PackedInt32Array = PackedInt32Array()
+var strike_y: PackedInt32Array = PackedInt32Array()
+var strike_tick: PackedInt32Array = PackedInt32Array()
 ## The ore units left, one per `ore_cell` entry.
 var ore_amount: PackedInt32Array = PackedInt32Array()
 ## The last-seen building records, `ghost_cap` per player (see GHOST_ARRAYS), and the live count per
@@ -651,6 +684,12 @@ func prepare() -> void:
 	_pad(type_exit_x, types, TYPE_PAD_V0)
 	_pad(type_exit_y, types, TYPE_PAD_V0)
 	_pad(type_faction, types, TYPE_PAD_NONE)
+	_pad(type_strike_kind, types, TYPE_PAD_V0)
+	_pad(type_charge_ticks, types, TYPE_PAD_V0)
+	_pad(type_strike_radius, types, TYPE_PAD_V0)
+	_pad(type_strike_delay, types, TYPE_PAD_V0)
+	_pad(type_strike_ticks, types, TYPE_PAD_V0)
+	_pad(type_strike_weapon, types, TYPE_PAD_NONE)
 	var ids: Array[StringName] = type_ids
 	var names: PackedStringArray = type_names
 	for i: int in range(names.size(), types):
@@ -760,6 +799,8 @@ func add_unit(owner: int, type_index: int, x: int, y: int) -> int:
 	cargo.append(0)
 	harvest_slot.append(-1)
 	home.append(0)
+	ready_tick.append(0)
+	offline_until.append(0)
 	_push_unit_event(Event.SPAWNED, unit_id.size() - 1)
 	rows_version += 1
 	player_count = maxi(player_count, owner)

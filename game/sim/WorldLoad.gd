@@ -199,6 +199,7 @@ static func _type_for(world: World, unit: UnitDef) -> int:
 	world.type_dock_y.append(building.dock.y if building != null else World.TYPE_PAD_V0)
 	world.type_exit_x.append(building.exit.x if building != null else World.TYPE_PAD_V0)
 	world.type_exit_y.append(building.exit.y if building != null else World.TYPE_PAD_V0)
+	_strike_for(world, building)
 	# The other types last, so that this type is complete before they are read.
 	var index: int = world.type_ids.size() - 1
 	if unit.requires != null:
@@ -206,6 +207,22 @@ static func _type_for(world: World, unit: UnitDef) -> int:
 	if building != null and building.free_unit != null:
 		world.type_free_unit[index] = _type_for(world, building.free_unit)
 	return index
+
+
+## Appends the six strike table entries of a type (ADR 0023 section 10): a BuildingDef's exports,
+## else the pads (kind 0, no lengths, no weapon). The strike weapon is a weapon of the weapon tables
+## (_weapon_for), so a rupture's damage goes through the armour percents like a shot's.
+static func _strike_for(world: World, building: BuildingDef) -> void:
+	var pad: int = World.TYPE_PAD_V0
+	world.type_strike_kind.append(building.strike_kind if building != null else pad)
+	world.type_charge_ticks.append(building.charge_ticks if building != null else pad)
+	world.type_strike_radius.append(building.strike_radius if building != null else pad)
+	world.type_strike_delay.append(building.strike_delay if building != null else pad)
+	world.type_strike_ticks.append(building.strike_ticks if building != null else pad)
+	var weapon: int = World.TYPE_PAD_NONE
+	if building != null:
+		weapon = _weapon_for(world, building.strike_weapon)
+	world.type_strike_weapon.append(weapon)
 
 
 ## The faction index for `faction`, -1 for none (an empty id: any faction). A faction is known by
@@ -296,7 +313,8 @@ static func copy_rules(world: World, rules: RulesDef) -> void:
 ## Sizes the player, ore and ghost state at its start values (ADR 0017 section 3), from the player
 ## count and the rule ints, so that no later row moves the hash through a start value: credits at
 ## start_credits for players 1..player_count, rally points and queue slots at -1 (none), every ore
-## cell at ore_start, the rest 0. Entry 0 of a per-player array is the neutral player.
+## cell at ore_start, the rest 0 (the pending strikes, none). Entry 0 of a per-player array is the
+## neutral player.
 static func size_match_state(world: World) -> void:
 	var players: int = world.player_count + 1
 	var queues: int = players * World.TABS
@@ -318,6 +336,9 @@ static func size_match_state(world: World) -> void:
 	world.rally_y.fill(-1)
 	world.queue_type.resize(queues * world.queue_slots)
 	world.queue_type.fill(-1)
+	world.strike_x.resize(players)
+	world.strike_y.resize(players)
+	world.strike_tick.resize(players)
 	world.ore_amount.resize(world.ore_cell.size())
 	world.ore_amount.fill(world.ore_start)
 	world.ghost_id.resize(ghosts)

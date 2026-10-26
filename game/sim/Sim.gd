@@ -96,7 +96,7 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 
 ## Applies a command of the right tick by type (ADR 0007 section 5), or drops and counts it. Every
 ## type needs a player in 1..player_count and at most MAX_PAYLOAD payload ints; a type without a
-## branch (NONE, 5-9, 15-19, 21-29, anything else) is dropped as unknown before any id rule runs.
+## branch (NONE, 5-9, 16-19, 21-29, anything else) is dropped as unknown before any id rule runs.
 ## The Phase 3 types (ADR 0017 section 4) also need a player who is not defeated. Once the match has
 ## ended (`match_end_tick` above 0, P76) every command of any type is dropped. Each `_apply_*` and
 ## each module's `apply_*` is the ADR's per-type validation: it checks the ids through the shared
@@ -128,6 +128,8 @@ static func _apply(world: World, command: Command) -> void:
 				applied = _playing(world, command) and Outcome.apply_rally(world, command)
 			Command.Type.HARVEST:
 				applied = _playing(world, command) and Harvest.apply_harvest(world, command)
+			Command.Type.SUPERWEAPON:
+				applied = false  # P110 calls Strike.apply_superweapon here; until then it is dropped.
 			Command.Type.SURRENDER:
 				applied = _playing(world, command) and Outcome.apply_surrender(world, command)
 	if not applied:
