@@ -56,7 +56,7 @@ holds any combat unit leave harvesters out; a box with only harvesters selects t
 ## Building placement
 ADR 0019 §2 (Michael's answer 1 B). Placement mode is local input state; no Command until confirm.
 - The ghost starts at the tile under the view centre. A one-finger drag that starts on the ghost
-  (its footprint plus a grab margin) moves it; it follows the finger 64 dp above the touch point,
+  (its sprite box plus a grab margin, ADR 0022 §5) moves it; it follows the finger 64 dp above the touch point,
   so the finger never hides it, and snaps to tiles. A one-finger drag that starts elsewhere pans
   as usual; a tap on the ground moves the ghost there; pinch and two-finger pan are unchanged;
   the long-press box select is off. Dragging the ghost near the view's edge pans the camera. The
