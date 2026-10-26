@@ -9,6 +9,8 @@
 [ext_resource type="Script" path="res://game/view/ProjectileLayer.gd" id="7_projectiles"]
 [ext_resource type="Script" path="res://game/view/EffectsLayer.gd" id="8_effects"]
 [ext_resource type="Script" path="res://game/view/FogLayer.gd" id="9_fog"]
+[ext_resource type="Script" path="res://game/view/BuildingLayer.gd" id="19_buildings"]
+[ext_resource type="Script" path="res://game/view/BuildingRoofLayer.gd" id="20_roofs"]
 [ext_resource type="Script" path="res://game/view/RtsCamera.gd" id="10_cam"]
 [ext_resource type="Script" path="res://game/input/TouchInput.gd" id="11_touch"]
 [ext_resource type="Resource" path="res://data/input_settings.tres" id="12_settings"]
@@ -46,6 +48,15 @@ tick_mode = 2
 script = ExtResource("4_map")
 runner = NodePath("../MatchRunner")
 
+[node name="BuildingLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "unit_layer", "fog_layer")]
+z_index = 2
+z_as_relative = false
+script = ExtResource("19_buildings")
+runner = NodePath("../MatchRunner")
+unit_layer = NodePath("../UnitLayer")
+fog_layer = NodePath("../FogLayer")
+reveal_enemies = true
+
 [node name="UnitLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "camera")]
 script = ExtResource("5_units")
 runner = NodePath("../MatchRunner")
@@ -53,11 +64,17 @@ camera = NodePath("../Camera")
 reveal_enemies = true
 
 [node name="HealthBarLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "unit_layer")]
-z_index = 110
+z_index = 112
 z_as_relative = false
 script = ExtResource("6_bars")
 runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
+
+[node name="BuildingRoofLayer" type="Node2D" parent="." node_paths=PackedStringArray("buildings")]
+z_index = 111
+z_as_relative = false
+script = ExtResource("20_roofs")
+buildings = NodePath("../BuildingLayer")
 
 [node name="ProjectileLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
 z_index = 120
@@ -74,7 +91,7 @@ runner = NodePath("../MatchRunner")
 reveal_enemies = true
 
 [node name="FogLayer" type="Sprite2D" parent="." node_paths=PackedStringArray("runner")]
-z_index = 140
+z_index = 110
 z_as_relative = false
 script = ExtResource("9_fog")
 runner = NodePath("../MatchRunner")

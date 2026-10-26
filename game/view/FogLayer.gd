@@ -3,8 +3,11 @@ extends Sprite2D
 ## The fog of war over the map (ADR 0010 section 2, assets/art/STYLE.md "Fog and terrain"): one
 ## RGBA8 texel of black per tile, drawn a tile wide and filtered linearly, so an edge is soft across
 ## one tile. A texel's alpha is 255 on a tile the local player never saw, `explored_alpha` (140) on
-## one it saw before and 0 on one it sees. The layer draws at z 140, above the units, the
-## projectiles and the effects and below the markers (ADR 0012 section 6); the scene sets that.
+## one it saw before and 0 on one it sees. The layer draws at z 110 (ADR 0022 section 2, which moved
+## it from 140): over the unit bands and the base parts of the buildings, under the roof parts
+## (z 111, which carry their footprint's fog state themselves), the health bars, the projectiles,
+## the effects and the markers; the scene sets that. Bars, projectiles and effects hide by the tile
+## they stand on, and the fog no longer darkens them.
 ##
 ## It reads only `runner.snapshot.fog` (ADR 0012 section 3). A new match (`match_serial`, which
 ## also brings another map size), another local player or explored alpha, an overflowed dirty list
@@ -23,13 +26,15 @@ extends Sprite2D
 ## behind, so everything is seen.
 
 const UNEXPLORED_ALPHA: int = 255
+## The export's default, which BuildingLayer's roof dim also reads.
+const DEFAULT_EXPLORED_ALPHA: int = 140
 const VISIBLE_ALPHA: int = 0
 const BYTES_PER_TEXEL: int = 4  ## RGBA8: the colour bytes stay 0 (black) and the alpha is the last.
 const ALPHA_BYTE: int = 3
 
 @export var runner: MatchRunner
 ## The alpha of a tile that was seen and is not now (STYLE.md). One value to change by eye.
-@export var explored_alpha: int = 140
+@export var explored_alpha: int = DEFAULT_EXPLORED_ALPHA
 
 ## The microsecond clock that times an update. Tests replace it.
 var usec_clock: Callable = Time.get_ticks_usec

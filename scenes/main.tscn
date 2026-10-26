@@ -22,6 +22,8 @@
 [ext_resource type="Script" path="res://game/view/HealthBarLayer.gd" id="18_bars"]
 [ext_resource type="Script" path="res://game/view/ProjectileLayer.gd" id="19_projectiles"]
 [ext_resource type="Script" path="res://game/view/FogLayer.gd" id="20_fog"]
+[ext_resource type="Script" path="res://game/view/BuildingLayer.gd" id="21_buildings"]
+[ext_resource type="Script" path="res://game/view/BuildingRoofLayer.gd" id="22_roofs"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -39,17 +41,31 @@ tick_mode = 2
 script = ExtResource("1_map")
 runner = NodePath("../MatchRunner")
 
+[node name="BuildingLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "unit_layer", "fog_layer")]
+z_index = 2
+z_as_relative = false
+script = ExtResource("21_buildings")
+runner = NodePath("../MatchRunner")
+unit_layer = NodePath("../UnitLayer")
+fog_layer = NodePath("../FogLayer")
+
 [node name="UnitLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "camera")]
 script = ExtResource("9_units")
 runner = NodePath("../MatchRunner")
 camera = NodePath("../Camera")
 
 [node name="HealthBarLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "unit_layer")]
-z_index = 110
+z_index = 112
 z_as_relative = false
 script = ExtResource("18_bars")
 runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
+
+[node name="BuildingRoofLayer" type="Node2D" parent="." node_paths=PackedStringArray("buildings")]
+z_index = 111
+z_as_relative = false
+script = ExtResource("22_roofs")
+buildings = NodePath("../BuildingLayer")
 
 [node name="ProjectileLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
 z_index = 120
@@ -64,7 +80,7 @@ script = ExtResource("19_effects")
 runner = NodePath("../MatchRunner")
 
 [node name="FogLayer" type="Sprite2D" parent="." node_paths=PackedStringArray("runner")]
-z_index = 140
+z_index = 110
 z_as_relative = false
 script = ExtResource("20_fog")
 runner = NodePath("../MatchRunner")

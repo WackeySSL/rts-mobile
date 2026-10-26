@@ -21,6 +21,13 @@ extends Node2D
 ## always shows (its sight ends with it, so its own tile can be dark in that very tick), and
 ## `reveal_enemies` adds everything (the perf arena, and tests whose subject is not fog).
 ##
+## The fog layer is under this one (z 110, ADR 0022 section 2), so it no longer covers what a
+## tracer draws on an unseen tile: a tracer with both ends seen is drawn whole, and one with a
+## single end seen is clipped at birth to the seen tiles (ADR 0022 section 4). It runs from the
+## seen end towards the other and stops at the last point of a TRACER_STEP_PX step whose tile the
+## local player sees in that tick's fog, so it ends within one step of the first dark tile and the
+## slot keeps the clipped end; `_draw` does not change.
+##
 ## `_process` plans the frame's lines and quads into reused packed arrays and `_draw` paints that
 ## plan: tracers as straight lines (butt caps: draw_line has no round ones, which STYLE.md asks
 ## for), everything else as quads of one atlas (ADR 0011 section 3, z 130 in ADR 0012 section 6).
@@ -60,6 +67,7 @@ const FLASH_DEFAULT_PX: float = 24.0
 const PUFF_DEFAULT_PX: float = 40.0
 const MUZZLE_DEFAULT_PX: float = 13.0
 const GEO_STRIDE: int = 5  ## A slot's x, y, end x, end y and size, in world px.
+const TRACER_STEP_PX: float = 16.0  ## A quarter tile: how far a clipped tracer is probed at a time.
 
 ## Ring slots; the setter makes a new, empty ring.
 @export var capacity: int = 128:
@@ -272,9 +280,32 @@ func _add_shot(snap: MatchSnapshot, at: int, now: int) -> void:
 	var muzzle: Vector2 = shooter + (target - shooter).limit_length(reach)
 	var speeds: PackedInt32Array = snap.weapon_projectile_speed
 	if weapon >= 0 and weapon < speeds.size() and speeds[weapon] == 0:
-		_push(Kind.TRACER, now, muzzle, target, 0.0)
+		var from: Vector2 = muzzle
+		var to: Vector2 = target
+		if not from_seen:  # Either end is seen, so the target is: the line starts at it.
+			from = _last_seen_point(snap, target, muzzle)
+		elif not _seen(snap, events[at + 6], events[at + 7]):
+			to = _last_seen_point(snap, muzzle, target)
+		_push(Kind.TRACER, now, from, to, 0.0)
 	if from_seen:
 		_push(Kind.FLASH, now, muzzle, Vector2.ZERO, flash_px.get(weapon_id, FLASH_DEFAULT_PX))
+
+
+## The last point on the line from `seen_end` towards `far_end` whose tile the local player sees,
+## probed in TRACER_STEP_PX steps from the seen end (the far end itself last), at most one step more
+## than the line holds; `seen_end` itself when the first step is already dark. No allocation.
+func _last_seen_point(snap: MatchSnapshot, seen_end: Vector2, far_end: Vector2) -> Vector2:
+	var span: float = seen_end.distance_to(far_end)
+	if span <= 0.0:
+		return seen_end
+	var heading: Vector2 = (far_end - seen_end) / span
+	var last: Vector2 = seen_end
+	for step: int in range(1, int(span / TRACER_STEP_PX) + 2):
+		var point: Vector2 = seen_end + heading * minf(step * TRACER_STEP_PX, span)
+		if not _seen(snap, ViewScale.px_to_milli(point.x), ViewScale.px_to_milli(point.y)):
+			break
+		last = point
+	return last
 
 
 ## [IMPACT, projectile id, x, y, target id or 0, weapon, 0, 0]: a puff where the shell came down.

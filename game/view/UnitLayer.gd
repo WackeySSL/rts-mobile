@@ -17,6 +17,9 @@ extends Node2D
 ## one absolute z per batch group (layer_z), so mixed types and owners still batch (ADR 0012
 ## section 6). The layer also keeps, per row, the hp it last saw and the frame clock of the last hp
 ## drop (`hit_time_ms`), which the health bars read together with `is_ringed`.
+## A row whose type has a footprint is a building, which BuildingLayer and BuildingRoofLayer draw
+## (ADR 0022): it has no rig, so its place in the per-row lists below holds a null, every per-row
+## answer stays indexed by snapshot row, and `fill_pick_snapshot` marks it unpickable.
 ## An enemy rig stands on a tile its owner's opponent may not see: the local player's fog hides it
 ## there (`is_shown`, ADR 0010 section 2) by its `visible` flag alone, so a hidden rig keeps its
 ## position, heading and tint and still answers `unit_screen_position`. Own rigs are always shown.
@@ -96,8 +99,9 @@ func _process(delta: float) -> void:
 			_refresh_rings(snap)
 
 
+## Rigs, one for each row that is not a building.
 func rig_count() -> int:
-	return _rigs.size()
+	return get_child_count()
 
 
 ## The absolute z of layer `layer` (an index of LAYER_FILES) for a unit of type `type` and owner
@@ -147,10 +151,11 @@ func is_shown(row: int) -> bool:
 	)
 
 
-## Where unit row `index` is on screen, in base px.
+## Where unit row `index` is on screen, in base px; a building's row answers where its position,
+## the footprint centre, is.
 func unit_screen_position(index: int) -> Vector2:
 	_sync_rigs()
-	return camera.world_to_screen(_rigs[index].global_position)
+	return camera.world_to_screen(_row_position(index))
 
 
 ## Rings exactly the units in `ids` at once. Unknown ids are skipped.
@@ -163,7 +168,7 @@ func set_selected(ids: PackedInt32Array) -> void:
 	_ringed.clear()
 	for id: int in ids:
 		var row: int = snap.index_of(id)
-		if row < 0:
+		if row < 0 or _rigs[row] == null:  # An unknown id, or a building: no ring (P84d's frame).
 			continue
 		if _rings[row] == null:
 			_rings[row] = _new_ring(row)
@@ -217,12 +222,12 @@ func fill_pick_snapshot(snap: PickSnapshot, min_radius_px: float) -> void:
 		out_ids[row] = ids[row]
 		out_owners[row] = owners[row]
 		out_types[row] = type
-		out_pos[row] = camera.world_to_screen(rigs[row].global_position)
+		out_pos[row] = camera.world_to_screen(_row_position(row))
 		out_radius[row] = maxf(min_radius_px, art_px)
 		var seen: bool = not fogged or owners[row] == player
 		if not seen:
 			seen = counts[counts_at + source.cell_of(pos_x[row], pos_y[row])] > 0
-		out_pickable[row] = 1 if seen else 0
+		out_pickable[row] = 1 if seen and rigs[row] != null else 0  # A building: P84d picks it.
 
 
 ## Reads `runner.snapshot` afresh and brings the rigs up to it: all new for another match_serial,
@@ -245,8 +250,9 @@ func _sync_rigs() -> MatchSnapshot:
 
 func _clear_rigs() -> void:
 	for rig: Node2D in _rigs:
-		remove_child(rig)
-		rig.queue_free()
+		if rig != null:
+			remove_child(rig)
+			rig.queue_free()
 	_ids.clear()
 	_rigs.clear()
 	_layers.clear()
@@ -305,10 +311,13 @@ func _merge(snap: MatchSnapshot) -> void:
 				ringed.append(row)
 			old += 1
 		else:
-			var rig: Node2D = _new_rig(
-				ids[row], types[row], type_ids[types[row]], owners[row], layers
-			)
-			add_child(rig)  # A new id is above every survivor's, so the end of the children is its row.
+			var rig: Node2D = null  # A building has no rig: the layer count of nulls keeps the stride.
+			if BuildingGeometry.is_building(snap, types[row]):
+				for _layer: int in LAYER_FILES.size():
+					layers.append(null)
+			else:
+				rig = _new_rig(ids[row], types[row], type_ids[types[row]], owners[row], layers)
+				add_child(rig)  # A new id is above every survivor's: the end of the children is its row.
 			rigs.append(rig)
 			last_hp[row] = snap.hp[row]
 			hit_ms[row] = NEVER_HIT
@@ -346,8 +355,17 @@ func _note_hits(snap: MatchSnapshot) -> void:
 
 
 func _drop_rig(old: int) -> void:
-	remove_child(_rigs[old])
-	_rigs[old].queue_free()
+	if _rigs[old] != null:
+		remove_child(_rigs[old])
+		_rigs[old].queue_free()
+
+
+## Where row `row` is in world px: its rig's place, or its position for a row with no rig.
+func _row_position(row: int) -> Vector2:
+	if _rigs[row] != null:
+		return _rigs[row].global_position
+	var snap: MatchSnapshot = runner.snapshot
+	return to_global(ViewScale.milli_to_px_vec(snap.pos_x[row], snap.pos_y[row]))
 
 
 ## A rig with its layers in order, which it appends to `layers`: a null for a type without turret
@@ -439,6 +457,8 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 	var counts: PackedInt32Array = fog.visible
 	var counts_at: int = (player - 1) * fog.cells
 	for row: int in rigs.size():
+		if rigs[row] == null:
+			continue  # A building: BuildingLayer draws it.
 		var from: Vector2 = ViewScale.milli_to_px_vec(prev_x[row], prev_y[row])
 		var to: Vector2 = ViewScale.milli_to_px_vec(cur_x[row], cur_y[row])
 		var at: Vector2 = from.lerp(to, alpha)

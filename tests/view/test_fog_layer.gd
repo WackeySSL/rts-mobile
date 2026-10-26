@@ -18,11 +18,14 @@ const MAIN_SCENE: String = "res://scenes/main.tscn"
 const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
 ## The screens every screen is tested at: base, 20:9 phone and 4:3 tablet, each held both ways.
 const TARGET_SIZES: Array[Vector2i] = ScreenSizes.ALL
-## STYLE.md / ADR 0012 section 6: the z of the layers around the fog, bottom to top.
-const Z_BARS: int = 110
+## ADR 0022 section 2 (which moved the fog from 140 and the bars from 110): the z of the layers
+## around the fog, bottom to top.
+const Z_BASE_PARTS: int = 2
+const Z_FOG: int = 110
+const Z_ROOFS: int = 111
+const Z_BARS: int = 112
 const Z_PROJECTILES: int = 120
 const Z_EFFECTS: int = 130
-const Z_FOG: int = 140
 const Z_MARKERS: int = 150
 
 var _window_size_before: Vector2i
@@ -311,7 +314,7 @@ func test_a_rebuild_and_a_patch_each_record_their_own_time_and_an_idle_frame_non
 	assert_int(reads[0]).is_equal(4)
 
 
-func test_the_main_scene_draws_the_fog_at_z_140_over_the_effects_and_covers_the_map_at_every_size(
+func test_the_main_scene_draws_the_fog_at_z_110_under_the_roofs_and_covers_the_map_at_every_size(
 ) -> void:
 	var packed: PackedScene = load(MAIN_SCENE)
 	var main: Node2D = auto_free(packed.instantiate())
@@ -322,18 +325,22 @@ func test_the_main_scene_draws_the_fog_at_z_140_over_the_effects_and_covers_the_
 	var order: Array[String] = []
 	for child: Node in main.get_children():
 		order.append(String(child.name))
-	assert_array(order.slice(0, 8)).is_equal(
+	assert_array(order.slice(0, 10)).is_equal(
 		[
 			"MatchRunner",
 			"MapView",
+			"BuildingLayer",
 			"UnitLayer",
 			"HealthBarLayer",
+			"BuildingRoofLayer",
 			"ProjectileLayer",
 			"EffectsLayer",
 			"FogLayer",
 			"MarkerLayer"
 		]
 	)
+	assert_int(main.get_node("BuildingLayer").z_index).is_equal(Z_BASE_PARTS)
+	assert_int(main.get_node("BuildingRoofLayer").z_index).is_equal(Z_ROOFS)
 	assert_int(main.get_node("HealthBarLayer").z_index).is_equal(Z_BARS)
 	assert_int(main.get_node("ProjectileLayer").z_index).is_equal(Z_PROJECTILES)
 	assert_int(main.get_node("EffectsLayer").z_index).is_equal(Z_EFFECTS)

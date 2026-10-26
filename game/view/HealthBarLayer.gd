@@ -5,11 +5,13 @@ extends Node2D
 ## lost hp within the last RECENT_MS (`unit_layer.hit_time_ms`, on the unit layer's frame clock).
 ## Own bars are plain, enemy bars have a notch in the top edge, which is the cue that does not
 ## rely on colour. Every bar is filled rects only and is drawn in one `_draw()` (ADR 0011 section
-## 3, z 110 in ADR 0012 section 6). The layer reads `runner.snapshot` and the unit layer's
-## per-row answers, and it brings the unit layer's rows up to the snapshot once at the start of a
-## frame (`sync_rows`), so the tree order of the two layers does not matter.
+## 3, z 112 in ADR 0022 section 2, over the roof parts of the buildings, which moved it from 110,
+## so the bar of a unit behind a roof still shows). The layer reads `runner.snapshot` and the unit
+## layer's per-row answers, and it brings the unit layer's rows up to the snapshot once at the
+## start of a frame (`sync_rows`), so the tree order of the two layers does not matter.
 ##
 ## A unit that the unit layer does not show (an enemy in the fog) gets no bar, whatever its hp did.
+## A row with a footprint is a building and gets no unit bar here (its bar and frame are P84d's).
 ##
 ## A bar is sized in dp, so it looks the same at every zoom: world px per dp is the base px per dp
 ## over the camera zoom. It is centred on its unit, and its bottom edge is r x zoom + 1 dp above
@@ -195,6 +197,8 @@ func _plan() -> void:
 			continue
 		if not unit_layer.is_shown(row):
 			continue  # A rig the fog hides has no bar either (ADR 0010 section 2).
+		if BuildingGeometry.is_building(snap, types[row]):
+			continue
 		var type: int = types[row]
 		var infantry: int = 1 if armours[type] == World.Armour.INFANTRY else 0
 		var shape: int = (2 if owners[row] != local_player else 0) + infantry

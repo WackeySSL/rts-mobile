@@ -26,6 +26,8 @@ const RED: Color = Color("E5484D")
 const SEEN: Vector2i = Vector2i(8500, 18500)
 const DARK: Vector2i = Vector2i(40500, 40500)
 const RED_31: Vector2i = Vector2i(34500, 10500)
+## The plan keeps its points in 32 bit floats, so a point is read to within this.
+const TOLERANCE: Vector2 = Vector2(0.01, 0.01)
 
 var _window_size_before: Vector2i
 var _now_ms: int = 0
@@ -289,6 +291,58 @@ func test_a_shot_shows_its_tracer_when_either_end_is_seen_and_its_flash_when_the
 	assert_int(_effects.active_count()).is_equal(7)
 
 
+func test_a_tracer_with_one_end_seen_ends_on_a_seen_tile_within_16_px_of_the_first_dark_one(
+) -> void:
+	_runner.snapshot.weapon_projectile_speed[0] = 0  # tank_cannon as a hitscan weapon.
+	_see_row_18(10, 18)  # Tiles 10 to 18 of row 18 are seen: the dark begins at x = 19 * 64.
+	# A shooter on a dark tile three tiles east of a seen target: the line starts at the target
+	# and ends at the last seen point towards the shooter, which is under one step short of the
+	# dark tile.
+	var target: Vector2 = ViewScale.milli_to_px_vec(18500, 18500)
+	var muzzle: Vector2 = ViewScale.milli_to_px_vec(21500, 18500) + Vector2(-31.0, 0.0)
+	_tick_with(EffectsRig.shot(Vector2i(21500, 18500), Vector2i(18500, 18500), 0))
+	assert_int(_effects.line_count()).is_equal(2)  # The outline pass and the colour pass.
+	for line: int in 2:  # Both passes share the clipped ends.
+		assert_vector(_effects.line_to(line)).is_equal_approx(target, TOLERANCE)
+		assert_bool(_point_seen(_effects.line_from(line))).is_true()
+		assert_bool(_point_seen(_effects.line_from(line) + Vector2(16.0, 0.0))).is_false()
+		assert_float(_effects.line_from(line).distance_to(muzzle)).is_greater(100.0)
+	# The same with the ends the other way round: a seen shooter, a dark target, three tiles east.
+	_tick_with(EffectsRig.shot(Vector2i(15500, 18500), Vector2i(21500, 18500), 0))
+	assert_int(_effects.line_count()).is_equal(4)
+	var shooter: Vector2 = ViewScale.milli_to_px_vec(15500, 18500)
+	for line: int in range(2, 4):
+		assert_vector(_effects.line_from(line)).is_equal_approx(
+			shooter + Vector2(31.0, 0.0), TOLERANCE
+		)  # The muzzle.
+		assert_bool(_point_seen(_effects.line_to(line))).is_true()
+		assert_bool(_point_seen(_effects.line_to(line) + Vector2(16.0, 0.0))).is_false()
+	# A target one step past the seen tile leaves a line no longer than that step.
+	_tick_with(EffectsRig.shot(Vector2i(18500, 18500), Vector2i(19500, 18500), 0))
+	assert_float(_effects.line_from(4).distance_to(_effects.line_to(4))).is_less_equal(16.0)
+
+
+func test_a_tracer_with_both_ends_seen_is_whole_and_so_is_one_in_the_dark_when_revealed() -> void:
+	_runner.snapshot.weapon_projectile_speed[0] = 0
+	_see_row_18(10, 18)
+	_set_seen_tile(Vector2i(14, 18), false)  # A dark tile between two seen ends.
+	var shooter: Vector2 = ViewScale.milli_to_px_vec(10500, 18500)
+	var target: Vector2 = ViewScale.milli_to_px_vec(18500, 18500)
+	_tick_with(EffectsRig.shot(Vector2i(10500, 18500), Vector2i(18500, 18500), 0))
+	assert_int(_effects.line_count()).is_equal(2)
+	assert_vector(_effects.line_from(1)).is_equal_approx(shooter + Vector2(31.0, 0.0), TOLERANCE)
+	assert_vector(_effects.line_to(1)).is_equal_approx(target, TOLERANCE)
+	# Revealed (the perf arena): every tracer is whole, in the dark too.
+	_effects.reveal_enemies = true
+	_tick_with(EffectsRig.shot(DARK, DARK + Vector2i(3000, 0), 0))
+	assert_int(_effects.line_count()).is_equal(4)
+	var dark_from: Vector2 = ViewScale.milli_to_px_vec(DARK.x, DARK.y)
+	assert_vector(_effects.line_from(3)).is_equal_approx(dark_from + Vector2(31.0, 0.0), TOLERANCE)
+	assert_vector(_effects.line_to(3)).is_equal_approx(
+		ViewScale.milli_to_px_vec(DARK.x + 3000, DARK.y), TOLERANCE
+	)
+
+
 func test_a_projectile_shot_from_the_dark_shows_nothing_until_it_lands_in_sight() -> void:
 	var speed: int = _runner.snapshot.weapon_projectile_speed[0]
 	assert_int(speed).is_greater(0)  # The cannon fires a shell.
@@ -420,3 +474,21 @@ func _tick_with(events: PackedInt32Array) -> void:
 	_runner.snapshot.events = events
 	_runner.ticked.emit(_runner.snapshot.tick)
 	_effects._process(0.0)
+
+
+## Whether the local player sees the tile of the world point `point` (px) in the published fog.
+func _point_seen(point: Vector2) -> bool:
+	return FogLayer.is_seen(
+		_runner.snapshot, 1, ViewScale.px_to_milli(point.x), ViewScale.px_to_milli(point.y)
+	)
+
+
+## The player sees tiles `first` to `last` of row 18 and nothing else.
+func _see_row_18(first: int, last: int) -> void:
+	Rig.blind(_runner.snapshot, 1)
+	for column: int in range(first, last + 1):
+		_set_seen_tile(Vector2i(column, 18), true)
+
+
+func _set_seen_tile(tile: Vector2i, seen: bool) -> void:
+	Rig.set_seen(_runner.snapshot, 1, tile, seen)

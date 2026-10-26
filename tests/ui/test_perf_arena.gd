@@ -131,10 +131,10 @@ func test_the_three_layers_with_the_export_reveal_enemies_in_the_arena_and_not_i
 	# The bars have no export: they follow the unit layer's is_shown().
 	assert_object(arena.bar_layer.unit_layer).is_same(arena.unit_layer)
 	var fog: FogLayer = arena.fog_layer
-	assert_array([fog.z_index, fog.z_as_relative]).is_equal([140, false])
+	assert_array([fog.z_index, fog.z_as_relative]).is_equal([110, false])
 	assert_object(fog.runner).is_same(arena.runner)
 	assert_array([arena.projectile_layer.z_index, arena.effects_layer.z_index]).is_equal([120, 130])
-	assert_int(arena.bar_layer.z_index).is_equal(110)
+	assert_int(arena.bar_layer.z_index).is_equal(112)
 
 
 func test_both_scenes_run_auto_modes_which_headless_are_sync_and_native() -> void:

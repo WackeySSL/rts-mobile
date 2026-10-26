@@ -56,6 +56,12 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | With units selected, tap near an enemy the fog hides | It counts as a tap on the ground: the units move to the point you tapped, with chevrons, and the hidden enemy is not attacked. Once one of your units sees it, the same tap attacks it | |
 | Fight in the fog | Your units only attack enemies your side can see, whichever of your units sees them. An enemy that slips out of sight is no longer attacked: units you sent against it attack-move on to where it was last seen, and the others look for a new target | |
 
+## Buildings
+| Action | Result | Teach |
+|---|---|---|
+| Look at the map | Your own buildings always show. Enemy buildings show only where you see them: an enemy building is drawn while any of the ground it stands on is clear, and it is not drawn on black or dimmed ground | |
+| A unit drives behind (north of) a building | The building's roof hides it. Its health bar still shows on top when it is selected or has just been hit | |
+
 ## Army bar (bottom left)
 | Action | Result | Teach |
 |---|---|---|
