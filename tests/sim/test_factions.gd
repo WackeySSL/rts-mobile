@@ -143,7 +143,7 @@ func test_a_type_without_a_faction_is_queued_at_a_producer_of_any_faction() -> v
 		var world: World = _base()
 		var type: int = Worlds.type_of(world, item[0])
 		var credits: int = world.credits[1]
-		assert_int(world.type_faction[type]).is_equal(-1)
+		world.type_faction[type] = World.TYPE_PAD_NONE
 		Rig.step(world, [Rig.queue(world, 1, item[0])])
 		assert_int(world.dropped_commands).override_failure_message(item[0]).is_equal(0)
 		assert_array(Rig.items(world, 1, item[1])).override_failure_message(item[0]).is_equal(
@@ -212,7 +212,8 @@ func test_the_snapshot_copies_both_faction_tables() -> void:
 
 
 ## The production base with a Headquarters, whose three producers (Headquarters, barracks, vehicle
-## factory) have the faction ALPHA, and the two faction ids registered; every other type has none.
+## factory) have the faction ALPHA, and the two faction ids registered. Every other type keeps the
+## faction the data gives it, so a case that relies on one sets it by hand.
 func _base() -> World:
 	var world: World = Rig.base()
 	Rig.add_headquarters(world)
