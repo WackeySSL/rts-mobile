@@ -60,9 +60,9 @@ static func run(world: World) -> void:
 
 
 ## QUEUE `[type_index]`: true when the item joined the player's queue and its cost was paid. The
-## type needs a tab (a structure's too), the player a producer of that tab (producer_row) and a row
-## of the type's requirement (if it has one), the queue room and at least the type's cost in
-## credits.
+## type needs a tab (a structure's too), the player a producer of that tab (producer_row) whose
+## faction may queue it (`_faction_allows`) and a row of the type's requirement (if it has one), the
+## queue room and at least the type's cost in credits.
 static func apply_queue(world: World, command: Command) -> bool:
 	if command.payload.size() != 1:
 		return false
@@ -71,7 +71,10 @@ static func apply_queue(world: World, command: Command) -> bool:
 		return false
 	var tab: int = world.type_tab[type]
 	var player: int = command.player_id
-	if tab < 0 or tab >= World.TABS or producer_row(world, player, tab) < 0:
+	if tab < 0 or tab >= World.TABS:
+		return false
+	var producer: int = producer_row(world, player, tab)
+	if producer < 0 or not _faction_allows(world, type, producer):
 		return false
 	var queue: int = player * World.TABS + tab
 	var count: int = world.queue_count[queue]
@@ -170,6 +173,14 @@ static func producer_row(world: World, player: int, tab: int) -> int:
 		if owners[row] == player and produces[types[row]] == tab:
 			return row
 	return -1
+
+
+## The producer-faction rule (ADR 0023 section 6): a type with no faction (-1) is queued at any
+## producer; one with a faction only at a producer of that faction, so a producer with no faction
+## queues only the types with none. A player's faction is the faction of what it owns: no state.
+static func _faction_allows(world: World, type: int, producer: int) -> bool:
+	var faction: int = world.type_faction[type]
+	return faction < 0 or faction == world.type_faction[world.type_index[producer]]
 
 
 ## Whether the player owns a row of `type` (-1 = no requirement).

@@ -150,6 +150,7 @@ func test_prepare_pads_every_type_table_to_the_type_count_and_keeps_entries() ->
 		&"type_dock_y": [0, 0, 0],
 		&"type_exit_x": [0, 0, 0],
 		&"type_exit_y": [0, 0, 0],
+		&"type_faction": [-1, -1, -1],
 	}
 	assert_array(World.TYPE_ARRAYS).is_equal(expected.keys())
 	for _pass: int in 2:
@@ -300,7 +301,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 			skipped.append(column)
 		else:
 			others.append(column)
-	assert_int(packed.size()).is_equal(98)
+	assert_int(packed.size()).is_equal(99)
 	assert_int(ints.size()).is_equal(53)
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
 	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper
@@ -312,7 +313,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	byte_tables.append("terrain_buildable")
 	assert_array(not_int32).contains_exactly_in_any_order(byte_tables)
 	var unlisted: Array[String] = ["type_ids", "weapon_ids", "terrain_ids", "rng", "prepared"]
-	unlisted.append_array(["fog", "flow", "sep_grid", "target_grid"])
+	unlisted.append_array(["fog", "flow", "sep_grid", "target_grid", "faction_ids"])
 	assert_array(others).contains_exactly_in_any_order(unlisted)
 	_assert_listed_once(packed, array_lists)
 	_assert_listed_once(ints, scalar_lists)
