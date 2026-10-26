@@ -9,18 +9,33 @@ markers and the gallery zoom row. v1.2 (Phase 2, P34) adds the rifle and rocket 
 texture, the effects atlas and the specs for combat effects, health bars, fog and terrain. v1.3 (Phase 3, P91) adds
 the six buildings, the ore cells and the two ghost patterns, and two more gallery pages. v1.4 (Phase 3, P92) adds
 the heavy tank, the artillery and the harvester, the tab, item and glyph icons, the two rally flags, and two more
-gallery pages. Rules marked **(new)** go beyond the skill and are waiting for Michael's approval (list at the end).
+gallery pages. v1.5 (Phase 3, P91b) redraws the six buildings and the five building item icons in an
+oblique 3/4 view (art direction B, ADR 0022) and changes Look, Scale, Palette, Drawing rules, Technical
+rules, Buildings, Ghosts and Health bars to match; the units (P92b), the ore and the ground (P92c)
+follow, and the rules below say where they still describe the v1 look. Rules marked **(new)** go
+beyond the skill and are waiting for Michael's approval (list at the end).
 
 ## Look
-Clean, flat, top-down "military map" style with strong silhouettes, readable at small size on a
-phone. Not cartoonish, not photoreal. Pure top-down view, light from the top-left.
+Realistic and muted, readable at small size on a phone (ADR 0022, Michael 2026-10-26: the first look
+was "too square and too toy-like", he wants it "more true to nature"). Real materials (poured
+concrete, corrugated steel, tarmac, sandbags, canvas, rust, dirt), believable proportions and detail
+density, soft shading and weathering, small team markings. Not cartoonish, not photoreal, no flat
+colour fields. One light from the top left for everything. **Buildings are drawn in an oblique 3/4
+view**: the roof and the south facade, the sprite standing on its footprint and rising 0.75 tile above
+it (see "Buildings"). Units, effects, ore and ground stay top-down, and so do the unit icons, the tab
+icons and the glyphs; the five building item icons follow the buildings and are drawn in the oblique
+view too (see "Icons and glyphs"). The units, the ore and the ground are redrawn in the same treatment
+in P92b and P92c; until then the rules below that speak of the 3 px outline or of flat colours still
+describe them.
 
 ## Scale
 - 1 tile = 64 px in game at zoom 1. Author at 2x: 1 tile = 128 px in the SVG.
-- Canvas at 2x: infantry squad 64x64, light vehicles 96x96, **tanks 128x128**, harvester 160x160,
-  buildings 128x128 (1x1 tile), 256x256 (2x2 tiles) or 384x384 (3x3 tiles), an ore cell 128x128,
-  a rally flag 128x128. **Icons and glyphs are 128x128 with import scale 1.0 (new)**, because they
-  are drawn at 24 to 64 dp, not in tiles (see "Icons and glyphs").
+- Canvas at 2x: infantry squad 64x64, light vehicles 96x96, **tanks 128x128**, harvester 160x160, an
+  ore cell 128x128, a rally flag 128x128. **Buildings are the footprint plus the rise**: 128 px per
+  footprint tile and 96 px (0.75 tile, 48 px in game) above it, so a 3x3 building is **384x480**, a
+  2x2 building **256x352** and the 1x1 defence turret **128x224** (new, ADR 0022 section 1; see
+  "Buildings"). **Icons and glyphs are 128x128 with import scale 1.0 (new)**, because they are drawn
+  at 24 to 64 dp, not in tiles (see "Icons and glyphs").
 - Godot rasterises an SVG once, at import. Showing a sprite above scale 1 therefore looks soft.
   The gallery's main row shows scale 1. Its zoom row shows the light tank at 0.75, 1.0 and 1.5.
 
@@ -38,11 +53,23 @@ phone. Not cartoonish, not photoreal. Pure top-down view, light from the top-lef
 | Dirt shade / highlight (new) | #6F583B / #A3865E | 92 / 138 (the dirt itself, #8A6F4D, is 115) |
 | Water | #2E5E7E / #3C7396 | |
 | Ore | #F2B705, highlight #FFD84D, shade #A67C00 | |
+| Tarmac (new) | #4A4F53 to #62676A | 78 to 102 |
+| Concrete shade / mid / lit (new) | #6B6D68 / #8D8F88 / #B3B4AC | 108 / 142 / 179 |
+| Corrugated steel (new) | #5D6B68 to #A0ACA8 | 102 to 168 |
+| Olive drab (new) | #46532F / #6B7A4F / #78885B | 75 / 113 / 126 |
+| Rust (new) | #8F5731 | 99 |
 | Team A / team B / neutral | #2F80ED / #E5484D / #9AA5B1 | 116 / 120 / 163 |
 | UI accents: warning / danger / ok | #F5A524 / #E5484D / #30A46C | |
 | HUD panel backdrop | #0F141C at 78% | 19 |
 
 Luminance is 0.299 R + 0.587 G + 0.114 B. Use it when you judge the greyscale check below.
+
+The rows marked (new) above the team colours are A's muted materials of ADR 0022: the
+building art and the building icons use them, with the neutral tones of their gradients (a dark shade
+of the material for edges, #76694F for the dirt of an apron, #A99869 for sandbags, #1C272B to
+#4A5E63 for glass). The unit, ore and ground art keeps the older rows until P92b and P92c redraw
+it. The outline row stays the edge colour of icons, effects and markers; a building has a dark shade
+of its own material (#25292A to #2C3030) instead.
 
 The HUD panel backdrop is the one palette value that lives in the UI Theme (`game/ui/theme.tres`,
 `Color(0.06, 0.08, 0.11, 0.78)`, behind the selection panel). The hex is the 8-bit rounding of the
@@ -52,30 +79,45 @@ theme's floats: the theme is the value of record, and `tests/ui/test_ui_theme.gd
 a team layer has R = G = B, so the runtime tint stays clean.
 
 ## Drawing rules
-- Outline 3 px (at 2x) on the outer silhouette, 1.5 px on inner details. Outline colour #1C2127
-  (team layers use the edge grey instead).
-- Three tones per material plus a highlight on edges that face the top-left.
-- Filled shapes and gaps are at least 2 px at 2x. Inner outline strokes may be 1.5 px. (This is how
-  we read the skill's "1.5 px inner details" together with "nothing thinner than 2 px".)
-- **Elevation reads as lightness (new).** The lower the plane, the darker the olive: hull deck
-  #4E5A3A, turret #6B7A4F, hatches and barrel in metal, highlights #8C9A6B / #A9B4BE. This keeps
-  the turret apart from the hull at 32 px greyscale without a bigger palette.
+- **No heavy outline (new, ADR 0022).** A thin dark edge, about 1.5 px at 2x, in a dark shade of the
+  material on the silhouette and the inner details; a soft dark contact rim where a volume meets the
+  ground; a short soft shadow. Icons keep an edge of 3 to 4 px in #1C2127 (they are seen small on the
+  dark HUD tile), and the art that v1 drew with the 3 px outline (units, ore, flags, effects) keeps it
+  until P92b and P92c redraw it.
+- Three tones per material plus a highlight on edges that face the top left. Texture comes from
+  gradients and dash arrays, never from a `pattern` (see "Technical rules").
+- Filled shapes and gaps are at least 2 px at 2x. Edges and thin inner lines may be 1.5 px. (This is
+  how we read the skill's "1.5 px inner details" together with "nothing thinner than 2 px".)
+- **Elevation reads as lightness.** The lower the plane, the darker the olive: hull deck #4E5A3A,
+  turret #6B7A4F, hatches and barrel in metal, highlights #8C9A6B / #A9B4BE. This keeps the turret
+  apart from the hull at 32 px greyscale without a bigger palette.
+- **Buildings (new).** The south facades lie in shade and the roof is lit from the top left. Shading
+  and contact shadows stay inside the sprite box: there is no cast shadow onto the ground east or
+  south of the footprint. A building's own shadow is three nested passes at low alpha on the apron
+  under it. A rotating layer (a gun head, a turret) has no shadow.
 - The silhouette must be identifiable at 32 px in greyscale. A gun or other weapon must also stick
   out of the body as its own shape in the pure silhouette, at least 3 px long and 3 px thick at
   32 px (see "Readability check").
-- The team-coloured area covers 20-35% of the visible surface and always includes a stripe or
-  marker visible from above.
+- **Team colour covers about 8 to 12 % of the visible surface (new, ADR 0022 question 3, Michael:
+  ja)**, as marks that are seen from above: a stripe along an eave or a cornice, a band round a
+  cylinder, a ring painted on a roof, a pennant, a panel. Never a large plate. Ownership is therefore
+  weaker at zoom 0.75 than the old 20 to 35 %; the gallery shows both teams at every zoom, so judge it
+  there. The old art keeps its larger share until P92b redraws the units.
 
 ## Technical rules
 - One drawing per file with `width`, `height` and `viewBox="0 0 W H"` set to the canvas.
 - Allowed elements: `svg`, `g`, `path`, `rect`, `circle`, `ellipse`, `polygon`, `polyline`, `line`,
-  `linearGradient` and its `stop` children (sparingly; the tank uses none). Not allowed: text, image, filter, mask,
+  `defs`, `linearGradient`, `radialGradient` and its `stop` children, `clipPath`, and `use` that
+  references only `href="#id"` of an id in the same file (new, ADR 0022). A group `opacity` and dash
+  arrays are fine and flatten overlapping shapes (used for the shadows and for corrugation). A `mask`
+  only with solid fills: Godot 4.7.2's ThorVG hides everything under a gradient-filled mask. **No
+  `pattern`**: ThorVG draws none, so the file would look empty in the game (the texture of a roof is a
+  wide line with a short dash array, clipped or not). Not allowed: text, image, filter,
   foreignObject, external href, style blocks, scripts, raster data.
-- At most 20 KB per file; integer or one-decimal coordinates. A group `opacity` is fine and flattens
-  overlapping shapes (used for the shadow).
-- Start each file with XML comments: the layer, then the silhouette in one line. Do not use the
-  forbidden words in comments either, because the check is a plain `grep` (this rules out words
-  such as "description", which contains "script").
+- At most 28 KB per file (new; was 20 KB); integer or one-decimal coordinates (gradient fractions and
+  opacities may have two decimals). `tests/art/test_art_assets.gd` reads every file for these rules.
+- Start each file with two XML comments: the layer, then the silhouette in one line that begins
+  `Silhouette:` (`Shape:` for a team layer, `Pattern:` for a tile) and says what the shape is.
 - Naming: `assets/art/svg/<category>/<name>[_hull|_turret|_team].svg` in snake_case.
 - Godot imports SVG directly. Commit the `.svg.import` next to each file with `svg/scale=0.5`:
   1. Write the SVG, run `godot --headless --path . --import` (this creates the `.import` with
@@ -91,7 +133,7 @@ Vehicles are drawn from three layers that share one canvas size:
 | --- | --- | --- |
 | 1 | `<name>_hull.svg` | Tracks or wheels, hull deck and the ground shadow of the whole vehicle |
 | 2 | `<name>_team.svg` | White and grey team marks, tinted with `modulate` |
-| 3 | `<name>_turret.svg` | Turret and gun; rotates about the canvas centre |
+| 3 | `<name>_turret.svg` | Turret and gun; a unit's turret rotates about the canvas centre, a building's gun head about the roof's centre, (tex_w / 2, tex_w / 2) |
 
 - Draw order across rigs, not per rig (ADR 0012 section 6, one z per batch group): every ring, then
   every hull, then every team layer, then every turret. Two overlapping rigs can therefore show a
@@ -101,7 +143,10 @@ Vehicles are drawn from three layers that share one canvas size:
   edge and stays inside its unit's footprint, and no hull relies on its team layer to look finished.
 - Hull and team share one orientation. The hull faces +x (east). Rotating the vehicle rotates hull
   and team together.
-- The turret pivot is the canvas centre. Turret art is drawn facing +x.
+- The turret pivot of a unit is the canvas centre. Turret art is drawn facing +x. A building's gun
+  head is the one exception: it turns about (tex_w / 2, tex_w / 2) of its texture, which is (32, 32)
+  imported px on the 64x112 px texture of the 128x224 building canvas (the roof's centre, the
+  footprint's centre lifted by the rise; see "Buildings"), not about the canvas centre.
 - All layers of one unit have the same canvas. Tanks: **128x128 at 2x**.
 - Import scale **0.5** for every layer, so 128 px becomes 64 px, one tile.
 - Team layer: tinted at runtime with `modulate` (team A #2F80ED, team B #E5484D, neutral #9AA5B1).
@@ -115,31 +160,62 @@ Vehicles are drawn from three layers that share one canvas size:
   tube), clear of the shoulders and weapons so it shows at any heading.
 
 ## Buildings
-Six buildings, drawn from above on a pad that covers their whole footprint, so the sprite's box is
-the blocked cells (ADR 0017). Each has one canvas per layer, one tile (128 px at 2x) per footprint
-tile: 3x3 is 384x384, 2x2 is 256x256 and the 1x1 defence turret 128x128. Import scale **0.5**, so
-the sprite is 64 px per footprint tile in game. The pad's outline starts 6 px inside the canvas and
-the shadow (offset 4,4) ends inside it.
-- Files: `buildings/<id>_hull.svg` and `buildings/<id>_team.svg` by building id, the names of the
-  unit layers, so one loader reads both. `hull` is the building's body: pad, roof and the ground
-  shadow. `team` is white and grey marks tinted at run time, under the same rules as a unit's. Only
-  the defence turret has `turret`, a gun head that turns about the canvas centre under the rules
-  for rotating layers (no shadow, shading mirrored about the gun line, one off-axis detail).
-- The hull draws a neutral plinth under every team mark (the darkest olive, or a metal deck), so it
-  looks finished without its team layer, and the team mark sits 3 to 4 px inside it with its own
-  #4D4D4D edge. Buildings never overlap, so the draw-order rule for rigs holds trivially.
-- The team-coloured share is 20-35 % of the building's visible body (the shadow left out) at every
-  quarter turn of the gun head. The team marks are large roof plates and rings, because a building
-  is big: they say who owns it from one tile away.
-- Use seen from above: a refinery or a vehicle factory shows what it is for. The refinery's gold
-  funnel and the factory's bay with its two arrows both sit in the middle of the south wall. The
-  art therefore assumes the dock and the exit are the middle cell south of the footprint: offsets
-  (1, 3) for the 3x3 buildings. The barracks' yard opens south, so its exit is (0, 2) or (1, 2).
-  The offsets are data (`BuildingDef`, P72); this is what the sprites show.
-- The view dims a building on low power with `modulate` on the whole rig. Health bars, the offline
-  glyph and damage are the view's and P92's, not part of these files.
-- The hazard arrows of the vehicle factory are the UI warning accent #F5A524 (palette), the refinery
-  funnel holds the ore colours; nothing else in a building uses either.
+Six buildings in an oblique 3/4 view (ADR 0022, direction B). The sprite stands on its footprint and
+rises above it, so the blocked cells (ADR 0017) are the bottom of the picture.
+- **Projection.** A ground point (x, y) of the footprint is drawn at (x, y) and a point h px above the
+  ground at (x, y - h). There is no sideways skew: the east and west walls are edge-on, so a sprite
+  never leaves its footprint's columns, and the ground plane is not foreshortened, so a circle on
+  the ground is a circle. A roof is the footprint lifted by the wall height; the south facade shows
+  below it, in shade.
+- **Canvas.** The footprint (128 px per tile at 2x) plus the rise of 0.75 tile (96 px at 2x, 48 px
+  in game): 3x3 **384x480**, 2x2 **256x352**, 1x1 **128x224**, import scale **0.5**, so a building is
+  192x240, 128x176 or 64x112 px in game. Every layer of a building has the same canvas, the gun head
+  too, and `tests/art` pins it. A low building leaves the top clear; tall parts (a stack, a mast, a
+  crane) may rise to the top edge, and nothing is drawn outside the canvas.
+- **Anchor.** The canvas's bottom edge lies on the footprint's south edge and its left edge on the
+  footprint's west edge, so the sprite box in world px is `(origin_col * 64, (origin_row + foot_h) *
+  64 - tex_h, foot_w * 64, tex_h)`: the footprint plus 48 px to the north. The view derives the rise
+  from the texture (`tex_h - foot_h * 64`); no constant holds it. Nothing is drawn outside the box;
+  in particular there is no cast shadow onto the ground east or south of the footprint.
+- **The cut.** The view draws each building in two parts, cut along the horizontal line through the
+  footprint's centre, the middle line (`y_mid = origin_row * 64 + foot_h * 32` in world px, which is
+  `tex_h - foot_h * 32` px from the top of the sprite): the **base part**, the canvas rows south of
+  the line, is drawn under every unit layer; the **roof part**, the rows north of it, over every unit
+  layer and over the fog. The line alone defines the parts, not what the art shows: of a 3x3 building
+  the base part is the south 48 px of the roof plus the facade, of a 2x2 building the south 16 px of
+  the roof plus the facade, of the 1x1 turret the lower 32 px of the facade. The art is not drawn to
+  the cut, but it must read when cut: both parts hold ink (a pin in `tests/art`), and a tank north
+  of a building stands behind its roof, a tank south of it in front of its wall. The gallery's Build
+  page shows both, and its Seam page the building that a vision edge crosses.
+- **Files.** `buildings/<id>_hull.svg` and `buildings/<id>_team.svg` by building id, the names of the
+  unit layers, so one loader reads both; only the defence turret has `_turret.svg`. `hull` is the
+  body: a ragged apron of hard standing on the footprint (not a square pad), the structures with
+  their roofs, facades and details, and the soft shadows. `team` is white and grey marks, tinted at
+  run time (greys only, R = G = B) and drawn over the hull under the same rules as a unit's: each
+  mark has its own #4D4D4D edge and sits 1 to 2 px inside a neutral element of the hull, so the hull
+  looks finished without its team layer. The team-coloured share is about 8 to 12 % of the
+  visible body (the shadow left out, the area under the gun head not counted) at every quarter turn
+  of the head; measured 9.2 to 11.5 %.
+- **The gun head** (`defence_turret_turret.svg`) turns about the roof's centre, the footprint's
+  centre lifted by the rise: (32, 32) imported px on the 64 px wide canvas of the 1x1 turret, which is
+  the hull's canvas too. It has no shadow, is shaded the same either side of the gun line and has one
+  off-axis detail (the sight hatch, on the upper side). All of it lies within 32 px of the pivot, so
+  at any heading it stays inside the sprite box. The hull holds the round cupola, its roof and the
+  steel turntable ring the head sits on, so it looks finished without a head. The muzzle block
+  (12 by 18 px at 2x) lies wholly outside the cupola's roof, so the gun is its own shape.
+- **Use seen from above:** a refinery or a vehicle factory shows what it is for. The refinery's hopper
+  and ramp and the factory's bay door both sit in the middle of the south wall. The art therefore
+  assumes the dock and the exit are the middle cell south of the footprint: offsets (1, 3) for the
+  3x3 buildings. The barracks' yard opens south, so its exit is (0, 2) or (1, 2). The offsets are
+  data (`BuildingDef`, P72); this is what the sprites show.
+- **Low power.** The view dims a building with the colour of the quads it draws, both parts alike
+  (ADR 0022 sections 2 and 4), not with `modulate` on a rig. Health bars, the offline glyph and damage
+  are the view's, not part of these files.
+- The hazard chevrons on the vehicle factory's lintel are the UI warning accent #F5A524 (palette). The
+  refinery's hopper heap is its own gold gradient, #ECCA55 / #CF9F1D / #8A6410 on a #3E3016 bed with
+  #F3D878 flecks, a weathered cousin of the ore colours that needs the in-between stops of a
+  gradient (it is not the palette's #F2B705 / #FFD84D / #A67C00); nothing else in a building uses
+  either amber or gold.
 
 ## Ore
 Nine opaque tiles, `ore/ore_<level>[a|b].svg`, 128x128 at 2x, import scale 0.5, so one tile is
@@ -175,28 +251,36 @@ gold 180 to 212 with a 3 px outline at 32. At 32 px per tile in greyscale the fi
 by the number and size of the nuggets alone, and level 0 by its dark pits.
 
 ## Ghosts
-A ghost is a building drawn as a plan: where the player is about to place one (ADR 0019 section
-2), and a building last seen (ADR 0017 section 3, plan P84c). Two pattern tiles do the work, both
-seamless, white and grey only and tinted at run time like a team layer: `ui/ghost_hatch.svg` and
-`ui/ghost_seen.svg`, 128x128 at 2x, import scale 0.5, so 64 px. They are drawn tiled
-(`TextureRect` with `stretch_mode` TILE, or a tiled `draw_texture_rect`) over the **footprint
-rectangle**, not the sprite's outline, because the hatch also shows which cells are blocked.
-Each meaning has its own shape (see "Shape as second cue"): bold diagonal bands rising to the right
-mean it does not fit, fine staggered dots mean last seen, and a solid frame and no pattern mean it
-fits.
+A ghost is a building drawn as a plan: where the player is about to place one (ADR 0019 section 2,
+ADR 0022 section 5), and a building last seen (ADR 0017 section 3, plan P84c, ADR 0022 section 4).
+Two pattern tiles do the work, both seamless, white and grey only and tinted at run time like a team
+layer: `ui/ghost_hatch.svg` and `ui/ghost_seen.svg`, 128x128 at 2x, import scale 0.5, so 64 px. They
+are drawn tiled (`TextureRect` with `stretch_mode` TILE, or a tiled `draw_texture_rect`): the hatch
+over the **footprint rectangle**, because it also shows which cells are blocked, and the dots over
+the **whole sprite box**, the footprint and the 48 px above it, because the remembered picture, roof
+included, is what they mark. Each meaning has its own shape (see "Shape as second cue"): bold
+diagonal bands rising to the right mean it does not fit, fine staggered dots mean last seen, and a
+solid frame and no pattern mean it fits.
 
 | Ghost | Building | Wash | Pattern | Frame |
 | --- | --- | --- | --- | --- |
-| Fits | own team colour, faded as one group | #30A46C | none | solid, #30A46C |
-| Does not fit | own team colour, faded as one group | #E5484D | `ghost_hatch.svg` tinted #E5484D | solid, #E5484D |
-| Last seen | the other team's colour, not faded | none | `ghost_seen.svg` tinted #9AA5B1 | none, no health bar |
+| Fits | own team colour, the whole sprite, faded as one group | #30A46C on the footprint | none | solid on the footprint, #30A46C |
+| Does not fit | own team colour, the whole sprite, faded as one group | #E5484D on the footprint | `ghost_hatch.svg` tinted #E5484D over the footprint | solid on the footprint, #E5484D |
+| Last seen | the other team's colour, not faded | none | `ghost_seen.svg` tinted #9AA5B1 over the sprite box | none, no health bar |
+
+A placement ghost is the whole sprite in the projection, anchored on the footprint's south edge like a
+placed building and not cut (it is above every unit layer). The draw order is the wash on the
+footprint, the faded sprite, the hatch if it does not fit, the solid frame on the footprint and the
+reason's glyph at the footprint's centre, so the cells that will be blocked read through the sprite
+and the overhang shows the faded sprite only.
 
 The numbers: sprite alpha 0.7 (the whole rig in one `CanvasGroup`, faded through its
 `CanvasGroup.self_modulate`: `modulate` would reach the hull and team sprites too and blend twice,
 so the hull would show through a team plate, as `MoveMarkerLayer` notes), wash alpha 0.3, hatch alpha 0.8, dots alpha 0.7 and a frame 3 dp wide
 (the marker stroke rule, dp over zoom in world space; the gallery draws 3 base px). A last-seen
-ghost is drawn under the fog like any explored tile, so it is dimmed by the explored fog alpha (140)
-and carries no other dimming. The reason's glyph for a placement that does not fit is
+ghost is dimmed by the explored fog alpha (140) and carries no other dimming: its base part lies under
+the fog layer and its roof part carries the dim as its quad colour (ADR 0022 section 4), so both
+parts match. The reason's glyph for a placement that does not fit is
 `icons/glyph_reason_<reason>.svg` (see "Icons and glyphs"). It is drawn on top of the frame at
 32 dp and tinted danger red like the hatch under it, so its file carries a dark seat of its own:
 a glyph without one has the hatch's fill and the hatch's edge. The gallery centres
@@ -259,10 +343,12 @@ selection ring does. The world art (units, buildings, flags) keeps scale 0.5.
   `occupied`, `unexplored`, `too_far`, `cap`); the view finds it by name. `OK` has none, and the
   "Blocked" of a pending ghost uses `glyph_reason_occupied`.
 
-**Item icons** are in palette colours, top-down like the sprites and simplified for a small size,
-with a 4 px outline, thin inner details at 2 to 3 px and no drop shadow, on a clear canvas: the
-tile draws its own panel. A unit carries one neutral grey (#9AA5B1, the palette's neutral) where
-its sprite has team plates, and a building carries none: a build tile is not a team's.
+**Item icons** are in palette colours (a building icon in A's muted materials, a unit icon in the v1
+palette until P92b), drawn like the sprites (a unit top-down, a building in the oblique view, the
+roof and the south wall) and simplified for a small size, with a 3 to 4 px edge in #1C2127, thin
+inner details at 2 to 3 px and no drop shadow, on a clear canvas: the tile draws its own panel. A
+unit carries one neutral grey (#9AA5B1, the palette's neutral) where its sprite has team plates,
+and a building carries none: a build tile is not a team's.
 
 **Tab and glyph icons** are drawn in the team layer greys, white #FFFFFF, shade #BFBFBF and edge
 #4D4D4D, every colour R = G = B, and are tinted at run time with `modulate`, so the HUD says the
@@ -303,11 +389,11 @@ under the 82 % bound for an icon.
 | `tab_structures.svg` | A wide workshop from the front, a sawtooth roof of three teeth, a tall chimney on the right and a dark doorway. |
 | `tab_infantry.svg` | A soldier from the chest up, a round helmet with a wide brim over a grey face, on sloping shoulders. |
 | `tab_vehicles.svg` | A tank from the side, a long track pod with four grey wheels, a sloped hull, a boxy turret and one long barrel. |
-| `item_power_plant.svg` | One big and one small round drum with dark open mouths, side by side over a low wide ribbed hall. |
-| `item_refinery.svg` | One fat round silo and two small ones stepping off to the right above a wide hall, a gold-filled funnel jutting out of its front. |
-| `item_barracks.svg` | A U of three long olive roofs round a bare metal yard that opens to the bottom, a dark door at its head. |
-| `item_vehicle_factory.svg` | One wide hall whose roof is four bright stripes, a dark open bay under it with two orange arrows pointing out. |
-| `item_defence_turret.svg` | A round gun pit ringed by eight fat sandbags, a round gun head with one thick barrel and a wide muzzle block leaving to the right. |
+| `item_power_plant.svg` | A slender banded chimney and a fat flared cooling tower with a steam puff rise behind one long olive-roofed hall with dark windows. |
+| `item_refinery.svg` | One fat round tank and two small ones stepping off to the right rise behind a wide corrugated hall, a gold-filled funnel jutting out of its front. |
+| `item_barracks.svg` | A U of three olive pitched-roof huts round a bare gravel yard that opens to the bottom, a sandbag ring in the yard. |
+| `item_vehicle_factory.svg` | One wide hall whose roof is four bright slopes between dark glazing, a crane jib over its corner and a dark bay under an orange hazard lintel. |
+| `item_defence_turret.svg` | A squat round bunker ringed with sandbags under a narrower cupola, a gun head on top with one thick barrel and a wide muzzle block leaving to the right. |
 | `item_rifle_squad.svg` | Four soldiers in a loose diamond, each a broad oval with a grey helmet cover and a short stubby rifle to the right. |
 | `item_rocket_squad.svg` | Two staggered soldiers, each with a long fat launch tube flared at the back and ending in an orange warhead: two parallel bars. |
 | `item_light_tank.svg` | An H on its side: two long round-ended track pods, a flat deck, a compact turret and one long barrel. |
@@ -386,12 +472,12 @@ in doubt, choose a plainer real-world form.
 | Light tank | A plain light tank shaped like an H on its side: two long round-ended track pods joined by a short flat deck, a compact rounded-rear turret, and one long vented barrel leaving through the front bay. | `units/light_tank_{hull,team,turret}.svg`, 128x128 |
 | Rifle squad | Four soldiers in a loose pinwheel diamond, each a broad-shouldered oval with a round helmet cover and a short stubby rifle held out to the right of the head. | `units/rifle_squad_{hull,team}.svg`, 64x64, no turret |
 | Rocket squad | Two staggered soldiers, each carrying a long fat launch tube over the right shoulder, flared at the back and ending in a rounded orange warhead: the squad reads as two parallel bars. | `units/rocket_squad_{hull,team}.svg`, 64x64, no turret |
-| Headquarters | A square pad with cut corners carrying a plus-shaped roof, a round dome where the four arms cross and a small square deck in each corner. | `buildings/headquarters_{hull,team}.svg`, 384x384 |
-| Power plant | One big and one small round drum with dark open mouths over a low ribbed hall on the left and a tall yard of three boxes on the right, on a rounded square pad. | `buildings/power_plant_{hull,team}.svg`, 256x256 |
-| Refinery | One fat round silo and two small ones stepping off to the right behind a wide hall, with a belt rising from a gold-filled funnel that juts out of the middle of the front. | `buildings/refinery_{hull,team}.svg`, 384x384 |
-| Barracks | A U of three long olive pitched roofs round a bare yard that opens to the front, a raised metal spine along the ridge of all three, on a square pad. | `buildings/barracks_{hull,team}.svg`, 256x256 |
-| Vehicle factory | One wide hall with a five-tooth sawtooth roof across the back, a dark doorway in its front wall and an open bay with two arrows pointing out, crates on the left and a round tank on the right. | `buildings/vehicle_factory_{hull,team}.svg`, 384x384 |
-| Defence turret | A round gun pit ringed by eight fat sandbags, with a squat wedge-shaped gun head on top whose single long barrel ends in a wide muzzle block. | `buildings/defence_turret_{hull,team,turret}.svg`, 128x128 |
+| Headquarters | A wide two-storey concrete block with a parapet roof, a taller control tower with a lattice mast at its west end, a lift housing, vents and a dish on the roof and a flat porch canopy on two pillars at the middle of the south wall over a paved forecourt with a flagpole. | `buildings/headquarters_{hull,team}.svg`, 384x480 |
+| Power plant | A tall slender banded chimney and a fat flared cooling tower with a plume of steam stand behind a long olive-roofed turbine hall with arched windows, and a fenced yard of two finned transformer tanks and a kiosk fills the south-east corner. | `buildings/power_plant_{hull,team}.svg`, 256x352 |
+| Refinery | A tall chalk-grey tank and two shorter ones stand behind a long corrugated hall whose south wall carries a roller door, a pipe run and a tall elevator housing, with an ore hopper and ramp opening at the middle of the south edge. | `buildings/refinery_{hull,team}.svg`, 384x480 |
+| Barracks | Three olive corrugated huts form a U round a gravel yard that opens to the south, a long one across the north with stovepipes and a row of doors and two shorter ones down the west and east edges showing plank gable ends, with a flagpole inside a sandbag ring in the yard and a sandbag bastion on each side of the open end. | `buildings/barracks_{hull,team}.svg`, 256x352 |
+| Vehicle factory | One wide steel-walled hall under a five-tooth sawtooth roof of bright slopes and dark glazing, a tower crane on its roof corner with a crate on its hook, and a big bay door with a hazard-striped lintel at the middle of the south wall that opens onto a concrete ramp, a bare tracked chassis and drums on the forecourt. | `buildings/vehicle_factory_{hull,team}.svg`, 384x480 |
+| Defence turret | A squat round concrete bunker with a ring of sandbags on its roof carries a narrower round cupola whose flat roof holds a steel turntable ring, with a dark arched door and two firing slits in the bunker wall; the gun head is a rounded wedge of cast steel whose single long barrel ends in a wide slotted muzzle block. | `buildings/defence_turret_{hull,team,turret}.svg`, 128x224 |
 | Heavy tank | A squat armoured slab: two broad flat-sided track pods with chamfered fronts joined by a deep deck whose lit wedge nose pokes out ahead of them, a wide eight-sided turret with a boxy rear bustle, and one thick barrel with a fat fume bulge and a cross-bar muzzle brake. | `units/heavy_tank_{hull,team,turret}.svg`, 128x128 |
 | Artillery | A long narrow wheeled carrier with three fat tyres a side, a short armoured cab at the front and a wide folded spade plate across the back that makes the rear a T, carrying a squarish open-topped gun house with a sloped front shield, a fat recoil sleeve and one very long thin barrel. | `units/artillery_{hull,team,turret}.svg`, 128x128 |
 | Harvester | A combine-like ore hauler: two long round-ended track pods either side of one big square open bin, a small cab in front of it and a wide toothed reel bar across the nose. | `units/harvester_{hull,team}.svg`, 160x160, no turret |
@@ -436,18 +522,23 @@ degrees, the pinwheel and the two bars stay apart and the heading reads. Detail 
 of metal between the rifle outlines, 1.9 units (1 px at 32 px) between each rifle tip and the next
 soldier, and on each helmet cover a full 1.5 px edge with a 2.0 px grey shade, both at the minimum.
 
-Building results (P91, scratch script, imported scale 0.5, alpha above 0.5): the six team layers
+Building results (P91b, scratch script, imported scale 0.5, alpha above 0.5): the six team layers
 have no non-grey pixel. The visible team share, by the tank's definition (shadow left out, nothing
-under the gun head), is 24.8 % (headquarters), 22.6 % (power plant), 22.7 % (refinery), 24.2 %
-(barracks), 23.2 % (vehicle factory) and 26.0 % (defence turret, the same at 0, 90, 180 and 270
-degrees). The silhouette of each was drawn at 32 px for its longest side, in greyscale on grass and
-sand, and at 48 px per tile (the camera's 0.75 zoom). At 32 px the six read apart: the cut-corner
-cross with its dome, the two drums beside a yard of three boxes, the three silos over a bright gold
-funnel, the U, the five roof stripes over a dark bay, and the ring with a gun. In the pure
-silhouette the defence turret's gun is its own shape: the muzzle block leaves the pit 4 px by 6 px
-at 32 px (7 by 12 at 64). Both ground tones keep every building apart because of the outline (32)
-and the pad, which is darker (100) than the grass (110 and 127) and the sand (186) under it. The
-ore tiles at 32 px per tile in greyscale read by nugget count and size (see "Ore").
+under the gun head), is 10.5 % (headquarters), 10.6 % (power plant), 9.2 % (refinery), 11.4 % (barracks),
+10.4 % (vehicle factory) and 11.3 to 11.5 % (defence turret, at 0, 90, 180 and 270 degrees). No layer
+has an opaque pixel on the north, west or east edge of its canvas, and every hull reaches within 1 px
+of the south edge. The file sizes are 7.8 KB (defence turret) to 24.7 KB (refinery) for a hull, under
+the 28 KB limit. The silhouette of each was drawn at 32 px for its longest side, in greyscale on grass
+and sand, and at 48 px per tile (the camera's 0.75 zoom). At 32 px the six read apart: the wide
+block with a ringed chevron badge on its roof and a mast, the two tank domes over a wide hall, the horizontal
+stripes of the sawtooth roof over a dark bay and a crane jib, the chimney beside a flared tower over
+a green hall, the U of three roofs with a round yard, and the round tower with a gun leaving to the
+right. In the pure silhouette the defence turret's gun is its own shape: the muzzle block is 3 px
+long and 4.5 px thick at 32 px per tile (12 by 18 px at 2x), over the 3 by 3 minimum. The aprons are darker than
+grass (110 and 127) and lighter than the facades' shade, so every building keeps its edge on both
+grounds; the sand (186) separates the pale concrete roofs less than the grass does, and their dark
+facades and shadows carry them there. The ore tiles at 32 px per tile in greyscale read by nugget
+count and size (see "Ore").
 
 ## Feedback markers (new)
 The target flash, the attack-move marker, the long-press anchor and the box are drawn in code
@@ -564,6 +655,16 @@ class is the one under Combat effects (infantry when `type_armour` is INFANTRY).
 | Own, vehicle | 22 | 6 | 26 | #1C2127, 1 dp round the 4 dp interior | #30A46C (ok), luminance 123 |
 | Own, infantry | 16 | 6 | 14 | as above | as above |
 | Enemy | as the class of the unit | 6 | as the class | as above | #F5A524 (warning), luminance 174 |
+
+**Buildings (new, P91b, ADR 0022 section 3).** A building's bar is centred on the footprint's columns
+with its top edge 2 dp below the top edge of the sprite box, inside the box, so it never covers a
+neighbour north of the building. Its width W is 24 dp for the 1x1 turret, 40 dp for a 2x2 building
+and 56 dp for a 3x3 building, 6 dp high, which a footprint holds at zoom 0.75 on the 6-inch phone
+(1x1 is 27 dp wide there, 2x2 54 dp, 3x3 82 dp); edge, notch and fill follow the class table by
+owner (own plain #30A46C, enemy notched #F5A524), and the density rule below holds (selected, or hit
+within 3000 ms; none for a building the fog hides). The selection frame goes round the whole sprite
+box, roof included (question 2 = A), and the offline glyph sits on the roof's centre, the footprint's
+centre lifted by the rise. The bar band of the layer is P84's: this row only sizes the bar.
 
 Half-heights, for the overlap check only: P45's overlap test (see Overlap below) takes the vertical
 half-height h of a unit as 14 world px for squads and 21 for tanks. The layer never reads h, it places
@@ -695,18 +796,30 @@ A terrain row at the top shows a patch of 8 x 2 map tiles at 64 px in a dark fra
 edge shows on both grounds: grass, scrub, rock, water and sand. Team A's and team B's
 squads stand on the two scrub tiles, and the second row of the patch is under the explored fog alpha.
 A button at the top right (120x120 base px, labelled with the page it is on) turns the pages: **Units**
-(everything above), **Build**, **Ground**, **Vehicles** and **Icons**, and the Back button leaves
-from any of them. The new pages are built by `art_gallery.gd` and start hidden, so the Units page is
-as it was.
-- **Build** shows the six buildings at scale 1 on grass (left) and sand (right). Each ground has four
-  rows: the small ones first (power plant, barracks, defence turret), team A then team B, then the
-  3x3 ones (headquarters, refinery, vehicle factory), team A then team B. Every building is a rig
-  `Node2D` named by its id in PascalCase, with `Hull`, `Team` and, for the turret, `Turret`, in the
-  team group; the turret's gun head turns slowly like the tanks'. The rows are centred and the
-  layout is made for landscape (the Units page is too).
+(everything above), **Build**, **Ground**, **Vehicles**, **Icons** and **Seam**, and the Back button leaves
+from any of them. The new pages are built by `art_gallery.gd` (Build and Seam by
+`art_gallery_buildings.gd`) and start hidden, so the Units page is as it was.
+- **Build** is a list to scroll (drag it), in six sections: zoom 1, 0.75 and 1.5, each for team A and
+  then team B, the camera's zoom levels of `data/input_settings.tres`. A section shows the six
+  buildings on grass (left) and sand (right), the 3x3 ones first, in lines that fit a ground, with a
+  light tank 26 px off the north wall and one off the south wall of every building (the tank's reach,
+  `HealthBarLayer.VEHICLE_REACH_PX`). A building is a cell that draws its **base part** (the sprite
+  rows south of the footprint's middle line), the two tanks, then its **roof part** (the rows north of
+  it, and the defence turret's gun head, which turns about the roof's centre): the order of the view's
+  layers, so a tank north of a building stands behind its roof and a tank south of it in front of its
+  wall. A building's parts are rigs `Node2D` named `Base` and `Roof` with `Hull` and `Team` sprites
+  (region sprites) in the team group; the tanks are the light tank's rig. Sections are named
+  `Zoom100A`, `Zoom100B`, `Zoom75A`... and each has a label.
+- **Seam** shows the refinery twice on each ground, team A on grass and team B on sand: left, the
+  explored fog (alpha 140) over the west column of its footprint, drawn between the tanks and the roof
+  part, right the same building seen. This is the partly seen building of ADR 0022 section 4: the
+  base part is dimmed under the fog and the roof part is not. It is the item for Michael's phone
+  check. The fog patch here has a hard edge; the view's has a soft one, a tile wide.
 - **Ground** shows, on each ground, the ore levels (five tiles by two variants, side by side with
   no gap), a mixed ore field of 6 x 3 tiles to judge the joins, the three ghosts of a barracks (fits,
-  does not fit, last seen) and the two pattern tiles repeated three by two times. The ghost that
+  does not fit, last seen) and the two pattern tiles repeated three by two times. A ghost's cell is
+  its footprint, with the sprite standing on its south edge and rising above it (the dots and the
+  fog of the last-seen ghost cover the whole sprite box). The ghost that
   does not fit carries `glyph_reason_occupied` at 32 dp in the middle of its footprint (a
   `TextureRect` named `GlyphReasonOccupied`, tinted danger red, on top of the frame): this is where
   a reason glyph is seen, on the red wash and the hatch, so judge it there.
@@ -726,6 +839,8 @@ as it was.
 
 To add an asset:
 - Add its layers as one rig `Node2D` under each of the four slots (grass A, grass B, sand A, sand B).
+  A building goes into `BUILDINGS` of `art_gallery_buildings.gd` instead: its cell is built from its
+  hull, team and turret files (the turret rule above applies to `defence_turret` only).
 - Put the rig in the group `gallery_team_a` or `gallery_team_b`, and name the layers `Hull`, `Team`
   and `Turret` (a unit without a turret leaves `Turret` out).
 - The script `game/view/art_gallery.gd` tints `Team` and turns `Turret`. The team colours are exported
@@ -843,6 +958,26 @@ Renaming a unit or a unit type is a data change, not a reskin.
     and the placement view find the icons by, and `glyph_reason_occupied` for a pending ghost that
     turns "Blocked";
   - the Vehicles and Icons gallery pages.
+- P91b (Phase 3), please judge on the phone (Dev, Art gallery, button at the top right: Build, then
+  Seam) the six buildings in the oblique view, which Michael chose on 2026-10-26 (ADR 0022):
+  - the look itself, "more true to nature" than the first art: materials, weathering, soft shadows;
+  - the team marks, now about 8 to 12 % of a building (question 3 = ja): stripes along eaves and
+    cornices, bands round cylinders, rings on roofs, pennants. Judge at zoom 0.75, the Build page's
+    third section, on both grounds;
+  - a tank behind a roof: on the Build page the north tank of the power plant and of the refinery is
+    partly hidden by the roof part (question 1 = ja); the light tank itself is still the v1 art until
+    P92b;
+  - the seam on the Seam page: a building that a vision edge crosses shows its roof as seen over a
+    dimmed base part (ADR 0022 section 4). If it is too ugly, the fallback is a fog shader on the roof
+    layer;
+  - the five building item icons on the Icons page, drawn in the same view;
+  - the Build page itself: a long list to scroll, a section for each zoom level and team.
+- For touch-ux-dev (requests from P91b, for P84, P84d and P86): the canvases are the footprint plus
+  96 px at 2x (384x480, 256x352, 128x224, import scale 0.5) and `tests/art` pins them, so the view can
+  read the rise off the texture. The turret head has the building's canvas and turns about
+  (tex_w / 2, tex_w / 2) of its texture in game px, the footprint's centre lifted by the rise. The
+  middle line is `tex_h - foot_h * 32` px from the top of the texture. The building bar widths are the
+  "Health bars" row (24, 40 and 56 dp, 6 dp high). Every layer's file name is unchanged.
 - For touch-ux-dev (requests from P92): the HUD finds each icon by name as above and tints it with
   `modulate`; `UnitLayer` and the selection panel already skip a missing `turret` layer (the squads
   have none), which the harvester relies on too. A map glyph brings its own seat (a dark plate, for
@@ -882,3 +1017,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-10-19 | P58 review (art-director): palette row for the HUD panel backdrop; Reskin item 3 says what the UI Theme holds and what the dp step scales. No rule changed. |
 | 2026-10-22 | v1.3 (P91, art-director): the six buildings with their layer contract, the ore cells and their levels, the two ghost patterns and the ghost look, two dirt tones (new), the Build and Ground gallery pages. |
 | 2026-10-22 | v1.4 (P92, art-director): the heavy tank, the artillery and the harvester, the tab, item and glyph icons with the glyph contract (import scale 1.0, new) and the seat of the eight map glyphs (new), the two rally flags, the Vehicles and Icons gallery pages, the reason glyph on the Ground page's ghost. |
+| 2026-10-26 | v1.5 (P91b, art-director, Michael chose direction B on 2026-10-26, ADR 0022): the six buildings and the gun head redrawn in the oblique 3/4 view on new canvases (the footprint plus 96 px at 2x), the five building item icons, Look, Scale, Palette (A's muted materials), Drawing rules (thin edges, team marks about 8 to 12 %), Technical rules (defs, radialGradient, clipPath, use; 28 KB), Buildings (projection, canvas, anchor, the cut, the pivot), Ghosts (in the projection), the building row of Health bars, the Build page as a scrolling list with the camera zooms and the Seam page. |

@@ -1,8 +1,9 @@
 class_name ProductionSpawn
 extends RefCounted
 ## A finished unit joins the map (ADR 0018 section 5), split out of Production.gd: the holds, the
-## exit walk, the new row and its first order. Static helpers over the World passed in, at event
-## cadence (one call per finished unit, and per tick while a finished unit waits).
+## exit walk, the new row and its first order, and the free unit of a placed refinery (ADR 0018
+## section 3). Static helpers over the World passed in, at event cadence (one call per finished
+## unit, and per tick while a finished unit waits).
 
 
 ## Spawns one finished unit of `type` for `player` at the exit of `producer` (a building row) and
@@ -12,9 +13,39 @@ extends RefCounted
 ## `EXIT_SCANNED`, and before `add_unit`, so a wait is not a `spawn_refused`. The new row gets its
 ## first order (`_start`).
 static func spawn(world: World, player: int, type: int, producer: int) -> bool:
+	var kind: int = world.type_index[producer]
+	var exit: Vector2i = Vector2i(world.type_exit_x[kind], world.type_exit_y[kind])
+	return _spawn_from(world, player, type, producer, exit)
+
+
+## Spawns the free unit of the placed building `building` (a row), the harvester of a refinery
+## (ADR 0018 section 3), and returns true; false when the building's type gives none (no
+## `type_free_unit`, or a dock of (0, 0), the tile that means "none") or the unit has to be left out
+## by the holds of `spawn`: nothing is held or owed, so no later tick makes up for it. The unit
+## appears at the dock (the walk of `exit_tile` starts there, so a closed dock hands it to the next
+## open ring tile) and a harvester gets `home` set to the building's id, which SEEK and RETURN read
+## (Harvest).
+static func spawn_free(world: World, building: int) -> bool:
+	var kind: int = world.type_index[building]
+	var free: int = world.type_free_unit[kind]
+	var dock: Vector2i = Vector2i(world.type_dock_x[kind], world.type_dock_y[kind])
+	if free < 0 or dock == Vector2i.ZERO:
+		return false
+	if not _spawn_from(world, world.owner[building], free, building, dock):
+		return false
+	if world.type_harvest[free] > 0:
+		world.home[world.unit_id.size() - 1] = world.unit_id[building]
+	return true
+
+
+## The holds, the walk from the offset `start` of `producer`'s footprint, `add_unit` and the first
+## order: what `spawn` and `spawn_free` share.
+static func _spawn_from(
+	world: World, player: int, type: int, producer: int, start: Vector2i
+) -> bool:
 	if world.unit_id.size() >= world.max_rows or mobile_rows(world, player) >= world.unit_cap:
 		return false
-	var tile: Vector2i = exit_tile(world, producer, world.type_move_class[type])
+	var tile: Vector2i = tile_from(world, producer, world.type_move_class[type], start)
 	if tile.x < 0:
 		return false
 	var id: int = world.add_unit(
@@ -49,13 +80,21 @@ static func mobile_rows(world: World, player: int) -> int:
 ## is not on the ring (data keeps it so) starts the walk at ring tile 0.
 static func exit_tile(world: World, producer: int, move_class: int) -> Vector2i:
 	var type: int = world.type_index[producer]
+	var exit: Vector2i = Vector2i(world.type_exit_x[type], world.type_exit_y[type])
+	return tile_from(world, producer, move_class, exit)
+
+
+## The walk of `exit_tile` from any tile offset `start` of building row `building`'s footprint (the
+## exit, or a refinery's dock): the same ring, the same order, the same `EXIT_SCANNED` counts.
+static func tile_from(world: World, building: int, move_class: int, start: Vector2i) -> Vector2i:
+	var type: int = world.type_index[building]
 	var size: Vector2i = Vector2i(world.type_foot_w[type], world.type_foot_h[type])
-	var origin: Vector2i = world.footprint_origin(producer)
-	var exit: Vector2i = origin + Vector2i(world.type_exit_x[type], world.type_exit_y[type])
+	var origin: Vector2i = world.footprint_origin(building)
+	var from: Vector2i = origin + start
 	var length: int = ring_length(size)
 	var first: int = 0
 	for at: int in length:
-		if ring_tile(origin, size, at) == exit:
+		if ring_tile(origin, size, at) == from:
 			first = at
 			break
 	var cols: int = world.map_cols
