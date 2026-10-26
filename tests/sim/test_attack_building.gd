@@ -211,6 +211,41 @@ func test_a_placement_on_an_attack_goal_re_picks_the_approach_point() -> void:
 	assert_int(world.order[near_row]).is_equal(World.Order.ATTACK)
 
 
+func test_a_re_pick_skips_a_ring_tile_the_class_cannot_enter() -> void:
+	var world: World = Worlds.open(24, 12)
+	var hq: int = world.add_building(2, Worlds.type_of(world, "headquarters"), 10, 4)
+	var near: int = world.add_unit(1, Worlds.type_of(world, "light_tank"), 3500, 5500)
+	_step_with(world, Command.attack(1, PackedInt32Array([near]), hq))
+	var row: int = world.index_of(near)
+	assert_vector(_goal(world, row)).is_equal(Vector2i(9500, 5500))
+	# (9, 4) is scrub, which a tracked unit cannot enter: the tie between (9, 4) and (9, 6) that
+	# the lower index wins in the case above goes to (9, 6). A re-pick that read the cost table of
+	# another movement class, foot, would take (9, 4).
+	world.set_terrain(4 * 24 + 9, GridWorld.GROUND.find("^"))
+	world.add_building(1, Worlds.type_of(world, "defence_turret"), 9, 5)
+	assert_vector(_goal(world, row)).is_equal(Vector2i(9500, 6500))
+
+
+func test_a_re_pick_with_no_passable_ring_tile_keeps_the_goal() -> void:
+	var world: World = Worlds.open(24, 12)
+	var hq: int = world.add_building(2, Worlds.type_of(world, "headquarters"), 10, 4)
+	# Rock on every ring tile of the Headquarters (columns 10 to 12, lines 4 to 6) but (9, 5).
+	for line: int in range(3, 8):
+		for col: int in range(9, 14):
+			var inside: bool = col >= 10 and col <= 12 and line >= 4 and line <= 6
+			if not inside and not (col == 9 and line == 5):
+				world.set_terrain(line * 24 + col, GridWorld.GROUND.find("#"))
+	var near: int = world.add_unit(1, Worlds.type_of(world, "light_tank"), 3500, 5500)
+	_step_with(world, Command.attack(1, PackedInt32Array([near]), hq))
+	var row: int = world.index_of(near)
+	assert_vector(_goal(world, row)).is_equal(Vector2i(9500, 5500))
+	# The turret takes the one passable ring tile: no tile is left, and the goal stays where it
+	# was (not (-1, -1)); the order stays too.
+	world.add_building(1, Worlds.type_of(world, "defence_turret"), 9, 5)
+	assert_vector(_goal(world, row)).is_equal(Vector2i(9500, 5500))
+	assert_int(world.order[row]).is_equal(World.Order.ATTACK)
+
+
 func test_an_attack_on_a_building_behind_rock_reaches_weapon_range_and_holds(
 	impl: int, size: Vector2i, _test_parameters := _sizes()
 ) -> void:
