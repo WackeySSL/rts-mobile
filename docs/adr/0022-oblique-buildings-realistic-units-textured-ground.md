@@ -1,12 +1,34 @@
 # ADR 0022: Oblique buildings, realistic top-down units and textured ground (art direction B)
 
-Status: proposed, 2026-10-26. Docs PR with `docs/plans/2026-10-22-phase-3.md` revision 4. Base:
-`main` at 9b690b0. Nothing here is applied in code, art or the style guide until Michael answers the
-questions at the end. Builds on ADR 0011 (view draw structure and budget), ADR 0012 §6 (z bands and
-batching), ADR 0010 §2 (the fog layer), ADR 0015 (portrait), ADR 0017 §1 (footprints), ADR 0019 §2
-and §3 (placement ghost, building taps) and ADR 0021 (the base arena). Supersedes parts of ADR 0012
-§6, ADR 0010 §2, ADR 0011 §3 and ADR 0019 §2 (listed under "On acceptance"); no rule of the sim
-changes.
+Status: accepted, 2026-10-26 (Michael: 1 ja, 2 A, 3 ja, 4 ja, 5 ja). Proposed 2026-10-26. Docs PR
+#186 with `docs/plans/2026-10-22-phase-3.md` revision 4, accepted by the lead's row P68d on the same
+PR. Base: `main` at 9b690b0. Builds on ADR 0011 (view draw structure and budget), ADR 0012 §6 (z
+bands and batching), ADR 0010 §2 (the fog layer), ADR 0015 (portrait), ADR 0017 §1 (footprints),
+ADR 0019 §2 and §3 (placement ghost, building taps) and ADR 0021 (the base arena). Supersedes parts
+of ADR 0012 §6, ADR 0010 §2, ADR 0011 §3 and ADR 0019 §2 and §3 (listed under "On
+acceptance"); no rule of the sim changes.
+
+## Acceptance note (2026-10-26)
+Michael answered the five questions in chat on 2026-10-26, verbatim "ja til anbefaling" (yes to the
+recommendations), which the lead records as "1 ja, 2 A, 3 ja, 4 ja, 5 ja":
+1. **ja:** a unit north of a building is hidden by its roof; its bar shows when it is selected or
+   hit, and a tap on it still selects it (§2, §3).
+2. **A:** the selection frame goes round the whole sprite box, roof included (§3). Option B (the
+   footprint) is not taken.
+3. **ja:** the team share drops to about 8 to 12 % (§7); Michael checks it in the gallery at zoom
+   0.75 on his phone.
+4. **ja:** the textured ground comes in Phase 3 (P92c and P97, §6).
+5. **ja:** `assets/art/STYLE.md` (art-director, in P91b, P92c and P92b), the `svg-art-style` skill
+   and CLAUDE.md's Stack line change as §7 lists. The lead asked this question in chat with the
+   `touch-ui-rules` skill included, so the yes covers that skill's building-tap rows too.
+
+The decision below is unchanged by the acceptance. P68d applied "On acceptance" and fixed the review
+points of #186 in the text: the two parts are defined by `y_mid` alone (§2), the 1x1 turret's error
+on both sides and its bound (§2, "Consequences"), the eave-cut failure set ("Alternatives"), the
+runtime atlas's copy path and gutter (§2), the turret heads drawn inside the roof list and the
+offline glyph counted (§2, §3), the pick order with and without a selection (§3), the persistent
+partly-seen seam (§4, "Consequences"), the silhouette alternative ("Alternatives") and the style
+guide's low-power line (§7). Code and art follow in the plan's revision 4 rows.
 
 ## Context
 - Michael checked P91 (#172) and P92 (#178) on his phone on 2026-10-26: the art is "too square and
@@ -99,17 +121,26 @@ changes.
 ### 2. Draw order: each building is cut at its footprint's middle line
 - **Rule.** Each building is drawn in two parts, cut along the horizontal line through its
   footprint's centre (`y_mid = origin_row * 64 + foot_h * 32` px):
-  - the **base part**, the sprite rows south of `y_mid` (the south half of the roof and the
-    facade), is drawn **under** every unit layer;
-  - the **roof part**, the sprite rows north of `y_mid` (the north half of the roof and the 48 px
-    overhang), is drawn **over** every unit layer.
+  - the **base part**, the sprite rows south of `y_mid`, is drawn **under** every unit layer;
+  - the **roof part**, the sprite rows north of `y_mid`, is drawn **over** every unit layer.
+
+  The parts are defined by `y_mid` alone, not by what the art shows. For a building of the full
+  rise (roof 48 px above the ground, facade 48 px tall) the split is: 3x3, base part the south
+  48 px of the roof plus the facade, roof part the other 144 px of the roof; 2x2, base part the
+  south 16 px of the roof plus the facade, roof part the other 112 px; 1x1, base part the lower
+  32 px of the facade only, roof part the whole roof plus the upper 16 px of the facade. A lower
+  building moves the line between roof and facade, never `y_mid`.
 - **Why it is right.** A unit north of a building has its centre at or north of the footprint's
   north edge, so its pixels reach at most `r` south of it; a unit south has its centre at or south
   of the south edge. Both stay out of the other part as long as `r <= foot_h * 32`, half the
   footprint's depth. That holds for every unit against every 2x2 and 3x3 building (r at most 57 px
   against 64 and 96 px). For the 1x1 defence turret (32 px) it holds for squads and for tanks along
-  the axes; a harvester or a diagonal tank hugging its north side can show a few px of its tail over
-  the turret's lower wall for a moment (accepted, "Consequences"). Buildings among themselves:
+  the axes, and fails by `r - 32` px on both sides for a longer reach (a diagonal tank, 45 px, or
+  the harvester, 40 px along the axes and 57 px on a diagonal): a unit hugging its **north** side
+  shows its tail over the turret's lower facade (the base part), and a unit hugging its **south**
+  side has its nose painted over by the turret's roof part. The bound is about 25 px at the canvas
+  limit (57 - 32) and less for the real silhouettes, whose canvas corners are empty (accepted,
+  "Consequences"; P84's crafted case asserts both sides). Buildings among themselves:
   base parts lie inside their footprints, so they never overlap; a roof part can overlap another
   building's roof part only when a building stands directly south of a 1x1 turret, so the roof
   part is drawn in ascending order of the footprint's south row.
@@ -122,18 +153,32 @@ changes.
   - `BuildingLayer` (the base parts) and `BuildingRoofLayer` (the roof parts), each one `Node2D`
     that draws all its quads in one `_draw()` with `draw_texture_rect_region` from **one runtime
     atlas**: at match start the view copies every building layer texture it needs (`hull`, `team`,
-    and the last-seen dot tile `ui/ghost_seen.svg`) into one `ImageTexture` (about 1024x512 px,
-    2 MB). Team tint, the low-power dim and the fog dim (§4) are the quad's colour, which is vertex
-    data and does not break the batch (ADR 0012 §6, "What else batches"). So each part is **one draw
-    call** however many buildings stand. ADR 0011 §3's rule (per-item quads from one shared
-    texture) holds; the atlas is how it holds with per-building SVG files.
-  - The defence turrets' heads are `Sprite2D` children of `BuildingRoofLayer`, one per turret
-    row, sharing one texture: one more call, and they turn on the frame clock as unit turrets do
-    without redrawing the roof list.
+    the turret's `turret` head and the last-seen dot tile `ui/ghost_seen.svg`) into one
+    `ImageTexture` (about 1024x512 px, 2 MB). Team tint, the low-power dim and the fog dim (§4) are
+    the quad's colour, which is vertex data and does not break the batch (ADR 0012 §6, "What else
+    batches"). So each part is **one draw call** however many buildings stand. ADR 0011 §3's rule
+    (per-item quads from one shared texture) holds; the atlas is how it holds with per-building SVG
+    files.
+  - **The atlas build** (one helper in `game/view/`, which P97's ground and P84b's ore reuse): each
+    source is an imported texture (`load()` of the `.svg`, imported lossless, `compress/mode` 0 as
+    every art file is today), read once with `Texture2D.get_image()` and converted to
+    `Image.FORMAT_RGBA8` if it is not; `Image.blit_rect` copies it into one RGBA8 `Image` that
+    becomes the `ImageTexture`. Every region has a **2 px gutter** on each side, filled by
+    repeating the region's edge pixels, so linear filtering at zooms 0.75 and 1.5 never samples a
+    neighbour (a transparent-edged sprite repeats transparent pixels; a ground or ore tile repeats
+    its own edge). The build runs on the main thread once per match (and per `map_version` for the
+    ground), never per frame. P84 checks it on the web export and on the phone, noted in its PR.
+  - The defence turrets' **heads are drawn inside `BuildingRoofLayer`'s `_draw()`**, each right
+    after its own roof part, as a rotated atlas quad (`draw_set_transform` about the roof's centre,
+    then `draw_texture_rect_region`, then the transform reset), with the dim as the quad colour.
+    So a building south of a turret still covers its head, and the heads cost no call of their own.
+    A head turns on the frame clock as unit turrets do, so the roof list is also redrawn on a frame
+    where a head's angle changed (a few dozen quads, only while a turret turns).
   - Each list is redrawn only on a change: the building rows (`rows_version`), a cell of a drawn
     footprint in the local player's fog dirty list (a cell-to-building map rebuilt with the rows, so
-    the check is O(dirty cells)), the low-power set, the local player. No redraw in a frame without
-    a published change; a `draw_count()` like `MapView`'s lets tests pin it.
+    the check is O(dirty cells)), the low-power set, the local player, and for the roof list a
+    turning head. No redraw in a frame without a published change or a turning head; a
+    `draw_count()` like `MapView`'s lets tests pin it.
 - **The z bands** (ADR 0012 §6's table; rows marked new or moved, the rest unchanged):
 
   | z | Layer | Change |
@@ -145,7 +190,7 @@ changes.
   | 20 + 8 x `type_index` + `owner` | team | unchanged |
   | 100 + `type_index` | turret | unchanged |
   | 110 | fog (`FogLayer`) | moved from 140 |
-  | 111 | `BuildingRoofLayer`: roof parts, then the turret heads | new |
+  | 111 | `BuildingRoofLayer`: roof parts, each followed by its turret head | new |
   | 112 | health bars and the building selection frame (`HealthBarLayer`) | moved from 110 |
   | 120 | projectiles | unchanged |
   | 130 | effects | unchanged |
@@ -173,13 +218,15 @@ changes.
     buildings, and a hit behind a roof still flashes.
   - The ghost and the rally flags are UI on the map: over everything but the markers.
 - **Pooled rigs and interpolation (ADR 0011 §2, P84b) keep working unchanged.** Buildings never
-  move, so nothing of them is interpolated; they are no rigs and need no pool (a turret head is
-  made once per turret row when the row appears, at event cadence). `UnitLayer` skips rows with a
-  footprint, as P84 already planned.
+  move, so nothing of them is interpolated; they are no rigs and need no pool (a turret head is a
+  quad in the roof list, not a node). `UnitLayer` skips rows with a footprint, as P84 already
+  planned.
 - **Draw calls.** ADR 0012 §6's forecast gains: ground 1 (it replaces the map rect, §6), ore 1,
-  building base 1, roofs 1, turret heads 1. For the base arena (six mobile types, two owners, three
-  turret types): ground 1 + ore 1 + rings 1 + base 1 + hulls 6 + teams 12 + turrets 3 + fog 1 +
-  roofs 1 + heads 1 + bars 1 + projectiles 1 + effects 2 = **32**, under the 40 that triggers
+  building base 1, roofs with their turret heads 1, the offline glyphs 1 (P89: `HealthBarLayer`
+  draws them after all its bar and frame rects, so the textured quads break the rect batch once).
+  For the base arena (six mobile types, two owners, three turret types): ground 1 + ore 1 + rings
+  1 + base 1 + hulls 6 + teams 12 + turrets 3 + fog 1 + roofs and heads 1 + bars 1 + glyphs 1 +
+  projectiles 1 + effects 2 = **32**, under the 40 that triggers
   `MultiMeshInstance2D` and the ceiling of 60. Without the building atlas (textures sorted inside
   each `_draw()` instead) the two building parts alone would cost up to 24 calls instead of 2, about
   54 in all: the atlas is not optional.
@@ -188,20 +235,24 @@ changes.
 - **A tap on a building's picture selects it:** the pick shape is the sprite box (footprint plus the
   overhang), grown about its centre to at least 48 dp on each axis at the current zoom (touch rule
   unchanged; it matters for the 1x1 turret at zoom 0.75).
-- **Units first:** a unit hit (`Picker.pick`'s circle) wins over a building box at the same point,
-  so a unit next to or partly under a roof stays tappable. Among buildings, the one with the larger
-  footprint south row wins (it is drawn in front). Own and enemy follow the unit rule (with a
-  selection, an enemy wins). A building the fog hides and a last-seen ghost are not pickable.
+- **The pick order.** With a selection: enemy unit > enemy building > own unit > own building.
+  Without one, enemies do not count (`Picker.pick`'s rule today): own unit > own building. So a
+  unit (`Picker.pick`'s circle) wins over a building box of its own side at the same point, and a
+  unit next to or partly under a roof stays tappable; with a selection, an enemy building wins over
+  an own unit, as an enemy unit does today. Among buildings of one side, the one with the larger
+  footprint south row wins (it is drawn in front). A building the fog hides and a last-seen ghost
+  are not pickable. P84d's acceptance pins the order.
 - Buildings still never join a box, a double-tap selection or "All army" (ADR 0019 §3); a box uses
   unit centres as today.
 - **The selection frame** is four corner brackets of filled rects round the sprite box, drawn by
   `HealthBarLayer` in its one `_draw()` (z 112), white like the selection ring, with
   `FeedbackStyle`'s stroke rule (a `STROKE_DP` 3 pass over an `OUTLINE` pass `OUTLINE_DP` wider);
-  question 2 decides box or footprint (recommended: the box, what the player tapped).
+  the frame goes round the sprite box, what the player tapped (question 2 = A).
 - **The building's health bar** is centred on the footprint's columns with its top edge 2 dp below
   the sprite box's top edge, inside the box, so it never covers a neighbour north of the building;
   its size in dp is a row of STYLE.md's "Health bars" (P91b adds it). The offline glyph of P89 sits
-  on the roof's centre (the footprint centre lifted by the rise), in the same layer.
+  on the roof's centre (the footprint centre lifted by the rise), in the same layer, drawn after
+  all the bar and frame rects (one call, counted in §2).
 
 ### 4. Fog and memory
 - **The overhang gets the fog of its footprint.** The base part is under the fog layer, so its
@@ -212,8 +263,10 @@ changes.
   state match exactly. A building the local player does not see is not drawn (P84's rule); a ghost is
   drawn only where its cells are explored and not seen (P84c's rule).
 - **Partly seen buildings** (vision edge across a footprint): the roof part is drawn as seen while
-  the base part's unseen cells are dimmed by the fog under it. Accepted; it occurs only at the edge
-  of vision and lasts until the next fog update. A fog shader that samples the fog texture at the
+  the base part's unseen cells are dimmed by the fog under it. Accepted; it occurs only while a
+  vision edge crosses the footprint, which is indefinitely for a parked viewer (a unit standing
+  still with the edge across a building). It is an item for Michael's phone check and for the
+  gallery (P91b shows a building with the edge across it). A fog shader that samples the fog texture at the
   ground point under each roof pixel would be exact; it is the fallback if Michael's phone check
   finds the seam ("Alternatives").
 - **Last-seen ghosts (P84c)** are drawn in the same projection by the same two layers: the building
@@ -291,17 +344,19 @@ changes.
 - **Order against P84:** P91b (buildings) comes first and P84 depends on it, so P84 builds against
   the new canvases and the anchor; then P92c (ground and ore, which P97 needs); then P92b (units),
   which no view row waits for. Rows and owners: plan revision 4.
-- **Style guide and skill** (art-director edits `assets/art/STYLE.md` in each art row; the skill
-  only after Michael's yes, question 5): "Look" (flat goes, "not photoreal" stays, buildings in a 3/4
-  view), "Scale" (building canvases with the rise), "Palette" (A's muted values: tarmac #4A4F53 to
-  #62676A, concrete #8D8F88, corrugated steel #5D6B68 to #A0ACA8, olive drab #46532F to #78885B,
-  rust #8F5731), "Drawing rules" (the 3 px outline becomes a thin dark edge plus a contact rim and a
-  short soft shadow; team marks about 8 to 12 % instead of 20 to 35 %, question 3), "Technical
-  rules" (`defs`, `radialGradient`, `clipPath` and `use` with `href="#id"` allowed; no `pattern`;
-  a mask only with solid fills; at most 28 KB), "Layer contract" (shadows), "Buildings" (projection,
-  canvas, anchor, middle-line cut, turret pivot, no pixel outside the box), "Ghosts" (dots over the
-  sprite box; placement marks on the footprint), "Ore", "Fog and terrain" (ground tiles), "Health
-  bars" (the building bar row; the bar band), "Reskin" (place 2 gains the ground files), "Gallery".
+- **Style guide and skill** (art-director edits `assets/art/STYLE.md` in each art row; the lead
+  edits the skill in P68d, with Michael's yes to question 5): "Look" (flat goes, "not photoreal"
+  stays, buildings in a 3/4 view), "Scale" (building canvases with the rise), "Palette" (A's muted
+  values: tarmac #4A4F53 to #62676A, concrete #8D8F88, corrugated steel #5D6B68 to #A0ACA8, olive
+  drab #46532F to #78885B, rust #8F5731), "Drawing rules" (the 3 px outline becomes a thin dark edge
+  plus a contact rim and a short soft shadow; team marks about 8 to 12 % instead of 20 to 35 %,
+  question 3), "Technical rules" (`defs`, `radialGradient`, `clipPath` and `use` with `href="#id"`
+  allowed; no `pattern`; a mask only with solid fills; at most 28 KB), "Layer contract" (shadows),
+  "Buildings" (projection, canvas, anchor, middle-line cut, turret pivot, no pixel outside the box;
+  its low-power line, "The view dims a building on low power with `modulate` on the whole rig",
+  becomes the quad colour of both parts, P91b), "Ghosts" (dots over the sprite box; placement marks
+  on the footprint), "Ore", "Fog and terrain" (ground tiles), "Health bars" (the building bar row;
+  the bar band), "Reskin" (place 2 gains the ground files), "Gallery".
 
 ### 8. Performance
 - **No new arena.** The base arena (ADR 0021 §2: about 30 buildings of every type, 150 mobile rows,
@@ -311,10 +366,12 @@ changes.
   `budget.cfg` and every `PERF` line stay as they are.
 - **Headless proof before the phone** (P84, P97): the z of each new and moved layer in both scenes;
   each building part draws from one texture (the atlas) whatever the mix of types, owners, ghosts
-  and dim states; the roof list is redrawn on a change only (a `draw_count()` that does not move over
-  frames without a published change); the middle-line cut on crafted footprints and unit
-  positions (a unit north never in the base part's rect, south never in the roof part's); the
-  forecast of §2 computed from a base-arena-like snapshot is at most 40.
+  and dim states, turret heads included; the roof list is redrawn on a change only (a
+  `draw_count()` that does not move over frames without a published change or a turning head); the
+  middle-line cut on crafted footprints and unit positions (on 2x2 and 3x3 a unit north never in
+  the base part's rect, south never in the roof part's; on the 1x1 turret the known error on both
+  sides, at most `r - 32` px); the forecast of §2, the offline glyphs included, computed from a
+  base-arena-like snapshot is at most 40.
 - **Gate:** unchanged thresholds (`draw_calls_max` 60, `work_p95_ms` 5.6, ...); the Phase 3 gate
   runs both cards three times each (ADR 0021 §3). P93c also frames the base arena's camera on every
   sprite box, overhangs included (the P50c rule).
@@ -325,15 +382,21 @@ changes.
   about 520 production lines in all (plan revision 4).
 - A unit north of a building can be hidden by the roof; its bar still shows when it is selected or
   hit (question 1).
-- The 1x1 defence turret's lower wall can show a few px of a harvester or a diagonal tank hugging
-  its north side; a unit touching a building's east or west wall is cut at the middle line where
-  its pixels cross the footprint's columns. Both are short-lived and only a few px.
+- The 1x1 defence turret is drawn wrong by up to `r - 32` px for a unit of longer reach hugging it
+  (a diagonal tank or the harvester): on its north side the unit's tail shows over the turret's
+  lower facade, on its south side the turret's roof part paints over the unit's nose; about 25 px at
+  the canvas limit, less for the real silhouettes. A unit touching a building's east or west wall is
+  cut at the middle line where its pixels cross the footprint's columns. Both last only while the
+  unit stands there; the gallery and Michael's phone check judge them.
 - A building on the map's top row shows its roof cut at the map's edge, because the camera stops at
   the map rect (`test_camera_limits_equal_the_map_rect`); if the play sessions find it, the camera's
   top limit grows by the rise in a touch-ux-dev row.
 - The fog no longer softens bars, projectiles and effects at the edge of vision, and no longer dims
   an own unit's death burst on its dark tile. A tracer fired from or into the dark is drawn only
   over the seen tiles (§4); at the vision edge it ends up to 16 px short of the dark tile.
+- A building that a vision edge crosses shows its roof as seen over a dimmed base part, for as long
+  as the edge stands there (§4); the gallery and Michael's phone check judge it, and the fog shader
+  is the fallback.
 - Team colour on a sprite drops to about 8 to 12 %: ownership reads from stripes and bands and is
   weaker at zoom 0.75 (question 3); the art rows show both teams at every zoom in the gallery.
 - SVG files grow (the probe's B refinery hull is 25.2 KB); the import time and the APK grow a little.
@@ -349,8 +412,11 @@ changes.
 - **Buildings in row bands interleaved with units** (z = row band x K + group): calls grow with the
   rows on screen times the unit groups (about 20 x 20), and Godot's z range (-4096 to 4096) runs
   out on a 64-row map.
-- **Cut at the eave** (the facade under the units, the whole roof over them): fails for every
-  footprint shallower than the rise plus a unit's reach (1x1 and, for the harvester, 2x2).
+- **Cut at the eave** (the facade under the units, the whole roof over them): a unit south fails
+  whenever its reach exceeds the 48 px rise (its nose goes under the roof), so the harvester's
+  57 px diagonal fails at every footprint; a unit north fails whenever its reach exceeds the
+  roof's depth over the footprint (`foot_h * 64 - 48`: 16 px on the 1x1 turret, so nearly every
+  unit there).
 - **The whole building under the units, the overhang only over them:** a tank behind a roof would
   stand on its south half.
 - **A fog shader on the roof layer** (sample the fog texture at the pixel's ground point): exact at
@@ -366,6 +432,12 @@ changes.
   Clipping the tracer (§4) costs no call and hides the part over every unseen tile.
 - **Draw the ground per visible tile in `MapView._draw()`:** hundreds of commands re-recorded on
   every camera move, on the main thread.
+- **A silhouette for units behind a roof** (question 1's other answer): a second pass of every
+  hidden rig as a flat silhouette over the roofs (one more band per type and owner, roughly
+  doubling the rig calls, and a per-frame test of which rigs a roof covers), or a shader on the
+  roof layer that cuts out where a unit stands (a unit mask texture rendered each frame, a custom
+  shader on the Compatibility renderer and the web export). Not taken: the bar already shows a
+  selected or hit unit behind a roof (question 1 = ja).
 - **A non-turning shadow sprite per unit** (the probe's note for longer tank shadows): one more
   band per type and a fifth child in the rig contract; not now.
 - **A (realistic top-down) for buildings too:** cheaper (no draw-order change), but Michael chose B.
@@ -386,9 +458,10 @@ changes.
    for buildings, the muted palette, thin edges instead of outlines, smaller team marks, the new SVG
    rules), and CLAUDE.md's "2D top-down" line name the oblique buildings? (ja/nej; recommended: ja)
 
-## On acceptance (lead, docs row P68d; nothing before Michael's answers)
+## On acceptance (lead, docs row P68d; applied 2026-10-26 on #186)
 - This ADR: status "accepted" with the date and the answers; the plan's revision 4 rows become
-  plain rows (or are withdrawn on a "nej" to the ADR as a whole).
+  plain rows (or are withdrawn on a "nej" to the ADR as a whole; not the case, every answer is the
+  recommended one).
 - Dated status notes, never a rewrite: ADR 0012 §6 (the z table and the forecast of §2 here; the
   "Markers" and "What else batches" items stand), ADR 0010 §2 (the fog layer draws at z 110, under
   the roofs, bars, projectiles and effects; the "either end" tracer rule of its 2026-10-21 status
@@ -396,12 +469,15 @@ changes.
   ADR 0011 §3 (`MapView` is not drawn where the ground layer covers the map; the per-building atlas
   is how the one-texture rule holds), ADR 0019 §2 (the grab area is the sprite box plus 24 dp; the
   ghost is drawn in the projection, §5) and §3 (a tap on the roof selects the building; units win).
-- `.claude/skills/svg-art-style/SKILL.md` (with Michael's yes to question 5): "Look", "Camera and
+- `.claude/skills/svg-art-style/SKILL.md` (with Michael's yes to question 5): its frontmatter
+  `description` line (no longer "top-down flat military-map look"), "Look", "Camera and
   scale" (pure top-down for units, the oblique view and canvases for buildings), "Palette" (A's
   values), "Drawing rules" (edge, rim, shadow, team share), "Technical rules" (elements, 28 KB, no
   `pattern`, masks with solid fills only).
-- `.claude/skills/touch-ui-rules/SKILL.md` (Michael's yes, as for any skill): "Tap own building"
-  picks on the whole picture, roof included; a unit at the same point wins.
+- `.claude/skills/touch-ui-rules/SKILL.md` (Michael's yes to question 5, which the lead asked in
+  chat with this skill included): "Tap own building" picks on the whole picture, roof included; a
+  unit at the same point wins; the pick order of §3 (with a selection enemy unit > enemy building >
+  own unit > own building; without one own unit > own building).
 - `CLAUDE.md` Stack line "2D top-down" gains "buildings in an oblique 3/4 view (ADR 0022)"
   (Michael's yes, question 5).
 - `docs/GDD.md` line 81 ("flat top-down military-map look") becomes the new look in one sentence.
