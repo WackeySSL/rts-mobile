@@ -1,10 +1,11 @@
 class_name BuildSidebar
 extends PanelContainer
 ## The build sidebar, part 1 (ADR 0019 section 1, plan P85): the zone at the end of the long axis
-## (ADR 0015 section 5), the three tabs, and two slots that later rows fill: `Status`, the line
-## for the credits and the power bar (P85c), and `Items`, the row for the item tiles (P85b). It
-## sends nothing to the sim: a tab is local state, and the part that queues items will send its
-## Commands through `PlayerController.command_sink`.
+## (ADR 0015 section 5) with the credits and the power bar on one line, the three tabs and, below,
+## the slot `Items` that part 2 (P85b) fills with the item tiles. It sends nothing to the sim: a tab
+## is local state and the part that queues items will send its Commands through
+## `PlayerController.command_sink`. It reads the published snapshot only, the local player's
+## credits, `power_made` and `power_used`, and never keeps one.
 ## Landscape: the right zone, 20% of the width and at least 200 dp, the full height of the safe
 ## area's inner rect. Portrait: the bottom band, the full inner width, `HudLayout.band_dp` high.
 ## The band's height goes to `HudLayout.bottom_zone_dp`, the one place the ArmyBar reads, from
@@ -13,8 +14,10 @@ extends PanelContainer
 ## Tabs: Structures, Infantry and Vehicles, each an icon (`tab_<name>`, grey at rest and white when
 ## open, from the theme) and in landscape also its name where the three fit the zone with it. The
 ## open tab is the lighter plate with the thick bar at its foot (theme `SidebarTab`).
-## The look is the inherited theme's (`game/ui/theme.tres`: `BuildSidebar`, `SidebarTab`), the
-## sizes are dp.
+## Power: the bar is the share of the power made that is in use. On low power (`power_used` above
+## `power_made`) it is full and amber and the glyph is the warning triangle: a shape and a colour.
+## The look is the inherited theme's (`game/ui/theme.tres`: `BuildSidebar`, `SidebarTab`,
+## `PowerBar`, `PowerBarLow`, `NumberLabel`), the sizes are dp.
 
 ## Emitted when another tab opens, by a tap or by `select_tab`.
 signal tab_selected(tab: int)
@@ -22,22 +25,38 @@ signal tab_selected(tab: int)
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
 const THEME_TYPE: StringName = &"BuildSidebar"
 const TAB_VARIATION: StringName = &"SidebarTab"
+const BAR_VARIATION: StringName = &"PowerBar"
+const BAR_LOW_VARIATION: StringName = &"PowerBarLow"
+const NUMBER_VARIATION: StringName = &"NumberLabel"
 ## The tab names by `World.Tab`; the icon of a tab is `tab_<name in lower case>`.
 const TAB_NAMES: PackedStringArray = ["Structures", "Infantry", "Vehicles"]
-const STATUS_DP: float = 32.0  ## The height of the line for the credits and the power bar.
+const STATUS_DP: float = 32.0  ## The credits and power line.
+const GLYPH_DP: float = 24.0
+const BAR_DP: Vector2 = Vector2(24.0, 24.0)  ## The bar's least size; it takes the rest of the line.
 const TAB_DP: float = 48.0
 const TAB_ICON_DP: float = 32.0
 const ITEMS_DP: float = 64.0  ## The height of the slot for one row of item tiles.
 const GAP_DP: float = 8.0
+const TEXT_PAD_DP: float = 4.0  ## Each side of the numbers in the bar.
+
+@export var runner: MatchRunner
 
 ## The open tab, a `World.Tab`.
 var tab: int = World.Tab.STRUCTURES
 
 var _stack: VBoxContainer = VBoxContainer.new()
 var _status: HBoxContainer = HBoxContainer.new()
+var _credits_glyph: TextureRect
+var _credits: Label = Label.new()
+var _power_glyph: TextureRect
+var _bar: ProgressBar = ProgressBar.new()
+var _bar_text: Label = Label.new()
 var _tab_row: HBoxContainer = HBoxContainer.new()
 var _tabs: Array[Button] = []
 var _items: Control = Control.new()
+var _low: bool = false
+var _shown: Vector3i = Vector3i(-1, -1, -1)  ## Credits, power made and power used on screen.
+var _seen: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot last read.
 
 
 func _ready() -> void:
@@ -45,9 +64,7 @@ func _ready() -> void:
 	theme_type_variation = THEME_TYPE
 	_stack.name = "Stack"
 	add_child(_stack)
-	_status.name = "Status"
-	_min_dp(_status, Vector2(0.0, STATUS_DP))
-	_stack.add_child(_status)
+	_build_status()
 	_build_tabs()
 	_items.name = "Items"
 	_items.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -55,12 +72,43 @@ func _ready() -> void:
 	_min_dp(_items, Vector2(0.0, ITEMS_DP))
 	_stack.add_child(_items)
 	select_tab(tab)
+	_tint()
 	_apply_dp()  # Sets the zone before the ArmyBar's _ready lifts the bar.
 	get_viewport().size_changed.connect(_apply_dp)  # After the DpMinSize nodes' own handlers.
 
 
 func _exit_tree() -> void:
 	HudLayout.bottom_zone_dp = 0.0
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_THEME_CHANGED and _credits_glyph != null and _power_glyph != null:
+		_tint()
+
+
+## The published snapshot is read when it is a new one (a tick, or a new match): a frame has at
+## most one publish to see, and the numbers change only a few times a second.
+func _process(_delta: float) -> void:
+	var snap: MatchSnapshot = null if runner == null else runner.snapshot
+	if snap != null and Vector2i(snap.match_serial, snap.tick) != _seen:
+		refresh()
+
+
+## Shows the local player's credits and power from the published snapshot.
+func refresh() -> void:
+	var snap: MatchSnapshot = null if runner == null else runner.snapshot
+	if snap == null or runner.scenario == null:
+		return
+	_seen = Vector2i(snap.match_serial, snap.tick)
+	var player: int = runner.scenario.local_player
+	var numbers: Vector3i = Vector3i(
+		_entry(snap.credits, player),
+		_entry(snap.power_made, player),
+		_entry(snap.power_used, player)
+	)
+	if numbers != _shown:
+		_shown = numbers
+		_show(numbers.x, numbers.y, numbers.z)
 
 
 ## Opens tab `index` (a `World.Tab`; another value is ignored). A building selection will call it.
@@ -74,10 +122,59 @@ func select_tab(index: int) -> void:
 		tab_selected.emit(index)
 
 
+static func _entry(values: PackedInt32Array, player: int) -> int:
+	return values[player] if player >= 0 and player < values.size() else 0
+
+
 static func _min_dp(control: Control, size_dp: Vector2) -> void:
 	var min_size: DpMinSize = DpMinSize.new()
 	min_size.min_dp = size_dp
 	control.add_child(min_size)
+
+
+func _glyph(node_name: String, icon: String) -> TextureRect:
+	var rect: TextureRect = TextureRect.new()
+	rect.name = node_name
+	rect.texture = load(ICON_ART % icon)
+	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_min_dp(rect, Vector2(GLYPH_DP, GLYPH_DP))
+	return rect
+
+
+func _build_status() -> void:
+	_status.name = "Status"
+	_min_dp(_status, Vector2(0.0, STATUS_DP))
+	_stack.add_child(_status)
+	_credits_glyph = _glyph("CreditsGlyph", "glyph_credits")
+	_status.add_child(_credits_glyph)
+	_credits.name = "Credits"
+	_credits.theme_type_variation = NUMBER_VARIATION
+	_credits.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_credits.text = "0"
+	_status.add_child(_credits)
+	_power_glyph = _glyph("PowerGlyph", "glyph_power")
+	_status.add_child(_power_glyph)
+	_bar.name = "PowerBar"
+	_bar.theme_type_variation = BAR_VARIATION
+	_bar.show_percentage = false
+	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_bar.max_value = 1.0
+	_bar.value = 0.0
+	_min_dp(_bar, BAR_DP)
+	_status.add_child(_bar)
+	_bar_text.name = "PowerText"
+	_bar_text.theme_type_variation = NUMBER_VARIATION
+	_bar_text.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_bar_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_bar_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_bar_text.clip_text = true  # It adds nothing to the line's width: it is shown where it fits.
+	_bar_text.text = "0/0"
+	_bar.add_child(_bar_text)
+	_bar.resized.connect(_fit_bar_text)
 
 
 func _build_tabs() -> void:
@@ -97,15 +194,48 @@ func _build_tabs() -> void:
 		_tabs.append(button)
 
 
+## The numbers of the line. The look changes only when the low state does.
+func _show(credits: int, made: int, used: int) -> void:
+	var low: bool = used > made
+	_credits.text = str(credits)
+	_bar.max_value = maxi(made, 1)
+	_bar.value = _bar.max_value if low else used
+	_bar_text.text = "%d/%d" % [used, made]
+	if low != _low:
+		_low = low
+		_bar.theme_type_variation = BAR_LOW_VARIATION if low else BAR_VARIATION
+		_power_glyph.texture = load(ICON_ART % ("glyph_low_power" if low else "glyph_power"))
+		_tint()
+	_fit_bar_text()
+
+
+## The glyphs' tints come from the theme: credits, power, or the warning on low power.
+func _tint() -> void:
+	_credits_glyph.modulate = get_theme_color(&"credits", THEME_TYPE)
+	_power_glyph.modulate = get_theme_color(&"warning" if _low else &"power", THEME_TYPE)
+
+
+## The numbers show in the bar where the bar is wider than they are; else the bar speaks alone.
+func _fit_bar_text() -> void:
+	var font: Font = _bar_text.get_theme_font(&"font")
+	var font_px: int = _bar_text.get_theme_font_size(&"font_size")
+	var text_px: float = (
+		font.get_string_size(_bar_text.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_px).x
+	)
+	_bar_text.visible = text_px + 2.0 * UiScale.dp(TEXT_PAD_DP) <= _bar.size.x
+
+
 ## Sizes are dp, so they follow a resize like DpMinSize does.
 func _apply_dp() -> void:
 	var gap: int = roundi(UiScale.dp(GAP_DP))
 	for row: BoxContainer in [_stack, _tab_row]:
 		row.add_theme_constant_override("separation", gap)
+	_status.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP / 2.0)))
 	for button: Button in _tabs:
 		button.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(TAB_ICON_DP)))
 	_place()
 	_fit_names(gap)
+	_fit_bar_text()
 
 
 ## Puts the sidebar in its zone and, in portrait, hands the band's height to the HUD.
