@@ -1,12 +1,29 @@
-<!-- Barracks, team layer: white and grey only, tinted at run time, drawn over the hull. -->
-<!-- Shape: one U-shaped plate that follows the ridge of the three roofs. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <polygon points="41,41 215,41 215,215 185,215 185,71 71,71 71,215 41,215" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round"/>
-  <!-- grey shade on the lower and the right-hand edges -->
-  <g fill="#BFBFBF">
-    <rect x="42" y="212" width="28" height="3"/>
-    <rect x="186" y="212" width="28" height="3"/>
-    <rect x="211" y="42" width="3" height="170"/>
-    <rect x="72" y="67" width="112" height="3"/>
+<!-- Barracks, team layer: white and grey only, tinted at run time, drawn over the hull; the same 256 x 352 canvas. -->
+<!-- Shape: two stripes across the long roof, a band across both slopes and a band on the gable of each wing, a lintel over each door, a pennant on the flagpole and a ring painted on the gravel round the sandbags. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="352" viewBox="0 0 256 352">
+  <g fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round">
+    <!-- long roof: a stripe along the eave and a second one half way up the slope -->
+    <rect x="20" y="138" width="216" height="7"/>
+    <rect x="20" y="116" width="216" height="6"/>
+    <!-- wings: a band across both slopes near the south end and one on the gable -->
+    <polygon points="19.5,252 48,233.5 48,243.5 19.5,262"/>
+    <polygon points="48,233.5 76.5,252 76.5,262 48,243.5"/>
+    <polygon points="179.5,252 208,233.5 208,243.5 179.5,262"/>
+    <polygon points="208,233.5 236.5,252 236.5,262 208,243.5"/>
+    <rect x="21" y="297" width="54" height="6"/>
+    <rect x="181" y="297" width="54" height="6"/>
+    <!-- door lintels on the north hut -->
+    <rect x="36" y="156" width="18" height="4"/><rect x="119" y="156" width="18" height="4"/><rect x="202" y="156" width="18" height="4"/>
+  </g>
+  <!-- ring on the gravel round the sandbag ring -->
+  <g fill="none">
+    <circle cx="128" cy="262" r="31" stroke="#4D4D4D" stroke-width="7"/>
+    <circle cx="128" cy="262" r="31" stroke="#FFFFFF" stroke-width="4"/>
+  </g>
+  <g fill="#BFBFBF"><rect x="21" y="143" width="214" height="1.5"/><rect x="21" y="120.5" width="214" height="1.5"/><rect x="22" y="301.5" width="52" height="1.5"/><rect x="182" y="301.5" width="52" height="1.5"/></g>
+  <!-- pennant at the top of the flagpole -->
+  <g stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round">
+    <path d="M130 161 C142 157 150 166 164 162 L164 181 C150 185 142 176 130 180 Z" fill="#FFFFFF"/>
+    <path d="M130 170 C142 166 150 175 164 171 L164 174 C150 178 142 169 130 173 Z" fill="#BFBFBF" stroke="none"/>
   </g>
 </svg>

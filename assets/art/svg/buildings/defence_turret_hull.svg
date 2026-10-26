@@ -1,25 +1,88 @@
-<!-- Defence turret, hull layer: drawn first, holds the ground shadow of the whole emplacement. -->
-<!-- Silhouette: a round gun pit ringed by eight fat sandbags, with a squat wedge-shaped gun head on top whose single long barrel ends in a wide muzzle block. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <!-- ground shadow, offset (4,4), flattened as one group -->
-  <g transform="translate(4 4)" opacity="0.25" fill="#000000">
-    <circle cx="64" cy="64" r="48"/>
+<!-- Defence turret, hull layer, oblique 3/4 view: a ground point (x, y) is drawn at (x, y + 96) and a point h px up h px higher; the canvas is 128 x 224 and the 1x1 footprint is its bottom 128 x 128. -->
+<!-- Silhouette: a squat round concrete bunker with a ring of sandbags on its roof carries a narrower round cupola whose flat roof holds a steel turntable ring, with a dark arched door and two firing slits in the bunker wall; the gun head is a separate layer that turns on the cupola. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="224" viewBox="0 0 128 224">
+  <defs>
+    <clipPath id="pad"><polygon points="8,12 22,5 70,3 112,6 123,18 124,64 120,112 112,122 70,124 24,123 8,116 4,64"/></clipPath>
+    <clipPath id="bunker"><path d="M8 112 L8 160 A56 56 0 0 0 120 160 L120 112 A56 56 0 0 0 8 112 Z"/></clipPath>
+    <clipPath id="cupola"><path d="M26 64 L26 112 A38 38 0 0 0 102 112 L102 64 A38 38 0 0 0 26 64 Z"/></clipPath>
+    <linearGradient id="slab" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8d8f88"/><stop offset="1" stop-color="#6b6d68"/></linearGradient>
+    <linearGradient id="cylH" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#85877f"/><stop offset="0.14" stop-color="#bdbeb6"/><stop offset="0.42" stop-color="#9c9e97"/><stop offset="0.78" stop-color="#6a6c67"/><stop offset="1" stop-color="#4a4c48"/></linearGradient>
+    <radialGradient id="roof" cx="0.5" cy="0.5" r="0.5" fx="0.36" fy="0.3"><stop offset="0" stop-color="#cfd0c8"/><stop offset="0.6" stop-color="#a9aaa2"/><stop offset="1" stop-color="#85877f"/></radialGradient>
+    <linearGradient id="ao" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d1112" stop-opacity="0"/><stop offset="1" stop-color="#0d1112" stop-opacity="0.55"/></linearGradient>
+    <radialGradient id="stain"><stop offset="0" stop-color="#101314" stop-opacity="0.55"/><stop offset="1" stop-color="#101314" stop-opacity="0"/></radialGradient>
+    <radialGradient id="rust"><stop offset="0" stop-color="#8f5731" stop-opacity="0.5"/><stop offset="1" stop-color="#8f5731" stop-opacity="0"/></radialGradient>
+    <g id="shape"><circle cx="64" cy="64" r="54"/><path d="M64 64 L104 104" stroke-width="44" stroke-linecap="round"/></g>
+  </defs>
+
+  <!-- ground: a cracked concrete slab with the soft shadow of the bunker on its south-east side -->
+  <g transform="translate(0 96)">
+    <polygon points="6,12 20,2 70,0 112,3 125,18 126,64 122,114 112,126 70,127 22,126 5,118 2,64" fill="#76694f" opacity="0.55"/>
+    <polygon points="8,12 22,5 70,3 112,6 123,18 124,64 120,112 112,122 70,124 24,123 8,116 4,64" fill="url(#slab)"/>
+    <g clip-path="url(#pad)">
+      <rect x="4" y="84" width="40" height="40" fill="#575b5c" opacity="0.3"/>
+      <ellipse cx="26" cy="114" rx="16" ry="6" fill="url(#stain)"/>
+      <ellipse cx="106" cy="36" rx="12" ry="10" fill="url(#stain)" opacity="0.7"/>
+      <g fill="none" stroke="#1d2122" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.6">
+        <path d="M8 28 L18 36 L14 46 L22 52"/><path d="M118 86 L108 96 L114 108"/><path d="M46 120 L54 114 L62 121"/>
+      </g>
+      <g fill="#0d1112" stroke="#0d1112" stroke-linejoin="round">
+        <g opacity="0.08" stroke-width="12"><use href="#shape" x="8" y="8"/></g>
+        <g opacity="0.14" stroke-width="6"><use href="#shape" x="8" y="8"/></g>
+        <g opacity="0.24" stroke-width="0"><use href="#shape" x="8" y="8"/></g>
+      </g>
+    </g>
+    <polygon points="8,12 22,5 70,3 112,6 123,18 124,64 120,112 112,122 70,124 24,123 8,116 4,64" fill="none" stroke="#25292a" stroke-width="2" stroke-dasharray="15 3 21 4 9 2" stroke-linejoin="round" opacity="0.6"/>
   </g>
-  <!-- pit: the lowest plane -->
-  <circle cx="64" cy="64" r="48" fill="#5B6670" stroke="#1C2127" stroke-width="3"/>
-  <path d="M22 64 A42 42 0 0 1 64 22" fill="none" stroke="#7D8893" stroke-width="2" stroke-linecap="round"/>
-  <!-- sandbags: eight, tangent to the ring; the team layer covers every second one -->
-  <g stroke="#1C2127" stroke-width="1.5">
-    <ellipse cx="64" cy="27" rx="16" ry="10" fill="#6B7A4F" transform="rotate(22.5 64 64)"/>
-    <ellipse cx="64" cy="27" rx="16" ry="10" fill="#4E5A3A" transform="rotate(67.5 64 64)"/>
-    <ellipse cx="64" cy="27" rx="16" ry="10" fill="#6B7A4F" transform="rotate(112.5 64 64)"/>
-    <ellipse cx="64" cy="27" rx="16" ry="10" fill="#4E5A3A" transform="rotate(157.5 64 64)"/>
-    <ellipse cx="64" cy="27" rx="16" ry="10" fill="#6B7A4F" transform="rotate(202.5 64 64)"/>
-    <ellipse cx="64" cy="27" rx="16" ry="10" fill="#8C9A6B" transform="rotate(247.5 64 64)"/>
-    <ellipse cx="64" cy="27" rx="16" ry="10" fill="#6B7A4F" transform="rotate(292.5 64 64)"/>
-    <ellipse cx="64" cy="27" rx="16" ry="10" fill="#8C9A6B" transform="rotate(337.5 64 64)"/>
+
+  <!-- bunker: round concrete wall 48 high with formwork courses, firing slits, an arched door and its flat roof -->
+  <path d="M8 112 L8 160 A56 56 0 0 0 120 160 L120 112 Z" fill="url(#cylH)" stroke="#2b2d2a" stroke-width="2" stroke-linejoin="round"/>
+  <g clip-path="url(#bunker)">
+    <path d="M8 130 A56 56 0 0 0 120 130 M8 148 A56 56 0 0 0 120 148 M8 166 A56 56 0 0 0 120 166" fill="none" stroke="#2f302d" stroke-width="1.5" opacity="0.5"/>
+    <path d="M8 131.5 A56 56 0 0 0 120 131.5 M8 149.5 A56 56 0 0 0 120 149.5" fill="none" stroke="#f0f1e8" stroke-width="1.5" opacity="0.28"/>
+    <line x1="6" y1="150" x2="122" y2="150" stroke="#161819" stroke-width="120" stroke-dasharray="1.5 12.5" opacity="0.1"/>
+    <ellipse cx="96" cy="170" rx="10" ry="22" fill="url(#stain)" opacity="0.5"/>
+    <ellipse cx="30" cy="150" rx="8" ry="14" fill="url(#rust)"/>
+    <rect x="4" y="196" width="120" height="22" fill="url(#ao)"/>
   </g>
-  <!-- gun race: what is left of the pit under the head -->
-  <circle cx="64" cy="64" r="26" fill="#4E5A3A" stroke="#1C2127" stroke-width="1.5"/>
-  <circle cx="64" cy="64" r="18" fill="#5B6670" stroke="#1C2127" stroke-width="1.5"/>
+  <g fill="#161b1c"><rect x="24" y="180" width="16" height="5" rx="1.5"/><rect x="88" y="180" width="16" height="5" rx="1.5"/></g>
+  <g fill="#9c9e97"><rect x="24" y="185" width="16" height="1.5"/><rect x="88" y="185" width="16" height="1.5"/></g>
+  <path d="M54 212 V192 A10 10 0 0 1 74 192 V212 Z" fill="#232a2c" stroke="#161b1c" stroke-width="1.5"/>
+  <path d="M57 212 V194 A7 7 0 0 1 71 194 V212 Z" fill="#3c4a4e"/>
+  <rect x="52" y="211" width="24" height="3" fill="#9a9c94"/>
+  <path d="M8 112 A56 56 0 0 1 120 112" fill="none" stroke="#2b2d2a" stroke-width="2"/>
+  <ellipse cx="64" cy="112" rx="56" ry="56" fill="url(#roof)" stroke="#2b2d2a" stroke-width="2"/>
+  <circle cx="64" cy="112" r="56" fill="none" stroke="#e6e7df" stroke-width="2" opacity="0.6" transform="translate(-1 -1)"/>
+  <circle cx="64" cy="112" r="52" fill="none" stroke="#5f625d" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- sandbag ring on the bunker roof: two courses, whole ring now and its near half again after the cupola -->
+  <g fill="none">
+    <circle cx="64" cy="112" r="46" stroke="#4d4429" stroke-width="13"/>
+    <circle cx="64" cy="112" r="46" stroke="#a99869" stroke-width="10.5" stroke-dasharray="15 2.5"/>
+    <circle cx="64" cy="106" r="46" stroke="#4d4429" stroke-width="11"/>
+    <circle cx="64" cy="106" r="46" stroke="#b6a678" stroke-width="8.5" stroke-dasharray="12 2.5" stroke-dashoffset="7"/>
+  </g>
+
+  <!-- cupola: a narrower drum on the bunker roof with a flat roof, the steel turntable ring and its boss -->
+  <path d="M26 64 L26 112 A38 38 0 0 0 102 112 L102 64 Z" fill="url(#cylH)" stroke="#2b2d2a" stroke-width="2" stroke-linejoin="round"/>
+  <g clip-path="url(#cupola)">
+    <path d="M26 80 A38 38 0 0 0 102 80 M26 96 A38 38 0 0 0 102 96" fill="none" stroke="#2f302d" stroke-width="1.5" opacity="0.5"/>
+    <path d="M26 81.5 A38 38 0 0 0 102 81.5 M26 97.5 A38 38 0 0 0 102 97.5" fill="none" stroke="#f0f1e8" stroke-width="1.5" opacity="0.28"/>
+    <ellipse cx="86" cy="100" rx="9" ry="16" fill="url(#stain)" opacity="0.5"/>
+    <rect x="22" y="100" width="84" height="52" fill="url(#ao)" opacity="0.6"/>
+  </g>
+  <g fill="none">
+    <path d="M14 112 A50 50 0 0 0 114 112" stroke="#4d4429" stroke-width="13"/>
+    <path d="M14 112 A50 50 0 0 0 114 112" stroke="#a99869" stroke-width="10.5" stroke-dasharray="15 2.5"/>
+    <path d="M14 106 A50 50 0 0 0 114 106" stroke="#4d4429" stroke-width="11"/>
+    <path d="M14 106 A50 50 0 0 0 114 106" stroke="#b6a678" stroke-width="8.5" stroke-dasharray="12 2.5" stroke-dashoffset="7"/>
+    <path d="M18 104 A46 46 0 0 0 110 104" stroke="#d8c99b" stroke-width="1.5" stroke-dasharray="10 7" opacity="0.65"/>
+  </g>
+  <circle cx="64" cy="64" r="38" fill="url(#roof)" stroke="#2b2d2a" stroke-width="2"/>
+  <circle cx="64" cy="64" r="38" fill="none" stroke="#e6e7df" stroke-width="2" opacity="0.7" transform="translate(-1 -1)"/>
+  <circle cx="64" cy="64" r="33" fill="#3d4246" stroke="#1c2022" stroke-width="2"/>
+  <circle cx="64" cy="64" r="30.5" fill="#5b6670" stroke="#2c3236" stroke-width="1.5"/>
+  <circle cx="64" cy="64" r="32" fill="none" stroke="#9aa5ae" stroke-width="2" stroke-dasharray="2 6" opacity="0.8"/>
+  <circle cx="64" cy="64" r="20" fill="none" stroke="#3d4246" stroke-width="1.5" opacity="0.7"/>
+  <circle cx="64" cy="64" r="9" fill="#8d979f" stroke="#2c3236" stroke-width="2"/>
+  <circle cx="64" cy="64" r="4" fill="#3d4246"/>
 </svg>

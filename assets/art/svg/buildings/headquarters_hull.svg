@@ -1,65 +1,189 @@
-<!-- Headquarters, hull layer: drawn first, holds the ground shadow of the whole building. -->
-<!-- Silhouette: a square pad with cut corners carrying a plus-shaped roof, a round dome where the four arms cross and a small square deck in each corner. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="384" height="384" viewBox="0 0 384 384">
-  <!-- ground shadow, offset (4,4), flattened as one group -->
-  <g transform="translate(4 4)" opacity="0.25" fill="#000000">
-    <polygon points="66,6 318,6 378,66 378,318 318,378 66,378 6,318 6,66"/>
+<!-- Headquarters, hull layer, oblique 3/4 view: a ground point (x, y) is drawn at (x, y + 96) and a point h px up h px higher; the canvas is 384 x 480 and the 3x3 footprint is its bottom 384 x 384. -->
+<!-- Silhouette: a wide two-storey concrete block with a parapet roof, a taller control tower with a lattice mast at its west end, a lift housing, vents and a dish on the roof, and a flat porch canopy on two pillars at the middle of the south wall over a paved forecourt with a flagpole. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="480" viewBox="0 0 384 480">
+  <defs>
+    <clipPath id="apron"><polygon points="14,26 40,10 120,6 230,12 330,6 366,22 378,60 372,150 380,240 374,330 360,372 300,378 200,374 120,378 50,374 16,358 8,300 12,200 6,120 10,60"/></clipPath>
+    <linearGradient id="tar" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#62676a"/><stop offset="1" stop-color="#4a4f53"/></linearGradient>
+    <linearGradient id="pave" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9b9c94"/><stop offset="1" stop-color="#7f817b"/></linearGradient>
+    <linearGradient id="roof" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a9aaa2"/><stop offset="1" stop-color="#8d8f88"/></linearGradient>
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a7c75"/><stop offset="1" stop-color="#4b4d4a"/></linearGradient>
+    <linearGradient id="wallT" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#85877f"/><stop offset="1" stop-color="#5a5c58"/></linearGradient>
+    <linearGradient id="top" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#bdbeb6"/><stop offset="1" stop-color="#9c9e97"/></linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4a5e63"/><stop offset="1" stop-color="#1c272b"/></linearGradient>
+    <linearGradient id="ao" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d1112" stop-opacity="0"/><stop offset="1" stop-color="#0d1112" stop-opacity="0.55"/></linearGradient>
+    <linearGradient id="aoTop" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#0d1112" stop-opacity="0"/><stop offset="1" stop-color="#0d1112" stop-opacity="0.45"/></linearGradient>
+    <linearGradient id="pipeV" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#a9b1b4"/><stop offset="0.35" stop-color="#737c7f"/><stop offset="1" stop-color="#3b4145"/></linearGradient>
+    <linearGradient id="pipeH" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9b1b4"/><stop offset="0.35" stop-color="#737c7f"/><stop offset="1" stop-color="#3b4145"/></linearGradient>
+    <radialGradient id="dish" cx="0.5" cy="0.5" r="0.5" fx="0.34" fy="0.3"><stop offset="0" stop-color="#e2e4dc"/><stop offset="0.6" stop-color="#b3b6ad"/><stop offset="1" stop-color="#76787a"/></radialGradient>
+    <radialGradient id="stain"><stop offset="0" stop-color="#101314" stop-opacity="0.55"/><stop offset="1" stop-color="#101314" stop-opacity="0"/></radialGradient>
+    <radialGradient id="rust"><stop offset="0" stop-color="#8f5731" stop-opacity="0.5"/><stop offset="1" stop-color="#8f5731" stop-opacity="0"/></radialGradient>
+    <g id="shMain"><rect x="40" y="120" width="304" height="200" rx="3"/><rect x="148" y="304" width="88" height="30"/></g>
+    <g id="feet"><rect x="26" y="106" width="332" height="228" rx="4"/></g>
+  </defs>
+
+  <!-- ground: ragged tarmac apron, paved forecourt, stains, cracks and the soft shadow of the block -->
+  <g transform="translate(0 96)">
+    <polygon points="10,30 36,4 122,1 230,7 332,1 370,18 383,58 378,152 383,242 378,332 363,376 302,383 200,378 120,383 48,379 12,362 3,300 8,200 1,120 6,60" fill="#76694f" opacity="0.55"/>
+    <polygon points="14,26 40,10 120,6 230,12 330,6 366,22 378,60 372,150 380,240 374,330 360,372 300,378 200,374 120,378 50,374 16,358 8,300 12,200 6,120 10,60" fill="url(#tar)"/>
+    <g clip-path="url(#apron)">
+      <rect x="20" y="40" width="70" height="60" fill="#575b5c" opacity="0.5"/>
+      <rect x="290" y="46" width="80" height="48" fill="#3b3f41" opacity="0.45"/>
+      <polygon points="92,324 292,324 300,372 288,378 100,378 86,372" fill="url(#pave)"/>
+      <polygon points="92,324 292,324 300,372 288,378 100,378 86,372" fill="none" stroke="#3a3c39" stroke-width="2" stroke-dasharray="21 3 17 4" opacity="0.7"/>
+      <path d="M140 324 V378 M192 324 V378 M244 324 V378" stroke="#5f625d" stroke-width="1.5" opacity="0.55"/>
+      <line x1="100" y1="360" x2="290" y2="360" stroke="#d9d5c0" stroke-width="3" stroke-dasharray="14 9" opacity="0.55"/>
+      <ellipse cx="60" cy="300" rx="34" ry="12" fill="url(#stain)"/>
+      <ellipse cx="330" cy="290" rx="26" ry="10" fill="url(#stain)"/>
+      <ellipse cx="200" cy="364" rx="26" ry="8" fill="url(#stain)"/>
+      <g fill="none" stroke="#1d2122" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.65">
+        <path d="M24 90 L38 98 L46 92 L62 102"/>
+        <path d="M356 210 L344 222 L352 238 L346 256"/>
+        <path d="M30 250 L44 244 L56 252"/>
+        <path d="M70 360 L82 352 L90 358"/>
+      </g>
+    </g>
+    <polygon points="14,26 40,10 120,6 230,12 330,6 366,22 378,60 372,150 380,240 374,330 360,372 300,378 200,374 120,378 50,374 16,358 8,300 12,200 6,120 10,60" fill="none" stroke="#25292a" stroke-width="2.5" stroke-dasharray="19 3 26 4 12 2" stroke-linejoin="round" opacity="0.6"/>
+    <g fill="#0d1112" stroke="#0d1112" stroke-linejoin="round">
+      <g opacity="0.07" stroke-width="18"><use href="#shMain" x="20" y="20"/></g>
+      <g opacity="0.12" stroke-width="9"><use href="#shMain" x="20" y="20"/></g>
+      <g opacity="0.24" stroke-width="0"><use href="#shMain" x="20" y="20"/></g>
+    </g>
+    <g fill="none" stroke="#0d1112" stroke-linejoin="round">
+      <g opacity="0.05" stroke-width="22"><use href="#feet"/></g>
+      <g opacity="0.07" stroke-width="12"><use href="#feet"/></g>
+      <g opacity="0.09" stroke-width="5"><use href="#feet"/></g>
+    </g>
   </g>
-  <!-- pad: the lowest plane -->
-  <polygon points="66,6 318,6 378,66 378,318 318,378 66,378 6,318 6,66" fill="#5B6670" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
-  <polyline points="11,318 11,66 66,11 318,11" fill="none" stroke="#7D8893" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-  <!-- painted lane line round the pad -->
-  <polygon points="72,22 312,22 362,72 362,312 312,362 72,362 22,312 22,72" fill="none" stroke="#7D8893" stroke-width="2" stroke-dasharray="12 8" stroke-linejoin="round"/>
-  <!-- corner decks, each a plinth for a team plate -->
-  <g fill="#7D8893" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round">
-    <rect x="40" y="40" width="56" height="56" rx="6"/>
-    <rect x="288" y="40" width="56" height="56" rx="6"/>
-    <rect x="40" y="288" width="56" height="56" rx="6"/>
-    <rect x="288" y="288" width="56" height="56" rx="6"/>
+
+  <!-- main block, roof: coping, the inner face of the north parapet, membrane patches, helipad ring, hatches and pipes -->
+  <rect x="40" y="152" width="304" height="200" fill="url(#roof)" stroke="#2c3030" stroke-width="2" stroke-linejoin="round"/>
+  <rect x="48" y="168" width="288" height="176" fill="#8a8c85" opacity="0.5"/>
+  <rect x="48" y="160" width="288" height="9" fill="#5c5e5a" stroke="#2c3030" stroke-width="1.5"/>
+  <rect x="48" y="160" width="288" height="3" fill="#2b2d2a" opacity="0.35"/>
+  <g fill="#6a6c67" opacity="0.5"><rect x="56" y="270" width="68" height="62"/><rect x="272" y="196" width="58" height="26"/><rect x="150" y="302" width="86" height="34"/></g>
+  <g fill="none" stroke="#5b5d58" stroke-width="1.5" opacity="0.55"><path d="M48 236 H336 M144 169 V344 M240 169 V344"/></g>
+  <line x1="56" y1="300" x2="124" y2="300" stroke="#2b2d2a" stroke-width="62" stroke-dasharray="1 4" opacity="0.16"/>
+  <circle cx="196" cy="256" r="44" fill="none" stroke="#c9cac2" stroke-width="5" opacity="0.7"/>
+  <circle cx="196" cy="256" r="44" fill="none" stroke="#3a3c39" stroke-width="1.5" opacity="0.45" transform="translate(1 2)"/>
+  <path d="M170 256 H222 M196 230 V282" fill="none" stroke="#c9cac2" stroke-width="5" opacity="0.7"/>
+  <rect x="40" y="152" width="304" height="8" fill="url(#top)"/>
+  <rect x="40" y="152" width="8" height="200" fill="url(#top)"/>
+  <rect x="336" y="160" width="8" height="192" fill="#6f716b"/>
+  <rect x="40" y="152" width="304" height="2" fill="#e6e7df" opacity="0.85"/>
+  <rect x="40" y="152" width="2" height="200" fill="#e6e7df" opacity="0.7"/>
+  <rect x="40" y="344" width="304" height="8" fill="#7d7f78" stroke="#2c3030" stroke-width="1.5"/>
+  <rect x="40" y="344" width="304" height="2" fill="#c3c4bc"/>
+  <ellipse cx="320" cy="320" rx="22" ry="9" fill="url(#stain)" opacity="0.5"/>
+  <ellipse cx="100" cy="338" rx="22" ry="6" fill="url(#rust)"/>
+  <!-- hatch, vents and a pipe run on the roof -->
+  <rect x="104" y="318" width="22" height="16" fill="#7c7e78" stroke="#2c3030" stroke-width="1.5"/><rect x="106" y="320" width="18" height="10" fill="#9a9c94"/>
+  <g fill="url(#pipeV)" stroke="#25292a" stroke-width="1.5"><rect x="164" y="176" width="8" height="18"/><rect x="186" y="176" width="8" height="18"/><rect x="208" y="176" width="8" height="18"/><rect x="230" y="176" width="8" height="18"/></g>
+  <g fill="#43494c" stroke="#25292a" stroke-width="1.5"><rect x="162" y="172" width="12" height="5"/><rect x="184" y="172" width="12" height="5"/><rect x="206" y="172" width="12" height="5"/><rect x="228" y="172" width="12" height="5"/></g>
+  <rect x="160" y="196" width="84" height="8" fill="url(#pipeH)" stroke="#25292a" stroke-width="1.5"/>
+  <g fill="#8a8c85" stroke="#2c3030" stroke-width="1.5"><rect x="280" y="276" width="34" height="18"/><rect x="280" y="294" width="34" height="8" fill="#5a5c58"/></g>
+  <g stroke="#2b2d2a" stroke-width="1.5" opacity="0.7"><path d="M285 282 H309 M285 286 H309 M285 290 H309"/></g>
+  <!-- roof edge: the south wall, with its cornice, pilasters and ribbon windows -->
+  <rect x="40" y="352" width="304" height="64" fill="url(#wall)"/>
+  <line x1="40" y1="388" x2="344" y2="388" stroke="#161819" stroke-width="64" stroke-dasharray="1.5 14.5" opacity="0.2"/>
+  <path d="M40 372 H344 M40 404 H344" fill="none" stroke="#161819" stroke-width="1.5" opacity="0.3"/>
+  <rect x="40" y="352" width="304" height="9" fill="#8f9189"/>
+  <rect x="40" y="352" width="304" height="2" fill="#d9dad2"/>
+  <rect x="40" y="361" width="304" height="3" fill="#0d1112" opacity="0.35"/>
+  <g fill="url(#wallT)" stroke="#2c3030" stroke-width="1.5"><rect x="40" y="361" width="10" height="55"/><rect x="144" y="361" width="8" height="55"/><rect x="232" y="361" width="8" height="55"/><rect x="334" y="361" width="10" height="55"/></g>
+  <g fill="#b3b4ac" opacity="0.7"><rect x="40" y="361" width="3" height="55"/><rect x="144" y="361" width="2" height="55"/><rect x="232" y="361" width="2" height="55"/></g>
+  <rect x="40" y="408" width="304" height="8" fill="#3d3f3c"/>
+  <g fill="url(#glass)" stroke="#161b1c" stroke-width="1.5">
+    <rect x="58" y="370" width="26" height="15"/><rect x="90" y="370" width="26" height="15"/>
+    <rect x="58" y="391" width="26" height="15"/><rect x="90" y="391" width="26" height="15"/>
+    <rect x="256" y="370" width="26" height="15"/><rect x="288" y="370" width="26" height="15"/>
+    <rect x="256" y="391" width="26" height="15"/><rect x="288" y="391" width="26" height="15"/>
   </g>
-  <g fill="none" stroke="#A9B4BE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <polyline points="43,92 43,43 92,43"/>
-    <polyline points="291,92 291,43 340,43"/>
-    <polyline points="43,340 43,291 92,291"/>
-    <polyline points="291,340 291,291 340,291"/>
+  <g stroke="#a4bcc0" stroke-width="1.5" opacity="0.5" stroke-linecap="round">
+    <path d="M62 382 L72 373 M94 382 L104 373 M62 403 L72 394 M94 403 L104 394 M260 382 L270 373 M292 382 L302 373 M260 403 L270 394 M292 403 L302 394"/>
   </g>
-  <!-- plus-shaped roof -->
-  <polygon points="132,24 252,24 252,132 360,132 360,252 252,252 252,360 132,360 132,252 24,252 24,132 132,132" fill="#7D8893" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
-  <!-- light edge on the roof sides that face the top left -->
-  <g fill="none" stroke="#A9B4BE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <polyline points="28,248 28,136 136,136 136,28 248,28"/>
-    <polyline points="256,136 356,136"/>
-    <polyline points="136,256 136,356"/>
+  <g fill="#b9bab2" opacity="0.8"><rect x="56" y="385" width="30" height="2"/><rect x="88" y="385" width="30" height="2"/><rect x="56" y="406" width="30" height="2"/><rect x="88" y="406" width="30" height="2"/><rect x="254" y="385" width="30" height="2"/><rect x="286" y="385" width="30" height="2"/><rect x="254" y="406" width="30" height="2"/><rect x="286" y="406" width="30" height="2"/></g>
+  <g fill="#0d1112" opacity="0.4"><rect x="58" y="368" width="26" height="2"/><rect x="90" y="368" width="26" height="2"/><rect x="256" y="368" width="26" height="2"/><rect x="288" y="368" width="26" height="2"/></g>
+  <rect x="40" y="400" width="304" height="16" fill="url(#ao)"/>
+  <rect x="46" y="372" width="3" height="40" fill="#8f5731" opacity="0.28"/><rect x="318" y="374" width="3" height="36" fill="#8f5731" opacity="0.24"/>
+
+  <!-- lift housing on the east of the roof -->
+  <rect x="290" y="214" width="46" height="30" fill="#0d1112" opacity="0.18" transform="translate(8 10)"/>
+  <rect x="288" y="196" width="48" height="30" fill="url(#top)" stroke="#2c3030" stroke-width="2"/>
+  <rect x="288" y="196" width="48" height="2" fill="#e6e7df" opacity="0.8"/>
+  <rect x="288" y="226" width="48" height="26" fill="url(#wallT)" stroke="#2c3030" stroke-width="2"/>
+  <line x1="290" y1="239" x2="334" y2="239" stroke="#161819" stroke-width="26" stroke-dasharray="1.5 6.5" opacity="0.2"/>
+  <rect x="300" y="232" width="16" height="20" fill="#2b3234" stroke="#161b1c" stroke-width="1.5"/>
+  <rect x="288" y="226" width="48" height="4" fill="#aaaba3"/>
+  <rect x="288" y="244" width="48" height="8" fill="url(#ao)"/>
+  <!-- satellite dish on a pedestal -->
+  <rect x="248" y="298" width="30" height="6" fill="#4a5155" stroke="#25292a" stroke-width="1.5"/>
+  <rect x="259" y="284" width="8" height="16" fill="url(#pipeV)" stroke="#25292a" stroke-width="1.5"/>
+  <circle cx="263" cy="272" r="28" fill="#0d1112" opacity="0.2" transform="translate(7 10)"/>
+  <circle cx="263" cy="272" r="28" fill="url(#dish)" stroke="#2c3030" stroke-width="2"/>
+  <circle cx="263" cy="272" r="22" fill="none" stroke="#6b6e70" stroke-width="1.5" opacity="0.7"/>
+  <circle cx="263" cy="272" r="12" fill="none" stroke="#6b6e70" stroke-width="1.5" opacity="0.7"/>
+  <path d="M263 244 V300 M235 272 H291 M243 252 L283 292 M243 292 L283 252" fill="none" stroke="#6b6e70" stroke-width="1.2" opacity="0.55"/>
+  <circle cx="263" cy="272" r="5" fill="#3a3d3f" stroke="#161b1c" stroke-width="1.5"/>
+  <path d="M263 272 L287 246" stroke="#25292a" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="288" cy="245" r="4" fill="#4a5155" stroke="#161b1c" stroke-width="1.5"/>
+
+  <!-- control tower: shadow on the roof, its top, then the south wall with a window band -->
+  <polygon points="62,176 150,176 164,260 76,260" fill="#0d1112" opacity="0.18"/>
+  <rect x="54" y="136" width="92" height="70" fill="url(#top)" stroke="#2c3030" stroke-width="2"/>
+  <rect x="62" y="146" width="76" height="52" fill="#8d8f88" stroke="#5f625d" stroke-width="1.5" opacity="0.9"/>
+  <g fill="none" stroke="#5f625d" stroke-width="1.5" opacity="0.55"><path d="M62 172 H138 M100 146 V198"/></g>
+  <rect x="54" y="136" width="92" height="3" fill="#e6e7df" opacity="0.85"/>
+  <rect x="54" y="136" width="3" height="70" fill="#e6e7df" opacity="0.7"/>
+  <rect x="54" y="206" width="92" height="36" fill="url(#wall)" stroke="#2c3030" stroke-width="2"/>
+  <line x1="56" y1="224" x2="144" y2="224" stroke="#161819" stroke-width="36" stroke-dasharray="1.5 14.5" opacity="0.2"/>
+  <rect x="54" y="206" width="92" height="6" fill="#8f9189"/>
+  <g fill="url(#glass)" stroke="#161b1c" stroke-width="1.5"><rect x="62" y="217" width="20" height="14"/><rect x="88" y="217" width="20" height="14"/><rect x="114" y="217" width="20" height="14"/></g>
+  <g stroke="#a4bcc0" stroke-width="1.5" opacity="0.5" stroke-linecap="round"><path d="M65 229 L74 219 M91 229 L100 219 M117 229 L126 219"/></g>
+  <rect x="54" y="232" width="92" height="10" fill="url(#ao)"/>
+  <!-- mast on the tower: legs, braces, cross arms and a ball -->
+  <path d="M90 172 L84 90 M106 172 L112 90" fill="none" stroke="#25292a" stroke-width="3" stroke-linecap="round"/>
+  <path d="M90 172 H106 M88.5 156 H107.5 M87 140 H109 M86 124 H110 M85 108 H111 M84.5 94 H111.5 M90 172 L107.5 156 M106 172 L88.5 156 M88.5 156 L109 140 M107.5 156 L87 140 M87 140 L110 124 M109 140 L86 124 M86 124 L111 108 M110 124 L85 108" fill="none" stroke="#25292a" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M98 94 V62 M86 78 H110 M92 70 H104" stroke="#25292a" stroke-width="3" stroke-linecap="round"/>
+  <path d="M89 172 L83 92 M98 92 V64 M86 78 H97" fill="none" stroke="#c9ccc6" stroke-width="1" opacity="0.7"/>
+  <circle cx="98" cy="60" r="3.5" fill="#d8dad0" stroke="#25292a" stroke-width="1.5"/>
+  <path d="M84 92 L66 150 M112 92 L132 150" fill="none" stroke="#25292a" stroke-width="1" opacity="0.6"/>
+  <rect x="86" y="170" width="24" height="6" fill="#43494c" stroke="#1c2022" stroke-width="1.5"/>
+
+  <!-- porch: doors in the wall, steps, two pillars and a flat canopy -->
+  <rect x="160" y="391" width="64" height="25" fill="#1d2428" stroke="#161b1c" stroke-width="2"/>
+  <rect x="164" y="395" width="26" height="21" fill="url(#glass)"/><rect x="194" y="395" width="26" height="21" fill="url(#glass)"/>
+  <path d="M166 414 L176 399 M196 414 L206 399" stroke="#a4bcc0" stroke-width="1.5" opacity="0.4"/>
+  <rect x="152" y="416" width="80" height="7" fill="#a4a59d" stroke="#2c3030" stroke-width="1.5"/>
+  <rect x="148" y="423" width="88" height="7" fill="#8d8f88" stroke="#2c3030" stroke-width="1.5"/>
+  <rect x="148" y="416" width="88" height="2" fill="#dcddd5" opacity="0.6"/>
+  <rect x="148" y="424" width="88" height="8" fill="url(#ao)" opacity="0.6"/>
+  <rect x="150" y="394" width="9" height="36" fill="url(#wallT)" stroke="#2c3030" stroke-width="1.5"/>
+  <rect x="225" y="394" width="9" height="36" fill="url(#wallT)" stroke="#2c3030" stroke-width="1.5"/>
+  <rect x="150" y="394" width="2" height="36" fill="#c3c4bc" opacity="0.7"/>
+  <rect x="150" y="424" width="84" height="6" fill="url(#ao)" opacity="0.7"/>
+  <rect x="142" y="372" width="100" height="30" fill="url(#top)" stroke="#2c3030" stroke-width="2" stroke-linejoin="round"/>
+  <rect x="146" y="376" width="92" height="22" fill="#8d8f88" opacity="0.5"/>
+  <rect x="142" y="372" width="100" height="2" fill="#e6e7df" opacity="0.85"/>
+  <rect x="142" y="402" width="100" height="8" fill="#6a6c67" stroke="#2c3030" stroke-width="2"/>
+  <rect x="142" y="402" width="100" height="2" fill="#a8a9a1"/>
+  <rect x="142" y="406" width="100" height="6" fill="url(#ao)"/>
+
+  <!-- forecourt: flagpole, sandbag corners, drums -->
+  <g fill="#a99869" stroke="#4d4429" stroke-width="1.5" stroke-linejoin="round">
+    <rect x="62" y="446" width="22" height="12" rx="4"/><rect x="86" y="446" width="22" height="12" rx="4"/><rect x="110" y="446" width="14" height="12" rx="4"/>
+    <rect x="68" y="434" width="22" height="12" rx="4"/><rect x="92" y="434" width="22" height="12" rx="4"/>
+    <rect x="262" y="446" width="22" height="12" rx="4"/><rect x="286" y="446" width="22" height="12" rx="4"/>
+    <rect x="270" y="434" width="22" height="12" rx="4"/>
   </g>
-  <!-- arm-end plinths for the team plates, in the darkest olive -->
-  <g fill="#4E5A3A" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round">
-    <rect x="140" y="32" width="104" height="64" rx="4"/>
-    <rect x="288" y="140" width="64" height="104" rx="4"/>
-    <rect x="140" y="288" width="104" height="64" rx="4"/>
-    <rect x="32" y="140" width="64" height="104" rx="4"/>
-  </g>
-  <!-- conduits from the dome to the plinths -->
-  <g fill="#5B6670" stroke="#1C2127" stroke-width="1.5" stroke-linejoin="round">
-    <rect x="180" y="98" width="24" height="34"/>
-    <rect x="180" y="252" width="24" height="34"/>
-    <rect x="98" y="180" width="34" height="24"/>
-    <rect x="252" y="180" width="34" height="24"/>
-  </g>
-  <!-- rivet hatches in the inner corners of the crossing -->
-  <g fill="#5B6670" stroke="#1C2127" stroke-width="1.5">
-    <circle cx="148" cy="148" r="8"/>
-    <circle cx="236" cy="148" r="8"/>
-    <circle cx="148" cy="236" r="8"/>
-    <circle cx="236" cy="236" r="8"/>
-  </g>
-  <!-- dome -->
-  <circle cx="192" cy="192" r="60" fill="#5B6670" stroke="#1C2127" stroke-width="3"/>
-  <circle cx="192" cy="192" r="48" fill="#7D8893" stroke="#1C2127" stroke-width="1.5"/>
-  <path d="M152 192 A40 40 0 0 1 192 152" fill="none" stroke="#A9B4BE" stroke-width="3" stroke-linecap="round"/>
-  <path d="M232 192 A40 40 0 0 1 192 232" fill="none" stroke="#5B6670" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="192" cy="192" r="14" fill="#A9B4BE" stroke="#1C2127" stroke-width="1.5"/>
-  <g stroke="#5B6670" stroke-width="2" stroke-linecap="round">
-    <line x1="185" y1="192" x2="199" y2="192"/>
-    <line x1="192" y1="185" x2="192" y2="199"/>
-  </g>
+  <g stroke="#cdbd8c" stroke-width="2" stroke-linecap="round" opacity="0.8"><path d="M66 450 H78 M90 450 H102 M72 438 H84 M96 438 H108 M266 450 H278 M290 450 H302 M274 438 H286"/></g>
+  <g stroke="#4d4429" stroke-width="1.5" opacity="0.6"><path d="M62 456 H122 M262 456 H306"/></g>
+  <ellipse cx="322" cy="470" rx="14" ry="4" fill="#0d1112" opacity="0.3"/>
+  <path d="M312 456 V464 A8 8 0 0 0 328 464 V454 Z" fill="#68704d" stroke="#1c2022" stroke-width="1.5"/>
+  <circle cx="320" cy="456" r="8" fill="#68704d" stroke="#1c2022" stroke-width="1.5"/><circle cx="320" cy="456" r="5" fill="none" stroke="#161a1b" stroke-width="1.5" opacity="0.7"/><circle cx="317" cy="453" r="2" fill="#cdd3c1" opacity="0.5"/>
+  <path d="M332 462 V470 A8 8 0 0 0 348 470 V460 Z" fill="#8b5a3a" stroke="#1c2022" stroke-width="1.5"/>
+  <circle cx="340" cy="462" r="8" fill="#8b5a3a" stroke="#1c2022" stroke-width="1.5"/><circle cx="340" cy="462" r="5" fill="none" stroke="#161a1b" stroke-width="1.5" opacity="0.7"/><circle cx="337" cy="459" r="2" fill="#cdd3c1" opacity="0.5"/>
+  <ellipse cx="302" cy="452" rx="9" ry="3" fill="#0d1112" opacity="0.35"/>
+  <rect x="297" y="446" width="10" height="6" fill="#43494c" stroke="#1c2022" stroke-width="1.5"/>
+  <line x1="302" y1="449" x2="302" y2="372" stroke="#2a2f31" stroke-width="3.5" stroke-linecap="round"/><line x1="301" y1="449" x2="301" y2="374" stroke="#a8b0b2" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="302" cy="370" r="3" fill="#c8ccc4" stroke="#1c2022" stroke-width="1"/>
 </svg>

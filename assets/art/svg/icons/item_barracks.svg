@@ -1,20 +1,25 @@
-<!-- Barracks build icon: palette colours, no team colour, drawn on a clear canvas for a tile of 64 dp or more. -->
-<!-- Silhouette: a U of three long olive pitched roofs round a bare metal yard that opens to the bottom, a raised ridge along each and a dark door at the head of the yard. -->
+<!-- Barracks item icon: oblique 3/4 view, simplified, palette colours, no team colour, clear background. -->
+<!-- Silhouette: three olive pitched-roof huts in a U round a bare gravel yard that opens to the bottom, a long one across the top with a row of doors and a shorter one down each side ending in a plank gable. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
   <!-- yard -->
-  <rect x="38" y="38" width="52" height="80" fill="#7D8893" stroke="#1C2127" stroke-width="3"/>
-  <rect x="58" y="40" width="12" height="12" fill="#1C2127"/>
-  <line x1="64" y1="60" x2="64" y2="112" stroke="#A9B4BE" stroke-width="3" stroke-dasharray="8 6"/>
-  <!-- the U of roofs -->
-  <polygon points="10,10 118,10 118,118 90,118 90,38 38,38 38,118 10,118" fill="#6B7A4F" stroke="#1C2127" stroke-width="4" stroke-linejoin="round"/>
-  <!-- shade facets along the inner side of each roof -->
-  <polygon points="38,38 90,38 90,28 28,28 28,118 38,118" fill="#4E5A3A"/>
-  <polygon points="90,38 90,118 100,118 100,28" fill="#4E5A3A"/>
-  <!-- ridges -->
-  <g stroke="#8C9A6B" stroke-width="4" stroke-linecap="round">
-    <line x1="20" y1="20" x2="108" y2="20"/>
-    <line x1="19" y1="30" x2="19" y2="110"/>
-    <line x1="109" y1="30" x2="109" y2="110"/>
-  </g>
-  <polygon points="10,10 118,10 118,118 90,118 90,38 38,38 38,118 10,118" fill="none" stroke="#1C2127" stroke-width="4" stroke-linejoin="round"/>
+  <polygon points="38,56 90,56 90,116 38,116" fill="#B59F72" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="64" cy="92" r="9" fill="none" stroke="#1C2127" stroke-width="9"/>
+  <circle cx="64" cy="92" r="9" fill="none" stroke="#CDB98F" stroke-width="5" stroke-dasharray="6 1.6"/>
+  <rect x="62.5" y="64" width="3" height="28" fill="#1C2127"/>
+  <!-- long hut across the top -->
+  <polygon points="8,16 120,16 120,26 8,26" fill="#78885B" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
+  <polygon points="8,26 120,26 120,46 8,46" fill="#6B7A4F" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
+  <rect x="10" y="28" width="108" height="3" fill="#B6C28F" opacity="0.6"/>
+  <rect x="8" y="46" width="112" height="11" fill="#46532F" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
+  <g fill="#1C2127"><rect x="22" y="49" width="9" height="8"/><rect x="60" y="49" width="9" height="8"/><rect x="97" y="49" width="9" height="8"/></g>
+  <!-- west wing -->
+  <polygon points="8,52 8,108 24,98 24,42" fill="#78885B" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
+  <polygon points="24,42 24,98 40,108 40,52" fill="#46532F" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
+  <polygon points="8,120 8,108 24,98 40,108 40,120" fill="#6B7A4F" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
+  <rect x="19" y="108" width="10" height="12" fill="#1C2127"/>
+  <!-- east wing -->
+  <polygon points="88,52 88,108 104,98 104,42" fill="#78885B" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
+  <polygon points="104,42 104,98 120,108 120,52" fill="#46532F" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
+  <polygon points="88,120 88,108 104,98 120,108 120,120" fill="#6B7A4F" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
+  <rect x="99" y="108" width="10" height="12" fill="#1C2127"/>
 </svg>

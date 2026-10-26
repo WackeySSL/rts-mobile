@@ -1,18 +1,24 @@
-<!-- Vehicle factory build icon: palette colours, no team colour, drawn on a clear canvas for a tile of 64 dp or more. -->
-<!-- Silhouette: one wide hall whose roof is four bright stripes, with a dark open bay under it carrying two orange arrows that point out. -->
+<!-- Vehicle factory item icon: oblique 3/4 view, simplified, palette colours, no team colour, clear background. -->
+<!-- Silhouette: one wide hall whose roof is four bright slopes alternating with dark glazing, a tower crane with a long jib at its top right corner and a big dark bay door with an orange hazard lintel at the middle of the front wall. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <!-- roof hall -->
-  <rect x="8" y="8" width="112" height="68" rx="7" fill="#5B6670" stroke="#1C2127" stroke-width="4" stroke-linejoin="round"/>
-  <g fill="#A9B4BE" stroke="#1C2127" stroke-width="2.5" stroke-linejoin="round">
-    <rect x="15" y="15" width="98" height="10" rx="2"/>
-    <rect x="15" y="31" width="98" height="10" rx="2"/>
-    <rect x="15" y="47" width="98" height="10" rx="2"/>
-    <rect x="15" y="63" width="98" height="8" rx="2"/>
-  </g>
-  <!-- bay -->
-  <rect x="18" y="82" width="92" height="38" rx="5" fill="#4E5A3A" stroke="#1C2127" stroke-width="4" stroke-linejoin="round"/>
-  <g fill="none" stroke="#F5A524" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
-    <polyline points="40,92 64,102 88,92"/>
-    <polyline points="40,105 64,115 88,105"/>
-  </g>
+  <!-- crane: mast and jib behind the roof -->
+  <rect x="100" y="8" width="8" height="26" fill="#5D6B68" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <rect x="44" y="6" width="76" height="6" fill="#A0ACA8" stroke="#1C2127" stroke-width="3" stroke-linejoin="round"/>
+  <rect x="116" y="6" width="6" height="12" fill="#4A4F53" stroke="#1C2127" stroke-width="2.5"/>
+  <!-- sawtooth roof: slope, glazing, four times -->
+  <rect x="8" y="22" width="112" height="60" fill="#1C2127" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
+  <g fill="#A0ACA8"><rect x="10" y="24" width="108" height="8"/><rect x="10" y="38" width="108" height="8"/><rect x="10" y="52" width="108" height="8"/><rect x="10" y="66" width="108" height="8"/></g>
+  <g fill="#3C4A4E"><rect x="10" y="32" width="108" height="6"/><rect x="10" y="46" width="108" height="6"/><rect x="10" y="60" width="108" height="6"/><rect x="10" y="74" width="108" height="6"/></g>
+  <g fill="#FFFFFF" opacity="0.6"><rect x="10" y="24" width="108" height="2"/><rect x="10" y="38" width="108" height="2"/><rect x="10" y="52" width="108" height="2"/><rect x="10" y="66" width="108" height="2"/></g>
+  <!-- front wall with the bay -->
+  <rect x="8" y="82" width="112" height="26" fill="#5D6B68" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
+  <rect x="10" y="84" width="108" height="3" fill="#A0ACA8" opacity="0.8"/>
+  <rect x="42" y="90" width="44" height="18" fill="#1C2127"/>
+  <rect x="45" y="93" width="38" height="15" fill="#3C4A4E"/>
+  <rect x="45" y="93" width="38" height="5" fill="#8D8F88"/>
+  <polygon points="40,86 88,86 88,92 40,92" fill="#1C2127"/>
+  <g fill="#F5A524"><polygon points="42,91 48,87 54,87 48,91"/><polygon points="55,91 61,87 67,87 61,91"/><polygon points="68,91 74,87 80,87 74,91"/><polygon points="80,91 84,87 87,87 87,91"/></g>
+  <!-- ramp -->
+  <polygon points="40,108 88,108 94,120 34,120" fill="#8D8F88" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
+  <rect x="62.5" y="110" width="3" height="8" fill="#FFFFFF" opacity="0.7"/>
 </svg>
