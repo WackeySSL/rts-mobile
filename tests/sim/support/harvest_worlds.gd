@@ -1,6 +1,6 @@
 extends RefCounted
-## Worlds with ore for the harvest suites (plan row P75, ADR 0018 sections 2 and 3): a map from one
-## string per tile row over the shipped terrain set ('.' grass, 'o' ore, '#' rock, ':' sand, '~'
+## Worlds with ore for the harvest suites (plan rows P75 and P75b, ADR 0018 section 3): a map from
+## one string per tile row over the shipped terrain set ('.' grass, 'o' ore, '#' rock, ':' sand, '~'
 ## water), loaded through `World.from_scenario`, so the ore cells are listed and filled the way a
 ## match does it. The roster is the shipped harvester, refinery, power plant and rifle squad; the
 ## rules are `data/rules.tres`. Harvesters and refineries are the test's to add. Not a test suite.
@@ -11,8 +11,10 @@ const UNIT_DIR: String = "res://data/units/"
 const ROSTER: Array[String] = ["harvester", "refinery", "power_plant", "rifle_squad"]
 
 
-## A prepared World of the map `rows` with 2 players and the roster.
-static func world(rows: Array[String]) -> World:
+## A prepared World of the map `rows` with 2 players and the roster, then the unit and building ids
+## of `extra` (a plain Array of strings: a caller reaches this through a preloaded script, so its
+## literal is not typed; a case that builds with a factory asks for "vehicle_factory").
+static func world(rows: Array[String], extra: Array = []) -> World:
 	var map: MapDef = MapDef.new()
 	map.rows = PackedStringArray(rows)
 	map.terrain = load(TERRAIN_PATH) as TerrainSetDef
@@ -20,7 +22,7 @@ static func world(rows: Array[String]) -> World:
 	scenario.map = map
 	scenario.player_count = 2
 	scenario.rules = load(RULES_PATH) as RulesDef
-	for id: String in ROSTER:
+	for id: String in ROSTER + extra:
 		scenario.roster.append(load(UNIT_DIR + id + ".tres") as UnitDef)
 	return World.from_scenario(scenario)
 
@@ -67,10 +69,31 @@ static func add_refinery(world: World, owner: int, col: int, line: int) -> int:
 	return world.add_building(owner, type_of(world, "refinery"), col, line)
 
 
+## One tick with `commands` (a plain Array, as a preloaded script's caller has no typed literal):
+## each is stamped with the World's tick, so `Sim.step` applies it.
+static func send(world: World, commands: Array) -> void:
+	var stamped: Array[Command] = []
+	stamped.assign(commands)
+	for command: Command in stamped:
+		command.tick = world.tick
+	Sim.step(world, stamped)
+
+
 ## Runs `count` ticks with no commands.
 static func step(world: World, count: int = 1) -> void:
 	for _tick: int in count:
 		Sim.step(world, [] as Array[Command])
+
+
+## Gives unit `id` a MOVE to the milli point (x, y) the way Harvest's own orders do (the order, the
+## goal, no group cell, a fresh DIRECT navigation), without touching its harvest mode.
+static func walk_to(world: World, id: int, x: int, y: int) -> void:
+	var row: int = world.index_of(id)
+	world.order[row] = World.Order.MOVE
+	world.goal_x[row] = x
+	world.goal_y[row] = y
+	world.group_cell[row] = -1
+	Movement.reset_nav(world, PackedInt32Array([row]), World.NavMode.DIRECT)
 
 
 ## The first tick at or after `from` on which a row of `id` takes its turn at `period`: the ticks
@@ -87,3 +110,18 @@ static func mode_of(world: World, id: int) -> int:
 ## The cargo of unit `id`.
 static func cargo_of(world: World, id: int) -> int:
 	return world.cargo[world.index_of(id)]
+
+
+## The harvest state and order of unit `id`, to compare before and after: harvest mode, ore cell,
+## order, goal x and y, cargo and home.
+static func columns_of(world: World, id: int) -> Array[int]:
+	var row: int = world.index_of(id)
+	return [
+		world.harvest_mode[row],
+		world.harvest_slot[row],
+		world.order[row],
+		world.goal_x[row],
+		world.goal_y[row],
+		world.cargo[row],
+		world.home[row],
+	]
