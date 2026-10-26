@@ -1,0 +1,158 @@
+<!-- App icon, full square (512 x 512, no rounded corners and no transparent edge: the stores add their own mask): the two adaptive layers of this folder stacked, background first, and scaled by 1.7 about the centre so that the tank fills the square. Redraw icon_background.svg and icon_foreground.svg first and stack them again; the drawing is the same. -->
+<!-- Silhouette: one wide, low tank with a wedge turret and a long gun pointing up and to the right at the viewer, charging out of a band of dust in front of a sky split on a steep diagonal, amber with a gas flare and a pumpjack on the left, cyan with wind turbines and solar panels on the right. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="skyWarm" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="240"><stop offset="0" stop-color="#c94d12"/><stop offset="0.5" stop-color="#e8681f"/><stop offset="1" stop-color="#ff9446"/></linearGradient>
+    <linearGradient id="skyCool" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="240"><stop offset="0" stop-color="#1590b0"/><stop offset="0.5" stop-color="#1fa6c8"/><stop offset="1" stop-color="#62d6ee"/></linearGradient>
+    <linearGradient id="groundWarm" gradientUnits="userSpaceOnUse" x1="0" y1="240" x2="0" y2="432"><stop offset="0" stop-color="#9a4216"/><stop offset="0.45" stop-color="#5a2a10"/><stop offset="1" stop-color="#2a150a"/></linearGradient>
+    <linearGradient id="groundCool" gradientUnits="userSpaceOnUse" x1="0" y1="240" x2="0" y2="432"><stop offset="0" stop-color="#14829a"/><stop offset="0.45" stop-color="#0c5368"/><stop offset="1" stop-color="#062a37"/></linearGradient>
+    <linearGradient id="seam" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="300"><stop offset="0" stop-color="#ffffff" stop-opacity="0.75"/><stop offset="1" stop-color="#ffffff" stop-opacity="0.1"/></linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5fb8d8"/><stop offset="1" stop-color="#0f3f57"/></linearGradient>
+    <linearGradient id="tower" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#a9cdd8"/></linearGradient>
+    <radialGradient id="flame" cx="0.5" cy="0.8" r="0.8"><stop offset="0" stop-color="#fff8d6"/><stop offset="0.4" stop-color="#ffd24d"/><stop offset="1" stop-color="#ff7a1a"/></radialGradient>
+    <radialGradient id="flareGlow" gradientUnits="userSpaceOnUse" cx="150" cy="122" r="74"><stop offset="0" stop-color="#ffe9a8" stop-opacity="0.95"/><stop offset="0.5" stop-color="#ffc060" stop-opacity="0.45"/><stop offset="1" stop-color="#ffb060" stop-opacity="0"/></radialGradient>
+    <radialGradient id="backlight" gradientUnits="userSpaceOnUse" cx="216" cy="200" r="150"><stop offset="0" stop-color="#fff4dc" stop-opacity="0.6"/><stop offset="0.55" stop-color="#fff4dc" stop-opacity="0.22"/><stop offset="1" stop-color="#fff4dc" stop-opacity="0"/></radialGradient>
+    <radialGradient id="puffW"><stop offset="0" stop-color="#ffe6c0" stop-opacity="0.95"/><stop offset="0.6" stop-color="#f0c48e" stop-opacity="0.8"/><stop offset="1" stop-color="#e0a468" stop-opacity="0"/></radialGradient>
+    <radialGradient id="puffC"><stop offset="0" stop-color="#e6f8fa" stop-opacity="0.95"/><stop offset="0.6" stop-color="#b6dde4" stop-opacity="0.8"/><stop offset="1" stop-color="#86bcc8" stop-opacity="0"/></radialGradient>
+    <radialGradient id="smoke"><stop offset="0" stop-color="#3a1608" stop-opacity="0.35"/><stop offset="1" stop-color="#3a1608" stop-opacity="0"/></radialGradient>
+    <radialGradient id="vignette" gradientUnits="userSpaceOnUse" cx="216" cy="216" r="300"><stop offset="0.55" stop-color="#000000" stop-opacity="0"/><stop offset="1" stop-color="#000000" stop-opacity="0.45"/></radialGradient>
+    <linearGradient id="glacis" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7f8f60"/><stop offset="0.55" stop-color="#55633a"/><stop offset="1" stop-color="#36402a"/></linearGradient>
+    <linearGradient id="sideL" gradientUnits="userSpaceOnUse" x1="200" y1="172" x2="150" y2="246"><stop offset="0" stop-color="#8f9d6d"/><stop offset="0.5" stop-color="#627147"/><stop offset="1" stop-color="#37422b"/></linearGradient>
+    <linearGradient id="front" gradientUnits="userSpaceOnUse" x1="218" y1="176" x2="268" y2="248"><stop offset="0" stop-color="#55633a"/><stop offset="1" stop-color="#232a1b"/></linearGradient>
+    <linearGradient id="track" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3a424a"/><stop offset="0.5" stop-color="#20262a"/><stop offset="1" stop-color="#14181b"/></linearGradient>
+    <linearGradient id="gunBody" gradientUnits="userSpaceOnUse" x1="273" y1="174" x2="285" y2="196"><stop offset="0" stop-color="#c3cdd6"/><stop offset="0.4" stop-color="#7d8893"/><stop offset="1" stop-color="#2f373e"/></linearGradient>
+    <linearGradient id="dustUp" gradientUnits="userSpaceOnUse" x1="0" y1="250" x2="0" y2="300"><stop offset="0" stop-color="#cdb98f" stop-opacity="0"/><stop offset="1" stop-color="#cdb98f" stop-opacity="0.45"/></linearGradient>
+    <linearGradient id="occlude" gradientUnits="userSpaceOnUse" x1="0" y1="236" x2="0" y2="266"><stop offset="0" stop-color="#000000" stop-opacity="0.6"/><stop offset="1" stop-color="#000000" stop-opacity="0"/></linearGradient>
+    <linearGradient id="occludeUp" gradientUnits="userSpaceOnUse" x1="0" y1="218" x2="0" y2="248"><stop offset="0" stop-color="#000000" stop-opacity="0"/><stop offset="1" stop-color="#000000" stop-opacity="0.5"/></linearGradient>
+    <radialGradient id="puff"><stop offset="0" stop-color="#f0e2c4" stop-opacity="0.95"/><stop offset="0.6" stop-color="#d9c59a" stop-opacity="0.75"/><stop offset="1" stop-color="#cdb98f" stop-opacity="0"/></radialGradient>
+    <clipPath id="lowerBody"><path d="M100 282 L108 246 Q110 240 118 240 L146 240 L166 234 L266 234 L286 240 L314 240 Q322 240 324 246 L332 282 L320 296 L112 296 Z"/></clipPath>
+    <clipPath id="glacisClip"><polygon points="162,238 270,238 280,288 152,288"/></clipPath>
+    <clipPath id="sideClip"><path d="M146 246 L150 214 Q151 210 156 208 L216 178 Q221 176 226 177 L218 248 L146 248 Z"/></clipPath>
+    <clipPath id="frontClip"><path d="M218 248 L222 178 L260 187 Q266 189 267 195 L268 246 Z"/></clipPath>
+  </defs>
+  <g transform="translate(-111.2 -111.2) scale(1.7)">
+  <!-- Sky and ground: the warm one over the whole canvas, the cool one over its right of the seam from (300,0) to (140,432), so that no pixel along the seam is half empty. -->
+  <rect width="432" height="432" fill="url(#skyWarm)"/>
+  <polygon points="300,0 432,0 432,432 140,432" fill="url(#skyCool)"/>
+  <circle cx="150" cy="122" r="74" fill="url(#flareGlow)"/>
+  <circle cx="216" cy="200" r="150" fill="url(#backlight)"/>
+  <!-- Far ridges on each side of the seam. -->
+  <path d="M0 232 L30 222 L64 228 L96 216 L130 226 L170 218 L212 230 L212 242 L0 242 Z" fill="#8a360f" opacity="0.5"/>
+  <path d="M212 232 L252 220 L290 226 L330 214 L372 224 L432 216 L432 242 L212 242 Z" fill="#0f6f8c" opacity="0.5"/>
+  <rect x="0" y="240" width="432" height="192" fill="url(#groundWarm)"/>
+  <polygon points="211,240 432,240 432,432 140,432" fill="url(#groundCool)"/>
+  <!-- Warm side: smoke and a lattice flare stack with its flame, and a pumpjack facing left. -->
+  <g>
+    <ellipse cx="136" cy="76" rx="40" ry="22" fill="url(#smoke)"/>
+    <ellipse cx="118" cy="52" rx="44" ry="20" fill="url(#smoke)"/>
+    <path d="M142 244 L147 152 M158 244 L153 152 M146 224 L156 200 M154 224 L144 200 M145 190 L154 170 M155 190 L146 170" stroke="#3a1c0c" stroke-width="2.5" fill="none"/>
+    <rect x="144" y="148" width="12" height="6" fill="#3a1c0c"/>
+    <path d="M150 150 C138 142 134 124 142 110 C143 120 148 122 149 112 C149 100 145 96 150 84 C160 96 168 112 163 128 C161 139 157 145 150 150 Z" fill="url(#flame)"/>
+    <path d="M150 148 C143 142 142 133 147 123 C148 129 152 129 153 123 C158 131 157 142 150 148 Z" fill="#fffbe6" opacity="0.9"/>
+    <g fill="#ffd9a0"><circle cx="166" cy="104" r="1.8"/><circle cx="132" cy="96" r="1.5"/><circle cx="172" cy="124" r="1.5"/><circle cx="128" cy="116" r="1.8"/></g>
+    <g fill="#3a1c0c">
+      <rect x="72" y="238" width="68" height="6"/>
+      <polygon points="96,240 110,200 124,240"/>
+      <polygon points="72,190 138,208 138,216 72,200"/>
+      <path d="M70 190 C70 180 82 180 88 186 L92 204 C86 210 74 208 70 200 Z"/>
+      <rect x="78" y="200" width="2.5" height="38"/>
+      <circle cx="134" cy="222" r="12"/>
+      <rect x="126" y="228" width="26" height="12"/>
+    </g>
+  </g>
+  <!-- Cool side: wind turbines and a row of solar panels. -->
+  <g>
+    <path d="M299 242 L309 242 L306 168 L302 168 Z" fill="url(#tower)" stroke="#0e5a73" stroke-width="1.5" stroke-linejoin="round"/>
+    <polygon points="307.4,165.4 298.4,128.4 296.4,128.8 300.6,166.6" fill="#f2f6f8" stroke="#0e5a73" stroke-width="1.5"/>
+    <polygon points="301.8,163.3 274.2,189.7 275.5,191.2 306.2,168.7" fill="#f2f6f8" stroke="#0e5a73" stroke-width="1.5"/>
+    <polygon points="302.8,169.3 339.4,179.9 340.1,178.1 305.2,162.7" fill="#f2f6f8" stroke="#0e5a73" stroke-width="1.5"/>
+    <rect x="297" y="161" width="14" height="10" rx="3" fill="#f2f6f8" stroke="#0e5a73" stroke-width="1.5"/>
+    <path d="M341 242 L347 242 L345.5 206 L342.5 206 Z" fill="url(#tower)" stroke="#0e5a73" stroke-width="1.5" stroke-linejoin="round"/>
+    <polygon points="344.9,206.4 369.6,195.5 369.1,194.0 343.1,201.6" fill="#f2f6f8" stroke="#0e5a73" stroke-width="1.2"/>
+    <polygon points="345.7,202.0 323.8,186.0 322.8,187.3 342.3,206.0" fill="#f2f6f8" stroke="#0e5a73" stroke-width="1.2"/>
+    <polygon points="341.4,203.5 338.5,230.5 340.1,230.7 346.6,204.5" fill="#f2f6f8" stroke="#0e5a73" stroke-width="1.2"/>
+    <circle cx="344" cy="204" r="4" fill="#f2f6f8" stroke="#0e5a73" stroke-width="1.2"/>
+    <g fill="url(#panel)" stroke="#d6f3fb" stroke-width="1.5" stroke-linejoin="round">
+      <path d="M262 238 L270 214 L288 214 L282 238 Z"/>
+      <path d="M286 238 L294 214 L312 214 L306 238 Z"/>
+      <path d="M310 238 L318 214 L336 214 L330 238 Z"/>
+      <path d="M334 238 L342 214 L360 214 L354 238 Z"/>
+      <path d="M358 238 L366 214 L384 214 L378 238 Z"/>
+    </g>
+  </g>
+  <!-- The seam: a bright diagonal edge between the two skies. -->
+  <polygon points="297,0 303,0 143,432 137,432" fill="url(#seam)"/>
+  <!-- Dust band along the foot, lit warm on the left of the seam and cool on the right. -->
+  <g>
+    <ellipse cx="34" cy="296" rx="64" ry="30" fill="url(#puffW)"/>
+    <ellipse cx="108" cy="304" rx="70" ry="32" fill="url(#puffW)"/>
+    <ellipse cx="176" cy="308" rx="66" ry="30" fill="url(#puffW)"/>
+    <ellipse cx="256" cy="308" rx="66" ry="30" fill="url(#puffC)"/>
+    <ellipse cx="326" cy="304" rx="70" ry="32" fill="url(#puffC)"/>
+    <ellipse cx="400" cy="296" rx="64" ry="30" fill="url(#puffC)"/>
+    <ellipse cx="64" cy="334" rx="70" ry="26" fill="url(#puffW)" opacity="0.7"/>
+    <ellipse cx="150" cy="340" rx="64" ry="24" fill="url(#puffW)" opacity="0.6"/>
+    <ellipse cx="282" cy="340" rx="64" ry="24" fill="url(#puffC)" opacity="0.6"/>
+    <ellipse cx="368" cy="334" rx="70" ry="26" fill="url(#puffC)" opacity="0.7"/>
+  </g>
+  <rect width="432" height="432" fill="url(#vignette)"/>
+  <ellipse cx="216" cy="297" rx="108" ry="8" fill="#000000" opacity="0.4"/>
+  <!-- Hull front between the tracks: sloped glacis with its nose below. -->
+  <polygon points="162,238 270,238 280,288 152,288" fill="url(#glacis)" stroke="#1c2127" stroke-width="2" stroke-linejoin="round"/>
+  <rect x="152" y="234" width="130" height="30" fill="url(#occlude)" clip-path="url(#glacisClip)"/>
+  <polygon points="154,286 278,286 272,296 160,296" fill="#2f3825" stroke="#1c2127" stroke-width="2" stroke-linejoin="round"/>
+  <rect x="180" y="256" width="34" height="11" fill="#1c2127"/>
+  <path d="M185 259 V264 M193 259 V264 M201 259 V264 M209 259 V264" stroke="#5b6670" stroke-width="2" fill="none"/>
+  <rect x="166" y="268" width="12" height="7" rx="2" fill="#ffe9a8" stroke="#1c2127" stroke-width="1.5"/>
+  <rect x="254" y="268" width="12" height="7" rx="2" fill="#ffe9a8" stroke="#1c2127" stroke-width="1.5"/>
+  <path d="M157 278 H275" stroke="#232a1b" stroke-width="1.5" opacity="0.7" fill="none"/>
+  <path d="M158 280 H274" stroke="#8c9a6b" stroke-width="1.5" opacity="0.4" fill="none"/>
+  <path d="M168 284 Q216 294 264 284" stroke="#1c2127" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- Track blocks with their cleats. -->
+  <path d="M100 282 L108 246 Q110 240 118 240 L146 240 Q154 240 154 248 L154 296 L112 296 Z" fill="url(#track)" stroke="#1c2127" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M332 282 L324 246 Q322 240 314 240 L286 240 Q278 240 278 248 L278 296 L320 296 Z" fill="url(#track)" stroke="#1c2127" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M108 254 H153 M106 263 H153 M104 273 H153 M108 285 H153 M279 254 H324 M279 263 H326 M279 273 H328 M279 285 H324" stroke="#5b6670" stroke-width="2.5" opacity="0.75" fill="none"/>
+  <!-- Fenders over the tracks. -->
+  <polygon points="92,246 166,234 166,248 94,260" fill="#55633a" stroke="#1c2127" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="340,246 266,234 266,248 338,260" fill="#36402a" stroke="#1c2127" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M95 247 L164 236" stroke="#a3b17e" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <!-- Dust that the hull has gathered, over everything low. -->
+  <rect x="88" y="250" width="256" height="50" fill="url(#dustUp)" clip-path="url(#lowerBody)"/>
+  <!-- Turret, swung to the right: roof gear, the cast dome with its lit left side and stowage basket, the front plate with its mantlet. -->
+  <rect x="236" y="164" width="24" height="24" rx="2" fill="#4a545d" stroke="#1c2127" stroke-width="2"/>
+  <circle cx="244" cy="175" r="4" fill="#101417"/>
+  <rect x="168" y="180" width="24" height="26" rx="3" fill="#5b6670" stroke="#1c2127" stroke-width="2"/>
+  <ellipse cx="180" cy="180" rx="12" ry="4" fill="#7d8893" stroke="#1c2127" stroke-width="2"/>
+  <path d="M146 246 L150 214 Q151 210 156 208 L216 178 Q221 176 226 177 L260 186 Q266 188 268 194 L278 244 L276 248 Z" fill="url(#sideL)" stroke="#1c2127" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M218 248 L222 178 L260 187 Q266 189 267 195 L268 246 Z" fill="url(#front)" stroke="#1c2127" stroke-width="1.5" stroke-linejoin="round"/>
+  <rect x="146" y="218" width="74" height="32" fill="url(#occludeUp)" clip-path="url(#sideClip)"/>
+  <path d="M268 246 L267 195 Q266 189 260 187 L276 196 L279 244 Z" fill="#1b2115" stroke="#1c2127" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M222 178 L218 246" stroke="#c8d4a4" stroke-width="2" opacity="0.6" fill="none" stroke-linecap="round"/>
+  <path d="M152 210 L216 179 Q221 177 226 178 L259 187" stroke="#d4dfb0" stroke-width="2" opacity="0.65" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="155" y="212" width="30" height="28" fill="#2f3825" stroke="#1c2127" stroke-width="2"/>
+  <path d="M155 221 H185 M155 231 H185 M165 212 V240 M175 212 V240" stroke="#6b7a4f" stroke-width="1.5" opacity="0.7" fill="none"/>
+  <g fill="#1c2127"><rect x="196" y="196" width="5" height="15" rx="1"/><rect x="203" y="193" width="5" height="15" rx="1"/><rect x="189" y="199" width="5" height="15" rx="1"/></g>
+  <polygon points="226,204 260,209 260,238 226,238" fill="#7d8893" stroke="#1c2127" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M226 207 L260 212" stroke="#c3cdd6" stroke-width="1.5" fill="none"/>
+  <g fill="#1c2127"><circle cx="230" cy="234" r="1.8"/><circle cx="256" cy="234" r="1.8"/><circle cx="230" cy="212" r="1.8"/></g>
+  <polygon points="250,222 334,180 318,153 250,201" fill="#000000" opacity="0.3" clip-path="url(#frontClip)"/>
+  <!-- Gun: points up and to the right, toward the viewer, and ends in the muzzle ring. -->
+  <polygon points="243.9,221.9 257.7,214.6 245.1,193.4 232.1,202.1" fill="#262c31" stroke="#1c2127" stroke-width="1.5" stroke-linejoin="round"/>
+  <polygon points="255.2,214.2 329.7,174.9 314.3,149.1 244.3,195.8" fill="url(#gunBody)" stroke="#1c2127" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="287.9,200.3 301.8,193.0 285.1,165.0 272.1,173.7" fill="#5b6670" stroke="#1c2127" stroke-width="1.5" stroke-linejoin="round"/>
+  <polygon points="269.6,207.7 273.1,205.9 260.1,184.1 256.8,186.3" fill="#262c31"/>
+  <polygon points="321.8,180.7 330.4,176.2 313.6,147.8 305.4,153.3" fill="#4a545d" stroke="#1c2127" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M243.1 201.4 L315.6 155.1" stroke="#e1e8ee" stroke-width="2" opacity="0.7" fill="none" stroke-linecap="round"/>
+  <ellipse cx="322" cy="162" rx="16" ry="11" transform="rotate(59 322 162)" fill="#7d8893" stroke="#1c2127" stroke-width="2"/>
+  <ellipse cx="322" cy="162" rx="11" ry="7" transform="rotate(59 322 162)" fill="#101417"/>
+  <!-- Rim light: warm on the left edges, cool on the right ones. -->
+  <path d="M147 244 L151 214 L216 180 L222 179" stroke="#ffb26b" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M277 242 L268 196" stroke="#8fe4f6" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <!-- Wear: dark specks and bright chips on the paint. -->
+  <g fill="#1c2127" opacity="0.45"><circle cx="172" cy="196" r="1.2"/><circle cx="196" cy="226" r="1.4"/><circle cx="206" cy="184" r="1.2"/><circle cx="188" cy="244" r="1.2"/><circle cx="232" cy="198" r="1.2"/><circle cx="252" cy="224" r="1.4"/><circle cx="178" cy="262" r="1.3"/><circle cx="238" cy="270" r="1.4"/><circle cx="206" cy="276" r="1.2"/><circle cx="262" cy="258" r="1.2"/></g>
+  <g fill="#d4dfb0" opacity="0.5"><circle cx="168" cy="204" r="1"/><circle cx="198" cy="180" r="1"/><circle cx="210" cy="236" r="1"/><circle cx="170" cy="250" r="1"/><circle cx="238" cy="246" r="1"/></g>
+  <!-- Dust kicked up by the tracks. -->
+  <ellipse cx="128" cy="294" rx="26" ry="10" fill="url(#puff)"/>
+  <ellipse cx="304" cy="294" rx="26" ry="10" fill="url(#puff)"/>
+  </g>
+</svg>
