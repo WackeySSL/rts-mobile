@@ -6,9 +6,10 @@ extends GdUnitTestSuite
 ## first row inside the zone and the rest a scroll away; in the portrait band they are one row that
 ## scrolls sideways, with at least three whole tiles in view; a short screen's band, which gives
 ## way to its floor, still holds the row; what a state draws over the icon (the fill, the padlock,
-## the banner) is seen above the cost's plate; and a turn keeps the tiles and sends nothing. The
-## zone itself is test_build_sidebar_layout's, the tiles' states and orders are
-## test_build_sidebar_items and test_build_sidebar_orders.
+## the banner) is seen above the cost's plate, the "Ready" banner takes the plate's place and never
+## meets the count badge, and a turn keeps the tiles and sends nothing. The zone itself is
+## test_build_sidebar_layout's, the tiles' states and orders are test_build_sidebar_items and
+## test_build_sidebar_orders.
 
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -173,7 +174,9 @@ func test_the_band_that_gave_way_still_holds_the_row_of_tiles() -> void:
 
 ## What a state draws over the icon is seen above the cost's plate (ADR 0019 section 1): the fill is
 ## a strip of the area above the plate even at a small share, rising to the tile's top at the end,
-## and the padlock and the banner are whole above the plate, never under it.
+## and the padlock is whole above the plate, never under it. The "Ready" banner of a finished
+## structure is the foot of the tile, in the plate's place (the item is paid for, so its cost is
+## gone), and nothing is drawn under it either.
 func test_the_fill_the_padlock_and_the_banner_stay_clear_of_the_cost_plate_at_every_size() -> void:
 	for screen: Dictionary in _screens():
 		await _open(screen["size"], screen["metrics"])
@@ -190,7 +193,18 @@ func test_the_fill_the_padlock_and_the_banner_stay_clear_of_the_cost_plate_at_ev
 		_assert_above(_part(tile, "Lock").get_global_rect(), above, "padlock, " + why)
 		tile.show_state(ItemTile.State.READY, 1, 1.0)
 		await _settle()
-		_assert_above(_part(tile, "Banner").get_global_rect(), above, "banner, " + why)
+		var banner: Rect2 = _part(tile, "Banner").get_global_rect()
+		var foot: String = "banner, %s: %s" % [why, banner]
+		assert_bool(_part(tile, "Cost").visible).override_failure_message(foot).is_false()
+		(
+			assert_bool(whole.grow(TOLERANCE_PX).encloses(banner))
+			. override_failure_message(foot)
+			. is_true()
+		)
+		assert_float(banner.end.y).override_failure_message(foot).is_equal_approx(
+			plate.end.y, TOLERANCE_PX
+		)
+		assert_float(banner.size.y).override_failure_message(foot).is_less_equal(plate.size.y)
 		for share: float in [0.05, 0.1, 0.3, 0.99]:
 			tile.show_state(ItemTile.State.AVAILABLE, 1, share)
 			await _settle()
@@ -204,6 +218,56 @@ func test_the_fill_the_padlock_and_the_banner_stay_clear_of_the_cost_plate_at_ev
 				plate.position.y, TOLERANCE_PX
 			)
 		assert_array(_sent).is_empty()
+
+
+## A finished structure is always the head of its queue, so its count badge always shows: the
+## "Ready" banner and the badge share the tile and never meet, with the count of one digit or two,
+## and the banner's text (the glyphs, not only its green chip) is whole inside the banner and tile.
+func test_the_ready_banner_and_the_count_badge_never_meet_at_every_size() -> void:
+	for screen: Dictionary in _screens():
+		await _open(screen["size"], screen["metrics"])
+		var tile: ItemTile = _visible_tiles()[0]
+		var whole: Rect2 = tile.get_global_rect()
+		for count: int in [1, 5, 12, 99]:
+			tile.show_state(ItemTile.State.READY, count, 1.0)
+			await _settle()
+			var banner_label: Label = _part(tile, "Banner") as Label
+			var banner: Rect2 = banner_label.get_global_rect()
+			var text: Rect2 = _text_rect(banner_label)
+			var badge: Rect2 = _part(tile, "Badge").get_global_rect()
+			var why: String = (
+				"%s, count %d: tile %s, banner %s, its text %s, badge %s"
+				% [screen["label"], count, whole, banner, text, badge]
+			)
+			assert_bool(_part(tile, "Badge").visible).override_failure_message(why).is_true()
+			assert_bool(banner_label.visible).override_failure_message(why).is_true()
+			assert_bool(banner.intersects(badge)).override_failure_message(why).is_false()
+			assert_bool(text.intersects(badge)).override_failure_message(why).is_false()
+			(
+				assert_bool(banner.grow(TOLERANCE_PX).encloses(text))
+				. override_failure_message(why)
+				. is_true()
+			)
+			(
+				assert_bool(whole.grow(TOLERANCE_PX).encloses(badge))
+				. override_failure_message(why)
+				. is_true()
+			)
+			(
+				assert_bool(whole.grow(TOLERANCE_PX).encloses(text))
+				. override_failure_message(why)
+				. is_true()
+			)
+		assert_array(_sent).is_empty()
+
+
+## The rect of the glyphs of `label` (one line, centred), in the space of its global rect.
+func _text_rect(label: Label) -> Rect2:
+	var font: Font = label.get_theme_font(&"font")
+	var font_size: int = label.get_theme_font_size(&"font_size")
+	var text: Vector2 = font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size)
+	var box: Rect2 = label.get_global_rect()
+	return Rect2(box.position + (box.size - text) / 2.0, text)
 
 
 ## `rect` lies inside the area `above` the cost plate, to half a px.

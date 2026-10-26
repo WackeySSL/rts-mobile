@@ -4,9 +4,11 @@ extends HoldButton
 ## plate, its cost at the foot, a badge for the items of the type queued, a fill that rises over the
 ## icon with the head's progress, and a state shown by a shape and not by colour alone: a padlock
 ## (LOCKED), stripes (UNAFFORDABLE, FULL; the cost amber for money), a "Ready" banner (READY).
-## The cost's plate takes the foot of the tile, and the shapes of a state (the fill, the stripes,
-## the padlock, the banner) fill the area above it, so none of them is ever drawn under the plate:
-## the fill's share is a share of that area.
+## The foot of the tile is the cost's plate, and the shapes of a state (the fill, the stripes, the
+## padlock) fill the area above it, so none of them is ever drawn under the plate: the fill's share
+## is a share of that area. A READY structure is paid for, so its banner takes the foot in the
+## plate's place (the cost is hidden): the count badge, always there on a ready tile, is at the top
+## corner and the banner at the bottom, and the two never meet however many digits the count has.
 ## `BuildSidebar` tells it what to show (`show_state`); it tells the sidebar what the finger did:
 ## `chose` for a tap, `cancelled` for a hold of `hold_ms`, `dragged` for a drag beyond `slop_dp`,
 ## which scrolls the row and is then neither. The tile is a Button, so a touch on it never reaches
@@ -39,8 +41,8 @@ var slop_dp: float = 12.0  ## `InputSettings.tap_slop_dp`.
 var shakes: int = 0  ## How many times the tile has shaken, for the tests.
 
 var _icon: TextureRect = TextureRect.new()
-var _column: VBoxContainer = VBoxContainer.new()  ## The area above the cost, and the cost.
-var _stage: Control = Control.new()  ## The area above the cost's plate: the state's shapes.
+var _column: VBoxContainer = VBoxContainer.new()  ## The area above the foot, and the foot.
+var _stage: Control = Control.new()  ## The area above the foot (cost or banner): the shapes.
 var _fill: ColorRect = ColorRect.new()
 var _stripes: Stripes = Stripes.new()
 var _lock: TextureRect = TextureRect.new()
@@ -90,8 +92,6 @@ func _init() -> void:
 	_lock.add_child(lock_size)
 	_banner.text = "Ready"
 	_banner.theme_type_variation = BANNER_VARIATION
-	_banner.set_anchors_preset(Control.PRESET_HCENTER_WIDE)
-	_banner.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_cost.theme_type_variation = COST_VARIATION
 	_cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -107,10 +107,10 @@ func _init() -> void:
 	_add(_column, "Column")
 	_add(_stage, "Stage", _column)
 	_add(_cost, "Cost", _column)
+	_add(_banner, "Banner", _column)  # The foot of a READY tile, where the cost is not.
 	_add(_fill, "Fill", _stage)
 	_add(_stripes, "Stripes", _stage)
 	_add(_lock, "Lock", _stage)
-	_add(_banner, "Banner", _stage)
 	_add(_badge, "Badge")
 	show_state(State.AVAILABLE, 0, 0.0)
 
@@ -146,6 +146,7 @@ func show_state(new_state: State, count: int, share: float) -> void:
 	_lock.visible = new_state == State.LOCKED
 	_stripes.visible = new_state == State.UNAFFORDABLE or new_state == State.FULL
 	_banner.visible = ready
+	_cost.visible = not ready
 	_fill.visible = share > 0.0 and not ready
 	_fill.anchor_top = 1.0 - share
 	_badge.visible = count > 0
