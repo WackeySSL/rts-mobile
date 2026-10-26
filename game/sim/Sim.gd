@@ -131,7 +131,8 @@ static func _apply(world: World, command: Command) -> void:
 		world.dropped_commands += 1
 
 
-## ATTACK_MOVE and MOVE: the valid units take `order` and a formation slot around the target.
+## ATTACK_MOVE and MOVE: the valid units take `order` and a formation slot around the target; the
+## harvesters among them go back to the player (`Harvest.release`).
 static func _apply_point(world: World, command: Command, order: int) -> bool:
 	var rows: PackedInt32Array = _own_rows(world, command, false)
 	if rows.is_empty():
@@ -168,7 +169,8 @@ static func _apply_attack(world: World, command: Command) -> bool:
 	return true
 
 
-## STOP: the valid units go idle where they stand, with no target and no flow field.
+## STOP: the valid units go idle where they stand, with no target and no flow field; the harvesters
+## among them go back to the player (`Harvest.release`).
 static func _apply_stop(world: World, command: Command) -> bool:
 	var rows: PackedInt32Array = _own_rows(world, command, false)
 	if rows.is_empty():

@@ -52,9 +52,21 @@ const REASONS: Array[String] = [
 ]
 const MAP_GLYPHS: Array[String] = ["glyph_offline", "glyph_under_attack"]
 const FLAGS: Array[String] = ["rally_infantry", "rally_vehicles"]
-## The colours the item icons and the flags may use: STYLE.md's palette, the neutral team colour
-## that a unit's item icon carries, and the greys of the team layer.
+## The colours the item icons and the flags may use: STYLE.md's palette with A's muted materials of
+## ADR 0022 (the building icons use them; P92b brings the unit icons), the neutral team colour that
+## a unit's item icon carries, and the greys of the team layer.
 const PALETTE: PackedStringArray = [
+	"#4A4F53",
+	"#62676A",
+	"#8D8F88",
+	"#B3B4AC",
+	"#6B6D68",
+	"#5D6B68",
+	"#A0ACA8",
+	"#46532F",
+	"#78885B",
+	"#8F5731",
+	"#B59F72",
 	"#1C2127",
 	"#000000",
 	"#5B6670",

@@ -14,9 +14,9 @@ Source of truth: this file for rules, `docs/GDD.md` for game design,
   0013), each with a GDScript twin in `game/sim/` that stays the reference and the web path.
   No C#.
 - Renderer: **Compatibility** (required for web export and low-end Android).
-- 2D top-down, landscape and portrait (ADR 0015; the Android build follows the phone's sensor, the
-  web preview turns with the phone). Base size 1280x720, stretch mode `canvas_items`, aspect
-  `expand`.
+- 2D top-down, buildings in an oblique 3/4 view (ADR 0022), landscape and portrait (ADR 0015; the
+  Android build follows the phone's sensor, the web preview turns with the phone). Base size
+  1280x720, stretch mode `canvas_items`, aspect `expand`.
 - Tests: gdUnit4 in `tests/`, plus a CI-only C++ sanitizer harness in
   `native/sim_kernels/sanitizer/` (ADR 0013 §10). Format/lint: gdtoolkit 4 (`gdformat`,
   `gdlint`). C++: `clang-format` 20.1.8, pinned in `scripts/ci/check-cpp-format.sh`

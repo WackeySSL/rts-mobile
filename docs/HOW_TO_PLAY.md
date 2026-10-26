@@ -64,6 +64,11 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Hold a group (1-3) | Stores the current selection in that group; the phone buzzes and the count shows (`group_assign_ms` in `data/input_settings.tres`) | yes |
 | A grouped unit is destroyed | It leaves the group; the group's badge shows the new count, and an empty group shows only its number | |
 
+## Build sidebar
+| Action | Result | Teach |
+|---|---|---|
+| Look at the sidebar (on the right; at the bottom when the phone is upright) | It shows your credits, a power bar and three tabs: Structures, Infantry and Vehicles. The bar fills with the power your buildings use against the power they make and shows both numbers where it is wide enough; when you use more than you make, the bar is full and amber and its bolt becomes a warning triangle. Tap a tab to open it: the open tab is the lighter one with a thick bar under it. The tab names show beside the icons only where the sidebar is wide enough; a phone shows the icons alone | |
+
 ## Not yet in the game
 Base building, harvesting, power, production, win and lose conditions, menus and rewards get
 their entries when their phase ships them (ROADMAP Phases 3-6).

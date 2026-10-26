@@ -10,8 +10,12 @@ const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const TwoTypeLayer: GDScript = preload("res://tests/input/support/two_type_layer.gd")
 const PROFILES: Array[StringName] = [&"desktop", &"android_6in", &"web_tablet"]
 const CAMERA_START: Vector2 = Vector2(800, 1376)
-## World px with no unit near it: milli (20016, 21516), where 20015.625 rounds up.
-const GROUND: Vector2 = Vector2(1281, 1377)
+## Where a pan's finger goes down: left of the build sidebar at every size (its edge is at 1009 or
+## more), with room to drag 784 px to the left.
+const PAN_FROM_X: float = 900.0
+## World px with no unit near it, right of the tank block and left of the build sidebar at every
+## size (P85): milli (17266, 21516), where 17265.625 rounds up.
+const GROUND: Vector2 = Vector2(1105, 1377)
 
 var _window_size_before: Vector2i
 var _main: Node2D
@@ -91,12 +95,12 @@ func test_tap_ground_with_a_selection_sends_one_move_and_without_one_nothing() -
 		_tap(_layer.unit_screen_position(0))  # Select tank 1, then send it.
 		_tap(_camera.world_to_screen(GROUND), 300)  # Held: LONG_PRESS, BOX_CANCEL, then a TAP.
 		assert_array(_sent).has_size(1)
-		_assert_move(_sent[0], [1], 20016, 21516)
+		_assert_move(_sent[0], [1], 17266, 21516)
 		assert_array(_controller.selection.selected).is_equal([1])
 		_controller.selection.set_ids(PackedInt32Array([30, 2, 9]))
 		_tap(_camera.world_to_screen(GROUND))
 		assert_array(_sent).has_size(2)
-		_assert_move(_sent[1], [2, 9, 30], 20016, 21516)
+		_assert_move(_sent[1], [2, 9, 30], 17266, 21516)
 		assert_array(_controller.selection.selected).is_equal([2, 9, 30])  # Ordering keeps it.
 
 
@@ -158,7 +162,7 @@ func test_double_tap_a_tank_selects_all_30_when_all_are_on_screen() -> void:
 		assert_array(_controller.selection.selected).is_equal(range(1, 31))
 		_double_tap(_camera.world_to_screen(GROUND))  # On ground it is a tap, twice.
 		assert_array(_sent).has_size(2)
-		_assert_move(_sent[1], range(1, 31), 20016, 21516)
+		_assert_move(_sent[1], range(1, 31), 17266, 21516)
 
 
 func test_double_tap_after_panning_half_the_block_away_selects_only_the_visible_tanks() -> void:
@@ -220,8 +224,9 @@ func test_the_ordered_tanks_stand_idle_on_distinct_slots_around_the_point_after_
 		for row: int in 30:
 			assert_int(world.order[row]).is_equal(World.Order.IDLE)
 			spots.append(Vector2i(world.pos_x[row], world.pos_y[row]))
-			# The nearest 30 slots of a 1200 lattice reach sqrt(10) * 1200 = 3795 milli.
-			assert_float(Vector2(spots[row]).distance_to(Vector2(20016, 21516))).is_less(3800.0)
+			# The nearest 30 slots of a 1200 lattice reach sqrt(10) * 1200 = 3795 milli; the point
+			# is near the block (P85), so the last tanks to arrive settle up to ~100 milli further out.
+			assert_float(Vector2(spots[row]).distance_to(Vector2(17266, 21516))).is_less(3900.0)
 		for a: int in 30:
 			for b: int in range(a + 1, 30):
 				# P39b: separation settles tanks just under their radii sum (800), not on the lattice;
@@ -473,7 +478,7 @@ func _box(from: Vector2, to: Vector2) -> void:
 
 ## One finger drags the map by `by` base px, which moves the camera the other way.
 func _pan(by: Vector2) -> void:
-	var from: Vector2 = Vector2(get_viewport().get_visible_rect().size.x - 60.0, 400.0)
+	var from: Vector2 = Vector2(PAN_FROM_X, 400.0)
 	TouchEvents.press(get_viewport(), 0, from)
 	TouchEvents.drag(get_viewport(), 0, from + by, by)
 	TouchEvents.release(get_viewport(), 0, from + by)

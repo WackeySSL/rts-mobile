@@ -36,6 +36,10 @@ Status note (2026-10-21, P26af docs): §5 carries a dated status note on the car
 P50a3 (#152) and P50b (#154) merged it: about 30 rows in a scrolling body under a `GATE` header,
 not "about 8 grouped lines". No accepted text changed.
 
+Status note (2026-10-26, P68d docs; ADR 0022 accepted 2026-10-26): §3 carries a dated status note:
+`MapView` is not drawn where ADR 0022's ground layer covers the map, and one runtime atlas per
+building part is how the one-texture draw-call rule holds for buildings. No accepted text changed.
+
 ## Context
 ROADMAP Phase 2 asks for three things:
 - "View interpolation at the display frame rate";
@@ -156,6 +160,18 @@ Mesa/llvmpipe with Xvfb, so draw-call counts are reliable and times are not):
   with one textured rect. It replaces `TestMapView` (ADR 0002 §5). Like `FogLayer` (ADR 0010 §2) it
   exposes its CPU-side bake (`func image() -> Image`) for tests, which never read an
   `ImageTexture` back after `update()`.
+
+Status note (2026-10-26, P68d docs, ADR 0022 accepted 2026-10-26, Michael's "ja til anbefaling";
+the text above stays as accepted; the z list above was already replaced by ADR 0012 §6):
+- **`MapView`** stays the map's model (`colors`, `tiles`, the 8 px bake and `image()`), but from plan
+  row P97 on it does not draw its rect where ADR 0022 §6's `GroundLayer` (a `TileMapLayer` of
+  textured tiles at z 0, after `MapView` in tree order) covers the map: the main scene and the perf
+  arena. Where no ground layer is set, it draws as above.
+- **The draw-call rule** (per-item quads from one shared texture) holds for buildings through one
+  runtime atlas: at match start the view copies every building texture it needs into one
+  `ImageTexture`, and `BuildingLayer` (base parts) and `BuildingRoofLayer` (roof parts and turret
+  heads) each draw all their quads from it in one `_draw()`, one call each (ADR 0022 §2). The ground
+  and the ore layers use the same atlas helper.
 
 ### 4. Headless performance test (`tests/perf/`, qa-engineer)
 - **Scenario:** `data/scenarios/perf_arena.tres` (data lands in P27b, so every sim PR can measure
