@@ -59,15 +59,15 @@ static func rows(blocked: bool = false) -> Array[String]:
 
 
 ## A prepared World of the start: two players, the roster above and the map `map_rows` (the
-## shipped one when empty).
-static func start(map_rows: Array[String] = []) -> World:
+## shipped one when empty), on the shipped rules or on `rules` when given.
+static func start(map_rows: Array[String] = [], rules: RulesDef = null) -> World:
 	var map: MapDef = MapDef.new()
 	map.rows = PackedStringArray(map_rows if not map_rows.is_empty() else rows())
 	map.terrain = load(TERRAIN_PATH) as TerrainSetDef
 	var scenario: ScenarioDef = ScenarioDef.new()
 	scenario.map = map
 	scenario.player_count = 2
-	scenario.rules = load(RULES_PATH) as RulesDef
+	scenario.rules = rules if rules != null else load(RULES_PATH) as RulesDef
 	scenario.spawns.append(_spawn(1, "headquarters", HQ_1, 1))
 	scenario.spawns.append(_spawn(1, "rifle_squad", Vector2i(4, 10), 2))
 	scenario.spawns.append(_spawn(2, "headquarters", HQ_2, 1))
@@ -131,6 +131,32 @@ static func run(world: World, loop: MatchLoop, controllers: Array, ticks: int) -
 	for _step: int in ticks:
 		all.append_array(tick(world, loop, controllers))
 	return all
+
+
+## `sent` without the ATTACK_MOVE orders of the dummy's defence (plan row P83b), for the suites that
+## judge only its economy, the QUEUE and PLACE commands.
+static func economy(sent: Array[Command]) -> Array[Command]:
+	var kept: Array[Command] = []
+	for command: Command in sent:
+		if command.type != Command.Type.ATTACK_MOVE:
+			kept.append(command)
+	return kept
+
+
+## Ticks with no controller until every player's fog has been stamped again: each player updates
+## once in `fog_period_ticks` ticks, so a row or a building given since then is seen or seeing.
+static func settle(world: World, loop: MatchLoop) -> void:
+	run(world, loop, [], world.fog_period_ticks)
+
+
+## The ids of the rows of `player` with the type `id`, ascending.
+static func ids_of(world: World, player: int, id: String) -> PackedInt32Array:
+	var type: int = type_of(world, id)
+	var found: PackedInt32Array = PackedInt32Array()
+	for row: int in world.unit_count():
+		if world.owner[row] == player and world.type_index[row] == type:
+			found.append(world.unit_id[row])
+	return found
 
 
 ## One tick with `commands` (a plain Array) stamped and applied, and no controller thinking.

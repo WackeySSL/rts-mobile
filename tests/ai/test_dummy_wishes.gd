@@ -156,20 +156,24 @@ func test_a_player_with_no_producer_sends_nothing() -> void:
 	var loop: MatchLoop = Rig.loop_of(world)
 	Rig.kill(world, loop, Rig.row_of(world, 1, "headquarters"))
 	assert_int(world.defeated_tick[1]).is_greater(0)
-	assert_array(_think(world, Rig.dummy(1))).is_empty()
+	# Not even an order for its two rifle squads: the defence belongs to a player who can still
+	# produce.
+	assert_array(_think(world, Rig.dummy(1), -1, true)).is_empty()
 
 
 func test_a_player_the_view_has_no_queues_for_sends_nothing() -> void:
 	var world: World = Rig.start()
 	for player: int in [0, 3]:
-		assert_array(_think(world, Rig.dummy(1), player)).is_empty()
+		assert_array(_think(world, Rig.dummy(1), player, true)).is_empty()
 
 
-## One think of `ai` on a fresh view of `world` (of `player` when given, else the ai's own).
-func _think(world: World, ai: AiController, player: int = -1) -> Array[Command]:
+## One think of `ai` on a fresh view of `world` (of `player` when given, else the ai's own): its
+## economy commands, or with `all` every command (the ATTACK_MOVE of the defence are judged in
+## test_dummy_defence.gd).
+func _think(world: World, ai: AiController, player: int = -1, all: bool = false) -> Array[Command]:
 	var sent: Array[Command] = []
 	ai.think(PlayerView.of(world, ai.player_id if player < 0 else player), sent)
-	return sent
+	return sent if all else Rig.economy(sent)
 
 
 ## The type ids that the QUEUE commands of `sent` name, in order.

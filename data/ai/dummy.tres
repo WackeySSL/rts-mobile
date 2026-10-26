@@ -12,5 +12,7 @@ queue_target = 2
 harvesters_wanted = 2
 place_tries = 64
 place_stride_tiles = 4
+defend_radius_tiles = 12
+guard_offset_tiles = Vector2i(2, 2)
 think_period = 15
 think_tick = 7

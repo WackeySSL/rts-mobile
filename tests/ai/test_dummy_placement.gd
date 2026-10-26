@@ -115,11 +115,12 @@ func _waiting(rows: Array[String] = []) -> World:
 	return world
 
 
-## One think of `ai` on a fresh view of `world`.
+## One think of `ai` on a fresh view of `world`: its economy commands (the ATTACK_MOVE of the
+## defence are judged in test_dummy_defence.gd).
 func _think(world: World, ai: AiController) -> Array[Command]:
 	var sent: Array[Command] = []
 	ai.think(PlayerView.of(world, ai.player_id), sent)
-	return sent
+	return Rig.economy(sent)
 
 
 ## The points (milli-tiles) of the PLACE commands of `sent`.
