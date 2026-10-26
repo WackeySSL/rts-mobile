@@ -14,7 +14,8 @@ extends RefCounted
 ## counted in `spawn_refused`), or add_unit's own refusals. The row comes through add_unit (the
 ## SPAWNED event, `rows_version`, the row cap). Then every footprint tile costs 0 for every class,
 ## `map_version` goes up once, the flow cache is invalidated, and an owner whose building produces
-## a tab has had a producer for good (`had_producer`, ADR 0018 section 7). A world with a size but
+## a tab has had a producer for good (`had_producer`, ADR 0018 section 7), and every ATTACK row
+## whose goal tile is now inside the footprint re-picks its approach point. A world with a size but
 ## no grid yet gets the open grass prepare() would make. The ground is not checked: Placement
 ## judges that for a PLACE, and data keeps a scenario's buildings apart.
 static func add(world: World, owner: int, type: int, col: int, line: int) -> int:
@@ -47,6 +48,7 @@ static func add(world: World, owner: int, type: int, col: int, line: int) -> int
 		if world.had_producer.size() <= owner:
 			world.had_producer.resize(owner + 1)  # Before prepare() sizes it; the 1 survives.
 		world.had_producer[owner] = 1
+	_repick(world, col, line, width, height)
 	return id
 
 
@@ -83,6 +85,66 @@ static func unblock_dead(world: World) -> void:
 	if died:
 		world.map_version += 1
 		world.flow.invalidate(world.map_version)
+
+
+## The point an ATTACK on building row `target_row` aims `row` at (ADR 0017 section 1): the
+## centre of the ring tile (8-adjacent to the footprint, outside it, inside the map) that is
+## passable for the row's class and nearest to the row's position by squared distance, then by
+## the lower tile index. (-1, -1) when no ring tile is passable.
+@warning_ignore("integer_division")
+static func approach_point(world: World, row: int, target_row: int) -> Vector2i:
+	var cols: int = world.map_cols
+	var lines: int = world.map_rows
+	var type: int = world.type_index[target_row]
+	var origin: Vector2i = footprint_origin(world, target_row)
+	var width: int = _entry(world.type_foot_w, type, 0)
+	var height: int = _entry(world.type_foot_h, type, 0)
+	var base: int = world.type_move_class[world.type_index[row]] * cols * lines
+	var tile: int = World.MILLI_PER_TILE
+	var best: int = -1
+	var best_d2: int = 0
+	for line: int in range(maxi(origin.y - 1, 0), mini(origin.y + height, lines - 1) + 1):
+		for col: int in range(maxi(origin.x - 1, 0), mini(origin.x + width, cols - 1) + 1):
+			var inside: bool = (
+				col >= origin.x
+				and col < origin.x + width
+				and line >= origin.y
+				and line < origin.y + height
+			)
+			var cell: int = line * cols + col
+			if inside or world.move_cost[base + cell] == 0:
+				continue
+			var dx: int = col * tile + World.TILE_CENTRE - world.pos_x[row]
+			var dy: int = line * tile + World.TILE_CENTRE - world.pos_y[row]
+			if best < 0 or dx * dx + dy * dy < best_d2:
+				best = cell
+				best_d2 = dx * dx + dy * dy
+	if best < 0:
+		return Vector2i(-1, -1)
+	return Vector2i(best % cols * tile + World.TILE_CENTRE, best / cols * tile + World.TILE_CENTRE)
+
+
+## What an ATTACK on `target_row` does to the goals of `rows`, and which of them it keeps. A mobile
+## target (speed above 0) leaves them alone: TARGETING writes the goal from its position every tick.
+## A target that stands still gets no such write (TARGETING skips it, in both twins), so the command
+## writes it once: a building's approach point, a row without one left out; any other speed-0 target
+## is aimed at where it stands, as the lock did before buildings.
+static func aim(world: World, rows: PackedInt32Array, target_row: int) -> PackedInt32Array:
+	var type: int = world.type_index[target_row]
+	if world.type_speed[type] > 0:
+		return rows
+	var footprint: bool = _entry(world.type_foot_w, type, 0) > 0
+	var kept: PackedInt32Array = PackedInt32Array()
+	for row: int in rows:
+		var point: Vector2i = Vector2i(world.pos_x[target_row], world.pos_y[target_row])
+		if footprint:
+			point = approach_point(world, row, target_row)
+			if point.x < 0:
+				continue
+		world.goal_x[row] = point.x
+		world.goal_y[row] = point.y
+		kept.append(row)
+	return kept
 
 
 ## Rebuilds `building_rows` (rows of a type with a footprint) and `harvester_rows` (mobile rows of
@@ -150,3 +212,26 @@ static func _write_cost(
 				cost[move_class * cells + cell] = (
 					costs[kind * classes + move_class] if restore else 0
 				)
+
+
+## The re-pick of `add()`: every ATTACK row whose goal tile lies in the new footprint and whose
+## target is a building takes a new approach point; a row with no passable ring tile keeps its goal.
+## A mobile target needs nothing: TARGETING rewrites the goal from its position every tick.
+@warning_ignore("integer_division")
+static func _repick(world: World, col: int, line: int, width: int, height: int) -> void:
+	var orders: PackedInt32Array = world.order
+	for row: int in orders.size():
+		if orders[row] != World.Order.ATTACK:
+			continue
+		var cell: int = world.cell_of(world.goal_x[row], world.goal_y[row])
+		var x: int = cell % world.map_cols
+		var y: int = cell / world.map_cols
+		if x < col or x >= col + width or y < line or y >= line + height:
+			continue
+		var at: int = world.index_of(world.order_target[row])
+		if at < 0 or _entry(world.type_foot_w, world.type_index[at], 0) <= 0:
+			continue
+		var point: Vector2i = approach_point(world, row, at)
+		if point.x >= 0:
+			world.goal_x[row] = point.x
+			world.goal_y[row] = point.y

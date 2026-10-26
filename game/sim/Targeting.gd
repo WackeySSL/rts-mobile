@@ -55,8 +55,11 @@ const TILE: int = World.MILLI_PER_TILE
 ## - An `ATTACK` row locks its target (P41b): `target` is its `order_target` for as long as that
 ##   unit exists, is an enemy and (P46b) stands in a cell the row's player sees, wherever it
 ##   stands, and the row's goal is the target's position as it stands at the start of the tick (read
-##   before anyone moves, so the row order cannot matter). When the target is gone, or out of
-##   sight, the order becomes `ATTACK_MOVE` to the goal it left, which is where the target last
+##   before anyone moves, so the row order cannot matter). That holds for a target that moves; a
+##   target of speed 0 leaves the goal as it is (P71b, ADR 0017 section 1): `Sim._apply_attack`
+##   wrote it, a building's approach point, which the lock must not overwrite with the centre of
+##   the footprint (`type_speed` is in the kernel's checked list). When the target is gone, or out
+##   of sight, the order becomes `ATTACK_MOVE` to the goal it left, which is where the target last
 ##   stood in sight: the row's `order_target` is cleared, and the row goes on as an attack-moving
 ##   row from this tick (in this same pass it scans if it is due on this tick, else on its next due
 ##   tick). The lock tests the sight on every tick, not on the row's turn. ADR 0009 section 2.
@@ -104,6 +107,7 @@ static func run(world: World) -> void:
 	var orders: PackedInt32Array = world.order
 	var order_targets: PackedInt32Array = world.order_target
 	var targets: PackedInt32Array = world.target
+	var type_speed: PackedInt32Array = world.type_speed
 	var type_armour: PackedInt32Array = world.type_armour
 	var type_acquire: PackedInt32Array = world.type_acquire
 	var type_weapon: PackedInt32Array = world.type_weapon
@@ -158,8 +162,9 @@ static func run(world: World) -> void:
 					in_sight = seen[veil + lock_cell] > 0
 				if in_sight:
 					targets[row] = locked
-					goal_x[row] = pos_x[at]
-					goal_y[row] = pos_y[at]
+					if type_speed[types[at]] > 0:
+						goal_x[row] = pos_x[at]
+						goal_y[row] = pos_y[at]
 					continue
 			orders[row] = ATTACK_MOVE
 			order_targets[row] = 0
@@ -301,14 +306,15 @@ static func sees(world: World, player: int, x: int, y: int) -> bool:
 ##   `line_check_period_ticks`, so a crowd spreads its checks), which is the tick it acquires a
 ##   target when the two periods are equal (5); the first clear line starts the chase and the first
 ##   blocked one ends it (up to `line_check_period_ticks` ticks of `CHASE` with a blocked line).
-## - An `ATTACK` unit never chases: its goal is its target's position, and the navigation of the
-##   order takes it to weapon range (`DIRECT` while the line is clear, else a field keyed on the
-##   target's tile, `Movement._rekey`). `Movement` checks a `DIRECT` unit's line once, because a
-##   clear line stays clear on a static map, but this goal walks, so on the unit's line-check turn
-##   a `DIRECT` unit whose line was marked clear tests it again, and a blocked line sends it back
-##   through `Movement.run`'s check (unchecked `DIRECT`, so the same tick takes the field) instead
-##   of steering into the rock for as long as the target stays behind it. A `FIELD` unit already
-##   checks its line each time it enters a tile.
+## - An `ATTACK` unit never chases: its goal is its target's position (a building's approach
+##   point, P71b), and the navigation of the order takes it to weapon range (`DIRECT` while the line
+##   is clear, else a field keyed on the goal's tile, `Movement._rekey`). `Movement` checks a
+##   `DIRECT` unit's line once, because a clear line stays clear on a static map, but this goal
+##   walks, so on the unit's line-check turn a `DIRECT` unit whose line was marked clear tests the
+##   line to its goal again, and a blocked line sends it back through `Movement.run`'s check
+##   (unchecked `DIRECT`, so the same tick takes the field) instead of steering into the rock for
+##   as long as the target stays behind it. A `FIELD` unit already checks its line each time it
+##   enters a tile. Range and the hold still measure to the target's position.
 ## An idle unit never moves. A target inside `min_range` is not in range, and no unit backs away
 ## from it (no Phase 2 weapon has a minimum range). A type without a weapon table row is unarmed
 ## here as in `run`.
@@ -322,6 +328,8 @@ static func _engage(world: World) -> void:
 	var classes: PackedInt32Array = world.type_move_class
 	var pos_x: PackedInt32Array = world.pos_x
 	var pos_y: PackedInt32Array = world.pos_y
+	var goal_x: PackedInt32Array = world.goal_x
+	var goal_y: PackedInt32Array = world.goal_y
 	var type_acquire: PackedInt32Array = world.type_acquire
 	var type_weapon: PackedInt32Array = world.type_weapon
 	var weapon_range: PackedInt32Array = world.weapon_range
@@ -367,7 +375,7 @@ static func _engage(world: World) -> void:
 		if order == ATTACK:
 			if mode == DIRECT and checked[row] >= 0:
 				checks += 1
-				if not FixedMath.line_clear(world, x, y, pos_x[at], pos_y[at], classes[type]):
+				if not FixedMath.line_clear(world, x, y, goal_x[row], goal_y[row], classes[type]):
 					Movement.reset_row(world, row, DIRECT)
 			continue
 		var clear: bool = false

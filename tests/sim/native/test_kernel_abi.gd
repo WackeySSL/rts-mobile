@@ -26,10 +26,11 @@ const SLOTS: int = 8
 ## type_move_class). TARGETING's 35 are the names kernel_targeting.cpp gets or sets (P41n; it was
 ## 32: max_rows, hp and type_speed lose its bit, and line_check_period_ticks, nav_cell, field,
 ## nav_next, best_dist and stall gain it); since P46b it is 40: the vision rule reads the fog's
-## cols, rows, cells, player_count and visible. FOG's 25 are the names kernel_fog.cpp gets or sets
-## (P46n; it was 29: max_rows, map_cols, map_rows and type_speed lose its bit, type_sight stays
-## because the pad mask is the size of that table).
-const LIST_SIZES: Dictionary[int, int] = {1: 26, 3: 40, 5: 20, 6: 49, 10: 25}
+## cols, rows, cells, player_count and visible; since P71b it is 41: a lock on a target that stands
+## still keeps the row's goal, so the kernel reads type_speed again. FOG's 25 are the names
+## kernel_fog.cpp gets or sets (P46n; it was 29: max_rows, map_cols, map_rows and type_speed lose
+## its bit, type_sight stays because the pad mask is the size of that table).
+const LIST_SIZES: Dictionary[int, int] = {1: 26, 3: 41, 5: 20, 6: 49, 10: 25}
 ## A status is the table index of the first bad name times FAULT_COUNT, plus its fault.
 const FAULT_PHASE: int = 1
 const FAULT_OWNER: int = 2
@@ -96,7 +97,7 @@ const FLOW_NAMES: Array[String] = [
 const PHASES_OF: Dictionary[String, Array] = {
 	"WORLD.hp": [],
 	"WORLD.max_rows": [],
-	"WORLD.type_speed": [6],
+	"WORLD.type_speed": [3, 6],
 	"WORLD.line_check_period_ticks": [3, 6],
 	"WORLD.order_target": [3],
 	"WORLD.target": [3],

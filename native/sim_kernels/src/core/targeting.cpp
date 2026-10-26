@@ -110,6 +110,7 @@ int64_t Pass::acquire() {
 	ArrayView<int32_t> orders = rows_.order;
 	ArrayView<int32_t> order_targets = rows_.order_target;
 	ArrayView<int32_t> targets = rows_.target;
+	const ArrayView<const int32_t> type_speed = types_.speed;
 	const ArrayView<const int32_t> type_armour = types_.armour;
 	const ArrayView<const int32_t> type_acquire = types_.acquire;
 	const ArrayView<const int32_t> type_weapon = types_.weapon;
@@ -139,8 +140,10 @@ int64_t Pass::acquire() {
 			if (at < count && ids.get(at) == locked && owners.get(at) != own && owners.get(at) != 0) {
 				if (veil < 0 || seen(veil, pos_x.get(at), pos_y.get(at))) {
 					targets.set(row, locked);
-					goal_x.set(row, pos_x.get(at));
-					goal_y.set(row, pos_y.get(at));
+					if (type_speed.get(types.get(at)) > 0) {
+						goal_x.set(row, pos_x.get(at));
+						goal_y.set(row, pos_y.get(at));
+					}
 					continue;
 				}
 			}
@@ -244,6 +247,8 @@ int64_t Pass::engage() {
 	const ArrayView<const int32_t> classes = types_.move_class;
 	const ArrayView<const int32_t> pos_x = rows_.pos_x;
 	const ArrayView<const int32_t> pos_y = rows_.pos_y;
+	const ArrayView<int32_t> goal_x = rows_.goal_x;
+	const ArrayView<int32_t> goal_y = rows_.goal_y;
 	const ArrayView<const int32_t> type_acquire = types_.acquire;
 	const ArrayView<const int32_t> type_weapon = types_.weapon;
 	const ArrayView<const int32_t> weapon_range = weapons_.range;
@@ -298,7 +303,7 @@ int64_t Pass::engage() {
 		if (order == ATTACK) {
 			if (mode == DIRECT && checked.get(row) >= 0) {
 				checks += 1;
-				if (!fixed_math::line_clear(map_.move_cost, map_.cols, map_.rows, x, y, pos_x.get(at), pos_y.get(at), classes.get(type))) {
+				if (!fixed_math::line_clear(map_.move_cost, map_.cols, map_.rows, x, y, goal_x.get(row), goal_y.get(row), classes.get(type))) {
 					reset_row(row, DIRECT);
 				}
 			}

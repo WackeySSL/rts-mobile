@@ -144,12 +144,15 @@ static func _apply_point(world: World, command: Command, order: int) -> bool:
 	return true
 
 
-## ATTACK: the armed valid units take the order and the target (the goal: `Targeting.run`), when
-## the target is an enemy their player sees (`_enemy_target`).
+## ATTACK: the armed valid units take the order and the target, when the target is an enemy their
+## player sees (`_enemy_target`). The goal of a mobile target is `Targeting.run`'s, every tick; a
+## target that stands still gets its goal here (`Buildings.aim`: a building's approach point, ADR
+## 0017 section 1), and a unit with no passable ring tile around a building is left out.
 static func _apply_attack(world: World, command: Command) -> bool:
 	if not _enemy_target(world, command):
 		return false
 	var rows: PackedInt32Array = _own_rows(world, command, true)
+	rows = Buildings.aim(world, rows, world.index_of(command.target_id))
 	if rows.is_empty():
 		return false
 	var orders: PackedInt32Array = world.order
