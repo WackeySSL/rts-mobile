@@ -2,11 +2,13 @@
 
 [ext_resource type="Script" path="res://game/sim/defs/UnitDef.gd" id="1_unit"]
 [ext_resource type="Resource" path="res://data/weapons/artillery_gun.tres" id="2_weapon"]
+[ext_resource type="Resource" path="res://data/units/fossil_radar.tres" id="3_requires"]
 
 [resource]
 script = ExtResource("1_unit")
 type_id = &"artillery"
-display_name = "Artillery"
+display_name = "Mortar Rig"
+faction = &"fossil"
 speed = 67
 radius = 400
 selection_radius = 500
@@ -20,3 +22,4 @@ weapon = ExtResource("2_weapon")
 cost = 900
 build_ticks = 300
 tab = 2
+requires = ExtResource("3_requires")

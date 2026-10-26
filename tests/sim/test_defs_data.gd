@@ -33,9 +33,10 @@ func test_unit_files_hold_the_adr_0009_starting_stats() -> void:
 	assert_array(_unit_row("light_tank")).is_equal([120, 400, 500, 1200, 300, 1, 2, 7000, 5500])
 	assert_array(_unit_row("rifle_squad")).is_equal([67, 300, 350, 900, 100, 0, 0, 6000, 5000])
 	assert_array(_unit_row("rocket_squad")).is_equal([60, 300, 350, 900, 90, 0, 0, 6000, 5500])
-	assert_array(_unit_label("light_tank")).is_equal(["Light Tank", "tank_cannon"])
-	assert_array(_unit_label("rifle_squad")).is_equal(["Rifle Squad", "rifle"])
-	assert_array(_unit_label("rocket_squad")).is_equal(["Rocket Squad", "rocket"])
+	# The display names are the Derrick League's (ADR 0023 section 7).
+	assert_array(_unit_label("light_tank")).is_equal(["Flarejack", "tank_cannon"])
+	assert_array(_unit_label("rifle_squad")).is_equal(["Roustabouts", "rifle"])
+	assert_array(_unit_label("rocket_squad")).is_equal(["Wildcatters", "rocket"])
 
 
 func test_weapon_files_hold_the_adr_0009_starting_stats() -> void:
@@ -258,6 +259,7 @@ func test_the_phase_3_unit_and_building_rules_accept_their_edge_values_and_repor
 ) -> void:
 	# Property path from a building, values that pass, values that fail, and the rule they break.
 	var foot: String = "footprint is not 1..3"
+	var square: String = "footprint is not square"
 	var rows: Array = [
 		["cost", [0, 1], [-1], "cost is negative"],
 		["build_ticks", [0, 1], [-1], "build_ticks is negative"],
@@ -266,8 +268,13 @@ func test_the_phase_3_unit_and_building_rules_accept_their_edge_values_and_repor
 		["speed", [0], [2], "speed is not 0"],
 		["radius", [0], [1], "radius is not 0"],
 		["armour", [3], [0, 2], "armour is not Building"],
-		["footprint", [Vector2i(1, 1), Vector2i(3, 3)], [Vector2i(0, 1), Vector2i(1, 0)], foot],
-		["footprint", [], [Vector2i(1, 4), Vector2i(4, 1), Vector2i(-1, 2)], foot],
+		[
+			"footprint",
+			[Vector2i(1, 1), Vector2i(2, 2), Vector2i(3, 3)],
+			[Vector2i(0, 0), Vector2i(4, 4), Vector2i(-1, -1)],
+			foot
+		],
+		["footprint", [], [Vector2i(1, 2), Vector2i(2, 1), Vector2i(3, 1), Vector2i(2, 3)], square],
 		["produces", [-1, 0, 2], [-2, 3], "produces is not -1..2"],
 	]
 	for row: Array in rows:
@@ -277,6 +284,14 @@ func test_the_phase_3_unit_and_building_rules_accept_their_edge_values_and_repor
 			var got: PackedStringArray = _economy_problems("depot.tres", building, RulesDef.new())
 			var want: Array = [] if row[1].has(value) else ["depot.tres: " + row[3]]
 			assert_array(got).override_failure_message("%s = %s" % [row[0], value]).is_equal(want)
+	# A footprint can break both rules at once: each one is reported, the range first.
+	for value: Vector2i in [Vector2i(0, 1), Vector2i(1, 0), Vector2i(1, 4), Vector2i(4, 1)]:
+		var odd: BuildingDef = _fine_building()
+		odd.footprint = value
+		var both: PackedStringArray = _economy_problems("depot.tres", odd, RulesDef.new())
+		assert_array(both).override_failure_message(str(value)).is_equal(
+			["depot.tres: " + foot, "depot.tres: " + square]
+		)
 	var unit: UnitDef = _fine_building()
 	unit.requires = unit
 	var got_self: PackedStringArray = _economy_problems("depot.tres", unit, RulesDef.new())
@@ -587,7 +602,7 @@ func _fine_building() -> BuildingDef:
 
 ## One text per broken Phase 3 rule of a unit or building file; empty when the file is fine. The
 ## rules of ADR 0018 section 9 that span files (the requirement chains reach the Headquarters) are
-## test_defs_roster's.
+## test_defs_roster's and test_defs_factions_data's.
 func _economy_problems(file: String, unit: UnitDef, rules: RulesDef) -> PackedStringArray:
 	var broken: Dictionary[String, bool] = {
 		"cost is negative": unit.cost < 0,
@@ -608,6 +623,8 @@ func _economy_problems(file: String, unit: UnitDef, rules: RulesDef) -> PackedSt
 			or building.footprint.y < 1
 			or building.footprint.y > 3
 		)
+		# ADR 0023 section 7: every footprint is square (the iso art draws one diamond per building).
+		broken["footprint is not square"] = building.footprint.x != building.footprint.y
 		broken["produces is not -1..2"] = building.produces < -1 or building.produces > 2
 	var problems: PackedStringArray = PackedStringArray()
 	for message: String in broken:

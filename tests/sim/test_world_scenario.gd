@@ -31,7 +31,7 @@ func test_from_scenario_copies_the_unit_weapon_and_terrain_tables_of_the_arena()
 		&"type_sight": [7000, 6000, 6000],
 		&"type_acquire": [5500, 5000, 5500],
 		&"type_weapon": [0, 1, 2],
-		&"type_names": ["Light Tank", "Rifle Squad", "Rocket Squad"],
+		&"type_names": ["Flarejack", "Roustabouts", "Wildcatters"],
 		# The arena has no building and no harvester: the building tables pad. The production
 		# columns and the faction column are what the three unit files say (P72 sets the first,
 		# ADR 0023 the other), read from the spawned definitions; test_world_v2 and test_factions

@@ -266,7 +266,7 @@ func test_the_profiles_are_two_phones_each_flat_and_upright() -> void:
 
 func _assert_panel(count: String) -> void:
 	assert_bool(_panel.visible).is_true()
-	assert_str((_panel.get_node("Rows/Row0/Name") as Label).text).is_equal("Light Tank")
+	assert_str((_panel.get_node("Rows/Row0/Name") as Label).text).is_equal("Flarejack")
 	assert_str((_panel.get_node("Rows/Row0/Count") as Label).text).is_equal(count)
 
 
