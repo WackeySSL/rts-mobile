@@ -10,12 +10,25 @@ extends GdUnitTestSuite
 const Rig: GDScript = preload("res://tests/sim/support/production_worlds.gd")
 const Worlds: GDScript = preload("res://tests/sim/support/building_worlds.gd")
 const INFANTRY: int = World.Tab.INFANTRY
+## Every shipped type with a power value, as one typed literal (`Rig.IDS` has no turret, and a type
+## enters the table only when it is listed or required by a listed one).
+const POWER_TYPES: Array[String] = [
+	"power_plant",
+	"headquarters",
+	"barracks",
+	"vehicle_factory",
+	"refinery",
+	"defence_turret",
+]
 
 
 ## `Rig.base()`: player 1 owns a power plant, a barracks, a refinery and a vehicle factory, player 2
 ## a barracks (no plant).
 func _power(world: World, id: String) -> int:
-	return world.type_power[Worlds.type_of(world, id)]
+	var type: int = Worlds.type_of(world, id)
+	# A missing type is -1, which a packed array reads as its last entry: it must fail here.
+	assert_int(type).override_failure_message("no type %s in the table" % id).is_greater_equal(0)
+	return world.type_power[type]
 
 
 func _step(world: World, commands: Array = []) -> void:
@@ -41,8 +54,7 @@ func _totals(world: World, player: int) -> Array[int]:
 
 
 func test_the_shipped_signs_a_plant_and_the_headquarters_make_and_the_rest_use() -> void:
-	var world: World = Rig.base()
-	Rig.add_headquarters(world)
+	var world: World = Worlds.open(Rig.COLS, Rig.ROWS, POWER_TYPES)
 	assert_int(_power(world, "power_plant")).is_greater(0)
 	assert_int(_power(world, "headquarters")).is_greater(0)
 	for id: String in ["barracks", "refinery", "vehicle_factory", "defence_turret"]:

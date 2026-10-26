@@ -76,7 +76,8 @@ func test_low_power_halves_progress_exactly_and_only_for_the_player_on_low_power
 	Rig.step(world)
 	assert_int(_count(world, 2, "rifle_squad")).is_equal(1)
 	assert_int(world.tick).is_equal(slow)
-	assert_array([world.credits[1], world.credits[2]]).is_equal([2000 - 100, 2000 - 100])
+	var spent: int = world.start_credits - world.type_cost[Worlds.type_of(world, "rifle_squad")]
+	assert_array([world.credits[1], world.credits[2]]).is_equal([spent, spent])
 	assert_array([world.stat_built[1], world.stat_built[2]]).is_equal([1, 1])
 
 
