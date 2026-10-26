@@ -34,7 +34,14 @@ column (factions, §6) and, if question 3 is A or B, the strike rules of §10 wi
   "Russia against Europe ... never said out loud". Its Spec board (§01-§10) fixes the projection,
   light, anchors, directions, sizes, render order, team-colour remap, export and touch rules. The
   artboard images are uploads that this ADR could not read; their alt texts, captions and the
-  inline SVG (emblems, icons, HUD layout) were read from the `.dc.html` files.
+  inline SVG (emblems, icons, HUD layout) were read from the `.dc.html` files. Lead note
+  (2026-10-26): Michael then exported every artboard of both versions as PNG. The lead checked B's
+  sheets against this ADR: clean flat-shaded vector, three tones per face, north-west light, which
+  §5's generator reproduces. B's drawings still carry geography that decision 1 drops (a
+  hyperboloid lattice tower for the superweapon and the radar, a domed hall with a colonnade,
+  timber framing, a log cabin and a red wooden house on the map), as §6 already says. The PNGs
+  stay out of the repo (an outside tool's renders, reference only); art-director gets them as
+  mood reference with each art row.
 - **Michael's four decisions (2026-10-26)**, after looking at the canvas:
   1. "Energi, ingen geografi": an oil and gas bloc against a green-energy alliance with invented
      names, B's look and materials, no Russia or Europe coding (no Vysotka, Panelka, Zavod,
