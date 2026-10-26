@@ -26,7 +26,8 @@ The decision below is unchanged by the acceptance. P68d applied "On acceptance" 
 points of #186 in the text: the two parts are defined by `y_mid` alone (§2), the 1x1 turret's error
 on both sides and its bound (§2, "Consequences"), the eave-cut failure set ("Alternatives"), the
 runtime atlas's copy path and gutter (§2), the turret heads drawn inside the roof list and the
-offline glyph counted (§2, §3), the pick order with and without a selection (§3), the persistent
+offline glyph counted (§2, §3), the pick order with and without a selection, units still first
+(§3), the persistent
 partly-seen seam (§4, "Consequences"), the silhouette alternative ("Alternatives") and the style
 guide's low-power line (§7). Code and art follow in the plan's revision 4 rows.
 
@@ -235,13 +236,12 @@ guide's low-power line (§7). Code and art follow in the plan's revision 4 rows.
 - **A tap on a building's picture selects it:** the pick shape is the sprite box (footprint plus the
   overhang), grown about its centre to at least 48 dp on each axis at the current zoom (touch rule
   unchanged; it matters for the 1x1 turret at zoom 0.75).
-- **The pick order.** With a selection: enemy unit > enemy building > own unit > own building.
-  Without one, enemies do not count (`Picker.pick`'s rule today): own unit > own building. So a
-  unit (`Picker.pick`'s circle) wins over a building box of its own side at the same point, and a
-  unit next to or partly under a roof stays tappable; with a selection, an enemy building wins over
-  an own unit, as an enemy unit does today. Among buildings of one side, the one with the larger
-  footprint south row wins (it is drawn in front). A building the fog hides and a last-seen ghost
-  are not pickable. P84d's acceptance pins the order.
+- **Units first, then the pick order.** A unit hit (`Picker.pick`'s circle) wins over a building
+  box at the same point, whatever the sides, so a unit next to or partly under a roof stays
+  tappable. With a selection: enemy unit > own unit > enemy building > own building. Without one,
+  enemies do not count (`Picker.pick`'s rule today): own unit > own building. Among buildings of
+  one side, the one with the larger footprint south row wins (it is drawn in front). A building
+  the fog hides and a last-seen ghost are not pickable. P84d's acceptance pins the order.
 - Buildings still never join a box, a double-tap selection or "All army" (ADR 0019 §3); a box uses
   unit centres as today.
 - **The selection frame** is four corner brackets of filled rects round the sprite box, drawn by
@@ -266,9 +266,10 @@ guide's low-power line (§7). Code and art follow in the plan's revision 4 rows.
   the base part's unseen cells are dimmed by the fog under it. Accepted; it occurs only while a
   vision edge crosses the footprint, which is indefinitely for a parked viewer (a unit standing
   still with the edge across a building). It is an item for Michael's phone check and for the
-  gallery (P91b shows a building with the edge across it). A fog shader that samples the fog texture at the
-  ground point under each roof pixel would be exact; it is the fallback if Michael's phone check
-  finds the seam ("Alternatives").
+  gallery: P91b's acceptance shows a building at least two tiles wide with the explored fog over
+  its footprint's west column, drawn in P84's order (base part, the fog patch, the roof part
+  undimmed). A fog shader that samples the fog texture at the ground point under each roof pixel
+  would be exact; it is the fallback if Michael's phone check finds the seam ("Alternatives").
 - **Last-seen ghosts (P84c)** are drawn in the same projection by the same two layers: the building
   in the other team's colour, cut at the same line, with the `ghost_seen` dots (from the atlas, one
   quad per 64 px of the box) over the **whole sprite box**, because the remembered picture, roof
@@ -476,8 +477,8 @@ guide's low-power line (§7). Code and art follow in the plan's revision 4 rows.
   `pattern`, masks with solid fills only).
 - `.claude/skills/touch-ui-rules/SKILL.md` (Michael's yes to question 5, which the lead asked in
   chat with this skill included): "Tap own building" picks on the whole picture, roof included; a
-  unit at the same point wins; the pick order of §3 (with a selection enemy unit > enemy building >
-  own unit > own building; without one own unit > own building).
+  unit at the same point wins; the pick order of §3 (with a selection enemy unit > own unit >
+  enemy building > own building; without one own unit > own building).
 - `CLAUDE.md` Stack line "2D top-down" gains "buildings in an oblique 3/4 view (ADR 0022)"
   (Michael's yes, question 5).
 - `docs/GDD.md` line 81 ("flat top-down military-map look") becomes the new look in one sentence.

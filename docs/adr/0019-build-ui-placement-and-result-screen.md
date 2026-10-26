@@ -113,8 +113,8 @@ P86). The rest of §2 is unchanged.
 Status note (2026-10-26, P68d docs, ADR 0022 accepted 2026-10-26, Michael's "ja til anbefaling";
 the text above stays as accepted): "Tap an own building" picks on the building's whole picture, the
 sprite box (footprint plus the rise, roof included), grown to at least 48 dp a side (ADR 0022 §3).
-A unit at the same point wins. The pick order with a selection is enemy unit > enemy building > own
-unit > own building; without one, enemies do not count, so own unit > own building; among buildings
+A unit at the same point wins. The pick order with a selection is enemy unit > own unit > enemy
+building > own building; without one, enemies do not count, so own unit > own building; among buildings
 of one side the larger footprint south row wins. A building the fog hides and a last-seen ghost are
 not pickable. The selection frame goes round the sprite box (ADR 0022 question 2 = A). Plan row P84d
 applies it. The rest of §3 is unchanged.

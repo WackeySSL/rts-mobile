@@ -48,8 +48,8 @@ holds any combat unit leave harvesters out; a box with only harvesters selects t
   (infantry in particular).
 - When hit areas overlap the touch point, pick the target whose centre is closest; with units
   selected, enemies win over own units.
-- Units and buildings at one point (ADR 0022 §3): with a selection, enemy unit > enemy building >
-  own unit > own building; without one, enemies do not count, so own unit > own building. A
+- Units and buildings at one point (ADR 0022 §3): units first, so with a selection, enemy unit >
+  own unit > enemy building > own building; without one, enemies do not count, so own unit > own building. A
   building's hit area is its whole sprite box (footprint plus the roof's rise), at least 48 dp a
   side; between two buildings the one in front (the larger footprint south row) wins.
 
