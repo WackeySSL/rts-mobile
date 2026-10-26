@@ -4,12 +4,12 @@ extends GdUnitTestSuite
 ## every handler must end in the state a fresh scene has at the end size (plan P59). Each case opens
 ## a scene, turns the window and turns it back, and compares what the handlers made of the dp with
 ## a scene opened at that size; the middle step is compared with a fresh scene too. The handlers
-## are the ones of main.tscn (DpMinSize, SafeAreaMargin, HudTheme, TouchInput, ArmyBar,
-## SelectionPanel, UnitLayer's rings, HealthBarLayer, EffectsLayer and RtsCamera), of the touch
-## probe, of the dev menu (P63) and of the perf arena (PerfHud and the arena's own). A handler that
-## a later row rewrites extends its case there (P61 SelectionPanel and ArmyBar, P62 RtsCamera and
-## TouchInput, P63 the touch probe). The engine's own metrics are used, no override: the stretch
-## has to follow.
+## are the ones of main.tscn (DpMinSize, SafeAreaMargin, HudTheme, TouchInput, BuildSidebar,
+## ArmyBar, SelectionPanel, UnitLayer's rings, HealthBarLayer, EffectsLayer and RtsCamera), of the
+## touch probe, of the dev menu (P63) and of the perf arena (PerfHud and the arena's own). A
+## handler that a later row rewrites extends its case there (P61 SelectionPanel and ArmyBar, P62
+## RtsCamera and TouchInput, P63 the touch probe). The engine's own metrics are used, no override:
+## the stretch has to follow.
 
 const Rig: GDScript = preload("res://tests/ui/support/arena_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -43,14 +43,9 @@ func after_test() -> void:
 	HudLayout.bottom_zone_dp = 0.0
 
 
+## The BuildSidebar's zone and the ArmyBar's lift above its band are part of the main scene's state
+## (P61, P85): the band's height differs between the two orientations, and the bar follows it.
 func test_the_main_scene_handlers_end_in_the_state_of_a_fresh_scene() -> void:
-	await _check_flips(&"main")
-
-
-## The ArmyBar's lift above a bottom zone is part of the main scene's state (P61): a stand-in band
-## height makes the bar's band margin differ between the two orientations.
-func test_the_army_bar_lift_ends_in_the_state_of_a_fresh_scene_with_a_bottom_zone() -> void:
-	HudLayout.bottom_zone_dp = 200.0
 	await _check_flips(&"main")
 
 
@@ -255,6 +250,7 @@ func _read_main(main: Node) -> Dictionary:
 	var band: Control = main.get_node("Hud/SafeArea/SelectionBand")
 	var panel: SelectionPanel = main.get_node("Hud/SafeArea/SelectionBand/SelectionPanel")
 	var recognizer: GestureRecognizer = (main.get_node("TouchInput") as TouchInput)._recognizer
+	var sidebar: BuildSidebar = main.get_node("Hud/SafeArea/BuildSidebar")
 	var rings: Array[Array] = []
 	for row: int in [1, 39]:
 		var ring: Sprite2D = main.get_node("UnitLayer").get_child(row).get_node("Ring")
@@ -271,11 +267,44 @@ func _read_main(main: Node) -> Dictionary:
 		"panel_gap": panel._list.get_theme_constant("separation"),
 		"panel_line": _panel_line(panel),
 		"army_lift": army.get_parent().get_theme_constant("margin_bottom"),
+		"sidebar": _sidebar_state(sidebar),
 		"font_size": army.get_node("AllArmy").get_theme_font_size("font_size"),
 		"slops": [recognizer._slop_px, recognizer._double_tap_slop_px, recognizer._min_pinch_px],
 		"rings": rings,
 		"bar_dp": main.get_node("HealthBarLayer")._dp_px,
 		"effects_dp": main.get_node("EffectsLayer")._dp_px,
+	}
+
+
+## How the BuildSidebar is placed and sized: its zone, size flags and minimum, the gaps, the tabs'
+## sizes, icon sizes, names and icon alignment, and the item slot and status line.
+func _sidebar_state(sidebar: BuildSidebar) -> Dictionary:
+	var tabs: Array[Button] = sidebar._tabs
+	var texts: Array[String] = []
+	var aligns: Array[int] = []
+	var icon_widths: Array[int] = []
+	var sizes: Array[Vector2] = []
+	for tab: Button in tabs:
+		texts.append(tab.text)
+		aligns.append(tab.icon_alignment)
+		icon_widths.append(tab.get_theme_constant("icon_max_width"))
+		sizes.append(tab.custom_minimum_size)
+	return {
+		"zone_dp": HudLayout.bottom_zone_dp,
+		"min": sidebar.custom_minimum_size,
+		"flags": [sidebar.size_flags_horizontal, sidebar.size_flags_vertical],
+		"gaps":
+		[
+			sidebar._stack.get_theme_constant("separation"),
+			sidebar._tab_row.get_theme_constant("separation"),
+			sidebar._status.get_theme_constant("separation"),
+		],
+		"tab_sizes": sizes,
+		"tab_texts": texts,
+		"tab_aligns": aligns,
+		"icon_widths": icon_widths,
+		"items_min": sidebar._items.custom_minimum_size,
+		"status_min": sidebar._status.custom_minimum_size,
 	}
 
 

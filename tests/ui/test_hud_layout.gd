@@ -2,17 +2,16 @@ extends GdUnitTestSuite
 ## The battle-screen HUD in both orientations (plan P61, ADR 0015 section 5), at the six sizes of
 ## ScreenSizes.ALL with the engine's own metrics and at every profile of both orientations, also
 ## with a cutout: every HUD control is inside the safe rect, at least 48 dp on each axis and clear
-## of every other, and none enters the zone that the build sidebar will take (the right fifth in
-## landscape; in portrait the bottom band, which is 0 high today and has a stand-in here). Landscape
-## selects the 30 tanks the scene starts with, portrait the six MVP types with 3-digit counts.
+## of every other, and none enters the zone that the build sidebar takes (the right fifth in
+## landscape; in portrait the bottom band, which the sidebar sets and the ArmyBar sits above, P85).
+## Landscape selects the 30 tanks the scene starts with, portrait the six MVP types with 3-digit
+## counts.
 
 const Roster: GDScript = preload("res://tests/ui/support/mvp_roster.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const TANKS: Array[int] = [0, 0, 30]
 const SIX_TYPES: Array[int] = [120, 100, 150, 110, 130, 140]
-## A stand-in for the sidebar row's band height, in dp (ADR 0015 section 5: at least 200 dp).
-const BAND_DP: float = 200.0
 const STACK_LIMIT: float = 0.4  ## The bottom stack's share of the safe height, at most.
 const CUTOUT_PX: int = 100
 const TOLERANCE_PX: float = 0.5
@@ -44,7 +43,10 @@ func test_every_hud_control_is_inside_the_safe_rect_48_dp_and_clear_of_the_other
 		var safe: Rect2 = UiScale.safe_rect_base()
 		var visible_rect: Rect2 = get_viewport().get_visible_rect()
 		var big: Dictionary[String, Rect2] = {
-			"DevButton": _rect("DevButton"), "ArmyBar": _rect("ArmyBar"), "Panel": _rect(_panel)
+			"DevButton": _rect("DevButton"),
+			"ArmyBar": _rect("ArmyBar"),
+			"Panel": _rect(_panel),
+			"Sidebar": _rect("BuildSidebar"),
 		}
 		var all: Dictionary[String, Rect2] = big.duplicate()
 		for button: String in ["AllArmy", "Group1", "Group2", "Group3"]:
@@ -65,40 +67,34 @@ func test_every_hud_control_is_inside_the_safe_rect_48_dp_and_clear_of_the_other
 				assert_bool(overlap).override_failure_message(pair).is_false()
 		var area: Rect2 = (_hud("SafeArea") as Control).get_global_rect()  # It must not grow.
 		assert_that(area).override_failure_message(why).is_equal(visible_rect)
-		if not HudLayout.is_portrait():  # The right zone stays free (today's rule).
+		if not HudLayout.is_portrait():  # The right zone is the sidebar's alone.
 			var zone: float = visible_rect.size.x - HudLayout.right_zone_px(visible_rect.size.x)
 			for control: String in all:
+				if control == "Sidebar":
+					continue
 				var at: String = "%s: %s %s, zone from %s" % [why, control, all[control], zone]
 				assert_float(all[control].end.x).override_failure_message(at).is_less_equal(
 					zone + TOLERANCE_PX
 				)
 
 
-func test_in_portrait_the_army_bar_is_on_the_bottom_edge_while_the_zone_is_0() -> void:
-	for screen: Dictionary in _screens(true):
-		await _open(screen)
-		var why: String = str(screen["label"])
-		assert_float(HudLayout.bottom_zone_px()).override_failure_message(why).is_equal(0.0)
-		var bar: Rect2 = _rect("ArmyBar")
-		var inner_bottom: float = _inner_bottom()
-		assert_float(bar.end.y).override_failure_message(why).is_equal_approx(inner_bottom, 0.01)
-		assert_bool(UiScale.safe_rect_base().encloses(bar)).override_failure_message(why).is_true()
-		assert_int(_hud("ArmyBand").get_theme_constant("margin_bottom")).is_equal(0)
-
-
-## With a band of 200 dp as the sidebar row will have it, no control enters the band, the bar sits
-## a gap above it, and nothing else is in the bottom stack. The limit of 40% of the safe height is
-## the plan's, for the six sizes and the profiles; a cutout takes height from both ends of the
-## screen (SafeAreaMargin gives top and bottom the larger inset), so a case with one is left out
-## of the limit, as a phone browser that is only 700 dp tall has no room left for it.
-func test_in_portrait_a_stand_in_band_keeps_the_controls_out_and_the_bar_directly_above() -> void:
-	HudLayout.bottom_zone_dp = BAND_DP
+## With the sidebar's real band (P85), no other control enters the band, the bar sits a gap above
+## it, and nothing else is in the bottom stack. The limit of 40% of the safe height is the plan's,
+## for the six sizes and the profiles; a cutout takes height from both ends of the screen
+## (SafeAreaMargin gives top and bottom the larger inset), so a case with one is left out of the
+## limit, as a phone browser that is only 700 dp tall has no room left for it.
+func test_in_portrait_the_bar_is_directly_above_the_sidebars_band_and_nothing_else_is_below_it(
+) -> void:
 	for screen: Dictionary in _screens(true):
 		await _open(screen)
 		var why: String = str(screen["label"])
 		var safe: Rect2 = UiScale.safe_rect_base()
 		var gap: float = UiScale.dp(8.0)
-		var zone_top: float = _inner_bottom() - UiScale.dp(BAND_DP)
+		var band: Rect2 = _rect("BuildSidebar")
+		var zone_top: float = _inner_bottom() - HudLayout.bottom_zone_px()
+		assert_float(HudLayout.bottom_zone_px()).override_failure_message(why).is_greater(0.0)
+		assert_float(band.position.y).override_failure_message(why).is_equal_approx(zone_top, 0.5)
+		assert_float(band.end.y).override_failure_message(why).is_equal_approx(_inner_bottom(), 0.5)
 		var bar: Rect2 = _rect("ArmyBar")
 		assert_float(bar.end.y).override_failure_message(why).is_between(
 			zone_top - gap - 1.5, zone_top - gap + TOLERANCE_PX
@@ -122,16 +118,21 @@ func test_in_portrait_a_stand_in_band_keeps_the_controls_out_and_the_bar_directl
 			assert_float(stack).override_failure_message(share).is_less_equal(limit)
 
 
-## A band height does nothing in landscape: the zone there is the right fifth.
-func test_in_landscape_the_bar_stays_on_the_bottom_edge_whatever_the_band_height() -> void:
-	HudLayout.bottom_zone_dp = BAND_DP
+## There is no band in landscape: the sidebar leaves the zone at 0 and the bar is on the bottom
+## edge, and the bar lifts for a band only in portrait, whatever zone it is told of.
+func test_in_landscape_the_bar_stays_on_the_bottom_edge_whatever_the_zone_it_is_told_of() -> void:
 	for screen: Dictionary in _screens(false):
 		await _open(screen)
 		var why: String = str(screen["label"])
+		assert_float(HudLayout.bottom_zone_px()).override_failure_message(why).is_equal(0.0)
 		assert_float(_rect("ArmyBar").end.y).override_failure_message(why).is_equal_approx(
 			_inner_bottom(), 0.01
 		)
 		assert_int(_hud("ArmyBand").get_theme_constant("margin_bottom")).is_equal(0)
+		HudLayout.bottom_zone_dp = 200.0  # Not what the sidebar sets: the bar's own rule.
+		(_hud("ArmyBar") as ArmyBar)._lift()
+		assert_int(_hud("ArmyBand").get_theme_constant("margin_bottom")).is_equal(0)
+		HudLayout.bottom_zone_dp = 0.0
 
 
 ## Every screen to test, as {label, size, metrics (a profile, or null for the engine's own), cutout,

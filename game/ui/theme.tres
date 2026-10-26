@@ -19,8 +19,11 @@
 ; skew (a shear ratio, the same angle on every screen), corner_detail (a count) and
 ; anti_aliasing_size (the soft edge, 1 px). Scale a constant in HudTheme.scaled() before putting
 ; one here. An entry that stays in base px is listed in metadata/base_px by its path in this file.
-; Type variations (DevButton, NumberLabel, SelectionPanel, PerfCard) are set by theme_type_variation on the
-; node, once, in main.tscn or at build in the script.
+; Type variations (DevButton, NumberLabel, SelectionPanel, PerfCard, BuildSidebar, SidebarTab, PowerBar,
+; PowerBarLow, PowerNumber, PowerNumberLow) are set by theme_type_variation on the node, in main.tscn
+; or at build in the script (the power bar's two pairs switch with the low-power state).
+; The build sidebar's tints (the colours of BuildSidebar, STYLE.md "Icons and glyphs") are read by
+; BuildSidebar.gd with get_theme_color; its tabs get theirs from the icon colours of SidebarTab.
 [gd_resource type="Theme" format=3]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_backdrop"]
@@ -33,6 +36,82 @@ corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
+
+; The build sidebar's backdrop (BuildSidebar): a little darker than the selection panel's, 8 dp at
+; the sides and 4 dp above and below (ADR 0015 section 5 budgets the portrait band's inner height).
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sidebar"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.06, 0.08, 0.11, 0.9)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+; A build tab at rest: a dark plate with a thin grey edge. The open tab (pressed) is lighter, with a
+; white edge and a thick white bar at its foot, so that it differs by shape and not by colour alone.
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tab"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.11, 0.13, 0.15, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 0.3, 0.3, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tab_open"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.22, 0.26, 0.31, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 6
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_focus"]
+
+; The power bar: a dark track with a green fill, and an amber fill on low power.
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_track"]
+bg_color = Color(0.11, 0.13, 0.15, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 0.3, 0.3, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_power"]
+bg_color = Color(0.18823529, 0.64313725, 0.42352941, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_low_power"]
+bg_color = Color(0.96078431, 0.64705882, 0.14117647, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [resource]
 ; The long-press anchor and the selection box (BoxOverlay.gd): fill, dark pass, stroke.
@@ -54,4 +133,42 @@ SelectionPanel/styles/panel = SubResource("StyleBoxFlat_backdrop")
 ; The perf card's backdrop (PerfHud.gd, a developer tool): the same box as the selection panel's.
 PerfCard/base_type = &"PanelContainer"
 PerfCard/styles/panel = SubResource("StyleBoxFlat_backdrop")
+; The build sidebar (BuildSidebar.gd, plan P85): its backdrop, and the tints of its glyphs from STYLE.md
+; "Icons and glyphs": credits #F2B705, power #30A46C and the low-power warning #F5A524.
+BuildSidebar/base_type = &"PanelContainer"
+BuildSidebar/colors/credits = Color(0.94901961, 0.71764706, 0.01960784, 1)
+BuildSidebar/colors/power = Color(0.18823529, 0.64313725, 0.42352941, 1)
+BuildSidebar/colors/warning = Color(0.96078431, 0.64705882, 0.14117647, 1)
+BuildSidebar/styles/panel = SubResource("StyleBoxFlat_sidebar")
+; The three tabs: the icon is tinted #9AA5B1 at rest and white when the tab is open.
+SidebarTab/base_type = &"Button"
+SidebarTab/colors/icon_focus_color = Color(0.60392157, 0.64705882, 0.69411765, 1)
+SidebarTab/colors/icon_hover_color = Color(0.60392157, 0.64705882, 0.69411765, 1)
+SidebarTab/colors/icon_hover_pressed_color = Color(1, 1, 1, 1)
+SidebarTab/colors/icon_normal_color = Color(0.60392157, 0.64705882, 0.69411765, 1)
+SidebarTab/colors/icon_pressed_color = Color(1, 1, 1, 1)
+SidebarTab/styles/focus = SubResource("StyleBoxEmpty_focus")
+SidebarTab/styles/hover = SubResource("StyleBoxFlat_tab")
+SidebarTab/styles/hover_pressed = SubResource("StyleBoxFlat_tab_open")
+SidebarTab/styles/normal = SubResource("StyleBoxFlat_tab")
+SidebarTab/styles/pressed = SubResource("StyleBoxFlat_tab_open")
+; The power bar and its low-power look.
+PowerBar/base_type = &"ProgressBar"
+PowerBar/styles/background = SubResource("StyleBoxFlat_track")
+PowerBar/styles/fill = SubResource("StyleBoxFlat_power")
+PowerBarLow/base_type = &"ProgressBar"
+PowerBarLow/styles/background = SubResource("StyleBoxFlat_track")
+PowerBarLow/styles/fill = SubResource("StyleBoxFlat_low_power")
+; The numbers in the power bar, 18 dp (the least a HUD number may be). On the green bar they sit across
+; the fill and the dark track: white with a dark edge (the size of the edge is set in code, in dp), 3.2:1
+; against the fill without the edge. On low power the bar is full and amber under all of them: dark and
+; with no edge, 9:1 against the amber (WCAG AA asks 4.5:1).
+PowerNumber/base_type = &"NumberLabel"
+PowerNumber/colors/font_color = Color(1, 1, 1, 1)
+PowerNumber/colors/font_outline_color = Color(0.06, 0.08, 0.11, 1)
+PowerNumber/font_sizes/font_size = 18
+PowerNumberLow/base_type = &"NumberLabel"
+PowerNumberLow/colors/font_color = Color(0.06, 0.08, 0.11, 1)
+PowerNumberLow/colors/font_outline_color = Color(0.06, 0.08, 0.11, 0)
+PowerNumberLow/font_sizes/font_size = 18
 metadata/base_px = PackedStringArray("DevButton/font_sizes/font_size")

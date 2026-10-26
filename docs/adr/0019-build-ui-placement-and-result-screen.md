@@ -23,6 +23,11 @@ The decision below is unchanged by the acceptance. P68b added one sentence to §
 button narrows the portrait SelectionPanel's line, so its row re-checks that panel's worst case.
 Nothing here is applied in code yet: plan rows P84-P90 apply it.
 
+Status note (2026-10-26, P68d docs; ADR 0022 accepted 2026-10-26): §2 and §3 carry dated status
+notes on the oblique buildings: the ghost is drawn in ADR 0022's projection and grabbed on its
+sprite box plus 24 dp, and a tap anywhere on a building's picture selects it, a unit winning at the
+same point. No accepted text changed.
+
 ## Context
 - `touch-ui-rules` already fixes, in its gesture table and its "Building placement" section: tap an
   own building selects it and "a production building opens its build tab"; tap minimap moves the
@@ -84,6 +89,16 @@ Local input state: no Command until the player confirms.
 - **Rotation:** the ghost keeps its tile; the camera keeps its centre (P62); a turn's gesture
   cancel ends a ghost drag without moving the ghost; no Command is sent.
 
+Status note (2026-10-26, P68d docs, ADR 0022 accepted 2026-10-26, Michael's "ja til anbefaling";
+the text above stays as accepted): with buildings drawn in an oblique 3/4 view (ADR 0022 §1, §5),
+the ghost is the building's whole sprite in that projection, anchored on the footprint's south edge
+and faded as one group; the wash, the hatch and the solid frame lie on the footprint rect, and the
+reason's glyph at the footprint's centre. The grab area "its footprint plus 24 dp" becomes **the
+sprite box plus 24 dp** (the footprint plus the 0.75-tile rise to the north), so a drag that starts
+on the roof moves the ghost. The ghost still follows the finger 64 dp above the touch point, with
+the footprint's centre as the reference, and snaps to tiles. `GhostLayer` draws at z 145 (plan row
+P86). The rest of §2 is unchanged.
+
 ### 3. Buildings and harvesters on the map
 - Tap an own building: it alone is selected; the selection panel shows it. Buildings never join a
   box selection, a double-tap selection or "All army".
@@ -94,6 +109,15 @@ Local input state: no Command until the player confirms.
   today.
 - "All army" and a box that holds any combat unit leave harvesters out; a box with only harvesters
   selects them.
+
+Status note (2026-10-26, P68d docs, ADR 0022 accepted 2026-10-26, Michael's "ja til anbefaling";
+the text above stays as accepted): "Tap an own building" picks on the building's whole picture, the
+sprite box (footprint plus the rise, roof included), grown to at least 48 dp a side (ADR 0022 §3).
+A unit at the same point wins. The pick order with a selection is enemy unit > own unit > enemy
+building > own building; without one, enemies do not count, so own unit > own building; among buildings
+of one side the larger footprint south row wins. A building the fog hides and a last-seen ghost are
+not pickable. The selection frame goes round the sprite box (ADR 0022 question 2 = A). Plan row P84d
+applies it. The rest of §3 is unchanged.
 
 ### 4. Minimap
 In the sidebar (top in landscape; at the right end of the portrait band, a square of the band's
