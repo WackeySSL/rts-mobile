@@ -37,6 +37,9 @@ static func from_scenario(scenario: ScenarioDef, rng: DetRandom = null) -> World
 		if spawn == null or spawn.unit == null:
 			continue
 		var type: int = _type_for(world, spawn.unit)
+		if spawn.unit is BuildingDef:
+			_place_buildings(world, spawn, type)
+			continue
 		var move_class: int = world.type_move_class[type]
 		var columns: int = maxi(spawn.columns, 1)
 		var start_x: int = spawn.origin_tile.x * World.MILLI_PER_TILE + World.TILE_CENTRE
@@ -61,6 +64,20 @@ static func from_scenario(scenario: ScenarioDef, rng: DetRandom = null) -> World
 	world.prepare()
 	world.events.clear()
 	return world
+
+
+## The buildings of a spawn whose unit is a BuildingDef (ADR 0017 section 1): `count` of them
+## through World.add_building from `origin_tile`, in rows of `columns`, one footprint apart. Nothing
+## is drawn: `spacing` and `jitter` are for units.
+@warning_ignore("integer_division")
+static func _place_buildings(world: World, spawn: SpawnDef, type: int) -> void:
+	var columns: int = maxi(spawn.columns, 1)
+	var width: int = world.type_foot_w[type]
+	var height: int = world.type_foot_h[type]
+	for slot: int in spawn.count:
+		var col: int = spawn.origin_tile.x + slot % columns * width
+		var line: int = spawn.origin_tile.y + slot / columns * height
+		world.add_building(spawn.owner, type, col, line)
 
 
 ## Open grass over map_w x map_h rounded up to whole tiles (ADR 0007 section 2): terrain 0 on

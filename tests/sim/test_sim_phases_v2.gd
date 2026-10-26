@@ -56,7 +56,8 @@ func test_a_defeated_or_unknown_player_is_not_playing() -> void:
 
 
 ## The skeleton modules change nothing: each `run`, and `release`, leaves the state hash and every
-## part of it as it was, and each `apply_*` refuses a command that looks right.
+## part of it as it was (Power.run rebuilds the derived row lists since P71, which are in no hash
+## section), and each `apply_*` refuses a command that looks right.
 func test_the_stub_modules_change_no_state_and_refuse_every_command() -> void:
 	var world: World = _arena()
 	var before: PackedInt64Array = world.hash_parts()

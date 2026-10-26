@@ -266,6 +266,7 @@ const UNHASHED_SCALARS: Array[StringName] = [
 	&"native_phases",
 	&"_map_digest",
 	&"_map_digest_version",
+	&"_lists_version",
 	&"retarget_period_ticks",
 	&"fog_period_ticks",
 	&"line_check_period_ticks",
@@ -581,6 +582,8 @@ var stats: PackedInt32Array = PackedInt32Array()
 ## equals `map_version`. Derived, so unhashed; WorldHash.map_digest() fills it.
 var _map_digest: int = 0
 var _map_digest_version: int = -1
+## The `rows_version` the derived row lists were last rebuilt at (-1: never); unhashed like them.
+var _lists_version: int = -1
 
 
 ## The rule ints start at the RulesDef script defaults, so a hand-built world is a valid world.
@@ -834,6 +837,18 @@ func add_unit(owner: int, type_index: int, x: int, y: int) -> int:
 	return id
 
 
+## Appends a building with its top-left tile at (origin_col, origin_row); 0 when refused. It blocks
+## its tiles (Buildings.add has the rule).
+@warning_ignore("shadowed_variable")
+func add_building(owner: int, type_index: int, origin_col: int, origin_row: int) -> int:
+	return Buildings.add(self, owner, type_index, origin_col, origin_row)
+
+
+## The top-left tile of row `row`'s footprint, from its position and type.
+func footprint_origin(row: int) -> Vector2i:
+	return Buildings.footprint_origin(self, row)
+
+
 ## Appends the `kind` record (SPAWNED) of row `row` to `events` (ADR 0007 section 10), in place.
 func _push_unit_event(kind: int, row: int) -> void:
 	var at: int = events.size()
@@ -865,6 +880,7 @@ func remove_dead() -> void:
 		first += 1
 	if first == count:
 		return
+	Buildings.unblock_dead(self)  # Before the compaction: the origin comes from the position.
 	var dead: int = 0
 	for row: int in range(first, count):
 		if alive[row] <= 0:
