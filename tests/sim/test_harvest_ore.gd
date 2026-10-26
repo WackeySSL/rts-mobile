@@ -202,3 +202,50 @@ func test_an_order_that_stalls_short_of_an_enclosed_cell_sends_the_harvester_to_
 			)
 	assert_bool(mining >= 0).is_true()
 	assert_int(world.ore_amount[0]).is_equal(20)
+
+
+## Gives the harvester `id` a MOVE to the milli point (x, y), as Harvest's own orders do.
+func _walk_to(world: World, id: int, x: int, y: int) -> void:
+	var row: int = world.index_of(id)
+	world.order[row] = World.Order.MOVE
+	world.goal_x[row] = x
+	world.goal_y[row] = y
+	world.group_cell[row] = -1
+	Movement.reset_nav(world, PackedInt32Array([row]), World.NavMode.DIRECT)
+
+
+func test_a_walk_to_a_cell_that_ran_empty_is_replaced_even_within_reach_of_the_next() -> void:
+	var world: World = Worlds.world(Worlds.grass(10, 8, [Vector2i(3, 3), Vector2i(4, 4)]))
+	world.ore_cell_max = 0
+	world.ore_amount[0] = 0
+	world.ore_amount[1] = 20
+	# 1 000 from cell 1, so within reach of it, but walking to the emptied cell 0: the walk had an
+	# order, so the pick gives the order to cell 1 at once instead of keeping the walk to cell 0.
+	var id: int = Worlds.add_harvester(world, 1, 4500, 5500, SEEK, 0)
+	var row: int = world.index_of(id)
+	_walk_to(world, id, 3500, 3500)
+	Worlds.step(world)
+	assert_array([world.harvest_slot[row], world.order[row]]).is_equal([1, World.Order.MOVE])
+	assert_array([world.goal_x[row], world.goal_y[row]]).is_equal([4500, 4500])
+
+
+func test_a_cell_that_ran_empty_is_replaced_on_the_next_tick_not_on_the_retry_turn() -> void:
+	var world: World = Worlds.world(Worlds.grass(10, 8, [Vector2i(3, 3), Vector2i(8, 3)]))
+	world.ore_cell_max = 0
+	world.ore_amount[0] = 0
+	world.ore_amount[1] = 20
+	var id: int = Worlds.add_harvester(world, 1, 3500, 3500, SEEK, 0)
+	var row: int = world.index_of(id)
+	assert_int(id % world.harvest_retry_ticks).is_not_equal(0)  # Tick 0 is not its retry turn.
+	Worlds.step(world)
+	assert_array([world.harvest_slot[row], world.order[row]]).is_equal([1, World.Order.MOVE])
+	assert_int(world.stats[World.Stat.ORE_SCANNED]).is_equal(2)
+
+
+func test_a_pick_exactly_at_reach_of_its_cell_gives_no_order() -> void:
+	var world: World = Worlds.world(Worlds.grass(10, 8, [Vector2i(3, 3)]))
+	world.ore_cell_max = 0
+	var id: int = Worlds.add_harvester(world, 1, 3500 + world.harvest_reach_milli, 3500)
+	var row: int = world.index_of(id)
+	Worlds.step(world, Worlds.turn(0, id, world.harvest_retry_ticks) + 1)
+	assert_array([world.harvest_slot[row], world.order[row]]).is_equal([0, World.Order.IDLE])
