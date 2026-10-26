@@ -5,24 +5,31 @@ extends GdUnitTestSuite
 ## Four layers guard game/sim:
 ## - Name and literal patterns on each line, after string literals and comments are stripped. They
 ##   include the thread-safety rules of ADR 0012 section 2 and the replay rule of ADR 0007 section
-##   9 (no variant parser that can make an Object).
+##   9 (no variant parser that can make an Object), and the name of every autoload that
+##   project.godot registers.
 ## - An identifier scan that asks ClassDB whether a capitalised word is an engine Node class or
 ##   a *Server singleton. Names alone cannot list the 200 Node classes.
 ## - A base type check: no sim script may extend a Node, directly or through a user base class.
 ## - An allocation check by indentation (ADR 0007 section 1): no array or dictionary literal,
 ##   Array or Dictionary variable without a value, Packed*Array(...), duplicate() or slice()
 ##   inside a for or while body or a while condition, unless the line ends with `# alloc-ok`.
-## game/ai is scanned for randomness only (rule 3).
+## game/ai gets the first three (ADR 0020 section 3: it runs in the tick job, so it joins the
+## thread rules of ADR 0012 section 2 and the purity rules of the sim: no Node, no autoload, no
+## engine singleton, no clock, no float, no unseeded randomness). It does not get the allocation
+## check, which is the rule for the loops of the per-tick phases; a think runs one tick in 15. That
+## game/ai never names the World is the rule of test_view_reads_snapshot.
 ##
 ## The scans over game/sim and game/ai are vacuous until those folders hold code. The fixture
 ## tests are not: they prove each pattern catches what it must and leaves legal integer code
-## alone.
+## alone, and the game/ai ones run one line of each rule, and a legal controller, through the
+## function that scans the folder.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const SIM_DIR: String = "res://game/sim"
 const AI_DIR: String = "res://game/ai"
 ## Read as text and never loaded, so no scan of game/ and no import step meets it.
 const LOOP_FIXTURE: String = "res://tests/project/fixtures/sim_loop_allocations.txt"
+const CONTROLLER_FIXTURE: String = "res://tests/project/fixtures/ai_legal_controller.txt"
 const ALLOC_OK: String = "# alloc-ok"
 
 const STRING_LITERAL: String = r"\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*'"
@@ -104,6 +111,8 @@ const MUST_MATCH: Array[String] = [
 	"2.",
 	"sin(a)",
 	"var r: DetRng",
+	# Every autoload in project.godot is banned by name, not only the two of the names list.
+	"var wide: bool = UiOrientation.is_landscape()",
 	"get_physics_process_delta_time()",
 	"OS.get_ticks_msec()",
 	'NodePath("a")',
@@ -227,6 +236,9 @@ const MUST_NOT_MATCH: Array[String] = [
 	"0x1e5",
 	"arr[0].size()",
 	"var rng: DetRandom",
+	"var ui_orientation: int = 0",
+	"var layout: UiOrientationQueue",
+	"var wide: bool = view_orientation.is_landscape()",
 	"cmd_queue",
 	"input_count",
 	"cos_table",
@@ -334,7 +346,7 @@ const MUST_NOT_MATCH: Array[String] = [
 	"var bytes: PackedByteArray = var_to_bytes_with_objects_safe(data)",
 ]
 
-## Rule 3 for game/ai: the only check there is randomness.
+## Rule 3 on its own: game/sim and game/ai get it through `_is_sim_violation`.
 const RAND_MUST_MATCH: Array[String] = [
 	"var roll: int = randi() % 6",
 	"randf()",
@@ -358,6 +370,58 @@ const RAND_MUST_NOT_MATCH: Array[String] = [
 	"rng.shuffle(units)",
 	"var target: int = rng.pick_random(ids)",
 ]
+
+## The layers of `_layers_of`, which `_is_sim_violation` is made of, and one line of game/ai code
+## for each rule of ADR 0020 section 3 (no Node, no autoload, no engine singleton, no clock, the
+## thread rules of ADR 0012 section 2, no float, no unseeded randomness). The key is the layer that
+## must flag the line, then what the line does. The test runs the lines through the function that
+## scans the folder, so every one of them fails the scan, and each layer has a line.
+const LAYERS: Array[String] = [
+	"names", "calls", "threads", "random", "floats", "classes", "autoloads"
+]
+const AI_RULE_LINES: Dictionary[String, String] = {
+	"names node": "var marker: Node = null",
+	"names scene tree": "var tree: Variant = get_tree()",
+	"names autoload rng": "var stream: Variant = DetRng.create(seed, 102)",
+	"names autoload queue": "CommandQueue.submit(command)",
+	"names input": 'var held: bool = Input.is_action_pressed(&"fire")',
+	"names engine": "var drawn: int = Engine.get_frames_drawn()",
+	"names os clock": "var now: int = OS.get_ticks_msec()",
+	"names time clock": "var now: int = Time.get_ticks_usec()",
+	"names frame delta": "var step: int = get_process_delta_time()",
+	"names class db": 'var known: bool = ClassDB.class_exists(&"Node")',
+	"names kernels": "var kernels: SimKernels = null",
+	"names float": "var share: float = 0",
+	"names float builtin": "var root: int = int(sqrt(dist2))",
+	"names float vector": "var at: Vector2 = Vector2(1, 2)",
+	"autoloads ui orientation": "var wide: bool = UiOrientation.is_landscape()",
+	"classes node": "var body: CharacterBody2D = null",
+	"classes timer": "var cooldown: Timer = null",
+	"classes server": "var size: Vector2i = DisplayServer.screen_get_size()",
+	"calls length": "var n: int = offset.length()",
+	"calls hash": "var h: int = hash(pos)",
+	"calls json": "var data: Variant = JSON.parse_string(text)",
+	"floats literal": "var share: int = int(credits * 0.5)",
+	"threads static var": "static var cache: int = 0",
+	"threads signal": "signal thought(tick: int)",
+	"threads emit": "thought.emit(view.tick)",
+	"threads emit_signal": 'emit_signal(&"thought", view.tick)',
+	"threads call_deferred": "callable.call_deferred()",
+	"threads load": 'var def: Resource = load("res://data/ai/dummy.tres")',
+	"threads preload": 'const Def: Script = preload("res://game/ai/AiDef.gd")',
+	"threads loader": "var exists: bool = ResourceLoader.exists(path)",
+	"threads saver": "var err: int = ResourceSaver.save(def, path)",
+	"threads thread": "var worker: Thread = null",
+	"threads mutex": "var gate: Mutex = null",
+	"threads semaphore": "var gate: Semaphore = null",
+	"threads pool": "var id: int = WorkerThreadPool.add_task(job)",
+	"threads await": "await done",
+	"threads object parser": "var data: Variant = str_to_var(text)",
+	"random global": "var roll: int = randi() % 6",
+	"random generator": "var gen := RandomNumberGenerator.new()",
+	"random shuffle": "ids.shuffle()",
+	"random pick": "var target: int = ids.pick_random()",
+}
 
 ## Run as the body of a loop. Each statement is matched by exactly one part of ALLOC_NAMES, so
 ## dropping an operator, a keyword or a call from it fails this list.
@@ -414,6 +478,7 @@ var _banned_threads: RegEx
 var _rand: RegEx
 var _floats: RegEx
 var _identifiers: RegEx
+var _autoloads: RegEx
 var _alloc: RegEx
 var _loop_header: RegEx
 
@@ -426,6 +491,7 @@ func before() -> void:
 	_rand = _compile(RAND_NAMES)
 	_floats = _compile(FLOAT_LITERAL)
 	_identifiers = _compile(CAPITALISED_IDENTIFIER)
+	_autoloads = _compile(r"\b(?:%s)\b" % "|".join(_autoload_names()))
 	_alloc = _compile(ALLOC_NAMES)
 	_loop_header = _compile(LOOP_HEADER)
 
@@ -446,24 +512,28 @@ func test_sim_sources_do_not_allocate_in_loops() -> void:
 
 
 func test_sim_scripts_do_not_extend_node() -> void:
-	var offenders: Array[String] = []
-	for path: String in FileScan.list_files(SIM_DIR, ".gd"):
-		var script: Script = load(path) as Script
-		if script == null:
-			offenders.append("%s: cannot be loaded" % path)
-			continue
-		var problem: String = _base_problem(script)
-		if not problem.is_empty():
-			offenders.append("%s: %s" % [path, problem])
-	assert_array(offenders).is_empty()
+	assert_array(_base_offenders(SIM_DIR)).is_empty()
 
 
-func test_ai_sources_use_no_unseeded_randomness() -> void:
+func test_ai_sources_follow_the_sims_purity_and_thread_rules() -> void:
+	assert_bool(DirAccess.dir_exists_absolute(AI_DIR)).is_true()
 	var violations: Array[String] = []
 	for path: String in FileScan.list_files(AI_DIR, ".gd"):
-		var source: String = FileAccess.get_file_as_string(path)
-		violations.append_array(_violations(source, path, _is_rand_violation))
-	assert_array(violations).is_empty()
+		violations.append_array(_ai_violations(FileAccess.get_file_as_string(path), path))
+	(
+		assert_array(violations)
+		. override_failure_message(
+			(
+				"game/ai runs in the tick job and follows the sim's purity and thread rules "
+				+ "(ADR 0020 section 3):\n%s" % "\n".join(violations)
+			)
+		)
+		. is_empty()
+	)
+
+
+func test_ai_scripts_do_not_extend_node() -> void:
+	assert_array(_base_offenders(AI_DIR)).is_empty()
 
 
 ## Pinned to the line numbers of the fixture: the lines in a loop body or a while condition that
@@ -536,7 +606,7 @@ func test_guard_accepts_every_legal_fixture() -> void:
 	assert_array(wrongly_flagged).is_empty()
 
 
-func test_ai_guard_flags_every_randomness_fixture() -> void:
+func test_randomness_rule_flags_every_fixture() -> void:
 	var missed: Array[String] = []
 	for line: String in RAND_MUST_MATCH:
 		if not _is_rand_violation(line):
@@ -544,12 +614,51 @@ func test_ai_guard_flags_every_randomness_fixture() -> void:
 	assert_array(missed).is_empty()
 
 
-func test_ai_guard_accepts_every_legal_fixture() -> void:
+func test_randomness_rule_accepts_every_legal_fixture() -> void:
 	var wrongly_flagged: Array[String] = []
 	for line: String in RAND_MUST_NOT_MATCH:
 		if _is_rand_violation(line):
 			wrongly_flagged.append(line)
 	assert_array(wrongly_flagged).is_empty()
+
+
+## Every line of AI_RULE_LINES goes through `_ai_violations`, the function that scans game/ai, and
+## is reported at its own line; the layer in its key flags it, and every layer has a line.
+func test_ai_scan_flags_one_line_of_each_rule() -> void:
+	var codes: Array[String] = []
+	codes.assign(AI_RULE_LINES.values())
+	var flagged: Array[int] = []
+	for report: String in _ai_violations("\n".join(codes), "fixture"):
+		flagged.append(int(report.split(":")[1]))
+	var expected: Array[int] = []
+	for index: int in codes.size():
+		expected.append(index + 1)
+	assert_array(flagged).is_equal(expected)
+	var not_flagged_by_its_layer: Array[String] = []
+	var used: Array[String] = []
+	for key: String in AI_RULE_LINES:
+		var layer: String = key.get_slice(" ", 0)
+		if not used.has(layer):
+			used.append(layer)
+		if not _layers_of(_strip(AI_RULE_LINES[key])).has(layer):
+			not_flagged_by_its_layer.append(key)
+	assert_array(not_flagged_by_its_layer).is_empty()
+	assert_array(used).contains_exactly_in_any_order(LAYERS)
+	var autoloads: Array[String] = _autoload_names()
+	assert_array(autoloads).contains(["DetRng", "CommandQueue"])
+	for autoload_name: String in autoloads:
+		var line: String = "var x: int = %s.value()" % autoload_name
+		assert_array(_ai_violations(line, "autoload")).has_size(1)
+
+
+## A controller that follows the rules (PlayerView, Command, a DetRandom passed in, integers, the
+## words of the bans inside comments and strings and in names that only contain them) is not
+## flagged, and its file is long enough to hold the shapes of a real one.
+func test_ai_scan_leaves_a_legal_controller_alone() -> void:
+	var source: String = FileAccess.get_file_as_string(CONTROLLER_FIXTURE)
+	assert_int(source.split("\n").size()).is_greater(60)
+	assert_str(source).contains("PlayerView").contains("DetRandom").contains("Command")
+	assert_array(_ai_violations(source, "controller")).is_empty()
 
 
 func test_base_check_flags_scripts_that_extend_a_node() -> void:
@@ -619,15 +728,38 @@ func _strip(line: String) -> String:
 
 
 func _is_sim_violation(line: String) -> bool:
-	var code: String = _strip(line)
-	return (
-		_banned.search(code) != null
-		or _banned_calls.search(code) != null
-		or _banned_threads.search(code) != null
-		or _rand.search(code) != null
-		or _floats.search(code) != null
-		or _names_engine_node_or_server(code)
-	)
+	return not _layers_of(_strip(line)).is_empty()
+
+
+## The layers (LAYERS) of the line rules that flag `code`, a line without strings and comments.
+func _layers_of(code: String) -> Array[String]:
+	var found: Array[String] = []
+	if _banned.search(code) != null:
+		found.append("names")
+	if _banned_calls.search(code) != null:
+		found.append("calls")
+	if _banned_threads.search(code) != null:
+		found.append("threads")
+	if _rand.search(code) != null:
+		found.append("random")
+	if _floats.search(code) != null:
+		found.append("floats")
+	if _names_engine_node_or_server(code):
+		found.append("classes")
+	if _autoloads.search(code) != null:
+		found.append("autoloads")
+	return found
+
+
+## The names of the autoloads that project.godot registers: game/sim and game/ai name none of them
+## (DetRng and CommandQueue are also in BANNED_NAMES; this covers the rest and the next one).
+func _autoload_names() -> Array[String]:
+	var names: Array[String] = []
+	for property: Dictionary in ProjectSettings.get_property_list():
+		var property_name: String = property["name"]
+		if property_name.begins_with("autoload/"):
+			names.append(property_name.trim_prefix("autoload/"))
+	return names
 
 
 func _is_rand_violation(line: String) -> bool:
@@ -667,6 +799,25 @@ func _script_from(source: String) -> GDScript:
 ## What test_sim_sources_are_pure reports for one file.
 func _sim_violations(source: String, label: String) -> Array[String]:
 	return _violations(source, label, _is_sim_violation, _hint)
+
+
+## What the scan of game/ai reports for one file: the line rules of the sim (ADR 0020 section 3).
+func _ai_violations(source: String, label: String) -> Array[String]:
+	return _violations(source, label, _is_sim_violation, _hint)
+
+
+## One line for each script of `dir` that cannot be loaded or extends a Node.
+func _base_offenders(dir: String) -> Array[String]:
+	var offenders: Array[String] = []
+	for path: String in FileScan.list_files(dir, ".gd"):
+		var script: Script = load(path) as Script
+		if script == null:
+			offenders.append("%s: cannot be loaded" % path)
+			continue
+		var problem: String = _base_problem(script)
+		if not problem.is_empty():
+			offenders.append("%s: %s" % [path, problem])
+	return offenders
 
 
 func _violations(
