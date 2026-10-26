@@ -30,15 +30,18 @@ func _lost(world: World, player: int) -> Array[int]:
 
 
 ## A building and two units of a player with a producer die in one tick: the stats read 2 units and
-## 1 building for that player, and nothing for the other one.
+## 1 building for that player, and nothing for the other one. A real death overshoots: Combat
+## lowers hp by every hit of the tick, so it ends below 0. Here the plant and one unit die below 0,
+## the other at exactly 0, and all three count.
 func test_a_building_and_two_units_dying_in_one_tick_count_as_one_building_and_two_units() -> void:
 	var world: World = Rig.base()
 	var first: int = _squad(world, 1, 500, 500)
 	var second: int = _squad(world, 1, 1500, 500)
 	Rig.run(world, 3)
 	assert_array(_lost(world, 1)).is_equal([0, 0])
-	for id: int in [Rig.PLANT, first, second]:
-		_kill(world, id)
+	world.hp[world.index_of(Rig.PLANT)] = -5
+	world.hp[world.index_of(first)] = -40
+	_kill(world, second)
 	Rig.step(world)
 	assert_array(_lost(world, 1)).is_equal([2, 1])
 	assert_array(_lost(world, 2)).is_equal([0, 0])
