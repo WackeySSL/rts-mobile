@@ -106,6 +106,7 @@ const MUST_MATCH: Array[String] = [
 	"func _process(delta: int)",
 	"var f: float",
 	"var n: Node2D",
+	"var tree: SceneTree",
 	"1e3",
 	".5",
 	"2.",
@@ -382,6 +383,7 @@ const LAYERS: Array[String] = [
 const AI_RULE_LINES: Dictionary[String, String] = {
 	"names node": "var marker: Node = null",
 	"names scene tree": "var tree: Variant = get_tree()",
+	"names scene tree type": "var tree: SceneTree = null",
 	"names autoload rng": "var stream: Variant = DetRng.create(seed, 102)",
 	"names autoload queue": "CommandQueue.submit(command)",
 	"names input": 'var held: bool = Input.is_action_pressed(&"fire")',
