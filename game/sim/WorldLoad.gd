@@ -3,9 +3,10 @@ extends RefCounted
 ## The scenario loader of a World, split out of World.gd (P70c) so that file stays under gdlint's
 ## 1,000 lines. Pure static helpers: they read the scenario, the map and the definitions passed in
 ## and write the World passed in, and they keep nothing. World.from_scenario() is a thin wrapper
-## over from_scenario() here, and World.prepare() calls derive_open_grass(), so no caller names
-## this class. No rule lives here: the code is World.gd's own, moved (ADR 0007 section 2, ADR 0017
-## section 3 keep every column, list and rule int in World itself).
+## over from_scenario() here, World.prepare() calls derive_open_grass() and size_match_state(), and
+## World._init() calls copy_rules(), so no caller names this class. No rule lives here: the code is
+## World.gd's own, moved (P109 moved copy_rules and size_match_state, with no change), and ADR 0007
+## section 2 and ADR 0017 section 3 keep every column, list and rule int in World itself.
 
 
 ## Reads the scenario and its definitions once and returns a prepared world; a null scenario gives
@@ -25,7 +26,7 @@ static func from_scenario(scenario: ScenarioDef, rng: DetRandom = null) -> World
 		world.prepare()
 		return world
 	if scenario.rules != null:
-		world._copy_rules(scenario.rules)
+		copy_rules(world, scenario.rules)
 	world.player_count = maxi(scenario.player_count, 0)
 	var map: MapDef = scenario.map
 	if map != null and map.validate().is_empty():
@@ -253,3 +254,76 @@ static func _jittered(world: World, x: int, y: int, jitter: int, move_class: int
 		if not world.is_passable(world.cell_of(moved_x, moved_y), move_class):
 			return Vector2i(x, y)
 	return Vector2i(moved_x, moved_y)
+
+
+## Copies the rule ints from `rules` under the same names.
+static func copy_rules(world: World, rules: RulesDef) -> void:
+	world.retarget_period_ticks = rules.retarget_period_ticks
+	world.fog_period_ticks = rules.fog_period_ticks
+	world.line_check_period_ticks = rules.line_check_period_ticks
+	world.flow_cells_per_tick = rules.flow_cells_per_tick
+	world.flow_cache_size = rules.flow_cache_size
+	world.separation_neighbours = rules.separation_neighbours
+	world.separation_scan = rules.separation_scan
+	world.separation_idle_share = rules.separation_idle_share
+	world.separation_push_max = rules.separation_push_max
+	world.separation_coincident_divisor = rules.separation_coincident_divisor
+	world.stall_ticks = rules.stall_ticks
+	world.stall_range_spacings = rules.stall_range_spacings
+	world.attack_rekey_milli = rules.attack_rekey_milli
+	world.max_projectiles = rules.max_projectiles
+	world.max_rows = rules.max_rows
+	world.start_credits = rules.start_credits
+	world.ore_start = rules.ore_start
+	world.ore_cell_max = rules.ore_cell_max
+	world.ore_regrow_ticks = rules.ore_regrow_ticks
+	world.credits_per_ore = rules.credits_per_ore
+	world.harvest_ticks_per_ore = rules.harvest_ticks_per_ore
+	world.unload_ticks_per_ore = rules.unload_ticks_per_ore
+	world.harvest_reach_milli = rules.harvest_reach_milli
+	world.dock_reach_milli = rules.dock_reach_milli
+	world.harvest_retry_ticks = rules.harvest_retry_ticks
+	world.harvest_resume_ticks = rules.harvest_resume_ticks
+	world.harvest_pick_milli = rules.harvest_pick_milli
+	world.low_power_percent = rules.low_power_percent
+	world.queue_slots = rules.queue_slots
+	world.build_reach_tiles = rules.build_reach_tiles
+	world.unit_cap = rules.unit_cap
+	world.building_cap = rules.building_cap
+	world.ghost_cap = rules.ghost_cap
+
+
+## Sizes the player, ore and ghost state at its start values (ADR 0017 section 3), from the player
+## count and the rule ints, so that no later row moves the hash through a start value: credits at
+## start_credits for players 1..player_count, rally points and queue slots at -1 (none), every ore
+## cell at ore_start, the rest 0. Entry 0 of a per-player array is the neutral player.
+static func size_match_state(world: World) -> void:
+	var players: int = world.player_count + 1
+	var queues: int = players * World.TABS
+	var ghosts: int = players * world.ghost_cap
+	world.credits.resize(players)
+	for player: int in range(1, players):
+		world.credits[player] = world.start_credits
+	world.defeated_tick.resize(players)
+	world.had_producer.resize(players)
+	world.stat_built.resize(players)
+	world.stat_lost_units.resize(players)
+	world.stat_lost_buildings.resize(players)
+	world.stat_harvested.resize(players)
+	world.queue_count.resize(queues)
+	world.queue_progress.resize(queues)
+	world.rally_x.resize(queues)
+	world.rally_x.fill(-1)
+	world.rally_y.resize(queues)
+	world.rally_y.fill(-1)
+	world.queue_type.resize(queues * world.queue_slots)
+	world.queue_type.fill(-1)
+	world.ore_amount.resize(world.ore_cell.size())
+	world.ore_amount.fill(world.ore_start)
+	world.ghost_id.resize(ghosts)
+	world.ghost_type.resize(ghosts)
+	world.ghost_owner.resize(ghosts)
+	world.ghost_cell.resize(ghosts)
+	world.ghost_count.resize(players)
+	world.power_made.resize(players)
+	world.power_used.resize(players)

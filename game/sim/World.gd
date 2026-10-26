@@ -589,45 +589,8 @@ var _lists_version: int = -1
 
 ## The rule ints start at the RulesDef script defaults, so a hand-built world is a valid world.
 func _init() -> void:
-	_copy_rules(RulesDef.new())
+	WorldLoad.copy_rules(self, RulesDef.new())
 	rng = DetRandom.create(0, DetRandom.STREAM_SIM)
-
-
-## Copies the rule ints from `rules` under the same names.
-func _copy_rules(rules: RulesDef) -> void:
-	retarget_period_ticks = rules.retarget_period_ticks
-	fog_period_ticks = rules.fog_period_ticks
-	line_check_period_ticks = rules.line_check_period_ticks
-	flow_cells_per_tick = rules.flow_cells_per_tick
-	flow_cache_size = rules.flow_cache_size
-	separation_neighbours = rules.separation_neighbours
-	separation_scan = rules.separation_scan
-	separation_idle_share = rules.separation_idle_share
-	separation_push_max = rules.separation_push_max
-	separation_coincident_divisor = rules.separation_coincident_divisor
-	stall_ticks = rules.stall_ticks
-	stall_range_spacings = rules.stall_range_spacings
-	attack_rekey_milli = rules.attack_rekey_milli
-	max_projectiles = rules.max_projectiles
-	max_rows = rules.max_rows
-	start_credits = rules.start_credits
-	ore_start = rules.ore_start
-	ore_cell_max = rules.ore_cell_max
-	ore_regrow_ticks = rules.ore_regrow_ticks
-	credits_per_ore = rules.credits_per_ore
-	harvest_ticks_per_ore = rules.harvest_ticks_per_ore
-	unload_ticks_per_ore = rules.unload_ticks_per_ore
-	harvest_reach_milli = rules.harvest_reach_milli
-	dock_reach_milli = rules.dock_reach_milli
-	harvest_retry_ticks = rules.harvest_retry_ticks
-	harvest_resume_ticks = rules.harvest_resume_ticks
-	harvest_pick_milli = rules.harvest_pick_milli
-	low_power_percent = rules.low_power_percent
-	queue_slots = rules.queue_slots
-	build_reach_tiles = rules.build_reach_tiles
-	unit_cap = rules.unit_cap
-	building_cap = rules.building_cap
-	ghost_cap = rules.ghost_cap
 
 
 ## Reads the scenario and its definitions once and returns a prepared world; a null scenario gives
@@ -654,10 +617,10 @@ func index_of(id: int) -> int:
 ## Gives every type table one entry per type_ids entry, with the TYPE_PAD_* values (a name is the
 ## capitalised type id), because Phase 1 code appends only the four Phase 1 tables. It also sizes
 ## the scratch arrays to max_rows, stats to the Stat count and the projectile slots to
-## max_projectiles, sizes the player, ore and ghost state at its start values (_size_match_state),
-## and derives open grass from map_w and map_h when no map is loaded. Last it
-## configures the helpers, once, because configure() re-creates their arrays, stamps the fog of the
-## rows that exist (_stamp_fog) and caches the map digest of the hash. Idempotent through
+## max_projectiles, sizes the player, ore and ghost state at its start values
+## (WorldLoad.size_match_state), and derives open grass from map_w and map_h when no map is loaded.
+## Last it configures the helpers, once, because configure() re-creates their arrays, stamps the fog
+## of the rows that exist (_stamp_fog) and caches the map digest of the hash. Idempotent through
 ## `prepared`, so Sim.step calls it every tick. Types, players and sizes are fixed before it.
 func prepare() -> void:
 	if prepared:
@@ -702,7 +665,7 @@ func prepare() -> void:
 		_reset_projectile_slots()
 	if map_cols == 0:
 		WorldLoad.derive_open_grass(self)
-	_size_match_state()
+	WorldLoad.size_match_state(self)
 	fog.configure(map_cols, map_rows, player_count)
 	_stamp_fog()
 	flow.configure(map_cols, map_rows, MoveClass.size(), flow_cache_size)
@@ -711,42 +674,6 @@ func prepare() -> void:
 	_map_digest_version = -1  # The grid may be new without a map_version bump.
 	WorldHash.map_digest(self)
 	prepared = true
-
-
-## Sizes the player, ore and ghost state at its start values (ADR 0017 section 3), from the player
-## count and the rule ints, so that no later row moves the hash through a start value: credits at
-## start_credits for players 1..player_count, rally points and queue slots at -1 (none), every ore
-## cell at ore_start, the rest 0. Entry 0 of a per-player array is the neutral player.
-func _size_match_state() -> void:
-	var players: int = player_count + 1
-	var queues: int = players * TABS
-	var ghosts: int = players * ghost_cap
-	credits.resize(players)
-	for player: int in range(1, players):
-		credits[player] = start_credits
-	defeated_tick.resize(players)
-	had_producer.resize(players)
-	stat_built.resize(players)
-	stat_lost_units.resize(players)
-	stat_lost_buildings.resize(players)
-	stat_harvested.resize(players)
-	queue_count.resize(queues)
-	queue_progress.resize(queues)
-	rally_x.resize(queues)
-	rally_x.fill(-1)
-	rally_y.resize(queues)
-	rally_y.fill(-1)
-	queue_type.resize(queues * queue_slots)
-	queue_type.fill(-1)
-	ore_amount.resize(ore_cell.size())
-	ore_amount.fill(ore_start)
-	ghost_id.resize(ghosts)
-	ghost_type.resize(ghosts)
-	ghost_owner.resize(ghosts)
-	ghost_cell.resize(ghosts)
-	ghost_count.resize(players)
-	power_made.resize(players)
-	power_used.resize(players)
 
 
 ## The cell holding the point (x, y) in milli-tiles: `row * map_cols + column`. A point outside
