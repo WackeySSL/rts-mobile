@@ -47,7 +47,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 ## Terrain
 | Action | Result | Teach |
 |---|---|---|
-| Send units across rock, water or scrub | Rock and water block all units, and scrub (the patterned ground) blocks vehicles; the units drive around them to the point you tapped | yes |
+| Send units across rock, water or scrub | Rock and water block all units, and scrub (the patterned ground) blocks vehicles but not infantry, which walks across it; a unit that cannot cross drives around to the point you tapped | yes |
 
 ## Fog
 | Action | Result | Teach |
@@ -68,6 +68,9 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Action | Result | Teach |
 |---|---|---|
 | Look at the sidebar (on the right; at the bottom when the phone is upright) | It shows your credits, a power bar and three tabs: Structures, Infantry and Vehicles. The bar fills with the power your buildings use against the power they make and shows both numbers where it is wide enough; when you use more than you make, the bar is full and amber and its bolt becomes a warning triangle. Tap a tab to open it: the open tab is the lighter one with a thick bar under it. The tab names show beside the icons only where the sidebar is wide enough; a phone shows the icons alone | |
+| Tap an item in the open tab | One of it is queued and paid for at once; the icon fills while it is built, and a number on it counts how many of it are queued. A padlock on a dimmed icon means a building you need is missing (a power plant for a barracks, a barracks for infantry). Stripes mean it cannot be queued now: you cannot pay it (its cost turns amber) or its queue of five is full. A finished building shows "Ready" (tapping it does nothing yet). A tap on a padlocked or striped item shakes it and does nothing. The row scrolls with a drag, down in the sidebar on the right and sideways in the band at the bottom, and a drag never queues anything | yes |
+| Hold an item (`long_press_ms` in `data/input_settings.tres`) | The last one of it you queued is cancelled and its cost is paid back in full; the phone buzzes. An item with none queued does nothing, however long you hold | yes |
+| Tap your Headquarters, barracks or vehicle factory | The sidebar opens the tab it builds: Structures, Infantry or Vehicles | |
 
 ## Not yet in the game
 Base building, harvesting, power, production, win and lose conditions, menus and rewards get
