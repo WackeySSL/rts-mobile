@@ -9,7 +9,7 @@
   <!-- long hut across the top -->
   <polygon points="8,16 120,16 120,26 8,26" fill="#78885B" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
   <polygon points="8,26 120,26 120,46 8,46" fill="#6B7A4F" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
-  <rect x="10" y="28" width="108" height="3" fill="#B6C28F" opacity="0.6"/>
+  <rect x="10" y="28" width="108" height="3" fill="#8C9A6B"/>
   <rect x="8" y="46" width="112" height="11" fill="#46532F" stroke="#1C2127" stroke-width="3.5" stroke-linejoin="round"/>
   <g fill="#1C2127"><rect x="22" y="49" width="9" height="8"/><rect x="60" y="49" width="9" height="8"/><rect x="97" y="49" width="9" height="8"/></g>
   <!-- west wing -->

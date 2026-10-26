@@ -8,6 +8,7 @@ extends GdUnitTestSuite
 ## are in test_art_gallery_pages.gd.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
+const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
 const BUILDING_ART: String = "res://assets/art/svg/buildings/%s_%s.svg"
 const ORE_ART: String = "res://assets/art/svg/ore/ore_%s.svg"
 const GHOST_ART: String = "res://assets/art/svg/ui/ghost_%s.svg"
@@ -375,6 +376,27 @@ func test_the_style_guide_states_the_oblique_projection_the_canvas_and_the_cut()
 		"about 8 to 12 %",
 	]:
 		assert_str(section).override_failure_message(line).contains(line)
+
+
+## The ghost looks STYLE.md quotes are the ones the gallery draws.
+func test_the_style_guide_quotes_the_ghost_look_the_gallery_draws() -> void:
+	var style: String = FileAccess.get_file_as_string(STYLE_PATH)
+	var start: int = style.find("## Ghosts")
+	assert_int(start).is_greater(-1)
+	var section: String = style.substr(start, style.find("\n## ", start + 1) - start)
+	var flat: String = section.replace("\n", " ")
+	for line: String in [
+		"sprite alpha %s" % Gallery.GHOST_SPRITE_ALPHA,
+		"`CanvasGroup.self_modulate`",
+		"wash alpha %s" % Gallery.GHOST_WASH_ALPHA,
+		"hatch alpha %s" % Gallery.GHOST_HATCH_ALPHA,
+		"dots alpha %s" % Gallery.GHOST_DOTS_ALPHA,
+		"frame %d dp" % int(Gallery.GHOST_FRAME_PX),
+		"#" + Gallery.GHOST_OK.to_html(false).to_upper(),
+		"#" + Gallery.GHOST_DANGER.to_html(false).to_upper(),
+		"#" + Gallery.GHOST_NEUTRAL.to_html(false).to_upper(),
+	]:
+		assert_str(flat).contains(line)
 
 
 ## The raster of a texture as RGBA8, so a pixel reads the same whatever the import chose.
