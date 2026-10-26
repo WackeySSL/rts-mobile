@@ -881,6 +881,7 @@ func remove_dead() -> void:
 	if first == count:
 		return
 	Buildings.unblock_dead(self)  # Before the compaction: the origin comes from the position.
+	Outcome.count_losses(self)  # Likewise: the owner and the type of a dying row (ADR 0018 s. 7).
 	var dead: int = 0
 	for row: int in range(first, count):
 		if alive[row] <= 0:

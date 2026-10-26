@@ -12,8 +12,9 @@ extends RefCounted
 ## A queue is identified by `queue = player * TABS + tab`. Its items are the `queue_count[queue]`
 ## type indexes in `queue_type` from `queue * queue_slots` on, the head first; a slot past the count
 ## holds -1. `queue_progress[queue]` is the head's progress in hundredths of a tick: the head is
-## done at `type_build_ticks * PROGRESS_PER_TICK`. Players are never skipped for being defeated:
-## the defeat rules (plan row P76) decide whether a defeated player's queues go on.
+## done at `type_build_ticks * PROGRESS_PER_TICK`. The queues of a defeated player (`defeated_tick`
+## above 0, plan row P76) stop where they are: no progress and no spawn, whatever producers the
+## player still owns (a surrender leaves them), and nothing is refunded.
 
 ## Hundredths of a tick: the resolution of `queue_progress` (a structural unit, like a tile's
 ## 1,000 milli). A head gains this much per tick (ADR 0018 section 5), or `low_power_percent` of it
@@ -24,10 +25,12 @@ const PROGRESS_PER_TICK: int = 100
 ## `low_power_percent` of it on low power (every tab, STRUCTURES included), never past its goal. A
 ## done unit spawns (ProductionSpawn.spawn) and leaves the queue; one that cannot spawn yet waits at
 ## 100 %, and so does a done structure, until PLACE or CANCEL. Players ascending, then tabs. A queue
-## without a producer waits. The loop runs over the arrays as sized, so a hand-built World whose
-## player_count was raised after prepare() has no queue for the late players.
+## without a producer waits, and so does every queue of a defeated player. The loop runs over the
+## arrays as sized, so a hand-built World whose player_count was raised after prepare() has no queue
+## for the late players.
 @warning_ignore("integer_division")
 static func run(world: World) -> void:
+	var defeated: PackedInt32Array = world.defeated_tick
 	var counts: PackedInt32Array = world.queue_count
 	var progress: PackedInt32Array = world.queue_progress
 	var items: PackedInt32Array = world.queue_type
@@ -38,6 +41,8 @@ static func run(world: World) -> void:
 		if counts[queue] == 0:
 			continue
 		var player: int = queue / World.TABS
+		if defeated[player] != 0:
+			continue
 		var producer: int = producer_row(world, player, tab)
 		if producer < 0:
 			continue
