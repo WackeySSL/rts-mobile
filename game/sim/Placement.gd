@@ -59,10 +59,11 @@ static func _bad_ground(
 	var kinds: PackedByteArray = input.terrain
 	var flags: PackedByteArray = input.terrain_buildable
 	var cost: PackedByteArray = input.move_cost
-	var foot_base: int = FOOT * input.map_cols * input.map_rows
+	var cols: int = input.map_cols
+	var foot_base: int = FOOT * cols * input.map_rows
 	for y: int in range(line, line + height):
 		for x: int in range(col, col + width):
-			var cell: int = y * input.map_cols + x
+			var cell: int = y * cols + x
 			if (
 				cell >= kinds.size()
 				or foot_base + cell >= cost.size()
@@ -86,13 +87,15 @@ static func _occupied(input: PlacementInput, col: int, line: int, width: int, he
 	var types: PackedInt32Array = input.type_index
 	var pos_x: PackedInt32Array = input.pos_x
 	var pos_y: PackedInt32Array = input.pos_y
+	var speeds: PackedInt32Array = input.type_speed
+	var radii: PackedInt32Array = input.type_radius
 	for row: int in mini(types.size(), mini(pos_x.size(), pos_y.size())):
 		var type: int = types[row]
-		if _entry(input.type_speed, type) <= 0:
+		if _entry(speeds, type) <= 0:
 			continue
 		var dx: int = maxi(maxi(left - pos_x[row], pos_x[row] - right), 0)
 		var dy: int = maxi(maxi(top - pos_y[row], pos_y[row] - bottom), 0)
-		var radius: int = _entry(input.type_radius, type)
+		var radius: int = _entry(radii, type)
 		if dx * dx + dy * dy <= radius * radius:
 			return true
 	return false
@@ -111,9 +114,10 @@ static func _unexplored(
 		return false
 	var base: int = (player - 1) * input.fog_cells
 	var seen: PackedByteArray = input.explored
+	var cols: int = input.map_cols
 	for y: int in range(line, line + height):
 		for x: int in range(col, col + width):
-			var at: int = base + y * input.map_cols + x
+			var at: int = base + y * cols + x
 			if at >= seen.size() or seen[at] == 0:
 				return true
 	return false
@@ -130,11 +134,14 @@ static func _reach_and_cap(
 	var types: PackedInt32Array = input.type_index
 	var pos_x: PackedInt32Array = input.pos_x
 	var pos_y: PackedInt32Array = input.pos_y
+	var foot_w: PackedInt32Array = input.type_foot_w
+	var foot_h: PackedInt32Array = input.type_foot_h
+	var reach: int = input.build_reach_tiles
 	var count: int = 0
 	var near: bool = false
 	for row: int in mini(owners.size(), mini(types.size(), mini(pos_x.size(), pos_y.size()))):
-		var wide: int = _entry(input.type_foot_w, types[row])
-		var tall: int = _entry(input.type_foot_h, types[row])
+		var wide: int = _entry(foot_w, types[row])
+		var tall: int = _entry(foot_h, types[row])
 		if owners[row] != player or wide <= 0 or tall <= 0:
 			continue
 		count += 1
@@ -142,7 +149,7 @@ static func _reach_and_cap(
 		var origin_y: int = (pos_y[row] - tall * World.TILE_CENTRE) / World.MILLI_PER_TILE
 		var gap_x: int = maxi(maxi(origin_x - (col + width), col - (origin_x + wide)), 0)
 		var gap_y: int = maxi(maxi(origin_y - (line + height), line - (origin_y + tall)), 0)
-		near = near or maxi(gap_x, gap_y) <= input.build_reach_tiles
+		near = near or maxi(gap_x, gap_y) <= reach
 	if not near:
 		return Reason.TOO_FAR
 	return Reason.CAP if count >= input.building_cap else Reason.OK

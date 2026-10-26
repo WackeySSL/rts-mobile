@@ -51,14 +51,13 @@ static func add(world: World, owner: int, type: int, col: int, line: int) -> int
 
 
 ## The top-left tile of row `row`'s footprint; for a row with no footprint, the tile that holds it.
-@warning_ignore("integer_division")
 static func footprint_origin(world: World, row: int) -> Vector2i:
 	var type: int = world.type_index[row]
-	var half_w: int = _entry(world.type_foot_w, type, 0) * World.TILE_CENTRE
-	var half_h: int = _entry(world.type_foot_h, type, 0) * World.TILE_CENTRE
-	return Vector2i(
-		(world.pos_x[row] - half_w) / World.MILLI_PER_TILE,
-		(world.pos_y[row] - half_h) / World.MILLI_PER_TILE
+	return _origin(
+		world.pos_x[row],
+		world.pos_y[row],
+		_entry(world.type_foot_w, type, 0),
+		_entry(world.type_foot_h, type, 0)
 	)
 
 
@@ -69,13 +68,17 @@ static func unblock_dead(world: World) -> void:
 	var alive: PackedInt32Array = world.hp
 	var types: PackedInt32Array = world.type_index
 	var widths: PackedInt32Array = world.type_foot_w
+	var heights: PackedInt32Array = world.type_foot_h
+	var pos_x: PackedInt32Array = world.pos_x
+	var pos_y: PackedInt32Array = world.pos_y
 	var died: bool = false
 	for row: int in alive.size():
 		if alive[row] > 0 or types[row] >= widths.size() or widths[types[row]] <= 0:
 			continue
-		var origin: Vector2i = footprint_origin(world, row)
-		var height: int = _entry(world.type_foot_h, types[row], 0)
-		_write_cost(world, origin.x, origin.y, widths[types[row]], height, true)
+		var width: int = widths[types[row]]
+		var height: int = _entry(heights, types[row], 0)
+		var origin: Vector2i = _origin(pos_x[row], pos_y[row], width, height)
+		_write_cost(world, origin.x, origin.y, width, height, true)
 		died = true
 	if died:
 		world.map_version += 1
@@ -111,6 +114,15 @@ static func rebuild_lists(world: World) -> bool:
 	return true
 
 
+## The top-left tile of a footprint of width x height tiles whose centre is (x, y) milli-tiles.
+@warning_ignore("integer_division")
+static func _origin(x: int, y: int, width: int, height: int) -> Vector2i:
+	return Vector2i(
+		(x - width * World.TILE_CENTRE) / World.MILLI_PER_TILE,
+		(y - height * World.TILE_CENTRE) / World.MILLI_PER_TILE
+	)
+
+
 ## `table[type]`, or `missing` for a type past the table (a hand-built world before prepare()
 ## pads it): 0 for a size, -1 for a tab.
 static func _entry(table: PackedInt32Array, type: int, missing: int) -> int:
@@ -123,13 +135,15 @@ static func _write_cost(
 	world: World, col: int, line: int, width: int, height: int, restore: bool
 ) -> void:
 	var classes: int = World.MoveClass.size()
-	var cells: int = world.map_cols * world.map_rows
+	var cols: int = world.map_cols
+	var cells: int = cols * world.map_rows
+	var kinds: PackedByteArray = world.terrain
 	var costs: PackedByteArray = world.terrain_cost
 	var cost: PackedByteArray = world.move_cost
 	for y: int in range(line, line + height):
 		for x: int in range(col, col + width):
-			var cell: int = y * world.map_cols + x
-			var kind: int = world.terrain[cell]
+			var cell: int = y * cols + x
+			var kind: int = kinds[cell]
 			if restore and (kind + 1) * classes > costs.size():
 				continue
 			for move_class: int in classes:
