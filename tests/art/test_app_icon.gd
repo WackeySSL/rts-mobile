@@ -4,7 +4,7 @@ extends GdUnitTestSuite
 ## and follows the technical rules, the foreground paints only inside the 288 px safe circle, the
 ## background and the square have no transparent edge, the warm sky is on the left and the cool sky
 ## on the right, and the tank still reads against its surroundings in greyscale at launcher sizes.
-## The icon is not wired into the export presets here; that is the release engineer's row.
+## The wiring (project icon, Android launcher icons, web favicon) is pinned in tests/project.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const ICON_DIR: String = "res://assets/art/svg/icon"

@@ -7,6 +7,22 @@ extends GdUnitTestSuite
 const SECTION: String = "preset.1"
 const OPTIONS: String = "preset.1.options"
 
+## Plan row P98: the Android presets ("Android" and "Android perf") name the game's own icon in the
+## three launcher icon options, and the files they name are the SVGs of assets/art/svg/icon.
+const ANDROID_PRESETS: Array[String] = ["preset.1", "preset.2"]
+const MAIN_ICON: String = "launcher_icons/main_192x192"
+const FOREGROUND_ICON: String = "launcher_icons/adaptive_foreground_432x432"
+const BACKGROUND_ICON: String = "launcher_icons/adaptive_background_432x432"
+const ICON_FILES: Dictionary[String, String] = {
+	MAIN_ICON: "res://assets/art/svg/icon/app_icon.svg",
+	FOREGROUND_ICON: "res://assets/art/svg/icon/icon_foreground.svg",
+	BACKGROUND_ICON: "res://assets/art/svg/icon/icon_background.svg",
+}
+## The Play Store asks for a 512 px icon.
+const MIN_MAIN_ICON_PX: int = 512
+## An adaptive layer is 108 dp at 4x.
+const LAYER_PX: int = 432
+
 
 func _config() -> ConfigFile:
 	var config: ConfigFile = ConfigFile.new()
@@ -69,3 +85,67 @@ func test_non_gradle_arm64_only() -> void:
 func test_no_keystore_value_in_the_file() -> void:
 	for key: String in _config().get_section_keys(OPTIONS):
 		assert_bool(key.begins_with("keystore/")).is_false()
+
+
+func test_android_presets_name_the_three_icon_files() -> void:
+	var config: ConfigFile = _config()
+	for section: String in ANDROID_PRESETS:
+		assert_str(config.get_value(section, "platform")).is_equal("Android")
+		for option: String in ICON_FILES:
+			var named: String = config.get_value(section + ".options", option, "")
+			var where: String = "%s %s" % [section, option]
+			assert_str(named).override_failure_message(where).is_equal(ICON_FILES[option])
+
+
+func test_every_icon_file_a_preset_names_exists() -> void:
+	var config: ConfigFile = _config()
+	for section: String in ANDROID_PRESETS:
+		for option: String in ICON_FILES:
+			var path: String = config.get_value(section + ".options", option, "")
+			var where: String = "%s %s '%s'" % [section, option, path]
+			assert_bool(FileAccess.file_exists(path)).override_failure_message(where).is_true()
+
+
+## The main icon is the 512 px store square; the option is named 192x192 because the exporter
+## processes it down to the launcher sizes, so a larger source loses nothing.
+func test_the_main_launcher_icon_loads_square_at_512_px_or_more() -> void:
+	var config: ConfigFile = _config()
+	for section: String in ANDROID_PRESETS:
+		var path: String = config.get_value(section + ".options", MAIN_ICON, "")
+		var size: Vector2i = _source_size(path)
+		var where: String = "%s '%s' loads at %s" % [section, path, size]
+		assert_int(size.x).override_failure_message(where).is_equal(size.y)
+		assert_int(size.x).override_failure_message(where).is_greater_equal(MIN_MAIN_ICON_PX)
+
+
+## A layer is 108 dp at 4x, and the foreground is drawn for the 288 px safe circle of that canvas
+## (tests/art/test_app_icon.gd), so the file must be exactly the canvas the option names.
+func test_the_adaptive_layers_load_at_432_px() -> void:
+	var config: ConfigFile = _config()
+	for section: String in ANDROID_PRESETS:
+		for option: String in [FOREGROUND_ICON, BACKGROUND_ICON]:
+			var path: String = config.get_value(section + ".options", option, "")
+			var size: Vector2i = _source_size(path)
+			var where: String = "%s '%s' loads at %s" % [section, path, size]
+			assert_vector(size).override_failure_message(where).is_equal(
+				Vector2i(LAYER_PX, LAYER_PX)
+			)
+
+
+## Plan row P98: the web preview's favicon (index.icon.png and the apple-touch icon) is the project
+## icon instead of the page showing none. The PWA stays off; this option does not turn it on.
+func test_web_preset_exports_the_project_icon_as_the_favicon() -> void:
+	var config: ConfigFile = _config()
+	assert_str(config.get_value("preset.0", "name")).is_equal("Web")
+	assert_bool(config.get_value("preset.0.options", "html/export_icon")).is_true()
+
+
+## The size of an icon file as the Android exporter reads it: straight through Godot's image
+## loader, which has ThorVG draw an SVG at its own width and height. A res:// path would load too,
+## but with a warning that it does not work in an export build. A missing or unreadable file gives
+## a zero size.
+func _source_size(path: String) -> Vector2i:
+	if not FileAccess.file_exists(path):
+		return Vector2i.ZERO
+	var image: Image = Image.load_from_file(ProjectSettings.globalize_path(path))
+	return Vector2i.ZERO if image == null else image.get_size()
