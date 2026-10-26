@@ -83,6 +83,10 @@ reads no World (ADR 0020 §3 supersedes §1's "The Phase 4 AI acts there", §2's
 `PlayerView` read it there" and §3's scan allowance for `game/ai` "(whose World reads inside
 `ticked` are allowed and guarded at runtime)", and only those). No accepted text changed.
 
+Status note (2026-10-26, P68d docs; ADR 0022 accepted 2026-10-26): §6 carries a dated status note:
+ADR 0022 §2 extends the z table (building base and roof parts, the fog moved to 110, the bars to
+112, the ghost and rally layers) and the draw-call forecast. No accepted text changed.
+
 ## Context
 The Phase 2 plan (P26s) says that a contract the phone probe contradicts changes through a new ADR
 before P34 starts. The probe ran on 2026-10-12. The full reports are comments on PR #35.
@@ -868,6 +872,21 @@ through `MatchLoop` and asserts `stats[FLOW_CELLS] == 0` exactly on the steps af
   calls on the phone.
 - **Visual cost:** an overlap of two units of different types or owners can draw one unit's
   layer over the other's. Separation keeps such overlaps short.
+
+Status note (2026-10-26, P68d docs, ADR 0022 accepted 2026-10-26, Michael's "ja til anbefaling";
+the text above stays as accepted): from plan row P84 on, ADR 0022 §2's table replaces the z bands
+above. New: z 2 `BuildingLayer` (the base parts of buildings and last-seen ghosts, under every unit
+band), z 111 `BuildingRoofLayer` (the roof parts in ascending footprint south row, each followed by
+its turret head), z 145 the placement ghost (`GhostLayer`, P86), z 146 the rally flags
+(`RallyLayer`, P87); moved: fog 140 to 110 (under the roofs), health bars 110 to 112 (over the
+roofs; they also draw the building selection frame and, after all their rects, the offline
+glyphs). Unchanged: map 0 (with the ground and ore layers after it in tree order, P97, P84b),
+rings 1, the unit bands 10-109 and the rig node contract, projectiles 120, effects 130, markers
+150. The **expected count** gains ground 1 (replacing the map's rect), ore 1, building base 1,
+roofs with their turret heads 1 and the offline glyphs 1, each building part drawn from one
+runtime atlas with tint and dims as quad colours: 32 calls for the base arena (six mobile types,
+two owners, three turret types), under the 40 trigger and the ceiling of 60 (ADR 0022 §2). The
+"Markers" and "What else batches" items above stand.
 
 ### 7. What stays, and when GDExtension comes
 - **Unchanged:**

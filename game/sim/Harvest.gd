@@ -3,8 +3,9 @@ extends RefCounted
 ## The harvest loop and the ore (ADR 0017 section 5, ADR 0018 sections 2 and 3). `run` is the
 ## second half of ECONOMY, after `Power.run` has rebuilt `harvester_rows` and `building_rows`: ore
 ## regrowth, then the SEEK, MINE, RETURN and UNLOAD of every harvester, ascending by row. IDLE rows
-## are the player's. Plan row P75b adds `release`, `apply_harvest` and the auto-resume; until then
-## `apply_harvest` refuses, so a HARVEST is dropped and counted.
+## are the player's: a unit-group order hands them over (`release`), HARVEST sends them back to work
+## at a cell of the player's choice (`apply_harvest`) and the auto-resume does it on its own after
+## `harvest_resume_ticks` (plan row P75b).
 ##
 ## The loop gives orders the way `Sim._apply_point` does after `Formation.assign`: `order` MOVE, the
 ## goal, `group_cell` -1 and `Movement.reset_nav` with DIRECT. It reads no input and draws no random
@@ -15,8 +16,9 @@ extends RefCounted
 ## ore cell that has ore gives the order in the same step, hence a SEEK harvester that has no order
 ## and stands farther than `harvest_reach_milli` from its cell is one whose order ended short. It
 ## takes another cell (ADR 0018 section 3 says "once more", which has no counter to run on; the
-## cell it left is skipped, and a lone cell is tried again after the retry wait). P75b's HARVEST
-## and auto-resume give their order the same way. A refinery is a building type with a dock other
+## cell it left is skipped, and a lone cell is tried again after the retry wait). HARVEST and the
+## auto-resume therefore give their order in the same step that sets `harvest_slot` and SEEK
+## (`_take`: `_order` and the cell's centre). A refinery is a building type with a dock other
 ## than (0, 0), a tile inside the footprint that no unit can walk to (`BuildingDef.dock` defaults
 ## to it, meaning none).
 
@@ -34,6 +36,8 @@ extends RefCounted
 ## - UNLOAD: on ticks with `(tick + id) % unload_ticks_per_ore == 0` it pays `credits_per_ore` of
 ##   its cargo to its owner and to `stat_harvested`; empty, it goes back to its cell. It needs no
 ##   refinery once it has docked: one destroyed meanwhile does not stop the unloading.
+## - IDLE: on a tick with `(tick + id) % harvest_resume_ticks == 0` a harvester whose order has
+##   ended goes back to work (`_resume`); 0 turns that off. A harvester still walking waits.
 ## The loop aliases what it reads once; the rest (a scan, an order, a refinery choice) is event
 ## cadence and reads the World itself.
 @warning_ignore("integer_division")
@@ -69,6 +73,7 @@ static func run(world: World) -> void:
 	var retry: int = maxi(world.harvest_retry_ticks, 1)
 	var reach: int = world.harvest_reach_milli
 	var dock_reach: int = world.dock_reach_milli
+	var resume: int = world.harvest_resume_ticks
 	for row: int in rows:
 		var mode: int = modes[row]
 		var type: int = types[row]
@@ -131,17 +136,43 @@ static func run(world: World) -> void:
 				modes[row] = World.HarvestMode.SEEK
 				if has_ore:
 					_order(world, row, _centre(ore_cells[slot], cols))  # Back to its last cell.
+		elif (
+			mode == World.HarvestMode.IDLE
+			and resume > 0
+			and orders[row] == World.Order.IDLE
+			and (tick + ids[row]) % resume == 0
+		):
+			_resume(world, row)
 
 
-## HARVEST: true when a harvester among the command's units took an ore cell near the point.
-static func apply_harvest(_world: World, _command: Command) -> bool:
-	return false
+## HARVEST: true when at least one harvester among the command's units took an ore cell near the
+## point. The cell is the one with ore nearest to the point, within `harvest_pick_milli` of it (the
+## smallest squared distance, then the lowest index; the scan counts in `Stat.ORE_SCANNED`), and
+## every harvester of the player among `unit_ids` takes it (`_take`), the cargo and `home` as they
+## are. No harvester among the ids, or no such cell: dropped. The ids go through `Sim._own_rows`,
+## the helper the unit-group commands share.
+static func apply_harvest(world: World, command: Command) -> bool:
+	var rows: PackedInt32Array = _harvesters(world, command)
+	if rows.is_empty():
+		return false
+	var slot: int = _scan(world, command.target_x, command.target_y, -1, world.harvest_pick_milli)
+	if slot < 0:
+		return false
+	for row: int in rows:
+		_take(world, row, slot)
+	return true
 
 
 ## A unit-group order (MOVE, ATTACK_MOVE, STOP) on `rows` hands those harvesters back to the player
-## (harvest mode IDLE, the cargo kept). Sim calls it with the rows it accepted.
-static func release(_world: World, _rows: PackedInt32Array) -> void:
-	pass
+## (harvest mode IDLE; the cargo, the cell and `home` are kept). Sim calls it with the rows it
+## accepted, after the order is given.
+static func release(world: World, rows: PackedInt32Array) -> void:
+	var capacity: PackedInt32Array = world.type_harvest
+	var types: PackedInt32Array = world.type_index
+	var modes: PackedInt32Array = world.harvest_mode
+	for row: int in rows:
+		if capacity[types[row]] > 0:
+			modes[row] = World.HarvestMode.IDLE
 
 
 ## On a tick with `tick % ore_regrow_ticks == 0` every ore cell below `ore_cell_max` gains 1 unit.
@@ -178,31 +209,79 @@ static func _go_home(world: World, row: int) -> void:
 		_order(world, row, dock)
 
 
-## SEEK's scan: row `row` takes the ore cell with ore nearest to it (smallest squared distance, then
-## the lowest index, skipping index `skip`; -1 skips none), and gets the order to its centre unless
-## it stands within reach of it with no order. No cell: `harvest_slot` -1, and the row waits.
-## Every cell of the list is looked at and counted in `Stat.ORE_SCANNED`.
+## SEEK's scan: row `row` takes the ore cell with ore nearest to it (`_scan`, skipping index `skip`;
+## -1 skips none), and gets the order to its centre unless it stands within reach of it with no
+## order. No cell: `harvest_slot` -1, and the row waits.
 static func _pick(world: World, row: int, skip: int) -> void:
+	var best: int = _scan(world, world.pos_x[row], world.pos_y[row], skip, -1)
+	world.harvest_slot[row] = best
+	if best < 0:
+		return
+	var centre: Vector2i = _centre(world.ore_cell[best], world.map_cols)
+	var dx: int = centre.x - world.pos_x[row]
+	var dy: int = centre.y - world.pos_y[row]
+	var reach: int = world.harvest_reach_milli
+	if world.order[row] != World.Order.IDLE or dx * dx + dy * dy > reach * reach:
+		_order(world, row, centre)
+
+
+## The index of the ore cell with ore nearest to the milli point (x, y): the smallest squared
+## distance to the cell's centre, then the lowest index; `skip` is an index to pass over (-1 none)
+## and `reach` the greatest distance that counts (-1: any, for a point on the map). -1 when no cell
+## qualifies. Every cell of the list is looked at and counted in `Stat.ORE_SCANNED`. A point far
+## off the map is cut by the box test before anything is squared.
+static func _scan(world: World, x: int, y: int, skip: int, reach: int) -> int:
 	var cells: PackedInt32Array = world.ore_cell
 	var amounts: PackedInt32Array = world.ore_amount
 	var cols: int = world.map_cols
-	var x: int = world.pos_x[row]
-	var y: int = world.pos_y[row]
 	var best: int = -1
 	var best_d2: int = 0
 	for index: int in cells.size():
 		if amounts[index] <= 0 or index == skip:
 			continue
 		var centre: Vector2i = _centre(cells[index], cols)
-		var d2: int = (centre.x - x) * (centre.x - x) + (centre.y - y) * (centre.y - y)
+		var dx: int = centre.x - x
+		var dy: int = centre.y - y
+		if reach >= 0 and (absi(dx) > reach or absi(dy) > reach):
+			continue
+		var d2: int = dx * dx + dy * dy
+		if reach >= 0 and d2 > reach * reach:
+			continue
 		if best < 0 or d2 < best_d2:
 			best = index
 			best_d2 = d2
 	world.stats[World.Stat.ORE_SCANNED] += cells.size()
-	world.harvest_slot[row] = best
-	var reach: int = world.harvest_reach_milli
-	if best >= 0 and (world.order[row] != World.Order.IDLE or best_d2 > reach * reach):
-		_order(world, row, _centre(cells[best], cols))
+	return best
+
+
+## Hands harvester `row` the ore cell `slot` (-1: none): SEEK, the cell in `harvest_slot` and, with
+## a cell, the order to its centre in the same step, so that SEEK reads the row as under way and
+## not as one whose order ended short. The cargo and `home` stay.
+static func _take(world: World, row: int, slot: int) -> void:
+	world.harvest_mode[row] = World.HarvestMode.SEEK
+	world.harvest_slot[row] = slot
+	if slot >= 0:
+		_order(world, row, _centre(world.ore_cell[slot], world.map_cols))
+
+
+## The auto-resume of an IDLE harvester whose order has ended: back to SEEK with the cell it had
+## while that has ore, else the cell nearest to where it stands (none: it waits, as SEEK does).
+static func _resume(world: World, row: int) -> void:
+	var slot: int = world.harvest_slot[row]
+	if slot < 0 or slot >= world.ore_amount.size() or world.ore_amount[slot] <= 0:
+		slot = _scan(world, world.pos_x[row], world.pos_y[row], -1, -1)
+	_take(world, row, slot)
+
+
+## The rows of the command's own harvesters (their type has `type_harvest` above 0), ascending.
+static func _harvesters(world: World, command: Command) -> PackedInt32Array:
+	var capacity: PackedInt32Array = world.type_harvest
+	var types: PackedInt32Array = world.type_index
+	var found: PackedInt32Array = PackedInt32Array()
+	for row: int in Sim._own_rows(world, command, false):
+		if capacity[types[row]] > 0:
+			found.append(row)
+	return found
 
 
 ## RETURN's refinery choice: the nearest own refinery (squared distance to its centre, then the

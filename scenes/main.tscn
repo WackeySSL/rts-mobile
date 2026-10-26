@@ -22,6 +22,7 @@
 [ext_resource type="Script" path="res://game/view/HealthBarLayer.gd" id="18_bars"]
 [ext_resource type="Script" path="res://game/view/ProjectileLayer.gd" id="19_projectiles"]
 [ext_resource type="Script" path="res://game/view/FogLayer.gd" id="20_fog"]
+[ext_resource type="Script" path="res://game/ui/BuildSidebar.gd" id="21_sidebar"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -127,6 +128,9 @@ script = ExtResource("3_dev")
 
 [node name="DpMinSize" type="Node" parent="Hud/SafeArea/DevButton"]
 script = ExtResource("13_dp")
+
+[node name="BuildSidebar" type="PanelContainer" parent="Hud/SafeArea"]
+script = ExtResource("21_sidebar")
 
 [node name="ArmyBand" type="MarginContainer" parent="Hud/SafeArea"]
 mouse_filter = 2
