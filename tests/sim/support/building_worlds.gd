@@ -100,3 +100,53 @@ static func fight() -> World:
 ## Gives the building `id` `hit_points`.
 static func _weaken(made: World, id: int, hit_points: int) -> void:
 	made.hp[made.index_of(id)] = hit_points
+
+
+## An unarmed building of `width` x `height` tiles with plenty of hit points, for a case that must
+## outlive the fight (the shipped buildings are the real ones; this one has no weapon and no tab).
+static func block(id: String, width: int, height: int) -> BuildingDef:
+	var def: BuildingDef = BuildingDef.new()
+	def.type_id = StringName(id)
+	def.speed = 0
+	def.radius = 0
+	def.max_hp = 20000
+	def.armour = World.Armour.BUILDING
+	def.sight_range = 3000
+	def.footprint = Vector2i(width, height)
+	return def
+
+
+## A World of 30 x 16 tiles for an ATTACK on a building behind rock: a wall of rock on column 12
+## from row 0 to row 12 (the gap is rows 13 to 15), a `width` x `height` unarmed building of player
+## 2 with its top-left tile at (18, 6), and four light tanks of player 1 on tiles x 4..5 and y 6..7
+## (they see every cell). Types: light tank 0, the building 1.
+@warning_ignore("integer_division")
+static func behind_rock(width: int, height: int) -> World:
+	var rock: Array[Vector2i] = []
+	for line: int in 13:
+		rock.append(Vector2i(12, line))
+	var units: Array[UnitDef] = [load(UNIT_DIR + "light_tank.tres") as UnitDef]
+	units.append(block("wall_%dx%d" % [width, height], width, height))
+	var made: World = Rig.world_of(units, 30, 16, true)
+	made.terrain_cost = PackedByteArray(GridWorld.GROUND_COST)
+	for tile: Vector2i in rock:
+		made.set_terrain(tile.y * 30 + tile.x, GridWorld.GROUND.find("#"))
+	made.terrain_buildable = PackedByteArray(BUILDABLE)
+	made.add_building(2, 1, 18, 6)
+	for tank: int in 4:
+		made.add_unit(1, 0, 4500 + tank % 2 * 1000, 6500 + tank / 2 * 1000)
+	return made
+
+
+## A World of 40 x 24 open tiles for the artillery check: the shipped artillery (type 0) of player 1
+## at `distance` milli west of the centre of a Headquarters (type 1) of player 2 at (20, 10), whose
+## centre is (21500, 11500), on the same row; the map is revealed.
+static func artillery_range(distance: int) -> World:
+	var units: Array[UnitDef] = [
+		load(UNIT_DIR + "artillery.tres") as UnitDef,
+		load(UNIT_DIR + "headquarters.tres") as UnitDef
+	]
+	var made: World = Rig.world_of(units, 40, 24, true)
+	made.add_building(2, 1, 20, 10)
+	made.add_unit(1, 0, 21500 - distance, 11500)
+	return made

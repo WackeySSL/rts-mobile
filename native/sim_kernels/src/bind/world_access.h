@@ -156,7 +156,7 @@ struct Entry {
 	X(WORLD, stats, I32, STATS, PH_F | PH_T | PH_S | PH_G) \
 	X(WORLD, events, I32, ANY, 0) \
 	X(WORLD, move_cost, BYTES, COSTS, PH_F | PH_T | PH_I) \
-	X(WORLD, type_speed, I32, ANY, PH_I) \
+	X(WORLD, type_speed, I32, ANY, PH_T | PH_I) \
 	X(WORLD, type_radius, I32, TYPES, PH_S) \
 	X(WORLD, type_spacing, I32, TYPES, PH_I) \
 	X(WORLD, type_armour, I32, TYPES, PH_T) \

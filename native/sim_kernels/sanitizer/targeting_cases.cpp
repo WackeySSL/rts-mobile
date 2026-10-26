@@ -6,7 +6,8 @@
 // are the gdUnit4 suites' (test_targeting*.gd and test_engagement*.gd under both implementations,
 // test_targeting_kernel*.gd), and only what needs no second implementation is checked here (a MOVE row ends with no
 // target, no count past the rows, a grid with no cells finds nobody, a fog that sees nothing leaves no row of a player with a
-// grid a target, and a fog with no grid sees every cell). The build has no -fwrapv, so the range that
+// grid a target, a fog with no grid sees every cell, and an ATTACK lock writes the goal of a target whose type has a speed above 0
+// and leaves the goal of a speed-0 target, a building, alone: P71b). The build has no -fwrapv, so the range that
 // core/targeting.h records is run at its edges: positions of 10^9 and reaches of 2 * 10^9. Plain C++17, no Godot header. MIT.
 // The fog (P46b): the sight counts of a dump are the dump's own; the crafted scenes get counts of their own.
 // Twin: bind/kernel_targeting.cpp (call() below is the same targeting::run, with the arrays of the World replaced by
@@ -35,7 +36,7 @@ struct State {
 	int64_t map_cols = 0, map_rows = 0;
 	int64_t cols = 0, rows = 0, cell_milli = 4000;
 	std::vector<int32_t> unit_id, owner, type_index, pos_x, pos_y, goal_x, goal_y, order, order_target, target, nav_mode, nav_cell, field, nav_next, best_dist, stall;
-	std::vector<int32_t> armour, acquire, weapon, move_class, range, min_range, vs_armour;
+	std::vector<int32_t> speed, armour, acquire, weapon, move_class, range, min_range, vs_armour;
 	std::vector<uint8_t> move_cost;
 	std::vector<int32_t> head, next;
 	targeting::Fog fog; // the sides and the player count of World.fog; `visible` is the vector below
@@ -84,6 +85,7 @@ targeting::Counts call(State &state) {
 	rows.best_dist = view(state.best_dist);
 	rows.stall = view(state.stall);
 	targeting::Types types;
+	types.speed = cview(state.speed);
 	types.armour = cview(state.armour);
 	types.acquire = cview(state.acquire);
 	types.weapon = cview(state.weapon);
@@ -158,6 +160,7 @@ State from_dump(const Dump &dump) {
 		{ "world.nav_next", &State::nav_next },
 		{ "world.best_dist", &State::best_dist },
 		{ "world.stall", &State::stall },
+		{ "world.type_speed", &State::speed },
 		{ "world.type_armour", &State::armour },
 		{ "world.type_acquire", &State::acquire },
 		{ "world.type_weapon", &State::weapon },
@@ -192,7 +195,7 @@ State from_dump(const Dump &dump) {
 		}
 	}
 	const size_t types = state.armour.size();
-	if (state.acquire.size() != types || state.weapon.size() != types || state.move_class.size() != types) {
+	if (state.speed.size() != types || state.acquire.size() != types || state.weapon.size() != types || state.move_class.size() != types) {
 		throw std::runtime_error("a type table of the dump does not have one entry per type");
 	}
 	if (state.min_range.size() != state.range.size() || state.vs_armour.size() != state.range.size() * static_cast<size_t>(ARMOUR_COUNT)) {
@@ -312,7 +315,8 @@ void give_fog(Stream &stream, State &state, int64_t players) {
 }
 
 // A scene: a map of `cols` x `rows` tiles with a quarter of the tiles rock for each of three movement classes, a grid of
-// cells of 4000 over it, four unit types (the weapon indexes 0, 1 and 2, and one that names no weapon) and `units` rows
+// cells of 4000 over it, four unit types (the weapon indexes 0, 1 and 2, and one that names no weapon; the second and the
+// fourth have speed 0, like a building) and `units` rows
 // scattered over the map and a margin of 3000 around it, with owners 0 to 2 and a random order, mode, target and line
 // state each. The rules are the shipped ones (5 and 5).
 State make_scene(Stream &stream, int64_t cols, int64_t rows, int64_t units) {
@@ -326,6 +330,7 @@ State make_scene(Stream &stream, int64_t cols, int64_t rows, int64_t units) {
 	for (uint8_t &cost : state.move_cost) {
 		cost = stream.next(4) == 0 ? 0 : 10;
 	}
+	state.speed = { 120, 0, 61, 0 };
 	state.armour = { 0, 1, 2, 3 };
 	state.acquire = { 5000, 5500, 6000, 3000 };
 	state.weapon = { 0, 1, 2, -1 };
@@ -424,6 +429,7 @@ void range_edges(Tally &tally) {
 	Stream stream = { 8 };
 	State corners = make_scene(stream, 1, 1, 0);
 	corners.visible.assign(corners.visible.size(), 1); // the one cell is seen by both players
+	corners.speed = { 1 };
 	corners.armour = { 0 };
 	corners.acquire = { static_cast<int32_t>(TOP) };
 	corners.weapon = { 0 };
@@ -475,7 +481,8 @@ void range_edges(Tally &tally) {
 
 // Type numbers, weapon indexes, armour classes and heads that name nothing: a type past the table, negative or at both ends
 // of int32, a type table that names a weapon past the weapon tables, an armour class past the four, owners at both ends of
-// int32, an order past the four and heads that name rows past the units (inside and outside the arrays). The pass reads
+// int32 (a speed too: the lock tests it above 0), an order past the four and heads that name rows past the units (inside and
+// outside the arrays). The pass reads
 // them through ArrayView (0 outside), so it finishes and AddressSanitizer stays quiet. Only heads are made hostile: a
 // hostile link could close a circle, and the scan, which has no cap, would never end (in the twin either; SpatialGrid never
 // writes one).
@@ -494,6 +501,7 @@ void hostile_references(Tally &tally) {
 		for (size_t type = 0; type < state.weapon.size(); type++) {
 			state.weapon[type] = hostile[(type + shift) % std::size(hostile)];
 			state.armour[type] = hostile[(type + 2 * shift) % std::size(hostile)];
+			state.speed[type] = hostile[(type + 6 * shift) % std::size(hostile)];
 			state.move_class[type] = hostile[(type + 4 * shift) % std::size(hostile)];
 		}
 		rebuild(state);
@@ -582,8 +590,56 @@ void fog_edges(Tally &tally) {
 	}
 }
 
+// One row of a scene made by hand, with every navigation column at its neutral value.
+void add_row(State &state, int32_t owner, int32_t type, int32_t x, int32_t y, int32_t goal_x, int32_t goal_y, int32_t order, int32_t order_target) {
+	state.unit_id.push_back(static_cast<int32_t>(state.unit_id.size() + 1));
+	state.owner.push_back(owner);
+	state.type_index.push_back(type);
+	state.pos_x.push_back(x);
+	state.pos_y.push_back(y);
+	state.goal_x.push_back(goal_x);
+	state.goal_y.push_back(goal_y);
+	state.order.push_back(order);
+	state.order_target.push_back(order_target);
+	state.target.push_back(0);
+	state.nav_mode.push_back(0);
+	state.nav_cell.push_back(-1);
+	state.field.push_back(-1);
+	state.nav_next.push_back(-1);
+	state.best_dist.push_back(0);
+	state.stall.push_back(0);
+}
+
+// The goal of an ATTACK lock (P71b, ADR 0017 section 1), which the random scenes reach only by chance: the lock on a target whose
+// type has a speed above 0 writes the target's position as the row's goal, and the lock on a speed-0 target (a building)
+// leaves the goal Sim._apply_attack gave it. Both rows lock their target in the same call. The answer needs no second
+// implementation, and the speed-0 row is the only one that tests the table with a target the lock keeps.
+void attack_goals(Tally &tally) {
+	Stream stream = { 21 };
+	State state = make_scene(stream, 12, 8, 0);
+	state.visible.assign(state.visible.size(), 1); // every cell is seen
+	state.rules = { 0, 5, 5 };
+	// Types 0 and 2 move (speed 120 and 61), types 1 and 3 stand still. Units 1 and 2 of player 1 lock units 3 and 4 of player 2.
+	add_row(state, 1, 2, 1500, 1500, 777, 888, static_cast<int32_t>(ORDER_ATTACK), 3);
+	add_row(state, 1, 2, 1500, 2500, 555, 666, static_cast<int32_t>(ORDER_ATTACK), 4);
+	add_row(state, 2, 0, 6500, 1500, 0, 0, static_cast<int32_t>(ORDER_IDLE), 0);
+	add_row(state, 2, 1, 6500, 2500, 0, 0, static_cast<int32_t>(ORDER_IDLE), 0);
+	state.next.assign(state.unit_id.size() + 8, -1);
+	play(state, tally, "attack goals");
+	if (state.target[0] != 3 || state.target[1] != 4) {
+		throw Finding("targeting: attack goals: a lock did not hold its target");
+	}
+	if (state.goal_x[0] != 6500 || state.goal_y[0] != 1500) {
+		throw Finding("targeting: attack goals: the lock on a mobile target did not write its position as the goal");
+	}
+	if (state.goal_x[1] != 555 || state.goal_y[1] != 666) {
+		throw Finding("targeting: attack goals: the lock on a target of speed 0 overwrote the goal");
+	}
+}
+
 void crafted(Tally &tally) {
 	random_scenes(tally);
+	attack_goals(tally);
 	no_cells(tally);
 	range_edges(tally);
 	hostile_references(tally);

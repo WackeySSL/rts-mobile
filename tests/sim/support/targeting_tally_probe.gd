@@ -192,8 +192,9 @@ func count() -> void:
 			if enemy and _sees(owners[row], pos_x[at], pos_y[at]):
 				tally[&"locked"] += 1
 				want_target[row] = locked
-				want_goal_x[row] = pos_x[at]
-				want_goal_y[row] = pos_y[at]
+				if world.type_speed[types[at]] > 0:  # A target that stands still keeps the goal.
+					want_goal_x[row] = pos_x[at]
+					want_goal_y[row] = pos_y[at]
 				continue
 			tally[&"sight_lost"] += int(enemy)
 			tally[&"fallbacks"] += 1

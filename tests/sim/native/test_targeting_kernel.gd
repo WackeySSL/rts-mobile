@@ -65,6 +65,7 @@ const TARGETING_NAMES: Array[String] = [
 	"WORLD.stall",
 	"WORLD.stats",
 	"WORLD.move_cost",
+	"WORLD.type_speed",
 	"WORLD.type_armour",
 	"WORLD.type_move_class",
 	"WORLD.type_acquire",

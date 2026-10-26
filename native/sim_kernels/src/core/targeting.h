@@ -1,10 +1,12 @@
 // The rules of the TARGETING kernel (ADR 0013 sections 1 and 2, plan P41n, P46b): Targeting.run and Targeting._engage over views of the
 // arrays the kernel borrowed, two passes over the rows in ascending id order. Acquisition: an ATTACK row locks its target (or
-// falls back to ATTACK_MOVE when that unit is gone or out of its player's sight), a MOVE row drops its target, and a due
+// falls back to ATTACK_MOVE when that unit is gone or out of its player's sight; the lock writes the row's goal from the target's
+// position only when the target's type has a speed above 0, so a building keeps the approach point that Sim._apply_attack gave
+// it, P71b, ADR 0017 section 1), a MOVE row drops its target, and a due
 // ATTACK_MOVE or IDLE row keeps its target or scans the cells of the targeting grid around it for the best enemy that its
 // player sees (the highest damage percent, then the smaller squared distance, then the lower row). Engagement: a unit with a
 // target in weapon range holds, an attack-moving unit chases a target inside its acquire range while the line to it is clear,
-// an ATTACK unit re-tests its line on its line-check turn, and a unit whose target is gone resumes the path of its order. Every
+// an ATTACK unit re-tests the line to its goal on its line-check turn, and a unit whose target is gone resumes the path of its order. Every
 // mode change goes through reset_row (Movement.reset_row), which writes the six navigation columns and nothing else; the
 // engagement pass also calls it on the ATTACK re-test, which resets a DIRECT row to DIRECT. Plain C++17, no Godot header, no
 // float. Rule values come in through `Rules`, `Types`, `Weapons`, the grid and the fog, read from the World by the bind layer.
@@ -45,10 +47,10 @@ struct Rows {
 	ArrayView<int32_t> goal_x, goal_y, order, order_target, target, nav_mode, nav_cell, field, nav_next, best_dist, stall;
 };
 
-// The per-type tables (World.type_*): the armour class, the acquire range, the weapon index (negative for none) and the
-// movement class.
+// The per-type tables (World.type_*): the speed (a target of speed 0 keeps the goal an ATTACK gave the row: P71b), the armour
+// class, the acquire range, the weapon index (negative for none) and the movement class.
 struct Types {
-	ArrayView<const int32_t> armour, acquire, weapon, move_class;
+	ArrayView<const int32_t> speed, armour, acquire, weapon, move_class;
 };
 
 // The weapon tables (World.weapon_*): the range and minimum range per weapon, and four percents per weapon, one for each
