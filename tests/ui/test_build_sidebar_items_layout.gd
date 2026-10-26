@@ -5,8 +5,9 @@ extends GdUnitTestSuite
 ## clear of its neighbours; in landscape the tiles are a grid as wide as the zone holds, with its
 ## first row inside the zone and the rest a scroll away; in the portrait band they are one row that
 ## scrolls sideways, with at least three whole tiles in view; a short screen's band, which gives
-## way to its floor, still holds the row; and a turn keeps the tiles and sends nothing. The zone
-## itself is test_build_sidebar_layout's, the tiles' states and orders are
+## way to its floor, still holds the row; what a state draws over the icon (the fill, the padlock,
+## the banner) is seen above the cost's plate; and a turn keeps the tiles and sends nothing. The
+## zone itself is test_build_sidebar_layout's, the tiles' states and orders are
 ## test_build_sidebar_items and test_build_sidebar_orders.
 
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -168,6 +169,55 @@ func test_the_band_that_gave_way_still_holds_the_row_of_tiles() -> void:
 			. override_failure_message(needs)
 			. is_less_equal(HudLayout.bottom_zone_px() + TOLERANCE_PX)
 		)
+
+
+## What a state draws over the icon is seen above the cost's plate (ADR 0019 section 1): the fill is
+## a strip of the area above the plate even at a small share, rising to the tile's top at the end,
+## and the padlock and the banner are whole above the plate, never under it.
+func test_the_fill_the_padlock_and_the_banner_stay_clear_of_the_cost_plate_at_every_size() -> void:
+	for screen: Dictionary in _screens():
+		await _open(screen["size"], screen["metrics"])
+		var tile: ItemTile = _visible_tiles()[0]
+		var whole: Rect2 = tile.get_global_rect()
+		var plate: Rect2 = _part(tile, "Cost").get_global_rect()
+		var above: Rect2 = Rect2(
+			whole.position, Vector2(whole.size.x, plate.position.y - whole.position.y)
+		)
+		var why: String = "%s: tile %s, plate %s" % [screen["label"], whole, plate]
+		assert_float(above.size.y).override_failure_message(why).is_greater(UiScale.dp(32.0))
+		tile.show_state(ItemTile.State.LOCKED, 0, 0.0)
+		await _settle()
+		_assert_above(_part(tile, "Lock").get_global_rect(), above, "padlock, " + why)
+		tile.show_state(ItemTile.State.READY, 1, 1.0)
+		await _settle()
+		_assert_above(_part(tile, "Banner").get_global_rect(), above, "banner, " + why)
+		for share: float in [0.05, 0.1, 0.3, 0.99]:
+			tile.show_state(ItemTile.State.AVAILABLE, 1, share)
+			await _settle()
+			var fill: Rect2 = _part(tile, "Fill").get_global_rect()
+			var at: String = "fill at %.2f, %s: %s" % [share, why, fill]
+			_assert_above(fill, above, at)
+			assert_float(fill.size.y).override_failure_message(at).is_equal_approx(
+				share * above.size.y, TOLERANCE_PX
+			)
+			assert_float(fill.end.y).override_failure_message(at).is_equal_approx(
+				plate.position.y, TOLERANCE_PX
+			)
+		assert_array(_sent).is_empty()
+
+
+## `rect` lies inside the area `above` the cost plate, to half a px.
+func _assert_above(rect: Rect2, above: Rect2, why: String) -> void:
+	(
+		assert_bool(above.grow(TOLERANCE_PX).encloses(rect))
+		. override_failure_message("%s: %s, above %s" % [why, rect, above])
+		. is_true()
+	)
+
+
+## A tile's part by name: the parts sit one level down, in the area above the cost and in a column.
+func _part(tile: ItemTile, part: String) -> Control:
+	return tile.find_child(part, true, false) as Control
 
 
 ## A turn keeps the tiles (the same nodes, the same states) and re-lays them for the other

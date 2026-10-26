@@ -4,6 +4,9 @@ extends HoldButton
 ## plate, its cost at the foot, a badge for the items of the type queued, a fill that rises over the
 ## icon with the head's progress, and a state shown by a shape and not by colour alone: a padlock
 ## (LOCKED), stripes (UNAFFORDABLE, FULL; the cost amber for money), a "Ready" banner (READY).
+## The cost's plate takes the foot of the tile, and the shapes of a state (the fill, the stripes,
+## the padlock, the banner) fill the area above it, so none of them is ever drawn under the plate:
+## the fill's share is a share of that area.
 ## `BuildSidebar` tells it what to show (`show_state`); it tells the sidebar what the finger did:
 ## `chose` for a tap, `cancelled` for a hold of `hold_ms`, `dragged` for a drag beyond `slop_dp`,
 ## which scrolls the row and is then neither. The tile is a Button, so a touch on it never reaches
@@ -36,6 +39,8 @@ var slop_dp: float = 12.0  ## `InputSettings.tap_slop_dp`.
 var shakes: int = 0  ## How many times the tile has shaken, for the tests.
 
 var _icon: TextureRect = TextureRect.new()
+var _column: VBoxContainer = VBoxContainer.new()  ## The area above the cost, and the cost.
+var _stage: Control = Control.new()  ## The area above the cost's plate: the state's shapes.
 var _fill: ColorRect = ColorRect.new()
 var _stripes: Stripes = Stripes.new()
 var _lock: TextureRect = TextureRect.new()
@@ -89,20 +94,23 @@ func _init() -> void:
 	_banner.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_cost.theme_type_variation = COST_VARIATION
-	_cost.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	_cost.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_badge.theme_type_variation = COST_VARIATION
 	_badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	_badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_fill.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_stripes.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_column.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_column.add_theme_constant_override(&"separation", 0)  # The plate sits right under the stage.
+	_stage.size_flags_vertical = Control.SIZE_EXPAND_FILL  # The cost keeps its height, this the rest.
 	_add(_icon, "Icon")
-	_add(_fill, "Fill")
-	_add(_stripes, "Stripes")
-	_add(_lock, "Lock")
-	_add(_banner, "Banner")
-	_add(_cost, "Cost")
+	_add(_column, "Column")
+	_add(_stage, "Stage", _column)
+	_add(_cost, "Cost", _column)
+	_add(_fill, "Fill", _stage)
+	_add(_stripes, "Stripes", _stage)
+	_add(_lock, "Lock", _stage)
+	_add(_banner, "Banner", _stage)
 	_add(_badge, "Badge")
 	show_state(State.AVAILABLE, 0, 0.0)
 
@@ -186,10 +194,10 @@ func _on_held() -> void:
 
 
 ## A part of the tile that the finger never finds: the tile is what it finds.
-func _add(part: Control, part_name: String) -> void:
+func _add(part: Control, part_name: String, parent: Control = self) -> void:
 	part.name = part_name
 	part.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(part)
+	parent.add_child(part)
 
 
 ## The tints, the fill, the stripes and the inset of the icon, from the theme and the dp scale.

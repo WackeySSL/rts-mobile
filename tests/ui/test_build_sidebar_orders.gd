@@ -163,9 +163,10 @@ func test_a_tap_on_a_ready_structure_sends_nothing_and_a_hold_on_it_cancels_it()
 
 
 ## A drag beyond the slop scrolls the row, sends nothing and ends the touch as neither a tap nor a
-## hold, whether the finger stays on its tile or leaves it (a tile with an item queued and money to
-## queue another: a tap or a hold would send one); a finger that only wobbles still taps. The
-## portrait row scrolls sideways, at 360 dp where five tiles do not fit.
+## hold, whether the finger stays on its tile or leaves it, and whether it lifts at once (a flick)
+## or after a hold's time (a tile with an item queued and money to queue another: a tap or a hold
+## would send one); a finger that only wobbles still taps. The portrait row scrolls sideways, at
+## 360 dp where five tiles do not fit.
 func test_a_scroll_drag_in_the_portrait_row_sends_nothing_and_a_wobble_still_taps() -> void:
 	await _open(&"web_phone_portrait")
 	var world: World = Sw.world()
@@ -177,21 +178,27 @@ func test_a_scroll_drag_in_the_portrait_row_sends_nothing_and_a_wobble_still_tap
 	assert_int(items.horizontal_scroll_mode).is_equal(ScrollContainer.SCROLL_MODE_SHOW_NEVER)
 	assert_int(items.vertical_scroll_mode).is_equal(ScrollContainer.SCROLL_MODE_DISABLED)
 	var tile: ItemTile = _tile("power_plant")
-	var at: Vector2 = tile.get_global_rect().get_center()
-	for by: float in [UiScale.dp(20.0), UiScale.dp(60.0)]:  # On its tile, then off it.
-		var before: int = items.scroll_horizontal
+	# [dp dragged, ms the finger rests before it lifts], each from the row's left end. The first is a
+	# flick: it lifts long before a hold, on the tile that the scroll carried under it, so only the
+	# tile's own scroll flag keeps the lift from being a tap. The second is as long as a hold, on its
+	# tile too, and the third is as long as a hold and ends well off its tile (the row's range is
+	# about a tile, so it cannot follow the finger that far).
+	for drag: Array in [[20.0, 50], [20.0, _hold_ms * 2], [100.0, _hold_ms * 2]]:
+		var by: float = UiScale.dp(drag[0] as float)
+		items.scroll_horizontal = 0
+		await await_idle_frame()
+		var at: Vector2 = tile.get_global_rect().get_center()
 		_press(tile, at)
 		TouchEvents.drag(get_viewport(), 0, at + Vector2(-by / 2.0, 0.0), Vector2(-by / 2.0, 0.0))
 		TouchEvents.drag(get_viewport(), 0, at + Vector2(-by, 0.0), Vector2(-by / 2.0, 0.0))
-		_now_ms += _hold_ms * 2  # As long as a hold, but it was a scroll.
+		_now_ms += drag[1] as int
 		tile._process(0.0)
 		TouchEvents.release(get_viewport(), 0, at + Vector2(-by, 0.0))
 		await await_idle_frame()
 		assert_array(_sent).is_empty()
 		assert_array(_buzzed).is_empty()
-		assert_int(items.scroll_horizontal).is_greater(before)
+		assert_int(items.scroll_horizontal).is_greater(0)
 		assert_int(items.scroll_vertical).is_equal(0)
-		at = tile.get_global_rect().get_center()  # It moved with the row.
 	var wobble: float = UiScale.dp(4.0)  # Well inside the slop: a tap with a shaky finger.
 	var again: Vector2 = _tile("barracks").get_global_rect().get_center()
 	_press(_tile("barracks"), again)

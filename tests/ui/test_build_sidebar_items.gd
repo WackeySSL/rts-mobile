@@ -52,10 +52,10 @@ func test_the_open_tab_shows_its_types_in_table_order_with_the_icon_by_name_and_
 	assert_array(_shown()).is_equal(STRUCTURES)
 	for id: String in STRUCTURES + INFANTRY + VEHICLES:
 		var tile: ItemTile = _tile(id)
-		var icon: TextureRect = tile.find_child("Icon", false, false)
+		var icon: TextureRect = tile.find_child("Icon", true, false)
 		assert_str(icon.texture.resource_path).is_equal(ICONS % ("item_" + id))
 		var cost: int = world.type_cost[Sw.type_of(world, id)]
-		assert_str((tile.find_child("Cost", false, false) as Label).text).is_equal(str(cost))
+		assert_str((tile.find_child("Cost", true, false) as Label).text).is_equal(str(cost))
 		assert_int(tile.tab).is_equal(world.type_tab[Sw.type_of(world, id)])
 	assert_array(_all_ids()).is_not_empty()
 	assert_array(_all_ids()).not_contains(["headquarters"])  # Not buildable: no tile.
@@ -320,7 +320,7 @@ func _tile(id: String) -> ItemTile:
 
 
 func _part(id: String, part: String) -> Control:
-	return _tile(id).find_child(part, false, false) as Control
+	return _tile(id).find_child(part, true, false) as Control
 
 
 func _state(id: String) -> int:
