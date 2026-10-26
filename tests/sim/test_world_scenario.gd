@@ -33,8 +33,9 @@ func test_from_scenario_copies_the_unit_weapon_and_terrain_tables_of_the_arena()
 		&"type_weapon": [0, 1, 2],
 		&"type_names": ["Light Tank", "Rifle Squad", "Rocket Squad"],
 		# The arena has no building and no harvester: the building tables pad. The production
-		# columns are what the three unit files say (P72 sets them), read from the spawned
-		# definitions; test_world_v2 pins the literals with hand-built definitions.
+		# columns and the faction column are what the three unit files say (P72 sets the first,
+		# ADR 0023 the other), read from the spawned definitions; test_world_v2 and test_factions
+		# pin the literals with hand-built definitions.
 		&"type_foot_w": [0, 0, 0],
 		&"type_foot_h": [0, 0, 0],
 		&"type_cost": _spawned_column(arena, &"cost"),
@@ -49,6 +50,7 @@ func test_from_scenario_copies_the_unit_weapon_and_terrain_tables_of_the_arena()
 		&"type_dock_y": [0, 0, 0],
 		&"type_exit_x": [0, 0, 0],
 		&"type_exit_y": [0, 0, 0],
+		&"type_faction": _faction_column(arena),
 		&"weapon_range": [4500, 4000, 5000],
 		&"weapon_min_range": [0, 0, 0],
 		&"weapon_damage": [30, 12, 50],
@@ -319,6 +321,21 @@ func _spawned_column(scenario: ScenarioDef, field: StringName) -> Array:
 		if not seen.has(spawn.unit.type_id):
 			seen.append(spawn.unit.type_id)
 			column.append(spawn.unit.get(field))
+	return column
+
+
+## The faction index of each distinct spawned definition: -1 for none, else the place of its
+## faction among the distinct ones in order of first appearance.
+func _faction_column(scenario: ScenarioDef) -> Array:
+	var seen: Array[StringName] = []
+	var column: Array = []
+	for faction: StringName in _spawned_column(scenario, &"faction"):
+		if faction.is_empty():
+			column.append(-1)
+			continue
+		if not seen.has(faction):
+			seen.append(faction)
+		column.append(seen.find(faction))
 	return column
 
 

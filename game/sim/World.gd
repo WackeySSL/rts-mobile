@@ -60,7 +60,7 @@ const TYPE_PAD_WEAPON: int = -1
 ## For the four Phase 1 tables (speed, radius, selection radius, spacing), and for the Phase 3
 ## tables whose pad is 0: footprint, cost, build ticks, power, cargo capacity, dock and exit.
 const TYPE_PAD_V0: int = 0
-## For the Phase 3 tables whose "none" is -1: tab, requirement, produced tab and free unit.
+## For the Phase 3 tables whose "none" is -1: tab, requirement, produced tab, free unit, faction.
 const TYPE_PAD_NONE: int = -1
 ## The cost of open grass for every class, 10 = normal ground (ADR 0008 section 1). It equals the
 ## default TerrainDef.cost, which a test pins: prepare() may run in the tick and reads no Resource.
@@ -135,6 +135,7 @@ const TYPE_ARRAYS: Array[StringName] = [
 	&"type_dock_y",
 	&"type_exit_x",
 	&"type_exit_y",
+	&"type_faction",
 ]
 ## The weapon tables, one entry per weapon (weapon_vs_armour has four).
 const WEAPON_ARRAYS: Array[StringName] = [
@@ -200,9 +201,8 @@ const SCRATCH_ARRAYS: Array[StringName] = [&"intent_x", &"intent_y", &"push_x", 
 ## Rewritten every tick, neither hashed nor compacted.
 const RUNTIME_ARRAYS: Array[StringName] = [&"events", &"stats"]
 
-## The int properties that go into the state hash, in hash order: the header ints, then
-## map_version (the map grid itself goes in as a cached digest), then the match end. rng.state()
-## follows them.
+## The int properties in the state hash, in hash order: the header ints, then map_version (the map
+## grid goes in as a cached digest), then the match end. rng.state() follows them.
 const HASHED_SCALARS: Array[StringName] = [
 	&"tick",
 	&"next_id",
@@ -252,11 +252,10 @@ const RULE_SCALARS: Array[StringName] = [
 	&"building_cap",
 	&"ghost_cap",
 ]
-## The other int properties: the map size, the view's rows_version, native_phases (which
-## implementation runs a phase is never state, ADR 0013 section 3), the map digest cache (it
-## follows from map_version and the grid) and the rule ints, which repeat RULE_SCALARS (a literal,
-## because `+` on typed constants gives an untyped Array; a test pins the repeat). None is in the
-## state hash.
+## The other int properties, none in the state hash: the map size, the view's rows_version,
+## native_phases (which implementation runs a phase is never state, ADR 0013 section 3), the map
+## digest cache (it follows from map_version and the grid) and the rule ints, which repeat
+## RULE_SCALARS (a literal, because `+` on typed constants gives an untyped Array; a test pins it).
 const UNHASHED_SCALARS: Array[StringName] = [
 	&"map_w",
 	&"map_h",
@@ -429,6 +428,8 @@ var type_dock_x: PackedInt32Array = PackedInt32Array()
 var type_dock_y: PackedInt32Array = PackedInt32Array()
 var type_exit_x: PackedInt32Array = PackedInt32Array()
 var type_exit_y: PackedInt32Array = PackedInt32Array()
+var faction_ids: Array[StringName] = []  # In order of first appearance in the unit types.
+var type_faction: PackedInt32Array = PackedInt32Array()  # An index into faction_ids, -1 = none.
 
 ## Per weapon, in the order of first appearance in the unit types. The index is `type_weapon`.
 var weapon_ids: Array[StringName] = []
@@ -686,6 +687,7 @@ func prepare() -> void:
 	_pad(type_dock_y, types, TYPE_PAD_V0)
 	_pad(type_exit_x, types, TYPE_PAD_V0)
 	_pad(type_exit_y, types, TYPE_PAD_V0)
+	_pad(type_faction, types, TYPE_PAD_NONE)
 	var ids: Array[StringName] = type_ids
 	var names: PackedStringArray = type_names
 	for i: int in range(names.size(), types):
