@@ -3,7 +3,9 @@ extends Resource
 ## One block of units of a scenario. Unit k (0-based) starts at
 ## origin_tile * 1000 + 500 + (k % columns, k / columns) * spacing, in milli-tiles, so a block
 ## fills rows of `columns` units from the centre of its origin tile. A `columns` below 1 is
-## read as 1.
+## read as 1. When `unit` is a BuildingDef the block is `count` buildings (World.add_building):
+## building k has its top-left tile at origin_tile + (k % columns * width, k / columns * height),
+## so the footprints sit side by side; `spacing` and `jitter` do nothing for them.
 
 @export var owner: int = 0
 @export var unit: UnitDef
