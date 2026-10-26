@@ -33,6 +33,8 @@ func test_the_dummy_def_loads_with_the_numbers_of_the_plan() -> void:
 		)
 		. is_equal([2, 2, 64, 15])
 	)
+	assert_int(_def.defend_radius_tiles).is_equal(12)
+	assert_vector(_def.guard_offset_tiles).is_equal(Vector2i(2, 2))
 	assert_array([_def.hq_type, _def.harvester_type]).is_equal([&"headquarters", &"harvester"])
 
 
@@ -77,6 +79,18 @@ func test_the_numbers_fit_the_rules_and_the_footprints() -> void:
 		var building: BuildingDef = load(UNIT_DIR + String(id) + ".tres") as BuildingDef
 		widest = maxi(widest, maxi(building.footprint.x, building.footprint.y))
 	assert_int(_def.place_stride_tiles).is_greater_equal(widest + 1)
+
+
+func test_the_guard_point_is_beside_the_headquarters_and_within_the_defend_radius() -> void:
+	# Each axis is at most half the radius, which is what keeps the point within the radius (a
+	# controller cuts a larger offset), and the point is off the Headquarters' centre.
+	var offset: Vector2i = _def.guard_offset_tiles
+	assert_bool(offset != Vector2i.ZERO).is_true()
+	assert_int(maxi(absi(offset.x), absi(offset.y)) * 2).is_less_equal(_def.defend_radius_tiles)
+	# Two tiles from the centre of the 3 x 3 Headquarters, on both axes, is the free tile between it
+	# and the first slot of the spiral (the stride 4 leaves one tile past a footprint of 3).
+	assert_vector(offset).is_equal(Vector2i(2, 2))
+	assert_int(_def.place_stride_tiles).is_equal(4)
 
 
 func test_no_player_from_2_to_4_thinks_on_the_tick_that_ends_in_a_checkpoint() -> void:

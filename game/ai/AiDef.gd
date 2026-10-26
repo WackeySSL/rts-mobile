@@ -22,6 +22,15 @@ extends Resource
 ## Tiles between two spiral slots: the largest footprint plus one free tile, so no building is
 ## walled in by the next one.
 @export var place_stride_tiles: int = 4
+## The defence (ADR 0020 section 4, plan row P83b). `defend_radius_tiles`: a seen enemy row within
+## this many tiles of the centre of one of the player's buildings calls its idle combat units out,
+## and no order of the defence sends a unit farther from its buildings than this.
+## `guard_offset_tiles`: where the units wait when no enemy is within the radius, in tiles from the
+## centre of the Headquarters; (2, 2) puts the point on the free tile between a 3 x 3 Headquarters
+## and the first slot of the spiral (south-east of it, y grows downwards). A controller cuts each
+## axis to half the radius, so the point is always within the radius.
+@export var defend_radius_tiles: int = 12
+@export var guard_offset_tiles: Vector2i = Vector2i(2, 2)
 ## Ticks between two thinks, and the tick of the period (tick % think_period) at which the first
 ## player of the ADR's numbering (player 2) thinks; each later player thinks one tick after.
 @export var think_period: int = 15

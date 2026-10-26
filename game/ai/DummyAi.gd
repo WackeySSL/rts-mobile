@@ -1,10 +1,11 @@
 class_name DummyAi
 extends AiController
-## The dummy opponent's economy (ADR 0020 section 4, plan row P83): it builds its base from a build
-## order and keeps its harvesters up, through the same Commands as a player. It reads the match
-## only through the `PlayerView` of its think, uses no random number and no bonus, and sends only
-## Commands the sim accepts: a QUEUE only for an item its queue has room for, its player can pay
-## and its buildings let it build, a PLACE only on a slot that `placement` answers OK for.
+## The dummy opponent (ADR 0020 section 4, plan rows P83 and P83b): it builds its base from a build
+## order, keeps its harvesters up and defends the base (`DummyDefence`), through the same Commands
+## as a player. It reads the match only through the `PlayerView` of its think, uses no random number
+## and no bonus, and sends only Commands the sim accepts: a QUEUE only for an item its queue has
+## room for, its player can pay and its buildings let it build, a PLACE only on a slot that
+## `placement` answers OK for, an ATTACK_MOVE only for units it has.
 ##
 ## One think (`think`):
 ## - a STRUCTURES head that is built is placed on the first slot of the spiral round the
@@ -16,9 +17,14 @@ extends AiController
 ##   fewer of than the list calls for. A wish that cannot be queued yet (no producer, no room, its
 ##   requirement not owned) is waited for, not skipped, so the order holds, and one that costs more
 ##   than the credits left keeps them for it. An item counts as had once it is owned or queued, so a
-##   lost building is wanted again at its place in the order.
+##   lost building is wanted again at its place in the order;
+## - last, its defence (`DummyDefence`, in its own file) orders its combat units: ATTACK_MOVE to an
+##   enemy within `defend_radius_tiles` of its buildings, else to the guard point beside its
+##   Headquarters.
 ## A player with no building that produces a tab (defeated, or never started) sends nothing.
 
+## The defence: its memory of the units it ordered, and the work of its last run.
+var defence: DummyDefence = null
 ## Slots asked about by the last think: at most `place_tries` (tests count the work, ADR 0020 §4).
 var placement_tries: int = 0
 
@@ -62,6 +68,7 @@ static func create(def: AiDef, player_id: int, rng: DetRandom) -> DummyAi:
 	ai._place_tries = def.place_tries
 	ai._stride = maxi(def.place_stride_tiles, 1)
 	ai._spiral = PlacementSpiral.cells(def.place_tries)
+	ai.defence = DummyDefence.create(def, player_id)
 	return ai
 
 
@@ -73,6 +80,7 @@ func think(view: PlayerView, out: Array[Command]) -> void:
 	if view.structure_ready():
 		_place(view, out)
 	_queue(view, out)
+	defence.run(view, _hq_type, out)
 
 
 ## The build order and the two types as indexes of the view's roster. An id the roster lacks, or a
