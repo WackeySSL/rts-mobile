@@ -41,7 +41,7 @@ game/sim/    deterministic simulation: pure GDScript, no Node, no rendering, no 
 game/core/   Node-side services (autoloads DetRng and CommandQueue, plus MatchRunner); no game rules
 game/view/   presentation: sprites, interpolation, effects, camera
 game/input/  touch gestures -> Command objects
-game/ui/     HUD, build sidebar, menus
+game/ui/     HUD, build panel (the band in portrait), menus
 game/ai/     opponent AI (issues Commands like a player)
 game/ads/    AdService + consent
 game/meta/   progression, save data

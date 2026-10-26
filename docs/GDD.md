@@ -94,8 +94,9 @@ shows the last known buildings.
 - Hard: better economy and unit control plus a 20% income bonus. No extra vision.
 
 ## Meta progression
-Commander rank from XP (win, loss, difficulty bonus). Unlocks: maps, Hard difficulty, team
-colours, cosmetic Headquarters skins. Everything can be unlocked without watching ads.
+Commander rank from XP (win, loss, difficulty bonus). Unlocks: maps, Hard difficulty, cosmetic
+Headquarters skins; all eight team colours are open from the start. Everything can be unlocked
+without watching ads.
 Rewarded ads offer double XP after a match and +500 starting credits for the next match.
 
 ## Monetization
