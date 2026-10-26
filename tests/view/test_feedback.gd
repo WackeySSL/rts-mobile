@@ -15,10 +15,9 @@ const PROFILES: Array[StringName] = [
 	&"android_6in_portrait",
 	&"web_tablet_portrait",
 ]
-const GROUND: Vector2 = Vector2(1281, 1377)  ## No unit near it: milli (20016, 21516).
-## The same in a portrait view, which is 720 base px wide at the narrowest and so cannot show both
-## tank 1 (x 544) and GROUND (x 1281): south of the tank block instead, milli (8500, 26500).
-const GROUND_PORTRAIT: Vector2 = Vector2(544, 1696)
+## No unit near it, right of the tank block: milli (17266, 21516). It is left of the build sidebar
+## at every profile (P85) and, in a portrait view 720 base px wide at the narrowest, at x 665.
+const GROUND: Vector2 = Vector2(1105, 1377)
 const RING_TEXTURE: String = "res://assets/art/svg/ui/selection_ring.svg"
 ## The texture's centre-line radius in px, typed again from STYLE.md (not read from UnitLayer, so
 ## that a wrong UnitLayer.RING_TEX_RADIUS_PX fails; tests/art pins the texture to the same number).
@@ -241,9 +240,7 @@ func test_orders_rings_anchor_and_box_follow_the_fingers_at_every_profile() -> v
 		_controller.selection.clear()
 		_now_ms += 5000
 		_markers._process(0.0)  # Earlier marks have expired.
-		var ground: Vector2 = (
-			GROUND_PORTRAIT if UiScale.is_portrait_size(get_window().size) else GROUND
-		)
+		var ground: Vector2 = GROUND
 		_tap(_camera.world_to_screen(ground))  # Nothing selected: nothing happens.
 		assert_int(_markers.active_count()).is_equal(0)
 		_tap(_layer.unit_screen_position(0))  # The first tap selects, and the ring is there at once.

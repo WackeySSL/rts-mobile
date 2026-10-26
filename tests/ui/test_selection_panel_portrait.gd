@@ -228,7 +228,7 @@ func test_a_tap_on_the_portrait_panel_orders_nothing_and_a_tap_on_the_ground_doe
 	_tap(_panel.get_global_rect().get_center())
 	assert_array(_sent).is_empty()
 	assert_array(_controller.selection.selected).is_equal([1, 2])
-	_tap(Vector2(600, 1300))  # Plain ground, clear of the tanks, the panel and the army bar.
+	_tap(Vector2(690, 1000))  # Plain ground, clear of the tanks, the panel, the army bar and the band.
 	assert_array(_sent).has_size(1)
 
 

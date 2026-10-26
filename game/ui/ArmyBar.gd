@@ -3,8 +3,8 @@ extends HBoxContainer
 ## The bottom-left army controls (touch-ui-rules): "All army" and groups 1-3. It reports presses and
 ## shows the counts it is given; PlayerController decides what a press does. A tap on a group asks
 ## to recall it, a hold of `settings.group_assign_ms` asks to assign the selection.
-## It sits on the safe area's bottom edge in both orientations, and in portrait directly above the
-## build band once Phase 3 gives the bottom zone a height (`HudLayout`, ADR 0015 section 5).
+## It sits on the safe area's bottom edge in landscape, and in portrait directly above the build
+## band, whose height BuildSidebar puts in `HudLayout` (ADR 0015 section 5).
 
 signal all_army_pressed
 signal group_tapped(slot: int)

@@ -23,18 +23,22 @@ const VIEW_WIDTH: Dictionary[String, float] = {
 	"web_phone_portrait": 720.0,
 }
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
-## World px with no unit near it: milli (20016, 21516), where 20015.625 rounds up.
-const GROUND: Vector2 = Vector2(1281, 1377)
-## The same upright, where the view is 720 base px wide and cannot show tank 1 (x 544) and GROUND
-## (x 1281) together: south of the tank block, milli (8500, 27500).
-const GROUND_PORTRAIT: Vector2 = Vector2(544, 1760)
+## World px with no unit near it, right of the tank block: milli (17266, 21516), where 17265.625
+## rounds up. It is left of the build sidebar at every profile (P85), flat at screen x 1105 and
+## upright, where the view is 720 base px wide, at x 665.
+const GROUND: Vector2 = Vector2(1105, 1377)
+## Where a drag's finger goes down: left of the build sidebar, with room to drag the map 784 px left
+## flat; upright 344 px, from near the right edge as before the sidebar.
+const DRAG_FROM: Vector2 = Vector2(900, 400)
+const DRAG_FROM_PORTRAIT: Vector2 = Vector2(660, 400)
 ## A box with no tank in it, in base px: left of the block flat; upright the block starts at x 104,
 ## so above it (its first row is at y 448 in the 1280 high view and lower in the taller ones).
 const EMPTY_BOX: Rect2 = Rect2(80, 300, 220, 200)
 const EMPTY_BOX_PORTRAIT: Rect2 = Rect2(80, 200, 220, 200)
-## The middle of a pinch, clear of the tanks and the HUD.
-const PINCH_CENTRE: Vector2 = Vector2(1200, 300)
-const PINCH_CENTRE_PORTRAIT: Vector2 = Vector2(360, 1000)
+## The middle of a pinch, clear of the tanks and the HUD, above the block: the fingers go 170 px
+## either side, so flat they stay left of the build sidebar, and upright above the band.
+const PINCH_CENTRE: Vector2 = Vector2(800, 100)
+const PINCH_CENTRE_PORTRAIT: Vector2 = Vector2(360, 300)
 const RED: Color = Color("E5484D")
 const IDLE: int = World.Order.IDLE
 
@@ -130,8 +134,9 @@ func test_tap_ground_450_ticks_idle_slots(profile: String, _test_parameters := P
 		var row: int = world.index_of(id)
 		assert_int(world.order[row]).override_failure_message("tank %d" % id).is_equal(IDLE)
 		spots.append(Vector2(world.pos_x[row], world.pos_y[row]))
-		# The nearest 30 slots of a lattice reach sqrt(10) * spacing, here 3795 milli.
-		assert_float(spots[-1].distance_to(Vector2(target))).is_less(spacing * 3.17)
+		# The nearest 30 slots of a lattice reach sqrt(10) * spacing, here 3795 milli; the point is
+		# near the block, so the last tanks to arrive settle up to about 100 milli further out.
+		assert_float(spots[-1].distance_to(Vector2(target))).is_less(spacing * 3.3)
 	for a: int in 30:
 		for b: int in range(a + 1, 30):
 			# P39b: separation settles tanks just under their radii sum (800), not on the lattice;
@@ -150,7 +155,7 @@ func test_double_tap_selects_visible_tanks(profile: String, _test_parameters := 
 	# 736 leave the screen, 3-5 stay), 344 upright (they start at x 104, 200 and 296).
 	var by: float = (_layer.unit_screen_position(2).x + _layer.unit_screen_position(3).x) * 0.5
 	assert_float(by).is_equal_approx(344.0 if _upright else 784.0, 0.5)
-	await _drag(Vector2(VIEW_WIDTH[profile] - 60.0, 400.0), Vector2(-by, 0.0))
+	await _drag(DRAG_FROM_PORTRAIT if _upright else DRAG_FROM, Vector2(-by, 0.0))
 	assert_float(_layer.unit_screen_position(0).x).is_less(0.0)
 	await _double_tap(_layer.unit_screen_position(3))  # Tank 4, column 3 of row 0.
 	var visible_columns: Array = [4, 5, 6, 10, 11, 12, 16, 17, 18, 22, 23, 24, 28, 29, 30]
@@ -282,7 +287,7 @@ func _assert_off_hud(at: Vector2) -> void:
 	await await_idle_frame()
 	var screen: Rect2 = get_viewport().get_visible_rect()
 	assert_bool(screen.has_point(at)).override_failure_message("%s is off screen" % at).is_true()
-	for node_name: String in ["SelectionPanel", "ArmyBar", "DevButton"]:
+	for node_name: String in ["SelectionPanel", "ArmyBar", "DevButton", "BuildSidebar"]:
 		var hud: Control = _hud(node_name)
 		var why: String = "%s is on %s %s" % [at, node_name, hud.get_global_rect()]
 		var under: bool = hud.is_visible_in_tree() and hud.get_global_rect().has_point(at)
@@ -291,11 +296,11 @@ func _assert_off_hud(at: Vector2) -> void:
 
 ## The ground point that a case taps, and the milli target that its MOVE must carry.
 func _ground() -> Vector2:
-	return GROUND_PORTRAIT if _upright else GROUND
+	return GROUND
 
 
 func _ground_milli() -> Vector2i:
-	return Vector2i(8500, 27500) if _upright else Vector2i(20016, 21516)
+	return Vector2i(17266, 21516)
 
 
 ## A new main scene on `profile` with the fake clock; Commands and buzzes are caught on their way.
