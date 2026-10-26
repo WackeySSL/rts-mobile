@@ -7,7 +7,7 @@ script = ExtResource("1_model")
 art_id = &"renew_artillery"
 faction = &"renew"
 category = &"veh"
-silhouette = "A six-wheeled blue-grey carrier with a white cab and glass front, and a turntable carrying a boxy housing and one very long thin gun."
+silhouette = "A six-wheeled blue-grey carrier with a white cab, a team band and a glass front, and a turntable carrying a boxy housing with a team band and one very long thin gun."
 mount = Vector3(-0.2, 0, 0.24)
 prims = PackedStringArray(
 "box hull bluegrey 0 0 0.1 1.2 0.5 0.14",
@@ -17,12 +17,14 @@ prims = PackedStringArray(
 "prism hull graphite 0 0.31 0 0.24 0.12 0.24 axis=y sides=8",
 "prism hull graphite -0.45 -0.31 0 0.24 0.12 0.24 axis=y sides=8",
 "prism hull graphite -0.45 0.31 0 0.24 0.12 0.24 axis=y sides=8",
-"box hull ceramic 0.42 0 0.24 0.34 0.46 0.3",
+"box hull ceramic 0.42 0 0.24 0.34 0.46 0.06",
+"box hull team 0.42 0 0.3 0.38 0.5 0.06",
+"box hull ceramic 0.42 0 0.36 0.34 0.46 0.18",
 "box hull glass 0.6 0 0.36 0.02 0.34 0.12",
-"box hull team 0.42 0 0.54 0.34 0.46 0.02",
 "prism turret bluegrey 0 0 0 0.5 0.44 0.1 sides=6",
-"box turret ceramic -0.05 0 0.1 0.4 0.34 0.2",
-"box turret team -0.05 0 0.3 0.4 0.34 0.02",
-"box turret titanium 0.6 0 0.17 0.9 0.07 0.07",
-"box turret mint 1.07 0 0.17 0.04 0.07 0.07"
+"box turret ceramic -0.05 0 0.1 0.4 0.34 0.06",
+"box turret team -0.05 0 0.16 0.44 0.38 0.06",
+"box turret ceramic -0.05 0 0.22 0.4 0.34 0.08",
+"box turret titanium 0.615 0 0.17 0.89 0.07 0.07",
+"box turret mint 1.08 0 0.17 0.04 0.07 0.07"
 )

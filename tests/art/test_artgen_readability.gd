@@ -2,9 +2,9 @@ extends GdUnitTestSuite
 ## What the generated blockouts look like when rasterised (plan row P99, svg-art-style "Drawing
 ## rules"): every frame is a valid picture of the size its canvas says, the default view of every
 ## type (d06 for the Derrick League, d10 for the Lumen Accord, the one view of a building) has a
-## team zone of a few percent of its pixels and no more than a fifth, and shrunk to 32 px in
-## greyscale it still has a body and a spread of tones, so it can be told from the ground. The
-## look itself is the gallery's, on Michael's phone.
+## team zone of a few percent of its pixels and no more than a fifth (that it is not a roof plate
+## is test_artgen_plates.gd), and shrunk to 32 px in greyscale it still has a body and a spread of
+## tones, so it can be told from the ground. The look itself is the gallery's, on Michael's phone.
 
 const SCALE: float = 0.5  ## 2x art at zoom 1: one tile is 64 px.
 const SIDE_PX: int = 32
@@ -40,7 +40,7 @@ func test_every_frame_is_a_picture_of_the_size_its_canvas_says() -> void:
 				)
 
 
-func test_the_default_view_of_every_type_has_a_team_zone_that_is_not_a_plate() -> void:
+func test_the_default_view_of_every_type_has_a_team_share_of_3_to_20_percent() -> void:
 	for path: String in ArtGen.model_paths():
 		var model: ArtModel = load(path) as ArtModel
 		var picture: Image = _default_picture(model)

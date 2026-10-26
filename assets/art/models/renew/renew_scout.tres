@@ -17,10 +17,11 @@ prims = PackedStringArray(
 "box hull bluegrey 0 0 0.08 0.76 0.44 0.14",
 "wedge hull bluegrey 0.46 0 0.08 0.16 0.44 0.14",
 "box hull graphite -0.15 0 0.22 0.26 0.3 0.02",
-"box hull team 0.1 0 0.22 0.16 0.44 0.02",
+"box hull team 0.1 0 0.22 0.18 0.44 0.02",
 "prism hull titanium -0.3 0 0.22 0.05 0.05 0.5 sides=6",
 "box hull mint -0.3 0 0.72 0.08 0.08 0.06",
-"prism turret bluegrey 0 0 0 0.3 0.26 0.1 sides=6",
-"box turret titanium 0.3 0 0.03 0.3 0.04 0.04",
-"prism turret team 0 0 0.1 0.18 0.15 0.02 sides=6"
+"prism turret bluegrey 0 0 0 0.3 0.26 0.04 sides=6",
+"prism turret team 0 0 0.04 0.3 0.26 0.06 sides=6",
+"prism turret bluegrey 0 0 0.1 0.24 0.2 0.04 sides=6",
+"box turret titanium 0.3 0 0.03 0.3 0.04 0.04"
 )

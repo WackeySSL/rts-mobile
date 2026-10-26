@@ -101,10 +101,12 @@ func test_a_turret_sits_at_its_mount_and_a_frame_carries_the_triad_of_its_row() 
 	var signal_hull: Image = (rig.get_node("Hull") as Sprite2D).texture.get_image()
 	var arktisk: Node2D = page.get_node("Scroll/Content/Grass/Arktisk/Dir06")
 	var arktisk_hull: Image = (arktisk.get_node("Hull") as Sprite2D).texture.get_image()
-	assert_bool(_has_colour(signal_hull, SIGNAL_KEYS[0])).is_true()
-	assert_bool(_has_colour(signal_hull, ARKTISK_KEYS[0])).is_false()
-	assert_bool(_has_colour(arktisk_hull, ARKTISK_KEYS[0])).is_true()
-	assert_bool(_has_colour(arktisk_hull, SIGNAL_KEYS[0])).is_false()
+	# The mid tone is the left face of the team band; its top is a thin ledge that a texture at
+	# gallery size blurs into the edge.
+	assert_bool(_has_colour(signal_hull, SIGNAL_KEYS[1])).is_true()
+	assert_bool(_has_colour(signal_hull, ARKTISK_KEYS[1])).is_false()
+	assert_bool(_has_colour(arktisk_hull, ARKTISK_KEYS[1])).is_true()
+	assert_bool(_has_colour(arktisk_hull, SIGNAL_KEYS[1])).is_false()
 	# Grass and sand show the same frame: one texture.
 	var sand_rig: Node2D = page.get_node("Scroll/Content/Sand/Signal/Dir06")
 	assert_object((sand_rig.get_node("Hull") as Sprite2D).texture).is_same(
@@ -152,6 +154,39 @@ func test_everything_stays_on_its_ground_at_the_base_size_and_under_the_two_corn
 		assert_float(content.custom_minimum_size.y).is_greater(300.0)
 		page.get_node("Next").pressed.emit()
 		await await_idle_frame()
+
+
+## The Iso page lists the models and loads them at run time and uses the generator's global classes,
+## and the dev menu (so the gallery) is on in the web preview and in the debug APK: no export preset
+## may leave out `tools/` or `assets/art/models/` (or the frames the page reads) while it does. The
+## page stops reading them when P113's `IsoAtlas` and P99b's `index.tres` replace the reads; the
+## exclusion of those folders waits for that, or for a preset that the dev menu is off in.
+func test_no_export_preset_leaves_out_what_the_iso_page_reads() -> void:
+	var presets: ConfigFile = ConfigFile.new()
+	assert_int(presets.load("res://export_presets.cfg")).is_equal(OK)
+	var needed: Array[String] = [
+		"tools/artgen/ArtGen.gd",
+		"assets/art/models/fossil/headquarters.tres",
+		"assets/art/iso/fossil/bld/headquarters_hull.svg",
+	]
+	var filtered: int = 0
+	for section: String in presets.get_sections():
+		if not presets.has_section_key(section, "exclude_filter"):
+			continue
+		filtered += 1
+		var filters: PackedStringArray = String(presets.get_value(section, "exclude_filter")).split(
+			",", false
+		)
+		for filter: String in filters:
+			for path: String in needed:
+				(
+					assert_bool(path.matchn(filter.strip_edges()))
+					. override_failure_message(
+						"%s: exclude_filter '%s' leaves out %s" % [section, filter, path]
+					)
+					. is_false()
+				)
+	assert_int(filtered).is_greater(0)
 
 
 func _open_gallery(base_size: Vector2 = BASE) -> Control:

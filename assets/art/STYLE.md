@@ -84,14 +84,21 @@ ADR 0023 section 5; the canvas's Spec 02. One light for the whole game, from the
 - **Team colour** is 4 to 17 % of the pixels of a default view in the blockouts (`tests/art` pins
   3 to 20 %); the art rows aim at 8 to 12 %: bands, cranes, stripes, light strips and lamps seen
   from above, never a large plate. A band is a slab slightly larger than the wall it wraps and
-  stands between two wall segments, so no roof is a team plate.
+  stands between two wall segments, so no roof is a team plate: a turret has a ring between two
+  segments, a cab a band, a soldier a chest band, never a disc or a cap on top. `tests/art` pins
+  it (`test_artgen_plates.gd`): a team primitive is a roof plate when it is flat, its top face is
+  open (less than a quarter of it has anything on it) and it covers 30 % of the top it rests on or
+  is larger than 0.2 square tiles; a band, a stripe across a deck, an upright lintel and a ring
+  round a barrel or a drum are not.
 
 ## Generated art
 ADR 0023 section 5; plan rows P99 (the generator and the blockouts) and P99b (shadows, turrets with
-sheets, squads, `IsoSheetDef`, item icons, the ring as an ellipse). Run
-`bash scripts/gen-art.sh --all` (or `--model assets/art/models/fossil/heavy_tank.tres`; `--check`
-writes nothing and fails on a difference); never edit a generated frame, change its model and
-generate again. The generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
+sheets, squads, `IsoSheetDef`, item icons, the ring as an ellipse). Run `bash scripts/gen-art.sh`
+(no argument: it regenerates every model and writes only the files that differ, so a second run
+writes nothing; exit 0 done, 1 an invalid model or a script error, 2 an argument, 3 no Godot); never
+edit a generated frame, change its model and generate again. P99b adds `--model PATH` (one model)
+and `--check` (write nothing, fail on a difference), as the plan's split trigger of P99 says. The
+generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
 - **A model** is `assets/art/models/<faction>/<type_id>.tres`, an `ArtModel`: `art_id`, `faction`
   (`fossil` or `renew`), `category` (`veh`, `inf`, `bld`), `footprint` (buildings), `silhouette`
   (one line in words, written before the model), `mount` (the turret or head pivot) and `prims`,
@@ -110,12 +117,13 @@ generate again. The generator is GDScript in `tools/artgen/` and runs in the pin
   a building body), each with a "Keep File" `.import` (`importer="keep"`): the export carries the
   SVG text and the bake reads it. A frame is one comment line (the model it came from), the root
   with the canvas, one `g` with the 2 px edge and one `polygon` per face; hex colours in upper
-  case, coordinates with one decimal. At most 28 KB (the blockouts are under 8 KB).
+  case, coordinates with one decimal. At most 28 KB (the blockouts are under 14 KB).
 - **Tests** (`tests/art/test_artgen*.gd`): two runs give identical bytes, every committed frame
   equals a fresh run and none is left over, the directions are complete, only `svg`, `g` and
   `polygon` are used, every part has one canvas, a building is anchored at its back corner, the key
-  band holds, every type has a team zone that is not a plate, and each default view has a body and
-  a spread of tones at 32 px in greyscale.
+  band holds, every type has a team share of 3 to 20 % in its default view and no team primitive
+  is a roof plate, and each default view has a body and a spread of tones at 32 px in greyscale.
+  `test_gen_art_cli.gd` pins the exit codes of `scripts/gen-art.sh` and `tools/artgen/gen_art.gd`.
 - **The key band** (ADR 0023 section 5): a colour other than the faction's three key colours must
   not have an HSV hue within 20 degrees of a key colour's hue and a saturation of at least 0.30.
   The Derrick League's band is 1.6 to 45.3 degrees, the Lumen Accord's 170.3 to 213.0. Greys and
@@ -140,10 +148,13 @@ canvas fall in a key band and were replaced: rust #8E5A38 by **#6E5D50**, lamp a
 | mid tone | #D5DBDC | #414A51 | #8A9398 | #B4C8CF | #7D8B96 | #A8F5B0 |
 
 Derrick League look: poured concrete, riveted steel, rust, olive drab vehicles, gas spheres, flare
-stacks, drilling masts, warning stripes and warm lamps; wedges and trapezoids. Lumen Accord look:
+stacks, open drilling derricks, warning stripes and warm lamps; wedges and trapezoids. Lumen Accord look:
 white ceramic, graphite, glass, blue-grey vehicles with dark patches, hexagonal and rounded
 panels, slim masts, mint status lights. No geography, flag, star or real insignia (ADR 0023
-decision 1).
+decision 1). **No spire:** a tall structure is an open lattice (legs and girders), a round stack or a
+slim pole, never one solid dark four-sided column that tapers to a point and carries a light or a
+team cap at its tip; that silhouette is another game's tower (CLAUDE.md, Legal). The Deep Bore
+(`fossil_strike`) is the open derrick, the Rigworks' stack is round and steel.
 
 ### Blockouts of Phase 3 (P99)
 Boxes, wedges, prisms and spheres sized by size class or footprint with a team band each, so every
@@ -170,7 +181,10 @@ building 1 (+ 16 head for the defence); 304 frames in all.
 
 The gallery's **Iso** page (the last page) steps through them: every direction on grass and sand in
 the Signal and the Arktisk triad, then the default view at zoom 0.75, 1 and 1.5. Until the
-per-match atlas exists (P113) it rasterises the frames itself.
+per-match atlas exists (P113) it rasterises the frames itself. It lists and loads the models and
+uses the generator's classes at run time, and the dev menu is on in the web preview and the debug
+APK, so no export preset may exclude `tools/` or `assets/art/models/` until P99b's `index.tres` and
+P113's `IsoAtlas` replace those reads (`test_art_gallery_iso.gd` pins it).
 
 ## Scale
 - 1 tile = 64 px in game at zoom 1. Author at 2x: 1 tile = 128 px in the SVG.
@@ -1162,4 +1176,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-10-22 | v1.3 (P91, art-director): the six buildings with their layer contract, the ore cells and their levels, the two ghost patterns and the ghost look, two dirt tones (new), the Build and Ground gallery pages. |
 | 2026-10-22 | v1.4 (P92, art-director): the heavy tank, the artillery and the harvester, the tab, item and glyph icons with the glyph contract (import scale 1.0, new) and the seat of the eight map glyphs (new), the two rally flags, the Vehicles and Icons gallery pages, the reason glyph on the Ground page's ghost. |
 | 2026-10-26 | v1.5 (P91b, art-director, Michael chose direction B on 2026-10-26, ADR 0022): the six buildings and the gun head redrawn in the oblique 3/4 view on new canvases (the footprint plus 96 px at 2x), the five building item icons, Look, Scale, Palette (A's muted materials), Drawing rules (thin edges, team marks about 8 to 12 %), Technical rules (defs, radialGradient, clipPath, use; 28 KB), Buildings (projection, canvas, anchor, the cut, the pivot), Ghosts (in the projection), the building row of Health bars, the Build page as a scrolling list with the camera zooms and the Seam page. |
-| 2026-10-26 | v1.6 (P99, art-director, ADR 0023 accepted by Michael 2026-10-26): Projection, Light and Generated art (the generator `tools/artgen/`, `scripts/gen-art.sh`, the model format, the files, the key band, the eight triads, the faction palettes as the key band changed them, the 28 blockout models and their 304 frames), the gallery's Iso page. Older sections that disagree are superseded as P101 to P105 replace their art. |
+| 2026-10-26 | v1.6 (P99, art-director, ADR 0023 accepted by Michael 2026-10-26): Projection, Light and Generated art (the generator `tools/artgen/`, `scripts/gen-art.sh`, the model format, the files, the key band, the eight triads, the faction palettes as the key band changed them, the 28 blockout models and their 304 frames, an open derrick for the Deep Bore, team rings, bands and no roof plates), the gallery's Iso page. Older sections that disagree are superseded as P101 to P105 replace their art. |

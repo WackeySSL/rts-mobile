@@ -19,7 +19,8 @@ prims = PackedStringArray(
 "box hull team -0.12 0 0.24 0.1 0.44 0.02",
 "prism hull iron -0.34 0.14 0.24 0.06 0.06 0.5 sides=6",
 "box hull lamp -0.34 0.14 0.74 0.08 0.08 0.08",
-"box turret olive 0 0 0 0.32 0.3 0.12",
-"box turret steel 0.32 0 0.03 0.32 0.05 0.05",
-"box turret team 0 0 0.12 0.14 0.3 0.02"
+"box turret olive 0 0 0 0.32 0.3 0.05",
+"box turret team 0 0 0.05 0.32 0.3 0.05",
+"box turret olive 0 0 0.1 0.26 0.24 0.05",
+"box turret steel 0.32 0 0.03 0.32 0.05 0.05"
 )

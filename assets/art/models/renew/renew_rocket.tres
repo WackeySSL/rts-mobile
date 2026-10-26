@@ -7,26 +7,29 @@ script = ExtResource("1_model")
 art_id = &"renew_rocket"
 faction = &"renew"
 category = &"inf"
-silhouette = "Three blue-grey launcher crews in an arrowhead, each carrying a long graphite tube whose tip is team-coloured."
+silhouette = "Three blue-grey launcher crews in an arrowhead, each in a team-coloured chest band, carrying a long graphite tube whose tip is team-coloured."
 prims = PackedStringArray(
 "box hull graphite 0.18 0 0 0.12 0.12 0.14",
-"box hull bluegrey 0.18 0 0.14 0.16 0.18 0.16",
+"box hull bluegrey 0.18 0 0.14 0.16 0.18 0.04",
+"box hull team 0.18 0 0.18 0.16 0.18 0.06",
+"box hull bluegrey 0.18 0 0.24 0.16 0.18 0.06",
 "box hull ceramic 0.18 0 0.3 0.12 0.12 0.1",
-"box hull team 0.18 0 0.4 0.12 0.12 0.03",
 "box hull team 0.07 0 0.16 0.06 0.12 0.12",
 "box hull graphite 0.14 0.13 0.26 0.36 0.07 0.07",
 "box hull team 0.36 0.13 0.26 0.08 0.07 0.07",
 "box hull graphite -0.12 0.2 0 0.12 0.12 0.14",
-"box hull bluegrey -0.12 0.2 0.14 0.16 0.18 0.16",
+"box hull bluegrey -0.12 0.2 0.14 0.16 0.18 0.04",
+"box hull team -0.12 0.2 0.18 0.16 0.18 0.06",
+"box hull bluegrey -0.12 0.2 0.24 0.16 0.18 0.06",
 "box hull ceramic -0.12 0.2 0.3 0.12 0.12 0.1",
-"box hull team -0.12 0.2 0.4 0.12 0.12 0.03",
 "box hull team -0.23 0.2 0.16 0.06 0.12 0.12",
 "box hull graphite -0.16 0.33 0.26 0.36 0.07 0.07",
 "box hull team 0.06 0.33 0.26 0.08 0.07 0.07",
 "box hull graphite -0.12 -0.2 0 0.12 0.12 0.14",
-"box hull bluegrey -0.12 -0.2 0.14 0.16 0.18 0.16",
+"box hull bluegrey -0.12 -0.2 0.14 0.16 0.18 0.04",
+"box hull team -0.12 -0.2 0.18 0.16 0.18 0.06",
+"box hull bluegrey -0.12 -0.2 0.24 0.16 0.18 0.06",
 "box hull ceramic -0.12 -0.2 0.3 0.12 0.12 0.1",
-"box hull team -0.12 -0.2 0.4 0.12 0.12 0.03",
 "box hull team -0.23 -0.2 0.16 0.06 0.12 0.12",
 "box hull graphite -0.16 -0.07 0.26 0.36 0.07 0.07",
 "box hull team 0.06 -0.07 0.26 0.08 0.07 0.07"
