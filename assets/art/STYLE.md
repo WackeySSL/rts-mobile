@@ -695,7 +695,8 @@ A terrain row at the top shows a patch of 8 x 2 map tiles at 64 px in a dark fra
 edge shows on both grounds: grass, scrub, rock, water and sand. Team A's and team B's
 squads stand on the two scrub tiles, and the second row of the patch is under the explored fog alpha.
 A button at the top right (120x120 base px, labelled with the page it is on) turns the pages: **Units**
-(everything above), **Build**, **Ground**, **Vehicles** and **Icons**, and the Back button leaves
+(everything above), **Build**, **Ground**, **Vehicles**, **Icons** and the not approved **Probe**
+(see "Style probe"), and the Back button leaves
 from any of them. The new pages are built by `art_gallery.gd` and start hidden, so the Units page is
 as it was.
 - **Build** shows the six buildings at scale 1 on grass (left) and sand (right). Each ground has four
@@ -723,6 +724,9 @@ as it was.
   icon is a `TextureRect` named by its file in PascalCase (`TabInfantry`, `ItemHeavyTank`,
   `GlyphReasonTooFar`); a flag is a rig `Node2D` (`RallyInfantryA`) with `Hull` and `Team`. All of it
   sits clear of the two corner buttons, which cover 24 to 144 px from the top and the left or right.
+- **Probe** (2026-10-26, not approved) shows the refinery, the heavy tank and a ground patch in three
+  directions side by side; it is described under "Style probe" and built by
+  `game/view/art_gallery_probe.gd`. It is not a pattern for new assets.
 
 To add an asset:
 - Add its layers as one rig `Node2D` under each of the four slots (grass A, grass B, sand A, sand B).
@@ -736,6 +740,94 @@ To add an asset:
 - The Back button (120x120 base px, top-left) and the Android back request both return to the dev
   menu. While the gallery is open the script switches `SceneTree.quit_on_go_back` off (its default
   is on, which would quit the app) and restores it on exit.
+
+## Style probe (2026-10-26, not approved)
+Michael checked P91 and P92 on his phone (2026-10-26): the look is "too square and too toy-like" and
+should be "more true to nature". He named an old commercial game as his reference. We do not
+imitate it (see Legal in CLAUDE.md); the wish is translated into original qualities: a muted natural
+military palette, real materials (poured concrete, corrugated steel, tarmac, sandbags, canvas, rust,
+dirt), believable proportions and detail density, soft shading and cast shadows that show height,
+weathering, and small team markings (stripes, bands, pennants, panels) instead of large team plates.
+
+This is a probe, not a redraw: the same three subjects in three directions, so Michael can choose.
+Subjects: the refinery (3x3, its hopper at the middle of the south edge as in P91), the heavy tank
+(it still turns freely, so it stays a top-down sprite) and a ground patch (grass, sand and one ore
+cell). Files: `assets/art/svg/probe/` (12 SVG, import scale 0.5). To judge: the gallery's sixth
+page, **Probe**: three labelled columns at zoom 1, team A on grass and team B on sand, the 3x3
+footprint marked by a white frame, the tanks at two headings. No existing art file and no rule in
+this guide is changed by the probe.
+
+- **A, Realistic top-down.** The camera, canvas sizes and layer contract of today, a new
+  treatment. The refinery (`a_refinery_*`, 384x384) stands on a ragged tarmac apron with cut corners,
+  a dirt spill and cracks, not on a square pad: a long corrugated hall with two roof slopes, a
+  penthouse and a covered conveyor, three tanks with domed lids, bolt rows and a catwalk, pipe runs,
+  a gold-filled hopper under a grating, sandbags, barrels and a tarpaulin. There is no outline: a thin
+  dark edge, a soft dark rim where each volume meets the ground, and a cast shadow to the south-east
+  whose length follows the height. The heavy tank (`a_heavy_tank_*`, 128x128): a hull half again as
+  long as wide, link tracks under bolted skirts, a cast turret, a long barrel with a bore evacuator.
+  Its shadow is a short throw plus a ring of ambient darkness, so the hull can face any way; the
+  turret has none and is shaded symmetrically. The ground tiles (`a_grass_a/b`, `a_sand_a/b`,
+  `a_ore`, 128x128) have a flat edge band so tiles join, with the texture inside. Team marks:
+  painted stripes on the hall's eaves, a band round each tank, a pennant, a tarpaulin and a barrel lid;
+  on the tank a stripe on each skirt and a patch on the bow and on the engine deck. Cost: less team
+  colour (see the table), so ownership reads from the bands and stripes, weaker at 32 px; a cast
+  shadow longer than a few px cannot live in a hull that turns, so a longer one for tanks wants a
+  separate shadow sprite that does not turn (a small view change). No other view code changes.
+- **B, Oblique 3/4 buildings.** The tank and the ground are A's; only the building changes. The
+  refinery (`b_refinery_*`, 384x480) is drawn in an oblique projection: a ground point (x, y) is at
+  (x, y + 96) and a point z px up is z px higher, so the roof is the footprint lifted by the wall
+  height and the south wall shows below it (roller door, windows, pipe run, gutter); the tanks are
+  cylinders, the elevator housing leans on the wall, the east and west walls are edge-on. The
+  sprite's bottom 384x384 is the footprint and the top 96 px (48 px in game) rises above it; the
+  light from the top left leaves the south walls in shade. Cost, in the view code (not written):
+  1. *Anchor*: the sprite's bottom edge sits on the footprint's south edge (a Sprite2D offset of
+     minus half the extra height, 48 px in game, instead of centred), and it covers 0.75 tile
+     north of the footprint.
+  2. *Picking, selection and bars*: a tap on the roof above the footprint must pick the building,
+     so the pick shape is the footprint plus the overhang; the selection frame stays on the
+     footprint (it shows the blocked cells); the health bar sits on the roof's top edge.
+  3. *Draw order by row*: a building must draw over what stands north of it and under what stands
+     south of it. The view draws one z band per batch group (ADR 0012 section 6), so all units
+     draw over all buildings and a tank north of the refinery would stand on its roof. Buildings
+     and units must sort by the row of their south edge, or the units behind an overhang be hidden.
+  4. *Fog and ghosts*: the overhang lies over the tiles north of the footprint, which can be fogged
+     while the building is seen, and the placement ghost's wash and frame must stay on the footprint
+     while the sprite shows above it. Both need a check.
+  Art cost: every building is a new drawing in a new shape, about twice the work of a top-down one.
+- **C, Current.** The P91 and P92 files, unchanged, shown for comparison (its ground is the flat
+  colours and the `ore_3a` tile of today).
+
+| Measured (scratch script, imported scale 0.5) | C current | A realistic | B oblique |
+| --- | --- | --- | --- |
+| Refinery, visible team share (shadow left out) | 22.7 % | 10.4 % | 7.0 % |
+| Heavy tank, team share at turret 0 / 90 / 180 / 270 | 29.2 / 22.9 / 29.3 / 22.9 % | 11.8 / 7.9 / 10.8 / 7.8 % | as A |
+| Refinery, mean luminance of the 6 px edge band (grass 127, sand 186) | 74 | 82 | 88 |
+| Heavy tank, gun outside the body at 32 px (long x thick) | 4 x 6 px | 4 x 4 px | as A |
+| Refinery hull file | 4.4 KB | 18.2 KB | 25.2 KB |
+
+At 32 px for the longest side, in greyscale on grass and sand, every refinery is still itself: A as
+three round lids over a wide hall with the bright hopper at the south edge, B as two tall cylinders
+over a long roof with the hopper below it, C as before. Both tanks read as hull, turret and gun, and
+the team marks of A and B stay visible in colour at 32 px, as thin stripes, arcs and rings. At
+64 px per tile every subject of A and B reads at a glance. The team layers hold only greys
+(R = G = B), so the run-time tint and the view code work for either direction.
+
+Technical findings (Godot 4.7.2, ThorVG at import; every probe file imports without a warning).
+Linear and radial gradients, clip paths, `use`, group opacity and dash arrays render. `pattern`
+draws nothing, so a file that used one would look empty in the game, and a mask renders only with
+solid fills (a mask filled with a gradient hides everything). The texture is therefore made of dash
+arrays and gradients. The probe files use `defs`, `radialGradient`, `clipPath` and `use`, which the
+technical rules above do not list, reference only with `href="#id"`, and use no filter, mask,
+pattern, text or image. They may be up to 28 KB (the rule above says 20 KB). The probe's own rules
+are held by `tests/art/test_style_probe.gd`; `tests/art/test_art_assets.gd` leaves `probe/` out.
+
+If Michael chooses A or B, these rules above would change (nothing is changed yet): the Look
+paragraph ("not photoreal" stays, "flat" goes), the palette (A's muted values: tarmac #4A4F53 to
+#62676A, concrete #8D8F88, corrugated steel #5D6B68 to #A0ACA8, olive drab #46532F to #78885B, rust
+#8F5731), the drawing rules (the 3 px outline becomes a thin dark edge plus a contact rim and a cast
+shadow), the element list and the size limit, the team share (20-35 % becomes about 8-12 %, in marks),
+and for B the Buildings section (sprite box and anchor). The probe files would then be the pattern,
+and P91 and P92 would be redrawn in the chosen direction.
 
 ## Reskin
 Michael, 2026-10-15: the game's look must stay replaceable as a whole without touching game rules
@@ -882,3 +974,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-10-19 | P58 review (art-director): palette row for the HUD panel backdrop; Reskin item 3 says what the UI Theme holds and what the dp step scales. No rule changed. |
 | 2026-10-22 | v1.3 (P91, art-director): the six buildings with their layer contract, the ore cells and their levels, the two ghost patterns and the ghost look, two dirt tones (new), the Build and Ground gallery pages. |
 | 2026-10-22 | v1.4 (P92, art-director): the heavy tank, the artillery and the harvester, the tab, item and glyph icons with the glyph contract (import scale 1.0, new) and the seat of the eight map glyphs (new), the two rally flags, the Vehicles and Icons gallery pages, the reason glyph on the Ground page's ghost. |
+| 2026-10-26 | Style probe (art-director, Michael's "too square, too toy-like"): the refinery, the heavy tank and a ground patch in three directions (A realistic top-down, B oblique 3/4 buildings, C current), the Probe gallery page. Not approved; no rule changed. |

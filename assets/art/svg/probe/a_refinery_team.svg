@@ -1,0 +1,42 @@
+<!-- Style probe A, refinery, team layer: white and grey only, tinted at run time; small painted marks, not plates. -->
+<!-- Shape: a painted stripe along each hall eave, a banded ring round each tank, a pennant on a mast, a tarpaulin over the crates, a lid on one barrel and stripes on the conveyor and its transfer house. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="384" viewBox="0 0 384 384">
+  <!-- painted stripes along the eaves: dark edge first, white panels on top, so the joints show as dark -->
+  <g stroke-linejoin="round">
+    <rect x="34" y="285" width="256" height="10" fill="#4D4D4D"/>
+    <rect x="100" y="198" width="190" height="9" fill="#4D4D4D"/>
+    <g fill="#FFFFFF">
+      <rect x="35.5" y="286.5" width="60" height="7"/><rect x="98" y="286.5" width="62" height="7"/><rect x="163" y="286.5" width="9" height="7"/><rect x="212" y="286.5" width="76" height="7"/>
+      <rect x="101.5" y="199.5" width="86" height="6"/><rect x="190" y="199.5" width="72" height="6"/><rect x="265" y="199.5" width="23" height="6"/>
+    </g>
+    <g fill="#BFBFBF"><rect x="35.5" y="291" width="60" height="2.5"/><rect x="98" y="291" width="62" height="2.5"/><rect x="212" y="291" width="76" height="2.5"/></g>
+  </g>
+  <!-- banded rings round the three tanks -->
+  <g fill="none">
+    <circle cx="104" cy="104" r="54.5" stroke="#4D4D4D" stroke-width="10"/>
+    <circle cx="104" cy="104" r="54.5" stroke="#FFFFFF" stroke-width="7" stroke-dasharray="52 5"/>
+    <circle cx="262" cy="76" r="30" stroke="#4D4D4D" stroke-width="6.5"/>
+    <circle cx="262" cy="76" r="30" stroke="#FFFFFF" stroke-width="4" stroke-dasharray="28 3.4"/>
+    <circle cx="320" cy="146" r="30" stroke="#4D4D4D" stroke-width="6.5"/>
+    <circle cx="320" cy="146" r="30" stroke="#FFFFFF" stroke-width="4" stroke-dasharray="28 3.4"/>
+  </g>
+  <!-- pennant on the mast at the north-west corner of the roof -->
+  <g stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round">
+    <path d="M44 203 C56 199 66 207 78 203 C86 200 92 202 98 203 L98 218 C92 217 86 216 78 219 C66 223 56 215 44 218 Z" fill="#FFFFFF"/>
+    <path d="M44 210 C56 206 66 214 78 210 C86 207 92 209 98 210 L98 213 C92 212 86 211 78 214 C66 218 56 210 44 213 Z" fill="#BFBFBF" stroke="none"/>
+  </g>
+  <!-- tarpaulin over the crates, with its folds and lashings -->
+  <g stroke-linejoin="round">
+    <rect x="278" y="320" width="58" height="36" rx="3" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5"/>
+    <path d="M284 326 L330 350 M284 350 L330 326" fill="none" stroke="#BFBFBF" stroke-width="3"/>
+    <path d="M306 322 V354 M282 324 H332 M282 352 H332" fill="none" stroke="#4D4D4D" stroke-width="1.5" opacity="0.7"/>
+  </g>
+  <!-- barrel lid -->
+  <circle cx="46" cy="330" r="6.5" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5"/>
+  <!-- conveyor and transfer house -->
+  <g fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5">
+    <rect x="178" y="268" width="28" height="7"/>
+    <rect x="164" y="168" width="56" height="7"/>
+  </g>
+  <rect x="165" y="173" width="54" height="2" fill="#BFBFBF"/>
+</svg>

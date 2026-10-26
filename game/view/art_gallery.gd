@@ -21,16 +21,17 @@ extends Control
 ## `_add_rings_and_atlas` adds a ring row (the team A tank with its selection ring at the three
 ## zooms, at the 6-inch phone's ring radius) and the effects atlas at scale 1 to each ground.
 ##
-## The button at the top right turns the pages: Units (all of the above), Build, Ground, Vehicles
-## and Icons. Build (`_add_buildings_page`) shows the six buildings at gameplay zoom in all four
-## slots, grass and sand, team A and team B. Ground (`_add_ground_page`) shows the ore cells by
+## The button at the top right turns the pages: Units (all of the above), Build, Ground, Vehicles,
+## Icons and Probe. Build (`_add_buildings_page`) shows the six buildings at gameplay zoom in all
+## four slots, grass and sand, team A and team B. Ground (`_add_ground_page`) shows the ore cells by
 ## level, a mixed ore field, and the ghost looks of STYLE.md ("Ghosts"), the one that does not fit
 ## with its reason glyph. Vehicles
 ## (`_add_vehicles_page`) shows the light tank beside the heavy tank, the artillery and the
 ## harvester at gameplay zoom, on grass and sand, in both team colours. Icons (`_add_icons_page`)
 ## shows the sidebar's tab and item icons and the HUD glyphs at their size in dp on a dark HUD
-## panel, and the glyphs and rally flags that sit on the map on grass and sand. All are built in
-## code and start hidden.
+## panel, and the glyphs and rally flags that sit on the map on grass and sand. Probe (built by
+## `art_gallery_probe.gd`) is the style probe: the refinery, the heavy tank and a ground patch in
+## three directions side by side, none of them approved. All are built in code and start hidden.
 ##
 ## To add an asset: add its layers as a rig on both backgrounds, put the rig in a team group and
 ## keep the layer names. See assets/art/STYLE.md.
@@ -91,7 +92,8 @@ const FRAME_COLOR: Color = Color("1C2127")
 const SQUAD_TILE_OFFSET_PX: float = 16.0  ## A squad pair fills one tile: 2 x 32 px.
 const TERRAIN_ROW_TOP: float = 0.02
 ## The pages the button at the top right cycles through; the button shows the page it is on.
-const PAGES: Array[String] = ["Units", "Build", "Ground", "Vehicles", "Icons"]
+const PAGES: Array[String] = ["Units", "Build", "Ground", "Vehicles", "Icons", "Probe"]
+const Probe: GDScript = preload("res://game/view/art_gallery_probe.gd")
 const BUILDING_ART: String = "res://assets/art/svg/buildings/%s_%s.svg"
 ## The six buildings (STYLE.md, "Buildings"), by file name. The small row holds the 2x2 buildings
 ## and the 1x1 turret, the large row the 3x3 ones. Only the defence turret has a `Turret` layer.
@@ -231,6 +233,7 @@ var _buildings_page: Control = null
 var _ground_page: Control = null
 var _vehicles_page: Control = null
 var _icons_page: Control = null
+var _probe_page: Control = null
 
 @onready var _back_button: Button = %BackButton
 @onready var _page_button: Button = %PageButton
@@ -258,6 +261,8 @@ func _ready() -> void:
 	_add_ground_page()
 	_add_vehicles_page()
 	_add_icons_page()
+	_probe_page = _page_root("ProbePage")
+	Probe.build(_probe_page)
 	_tint_team_layers(TEAM_A_GROUP, team_a_color)
 	_tint_team_layers(TEAM_B_GROUP, team_b_color)
 	for node: Node in find_children(TURRET_LAYER, "Sprite2D", true, false):
@@ -828,6 +833,7 @@ func _show_page(index: int) -> void:
 	_ground_page.visible = index == 2
 	_vehicles_page.visible = index == 3
 	_icons_page.visible = index == 4
+	_probe_page.visible = index == 5
 	_page_button.text = PAGES[index]
 
 

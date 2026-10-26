@@ -48,6 +48,7 @@ func test_the_back_and_page_buttons_stay_above_every_page() -> void:
 	assert_int(gallery.get_node("GroundPage").get_index()).is_less(last - 1)
 	assert_int(gallery.get_node("VehiclesPage").get_index()).is_less(last - 1)
 	assert_int(gallery.get_node("IconsPage").get_index()).is_less(last - 1)
+	assert_int(gallery.get_node("ProbePage").get_index()).is_less(last - 1)
 	for button: Control in [gallery.get_node("%PageButton"), gallery.get_node("%BackButton")]:
 		assert_vector(button.size).is_greater_equal(Vector2(120, 120))
 
@@ -280,6 +281,7 @@ func _assert_page(gallery: Control, page: int) -> void:
 	assert_bool(gallery.get_node("GroundPage").visible).is_equal(page == 2)
 	assert_bool(gallery.get_node("VehiclesPage").visible).is_equal(page == 3)
 	assert_bool(gallery.get_node("IconsPage").visible).is_equal(page == 4)
+	assert_bool(gallery.get_node("ProbePage").visible).is_equal(page == 5)
 
 
 func _turn_to(gallery: Control, page: int) -> void:

@@ -1,0 +1,35 @@
+<!-- Style probe B, refinery, team layer: white and grey only, tinted at run time; same 384 x 480 canvas as the hull. -->
+<!-- Shape: a stripe along the top of the south wall, a banded ring round each tank, a pennant on the mast, the tarpaulin over the crates, a stripe on the elevator housing and one barrel lid. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="480" viewBox="0 0 384 480">
+  <!-- stripe along the top of the south wall -->
+  <rect x="30" y="342" width="294" height="10" fill="#4D4D4D"/>
+  <g fill="#FFFFFF">
+    <rect x="31.5" y="343.5" width="62" height="7"/><rect x="96" y="343.5" width="62" height="7"/><rect x="161" y="343.5" width="10" height="7"/><rect x="214" y="343.5" width="53" height="7"/><rect x="270" y="343.5" width="52" height="7"/>
+  </g>
+  <g fill="#BFBFBF"><rect x="31.5" y="349" width="62" height="1.5"/><rect x="96" y="349" width="62" height="1.5"/><rect x="214" y="349" width="53" height="1.5"/><rect x="270" y="349" width="52" height="1.5"/></g>
+  <!-- bands on the cylinders: the front half of a ring inside the silhouette, drawn as an arc with panel joints -->
+  <g fill="none">
+    <path d="M44 176 A60 60 0 0 0 164 176" stroke="#4D4D4D" stroke-width="12"/>
+    <path d="M44 176 A60 60 0 0 0 164 176" stroke="#FFFFFF" stroke-width="9" stroke-dasharray="24 4"/>
+    <path d="M231 148 A31 31 0 0 0 293 148" stroke="#4D4D4D" stroke-width="8"/>
+    <path d="M231 148 A31 31 0 0 0 293 148" stroke="#FFFFFF" stroke-width="5.5" stroke-dasharray="14 3"/>
+    <path d="M289 218 A31 31 0 0 0 351 218" stroke="#4D4D4D" stroke-width="8"/>
+    <path d="M289 218 A31 31 0 0 0 351 218" stroke="#FFFFFF" stroke-width="5.5" stroke-dasharray="14 3"/>
+  </g>
+  <!-- pennant at the top of the mast on the roof edge -->
+  <g stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round">
+    <path d="M44 277 C56 272 68 282 82 277 C92 274 100 276 106 277 L106 296 C100 295 92 293 82 297 C68 302 56 292 44 297 Z" fill="#FFFFFF"/>
+    <path d="M44 286 C56 281 68 291 82 286 C92 283 100 285 106 286 L106 289 C100 288 92 286 82 290 C68 295 56 285 44 289 Z" fill="#BFBFBF" stroke="none"/>
+  </g>
+  <!-- elevator housing stripe -->
+  <g fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5"><rect x="175" y="372" width="34" height="9"/></g>
+  <rect x="176" y="379" width="32" height="1.5" fill="#BFBFBF"/>
+  <!-- tarpaulin on the crates -->
+  <g stroke-linejoin="round">
+    <rect x="278" y="418" width="58" height="26" rx="2" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5"/>
+    <path d="M284 424 L330 438 M284 438 L330 424" fill="none" stroke="#BFBFBF" stroke-width="3"/>
+    <path d="M306 420 V442 M282 422 H332" fill="none" stroke="#4D4D4D" stroke-width="1.5" opacity="0.7"/>
+  </g>
+  <!-- barrel lid -->
+  <circle cx="46" cy="426" r="6.5" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5"/>
+</svg>

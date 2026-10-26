@@ -1,0 +1,16 @@
+<!-- Style probe A, heavy tank, team layer: white and grey only, tinted at run time; narrow painted marks on the skirts, bow and rear deck, clear of the turret ring. -->
+<!-- Shape: a stripe of three panels along each side skirt, a recognition patch on the bow plate and one on the engine deck. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <g stroke-linejoin="round">
+    <rect x="36" y="35.5" width="49" height="8" fill="#4D4D4D"/>
+    <rect x="36" y="84.5" width="49" height="8" fill="#4D4D4D"/>
+    <g fill="#FFFFFF">
+      <rect x="37.5" y="37" width="14" height="5"/><rect x="53.5" y="37" width="14" height="5"/><rect x="69.5" y="37" width="14" height="5"/>
+      <rect x="37.5" y="86" width="14" height="5"/><rect x="53.5" y="86" width="14" height="5"/><rect x="69.5" y="86" width="14" height="5"/>
+    </g>
+    <g fill="#BFBFBF"><rect x="37.5" y="41" width="46" height="1"/><rect x="37.5" y="90" width="46" height="1"/></g>
+    <rect x="95" y="60" width="9" height="8" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5"/>
+    <rect x="18" y="56" width="12" height="16" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5"/>
+    <rect x="19" y="69" width="10" height="2" fill="#BFBFBF"/>
+  </g>
+</svg>

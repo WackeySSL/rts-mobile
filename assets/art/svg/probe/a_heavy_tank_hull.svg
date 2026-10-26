@@ -1,0 +1,88 @@
+<!-- Style probe A, heavy tank, hull layer: faces east, drawn first; symmetric ambient shadow so the hull may turn freely, one short cast shadow to the south-east. -->
+<!-- Silhouette: a long low hull, half again as long as it is wide, with dark link tracks under bolted side skirts, a sloped bow plate with an off-centre driver hatch, a louvred engine deck and stowage on the skirts. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="deck" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6a7a4d"/><stop offset="1" stop-color="#46532f"/></linearGradient>
+    <linearGradient id="fendN" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#78885b"/><stop offset="1" stop-color="#55633d"/></linearGradient>
+    <linearGradient id="fendS" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5d6b44"/><stop offset="1" stop-color="#46522f"/></linearGradient>
+    <radialGradient id="mud"><stop offset="0" stop-color="#5a4731" stop-opacity="0.75"/><stop offset="1" stop-color="#5a4731" stop-opacity="0"/></radialGradient>
+    <radialGradient id="dust"><stop offset="0" stop-color="#b8aa84" stop-opacity="0.4"/><stop offset="1" stop-color="#b8aa84" stop-opacity="0"/></radialGradient>
+    <radialGradient id="soot"><stop offset="0" stop-color="#0f1110" stop-opacity="0.6"/><stop offset="1" stop-color="#0f1110" stop-opacity="0"/></radialGradient>
+    <g id="body">
+      <path d="M16 27 H92 Q102 27 102 35 V43 Q102 47 98 47 H12 Q8 47 8 43 V35 Q8 27 16 27 Z"/>
+      <path d="M16 101 H92 Q102 101 102 93 V85 Q102 81 98 81 H12 Q8 81 8 85 V93 Q8 101 16 101 Z"/>
+      <polygon points="12,44 88,44 102,46 108,52 108,76 102,82 88,84 12,84"/>
+    </g>
+  </defs>
+
+  <!-- shadows: a ring of ambient darkness that turns with the hull, then a short throw to the south-east -->
+  <g fill="none" stroke="#0d1112" stroke-linejoin="round">
+    <g opacity="0.07" stroke-width="14"><use href="#body"/></g>
+    <g opacity="0.1" stroke-width="8"><use href="#body"/></g>
+  </g>
+  <!--shadow-->
+  <g fill="#0d1112" stroke="#0d1112" stroke-linejoin="round">
+    <g opacity="0.1" stroke-width="6"><use href="#body" x="4" y="5"/></g>
+    <g opacity="0.2" stroke-width="0"><use href="#body" x="4" y="5"/></g>
+  </g>
+  <!--/shadow-->
+
+  <!-- tracks: dark base, cross links, a worn highlight on the outer edge -->
+  <path d="M16 27 H92 Q102 27 102 35 V43 Q102 47 98 47 H12 Q8 47 8 43 V35 Q8 27 16 27 Z" fill="#2a2d2f" stroke="#15181a" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M16 101 H92 Q102 101 102 93 V85 Q102 81 98 81 H12 Q8 81 8 85 V93 Q8 101 16 101 Z" fill="#2a2d2f" stroke="#15181a" stroke-width="2" stroke-linejoin="round"/>
+  <line x1="10" y1="31" x2="100" y2="31" stroke="#5a5f62" stroke-width="6" stroke-dasharray="2 4" opacity="0.75"/>
+  <line x1="10" y1="97" x2="100" y2="97" stroke="#5a5f62" stroke-width="6" stroke-dasharray="2 4" opacity="0.75"/>
+  <line x1="12" y1="28.5" x2="96" y2="28.5" stroke="#8b9094" stroke-width="1.2" opacity="0.7"/>
+  <ellipse cx="22" cy="29" rx="14" ry="4" fill="url(#mud)"/>
+  <ellipse cx="94" cy="29" rx="9" ry="3.5" fill="url(#mud)"/>
+  <ellipse cx="30" cy="99" rx="16" ry="4" fill="url(#mud)"/>
+  <ellipse cx="92" cy="99" rx="11" ry="3.5" fill="url(#mud)"/>
+
+  <!-- side skirts: bolted plates over the inner part of each track, with a sloped front flap -->
+  <path d="M14 34 H86 L98 38 V47 H14 Q10 47 10 43 V38 Q10 34 14 34 Z" fill="url(#fendN)" stroke="#232a19" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M14 94 H86 L98 90 V81 H14 Q10 81 10 85 V90 Q10 94 14 94 Z" fill="url(#fendS)" stroke="#232a19" stroke-width="2" stroke-linejoin="round"/>
+  <polyline points="12,36 85,36 96,39.5" fill="none" stroke="#a2b280" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+  <line x1="11" y1="39" x2="11" y2="43" stroke="#a2b280" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+  <line x1="14" y1="35" x2="86" y2="35" stroke="#d8ceb0" stroke-width="1.5" stroke-dasharray="1 9 1 17 2 11" opacity="0.5"/>
+  <line x1="14" y1="93" x2="86" y2="93" stroke="#d8ceb0" stroke-width="1.5" stroke-dasharray="1 13 1 8 2 19" opacity="0.4"/>
+  <line x1="19" y1="46" x2="94" y2="46" stroke="#1d2314" stroke-width="1.8" stroke-dasharray="1.5 7.5" opacity="0.65"/>
+  <line x1="19" y1="82" x2="94" y2="82" stroke="#1d2314" stroke-width="1.8" stroke-dasharray="1.5 7.5" opacity="0.65"/>
+  <ellipse cx="52" cy="40" rx="30" ry="5" fill="url(#dust)"/>
+  <!-- stowage: two jerrycans and a tool box on the north skirt, a rolled tarpaulin on the south -->
+  <g stroke="#1b1f14" stroke-width="1.5" stroke-linejoin="round">
+    <rect x="15" y="36" width="8" height="9" rx="1.5" fill="#7b4e2f"/>
+    <rect x="25" y="36" width="8" height="9" rx="1.5" fill="#6e4a30"/>
+    <rect x="82" y="37" width="11" height="8" rx="1.5" fill="#566243"/>
+    <rect x="15" y="83" width="30" height="8" rx="4" fill="#3d4a2c"/>
+  </g>
+  <g stroke="#b8a77f" stroke-width="1" opacity="0.7"><line x1="17" y1="38.5" x2="21" y2="38.5"/><line x1="27" y1="38.5" x2="31" y2="38.5"/></g>
+  <g stroke="#1b1f14" stroke-width="1.5"><line x1="22" y1="83" x2="22" y2="91"/><line x1="38" y1="83" x2="38" y2="91"/></g>
+  <line x1="18" y1="85" x2="43" y2="85" stroke="#728257" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+
+  <!-- hull deck between the skirts -->
+  <polygon points="12,46 88,46 102,48 108,54 108,74 102,80 88,82 12,82" fill="url(#deck)" stroke="#1b2113" stroke-width="2" stroke-linejoin="round"/>
+  <polyline points="15,79 15,49 87,49 101,51 105,55" fill="none" stroke="#9aaa78" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+  <!-- engine deck at the rear: louvres and two exhausts -->
+  <rect x="16" y="51" width="26" height="26" rx="2" fill="#363d29" stroke="#161a10" stroke-width="1.5"/>
+  <line x1="19" y1="64" x2="39" y2="64" stroke="#13160e" stroke-width="24" stroke-dasharray="2.5 3" opacity="0.8"/>
+  <line x1="19" y1="64" x2="39" y2="64" stroke="#8c9970" stroke-width="24" stroke-dasharray="0.7 4.8" opacity="0.35"/>
+  <circle cx="11" cy="55" r="3.8" fill="#2b2f2c" stroke="#101211" stroke-width="1.5"/>
+  <circle cx="11" cy="73" r="3.8" fill="#2b2f2c" stroke="#101211" stroke-width="1.5"/>
+  <ellipse cx="21" cy="55" rx="13" ry="5" fill="url(#soot)"/>
+  <ellipse cx="21" cy="73" rx="13" ry="5" fill="url(#soot)"/>
+  <!-- turret ring -->
+  <circle cx="64" cy="64" r="26" fill="#2d3324" stroke="#12150d" stroke-width="2"/>
+  <circle cx="64" cy="64" r="22" fill="none" stroke="#6f7e53" stroke-width="1.5" opacity="0.6"/>
+  <!-- sloped bow plate: two facets, driver hatch off the centre line, tow eyes and lamps -->
+  <polygon points="88,46 102,48 108,54 108,64 88,64" fill="#76865a" stroke="#1b2113" stroke-width="1.5" stroke-linejoin="round"/>
+  <polygon points="88,64 108,64 108,74 102,80 88,82" fill="#4a5736" stroke="#1b2113" stroke-width="1.5" stroke-linejoin="round"/>
+  <polyline points="90,49 101,50.5 106,55" fill="none" stroke="#abbb8c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+  <rect x="91" y="53" width="10" height="8" rx="2" fill="#4b5535" stroke="#12150d" stroke-width="1.5"/>
+  <rect x="93" y="55" width="6" height="4" fill="#1d2118"/>
+  <g fill="#3a4029" stroke="#12150d" stroke-width="1.5"><rect x="106" y="57" width="4" height="3.5" rx="1"/><rect x="106" y="68.5" width="4" height="3.5" rx="1"/></g>
+  <g fill="#d8d0a8" stroke="#12150d" stroke-width="1"><circle cx="96" cy="41.5" r="2.4"/><circle cx="96" cy="86.5" r="2.4"/></g>
+  <path d="M91 70 L103 70 M91 74 L101 74" stroke="#1d2314" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+  <!-- weld seams, scratches and a few paint chips -->
+  <path d="M46 50 H86 M46 78 H86 M44 52 V76" fill="none" stroke="#1d2314" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
+  <path d="M50 52 l6 -1 M78 76 l5 2 M30 80 l4 -2" fill="none" stroke="#c8bd96" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
+</svg>

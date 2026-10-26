@@ -1,0 +1,41 @@
+<!-- Style probe A, heavy tank, turret layer: faces east, pivot at the canvas centre, drawn last; no cast shadow and shading mirrored about the gun line so it turns freely. -->
+<!-- Silhouette: a broad cast turret bulging at the sides with a boxy stowage bustle behind it, a thick mantlet and one long barrel with a bore evacuator and a ringed muzzle; the cupola sits off the gun line. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="tur" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#434f31"/><stop offset="0.3" stop-color="#6a7a4d"/><stop offset="0.5" stop-color="#76865a"/><stop offset="0.7" stop-color="#6a7a4d"/><stop offset="1" stop-color="#434f31"/></linearGradient>
+    <linearGradient id="gun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#23282a"/><stop offset="0.35" stop-color="#6b7377"/><stop offset="0.5" stop-color="#848d91"/><stop offset="0.7" stop-color="#5b6366"/><stop offset="1" stop-color="#23282a"/></linearGradient>
+    <linearGradient id="bus" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f3823"/><stop offset="0.5" stop-color="#4f5d39"/><stop offset="1" stop-color="#2f3823"/></linearGradient>
+  </defs>
+  <!-- barrel, evacuator, muzzle ring -->
+  <rect x="94" y="60" width="31" height="8" fill="url(#gun)" stroke="#12150f" stroke-width="1.5"/>
+  <rect x="102" y="57.5" width="9" height="13" rx="1.5" fill="url(#gun)" stroke="#12150f" stroke-width="1.5"/>
+  <rect x="117" y="56.5" width="9" height="15" rx="1.5" fill="url(#gun)" stroke="#12150f" stroke-width="1.5"/>
+  <line x1="121.5" y1="58" x2="121.5" y2="70" stroke="#0a0c0a" stroke-width="1.5"/>
+  <line x1="97" y1="62.5" x2="102" y2="62.5" stroke="#c5ccce" stroke-width="1" opacity="0.6"/>
+  <!-- stowage bustle -->
+  <rect x="26" y="50" width="16" height="28" rx="3" fill="url(#bus)" stroke="#12150f" stroke-width="2" stroke-linejoin="round"/>
+  <line x1="29" y1="64" x2="39" y2="64" stroke="#12150f" stroke-width="24" stroke-dasharray="1.5 3.5" opacity="0.5"/>
+  <path d="M29 53 H39 M29 75 H39" fill="none" stroke="#9aaa78" stroke-width="1" opacity="0.6"/>
+  <!-- turret body: a cast, rounded hexagon -->
+  <path d="M38 55 Q38 46 48 44 L76 44 Q91 46 95 57 L95 71 Q91 82 76 84 L48 84 Q38 82 38 73 Z" fill="url(#tur)" stroke="#12150f" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M43 57 Q43 50 50 49 L75 49 Q87 51 89 59 L89 69 Q87 77 75 79 L50 79 Q43 78 43 71 Z" fill="none" stroke="#9aaa78" stroke-width="1" opacity="0.45"/>
+  <path d="M46 51 L74 51 M46 77 L74 77" stroke="#b6c496" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+  <!-- weld seam and smoke dischargers on both cheeks -->
+  <path d="M62 48 V80" fill="none" stroke="#1d2314" stroke-width="1" opacity="0.4"/>
+  <g fill="#262c1d" stroke="#0d0f0a" stroke-width="1">
+    <rect x="76" y="46" width="4" height="3"/><rect x="82" y="47" width="4" height="3"/>
+    <rect x="76" y="79" width="4" height="3"/><rect x="82" y="78" width="4" height="3"/>
+  </g>
+  <!-- mantlet -->
+  <path d="M91 53 H99 Q100 53 100 55 V73 Q100 75 99 75 H91 Z" fill="url(#gun)" stroke="#12150f" stroke-width="2" stroke-linejoin="round"/>
+  <line x1="95" y1="56" x2="95" y2="72" stroke="#0d0f0a" stroke-width="1" stroke-dasharray="1.5 2.5" opacity="0.7"/>
+  <!-- commander's cupola off the gun line, loader hatch on the other side -->
+  <circle cx="54" cy="55" r="7" fill="#55633d" stroke="#12150f" stroke-width="2"/>
+  <circle cx="54" cy="55" r="7" fill="none" stroke="#12150f" stroke-width="3" stroke-dasharray="1 2.4" opacity="0.5"/>
+  <circle cx="54" cy="55" r="4" fill="#262c1d" stroke="#0d0f0a" stroke-width="1"/>
+  <path d="M54 55 L63 50" stroke="#1d2024" stroke-width="2" stroke-linecap="round"/>
+  <rect x="62" y="68" width="11" height="8" rx="2" fill="#6a7a4d" stroke="#12150f" stroke-width="1.5"/>
+  <line x1="64" y1="70" x2="71" y2="70" stroke="#b6c496" stroke-width="1" opacity="0.7"/>
+  <circle cx="48" cy="75" r="2" fill="#23282a"/>
+  <circle cx="64" cy="64" r="1.5" fill="#12150f"/>
+</svg>

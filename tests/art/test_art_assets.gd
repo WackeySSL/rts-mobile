@@ -77,6 +77,8 @@ func after() -> void:
 func test_every_svg_follows_the_technical_rules() -> void:
 	var files: Array[String] = FileScan.list_files("res://assets/art/svg", ".svg")
 	assert_int(files.size()).is_greater_equal(9)
+	# The style probe (not approved, STYLE.md) has its own relaxed rules, held by test_style_probe.gd.
+	files = files.filter(func(path: String) -> bool: return not path.contains("/svg/probe/"))
 	var tag: RegEx = RegEx.create_from_string("<(?!svg)([a-zA-Z]+)")
 	var canvas: RegEx = RegEx.create_from_string(
 		'<svg[^>]* width="(\\d+)" height="(\\d+)" viewBox="0 0 (\\d+) (\\d+)"'
@@ -492,7 +494,9 @@ func test_the_gallery_terrain_row_is_inside_and_clear_of_the_back_button_atlases
 		for ground: String in ["Grass", "Sand"]:
 			avoid.append((gallery.get_node(ground + "/EffectsAtlas") as Control).get_global_rect())
 		for label: Node in gallery.find_children("*", "Label", true, false):
-			avoid.append((label as Control).get_global_rect())
+			# Only the labels on show: the other pages are hidden and lay out on their own.
+			if (label as Control).is_visible_in_tree():
+				avoid.append((label as Control).get_global_rect())
 		for sprite: Node in _shown_sprites(gallery):
 			if not row.is_ancestor_of(sprite):
 				avoid.append(_box(sprite))

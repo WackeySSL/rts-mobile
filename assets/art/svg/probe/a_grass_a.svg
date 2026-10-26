@@ -1,0 +1,37 @@
+<!-- Style probe A, ground tile: grass, variant a. One opaque tile, no team colour; the edge band is flat so tiles join without a seam. -->
+<!-- Silhouette: a square of muted olive turf mottled with lighter and darker patches, short blades, a few tufts, a worn dirt scuff and pebbles. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <radialGradient id="lt"><stop offset="0" stop-color="#8ea766" stop-opacity="0.6"/><stop offset="1" stop-color="#8ea766" stop-opacity="0"/></radialGradient>
+    <radialGradient id="dk"><stop offset="0" stop-color="#3d4c29" stop-opacity="0.62"/><stop offset="1" stop-color="#3d4c29" stop-opacity="0"/></radialGradient>
+    <radialGradient id="dirt"><stop offset="0" stop-color="#7d6a49" stop-opacity="0.65"/><stop offset="1" stop-color="#7d6a49" stop-opacity="0"/></radialGradient>
+    <path id="tf" d="M0 0 L-5 -9 M0 0 L-1.5 -12 M0 0 L2 -11 M0 0 L6 -8" fill="none" stroke-width="1.6" stroke-linecap="round"/>
+  </defs>
+  <rect width="128" height="128" fill="#6a7c4c"/>
+  <ellipse cx="32" cy="34" rx="28" ry="19" fill="url(#lt)"/>
+  <ellipse cx="94" cy="28" rx="24" ry="16" fill="url(#dk)"/>
+  <ellipse cx="72" cy="82" rx="30" ry="21" fill="url(#lt)"/>
+  <ellipse cx="24" cy="102" rx="22" ry="15" fill="url(#dk)"/>
+  <ellipse cx="106" cy="108" rx="19" ry="14" fill="url(#lt)"/>
+  <ellipse cx="62" cy="48" rx="14" ry="9" fill="url(#dk)"/>
+  <ellipse cx="100" cy="64" rx="13" ry="8" fill="url(#dirt)"/>
+  <g fill="none" stroke-linecap="butt">
+    <line x1="14" y1="8" x2="14" y2="120" stroke="#46572f" stroke-width="1.6" stroke-dasharray="4 22 3 31 4 17"/>
+    <line x1="27" y1="8" x2="27" y2="120" stroke="#8aa161" stroke-width="1.6" stroke-dasharray="3 19 4 27 3 13" stroke-dashoffset="9"/>
+    <line x1="39" y1="8" x2="39" y2="120" stroke="#46572f" stroke-width="1.6" stroke-dasharray="4 29 3 14 4 24" stroke-dashoffset="20"/>
+    <line x1="52" y1="8" x2="52" y2="120" stroke="#8aa161" stroke-width="1.6" stroke-dasharray="3 23 4 18 3 33" stroke-dashoffset="4"/>
+    <line x1="66" y1="8" x2="66" y2="120" stroke="#46572f" stroke-width="1.6" stroke-dasharray="4 16 3 28 4 21" stroke-dashoffset="14"/>
+    <line x1="79" y1="8" x2="79" y2="120" stroke="#8aa161" stroke-width="1.6" stroke-dasharray="3 26 4 15 3 30" stroke-dashoffset="31"/>
+    <line x1="92" y1="8" x2="92" y2="120" stroke="#46572f" stroke-width="1.6" stroke-dasharray="4 20 3 34 4 12" stroke-dashoffset="2"/>
+    <line x1="105" y1="8" x2="105" y2="120" stroke="#8aa161" stroke-width="1.6" stroke-dasharray="3 17 4 25 3 22" stroke-dashoffset="18"/>
+    <line x1="116" y1="8" x2="116" y2="120" stroke="#46572f" stroke-width="1.6" stroke-dasharray="4 31 3 19 4 15" stroke-dashoffset="26"/>
+    <line x1="10" y1="20" x2="118" y2="44" stroke="#3a4a28" stroke-width="1.4" stroke-dasharray="3 21 2 33 3 17" opacity="0.8"/>
+    <line x1="10" y1="76" x2="118" y2="100" stroke="#9cb374" stroke-width="1.4" stroke-dasharray="2 27 3 19 2 31" opacity="0.8"/>
+  </g>
+  <g stroke="#3b4b28"><use href="#tf" x="22" y="48"/><use href="#tf" x="84" y="42"/><use href="#tf" x="46" y="108"/><use href="#tf" x="110" y="92"/></g>
+  <g stroke="#a5bc7c"><use href="#tf" x="58" y="26"/><use href="#tf" x="16" y="84"/><use href="#tf" x="88" y="112"/><use href="#tf" x="104" y="24"/></g>
+  <g fill="#a39a82" stroke="#4b4636" stroke-width="1">
+    <ellipse cx="44" cy="68" rx="3" ry="2"/><ellipse cx="96" cy="86" rx="2.4" ry="1.8"/><ellipse cx="20" cy="22" rx="2.2" ry="1.6"/><ellipse cx="74" cy="112" rx="2.6" ry="1.8"/>
+  </g>
+  <g fill="#d8d2b4" opacity="0.8"><circle cx="38" cy="30" r="1.1"/><circle cx="60" cy="96" r="1.1"/><circle cx="110" cy="52" r="1.1"/></g>
+</svg>

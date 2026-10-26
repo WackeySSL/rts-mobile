@@ -1,0 +1,58 @@
+<!-- Style probe A, ground tile: one ore cell. One opaque tile, no team colour; the edge band is plain dirt so it joins grass and sand. -->
+<!-- Silhouette: a square of dark packed dirt and gravel with one large faceted gold-brown ore lump, two medium ones and a few small chips scattered round it, each throwing a short shadow. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <radialGradient id="dk"><stop offset="0" stop-color="#2f2416" stop-opacity="0.6"/><stop offset="1" stop-color="#2f2416" stop-opacity="0"/></radialGradient>
+    <radialGradient id="lt"><stop offset="0" stop-color="#9a8561" stop-opacity="0.55"/><stop offset="1" stop-color="#9a8561" stop-opacity="0"/></radialGradient>
+    <g id="chunk">
+      <polygon points="-24,6 -16,-18 4,-26 2,-2" fill="#f0d160"/>
+      <polygon points="4,-26 24,-12 26,10 2,-2" fill="#cf9f1e"/>
+      <polygon points="26,10 8,24 -14,22 -24,6 2,-2" fill="#8f6a10"/>
+      <polygon points="-18,-8 -12,-16 -2,-20 -6,-8" fill="#fbeaa0" opacity="0.8"/>
+      <path d="M2 -2 L-24 6 M2 -2 L4 -26 M2 -2 L26 10" fill="none" stroke="#5e4308" stroke-width="1.2" opacity="0.6"/>
+      <polygon points="-24,6 -16,-18 4,-26 24,-12 26,10 8,24 -14,22" fill="none" stroke="#241a06" stroke-width="2" stroke-linejoin="round" opacity="0.9"/>
+    </g>
+    <polygon id="sil" points="-24,6 -16,-18 4,-26 24,-12 26,10 8,24 -14,22"/>
+  </defs>
+  <rect width="128" height="128" fill="#6f5c42"/>
+  <ellipse cx="34" cy="30" rx="28" ry="18" fill="url(#lt)"/>
+  <ellipse cx="96" cy="100" rx="26" ry="17" fill="url(#lt)"/>
+  <ellipse cx="96" cy="30" rx="22" ry="14" fill="url(#dk)"/>
+  <ellipse cx="30" cy="102" rx="22" ry="14" fill="url(#dk)"/>
+  <ellipse cx="62" cy="68" rx="40" ry="30" fill="url(#dk)"/>
+  <g fill="none" stroke-linecap="butt">
+    <line x1="8" y1="14" x2="120" y2="14" stroke="#9b8662" stroke-width="2.4" stroke-dasharray="1.5 15 2.5 23 1.5 11 2 29" opacity="0.65"/>
+    <line x1="8" y1="40" x2="120" y2="40" stroke="#2f2416" stroke-width="2.4" stroke-dasharray="2 19 1.5 13 2.5 26 1.5 17" opacity="0.6"/>
+    <line x1="8" y1="62" x2="120" y2="62" stroke="#9b8662" stroke-width="2.4" stroke-dasharray="1.5 24 2.5 12 1.5 31 2 16" opacity="0.6"/>
+    <line x1="8" y1="88" x2="120" y2="88" stroke="#2f2416" stroke-width="2.4" stroke-dasharray="2.5 14 1.5 27 2 18 1.5 21" opacity="0.6"/>
+    <line x1="8" y1="114" x2="120" y2="114" stroke="#9b8662" stroke-width="2.4" stroke-dasharray="1.5 21 2.5 15 1.5 28 2 12" opacity="0.65"/>
+  </g>
+  <g fill="#8d795a" stroke="#2f2416" stroke-width="1"><ellipse cx="18" cy="52" rx="3.4" ry="2.4"/><ellipse cx="106" cy="52" rx="3" ry="2.2"/><ellipse cx="24" cy="118" rx="2.6" ry="1.8"/><ellipse cx="112" cy="118" rx="3" ry="2"/><ellipse cx="60" cy="14" rx="2.6" ry="1.8"/></g>
+  <!--shadow-->
+  <g fill="#0f0a04" stroke="#0f0a04" stroke-linejoin="round">
+    <g opacity="0.14" stroke-width="8">
+      <g transform="translate(6 7)"><use href="#sil" transform="translate(58 62) rotate(-8)"/></g>
+      <g transform="translate(4 5)">
+        <use href="#sil" transform="translate(98 40) rotate(20) scale(0.5)"/>
+        <use href="#sil" transform="translate(94 94) rotate(-30) scale(0.46)"/>
+        <use href="#sil" transform="translate(28 96) rotate(40) scale(0.3)"/>
+        <use href="#sil" transform="translate(32 30) rotate(10) scale(0.26)"/>
+      </g>
+    </g>
+    <g opacity="0.28" stroke-width="0">
+      <g transform="translate(6 7)"><use href="#sil" transform="translate(58 62) rotate(-8)"/></g>
+      <g transform="translate(4 5)">
+        <use href="#sil" transform="translate(98 40) rotate(20) scale(0.5)"/>
+        <use href="#sil" transform="translate(94 94) rotate(-30) scale(0.46)"/>
+        <use href="#sil" transform="translate(28 96) rotate(40) scale(0.3)"/>
+        <use href="#sil" transform="translate(32 30) rotate(10) scale(0.26)"/>
+      </g>
+    </g>
+  </g>
+  <!--/shadow-->
+  <use href="#chunk" transform="translate(58 62) rotate(-8)"/>
+  <use href="#chunk" transform="translate(98 40) rotate(20) scale(0.5)"/>
+  <use href="#chunk" transform="translate(94 94) rotate(-30) scale(0.46)"/>
+  <use href="#chunk" transform="translate(28 96) rotate(40) scale(0.3)"/>
+  <use href="#chunk" transform="translate(32 30) rotate(10) scale(0.26)"/>
+</svg>
