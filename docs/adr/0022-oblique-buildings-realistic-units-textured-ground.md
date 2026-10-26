@@ -38,9 +38,20 @@ changes.
     `tests/view/test_fog_layer.gd` (`Z_BARS` 110 ... `Z_MARKERS` 150), `tests/view/test_health_bars.gd`
     and `tests/ui/test_perf_arena.gd` pin these values.
   - `FogLayer` is one RGBA8 texel of black per tile, filtered linearly (a soft edge one tile wide):
-    alpha 255 unexplored, `explored_alpha` 140 explored, 0 seen. The projectile, effect and bar
-    layers and `UnitLayer` do not rely on it to hide anything: each skips what the local player does
-    not see (`FogLayer.is_seen`, `FogLayer.covers`, `UnitLayer.is_shown`).
+    alpha 255 unexplored, `explored_alpha` 140 explored, 0 seen. `UnitLayer` and the bar and
+    projectile layers skip what the local player does not see (`FogLayer.is_seen`,
+    `FogLayer.covers`, `UnitLayer.is_shown`), and `EffectsLayer` filters each effect as it is born,
+    with two items that do rely on the fog drawn over them (z 140 over 130):
+    - a rifle `TRACER` (the one hitscan weapon) is added when **either** end is seen
+      (`EffectsLayer._add_shot`; ADR 0010 §2's status note of 2026-10-21;
+      `tests/view/test_fog_hiding.gd`'s
+      `test_a_shot_shows_its_tracer_when_either_end_is_seen_and_its_flash_when_the_shooter_is`).
+      It runs from the muzzle (13 px from the shooter) to the target, so its unseen part lies over
+      tiles that the fog blacks (unexplored) or dims (explored). Today's data narrows the case
+      (rifle `range` 4000 is under every `sight_range`, 5000 or more), but an armed neutral
+      (owner 0), a third party or a later weapon with range above sight still draws a line into the
+      dark that points at an unseen shooter or target;
+    - an own unit's death always shows (ADR 0010 §2), and its tile, dark in that tick, dims it.
   - `MapView` bakes the terrain into one image of `bake_px_per_tile` 8 texels per tile from its
     `colors` and `tiles` exports and draws it as one rect (`draw_count()` 1 in
     `tests/scenes/test_main_scene.gd`). `tests/project/test_cross_file_facts.gd` (qa-engineer, P52)
@@ -148,9 +159,14 @@ changes.
     `Unit<id>` in row order), `UnitLayer.layer_z` and its tests do not change.
   - The **fog moves under the roofs** (140 to 110), because a roof must show the fog of its own
     footprint, not of the cells north of it that its overhang lies over (§4); the roof layer applies
-    the footprint's fog itself. Nothing that was hidden by the fog becomes visible: every layer above
-    it already skips what the local player does not see. What changes is the soft one-tile edge,
-    which no longer darkens bars, projectiles and effects at the edge of vision.
+    the footprint's fog itself. Bars, projectiles, flashes, puffs and bursts are each tested at the
+    tile of their point, so above the fog they show nothing of an unseen tile; the pixels of a quad
+    centred on a seen tile may now reach over a dark neighbour, which tells nothing new. **One item
+    would leak, the tracer** (Context): above the fog its unseen part would show where an unseen
+    shooter or target is. So the tracer is **clipped to the seen tiles** (§4, P84). An own unit's
+    death burst is no longer dimmed on its dark tile; it shows the player's own unit and nothing
+    hidden, so that is accepted. What else changes is the soft one-tile edge, which no longer
+    darkens bars, projectiles and effects at the edge of vision.
   - **Bars move over the roofs** (110 to 112), so a unit behind a roof still shows its bar when it is
     selected or hit, and a building's bar and frame sit on its roof.
   - Projectiles and effects stay at 120 and 130, over the roofs: a shell in flight is above the
@@ -205,6 +221,17 @@ changes.
   quad per 64 px of the box) over the **whole sprite box**, because the remembered picture, roof
   included, is what the dots mark. Never a bar, never pickable.
 - `reveal_enemies` (the perf arena) draws every building as seen, as `UnitLayer` does.
+- **Tracers are clipped to the seen tiles** (P84, touch-ux-dev; `EffectsLayer` is that owner's
+  file), because the fog no longer covers the effects (§2). The birth rule of ADR 0010 §2 stays: a
+  tracer is added when either end is seen, so fire from the dark still shows its direction. A
+  tracer with both ends seen is drawn whole. A tracer with one end seen is drawn from that end
+  towards the other and ends at the last point whose tile the local player sees in that tick's fog,
+  found at birth by stepping along the line from the seen end in steps of 16 px (a quarter tile),
+  at most the weapon's range in px / 16 + 1 steps, at event cadence and without allocation; the
+  slot keeps the clipped end, so `_draw` does not change. `reveal_enemies` draws it whole.
+  `tests/view/test_fog_hiding.gd` gains the case: a shooter on a dark tile three tiles east of a
+  seen target gives a tracer whose far end lies on a seen tile within 16 px of the dark one, and
+  a shooter and target both seen give the whole line; the existing either-end test keeps its counts.
 
 ### 5. Placement ghost (ADR 0019 §2)
 - The ghost is the building's whole sprite in the same projection (no cut: it is above every unit
@@ -293,9 +320,9 @@ changes.
   sprite box, overhangs included (the P50c rule).
 
 ## Consequences
-- Every Phase 3 view row that draws a building waits for P91b; P84 grows by about 90 lines and
+- Every Phase 3 view row that draws a building waits for P91b; P84 grows by about 110 lines and
   takes its named split P84d (picking and selection). Five new rows (one docs, three art, one view),
-  about 500 production lines in all (plan revision 4).
+  about 520 production lines in all (plan revision 4).
 - A unit north of a building can be hidden by the roof; its bar still shows when it is selected or
   hit (question 1).
 - The 1x1 defence turret's lower wall can show a few px of a harvester or a diagonal tank hugging
@@ -304,7 +331,9 @@ changes.
 - A building on the map's top row shows its roof cut at the map's edge, because the camera stops at
   the map rect (`test_camera_limits_equal_the_map_rect`); if the play sessions find it, the camera's
   top limit grows by the rise in a touch-ux-dev row.
-- The fog no longer softens bars, projectiles and effects at the edge of vision.
+- The fog no longer softens bars, projectiles and effects at the edge of vision, and no longer dims
+  an own unit's death burst on its dark tile. A tracer fired from or into the dark is drawn only
+  over the seen tiles (§4); at the vision edge it ends up to 16 px short of the dark tile.
 - Team colour on a sprite drops to about 8 to 12 %: ownership reads from stripes and bands and is
   weaker at zoom 0.75 (question 3); the art rows show both teams at every zoom in the gallery.
 - SVG files grow (the probe's B refinery hull is 25.2 KB); the import time and the APK grow a little.
@@ -330,6 +359,11 @@ changes.
   the fallback for §4.
 - **Keep the fog at 140 and draw the roofs over it at 141:** bars, projectiles and effects (110 to
   130) would vanish behind roofs.
+- **A second fog draw above the effects (z 135) with the unexplored alpha only**, to keep hiding the
+  tracer's unseen part: one more call (33 in the forecast) and a second fog texture kept up to date
+  from the dirty lists (twice the upload), it would black a roof's overhang that lies over
+  unexplored cells, and it still would not hide the part over explored cells (only dimmed today).
+  Clipping the tracer (§4) costs no call and hides the part over every unseen tile.
 - **Draw the ground per visible tile in `MapView._draw()`:** hundreds of commands re-recorded on
   every camera move, on the main thread.
 - **A non-turning shadow sprite per unit** (the probe's note for longer tank shadows): one more
@@ -357,10 +391,11 @@ changes.
   plain rows (or are withdrawn on a "nej" to the ADR as a whole).
 - Dated status notes, never a rewrite: ADR 0012 §6 (the z table and the forecast of §2 here; the
   "Markers" and "What else batches" items stand), ADR 0010 §2 (the fog layer draws at z 110, under
-  the roofs, bars, projectiles and effects), ADR 0011 §3 (`MapView` is not drawn where the ground
-  layer covers the map; the per-building atlas is how the one-texture rule holds), ADR 0019 §2 (the
-  grab area is the sprite box plus 24 dp; the ghost is drawn in the projection, §5) and §3 (a tap on
-  the roof selects the building; units win).
+  the roofs, bars, projectiles and effects; the "either end" tracer rule of its 2026-10-21 status
+  note stays as the birth rule, and the tracer is drawn clipped to the seen tiles, ADR 0022 §4),
+  ADR 0011 §3 (`MapView` is not drawn where the ground layer covers the map; the per-building atlas
+  is how the one-texture rule holds), ADR 0019 §2 (the grab area is the sprite box plus 24 dp; the
+  ghost is drawn in the projection, §5) and §3 (a tap on the roof selects the building; units win).
 - `.claude/skills/svg-art-style/SKILL.md` (with Michael's yes to question 5): "Look", "Camera and
   scale" (pure top-down for units, the oblique view and canvases for buildings), "Palette" (A's
   values), "Drawing rules" (edge, rim, shadow, team share), "Technical rules" (elements, 28 KB, no
