@@ -191,7 +191,7 @@ column (factions, §6) and, if question 3 is A or B, the strike rules of §10 wi
   unchanged), own rows always stand on seen cells, and last-seen ghosts carry the dim at z 5. A
   building partly in vision is drawn whole as seen (ADR 0022's seam goes). Effects (z 50) are
   above the fog, so **the tracer clip of ADR 0022 §4 stays** (the shelved P84's `EffectsLayer`
-  change and its `test_fog_hiding.gd` cases are reused in P98b).
+  change and its `test_fog_hiding.gd` cases are reused in P117b).
 - **Health bars** sit above each sprite: the ground point lifted by the sheet's `bar_lift_px` (the
   frame's top) plus a gap; `VEHICLE_REACH_PX` and `INFANTRY_REACH_PX` give way to the sheet. A
   selected or hit unit behind a building is hidden by it, and its bar still shows (ADR 0022
@@ -269,9 +269,18 @@ column (factions, §6) and, if question 3 is A or B, the strike rules of §10 wi
   into the ground's atlas; the ring and the UI icons stay normal imports too. Internal faction ids are `fossil` (oil and gas) and `renew`
   (green energy); they never show in the game.
 - **Team colour** (Spec §07). Each faction's art paints its team zones only in its key triad:
-  oil and gas `#FF9446 #E8681F #B04B12`, green `#62D6EE #1FA6C8 #137C99`; no other colour in that
-  art may be within the triad's hue band (a `tests/art` check on the SVG text). Players take any of
-  the canvas's eight triads (light, mid, dark):
+  oil and gas `#FF9446 #E8681F #B04B12`, green `#62D6EE #1FA6C8 #137C99`. The bake replaces those
+  six exact hex strings and nothing else.
+- **The key band** (a `tests/art` check on the SVG text of each faction's frames). A colour other
+  than the three key colours is in its faction's key band when its HSV hue lies within 20° of the
+  hue of any of the three (oil and gas: 21.6° to 25.3°, so 1.6° to 45.3°; green: 190.3° to 193.0°,
+  so 170.3° to 213.0°) **and** its HSV saturation is at least 0.30. No colour in the band is
+  allowed, so nothing but a team zone reads as team colour in the default pairing. Greys and muted
+  materials (saturation below 0.30) are allowed at any hue. The rule wins over the canvas's
+  palette: §6's four colliding entries are changed there. The band guards the key triads only;
+  how the art reads with the other six triads is the gallery's check (every type in two triads,
+  P99) and art-director's in the art rows, not a test.
+- **Triads.** Players take any of the canvas's eight triads (light, mid, dark):
 
   | Name | Triad |
   | --- | --- |
@@ -294,7 +303,7 @@ column (factions, §6) and, if question 3 is A or B, the strike rules of §10 wi
   two team triads, on grass and sand at zoom 0.75, 1 and 1.5, with a tank in front of and behind
   each building (through the same `IsoAtlas` bake, so the gallery shows exactly what a match
   draws). `tests/art` pins: canvases and anchors per footprint, directions complete (16 or 8),
-  allowed elements and size limits, the key-triad rule, determinism and staleness, the sheet
+  allowed elements and size limits, the key band (§5), determinism and staleness, the sheet
   metadata against the frames, and the square-footprint art. Today's top-down unit files, P91b's
   oblique buildings and their pages stay on `main` as reference until the art rows replace them;
   the row that replaces a set deletes it and its gallery page.
@@ -319,10 +328,15 @@ column (factions, §6) and, if question 3 is A or B, the strike rules of §10 wi
   tiered towers, panel blocks, hyperboloid masts, fur hats and long coats, domes with colonnades,
   timber framing, snow-and-birch as one side's home; from A: the cryo theme (§13).
 - **Palettes** (starting values from the canvas; art-director owns them in STYLE.md): Iron Compact
-  gun steel #6B7366, concrete #9F9A8E, rust #8E5A38, dark iron #3B3F39, lamp amber #FFC45C, olive
-  #7D8562; Lumen Accord ceramic #D5DBDC, graphite #414A51, titanium #8A9398, glass #8AD6E6,
-  blue-grey #7D8B96, status light #9BF6FF. Terrain: a neutral temperate set (grass, dirt, sand,
-  scrub, rock, water) as today's terrain ids.
+  gun steel #6B7366, concrete #9F9A8E, weathered rust #6E5D50, dark iron #3B3F39, lamp warm white
+  #FFF1D6, olive #7D8562; Lumen Accord ceramic #D5DBDC, graphite #414A51, titanium #8A9398, glass
+  #B4C8CF, blue-grey #7D8B96, status light mint #A8F5B0. Four canvas entries fall in their
+  faction's key band (§5) and are changed: rust #8E5A38 (hue 23.7°, saturation 0.61) and lamp
+  amber #FFC45C (38.3°, 0.64) against the oil and gas key (21.6°-25.3°); glass #8AD6E6 (190.4°,
+  0.40) and status light #9BF6FF (185.4°, 0.39) against the green key (190.3°-193.0°). The
+  replacements are muted (rust 0.27, lamp 0.16, glass 0.13 saturation) or outside the band and
+  every triad's hue (mint, 126°). Every other entry has a saturation below 0.30. Terrain: a
+  neutral temperate set (grass, dirt, sand, scrub, rock, water) as today's terrain ids.
 - **Emblems** (art-director, P103 and P104): Iron Compact starts from A's octagon with an I-beam and
   four rivets (no star, no letter); Lumen Accord from A's hexagon with horizon arcs, but with a
   three-blade rotor in place of A's four-pointed sparkle (a star shape, which decision 1 excludes).
@@ -348,8 +362,11 @@ column (factions, §6) and, if question 3 is A or B, the strike rules of §10 wi
     scenario lists no faction and its three unit files keep every sim field (only their faction
     and display names change), so **its golden hashes and `TICK_0_SEED_1` stay bit-identical**;
     its `defs_hash` changes, which nothing pins. `MatchSnapshot` copies `type_faction` and lists
-    `faction_ids` beside `type_ids` (the lead's file: the plan's named exception 17 lets P106 add
-    both lines; P109's strike arrays follow under exception 18).
+    `faction_ids` beside `type_ids`: two list entries, two member declarations and two capture
+    lines in the lead's `MatchSnapshot.gd`, plus the `ID_LISTS` literal of the lead's
+    `tests/core/test_match_snapshot.gd` (the plan's named exception 17); P109's strike arrays
+    follow under exception 18 (eight copied with members and capture lines, three in
+    `NOT_COPIED`).
   - The view and the UI read the local player's faction from `runner`'s scenario
     (`factions[local_player]`); the build menu lists the types of that faction only; the Skirmish
     route gives the dummy its faction's `AiDef`.
@@ -371,9 +388,9 @@ P are proposals for Phase 4's balance runs, stored in `data/` only.
 | Strike 3x3 (new) | `fossil_strike`, Deep Bore | `renew_strike`, Blackout Array | §10 |
 | Rifle infantry | `rifle_squad`, Roustabouts | `renew_rifle`, Linemen | Linemen faster (1.1 tiles/s), 80 hp |
 | Anti-tank infantry | `rocket_squad`, Wildcatters | `renew_rocket`, Breakers | Breakers longer range (5.5) |
-| Scout | `light_tank`, Coyote | `renew_scout`, Swift | Swift 2.2 tiles/s, 220 hp |
-| Tank | `heavy_tank`, Bulwark | `renew_tank`, Torque | Torque 1.4 tiles/s, 520 hp |
-| Artillery | `artillery`, Mortar Rig | `renew_artillery`, Longshot | Longshot range 10, 160 hp |
+| Scout | `light_tank`, Flarejack | `renew_scout`, Swift | Swift 2.2 tiles/s, 220 hp |
+| Tank | `heavy_tank`, Bullhead | `renew_tank`, Torque | Torque 1.4 tiles/s, 520 hp |
+| Artillery | `artillery`, Mortar Rig | `renew_artillery`, Arcline | Arcline range 10, 160 hp |
 | Tanker | `harvester`, Tanker | `renew_tanker`, Fuel Runner | Fuel Runner faster (1.4), carries 450 |
 
 Character (canvas A's, kept): Iron Compact heavy, robust, slow; Lumen Accord fast, precise,
@@ -431,18 +448,31 @@ reserves 20 for them.
 - **Rupture** (Deep Bore): firing writes the player's pending strike, `strike_tick = tick + 1 +
   type_strike_delay` (P: 45 ticks, a 3 s warning that every player sees); on that tick every row
   (own rows included) within `type_strike_radius` (P: 3000 milli) of the point, in ascending id, loses the weapon's
-  damage times its armour percent (P: 600, buildings 100 %); deaths go through `remove_dead` as
-  any death.
-- **Blackout** (Blackout Array): at once, every building not owned by the firing player within
+  damage times its armour percent (P: 600, buildings 100 %). The damage lands in FIRE (next item),
+  so a ruptured row dies at that tick's REMOVE exactly like a row killed by a shot.
+- **Blackout** (Blackout Array): at once, in the command's apply (COMMANDS, one pass over the rows
+  in ascending id), every building not owned by the firing player within
   `type_strike_radius` (P: 4000) gets `offline_until = tick + 1 + type_strike_ticks` (P: 450,
   30 s). While offline: `Power.run` counts neither its output nor its use; `Combat.fire` skips it
   (P74's offline rule, widened); `Production.run` does not advance a queue whose producer is
   offline. Units are not affected.
-- **Where it runs:** a new `Strike.gd` module, called inside PRODUCTION before `Outcome.run`
-  (no new probe phase, ADR 0017 §5), so a strike's kills count for defeat on the same tick.
-  Event cadence; at most one pass over the rows per strike, aliased arrays, no allocation. No
-  kernel changes: damage and the offline flag are applied in GDScript phases, and `Combat.fire`
-  (FIRE) is GDScript.
+- **Where it runs:** a new `Strike.gd` module. `Strike.apply_superweapon` is the command's apply
+  (COMMANDS). `Strike.run(world)` applies a pending rupture on its `strike_tick`; `Sim.step` calls
+  it right after `Combat.fire` and before `FogUpdate.begin` and `world.remove_dead()`, inside the
+  FIRE mark (no new probe phase, ADR 0017 §5 and its rejection of phases between FIRE and REMOVE
+  hold). Consequences, the same as for a shot that kills in FIRE: the ruptured rows are removed at
+  that tick's REMOVE (`FogUpdate.begin` has already run, so `remove_dead`'s unstamp lands in the
+  right dirty lists, ADR 0010 §1), `rows_version` moves, ECONOMY's `Power.run` rebuilds
+  `building_rows` and sums power without them, and PRODUCTION's `Outcome.run` sees a ruptured
+  producer gone, so **a rupture's kills count for defeat on the same tick** and no ruptured row
+  takes part in the next tick's COMMANDS, TARGETING, movement phases or FIRE. Rejected: `Strike.run` in
+  PRODUCTION with a second `remove_dead` there (it would unstamp after this tick's FOG update and
+  after `Power.run` summed the totals) and in PRODUCTION without one (`Outcome._owns_producer`
+  walks `building_rows` without an hp check, so the kills would count a tick late and the dead rows
+  would act through the next tick). Event cadence; at most one pass over the rows per strike,
+  aliased arrays, no allocation. No kernel changes: damage and the offline flag are written in
+  GDScript, and `Strike.run` is its own call after `Combat.fire`, so a later FIRE port (whose
+  dispatch is the first line of `Combat.fire`, ADR 0013 §3) leaves it in GDScript.
 - **Proposed numbers (P):** both strike buildings cost 2500 and use 60 power; charge 4500 ticks
   (5 min of a match of 8-10 min). The dummy builds no strike building and never fires (ADR 0020
   §4 unchanged); Phase 4's AI uses them.
@@ -493,7 +523,11 @@ RTS games (StarCraft I-II, Warcraft III, Age of Empires II-III, Company of Heroe
 II and 2000, Starship Troopers: Terran Command), from the architect's knowledge; a "no known hit"
 is not a trademark search (ADR 0006's Phase 7 search covers the store title; the lead adds the
 faction and unit names to it). Generic military or industrial words may stay as words, but no
-display name equals a C&C unit or building name.
+display name equals a C&C unit or building name. Decision 1 (no real weapons, no national coding)
+adds a second screen: no display name equals the name of a real military vehicle, aircraft, ship or
+weapon programme, in service or recent (from the architect's knowledge; the lead's trademark list
+gets these names too). The table records that screen in its Jackal and Trebuchet rows and in
+its three name-list rows, for every name this ADR uses.
 
 | Canvas name or concept | Where | Finding | Decision |
 | --- | --- | --- | --- |
@@ -511,7 +545,7 @@ display name equals a C&C unit or building name.
 | Seeker | A | C&C 3 Scrin Seeker | replaced: Breakers |
 | Prospector | A | Red Alert 3 Allied ore collector | replaced: Fuel Runner (B) |
 | Wisp | A | Warcraft III Wisp | dropped (air later) |
-| Jackal | A | Halo Wars Jackals | replaced: Coyote |
+| Jackal | A | Halo Wars Jackals; also the British Army's Jackal patrol vehicle | replaced: Flarejack (the first replacement, Coyote, is the Canadian Army's LAV Coyote reconnaissance vehicle and the British Army's Coyote, the Jackal's sibling) |
 | Technician | A | TD and RA civilian Technician | dropped with the engineer role |
 | Sapper | A, B | Company of Heroes Sappers; an engineer role | dropped |
 | Scorcher, Flamer (flamethrower infantry) | A, B | TD and RA1 Flamethrower, StarCraft Firebat | dropped |
@@ -530,7 +564,7 @@ display name equals a C&C unit or building name.
 | Light tank, Heavy tank, Artillery, Rifle and Rocket squads | GDD | RA1 Light Tank, Heavy Tank, Artillery, Rifle Infantry, Rocket Soldier | display names per §7; ids stay internal |
 | Ore | P75 | RA's ore | player-facing words are oil and gas; `ore` stays internal |
 | Academy | B | StarCraft Terran Academy | replaced: Crew Hall |
-| Trebuchet | B | Age of Empires II Trebuchet | replaced: Longshot |
+| Trebuchet | B | Age of Empires II Trebuchet | replaced: Arcline (the first replacement, Longshot, is a real air-launched drone programme, DARPA's LongShot) |
 | Warden | B | Halo's Warden (not a known RTS unit) | not used: Torque |
 | Fusilier, Jäger | B | real military words with national coding (decision 1) | replaced: Linemen, Breakers |
 | Blackout Array (EMP dish) | B | EMP area weapons: Tiberian Sun EMP Cannon, StarCraft EMP Shockwave; the name has no known hit | kept as a name; it blacks out buildings only, no EMP wording, no blue lightning |
@@ -539,14 +573,15 @@ display name equals a C&C unit or building name.
 | Tesla, Chrono, Mammoth, Iron Curtain, coil and prism towers, airships | - | RA | excluded (A's own list, svg-art-style) |
 | Tabs Base, Defense, Infantry, Vehicles, Air; sell and repair buttons; rank chevrons; PRIMARY | A HUD | RA2's sidebar tabs and buttons | not taken (§12) |
 | Blue against red, East against West, Cold War 1986, orbital ring as a Cold War sign | A, B, GDD | RA's Allies (blue) and Soviets (red) | dropped; orange against cyan by default |
-| Lancer, Bulwark, Thunderhead, Hauler, Swift, Kestrel, Fuel Runner, Wind Park, Motor Works, Gas Works, Training Hall, Garrison, Bastion, Rail Battery, Armor Works, Smelter, Furnace Plant, Radar Mast, Halcyon, Gyro Striker, Skylance, Trooper, Breacher | A, B | no known hit in the games above | Bulwark, Swift, Fuel Runner, Wind Park, Motor Works and Rail Battery used; the others unused |
+| Lancer, Bulwark, Kestrel, Bastion, Gyro Striker | A, B | no known hit in the games above, but real military names: the B-1B Lancer bomber, HMS Bulwark (a Royal Navy assault ship), the Kestrel anti-armour rocket, the Bastion coastal missile system, the Striker anti-tank vehicle | not used (Bulwark was §7's first tank name; now Bullhead) |
+| Thunderhead, Hauler, Swift, Fuel Runner, Wind Park, Motor Works, Gas Works, Training Hall, Garrison, Rail Battery, Armor Works, Smelter, Furnace Plant, Radar Mast, Halcyon, Skylance, Trooper, Breacher | A, B | no known hit in the games above or among real military vehicles in service (Swift: the Supermarine Swift jet, retired in the 1960s; a common word) | Swift, Fuel Runner, Wind Park, Motor Works and Rail Battery used; the others unused |
 | Big Shoulders, Chakra Petch fonts | A | SIL OFL fonts, not CC0 or CC-BY | not used (§5) |
-| The new names of §6 and §7: Iron Compact, Lumen Accord, Rigworks, Turbine Hall, Cracking Plant, Bunkhouse, Heavy Yard, Signal Mast, Redoubt, Deep Bore, Roustabouts, Wildcatters, Coyote, Mortar Rig, Tanker, Grid Hub, Synthesis Works, Crew Hall, Relay Tower, Linemen, Breakers, Torque, Longshot | this ADR | no known hit in the games above; rejected while choosing them: Roughnecks (Starship Troopers' Roughnecks, an RTS since 2022), Blockhouse (Age of Empires III), Thumper (Dune), Aegis (RA2 Aegis Cruiser), Pylon (StarCraft), Longbow (RA1) | proposed (questions 1 and 2) |
+| The new names of §6 and §7: Iron Compact, Lumen Accord, Rigworks, Turbine Hall, Cracking Plant, Bunkhouse, Heavy Yard, Signal Mast, Redoubt, Deep Bore, Roustabouts, Wildcatters, Flarejack, Bullhead, Mortar Rig, Tanker, Grid Hub, Synthesis Works, Crew Hall, Relay Tower, Blackout Array, Linemen, Breakers, Torque, Arcline | this ADR | no known hit in the games above or among real military vehicles, aircraft, ships or weapon programmes. Flarejack (flare stack + pumpjack) and Arcline are coined; Bullhead is an oilfield word (bullheading, a well-control method); Roustabouts, Wildcatters and Linemen are trades (the AW159 Wildcat helicopter is another word); Redoubt, Tanker, Mortar Rig and Rail Battery are generic words. Rejected while choosing them: Roughnecks (Starship Troopers' Roughnecks, an RTS since 2022), Blockhouse (Age of Empires III), Thumper (Dune), Aegis (RA2 Aegis Cruiser; also a real naval combat system), Pylon (StarCraft), Longbow (RA1; also the AH-64D Longbow), Coyote, Longshot, Bulwark (rows above) | proposed (questions 1 and 2) |
 
 ### 14. Performance and the arenas
 - **Perf arena:** nothing here but §10 touches its state (§6 adds type data only, and its
   scenario lists no faction), so its golden hashes, `budget.cfg` and every `PERF` line stay; with question 3 A or B, P109's one re-pin (§10) is the only change,
-  with its reason. The arena scene gets the iso layers (P98, P114, P116), so its phone card's draw
+  with its reason. The arena scene gets the iso layers (P117, P114, P116), so its phone card's draw
   calls and frame times change; thresholds are unchanged (ADR 0021 §5).
 - **Base arena** (P80, not merged): side 1 Iron Compact, side 2 Lumen Accord, every building type
   of both (about 30 buildings) and 150 mobile rows; with question 3 A, a scenario order fires each
@@ -581,7 +616,8 @@ display name equals a C&C unit or building name.
   §3 (pick shapes), §4 (an isometric minimap, its place), §5 (low power: a glyph on every consuming
   building instead of a dim, question 7).
 - **ADR 0007 §5 and ADR 0017 §4-§5** (question 3 A or B): `SUPERWEAPON` = 15; `Strike.run` inside
-  PRODUCTION before `Outcome.run`.
+  the FIRE mark, after `Combat.fire` and before REMOVE (§10), so its kills die at that tick's
+  REMOVE; no new phase id.
 - **ADR 0018 §2-§3:** player-facing ore and harvester become fields and tankers (§11); the rules
   are unchanged.
 - **ADR 0020 §4:** one dummy `AiDef` per faction; the dummy never builds or fires a strike.
@@ -669,10 +705,12 @@ display name equals a C&C unit or building name.
    League and Current Accord. C: names you choose (screened by the lead before use). Recommended:
    A. Cost: none either way (display names in data and docs).
 2. **Unit and building names** of §7 (Rigworks, Turbine Hall, Cracking Plant, Bunkhouse, Heavy
-   Yard, Signal Mast, Redoubt, Deep Bore, Roustabouts, Wildcatters, Coyote, Bulwark, Mortar Rig,
+   Yard, Signal Mast, Redoubt, Deep Bore, Roustabouts, Wildcatters, Flarejack, Bullhead, Mortar Rig,
    Tanker; Grid Hub, Wind Park, Synthesis Works, Crew Hall, Motor Works, Relay Tower, Rail
-   Battery, Blackout Array, Linemen, Breakers, Swift, Torque, Longshot, Fuel Runner). ja, or name
-   the ones to change. Recommended: ja. Cost: none; later renames are data only.
+   Battery, Blackout Array, Linemen, Breakers, Swift, Torque, Arcline, Fuel Runner). ja, or name
+   the ones to change. Flarejack, Bullhead and Arcline replace this draft's first Coyote, Bulwark
+   and Longshot, which are names of real military vehicles, a ship and a drone programme (§13).
+   Recommended: ja. Cost: none; later renames are data only.
 3. **What comes in Phase 3.** A: both factions' full rosters (8 buildings and 6 unit types each)
    and both superweapons (the rest of §8 later or dropped). B: the full rosters now; the
    superweapon buildings stand but fire only after the gate (5 rows and about 1150 lines later, no
@@ -705,7 +743,12 @@ display name equals a C&C unit or building name.
    about 30 extra draw calls while power is low, or a second dimmed copy of every building
    picture.
 8. **Team colours.** The canvas's eight three-tone colours; player 1 orange, player 2 cyan by
-   default; no red-against-blue. ja/nej. Recommended: ja. Cost: none.
+   default; no red-against-blue. The team colours win over the canvas's material colours: four of
+   them change so that nothing in a faction's art looks like its team colour (Iron Compact's rust
+   becomes a dull brown and its amber lamps warm white; Lumen Accord's glass becomes pale grey-blue
+   and its cyan status lights mint green; §5, §6). ja/nej. Recommended: ja. Cost: none (the art is
+   not drawn yet). The other answer, other key colours that no material uses, would make the
+   art's source files show the wrong colours and change the canvas's default look.
 9. **The texts that must follow** (§15): CLAUDE.md's Stack, Layout and asset lines, the GDD's
    factions, rosters and economy, the two skills, art-director's agent file and a new ROADMAP
    Phase 3 box for the factions. ja/nej. Recommended: ja. Cost: none (one docs row).
