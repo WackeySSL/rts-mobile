@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"fossil_radar"
+faction = &"fossil"
+category = &"bld"
+footprint = 2
+silhouette = "A squat concrete shed with a team band and a tall tapering steel mast carrying a crossbar and one flat antenna panel."
+prims = PackedStringArray(
+"box hull concrete 0 0 0 1.92 1.92 0.06",
+"box hull concrete 0.3 0.3 0.06 0.9 0.9 0.2",
+"box hull team 0.3 0.3 0.26 0.96 0.96 0.24",
+"box hull concrete 0.3 0.3 0.5 0.9 0.9 0.06",
+"prism hull iron -0.45 -0.45 0.06 0.18 0.18 2.04 sides=4 taper=0.5",
+"box hull steel -0.45 -0.45 2.1 0.9 0.1 0.12",
+"box hull steel -0.45 -0.45 2.22 0.5 0.06 0.4"
+)

@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"light_tank"
+faction = &"fossil"
+category = &"veh"
+silhouette = "A small olive wedge-nosed scout on four fat wheels with a stubby gun turret and a thin flare pipe with a warm lamp at the rear."
+mount = Vector3(0.08, 0, 0.24)
+prims = PackedStringArray(
+"prism hull iron 0.26 -0.27 0 0.22 0.1 0.22 axis=y sides=8",
+"prism hull iron 0.26 0.27 0 0.22 0.1 0.22 axis=y sides=8",
+"prism hull iron -0.26 -0.27 0 0.22 0.1 0.22 axis=y sides=8",
+"prism hull iron -0.26 0.27 0 0.22 0.1 0.22 axis=y sides=8",
+"box hull olive 0 0 0.08 0.8 0.44 0.16",
+"wedge hull olive 0.5 0 0.08 0.2 0.44 0.16",
+"box hull team -0.12 0 0.24 0.1 0.44 0.02",
+"prism hull iron -0.34 0.14 0.24 0.06 0.06 0.5 sides=6",
+"box hull lamp -0.34 0.14 0.74 0.08 0.08 0.08",
+"box turret olive 0 0 0 0.32 0.3 0.12",
+"box turret steel 0.32 0 0.03 0.32 0.05 0.05",
+"box turret team 0 0 0.12 0.14 0.3 0.02"
+)

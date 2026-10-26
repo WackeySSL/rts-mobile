@@ -15,7 +15,19 @@ rules, Buildings, Ghosts and Health bars to match; the units (P92b), the ore and
 follow, and the rules below say where they still describe the v1 look. Rules marked **(new)** go
 beyond the skill and are waiting for Michael's approval (list at the end).
 
+**v1.6 (Phase 3, P99, ADR 0023, accepted by Michael on 2026-10-26)** changes the view of everything
+on the map to the isometric 2:1 view of Michael's canvas, adds the art generator `tools/artgen/` and
+its blockout models of both factions, and adds the sections "Projection", "Light" and "Generated art"
+below. Where an older section (oblique buildings, top-down units, the 3 px outline, the old
+palette) disagrees with those three, the three win; the art rows P101 to P105 rewrite the older
+sections as they replace the art they describe.
+
 ## Look
+**Since ADR 0023 (Michael 2026-10-26) everything on the map is drawn in the isometric 2:1 view, flat
+shaded with three tones per face and one light from the north-west; see "Projection", "Light" and
+"Generated art" right below this section.** The rest of this section is the look of ADR 0022 and
+stays until the art rows P101 to P105 replace the art it describes.
+
 Realistic and muted, readable at small size on a phone (ADR 0022, Michael 2026-10-26: the first look
 was "too square and too toy-like", he wants it "more true to nature"). Real materials (poured
 concrete, corrugated steel, tarmac, sandbags, canvas, rust, dirt), believable proportions and detail
@@ -27,6 +39,138 @@ icons and the glyphs; the five building item icons follow the buildings and are 
 view too (see "Icons and glyphs"). The units, the ore and the ground are redrawn in the same treatment
 in P92b and P92c; until then the rules below that speak of the 3 px outline or of flat colours still
 describe them.
+
+## Projection
+ADR 0023 section 1; the canvas's Spec 01. The sim keeps its square grid; only the drawing is
+projected, and the map is never rotated.
+- A ground point (gx, gy) in tiles and a height z in px above it is drawn at
+  `((gx - gy) x 32, (gx + gy) x 16 - z)` px at zoom 1. A tile is a 64 x 32 diamond; +gx runs down
+  and to the right on the screen, +gy down and to the left.
+- **Author at 2x**: one tile is 128 x 64 px in the SVG, the match-start bake rasterises at
+  `bake_scale` and the gallery at 0.5 x zoom. The generator's models are in tiles in all three
+  axes: a cube of one tile is 39.2 px high at 1x (Spec 01 says 39), `Z_PX` = 78.38 px per tile at
+  2x. The camera looks from +gx, +gy and 30 degrees up.
+- **Directions**: `d00` to `d15` in 22.5 degree steps. `d_k` faces the grid angle `(k - 6) x 22.5`
+  degrees from +gx towards +gy: `d06` faces +gx (south-east on the screen, the Derrick League's
+  default view), `d10` +gy (south-west, the Lumen Accord's), `d00` up the screen, `d08` down it.
+  Vehicles, turrets and a defence's head have 16; a squad has the even ones (8); a building has one
+  view and no direction in its file name.
+- **Anchors** (Spec 03): a unit's frame is anchored at its ground point; a building's at the back
+  corner of its footprint's diamond, 32 x n px above the footprint's centre at 2x for an n x n
+  footprint. Every footprint is square. A building's canvas is exactly the footprint wide (128 x n
+  at 2x) and as tall as its model needs above the back corner and the diamond's front corner below.
+- **A part's frames share one canvas and one anchor**, the union over all of its directions plus a
+  2 px margin, so an atlas sheet needs one frame box per part. A turret or head part has its own
+  origin at its pivot; the pivot's place in the hull (`ArtModel.mount`) turns with the hull, and
+  `ArtGen.mount_px` gives it in px for each direction (P99b writes it into the sheets).
+
+## Light
+ADR 0023 section 5; the canvas's Spec 02. One light for the whole game, from the north-west.
+- **Three tones per face**: top 100 %, left face 82 %, right face 62 % of the top tone. The light
+  is a plane in the world, so a face keeps its tone when the model turns: a face's tone comes from
+  its normal in the world, `0.72 + 0.28 nz - 0.10 nx + 0.10 ny` cut at 0.915 and 0.70, which gives
+  the three values for the normals up, +gy and +gx; a slope towards the south-east is a left-face
+  tone, one towards the north-west is lit. There are no gradients in a generated frame.
+- **A material is one colour, its mid tone** (the left face); the top is that colour divided by
+  0.82 (white where it clamps), the right face 0.62 / 0.82 of it. A **team zone** uses the
+  faction's key triad as it is: light on the top, mid on the left face, dark on the right face.
+- **Edges** are 2 px (not a detail thinner than 2 px at 2x): a dark shade of the face's own
+  material (0.45 of its mid tone) on the sides, a thin light edge (the top tone 40 % towards white)
+  on top faces, so every top edge catches the light (Spec 02). A team zone's edges are its key
+  colours. A sphere is three discs, dark, mid and a lit one up and left, in a ring of 16 points.
+- **Cast shadows** are separate frames (P99b): every volume projected onto the ground away from
+  the light, about 0.8 x its height long, black at 35 % as one group. No shadow inside a hull,
+  turret or building frame.
+- **Team colour** is 4 to 17 % of the pixels of a default view in the blockouts (`tests/art` pins
+  3 to 20 %); the art rows aim at 8 to 12 %: bands, cranes, stripes, light strips and lamps seen
+  from above, never a large plate. A band is a slab slightly larger than the wall it wraps and
+  stands between two wall segments, so no roof is a team plate.
+
+## Generated art
+ADR 0023 section 5; plan rows P99 (the generator and the blockouts) and P99b (shadows, turrets with
+sheets, squads, `IsoSheetDef`, item icons, the ring as an ellipse). Run
+`bash scripts/gen-art.sh --all` (or `--model assets/art/models/fossil/heavy_tank.tres`; `--check`
+writes nothing and fails on a difference); never edit a generated frame, change its model and
+generate again. The generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
+- **A model** is `assets/art/models/<faction>/<type_id>.tres`, an `ArtModel`: `art_id`, `faction`
+  (`fossil` or `renew`), `category` (`veh`, `inf`, `bld`), `footprint` (buildings), `silhouette`
+  (one line in words, written before the model), `mount` (the turret or head pivot) and `prims`,
+  one primitive per entry: `<shape> <part> <material> <cx> <cy> <z0> <sx> <sy> <sz> [options]`.
+  Lengths are tiles; a unit faces +x and stands on its origin; a building's origin is its
+  footprint's centre. Shapes: `box`; `wedge` (a box whose top slopes down towards +x, `slope=` 0
+  to 1); `prism` (`sides=` 3 to 24, default 12, `taper=` scales the top, `axis=x|y|z` lays it
+  along its length; the size is the width across the flats, a hexagon is 1.155 times as long on
+  its second axis); `sphere` (diameter `sx`). Parts: `hull`, `turret`, `head`. Material: a name of
+  the faction's palette below, or `team`.
+- **Painter's order**: back to front by the camera, a primitive before another when their boxes
+  are apart along an axis and the other is on the camera's side. So keep primitives apart along an
+  axis, touching is fine: split a drum into segments and put the band between them, put a
+  turret's barrel against the face it comes out of.
+- **Files**: `assets/art/iso/<faction>/<category>/<type_id>_<part>_d<NN>.svg` (`d<NN>` left out for
+  a building body), each with a "Keep File" `.import` (`importer="keep"`): the export carries the
+  SVG text and the bake reads it. A frame is one comment line (the model it came from), the root
+  with the canvas, one `g` with the 2 px edge and one `polygon` per face; hex colours in upper
+  case, coordinates with one decimal. At most 28 KB (the blockouts are under 8 KB).
+- **Tests** (`tests/art/test_artgen*.gd`): two runs give identical bytes, every committed frame
+  equals a fresh run and none is left over, the directions are complete, only `svg`, `g` and
+  `polygon` are used, every part has one canvas, a building is anchored at its back corner, the key
+  band holds, every type has a team zone that is not a plate, and each default view has a body and
+  a spread of tones at 32 px in greyscale.
+- **The key band** (ADR 0023 section 5): a colour other than the faction's three key colours must
+  not have an HSV hue within 20 degrees of a key colour's hue and a saturation of at least 0.30.
+  The Derrick League's band is 1.6 to 45.3 degrees, the Lumen Accord's 170.3 to 213.0. Greys and
+  muted materials are free; how the art reads with the other six triads is the gallery's check.
+- **Triads**: Signal #FF9446 #E8681F #B04B12, Arktisk #62D6EE #1FA6C8 #137C99, Karmin #F26A5E
+  #CF3A2E #922219, Kobolt #7AA2F7 #3F6FE0 #27479E, Guld #FFDA6B #E6B52E #A47D13, Magenta #F083CF
+  #C9439F #8C2A6E, Sne #FFFFFF #DCE2E6 #A3ACB3, Kul #6E737A #44494F #26292D. Art keys its team
+  zones in its faction's own triad (Derrick League Signal, Lumen Accord Arktisk); the bake replaces
+  those six strings with the player's. Player 1 Signal, player 2 Arktisk.
+
+### Palette per faction
+The mid tone of each material (ADR 0023 section 6 as changed by the key band). Four colours of the
+canvas fall in a key band and were replaced: rust #8E5A38 by **#6E5D50**, lamp amber #FFC45C by
+**#FFF1D6** (warm white), glass #8AD6E6 by **#B4C8CF**, status light #9BF6FF by mint **#A8F5B0**.
+
+| Derrick League | steel | concrete | rust | iron | lamp | olive |
+| --- | --- | --- | --- | --- | --- | --- |
+| mid tone | #6B7366 | #9F9A8E | #6E5D50 | #3B3F39 | #FFF1D6 | #7D8562 |
+
+| Lumen Accord | ceramic | graphite | titanium | glass | bluegrey | mint |
+| --- | --- | --- | --- | --- | --- | --- |
+| mid tone | #D5DBDC | #414A51 | #8A9398 | #B4C8CF | #7D8B96 | #A8F5B0 |
+
+Derrick League look: poured concrete, riveted steel, rust, olive drab vehicles, gas spheres, flare
+stacks, drilling masts, warning stripes and warm lamps; wedges and trapezoids. Lumen Accord look:
+white ceramic, graphite, glass, blue-grey vehicles with dark patches, hexagonal and rounded
+panels, slim masts, mint status lights. No geography, flag, star or real insignia (ADR 0023
+decision 1).
+
+### Blockouts of Phase 3 (P99)
+Boxes, wedges, prisms and spheres sized by size class or footprint with a team band each, so every
+view row builds against real frames, names and canvases; the art rows P101 to P105 replace the
+models under the same ids. Frames per type: vehicle 16 hull (+ 16 turret), tanker 16, squad 8,
+building 1 (+ 16 head for the defence); 304 frames in all.
+
+| Role | Derrick League (`fossil`) | Lumen Accord (`renew`) | Kind |
+| --- | --- | --- | --- |
+| HQ | `headquarters` | `renew_hq` | building 3x3 |
+| Power | `power_plant` | `renew_power` | building 2x2 |
+| Refinery | `refinery` | `renew_refinery` | building 3x3 |
+| Barracks | `barracks` | `renew_barracks` | building 2x2 |
+| Vehicle factory | `vehicle_factory` | `renew_factory` | building 3x3 |
+| Radar | `fossil_radar` | `renew_radar` | building 2x2 |
+| Defence | `defence_turret` | `renew_defence` | building 1x1, head of 16 |
+| Superweapon | `fossil_strike` | `renew_strike` | building 3x3 |
+| Rifle squad | `rifle_squad` | `renew_rifle` | squad of three, 8 |
+| Anti-tank squad | `rocket_squad` | `renew_rocket` | squad of three, 8 |
+| Scout | `light_tank` | `renew_scout` | vehicle, turret |
+| Tank | `heavy_tank` | `renew_tank` | vehicle, turret |
+| Artillery | `artillery` | `renew_artillery` | vehicle, turret |
+| Tanker | `harvester` | `renew_tanker` | vehicle, no turret |
+
+The gallery's **Iso** page (the last page) steps through them: every direction on grass and sand in
+the Signal and the Arktisk triad, then the default view at zoom 0.75, 1 and 1.5. Until the
+per-match atlas exists (P113) it rasterises the frames itself.
 
 ## Scale
 - 1 tile = 64 px in game at zoom 1. Author at 2x: 1 tile = 128 px in the SVG.
@@ -1018,3 +1162,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-10-22 | v1.3 (P91, art-director): the six buildings with their layer contract, the ore cells and their levels, the two ghost patterns and the ghost look, two dirt tones (new), the Build and Ground gallery pages. |
 | 2026-10-22 | v1.4 (P92, art-director): the heavy tank, the artillery and the harvester, the tab, item and glyph icons with the glyph contract (import scale 1.0, new) and the seat of the eight map glyphs (new), the two rally flags, the Vehicles and Icons gallery pages, the reason glyph on the Ground page's ghost. |
 | 2026-10-26 | v1.5 (P91b, art-director, Michael chose direction B on 2026-10-26, ADR 0022): the six buildings and the gun head redrawn in the oblique 3/4 view on new canvases (the footprint plus 96 px at 2x), the five building item icons, Look, Scale, Palette (A's muted materials), Drawing rules (thin edges, team marks about 8 to 12 %), Technical rules (defs, radialGradient, clipPath, use; 28 KB), Buildings (projection, canvas, anchor, the cut, the pivot), Ghosts (in the projection), the building row of Health bars, the Build page as a scrolling list with the camera zooms and the Seam page. |
+| 2026-10-26 | v1.6 (P99, art-director, ADR 0023 accepted by Michael 2026-10-26): Projection, Light and Generated art (the generator `tools/artgen/`, `scripts/gen-art.sh`, the model format, the files, the key band, the eight triads, the faction palettes as the key band changed them, the 28 blockout models and their 304 frames), the gallery's Iso page. Older sections that disagree are superseded as P101 to P105 replace their art. |

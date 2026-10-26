@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"renew_tank"
+faction = &"renew"
+category = &"veh"
+silhouette = "A low blue-grey hull on dark tracks with a long pointed nose, dark roof patches and a hexagonal turret with one thin rail barrel."
+mount = Vector3(0, 0, 0.3)
+prims = PackedStringArray(
+"box hull graphite 0 -0.3 0 1.05 0.18 0.18",
+"box hull graphite 0 0.3 0 1.05 0.18 0.18",
+"box hull bluegrey 0 0 0.03 0.95 0.42 0.15",
+"box hull bluegrey -0.05 0 0.18 0.85 0.8 0.12",
+"wedge hull bluegrey 0.505 0 0.18 0.26 0.8 0.12 slope=0.7",
+"box hull graphite -0.2 0.2 0.3 0.3 0.24 0.02",
+"box hull team -0.35 -0.1 0.3 0.14 0.5 0.02",
+"prism turret bluegrey 0 0 0 0.48 0.42 0.14 sides=6",
+"prism turret team 0 0 0.14 0.3 0.26 0.02 sides=6",
+"box turret titanium 0.55 0 0.07 0.62 0.045 0.045"
+)

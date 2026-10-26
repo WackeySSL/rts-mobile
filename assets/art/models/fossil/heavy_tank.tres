@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"heavy_tank"
+faction = &"fossil"
+category = &"veh"
+silhouette = "A low wide olive hull on two dark tracks with a sloped glacis nose and a squat octagonal turret carrying one long barrel."
+mount = Vector3(-0.02, 0, 0.34)
+prims = PackedStringArray(
+"box hull iron 0 -0.31 0 1.1 0.2 0.2",
+"box hull iron 0 0.31 0 1.1 0.2 0.2",
+"box hull olive 0 0 0.03 1 0.42 0.17",
+"box hull olive -0.05 0 0.2 0.9 0.82 0.14",
+"wedge hull olive 0.5 0 0.2 0.2 0.82 0.14",
+"box hull team -0.3 0 0.34 0.12 0.82 0.02",
+"prism turret olive 0 0 0 0.52 0.52 0.16 sides=8",
+"prism turret team 0 0 0.16 0.34 0.34 0.02 sides=8",
+"box turret steel 0.56 0 0.08 0.6 0.07 0.07"
+)
