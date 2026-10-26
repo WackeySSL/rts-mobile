@@ -838,8 +838,8 @@ absorbs next to the C++ phases.
   - **The building worlds:** `tests/sim/native/test_building_lockstep.gd` runs every ported
     kernel on a world with buildings for 450 ticks, not §4's 900; the 900-tick locksteps of each
     kernel stand as they are. `tests/sim/native/test_building_attack_lockstep.gd` is P71b's
-    lockstep of the TARGETING kernel (alone, with INTEGRATE, or with every kernel on) for an
-    `ATTACK` on a 1x1, a 2x2 and a 3x3 building.
+    lockstep for an `ATTACK` on a 1x1, a 2x2 and a 3x3 building with TARGETING alone, INTEGRATE
+    alone or every kernel in C++ (the artillery cases: TARGETING alone and every kernel).
 
 ### 3. Dispatch and the implementation switch
 - **`World` gains two members (P54):**

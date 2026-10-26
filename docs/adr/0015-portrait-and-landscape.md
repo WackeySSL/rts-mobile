@@ -388,8 +388,9 @@ text and the notes above stay as accepted and as dated):
 - **Margins.** The sidebar's backdrop (`game/ui/theme.tres`) has 8 dp at the sides and 4 dp above
   and below, not 8 dp, so a 200 dp band's inner height is 192 dp, not 184. The floor 172 is the
   stacked left part (status line 32, tabs 48, items 64, two 8 dp gaps: 160) plus the two 4 dp
-  margins and 4 dp for the gaps' rounding to whole px. The minimap's square (plan row P88) is the
-  band's inner height as the theme gives it.
+  margins and 4 dp for the gaps' rounding to whole px. The band's inner height as the theme gives
+  it (192 dp for a 200 dp band) is the most the minimap's 2:1 box (plan row P88, ADR 0023 §4) may
+  take in height, within 40 % of the safe inner width.
 - **Tab names** show beside the icons only in landscape and only where all three tabs fit the
   zone with them (`BuildSidebar._fit_names`); the portrait band shows icons only, however wide.
 
