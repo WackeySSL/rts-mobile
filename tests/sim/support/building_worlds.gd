@@ -118,8 +118,8 @@ static func block(id: String, width: int, height: int) -> BuildingDef:
 
 ## A World of 30 x 16 tiles for an ATTACK on a building behind rock: a wall of rock on column 12
 ## from row 0 to row 12 (the gap is rows 13 to 15), a `width` x `height` unarmed building of player
-## 2 with its top-left tile at (18, 6), and four light tanks of player 1 at x 4..7 and y 6..7 (they
-## see every cell). Types: light tank 0, the building 1.
+## 2 with its top-left tile at (18, 6), and four light tanks of player 1 on tiles x 4..5 and y 6..7
+## (they see every cell). Types: light tank 0, the building 1.
 @warning_ignore("integer_division")
 static func behind_rock(width: int, height: int) -> World:
 	var rock: Array[Vector2i] = []

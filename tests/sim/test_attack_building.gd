@@ -211,6 +211,22 @@ func test_a_placement_on_an_attack_goal_re_picks_the_approach_point() -> void:
 	assert_int(world.order[near_row]).is_equal(World.Order.ATTACK)
 
 
+func test_a_re_pick_measures_from_the_unit_not_from_its_old_goal() -> void:
+	var world: World = Worlds.open(24, 12)
+	var hq: int = world.add_building(2, Worlds.type_of(world, "headquarters"), 10, 4)
+	var near: int = world.add_unit(1, Worlds.type_of(world, "light_tank"), 3500, 5500)
+	_step_with(world, Command.attack(1, PackedInt32Array([near]), hq))
+	var row: int = world.index_of(near)
+	assert_vector(_goal(world, row)).is_equal(Vector2i(9500, 5500))
+	# Moved by hand to (9500, 9500), below its goal: from there the nearest ring tile is (9, 7).
+	# A re-pick that measured from the old goal (9, 5) would take (9, 4), the lower index on its
+	# tie with (9, 6).
+	world.pos_x[row] = 9500
+	world.pos_y[row] = 9500
+	world.add_building(1, Worlds.type_of(world, "defence_turret"), 9, 5)
+	assert_vector(_goal(world, row)).is_equal(Vector2i(9500, 7500))
+
+
 func test_a_re_pick_skips_a_ring_tile_the_class_cannot_enter() -> void:
 	var world: World = Worlds.open(24, 12)
 	var hq: int = world.add_building(2, Worlds.type_of(world, "headquarters"), 10, 4)
