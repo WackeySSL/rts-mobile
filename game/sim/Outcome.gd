@@ -19,10 +19,14 @@ extends RefCounted
 ## the runner published stay as they were; `Sim._apply` drops every Command from then on.
 ##
 ## What a defeat does not do (plan row P76's decisions): the rows of a defeated player stay on the
-## map, only its queues stop (`Production.run` skips them). `stat_lost_units` and
-## `stat_lost_buildings` are not counted yet: ADR 0018 section 7 counts the owner of every dying
-## row in `World.remove_dead`, which writes the perf arena's `players` section from its first
-## death on and moves its golden hashes (tick 150 already), so the count waits for a decision.
+## map, only its queues stop (`Production.run` skips them).
+##
+## The losses. `count_losses`, called by `World.remove_dead` before its compaction, adds each dying
+## row to its owner's `stat_lost_buildings` (a type with a footprint, `type_foot_w` above 0) or
+## `stat_lost_units` (any other row), once per death, for an owner whose `had_producer` is 1 (lead
+## decision of 2026-10-26: every real match sets it at load through its scenario buildings, while
+## the perf arena and a World of units only never do, so their `players` section and golden hashes
+## stay as they were). Neutral rows (owner 0) count for nobody.
 
 
 ## The defeat and victory check, after the queues. No end yet, one pass over the players ascending
@@ -85,6 +89,30 @@ static func apply_surrender(world: World, command: Command) -> bool:
 		return false
 	world.defeated_tick[player] = world.tick + 1
 	return true
+
+
+## Adds every row with hp of 0 or less to its owner's loss count (see the header). It reads the
+## rows as they stand, so `World.remove_dead` calls it before the compaction, once per tick that has
+## a death; a row is gone after that and cannot count twice. One pass over the rows ascending, over
+## aliased arrays, no allocation. An owner past the per-player arrays of a hand-built World, or a
+## type past the footprint table, is a unit (or nobody) rather than an error.
+static func count_losses(world: World) -> void:
+	var alive: PackedInt32Array = world.hp
+	var owners: PackedInt32Array = world.owner
+	var types: PackedInt32Array = world.type_index
+	var widths: PackedInt32Array = world.type_foot_w
+	var had: PackedInt32Array = world.had_producer
+	var lost_units: PackedInt32Array = world.stat_lost_units
+	var lost_buildings: PackedInt32Array = world.stat_lost_buildings
+	var players: int = mini(had.size(), mini(lost_units.size(), lost_buildings.size()))
+	for row: int in alive.size():
+		var player: int = owners[row]
+		if alive[row] > 0 or player < 1 or player >= players or had[player] != 1:
+			continue
+		if types[row] < widths.size() and widths[types[row]] > 0:
+			lost_buildings[player] += 1
+		else:
+			lost_units[player] += 1
 
 
 ## Whether `player` owns a building whose type produces a tab (a Headquarters, a barracks or a
