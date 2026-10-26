@@ -67,7 +67,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 ## Build sidebar
 | Action | Result | Teach |
 |---|---|---|
-| Look at the sidebar (on the right; at the bottom when the phone is upright) | It has three tabs, Structures, Infantry and Vehicles. Tap a tab to open it: the open tab is the lighter one with a thick bar under it. The tab names show beside the icons only where the sidebar is wide enough; a phone shows the icons alone | |
+| Look at the sidebar (on the right; at the bottom when the phone is upright) | It shows your credits, a power bar and three tabs: Structures, Infantry and Vehicles. The bar fills with the power your buildings use against the power they make and shows both numbers where it is wide enough; when you use more than you make, the bar is full and amber and its bolt becomes a warning triangle. Tap a tab to open it: the open tab is the lighter one with a thick bar under it. The tab names show beside the icons only where the sidebar is wide enough; a phone shows the icons alone | |
 
 ## Not yet in the game
 Base building, harvesting, power, production, win and lose conditions, menus and rewards get

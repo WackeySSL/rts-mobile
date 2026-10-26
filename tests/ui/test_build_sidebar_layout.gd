@@ -2,11 +2,12 @@ extends GdUnitTestSuite
 ## The build sidebar's zone and its controls in both orientations (plan P85, ADR 0015 section 5
 ## and ADR 0019 section 1): at the six sizes of ScreenSizes.ALL with the engine's own metrics and at
 ## every profile of both orientations, also with a cutout. The sidebar fills its zone inside the
-## safe rect, its tabs are at least 48 dp and clear of each other, the item slot keeps its 64 dp,
-## the portrait band is what HudLayout says (and gives way first on a short screen), the tabs show
-## names only where they fit and never in the band, and the band's height is the HUD's one place for
-## it: 0 in landscape and once the sidebar is gone. How the ArmyBar and the other HUD parts sit
-## around it is tests/ui/test_hud_layout.gd's.
+## safe rect, its tabs are at least 48 dp and clear of each other, the credits line's glyphs, number
+## and bar sit inside it clear of each other (the glyphs at least 24 dp), the item slot keeps its
+## 64 dp, the portrait band is what HudLayout says (and gives way first on a short screen), the
+## tabs show names only where they fit and never in the band, and the band's height is the HUD's
+## one place for it: 0 in landscape and once the sidebar is gone. How the ArmyBar and the other
+## HUD parts sit around it is tests/ui/test_hud_layout.gd's.
 
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -84,6 +85,7 @@ func test_the_sidebar_fills_its_zone_inside_the_safe_rect_with_its_controls_clea
 				var pair: String = "%s: %s and %s" % [why, names[first], names[second]]
 				var overlap: bool = parts[names[first]].intersects(parts[names[second]])
 				assert_bool(overlap).override_failure_message(pair).is_false()
+		_assert_status_line(parts["Status"], why)
 
 
 ## ADR 0015 section 5: 20% of the safe height and at least 200 dp; where the band and the ArmyBar
@@ -199,6 +201,29 @@ func test_the_bands_height_follows_a_turn_and_goes_with_the_sidebar() -> void:
 	remove_child(_main)
 	_main.free()
 	assert_float(HudLayout.bottom_zone_dp).is_equal(0.0)
+
+
+## The credits line (plan P85c): its glyph, number, bolt and bar sit inside `Status`, clear of each
+## other, and the glyphs are at least 24 dp.
+func _assert_status_line(status: Rect2, why: String) -> void:
+	var line: Array[String] = ["CreditsGlyph", "Credits", "PowerGlyph", "PowerBar"]
+	for index: int in line.size():
+		var rect: Rect2 = _rect(line[index])
+		var inside: String = "%s: %s %s in the status line %s" % [why, line[index], rect, status]
+		assert_bool(status.encloses(rect)).override_failure_message(inside).is_true()
+		for later: int in range(index + 1, line.size()):
+			var pair: String = "%s: %s and %s" % [why, line[index], line[later]]
+			(
+				assert_bool(rect.intersects(_rect(line[later])))
+				. override_failure_message(pair)
+				. is_false()
+			)
+	for glyph: String in ["CreditsGlyph", "PowerGlyph"]:
+		var size: Vector2 = _rect(glyph).size
+		var small: String = "%s: %s is %s" % [why, glyph, size]
+		var least: float = UiScale.dp(24.0) - TOLERANCE_PX
+		assert_float(size.x).override_failure_message(small).is_greater_equal(least)
+		assert_float(size.y).override_failure_message(small).is_greater_equal(least)
 
 
 ## Each of `edges` (the edge values) is on the side of `rect` named by `sides` (0 left, 1 top,

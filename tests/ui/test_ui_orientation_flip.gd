@@ -297,6 +297,7 @@ func _sidebar_state(sidebar: BuildSidebar) -> Dictionary:
 		[
 			sidebar._stack.get_theme_constant("separation"),
 			sidebar._tab_row.get_theme_constant("separation"),
+			sidebar._status.get_theme_constant("separation"),
 		],
 		"tab_sizes": sizes,
 		"tab_texts": texts,
