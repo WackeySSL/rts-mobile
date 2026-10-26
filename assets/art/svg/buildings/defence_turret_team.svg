@@ -1,10 +1,19 @@
-<!-- Defence turret, team layer: white and grey only, tinted at run time, drawn between hull and head. -->
-<!-- Shape: every second sandbag of the ring, four in all, so the colour shows at any heading of the gun. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <g fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5">
-    <ellipse cx="64" cy="27" rx="16" ry="10" transform="rotate(22.5 64 64)"/>
-    <ellipse cx="64" cy="27" rx="16" ry="10" transform="rotate(112.5 64 64)"/>
-    <ellipse cx="64" cy="27" rx="16" ry="10" transform="rotate(202.5 64 64)"/>
-    <ellipse cx="64" cy="27" rx="16" ry="10" transform="rotate(292.5 64 64)"/>
+<!-- Defence turret, team layer: white and grey only, tinted at run time, drawn over the hull and under the gun head; the same 128 x 224 canvas. -->
+<!-- Shape: a painted band round the cupola wall above the sandbags, a ring on the rim of the cupola roof and a plate over the bunker door. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="224" viewBox="0 0 128 224">
+  <defs>
+    <clipPath id="cupola"><path d="M26 64 L26 112 A38 38 0 0 0 102 112 L102 64 A38 38 0 0 0 26 64 Z"/></clipPath>
+  </defs>
+  <g clip-path="url(#cupola)" fill="none">
+    <path d="M26 98 A38 38 0 0 0 102 98" stroke="#4D4D4D" stroke-width="8"/>
+    <path d="M26 98 A38 38 0 0 0 102 98" stroke="#FFFFFF" stroke-width="5"/>
+    <path d="M26 100 A38 38 0 0 0 102 100" stroke="#BFBFBF" stroke-width="1.5"/>
+  </g>
+  <g fill="none">
+    <circle cx="64" cy="64" r="35.5" stroke="#4D4D4D" stroke-width="6"/>
+    <circle cx="64" cy="64" r="35.5" stroke="#FFFFFF" stroke-width="3"/>
+  </g>
+  <g fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round">
+    <rect x="49" y="171" width="30" height="7" rx="1.5"/>
   </g>
 </svg>

@@ -21,16 +21,18 @@ extends Control
 ## `_add_rings_and_atlas` adds a ring row (the team A tank with its selection ring at the three
 ## zooms, at the 6-inch phone's ring radius) and the effects atlas at scale 1 to each ground.
 ##
-## The button at the top right turns the pages: Units (all of the above), Build, Ground, Vehicles
-## and Icons. Build (`_add_buildings_page`) shows the six buildings at gameplay zoom in all four
-## slots, grass and sand, team A and team B. Ground (`_add_ground_page`) shows the ore cells by
+## The button at the top right turns the pages: Units (all of the above), Build, Ground, Vehicles,
+## Icons and Seam. Build and Seam are built by `art_gallery_buildings.gd` (`_add_building_pages`):
+## Build is a list to scroll with the six buildings on grass and sand in both team colours at the
+## camera zoom levels, a tank north and south of each, every building cut at its footprint's middle
+## line and drawn in the view's order (ADR 0022); Seam shows a building with the explored fog over
+## its west column beside the same building seen. Ground (`_add_ground_page`) shows the ore cells by
 ## level, a mixed ore field, and the ghost looks of STYLE.md ("Ghosts"), the one that does not fit
-## with its reason glyph. Vehicles
-## (`_add_vehicles_page`) shows the light tank beside the heavy tank, the artillery and the
-## harvester at gameplay zoom, on grass and sand, in both team colours. Icons (`_add_icons_page`)
-## shows the sidebar's tab and item icons and the HUD glyphs at their size in dp on a dark HUD
-## panel, and the glyphs and rally flags that sit on the map on grass and sand. All are built in
-## code and start hidden.
+## with its reason glyph. Vehicles (`_add_vehicles_page`) shows the light tank beside the heavy
+## tank, the artillery and the harvester at gameplay zoom, on grass and sand, in both team colours.
+## Icons (`_add_icons_page`) shows the sidebar's tab and item icons and the HUD glyphs at their
+## size in dp on a dark HUD panel, and the glyphs and rally flags that sit on the map on grass and
+## sand. All are built in code and start hidden.
 ##
 ## To add an asset: add its layers as a rig on both backgrounds, put the rig in a team group and
 ## keep the layer names. See assets/art/STYLE.md.
@@ -91,15 +93,9 @@ const FRAME_COLOR: Color = Color("1C2127")
 const SQUAD_TILE_OFFSET_PX: float = 16.0  ## A squad pair fills one tile: 2 x 32 px.
 const TERRAIN_ROW_TOP: float = 0.02
 ## The pages the button at the top right cycles through; the button shows the page it is on.
-const PAGES: Array[String] = ["Units", "Build", "Ground", "Vehicles", "Icons"]
+const PAGES: Array[String] = ["Units", "Build", "Ground", "Vehicles", "Icons", "Seam"]
+const Buildings: GDScript = preload("res://game/view/art_gallery_buildings.gd")
 const BUILDING_ART: String = "res://assets/art/svg/buildings/%s_%s.svg"
-## The six buildings (STYLE.md, "Buildings"), by file name. The small row holds the 2x2 buildings
-## and the 1x1 turret, the large row the 3x3 ones. Only the defence turret has a `Turret` layer.
-const BUILDINGS_SMALL: Array[String] = ["power_plant", "barracks", "defence_turret"]
-const BUILDINGS_LARGE: Array[String] = ["headquarters", "refinery", "vehicle_factory"]
-const BUILDING_GAP_PX: float = 12.0
-## Top of each building row on a ground, in base px: team A small, team B small, then the large two.
-const BUILDING_ROW_TOPS: Array[float] = [12.0, 152.0, 292.0, 496.0]
 const ORE_ART: String = "res://assets/art/svg/ore/ore_%s.svg"
 ## Ore tiles by `ore_<name>.svg`: the five fill levels, two variants of each from level 1 up. A
 ## row of a patch is one string of names, left to right (STYLE.md, "Ore").
@@ -107,7 +103,7 @@ const ORE_LEVEL_ROWS: Array[String] = ["0 1a 2a 3a 4a", "0 1b 2b 3b 4b"]
 const ORE_FIELD_ROWS: Array[String] = ["0 1a 2b 3a 2a 1b", "1b 3b 4a 4b 3a 2b", "0 2a 3b 4b 3b 1a"]
 const ORE_LEVEL_TOP: float = 12.0
 const ORE_FIELD_TOP: float = 168.0
-const GHOST_ROW_TOP: float = 392.0
+const GHOST_ROW_TOP: float = 420.0
 const SWATCH_ROW_TOP: float = 560.0
 const GHOST_ART: String = "res://assets/art/svg/ui/ghost_%s.svg"
 const GHOST_BUILDING: String = "barracks"  ## A 2x2 building, so the ghost is 128 px square.
@@ -231,6 +227,7 @@ var _buildings_page: Control = null
 var _ground_page: Control = null
 var _vehicles_page: Control = null
 var _icons_page: Control = null
+var _seam_page: Control = null
 
 @onready var _back_button: Button = %BackButton
 @onready var _page_button: Button = %PageButton
@@ -254,10 +251,10 @@ func _ready() -> void:
 	_add_terrain_row()
 	for node_name: String in ["Grass", "Sand", "TerrainRow"]:
 		_unit_page.append(get_node(node_name) as CanvasItem)
-	_add_buildings_page()
 	_add_ground_page()
 	_add_vehicles_page()
 	_add_icons_page()
+	_add_building_pages()
 	_tint_team_layers(TEAM_A_GROUP, team_a_color)
 	_tint_team_layers(TEAM_B_GROUP, team_b_color)
 	for node: Node in find_children(TURRET_LAYER, "Sprite2D", true, false):
@@ -446,51 +443,13 @@ func _tint_team_layers(group: StringName, color: Color) -> void:
 			layer.modulate = color
 
 
-## The Build page: the six buildings at scale 1 on grass and sand, team A and team B in a row each.
-func _add_buildings_page() -> void:
-	_buildings_page = _page_root("BuildingsPage")
-	for ground_name: String in ["Grass", "Sand"]:
-		var ground: ColorRect = _page_ground(_buildings_page, ground_name)
-		var index: int = 0
-		for size_name: String in ["Small", "Large"]:
-			var ids: Array[String] = BUILDINGS_SMALL if size_name == "Small" else BUILDINGS_LARGE
-			for team_name: String in ["A", "B"]:
-				var row: Control = _pixel_row(
-					ground, size_name + team_name, BUILDING_ROW_TOPS[index]
-				)
-				_fill_building_row(row, ids, team_name == "A")
-				index += 1
-
-
-## One row of buildings, left to right, centred on the row; each is centred on the tallest one.
-func _fill_building_row(row: Control, ids: Array[String], is_team_a: bool) -> void:
-	var rigs: Array[Node2D] = []
-	var total: float = BUILDING_GAP_PX * (ids.size() - 1)
-	var tallest: float = 0.0
-	for id: String in ids:
-		var rig: Node2D = _building_rig(id, is_team_a)
-		var extent: Vector2 = (rig.get_node("Hull") as Sprite2D).texture.get_size()
-		total += extent.x
-		tallest = maxf(tallest, extent.y)
-		rigs.append(rig)
-	var left: float = -total / 2.0
-	for rig: Node2D in rigs:
-		var extent: Vector2 = (rig.get_node("Hull") as Sprite2D).texture.get_size()
-		rig.position = Vector2(left + extent.x / 2.0, tallest / 2.0)
-		left += extent.x + BUILDING_GAP_PX
-		row.add_child(rig)
-
-
-## A building as a rig with the layers `Hull`, `Team` and, for a gun, `Turret`.
-func _building_rig(id: String, is_team_a: bool) -> Node2D:
-	var rig: Node2D = Node2D.new()
-	rig.name = id.to_pascal_case()
-	rig.add_to_group(TEAM_A_GROUP if is_team_a else TEAM_B_GROUP)
-	for layer: String in ["hull", "team", "turret"]:
-		var path: String = BUILDING_ART % [id, layer]
-		if ResourceLoader.exists(path):
-			rig.add_child(_layer_sprite(layer, path))
-	return rig
+## The Build and Seam pages (STYLE.md, "Buildings"), built by `art_gallery_buildings.gd`.
+func _add_building_pages() -> void:
+	var pages: Array[Control] = Buildings.add_pages(
+		self, TERRAIN_COLORS[&"grass_b"], TERRAIN_COLORS[&"sand"], explored_fog_alpha
+	)
+	_buildings_page = pages[0]
+	_seam_page = pages[1]
 
 
 func _layer_sprite(layer: String, path: String) -> Sprite2D:
@@ -535,9 +494,12 @@ func _add_ore_patch(row: Control, spec_rows: Array[String]) -> void:
 			row.add_child(tile)
 
 
-## Three ghosts of one 2x2 building: it fits, it does not fit, and it was last seen.
+## Three ghosts of one 2x2 building: it fits, it does not fit, and it was last seen. A cell is the
+## footprint; the sprite stands on its south edge and rises above it (ADR 0022 section 5).
 func _add_ghost_row(row: Control) -> void:
-	var footprint: Vector2 = (load(BUILDING_ART % [GHOST_BUILDING, "hull"]) as Texture2D).get_size()
+	var texture: Texture2D = load(BUILDING_ART % [GHOST_BUILDING, "hull"])
+	var footprint: Vector2 = Vector2.ONE * texture.get_size().x
+	var rise: float = texture.get_size().y - texture.get_size().x
 	var kinds: Array[String] = ["Valid", "Blocked", "Seen"]
 	for i: int in kinds.size():
 		var cell: Control = Control.new()
@@ -546,16 +508,19 @@ func _add_ghost_row(row: Control) -> void:
 		cell.size = footprint
 		cell.position = Vector2((i - 1) * (footprint.x + GHOST_GAP_PX) - footprint.x / 2.0, 0.0)
 		row.add_child(cell)
-		_build_ghost(cell, kinds[i])
+		_build_ghost(cell, kinds[i], rise)
 
 
-## A ghost: own team's building at a fade and a wash with a solid frame when it fits; the same in
-## danger red with the hatch tile and a reason glyph on top when it does not; a building of the
-## other team under the dots and the explored fog when it was last seen.
-func _build_ghost(cell: Control, kind: String) -> void:
+## A ghost: own team's building at a fade over a wash on its footprint and a solid frame when it
+## fits; the same in danger red with the hatch tile and a reason glyph on top when it does not (the
+## wash first, then the faded sprite, then hatch and frame, so the blocked cells read through it);
+## a building of the other team under the dots and the explored fog, over the whole sprite box, when
+## it was last seen.
+func _build_ghost(cell: Control, kind: String, rise: float) -> void:
+	var box: Rect2 = Rect2(0.0, -rise, cell.size.x, cell.size.y + rise)
 	var rig: CanvasGroup = CanvasGroup.new()
 	rig.name = "Rig"
-	rig.position = cell.size / 2.0
+	rig.position = box.get_center()
 	rig.add_to_group(TEAM_B_GROUP if kind == "Seen" else TEAM_A_GROUP)
 	for layer: String in ["hull", "team"]:
 		rig.add_child(_layer_sprite(layer, BUILDING_ART % [GHOST_BUILDING, layer]))
@@ -563,14 +528,17 @@ func _build_ghost(cell: Control, kind: String) -> void:
 		# `self_modulate`, not `modulate`: modulate reaches the Hull and Team children too and the
 		# fade blends twice, so the hull shows through the team plate (as MoveMarkerLayer notes).
 		rig.self_modulate = Color(1.0, 1.0, 1.0, GHOST_SPRITE_ALPHA)
-	cell.add_child(rig)
 	if kind == "Seen":
-		cell.add_child(_pattern_rect(cell.size, "seen", GHOST_NEUTRAL, GHOST_DOTS_ALPHA))
+		cell.add_child(rig)
+		var dots: TextureRect = _pattern_rect(box.size, "seen", GHOST_NEUTRAL, GHOST_DOTS_ALPHA)
+		dots.position = box.position
+		cell.add_child(dots)
 		var fog: ColorRect = ColorRect.new()
 		fog.name = "ExploredFog"
 		fog.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		fog.color = Color(0.0, 0.0, 0.0, explored_fog_alpha / 255.0)
-		fog.size = cell.size
+		fog.position = box.position
+		fog.size = box.size
 		cell.add_child(fog)
 		return
 	var accent: Color = GHOST_OK if kind == "Valid" else GHOST_DANGER
@@ -580,6 +548,7 @@ func _build_ghost(cell: Control, kind: String) -> void:
 	wash.color = Color(accent, GHOST_WASH_ALPHA)
 	wash.size = cell.size
 	cell.add_child(wash)
+	cell.add_child(rig)
 	if kind == "Blocked":
 		cell.add_child(_pattern_rect(cell.size, "hatch", accent, GHOST_HATCH_ALPHA))
 	var frame: ReferenceRect = ReferenceRect.new()
@@ -828,6 +797,7 @@ func _show_page(index: int) -> void:
 	_ground_page.visible = index == 2
 	_vehicles_page.visible = index == 3
 	_icons_page.visible = index == 4
+	_seam_page.visible = index == 5
 	_page_button.text = PAGES[index]
 
 

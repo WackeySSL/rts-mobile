@@ -16,9 +16,16 @@ const SIDE_PX: Dictionary[String, int] = {
 	"artillery": 64,
 	"harvester": 80,
 }
-## Words the plain `grep` of STYLE.md forbids (comments too); the elements allowed besides `svg`.
-const FORBIDDEN: Array[String] = ["text", "image", "filter", "mask", "href", "style", "script"]
-const OK_TAGS: String = " g path rect circle ellipse polygon polyline line linearGradient stop "
+## The elements STYLE.md allows besides `svg` (ADR 0022 adds `defs`, `radialGradient`, `clipPath`
+## and `use`). `pattern` is out because ThorVG in Godot 4.7.2 draws none, so a file that used one
+## would look right in an editor and empty in the game; a mask only with solid fills.
+const OK_TAGS: String = (
+	" g path rect circle ellipse polygon polyline line linearGradient radialGradient stop defs "
+	+ "clipPath use mask "
+)
+## Strings no art file may hold: an embedded raster, an external reference, a doctype entity.
+const FORBIDDEN: Array[String] = ["data:", "xlink", "<!ENTITY", "base64", "<text", "<image"]
+const MAX_BYTES: int = 28672  ## 28 KB.
 const ATLAS_PATH: String = "res://assets/art/svg/fx/effects_atlas.svg"
 ## Each map tile as the style guide draws it, rows from the top: 0 is the tile's own colour, 1 and 2
 ## its `_b` and `_c` tone. There is no grid: row 0 and column 0 are the base, or the rock's edge.
@@ -81,24 +88,40 @@ func test_every_svg_follows_the_technical_rules() -> void:
 	var canvas: RegEx = RegEx.create_from_string(
 		'<svg[^>]* width="(\\d+)" height="(\\d+)" viewBox="0 0 (\\d+) (\\d+)"'
 	)
-	var opacity: RegEx = RegEx.create_from_string('opacity="[^"]*"')
+	var href: RegEx = RegEx.create_from_string('href="([^"]*)"')
+	var url: RegEx = RegEx.create_from_string("url\\(#([^)]+)\\)")
+	var mask: RegEx = RegEx.create_from_string("(?s)<mask[^>]*>(.*?)</mask>")
+	var opacity: RegEx = RegEx.create_from_string('(stop-)?opacity="[^"]*"|(offset|fx|fy)="[^"]*"')
 	var two_decimals: RegEx = RegEx.create_from_string("\\d\\.\\d\\d")
 	var problems: Array[String] = []
 	for path: String in files:
 		var text: String = FileAccess.get_file_as_string(path)
-		if text.length() > 20480:
-			problems.append(path + " is over 20 KB")
+		if text.length() > MAX_BYTES:
+			problems.append(path + " is over 28 KB")
 		for word: String in FORBIDDEN:
-			if text.containsn(word):
+			if text.contains(word):
 				problems.append("%s has '%s'" % [path, word])
 		for found: RegExMatch in tag.search_all(text):
 			if not OK_TAGS.contains(" %s " % found.get_string(1)):
 				problems.append("%s has <%s>" % [path, found.get_string(1)])
+		# A reference stays inside the file and names an id that is there.
+		for found: RegExMatch in href.search_all(text):
+			var target: String = found.get_string(1)
+			if not target.begins_with("#") or not text.contains('id="%s"' % target.substr(1)):
+				problems.append("%s has the reference %s" % [path, target])
+		for found: RegExMatch in url.search_all(text):
+			if not text.contains('id="%s"' % found.get_string(1)):
+				problems.append("%s has no id %s" % [path, found.get_string(1)])
+		# ThorVG hides everything under a gradient-filled mask.
+		for found: RegExMatch in mask.search_all(text):
+			if found.get_string(1).contains("url("):
+				problems.append(path + " has a mask with a gradient")
 		var size: RegExMatch = canvas.search(text)
 		if size == null or size.get_string(1) != size.get_string(3):
 			problems.append(path + " width and viewBox disagree")
 		elif size.get_string(2) != size.get_string(4):
 			problems.append(path + " height and viewBox disagree")
+		# Coordinates are integers or have one decimal; gradient fractions and opacities may have two.
 		if two_decimals.search(opacity.sub(text, "", true)) != null:
 			problems.append(path + " has a two-decimal coordinate")
 	assert_array(problems).is_empty()
