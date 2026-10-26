@@ -7,27 +7,39 @@ extends GdUnitTestSuite
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const HoldingProbe: GDScript = preload("res://tests/core/support/holding_probe.gd")
 const CapturingSnapshot: GDScript = preload("res://tests/core/support/capturing_snapshot.gd")
+const RecordingAi: GDScript = preload("res://tests/core/support/recording_ai.gd")
+const DummyStart: GDScript = preload("res://tests/core/support/dummy_start.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const SEED: int = 42
 ## How long before run() a late job is posted: far longer than any run, as a worker woken late.
 const LATE_USEC: int = 5_000_000
 ## The types a TickJob property may have, and the contract's fields with theirs.
 const ALLOWED_TYPES: Array[String] = [
-	"World", "MatchLoop", "SimProbe", "MatchSnapshot", "Array[Command]", "Semaphore", "int", "bool"
+	"World",
+	"MatchLoop",
+	"SimProbe",
+	"MatchSnapshot",
+	"Array[Command]",
+	"Array[AiController]",
+	"Semaphore",
+	"int",
+	"bool",
 ]
 const CONTRACT_FIELDS: Dictionary[String, String] = {
 	"world": "World",
 	"loop": "MatchLoop",
 	"probe": "SimProbe",
 	"commands": "Array[Command]",
+	"controllers": "Array[AiController]",
 	"snapshot": "MatchSnapshot",
 	"previous": "MatchSnapshot",
 	"post_usec": "int",
 	"end_usec": "int",
 }
-## The code that runs inside TickJob.run() on the worker.
+## The code of game/core that runs inside TickJob.run() on the worker (game/ai has its own scan).
 const WORKER_FILES: Array[String] = [
 	"res://game/core/TickJob.gd",
+	"res://game/core/AiDriver.gd",
 	"res://game/core/MatchSnapshot.gd",
 	"res://game/core/TimingProbe.gd",
 	"res://game/core/StepProbe.gd",
@@ -148,9 +160,11 @@ func test_the_timings_come_after_the_capture_and_count_it() -> void:
 
 ## The walk goes from a job on the prepared arena through script variables and Array and
 ## Dictionary keys and values: the World (with the native kernels as a leaf), the MatchLoop and
-## its Replay, the StepProbe and a TimingProbe, the command list and both snapshots. It finds no
-## Node and no Resource, before and after a run. A probe behind the StepProbe that holds a Node, or
-## a Resource in an Array or a Dictionary, is found, and so are kernels that are a Node.
+## its Replay, the StepProbe and a TimingProbe, the command list, the controllers (the shipped
+## dummy of player 2 with its stream, ADR 0020 section 2) and both snapshots. It finds no Node and
+## no Resource, before and after a run in which the dummy thinks. A probe behind the StepProbe that
+## holds a Node, or a Resource in an Array or a Dictionary, is found, and so are kernels that are a
+## Node.
 func test_nothing_reachable_from_a_job_is_a_node_or_a_resource() -> void:
 	var job: TickJob = _arena_job()
 	assert_array(SimImpls.use(job.world, SimImpls.Impl.NATIVE)).is_empty()
@@ -159,10 +173,15 @@ func test_nothing_reachable_from_a_job_is_a_node_or_a_resource() -> void:
 	step.target = timing
 	var command: Command = Command.move(1, PackedInt32Array([1]), 30500, 20500)
 	job.commands.append(command)
+	var stream: DetRandom = DetRandom.create(SEED, DetRandom.STREAM_AI_BASE + 2)
+	var dummy: DummyAi = DummyAi.create(DummyStart.dummy_def(), 2, stream)
+	# Its turn on tick 0, so it thinks in the run below.
+	dummy.think_offset = 0
+	job.controllers.append(dummy)
 	var visited: Dictionary = {}
 	assert_array(_engine_objects(job, visited)).is_empty()
 	var reached: Array[Object] = [job.world, job.world.rng, job.world.fog, job.world.flow]
-	reached.append_array([job.loop, job.loop.replay, step, timing, command])
+	reached.append_array([job.loop, job.loop.replay, step, timing, command, dummy, stream])
 	reached.append_array([job.previous, job.previous.fog, job.snapshot])
 	for object: Object in reached:
 		(
@@ -175,6 +194,7 @@ func test_nothing_reachable_from_a_job_is_a_node_or_a_resource() -> void:
 	visited.clear()
 	assert_array(_engine_objects(job, visited)).is_empty()
 	assert_bool(visited.has(job.snapshot.fog.get_instance_id())).is_true()
+	assert_bool(visited.has(dummy.get_instance_id())).is_true()
 	var holding: SimProbe = HoldingProbe.new()
 	step.target = holding
 	var node: Node = auto_free(Node.new())
@@ -191,6 +211,36 @@ func test_nothing_reachable_from_a_job_is_a_node_or_a_resource() -> void:
 	holding.held = null
 	job.world.kernels = node
 	assert_array(_engine_objects(job, {})).is_equal(["job.world.kernels: Node"])
+
+
+## run() lets the controllers think on the World before the step, after the commands the list
+## holds (ADR 0020 section 3): a recording controller of player 2 that thinks on every tick sees the
+## view of tick 0 with the human's command already in the list, and its STOP is stamped tick 0 after
+## it, recorded in the replay after it, and gone from the list with it. Without controllers nothing
+## is added.
+func test_run_lets_the_controllers_think_before_the_step_after_the_listed_commands() -> void:
+	var job: TickJob = _arena_job()
+	var journal: Array = []
+	var controller: AiController = RecordingAi.new()
+	controller.player_id = 2
+	controller.set(&"journal", journal)
+	job.controllers.append(controller)
+	var command: Command = Command.move(1, PackedInt32Array([1]), 30500, 20500)
+	job.commands.append(command)
+	job.run()
+	assert_int(journal.size()).is_equal(1)
+	# The view's player and tick, and the list's size when it thought.
+	assert_array([journal[0][1], journal[0][2], journal[0][4]]).is_equal([2, 0, 1])
+	assert_bool(job.commands.is_empty()).is_true()
+	# The arena's two scenario orders come first (sequences 0 and 1), then the human's, the AI's.
+	assert_array(_records(job.loop.replay).slice(2)).is_equal(
+		[[0, 1, 2, Command.Type.MOVE], [0, 2, 3, Command.Type.STOP]]
+	)
+	job.controllers.clear()
+	job.previous = job.snapshot
+	job.snapshot = _new_snapshot()
+	job.run()
+	assert_array([journal.size(), job.loop.next_sequence]).is_equal([1, 4])
 
 
 func test_the_worker_files_use_none_of_the_banned_names() -> void:
@@ -239,6 +289,20 @@ func _arena_job() -> TickJob:
 	job.previous.capture(job.world, null)
 	job.snapshot = _new_snapshot()
 	return job
+
+
+## The replay's log as [tick, player_id, sequence, type] per command, in log order.
+func _records(replay: Replay) -> Array:
+	var records: Array = []
+	var at: int = 0
+	while at < replay.commands.size():
+		var command: Command = Command.new()
+		at = Command.decode(replay.commands, at, command)
+		assert_int(at).is_greater(0)
+		if at <= 0:
+			break
+		records.append([command.tick, command.player_id, command.sequence, command.type])
+	return records
 
 
 func _new_snapshot() -> MatchSnapshot:
