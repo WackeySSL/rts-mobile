@@ -3,8 +3,9 @@ extends Node2D
 ## Draws the projectiles of the runner's published snapshot (assets/art/STYLE.md "Combat effects",
 ## ADR 0012 sections 3 and 6, z 120): every live slot is one quad of the effects atlas, the SHELL
 ## region for a shot of any weapon but the rocket, the ROCKET region for that one (the weapon is
-## `weapon_ids[proj_weapon]`). A quad stands at lerp(prev_proj, proj, alpha), turned along the
-## move from prev_proj to proj, and is as big in world px as its region, so it scales with the zoom.
+## `weapon_ids[proj_weapon]`). A quad stands at lerp(prev_proj, proj, alpha) projected by
+## `IsoProjection` (ADR 0023 section 1), turned along the move from prev_proj to proj as that move
+## looks on the screen, and is as big in world px as its region, so it scales with the zoom.
 ## Whose shell it is does not matter: a slot of owner 0 (a neutral armed unit) is drawn like any.
 ##
 ## A slot whose `proj_id` differs from `prev_proj_id` is new in the last tick: it has no heading, so
@@ -108,7 +109,6 @@ func _plan() -> void:
 	var cur_y: PackedInt32Array = snap.proj_y
 	var rocket: int = snap.weapon_ids.find(ROCKET_ID)  # -1 without one: no slot is a rocket.
 	var alpha: float = runner.alpha()
-	var px_per_milli: float = ViewScale.milli_to_px(1)
 	var geometry: PackedFloat32Array = _geometry
 	var player: int = FogLayer.local_player_of(runner)
 	var fog: FogGrid = snap.fog
@@ -134,9 +134,12 @@ func _plan() -> void:
 		if fogged and counts[counts_at + snap.cell_of(to_x, to_y)] <= 0:
 			continue  # On a tile the local player does not see.
 		var out: int = _quads * FLOATS_PER_QUAD
-		geometry[out] = lerpf(from_x, to_x, alpha) * px_per_milli
-		geometry[out + 1] = lerpf(from_y, to_y, alpha) * px_per_milli
-		geometry[out + 2] = atan2(float(to_y - from_y), float(to_x - from_x))
+		var place: Vector2 = IsoProjection.ground_to_px(from_x, from_y).lerp(
+			IsoProjection.ground_to_px(to_x, to_y), alpha
+		)
+		geometry[out] = place.x
+		geometry[out + 1] = place.y
+		geometry[out + 2] = IsoProjection.screen_angle(float(to_x - from_x), float(to_y - from_y))
 		_slots[_quads] = slot
 		_kinds[_quads] = KIND_ROCKET if weapons[slot] == rocket else KIND_SHELL
 		_quads += 1

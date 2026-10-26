@@ -376,7 +376,7 @@ func test_a_held_tick_leaves_the_rigs_in_place_and_resumes_without_a_burst() -> 
 	var held_at: PackedVector2Array = worker.positions()
 	assert_array([worker.runner.held_ticks, worker.runner.alpha()]).is_equal([1, 1.0])
 	for row: int in rigs.size():
-		var shown: Vector2 = ViewScale.milli_to_px_vec(snap.pos_x[row], snap.pos_y[row])
+		var shown: Vector2 = IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row])
 		assert_vector(held_at[row]).is_equal_approx(shown, Vector2(0.01, 0.01))
 	for _frame: int in HOLD_FRAMES - 1:
 		worker.frame()

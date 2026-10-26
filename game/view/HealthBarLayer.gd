@@ -177,7 +177,6 @@ func _plan() -> void:
 	var recent_since: int = int(unit_layer.clock.call()) - RECENT_MS
 	var local_player: int = runner.scenario.local_player if runner.scenario != null else 1
 	var alpha: float = runner.alpha()
-	var px_per_milli: float = ViewScale.milli_to_px(1)
 	var owners: PackedInt32Array = snap.owner
 	var types: PackedInt32Array = snap.type_index
 	var hps: PackedInt32Array = snap.hp
@@ -203,10 +202,11 @@ func _plan() -> void:
 		var fill_color: Color = enemy_color if shape >= 2 else own_color
 		var reach: float = INFANTRY_REACH_PX if infantry == 1 else VEHICLE_REACH_PX
 		# The unit's place now, the way UnitLayer puts its rig, and the bar's top-left corner.
-		var x: float = lerpf(prev_x[row], cur_x[row], alpha) * px_per_milli
-		var y: float = lerpf(prev_y[row], cur_y[row], alpha) * px_per_milli
-		var left: float = x - 0.5 * width * unit
-		var top: float = y - reach - (GAP_DP + HEIGHT_DP) * unit
+		var place: Vector2 = IsoProjection.ground_to_px(prev_x[row], prev_y[row]).lerp(
+			IsoProjection.ground_to_px(cur_x[row], cur_y[row]), alpha
+		)
+		var left: float = place.x - 0.5 * width * unit
+		var top: float = place.y - reach - (GAP_DP + HEIGHT_DP) * unit
 		_bars[_bar_count] = row
 		_bar_first[_bar_count] = _rects
 		_bar_count += 1

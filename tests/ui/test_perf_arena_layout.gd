@@ -14,8 +14,8 @@ const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const MICHAEL: Dictionary = {"window": Vector2i(2424, 1080), "safe": Rect2i(152, 0, 2272, 1080)}
 const PROFILES: Array[StringName] = [&"desktop", &"android_6in", &"web_tablet"]
 const MIN_DP: float = 48.0
-## The centre of tile (32, 32) in world px (64 px a tile).
-const CENTRE: Vector2 = Vector2(2080, 2080)
+## The centre of tile (32, 32) in world px under the 2:1 projection (P117).
+const CENTRE: Vector2 = Vector2(0, 1040)
 const RUN_TICKS: int = 15
 ## The sink of the fog clock: every update takes this many us.
 const FOG_US: int = 1234
@@ -77,7 +77,7 @@ func test_the_camera_starts_at_the_lowest_zoom_on_the_fight_at_every_size() -> v
 		var snap: MatchSnapshot = runner.snapshot
 		var inside: int = 0
 		for row: int in snap.unit_count():
-			var at: Vector2 = ViewScale.milli_to_px_vec(snap.pos_x[row], snap.pos_y[row])
+			var at: Vector2 = IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row])
 			inside += int(view.has_point(at))
 		var heavy: int = arena.hud.gate.heavy_rigs
 		var label: String = "%s: %d of 150 rows in %s" % [profile_name, inside, view]

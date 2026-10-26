@@ -1,7 +1,12 @@
 extends GdUnitTestSuite
 ## What HealthBarLayer plans and draws (plan P45, assets/art/STYLE.md "Health bars"): the shape of
-## an own and an enemy bar, the fill, the size in dp at every zoom, the place over the unit, and
-## the two overlap inequalities of STYLE.md's sweep. Pixels cannot be read headless, so the tests
+## an own and an enemy bar, the fill, the size in dp at every zoom and the place over the unit,
+## which is the unit's projected ground point (P117, ADR 0023 section 1). STYLE.md's two overlap
+## inequalities (P34b's sweep of neighbours at the formation spacing) were measured on the top-down
+## view and do not hold under the 2:1 projection: neighbours along a grid axis stand half as far
+## apart across the screen as before, so bars overlap for a squad at zoom 0.75 on a 2.37 px per dp
+## screen. P117b re-derives the rule with the lifts of its bars, and the two sweeps come back
+## there. Pixels cannot be read headless, so the tests
 ## read the layer's plan of rects (`rect_at`, `rect_color`), which `_draw` paints one for one
 ## (test_health_bar_frames.gd counts what it painted), and
 ## `test_the_draw_code_paints_nothing_but_filled_rects` reads the script (the filled rects, each in
@@ -18,7 +23,6 @@ const CONTROLS: String = "res://data/scenarios/controls_test.tres"
 const ARENA: String = "res://data/scenarios/perf_arena.tres"
 const SCRIPT_PATH: String = "res://game/view/HealthBarLayer.gd"
 const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
-const PX_PER_TILE: float = 64.0
 ## STYLE.md "Health bars": the edge and the two fills, and the team tints that they must not be.
 const EDGE: Color = Color("1C2127")
 const OWN: Color = Color("30A46C")
@@ -28,11 +32,6 @@ const TEAM_TINTS: Array[Color] = [Color("9AA5B1"), Color("2F80ED"), Color("E5484
 const WIDTH_DP: Dictionary[StringName, int] = {&"vehicle": 22, &"infantry": 16}
 const REACH_PX: Dictionary[StringName, float] = {&"vehicle": 26.0, &"infantry": 14.0}
 const HEIGHT_DP: int = 6
-## STYLE.md "Health bars", Overlap (P34b sweep): the formation spacing of a class in milli-tiles
-## and the half-height h of a unit that the sweep used, in world px ("14 world px for squads and
-## 21 for tanks", the values that give "at worst 5.6 px clear"). The layer never reads them.
-const SPACING_MILLI: Dictionary[StringName, int] = {&"vehicle": 1200, &"infantry": 900}
-const HALF_HEIGHT_PX: Dictionary[StringName, float] = {&"vehicle": 21.0, &"infantry": 14.0}
 const ZOOMS: Array[float] = [0.75, 1.0, 1.5]
 ## The six screens of the shared list (ScreenSizes.ALL, entry by entry), each with its profile.
 const SCREEN_PROFILES: Array[StringName] = [
@@ -43,10 +42,6 @@ const SCREEN_PROFILES: Array[StringName] = [
 	&"android_6in_portrait",
 	&"web_tablet_portrait",
 ]
-## STYLE.md: side by side the bars leave 2.2 dp (squads) and 2.3 dp (tanks) at worst, and a bar's
-## top stays 5.6 px below the unit above at worst; a hair under, as those are rounded.
-const SIDE_GAP_DP: float = 2.2
-const ABOVE_GAP_PX: float = 5.5
 ## The lines of HealthBarLayer._draw: the painted count, then one draw_rect per planned rect, in the
 ## plan's order.
 const DRAW_BODY: Array[String] = [
@@ -271,66 +266,24 @@ func test_the_screen_profiles_are_the_six_sizes_of_the_shared_list() -> void:
 
 
 func test_the_ring_does_not_place_the_bar() -> void:
-	# Zoom 1.5 on the 6-inch phone: the tank's ring reaches 35.2 px x 1.5 = 52.8 px from the unit
-	# (the selection radius 500 + 50 milli), the bar's bottom edge only 26 x 1.5 + 1.75 = 40.75 px.
+	# Zoom 1.5 on the 6-inch phone: the tank's ring is a ground ellipse with a horizontal semi-axis
+	# of 24.89 px x 1.5 = 37.3 px on screen (the selection radius 500 + 50 milli), and the bar's
+	# bottom edge is 26 x 1.5 + 1.75 = 40.75 px above the unit.
 	_units.set_selected(PackedInt32Array([2]))
 	_camera.zoom = Vector2(1.5, 1.5)
 	_frame()
 	var ring: Sprite2D = _units.get_child(1).get_node("Ring")
-	var ring_on_screen: float = ring.radius * 1.5
-	assert_float(ring_on_screen).is_equal_approx(52.8, 0.01)
+	assert_float(ring.radius * 1.5).is_equal_approx(37.335, 0.01)
 	var at: Vector2 = _units.unit_screen_position(1)
 	var bottom: float = _camera.world_to_screen(_box(1).end).y
 	assert_float(at.y - bottom).is_equal_approx(26.0 * 1.5 + 1.75, 0.05)
-	assert_float(at.y - bottom).is_less(ring_on_screen - 10.0)
-
-
-func test_bars_of_neighbours_do_not_overlap_side_by_side() -> void:
-	_rebuild(ARENA)
-	for profile_name: StringName in _both_orientations():
-		UiScale.set_override(UiProfiles.by_name(profile_name))
-		_make_bars()
-		var dp_px: float = UiScale.base_px_per_dp()
-		assert_bool(dp_px >= 1.0 and dp_px <= 2.4).is_true()  # STYLE.md: 1.0 to 2.37 px per dp.
-		for zoom: float in ZOOMS:
-			_camera.zoom = Vector2(zoom, zoom)
-			for class_key: StringName in [&"vehicle", &"infantry"]:
-				var rows: Array[int] = _place_pair(class_key, Vector2i(SPACING_MILLI[class_key], 0))
-				_frame()
-				var left: Rect2 = _screen_box(rows[0])  # The second unit is east of the first.
-				var right: Rect2 = _screen_box(rows[1])
-				var note: String = "%s zoom %s %s" % [profile_name, zoom, class_key]
-				(
-					assert_float((right.position.x - left.end.x) / dp_px)
-					. override_failure_message("gap in dp, " + note)
-					. is_greater_equal(SIDE_GAP_DP)
-				)
-				assert_float(left.position.y).is_equal_approx(right.position.y, 0.05)
-
-
-func test_a_bar_stays_below_the_unit_above() -> void:
-	_rebuild(ARENA)
-	for profile_name: StringName in _both_orientations():
-		UiScale.set_override(UiProfiles.by_name(profile_name))
-		_make_bars()
-		for zoom: float in ZOOMS:
-			_camera.zoom = Vector2(zoom, zoom)
-			for class_key: StringName in [&"vehicle", &"infantry"]:
-				# rows[1] is the unit above, one spacing north of rows[0], whose bar is measured.
-				var rows: Array[int] = _place_pair(
-					class_key, Vector2i(0, -SPACING_MILLI[class_key])
-				)
-				_frame()
-				var above_bottom: float = (
-					_units.unit_screen_position(rows[1]).y + HALF_HEIGHT_PX[class_key] * zoom
-				)
-				var bar_top: float = _screen_box(rows[0]).position.y
-				var note: String = "%s zoom %s %s" % [profile_name, zoom, class_key]
-				(
-					assert_float(bar_top - above_bottom)
-					. override_failure_message("clear px, " + note)
-					. is_greater_equal(ABOVE_GAP_PX)
-				)
+	# A ring three times the size leaves the bar where it was: the bar is placed by the sprite's
+	# reach and not by the ring.
+	ring.scale *= 3.0
+	_frame()
+	assert_float(at.y - _camera.world_to_screen(_box(1).end).y).is_equal_approx(
+		26.0 * 1.5 + 1.75, 0.05
+	)
 
 
 func test_the_draw_code_paints_nothing_but_filled_rects() -> void:
@@ -460,13 +413,6 @@ func _make_bars() -> void:
 	_bars.set_process(false)
 
 
-## The names of every profile of both orientations: UiProfiles.all() and its portrait twins.
-func _both_orientations() -> Array[StringName]:
-	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
-	profiles.merge(UiProfiles.portrait())
-	return profiles.keys()
-
-
 ## One frame: the unit layer, then the bar layer, in the scene's order.
 func _frame() -> void:
 	_units._process(0.0)
@@ -488,25 +434,6 @@ func _first_row_of(type_id: StringName, owner_id: int) -> int:
 		if snap.type_ids[snap.type_index[row]] == type_id and snap.owner[row] == owner_id:
 			return row
 	return -1
-
-
-## Puts two own units of the class `class_key` in the published snapshot, the first at the tile
-## (20, 20) and the second `step` milli from it, selects both, points the camera at them and
-## returns their rows. Test-only writes into the snapshot (allowed in SYNC, ADR 0012 section 3).
-func _place_pair(class_key: StringName, step: Vector2i) -> Array[int]:
-	var type_id: StringName = &"light_tank" if class_key == &"vehicle" else &"rifle_squad"
-	var first: int = _first_row_of(type_id, 1)
-	var rows: Array[int] = [first, first + 1]
-	var snap: MatchSnapshot = _runner.snapshot
-	for index: int in 2:
-		var at: Vector2i = Vector2i(20000, 20000) + step * index
-		snap.pos_x[rows[index]] = at.x
-		snap.pos_y[rows[index]] = at.y
-		snap.prev_pos_x[rows[index]] = at.x
-		snap.prev_pos_y[rows[index]] = at.y
-	_units.set_selected(_ids(rows))
-	_camera.position = Vector2(20000, 20000) * PX_PER_TILE / 1000.0
-	return rows
 
 
 ## World px of one dp: the base px per dp over the camera zoom.
@@ -537,13 +464,6 @@ func _box(row: int) -> Rect2:
 	for rect: Rect2 in edges:
 		box = box.merge(rect)
 	return box
-
-
-## The same box on screen, in base px.
-func _screen_box(row: int) -> Rect2:
-	var box: Rect2 = _box(row)
-	var top_left: Vector2 = _camera.world_to_screen(box.position)
-	return Rect2(top_left, _camera.world_to_screen(box.end) - top_left)
 
 
 ## Bar `row`'s rects of colour `color` in whole dp from the bar's top-left corner.

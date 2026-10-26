@@ -1,9 +1,10 @@
 extends GdUnitTestSuite
-## The main scene (ROADMAP Phase 1 boxes 1 and 2): a MatchRunner on the controls_test scenario, a
-## 48x48 map of 64 px tiles drawn by MapView from the runner's World, 40 unit rigs, an RtsCamera
-## driven by a TouchInput (both on data/input_settings.tres), and the Dev button. Composition
-## only: the camera and gesture rules are tested in tests/view and tests/input. Fingers enter
-## through the touch_events helper, which converts base px to the window px that push_input takes.
+## The main scene (ROADMAP Phase 1 boxes 1 and 2, P117): a MatchRunner on the controls_test
+## scenario, a 48x48 map drawn by MapView from the runner's World as a diamond of 64 x 32 px tiles
+## (ADR 0023 section 1), 40 unit rigs, an RtsCamera driven by a TouchInput (both on
+## data/input_settings.tres), and the Dev button. Composition only: the camera and gesture rules are
+## tested in tests/view and tests/input. Fingers enter through the touch_events helper, which
+## converts base px to the window px that push_input takes.
 ##
 ## Every test starts at a 1280x720 window. The headless window is 64x64 by default, and GUI
 ## hit-tests silently miss until the window has the base size. Tests that resize the window reset
@@ -17,21 +18,16 @@ const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
 const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
 ## The screens every screen is tested at: base, 20:9 phone and 4:3 tablet, each held both ways.
 const TARGET_SIZES: Array[Vector2i] = ScreenSizes.ALL
-## The lowest camera position at each of them: half the visible size. The UiOrientation autoload
-## turns the base size with the window, so a portrait window shows the transposed rect: 1280x720,
-## 1600x720 and 1280x960 in landscape; 720x1280, 720x1600 and 960x1280 in portrait.
-const LOWEST: Dictionary[Vector2i, Vector2] = {
-	ScreenSizes.LANDSCAPE[0]: Vector2(640, 360),
-	ScreenSizes.LANDSCAPE[1]: Vector2(800, 360),
-	ScreenSizes.LANDSCAPE[2]: Vector2(640, 480),
-	ScreenSizes.PORTRAIT[0]: Vector2(360, 640),
-	ScreenSizes.PORTRAIT[1]: Vector2(360, 800),
-	ScreenSizes.PORTRAIT[2]: Vector2(480, 640),
-}
-## Bigger than the map, so the camera must stop at its limit.
+## The UiOrientation autoload turns the base size with the window, so a portrait window shows the
+## transposed rect: 1280x720, 1600x720 and 1280x960 in landscape; 720x1280, 720x1600 and 960x1280
+## in portrait. The camera's centre stops at the map's tips whatever the size (ADR 0023 section 4).
+## Bigger than the map, so the camera must stop at its edge.
 const OVERSCROLL_PX: float = 5000.0
-## The middle of the 48x48 map (3072 px), where the pan and pinch tests begin.
-const MAP_CENTRE: Vector2 = Vector2(1536, 1536)
+## The middle of the 48x48 map's diamond, where the pan and pinch tests begin, and the north and
+## south tips that a pan down and right, and up and left, ends on.
+const MAP_CENTRE: Vector2 = Vector2(0, 768)
+const NORTH_TIP: Vector2 = Vector2(0, 0)
+const SOUTH_TIP: Vector2 = Vector2(0, 1536)
 const POSITION_MARGIN_PX: float = 0.5
 const TOLERANCE: Vector2 = Vector2(0.01, 0.01)
 ## Mid-screen at 1280x720, well clear of the Dev button (24..144 px).
@@ -67,7 +63,7 @@ func before_test() -> void:
 	_touch.clock = func() -> int: return 0  # No long-press, however long the test stalls.
 
 
-func test_map_is_48_by_48_tiles_of_64_px_from_the_scenario() -> void:
+func test_map_is_a_48_by_48_tile_diamond_from_the_scenario() -> void:
 	var scenario: ScenarioDef = load(SCENARIO_PATH)
 	assert_that(scenario.map_size_tiles).is_equal(Vector2i(48, 48))
 	assert_object(_main.get_node("MatchRunner").scenario).is_same(scenario)
@@ -75,7 +71,10 @@ func test_map_is_48_by_48_tiles_of_64_px_from_the_scenario() -> void:
 	assert_object(_map.runner).is_same(runner)  # The scene wires the map to the match.
 	assert_int(runner.world.map_cols).is_equal(48)
 	assert_int(runner.world.map_rows).is_equal(48)
-	assert_that(_map.map_rect_px()).is_equal(Rect2i(0, 0, 3072, 3072))
+	assert_that(_map.map_rect_px()).is_equal(Rect2i(-1536, 0, 3072, 1536))  # Its bounding rect.
+	assert_array(_map.map_diamond_px()).contains_exactly(
+		[Vector2(0, 0), Vector2(1536, 768), Vector2(0, 1536), Vector2(-1536, 768)]
+	)
 	# One bake of 8 texels per tile, drawn once over the whole map (no grid lines), with the two
 	# grass tones of Phase 1 as a checkerboard (the scene sets no colour or tile override).
 	assert_int(_map.bake_count()).is_equal(1)
@@ -83,16 +82,19 @@ func test_map_is_48_by_48_tiles_of_64_px_from_the_scenario() -> void:
 	assert_str(_map.image().get_pixel(3, 3).to_html(false)).is_equal("5e7d4a")
 	assert_str(_map.image().get_pixel(8 + 3, 3).to_html(false)).is_equal("6f8f57")
 	assert_int(_map.draw_count()).is_equal(1)
-	assert_that(_map.drawn_rect()).is_equal(Rect2(0, 0, 3072, 3072))
-	assert_that(_map.get_global_transform()).is_equal(Transform2D.IDENTITY)  # Sim px are world px.
+	assert_that(_map.drawn_rect()).is_equal(Rect2(0, 0, 48, 48))  # Cells, under the cell transform.
+	assert_that(_map.drawn_transform()).is_equal(IsoProjection.cell_to_px())
+	assert_that(_map.get_global_transform()).is_equal(Transform2D.IDENTITY)  # The node is at 0.
 
 
-func test_camera_limits_equal_the_map_rect() -> void:
-	var rect: Rect2i = _map.map_rect_px()
-	assert_int(_camera.limit_left).is_equal(rect.position.x)
-	assert_int(_camera.limit_top).is_equal(rect.position.y)
-	assert_int(_camera.limit_right).is_equal(rect.end.x)
-	assert_int(_camera.limit_bottom).is_equal(rect.end.y)
+func test_the_camera_clamps_its_centre_into_the_maps_diamond_and_has_no_engine_limit() -> void:
+	assert_bool(_camera.limit_enabled).is_false()
+	_camera.centre_on(Vector2(-99999, -99999))
+	assert_that(_camera.position).is_equal(NORTH_TIP)
+	_camera.centre_on(Vector2(99999, 99999))
+	assert_that(_camera.position).is_equal(SOUTH_TIP)
+	_camera.centre_on(MAP_CENTRE)
+	assert_that(_camera.position).is_equal(MAP_CENTRE)
 
 
 func test_camera_starts_on_the_scenario_camera_tile_and_sees_all_30_tanks_at_every_size() -> void:
@@ -103,8 +105,8 @@ func test_camera_starts_on_the_scenario_camera_tile_and_sees_all_30_tanks_at_eve
 		get_window().size = size
 		await await_idle_frame()
 		_camera.zoom = Vector2.ONE  # A turn rescales the zoom (ADR 0015 section 4); count at zoom 1.
-		assert_that(_camera.position).is_equal(Vector2(800, 1376))  # The centre of tile (12, 21).
-		assert_that(_camera.get_screen_center_position()).is_equal(Vector2(800, 1376))
+		assert_that(_camera.position).is_equal(Vector2(-288, 544))  # The centre of tile (12, 21).
+		assert_that(_camera.get_screen_center_position()).is_equal(Vector2(-288, 544))
 		for row: int in 30:
 			(
 				assert_bool(_camera.visible_world_rect().has_point(layer.get_child(row).position))
@@ -118,6 +120,11 @@ func test_30_blue_and_10_red_tanks_stand_on_the_map_under_the_unit_layer() -> vo
 	for rig: Node2D in layer.get_children():
 		tints.append(rig.get_node("Team").modulate)
 		assert_bool(Rect2(_map.map_rect_px()).has_point(rig.position)).is_true()
+		var ground: Vector2i = IsoProjection.px_to_ground(rig.position)
+		(
+			assert_bool(ground.x >= 0 and ground.x < 48000 and ground.y >= 0 and ground.y < 48000)
+			. is_true()
+		)
 	assert_int(layer.rig_count()).is_equal(40)
 	assert_int(tints.count(Color("2F80ED"))).is_equal(30)
 	assert_int(tints.count(Color("E5484D"))).is_equal(10)
@@ -144,16 +151,20 @@ func test_one_finger_pan_stops_exactly_at_the_map_edge_at_every_target_resolutio
 		get_window().size = size
 		await await_idle_frame()
 		_camera.zoom = Vector2.ONE  # A turn rescales the zoom (ADR 0015 section 4); count at zoom 1.
-		assert_that(_expected_low()).is_equal(LOWEST[size])
 		_camera.centre_on(MAP_CENTRE)
 		await _pan(Vector2(100, 40))
-		assert_vector(_camera.position).is_equal_approx(Vector2(1436, 1496), TOLERANCE)
+		assert_vector(_camera.position).is_equal_approx(Vector2(-100, 728), TOLERANCE)
+		# The finger goes down and right, so the camera goes up and left, out of the diamond past
+		# its north edge: the centre stops on the north tip, and the engine draws what it holds.
 		await _pan(Vector2(OVERSCROLL_PX, OVERSCROLL_PX))
-		assert_that(_camera.position).is_equal(_expected_low())
+		assert_vector(_camera.position).is_equal_approx(NORTH_TIP, TOLERANCE)
 		_assert_position_matches_screen_centre()
 		await _pan(Vector2(-OVERSCROLL_PX, -OVERSCROLL_PX))
-		assert_that(_camera.position).is_equal(_expected_high())
+		assert_vector(_camera.position).is_equal_approx(SOUTH_TIP, TOLERANCE)
 		_assert_position_matches_screen_centre()
+		# No dead zone after the overscroll: a pull back moves the centre at once.
+		await _pan(Vector2(0, 100))
+		assert_vector(_camera.position).is_equal_approx(SOUTH_TIP - Vector2(0, 100), TOLERANCE)
 
 
 func test_a_pinch_zooms_about_the_fingers_and_snaps_to_a_level_at_every_target_resolution() -> void:
@@ -222,20 +233,6 @@ func _pan(relative: Vector2) -> void:
 	TouchEvents.drag(vp, 0, MAP_POINT + relative, relative)
 	TouchEvents.release(vp, 0, MAP_POINT + relative)
 	await await_idle_frame()
-
-
-func _half_view() -> Vector2:
-	return get_viewport().get_visible_rect().size * 0.5 / _camera.zoom
-
-
-## Lowest camera position: the map's top-left corner plus half the view.
-func _expected_low() -> Vector2:
-	return Vector2(_map.map_rect_px().position) + _half_view()
-
-
-## Highest camera position: the map's bottom-right corner minus half the view.
-func _expected_high() -> Vector2:
-	return Vector2(_map.map_rect_px().end) - _half_view()
 
 
 func _assert_position_matches_screen_centre() -> void:
