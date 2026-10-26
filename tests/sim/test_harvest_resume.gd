@@ -10,7 +10,12 @@ extends GdUnitTestSuite
 ## (3 500, 2 500) and (16 500, 9 500). The cells' own cap is 0, so regrowth adds nothing.
 
 const Worlds: GDScript = preload("res://tests/sim/support/harvest_worlds.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 
+## Ticks of the determinism run: long enough for a resume turn after the last order has ended, and
+## for the full harvester to reach the refinery and unload (the determinism case asserts both).
+const RUN_TICKS: int = 600
+const STOP_TICK: int = 20
 const IDLE: int = World.HarvestMode.IDLE
 const SEEK: int = World.HarvestMode.SEEK
 const MINE: int = World.HarvestMode.MINE
@@ -231,3 +236,64 @@ func test_a_full_harvester_the_player_moved_goes_home_and_unloads_what_it_carrie
 		[world.start_credits + full, full]
 	)
 	assert_array([world.credits[2], Worlds.cargo_of(world, id)]).is_equal([world.start_credits, 0])
+
+
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
+
+
+## The orders and the resume of four harvesters of player 1 under `impl`: HARVEST sends the first
+## from cell A to cell D, MOVE takes the second away from A, STOP (on tick STOP_TICK) the third
+## from its unloading, and the fourth, full and idle beside D, is left to the auto-resume. `ids`
+## gets the four ids in that order; `hashes` the state hash after each step that ends on a
+## multiple of `Replay.CHECKPOINT_PERIOD` ticks (the ticks MatchLoop takes its checkpoints on).
+func _play(impl: int, hashes: Array[int], ids: Array[int]) -> World:
+	var world: World = _world()
+	var refinery: int = Worlds.add_refinery(world, 1, 8, 6)
+	var full: int = world.type_harvest[Worlds.type_of(world, "harvester")]
+	var worker: int = Worlds.add_harvester(world, 1, CENTRE_A.x, CENTRE_A.y, MINE, 0, refinery, 100)
+	var walker: int = Worlds.add_harvester(world, 1, 4000, 2500, MINE, 0, refinery, 100)
+	var unloader: int = Worlds.add_harvester(world, 1, 3500, 3000, UNLOAD, 0, refinery, 50)
+	var idle: int = Worlds.add_harvester(world, 1, 14500, 9500, IDLE, 0, refinery, full)
+	ids.assign([worker, walker, unloader, idle])
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.INTEGRATE)).is_empty()
+	for tick: int in RUN_TICKS:
+		var commands: Array[Command] = []
+		if tick == 0:
+			commands.append(Command.harvest(1, PackedInt32Array([worker]), CENTRE_D.x, CENTRE_D.y))
+			commands.append(Command.move(1, PackedInt32Array([walker]), 9500, 2500))
+		elif tick == STOP_TICK:
+			commands.append(Command.stop(1, PackedInt32Array([unloader])))
+		Worlds.send(world, commands)
+		if world.tick % Replay.CHECKPOINT_PERIOD == 0:
+			hashes.append(world.state_hash())
+	return world
+
+
+## HARVEST, the release of MOVE and STOP and the auto-resume are the same state in both
+## implementations at every checkpoint, and the same on a second run of either: the new orders go
+## through `_order`, MOVEMENT and INTEGRATE like any other, and nothing in them reads the clock or
+## a random stream. The run ends with every harvester back at work and the idle full one paid.
+@warning_ignore("integer_division")
+func test_harvest_release_and_resume_give_the_same_hash_at_every_checkpoint_in_both_implementations(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var first: Array[int] = []
+	var ids: Array[int] = []
+	var world: World = _play(impl, first, ids)
+	assert_int(first.size()).is_equal(RUN_TICKS / Replay.CHECKPOINT_PERIOD)
+	var second: Array[int] = []
+	_play(impl, second, [] as Array[int])
+	assert_array(second).is_equal(first)
+	if impl == SimImpls.Impl.NATIVE:
+		var twin: Array[int] = []
+		_play(SimImpls.Impl.GDSCRIPT, twin, [] as Array[int])
+		assert_array(twin).is_equal(first)
+	assert_bool(first[0] != first[first.size() - 1]).is_true()  # The state moved on.
+	assert_int(world.dropped_commands).is_equal(0)
+	for id: int in ids:
+		assert_int(Worlds.mode_of(world, id)).override_failure_message("id %d" % id).is_not_equal(
+			IDLE
+		)
+	var full: int = world.type_harvest[Worlds.type_of(world, "harvester")]
+	assert_bool(world.stat_harvested[1] >= full).is_true()  # The idle full one went home and paid.
