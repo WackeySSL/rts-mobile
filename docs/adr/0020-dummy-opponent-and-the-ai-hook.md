@@ -28,6 +28,10 @@ plan rows P78, P78q, P81-P83b and P95 apply it. The line for `.claude/agents/ai-
 reads only `PlayerView` and runs in the tick job) waits for Michael's explicit yes to that agent
 file.
 
+Status note (2026-10-26, P68e docs; ADR 0023 accepted 2026-10-26): §4 carries a dated status note:
+one dummy `AiDef` per faction; the dummy never builds or fires a superweapon. No accepted text
+changed.
+
 ## Context
 - CLAUDE.md rule 4: humans and AI act only through `Command` objects. Rule 3: randomness only
   through per-match `DetRandom` streams; `game/sim/DetRandom.gd` says "AI controllers use
@@ -112,6 +116,14 @@ This supersedes ADR 0012 §1's "The Phase 4 AI acts there" and §2's "Phase 4's 
 - Cost: one think visits its own rows, the seen enemy rows and at most `place_tries` spiral tiles.
   Tests count that work (no clock in a session); the ai-dev rule of 1 ms on CI is read from CI's
   log only.
+
+Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26; the text above stays as
+accepted): with two factions (ADR 0023 §6) the dummy has one `AiDef` per faction:
+`data/ai/dummy.tres` becomes `dummy_fossil.tres` (the Derrick League's build order) and
+`dummy_renew.tres` is new (the Lumen Accord's), and the Skirmish route puts the dummy of the
+opponent's faction in `MatchRunner.opponents` (plan rows P83d, P90). A build order lists only its
+faction's types. The dummy builds no strike building and never sends `SUPERWEAPON`; Phase 4's AI
+uses the superweapons. The rules above are unchanged.
 
 ### 5. Proof
 - A dummy-vs-dummy match of 9 000 ticks (10 minutes) run twice from one seed gives the same

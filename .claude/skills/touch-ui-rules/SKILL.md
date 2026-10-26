@@ -1,6 +1,6 @@
 ---
 name: touch-ui-rules
-description: Touch controls, camera, HUD and layout rules for rts-mobile on phones in landscape and portrait (ADR 0015) - gesture map, thresholds, hit areas in dp, sidebar layout, safe areas, text sizes and feedback. Use whenever building or reviewing input handling, camera, selection, HUD, the build sidebar, menus or any on-screen control.
+description: Touch controls, camera, HUD and layout rules for rts-mobile on phones in landscape and portrait (ADR 0015) - gesture map, thresholds, hit areas in dp, build menu layout (floating panels in landscape, a band in portrait), safe areas, text sizes and feedback. Use whenever building or reviewing input handling, camera, selection, HUD, the build menu, menus or any on-screen control.
 paths:
   - "game/input/**"
   - "game/ui/**"
@@ -19,11 +19,11 @@ with the phone; no UI code assumes width > height.
 | Gesture | Result |
 | --- | --- |
 | Tap own unit | Select it, replacing the selection |
-| Tap own building | Select it; a production building opens its build tab. The hit area is the whole picture, roof included (ADR 0022 §3); a unit at the same point wins |
+| Tap own building | Select it; a production building opens its build tab. The hit area is its silhouette, the footprint diamond plus its walls up to the sprite's top (ADR 0023 §3); a unit at the same point wins |
 | Tap ground with units selected | Move there (stops an attack) |
 | Tap ground with an own barracks or vehicle factory selected | Set that tab's rally point (`RALLY`) and show its flag |
 | Tap ground with another own building selected | Clear the selection |
-| Tap ore with harvesters selected | Harvest there (`HARVEST`) |
+| Tap an oil or gas field with tankers selected | Load there (`HARVEST`) |
 | Tap enemy with units selected | Attack it |
 | Tap enemy with nothing selected | Show its info card |
 | Double-tap own unit | Select all own units of that type on screen |
@@ -39,7 +39,7 @@ with the phone; no UI code assumes width > height.
 Thresholds live in `data/input_settings.tres`, never in code.
 
 Buildings never join a box, a double-tap selection or "All army". "All army" and a box that
-holds any combat unit leave harvesters out; a box with only harvesters selects them (ADR 0019 §3).
+holds any combat unit leave tankers out; a box with only tankers selects them (ADR 0019 §3).
 
 ## Sizes in dp, not pixels
 - Convert with `game/ui/UiScale.gd` (`dp(value)`), which uses `DisplayServer.screen_get_dpi()`
@@ -48,22 +48,26 @@ holds any combat unit leave harvesters out; a box with only harvesters selects t
   (infantry in particular).
 - When hit areas overlap the touch point, pick the target whose centre is closest; with units
   selected, enemies win over own units.
-- Units and buildings at one point (ADR 0022 §3): units first, so with a selection, enemy unit >
-  own unit > enemy building > own building; without one, enemies do not count, so own unit > own building. A
-  building's hit area is its whole sprite box (footprint plus the roof's rise), at least 48 dp a
-  side; between two buildings the one in front (the larger footprint south row) wins.
+- Units and buildings at one point (ADR 0023 §3, units first as in ADR 0022): with a selection,
+  enemy unit > own unit > enemy building > own building; without one, enemies do not count, so own
+  unit > own building. A unit is hit within its pick radius of its lifted centre (the ground point
+  raised by half the frame's visible height), the radius at least 24 dp. A building's hit area is
+  its silhouette (the footprint diamond plus the rectangle between its left and right corners from
+  the sprite's top down), at least 48 dp a side at zoom 0.75; between two buildings the one drawn
+  in front (the larger sort key) wins. Ground taps go through the inverse projection.
 
 ## Building placement
 ADR 0019 §2 (Michael's answer 1 B). Placement mode is local input state; no Command until confirm.
 - The ghost starts at the tile under the view centre. A one-finger drag that starts on the ghost
-  (its sprite box plus a grab margin, ADR 0022 §5) moves it; it follows the finger 64 dp above
+  (its silhouette plus a grab margin, ADR 0023 §3) moves it; it follows the finger 64 dp above
   the touch point, so the finger never hides it, and snaps to tiles. A one-finger drag that starts
   elsewhere pans as usual; a tap on the ground moves the ghost there; pinch and two-finger pan are
   unchanged; the long-press box select is off. Dragging the ghost near the view's edge pans the
   camera. The grab margin, the edge band and the pan speed live in `data/input_settings.tres`.
 - Valid tiles are tinted green with a solid outline, invalid red with a hatch and the reason's
   glyph (never colour alone), from `Placement.reason` on the snapshot. Confirm with a check-mark
-  button, cancel with an X, each at least 64 dp, in the sidebar zone in place of the item row;
+  button, cancel with an X, each at least 64 dp, in place of the card row: in the floating build
+  panel in landscape (ADR 0023 §12), in the band in portrait;
   the check mark is disabled while the ghost is invalid. Never place a building on touch release
   alone.
 - After confirm the ghost waits ("pending") until the snapshot shows the building; if the
@@ -71,10 +75,13 @@ ADR 0019 §2 (Michael's answer 1 B). Placement mode is local input state; no Com
   "Blocked". Cancel keeps the structure ready. A turn keeps the ghost's tile and sends nothing.
 
 ## Layout in landscape
-Today's layout, unchanged by ADR 0015.
-- Right sidebar: 20% of the width and at least 200 dp. Minimap at the top, then credits and the
-  power bar, then tabs (Buildings, Infantry, Vehicles) with build icons of at least 64 dp that
-  show cost and progress.
+The canvas's floating panels (ADR 0023 §12, Michael's answer 4 A; plan row P85d); the map fills
+the rest. Until P85d merges, ADR 0019's right sidebar (20% of the width, at least 200 dp) holds
+the same parts.
+- Build panel at the bottom right: the tabs (Structures, Infantry, Vehicles) as line icons above
+  one row of cards of at least 64 dp that show the item's name, cost and progress.
+- Minimap: a floating panel at the top right, an isometric diamond (ADR 0023 §4).
+- Credits and the power bar: a pill at the top left.
 - Bottom-left: "All army" and groups 1-3 (tap selects, long-press assigns).
 - Top-left: pause and menu.
 - No ads on this screen, ever.
@@ -86,9 +93,10 @@ Today's layout, unchanged by ADR 0015.
   Decide the shape only through `UiScale`'s orientation function (P59; height > width is
   portrait).
 - Build sidebar zone: a bottom band, the full safe width, 20% of the height and at least 200 dp.
-  Minimap at its right end (square, at most 40% of the safe width); left of it, stacked, credits
-  and the power bar, icon-only tabs (48 dp) and one row of build icons (at least 64 dp) that
-  scrolls sideways: at least three whole icons on the 6-inch phone, two at 360 dp wide.
+  Minimap at its right end (an isometric diamond, at most 40% of the safe width; unchanged by ADR
+  0023 §12); left of it, stacked, credits and the power bar, icon-only tabs (48 dp) and one row of
+  build icons (at least 64 dp) that scrolls sideways: at least three whole icons on the 6-inch
+  phone, two at 360 dp wide.
 - Until Phase 3's sidebar row the portrait zone is not reserved (height 0); that row sets it.
 - Bottom-left: "All army" and groups 1-3, on the safe bottom edge while the zone is 0, then
   directly above the band.

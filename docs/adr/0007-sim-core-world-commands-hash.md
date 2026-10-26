@@ -44,6 +44,10 @@ dated status notes on what ADR 0017 fixes for Phase 3: the side arrays and per-p
 its shape lists, the probe ids 11-13 follow FOG, and Command types 10-14 and 20 are fixed; no
 accepted text changed.
 
+Status note (2026-10-26, P68e docs; ADR 0023 accepted 2026-10-26, Michael's answer 3 A): §4 and §5
+carry dated status notes: the Deep Bore's rupture is applied inside step 10 (the FIRE mark), and
+Command type 15 is fixed as `SUPERWEAPON`; no phase id changes and no accepted text changed.
+
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state
 hash. Phase 1 shipped the v0 shapes of ADR 0003: a struct-of-arrays `World` that never removes a
@@ -329,6 +333,14 @@ and before `tick += 1` (step 13): power and the harvest loop, then the queues an
 check, then the last-seen memory. No Phase 2 id changes. Plan row P70 adds the ids and the
 skeleton; rows P73-P77 fill the phases.
 
+Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26, Michael's answer 3 A; the text
+and the notes above stay as accepted): ADR 0023 §10 adds `Strike.run(world)` to step 10. It
+applies a pending Deep Bore rupture on its `strike_tick` and is called right after `Combat.fire`
+and before `FogUpdate.begin` and `remove_dead()`, inside the FIRE mark, so damage still lowers
+`hp` only in steps 9 and 10 and rows still die only in step 11: a ruptured row dies at that
+tick's REMOVE like a row killed by a shot. A Blackout Array's effect is written in step 2 (the
+command's apply). No step is added and no phase id changes (plan rows P110, P111).
+
 ### 5. Command v1
 `Command` keeps every v0 field and gains `payload: PackedInt32Array` (type-specific ints, empty
 for Phase 2 types).
@@ -406,6 +418,13 @@ factories; ADR 0018 fixes their per-type rules. Every new type also needs a play
 defeated, and once `match_end_tick` is above 0 every Command of any type is dropped and counted.
 15-19 and 21-29 stay reserved. Until each type's plan row lands its `apply_*`, the type is
 dropped and counted as today (plan row P70).
+
+Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26, Michael's answer 3 A; the text
+and the notes above stay as accepted): ADR 0023 §10 fixes reserved slot 15 as `SUPERWEAPON`:
+`target_id` an own strike building, `target_x`, `target_y` the point (milli), payload empty;
+factory `Command.superweapon(player_id, building_id, target_x, target_y)`; ADR 0017 §4's common
+rules apply. 16-19 and 21-29 stay reserved. Plan row P109 adds the type (dropped and counted until
+P110 adds its validation).
 
 ### 6. Node-side services (`game/core`, ADR 0002 §1)
 - **`CommandQueue` API v1 = v0, unchanged:** `submit`, `drain_into`, `clear`, `pending`. Input,

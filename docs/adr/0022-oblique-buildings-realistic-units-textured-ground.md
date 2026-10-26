@@ -8,6 +8,19 @@ ADR 0019 §2 and §3 (placement ghost, building taps) and ADR 0021 (the base are
 of ADR 0012 §6, ADR 0010 §2, ADR 0011 §3 and ADR 0019 §2 and §3 (listed under "On
 acceptance"); no rule of the sim changes.
 
+Status note (2026-10-26, P68e docs; ADR 0023 accepted 2026-10-26): **superseded by ADR 0023**
+except the rules ADR 0023 §15 keeps: units first in picking and its order (§3), the selection
+frame round the picture (question 2 = A), a unit hidden behind a building keeps its bar (question
+1), team marks about 8-12 % (question 3), textured ground in Phase 3 (question 4), the tracer
+clipped to the seen tiles (§4), the runtime atlas helper with its 2 px gutter, `MapView` as the
+map's model with its colours, tiles and bake (P52's cross-file facts), and "no new perf arena"
+(§8). The oblique view (§1), the middle-line cut, the two building layers, the z table and the
+forecast of 32 (§2), the roof's fog colour and the partly-seen seam (§4), the oblique ghost (§5),
+the square ground tiles (§6) and the art list (§7) give way to ADR 0023 §1-§5. The text below
+stays as accepted. Plan rows P84, P84d, P84c, P92c, P92b and P97 are retired (P84 is shelved as
+`claude/p84-buildings-view`, 817c90c), and P91b's merged art stays as reference until ADR 0023's
+art rows replace it.
+
 ## Acceptance note (2026-10-26)
 Michael answered the five questions in chat on 2026-10-26, verbatim "ja til anbefaling" (yes to the
 recommendations), which the lead records as "1 ja, 2 A, 3 ja, 4 ja, 5 ja":

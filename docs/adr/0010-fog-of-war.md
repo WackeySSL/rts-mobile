@@ -33,6 +33,11 @@ Status note (2026-10-26, P68d docs; ADR 0022 accepted 2026-10-26): §2 carries a
 the fog layer moves under the building roofs, bars, projectiles and effects (z 110), and a tracer is
 drawn clipped to the seen tiles (ADR 0022 §2, §4); no accepted text changed.
 
+Status note (2026-10-26, P68e docs; ADR 0023 accepted 2026-10-26): §2 carries a dated status note:
+in the isometric view the fog lies on the ground at z 4, as diamonds under every object, and
+last-seen enemy buildings draw at z 5 with one dim; ADR 0022's z 110 does not come. No accepted
+text changed.
+
 ## Context
 ROADMAP Phase 2 asks for "fog of war (visible and explored) and its rendering". The GDD says:
 - unexplored is black;
@@ -272,6 +277,20 @@ no longer covers the effects, a tracer with one end seen is drawn clipped to the
 the seen end to the last point on a seen tile, found at birth in 16 px steps (ADR 0022 §4, P84),
 and one with both ends seen is drawn whole. The texture, its updates, `explored_alpha` and the
 soft one-tile edge are unchanged.
+
+Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26, Michael's answer 7 "ja"; the
+text and the notes above stay as accepted and as dated): ADR 0023 §2 supersedes the P68d note's
+z 110 and roof colour (ADR 0022 is superseded and plan row P84 retired). From plan row P117 on,
+`FogLayer` keeps its texture (one RGBA8 texel per cell, linear filtering, alpha 255 /
+`explored_alpha` / 0, the dirty-list patching) and draws it under a `Transform2D` whose axes are
+(32, 16) and (-32, 16) px per texel, so each texel is a diamond, at **z 4**: over the terrain, the
+decals, the unit shadows and the selection rings, under every object (`WorldSort`, z 10), the
+bars (30), projectiles (40), effects (50) and markers. Objects carry no fog of their own: enemy
+rigs, buildings, bars and projectiles are drawn only where the local player sees them (the
+"Hiding" item above, unchanged); a building partly in vision is drawn whole; last-seen enemy
+buildings draw at z 5 in `GhostMemoryLayer` with one shared dim colour (plan row P115c). The
+tracer stays clipped to the seen tiles as the P68d note says (plan row P117b). The texture, its
+updates, `explored_alpha` and the soft edge are unchanged.
 
 ### 3. Data
 `RulesDef.fog_period_ticks` (3). `TerrainDef` has no sight effect in Phase 2. The explored alpha
