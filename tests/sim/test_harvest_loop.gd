@@ -234,6 +234,30 @@ func test_a_full_load_in_seek_with_no_order_at_the_dock_keeps_none_and_unloads_n
 	assert_array([Worlds.mode_of(world, id), world.order[row]]).is_equal([UNLOAD, World.Order.IDLE])
 
 
+func test_a_full_load_in_seek_within_dock_reach_still_drops_the_walk_to_the_cell() -> void:
+	# 1 000 from the dock is inside dock_reach_milli (1 500), and the row has a MOVE to the far cell:
+	# the order to the dock replaces it at once, as for a row beyond reach (the clause "whatever
+	# order the row had"; the case P75b's HARVEST on a full harvester by the refinery gives).
+	var world: World = _far_world()
+	var id: int = Worlds.add_harvester(world, 1, DOCK_AT.x, DOCK_AT.y + 1000, SEEK, 0, 1, 500)
+	var row: int = world.index_of(id)
+	_walk_to(world, id, 13500, 7500)
+	Worlds.step(world)
+	assert_array([Worlds.mode_of(world, id), world.order[row]]).is_equal([RETURN, World.Order.MOVE])
+	assert_array([world.goal_x[row], world.goal_y[row]]).is_equal([DOCK_AT.x, DOCK_AT.y])
+	assert_array([world.group_cell[row], world.nav_mode[row]]).is_equal([-1, World.NavMode.DIRECT])
+	# INTEGRATE runs before ECONOMY, so that first step still took one step east on the old order;
+	# from here on it never walks east again.
+	var east: int = world.pos_x[row]
+	var guard: int = 300
+	while world.credits[1] < 2000 + 500 and guard > 0:
+		Worlds.step(world)
+		assert_bool(world.pos_x[row] <= east).is_true()
+		guard -= 1
+	assert_array([world.credits[1], world.stat_harvested[1]]).is_equal([2500, 500])
+	assert_int(world.ore_amount[0]).is_equal(20)
+
+
 func test_a_full_load_in_seek_without_a_refinery_of_its_own_chooses_one_in_the_same_step() -> void:
 	var world: World = _far_world()
 	var enemy: int = Worlds.add_refinery(world, 2, 10, 6)  # Nearer to the harvester than id 1.
