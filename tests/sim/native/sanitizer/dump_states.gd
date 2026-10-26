@@ -43,8 +43,9 @@ extends SceneTree
 ##   (the World's own grid is the one the step before moved the units off), so that its lists
 ##   match the units the way the next tick's GRIDS phase makes them.
 ## The TARGETING kernel (P41n) reads the unit_id, type_index, pos_x, pos_y, goal_x, goal_y, order,
-## nav_mode, nav_cell, nav_next, best_dist, stall and type_move_class records of the INTEGRATE
-## kernel, the world.field and world.move_cost records of FLOW, and adds, in _write_targeting:
+## nav_mode, nav_cell, nav_next, best_dist, stall, type_speed (P71b) and type_move_class records of
+## the INTEGRATE kernel, the world.field and world.move_cost records of FLOW, and adds, in
+## _write_targeting:
 ##   world.retarget_period_ticks, target.cols, target.rows, target.cell_milli (S);
 ##   world.owner, .order_target, .target, .type_armour, .type_acquire, .type_weapon,
 ##   .weapon_range, .weapon_min_range, .weapon_vs_armour, target.head, target.next (I). The

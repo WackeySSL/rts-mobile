@@ -90,59 +90,73 @@ static func unblock_dead(world: World) -> void:
 ## The point an ATTACK on building row `target_row` aims `row` at (ADR 0017 section 1): the
 ## centre of the ring tile (8-adjacent to the footprint, outside it, inside the map) that is
 ## passable for the row's class and nearest to the row's position by squared distance, then by
-## the lower tile index. (-1, -1) when no ring tile is passable.
-@warning_ignore("integer_division")
+## the lower tile index. (-1, -1) when no ring tile is passable. The one-row form of what aim() and
+## _repick() do for many rows: they read the World once and call _ring_point per row.
 static func approach_point(world: World, row: int, target_row: int) -> Vector2i:
+	var target_type: int = world.type_index[target_row]
 	var cols: int = world.map_cols
 	var lines: int = world.map_rows
-	var type: int = world.type_index[target_row]
-	var origin: Vector2i = footprint_origin(world, target_row)
-	var width: int = _entry(world.type_foot_w, type, 0)
-	var height: int = _entry(world.type_foot_h, type, 0)
-	var base: int = world.type_move_class[world.type_index[row]] * cols * lines
-	var tile: int = World.MILLI_PER_TILE
-	var best: int = -1
-	var best_d2: int = 0
-	for line: int in range(maxi(origin.y - 1, 0), mini(origin.y + height, lines - 1) + 1):
-		for col: int in range(maxi(origin.x - 1, 0), mini(origin.x + width, cols - 1) + 1):
-			var inside: bool = (
-				col >= origin.x
-				and col < origin.x + width
-				and line >= origin.y
-				and line < origin.y + height
-			)
-			var cell: int = line * cols + col
-			if inside or world.move_cost[base + cell] == 0:
-				continue
-			var dx: int = col * tile + World.TILE_CENTRE - world.pos_x[row]
-			var dy: int = line * tile + World.TILE_CENTRE - world.pos_y[row]
-			if best < 0 or dx * dx + dy * dy < best_d2:
-				best = cell
-				best_d2 = dx * dx + dy * dy
-	if best < 0:
-		return Vector2i(-1, -1)
-	return Vector2i(best % cols * tile + World.TILE_CENTRE, best / cols * tile + World.TILE_CENTRE)
+	return _ring_point(
+		world.move_cost,
+		world.type_move_class[world.type_index[row]] * cols * lines,
+		cols,
+		lines,
+		footprint_origin(world, target_row),
+		Vector2i(
+			_entry(world.type_foot_w, target_type, 0), _entry(world.type_foot_h, target_type, 0)
+		),
+		world.pos_x[row],
+		world.pos_y[row]
+	)
 
 
 ## What an ATTACK on `target_row` does to the goals of `rows`, and which of them it keeps. A mobile
 ## target (speed above 0) leaves them alone: TARGETING writes the goal from its position every tick.
 ## A target that stands still gets no such write (TARGETING skips it, in both twins), so the command
 ## writes it once: a building's approach point, a row without one left out; any other speed-0 target
-## is aimed at where it stands, as the lock did before buildings.
+## is aimed at where it stands, as the lock did before buildings. Runs in COMMANDS on the worker, so
+## every array is read once before the loops.
 static func aim(world: World, rows: PackedInt32Array, target_row: int) -> PackedInt32Array:
-	var type: int = world.type_index[target_row]
-	if world.type_speed[type] > 0:
+	var types: PackedInt32Array = world.type_index
+	var target_type: int = types[target_row]
+	if world.type_speed[target_type] > 0:
 		return rows
-	var footprint: bool = _entry(world.type_foot_w, type, 0) > 0
+	var pos_x: PackedInt32Array = world.pos_x
+	var pos_y: PackedInt32Array = world.pos_y
+	var goal_x: PackedInt32Array = world.goal_x
+	var goal_y: PackedInt32Array = world.goal_y
+	var width: int = _entry(world.type_foot_w, target_type, 0)
 	var kept: PackedInt32Array = PackedInt32Array()
+	if width <= 0:
+		var stand_x: int = pos_x[target_row]
+		var stand_y: int = pos_y[target_row]
+		for row: int in rows:
+			goal_x[row] = stand_x
+			goal_y[row] = stand_y
+			kept.append(row)
+		return kept
+	var height: int = _entry(world.type_foot_h, target_type, 0)
+	var origin: Vector2i = _origin(pos_x[target_row], pos_y[target_row], width, height)
+	var size: Vector2i = Vector2i(width, height)
+	var classes: PackedInt32Array = world.type_move_class
+	var cost: PackedByteArray = world.move_cost
+	var cols: int = world.map_cols
+	var lines: int = world.map_rows
 	for row: int in rows:
-		var point: Vector2i = Vector2i(world.pos_x[target_row], world.pos_y[target_row])
-		if footprint:
-			point = approach_point(world, row, target_row)
-			if point.x < 0:
-				continue
-		world.goal_x[row] = point.x
-		world.goal_y[row] = point.y
+		var point: Vector2i = _ring_point(
+			cost,
+			classes[types[row]] * cols * lines,
+			cols,
+			lines,
+			origin,
+			size,
+			pos_x[row],
+			pos_y[row]
+		)
+		if point.x < 0:
+			continue
+		goal_x[row] = point.x
+		goal_y[row] = point.y
 		kept.append(row)
 	return kept
 
@@ -214,24 +228,91 @@ static func _write_cost(
 				)
 
 
+## The ring tile of the passable kind nearest to (x, y) around the footprint of `size` tiles whose
+## top-left tile is `origin`, as approach_point() defines it, from values alone: `cost` is the
+## World's move_cost, `base` the first entry of the mover's class in it, `cols` and `lines` the map.
+## No World read, so a caller's loop over rows aliases its arrays once.
+@warning_ignore("integer_division")
+static func _ring_point(
+	cost: PackedByteArray,
+	base: int,
+	cols: int,
+	lines: int,
+	origin: Vector2i,
+	size: Vector2i,
+	x: int,
+	y: int
+) -> Vector2i:
+	var tile: int = World.MILLI_PER_TILE
+	var best: int = -1
+	var best_d2: int = 0
+	for line: int in range(maxi(origin.y - 1, 0), mini(origin.y + size.y, lines - 1) + 1):
+		for col: int in range(maxi(origin.x - 1, 0), mini(origin.x + size.x, cols - 1) + 1):
+			var inside: bool = (
+				col >= origin.x
+				and col < origin.x + size.x
+				and line >= origin.y
+				and line < origin.y + size.y
+			)
+			var cell: int = line * cols + col
+			if inside or cost[base + cell] == 0:
+				continue
+			var dx: int = col * tile + World.TILE_CENTRE - x
+			var dy: int = line * tile + World.TILE_CENTRE - y
+			if best < 0 or dx * dx + dy * dy < best_d2:
+				best = cell
+				best_d2 = dx * dx + dy * dy
+	if best < 0:
+		return Vector2i(-1, -1)
+	return Vector2i(best % cols * tile + World.TILE_CENTRE, best / cols * tile + World.TILE_CENTRE)
+
+
 ## The re-pick of `add()`: every ATTACK row whose goal tile lies in the new footprint and whose
 ## target is a building takes a new approach point; a row with no passable ring tile keeps its goal.
-## A mobile target needs nothing: TARGETING rewrites the goal from its position every tick.
+## A mobile target needs nothing: TARGETING rewrites the goal from its position every tick. Event
+## cadence, but on the worker once PLACE calls add_building, so every array is read once before the
+## loop and the target row is found with the same bsearch as World.index_of.
 @warning_ignore("integer_division")
 static func _repick(world: World, col: int, line: int, width: int, height: int) -> void:
 	var orders: PackedInt32Array = world.order
+	var order_targets: PackedInt32Array = world.order_target
+	var ids: PackedInt32Array = world.unit_id
+	var types: PackedInt32Array = world.type_index
+	var widths: PackedInt32Array = world.type_foot_w
+	var heights: PackedInt32Array = world.type_foot_h
+	var classes: PackedInt32Array = world.type_move_class
+	var pos_x: PackedInt32Array = world.pos_x
+	var pos_y: PackedInt32Array = world.pos_y
+	var goal_x: PackedInt32Array = world.goal_x
+	var goal_y: PackedInt32Array = world.goal_y
+	var cost: PackedByteArray = world.move_cost
+	var cols: int = world.map_cols
+	var lines: int = world.map_rows
 	for row: int in orders.size():
 		if orders[row] != World.Order.ATTACK:
 			continue
-		var cell: int = world.cell_of(world.goal_x[row], world.goal_y[row])
-		var x: int = cell % world.map_cols
-		var y: int = cell / world.map_cols
+		var x: int = clampi(goal_x[row] / World.MILLI_PER_TILE, 0, cols - 1)
+		var y: int = clampi(goal_y[row] / World.MILLI_PER_TILE, 0, lines - 1)
 		if x < col or x >= col + width or y < line or y >= line + height:
 			continue
-		var at: int = world.index_of(world.order_target[row])
-		if at < 0 or _entry(world.type_foot_w, world.type_index[at], 0) <= 0:
+		var target_id: int = order_targets[row]
+		var at: int = ids.bsearch(target_id)
+		if at >= ids.size() or ids[at] != target_id:
 			continue
-		var point: Vector2i = approach_point(world, row, at)
+		var target_w: int = _entry(widths, types[at], 0)
+		if target_w <= 0:
+			continue
+		var target_h: int = _entry(heights, types[at], 0)
+		var point: Vector2i = _ring_point(
+			cost,
+			classes[types[row]] * cols * lines,
+			cols,
+			lines,
+			_origin(pos_x[at], pos_y[at], target_w, target_h),
+			Vector2i(target_w, target_h),
+			pos_x[row],
+			pos_y[row]
+		)
 		if point.x >= 0:
-			world.goal_x[row] = point.x
-			world.goal_y[row] = point.y
+			goal_x[row] = point.x
+			goal_y[row] = point.y

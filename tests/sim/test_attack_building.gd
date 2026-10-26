@@ -196,6 +196,11 @@ func test_a_placement_on_an_attack_goal_re_picks_the_approach_point() -> void:
 	var far_row: int = world.index_of(far)
 	var far_goal: Vector2i = _goal(world, far_row)
 	assert_vector(_goal(world, near_row)).is_equal(Vector2i(9500, 5500))
+	assert_vector(far_goal).is_equal(Vector2i(9500, 7500))
+	# Moved by hand to straight below the Headquarters, where a fresh pick would be (11500, 7500):
+	# a re-pick that took every ATTACK row on a building, not only those whose goal tile is built
+	# on, would move this goal.
+	world.pos_x[far_row] = 11500
 	var version: int = world.map_version
 	world.add_building(1, Worlds.type_of(world, "defence_turret"), 9, 5)
 	assert_int(world.map_version).is_equal(version + 1)
