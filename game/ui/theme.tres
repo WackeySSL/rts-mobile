@@ -20,8 +20,9 @@
 ; anti_aliasing_size (the soft edge, 1 px). Scale a constant in HudTheme.scaled() before putting
 ; one here. An entry that stays in base px is listed in metadata/base_px by its path in this file.
 ; Type variations (DevButton, NumberLabel, SelectionPanel, PerfCard, BuildSidebar, SidebarTab, PowerBar,
-; PowerBarLow, PowerNumber, PowerNumberLow) are set by theme_type_variation on the node, in main.tscn
-; or at build in the script (the power bar's two pairs switch with the low-power state).
+; PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner) are set by
+; theme_type_variation on the node, in main.tscn or at build in the script (the power bar's two
+; pairs switch with the low-power state, the cost of an item tile with its money).
 ; The build sidebar's tints (the colours of BuildSidebar, STYLE.md "Icons and glyphs") are read by
 ; BuildSidebar.gd with get_theme_color; its tabs get theirs from the icon colours of SidebarTab.
 [gd_resource type="Theme" format=3]
@@ -113,6 +114,17 @@ corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
+; A build item tile (ItemTile) is the tab's plate, and the open tab's while the finger is on it. The cost
+; and the count sit on a dark plate; the "Ready" banner is the power bar's green.
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_plate"]
+content_margin_left = 4.0
+content_margin_right = 4.0
+bg_color = Color(0.06, 0.08, 0.11, 0.9)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
 [resource]
 ; The long-press anchor and the selection box (BoxOverlay.gd): fill, dark pass, stroke.
 BoxOverlay/colors/fill = Color(1, 1, 1, 0.15)
@@ -152,6 +164,30 @@ SidebarTab/styles/hover = SubResource("StyleBoxFlat_tab")
 SidebarTab/styles/hover_pressed = SubResource("StyleBoxFlat_tab_open")
 SidebarTab/styles/normal = SubResource("StyleBoxFlat_tab")
 SidebarTab/styles/pressed = SubResource("StyleBoxFlat_tab_open")
+; The build item tiles (ItemTile.gd, plan P85b): the icon (dimmed behind a padlock), the fill that rises
+; over it with the head's progress, the padlock (#9AA5B1) and the stripes of a tile that cannot take an
+; item (the warning amber, half clear). The cost and the count are 18 dp numbers on a plate (the cost
+; amber when the money is short), the banner is 14 dp, dark on the green (5.8:1).
+ItemTile/base_type = &"Button"
+ItemTile/colors/fill = Color(1, 1, 1, 0.4)
+ItemTile/colors/icon = Color(1, 1, 1, 1)
+ItemTile/colors/icon_locked = Color(1, 1, 1, 0.4)
+ItemTile/colors/lock = Color(0.60392157, 0.64705882, 0.69411765, 1)
+ItemTile/colors/stripe = Color(0.96078431, 0.64705882, 0.14117647, 0.55)
+ItemTile/styles/hover = SubResource("StyleBoxFlat_tab")
+ItemTile/styles/hover_pressed = SubResource("StyleBoxFlat_tab_open")
+ItemTile/styles/normal = SubResource("StyleBoxFlat_tab")
+ItemTile/styles/pressed = SubResource("StyleBoxFlat_tab_open")
+ItemCost/base_type = &"NumberLabel"
+ItemCost/colors/font_color = Color(1, 1, 1, 1)
+ItemCost/font_sizes/font_size = 18
+ItemCost/styles/normal = SubResource("StyleBoxFlat_plate")
+ItemCostLow/base_type = &"ItemCost"
+ItemCostLow/colors/font_color = Color(0.96078431, 0.64705882, 0.14117647, 1)
+ItemBanner/base_type = &"Label"
+ItemBanner/colors/font_color = Color(0.06, 0.08, 0.11, 1)
+ItemBanner/font_sizes/font_size = 14
+ItemBanner/styles/normal = SubResource("StyleBoxFlat_power")
 ; The power bar and its low-power look.
 PowerBar/base_type = &"ProgressBar"
 PowerBar/styles/background = SubResource("StyleBoxFlat_track")
