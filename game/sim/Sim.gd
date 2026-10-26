@@ -21,9 +21,11 @@ const MILLI_PER_TILE: int = 1000
 ## `fog_period_ticks`, after `FogUpdate.begin` emptied their dirty lists), the economy runs
 ## (ECONOMY: `Power.run`, `Harvest.run`), the queues advance and the match outcome is checked
 ## (PRODUCTION: `Production.run`, `Outcome.run`), the last-seen records update (MEMORY:
-## `LastSeen.run`; ADR 0017 section 5), and the tick counts. Those five modules are skeletons that
-## run nothing until plan rows P73 to P77. A probe gets `begin()` first and a `mark` after each
-## phase that exists (ADR 0007 section 4); it never sees the World.
+## `LastSeen.run`; ADR 0017 section 5), and the tick counts. Of those five modules `Power.run`
+## rebuilds the derived row lists (P71), `Harvest.run` runs the ore and the harvest loop (P75) and
+## `Production.run` advances the unit queues (P73); the others are skeletons until plan rows P74 to
+## P77. A probe gets `begin()` first and a `mark` after each phase that exists (ADR 0007 section 4);
+## it never sees the World.
 static func step(world: World, commands: Array[Command], probe: SimProbe = null) -> void:
 	if probe != null:
 		probe.begin()
@@ -143,12 +145,15 @@ static func _apply_point(world: World, command: Command, order: int) -> bool:
 	return true
 
 
-## ATTACK: the armed valid units take the order and the target (the goal: `Targeting.run`), when
-## the target is an enemy their player sees (`_enemy_target`).
+## ATTACK: the armed valid units take the order and the target, when the target is an enemy their
+## player sees (`_enemy_target`). The goal of a mobile target is `Targeting.run`'s, every tick; a
+## target that stands still gets its goal here (`Buildings.aim`: a building's approach point, ADR
+## 0017 section 1), and a unit with no passable ring tile around a building is left out.
 static func _apply_attack(world: World, command: Command) -> bool:
 	if not _enemy_target(world, command):
 		return false
 	var rows: PackedInt32Array = _own_rows(world, command, true)
+	rows = Buildings.aim(world, rows, world.index_of(command.target_id))
 	if rows.is_empty():
 		return false
 	var orders: PackedInt32Array = world.order

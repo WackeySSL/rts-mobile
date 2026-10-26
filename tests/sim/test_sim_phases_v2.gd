@@ -2,7 +2,9 @@ extends GdUnitTestSuite
 ## The Phase 3 skeleton of Sim.step (plan P70b, ADR 0017 sections 4 and 5): every new Command type
 ## is dropped and counted until its row (the modules refuse it), the commands need an undefeated
 ## player, the five module stubs change no state, and a tick runs them after FOG in the order of the
-## pipeline. The perf arena is the world: 2 players, 150 units, no building.
+## pipeline. The perf arena is the world: 2 players, 150 units, no building, so it has no queue and
+## no producer: since P73 `Production` is no stub, but QUEUE and CANCEL are still dropped here and
+## its `run` still changes nothing (tests/sim/test_production_*.gd have the rules).
 
 const RecordingProbe: GDScript = preload("res://tests/sim/recording_probe.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
@@ -56,7 +58,9 @@ func test_a_defeated_or_unknown_player_is_not_playing() -> void:
 
 
 ## The skeleton modules change nothing: each `run`, and `release`, leaves the state hash and every
-## part of it as it was, and each `apply_*` refuses a command that looks right.
+## part of it as it was (Power.run rebuilds the derived row lists since P71, which are in no hash
+## section), and each `apply_*` refuses a command that looks right (the arena has no producer for a
+## QUEUE and no item for a CANCEL, since P73).
 func test_the_stub_modules_change_no_state_and_refuse_every_command() -> void:
 	var world: World = _arena()
 	var before: PackedInt64Array = world.hash_parts()
