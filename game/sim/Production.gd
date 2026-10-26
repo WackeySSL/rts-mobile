@@ -2,11 +2,12 @@ class_name Production
 extends RefCounted
 ## The PRODUCTION phase and its Commands (ADR 0017 section 5, ADR 0018 section 5): the queues
 ## advance, finished units spawn at their exit and leave for the rally point, finished structures
-## turn ready. Since plan row P73 the two unit tabs, INFANTRY and VEHICLES, work: QUEUE pays and
-## joins the queue, CANCEL refunds, `run` advances each queue's head and ProductionSpawn puts the
-## finished unit on the map. The STRUCTURES tab (a ready structure, PLACE, the free harvester) is
-## plan row P73b's: QUEUE refuses a structure, `run` leaves that queue alone and `apply_place`
-## still refuses, so a PLACE is dropped and counted.
+## turn ready. QUEUE pays and joins the queue of the item's tab, CANCEL refunds, `run` advances each
+## queue's head and ProductionSpawn puts a finished unit on the map. A finished structure (the
+## STRUCTURES tab, plan row P73b) is not spawned: its head stops at 100 % and waits, with no state
+## of its own ("ready" is progress at the goal), until PLACE puts it on the map or CANCEL takes it
+## out; PLACE builds it complete through `World.add_building` and ProductionSpawn gives a refinery
+## its free harvester.
 ##
 ## A queue is identified by `queue = player * TABS + tab`. Its items are the `queue_count[queue]`
 ## type indexes in `queue_type` from `queue * queue_slots` on, the head first; a slot past the count
@@ -15,15 +16,16 @@ extends RefCounted
 ## the defeat rules (plan row P76) decide whether a defeated player's queues go on.
 
 ## Hundredths of a tick: the resolution of `queue_progress` (a structural unit, like a tile's
-## 1,000 milli). A head gains this much per tick (ADR 0018 section 5; plan row P74 scales it on
-## low power).
+## 1,000 milli). A head gains this much per tick (ADR 0018 section 5), or `low_power_percent` of it
+## while its player is on low power (`Power.scaled`, ADR 0018 section 4).
 const PROGRESS_PER_TICK: int = 100
 
-## One PRODUCTION step: the head of every unit queue that has a producer gains PROGRESS_PER_TICK
-## (never past its goal) and, once done, spawns (ProductionSpawn.spawn) and leaves the queue; one
-## that cannot spawn yet waits at 100 %. Players ascending, then tabs. A queue without a producer
-## waits. The loop runs over the arrays as sized, so a hand-built World whose player_count was
-## raised after prepare() has no queue for the late players.
+## One PRODUCTION step: the head of every queue that has a producer gains PROGRESS_PER_TICK, or
+## `low_power_percent` of it on low power (every tab, STRUCTURES included), never past its goal. A
+## done unit spawns (ProductionSpawn.spawn) and leaves the queue; one that cannot spawn yet waits at
+## 100 %, and so does a done structure, until PLACE or CANCEL. Players ascending, then tabs. A queue
+## without a producer waits. The loop runs over the arrays as sized, so a hand-built World whose
+## player_count was raised after prepare() has no queue for the late players.
 @warning_ignore("integer_division")
 static func run(world: World) -> void:
 	var counts: PackedInt32Array = world.queue_count
@@ -33,7 +35,7 @@ static func run(world: World) -> void:
 	var slots: int = world.queue_slots
 	for queue: int in range(World.TABS, counts.size()):
 		var tab: int = queue % World.TABS
-		if counts[queue] == 0 or not _unit_tab(tab):
+		if counts[queue] == 0:
 			continue
 		var player: int = queue / World.TABS
 		var producer: int = producer_row(world, player, tab)
@@ -41,15 +43,21 @@ static func run(world: World) -> void:
 			continue
 		var head: int = items[queue * slots]
 		var done: int = build_ticks[head] * PROGRESS_PER_TICK
-		progress[queue] = mini(progress[queue] + PROGRESS_PER_TICK, done)
-		if progress[queue] >= done and ProductionSpawn.spawn(world, player, head, producer):
+		var step: int = Power.scaled(world, player, PROGRESS_PER_TICK)  # Less on low power.
+		progress[queue] = mini(progress[queue] + step, done)
+		if (
+			tab != World.Tab.STRUCTURES
+			and progress[queue] >= done
+			and ProductionSpawn.spawn(world, player, head, producer)
+		):
 			remove_item(world, queue, 0)
 			world.stat_built[player] += 1
 
 
 ## QUEUE `[type_index]`: true when the item joined the player's queue and its cost was paid. The
-## type needs a unit tab, the player a producer of that tab (producer_row) and a row of the type's
-## requirement (if it has one), the queue room and at least the type's cost in credits.
+## type needs a tab (a structure's too), the player a producer of that tab (producer_row) and a row
+## of the type's requirement (if it has one), the queue room and at least the type's cost in
+## credits.
 static func apply_queue(world: World, command: Command) -> bool:
 	if command.payload.size() != 1:
 		return false
@@ -58,7 +66,7 @@ static func apply_queue(world: World, command: Command) -> bool:
 		return false
 	var tab: int = world.type_tab[type]
 	var player: int = command.player_id
-	if not _unit_tab(tab) or producer_row(world, player, tab) < 0:
+	if tab < 0 or tab >= World.TABS or producer_row(world, player, tab) < 0:
 		return false
 	var queue: int = player * World.TABS + tab
 	var count: int = world.queue_count[queue]
@@ -94,10 +102,39 @@ static func apply_cancel(world: World, command: Command) -> bool:
 	return true
 
 
-## PLACE: true when the ready head of the STRUCTURES queue stands on the ground of the point. Plan
-## row P73b; until then it refuses.
-static func apply_place(_world: World, _command: Command) -> bool:
-	return false
+## PLACE: true when the player's ready STRUCTURES head was built at the point (ADR 0018 section 5).
+## The payload is empty and the head is ready (its progress at the goal; a producer is not asked
+## for, so a structure finished before its Headquarters died can still be placed). The footprint's
+## origin is the tile that holds the point, and `Placement.reason` must say OK: a failing reason
+## drops the command and leaves the head ready. Then the building comes complete
+## (`World.add_building`, which a full row table refuses), the head leaves the queue, `stat_built`
+## counts it and a refinery gets its free harvester (ProductionSpawn.spawn_free). The cost was paid
+## when the item was queued, so the credits do not move. Event cadence: one `PlacementInput` per
+## call.
+@warning_ignore("integer_division")
+static func apply_place(world: World, command: Command) -> bool:
+	if not command.payload.is_empty():
+		return false
+	var player: int = command.player_id
+	var queue: int = player * World.TABS + World.Tab.STRUCTURES
+	if world.queue_count[queue] == 0:
+		return false
+	var head: int = world.queue_type[queue * world.queue_slots]
+	if world.queue_progress[queue] < world.type_build_ticks[head] * PROGRESS_PER_TICK:
+		return false
+	# A negative point is outside the map; `/` would truncate it to tile 0.
+	var col: int = command.target_x / World.MILLI_PER_TILE if command.target_x >= 0 else -1
+	var line: int = command.target_y / World.MILLI_PER_TILE if command.target_y >= 0 else -1
+	var input: PlacementInput = PlacementInput.of_world(world)
+	if Placement.reason(input, player, head, col, line) != Placement.Reason.OK:
+		return false
+	var id: int = world.add_building(player, head, col, line)
+	if id == 0:
+		return false
+	remove_item(world, queue, 0)
+	world.stat_built[player] += 1
+	ProductionSpawn.spawn_free(world, world.index_of(id))
+	return true
 
 
 ## Takes the item in `slot` out of `queue` and moves the later ones up, leaving -1 in the freed last
@@ -128,11 +165,6 @@ static func producer_row(world: World, player: int, tab: int) -> int:
 		if owners[row] == player and produces[types[row]] == tab:
 			return row
 	return -1
-
-
-## Whether `tab` is one of the two unit tabs; the STRUCTURES tab is plan row P73b's.
-static func _unit_tab(tab: int) -> bool:
-	return tab == World.Tab.INFANTRY or tab == World.Tab.VEHICLES
 
 
 ## Whether the player owns a row of `type` (-1 = no requirement).

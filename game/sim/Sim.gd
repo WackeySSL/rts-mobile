@@ -16,16 +16,17 @@ const MILLI_PER_TILE: int = 1000
 ## lock, holding and chasing), ordered units choose their steps (intents), overlapping units are
 ## pushed apart (SEPARATION), the steps and pushes are integrated, shells in flight move and those
 ## that arrive hit (PROJECTILES: `Combat.advance_projectiles`), armed units with a target in range
-## fire (FIRE: `Combat.fire`, a hitscan hit or a new shell), dead rows leave and their vision ends
-## (REMOVE), the players whose turn it is move their fog (FOG: `FogUpdate.run`, every
-## `fog_period_ticks`, after `FogUpdate.begin` emptied their dirty lists), the economy runs
-## (ECONOMY: `Power.run`, `Harvest.run`), the queues advance and the match outcome is checked
-## (PRODUCTION: `Production.run`, `Outcome.run`), the last-seen records update (MEMORY:
-## `LastSeen.run`; ADR 0017 section 5), and the tick counts. Of those five modules `Power.run`
-## rebuilds the derived row lists (P71), `Harvest.run` runs the ore and the harvest loop (P75) and
-## `Production.run` advances the unit queues (P73); the others are skeletons until plan rows P74 to
-## P77. A probe gets `begin()` first and a `mark` after each phase that exists (ADR 0007 section 4);
-## it never sees the World.
+## fire (FIRE: `Combat.fire`, a hitscan hit or a new shell; a defence on low power keeps its target
+## and waits), dead rows leave and their vision ends (REMOVE), the players whose turn it is move
+## their fog (FOG: `FogUpdate.run`, every `fog_period_ticks`, after `FogUpdate.begin` emptied their
+## dirty lists), the economy runs (ECONOMY: `Power.run`, `Harvest.run`), the queues advance and the
+## match outcome is checked (PRODUCTION: `Production.run`, `Outcome.run`), the last-seen records
+## update (MEMORY: `LastSeen.run`; ADR 0017 section 5), and the tick counts. Of those five modules
+## `Power.run` rebuilds the derived row lists (P71) and sums the power made and used per player
+## (P74), `Harvest.run` runs the ore and the harvest loop (P75) and `Production.run` advances the
+## queues, the structures' too, at `low_power_percent` of the rate on low power (P73, P73b, P74);
+## the others are skeletons until plan rows P76 and P77. A probe gets `begin()` first and a `mark`
+## after each phase that exists (ADR 0007 section 4); it never sees the World.
 static func step(world: World, commands: Array[Command], probe: SimProbe = null) -> void:
 	if probe != null:
 		probe.begin()
@@ -130,7 +131,8 @@ static func _apply(world: World, command: Command) -> void:
 		world.dropped_commands += 1
 
 
-## ATTACK_MOVE and MOVE: the valid units take `order` and a formation slot around the target.
+## ATTACK_MOVE and MOVE: the valid units take `order` and a formation slot around the target; the
+## harvesters among them go back to the player (`Harvest.release`).
 static func _apply_point(world: World, command: Command, order: int) -> bool:
 	var rows: PackedInt32Array = _own_rows(world, command, false)
 	if rows.is_empty():
@@ -167,7 +169,8 @@ static func _apply_attack(world: World, command: Command) -> bool:
 	return true
 
 
-## STOP: the valid units go idle where they stand, with no target and no flow field.
+## STOP: the valid units go idle where they stand, with no target and no flow field; the harvesters
+## among them go back to the player (`Harvest.release`).
 static func _apply_stop(world: World, command: Command) -> bool:
 	var rows: PackedInt32Array = _own_rows(world, command, false)
 	if rows.is_empty():

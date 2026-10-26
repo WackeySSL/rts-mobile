@@ -1,18 +1,30 @@
 extends GdUnitTestSuite
-## The Build and Ground pages of the art gallery (plan row P91): the six buildings at gameplay zoom
-## on grass and sand in both team colours, the ore patches, the three ghosts and the two pattern
-## tiles, and the button that turns the pages (the Vehicles and Icons pages of plan row P92 are in
-## test_art_gallery_icon_pages.gd). The gallery opens on the Units page, which
-## tests/art/test_art_assets.gd covers.
+## The Build, Seam and Ground pages of the art gallery (plan rows P91 and P91b): the six buildings
+## in their oblique view at the camera zoom levels on grass and sand in both team colours, each cut
+## at its footprint's middle line with a tank north and south of it, the building the vision edge
+## crosses, the ore patches, the three ghosts and the two pattern tiles, and the button that turns
+## the pages (the Vehicles and Icons pages of plan row P92 are in test_art_gallery_icon_pages.gd).
+## The gallery opens on the Units page, which tests/art/test_art_assets.gd covers.
 
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
+const Buildings: GDScript = preload("res://game/view/art_gallery_buildings.gd")
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
 ## The tightest 16:9 phone, a wider one and a 4:3 tablet (the sizes of test_art_assets.gd).
 const BASES: Array[Vector2] = [Vector2(1280, 720), Vector2(1600, 720), Vector2(1280, 960)]
-const SMALL: Array[String] = ["PowerPlant", "Barracks", "DefenceTurret"]
-const LARGE: Array[String] = ["Headquarters", "Refinery", "VehicleFactory"]
 const TEAM_A: Color = Color("2F80ED")
 const TEAM_B: Color = Color("E5484D")
+const BUILD_PAGE: int = 1
+const GROUND_PAGE: int = 2
+const SEAM_PAGE: int = 5
+## The sections of the Build page in order: zoom 1 first, then the other two camera zoom levels.
+const SECTIONS: Array[String] = [
+	"Zoom100A", "Zoom100B", "Zoom75A", "Zoom75B", "Zoom150A", "Zoom150B"
+]
+const IDS: Array[String] = [
+	"headquarters", "refinery", "vehicle_factory", "power_plant", "barracks", "defence_turret"
+]
+const TANK_REACH: float = 26.0
+const RISE: float = 48.0
 
 
 ## A gallery switches `SceneTree.quit_on_go_back` off while it is open and restores what it found,
@@ -44,80 +56,220 @@ func test_the_back_and_page_buttons_stay_above_every_page() -> void:
 	var last: int = gallery.get_child_count() - 1
 	assert_int(gallery.get_node("%PageButton").get_index()).is_equal(last)
 	assert_int(gallery.get_node("%BackButton").get_index()).is_equal(last - 1)
-	assert_int(gallery.get_node("BuildingsPage").get_index()).is_less(last - 1)
-	assert_int(gallery.get_node("GroundPage").get_index()).is_less(last - 1)
-	assert_int(gallery.get_node("VehiclesPage").get_index()).is_less(last - 1)
-	assert_int(gallery.get_node("IconsPage").get_index()).is_less(last - 1)
+	for page: String in ["BuildingsPage", "GroundPage", "VehiclesPage", "IconsPage", "SeamPage"]:
+		assert_int(gallery.get_node(page).get_index()).is_less(last - 1)
 	for button: Control in [gallery.get_node("%PageButton"), gallery.get_node("%BackButton")]:
 		assert_vector(button.size).is_greater_equal(Vector2(120, 120))
 
 
-func test_the_build_page_has_the_six_buildings_in_each_of_the_four_slots_in_its_team_colour(
+func test_the_build_page_is_a_scroll_list_of_six_sections_on_grass_and_sand() -> void:
+	var gallery: Control = await _open_gallery()
+	var scroll: ScrollContainer = gallery.get_node("BuildingsPage/Scroll")
+	assert_int(scroll.horizontal_scroll_mode).is_equal(ScrollContainer.SCROLL_MODE_DISABLED)
+	# A finger can drag it: the list takes the touch (nothing over it ignores it) and it has a range.
+	assert_int(scroll.mouse_filter).is_not_equal(Control.MOUSE_FILTER_IGNORE)
+	_turn_to(gallery, BUILD_PAGE)
+	await await_idle_frame()
+	assert_float(scroll.get_v_scroll_bar().max_value).is_greater(3.0 * 720.0)
+	var content: Control = scroll.get_node("Content")
+	assert_float(content.custom_minimum_size.y).is_greater(3.0 * 720.0)
+	for ground: String in ["Grass", "Sand"]:
+		var sections: Array[Node] = content.get_node(ground).get_children()
+		assert_array(sections.map(_node_name)).is_equal(SECTIONS)
+		for section: Node in sections:
+			var zoom: float = float(
+				String(section.name).substr(4, -1).trim_suffix("A").trim_suffix("B")
+			)
+			var is_a: bool = String(section.name).ends_with("A")
+			var label: Label = section.get_child(0)
+			var text: String = "Zoom %s, team %s" % [zoom / 100.0, "A" if is_a else "B"]
+			assert_str(label.text).override_failure_message(section.name).is_equal(text)
+			var cells: Array[Node] = section.get_children().slice(1)
+			var want: Array = IDS.map(func(id: String) -> String: return id.to_pascal_case())
+			assert_array(cells.map(_node_name)).override_failure_message(section.name).is_equal(
+				want
+			)
+			for cell: Node2D in cells:
+				assert_vector(cell.scale).is_equal(Vector2.ONE * zoom / 100.0)
+
+
+## The base part is the sprite rows south of the footprint's middle line, the roof part the rows
+## north of it, and the cell draws base, tanks, roof in that order (ADR 0022 section 2).
+func test_each_cell_draws_the_base_part_then_the_tanks_then_the_roof_part_cut_at_the_middle_line(
 ) -> void:
 	var gallery: Control = await _open_gallery()
-	var rows: Dictionary[String, Array] = {"SmallA": SMALL, "SmallB": SMALL}
-	rows["LargeA"] = LARGE
-	rows["LargeB"] = LARGE
 	for ground: String in ["Grass", "Sand"]:
-		for row_name: String in rows:
-			var is_a: bool = row_name.ends_with("A")
-			var row: Node = gallery.get_node("BuildingsPage/%s/%s" % [ground, row_name])
-			assert_int(row.get_child_count()).is_equal(3)
-			for building: String in rows[row_name]:
-				var rig: Node2D = row.get_node(building)
-				var id: String = building.to_snake_case()
-				var layers: Array[String] = ["Hull", "Team"]
-				if building == "DefenceTurret":
-					layers.append("Turret")
-				assert_int(rig.get_child_count()).is_equal(layers.size())
-				for layer: String in layers:
-					var texture: Texture2D = (rig.get_node(layer) as Sprite2D).texture
-					assert_str(texture.resource_path).ends_with(
-						"%s_%s.svg" % [id, layer.to_lower()]
-					)
-				var tint: Color = (rig.get_node("Team") as Sprite2D).modulate
-				var path: String = "%s %s %s" % [ground, row_name, building]
-				assert_that(tint).override_failure_message(path).is_equal(
-					TEAM_A if is_a else TEAM_B
+		for section: String in SECTIONS:
+			var is_a: bool = section.ends_with("A")
+			var team: Color = TEAM_A if is_a else TEAM_B
+			var group: StringName = Gallery.TEAM_A_GROUP if is_a else Gallery.TEAM_B_GROUP
+			for id: String in IDS:
+				var path: String = (
+					"BuildingsPage/Scroll/Content/%s/%s/%s" % [ground, section, id.to_pascal_case()]
 				)
-				var group: StringName = Gallery.TEAM_A_GROUP if is_a else Gallery.TEAM_B_GROUP
-				assert_bool(rig.is_in_group(group)).override_failure_message(path).is_true()
-				assert_vector(rig.scale).is_equal(Vector2.ONE)
+				var cell: Node = gallery.get_node(path)
+				(
+					assert_array(cell.get_children().map(_node_name))
+					. override_failure_message(path)
+					. is_equal(["Base", "TankNorth", "TankSouth", "Roof"])
+				)
+				var size: Vector2 = (
+					(load("res://assets/art/svg/buildings/%s_hull.svg" % id) as Texture2D)
+					. get_size()
+				)
+				var cut: float = size.y - size.x / 2.0
+				var parts: Dictionary[String, Rect2] = {
+					"Base": Rect2(0.0, cut, size.x, size.y - cut),
+					"Roof": Rect2(0.0, 0.0, size.x, cut)
+				}
+				for part: String in parts:
+					var rig: Node2D = cell.get_node(part)
+					(
+						assert_bool(rig.is_in_group(group))
+						. override_failure_message(path + part)
+						. is_true()
+					)
+					assert_vector(rig.position).is_equal(parts[part].position)
+					for layer: String in ["Hull", "Team"]:
+						var sprite: Sprite2D = rig.get_node(layer)
+						assert_str(sprite.texture.resource_path).ends_with(
+							"%s_%s.svg" % [id, layer.to_lower()]
+						)
+						assert_bool(sprite.region_enabled).is_true()
+						assert_bool(sprite.centered).is_false()
+						assert_that(sprite.region_rect).is_equal(parts[part])
+					assert_that((rig.get_node("Team") as Sprite2D).modulate).is_equal(team)
+				var head: Node = cell.get_node("Roof").get_node_or_null("Turret")
+				assert_bool(head != null).override_failure_message(path).is_equal(
+					id == "defence_turret"
+				)
+				for tank_name: String in ["TankNorth", "TankSouth"]:
+					var tank: Node2D = cell.get_node(tank_name)
+					assert_array(tank.get_children().map(_node_name)).is_equal(
+						["Hull", "Team", "Turret"]
+					)
+					assert_bool(tank.is_in_group(group)).is_true()
+					assert_that((tank.get_node("Team") as Sprite2D).modulate).is_equal(team)
 
 
-func test_the_defence_turret_gun_head_turns_with_the_other_turrets() -> void:
+## A unit north of a building has its centre at or north of the footprint's north edge and a unit
+## south of it at or south of the south edge, by the light tank's reach
+## (HealthBarLayer.VEHICLE_REACH_PX).
+func test_the_tanks_stand_off_the_footprints_north_and_south_walls_by_their_reach() -> void:
 	var gallery: Control = await _open_gallery()
-	var head: Sprite2D = gallery.get_node("BuildingsPage/Grass/SmallA/DefenceTurret/Turret")
+	for id: String in IDS:
+		var cell: Node2D = gallery.get_node(
+			"BuildingsPage/Scroll/Content/Grass/Zoom100A/" + id.to_pascal_case()
+		)
+		var size: Vector2 = (
+			(load("res://assets/art/svg/buildings/%s_hull.svg" % id) as Texture2D).get_size()
+		)
+		var north: Node2D = cell.get_node("TankNorth")
+		var south: Node2D = cell.get_node("TankSouth")
+		assert_vector(north.position).override_failure_message(id).is_equal(
+			Vector2(size.x / 2.0, RISE - TANK_REACH)
+		)
+		assert_vector(south.position).override_failure_message(id).is_equal(
+			Vector2(size.x / 2.0, size.y + TANK_REACH)
+		)
+		# The tank on the north side faces the building, the one on the south side faces it too.
+		assert_float(north.rotation).is_equal_approx(PI / 2.0, 0.0001)
+		assert_float(south.rotation).is_equal_approx(-PI / 2.0, 0.0001)
+		# The extent of a cell is the sprite box with a tank's canvas beyond both walls.
+		var extent: Vector2 = Buildings.cell_extent(size)
+		assert_float(extent.x).is_equal(RISE - TANK_REACH - 32.0)
+		assert_float(extent.y).is_equal(size.y + TANK_REACH + 32.0)
+
+
+## The head of the defence turret turns about the roof's centre, the footprint's centre lifted by
+## the rise, and turns with the other turrets; the roof part that carries it does not turn.
+func test_the_defence_turret_gun_head_turns_about_the_roofs_centre_with_the_other_turrets() -> void:
+	var gallery: Control = await _open_gallery()
+	var roof: Node2D = gallery.get_node(
+		"BuildingsPage/Scroll/Content/Grass/Zoom100A/DefenceTurret/Roof"
+	)
+	var head: Sprite2D = roof.get_node("Turret")
+	assert_str(head.texture.resource_path).ends_with("defence_turret_turret.svg")
+	assert_bool(head.centered).is_false()
+	assert_vector(head.position).is_equal(Vector2(32, 32))
+	assert_vector(head.offset).is_equal(Vector2(-32, -32))
 	var before: float = head.rotation
 	gallery.call("_process", 0.5)
 	assert_float(head.rotation).is_not_equal(before)
-	var rig: Node2D = gallery.get_node("BuildingsPage/Grass/SmallA/DefenceTurret")
-	assert_float(rig.rotation).is_equal(0.0)
+	assert_float(roof.rotation).is_equal(0.0)
 
 
-## Each building is at scale 1 inside its half, clear of its neighbours and of both buttons, on the
-## phone that is tightest in height, a wider one and a tablet.
+## Every cell is inside its ground, clear of the other cells and, at the top of the list, of both
+## buttons, on the phone that is tightest in height, a wider one and a tablet.
 func test_the_build_page_fits_each_half_and_keeps_clear_of_the_buttons_at_three_sizes() -> void:
 	for base: Vector2 in BASES:
 		var gallery: Control = await _open_gallery(base)
-		_turn_to(gallery, 1)
+		_turn_to(gallery, BUILD_PAGE)
 		await await_idle_frame()
 		var problems: Array[String] = []
-		var seen: Array[Rect2] = []
 		var buttons: Array[Rect2] = _button_rects(gallery)
+		var count: int = 0
 		for ground_name: String in ["Grass", "Sand"]:
-			var half: Rect2 = (
-				(gallery.get_node("BuildingsPage/" + ground_name) as Control).get_global_rect()
-			)
-			for node: Node in gallery.get_node("BuildingsPage/" + ground_name).find_children(
-				"Hull", "Sprite2D", true, false
-			):
-				var box: Rect2 = _box(node)
-				problems.append_array(_clashes(box, str(node.get_path()), half, buttons, seen))
+			var ground: Control = gallery.get_node("BuildingsPage/Scroll/Content/" + ground_name)
+			var half: Rect2 = ground.get_global_rect()
+			var seen: Array[Rect2] = []
+			for cell: Node in ground.find_children("*", "Node2D", true, false):
+				if not IDS.has(String(cell.name).to_snake_case()):
+					continue
+				var hull: Vector2 = (cell.get_node("Roof/Hull") as Sprite2D).texture.get_size()
+				var extent: Vector2 = Buildings.cell_extent(hull)
+				var box: Rect2 = (
+					(cell as Node2D).get_global_transform()
+					* Rect2(0.0, extent.x, hull.x, extent.y - extent.x)
+				)
+				count += 1
+				var label: String = str(cell.get_path())
+				if box.position.x < half.position.x or box.end.x > half.end.x:
+					problems.append(label + " is outside its ground")
+				for other: Rect2 in seen:
+					if box.intersects(other):
+						problems.append(label + " overlaps another cell")
+				if cell.get_parent().name == SECTIONS[0]:
+					for button: Rect2 in buttons:
+						if box.intersects(button):
+							problems.append(label + " is under a button")
 				seen.append(box)
-		assert_int(seen.size()).is_equal(24)
+		assert_int(count).is_equal(2 * SECTIONS.size() * IDS.size())
 		assert_array(problems).override_failure_message(str(base)).is_empty()
 		gallery.get_parent().free()
+
+
+## The Seam page (ADR 0022 section 4): the refinery with the explored fog over the west column of
+## its footprint, drawn between the tanks and the roof part, beside the same refinery seen.
+func test_the_seam_page_shows_the_fog_over_the_west_column_under_the_roof_part() -> void:
+	var gallery: Control = await _open_gallery()
+	_turn_to(gallery, SEAM_PAGE)
+	assert_str((gallery.get_node("%PageButton") as Button).text).is_equal("Seam")
+	for ground: String in ["Grass", "Sand"]:
+		var row: Node = gallery.get_node("SeamPage/%s/Row" % ground)
+		var cells: Array[Node] = row.get_children().filter(
+			func(n: Node) -> bool: return n is Node2D
+		)
+		assert_int(cells.size()).is_equal(2)
+		var size: Vector2 = (
+			(load("res://assets/art/svg/buildings/refinery_hull.svg") as Texture2D).get_size()
+		)
+		assert_float(size.x).is_greater_equal(128.0)
+		var fogged: Node2D = cells[0]
+		var seen: Node2D = cells[1]
+		assert_array(fogged.get_children().map(_node_name)).is_equal(
+			["Base", "TankNorth", "TankSouth", "ExploredFog", "Roof"]
+		)
+		assert_array(seen.get_children().map(_node_name)).is_equal(
+			["Base", "TankNorth", "TankSouth", "Roof"]
+		)
+		var fog: ColorRect = fogged.get_node("ExploredFog")
+		assert_vector(fog.position).is_equal(Vector2(0, size.y - size.x))
+		assert_vector(fog.size).is_equal(Vector2(64, size.x))
+		assert_that(fog.color).is_equal(Color(0.0, 0.0, 0.0, 140.0 / 255.0))
+		assert_int(fog.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
+		var team: Color = TEAM_A if ground == "Grass" else TEAM_B
+		assert_that((fogged.get_node("Roof/Team") as Sprite2D).modulate).is_equal(team)
 
 
 func test_the_ground_page_has_the_ore_patches_the_ghosts_and_the_swatches() -> void:
@@ -150,10 +302,11 @@ func test_the_ground_page_has_the_ore_patches_the_ghosts_and_the_swatches() -> v
 			assert_int(tiles.size()).is_equal(count)
 
 
-## Valid: the own team's building at a fade, a green wash and a solid green frame. Blocked: the same
-## in red with the hatch tile over it and the occupied glyph, 32 dp and red like the hatch, in the
-## middle of the footprint. Seen: the other team's building under the dots and the explored fog,
-## with no frame and no wash.
+## Valid: the wash on the footprint, the own team's building at a fade over it and a solid green
+## frame on the footprint. Blocked: the same in red with the hatch tile over the sprite and the
+## occupied glyph, 32 dp and red like the hatch, in the middle of the footprint. Seen: the other
+## team's building under the dots and the explored fog, over the whole sprite box, with no frame and
+## no wash (ADR 0022 sections 4 and 5). The sprite stands on the footprint's south edge.
 func test_the_three_ghosts_are_drawn_as_the_style_guide_says() -> void:
 	var gallery: Control = await _open_gallery()
 	for ground: String in ["Grass", "Sand"]:
@@ -168,12 +321,17 @@ func test_the_three_ghosts_are_drawn_as_the_style_guide_says() -> void:
 			var rig: CanvasGroup = cell.get_node("Rig")
 			assert_that(rig.modulate).is_equal(Color.WHITE)
 			assert_vector(cell.size).is_equal(Vector2(128, 128))
+			# The sprite box is the footprint with the rise above it: the rig is centred on it.
+			assert_vector(rig.position).is_equal(Vector2(64, 64 - RISE / 2.0))
 			assert_str((rig.get_node("Hull") as Sprite2D).texture.resource_path).ends_with(
 				"barracks_hull.svg"
 			)
-		assert_array(valid.get_children().map(_node_name)).is_equal(["Rig", "Wash", "Frame"])
+			assert_vector((rig.get_node("Hull") as Sprite2D).texture.get_size()).is_equal(
+				Vector2(128, 176)
+			)
+		assert_array(valid.get_children().map(_node_name)).is_equal(["Wash", "Rig", "Frame"])
 		assert_array(blocked.get_children().map(_node_name)).is_equal(
-			["Rig", "Wash", "PatternHatch", "Frame", "GlyphReasonOccupied"]
+			["Wash", "Rig", "PatternHatch", "Frame", "GlyphReasonOccupied"]
 		)
 		assert_array(seen.get_children().map(_node_name)).is_equal(
 			["Rig", "PatternSeen", "ExploredFog"]
@@ -189,6 +347,9 @@ func test_the_three_ghosts_are_drawn_as_the_style_guide_says() -> void:
 		assert_that(blocked.get_node("Wash").color).is_equal(
 			Color(Gallery.GHOST_DANGER, Gallery.GHOST_WASH_ALPHA)
 		)
+		# The wash, the hatch and the frame mark the footprint; the dots and the fog the sprite box.
+		for node: Control in [valid.get_node("Wash"), blocked.get_node("Wash")]:
+			assert_vector(node.size).is_equal(Vector2(128, 128))
 		for frame: ReferenceRect in [valid.get_node("Frame"), blocked.get_node("Frame")]:
 			assert_bool(frame.editor_only).is_false()
 			assert_float(frame.border_width).is_equal(Gallery.GHOST_FRAME_PX)
@@ -207,10 +368,13 @@ func test_the_three_ghosts_are_drawn_as_the_style_guide_says() -> void:
 		assert_that(dots.modulate).is_equal(Color(Gallery.GHOST_NEUTRAL, Gallery.GHOST_DOTS_ALPHA))
 		for pattern: TextureRect in [hatch, dots]:
 			assert_int(pattern.stretch_mode).is_equal(TextureRect.STRETCH_TILE)
-			assert_vector(pattern.size).is_equal(Vector2(128, 128))
-		assert_that((seen.get_node("ExploredFog") as ColorRect).color).is_equal(
-			Color(0.0, 0.0, 0.0, 140.0 / 255.0)
-		)
+		assert_vector(hatch.size).is_equal(Vector2(128, 128))
+		assert_vector(dots.position).is_equal(Vector2(0, -RISE))
+		assert_vector(dots.size).is_equal(Vector2(128, 128 + RISE))
+		var fog: ColorRect = seen.get_node("ExploredFog")
+		assert_that(fog.color).is_equal(Color(0.0, 0.0, 0.0, 140.0 / 255.0))
+		assert_vector(fog.position).is_equal(Vector2(0, -RISE))
+		assert_vector(fog.size).is_equal(Vector2(128, 128 + RISE))
 		# The reason glyph is on top of the frame, red like the hatch (its seat keeps it apart from
 		# the bands, STYLE.md "Icons and glyphs"), at the 32 dp of a glyph on the map (1.75 base px
 		# per dp), centred in the 128 px footprint.
@@ -240,11 +404,11 @@ func test_the_swatches_show_each_pattern_tile_whole_times_over() -> void:
 
 
 ## Everything on the Ground page is inside its half and clear of the buttons and of each other, at
-## the three base sizes.
+## the three base sizes; a ghost counts with the rise of its sprite above its footprint.
 func test_the_ground_page_fits_each_half_and_keeps_clear_of_the_buttons_at_three_sizes() -> void:
 	for base: Vector2 in BASES:
 		var gallery: Control = await _open_gallery(base)
-		_turn_to(gallery, 2)
+		_turn_to(gallery, GROUND_PAGE)
 		await await_idle_frame()
 		var problems: Array[String] = []
 		var seen: Array[Rect2] = []
@@ -252,17 +416,23 @@ func test_the_ground_page_fits_each_half_and_keeps_clear_of_the_buttons_at_three
 		for ground_name: String in ["Grass", "Sand"]:
 			var ground: Control = gallery.get_node("GroundPage/" + ground_name)
 			var half: Rect2 = ground.get_global_rect()
-			var things: Array[Control] = []
+			var things: Array[Rect2] = []
+			var names: Array[String] = []
 			for patch: String in ["OreLevels", "OreField"]:
-				things.append(ground.get_node(patch + "/Frame"))
+				things.append((ground.get_node(patch + "/Frame") as Control).get_global_rect())
+				names.append(patch)
 			for kind: String in ["Valid", "Blocked", "Seen"]:
-				things.append(ground.get_node("Ghosts/Ghost" + kind))
-			things.append(ground.get_node("Swatches/SwatchHatch"))
-			things.append(ground.get_node("Swatches/SwatchSeen"))
-			for thing: Control in things:
-				var box: Rect2 = thing.get_global_rect()
-				problems.append_array(_clashes(box, str(thing.get_path()), half, buttons, seen))
-				seen.append(box)
+				var box: Rect2 = (
+					(ground.get_node("Ghosts/Ghost" + kind) as Control).get_global_rect()
+				)
+				things.append(Rect2(box.position - Vector2(0, RISE), box.size + Vector2(0, RISE)))
+				names.append("Ghost" + kind)
+			for swatch: String in ["SwatchHatch", "SwatchSeen"]:
+				things.append((ground.get_node("Swatches/" + swatch) as Control).get_global_rect())
+				names.append(swatch)
+			for index: int in things.size():
+				problems.append_array(_clashes(things[index], names[index], half, buttons, seen))
+				seen.append(things[index])
 		assert_int(seen.size()).is_equal(14)
 		assert_array(problems).override_failure_message(str(base)).is_empty()
 		gallery.get_parent().free()
@@ -276,10 +446,11 @@ func _assert_page(gallery: Control, page: int) -> void:
 			. override_failure_message(node_name)
 			. is_equal(page == 0)
 		)
-	assert_bool(gallery.get_node("BuildingsPage").visible).is_equal(page == 1)
-	assert_bool(gallery.get_node("GroundPage").visible).is_equal(page == 2)
+	assert_bool(gallery.get_node("BuildingsPage").visible).is_equal(page == BUILD_PAGE)
+	assert_bool(gallery.get_node("GroundPage").visible).is_equal(page == GROUND_PAGE)
 	assert_bool(gallery.get_node("VehiclesPage").visible).is_equal(page == 3)
 	assert_bool(gallery.get_node("IconsPage").visible).is_equal(page == 4)
+	assert_bool(gallery.get_node("SeamPage").visible).is_equal(page == SEAM_PAGE)
 
 
 func _turn_to(gallery: Control, page: int) -> void:
@@ -312,12 +483,6 @@ func _clashes(
 
 func _node_name(node: Node) -> String:
 	return String(node.name)
-
-
-## The bounding box of a sprite on screen.
-func _box(sprite: Node) -> Rect2:
-	var node: Sprite2D = sprite as Sprite2D
-	return node.get_global_transform() * node.get_rect()
 
 
 func _assert_quit_on_go_back_restored() -> void:

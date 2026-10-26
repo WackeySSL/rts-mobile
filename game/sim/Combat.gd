@@ -17,6 +17,11 @@ extends RefCounted
 ##   The unit does not have to be in `HOLD`: a chasing unit fires on the first tick it is in range.
 ##   It fires on that first tick, and then every `cooldown_ticks`, because the cooldown is set to
 ##   `cooldown_ticks` by a shot and counts down on each of the following ticks;
+## - an offline defence does not shoot (ADR 0018 section 4): a building row (`type_foot_w` above 0)
+##   of a player whose `power_used` is above its `power_made` (`Power.is_low`'s rule, inlined over
+##   the aliased totals) keeps its `target` and its cooldown counts down, but it skips the shot, so
+##   it fires on the first FIRE after the totals stop being low, with no wind-up. TARGETING and its
+##   kernel are unchanged, and a mobile row never goes offline;
 ## - a shot writes `[SHOT, shooter id, shooter x, shooter y, target id, weapon, target x, target y]`
 ##   (ADR 0007 section 10, both positions read now, so a tracer can still be drawn after either unit
 ##   is removed) and sets the cooldown, and then either
@@ -180,6 +185,9 @@ static func fire(world: World) -> void:
 	var hit_points: PackedInt32Array = world.hp
 	var type_armour: PackedInt32Array = world.type_armour
 	var type_weapon: PackedInt32Array = world.type_weapon
+	var type_foot: PackedInt32Array = world.type_foot_w
+	var power_made: PackedInt32Array = world.power_made
+	var power_used: PackedInt32Array = world.power_used
 	var weapon_range: PackedInt32Array = world.weapon_range
 	var weapon_min_range: PackedInt32Array = world.weapon_min_range
 	var weapon_damage: PackedInt32Array = world.weapon_damage
@@ -201,6 +209,8 @@ static func fire(world: World) -> void:
 	var next_shell: int = world.next_projectile_id
 	var overflow: int = 0
 	var weapons: int = weapon_range.size()
+	var footprints: int = type_foot.size()
+	var players: int = mini(power_made.size(), power_used.size())
 	var armour_classes: int = World.Armour.size()
 	var count: int = ids.size()
 	for row: int in count:
@@ -215,8 +225,12 @@ static func fire(world: World) -> void:
 		var weapon: int = type_weapon[type]
 		if weapon < 0 or weapon >= weapons:
 			continue
+		var side: int = owners[row]
+		if type < footprints and type_foot[type] > 0 and side < players:
+			if power_used[side] > power_made[side]:
+				continue  # Offline: the target stays, the shot waits for power.
 		var at: int = ids.bsearch(held)
-		if at >= count or ids[at] != held or owners[at] == owners[row] or owners[at] == 0:
+		if at >= count or ids[at] != held or owners[at] == side or owners[at] == 0:
 			continue
 		var x: int = pos_x[row]
 		var y: int = pos_y[row]

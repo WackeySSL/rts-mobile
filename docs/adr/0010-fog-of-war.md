@@ -29,6 +29,10 @@ Status note (2026-10-22, P68b docs; ADR 0017 accepted 2026-10-22): §1 carries a
 the per-player last-seen building memory lives in the World (ADR 0017 §3, `GHOST_ARRAYS`), not in
 `FogGrid`, and `PlayerView` arrives in plan row P78 (ADR 0020 §1); no accepted text changed.
 
+Status note (2026-10-26, P68d docs; ADR 0022 accepted 2026-10-26): §2 carries a dated status note:
+the fog layer moves under the building roofs, bars, projectiles and effects (z 110), and a tracer is
+drawn clipped to the seen tiles (ADR 0022 §2, §4); no accepted text changed.
+
 ## Context
 ROADMAP Phase 2 asks for "fog of war (visible and explored) and its rendering". The GDD says:
 - unexplored is black;
@@ -252,6 +256,22 @@ accepted): §2 as merged in `game/view/FogLayer.gd`, the other draw layers, `gam
   `EffectsLayer` and `PickSnapshot`, `Picker`, and its sections P47 and P47p "As merged", hold
   the details. The look (the fog colour, the soft edge, alpha 140 on the phone, an own unit's
   death on a dark tile) is recorded there as follow-ups for the art lens; STYLE.md is unchanged.
+
+Status note (2026-10-26, P68d docs, ADR 0022 accepted 2026-10-26, Michael's "ja til anbefaling";
+the text and the notes above stay as accepted and as dated): ADR 0022 §2 supersedes the draw order
+above ("projectiles and effects, **fog**, then move and target markers") and the note's
+`z_index = 140`. From plan row P84 on, the fog layer draws at **z 110**: over the unit bands and the
+base parts of buildings (z 2), under the building roofs (z 111), the health bars (z 112),
+projectiles (120), effects (130), the placement ghost (145), the rally flags (146) and the markers
+(150), in `scenes/main.tscn` and `scenes/dev/perf_arena.tscn`. A roof carries its footprint's fog
+state as its quad colour (ADR 0022 §4). Bars, projectiles and effects keep their hiding by tile
+(the "Hiding" item above), but the fog no longer darkens them at the edge of vision, and an own
+unit's death burst is no longer dimmed on its dark tile. **Tracers:** the "either end" rule of the
+2026-10-21 note stays as the birth rule (a tracer is added when either end is seen); since the fog
+no longer covers the effects, a tracer with one end seen is drawn clipped to the seen tiles, from
+the seen end to the last point on a seen tile, found at birth in 16 px steps (ADR 0022 §4, P84),
+and one with both ends seen is drawn whole. The texture, its updates, `explored_alpha` and the
+soft one-tile edge are unchanged.
 
 ### 3. Data
 `RulesDef.fog_period_ticks` (3). `TerrainDef` has no sight effect in Phase 2. The explored alpha

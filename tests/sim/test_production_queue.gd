@@ -107,17 +107,15 @@ func test_a_requirement_is_checked_when_the_item_is_queued_and_not_after() -> vo
 	assert_array([world.credits[1], world.dropped_commands]).is_equal([1000, 1])
 
 
-## Plan row P73b opens the STRUCTURES tab; until then a structure, a type that is not buildable and
-## a type index outside the table are refused, and so is a payload that is not one int. Player 1 has
-## a headquarters, so the STRUCTURES tab has a producer and the structures (whose requirements it
-## owns, and whose cost it can pay) are refused by the unit-tab gate alone.
-func test_only_unit_types_can_be_queued() -> void:
+## A type that is not buildable (the headquarters has no tab), a type index outside the table and a
+## payload that is not one int are refused. Player 1 has a headquarters, so the STRUCTURES tab has
+## a producer and the gate that refuses the headquarters is its own missing tab alone.
+func test_only_buildable_types_can_be_queued() -> void:
 	var world: World = Rig.base()
 	Rig.add_headquarters(world)
 	assert_int(Production.producer_row(world, 1, World.Tab.STRUCTURES)).is_greater_equal(0)
 	var types: Array[int] = [
-		Worlds.type_of(world, "power_plant"),
-		Worlds.type_of(world, "barracks"),
+		Worlds.type_of(world, "headquarters"),
 		-1,
 		world.type_ids.size(),
 		1000000,
@@ -132,6 +130,40 @@ func test_only_unit_types_can_be_queued() -> void:
 	assert_bool(Production.apply_queue(world, two)).is_false()
 	assert_int(world.credits[1]).is_equal(2000)
 	assert_array(world.queue_count).is_equal([0, 0, 0, 0, 0, 0, 0, 0, 0])
+
+
+## P73b opens the STRUCTURES tab: a structure pays and joins the structures queue, and only a
+## player with a headquarters (the producer of the tab) can queue one. The requirement is the same
+## rule as for units: owned when the item is queued.
+func test_a_structure_joins_the_structures_queue_when_the_player_has_a_producer_and_the_requirement(
+) -> void:
+	var world: World = Rig.base()
+	var plant: int = Worlds.type_of(world, "power_plant")
+	var barracks: int = Worlds.type_of(world, "barracks")
+	# No headquarters, no producer of the tab: nothing joins and nothing is paid.
+	Rig.step(world, [Rig.queue(world, 1, "power_plant")])
+	assert_array([world.credits[1], world.dropped_commands]).is_equal([world.start_credits, 1])
+	Rig.add_headquarters(world)
+	Rig.step(world, [Rig.queue(world, 1, "power_plant"), Rig.queue(world, 1, "barracks", 1)])
+	assert_array(Rig.items(world, 1, World.Tab.STRUCTURES)).is_equal([plant, barracks])
+	assert_int(world.credits[1]).is_equal(
+		world.start_credits - world.type_cost[plant] - world.type_cost[barracks]
+	)
+	assert_array(Rig.items(world, 1, INFANTRY)).is_empty()
+	assert_int(world.dropped_commands).is_equal(1)
+	# Player 2 has no headquarters, the producer of the tab.
+	Rig.step(world, [Rig.queue(world, 2, "power_plant")])
+	assert_array([world.credits[2], world.dropped_commands]).is_equal([world.start_credits, 2])
+	# Player 1 loses its power plant: a barracks is refused, the power plant (needs the headquarters)
+	# is not.
+	world.hp[world.index_of(Rig.PLANT)] = 0
+	Rig.step(world)
+	var credits: int = world.credits[1]
+	Rig.step(world, [Rig.queue(world, 1, "barracks"), Rig.queue(world, 1, "power_plant", 1)])
+	assert_array(Rig.items(world, 1, World.Tab.STRUCTURES)).is_equal([plant, barracks, plant])
+	assert_array([world.credits[1], world.dropped_commands]).is_equal(
+		[credits - world.type_cost[plant], 3]
+	)
 
 
 func test_a_cancel_refunds_the_whole_cost_and_moves_the_later_items_up() -> void:

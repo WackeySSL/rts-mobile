@@ -19,7 +19,7 @@ with the phone; no UI code assumes width > height.
 | Gesture | Result |
 | --- | --- |
 | Tap own unit | Select it, replacing the selection |
-| Tap own building | Select it; a production building opens its build tab |
+| Tap own building | Select it; a production building opens its build tab. The hit area is the whole picture, roof included (ADR 0022 §3); a unit at the same point wins |
 | Tap ground with units selected | Move there (stops an attack) |
 | Tap ground with an own barracks or vehicle factory selected | Set that tab's rally point (`RALLY`) and show its flag |
 | Tap ground with another own building selected | Clear the selection |
@@ -48,15 +48,19 @@ holds any combat unit leave harvesters out; a box with only harvesters selects t
   (infantry in particular).
 - When hit areas overlap the touch point, pick the target whose centre is closest; with units
   selected, enemies win over own units.
+- Units and buildings at one point (ADR 0022 §3): units first, so with a selection, enemy unit >
+  own unit > enemy building > own building; without one, enemies do not count, so own unit > own building. A
+  building's hit area is its whole sprite box (footprint plus the roof's rise), at least 48 dp a
+  side; between two buildings the one in front (the larger footprint south row) wins.
 
 ## Building placement
 ADR 0019 §2 (Michael's answer 1 B). Placement mode is local input state; no Command until confirm.
 - The ghost starts at the tile under the view centre. A one-finger drag that starts on the ghost
-  (its footprint plus a grab margin) moves it; it follows the finger 64 dp above the touch point,
-  so the finger never hides it, and snaps to tiles. A one-finger drag that starts elsewhere pans
-  as usual; a tap on the ground moves the ghost there; pinch and two-finger pan are unchanged;
-  the long-press box select is off. Dragging the ghost near the view's edge pans the camera. The
-  grab margin, the edge band and the pan speed live in `data/input_settings.tres`.
+  (its sprite box plus a grab margin, ADR 0022 §5) moves it; it follows the finger 64 dp above
+  the touch point, so the finger never hides it, and snaps to tiles. A one-finger drag that starts
+  elsewhere pans as usual; a tap on the ground moves the ghost there; pinch and two-finger pan are
+  unchanged; the long-press box select is off. Dragging the ghost near the view's edge pans the
+  camera. The grab margin, the edge band and the pan speed live in `data/input_settings.tres`.
 - Valid tiles are tinted green with a solid outline, invalid red with a hatch and the reason's
   glyph (never colour alone), from `Placement.reason` on the snapshot. Confirm with a check-mark
   button, cancel with an X, each at least 64 dp, in the sidebar zone in place of the item row;

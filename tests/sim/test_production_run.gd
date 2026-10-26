@@ -92,6 +92,7 @@ func test_the_next_item_starts_from_zero_and_takes_its_own_ticks() -> void:
 ## others as they were.
 func test_the_queues_of_the_tabs_and_the_players_run_side_by_side() -> void:
 	var world: World = Rig.base()
+	Rig.add_plant(world, 2, 2, 12)  # Player 2's barracks needs power to run at the normal rate.
 	Rig.step(world, [Rig.queue(world, 1, "rifle_squad"), Rig.queue(world, 1, "light_tank", 1)])
 	Rig.run(world, 9)
 	Rig.step(world, [Rig.queue(world, 2, "rifle_squad")])
@@ -113,6 +114,7 @@ func test_the_queues_of_the_tabs_and_the_players_run_side_by_side() -> void:
 ## barracks adds no speed and no exit); when it dies the next one takes over with the progress kept.
 func test_the_primary_producer_is_the_lowest_id_building_of_the_tab() -> void:
 	var world: World = Rig.base()
+	Rig.add_plant(world, 1, 20, 6)  # A second barracks would put player 1 on low power.
 	var second: int = world.add_building(1, Worlds.type_of(world, "barracks"), 8, 6)
 	assert_int(second).is_greater(Rig.ENEMY_BARRACKS)
 	Rig.step(world, [Rig.queue(world, 1, "rifle_squad"), Rig.queue(world, 1, "rifle_squad", 1)])
@@ -182,6 +184,7 @@ func test_a_harvester_starts_in_seek_and_ignores_the_rally_point() -> void:
 ## other player's do not apply.
 func test_a_new_unit_goes_to_the_rally_point_by_the_rule_of_a_one_unit_move() -> void:
 	var world: World = Rig.base([Vector2i(15, 9)])
+	Rig.add_plant(world, 2, 2, 12)
 	world.rally_x[Rig.queue_of(1, INFANTRY)] = 15500
 	world.rally_y[Rig.queue_of(1, INFANTRY)] = 9500
 	world.rally_x[Rig.queue_of(1, VEHICLES)] = 20500
@@ -226,20 +229,49 @@ func test_an_open_rally_point_is_the_goal_and_an_empty_one_leaves_the_unit_idle(
 	assert_int(world.group_cell[tank]).is_equal(-1)
 
 
-## The STRUCTURES queue is plan row P73b's: `run` leaves it alone, so an item put there by hand
-## gains nothing. Player 1 has a headquarters, so the tab has a producer and only the unit-tab gate
-## keeps the item from advancing (and from spawning as a unit at the headquarters' exit).
-func test_the_structures_queue_is_not_advanced_before_p73b() -> void:
+## A structure's head gains progress like a unit's and stops at 100 % (plan row P73b, ADR 0018
+## section 5): nothing spawns, nothing is paid again, the queue keeps it and the item behind it
+## does not start. Ticks and costs are the World's tables'.
+func test_a_finished_structure_waits_ready_at_the_head_of_the_structures_queue() -> void:
 	var world: World = Rig.base()
 	Rig.add_headquarters(world)
-	assert_int(Production.producer_row(world, 1, World.Tab.STRUCTURES)).is_greater_equal(0)
-	var rows: int = world.unit_count()
+	var plant: int = Worlds.type_of(world, "power_plant")
+	var barracks: int = Worlds.type_of(world, "barracks")
 	var queue: int = Rig.queue_of(1, World.Tab.STRUCTURES)
-	world.queue_type[queue * world.queue_slots] = Worlds.type_of(world, "power_plant")
-	world.queue_count[queue] = 1
+	var goal: int = world.type_build_ticks[plant] * Production.PROGRESS_PER_TICK
+	var rows: int = world.unit_count()
+	Rig.step(world, [Rig.queue(world, 1, "power_plant"), Rig.queue(world, 1, "barracks", 1)])
+	var paid: int = world.start_credits - world.type_cost[plant] - world.type_cost[barracks]
+	Rig.run(world, world.type_build_ticks[plant] - 2)
+	assert_array([world.queue_count[queue], world.queue_progress[queue]]).is_equal([2, goal - 100])
+	Rig.step(world)
+	assert_int(world.queue_progress[queue]).is_equal(goal)
 	Rig.run(world, 200)
-	assert_array([world.queue_count[queue], world.queue_progress[queue]]).is_equal([1, 0])
-	assert_array([world.unit_count(), world.stat_built[1]]).is_equal([rows, 0])
+	assert_array([world.queue_count[queue], world.queue_progress[queue]]).is_equal([2, goal])
+	assert_array(Rig.items(world, 1, World.Tab.STRUCTURES)).is_equal([plant, barracks])
+	assert_array([world.credits[1], world.unit_count(), world.stat_built[1]]).is_equal(
+		[paid, rows, 0]
+	)
+	# Other tabs and the other player's queue are not held by it.
+	Rig.step(world, [Rig.queue(world, 1, "rifle_squad")])
+	assert_int(world.queue_progress[Rig.queue_of(1, INFANTRY)]).is_equal(100)
+
+
+## Without a producer of the tab the STRUCTURES queue waits like the others, and goes on from where
+## it was when a headquarters is there again.
+func test_a_structures_queue_without_a_headquarters_waits_and_goes_on_with_a_new_one() -> void:
+	var world: World = Rig.base()
+	var headquarters: int = Rig.add_headquarters(world)
+	var queue: int = Rig.queue_of(1, World.Tab.STRUCTURES)
+	Rig.step(world, [Rig.queue(world, 1, "power_plant")])
+	Rig.run(world, 9)
+	assert_int(world.queue_progress[queue]).is_equal(1000)
+	world.hp[world.index_of(headquarters)] = 0
+	Rig.run(world, 40)
+	assert_array([world.queue_count[queue], world.queue_progress[queue]]).is_equal([1, 1000])
+	world.add_building(1, Worlds.type_of(world, "headquarters"), 2, 9)
+	Rig.step(world)
+	assert_int(world.queue_progress[queue]).is_equal(1100)
 
 
 ## The same commands on the same data give the same checkpoints and the same units, and a world
