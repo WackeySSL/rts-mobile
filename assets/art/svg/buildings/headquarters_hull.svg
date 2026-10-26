@@ -55,7 +55,7 @@
     </g>
   </g>
 
-  <!-- main block, roof: coping, the inner face of the north parapet, membrane patches, helipad ring, hatches and pipes -->
+  <!-- main block, roof: coping, the inner face of the north parapet, membrane patches, the painted pad ring and chevrons, hatches and pipes -->
   <rect x="40" y="152" width="304" height="200" fill="url(#roof)" stroke="#2c3030" stroke-width="2" stroke-linejoin="round"/>
   <rect x="48" y="168" width="288" height="176" fill="#8a8c85" opacity="0.5"/>
   <rect x="48" y="160" width="288" height="9" fill="#5c5e5a" stroke="#2c3030" stroke-width="1.5"/>
@@ -65,7 +65,7 @@
   <line x1="56" y1="300" x2="124" y2="300" stroke="#2b2d2a" stroke-width="62" stroke-dasharray="1 4" opacity="0.16"/>
   <circle cx="196" cy="256" r="44" fill="none" stroke="#c9cac2" stroke-width="5" opacity="0.7"/>
   <circle cx="196" cy="256" r="44" fill="none" stroke="#3a3c39" stroke-width="1.5" opacity="0.45" transform="translate(1 2)"/>
-  <path d="M170 256 H222 M196 230 V282" fill="none" stroke="#c9cac2" stroke-width="5" opacity="0.7"/>
+  <g fill="#c9cac2" opacity="0.7"><path d="M171 249.5 L196 232.5 L221 249.5 V259.5 L196 242.5 L171 259.5 Z"/><path d="M171 269.5 L196 252.5 L221 269.5 V279.5 L196 262.5 L171 279.5 Z"/></g>
   <rect x="40" y="152" width="304" height="8" fill="url(#top)"/>
   <rect x="40" y="152" width="8" height="200" fill="url(#top)"/>
   <rect x="336" y="160" width="8" height="192" fill="#6f716b"/>

@@ -22,9 +22,11 @@ concrete, corrugated steel, tarmac, sandbags, canvas, rust, dirt), believable pr
 density, soft shading and weathering, small team markings. Not cartoonish, not photoreal, no flat
 colour fields. One light from the top left for everything. **Buildings are drawn in an oblique 3/4
 view**: the roof and the south facade, the sprite standing on its footprint and rising 0.75 tile above
-it (see "Buildings"). Units, effects, icons, ore and ground stay top-down. The units, the ore and the
-ground are redrawn in the same treatment in P92b and P92c; until then the rules below that speak of
-the 3 px outline or of flat colours still describe them.
+it (see "Buildings"). Units, effects, ore and ground stay top-down, and so do the unit icons, the tab
+icons and the glyphs; the five building item icons follow the buildings and are drawn in the oblique
+view too (see "Icons and glyphs"). The units, the ore and the ground are redrawn in the same treatment
+in P92b and P92c; until then the rules below that speak of the 3 px outline or of flat colours still
+describe them.
 
 ## Scale
 - 1 tile = 64 px in game at zoom 1. Author at 2x: 1 tile = 128 px in the SVG.
@@ -131,7 +133,7 @@ Vehicles are drawn from three layers that share one canvas size:
 | --- | --- | --- |
 | 1 | `<name>_hull.svg` | Tracks or wheels, hull deck and the ground shadow of the whole vehicle |
 | 2 | `<name>_team.svg` | White and grey team marks, tinted with `modulate` |
-| 3 | `<name>_turret.svg` | Turret and gun; rotates about the canvas centre |
+| 3 | `<name>_turret.svg` | Turret and gun; a unit's turret rotates about the canvas centre, a building's gun head about the roof's centre, (tex_w / 2, tex_w / 2) |
 
 - Draw order across rigs, not per rig (ADR 0012 section 6, one z per batch group): every ring, then
   every hull, then every team layer, then every turret. Two overlapping rigs can therefore show a
@@ -141,7 +143,10 @@ Vehicles are drawn from three layers that share one canvas size:
   edge and stays inside its unit's footprint, and no hull relies on its team layer to look finished.
 - Hull and team share one orientation. The hull faces +x (east). Rotating the vehicle rotates hull
   and team together.
-- The turret pivot is the canvas centre. Turret art is drawn facing +x.
+- The turret pivot of a unit is the canvas centre. Turret art is drawn facing +x. A building's gun
+  head is the one exception: it turns about (tex_w / 2, tex_w / 2) of its texture, which is (32, 32)
+  imported px on the 64x112 px texture of the 128x224 building canvas (the roof's centre, the
+  footprint's centre lifted by the rise; see "Buildings"), not about the canvas centre.
 - All layers of one unit have the same canvas. Tanks: **128x128 at 2x**.
 - Import scale **0.5** for every layer, so 128 px becomes 64 px, one tile.
 - Team layer: tinted at runtime with `modulate` (team A #2F80ED, team B #E5484D, neutral #9AA5B1).
@@ -206,8 +211,11 @@ rises above it, so the blocked cells (ADR 0017) are the bottom of the picture.
 - **Low power.** The view dims a building with the colour of the quads it draws, both parts alike
   (ADR 0022 sections 2 and 4), not with `modulate` on a rig. Health bars, the offline glyph and damage
   are the view's, not part of these files.
-- The hazard chevrons on the vehicle factory's lintel are the UI warning accent #F5A524 (palette); the
-  refinery's hopper holds the ore colours; nothing else in a building uses either.
+- The hazard chevrons on the vehicle factory's lintel are the UI warning accent #F5A524 (palette). The
+  refinery's hopper heap is its own gold gradient, #ECCA55 / #CF9F1D / #8A6410 on a #3E3016 bed with
+  #F3D878 flecks, a weathered cousin of the ore colours that needs the in-between stops of a
+  gradient (it is not the palette's #F2B705 / #FFD84D / #A67C00); nothing else in a building uses
+  either amber or gold.
 
 ## Ore
 Nine opaque tiles, `ore/ore_<level>[a|b].svg`, 128x128 at 2x, import scale 0.5, so one tile is
@@ -516,13 +524,13 @@ soldier, and on each helmet cover a full 1.5 px edge with a 2.0 px grey shade, b
 
 Building results (P91b, scratch script, imported scale 0.5, alpha above 0.5): the six team layers
 have no non-grey pixel. The visible team share, by the tank's definition (shadow left out, nothing
-under the gun head), is 9.7 % (headquarters), 10.6 % (power plant), 9.2 % (refinery), 11.4 % (barracks),
+under the gun head), is 10.5 % (headquarters), 10.6 % (power plant), 9.2 % (refinery), 11.4 % (barracks),
 10.4 % (vehicle factory) and 11.3 to 11.5 % (defence turret, at 0, 90, 180 and 270 degrees). No layer
 has an opaque pixel on the north, west or east edge of its canvas, and every hull reaches within 1 px
 of the south edge. The file sizes are 7.8 KB (defence turret) to 24.7 KB (refinery) for a hull, under
 the 28 KB limit. The silhouette of each was drawn at 32 px for its longest side, in greyscale on grass
 and sand, and at 48 px per tile (the camera's 0.75 zoom). At 32 px the six read apart: the wide
-block with a ring on its roof and a mast, the two tank domes over a wide hall, the horizontal
+block with a ringed chevron badge on its roof and a mast, the two tank domes over a wide hall, the horizontal
 stripes of the sawtooth roof over a dark bay and a crane jib, the chimney beside a flared tower over
 a green hall, the U of three roofs with a round yard, and the round tower with a gun leaving to the
 right. In the pure silhouette the defence turret's gun is its own shape: the muzzle block is 3 px

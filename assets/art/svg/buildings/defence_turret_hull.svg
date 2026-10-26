@@ -47,7 +47,7 @@
   <g fill="#161b1c"><rect x="24" y="180" width="16" height="5" rx="1.5"/><rect x="88" y="180" width="16" height="5" rx="1.5"/></g>
   <g fill="#9c9e97"><rect x="24" y="185" width="16" height="1.5"/><rect x="88" y="185" width="16" height="1.5"/></g>
   <path d="M54 212 V192 A10 10 0 0 1 74 192 V212 Z" fill="#232a2c" stroke="#161b1c" stroke-width="1.5"/>
-  <path d="M57 212 V194 A7 7 0 0 1 71 194 V212 Z" fill="#3c4a4e"/>
+  <path d="M57 212 V194 A7 7 0 0 1 71 194 V212 Z" fill="#4A4F53"/>
   <rect x="52" y="211" width="24" height="3" fill="#9a9c94"/>
   <path d="M8 112 A56 56 0 0 1 120 112" fill="none" stroke="#2b2d2a" stroke-width="2"/>
   <ellipse cx="64" cy="112" rx="56" ry="56" fill="url(#roof)" stroke="#2b2d2a" stroke-width="2"/>

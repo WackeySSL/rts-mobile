@@ -1,5 +1,5 @@
 <!-- Headquarters, team layer: white and grey only, tinted at run time, drawn over the hull; the same 384 x 480 canvas. -->
-<!-- Shape: a painted coping round the roof, a broad stripe under the south cornice, a ring and cross on the roof, a band on the tower wall, a panel on the lift housing, a stripe on the porch canopy and a pennant on the flagpole. -->
+<!-- Shape: a painted coping round the roof, a broad stripe under the south cornice, a solid ring round two stacked chevrons on the roof, a band on the tower wall, a panel on the lift housing, a stripe on the porch canopy and a pennant on the flagpole. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="384" height="480" viewBox="0 0 384 480">
   <g fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round">
     <!-- coping: four bars round the roof edge, 2 px inside the concrete -->
@@ -14,12 +14,14 @@
     <rect x="292" y="200" width="40" height="22" rx="2"/>
     <rect x="144" y="403.5" width="96" height="5"/>
   </g>
-  <!-- helipad ring and cross on the roof: a dark ring under a white one -->
+  <!-- command roundel on the roof: a solid ring round two stacked chevrons, each with a dark edge -->
   <g fill="none">
-    <circle cx="196" cy="256" r="44" stroke="#4D4D4D" stroke-width="8"/>
-    <circle cx="196" cy="256" r="44" stroke="#FFFFFF" stroke-width="5"/>
-    <path d="M170 256 H222 M196 230 V282" stroke="#4D4D4D" stroke-width="8" stroke-linecap="butt"/>
-    <path d="M170 256 H222 M196 230 V282" stroke="#FFFFFF" stroke-width="5" stroke-linecap="butt"/>
+    <circle cx="196" cy="256" r="44" stroke="#4D4D4D" stroke-width="10"/>
+    <circle cx="196" cy="256" r="44" stroke="#FFFFFF" stroke-width="7"/>
+  </g>
+  <g fill="#FFFFFF" stroke="#4D4D4D" stroke-width="1.5" stroke-linejoin="round">
+    <path d="M171 249.5 L196 232.5 L221 249.5 V259.5 L196 242.5 L171 259.5 Z"/>
+    <path d="M171 269.5 L196 252.5 L221 269.5 V279.5 L196 262.5 L171 279.5 Z"/>
   </g>
   <!-- grey shade on the lower edge of the long stripes -->
   <g fill="#BFBFBF"><rect x="43" y="361" width="298" height="2"/><rect x="43" y="348.5" width="298" height="1.5"/><rect x="57" y="212" width="86" height="1.5"/></g>
