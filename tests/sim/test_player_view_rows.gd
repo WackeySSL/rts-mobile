@@ -1,12 +1,15 @@
 extends GdUnitTestSuite
 ## PlayerView's rows (plan row P78, ADR 0020 section 1): which rows a player owns and sees, and that
 ## no getter answers for a row it does not. The crafted World of `view_worlds.gd` (real fog) gives
-## each player rows it sees and rows it does not; the vision rule is `Targeting.sees`, which a
-## random World checks row by row. Stat, queue, placement and table cases are in
+## each player rows it sees and rows it does not; the vision rule is `Targeting.sees` (visible now,
+## not explored earlier), which a random World checks row by row. A row that stands on explored
+## ground that is dark now (`ViewWorlds.darken` ends a row's sight) is its own case, crafted and
+## random: stamping alone never separates the two. Stat, queue, placement and table cases are in
 ## test_player_view_state.gd.
 
 const ViewWorlds: GDScript = preload("res://tests/sim/support/view_worlds.gd")
 const TargetingWorlds: GDScript = preload("res://tests/sim/support/targeting_worlds.gd")
+const BuildingWorlds: GDScript = preload("res://tests/sim/support/building_worlds.gd")
 const MISSING: int = PlayerView.MISSING
 
 
@@ -187,6 +190,62 @@ func test_a_row_is_seen_by_the_cell_it_stands_in_now() -> void:
 	assert_int(view.row_pos(near).x).is_equal(MISSING)
 
 
+func test_an_enemy_unit_and_building_on_ground_explored_earlier_but_dark_now_are_not_seen() -> void:
+	var world: World = ViewWorlds.crafted()
+	# A power plant of player 2 on tile (8, 5), 29 from the headquarters (49) and out of reach of
+	# the rifle squad and the harvester, so that the headquarters alone shows it, as it shows the
+	# enemy rifle squad on (9, 5).
+	var plant_id: int = world.add_building(2, BuildingWorlds.type_of(world, "power_plant"), 7, 4)
+	var plant: int = world.index_of(plant_id)
+	var foe: int = world.index_of(ViewWorlds.NEAR_FOE)
+	var lit: PlayerView = PlayerView.of(world, 1)
+	for row: int in [foe, plant]:
+		assert_bool(_in(lit.seen_rows, row)).is_true()
+		assert_int(lit.row_id(row)).is_equal(world.unit_id[row])
+	assert_int(lit.row_of(plant_id)).is_equal(plant)
+	# The headquarters loses its sight. Nothing else of player 1 reaches the two rows, whose cells
+	# stay explored (FogGrid never clears it) and are dark now.
+	ViewWorlds.darken(world, world.index_of(ViewWorlds.HQ_1))
+	var dark: PlayerView = PlayerView.of(world, 1)
+	for row: int in [foe, plant]:
+		assert_array(_fog_of(world, 1, row)).is_equal([false, true])
+		var cell: int = world.cell_of(world.pos_x[row], world.pos_y[row])
+		assert_bool(dark.is_explored(cell)).is_true()
+		assert_bool(Targeting.sees(world, 1, world.pos_x[row], world.pos_y[row])).is_false()
+		assert_bool(_in(dark.seen_rows, row)).is_false()
+		assert_bool(_in(dark.own_rows, row)).is_false()
+		assert_array(_answers(dark, row)).is_equal(_missing_answers())
+		assert_int(dark.row_of(world.unit_id[row])).is_equal(MISSING)
+	# What the rifle squad and the harvester still show stays seen, and the rows of player 1 stay
+	# its own, lit or not.
+	assert_array(_ids(world, dark.seen_rows)).is_equal(
+		[ViewWorlds.NEAR_HARVESTER, ViewWorlds.NEAR_NEUTRAL]
+	)
+	assert_array(_ids(world, dark.own_rows)).is_equal(
+		[ViewWorlds.HQ_1, ViewWorlds.RIFLE_1, ViewWorlds.HARVESTER_1]
+	)
+
+
+func test_a_neutral_row_on_ground_explored_earlier_but_dark_now_is_not_seen() -> void:
+	var world: World = ViewWorlds.crafted()
+	var neutral: int = world.index_of(ViewWorlds.NEAR_NEUTRAL)
+	assert_bool(_in(PlayerView.of(world, 1).seen_rows, neutral)).is_true()
+	# Every row of player 1 loses its sight: it sees nothing, and what it explored stays explored.
+	for id: int in [ViewWorlds.HQ_1, ViewWorlds.RIFLE_1, ViewWorlds.HARVESTER_1]:
+		ViewWorlds.darken(world, world.index_of(id))
+	for id: int in [ViewWorlds.NEAR_FOE, ViewWorlds.NEAR_HARVESTER, ViewWorlds.NEAR_NEUTRAL]:
+		assert_array(_fog_of(world, 1, world.index_of(id))).is_equal([false, true])
+	var view: PlayerView = PlayerView.of(world, 1)
+	assert_array(Array(view.seen_rows)).is_empty()
+	assert_int(view.own_rows.size()).is_equal(3)
+	assert_array(_answers(view, neutral)).is_equal(_missing_answers())
+	assert_int(view.row_of(ViewWorlds.NEAR_NEUTRAL)).is_equal(MISSING)
+	(
+		assert_bool(view.is_explored(world.cell_of(world.pos_x[neutral], world.pos_y[neutral])))
+		. is_true()
+	)
+
+
 func test_a_position_off_the_map_counts_for_its_nearest_edge_cell() -> void:
 	var world: World = ViewWorlds.crafted()
 	var far: int = world.index_of(ViewWorlds.FAR_FOE)
@@ -204,6 +263,35 @@ func test_a_position_off_the_map_counts_for_its_nearest_edge_cell() -> void:
 	assert_bool(Targeting.sees(world, 1, world.pos_x[near], world.pos_y[near])).is_false()
 
 
+## Whether `player` has found the cell of `row` and shows it now, as the fog says, not the view:
+## [visible now, explored].
+func _fog_of(world: World, player: int, row: int) -> Array[bool]:
+	var cell: int = world.cell_of(world.pos_x[row], world.pos_y[row])
+	return [world.fog.is_visible(player, cell), world.fog.is_explored(player, cell)]
+
+
+## Every row of `world` against the rule for `player`: own exactly when owned, seen exactly when
+## owned by another and `Targeting.sees` its cell. Returns how many rows of other owners stood on
+## ground that the player has explored and cannot see now, which only a World whose rows lost
+## their sight has (`ViewWorlds.darken`).
+func _check_seen_rule(world: World, player: int) -> int:
+	var view: PlayerView = PlayerView.of(world, player)
+	var seen: int = 0
+	var dark: int = 0
+	for row: int in world.unit_count():
+		var other: bool = world.owner[row] != player
+		var sees: bool = Targeting.sees(world, player, world.pos_x[row], world.pos_y[row])
+		assert_bool(_in(view.seen_rows, row)).is_equal(other and sees)
+		assert_bool(_in(view.own_rows, row)).is_equal(not other)
+		seen += 1 if other and sees else 0
+		if other and not sees and _fog_of(world, player, row)[1]:
+			dark += 1
+	assert_int(view.seen_rows.size()).is_equal(seen)
+	# A case that never sees, or always sees, would pass the loop above for nothing.
+	assert_bool(seen > 0 and seen < world.unit_count() - view.own_rows.size()).is_true()
+	return dark
+
+
 func test_seen_is_targeting_sees_on_random_worlds_for_every_row_and_player() -> void:
 	for salt: int in [3, 4]:
 		var world: World = TargetingWorlds.short_sighted(salt, 30)
@@ -211,17 +299,22 @@ func test_seen_is_targeting_sees_on_random_worlds_for_every_row_and_player() -> 
 		world.add_unit(0, 0, 3000, 2000)
 		world.add_unit(0, 1, 15000, 10000)
 		for player: int in [1, 2]:
-			var view: PlayerView = PlayerView.of(world, player)
-			var seen: int = 0
-			for row: int in world.unit_count():
-				var other: bool = world.owner[row] != player
-				var sees: bool = Targeting.sees(world, player, world.pos_x[row], world.pos_y[row])
-				assert_bool(_in(view.seen_rows, row)).is_equal(other and sees)
-				assert_bool(_in(view.own_rows, row)).is_equal(not other)
-				seen += 1 if other and sees else 0
-			assert_int(view.seen_rows.size()).is_equal(seen)
-			# A case that never sees, or always sees, would pass the loop above for nothing.
-			assert_bool(seen > 0 and seen < world.unit_count() - view.own_rows.size()).is_true()
+			_check_seen_rule(world, player)
+
+
+func test_seen_is_visible_now_not_explored_on_random_worlds_whose_rows_lost_their_sight() -> void:
+	for salt: int in [3, 4]:
+		var world: World = TargetingWorlds.short_sighted(salt, 30)
+		world.add_unit(0, 0, 3000, 2000)
+		world.add_unit(0, 1, 15000, 10000)
+		# A third of the stamped rows lose their sight, so that the cells they showed are explored
+		# and dark: `Targeting.sees` and `explored` now disagree for some rows of every player.
+		var rng: DetRandom = DetRandom.create(salt, 78)
+		for row: int in world.unit_count():
+			if rng.next_int(3) == 0:
+				ViewWorlds.darken(world, row)
+		for player: int in [1, 2]:
+			assert_bool(_check_seen_rule(world, player) > 0).is_true()
 
 
 func test_a_player_the_fog_has_no_block_for_sees_every_row_as_targeting_does() -> void:

@@ -61,6 +61,22 @@ static func crafted() -> World:
 	return world
 
 
+## Ends the sight of row `row` the way the sim does when a row dies (`World.remove_dead`): its
+## stamp is undone and `fog_cell` goes back to -1, while `explored` stays, since FogGrid never
+## clears it. The cells that only that row showed are explored and dark afterwards: the state of an
+## enemy that stands on ground the player saw earlier and cannot see now. `stamp_fog` and `crafted`
+## stamp only, so without this call `explored` equals `visible > 0` on every cell. A row with no
+## stamp is left alone.
+static func darken(world: World, row: int) -> void:
+	var cell: int = world.fog_cell[row]
+	if cell < 0:
+		return
+	world.fog.stamp(
+		world.owner[row], cell, mini(world.type_index[row], world.type_sight.size()), -1
+	)
+	world.fog_cell[row] = -1
+
+
 ## The rows of the units `ids`, in the order given.
 static func rows(world: World, ids: Array[int]) -> Array[int]:
 	var found: Array[int] = []
