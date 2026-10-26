@@ -40,7 +40,10 @@ func test_a_seen_enemy_building_is_remembered_on_its_players_turn() -> void:
 
 
 func test_only_the_players_whose_fog_turn_it_is_update() -> void:
-	assert_int(Memory.world().fog_period_ticks).is_equal(3)
+	# The table is the suite's own period (`Memory.FOG_PERIOD`, 3), not the shipped rule's.
+	assert_int(Memory.world().fog_period_ticks).is_equal(Memory.FOG_PERIOD)
+	assert_int(Memory.FOG_PERIOD).is_equal(3)
+	assert_int(Memory.idle_tick(Memory.world())).is_equal(2)
 	# Both players see the other's Headquarters. Player 1 turns on ticks 0, 3 and 6, player 2 on 1,
 	# 4 and 7, and nobody on 2 and 5 (FogUpdate's rule, which MEMORY follows).
 	var expected: Dictionary[int, Array] = {
@@ -109,7 +112,7 @@ func test_a_building_destroyed_out_of_sight_stays_remembered_until_its_cell_is_s
 	assert_array(Memory.records(world, 1)).is_equal(record)
 	# Seen again, but not on player 1's turn: the memory moves with the player's own sight only.
 	Memory.show(world, 1, cell)
-	world.tick = 2
+	world.tick = Memory.idle_tick(world)
 	LastSeen.run(world)
 	assert_array(Memory.records(world, 1)).is_equal(record)
 	Memory.turn(world, 1, world.tick + 1)
@@ -137,7 +140,7 @@ func test_a_building_destroyed_in_sight_is_dropped_on_the_next_turn() -> void:
 	Memory.show(world, 1, cell)
 	Memory.turn(world, 1)
 	Memory.destroy(world, world.unit_id[1])
-	world.tick = 2  # Nobody's turn: the record is still there.
+	world.tick = Memory.idle_tick(world)  # Nobody's turn: the record is still there.
 	LastSeen.run(world)
 	assert_array(world.ghost_count).is_equal([0, 1, 0])
 	Memory.turn(world, 1, world.tick + 1)
@@ -203,7 +206,7 @@ func test_memory_checks_count_the_records_and_the_building_rows_looked_at() -> v
 	Memory.show(world, 1, Memory.cell_of(16, 6, 3, 3))
 	Memory.show(world, 1, Memory.cell_of(20, 1, 2, 2))
 	world.stats.fill(0)
-	world.tick = 2  # Nobody's turn.
+	world.tick = Memory.idle_tick(world)  # Nobody's turn.
 	LastSeen.run(world)
 	assert_int(world.stats[World.Stat.MEMORY_CHECKS]).is_equal(0)
 	Memory.turn(world, 1)
@@ -239,8 +242,21 @@ func test_the_ghosts_section_hashes_the_live_records_only() -> void:
 	Memory.turn(world, 1)
 	var live: PackedInt64Array = world.hash_parts()
 	assert_int(live[at]).is_not_equal(start[at])
-	# The record goes (its building dies in sight): the section is the start's again, though the
-	# freed place once held a record.
+	# The record goes (its building dies in sight): the section is the start's again.
+	var gone: Array = Memory.records(world, 1)[0]
 	Memory.destroy(world, world.unit_id[1])
 	Memory.turn(world, 1, world.tick + 1)
+	assert_int(world.ghost_count[1]).is_equal(0)
 	assert_int(world.hash_parts()[at]).is_equal(start[at])
+	# Stale values in the freed place (the record that was there) are not state while the count
+	# stays below them, so a hash that fed the whole arrays would differ from the start's here.
+	var free: int = world.ghost_cap
+	world.ghost_id[free] = gone[0]
+	world.ghost_type[free] = gone[1]
+	world.ghost_owner[free] = gone[2]
+	world.ghost_cell[free] = gone[3]
+	assert_int(world.ghost_id[free]).is_not_equal(0)
+	assert_int(world.hash_parts()[at]).is_equal(start[at])
+	# The same entry below the count is state: the count alone makes it count.
+	world.ghost_count[1] = 1
+	assert_int(world.hash_parts()[at]).is_equal(live[at])
