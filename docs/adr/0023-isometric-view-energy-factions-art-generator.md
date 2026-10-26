@@ -40,7 +40,7 @@ P68e wrote the answers into the text (the names; the options not taken are gone 
 §14 and §15), added the ADR sections the decision amends but the proposal did not list (ADR 0004
 §6, the camera clamp; ADR 0007 §4 and ADR 0018 §4-§5, the strike and faction rules; ADR 0021 §1,
 the P109 re-pin), added `touch-ui-rules`' description and line 66 (confirm and cancel in the
-floating panel) to §15, and fixed four review points: the ellipse's semi-axes (§1, §3), the
+floating panel) and `art-director.md` line 16 (what `svg-art-style` covers) to §15, and fixed four review points: the ellipse's semi-axes (§1, §3), the
 Blackout Array's closest Command & Conquer analogue (§13), question 3's cost wording and the plan
 lines that still said the perf arena is never re-pinned after P70.
 
@@ -705,7 +705,9 @@ its three name-list rows, for every name this ADR uses.
     plus margin), line 66 (the check mark and X in the floating build panel in landscape), lines
     74-77 (landscape layout, question 4), line 89 (the portrait minimap's place).
   - `.claude/agents/art-director.md` line 10 ("All art is hand-written SVG code in this
-    repository.") and line 15 ("Write clean SVG by hand") allow the generator and its models.
+    repository.") and lines 15-16 ("Write clean SVG by hand"; what `svg-art-style` covers: the
+    projection, shadows and the key triad in place of outline and the team-colour layer, which
+    that skill no longer has) allow the generator and its models.
   - `docs/ROADMAP.md` Phase 3: a new box "Two original factions with their own buildings, units
     and superweapon (ADR 0023)".
   - Not changed: `rts-sim-conventions` (the lead adds the faction rule and Command 15 in the sim
