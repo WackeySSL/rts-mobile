@@ -1,10 +1,13 @@
 extends GdUnitTestSuite
 ## The Phase 3 skeleton of Sim.step (plan P70b, ADR 0017 sections 4 and 5): every new Command type
-## is dropped and counted until its row (the modules refuse it), the commands need an undefeated
-## player, the five module stubs change no state, and a tick runs them after FOG in the order of the
-## pipeline. The perf arena is the world: 2 players, 150 units, no building, so it has no queue and
-## no producer: since P73 `Production` is no stub, but QUEUE and CANCEL are still dropped here and
-## its `run` still changes nothing (tests/sim/test_production_*.gd have the rules).
+## that has no row yet is dropped and counted (the modules refuse it), the commands need an
+## undefeated player, the module stubs change no state, and a tick runs them after FOG in the order
+## of the pipeline. The perf arena is the world: 2 players, 150 units, no building, so it has no
+## queue and no producer: since P73 `Production` is no stub, but QUEUE and CANCEL are still dropped
+## here and its `run` still changes nothing (tests/sim/test_production_*.gd have the rules); since
+## P76 `Outcome` is none either: its `run` changes nothing here because the arena's players never
+## owned a producer, RALLY is dropped (id 1 is a unit) and SURRENDER, which applies, has its rules
+## in tests/sim/test_outcome_*.gd.
 
 const RecordingProbe: GDScript = preload("res://tests/sim/recording_probe.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
@@ -17,7 +20,6 @@ func test_every_new_command_type_is_dropped_and_counted_until_its_row() -> void:
 		"cancel": Command.cancel(1, 0, 0),
 		"rally": Command.rally(1, 1, 20500, 4500),
 		"harvest": Command.harvest(1, PackedInt32Array([1]), 20500, 4500),
-		"surrender": Command.surrender(1),
 	}
 	var base: World = _arena()
 	Sim.step(base, [])
@@ -59,8 +61,9 @@ func test_a_defeated_or_unknown_player_is_not_playing() -> void:
 
 ## The skeleton modules change nothing: each `run`, and `release`, leaves the state hash and every
 ## part of it as it was (Power.run rebuilds the derived row lists since P71, which are in no hash
-## section), and each `apply_*` refuses a command that looks right (the arena has no producer for a
-## QUEUE and no item for a CANCEL, since P73).
+## section; Outcome.run finds no player that ever owned a producer), and each `apply_*` that is
+## left refuses a command that looks right (the arena has no producer for a QUEUE, no item for a
+## CANCEL since P73 and no building for a RALLY since P76).
 func test_the_stub_modules_change_no_state_and_refuse_every_command() -> void:
 	var world: World = _arena()
 	var before: PackedInt64Array = world.hash_parts()
@@ -79,7 +82,6 @@ func test_the_stub_modules_change_no_state_and_refuse_every_command() -> void:
 	var ids: PackedInt32Array = PackedInt32Array([1])
 	assert_bool(Harvest.apply_harvest(world, Command.harvest(1, ids, 20500, 4500))).is_false()
 	assert_bool(Outcome.apply_rally(world, Command.rally(1, 1, 20500, 4500))).is_false()
-	assert_bool(Outcome.apply_surrender(world, Command.surrender(1))).is_false()
 
 
 ## A MOVE and a STOP still hand their units to `Harvest.release` and work as before: the order and
