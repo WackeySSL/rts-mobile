@@ -27,6 +27,15 @@ extends RefCounted
 ##   reads every row, as the sim's PLACE does, so a tile held by a mobile enemy row that the
 ##   player does not see answers OCCUPIED: the sim would refuse that PLACE too, and a controller
 ##   that never sends a refused Command needs the same answer.
+## - The last-seen records (plan row P77, ADR 0017 section 3): the buildings the player saw and has
+##   not seen gone (`LastSeen`), as its own block of the World's ghost arrays with the player
+##   stripped off, copied in `of` like the queue slices: `ghost_count` records, record `i` being
+##   `ghost_id[i]`, `ghost_type[i]`, `ghost_owner[i]` and `ghost_cell[i]` (the tile that holds the
+##   building), in the order the sim keeps them. A record is the player's own memory, so no fog
+##   hides it: it may be stale (the building died out of sight) and it may be of a building the
+##   player sees now, which `seen_rows` lists as well. `ghost_of(id)` finds a record by building id
+##   and `ghost_pos(i)` gives its position, the footprint centre in milli-tiles as `row_pos` gives
+##   it for a live building.
 ## - The rules, which no fog hides: the type tables the AI reads (`type_cost`, `type_tab`, ...),
 ##   `type_index_of(id)`, `is_refinery(type)`, and the World's constants it needs, re-exported
 ##   (`Tab`, `HarvestMode`, `Order`, `TABS`, `MILLI_PER_TILE`, `TILE_CENTRE`).
@@ -34,17 +43,14 @@ extends RefCounted
 ## Aliasing (ADR 0012 section 2, as `PlacementInput`): GDScript passes a packed array by reference,
 ## so an array the view takes from the World without copying is the World's own and live: it shows
 ## the World's later writes, and a write through it would be the World's. So nothing a caller can
-## reach is an alias. Every public field is a copy (the two lists, the slices of the player's state,
-## the type tables, the type ids); the row columns and the placement input, which a think reads a
-## few rows of and so are not worth a copy of the table, are aliases behind an underscore, read
-## only by the getters below and written by nothing. A view is made, read and dropped within one
-## think, never kept across a tick: its aliases follow the World, its lists and slices do not, and a
-## row index is good only for the tick it was made on (the table compacts when a row dies). The
-## per-row getters are for event cadence, a few reads per row of a think, not a per-tick loop.
-##
-## Last-seen records (plan row P77): the player's own block of the ghost arrays
-## (`World.GHOST_ARRAYS`), copied in `of` like the queue slices, joins the public fields after
-## `rally_y`, and its getters follow `is_refinery`. Nothing of it exists before P77.
+## reach is an alias. Every public field is a copy (the two lists, the slices of the player's state
+## and last-seen records, the type tables, the type ids); the row columns and the placement input,
+## which a think reads a few rows of and so are not worth a copy of the table, are aliases behind an
+## underscore, read only by the getters below and written by nothing. A view is made, read and
+## dropped within one think, never kept across a tick: its aliases follow the World, its lists and
+## slices do not, and a row index is good only for the tick it was made on (the table compacts when
+## a row dies). The per-row getters are for event cadence, a few reads per row of a think, not a
+## per-tick loop.
 
 ## The World's enums the AI names, re-exported with the World's values (a test pins each pair), so
 ## that `game/ai` never names `World`: the production tabs, the harvest modes of a harvester row
@@ -80,6 +86,8 @@ const TILE_CENTRE: int = World.TILE_CENTRE
 const _HIDDEN: int = 0
 const _OWN: int = 1
 const _SEEN: int = 2
+## The largest id a column of the World can hold (its ids are 32-bit ints, counted up from 1).
+const _MAX_ID: int = 0x7FFFFFFF
 
 ## The player the view is for, the World's tick it was made on, and the map's size in tiles. A cell
 ## is `tile_row * map_cols + tile_col`, as `World.cell_of`.
@@ -106,7 +114,13 @@ var queue_progress: PackedInt32Array = PackedInt32Array()
 var queue_type: PackedInt32Array = PackedInt32Array()
 var rally_x: PackedInt32Array = PackedInt32Array()
 var rally_y: PackedInt32Array = PackedInt32Array()
-# P77: the last-seen records of the player (copies, one block of the ghost arrays) go here.
+## The player's last-seen records: how many, and the four columns, one entry per record, in the
+## order of the World's block (`LastSeen`). Copies; a column is as long as `ghost_count`.
+var ghost_count: int = 0
+var ghost_id: PackedInt32Array = PackedInt32Array()
+var ghost_type: PackedInt32Array = PackedInt32Array()
+var ghost_owner: PackedInt32Array = PackedInt32Array()
+var ghost_cell: PackedInt32Array = PackedInt32Array()
 ## Copies of the World's type tables, one entry per type index (its names and meanings): a cost in
 ## credits, the tab a type is built on and the type it requires (-1 for none), the tab a building
 ## produces (-1), the footprint in tiles (0 for a unit), the speed in milli-tiles a tick (0 for a
@@ -156,6 +170,7 @@ static func of(world: World, player: int) -> PlayerView:
 	view._input = PlacementInput.of_world(world)
 	view._take_tables(world)
 	view._take_player(world)
+	view._take_ghosts(world)
 	view._take_rows(world)
 	return view
 
@@ -248,7 +263,33 @@ func is_refinery(type: int) -> bool:
 	return _entry(_dock_x, type) != 0 or _entry(_dock_y, type) != 0
 
 
-# P77: the getters of the last-seen records go here.
+## The record of the building `id` in the player's memory, MISSING when it has none (an id is a
+## positive 32-bit int; a wider one would be compared by its low 32 bits, so it has no record).
+func ghost_of(id: int) -> int:
+	if id < 1 or id > _MAX_ID:
+		return MISSING
+	return ghost_id.find(id)
+
+
+## The position, in milli-tiles, of the building that record `record` remembers: the centre of its
+## footprint, which is where `Buildings.add` puts a building whose tile `ghost_cell` is (a footprint
+## of odd width has its centre in the middle of the tile, one of even width on the tile's west
+## edge, and the same for the height). (MISSING, MISSING) for a record outside the list and for a
+## type without a footprint.
+@warning_ignore("integer_division")
+func ghost_pos(record: int) -> Vector2i:
+	if record < 0 or record >= ghost_cell.size() or map_cols < 1:
+		return Vector2i(MISSING, MISSING)
+	var type: int = ghost_type[record]
+	var width: int = _entry(type_foot_w, type)
+	var height: int = _entry(type_foot_h, type)
+	if width < 1 or height < 1:
+		return Vector2i(MISSING, MISSING)
+	var cell: int = ghost_cell[record]
+	return Vector2i(
+		cell % map_cols * MILLI_PER_TILE + width % 2 * TILE_CENTRE,
+		cell / map_cols * MILLI_PER_TILE + height % 2 * TILE_CENTRE
+	)
 
 
 ## Copies of the World's type tables and type ids: a dozen entries each, so a caller that writes
@@ -286,6 +327,23 @@ func _take_player(world: World) -> void:
 	queue_type = world.queue_type.slice(first * queue_slots, (first + TABS) * queue_slots)
 	rally_x = world.rally_x.slice(first, first + TABS)
 	rally_y = world.rally_y.slice(first, first + TABS)
+
+
+## The player's block of the last-seen records, as `ghost_*` copies. A player past the World's
+## arrays (the neutral 0, a hand-built World) and a count that the arrays cannot hold keep none.
+func _take_ghosts(world: World) -> void:
+	var cap: int = world.ghost_cap
+	if player < 1 or player >= world.ghost_count.size() or cap < 1:
+		return
+	var first: int = player * cap
+	var count: int = clampi(world.ghost_count[player], 0, cap)
+	if first + count > world.ghost_id.size():
+		return
+	ghost_count = count
+	ghost_id = world.ghost_id.slice(first, first + count)
+	ghost_type = world.ghost_type.slice(first, first + count)
+	ghost_owner = world.ghost_owner.slice(first, first + count)
+	ghost_cell = world.ghost_cell.slice(first, first + count)
 
 
 ## The one pass over the rows: aliases the columns, then sorts each row into `own_rows`,
