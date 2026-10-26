@@ -122,10 +122,28 @@ func test_the_band_is_a_fifth_of_the_height_and_gives_way_first_on_a_short_scree
 		assert_float(_rect("Items").size.y).override_failure_message(why).is_greater_equal(
 			UiScale.dp(64.0) - TOLERANCE_PX
 		)
+		# The band's contents fit the band, so BAND_FLOOR_DP is enough for them. The sidebar's own
+		# height is never below its combined minimum (the SafeArea fits it at that minimum), so the
+		# minimum is compared with the zone, which is the band's height and what the bar reads.
+		var zone: float = HudLayout.bottom_zone_px()
+		var band: Rect2 = _rect(_sidebar)
+		var needs: String = (
+			"%s: the band %s needs %.2f px of its zone %.2f"
+			% [why, band, _sidebar.get_combined_minimum_size().y, zone]
+		)
 		(
 			assert_float(_sidebar.get_combined_minimum_size().y)
-			. override_failure_message(why)
-			. is_less_equal(_rect(_sidebar).size.y + TOLERANCE_PX)
+			. override_failure_message(needs)
+			. is_less_equal(zone + TOLERANCE_PX)
+		)
+		assert_float(band.size.y).override_failure_message(needs).is_equal_approx(zone, 1.0)
+		var gap: String = (
+			"%s: the bar ends at %.2f, its band starts at %.2f" % [why, bar.end.y, band.position.y]
+		)
+		(
+			assert_float(bar.end.y + UiScale.dp(ArmyBar.GAP_DP))
+			. override_failure_message(gap)
+			. is_less_equal(band.position.y + TOLERANCE_PX)
 		)
 		var area: Rect2 = (_hud("SafeArea") as Control).get_global_rect()
 		assert_that(area).override_failure_message(why).is_equal(get_viewport().get_visible_rect())
