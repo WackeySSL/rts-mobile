@@ -9,6 +9,10 @@ Status note (2026-10-22, P68b docs; ADR 0019 accepted 2026-10-22): §5 carries a
 note: Phase 3's sidebar row is P85 of `docs/plans/2026-10-22-phase-3.md`, and the Surrender
 button joins the top-left controls. No accepted text changed.
 
+Status note (2026-10-26, P68e docs; ADR 0023 accepted 2026-10-26, Michael's answer 4 A): §5
+carries a dated status note: in landscape the right-hand build sidebar zone becomes the canvas's
+floating panels (plan row P85d); portrait is unchanged. No accepted text changed.
+
 ## Context
 Michael, 2026-10-19, verbatim: **"Tilføj til tema at spillet også skal kunne spilles vertikale og
 ikke kun i landscape"**: the game shall be playable in portrait as well as landscape. That changes
@@ -357,6 +361,18 @@ gives them. During placement the check mark and X (64 dp) take the item row's pl
 so the SelectionPanel's portrait line starts after it and gets shorter; P90 re-runs P61's worst
 case (six types, 3-digit counts, 360 dp) with it. On 757b5f9 P59 (#164) and P60 (#165) are open
 PRs and P61-P63 have started.
+
+Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26, Michael's answer 4 A; the text
+and the note above stay as accepted): ADR 0023 §12 changes the landscape column of the table above
+from plan row P85d on. The right-hand zone (20 % of the width, at least 200 dp) goes: the build
+panel floats at the bottom right (tabs as line icons above one row of named cards of at least
+64 dp; during placement the check mark and X take the card row's place), the minimap is a floating
+panel at the top right, and the credits and power bar a pill at the top left; the map fills the
+rest. The ArmyBar, the SelectionPanel and the top-left controls keep their places, clear of the
+panels (P85d checks every control at the six sizes: inside the safe rect, at least 48 dp, no
+overlap). The portrait column is unchanged: the bottom band, its budget, the minimap at its right
+end (now an isometric diamond, ADR 0023 §4, at most 40 % of the safe inner width) and the ArmyBar
+above the band. The general rules of this section hold.
 
 ### 6. Tests
 - Window sizes for UI and layout tests: landscape 1280x720, 2400x1080 and 2048x1536 (today's),

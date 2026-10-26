@@ -14,9 +14,9 @@ Source of truth: this file for rules, `docs/GDD.md` for game design,
   0013), each with a GDScript twin in `game/sim/` that stays the reference and the web path.
   No C#.
 - Renderer: **Compatibility** (required for web export and low-end Android).
-- 2D top-down, buildings in an oblique 3/4 view (ADR 0022), landscape and portrait (ADR 0015; the
-  Android build follows the phone's sensor, the web preview turns with the phone). Base size
-  1280x720, stretch mode `canvas_items`, aspect `expand`.
+- 2D isometric (dimetric 2:1, ADR 0023): the sim keeps its square grid and only the view projects;
+  landscape and portrait (ADR 0015; the Android build follows the phone's sensor, the web preview
+  turns with the phone). Base size 1280x720, stretch mode `canvas_items`, aspect `expand`.
 - Tests: gdUnit4 in `tests/`, plus a CI-only C++ sanitizer harness in
   `native/sim_kernels/sanitizer/` (ADR 0013 §10). Format/lint: gdtoolkit 4 (`gdformat`,
   `gdlint`). C++: `clang-format` 20.1.8, pinned in `scripts/ci/check-cpp-format.sh`
@@ -48,6 +48,7 @@ game/meta/   progression, save data
 native/      C++ sim kernels (GDExtension) and their build; godot-cpp is fetched, not committed
 data/        unit/building/AI definitions (.tres) - all balance numbers live here
 assets/art/svg/, assets/audio/   see assets/CREDITS.md
+tools/artgen/ the art generator: simple 3D models to SVG frames (ADR 0023)
 scenes/dev/  developer scenes (art gallery, sandbox maps)
 tests/       gdUnit4 tests mirroring game/
 ```
@@ -88,8 +89,9 @@ injected only by the release workflow. UMP consent before any ad request. Detail
   other existing game. Factions, units and lore are original.
 - Never copy code from EA's C&C source release or OpenRA. They are GPL and would force the whole
   project to GPL.
-- Assets: only SVG authored in this repo, or CC0/CC-BY with an entry in `assets/CREDITS.md`.
-  No asset-store packs, no AI images from outside tools, no web images.
+- Assets: only SVG authored in this repo (by hand or by `tools/artgen/`), or CC0/CC-BY with
+  an entry in `assets/CREDITS.md`. No asset-store packs, no AI images from outside tools,
+  no web images.
 - Never read, print or commit secrets: keystores, `.godot/export_credentials.cfg`, `.env`, API keys.
 
 ## Workflow

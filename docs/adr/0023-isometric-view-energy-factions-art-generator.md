@@ -1,10 +1,48 @@
 # ADR 0023: Isometric 2:1 view, two energy factions with their own rosters, and the art generator
 
-Status: proposed, 2026-10-26. Docs PR with `docs/plans/2026-10-22-phase-3.md` revision 5. Base:
-`main` at 3d9e133. Supersedes ADR 0022 (accepted the same morning) except the rules §15 keeps, and
-amends ADRs 0007 §5, 0010 §2, 0011 §3, 0012 §6, 0015 §5, 0017 §4-§5, 0018 §2-§3, 0019 §1-§5,
-0020 §4 and 0021 §2 (listed in §15). No rule of the Phase 2 sim changes; the sim gains one data
-column (factions, §6) and, if question 3 is A or B, the strike rules of §10 with one re-pin.
+Status: accepted, 2026-10-26 (Michael: 1 "Derrick League + Lumen Accord", 2 ja, 3 A, 4 A, 5-10
+ja; "Answers" below). Proposed 2026-10-26. Docs PR #200 with `docs/plans/2026-10-22-phase-3.md`
+revision 5, accepted by the lead's row P68e on the same PR. Base: `main` at 3d9e133. Supersedes ADR
+0022 (accepted the same morning) except the rules §15 keeps, and amends ADRs 0004 §6, 0007 §4-§5,
+0010 §2, 0011 §3, 0012 §6, 0015 §5, 0017 §4-§5, 0018 §2-§5, 0019 §1-§5, 0020 §4 and 0021 §1-§2
+(listed in §15). No rule of the Phase 2 sim changes; the sim gains one data column (factions, §6)
+and the strike rules of §10 with one re-pin.
+
+## Answers (2026-10-26)
+Michael answered the ten questions in chat on 2026-10-26. The lead asked them in Danish, the first
+four as multiple choice; Michael's words are quoted:
+1. **"Derrick League + Lumen Accord"**, the lead's alternative, not option A. The oil and gas bloc
+   is the **Derrick League** (internal `fossil`), the green-energy alliance the **Lumen Accord**
+   (internal `renew`). Option A's "Iron Compact" is dropped: it evokes the Iron Curtain (Red
+   Alert's superweapon) and the Warsaw Pact, and it named the bloc that carried Version B's east
+   look, which decision 1 drops (§13). Option B's "Current Accord" is not used.
+2. **"ja":** every display name of §7, as listed after fix 1 (Flarejack, Bullhead and Arcline in
+   place of the first Coyote, Bulwark and Longshot).
+3. **"A":** both factions' full rosters and both superweapons in Phase 3; the strike rows
+   P109-P112b are plain rows, with P109's one re-pin.
+4. **"A":** the canvas's floating panels in landscape (§12, row P85d); portrait keeps the band.
+5. **"ja":** the art generator (`tools/artgen/`, §5).
+6. **"ja":** the two superweapons as §10 gives them (the Deep Bore's rupture, the Blackout
+   Array's blackout of enemy buildings).
+7. **"ja":** the on-screen trade-offs of §2-§4: a unit behind a building is hidden and its bar
+   shows, last-seen ghosts draw under live units, low power shows a glyph instead of a dim, the
+   minimap is a diamond.
+8. **"ja":** the eight triads, Signal and Arktisk by default, and the four palette changes of §6.
+9. **"ja":** the rule texts of §15: `CLAUDE.md`, `docs/GDD.md`, the `svg-art-style` and
+   `touch-ui-rules` skills, `.claude/agents/art-director.md` and the new ROADMAP Phase 3 box.
+10. **"ja":** oil and gas fields work as today's ore loop (§11).
+
+The game's title stays "Treadline" (ADR 0006); the lead told Michael so, and he did not ask to
+change it.
+
+The decision below is unchanged by the acceptance except answer 1's name for the oil and gas bloc.
+P68e wrote the answers into the text (the names; the options not taken are gone from §8, §10, §12,
+§14 and §15), added the ADR sections the decision amends but the proposal did not list (ADR 0004
+§6, the camera clamp; ADR 0007 §4 and ADR 0018 §4-§5, the strike and faction rules; ADR 0021 §1,
+the P109 re-pin), added `touch-ui-rules`' description and line 66 (confirm and cancel in the
+floating panel) to §15, and fixed four review points: the ellipse's semi-axes (§1, §3), the
+Blackout Array's closest Command & Conquer analogue (§13), question 3's cost wording and the plan
+lines that still said the perf arena is never re-pinned after P70.
 
 ## Decisions in short
 | # | Topic | Decision |
@@ -18,11 +56,11 @@ column (factions, §6) and, if question 3 is A or B, the strike rules of §10 wi
 | 7 | Minimap | Isometric diamond in a 2:1 box (the canvas's minimap) |
 | 8 | Art | An in-repo generator (`tools/artgen/`, GDScript run headless) turns simple 3D models into SVG frames: vehicles and turrets 16 directions, infantry 8; buildings generated or hand-drawn; one light from the north-west |
 | 9 | Team colour | Art keys its team zones in its faction's canvas triad; at match start the view rasterises each player's SVG text with the player's triad (`Image.load_svg_from_string`) into the atlas; 8 triads from the canvas |
-| 10 | Factions | Two invented energy factions (names: question 1), data only: `UnitDef.faction`, `FactionDef`, `ScenarioDef.factions`, one type column `type_faction`; a producer queues only its own faction's types |
+| 10 | Factions | Two invented energy factions, the Derrick League (oil and gas) and the Lumen Accord (green energy), data only: `UnitDef.faction`, `FactionDef`, `ScenarioDef.factions`, one type column `type_faction`; a producer queues only its own faction's types |
 | 11 | Roster | Per faction: HQ, power, refinery, barracks, vehicle factory, radar, defence, superweapon; rifle and anti-tank infantry, scout, tank, artillery, tanker (§7) |
 | 12 | Hashes | Factions move no state hash (the perf arena loads no faction); strikes (§10) add hashed state with **one** re-pin |
 | 13 | Economy | Oil and gas fields are the merged ore cells; tanker = harvester; data and view only |
-| 14 | HUD | Recommended: the canvas's floating panels in landscape (question 4); ADR 0019's tiles, queues and placement stay |
+| 14 | HUD | The canvas's floating panels in landscape (question 4 A, P85d); ADR 0019's tiles, queues and placement stay |
 | 15 | Legal | Every canvas name screened (§13); hits replaced; no mobile base, no capture of neutral derricks, no freeze, no flamethrower infantry, no engineers in Phase 3 |
 
 ## Context
@@ -80,7 +118,8 @@ column (factions, §6) and, if question 3 is A or B, the strike rules of §10 wi
   `px = (x - y) x 32 / 1000`, `py = (x + y) x 16 / 1000`. **Inverse** for a ground point:
   `x = (py / 16 + px / 32) x 500`, `y = (py / 16 - px / 32) x 500`, rounded to the nearest milli
   for a Command. A tile is a 64 x 32 diamond; a ground circle of radius `r` milli is a 2:1 ellipse
-  of `r x 32 x sqrt(2) / 1000` px across and half that high.
+  whose horizontal semi-axis is `r x 32 x sqrt(2) / 1000` px and whose vertical semi-axis is half
+  that (`ellipse_px(r)` returns the two semi-axes).
 - **Where it lives.** `game/view/IsoProjection.gd` (touch-ux-dev): `ground_to_px(x, y)`,
   `px_to_ground(p)`, `cell_centre_px(col, row)`, `ellipse_px(r)`, the map's diamond and its
   bounding rect. It replaces `ViewScale.milli_to_px_vec` and `px_to_milli` at every caller
@@ -92,9 +131,10 @@ column (factions, §6) and, if question 3 is A or B, the strike rules of §10 wi
   are; only drawing and input convert. `game/sim` gains no view concept.
 - **Directions** (Spec §04): `d00` to `d15` in 22.5° steps, named so the canvas's names hold:
   `d_k` faces the grid angle `(k - 6) x 22.5°` measured from +gx towards +gy, so `d06` is +gx
-  (south-east on screen, the canvas's Compact default), `d10` is +gy (south-west), `d00` points up
-  the screen and `d08` down it. Infantry uses the even ones. The view picks the frame from the
-  heading it already computes (`round(angle / 22.5°)`, view-only float math).
+  (south-east on screen, the canvas's default for the oil and gas bloc), `d10` is +gy
+  (south-west), `d00` points up the screen and `d08` down it. Infantry uses the even ones. The
+  view picks the frame from the heading it already computes (`round(angle / 22.5°)`, view-only
+  float math).
 
 ### 2. Drawing: one sorted world from one per-match atlas
 - **The world z table** (replaces ADR 0012 §6's bands and ADR 0022 §2's table; absolute z):
@@ -212,7 +252,8 @@ column (factions, §6) and, if question 3 is A or B, the strike rules of §10 wi
   building > own building, without one own unit > own building. A unit is hit within its pick
   radius of its **lifted centre** (the ground point raised by the sheet's `pick_lift_px`, half the
   frame's visible height), the radius the larger of 24 dp (48 dp across, Spec §09's 44 pt is
-  smaller) and the selection radius's ellipse width. Infantry is picked as a squad (one row).
+  smaller) and the horizontal semi-axis of the selection radius's ellipse (§1). Infantry is
+  picked as a squad (one row).
 - **A building** is hit on its silhouette: the footprint diamond plus the rectangle between the
   diamond's left and right corners from the sprite's top to the corners' y; at least 48 dp a side
   at zoom 0.75. Among overlapping buildings the larger sort key wins (it is drawn in front).
@@ -321,20 +362,21 @@ column (factions, §6) and, if question 3 is A or B, the strike rules of §10 wi
   asset rule does not allow without a change).
 
 ### 6. Factions: names, look and data
-- **Names** (question 1; screened in §13): recommended **Iron Compact** (the oil and gas bloc;
-  internal `fossil`) and **Lumen Accord** (the green-energy alliance; internal `renew`). Version A's
-  "Aurora Accord" is not used ("Aurora" is a Command & Conquer: Generals unit). No geography, no
+- **Names** (Michael's answer 1; screened in §13): the **Derrick League** (the oil and gas bloc;
+  internal `fossil`) and the **Lumen Accord** (the green-energy alliance; internal `renew`). The
+  proposal's "Iron Compact" (§13: the Iron Curtain, the Warsaw Pact) and Version A's "Aurora Accord"
+  ("Aurora" is a Command & Conquer: Generals unit) are not used. No geography, no
   Cold War: the canvas's "1986 retro-futuristic Cold War" and "East against West" framing goes;
   the world is two energy blocs. The game's title stays "Treadline" (ADR 0006); "Iron Meridian" is
   the canvas's working title only.
-- **Look.** Iron Compact: poured concrete, riveted steel, rust, olive drab vehicles, gas spheres,
+- **Look.** Derrick League: poured concrete, riveted steel, rust, olive drab vehicles, gas spheres,
   flare stacks, pumpjacks, pipe racks, warning stripes, amber lamps; wedges and trapezoids (A's
   form language). Lumen Accord: white ceramic, graphite, glass, blue-grey vehicles with dark
   patches, wind turbines, solar panels, battery banks, drones, cyan status light; hexagons and
   rounded panels. Dropped from B as geography: red brick with copper patina and stucco, spires and
   tiered towers, panel blocks, hyperboloid masts, fur hats and long coats, domes with colonnades,
   timber framing, snow-and-birch as one side's home; from A: the cryo theme (§13).
-- **Palettes** (starting values from the canvas; art-director owns them in STYLE.md): Iron Compact
+- **Palettes** (starting values from the canvas; art-director owns them in STYLE.md): Derrick League
   gun steel #6B7366, concrete #9F9A8E, weathered rust #6E5D50, dark iron #3B3F39, lamp warm white
   #FFF1D6, olive #7D8562; Lumen Accord ceramic #D5DBDC, graphite #414A51, titanium #8A9398, glass
   #B4C8CF, blue-grey #7D8B96, status light mint #A8F5B0. Four canvas entries fall in their
@@ -344,8 +386,8 @@ column (factions, §6) and, if question 3 is A or B, the strike rules of §10 wi
   replacements are muted (rust 0.27, lamp 0.16, glass 0.13 saturation) or outside the band and
   every triad's hue (mint, 126°). Every other entry has a saturation below 0.30. Terrain: a
   neutral temperate set (grass, dirt, sand, scrub, rock, water) as today's terrain ids.
-- **Emblems** (art-director, P103 and P104): Iron Compact starts from A's octagon with an I-beam and
-  four rivets (no star, no letter); Lumen Accord from A's hexagon with horizon arcs, but with a
+- **Emblems** (art-director, P103 and P104): Derrick League starts from A's octagon with an I-beam
+  and four rivets (no star, no letter); Lumen Accord from A's hexagon with horizon arcs, but with a
   three-blade rotor in place of A's four-pointed sparkle (a star shape, which decision 1 excludes).
   No flag, star, wreath, crest or real insignia.
 - **Data model** (P106, gameplay-dev; the sim rule is one condition):
@@ -379,11 +421,11 @@ column (factions, §6) and, if question 3 is A or B, the strike rules of §10 wi
     route gives the dummy its faction's `AiDef`.
 
 ### 7. The asymmetric Phase 3 roster
-Iron Compact keeps the twelve merged files (ids, sim numbers, P72's tests) and adds two; Lumen
-Accord gets fourteen new files. Display names are question 2; sizes are footprints; numbers marked
-P are proposals for Phase 4's balance runs, stored in `data/` only.
+Derrick League keeps the twelve merged files (ids, sim numbers, P72's tests) and adds two; Lumen
+Accord gets fourteen new files. Display names are Michael's (answer 2); sizes are footprints;
+numbers marked P are proposals for Phase 4's balance runs, stored in `data/` only.
 
-| Role | Iron Compact: id, name | Lumen Accord: id, name | Asymmetry (P) |
+| Role | Derrick League: id, name | Lumen Accord: id, name | Asymmetry (P) |
 | --- | --- | --- | --- |
 | HQ 3x3 | `headquarters`, Rigworks | `renew_hq`, Grid Hub | same role |
 | Power 2x2 | `power_plant`, Turbine Hall | `renew_power`, Wind Park | Wind Park cheaper (250), less power (+80) |
@@ -400,7 +442,7 @@ P are proposals for Phase 4's balance runs, stored in `data/` only.
 | Artillery | `artillery`, Mortar Rig | `renew_artillery`, Arcline | Arcline range 10, 160 hp |
 | Tanker | `harvester`, Tanker | `renew_tanker`, Fuel Runner | Fuel Runner faster (1.4), carries 450 |
 
-Character (canvas A's, kept): Iron Compact heavy, robust, slow; Lumen Accord fast, precise,
+Character (canvas A's, kept): Derrick League heavy, robust, slow; Lumen Accord fast, precise,
 fragile. Every footprint is square. `requires`: each faction's chain mirrors P72's (power after
 HQ, refinery after power, barracks after power, factory after refinery, defence after barracks);
 the radar after the refinery; artillery and the strike after the radar (P107 moves the merged
@@ -412,7 +454,7 @@ squads keep three figures per row.
 | --- | --- | --- | --- |
 | Asymmetric rosters (§7) | 3 | decision 3 | P106 sim 120; P107, P108 data (.tres) |
 | Radar building | 3, as a tech gate only | data only; a radar that unlocks the minimap is C&C's (TD, RA) | data |
-| Superweapons, one per faction | 3 (question 3 A) or right after the gate (B) | decision 3; no kernel touched (§10) | P109 220, P110 250, P111 180, P112 350 + P112b 150 |
+| Superweapons, one per faction | 3 (question 3 A) | decision 3; no kernel touched (§10) | P109 220, P110 250, P111 180, P112 350 + P112b 150 |
 | Oil and gas fields with three stages | 3, on the ore loop | §11; data and view only | P116 (view) |
 | Tanker trucks | 3, as the harvester | §11 | data, P84b cue |
 | Pumps or wellheads built on a field (2x1) | later (Phase 4 economy, its own ADR) | a new income rule, a non-square footprint | - |
@@ -434,7 +476,7 @@ They need a movement class through FLOW, INTEGRATE and TARGETING (two kernels wi
 ADR 0013 §5) and the GDD keeps them out of version 1; a later ADR decides them. The z table
 reserves 20 for them.
 
-### 10. Superweapons (question 3 A, or after the gate with B)
+### 10. Superweapons (question 3 A: in Phase 3)
 - **State** (P109, one layout row, like P70): `ROW_ARRAYS` + `ready_tick` (the tick a strike
   building may fire, 0 for every other row) and `offline_until` (the tick a blacked-out building
   comes back, 0 = on); `PLAYER_ARRAYS` + `strike_x`, `strike_y`, `strike_tick` (one pending
@@ -502,12 +544,12 @@ reserves 20 for them.
 - **HUD icons** (B's Resources board): credits as a barrel with a flame, oil as a dark drop, gas
   as a blue flame.
 
-### 12. HUD (question 4)
+### 12. HUD (question 4 A)
 - **Kept from ADR 0019:** the item tiles and their states, tap to queue, long-press to cancel,
   ready structures and placement mode, the power bar, the three tabs (Structures, Infantry,
   Vehicles; no separate Defense or Air tab), the portrait bottom band (ADR 0015 §5) and every dp
   rule. P85, P85c and P85b keep their code.
-- **Recommended (A): the canvas's own layout in landscape.** The build panel becomes a floating
+- **Decided (A): the canvas's own layout in landscape.** The build panel becomes a floating
   panel at the bottom right (canvas HUD board: 372 x 130 at 932 x 430, one row of 68 dp cards with
   the item's name always shown, tabs as line icons above it), the minimap a floating panel at the
   top right, credits and power a pill at the top left; the map fills the rest. Portrait keeps the
@@ -516,9 +558,9 @@ reserves 20 for them.
   own UI: a map rail and floating panels instead of a fixed sidebar"); a right-hand column with
   the minimap on top, credits, tabs and build icons below is the Command & Conquer and Red Alert 2
   sidebar layout; and landscape gains map width.
-- **B:** keep ADR 0019's right zone in landscape, restyle it with the canvas's cards and icons
-  only, and revisit the layout in Phase 5. Cheaper now; P86's buttons and P88's minimap would be
-  moved again later.
+- **Not taken (B):** keep ADR 0019's right zone in landscape, restyle it with the canvas's cards
+  and icons only, and revisit the layout in Phase 5. Cheaper at first, but P86's buttons and P88's
+  minimap would have moved again later.
 - **Not taken from the canvas HUD:** the command buttons (attack-move, guard, stop, patrol,
   formation), sell and repair, the Air tab, rank chevrons, the "PRIMARY" label: out of scope or
   too close to Red Alert 2's sidebar buttons (§13).
@@ -539,7 +581,7 @@ its three name-list rows, for every name this ADR uses.
 | Canvas name or concept | Where | Finding | Decision |
 | --- | --- | --- | --- |
 | Aurora Accord | A | Aurora bomber (Generals Zero Hour) | replaced: Lumen Accord |
-| Iron Compact | A | no known hit ("Iron Curtain" is RA's superweapon, different) | kept (question 1) |
+| Iron Compact | A | no exact hit, but it evokes the Iron Curtain (Red Alert's superweapon) and the Warsaw Pact, and it named the bloc that carried Version B's east look, which decision 1 drops | replaced: Derrick League (Michael's answer 1, 2026-10-26) |
 | Iron Meridian | A | no known hit | not used; the title stays Treadline |
 | Meridium crystals, regrowing | A | harvested glowing crystals = Tiberium (TD, TS, C&C 3), RA's gems | replaced by B's oil and gas |
 | Forge, Forge Rig | A | StarCraft Protoss Forge; the rig is an MCV | replaced: Rigworks; no mobile base |
@@ -574,7 +616,7 @@ its three name-list rows, for every name this ADR uses.
 | Trebuchet | B | Age of Empires II Trebuchet | replaced: Arcline (the first replacement, Longshot, is a real air-launched drone programme, DARPA's LongShot) |
 | Warden | B | Halo's Warden (not a known RTS unit) | not used: Torque |
 | Fusilier, Jäger | B | real military words with national coding (decision 1) | replaced: Linemen, Breakers |
-| Blackout Array (EMP dish) | B | EMP area weapons: Tiberian Sun EMP Cannon, StarCraft EMP Shockwave; the name has no known hit | kept as a name; it blacks out buildings only, no EMP wording, no blue lightning |
+| Blackout Array (EMP dish) | B | the closest C&C analogue is Generals Zero Hour's EMP Pulse (a general's power that disables vehicles and buildings in an area); also Tiberian Sun's EMP Cannon (a GDI structure firing an area EMP) and StarCraft's EMP Shockwave; the name has no known hit | kept as a name; it blacks out buildings only, no EMP wording, no blue lightning |
 | Tectonic Hammer (seismic strike) | A | no known C&C seismic superweapon | the concept kept as Deep Bore |
 | Twin rail cannon (Lancer, Rail Battery), twin gun (Sentry) | A, B | the twin-barrel super-heavy tank is TD and RA's Mammoth (svg-art-style forbids it) | single barrels only |
 | Tesla, Chrono, Mammoth, Iron Curtain, coil and prism towers, airships | - | RA | excluded (A's own list, svg-art-style) |
@@ -583,16 +625,17 @@ its three name-list rows, for every name this ADR uses.
 | Lancer, Bulwark, Kestrel, Bastion, Gyro Striker | A, B | no known hit in the games above, but real military names: the B-1B Lancer bomber, HMS Bulwark (a Royal Navy assault ship), the Kestrel anti-armour rocket, the Bastion coastal missile system, the Striker anti-tank vehicle | not used (Bulwark was §7's first tank name; now Bullhead) |
 | Thunderhead, Hauler, Swift, Fuel Runner, Wind Park, Motor Works, Gas Works, Training Hall, Garrison, Rail Battery, Armor Works, Smelter, Furnace Plant, Radar Mast, Halcyon, Skylance, Trooper, Breacher | A, B | no known hit in the games above or among real military vehicles in service (Swift: the Supermarine Swift jet, retired in the 1960s; a common word) | Swift, Fuel Runner, Wind Park, Motor Works and Rail Battery used; the others unused |
 | Big Shoulders, Chakra Petch fonts | A | SIL OFL fonts, not CC0 or CC-BY | not used (§5) |
-| The new names of §6 and §7: Iron Compact, Lumen Accord, Rigworks, Turbine Hall, Cracking Plant, Bunkhouse, Heavy Yard, Signal Mast, Redoubt, Deep Bore, Roustabouts, Wildcatters, Flarejack, Bullhead, Mortar Rig, Tanker, Grid Hub, Synthesis Works, Crew Hall, Relay Tower, Blackout Array, Linemen, Breakers, Torque, Arcline | this ADR | no known hit in the games above or among real military vehicles, aircraft, ships or weapon programmes. Flarejack (flare stack + pumpjack) and Arcline are coined; Bullhead is an oilfield word (bullheading, a well-control method); Roustabouts, Wildcatters and Linemen are trades (the AW159 Wildcat helicopter is another word); Redoubt, Tanker, Mortar Rig and Rail Battery are generic words. Rejected while choosing them: Roughnecks (Starship Troopers' Roughnecks, an RTS since 2022), Blockhouse (Age of Empires III), Thumper (Dune), Aegis (RA2 Aegis Cruiser; also a real naval combat system), Pylon (StarCraft), Longbow (RA1; also the AH-64D Longbow), Coyote, Longshot, Bulwark (rows above) | proposed (questions 1 and 2) |
+| The names of §6 and §7: Derrick League, Lumen Accord, Rigworks, Turbine Hall, Cracking Plant, Bunkhouse, Heavy Yard, Signal Mast, Redoubt, Deep Bore, Roustabouts, Wildcatters, Flarejack, Bullhead, Mortar Rig, Tanker, Grid Hub, Synthesis Works, Crew Hall, Relay Tower, Blackout Array, Linemen, Breakers, Torque, Arcline | this ADR | no known hit in the games above or among real military vehicles, aircraft, ships or weapon programmes. Flarejack (flare stack + pumpjack) and Arcline are coined; Bullhead is an oilfield word (bullheading, a well-control method); Roustabouts, Wildcatters and Linemen are trades (the AW159 Wildcat helicopter is another word); Redoubt, Tanker, Mortar Rig and Rail Battery are generic words; "derrick" is an oilfield word (Red Alert 2's and Generals' Oil Derrick is a capturable neutral building, another name and a dropped mechanic, row above). Rejected while choosing them: Roughnecks (Starship Troopers' Roughnecks, an RTS since 2022), Blockhouse (Age of Empires III), Thumper (Dune), Aegis (RA2 Aegis Cruiser; also a real naval combat system), Pylon (StarCraft), Longbow (RA1; also the AH-64D Longbow), Coyote, Longshot, Bulwark, Iron Compact (rows above) | used (Michael's answers 1 and 2, 2026-10-26) |
 
 ### 14. Performance and the arenas
 - **Perf arena:** nothing here but §10 touches its state (§6 adds type data only, and its
-  scenario lists no faction), so its golden hashes, `budget.cfg` and every `PERF` line stay; with question 3 A or B, P109's one re-pin (§10) is the only change,
-  with its reason. The arena scene gets the iso layers (P117, P114, P116), so its phone card's draw
-  calls and frame times change; thresholds are unchanged (ADR 0021 §5).
-- **Base arena** (P80, not merged): side 1 Iron Compact, side 2 Lumen Accord, every building type
-  of both (about 30 buildings) and 150 mobile rows; with question 3 A, a scenario order fires each
-  strike once (`OrderDef` gains `SUPERWEAPON`). Its golden hashes are pinned first by P93, after
+  scenario lists no faction), so its golden hashes, `budget.cfg` and every `PERF` line stay;
+  P109's one re-pin (§10) is the only change, with its reason. The arena scene gets the iso
+  layers (P117, P114, P116), so its phone card's draw calls and frame times change; thresholds are
+  unchanged (ADR 0021 §5).
+- **Base arena** (P80, not merged): side 1 Derrick League, side 2 Lumen Accord, every building type
+  of both (about 30 buildings) and 150 mobile rows; a scenario order fires each strike once
+  (`OrderDef` gains `SUPERWEAPON`). Its golden hashes are pinned first by P93, after
   every sim row of revision 5.
 - **Headless proof:** the projection round trip; the sort order of crafted units around 1x1, 2x2
   and 3x3 footprints; every `WorldSort` sprite on the one atlas texture with white modulate (the
@@ -609,6 +652,9 @@ its three name-list rows, for every name this ADR uses.
   about 8-12 % (question 3), textured ground in Phase 3 (question 4), the tracer clip (§4), the
   runtime atlas helper with its 2 px gutter, `MapView` as the map's model with its colours, tiles
   and bake (P52's cross-file facts untouched), and "no new perf arena" (§8).
+- **ADR 0004 §6:** the camera's edge clamp becomes §4's: the view centre's ground point is
+  clamped into the map's diamond, and the limits are the diamond's bounding rect grown at the top by
+  the tallest sprite; pan, pinch, the zoom levels and the snap are unchanged.
 - **ADR 0010 §2:** the fog draws at z 4 on the ground, as diamonds under the iso transform, under
   every object; last-seen ghosts at z 5; enemies, bars and projectiles keep their hiding by tile;
   the tracer stays clipped. Texture, updates, `explored_alpha` and the soft edge unchanged.
@@ -617,19 +663,22 @@ its three name-list rows, for every name this ADR uses.
   its bake under the iso transform where no ground layer covers it.
 - **ADR 0012 §6:** the z bands per type and owner are replaced by §2's table and the one-atlas rule;
   the forecast is 13; the MultiMesh trigger (40) and the ceiling (60) stand.
-- **ADR 0015 §5:** with question 4 A, landscape's right zone becomes the floating panels; portrait
-  unchanged; the minimap's place follows §12.
+- **ADR 0015 §5:** landscape's right zone becomes the floating panels (question 4 A, P85d);
+  portrait unchanged; the minimap's place follows §12.
 - **ADR 0019:** §1 (layout, question 4), §2 (the ghost on diamonds, grab area = silhouette + 24 dp),
   §3 (pick shapes), §4 (an isometric minimap, its place), §5 (low power: a glyph on every consuming
   building instead of a dim, question 7).
-- **ADR 0007 §5 and ADR 0017 §4-§5** (question 3 A or B): `SUPERWEAPON` = 15; `Strike.run` inside
-  the FIRE mark, after `Combat.fire` and before REMOVE (§10), so its kills die at that tick's
-  REMOVE; no new phase id.
+- **ADR 0007 §4-§5 and ADR 0017 §4-§5** (question 3 A): `SUPERWEAPON` = 15; `Strike.run` inside
+  the FIRE mark (step 10 of ADR 0007 §4), after `Combat.fire` and before REMOVE (§10), so its kills
+  die at that tick's REMOVE; no new phase id.
 - **ADR 0018 §2-§3:** player-facing ore and harvester become fields and tankers (§11); the rules
-  are unchanged.
+  are unchanged. **§4-§5:** an offline (blacked-out) building neither makes nor uses power, a
+  defence among them does not fire and a producer among them does not advance its queue (§10);
+  `QUEUE` is dropped for another faction's item (§6).
 - **ADR 0020 §4:** one dummy `AiDef` per faction; the dummy never builds or fires a strike.
-- **ADR 0021 §2:** the base arena holds both factions (§14).
-- **Lines that change on Michael's yes** (question 9; P68e, never in this PR):
+- **ADR 0021 §1:** the perf arena's golden hashes move once more after P70, in P109 (§10).
+  **§2:** the base arena holds both factions (§14).
+- **Lines that changed with Michael's yes** (question 9 "ja"; applied by P68e on #200):
   - `CLAUDE.md` Stack: "- 2D top-down, buildings in an oblique 3/4 view (ADR 0022), landscape and
     portrait (ADR 0015; the" becomes "- 2D isometric (dimetric 2:1, ADR 0023): the sim keeps its
     square grid and only the view projects; landscape and portrait (ADR 0015; the". Layout: a new
@@ -638,8 +687,9 @@ its three name-list rows, for every name this ADR uses.
   - `docs/GDD.md`: "Match setup" (two asymmetric factions in the MVP, their names, both sides
     playable; "Both sides use the same faction in the MVP (mirror). A second, asymmetric faction
     comes after launch." and the "Working faction names" line go), "Economy" (oil and gas fields,
-    tankers), "Buildings (MVP)" and "Units (MVP)" (per faction, §7), "Art and audio" (isometric,
-    ADR 0023), "Not in version 1" ("second faction" goes; air stays).
+    tankers), "Buildings (MVP)" and "Units (MVP)" (per faction, §7), a new "Superweapons (MVP)"
+    (§10), "Art and audio" (isometric, ADR 0023), "Not in version 1" ("second faction" goes; air
+    stays); P68e also turned the ore of "Pitch" and "Maps (MVP)" into oil and gas (§11).
   - `.claude/skills/svg-art-style/SKILL.md`: the frontmatter `description` (isometric, generated
     frames), "Look" (lines 10-14), "Camera and scale" (lines 16-31: §1's projection, 2x = 128 x 64
     per tile, directions, anchors, sizes of Spec §05), "Palette" (lines 33-43: per-faction palettes,
@@ -648,10 +698,12 @@ its three name-list rows, for every name this ADR uses.
     so the hull can face any way" and "Buildings: south facades in shade" lines go), "Technical
     rules" (lines 59-71: generated files, the keep import, naming of §5), "Originality" (line 74-76
     gains the dropped concepts of §13).
-  - `.claude/skills/touch-ui-rules/SKILL.md`: line 22 (tap own building: its silhouette, ADR 0023
-    §3), line 26 ("Tap ore with harvesters selected" becomes oil or gas fields with tankers), lines
-    41-42 (harvesters become tankers), lines 51-54 (the pick shapes of §3), lines 58-60 (the ghost's grab area: silhouette plus margin),
-    lines 74-77 (landscape layout, question 4), line 89 (the portrait minimap's place).
+  - `.claude/skills/touch-ui-rules/SKILL.md`: the frontmatter `description` (the build menu, not
+    a sidebar), line 22 (tap own building: its silhouette, ADR 0023 §3), line 26 ("Tap ore with
+    harvesters selected" becomes oil or gas fields with tankers), lines 41-42 (harvesters become
+    tankers), lines 51-54 (the pick shapes of §3), lines 58-60 (the ghost's grab area: silhouette
+    plus margin), line 66 (the check mark and X in the floating build panel in landscape), lines
+    74-77 (landscape layout, question 4), line 89 (the portrait minimap's place).
   - `.claude/agents/art-director.md` line 10 ("All art is hand-written SVG code in this
     repository.") and line 15 ("Write clean SVG by hand") allow the generator and its models.
   - `docs/ROADMAP.md` Phase 3: a new box "Two original factions with their own buildings, units
@@ -674,9 +726,10 @@ its three name-list rows, for every name this ADR uses.
 - Low power no longer dims buildings; it shows a glyph on each consuming building and the power bar.
 - Michael's art rows depend on a new tool. Until the art rows land the game shows blockout models
   (boxes with team bands), which Michael sees in the preview.
-- With question 3 A or B, the perf arena's golden hashes are re-pinned once (P109).
+- The perf arena's golden hashes are re-pinned once more (P109, question 3 A).
 - Two factions double the art and data work of the roster and the balance space of Phase 4.
-- The CLAUDE.md asset rule, the art-director agent and the skills change wording on Michael's yes.
+- The CLAUDE.md asset rule, the art-director agent and the skills changed wording with Michael's
+  yes (question 9, P68e).
 
 ## Alternatives considered
 - **Keep ADR 0022's oblique view.** Rejected by Michael's decision 2.
@@ -707,7 +760,9 @@ its three name-list rows, for every name this ADR uses.
 - **Everything of the canvas in Phase 3** (air, engineers, capture, pumps, pipelines, bridges,
   garrisons): several thousand lines and kernel changes; the gate would move by weeks.
 
-## Questions for Michael
+## Questions for Michael (answered 2026-10-26)
+As proposed; the lead asked them in Danish in chat. "Answers" at the top records Michael's
+answers and what they mean.
 1. **Faction names.** A: Iron Compact (oil and gas) and Lumen Accord (green energy). B: Derrick
    League and Current Accord. C: names you choose (screened by the lead before use). Recommended:
    A. Cost: none either way (display names in data and docs).
@@ -723,10 +778,12 @@ its three name-list rows, for every name this ADR uses.
    superweapon buildings stand but fire only after the gate (5 rows and about 1150 lines later, no
    re-pin before the gate; the rows are off the critical path, so the gate comes about a day
    sooner). C: as B, and Lumen Accord's units share
-   Iron Compact's numbers until Phase 4 (art-only asymmetry; saves little, the numbers are data).
+   Derrick League's numbers until Phase 4 (art-only asymmetry; saves little, the numbers are data).
    Recommended: A (you chose asymmetry with a superweapon now; its rows run beside the critical
-   path). Cost of A over today's plan: the gate about one week later (estimate: 0.5 to 1.5 weeks; plan
-   revision 5 gives the rows and the critical path).
+   path). Cost of A over B: the five strike rows (about 1 150 production lines) inside Phase 3
+   and about a day on the gate, since they run beside the critical path. Revision 5 as a whole
+   (the view, the art and the factions, whatever the answer) moves the gate about one week
+   (estimate: 0.5 to 1.5 weeks; plan revision 5 gives the rows and the critical path).
 4. **The build menu in landscape.** A: the canvas's floating panels (build panel at the bottom
    right with named cards, minimap top right, more map visible), one extra row before placement.
    B: keep today's right-hand sidebar, restyled with the canvas's cards, and revisit in Phase 5.
@@ -738,7 +795,7 @@ its three name-list rows, for every name this ADR uses.
    in the repository and a tool in the repository draws them as SVG in every direction with one
    light; art-director may still hand-draw buildings and details. ja/nej. Recommended: ja. Cost of
    nej: about 500 hand-drawn files, roughly 3-4 extra weeks of art (estimate).
-6. **The two superweapons.** Iron Compact's Deep Bore splits the ground (damage in 3 tiles after a
+6. **The two superweapons.** Derrick League's Deep Bore splits the ground (damage in 3 tiles after a
    3-second warning everyone sees); Lumen Accord's Blackout Array shuts enemy buildings in 4 tiles
    down for 30 seconds (no power, defences silent, production paused; units keep going). No freeze
    (Red Alert 3 has freezing weapons). ja/nej, or swap the effects. Recommended: ja. Only if
@@ -751,7 +808,7 @@ its three name-list rows, for every name this ADR uses.
    picture.
 8. **Team colours.** The canvas's eight three-tone colours; player 1 orange, player 2 cyan by
    default; no red-against-blue. The team colours win over the canvas's material colours: four of
-   them change so that nothing in a faction's art looks like its team colour (Iron Compact's rust
+   them change so that nothing in a faction's art looks like its team colour (Derrick League's rust
    becomes a dull brown and its amber lamps warm white; Lumen Accord's glass becomes pale grey-blue
    and its cyan status lights mint green; §5, §6). ja/nej. Recommended: ja. Cost: none (the art is
    not drawn yet). The other answer, other key colours that no material uses, would make the
@@ -763,13 +820,13 @@ its three name-list rows, for every name this ADR uses.
     refinery, fields show full, half and dry and refill slowly; no pumps, no captured derricks and
     no pipelines in Phase 3. ja/nej. Recommended: ja. Cost: none (data and view only).
 
-## On acceptance (lead, docs row P68e)
+## On acceptance (lead, docs row P68e; applied 2026-10-26 on #200)
 - This ADR: status "accepted" with the date and the answers; the plan's revision 5 rows become plain
-  rows, or the rows an answer removes are withdrawn (question 3 B moves P109-P112b after the gate;
-  question 4 B shrinks P85d to the faction filter and a restyle).
+  rows. No row is withdrawn: question 3 A keeps P109-P112b in Phase 3, question 4 A keeps P85d
+  whole.
 - ADR 0022: status "superseded by ADR 0023 except §15's kept rules", dated, never rewritten. Dated
-  status notes on ADRs 0007 §5, 0010 §2, 0011 §3, 0012 §6, 0015 §5, 0017 §4-§5, 0018 §2-§3,
-  0019 §1-§5, 0020 §4 and 0021 §2 as §15 lists.
+  status notes on ADRs 0004 §6, 0007 §4-§5, 0010 §2, 0011 §3, 0012 §6, 0015 §5, 0017 §4-§5,
+  0018 §2-§5, 0019 §1-§5, 0020 §4 and 0021 §1-§2 as §15 lists.
 - With Michael's yes to question 9: `CLAUDE.md`, `docs/GDD.md`, both skills, `art-director.md` and
   the ROADMAP box, line by line as §15 lists. `assets/art/STYLE.md` changes in the art rows
   (art-director).

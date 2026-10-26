@@ -22,6 +22,12 @@ The decision below is unchanged by the acceptance. P68b added one data test to �
 separation argument of ADR 0017 §1 relies on (every mobile unit's radius at most 500). Nothing
 here is applied in code yet: plan rows P69-P80 apply it.
 
+Status note (2026-10-26, P68e docs; ADR 0023 accepted 2026-10-26, Michael's answers 3 A and 10
+"ja"): §2-§3 and §4-§5 carry dated status notes (after §3 and after §5): player-facing ore and
+harvesters become oil and gas fields and tankers with the rules of §2 and §3 unchanged; an offline
+(blacked-out) building neither makes nor uses power, does not fire and does not advance its queue;
+`QUEUE` is dropped for another faction's item. No accepted text changed.
+
 ## Context
 - `docs/GDD.md`, "Match setup": one Headquarters, 2 000 credits and 2 rifle squads at the start;
   victory when "the enemy has neither a Headquarters nor a production building left".
@@ -90,6 +96,15 @@ The loop gives orders the way the unit-group commands do: it writes `order` (`MO
 the loop does not call it); it reads no input. That is a sim rule, like target acquisition, not a
 player action, so CLAUDE.md rule 4 holds.
 
+Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26, Michael's answer 10 "ja"; the
+text of §2 and §3 stays as accepted): ADR 0023 §11 maps the economy onto the energy factions
+without a rule change. An oil or gas field is a group of the ore cells of §2 (`ore_cell`,
+`ore_amount`, `ore_cell_max`, `ore_regrow_ticks`), and the tanker is the harvester of §3 (SEEK,
+MINE, RETURN, UNLOAD, `HARVEST`, the auto-resume); the refinery and its dock are unchanged.
+Internal names (`ore`, `harvest_*`) stay; every player-facing word says oil, gas, field or
+tanker. Full, half and dry are view-only thresholds on `ore_amount` (plan row P116), and oil or
+gas is a view-only choice per field; both pay the same. No rule value moves, so no hash moves.
+
 ### 4. Power
 - `power_made` is the sum of the positive `type_power` of a player's buildings, `power_used` the
   sum of the negative ones (as a positive number). Both are derived (ADR 0016), rebuilt in ECONOMY
@@ -128,6 +143,16 @@ player action, so CLAUDE.md rule 4 holds.
   `stat_built` and spawns a free unit (§3).
 - Requirements are checked when an item is queued; losing the required building later leaves
   queued items as they are.
+
+Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26, Michael's answer 3 A; the text
+of §4 and §5 stays as accepted): two rules join. **Offline** (ADR 0023 §10, plan row P111): a
+building inside a Blackout Array's radius is offline until its `offline_until` tick; while
+offline, `Power.run` counts neither its output nor its use, `Combat.fire` skips it (§4's offline
+rule for defences, widened) and `Production.run` does not advance a queue whose producer is
+offline. Units are not affected. **Factions** (ADR 0023 §6, plan row P106): `QUEUE` is also
+dropped and counted when the item's faction is set and differs from the faction of the producer
+the queue uses (`type_faction[type] != type_faction[producer]`); a type without a faction is
+queued as before. Everything else in §4 and §5 is unchanged.
 
 ### 6. Rally points
 One per player and production tab (INFANTRY, VEHICLES), stored in `rally_x`, `rally_y` (-1 =

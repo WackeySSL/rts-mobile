@@ -31,6 +31,11 @@ sends `RALLY`, with another own building selected it clears the selection; with 
 selected a tap on ore sends `HARVEST` (P87). A long-press on a sidebar tile is a HUD control's
 own gesture (`CANCEL`, P85b), not the recognizer's.
 
+Status note (2026-10-26, P68e docs; ADR 0023 accepted 2026-10-26): §6 carries a dated status note:
+with the isometric view the camera clamps the view centre's ground point into the map's diamond
+(ADR 0023 §4, plan row P117) instead of its position into the map rect; pan, pinch, the zoom levels
+and the snap are unchanged. No accepted text changed.
+
 ## Context
 Phase 1 is a go/no-go on controls. `touch-ui-rules` gives the gesture map and the 48 dp rule,
 but it leaves several things open: how tap, long-press, drag, pinch and double-tap are told
@@ -211,6 +216,15 @@ Facts checked on Godot 4.7.2:
      the visible size, centre the map on any axis where it is smaller than the view, and
      re-clamp on resize and on every zoom step.
    - The camera owns no input handling. **This supersedes ADR 0002 §5's camera input part.**
+
+   Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26; the text above stays as
+   accepted): from plan row P117 on, the map is drawn in ADR 0023's 2:1 projection, a diamond, and
+   the "Edge clamping" item becomes ADR 0023 §4's clamp: after every move, zoom step and resize the
+   view centre's ground point is clamped into `[0, map_w] x [0, map_h]` milli and projected back;
+   the `limit_*` values are the diamond's bounding rect grown at the top by the tallest sprite's
+   height, and outside the diamond the clear colour shows. Pan, pinch, `CAMERA_END`'s snap, the
+   three zoom levels and the rotation rule of ADR 0015 §4 are unchanged; the clamp holds in both
+   orientations.
 7. **Feedback.** Selection rings, the move marker, the long-press anchor and the box are drawn
    procedurally in view code, so they stay crisp at every zoom and can be sized in dp. They
    are not SVG. art-director specifies their shape and colour in `assets/art/STYLE.md`, using

@@ -28,6 +28,12 @@ notes on the oblique buildings: the ghost is drawn in ADR 0022's projection and 
 sprite box plus 24 dp, and a tap anywhere on a building's picture selects it, a unit winning at the
 same point. No accepted text changed.
 
+Status note (2026-10-26, P68e docs; ADR 0023 accepted 2026-10-26, Michael's answers 4 A and 7
+"ja"): §1-§5 carry dated status notes for the isometric view and the floating panels: in landscape
+the build sidebar becomes floating panels, the ghost marks diamonds and is grabbed on its
+silhouette, buildings are picked on their silhouettes (units first), the minimap is an isometric
+diamond, and low power shows a glyph instead of a dim. No accepted text changed.
+
 ## Context
 - `touch-ui-rules` already fixes, in its gesture table and its "Building placement" section: tap an
   own building selects it and "a production building opens its build tab"; tap minimap moves the
@@ -68,6 +74,15 @@ same point. No accepted text changed.
 - The power bar shows made against used; on low power it turns to the warning style with an icon
   and pulses.
 
+Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26, Michael's answer 4 A; the text
+above stays as accepted): from plan row P85d on, `BuildSidebar` in landscape is the canvas's
+floating build panel at the bottom right (tabs as line icons above one row of cards of at least
+64 dp, each with the item's name always shown), the minimap a floating panel at the top right and
+the credits and power bar a pill at the top left (ADR 0023 §12); portrait keeps the band. The
+tiles, their states, tap to queue, long-press to cancel, ready structures, the power bar and the
+three tabs are unchanged, and the build menu lists only the local player's faction's types
+(`type_faction`, ADR 0023 §6).
+
 ### 2. Placement mode
 Local input state: no Command until the player confirms.
 - Entering puts the ghost at the tile under the view centre. The ghost is the building's sprite
@@ -99,6 +114,15 @@ on the roof moves the ghost. The ghost still follows the finger 64 dp above the 
 the footprint's centre as the reference, and snaps to tiles. `GhostLayer` draws at z 145 (plan row
 P86). The rest of §2 is unchanged.
 
+Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26; the text and the note above stay
+as accepted and as dated; ADR 0022's oblique ghost does not come): from plan row P86 on, the
+footprint's cells are marked as diamonds on the ground (the wash, the hatch and the frame as
+diamond tile quads from one texture, per cell, in `GhostLayer` at z 60), with the building's sprite
+faded over them; the tile under the reference point is `floor` of `IsoProjection.px_to_ground`;
+the grab area is the building's **silhouette plus 24 dp** (ADR 0023 §3). The ghost still follows
+the finger 64 dp above the touch point and snaps to tiles. In landscape the check mark and X sit in
+the floating build panel in place of the card row (§1's note). The rest of §2 is unchanged.
+
 ### 3. Buildings and harvesters on the map
 - Tap an own building: it alone is selected; the selection panel shows it. Buildings never join a
   box selection, a double-tap selection or "All army".
@@ -119,6 +143,17 @@ of one side the larger footprint south row wins. A building the fog hides and a 
 not pickable. The selection frame goes round the sprite box (ADR 0022 question 2 = A). Plan row P84d
 applies it. The rest of §3 is unchanged.
 
+Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26; the text and the note above stay
+as accepted and as dated): "Tap an own building" picks on the building's **silhouette**: the
+footprint diamond plus the rectangle between the diamond's left and right corners from the
+sprite's top down to the corners' y, at least 48 dp a side at zoom 0.75 (ADR 0023 §3). Units come
+first, as the note above says (with a selection enemy unit > own unit > enemy building > own
+building; without one own unit > own building); a unit is hit within its pick radius of its lifted
+centre; among overlapping buildings the one drawn in front (the larger sort key) wins. The
+selection frame is four brackets round the silhouette box. Player-facing harvesters are tankers
+and ore is oil and gas (ADR 0018 §3's note). Plan row P115b applies it. The rest of §3 is
+unchanged.
+
 ### 4. Minimap
 In the sidebar (top in landscape; at the right end of the portrait band, a square of the band's
 inner height, at most 40 % of the safe width). It draws the terrain, the fog (black and dimmed),
@@ -126,11 +161,25 @@ own rows, the enemy rows the local player sees, the last-seen ghosts and the cam
 one texture, redrawn at fog cadence, not every frame (ADR 0011's draw rules). A tap or a drag on it
 moves the camera there; a long-press with units selected sends `MOVE` to that point.
 
+Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26, Michael's answers 4 A and 7
+"ja"; the text above stays as accepted): the minimap is an **isometric diamond** in a 2:1 box (ADR
+0023 §4): one cell texture at fog cadence, drawn with the fog's skew, so the camera's frame is a
+plain rectangle on it. In landscape it is a floating panel at the top right (§1's note); in
+portrait it stays at the right end of the band, at most 40 % of the safe width. What it draws, its
+cadence and its gestures are unchanged (plan row P88).
+
 ### 5. Low power and under attack
 On low power the power-using buildings are drawn dimmed and each defence shows an offline glyph.
 When an own row is hit off screen (a `SHOT` or `IMPACT` event on an own target), an arrow of at
 least 48 dp at the screen edge points to it for a few seconds and the minimap pings there; one cue
 per area and interval (values in `data/input_settings.tres`).
+
+Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26, Michael's answer 7 "ja"; the
+text above stays as accepted): low power no longer dims the power-using buildings; each consuming
+building shows a low-power glyph instead (a dim would split the sorted world's one batch, ADR 0023
+§2), and the power bar warns as §1 says. Each defence still shows the offline glyph, and a
+building a Blackout Array switched off shows it too (ADR 0023 §10). The under-attack cue is
+unchanged (plan rows P89, P112b).
 
 ### 6. Result screen and surrender
 - When the snapshot shows `match_end_tick`, a full-screen overlay shows Victory, Defeat or Draw (a

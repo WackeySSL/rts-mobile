@@ -30,6 +30,10 @@ Companion ADRs: 0018 (economy and production rules), 0019 (build UI), 0020 (dumm
 AI hook), 0021 (Phase 3 performance gate). This ADR fixes the data model and the plumbing; 0018
 fixes what the rules do with it.
 
+Status note (2026-10-26, P68e docs; ADR 0023 accepted 2026-10-26, Michael's answer 3 A): §4 and §5
+carry dated status notes: Command type 15 is `SUPERWEAPON`, and `Strike.run` runs inside the FIRE
+mark, so no phase id is added. No accepted text changed.
+
 ## Context
 What earlier ADRs already decided for Phase 3:
 - **ADR 0007 §2:** "Buildings (Phase 3) are rows of the same table", so targeting, damage, death
@@ -194,6 +198,16 @@ target_y)`, `surrender(player_id)`. `encode`/`decode` need no change: the payloa
 are already written. A type index in a payload is the World's type index; `defs_hash` protects a
 replay against other data, as today. 15-19 and 21-29 stay reserved.
 
+Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26, Michael's answer 3 A; the text
+above stays as accepted): ADR 0023 §10 adds `SUPERWEAPON` = 15 under this section's common rules
+(a player who is not defeated, nothing after `match_end_tick`): `target_id` an own strike
+building, `target_x`, `target_y` the point (milli), payload empty; factory
+`superweapon(player_id, building_id, target_x, target_y)`. It is valid when the building is the
+player's, its type's `type_strike_kind` is above 0, `world.tick + 1 >= ready_tick` and the
+building is not offline; firing sets `ready_tick` to `tick + 1 + type_charge_ticks`. A Blackout
+Array's effect is written in the command's apply (COMMANDS). ADR 0023 §6 adds one `QUEUE` rule
+(ADR 0018 §5's note). 16-19 and 21-29 stay reserved (plan rows P109, P110).
+
 ### 5. Three new tick phases after FOG
 `SimProbe.Phase` gains `ECONOMY = 11`, `PRODUCTION = 12` and `MEMORY = 13`, `COUNT = 14`, and
 `PHASE_NAMES` gains `"economy"`, `"production"`, `"memory"`. Because marks must ascend, the three
@@ -212,6 +226,17 @@ PRODUCTION enters the grids in t+1 and is stamped into the fog on its player's n
 every row with `fog_cell` -1; orders that the harvest loop gives in t's ECONOMY move the harvester
 from t+1. Every loop visits players ascending, tabs ascending, rows ascending by id and ore cells
 ascending; no Phase 3 rule draws a random number.
+
+Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26, Michael's answer 3 A; the text
+above stays as accepted): ADR 0023 §10 adds no phase. `Strike.run(world)`, which applies a pending
+Deep Bore rupture on its `strike_tick`, is called by `Sim.step` right after `Combat.fire` and
+before `FogUpdate.begin` and `world.remove_dead()`, inside the FIRE mark, as "Alternatives"'
+rejection of new phases between FIRE and REMOVE requires. A ruptured row therefore dies at that
+tick's REMOVE like a row killed by a shot: its fog unstamp lands in that tick's dirty lists,
+ECONOMY's `Power.run` sums power without it, PRODUCTION's `Outcome.run` counts a ruptured
+producer's loss for defeat on the same tick, and no ruptured row acts in the next tick. The
+blackout is applied in COMMANDS; ECONOMY, PRODUCTION and FIRE read its `offline_until` (ADR 0018
+§4-§5's note). Plan rows P110 and P111.
 
 ### 6. The snapshot
 P70 lists every new `ROW_ARRAYS`, `TYPE_ARRAYS` and `MAP_ARRAYS` name in `MatchSnapshot.NOT_COPIED`
