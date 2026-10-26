@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="AiDef" format=3]
+
+[ext_resource type="Script" path="res://game/ai/AiDef.gd" id="1_aidef"]
+
+[resource]
+script = ExtResource("1_aidef")
+id = &"dummy"
+build_order = Array[StringName]([&"power_plant", &"refinery", &"barracks", &"power_plant", &"vehicle_factory", &"defence_turret", &"defence_turret", &"power_plant"])
+hq_type = &"headquarters"
+harvester_type = &"harvester"
+queue_target = 2
+harvesters_wanted = 2
+place_tries = 64
+place_stride_tiles = 4
+think_period = 15
+think_tick = 7
