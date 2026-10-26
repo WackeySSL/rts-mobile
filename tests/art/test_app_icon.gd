@@ -146,7 +146,8 @@ func test_the_background_and_the_square_are_opaque_to_every_edge() -> void:
 
 
 func test_the_warm_sky_is_on_the_left_and_the_cool_sky_on_the_right() -> void:
-	# The seam runs from (300, 0) down to (140, 432); these points are far from it on each side.
+	# The pale light core sits in the middle; these points are high in the sky, well to the amber
+	# side of it (left) and well to the cyan side (right).
 	for image_name: String in ["icon_background", "app_icon"]:
 		var image: Image = _rgba(image_name)
 		var side: int = image.get_width()
