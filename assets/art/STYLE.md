@@ -12,8 +12,7 @@ the heavy tank, the artillery and the harvester, the tab, item and glyph icons, 
 gallery pages. v1.5 (Phase 3, P91b) redraws the six buildings and the five building item icons in an
 oblique 3/4 view (art direction B, ADR 0022) and changes Look, Scale, Palette, Drawing rules, Technical
 rules, Buildings, Ghosts and Health bars to match; the units (P92b), the ore and the ground (P92c)
-follow, and the rules below say where they still describe the v1 look. v1.6 (Phase 3, P98) adds the app icon
-(its own section below). Rules marked **(new)** go
+follow, and the rules below say where they still describe the v1 look. Rules marked **(new)** go
 beyond the skill and are waiting for Michael's approval (list at the end).
 
 ## Look
@@ -460,46 +459,6 @@ sprite on the point the player tapped.
   on the ground, Vehicles a wide notched banner over a **square frame**.
 - The line from the building to the flag is drawn in code (the marker stroke rule, ADR 0019
   section 3); it is not part of these files.
-
-## App icon (new)
-Plan row P98, asked for by Michael on 2026-10-26. Three files in `assets/art/svg/icon/`, drawn in this
-repository (`assets/CREDITS.md` has the row), imported at scale 1.0 so that a texture is as big as its
-canvas:
-
-| File | Canvas | Holds |
-| --- | --- | --- |
-| `app_icon.svg` | 512 x 512 | The whole icon as one full square, for Google Play and the App Store. No rounded corner is baked in and no pixel on the edge is transparent, because the stores add their own mask |
-| `icon_background.svg` | 432 x 432 | The Android adaptive icon's background layer (108 dp at 4x). It fills the whole canvas |
-| `icon_foreground.svg` | 432 x 432 | The adaptive foreground, the tank. It is transparent outside the tank |
-
-- **Concept.** One tank charging at the viewer from a low angle, large and centred: a wide hull on two
-  dark track blocks, a wedge turret swung to the right so that its lit left side shows, and a gun
-  that points up and to the right at the viewer and ends in a big dark muzzle ring. Behind it the
-  sky is split on a steep diagonal. Left of the seam it is warm (`#C94D12` / `#E8681F` / `#FF9446`)
-  with a lattice flare stack, its flame and a pumpjack. Right of it, it is cool (`#1590B0` /
-  `#1FA6C8` / `#62D6EE`) with two white wind turbines and a row of solar panels. A band of dust
-  along the foot is lit warm on the left and cool on the right, and the tank's left edges carry a
-  warm rim light and its right edges a cool one. The icon names no faction, shows no flag, star,
-  map, missile, aircraft, insignia or text, and does not use the split of a real game.
-- **Safe zone.** A launcher shows only the central 72 dp (288 px) of the adaptive layers, in a
-  circle, a squircle or a rounded square. Every painted pixel of the foreground lies inside the
-  circle of radius 144 px about (216, 216), and the elements of the background that matter (the
-  flame, the pumpjack, the turbines) lie inside it too. `tests/art/test_app_icon.gd` samples the
-  rendered foreground for this.
-- **One drawing.** `app_icon.svg` is the background and then the foreground, the same drawing,
-  inside `translate(-111.2 -111.2) scale(1.7)`, so the central 301 px of the layers fill the
-  square. Redraw a layer first and stack it again; do not edit the square alone. The file holds
-  both sets of gradients and stays under 28 KB.
-- **No seam of half-empty pixels.** The warm sky and the warm ground are drawn over the whole
-  canvas and the cool ones over them, never as two polygons that touch: anti-aliasing leaves the
-  pixels along a shared edge partly transparent, and the test for an opaque background would
-  catch it.
-- **Readable at launcher size.** At 48 px in greyscale the tank (mean grey about 87 of 255) is far
-  darker than the sky and dust around it (about 150). The test asks for a gap of at least 40 grey
-  levels at 48 and 36 cells across. A backlight behind the turret makes the gap.
-- **Not wired.** `export_presets.cfg` and the Android and iOS exports still use the engine's
-  default icon (`assets/CREDITS.md`). The release engineer wires the three files after Michael
-  approves the look.
 
 ## Originality
 Describe each silhouette in one line before drawing, in your own words. The catalogue below holds
@@ -1044,13 +1003,6 @@ Renaming a unit or a unit type is a data change, not a reskin.
   `TERRAIN_TILES`. P36's phone check "the map looks as before" needs an exception: the Phase 1 grid
   lines are gone. The other route is two tones per terrain, which drops the scrub highlight and the
   rock bevel: change this spec for it, not the contract.
-- Approve the **app icon** (P98, new): the look (the tank, the warm and cool sky with their
-  silhouettes, the dust band, the rim lights), the sky and flame colours that are not in the palette
-  table, the 1.7 scale that turns the two adaptive layers into the store square, and the grey gap of
-  40 as the readability test. Look at the three files in
-  `assets/art/svg/icon/` at 512 px, reduced to 96 and 48 px, under a circle and a rounded-square
-  mask, and as the two adaptive layers with the safe circle outlined. Say what to change; nothing is wired into the
-  exports before you say yes.
 
 ## Change log
 | Date | Change |
@@ -1066,4 +1018,3 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-10-22 | v1.3 (P91, art-director): the six buildings with their layer contract, the ore cells and their levels, the two ghost patterns and the ghost look, two dirt tones (new), the Build and Ground gallery pages. |
 | 2026-10-22 | v1.4 (P92, art-director): the heavy tank, the artillery and the harvester, the tab, item and glyph icons with the glyph contract (import scale 1.0, new) and the seat of the eight map glyphs (new), the two rally flags, the Vehicles and Icons gallery pages, the reason glyph on the Ground page's ghost. |
 | 2026-10-26 | v1.5 (P91b, art-director, Michael chose direction B on 2026-10-26, ADR 0022): the six buildings and the gun head redrawn in the oblique 3/4 view on new canvases (the footprint plus 96 px at 2x), the five building item icons, Look, Scale, Palette (A's muted materials), Drawing rules (thin edges, team marks about 8 to 12 %), Technical rules (defs, radialGradient, clipPath, use; 28 KB), Buildings (projection, canvas, anchor, the cut, the pivot), Ghosts (in the projection), the building row of Health bars, the Build page as a scrolling list with the camera zooms and the Seam page. |
-| 2026-10-26 | v1.6 (P98, art-director, asked for by Michael): the app icon, three files in `assets/art/svg/icon/` (the 512 px square and the two 432 px adaptive layers), the new section "App icon", its test and its credits row. Waiting for Michael's approval of the look; not wired into the exports. |

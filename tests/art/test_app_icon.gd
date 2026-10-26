@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## The app icon of plan row P98 (STYLE.md, "App icon"): the full square for the stores and the two
+## The app icon of plan row P98: the full square for the stores and the two
 ## 432 px layers of an Android adaptive icon (108 dp at 4x). Every file imports at its stated size
 ## and follows the technical rules, the foreground paints only inside the 288 px safe circle, the
 ## background and the square have no transparent edge, the warm sky is on the left and the cool sky
