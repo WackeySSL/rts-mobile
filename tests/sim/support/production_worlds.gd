@@ -49,6 +49,14 @@ static func add_headquarters(world: World) -> int:
 	return world.add_building(1, Worlds.type_of(world, "headquarters"), 2, 5)
 
 
+## Gives `player` a power plant with its top-left tile at (`col`, `line`) and returns its id. The
+## suites that pin the normal rate need a player whose buildings use no more power than it makes
+## (plan row P74): `base()` has that for player 1 until a second barracks joins, but not for player
+## 2, whose barracks alone uses 20 and nothing makes any.
+static func add_plant(world: World, player: int, col: int, line: int) -> int:
+	return world.add_building(player, Worlds.type_of(world, "power_plant"), col, line)
+
+
 ## One tick: `commands` (a plain Array: a caller reaches this through a preloaded script, so its
 ## literal is not typed) are stamped with the World's tick and `Sim.step` runs.
 static func step(world: World, commands: Array = []) -> void:
