@@ -40,6 +40,10 @@ Status note (2026-10-26, P68d docs; ADR 0022 accepted 2026-10-26): §3 carries a
 `MapView` is not drawn where ADR 0022's ground layer covers the map, and one runtime atlas per
 building part is how the one-texture draw-call rule holds for buildings. No accepted text changed.
 
+Status note (2026-10-26, P68e docs; ADR 0023 accepted 2026-10-26): §3 carries a dated status note:
+unit rigs and buildings are regions of one per-match atlas, y-sorted in one `WorldSort` node, with
+no `Team` node, and `MapView` draws under the iso transform. No accepted text changed.
+
 ## Context
 ROADMAP Phase 2 asks for three things:
 - "View interpolation at the display frame rate";
@@ -172,6 +176,18 @@ the text above stays as accepted; the z list above was already replaced by ADR 0
   `ImageTexture`, and `BuildingLayer` (base parts) and `BuildingRoofLayer` (roof parts and turret
   heads) each draw all their quads from it in one `_draw()`, one call each (ADR 0022 §2). The ground
   and the ore layers use the same atlas helper.
+
+Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26; the text and the note above stay
+as accepted and as dated; ADR 0022's two building layers do not come): from plan row P114 on, a
+unit rig is a `Node2D` in the y-sorted `WorldSort` (z 10) with the children `[Shadow, Ring, Hull,
+Turret]` (`Turret` for turreted types only), each a `Sprite2D` region of **one per-match atlas**
+with the team colours baked in and white modulate (ADR 0023 §2, §5); there is no `Team` node, and
+a region changes only when the 16-step (infantry 8-step) direction index changes. Buildings are
+one sprite per row in the same sort (plan row P115), a defence's head a child. The one-texture rule
+holds because every sorted sprite comes from that one page, which `IsoAtlas` builds at match start
+with the runtime atlas helper and its 2 px gutter. `MapView` stays the map's model (`colors`,
+`tiles`, the bake, `image()`) and draws its bake under the iso transform where no ground layer
+covers it; ADR 0023's iso `GroundLayer` (plan row P116) replaces ADR 0022's square one.
 
 ### 4. Headless performance test (`tests/perf/`, qa-engineer)
 - **Scenario:** `data/scenarios/perf_arena.tres` (data lands in P27b, so every sim PR can measure

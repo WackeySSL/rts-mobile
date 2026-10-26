@@ -384,6 +384,8 @@ func _assert_hud_resolves(why: String) -> void:
 	assert_that(box.draw_colors()[&"stroke"]).is_equal(STROKE)
 	var overrides: Array[String] = []
 	for control: Control in hud.find_children("*", "Control", true, false):
+		if not control.get_parent().get_children().has(control):
+			continue  # The engine's own child: a ScrollContainer's focus panel has its override.
 		for override: String in _overrides(control):
 			overrides.append("%s: %s" % [control.get_path(), override])
 	assert_array(overrides).override_failure_message(why).is_empty()

@@ -46,6 +46,9 @@ Tick a box in the PR that meets the criterion.
 - [ ] Ore fields, harvester loop, refinery and credits
 - [ ] Production of all MVP units with rally points
 - [ ] Victory and defeat conditions and a result screen
+- [ ] Two original factions with their own buildings, units and superweapon (ADR 0023): the Derrick League and the
+  Lumen Accord, each with eight buildings, six unit types and one superweapon, both playable; the build menu shows only the
+  player's own faction
 - [ ] Gate: a full match can be played against a dummy opponent that only builds and defends
 
 ## Phase 4: Opponent AI and balance

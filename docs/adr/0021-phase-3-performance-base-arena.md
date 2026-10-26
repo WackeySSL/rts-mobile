@@ -20,6 +20,10 @@ exports of the lead's `game/core/PerfGateDef.gd`, whose exact field list the lea
 `tests/core/test_timing_probe.gd` pins and so gains the two names in the same row (the plan's
 exception 15). Nothing here is applied in code yet.
 
+Status note (2026-10-26, P68e docs; ADR 0023 accepted 2026-10-26, Michael's answer 3 A): §1 and §2
+carry dated status notes: the perf arena's golden hashes move once more, in plan row P109, and
+the base arena holds both factions and fires each superweapon once. No threshold changes.
+
 ## Context
 - CLAUDE.md rule 6: 150 units at 60 fps on a mid-range 2021 Android phone; the gate phone is
   Michael's own phone for good, with the divided limits (ADR 0011's acceptance note, ADR 0012 §4,
@@ -52,6 +56,14 @@ ratchet of the combat tick. Its golden hashes move only with a hash layout chang
 arena tick over it stops and asks qa-engineer, who raises it in its own PR with before and after
 numbers and the reason (the three new phases' idle cost on the arena is the expected case).
 
+Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26, Michael's answer 3 A; the text
+above stays as accepted): the perf arena's golden hashes move once more after P70, in plan row
+P109 (ADR 0023 §10): the strike state adds two row columns and three player arrays to the state
+hash (`STATE_FORMAT` 4), so `golden_hex`, `TICK_0_SEED_1` and `KNOWN_FORMATS` are re-pinned under
+exception 10 with that reason, and P65q's byte line moves once. The arena's units behave
+bit-identically, and every other Phase 3 row, P106's faction column included, leaves the hashes as
+they are. Its role, scenario, seed, ticks and `budget.cfg` are unchanged.
+
 ### 2. A base arena measures Phase 3's load
 - A second perf scenario, `data/scenarios/perf_bases.tres` with its own map: two compact bases
   with every building type, two ore fields and four working harvesters per side, both unit queues
@@ -67,6 +79,13 @@ numbers and the reason (the three new phases' idle cost on the arena is the expe
   last Phase 3 sim row, a `[bases]` section in `budget.cfg`, calibrated as P49b did (1.5 x the worst
   native min-of-3 of 11 runs).
 - The job summary (release-engineer) shows the `PERF bases` lines next to `PERF sim`.
+
+Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26, Michael's answer 3 A; the text
+above stays as accepted): the base arena (plan row P80) holds both factions: side 1 the Derrick
+League, side 2 the Lumen Accord, every building type of both (about 30 buildings) and 150 mobile
+rows, and one scenario order fires each superweapon once (`OrderDef` gains `SUPERWEAPON`). P93
+pins its golden hashes after the last sim row of plan revision 5. The arena scene gets the iso
+layers, and its card's draw calls are judged against ADR 0023 §2's forecast (13) plus the HUD.
 
 ### 3. The phone card runs both
 The perf arena scene gets a scenario choice (perf arena, base arena), and the dev menu a route to

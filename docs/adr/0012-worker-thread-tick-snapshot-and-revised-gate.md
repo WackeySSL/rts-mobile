@@ -87,6 +87,10 @@ Status note (2026-10-26, P68d docs; ADR 0022 accepted 2026-10-26): §6 carries a
 ADR 0022 §2 extends the z table (building base and roof parts, the fog moved to 110, the bars to
 112, the ghost and rally layers) and the draw-call forecast. No accepted text changed.
 
+Status note (2026-10-26, P68e docs; ADR 0023 accepted 2026-10-26): §6 carries a dated status note:
+ADR 0023 §2's z table and one-atlas rule replace the z bands per type and owner and ADR 0022's
+table; the forecast is 13. No accepted text changed.
+
 ## Context
 The Phase 2 plan (P26s) says that a contract the phone probe contradicts changes through a new ADR
 before P34 starts. The probe ran on 2026-10-12. The full reports are comments on PR #35.
@@ -887,6 +891,19 @@ roofs with their turret heads 1 and the offline glyphs 1, each building part dra
 runtime atlas with tint and dims as quad colours: 32 calls for the base arena (six mobile types,
 two owners, three turret types), under the 40 trigger and the ceiling of 60 (ADR 0022 §2). The
 "Markers" and "What else batches" items above stand.
+
+Status note (2026-10-26, P68e docs, ADR 0023 accepted 2026-10-26; the text and the note above stay
+as accepted and as dated): from plan row P114 on, ADR 0023 §2's z table replaces both the z bands
+per type and owner above and the P68d note's table (ADR 0022 is superseded): map and ground 0,
+decals 1, unit shadows 2, rings 3, fog 4, last-seen ghosts 5, `WorldSort` 10 (every unit rig and
+building, y-sorted), 20 reserved for air units, bars 30, projectiles 40, effects 50, the placement
+ghost 60, rally flags 61 and markers 70, in both scenes. Bands and y-sorting exclude each other (z
+outranks the sort), so batching holds through **one per-match atlas page** with the team colours
+baked in and white modulate for every sorted sprite: the probe's "one texture, one tint" case, about
+one call for the sorted world however types, owners and depths interleave. Nothing tints a sorted
+sprite on its own (low power shows a glyph, ADR 0023 §2). The expected count for the base arena is
+**13** (ADR 0023 §2); the MultiMesh trigger (40) and the ceiling (60) stand, and P114 counts the
+calls with this ADR's llvmpipe method.
 
 ### 7. What stays, and when GDExtension comes
 - **Unchanged:**

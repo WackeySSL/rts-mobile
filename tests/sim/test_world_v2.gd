@@ -47,7 +47,7 @@ func test_the_new_arrays_are_listed_by_name_in_their_lists() -> void:
 	var types: Array[String] = ["type_foot_w", "type_foot_h", "type_cost", "type_build_ticks"]
 	types.append_array(["type_tab", "type_requires", "type_produces", "type_power"])
 	types.append_array(["type_harvest", "type_free_unit", "type_dock_x", "type_dock_y"])
-	types.append_array(["type_exit_x", "type_exit_y"])
+	types.append_array(["type_exit_x", "type_exit_y", "type_faction"])
 	assert_array(World.TYPE_ARRAYS.slice(11)).is_equal(types)
 	var players: Array[String] = ["credits", "defeated_tick", "had_producer", "stat_built"]
 	players.append_array(["stat_lost_units", "stat_lost_buildings", "stat_harvested"])
