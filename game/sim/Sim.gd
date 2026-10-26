@@ -22,9 +22,10 @@ const MILLI_PER_TILE: int = 1000
 ## (ECONOMY: `Power.run`, `Harvest.run`), the queues advance and the match outcome is checked
 ## (PRODUCTION: `Production.run`, `Outcome.run`), the last-seen records update (MEMORY:
 ## `LastSeen.run`; ADR 0017 section 5), and the tick counts. Of those five modules `Power.run`
-## rebuilds the derived row lists (P71) and `Production.run` advances the unit queues (P73); the
-## others are skeletons until plan rows P74 to P77. A probe gets `begin()` first and a `mark` after
-## each phase that exists (ADR 0007 section 4); it never sees the World.
+## rebuilds the derived row lists (P71), `Harvest.run` runs the ore and the harvest loop (P75) and
+## `Production.run` advances the unit queues (P73); the others are skeletons until plan rows P74 to
+## P77. A probe gets `begin()` first and a `mark` after each phase that exists (ADR 0007 section 4);
+## it never sees the World.
 static func step(world: World, commands: Array[Command], probe: SimProbe = null) -> void:
 	if probe != null:
 		probe.begin()

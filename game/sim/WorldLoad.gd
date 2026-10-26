@@ -54,6 +54,9 @@ static func from_scenario(scenario: ScenarioDef, rng: DetRandom = null) -> World
 				x = at.x
 				y = at.y
 			world.add_unit(spawn.owner, type, x, y)
+			# A harvester that a scenario spawns starts in SEEK, with no home (ADR 0018 section 3).
+			if world.type_harvest[type] > 0:
+				world.harvest_mode[world.unit_count() - 1] = World.HarvestMode.SEEK
 			column += 1
 			if column == columns:
 				column = 0
