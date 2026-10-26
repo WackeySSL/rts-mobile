@@ -116,6 +116,24 @@ func test_the_numbers_are_in_the_bar_only_where_it_is_wide_enough() -> void:
 	assert_bool((_node("PowerText") as Control).visible).is_true()
 
 
+## A turn changes the bar's width without a new snapshot, so only the bar's own `resized` makes
+## the numbers follow it (the fit at the end of `_apply_dp` still reads the old width, as a
+## container sorts later). Portrait gives the bar room for numbers that landscape has none for.
+func test_the_numbers_follow_the_bar_when_a_turn_changes_its_width() -> void:
+	await _open()
+	_publish(2000, 99999, 99999)
+	await await_idle_frame()
+	var landscape_px: float = (_node("PowerBar") as Control).size.x
+	assert_bool((_node("PowerText") as Control).visible).is_false()
+	await _turn(&"android_6in_portrait")
+	var portrait_px: float = (_node("PowerBar") as Control).size.x
+	assert_float(portrait_px).is_greater(landscape_px)  # The turn moved the bar: not vacuous.
+	assert_bool((_node("PowerText") as Control).visible).is_true()
+	await _turn(&"android_6in")
+	assert_float((_node("PowerBar") as Control).size.x).is_equal_approx(landscape_px, 1.0)
+	assert_bool((_node("PowerText") as Control).visible).is_false()
+
+
 func test_a_snapshot_without_player_columns_shows_zeros() -> void:
 	await _open()
 	_runner.snapshot = MatchSnapshot.new()
@@ -182,6 +200,16 @@ func _credits() -> Label:
 
 func _node(node_name: String) -> Node:
 	return _sidebar.find_child(node_name, true, false)
+
+
+## Turns the window to a profile's size, with its metrics, and lets the handlers and the
+## containers settle: a turn runs its handlers twice and the containers sort a frame later.
+func _turn(profile_name: StringName) -> void:
+	var metrics: UiMetrics = UiProfiles.by_name(profile_name)
+	UiScale.set_override(metrics)
+	get_window().size = metrics.window_size
+	await await_idle_frame()
+	await await_idle_frame()
 
 
 ## A new main scene on the 6-inch phone, its match paused, with the Commands caught.
