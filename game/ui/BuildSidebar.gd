@@ -16,8 +16,12 @@ extends PanelContainer
 ## open tab is the lighter plate with the thick bar at its foot (theme `SidebarTab`).
 ## Power: the bar is the share of the power made that is in use. On low power (`power_used` above
 ## `power_made`) it is full and amber and the glyph is the warning triangle: a shape and a colour.
+## Its numbers are centred in the bar, white with a dark edge across the green fill and the dark
+## track, and dark on the amber (`PowerNumber`, `PowerNumberLow`).
+## The credits keep the width of `CREDITS_DIGITS` digits, so the bar does not move when they gain or
+## lose a digit.
 ## The look is the inherited theme's (`game/ui/theme.tres`: `BuildSidebar`, `SidebarTab`,
-## `PowerBar`, `PowerBarLow`, `NumberLabel`), the sizes are dp.
+## `PowerBar`, `PowerBarLow`, `PowerNumber`, `PowerNumberLow`, `NumberLabel`), the sizes are dp.
 
 ## Emitted when another tab opens, by a tap or by `select_tab`.
 signal tab_selected(tab: int)
@@ -28,16 +32,24 @@ const TAB_VARIATION: StringName = &"SidebarTab"
 const BAR_VARIATION: StringName = &"PowerBar"
 const BAR_LOW_VARIATION: StringName = &"PowerBarLow"
 const NUMBER_VARIATION: StringName = &"NumberLabel"
+const BAR_NUMBER_VARIATION: StringName = &"PowerNumber"
+const BAR_NUMBER_LOW_VARIATION: StringName = &"PowerNumberLow"
 ## The tab names by `World.Tab`; the icon of a tab is `tab_<name in lower case>`.
 const TAB_NAMES: PackedStringArray = ["Structures", "Infantry", "Vehicles"]
 const STATUS_DP: float = 32.0  ## The credits and power line.
 const GLYPH_DP: float = 24.0
-const BAR_DP: Vector2 = Vector2(24.0, 24.0)  ## The bar's least size; it takes the rest of the line.
+## The bar's least size; it takes the rest of the line. It is taller than a line of its numbers
+## (18 dp text is about 25 dp), which are centred in it.
+const BAR_DP: Vector2 = Vector2(24.0, 28.0)
 const TAB_DP: float = 48.0
 const TAB_ICON_DP: float = 32.0
 const ITEMS_DP: float = 64.0  ## The height of the slot for one row of item tiles.
 const GAP_DP: float = 8.0
 const TEXT_PAD_DP: float = 4.0  ## Each side of the numbers in the bar.
+const TEXT_EDGE_DP: float = 2.0  ## The dark edge of the numbers on the green bar.
+## The credits' slot: 99 999. The rules set no ceiling (a snapshot holds an int32); a bigger bank
+## widens the line by a digit once.
+const CREDITS_DIGITS: int = 5
 
 @export var runner: MatchRunner
 
@@ -84,6 +96,7 @@ func _exit_tree() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_THEME_CHANGED and _credits_glyph != null and _power_glyph != null:
 		_tint()
+		_fit_credits()
 
 
 ## The published snapshot is read when it is a new one (a tick, or a new match): a frame has at
@@ -167,8 +180,11 @@ func _build_status() -> void:
 	_min_dp(_bar, BAR_DP)
 	_status.add_child(_bar)
 	_bar_text.name = "PowerText"
-	_bar_text.theme_type_variation = NUMBER_VARIATION
-	_bar_text.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_bar_text.theme_type_variation = BAR_NUMBER_VARIATION
+	# The full width and the middle of the bar. A line of text can be taller than the bar at some
+	# size: it then grows up and down alike, never down alone.
+	_bar_text.set_anchors_preset(Control.PRESET_HCENTER_WIDE)
+	_bar_text.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_bar_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_bar_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_bar_text.clip_text = true  # It adds nothing to the line's width: it is shown where it fits.
@@ -204,6 +220,7 @@ func _show(credits: int, made: int, used: int) -> void:
 	if low != _low:
 		_low = low
 		_bar.theme_type_variation = BAR_LOW_VARIATION if low else BAR_VARIATION
+		_bar_text.theme_type_variation = BAR_NUMBER_LOW_VARIATION if low else BAR_NUMBER_VARIATION
 		_power_glyph.texture = load(ICON_ART % ("glyph_low_power" if low else "glyph_power"))
 		_tint()
 	_fit_bar_text()
@@ -213,6 +230,20 @@ func _show(credits: int, made: int, used: int) -> void:
 func _tint() -> void:
 	_credits_glyph.modulate = get_theme_color(&"credits", THEME_TYPE)
 	_power_glyph.modulate = get_theme_color(&"warning" if _low else &"power", THEME_TYPE)
+
+
+## The credits' least width is that of the widest `CREDITS_DIGITS` digits at the theme's font and
+## size, so the line (and the bar, which takes the rest) keeps still as the credits change length.
+func _fit_credits() -> void:
+	var font: Font = _credits.get_theme_font(&"font")
+	var font_px: int = _credits.get_theme_font_size(&"font_size")
+	var widest: float = 0.0
+	for digit: String in "0123456789":
+		var slot: String = digit.repeat(CREDITS_DIGITS)
+		widest = maxf(
+			widest, font.get_string_size(slot, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_px).x
+		)
+	_credits.custom_minimum_size = Vector2(ceilf(widest), 0.0)
 
 
 ## The numbers show in the bar where the bar is wider than they are; else the bar speaks alone.
@@ -233,8 +264,10 @@ func _apply_dp() -> void:
 	_status.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP / 2.0)))
 	for button: Button in _tabs:
 		button.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(TAB_ICON_DP)))
+	_bar_text.add_theme_constant_override("outline_size", roundi(UiScale.dp(TEXT_EDGE_DP)))
 	_place()
 	_fit_names(gap)
+	_fit_credits()
 	_fit_bar_text()
 
 

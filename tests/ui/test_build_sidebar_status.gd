@@ -10,6 +10,9 @@ const ICONS: String = "res://assets/art/svg/icons/%s.svg"
 ## shows them.
 const OTHER_CREDITS: int = 9000
 const OTHER_POWER: int = 777
+## WCAG 2.1 AA: 4.5 for text, 3 for large text (18 pt or 14 pt bold).
+const AA_TEXT: float = 4.5
+const AA_LARGE_TEXT: float = 3.0
 
 var _window_size_before: Vector2i
 var _main: Node2D
@@ -103,15 +106,17 @@ func test_the_glyphs_have_their_icons_and_their_tints_from_the_theme() -> void:
 
 ## The numbers are in the bar where it is wide enough for them and left out where it is not: the
 ## bar and the glyph still say it. A bar follows its line, so a frame runs before the look is read.
+## The credits keep a five-digit slot, so on the 6-inch phone in landscape "40/60" fits and
+## "40/100" does not.
 func test_the_numbers_are_in_the_bar_only_where_it_is_wide_enough() -> void:
 	await _open()
-	_publish(2000, 100, 40)
+	_publish(2000, 60, 40)
 	await await_idle_frame()
 	assert_bool((_node("PowerText") as Control).visible).is_true()
 	_publish(2000, 99999, 99999)
 	await await_idle_frame()
 	assert_bool((_node("PowerText") as Control).visible).is_false()
-	_publish(2000, 100, 40)
+	_publish(2000, 60, 40)
 	await await_idle_frame()
 	assert_bool((_node("PowerText") as Control).visible).is_true()
 
@@ -132,6 +137,76 @@ func test_the_numbers_follow_the_bar_when_a_turn_changes_its_width() -> void:
 	await _turn(&"android_6in")
 	assert_float((_node("PowerBar") as Control).size.x).is_equal_approx(landscape_px, 1.0)
 	assert_bool((_node("PowerText") as Control).visible).is_false()
+
+
+## The numbers are in the middle of the bar, not hanging from its top: a line of text is taller
+## than the bar's inside, so a label that grew only downwards rested on the bottom border. Their
+## rect is inside the bar's and has the same centre, in both states and on every screen.
+func test_the_numbers_sit_inside_the_bar_and_centred_in_it_at_every_size() -> void:
+	await _open()
+	for profile: StringName in _every_profile():
+		await _turn(profile)
+		for used: int in [4, 9]:  # Of 6 made: power to spare, then low power.
+			_publish(2000, 6, used)
+			await await_idle_frame()
+			var why: String = "%s, %d/6 (%s)" % [profile, used, get_window().size]
+			var text: Control = _node("PowerText")
+			assert_bool(text.visible).override_failure_message(why + ": hidden").is_true()
+			var bar: Rect2 = _rect("PowerBar")
+			var numbers: Rect2 = _rect("PowerText")
+			var inside: String = "%s: numbers %s in the bar %s" % [why, numbers, bar]
+			assert_bool(bar.grow(0.5).encloses(numbers)).override_failure_message(inside).is_true()
+			var off: float = absf(numbers.get_center().y - bar.get_center().y)
+			var centred: String = "%s: numbers %s px off the bar's middle" % [why, off]
+			assert_float(off).override_failure_message(centred).is_less_equal(UiScale.dp(1.0))
+
+
+## The numbers' colours are the theme's and read against what is under them (WCAG): on the amber
+## of low power the bar is full, so all of the text is on amber and is dark; on the green bar the
+## text crosses the fill and the dark track, so it is white with a dark edge that reads on both.
+func test_the_numbers_read_on_the_amber_and_on_the_green() -> void:
+	await _open()
+	var bar: ProgressBar = _node("PowerBar")
+	var text: Label = _node("PowerText")
+	_publish(0, 100, 130)
+	var amber: Color = (bar.get_theme_stylebox(&"fill") as StyleBoxFlat).bg_color
+	var dark: Color = text.get_theme_color(&"font_color")
+	assert_float(_contrast(dark, amber)).is_greater_equal(AA_TEXT)
+	assert_float(text.get_theme_color(&"font_outline_color").a).is_equal(0.0)  # No edge on amber.
+	_publish(0, 100, 40)
+	var green: Color = (bar.get_theme_stylebox(&"fill") as StyleBoxFlat).bg_color
+	var track: Color = (bar.get_theme_stylebox(&"background") as StyleBoxFlat).bg_color
+	var white: Color = text.get_theme_color(&"font_color")
+	var edge: Color = text.get_theme_color(&"font_outline_color")
+	assert_that(green).is_not_equal(amber)  # The look did change with the state.
+	assert_float(_contrast(white, green)).is_greater_equal(AA_LARGE_TEXT)
+	assert_float(_contrast(white, track)).is_greater_equal(AA_TEXT)
+	assert_float(_contrast(edge, white)).is_greater_equal(AA_TEXT)
+	assert_float(_contrast(edge, green)).is_greater_equal(AA_TEXT)
+	assert_float(edge.a).is_equal(1.0)
+	assert_int(text.get_theme_constant(&"outline_size")).is_greater_equal(1)
+
+
+## The credits keep one width, so the bar does not move when they gain or lose a digit.
+func test_the_bar_does_not_move_when_the_credits_gain_a_digit() -> void:
+	await _open()
+	for profile: StringName in [&"android_6in", &"web_tablet", &"android_6in_portrait"]:
+		await _turn(profile)
+		for pair: Vector2i in [
+			Vector2i(999, 1000), Vector2i(9999, 10000), Vector2i(1, 99999), Vector2i(0, 12345)
+		]:
+			_publish(pair.x, 100, 40)
+			await await_idle_frame()
+			var before: Dictionary[String, Rect2] = _status_rects()
+			_publish(pair.y, 100, 40)
+			await await_idle_frame()
+			assert_str(_credits().text).is_equal(str(pair.y))  # The number did change.
+			var after: Dictionary[String, Rect2] = _status_rects()
+			for node_name: String in before:
+				var why: String = "%s: %s from %d to %d" % [profile, node_name, pair.x, pair.y]
+				assert_that(after[node_name]).override_failure_message(why).is_equal(
+					before[node_name]
+				)
 
 
 func test_a_snapshot_without_player_columns_shows_zeros() -> void:
@@ -184,6 +259,45 @@ func _craft(credits: int, made: int, used: int) -> MatchSnapshot:
 func _publish(credits: int, made: int, used: int) -> void:
 	_runner.snapshot = _craft(credits, made, used)
 	_sidebar.refresh()
+
+
+## The rects of the status line's pieces, by name.
+func _status_rects() -> Dictionary[String, Rect2]:
+	var rects: Dictionary[String, Rect2] = {}
+	for node_name: String in ["CreditsGlyph", "Credits", "PowerGlyph", "PowerBar"]:
+		rects[node_name] = _rect(node_name)
+	return rects
+
+
+func _rect(node_name: String) -> Rect2:
+	return (_node(node_name) as Control).get_global_rect()
+
+
+## Every device profile, landscape and then portrait.
+func _every_profile() -> Array[StringName]:
+	var names: Array[StringName] = []
+	for profile: StringName in UiProfiles.all():
+		names.append(profile)
+	for profile: StringName in UiProfiles.portrait():
+		names.append(profile)
+	return names
+
+
+## WCAG 2.1 relative luminance of an sRGB colour.
+static func _luminance(color: Color) -> float:
+	var linear: Array[float] = []
+	for channel: float in [color.r, color.g, color.b]:
+		linear.append(
+			channel / 12.92 if channel <= 0.04045 else pow((channel + 0.055) / 1.055, 2.4)
+		)
+	return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+## WCAG 2.1 contrast ratio of two colours, 1 to 21.
+static func _contrast(first: Color, second: Color) -> float:
+	var light: float = maxf(_luminance(first), _luminance(second))
+	var dark: float = minf(_luminance(first), _luminance(second))
+	return (light + 0.05) / (dark + 0.05)
 
 
 func _low() -> bool:

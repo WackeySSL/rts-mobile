@@ -20,7 +20,8 @@
 ; anti_aliasing_size (the soft edge, 1 px). Scale a constant in HudTheme.scaled() before putting
 ; one here. An entry that stays in base px is listed in metadata/base_px by its path in this file.
 ; Type variations (DevButton, NumberLabel, SelectionPanel, PerfCard, BuildSidebar, SidebarTab, PowerBar,
-; PowerBarLow) are set by theme_type_variation on the node, once, in main.tscn or at build in the script.
+; PowerBarLow, PowerNumber, PowerNumberLow) are set by theme_type_variation on the node, in main.tscn
+; or at build in the script (the power bar's two pairs switch with the low-power state).
 ; The build sidebar's tints (the colours of BuildSidebar, STYLE.md "Icons and glyphs") are read by
 ; BuildSidebar.gd with get_theme_color; its tabs get theirs from the icon colours of SidebarTab.
 [gd_resource type="Theme" format=3]
@@ -158,4 +159,16 @@ PowerBar/styles/fill = SubResource("StyleBoxFlat_power")
 PowerBarLow/base_type = &"ProgressBar"
 PowerBarLow/styles/background = SubResource("StyleBoxFlat_track")
 PowerBarLow/styles/fill = SubResource("StyleBoxFlat_low_power")
+; The numbers in the power bar, 18 dp (the least a HUD number may be). On the green bar they sit across
+; the fill and the dark track: white with a dark edge (the size of the edge is set in code, in dp), 3.2:1
+; against the fill without the edge. On low power the bar is full and amber under all of them: dark and
+; with no edge, 9:1 against the amber (WCAG AA asks 4.5:1).
+PowerNumber/base_type = &"NumberLabel"
+PowerNumber/colors/font_color = Color(1, 1, 1, 1)
+PowerNumber/colors/font_outline_color = Color(0.06, 0.08, 0.11, 1)
+PowerNumber/font_sizes/font_size = 18
+PowerNumberLow/base_type = &"NumberLabel"
+PowerNumberLow/colors/font_color = Color(0.06, 0.08, 0.11, 1)
+PowerNumberLow/colors/font_outline_color = Color(0.06, 0.08, 0.11, 0)
+PowerNumberLow/font_sizes/font_size = 18
 metadata/base_px = PackedStringArray("DevButton/font_sizes/font_size")
