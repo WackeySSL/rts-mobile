@@ -121,8 +121,8 @@ func test_the_foreground_is_a_large_tank_with_transparent_corners() -> void:
 		Vector2i(0, 0), Vector2i(431, 0), Vector2i(0, 431), Vector2i(431, 431)
 	]:
 		assert_float(image.get_pixelv(corner).a).override_failure_message(str(corner)).is_equal(0.0)
-	# The turret and the hull are solid at the centre of the canvas and under it.
-	for point: Vector2i in [Vector2i(240, 215), Vector2i(216, 268)]:
+	# The turret, the deck of the hull and the glacis under them are solid.
+	for point: Vector2i in [Vector2i(190, 185), Vector2i(240, 215), Vector2i(216, 245)]:
 		assert_float(image.get_pixelv(point).a).override_failure_message(str(point)).is_equal(1.0)
 
 
