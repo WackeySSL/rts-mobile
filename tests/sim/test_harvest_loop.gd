@@ -183,6 +183,73 @@ func test_a_full_load_goes_home_before_more_ore() -> void:
 	assert_int(world.ore_amount[0]).is_equal(20)
 
 
+## 16 x 10 tiles with one ore cell at (13, 7) and the refinery of `_trip_world` (id 1, dock (3 500,
+## 5 500)): the ore lies the other way from the dock for a harvester at (8 500, 7 500).
+func _far_world() -> World:
+	var world: World = Worlds.world(Worlds.grass(16, 10, [Vector2i(13, 7)]))
+	Worlds.add_refinery(world, 1, 2, 2)
+	world.ore_amount[0] = 20
+	return world
+
+
+## Gives unit `id` a MOVE to (x, y) with the columns Sim._apply_point writes, as a walk to its cell.
+func _walk_to(world: World, id: int, x: int, y: int) -> void:
+	var row: int = world.index_of(id)
+	world.order[row] = World.Order.MOVE
+	world.goal_x[row] = x
+	world.goal_y[row] = y
+	world.group_cell[row] = -1
+	Movement.reset_nav(world, PackedInt32Array([row]), World.NavMode.DIRECT)
+
+
+func test_a_full_load_in_seek_drops_the_walk_to_the_cell_and_heads_for_the_dock_at_once() -> void:
+	var world: World = _far_world()
+	var id: int = Worlds.add_harvester(world, 1, 8500, 7500, SEEK, 0, 1, 500)
+	var row: int = world.index_of(id)
+	_walk_to(world, id, 13500, 7500)
+	Worlds.step(world)
+	# The same step turns it to RETURN and gives the order to the dock; the ore cell is forgotten.
+	assert_array([Worlds.mode_of(world, id), world.order[row]]).is_equal([RETURN, World.Order.MOVE])
+	assert_array([world.goal_x[row], world.goal_y[row]]).is_equal([DOCK_AT.x, DOCK_AT.y])
+	assert_array([world.group_cell[row], world.nav_mode[row]]).is_equal([-1, World.NavMode.DIRECT])
+	# From here on it never walks back toward the ore (east of where it was after the first step),
+	# and it pays its 500 credits at the refinery.
+	var east: int = world.pos_x[row]
+	var guard: int = 600
+	while world.credits[1] < 2000 + 500 and guard > 0:
+		Worlds.step(world)
+		assert_bool(world.pos_x[row] <= east).is_true()
+		guard -= 1
+	assert_array([world.credits[1], world.stat_harvested[1]]).is_equal([2500, 500])
+	assert_int(world.ore_amount[0]).is_equal(20)
+
+
+func test_a_full_load_in_seek_with_no_order_at_the_dock_keeps_none_and_unloads_next_tick() -> void:
+	var world: World = _far_world()
+	var id: int = Worlds.add_harvester(world, 1, DOCK_AT.x, DOCK_AT.y, SEEK, 0, 1, 500)
+	var row: int = world.index_of(id)
+	Worlds.step(world)
+	assert_array([Worlds.mode_of(world, id), world.order[row]]).is_equal([RETURN, World.Order.IDLE])
+	Worlds.step(world)
+	assert_array([Worlds.mode_of(world, id), world.order[row]]).is_equal([UNLOAD, World.Order.IDLE])
+
+
+func test_a_full_load_in_seek_without_a_refinery_of_its_own_chooses_one_in_the_same_step() -> void:
+	var world: World = _far_world()
+	var enemy: int = Worlds.add_refinery(world, 2, 10, 6)  # Nearer to the harvester than id 1.
+	var stale: int = Worlds.add_harvester(world, 1, 8500, 7500, SEEK, 0, 0, 500)
+	var foreign: int = Worlds.add_harvester(world, 1, 8500, 7500, SEEK, 0, enemy, 500)
+	for id: int in [stale, foreign]:
+		_walk_to(world, id, 13500, 7500)
+	Worlds.step(world)
+	for id: int in [stale, foreign]:
+		var row: int = world.index_of(id)
+		assert_array([Worlds.mode_of(world, id), world.home[row], world.order[row]]).is_equal(
+			[RETURN, 1, World.Order.MOVE]
+		)
+		assert_array([world.goal_x[row], world.goal_y[row]]).is_equal([DOCK_AT.x, DOCK_AT.y])
+
+
 func test_a_harvester_far_from_its_cell_walks_there_before_it_mines() -> void:
 	var world: World = _trip_world()
 	var id: int = Worlds.add_harvester(world, 1, ORE_AT.x + 4000, ORE_AT.y)  # SEEK, no cell yet.

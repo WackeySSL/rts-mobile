@@ -9,7 +9,7 @@ extends RefCounted
 ## The loop gives orders the way `Sim._apply_point` does after `Formation.assign`: `order` MOVE, the
 ## goal, `group_cell` -1 and `Movement.reset_nav` with DIRECT. It reads no input and draws no random
 ## number. A row takes one step per tick and a change of mode counts from the next tick, except the
-## two that give an order at once (`_pick`, the end of UNLOAD).
+## three that give an order at once (`_pick`, the end of UNLOAD, SEEK's full load by `_go_home`).
 ##
 ## No column says "the order was given", so SEEK reads it off the state: every way into SEEK with an
 ## ore cell that has ore gives the order in the same step, hence a SEEK harvester that has no order
@@ -22,7 +22,8 @@ extends RefCounted
 
 ## ECONOMY: the ore grows back, then each harvester steps once. Ore: on a tick with
 ## `tick % ore_regrow_ticks == 0` every cell below `ore_cell_max` gains 1.
-## - SEEK: a full load goes to RETURN. A cell with ore and an ended order: within
+## - SEEK: a full load goes to RETURN with the order to the dock at once (`_go_home`), so a walk to
+##   an ore cell does not run its course first. A cell with ore and an ended order: within
 ##   `harvest_reach_milli` of its centre the harvester turns to MINE, farther it picks another
 ##   cell. No cell, or one that ran empty: `_pick`. With no cell at all (`harvest_slot` -1) it looks
 ##   only on ticks with `(tick + id) % harvest_retry_ticks == 0`.
@@ -75,7 +76,7 @@ static func run(world: World) -> void:
 		var has_ore: bool = slot >= 0 and slot < ore_count and amounts[slot] > 0
 		if mode == World.HarvestMode.SEEK:
 			if cargos[row] >= capacity[type]:
-				modes[row] = World.HarvestMode.RETURN  # A full load goes home before more ore.
+				_go_home(world, row)  # A full load goes home before more ore.
 			elif not has_ore:
 				# A cell that ran empty (slot kept) is replaced at once; no cell waits for its turn.
 				if slot >= 0 or (tick + ids[row]) % retry == 0:
@@ -152,6 +153,29 @@ static func _regrow(world: World) -> void:
 	for index: int in amounts.size():
 		if amounts[index] < most:
 			amounts[index] += 1
+
+
+## SEEK's full load: RETURN and, in the same step, the order to the dock of `home` while that
+## refinery still stands, whatever order the row has (RETURN itself gives the order only to a row
+## with none, so a MOVE to an ore cell would run its course first). A row with no order within
+## `dock_reach_milli` of the dock keeps none and RETURN turns it to UNLOAD next tick. A `home` that
+## is gone, is not a refinery of the owner or is 0 goes to `_choose`, as in RETURN.
+static func _go_home(world: World, row: int) -> void:
+	world.harvest_mode[row] = World.HarvestMode.RETURN
+	var at: int = world.index_of(world.home[row])
+	if at < 0 or world.owner[at] != world.owner[row]:
+		_choose(world, row)
+		return
+	var type: int = world.type_index[at]
+	if world.type_dock_x[type] == 0 and world.type_dock_y[type] == 0:
+		_choose(world, row)
+		return
+	var dock: Vector2i = _dock(world, at)
+	var dx: int = dock.x - world.pos_x[row]
+	var dy: int = dock.y - world.pos_y[row]
+	var reach: int = world.dock_reach_milli
+	if world.order[row] != World.Order.IDLE or dx * dx + dy * dy > reach * reach:
+		_order(world, row, dock)
 
 
 ## SEEK's scan: row `row` takes the ore cell with ore nearest to it (smallest squared distance, then
