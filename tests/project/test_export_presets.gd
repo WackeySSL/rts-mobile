@@ -140,12 +140,17 @@ func test_web_preset_exports_the_project_icon_as_the_favicon() -> void:
 	assert_bool(config.get_value("preset.0.options", "html/export_icon")).is_true()
 
 
-## The size of an icon file as the Android exporter reads it: straight through Godot's image
-## loader, which has ThorVG draw an SVG at its own width and height. A res:// path would load too,
-## but with a warning that it does not work in an export build. A missing or unreadable file gives
-## a zero size.
+## The size of an icon file as the Android exporter reads it. The exporter's icon loader
+## (EditorExportPlatform._load_icon_or_splash_image, called for every launcher icon option and the
+## splash icon) loads the imported Texture2D and takes its image, so the file's .import settings
+## (svg/scale, process/size_limit) decide the size; only when that fails does it fall back to the
+## raw image loader. This loads the texture the same way. A missing or unreadable file gives a zero
+## size.
 func _source_size(path: String) -> Vector2i:
-	if not FileAccess.file_exists(path):
+	if not ResourceLoader.exists(path):
 		return Vector2i.ZERO
-	var image: Image = Image.load_from_file(ProjectSettings.globalize_path(path))
+	var texture: Texture2D = load(path) as Texture2D
+	if texture == null:
+		return Vector2i.ZERO
+	var image: Image = texture.get_image()
 	return Vector2i.ZERO if image == null else image.get_size()
