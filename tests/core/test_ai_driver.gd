@@ -53,6 +53,24 @@ func test_due_controllers_think_in_player_order_each_on_a_fresh_view_of_its_play
 	assert_array([world.tick, controllers.size(), world.dropped_commands]).is_equal([30, 4, 0])
 
 
+## Three players interleaved, every one due: each thinks exactly once, the players ascending and
+## the two of one player in list order, wherever they stand in the list.
+func test_interleaved_players_think_once_each_ascending_and_in_list_order_within_a_player() -> void:
+	var world: World = Rig.start()
+	var controllers: Array[AiController] = [
+		_recorder("d", 3, 1, 0),
+		_recorder("b", 2, 1, 0),
+		_recorder("e", 3, 1, 0),
+		_recorder("c", 2, 1, 0),
+		_recorder("a", 1, 1, 0),
+	]
+	var out: Array[Command] = []
+	AiDriver.think_all(world, controllers, out)
+	var order: Array = _journal.map(func(record: Array) -> Array: return record.slice(0, 2))
+	assert_array(order).is_equal([["a", 1], ["b", 2], ["c", 2], ["d", 3], ["e", 3]])
+	assert_int(out.size()).is_equal(5)
+
+
 ## A controller thinks on the ticks with `(tick + think_offset) % think_period == 0`: period 15
 ## and offset 8 (the shipped dummy's player 2) at ticks 7, 22 and 37 of 0 to 44; period 1 on every
 ## tick; a period of 0 or below counts as 1, so it thinks on every tick and divides by nothing.

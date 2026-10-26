@@ -6,7 +6,8 @@ extends RefCounted
 ## calls it right before MatchLoop.step with that list: TickJob.run() on the thread that runs the
 ## job (the worker in WORKER, the main thread in SYNC), after the human's drained commands, and
 ## every headless loop. So the loop stamps and records the AI's Commands like a player's, the
-## phone and CI cannot drift, and Replay.play needs no AI. Pure: no Node, no clock, no state.
+## phone and CI cannot drift, and Replay.play needs no AI. Pure: no Node, no clock, no state, and
+## no allocation of its own: a tick makes only the PlayerViews of the controllers that think.
 
 
 ## Lets every controller of `controllers` whose turn it is think, in ascending player order (two of
@@ -19,16 +20,26 @@ static func think_all(world: World, controllers: Array[AiController], out: Array
 	if world.match_end_tick > 0 or controllers.is_empty():
 		return
 	var tick: int = world.tick
-	var due: Array[AiController] = []
-	for controller: AiController in controllers:
-		if controller == null:
-			continue
-		if (tick + controller.think_offset) % maxi(controller.think_period, 1) != 0:
-			continue
-		# An insertion that keeps the list stable: after every controller of a lower or equal player.
-		var at: int = due.size()
-		while at > 0 and due[at - 1].player_id > controller.player_id:
-			at -= 1
-		due.insert(at, controller)
-	for controller: AiController in due:
-		controller.think(PlayerView.of(world, controller.player_id), out)
+	# A selection without scratch storage: each pass picks the due controller with the smallest
+	# (player, list index) after the one that thought last. O(n^2), with n at most 3 opponents.
+	var last: int = -1
+	var last_player: int = 0
+	while true:
+		var next: int = -1
+		for index: int in controllers.size():
+			var controller: AiController = controllers[index]
+			if controller == null:
+				continue
+			if (tick + controller.think_offset) % maxi(controller.think_period, 1) != 0:
+				continue
+			var player: int = controller.player_id
+			if last >= 0 and (player < last_player or (player == last_player and index <= last)):
+				continue
+			if next < 0 or player < controllers[next].player_id:
+				next = index
+		if next < 0:
+			return
+		var chosen: AiController = controllers[next]
+		last = next
+		last_player = chosen.player_id
+		chosen.think(PlayerView.of(world, last_player), out)
