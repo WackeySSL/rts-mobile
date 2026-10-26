@@ -78,7 +78,7 @@ Rules in the `admob-policy` skill: never ads in battle, rewarded by choice, capp
 after a match, banners only in menus, plus a Remove ads purchase.
 
 ## Art and audio
-Rules in the `svg-art-style` skill: flat top-down military-map look drawn as SVG code.
+Rules in the `svg-art-style` skill: a realistic, muted military look drawn as SVG code, with top-down units and textured ground and buildings in an oblique 3/4 view (ADR 0022).
 Audio: short radio chirps and mechanical sounds instead of voice acting, CC0 or generated.
 
 ## Not in version 1
