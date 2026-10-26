@@ -273,6 +273,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	unhashed.append_array(["flow_cells_per_tick", "native_phases"])  # The mask is never state (P54).
 	unhashed.append_array(["_map_digest", "_map_digest_version"])  # The map digest cache (P31b).
 	unhashed.append("_lists_version")  # The version the derived row lists were rebuilt at (P71).
+	unhashed.append("_power_version")  # The version the derived power totals were built at (P74).
 	unhashed.append_array(RULES.keys())
 	assert_array(World.UNHASHED_SCALARS).contains_exactly_in_any_order(unhashed)
 	var array_lists: Array = [World.ROW_ARRAYS, World.TYPE_ARRAYS, World.WEAPON_ARRAYS]
@@ -301,7 +302,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 		else:
 			others.append(column)
 	assert_int(packed.size()).is_equal(98)
-	assert_int(ints.size()).is_equal(53)
+	assert_int(ints.size()).is_equal(54)
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
 	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper
 	# objects and the bool `prepared`. The one non-state member, the kernels, is skipped by name, so

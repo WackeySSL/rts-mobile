@@ -16,15 +16,16 @@ extends RefCounted
 ## the defeat rules (plan row P76) decide whether a defeated player's queues go on.
 
 ## Hundredths of a tick: the resolution of `queue_progress` (a structural unit, like a tile's
-## 1,000 milli). A head gains this much per tick (ADR 0018 section 5; plan row P74 scales it on
-## low power).
+## 1,000 milli). A head gains this much per tick (ADR 0018 section 5), or `low_power_percent` of it
+## while its player is on low power (`Power.scaled`, ADR 0018 section 4).
 const PROGRESS_PER_TICK: int = 100
 
-## One PRODUCTION step: the head of every queue that has a producer gains PROGRESS_PER_TICK (never
-## past its goal). A done unit spawns (ProductionSpawn.spawn) and leaves the queue; one that cannot
-## spawn yet waits at 100 %, and so does a done structure, until PLACE or CANCEL. Players ascending,
-## then tabs. A queue without a producer waits. The loop runs over the arrays as sized, so a
-## hand-built World whose player_count was raised after prepare() has no queue for the late players.
+## One PRODUCTION step: the head of every queue that has a producer gains PROGRESS_PER_TICK, or
+## `low_power_percent` of it on low power (every tab, STRUCTURES included), never past its goal. A
+## done unit spawns (ProductionSpawn.spawn) and leaves the queue; one that cannot spawn yet waits at
+## 100 %, and so does a done structure, until PLACE or CANCEL. Players ascending, then tabs. A queue
+## without a producer waits. The loop runs over the arrays as sized, so a hand-built World whose
+## player_count was raised after prepare() has no queue for the late players.
 @warning_ignore("integer_division")
 static func run(world: World) -> void:
 	var counts: PackedInt32Array = world.queue_count
@@ -42,7 +43,8 @@ static func run(world: World) -> void:
 			continue
 		var head: int = items[queue * slots]
 		var done: int = build_ticks[head] * PROGRESS_PER_TICK
-		progress[queue] = mini(progress[queue] + PROGRESS_PER_TICK, done)
+		var step: int = Power.scaled(world, player, PROGRESS_PER_TICK)  # Less on low power.
+		progress[queue] = mini(progress[queue] + step, done)
 		if (
 			tab != World.Tab.STRUCTURES
 			and progress[queue] >= done

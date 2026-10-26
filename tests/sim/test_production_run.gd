@@ -92,6 +92,7 @@ func test_the_next_item_starts_from_zero_and_takes_its_own_ticks() -> void:
 ## others as they were.
 func test_the_queues_of_the_tabs_and_the_players_run_side_by_side() -> void:
 	var world: World = Rig.base()
+	Rig.add_plant(world, 2, 2, 12)  # Player 2's barracks needs power to run at the normal rate.
 	Rig.step(world, [Rig.queue(world, 1, "rifle_squad"), Rig.queue(world, 1, "light_tank", 1)])
 	Rig.run(world, 9)
 	Rig.step(world, [Rig.queue(world, 2, "rifle_squad")])
@@ -113,6 +114,7 @@ func test_the_queues_of_the_tabs_and_the_players_run_side_by_side() -> void:
 ## barracks adds no speed and no exit); when it dies the next one takes over with the progress kept.
 func test_the_primary_producer_is_the_lowest_id_building_of_the_tab() -> void:
 	var world: World = Rig.base()
+	Rig.add_plant(world, 1, 20, 6)  # A second barracks would put player 1 on low power.
 	var second: int = world.add_building(1, Worlds.type_of(world, "barracks"), 8, 6)
 	assert_int(second).is_greater(Rig.ENEMY_BARRACKS)
 	Rig.step(world, [Rig.queue(world, 1, "rifle_squad"), Rig.queue(world, 1, "rifle_squad", 1)])
@@ -182,6 +184,7 @@ func test_a_harvester_starts_in_seek_and_ignores_the_rally_point() -> void:
 ## other player's do not apply.
 func test_a_new_unit_goes_to_the_rally_point_by_the_rule_of_a_one_unit_move() -> void:
 	var world: World = Rig.base([Vector2i(15, 9)])
+	Rig.add_plant(world, 2, 2, 12)
 	world.rally_x[Rig.queue_of(1, INFANTRY)] = 15500
 	world.rally_y[Rig.queue_of(1, INFANTRY)] = 9500
 	world.rally_x[Rig.queue_of(1, VEHICLES)] = 20500

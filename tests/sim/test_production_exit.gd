@@ -152,6 +152,7 @@ func test_the_walk_asks_the_class_of_the_unit() -> void:
 func test_ring_tiles_off_the_map_are_skipped_and_not_counted() -> void:
 	var world: World = Worlds.world(GridWorld.grass(12, 8), Rig.IDS)
 	world.add_building(1, Worlds.type_of(world, "barracks"), 0, 0)
+	Rig.add_plant(world, 1, 8, 4)
 	_block(world, [Vector2i(1, 2), Vector2i(0, 2)])
 	_almost_done(world)
 	Rig.step(world)
