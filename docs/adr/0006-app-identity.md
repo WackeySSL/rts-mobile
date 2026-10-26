@@ -2,6 +2,12 @@
 
 Status: accepted, 2026-10-10 (Michael)
 
+Status note (2026-10-26, P26ai docs; ADR 0023 accepted 2026-10-26): the Phase 7 trademark search
+of "Consequences" also covers the names ADR 0023 brings: the factions (Derrick League, Lumen
+Accord) and the building, unit and superweapon names of its §6, §7 and §10. ADR 0023 §13 screens
+them against existing games only; it is no trademark search (plan revision 5, "Risks"). The title
+stays "Treadline". No accepted text changed.
+
 ## Context
 Google Play locks the applicationId at the first upload of an app, including an upload to
 internal testing. That upload happens in Phase 6, before the Phase 7 naming step in the
