@@ -75,9 +75,13 @@ func test_a_dummy_keeps_no_resource_and_no_node() -> void:
 
 
 func test_the_def_is_copied_when_the_dummy_is_made() -> void:
-	var def: AiDef = Rig.dummy_def().duplicate() as AiDef
+	# `def_with` gives the def an array of its own, so the in-place change below reaches no Resource
+	# that another test loads.
+	var def: AiDef = Rig.def_with(["power_plant", "refinery"])
 	var ai: DummyAi = DummyAi.create(def, 1, DetRandom.create(1, DetRandom.STREAM_AI_BASE + 1))
-	def.build_order = []
+	# The order is emptied in place: binding a new array to the property would leave the one that a
+	# dummy holding a reference kept, and the test would pass without a copy.
+	def.build_order.clear()
 	def.queue_target = 0
 	def.hq_type = &"nothing"
 	var world: World = Rig.start()

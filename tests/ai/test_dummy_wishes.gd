@@ -144,7 +144,9 @@ func test_one_think_queues_no_more_than_the_credits_pay() -> void:
 
 func test_an_id_the_roster_lacks_and_a_type_no_tab_builds_are_left_out() -> void:
 	var world: World = Rig.start()
-	var order: Array[String] = ["flying_pig", "headquarters", "power_plant"]
+	# The player owns one Headquarters, so the second one is a wish that no tab can serve: kept in
+	# the order, it would hold the strict order for good and the power plant would never be queued.
+	var order: Array[String] = ["flying_pig", "headquarters", "headquarters", "power_plant"]
 	var ai: DummyAi = Rig.ai_of(Rig.def_with(order), 1)
 	assert_array(_queued(world, _think(world, ai))).is_equal(["power_plant"])
 
