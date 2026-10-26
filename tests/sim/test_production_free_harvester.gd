@@ -118,6 +118,8 @@ func test_a_refinery_with_no_open_ring_tile_comes_without_a_harvester() -> void:
 	assert_int(world.index_of(id)).is_greater_equal(0)
 	assert_array([world.stat_built[1], world.dropped_commands]).is_equal([1, 0])
 	assert_int(world.stats[World.Stat.EXIT_SCANNED]).is_equal(ring.size())
+	# No harvester, so no `home` is written anywhere: the refinery's own stays 0.
+	assert_int(world.home[world.index_of(id)]).is_equal(0)
 	world.set_terrain(8 * Rig.COLS + 7, 0)
 	Rig.run(world, 60)
 	assert_array(Rig.rows_of(world, 1, "harvester")).is_empty()

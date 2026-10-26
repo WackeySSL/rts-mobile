@@ -245,6 +245,39 @@ func test_place_refuses_a_payload_another_players_queue_and_an_empty_queue() -> 
 	assert_bool(Production.apply_place(world, PlaceRig.place(6, 7))).is_false()
 
 
+## The first tile where `player` may place the type `id` now (`Placement.Reason.OK`), scanning
+## lines then columns; (-1, -1) when there is none.
+func _fitting_tile(world: World, player: int, id: String) -> Vector2i:
+	var input: PlacementInput = PlacementInput.of_world(world)
+	var type: int = Worlds.type_of(world, id)
+	for line: int in world.map_rows:
+		for col: int in world.map_cols:
+			if Placement.reason(input, player, type, col, line) == Placement.Reason.OK:
+				return Vector2i(col, line)
+	return Vector2i(-1, -1)
+
+
+## PLACE reads the placing player's own STRUCTURES queue: player 2 places its own ready plant
+## while player 1's queue is empty, and the new building is player 2's.
+func test_a_place_reads_the_placing_players_own_structures_queue() -> void:
+	var world: World = PlaceRig.world()
+	assert_int(world.add_building(2, Worlds.type_of(world, "headquarters"), 12, 11)).is_not_zero()
+	Rig.step(world, [Rig.queue(world, 2, "power_plant")])
+	Rig.run(world, PlaceRig.build_ticks(world, "power_plant") - 1)
+	var own: int = Rig.queue_of(2, STRUCTURES)
+	assert_int(world.queue_progress[own]).is_equal(_goal(world, "power_plant"))
+	assert_int(world.queue_count[PlaceRig.queue()]).is_equal(0)
+	var spot: Vector2i = _fitting_tile(world, 2, "power_plant")
+	assert_vector(spot).is_not_equal(Vector2i(-1, -1))
+	var rows: int = world.unit_count()
+	Rig.step(world, [PlaceRig.place(spot.x, spot.y, 2)])
+	assert_int(world.unit_count()).is_equal(rows + 1)
+	assert_int(world.owner[world.unit_count() - 1]).is_equal(2)
+	assert_array([world.queue_count[own], world.stat_built[2], world.stat_built[1]]).is_equal(
+		[0, 1, 0]
+	)
+
+
 ## PLACE asks for a ready head and a fitting tile, not for a producer: a structure that was finished
 ## before its headquarters died stays ready and can still be placed (a queue without a producer only
 ## stops gaining progress).
