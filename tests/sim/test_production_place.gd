@@ -157,6 +157,22 @@ func test_each_failing_reason_drops_the_place_and_keeps_the_head_ready() -> void
 	_dropped("negative y", outside, Command.place(1, 6500, -1), 6, -1, OUTSIDE)
 
 
+## ADR 0017 section 4: any point inside the origin tile selects it, the tile's west and north edge
+## included. A point on the zero line is tile column or row 0 (an origin at the map's west or
+## north edge is a valid placement), not outside the map; only a negative point is outside.
+func test_a_point_on_the_zero_line_is_the_origin_tile_of_column_or_row_zero() -> void:
+	var west: World = _ready_world()
+	Rig.step(west, [Command.place(1, 0, 5500)])
+	var row: int = west.unit_count() - 1
+	assert_array([west.dropped_commands, west.stat_built[1]]).is_equal([0, 1])
+	assert_vector(west.footprint_origin(row)).is_equal(Vector2i(0, 5))
+	var north: World = _ready_world()
+	Rig.step(north, [Command.place(1, 6500, 0)])
+	row = north.unit_count() - 1
+	assert_array([north.dropped_commands, north.stat_built[1]]).is_equal([0, 1])
+	assert_vector(north.footprint_origin(row)).is_equal(Vector2i(6, 0))
+
+
 ## The reason is judged again on every PLACE: the same head fits once the cap lifts, and the
 ## other player's rows do not count against player 1's cap.
 func test_a_head_stopped_by_the_cap_goes_down_when_the_cap_lifts() -> void:
