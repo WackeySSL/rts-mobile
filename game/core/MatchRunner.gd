@@ -9,12 +9,19 @@ extends Node
 ## it runs on one worker thread, one tick ahead (plan P38w): at a boundary the runner publishes the
 ## finished job, emits `ticked`, then drains the queue and posts the next job. While a job runs,
 ## the World, `loop`, `replay` and `probe` belong to the worker and their getters refuse the main
-## thread (plan P38w1b); it reads the World only inside `ticked` or after wait_idle().
+## thread (plan P38w1b); it reads the World only inside `ticked` or after wait_idle(). Once a
+## published snapshot shows the end of the match, the runner emits `match_ended` and plays no
+## further tick until start() (ADR 0017 section 6, ADR 0018 section 7, plan P81).
 ## It needs the CommandQueue and DetRng autoloads, so a headless `godot -s` tool must load() this
 ## script at runtime; naming MatchRunner in the entry script does not compile.
 
 ## Emitted after each publish with the snapshot's tick, the number of ticks played so far.
 signal ticked(tick: int)
+## Emitted once per match, after the `ticked` of the first published snapshot that shows
+## `match_end_tick` (ADR 0018 section 7), with its `winner`: the player, or 0 for a draw. From then
+## on no tick runs: frames and run_ticks() do nothing, and in WORKER mode no job is posted, until
+## start() begins a new match. A `ticked` handler that restarted the match gets none for the old.
+signal match_ended(winner: int)
 
 ## Where the tick runs (ADR 0012 section 1): inline in the frame, on a worker thread one tick
 ## ahead, or AUTO, which start() resolves with resolve_mode().
@@ -262,9 +269,9 @@ func start() -> void:
 ## Plays `n` ticks now. It ignores time and both pauses; tests and replays call it. In WORKER mode
 ## a job in flight is waited for and published as the first of the `n` ticks, and the rest run
 ## inline, so the published tick advances by exactly `n` (ADR 0012 section 1). The next frame
-## refills.
+## refills. It stops after the tick that publishes the end of the match, and does nothing after it.
 func run_ticks(n: int) -> void:
-	if _world == null or n <= 0:
+	if _world == null or n <= 0 or _ended():
 		return
 	var step: Vector2i = hand_off(_state, HandOffEvent.RUN_TICKS)
 	if step.y & HandOffStep.WAIT and not _take_done(WAIT_CAP_MSEC):
@@ -275,6 +282,8 @@ func run_ticks(n: int) -> void:
 		inline -= 1
 	_state = step.x
 	for _i: int in inline:
+		if _ended():
+			return
 		_tick()
 
 
@@ -377,13 +386,15 @@ func _process(delta: float) -> void:
 	if _world == null or paused or _app_paused:
 		_resumed = true
 		return
+	if _ended():
+		return
 	if _mode == TickMode.WORKER:
 		_process_worker(delta)
 		return
 	_micro_ticks += roundi(maxf(delta, 0.0) * float(Sim.TICK_RATE * MICRO_TICKS_PER_TICK))
 	var limit: int = maxi(max_catch_up_ticks, 1)
 	var played: int = 0
-	while _micro_ticks >= MICRO_TICKS_PER_TICK and played < limit and not paused:
+	while _micro_ticks >= MICRO_TICKS_PER_TICK and played < limit and not paused and not _ended():
 		_micro_ticks -= MICRO_TICKS_PER_TICK
 		_tick()
 		played += 1
@@ -456,10 +467,10 @@ func _process_worker(delta: float) -> void:
 
 ## A boundary with the job finished (ADR 0012 section 1): publishes it with `ticked`, then drains
 ## and posts the next job. A `ticked` handler that restarted the match in SYNC mode gets no job
-## posted, so no job runs beside its inline ticks.
+## posted, so no job runs beside its inline ticks, and a published end gets none either.
 func _publish_and_post() -> void:
 	_publish_job()
-	if _mode == TickMode.WORKER:
+	if _mode == TickMode.WORKER and not _ended():
 		_post_next()
 
 
@@ -548,8 +559,9 @@ func _hand_over() -> void:
 
 ## Step 1 of a boundary (ADR 0012 section 1): takes the finished job's snapshot and the World, loop
 ## and snapshots back from the job, counts its post-to-done time into late_ticks and
-## latency_usec_max, publishes the snapshot and emits `ticked`. No job is in flight inside a
-## `ticked` handler, so the World there equals the published snapshot.
+## latency_usec_max, publishes the snapshot and emits `ticked`, then `match_ended` when the
+## snapshot shows the end and is still the published one. No job is in flight inside a `ticked`
+## handler, so the World there equals the published snapshot.
 func _publish_job() -> void:
 	var next: MatchSnapshot = _job.snapshot
 	_release_job()
@@ -560,6 +572,8 @@ func _publish_job() -> void:
 		late_ticks += 1
 	_publish(next)
 	ticked.emit(next.tick)
+	if next.match_end_tick > 0 and snapshot == next:
+		match_ended.emit(next.winner)
 
 
 ## Takes the World, loop and snapshots back from the job (a published or a dropped one), so the old
@@ -600,6 +614,11 @@ func _shared(what: StringName) -> bool:
 		return true
 	push_error("MatchRunner: %s used while a job runs on the worker (ADR 0012 section 1)" % what)
 	return false
+
+
+## Whether the published snapshot shows the end of the match: then no tick runs until start().
+func _ended() -> bool:
+	return snapshot != null and snapshot.match_end_tick > 0
 
 
 ## Makes `published` the runner's snapshot and sets the published fields from it (ADR 0012

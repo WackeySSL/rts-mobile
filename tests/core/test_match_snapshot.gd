@@ -54,6 +54,9 @@ func test_after_30_ticks_every_snapshot_array_equals_its_world_array() -> void:
 	assert_array(sizes).is_equal([149, 149, 149])
 
 
+## The nine World lists of ADR 0012 section 3 and ADR 0017 section 6, DERIVED_ARRAYS included. No
+## NOT_COPIED name is a snapshot property, so a derived list cannot slip in as a stale copy, and
+## every COPIED_SCALARS name is an int of the snapshot and of the World.
 func test_copied_and_not_copied_split_the_world_shape_lists_exactly_once() -> void:
 	var shape: PackedStringArray = PackedStringArray()
 	for name: StringName in _shape_names():
@@ -78,11 +81,26 @@ func test_copied_and_not_copied_split_the_world_shape_lists_exactly_once() -> vo
 	for name: StringName in MatchSnapshot.COPIED:
 		if not properties.has(String(name)) or typeof(snap.get(name)) != typeof(_world.get(name)):
 			wrong.append(name)
+	for name: StringName in MatchSnapshot.NOT_COPIED:
+		if properties.has(String(name)):
+			wrong.append(name)
+	for name: StringName in MatchSnapshot.COPIED_SCALARS:
+		if typeof(snap.get(name)) != TYPE_INT or typeof(_world.get(name)) != TYPE_INT:
+			wrong.append(name)
 	assert_array(wrong).is_empty()
-	for name: StringName in [&"type_armour", &"weapon_projectile_speed", &"terrain"]:
-		assert_bool(MatchSnapshot.COPIED.has(name)).is_true()
-	for name: StringName in [&"move_cost", &"terrain_cost"]:
-		assert_bool(MatchSnapshot.NOT_COPIED.has(name)).is_true()
+	var copied: Array[StringName] = [&"type_armour", &"weapon_projectile_speed", &"terrain"]
+	copied.append_array([&"move_cost", &"type_radius", &"power_made", &"power_used"])
+	var misplaced: Array[StringName] = []
+	for name: StringName in copied:
+		if not MatchSnapshot.COPIED.has(name):
+			misplaced.append(name)
+	for name: StringName in [&"terrain_cost", &"building_rows", &"harvester_rows"]:
+		if not MatchSnapshot.NOT_COPIED.has(name):
+			misplaced.append(name)
+	assert_array(misplaced).is_empty()
+	assert_array(MatchSnapshot.COPIED_SCALARS).is_equal(
+		[&"match_end_tick", &"winner", &"build_reach_tiles", &"building_cap"]
+	)
 
 
 func test_each_id_list_is_an_equal_typed_copy_of_the_worlds() -> void:
@@ -449,7 +467,7 @@ func _put_projectile(slot: int, id: int, x: int, y: int) -> void:
 	_world.proj_y[slot] = y
 
 
-## The names of the World's five shape lists, in list order.
+## The names of the World's nine shape lists, in list order.
 func _shape_names() -> Array[StringName]:
 	var names: Array[StringName] = []
 	names.append_array(World.ROW_ARRAYS)
@@ -457,6 +475,10 @@ func _shape_names() -> Array[StringName]:
 	names.append_array(World.WEAPON_ARRAYS)
 	names.append_array(World.PROJECTILE_ARRAYS)
 	names.append_array(World.MAP_ARRAYS)
+	names.append_array(World.PLAYER_ARRAYS)
+	names.append_array(World.ORE_ARRAYS)
+	names.append_array(World.GHOST_ARRAYS)
+	names.append_array(World.DERIVED_ARRAYS)
 	return names
 
 
@@ -471,14 +493,17 @@ func _fog_reads(fog: FogGrid, cell: int) -> Array:
 	]
 
 
-## Writes entry 0 of every copied World column and of `stats`, appends to `events` and to every id
-## list, and stamps the fog of player 1 at `cell`. Returns the names whose World value still
-## equals the snapshot's, which must be none: the writes reached the World.
+## Writes entry 0 of every copied World column and of `stats` (appends to an empty one: the arena
+## has no ore), appends to `events` and to every id list, and stamps the fog of player 1 at `cell`.
+## Returns the names whose World value still equals the snapshot's, which must be none: the writes
+## reached the World.
 func _scribble(world: World, snap: MatchSnapshot, cell: int) -> Array[StringName]:
 	for name: StringName in MatchSnapshot.COPIED + [&"stats"]:
 		var column: Variant = world.get(name)
 		if typeof(column) == TYPE_PACKED_STRING_ARRAY:
 			column[0] = column[0] + "!"
+		elif column.is_empty():
+			column.append(1)
 		else:
 			column[0] = column[0] + 1
 	world.events.append(World.Event.SPAWNED)
