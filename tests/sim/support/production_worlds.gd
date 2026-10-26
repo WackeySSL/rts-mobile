@@ -41,6 +41,14 @@ static func base(rock: Array = []) -> World:
 	return world
 
 
+## Gives player 1 a headquarters (3x3 at tile (2, 5), clear of every other building and of both
+## exits) and returns its id. It is the one shipped building that produces the STRUCTURES tab, so a
+## case that pins the unit-tab gate needs it: without one, `Production.producer_row` finds no
+## producer for that tab and a refusal or a stalled queue would be the missing producer's.
+static func add_headquarters(world: World) -> int:
+	return world.add_building(1, Worlds.type_of(world, "headquarters"), 2, 5)
+
+
 ## One tick: `commands` (a plain Array: a caller reaches this through a preloaded script, so its
 ## literal is not typed) are stamped with the World's tick and `Sim.step` runs.
 static func step(world: World, commands: Array = []) -> void:

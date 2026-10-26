@@ -108,9 +108,13 @@ func test_a_requirement_is_checked_when_the_item_is_queued_and_not_after() -> vo
 
 
 ## Plan row P73b opens the STRUCTURES tab; until then a structure, a type that is not buildable and
-## a type index outside the table are refused, and so is a payload that is not one int.
+## a type index outside the table are refused, and so is a payload that is not one int. Player 1 has
+## a headquarters, so the STRUCTURES tab has a producer and the structures (whose requirements it
+## owns, and whose cost it can pay) are refused by the unit-tab gate alone.
 func test_only_unit_types_can_be_queued() -> void:
 	var world: World = Rig.base()
+	Rig.add_headquarters(world)
+	assert_int(Production.producer_row(world, 1, World.Tab.STRUCTURES)).is_greater_equal(0)
 	var types: Array[int] = [
 		Worlds.type_of(world, "power_plant"),
 		Worlds.type_of(world, "barracks"),

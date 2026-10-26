@@ -227,15 +227,19 @@ func test_an_open_rally_point_is_the_goal_and_an_empty_one_leaves_the_unit_idle(
 
 
 ## The STRUCTURES queue is plan row P73b's: `run` leaves it alone, so an item put there by hand
-## gains nothing.
+## gains nothing. Player 1 has a headquarters, so the tab has a producer and only the unit-tab gate
+## keeps the item from advancing (and from spawning as a unit at the headquarters' exit).
 func test_the_structures_queue_is_not_advanced_before_p73b() -> void:
 	var world: World = Rig.base()
+	Rig.add_headquarters(world)
+	assert_int(Production.producer_row(world, 1, World.Tab.STRUCTURES)).is_greater_equal(0)
+	var rows: int = world.unit_count()
 	var queue: int = Rig.queue_of(1, World.Tab.STRUCTURES)
 	world.queue_type[queue * world.queue_slots] = Worlds.type_of(world, "power_plant")
 	world.queue_count[queue] = 1
-	Rig.run(world, 20)
+	Rig.run(world, 200)
 	assert_array([world.queue_count[queue], world.queue_progress[queue]]).is_equal([1, 0])
-	assert_int(world.unit_count()).is_equal(5)
+	assert_array([world.unit_count(), world.stat_built[1]]).is_equal([rows, 0])
 
 
 ## The same commands on the same data give the same checkpoints and the same units, and a world
