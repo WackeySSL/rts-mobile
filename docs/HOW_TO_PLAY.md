@@ -13,6 +13,8 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 |---|---|---|
 | Drag one finger | Pans the map | |
 | Pinch | Zooms about the fingers; on release it settles on the nearest of three zoom levels (`zoom_levels` in `data/input_settings.tres`) | |
+| Look at the map | The map is drawn at an angle, as a diamond: every tile is a diamond and the map's corners point up, down, left and right. Drag, pinch and taps work as before, and a tap on the ground sends the units to the point under your finger | |
+| Drag the map to its edge | The camera stops at the map's edge: the middle of the screen never leaves the map. The edge can reach the middle of the screen, so what lies under the sidebar or the army bar can be scrolled into view; beyond the edge there is only empty ground. Turning the phone keeps the middle of the screen where it was | |
 
 ## Turn the phone
 | Action | Result | Teach |
@@ -34,15 +36,15 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 ## Orders
 | Action | Result | Teach |
 |---|---|---|
-| With units selected, tap the ground | Move: the units drive there without fighting, also out of a fight; on arrival they fire at enemies within weapon range without moving; chevrons mark the point | yes |
-| With units selected, tap an enemy | Attack: the units drive to weapon range of that enemy, stop there and fire at it until it is destroyed, then attack-move on to where it stood; a diamond marks it | yes |
+| With units selected, tap the ground | Move: the units drive there without fighting, also out of a fight; on arrival they fire at enemies within weapon range without moving; chevrons lying flat on the ground close in on the point | yes |
+| With units selected, tap an enemy | Attack: the units drive to weapon range of that enemy, stop there and fire at it until it is destroyed, then attack-move on to where it stood; a flat diamond on the ground marks it | yes |
 
 ## Combat
 | Action | Result | Teach |
 |---|---|---|
 | Enemies come within weapon range of your standing units | The units fire at them on their own, without an order, until they are destroyed or out of range; units on a move order do not fire until they have arrived; a destroyed unit disappears from the map | |
 | Units that finish an attack meet more enemies | They stop to fight: they drive to weapon range of the enemy they picked, fire until it is destroyed, pick the next one, and go on to where the enemy you tapped stood when no enemy is left within their reach | yes |
-| A unit is selected, or has just been damaged | A health bar shows above it, filled by the hp it has left (a unit that lives always shows a little fill). Selected units keep their bar; a damaged unit shows it for a few seconds; an enemy hidden by the fog shows none. Your bars are plain, enemy bars have a notch in the top edge, so you can tell them apart without colour | |
+| A unit is selected, or has just been damaged | A health bar shows above its picture, filled by the hp it has left (a unit that lives always shows a little fill). Selected units keep their bar; a damaged unit shows it for a few seconds; an enemy hidden by the fog shows none. Your bars are plain, enemy bars have a notch in the top edge, so you can tell them apart without colour | |
 
 ## Terrain
 | Action | Result | Teach |
@@ -64,13 +66,17 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Hold a group (1-3) | Stores the current selection in that group; the phone buzzes and the count shows (`group_assign_ms` in `data/input_settings.tres`) | yes |
 | A grouped unit is destroyed | It leaves the group; the group's badge shows the new count, and an empty group shows only its number | |
 
-## Build sidebar
+## Build menu
 | Action | Result | Teach |
 |---|---|---|
-| Look at the sidebar (on the right; at the bottom when the phone is upright) | It shows your credits, a power bar and three tabs: Structures, Infantry and Vehicles. The bar fills with the power your buildings use against the power they make and shows both numbers where it is wide enough; when you use more than you make, the bar is full and amber and its bolt becomes a warning triangle. Tap a tab to open it: the open tab is the lighter one with a thick bar under it. The tab names show beside the icons only where the sidebar is wide enough; a phone shows the icons alone | |
-| Tap an item in the open tab | One of it is queued and paid for at once; the icon fills while it is built, and a number on it counts how many of it are queued. A padlock on a dimmed icon means a building you need is missing (a power plant for a barracks, a barracks for infantry). Stripes mean it cannot be queued now: you cannot pay it (its cost turns amber) or its queue is full (`queue_slots` in `data/rules.tres`). A finished building shows "Ready" where its price was (tapping it does nothing yet). A tap on a padlocked or striped item shakes it and does nothing. The row scrolls with a drag, down in the sidebar on the right and sideways in the band at the bottom, and a drag never queues anything | yes |
+| Look at the screen with the phone sideways | The build menu floats over the map at the bottom right: three tabs as icons above one row of cards. Your credits and the power bar sit in a pill at the top left, next to the Dev button, and a panel at the top right is kept for the minimap (the minimap itself comes later). Nothing else moves: the army bar, the selection panel and the Dev button keep their places | |
+| Look at the screen with the phone upright | The build menu is the band at the bottom, and your credits and the power bar are its first line; the pill and the panel at the top right are not shown. Turning the phone moves the credits line between the two and changes nothing else | |
+| Look at the credits and the power bar | They show your credits and a power bar. The bar fills with the power your buildings use against the power they make and shows both numbers where it is wide enough; when you use more than you make, the bar is full and amber and its bolt becomes a warning triangle | |
+| Tap a tab | It opens: Structures, Infantry or Vehicles, as an icon; the open tab is the lighter one with a thick bar under it | |
+| Tap an item in the open tab | One of it is queued and paid for at once; the icon fills while it is built, and a number on it counts how many of it are queued. Each card shows the item's name under its cost (a long name is cut short with an ellipsis; the upright band's tiles show no name). A padlock on a dimmed icon means a building you need is missing (a power plant for a barracks, a barracks for infantry). Stripes mean it cannot be queued now: you cannot pay it (its cost turns amber) or its queue is full (`queue_slots` in `data/rules.tres`). A finished building shows "Ready" where its price was (tapping it does nothing yet). A tap on a padlocked or striped item shakes it and does nothing. The row scrolls sideways with a drag, and a drag never queues anything | yes |
 | Hold an item (`long_press_ms` in `data/input_settings.tres`) | The last one of it you queued is cancelled and its cost is paid back in full; the phone buzzes. An item with none queued does nothing, however long you hold | yes |
-| Tap your Headquarters, barracks or vehicle factory | The sidebar opens the tab it builds: Structures, Infantry or Vehicles | |
+| Tap your Headquarters, barracks or vehicle factory | The build menu opens the tab it builds: Structures, Infantry or Vehicles | |
+| Open any tab | It lists only the buildings and units of your own side, and those that both sides share; the other side's items are never shown | |
 
 ## Not yet in the game
 Base building, harvesting, power, production, win and lose conditions, menus and rewards get
@@ -79,3 +85,4 @@ their entries when their phase ships them (ROADMAP Phases 3-6).
 | Action | Result | Teach |
 |---|---|---|
 | An "under attack" warning at the screen edge | Not shown yet: nothing points at a unit that is hit off screen | |
+| Play the Derrick League (oil and gas) or the Lumen Accord (green energy) | Not shown yet: no match has sides, so no building or unit belongs to one side only. Once a match has them, each side has its own buildings and units and your build menu shows only yours (and what both sides share) | |

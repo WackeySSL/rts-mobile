@@ -3,14 +3,16 @@ extends Node2D
 ## Draws every unit of the runner's published snapshot as a rig: a Node2D with the Sprite2D layers
 ## Hull, Team and, for a type with turret art, Turret (assets/art/STYLE.md, layer contract). It
 ## only reads `runner.snapshot` (ADR 0012 section 3), afresh in every entry point and never kept
-## between them: each frame a rig stands at prev + (cur - prev) * runner.alpha() in px, and the
-## hull and team layers turn toward the last direction the unit moved in. A turret turns on its
-## own toward the unit's target (`snapshot.target_row`, computed on the worker, so the layer never
-## searches for a row) as the target is drawn, at the bearing between the interpolated positions of
-## the two rigs (ADR 0011 section 2), in every frame; it follows the hull while the unit has no
-## target and stays where it is for the ticks in which the target is gone but not yet replaced. A
-## rig without a turret (a squad) turns as a whole toward its target instead. The turns are view
-## effects and never touch the World.
+## between them: each frame a rig stands at prev + (cur - prev) * runner.alpha() in px, projected
+## by `IsoProjection` (ADR 0023 section 1), and the hull and team layers turn toward the last
+## direction the unit moved in, as that direction looks on the screen (`IsoProjection.screen_angle`;
+## the 16 directions of the iso sheets come with P114). A turret turns on its own toward the unit's
+## target (`snapshot.target_row`, computed on the worker, so the layer never searches for a row) as
+## the target is drawn, at the bearing between the interpolated positions of the two rigs (ADR 0011
+## section 2), in every frame; it follows the hull while the unit has no target and stays where it
+## is for the ticks in which the target is gone but not yet replaced. A rig without a turret (a
+## squad) turns as a whole toward its target instead. The turns are view effects and never touch
+## the World.
 ## Rigs are the children of this node in row order, so rig `i` shows unit row `i`, and they follow
 ## their unit by id: a death frees its rig, a new row gets a new one, a new match rebuilds all.
 ## A selected unit has a Ring as the first child of its rig, under the layers. Each layer draws at
@@ -74,8 +76,10 @@ var _ring_zoom: float = 1.0  ## Camera zoom the rings are sized for.
 var _dp_px: float = 1.0  ## Base px per dp, read when the selection or the window changes.
 
 
-## The ring texture at `radius` world px: the texture's centre line has RING_TEX_RADIUS_PX, and its
-## strokes are baked, so they scale with the ring. `unit` is the world px of one dp.
+## The ring texture as a 2:1 ground ellipse (the selection radius, `IsoProjection.ellipse_px`):
+## `radius` is its horizontal semi-axis in world px and the vertical one is half of it. The
+## texture's centre line has RING_TEX_RADIUS_PX, and its strokes are baked, so they scale with the
+## ring. `unit` is the world px of one dp.
 class Ring:
 	extends Sprite2D
 
@@ -174,10 +178,11 @@ func set_selected(ids: PackedInt32Array) -> void:
 
 
 ## Fills `snap` for the Picker with every unit in row order: id, owner, type, centre on screen (base
-## px) and hit radius, the larger of `min_radius_px` and the type's selection radius at the camera
-## zoom. An enemy that `is_shown` would not draw is filled like any other row, with its `pickable`
-## entry 0, so the Picker skips it (P47p). The snapshot's arrays are resized in place, so refilling
-## one allocates nothing.
+## px) and hit radius, the larger of `min_radius_px` and the horizontal semi-axis of the type's
+## selection ellipse at the camera zoom. The centre is the rig's ground point (the lift of ADR 0023
+## section 3 comes with the sheets, P113). An enemy that `is_shown` would not draw is filled like
+## any other row, with its `pickable` entry 0, so the Picker skips it (P47p). The snapshot's arrays
+## are resized in place, so refilling one allocates nothing.
 func fill_pick_snapshot(snap: PickSnapshot, min_radius_px: float) -> void:
 	var source: MatchSnapshot = _sync_rigs()
 	var count: int = 0 if source == null else _rigs.size()
@@ -213,7 +218,7 @@ func fill_pick_snapshot(snap: PickSnapshot, min_radius_px: float) -> void:
 	var counts_at: int = (player - 1) * fog.cells
 	for row: int in count:
 		var type: int = types[row]
-		var art_px: float = ViewScale.milli_to_px(radii[type]) * zoom
+		var art_px: float = IsoProjection.ellipse_px(radii[type]).x * zoom
 		out_ids[row] = ids[row]
 		out_owners[row] = owners[row]
 		out_types[row] = type
@@ -402,11 +407,11 @@ func _refresh_rings(snap: MatchSnapshot) -> void:
 	var radii: PackedInt32Array = snap.type_selection_radius
 	for row: int in _ringed:
 		var ring: Ring = _rings[row]
-		ring.radius = maxf(
-			ViewScale.milli_to_px(radii[types[row]] + RING_PAD_MILLI), RING_MIN_DP * unit
-		)
+		var semi: Vector2 = IsoProjection.ellipse_px(radii[types[row]] + RING_PAD_MILLI)
+		var grow: float = maxf(1.0, RING_MIN_DP * unit / semi.x)  # The smallest ring: RING_MIN_DP.
+		ring.radius = semi.x * grow
 		ring.unit = unit
-		ring.scale = Vector2.ONE * ring.radius / RING_TEX_RADIUS_PX
+		ring.scale = semi * grow / RING_TEX_RADIUS_PX
 
 
 ## The Team layer tint of `owner_id`: index 0 (neutral) for an owner with no colour.
@@ -439,8 +444,8 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 	var counts: PackedInt32Array = fog.visible
 	var counts_at: int = (player - 1) * fog.cells
 	for row: int in rigs.size():
-		var from: Vector2 = ViewScale.milli_to_px_vec(prev_x[row], prev_y[row])
-		var to: Vector2 = ViewScale.milli_to_px_vec(cur_x[row], cur_y[row])
+		var from: Vector2 = IsoProjection.ground_to_px(prev_x[row], prev_y[row])
+		var to: Vector2 = IsoProjection.ground_to_px(cur_x[row], cur_y[row])
 		var at: Vector2 = from.lerp(to, alpha)
 		if rigs[row].position != at:
 			rigs[row].position = at
@@ -456,14 +461,14 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 		var moved: int = moved_x * moved_x + moved_y * moved_y
 		var speed: int = speeds[types[row]]
 		if moved > 0 and 4 * moved >= speed * speed:
-			_aim[row] = atan2(float(moved_y), float(moved_x))
+			_aim[row] = IsoProjection.screen_angle(float(moved_x), float(moved_y))
 		var seen: int = target_rows[row]
 		var turret: Sprite2D = layers[row * layer_count + TURRET_LAYER]
-		var bearing: float = 0.0  # To the target as drawn, from rig to rig; east is 0.
+		var bearing: float = 0.0  # To the target as drawn, from rig to rig, on screen; east is 0.
 		if seen >= 0:
-			bearing = atan2(
-				lerpf(prev_y[seen], cur_y[seen], alpha) - lerpf(prev_y[row], cur_y[row], alpha),
-				lerpf(prev_x[seen], cur_x[seen], alpha) - lerpf(prev_x[row], cur_x[row], alpha)
+			bearing = IsoProjection.screen_angle(
+				lerpf(prev_x[seen], cur_x[seen], alpha) - lerpf(prev_x[row], cur_x[row], alpha),
+				lerpf(prev_y[seen], cur_y[seen], alpha) - lerpf(prev_y[row], cur_y[row], alpha)
 			)
 			if turret == null:
 				_aim[row] = bearing  # No turret to swing: the whole rig faces its target.

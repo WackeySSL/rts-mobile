@@ -23,9 +23,10 @@ const PAIR: Array[int] = [1, 2]
 const RED: int = 31
 const RED_MILLI: Vector2i = Vector2i(9250, 14500)
 const RETREAT_MILLI: Vector2i = Vector2i(15000, 12500)
-## The same points in world px (1 tile = 64 px), and the camera centre that shows both.
-const RETREAT: Vector2 = Vector2(960, 800)
-const CAMERA_AT: Vector2 = Vector2(700, 1000)
+## The retreat point in world px under the 2:1 projection (P117), and the camera centre that shows
+## the pair, the red tank and the point.
+const RETREAT: Vector2 = Vector2(80, 440)
+const CAMERA_AT: Vector2 = Vector2(-100, 420)
 const WEAPON_RANGE: int = 4500
 const TOL: Vector2 = Vector2(0.05, 0.05)
 
@@ -300,9 +301,9 @@ func _assert_one_chevron_mark_at(world_px: Vector2) -> void:
 	assert_vector(shown[0].position).is_equal_approx(world_px, TOL)
 
 
-## 20 dp left of the centre of row `row`: the tap point is not the unit's own position.
+## 20 dp above the centre of row `row`: the tap point is not the unit's own position.
 func _off_centre(row: int) -> Vector2:
-	return _layer.unit_screen_position(row) - Vector2(UiScale.dp(20), 0)
+	return _layer.unit_screen_position(row) - Vector2(0, UiScale.dp(20))
 
 
 ## A finger down and up at `at` (base px), then a pause past the double-tap time.

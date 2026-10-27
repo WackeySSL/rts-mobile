@@ -168,10 +168,10 @@ func set_layer_mode(mode: String) -> void:
 ## The scenario's framing: the start zoom, centred on its camera tile, inside the map. A run begins
 ## here (`_ready` and `PerfHud.before_restart`), wherever a finger left the camera.
 func frame_camera() -> void:
-	camera.set_map_rect(Rect2(map_view.map_rect_px()))
+	camera.set_map_rect(map_view.map_diamond_px())
 	camera.zoom = Vector2.ONE * start_zoom
 	camera.centre_on(
-		(Vector2(scenario.camera_start_tile) + Vector2(0.5, 0.5)) * ViewScale.PX_PER_TILE
+		IsoProjection.cell_centre_px(scenario.camera_start_tile.x, scenario.camera_start_tile.y)
 	)
 
 

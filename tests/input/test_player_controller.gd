@@ -2,20 +2,26 @@ extends GdUnitTestSuite
 ## PlayerController in the main scene (ADR 0004 section 5). Fingers enter as window-px touch events
 ## with a fake clock, through the real TouchInput and recognizer, and the Commands are caught at
 ## `command_sink`. Each flow runs at 1280x720 (desktop), 2400x1080 (android_6in, 20:9 phone) and
-## 2048x1536 (web_tablet, 4:3). Tank n is row n - 1 of the 6-column block: tank 1 at px (544,
-## 1184), 96 px between neighbours. Red tank 31 stands at px (2208, 672), milli (34500, 10500).
+## 2048x1536 (web_tablet, 4:3). Under the 2:1 projection (P117) the 6 x 5 block of tanks is a
+## diamond: tank n is column c = (n - 1) % 6 and row r = (n - 1) / 6, at px x = -320 + 48 (c - r)
+## and y = 432 + 24 (c + r), so tank 1 is the top corner and has no unit above it. Red tank 31
+## stands at px (768, 720), milli (34500, 10500), the top corner of the red block.
 
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const TwoTypeLayer: GDScript = preload("res://tests/input/support/two_type_layer.gd")
 const PROFILES: Array[StringName] = [&"desktop", &"android_6in", &"web_tablet"]
-const CAMERA_START: Vector2 = Vector2(800, 1376)
+const CAMERA_START: Vector2 = Vector2(-288, 544)
 ## Where a pan's finger goes down: left of the build sidebar at every size (its edge is at 1009 or
-## more), with room to drag 784 px to the left.
+## more), with room to drag 888 px to the left.
 const PAN_FROM_X: float = 900.0
-## World px with no unit near it, right of the tank block and left of the build sidebar at every
-## size (P85): milli (17266, 21516), where 17265.625 rounds up.
-const GROUND: Vector2 = Vector2(1105, 1377)
+## World px with no unit near it, past the tank block's upper right edge and clear of the build
+## sidebar and the selection panel at every size (P85): milli (10000, 15000). The nearest tank is
+## 102 px away.
+const GROUND: Vector2 = Vector2(-160, 400)
+const GROUND_MILLI: Vector2i = Vector2i(10000, 15000)
+## The red top-corner tank 31, and the way a tap reaches a top-corner tank alone: straight above it.
+const RED_TANK: Vector2 = Vector2(768, 720)
 
 var _window_size_before: Vector2i
 var _main: Node2D
@@ -76,9 +82,9 @@ func test_the_first_tap_on_a_tank_selects_it() -> void:
 	assert_object(_controller.settings).is_same(load("res://data/input_settings.tres"))
 	for profile: StringName in PROFILES:
 		await _fresh_match(profile)
-		_tap(_layer.unit_screen_position(0) - Vector2(UiScale.dp(40), 0))  # Outside the hit area.
+		_tap(_layer.unit_screen_position(0) - Vector2(0, UiScale.dp(40)))  # Outside the hit area.
 		assert_array(_controller.selection.selected).is_empty()
-		_tap(_layer.unit_screen_position(0) - Vector2(UiScale.dp(20), 0))  # The block's left edge.
+		_tap(_layer.unit_screen_position(0) - Vector2(0, UiScale.dp(20)))  # Above the top corner.
 		assert_array(_controller.selection.selected).is_equal([1])
 		assert_array(_changes).has_size(1)
 		assert_array(_changes[0]).is_equal([1])
@@ -95,17 +101,17 @@ func test_tap_ground_with_a_selection_sends_one_move_and_without_one_nothing() -
 		_tap(_layer.unit_screen_position(0))  # Select tank 1, then send it.
 		_tap(_camera.world_to_screen(GROUND), 300)  # Held: LONG_PRESS, BOX_CANCEL, then a TAP.
 		assert_array(_sent).has_size(1)
-		_assert_move(_sent[0], [1], 17266, 21516)
+		_assert_move(_sent[0], [1], GROUND_MILLI.x, GROUND_MILLI.y)
 		assert_array(_controller.selection.selected).is_equal([1])
 		_controller.selection.set_ids(PackedInt32Array([30, 2, 9]))
 		_tap(_camera.world_to_screen(GROUND))
 		assert_array(_sent).has_size(2)
-		_assert_move(_sent[1], [2, 9, 30], 17266, 21516)
+		_assert_move(_sent[1], [2, 9, 30], GROUND_MILLI.x, GROUND_MILLI.y)
 		assert_array(_controller.selection.selected).is_equal([2, 9, 30])  # Ordering keeps it.
 
 
 ## The order names the enemy by its id, so the sim follows it when it moves, and the diamond sits on
-## the enemy and not on the finger (the tap is 20 dp to its left).
+## the enemy and not on the finger (the tap is 20 dp above it).
 func test_tap_an_enemy_with_a_selection_sends_one_attack_and_without_one_does_nothing() -> void:
 	var markers: MoveMarkerLayer = _main.get_node("MarkerLayer")
 	markers.clock = _touch.clock  # One fake clock: a mark of an earlier profile has expired.
@@ -116,8 +122,8 @@ func test_tap_an_enemy_with_a_selection_sends_one_attack_and_without_one_does_no
 	for profile: StringName in PROFILES:
 		await _fresh_match(profile)
 		markers._process(0.0)
-		_camera.centre_on(Vector2(2208, 672))
-		var off_centre: Vector2 = _layer.unit_screen_position(30) - Vector2(UiScale.dp(20), 0)
+		_camera.centre_on(RED_TANK)
+		var off_centre: Vector2 = _layer.unit_screen_position(30) - Vector2(0, UiScale.dp(20))
 		_tap(off_centre)
 		assert_array(_sent).is_empty()
 		assert_array(_controller.selection.selected).is_empty()
@@ -130,7 +136,7 @@ func test_tap_an_enemy_with_a_selection_sends_one_attack_and_without_one_does_no
 		var marks: Array[MoveMarkerLayer.Mark] = _shown_marks(markers)
 		assert_array(marks).has_size(1)
 		assert_bool(marks[0].diamond).is_true()
-		assert_vector(marks[0].position).is_equal_approx(Vector2(2208, 672), Vector2(0.05, 0.05))
+		assert_vector(marks[0].position).is_equal_approx(RED_TANK, Vector2(0.05, 0.05))
 		_double_tap(off_centre)  # An enemy is never selected by type: two taps, two orders.
 		assert_array(_sent).has_size(3)
 		_assert_attack(_sent[1], [1, 2], 31)
@@ -162,22 +168,23 @@ func test_double_tap_a_tank_selects_all_30_when_all_are_on_screen() -> void:
 		assert_array(_controller.selection.selected).is_equal(range(1, 31))
 		_double_tap(_camera.world_to_screen(GROUND))  # On ground it is a tap, twice.
 		assert_array(_sent).has_size(2)
-		_assert_move(_sent[1], range(1, 31), 17266, 21516)
+		_assert_move(_sent[1], range(1, 31), GROUND_MILLI.x, GROUND_MILLI.y)
 
 
 func test_double_tap_after_panning_half_the_block_away_selects_only_the_visible_tanks() -> void:
 	for profile: StringName in PROFILES:
 		await _fresh_match(profile)
-		# Pan so the view starts at world x 784: columns 0-2 (x 544, 640, 736) leave, 3-5 stay.
+		# Pan so the view starts at world x -200: tanks 1-3 leave, and so does every tank with
+		# c - r under 3 (x = -320 + 48 (c - r), so -224 is off and -176 is on): 4, 5, 6, 11, 12, 18 stay.
 		var view: Vector2 = get_viewport().get_visible_rect().size
-		_pan(Vector2(CAMERA_START.x - 784.0 - view.x * 0.5, 0.0))
+		_pan(Vector2(CAMERA_START.x + 200.0 - view.x * 0.5, 0.0))
 		_double_tap(_layer.unit_screen_position(3))  # Tank 4, column 3 of row 0.
-		var visible_columns: Array = [4, 5, 6, 10, 11, 12, 16, 17, 18, 22, 23, 24, 28, 29, 30]
-		assert_array(_controller.selection.selected).is_equal(visible_columns)
-		# Pan up so the view ends at world y 1424: block rows 3 and 4 (y 1472, 1568) leave.
-		_pan(Vector2(0.0, view.y * 0.5 - 48.0))
-		_double_tap(_layer.unit_screen_position(3))
-		assert_array(_controller.selection.selected).is_equal([4, 5, 6, 10, 11, 12, 16, 17, 18])
+		assert_array(_controller.selection.selected).is_equal([4, 5, 6, 11, 12, 18])
+		# Pan 48 px more: the view starts at world x -152, so c - r under 4 leaves too, tank 4 among
+		# them: 5, 6 and 12 stay, and the tap on tank 6 selects those three.
+		_pan(Vector2(-48.0, 0.0))
+		_double_tap(_layer.unit_screen_position(5))  # Tank 6.
+		assert_array(_controller.selection.selected).is_equal([5, 6, 12])
 
 
 func test_double_tap_selects_own_units_of_the_tapped_type_only() -> void:
@@ -200,10 +207,12 @@ func test_a_long_press_drag_selects_exactly_the_6_tanks_in_the_box_and_buzzes_on
 		await _fresh_match(profile)
 		_buzzes.clear()
 		_controller.selection.set_ids(PackedInt32Array([20]))
-		var first_row: Rect2 = Rect2(_layer.unit_screen_position(0), Vector2.ZERO)
-		first_row = first_row.expand(_layer.unit_screen_position(5)).grow(30.0)  # Tanks 1-6.
-		_box(first_row.position, first_row.end)
-		assert_array(_controller.selection.selected).is_equal([1, 2, 3, 4, 5, 6])
+		# The top of the diamond, world (-440, 410) to (-200, 490): the tanks with c + r <= 2, which
+		# stand at y 432 to 480 (the next ones are at 504).
+		var top_left: Vector2 = _camera.world_to_screen(Vector2(-440, 410))
+		var bottom_right: Vector2 = _camera.world_to_screen(Vector2(-200, 490))
+		_box(top_left, bottom_right)
+		assert_array(_controller.selection.selected).is_equal([1, 2, 3, 7, 8, 13])
 		assert_array(_buzzes).is_equal([15])  # Through TouchInput, once.
 		assert_array(_sent).is_empty()
 		_box(Vector2(80, 300), Vector2(300, 500))  # Left of the block: no tank in it.
@@ -226,7 +235,7 @@ func test_the_ordered_tanks_stand_idle_on_distinct_slots_around_the_point_after_
 			spots.append(Vector2i(world.pos_x[row], world.pos_y[row]))
 			# The nearest 30 slots of a 1200 lattice reach sqrt(10) * 1200 = 3795 milli; the point
 			# is near the block (P85), so the last tanks to arrive settle up to ~100 milli further out.
-			assert_float(Vector2(spots[row]).distance_to(Vector2(17266, 21516))).is_less(3900.0)
+			assert_float(Vector2(spots[row]).distance_to(Vector2(GROUND_MILLI))).is_less(3900.0)
 		for a: int in 30:
 			for b: int in range(a + 1, 30):
 				# P39b: separation settles tanks just under their radii sum (800), not on the lattice;
@@ -369,7 +378,7 @@ func _assert_move(command: Command, ids: Array, x: int, y: int, player: int = 1)
 
 
 ## The story of one hidden enemy at the three screen sizes. `enemy_id` starts outside the sight of
-## `player`'s units; `ids` is the selection. A tap 20 dp left of the enemy's centre is a MOVE to
+## `player`'s units; `ids` is the selection. A tap 20 dp above the enemy's centre is a MOVE to
 ## that ground point, with chevrons only; so is a double-tap (two MOVEs); with nothing selected it
 ## does nothing. Then the unit `mover_id` (the enemy itself, or a unit of the other side) is stood
 ## at `mover_milli`, 5 tiles from its opponent, and the fog is played until the real mask lets
@@ -389,11 +398,11 @@ func _check_hidden_enemy(
 		var rig: Node2D = _layer.get_node("Unit%d" % enemy_id)
 		assert_bool(_layer.is_shown(row)).is_false()
 		_camera.centre_on(rig.global_position)
-		var off_centre: Vector2 = _layer.unit_screen_position(row) - Vector2(UiScale.dp(20), 0)
+		var off_centre: Vector2 = _layer.unit_screen_position(row) - Vector2(0, UiScale.dp(20))
 		# The point tapped in world px and milli, from the tap and the camera alone.
-		var ground: Vector2 = rig.global_position - Vector2(UiScale.dp(20) / _camera.zoom.x, 0.0)
-		var at_x: int = ViewScale.px_to_milli(ground.x)
-		var at_y: int = ViewScale.px_to_milli(ground.y)
+		var ground: Vector2 = rig.global_position - Vector2(0.0, UiScale.dp(20) / _camera.zoom.x)
+		var at_x: int = IsoProjection.px_to_ground(ground).x
+		var at_y: int = IsoProjection.px_to_ground(ground).y
 		_tap(off_centre)  # Nothing selected: a tap on nothing.
 		assert_array(_sent).is_empty()
 		assert_int(markers.active_count()).is_equal(0)
@@ -423,7 +432,7 @@ func _check_hidden_enemy(
 		markers._process(0.0)  # The chevrons are old by now.
 		assert_int(markers.active_count()).is_equal(0)
 		_camera.centre_on(rig.global_position)
-		_tap(_layer.unit_screen_position(row) - Vector2(UiScale.dp(20), 0))
+		_tap(_layer.unit_screen_position(row) - Vector2(0, UiScale.dp(20)))
 		assert_array(_sent).has_size(1)
 		_assert_attack(_sent[0], sorted_ids, enemy_id, player)
 		marks = _shown_marks(markers)

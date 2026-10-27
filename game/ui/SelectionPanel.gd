@@ -15,12 +15,12 @@ extends PanelContainer
 ## and its own size flags by the orientation of the window (`HudLayout.is_portrait`), on a change
 ## of the selection and on a resize. A flip runs it twice, so every call lays out from the state
 ## it finds.
-## Landscape: the band lies between the ArmyBar and the sidebar zone (the right 20%, at least 200
-## dp, kept free for the build sidebar) and the panel sits in its middle, at the bottom. A row is at
-## most BAND_SHARE of the band's width (the safe area's inner width, the band's own): a longer name
-## is clipped with an ellipsis. The cap bounds the panel's growth and keeps it off the ArmyBar. It
-## does not reserve the zone: where the screen is too narrow for the panel and the zone (see
-## `_fit_zone`), the zone gives way, a long name or not.
+## Landscape: the band lies between the ArmyBar and the floating build panel (`HudLayout.
+## right_zone_px`: the panel and a gap, at the bottom right) and the panel sits in its middle, at
+## the bottom. A row is at most BAND_SHARE of the band's width (the safe area's inner width, the
+## band's own) and at most what the ArmyBar and the zone leave of it: a longer name or a larger
+## count clips the name with an ellipsis, so the panel stays between the two. Only a screen too
+## narrow for the least row (see `_fit_zone`) lets the zone give way.
 ## Portrait (ADR 0015 section 5): the rows stand side by side in one line at the top, after the
 ## `top_left` control and a gap. The panel never grows past the line (an overflow would grow the
 ## SafeArea and push the HUD off the screen); it takes the first of four fit levels whose line
@@ -198,19 +198,27 @@ func _fit_band() -> void:
 	if portrait:
 		_fit_line(band, band_px)
 	else:
-		_fit_rows(BAND_SHARE * band_px)
-		_fit_zone(band, width, band_px)
+		_fit_zone(band, band_px)
 
 
-## Landscape: the band's margins are the ArmyBar on the left and the sidebar zone on the right. The
-## band's minimum width counts both, so on a screen too narrow for all three the zone gives way and
-## the panel sits in the still empty zone, instead of growing the SafeArea and pushing the HUD off
-## the screen.
-func _fit_zone(band: MarginContainer, width: float, band_px: float) -> void:
+## Landscape: the band's margins are the ArmyBar on the left and the build panel's zone on the
+## right, and the rows are capped to what they leave (the bottom row's room, less the backdrop's
+## padding), so a long name clips and the panel never slides into the zone. The band's minimum
+## width counts both margins; on a screen too narrow for them and the least row the zone gives
+## way, instead of growing the SafeArea and pushing the HUD off the screen.
+func _fit_zone(band: MarginContainer, band_px: float) -> void:
 	size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	size_flags_vertical = Control.SIZE_SHRINK_END
-	var zone: float = HudLayout.right_zone_px(width)
+	var zone: float = HudLayout.right_zone_px(band_px)
 	var left: int = ceili(army_bar.get_combined_minimum_size().x + UiScale.dp(GAP_DP))
+	var between: float = band_px - left - ceilf(zone)  # The panel's room, backdrop included.
+	var cap: float = minf(
+		BAND_SHARE * band_px, between - get_theme_stylebox(&"panel").get_minimum_size().x
+	)
+	_fit_rows(cap)
+	var over: float = get_combined_minimum_size().x - between
+	if over > 0.0:  # The box layout rounds sizes up to whole px: the name gives the excess back.
+		_fit_rows(cap - over)
 	var room: float = band_px - left - get_combined_minimum_size().x
 	band.add_theme_constant_override("margin_left", left)
 	band.add_theme_constant_override("margin_right", mini(ceili(zone), maxi(floori(room), 0)))

@@ -4,8 +4,10 @@ extends GdUnitTestSuite
 ## not its row, uses the local player's number, marks the enemy where it is drawn, and reaches the
 ## sim through the real CommandQueue.
 ## Fingers enter as window-px touch events through the real TouchInput with a fake clock, at
-## 1280x720 (desktop), 2400x1080 (android_6in, 20:9 phone) and 2048x1536 (web_tablet, 4:3). Blue
-## tank n is row n - 1 at px (544 + 96 * ((n - 1) % 6), 1184 + 96 * ((n - 1) / 6)).
+## 1280x720 (desktop), 2400x1080 (android_6in, 20:9 phone) and 2048x1536 (web_tablet, 4:3). Under
+## the 2:1 projection (P117) blue tank n is row n - 1 at px (-320 + 48 (c - r), 432 + 24 (c + r)),
+## c = (n - 1) % 6 and r = (n - 1) / 6, so tank 1 is the top corner of the block and a tap straight
+## above a top-corner tank reaches it alone.
 ## Fog (authoring rule of P46b and P47p): red tank 31 starts at milli (34500, 10500), far outside
 ## every blue sight disc, where a later fog rule would drop an order on it and leave a tap on it
 ## unpicked. So each case first stands the unit it taps inside the sight of a unit of the other
@@ -16,12 +18,12 @@ const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const PROFILES: Array[StringName] = [&"desktop", &"android_6in", &"web_tablet"]
 ## Where the cases stand red tank 31: 5 tiles east of blue tank 30 (milli (16000, 24500)) and about
-## 14 tiles from blue tank 1. Its px are the milli times 64 / 1000.
+## 14 tiles from blue tank 1. Its px are the projection of its milli.
 const RED_31_MILLI: Vector2i = Vector2i(21000, 24500)
-const RED_31: Vector2 = Vector2(1344, 1568)
+const RED_31: Vector2 = Vector2(-112, 728)
 ## Where the local-player-2 case stands red tank 40: 5 tiles north of blue tank 1.
 const RED_40_MILLI: Vector2i = Vector2i(8500, 13500)
-const BLUE_1: Vector2 = Vector2(544, 1184)
+const BLUE_1: Vector2 = Vector2(-320, 432)
 const TOL: Vector2 = Vector2(0.05, 0.05)
 
 var _window_size_before: Vector2i
@@ -157,7 +159,7 @@ func test_the_diamond_marks_a_moving_enemy_where_it_is_drawn_and_not_where_the_s
 		_layer._process(0.0)
 		_assert_sees(30, 31)  # Still seen after the move.
 		var snap: MatchSnapshot = _runner.snapshot
-		var held_px: Vector2 = ViewScale.milli_to_px_vec(snap.pos_x[30], snap.pos_y[30])
+		var held_px: Vector2 = IsoProjection.ground_to_px(snap.pos_x[30], snap.pos_y[30])
 		var drawn_px: Vector2 = _camera.screen_to_world(_layer.unit_screen_position(30))
 		assert_float(held_px.x).is_greater(RED_31.x + 5.0)  # It drove east, 5 px at least.
 		assert_float(held_px.distance_to(drawn_px)).is_greater(1.0)  # A step, well above TOL.
@@ -241,9 +243,10 @@ func _fresh_match(profile: StringName) -> void:
 	_markers._process(0.0)  # A mark of the last profile is older than its lifetime by now.
 
 
-## 20 dp left of the centre of row `row`: the tap point is not the enemy's own position.
+## 20 dp above the centre of row `row`: the tap point is not the enemy's own position, and no
+## other unit is near it (a top-corner tank has none above it).
 func _off_centre(row: int) -> Vector2:
-	return _layer.unit_screen_position(row) - Vector2(UiScale.dp(20), 0)
+	return _layer.unit_screen_position(row) - Vector2(0, UiScale.dp(20))
 
 
 ## A finger down and up at `at` (base px), then a pause past the double-tap time.
