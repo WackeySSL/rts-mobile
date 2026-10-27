@@ -15,6 +15,8 @@ extends RefCounted
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const PATH: String = "res://data/scenarios/perf_bases.tres"
 const SEED: int = 42
+## The length of the arena's run (ADR 0021 section 2): the scenario's strikes fire inside it.
+const RUN_TICKS: int = 900
 
 
 ## The rows of the World after one step, copied.

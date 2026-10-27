@@ -63,6 +63,7 @@ owner = 1
 unit = ExtResource("12_fossil_strike")
 count = 1
 origin_tile = Vector2i(1, 10)
+charge_elapsed_ticks = 4500
 
 [sub_resource type="Resource" id="Spawn_p1_refinery_4"]
 script = ExtResource("2_spawn")
@@ -181,6 +182,7 @@ owner = 2
 unit = ExtResource("25_renew_strike")
 count = 1
 origin_tile = Vector2i(50, 10)
+charge_elapsed_ticks = 4500
 
 [sub_resource type="Resource" id="Spawn_p2_refinery_4"]
 script = ExtResource("2_spawn")
@@ -393,7 +395,7 @@ unit = ExtResource("30_renew_scout")
 
 [sub_resource type="Resource" id="Order_p1_strike"]
 script = ExtResource("3_order")
-tick = 4500
+tick = 300
 player = 1
 type = 15
 target_tile = Vector2i(47, 11)
@@ -401,7 +403,7 @@ unit = ExtResource("12_fossil_strike")
 
 [sub_resource type="Resource" id="Order_p2_strike"]
 script = ExtResource("3_order")
-tick = 4500
+tick = 480
 player = 2
 type = 15
 target_tile = Vector2i(6, 11)

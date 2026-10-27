@@ -4,10 +4,12 @@ extends GdUnitTestSuite
 ## bases facing each other across a ridge with three gaps, the Derrick League (player 1) in the
 ## west and the Lumen Accord (player 2) in the east, every building type of both, four harvesters
 ## and two ore fields a side, an army a side at the unit cap and the scenario orders that start the
-## economy, the queues and, once the charge has ended, a strike each. What these data do when
-## played is test_base_arena_run's and test_base_arena_strikes'. The layout numbers are literals
-## (the data are layout); every rule number is read from the data files and the World.
+## economy, the queues and, once the charge has ended and inside the 900-tick run, a strike each.
+## What these data do when played is test_base_arena_run's and test_base_arena_strikes'. The layout
+## numbers are literals (the data are layout); every rule number is read from the data files and the
+## World.
 
+const BaseArena: GDScript = preload("res://tests/sim/support/base_arena.gd")
 const MAP_PATH: String = "res://data/maps/perf_bases.tres"
 const SCENARIO_PATH: String = "res://data/scenarios/perf_bases.tres"
 const TERRAIN_PATH: String = "res://data/terrain/standard.tres"
@@ -277,16 +279,28 @@ func test_the_start_formation_fits_the_arena_frame() -> void:
 
 
 ## One SUPERWEAPON order of `player`: the strike building of its faction (a BuildingDef of its
-## roster with a strike kind), a tick at or after the end of its charge (the first tick accepted is
-## `charge_ticks`: ready_tick is the stamp of the placement plus the charge), and a target tile in
-## the other base, with an enemy building within the strike's radius and none of the firing
-## player's own (a rupture takes own rows too).
+## roster with a strike kind), a tick at or after the end of its charge and inside the arena's run,
+## and a target tile in the other base, with an enemy building within the strike's radius and none
+## of the firing player's own (a rupture takes own rows too). The building's spawn block starts
+## `charge_elapsed_ticks` into the charge (a Deep Bore placed at tick 0 would need `charge_ticks`,
+## longer than the run), so the first tick accepted is the difference, floored at 0 (ready_tick is
+## the stamp of the placement plus the charge, less the ticks already behind it). The strike falls
+## inside the run: a rupture lands `strike_delay` ticks after the order, a blackout works at once.
 func _check_strike(order: OrderDef, player: int) -> void:
 	var def: BuildingDef = order.unit as BuildingDef
 	assert_object(def).is_not_null()
 	assert_bool(_scenario.factions[player].roster.has(def)).is_true()
 	assert_int(def.strike_kind).is_greater(0)
-	assert_int(order.tick).is_greater_equal(def.charge_ticks)
+	var spawn: SpawnDef = null
+	for candidate: SpawnDef in _scenario.spawns:
+		if candidate.owner == player and candidate.unit == def:
+			spawn = candidate
+	assert_object(spawn).is_not_null()
+	assert_int(spawn.count).is_equal(1)
+	assert_int(spawn.charge_elapsed_ticks).is_greater(0)
+	assert_int(order.tick).is_greater_equal(maxi(def.charge_ticks - spawn.charge_elapsed_ticks, 0))
+	var delay: int = def.strike_delay if def.strike_kind == Strike.Kind.RUPTURE else 0
+	assert_int(order.tick + 1 + delay).is_less_equal(BaseArena.RUN_TICKS)
 	var point: Vector2i = order.target_tile * 1000 + Vector2i(500, 500)
 	var reach: int = def.strike_radius
 	var enemy: int = 0

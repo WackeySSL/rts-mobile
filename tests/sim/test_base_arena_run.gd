@@ -5,16 +5,18 @@ extends GdUnitTestSuite
 ## kernels. The cases judge the acceptance of the row: at least 150 mobile rows alive in the heavy
 ## part, every building type of both factions alive throughout, four harvesters a side unloading,
 ## both unit tabs producing for both players, no dropped command, and a run that is bit-identical
-## across two runs and across the two implementations, that a replay reproduces. The strikes are
-## test_base_arena_strikes' (they need 4,500 ticks of charge). Golden hashes are not pinned here:
-## plan row P93 pins them (nothing in this file names a hash).
+## across two runs and across the two implementations, that a replay reproduces. Both strikes fire
+## inside the 900 ticks (the scenario's strike buildings start their charge part-way through, see
+## `SpawnDef.charge_elapsed_ticks`), so the goldens that P93 pins cover them; their rules are
+## test_base_arena_strikes'. Golden hashes are not pinned here: plan row P93 pins them (nothing in
+## this file names a hash).
 
 const BaseArena: GDScript = preload("res://tests/sim/support/base_arena.gd")
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const HashReport: GDScript = preload("res://tests/sim/support/hash_report.gd")
 const GATE_PATH: String = "res://data/dev/perf_gate.tres"
 const GATE_FPS: int = 60
-const TICKS: int = 900
+const TICKS: int = BaseArena.RUN_TICKS
 ## The armies close for 65 ticks before the first death; 60 keeps a margin. The gate's own heavy
 ## window (below) is the number that must hold.
 const FULL_TICKS: int = 60
@@ -144,27 +146,82 @@ func test_two_gdscript_runs_and_the_native_run_are_bit_identical() -> void:
 
 
 ## The replay holds the scenario's own orders as commands (a group order and the harvesters' ore
-## for each side, then its queue items) and plays back on a fresh world to the same hashes.
+## for each side, then its queue items, all at tick 0, then the two strikes on their own ticks) and
+## plays back on a fresh world to the same hashes.
 func test_the_replay_holds_the_scenario_orders_and_plays_back_to_the_same_hash() -> void:
 	var scenario: ScenarioDef = load(BaseArena.PATH) as ScenarioDef
 	var items: int = 0
+	var strike_ticks: Array[int] = []
 	for order: OrderDef in scenario.orders:
 		items += 1 if order.type == Command.Type.QUEUE else 0
+		if order.type == Command.Type.SUPERWEAPON:
+			strike_ticks.append(order.tick)
+	strike_ticks.sort()
 	var replay: Replay = _first.replay
 	var types: Array[int] = []
+	var ticks: Array[int] = []
 	var payloads: int = 0
 	var at: int = 0
 	while at < replay.commands.size():
 		var command: Command = Command.new()
 		at = Command.decode(replay.commands, at, command)
-		assert_int(command.tick).is_equal(0)
 		types.append(command.type)
+		ticks.append(command.tick)
 		payloads += command.payload.size()
 	var side: Array[int] = [Command.Type.ATTACK_MOVE, Command.Type.HARVEST]
 	for _item: int in items / 2:
 		side.append(Command.Type.QUEUE)
-	assert_array(types).is_equal(side + side)
+	var strikes: Array[int] = [Command.Type.SUPERWEAPON, Command.Type.SUPERWEAPON]
+	assert_array(types).is_equal(side + side + strikes)
+	var start: int = side.size() * 2
+	for index: int in start:
+		assert_int(ticks[index]).override_failure_message(str(index)).is_equal(0)
+	assert_array(ticks.slice(start)).is_equal(strike_ticks)
 	assert_int(payloads).is_equal(items)
 	var fresh: World = World.from_scenario(scenario, DetRandom.create(42, DetRandom.STREAM_SIM))
 	assert_int(Replay.play(replay, fresh, TICKS)).is_equal(Replay.PLAY_MATCHED)
 	assert_int(fresh.state_hash()).is_equal(replay.final_hash)
+
+
+## One rupture and one blackout land inside the 900 ticks, in both implementations: each strike
+## building was fired on its order's tick (it is charging again from there, so the order was not
+## dropped), the rupture has landed and hurt a building of the other base, and the
+## blackout is in force at the end (when its length reaches that far) on the buildings of the other
+## base and nowhere else. The rules (radius, damage, the length) are test_base_arena_strikes'.
+func test_one_rupture_and_one_blackout_land_inside_the_run() -> void:
+	var scenario: ScenarioDef = load(BaseArena.PATH) as ScenarioDef
+	for run: BaseArena.Run in [_first, _native]:
+		var world: World = run.world
+		var hurt: int = 0
+		var offline: Array[int] = [0, 0, 0]
+		for row: int in world.unit_count():
+			var type: int = world.type_index[row]
+			if world.type_foot_w[type] <= 0:
+				continue
+			if world.owner[row] == 2 and world.hp[row] < world.type_max_hp[type]:
+				hurt += 1
+			if world.offline_until[row] > world.tick:
+				offline[world.owner[row]] += 1
+		var kinds: Array[int] = []
+		var in_force: bool = false
+		for order: OrderDef in scenario.orders:
+			if order.type != Command.Type.SUPERWEAPON:
+				continue
+			var def: BuildingDef = order.unit as BuildingDef
+			kinds.append(def.strike_kind)
+			if def.strike_kind == Strike.Kind.BLACKOUT:
+				in_force = order.tick + 1 + def.strike_ticks > world.tick
+			var type: int = world.type_ids.find(def.type_id)
+			var row: int = world.type_index.find(type)
+			while world.owner[row] != order.player:
+				row = world.type_index.find(type, row + 1)
+			assert_int(world.ready_tick[row]).is_equal(order.tick + 1 + def.charge_ticks)
+			assert_int(order.tick + 1).is_less(TICKS)
+		assert_array(kinds).is_equal([Strike.Kind.RUPTURE, Strike.Kind.BLACKOUT])
+		assert_int(world.strike_tick[1]).is_equal(0)
+		assert_int(hurt).is_greater_equal(1)
+		assert_int(offline[0] + offline[2]).is_equal(0)
+		if in_force:
+			assert_int(offline[1]).is_greater_equal(3)
+		else:
+			assert_int(offline[1]).is_equal(0)

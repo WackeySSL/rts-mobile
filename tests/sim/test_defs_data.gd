@@ -332,7 +332,8 @@ func test_every_scenario_file_sets_the_shared_rules_resource_and_has_a_valid_map
 ## spawn draws nothing from a span above 2^31), at most `max_rows` units (nothing refuses a row
 ## before prepare()) and a player_count of 0 or at least the highest spawn owner. A block of
 ## buildings (P80) has no grid point to walk on, its footprints are the loader's: `add_building`
-## refuses one that is not wholly on the map and counts it in `spawn_refused`, which stays 0.
+## refuses one that is not wholly on the map and counts it in `spawn_refused`, which stays 0. A
+## `charge_elapsed_ticks` is 0 or more, and above 0 only on a strike building.
 func test_every_scenario_file_places_its_units_inside_the_map_and_within_its_limits() -> void:
 	for path: String in FileScan.list_files(SCENARIOS_DIR, ".tres"):
 		var scenario: ScenarioDef = load(path)
@@ -346,6 +347,17 @@ func test_every_scenario_file_places_its_units_inside_the_map_and_within_its_lim
 			owners = maxi(owners, spawn.owner)
 			if spawn.jitter < 0 or spawn.jitter > 8000:
 				problems.append("jitter %d of %s" % [spawn.jitter, spawn.unit.type_id])
+			if spawn.charge_elapsed_ticks < 0:
+				problems.append(
+					(
+						"charge_elapsed_ticks %d of %s"
+						% [spawn.charge_elapsed_ticks, spawn.unit.type_id]
+					)
+				)
+			if spawn.charge_elapsed_ticks > 0 and not _is_strike_building(spawn.unit):
+				problems.append(
+					"charge_elapsed_ticks of %s, which has no strike" % spawn.unit.type_id
+				)
 			if spawn.unit is BuildingDef:
 				continue
 			for k: int in spawn.count:
@@ -703,6 +715,11 @@ func _rule_problems(rules: RulesDef) -> PackedStringArray:
 		if broken[message]:
 			problems.append("rules: " + message)
 	return problems
+
+
+## True when `unit` is a building with a strike (BuildingDef.strike_kind above 0).
+func _is_strike_building(unit: UnitDef) -> bool:
+	return unit is BuildingDef and (unit as BuildingDef).strike_kind > 0
 
 
 ## Where unit k of a block starts before jitter (the SpawnDef rule), in milli-tiles.

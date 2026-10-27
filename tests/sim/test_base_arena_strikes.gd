@@ -1,12 +1,14 @@
 extends GdUnitTestSuite
 ## The two strikes of the base arena (plan row P80, ADR 0023 sections 10 and 14): each side's
-## scenario SUPERWEAPON order fires the strike building of its faction once, on a tick that the
-## charge has ended by (a strike building placed at tick 0 charges for `charge_ticks`, 4,500 ticks).
-## The Derrick League's Deep Bore ruptures the Lumen Accord's base and the Lumen Accord's Blackout
+## scenario SUPERWEAPON order fires the strike building of its faction once, inside the 900-tick
+## run, on a tick that the charge has ended by (the scenario starts the building
+## `charge_elapsed_ticks` into its charge of `charge_ticks`, see test_spawn_charge_elapsed). The
+## Derrick League's Deep Bore ruptures the Lumen Accord's base and the Lumen Accord's Blackout
 ## Array takes the Derrick League's buildings offline. The arena is played to the end of the
-## blackout in the GDScript phases and in the C++ kernels; rows are counted before and after the
-## strikes, never time. Every number (ticks, radius, damage, percents) is read from the data files
-## and the World's tables, so a retune moves no case; the 900-tick part is test_base_arena_run's.
+## blackout (a few ticks past the 900) in the GDScript phases and in the C++ kernels; rows are
+## counted before and after the strikes, never time. Every number (ticks, radius, damage, percents)
+## is read from the data files and the World's tables, so a retune moves no case; the 900-tick part
+## is test_base_arena_run's.
 
 const BaseArena: GDScript = preload("res://tests/sim/support/base_arena.gd")
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
