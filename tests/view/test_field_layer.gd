@@ -1,6 +1,7 @@
 extends GdUnitTestSuite
 ## The oil and gas fields on the ground (plan P116, ADR 0023 sections 2 and 11, STYLE.md "Fields"):
-## the fields as edge-adjacent groups of ore cells, the stage of a cell by integer thirds of
+## the fields as groups of ore cells joined side to side or corner to corner (the numbering of
+## `MapDef.field_kinds`, plan P79), the stage of a cell by integer thirds of
 ## `ore_cell_max`, a stage tile written only when a cell's stage changes, the kind of a field from
 ## one lookup that says oil until the map data names it, and one wellhead with its shadow on each
 ## field, drawn from the ground's one page. The fixture map is tests/view/support/ground_rig.gd's.
@@ -33,14 +34,26 @@ func test_a_stage_is_an_integer_third_of_the_most_a_cell_holds() -> void:
 	assert_int(FieldLayer.stage_of(3, 9)).is_equal(2)  # One third exactly: dry.
 
 
-func test_a_field_is_a_group_of_edge_adjacent_ore_cells_and_a_corner_is_no_edge() -> void:
-	assert_array(_runner.snapshot.ore_cell).contains_exactly(Rig.ORE_CELLS)
+func test_a_field_is_a_group_of_ore_cells_joined_side_to_side_or_corner_to_corner() -> void:
+	assert_array(_runner.snapshot.ore_cell).contains_exactly(Rig.ORE_CELLS)  # 44 joins the line at 35.
 	assert_int(_fields.fields().size()).is_equal(Rig.FIELDS.size())
 	for at: int in Rig.FIELDS.size():
 		var members: Array[int] = []
 		members.assign(_fields.fields()[at])
 		assert_int(members[0]).is_equal(Rig.FIELDS[at][0])  # The lowest cell comes first.
 		assert_array(members).contains_exactly_in_any_order(Rig.FIELDS[at])
+
+
+func test_a_row_end_and_the_next_row_start_are_no_neighbours_and_fields_keep_their_numbers(
+) -> void:
+	# Cells 7 and 8 follow each other in the numbering but sit at opposite ends of two rows.
+	_build(Rig.scenario(PackedStringArray([".......o", "o.......", "...o....", "....o..."])))
+	var members: Array[Array] = []
+	for field: PackedInt32Array in _fields.fields():
+		members.append(Array(field))
+	# Fields are numbered by their lowest cell: 7, 8, then 19 with its corner neighbour 28.
+	assert_array(members).contains_exactly([[0], [1], [2, 3]])
+	assert_array(_fields.wellhead_cells()).contains_exactly([7, 8, 19])
 
 
 func test_each_field_has_one_wellhead_on_the_cell_nearest_its_middle() -> void:
@@ -108,11 +121,11 @@ func test_the_kind_of_a_field_comes_from_one_lookup_that_says_oil_by_default() -
 	var asked: Array[int] = []
 	_build(
 		Rig.scenario(),
-		func(first_cell: int) -> StringName:
-			asked.append(first_cell)
-			return &"gas" if first_cell == 15 else &"oil"
+		func(field: int) -> StringName:
+			asked.append(field)
+			return &"gas" if field == 1 else &"oil"
 	)
-	assert_array(asked).contains_exactly([10, 15, 28, 33])  # Each field once, by its lowest cell.
+	assert_array(asked).contains_exactly([0, 1, 2])  # Each field once, by its number.
 	assert_that(_tile_at(0)).is_equal(_ground.atlas().coords(&"oil_full"))  # The 2 x 2 field.
 	assert_that(_tile_at(2)).is_equal(_ground.atlas().coords(&"gas_full"))  # The lone cell 15.
 	assert_that(_tile_at(6)).is_equal(_ground.atlas().coords(&"oil_full"))  # The line.
@@ -126,15 +139,15 @@ func test_the_kind_of_a_field_comes_from_one_lookup_that_says_oil_by_default() -
 
 func test_a_wellhead_and_its_shadow_stand_at_the_cell_centre_from_the_one_page() -> void:
 	var props: Array[Node] = _props()
-	assert_int(props.size()).is_equal(8)  # Four shadows, then four bodies.
+	assert_int(props.size()).is_equal(6)  # Three shadows, then three bodies.
 	var props_node: Node2D = props[0].get_parent() as Node2D
 	assert_int(props_node.z_index).is_equal(FieldLayer.Z_PROPS)  # With the decals, at z 1,
 	assert_bool(props_node.z_as_relative).is_false()  # whatever the parents' z.
-	for at: int in 4:
+	for at: int in 3:
 		var cell: int = Rig.WELLHEADS[at]
 		var centre: Vector2 = IsoProjection.cell_centre_px(cell % Rig.COLS, cell / Rig.COLS)
 		for kind: int in 2:  # 0 the shadow, 1 the body: the shadows first, so a body is on top.
-			var sprite: Sprite2D = props[kind * 4 + at] as Sprite2D
+			var sprite: Sprite2D = props[kind * 3 + at] as Sprite2D
 			var key: StringName = GroundAtlas.WELLHEAD_SHADOW if kind == 0 else GroundAtlas.WELLHEAD
 			assert_object(sprite.texture).is_same(_ground.atlas().texture())
 			assert_bool(sprite.region_enabled).is_true()
@@ -158,7 +171,7 @@ func test_the_ground_the_stages_and_the_props_are_one_texture() -> void:
 
 func test_a_new_match_stands_its_own_fields_and_frees_the_old_wellheads() -> void:
 	var old: Array[Node] = _props()
-	assert_int(old.size()).is_equal(8)
+	assert_int(old.size()).is_equal(6)
 	_runner.scenario = Rig.scenario(PackedStringArray(["...", ".o."]))
 	_runner.start()
 	await await_idle_frame()

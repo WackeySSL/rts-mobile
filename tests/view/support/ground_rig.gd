@@ -1,10 +1,10 @@
 extends RefCounted
 ## Fixtures of the ground suites (plan P116). Not a test suite. An 8 x 6 map of the six terrains of
-## `data/terrain/standard.tres` with four fields of ore (`o`), by cell number (row * 8 + column):
-## a 2 x 2 field (10, 11, 18, 19), a lone cell (15), a lone cell that touches the 2 x 2 field and
-## the line only at a corner (28), and a line of three (33, 34, 35). A corner is not an edge, so
-## they are four fields, not one. The ore indexes (into `ore_cell` and `ore_amount`) are 0 to 8 in
-## the order of the cells: 10, 11, 15, 18, 19, 28, 33, 34, 35.
+## `data/terrain/standard.tres` with three fields of ore (`o`), by cell number (row * 8 + column):
+## a 2 x 2 field (10, 11, 18, 19), a lone cell (15), and a line of three (33, 34, 35) with a cell
+## (44) that touches its end only at a corner. A corner joins, as `MapDef.field_kinds` counts fields
+## (plan P79), so 44 belongs to the line: three fields. The ore indexes (into `ore_cell` and
+## `ore_amount`) are 0 to 8 in the order of the cells: 10, 11, 15, 18, 19, 33, 34, 35, 44.
 
 const TERRAIN: String = "res://data/terrain/standard.tres"
 const RULES: String = "res://data/rules.tres"
@@ -14,15 +14,15 @@ const ROWS: PackedStringArray = [
 	".:^#~...",
 	"..oo...o",
 	"..oo....",
-	"....o...",
-	".ooo....",
 	"........",
+	".ooo....",
+	"....o...",
 ]
-const ORE_CELLS: Array[int] = [10, 11, 15, 18, 19, 28, 33, 34, 35]
+const ORE_CELLS: Array[int] = [10, 11, 15, 18, 19, 33, 34, 35, 44]
 ## The ore indexes of each field, in the order of their lowest cells, and the cell each wellhead
 ## stands on: the cell nearest the field's middle (the lowest of equal ones).
-const FIELDS: Array[Array] = [[0, 1, 3, 4], [2], [5], [6, 7, 8]]
-const WELLHEADS: Array[int] = [10, 15, 28, 34]
+const FIELDS: Array[Array] = [[0, 1, 3, 4], [2], [5, 6, 7, 8]]
+const WELLHEADS: Array[int] = [10, 15, 34]
 ## The index of each terrain in the set, for `World.set_terrain`.
 const GRASS: int = 0
 const ROCK: int = 3

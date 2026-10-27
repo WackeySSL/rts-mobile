@@ -103,9 +103,10 @@ func _begin(snap: MatchSnapshot) -> void:
 @warning_ignore("integer_division")
 func _fill(snap: MatchSnapshot) -> void:
 	_version = snap.map_version
-	for cell: int in snap.terrain.size():
+	var terrain: PackedByteArray = snap.terrain
+	for cell: int in terrain.size():
 		var at: Vector2i = Vector2i(cell % _cols, cell / _cols)
-		var coords: Vector2i = _tile_of[snap.terrain[cell] * 2 + ((at.x + at.y) & 1)]
+		var coords: Vector2i = _tile_of[terrain[cell] * 2 + ((at.x + at.y) & 1)]
 		if coords == get_cell_atlas_coords(at):
 			continue
 		_writes += 1
