@@ -730,8 +730,8 @@ its three name-list rows, for every name this ADR uses.
 
 Status note (2026-10-27, P26ak docs, from P102's review; the table above stays as accepted): the
 twin-barrel row covers the Mammoth's stance too, a tank standing on four corner track pods (TD's
-and RA's Mammoth). No unit stands on four corner pods. P102's fix round (#233, open on
-2026-10-27) takes them out of the Torque, which then stands on two long tracks, and
+and RA's Mammoth). No unit stands on four corner pods. P102 as merged (#233, 280d189) took them
+out of the Torque in its fix round, so the Torque stands on one continuous track a side, and
 `svg-art-style` names the stance next to the twin barrels (Michael's yes of 2026-10-27).
 
 ### 14. Performance and the arenas

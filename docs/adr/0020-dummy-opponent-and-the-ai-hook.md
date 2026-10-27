@@ -149,14 +149,14 @@ allocation check** (no array literal, `duplicate()` or `slice()` in a loop body)
 decision of 2026-10-26: that check guards the loops of the per-tick phases, and a think runs on
 one tick in 15, counted and bounded by its tests (§4).
 
-Status note (2026-10-27, P26ak docs, P107 as merged, #212; the text and the note above stay as
-accepted and as dated): `MatchRunner.opponents` is a typed `Array[AiDef]` that is **not**
-exported. Godot 4.7.2 keeps an exported default in a cache that `GDScript::clear()` does not
-empty; with the typed array there, the editor's exit (export, import) can free `AiDef` while it
-clears `MatchRunner`, and the autoload scripts leak, which fails `scripts/export-web.sh`. No scene
-or `.tres` sets the list: the tests and the Skirmish route (P90) set it in code. Any exported typed
-array or dictionary of a `class_name` script in a long-lived script carries the same risk; the CI
-web export is its guard.
+Status note (2026-10-27, P26ak docs, P109 as merged, #214, 1d7b2cb, which ported the change from
+P107's branch, e685d5e; the text and the note above stay as accepted and as dated):
+`MatchRunner.opponents` is a typed `Array[AiDef]` that is **not** exported. Godot 4.7.2 keeps an
+exported default in a cache that `GDScript::clear()` does not empty; with the typed array there, the
+editor's exit (export, import) can free `AiDef` while it clears `MatchRunner`, and the autoload
+scripts leak, which fails `scripts/export-web.sh`. No scene or `.tres` sets the list: the tests and
+the Skirmish route (P90) set it in code. Any exported typed array or dictionary of a `class_name`
+script in a long-lived script carries the same risk; the CI web export is its guard.
 
 ### 4. The dummy opponent
 `DummyAi extends AiController`, driven by `data/ai/dummy.tres` (`AiDef`):
