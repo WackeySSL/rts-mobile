@@ -1,0 +1,28 @@
+# Fixture for test_view_reads_snapshot: game/ai code that reads the World, which ADR 0020 section 3
+# forbids, read as text and never loaded as a script. The test pins the line numbers each rule
+# flags, so add new cases at the end.
+class_name FixtureWorldReader
+extends RefCounted
+
+var held: World = null
+var by_id: Dictionary[int, World] = {}
+
+
+func think(view: PlayerView, runner: Object, world: World) -> void:
+	var tab: int = World.Tab.STRUCTURES
+	var tick: int = runner.world.tick
+	var l: Object = runner.loop
+	var r: Object = runner.replay
+	runner.probe = null
+	var wrapped: int = (
+		runner
+		. world
+		. tick
+	)
+	var legal_tab: int = PlayerView.Tab.STRUCTURES
+	var legal_reason: int = Placement.Reason.OK
+	var layer: World2D = null
+	var loaded: WorldLoad = null
+	var world_px: int = view.tick
+	# World, runner.world and runner.loop in a comment are not code
+	var s: String = "World runner.world runner.probe"

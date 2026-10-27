@@ -34,6 +34,10 @@ Status note (2026-10-26, P68e docs; ADR 0023 accepted 2026-10-26, Michael's answ
 carry dated status notes: Command type 15 is `SUPERWEAPON`, and `Strike.run` runs inside the FIRE
 mark, so no phase id is added. No accepted text changed.
 
+Status note (2026-10-26, P26ai docs): §1 carries a dated status note on the `ATTACK` approach point
+as P71 and P71b merged it (the code in `Buildings.gd`, the two open choices, TARGETING's 41
+names). No accepted text changed.
+
 ## Context
 What earlier ADRs already decided for Phase 3:
 - **ADR 0007 §2:** "Buildings (Phase 3) are rows of the same table", so targeting, damage, death
@@ -132,6 +136,20 @@ What the code does today (`main` at 757b5f9):
   kernel's lockstep suite to prove it on both implementations, among them an `ATTACK` on a 3x3
   building behind rock. A later rule that needs a kernel change edits both twins (ADR 0013 §5).
 - `_own_rows` already filters speed-0 rows, so no unit-group Command moves a building.
+
+Status note (2026-10-26, P26ai docs, P71 as merged, #184, and P71b, #185; the text above stays as
+accepted):
+- **Where the code lives.** The building rules are in `game/sim/Buildings.gd`, not in
+  `World.gd`, which keeps `add_building` and `footprint_origin` as thin wrappers (gdlint's 1,000
+  lines). `Buildings.add` places, blocks and re-picks (`_repick`); `Buildings.approach_point` and
+  `Buildings.aim` give the approach point; `Sim._apply_attack` calls `Buildings.aim`.
+- **Two choices the text leaves open, as merged and pinned in `tests/sim/test_attack_building.gd`.**
+  An `ATTACK` on a target with speed 0 and no footprint gets its goal written once by the command,
+  at the target's position (TARGETING skips every speed-0 target in both twins, so nothing else
+  writes it). A re-pick in `add_building` that finds no passable ring tile keeps the row's goal,
+  which then lies inside the new footprint.
+- **The kernel's checked list.** TARGETING gets `type_speed` again, so its checked list in
+  `bind/world_access.h` holds 41 names (ADR 0013 §2's note of the same date).
 
 ### 2. Placement validity is one pure function
 `game/sim/Placement.gd` decides whether a footprint fits, for the sim (applying `PLACE`) and the

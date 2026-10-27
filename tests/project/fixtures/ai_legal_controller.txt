@@ -1,0 +1,64 @@
+# Fixture for test_sim_purity and test_view_reads_snapshot: a game/ai controller that keeps every rule
+# of game/ai (ADR 0020 section 3), read as text and never loaded as a script. Every scan of game/ai
+# must leave all of it alone. Its comments and strings name what game/ai may not use (World, Node,
+# randi(), 1.5, load(), signal, .world) and are no code, and its look-alikes (`exp`, `signal_count`,
+# `DetRandom`, `PlayerView.Tab`, `Placement.Reason`) are legal names.
+class_name FixtureController
+extends RefCounted
+
+const QUEUE_TARGET: int = 2
+const GUARD_RADIUS: int = 6
+const SPIRAL: Array[Vector2i] = [Vector2i(2, 0), Vector2i(0, 2), Vector2i(-2, 0), Vector2i(0, -2)]
+
+var player_id: int = 0
+var think_period: int = 15
+var think_offset: int = 7
+var build_order: PackedInt32Array = PackedInt32Array()
+var exp: int = 0
+var log: Array[int] = []
+var signal_count: int = 0
+var _rng: DetRandom = null
+var _next_item: int = 0
+var _label: String = "World randi() 1.5 load(path) signal .world"  # World, randi(), 1.5
+
+
+static func create(player: int, order: PackedInt32Array, rng: DetRandom) -> FixtureController:
+	var controller: FixtureController = FixtureController.new()
+	controller.player_id = player
+	controller.build_order = order.duplicate()
+	controller._rng = rng
+	return controller
+
+
+## The match is read through the view only, and the answer is Commands (ADR 0020 section 2).
+func think(view: PlayerView, out: Array[Command]) -> void:
+	var tab: int = PlayerView.Tab.STRUCTURES
+	var centre: int = PlayerView.TILE_CENTRE
+	var per_tile: int = PlayerView.MILLI_PER_TILE
+	if view.low_power or view.credits < 0:
+		return
+	if view.structure_ready():
+		_place(view, out)
+	if view.queue_count[tab] < QUEUE_TARGET and not build_order.is_empty():
+		out.append(Command.queue(player_id, build_order[_next_item % len(build_order)]))
+		_next_item += 1
+	for row: int in view.own_rows:
+		if view.row_order(row) != PlayerView.Order.IDLE:
+			continue
+		var pos: Vector2i = view.row_pos(row)
+		var tiles2: int = pos.distance_squared_to(Vector2i(centre, centre)) / (per_tile * per_tile)
+		var jitter: int = _rng.next_int(3)
+		if view.seen_rows.size() > 0 and tiles2 > GUARD_RADIUS * GUARD_RADIUS + jitter:
+			var ids: PackedInt32Array = PackedInt32Array([view.row_id(row)])
+			_rng.shuffle(ids)
+			out.append(Command.attack_move(player_id, ids, pos.x, pos.y))
+	log.append(clampi(view.credits, 0, 99_999))
+	exp += maxi(0, mini(abs(view.power_made - view.power_used), 9))
+
+
+func _place(view: PlayerView, out: Array[Command]) -> void:
+	for step: Vector2i in SPIRAL:
+		var reason: int = view.placement(0, step.x, step.y)
+		if reason == Placement.Reason.OK:
+			out.append(Command.place(player_id, step.x, step.y))
+			return

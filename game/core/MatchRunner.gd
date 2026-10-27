@@ -11,7 +11,9 @@ extends Node
 ## the World, `loop`, `replay` and `probe` belong to the worker and their getters refuse the main
 ## thread (plan P38w1b); it reads the World only inside `ticked` or after wait_idle(). Once a
 ## published snapshot shows the end of the match, the runner emits `match_ended` and plays no
-## further tick until start() (ADR 0017 section 6, ADR 0018 section 7, plan P81).
+## further tick until start() (ADR 0017 section 6, ADR 0018 section 7, plan P81). The computer
+## players of `opponents` think inside each tick job, before its step and after the human's
+## commands, so their Commands are stamped and recorded like a player's (ADR 0020 section 3).
 ## It needs the CommandQueue and DetRng autoloads, so a headless `godot -s` tool must load() this
 ## script at runtime; naming MatchRunner in the entry script does not compile.
 
@@ -54,6 +56,8 @@ enum ImplLog { NONE = 0, WARNING = 1, ERROR = 2 }
 ## A tick is split into this many parts, so the frame clock is an integer and frame lengths
 ## that add up to whole ticks (four times 1/60 s) step exactly.
 const MICRO_TICKS_PER_TICK: int = 1_000_000
+## The player of the first entry of `opponents` (ADR 0020 section 3: player 2 upward).
+const FIRST_OPPONENT: int = 2
 ## OS.get_name() of the platform that requires the library (ADR 0013 section 3) and of the web
 ## preview, which packs no library (section 7) and falls back silently.
 const OS_ANDROID: String = "Android"
@@ -126,6 +130,10 @@ static var _live_workers: int = 0
 ## Where the tick runs. SYNC by default: a runner a test builds ticks inline unless it asks for
 ## WORKER. The scenes set AUTO from P50b.
 @export var tick_mode: TickMode = TickMode.SYNC
+## The computer players (ADR 0020 section 3): entry i plays player FIRST_OPPONENT + i, a null entry
+## none; player 1 is the human. start() makes each one's controller with DummyAi.create, with the
+## stream DetRng.create(match_seed, DetRandom.STREAM_AI_BASE + player), and hands them to the job.
+@export var opponents: Array[AiDef] = []
 
 ## The World, `loop`, `replay` and `probe` belong to the worker while a job runs (ADR 0012
 ## section 1): read or swap them in SYNC mode, inside `ticked` or after wait_idle(). Each is a
@@ -232,9 +240,10 @@ func _ready() -> void:
 ## 0 again, no checkpoint yet. It publishes the tick-0 snapshot, without `ticked`: its match_serial
 ## and last_hash first, then a capture with no previous one, so prev = current and nothing slides
 ## from the old match. The World runs the implementation that sim_impl resolves to on this platform
-## (_use_impl()), and the ticks run in the mode tick_mode resolves to (resolve_mode()). A job in
-## flight is waited for and dropped first; if that wait reaches its cap, start() logs it and
-## returns with the old match.
+## (_use_impl()), and the ticks run in the mode tick_mode resolves to (resolve_mode()). The job gets
+## the new match's controllers here, so the old ones go with the old match. A job in flight is
+## waited for and dropped first; if that wait reaches its cap, start() logs it and returns with the
+## old match.
 func start() -> void:
 	var step: Vector2i = hand_off(_state, HandOffEvent.START)
 	if step.y & HandOffStep.WAIT and not _take_done(WAIT_CAP_MSEC):
@@ -249,6 +258,7 @@ func start() -> void:
 	_world = World.from_scenario(scenario, DetRng.create(match_seed, DetRandom.STREAM_SIM))
 	var kernels: Object = null if sim_impl == SimImpl.GDSCRIPT else NativeKernels.create()
 	_use_impl(_world, kernels, OS.get_name())
+	_job.controllers = _opponent_controllers()
 	var scenario_path: String = scenario.resource_path if scenario != null else ""
 	_loop = MatchLoop.create(scenario, scenario_path, match_seed, _world)
 	_replay = _loop.replay
@@ -497,6 +507,20 @@ func _post_next() -> void:
 	_state = HandOff.RUNNING
 	_job.post_usec = Time.get_ticks_usec()
 	_job.work.post()
+
+
+## One controller per def of `opponents` that is not null, in ascending player order: entry i plays
+## player FIRST_OPPONENT + i, with that player's stream of match_seed (ADR 0020 section 3).
+func _opponent_controllers() -> Array[AiController]:
+	var built: Array[AiController] = []
+	for index: int in opponents.size():
+		var def: AiDef = opponents[index]
+		if def == null:
+			continue
+		var player: int = FIRST_OPPONENT + index
+		var rng: DetRandom = DetRng.create(match_seed, DetRandom.STREAM_AI_BASE + player)
+		built.append(DummyAi.create(def, player, rng))
+	return built
 
 
 ## Takes the job's `done` token in a try_wait() loop with 1 ms steps (ADR 0012 section 1). At the

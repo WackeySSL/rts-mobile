@@ -27,8 +27,9 @@ const MILLI_PER_TILE: int = 1000
 ## (P74), `Harvest.run` runs the ore and the harvest loop (P75), `Production.run` advances the
 ## queues, the structures' too, at `low_power_percent` of the rate on low power (P73, P73b, P74),
 ## and `Outcome.run` defeats a player that lost its last producer and ends the match (P76);
-## `LastSeen` is a skeleton until plan row P77. A probe gets `begin()` first and a `mark` after
-## each phase that exists (ADR 0007 section 4); it never sees the World.
+## `LastSeen.run` keeps each player's last-seen building records on that player's fog turn (P77).
+## A probe gets `begin()` first and a `mark` after each phase that exists (ADR 0007 section 4); it
+## never sees the World.
 static func step(world: World, commands: Array[Command], probe: SimProbe = null) -> void:
 	if probe != null:
 		probe.begin()
