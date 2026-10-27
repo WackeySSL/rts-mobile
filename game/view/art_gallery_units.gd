@@ -1,8 +1,9 @@
 extends RefCounted
-## Generated units for the Units page of the art gallery (ADR 0023 section 5, plan row P101): a rig
-## `Node2D` with the cast shadow, the hull and the turret of an art id, in its default view, drawn
-## from the generator's frames (`assets/art/iso/`). The frame is the SVG text with the faction's key
-## triad replaced by a player's, as the match-start bake does, and is rasterised at 0.5 x `zoom`
+## Generated units for the Units page of the art gallery (ADR 0023 section 5, plan rows P101 and
+## P102): a rig `Node2D` with the cast shadow, the hull and the turret of an art id (a Derrick
+## League unit or a Lumen Accord one), in its default view (`d06` or `d10`), drawn from the
+## generator's frames (`assets/art/iso/`). The frame is the SVG text with the faction's key triad
+## replaced by a player's, as the match-start bake does, and is rasterised at 0.5 x `zoom`
 ## (the 2x art at zoom 1 is half size), then drawn at 1 / `zoom`, so a rig scaled by `zoom` shows
 ## one texel per screen px, as the game's atlas does. Until the per-match atlas exists (P113) the
 ## gallery rasterises the frames itself, once per art id, triad and zoom: one instance holds the
@@ -13,7 +14,9 @@ const TRIADS: Array[Array] = [
 	["#FF9446", "#E8681F", "#B04B12"],
 	["#62D6EE", "#1FA6C8", "#137C99"],
 ]
-const MODEL: String = "res://assets/art/models/fossil/%s.tres"
+const MODEL: String = "res://assets/art/models/%s/%s.tres"
+## The Lumen Accord's art ids start with this; the Derrick League's have no prefix.
+const ACCORD_PREFIX: String = "renew_"
 const BASE_SCALE: float = 0.5  ## 2x art at zoom 1: one tile is 64 px.
 ## The sprite names of a rig. The turret frame is not called `Turret`: the gallery turns every
 ## sprite of that name, and a frame cannot turn (the view picks one of 16).
@@ -26,8 +29,8 @@ var _mounts: Dictionary[String, Vector2] = {}  ## art id: where the turret sits,
 var _textures: Dictionary[String, ImageTexture] = {}
 
 
-## A rig of `art_id` (a Derrick League unit) for `triad` (an index into `TRIADS`), named by the id
-## in PascalCase, standing on its origin.
+## A rig of `art_id` (a unit of either faction) for `triad` (an index into `TRIADS`), named by the
+## id in PascalCase, standing on its origin.
 func make(art_id: String, triad: int) -> Node2D:
 	var unit: Node2D = Node2D.new()
 	unit.name = art_id.to_pascal_case()
@@ -37,7 +40,8 @@ func make(art_id: String, triad: int) -> Node2D:
 
 ## Adds the sprites of `art_id` to `unit`, for a rig that will be scaled by `zoom`.
 func fill(unit: Node2D, art_id: String, triad: int, zoom: float) -> void:
-	var model: ArtModel = load(MODEL % art_id) as ArtModel
+	var faction: String = "renew" if art_id.begins_with(ACCORD_PREFIX) else "fossil"
+	var model: ArtModel = load(MODEL % [faction, art_id]) as ArtModel
 	if not _mounts.has(art_id):
 		var layouts: Dictionary[StringName, ArtGen.Layout] = ArtGen.layouts(model)
 		for part: StringName in layouts:

@@ -32,9 +32,9 @@ color = Color(0.43529412, 0.56078434, 0.34117648, 1)
 layout_mode = 1
 anchors_preset = -1
 anchor_left = 0.5
-anchor_top = 0.78
+anchor_top = 0.8
 anchor_right = 0.5
-anchor_bottom = 0.78
+anchor_bottom = 0.8
 mouse_filter = 2
 
 [node name="Zoom075" type="Node2D" parent="Grass/ZoomRow" groups=["gallery_team_a"]]
@@ -92,9 +92,9 @@ color = Color(0.8039216, 0.7254902, 0.56078434, 1)
 layout_mode = 1
 anchors_preset = -1
 anchor_left = 0.5
-anchor_top = 0.78
+anchor_top = 0.8
 anchor_right = 0.5
-anchor_bottom = 0.78
+anchor_bottom = 0.8
 mouse_filter = 2
 
 [node name="Zoom075" type="Node2D" parent="Sand/ZoomRow" groups=["gallery_team_b"]]

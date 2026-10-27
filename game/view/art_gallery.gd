@@ -3,14 +3,15 @@ extends Control
 ## colours, so the art can be judged on a phone through the web preview.
 ##
 ## View-only. The Units page (the one the gallery opens on) shows the six Derrick League units
-## (plan row P101, ADR 0023) as the generator draws them: `_add_roster` puts the units of
-## `art_gallery_units.gd` in a line for team A (the Signal triad) and one for team B (Arktisk) on
-## each ground, the names under team B's line, and `_fill_zoom_rows` the Flarejack at the camera
-## zoom levels in the scene's `ZoomRow` of each ground (team A on grass, team B on sand), so how
-## the art looks at 0.75, 1 and 1.5 can be judged. A generated unit has no `Team` layer: the team
-## colour is in its SVG text, replaced per player as the match-start bake does. `_add_atlas` adds
-## the effects atlas at scale 1 to each ground, and `_add_terrain_row` a patch of map tiles with
-## the explored fog over its second row.
+## and the six Lumen Accord units (plan rows P101 and P102, ADR 0023) as the generator draws
+## them: `_add_roster` puts the units of `art_gallery_units.gd` in a line for team A (the Signal
+## triad) and one for team B (Arktisk) of each faction on each ground, the Derrick League's two
+## lines above the Lumen Accord's two, the names under team B's line of a faction, and
+## `_fill_zoom_rows` the Flarejack at the camera zoom levels in the scene's `ZoomRow` of each
+## ground (team A on grass, team B on sand), so how the art looks at 0.75, 1 and 1.5 can be
+## judged. A generated unit has no `Team` layer: the team colour is in its SVG text, replaced per
+## player as the match-start bake does. `_add_atlas` adds the effects atlas at scale 1 to each
+## ground, and `_add_terrain_row` a patch of map tiles with the explored fog over its second row.
 ##
 ## The button at the top right turns the pages: Units, Build, Ground, Icons, Iso and Terrain.
 ## Build (`_add_build_page`, `art_gallery_build.gd`, plan row P103, STYLE.md "Buildings") shows each
@@ -27,8 +28,9 @@ extends Control
 ## The pages after Units are built in code and start hidden.
 ##
 ## To add a unit: its model goes under `assets/art/models/` (STYLE.md "Generated art") and its art
-## id into `ROSTER_IDS`. A building goes into the Build page (`art_gallery_build.gd`). A flag is a
-## rig with the layers `Hull` and `Team` in a team group.
+## id into `ROSTER_IDS` (Derrick League) or `ACCORD_IDS` (Lumen Accord). A building goes into the
+## Build page (`art_gallery_build.gd`). A flag is a rig with the layers `Hull` and `Team` in a team
+## group.
 
 const TEAM_A_GROUP: StringName = &"gallery_team_a"
 const TEAM_B_GROUP: StringName = &"gallery_team_b"
@@ -38,17 +40,26 @@ const TURRET_LAYER: String = "Turret"
 ## the view's rings to the ellipse and drops the circle (STYLE.md "Selection ring").
 const RING_TEX_RADIUS_PX: float = 72.0
 const PX_PER_DP: float = 1.75  ## Base px per dp on the 6-inch phone profile.
-## The Units page: the six Derrick League units by art id and display name (Michael's, ADR 0023
-## section 7), a line each for team A and team B on a ground, as rows of the ground's height.
+## The Units page: the six units of each faction by art id and display name (Michael's, ADR 0023
+## section 7), in the same role order so that a column is one role: rifle, anti-tank, scout, tank,
+## artillery, tanker. A line each for team A and team B of a faction on a ground, as rows of the
+## ground's height: the Derrick League's `RosterA` and `RosterB`, then the Lumen Accord's `AccordA`
+## and `AccordB` (`ROSTER_TOPS` in that order).
 const ROSTER_IDS: Array[String] = [
 	"rifle_squad", "rocket_squad", "light_tank", "heavy_tank", "artillery", "harvester"
 ]
 const ROSTER_NAMES: Array[String] = [
 	"Roustabouts", "Wildcatters", "Flarejack", "Bullhead", "Mortar Rig", "Tanker"
 ]
-const ROSTER_TOPS: Array[float] = [0.4, 0.55]
+const ACCORD_IDS: Array[String] = [
+	"renew_rifle", "renew_rocket", "renew_scout", "renew_tank", "renew_artillery", "renew_tanker"
+]
+const ACCORD_NAMES: Array[String] = [
+	"Linemen", "Breakers", "Swift", "Torque", "Arcline", "Fuel Runner"
+]
+const ROSTER_TOPS: Array[float] = [0.28, 0.385, 0.52, 0.62]
 const ROSTER_GAP_PX: float = 104.0
-const ROSTER_LABEL_PX: int = 20
+const ROSTER_LABEL_PX: int = 16
 const ROSTER_LABEL_COLOR: Color = Color("1C2127")
 const ZOOM_UNIT: String = "light_tank"  ## The zoom row's unit.
 const ATLAS_ART: String = "res://assets/art/svg/fx/effects_atlas.svg"
@@ -275,22 +286,27 @@ func _notification(what: int) -> void:
 		_go_back.call_deferred()
 
 
-## The six units on each ground in a line for team A and one for team B, the names under team B's.
+## The six units of each faction on each ground in a line for team A and one for team B, the names
+## under team B's line of a faction.
 func _add_roster() -> void:
 	for ground_name: String in ["Grass", "Sand"]:
 		var ground: Control = get_node(ground_name)
 		for index: int in ROSTER_TOPS.size():
-			var is_team_a: bool = index == 0
-			var row: Control = _anchored_row(
-				ground, "RosterA" if is_team_a else "RosterB", ROSTER_TOPS[index]
+			var is_team_a: bool = index % 2 == 0
+			var is_accord: bool = index >= 2
+			var ids: Array[String] = ACCORD_IDS if is_accord else ROSTER_IDS
+			var names: Array[String] = ACCORD_NAMES if is_accord else ROSTER_NAMES
+			var row_name: String = (
+				("Accord" if is_accord else "Roster") + ("A" if is_team_a else "B")
 			)
-			for i: int in ROSTER_IDS.size():
-				var unit: Node2D = _units.make(ROSTER_IDS[i], 0 if is_team_a else 1)
-				unit.position = Vector2((i - (ROSTER_IDS.size() - 1) / 2.0) * ROSTER_GAP_PX, 0.0)
+			var row: Control = _anchored_row(ground, row_name, ROSTER_TOPS[index])
+			for i: int in ids.size():
+				var unit: Node2D = _units.make(ids[i], 0 if is_team_a else 1)
+				unit.position = Vector2((i - (ids.size() - 1) / 2.0) * ROSTER_GAP_PX, 0.0)
 				unit.add_to_group(TEAM_A_GROUP if is_team_a else TEAM_B_GROUP)
 				row.add_child(unit)
 				if not is_team_a:
-					row.add_child(_roster_label(ROSTER_NAMES[i], unit.position.x))
+					row.add_child(_roster_label(names[i], unit.position.x))
 
 
 ## The name of a unit under its rig.

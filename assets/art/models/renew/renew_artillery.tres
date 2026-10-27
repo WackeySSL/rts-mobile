@@ -7,24 +7,42 @@ script = ExtResource("1_model")
 art_id = &"renew_artillery"
 faction = &"renew"
 category = &"veh"
-silhouette = "A six-wheeled blue-grey carrier with a white cab, a team band and a glass front, and a turntable carrying a boxy housing with a team band and one very long thin gun."
-mount = Vector3(-0.2, 0, 0.24)
+silhouette = "Arcline: a long white four-wheeled carrier with a short glass-fronted cab and a team band, rear stabiliser feet and, on a hexagonal turntable between two white cheek plates, a slim rail raised in steps towards the front."
+mount = Vector3(-0.15, 0, 0.23)
 prims = PackedStringArray(
-"box hull bluegrey 0 0 0.1 1.2 0.5 0.14",
-"prism hull graphite 0.45 -0.31 0 0.24 0.12 0.24 axis=y sides=8",
-"prism hull graphite 0.45 0.31 0 0.24 0.12 0.24 axis=y sides=8",
-"prism hull graphite 0 -0.31 0 0.24 0.12 0.24 axis=y sides=8",
-"prism hull graphite 0 0.31 0 0.24 0.12 0.24 axis=y sides=8",
-"prism hull graphite -0.45 -0.31 0 0.24 0.12 0.24 axis=y sides=8",
-"prism hull graphite -0.45 0.31 0 0.24 0.12 0.24 axis=y sides=8",
-"box hull ceramic 0.42 0 0.24 0.34 0.46 0.06",
-"box hull team 0.42 0 0.3 0.38 0.5 0.06",
-"box hull ceramic 0.42 0 0.36 0.34 0.46 0.18",
-"box hull glass 0.6 0 0.36 0.02 0.34 0.12",
-"prism turret bluegrey 0 0 0 0.5 0.44 0.1 sides=6",
-"box turret ceramic -0.05 0 0.1 0.4 0.34 0.06",
-"box turret team -0.05 0 0.16 0.44 0.38 0.06",
-"box turret ceramic -0.05 0 0.22 0.4 0.34 0.08",
-"box turret titanium 0.615 0 0.17 0.89 0.07 0.07",
-"box turret mint 1.08 0 0.17 0.04 0.07 0.07"
+"prism hull graphite 0.45 -0.31 0 0.3 0.1 0.3 axis=y sides=10",
+"prism hull titanium 0.45 -0.37 0.081 0.138 0.02 0.138 axis=y sides=8",
+"prism hull graphite 0.45 0.31 0 0.3 0.1 0.3 axis=y sides=10",
+"prism hull titanium 0.45 0.37 0.081 0.138 0.02 0.138 axis=y sides=8",
+"prism hull graphite -0.38 -0.31 0 0.3 0.1 0.3 axis=y sides=10",
+"prism hull titanium -0.38 -0.37 0.081 0.138 0.02 0.138 axis=y sides=8",
+"prism hull graphite -0.38 0.31 0 0.3 0.1 0.3 axis=y sides=10",
+"prism hull titanium -0.38 0.37 0.081 0.138 0.02 0.138 axis=y sides=8",
+"box hull graphite -0.02 0 0.1 1.3 0.4 0.07",
+"box hull ceramic 0.5 0 0.17 0.34 0.54 0.12",
+"box hull team 0.5 0 0.29 0.38 0.58 0.06",
+"wedge hull glass 0.5 0 0.35 0.34 0.5 0.13 slope=0.95",
+"box hull graphite 0.7 0 0.12 0.05 0.5 0.08",
+"box hull mint 0.725 0 0.19 0.02 0.3 0.025",
+"box hull bluegrey -0.18 0 0.17 0.9 0.5 0.06",
+"box hull team -0.18 -0.26 0.17 0.8 0.02 0.07",
+"box hull team -0.18 0.26 0.17 0.8 0.02 0.07",
+"box hull ceramic -0.18 -0.2 0.23 0.7 0.03 0.08",
+"box hull ceramic -0.18 0.2 0.23 0.7 0.03 0.08",
+"box hull graphite -0.72 -0.3 0 0.14 0.14 0.12",
+"box hull graphite -0.72 0.3 0 0.14 0.14 0.12",
+"box hull titanium -0.62 -0.3 0.12 0.1 0.06 0.05",
+"box hull titanium -0.62 0.3 0.12 0.1 0.06 0.05",
+"prism turret graphite 0 0 0 0.44 0.44 0.04 sides=6",
+"prism turret team 0 0 0.04 0.5 0.5 0.035 sides=6",
+"prism turret ceramic 0 0 0.075 0.4 0.4 0.09 sides=6",
+"box turret graphite -0.1 0 0.165 0.18 0.2 0.02",
+"box turret mint -0.14 0.1 0.185 0.04 0.04 0.02",
+"box turret ceramic 0 -0.17 0.1 0.3 0.04 0.16",
+"box turret ceramic 0 0.17 0.1 0.3 0.04 0.16",
+"prism turret graphite 0.2 0 0.1 0.16 0.14 0.14 axis=x sides=6",
+"prism turret titanium 0.34 0 0.12 0.17 0.065 0.065 axis=x sides=6",
+"prism turret titanium 0.5 0 0.18 0.17 0.065 0.065 axis=x sides=6",
+"prism turret titanium 0.66 0 0.24 0.17 0.065 0.065 axis=x sides=6",
+"prism turret titanium 0.82 0 0.3 0.17 0.065 0.065 axis=x sides=6"
 )
