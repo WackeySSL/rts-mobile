@@ -55,7 +55,13 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 ## Terrain
 | Action | Result | Teach |
 |---|---|---|
+| Look at the ground | Every tile is a diamond of grass, sand, scrub, rock, water or dark oil-stained earth, drawn in two slightly different arrangements so that a stretch of one kind does not look stamped; outside the map's edge the screen is dark grey | |
 | Send units across rock, water or scrub | Rock and water block all units, and scrub (the patterned ground) blocks vehicles but not infantry, which walks across it; a unit that cannot cross drives around to the point you tapped | yes |
+
+## Economy
+| Action | Result | Teach |
+|---|---|---|
+| Look at an oil field | A field is a patch of dark, oil-stained ground with a wellhead standing in it. A full field is one black pool; as oil is taken the pool shrinks to a small one with bare earth round it (half) and then to a cracked stain (dry), and the field fills up again slowly, a step at a time | yes |
 
 ## Fog
 | Action | Result | Teach |
@@ -91,4 +97,5 @@ their entries when their phase ships them (ROADMAP Phases 3-6).
 | Action | Result | Teach |
 |---|---|---|
 | An "under attack" warning at the screen edge | Not shown yet: nothing points at a unit that is hit off screen | |
+| Gas fields | Not shown yet: every field is oil. Once a map names its gas fields, one shows a pale crust with a glowing vent instead of a black pool, with the same full, half and dry steps | |
 | Play the Derrick League (oil and gas) or the Lumen Accord (green energy) | Not shown yet: no match has sides, so no building or unit belongs to one side only. Once a match has them, each side has its own buildings and units and your build menu shows only yours (and what both sides share) | |
