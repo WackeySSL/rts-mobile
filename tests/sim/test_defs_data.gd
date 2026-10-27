@@ -330,7 +330,9 @@ func test_every_scenario_file_sets_the_shared_rules_resource_and_has_a_valid_map
 ## What World.from_scenario takes on trust from a scenario file: every grid point inside the map and
 ## on ground its class may enter (the jitter fallback is the grid point), a jitter in 0..8000 (the
 ## spawn draws nothing from a span above 2^31), at most `max_rows` units (nothing refuses a row
-## before prepare()) and a player_count of 0 or at least the highest spawn owner.
+## before prepare()) and a player_count of 0 or at least the highest spawn owner. A block of
+## buildings (P80) has no grid point to walk on, its footprints are the loader's: `add_building`
+## refuses one that is not wholly on the map and counts it in `spawn_refused`, which stays 0.
 func test_every_scenario_file_places_its_units_inside_the_map_and_within_its_limits() -> void:
 	for path: String in FileScan.list_files(SCENARIOS_DIR, ".tres"):
 		var scenario: ScenarioDef = load(path)
@@ -344,10 +346,14 @@ func test_every_scenario_file_places_its_units_inside_the_map_and_within_its_lim
 			owners = maxi(owners, spawn.owner)
 			if spawn.jitter < 0 or spawn.jitter > 8000:
 				problems.append("jitter %d of %s" % [spawn.jitter, spawn.unit.type_id])
+			if spawn.unit is BuildingDef:
+				continue
 			for k: int in spawn.count:
 				var at: Vector2i = _grid_point(spawn, k)
 				if not map.has_point(at) or not _passable(world, at, spawn.unit.move_class):
 					problems.append("%s %d at %s" % [spawn.unit.type_id, k, at])
+		if world.spawn_refused > 0:
+			problems.append("%d buildings refused" % world.spawn_refused)
 		if units > world.max_rows:
 			problems.append("%d units, max_rows %d" % [units, world.max_rows])
 		if scenario.player_count != 0 and scenario.player_count < owners:
