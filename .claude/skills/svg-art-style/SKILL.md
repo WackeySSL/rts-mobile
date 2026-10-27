@@ -15,7 +15,9 @@ is drawn in the isometric 2:1 view. Units, turrets and buildings are simple 3D m
 `assets/art/models/` that the generator (`tools/artgen/`, `bash scripts/gen-art.sh`) turns into
 SVG frames (P101-P104 modelled all twelve units and sixteen buildings); ADR 0023 §5 still lets a
 building be hand-drawn in the projection or get a hand-drawn detail overlay. Ground diamonds,
-fields, icons, glyphs, UI parts and effects are hand-written SVG.
+fields, tab icons, emblems, glyphs, UI parts, effects and the older `svg/icons/item_<id>.svg`
+are hand-written SVG; the generator also writes the build cards
+`assets/art/iso/icons/item_<type_id>.svg`.
 Two factions: the Derrick League (oil and gas: poured concrete, riveted steel, rust, olive drab
 vehicles, gas spheres, flare stacks, pumpjacks, pipe racks, warning stripes, warm lamps; wedges and
 trapezoids) and the Lumen Accord (white ceramic, graphite, glass, blue-grey vehicles with dark

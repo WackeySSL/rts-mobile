@@ -26,6 +26,7 @@ with the phone; no UI code assumes width > height.
 | Tap an oil or gas field with tankers selected | Load there (`HARVEST`) |
 | Tap enemy with units selected | Attack it |
 | Tap a shown enemy building with nothing selected | Select it for its info only (frame and panel; it takes no order) |
+| Tap an enemy unit with nothing selected | Nothing yet (its info card is out of Phase 3 scope) |
 | Double-tap own unit | Select all own units of that type on screen |
 | Long-press 300 ms on ground, then drag | Selection box, selects on release |
 | One-finger drag beyond 12 dp | Pan the camera |
