@@ -312,8 +312,9 @@ func _credits() -> Label:
 	return _node("Credits")
 
 
+## By name from the HUD: the status line is the pill's in landscape and the band's in portrait.
 func _node(node_name: String) -> Node:
-	return _sidebar.find_child(node_name, true, false)
+	return _main.get_node("Hud").find_child(node_name, true, false)
 
 
 ## Turns the window to a profile's size, with its metrics, and lets the handlers and the

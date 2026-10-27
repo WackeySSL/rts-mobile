@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
-## What FogLayer draws and when (plan P47, ADR 0010 section 2, assets/art/STYLE.md "Fog and
-## terrain"): one RGBA8 texel of black per tile with the alpha 255 (never seen), 140 (seen before)
-## or 0 (seen now), read from `FogLayer.image()`, never from the ImageTexture, which reads back
+## What FogLayer draws and when (plan P47, P117, ADR 0010 section 2, ADR 0023 section 2,
+## assets/art/STYLE.md "Fog and terrain"): one RGBA8 texel of black per tile, drawn as that tile's
+## diamond on the ground at z 4, with the alpha 255 (never seen), 140 (seen before) or 0 (seen
+## now), read from `FogLayer.image()`, never from the ImageTexture, which reads back
 ## stale after `update()`; an upload only when the local player's fog version changed; a patch of
 ## the dirty list for an ordinary tick, a full rebuild for a new match, an overflowed list or a gap
 ## in the ticks. What the other layers hide by the fog is in test_fog_hiding.gd (gdlint allows 20
@@ -18,12 +19,14 @@ const MAIN_SCENE: String = "res://scenes/main.tscn"
 const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
 ## The screens every screen is tested at: base, 20:9 phone and 4:3 tablet, each held both ways.
 const TARGET_SIZES: Array[Vector2i] = ScreenSizes.ALL
-## STYLE.md / ADR 0012 section 6: the z of the layers around the fog, bottom to top.
+## ADR 0023 section 2 and ADR 0012 section 6: the z of the layers around the fog, bottom to top.
+## The fog lies on the ground, under every unit (the lowest unit layer is 10), bar and effect.
+const Z_FOG: int = 4
 const Z_BARS: int = 110
 const Z_PROJECTILES: int = 120
 const Z_EFFECTS: int = 130
-const Z_FOG: int = 140
 const Z_MARKERS: int = 150
+const CORNER_TOLERANCE: Vector2 = Vector2(0.001, 0.001)
 
 var _window_size_before: Vector2i
 var _runner: MatchRunner
@@ -71,17 +74,34 @@ func test_the_image_is_cols_by_rows_in_black_with_the_alpha_of_each_tile_state()
 	assert_int(_fog.image().get_pixel(2, 20).a8).is_equal(140)  # The west of the block: left behind.
 
 
-func test_the_sprite_is_the_map_a_tile_wide_per_texel_filtered_linearly_from_its_corner() -> void:
-	assert_that(_fog.scale).is_equal(Vector2(64, 64))
+func test_the_sprite_is_the_map_as_diamonds_one_per_texel_filtered_linearly_from_its_corner(
+) -> void:
 	assert_bool(_fog.centered).is_false()
-	assert_that(_fog.position).is_equal(Vector2.ZERO)
+	assert_that(_fog.position).is_equal_approx(Vector2.ZERO, CORNER_TOLERANCE)
 	assert_int(_fog.texture_filter).is_equal(CanvasItem.TEXTURE_FILTER_LINEAR)
 	assert_object(_fog.texture).is_not_null()
 	assert_that(_fog.texture.get_size()).is_equal(Vector2(48, 48))
-	assert_that(_fog.get_rect()).is_equal(Rect2(0, 0, 48, 48))  # In texels; x 64 is the 3072 px map.
-	assert_that(_fog.get_global_transform().get_scale()).is_equal(Vector2(64, 64))
-	# The tile of a point is the sim's: tank 1 stands on tile (8, 18), x 544 and y 1184 px.
-	assert_int(_fog.image().get_pixel(int(544.0 / 64.0), int(1184.0 / 64.0)).a8).is_equal(0)
+	assert_that(_fog.get_rect()).is_equal(Rect2(0, 0, 48, 48))  # In texels.
+	# The axes are (32, 16) and (-32, 16) px per texel: a texel is a tile's diamond.
+	var transform: Transform2D = _fog.get_global_transform()
+	assert_that(transform.x).is_equal_approx(Vector2(32, 16), CORNER_TOLERANCE)
+	assert_that(transform.y).is_equal_approx(Vector2(-32, 16), CORNER_TOLERANCE)
+	assert_that(transform.origin).is_equal_approx(Vector2.ZERO, CORNER_TOLERANCE)
+	# The four texel corners of the image are the map's diamond corners.
+	var diamond: PackedVector2Array = IsoProjection.map_diamond(48, 48)
+	var corners: Array[Vector2] = [Vector2(0, 0), Vector2(48, 0), Vector2(48, 48), Vector2(0, 48)]
+	for index: int in 4:
+		(
+			assert_that(transform * corners[index])
+			. override_failure_message(str(index))
+			. is_equal_approx(diamond[index], CORNER_TOLERANCE)
+		)
+	# The tile of a point is the sim's: tank 1 stands on tile (8, 18), ground (8500, 18500), and the
+	# middle of that texel is where its rig is drawn.
+	assert_that(transform * Vector2(8.5, 18.5)).is_equal_approx(
+		IsoProjection.ground_to_px(8500, 18500), CORNER_TOLERANCE
+	)
+	assert_int(_fog.image().get_pixel(8, 18).a8).is_equal(0)
 
 
 func test_explored_alpha_is_the_export_and_a_change_repaints_at_the_next_frame() -> void:
@@ -311,7 +331,7 @@ func test_a_rebuild_and_a_patch_each_record_their_own_time_and_an_idle_frame_non
 	assert_int(reads[0]).is_equal(4)
 
 
-func test_the_main_scene_draws_the_fog_at_z_140_over_the_effects_and_covers_the_map_at_every_size(
+func test_the_main_scene_draws_the_fog_at_z_4_under_every_object_and_covers_the_map_at_every_size(
 ) -> void:
 	var packed: PackedScene = load(MAIN_SCENE)
 	var main: Node2D = auto_free(packed.instantiate())
@@ -338,10 +358,13 @@ func test_the_main_scene_draws_the_fog_at_z_140_over_the_effects_and_covers_the_
 	assert_int(main.get_node("ProjectileLayer").z_index).is_equal(Z_PROJECTILES)
 	assert_int(main.get_node("EffectsLayer").z_index).is_equal(Z_EFFECTS)
 	assert_int(fog.z_index).is_equal(Z_FOG)
+	assert_int(Z_FOG).is_less(UnitLayer.Z_FIRST[0])  # Under the lowest hull, team and turret z.
+	assert_int(Z_FOG).is_greater(UnitLayer.Z_RING)  # Over the map (0) and the rings.
 	assert_bool(fog.z_as_relative).is_false()
 	assert_int(main.get_node("MarkerLayer").z_index).is_equal(Z_MARKERS)
 	assert_object(fog.runner).is_same(main.get_node("MatchRunner"))
-	var map_px: Rect2 = Rect2(0, 0, 3072, 3072)
+	var map_px: Rect2 = IsoProjection.map_bounds(48, 48)  # The diamond's bounding rect.
+	var diamond: PackedVector2Array = IsoProjection.map_diamond(48, 48)
 	for size: Vector2i in TARGET_SIZES:
 		get_window().size = size
 		await await_idle_frame()
@@ -350,13 +373,15 @@ func test_the_main_scene_draws_the_fog_at_z_140_over_the_effects_and_covers_the_
 		assert_bool(view.y > view.x).override_failure_message(str(size)).is_equal(
 			UiScale.is_portrait_size(size)
 		)
-		# The sprite is the map, whatever the screen: its rect in world px, and the camera at both
-		# ends of its range (it clamps to the map) never shows a point beyond it.
+		# The sprite is the map, whatever the screen: its bounding rect in world px, and the camera
+		# at both ends of its range (its centre clamps into the diamond) stops at a tip of it.
 		var rect: Rect2 = fog.get_global_transform() * fog.get_rect()
-		assert_that(rect).is_equal(map_px)
-		for corner: Vector2 in [Vector2.ZERO, Vector2(99999, 99999)]:
+		assert_that(rect.position).is_equal_approx(map_px.position, CORNER_TOLERANCE)
+		assert_that(rect.size).is_equal_approx(map_px.size, CORNER_TOLERANCE)
+		for corner: Vector2 in [Vector2(-99999, -99999), Vector2(99999, 99999)]:
 			camera.centre_on(corner)
-			assert_bool(rect.encloses(camera.visible_world_rect())).is_true()
+			assert_bool(rect.grow(0.5).has_point(camera.position)).is_true()  # A tip is on its edge.
+			assert_bool(diamond.has(camera.position.round())).is_true()
 		# Unexplored tiles are black over most of the first screen of the match: the far corner of
 		# the map, away from the blue block.
 		assert_int(fog.image().get_pixel(47, 0).a8).is_equal(255)

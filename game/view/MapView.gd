@@ -2,10 +2,12 @@ class_name MapView
 extends Node2D
 ## Draws the sim's terrain (ADR 0011 section 3, assets/art/STYLE.md "Fog and terrain"). The map is
 ## baked into one RGBA8 image of `bake_px_per_tile` texels per tile, once per match and once per
-## `map_version`, and drawn as one textured rect with NEAREST filtering, so a texel is 8 x 8 world
-## px. The map has no grid (Michael, 2026-10-12): tiles meet edge to edge. It reads only
-## `runner.snapshot` (ADR 0012 section 3), afresh in every call, and a new `match_serial` is a new
-## match; a change of the map shows from the tick after it (the next capture).
+## `map_version`, and drawn as one textured rect with NEAREST filtering. The rect is in cell units
+## under `IsoProjection.cell_to_px()` (ADR 0023 sections 1-2), so the map shows as a diamond and a
+## tile is a 64 x 32 px diamond whose texels are 8 x 4 px steps. The map has no grid (Michael,
+## 2026-10-12): tiles meet edge to edge. It reads only `runner.snapshot` (ADR 0012 section 3),
+## afresh in every call, and a new `match_serial` is a new match; a change of the map shows from
+## the tick after it (the next capture).
 
 const TILE_GRID: int = 8  ## The grid the rects of `tiles` use, whatever the bake size.
 const MISSING: Color = Color.MAGENTA  ## Shown for a terrain or colour key the dictionaries lack.
@@ -45,6 +47,8 @@ var _version: int = -1
 var _bakes: int = 0
 var _draws: int = 0
 var _drawn: Rect2 = Rect2()
+var _drawn_transform: Transform2D = Transform2D.IDENTITY
+var _cells: Vector2 = Vector2.ZERO  ## Columns and rows of the last bake: the rect it is drawn in.
 var _image: Image = Image.new()
 var _texture: ImageTexture = null
 
@@ -58,14 +62,21 @@ func _process(_delta: float) -> void:
 	_sync()
 
 
-## The map in world px, from the origin: columns and rows of the map times 64.
-func map_rect_px() -> Rect2i:
+## The corners of the map's diamond in world px (`IsoProjection.map_diamond`), clockwise from the
+## top, and empty with no map: what the camera clamps the view centre into.
+func map_diamond_px() -> PackedVector2Array:
 	var snap: MatchSnapshot = runner.snapshot if runner != null else null
 	if snap == null:
+		return PackedVector2Array()
+	return IsoProjection.map_diamond(snap.map_cols, snap.map_rows)
+
+
+## The bounding rect of the diamond in world px, and an empty rect with no map.
+func map_rect_px() -> Rect2i:
+	var snap: MatchSnapshot = runner.snapshot if runner != null else null
+	if snap == null or snap.map_cols <= 0 or snap.map_rows <= 0:
 		return Rect2i()
-	return Rect2i(
-		0, 0, snap.map_cols * ViewScale.PX_PER_TILE, snap.map_rows * ViewScale.PX_PER_TILE
-	)
+	return Rect2i(IsoProjection.map_bounds(snap.map_cols, snap.map_rows))
 
 
 ## Bakes made so far: one per match and one per `map_version`, never one per frame.
@@ -78,9 +89,16 @@ func draw_count() -> int:
 	return _draws
 
 
-## The rect the last `_draw()` gave `draw_texture_rect`, empty when nothing was drawn.
+## The rect the last `_draw()` gave `draw_texture_rect`, in cell units (the map's columns and
+## rows from the origin), empty when nothing was drawn.
 func drawn_rect() -> Rect2:
 	return _drawn
+
+
+## The transform the last `_draw()` drew `drawn_rect()` under (`IsoProjection.cell_to_px()`), the
+## identity when nothing was drawn.
+func drawn_transform() -> Transform2D:
+	return _drawn_transform
 
 
 ## The CPU-side bake that is uploaded. Tests read texels here, never from the ImageTexture, which
@@ -93,8 +111,11 @@ func image() -> Image:
 func _draw() -> void:
 	_draws = 0
 	_drawn = Rect2()
+	_drawn_transform = Transform2D.IDENTITY
 	if _texture != null:
-		_drawn = Rect2(map_rect_px())
+		_drawn = Rect2(Vector2.ZERO, _cells)
+		_drawn_transform = IsoProjection.cell_to_px()
+		draw_set_transform_matrix(_drawn_transform)
 		draw_texture_rect(_texture, _drawn, false)
 		_draws += 1
 
@@ -111,6 +132,7 @@ func _bake(snap: MatchSnapshot) -> void:
 	_bakes += 1
 	var cols: int = snap.map_cols
 	var rows: int = snap.map_rows
+	_cells = Vector2(cols, rows)
 	if cols <= 0 or rows <= 0:  # No map: nothing to show, and nothing left of the last match.
 		_image = Image.new()
 		_texture = null

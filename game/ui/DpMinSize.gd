@@ -3,9 +3,13 @@ extends Node
 ## Keeps its parent Control at least `min_dp` density-independent pixels in size (ADR 0004
 ## section 3). Add it as a child of any tappable Control. It sets the parent's
 ## `custom_minimum_size` in `_ready` and whenever the viewport's size changes (rotation, a browser
-## toolbar), because the dp factor changes with it.
+## toolbar), because the dp factor changes with it. Setting `min_dp` later applies it at once.
 
-@export var min_dp: Vector2 = Vector2(48, 48)
+@export var min_dp: Vector2 = Vector2(48, 48):
+	set(value):
+		min_dp = value
+		if is_node_ready():
+			_apply()
 
 
 func _ready() -> void:
