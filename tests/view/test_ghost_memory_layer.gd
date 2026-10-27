@@ -231,7 +231,7 @@ func test_a_dropped_record_or_a_seen_spot_takes_its_ghost_away_and_the_others_st
 	_look([])
 	assert_int(_ghosts.ghost_count()).is_equal(3)
 	var snap: MatchSnapshot = _runner.snapshot
-	# The sim drops a record whose spot the player saw empty; the block closes up, in order.
+	# The sim drops a record whose centre tile the player saw empty; the block closes up, in order.
 	(
 		Ghosts
 		. remember(

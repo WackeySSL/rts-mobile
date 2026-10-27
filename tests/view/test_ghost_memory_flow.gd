@@ -107,8 +107,10 @@ func test_a_building_destroyed_out_of_sight_stays_a_ghost_until_its_spot_is_seen
 		_runner.run_ticks(1)
 		_ghosts._process(0.0)
 	assert_str(_state(PARK_ID)).is_equal("ghost")
-	# Any one cell of the footprint seen takes the ghost away (the sim drops the record on the
-	# player's next turn; the layer does not wait for it), a cell beside it does not.
+	# Any one cell of the footprint seen takes the ghost away while it is seen (the layer's rule is
+	# the live building's, and it does not wait for a fog turn), a cell beside it does not. The
+	# sim's memory drops a record on its centre tile only (`LastSeen`), so the case stops at the
+	# glimpse: with the sim run on, the record of the park outlives a glimpse of the north tile.
 	Rig.see(_runner.snapshot, 1, [PARK_TILE + Vector2i(2, 0)])
 	_ghosts._process(0.0)
 	assert_str(_state(PARK_ID)).is_equal("ghost")

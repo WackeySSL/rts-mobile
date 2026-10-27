@@ -16,13 +16,19 @@ extends Node2D
 ## `ghost_id.size() / ghost_count.size()`. `ghost_cell` is the tile that holds the footprint centre,
 ## so the building stands at x = `(cell % cols) * 1000 + (foot_w % 2) * 500` and y =
 ## `(cell / cols) * 1000 + (foot_h % 2) * 500`, milli-tiles. The sim lists a building it sees now as
-## well, so a record is drawn only where `BuildingLayer.footprint_seen` is false, the rule that
-## draws a live enemy building (any cell of its footprint seen): at every moment exactly one of the
-## live building and its ghost is drawn, and a record of a building that is gone (destroyed out of
-## sight) is drawn until a cell of its footprint is seen, where the sim drops the record on the
-## player's next fog turn. A record is made on a tile the player saw, so the ground under it is
-## explored. A type with no art on the atlas is not drawn (the live building shows a flat diamond
-## then; a ghost has no stand-in).
+## well, so a record is drawn only where no cell of its footprint is seen, the rule that draws a
+## live enemy building (`BuildingLayer.any_cell_seen`): at every moment exactly one of the live
+## building and its ghost is drawn. A record is made on a tile the player saw, so the ground under
+## it is explored. A type with no art on the atlas is not drawn (the live building shows a flat
+## diamond then; a ghost has no stand-in).
+##
+## The sim's memory (`LastSeen`) looks at the centre tile only: it makes a record when that tile is
+## seen and drops it when that tile is seen and the building is gone. So the layer's any-cell rule
+## and the sim's differ for a footprint larger than one tile until `LastSeen` follows it (P115c's
+## request to gameplay-dev): the record of a building destroyed out of sight outlives a glimpse of
+## any other cell, so its ghost is hidden while that cell is seen and is drawn again when sight
+## leaves, and a building seen only at its edge has no record to draw. This layer needs no change
+## when the sim follows.
 ##
 ## Sorting: the layer is flat in z (one z, 5) and `y_sort_enabled`, as `WorldSort` is, so the
 ## engine orders its sprites by their y, the footprint centre's projected point, which is the sort
@@ -127,13 +133,21 @@ func _sync() -> void:
 
 
 ## Dresses a sprite for each record of `player` that no cell of its footprint is seen for, in the
-## record order, and returns how many. The snapshot's arrays are read into locals once.
+## record order, and returns how many. The snapshot's record arrays, its type tables and the fog's
+## visible counts are read into locals once, before the loop, and a record's footprint is looked up
+## in those counts (`BuildingLayer.any_cell_seen`), so the loop reads no property of the snapshot or
+## the fog. A fog that does not cover the player draws no ghost: it hides nothing
+## (`BuildingLayer.footprint_seen` sees everything then).
 @warning_ignore("integer_division")
 func _place(snap: MatchSnapshot, player: int) -> int:
 	var counts: PackedInt32Array = snap.ghost_count
-	var cols: int = snap.fog.cols
-	if cols < 1 or player < 1 or player >= counts.size():
+	var fog: FogGrid = snap.fog
+	var cols: int = fog.cols
+	if cols < 1 or player < 1 or player >= counts.size() or not FogLayer.covers(fog, player):
 		return 0
+	var visible: PackedInt32Array = fog.visible
+	var base: int = (player - 1) * fog.cells
+	var type_ids: Array[StringName] = snap.type_ids
 	var ids: PackedInt32Array = snap.ghost_id
 	var cap: int = ids.size() / counts.size()
 	var types: PackedInt32Array = snap.ghost_type
@@ -151,9 +165,9 @@ func _place(snap: MatchSnapshot, player: int) -> int:
 		var h: int = foot_h[type]
 		var x: int = (cells[entry] % cols) * World.MILLI_PER_TILE + (w % 2) * World.TILE_CENTRE
 		var y: int = (cells[entry] / cols) * World.MILLI_PER_TILE + (h % 2) * World.TILE_CENTRE
-		if BuildingLayer.footprint_seen(snap, player, BuildingLayer.footprint_at(x, y, w, h)):
+		if BuildingLayer.any_cell_seen(visible, base, cols, BuildingLayer.footprint_at(x, y, w, h)):
 			continue
-		var sheet: IsoSheetDef = world_sort.sheet(snap.type_ids[type])
+		var sheet: IsoSheetDef = world_sort.sheet(type_ids[type])
 		if sheet == null:
 			continue
 		var sprite: Sprite2D = _slot(drawn)
