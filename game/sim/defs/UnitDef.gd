@@ -9,6 +9,9 @@ extends Resource
 @export var type_id: StringName = &""
 ## Shown in the UI. Empty reads as type_id capitalised.
 @export var display_name: String = ""
+## The faction that owns the type (ADR 0023 section 6): a FactionDef `id`. Empty = any faction, so
+## a producer of any faction may queue it. A BuildingDef has the field through UnitDef.
+@export var faction: StringName = &""
 @export var speed: int = 0
 @export var radius: int = 0
 @export var selection_radius: int = 0

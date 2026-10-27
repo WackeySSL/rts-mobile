@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## Facts that live in two files and would drift apart without a word: the camera's zoom levels
-## (data/input_settings.tres) and the art gallery's zoom row, the licence credit for the debug APKs'
-## default launcher icon (ADR 0005, plan risk 12), the selection ring's texture radius that the unit
+## (data/input_settings.tres) and the art gallery's zoom row, the licence credit for the engine's
+## default boot splash (ADR 0005, plan risk 12), the selection ring's texture radius that the unit
 ## layer and the art gallery each hold (P56d), and the error scan's allowlist, which hides engine
 ## errors from verify.sh and both export scripts: a new or widened entry must show up here. Phase 2
 ## adds (plan P52) the perf budget's unit count and the arena's, the explored fog alpha of STYLE.md,
@@ -65,11 +65,11 @@ func test_the_unit_layer_and_the_art_gallery_scale_the_ring_texture_by_the_same_
 
 
 ## Whitespace is normalised, so a re-wrapped line does not break the check.
-func test_credits_name_the_debug_launcher_icon_and_the_licence_file() -> void:
+func test_credits_name_the_default_boot_splash_and_the_licence_file() -> void:
 	var credits: String = FileAccess.get_file_as_string(CREDITS_PATH)
 	assert_str(credits).is_not_empty()
 	var flat: String = RegEx.create_from_string("\\s+").sub(credits, " ", true)
-	assert_str(flat).contains("default launcher icon of the debug APKs")
+	assert_str(flat).contains("the engine's default boot splash")
 	assert_str(flat).contains("THIRD_PARTY_LICENSES.txt")
 	assert_str(flat).contains("Andrea Calabró")  # CC BY: the author and the licence are the credit.
 	assert_str(flat).contains("CC BY 4.0")

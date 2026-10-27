@@ -12,8 +12,9 @@ extends RefCounted
 ## A queue is identified by `queue = player * TABS + tab`. Its items are the `queue_count[queue]`
 ## type indexes in `queue_type` from `queue * queue_slots` on, the head first; a slot past the count
 ## holds -1. `queue_progress[queue]` is the head's progress in hundredths of a tick: the head is
-## done at `type_build_ticks * PROGRESS_PER_TICK`. Players are never skipped for being defeated:
-## the defeat rules (plan row P76) decide whether a defeated player's queues go on.
+## done at `type_build_ticks * PROGRESS_PER_TICK`. The queues of a defeated player (`defeated_tick`
+## above 0, plan row P76) stop where they are: no progress and no spawn, whatever producers the
+## player still owns (a surrender leaves them), and nothing is refunded.
 
 ## Hundredths of a tick: the resolution of `queue_progress` (a structural unit, like a tile's
 ## 1,000 milli). A head gains this much per tick (ADR 0018 section 5), or `low_power_percent` of it
@@ -24,10 +25,12 @@ const PROGRESS_PER_TICK: int = 100
 ## `low_power_percent` of it on low power (every tab, STRUCTURES included), never past its goal. A
 ## done unit spawns (ProductionSpawn.spawn) and leaves the queue; one that cannot spawn yet waits at
 ## 100 %, and so does a done structure, until PLACE or CANCEL. Players ascending, then tabs. A queue
-## without a producer waits. The loop runs over the arrays as sized, so a hand-built World whose
-## player_count was raised after prepare() has no queue for the late players.
+## without a producer waits, and so does every queue of a defeated player. The loop runs over the
+## arrays as sized, so a hand-built World whose player_count was raised after prepare() has no queue
+## for the late players.
 @warning_ignore("integer_division")
 static func run(world: World) -> void:
+	var defeated: PackedInt32Array = world.defeated_tick
 	var counts: PackedInt32Array = world.queue_count
 	var progress: PackedInt32Array = world.queue_progress
 	var items: PackedInt32Array = world.queue_type
@@ -38,6 +41,8 @@ static func run(world: World) -> void:
 		if counts[queue] == 0:
 			continue
 		var player: int = queue / World.TABS
+		if defeated[player] != 0:
+			continue
 		var producer: int = producer_row(world, player, tab)
 		if producer < 0:
 			continue
@@ -55,9 +60,9 @@ static func run(world: World) -> void:
 
 
 ## QUEUE `[type_index]`: true when the item joined the player's queue and its cost was paid. The
-## type needs a tab (a structure's too), the player a producer of that tab (producer_row) and a row
-## of the type's requirement (if it has one), the queue room and at least the type's cost in
-## credits.
+## type needs a tab (a structure's too), the player a producer of that tab (producer_row) whose
+## faction may queue it (`_faction_allows`) and a row of the type's requirement (if it has one), the
+## queue room and at least the type's cost in credits.
 static func apply_queue(world: World, command: Command) -> bool:
 	if command.payload.size() != 1:
 		return false
@@ -66,7 +71,10 @@ static func apply_queue(world: World, command: Command) -> bool:
 		return false
 	var tab: int = world.type_tab[type]
 	var player: int = command.player_id
-	if tab < 0 or tab >= World.TABS or producer_row(world, player, tab) < 0:
+	if tab < 0 or tab >= World.TABS:
+		return false
+	var producer: int = producer_row(world, player, tab)
+	if producer < 0 or not _faction_allows(world, type, producer):
 		return false
 	var queue: int = player * World.TABS + tab
 	var count: int = world.queue_count[queue]
@@ -165,6 +173,14 @@ static func producer_row(world: World, player: int, tab: int) -> int:
 		if owners[row] == player and produces[types[row]] == tab:
 			return row
 	return -1
+
+
+## The producer-faction rule (ADR 0023 section 6): a type with no faction (-1) is queued at any
+## producer; one with a faction only at a producer of that faction, so a producer with no faction
+## queues only the types with none. A player's faction is the faction of what it owns: no state.
+static func _faction_allows(world: World, type: int, producer: int) -> bool:
+	var faction: int = world.type_faction[type]
+	return faction < 0 or faction == world.type_faction[world.type_index[producer]]
 
 
 ## Whether the player owns a row of `type` (-1 = no requirement).

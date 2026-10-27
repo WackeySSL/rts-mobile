@@ -5,8 +5,11 @@ extends GdUnitTestSuite
 ## every `.gd` file fails on:
 ## - `game/view`, `game/input` and `game/ui`: a member access `.world`, `.loop`, `.replay` or
 ##   `.probe` (`runner.world.pos_x`, `runner.probe = p`; the installer is `set_probe()`);
-## - `game/ai`: `.loop`, `.replay` and `.probe`. Its World reads inside `ticked` are allowed and
-##   guarded at runtime (ADR 0012 section 3), so `.world` is not scanned there;
+## - `game/ai`: the same four, `.world` too, and the name `World` itself, as a type, as `World.Tab`
+##   or as `World.new(`. ADR 0020 section 3 moved the AI into the tick job, where it reads the
+##   match through `PlayerView` and never names the World (`PlayerView` re-exports `Tab`,
+##   `HarvestMode`, `Order`, `TABS`, `MILLI_PER_TILE` and `TILE_CENTRE`; `Placement.Reason` may be
+##   named), so the allowance of `.world` that ADR 0012 section 3 gave it is gone;
 ## - all four folders: a member variable (a `var` at column 0, with its annotations or `static`)
 ##   typed `World`, alone or in an Array or as a Dictionary value, or made with `:= World.new(` or
 ##   `:= World.from_scenario(`. A World held between frames is a World read outside `ticked`.
@@ -16,14 +19,20 @@ extends GdUnitTestSuite
 ## The scan is a line lint with documented gaps, not a proof. What it cannot see:
 ## - a name computed or given as a string: `runner.get("world")`, `runner["world"]`. The guarded
 ##   getters catch those at run time, in tests/scenes/test_worker_scenes.gd (the layers run while a
-##   job is in flight there);
+##   job is in flight there). game/ai cannot build the name from a string either: test_sim_purity
+##   bans `ClassDB`, `load(` and `preload(` there;
 ## - a World, loop, replay or probe that reaches the view through another object's property.
 ## Every rule has fixtures that it must flag and fixtures that it must leave alone, so a scan that
-## matches nothing fails, and the folders must still hold the scripts the scan is about.
+## matches nothing fails, and the folders must still hold the scripts the scan is about. game/ai
+## may be empty, so its rules also run through the function that scans a folder on two fixture
+## files: one that breaks each of them and one controller that keeps them.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const VIEW_DIRS: Array[String] = ["res://game/view", "res://game/input", "res://game/ui"]
 const AI_DIR: String = "res://game/ai"
+## Read as text and never loaded, so no scan of game/ and no import step meets them.
+const BREAKING_FIXTURE: String = "res://tests/project/fixtures/ai_reads_world.txt"
+const CONTROLLER_FIXTURE: String = "res://tests/project/fixtures/ai_legal_controller.txt"
 ## Scripts that read the runner's snapshot today, one per folder. A rename or a move fails the
 ## test, and the new place goes here, so the scan cannot pass by finding nothing.
 const KNOWN_SCRIPTS: Array[String] = [
@@ -36,7 +45,9 @@ const KNOWN_SCRIPTS: Array[String] = [
 ## A member access to one of the runner's guarded objects. White space or a `\` after the dot also
 ## reads the `. world` that gdformat writes in a wrapped chain, and a continued line.
 const VIEW_MEMBER: String = r"\.[\s\\]*(?:world|loop|replay|probe)\b"
-const AI_MEMBER: String = r"\.[\s\\]*(?:loop|replay|probe)\b"
+## The name `World` as a whole word, which game/ai may not use: `World2D`, `WorldLoad`, `newWorld`
+## and `world_px` are other names, and `world` is no type.
+const WORLD_NAME: String = r"\bWorld\b"
 ## A member variable typed World: at column 0, after annotations or `static`. `World.Armour` and
 ## `World2D` are other types.
 const WORLD_VAR: String = (
@@ -89,18 +100,6 @@ const VIEW_CLEAN: Array[String] = [
 	"var looped: bool = animation_loop",
 	"var probe_count: int = hud.probe_total",
 ]
-## The same for AI_MEMBER: the three it flags, and `.world`, which it allows.
-const AI_FLAGGED: Array[String] = [
-	"var l: MatchLoop = runner.loop",
-	"var r: Replay = runner.replay",
-	"runner.probe = p",
-]
-const AI_CLEAN: Array[String] = [
-	"var w: World = runner.world",
-	"var t: int = runner.world.tick",
-	"runner.set_probe(p)",
-	"# runner.loop",
-]
 ## The same for WORLD_VAR.
 const WORLD_FLAGGED: Array[String] = [
 	"var world: World",
@@ -130,6 +129,73 @@ const WORLD_CLEAN: Array[String] = [
 	"func f(world: World) -> void:",
 	"const WORLD: Script = World",
 ]
+## The same for WORLD_NAME, which only game/ai gets: one name in each flagged source.
+const WORLD_NAME_FLAGGED: Array[String] = [
+	"var world: World",
+	"var held: World = null",
+	"func think(view: PlayerView, world: World) -> void:",
+	"var tab: int = World.Tab.STRUCTURES",
+	"var per_tile: int = World.MILLI_PER_TILE",
+	"var kinds: Array[World.Event] = []",
+	"var by_id: Dictionary[int, World] = {}",
+	"var w := World.new()",
+	"var ok: bool = view is World",
+	"var w = view as World",
+	"extends World",
+	"const W: Script = World",
+	"var x: int = (\n\tWorld\n\t.EVENT_STRIDE\n)",
+]
+const WORLD_NAME_CLEAN: Array[String] = [
+	"var view: PlayerView",
+	"var tab: int = PlayerView.Tab.STRUCTURES",
+	"var per_tile: int = PlayerView.MILLI_PER_TILE",
+	"var reason: int = Placement.Reason.OK",
+	"var layer: World2D = null",
+	"var loader: WorldLoad = null",
+	"var world_px: int = 0",
+	"var worlds: int = 0",
+	"var newWorld: int = 0",
+	"var MyWorld: int = 0",
+	"var WORLD: int = 0",
+	"var world: PlayerView = view",
+	"# var world: World",
+	"## World is never named here",
+	'var s: String = "World"',
+	"var s: String = 'World.Tab'",
+	'"""\nWorld\n"""',
+	'var t: String = "a # b"  # World',
+]
+## The rules of game/ai (ADR 0020 section 3): the pattern, what a hit tells the author, and the
+## lines of BREAKING_FIXTURE that it must flag. The member rule is the view's, so `.world` is
+## flagged there too (lines 13 to 16 and the wrapped `. world` of line 19); the name rule flags a
+## member, a parameter and two uses of the type (7, 8, 11, 12) and the typed-member rule the two
+## members. Lines 22 to 28 stay clean: the legal names, World2D, WorldLoad, world_px, a comment and
+## a string with the words. The folder test and the fixture tests both read this list.
+const AI_RULES: Array[Dictionary] = [
+	{
+		"pattern": VIEW_MEMBER,
+		"advice":
+		(
+			"the AI runs in the tick job and reads the match through PlayerView, never the "
+			+ "runner's `world`, `loop`, `replay` or `probe`"
+		),
+		"lines": [13, 14, 15, 16, 19],
+	},
+	{
+		"pattern": WORLD_NAME,
+		"advice":
+		(
+			"game/ai never names World; PlayerView re-exports Tab, HarvestMode, Order, TABS, "
+			+ "MILLI_PER_TILE and TILE_CENTRE"
+		),
+		"lines": [7, 8, 11, 12],
+	},
+	{
+		"pattern": WORLD_VAR,
+		"advice": "a World held in a member outlives its think; read the match through PlayerView",
+		"lines": [7, 8],
+	},
+]
 
 var _token: RegEx
 
@@ -154,23 +220,19 @@ func test_no_view_input_or_ui_script_reads_the_runners_world_loop_replay_or_prob
 	)
 
 
-func test_no_ai_script_reads_the_runners_loop_replay_or_probe() -> void:
-	var found: Array[String] = _scan_dir(AI_DIR, AI_MEMBER)
-	(
-		assert_array(found)
-		. override_failure_message(
-			(
-				"The AI may read the World inside `ticked` only, and never `loop`, `replay` or "
-				+ "`probe` (ADR 0012 section 3):\n%s" % "\n".join(found)
-			)
-		)
-		. is_empty()
-	)
-
-
-func test_no_member_variable_of_the_view_input_ui_or_ai_is_typed_world() -> void:
+func test_no_ai_script_reads_the_runner_or_names_world() -> void:
 	var found: Array[String] = []
-	for dir: String in VIEW_DIRS + [AI_DIR]:
+	for rule: Dictionary in AI_RULES:
+		var pattern: String = rule["pattern"]
+		var hits: Array[String] = _scan_dir(AI_DIR, pattern)
+		if not hits.is_empty():
+			found.append("%s (ADR 0020 section 3):\n%s" % [rule["advice"], "\n".join(hits)])
+	assert_array(found).override_failure_message("\n".join(found)).is_empty()
+
+
+func test_no_member_variable_of_the_view_input_or_ui_is_typed_world() -> void:
+	var found: Array[String] = []
+	for dir: String in VIEW_DIRS:
 		found.append_array(_scan_dir(dir, WORLD_VAR))
 	(
 		assert_array(found)
@@ -187,8 +249,8 @@ func test_no_member_variable_of_the_view_input_ui_or_ai_is_typed_world() -> void
 func test_each_member_rule_flags_its_fixtures_and_spares_the_clean_ones() -> void:
 	var rules: Dictionary[String, Array] = {
 		VIEW_MEMBER: [VIEW_FLAGGED, VIEW_CLEAN],
-		AI_MEMBER: [AI_FLAGGED, AI_CLEAN],
 		WORLD_VAR: [WORLD_FLAGGED, WORLD_CLEAN],
+		WORLD_NAME: [WORLD_NAME_FLAGGED, WORLD_NAME_CLEAN],
 	}
 	for pattern: String in rules:
 		assert_bool(RegEx.create_from_string(pattern).is_valid()).is_true()
@@ -207,13 +269,30 @@ func test_each_member_rule_flags_its_fixtures_and_spares_the_clean_ones() -> voi
 			)
 
 
-## The AI rule leaves `.world` to the runtime guard; the view rule does not.
-func test_the_ai_rule_allows_world_and_the_view_rule_does_not() -> void:
-	for source: String in ["var w: World = runner.world", "var t: int = runner.world.tick"]:
-		assert_array(_hits(source, AI_MEMBER)).is_empty()
-		assert_array(_hits(source, VIEW_MEMBER)).has_size(1)
-	for source: String in AI_FLAGGED:
-		assert_array(_hits(source, VIEW_MEMBER)).has_size(1)
+## The three rules of game/ai flag the lines of BREAKING_FIXTURE that AI_RULES lists, and no other,
+## through the function that scans a folder. `.world` is among them: game/ai has no allowance.
+func test_the_ai_rules_flag_exactly_the_lines_of_a_controller_that_breaks_them() -> void:
+	for rule: Dictionary in AI_RULES:
+		var pattern: String = rule["pattern"]
+		var lines: Array[int] = []
+		for hit: String in _scan_files([BREAKING_FIXTURE], pattern):
+			lines.append(int(hit.split(":")[2]))
+		assert_array(lines).override_failure_message(pattern).is_equal(rule["lines"])
+
+
+## A controller that reads the match through PlayerView, names Placement.Reason and keeps the words
+## of the bans in comments, strings and look-alike names is flagged by no rule of game/ai.
+func test_the_ai_rules_leave_a_legal_controller_alone() -> void:
+	var source: String = FileAccess.get_file_as_string(CONTROLLER_FIXTURE)
+	assert_int(source.split("\n").size()).is_greater(60)
+	assert_str(source).contains("PlayerView.Tab").contains("Placement.Reason")
+	for rule: Dictionary in AI_RULES:
+		var pattern: String = rule["pattern"]
+		(
+			assert_array(_scan_files([CONTROLLER_FIXTURE], pattern))
+			. override_failure_message(pattern)
+			. is_empty()
+		)
 
 
 ## A hit is reported at its own line, also when the chain is wrapped, and a comment or a string
@@ -243,8 +322,13 @@ func test_the_scan_reads_the_folders_and_the_scripts_it_should() -> void:
 
 ## "path:line: text" for each match of `pattern` in every script below `dir`.
 func _scan_dir(dir: String, pattern: String) -> Array[String]:
+	return _scan_files(FileScan.list_files(dir, ".gd"), pattern)
+
+
+## The same for the files at `paths`.
+func _scan_files(paths: Array[String], pattern: String) -> Array[String]:
 	var found: Array[String] = []
-	for path: String in FileScan.list_files(dir, ".gd"):
+	for path: String in paths:
 		found.append_array(_hits(FileAccess.get_file_as_string(path), pattern, path))
 	return found
 

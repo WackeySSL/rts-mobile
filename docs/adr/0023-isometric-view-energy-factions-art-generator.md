@@ -44,6 +44,11 @@ floating panel) and `art-director.md` line 16 (what `svg-art-style` covers) to �
 Blackout Array's closest Command & Conquer analogue (§13), question 3's cost wording and the plan
 lines that still said the perf arena is never re-pinned after P70.
 
+Status note (2026-10-26, P26ai docs): §6 and §15 and the questions carry dated status notes:
+P106's `FactionDef` as merged and the palette words of §6's "Look"; what P68e wrote into §15's
+`GDD.md` bullet and the ROADMAP box; the question texts P68e changed after the answers. No
+accepted text changed.
+
 ## Decisions in short
 | # | Topic | Decision |
 | --- | --- | --- |
@@ -420,6 +425,19 @@ lines that still said the perf arena is never re-pinned after P70.
     (`factions[local_player]`); the build menu lists the types of that faction only; the Skirmish
     route gives the dummy its faction's `AiDef`.
 
+Status note (2026-10-26, P26ai docs, P106 as merged, #202; the text above stays as accepted):
+- **"Look" and "Palettes."** The "rust" and "amber lamps" of the Derrick League's look and the
+  "cyan status light" of the Lumen Accord's are the Palettes' replacements: weathered rust
+  #6E5D50, lamp warm white #FFF1D6 and status light mint #A8F5B0 (answer 8). Nothing in a
+  faction's art uses the four replaced canvas colours.
+- **`FactionDef`** (`game/sim/defs/FactionDef.gd`) holds `key_triad` as a `PackedStringArray` of
+  three `#rrggbb` strings (light, mid, dark), not colours: `game/sim` allows no colour type
+  (`tests/project/test_sim_purity.gd`). Its `display_name`, `emblem` and `key_triad` are view
+  data in a sim def file: `WorldLoad` reads only `roster` (`WorldLoad.gd:69-72`) and takes a
+  type's faction from `UnitDef.faction`, and the view and the UI read the rest from the scenario.
+  `ScenarioDef.factions`' unused entry 0 is a data convention: `WorldLoad` skips null entries
+  only, so a `FactionDef` at entry 0 would have its roster registered too.
+
 ### 7. The asymmetric Phase 3 roster
 Derrick League keeps the twelve merged files (ids, sim numbers, P72's tests) and adds two; Lumen
 Accord gets fourteen new files. Display names are Michael's (answer 2); sizes are footprints;
@@ -714,6 +732,15 @@ its three name-list rows, for every name this ADR uses.
     rows' review, as for every sim rule), `export_presets.cfg` (the keep import needs no filter;
     P113 confirms it on both exports), the perf thresholds.
 
+Status note (2026-10-26, P26ai docs, P68e as merged, #200; the text above stays as accepted):
+the `docs/GDD.md` bullet above names more than "Match setup": P68e also wrote the new
+"Superweapons (MVP)" section and the oil and gas of "Pitch" and "Maps (MVP)", which the Answers'
+paragraph does not list. The ROADMAP box P68e added reads longer than the bullet quotes it: "Two
+original factions with their own buildings, units and superweapon (ADR 0023): the Derrick League
+and the Lumen Accord, each with eight buildings, six unit types and one superweapon, both
+playable; the build menu shows only the player's own faction" (`docs/ROADMAP.md`, Phase 3). Both
+are within answer 9's yes to the files of this section.
+
 ## Consequences
 - The view is rebuilt once more, the day after ADR 0022: P84's shelved branch, P91b's oblique art
   and the top-down unit art become reference. Reused from the shelved P84: `RuntimeAtlas` with its
@@ -765,6 +792,12 @@ its three name-list rows, for every name this ADR uses.
 ## Questions for Michael (answered 2026-10-26)
 As proposed; the lead asked them in Danish in chat. "Answers" at the top records Michael's
 answers and what they mean.
+Status note (2026-10-26, P26ai docs; the questions below stay as P68e left them): "As proposed"
+holds except for P68e's edits after the answers: question 3's cost sentence was rewritten (the
+cost of A over B, and revision 5's week as a whole), and "Iron Compact" in question 3's option
+C, question 6 and question 8 became "Derrick League" (answer 1). Question 1 keeps the name it was
+asked with.
+
 1. **Faction names.** A: Iron Compact (oil and gas) and Lumen Accord (green energy). B: Derrick
    League and Current Accord. C: names you choose (screened by the lead before use). Recommended:
    A. Cost: none either way (display names in data and docs).

@@ -1,11 +1,11 @@
 class_name BuildSidebar
 extends PanelContainer
-## The build sidebar, part 1 (ADR 0019 section 1, plan P85): the zone at the end of the long axis
-## (ADR 0015 section 5) with the credits and the power bar on one line, the three tabs and, below,
-## the slot `Items` that part 2 (P85b) fills with the item tiles. It sends nothing to the sim: a tab
-## is local state and the part that queues items will send its Commands through
-## `PlayerController.command_sink`. It reads the published snapshot only, the local player's
-## credits, `power_made` and `power_used`, and never keeps one.
+## The build sidebar (ADR 0019 section 1, plans P85, P85c and P85b): the zone at the end of the long
+## axis (ADR 0015 section 5) with the credits and the power bar on one line, the three tabs and,
+## below, the slot `Items` with the open tab's item tiles. It sends nothing to the sim but Commands
+## through `PlayerController.command_sink`: a tap on an available tile is one QUEUE, a hold on a
+## tile with items queued is one CANCEL of the last of them. It reads the published snapshot only
+## (the local player's credits, power, queue and rows, and the type tables) and never keeps one.
 ## Landscape: the right zone, 20% of the width and at least 200 dp, the full height of the safe
 ## area's inner rect. Portrait: the bottom band, the full inner width, `HudLayout.band_dp` high.
 ## The band's height goes to `HudLayout.bottom_zone_dp`, the one place the ArmyBar reads, from
@@ -20,8 +20,17 @@ extends PanelContainer
 ## track, and dark on the amber (`PowerNumber`, `PowerNumberLow`).
 ## The credits keep the width of `CREDITS_DIGITS` digits, so the bar does not move when they gain or
 ## lose a digit.
+## Items: one `ItemTile` per buildable type (icon `item_<type id>`), made per match from the
+## snapshot's type tables, those of the open tab shown: a grid scrolling down in landscape, one row
+## scrolling sideways in the portrait band (ADR 0015 section 5). A tile is READY (a finished
+## structure at the head of its queue: tapping it is placement mode, plan P86), LOCKED (the type's
+## requirement or the tab's producer is not among the player's rows), UNAFFORDABLE, FULL (no room in
+## the queue) or AVAILABLE, in that order. A tap on one that cannot take an item shakes it.
+## Selecting an own production building opens its tab: `set_selected` is the hook, wired to
+## `PlayerController.selection_changed` when `controller` is set.
 ## The look is the inherited theme's (`game/ui/theme.tres`: `BuildSidebar`, `SidebarTab`,
-## `PowerBar`, `PowerBarLow`, `PowerNumber`, `PowerNumberLow`, `NumberLabel`), the sizes are dp.
+## `PowerBar`, `PowerBarLow`, `PowerNumber`, `PowerNumberLow`, `NumberLabel` and the `ItemTile`
+## family), the sizes are dp.
 
 ## Emitted when another tab opens, by a tap or by `select_tab`.
 signal tab_selected(tab: int)
@@ -52,6 +61,7 @@ const TEXT_EDGE_DP: float = 2.0  ## The dark edge of the numbers on the green ba
 const CREDITS_DIGITS: int = 5
 
 @export var runner: MatchRunner
+@export var controller: PlayerController  ## The Commands' sink, the haptic, the selection.
 
 ## The open tab, a `World.Tab`.
 var tab: int = World.Tab.STRUCTURES
@@ -65,10 +75,15 @@ var _bar: ProgressBar = ProgressBar.new()
 var _bar_text: Label = Label.new()
 var _tab_row: HBoxContainer = HBoxContainer.new()
 var _tabs: Array[Button] = []
-var _items: Control = Control.new()
+var _items: ScrollContainer = ScrollContainer.new()
+var _grid: GridContainer = GridContainer.new()
+var _tiles: Array[ItemTile] = []
 var _low: bool = false
 var _shown: Vector3i = Vector3i(-1, -1, -1)  ## Credits, power made and power used on screen.
 var _seen: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot last read.
+var _built: Vector2i = Vector2i(-1, -1)  ## Match serial and type count the tiles are made for.
+var _owned: PackedInt32Array = PackedInt32Array()  ## Scratch of a refresh: own rows per type.
+var _producers: PackedInt32Array = PackedInt32Array()  ## And own producers per tab.
 
 
 func _ready() -> void:
@@ -82,11 +97,14 @@ func _ready() -> void:
 	_items.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_items.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_min_dp(_items, Vector2(0.0, ITEMS_DP))
+	_items.add_child(_grid)
 	_stack.add_child(_items)
 	select_tab(tab)
 	_tint()
 	_apply_dp()  # Sets the zone before the ArmyBar's _ready lifts the bar.
 	get_viewport().size_changed.connect(_apply_dp)  # After the DpMinSize nodes' own handlers.
+	if controller != null:
+		controller.selection_changed.connect(set_selected)
 
 
 func _exit_tree() -> void:
@@ -122,9 +140,10 @@ func refresh() -> void:
 	if numbers != _shown:
 		_shown = numbers
 		_show(numbers.x, numbers.y, numbers.z)
+	_refresh_items(snap, player)
 
 
-## Opens tab `index` (a `World.Tab`; another value is ignored). A building selection will call it.
+## Opens tab `index` (a `World.Tab`; another value is ignored).
 func select_tab(index: int) -> void:
 	if index < 0 or index >= _tabs.size():
 		return
@@ -132,11 +151,39 @@ func select_tab(index: int) -> void:
 		_tabs[at].set_pressed_no_signal(at == index)  # A tap on the open tab keeps it open.
 	if index != tab:
 		tab = index
+		_items.scroll_horizontal = 0
+		_items.scroll_vertical = 0
+		_show_tab()
 		tab_selected.emit(index)
+
+
+## The selection hook (ADR 0019 section 1): a lone own building that produces a tab opens it. The
+## building selection (plan P84d) needs only to put the building's id in the selection; units and
+## anything else leave the open tab as it is.
+func set_selected(ids: PackedInt32Array) -> void:
+	var snap: MatchSnapshot = null if runner == null else runner.snapshot
+	if snap == null or ids.size() != 1:
+		return
+	var row: int = snap.index_of(ids[0])
+	if row >= 0 and snap.owner[row] == _local_player():
+		select_tab(snap.type_produces[snap.type_index[row]])
 
 
 static func _entry(values: PackedInt32Array, player: int) -> int:
 	return values[player] if player >= 0 and player < values.size() else 0
+
+
+## The slots of a queue. The snapshot has no `queue_slots` yet (a P81 follow-up: one line in
+## `COPIED_SCALARS`), but `queue_type` holds them per player and tab, `credits` has one entry per
+## player, so the quotient is the slots; 0 for a snapshot with no players.
+@warning_ignore("integer_division")
+static func _queue_slots(snap: MatchSnapshot) -> int:
+	var queues: int = snap.credits.size() * World.TABS
+	return snap.queue_type.size() / queues if queues > 0 else 0
+
+
+func _local_player() -> int:
+	return -1 if runner == null or runner.scenario == null else runner.scenario.local_player
 
 
 static func _min_dp(control: Control, size_dp: Vector2) -> void:
@@ -210,6 +257,140 @@ func _build_tabs() -> void:
 		_tabs.append(button)
 
 
+## Makes the tiles again when the match or the type tables changed, then shows each one's state.
+func _refresh_items(snap: MatchSnapshot, player: int) -> void:
+	var key: Vector2i = Vector2i(snap.match_serial, snap.type_tab.size())
+	if key != _built:
+		_built = key
+		_build_tiles(snap)
+	if _tiles.is_empty():
+		return
+	_owned.resize(snap.type_tab.size())
+	_owned.fill(0)
+	for row: int in snap.unit_id.size():
+		if snap.owner[row] == player:
+			_owned[snap.type_index[row]] += 1
+	_producers.resize(World.TABS)
+	_producers.fill(0)
+	for type: int in _owned.size():
+		if _owned[type] > 0 and snap.type_produces[type] >= 0:
+			_producers[snap.type_produces[type]] += 1
+	var slots: int = _queue_slots(snap)
+	for tile: ItemTile in _tiles:
+		_show_tile(tile, snap, player, slots)
+
+
+## One tile's state, queued count and progress from the player's queue of its tab.
+func _show_tile(tile: ItemTile, snap: MatchSnapshot, player: int, slots: int) -> void:
+	var type: int = tile.type_index
+	var queue: int = player * World.TABS + tile.tab
+	var count: int = _entry(snap.queue_count, queue)
+	var queued: int = 0
+	for slot: int in count:
+		queued += 1 if snap.queue_type[queue * slots + slot] == type else 0
+	var head: bool = count > 0 and snap.queue_type[queue * slots] == type
+	var goal: int = maxi(snap.type_build_ticks[type], 1) * Production.PROGRESS_PER_TICK
+	var done: float = 0.0
+	if head:
+		done = clampf(float(_entry(snap.queue_progress, queue)) / goal, 0.0, 1.0)
+	var requires: int = snap.type_requires[type]
+	var state: ItemTile.State = ItemTile.State.AVAILABLE
+	if head and done >= 1.0 and tile.tab == World.Tab.STRUCTURES:
+		state = ItemTile.State.READY
+	elif _producers[tile.tab] == 0 or (requires >= 0 and _owned[requires] == 0):
+		state = ItemTile.State.LOCKED
+	elif _entry(snap.credits, player) < snap.type_cost[type]:
+		state = ItemTile.State.UNAFFORDABLE
+	elif count >= slots:
+		state = ItemTile.State.FULL
+	tile.show_state(state, queued, done)
+
+
+## One tile per buildable type, in the type table's order, for the snapshot's match.
+func _build_tiles(snap: MatchSnapshot) -> void:
+	for old: ItemTile in _tiles:
+		_grid.remove_child(old)
+		old.queue_free()
+	_tiles.clear()
+	var settings: InputSettings = InputSettings.new()  # The ADR table, as PlayerController does.
+	if controller != null and controller.settings != null:
+		settings = controller.settings
+	for type: int in snap.type_tab.size():
+		var type_tab: int = snap.type_tab[type]
+		if type_tab < 0 or type_tab >= World.TABS:
+			continue
+		var art: String = ICON_ART % ("item_%s" % snap.type_ids[type])
+		var tile: ItemTile = ItemTile.new()
+		tile.name = "Tile_%s" % snap.type_ids[type]
+		tile.setup(
+			type, type_tab, load(art) if ResourceLoader.exists(art) else null, snap.type_cost[type]
+		)
+		tile.hold_ms = settings.long_press_ms
+		tile.slop_dp = settings.tap_slop_dp
+		tile.chose.connect(_on_chose.bind(tile))
+		tile.cancelled.connect(_on_cancelled.bind(tile))
+		tile.dragged.connect(_scroll_by)
+		_grid.add_child(tile)
+		_tiles.append(tile)
+	_show_tab()
+
+
+## Shows the tiles of the open tab, in a row in the portrait band and in as many columns as the zone
+## holds in landscape.
+func _show_tab() -> void:
+	var shown: int = 0
+	for tile: ItemTile in _tiles:
+		tile.visible = tile.tab == tab
+		shown += 1 if tile.visible else 0
+	var columns: int = maxi(shown, 1)
+	if not HudLayout.is_portrait():
+		var room: float = custom_minimum_size.x - get_theme_stylebox(&"panel").get_minimum_size().x
+		var step: float = UiScale.dp(ItemTile.SIZE_DP + GAP_DP)
+		columns = maxi(floori((room + UiScale.dp(GAP_DP)) / step), 1)
+	_grid.columns = columns
+
+
+## A tap: an available tile queues one item, a ready structure waits for placement mode (plan
+## P86), any other tile shakes.
+func _on_chose(tile: ItemTile) -> void:
+	match tile.state:
+		ItemTile.State.AVAILABLE:
+			_send(Command.queue(_local_player(), tile.type_index))
+		ItemTile.State.READY:
+			pass
+		_:
+			tile.shake()
+
+
+## A hold: the last queued item of the tile's type leaves its queue (and is paid back).
+func _on_cancelled(tile: ItemTile) -> void:
+	var snap: MatchSnapshot = null if runner == null else runner.snapshot
+	if snap == null:
+		return
+	var player: int = _local_player()
+	var queue: int = player * World.TABS + tile.tab
+	var base: int = queue * _queue_slots(snap)
+	for slot: int in range(_entry(snap.queue_count, queue) - 1, -1, -1):
+		if snap.queue_type[base + slot] == tile.type_index:
+			_send(Command.cancel(player, tile.tab, slot))
+			return
+
+
+## The row follows a finger that went beyond the slop on a tile.
+func _scroll_by(relative: Vector2) -> void:
+	_items.scroll_horizontal -= roundi(relative.x)
+	_items.scroll_vertical -= roundi(relative.y)
+
+
+## The Command goes out through the controller's sink, with the light haptic.
+func _send(command: Command) -> void:
+	if controller == null:
+		return
+	controller.command_sink.call(command)
+	if controller.settings.haptics_enabled:
+		controller.vibrate.call(controller.settings.haptic_ms)
+
+
 ## The numbers of the line. The look changes only when the low state does.
 func _show(credits: int, made: int, used: int) -> void:
 	var low: bool = used > made
@@ -266,9 +447,24 @@ func _apply_dp() -> void:
 		button.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(TAB_ICON_DP)))
 	_bar_text.add_theme_constant_override("outline_size", roundi(UiScale.dp(TEXT_EDGE_DP)))
 	_place()
+	_place_items(gap)
 	_fit_names(gap)
 	_fit_credits()
 	_fit_bar_text()
+
+
+## The item row scrolls sideways in the portrait band and down in the landscape zone.
+func _place_items(gap: int) -> void:
+	var portrait: bool = HudLayout.is_portrait()
+	_items.horizontal_scroll_mode = (
+		ScrollContainer.SCROLL_MODE_SHOW_NEVER if portrait else ScrollContainer.SCROLL_MODE_DISABLED
+	)
+	_items.vertical_scroll_mode = (
+		ScrollContainer.SCROLL_MODE_DISABLED if portrait else ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	)
+	_grid.add_theme_constant_override("h_separation", gap)
+	_grid.add_theme_constant_override("v_separation", gap)
+	_show_tab()
 
 
 ## Puts the sidebar in its zone and, in portrait, hands the band's height to the HUD.
