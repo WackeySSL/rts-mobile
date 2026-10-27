@@ -22,13 +22,16 @@ const BURST: Rect2 = Rect2(0, 0, 80, 80)
 const TRACER: Color = Color("FFD84D")
 const EDGE: Color = Color("1C2127")
 const TOL: Vector2 = Vector2(0.001, 0.001)
-## The lifts of ADR 0023 section 2 in world px (`SpriteLift`, test_sprite_lift.gd), typed again: the
-## muzzle height of each weapon, which a flash, a tracer and a puff stand at, and the middle of the
-## frame of a light tank and of a rifle squad (24 high, so 12), which a burst and a fade centre on.
+## The lifts of ADR 0023 section 2 in world px that a layer without a sorted world falls back to
+## (`SpriteLift`, test_sprite_lift.gd), typed again: the muzzle height of each weapon, which a
+## flash, a tracer and a puff stand at, and the middle of a vehicle's frame (26 high by default, so
+## 13) and of an infantry unit's (24, so 12), which a burst and a fade centre on. With a sorted
+## world the sheets' numbers stand in for both (test_lift_sheets.gd).
 const MUZZLE_LIFT: Dictionary[StringName, float] = {
 	&"tank_cannon": 14.0, &"rocket": 13.0, &"rifle": 11.0
 }
-const CENTRE_LIFT: float = 12.0
+const VEHICLE_CENTRE_LIFT: float = 13.0
+const INFANTRY_CENTRE_LIFT: float = 12.0
 
 var _now_ms: int = 0
 var _runner: MatchRunner
@@ -182,14 +185,16 @@ func test_an_impact_draws_a_puff_where_the_shell_came_down() -> void:
 
 func test_a_vehicle_death_bursts_and_an_infantry_death_fades() -> void:
 	var place: Vector2i = Vector2i(15000, 8000)
-	var place_px: Vector2 = IsoProjection.ground_to_px(place.x, place.y)
-	place_px.y -= CENTRE_LIFT  # A burst and a fade centre on the middle of the unit's frame.
+	var ground_px: Vector2 = IsoProjection.ground_to_px(place.x, place.y)
+	# A burst and a fade centre on the middle of the unit's frame.
+	var tank_px: Vector2 = ground_px - Vector2(0.0, VEHICLE_CENTRE_LIFT)
+	var place_px: Vector2 = ground_px - Vector2(0.0, INFANTRY_CENTRE_LIFT)
 	var tank: int = _type(&"light_tank")
 	var squad: int = _type(&"rifle_squad")
 	_tick_with(Rig.died(place, tank))
 	assert_int(_layer.quad_count()).is_equal(1)
 	assert_that(_layer.quad_region(0)).is_equal(BURST)  # A burst, 80 px, from half of that.
-	assert_vector(_layer.quad_rect(0).get_center()).is_equal_approx(place_px, TOL)
+	assert_vector(_layer.quad_rect(0).get_center()).is_equal_approx(tank_px, TOL)
 	assert_float(_layer.quad_rect(0).size.x).is_equal_approx(40.0, 0.001)
 	_now_ms += 1000
 	_tick_with(Rig.died(place, squad))
@@ -214,10 +219,11 @@ func test_a_vehicle_death_bursts_and_an_infantry_death_fades() -> void:
 	assert_that(_layer.quad_region(0)).is_equal(BURST)
 
 
-func test_the_lift_follows_the_weapon_id_and_the_type_id_of_the_snapshots_tables() -> void:
-	# A shot is lifted by the muzzle height of its weapon and a death by the middle of its type's
-	# frame, both by the ids of the tables the snapshot carries: the test renames a weapon and a
-	# type, and the effects follow (a heavy cannon fires 17 px up, a heavy tank is 30 px high).
+func test_the_lift_follows_the_weapon_id_and_the_armour_of_the_snapshots_tables() -> void:
+	# A shot is lifted by the muzzle height of its weapon and a death, with no sheet to say, by the
+	# middle of its class's frame, both by the tables the snapshot carries: the test renames a
+	# weapon and makes a type infantry, and the effects follow (a heavy cannon fires 17 px up, an
+	# infantry frame is 24 px high).
 	var rifle: int = _weapon(&"rifle")  # A hitscan weapon: its tracer shows the lift at both ends.
 	var tank: int = _type(&"light_tank")
 	_runner.snapshot.weapon_ids[rifle] = &"heavy_cannon"
@@ -229,11 +235,15 @@ func test_the_lift_follows_the_weapon_id_and_the_type_id_of_the_snapshots_tables
 	_now_ms += 1000
 	_tick_with(Rig.impact(target, rifle))
 	assert_vector(_layer.quad_rect(0).get_center()).is_equal_approx(lifted, TOL)
-	_runner.snapshot.type_ids[tank] = &"heavy_tank"
 	_now_ms += 1000
 	_tick_with(Rig.died(target, tank))
-	var centre: Vector2 = IsoProjection.ground_to_px(target.x, target.y) - Vector2(0.0, 15.0)
-	assert_vector(_layer.quad_rect(0).get_center()).is_equal_approx(centre, TOL)
+	var vehicle: Vector2 = IsoProjection.ground_to_px(target.x, target.y) - Vector2(0.0, 13.0)
+	assert_vector(_layer.quad_rect(0).get_center()).is_equal_approx(vehicle, TOL)
+	_runner.snapshot.type_armour[tank] = World.Armour.INFANTRY
+	_now_ms += 1000
+	_tick_with(Rig.died(target, tank))
+	var figure: Vector2 = IsoProjection.ground_to_px(target.x, target.y) - Vector2(0.0, 12.0)
+	assert_vector(_layer.quad_rect(0).get_center()).is_equal_approx(figure, TOL)
 
 
 func test_a_neutral_unit_shoots_and_dies_like_any_other() -> void:

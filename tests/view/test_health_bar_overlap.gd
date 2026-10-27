@@ -4,28 +4,30 @@ extends GdUnitTestSuite
 ## is a spacing to the right and one north a spacing above. In iso a grid step along x is (32, 16)
 ## px x the spacing and one along y (-32, 16), so a formation's neighbours are 2:1 diagonals: the
 ## one on the grid's (1, 1) diagonal stands straight below, the one on (1, -1) straight beside.
-## A bar stands a lift above its unit's ground point and the lift is per type (`SpriteLift`: light
-## tank 24 px, heavy tank 30, artillery 28, harvester 26, a squad 24). Two bars overlap when their
-## units' screen offsets are under the bars' width and under the bar's height once the lower
-## unit's bar has risen by the difference of the lifts: below a light tank, a heavy tank has its bar
-## 6 px nearer to the light tank's than a second light tank would.
+## A bar stands a lift above its unit's ground point and the lift is per type (P114b: the
+## `bar_lift_px` of the type's sheet, the top of its frame; the numbers are generated data, so they
+## are read and not typed here). Two bars overlap when their units' screen offsets are under the
+## bars' width and under the bar's height once the lower unit's bar has risen by the difference of
+## the lifts: below a light tank, a taller frame has its bar nearer to the light tank's than a
+## second light tank would, by the difference of the two lifts at the zoom.
 ## The sweep puts two own units at each of the four distinct neighbour steps, at the larger
 ## formation_spacing of their two types (read from data/units: a group spaces by its largest type
 ## spacing, Formation.gd; 900 milli for two squads, 1200 for two light tanks, 1300 for a heavy tank
 ## with anything lighter), selects both and reads the plan of the layer, at the three zooms on
 ## every profile of both orientations (1.0 to 2.37 base px per dp). Its pairs are the units of one
 ## vehicle type, the squad pair, and every ordered pair of two different types out of the four
-## vehicle types of the lift table and the rifle squad: each type stands once in front of and once
+## vehicle types of the sweep and the rifle squad: each type stands once in front of and once
 ## behind every other, so all eight neighbour directions are covered. Units that stand closer than
 ## their formation spacing (two orders, a unit pushed aside) are outside the rule, as in P34b.
-## The result, which the three tests pin: two vehicles of one type never overlap; squads, and any
-## two units of different types, overlap only at zoom 0.75 on a screen above 1.8 base px per dp
-## (web_phone, web_phone_small and web_phone_portrait) and then by at most 1.5 dp (a quarter of a
-## bar's height) at the bar's edge: by 1.44 dp for two squads and by 1.31 dp at the worst for two
-## types, a taller frame below a shorter one (a heavy tank below a light tank or a squad, on
-## web_phone_small). Whether a bar covers the unit above it has no iso rule: the bar stands over
-## its own unit's frame and the unit above is only half a spacing higher, so a bar may cover that
-## unit's feet.
+## The result, which the three tests pin: two vehicles of one type never overlap; two squads
+## overlap only at zoom 0.75 on a screen above 1.8 base px per dp (web_phone, web_phone_small and
+## web_phone_portrait) and then by at most 1.5 dp (a quarter of a bar's height) at the bar's edge,
+## by 1.44 dp; two units of different types overlap by no more than their lifts differ (P114b: the
+## lift difference at the zoom, in dp, which is where the taller frame's bar has risen to: on the
+## sheets of P99b the worst pair is a light tank with another type, 5.6 dp at zoom 0.75 and 3.8 dp
+## at zoom 1 on the 6-inch phone). Whether a bar covers the unit above it has no iso rule: the bar
+## stands over its own unit's frame and the unit above is only half a spacing higher, so a bar may
+## cover that unit's feet.
 
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ARENA: String = "res://data/scenarios/perf_arena.tres"
@@ -33,6 +35,8 @@ const UNITS_DIR: String = "res://data/units/"
 const EDGE: Color = Color("1C2127")
 const ZOOMS: Array[float] = [0.75, 1.0, 1.5]
 const SQUAD: StringName = &"rifle_squad"
+## The four vehicle types of the sweep; a bar stands the sheet's `bar_lift_px` above its unit.
+const VEHICLES: Array[StringName] = [&"light_tank", &"heavy_tank", &"artillery", &"harvester"]
 ## The neighbours of a unit that differ: along grid x, along grid y, down the grid's diagonal (which
 ## is straight down the screen) and across it (straight sideways).
 const STEPS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, -1)]
@@ -64,7 +68,7 @@ func after_test() -> void:
 
 func test_bars_of_two_vehicles_of_one_type_never_overlap_on_any_screen() -> void:
 	var pairs: Array[Array] = []
-	for type_id: StringName in SpriteLift.BAR_PX:
+	for type_id: StringName in VEHICLES:
 		pairs.append([type_id, type_id])
 	assert_int(pairs.size()).is_greater_equal(4)  # Light, heavy, artillery, harvester.
 	_sweep(pairs, false)
@@ -76,9 +80,9 @@ func test_squad_bars_overlap_only_at_zoom_075_above_1_8_px_per_dp_and_by_at_most
 	assert_float(_sweep(pairs, true)).is_greater(1.0)
 
 
-func test_mixed_type_bars_overlap_only_at_zoom_075_above_1_8_px_per_dp_by_at_most_1_5_dp() -> void:
+func test_mixed_type_bars_overlap_by_no_more_than_their_lifts_differ() -> void:
 	var types: Array[StringName] = [SQUAD]
-	for type_id: StringName in SpriteLift.BAR_PX:
+	for type_id: StringName in VEHICLES:
 		types.append(type_id)
 	var pairs: Array[Array] = []
 	for first: StringName in types:
@@ -86,7 +90,9 @@ func test_mixed_type_bars_overlap_only_at_zoom_075_above_1_8_px_per_dp_by_at_mos
 			if first != second:
 				pairs.append([first, second])
 	assert_int(pairs.size()).is_equal(types.size() * (types.size() - 1))
-	assert_float(_sweep(pairs, true)).is_greater(1.0)
+	# The residual is real (the sheets' frames are not one height), so a layer that stopped
+	# lifting by the sheets would be noticed here too.
+	assert_float(_sweep_bounded(pairs)).is_greater(0.0)
 
 
 func test_the_sweep_pairs_the_types_it_names_at_the_larger_of_their_spacings() -> void:
@@ -140,6 +146,33 @@ func _sweep(pairs: Array[Array], may_overlap: bool) -> float:
 						worst = maxf(worst, depth)
 					else:
 						assert_float(depth).override_failure_message(note).is_equal(0.0)
+	return worst
+
+
+## Runs the sweep for each pair of types in `pairs` with the bound of two bars whose lifts differ:
+## the bars of equal lift never overlap, so the depth of an overlap is at most how far the taller
+## frame's bar has risen towards the other's, the difference of the two sheets' lifts at the zoom
+## in dp. Returns the worst depth in dp that it met.
+func _sweep_bounded(pairs: Array[Array]) -> float:
+	var worst: float = 0.0
+	for profile_name: StringName in _both_orientations():
+		UiScale.set_override(UiProfiles.by_name(profile_name))
+		_make_bars()
+		var dp_px: float = UiScale.base_px_per_dp()
+		for zoom: float in ZOOMS:
+			_camera.zoom = Vector2(zoom, zoom)
+			for pair: Array in pairs:
+				var first: StringName = pair[0]
+				var second: StringName = pair[1]
+				var rise: float = absf(_lift(first) - _lift(second)) * zoom / dp_px
+				for step: Vector2i in STEPS:
+					var note: String = (
+						"overlap in dp, %s zoom %s %s then %s step %s"
+						% [profile_name, zoom, first, second, step]
+					)
+					var depth: float = _overlap_dp(first, second, step)
+					assert_float(depth).override_failure_message(note).is_less_equal(rise + 0.01)
+					worst = maxf(worst, depth)
 	return worst
 
 
@@ -209,7 +242,7 @@ func _both_orientations() -> Array[StringName]:
 
 func _build() -> void:
 	_runner = auto_free(MatchRunner.new())
-	_runner.scenario = load(ARENA)
+	_runner.scenario = _arena_with_the_vehicles()
 	_runner.start()
 	_camera = auto_free(RtsCamera.new())
 	add_child(_camera)
@@ -228,6 +261,18 @@ func _build() -> void:
 	assert_int(_runner.snapshot.type_index[_row_a]).is_not_equal(
 		_runner.snapshot.type_index[_row_b]
 	)
+
+
+## The arena with a roster that lists the four vehicle types, so that the match's atlas holds their
+## sheets and a retyped row is lifted by its type's sheet (a type without one has its class's
+## default). The scenario is a copy: the file's resource is shared with other suites.
+func _arena_with_the_vehicles() -> ScenarioDef:
+	var scenario: ScenarioDef = (load(ARENA) as ScenarioDef).duplicate()
+	var roster: Array[UnitDef] = scenario.roster.duplicate()
+	for type_id: StringName in VEHICLES:
+		roster.append(_def(type_id))
+	scenario.roster = roster
+	return scenario
 
 
 ## A fresh bar layer, which reads the dp that is in force now.
@@ -270,3 +315,8 @@ func _screen_box(row: int) -> Rect2:
 	assert_bool(found).override_failure_message("no bar for row %d" % row).is_true()
 	var top_left: Vector2 = _camera.world_to_screen(box.position)
 	return Rect2(top_left, _camera.world_to_screen(box.end) - top_left)
+
+
+## The lift of the top of a unit's frame, world px at zoom 1: the `bar_lift_px` of its type's sheet.
+func _lift(type_id: StringName) -> float:
+	return float((load(IsoIndex.PATH) as IsoIndex).sheet(type_id).bar_lift_px)
