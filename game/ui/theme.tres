@@ -20,7 +20,7 @@
 ; anti_aliasing_size (the soft edge, 1 px). Scale a constant in HudTheme.scaled() before putting
 ; one here. An entry that stays in base px is listed in metadata/base_px by its path in this file.
 ; Type variations (DevButton, NumberLabel, SelectionPanel, PerfCard, BuildSidebar, SidebarTab, PowerBar,
-; PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner) are set by
+; PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner, ItemCaption) are set by
 ; theme_type_variation on the node, in main.tscn or at build in the script (the power bar's two
 ; pairs switch with the low-power state, the cost of an item tile with its money).
 ; The build sidebar's tints (the colours of BuildSidebar, STYLE.md "Icons and glyphs") are read by
@@ -167,7 +167,8 @@ SidebarTab/styles/pressed = SubResource("StyleBoxFlat_tab_open")
 ; The build item tiles (ItemTile.gd, plan P85b): the icon (dimmed behind a padlock), the fill that rises
 ; over it with the head's progress, the padlock (#9AA5B1) and the stripes of a tile that cannot take an
 ; item (the warning amber, half clear). The cost and the count are 18 dp numbers on a plate (the cost
-; amber when the money is short), the banner is 14 dp, dark on the green (5.8:1).
+; amber when the money is short), the banner is 14 dp, dark on the green (5.8:1). The name under the
+; plate of a landscape card is 14 dp, white on the tile's dark plate.
 ItemTile/base_type = &"Button"
 ItemTile/colors/fill = Color(1, 1, 1, 0.4)
 ItemTile/colors/icon = Color(1, 1, 1, 1)
@@ -188,6 +189,9 @@ ItemBanner/base_type = &"Label"
 ItemBanner/colors/font_color = Color(0.06, 0.08, 0.11, 1)
 ItemBanner/font_sizes/font_size = 14
 ItemBanner/styles/normal = SubResource("StyleBoxFlat_power")
+ItemCaption/base_type = &"Label"
+ItemCaption/colors/font_color = Color(1, 1, 1, 1)
+ItemCaption/font_sizes/font_size = 14
 ; The power bar and its low-power look.
 PowerBar/base_type = &"ProgressBar"
 PowerBar/styles/background = SubResource("StyleBoxFlat_track")
