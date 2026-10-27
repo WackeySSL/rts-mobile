@@ -7,16 +7,17 @@ extends GdUnitTestSuite
 
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const Rig: GDScript = preload("res://tests/view/support/fog_rig.gd")
-## Hit radius of tank 1 in base px at zoom [0.75, 1.0]: the larger of dp(24) and its art radius
-## (500 milli = 32 px at zoom 1, 24 px at zoom 0.75).
+## Hit radius of tank 1 in base px at zoom [0.75, 1.0, 1.5]: the larger of dp(24) and the horizontal
+## semi-axis of its ground ellipse (500 milli: 22.63 px at zoom 1, ADR 0023 section 3), so only a
+## desktop or a tablet at zoom 1.5 reaches past the 48 dp across (33.94 px).
 const RADIUS: Dictionary[StringName, Array] = {
-	&"android_6in": [42.0, 42.0],
-	&"web_phone": [48.67, 48.67],
-	&"web_phone_small": [56.84, 56.84],
-	&"web_tablet": [30.0, 32.0],
-	&"desktop": [24.0, 32.0],
+	&"android_6in": [42.0, 42.0, 42.0],
+	&"web_phone": [48.67, 48.67, 48.67],
+	&"web_phone_small": [56.84, 56.84, 56.84],
+	&"web_tablet": [30.0, 30.0, 33.94],
+	&"desktop": [24.0, 24.0, 33.94],
 }
-const ZOOMS: Array[float] = [0.75, 1.0]
+const ZOOMS: Array[float] = [0.75, 1.0, 1.5]
 
 var _settings: InputSettings = load("res://data/input_settings.tres")
 var _camera: RtsCamera
@@ -46,7 +47,7 @@ func test_the_hit_area_is_48_dp_across_or_the_art_if_larger_at_every_profile_and
 	for profile_name: StringName in RADIUS:
 		var profile: UiMetrics = UiProfiles.by_name(profile_name)
 		UiScale.set_override(profile)  # dp comes from the profile alone, not from the window.
-		for z: int in 2:
+		for z: int in ZOOMS.size():
 			_camera.zoom = Vector2(ZOOMS[z], ZOOMS[z])
 			var snap: PickSnapshot = _fill(PickSnapshot.new())
 			var radius: float = RADIUS[profile_name][z]
@@ -56,7 +57,7 @@ func test_the_hit_area_is_48_dp_across_or_the_art_if_larger_at_every_profile_and
 			)
 			var above: Callable = func(px: float) -> int:
 				return Picker.pick(snap, snap.screen_pos[0] - Vector2(0, px), 1, false)
-			# 25 dp misses unless the art is bigger than that (a tablet or desktop at zoom 1).
+			# 25 dp misses unless the art is bigger than that (a tablet or desktop at zoom 1.5).
 			var at_25: int = 0 if UiScale.dp(25.0) <= radius else -1
 			var got: Array[int] = [above.call(UiScale.dp(23.0)), above.call(UiScale.dp(25.0))]
 			got.append_array([above.call(radius - 0.5), above.call(radius + 0.5)])
@@ -277,18 +278,19 @@ func test_filling_a_snapshot_writes_the_rows_in_place_and_keeps_the_sizes() -> v
 	assert_array(snap.ids).is_equal(PackedInt32Array(range(1, 41)))
 	var counts: Array[int] = [snap.owners.count(1), snap.owners.count(2), snap.type_index.count(0)]
 	assert_array(counts).is_equal([30, 10, 40])
-	assert_that(snap.screen_pos[0]).is_equal(_camera.world_to_screen(Vector2(544, 1184)))
+	assert_that(snap.screen_pos[0]).is_equal(_camera.world_to_screen(Vector2(-320, 432)))
 	assert_that(snap.screen_pos[30]).is_equal(_layer.unit_screen_position(30))
-	assert_float(snap.radius_px[0]).is_equal(32.0)  # Art 32 px at zoom 1 beats dp(24) = 24 px.
-	# A second type, 1000 milli = 64 px, for row 5. The layer reads the published snapshot, so the
+	assert_float(snap.radius_px[0]).is_equal(24.0)  # Art 22.63 px at zoom 1 loses to dp(24).
+	# A second type, 1000 milli = 45.25 px, for row 5. The layer reads the published snapshot, so the
 	# test writes that (allowed in SYNC, ADR 0012 section 3); a tick would not do, the sim has no
 	# speed for type 1.
 	var published: MatchSnapshot = _layer.runner.snapshot
 	published.type_selection_radius.append(1000)
 	published.type_index[5] = 1
 	_fill(snap)
-	var row_5: Array = [snap.type_index[5], snap.radius_px[5], snap.radius_px.count(32.0)]
-	assert_array(row_5).is_equal([1, 64.0, 39])  # The other 39 rows keep their 32 px.
+	assert_int(snap.type_index[5]).is_equal(1)
+	assert_float(snap.radius_px[5]).is_equal_approx(45.2548, 0.001)
+	assert_int(snap.radius_px.count(24.0)).is_equal(39)  # The other 39 rows keep their 24 px.
 	var held: Array = [snap.ids, snap.owners, snap.type_index, snap.screen_pos, snap.radius_px]
 	held.append(snap.pickable)
 	for array: Variant in held:
@@ -299,8 +301,8 @@ func test_filling_a_snapshot_writes_the_rows_in_place_and_keeps_the_sizes() -> v
 	# A fill that replaced an array would leave the held one empty.
 	assert_bool(held.all(func(a: Variant) -> bool: return a.size() == 40)).is_true()
 	assert_int(held[5].count(1)).is_equal(30)  # And filled, not just resized.
-	assert_that(held[3][0]).is_equal(_camera.world_to_screen(Vector2(544, 1184)))
-	assert_float(snap.radius_px[0]).is_equal(48.0)  # Art 32 px * 1.5.
+	assert_that(held[3][0]).is_equal(_camera.world_to_screen(Vector2(-320, 432)))
+	assert_float(snap.radius_px[0]).is_equal_approx(33.9411, 0.001)  # Art 22.63 px * 1.5.
 
 
 ## The rows whose `pickable` entry is not what `is_shown` says (of `layer`, else the suite's own; an

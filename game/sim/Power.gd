@@ -10,6 +10,13 @@ extends RefCounted
 ## placed or lost in tick t counts in t's ECONOMY (the totals are built after REMOVE), so PRODUCTION
 ## of tick t and FIRE of tick t+1 see it.
 ##
+## A blacked-out building (P111, ADR 0023 section 10: `offline_until` above the stamp `world.tick +
+## 1` of the step in progress) counts neither its output nor its use, so the totals fall for exactly
+## the blackout's `type_strike_ticks` steps and come back at the stamp that reaches `offline_until`.
+## The totals are therefore a function of the hashed rows and of the step they were built in (the
+## stamp is a value, not a field to keep): a rebuild after that step must run with that step's tick,
+## one back from the tick the step left behind (`tests/sim/test_power_blackout.gd`).
+##
 ## Low power is `power_used > power_made` (`is_low`; equal is not low). Its two effects are
 ## elsewhere: the queues of a low player advance at `low_power_percent` (`scaled`, called by
 ## `Production.run`), and the player's defences (building rows with a weapon) keep their targets but
@@ -34,14 +41,17 @@ static func run(world: World) -> void:
 	used.fill(0)
 	var owners: PackedInt32Array = world.owner
 	var types: PackedInt32Array = world.type_index
+	var offline: PackedInt32Array = world.offline_until
 	var table: PackedInt32Array = world.type_power
 	var known: int = table.size()
+	var stamp: int = world.tick + 1
 	for row: int in world.building_rows:
 		var player: int = owners[row]
 		var type: int = types[row]
 		# Entry 0 is the neutral player's and stays 0; a player past the arrays (a hand-built World
 		# whose player_count was raised after prepare()) and a type past the table have no entry.
-		if player < 1 or player >= players or type >= known:
+		# A blacked-out building (offline until a later stamp) has none for this step either.
+		if player < 1 or player >= players or type >= known or offline[row] > stamp:
 			continue
 		var power: int = table[type]
 		if power > 0:

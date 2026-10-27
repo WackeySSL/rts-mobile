@@ -68,8 +68,9 @@ func test_the_enums_and_the_event_stride_are_the_contract() -> void:
 	var nav: Dictionary = {"NONE": 0, "DIRECT": 1, "FIELD": 2, "HOLD": 3, "CHASE": 4}
 	assert_dict(World.NavMode).is_equal(nav)
 	# 2 since P65 (ADR 0016, exception 10): fog.visible left the state hash. 3 since P70 (ADR 0017
-	# section 7, exception 10): Phase 3's state joined it.
-	assert_array([World.EVENT_STRIDE, World.STATE_FORMAT]).is_equal([8, 3])
+	# section 7, exception 10): Phase 3's state joined it. 4 since P109 (ADR 0023 section 10,
+	# exception 10): the strike columns joined it.
+	assert_array([World.EVENT_STRIDE, World.STATE_FORMAT]).is_equal([8, 4])
 
 
 ## A Phase 1-shaped world: the rule ints and the stream exist, player_count follows the owners
@@ -151,6 +152,12 @@ func test_prepare_pads_every_type_table_to_the_type_count_and_keeps_entries() ->
 		&"type_exit_x": [0, 0, 0],
 		&"type_exit_y": [0, 0, 0],
 		&"type_faction": [-1, -1, -1],
+		&"type_strike_kind": [0, 0, 0],
+		&"type_charge_ticks": [0, 0, 0],
+		&"type_strike_radius": [0, 0, 0],
+		&"type_strike_delay": [0, 0, 0],
+		&"type_strike_ticks": [0, 0, 0],
+		&"type_strike_weapon": [-1, -1, -1],
 	}
 	assert_array(World.TYPE_ARRAYS).is_equal(expected.keys())
 	for _pass: int in 2:
@@ -186,6 +193,8 @@ func test_add_unit_writes_every_column_at_its_spawn_value_and_one_spawned_record
 		&"cargo": [0],
 		&"harvest_slot": [-1],
 		&"home": [0],
+		&"ready_tick": [0],
+		&"offline_until": [0],
 	}
 	assert_array(World.ROW_ARRAYS).is_equal(expected.keys())
 	assert_int(world.add_unit(2, 0, 3500, 4500)).is_equal(1)
@@ -301,7 +310,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 			skipped.append(column)
 		else:
 			others.append(column)
-	assert_int(packed.size()).is_equal(99)
+	assert_int(packed.size()).is_equal(110)
 	assert_int(ints.size()).is_equal(53)
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
 	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper

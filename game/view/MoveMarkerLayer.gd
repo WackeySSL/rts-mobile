@@ -7,12 +7,20 @@ extends Node2D
 ## keep their size on screen through a pinch. It fades as ONE group through
 ## `CanvasGroup.self_modulate`: `modulate` would reach the lines too and blend twice, which turns
 ## the marker dark mid-fade.
+##
+## A mark lies on the ground at the projected point it is shown at (ADR 0023 section 1): its shapes
+## keep their width and are flattened to `IsoProjection.GROUND_FLATTEN` of their height, so the
+## chevrons and the diamond read as drawn on the terrain the way the selection ring does. The
+## strokes stay as wide as before: only the points are flattened.
 
 const WARNING: Color = Color("F5A524")
 const DANGER: Color = Color("E5484D")
 const CHEVRON_DP: Vector2 = Vector2(36.0, 12.0)  ## Tip distance from the point: start, rest.
 const CHEVRON_MS: float = 200.0
-const DIAMOND_PX: float = 45.8  ## Corner distance in world px: 1.3 x a light tank's ring.
+## Half the diamond's width in world px: 1.3 x the horizontal semi-axis of a light tank's ring
+## (24.9 px, `IsoProjection.ellipse_px` of its selection radius and the ring's pad).
+const DIAMOND_PX: float = 32.4
+const FLAT: Vector2 = Vector2(1.0, IsoProjection.GROUND_FLATTEN)  ## The ground's 2:1 flattening.
 const DIAMOND_START: float = 1.5  ## Times the size, easing to 1.
 const DIAMOND_MS: float = 150.0
 const FADE_START_MS: float = 200.0  ## Full alpha up to min(this, marker_ms / 3).
@@ -51,9 +59,19 @@ class Mark:
 				line.end_cap_mode = Line2D.LINE_CAP_ROUND
 				line.antialiased = true
 				line.closed = shape == 4
-				line.points = CORNERS if shape == 4 else CHEVRON
-				line.rotation = shape * PI / 2.0 if shape < 4 else 0.0
+				line.points = _flat_points(shape)
 				add_child(line)
+
+	## The points of `shape` (a chevron turned by 90 degrees a shape, or the diamond), flattened.
+	static func _flat_points(shape: int) -> PackedVector2Array:
+		var points: PackedVector2Array = PackedVector2Array()
+		if shape == 4:
+			for corner: Vector2 in CORNERS:
+				points.append(corner * FLAT)
+			return points
+		for point: Vector2 in CHEVRON:
+			points.append(point.rotated(shape * PI / 2.0) * FLAT)
+		return points
 
 	## The size, fade and motion `age` ms after the mark was shown, at camera `zoom`.
 	func pose(age: float, marker_ms: float, zoom: float) -> void:
@@ -68,11 +86,13 @@ class Mark:
 			for shape: int in 4:
 				var chevron: Line2D = get_child(first + shape)
 				chevron.visible = not diamond
-				chevron.position = Vector2(reach, 0.0).rotated(shape * PI / 2.0)
+				chevron.position = Vector2(reach, 0.0).rotated(shape * PI / 2.0) * FLAT
 			var flash: Line2D = get_child(first + 4)
 			flash.visible = diamond
 			for corner: int in 4:  # World px: this node's scale turns them into dp.
-				flash.set_point_position(corner, CORNERS[corner] * DIAMOND_PX / scale.x * size)
+				flash.set_point_position(
+					corner, CORNERS[corner] * FLAT * DIAMOND_PX / scale.x * size
+				)
 
 
 func _ready() -> void:
