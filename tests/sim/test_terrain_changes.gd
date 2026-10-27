@@ -112,7 +112,7 @@ func test_a_set_terrain_during_a_match_is_drawn_by_map_view() -> void:
 	assert_str(_hex(view, ODD_TILE)).is_equal(WATER_HEX)
 	assert_str(_hex(view, EVEN_TILE + Vector2i(0, 1))).is_equal(GRASS_B_HEX)  # Its neighbour.
 	assert_int(view.draw_count()).is_equal(1)
-	assert_that(view.drawn_rect()).is_equal(Rect2(0, 0, 48 * 64, 48 * 64))
+	assert_that(view.drawn_rect()).is_equal(Rect2(0, 0, 48, 48))  # In cells, under the iso transform.
 	# A later change shows too: the water turns to sand, and a refused index changes nothing (256 is
 	# refused here by the cost-row bound of this 5-row table; the byte bound is proved by the first
 	# case, on a table of 300 rows).

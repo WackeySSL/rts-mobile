@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"renew_strike"
+faction = &"renew"
+category = &"bld"
+footprint = 3
+silhouette = "A white hexagonal pedestal with a team band carrying a slim mast, a wide flat hexagonal dish and a mint light, with four small dark pylons at the corners."
+prims = PackedStringArray(
+"box hull titanium 0 0 0 2.92 2.92 0.06",
+"prism hull ceramic 0 0.2 0.06 1.2 1.04 0.24 sides=6",
+"prism hull team 0 0.2 0.3 1.24 1.08 0.2 sides=6",
+"prism hull ceramic 0 0.2 0.5 1.2 1.04 0.1 sides=6",
+"prism hull titanium 0 0.2 0.6 0.3 0.26 1.16 sides=6",
+"prism hull team 0 0.2 1.76 1.5 1.3 0.1 sides=6",
+"prism hull ceramic 0 0.2 1.86 1.3 1.12 0.03 sides=6",
+"prism hull glass 0 0.2 1.89 0.9 0.78 0.03 sides=6",
+"sphere hull mint 0 0.2 1.92 0.2 0.2 0.2",
+"prism hull graphite 1.1 1.1 0.06 0.2 0.18 0.6 sides=6",
+"prism hull graphite -1.1 1.1 0.06 0.2 0.18 0.6 sides=6",
+"prism hull graphite 1.1 -1.1 0.06 0.2 0.18 0.6 sides=6",
+"prism hull graphite -1.1 -1.1 0.06 0.2 0.18 0.6 sides=6"
+)

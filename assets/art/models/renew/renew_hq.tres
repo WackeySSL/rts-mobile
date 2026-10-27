@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"renew_hq"
+faction = &"renew"
+category = &"bld"
+footprint = 3
+silhouette = "A broad white hexagonal hall with a team band and a glass ring under a smaller upper hall, topped by a slim hexagonal mast with a mint light."
+prims = PackedStringArray(
+"box hull titanium 0 0 0 2.92 2.92 0.06",
+"prism hull ceramic 0 0 0.06 2 1.7 0.4 sides=6",
+"prism hull team 0 0 0.46 2.06 1.76 0.2 sides=6",
+"prism hull ceramic 0 0 0.66 2 1.7 0.3 sides=6",
+"prism hull ceramic 0 0 1.08 1.4 1.2 0.2 sides=6",
+"prism hull team 0 0 1.28 1.44 1.24 0.14 sides=6",
+"prism hull ceramic 0 0 1.42 1.4 1.2 0.16 sides=6",
+"prism hull glass 0 0 1.58 1.2 1 0.14 sides=6",
+"prism hull titanium 0 0 1.72 0.3 0.26 1.2 sides=6 taper=0.6",
+"sphere hull mint 0 0 2.92 0.2 0.2 0.2"
+)
