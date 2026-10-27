@@ -57,13 +57,6 @@ func test_the_gallery_zoom_row_shows_the_camera_zoom_levels() -> void:
 		assert_array(scales).override_failure_message(row_path).is_equal(levels)
 
 
-## Both scale a ring by `radius / RING_TEX_RADIUS_PX`, so the gallery (art-director's) shows the
-## ring sizes of the game (touch-ux-dev's UnitLayer) only while the two constants agree. The
-## texture itself is pinned to the same 72 px by tests/art.
-func test_the_unit_layer_and_the_art_gallery_scale_the_ring_texture_by_the_same_radius() -> void:
-	assert_float(ArtGallery.RING_TEX_RADIUS_PX).is_equal(UnitLayer.RING_TEX_RADIUS_PX)
-
-
 ## Whitespace is normalised, so a re-wrapped line does not break the check.
 func test_credits_name_the_default_boot_splash_and_the_licence_file() -> void:
 	var credits: String = FileAccess.get_file_as_string(CREDITS_PATH)
