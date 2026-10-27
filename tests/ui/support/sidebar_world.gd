@@ -1,8 +1,12 @@
 extends RefCounted
 ## The World behind the build sidebar's item suites (plan P85b): the shipped units and buildings
-## (every buildable type), a 24 x 16 open map and two players. A suite gives player 1 buildings,
-## credits and queued items, captures the snapshot the sidebar reads and gets the real tables
-## (costs, tabs, requirements, producers, build ticks) rather than copies of them. Not a suite.
+## (the twelve of Phase 2 and the first Phase 3 plan), a 24 x 16 open map and two players. A suite
+## gives player 1 buildings, credits and queued items, captures the snapshot the sidebar reads and
+## gets the real tables (costs, tabs, requirements, producers, build ticks) rather than copies of
+## them, with one exception: the Derrick League's radar (plan P107, ADR 0023 section 7), which
+## gates artillery and which the loader pulls in after it, is taken off the tabs and artillery's
+## requirement is dropped, so that these suites keep pinning the sidebar's own rules on the same
+## twelve tiles. Not a suite.
 
 const Worlds: GDScript = preload("res://tests/sim/support/building_worlds.gd")
 const IDS: Array[String] = [
@@ -11,13 +15,13 @@ const IDS: Array[String] = [
 	"light_tank",
 	"heavy_tank",
 	"harvester",
-	"artillery",
 	"headquarters",
 	"power_plant",
 	"barracks",
 	"refinery",
 	"vehicle_factory",
 	"defence_turret",
+	"artillery",
 ]
 const COLS: int = 24
 const ROWS: int = 16
@@ -26,7 +30,10 @@ const PER_LINE: int = 5
 
 
 static func world() -> World:
-	return Worlds.open(COLS, ROWS, IDS)
+	var made: World = Worlds.open(COLS, ROWS, IDS)
+	made.type_tab[type_of(made, "fossil_radar")] = -1
+	made.type_requires[type_of(made, "artillery")] = World.TYPE_PAD_NONE
+	return made
 
 
 ## The type index of `id`.
