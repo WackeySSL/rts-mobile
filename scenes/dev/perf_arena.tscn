@@ -18,12 +18,14 @@
 [ext_resource type="Script" path="res://game/ui/DpMinSize.gd" id="16_dp"]
 [ext_resource type="Script" path="res://game/ui/PerfHud.gd" id="17_hud"]
 [ext_resource type="Resource" path="res://data/dev/perf_gate.tres" id="18_gate"]
+[ext_resource type="Script" path="res://game/view/WorldSort.gd" id="19_sort"]
 
-[node name="PerfArena" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "unit_layer", "bar_layer", "projectile_layer", "effects_layer", "fog_layer", "camera", "hud", "back_button", "layers_button", "layout", "bar")]
+[node name="PerfArena" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "world_sort", "unit_layer", "bar_layer", "projectile_layer", "effects_layer", "fog_layer", "camera", "hud", "back_button", "layers_button", "layout", "bar")]
 script = ExtResource("1_arena")
 scenario = ExtResource("2_scenario")
 runner = NodePath("MatchRunner")
 map_view = NodePath("MapView")
+world_sort = NodePath("WorldSort")
 unit_layer = NodePath("UnitLayer")
 bar_layer = NodePath("HealthBarLayer")
 projectile_layer = NodePath("ProjectileLayer")
@@ -46,28 +48,36 @@ tick_mode = 2
 script = ExtResource("4_map")
 runner = NodePath("../MatchRunner")
 
-[node name="UnitLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "camera")]
+[node name="WorldSort" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
+y_sort_enabled = true
+z_index = 10
+z_as_relative = false
+script = ExtResource("19_sort")
+runner = NodePath("../MatchRunner")
+
+[node name="UnitLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "camera", "world_sort")]
 script = ExtResource("5_units")
 runner = NodePath("../MatchRunner")
 camera = NodePath("../Camera")
+world_sort = NodePath("../WorldSort")
 reveal_enemies = true
 
 [node name="HealthBarLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "unit_layer")]
-z_index = 110
+z_index = 30
 z_as_relative = false
 script = ExtResource("6_bars")
 runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
 
 [node name="ProjectileLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
-z_index = 120
+z_index = 40
 z_as_relative = false
 script = ExtResource("7_projectiles")
 runner = NodePath("../MatchRunner")
 reveal_enemies = true
 
 [node name="EffectsLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
-z_index = 130
+z_index = 50
 z_as_relative = false
 script = ExtResource("8_effects")
 runner = NodePath("../MatchRunner")

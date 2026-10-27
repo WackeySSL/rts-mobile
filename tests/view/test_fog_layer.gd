@@ -19,13 +19,13 @@ const MAIN_SCENE: String = "res://scenes/main.tscn"
 const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
 ## The screens every screen is tested at: base, 20:9 phone and 4:3 tablet, each held both ways.
 const TARGET_SIZES: Array[Vector2i] = ScreenSizes.ALL
-## ADR 0023 section 2 and ADR 0012 section 6: the z of the layers around the fog, bottom to top.
-## The fog lies on the ground, under every unit (the lowest unit layer is 10), bar and effect.
+## ADR 0023 section 2: the z of the layers around the fog, bottom to top. The fog lies on the
+## ground, under every unit (the sorted world is 10), bar and effect.
 const Z_FOG: int = 4
-const Z_BARS: int = 110
-const Z_PROJECTILES: int = 120
-const Z_EFFECTS: int = 130
-const Z_MARKERS: int = 150
+const Z_BARS: int = 30
+const Z_PROJECTILES: int = 40
+const Z_EFFECTS: int = 50
+const Z_MARKERS: int = 70
 const CORNER_TOLERANCE: Vector2 = Vector2(0.001, 0.001)
 
 var _window_size_before: Vector2i
@@ -342,10 +342,11 @@ func test_the_main_scene_draws_the_fog_at_z_4_under_every_object_and_covers_the_
 	var order: Array[String] = []
 	for child: Node in main.get_children():
 		order.append(String(child.name))
-	assert_array(order.slice(0, 8)).is_equal(
+	assert_array(order.slice(0, 9)).is_equal(
 		[
 			"MatchRunner",
 			"MapView",
+			"WorldSort",
 			"UnitLayer",
 			"HealthBarLayer",
 			"ProjectileLayer",
@@ -358,8 +359,9 @@ func test_the_main_scene_draws_the_fog_at_z_4_under_every_object_and_covers_the_
 	assert_int(main.get_node("ProjectileLayer").z_index).is_equal(Z_PROJECTILES)
 	assert_int(main.get_node("EffectsLayer").z_index).is_equal(Z_EFFECTS)
 	assert_int(fog.z_index).is_equal(Z_FOG)
-	assert_int(Z_FOG).is_less(UnitLayer.Z_FIRST[0])  # Under the lowest hull, team and turret z.
-	assert_int(Z_FOG).is_greater(UnitLayer.Z_RING)  # Over the map (0) and the rings.
+	assert_int(Z_FOG).is_less(WorldSort.Z_SORT)  # Under the sorted world: rigs and buildings.
+	assert_int(Z_FOG).is_greater(WorldSort.Z_RING)  # Over the map (0), the shadows and the rings.
+	assert_int(main.get_node("WorldSort").z_index).is_equal(WorldSort.Z_SORT)
 	assert_bool(fog.z_as_relative).is_false()
 	assert_int(main.get_node("MarkerLayer").z_index).is_equal(Z_MARKERS)
 	assert_object(fog.runner).is_same(main.get_node("MatchRunner"))

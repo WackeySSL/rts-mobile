@@ -8,7 +8,7 @@ const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const HudThemes: GDScript = preload("res://tests/support/hud_theme.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
-const ART: String = "res://assets/art/svg/units/light_tank_"
+const CARD: String = "res://assets/art/iso/icons/item_light_tank.svg"
 const LONG_NAME: String = "Heavily Armoured Experimental Siege Tank Destroyer Mark Seven"
 
 var _window_size_before: Vector2i
@@ -40,10 +40,9 @@ func test_the_count_follows_every_way_the_selection_changes() -> void:
 	_tap(first)  # A real finger through the GUI and TouchInput.
 	_expect("tap", "×1")
 	assert_bool(_node("Rows/Total").visible).is_false()  # One type: no total.
-	for part: String in ["Hull", "Team", "Turret"]:  # The tank's own layers, the owner colour.
-		var rect: TextureRect = _node("Rows/Row0/Icon/" + part)
-		assert_str(rect.texture.resource_path).is_equal(ART + part.to_lower() + ".svg")
-		assert_that(rect.modulate).is_equal(Color("2F80ED") if part == "Team" else Color.WHITE)
+	var card: TextureRect = _node("Rows/Row0/Icon/Card")  # The generated item card (P99b).
+	assert_str(card.texture.resource_path).is_equal(CARD)
+	assert_that(card.modulate).is_equal(Color.WHITE)  # Its colours are its own.
 	_gesture(GestureEvent.Kind.DOUBLE_TAP, first)
 	_expect("double-tap", "×30")
 	# The top of the diamond block under the 2:1 projection (P117): world (-440, 410) to (-200, 490)
@@ -86,7 +85,6 @@ func test_two_types_get_a_row_each_and_a_total_and_the_rows_are_reused() -> void
 	add_child(runner)
 	_panel = auto_free(SelectionPanel.new())
 	_panel.runner = runner
-	_panel.unit_layer = auto_free(UnitLayer.new())
 	_panel.theme = HudThemes.scaled()  # Outside main.tscn nothing is inherited (P58).
 	add_child(_panel)
 	_panel.set_selected(PackedInt32Array([1, 2, 3, 4, 5, 999]))  # 999 is no unit.
@@ -101,7 +99,7 @@ func test_two_types_get_a_row_each_and_a_total_and_the_rows_are_reused() -> void
 	assert_that(backdrop.bg_color).is_equal(Color(0.06, 0.08, 0.11, 0.78))
 	assert_bool(_node("Rows/Total").visible).is_true()
 	assert_int(_node("Rows/Total").get_index()).is_equal(2)  # Below the rows.
-	assert_object((_node("Rows/Row1/Icon/Hull") as TextureRect).texture).is_null()  # No art.
+	assert_object((_node("Rows/Row1/Icon/Card") as TextureRect).texture).is_null()  # No card.
 	await await_idle_frame()
 	for row_name: String in ["Row0", "Row1"]:  # Without a band there is no cap.
 		var title: Label = _node("Rows/%s/Name" % row_name)
@@ -110,7 +108,7 @@ func test_two_types_get_a_row_each_and_a_total_and_the_rows_are_reused() -> void
 	_panel.set_selected(PackedInt32Array([4]))
 	assert_object(_node("Rows/Row0")).is_same(row0)  # Reused, now the scout.
 	assert_array(_texts("Row0")).is_equal(["Scout Test", "×1"])
-	assert_object((_node("Rows/Row0/Icon/Hull") as TextureRect).texture).is_null()  # Not the tank's.
+	assert_object((_node("Rows/Row0/Icon/Card") as TextureRect).texture).is_null()  # Not the tank's.
 	assert_bool(_node("Rows/Row1").visible).is_false()
 	assert_bool(_node("Rows/Total").visible).is_false()
 	assert_int(_node("Rows").get_child_count()).is_equal(3)  # Two rows and the total, none new.
@@ -161,7 +159,7 @@ func test_the_panel_is_dp_sized_and_sits_in_its_band_in_both_orientations() -> v
 			sizes.append(_node(path).get_theme_font_size("font_size"))
 		var pinned: Array[int] = [_px(16.0), _px(20.0), _px(20.0)]  # Name, count, total.
 		assert_array(sizes).override_failure_message(why).is_equal(pinned)
-		for part: String in ["", "/Hull", "/Team", "/Turret"]:  # The icon and its drawn layers.
+		for part: String in ["", "/Card"]:  # The icon and its picture.
 			var icon: Vector2 = (_node("Rows/Row0/Icon" + part) as Control).size
 			var icon_dp: Vector2 = UiScale.dp_vec(40.0, 40.0)
 			assert_vector(icon).override_failure_message(why).is_equal_approx(icon_dp, Vector2.ONE)

@@ -200,13 +200,13 @@ class MainScene:
 	## The instance ids of the rig nodes, in row order.
 	func rig_ids() -> Array[int]:
 		var ids: Array[int] = []
-		for rig: Node in units.get_children():
+		for rig: Node in units.world_sort.get_children():
 			ids.append(rig.get_instance_id())
 		return ids
 
 	func positions() -> PackedVector2Array:
 		var found: PackedVector2Array = PackedVector2Array()
-		for rig: Node2D in units.get_children():
+		for rig: Node2D in units.world_sort.get_children():
 			found.append(rig.position)
 		return found
 
@@ -228,7 +228,7 @@ class MainScene:
 			found = "rig count %d against %d" % [units.rig_count(), other.units.rig_count()]
 		var rows: int = units.rig_count() if found.is_empty() else 0
 		for row: int in rows:
-			found = _rig_diff(units.get_child(row), other.units.get_child(row))
+			found = _rig_diff(row, other)
 			if not found.is_empty():
 				break
 		if found.is_empty() and fog.image().get_data() != other.fog.image().get_data():
@@ -246,23 +246,30 @@ class MainScene:
 			return "checkpoints"
 		return ""
 
-	func _rig_diff(rig: Node2D, twin: Node2D) -> String:
+	func _rig_diff(row: int, other: MainScene) -> String:
+		var rig: Node2D = units.rig(row)
+		var twin: Node2D = other.units.rig(row)
 		if rig.name != twin.name:
 			return "rig %s against %s" % [rig.name, twin.name]
 		if rig.position != twin.position or rig.visible != twin.visible:
 			return "rig %s position or visibility" % rig.name
-		if turns(rig) != turns(twin):
-			return "rig %s hull, team or turret turn" % rig.name
+		if turns(row) != other.turns(row):
+			return "rig %s hull or turret turn" % rig.name
+		if shown_frames(rig) != other.shown_frames(twin):
+			return "rig %s frames" % rig.name
 		return ""
 
-	## The turns of a rig's Hull, Team and Turret layers (0 for a type without a turret).
-	static func turns(rig: Node2D) -> Vector3:
-		var turret: Node2D = rig.get_node_or_null("Turret") as Node2D
-		return Vector3(
-			(rig.get_node("Hull") as Node2D).rotation,
-			(rig.get_node("Team") as Node2D).rotation,
-			0.0 if turret == null else turret.rotation
-		)
+	## The angles the hull and the turret of row `row` show (0 for a type without a turret).
+	func turns(row: int) -> Vector2:
+		var has_turret: bool = units.rig(row).has_node("Turret")
+		return Vector2(units.heading(row), units.turret_angle(row) if has_turret else 0.0)
+
+	## The region of each sprite of a rig, in child order: the frames it shows.
+	func shown_frames(rig: Node2D) -> Array[Rect2]:
+		var found: Array[Rect2] = []
+		for sprite: Sprite2D in rig.find_children("*", "Sprite2D", false, false):
+			found.append(sprite.region_rect)
+		return found
 
 	## The orders stamped `stamp`: blue attack-moves at ATTACK_AT, five tanks stop at STOP_AT and
 	## fifteen move on to a point on the way at MOVE_AT.

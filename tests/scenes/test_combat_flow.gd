@@ -211,7 +211,7 @@ func _hud(node_name: String) -> Control:
 
 ## The rig of unit row `row`, a child of the unit layer in row order.
 func _rig(row: int) -> Node2D:
-	return _layer.get_child(row) as Node2D
+	return _layer.rig(row)
 
 
 func _centre_on_rig(row: int) -> void:

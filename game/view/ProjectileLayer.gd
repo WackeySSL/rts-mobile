@@ -1,10 +1,10 @@
 class_name ProjectileLayer
 extends Node2D
 ## Draws the projectiles of the runner's published snapshot (assets/art/STYLE.md "Combat effects",
-## ADR 0012 sections 3 and 6, z 120): every live slot is one quad of the effects atlas, the SHELL
-## region for a shot of any weapon but the rocket, the ROCKET region for that one (the weapon is
-## `weapon_ids[proj_weapon]`). A quad stands at lerp(prev_proj, proj, alpha) projected by
-## `IsoProjection` (ADR 0023 section 1) and lifted by the muzzle height of its weapon
+## ADR 0012 section 3, z 40 in ADR 0023 section 2): every live slot is one quad of the effects
+## atlas, the SHELL region for a shot of any weapon but the rocket, the ROCKET region for that one
+## (the weapon is `weapon_ids[proj_weapon]`). A quad stands at lerp(prev_proj, proj, alpha)
+## projected by `IsoProjection` (ADR 0023 section 1) and lifted by the muzzle height of its weapon
 ## (`SpriteLift.muzzle_lift_px`, the shooter's `muzzle_lift_px` of its sheet once P113 brings them:
 ## a shell flies straight and level in Phase 3), turned along the move from prev_proj to proj as
 ## that move looks on the screen, and is as big in world px as its region, so it scales with the

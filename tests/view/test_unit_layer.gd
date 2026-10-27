@@ -1,29 +1,28 @@
 extends GdUnitTestSuite
-## UnitLayer on data/scenarios/controls_test.tres: 40 rigs in World row order, ids 1-30 blue and
-## 31-40 red. Under the 2:1 projection (P117) tank 1, at ground (8500, 18500) milli, stands at px
-## (-320, 432), tank 2 at (-272, 456) and tank 7 at (-368, 456).
+## UnitLayer on data/scenarios/controls_test.tres: 40 rigs in World row order, ids 1-30 owned by
+## player 1 and 31-40 by player 2. A rig is a Node2D of the sorted world (P114) with the children
+## Shadow, Hull and Turret, each a region of the match's one atlas. Under the 2:1 projection (P117)
+## tank 1, at ground (8500, 18500) milli, stands at px (-320, 432), tank 2 at (-272, 456) and tank 7
+## at (-368, 456). Headings are grid angles: east on the grid is 0 and the frame `d06`, grid south
+## (+y) a quarter turn and `d10`.
 ## The runner is not in the tree, so only the calls here move time: runner._process() moves the
 ## interpolation clock and layer._process() draws a frame. Rigs that follow deaths and spawns by
-## unit id are in test_unit_layer_rows.gd, and where turrets and squads aim in
-## test_unit_layer_aim.gd.
+## unit id are in test_unit_layer_rows.gd, where turrets and squads aim in test_unit_layer_aim.gd
+## and the sorted world's atlas, z and sort in test_world_sort.gd.
 
+const Frames: GDScript = preload("res://tests/view/support/rig_frames.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
-const ART: String = "res://assets/art/svg/units/light_tank_%s.svg"
 const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
-const BLUE: Color = Color("2F80ED")
-const RED: Color = Color("E5484D")
 const RING_ART: String = "res://assets/art/svg/ui/selection_ring.svg"
 ## The ring texture's centre-line radius in px, typed again from STYLE.md so that a wrong
 ## UnitLayer.RING_TEX_RADIUS_PX fails (tests/art pins the texture to the same number).
 const RING_CENTRE_PX: float = 72.0
-const UNITS: String = "res://assets/art/svg/units/"
 const TANK_1: PackedInt32Array = [1]
 const TANK_6: PackedInt32Array = [6]  ## Row 5, the east end of the block's first row.
 const TANK_30: PackedInt32Array = [30]  ## Row 29, the block's south-east corner.
-## Grid south (+y) as the hull looks on the screen: down and to the left, atan2(16, -32).
-const SOUTH: float = 2.677945
+const SOUTH: float = PI / 2.0  ## Grid south (+y) as a heading.
 
 var _window_size_before: Vector2i
 var _runner: MatchRunner
@@ -59,24 +58,60 @@ func after_test() -> void:
 	CommandQueue.clear()
 
 
-func test_one_rig_per_unit_with_hull_team_and_turret_layers_in_draw_order() -> void:
+func test_one_rig_per_unit_with_shadow_hull_and_turret_on_the_atlas_in_draw_order() -> void:
 	assert_int(_layer.rig_count()).is_equal(40)
-	assert_int(_layer.get_child_count()).is_equal(40)
+	assert_int(_layer.world_sort.get_child_count()).is_equal(40)  # The rigs stand in the sort.
 	for row: int in 40:
-		var names: Array = _rig(row).get_children().map(func(n: Node) -> StringName: return n.name)
-		assert_array(names).is_equal([&"Hull", &"Team", &"Turret"])
+		assert_array(_names(_rig(row))).is_equal([&"Shadow", &"Hull", &"Turret"])
+		assert_object(_rig(row).get_parent()).is_same(_layer.world_sort)
 	assert_str(_rig(0).name).is_equal("Unit1")
-	for layer: String in ["hull", "team", "turret"]:
-		var texture: Texture2D = _rig(0).get_node(layer.capitalize()).texture
-		assert_str(texture.resource_path).is_equal(ART % layer)
+	var atlas: IsoAtlas = _layer.world_sort.atlas
+	assert_bool(atlas.is_empty()).is_false()
+	for row: int in [0, 29, 30, 39]:  # Owners 1 and 2 wear their own triads: other regions.
+		var slot: int = 0 if row < 30 else 1
+		for part: StringName in [&"shadow", &"hull", &"turret"]:
+			var sprite: Sprite2D = _rig(row).get_node(String(part).capitalize())
+			assert_object(sprite.texture).is_same(atlas.texture())
+			assert_bool(sprite.region_enabled).is_true()
+			assert_that(sprite.modulate).is_equal(Color.WHITE)
+			assert_bool(sprite.centered).is_false()
+			var want: Rect2i = atlas.region(&"light_tank", part, 6, slot)
+			assert_bool(want.has_area()).is_true()
+			assert_that(sprite.region_rect).is_equal(Rect2(want))
+			assert_float(sprite.scale.x).is_equal_approx(0.5 / atlas.bake_scale(), 0.000001)
+	# The hulls of the two owners are recoloured copies, the shadows (no key colour) are shared.
+	(
+		assert_bool(
+			atlas.region(&"light_tank", &"hull", 6, 0) != atlas.region(&"light_tank", &"hull", 6, 1)
+		)
+		. is_true()
+	)
+	assert_that(atlas.region(&"light_tank", &"shadow", 6, 0)).is_equal(
+		atlas.region(&"light_tank", &"shadow", 6, 1)
+	)
 
 
-func test_team_layers_are_tinted_by_owner_and_the_other_layers_are_not() -> void:
-	for row: int in 40:
-		assert_that(_rig(row).get_node("Team").modulate).is_equal(BLUE if row < 30 else RED)
-		assert_that(_rig(row).get_node("Hull").modulate).is_equal(Color.WHITE)
-		assert_that(_rig(row).get_node("Turret").modulate).is_equal(Color.WHITE)
-	assert_array(_layer.team_colors).is_equal(PackedColorArray([Color("9AA5B1"), BLUE, RED]))
+func test_a_frame_is_placed_by_the_sheets_anchor_and_the_turret_at_its_mount() -> void:
+	var sheet: IsoSheetDef = _layer.world_sort.sheet(&"light_tank")
+	var atlas: IsoAtlas = _layer.world_sort.atlas
+	var rig: Node2D = _rig(0)
+	# The sprite's top-left, in the rig's px, lies the anchor (2x art px, half in world px) up
+	# and to the left of the ground point: so the anchor is the rig's position.
+	for part: StringName in [&"hull", &"turret", &"shadow"]:
+		var sprite: Sprite2D = rig.get_node(String(part).capitalize())
+		var anchor: Vector2 = Vector2(sheet.anchor(part))
+		assert_vector(sprite.offset * sprite.scale).is_equal_approx(
+			-anchor * 0.5, Vector2(0.001, 0.001)
+		)
+	var turret: Sprite2D = rig.get_node("Turret")
+	assert_vector(turret.position).is_equal_approx(sheet.mount(6) * 0.5, Vector2(0.001, 0.001))
+	assert_bool(atlas.region(&"light_tank", &"turret", 6, 0).size.x > 0).is_true()
+	# A new hull frame moves the turret to the mount of that frame.
+	CommandQueue.submit(Command.attack_move(1, TANK_1, 8500, 21500))
+	_runner.run_ticks(1)
+	_render(0.5)
+	assert_int(Frames.dir(_layer, 0, &"hull")).is_equal(10)
+	assert_vector(turret.position).is_equal_approx(sheet.mount(10) * 0.5, Vector2(0.001, 0.001))
 
 
 func test_rigs_start_on_the_projected_unit_positions_in_px() -> void:
@@ -123,65 +158,70 @@ func test_frames_leave_no_new_objects_alive() -> void:
 	assert_float(Performance.get_monitor(Performance.OBJECT_COUNT)).is_equal(objects)
 
 
-func test_a_restarted_match_gets_new_rigs_with_their_own_tint_and_heading() -> void:
+func test_a_restarted_match_gets_new_rigs_with_their_own_frames_and_heading() -> void:
 	var south: Callable = func() -> void:
 		CommandQueue.submit(Command.attack_move(1, TANK_1, 8500, 21500))
 		_runner.run_ticks(1)
 		_render(0.5)
 	south.call()
-	_layer.team_colors = PackedColorArray([Color("9AA5B1"), BLUE])  # Owner 2 has no colour.
+	assert_int(Frames.dir(_layer, 0, &"hull")).is_equal(10)
+	var atlas: IsoAtlas = _layer.world_sort.atlas
 	_runner.start()
 	_layer._process(0.05)
 	assert_int(_layer.rig_count()).is_equal(40)
-	assert_int(_layer.get_child_count()).is_equal(40)
-	assert_that(_rig(0).get_node("Team").modulate).is_equal(BLUE)
-	assert_that(_rig(30).get_node("Team").modulate).is_equal(Color("9AA5B1"))  # The neutral one.
-	assert_float(_rig(0).get_node("Hull").rotation).is_equal(0.0)  # Neither heading nor aim is kept.
+	assert_int(_layer.world_sort.get_child_count()).is_equal(40)
+	assert_object(_layer.world_sort.atlas).is_same(atlas)  # The same scenario: nothing is baked.
+	assert_float(_layer.heading(0)).is_equal(0.0)  # Neither heading nor aim is kept.
+	assert_int(Frames.dir(_layer, 0, &"hull")).is_equal(6)
 	south.call()  # Grid south (+y) is down and to the left on the screen.
-	assert_float(_rig(0).get_node("Hull").rotation).is_equal_approx(SOUTH, 0.001)
+	assert_float(_layer.heading(0)).is_equal_approx(SOUTH, 0.001)
+	assert_int(Frames.dir(_layer, 0, &"hull")).is_equal(10)
 	await await_idle_frame()  # The old rigs are freed.
 
 
 func test_the_hull_eases_toward_where_the_tank_moves_and_keeps_its_heading_when_it_stops() -> void:
-	var hull: Sprite2D = _rig(29).get_node("Hull")
-	# Tank 30 (row 29, at (16000, 24500)) drives 3 tiles (25 ticks) on a 3-4-5 path, then west (127
-	# degrees), then east (180); the headings are the grid directions (3, 4), (-3, 0) and (3, 0) as
-	# they look on the screen. It stands at the block's south-east corner, so no unit is within 800
-	# milli of the path: separation (P39b) cannot push it.
+	# Tank 30 (row 29, at (16000, 24500)) drives 3 tiles (25 ticks) on a 3-4-5 path, then west
+	# (180 degrees), then east; the headings are the grid directions (3, 4), (-3, 0) and (3, 0).
+	# It stands at the block's south-east corner, so no unit is within 800 milli of the path:
+	# separation (P39b) cannot push it.
 	var goals: Array[Vector2i] = [Vector2i(17800, 26900), Vector2i(14800, 26900)]
 	goals.append(goals[0])
-	var headings: Array[float] = [
-		IsoProjection.screen_angle(3.0, 4.0),
-		IsoProjection.screen_angle(-3.0, 0.0),
-		IsoProjection.screen_angle(3.0, 0.0),
-	]
+	var headings: Array[float] = [atan2(4.0, 3.0), PI, 0.0]
+	var frames: Array[int] = [8, 14, 6]  # The frames of 53, 180 and 0 degrees.
 	for leg: int in 3:
 		CommandQueue.submit(Command.attack_move(1, TANK_30, goals[leg].x, goals[leg].y))
 		_runner.run_ticks(1)
-		var before: float = hull.rotation
+		var before: float = _layer.heading(29)
 		_layer._process(0.05)  # 12 rad/s * 0.05 s = 0.6 rad.
-		assert_float(absf(angle_difference(before, hull.rotation))).is_equal_approx(0.6, 0.001)
+		assert_float(absf(angle_difference(before, _layer.heading(29)))).is_equal_approx(0.6, 0.001)
 		_render(0.5)
-		assert_float(hull.rotation).is_equal_approx(headings[leg], 0.001)
+		assert_float(angle_difference(_layer.heading(29), headings[leg])).is_equal_approx(
+			0.0, 0.001
+		)
+		assert_int(Frames.dir(_layer, 29, &"hull")).is_equal(frames[leg])
+		assert_int(Frames.dir(_layer, 29, &"shadow")).is_equal(frames[leg])
 		_runner.run_ticks(40)
 		assert_int(_runner.world.order[29]).is_equal(World.Order.IDLE)
 		_render(0.5)
-		assert_float(hull.rotation).is_equal_approx(headings[leg], 0.001)
-		assert_float(_rig(29).get_node("Team").rotation).is_equal(hull.rotation)
-		assert_float(_rig(29).get_node("Turret").rotation).is_equal(hull.rotation)
+		assert_float(angle_difference(_layer.heading(29), headings[leg])).is_equal_approx(
+			0.0, 0.001
+		)
+		assert_int(Frames.dir(_layer, 29, &"hull")).is_equal(frames[leg])
+		assert_float(_layer.turret_angle(29)).is_equal(_layer.heading(29))
+		assert_int(Frames.dir(_layer, 29, &"turret")).is_equal(frames[leg])
 
 
 func test_the_short_last_step_onto_the_goal_does_not_turn_the_hull() -> void:
 	# Tank 6 (row 5, at (16000, 18500)) drives 5.5 tiles almost due east over open ground, the same
-	# vector as tank 1's Phase 1 drive. Its last tick moves (1, 1) milli, which is straight down on
-	# the screen (a turn of about 1.1 rad from the heading).
+	# vector as tank 1's Phase 1 drive. Its last tick moves (1, 1) milli, which would turn the hull
+	# by a quarter of a turn (45 degrees from the heading).
 	CommandQueue.submit(Command.attack_move(1, TANK_6, 21521, 18540))
 	for _tick: int in 50:  # 47 to arrive. Every tick is drawn, as on the phone.
 		_runner.run_ticks(1)
 		_layer._process(0.05)
 	assert_int(_runner.world.order[5]).is_equal(World.Order.IDLE)
-	var east: float = IsoProjection.screen_angle(5521.0, 40.0)
-	assert_float(_rig(5).get_node("Hull").rotation).is_equal_approx(east, 0.02)
+	assert_float(_layer.heading(5)).is_equal_approx(atan2(40.0, 5521.0), 0.02)
+	assert_int(Frames.dir(_layer, 5, &"hull")).is_equal(6)  # Still east.
 
 
 func test_unit_screen_position_is_the_rig_seen_through_the_camera() -> void:
@@ -191,7 +231,7 @@ func test_unit_screen_position_is_the_rig_seen_through_the_camera() -> void:
 	_camera.position = Vector2(700, 650)
 	assert_that(_layer.unit_screen_position(30)).is_equal(Vector2(742, 465))  # 640 + 68 * 1.5, ...
 	# The camera sees the rig's global position, so a layer that is not at the origin moves both
-	# this answer and the Picker's rows by its offset.
+	# this answer and the Picker's rows by its offset (the layer's own sort node moves with it).
 	_layer.position = Vector2(64, 32)  # 96 px and 48 px on the screen.
 	assert_that(_layer.unit_screen_position(30)).is_equal(Vector2(838, 513))
 	var pick: PickSnapshot = PickSnapshot.new()
@@ -199,55 +239,58 @@ func test_unit_screen_position_is_the_rig_seen_through_the_camera() -> void:
 	assert_that(pick.screen_pos[30]).is_equal(Vector2(838, 513))
 
 
-func test_a_type_without_turret_art_has_hull_and_team_only_and_still_turns() -> void:
-	assert_bool(ResourceLoader.exists(UNITS + "rifle_squad_turret.svg")).is_false()
-	assert_bool(ResourceLoader.exists(UNITS + "rocket_squad_turret.svg")).is_false()
-	assert_bool(ResourceLoader.exists(UNITS + "light_tank_turret.svg")).is_true()
+func test_a_type_without_turret_art_has_hull_and_shadow_only_and_still_turns() -> void:
+	var index: IsoIndex = load(IsoIndex.PATH) as IsoIndex
+	assert_bool(index.sheet(&"rifle_squad").has_part(&"turret")).is_false()
+	assert_bool(index.sheet(&"rocket_squad").has_part(&"turret")).is_false()
+	assert_bool(index.sheet(&"light_tank").has_part(&"turret")).is_true()
 	var spawns: Array[SpawnDef] = [_spawn(1, "light_tank", 5, 5), _spawn(2, "rifle_squad", 8, 5)]
 	spawns.append(_spawn(1, "rocket_squad", 5, 8))
 	_start(spawns)
 	assert_int(_layer.rig_count()).is_equal(3)
-	assert_array(_names(_rig(0))).is_equal([&"Hull", &"Team", &"Turret"])
+	assert_array(_names(_rig(0))).is_equal([&"Shadow", &"Hull", &"Turret"])
 	for row: int in [1, 2]:
-		assert_array(_names(_rig(row))).is_equal([&"Hull", &"Team"])
-	assert_str(_rig(1).get_node("Hull").texture.resource_path).is_equal(
-		UNITS + "rifle_squad_hull.svg"
+		assert_array(_names(_rig(row))).is_equal([&"Shadow", &"Hull"])
+	var atlas: IsoAtlas = _layer.world_sort.atlas
+	assert_that(_rig(1).get_node("Hull").region_rect).is_equal(
+		Rect2(atlas.region(&"rifle_squad", &"hull", 6, 1))  # Owner 2 wears the second triad.
 	)
-	assert_str(_rig(2).get_node("Team").texture.resource_path).is_equal(
-		UNITS + "rocket_squad_team.svg"
+	assert_that(_rig(2).get_node("Hull").region_rect).is_equal(
+		Rect2(atlas.region(&"rocket_squad", &"hull", 6, 0))
 	)
-	assert_that(_rig(1).get_node("Team").modulate).is_equal(RED)  # Owner 2.
-	assert_that(_rig(2).get_node("Team").modulate).is_equal(BLUE)
-	# Rifle squad 2 (speed 67) drives 4 tiles south: both its layers turn, with no turret to turn.
+	# Rifle squad 2 (speed 67) drives 4 tiles south: its frames turn, with no turret to turn. A
+	# squad has 8 frames, the even ones, so south is d10 as for a tank.
 	CommandQueue.submit(Command.attack_move(2, PackedInt32Array([2]), 8500, 9500))
 	_runner.run_ticks(1)
 	_render(0.5)
-	assert_float(_rig(1).get_node("Hull").rotation).is_equal_approx(SOUTH, 0.001)
-	assert_float(_rig(1).get_node("Team").rotation).is_equal(_rig(1).get_node("Hull").rotation)
-	assert_float(_rig(0).get_node("Hull").rotation).is_equal(0.0)
-	for layer: String in ["Hull", "Team"]:  # The layers of the rows after the rifle squad stay put.
-		assert_float(_rig(2).get_node(layer).rotation).is_equal(0.0)
+	assert_float(_layer.heading(1)).is_equal_approx(SOUTH, 0.001)
+	for part: StringName in [&"hull", &"shadow"]:
+		assert_int(Frames.dir(_layer, 1, part)).is_equal(10)
+	assert_float(_layer.heading(0)).is_equal(0.0)
+	assert_int(Frames.dir(_layer, 0, &"hull")).is_equal(6)
+	assert_float(_layer.heading(2)).is_equal(0.0)  # The rows after the rifle squad stay put.
+	assert_int(Frames.dir(_layer, 2, &"hull")).is_equal(6)
 	# Rocket squad 3 (speed 60) drives 4 tiles south-east: a step of (42, 42) milli, 59 long. That
 	# turns it (half of its own step is 30) although it is under half a light tank step (60).
 	CommandQueue.submit(Command.attack_move(1, PackedInt32Array([3]), 9500, 12500))
 	_runner.run_ticks(1)
 	_render(0.5)
-	assert_float(_rig(2).get_node("Hull").rotation).is_equal_approx(PI / 2.0, 0.05)  # Straight down.
-	assert_float(_rig(2).get_node("Team").rotation).is_equal(_rig(2).get_node("Hull").rotation)
-	assert_float(_rig(0).get_node("Hull").rotation).is_equal(0.0)
+	assert_float(_layer.heading(2)).is_equal_approx(PI / 4.0, 0.05)  # Down the screen.
+	assert_int(Frames.dir(_layer, 2, &"hull")).is_equal(8)
+	assert_float(_layer.heading(0)).is_equal(0.0)
 
 
 func test_a_ring_is_the_sprite_subclass_with_the_ring_texture_made_at_the_first_selection() -> void:
 	for row: int in 40:
-		assert_array(_names(_rig(row))).is_equal([&"Hull", &"Team", &"Turret"])  # No ring yet.
+		assert_array(_names(_rig(row))).is_equal([&"Shadow", &"Hull", &"Turret"])  # No ring yet.
 	_layer.set_selected(TANK_1)
-	var ring: Sprite2D = _rig(0).get_child(0)
-	assert_str(ring.name).is_equal("Ring")
-	assert_array(_names(_rig(0))).is_equal([&"Ring", &"Hull", &"Team", &"Turret"])
+	var ring: Sprite2D = _rig(0).get_node("Ring")
+	assert_int(ring.get_index()).is_equal(1)  # After the Shadow and under the sprites.
+	assert_array(_names(_rig(0))).is_equal([&"Shadow", &"Ring", &"Hull", &"Turret"])
 	assert_str(ring.get_class()).is_equal("Sprite2D")
 	assert_str(ring.get_script().get_instance_base_type()).is_equal("Sprite2D")
 	assert_str(ring.texture.resource_path).is_equal(RING_ART)
-	assert_int(ring.z_index).is_equal(1)
+	assert_int(ring.z_index).is_equal(3)
 	assert_bool(ring.z_as_relative).is_false()
 	assert_that(ring.position).is_equal(Vector2.ZERO)
 	assert_bool(ring.centered).is_true()  # The texture's centre is the unit's centre.
@@ -262,7 +305,7 @@ func test_a_ring_is_the_sprite_subclass_with_the_ring_texture_made_at_the_first_
 	_layer.set_selected(PackedInt32Array())  # Hidden, and kept for the next selection.
 	assert_bool(ring.visible).is_false()
 	_layer.set_selected(TANK_1)
-	assert_bool(_rig(0).get_child(0) == ring and ring.visible).is_true()
+	assert_bool(_rig(0).get_node("Ring") == ring and ring.visible).is_true()
 	assert_int(_rig(0).get_child_count()).is_equal(4)
 
 
@@ -290,7 +333,8 @@ func test_a_ring_is_sized_for_the_selection_radius_of_its_own_unit_type() -> voi
 		assert_float(ring.scale.y * 2.0).is_equal_approx(ring.scale.x, 0.000001)
 
 
-func test_every_layer_draws_at_the_z_of_its_batch_group_and_all_are_absolute() -> void:
+func test_every_child_of_a_rig_draws_at_the_z_of_the_table_for_every_mix_of_types_and_owners(
+) -> void:
 	# Rows alternate types and owners: tank/1, rifle/2, rifle/1, tank/2, tank/1, rifle/2.
 	var spawns: Array[SpawnDef] = [_spawn(1, "light_tank", 5, 5), _spawn(2, "rifle_squad", 8, 5)]
 	spawns.append_array([_spawn(1, "rifle_squad", 5, 8), _spawn(2, "light_tank", 8, 8)])
@@ -299,60 +343,23 @@ func test_every_layer_draws_at_the_z_of_its_batch_group_and_all_are_absolute() -
 	var snap: MatchSnapshot = _runner.snapshot
 	assert_array(snap.type_index).is_equal(PackedInt32Array([0, 1, 1, 0, 0, 1]))
 	assert_array(snap.owner).is_equal(PackedInt32Array([1, 2, 1, 2, 1, 2]))
+	_layer.set_selected(PackedInt32Array([1, 2]))
 	for row: int in 6:
-		var type: int = snap.type_index[row]
-		var owner_id: int = snap.owner[row]
-		assert_int(_rig(row).get_node("Hull").z_index).is_equal(10 + type)
-		assert_int(_rig(row).get_node("Team").z_index).is_equal(20 + 8 * type + owner_id)
-		assert_bool(_rig(row).has_node("Turret")).is_equal(type == 0)
-		if type == 0:
-			assert_int(_rig(row).get_node("Turret").z_index).is_equal(100 + type)
-		for sprite: Sprite2D in _rig(row).get_children():
-			assert_bool(sprite.z_as_relative).override_failure_message(str(sprite.name)).is_false()
-	_layer.set_selected(PackedInt32Array([1, 2]))  # A ring is at 1 under every unit layer.
-	assert_int(_rig(0).get_child(0).z_index).is_equal(1)
-	# Beyond the bands (the published snapshot is edited, which SYNC allows, and a layer built
-	# from it): owner 9 and type index 12 take the last group of their band, owner 8 too.
-	snap.type_ids.resize(13)
-	snap.type_speed.resize(13)
-	snap.type_selection_radius.resize(13)
-	for type: int in range(2, 13):
-		snap.type_ids[type] = &"light_tank"
-	snap.owner[2] = 9  # Rifle squad: Hull 11, Team 99.
-	snap.type_index[3] = 12  # Tank of owner 2: Hull 19, Team 99, Turret 109.
-	snap.owner[4] = 8  # Tank of type 0: Hull 10, Team 99, Turret 100.
-	snap.type_index[5] = 9  # Owner 2, the last type with a group: Hull 19, Team 94, Turret 109.
-	var late: UnitLayer = _extra_layer()
-	# Per row: Hull, Team and Turret z (-1: no turret).
-	var expected: Array[Array] = [
-		[2, 11, 99, -1], [3, 19, 99, 109], [4, 10, 99, 100], [5, 19, 94, 109]
-	]
-	for want: Array in expected:
-		var rig: Node2D = late.get_child(want[0])
-		assert_int(rig.get_node("Hull").z_index).is_equal(want[1])
-		assert_int(rig.get_node("Team").z_index).is_equal(want[2])
-		assert_int(rig.get_node("Turret").z_index if want[3] >= 0 else -1).is_equal(want[3])
-	assert_int(late.get_child(0).get_node("Team").z_index).is_equal(21)  # Row 0 is unchanged.
-	# The thresholds themselves: type 9 and owner 7 are the last with a group of their own, type 10
-	# and owner 8 the first without. Hull, Team and Turret are layers 0, 1 and 2.
-	var groups: Array[Array] = [  # layer, type, owner, z
-		[0, 9, 0, 19],
-		[0, 10, 1, 19],
-		[2, 9, 0, 109],
-		[2, 10, 1, 109],
-		[1, 0, 7, 27],
-		[1, 1, 7, 35],
-		[1, 9, 7, 99],
-		[1, 0, 8, 99],
-		[1, 10, 0, 99],
-		[1, 0, 0, 20],
-	]
-	for group: Array in groups:
-		(
-			assert_int(UnitLayer.layer_z(group[0], group[1], group[2]))
-			. override_failure_message(str(group))
-			. is_equal(group[3])
-		)
+		var rig: Node2D = _rig(row)
+		assert_int(_absolute_z(rig)).is_equal(WorldSort.Z_SORT)
+		assert_int(_absolute_z(rig.get_node("Shadow"))).is_equal(2)  # -8 under the sort's 10.
+		assert_int(rig.get_node("Shadow").z_index).is_equal(-8)
+		assert_bool(rig.get_node("Shadow").z_as_relative).is_true()
+		assert_int(_absolute_z(rig.get_node("Hull"))).is_equal(10)
+		assert_bool(rig.has_node("Turret")).is_equal(snap.type_index[row] == 0)
+		if snap.type_index[row] == 0:
+			assert_int(_absolute_z(rig.get_node("Turret"))).is_equal(10)
+		assert_bool(rig.has_node("Ring")).is_equal(row < 2)
+		if row < 2:
+			assert_int(_absolute_z(rig.get_node("Ring"))).is_equal(3)  # Absolute: the ring.
+			assert_bool(rig.get_node("Ring").z_as_relative).is_false()
+	assert_int(WorldSort.Z_SHADOW).is_less(WorldSort.Z_RING)
+	assert_int(WorldSort.Z_RING).is_less(WorldSort.Z_SORT)
 
 
 func test_the_layer_draws_from_the_published_snapshot_and_never_reads_the_world() -> void:
@@ -365,8 +372,8 @@ func test_the_layer_draws_from_the_published_snapshot_and_never_reads_the_world(
 	assert_int(_layer.rig_count()).is_equal(40)
 	assert_that(_rig(0).position).is_equal(Vector2(-320, 432))  # Alpha 0 shows the old tick.
 	_layer.set_selected(TANK_1)
-	assert_that(_rig(0).get_child(0).name).is_equal(&"Ring")
-	assert_float(_rig(0).get_child(0).radius).is_equal_approx(24.8901, 0.001)
+	assert_that(_rig(0).get_child(1).name).is_equal(&"Ring")
+	assert_float(_rig(0).get_child(1).radius).is_equal_approx(24.8901, 0.001)
 	var pick: PickSnapshot = PickSnapshot.new()
 	_layer.fill_pick_snapshot(pick, 24.0)
 	assert_array(pick.ids).is_equal(PackedInt32Array(range(1, 41)))
@@ -376,7 +383,18 @@ func test_the_layer_draws_from_the_published_snapshot_and_never_reads_the_world(
 
 
 func _rig(row: int) -> Node2D:
-	return _layer.get_child(row)
+	return _layer.rig(row)
+
+
+## The z a canvas item draws at: its own, plus its parents' while it is relative to them.
+func _absolute_z(item: CanvasItem) -> int:
+	var z: int = item.z_index
+	var node: Node = item
+	while node is CanvasItem and (node as CanvasItem).z_as_relative:
+		node = node.get_parent()
+		if node is CanvasItem:
+			z += (node as CanvasItem).z_index
+	return z
 
 
 ## One frame of zero length, then frames of 50 ms that add up to `seconds`.

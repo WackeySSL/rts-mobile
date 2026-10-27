@@ -93,23 +93,23 @@ func test_rings_show_for_exactly_the_selected_ids_and_are_31_5_31_5_and_37_3_px(
 	UiScale.set_override(UiProfiles.by_name(&"desktop"))  # 1 dp is 1 px.
 	_controller.selection.set_ids(PackedInt32Array([3, 7]))  # No frame has run.
 	assert_array(_ringed_ids()).is_equal([3, 7])
-	var first_ring: Sprite2D = _layer.get_child(2).get_node("Ring")  # Sized in the frame of the tap.
+	var first_ring: Sprite2D = _layer.rig(2).get_node("Ring")  # Sized in the frame of the tap.
 	assert_float(first_ring.radius).is_equal_approx(24.8901, 0.001)  # (500 + 50) * 32 * sqrt(2) / 1000
 	assert_float(first_ring.unit).is_equal_approx(1.0, 0.0001)
 	assert_str(first_ring.texture.resource_path).is_equal(RING_TEXTURE)
 	assert_float(UnitLayer.RING_TEX_RADIUS_PX).is_equal(RING_CENTRE_PX)
 	assert_float(first_ring.scale.x * RING_CENTRE_PX).is_equal_approx(24.8901, 0.001)
 	assert_float(first_ring.scale.y * 2.0).is_equal_approx(first_ring.scale.x, 0.000001)  # 2:1
-	var rig_children: Array = _layer.get_child(2).get_children()
+	var rig_children: Array = _layer.rig(2).get_children()
 	var names: Array = rig_children.map(func(n: Node) -> StringName: return n.name)
-	assert_array(names).is_equal([&"Ring", &"Hull", &"Team", &"Turret"])  # Under the layers.
+	assert_array(names).is_equal([&"Shadow", &"Ring", &"Hull", &"Turret"])  # Under the sprites.
 	_controller.selection.set_ids(PackedInt32Array([7, 40]))
 	assert_array(_ringed_ids()).is_equal([7, 40])
 	_layer.set_selected(PackedInt32Array([999, 1]))  # An unknown id is skipped.
 	assert_array(_ringed_ids()).is_equal([1])
 	await _use(&"android_6in")  # 1 dp is 1.75 px: 18 dp is 31.5 px, the ellipse 24.89 world px.
 	_layer.set_selected(PackedInt32Array([1]))
-	var ring: Sprite2D = _layer.get_child(0).get_node("Ring")
+	var ring: Sprite2D = _layer.rig(0).get_node("Ring")
 	for z: Array in [[0.75, 31.5], [1.0, 31.5], [1.5, 37.335]]:
 		_camera.zoom = Vector2(z[0], z[0])
 		_layer._process(0.0)
@@ -129,18 +129,23 @@ func test_rings_show_for_exactly_the_selected_ids_and_are_31_5_31_5_and_37_3_px(
 	assert_array(_ringed_ids()).is_empty()
 
 
-func test_the_markers_draw_at_z_150_above_every_band_of_the_unit_layers() -> void:
-	# The rigs' layers use the absolute z 10-109 and the rings 1 (ADR 0012 section 6). The marks
-	# stay above them all, and the mark layer's own z does not depend on its parent.
-	assert_int(_markers.z_index).is_equal(150)
+func test_the_markers_draw_at_z_70_above_every_layer_of_the_world() -> void:
+	# The table of ADR 0023 section 2: the sorted world at 10, the bars, shells and effects at 30,
+	# 40 and 50, the marks at 70, and the mark layer's own z does not depend on its parent.
+	assert_int(_markers.z_index).is_equal(70)
 	assert_bool(_markers.z_as_relative).is_false()
+	for z: int in [WorldSort.Z_SORT, 30, 40, 50]:
+		assert_int(_markers.z_index).is_greater(z)
+	_layer.set_selected(PackedInt32Array([3]))
 	var highest: int = 0
-	for rig: Node2D in _layer.get_children():
+	for rig: Node2D in _layer.world_sort.get_children():
 		for layer: Sprite2D in rig.get_children():
-			assert_bool(layer.z_as_relative).is_false()
-			highest = maxi(highest, layer.z_index)
-	assert_int(highest).is_equal(100)  # Turret of type 0; the scene has one type.
-	assert_int(_markers.z_index).is_greater(109)  # The last turret group.
+			var z: int = (
+				layer.z_index if not layer.z_as_relative else layer.z_index + WorldSort.Z_SORT
+			)
+			highest = maxi(highest, z)
+	assert_int(highest).is_equal(WorldSort.Z_SORT)  # The hulls and turrets; the ring is at 3.
+	assert_int(_markers.z_index).is_greater(highest)
 
 
 func test_chevrons_close_in_and_the_diamond_settles_at_the_spec_sizes() -> void:
@@ -317,7 +322,7 @@ func _assert_no_allocation(step: Callable) -> void:
 ## Unit ids whose ring shows.
 func _ringed_ids() -> Array[int]:
 	var ids: Array[int] = []
-	for rig: Node2D in _layer.get_children():
+	for rig: Node2D in _layer.world_sort.get_children():
 		if rig.has_node("Ring") and rig.get_node("Ring").visible:
 			ids.append(rig.name.trim_prefix("Unit").to_int())
 	return ids

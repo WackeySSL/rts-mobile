@@ -4,19 +4,18 @@ extends GdUnitTestSuite
 ## made inside `ticked` right after a change already use the new rows. On
 ## data/scenarios/controls_test.tres: 40 rigs, ids 1-30 blue and 31-40 red; tank 2 stands still at
 ## px (-272, 456) under the 2:1 projection (P117) and tank 30 (row 29) can drive out of the block
-## to the south-east. Its 3-4-5 drive is the grid vector (3, 4), which looks 1.849 rad turned from
-## east on the screen (a hull needs four frames of 0.6 rad). The runner is not in the tree: only
-## the calls here move time. The other cases of UnitLayer are in
-## test_unit_layer.gd (gdlint allows 20 public methods per file).
+## to the south, a quarter turn from east on the grid (a hull needs three frames of 0.6 rad; the
+## headings are grid angles, P114). The runner is not in the tree: only the calls here move time.
+## The other cases of UnitLayer are in test_unit_layer.gd (gdlint allows 20 public methods per
+## file).
 
+const Frames: GDScript = preload("res://tests/view/support/rig_frames.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
 const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
-const RED: Color = Color("E5484D")
 const TANK_30: PackedInt32Array = [30]
-## The hull's aim after tank 30's 3-4-5 drive: the grid vector (3, 4) on the screen.
-const AIM: float = 1.849096
+const AIM: float = PI / 2.0  ## The hull's aim after tank 30's drive south, grid (0, +y).
 
 var _window_size_before: Vector2i
 var _runner: MatchRunner
@@ -54,15 +53,15 @@ func after_test() -> void:
 
 
 func test_a_dead_unit_loses_its_rig_and_the_others_keep_their_position_heading_and_ring() -> void:
-	CommandQueue.submit(Command.attack_move(1, TANK_30, 17800, 26900))
-	for _tick: int in 40:  # 25 to arrive: tank 30 then stands still, turned south-east.
+	CommandQueue.submit(Command.attack_move(1, TANK_30, 16000, 27500))
+	for _tick: int in 40:  # 25 to arrive: tank 30 then stands still, turned south.
 		_runner.run_ticks(1)
 		_layer._process(0.05)  # Every tick is drawn, as on the phone.
 	var dead: Node2D = _rig(0)
 	var still: Node2D = _rig(1)
 	var turned: Node2D = _rig(29)
 	_layer.set_selected(PackedInt32Array([2, 30]))
-	var heading: float = turned.get_node("Hull").rotation
+	var heading: float = _layer.heading(29)
 	assert_float(heading).is_equal_approx(AIM, 0.001)
 	_runner.world.hp[0] = 0  # Tank 1 dies in the next tick, and every row after it moves up.
 	_runner.run_ticks(1)
@@ -70,32 +69,30 @@ func test_a_dead_unit_loses_its_rig_and_the_others_keep_their_position_heading_a
 	var snap: MatchSnapshot = _runner.snapshot
 	assert_int(snap.unit_count()).is_equal(39)
 	assert_int(_layer.rig_count()).is_equal(39)
-	assert_int(_layer.get_child_count()).is_equal(39)
+	assert_int(_layer.world_sort.get_child_count()).is_equal(39)
 	assert_bool(_rig(0) == still and _rig(28) == turned).is_true()  # The same rigs, one row up.
 	for row: int in 39:  # Every rig shows its own unit, at the old tick's position (alpha 0).
 		assert_str(_rig(row).name).is_equal("Unit%d" % snap.unit_id[row])
 		var at: Vector2 = IsoProjection.ground_to_px(snap.prev_pos_x[row], snap.prev_pos_y[row])
 		assert_vector(_rig(row).position).is_equal_approx(at, Vector2(0.001, 0.001))
 	assert_that(still.position).is_equal(Vector2(-272, 456))
-	assert_float(turned.get_node("Hull").rotation).is_equal(heading)
+	assert_float(_layer.heading(28)).is_equal(heading)
+	assert_int(Frames.dir(_layer, 28, &"hull")).is_equal(10)  # d10 faces grid south.
 	# The heading and the aim moved with the unit: a hull that has nothing to turn to stays put.
 	_render(0.5)
-	assert_float(turned.get_node("Hull").rotation).is_equal_approx(heading, 0.001)
-	assert_float(still.get_node("Hull").rotation).is_equal(0.0)
+	assert_float(_layer.heading(28)).is_equal_approx(heading, 0.001)
+	assert_float(_layer.heading(0)).is_equal(0.0)
 	# A later order starts from the kept heading and aim: due east is 0.6 rad (12 rad/s * 0.05 s)
-	# nearer (the turn is longer than one frame), on the survivor's own three layers and on no
-	# other rig's. A merge that lost the
-	# heading and the aim together would show no turn at all, the hull keeping its sprite angle.
-	CommandQueue.submit(Command.attack_move(1, TANK_30, 20800, 26900))
+	# nearer (the turn is longer than one frame), on the survivor's own frames and on no other
+	# rig's. A merge that lost the heading and the aim together would show no turn at all.
+	CommandQueue.submit(Command.attack_move(1, TANK_30, 19000, 27500))
 	_runner.run_ticks(1)
 	_layer._process(0.05)
-	var hull: Sprite2D = turned.get_node("Hull")
-	assert_float(hull.rotation).is_equal_approx(heading - 0.6, 0.001)
-	assert_float(turned.get_node("Team").rotation).is_equal(hull.rotation)
-	assert_float(turned.get_node("Turret").rotation).is_equal(hull.rotation)
-	assert_float(_rig(27).get_node("Hull").rotation).is_equal(0.0)  # Tank 29, one row before it.
+	assert_float(_layer.heading(28)).is_equal_approx(heading - 0.6, 0.001)
+	assert_float(_layer.turret_angle(28)).is_equal(_layer.heading(28))
+	assert_float(_layer.heading(27)).is_equal(0.0)  # Tank 29, one row before it.
 	assert_array(_ringed_ids()).is_equal([2, 30])
-	assert_bool(still.get_child(0).name == &"Ring" and still.get_child(0).visible).is_true()
+	assert_bool(still.get_child(1).name == &"Ring" and still.get_child(1).visible).is_true()
 	assert_int(turned.get_child_count()).is_equal(4)
 	_layer.set_selected(PackedInt32Array([1, 2]))  # The dead unit is skipped like any unknown id.
 	assert_array(_ringed_ids()).is_equal([2])
@@ -104,65 +101,63 @@ func test_a_dead_unit_loses_its_rig_and_the_others_keep_their_position_heading_a
 
 
 func test_a_unit_that_is_mid_turn_when_another_dies_keeps_its_heading_and_aim_apart() -> void:
-	CommandQueue.submit(Command.attack_move(1, TANK_30, 17800, 26900))
+	CommandQueue.submit(Command.attack_move(1, TANK_30, 16000, 27500))
 	_runner.run_ticks(1)
-	var hull: Sprite2D = _rig(29).get_node("Hull")
-	_layer._process(0.05)  # 12 rad/s * 0.05 s = 0.6 rad of the 1.849 to the aim.
-	assert_float(hull.rotation).is_equal_approx(0.6, 0.001)
+	var rig: Node2D = _rig(29)
+	_layer._process(0.05)  # 12 rad/s * 0.05 s = 0.6 rad of the 1.571 to the aim.
+	assert_float(_layer.heading(29)).is_equal_approx(0.6, 0.001)
 	_runner.world.hp[0] = 0  # Tank 1 dies in the next tick, and tank 30 moves up to row 28.
 	_runner.run_ticks(1)
 	_layer._process(0.05)  # The merge keeps the heading 0.6 and the aim 1.849 apart: 0.6 more.
 	assert_int(_layer.rig_count()).is_equal(39)
-	assert_bool(_rig(28).get_node("Hull") == hull).is_true()
+	assert_bool(_rig(28) == rig).is_true()
 	# A merge that gave the heading the aim would jump to it at once, and one that gave the aim the
 	# heading would write no turn at all: the hull would stay at 0.6 for good.
-	assert_float(hull.rotation).is_equal_approx(1.2, 0.001)
+	assert_float(_layer.heading(28)).is_equal_approx(1.2, 0.001)
 	_render(0.5)
-	assert_float(hull.rotation).is_equal_approx(AIM, 0.001)
-	assert_float(_rig(28).get_node("Team").rotation).is_equal(hull.rotation)
-	assert_float(_rig(28).get_node("Turret").rotation).is_equal(hull.rotation)
+	assert_float(_layer.heading(28)).is_equal_approx(AIM, 0.001)
+	assert_float(_layer.turret_angle(28)).is_equal(_layer.heading(28))
+	assert_int(Frames.dir(_layer, 28, &"hull")).is_equal(10)
 	await await_idle_frame()
 
 
 func test_a_unit_that_stands_still_mid_turn_when_another_dies_still_finishes_the_turn() -> void:
-	# One full step, (72, 96) milli: tank 30 arrives in one tick and then stands still, with the
-	# hull 0.6 rad into the 1.849 to its aim.
-	CommandQueue.submit(Command.attack_move(1, TANK_30, 16072, 24596))
+	# One full step, (0, 120) milli: tank 30 arrives in one tick and then stands still, with the
+	# hull 0.6 rad into the 1.571 to its aim.
+	CommandQueue.submit(Command.attack_move(1, TANK_30, 16000, 24620))
 	_runner.run_ticks(1)
 	assert_int(_runner.world.order[29]).is_equal(World.Order.IDLE)
-	var hull: Sprite2D = _rig(29).get_node("Hull")
+	var rig: Node2D = _rig(29)
 	_layer._process(0.05)
-	assert_float(hull.rotation).is_equal_approx(0.6, 0.001)
+	assert_float(_layer.heading(29)).is_equal_approx(0.6, 0.001)
 	# Tank 1 dies in the next tick, in which tank 30 does not move: the frame cannot take the aim
 	# from the snapshot, so the merge has to keep it apart from the heading (0.6).
 	_runner.world.hp[0] = 0
 	_runner.run_ticks(1)
 	_layer._process(0.05)
 	assert_int(_layer.rig_count()).is_equal(39)
-	assert_bool(_rig(28).get_node("Hull") == hull).is_true()
-	assert_float(hull.rotation).is_equal_approx(1.2, 0.001)  # Still turning: heading and aim apart.
+	assert_bool(_rig(28) == rig).is_true()
+	assert_float(_layer.heading(28)).is_equal_approx(1.2, 0.001)  # Still turning.
 	_render(0.5)
-	assert_float(hull.rotation).is_equal_approx(AIM, 0.001)
-	assert_float(_rig(28).get_node("Team").rotation).is_equal(hull.rotation)
-	assert_float(_rig(28).get_node("Turret").rotation).is_equal(hull.rotation)
+	assert_float(_layer.heading(28)).is_equal_approx(AIM, 0.001)
+	assert_float(_layer.turret_angle(28)).is_equal(_layer.heading(28))
 	await await_idle_frame()
 
 
 func test_a_unit_with_no_speed_that_stands_still_keeps_its_aim() -> void:
 	# No type has speed 0 yet. For one that had, "moved at least half a step" holds for any move
 	# (4 * moved >= 0), so only the move itself keeps a standing unit from aiming at atan2(0, 0).
-	CommandQueue.submit(Command.attack_move(1, TANK_30, 16072, 24596))
+	CommandQueue.submit(Command.attack_move(1, TANK_30, 16000, 24620))
 	_runner.run_ticks(1)
-	var hull: Sprite2D = _rig(29).get_node("Hull")
 	_layer._process(0.05)
-	assert_float(hull.rotation).is_equal_approx(0.6, 0.001)
+	assert_float(_layer.heading(29)).is_equal_approx(0.6, 0.001)
 	_runner.run_ticks(1)  # Tank 30 stands still in this tick.
 	var snap: MatchSnapshot = _runner.snapshot
 	assert_int(snap.pos_x[29]).is_equal(snap.prev_pos_x[29])
 	snap.type_speed[snap.type_index[29]] = 0  # Test-only: written into the published snapshot.
 	_layer._process(0.05)
 	_render(0.5)  # It finishes the turn to the aim it had, and does not turn to atan2(0, 0).
-	assert_float(hull.rotation).is_equal_approx(AIM, 0.001)
+	assert_float(_layer.heading(29)).is_equal_approx(AIM, 0.001)
 	await await_idle_frame()
 
 
@@ -181,11 +176,11 @@ func test_a_layer_without_a_runner_or_on_a_runner_without_a_snapshot_draws_nothi
 		layer.fill_pick_snapshot(pick, 24.0)
 		assert_int(pick.ids.size()).is_equal(0)
 		assert_int(layer.rig_count()).is_equal(0)
-		assert_int(layer.get_child_count()).is_equal(0)
+		assert_int(layer.world_sort.get_child_count()).is_equal(0)
 	waiting.start()  # The rigs come with the first snapshot.
 	layers[1]._process(0.0)
 	assert_int(layers[1].rig_count()).is_equal(40)
-	assert_int(layers[1].get_child_count()).is_equal(40)
+	assert_int(layers[1].world_sort.get_child_count()).is_equal(40)
 	assert_int(layers[0].rig_count()).is_equal(0)
 	assert_array(layers[1]._ringed).is_empty()  # The selection made before the snapshot is lost.
 	await await_idle_frame()
@@ -230,9 +225,9 @@ func test_a_unit_spawned_mid_match_appears_at_its_position_with_its_tint_and_no_
 		assert_that(_rig(40).position).is_equal(Vector2(576, 688))
 		_runner._process(1.0 / 60.0)
 	var rig: Node2D = _rig(40)
-	assert_that(rig.get_node("Team").modulate).is_equal(RED)
-	assert_float(rig.get_node("Hull").rotation).is_equal(0.0)
-	assert_int(rig.get_child_count()).is_equal(3)  # Hull, Team and Turret: no ring.
+	assert_int(Frames.dir(_layer, 40, &"hull")).is_equal(6)  # Owner 2's frame, facing east.
+	assert_float(_layer.heading(40)).is_equal(0.0)
+	assert_int(rig.get_child_count()).is_equal(3)  # Shadow, Hull and Turret: no ring.
 	assert_bool(_rig(0) == rig_0).is_true()  # The others are not rebuilt.
 	assert_array(_ringed_ids()).is_empty()
 	assert_that(_layer.unit_screen_position(40)).is_equal(
@@ -249,11 +244,11 @@ func test_a_death_and_a_spawn_in_one_tick_keep_the_row_count_and_still_remap_the
 	_layer._process(0.0)
 	assert_int(_runner.snapshot.unit_count()).is_equal(40)  # As many rows as before the tick.
 	assert_int(_layer.rig_count()).is_equal(40)
-	assert_int(_layer.get_child_count()).is_equal(40)
+	assert_int(_layer.world_sort.get_child_count()).is_equal(40)
 	for row: int in 40:  # Units 2-41: every rig shows its own unit.
 		assert_str(_rig(row).name).is_equal("Unit%d" % (row + 2))
 	assert_bool(_rig(0) == second).is_true()
-	assert_that(_rig(39).get_node("Team").modulate).is_equal(RED)
+	assert_int(Frames.dir(_layer, 39, &"hull")).is_equal(6)  # Owner 2's frame.
 	assert_that(_rig(39).position).is_equal(Vector2(576, 688))
 	await await_idle_frame()
 	assert_bool(is_instance_valid(dead)).is_false()
@@ -261,7 +256,7 @@ func test_a_death_and_a_spawn_in_one_tick_keep_the_row_count_and_still_remap_the
 
 func test_deaths_in_a_row_and_apart_with_a_spawn_keep_every_survivor_rig_and_add_the_new_one_last(
 ) -> void:
-	var before: Array[Node] = _layer.get_children()
+	var before: Array[Node] = _layer.world_sort.get_children()
 	var dead_rows: Array[int] = [0, 1, 20]  # Units 1 and 2 side by side at the head, and unit 21.
 	for row: int in dead_rows:
 		_runner.world.hp[row] = 0
@@ -269,7 +264,7 @@ func test_deaths_in_a_row_and_apart_with_a_spawn_keep_every_survivor_rig_and_add
 	_runner.run_ticks(1)
 	_layer._process(0.0)
 	assert_int(_layer.rig_count()).is_equal(38)
-	assert_int(_layer.get_child_count()).is_equal(38)
+	assert_int(_layer.world_sort.get_child_count()).is_equal(38)
 	var row: int = 0
 	for old_row: int in 40:
 		if not dead_rows.has(old_row):
@@ -329,15 +324,15 @@ func test_a_resize_between_a_death_and_the_next_frame_sizes_the_rings_of_the_new
 
 
 func test_another_match_rebuilds_every_rig_even_when_the_rows_version_is_the_same() -> void:
-	var before: Array[Node] = _layer.get_children()
+	var before: Array[Node] = _layer.world_sort.get_children()
 	var old_snapshot: MatchSnapshot = _runner.snapshot
 	var rows_version: int = old_snapshot.rows_version
 	_runner.start()
 	assert_int(_runner.snapshot.rows_version).is_equal(rows_version)  # Only match_serial differs.
 	_layer._process(0.0)
 	assert_int(_layer.rig_count()).is_equal(40)
-	assert_int(_layer.get_child_count()).is_equal(40)
-	for rig: Node in _layer.get_children():
+	assert_int(_layer.world_sort.get_child_count()).is_equal(40)
+	for rig: Node in _layer.world_sort.get_children():
 		assert_bool(before.has(rig)).is_false()
 	# The layer never writes a snapshot, also not the one of the match it is leaving.
 	assert_int(old_snapshot.unit_count()).is_equal(40)
@@ -373,7 +368,7 @@ func test_deaths_spawns_rings_and_restarts_leave_no_objects_behind() -> void:
 	await await_idle_frame()
 	counts.append(roundi(Performance.get_monitor(Performance.OBJECT_COUNT)))
 	var base: int = counts[0]
-	# A spawn adds a rig and its Hull, Team and Turret (the tick's snapshot replaced the last one).
+	# A spawn adds a rig and its Shadow, Hull and Turret (the tick's snapshot replaced the last one).
 	# The first Ring also loads the ring texture, `loaded` objects that every later ring shares, so
 	# the second adds one. A death frees the rig, its layers and its ring (5). The restart frees the
 	# 40 old rigs and the ring of tank 1, the last holder of the texture.
@@ -397,7 +392,7 @@ func _kill_first_and_call(entry: Callable) -> void:
 
 
 func _rig(row: int) -> Node2D:
-	return _layer.get_child(row)
+	return _layer.rig(row)
 
 
 ## One frame of zero length, then frames of 50 ms that add up to `seconds`.
@@ -410,7 +405,7 @@ func _render(seconds: float) -> void:
 ## Unit ids whose ring shows.
 func _ringed_ids() -> Array[int]:
 	var ids: Array[int] = []
-	for rig: Node2D in _layer.get_children():
+	for rig: Node2D in _layer.world_sort.get_children():
 		if rig.has_node("Ring") and rig.get_node("Ring").visible:
 			ids.append(rig.name.trim_prefix("Unit").to_int())
 	return ids

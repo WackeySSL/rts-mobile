@@ -392,7 +392,7 @@ func test_the_main_scene_has_the_layer_after_the_bars_at_z_120_in_world_space_at
 	layer.reveal_enemies = true  # The middle of the map is in the dark at the start of the match.
 	var runner: MatchRunner = main.get_node("MatchRunner")
 	var camera: RtsCamera = main.get_node("Camera")
-	assert_int(layer.z_index).is_equal(120)
+	assert_int(layer.z_index).is_equal(40)  # ADR 0023 section 2.
 	assert_bool(layer.z_as_relative).is_false()
 	assert_object(layer.runner).is_same(runner)
 	runner.paused = true  # The scene's runner plays on its own: hold it while the snapshot is set.

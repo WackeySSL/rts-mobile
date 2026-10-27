@@ -28,9 +28,10 @@ extends Node2D
 ## layer-mode step starts, because the heavy window counts the rigs inside the camera. A finger
 ## still pans and zooms (to inspect on the preview), but a move while a run records makes it
 ## INVALID (`PerfHud.REASON_CAMERA_MOVED`): keep the phone on the table.
-## The per-match atlas (plan P113) is baked once in `_ready`, before the card's preflight and so
-## outside every timed window: both factions, each player in its faction's own key triad, scale 1.
-## Nothing draws from it yet (P114 does); the card and one console line give the bake time and page.
+## The per-match atlas (plans P113 and P114) is baked once in `_ready`, before the card's preflight
+## and so outside every timed window, by the sorted world that draws from it: the art of the
+## scenario's types for each player, in its faction's art and its own triad, scale 1. The card and
+## one console line give the bake time and page; the match start finds the atlas there and keeps it.
 ## The look is the theme's (`game/ui/theme.tres`): the scene sets it on the margin the controls sit
 ## in, and this script sets no colour, font or style.
 
@@ -60,6 +61,7 @@ const ATLAS_SCALE: float = 1.0  ## The scale the arena asks the atlas for.
 @export var start_zoom: float = 0.75
 @export var runner: MatchRunner
 @export var map_view: MapView
+@export var world_sort: WorldSort  ## Draws the rigs and holds the atlas.
 @export var unit_layer: UnitLayer
 @export var bar_layer: HealthBarLayer
 @export var projectile_layer: ProjectileLayer
@@ -87,7 +89,7 @@ var orientation_feature: Callable = DisplayServer.has_feature.bind(
 )
 var orientation_source: Callable = DisplayServer.screen_get_orientation
 var orientation_sink: Callable = DisplayServer.screen_set_orientation
-## Bakes the atlas (a test replaces it with a stub, since the real bake rasterises 480 frames).
+## Bakes the atlas (a test replaces it with a stub: the real bake rasterises every frame).
 var atlas_source: Callable = _bake_atlas
 var atlas: IsoAtlas = null
 var layer_mode: String = MODE_ALL
@@ -210,13 +212,7 @@ func _on_view_resized() -> void:
 
 ## The rows shown and inside the camera's visible world rect now (`PerfHud.rigs_source`).
 func drawn_rigs() -> int:
-	var view: Rect2 = camera.visible_world_rect()
-	var count: int = 0
-	for index: int in unit_layer.get_child_count():
-		var rig: Node2D = unit_layer.get_child(index)
-		if rig.visible and view.has_point(rig.position):
-			count += 1
-	return count
+	return unit_layer.count_in(camera.visible_world_rect())
 
 
 ## The fog layer's update time in us when it uploaded since the last call, else -1
@@ -262,14 +258,11 @@ func _apply_dp() -> void:
 	bar.add_theme_constant_override("separation", gap)
 
 
-## The atlas of both factions, each in its own key triad (`ArtPalette.KEYS` until the scenario
-## carries factions, P107 and P108; then `FactionDef.key_triad`).
+## The atlas of the scenario's match, baked by the sorted world: `ScenarioDef.factions` give the
+## players their art and `FactionDef.key_triad` the colours the bake replaces.
 func _bake_atlas() -> IsoAtlas:
-	var players: Array[IsoPlayerArt] = []
-	for faction: StringName in ArtPalette.KEYS:
-		var key: PackedStringArray = PackedStringArray(ArtPalette.KEYS[faction])
-		players.append(IsoPlayerArt.make(faction, key, key))
-	return IsoAtlas.build(IsoAtlas.load_sheets(), players, ATLAS_SCALE)
+	world_sort.bake_scale = ATLAS_SCALE
+	return world_sort.bake(scenario)
 
 
 ## Bakes the atlas and gives the card its numbers (and the console its one line).
