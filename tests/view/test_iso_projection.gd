@@ -104,6 +104,10 @@ func test_a_ground_circle_is_a_2_to_1_ellipse_with_the_documented_semi_axes() ->
 	assert_float(semi.x).is_equal_approx(32.0 * sqrt(2.0), 0.0001)
 	assert_float(semi.y).is_equal_approx(16.0 * sqrt(2.0), 0.0001)
 	assert_float(semi.x / semi.y).is_equal_approx(2.0, 0.0000001)
+	# What a flat shape on the ground keeps of its height (the markers' chevrons and diamond): the
+	# ellipse's ratio, half.
+	assert_float(IsoProjection.GROUND_FLATTEN).is_equal(0.5)
+	assert_float(IsoProjection.GROUND_FLATTEN).is_equal_approx(semi.y / semi.x, 0.0000001)
 	assert_that(IsoProjection.ellipse_px(0)).is_equal(Vector2.ZERO)
 	assert_float(IsoProjection.ellipse_px(2500).x).is_equal_approx(2.5 * semi.x, 0.0001)
 	# Points of the ground circle of radius 4 tiles land on that ellipse, whatever the angle.

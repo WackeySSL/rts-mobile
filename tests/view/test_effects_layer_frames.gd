@@ -223,10 +223,12 @@ func test_draw_hands_every_field_of_the_plan_to_its_draw_call() -> void:
 
 func test_records_the_tables_do_not_know_draw_something_sane_and_other_kinds_nothing() -> void:
 	# A weapon past the snapshot's tables gets the default flash 13 px from its shooter and no
-	# tracer, a puff of the default size, and a type past them bursts. A SPAWNED record, or one of
-	# no kind, is ignored.
+	# tracer, a puff of the default size, both at the default muzzle height of 14 px, and a type
+	# past them bursts, centred 13 px up (half of the default vehicle frame of 26). A SPAWNED
+	# record, or one of no kind, is ignored.
 	var at: Vector2i = Vector2i(5000, 5000)
-	var shooter: Vector2 = IsoProjection.ground_to_px(at.x, at.y)
+	var ground: Vector2 = IsoProjection.ground_to_px(at.x, at.y)
+	var shooter: Vector2 = ground - Vector2(0.0, 14.0)
 	for weapon: int in [99, -1]:
 		_now_ms += 1000
 		_deliver(Rig.shot(at, Vector2i(9000, 5000), weapon))
@@ -237,7 +239,7 @@ func test_records_the_tables_do_not_know_draw_something_sane_and_other_kinds_not
 		assert_float(_layer.quad_rect(0).size.x).is_equal_approx(24.0, 0.001)
 		var muzzle: Vector2 = _layer.quad_rect(0).get_center()
 		assert_float(muzzle.distance_to(shooter)).is_equal_approx(13.0, 0.001)
-		var towards: Vector2 = IsoProjection.ground_to_px(9000, 5000) - shooter
+		var towards: Vector2 = IsoProjection.ground_to_px(9000, 5000) - ground
 		var offset: Vector2 = muzzle - shooter
 		assert_vector(offset).is_equal_approx(towards.normalized() * 13.0, Vector2(0.001, 0.001))
 		_now_ms += 1000
@@ -245,11 +247,17 @@ func test_records_the_tables_do_not_know_draw_something_sane_and_other_kinds_not
 		_layer._process(0.0)
 		assert_that(_layer.quad_region(0)).is_equal(PUFF)
 		assert_float(_layer.quad_rect(0).size.x).is_equal_approx(40.0 * 0.6, 0.001)
+		assert_vector(_layer.quad_rect(0).get_center()).is_equal_approx(
+			shooter, Vector2(0.001, 0.001)
+		)
 	for type_index: int in [99, -1]:
 		_now_ms += 1000
 		_deliver(Rig.died(at, type_index))
 		_layer._process(0.0)
 		assert_that(_layer.quad_region(0)).is_equal(BURST)
+		assert_vector(_layer.quad_rect(0).get_center()).is_equal_approx(
+			ground - Vector2(0.0, 13.0), Vector2(0.001, 0.001)
+		)
 	_now_ms += 1000
 	_deliver(
 		PackedInt32Array([World.Event.SPAWNED, 1, 5000, 5000, 0, 1, 0, 0, 0, 1, 2, 3, 0, 0, 0, 0])
@@ -304,6 +312,11 @@ func test_the_main_scene_has_the_layer_at_z_130_between_the_health_bars_and_the_
 	assert_bool(layer.z_as_relative).is_false()
 	assert_object(layer.runner).is_same(runner)
 	assert_int(layer.capacity).is_equal(128)
+	# The fog lies on the ground at z 4, under every effect, so it cannot cover a tracer: the layer
+	# clips one with a single end seen itself (ADR 0023 section 2, test_fog_hiding.gd).
+	var fog: Node2D = main.get_node("FogLayer")
+	assert_bool(fog.z_as_relative).is_false()
+	assert_int(fog.z_index).is_less(layer.z_index)
 	var order: Array[StringName] = []
 	for child: Node in main.get_children():
 		order.append(child.name)

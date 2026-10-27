@@ -12,6 +12,9 @@ extends RefCounted
 const HALF_W: int = 32  ## Half the width of a tile's diamond, px.
 const HALF_H: int = 16  ## Half its height, px.
 const SQRT2: float = 1.4142135623730951
+## A shape lying on the ground keeps its width on the screen and its height falls to this share: a
+## circle is a 2:1 ellipse (`ellipse_px`), the markers' chevrons and diamond are flattened by it.
+const GROUND_FLATTEN: float = 0.5
 ## Where a `TileMapLayer` node sits (tile size 64 x 32, diamond down) so that its `map_to_local`
 ## of a cell is `cell_centre_px` of that cell: the engine puts cell (0, 0)'s diamond in the box
 ## from (0, 0) to (64, 32), while ground (0, 0) is the map's top corner.

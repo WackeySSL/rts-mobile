@@ -5,7 +5,10 @@ extends GdUnitTestSuite
 ## changes per tick: the rig and the projectile read the position of the tick, an effect is judged
 ## as it is born. Hiding sets only `visible` (a hidden rig keeps its position, tint and screen
 ## position), and the health bars follow `UnitLayer.is_shown`. The image of the fog layer is in
-## test_fog_layer.gd (gdlint allows 20 public methods per file).
+## test_fog_layer.gd (gdlint allows 20 public methods per file). The fog lies on the ground at z 4,
+## under the effects (ADR 0023 section 2), so it does not cover a tracer: one with a single end seen
+## is clipped to the seen tiles when it is born (ADR 0022 section 4, from the shelved P84), on the
+## ground in steps of a quarter tile, and its two ends are read back through the projection.
 ## On controls_test (Rig): blue light tanks (ids 1-30, rows 0-29) from tile (8, 18), red ones (ids
 ## 31-40, rows 30-39), the nearest at tile (34, 10). Exact cases write the published snapshot's fog
 ## and positions (allowed in SYNC, ADR 0012 section 3); the first one plays the real sim. The
@@ -26,6 +29,13 @@ const RED: Color = Color("E5484D")
 const SEEN: Vector2i = Vector2i(8500, 18500)
 const DARK: Vector2i = Vector2i(40500, 40500)
 const RED_31: Vector2i = Vector2i(34500, 10500)
+## The tolerance of a plan point: the plan keeps its points in 32 bit floats.
+const TOLERANCE: Vector2 = Vector2(0.01, 0.01)
+## Where a tracer stands above its ground points: the muzzle height of tank_cannon, weapon 0 here
+## (ADR 0023 section 2; `SpriteLift`, typed again), and how far a clipped tracer is probed at a
+## time (a quarter tile, in milli).
+const TANK_LIFT_PX: float = 14.0
+const STEP_MILLI: int = 250
 
 var _window_size_before: Vector2i
 var _now_ms: int = 0
@@ -289,6 +299,70 @@ func test_a_shot_shows_its_tracer_when_either_end_is_seen_and_its_flash_when_the
 	assert_int(_effects.active_count()).is_equal(7)
 
 
+func test_a_tracer_with_one_end_seen_is_clipped_to_the_seen_tiles_within_a_quarter_tile() -> void:
+	_runner.snapshot.weapon_projectile_speed[0] = 0  # tank_cannon as a hitscan weapon.
+	var base: Vector2i = Vector2i(18500, 18500)  # Tile (18, 18), the last seen one on each axis.
+	for axis: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
+		_see_line(axis, 10, 18)  # The dark begins at the tile 19 of the axis: milli 19000.
+		var dark_edge: int = 19000
+		# A shooter on a dark tile three tiles on, a seen target: the line starts at the last seen
+		# point on the way from the target to the muzzle and ends at the target.
+		_now_ms += 1000
+		_tick_with(EffectsRig.shot(base + axis * 3000, base, 0))
+		assert_int(_effects.line_count()).is_equal(2)  # The outline pass and the colour pass.
+		for line: int in 2:  # Both passes share the clipped ends.
+			assert_vector(_effects.line_to(line)).is_equal_approx(_lifted(base), TOLERANCE)
+			var from: Vector2i = _ground_of(_effects.line_from(line))
+			assert_bool(_point_seen(from)).is_true()
+			assert_bool(_point_seen(from + axis * (STEP_MILLI + 2))).is_false()
+			assert_int(_along(from, axis)).is_between(dark_edge - STEP_MILLI - 2, dark_edge - 1)
+			assert_int(_along(from, Vector2i(axis.y, axis.x))).is_equal(18500)  # On the line.
+		# The ends the other way round: a seen shooter, a dark target six tiles on.
+		var shooter: Vector2i = base - axis * 3000
+		_now_ms += 1000
+		_tick_with(EffectsRig.shot(shooter, base + axis * 3000, 0))
+		assert_int(_effects.line_count()).is_equal(2)
+		for line: int in 2:
+			var muzzle: Vector2 = _effects.line_from(line)
+			assert_float(muzzle.distance_to(_lifted(shooter))).is_equal_approx(31.0, 0.01)
+			var to: Vector2i = _ground_of(_effects.line_to(line))
+			assert_bool(_point_seen(to)).is_true()
+			assert_bool(_point_seen(to + axis * (STEP_MILLI + 2))).is_false()
+			assert_int(_along(to, axis)).is_between(dark_edge - STEP_MILLI - 2, dark_edge - 1)
+		# A target one tile past the last seen tile leaves a line no longer than one step.
+		_now_ms += 1000
+		_tick_with(EffectsRig.shot(base, base + axis * 1000, 0))
+		var short: float = _effects.line_from(0).distance_to(_effects.line_to(0))
+		assert_float(short).is_less_equal(IsoProjection.ground_to_px(STEP_MILLI, 0).length())
+
+
+func test_a_tracer_with_both_ends_seen_is_whole_and_so_is_one_in_the_dark_when_revealed() -> void:
+	_runner.snapshot.weapon_projectile_speed[0] = 0
+	_see_line(Vector2i(1, 0), 10, 18)
+	Rig.set_seen(_runner.snapshot, 1, Vector2i(14, 18), false)  # A dark tile between two seen ends.
+	var shooter: Vector2i = Vector2i(10500, 18500)
+	var target: Vector2i = Vector2i(18500, 18500)
+	_tick_with(EffectsRig.shot(shooter, target, 0))
+	assert_int(_effects.line_count()).is_equal(2)
+	var from: Vector2 = _lifted(shooter)
+	var to: Vector2 = _lifted(target)
+	assert_vector(_effects.line_from(1)).is_equal_approx(
+		from + (to - from).limit_length(31.0), TOLERANCE
+	)
+	assert_vector(_effects.line_to(1)).is_equal_approx(to, TOLERANCE)
+	# Revealed (the perf arena): every tracer is whole, in the dark too.
+	_effects.reveal_enemies = true
+	_now_ms += 1000
+	_tick_with(EffectsRig.shot(DARK, DARK + Vector2i(3000, 0), 0))
+	assert_int(_effects.line_count()).is_equal(2)
+	var dark_from: Vector2 = _lifted(DARK)
+	var dark_to: Vector2 = _lifted(DARK + Vector2i(3000, 0))
+	assert_vector(_effects.line_from(1)).is_equal_approx(
+		dark_from + (dark_to - dark_from).limit_length(31.0), TOLERANCE
+	)
+	assert_vector(_effects.line_to(1)).is_equal_approx(dark_to, TOLERANCE)
+
+
 func test_a_projectile_shot_from_the_dark_shows_nothing_until_it_lands_in_sight() -> void:
 	var speed: int = _runner.snapshot.weapon_projectile_speed[0]
 	assert_int(speed).is_greater(0)  # The cannon fires a shell.
@@ -420,3 +494,31 @@ func _tick_with(events: PackedInt32Array) -> void:
 	_runner.snapshot.events = events
 	_runner.ticked.emit(_runner.snapshot.tick)
 	_effects._process(0.0)
+
+
+## The world px of the ground point `milli`, lifted to the tank cannon's muzzle height.
+func _lifted(milli: Vector2i) -> Vector2:
+	return IsoProjection.ground_to_px(milli.x, milli.y) - Vector2(0.0, TANK_LIFT_PX)
+
+
+## The ground point (milli, rounded) under the world px `point` of a tracer at that height.
+func _ground_of(point: Vector2) -> Vector2i:
+	return IsoProjection.px_to_ground(point + Vector2(0.0, TANK_LIFT_PX))
+
+
+## Whether the local player sees the tile of the ground point `milli` in the published fog.
+func _point_seen(milli: Vector2i) -> bool:
+	return FogLayer.is_seen(_runner.snapshot, 1, milli.x, milli.y)
+
+
+## The coordinate of `point` along `axis`, a unit step of the grid.
+func _along(point: Vector2i, axis: Vector2i) -> int:
+	return point.x * axis.x + point.y * axis.y
+
+
+## The player sees the tiles `first` to `last` along `axis` through the tile (18, 18), and nothing
+## else: along x these are the tiles (first, 18) to (last, 18), along y (18, first) to (18, last).
+func _see_line(axis: Vector2i, first: int, last: int) -> void:
+	Rig.blind(_runner.snapshot, 1)
+	for at: int in range(first, last + 1):
+		Rig.set_seen(_runner.snapshot, 1, Vector2i(18, 18) + axis * (at - 18), true)
