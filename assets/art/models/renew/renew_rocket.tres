@@ -7,7 +7,7 @@ script = ExtResource("1_model")
 art_id = &"renew_rocket"
 faction = &"renew"
 category = &"inf"
-silhouette = "Breakers: three launcher crews in an inverted arrowhead, two ahead and one behind, each in a white hexagonal helmet with a mint visor strip, a team-coloured band over chest and shoulders, a battery pack and a short fat white pod loaded on a long dark rail over the right shoulder with a team ring round its mouth."
+silhouette = "Breakers: three launcher crews in an inverted arrowhead, two ahead and one behind, each in a white hexagonal helmet with a mint visor strip, a team-coloured band over chest and shoulders, a titanium battery pack on the back and a short fat white pod loaded on a long dark rail over the right shoulder with a team ring at each end."
 prims = PackedStringArray(
 "box hull graphite 0.14 -0.25 0 0.06 0.06 0.16",
 "box hull graphite 0.14 -0.17 0 0.06 0.06 0.16",

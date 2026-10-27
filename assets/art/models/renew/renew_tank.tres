@@ -7,29 +7,36 @@ script = ExtResource("1_model")
 art_id = &"renew_tank"
 faction = &"renew"
 category = &"veh"
-silhouette = "Torque: a long low blue-grey hull with a sloping nose on four separate dark track pods, white side skirts with a team stripe, dark roof patches and a hexagonal turret on a team ring carrying one long thin rail barrel."
+silhouette = "Torque: a long low blue-grey hull with a sloping nose that sits on one continuous round-ended dark track a side, each with a row of titanium road wheels, white side skirts over the tracks with a team stripe above them, dark roof patches and a hexagonal turret on a team ring carrying one long dark rail barrel with a block at its muzzle."
 mount = Vector3(0.05, 0, 0.29)
 prims = PackedStringArray(
-"box hull graphite 0.4 -0.42 0 0.46 0.2 0.19",
-"box hull titanium 0.4 -0.525 0.05 0.34 0.01 0.1",
-"prism hull graphite 0.4 -0.53 0.02 0.15 0.02 0.15 axis=y sides=8",
-"box hull graphite 0.4 0.42 0 0.46 0.2 0.19",
-"box hull titanium 0.4 0.525 0.05 0.34 0.01 0.1",
-"prism hull graphite 0.4 0.53 0.02 0.15 0.02 0.15 axis=y sides=8",
-"box hull graphite -0.4 -0.42 0 0.46 0.2 0.19",
-"box hull titanium -0.4 -0.525 0.05 0.34 0.01 0.1",
-"prism hull graphite -0.4 -0.53 0.02 0.15 0.02 0.15 axis=y sides=8",
-"box hull graphite -0.4 0.42 0 0.46 0.2 0.19",
-"box hull titanium -0.4 0.525 0.05 0.34 0.01 0.1",
-"prism hull graphite -0.4 0.53 0.02 0.15 0.02 0.15 axis=y sides=8",
+"box hull graphite 0.04 -0.43 0 1.2 0.16 0.15",
+"prism hull graphite -0.56 -0.43 0 0.16 0.16 0.143 axis=y sides=10",
+"prism hull graphite 0.64 -0.43 0 0.16 0.16 0.143 axis=y sides=10",
+"prism hull titanium -0.56 -0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
+"prism hull titanium -0.32 -0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
+"prism hull titanium -0.08 -0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
+"prism hull titanium 0.16 -0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
+"prism hull titanium 0.4 -0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
+"prism hull titanium 0.64 -0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
+"box hull graphite 0.04 0.43 0 1.2 0.16 0.15",
+"prism hull graphite -0.56 0.43 0 0.16 0.16 0.143 axis=y sides=10",
+"prism hull graphite 0.64 0.43 0 0.16 0.16 0.143 axis=y sides=10",
+"prism hull titanium -0.56 0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
+"prism hull titanium -0.32 0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
+"prism hull titanium -0.08 0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
+"prism hull titanium 0.16 0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
+"prism hull titanium 0.4 0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
+"prism hull titanium 0.64 0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
+"box hull graphite 0.04 0 0.02 1.1 0.7 0.07",
 "box hull bluegrey -0.1 0 0.09 1 0.66 0.2",
 "wedge hull bluegrey 0.55 0 0.09 0.3 0.66 0.2 slope=0.6",
 "box hull graphite 0.72 0 0.09 0.04 0.66 0.09",
 "box hull team 0.75 0 0.1 0.02 0.3 0.07",
-"box hull ceramic 0 -0.355 0.07 0.4 0.03 0.16",
-"box hull ceramic 0 0.355 0.07 0.4 0.03 0.16",
-"box hull team -0.05 -0.345 0.2 0.9 0.02 0.08",
-"box hull team -0.05 0.345 0.2 0.9 0.02 0.08",
+"box hull ceramic -0.02 -0.36 0.16 1 0.05 0.04",
+"box hull ceramic -0.02 0.36 0.16 1 0.05 0.04",
+"box hull team -0.05 -0.345 0.2 0.9 0.02 0.085",
+"box hull team -0.05 0.345 0.2 0.9 0.02 0.085",
 "box hull graphite -0.34 0.18 0.29 0.3 0.22 0.02",
 "box hull graphite -0.34 -0.18 0.29 0.3 0.22 0.02",
 "box hull graphite 0.38 0 0.27 0.22 0.34 0.02",
@@ -41,5 +48,6 @@ prims = PackedStringArray(
 "prism turret graphite 0 0 0.195 0.34 0.34 0.03 sides=6",
 "box turret mint -0.12 0.1 0.225 0.04 0.05 0.02",
 "prism turret ceramic 0.3 0 0.1 0.18 0.11 0.11 axis=x sides=6",
-"prism turret titanium 0.67 0 0.125 0.8 0.05 0.05 axis=x sides=6"
+"prism turret graphite 0.67 0 0.105 0.8 0.09 0.09 axis=x sides=6",
+"prism turret graphite 1.02 0 0.085 0.16 0.15 0.13 axis=x sides=6"
 )

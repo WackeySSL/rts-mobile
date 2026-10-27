@@ -7,7 +7,7 @@ script = ExtResource("1_model")
 art_id = &"renew_rifle"
 faction = &"renew"
 category = &"inf"
-silhouette = "Linemen: three lean blue-grey technicians in a wide open arrowhead, each in a smooth white hexagonal helmet with a mint visor strip, a team-coloured band over chest and shoulders, a thin dark rail rifle across the chest and a dark cable reel with white flanges on the back."
+silhouette = "Linemen: three lean blue-grey technicians in a wide open arrowhead, each in a smooth white hexagonal helmet with a mint visor strip, a team-coloured band over chest and shoulders, a thin dark rail rifle across the chest and a dark cable reel with team-coloured flanges on the back."
 prims = PackedStringArray(
 "box hull graphite 0.22 -0.04 0 0.06 0.06 0.16",
 "box hull graphite 0.22 0.04 0 0.06 0.06 0.16",
@@ -19,9 +19,9 @@ prims = PackedStringArray(
 "box hull bluegrey 0.22 -0.1 0.285 0.05 0.04 0.05",
 "box hull bluegrey 0.22 0.1 0.285 0.05 0.04 0.05",
 "box hull graphite 0.32 0.07 0.235 0.3 0.028 0.03",
-"prism hull graphite 0.12 0 0.17 0.12 0.1 0.12 axis=y sides=8",
-"prism hull team 0.12 -0.062 0.17 0.13 0.015 0.13 axis=y sides=8",
-"prism hull team 0.12 0.062 0.17 0.13 0.015 0.13 axis=y sides=8",
+"prism hull graphite 0.12 0 0.145 0.17 0.12 0.17 axis=y sides=8",
+"prism hull team 0.12 -0.066 0.18 0.1 0.012 0.1 axis=y sides=8",
+"prism hull team 0.12 0.066 0.18 0.1 0.012 0.1 axis=y sides=8",
 "box hull graphite 0.22 0 0.325 0.075 0.085 0.04",
 "prism hull ceramic 0.22 0 0.365 0.12 0.12 0.075 sides=6",
 "box hull mint 0.275 0 0.375 0.03 0.09 0.03",
@@ -35,9 +35,9 @@ prims = PackedStringArray(
 "box hull bluegrey -0.12 -0.36 0.285 0.05 0.04 0.05",
 "box hull bluegrey -0.12 -0.16 0.285 0.05 0.04 0.05",
 "box hull graphite -0.02 -0.19 0.235 0.3 0.028 0.03",
-"prism hull graphite -0.22 -0.26 0.17 0.12 0.1 0.12 axis=y sides=8",
-"prism hull team -0.22 -0.322 0.17 0.13 0.015 0.13 axis=y sides=8",
-"prism hull team -0.22 -0.198 0.17 0.13 0.015 0.13 axis=y sides=8",
+"prism hull graphite -0.22 -0.26 0.145 0.17 0.12 0.17 axis=y sides=8",
+"prism hull team -0.22 -0.326 0.18 0.1 0.012 0.1 axis=y sides=8",
+"prism hull team -0.22 -0.194 0.18 0.1 0.012 0.1 axis=y sides=8",
 "box hull graphite -0.12 -0.26 0.325 0.075 0.085 0.04",
 "prism hull ceramic -0.12 -0.26 0.365 0.12 0.12 0.075 sides=6",
 "box hull mint -0.065 -0.26 0.375 0.03 0.09 0.03",
@@ -51,9 +51,9 @@ prims = PackedStringArray(
 "box hull bluegrey -0.12 0.16 0.285 0.05 0.04 0.05",
 "box hull bluegrey -0.12 0.36 0.285 0.05 0.04 0.05",
 "box hull graphite -0.02 0.33 0.235 0.3 0.028 0.03",
-"prism hull graphite -0.22 0.26 0.17 0.12 0.1 0.12 axis=y sides=8",
-"prism hull team -0.22 0.198 0.17 0.13 0.015 0.13 axis=y sides=8",
-"prism hull team -0.22 0.322 0.17 0.13 0.015 0.13 axis=y sides=8",
+"prism hull graphite -0.22 0.26 0.145 0.17 0.12 0.17 axis=y sides=8",
+"prism hull team -0.22 0.194 0.18 0.1 0.012 0.1 axis=y sides=8",
+"prism hull team -0.22 0.326 0.18 0.1 0.012 0.1 axis=y sides=8",
 "box hull graphite -0.12 0.26 0.325 0.075 0.085 0.04",
 "prism hull ceramic -0.12 0.26 0.365 0.12 0.12 0.075 sides=6",
 "box hull mint -0.065 0.26 0.375 0.03 0.09 0.03"

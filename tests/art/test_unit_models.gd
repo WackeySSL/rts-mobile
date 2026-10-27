@@ -123,16 +123,23 @@ func test_the_wheels_are_the_ones_the_silhouette_line_counts_and_the_tanks_have_
 	for prim: ArtPrim in _model("heavy_tank").primitives(&"hull"):
 		tracks += int(is_zero_approx(prim.z0) and prim.size.x >= 1.0 and prim.size.y < 0.3)
 	assert_int(tracks).is_equal(2)
-	# The Torque stands on four separate pods, two a side with a gap between them.
-	var pods: Array[ArtPrim] = []
+	# The Torque stands on one long continuous track a side, as long as its hull, like any ordinary
+	# tank, and not on separate pods at the corners: exactly two ground boxes of any length, one on
+	# each side of the centre line, each covering most of the way from the rear of the hull to its
+	# nose.
+	var hull_from: float = INF
+	var hull_to: float = -INF
+	var runs: Array[ArtPrim] = []
 	for prim: ArtPrim in _model("renew_tank").primitives(&"hull"):
+		if prim.material == &"bluegrey":
+			hull_from = minf(hull_from, prim.aabb().position.x)
+			hull_to = maxf(hull_to, prim.aabb().end.x)
 		if is_zero_approx(prim.z0) and prim.shape == &"box" and prim.size.x >= 0.4:
-			pods.append(prim)
-	assert_int(pods.size()).is_equal(4)
-	for pod: ArtPrim in pods:
-		for other: ArtPrim in pods:
-			if pod != other and signf(pod.centre.y) == signf(other.centre.y):
-				assert_float(absf(pod.centre.x - other.centre.x) - pod.size.x).is_greater(0.0)
+			runs.append(prim)
+	assert_int(runs.size()).is_equal(2)
+	assert_float(signf(runs[0].centre.y) * signf(runs[1].centre.y)).is_equal(-1.0)
+	for run: ArtPrim in runs:
+		assert_float(run.size.x).is_greater_equal((hull_to - hull_from) * 0.85)
 
 
 ## STYLE.md "Scale": a figure is about 18 px tall at zoom 1 (0.46 tile), a vehicle fills about a
@@ -206,6 +213,49 @@ func test_the_lumen_accord_guns_are_single_barrels_on_the_centre_line() -> void:
 		assert_int(long_pieces).override_failure_message(id).is_equal(
 			0 if id == "renew_artillery" else 1
 		)
+
+
+## Three details that were lost at 32 px in greyscale and are pinned so they stay (P102 fix round):
+## the Torque's barrel is graphite, not titanium (titanium is the grey of the hull), and a thicker
+## graphite block stands at its muzzle; the Fuel Runner's glass tank is round, not a hexagonal
+## box, with a hatch dome standing above its top, so it is a tanker and not a white van; and the
+## Linemen's cable-reel hub is wider than its team flanges, so a dark rim shows round each.
+func test_the_torque_barrel_the_fuel_runner_tank_and_the_linemen_reel_read_at_32_px() -> void:
+	var torque: ArtModel = _model("renew_tank")
+	var barrel: ArtPrim = null
+	var muzzle: ArtPrim = null
+	for prim: ArtPrim in torque.primitives(&"turret"):
+		if prim.shape == &"prism" and prim.axis == 0 and prim.size.x >= 0.3:
+			barrel = prim
+		if muzzle == null or prim.aabb().end.x > muzzle.aabb().end.x:
+			muzzle = prim
+	assert_bool(barrel.material == &"graphite").is_true()
+	assert_bool(muzzle.material == &"graphite").is_true()
+	assert_float(barrel.size.y).is_greater_equal(0.08)
+	assert_float(muzzle.size.y).is_greater_equal(barrel.size.y + 0.05)
+	assert_float(muzzle.size.z).is_greater_equal(barrel.size.z + 0.03)
+	var tanker: ArtModel = _model("renew_tanker")
+	var tanks: int = 0
+	var tank_top: float = 0.0
+	var dome_top: float = 0.0
+	for prim: ArtPrim in tanker.primitives(&"hull"):
+		if prim.material == &"glass" and prim.shape == &"prism" and prim.axis == 0:
+			tanks += int(prim.sides >= 8)
+			tank_top = maxf(tank_top, prim.aabb().end.z)
+	for prim: ArtPrim in tanker.primitives(&"hull"):
+		if prim.shape == &"prism" and prim.axis == 2 and prim.sides >= 8 and prim.z0 > 0.4:
+			dome_top = maxf(dome_top, prim.aabb().end.z)
+	assert_int(tanks).is_equal(2)
+	assert_float(dome_top).is_greater_equal(tank_top + 0.08)
+	var hub: float = INF
+	var flange: float = 0.0
+	for prim: ArtPrim in _model("renew_rifle").primitives(&"hull"):
+		if prim.shape == &"prism" and prim.axis == 1:
+			if prim.material == &"graphite":
+				hub = minf(hub, prim.size.x)
+			if prim.material == &"team":
+				flange = maxf(flange, prim.size.x)
+	assert_float(hub - flange).is_greater_equal(0.05)
 
 
 ## The Lumen Accord's form language (ADR 0023 section 6): hexagons (a helmet, a turret ring, the
