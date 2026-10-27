@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"renew_radar"
+faction = &"renew"
+category = &"bld"
+footprint = 2
+silhouette = "A small white hexagonal base with a team band and a slim tapering hexagonal tower carrying a flat white panel and a mint light."
+prims = PackedStringArray(
+"box hull titanium 0 0 0 1.92 1.92 0.06",
+"prism hull ceramic 0.3 0.3 0.06 0.8 0.7 0.16 sides=6",
+"prism hull team 0.3 0.3 0.22 0.84 0.74 0.22 sides=6",
+"prism hull ceramic 0.3 0.3 0.44 0.8 0.7 0.06 sides=6",
+"prism hull titanium -0.4 -0.4 0.06 0.24 0.2 2.1 sides=6 taper=0.5",
+"box hull team -0.4 -0.4 2.16 0.6 0.06 0.1",
+"box hull ceramic -0.4 -0.4 2.26 0.6 0.06 0.4",
+"box hull mint -0.4 -0.4 2.66 0.08 0.08 0.08"
+)

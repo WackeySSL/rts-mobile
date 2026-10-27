@@ -6,10 +6,14 @@ extends Node
 ## Command that carries the sorted selection (ADR 0003), a MOVE to a ground point or an ATTACK on
 ## an enemy's id. A ground tap moves and does not fight, also out of a fight (P43c): the sim drops
 ## the units' targets and holds their fire until they arrive and stand idle again.
-## A tap acts at once. A double-tap on an own unit selects its type on screen, a box selects the
-## own units inside it, and an empty box clears the selection (the one way to deselect). Selection
-## is not a Command, so it never reaches the sim. A unit that dies leaves the selection and the
-## groups at once, inside `runner.ticked`, and the rings, the panel and the badges follow.
+## A ground tap goes through the inverse projection (`IsoProjection.px_to_ground`, ADR 0023
+## section 3), rounded to milli-tiles, so the sim only sees integers; a tap outside the map's
+## diamond is a Command too, and the sim clamps its target.
+## A tap acts at once. A double-tap on an own unit selects its type on screen, a box (a rect on the
+## screen, over the units' projected positions) selects the own units inside it, and an empty box
+## clears the selection (the one way to deselect). Selection is not a Command, so it never reaches
+## the sim. A unit that dies leaves the selection and the groups at once, inside `runner.ticked`,
+## and the rings, the panel and the badges follow.
 ## Each order shows its marker and the BoxOverlay follows a long-press and its box, both in the
 ## frame of the gesture. The selection rings follow `selection_changed` (wired in the scene).
 
@@ -105,8 +109,8 @@ func _tap(pos: Vector2) -> void:
 	elif hit >= 0:  # An enemy: only picked while a selection exists.
 		_attack(hit)
 	elif not selection.selected.is_empty():
-		var world_px: Vector2 = camera.screen_to_world(pos)
-		_move(ViewScale.px_to_milli(world_px.x), ViewScale.px_to_milli(world_px.y))
+		var ground: Vector2i = IsoProjection.px_to_ground(camera.screen_to_world(pos))
+		_move(ground.x, ground.y)
 
 
 func _double_tap(pos: Vector2) -> void:
@@ -161,7 +165,7 @@ func _show_group_count(slot: int) -> void:
 ## radius, so the units stop that much off the marker.
 func _move(target_x: int, target_y: int) -> void:
 	command_sink.call(Command.move(_local_player(), selection.selected, target_x, target_y))
-	marker_layer.show_attack_move(ViewScale.milli_to_px_vec(target_x, target_y))
+	marker_layer.show_attack_move(IsoProjection.ground_to_px(target_x, target_y))
 
 
 ## Attack the enemy at pick index `hit` (a row of the snapshot just read), by its id. The sim

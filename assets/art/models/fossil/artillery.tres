@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"artillery"
+faction = &"fossil"
+category = &"veh"
+silhouette = "A six-wheeled olive truck with a team band round its cab at the front and a drum on the rear deck that turns a short thick mortar tube raised on a cradle."
+mount = Vector3(-0.15, 0, 0.3)
+prims = PackedStringArray(
+"box hull iron 0 0 0.1 1.2 0.5 0.12",
+"prism hull iron 0.45 -0.31 0 0.24 0.12 0.24 axis=y sides=8",
+"prism hull iron 0.45 0.31 0 0.24 0.12 0.24 axis=y sides=8",
+"prism hull iron 0 -0.31 0 0.24 0.12 0.24 axis=y sides=8",
+"prism hull iron 0 0.31 0 0.24 0.12 0.24 axis=y sides=8",
+"prism hull iron -0.45 -0.31 0 0.24 0.12 0.24 axis=y sides=8",
+"prism hull iron -0.45 0.31 0 0.24 0.12 0.24 axis=y sides=8",
+"box hull olive 0.38 0 0.22 0.4 0.5 0.08",
+"box hull team 0.38 0 0.3 0.44 0.54 0.06",
+"box hull olive 0.38 0 0.36 0.4 0.5 0.2",
+"box hull lamp 0.59 0 0.4 0.02 0.38 0.1",
+"box hull steel -0.3 0 0.22 0.55 0.46 0.08",
+"prism turret steel 0 0 0 0.4 0.4 0.12 sides=8",
+"box turret olive 0 0 0.12 0.3 0.26 0.16",
+"prism turret iron 0.2 0 0.14 0.1 0.2 0.2 axis=x sides=8",
+"prism turret team 0.3 0 0.14 0.16 0.2 0.2 axis=x sides=8",
+"prism turret iron 0.64 0 0.14 0.52 0.2 0.2 axis=x sides=8"
+)

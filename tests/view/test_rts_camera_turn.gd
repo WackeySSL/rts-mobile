@@ -1,14 +1,15 @@
 extends GdUnitTestSuite
-## RtsCamera when the phone turns (ADR 0015 section 4, plan P62): the world point at the centre
-## stays, the zoom keeps the world size per dp, the snap stops, and a resize inside one orientation
-## only clamps and refreshes what the next turn compares with. The 6-inch phone (2400x1080 and
+## RtsCamera when the phone turns (ADR 0015 section 4, plan P62, P117): the world point at the
+## centre stays, the zoom keeps the world size per dp, the snap stops, and a resize inside one
+## orientation only refreshes what the next turn compares with. The 6-inch phone (2400x1080 and
 ## 1080x2400, stretch 1.5 both ways) is the plain turn, the engine's own metrics are used where
 ## they decide (the rounding at 2556x1179), and a profile override stands in for a phone browser
 ## whose toolbar takes a different share of the screen in each orientation.
 
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
-const MAP: Rect2 = Rect2(0, 0, 3072, 3072)
+const MAP_TILES: int = 48  ## The map is 48 x 48 tiles: a diamond 3072 px wide.
+const MAP_CENTRE: Vector2 = Vector2(0, 768)  ## The middle of that diamond.
 const LEVELS: Array[float] = [0.75, 1.0, 1.5]
 const PHONE: Vector2i = ScreenSizes.LANDSCAPE[1]
 const PHONE_TURNED: Vector2i = ScreenSizes.PORTRAIT[1]
@@ -43,37 +44,33 @@ func after_test() -> void:
 	UiScale.clear_override()
 
 
-func test_a_turn_keeps_every_zoom_level_exactly_and_the_centre_where_the_clamp_allows() -> void:
+func test_a_turn_keeps_every_zoom_level_exactly_and_the_centre() -> void:
 	_camera = _add_camera()
 	for level: float in LEVELS:
 		await _show_size(PHONE)
 		_camera.zoom = Vector2(level, level)
-		_camera.centre_on(MAP.get_center())
+		_camera.centre_on(MAP_CENTRE)
 		await _show_size(PHONE_TURNED)
 		assert_that(_camera.zoom).is_equal(Vector2(level, level))
-		assert_that(_camera.position).is_equal(MAP.get_center())
+		assert_that(_camera.position).is_equal(MAP_CENTRE)
 		await _show_size(PHONE)
 		assert_that(_camera.zoom).is_equal(Vector2(level, level))
-		assert_that(_camera.position).is_equal(MAP.get_center())
+		assert_that(_camera.position).is_equal(MAP_CENTRE)
 
 
-## At zoom 1 the landscape view shows 1600x720 world px and the portrait one 720x1600, so a centre
-## on the landscape limits (800..2272, 360..2712) moves on y only, to the portrait ones
-## (360..2712, 800..2272).
-func test_a_centre_near_a_map_edge_moves_only_as_far_as_the_new_clamp_needs() -> void:
+## The clamp is on the centre, whatever the view's size, so a centre on the map's edge or tip stays
+## exactly there through a turn and back (the old rect clamp moved it by the new half view).
+func test_a_centre_on_the_map_edge_does_not_move_in_a_turn_either_way() -> void:
 	_camera = _add_camera()
-	var limits: Array[int] = _limits()
-	_camera.centre_on(Vector2(800, 360))
-	await _show_size(PHONE_TURNED)
-	assert_that(_camera.position).is_equal(Vector2(800, 800))
-	await _show_size(PHONE)  # Back: no memory of (800, 360), the landscape limits take (800, 800).
-	assert_that(_camera.position).is_equal(Vector2(800, 800))
-	_camera.centre_on(Vector2(2272, 2712))
-	await _show_size(PHONE_TURNED)
-	assert_that(_camera.position).is_equal(Vector2(2272, 2272))
-	await _show_size(PHONE)
-	assert_that(_camera.position).is_equal(Vector2(2272, 2272))
-	assert_array(_limits()).is_equal(limits)
+	var diamond: PackedVector2Array = IsoProjection.map_diamond(MAP_TILES, MAP_TILES)
+	var edge: Vector2 = diamond[0].lerp(diamond[3], 0.5)  # Halfway down the north-west edge.
+	for place: Vector2 in [diamond[0], diamond[1], diamond[2], diamond[3], edge]:
+		_camera.centre_on(place)
+		var held: Vector2 = _camera.position
+		await _show_size(PHONE_TURNED)
+		assert_that(_camera.position).is_equal(held)
+		await _show_size(PHONE)
+		assert_that(_camera.position).is_equal(held)
 
 
 ## The engine floors the expanded axis to whole base px, so a window and its transpose differ in
@@ -206,8 +203,8 @@ func _add_camera() -> RtsCamera:
 	var camera: RtsCamera = auto_free(RtsCamera.new())
 	camera.settings = _settings
 	add_child(camera)
-	camera.set_map_rect(MAP)
-	camera.centre_on(MAP.get_center())
+	camera.set_map_rect(IsoProjection.map_diamond(MAP_TILES, MAP_TILES))
+	camera.centre_on(MAP_CENTRE)
 	return camera
 
 
@@ -247,10 +244,6 @@ func _show(metrics: UiMetrics) -> void:
 ## World px one dp covers: base px per dp over the zoom.
 func _world_px_per_dp() -> float:
 	return UiScale.base_px_per_dp() / _camera.zoom.x
-
-
-func _limits() -> Array[int]:
-	return [_camera.limit_left, _camera.limit_top, _camera.limit_right, _camera.limit_bottom]
 
 
 func _near(actual: Vector2, expected: Vector2, tol: float = 0.01) -> void:
