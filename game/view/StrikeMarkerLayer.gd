@@ -59,17 +59,24 @@ func _draw() -> void:
 	if aim != null and aim.active and aim.has_point:
 		_zone(IsoProjection.ground_to_px(aim.point.x, aim.point.y), aim.radius, true, unit)
 	var snap: MatchSnapshot = runner.snapshot
+	var kinds: PackedInt32Array = snap.type_strike_kind  # Aliased once: no property read per row.
+	var radii: PackedInt32Array = snap.type_strike_radius
+	var landings: PackedInt32Array = snap.strike_tick
+	var xs: PackedInt32Array = snap.strike_x
+	var ys: PackedInt32Array = snap.strike_y
+	var now: float = snap.tick + runner.alpha()
 	var radius: int = 0
-	for type: int in snap.type_strike_kind.size():  # The first rupture type's radius.
-		if snap.type_strike_kind[type] == Strike.Kind.RUPTURE:
-			radius = snap.type_strike_radius[type]
+	for type: int in kinds.size():  # The first rupture type's radius.
+		if kinds[type] == Strike.Kind.RUPTURE:
+			radius = radii[type]
 			break
-	for player: int in snap.strike_tick.size():
-		if snap.strike_tick[player] == 0:
+	for player: int in landings.size():
+		var landing: int = landings[player]
+		if landing == 0:
 			continue
-		var at: Vector2 = IsoProjection.ground_to_px(snap.strike_x[player], snap.strike_y[player])
-		var left: float = float(snap.strike_tick[player]) - (snap.tick + runner.alpha())
-		var first: float = _first.get_or_add(snap.strike_tick[player], left)
+		var at: Vector2 = IsoProjection.ground_to_px(xs[player], ys[player])
+		var left: float = float(landing) - now
+		var first: float = _first.get_or_add(landing, left)
 		_zone(at, radius, false, unit)
 		_stroke(at, closing_radius(radius, left, first), Color.WHITE, STROKE_DP * 0.6 * unit)
 		if blinks_on(left):

@@ -50,19 +50,26 @@ func refresh() -> void:
 	var best_id: int = 0
 	var best_type: int = -1
 	var best_share: float = 0.0
-	for row: int in snap.unit_id.size():
-		var type: int = snap.type_index[row]
-		if snap.owner[row] != player or type >= snap.type_strike_kind.size():
+	var ids: PackedInt32Array = snap.unit_id  # Aliased once: no snapshot property read per row.
+	var owners: PackedInt32Array = snap.owner
+	var types: PackedInt32Array = snap.type_index
+	var ready_ticks: PackedInt32Array = snap.ready_tick
+	var offline_ticks: PackedInt32Array = snap.offline_until
+	var kinds: PackedInt32Array = snap.type_strike_kind
+	var charges: PackedInt32Array = snap.type_charge_ticks
+	for row: int in ids.size():
+		var type: int = types[row]
+		if owners[row] != player or type >= kinds.size():
 			continue
-		if snap.type_strike_kind[type] == Strike.Kind.NONE:
+		if kinds[type] == Strike.Kind.NONE:
 			continue
-		var charge: int = maxi(snap.ready_tick[row] - stamp, 0)
-		var left: int = maxi(charge, maxi(snap.offline_until[row] - stamp, pending))
+		var charge: int = maxi(ready_ticks[row] - stamp, 0)
+		var left: int = maxi(charge, maxi(offline_ticks[row] - stamp, pending))
 		if best < 0 or left < best:
 			best = left
-			best_id = snap.unit_id[row]
+			best_id = ids[row]
 			best_type = type
-			best_share = 1.0 - minf(float(charge) / maxi(snap.type_charge_ticks[type], 1), 1.0)
+			best_share = 1.0 - minf(float(charge) / maxi(charges[type], 1), 1.0)
 	owned = best >= 0
 	building_id = best_id if best == 0 else 0
 	type_index = best_type
