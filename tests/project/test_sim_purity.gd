@@ -409,7 +409,7 @@ const AI_RULE_LINES: Dictionary[String, String] = {
 	"threads emit": "thought.emit(view.tick)",
 	"threads emit_signal": 'emit_signal(&"thought", view.tick)',
 	"threads call_deferred": "callable.call_deferred()",
-	"threads load": 'var def: Resource = load("res://data/ai/dummy.tres")',
+	"threads load": 'var def: Resource = load("res://data/ai/dummy_fossil.tres")',
 	"threads preload": 'const Def: Script = preload("res://game/ai/AiDef.gd")',
 	"threads loader": "var exists: bool = ResourceLoader.exists(path)",
 	"threads saver": "var err: int = ResourceSaver.save(def, path)",
