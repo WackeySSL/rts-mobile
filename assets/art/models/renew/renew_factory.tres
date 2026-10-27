@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"renew_factory"
+faction = &"renew"
+category = &"bld"
+footprint = 3
+silhouette = "A broad white hall with a sawtooth roof of three glass slopes, a dark vehicle door on its front under a team lintel."
+prims = PackedStringArray(
+"box hull titanium 0 0 0 2.92 2.92 0.06",
+"box hull ceramic -0.1 0 0.06 2.1 2 0.9",
+"wedge hull glass -0.8 0 0.96 0.7 2 0.5 slope=0.6",
+"wedge hull glass -0.1 0 0.96 0.7 2 0.5 slope=0.6",
+"wedge hull glass 0.6 0 0.96 0.7 2 0.5 slope=0.6",
+"box hull graphite 0.97 0 0.06 0.04 1.2 0.65",
+"box hull team 0.97 0 0.71 0.04 1.2 0.2",
+"box hull team -0.1 1.02 0.4 2.1 0.04 0.2"
+)

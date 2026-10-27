@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"renew_defence"
+faction = &"renew"
+category = &"bld"
+footprint = 1
+silhouette = "A small white hexagonal base with a team band carrying a hexagonal gun head with one long thin rail barrel and a mint light."
+mount = Vector3(0, 0, 0.36)
+prims = PackedStringArray(
+"box hull titanium 0 0 0 0.92 0.92 0.06",
+"prism hull ceramic 0 0 0.06 0.75 0.65 0.14 sides=6",
+"prism hull team 0 0 0.2 0.78 0.68 0.08 sides=6",
+"prism hull ceramic 0 0 0.28 0.75 0.65 0.08 sides=6",
+"prism head bluegrey 0 0 0 0.45 0.4 0.14 sides=6",
+"box head titanium 0.6 0 0.05 0.75 0.06 0.06",
+"box head mint -0.1 0 0.14 0.08 0.08 0.04"
+)
