@@ -11,15 +11,18 @@ paths:
 Look (ADR 0023, Michael 2026-10-26): the canvas's Version B look without its geography, readable
 at small size on a phone. Clean flat-shaded vector, three tones per face, real materials and
 believable proportions, small team markings; not cartoonish, not photoreal. Everything on the map
-is drawn in the isometric 2:1 view. Units, turrets and most buildings are simple 3D models in
+is drawn in the isometric 2:1 view. Units, turrets and buildings are simple 3D models in
 `assets/art/models/` that the generator (`tools/artgen/`, `bash scripts/gen-art.sh`) turns into
-SVG frames; buildings may also be hand-drawn in the projection or get a hand-drawn detail overlay.
+SVG frames (P101-P104 modelled all twelve units and sixteen buildings); ADR 0023 §5 still lets a
+building be hand-drawn in the projection or get a hand-drawn detail overlay. Ground diamonds,
+fields, icons, glyphs, UI parts and effects are hand-written SVG.
 Two factions: the Derrick League (oil and gas: poured concrete, riveted steel, rust, olive drab
 vehicles, gas spheres, flare stacks, pumpjacks, pipe racks, warning stripes, warm lamps; wedges and
 trapezoids) and the Lumen Accord (white ceramic, graphite, glass, blue-grey vehicles with dark
 patches, wind turbines, solar panels, battery banks, mint status light; hexagons and rounded
-panels). `assets/art/STYLE.md` holds the full rules. The top-down unit files and P91b's oblique
-buildings stay as reference until the art rows (P101-P105) replace them; new art follows this file.
+panels). `assets/art/STYLE.md` holds the full rules. P101 and P103 deleted the top-down unit files
+and P91b's oblique buildings; the hand-drawn `svg/icons/item_<id>.svg` (top-down units, oblique
+buildings) stay while `BuildSidebar` reads them. New art follows this file.
 
 ## Camera and scale
 - Projection (ADR 0023 §1): a ground point (gx, gy) in tiles, z px above it, is drawn at

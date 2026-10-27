@@ -25,7 +25,7 @@ with the phone; no UI code assumes width > height.
 | Tap ground with another own building selected | Clear the selection |
 | Tap an oil or gas field with tankers selected | Load there (`HARVEST`) |
 | Tap enemy with units selected | Attack it |
-| Tap enemy with nothing selected | Show its info card |
+| Tap a shown enemy building with nothing selected | Select it for its info only (frame and panel; it takes no order) |
 | Double-tap own unit | Select all own units of that type on screen |
 | Long-press 300 ms on ground, then drag | Selection box, selects on release |
 | One-finger drag beyond 12 dp | Pan the camera |
@@ -48,13 +48,17 @@ holds any combat unit leave tankers out; a box with only tankers selects them (A
   (infantry in particular).
 - When hit areas overlap the touch point, pick the target whose centre is closest; with units
   selected, enemies win over own units.
-- Units and buildings at one point (ADR 0023 §3, units first as in ADR 0022): with a selection,
-  enemy unit > own unit > enemy building > own building; without one, enemies do not count, so own
-  unit > own building. A unit is hit within its pick radius of its lifted centre (the ground point
-  raised by half the frame's visible height), the radius at least 24 dp. A building's hit area is
-  its silhouette (the footprint diamond plus the rectangle between its left and right corners from
-  the sprite's top down), at least 48 dp a side at zoom 0.75; between two buildings the one drawn
-  in front (the larger sort key) wins. Ground taps go through the inverse projection.
+- Units and buildings at one point (ADR 0023 §3, units first as in ADR 0022; P115b's
+  `Picker.pick` and `Picker.pick_building`): with own units selected, enemy unit > own unit > enemy
+  building > own building, an enemy building only when the sim takes the attack
+  (`PickSnapshot.is_targetable`, else the tap is a ground tap); with nothing or a building
+  selected, enemy units do not count, so own unit > any shown building, own or enemy (an enemy one
+  is selected for its info only). A unit is hit within its pick radius of its lifted centre (the
+  ground point raised by half the frame's visible height), the radius at least 24 dp. A building's
+  hit area is its silhouette (the footprint diamond plus the rectangle between its left and right
+  corners from the sprite's top down), at least 48 dp a side at zoom 0.75; between two buildings of
+  one rank the one drawn in front (the larger sort key) wins. Ground taps go through the inverse
+  projection.
 
 ## Building placement
 ADR 0019 §2 (Michael's answer 1 B). Placement mode is local input state; no Command until confirm.
@@ -76,10 +80,11 @@ ADR 0019 §2 (Michael's answer 1 B). Placement mode is local input state; no Com
 
 ## Layout in landscape
 The canvas's floating panels (ADR 0023 §12, Michael's answer 4 A; plan row P85d); the map fills
-the rest. Until P85d merges, ADR 0019's right sidebar (20% of the width, at least 200 dp) holds
-the same parts.
-- Build panel at the bottom right: the tabs (Structures, Infantry, Vehicles) as line icons above
-  one row of cards of at least 64 dp that show the item's name, cost and progress.
+the rest.
+- Build panel at the bottom right, as wide as the bottom row leaves after the army line and the
+  selection panel's row (`HudLayout.panel_px`, 184 to 372 dp): the tabs (Structures, Infantry,
+  Vehicles) as line icons above one row of named cards, 80 x 88 dp (`ItemTile.CARD_DP`), that show
+  the item's icon, its cost with the name under it, and progress.
 - Minimap: a floating panel at the top right, an isometric diamond (ADR 0023 §4).
 - Credits and the power bar: a pill at the top left.
 - Bottom-left: "All army" and groups 1-3 (tap selects, long-press assigns).
