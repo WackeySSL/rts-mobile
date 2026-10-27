@@ -198,10 +198,11 @@ func test_the_new_weapon_files_hold_their_starting_stats() -> void:
 	}
 	for id: String in weapons:
 		assert_array(_weapon_row(id)).override_failure_message(id).is_equal(weapons[id])
-	# Every weapon file is one of the seven here or the Lumen Accord's own two (breaker_rocket and
-	# arcline_gun, test_defs_roster_renew), each used by the unit or building that names it.
+	# Every weapon file is one of the seven here, the Lumen Accord's own two (breaker_rocket and
+	# arcline_gun, test_defs_roster_renew) or the Deep Bore's rupture (fossil_rupture, P110d: no
+	# gun, test_defs_strike_data), each used by the unit or building that names it.
 	var files: Array[String] = FileScan.list_files(WEAPONS_DIR, ".tres")
-	assert_int(files.size()).is_equal(9)
+	assert_int(files.size()).is_equal(10)
 	assert_str(_unit("heavy_tank").weapon.resource_path).is_equal(
 		WEAPONS_DIR + "/heavy_cannon.tres"
 	)
