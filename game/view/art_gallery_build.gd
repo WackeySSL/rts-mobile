@@ -1,15 +1,15 @@
 extends "res://game/view/art_gallery_iso.gd"
-## The Build page of the art gallery (plan row P103, ADR 0023 sections 2 and 5): the Iso page's
-## list, buttons and title, over the building models only. One building at a time stands on the iso
-## ground with a tank of its faction in front of it and one behind it, at the camera zoom levels 1,
-## 0.75 and 1.5 in the two triads Signal and Arktisk, the scene on grass left and on sand right. It
-## draws what a match draws: the frames come from the one atlas `IsoAtlas` bakes for the two
-## players (the faction's key triad replaced by the player's), a sprite is a region of it at
+## The Build page of the art gallery (plan rows P103 and P104, ADR 0023 sections 2 and 5): the Iso
+## page's list, buttons and title, over the building models only. One building at a time stands on
+## the iso ground with a tank of its faction in front of it and one behind it, at the camera zoom
+## levels 1, 0.75 and 1.5 in the two triads Signal and Arktisk, the scene on grass left and on sand
+## right. It draws what a match draws: the frames come from the one atlas `IsoAtlas` bakes for the
+## two players (the faction's key triad replaced by the player's), a sprite is a region of it at
 ## `0.5 / bake_scale` times the zoom, the rigs are children of one y-sorted node (a thing south of
 ## another is drawn after it, as `WorldSort` does) and the cast shadows lie under every body. A
-## building's rig stands at its footprint's centre, a unit's at its ground point; a defence's head
-## faces the tank in front of it. The faction's emblem sits left of the item card. Built on first
-## show; view-only.
+## building's rig stands at its footprint's centre, a unit's at its ground point and facing its
+## faction's default view; a defence's head faces the tank in front of it. The faction's emblem sits
+## left of the item card. Built on first show; view-only.
 
 const GROUND_ART: String = "res://assets/art/svg/ground/%s_%s.svg"
 const EMBLEM_ART: String = "res://assets/art/svg/icons/emblem_%s.svg"
@@ -17,6 +17,9 @@ const EMBLEM_ART: String = "res://assets/art/svg/icons/emblem_%s.svg"
 const TANKS: Dictionary[StringName, StringName] = {
 	&"fossil": &"heavy_tank", &"renew": &"renew_tank"
 }
+## The heading each faction's units are shown with, their default view (Spec 04): south-east for the
+## Derrick League, south-west for the Lumen Accord.
+const UNIT_DIRS: Dictionary[StringName, int] = {&"fossil": 6, &"renew": 10}
 const BUILD_ZOOMS: Array[float] = [1.0, 0.75, 1.5]  ## The camera zoom levels, in the page's order.
 const BAKE_SCALE: float = 1.0  ## What a match asks of the atlas.
 const TILE_HALF: Vector2 = Vector2(32.0, 16.0)
@@ -163,7 +166,8 @@ func _scene_bounds(building: IsoSheetDef, tank: IsoSheetDef, zoom: float) -> Rec
 		var at: Vector2 = _px(unit_milli(building.footprint, where), zoom)
 		for part: StringName in [&"hull", &"shadow"]:
 			box = box.merge(_frame_rect(tank, part, at, zoom))
-		box = box.merge(_frame_rect(tank, &"turret", at + tank.mount(6) * BASE_SCALE * zoom, zoom))
+		var mount: Vector2 = tank.mount(UNIT_DIRS[tank.faction]) * BASE_SCALE * zoom
+		box = box.merge(_frame_rect(tank, &"turret", at + mount, zoom))
 	return box
 
 
@@ -205,7 +209,7 @@ func _scene(
 	rigs.add_child(_scene_rig("Building", building, Vector2i.ZERO, HEAD_DIR, zoom, triad))
 	for where: StringName in [&"Front", &"Behind"]:
 		var at: Vector2i = unit_milli(n, where)
-		rigs.add_child(_scene_rig(String(where), tank, at, 6, zoom, triad))
+		rigs.add_child(_scene_rig(String(where), tank, at, UNIT_DIRS[tank.faction], zoom, triad))
 	return scene
 
 

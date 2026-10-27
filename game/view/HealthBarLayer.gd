@@ -10,19 +10,34 @@ extends Node2D
 ## the start of a frame (`sync_rows`), so the tree order of the two layers does not matter.
 ##
 ## A unit that the unit layer does not show (an enemy in the fog) gets no bar, whatever its hp did.
-## A row with a footprint is a building and gets no unit bar here (its bar is P115's).
+## A row with a footprint is a building (P115): its bar is the width of its footprint (24, 40 and
+## 56 dp for 1x1, 2x2 and 3x3, STYLE.md "Health bars"), centred on its footprint centre, and stands
+## the sheet's `bar_lift_px` above it (`building_layer.bar_lift_px`). It shows for the same few
+## seconds after a hit and while the building is selected (`building_layer.is_selected`, P115b), and
+## only while `building_layer.is_shown`: an enemy building whose footprint the fog hides has none.
+## A selected building also gets its frame (P115b, ADR 0023 section 3): four brackets round the
+## silhouette box (`building_layer.frame_box`), each arm FRAME_THICK_DP thick and at most
+## FRAME_ARM_DP long, white with a dark edge for an own building and the enemy bar's colour for an
+## enemy one.
+## The frames are planned after the bars, in the same arrays: the rects from `frame_first_rect()`
+## on, FRAME_RECTS for each of `frame_count()` frames, outline first.
 ##
 ## A bar is sized in dp, so it looks the same at every zoom: world px per dp is the base px per dp
 ## over the camera zoom. It is centred on its unit's projected ground point (`IsoProjection`, ADR
 ## 0023 section 1), and its bottom edge is l x zoom + 1 dp above that point on the screen, l the
-## lift of the top of the unit's frame (`SpriteLift.bar_lift_px`, the sheet's `bar_lift_px` once
-## P113 brings the sheets). The ring does not place it.
+## lift of the top of the unit's frame (`unit_layer.bar_lift_px`, the sheet's `bar_lift_px`). The
+## ring does not place it.
 ## `_process` plans the rects of the frame in reused packed arrays and `_draw` paints that plan
 ## through the same accessors, so a frame creates no object and tests read the plan (`rect_count`,
 ## `rect_at`) and what was painted (`drawn_count`).
 
 const VEHICLE_WIDTH_DP: int = 22
 const INFANTRY_WIDTH_DP: int = 16
+## The width of each bar class: a vehicle, an infantry squad, then a 1x1, a 2x2 and a 3x3 building
+## (a larger footprint takes the last).
+const CLASS_WIDTH_DP: Array[int] = [VEHICLE_WIDTH_DP, INFANTRY_WIDTH_DP, 24, 40, 56]
+const INFANTRY_CLASS: int = 1
+const BUILDING_CLASS: int = 2  ## A 1x1 building's class; a footprint of n has class 1 + n.
 const HEIGHT_DP: int = 6
 const GAP_DP: int = 1  ## Between the bar's bottom edge and the sprite.
 const NOTCH_WIDTH_DP: int = 4  ## An enemy bar's notch, open in the top edge.
@@ -31,14 +46,20 @@ const EDGE_DP: int = 1  ## The dark edge round the interior.
 const RECENT_MS: int = 3000  ## A hit unit shows its bar for this long (inclusive).
 const MAX_RECTS_PER_BAR: int = 6  ## An enemy bar: three edge rects and three fill rects.
 const SHAPE_STRIDE: int = 5  ## A shape lists rects as x, y, w, h and 0 (edge) or 1 (fill) in dp.
+const FRAME_ARM_DP: int = 12  ## The longest arm of a frame's bracket.
+const FRAME_THICK_DP: int = 2
+const FRAME_RECTS: int = 16  ## Two arms for each of four corners, each as an outline and a fill.
 
 @export var runner: MatchRunner
 @export var unit_layer: UnitLayer  ## Gives the selection, the hit times, the camera and the clock.
+## Says which buildings are shown and how high their bars stand; null: no building has a bar.
+@export var building_layer: BuildingLayer
 ## The look: the fills are not team colours (STYLE.md). They are exports of this world-space layer
 ## and not theme items, like the team tints of `UnitLayer`, so a new palette edits them here.
 @export var edge_color: Color = Color("1C2127")
 @export var own_color: Color = Color("30A46C")  ## Fill of an own bar (ok).
 @export var enemy_color: Color = Color("F5A524")  ## Fill of an enemy bar (warning).
+@export var frame_color: Color = Color("FFFFFF")  ## Brackets of an own selected building.
 
 var _dp_px: float = 1.0  ## Base px per dp, read when the window changes.
 ## Rect `i` of the frame: x, y, width and height in world px at 4i, and its colour. `_bars` holds
@@ -50,9 +71,12 @@ var _bars: PackedInt32Array = PackedInt32Array()
 var _bar_first: PackedInt32Array = PackedInt32Array()
 var _rects: int = 0
 var _bar_count: int = 0
+var _frames: int = 0
+var _frame_first: int = 0  ## The first rect of the frames, which follow the bars' last.
+var _none: PackedInt32Array = PackedInt32Array()  ## The selected buildings when there is no layer.
 var _drawn: int = 0  ## Rects the last _draw painted.
-## The four shapes, own and enemy for each class (index 2 x enemy + infantry), made once: their
-## rects (SHAPE_STRIDE ints each), the rect count and the width in dp.
+## The shapes, own and enemy for each class (index class + enemy x CLASS_WIDTH_DP.size()), made
+## once: their rects (SHAPE_STRIDE ints each), the rect count and the width in dp.
 var _shapes: Array[PackedInt32Array] = []
 var _shape_rects: PackedInt32Array = PackedInt32Array()
 var _shape_width: PackedInt32Array = PackedInt32Array()
@@ -60,7 +84,7 @@ var _shape_width: PackedInt32Array = PackedInt32Array()
 @warning_ignore("integer_division")
 func _init() -> void:
 	for enemy: bool in [false, true]:
-		for width: int in [VEHICLE_WIDTH_DP, INFANTRY_WIDTH_DP]:
+		for width: int in CLASS_WIDTH_DP:
 			var shape: PackedInt32Array = _make_shape(enemy, width)
 			_shapes.append(shape)
 			_shape_rects.append(shape.size() / SHAPE_STRIDE)
@@ -102,6 +126,15 @@ func drawn_count() -> int:
 
 func bar_count() -> int:
 	return _bar_count
+
+
+## The frames of selected buildings in the last plan, and the plan's index of their first rect.
+func frame_count() -> int:
+	return _frames
+
+
+func frame_first_rect() -> int:
+	return _frame_first
 
 
 ## Rect `index` of the plan in world px (layer coordinates), and its colour.
@@ -163,17 +196,25 @@ func _read_dp() -> void:  # dp changes with the window.
 func _plan() -> void:
 	_rects = 0
 	_bar_count = 0
+	_frames = 0
 	var snap: MatchSnapshot = runner.snapshot if runner != null else null
 	if snap == null or unit_layer == null or unit_layer.camera == null:
 		return
 	unit_layer.sync_rows()  # One sync for the loop: the per-row answers below do not sync.
+	if building_layer != null:
+		building_layer.sync_rows()
 	var count: int = snap.unit_id.size()
+	var chosen: PackedInt32Array = (
+		building_layer.selected_ids() if building_layer != null else _none
+	)
 	# Sized by _bar_first, which the closing write below reaches at [bar count] even for 0 units.
 	if _bar_first.size() < count + 1:
 		_bars.resize(count)
 		_bar_first.resize(count + 1)
-		_geometry.resize(count * MAX_RECTS_PER_BAR * 4)
-		_colors.resize(count * MAX_RECTS_PER_BAR)
+	var rect_room: int = count * MAX_RECTS_PER_BAR + chosen.size() * FRAME_RECTS
+	if _colors.size() < rect_room:
+		_geometry.resize(rect_room * 4)
+		_colors.resize(rect_room)
 	var unit: float = _dp_px / unit_layer.camera.zoom.x  # World px per dp.
 	var recent_since: int = int(unit_layer.clock.call()) - RECENT_MS
 	var local_player: int = runner.scenario.local_player if runner.scenario != null else 1
@@ -183,7 +224,6 @@ func _plan() -> void:
 	var hps: PackedInt32Array = snap.hp
 	var max_hps: PackedInt32Array = snap.type_max_hp
 	var armours: PackedInt32Array = snap.type_armour
-	var type_ids: Array[StringName] = snap.type_ids
 	var prev_x: PackedInt32Array = snap.prev_pos_x
 	var prev_y: PackedInt32Array = snap.prev_pos_y
 	var cur_x: PackedInt32Array = snap.pos_x
@@ -192,25 +232,35 @@ func _plan() -> void:
 	var colors: PackedColorArray = _colors
 	for row: int in count:
 		var hit: int = unit_layer.hit_time_ms(row)
-		if not (unit_layer.is_ringed(row) or (hit >= 0 and hit >= recent_since)):
+		var selected: bool = (
+			unit_layer.is_ringed(row) or (not chosen.is_empty() and building_layer.is_selected(row))
+		)
+		if not (selected or (hit >= 0 and hit >= recent_since)):
 			continue
-		if not unit_layer.is_shown(row):
-			continue  # A rig the fog hides has no bar either (ADR 0010 section 2).
 		var type: int = types[row]
-		if WorldSort.is_building(snap, type):
-			continue
-		var infantry: int = 1 if armours[type] == World.Armour.INFANTRY else 0
-		var shape: int = (2 if owners[row] != local_player else 0) + infantry
+		var building: bool = WorldSort.is_building(snap, type)
+		if building:
+			if building_layer == null or not building_layer.is_shown(row):
+				continue  # No layer to say, or the fog hides the footprint.
+		elif not unit_layer.is_shown(row):
+			continue  # A rig the fog hides has no bar either (ADR 0010 section 2).
+		var klass: int = INFANTRY_CLASS if armours[type] == World.Armour.INFANTRY else 0
+		if building:
+			var last: int = CLASS_WIDTH_DP.size() - BUILDING_CLASS  # The largest footprint with a width.
+			klass = BUILDING_CLASS - 1 + clampi(snap.type_foot_w[type], 1, last)
+		var shape: int = (0 if owners[row] == local_player else CLASS_WIDTH_DP.size()) + klass
 		var width: int = _shape_width[shape]
 		var fill_end: int = fill_end_dp(hps[row], max_hps[type], width)
-		var fill_color: Color = enemy_color if shape >= 2 else own_color
-		# The unit's ground point now, the way UnitLayer puts its rig, and the bar's top-left
-		# corner, a lift above the top of its frame.
+		var fill_color: Color = enemy_color if shape >= CLASS_WIDTH_DP.size() else own_color
+		# The unit's ground point now, the way UnitLayer puts its rig (a building's is its
+		# footprint centre), and the bar's top-left corner, a lift above the top of its frame.
 		var place: Vector2 = IsoProjection.ground_to_px(prev_x[row], prev_y[row]).lerp(
 			IsoProjection.ground_to_px(cur_x[row], cur_y[row]), alpha
 		)
 		var left: float = place.x - 0.5 * width * unit
-		var lift: float = SpriteLift.bar_lift_px(type_ids, armours, type)
+		var lift: float = (
+			building_layer.bar_lift_px(row) if building else unit_layer.bar_lift_px(row)
+		)
 		var top: float = place.y - lift - (GAP_DP + HEIGHT_DP) * unit
 		_bars[_bar_count] = row
 		_bar_first[_bar_count] = _rects
@@ -232,6 +282,48 @@ func _plan() -> void:
 			colors[_rects] = fill_color if is_fill else edge_color
 			_rects += 1
 	_bar_first[_bar_count] = _rects
+	_plan_frames(snap, chosen, unit, local_player)
+
+
+## Plans the frame of each selected building that is shown, after the bars.
+func _plan_frames(
+	snap: MatchSnapshot, chosen: PackedInt32Array, unit: float, local_player: int
+) -> void:
+	_frame_first = _rects
+	for id: int in chosen:
+		var row: int = snap.index_of(id)
+		if row < 0 or not building_layer.is_shown(row):
+			continue
+		var box: Rect2 = building_layer.frame_box(row)
+		var arm: float = minf(FRAME_ARM_DP * unit, 0.4 * minf(box.size.x, box.size.y))
+		var color: Color = frame_color if snap.owner[row] == local_player else enemy_color
+		var thick: float = FRAME_THICK_DP * unit
+		for outline: int in 2:  # The dark outline of every arm first, then the arms.
+			for arm_at: int in 8:  # Corner (top left, top right, ...) and its two arms.
+				var corner: int = arm_at >> 1
+				var way: Vector2 = Vector2(-1.0 if corner & 1 else 1.0, -1.0 if corner & 2 else 1.0)
+				var from: Vector2 = Vector2(
+					box.end.x if corner & 1 else box.position.x,
+					box.end.y if corner & 2 else box.position.y
+				)
+				var along: Vector2 = Vector2(arm, thick) if arm_at & 1 == 0 else Vector2(thick, arm)
+				var rect: Rect2 = Rect2(from, along * way).abs()
+				if outline == 0:
+					_put(rect.grow(EDGE_DP * unit), edge_color)
+				else:
+					_put(rect, color)
+		_frames += 1
+
+
+## Appends one rect to the plan.
+func _put(rect: Rect2, color: Color) -> void:
+	var out: int = _rects * 4
+	_geometry[out] = rect.position.x
+	_geometry[out + 1] = rect.position.y
+	_geometry[out + 2] = rect.size.x
+	_geometry[out + 3] = rect.size.y
+	_colors[_rects] = color
+	_rects += 1
 
 
 func _draw() -> void:

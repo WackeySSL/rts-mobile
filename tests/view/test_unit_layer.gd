@@ -15,9 +15,9 @@ const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
 const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
-const RING_ART: String = "res://assets/art/svg/ui/selection_ring.svg"
-## The ring texture's centre-line radius in px, typed again from STYLE.md so that a wrong
-## UnitLayer.RING_TEX_RADIUS_PX fails (tests/art pins the texture to the same number).
+const RING_ART: String = "res://assets/art/svg/ui/selection_ellipse.svg"
+## The ellipse texture's horizontal centre-line semi-axis in px, typed again from STYLE.md so that a
+## wrong UnitLayer.RING_TEX_RX_PX fails (tests/art pins the texture to the same number).
 const RING_CENTRE_PX: float = 72.0
 const TANK_1: PackedInt32Array = [1]
 const TANK_6: PackedInt32Array = [6]  ## Row 5, the east end of the block's first row.
@@ -236,7 +236,10 @@ func test_unit_screen_position_is_the_rig_seen_through_the_camera() -> void:
 	assert_that(_layer.unit_screen_position(30)).is_equal(Vector2(838, 513))
 	var pick: PickSnapshot = PickSnapshot.new()
 	_layer.fill_pick_snapshot(pick, 24.0)
-	assert_that(pick.screen_pos[30]).is_equal(Vector2(838, 513))
+	# The Picker's centre is the lifted one: the sheet's pick lift, at the zoom 1.5, above that.
+	var lift: float = float((load(IsoIndex.PATH) as IsoIndex).sheet(&"light_tank").pick_lift_px)
+	assert_float(lift).is_greater(0.0)
+	assert_that(pick.screen_pos[30]).is_equal(Vector2(838, 513.0 - lift * 1.5))
 
 
 func test_a_type_without_turret_art_has_hull_and_shadow_only_and_still_turns() -> void:
@@ -298,8 +301,11 @@ func test_a_ring_is_the_sprite_subclass_with_the_ring_texture_made_at_the_first_
 	assert_that(ring.modulate).is_equal(Color.WHITE)  # The baked white and dark are not tinted.
 	assert_float(ring.rotation).is_equal(0.0)
 	assert_float(ring.radius).is_greater(0.0)
-	assert_float(UnitLayer.RING_TEX_RADIUS_PX).is_equal(RING_CENTRE_PX)
+	assert_float(UnitLayer.RING_TEX_RX_PX).is_equal(RING_CENTRE_PX)
 	assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(ring.radius, 0.001)
+	assert_float(ring.scale.y).is_equal(ring.scale.x)  # The texture is the 2:1 shape itself.
+	assert_vector(ring.texture.get_size()).is_equal(Vector2(168, 96))
+	assert_float(36.0 * ring.scale.y).is_equal_approx(ring.radius * 0.5, 0.001)  # Half as high.
 	for row: int in range(1, 40):
 		assert_int(_rig(row).get_child_count()).is_equal(3)
 	_layer.set_selected(PackedInt32Array())  # Hidden, and kept for the next selection.
@@ -320,7 +326,7 @@ func test_a_ring_is_sized_for_the_selection_radius_of_its_own_unit_type() -> voi
 		var ring: Sprite2D = _rig(want[0]).get_node("Ring")
 		assert_float(ring.radius).is_equal_approx(want[1], 0.001)
 		assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(want[1], 0.001)
-		assert_float(ring.scale.y * 2.0).is_equal_approx(ring.scale.x, 0.000001)
+		assert_float(ring.scale.y).is_equal(ring.scale.x)  # One scale: the texture is 2:1.
 	# A selection reads the dp again, also when no resize came in between: 1.75 px per dp, so both
 	# rings are under the 18 dp minimum (31.5 px) and grow to it, the shape kept (2:1).
 	UiScale.set_override(UiProfiles.by_name(&"android_6in"))
@@ -330,7 +336,7 @@ func test_a_ring_is_sized_for_the_selection_radius_of_its_own_unit_type() -> voi
 		assert_float(ring.unit).is_equal_approx(1.75, 0.0001)
 		assert_float(ring.radius).is_equal_approx(want[1], 0.001)
 		assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(want[1], 0.001)
-		assert_float(ring.scale.y * 2.0).is_equal_approx(ring.scale.x, 0.000001)
+		assert_float(ring.scale.y).is_equal(ring.scale.x)  # One scale: the texture is 2:1.
 
 
 func test_every_child_of_a_rig_draws_at_the_z_of_the_table_for_every_mix_of_types_and_owners(

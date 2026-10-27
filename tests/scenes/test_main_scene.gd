@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
-## The main scene (ROADMAP Phase 1 boxes 1 and 2, P117): a MatchRunner on the controls_test
-## scenario, a 48x48 map drawn by MapView from the runner's World as a diamond of 64 x 32 px tiles
-## (ADR 0023 section 1), 40 unit rigs, an RtsCamera driven by a TouchInput (both on
+## The main scene (ROADMAP Phase 1 boxes 1 and 2, P117, P116): a MatchRunner on the controls_test
+## scenario, a 48x48 map of 64 x 32 px diamond tiles (ADR 0023 section 1) that GroundLayer draws and
+## MapView only bakes, 40 unit rigs, an RtsCamera driven by a TouchInput (both on
 ## data/input_settings.tres), and the Dev button. Composition only: the camera and gesture rules are
 ## tested in tests/view and tests/input. Fingers enter through the touch_events helper, which
 ## converts base px to the window px that push_input takes.
@@ -12,6 +12,7 @@ extends GdUnitTestSuite
 
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
+const Rig: GDScript = preload("res://tests/view/support/ground_rig.gd")
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const SETTINGS_PATH: String = "res://data/input_settings.tres"
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
@@ -81,9 +82,17 @@ func test_map_is_a_48_by_48_tile_diamond_from_the_scenario() -> void:
 	assert_that(_map.image().get_size()).is_equal(Vector2i(384, 384))
 	assert_str(_map.image().get_pixel(3, 3).to_html(false)).is_equal("5e7d4a")
 	assert_str(_map.image().get_pixel(8 + 3, 3).to_html(false)).is_equal("6f8f57")
-	assert_int(_map.draw_count()).is_equal(1)
-	assert_that(_map.drawn_rect()).is_equal(Rect2(0, 0, 48, 48))  # Cells, under the cell transform.
-	assert_that(_map.drawn_transform()).is_equal(IsoProjection.cell_to_px())
+	# The ground draws the map (P116): the bake stays, for the minimap and P52, and its rect is not.
+	var ground: GroundLayer = _main.get_node("GroundLayer")
+	assert_object(_map.ground).is_same(ground)
+	assert_bool(ground.covers_map()).is_true()
+	assert_int(_map.draw_count()).is_equal(0)
+	assert_that(_map.drawn_rect()).is_equal(Rect2())
+	assert_that(_map.drawn_transform()).is_equal(Transform2D.IDENTITY)
+	assert_int(ground.write_count()).is_equal(48 * 48)  # One tile for each cell, grass a or b.
+	assert_that(Rig.key_at(ground, ground.atlas(), 0, 0)).is_equal(&"grass_a")
+	assert_that(Rig.key_at(ground, ground.atlas(), 1, 0)).is_equal(&"grass_b")
+	assert_that(Rig.key_at(ground, ground.atlas(), 47, 47)).is_equal(&"grass_a")
 	assert_that(_map.get_global_transform()).is_equal(Transform2D.IDENTITY)  # The node is at 0.
 
 

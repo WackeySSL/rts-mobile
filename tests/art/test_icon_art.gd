@@ -52,9 +52,9 @@ const REASONS: Array[String] = [
 ]
 const MAP_GLYPHS: Array[String] = ["glyph_offline", "glyph_under_attack"]
 const FLAGS: Array[String] = ["rally_infantry", "rally_vehicles"]
-## The factions' emblems (P103: the Derrick League's; P104 adds the Lumen Accord's), pinned in
-## test_fossil_buildings.gd.
-const EMBLEMS: Array[String] = ["emblem_fossil"]
+## The factions' emblems (P103: the Derrick League's, pinned in test_fossil_buildings.gd; P104: the
+## Lumen Accord's, pinned in test_renew_emblem.gd).
+const EMBLEMS: Array[String] = ["emblem_fossil", "emblem_renew"]
 ## The colours the item icons and the flags may use: STYLE.md's palette with A's muted materials of
 ## ADR 0022 (the building icons use them; P92b brings the unit icons), the neutral team colour that
 ## a unit's item icon carries, and the greys of the team layer.
@@ -134,7 +134,7 @@ func test_the_icon_folder_holds_exactly_the_files_the_style_guide_lists() -> voi
 		found.append(path.get_file().get_basename())
 	expected.sort()
 	assert_array(found).is_equal(expected)
-	assert_int(found.size()).is_equal(32)
+	assert_int(found.size()).is_equal(33)
 
 
 func test_every_icon_is_a_128_px_canvas_imported_at_scale_one_and_every_flag_layer_at_half(

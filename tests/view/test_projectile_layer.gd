@@ -395,6 +395,10 @@ func test_the_main_scene_has_the_layer_after_the_bars_at_z_120_in_world_space_at
 	assert_int(layer.z_index).is_equal(40)  # ADR 0023 section 2.
 	assert_bool(layer.z_as_relative).is_false()
 	assert_object(layer.runner).is_same(runner)
+	# The sorted world gives the muzzle heights: the light tank's sheet, not the weapon's table row.
+	assert_object(layer.world_sort).is_same(main.get_node("WorldSort"))
+	var muzzle: float = float((load(IsoIndex.PATH) as IsoIndex).sheet(&"light_tank").muzzle_lift_px)
+	assert_float(muzzle).is_greater(0.0)
 	runner.paused = true  # The scene's runner plays on its own: hold it while the snapshot is set.
 	for at_size: int in SIZES.size():
 		get_window().size = SIZES[at_size]
@@ -414,7 +418,7 @@ func test_the_main_scene_has_the_layer_after_the_bars_at_z_120_in_world_space_at
 		# A world layer: the shell on the middle of the map is seen where the camera looks.
 		# Lifted by the weapon's muzzle height, so it is seen that much above the middle.
 		var seen: Vector2 = camera.world_to_screen(layer.to_global(layer.quad_position(0)))
-		var lifted: Vector2 = VIEWS[at_size] * 0.5 - Vector2(0.0, TANK_LIFT)
+		var lifted: Vector2 = VIEWS[at_size] * 0.5 - Vector2(0.0, muzzle)
 		assert_vector(seen).is_equal_approx(lifted, Vector2(0.01, 0.01))
 
 

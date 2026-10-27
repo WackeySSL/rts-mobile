@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://game/sim/defs/BuildingDef.gd" id="1_building"]
 [ext_resource type="Resource" path="res://data/units/fossil_radar.tres" id="2_requires"]
+[ext_resource type="Resource" path="res://data/weapons/fossil_rupture.tres" id="3_rupture"]
 
 [resource]
 script = ExtResource("1_building")
@@ -17,3 +18,8 @@ tab = 0
 requires = ExtResource("2_requires")
 footprint = Vector2i(3, 3)
 power = -60
+strike_kind = 1
+charge_ticks = 4500
+strike_radius = 3000
+strike_delay = 45
+strike_weapon = ExtResource("3_rupture")

@@ -50,6 +50,13 @@ page is rebuilt on the generated frames. "Derrick League units" under "Generated
 look; the sections on the layer contract, the catalogue, the enemy look, the gallery and the reskin
 follow.
 
+**v1.11 (Phase 3, P104)** replaces P99's blockouts of the Lumen Accord's eight buildings with models
+under the same art ids (Grid Hub, Wind Park, Synthesis Works, Crew Hall, Motor Works, Relay Tower,
+Rail Battery with its 16 heads, Blackout Array), adds the faction's emblem (`emblem_renew.svg`) and
+shows both factions' buildings on the Build page. "Buildings" gets a section for them; "Look",
+"Blockouts of Phase 3", "Icons and glyphs", "Catalogue", "Readability check", "Gallery" and "Open
+points" say where they changed.
+
 **v1.12 (Phase 3, P102)** models the six Lumen Accord units (Linemen, Breakers, Swift, Torque,
 Arcline, Fuel Runner) in place of their blockouts, under the same art ids, and adds them to the
 gallery's Units page under the Derrick League's. "Lumen Accord units" under "Generated art" says
@@ -66,8 +73,8 @@ was "too square and too toy-like", he wants it "more true to nature"). Real mate
 concrete, corrugated steel, tarmac, sandbags, canvas, rust, dirt), believable proportions and detail
 density, soft shading and weathering, small team markings. Not cartoonish, not photoreal, no flat
 colour fields. One light from the top left for everything. **Buildings and units are generated
-isometric models** since P103 and P101 (the Derrick League's eight buildings, see "Buildings", and
-six units, see "Derrick League units"; the Lumen Accord's follow in P104 and P102). The ore cells
+isometric models** since P103, P104, P101 and P102 (the eight buildings of each faction, see "Buildings",
+and the six units of each, see "Derrick League units" and "Lumen Accord units"). The ore cells
 keep their flat look, so the rules below that speak of the 3 px outline or of flat colours still
 describe them; the unit icons, the tab icons and the glyphs stay flat, and the five hand-drawn
 building item icons keep the oblique view they were drawn in until P114 moves their readers (see
@@ -240,10 +247,10 @@ team cap at its tip; that silhouette is another game's tower (CLAUDE.md, Legal).
 ### Blockouts of Phase 3 (P99)
 Boxes, wedges, prisms and spheres sized by size class or footprint with a team band each, so every
 view row builds against real frames, names and canvases; the art rows P101 to P105 replace the
-models under the same ids. P103 replaced the eight Derrick League buildings (see "Buildings"), P101
-the six Derrick League units ("Derrick League units" below) and P102 the six Lumen Accord units
-("Lumen Accord units" below); the Lumen Accord's buildings are still blockouts. Frames per type:
-vehicle 16 hull (+ 16 turret), tanker 16, squad 8, building 1 (+ 16 head for the defence); 304
+models under the same ids. P103 replaced the eight Derrick League buildings and P104 the eight Lumen
+Accord buildings (see "Buildings"), P101 the six Derrick League units ("Derrick League units" below)
+and P102 the six Lumen Accord units ("Lumen Accord units" below); no blockout is left. Frames per
+type: vehicle 16 hull (+ 16 turret), tanker 16, squad 8, building 1 (+ 16 head for the defence); 304
 frames in all, and a shadow frame for each hull frame (176), a sheet and a card for each type.
 
 | Role | Derrick League (`fossil`) | Lumen Accord (`renew`) | Kind |
@@ -522,9 +529,9 @@ the rally flags, which are drawn from two layers that share one canvas:
 The Derrick League's eight buildings (plan row P103, ADR 0023 sections 5 to 7): generated models in the
 isometric view under the same art ids as P99's blockouts. They replace P91b's six oblique buildings,
 whose files, tests and gallery pages (Build and Seam) went with this row; the Lumen Accord's eight
-follow in P104. The projection, the light, the cast shadows, the sheets and the files are under
-"Projection", "Light" and "Generated art"; this section is what a building adds. The look is poured
-concrete, riveted steel, rust, gas spheres, flare stacks, pipe racks, hazard stripes and warm lamps,
+(P104) are under "The Lumen Accord's buildings" at the end of this section. The projection, the
+light, the cast shadows, the sheets and the files are under "Projection", "Light" and "Generated
+art"; this section is what a building adds. The look is poured concrete, riveted steel, rust, gas spheres, flare stacks, pipe racks, hazard stripes and warm lamps,
 in wedges and trapezoids (ADR 0023 section 6). Each is placed from primitives in
 `assets/art/models/fossil/<id>.tres`, so a change is a change of the model and a run of
 `bash scripts/gen-art.sh`, never of a frame.
@@ -606,6 +613,113 @@ in wedges and trapezoids (ADR 0023 section 6). Each is placed from primitives in
   in front of and behind it, at zoom 1, 0.75 and 1.5 in the Signal and the Arktisk triad on grass
   and sand; the Iso page shows its frames, the head's 16 directions among them. Health bars, the offline
   glyph, damage and the dimming of low power are the view's, not part of these files.
+
+### The Lumen Accord's buildings (P104)
+Plan row P104 (ADR 0023 sections 5 to 7) replaces P99's eight Lumen Accord blockouts by models under
+the same art ids, regenerated with `bash scripts/gen-art.sh`. What is said above holds for them
+too: the projection and the light, one view and no direction in a building's file names, a canvas
+exactly the footprint wide, the anchor at the back corner (Spec 03), a cast shadow of its own,
+Spec 05's heights, and the dock and the exits on the +y wall. The Rail Battery alone has a second
+part, its gun head, in 16 frames. Each is placed from primitives in
+`assets/art/models/renew/<id>.tres`; the Lumen Accord faces +y (south-west on the screen, Spec 04),
+which is the wall with the door.
+
+| Type id | Name | Footprint | Silhouette (the model's `silhouette` line) |
+| --- | --- | --- | --- |
+| `renew_hq` | Grid Hub | 3x3 | A broad white hexagonal hall on a graphite plinth with a glass band under a wide team light band and a glowing team gap under its white lid, a smaller hexagonal control drum rising from its middle with its own glass ring and team band, two dark solar panels on the lower roof, three battery cabinets along its right wall, an entrance pavilion with team light posts and mint lights on its front and a slim titanium mast with a team ring, a flat hexagonal array plate and a mint lamp. |
+| `renew_power` | Wind Park | 2x2 | Two slim white wind turbines of different heights with four-bladed rotors whose blades thin to team-coloured tips, a team ring and a team nacelle band on each, a low transformer house with a wide team band under a white lid and a dark door, and a row of three battery cabinets with mint lights. |
+| `renew_refinery` | Synthesis Works | 3x3 | Three upright glass reaction cylinders of three heights with ceramic caps and wide team rings, joined by titanium pipes to a low white process hall with a wide team band, a skylight, two hexagonal vent drums and a dark dock mouth between two rails in the middle of its front wall, with mint guide lights across the apron. |
+| `renew_barracks` | Crew Hall | 2x2 | A long low white hall with a glass window band under a wide team band and a flat white lid with three dark solar panels, a taller hexagonal rotunda rising behind its left end with a glass band, a team ring and a glass lantern, a dark door under a team lintel and a mint light in the hall's east front column and a slim signal pole with a mint lamp beside the door. |
+| `renew_factory` | Motor Works | 3x3 | A wide tall white hangar with a broad team band round its walls under a long glazed roof with chamfered shoulders and team light rails, three hexagonal vents with mint lamps along its ridge, a tall dark vehicle door in the middle of its front wall under the team band with a team light post either side, and mint guide lights on the apron. |
+| `renew_radar` | Relay Tower | 2x2 | A low white hexagonal relay house with a glass band and a wide team band beside a slim titanium pole with team rings that carries three upright hexagonal phased-array faces, each a blue-grey panel in a team-coloured frame, turned alternately to the front and to the side. |
+| `renew_defence` | Rail Battery | 1x1 | A squat white hexagonal plinth with a team band carrying a low hexagonal gun head with a team ring and one long thin titanium rail barrel in a white sleeve with three graphite coil collars and a muzzle ring. |
+| `renew_strike` | Blackout Array | 3x3 | An open square frame of four tall white hexagonal columns with two team rings each and graphite caps, joined at their tops by a ring of graphite bars with a team light strip and a mint node under each bar, standing round a hexagonal capacitor core of stacked white drums with a team band, a glass ring and a mint cap. |
+
+- **The look** is white ceramic on graphite: every building stands on a graphite plate, its walls
+  are ceramic (white where the light falls on them), each roof a white lid over a recessed team
+  light gap, with glass bands, titanium rails and panel joints, blue-grey array faces and mint
+  status lights (a light over a door, guide lights across an apron, a node under a bar). Hexagons are
+  the form (the Grid Hub's two tiers, the Crew Hall's rotunda, the Relay Tower's house, the Rail
+  Battery, the Blackout Array's columns and core) beside round drums (the tanks, the towers, the
+  vents). Solar panels are dark wedges tilted to the south-east (`slope=0.95`, the generator's one
+  tilted shape), battery cabinets small white boxes with a mint light. No geography, flag, star or
+  insignia (ADR 0023 decision 1), no brick, no dome with a colonnade and no timber (dropped from the
+  canvas's Concordia board as geography).
+- **Canvas and anchor** (px at 2x; the height in px at zoom 1 against Spec 05's band, and the team
+  share of the default view), which `tests/art` pins:
+
+| Type id | Hull canvas | Anchor | Shadow canvas | Height | Spec 05 | Team share, % |
+| --- | --- | --- | --- | --- | --- | --- |
+| `renew_hq` | 384 x 358 | (192, 165) | 384 x 194 | 118 | 80-150 | 8.5 |
+| `renew_power` | 256 x 268 | (128, 139) | 316 x 134 | 98 | 50-100 | 7.7 |
+| `renew_refinery` | 384 x 294 | (192, 101) | 398 x 202 | 78 | 60-80 | 8.2 |
+| `renew_barracks` | 256 x 236 | (128, 107) | 258 x 154 | 62 | 50-100 | 7.3 |
+| `renew_factory` | 384 x 332 | (192, 139) | 454 x 216 | 94 | 80-150 | 7.3 |
+| `renew_radar` | 256 x 258 | (128, 130) | 260 x 132 | 91 | 50-100 | 8.3 |
+| `renew_defence` | 128 x 104 | (64, 39) | 184 x 94 | 43 | 40-60 | 10.3 |
+| `renew_strike` | 384 x 388 | (192, 195) | 480 x 242 | 109 | 80-150 | 9.4 |
+
+- **Team colour** is about 7 to 11 % of a default view (the pin is 6.5 to 12.5 %): light bands the
+  height of a window (the Grid Hub's two, the halls' bands, the tanks' rings, the nacelle and tower
+  bands of the turbines, the Relay Tower's rings and array frames, the Blackout Array's rings and
+  light strip), the glowing gap under a white lid, light posts beside a door, the tips of the
+  blades and a lintel. A roof is never a team plate (`test_artgen_plates.gd`).
+- **Dock and exits.** `BuildingDef.dock` (the Synthesis Works, (1, 3)) and `exit` (the Motor Works
+  (1, 3), the Crew Hall (1, 2)) are cells south of the footprint, as for the Derrick League. The art
+  draws each as one graphite door or mouth, a thin face as tall as a door, on the +y wall in the
+  cell's column (the plates and plinths are graphite too, but low): the Synthesis Works' dark mouth
+  between two titanium rails under its team band, the Motor Works' tall door with titanium slats
+  and a team light post either side, the Crew Hall's door in its east column under a team lintel
+  and a mint light. Mint guide lights lie across each apron. `tests/art` pins exactly one graphite
+  door in the cell, against the data.
+- **The Wind Park** is two slim turbines of different heights (hub at 1.8 and 1.5 tiles), each a
+  tower with a team ring, a nacelle with a team band and a rotor of four tapered blades facing +y,
+  one prism each, ending in a team tip: eight blades, eight tips. The generator has no tilted
+  primitive, so a rotor of three blades would be a staircase of boxes; four blades are clean. (The
+  emblem's rotor has three.) A blade that points back (left, down) is a prism with `taper` above 1:
+  the ring at its root is the wide one.
+- **The Rail Battery** is the building with a gun: a hexagonal plinth with a team band and a low
+  hexagonal head that faces its target in 16 steps like a tank's turret, with one long thin rail
+  (a titanium barrel in a white sleeve, three graphite coil collars and a muzzle ring) for the
+  anti-vehicle role of ADR 0023 section 7 (the sim numbers are data). Every piece begins inside the
+  one before it, so each of the 16 head frames is one shape (`tests/art` pins it, and that there is
+  one barrel, not two); the muzzle ring is the primitive that reaches farthest along +x, so the
+  sheet's `muzzle_lift_px` is where a shot leaves (33 px at zoom 1). The head frames are 204 x 114
+  px at 2x with the pivot at (102, 70), which the sheet's mount puts 0.66 tile above the footprint's
+  centre. The team share counts the default head, facing the Lumen Accord's south-west (`d10`).
+- **The Blackout Array is neither a spire nor a dish** (CLAUDE.md, Legal; ADR 0023 section 10:
+  no glowing crystal spire, no ion-cannon dish). It is an open square frame: four tall white
+  hexagonal columns with two team rings each and graphite caps, joined at their tops by a ring of
+  graphite bars with a team light strip and a mint node under each bar, standing round a hexagonal
+  capacitor core of stacked drums that stays lower than the ring. It has no sphere, no wedge, no
+  tapered prism and no upright disc; `tests/art` pins that, and that the frame is open (its members
+  cover 35 % of the box they stand in on average, 42 % at most, and under 10 % above the core).
+  The columns are plain: no stack of discs, which would be a coil tower (the Originality rule bans
+  tesla-coil towers).
+- **Heights** follow Spec 05: the Grid Hub, the Motor Works and the Blackout Array are the tall ones
+  (80 to 150 px), the Synthesis Works stays under 80, the Wind Park, the Crew Hall and the Relay
+  Tower are 50 to 100 px and the Rail Battery 40 to 60.
+- **Modelling notes.** A wedge with `slope=1` loses its sloped face (the generator culls it): the
+  solar panels and the glazed roof use `slope=0.95`. An `axis=x` prism is (length, width, height),
+  an `axis=y` prism (width, length, height). A regular hexagon is a prism of `sides=6` with equal
+  first and second sizes; it has flats towards +x and -x and corners towards +y and -y.
+- **Readability.** Each default view is identifiable at 32 px in greyscale (a body and a spread of
+  tones, `test_artgen_readability.gd`), and the eight read apart: the largest overlap of two
+  silhouettes at 32 px is 0.80 (intersection over union, the Grid Hub and the Crew Hall, two white
+  tiered halls) and the pin is 0.85.
+- **The emblem** is `emblem_renew.svg` in `assets/art/svg/icons/`, the art id `FactionDef.emblem`
+  names, the Lumen Accord emblem in the Derrick League emblem's style (greys only, a dark rim round
+  a white ring round a dark panel, rivets on the ring, 128 x 128 at import scale 1.0, nothing in the
+  outer pixel) but in a different frame: a flat-topped hexagon, not an octagon. The panel holds a
+  white three-blade rotor on a round hub, the blades swept leaves turned 20 degrees off the vertical
+  so it is a turbine and not a three-pointed star, over two shallow horizon arcs; six rivets sit on
+  the ring at the hexagon's corners. No star, no flag, no wreath, no crest, no letter (ADR 0023
+  section 6: a three-blade rotor in place of the canvas's four-pointed sparkle). The emblem is
+  not a star and not a trefoil either: the blades are slim leaves with a gap to the hub's ring.
+- **Judge it in the gallery.** The Build page shows each Lumen Accord building on the iso ground
+  with a tank in front of and behind it, at zoom 1, 0.75 and 1.5 in the Signal and the Arktisk
+  triad on grass and sand, with the emblem in the faction's key colour beside the item card; the Iso
+  page shows its frames, the head's 16 directions among them.
 
 ## Ore
 Nine opaque tiles, `ore/ore_<level>[a|b].svg`, 128x128 at 2x, import scale 0.5, so one tile is
@@ -689,9 +803,9 @@ selection ring does. The world art (units, buildings, flags) keeps scale 0.5.
 - `item_<type_id>`: a build tile's icon, one per buildable type, named by P72's type id. The eleven
   types are the five buildings the player builds and the six units. The Headquarters is not
   buildable and has none.
-- `emblem_<faction>`: a faction's emblem (P103: `emblem_fossil`, the Derrick League's; P104 adds the
-  Lumen Accord's), drawn like a glyph in greys and tinted at run time; the art id `FactionDef.emblem`
-  names. See "Buildings".
+- `emblem_<faction>`: a faction's emblem (P103: `emblem_fossil`, the Derrick League's; P104:
+  `emblem_renew`, the Lumen Accord's), drawn like a glyph in greys and tinted at run time; the art
+  id `FactionDef.emblem` names. See "Buildings".
 - `glyph_<name>`: HUD, map and result glyphs. A placement reason's glyph is
   `glyph_reason_<reason>`, the `Placement.Reason` name in lower case (`outside`, `ground`,
   `occupied`, `unexplored`, `too_far`, `cap`); the view finds it by name. `OK` has none, and the
@@ -850,11 +964,20 @@ in doubt, choose a plainer real-world form.
 | Signal Mast | A squat concrete control bunker beside an open steel lattice mast on four stepped legs with team girders, carrying a slatted antenna panel and a thin whip. | `iso/fossil/bld/fossil_radar_{hull,shadow}.svg`, 256 wide |
 | Redoubt | A squat poured-concrete bunker with a team band and a short whip aerial, carrying an octagonal gun head with a team ring and one short thick barrel in a vented sleeve with a muzzle brake. | `iso/fossil/bld/defence_turret_{hull,shadow}.svg`, `defence_turret_head_d00..d15.svg`, 128 wide |
 | Deep Bore | An open steel drilling derrick of four stepped lattice tiers on four concrete footings, a heavy drill string through a crown block over a dark well, a doghouse before it and a team band round its platform. | `iso/fossil/bld/fossil_strike_{hull,shadow}.svg`, 384 wide |
+| Grid Hub | A broad white hexagonal hall on a graphite plinth with a glass band under a wide team light band and a glowing team gap under its white lid, a smaller hexagonal control drum rising from its middle with its own glass ring and team band, two dark solar panels on the lower roof, three battery cabinets along its right wall, an entrance pavilion with team light posts and mint lights on its front and a slim titanium mast with a team ring, a flat hexagonal array plate and a mint lamp. | `iso/renew/bld/renew_hq_{hull,shadow}.svg`, 384 wide |
+| Wind Park | Two slim white wind turbines of different heights with four-bladed rotors whose blades thin to team-coloured tips, a team ring and a team nacelle band on each, a low transformer house with a wide team band under a white lid and a dark door, and a row of three battery cabinets with mint lights. | `iso/renew/bld/renew_power_{hull,shadow}.svg`, 256 wide |
+| Synthesis Works | Three upright glass reaction cylinders of three heights with ceramic caps and wide team rings, joined by titanium pipes to a low white process hall with a wide team band, a skylight, two hexagonal vent drums and a dark dock mouth between two rails in the middle of its front wall, with mint guide lights across the apron. | `iso/renew/bld/renew_refinery_{hull,shadow}.svg`, 384 wide |
+| Crew Hall | A long low white hall with a glass window band under a wide team band and a flat white lid with three dark solar panels, a taller hexagonal rotunda rising behind its left end with a glass band, a team ring and a glass lantern, a dark door under a team lintel and a mint light in the hall's east front column and a slim signal pole with a mint lamp beside the door. | `iso/renew/bld/renew_barracks_{hull,shadow}.svg`, 256 wide |
+| Motor Works | A wide tall white hangar with a broad team band round its walls under a long glazed roof with chamfered shoulders and team light rails, three hexagonal vents with mint lamps along its ridge, a tall dark vehicle door in the middle of its front wall under the team band with a team light post either side, and mint guide lights on the apron. | `iso/renew/bld/renew_factory_{hull,shadow}.svg`, 384 wide |
+| Relay Tower | A low white hexagonal relay house with a glass band and a wide team band beside a slim titanium pole with team rings that carries three upright hexagonal phased-array faces, each a blue-grey panel in a team-coloured frame, turned alternately to the front and to the side. | `iso/renew/bld/renew_radar_{hull,shadow}.svg`, 256 wide |
+| Rail Battery | A squat white hexagonal plinth with a team band carrying a low hexagonal gun head with a team ring and one long thin titanium rail barrel in a white sleeve with three graphite coil collars and a muzzle ring. | `iso/renew/bld/renew_defence_{hull,shadow}.svg`, `renew_defence_head_d00..d15.svg`, 128 wide |
+| Blackout Array | An open square frame of four tall white hexagonal columns with two team rings each and graphite caps, joined at their tops by a ring of graphite bars with a team light strip and a mint node under each bar, standing round a hexagonal capacitor core of stacked white drums with a team band, a glass ring and a mint cap. | `iso/renew/bld/renew_strike_{hull,shadow}.svg`, 384 wide |
 | Infantry rally flag | A slim metal pole standing up from a round foot plate with a small triangular pennant, over a round ring on the ground. | `flags/rally_infantry_{hull,team}.svg`, 128x128 |
 | Vehicles rally flag | A slim metal pole standing up from a square foot plate with a wide notched swallowtail banner, over a square frame on the ground. | `flags/rally_vehicles_{hull,team}.svg`, 128x128 |
 | Tab, item and glyph icons | Three tab pictograms, eleven build tile icons and seventeen glyphs, one silhouette each. | `icons/<kind>_<name>.svg`, 128x128, import scale 1.0, see "Icons and glyphs" |
 | Ore cell | A square of dirt, bare or holding three to six gold nuggets and crystals by level. | `ore/ore_<level>[a\|b].svg`, 128x128, see "Ore" |
 | Derrick League emblem | A regular octagon with a thick dark rim, a dark panel holding a white steel I-beam with tapered flanges and four rivets on the white ring at the diagonal corners. | `icons/emblem_fossil.svg`, 128x128, see "Buildings" |
+| Lumen Accord emblem | A regular flat-topped hexagon with a dark rim, a white ring with six rivets and a dark panel holding a white three-blade rotor on a round hub, turned off the vertical, above two shallow horizon arcs. | `icons/emblem_renew.svg`, 128x128, see "Buildings" |
 | Ghost hatch | Bold diagonal bands rising to the right, a seamless tile. | `ui/ghost_hatch.svg`, 128x128, see "Ghosts" |
 | Ghost dots | Small round dots in a staggered lattice, a seamless tile. | `ui/ghost_seen.svg`, 128x128, see "Ghosts" |
 | Ground diamond | One cell of ground seen at 2:1: a 128 x 64 diamond whose base colour reaches every edge, with a soft rim and a few objects (tufts, ripples, bushes, boulders, swells, pits) in the middle, an a and a b for each of the six terrains. | `ground/<terrain_id>_{a,b}.svg`, 128x64, see "Iso ground tiles" |
@@ -933,6 +1056,18 @@ and the open derrick on its wide slab. Compared pair by pair on their silhouette
 union of the 32 px masks) the largest overlap is 0.82 (Rigworks and Turbine Hall) and the smallest 0.36
 (Cracking Plant and Signal Mast). The Deep Bore's members cover 10 % of their box on average and the
 mast's 18 %. The ore tiles at 32 px per tile in greyscale read by nugget count and size (see "Ore").
+
+Lumen Accord building results (P104, `tests/art/test_renew_buildings.gd`, the default view at zoom 1,
+alpha above 0.95 for the share, the Rail Battery's head facing `d10`): the team share is 8.5 % (Grid
+Hub), 7.7 % (Wind Park), 8.2 % (Synthesis Works), 7.3 % (Crew Hall), 7.3 % (Motor Works), 8.3 % (Relay
+Tower), 10.3 % (Rail Battery) and 9.4 % (Blackout Array). The hull frames are 2.3 KB (Rail Battery)
+to 20.5 KB (Synthesis Works), under the 28 KB limit. The eight default views were scaled to 32 px for
+their longest side in greyscale: the two white hexagonal tiers with a mast, the two turbines beside
+a shed, the three glass tanks behind a hall, the long hall with its rotunda, the glazed hangar, the
+house beside a thin mast with three plates, the squat plinth with a long rail and the open square
+frame round a core. Compared pair by pair on their silhouettes (intersection over union of the 32
+px masks) the largest overlap is 0.80 (Grid Hub and Crew Hall) and the smallest 0.41 (Synthesis
+Works and Relay Tower).
 
 ## Feedback markers (new)
 The target flash, the attack-move marker, the long-press anchor and the box are drawn in code
@@ -1361,12 +1496,14 @@ three on first show) and start hidden, so the Units page is as it was.
   direction.)
 - **Build** (plan row P103, `game/view/art_gallery_build.gd`) shows one building at a time, a list to
   scroll (drag it), with `<` and `>` for the previous and the next of the 16 building models (the
-  Derrick League's eight, then the Lumen Accord's blockouts until P104), the faction's emblem and the
+  Derrick League's eight, then the Lumen Accord's eight), the faction's emblem (tinted in its key
+  colour) and the
   item card at the top right (the Iso page's list, buttons and card, left of the page button) and a
   section for each camera zoom (1, 0.75 and 1.5, the zoom levels of `data/input_settings.tres`) and each triad (Signal, Arktisk), grass on the left and sand
   on the right. A section is the building on the iso ground (the grass or sand diamonds of the
   Terrain page, one cell of margin round the footprint) with a tank of its faction (the Derrick
-  League's is the Bullhead of P101) in front of and behind it: the front one south of the footprint's front corner on the screen, the behind one over the
+  League's is the Bullhead of P101, the Lumen Accord's the Torque of P102 (`renew_tank`), each in
+  its faction's default view, `d06` or `d10`) in front of and behind it: the front one south of the footprint's front corner on the screen, the behind one over the
   back corner and to the right, so the building covers part of it. It draws what a match draws: one
   `IsoAtlas` is baked for the two players (the faction's key triad replaced by the player's, requested
   scale 1.0), every sprite is a region of it at `0.5 / bake_scale` times the zoom, the three rigs
@@ -1538,6 +1675,22 @@ Renaming a unit or a unit type is a data change, not a reskin.
   them); (6) the dock and the exits: the Cracking Plant's hopper, the Heavy Yard's door and the
   Bunkhouse's door are on the left-front wall, in the cells the data names. The ground diamonds under a building are the colour of the half they stand on, so they only
   show their tufts; if he wants the patch to read, the fix is a darker half on this page, not new art.
+- **P104, for Michael on the phone (Dev, Art gallery, button at the top right: Build, then `>` past
+  the Derrick League's eight to the Lumen Accord's):** (1) the eight Lumen Accord buildings
+  themselves: the silhouettes against the canvas's Nexus, Assembly Bay, Extractor, Fusion Core,
+  Sensor Array, Training Hall and Rail Battery and Concordia's Wind Park, the white ceramic on
+  graphite look with glass, titanium, blue-grey and mint, the hexagons, and the team marks (7 to 11 %,
+  as light bands, a glowing gap under each white lid, light posts, rings and blade tips, never a roof
+  plate); (2) the Wind Park's turbines: four tapered blades read as a windmill, three would need
+  tilted blades (the generator has none), so he may want the rotor redrawn by hand over a generated
+  base; (3) the Blackout Array as an open square frame round a core (no crystal spire, no dish, no
+  coil tower), the one building a player must not mistake for another game's superweapon; (4) the
+  emblem (a hexagon with a three-blade rotor and two horizon arcs) beside the item card on the Build
+  page, and whether the rotor reads as a turbine and not as a star or a trefoil at 32 px; (5) the
+  Rail Battery's head, which turns in 16 steps (the Iso page shows all of them), and its long rail;
+  (6) the dock and the exits: the Synthesis Works' mouth, the Motor Works' door and the Crew Hall's
+  door are on the left-front wall, in the cells the data names; (7) the tank in front of and behind
+  each building: it is the Torque of P102 (`renew_tank`) in its default view, `d10`.
 - P101 (Phase 3), please judge on the phone (Dev, Art gallery, the first page: Units, then Iso) the
   six Derrick League units: the silhouettes of "Derrick League units", their team marks (7 to 11 %
   of a unit, as bands, rings and stripes) in both triads on both grounds, how the Flarejack looks
@@ -1611,5 +1764,6 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-10-27 | v1.8 (P105, art-director): the iso ground (twelve 128 x 64 diamonds with a soft rim, a and b for each terrain id; "Iso ground tiles"), the six oil and gas field stages, the neutral wellhead with its cast shadow and the crater decal ("Fields"), the off-map colour #16191D, the greyscale means of all of them, the Terrain gallery page, the catalogue rows and one open point for the phone. The files are hand-run SVG, not generated. |
 | 2026-10-27 | v1.9 (P103, art-director): the Derrick League's eight buildings as models under the blockouts' art ids (Rigworks, Turbine Hall, Cracking Plant, Bunkhouse, Heavy Yard, Signal Mast, Redoubt with 16 heads, Deep Bore as an open derrick), the emblem `emblem_fossil.svg`, the Build page (a tank in front of and behind each building at three zooms in two triads, through `IsoAtlas`), the ghost row on the iso barracks; P91b's six oblique buildings, their files, tests and the Build and Seam pages deleted. "Buildings", "Look", "Scale", "Palette", "Drawing rules", "Layer contract", "Ghosts", "Icons and glyphs", "Catalogue", "Readability check", "Health bars", "Gallery" and "Open points" brought up to date. |
 | 2026-10-27 | v1.10 (P101, art-director): the six Derrick League units modelled under their art ids (Roustabouts, Wildcatters, Flarejack, Bullhead, Mortar Rig, Tanker; "Derrick League units"), the top-down unit files deleted, the Layer contract narrowed to the rally flags, the Catalogue, Enemy target look and Reskin reworded (no `UnitLayer.ART_DIR`, `<type>_team.svg` or `UnitLayer.team_colors`), the Units page rebuilt on the generated frames, the Vehicles page deleted. |
+| 2026-10-27 | v1.11 (P104, art-director): the Lumen Accord's eight buildings as models under the blockouts' art ids (Grid Hub, Wind Park, Synthesis Works, Crew Hall, Motor Works, Relay Tower, Rail Battery with 16 heads, Blackout Array as an open frame, neither a spire nor a dish), the emblem `emblem_renew.svg` (a hexagon with a three-blade rotor and two horizon arcs), their canvases, heights and team shares, "The Lumen Accord's buildings" under "Buildings", the Build page for both factions, "Look", "Blockouts of Phase 3", "Icons and glyphs", "Catalogue", "Readability check", "Gallery" and "Open points" brought up to date. |
 | 2026-10-27 | v1.12 (P102, art-director): the six Lumen Accord units modelled under their art ids (Linemen, Breakers, Swift, Torque, Arcline, Fuel Runner; "Lumen Accord units"), the Catalogue and the readability results for them, the Units page extended with the Lumen Accord's two lines (`AccordA`, `AccordB`, `ACCORD_IDS`, `ACCORD_NAMES`) under the Derrick League's, the zoom row a little lower to make room. |
 | 2026-10-27 | v1.12 (P102 fix round, art-director; no version bump, the six units are the same row): the Torque stands on one continuous round-ended track a side with a row of titanium road wheels (it stood on four corner pods) and carries a graphite barrel with a muzzle block (it was titanium and vanished at 32 px; canvas 162 x 96), the Fuel Runner's tank is round (ten sides) with a hatch dome on a slim chassis (canvas 174 x 130), the Linemen's reel hub is wider than its team flanges, the Breakers' silhouette line says a team ring at each end; "Lumen Accord units", the Catalogue, the readability results and the open point for the phone brought up to date. |

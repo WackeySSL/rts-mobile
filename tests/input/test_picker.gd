@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const Rig: GDScript = preload("res://tests/view/support/fog_rig.gd")
+const Lifts: GDScript = preload("res://tests/view/support/lifts.gd")
 ## Hit radius of tank 1 in base px at zoom [0.75, 1.0, 1.5]: the larger of dp(24) and the horizontal
 ## semi-axis of its ground ellipse (500 milli: 22.63 px at zoom 1, ADR 0023 section 3), so only a
 ## desktop or a tablet at zoom 1.5 reaches past the 48 dp across (33.94 px).
@@ -278,8 +279,10 @@ func test_filling_a_snapshot_writes_the_rows_in_place_and_keeps_the_sizes() -> v
 	assert_array(snap.ids).is_equal(PackedInt32Array(range(1, 41)))
 	var counts: Array[int] = [snap.owners.count(1), snap.owners.count(2), snap.type_index.count(0)]
 	assert_array(counts).is_equal([30, 10, 40])
-	assert_that(snap.screen_pos[0]).is_equal(_camera.world_to_screen(Vector2(-320, 432)))
-	assert_that(snap.screen_pos[30]).is_equal(_layer.unit_screen_position(30))
+	# The centre is the lifted one: the ground point raised by the sheet's pick lift (zoom 1).
+	var lift: float = Lifts.pick(&"light_tank")
+	assert_that(snap.screen_pos[0]).is_equal(_camera.world_to_screen(Vector2(-320, 432 - lift)))
+	assert_that(snap.screen_pos[30]).is_equal(_layer.unit_screen_position(30) - Vector2(0.0, lift))
 	assert_float(snap.radius_px[0]).is_equal(24.0)  # Art 22.63 px at zoom 1 loses to dp(24).
 	# A second type, 1000 milli = 45.25 px, for row 5. The layer reads the published snapshot, so the
 	# test writes that (allowed in SYNC, ADR 0012 section 3); a tick would not do, the sim has no
@@ -301,7 +304,7 @@ func test_filling_a_snapshot_writes_the_rows_in_place_and_keeps_the_sizes() -> v
 	# A fill that replaced an array would leave the held one empty.
 	assert_bool(held.all(func(a: Variant) -> bool: return a.size() == 40)).is_true()
 	assert_int(held[5].count(1)).is_equal(30)  # And filled, not just resized.
-	assert_that(held[3][0]).is_equal(_camera.world_to_screen(Vector2(-320, 432)))
+	assert_that(held[3][0]).is_equal(_camera.world_to_screen(Vector2(-320, 432 - lift)))
 	assert_float(snap.radius_px[0]).is_equal_approx(33.9411, 0.001)  # Art 22.63 px * 1.5.
 
 
