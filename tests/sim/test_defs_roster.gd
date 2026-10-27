@@ -5,12 +5,18 @@ extends GdUnitTestSuite
 ## dock and exit cells. A type's art is pinned in tests/art from P99 on. The rules every single file
 ## obeys (a building has speed 0, radius 0 and armour Building; a mobile unit has a radius in
 ## 1..500; a weapon reaches the ring corner; a footprint is square) and the faction rules are
-## test_defs_data's and test_defs_factions_data's, which run them over these files too.
+## test_defs_data's and test_defs_factions_data's, which run them over these files too. The unit
+## files hold the Lumen Accord's fourteen as well (P108): the cases here that walk the files take
+## the Derrick League's by their faction, and test_defs_roster_renew holds the other roster to the
+## same rules.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
+const Cells: GDScript = preload("res://tests/sim/support/roster_cells.gd")
 const UNITS_DIR: String = "res://data/units"
 const WEAPONS_DIR: String = "res://data/weapons"
 const HEADQUARTERS: String = "headquarters"
+## The faction whose files these cases read (UnitDef.faction).
+const FACTION: StringName = &"fossil"
 ## The sidebar tabs (World.Tab) and the movement class of tanks (World.MoveClass).
 const STRUCTURES: int = 0
 const INFANTRY: int = 1
@@ -19,7 +25,7 @@ const VEHICLES: int = 2
 
 func test_the_data_holds_the_eight_buildings_and_the_six_units() -> void:
 	var ids: Array[String] = []
-	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
+	for path: String in _own_files():
 		ids.append(path.get_file().get_basename())
 	var wanted: Array[String] = [
 		"headquarters",
@@ -192,9 +198,10 @@ func test_the_new_weapon_files_hold_their_starting_stats() -> void:
 	}
 	for id: String in weapons:
 		assert_array(_weapon_row(id)).override_failure_message(id).is_equal(weapons[id])
-	# Every weapon file is one of the seven, each used by the unit or building that names it.
+	# Every weapon file is one of the seven here or the Lumen Accord's own two (breaker_rocket and
+	# arcline_gun, test_defs_roster_renew), each used by the unit or building that names it.
 	var files: Array[String] = FileScan.list_files(WEAPONS_DIR, ".tres")
-	assert_int(files.size()).is_equal(7)
+	assert_int(files.size()).is_equal(9)
 	assert_str(_unit("heavy_tank").weapon.resource_path).is_equal(
 		WEAPONS_DIR + "/heavy_cannon.tres"
 	)
@@ -249,7 +256,7 @@ func test_the_redoubts_gun_is_strong_against_infantry_and_weak_against_vehicles(
 
 func test_every_requirement_chain_reaches_the_headquarters_without_visiting_a_file_twice() -> void:
 	var units: Array[UnitDef] = []
-	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
+	for path: String in _own_files():
 		units.append(load(path))
 	assert_array(_chain_problems(units)).is_empty()
 	# The chains the plan names, followed from the file that ends them: the turret asks for a
@@ -317,7 +324,7 @@ func test_the_harvester_carries_500_and_is_unarmed_and_only_the_refinery_brings_
 	assert_str(refinery.free_unit.resource_path).is_equal(harvester.resource_path)
 	assert_str(String(refinery.free_unit.type_id)).is_equal("harvester")
 	# No other file carries ore or comes free with a building.
-	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
+	for path: String in _own_files():
 		var unit: UnitDef = load(path)
 		var file: String = path.get_file()
 		var carries: bool = unit.harvest_capacity > 0
@@ -339,11 +346,11 @@ func test_the_dock_and_exit_cells_are_the_middle_cell_south_of_the_footprint() -
 		var building: BuildingDef = _unit(row[0]) as BuildingDef
 		var cell: Vector2i = building.get(row[1])
 		assert_that(cell).override_failure_message("%s %s" % [row[0], row[1]]).is_equal(row[2])
-		assert_that(cell).is_equal(_south_middle(building.footprint))
-		assert_bool(_touches_footprint(building.footprint, cell)).is_true()
+		assert_that(cell).is_equal(Cells.south_middle(building.footprint))
+		assert_bool(Cells.touches_footprint(building.footprint, cell)).is_true()
 		named[row[0] + "." + row[1]] = true
 	# Every other offset keeps the default, which no rule reads.
-	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
+	for path: String in _own_files():
 		var unit: UnitDef = load(path)
 		if not unit is BuildingDef:
 			continue
@@ -363,24 +370,36 @@ func test_the_cell_rule_accepts_the_ring_of_a_footprint_and_reports_inside_and_b
 	var three: Vector2i = Vector2i(3, 3)
 	# Ring cells of 3x3: the 16 cells at distance one, corners included.
 	for cell: Vector2i in [Vector2i(1, 3), Vector2i(3, 3), Vector2i(-1, -1), Vector2i(-1, 1)]:
-		assert_bool(_touches_footprint(three, cell)).override_failure_message(str(cell)).is_true()
+		(
+			assert_bool(Cells.touches_footprint(three, cell))
+			. override_failure_message(str(cell))
+			. is_true()
+		)
 	# Inside the footprint, and one cell further out than the ring.
 	for cell: Vector2i in [Vector2i(0, 0), Vector2i(1, 2), Vector2i(2, 2), Vector2i(1, 4)]:
-		assert_bool(_touches_footprint(three, cell)).override_failure_message(str(cell)).is_false()
+		(
+			assert_bool(Cells.touches_footprint(three, cell))
+			. override_failure_message(str(cell))
+			. is_false()
+		)
 	for cell: Vector2i in [Vector2i(4, 0), Vector2i(-2, 1), Vector2i(0, -2)]:
-		assert_bool(_touches_footprint(three, cell)).override_failure_message(str(cell)).is_false()
+		(
+			assert_bool(Cells.touches_footprint(three, cell))
+			. override_failure_message(str(cell))
+			. is_false()
+		)
 	# A 2x2 footprint: (1, 2) is the cell below its right column, (1, 1) is inside it.
-	assert_bool(_touches_footprint(Vector2i(2, 2), Vector2i(1, 2))).is_true()
-	assert_bool(_touches_footprint(Vector2i(2, 2), Vector2i(1, 1))).is_false()
-	assert_that(_south_middle(Vector2i(2, 2))).is_equal(Vector2i(1, 2))
-	assert_that(_south_middle(Vector2i(3, 3))).is_equal(Vector2i(1, 3))
-	assert_that(_south_middle(Vector2i(1, 1))).is_equal(Vector2i(0, 1))
+	assert_bool(Cells.touches_footprint(Vector2i(2, 2), Vector2i(1, 2))).is_true()
+	assert_bool(Cells.touches_footprint(Vector2i(2, 2), Vector2i(1, 1))).is_false()
+	assert_that(Cells.south_middle(Vector2i(2, 2))).is_equal(Vector2i(1, 2))
+	assert_that(Cells.south_middle(Vector2i(3, 3))).is_equal(Vector2i(1, 3))
+	assert_that(Cells.south_middle(Vector2i(1, 1))).is_equal(Vector2i(0, 1))
 
 
 func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() -> void:
 	var producers: Dictionary[int, Array] = {STRUCTURES: [], INFANTRY: [], VEHICLES: []}
 	var buildable: Dictionary[int, Array] = {STRUCTURES: [], INFANTRY: [], VEHICLES: []}
-	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
+	for path: String in _own_files():
 		var unit: UnitDef = load(path)
 		var id: String = String(unit.type_id)
 		if unit is BuildingDef and (unit as BuildingDef).produces >= 0:
@@ -405,6 +424,15 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 	assert_array(buildable[VEHICLES]).is_equal(
 		["artillery", "harvester", "heavy_tank", "light_tank"]
 	)
+
+
+## The paths of the unit files of the faction these cases read, in file order.
+func _own_files() -> Array[String]:
+	var found: Array[String] = []
+	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
+		if (load(path) as UnitDef).faction == FACTION:
+			found.append(path)
+	return found
 
 
 ## One text per file whose requirement chain does not reach the Headquarters, or visits a file
@@ -449,22 +477,6 @@ func _chain(unit: UnitDef) -> Array[String]:
 		at = at.requires
 		ids.append(String(at.type_id))
 	return ids
-
-
-## The cell the plan gives a dock or an exit: the middle column of the footprint, the row below it.
-@warning_ignore("integer_division")
-func _south_middle(footprint: Vector2i) -> Vector2i:
-	return Vector2i(footprint.x / 2, footprint.y)
-
-
-## Whether `cell` (an offset from the footprint's top-left tile) is outside the footprint and
-## 8-adjacent to it: the ring of cells around it, corners included.
-func _touches_footprint(footprint: Vector2i, cell: Vector2i) -> bool:
-	var in_ring: bool = (
-		cell.x >= -1 and cell.x <= footprint.x and cell.y >= -1 and cell.y <= footprint.y
-	)
-	var inside: bool = cell.x >= 0 and cell.x < footprint.x and cell.y >= 0 and cell.y < footprint.y
-	return in_ring and not inside
 
 
 ## A building that only has a type_id, for the chain rule.

@@ -4,7 +4,8 @@ extends GdUnitTestSuite
 ## faction's Headquarters, each faction has the three producers, its key triad and its names, and
 ## the producer-faction rule of Production.apply_queue accepts every buildable type of a faction at
 ## the producers the data gives it. The rules run over every file of data/units and
-## data/factions, so a faction that a later row adds is held to them without a new case.
+## data/factions, so a faction that a later row adds is held to them without a new case. The
+## Derrick League (P107) and the Lumen Accord (P108) are the two that ship.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const Worlds: GDScript = preload("res://tests/sim/support/building_worlds.gd")
@@ -18,6 +19,7 @@ const TABS: int = 3
 const COLS: int = 40
 const ROWS: int = 8
 const PITCH: int = 4
+const PER_ROW: int = 10
 const CREDITS: int = 100000
 
 
@@ -46,6 +48,23 @@ func test_every_requires_chain_stays_in_its_faction_and_reaches_its_headquarters
 				"defence_turret": "barracks",
 				"fossil_strike": "fossil_radar",
 				"artillery": "fossil_radar",
+			}
+		)
+	)
+	# The Lumen Accord's, which mirror them under its own ids.
+	var renew: Dictionary[String, String] = _requires_of(load(FACTIONS_DIR + "/renew.tres"))
+	(
+		assert_dict(renew)
+		. is_equal(
+			{
+				"renew_power": "renew_hq",
+				"renew_refinery": "renew_power",
+				"renew_barracks": "renew_power",
+				"renew_factory": "renew_refinery",
+				"renew_radar": "renew_refinery",
+				"renew_defence": "renew_barracks",
+				"renew_strike": "renew_radar",
+				"renew_artillery": "renew_radar",
 			}
 		)
 	)
@@ -165,7 +184,7 @@ func test_the_chain_checks_report_the_headquarters_and_producers_a_faction_needs
 
 ## A faction file holds its id (the file name), a display name, an emblem art id and a key triad of
 ## three `#RRGGBB` strings in capitals (the bake replaces exact strings, ADR 0023 section 5) from
-## light to dark; no two factions share a name, an emblem or a colour. The Derrick League's values
+## light to dark; no two factions share a name, an emblem or a colour. The values of both factions
 ## are the ADR's (sections 5 and 6).
 func test_every_faction_file_holds_its_id_names_emblem_and_key_triad() -> void:
 	var names: Dictionary[String, String] = {}
@@ -200,6 +219,11 @@ func test_every_faction_file_holds_its_id_names_emblem_and_key_triad() -> void:
 		[&"fossil", "Derrick League", &"emblem_fossil"]
 	)
 	assert_array(Array(fossil.key_triad)).is_equal(["#FF9446", "#E8681F", "#B04B12"])
+	var renew: FactionDef = load(FACTIONS_DIR + "/renew.tres")
+	assert_array([renew.id, renew.display_name, renew.emblem]).is_equal(
+		[&"renew", "Lumen Accord", &"emblem_renew"]
+	)
+	assert_array(Array(renew.key_triad)).is_equal(["#62D6EE", "#1FA6C8", "#137C99"])
 
 
 ## The names the player reads: every unit and building file has one (an empty name would read as
@@ -245,6 +269,25 @@ func test_every_buildable_type_of_a_faction_is_queued_at_its_own_producers() -> 
 			world.queue_count[Rig.queue_of(1, member.tab)] = 0
 			Rig.step(world, [Rig.queue(world, 1, String(member.type_id))])
 			assert_int(world.dropped_commands).override_failure_message(member.type_id).is_equal(1)
+
+
+## The rule across the shipped rosters (ADR 0023 section 6): a player that owns every building of
+## every faction, its own faction's first so that its producers are the lowest ids, can still queue
+## no buildable type of another faction, though it owns that type's requirement and has the credits.
+## Only the producer-faction rule stands in the way: a type with its faction cleared is queued.
+func test_a_producer_refuses_every_buildable_type_of_another_faction() -> void:
+	var factions: Array[FactionDef] = _factions()
+	assert_int(factions.size()).is_greater_equal(2)
+	for home: FactionDef in factions:
+		var others: Array[FactionDef] = []
+		for faction: FactionDef in factions:
+			if faction != home:
+				others.append(faction)
+		var world: World = _owned(home, others)
+		for other: FactionDef in others:
+			for member: UnitDef in other.roster:
+				if member.tab >= 0:
+					_assert_refused_by_the_faction_rule(world, home, member)
 
 
 ## One text per broken rule between the unit files and the faction files; empty when they agree:
@@ -350,20 +393,46 @@ func _requires_of(faction: FactionDef) -> Dictionary[String, String]:
 	return found
 
 
-## A world of the faction's roster in which player 1 owns one building of every kind it has, in a
-## row, with credits for any item. The roster's file names are its type ids (test_defs_data).
-func _owned(faction: FactionDef) -> World:
+## `member` of another faction is dropped and counted at player 1's producers of `home`, and is
+## queued once its faction is cleared, so nothing else stood in the way. The queue is emptied after.
+func _assert_refused_by_the_faction_rule(world: World, home: FactionDef, member: UnitDef) -> void:
+	var label: String = "%s at %s" % [member.type_id, home.id]
+	var type: int = Worlds.type_of(world, String(member.type_id))
+	var faction: int = world.type_faction[type]
+	var dropped: int = world.dropped_commands
+	Rig.step(world, [Rig.queue(world, 1, String(member.type_id))])
+	assert_int(world.dropped_commands - dropped).override_failure_message(label).is_equal(1)
+	assert_array(Rig.items(world, 1, member.tab)).override_failure_message(label).is_empty()
+	world.type_faction[type] = -1
+	Rig.step(world, [Rig.queue(world, 1, String(member.type_id))])
+	assert_int(world.dropped_commands - dropped).override_failure_message(label).is_equal(1)
+	assert_array(Rig.items(world, 1, member.tab)).override_failure_message(label).is_equal([type])
+	world.type_faction[type] = faction
+	world.queue_count[Rig.queue_of(1, member.tab)] = 0
+
+
+## A world of the faction's roster, and of `also`'s, in which player 1 owns one building of every
+## kind the faction has and then of every kind the others have, in rows of PER_ROW, with credits for
+## any item. The roster's file names are its type ids (test_defs_data).
+@warning_ignore("integer_division")
+func _owned(faction: FactionDef, also: Array[FactionDef] = []) -> World:
+	var rosters: Array[FactionDef] = [faction]
+	rosters.append_array(also)
 	var ids: Array[String] = []
-	for member: UnitDef in faction.roster:
-		ids.append(String(member.type_id))
+	for each: FactionDef in rosters:
+		for member: UnitDef in each.roster:
+			ids.append(String(member.type_id))
 	var world: World = Worlds.open(COLS, ROWS, ids)
 	var at: int = 0
-	for member: UnitDef in faction.roster:
-		if member is BuildingDef:
-			var type: int = Worlds.type_of(world, String(member.type_id))
-			var id: int = world.add_building(1, type, 1 + at * PITCH, 1)
-			assert_int(id).override_failure_message(String(member.type_id)).is_greater(0)
-			at += 1
+	for each: FactionDef in rosters:
+		for member: UnitDef in each.roster:
+			if member is BuildingDef:
+				var type: int = Worlds.type_of(world, String(member.type_id))
+				var column: int = 1 + (at % PER_ROW) * PITCH
+				var line: int = 1 + (at / PER_ROW) * PITCH
+				var id: int = world.add_building(1, type, column, line)
+				assert_int(id).override_failure_message(String(member.type_id)).is_greater(0)
+				at += 1
 	world.credits[1] = CREDITS
 	return world
 

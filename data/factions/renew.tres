@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="FactionDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/FactionDef.gd" id="1_faction"]
+[ext_resource type="Script" path="res://game/sim/defs/UnitDef.gd" id="2_unit"]
+[ext_resource type="Resource" path="res://data/units/renew_hq.tres" id="3_hq"]
+[ext_resource type="Resource" path="res://data/units/renew_power.tres" id="4_power"]
+[ext_resource type="Resource" path="res://data/units/renew_refinery.tres" id="5_refinery"]
+[ext_resource type="Resource" path="res://data/units/renew_barracks.tres" id="6_barracks"]
+[ext_resource type="Resource" path="res://data/units/renew_factory.tres" id="7_factory"]
+[ext_resource type="Resource" path="res://data/units/renew_radar.tres" id="8_radar"]
+[ext_resource type="Resource" path="res://data/units/renew_defence.tres" id="9_defence"]
+[ext_resource type="Resource" path="res://data/units/renew_strike.tres" id="10_strike"]
+[ext_resource type="Resource" path="res://data/units/renew_rifle.tres" id="11_rifle"]
+[ext_resource type="Resource" path="res://data/units/renew_rocket.tres" id="12_rocket"]
+[ext_resource type="Resource" path="res://data/units/renew_scout.tres" id="13_scout"]
+[ext_resource type="Resource" path="res://data/units/renew_tank.tres" id="14_tank"]
+[ext_resource type="Resource" path="res://data/units/renew_artillery.tres" id="15_artillery"]
+[ext_resource type="Resource" path="res://data/units/renew_tanker.tres" id="16_tanker"]
+
+[resource]
+script = ExtResource("1_faction")
+id = &"renew"
+display_name = "Lumen Accord"
+emblem = &"emblem_renew"
+key_triad = PackedStringArray("#62D6EE", "#1FA6C8", "#137C99")
+roster = Array[ExtResource("2_unit")]([ExtResource("3_hq"), ExtResource("4_power"), ExtResource("5_refinery"), ExtResource("6_barracks"), ExtResource("7_factory"), ExtResource("8_radar"), ExtResource("9_defence"), ExtResource("10_strike"), ExtResource("11_rifle"), ExtResource("12_rocket"), ExtResource("13_scout"), ExtResource("14_tank"), ExtResource("15_artillery"), ExtResource("16_tanker")])
