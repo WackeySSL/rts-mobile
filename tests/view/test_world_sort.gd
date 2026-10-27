@@ -17,7 +17,9 @@ const RULES: String = "res://data/rules.tres"
 const TABLE: Dictionary[String, int] = {
 	"MapView": 0,
 	"GroundLayer": 0,
+	"DecalLayer": 1,
 	"FogLayer": 4,
+	"GhostMemoryLayer": 5,
 	"WorldSort": 10,
 	"HealthBarLayer": 30,
 	"ProjectileLayer": 40,
@@ -64,6 +66,19 @@ func test_both_scenes_hold_the_z_table_of_adr_0023_with_the_sort_between_fog_and
 		assert_bool(_scene_value(state, "WorldSort", &"y_sort_enabled", false)).is_true()
 		var own: Variant = _scene_value(state, "UnitLayer", &"world_sort", null)
 		assert_that(own).is_equal(NodePath("../WorldSort"))  # The rigs stand in the scene's sort.
+		# P115: the buildings too, their shadows in the scene's decal layer, and their bars.
+		var buildings: Variant = _scene_value(state, "BuildingLayer", &"world_sort", null)
+		assert_that(buildings).is_equal(NodePath("../WorldSort"))
+		var decals: Variant = _scene_value(state, "BuildingLayer", &"decals", null)
+		assert_that(decals).is_equal(NodePath("../DecalLayer"))
+		var bars: Variant = _scene_value(state, "HealthBarLayer", &"building_layer", null)
+		assert_that(bars).is_equal(NodePath("../BuildingLayer"))
+		# P114b: the shells and the effects take their muzzle heights from the scene's sheets.
+		for layer_name: String in ["ProjectileLayer", "EffectsLayer"]:
+			var sheets: Variant = _scene_value(state, layer_name, &"world_sort", null)
+			assert_that(sheets).override_failure_message(layer_name).is_equal(
+				NodePath("../WorldSort")
+			)
 		var names: Array[String] = _root_children(state)
 		assert_int(names.find("WorldSort")).is_greater(names.find("MapView"))
 		assert_int(names.find("WorldSort")).is_less(names.find("UnitLayer"))
@@ -279,7 +294,7 @@ func test_a_building_row_has_no_rig_no_ring_no_pick_and_no_bar_and_units_stay_in
 	assert_int(_layer.rig_count()).is_equal(2)  # The two tanks.
 	assert_int(_layer.world_sort.get_child_count()).is_equal(2)
 	assert_object(_layer.rig(0)).is_not_null()
-	assert_object(_layer.rig(1)).is_null()  # The Headquarters is row 1: P115 draws it.
+	assert_object(_layer.rig(1)).is_null()  # The Headquarters is row 1: BuildingLayer draws it.
 	assert_object(_layer.rig(2)).is_not_null()
 	assert_str(_layer.rig(2).name).is_equal("Unit3")
 	_layer.set_selected(PackedInt32Array([1, 2, 3]))  # A building takes no ring.

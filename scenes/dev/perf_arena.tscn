@@ -20,6 +20,9 @@
 [ext_resource type="Script" path="res://game/ui/PerfHud.gd" id="17_hud"]
 [ext_resource type="Resource" path="res://data/dev/perf_gate.tres" id="18_gate"]
 [ext_resource type="Script" path="res://game/view/WorldSort.gd" id="19_sort"]
+[ext_resource type="Script" path="res://game/view/DecalLayer.gd" id="30_decals"]
+[ext_resource type="Script" path="res://game/view/BuildingLayer.gd" id="31_buildings"]
+[ext_resource type="Script" path="res://game/view/GhostMemoryLayer.gd" id="32_ghosts"]
 
 [node name="PerfArena" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "world_sort", "unit_layer", "bar_layer", "projectile_layer", "effects_layer", "fog_layer", "camera", "hud", "back_button", "layers_button", "layout", "bar")]
 script = ExtResource("1_arena")
@@ -54,6 +57,11 @@ ground = NodePath("../GroundLayer")
 script = ExtResource("20_ground")
 runner = NodePath("../MatchRunner")
 
+[node name="DecalLayer" type="Node2D" parent="."]
+z_index = 1
+z_as_relative = false
+script = ExtResource("30_decals")
+
 [node name="WorldSort" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
 y_sort_enabled = true
 z_index = 10
@@ -68,25 +76,35 @@ camera = NodePath("../Camera")
 world_sort = NodePath("../WorldSort")
 reveal_enemies = true
 
-[node name="HealthBarLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "unit_layer")]
+[node name="BuildingLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort", "decals")]
+script = ExtResource("31_buildings")
+runner = NodePath("../MatchRunner")
+world_sort = NodePath("../WorldSort")
+decals = NodePath("../DecalLayer")
+reveal_enemies = true
+
+[node name="HealthBarLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer")]
 z_index = 30
 z_as_relative = false
 script = ExtResource("6_bars")
 runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
+building_layer = NodePath("../BuildingLayer")
 
-[node name="ProjectileLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
+[node name="ProjectileLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
 z_index = 40
 z_as_relative = false
 script = ExtResource("7_projectiles")
 runner = NodePath("../MatchRunner")
+world_sort = NodePath("../WorldSort")
 reveal_enemies = true
 
-[node name="EffectsLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
+[node name="EffectsLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
 z_index = 50
 z_as_relative = false
 script = ExtResource("8_effects")
 runner = NodePath("../MatchRunner")
+world_sort = NodePath("../WorldSort")
 reveal_enemies = true
 
 [node name="FogLayer" type="Sprite2D" parent="." node_paths=PackedStringArray("runner")]
@@ -94,6 +112,15 @@ z_index = 4
 z_as_relative = false
 script = ExtResource("9_fog")
 runner = NodePath("../MatchRunner")
+
+[node name="GhostMemoryLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
+y_sort_enabled = true
+z_index = 5
+z_as_relative = false
+script = ExtResource("32_ghosts")
+runner = NodePath("../MatchRunner")
+world_sort = NodePath("../WorldSort")
+reveal_enemies = true
 
 [node name="Camera" type="Camera2D" parent="."]
 script = ExtResource("10_cam")

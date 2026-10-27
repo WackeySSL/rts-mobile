@@ -11,13 +11,15 @@ extends GdUnitTestSuite
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const CAMERA_START: Vector2 = Vector2(-288, 544)
+const Lifts: GDScript = preload("res://tests/view/support/lifts.gd")
 ## The corner tanks: rows 0, 5, 24 and 29 are the ids 1, 6, 25 and 30.
 const CORNER_ROWS: Array[int] = [0, 5, 24, 29]
 ## A ground point past the block's upper right edge, milli (10000, 15000): 128 px right of and
 ## 144 px above the middle of the view, clear of the units and of the HUD at every size.
 const GROUND_FROM_MIDDLE: Vector2 = Vector2(128, -144)
 const GROUND_MILLI: Vector2i = Vector2i(10000, 15000)
-## The top of the diamond: the world rect that holds exactly the tanks 1, 2, 3, 7, 8 and 13.
+## The top of the diamond: the world rect that holds exactly the tanks 1, 2, 3, 7, 8 and 13 once it
+## is raised by the light tank's pick lift (a box takes the units whose lifted centres it covers).
 const TOP_BOX: Rect2 = Rect2(-440, 410, 240, 80)
 const TOP_TANKS: Array[int] = [1, 2, 3, 7, 8, 13]
 
@@ -132,15 +134,35 @@ func test_a_long_press_box_selects_the_tanks_it_covers_at_every_size() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _show(size)
 		_controller.selection.set_ids(PackedInt32Array([20]))
-		var top_left: Vector2 = _camera.world_to_screen(TOP_BOX.position)
-		_box(top_left, _camera.world_to_screen(TOP_BOX.end))
+		var raise: Vector2 = Vector2(0.0, Lifts.pick(&"light_tank"))
+		var top_left: Vector2 = _camera.world_to_screen(TOP_BOX.position - raise)
+		_box(top_left, _camera.world_to_screen(TOP_BOX.end - raise))
 		assert_array(_controller.selection.selected).override_failure_message(str(size)).is_equal(
 			TOP_TANKS
 		)
 		# The same box 560 px to the left of the block holds no tank.
 		var shift: Vector2 = Vector2(-560, 0)
-		_box(top_left + shift, _camera.world_to_screen(TOP_BOX.end) + shift)
+		_box(top_left + shift, _camera.world_to_screen(TOP_BOX.end - raise) + shift)
 		assert_array(_controller.selection.selected).override_failure_message(str(size)).is_empty()
+
+
+func test_a_tap_on_the_body_of_the_top_tank_selects_it_on_the_first_tap_at_every_size() -> void:
+	# A unit is hit round the middle of its picture (P114b): the first tap on the tank at the top
+	# corner, which no unit stands above, selects it on its ground point, on the middle of its
+	# picture and on the upper half of its body. Nothing is ordered by selecting.
+	var lift: float = Lifts.pick(&"light_tank")
+	for size: Vector2i in ScreenSizes.ALL:
+		await _show(size)
+		var foot: Vector2 = _layer.unit_screen_position(0)
+		for offset: float in [0.0, lift, 1.5 * lift]:
+			_tap(foot - Vector2(0.0, offset * _camera.zoom.x))
+			(
+				assert_array(_controller.selection.selected)
+				. override_failure_message("%s, %s px above its foot" % [size, offset])
+				. is_equal([1])
+			)
+			_controller.selection.clear()
+		assert_array(_sent).is_empty()
 
 
 ## A size, with the camera back on its start at zoom 1 (a turn rescales the zoom, ADR 0015 §4).
