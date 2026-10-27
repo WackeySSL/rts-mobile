@@ -40,7 +40,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 ## Selection
 | Action | Result | Teach |
 |---|---|---|
-| Tap an own unit | Selects that unit only; selected units show a ring | |
+| Tap an own unit | Selects that unit only. Tap anywhere on its picture, the middle of it included, not only on the ground under its feet: a unit is hit round the middle of its picture, and where two are close the one whose middle is nearer your finger is picked. A unit is easy to hit: at least 48 dp across (`hit_radius_dp` in `data/input_settings.tres`), however small it is drawn. Selected units show a white oval ring lying on the ground under them, as big as the unit's circle on the ground and never smaller than 36 dp across | |
 | Tap your own building | Selects that building only, and a unit standing at the same spot is picked instead of it. Tap anywhere on the building's picture, the part that stands up over the ground included, not only on the ground it covers; where two buildings overlap, the one drawn in front is selected. A building is easy to hit: at least 48 dp across (`hit_radius_dp` in `data/input_settings.tres`), however small it is drawn. It gets a frame of four corner brackets and its health bar, the panel names it, and a Headquarters, barracks or vehicle factory opens the tab it builds | |
 | Tap an enemy building you can see, with nothing selected | Selects it for its information only: an amber frame and its notched health bar show, and the panel names it. It takes no orders, and an enemy building the fog hides cannot be tapped | |
 | Tap the ground with a building selected | Lets go of the building. Nothing is ordered and nothing moves | |

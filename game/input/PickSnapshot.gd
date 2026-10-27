@@ -11,7 +11,12 @@ extends RefCounted
 var ids: PackedInt32Array = PackedInt32Array()
 var owners: PackedInt32Array = PackedInt32Array()
 var type_index: PackedInt32Array = PackedInt32Array()
-var screen_pos: PackedVector2Array = PackedVector2Array()  ## Unit centres, base px.
+## Unit centres, base px: the lifted ones (ADR 0023 section 3), the ground point raised by the
+## sheet's `pick_lift_px` at the camera zoom.
+var screen_pos: PackedVector2Array = PackedVector2Array()
+## How high each centre stands above the unit's ground point, base px (`lift_of`): a mark that lies
+## on the ground, the attack's flash, adds it back. A row with no entry stands on the ground.
+var lift_px: PackedFloat32Array = PackedFloat32Array()
 ## Hit radius in base px: the larger of the minimum (dp) and the unit's selection radius on screen.
 var radius_px: PackedFloat32Array = PackedFloat32Array()
 ## 0 for a row the Picker must skip (an enemy the fog hides), 1 for every other row. A row with no
@@ -36,6 +41,12 @@ var building_targetable: PackedByteArray = PackedByteArray()
 
 func size() -> int:
 	return ids.size()
+
+
+## How far above its ground point the centre of unit `index` stands, base px; 0 for a row with no
+## entry (a snapshot built by hand).
+func lift_of(index: int) -> float:
+	return lift_px[index] if index < lift_px.size() else 0.0
 
 
 func building_count() -> int:

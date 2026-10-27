@@ -162,7 +162,12 @@ func test_hiding_changes_only_visible_a_hidden_rig_keeps_its_place_tint_and_scre
 		assert_int(pick.size()).is_equal(40)
 		assert_int(pick.ids[30]).is_equal(31)
 		assert_int(pick.owners[30]).is_equal(2)
-		assert_vector(pick.screen_pos[30]).is_equal(_units.unit_screen_position(30))
+		# The Picker's centre is the lifted one: the light tank's pick lift above the ground point.
+		var lift: float = float((load(IsoIndex.PATH) as IsoIndex).sheet(&"light_tank").pick_lift_px)
+		assert_float(pick.lift_of(30)).is_equal_approx(lift * _camera.zoom.x, 0.0001)
+		assert_vector(pick.screen_pos[30] + Vector2(0.0, pick.lift_of(30))).is_equal_approx(
+			_units.unit_screen_position(30), Vector2(0.001, 0.001)
+		)
 		assert_bool(_rig(30).visible).is_false()  # And the screen did not unhide it.
 
 

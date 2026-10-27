@@ -71,6 +71,12 @@ func test_both_scenes_hold_the_z_table_of_adr_0023_with_the_sort_between_fog_and
 		assert_that(decals).is_equal(NodePath("../DecalLayer"))
 		var bars: Variant = _scene_value(state, "HealthBarLayer", &"building_layer", null)
 		assert_that(bars).is_equal(NodePath("../BuildingLayer"))
+		# P114b: the shells and the effects take their muzzle heights from the scene's sheets.
+		for layer_name: String in ["ProjectileLayer", "EffectsLayer"]:
+			var sheets: Variant = _scene_value(state, layer_name, &"world_sort", null)
+			assert_that(sheets).override_failure_message(layer_name).is_equal(
+				NodePath("../WorldSort")
+			)
 		var names: Array[String] = _root_children(state)
 		assert_int(names.find("WorldSort")).is_greater(names.find("MapView"))
 		assert_int(names.find("WorldSort")).is_less(names.find("UnitLayer"))

@@ -28,10 +28,6 @@ const ENEMY: Color = Color("F5A524")
 const TEAM_TINTS: Array[Color] = [Color("9AA5B1"), Color("2F80ED"), Color("E5484D")]
 ## STYLE.md, Class table: the box in dp, vehicle and infantry.
 const WIDTH_DP: Dictionary[StringName, int] = {&"vehicle": 22, &"infantry": 16}
-## The lift l of the top of a unit's frame above its ground point in world px (ADR 0023 section 2;
-## `SpriteLift`, test_sprite_lift.gd), typed again here: a light tank 24, a rifle squad 24 (the
-## canvas Spec, section 05: a vehicle is 16 to 30 px high, a figure 18 and a squad spreads).
-const LIFT_PX: Dictionary[StringName, float] = {&"light_tank": 24.0, &"rifle_squad": 24.0}
 const HEIGHT_DP: int = 6
 const ZOOMS: Array[float] = [0.75, 1.0, 1.5]
 ## The six screens of the shared list (ScreenSizes.ALL, entry by entry), each with its profile.
@@ -247,7 +243,7 @@ func test_a_bar_is_centred_and_its_bottom_edge_is_l_zoom_plus_1_dp_above_the_uni
 					. is_equal_approx(at.x, 0.05)
 				)
 				# The bottom edge is l x zoom + 1 dp above the unit's ground point on screen.
-				var gap: float = LIFT_PX[type_id] * zoom + dp_px
+				var gap: float = _lift(type_id) * zoom + dp_px
 				(
 					assert_float(at.y - bottom_right.y)
 					. override_failure_message("bottom edge, " + note)
@@ -267,25 +263,30 @@ func test_the_screen_profiles_are_the_six_sizes_of_the_shared_list() -> void:
 	assert_array(sizes).is_equal(ScreenSizes.ALL)
 
 
-func test_a_bar_stands_over_the_top_of_its_types_frame_and_a_type_without_a_row_gets_its_class(
+func test_a_bar_stands_over_the_top_of_its_types_sheet_and_a_type_without_one_gets_its_class(
 ) -> void:
-	# The lift comes from the type id of the snapshot's table: a heavy tank's frame is 30 px high and
-	# the light tank's 24, and a type without a row has its class default, 26 for a vehicle and 24
-	# for infantry (the ids are the snapshot's, so the test renames the tank's type).
-	_units.set_selected(PackedInt32Array([2]))
-	var type: int = _runner.snapshot.type_index[1]
+	# The lift comes from the type id of the snapshot's table: a light tank's sheet is taller than
+	# a rifle squad's, and a type the match's atlas holds no sheet of has the default of its class,
+	# 26 for a vehicle and 24 for infantry (the ids are the snapshot's, so the test renames the
+	# tank's type).
+	_rebuild(ARENA)  # Registers the light tank and both squads, the sheets the cases below use.
+	var tank: int = _first_row_of(&"light_tank", 1)
+	_units.set_selected(_ids([tank]))
+	var type: int = _runner.snapshot.type_index[tank]
 	var cases: Array = [
-		[&"light_tank", World.Armour.LIGHT, 24.0],
-		[&"heavy_tank", World.Armour.LIGHT, 30.0],
+		[&"light_tank", World.Armour.LIGHT, _lift(&"light_tank")],
+		[&"rifle_squad", World.Armour.INFANTRY, _lift(&"rifle_squad")],
+		[&"rocket_squad", World.Armour.INFANTRY, _lift(&"rocket_squad")],
 		[&"bullhead", World.Armour.HEAVY, 26.0],
 		[&"flarejack", World.Armour.INFANTRY, 24.0],
 	]
+	assert_float(_lift(&"light_tank")).is_not_equal(_lift(&"rifle_squad"))
 	for case: Array in cases:
 		_runner.snapshot.type_ids[type] = case[0]
 		_runner.snapshot.type_armour[type] = case[1]
 		_frame()
-		var at: Vector2 = _units.unit_screen_position(1)
-		var bottom: float = _camera.world_to_screen(_box(1).end).y
+		var at: Vector2 = _units.unit_screen_position(tank)
+		var bottom: float = _camera.world_to_screen(_box(tank).end).y
 		assert_float(at.y - bottom).override_failure_message(String(case[0])).is_equal_approx(
 			case[2] * _camera.zoom.x + 1.75, 0.05
 		)
@@ -294,7 +295,7 @@ func test_a_bar_stands_over_the_top_of_its_types_frame_and_a_type_without_a_row_
 func test_the_ring_does_not_place_the_bar() -> void:
 	# Zoom 1.5 on the 6-inch phone: the tank's ring is a ground ellipse with a horizontal semi-axis
 	# of 24.89 px x 1.5 = 37.3 px on screen (the selection radius 500 + 50 milli), and the bar's
-	# bottom edge is 24 x 1.5 + 1.75 = 37.75 px above the unit's ground point.
+	# bottom edge is l x 1.5 + 1.75 px above the unit's ground point, l the sheet's lift.
 	_units.set_selected(PackedInt32Array([2]))
 	_camera.zoom = Vector2(1.5, 1.5)
 	_frame()
@@ -302,13 +303,13 @@ func test_the_ring_does_not_place_the_bar() -> void:
 	assert_float(ring.radius * 1.5).is_equal_approx(37.335, 0.01)
 	var at: Vector2 = _units.unit_screen_position(1)
 	var bottom: float = _camera.world_to_screen(_box(1).end).y
-	assert_float(at.y - bottom).is_equal_approx(24.0 * 1.5 + 1.75, 0.05)
+	assert_float(at.y - bottom).is_equal_approx(_lift(&"light_tank") * 1.5 + 1.75, 0.05)
 	# A ring three times the size leaves the bar where it was: the bar is placed by the top of the
 	# sprite's frame and not by the ring.
 	ring.scale *= 3.0
 	_frame()
 	assert_float(at.y - _camera.world_to_screen(_box(1).end).y).is_equal_approx(
-		24.0 * 1.5 + 1.75, 0.05
+		_lift(&"light_tank") * 1.5 + 1.75, 0.05
 	)
 
 
@@ -560,3 +561,11 @@ func _top_level_arguments(source: String, open: int) -> int:
 		if not character.strip_edges().is_empty():
 			last_comma = false
 	return -1
+
+
+## The lift l of the top of a unit's frame above its ground point, world px at zoom 1 (ADR 0023
+## section 2): the `bar_lift_px` of the type's sheet. The sheets are generated data, so the number
+## is read from the index and not typed here (test_sprite_lift.gd and test_lift_sheets.gd pin the
+## rule on sheets with made-up numbers).
+func _lift(type_id: StringName) -> float:
+	return float((load(IsoIndex.PATH) as IsoIndex).sheet(type_id).bar_lift_px)

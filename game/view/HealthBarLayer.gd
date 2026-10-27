@@ -25,8 +25,8 @@ extends Node2D
 ## A bar is sized in dp, so it looks the same at every zoom: world px per dp is the base px per dp
 ## over the camera zoom. It is centred on its unit's projected ground point (`IsoProjection`, ADR
 ## 0023 section 1), and its bottom edge is l x zoom + 1 dp above that point on the screen, l the
-## lift of the top of the unit's frame (`SpriteLift.bar_lift_px`, the sheet's `bar_lift_px` once
-## P113 brings the sheets). The ring does not place it.
+## lift of the top of the unit's frame (`unit_layer.bar_lift_px`, the sheet's `bar_lift_px`). The
+## ring does not place it.
 ## `_process` plans the rects of the frame in reused packed arrays and `_draw` paints that plan
 ## through the same accessors, so a frame creates no object and tests read the plan (`rect_count`,
 ## `rect_at`) and what was painted (`drawn_count`).
@@ -224,7 +224,6 @@ func _plan() -> void:
 	var hps: PackedInt32Array = snap.hp
 	var max_hps: PackedInt32Array = snap.type_max_hp
 	var armours: PackedInt32Array = snap.type_armour
-	var type_ids: Array[StringName] = snap.type_ids
 	var prev_x: PackedInt32Array = snap.prev_pos_x
 	var prev_y: PackedInt32Array = snap.prev_pos_y
 	var cur_x: PackedInt32Array = snap.pos_x
@@ -260,9 +259,7 @@ func _plan() -> void:
 		)
 		var left: float = place.x - 0.5 * width * unit
 		var lift: float = (
-			building_layer.bar_lift_px(row)
-			if building
-			else SpriteLift.bar_lift_px(type_ids, armours, type)
+			building_layer.bar_lift_px(row) if building else unit_layer.bar_lift_px(row)
 		)
 		var top: float = place.y - lift - (GAP_DP + HEIGHT_DP) * unit
 		_bars[_bar_count] = row

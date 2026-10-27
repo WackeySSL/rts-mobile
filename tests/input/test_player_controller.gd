@@ -12,6 +12,7 @@ const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const TwoTypeLayer: GDScript = preload("res://tests/input/support/two_type_layer.gd")
 const PROFILES: Array[StringName] = [&"desktop", &"android_6in", &"web_tablet"]
 const CAMERA_START: Vector2 = Vector2(-288, 544)
+const Lifts: GDScript = preload("res://tests/view/support/lifts.gd")
 ## Where a pan's finger goes down: left of the build sidebar at every size (its edge is at 1009 or
 ## more), with room to drag 888 px to the left.
 const PAN_FROM_X: float = 900.0
@@ -82,9 +83,11 @@ func test_the_first_tap_on_a_tank_selects_it() -> void:
 	assert_object(_controller.settings).is_same(load("res://data/input_settings.tres"))
 	for profile: StringName in PROFILES:
 		await _fresh_match(profile)
-		_tap(_layer.unit_screen_position(0) - Vector2(0, UiScale.dp(40)))  # Outside the hit area.
+		# A unit is hit round its lifted centre (P114b): the ground point raised by the pick lift.
+		var centre: Vector2 = _layer.unit_screen_position(0) - Vector2(0.0, _lift_on_screen())
+		_tap(centre - Vector2(0, UiScale.dp(40)))  # Outside the hit area.
 		assert_array(_controller.selection.selected).is_empty()
-		_tap(_layer.unit_screen_position(0) - Vector2(0, UiScale.dp(20)))  # Above the top corner.
+		_tap(centre - Vector2(0, UiScale.dp(20)))  # Above the top corner.
 		assert_array(_controller.selection.selected).is_equal([1])
 		assert_array(_changes).has_size(1)
 		assert_array(_changes[0]).is_equal([1])
@@ -208,9 +211,11 @@ func test_a_long_press_drag_selects_exactly_the_6_tanks_in_the_box_and_buzzes_on
 		_buzzes.clear()
 		_controller.selection.set_ids(PackedInt32Array([20]))
 		# The top of the diamond, world (-440, 410) to (-200, 490): the tanks with c + r <= 2, which
-		# stand at y 432 to 480 (the next ones are at 504).
-		var top_left: Vector2 = _camera.world_to_screen(Vector2(-440, 410))
-		var bottom_right: Vector2 = _camera.world_to_screen(Vector2(-200, 490))
+		# stand at y 432 to 480 (the next ones are at 504). A box takes the units whose lifted
+		# centres it covers, so it is raised by the pick lift.
+		var raise: Vector2 = Vector2(0.0, Lifts.pick(&"light_tank"))
+		var top_left: Vector2 = _camera.world_to_screen(Vector2(-440, 410) - raise)
+		var bottom_right: Vector2 = _camera.world_to_screen(Vector2(-200, 490) - raise)
 		_box(top_left, bottom_right)
 		assert_array(_controller.selection.selected).is_equal([1, 2, 3, 7, 8, 13])
 		assert_array(_buzzes).is_equal([15])  # Through TouchInput, once.
@@ -453,6 +458,11 @@ func _fresh_match(profile: StringName) -> void:
 	_controller.selection.clear()
 	_sent.clear()
 	_changes.clear()
+
+
+## How high the Picker's centre of a light tank stands above its ground point on the screen now.
+func _lift_on_screen() -> float:
+	return Lifts.pick(&"light_tank") * _camera.zoom.x
 
 
 ## A finger down and up at `at` (base px), then a pause past the double-tap time.
