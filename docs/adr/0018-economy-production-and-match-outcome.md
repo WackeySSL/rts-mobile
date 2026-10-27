@@ -28,6 +28,12 @@ harvesters become oil and gas fields and tankers with the rules of §2 and §3 u
 (blacked-out) building neither makes nor uses power, does not fire and does not advance its queue;
 `QUEUE` is dropped for another faction's item. No accepted text changed.
 
+Status note (2026-10-26, P26ai docs): §3, §4-§5 and §6-§7 carry dated status notes on the rules as
+P73, P73b, P74, P75, P75b and P76 merged them: the choices the text leaves open, the power totals
+built every ECONOMY, the loss stats counted only for a side that has had a producer (the lead's
+decision, Option A), the end that needs somebody defeated and RALLY for unit producers only. No
+accepted text changed.
+
 ## Context
 - `docs/GDD.md`, "Match setup": one Headquarters, 2 000 credits and 2 rifle squads at the start;
   victory when "the enemy has neither a Headquarters nor a production building left".
@@ -105,6 +111,36 @@ Internal names (`ore`, `harvest_*`) stay; every player-facing word says oil, gas
 tanker. Full, half and dry are view-only thresholds on `ore_amount` (plan row P116), and oil or
 gas is a view-only choice per field; both pay the same. No rule value moves, so no hash moves.
 
+Status note (2026-10-26, P26ai docs, P75 as merged, #189, P75b, #192, and P73b, #191; the text
+of §3 and the note above stay as accepted and as dated). Where the text leaves a choice open,
+`game/sim/Harvest.gd` and `ProductionSpawn.gd` decide as follows:
+- **"Once more."** No column counts it: a SEEK row whose order ended farther than
+  `harvest_reach_milli` from its cell takes another cell at once, skipping the one it left (a lone
+  cell is tried again after the retry wait). So every way into SEEK with a cell that has ore gives
+  the `MOVE` in the same step (`HARVEST` and the auto-resume through `Harvest._take`), else SEEK
+  reads the row as one whose order ended short.
+- **When a harvester looks again.** A row with no cell (`harvest_slot` -1) looks only on its
+  `(tick + id) % harvest_retry_ticks` turn, up to 14 ticks later; a cell that ran empty and a
+  `home` that is gone are replaced at once. With no refinery at all `home` is 0 and the row waits
+  for its turn; the `MOVE` it had (to the lost dock) is not taken back. A partial load with no ore
+  left anywhere waits in SEEK with its cargo.
+- **The refinery.** A refinery is a building type with a dock other than (0, 0), the default that
+  means none. "Nearest" is measured to the building's position (its footprint centre), ties to the
+  lower row, which is the lower id. A harvester in UNLOAD needs no refinery once docked: one
+  destroyed meanwhile does not stop the unloading, so the Consequences' "A destroyed refinery
+  sends its harvesters to the nearest other refinery" holds for the harvesters on their way.
+- **`HARVEST`** counts every ore cell its scan looks at in `Stat.ORE_SCANNED`, as SEEK's scan does,
+  and gives the `MOVE` to the cell's centre even to a harvester already within reach of it.
+- **The auto-resume** follows the text literally: a harvester resumes on the first tick with
+  `(tick + id) % harvest_resume_ticks == 0` after its order has ended, so 0 to 74 ticks later,
+  not a full `harvest_resume_ticks`, and a `STOP` sent on its turn is undone in the same step.
+  Plan row P87's phone check judges the feel; a per-row idle timer would be a new hashed row
+  column, a layout change for a later row.
+- **The free harvester** (P73b) appears at the dock; a closed dock hands it to the next open ring
+  tile, walked clockwise from the dock (each tile looked at counts in `Stat.EXIT_SCANNED`), and no
+  open ring tile gives no harvester, with nothing owed. A free unit needs `type_free_unit` and a
+  dock other than (0, 0), and only a harvester gets `home`.
+
 ### 4. Power
 - `power_made` is the sum of the positive `type_power` of a player's buildings, `power_used` the
   sum of the negative ones (as a positive number). Both are derived (ADR 0016), rebuilt in ECONOMY
@@ -154,6 +190,24 @@ dropped and counted when the item's faction is set and differs from the faction 
 the queue uses (`type_faction[type] != type_faction[producer]`); a type without a faction is
 queued as before. Everything else in §4 and §5 is unchanged.
 
+Status note (2026-10-26, P26ai docs, P73 as merged, #188, P73b, #191, P74, #195, and P76, #197;
+the text of §4 and §5 and the note above stay as accepted and as dated):
+- **Power** (`game/sim/Power.gd`): `power_made` and `power_used` are summed over `building_rows`
+  in every ECONOMY, not only when `rows_version` has moved, so no stamp is kept and a rebuild of
+  the row lists by `Production.producer_row` in COMMANDS or PRODUCTION cannot leave them stale.
+  They stay derived (ADR 0016), and `tests/sim/test_power.gd` compares them with a scan at every
+  checkpoint.
+- **The exit walk** (`ProductionSpawn.tile_from`): the exit tile itself is the first tile looked
+  at and counts in `EXIT_SCANNED`; a ring tile off the map is skipped without a count; an exit that
+  is not on the ring (data keeps it there) starts the walk at ring tile 0.
+- **Progress:** a head never passes its goal, so a finished unit leaves no rest, and the next item
+  starts at 0. The low-power rate applies to every tab, STRUCTURES included. The queues of a
+  defeated player stop where they are: no progress, no spawn, no refund (§7's note).
+- **`PLACE`** asks for no producer, so a structure finished before the Headquarters died can still
+  be placed; a `PLACE` with a payload is dropped; a negative point maps to tile -1 (`OUTSIDE`),
+  because `/` would truncate it to tile 0. COMMANDS runs before PRODUCTION, so a `PLACE` in the
+  step whose PRODUCTION makes the head ready is dropped and counted, and one a step later builds.
+
 ### 6. Rally points
 One per player and production tab (INFANTRY, VEHICLES), stored in `rally_x`, `rally_y` (-1 =
 none). **`RALLY`**: `target_id` is an own building that produces INFANTRY or VEHICLES; the point is
@@ -179,6 +233,27 @@ separation spreads them.
 - Per player, for the result screen: `stat_built` (units produced and buildings placed),
   `stat_lost_units`, `stat_lost_buildings` (counted in `remove_dead` by the dying row's owner) and
   `stat_harvested`.
+
+Status note (2026-10-26, P26ai docs, P76 as merged, #197; the text of §6 and §7 stays as
+accepted), on `game/sim/Outcome.gd`:
+- **`RALLY`** names a building whose type produces INFANTRY or VEHICLES, as §6 says; a
+  Headquarters (STRUCTURES) is refused, so plan row P87 sends no `RALLY` for a selected
+  Headquarters. The point is clamped to 0 up to the last milli-tile of each axis, because a stored
+  value below 0 means "no rally point".
+- **The end needs somebody defeated.** The match ends once at least one player has been defeated
+  and at most one is still playing, so a World with one player (a test of units only) runs on.
+  After the end `Outcome.run` changes nothing, so `match_end_tick` and `winner` stay as the runner
+  published them.
+- **What a defeat leaves:** the defeated player's rows stay on the map; its queues stop, with no
+  refund (§5's note).
+- **The loss stats (the lead's decision of 2026-10-26, Option A).** Counted as written,
+  `stat_lost_units` would move the perf arena's golden hashes, whose rows die from tick 150 on
+  (the stats are in the hashed `players` section). So `Outcome.count_losses`, which
+  `World.remove_dead` calls before its compaction, adds each dying row to its owner's
+  `stat_lost_buildings` (a type with a footprint) or `stat_lost_units` only when that owner's
+  `had_producer` is 1, once per death; neutral rows count for nobody. Every real match sets
+  `had_producer` at load through its scenario buildings, so the result screen reads true counts;
+  the perf arena and Worlds of units only count nothing, and their hashes stay.
 
 ### 8. New unit types
 Heavy tank, artillery and harvester join `data/units/` with the GDD's costs, hp, speeds and
