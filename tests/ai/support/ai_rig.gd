@@ -17,7 +17,7 @@ extends RefCounted
 const RULES_PATH: String = "res://data/rules.tres"
 const TERRAIN_PATH: String = "res://data/terrain/standard.tres"
 const UNIT_DIR: String = "res://data/units/"
-const DUMMY_PATH: String = "res://data/ai/dummy.tres"
+const DUMMY_PATH: String = "res://data/ai/dummy_fossil.tres"
 const SIZE: int = 40
 const ROSTER: Array[String] = [
 	"headquarters",
@@ -77,7 +77,8 @@ static func start(map_rows: Array[String] = [], rules: RulesDef = null) -> World
 	return World.from_scenario(scenario)
 
 
-## The shipped dummy def.
+## The shipped dummy def of the Derrick League (`dummy_fossil.tres`, plan row P83d); the Lumen
+## Accord's is `faction_rig.gd`'s.
 static func dummy_def() -> AiDef:
 	return load(DUMMY_PATH) as AiDef
 

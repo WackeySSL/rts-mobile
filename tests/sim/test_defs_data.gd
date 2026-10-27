@@ -358,16 +358,19 @@ func test_every_scenario_file_places_its_units_inside_the_map_and_within_its_lim
 				problems.append(
 					"charge_elapsed_ticks of %s, which has no strike" % spawn.unit.type_id
 				)
+			# A building closes its own tiles, so the passable test is for units: the loader counts
+			# one that is not wholly on the map in `spawn_refused` (below), and Placement judges
+			# its ground (test_kestrel_flats_scenarios).
 			if spawn.unit is BuildingDef:
 				continue
 			for k: int in spawn.count:
 				var at: Vector2i = _grid_point(spawn, k)
 				if not map.has_point(at) or not _passable(world, at, spawn.unit.move_class):
 					problems.append("%s %d at %s" % [spawn.unit.type_id, k, at])
-		if world.spawn_refused > 0:
-			problems.append("%d buildings refused" % world.spawn_refused)
 		if units > world.max_rows:
 			problems.append("%d units, max_rows %d" % [units, world.max_rows])
+		if world.spawn_refused > 0:
+			problems.append("%d spawns refused" % world.spawn_refused)
 		if scenario.player_count != 0 and scenario.player_count < owners:
 			problems.append("player_count %d, owner %d" % [scenario.player_count, owners])
 		assert_array(problems).override_failure_message(path).is_empty()
