@@ -180,7 +180,7 @@ func test_six_types_with_3_digit_counts_fit_the_line_of_a_360_dp_phone_with_a_ch
 	assert_bool(_panel._total.visible).is_false()  # One type.
 
 
-## A name is cut at the line and not at 40% of the whole width: "Light Tank" shows whole on a 360 dp
+## A name is cut at the line and not at 40% of the whole width: "Flarejack" shows whole on a 360 dp
 ## phone, and a very long name still keeps the panel inside its line.
 func test_a_name_is_cut_at_the_line_and_light_tank_is_whole_on_a_360_dp_phone() -> void:
 	await _open(UiProfiles.by_name(&"web_phone_portrait"))
@@ -189,7 +189,7 @@ func test_a_name_is_cut_at_the_line_and_light_tank_is_whole_on_a_360_dp_phone() 
 	_panel.set_selected(PackedInt32Array([1, 2]))
 	await await_idle_frame()
 	var title: Label = _panel.get_node("Rows/Row0/Name")
-	assert_str(title.text).is_equal("Light Tank")
+	assert_str(title.text).is_equal("Flarejack")
 	assert_float(title.size.x).is_greater_equal(_text_px(title))
 	assert_int(_panel._level).is_equal(SelectionPanel.LEVEL_NAMED)
 	runner.snapshot.type_names[0] = LONG_NAME

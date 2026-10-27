@@ -90,7 +90,7 @@ func test_two_types_get_a_row_each_and_a_total_and_the_rows_are_reused() -> void
 	_panel.theme = HudThemes.scaled()  # Outside main.tscn nothing is inherited (P58).
 	add_child(_panel)
 	_panel.set_selected(PackedInt32Array([1, 2, 3, 4, 5, 999]))  # 999 is no unit.
-	assert_array(_texts("Row0")).is_equal(["Light Tank", "×2"])
+	assert_array(_texts("Row0")).is_equal(["Flarejack", "×2"])
 	assert_array(_texts("Row1")).is_equal(["Scout Test", "×3"])
 	assert_str((_node("Rows/Total") as Label).text).is_equal("Total ×5")
 	var sizes: Array[int] = []  # The look is the theme's: names 16 dp, counts and total 20 dp.
@@ -202,13 +202,13 @@ func test_the_band_and_the_text_follow_a_window_resize() -> void:
 	assert_int(_panel.get_parent().get_theme_constant("margin_right")).is_equal(ceili(zone))
 	assert_int(_node("Rows/Row0/Name").get_theme_font_size("font_size")).is_equal(_px(16.0))
 	var title: Label = _node("Rows/Row0/Name")  # The cap is in px, so it is fitted again.
-	assert_str(title.text).is_equal("Light Tank")
+	assert_str(title.text).is_equal("Flarejack")
 	assert_float(title.size.x).is_greater_equal(_text_px(title))
 
 
-## "Light Tank" is also the capitalised type id, so a name written into the snapshot alone shows
-## that the panel takes it from `type_names`. The World is swapped for an empty one after a tick:
-## the counts and the names must come from the published snapshot.
+## The data's name ("Flarejack") is no capitalised type id ("Light Tank"), so a name written
+## into the snapshot alone shows that the panel takes it from `type_names`. The World is swapped
+## for an empty one after a tick: the counts and the names must come from the published snapshot.
 func test_names_and_counts_come_from_the_snapshot_and_never_the_world() -> void:
 	await _open(UiProfiles.by_name(&"desktop"))
 	_runner().paused = true
@@ -221,12 +221,12 @@ func test_names_and_counts_come_from_the_snapshot_and_never_the_world() -> void:
 	_panel.set_selected(PackedInt32Array([1, 2, 3, 999]))
 	assert_bool(_panel.visible).is_true()
 	assert_array(_texts("Row0")).is_equal(["Ironclad", "×3"])
-	assert_str(_panel.get_node("Rows/Row0/Name").text).is_not_equal("Light Tank")
+	assert_str(_panel.get_node("Rows/Row0/Name").text).is_not_equal("Flarejack")
 
 
 ## A row is at most 40% of the band (the safe area's inner width) and at most what the ArmyBar and
 ## the build panel's zone leave of it: a name past that is clipped with an ellipsis, and the icon
-## and the count keep their room. "Light Tank" is not clipped. On the phones the second limit is
+## and the count keep their room. "Flarejack" is not clipped. On the phones the second limit is
 ## the lower one, and the zone keeps its whole width: the panel ends before the build panel's gap.
 func test_a_long_name_is_clipped_at_the_cap_and_light_tank_is_not() -> void:
 	for profile: StringName in [&"desktop", &"android_6in", &"web_tablet", &"web_phone_small"]:
@@ -360,7 +360,7 @@ func _row_cap(band_px: float) -> float:
 
 func _expect(step: String, count: String) -> void:
 	assert_bool(_panel.visible).override_failure_message(step).is_true()
-	assert_array(_texts("Row0")).override_failure_message(step).is_equal(["Light Tank", count])
+	assert_array(_texts("Row0")).override_failure_message(step).is_equal(["Flarejack", count])
 
 
 func _texts(row: String) -> Array[String]:

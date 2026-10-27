@@ -1,16 +1,15 @@
 extends GdUnitTestSuite
-## The Phase 3 roster (plan row P72, ADR 0018 sections 8 and 9, docs/GDD.md): the six buildings,
-## the six units and the three new weapons as literals, and the rules that span files: the
-## requirement chains, the free harvester, the dock and exit cells and the art ids. The rules every
-## single file obeys (a building has speed 0, radius 0 and armour Building; a mobile unit has a
-## radius in 1..500; a weapon reaches the ring corner) are test_defs_data's, which runs them over
-## these files too.
+## The Phase 3 roster (plan rows P72 and P107, ADR 0018 sections 8 and 9, ADR 0023 section 7,
+## docs/GDD.md): the eight Derrick League buildings, the six units and the four weapons of the
+## roster as literals, and the rules that span files: the requirement chains, the free tanker, the
+## dock and exit cells. A type's art is pinned in tests/art from P99 on. The rules every single file
+## obeys (a building has speed 0, radius 0 and armour Building; a mobile unit has a radius in
+## 1..500; a weapon reaches the ring corner; a footprint is square) and the faction rules are
+## test_defs_data's and test_defs_factions_data's, which run them over these files too.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const UNITS_DIR: String = "res://data/units"
 const WEAPONS_DIR: String = "res://data/weapons"
-## The art of a building by its type_id (plan P68c, assets/art/STYLE.md "Buildings").
-const BUILDING_ART: String = "res://assets/art/svg/buildings/%s_%s.svg"
 const HEADQUARTERS: String = "headquarters"
 ## The sidebar tabs (World.Tab) and the movement class of tanks (World.MoveClass).
 const STRUCTURES: int = 0
@@ -18,7 +17,7 @@ const INFANTRY: int = 1
 const VEHICLES: int = 2
 
 
-func test_the_data_holds_the_six_buildings_and_the_six_units_and_each_building_has_art() -> void:
+func test_the_data_holds_the_eight_buildings_and_the_six_units() -> void:
 	var ids: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
 		ids.append(path.get_file().get_basename())
@@ -28,7 +27,9 @@ func test_the_data_holds_the_six_buildings_and_the_six_units_and_each_building_h
 		"refinery",
 		"barracks",
 		"vehicle_factory",
+		"fossil_radar",
 		"defence_turret",
+		"fossil_strike",
 		"rifle_squad",
 		"rocket_squad",
 		"light_tank",
@@ -41,15 +42,11 @@ func test_the_data_holds_the_six_buildings_and_the_six_units_and_each_building_h
 		var unit: UnitDef = _unit(id)
 		assert_str(String(unit.type_id)).is_equal(id)
 		assert_bool(unit is BuildingDef).override_failure_message(id).is_equal(
-			id in wanted.slice(0, 6)
+			id in wanted.slice(0, 8)
 		)
-	for id: String in wanted.slice(0, 6):
-		for layer: String in ["hull", "team"]:
-			var art: String = BUILDING_ART % [id, layer]
-			assert_bool(FileAccess.file_exists(art)).override_failure_message(art).is_true()
 
 
-func test_the_six_building_files_hold_the_gdd_table_and_the_plan_starting_values() -> void:
+func test_the_eight_building_files_hold_the_gdd_table_and_the_plan_starting_values() -> void:
 	# id, footprint, cost, power, requires, produces (a tab, -1 none), tab (-1 = not buildable),
 	# build_ticks, max_hp, weapon.
 	var expected: Array = [
@@ -70,6 +67,18 @@ func test_the_six_building_files_hold_the_gdd_table_and_the_plan_starting_values
 			"",
 		],
 		[
+			"fossil_radar",
+			Vector2i(2, 2),
+			800,
+			-30,
+			"refinery",
+			-1,
+			STRUCTURES,
+			300,
+			800,
+			"",
+		],
+		[
 			"defence_turret",
 			Vector2i(1, 1),
 			600,
@@ -79,7 +88,19 @@ func test_the_six_building_files_hold_the_gdd_table_and_the_plan_starting_values
 			STRUCTURES,
 			225,
 			900,
-			"turret_gun",
+			"redoubt_gun",
+		],
+		[
+			"fossil_strike",
+			Vector2i(3, 3),
+			2500,
+			-60,
+			"fossil_radar",
+			-1,
+			STRUCTURES,
+			600,
+			1500,
+			"",
 		],
 	]
 	var got: Array = []
@@ -92,12 +113,14 @@ func test_the_buildings_see_around_them_and_only_the_turret_acquires() -> void:
 	# id, display_name, sight_range, acquire_range. A building sees (fog) and the turret fires at
 	# what its weapon reaches, so its acquire_range covers the range and its sight covers that.
 	var expected: Array = [
-		["headquarters", "Headquarters", 7000, 0],
-		["power_plant", "Power Plant", 5000, 0],
-		["refinery", "Refinery", 5000, 0],
-		["barracks", "Barracks", 5000, 0],
-		["vehicle_factory", "Vehicle Factory", 5000, 0],
-		["defence_turret", "Defence Turret", 7000, 5500],
+		["headquarters", "Rigworks", 7000, 0],
+		["power_plant", "Turbine Hall", 5000, 0],
+		["refinery", "Cracking Plant", 5000, 0],
+		["barracks", "Bunkhouse", 5000, 0],
+		["vehicle_factory", "Heavy Yard", 5000, 0],
+		["fossil_radar", "Signal Mast", 5000, 0],
+		["defence_turret", "Redoubt", 7000, 5500],
+		["fossil_strike", "Deep Bore", 5000, 0],
 	]
 	var got: Array = []
 	for row: Array in expected:
@@ -145,30 +168,33 @@ func test_the_three_new_unit_files_hold_their_starting_stats() -> void:
 	# move_class (2 tracked: one field per goal for a mixed group), sight_range, acquire_range,
 	# display_name. The harvester is unarmed, so it acquires nothing.
 	assert_array(_stat_row("heavy_tank")).is_equal(
-		[73, 450, 500, 1300, 650, 2, 2, 7000, 5500, "Heavy Tank"]
+		[73, 450, 500, 1300, 650, 2, 2, 7000, 5500, "Bullhead"]
 	)
 	assert_array(_stat_row("artillery")).is_equal(
-		[67, 400, 500, 1200, 200, 1, 2, 9000, 9000, "Artillery"]
+		[67, 400, 500, 1200, 200, 1, 2, 9000, 9000, "Mortar Rig"]
 	)
 	assert_array(_stat_row("harvester")).is_equal(
-		[73, 450, 650, 1400, 800, 1, 2, 5000, 0, "Harvester"]
+		[73, 450, 650, 1400, 800, 1, 2, 5000, 0, "Tanker"]
 	)
 
 
 func test_the_new_weapon_files_hold_their_starting_stats() -> void:
 	# id, range, min_range, damage, cooldown_ticks, projectile_speed (0 = hitscan), then the
 	# percent of damage against infantry, light, heavy and building armour. Artillery has no
-	# splash in Phase 3 (ADR 0018 section 8); the turret gun is the anti-vehicle gun.
+	# splash in Phase 3 (ADR 0018 section 8); the turret gun is the anti-vehicle gun, which the
+	# Redoubt gave up for its own anti-infantry gun (ADR 0023 section 7) and the Rail Battery of
+	# P108 takes up.
 	var weapons: Dictionary[String, Array] = {
 		"heavy_cannon": ["heavy_cannon", 5000, 0, 60, 30, 600, [30, 100, 70, 50]],
 		"artillery_gun": ["artillery_gun", 9000, 3000, 80, 60, 300, [60, 60, 50, 150]],
 		"turret_gun": ["turret_gun", 5500, 0, 40, 30, 600, [40, 100, 80, 20]],
+		"redoubt_gun": ["redoubt_gun", 5500, 0, 20, 15, 600, [150, 30, 15, 20]],
 	}
 	for id: String in weapons:
 		assert_array(_weapon_row(id)).override_failure_message(id).is_equal(weapons[id])
-	# Every weapon file is one of the six, each used by the unit or building that names it.
+	# Every weapon file is one of the seven, each used by the unit or building that names it.
 	var files: Array[String] = FileScan.list_files(WEAPONS_DIR, ".tres")
-	assert_int(files.size()).is_equal(6)
+	assert_int(files.size()).is_equal(7)
 	assert_str(_unit("heavy_tank").weapon.resource_path).is_equal(
 		WEAPONS_DIR + "/heavy_cannon.tres"
 	)
@@ -176,7 +202,48 @@ func test_the_new_weapon_files_hold_their_starting_stats() -> void:
 		WEAPONS_DIR + "/artillery_gun.tres"
 	)
 	assert_str(_unit("defence_turret").weapon.resource_path).is_equal(
-		WEAPONS_DIR + "/turret_gun.tres"
+		WEAPONS_DIR + "/redoubt_gun.tres"
+	)
+
+
+## The Redoubt fights infantry (ADR 0023 section 7, docs/GDD.md): its gun's percent is highest and
+## at least full against the infantry armour class, low against both vehicle classes, and what a
+## shot does (Combat: max(1, damage * percent / 100)) kills a squad of each shipped infantry type
+## in fewer ticks than it kills any shipped vehicle. The expectations are read from the tables.
+func test_the_redoubts_gun_is_strong_against_infantry_and_weak_against_vehicles() -> void:
+	var gun: WeaponDef = _unit("defence_turret").weapon
+	var percent: PackedInt32Array = gun.vs_armour
+	assert_int(percent[World.Armour.INFANTRY]).is_greater_equal(100)
+	assert_int(percent.size()).is_equal(World.Armour.size())
+	for armour: int in [World.Armour.LIGHT, World.Armour.HEAVY, World.Armour.BUILDING]:
+		assert_int(percent[armour]).override_failure_message(str(armour)).is_less(
+			percent[World.Armour.INFANTRY]
+		)
+	for armour: int in [World.Armour.LIGHT, World.Armour.HEAVY]:
+		assert_int(percent[armour]).override_failure_message(str(armour)).is_less_equal(50)
+	var infantry_ticks: Array[int] = []
+	var vehicle_ticks: Array[int] = []
+	for id: String in ["rifle_squad", "rocket_squad", "light_tank", "heavy_tank", "artillery"]:
+		var target: UnitDef = _unit(id)
+		var ticks: int = _ticks_to_kill(gun, target)
+		if target.armour == World.Armour.INFANTRY:
+			infantry_ticks.append(ticks)
+		else:
+			vehicle_ticks.append(ticks)
+	assert_array(infantry_ticks).has_size(2)
+	assert_array(vehicle_ticks).has_size(3)
+	assert_int(infantry_ticks.max()).is_less(vehicle_ticks.min())
+	# The anti-vehicle gun it replaced stays as it is, and it is the other way round: no better
+	# against infantry than against light vehicles.
+	var anti_vehicle: WeaponDef = load(WEAPONS_DIR + "/turret_gun.tres")
+	assert_int(anti_vehicle.vs_armour[World.Armour.INFANTRY]).is_less(
+		anti_vehicle.vs_armour[World.Armour.LIGHT]
+	)
+	assert_int(_ticks_to_kill(anti_vehicle, _unit("light_tank"))).is_less(
+		_ticks_to_kill(gun, _unit("light_tank"))
+	)
+	assert_int(_ticks_to_kill(gun, _unit("rifle_squad"))).is_less(
+		_ticks_to_kill(anti_vehicle, _unit("rifle_squad"))
 	)
 
 
@@ -186,12 +253,22 @@ func test_every_requirement_chain_reaches_the_headquarters_without_visiting_a_fi
 		units.append(load(path))
 	assert_array(_chain_problems(units)).is_empty()
 	# The chains the plan names, followed from the file that ends them: the turret asks for a
-	# barracks, which asks for a power plant, which asks for the Headquarters.
+	# barracks, which asks for a power plant, which asks for the Headquarters; the radar comes after
+	# the refinery, and artillery and the strike after the radar (ADR 0023 section 7).
 	assert_array(_chain(_unit("defence_turret"))).is_equal(
 		["defence_turret", "barracks", "power_plant", "headquarters"]
 	)
 	assert_array(_chain(_unit("vehicle_factory"))).is_equal(
 		["vehicle_factory", "refinery", "power_plant", "headquarters"]
+	)
+	assert_array(_chain(_unit("fossil_radar"))).is_equal(
+		["fossil_radar", "refinery", "power_plant", "headquarters"]
+	)
+	assert_array(_chain(_unit("artillery"))).is_equal(
+		["artillery", "fossil_radar", "refinery", "power_plant", "headquarters"]
+	)
+	assert_array(_chain(_unit("fossil_strike"))).is_equal(
+		["fossil_strike", "fossil_radar", "refinery", "power_plant", "headquarters"]
 	)
 	assert_array(_chain(_unit("headquarters"))).is_equal(["headquarters"])
 
@@ -314,7 +391,15 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 	assert_array(producers[INFANTRY]).is_equal(["barracks"])
 	assert_array(producers[VEHICLES]).is_equal(["vehicle_factory"])
 	assert_array(buildable[STRUCTURES]).is_equal(
-		["barracks", "defence_turret", "power_plant", "refinery", "vehicle_factory"]
+		[
+			"barracks",
+			"defence_turret",
+			"fossil_radar",
+			"fossil_strike",
+			"power_plant",
+			"refinery",
+			"vehicle_factory"
+		]
 	)
 	assert_array(buildable[INFANTRY]).is_equal(["rifle_squad", "rocket_squad"])
 	assert_array(buildable[VEHICLES]).is_equal(
@@ -344,6 +429,16 @@ func _chain_problems(units: Array[UnitDef]) -> PackedStringArray:
 				"%s: the chain ends at %s, not at %s" % [unit.type_id, at.type_id, HEADQUARTERS]
 			)
 	return problems
+
+
+## The ticks `gun` needs to kill `target` from full hit points with no pause but its cooldown: the
+## shots (a hit does `max(1, damage * percent / 100)`, as Combat has it) minus the first, which
+## needs no wait, times the cooldown.
+@warning_ignore("integer_division")
+func _ticks_to_kill(gun: WeaponDef, target: UnitDef) -> int:
+	var hit: int = maxi(1, gun.damage * gun.vs_armour[target.armour] / 100)
+	var shots: int = (target.max_hp + hit - 1) / hit
+	return (shots - 1) * gun.cooldown_ticks
 
 
 ## The type_ids from `unit` along `requires` to the end of the chain.
