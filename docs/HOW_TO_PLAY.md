@@ -103,7 +103,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Tap the ready button | You aim: the button stays pressed and says "Tap map", and a check mark and an X appear beside it. Drag and pinch still move the map; nothing is selected, ordered or boxed while you aim | yes |
 | While aiming, tap the map | A ring on the ground shows where the strike will hit and how far it reaches (`strike_radius` of the building); tap again to move it. Tap the check mark → the strike is fired once and aiming ends. The check mark waits dimmed until you have tapped the map | yes |
 | While aiming, tap the X or the pressed button, or turn the phone | Aiming ends and nothing is fired | |
-| A Deep Bore is fired, by anyone | Every player sees a red ring on the ground at the target and a blinking warning triangle for the warning time (`strike_delay`), with a white ring closing in on the target; when it has closed, the ground splits and everything inside the ring, yours too, takes damage. Move out of the ring while it closes | yes |
+| A Deep Bore is fired, by anyone | Every player sees a red ring on the ground at the target and a blinking warning triangle for the warning time (`strike_delay`), with a white ring closing in on the target; when it has closed, everything inside the ring, yours too, takes damage (the blast itself is not drawn yet, see below). Move out of the ring while it closes | yes |
 
 ## Not yet in the game
 Base building, harvesting, power, production, win and lose conditions, menus and rewards get
