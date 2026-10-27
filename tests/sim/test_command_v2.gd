@@ -1,23 +1,25 @@
 extends GdUnitTestSuite
-## Command v2 (plan P70b, ADR 0017 section 4): the six Phase 3 types and their ids, the factories
-## with the payloads of the ADR, that every factory copies its arrays, and that each new type
-## encodes and decodes (the replay log needs no change) and keeps the (tick, player_id, sequence)
-## order. The numbers are literals.
+## Command v2 (plan P70b, ADR 0017 section 4; SUPERWEAPON from P109, ADR 0023 section 10): the
+## seven Phase 3 types and their ids, the factories with the payloads of the ADR, that every factory
+## copies its arrays, and that each new type encodes and decodes (the replay log needs no change)
+## and keeps the (tick, player_id, sequence) order. The numbers are literals.
 
 const Samples: GDScript = preload("res://tests/sim/support/command_samples.gd")
-const NEW_TYPES: Array[int] = [10, 11, 12, 13, 14, 20]
+const NEW_TYPES: Array[int] = [10, 11, 12, 13, 14, 15, 20]
 
 
 func test_the_phase_3_types_have_the_ids_of_the_adr() -> void:
 	var expected: Dictionary = {"NONE": 0, "ATTACK_MOVE": 1, "MOVE": 2, "ATTACK": 3, "STOP": 4}
 	expected.merge({"PLACE": 10, "QUEUE": 11, "CANCEL": 12, "RALLY": 13, "HARVEST": 14})
+	expected["SUPERWEAPON"] = 15
 	expected["SURRENDER"] = 20
 	assert_dict(Command.Type).is_equal(expected)
 
 
 ## Each factory sets its type, its player and the fields of the ADR table and leaves the rest and
 ## the stamps alone: PLACE a point, QUEUE [type_index], CANCEL [tab, slot], RALLY a building and a
-## point, HARVEST the units and a point, SURRENDER nothing.
+## point, HARVEST the units and a point, SUPERWEAPON a strike building and a point, SURRENDER
+## nothing.
 func test_each_factory_sets_the_fields_and_the_payload_of_the_adr() -> void:
 	var place: Command = Command.place(2, 12500, -700)
 	assert_array(Samples.fields(place)).is_equal([-1, 2, 0, 10, 12500, -700, 0, [], []])
@@ -29,6 +31,8 @@ func test_each_factory_sets_the_fields_and_the_payload_of_the_adr() -> void:
 	assert_array(Samples.fields(rally)).is_equal([-1, 2, 0, 13, 8500, 9500, 41, [], []])
 	var harvest: Command = Command.harvest(1, PackedInt32Array([5, 6]), 20500, 4500)
 	assert_array(Samples.fields(harvest)).is_equal([-1, 1, 0, 14, 20500, 4500, 0, [5, 6], []])
+	var superweapon: Command = Command.superweapon(1, 41, 8500, 9500)
+	assert_array(Samples.fields(superweapon)).is_equal([-1, 1, 0, 15, 8500, 9500, 41, [], []])
 	var surrender: Command = Command.surrender(2)
 	assert_array(Samples.fields(surrender)).is_equal([-1, 2, 0, 20, 0, 0, 0, [], []])
 
@@ -68,6 +72,7 @@ func test_each_new_type_encodes_and_decodes() -> void:
 		Command.cancel(1, 2, 3),
 		Command.rally(2, 41, 8500, 9500),
 		Command.harvest(1, PackedInt32Array([5, 6]), 20500, 4500),
+		Command.superweapon(1, 41, 8500, 9500),
 		Command.surrender(2),
 	]
 	var log: PackedInt32Array = PackedInt32Array()

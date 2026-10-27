@@ -19,7 +19,11 @@ const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 ## exception 10): STATE_FORMAT became 3 and Phase 3's layout joined the hash (four row columns, the
 ## sections "players", "ore" and "ghosts", the scalars match_end_tick and winner, and the map digest
 ## of the six-terrain set with its buildable flags), so the digest changed from 3449fd90a4f3fe60.
-const TICK_0_SEED_1: String = "a9dc4b12c176bc8f"
+## P109 (ADR 0023 section 10, exception 10): STATE_FORMAT became 4 and the strike state joined the
+## hash (the row columns "ready_tick" and "offline_until", the player arrays strike_x, strike_y and
+## strike_tick), so the header, the two new row sections and the "players" section changed, and the
+## digest changed from a9dc4b12c176bc8f; no row, rule or run moved.
+const TICK_0_SEED_1: String = "27f335e9bd1439ee"
 
 
 ## Every int, bool and Packed array member of a helper, private ones too, is in HASHED or UNHASHED
@@ -228,9 +232,9 @@ func test_the_sections_are_named_in_hash_order() -> void:
 	var names: PackedStringArray = World.hash_section_names()
 	assert_array(names.slice(0, 4)).is_equal(["header", "map", "unit_id", "owner"])
 	assert_array(names.slice(25)).is_equal(
-		["home", "projectiles", "fog", "players", "ore", "ghosts"]
+		["home", "ready_tick", "offline_until", "projectiles", "fog", "players", "ore", "ghosts"]
 	)
-	assert_array(names.slice(2, 26)).is_equal(World.ROW_ARRAYS)
+	assert_array(names.slice(2, 28)).is_equal(World.ROW_ARRAYS)
 	assert_int(_world().hash_parts().size()).is_equal(names.size())
 
 
