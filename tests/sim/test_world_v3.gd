@@ -2,10 +2,11 @@ extends GdUnitTestSuite
 ## World v3, the strike layout (plan row P109, ADR 0023 section 10, exceptions 10 and 18): the
 ## two row columns, the three per-player arrays and the six type tables that a BuildingDef's strike
 ## exports fill, each in exactly one shape list; what is state (the row columns and the pending
-## strike, in the hash) and what is not (the type tables, in defs_hash); `SUPERWEAPON` dropped and
-## counted until its rule (P110); and the perf arena, which has no strike building, keeping every
-## new column at its start value. The layout re-pin itself is pinned where the hashes are
-## (test_world_hash's TICK_0_SEED_1, data/dev/perf_gate.tres through tests/perf/test_golden_hashes).
+## strike, in the hash) and what is not (the type tables, in defs_hash); and the perf arena, which
+## has no strike building, keeping every new column at its start value. The rules of the strike
+## state are P110's (test_strike_command, test_strike_rupture, test_strike_tick). The layout re-pin
+## itself is pinned where the hashes are (test_world_hash's TICK_0_SEED_1, data/dev/perf_gate.tres
+## through tests/perf/test_golden_hashes).
 ## Numbers are literals, so no data file can agree with a wrong rule.
 
 const HashBytes: GDScript = preload("res://tests/perf/support/hash_bytes.gd")
@@ -200,23 +201,6 @@ func test_the_row_columns_and_the_pending_strike_are_state_and_the_type_tables_a
 	assert_int(written.state_hash()).is_not_equal(base.state_hash())
 
 
-## SUPERWEAPON (15) has no rule before P110: a command that looks right (the owner, its own strike
-## building, a point) is dropped and counted, and nothing else moves. P110 replaces this case with
-## the validation cases.
-func test_a_superweapon_command_is_dropped_and_counted_until_its_rule() -> void:
-	var world: World = _strike_world()
-	var base: World = _strike_world()
-	var command: Command = Command.superweapon(1, 1, 9500, 9500)
-	command.tick = 0
-	Sim.step(world, [command])
-	Sim.step(base, [])
-	assert_int(world.dropped_commands).is_equal(1)
-	assert_int(base.dropped_commands).is_equal(0)
-	assert_array(_differing(base, world)).is_equal(["header"])
-	assert_array(world.ready_tick).is_equal([0, 0])
-	assert_array(world.strike_tick).is_equal([0, 0, 0])
-
-
 ## The arena has no strike building, so through a run its row columns and pending strikes stay at
 ## their start values and its type tables pad (no later Phase 3 row may move them there).
 func test_the_perf_arena_keeps_the_strike_state_at_its_start_values_through_a_run() -> void:
@@ -237,25 +221,6 @@ func test_the_perf_arena_keeps_the_strike_state_at_its_start_values_through_a_ru
 		var table: PackedInt32Array = world.get(column_name)
 		assert_int(table.size()).is_equal(world.type_ids.size())
 		assert_int(table.count(pad)).override_failure_message(column_name).is_equal(table.size())
-
-
-## A 20 x 20 tile world with one type that has a strike kind (a rupture) and a row of it for each of
-## player 1 and player 2.
-func _strike_world() -> World:
-	var world: World = World.new()
-	world.map_w = 20000
-	world.map_h = 20000
-	world.type_ids.append(&"depot")
-	world.type_strike_kind.append(1)
-	world.type_charge_ticks.append(100)
-	world.type_strike_radius.append(3000)
-	world.type_strike_delay.append(45)
-	world.type_strike_ticks.append(0)
-	world.type_strike_weapon.append(-1)
-	world.add_unit(1, 0, 5500, 5500)
-	world.add_unit(2, 0, 9500, 9500)
-	world.prepare()
-	return world
 
 
 func _arena() -> World:
