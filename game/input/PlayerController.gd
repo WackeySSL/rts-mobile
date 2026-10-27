@@ -18,12 +18,15 @@ extends Node
 ## silhouette (`Picker.pick_building`): a tap on an own or a shown enemy building selects it alone
 ## (an enemy one for its info only: it gets no order), the frame, the panel and the sidebar's tab
 ## follow `selection_changed`. A building never joins a box, a double-tap or "All army". With own
-## units selected a tap on an enemy building attacks it; with a building selected a tap on the
-## ground, or on an enemy unit, selects nothing and orders nothing.
+## units selected a tap on an enemy building attacks it, if the sim would take that attack
+## (`PickSnapshot.is_targetable`: the view draws an enemy building for any seen cell of its
+## footprint, the sim sees it at the cell under its position) and is a ground tap if not; with a
+## building selected a tap on the ground, or on an enemy unit, selects nothing and orders nothing.
 ## Each order shows its marker and the BoxOverlay follows a long-press and its box, both in the
 ## frame of the gesture. The selection rings follow `selection_changed` (wired in the scene).
 
-## Emitted with the new `selection.selected` after every real change.
+## Emitted with the new `selection.selected` after every real change, and again when a tap lands on
+## the one building that is selected already: the sidebar goes back to the tab it builds.
 signal selection_changed(ids: PackedInt32Array)
 
 @export var runner: MatchRunner
@@ -119,15 +122,27 @@ func _tap(pos: Vector2) -> void:
 	else:
 		var min_half: float = UiScale.dp(settings.hit_radius_dp)
 		var shape: int = Picker.pick_building(_snap, pos, _local_player(), units, min_half)
-		if shape >= 0 and units and _snap.building_owners[shape] != _local_player():
+		var hostile: bool = shape >= 0 and units and _snap.building_owners[shape] != _local_player()
+		if hostile and _snap.is_targetable(shape):
 			_attack(_snap.building_ids[shape], _snap.building_centres[shape])
-		elif shape >= 0:
-			selection.set_ids(PackedInt32Array([_snap.building_ids[shape]]))
+		elif shape >= 0 and not hostile:
+			_select_building(_snap.building_ids[shape])
 		elif units:
 			var ground: Vector2i = IsoProjection.px_to_ground(camera.screen_to_world(pos))
 			_move(ground.x, ground.y)
 		else:
 			selection.clear()  # A building was selected: a tap on the ground lets go of it.
+
+
+## Selects building `id` alone. The model does not fire for the building that is the selection
+## already, so then the signal goes out by hand: the player may have opened another tab since, and
+## a tap on the building takes the sidebar back to the one it builds. Every listener is idempotent.
+func _select_building(id: int) -> void:
+	var alone: PackedInt32Array = PackedInt32Array([id])
+	if selection.selected == alone:
+		selection_changed.emit(selection.selected)
+	else:
+		selection.set_ids(alone)
 
 
 func _double_tap(pos: Vector2) -> void:

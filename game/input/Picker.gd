@@ -42,7 +42,8 @@ static func pick(snap: PickSnapshot, pos: Vector2, local_player: int, has_select
 ## y. One under 2 x `min_half` px wide or high (48 dp across, a unit's hit radius twice) becomes
 ## the box of that size about the middle of its own. Of the buildings hit the one drawn in front
 ## wins (the larger sort key, then the higher id); with `has_units` (own units selected) a hit
-## enemy building wins over an own one, to be attacked. Any owner but `local_player` is an enemy.
+## enemy building the sim takes an attack on (`PickSnapshot.is_targetable`) wins over an own one, to
+## be attacked. Any owner but `local_player` is an enemy.
 static func pick_building(
 	snap: PickSnapshot, pos: Vector2, local_player: int, has_units: bool, min_half: float
 ) -> int:
@@ -51,10 +52,12 @@ static func pick_building(
 	for i: int in snap.building_count():
 		if not _in_silhouette(snap, i, pos, min_half):
 			continue
-		var enemy: bool = snap.building_owners[i] != local_player
+		var enemy: bool = (
+			has_units and snap.building_owners[i] != local_player and snap.is_targetable(i)
+		)
 		var wins: bool = best < 0
 		if not wins:
-			wins = enemy if has_units and enemy != best_enemy else _in_front(snap, i, best)
+			wins = enemy if enemy != best_enemy else _in_front(snap, i, best)
 		if wins:
 			best = i
 			best_enemy = enemy

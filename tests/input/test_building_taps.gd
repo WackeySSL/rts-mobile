@@ -5,7 +5,9 @@ extends GdUnitTestSuite
 ## building's picture selects it alone, the panel names it and the sidebar opens its tab; a unit at
 ## the spot is picked first; the building drawn in front wins an overlap; a ground tap lets go of
 ## it; an enemy building is selected for its info and gets no order, and with an own tank selected a
-## tap on it attacks. Buildings never join a double-tap, a box or "All army".
+## tap on it attacks when the sim would take that (the cell under its position is seen) and moves
+## when not. A second tap on the selected building takes the sidebar back to its tab. Buildings
+## never join a double-tap, a box or "All army".
 ## On a 32 x 32 map, player 1 the local one: Headquarters id 1 (3x3, tiles 6-8 by 6-8, centre px
 ## (0, 240)), power plant id 2 (2x2, tiles 9-10 by 6-7, centre px (96, 272), drawn in front of the
 ## Headquarters), barracks id 3 (2x2, tiles 14-15 by 3-4) and light tank id 4 at tile (5, 5), whose
@@ -235,6 +237,66 @@ func test_with_an_own_tank_selected_a_tap_on_a_seen_enemy_building_attacks_it() 
 		_sent.clear()
 
 
+func test_with_an_own_tank_selected_a_tap_on_an_enemy_building_seen_only_at_its_edge_is_a_move(
+) -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _show(size)
+		var note: String = str(size)
+		# A corner cell of the enemy Headquarters (tiles 20-22 by 20-22) is seen, the cell under its
+		# position (21, 21) is not: the building is drawn, but the sim would drop an attack on it.
+		Rig.see(_runner.snapshot, 1, [Vector2i(20, 20)])
+		_controller.selection.set_ids(PackedInt32Array([TANK]))
+		_tap_building(ENEMY_HQ, 0.0, Vector2(0, -60))  # On its overhang.
+		assert_array(_sent).override_failure_message(note).has_size(1)
+		assert_int(_sent[0].type).override_failure_message(note).is_equal(Command.Type.MOVE)
+		assert_array(_sent[0].unit_ids).is_equal([TANK])
+		assert_int(_diamonds()).override_failure_message(note).is_equal(0)  # No attack marker.
+		assert_array(_controller.selection.selected).is_equal([TANK])
+		# With nothing selected it is still tapped for its info: it is drawn.
+		_controller.selection.clear()
+		_sent.clear()
+		_tap_building(ENEMY_HQ, 0.0)
+		assert_array(_controller.selection.selected).override_failure_message(note).is_equal(
+			[ENEMY_HQ]
+		)
+		assert_array(_sent).is_empty()
+		Rig.see(_runner.snapshot, 1, [Vector2i(21, 21)])  # Back to the cell under its position.
+
+
+func test_a_second_tap_on_the_selected_building_takes_the_sidebar_back_to_its_tab() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _show(size)
+		var note: String = str(size)
+		_tap_building(HQ, 0.0)
+		assert_int(_sidebar.tab).override_failure_message(note).is_equal(World.Tab.STRUCTURES)
+		_sidebar.select_tab(World.Tab.VEHICLES)  # To queue a tank: the selection stays.
+		assert_array(_controller.selection.selected).override_failure_message(note).is_equal([HQ])
+		_tap_building(HQ, 0.0)
+		assert_array(_controller.selection.selected).override_failure_message(note).is_equal([HQ])
+		assert_int(_sidebar.tab).override_failure_message(note).is_equal(World.Tab.STRUCTURES)
+		_tap_building(BARRACKS, 0.0)
+		_sidebar.select_tab(World.Tab.STRUCTURES)
+		_tap_building(BARRACKS, 0.0)
+		assert_int(_sidebar.tab).override_failure_message(note).is_equal(World.Tab.INFANTRY)
+		assert_array(_sent).override_failure_message(note).is_empty()
+
+
+func test_selection_changed_fires_again_for_a_tap_on_the_selected_building_and_for_no_other_repeat(
+) -> void:
+	await _show(ScreenSizes.LANDSCAPE[1])
+	var seen: Array[PackedInt32Array] = []
+	_controller.selection_changed.connect(func(ids: PackedInt32Array) -> void: seen.append(ids))
+	_tap_building(HQ, 0.0)
+	assert_array(seen).has_size(1)
+	_tap_building(HQ, 0.0)  # The building that is the selection: the sidebar needs to hear it.
+	assert_array(seen).has_size(2)
+	assert_array(seen[1]).is_equal([HQ])
+	_controller.select_all_army()  # The tank: a real change.
+	assert_array(seen).has_size(3)
+	_controller.select_all_army()  # Not a change, and not a building tap: silent as before.
+	assert_array(seen).has_size(3)
+
+
 func test_a_selected_building_that_is_destroyed_leaves_the_selection() -> void:
 	await _show(ScreenSizes.LANDSCAPE[1])
 	_tap_building(PLANT, 0.0)
@@ -302,6 +364,15 @@ func _box(from: Vector2, to: Vector2) -> void:
 	TouchEvents.drag(get_viewport(), 0, to, to - from)
 	TouchEvents.release(get_viewport(), 0, to)
 	_now_ms += 1000
+
+
+## How many diamonds (the attack marker) are on show.
+func _diamonds() -> int:
+	var count: int = 0
+	for mark: Node in _main.get_node("MarkerLayer").get_children():
+		if mark is MoveMarkerLayer.Mark and mark.visible and mark.diamond:
+			count += 1
+	return count
 
 
 func _panel() -> Control:

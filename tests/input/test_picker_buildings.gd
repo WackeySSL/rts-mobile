@@ -2,7 +2,8 @@ extends GdUnitTestSuite
 ## Picker.pick_building (plan P115b, ADR 0023 section 3) on hand-built snapshots: the silhouette
 ## (the footprint's diamond plus the rectangle between its side corners up to the picture's top),
 ## the box a shape under 48 dp grows to, the building drawn in front wins an overlap, and with own
-## units selected an enemy building wins over an own one. The shapes are those of the real layer in
+## units selected an enemy building wins over an own one, if the sim would take an attack on it
+## (`PickSnapshot.is_targetable`). The shapes are those of the real layer in
 ## test_building_picking.gd. A 3x3 Headquarters at zoom 1 is half 96 x 48 and 140 px tall above the
 ## corners, so its box is 192 wide and 188 high; MIN is a tenth of that, which grows nothing.
 
@@ -116,6 +117,36 @@ func test_the_front_building_wins_even_when_it_is_an_enemy_unless_own_units_are_
 	assert_int(Picker.pick_building(lone, AT, 2, false, MIN)).is_equal(0)  # Player 2's own.
 
 
+func test_an_enemy_building_the_sim_would_not_attack_does_not_win_over_an_own_one() -> void:
+	# The view draws it (a corner cell is seen), but a tap on it cannot be an attack: with units
+	# selected it is no better than any other building, and the front one wins.
+	var back_enemy: Array = _untargetable(_hq(4, 2, AT, 380.0))
+	var front_own: Array = _hq(9, 1, AT + Vector2(60, 40), 420.0)
+	var both: Vector2 = AT + Vector2(50, 20)
+	for order: Array in [[back_enemy, front_own], [front_own, back_enemy]]:
+		var snap: PickSnapshot = _snap(order)
+		assert_int(snap.building_ids[Picker.pick_building(snap, both, 1, true, MIN)]).is_equal(9)
+	# In front, it is what the finger touched: the caller turns that into a ground tap.
+	var front_enemy: Array = _untargetable(_hq(9, 2, AT + Vector2(60, 40), 420.0))
+	var back_own: Array = _hq(4, 1, AT, 380.0)
+	var snap: PickSnapshot = _snap([back_own, front_enemy])
+	assert_int(snap.building_ids[Picker.pick_building(snap, both, 1, true, MIN)]).is_equal(9)
+	# A targetable enemy building still wins, behind an enemy one that is not.
+	var snap_two: PickSnapshot = _snap([_hq(4, 2, AT, 380.0), front_enemy])
+	assert_int(snap_two.building_ids[Picker.pick_building(snap_two, both, 1, true, MIN)]).is_equal(
+		4
+	)
+
+
+func test_a_building_with_no_targetable_entry_is_targetable() -> void:
+	var snap: PickSnapshot = PickSnapshot.new()
+	assert_bool(snap.is_targetable(0)).is_true()  # A snapshot built by hand has no entries.
+	snap.building_targetable = PackedByteArray([1, 0])
+	assert_bool(snap.is_targetable(0)).is_true()
+	assert_bool(snap.is_targetable(1)).is_false()
+	assert_bool(snap.is_targetable(2)).is_true()
+
+
 ## A 3x3 Headquarters row: id, owner, centre and sort key.
 func _hq(id: int, owner_id: int, centre: Vector2, key: float) -> Array:
 	return _row(id, owner_id, centre, HQ_HALF, HQ_RISE, key)
@@ -125,9 +156,16 @@ func _row(id: int, owner_id: int, centre: Vector2, half: Vector2, rise: float, k
 	return [id, owner_id, centre, half, rise, key]
 
 
+## `row` as a building the sim would drop an attack on.
+func _untargetable(row: Array) -> Array:
+	return row + [false]
+
+
+## A snapshot of `rows`; a row is targetable unless a seventh entry says false.
 func _snap(rows: Array) -> PickSnapshot:
 	var snap: PickSnapshot = PickSnapshot.new()
 	for row: Array in rows:
+		snap.building_targetable.append(1 if row.size() < 7 or row[6] else 0)
 		snap.building_ids.append(row[0])
 		snap.building_owners.append(row[1])
 		snap.building_centres.append(row[2])

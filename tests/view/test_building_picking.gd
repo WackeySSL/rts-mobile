@@ -1,7 +1,9 @@
 extends GdUnitTestSuite
 ## What BuildingLayer tells the Picker and the bars about a building (plan P115b, ADR 0023 section
 ## 3): `fill_pick_snapshot` lists the shown buildings with their diamond, the height of their
-## picture and their sort key on the screen of a camera; the picture's top comes from the sprite on
+## picture, their sort key and whether the sim takes an attack on them (the cell under their
+## position is seen, not just a cell of the footprint) on the screen of a camera; the picture's top
+## comes from the sprite on
 ## the atlas, so it is as tall as the region says; a shape is at least 48 dp a side at zoom 0.75
 ## on every screen; the fog keeps an enemy building out; and `set_selected` keeps the buildings
 ## among the ids, until they die. On a 32 x 32 map: player 1's Headquarters (3x3, row 0, id 1),
@@ -137,18 +139,41 @@ func test_an_enemy_building_the_fog_hides_is_not_listed_until_a_cell_of_it_is_se
 	assert_array(_snap.building_ids).is_equal([1, 2, 3])
 
 
+func test_an_enemy_building_is_targetable_where_the_sim_sees_the_cell_under_its_position() -> void:
+	_layer.reveal_enemies = false
+	# A corner cell of the enemy Headquarters (tiles 4-6 by 12-14, its position in cell (5, 13)) and
+	# the cell of the enemy defence: both are drawn, only the defence can be attacked.
+	Rig.see(_runner.snapshot, 1, [Vector2i(6, 14), Vector2i(10, 12)])
+	_layer._process(0.0)
+	_layer.fill_pick_snapshot(_snap, _camera)
+	assert_array(_snap.building_ids).is_equal([1, 2, 3, 4, 5])
+	assert_array(_snap.building_targetable).is_equal([1, 1, 1, 0, 1])  # Own ones always.
+	assert_bool(_snap.is_targetable(3)).is_false()
+	Rig.see(_runner.snapshot, 1, [Vector2i(5, 13)])  # The cell under its position.
+	_layer.fill_pick_snapshot(_snap, _camera)
+	assert_array(_snap.building_ids).is_equal([1, 2, 3, 4])
+	assert_array(_snap.building_targetable).is_equal([1, 1, 1, 1])
+	_layer.reveal_enemies = true  # Nothing seen, all shown: the layer's own switch.
+	Rig.see(_runner.snapshot, 1, [])
+	_layer.fill_pick_snapshot(_snap, _camera)
+	assert_array(_snap.building_targetable).is_equal([1, 1, 1, 1, 1])
+	assert_array(_snap.building_targetable).has_size(_snap.building_count())
+
+
 func test_a_refill_replaces_the_rows_of_the_last_fill() -> void:
 	_layer.fill_pick_snapshot(_snap, _camera)
 	_layer.fill_pick_snapshot(_snap, _camera)
 	assert_int(_snap.building_count()).is_equal(5)
 	assert_int(_snap.building_centres.size()).is_equal(5)
 	assert_int(_snap.building_keys.size()).is_equal(5)
+	assert_int(_snap.building_targetable.size()).is_equal(5)
 	var idle: BuildingLayer = auto_free(BuildingLayer.new())  # Its runner has no snapshot yet.
 	idle.runner = auto_free(MatchRunner.new())
 	add_child(idle)
 	idle.fill_pick_snapshot(_snap, _camera)
 	assert_int(_snap.building_count()).is_equal(0)
 	assert_int(_snap.building_half.size()).is_equal(0)
+	assert_int(_snap.building_targetable.size()).is_equal(0)
 
 
 func test_every_shape_is_at_least_48_dp_a_side_at_zoom_075_on_every_screen() -> void:

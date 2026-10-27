@@ -189,8 +189,10 @@ func frame_box(row: int) -> Rect2:
 
 
 ## Fills the building arrays of `out` for the `Picker` with the shown buildings, on the screen of
-## `camera` (centre, diamond, height of the picture and sort key; see `PickSnapshot`). The unit
-## arrays are left alone. A building the fog hides is left out, so no tap reaches it.
+## `camera` (centre, diamond, height of the picture, sort key and whether an attack on it is taken;
+## see `PickSnapshot`). The unit arrays are left alone. A building the fog hides is left out, so no
+## tap reaches it. One shown for a corner cell alone is listed, but not targetable: the sim sees an
+## enemy building at the cell under its position (`Targeting.sees`, as `UnitLayer`'s `pickable`).
 func fill_pick_snapshot(out: PickSnapshot, camera: RtsCamera) -> void:
 	var snap: MatchSnapshot = _sync()
 	out.building_ids.clear()
@@ -199,20 +201,34 @@ func fill_pick_snapshot(out: PickSnapshot, camera: RtsCamera) -> void:
 	out.building_half.clear()
 	out.building_rise.clear()
 	out.building_keys.clear()
+	out.building_targetable.clear()
 	if snap == null:
 		return
 	var zoom: float = camera.zoom.x
+	var owners: PackedInt32Array = snap.owner
+	var cur_x: PackedInt32Array = snap.pos_x
+	var cur_y: PackedInt32Array = snap.pos_y
+	var player: int = FogLayer.local_player_of(runner)
+	var fog: FogGrid = snap.fog
+	var all: bool = reveal_enemies or not FogLayer.covers(fog, player)
+	var counts: PackedInt32Array = fog.visible
+	var base: int = (player - 1) * fog.cells
 	for entry: Entry in _entries.values():
 		if not entry.shown:
 			continue
+		var row: int = entry.row
 		out.building_ids.append(entry.id)
-		out.building_owners.append(snap.owner[entry.row])
+		out.building_owners.append(owners[row])
 		out.building_centres.append(camera.world_to_screen(entry.node.position))
 		out.building_half.append(
 			Vector2(IsoProjection.HALF_W, IsoProjection.HALF_H) * (entry.foot * zoom)
 		)
 		out.building_rise.append(entry.rise * zoom)
 		out.building_keys.append(entry.node.position.y)
+		var targetable: bool = all or owners[row] == player
+		if not targetable:
+			targetable = counts[base + snap.cell_of(cur_x[row], cur_y[row])] > 0
+		out.building_targetable.append(1 if targetable else 0)
 
 
 ## The footprint's cells of building row `row`: its origin tile (the position minus half the

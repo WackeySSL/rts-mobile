@@ -28,6 +28,10 @@ var building_half: PackedVector2Array = PackedVector2Array()
 var building_rise: PackedFloat32Array = PackedFloat32Array()  ## Centre to the sprite's top.
 ## The sort key (the world y of the footprint centre): the larger one is drawn in front.
 var building_keys: PackedFloat32Array = PackedFloat32Array()
+## 0 for a building the sim would drop an ATTACK on, 1 for every other. The view draws an enemy
+## building when any cell of its footprint is seen, the sim takes an attack on it only when the cell
+## under its position is (`Targeting.sees`). A shape with no entry is targetable.
+var building_targetable: PackedByteArray = PackedByteArray()
 
 
 func size() -> int:
@@ -36,3 +40,8 @@ func size() -> int:
 
 func building_count() -> int:
 	return building_ids.size()
+
+
+## Whether an ATTACK on building `shape` (an index of the building arrays) is taken by the sim.
+func is_targetable(shape: int) -> bool:
+	return shape >= building_targetable.size() or building_targetable[shape] != 0

@@ -54,7 +54,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Action | Result | Teach |
 |---|---|---|
 | With units selected, tap the ground | Move: the units drive there without fighting, also out of a fight; on arrival they fire at enemies within weapon range without moving; chevrons lying flat on the ground close in on the point | yes |
-| With units selected, tap an enemy | Attack: the units drive to weapon range of that enemy, stop there and fire at it until it is destroyed, then attack-move on to where it stood; a flat diamond on the ground marks it. An enemy building you can see is attacked the same way: a tap anywhere on its picture counts, also where one of your own buildings is drawn in front of it. One the fog hides is a tap on the ground | yes |
+| With units selected, tap an enemy | Attack: the units drive to weapon range of that enemy, stop there and fire at it until it is destroyed, then attack-move on to where it stood; a flat diamond on the ground marks it. An enemy building is attacked the same way once the middle of it is in your sight: a tap anywhere on its picture counts, also where one of your own buildings is drawn in front of it. One you see only at its edge, or the fog hides, is a tap on the ground | yes |
 
 ## Combat
 | Action | Result | Teach |
@@ -92,7 +92,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Tap a tab | It opens: Structures, Infantry or Vehicles, as an icon; the open tab is the lighter one with a thick bar under it | |
 | Tap an item in the open tab | One of it is queued and paid for at once; the icon fills while it is built, and a number on it counts how many of it are queued. Each card shows the item's name under its cost (a long name is cut short with an ellipsis; the upright band's tiles show no name). A padlock on a dimmed icon means a building you need is missing (a power plant for a barracks, a barracks for infantry). Stripes mean it cannot be queued now: you cannot pay it (its cost turns amber) or its queue is full (`queue_slots` in `data/rules.tres`). A finished building shows "Ready" where its price was (tapping it does nothing yet). A tap on a padlocked or striped item shakes it and does nothing. The row scrolls sideways with a drag, and a drag never queues anything | yes |
 | Hold an item (`long_press_ms` in `data/input_settings.tres`) | The last one of it you queued is cancelled and its cost is paid back in full; the phone buzzes. An item with none queued does nothing, however long you hold | yes |
-| Tap your Headquarters, barracks or vehicle factory | The building is selected (see Selection) and the build menu opens the tab it builds: Structures, Infantry or Vehicles | |
+| Tap your Headquarters, barracks or vehicle factory | The building is selected (see Selection) and the build menu opens the tab it builds: Structures, Infantry or Vehicles. Tap it again after you opened another tab and the menu comes back to its tab | |
 | Open any tab | It lists only the buildings and units of your own side, and those that both sides share; the other side's items are never shown | |
 
 ## Not yet in the game
