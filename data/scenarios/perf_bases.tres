@@ -1,0 +1,421 @@
+[gd_resource type="Resource" script_class="ScenarioDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/ScenarioDef.gd" id="1_scenario"]
+[ext_resource type="Script" path="res://game/sim/defs/SpawnDef.gd" id="2_spawn"]
+[ext_resource type="Script" path="res://game/sim/defs/OrderDef.gd" id="3_order"]
+[ext_resource type="Script" path="res://game/sim/defs/FactionDef.gd" id="4_faction_script"]
+[ext_resource type="Resource" path="res://data/maps/perf_bases.tres" id="5_map"]
+[ext_resource type="Resource" path="res://data/rules.tres" id="6_rules"]
+[ext_resource type="Resource" path="res://data/factions/fossil.tres" id="7_fossil"]
+[ext_resource type="Resource" path="res://data/factions/renew.tres" id="8_renew"]
+[ext_resource type="Resource" path="res://data/units/headquarters.tres" id="9_headquarters"]
+[ext_resource type="Resource" path="res://data/units/power_plant.tres" id="10_power_plant"]
+[ext_resource type="Resource" path="res://data/units/fossil_radar.tres" id="11_fossil_radar"]
+[ext_resource type="Resource" path="res://data/units/fossil_strike.tres" id="12_fossil_strike"]
+[ext_resource type="Resource" path="res://data/units/refinery.tres" id="13_refinery"]
+[ext_resource type="Resource" path="res://data/units/barracks.tres" id="14_barracks"]
+[ext_resource type="Resource" path="res://data/units/vehicle_factory.tres" id="15_vehicle_factory"]
+[ext_resource type="Resource" path="res://data/units/defence_turret.tres" id="16_defence_turret"]
+[ext_resource type="Resource" path="res://data/units/light_tank.tres" id="17_light_tank"]
+[ext_resource type="Resource" path="res://data/units/heavy_tank.tres" id="18_heavy_tank"]
+[ext_resource type="Resource" path="res://data/units/rifle_squad.tres" id="19_rifle_squad"]
+[ext_resource type="Resource" path="res://data/units/rocket_squad.tres" id="20_rocket_squad"]
+[ext_resource type="Resource" path="res://data/units/harvester.tres" id="21_harvester"]
+[ext_resource type="Resource" path="res://data/units/renew_hq.tres" id="22_renew_hq"]
+[ext_resource type="Resource" path="res://data/units/renew_power.tres" id="23_renew_power"]
+[ext_resource type="Resource" path="res://data/units/renew_radar.tres" id="24_renew_radar"]
+[ext_resource type="Resource" path="res://data/units/renew_strike.tres" id="25_renew_strike"]
+[ext_resource type="Resource" path="res://data/units/renew_refinery.tres" id="26_renew_refinery"]
+[ext_resource type="Resource" path="res://data/units/renew_barracks.tres" id="27_renew_barracks"]
+[ext_resource type="Resource" path="res://data/units/renew_factory.tres" id="28_renew_factory"]
+[ext_resource type="Resource" path="res://data/units/renew_defence.tres" id="29_renew_defence"]
+[ext_resource type="Resource" path="res://data/units/renew_scout.tres" id="30_renew_scout"]
+[ext_resource type="Resource" path="res://data/units/renew_tank.tres" id="31_renew_tank"]
+[ext_resource type="Resource" path="res://data/units/renew_rifle.tres" id="32_renew_rifle"]
+[ext_resource type="Resource" path="res://data/units/renew_rocket.tres" id="33_renew_rocket"]
+[ext_resource type="Resource" path="res://data/units/renew_tanker.tres" id="34_renew_tanker"]
+
+[sub_resource type="Resource" id="Spawn_p1_hq_0"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("9_headquarters")
+count = 1
+origin_tile = Vector2i(1, 6)
+
+[sub_resource type="Resource" id="Spawn_p1_power_1"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("10_power_plant")
+count = 2
+origin_tile = Vector2i(5, 6)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p1_radar_2"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("11_fossil_radar")
+count = 1
+origin_tile = Vector2i(10, 6)
+
+[sub_resource type="Resource" id="Spawn_p1_strike_3"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("12_fossil_strike")
+count = 1
+origin_tile = Vector2i(1, 10)
+charge_elapsed_ticks = 4500
+
+[sub_resource type="Resource" id="Spawn_p1_refinery_4"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("13_refinery")
+count = 1
+origin_tile = Vector2i(5, 10)
+
+[sub_resource type="Resource" id="Spawn_p1_barracks_5"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("14_barracks")
+count = 1
+origin_tile = Vector2i(9, 10)
+
+[sub_resource type="Resource" id="Spawn_p1_factory_6"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("15_vehicle_factory")
+count = 1
+origin_tile = Vector2i(11, 10)
+
+[sub_resource type="Resource" id="Spawn_p1_power_7"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("10_power_plant")
+count = 2
+origin_tile = Vector2i(5, 17)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p1_defence_8"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("16_defence_turret")
+count = 2
+origin_tile = Vector2i(12, 9)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p1_defence_9"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("16_defence_turret")
+count = 2
+origin_tile = Vector2i(12, 15)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p1_light"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("17_light_tank")
+count = 24
+origin_tile = Vector2i(20, 7)
+columns = 3
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p1_heavy"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("18_heavy_tank")
+count = 6
+origin_tile = Vector2i(20, 15)
+columns = 3
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p1_rifle"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("19_rifle_squad")
+count = 24
+origin_tile = Vector2i(17, 8)
+columns = 3
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p1_rocket"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("20_rocket_squad")
+count = 17
+origin_tile = Vector2i(15, 8)
+columns = 2
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p1_tanker"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("21_harvester")
+count = 4
+origin_tile = Vector2i(5, 14)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_hq_0"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("22_renew_hq")
+count = 1
+origin_tile = Vector2i(50, 6)
+
+[sub_resource type="Resource" id="Spawn_p2_power_1"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("23_renew_power")
+count = 2
+origin_tile = Vector2i(45, 6)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_radar_2"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("24_renew_radar")
+count = 1
+origin_tile = Vector2i(42, 6)
+
+[sub_resource type="Resource" id="Spawn_p2_strike_3"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("25_renew_strike")
+count = 1
+origin_tile = Vector2i(50, 10)
+charge_elapsed_ticks = 4500
+
+[sub_resource type="Resource" id="Spawn_p2_refinery_4"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("26_renew_refinery")
+count = 1
+origin_tile = Vector2i(46, 10)
+
+[sub_resource type="Resource" id="Spawn_p2_barracks_5"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("27_renew_barracks")
+count = 1
+origin_tile = Vector2i(43, 10)
+
+[sub_resource type="Resource" id="Spawn_p2_factory_6"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("28_renew_factory")
+count = 1
+origin_tile = Vector2i(40, 10)
+
+[sub_resource type="Resource" id="Spawn_p2_power_7"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("23_renew_power")
+count = 2
+origin_tile = Vector2i(45, 17)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_defence_8"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("29_renew_defence")
+count = 2
+origin_tile = Vector2i(40, 9)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_defence_9"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("29_renew_defence")
+count = 2
+origin_tile = Vector2i(40, 15)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_light"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("30_renew_scout")
+count = 24
+origin_tile = Vector2i(31, 7)
+columns = 3
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p2_heavy"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("31_renew_tank")
+count = 6
+origin_tile = Vector2i(31, 15)
+columns = 3
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p2_rifle"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("32_renew_rifle")
+count = 24
+origin_tile = Vector2i(34, 8)
+columns = 3
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p2_rocket"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("33_renew_rocket")
+count = 17
+origin_tile = Vector2i(37, 8)
+columns = 2
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p2_tanker"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("34_renew_tanker")
+count = 4
+origin_tile = Vector2i(47, 14)
+columns = 2
+
+[sub_resource type="Resource" id="Order_p1_attack_move"]
+script = ExtResource("3_order")
+player = 1
+target_tile = Vector2i(23, 12)
+
+[sub_resource type="Resource" id="Order_p1_harvest"]
+script = ExtResource("3_order")
+player = 1
+type = 14
+target_tile = Vector2i(3, 15)
+
+[sub_resource type="Resource" id="Order_p1_queue_0"]
+script = ExtResource("3_order")
+player = 1
+type = 11
+target_tile = Vector2i(0, 0)
+unit = ExtResource("19_rifle_squad")
+
+[sub_resource type="Resource" id="Order_p1_queue_1"]
+script = ExtResource("3_order")
+player = 1
+type = 11
+target_tile = Vector2i(0, 0)
+unit = ExtResource("19_rifle_squad")
+
+[sub_resource type="Resource" id="Order_p1_queue_2"]
+script = ExtResource("3_order")
+player = 1
+type = 11
+target_tile = Vector2i(0, 0)
+unit = ExtResource("20_rocket_squad")
+
+[sub_resource type="Resource" id="Order_p1_queue_3"]
+script = ExtResource("3_order")
+player = 1
+type = 11
+target_tile = Vector2i(0, 0)
+unit = ExtResource("19_rifle_squad")
+
+[sub_resource type="Resource" id="Order_p1_queue_4"]
+script = ExtResource("3_order")
+player = 1
+type = 11
+target_tile = Vector2i(0, 0)
+unit = ExtResource("19_rifle_squad")
+
+[sub_resource type="Resource" id="Order_p1_queue_5"]
+script = ExtResource("3_order")
+player = 1
+type = 11
+target_tile = Vector2i(0, 0)
+unit = ExtResource("17_light_tank")
+
+[sub_resource type="Resource" id="Order_p1_queue_6"]
+script = ExtResource("3_order")
+player = 1
+type = 11
+target_tile = Vector2i(0, 0)
+unit = ExtResource("17_light_tank")
+
+[sub_resource type="Resource" id="Order_p2_attack_move"]
+script = ExtResource("3_order")
+player = 2
+target_tile = Vector2i(30, 12)
+
+[sub_resource type="Resource" id="Order_p2_harvest"]
+script = ExtResource("3_order")
+player = 2
+type = 14
+target_tile = Vector2i(50, 15)
+
+[sub_resource type="Resource" id="Order_p2_queue_0"]
+script = ExtResource("3_order")
+player = 2
+type = 11
+target_tile = Vector2i(0, 0)
+unit = ExtResource("32_renew_rifle")
+
+[sub_resource type="Resource" id="Order_p2_queue_1"]
+script = ExtResource("3_order")
+player = 2
+type = 11
+target_tile = Vector2i(0, 0)
+unit = ExtResource("32_renew_rifle")
+
+[sub_resource type="Resource" id="Order_p2_queue_2"]
+script = ExtResource("3_order")
+player = 2
+type = 11
+target_tile = Vector2i(0, 0)
+unit = ExtResource("33_renew_rocket")
+
+[sub_resource type="Resource" id="Order_p2_queue_3"]
+script = ExtResource("3_order")
+player = 2
+type = 11
+target_tile = Vector2i(0, 0)
+unit = ExtResource("32_renew_rifle")
+
+[sub_resource type="Resource" id="Order_p2_queue_4"]
+script = ExtResource("3_order")
+player = 2
+type = 11
+target_tile = Vector2i(0, 0)
+unit = ExtResource("32_renew_rifle")
+
+[sub_resource type="Resource" id="Order_p2_queue_5"]
+script = ExtResource("3_order")
+player = 2
+type = 11
+target_tile = Vector2i(0, 0)
+unit = ExtResource("30_renew_scout")
+
+[sub_resource type="Resource" id="Order_p2_queue_6"]
+script = ExtResource("3_order")
+player = 2
+type = 11
+target_tile = Vector2i(0, 0)
+unit = ExtResource("30_renew_scout")
+
+[sub_resource type="Resource" id="Order_p1_strike"]
+script = ExtResource("3_order")
+tick = 300
+player = 1
+type = 15
+target_tile = Vector2i(47, 11)
+unit = ExtResource("12_fossil_strike")
+
+[sub_resource type="Resource" id="Order_p2_strike"]
+script = ExtResource("3_order")
+tick = 480
+player = 2
+type = 15
+target_tile = Vector2i(6, 11)
+unit = ExtResource("25_renew_strike")
+
+[resource]
+script = ExtResource("1_scenario")
+map_size_tiles = Vector2i(54, 24)
+camera_start_tile = Vector2i(27, 12)
+spawns = Array[ExtResource("2_spawn")]([SubResource("Spawn_p1_hq_0"), SubResource("Spawn_p1_power_1"), SubResource("Spawn_p1_radar_2"), SubResource("Spawn_p1_strike_3"), SubResource("Spawn_p1_refinery_4"), SubResource("Spawn_p1_barracks_5"), SubResource("Spawn_p1_factory_6"), SubResource("Spawn_p1_power_7"), SubResource("Spawn_p1_defence_8"), SubResource("Spawn_p1_defence_9"), SubResource("Spawn_p1_light"), SubResource("Spawn_p1_heavy"), SubResource("Spawn_p1_rifle"), SubResource("Spawn_p1_rocket"), SubResource("Spawn_p1_tanker"), SubResource("Spawn_p2_hq_0"), SubResource("Spawn_p2_power_1"), SubResource("Spawn_p2_radar_2"), SubResource("Spawn_p2_strike_3"), SubResource("Spawn_p2_refinery_4"), SubResource("Spawn_p2_barracks_5"), SubResource("Spawn_p2_factory_6"), SubResource("Spawn_p2_power_7"), SubResource("Spawn_p2_defence_8"), SubResource("Spawn_p2_defence_9"), SubResource("Spawn_p2_light"), SubResource("Spawn_p2_heavy"), SubResource("Spawn_p2_rifle"), SubResource("Spawn_p2_rocket"), SubResource("Spawn_p2_tanker")])
+map = ExtResource("5_map")
+rules = ExtResource("6_rules")
+orders = Array[ExtResource("3_order")]([SubResource("Order_p1_attack_move"), SubResource("Order_p1_harvest"), SubResource("Order_p1_queue_0"), SubResource("Order_p1_queue_1"), SubResource("Order_p1_queue_2"), SubResource("Order_p1_queue_3"), SubResource("Order_p1_queue_4"), SubResource("Order_p1_queue_5"), SubResource("Order_p1_queue_6"), SubResource("Order_p2_attack_move"), SubResource("Order_p2_harvest"), SubResource("Order_p2_queue_0"), SubResource("Order_p2_queue_1"), SubResource("Order_p2_queue_2"), SubResource("Order_p2_queue_3"), SubResource("Order_p2_queue_4"), SubResource("Order_p2_queue_5"), SubResource("Order_p2_queue_6"), SubResource("Order_p1_strike"), SubResource("Order_p2_strike")])
+player_count = 2
+factions = Array[ExtResource("4_faction_script")]([null, ExtResource("7_fossil"), ExtResource("8_renew")])

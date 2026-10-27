@@ -193,6 +193,7 @@ func test_scenario_and_spawn_defaults_keep_phase_1_scenarios_unchanged() -> void
 	assert_object(scenario.map).is_null()
 	assert_object(scenario.rules).is_null()
 	assert_int(SpawnDef.new().jitter).is_equal(0)
+	assert_int(SpawnDef.new().charge_elapsed_ticks).is_equal(0)
 
 
 func test_order_def_defaults_to_an_attack_move_at_tick_0_for_no_player() -> void:
