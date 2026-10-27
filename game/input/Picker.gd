@@ -5,6 +5,7 @@ extends RefCounted
 ## but `local_player` is an enemy. Box queries use unit centres and return ascending ids. A row
 ## whose `pickable` entry is 0 (an enemy the fog hides, P47p) is skipped by every query, even at
 ## distance 0 or inside a box; the index `pick` returns is still the row of the snapshot.
+## A building is picked apart, by `pick_building`, on its silhouette (P115b, ADR 0023 section 3).
 
 const _ANY_TYPE: int = -1
 
@@ -35,6 +36,31 @@ static func pick(snap: PickSnapshot, pos: Vector2, local_player: int, has_select
 	return best
 
 
+## The index in the snapshot's building arrays of the building hit at `pos`, or -1. The caller asks
+## after `pick` found no unit, because a unit is hit before a building. The shape is the footprint's
+## diamond plus the rectangle between its side corners, from the sprite's top down to the corners'
+## y. One under 2 x `min_half` px wide or high (48 dp across, a unit's hit radius twice) becomes
+## the box of that size about the middle of its own. Of the buildings hit the one drawn in front
+## wins (the larger sort key, then the higher id); with `has_units` (own units selected) a hit
+## enemy building wins over an own one, to be attacked. Any owner but `local_player` is an enemy.
+static func pick_building(
+	snap: PickSnapshot, pos: Vector2, local_player: int, has_units: bool, min_half: float
+) -> int:
+	var best: int = -1
+	var best_enemy: bool = false
+	for i: int in snap.building_count():
+		if not _in_silhouette(snap, i, pos, min_half):
+			continue
+		var enemy: bool = snap.building_owners[i] != local_player
+		var wins: bool = best < 0
+		if not wins:
+			wins = enemy if has_units and enemy != best_enemy else _in_front(snap, i, best)
+		if wins:
+			best = i
+			best_enemy = enemy
+	return best
+
+
 ## Replaces `out` with the ids of `local_player`'s units whose centres lie in `rect`.
 static func own_in_rect(
 	snap: PickSnapshot, rect: Rect2, local_player: int, out: PackedInt32Array
@@ -62,3 +88,29 @@ static func _collect(
 		if snap.owners[i] == local_player and wanted and rect.has_point(snap.screen_pos[i]):
 			out.append(snap.ids[i])
 	out.sort()
+
+
+static func _in_silhouette(snap: PickSnapshot, i: int, pos: Vector2, min_half: float) -> bool:
+	var half: Vector2 = snap.building_half[i]
+	var rise: float = maxf(snap.building_rise[i], half.y)
+	var at: Vector2 = pos - snap.building_centres[i]
+	var width: float = 2.0 * half.x
+	var height: float = rise + half.y
+	if width < 2.0 * min_half or height < 2.0 * min_half:
+		# Too small to hit by hand: the box of at least 48 dp a side round the shape's middle.
+		var middle_y: float = 0.5 * (half.y - rise)
+		return (
+			absf(at.x) <= maxf(half.x, min_half)
+			and absf(at.y - middle_y) <= maxf(height * 0.5, min_half)
+		)
+	if absf(at.x) > half.x:
+		return false
+	if at.y <= 0.0:
+		return at.y >= -rise  # The rectangle, which holds the diamond's upper half.
+	return at.y <= half.y * (1.0 - absf(at.x) / half.x)
+
+
+## Whether building `i` is drawn in front of building `j`.
+static func _in_front(snap: PickSnapshot, i: int, j: int) -> bool:
+	var keys: PackedFloat32Array = snap.building_keys
+	return keys[i] > keys[j] or (keys[i] == keys[j] and snap.building_ids[i] > snap.building_ids[j])

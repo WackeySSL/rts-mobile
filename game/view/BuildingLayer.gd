@@ -17,7 +17,12 @@ extends Node2D
 ## `reveal_enemies` shows all. A building that leaves the rows while it is shown was destroyed in
 ## sight and leaves a crater in the decal layer; a hidden one, or a new match, leaves none. The hit
 ## times of a building's bar are the unit layer's (it notes the hp of every row); the bar layer
-## reads `is_shown` and `bar_lift_px` from here.
+## reads `is_shown`, `is_selected`, `frame_box` and `bar_lift_px` from here.
+## A tap picks a building on its silhouette (P115b, ADR 0023 section 3): `fill_pick_snapshot` lists
+## the shown buildings with the footprint's diamond and the height of the picture above it (the
+## top of the Body sprite, so the atlas region and its bake scale), for the `Picker`. A selection
+## (`set_selected`, wired to `PlayerController.selection_changed`) is kept as unit ids, so a
+## building that dies or leaves the rows leaves it.
 
 const HEAD: StringName = &"head"
 const BODY: StringName = &"hull"  ## The sheet part of a building's body.
@@ -39,6 +44,7 @@ const CRATER_MILLI_PER_TILE: int = 500
 @export var reveal_enemies: bool = false
 
 var _entries: Dictionary[int, Entry] = {}  ## The building of each unit id.
+var _selected: PackedInt32Array = PackedInt32Array()  ## Ids of the selected buildings.
 var _heads: Array[Entry] = []  ## The buildings that have a head, for the frame.
 var _serial: int = -1  ## match_serial the entries were made for.
 var _rows_version: int = -1  ## rows_version they follow.
@@ -56,6 +62,7 @@ class Entry:
 	var head: Sprite2D = null
 	var sheet: IsoSheetDef = null
 	var foot: int = 1
+	var rise: float = 0.0  ## Footprint centre to the picture's top, world px at zoom 1.
 	var shown: bool = true
 	var head_dir: int = UnitLayer.D_EAST
 	var head_angle: float = 0.0  ## Grid angle, east 0, as the unit layer's.
@@ -143,6 +150,71 @@ func bar_lift_px(row: int) -> float:
 	return float(sheet.bar_lift_px) if sheet != null else 0.0
 
 
+## Makes exactly the buildings among `ids` (unit ids; units and unknown ids are skipped) the
+## selected ones: each gets a frame and a bar (`HealthBarLayer`).
+func set_selected(ids: PackedInt32Array) -> void:
+	_sync()
+	_selected.clear()
+	for id: int in ids:
+		if _entries.has(id):
+			_selected.append(id)
+
+
+## The ids of the selected buildings. No sync.
+func selected_ids() -> PackedInt32Array:
+	return _selected
+
+
+## Whether building row `row` of `runner.snapshot` is selected. No sync.
+func is_selected(row: int) -> bool:
+	var snap: MatchSnapshot = runner.snapshot if runner != null else null
+	if _selected.is_empty() or snap == null or row < 0 or row >= snap.unit_id.size():
+		return false
+	return _selected.has(snap.unit_id[row])
+
+
+## The box round the silhouette of building row `row`, world px: the footprint's width, from the
+## top of the picture down to the diamond's bottom corner. An empty rect for a row that is no
+## building. No sync.
+func frame_box(row: int) -> Rect2:
+	var snap: MatchSnapshot = runner.snapshot if runner != null else null
+	if snap == null or row < 0 or row >= snap.unit_id.size():
+		return Rect2()
+	var entry: Entry = _entries.get(snap.unit_id[row])
+	if entry == null:
+		return Rect2()
+	var half: Vector2 = Vector2(IsoProjection.HALF_W, IsoProjection.HALF_H) * entry.foot
+	var at: Vector2 = entry.node.position
+	return Rect2(at.x - half.x, at.y - entry.rise, 2.0 * half.x, entry.rise + half.y)
+
+
+## Fills the building arrays of `out` for the `Picker` with the shown buildings, on the screen of
+## `camera` (centre, diamond, height of the picture and sort key; see `PickSnapshot`). The unit
+## arrays are left alone. A building the fog hides is left out, so no tap reaches it.
+func fill_pick_snapshot(out: PickSnapshot, camera: RtsCamera) -> void:
+	var snap: MatchSnapshot = _sync()
+	out.building_ids.clear()
+	out.building_owners.clear()
+	out.building_centres.clear()
+	out.building_half.clear()
+	out.building_rise.clear()
+	out.building_keys.clear()
+	if snap == null:
+		return
+	var zoom: float = camera.zoom.x
+	for entry: Entry in _entries.values():
+		if not entry.shown:
+			continue
+		out.building_ids.append(entry.id)
+		out.building_owners.append(snap.owner[entry.row])
+		out.building_centres.append(camera.world_to_screen(entry.node.position))
+		out.building_half.append(
+			Vector2(IsoProjection.HALF_W, IsoProjection.HALF_H) * (entry.foot * zoom)
+		)
+		out.building_rise.append(entry.rise * zoom)
+		out.building_keys.append(entry.node.position.y)
+
+
 ## The footprint's cells of building row `row`: its origin tile (the position minus half the
 ## footprint) and its side, tiles.
 static func footprint_of(snap: MatchSnapshot, row: int) -> Rect2i:
@@ -209,6 +281,7 @@ func _clear() -> void:
 		world_sort.remove_child(entry.node)
 		entry.node.queue_free()
 	_entries.clear()
+	_selected.clear()
 	_heads.clear()
 	decals.clear()
 	_fog_version = -1
@@ -248,9 +321,12 @@ func _make(snap: MatchSnapshot, row: int) -> Entry:
 	entry.node.name = "Building%d" % entry.id
 	entry.node.position = IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row])
 	var sheet: IsoSheetDef = entry.sheet
+	entry.rise = float(entry.foot * IsoProjection.HALF_H)  # A flat diamond until a picture says more.
 	if sheet != null:
 		var body: Sprite2D = _sprite(entry.node, sheet, BODY, NO_FRAME, owner_id)
 		body.name = "Body"
+		if body.visible:  # The top of the region as it is drawn: offset and scale of the atlas.
+			entry.rise = maxf(entry.rise, -body.get_rect().position.y * body.scale.y)
 		entry.shadow = _sprite(null, sheet, SHADOW, NO_FRAME, owner_id)
 		entry.shadow.name = "Shadow%d" % entry.id
 		entry.shadow.position = entry.node.position
@@ -291,6 +367,9 @@ func _drop(entry: Entry) -> void:
 	if entry.shadow != null:
 		decals.remove_shadow(entry.shadow)
 	_heads.erase(entry)
+	var chosen: int = _selected.find(entry.id)
+	if chosen >= 0:
+		_selected.remove_at(chosen)
 	world_sort.remove_child(entry.node)
 	entry.node.queue_free()
 	_entries.erase(entry.id)

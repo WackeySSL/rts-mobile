@@ -13,8 +13,14 @@ extends Node2D
 ## A row with a footprint is a building (P115): its bar is the width of its footprint (24, 40 and
 ## 56 dp for 1x1, 2x2 and 3x3, STYLE.md "Health bars"), centred on its footprint centre, and stands
 ## the sheet's `bar_lift_px` above it (`building_layer.bar_lift_px`). It shows for the same few
-## seconds after a hit (a building cannot be selected before P115b), and only while
-## `building_layer.is_shown`: an enemy building whose footprint the fog hides has none.
+## seconds after a hit and while the building is selected (`building_layer.is_selected`, P115b), and
+## only while `building_layer.is_shown`: an enemy building whose footprint the fog hides has none.
+## A selected building also gets its frame (P115b, ADR 0023 section 3): four brackets round the
+## silhouette box (`building_layer.frame_box`), each arm FRAME_THICK_DP thick and at most
+## FRAME_ARM_DP long, white with a dark edge for an own building and the enemy bar's colour for an
+## enemy one.
+## The frames are planned after the bars, in the same arrays: the rects from `frame_first_rect()`
+## on, FRAME_RECTS for each of `frame_count()` frames, outline first.
 ##
 ## A bar is sized in dp, so it looks the same at every zoom: world px per dp is the base px per dp
 ## over the camera zoom. It is centred on its unit's projected ground point (`IsoProjection`, ADR
@@ -40,6 +46,9 @@ const EDGE_DP: int = 1  ## The dark edge round the interior.
 const RECENT_MS: int = 3000  ## A hit unit shows its bar for this long (inclusive).
 const MAX_RECTS_PER_BAR: int = 6  ## An enemy bar: three edge rects and three fill rects.
 const SHAPE_STRIDE: int = 5  ## A shape lists rects as x, y, w, h and 0 (edge) or 1 (fill) in dp.
+const FRAME_ARM_DP: int = 12  ## The longest arm of a frame's bracket.
+const FRAME_THICK_DP: int = 2
+const FRAME_RECTS: int = 16  ## Two arms for each of four corners, each as an outline and a fill.
 
 @export var runner: MatchRunner
 @export var unit_layer: UnitLayer  ## Gives the selection, the hit times, the camera and the clock.
@@ -50,6 +59,7 @@ const SHAPE_STRIDE: int = 5  ## A shape lists rects as x, y, w, h and 0 (edge) o
 @export var edge_color: Color = Color("1C2127")
 @export var own_color: Color = Color("30A46C")  ## Fill of an own bar (ok).
 @export var enemy_color: Color = Color("F5A524")  ## Fill of an enemy bar (warning).
+@export var frame_color: Color = Color("FFFFFF")  ## Brackets of an own selected building.
 
 var _dp_px: float = 1.0  ## Base px per dp, read when the window changes.
 ## Rect `i` of the frame: x, y, width and height in world px at 4i, and its colour. `_bars` holds
@@ -61,6 +71,9 @@ var _bars: PackedInt32Array = PackedInt32Array()
 var _bar_first: PackedInt32Array = PackedInt32Array()
 var _rects: int = 0
 var _bar_count: int = 0
+var _frames: int = 0
+var _frame_first: int = 0  ## The first rect of the frames, which follow the bars' last.
+var _none: PackedInt32Array = PackedInt32Array()  ## The selected buildings when there is no layer.
 var _drawn: int = 0  ## Rects the last _draw painted.
 ## The shapes, own and enemy for each class (index class + enemy x CLASS_WIDTH_DP.size()), made
 ## once: their rects (SHAPE_STRIDE ints each), the rect count and the width in dp.
@@ -113,6 +126,15 @@ func drawn_count() -> int:
 
 func bar_count() -> int:
 	return _bar_count
+
+
+## The frames of selected buildings in the last plan, and the plan's index of their first rect.
+func frame_count() -> int:
+	return _frames
+
+
+func frame_first_rect() -> int:
+	return _frame_first
 
 
 ## Rect `index` of the plan in world px (layer coordinates), and its colour.
@@ -174,6 +196,7 @@ func _read_dp() -> void:  # dp changes with the window.
 func _plan() -> void:
 	_rects = 0
 	_bar_count = 0
+	_frames = 0
 	var snap: MatchSnapshot = runner.snapshot if runner != null else null
 	if snap == null or unit_layer == null or unit_layer.camera == null:
 		return
@@ -181,12 +204,17 @@ func _plan() -> void:
 	if building_layer != null:
 		building_layer.sync_rows()
 	var count: int = snap.unit_id.size()
+	var chosen: PackedInt32Array = (
+		building_layer.selected_ids() if building_layer != null else _none
+	)
 	# Sized by _bar_first, which the closing write below reaches at [bar count] even for 0 units.
 	if _bar_first.size() < count + 1:
 		_bars.resize(count)
 		_bar_first.resize(count + 1)
-		_geometry.resize(count * MAX_RECTS_PER_BAR * 4)
-		_colors.resize(count * MAX_RECTS_PER_BAR)
+	var rect_room: int = count * MAX_RECTS_PER_BAR + chosen.size() * FRAME_RECTS
+	if _colors.size() < rect_room:
+		_geometry.resize(rect_room * 4)
+		_colors.resize(rect_room)
 	var unit: float = _dp_px / unit_layer.camera.zoom.x  # World px per dp.
 	var recent_since: int = int(unit_layer.clock.call()) - RECENT_MS
 	var local_player: int = runner.scenario.local_player if runner.scenario != null else 1
@@ -205,7 +233,10 @@ func _plan() -> void:
 	var colors: PackedColorArray = _colors
 	for row: int in count:
 		var hit: int = unit_layer.hit_time_ms(row)
-		if not (unit_layer.is_ringed(row) or (hit >= 0 and hit >= recent_since)):
+		var selected: bool = (
+			unit_layer.is_ringed(row) or (not chosen.is_empty() and building_layer.is_selected(row))
+		)
+		if not (selected or (hit >= 0 and hit >= recent_since)):
 			continue
 		var type: int = types[row]
 		var building: bool = WorldSort.is_building(snap, type)
@@ -254,6 +285,48 @@ func _plan() -> void:
 			colors[_rects] = fill_color if is_fill else edge_color
 			_rects += 1
 	_bar_first[_bar_count] = _rects
+	_plan_frames(snap, chosen, unit, local_player)
+
+
+## Plans the frame of each selected building that is shown, after the bars.
+func _plan_frames(
+	snap: MatchSnapshot, chosen: PackedInt32Array, unit: float, local_player: int
+) -> void:
+	_frame_first = _rects
+	for id: int in chosen:
+		var row: int = snap.index_of(id)
+		if row < 0 or not building_layer.is_shown(row):
+			continue
+		var box: Rect2 = building_layer.frame_box(row)
+		var arm: float = minf(FRAME_ARM_DP * unit, 0.4 * minf(box.size.x, box.size.y))
+		var color: Color = frame_color if snap.owner[row] == local_player else enemy_color
+		var thick: float = FRAME_THICK_DP * unit
+		for outline: int in 2:  # The dark outline of every arm first, then the arms.
+			for arm_at: int in 8:  # Corner (top left, top right, ...) and its two arms.
+				var corner: int = arm_at >> 1
+				var way: Vector2 = Vector2(-1.0 if corner & 1 else 1.0, -1.0 if corner & 2 else 1.0)
+				var from: Vector2 = Vector2(
+					box.end.x if corner & 1 else box.position.x,
+					box.end.y if corner & 2 else box.position.y
+				)
+				var along: Vector2 = Vector2(arm, thick) if arm_at & 1 == 0 else Vector2(thick, arm)
+				var rect: Rect2 = Rect2(from, along * way).abs()
+				if outline == 0:
+					_put(rect.grow(EDGE_DP * unit), edge_color)
+				else:
+					_put(rect, color)
+		_frames += 1
+
+
+## Appends one rect to the plan.
+func _put(rect: Rect2, color: Color) -> void:
+	var out: int = _rects * 4
+	_geometry[out] = rect.position.x
+	_geometry[out + 1] = rect.position.y
+	_geometry[out + 2] = rect.size.x
+	_geometry[out + 3] = rect.size.y
+	_colors[_rects] = color
+	_rects += 1
 
 
 func _draw() -> void:
