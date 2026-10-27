@@ -369,10 +369,7 @@ func test_nothing_is_a_spire_and_the_blackout_array_is_an_open_frame_that_is_no_
 			. is_true()
 		)
 		assert_float(prim.taper).override_failure_message("a tapered prism").is_equal(1.0)
-		var disc: bool = (
-			prim.shape == &"prism" and prim.axis != 2 and prim.size.x * prim.size.y > 0.3
-		)
-		assert_bool(disc).override_failure_message("an upright disc").is_false()
+		assert_bool(_is_upright_disc(prim)).override_failure_message("an upright disc").is_false()
 		var box: AABB = prim.aabb()
 		columns += int(prim.shape == &"prism" and prim.sides == 6 and box.size.z > 0.8)
 		if prim.material == &"graphite" and box.size.x * box.size.y > 0.3 and box.position.z > 2.0:
@@ -403,6 +400,29 @@ func test_nothing_is_a_spire_and_the_blackout_array_is_an_open_frame_that_is_no_
 		mean += ratio / levels.size()
 	assert_float(mean).override_failure_message("covers %.2f" % mean).is_less(FRAME_MEAN)
 	assert_float(worst).override_failure_message("covers %.2f at most" % worst).is_less(FRAME_MAX)
+
+
+## The rule itself: a thin dish standing on its edge, along x or y and of any thickness, is an
+## upright disc; a hexagonal column, a ring beam lying flat and a slim lying rod are not. Without
+## this the test above would pass for a rule that finds nothing (the first one measured the disc's
+## thickness times its diameter, and 2.2 tiles across and 0.13 thick got through).
+func test_the_rule_finds_an_upright_dish_of_any_thickness_and_lets_a_column_and_a_rod_pass(
+) -> void:
+	for line: String in [
+		"prism hull ceramic 0 0 1.5 0.1 2 2 sides=16 axis=x",
+		"prism hull ceramic 0 0 1.5 2.2 0.13 2.2 sides=16 axis=y",
+		"prism hull ceramic 0 0 1.5 2 0.1 2 sides=8 axis=y",
+		"prism hull ceramic 0 0 1.5 0.5 0.6 0.6 sides=12 axis=x",
+	]:
+		assert_bool(_is_upright_disc(_prims([line])[0])).override_failure_message(line).is_true()
+	for line: String in [
+		"prism hull ceramic 0 0 0 0.3 0.3 1.2 sides=6",
+		"prism hull graphite 0 0 2.4 1.6 1.6 0.2 sides=4",
+		"prism hull graphite 0 0 1.5 1.5 0.12 0.12 sides=8 axis=x",
+		"prism hull graphite 0 0 1.5 0.12 1.5 0.12 sides=8 axis=y",
+		"box hull team 0 0 1.5 0.1 2 2",
+	]:
+		assert_bool(_is_upright_disc(_prims([line])[0])).override_failure_message(line).is_false()
 
 
 ## Two wind turbines of different heights, each a tower with a team ring and four tapered blades
@@ -498,6 +518,25 @@ func _distinct(sheet: IsoSheetDef, part: StringName) -> Array[String]:
 		if not found.has(text):
 			found.append(text)
 	return found
+
+
+## True for a prism that lies along x or y with a face of more than 0.3 square tiles: the face is
+## the ring, the box's other two sides, so the length (a rod's, a barrel's) does not count.
+func _is_upright_disc(prim: ArtPrim) -> bool:
+	if prim.shape != &"prism" or prim.axis == 2:
+		return false
+	var box: AABB = prim.aabb()
+	var face: float = box.size.y * box.size.z if prim.axis == 0 else box.size.x * box.size.z
+	return face > 0.3
+
+
+func _prims(lines: Array[String]) -> Array[ArtPrim]:
+	var prims: Array[ArtPrim] = []
+	for line: String in lines:
+		var prim: ArtPrim = ArtPrim.parse(line)
+		assert_object(prim).override_failure_message(line).is_not_null()
+		prims.append(prim)
+	return prims
 
 
 ## True for a box whose centre is within 0.7 tile of the footprint's centre along both axes: the
