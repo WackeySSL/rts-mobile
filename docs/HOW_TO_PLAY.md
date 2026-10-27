@@ -95,6 +95,16 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Tap your Headquarters, barracks or vehicle factory | The building is selected (see Selection) and the build menu opens the tab it builds: Structures, Infantry or Vehicles. Tap it again after you opened another tab and the menu comes back to its tab | |
 | Open any tab | It lists only the buildings and units of your own side, and those that both sides share; the other side's items are never shown | |
 
+## Superweapon
+| Action | Result | Teach |
+|---|---|---|
+| Own a Deep Bore or a Blackout Array | A round button shows the building's picture inside a ring: sideways it is on the top line, left of the minimap's panel; upright it is at the right edge, above the army bar. The ring fills clockwise while the strike charges (`charge_ticks` of the building in `data/units/`) and the time left shows on the button; when the ring is full and green, the button says "Ready". With no such building there is no button | yes |
+| Tap the button while it charges | The button gives a small nudge and nothing else happens | |
+| Tap the ready button | You aim: the button stays pressed and says "Tap map", and a check mark and an X appear beside it. Drag and pinch still move the map; nothing is selected, ordered or boxed while you aim | yes |
+| While aiming, tap the map | A ring on the ground shows where the strike will hit and how far it reaches (`strike_radius` of the building); tap again to move it. Tap the check mark → the strike is fired once and aiming ends. The check mark waits dimmed until you have tapped the map | yes |
+| While aiming, tap the X or the pressed button, or turn the phone | Aiming ends and nothing is fired | |
+| A Deep Bore is fired, by anyone | Every player sees a red ring on the ground at the target and a blinking warning triangle for the warning time (`strike_delay`), with a white ring closing in on the target; when it has closed, the ground splits and everything inside the ring, yours too, takes damage. Move out of the ring while it closes | yes |
+
 ## Not yet in the game
 Base building, harvesting, power, production, win and lose conditions, menus and rewards get
 their entries when their phase ships them (ROADMAP Phases 3-6).
@@ -103,4 +113,5 @@ their entries when their phase ships them (ROADMAP Phases 3-6).
 |---|---|---|
 | An "under attack" warning at the screen edge | Not shown yet: nothing points at a unit that is hit off screen | |
 | A crater where a destroyed building stood | Not shown yet: the ground art that draws it comes in another change; a building you saw fall leaves a crater then | |
+| The ground splitting where a Deep Bore lands, and a mark on the buildings a Blackout Array switches off | Not shown yet: the blast, the crater and the marks come in another change; the damage and the shut-down already happen | |
 | Play the Derrick League (oil and gas) or the Lumen Accord (green energy) | Not shown yet: no match has sides, so no building or unit belongs to one side only. Once a match has them, each side has its own buildings and units and your build menu shows only yours (and what both sides share) | |

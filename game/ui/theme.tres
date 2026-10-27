@@ -20,7 +20,8 @@
 ; anti_aliasing_size (the soft edge, 1 px). Scale a constant in HudTheme.scaled() before putting
 ; one here. An entry that stays in base px is listed in metadata/base_px by its path in this file.
 ; Type variations (DevButton, NumberLabel, SelectionPanel, PerfCard, BuildSidebar, SidebarTab, PowerBar,
-; PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner, ItemCaption) are set by
+; PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner, ItemCaption,
+; StrikeButton, StrikeConfirm) are set by
 ; theme_type_variation on the node, in main.tscn or at build in the script (the power bar's two
 ; pairs switch with the low-power state, the cost of an item tile with its money).
 ; The build sidebar's tints (the colours of BuildSidebar, STYLE.md "Icons and glyphs") are read by
@@ -192,6 +193,20 @@ ItemBanner/styles/normal = SubResource("StyleBoxFlat_power")
 ItemCaption/base_type = &"Label"
 ItemCaption/colors/font_color = Color(1, 1, 1, 1)
 ItemCaption/font_sizes/font_size = 14
+; The strike controls (StrikeButton.gd, StrikeControls.gd, plan P112): the item tile's plates. The ring
+; around the strike button's card is drawn in these colours: the track, the charge so far and the full
+; ring of a strike that can fire (the power bar's green). The check mark is green, the X white.
+StrikeButton/base_type = &"ItemTile"
+StrikeButton/colors/ring_charge = Color(0.9, 0.93, 0.95, 1)
+StrikeButton/colors/ring_ready = Color(0.18823529, 0.64313725, 0.42352941, 1)
+StrikeButton/colors/ring_track = Color(0.3, 0.3, 0.3, 1)
+StrikeButton/styles/disabled = SubResource("StyleBoxFlat_tab")
+StrikeButton/styles/focus = SubResource("StyleBoxEmpty_focus")
+StrikeConfirm/base_type = &"StrikeButton"
+StrikeConfirm/colors/icon_hover_color = Color(0.18823529, 0.64313725, 0.42352941, 1)
+StrikeConfirm/colors/icon_hover_pressed_color = Color(0.18823529, 0.64313725, 0.42352941, 1)
+StrikeConfirm/colors/icon_normal_color = Color(0.18823529, 0.64313725, 0.42352941, 1)
+StrikeConfirm/colors/icon_pressed_color = Color(0.18823529, 0.64313725, 0.42352941, 1)
 ; The power bar and its low-power look.
 PowerBar/base_type = &"ProgressBar"
 PowerBar/styles/background = SubResource("StyleBoxFlat_track")
