@@ -143,6 +143,7 @@ const CARD_ROWS: Array = [
 		"job_minus_step_p95_cp_ms",
 		"job_minus_step_p95_noncp_ms",
 	],
+	["atlas bake %.1f ms | page %s (no verdict)", "atlas_bake_ms", "atlas_page"],
 	["%s | %s | %s | screen %s | zoom %.2f", "model", "os", "engine", "screen", "zoom"],
 	["last hash %s | units alive %d", "hash_hex", "alive"],
 ]
@@ -161,6 +162,8 @@ const NEEDS: Dictionary = {
 ## Printed on the card and in the summary; P50b sets them.
 var layer_mode: String = "all"
 var zoom: float = 1.0
+var atlas_bake_ms: float = 0.0  ## P113, report-only: the scene's atlas bake (0: none) ...
+var atlas_page: String = "none"  ## ... and its page, "4096x2258 at 1.000"; `restart()` keeps both.
 ## Seams: clock (us), ref_step (one reference run), refresh_source (the panel rate in Hz, -1
 ## headless), max_fps_source, burst_step (the kept second half of a burst, in us), render_source
 ## (the viewport's render CPU time of the frame just drawn, in ms: 0 headless) and calls_source
@@ -665,6 +668,8 @@ func summary() -> Dictionary:
 		"invalid": not reasons.is_empty(),
 		"invalid_reasons": Array(reasons),
 		"layer_mode": layer_mode,
+		"atlas_bake_ms": atlas_bake_ms,
+		"atlas_page": atlas_page,
 		"screen": "%dx%d" % [screen.x, screen.y],
 		"zoom": zoom,
 		"model": OS.get_model_name(),
