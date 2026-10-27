@@ -3,6 +3,8 @@ extends GdUnitTestSuite
 ## rendering, scaling or touch behaviour without any error, so each one is asserted.
 
 const MAIN_SCENE: String = "res://scenes/main.tscn"
+## Plan row P98: the game's own icon, drawn in this repository (assets/art/svg/icon).
+const APP_ICON: String = "res://assets/art/svg/icon/app_icon.svg"
 
 
 func test_application() -> void:
@@ -15,6 +17,16 @@ func test_application() -> void:
 func test_main_scene_file_exists() -> void:
 	assert_bool(FileAccess.file_exists(MAIN_SCENE)).is_true()
 	assert_bool(ResourceLoader.exists(MAIN_SCENE)).is_true()
+
+
+## The exports fall back to the project icon (the web favicon, an Android icon option left empty),
+## so without this setting they ship Godot's logo.
+func test_project_icon_is_the_app_icon() -> void:
+	assert_str(_setting("application/config/icon")).is_equal(APP_ICON)
+
+
+func test_project_icon_file_exists() -> void:
+	assert_bool(FileAccess.file_exists(APP_ICON)).is_true()
 
 
 func test_autoload_entries_use_res_paths() -> void:
