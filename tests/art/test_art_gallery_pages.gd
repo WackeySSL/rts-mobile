@@ -2,9 +2,10 @@ extends GdUnitTestSuite
 ## The Ground page of the art gallery (plan rows P91, P91b and P103): the ore patches, the three
 ## ghosts of a barracks on the iso footprint (the sprite is the generated frame, the marks lie on
 ## the footprint's diamond) and the two pattern tiles, and the button that turns the pages (the
-## Build page of P103 is in test_art_gallery_build.gd, the Vehicles and Icons pages of plan row P92
-## in test_art_gallery_icon_pages.gd). The gallery opens on the Units page, which
-## tests/art/test_art_assets.gd covers.
+## Build page of P103 is in test_art_gallery_build.gd, the Icons page of plan row P92 in
+## test_art_gallery_icon_pages.gd). The gallery opens on the Units page, which
+## tests/art/test_art_gallery_units.gd and test_art_assets.gd cover. Plan row P101 deleted the
+## Vehicles page and plan row P103 the oblique Buildings page with its Seam page.
 
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
@@ -37,6 +38,8 @@ func test_the_gallery_opens_on_units_and_the_button_turns_through_the_pages() ->
 		_assert_page(gallery, (step + 1) % pages)
 		assert_str(button.text).is_equal(Gallery.PAGES[(step + 1) % pages])
 	assert_str(button.text).is_equal("Units")
+	for gone: String in ["SeamPage", "VehiclesPage"]:
+		assert_bool(gallery.has_node(gone)).override_failure_message(gone).is_false()
 
 
 ## The pages are opaque, so the two buttons are the last children: nothing covers them.
@@ -45,9 +48,7 @@ func test_the_back_and_page_buttons_stay_above_every_page() -> void:
 	var last: int = gallery.get_child_count() - 1
 	assert_int(gallery.get_node("%PageButton").get_index()).is_equal(last)
 	assert_int(gallery.get_node("%BackButton").get_index()).is_equal(last - 1)
-	for page: String in [
-		"BuildingsPage", "GroundPage", "VehiclesPage", "IconsPage", "IsoPage", "TerrainPage"
-	]:
+	for page: String in ["BuildingsPage", "GroundPage", "IconsPage", "IsoPage", "TerrainPage"]:
 		assert_int(gallery.get_node(page).get_index()).is_less(last - 1)
 	for button: Control in [gallery.get_node("%PageButton"), gallery.get_node("%BackButton")]:
 		assert_vector(button.size).is_greater_equal(Vector2(120, 120))
@@ -239,10 +240,9 @@ func _assert_page(gallery: Control, page: int) -> void:
 		)
 	assert_bool(gallery.get_node("BuildingsPage").visible).is_equal(page == 1)
 	assert_bool(gallery.get_node("GroundPage").visible).is_equal(page == GROUND_PAGE)
-	assert_bool(gallery.get_node("VehiclesPage").visible).is_equal(page == 3)
-	assert_bool(gallery.get_node("IconsPage").visible).is_equal(page == 4)
-	assert_bool(gallery.get_node("IsoPage").visible).is_equal(page == 5)
-	assert_bool(gallery.get_node("TerrainPage").visible).is_equal(page == 6)
+	assert_bool(gallery.get_node("IconsPage").visible).is_equal(page == 3)
+	assert_bool(gallery.get_node("IsoPage").visible).is_equal(page == 4)
+	assert_bool(gallery.get_node("TerrainPage").visible).is_equal(page == 5)
 
 
 func _turn_to(gallery: Control, page: int) -> void:

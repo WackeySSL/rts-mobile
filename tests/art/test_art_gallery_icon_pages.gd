@@ -1,27 +1,18 @@
 extends GdUnitTestSuite
-## The Vehicles and Icons pages of the art gallery (plan row P92): the light tank beside the three
-## new units at gameplay zoom on grass and sand in both team colours, and the tab, item and glyph
-## icons at their size in dp on the HUD panel, the map glyphs and rally flags on grass and sand. The
-## gallery opens on the Units page, which tests/art/test_art_assets.gd covers; the Build and Ground
-## pages are in test_art_gallery_pages.gd.
+## The Icons page of the art gallery (plan row P92): the tab, item and glyph icons at their size in
+## dp on the HUD panel, the map glyphs and rally flags on grass and sand. The gallery opens on the
+## Units page (tests/art/test_art_gallery_units.gd); the Build page is in
+## test_art_gallery_build.gd, the Ground page in test_art_gallery_pages.gd. Plan row P101 deleted
+## the Vehicles page with the top-down units.
 
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
 ## The tightest 16:9 phone, a wider one and a 4:3 tablet (the sizes of test_art_assets.gd).
 const BASES: Array[Vector2] = [Vector2(1280, 720), Vector2(1600, 720), Vector2(1280, 960)]
-const VEHICLES: Array[String] = ["LightTank", "HeavyTank", "Artillery", "Harvester"]
 const TEAM_A: Color = Color("2F80ED")
 const TEAM_B: Color = Color("E5484D")
 const PX_PER_DP: float = 1.75  ## Base px per dp on the 6-inch phone profile.
-## How far a turning rig reaches from its centre, in px: half the diagonal of its canvas.
-const REACH_PX: Dictionary[String, float] = {
-	"LightTank": 45.3,
-	"HeavyTank": 45.3,
-	"Artillery": 45.3,
-	"Harvester": 56.6,
-}
-const VEHICLE_PAGE: int = 3
-const ICONS_PAGE: int = 4
+const ICONS_PAGE: int = 3
 
 
 ## A gallery switches `SceneTree.quit_on_go_back` off while it is open and restores what it found,
@@ -34,112 +25,16 @@ func after() -> void:
 	_assert_quit_on_go_back_restored()
 
 
-func test_the_gallery_has_seven_pages_and_the_button_reaches_vehicles_and_icons() -> void:
-	assert_array(Gallery.PAGES).is_equal(
-		["Units", "Build", "Ground", "Vehicles", "Icons", "Iso", "Terrain"]
-	)
+func test_the_gallery_has_six_pages_and_the_button_reaches_the_icons_page() -> void:
+	assert_array(Gallery.PAGES).is_equal(["Units", "Build", "Ground", "Icons", "Iso", "Terrain"])
 	var gallery: Control = await _open_gallery()
 	var button: Button = gallery.get_node("%PageButton")
-	_turn_to(gallery, VEHICLE_PAGE)
-	assert_str(button.text).is_equal("Vehicles")
-	assert_bool(gallery.get_node("VehiclesPage").visible).is_true()
+	_turn_to(gallery, ICONS_PAGE - 1)
 	assert_bool(gallery.get_node("IconsPage").visible).is_false()
 	button.pressed.emit()
 	assert_str(button.text).is_equal("Icons")
-	assert_bool(gallery.get_node("VehiclesPage").visible).is_false()
 	assert_bool(gallery.get_node("IconsPage").visible).is_true()
-
-
-func test_the_vehicles_page_has_four_units_in_a_row_per_team_on_each_ground() -> void:
-	var gallery: Control = await _open_gallery()
-	for ground: String in ["Grass", "Sand"]:
-		for row_name: String in ["TeamA", "TeamB"]:
-			var is_a: bool = row_name == "TeamA"
-			var row: Node = gallery.get_node("VehiclesPage/%s/%s" % [ground, row_name])
-			var path: String = "%s %s" % [ground, row_name]
-			var rigs: Array[Node] = row.get_children().filter(
-				func(node: Node) -> bool: return node is Node2D
-			)
-			assert_array(rigs.map(_node_name)).override_failure_message(path).is_equal(VEHICLES)
-			for rig: Node2D in rigs:
-				var id: String = String(rig.name).to_snake_case()
-				var layers: Array[String] = ["Hull", "Team"]
-				if id != "harvester":
-					layers.append("Turret")
-				assert_array(rig.get_children().map(_node_name)).is_equal(layers)
-				for layer: String in layers:
-					var texture: Texture2D = (rig.get_node(layer) as Sprite2D).texture
-					assert_str(texture.resource_path).ends_with(
-						"%s_%s.svg" % [id, layer.to_lower()]
-					)
-				var tint: Color = (rig.get_node("Team") as Sprite2D).modulate
-				assert_that(tint).override_failure_message(path).is_equal(
-					TEAM_A if is_a else TEAM_B
-				)
-				var group: StringName = Gallery.TEAM_A_GROUP if is_a else Gallery.TEAM_B_GROUP
-				assert_bool(rig.is_in_group(group)).override_failure_message(path).is_true()
-				assert_vector(rig.scale).is_equal(Vector2.ONE)
-			var names: Array[String] = []
-			for label: Node in row.find_children("Label*", "Label", false, false):
-				names.append((label as Label).text)
-			assert_array(names).is_equal(Gallery.VEHICLE_LABELS)
-
-
-## The turrets turn about their rigs, and the harvester, which has none, turns as a whole rig.
-func test_the_armed_units_turn_their_turrets_and_the_harvester_turns_as_a_whole() -> void:
-	var gallery: Control = await _open_gallery()
-	var row: String = "VehiclesPage/Grass/TeamA/"
-	var heavy_turret: Sprite2D = gallery.get_node(row + "HeavyTank/Turret")
-	var gun_turret: Sprite2D = gallery.get_node(row + "Artillery/Turret")
-	var harvester: Node2D = gallery.get_node(row + "Harvester")
-	var before: Array[float] = [heavy_turret.rotation, gun_turret.rotation, harvester.rotation]
-	gallery.call("_process", 0.5)
-	assert_float(heavy_turret.rotation).is_not_equal(before[0])
-	assert_float(gun_turret.rotation).is_not_equal(before[1])
-	assert_float(harvester.rotation).is_not_equal(before[2])
-	for id: String in ["HeavyTank", "Artillery"]:
-		assert_float((gallery.get_node(row + id) as Node2D).rotation).is_equal(0.0)
-
-
-## Each cell is inside its half, clear of the buttons and of its neighbours' turning circles, and
-## its label is clear of the turning rig above it, on the phone that is tightest in height, a wider
-## one and a tablet.
-func test_the_vehicles_page_fits_each_half_and_keeps_clear_of_buttons_and_labels() -> void:
-	for base: Vector2 in BASES:
-		var gallery: Control = await _open_gallery(base)
-		_turn_to(gallery, VEHICLE_PAGE)
-		await await_idle_frame()
-		var problems: Array[String] = []
-		var buttons: Array[Rect2] = _button_rects(gallery)
-		for ground_name: String in ["Grass", "Sand"]:
-			var ground: Control = gallery.get_node("VehiclesPage/" + ground_name)
-			var half: Rect2 = ground.get_global_rect()
-			for row_name: String in ["TeamA", "TeamB"]:
-				var row: Node = ground.get_node(row_name)
-				var previous: Node2D = null
-				for id: String in VEHICLES:
-					var rig: Node2D = row.get_node(id)
-					rig.rotation = 0.0
-					var reach: float = REACH_PX[id]
-					var circle: Rect2 = Rect2(
-						rig.global_position - Vector2.ONE * reach, Vector2.ONE * 2.0 * reach
-					)
-					var path: String = "%s %s %s" % [ground_name, row_name, id]
-					if not half.encloses(circle):
-						problems.append(path + " turns outside its half")
-					for button: Rect2 in buttons:
-						if circle.intersects(button):
-							problems.append(path + " turns over a button")
-					if previous != null:
-						var gap: float = rig.global_position.distance_to(previous.global_position)
-						if gap < reach + REACH_PX[String(previous.name)]:
-							problems.append(path + " turns into " + String(previous.name))
-					var label: Control = row.get_node("Label" + id)
-					if label.get_global_rect().position.y < rig.global_position.y + reach:
-						problems.append(path + " turns into its label")
-					previous = rig
-		assert_array(problems).override_failure_message(str(base)).is_empty()
-		gallery.get_parent().free()
+	assert_bool(gallery.has_node("VehiclesPage")).is_false()
 
 
 func test_the_icons_page_has_the_hud_panel_and_the_two_grounds() -> void:

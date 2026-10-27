@@ -7,17 +7,42 @@ script = ExtResource("1_model")
 art_id = &"heavy_tank"
 faction = &"fossil"
 category = &"veh"
-silhouette = "A low wide olive hull on two dark tracks with a sloped glacis nose and a squat octagonal turret carrying one long barrel."
-mount = Vector3(-0.02, 0, 0.34)
+silhouette = "Bullhead: a squat olive slab of a tank on two dark tracks, a steel ram plate across its nose, a wide wedge turret with a long gun and two short lamp-topped pipes at its front corners like horns."
+mount = Vector3(0, 0, 0.32)
 prims = PackedStringArray(
-"box hull iron 0 -0.31 0 1.1 0.2 0.2",
-"box hull iron 0 0.31 0 1.1 0.2 0.2",
-"box hull olive 0 0 0.03 1 0.42 0.17",
-"box hull olive -0.05 0 0.2 0.9 0.82 0.14",
-"wedge hull olive 0.5 0 0.2 0.2 0.82 0.14",
-"box hull team -0.3 0 0.34 0.12 0.82 0.02",
-"prism turret olive 0 0 0 0.52 0.52 0.06 sides=8",
-"prism turret team 0 0 0.06 0.52 0.52 0.05 sides=8",
-"prism turret olive 0 0 0.11 0.44 0.44 0.07 sides=8",
-"box turret steel 0.56 0 0.08 0.6 0.07 0.07"
+"box hull iron 0 -0.37 0 1.16 0.2 0.2",
+"box hull iron 0 0.37 0 1.16 0.2 0.2",
+"prism hull steel -0.44 -0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
+"prism hull steel -0.22 -0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
+"prism hull steel 0 -0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
+"prism hull steel 0.22 -0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
+"prism hull steel 0.44 -0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
+"prism hull steel -0.44 0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
+"prism hull steel -0.22 0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
+"prism hull steel 0 0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
+"prism hull steel 0.22 0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
+"prism hull steel 0.44 0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
+"box hull iron 0 0 0.03 1.0 0.54 0.17",
+"box hull olive 0 0 0.2 1.0 0.9 0.12",
+"wedge hull olive 0.61 0 0.2 0.22 0.9 0.12 slope=0.95",
+"box hull steel 0.74 0 0.06 0.07 0.92 0.22",
+"box hull team 0.785 0 0.12 0.02 0.8 0.07",
+"box hull rust -0.34 0 0.32 0.3 0.5 0.1",
+"box hull team 0 -0.46 0.225 0.8 0.02 0.075",
+"box hull team 0 0.46 0.225 0.8 0.02 0.075",
+"prism turret olive 0 0 0 0.6 0.6 0.05 sides=8",
+"prism turret team 0 0 0.05 0.64 0.64 0.05 sides=8",
+"wedge turret olive 0.04 0 0.1 0.7 0.54 0.15 slope=0.5",
+"box turret team 0 -0.28 0.12 0.4 0.02 0.07",
+"box turret team 0 0.28 0.12 0.4 0.02 0.07",
+"box turret iron 0.4 0 0.1 0.06 0.2 0.1",
+"prism turret steel -0.12 0.12 0.245 0.14 0.14 0.04 sides=8",
+"prism turret steel 0.16 -0.31 0.095 0.05 0.05 0.2 sides=6",
+"prism turret steel 0.16 0.31 0.095 0.05 0.05 0.2 sides=6",
+"box turret lamp 0.16 -0.31 0.295 0.05 0.05 0.04",
+"box turret lamp 0.16 0.31 0.295 0.05 0.05 0.04",
+"prism turret steel 0.505 0 0.13 0.15 0.075 0.075 axis=x sides=8",
+"prism turret iron 0.655 0 0.115 0.14 0.105 0.105 axis=x sides=8",
+"prism turret steel 0.915 0 0.13 0.38 0.075 0.075 axis=x sides=8",
+"box turret iron 1.125 0 0.12 0.07 0.12 0.095"
 )
