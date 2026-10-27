@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"renew_scout"
+faction = &"renew"
+category = &"veh"
+silhouette = "A small blue-grey four-wheeled scout with a wedge nose, a dark roof patch, a short gun turret and a tall mast with a mint light."
+mount = Vector3(0.1, 0, 0.22)
+prims = PackedStringArray(
+"prism hull graphite 0.26 -0.27 0 0.22 0.1 0.22 axis=y sides=8",
+"prism hull graphite 0.26 0.27 0 0.22 0.1 0.22 axis=y sides=8",
+"prism hull graphite -0.26 -0.27 0 0.22 0.1 0.22 axis=y sides=8",
+"prism hull graphite -0.26 0.27 0 0.22 0.1 0.22 axis=y sides=8",
+"box hull bluegrey 0 0 0.08 0.76 0.44 0.14",
+"wedge hull bluegrey 0.46 0 0.08 0.16 0.44 0.14",
+"box hull graphite -0.15 0 0.22 0.26 0.3 0.02",
+"box hull team 0.1 0 0.22 0.18 0.44 0.02",
+"prism hull titanium -0.3 0 0.22 0.05 0.05 0.5 sides=6",
+"box hull mint -0.3 0 0.72 0.08 0.08 0.06",
+"prism turret bluegrey 0 0 0 0.3 0.26 0.04 sides=6",
+"prism turret team 0 0 0.04 0.3 0.26 0.06 sides=6",
+"prism turret bluegrey 0 0 0.1 0.24 0.2 0.04 sides=6",
+"box turret titanium 0.3 0 0.03 0.3 0.04 0.04"
+)

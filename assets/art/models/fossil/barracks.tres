@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"barracks"
+faction = &"fossil"
+category = &"bld"
+footprint = 2
+silhouette = "A long concrete bunkhouse under a pitched steel roof, a dark door with a warm lamp on its front, a team stripe down its long side and a small annex behind."
+prims = PackedStringArray(
+"box hull concrete 0 0 0 1.92 1.92 0.06",
+"box hull concrete 0 0.1 0.06 1.5 1.1 0.55",
+"wedge hull steel 0 0.1 0.61 1.5 1.1 0.25 slope=0.9",
+"box hull iron 0.77 0.1 0.06 0.04 0.4 0.4",
+"box hull lamp 0.77 0.1 0.48 0.04 0.12 0.06",
+"box hull team 0 0.67 0.3 1.5 0.04 0.18",
+"box hull concrete -0.35 -0.7 0.06 0.7 0.4 0.4"
+)

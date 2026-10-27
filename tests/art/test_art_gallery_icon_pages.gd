@@ -34,8 +34,10 @@ func after() -> void:
 	_assert_quit_on_go_back_restored()
 
 
-func test_the_gallery_has_six_pages_and_the_button_reaches_vehicles_and_icons() -> void:
-	assert_array(Gallery.PAGES).is_equal(["Units", "Build", "Ground", "Vehicles", "Icons", "Seam"])
+func test_the_gallery_has_seven_pages_and_the_button_reaches_vehicles_and_icons() -> void:
+	assert_array(Gallery.PAGES).is_equal(
+		["Units", "Build", "Ground", "Vehicles", "Icons", "Seam", "Iso"]
+	)
 	var gallery: Control = await _open_gallery()
 	var button: Button = gallery.get_node("%PageButton")
 	_turn_to(gallery, VEHICLE_PAGE)

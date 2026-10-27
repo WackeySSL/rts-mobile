@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"refinery"
+faction = &"fossil"
+category = &"bld"
+footprint = 3
+silhouette = "Two steel gas spheres on pedestals and a banded concrete column beside a low shed, with a thin flare stack carrying a warm lamp."
+prims = PackedStringArray(
+"box hull concrete 0 0 0 2.92 2.92 0.06",
+"box hull concrete 0.7 0.6 0.06 1.2 1.1 0.26",
+"box hull team 0.7 0.6 0.32 1.24 1.14 0.2",
+"box hull concrete 0.7 0.6 0.52 1.2 1.1 0.06",
+"prism hull iron -0.7 0 0.06 0.5 0.5 0.34 sides=8",
+"sphere hull steel -0.7 0 0.4 0.9 0.9 0.9",
+"prism hull iron -0.7 1 0.06 0.5 0.5 0.34 sides=8",
+"sphere hull steel -0.7 1 0.4 0.9 0.9 0.9",
+"prism hull steel 0.9 -0.95 0.06 0.4 0.4 0.9",
+"prism hull team 0.9 -0.95 0.96 0.4 0.4 0.4",
+"prism hull steel 0.9 -0.95 1.36 0.4 0.4 0.6",
+"prism hull iron -0.3 -1.1 0.06 0.08 0.08 2.2 sides=6",
+"box hull lamp -0.3 -1.1 2.26 0.12 0.12 0.12"
+)
