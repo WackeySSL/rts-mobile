@@ -118,7 +118,7 @@ func _tap(pos: Vector2) -> void:
 	if hit >= 0 and _snap.owners[hit] == _local_player():
 		selection.set_ids(PackedInt32Array([_snap.ids[hit]]))
 	elif hit >= 0:  # An enemy: only picked while own units are selected.
-		_attack(_snap.ids[hit], _snap.screen_pos[hit])
+		_attack(_snap.ids[hit], _snap.screen_pos[hit] + Vector2(0.0, _snap.lift_of(hit)))
 	else:
 		var min_half: float = UiScale.dp(settings.hit_radius_dp)
 		var shape: int = Picker.pick_building(_snap, pos, _local_player(), units, min_half)

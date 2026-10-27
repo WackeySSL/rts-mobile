@@ -5,10 +5,10 @@ extends Node2D
 ## atlas, the SHELL region for a shot of any weapon but the rocket, the ROCKET region for that one
 ## (the weapon is `weapon_ids[proj_weapon]`). A quad stands at lerp(prev_proj, proj, alpha)
 ## projected by `IsoProjection` (ADR 0023 section 1) and lifted by the muzzle height of its weapon
-## (`SpriteLift.muzzle_lift_px`, the shooter's `muzzle_lift_px` of its sheet once P113 brings them:
-## a shell flies straight and level in Phase 3), turned along the move from prev_proj to proj as
-## that move looks on the screen, and is as big in world px as its region, so it scales with the
-## zoom.
+## (`SpriteLift.muzzle_lift_px`, the `muzzle_lift_px` of the weapon's shooter's sheet, from
+## `world_sort`: a shell flies straight and level in Phase 3), turned along the move from prev_proj
+## to proj as that move looks on the screen, and is as big in world px as its region, so it scales
+## with the zoom.
 ## Whose shell it is does not matter: a slot of owner 0 (a neutral armed unit) is drawn like any.
 ##
 ## A slot whose `proj_id` differs from `prev_proj_id` is new in the last tick: it has no heading, so
@@ -42,6 +42,9 @@ const KIND_ROCKET: int = 1
 const FLOATS_PER_QUAD: int = 3  ## x and y in world px, then the heading in radians.
 
 @export var runner: MatchRunner
+## The sorted world, whose sheets say how high a weapon's muzzle stands; without one the table of
+## `SpriteLift` does.
+@export var world_sort: WorldSort
 ## Draws the projectiles on tiles the fog hides too: the perf arena, tests that are not about fog.
 @export var reveal_enemies: bool = false
 
@@ -142,10 +145,12 @@ func _plan() -> void:
 			IsoProjection.ground_to_px(to_x, to_y), alpha
 		)
 		geometry[out] = place.x
-		geometry[out + 1] = place.y - SpriteLift.muzzle_lift_px(weapon_ids, weapons[slot])
+		var weapon: int = weapons[slot]
+		var sheet_px: float = world_sort.muzzle_px(weapon) if world_sort != null else 0.0
+		geometry[out + 1] = place.y - SpriteLift.muzzle_lift_px(weapon_ids, weapon, sheet_px)
 		geometry[out + 2] = IsoProjection.screen_angle(float(to_x - from_x), float(to_y - from_y))
 		_slots[_quads] = slot
-		_kinds[_quads] = KIND_ROCKET if weapons[slot] == rocket else KIND_SHELL
+		_kinds[_quads] = KIND_ROCKET if weapon == rocket else KIND_SHELL
 		_quads += 1
 
 

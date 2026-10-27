@@ -42,6 +42,7 @@ const TRIADS: Array[Array] = [
 var atlas: IsoAtlas = IsoAtlas.new()  ## Empty until the first `bake`.
 var _sheets: Dictionary[StringName, IsoSheetDef] = {}  ## The baked art ids.
 var _arts: Array[IsoPlayerArt] = []  ## Owner n is entry n - 1.
+var _muzzles: PackedFloat32Array = PackedFloat32Array()  ## Per weapon index of the match, px.
 var _key: String = ""  ## The art and players the atlas holds.
 var _serial: int = -1  ## match_serial last synced.
 
@@ -64,6 +65,7 @@ func sync() -> void:
 	if snap != null and snap.match_serial != _serial:
 		_serial = snap.match_serial
 		bake(runner.scenario)
+		_muzzles = _muzzle_table(snap)
 
 
 ## The atlas of `scenario`: every sheet of a type it registers, for each player in its faction's
@@ -89,6 +91,14 @@ func bake(scenario: ScenarioDef) -> IsoAtlas:
 ## The sheet of art id `art_id` in the atlas, null for a type without one.
 func sheet(art_id: StringName) -> IsoSheetDef:
 	return _sheets.get(art_id)
+
+
+## The muzzle height of weapon index `weapon` of the match's snapshot, world px at zoom 1: the
+## sheet's `muzzle_lift_px` of the first type that carries the weapon and has a sheet. 0 when no
+## sheet says (`SpriteLift.muzzle_lift_px` then reads its table). A weapon that types of both
+## factions share has the first one's height. Read from the last `sync`, which never bakes here.
+func muzzle_px(weapon: int) -> float:
+	return _muzzles[weapon] if weapon >= 0 and weapon < _muzzles.size() else 0.0
 
 
 ## The atlas player of `owner_id`: owners 1..N in order, the nearest for one past the ends.
@@ -172,6 +182,18 @@ static func _faction_of(
 			):
 				return load(FACTION_FILE % sheet_def.faction) as FactionDef
 	return load(FACTION_FILE % DEFAULT_FACTION) as FactionDef
+
+
+## The muzzle height of each weapon index of `snap`, from the sheets of the types that carry it.
+func _muzzle_table(snap: MatchSnapshot) -> PackedFloat32Array:
+	var table: PackedFloat32Array = PackedFloat32Array()
+	table.resize(snap.weapon_ids.size())
+	for type: int in mini(snap.type_ids.size(), snap.type_weapon.size()):
+		var weapon: int = snap.type_weapon[type]
+		var found: IsoSheetDef = _sheets.get(snap.type_ids[type])
+		if found != null and weapon >= 0 and weapon < table.size() and table[weapon] == 0.0:
+			table[weapon] = float(found.muzzle_lift_px)
+	return table
 
 
 static func _describe(art: IsoPlayerArt) -> String:

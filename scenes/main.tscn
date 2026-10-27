@@ -75,17 +75,19 @@ runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
 building_layer = NodePath("../BuildingLayer")
 
-[node name="ProjectileLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
+[node name="ProjectileLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
 z_index = 40
 z_as_relative = false
 script = ExtResource("19_projectiles")
 runner = NodePath("../MatchRunner")
+world_sort = NodePath("../WorldSort")
 
-[node name="EffectsLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
+[node name="EffectsLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
 z_index = 50
 z_as_relative = false
 script = ExtResource("19_effects")
 runner = NodePath("../MatchRunner")
+world_sort = NodePath("../WorldSort")
 
 [node name="FogLayer" type="Sprite2D" parent="." node_paths=PackedStringArray("runner")]
 z_index = 4

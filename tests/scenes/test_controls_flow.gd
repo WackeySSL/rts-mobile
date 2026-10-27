@@ -45,10 +45,12 @@ const EMPTY_BOX_PORTRAIT: Rect2 = Rect2(80, 200, 220, 200)
 const PINCH_CENTRE: Vector2 = Vector2(800, 100)
 const PINCH_CENTRE_PORTRAIT: Vector2 = Vector2(360, 300)
 ## The tanks at the top of the diamond, c + r <= 2 (world y 432 to 480; the next ones are at 504),
-## and the world rect that holds exactly them.
+## and the world rect that holds exactly them, once the box has been raised by the light tank's pick
+## lift (a box takes the units whose lifted centres it covers, P114b).
 const TOP_TANKS: Array[int] = [1, 2, 3, 7, 8, 13]
 const TOP_BOX: Rect2 = Rect2(-440, 410, 240, 80)
 const CARD: String = "res://assets/art/iso/icons/item_light_tank.svg"
+const Lifts: GDScript = preload("res://tests/view/support/lifts.gd")
 const IDLE: int = World.Order.IDLE
 
 var _window_size_before: Vector2i
@@ -273,10 +275,11 @@ func test_the_profiles_are_two_phones_each_flat_and_upright() -> void:
 		assert_bool(VIEW_WIDTH.has(profile)).is_true()
 
 
-## The screen rect of TOP_BOX, from the camera as it is now.
+## The screen rect of TOP_BOX, from the camera as it is now, raised by the pick lift.
 func _top_box() -> Rect2:
-	var top_left: Vector2 = _camera.world_to_screen(TOP_BOX.position)
-	return Rect2(top_left, _camera.world_to_screen(TOP_BOX.end) - top_left)
+	var raise: Vector2 = Vector2(0.0, Lifts.pick(&"light_tank"))
+	var top_left: Vector2 = _camera.world_to_screen(TOP_BOX.position - raise)
+	return Rect2(top_left, _camera.world_to_screen(TOP_BOX.end - raise) - top_left)
 
 
 func _assert_panel(count: String) -> void:
