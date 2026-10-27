@@ -16,6 +16,7 @@ const RULES: String = "res://data/rules.tres"
 ## ADR 0023 section 2: the absolute z of the layers that both scenes hold, bottom to top.
 const TABLE: Dictionary[String, int] = {
 	"MapView": 0,
+	"GroundLayer": 0,
 	"DecalLayer": 1,
 	"FogLayer": 4,
 	"GhostMemoryLayer": 5,

@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://game/view/MapView.gd" id="1_map"]
+[ext_resource type="Script" path="res://game/view/GroundLayer.gd" id="23_ground"]
 [ext_resource type="Script" path="res://game/view/RtsCamera.gd" id="2_cam"]
 [ext_resource type="Script" path="res://game/ui/dev_menu_button.gd" id="3_dev"]
 [ext_resource type="Script" path="res://game/view/main_view.gd" id="4_main"]
@@ -43,8 +44,13 @@ scenario = ExtResource("8_scenario")
 sim_impl = 2
 tick_mode = 2
 
-[node name="MapView" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
+[node name="MapView" type="Node2D" parent="." node_paths=PackedStringArray("runner", "ground")]
 script = ExtResource("1_map")
+runner = NodePath("../MatchRunner")
+ground = NodePath("../GroundLayer")
+
+[node name="GroundLayer" type="TileMapLayer" parent="." node_paths=PackedStringArray("runner")]
+script = ExtResource("23_ground")
 runner = NodePath("../MatchRunner")
 
 [node name="DecalLayer" type="Node2D" parent="."]

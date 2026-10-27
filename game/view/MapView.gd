@@ -8,6 +8,9 @@ extends Node2D
 ## 2026-10-12): tiles meet edge to edge. It reads only `runner.snapshot` (ADR 0012 section 3),
 ## afresh in every call, and a new `match_serial` is a new match; a change of the map shows from
 ## the tick after it (the next capture).
+##
+## Under a ground (P116): while `ground` has a tile for every cell the bake's rect is not drawn; the
+## bake stays, for the minimap's colours and P52's keys (ADR 0023 section 15).
 
 const TILE_GRID: int = 8  ## The grid the rects of `tiles` use, whatever the bake size.
 const MISSING: Color = Color.MAGENTA  ## Shown for a terrain or colour key the dictionaries lack.
@@ -41,6 +44,8 @@ const MISSING: Color = Color.MAGENTA  ## Shown for a terrain or colour key the d
 }
 @export var bake_px_per_tile: int = 8
 @export var runner: MatchRunner
+## The textured ground that hides this node's rect while it covers the map; null draws the bake.
+@export var ground: GroundLayer
 
 var _serial: int = -1  ## match_serial of the last bake: another one is a new match.
 var _version: int = -1
@@ -51,6 +56,7 @@ var _drawn_transform: Transform2D = Transform2D.IDENTITY
 var _cells: Vector2 = Vector2.ZERO  ## Columns and rows of the last bake: the rect it is drawn in.
 var _image: Image = Image.new()
 var _texture: ImageTexture = null
+var _covered: bool = false  ## Whether `ground` covered the map when the rect was last decided.
 
 
 func _ready() -> void:
@@ -84,7 +90,8 @@ func bake_count() -> int:
 	return _bakes
 
 
-## Draw commands the last `_draw()` issued. The map is one textured rect, so 1 once it is baked.
+## Draw commands the last `_draw()` issued. The map is one textured rect, so 1 once it is baked,
+## and 0 while a ground covers it.
 func draw_count() -> int:
 	return _draws
 
@@ -112,7 +119,7 @@ func _draw() -> void:
 	_draws = 0
 	_drawn = Rect2()
 	_drawn_transform = Transform2D.IDENTITY
-	if _texture != null:
+	if _texture != null and not _covered:
 		_drawn = Rect2(Vector2.ZERO, _cells)
 		_drawn_transform = IsoProjection.cell_to_px()
 		draw_set_transform_matrix(_drawn_transform)
@@ -124,6 +131,10 @@ func _sync() -> void:
 	var snap: MatchSnapshot = runner.snapshot if runner != null else null
 	if snap != null and (snap.match_serial != _serial or snap.map_version != _version):
 		_bake(snap)
+	var covered: bool = ground != null and ground.covers_map()
+	if covered != _covered:
+		_covered = covered
+		queue_redraw()
 
 
 func _bake(snap: MatchSnapshot) -> void:

@@ -4,6 +4,7 @@
 [ext_resource type="Resource" path="res://data/scenarios/perf_arena.tres" id="2_scenario"]
 [ext_resource type="Script" path="res://game/core/MatchRunner.gd" id="3_runner"]
 [ext_resource type="Script" path="res://game/view/MapView.gd" id="4_map"]
+[ext_resource type="Script" path="res://game/view/GroundLayer.gd" id="20_ground"]
 [ext_resource type="Script" path="res://game/view/UnitLayer.gd" id="5_units"]
 [ext_resource type="Script" path="res://game/view/HealthBarLayer.gd" id="6_bars"]
 [ext_resource type="Script" path="res://game/view/ProjectileLayer.gd" id="7_projectiles"]
@@ -47,8 +48,13 @@ match_seed = 42
 sim_impl = 2
 tick_mode = 2
 
-[node name="MapView" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
+[node name="MapView" type="Node2D" parent="." node_paths=PackedStringArray("runner", "ground")]
 script = ExtResource("4_map")
+runner = NodePath("../MatchRunner")
+ground = NodePath("../GroundLayer")
+
+[node name="GroundLayer" type="TileMapLayer" parent="." node_paths=PackedStringArray("runner")]
+script = ExtResource("20_ground")
 runner = NodePath("../MatchRunner")
 
 [node name="DecalLayer" type="Node2D" parent="."]
