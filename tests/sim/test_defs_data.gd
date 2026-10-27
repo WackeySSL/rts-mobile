@@ -236,11 +236,17 @@ func test_every_phase_3_rule_accepts_its_edge_values_and_reports_the_next_ones()
 
 
 ## Every weapon reaches the ring corner of a 3x3 building from its centre, so the approach point of
-## an ATTACK on a building (ADR 0017 section 1) is always within range.
+## an ATTACK on a building (ADR 0017 section 1) is always within range. A strike weapon (the Deep
+## Bore's rupture, plan row P110d) is no gun: Strike reads its damage and percents and its building
+## the radius, nothing fires it from a position, so it keeps no range (test_defs_strike_data).
 func test_every_weapon_file_reaches_the_ring_corner_of_a_three_by_three_building() -> void:
 	var files: Array[String] = FileScan.list_files(WEAPONS_DIR, ".tres")
 	assert_int(files.size()).is_greater_equal(3)
+	var strikes: Dictionary[String, bool] = _strike_weapon_files()
+	assert_int(strikes.size()).is_greater_equal(1)
 	for path: String in files:
+		if strikes.has(path):
+			continue
 		var weapon: WeaponDef = load(path)
 		assert_int(weapon.range).override_failure_message(path).is_greater_equal(RING_CORNER_MILLI)
 
@@ -524,6 +530,16 @@ func test_each_perf_arena_gap_alone_lets_foot_and_tracked_units_cross_the_ridge(
 			for rows: Array in gaps:
 				var crossed: bool = _reaches(map, start, goal, move_class, rows)
 				assert_bool(crossed).override_failure_message("rows %s" % [rows]).is_true()
+
+
+## The paths of the weapon files that a strike building holds (BuildingDef.strike_weapon).
+func _strike_weapon_files() -> Dictionary[String, bool]:
+	var found: Dictionary[String, bool] = {}
+	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
+		var building: BuildingDef = load(path) as BuildingDef
+		if building != null and building.strike_weapon != null:
+			found[building.strike_weapon.resource_path] = true
+	return found
 
 
 ## The rules of every unit file, and the ones that span files: a type_id used once, and a weapon id

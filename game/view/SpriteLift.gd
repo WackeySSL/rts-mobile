@@ -23,7 +23,12 @@ const BAR_PX: Dictionary[StringName, float] = {
 }
 const VEHICLE_BAR_PX: float = 26.0  ## Any other type that is not infantry.
 const INFANTRY_BAR_PX: float = 24.0  ## Any other infantry type.
-## The height of a weapon's muzzle above the shooter's ground point, by weapon id.
+## The height of a weapon's muzzle above the shooter's ground point, by weapon id. Interim, like the
+## whole file: P114b and P99b's sheets (`IsoSheetDef.muzzle_lift_px`) replace it. Every weapon a
+## shipped `data/units` file references has a row (a new weapon gets its row with its data; the
+## default is for a snapshot that carries a weapon the table lacks). The Phase 3 faction weapons
+## take the height of the old weapon of the same kind of shooter: the Redoubt's `redoubt_gun` the
+## turret's, `breaker_rocket` the rocket squad's, `arcline_gun` the artillery's.
 const MUZZLE_PX: Dictionary[StringName, float] = {
 	&"tank_cannon": 14.0,
 	&"heavy_cannon": 17.0,
@@ -31,6 +36,9 @@ const MUZZLE_PX: Dictionary[StringName, float] = {
 	&"rocket": 13.0,
 	&"rifle": 11.0,
 	&"turret_gun": 30.0,
+	&"redoubt_gun": 30.0,
+	&"breaker_rocket": 13.0,
+	&"arcline_gun": 18.0,
 }
 const MUZZLE_DEFAULT_PX: float = 14.0
 
