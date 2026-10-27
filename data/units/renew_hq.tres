@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/BuildingDef.gd" id="1_building"]
+
+[resource]
+script = ExtResource("1_building")
+type_id = &"renew_hq"
+display_name = "Grid Hub"
+faction = &"renew"
+max_hp = 2000
+armour = 3
+sight_range = 7000
+footprint = Vector2i(3, 3)
+power = 20
+produces = 0

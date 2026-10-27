@@ -36,22 +36,23 @@ func test_the_tabs_and_harvest_modes_are_the_contract() -> void:
 	assert_int(World.TABS).is_equal(World.Tab.size())
 	var modes: Dictionary = {"IDLE": 0, "SEEK": 1, "MINE": 2, "RETURN": 3, "UNLOAD": 4}
 	assert_dict(World.HarvestMode).is_equal(modes)
-	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([3, 7])
+	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([4, 7])
 
 
 ## The lists that Phase 3 declares at once (ADR 0017 section 3), by name and in order. The other
 ## shape lists are pinned in test_world_v1.
 func test_the_new_arrays_are_listed_by_name_in_their_lists() -> void:
 	var rows: Array[String] = ["harvest_mode", "cargo", "harvest_slot", "home"]
-	assert_array(World.ROW_ARRAYS.slice(20)).is_equal(rows)
+	assert_array(World.ROW_ARRAYS.slice(20, 24)).is_equal(rows)
 	var types: Array[String] = ["type_foot_w", "type_foot_h", "type_cost", "type_build_ticks"]
 	types.append_array(["type_tab", "type_requires", "type_produces", "type_power"])
 	types.append_array(["type_harvest", "type_free_unit", "type_dock_x", "type_dock_y"])
 	types.append_array(["type_exit_x", "type_exit_y", "type_faction"])
-	assert_array(World.TYPE_ARRAYS.slice(11)).is_equal(types)
+	assert_array(World.TYPE_ARRAYS.slice(11, 26)).is_equal(types)
 	var players: Array[String] = ["credits", "defeated_tick", "had_producer", "stat_built"]
 	players.append_array(["stat_lost_units", "stat_lost_buildings", "stat_harvested"])
 	players.append_array(["queue_count", "queue_progress", "rally_x", "rally_y", "queue_type"])
+	players.append_array(["strike_x", "strike_y", "strike_tick"])  # P109 (test_world_v3).
 	assert_array(World.PLAYER_ARRAYS).is_equal(players)
 	assert_array(World.ORE_ARRAYS).is_equal(["ore_amount"])
 	var ghosts: Array[String] = ["ghost_id", "ghost_type", "ghost_owner", "ghost_cell"]

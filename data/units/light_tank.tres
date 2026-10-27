@@ -6,7 +6,8 @@
 [resource]
 script = ExtResource("1_atjfj")
 type_id = &"light_tank"
-display_name = "Light Tank"
+display_name = "Flarejack"
+faction = &"fossil"
 speed = 120
 radius = 400
 selection_radius = 500

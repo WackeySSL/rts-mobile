@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/BuildingDef.gd" id="1_building"]
+[ext_resource type="Resource" path="res://data/units/renew_radar.tres" id="2_requires"]
+
+[resource]
+script = ExtResource("1_building")
+type_id = &"renew_strike"
+display_name = "Blackout Array"
+faction = &"renew"
+max_hp = 1500
+armour = 3
+sight_range = 5000
+cost = 2500
+build_ticks = 600
+tab = 0
+requires = ExtResource("2_requires")
+footprint = Vector2i(3, 3)
+power = -60

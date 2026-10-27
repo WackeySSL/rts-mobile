@@ -6,7 +6,8 @@
 [resource]
 script = ExtResource("1_unit")
 type_id = &"rocket_squad"
-display_name = "Rocket Squad"
+display_name = "Wildcatters"
+faction = &"fossil"
 speed = 60
 radius = 300
 selection_radius = 350

@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="UnitDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/UnitDef.gd" id="1_unit"]
+[ext_resource type="Resource" path="res://data/weapons/heavy_cannon.tres" id="2_weapon"]
+
+[resource]
+script = ExtResource("1_unit")
+type_id = &"renew_tank"
+display_name = "Torque"
+faction = &"renew"
+speed = 93
+radius = 450
+selection_radius = 500
+formation_spacing = 1300
+max_hp = 520
+armour = 2
+move_class = 2
+sight_range = 7000
+acquire_range = 5500
+weapon = ExtResource("2_weapon")
+cost = 1000
+build_ticks = 330
+tab = 2
