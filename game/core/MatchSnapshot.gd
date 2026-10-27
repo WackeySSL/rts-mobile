@@ -30,6 +30,8 @@ const COPIED: Array[StringName] = [
 	&"cargo",
 	&"harvest_slot",
 	&"home",
+	&"ready_tick",
+	&"offline_until",
 	&"type_speed",
 	&"type_radius",
 	&"type_selection_radius",
@@ -52,6 +54,9 @@ const COPIED: Array[StringName] = [
 	&"type_exit_x",
 	&"type_exit_y",
 	&"type_faction",
+	&"type_strike_kind",
+	&"type_charge_ticks",
+	&"type_strike_radius",
 	&"weapon_projectile_speed",
 	&"proj_id",
 	&"proj_owner",
@@ -74,6 +79,9 @@ const COPIED: Array[StringName] = [
 	&"rally_x",
 	&"rally_y",
 	&"queue_type",
+	&"strike_x",
+	&"strike_y",
+	&"strike_tick",
 	&"ore_amount",
 	&"ghost_id",
 	&"ghost_type",
@@ -107,6 +115,9 @@ const NOT_COPIED: Array[StringName] = [
 	&"type_move_class",
 	&"type_sight",
 	&"type_acquire",
+	&"type_strike_delay",
+	&"type_strike_ticks",
+	&"type_strike_weapon",
 	&"weapon_range",
 	&"weapon_min_range",
 	&"weapon_damage",
@@ -155,6 +166,9 @@ var harvest_mode: PackedInt32Array = PackedInt32Array()
 var cargo: PackedInt32Array = PackedInt32Array()
 var harvest_slot: PackedInt32Array = PackedInt32Array()
 var home: PackedInt32Array = PackedInt32Array()
+## The tick a strike building may fire and the tick a blacked-out building comes back (0 = none).
+var ready_tick: PackedInt32Array = PackedInt32Array()
+var offline_until: PackedInt32Array = PackedInt32Array()
 ## The row of `target` in this snapshot, -1 for no target (0) or one that is gone.
 var target_row: PackedInt32Array = PackedInt32Array()
 ## The positions one tick before, aligned to these rows (a new row starts at its position).
@@ -185,6 +199,10 @@ var type_dock_y: PackedInt32Array = PackedInt32Array()
 var type_exit_x: PackedInt32Array = PackedInt32Array()
 var type_exit_y: PackedInt32Array = PackedInt32Array()
 var type_faction: PackedInt32Array = PackedInt32Array()
+## What the strike button, its charge ring and its targeting circle read (ADR 0023 section 10).
+var type_strike_kind: PackedInt32Array = PackedInt32Array()
+var type_charge_ticks: PackedInt32Array = PackedInt32Array()
+var type_strike_radius: PackedInt32Array = PackedInt32Array()
 var weapon_ids: Array[StringName] = []
 var faction_ids: Array[StringName] = []
 var weapon_projectile_speed: PackedInt32Array = PackedInt32Array()
@@ -229,6 +247,10 @@ var queue_progress: PackedInt32Array = PackedInt32Array()
 var rally_x: PackedInt32Array = PackedInt32Array()
 var rally_y: PackedInt32Array = PackedInt32Array()
 var queue_type: PackedInt32Array = PackedInt32Array()
+## The pending rupture per player, 0 = none: its point and the tick it lands (the warning marker).
+var strike_x: PackedInt32Array = PackedInt32Array()
+var strike_y: PackedInt32Array = PackedInt32Array()
+var strike_tick: PackedInt32Array = PackedInt32Array()
 var ore_amount: PackedInt32Array = PackedInt32Array()
 var ghost_id: PackedInt32Array = PackedInt32Array()
 var ghost_type: PackedInt32Array = PackedInt32Array()
@@ -332,6 +354,8 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	cargo = world.cargo.duplicate()
 	harvest_slot = world.harvest_slot.duplicate()
 	home = world.home.duplicate()
+	ready_tick = world.ready_tick.duplicate()
+	offline_until = world.offline_until.duplicate()
 	type_speed = world.type_speed.duplicate()
 	type_radius = world.type_radius.duplicate()
 	type_selection_radius = world.type_selection_radius.duplicate()
@@ -354,6 +378,9 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	type_exit_x = world.type_exit_x.duplicate()
 	type_exit_y = world.type_exit_y.duplicate()
 	type_faction = world.type_faction.duplicate()
+	type_strike_kind = world.type_strike_kind.duplicate()
+	type_charge_ticks = world.type_charge_ticks.duplicate()
+	type_strike_radius = world.type_strike_radius.duplicate()
 	weapon_projectile_speed = world.weapon_projectile_speed.duplicate()
 	proj_id = world.proj_id.duplicate()
 	proj_owner = world.proj_owner.duplicate()
@@ -404,6 +431,9 @@ func _capture_players(world: World) -> void:
 	rally_x = world.rally_x.duplicate()
 	rally_y = world.rally_y.duplicate()
 	queue_type = world.queue_type.duplicate()
+	strike_x = world.strike_x.duplicate()
+	strike_y = world.strike_y.duplicate()
+	strike_tick = world.strike_tick.duplicate()
 	ore_amount = world.ore_amount.duplicate()
 	ghost_id = world.ghost_id.duplicate()
 	ghost_type = world.ghost_type.duplicate()

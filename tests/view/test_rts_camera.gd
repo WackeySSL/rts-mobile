@@ -1,24 +1,18 @@
 extends GdUnitTestSuite
-## RtsCamera on the 48x48 tile map (3072 px): clamp cases at the three target screens, pan, pinch,
-## the zoom levels, screen/world maths. Snaps are immediate unless a test sets `zoom_snap_ms`.
+## RtsCamera on the 48x48 tile map, a diamond 3072 px wide (P117, ADR 0023 section 4): the centre
+## clamp into the diamond at the target screens, pan, pinch, the zoom levels, screen/world maths.
+## Snaps are immediate unless a test sets `zoom_snap_ms`. The acceptance cases of the clamp (the
+## ground point of the centre at every size, zoom and turn) are in test_rts_camera_diamond.gd.
 
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
-const MAP: Rect2 = Rect2(0, 0, 3072, 3072)
+const MAP_TILES: int = 48
+const MAP_CENTRE: Vector2 = Vector2(0, 768)  ## The middle of the diamond.
 const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
 const PHONE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[1]
-## A window as high as the base size and 320 px wider: it shows 1600x720 base px at stretch 1.
-const WIDE_SIZE: Vector2i = Vector2i(1600, 720)
-## Window size -> [lowest, highest] camera position at zoom 1: the map inset by half the visible
-## size. Visible: 1280x720, 1600x720 (20:9 at stretch 1.5), 1280x960 (4:3 at 1.6), and the portrait
-## three, turned: 720x1280, 720x1600 and 960x1280 (the base size turns with the window, ADR 0015).
-const BOUNDS: Dictionary[Vector2i, Array] = {
-	ScreenSizes.LANDSCAPE[0]: [Vector2(640, 360), Vector2(2432, 2712)],
-	ScreenSizes.LANDSCAPE[1]: [Vector2(800, 360), Vector2(2272, 2712)],
-	ScreenSizes.LANDSCAPE[2]: [Vector2(640, 480), Vector2(2432, 2592)],
-	ScreenSizes.PORTRAIT[0]: [Vector2(360, 640), Vector2(2712, 2432)],
-	ScreenSizes.PORTRAIT[1]: [Vector2(360, 800), Vector2(2712, 2272)],
-	ScreenSizes.PORTRAIT[2]: [Vector2(480, 640), Vector2(2592, 2432)],
-}
+## The diamond's tips: north, east, south and west, in world px.
+const TIPS: Array[Vector2] = [
+	Vector2(0, 0), Vector2(1536, 768), Vector2(0, 1536), Vector2(-1536, 768)
+]
 const OVERSCROLL: float = 5000.0
 const LEVELS: Array[float] = [0.75, 1.0, 1.5]
 const POINT: Vector2 = Vector2(900, 200)  ## A screen point off the centre.
@@ -53,77 +47,83 @@ func test_starts_at_the_settings_start_level_and_falls_back_to_the_defaults() ->
 	assert_that(bare.zoom).is_equal(Vector2(1, 1))
 
 
-func test_set_map_rect_sets_the_limits_reclamps_and_centres_a_narrow_map() -> void:
+func test_set_map_rect_clamps_the_centre_into_the_diamond_and_leaves_the_engine_limits_off(
+) -> void:
+	assert_bool(_camera.limit_enabled).is_false()
 	_camera.centre_on(Vector2(OVERSCROLL, OVERSCROLL))
-	assert_that(_camera.position).is_equal(Vector2(2432, 2712))
-	_camera.set_map_rect(Rect2(100, 200, 3072, 2048))
-	var limits: Array[int] = [
-		_camera.limit_left, _camera.limit_top, _camera.limit_right, _camera.limit_bottom
-	]
-	assert_array(limits).contains_exactly([100, 200, 3172, 2248])
-	_near(_camera.position, Vector2(2432, 1888))
-	# 640 px is narrower than the 1280 px view: centred on x. y is clamped to 360..1640.
-	_camera.set_map_rect(Rect2(0, 0, 640, 2000))
-	_near(_camera.position, Vector2(320, 1640))
-	_camera.set_map_rect(Rect2(0, 0, 2000, 500))  # 500 px is shorter than the 720 px view.
-	_near(_camera.position, Vector2(640, 250))
+	assert_that(_camera.position).is_equal(TIPS[2])  # Far down and right: the south tip.
+	# A smaller map re-clamps the centre at once: 6 x 2 tiles have their south tip at (128, 128).
+	_camera.set_map_rect(IsoProjection.map_diamond(6, 2))
+	var ground: Vector2i = IsoProjection.px_to_ground(_camera.position)
+	assert_int(ground.x).is_between(0, 6000)
+	assert_int(ground.y).is_between(0, 2000)
+	assert_that(_camera.position).is_equal_approx(Vector2(128, 128), Vector2(0.01, 0.01))
+	# No map (an empty diamond) means no clamp, and a camera outside a tree is no error.
+	_camera.set_map_rect(PackedVector2Array())
+	_camera.centre_on(Vector2(OVERSCROLL, OVERSCROLL))
+	assert_that(_camera.position).is_equal(Vector2(OVERSCROLL, OVERSCROLL))
 	var detached: RtsCamera = auto_free(RtsCamera.new())
-	detached.set_map_rect(MAP)  # Outside a tree there is no viewport to clamp to: no error.
-	assert_int(detached.limit_right).is_equal(3072)
+	detached.set_map_rect(IsoProjection.map_diamond(MAP_TILES, MAP_TILES))
+	detached.centre_on(Vector2(OVERSCROLL, 0))
+	assert_that(detached.position).is_equal(TIPS[1])
 
 
-func test_position_stops_exactly_at_the_corners_with_no_dead_zone_at_every_target_size() -> void:
+func test_a_pan_stops_exactly_at_each_tip_with_no_dead_zone_at_every_target_size() -> void:
+	# Pan deltas that push the centre past a tip: the world follows the fingers, so the camera moves
+	# by minus the delta. The east and west tips lie on the centre line, the north and south ones on
+	# the centre column. `inward` is the way the camera moves back into the map from each tip.
+	var pushes: Array[Vector2] = [
+		Vector2(0, OVERSCROLL),
+		Vector2(-OVERSCROLL, 0),
+		Vector2(0, -OVERSCROLL),
+		Vector2(OVERSCROLL, 0),
+	]
+	var inward: Array[Vector2] = [Vector2(0, 1), Vector2(-1, 0), Vector2(0, -1), Vector2(1, 0)]
 	for size: Vector2i in ScreenSizes.ALL:
-		var low: Vector2 = BOUNDS[size][0]
-		var high: Vector2 = BOUNDS[size][1]
 		get_window().size = size
 		await await_idle_frame()
-		_camera.zoom = Vector2.ONE  # A turn rescales the zoom (ADR 0015 section 4); the bounds are for 1.
-		_camera.pan_by_screen(Vector2(OVERSCROLL, OVERSCROLL))
-		_near(_camera.position, low, str(size))
-		# Back by 1000 px: an overscrolled position would leave the view where it was.
-		_camera.pan_by_screen(Vector2(-1000, -1000))
-		_near(_camera.position, low + Vector2(1000, 1000), str(size))
-		_camera.pan_by_screen(Vector2(-OVERSCROLL, -OVERSCROLL))
-		_near(_camera.position, high, str(size))
-		_camera.pan_by_screen(Vector2(1000, 1000))
-		_near(_camera.position, high - Vector2(1000, 1000), str(size))
+		for tip: int in 4:
+			_camera.zoom = Vector2.ONE  # A turn rescales the zoom (ADR 0015 section 4).
+			_camera.centre_on(MAP_CENTRE)
+			_camera.pan_by_screen(pushes[tip])
+			_near(_camera.position, TIPS[tip], str(size))
+			# Back by 100 px: an overscrolled position would leave the view where it was.
+			_camera.pan_by_screen(-inward[tip] * 100.0)
+			_near(_camera.position, TIPS[tip] + inward[tip] * 100.0, str(size))
 		await await_idle_frame()
-		_near(_camera.get_screen_center_position(), _camera.position)
+		_near(_camera.get_screen_center_position(), _camera.position)  # No engine limit shifts it.
 
 
-func test_reclamps_when_the_viewport_resizes() -> void:
-	_camera.pan_by_screen(Vector2(OVERSCROLL, OVERSCROLL))
-	get_window().size = WIDE_SIZE
-	await await_idle_frame()
-	_near(_camera.position, Vector2(800, 360))
-
-
-func test_zoomed_out_on_a_20_9_phone_the_map_is_wider_than_the_view_and_still_clamps() -> void:
+func test_zoomed_out_on_a_20_9_phone_the_view_overhangs_the_tip_and_the_engine_agrees() -> void:
 	get_window().size = PHONE_SIZE
 	await await_idle_frame()
 	_camera.zoom = Vector2(0.75, 0.75)
 	_near(_camera.visible_world_rect().size, Vector2(2133.3333, 960))
-	_camera.pan_by_screen(Vector2(OVERSCROLL, OVERSCROLL))
-	_near(_camera.position, Vector2(1066.6667, 480))
-	_camera.pan_by_screen(Vector2(-OVERSCROLL, -OVERSCROLL))
-	_near(_camera.position, Vector2(2005.3333, 2592))
-	_near(_camera.visible_world_rect().end, MAP.end)
+	_camera.pan_by_screen(Vector2(OVERSCROLL, 0))
+	_near(_camera.position, TIPS[3])
+	# Half the view lies past the west tip (the clear colour), and the engine draws exactly that.
+	assert_float(_camera.visible_world_rect().position.x).is_less(TIPS[3].x - 1000.0)
 	await await_idle_frame()
-	_near(_camera.get_screen_center_position(), _camera.position)  # The engine limits agree.
+	_near(_camera.get_screen_center_position(), _camera.position)
+	var middle: Vector2 = get_viewport().get_visible_rect().size * 0.5
+	_near(_camera.get_canvas_transform().affine_inverse() * middle, _camera.position)
 
 
 func test_pan_moves_by_minus_delta_over_zoom() -> void:
 	_camera.zoom = Vector2(1.5, 1.5)
 	_camera.pan_by_screen(Vector2(60, -30))
-	_near(_camera.position, Vector2(1496, 1556))
+	_near(_camera.position, MAP_CENTRE + Vector2(-40, 20))
 
 
-func test_zooming_out_at_a_corner_reclamps_the_position() -> void:
+func test_zooming_out_about_a_point_at_a_tip_keeps_the_centre_on_the_map() -> void:
 	_camera.zoom = Vector2(1.5, 1.5)
-	_camera.pan_by_screen(Vector2(OVERSCROLL, OVERSCROLL))  # The corner, (426.67, 240).
-	_camera.pinch(Vector2(640, 360), 0.5)  # Zoom 0.75 about the view centre.
-	_near(_camera.position, Vector2(853.3333, 480))  # The view grew, so the inset grew.
+	_camera.pan_by_screen(Vector2(OVERSCROLL, 0))  # The west tip.
+	_near(_camera.position, TIPS[3])
+	_camera.pinch(Vector2(640, 360), 0.5)  # Zoom 0.75 about the view centre: the centre stays.
+	_near(_camera.position, TIPS[3])
+	_camera.pinch(Vector2(1000, 360), 0.9)  # About a point east of it: the zoom would move it west.
+	_near(_camera.position, TIPS[3])
+	assert_float(_camera.zoom.x).is_less(0.75)
 
 
 func test_pinch_keeps_the_world_point_under_the_centre_fixed_through_the_snap() -> void:
@@ -198,7 +198,7 @@ func test_screen_and_world_round_trip_and_match_the_engine_canvas_transform() ->
 	await await_idle_frame()
 	for level: float in LEVELS:
 		_camera.zoom = Vector2(level, level)
-		_camera.centre_on(Vector2(1400, 1700))
+		_camera.centre_on(Vector2(300, 900))
 		await await_idle_frame()
 		for p: Vector2 in [Vector2.ZERO, Vector2(1600, 720), Vector2(333, 555)]:
 			var world: Vector2 = _camera.screen_to_world(p)
@@ -210,8 +210,8 @@ func _add_camera() -> RtsCamera:
 	var camera: RtsCamera = auto_free(RtsCamera.new())
 	camera.settings = _settings
 	add_child(camera)
-	camera.set_map_rect(MAP)
-	camera.centre_on(MAP.get_center())
+	camera.set_map_rect(IsoProjection.map_diamond(MAP_TILES, MAP_TILES))
+	camera.centre_on(MAP_CENTRE)
 	return camera
 
 

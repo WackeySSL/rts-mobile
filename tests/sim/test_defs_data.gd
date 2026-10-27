@@ -276,7 +276,11 @@ func test_the_phase_3_unit_and_building_rules_accept_their_edge_values_and_repor
 		],
 		["footprint", [], [Vector2i(1, 2), Vector2i(2, 1), Vector2i(3, 1), Vector2i(2, 3)], square],
 		["produces", [-1, 0, 2], [-2, 3], "produces is not -1..2"],
+		["strike_kind", [0, 1, 2], [-1, 3], "strike_kind is not 0..2"],
 	]
+	# The four strike numbers (P109) share one rule: none is negative.
+	for number: String in ["charge_ticks", "strike_radius", "strike_delay", "strike_ticks"]:
+		rows.append([number, [0, 1], [-1], "a strike number is negative"])
 	for row: Array in rows:
 		for value: Variant in row[1] + row[2]:
 			var building: BuildingDef = _fine_building()
@@ -626,6 +630,14 @@ func _economy_problems(file: String, unit: UnitDef, rules: RulesDef) -> PackedSt
 		# ADR 0023 section 7: every footprint is square (the iso art draws one diamond per building).
 		broken["footprint is not square"] = building.footprint.x != building.footprint.y
 		broken["produces is not -1..2"] = building.produces < -1 or building.produces > 2
+		broken["strike_kind is not 0..2"] = building.strike_kind < 0 or building.strike_kind > 2
+		broken["a strike number is negative"] = (
+			mini(
+				mini(building.charge_ticks, building.strike_radius),
+				mini(building.strike_delay, building.strike_ticks)
+			)
+			< 0
+		)
 	var problems: PackedStringArray = PackedStringArray()
 	for message: String in broken:
 		if broken[message]:
