@@ -16,6 +16,11 @@ func _type(world: World, id: String) -> int:
 	return Worlds.type_of(world, id)
 
 
+## The cell of tile (`col`, `line`): the north-west corner of a building whose top-left tile it is.
+func _tile(col: int, line: int) -> int:
+	return line * Memory.COLS + col
+
+
 ## A World where player 1 has a Headquarters at (2, 2) and player 2 one at (16, 6), and the cell of
 ## player 2's, which the cases light for player 1.
 func _bases() -> World:
@@ -161,8 +166,13 @@ func test_a_full_block_holds_ghost_cap_and_never_writes_past_it() -> void:
 	# The blocks of the neutral player and of player 2 hold nothing.
 	for entry: int in [0, 1, 4, 5]:
 		assert_array([world.ghost_id[entry], world.ghost_cell[entry]]).is_equal([0, 0])
-	# A record that goes frees its place for the building that was left out.
+	# A record that goes frees its place for the building that was left out. The first building
+	# falls out of sight, so its record stays; on the next turn a corner of its spot is seen empty
+	# and the record goes before the building left out is looked at (the forget comes first).
+	Memory.show(world, 1, Memory.cell_of(4, 4, 2, 2), false)
 	Memory.destroy(world, ids[0])
+	assert_array(Memory.ids(world, 1)).is_equal([ids[0], ids[1]])
+	Memory.show(world, 1, _tile(4, 4))
 	Memory.turn(world, 1, world.tick + 1)
 	assert_array(Memory.ids(world, 1)).is_equal([ids[1], ids[2]])
 	assert_int(world.ghost_id.size()).is_equal(world.ghost_cap * 3)
@@ -176,7 +186,13 @@ func test_records_keep_their_places_when_one_goes() -> void:
 		Memory.show(world, 1, Memory.cell_of(col, 4, 2, 2))
 	Memory.turn(world, 1)
 	assert_array(Memory.ids(world, 1)).is_equal(ids)
+	# The second building falls out of sight (its spot is dark): its record stays until a corner of
+	# the spot is seen empty on the player's turn, which closes the block up in order (the in-sight
+	# fall is pinned in test_last_seen_footprint.gd).
+	Memory.show(world, 1, Memory.cell_of(8, 4, 2, 2), false)
 	Memory.destroy(world, ids[1])
+	assert_array(Memory.ids(world, 1)).is_equal(ids)
+	Memory.show(world, 1, _tile(8, 4))
 	Memory.turn(world, 1, world.tick + 1)
 	assert_array(Memory.ids(world, 1)).is_equal([ids[0], ids[2], ids[3]])
 	var last: int = world.ghost_cap + 3  # The freed place after the three that are left.
