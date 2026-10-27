@@ -62,6 +62,13 @@ Arcline, Fuel Runner) in place of their blockouts, under the same art ids, and a
 gallery's Units page under the Derrick League's. "Lumen Accord units" under "Generated art" says
 how they look; the catalogue, the readability results and the gallery follow.
 
+**v1.13 (Phase 3, P105b)** answers Michael's phone check of P105's ground. The twelve ground
+diamonds lose their soft rim (it read as a grid), the three gas field stages get duller crust tones,
+one factor for each stage (full 20 %, half 10 %, dry 4 %; Michael chose B), and "Ghosts" is
+rewritten for the last-seen ghost that P115c draws (the whole body in one dim colour over the fog,
+no dots). "Iso ground tiles" and "Fields" carry the new files and the new greyscale means, and the
+open point for P105 holds his answers.
+
 ## Look
 **Since ADR 0023 (Michael 2026-10-26) everything on the map is drawn in the isometric 2:1 view, flat
 shaded with three tones per face and one light from the north-west; see "Projection", "Light" and
@@ -1444,29 +1451,33 @@ re-authored; nothing is copied.
 - **Colours**: oil pool #171C20 on a deeper #1B2125 and a core of #0B0E10, the dried film #2B2822,
   the stain #4A3E31, cracks and tar #1C1712, the sheen #3E6A70, #5C4F7C and #6A6A44 (muted teal,
   violet and olive, the only saturated colours in the ground: the resource), the glints #9DB4B8 and
-  #6E8A8F. Gas crust #ECE8C6 with a lit #F5F2DC and a shaded #CFC9A0, the dust #C0B994, #C6BF9A and
-  #CBC49F, the dusty ring #9C9576, fissures and vent #2B2620, the glow #BFE0E8 and #F4FBFC, the steam
-  white at 40 to 55 %. None of them is a key colour or in a key band (these are not faction frames).
+  #6E8A8F. Gas crust, one set of tones for each stage (P105b, the first drawing's tones times 0.80
+  for full, 0.90 for half and 0.96 for dry): full crust #BDBA9E with a lit #C4C2B0 and a shaded
+  #A6A180; half crust #D4D1B2 with a lit #DDDAC6 inside a dust ring #ADA785; dry dust #C3BC99 and
+  #BEB794 with a darker #968F71 round the vent. In all three stages the fissures and vent are
+  #2B2620, the glow #BFE0E8 and #F4FBFC and the steam white at 40 to 55 %. None of them is a key
+  colour or in a key band (these are not faction frames).
 - **Greyscale check** (P105, a stage over `ground/ore_a.svg`, 32 px wide, the mean Rec. 601 luminance of
-  the pixels with alpha above 0.9): oil full 30, half 44, dry 57 and gas full 213, half 166, dry 143
-  (without the ground's rim, P105b; with it they were 32, 44, 56 and 207, 166, 142).
+  the pixels with alpha above 0.9): oil full 30, half 44, dry 57 and gas full 173, half 152, dry 138
+  (P105b: the ground has no rim and the gas crust is duller; the first P105 drawing had 32, 44, 56
+  and 207, 166, 142).
   Oil is dark and steps up as it dries, gas is bright and steps down; the six are at least 11 grey
   levels from each other and from every ground tile (the nearest are oil dry 57 and the ore earth
-  70, gas dry 143 and grass 126, gas half 166 and sand 185), and each gas stage is at least 80 above
-  the oil stage of its name. At 32 px a full oil cell is a black diamond, a half cell a black pool in
-  brown, a dry cell a brown diamond with a dark cross; a full gas cell is a white diamond with a dark
-  star, a half one a white pool in brown and a dry one a grey-beige pool with spokes.
-- **Gas crust, too bright (P105b, open)**: Michael's phone check of 2026-10-27 found the gas crust
-  too bright (a full cell is 213 at 32 px against sand 185) and asked for its pale tones 10 to 15 %
-  duller. The three gas files are **not changed yet**, because no single factor in that range keeps
-  the rule above (every stage 11 grey levels from every ground tile, and each gas stage 80 above its
-  oil stage). Scaling the crust, dust and ring tones of all three by one factor and leaving the
-  fissures, the vent, the glow and the steam alone, on the tree without the rim: a full cell falls
-  into the sand at 9 to 19 % (192 at 10 %, 182 at 15 %, sand 185) and is clear again from 20 %
-  (172) or up to 8 % (196); a dry cell falls into the grass at 5 % or more (131 at 10 %, 125 at 15 %,
-  grass 126), so it allows 4 % (138); a half cell is clear up to 20 % (138 at 20 %, 152 at 10 %).
-  One factor can therefore do 4 % at most (full 205, half 160, dry 138). The ways out are in "Open
-  points for Michael" (P105); until Michael picks one the gas stays as drawn.
+  70, gas dry 138 and grass 126, gas full 173 and sand 185, gas half 152 and gas dry 138), and each gas
+  stage is at least 80 above the oil stage of its name (the dry pair is the nearest, 81 apart). At
+  32 px a full oil cell is a black diamond, a half cell a black pool in brown, a dry cell a brown
+  diamond with a dark cross; a full gas cell is a pale grey-beige diamond a little darker than sand
+  with a dark star, a half one a pale pool in brown and a dry one a dull beige pool with spokes.
+- **Gas crust, one factor for each stage (P105b, Michael's choice B of 2026-10-27)**: Michael's
+  phone check found the gas crust too bright (a full cell was 213 at 32 px against sand 185) and
+  asked for its pale tones 10 to 15 % duller. One factor for all three stages cannot keep the rule
+  above (a full cell falls into the sand at 9 to 19 %, a dry cell into the grass at 5 % or more), so
+  each stage has its own: **full 20 % duller (x 0.80), half 10 % (x 0.90), dry 4 % (x 0.96)**,
+  applied to the crust, dust and ring tones of the stage (the lit and shaded tones with them). The
+  dark fissures, the vent, its glow and the steam are as drawn. The means are 172.5, 151.9 and 138.0
+  (173, 152, 138), so every check above holds: a full cell is 12 under sand, a dry cell 12 over
+  grass and 81 over dry oil. The brightest stage, the full crust, is clearly the duller; the dry
+  one hardly changes, on purpose.
 - **Wellhead** (`fields/wellhead.svg` and `fields/wellhead_shadow.svg`): a neutral prop that stands
   on a field, decor and not a row. A square concrete pad carries a squat valve tree, a stout steel
   column with two flanges and a cross of two short arms that end in valves with dark hand-wheels, a
@@ -1774,20 +1785,12 @@ Renaming a unit or a unit type is a data change, not a reskin.
 - **P105, for Michael on the phone (Dev, Art gallery, Terrain page), his answers of 2026-10-27:**
   (1) The soft rim of the ground diamonds read as a grid: **dropped**, the two rim bands are gone
   from the twelve files (P105b; "Iso ground tiles"). (2) The gas crust is too bright: he asked for
-  it 10 to 15 % duller, and this one is **still open** (below). (3) The full oil lake (30 at 32 px
-  now, nearly black) **stays**, and (4) the crater **stays** 3 tiles across at scale 1; neither is
-  changed. About (2): no single factor in 10 to 15 % keeps the 32 px rule (every stage 11 grey levels
-  from every ground, each gas stage 80 above its oil stage; "Fields", gas crust), so P105b left the
-  three gas files as drawn. Three ways, measured on the tree without the rim (full, half, dry; sand
-  185, grass 126): **A**, one factor of 4 % (205, 160, 138): every check holds and the change is
-  hardly visible. **B**, one factor for each stage, full 20 %, half 10 % and dry 4 % (172, 152,
-  138): every check holds and the brightest stage, the full crust, is clearly duller. **C**, one
-  factor of 10 to 15 %, with the rule relaxed for the gas stages (at 10 %: 192, 152, 131, so a full
-  cell is 7 above sand, a dry cell 5 above grass and 74 above dry oil): all three duller, but the 11
-  and 80 of `tests/art` become smaller numbers. The art director would take B. The change is the pale
-  crust, dust and ring tones of `gas_full.svg`, `gas_half.svg` and `gas_dry.svg` times the factor,
-  the fissures, the vent, its glow and the steam left alone, and the gas numbers in this file and in
-  `tests/art/test_field_art.gd` updated with it.
+  it 10 to 15 % duller and chose **B**, one factor for each stage: full 20 % duller, half 10 % and
+  dry 4 % (the pale crust, dust and ring tones of the three gas files times 0.80, 0.90 and 0.96; the
+  fissures, the vent, its glow and the steam are as drawn). It measures 173, 152 and 138 at 32 px
+  (172.5, 151.9, 138.0; sand 185, grass 126), so every check of `tests/art` holds ("Fields", gas
+  crust). (3) The full oil lake (30 at 32 px now, nearly black) **stays**, and (4) the crater
+  **stays** 3 tiles across at scale 1; neither is changed.
 
 ## Change log
 | Date | Change |
@@ -1811,4 +1814,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-10-27 | v1.11 (P104, art-director): the Lumen Accord's eight buildings as models under the blockouts' art ids (Grid Hub, Wind Park, Synthesis Works, Crew Hall, Motor Works, Relay Tower, Rail Battery with 16 heads, Blackout Array as an open frame, neither a spire nor a dish), the emblem `emblem_renew.svg` (a hexagon with a three-blade rotor and two horizon arcs), their canvases, heights and team shares, "The Lumen Accord's buildings" under "Buildings", the Build page for both factions, "Look", "Blockouts of Phase 3", "Icons and glyphs", "Catalogue", "Readability check", "Gallery" and "Open points" brought up to date. |
 | 2026-10-27 | v1.12 (P102, art-director): the six Lumen Accord units modelled under their art ids (Linemen, Breakers, Swift, Torque, Arcline, Fuel Runner; "Lumen Accord units"), the Catalogue and the readability results for them, the Units page extended with the Lumen Accord's two lines (`AccordA`, `AccordB`, `ACCORD_IDS`, `ACCORD_NAMES`) under the Derrick League's, the zoom row a little lower to make room. |
 | 2026-10-27 | v1.12 (P102 fix round, art-director; no version bump, the six units are the same row): the Torque stands on one continuous round-ended track a side with a row of titanium road wheels (it stood on four corner pods) and carries a graphite barrel with a muzzle block (it was titanium and vanished at 32 px; canvas 162 x 96), the Fuel Runner's tank is round (ten sides) with a hatch dome on a slim chassis (canvas 174 x 130), the Linemen's reel hub is wider than its team flanges, the Breakers' silhouette line says a team ring at each end; "Lumen Accord units", the Catalogue, the readability results and the open point for the phone brought up to date. |
-| 2026-10-27 | v1.13 (P105b, art-director, Michael's phone-check answers on P105's ground): the ground diamonds lose their soft rim (the two rim `path` lines are gone from all twelve files; "Iso ground tiles", the rim column of the terrain table, the catalogue row and the Terrain page text; ADR 0023 section 5's soft rim is withdrawn), the greyscale means recomputed without it (grass 126, sand 185, scrub 97 and 96, rock 109 and 110, water 83, ore 70; oil 30, 44, 57; gas 213, 166, 143), the P105 open point answered (rim dropped, the full oil lake and the crater kept, the gas crust still open with three ways measured, none of 10 to 15 % as one factor), and "Ghosts" rewritten for P115c's last-seen ghost (the whole body at z 5 over the fog in one dim colour, no dots; ADR 0022's dotted ghost retired, kept only as the gallery's sample cell). |
+| 2026-10-27 | v1.13 (P105b, art-director, Michael's phone-check answers on P105's ground): the ground diamonds lose their soft rim (the two rim `path` lines are gone from all twelve files; "Iso ground tiles", the rim column of the terrain table, the catalogue row and the Terrain page text; ADR 0023 section 5's soft rim is withdrawn), the greyscale means recomputed without it (grass 126, sand 185, scrub 97 and 96, rock 109 and 110, water 83, ore 70; oil 30, 44, 57), the pale crust, dust and ring tones of `gas_full.svg`, `gas_half.svg` and `gas_dry.svg` duller by one factor for each stage (full x 0.80, half x 0.90, dry x 0.96, Michael's choice B; the fissures, vent, glow and steam as drawn; gas 173, 152, 138 at 32 px; "Fields"), the P105 open point answered (rim dropped, the full oil lake and the crater kept, the gas crust B), and "Ghosts" rewritten for P115c's last-seen ghost (the whole body at z 5 over the fog in one dim colour, no dots; ADR 0022's dotted ghost retired, kept only as the gallery's sample cell). |

@@ -11,9 +11,9 @@ const FIELD_GREY: Dictionary[String, int] = {
 	"oil_full": 30,
 	"oil_half": 44,
 	"oil_dry": 57,
-	"gas_full": 213,
-	"gas_half": 166,
-	"gas_dry": 143,
+	"gas_full": 173,
+	"gas_half": 152,
+	"gas_dry": 138,
 }
 const WELLHEAD: Vector2i = Vector2i(112, 116)  ## Canvas at 2x.
 const WELLHEAD_ANCHOR: Vector2i = Vector2i(56, 88)  ## The middle of the pad on the ground.
