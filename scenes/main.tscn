@@ -26,6 +26,9 @@
 [ext_resource type="Script" path="res://game/view/WorldSort.gd" id="22_sort"]
 [ext_resource type="Script" path="res://game/view/DecalLayer.gd" id="30_decals"]
 [ext_resource type="Script" path="res://game/view/BuildingLayer.gd" id="31_buildings"]
+[ext_resource type="Script" path="res://game/input/StrikeAim.gd" id="32_aim"]
+[ext_resource type="Script" path="res://game/view/StrikeMarkerLayer.gd" id="33_strike_layer"]
+[ext_resource type="Script" path="res://game/ui/StrikeControls.gd" id="34_strike_controls"]
 [ext_resource type="Script" path="res://game/view/GhostMemoryLayer.gd" id="32_ghosts"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
@@ -76,17 +79,19 @@ runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
 building_layer = NodePath("../BuildingLayer")
 
-[node name="ProjectileLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
+[node name="ProjectileLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
 z_index = 40
 z_as_relative = false
 script = ExtResource("19_projectiles")
 runner = NodePath("../MatchRunner")
+world_sort = NodePath("../WorldSort")
 
-[node name="EffectsLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
+[node name="EffectsLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
 z_index = 50
 z_as_relative = false
 script = ExtResource("19_effects")
 runner = NodePath("../MatchRunner")
+world_sort = NodePath("../WorldSort")
 
 [node name="FogLayer" type="Sprite2D" parent="." node_paths=PackedStringArray("runner")]
 z_index = 4
@@ -100,6 +105,13 @@ z_as_relative = false
 script = ExtResource("11_markers")
 settings = ExtResource("6_settings")
 
+[node name="StrikeMarkerLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "aim")]
+z_index = 65
+z_as_relative = false
+script = ExtResource("33_strike_layer")
+runner = NodePath("../MatchRunner")
+aim = NodePath("../StrikeAim")
+
 [node name="GhostMemoryLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
 y_sort_enabled = true
 z_index = 5
@@ -112,15 +124,22 @@ world_sort = NodePath("../WorldSort")
 script = ExtResource("2_cam")
 settings = ExtResource("6_settings")
 
-[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "camera", "marker_layer", "box_overlay", "army_bar")]
+[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer", "camera", "marker_layer", "box_overlay", "army_bar", "strike_aim")]
 script = ExtResource("10_player")
 runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
+building_layer = NodePath("../BuildingLayer")
 camera = NodePath("../Camera")
 settings = ExtResource("6_settings")
 marker_layer = NodePath("../MarkerLayer")
 box_overlay = NodePath("../Hud/BoxOverlay")
 army_bar = NodePath("../Hud/SafeArea/ArmyBand/ArmyBar")
+strike_aim = NodePath("../StrikeAim")
+
+[node name="StrikeAim" type="Node" parent="." node_paths=PackedStringArray("runner", "controller")]
+script = ExtResource("32_aim")
+runner = NodePath("../MatchRunner")
+controller = NodePath("../PlayerController")
 
 [node name="TouchInput" type="Node" parent="." node_paths=PackedStringArray("camera", "controller")]
 script = ExtResource("5_touch")
@@ -203,5 +222,15 @@ size_flags_horizontal = 8
 size_flags_vertical = 0
 theme_type_variation = &"BuildSidebar"
 
+[node name="StrikeBand" type="MarginContainer" parent="Hud/SafeArea"]
+mouse_filter = 2
+
+[node name="StrikeControls" type="HBoxContainer" parent="Hud/SafeArea/StrikeBand" node_paths=PackedStringArray("aim", "runner")]
+mouse_filter = 2
+script = ExtResource("34_strike_controls")
+aim = NodePath("../../../../StrikeAim")
+runner = NodePath("../../../../MatchRunner")
+
 [connection signal="selection_changed" from="PlayerController" to="UnitLayer" method="set_selected"]
+[connection signal="selection_changed" from="PlayerController" to="BuildingLayer" method="set_selected"]
 [connection signal="selection_changed" from="PlayerController" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="set_selected"]

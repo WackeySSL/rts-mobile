@@ -14,19 +14,32 @@ extends Node
 ## clears the selection (the one way to deselect). Selection is not a Command, so it never reaches
 ## the sim. A unit that dies leaves the selection and the groups at once, inside `runner.ticked`,
 ## and the rings, the panel and the badges follow.
+## A building (P115b, ADR 0019 section 3, ADR 0023 section 3) is picked after the units, on its
+## silhouette (`Picker.pick_building`): a tap on an own or a shown enemy building selects it alone
+## (an enemy one for its info only: it gets no order), the frame, the panel and the sidebar's tab
+## follow `selection_changed`. A building never joins a box, a double-tap or "All army". With own
+## units selected a tap on an enemy building attacks it, if the sim would take that attack
+## (`PickSnapshot.is_targetable`: the view draws an enemy building for any seen cell of its
+## footprint, the sim sees it at the cell under its position) and is a ground tap if not; with a
+## building selected a tap on the ground, or on an enemy unit, selects nothing and orders nothing.
+## While the strike is being aimed (P112, `strike_aim.active`) a tap places its point on the ground
+## and no gesture does anything else: nothing is selected, ordered or boxed.
 ## Each order shows its marker and the BoxOverlay follows a long-press and its box, both in the
 ## frame of the gesture. The selection rings follow `selection_changed` (wired in the scene).
 
-## Emitted with the new `selection.selected` after every real change.
+## Emitted with the new `selection.selected` after every real change, and again when a tap lands on
+## the one building that is selected already: the sidebar goes back to the tab it builds.
 signal selection_changed(ids: PackedInt32Array)
 
 @export var runner: MatchRunner
 @export var unit_layer: UnitLayer
+@export var building_layer: BuildingLayer  ## Without one no building can be picked.
 @export var camera: RtsCamera
 @export var settings: InputSettings
 @export var marker_layer: MoveMarkerLayer
 @export var box_overlay: BoxOverlay
 @export var army_bar: ArmyBar
+@export var strike_aim: StrikeAim  ## Without one there is no strike to aim.
 
 var selection: SelectionModel = SelectionModel.new()
 ## Receives each Command. Tests replace it.
@@ -55,6 +68,10 @@ func _ready() -> void:
 
 
 func handle_gesture(e: GestureEvent) -> void:
+	if strike_aim != null and strike_aim.active:
+		if e.kind == GestureEvent.Kind.TAP or e.kind == GestureEvent.Kind.DOUBLE_TAP:
+			strike_aim.place(IsoProjection.px_to_ground(camera.screen_to_world(e.position)))
+		return
 	match e.kind:
 		GestureEvent.Kind.TAP:
 			_tap(e.position)
@@ -103,20 +120,42 @@ func assign_group(slot: int) -> void:
 
 
 func _tap(pos: Vector2) -> void:
-	var hit: int = _pick(pos)
+	var units: bool = _units_selected()
+	var hit: int = _pick(pos, units)
 	if hit >= 0 and _snap.owners[hit] == _local_player():
 		selection.set_ids(PackedInt32Array([_snap.ids[hit]]))
-	elif hit >= 0:  # An enemy: only picked while a selection exists.
-		_attack(hit)
-	elif not selection.selected.is_empty():
-		var ground: Vector2i = IsoProjection.px_to_ground(camera.screen_to_world(pos))
-		_move(ground.x, ground.y)
+	elif hit >= 0:  # An enemy: only picked while own units are selected.
+		_attack(_snap.ids[hit], _snap.screen_pos[hit] + Vector2(0.0, _snap.lift_of(hit)))
+	else:
+		var min_half: float = UiScale.dp(settings.hit_radius_dp)
+		var shape: int = Picker.pick_building(_snap, pos, _local_player(), units, min_half)
+		var hostile: bool = shape >= 0 and units and _snap.building_owners[shape] != _local_player()
+		if hostile and _snap.is_targetable(shape):
+			_attack(_snap.building_ids[shape], _snap.building_centres[shape])
+		elif shape >= 0 and not hostile:
+			_select_building(_snap.building_ids[shape])
+		elif units:
+			var ground: Vector2i = IsoProjection.px_to_ground(camera.screen_to_world(pos))
+			_move(ground.x, ground.y)
+		else:
+			selection.clear()  # A building was selected: a tap on the ground lets go of it.
+
+
+## Selects building `id` alone. The model does not fire for the building that is the selection
+## already, so then the signal goes out by hand: the player may have opened another tab since, and
+## a tap on the building takes the sidebar back to the one it builds. Every listener is idempotent.
+func _select_building(id: int) -> void:
+	var alone: PackedInt32Array = PackedInt32Array([id])
+	if selection.selected == alone:
+		selection_changed.emit(selection.selected)
+	else:
+		selection.set_ids(alone)
 
 
 func _double_tap(pos: Vector2) -> void:
-	var hit: int = _pick(pos)
+	var hit: int = _pick(pos, _units_selected())
 	if hit < 0 or _snap.owners[hit] != _local_player():
-		_tap(pos)  # Anywhere but on an own unit it is a plain tap.
+		_tap(pos)  # Anywhere but on an own unit it is a plain tap, also on a building.
 		return
 	var on_screen: Rect2 = get_viewport().get_visible_rect()
 	Picker.own_of_type_in_rect(_snap, _snap.type_index[hit], on_screen, _local_player(), _found)
@@ -124,14 +163,27 @@ func _double_tap(pos: Vector2) -> void:
 	selection.set_ids(_found)
 
 
-## Refreshes the snapshot and returns the Picker's index for `pos` (a World row), or -1.
-func _pick(pos: Vector2) -> int:
+## Refreshes the snapshot and returns the Picker's index for `pos` (a World row), or -1. `units`:
+## own units are selected, so an enemy unit can be picked.
+func _pick(pos: Vector2, units: bool) -> int:
 	_refresh()
-	return Picker.pick(_snap, pos, _local_player(), not selection.selected.is_empty())
+	return Picker.pick(_snap, pos, _local_player(), units)
 
 
 func _refresh() -> void:
 	unit_layer.fill_pick_snapshot(_snap, UiScale.dp(settings.hit_radius_dp))
+	if building_layer != null:
+		building_layer.fill_pick_snapshot(_snap, camera)
+
+
+## Whether the selection is units: any selection but the one building a tap on a building makes
+## (it is alone, so its first id says).
+func _units_selected() -> bool:
+	if selection.selected.is_empty():
+		return false
+	var snap: MatchSnapshot = runner.snapshot
+	var row: int = -1 if snap == null else snap.index_of(selection.selected[0])
+	return row < 0 or not WorldSort.is_building(snap, snap.type_index[row])
 
 
 func _on_selection_changed() -> void:
@@ -168,12 +220,11 @@ func _move(target_x: int, target_y: int) -> void:
 	marker_layer.show_attack_move(IsoProjection.ground_to_px(target_x, target_y))
 
 
-## Attack the enemy at pick index `hit` (a row of the snapshot just read), by its id. The sim
-## takes the order only if the target is still a valid enemy there. The diamond marks the unit
-## where it is drawn.
-func _attack(hit: int) -> void:
-	command_sink.call(Command.attack(_local_player(), selection.selected, _snap.ids[hit]))
-	marker_layer.show_target(camera.screen_to_world(_snap.screen_pos[hit]))
+## Attack the enemy with id `target`, drawn at `at` on the screen (base px). The sim takes the order
+## only if the target is still a valid enemy there. The diamond marks it where it is drawn.
+func _attack(target: int, at: Vector2) -> void:
+	command_sink.call(Command.attack(_local_player(), selection.selected, target))
+	marker_layer.show_target(camera.screen_to_world(at))
 
 
 func _local_player() -> int:

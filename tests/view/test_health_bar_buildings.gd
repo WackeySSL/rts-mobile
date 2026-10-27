@@ -2,9 +2,10 @@ extends GdUnitTestSuite
 ## The bar of a building (plan P115, assets/art/STYLE.md "Health bars", ADR 0023 section 2): as wide
 ## as its footprint (24, 40 and 56 dp for 1x1, 2x2 and 3x3), centred on the footprint centre, its
 ## bottom edge a gap above the sheet's `bar_lift_px`, plain for an own building and notched for an
-## enemy one, filled by the hp it has left. It shows for a few seconds after a hit (selection comes
-## with P115b) and only while the building layer says the building is shown: an enemy building has
-## none unless a cell of its footprint is seen. Units' bars are in test_health_bars.gd. On a 32 x 32
+## enemy one, filled by the hp it has left. It shows for a few seconds after a hit (selecting a
+## building, and its frame, are in test_building_frame.gd) and only while the building layer says
+## the building is shown: an enemy building has none unless a cell of its footprint is seen. Units'
+## bars are in test_health_bars.gd. On a 32 x 32
 ## map: player 1's Headquarters (3x3, row 0), power plant (2x2, row 1) and Redoubt (1x1, row 2), and
 ## player 2's Headquarters (3x3, row 3) and defence (1x1, row 4); 1 dp is 1.75 px.
 
@@ -203,7 +204,7 @@ func test_the_fill_is_the_hp_it_has_left_with_a_floor_of_one_dp() -> void:
 
 func test_a_bar_shows_for_three_seconds_after_the_hit_and_not_for_an_unhit_building() -> void:
 	_frame()
-	assert_int(_bars.bar_count()).is_equal(0)  # Full hp, never hit, not selectable yet.
+	assert_int(_bars.bar_count()).is_equal(0)  # Full hp, never hit, not selected.
 	_now_ms = 10000
 	_hit([1], 1)
 	for elapsed: int in [0, 1500, 3000]:

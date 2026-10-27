@@ -8,6 +8,7 @@ const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const HudThemes: GDScript = preload("res://tests/support/hud_theme.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
+const Lifts: GDScript = preload("res://tests/view/support/lifts.gd")
 const CARD: String = "res://assets/art/iso/icons/item_light_tank.svg"
 const LONG_NAME: String = "Heavily Armoured Experimental Siege Tank Destroyer Mark Seven"
 
@@ -46,10 +47,14 @@ func test_the_count_follows_every_way_the_selection_changes() -> void:
 	_gesture(GestureEvent.Kind.DOUBLE_TAP, first)
 	_expect("double-tap", "×30")
 	# The top of the diamond block under the 2:1 projection (P117): world (-440, 410) to (-200, 490)
-	# holds the six tanks 1, 2, 3, 7, 8 and 13 and no other.
+	# holds the six tanks 1, 2, 3, 7, 8 and 13 and no other, once it is raised by the light tank's
+	# pick lift (a box takes the units whose lifted centres it covers, P114b).
 	var camera: RtsCamera = _main.get_node("Camera")
-	var top_left: Vector2 = camera.world_to_screen(Vector2(-440, 410))
-	var top_box: Rect2 = Rect2(top_left, camera.world_to_screen(Vector2(-200, 490)) - top_left)
+	var raise: Vector2 = Vector2(0.0, Lifts.pick(&"light_tank"))
+	var top_left: Vector2 = camera.world_to_screen(Vector2(-440, 410) - raise)
+	var top_box: Rect2 = Rect2(
+		top_left, camera.world_to_screen(Vector2(-200, 490) - raise) - top_left
+	)
 	_gesture(GestureEvent.Kind.BOX_END, first, top_box)
 	_expect("box", "×6")
 	_gesture(GestureEvent.Kind.BOX_END, first, Rect2(80, 300, 220, 200))  # No tank in it.

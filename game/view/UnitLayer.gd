@@ -17,30 +17,39 @@ extends Node2D
 ## squad) turns as a whole toward its target instead. The turns are view effects and never touch
 ## the World. A type with no sheet, or an atlas that did not bake, gets a `Marker` drawn by
 ## `_draw()` instead of sprites.
-## Rigs are the children of the sort node and follow their unit by id: a death frees its rig, a
-## new row gets a new one, a new match rebuilds all. A row whose type has a footprint is a
-## building: no rig (a null in every per-row list), no ring, no pick, no unit bar.
-## A selected unit has a Ring after the Shadow, under the sprites. The Shadow draws at z 2 and the
-## Ring at 3, the rest in the sort at 10 (ADR 0023 section 2), so mixed types and owners still
-## batch. The layer also keeps, per row, the hp it last saw and the frame clock of the last hp
-## drop (`hit_time_ms`), which the health bars read together with `is_ringed`.
+## Rigs are the children of the sort node and follow their unit by id: a death moves its rig into
+## the pool, a new row takes a rig of its kind from the pool before it makes one (`rigs_made` stops
+## growing once the pool has warmed up), a new match pools all. The pool is a hidden child of the
+## layer, so a pooled rig is neither sorted nor drawn, and the tree frees it. A row whose type has a
+## footprint is a building: no rig (a null in every per-row list), no ring, no pick, no unit bar.
+## A selected unit has a Ring after the Shadow, under the sprites: the 2:1 ground ellipse of its
+## selection radius (`ui/selection_ellipse.svg`). The Shadow draws at z 2 and the Ring at 3, the
+## rest in the sort at 10 (ADR 0023 section 2), so mixed types and owners still batch. The layer
+## also keeps, per row, the hp it last saw and the frame clock of the last hp drop
+## (`hit_time_ms`), which the health bars read together with `is_ringed`.
+## A tap picks a unit round its lifted centre: the ground point raised by its sheet's
+## `pick_lift_px`, half the frame's height (`fill_pick_snapshot`).
 ## An enemy rig stands on a tile its owner's opponent may not see: the local player's fog hides it
 ## there (`is_shown`, ADR 0010 section 2) by its `visible` flag alone, so a hidden rig keeps its
 ## position, heading and frame and still answers `unit_screen_position`. Own rigs are always shown.
 
-const RING_ART: String = "res://assets/art/svg/ui/selection_ring.svg"
+const RING_ART: String = "res://assets/art/svg/ui/selection_ellipse.svg"
 ## The per-row sprites of `_layers`, at PARTS * row + part; the turret is null for a type without.
 const HULL: int = 0
 const TURRET: int = 1
 const SHADOW: int = 2
 const PARTS: int = 3
 const PART_NAMES: Array[StringName] = [&"hull", &"turret", &"shadow"]  ## Sheet parts, also nodes.
+const DRAW_ORDER: Array[int] = [SHADOW, HULL, TURRET]  ## Also the order of a rig's nodes.
+const MARKER_KIND: int = 1 << PARTS  ## A rig's kind has a bit for each part it holds, then this.
 const DIRECTIONS: int = 16  ## Steps of a full turn in a hull's frames (a squad has every other).
 const D_EAST: int = 6  ## The frame `d06` faces grid +x, and each step is 22.5 degrees from it.
 const NO_FRAME: int = -1
 const RING_PAD_MILLI: int = 50  ## The ring clears the selection radius by this much.
 const RING_MIN_DP: float = 18.0
-const RING_TEX_RADIUS_PX: float = 72.0  ## The texture's centre-line radius in its px (STYLE.md).
+## The ellipse texture's horizontal centre-line semi-axis in its px (STYLE.md): its vertical one is
+## 36, so one scale gives the 2:1 ground ellipse.
+const RING_TEX_RX_PX: float = 72.0
 const NEVER_HIT: int = -1  ## What hit_time_ms answers for a unit whose hp has not dropped.
 
 ## How fast a hull, a turret or a squad rig turns, in radians per second.
@@ -71,8 +80,11 @@ var _frames: PackedInt32Array = PackedInt32Array()
 var _heading: PackedFloat64Array = PackedFloat64Array()  ## Angle the hull shows now.
 var _aim: PackedFloat64Array = PackedFloat64Array()  ## Where the hull turns to.
 var _turret: PackedFloat64Array = PackedFloat64Array()  ## Angle the turret shows now.
-var _rings: Array[Ring] = []  ## Ring of row `i`, made the first time that unit is selected.
+var _rings: Array[Ring] = []  ## Ring of row `i`, its rig's from the first time it is selected.
 var _ringed: PackedInt32Array = PackedInt32Array()  ## Rows whose ring shows.
+var _pool: Dictionary[int, Array] = {}  ## Rigs waiting for a unit, by kind: Arrays of Rig.
+var _pool_root: Node2D = null  ## The hidden node that the pooled rigs are children of.
+var _made: int = 0  ## Rigs made, which are the pool's misses.
 ## hp of row `i` as the layer last saw it, and the clock at which it last fell (NEVER_HIT for
 ## none). Both follow the rows by unit id like the rigs: rows compact on a death, so a plain
 ## resize would move a later unit's hit time onto its neighbour.
@@ -85,7 +97,7 @@ var _dp_px: float = 1.0  ## Base px per dp, read when the selection or the windo
 
 ## The ring texture as a 2:1 ground ellipse (the selection radius, `IsoProjection.ellipse_px`):
 ## `radius` is its horizontal semi-axis in world px and the vertical one is half of it. The
-## texture's centre line has RING_TEX_RADIUS_PX, and its strokes are baked, so they scale with the
+## texture's centre line has RING_TEX_RX_PX, and its strokes are baked, so they scale with the
 ## ring. `unit` is the world px of one dp.
 class Ring:
 	extends Sprite2D
@@ -106,11 +118,27 @@ class Marker:
 		draw_circle(Vector2.ZERO, radius, colour)
 
 
+## A unit's rig. `sprites` holds the Hull, Turret and Shadow (null for a part the sheet lacks) and
+## `kind` says which parts, so a rig in the pool fits any unit of its kind. The Ring is made once,
+## at the first selection, and stays the rig's child, hidden, whoever the rig belongs to.
+class Rig:
+	extends Node2D
+
+	var kind: int = 0
+	var sprites: Array[Sprite2D] = [null, null, null]
+	var marker: Marker = null
+	var ring: Ring = null
+
+
 func _ready() -> void:
 	if world_sort == null:
 		world_sort = WorldSort.new()
 		world_sort.runner = runner
 		add_child(world_sort)
+	_pool_root = Node2D.new()
+	_pool_root.name = "Pool"
+	_pool_root.visible = false
+	add_child(_pool_root)
 	get_viewport().size_changed.connect(_resize_rings)
 	_sync_rigs()
 
@@ -126,6 +154,11 @@ func _process(delta: float) -> void:
 ## The rigs, one for each row that is not a building.
 func rig_count() -> int:
 	return _live
+
+
+## The rigs made since the layer began, one for each unit that found none of its kind in the pool.
+func rigs_made() -> int:
+	return _made
 
 
 ## The rig of unit row `row`, null for a building or a row out of range. No sync.
@@ -174,6 +207,17 @@ func is_ringed(row: int) -> bool:
 	return row >= 0 and row < _rings.size() and _rings[row] != null and _rings[row].visible
 
 
+## Where the bar of unit row `row` stands above its ground point: the top of its frame, the
+## `bar_lift_px` of its type's sheet (world px at zoom 1), the default of its class without a sheet.
+## Read from the snapshot's type table at the call, so it needs no sync; 0 for a row out of range.
+func bar_lift_px(row: int) -> float:
+	var snap: MatchSnapshot = runner.snapshot if runner != null else null
+	if snap == null or row < 0 or row >= snap.type_index.size():
+		return 0.0
+	var type: int = snap.type_index[row]
+	return SpriteLift.bar_lift_px(world_sort.sheet(snap.type_ids[type]), snap.type_armour[type])
+
+
 ## Whether unit row `row` of `runner.snapshot` is drawn: an own unit always, an enemy one when its
 ## tile is visible to the local player (the tile from `snapshot.cell_of`, at the unit's position
 ## in the tick) or `reveal_enemies` is set. Both are read at the call, nothing is cached. Like
@@ -219,8 +263,9 @@ func set_selected(ids: PackedInt32Array) -> void:
 
 ## Fills `snap` for the Picker with every unit in row order: id, owner, type, centre on screen (base
 ## px) and hit radius, the larger of `min_radius_px` and the horizontal semi-axis of the type's
-## selection ellipse at the camera zoom. The centre is the rig's ground point (the lift of ADR 0023
-## section 3 comes with P114b). An enemy that `is_shown` would not draw is filled like
+## selection ellipse at the camera zoom. The centre is the lifted one of ADR 0023 section 3: the
+## rig's ground point raised by the sheet's `pick_lift_px` (`SpriteLift.centre_lift_px`), at the
+## camera zoom. An enemy that `is_shown` would not draw is filled like
 ## any other row, with its `pickable` entry 0, so the Picker skips it (P47p). The snapshot's arrays
 ## are resized in place, so refilling one allocates nothing.
 func fill_pick_snapshot(snap: PickSnapshot, min_radius_px: float) -> void:
@@ -231,12 +276,14 @@ func fill_pick_snapshot(snap: PickSnapshot, min_radius_px: float) -> void:
 	var out_owners: PackedInt32Array = snap.owners
 	var out_types: PackedInt32Array = snap.type_index
 	var out_pos: PackedVector2Array = snap.screen_pos
+	var out_lift: PackedFloat32Array = snap.lift_px
 	var out_radius: PackedFloat32Array = snap.radius_px
 	var out_pickable: PackedByteArray = snap.pickable
 	out_ids.resize(count)
 	out_owners.resize(count)
 	out_types.resize(count)
 	out_pos.resize(count)
+	out_lift.resize(count)
 	out_radius.resize(count)
 	out_pickable.resize(count)
 	if count == 0:
@@ -245,7 +292,9 @@ func fill_pick_snapshot(snap: PickSnapshot, min_radius_px: float) -> void:
 	var owners: PackedInt32Array = source.owner
 	var types: PackedInt32Array = source.type_index
 	var radii: PackedInt32Array = source.type_selection_radius
+	var armours: PackedInt32Array = source.type_armour
 	var rigs: Array[Node2D] = _rigs
+	var sheets: Array[IsoSheetDef] = _sheets
 	var zoom: float = camera.zoom.x
 	# is_shown's rule with the arrays aliased: an enemy is hidden when the tile of its position in
 	# this tick (`snapshot.cell_of`) is not visible to the local player.
@@ -262,12 +311,17 @@ func fill_pick_snapshot(snap: PickSnapshot, min_radius_px: float) -> void:
 		out_ids[row] = ids[row]
 		out_owners[row] = owners[row]
 		out_types[row] = type
-		out_pos[row] = camera.world_to_screen(_row_position(row))
+		var lift: float = 0.0  # A building's row is not picked here: P115b picks it on its silhouette.
+		if rigs[row] != null:
+			var armour: int = armours[type] if type < armours.size() else World.Armour.LIGHT
+			lift = SpriteLift.centre_lift_px(sheets[row], armour)
+		out_pos[row] = camera.world_to_screen(_row_position(row) - Vector2(0.0, lift))
+		out_lift[row] = lift * zoom
 		out_radius[row] = maxf(min_radius_px, art_px)
 		var seen: bool = not fogged or owners[row] == player
 		if not seen:
 			seen = counts[counts_at + source.cell_of(pos_x[row], pos_y[row])] > 0
-		out_pickable[row] = 1 if seen and rigs[row] != null else 0  # A building: P115b picks it.
+		out_pickable[row] = 1 if seen and rigs[row] != null else 0
 
 
 ## Reads `runner.snapshot` afresh and brings the rigs up to it: all new for another match_serial,
@@ -292,8 +346,7 @@ func _sync_rigs() -> MatchSnapshot:
 func _clear_rigs() -> void:
 	for node: Node2D in _rigs:
 		if node != null:
-			world_sort.remove_child(node)
-			node.queue_free()
+			_pool_rig(node)
 	_ids.clear()
 	_rigs.clear()
 	_live = 0
@@ -365,6 +418,7 @@ func _merge(snap: MatchSnapshot) -> void:
 			else:
 				node = _new_rig(snap, row, layers, sheets, frames)
 				world_sort.add_child(node)  # Other nodes of the sort stand beside it.
+				rings[row] = (node as Rig).ring  # A pooled rig brings its hidden Ring, if it has one.
 			rigs.append(node)
 			last_hp[row] = snap.hp[row]
 			hit_ms[row] = NEVER_HIT
@@ -406,8 +460,20 @@ func _note_hits(snap: MatchSnapshot) -> void:
 
 func _drop_rig(old: int) -> void:
 	if _rigs[old] != null:
-		world_sort.remove_child(_rigs[old])
-		_rigs[old].queue_free()
+		_pool_rig(_rigs[old])
+
+
+## Takes `node` out of the sort and into the pool of its kind, under the hidden pool node. A Ring it
+## has stays, hidden, for the next unit of the rig.
+func _pool_rig(node: Node2D) -> void:
+	var rig: Rig = node as Rig
+	world_sort.remove_child(rig)
+	if rig.ring != null:
+		rig.ring.visible = false
+	_pool_root.add_child(rig)
+	if not _pool.has(rig.kind):
+		_pool[rig.kind] = []
+	_pool[rig.kind].append(rig)
 
 
 ## Where row `row` is in world px: its rig's place, or its position for a row with no rig.
@@ -418,10 +484,11 @@ func _row_position(row: int) -> Vector2:
 	return to_global(IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row]))
 
 
-## The rig of unit row `row` of `snap`, facing east (`d06`): the children Shadow, Hull and Turret on
-## the atlas, where the sheet has the part, and a Marker where there is no art. It appends the
-## sprites (null for a missing part) to `layers`, its sheet to `sheets` and its frames to `frames`.
-## The Shadow draws at z 2, under the rings and the fog, and the rest at the sort's z.
+## The rig of unit row `row` of `snap`, facing east (`d06`): one of its kind from the pool, or a new
+## one, with the children Shadow, Hull and Turret on the atlas, where the sheet has the part, and a
+## Marker where there is no art. It appends the sprites (null for a missing part) to `layers`, its
+## sheet to `sheets` and its frames to `frames`. The Shadow draws at z 2, under the rings and the
+## fog, and the rest at the sort's z.
 func _new_rig(
 	snap: MatchSnapshot,
 	row: int,
@@ -432,42 +499,80 @@ func _new_rig(
 	var type: int = snap.type_index[row]
 	var owner_id: int = snap.owner[row]
 	var sheet: IsoSheetDef = world_sort.sheet(snap.type_ids[type])
-	var node: Node2D = Node2D.new()
-	node.name = "Unit%d" % snap.unit_id[row]
-	var sprites: Array[Sprite2D] = [null, null, null]
-	for part: int in [SHADOW, HULL, TURRET]:  # The draw order, which is also the node order.
-		if sheet != null and sheet.has_part(PART_NAMES[part]):
-			sprites[part] = Sprite2D.new()
-			sprites[part].name = String(PART_NAMES[part]).capitalize()
-			world_sort.dress(sprites[part], sheet, PART_NAMES[part])
-			world_sort.show_frame(sprites[part], sheet, PART_NAMES[part], D_EAST, owner_id)
-			node.add_child(sprites[part])
-	if sprites[SHADOW] != null:
-		sprites[SHADOW].z_index = WorldSort.Z_SHADOW - WorldSort.Z_SORT
-	if sprites[TURRET] != null:
-		sprites[TURRET].position = sheet.mount(D_EAST) * WorldSort.ART_SCALE
-	if sheet == null or world_sort.atlas.is_empty():
-		var marker: Marker = Marker.new()
-		marker.name = "Marker"
-		marker.colour = world_sort.mid_colour(owner_id)
-		marker.radius = IsoProjection.ellipse_px(snap.type_selection_radius[type]).x
-		node.add_child(marker)
-	layers.append_array(sprites)
+	var kind: int = _kind_of(sheet)
+	var rig: Rig = _take_rig(kind)
+	if rig == null:
+		rig = _make_rig(kind)
+	rig.name = "Unit%d" % snap.unit_id[row]
+	for part: int in DRAW_ORDER:
+		if rig.sprites[part] != null:
+			world_sort.dress(rig.sprites[part], sheet, PART_NAMES[part])
+			world_sort.show_frame(rig.sprites[part], sheet, PART_NAMES[part], D_EAST, owner_id)
+	if rig.sprites[TURRET] != null:
+		rig.sprites[TURRET].position = sheet.mount(D_EAST) * WorldSort.ART_SCALE
+	if rig.marker != null:
+		rig.marker.colour = world_sort.mid_colour(owner_id)
+		rig.marker.radius = IsoProjection.ellipse_px(snap.type_selection_radius[type]).x
+		rig.marker.queue_redraw()
+	layers.append_array(rig.sprites)
 	sheets.append(sheet)
 	frames.append_array([D_EAST, D_EAST])
-	return node
+	return rig
 
 
-## The Ring of row `row`, its rig's child after the Shadow and under the sprites, at z 3.
+## What a rig for `sheet` holds: a bit for each part it has, the Marker's without a sheet or atlas.
+func _kind_of(sheet: IsoSheetDef) -> int:
+	var kind: int = 0
+	for part: int in PARTS:
+		if sheet != null and sheet.has_part(PART_NAMES[part]):
+			kind |= 1 << part
+	if sheet == null or world_sort.atlas.is_empty():
+		kind |= MARKER_KIND
+	return kind
+
+
+## A rig of `kind` out of the pool, null when there is none.
+func _take_rig(kind: int) -> Rig:
+	var idle: Array = _pool.get(kind, [])
+	if idle.is_empty():
+		return null
+	var rig: Rig = idle.pop_back() as Rig
+	_pool_root.remove_child(rig)
+	return rig
+
+
+## A new rig with the children of `kind` (Shadow, Hull, Turret, Marker), not yet dressed.
+func _make_rig(kind: int) -> Rig:
+	_made += 1
+	var rig: Rig = Rig.new()
+	rig.kind = kind
+	for part: int in DRAW_ORDER:
+		if kind & (1 << part) != 0:
+			rig.sprites[part] = Sprite2D.new()
+			rig.sprites[part].name = String(PART_NAMES[part]).capitalize()
+			rig.add_child(rig.sprites[part])
+	if rig.sprites[SHADOW] != null:
+		rig.sprites[SHADOW].z_index = WorldSort.Z_SHADOW - WorldSort.Z_SORT
+	if kind & MARKER_KIND != 0:
+		rig.marker = Marker.new()
+		rig.marker.name = "Marker"
+		rig.add_child(rig.marker)
+	return rig
+
+
+## The Ring of row `row`, its rig's child after the Shadow and under the sprites, at z 3. A rig
+## makes its Ring once and keeps it through the pool.
 func _new_ring(row: int) -> Ring:
-	var ring: Ring = Ring.new()
-	ring.name = "Ring"
-	ring.texture = load(RING_ART)
-	ring.z_index = WorldSort.Z_RING
-	ring.z_as_relative = false
-	_rigs[row].add_child(ring)
-	_rigs[row].move_child(ring, mini(1, _rigs[row].get_child_count() - 1))
-	return ring
+	var rig: Rig = _rigs[row] as Rig
+	if rig.ring == null:
+		rig.ring = Ring.new()
+		rig.ring.name = "Ring"
+		rig.ring.texture = load(RING_ART)
+		rig.ring.z_index = WorldSort.Z_RING
+		rig.ring.z_as_relative = false
+		rig.add_child(rig.ring)
+		rig.move_child(rig.ring, mini(1, rig.get_child_count() - 1))
+	return rig.ring
 
 
 func _resize_rings() -> void:  # dp changes with the window.
@@ -491,7 +596,7 @@ func _refresh_rings(snap: MatchSnapshot) -> void:
 		var grow: float = maxf(1.0, RING_MIN_DP * unit / semi.x)  # The smallest ring: RING_MIN_DP.
 		ring.radius = semi.x * grow
 		ring.unit = unit
-		ring.scale = semi * grow / RING_TEX_RADIUS_PX
+		ring.scale = Vector2.ONE * (semi.x * grow / RING_TEX_RX_PX)
 
 
 ## The frame index (`d<NN>`) of grid angle `angle` among the `counts` frames of a part: `d06` faces
