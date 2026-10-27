@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="UnitDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/UnitDef.gd" id="1_unit"]
+[ext_resource type="Resource" path="res://data/weapons/rifle.tres" id="2_weapon"]
+
+[resource]
+script = ExtResource("1_unit")
+type_id = &"renew_rifle"
+display_name = "Linemen"
+faction = &"renew"
+speed = 73
+radius = 300
+selection_radius = 350
+formation_spacing = 900
+max_hp = 80
+sight_range = 6000
+acquire_range = 5000
+weapon = ExtResource("2_weapon")
+cost = 100
+build_ticks = 75
+tab = 1

@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="UnitDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/UnitDef.gd" id="1_unit"]
+[ext_resource type="Resource" path="res://data/weapons/arcline_gun.tres" id="2_weapon"]
+[ext_resource type="Resource" path="res://data/units/renew_radar.tres" id="3_requires"]
+
+[resource]
+script = ExtResource("1_unit")
+type_id = &"renew_artillery"
+display_name = "Arcline"
+faction = &"renew"
+speed = 67
+radius = 400
+selection_radius = 500
+formation_spacing = 1200
+max_hp = 160
+armour = 1
+move_class = 2
+sight_range = 10000
+acquire_range = 10000
+weapon = ExtResource("2_weapon")
+cost = 900
+build_ticks = 300
+tab = 2
+requires = ExtResource("3_requires")
