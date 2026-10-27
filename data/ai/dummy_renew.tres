@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="AiDef" format=3]
+
+[ext_resource type="Script" path="res://game/ai/AiDef.gd" id="1_aidef"]
+
+[resource]
+script = ExtResource("1_aidef")
+id = &"dummy_renew"
+build_order = Array[StringName]([&"renew_power", &"renew_refinery", &"renew_barracks", &"renew_power", &"renew_factory", &"renew_defence", &"renew_defence", &"renew_power"])
+hq_type = &"renew_hq"
+harvester_type = &"renew_tanker"
+queue_target = 2
+harvesters_wanted = 2
+place_tries = 64
+place_stride_tiles = 4
+defend_radius_tiles = 12
+guard_offset_tiles = Vector2i(2, 2)
+think_period = 15
+think_tick = 7
