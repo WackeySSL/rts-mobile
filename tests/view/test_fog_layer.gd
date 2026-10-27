@@ -342,12 +342,14 @@ func test_the_main_scene_draws_the_fog_at_z_4_under_every_object_and_covers_the_
 	var order: Array[String] = []
 	for child: Node in main.get_children():
 		order.append(String(child.name))
-	assert_array(order.slice(0, 9)).is_equal(
+	assert_array(order.slice(0, 11)).is_equal(
 		[
 			"MatchRunner",
 			"MapView",
+			"DecalLayer",
 			"WorldSort",
 			"UnitLayer",
+			"BuildingLayer",
 			"HealthBarLayer",
 			"ProjectileLayer",
 			"EffectsLayer",

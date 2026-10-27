@@ -3,9 +3,10 @@ extends Node2D
 ## The sorted world (ADR 0023 section 2, plan P114): one node at z 10 with `y_sort_enabled`, whose
 ## children the engine sorts by their y every frame, so a unit standing south of a thing is drawn
 ## after it. A unit rig stands at its projected ground point (`UnitLayer`); a building stands at
-## its footprint centre's (P115), which sorts a unit east or south of an n x n footprint in front
-## of it and one north or west behind it. Everything in it is a region of the one per-match atlas
-## in white, so the whole list is one draw call however types, owners and depths interleave.
+## its footprint centre's (`BuildingLayer`, P115), which sorts a unit east or south of an n x n
+## footprint in front of it and one north or west behind it. Everything in it is a region of the one
+## per-match atlas in white, so the whole list is one draw call however types, owners and depths
+## interleave.
 ## The node also owns the atlas of the match: `bake` rasterises the frames of every type the
 ## scenario registers, each player in its faction's art and its own triad (`IsoPlayerArt`,
 ## `IsoAtlas`), and `sync` does it again for a match whose art or players differ from what the
@@ -102,7 +103,8 @@ func mid_colour(owner_id: int) -> Color:
 
 
 ## Makes `sprite` the sprite of `part` of `sheet` on the atlas, white, whose origin is the part's
-## anchor: its ground point for a hull, its pivot for a turret. Frames come from `show_frame`.
+## `IsoSheetDef.origin`: a unit's ground point, a building's footprint centre (for its body and
+## its shadow), a turret's or head's pivot. Frames come from `show_frame`.
 func dress(sprite: Sprite2D, sheet_def: IsoSheetDef, part: StringName) -> void:
 	sprite.texture = atlas.texture()
 	sprite.region_enabled = true
@@ -110,7 +112,7 @@ func dress(sprite: Sprite2D, sheet_def: IsoSheetDef, part: StringName) -> void:
 	sprite.modulate = Color.WHITE
 	if not atlas.is_empty():
 		sprite.scale = Vector2.ONE * (ART_SCALE / atlas.bake_scale())
-		sprite.offset = -Vector2(sheet_def.anchor(part)) * atlas.bake_scale()
+		sprite.offset = -Vector2(sheet_def.origin(part)) * atlas.bake_scale()
 
 
 ## Shows frame `dir` (`d<NN>`, -1 for a building's body) of `part` for `owner_id`. A frame the

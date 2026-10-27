@@ -29,6 +29,14 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Look at your units | Each unit is drawn from the picture set of its side (the Derrick League or the Lumen Accord) in its player's team colour (the first player amber, the second cyan) with a shadow on the ground under it; units of two players on one side still differ by colour. The selection panel shows the unit's item card | |
 | Watch a unit drive or fight | The picture turns in steps to face where the unit drives (infantry in coarser steps); a tank's turret turns on its own to face its target while the hull keeps its heading; infantry turn as a whole toward their target. A unit lower on the screen is drawn in front of one above it | |
 
+## Buildings
+| Action | Result | Teach |
+|---|---|---|
+| Look at a building | Each building is drawn from the picture set of its side in its player's team colour, standing on its footprint with a soft shadow on the ground. It is drawn like a unit: a unit lower on the screen, in front of it, is drawn over it, and one higher up, behind it, is hidden by it. A defence's gun head turns on its own to face its target and stays turned while it has none | |
+| Look at the enemy's buildings | An enemy building is drawn only while you see the ground it stands on now; one cell of its footprint is enough, and then the whole building shows. Out of sight it is not drawn | |
+| A building is hit | A bar shows above it, as wide as its footprint (small, medium or large), filled by the hp it has left, for a few seconds after each hit. Your bars are plain, an enemy's has a notch in the top edge. An enemy building the fog hides shows none | |
+| A building is destroyed | It disappears from the map and the units behind it are no longer hidden | |
+
 ## Selection
 | Action | Result | Teach |
 |---|---|---|
@@ -91,4 +99,5 @@ their entries when their phase ships them (ROADMAP Phases 3-6).
 | Action | Result | Teach |
 |---|---|---|
 | An "under attack" warning at the screen edge | Not shown yet: nothing points at a unit that is hit off screen | |
+| A crater where a destroyed building stood | Not shown yet: the ground art that draws it comes in another change; a building you saw fall leaves a crater then | |
 | Play the Derrick League (oil and gas) or the Lumen Accord (green energy) | Not shown yet: no match has sides, so no building or unit belongs to one side only. Once a match has them, each side has its own buildings and units and your build menu shows only yours (and what both sides share) | |
