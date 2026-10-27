@@ -21,6 +21,11 @@ extends Node2D
 ## enemy one.
 ## The frames are planned after the bars, in the same arrays: the rects from `frame_first_rect()`
 ## on, FRAME_RECTS for each of `frame_count()` frames, outline first.
+## A building a Blackout Array switched off (`offline_until` above the snapshot's tick, P112b, ADR
+## 0023 section 10) wears the offline glyph (`glyph_offline.svg`, GLYPH_DP square, amber) for as
+## long as it is off, hit or not, over the place of its bar and centred on its footprint centre; an
+## enemy one only while `building_layer.is_shown`. The glyphs are planned after the frames and
+## painted after the rects, as `glyph_count()` squares at `glyph_rect(i)`.
 ##
 ## A bar is sized in dp, so it looks the same at every zoom: world px per dp is the base px per dp
 ## over the camera zoom. It is centred on its unit's projected ground point (`IsoProjection`, ADR
@@ -49,6 +54,11 @@ const SHAPE_STRIDE: int = 5  ## A shape lists rects as x, y, w, h and 0 (edge) o
 const FRAME_ARM_DP: int = 12  ## The longest arm of a frame's bracket.
 const FRAME_THICK_DP: int = 2
 const FRAME_RECTS: int = 16  ## Two arms for each of four corners, each as an outline and a fill.
+## The offline glyph (assets/art/STYLE.md "Icons and glyphs": 32 dp for a glyph on the map, drawn
+## tinted with its seat) and its gap over the bar's place.
+const GLYPH: Texture2D = preload("res://assets/art/svg/icons/glyph_offline.svg")
+const GLYPH_DP: int = 32
+const GLYPH_GAP_DP: int = 1
 
 @export var runner: MatchRunner
 @export var unit_layer: UnitLayer  ## Gives the selection, the hit times, the camera and the clock.
@@ -60,6 +70,7 @@ const FRAME_RECTS: int = 16  ## Two arms for each of four corners, each as an ou
 @export var own_color: Color = Color("30A46C")  ## Fill of an own bar (ok).
 @export var enemy_color: Color = Color("F5A524")  ## Fill of an enemy bar (warning).
 @export var frame_color: Color = Color("FFFFFF")  ## Brackets of an own selected building.
+@export var glyph_color: Color = Color("F5A524")  ## The offline glyph's tint (STYLE.md, warning).
 
 var _dp_px: float = 1.0  ## Base px per dp, read when the window changes.
 ## Rect `i` of the frame: x, y, width and height in world px at 4i, and its colour. `_bars` holds
@@ -75,6 +86,10 @@ var _frames: int = 0
 var _frame_first: int = 0  ## The first rect of the frames, which follow the bars' last.
 var _none: PackedInt32Array = PackedInt32Array()  ## The selected buildings when there is no layer.
 var _drawn: int = 0  ## Rects the last _draw painted.
+var _glyph_at: PackedFloat32Array = PackedFloat32Array()  ## Top-left x, y of glyph `i` at 2i.
+var _glyphs: int = 0
+var _glyph_side: float = 0.0  ## World px, the same for every glyph of the frame.
+var _drawn_glyphs: int = 0
 ## The shapes, own and enemy for each class (index class + enemy x CLASS_WIDTH_DP.size()), made
 ## once: their rects (SHAPE_STRIDE ints each), the rect count and the width in dp.
 var _shapes: Array[PackedInt32Array] = []
@@ -97,9 +112,9 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	var had_rects: bool = _rects > 0
+	var had_rects: bool = _rects > 0 or _glyphs > 0
 	_plan()
-	if had_rects or _rects > 0:
+	if had_rects or _rects > 0 or _glyphs > 0:
 		queue_redraw()
 
 
@@ -122,6 +137,20 @@ func rect_count() -> int:
 ## Rects the last `_draw` painted: the plan of the frame it ran after.
 func drawn_count() -> int:
 	return _drawn
+
+
+## The offline glyphs planned for the last frame, how many the last `_draw` painted, and glyph
+## `index`'s square in world px (layer coordinates).
+func glyph_count() -> int:
+	return _glyphs
+
+
+func drawn_glyphs() -> int:
+	return _drawn_glyphs
+
+
+func glyph_rect(index: int) -> Rect2:
+	return Rect2(_glyph_at[index * 2], _glyph_at[index * 2 + 1], _glyph_side, _glyph_side)
 
 
 func bar_count() -> int:
@@ -197,6 +226,7 @@ func _plan() -> void:
 	_rects = 0
 	_bar_count = 0
 	_frames = 0
+	_glyphs = 0
 	var snap: MatchSnapshot = runner.snapshot if runner != null else null
 	if snap == null or unit_layer == null or unit_layer.camera == null:
 		return
@@ -283,6 +313,29 @@ func _plan() -> void:
 			_rects += 1
 	_bar_first[_bar_count] = _rects
 	_plan_frames(snap, chosen, unit, local_player)
+	_plan_glyphs(snap, unit)
+
+
+## Plans the offline glyph of each shown building a blackout has switched off: its bottom edge
+## stands GLYPH_GAP_DP over the top of the bar's place, so a bar and a glyph never overlap.
+func _plan_glyphs(snap: MatchSnapshot, unit: float) -> void:
+	_glyph_side = GLYPH_DP * unit
+	if building_layer == null:
+		return
+	var until: PackedInt32Array = snap.offline_until  # Aliased once: no property read per row.
+	var cur_x: PackedInt32Array = snap.pos_x
+	var cur_y: PackedInt32Array = snap.pos_y
+	var tick: int = snap.tick
+	var rise: float = (GAP_DP + HEIGHT_DP + GLYPH_GAP_DP + GLYPH_DP) * unit
+	for row: int in until.size():
+		if until[row] <= tick or not building_layer.is_shown(row):
+			continue
+		if _glyph_at.size() < _glyphs * 2 + 2:
+			_glyph_at.resize(_glyph_at.size() + 16)
+		var place: Vector2 = IsoProjection.ground_to_px(cur_x[row], cur_y[row])
+		_glyph_at[_glyphs * 2] = place.x - 0.5 * _glyph_side
+		_glyph_at[_glyphs * 2 + 1] = place.y - building_layer.bar_lift_px(row) - rise
+		_glyphs += 1
 
 
 ## Plans the frame of each selected building that is shown, after the bars.
@@ -328,6 +381,10 @@ func _put(rect: Rect2, color: Color) -> void:
 
 func _draw() -> void:
 	_drawn = 0
+	_drawn_glyphs = 0
 	for index: int in _rects:
 		draw_rect(rect_at(index), rect_color(index))
 		_drawn += 1
+	for index: int in _glyphs:
+		draw_texture_rect(GLYPH, glyph_rect(index), false, glyph_color)
+		_drawn_glyphs += 1
