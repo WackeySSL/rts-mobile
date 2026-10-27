@@ -307,13 +307,14 @@ func test_every_map_glyph_sits_on_a_dark_seat_with_a_white_rim() -> void:
 		assert_bool(inner_corner > 0.5).override_failure_message(icon).is_equal(not is_disc)
 
 
-## An item icon is named by the art id of what it builds: a building's `buildings/<id>_hull.svg`
-## or a unit's `units/<id>_hull.svg`, so the sidebar finds the icon by the type id alone.
+## An item icon is named by the art id of what it builds: a building's `buildings/<id>_hull.svg` or
+## a unit's generated model `models/fossil/<id>.tres` (plan row P101 deleted the top-down unit
+## files), so the sidebar finds the icon by the type id alone.
 func test_every_item_icon_is_named_after_an_existing_building_or_unit_art_id() -> void:
 	for icon: String in ITEMS:
 		var id: String = icon.trim_prefix("item_")
 		var building: String = "res://assets/art/svg/buildings/%s_hull.svg" % id
-		var unit: String = "res://assets/art/svg/units/%s_hull.svg" % id
+		var unit: String = "res://assets/art/models/fossil/%s.tres" % id
 		(
 			assert_bool(ResourceLoader.exists(building) or ResourceLoader.exists(unit))
 			. override_failure_message(icon)

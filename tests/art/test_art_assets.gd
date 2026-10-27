@@ -1,21 +1,13 @@
 extends GdUnitTestSuite
-## STYLE.md rules a plain check can hold, the unit art that UnitLayer builds on (one canvas per
-## unit, half import scale, grey team layers, no turret on a squad), the ring texture and the
-## effects atlas that P40 and P44 copy numbers from, the terrain tiles and fog alpha that P36 and
-## P47 copy, and the gallery's squads, rings and terrain patch.
+## STYLE.md rules a plain check can hold, the ring texture and the effects atlas that P40 and P44
+## copy numbers from, the terrain tiles and fog alpha that P36 and P47 copy, and the gallery's
+## terrain patch. Plan row P101 took the top-down unit layers, the squads and the ring row out of
+## this suite with the files they pinned; the generated units are pinned by
+## tests/art/test_artgen*.gd and test_unit_models.gd, the Units page by test_art_gallery_units.gd.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
-const UNIT_ART: String = "res://assets/art/svg/units/%s_%s.svg"
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
-const SIDE_PX: Dictionary[String, int] = {
-	"light_tank": 64,
-	"rifle_squad": 32,
-	"rocket_squad": 32,
-	"heavy_tank": 64,
-	"artillery": 64,
-	"harvester": 80,
-}
 ## The elements STYLE.md allows besides `svg` (ADR 0022 adds `defs`, `radialGradient`, `clipPath`
 ## and `use`). `pattern` is out because ThorVG in Godot 4.7.2 draws none, so a file that used one
 ## would look right in an editor and empty in the game; a mask only with solid fills.
@@ -127,65 +119,6 @@ func test_every_svg_follows_the_technical_rules() -> void:
 	assert_array(problems).is_empty()
 
 
-func test_unit_layers_are_one_canvas_at_half_scale_and_squads_have_no_turret() -> void:
-	for unit: String in SIDE_PX:
-		for layer: String in ["hull", "team"]:
-			var size: Vector2 = (load(UNIT_ART % [unit, layer]) as Texture2D).get_size()
-			assert_vector(size).override_failure_message(unit + layer).is_equal(
-				Vector2.ONE * SIDE_PX[unit]
-			)
-	assert_bool(ResourceLoader.exists(UNIT_ART % ["rifle_squad", "turret"])).is_false()
-	assert_bool(ResourceLoader.exists(UNIT_ART % ["rocket_squad", "turret"])).is_false()
-
-
-func test_team_layers_hold_only_greys() -> void:
-	var paths: Array[String] = FileScan.list_files("res://assets/art/svg/units", "_team.svg")
-	assert_int(paths.size()).is_equal(SIDE_PX.size())
-	for path: String in paths:
-		var image: Image = (load(path) as Texture2D).get_image()
-		image.convert(Image.FORMAT_RGBA8)
-		var data: PackedByteArray = image.get_data()
-		var colored: int = 0
-		for i: int in range(0, data.size(), 4):
-			colored += int(
-				data[i + 3] > 0 and (data[i] != data[i + 1] or data[i + 1] != data[i + 2])
-			)
-		assert_int(colored).override_failure_message(path).is_equal(0)
-
-
-func test_the_gallery_has_both_squads_in_all_four_slots_tinted_by_slot() -> void:
-	var gallery: Node = await _open_gallery()
-	for slot: String in ["Grass/SlotA", "Grass/SlotB", "Sand/SlotA", "Sand/SlotB"]:
-		for squad: String in ["RifleSquad", "RocketSquad"]:
-			var rig: Node = gallery.get_node("%s/%s" % [slot, squad])
-			assert_int(rig.get_child_count()).is_equal(2)
-			for layer: String in ["Hull", "Team"]:
-				var texture: Texture2D = (rig.get_node(layer) as Sprite2D).texture
-				assert_str(texture.resource_path).ends_with(
-					"%s_%s.svg" % [squad.to_snake_case(), layer.to_lower()]
-				)
-			var team: Color = Color("2F80ED") if slot.ends_with("A") else Color("E5484D")
-			var tint: Color = (rig.get_node("Team") as Sprite2D).modulate
-			assert_that(tint).override_failure_message(slot).is_equal(team)
-
-
-func test_the_gallery_squads_turn_and_repeat_in_a_row_at_the_camera_zoom_levels() -> void:
-	var gallery: Node = await _open_gallery()
-	var squad: Node2D = gallery.get_node("Grass/SlotA/RifleSquad")
-	var before: float = squad.rotation
-	gallery.call("_process", 0.5)
-	assert_float(squad.rotation).is_not_equal(before)
-	var levels: Array[float] = []
-	for level: float in (load("res://data/input_settings.tres") as InputSettings).zoom_levels:
-		levels.append_array([level, level])  # One rifle and one rocket rig per level.
-	for ground: String in ["Grass", "Sand"]:
-		var scales: Array[float] = []
-		for rig: Node in gallery.get_node(ground + "/SquadZoomRow").get_children():
-			scales.append((rig as Node2D).scale.x)
-		scales.sort()
-		assert_array(scales).override_failure_message(ground).is_equal(levels)
-
-
 ## RING_TEX_RADIUS_PX is 72: from the centre 62 px clear, 4 dark, 12 white (centred on 72), 4 dark,
 ## 2 clear. Along a row and along a column, so a squashed ring or a fill fails too.
 func test_the_ring_texture_has_the_centre_line_radius_and_stroke_of_the_style_guide() -> void:
@@ -232,38 +165,6 @@ func test_the_effects_atlas_bakes_in_palette_colours_only_and_the_rocket_faces_e
 	var centre: Vector2i = REGIONS[4].get_center()
 	assert_that(image.get_pixelv(centre - Vector2i(7, 0))).is_equal(Color("FFD84D"))
 	assert_that(image.get_pixelv(centre + Vector2i(7, 0))).is_equal(Color("F5A524"))
-
-
-func test_the_gallery_ring_row_draws_the_team_a_ring_under_the_hull_at_31_5_35_2_and_52_8_px(
-) -> void:
-	var gallery: Node = await _open_gallery()
-	for ground: String in ["Grass", "Sand"]:
-		var radii: Array[float] = []
-		for rig: Node in gallery.get_node(ground + "/RingRow").get_children():
-			var ring: Sprite2D = rig.get_child(0) as Sprite2D
-			assert_str(String(ring.name)).is_equal("Ring")
-			assert_str(ring.texture.resource_path).ends_with("ui/selection_ring.svg")
-			assert_bool(ring.is_visible_in_tree()).is_true()
-			assert_that(ring.modulate).is_equal(Color.WHITE)
-			assert_that((rig.get_node("Team") as Sprite2D).modulate).is_equal(Color("2F80ED"))
-			radii.append(snappedf((rig as Node2D).scale.x * ring.scale.x * 72.0, 0.01))
-		radii.sort()
-		assert_str(str(radii)).override_failure_message(ground).is_equal("[31.5, 35.2, 52.8]")
-
-
-func test_the_gallery_keeps_every_ring_clear_of_the_other_sprites() -> void:
-	var gallery: Node = await _open_gallery()
-	var sprites: Array[Node] = _shown_sprites(gallery)
-	var rings: Array[Node] = gallery.find_children("Ring", "Sprite2D", true, false)
-	assert_int(rings.size()).is_equal(6)
-	for ring: Node in rings:
-		for other: Node in sprites:
-			if other.get_parent() != ring.get_parent():
-				(
-					assert_bool(_box(ring).intersects(_box(other)))
-					. override_failure_message("%s over %s" % [ring.get_path(), other.get_path()])
-					. is_false()
-				)
 
 
 func test_each_ground_carries_the_atlas_at_scale_1_clear_of_the_back_button_and_the_sprites(
@@ -440,24 +341,11 @@ func test_the_gallery_terrain_row_is_a_patch_of_map_tiles_with_the_fog_over_its_
 	var gallery: Node = await _open_gallery()
 	var row: Control = gallery.get_node("TerrainRow")
 	assert_bool(row.is_visible_in_tree()).is_true()
-	# Over both grounds, in the order frame, patch, squads, fog.
+	# Over both grounds, in the order frame, patch, fog.
 	assert_bool(row.get_index() > gallery.get_node("Sand").get_index()).is_true()
 	# Nothing else: a grid, a line or a band over the patch would be one more child.
 	var names: Array = row.get_children().map(func(c: Node) -> String: return c.name)
-	(
-		assert_array(names)
-		. is_equal(
-			[
-				"Frame",
-				"Patch",
-				"RifleSquadScrub2",
-				"RocketSquadScrub2",
-				"RifleSquadScrub3",
-				"RocketSquadScrub3",
-				"ExploredFog",
-			]
-		)
-	)
+	assert_array(names).is_equal(["Frame", "Patch", "ExploredFog"])
 	var patch: TextureRect = row.get_node("Patch")
 	var frame: ColorRect = row.get_node("Frame")
 	var fog: ColorRect = row.get_node("ExploredFog")
@@ -484,24 +372,6 @@ func test_the_gallery_terrain_row_is_a_patch_of_map_tiles_with_the_fog_over_its_
 			if cell.get_data() != tile.get_data():
 				wrong.append("%d,%d %s" % [x, y, PATCH_TILES[y][x]])
 	assert_array(wrong).is_empty()
-
-
-func test_the_gallery_patch_has_both_teams_squads_on_the_scrub_tiles_above_the_fog() -> void:
-	var gallery: Node = await _open_gallery()
-	var row: Control = gallery.get_node("TerrainRow")
-	var patch: Rect2 = (row.get_node("Patch") as Control).get_global_rect()
-	var fog: Control = row.get_node("ExploredFog")
-	for column: int in [2, 3]:
-		var tile: Rect2 = Rect2(patch.position + Vector2(64.0 * column, 0.0), Vector2(64, 64))
-		var team: Color = Color("2F80ED") if column == 2 else Color("E5484D")
-		for squad: String in ["RifleSquad", "RocketSquad"]:
-			var rig: Node2D = row.get_node("%sScrub%d" % [squad, column])
-			var inside: bool = tile.has_point(rig.global_position)
-			assert_bool(inside).override_failure_message(rig.name).is_true()
-			assert_bool(fog.get_global_rect().intersects(_box(rig.get_node("Hull")))).is_false()
-			assert_that((rig.get_node("Team") as Sprite2D).modulate).is_equal(team)
-			assert_bool(rig.get_index() < fog.get_index()).is_true()
-	assert_int(row.find_children("*Scrub*", "Node2D", false, false).size()).is_equal(4)
 
 
 ## At the base size of a 16:9 phone (the tightest: 720 high), a wider one and a 4:3 tablet.

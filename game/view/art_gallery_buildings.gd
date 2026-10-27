@@ -1,19 +1,18 @@
 extends RefCounted
 ## The Build and Seam pages of the art gallery (STYLE.md, "Buildings"; ADR 0022): the six
 ## buildings in their oblique view, drawn the way the view draws them. Build is a list to scroll, a
-## section for each camera zoom level and team: the six buildings on grass (left) and sand (right),
-## a light tank north and one south of each. A building is a cell cut at its footprint's middle line
-## (ADR 0022 section 2): the base part, the tanks, then the roof part (and the defence turret's gun
-## head, which turns about the roof's centre), so a tank north of a building stands behind its roof.
-## Seam shows the refinery with the explored fog over the west column of its footprint beside the
-## same refinery seen: the base part dimmed, the roof part not (ADR 0022 section 4). Every part is a
-## rig `Node2D` in the team group with `Hull` and `Team` (a tank also `Turret`), so the gallery's
-## tint and turret turn find them. View-only.
+## section for each camera zoom level and team: the six buildings on grass (left) and sand (right).
+## A building is a cell cut at its footprint's middle line (ADR 0022 section 2): the base part, then
+## the roof part (and the defence turret's gun head, which turns about the roof's centre). Seam
+## shows the refinery with the explored fog over the west column of its footprint beside the same
+## refinery seen: the base part dimmed, the roof part not (ADR 0022 section 4). Every part is a rig
+## `Node2D` in the team group with `Hull` and `Team`, so the gallery's tint and turret turn find
+## them. The top-down units stood north and south of each building until plan row P101 deleted
+## them; P103 deletes the oblique buildings and these pages. View-only.
 
 const TEAM_A_GROUP: StringName = &"gallery_team_a"
 const TEAM_B_GROUP: StringName = &"gallery_team_b"
 const BUILDING_ART: String = "res://assets/art/svg/buildings/%s_%s.svg"
-const UNIT_ART: String = "res://assets/art/svg/units/%s_%s.svg"
 ## The six buildings by file name, the 3x3 ones first. Only the defence turret has a `Turret` layer.
 ## A canvas is its footprint plus the rise (ADR 0022 section 1): the view reads it off the texture.
 const BUILDINGS: Array[String] = [
@@ -37,12 +36,6 @@ const NOTE_WIDTH_PX: float = 360.0
 const NOTE_TOP_PX: float = 320.0  ## Under the cells of the Seam page.
 const FIRST_TOP_PX: float = 150.0  ## Clear of the two corner buttons, which cover 24 to 144 px.
 const TILE_PX: float = 64.0
-## A light tank stands this far off a wall (`HealthBarLayer.VEHICLE_REACH_PX`); its canvas reaches
-## 32 px each side of its centre. A unit north of a building has its centre at or north of its
-## north edge.
-const TANK_ID: String = "light_tank"
-const TANK_REACH_PX: float = 26.0
-const TANK_HALF_PX: float = 32.0
 const SEAM_BUILDING: String = "refinery"  ## At least two tiles wide.
 
 
@@ -79,19 +72,12 @@ static func add_pages(host: Control, grass: Color, sand: Color, fog_alpha: int) 
 			var cell: Node2D = _cell(SEAM_BUILDING, ground_name == "Grass", index == 0, fog_alpha)
 			var hull_size: Vector2 = _hull_size(SEAM_BUILDING)
 			var left: float = (index - 1) * (hull_size.x + CELL_GAP_PX) + CELL_GAP_PX / 2.0
-			cell.position = Vector2(left, -cell_extent(hull_size).x)
+			cell.position = Vector2(left, 0.0)
 			row.add_child(cell)
 		var note: Label = _label("Left: fog over the west column. Right: seen.", NOTE_WIDTH_PX)
 		note.position = Vector2(-NOTE_WIDTH_PX / 2.0, NOTE_TOP_PX)
 		row.add_child(note)
 	return pages
-
-
-## How far a building cell reaches above (x) and below (y) its sprite box's top edge, in world px at
-## zoom 1: the sprite box with a tank's canvas beyond its north and its south wall.
-static func cell_extent(hull_size: Vector2) -> Vector2:
-	var rise: float = hull_size.y - hull_size.x
-	return Vector2(rise - TANK_REACH_PX - TANK_HALF_PX, hull_size.y + TANK_REACH_PX + TANK_HALF_PX)
 
 
 ## The size of a building's hull texture in game px: a footprint of tiles square plus the rise.
@@ -116,8 +102,7 @@ static func _lines(zoom: float) -> Array[Array]:
 static func _line_height(line: Array, zoom: float) -> float:
 	var tallest: float = 0.0
 	for id: String in line:
-		var extent: Vector2 = cell_extent(_hull_size(id))
-		tallest = maxf(tallest, (extent.y - extent.x) * zoom)
+		tallest = maxf(tallest, _hull_size(id).y * zoom)
 	return tallest
 
 
@@ -144,18 +129,17 @@ static func _add_section(
 			total += _hull_size(id).x * zoom
 		var x: float = -total / 2.0
 		for id: String in line:
-			var hull_size: Vector2 = _hull_size(id)
 			var cell: Node2D = _cell(id, is_team_a, false, fog_alpha)
 			cell.scale = Vector2.ONE * zoom
-			cell.position = Vector2(x, y - cell_extent(hull_size).x * zoom)
+			cell.position = Vector2(x, y)
 			row.add_child(cell)
-			x += hull_size.x * zoom + CELL_GAP_PX
+			x += _hull_size(id).x * zoom + CELL_GAP_PX
 		y += _line_height(line, zoom) + LINE_GAP_PX
 
 
-## A building cell: the base part, a light tank north and one south of the building, the explored
-## fog over the west column of the footprint if `fogged`, then the roof part. The origin is the
-## sprite box's top left corner. The cut is the footprint's middle line (`y_mid`, ADR 0022 s. 2).
+## A building cell: the base part, the explored fog over the west column of the footprint if
+## `fogged`, then the roof part. The origin is the sprite box's top left corner. The cut is the
+## footprint's middle line (`y_mid`, ADR 0022 s. 2).
 static func _cell(id: String, is_team_a: bool, fogged: bool, fog_alpha: int) -> Node2D:
 	var cell: Node2D = Node2D.new()
 	cell.name = id.to_pascal_case()
@@ -163,14 +147,6 @@ static func _cell(id: String, is_team_a: bool, fogged: bool, fog_alpha: int) -> 
 	var rise: float = size.y - size.x
 	var cut: float = size.y - size.x / 2.0
 	cell.add_child(_part("Base", id, is_team_a, Rect2(0.0, cut, size.x, size.y - cut)))
-	for north: bool in [true, false]:
-		var tank: Node2D = _tank(is_team_a)
-		tank.name = "TankNorth" if north else "TankSouth"
-		tank.position = Vector2(
-			size.x / 2.0, rise - TANK_REACH_PX if north else size.y + TANK_REACH_PX
-		)
-		tank.rotation = PI / 2.0 if north else -PI / 2.0
-		cell.add_child(tank)
 	if fogged:
 		var fog: ColorRect = ColorRect.new()
 		fog.name = "ExploredFog"
@@ -204,14 +180,6 @@ static func _part(part: String, id: String, is_team_a: bool, region: Rect2) -> N
 		sprite.region_enabled = true
 		sprite.region_rect = region
 		rig.add_child(sprite)
-	return rig
-
-
-static func _tank(is_team_a: bool) -> Node2D:
-	var rig: Node2D = Node2D.new()
-	rig.add_to_group(TEAM_A_GROUP if is_team_a else TEAM_B_GROUP)
-	for layer: String in ["hull", "team", "turret"]:
-		rig.add_child(_sprite(layer, UNIT_ART % [TANK_ID, layer]))
 	return rig
 
 

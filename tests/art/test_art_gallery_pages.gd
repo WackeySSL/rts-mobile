@@ -1,10 +1,11 @@
 extends GdUnitTestSuite
 ## The Build, Seam and Ground pages of the art gallery (plan rows P91 and P91b): the six buildings
 ## in their oblique view at the camera zoom levels on grass and sand in both team colours, each cut
-## at its footprint's middle line with a tank north and south of it, the building the vision edge
-## crosses, the ore patches, the three ghosts and the two pattern tiles, and the button that turns
-## the pages (the Vehicles and Icons pages of plan row P92 are in test_art_gallery_icon_pages.gd).
-## The gallery opens on the Units page, which tests/art/test_art_assets.gd covers.
+## at its footprint's middle line, the building the vision edge crosses, the ore patches, the three
+## ghosts and the two pattern tiles, and the button that turns the pages (the Icons page of plan row
+## P92 is in test_art_gallery_icon_pages.gd). The gallery opens on the Units page, which
+## tests/art/test_art_gallery_units.gd and test_art_assets.gd cover. Plan row P101 took the tanks
+## that stood north and south of each building out of the cells with the top-down unit files.
 
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
 const Buildings: GDScript = preload("res://game/view/art_gallery_buildings.gd")
@@ -15,7 +16,7 @@ const TEAM_A: Color = Color("2F80ED")
 const TEAM_B: Color = Color("E5484D")
 const BUILD_PAGE: int = 1
 const GROUND_PAGE: int = 2
-const SEAM_PAGE: int = 5
+const SEAM_PAGE: int = 4
 ## The sections of the Build page in order: zoom 1 first, then the other two camera zoom levels.
 const SECTIONS: Array[String] = [
 	"Zoom100A", "Zoom100B", "Zoom75A", "Zoom75B", "Zoom150A", "Zoom150B"
@@ -23,7 +24,6 @@ const SECTIONS: Array[String] = [
 const IDS: Array[String] = [
 	"headquarters", "refinery", "vehicle_factory", "power_plant", "barracks", "defence_turret"
 ]
-const TANK_REACH: float = 26.0
 const RISE: float = 48.0
 
 
@@ -56,9 +56,7 @@ func test_the_back_and_page_buttons_stay_above_every_page() -> void:
 	var last: int = gallery.get_child_count() - 1
 	assert_int(gallery.get_node("%PageButton").get_index()).is_equal(last)
 	assert_int(gallery.get_node("%BackButton").get_index()).is_equal(last - 1)
-	for page: String in [
-		"BuildingsPage", "GroundPage", "VehiclesPage", "IconsPage", "SeamPage", "IsoPage"
-	]:
+	for page: String in ["BuildingsPage", "GroundPage", "IconsPage", "SeamPage", "IsoPage"]:
 		assert_int(gallery.get_node(page).get_index()).is_less(last - 1)
 	for button: Control in [gallery.get_node("%PageButton"), gallery.get_node("%BackButton")]:
 		assert_vector(button.size).is_greater_equal(Vector2(120, 120))
@@ -96,9 +94,8 @@ func test_the_build_page_is_a_scroll_list_of_six_sections_on_grass_and_sand() ->
 
 
 ## The base part is the sprite rows south of the footprint's middle line, the roof part the rows
-## north of it, and the cell draws base, tanks, roof in that order (ADR 0022 section 2).
-func test_each_cell_draws_the_base_part_then_the_tanks_then_the_roof_part_cut_at_the_middle_line(
-) -> void:
+## north of it, and the cell draws base, then roof (ADR 0022 section 2).
+func test_each_cell_draws_the_base_part_then_the_roof_part_cut_at_the_middle_line() -> void:
 	var gallery: Control = await _open_gallery()
 	for ground: String in ["Grass", "Sand"]:
 		for section: String in SECTIONS:
@@ -113,7 +110,7 @@ func test_each_cell_draws_the_base_part_then_the_tanks_then_the_roof_part_cut_at
 				(
 					assert_array(cell.get_children().map(_node_name))
 					. override_failure_message(path)
-					. is_equal(["Base", "TankNorth", "TankSouth", "Roof"])
+					. is_equal(["Base", "Roof"])
 				)
 				var size: Vector2 = (
 					(load("res://assets/art/svg/buildings/%s_hull.svg" % id) as Texture2D)
@@ -145,42 +142,6 @@ func test_each_cell_draws_the_base_part_then_the_tanks_then_the_roof_part_cut_at
 				assert_bool(head != null).override_failure_message(path).is_equal(
 					id == "defence_turret"
 				)
-				for tank_name: String in ["TankNorth", "TankSouth"]:
-					var tank: Node2D = cell.get_node(tank_name)
-					assert_array(tank.get_children().map(_node_name)).is_equal(
-						["Hull", "Team", "Turret"]
-					)
-					assert_bool(tank.is_in_group(group)).is_true()
-					assert_that((tank.get_node("Team") as Sprite2D).modulate).is_equal(team)
-
-
-## A unit north of a building has its centre at or north of the footprint's north edge and a unit
-## south of it at or south of the south edge, by the light tank's reach
-## (HealthBarLayer.VEHICLE_REACH_PX).
-func test_the_tanks_stand_off_the_footprints_north_and_south_walls_by_their_reach() -> void:
-	var gallery: Control = await _open_gallery()
-	for id: String in IDS:
-		var cell: Node2D = gallery.get_node(
-			"BuildingsPage/Scroll/Content/Grass/Zoom100A/" + id.to_pascal_case()
-		)
-		var size: Vector2 = (
-			(load("res://assets/art/svg/buildings/%s_hull.svg" % id) as Texture2D).get_size()
-		)
-		var north: Node2D = cell.get_node("TankNorth")
-		var south: Node2D = cell.get_node("TankSouth")
-		assert_vector(north.position).override_failure_message(id).is_equal(
-			Vector2(size.x / 2.0, RISE - TANK_REACH)
-		)
-		assert_vector(south.position).override_failure_message(id).is_equal(
-			Vector2(size.x / 2.0, size.y + TANK_REACH)
-		)
-		# The tank on the north side faces the building, the one on the south side faces it too.
-		assert_float(north.rotation).is_equal_approx(PI / 2.0, 0.0001)
-		assert_float(south.rotation).is_equal_approx(-PI / 2.0, 0.0001)
-		# The extent of a cell is the sprite box with a tank's canvas beyond both walls.
-		var extent: Vector2 = Buildings.cell_extent(size)
-		assert_float(extent.x).is_equal(RISE - TANK_REACH - 32.0)
-		assert_float(extent.y).is_equal(size.y + TANK_REACH + 32.0)
 
 
 ## The head of the defence turret turns about the roof's centre, the footprint's centre lifted by
@@ -219,11 +180,7 @@ func test_the_build_page_fits_each_half_and_keeps_clear_of_the_buttons_at_three_
 				if not IDS.has(String(cell.name).to_snake_case()):
 					continue
 				var hull: Vector2 = (cell.get_node("Roof/Hull") as Sprite2D).texture.get_size()
-				var extent: Vector2 = Buildings.cell_extent(hull)
-				var box: Rect2 = (
-					(cell as Node2D).get_global_transform()
-					* Rect2(0.0, extent.x, hull.x, extent.y - extent.x)
-				)
+				var box: Rect2 = (cell as Node2D).get_global_transform() * Rect2(Vector2.ZERO, hull)
 				count += 1
 				var label: String = str(cell.get_path())
 				if box.position.x < half.position.x or box.end.x > half.end.x:
@@ -242,7 +199,7 @@ func test_the_build_page_fits_each_half_and_keeps_clear_of_the_buttons_at_three_
 
 
 ## The Seam page (ADR 0022 section 4): the refinery with the explored fog over the west column of
-## its footprint, drawn between the tanks and the roof part, beside the same refinery seen.
+## its footprint, drawn between the base part and the roof part, beside the same refinery seen.
 func test_the_seam_page_shows_the_fog_over_the_west_column_under_the_roof_part() -> void:
 	var gallery: Control = await _open_gallery()
 	_turn_to(gallery, SEAM_PAGE)
@@ -260,11 +217,9 @@ func test_the_seam_page_shows_the_fog_over_the_west_column_under_the_roof_part()
 		var fogged: Node2D = cells[0]
 		var seen: Node2D = cells[1]
 		assert_array(fogged.get_children().map(_node_name)).is_equal(
-			["Base", "TankNorth", "TankSouth", "ExploredFog", "Roof"]
+			["Base", "ExploredFog", "Roof"]
 		)
-		assert_array(seen.get_children().map(_node_name)).is_equal(
-			["Base", "TankNorth", "TankSouth", "Roof"]
-		)
+		assert_array(seen.get_children().map(_node_name)).is_equal(["Base", "Roof"])
 		var fog: ColorRect = fogged.get_node("ExploredFog")
 		assert_vector(fog.position).is_equal(Vector2(0, size.y - size.x))
 		assert_vector(fog.size).is_equal(Vector2(64, size.x))
@@ -450,10 +405,9 @@ func _assert_page(gallery: Control, page: int) -> void:
 		)
 	assert_bool(gallery.get_node("BuildingsPage").visible).is_equal(page == BUILD_PAGE)
 	assert_bool(gallery.get_node("GroundPage").visible).is_equal(page == GROUND_PAGE)
-	assert_bool(gallery.get_node("VehiclesPage").visible).is_equal(page == 3)
-	assert_bool(gallery.get_node("IconsPage").visible).is_equal(page == 4)
+	assert_bool(gallery.get_node("IconsPage").visible).is_equal(page == 3)
 	assert_bool(gallery.get_node("SeamPage").visible).is_equal(page == SEAM_PAGE)
-	assert_bool(gallery.get_node("IsoPage").visible).is_equal(page == 6)
+	assert_bool(gallery.get_node("IsoPage").visible).is_equal(page == 5)
 
 
 func _turn_to(gallery: Control, page: int) -> void:

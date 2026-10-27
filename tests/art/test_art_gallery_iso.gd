@@ -6,7 +6,7 @@ extends GdUnitTestSuite
 ## size of a phone held the wide way. The generator is in test_artgen.gd.
 
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
-const ISO_PAGE: int = 6
+const ISO_PAGE: int = 5
 const ROWS: Array[String] = ["Signal", "Arktisk"]
 const ZOOM_RIGS: Array[String] = ["Zoom75", "Zoom100", "Zoom150"]
 const SIGNAL_KEYS: Array[String] = ["#FF9446", "#E8681F", "#B04B12"]

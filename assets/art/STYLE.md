@@ -1,7 +1,8 @@
 # Art style guide (living)
 
 This is the living version of the `svg-art-style` skill (`.claude/skills/svg-art-style/SKILL.md`)
-plus the layer contract for multi-layer units. All art is hand-written SVG in this repository.
+plus the layer contract for multi-layer buildings and flags. All art is hand-written SVG in this
+repository.
 Update this file when Michael approves a change; the skill stays the short checklist.
 
 Status: v1, written in Phase 0 with the light tank sample. v1.1 (Phase 1, P12) adds the feedback
@@ -27,6 +28,12 @@ the lifts (`IsoSheetDef`, `assets/art/iso/index.tres`), the item cards, the CLI 
 `--all` and `--check`, and the selection ellipse (`ui/selection_ellipse.svg`); "Light", "Generated
 art", "Feedback markers" and the gallery's Iso page say how.
 
+**v1.8 (Phase 3, P101)** models the six Derrick League units (Roustabouts, Wildcatters, Flarejack,
+Bullhead, Mortar Rig, Tanker) in place of their blockouts, under the same art ids, and deletes the
+top-down unit files (`svg/units/`, their imports, the Vehicles gallery page and the tanks beside the
+Build page's buildings). "Derrick League units" under "Generated art" says how they look; the
+sections on the layer contract, the catalogue, the enemy look, the gallery and the reskin follow.
+
 ## Look
 **Since ADR 0023 (Michael 2026-10-26) everything on the map is drawn in the isometric 2:1 view, flat
 shaded with three tones per face and one light from the north-west; see "Projection", "Light" and
@@ -39,11 +46,11 @@ concrete, corrugated steel, tarmac, sandbags, canvas, rust, dirt), believable pr
 density, soft shading and weathering, small team markings. Not cartoonish, not photoreal, no flat
 colour fields. One light from the top left for everything. **Buildings are drawn in an oblique 3/4
 view**: the roof and the south facade, the sprite standing on its footprint and rising 0.75 tile above
-it (see "Buildings"). Units, effects, ore and ground stay top-down, and so do the unit icons, the tab
-icons and the glyphs; the five building item icons follow the buildings and are drawn in the oblique
-view too (see "Icons and glyphs"). The units, the ore and the ground are redrawn in the same treatment
-in P92b and P92c; until then the rules below that speak of the 3 px outline or of flat colours still
-describe them.
+it (see "Buildings"). Units are generated models in the isometric view since P101 (see "Derrick League
+units"); effects, ore and ground stay top-down until the art rows P98 and P105 redraw them, and so do
+the tab icons and the glyphs; the five building item icons follow the buildings and are drawn in the
+oblique view too (see "Icons and glyphs"). Until then the rules below that speak of the 3 px outline
+or of flat colours still describe the art they were written for.
 
 ## Projection
 ADR 0023 section 1; the canvas's Spec 01. The sim keeps its square grid; only the drawing is
@@ -212,9 +219,10 @@ team cap at its tip; that silhouette is another game's tower (CLAUDE.md, Legal).
 ### Blockouts of Phase 3 (P99)
 Boxes, wedges, prisms and spheres sized by size class or footprint with a team band each, so every
 view row builds against real frames, names and canvases; the art rows P101 to P105 replace the
-models under the same ids. Frames per type: vehicle 16 hull (+ 16 turret), tanker 16, squad 8,
-building 1 (+ 16 head for the defence); 304 frames in all, and a shadow frame for each hull frame
-(176), a sheet and a card for each type.
+models under the same ids (P101 did the Derrick League's six units, "Derrick League units" below).
+Frames per type: vehicle 16 hull (+ 16 turret), tanker 16, squad 8, building 1 (+ 16 head for the
+defence); 304 frames in all, and a shadow frame for each hull frame (176), a sheet and a card for
+each type.
 
 | Role | Derrick League (`fossil`) | Lumen Accord (`renew`) | Kind |
 | --- | --- | --- | --- |
@@ -243,16 +251,67 @@ dev menu is on in the web preview and the debug APK, so no export preset may exc
 `assets/art/models/` until `IsoAtlas` replaces those reads (`test_art_gallery_iso.gd` pins it, with
 the sheets, the index and the cards the bake and the page read).
 
+### Derrick League units (P101)
+Plan row P101 replaces the six unit blockouts of the Derrick League by modelled units under the same
+art ids (ADR 0023 sections 6 and 7), regenerated with `bash scripts/gen-art.sh`: 16 hull frames
+and 16 turret frames for a vehicle, 8 hull frames for a squad, a cast shadow for each hull frame,
+the sheets and the item cards. The Lumen Accord's six stay blockouts until P102. The look is the
+faction's: olive drab hulls, steel guns and drums, dark iron wheels and tracks, a rust accent, a warm
+lamp, pale concrete hard hats, wedges and drums; every unit carries its team colour as bands, rings
+and stripes. Each silhouette was written down before it was modelled; it is the `silhouette` line of
+the model, which begins with the unit's display name (`tests/art/test_unit_models.gd` pins that, and
+the figures below). Hull canvases are at 2x, in px; a unit's gun frame has its own canvas.
+
+| Art id | Name | Hull canvas | What makes it |
+| --- | --- | --- | --- |
+| `rifle_squad` | Roustabouts | 86 x 66 | Three figures in a tight arrowhead: dark breather mask, pale brimmed hard hat with a warm lamp, olive coverall, a team vest band across chest and arms, a dark rifle across the chest, a steel pack. |
+| `rocket_squad` | Wildcatters | 104 x 74 | Three figures in a zig-zag file: dark breather mask under a round steel pot helmet with a warm goggle strip, a team vest band, a long dark tube on the right shoulder with a flared back end and a team ring at its mouth, a rust pack. |
+| `light_tank` | Flarejack | 120 x 116 | A low armoured car shaped like a doorstop: four fat wheels, a long sloping hood, a boxed cab with a team band and a lamp bar, a small gun turret far back over the rear axle, two rust fuel cans, and a slim flare pipe with a warm lamp off the rear corner. |
+| `heavy_tank` | Bullhead | 166 x 104 | A squat slab on two dark tracks with road wheels: a steel ram plate across the nose with a team stripe, a sloping glacis, a wide wedge turret on a team ring with one long gun in three segments and a muzzle brake, two short lamp-topped pipes at the turret's front corners (the horns), flank stripes. |
+| `artillery` | Mortar Rig | 144 x 100 | A six-wheeled flatbed: a sloped armoured cab with a team band, two rust crates on the bed and, on a turning ring, two steel cheek plates that cradle a fat mortar tube raised in steps towards the front, with a team ring on the tube. |
+| `harvester` | Tanker | 182 x 138 | A six-wheeled tanker truck, no turret: a boxed cab with a team band and a lamp bar, a long steel drum with two team rings, a catwalk with a hatch and a vent along its back, a rust bumper. |
+
+- **Size** (see "Scale"): a figure is 0.43 tile tall (17 px at zoom 1), a squad 0.7 tile across;
+  with its gun straight ahead the Flarejack is 1.1 tiles long, the Mortar Rig 1.4, the Bullhead 1.7
+  (its hull 1.4) and the Tanker 1.7, and the highest point of a vehicle (a mast, a raised tube, the
+  drum's hatch) is 0.65 to 0.85 tile over the ground. `bar_lift_px` in the sheets is 24 for a
+  squad and 41 to 43 for a vehicle (`tests/art` allows at most 45), `muzzle_lift_px` 10 and 13 for
+  the squads, 17, 19 and 29 for the three guns, 5 for the tanker.
+- **Team colour** is 7 to 11 % of each default view (`tests/art` pins 6 to 14 % for these six, 3 to
+  20 % for every type): a vest band that wraps the sleeves too (so the arms do not hide it), flank
+  stripes standing on the olive walls, a band round a cab, rings between the segments of a drum, a
+  turret or a tube, a stripe across the ram plate. No roof plate and no cap (`test_artgen_plates.gd`).
+- **No face is drawn.** Every head is a dark breather mask under a hat or helmet (the canvas's gas
+  masks, kept; the fur hats and long coats are dropped as geography), so no figure reads as a person
+  of a colour or a caricature (ADR 0023 decision 1).
+- **Distinct at 32 px**: the Roustabouts are three pale hats over dark legs, the Wildcatters three
+  dark heads with long tubes, the Flarejack an armoured car with a mast, the Bullhead a slab with a
+  long gun and a stripe along its flank, the Mortar Rig a truck with a ribbed tube pointing up, the
+  Tanker a long truck with a drum.
+- **Modelling notes.** A wedge with `slope=1` has its sloped face's mean at the middle of its box, so
+  the generator's outward test does not flip that face and it is culled: the models use `slope=0.95`
+  (a hood, a glacis). The generator has no tilted primitive: the mortar tube is a stair of short
+  prisms (0.05 tile a step). A gun is the primitive of its turret that reaches farthest along +x, a
+  squad's weapon the one of its lead figure (the muzzle for `muzzle_lift_px`).
+- **Originality.** No twin barrels, no super-heavy tank, no tesla or flame infantry; every form is a
+  plain real-world one (an armoured car, a dozer plate, a flatbed with a mortar, a tanker truck).
+  The tall flare pipe is a slim round pole with a lamp, not the spire that "Palette per faction"
+  forbids.
+- The gallery's **Units** page shows the six on both grounds in both triads ("Gallery"); the Iso
+  page shows every direction.
+
 ## Scale
 - 1 tile = 64 px in game at zoom 1. Author at 2x: 1 tile = 128 px in the SVG.
-- Canvas at 2x: infantry squad 64x64, light vehicles 96x96, **tanks 128x128**, harvester 160x160, an
-  ore cell 128x128, a rally flag 128x128. **Buildings are the footprint plus the rise**: 128 px per
-  footprint tile and 96 px (0.75 tile, 48 px in game) above it, so a 3x3 building is **384x480**, a
-  2x2 building **256x352** and the 1x1 defence turret **128x224** (new, ADR 0022 section 1; see
-  "Buildings"). **Icons and glyphs are 128x128 with import scale 1.0 (new)**, because they are drawn
-  at 24 to 64 dp, not in tiles (see "Icons and glyphs").
+- Canvas at 2x: an ore cell 128x128, a rally flag 128x128. (The top-down units' 64x64, 96x96,
+  128x128 and 160x160 are gone: a generated unit's canvas is the union of its frames, see
+  "Derrick League units" and `IsoSheetDef.sizes`.) **Buildings are the footprint plus the rise**:
+  128 px per footprint tile and 96 px (0.75 tile, 48 px in game) above it, so a 3x3 building is
+  **384x480**, a 2x2 building **256x352** and the 1x1 defence turret **128x224** (new, ADR 0022
+  section 1; see "Buildings"). **Icons and glyphs are 128x128 with import scale 1.0 (new)**,
+  because they are drawn at 24 to 64 dp, not in tiles (see "Icons and glyphs").
 - Godot rasterises an SVG once, at import. Showing a sprite above scale 1 therefore looks soft.
-  The gallery's main row shows scale 1. Its zoom row shows the light tank at 0.75, 1.0 and 1.5.
+  The gallery's Units page shows scale 1; its zoom row shows the Flarejack at 0.75, 1.0 and 1.5, drawn
+  at the sharpness each zoom asks for, as the game's atlas does.
 
 ## Palette
 | Role | Hex | Luminance (0-255) |
@@ -297,8 +356,8 @@ a team layer has R = G = B, so the runtime tint stays clean.
 - **No heavy outline (new, ADR 0022).** A thin dark edge, about 1.5 px at 2x, in a dark shade of the
   material on the silhouette and the inner details; a soft dark contact rim where a volume meets the
   ground; a short soft shadow. Icons keep an edge of 3 to 4 px in #1C2127 (they are seen small on the
-  dark HUD tile), and the art that v1 drew with the 3 px outline (units, ore, flags, effects) keeps it
-  until P92b and P92c redraw it.
+  dark HUD tile), and the art that v1 drew with the 3 px outline (ore, flags, effects) keeps it
+  until P105 and P98 redraw it.
 - Three tones per material plus a highlight on edges that face the top left. Texture comes from
   gradients and dash arrays, never from a `pattern` (see "Technical rules").
 - Filled shapes and gaps are at least 2 px at 2x. Edges and thin inner lines may be 1.5 px. (This is
@@ -317,7 +376,7 @@ a team layer has R = G = B, so the runtime tint stays clean.
   ja)**, as marks that are seen from above: a stripe along an eave or a cornice, a band round a
   cylinder, a ring painted on a roof, a pennant, a panel. Never a large plate. Ownership is therefore
   weaker at zoom 0.75 than the old 20 to 35 %; the gallery shows both teams at every zoom, so judge it
-  there. The old art keeps its larger share until P92b redraws the units.
+  there. The generated units have it since P101.
 
 ## Technical rules
 - One drawing per file with `width`, `height` and `viewBox="0 0 W H"` set to the canvas.
@@ -341,38 +400,31 @@ a team layer has R = G = B, so the runtime tint stays clean.
   3. Check the texture: a 128 px canvas must load as 64x64 (`ui/selection_ring.svg` is the
      exception: import scale 1.0, 168 px).
 
-## Layer contract (multi-layer units)
-Vehicles are drawn from three layers that share one canvas size:
+## Layer contract (multi-layer buildings and flags)
+Until P101 this was the contract of every multi-layer unit; the units are generated models now (see
+"Generated art"), and it holds for the oblique buildings (until P103 and P104 replace them) and the
+rally flags, which are drawn from layers that share one canvas:
 
 | Order | File | Holds |
 | --- | --- | --- |
-| 1 | `<name>_hull.svg` | Tracks or wheels, hull deck and the ground shadow of the whole vehicle |
+| 1 | `<name>_hull.svg` | The body, and for a flag the pole and its ground plate |
 | 2 | `<name>_team.svg` | White and grey team marks, tinted with `modulate` |
-| 3 | `<name>_turret.svg` | Turret and gun; a unit's turret rotates about the canvas centre, a building's gun head about the roof's centre, (tex_w / 2, tex_w / 2) |
+| 3 | `<name>_turret.svg` | A building's gun head, which turns about the roof's centre, (tex_w / 2, tex_w / 2) |
 
-- Draw order across rigs, not per rig (ADR 0012 section 6, one z per batch group): every ring, then
-  every hull, then every team layer, then every turret. Two overlapping rigs can therefore show a
-  neighbour's team layer over this hull, or a neighbour's turret over this team layer, for a moment
-  (separation keeps overlaps short). The art must read right that way, and also with a neighbour's
-  hull over this team layer, as under the old per-rig order: every team mark keeps its own #4D4D4D
-  edge and stays inside its unit's footprint, and no hull relies on its team layer to look finished.
-- Hull and team share one orientation. The hull faces +x (east). Rotating the vehicle rotates hull
-  and team together.
-- The turret pivot of a unit is the canvas centre. Turret art is drawn facing +x. A building's gun
-  head is the one exception: it turns about (tex_w / 2, tex_w / 2) of its texture, which is (32, 32)
-  imported px on the 64x112 px texture of the 128x224 building canvas (the roof's centre, the
-  footprint's centre lifted by the rise; see "Buildings"), not about the canvas centre.
-- All layers of one unit have the same canvas. Tanks: **128x128 at 2x**.
+- Draw order across rigs, not per rig (ADR 0012 section 6, one z per batch group): every hull, then
+  every team layer, then every gun head. Two overlapping rigs can therefore show a neighbour's team
+  layer over this hull for a moment; the art must read right that way: every team mark keeps its own
+  #4D4D4D edge, and no hull relies on its team layer to look finished.
+- Hull and team share one orientation and one canvas. A building's gun head is the one exception to
+  the canvas: it turns about (tex_w / 2, tex_w / 2) of its texture, which is (32, 32) imported px on
+  the 64x112 px texture of the 128x224 building canvas (the roof's centre, the footprint's centre
+  lifted by the rise; see "Buildings").
 - Import scale **0.5** for every layer, so 128 px becomes 64 px, one tile.
 - Team layer: tinted at runtime with `modulate` (team A #2F80ED, team B #E5484D, neutral #9AA5B1).
-  Keep it clear of the turret ring where possible so it shows at any turret heading.
-- **Rotating layers (new).** The ground shadow lives only in the hull layer. A turret layer has no
-  drop shadow and no one-sided light: its shading is mirrored about the gun line, so it still
-  looks right when it turns. Give it one off-axis detail (hatch, sight) so the heading is readable.
-- **Infantry squads** have two layers, hull and team, on a 64x64 canvas (32 px in game, import scale
-  0.5) and no turret: the whole rig turns toward its target. The hull holds every soldier and weapon,
-  facing east. The team layer holds one marker per soldier (a helmet cover; also a band on each rocket
-  tube), clear of the shoulders and weapons so it shows at any heading.
+- **Rotating layers (new).** A gun head has no drop shadow and no one-sided light: its shading is
+  mirrored about the gun line, so it still looks right when it turns.
+- A unit is not drawn this way any more: its team colour is in its SVG text (the faction's key
+  triad, replaced by the player's at match start) and its frames are the generator's.
 
 ## Buildings
 Six buildings in an oblique 3/4 view (ADR 0022, direction B). The sprite stands on its footprint and
@@ -503,47 +555,6 @@ a glyph without one has the hatch's fill and the hatch's edge. The gallery centr
 The gallery's `GHOST_*` constants hold these values and `tests/art` pins this paragraph to them;
 the values are a proposal for touch-ux-dev to tune with Michael.
 
-## Heavy tank, artillery and harvester
-Three vehicles of Phase 3 (plan row P92), drawn under the layer contract above. Their file names are
-the type ids of P72's data files (`heavy_tank`, `artillery`, `harvester`), so `UnitLayer` finds them
-as it finds the light tank. The art says what each is for from above; every number is in
-`data/units/`. The ground shadow lives in the hull, a turret layer has none and is shaded the same
-either side of the gun line, and each turret has one off-axis detail, as under "Layer contract".
-
-| Unit | Canvas (2x) | Layers | What turns | Team marks (white and grey) |
-| --- | --- | --- | --- | --- |
-| Heavy tank | 128x128 | hull, team, turret | the turret, about the canvas centre | a plate on each track pod, two wedges on the nose, a strip on each rear corner of the deck |
-| Artillery | 128x128 | hull, team, turret | the gun house, about the canvas centre | a strip down the spade, a plate across the rear deck, a plate on the cab roof, a strip along each deck edge |
-| Harvester | 160x160 | hull, team | the whole rig, like a squad: it is unarmed and has no turret | a plate on each track pod, a strip along the top, bottom and rear rim of the bin, the cab roof, a cap on each end of the reel bar |
-
-- In game (import scale 0.5) the tanks are 64x64 px, one tile, and the harvester is 80x80 px.
-- **Heavy tank**: the broad one. Its track pods are flat-sided slabs with chamfered fronts, not the
-  light tank's round-ended capsules, and its hull is 96 high against the light tank's 80 (at 2x).
-  Its barrel is the thickest of the three guns: 12 plus the outline, with a fat fume bulge and a
-  cross-bar muzzle brake. One barrel only.
-- **Artillery**: the only wheeled vehicle. Three fat tyres a side give it a comb outline, and a wide
-  folded spade plate across the back makes the rear a T. Its gun is the longest and the thinnest.
-  The open gun house is nearly square (40x42 at 2x), so the plates round it stay covered about the
-  same at every heading.
-- **Harvester**: a combine. Two track pods either side of one square open bin, a small cab in front
-  of it, and a reel bar wider than the pods with a row of ten teeth across the nose.
-- **The bin for the cargo cue (P84b).** The hull draws the bin empty: a dirt-dark floor (#6F583B)
-  with a lit lip (#A3865E). The floor is the rectangle x 32 to 90, y 56 to 104 of the 160 px canvas,
-  which is x 16 to 45, y 28 to 52 in imported px (29x24): its centre is 9.5 px behind the unit's
-  centre. The view fills it in the ore colours by the cargo carried; there is no cargo layer.
-- Silhouettes in greyscale at 32 px: the light tank is an H with round ends; the heavy tank a
-  chamfered slab with an eight-sided turret; the artillery a comb with a T at the back; the
-  harvester an H with a toothed bar across the nose.
-
-Results (P92, scratch script, imported scale 0.5, alpha above 0.5): the team layers have no
-non-grey pixel. The visible team share, by the tank's definition (shadow left out, nothing under the
-turret), is 30.0 / 22.8 / 30.0 / 22.8 % for the heavy tank and 27.7 / 26.9 / 23.9 / 26.9 % for the
-artillery at turret headings 0 / 90 / 180 / 270 degrees, and 24.0 % for the harvester. The heavy
-tank's gun leaves the hull 9 px long and 12 px thick (the muzzle brake) and the artillery's 12 px
-long and 6 px thick, which is 4.5 by 6 and 6 by 3 px at 32 px, over the 3 by 3 minimum. At 32 px
-greyscale on grass and sand the three read apart from each other and from the light tank, and
-the turret and gun of each keep their own shape at all four headings.
-
 ## Icons and glyphs
 Icons live in `assets/art/svg/icons/`, named `<kind>_<name>.svg`, three kinds, all 128x128 with a
 clear background. **Import scale 1.0 (new)**: an icon is drawn from 24 to 64 dp (42 to 152 base px
@@ -559,11 +570,11 @@ selection ring does. The world art (units, buildings, flags) keeps scale 0.5.
   "Blocked" of a pending ghost uses `glyph_reason_occupied`.
 
 **Item icons** are in palette colours (a building icon in A's muted materials, a unit icon in the v1
-palette until P92b), drawn like the sprites (a unit top-down, a building in the oblique view, the
-roof and the south wall) and simplified for a small size, with a 3 to 4 px edge in #1C2127, thin
-inner details at 2 to 3 px and no drop shadow, on a clear canvas: the tile draws its own panel. A
-unit carries one neutral grey (#9AA5B1, the palette's neutral) where its sprite has team plates,
-and a building carries none: a build tile is not a team's.
+palette until the sidebar reads the generated cards), drawn like the sprites (a unit top-down, a
+building in the oblique view, the roof and the south wall) and simplified for a small size, with a
+3 to 4 px edge in #1C2127, thin inner details at 2 to 3 px and no drop shadow, on a clear canvas:
+the tile draws its own panel. A unit carries one neutral grey (#9AA5B1, the palette's neutral)
+where its sprite has team plates, and a building carries none: a build tile is not a team's.
 
 **Generated item cards (P99b)** are the isometric successors of the hand-drawn item icons: one per
 type of both factions, `assets/art/iso/icons/item_<type_id>.svg`, made by the generator from the
@@ -688,20 +699,20 @@ from other games, for example twin-barrel super-heavy tanks, tesla-coil towers o
 in doubt, choose a plainer real-world form.
 
 ## Catalogue
-| Unit | Silhouette | Layers |
+| Unit | Silhouette | Files |
 | --- | --- | --- |
-| Light tank | A plain light tank shaped like an H on its side: two long round-ended track pods joined by a short flat deck, a compact rounded-rear turret, and one long vented barrel leaving through the front bay. | `units/light_tank_{hull,team,turret}.svg`, 128x128 |
-| Rifle squad | Four soldiers in a loose pinwheel diamond, each a broad-shouldered oval with a round helmet cover and a short stubby rifle held out to the right of the head. | `units/rifle_squad_{hull,team}.svg`, 64x64, no turret |
-| Rocket squad | Two staggered soldiers, each carrying a long fat launch tube over the right shoulder, flared at the back and ending in a rounded orange warhead: the squad reads as two parallel bars. | `units/rocket_squad_{hull,team}.svg`, 64x64, no turret |
+| Roustabouts (`rifle_squad`) | Three olive riflemen in a tight arrowhead, each in a dark breather mask and a pale brimmed hard hat with a warm lamp, a team-coloured vest band across the chest and arms and a dark rifle held across the chest. | `iso/fossil/inf/rifle_squad_hull_d<NN>.svg`, 8 frames, 86x66, from `models/fossil/rifle_squad.tres` |
+| Wildcatters (`rocket_squad`) | Three olive launcher crews in a zig-zag file, each in a dark breather mask under a round steel pot helmet with a warm goggle strip, a team-coloured vest band, a long dark tube with a flared back end on the right shoulder and a team ring at its mouth. | `iso/fossil/inf/rocket_squad_hull_d<NN>.svg`, 8 frames, 104x74 |
+| Flarejack (`light_tank`) | A low olive doorstop of an armoured car on four fat dark wheels, a long sloping hood, a boxed cab with a team band and a lamp bar, a small gun turret far back over the rear axle and a thin flare pipe with a warm lamp standing off the rear corner. | `iso/fossil/veh/light_tank_{hull,turret}_d<NN>.svg`, 16 + 16 frames, 120x116 |
 | Headquarters | A wide two-storey concrete block with a parapet roof, a taller control tower with a lattice mast at its west end, a lift housing, vents and a dish on the roof and a flat porch canopy on two pillars at the middle of the south wall over a paved forecourt with a flagpole. | `buildings/headquarters_{hull,team}.svg`, 384x480 |
 | Power plant | A tall slender banded chimney and a fat flared cooling tower with a plume of steam stand behind a long olive-roofed turbine hall with arched windows, and a fenced yard of two finned transformer tanks and a kiosk fills the south-east corner. | `buildings/power_plant_{hull,team}.svg`, 256x352 |
 | Refinery | A tall chalk-grey tank and two shorter ones stand behind a long corrugated hall whose south wall carries a roller door, a pipe run and a tall elevator housing, with an ore hopper and ramp opening at the middle of the south edge. | `buildings/refinery_{hull,team}.svg`, 384x480 |
 | Barracks | Three olive corrugated huts form a U round a gravel yard that opens to the south, a long one across the north with stovepipes and a row of doors and two shorter ones down the west and east edges showing plank gable ends, with a flagpole inside a sandbag ring in the yard and a sandbag bastion on each side of the open end. | `buildings/barracks_{hull,team}.svg`, 256x352 |
 | Vehicle factory | One wide steel-walled hall under a five-tooth sawtooth roof of bright slopes and dark glazing, a tower crane on its roof corner with a crate on its hook, and a big bay door with a hazard-striped lintel at the middle of the south wall that opens onto a concrete ramp, a bare tracked chassis and drums on the forecourt. | `buildings/vehicle_factory_{hull,team}.svg`, 384x480 |
 | Defence turret | A squat round concrete bunker with a ring of sandbags on its roof carries a narrower round cupola whose flat roof holds a steel turntable ring, with a dark arched door and two firing slits in the bunker wall; the gun head is a rounded wedge of cast steel whose single long barrel ends in a wide slotted muzzle block. | `buildings/defence_turret_{hull,team,turret}.svg`, 128x224 |
-| Heavy tank | A squat armoured slab: two broad flat-sided track pods with chamfered fronts joined by a deep deck whose lit wedge nose pokes out ahead of them, a wide eight-sided turret with a boxy rear bustle, and one thick barrel with a fat fume bulge and a cross-bar muzzle brake. | `units/heavy_tank_{hull,team,turret}.svg`, 128x128 |
-| Artillery | A long narrow wheeled carrier with three fat tyres a side, a short armoured cab at the front and a wide folded spade plate across the back that makes the rear a T, carrying a squarish open-topped gun house with a sloped front shield, a fat recoil sleeve and one very long thin barrel. | `units/artillery_{hull,team,turret}.svg`, 128x128 |
-| Harvester | A combine-like ore hauler: two long round-ended track pods either side of one big square open bin, a small cab in front of it and a wide toothed reel bar across the nose. | `units/harvester_{hull,team}.svg`, 160x160, no turret |
+| Bullhead (`heavy_tank`) | A squat olive slab of a tank on two dark tracks, a steel ram plate across its nose, a wide wedge turret with a long gun and two short lamp-topped pipes at its front corners like horns. | `iso/fossil/veh/heavy_tank_{hull,turret}_d<NN>.svg`, 16 + 16 frames, 166x104 |
+| Mortar Rig (`artillery`) | A six-wheeled olive flatbed with a sloped armoured cab, a team band and two rust crates, and on the bed a turning rig of two steel cheek plates that cradle a fat mortar tube raised in steps towards the front. | `iso/fossil/veh/artillery_{hull,turret}_d<NN>.svg`, 16 + 16 frames, 144x100 |
+| Tanker (`harvester`) | A long olive tanker truck on six dark wheels, a boxed cab with a team band and a lamp bar, a long steel drum with two team rings, a catwalk and a hatch along its back and a rust-coloured bumper at the tail. | `iso/fossil/veh/harvester_hull_d<NN>.svg`, 16 frames, 182x138, no turret |
 | Infantry rally flag | A slim metal pole standing up from a round foot plate with a small triangular pennant, over a round ring on the ground. | `flags/rally_infantry_{hull,team}.svg`, 128x128 |
 | Vehicles rally flag | A slim metal pole standing up from a square foot plate with a wide notched swallowtail banner, over a square frame on the ground. | `flags/rally_vehicles_{hull,team}.svg`, 128x128 |
 | Tab, item and glyph icons | Three tab pictograms, eleven build tile icons and seventeen glyphs, one silhouette each. | `icons/<kind>_<name>.svg`, 128x128, import scale 1.0, see "Icons and glyphs" |
@@ -724,6 +735,9 @@ in doubt, choose a plainer real-world form.
      as its own shape, at least 3 px long and 3 px thick.
    - The visible team share is 20-35% at turret headings 0, 90, 180 and 270 degrees.
 
+The two paragraphs below are the results of the top-down light tank and squads (P12, P34), kept as
+history: P101 deleted that art.
+
 Light tank result (v1): visible team share 28.6 / 24.5 / 25.6 / 24.5 % at 0 / 90 / 180 / 270
 degrees (team alpha not covered by the turret, divided by the alpha of the whole vehicle without
 its shadow, both summed over the 128 px raster); the team layer has no non-grey pixel; the gun
@@ -742,6 +756,15 @@ union, same canvas). Composited on grass and sand in greyscale at headings 0, 90
 degrees, the pinwheel and the two bars stay apart and the heading reads. Detail check at 2x: 2 px
 of metal between the rifle outlines, 1.9 units (1 px at 32 px) between each rifle tip and the next
 soldier, and on each helmet cover a full 1.5 px edge with a 2.0 px grey shade, both at the minimum.
+
+Generated unit results (P101, the default view `d06` at 0.5, a transparent page): the visible team
+share is 7.3 % (Roustabouts), 11.1 % (Wildcatters), 7.4 % (Flarejack), 7.9 % (Bullhead), 8.5 %
+(Mortar Rig) and 8.9 % (Tanker) of the picture's opaque pixels. The largest frame of each is 13.2,
+16.0, 9.3, 8.1, 11.0 and 14.7 KB, under the 28 KB limit. `test_artgen_readability.gd` checks the
+picture at 32 px in greyscale for every type (a body of 150 px and a spread of tones of 80); the
+six read apart as under "Derrick League units": three pale hats over dark legs, three dark heads
+with long tubes, an armoured car with a mast, a slab with a long gun and a bright flank stripe, a
+truck with a ribbed tube, a long truck with a drum.
 
 Building results (P91b, scratch script, imported scale 0.5, alpha above 0.5): the six team layers
 have no non-grey pixel. The visible team share, by the tank's definition (shadow left out, nothing
@@ -843,10 +866,10 @@ unit. At zoom 1.5 its outer radius equals the long-press anchor's (60 base px): 
   difference.
 
 ### Enemy target look
-No new SVG. An enemy is the light tank (`units/light_tank_{hull,team,turret}.svg`) with its `Team`
-layer modulated #E5484D (team B). Hull and turret keep their olive and metal. The sand half of the
-gallery's zoom row shows it at 0.75, 1.0 and 1.5. Phase 1 targets stand still, so they need no other
-cue.
+No new SVG. An enemy is a unit in the other player's triad: against Signal (player 1) the
+default Arktisk (player 2), its hull and turret keeping their olive and metal. The sand half of the
+gallery's zoom row shows the Flarejack so at 0.75, 1.0 and 1.5. Phase 1 targets stand still, so they
+need no other cue.
 
 ## Combat effects (new)
 Five sprites share one sheet, `fx/effects_atlas.svg` (352x168 at 2x, import scale 0.5, so 176x84 px).
@@ -1017,38 +1040,43 @@ squads there. The figures move by about 1 with the number of headings, and no te
 
 ## Gallery
 `scenes/dev/art_gallery.tscn` (opened from the dev menu, also in the web preview) shows every asset
-at scale 1 (gameplay zoom) on grass and sand, in team A and team B. A faint 64 px square behind each
-tank marks one tile. Turrets turn slowly. The zoom row at the bottom shows the light tank at rig
-scale 0.75, 1.0 and 1.5, the camera zoom levels of `data/input_settings.tres`: team A on grass,
-team B on sand, labelled on the grass half. On a 6-inch phone (stretch 1.5) zoom 1.5 draws one
-tile as 144 window px from a 64 px raster, 2.25 times. Only the light tank has that zoom row; a
-second row above it, built by `art_gallery.gd`, shows both squads (team A on grass, B on sand) in
-the same three columns, and in each slot the squads stand beside the tank and turn slowly. The
-squads are built in code, without a tile square: a unit with no turret can join the `_squad_pair`
-list in `art_gallery.gd` instead of getting rigs in the scene. A ring row (also built by the
-script) shows team A's tank with its ring on both grounds (only own units get one) at the three zoom
-levels, at the ring radius of the 6-inch phone, and each ground carries the effects atlas at scale 1.
-A terrain row at the top shows a patch of 8 x 2 map tiles at 64 px in a dark frame, so every tile
-edge shows on both grounds: grass, scrub, rock, water and sand. Team A's and team B's
-squads stand on the two scrub tiles, and the second row of the patch is under the explored fog alpha.
-A button at the top right (120x120 base px, labelled with the page it is on) turns the pages: **Units**
-(everything above), **Build**, **Ground**, **Vehicles**, **Icons** and **Seam**, and the Back button leaves
-from any of them. The new pages are built by `art_gallery.gd` (Build and Seam by
-`art_gallery_buildings.gd`) and start hidden, so the Units page is as it was.
+at gameplay zoom on grass and sand, in team A and team B. The grass half is the left half of the
+screen, the sand half the right. A button at the top right (120x120 base px, labelled with the page
+it is on) turns the pages: **Units**, **Build**, **Ground**, **Icons**, **Seam** and **Iso**, and the
+Back button leaves from any of them. The pages after Units are built by `art_gallery.gd` (Build and
+Seam by `art_gallery_buildings.gd`, Iso by `art_gallery_iso.gd`) and start hidden.
+- **Units** (the page the gallery opens on) shows the six Derrick League units as the generator draws
+  them (`art_gallery_units.gd`, "Derrick League units"). On each ground two lines of the six, left to
+  right Roustabouts, Wildcatters, Flarejack, Bullhead, Mortar Rig and Tanker, in their default view
+  (`d06`, facing south-east): `RosterA` in team A's triad (Signal) and under it `RosterB` in team B's
+  (Arktisk), the names under team B's line. A unit is a rig `Node2D` named by its art id in
+  PascalCase with the sprites `Shadow`, `Hull` and, for the three with a gun, `Gun`, in the team
+  group; a frame cannot turn, so nothing here turns (the sprite is not called `Turret`, which the
+  gallery turns on a building). The team colour is in the SVG text: the frame is read with the
+  faction's key triad replaced by the player's and rasterised at 0.5 x zoom, as the match-start bake
+  does (until P113's `IsoAtlas` the gallery rasterises the frames itself). Under them the **zoom
+  row**, the Flarejack at rig scale 0.75, 1.0 and 1.5, the camera zoom levels of
+  `data/input_settings.tres`: team A on grass, team B on sand, labelled on the grass half. A rig
+  scaled by the zoom holds a texture rasterised at that zoom and drawn back at 1 / zoom, so it is as
+  sharp as the game's atlas would be. Each ground also carries the effects atlas at scale 1, and a
+  terrain row at the top shows a patch of 8 x 2 map tiles at 64 px in a dark frame, so every tile
+  edge shows on both grounds: grass, scrub, rock, water and sand, with the second row under the
+  explored fog alpha. (The top-down tank, the squads beside it, the ring row and the squads on the
+  scrub went with the unit files in P101; the Iso page shows a type's selection ellipse and every
+  direction.)
 - **Build** is a list to scroll (drag it), in six sections: zoom 1, 0.75 and 1.5, each for team A and
   then team B, the camera's zoom levels of `data/input_settings.tres`. A section shows the six
-  buildings on grass (left) and sand (right), the 3x3 ones first, in lines that fit a ground, with a
-  light tank 26 px off the north wall and one off the south wall of every building (the tank's reach,
-  `HealthBarLayer.VEHICLE_REACH_PX`). A building is a cell that draws its **base part** (the sprite
-  rows south of the footprint's middle line), the two tanks, then its **roof part** (the rows north of
-  it, and the defence turret's gun head, which turns about the roof's centre): the order of the view's
-  layers, so a tank north of a building stands behind its roof and a tank south of it in front of its
-  wall. A building's parts are rigs `Node2D` named `Base` and `Roof` with `Hull` and `Team` sprites
-  (region sprites) in the team group; the tanks are the light tank's rig. Sections are named
-  `Zoom100A`, `Zoom100B`, `Zoom75A`... and each has a label.
+  buildings on grass (left) and sand (right), the 3x3 ones first, in lines that fit a ground. A
+  building is a cell that draws its **base part** (the sprite rows south of the footprint's middle
+  line), then its **roof part** (the rows north of it, and the defence turret's gun head, which turns
+  about the roof's centre): the order of the view's layers. A building's parts are rigs `Node2D`
+  named `Base` and `Roof` with `Hull` and `Team` sprites (region sprites) in the team group.
+  Sections are named `Zoom100A`, `Zoom100B`, `Zoom75A`... and each has a label. (A light tank stood
+  26 px off the north and the south wall of every building until P101 deleted the top-down units;
+  the Iso page of P103 puts a unit in front of and behind each building again.)
 - **Seam** shows the refinery twice on each ground, team A on grass and team B on sand: left, the
-  explored fog (alpha 140) over the west column of its footprint, drawn between the tanks and the roof
-  part, right the same building seen. This is the partly seen building of ADR 0022 section 4: the
+  explored fog (alpha 140) over the west column of its footprint, drawn between the base part and the
+  roof part, right the same building seen. This is the partly seen building of ADR 0022 section 4: the
   base part is dimmed under the fog and the roof part is not. It is the item for Michael's phone
   check. The fog patch here has a hard edge; the view's has a soft one, a tile wide.
 - **Ground** shows, on each ground, the ore levels (five tiles by two variants, side by side with
@@ -1059,11 +1087,6 @@ from any of them. The new pages are built by `art_gallery.gd` (Build and Seam by
   does not fit carries `glyph_reason_occupied` at 32 dp in the middle of its footprint (a
   `TextureRect` named `GlyphReasonOccupied`, tinted danger red, on top of the frame): this is where
   a reason glyph is seen, on the red wash and the hatch, so judge it there.
-- **Vehicles** shows the light tank for scale beside the heavy tank, the artillery and the
-  harvester at scale 1, a row for team A and a row for team B on each ground, each on a faint tile
-  square with its name below. Every unit is a rig `Node2D` named by its id in PascalCase with
-  `Hull`, `Team` and `Turret` where it has one, in the team group. The turrets turn slowly; the
-  harvester has none, so its whole rig turns, as a squad's does.
 - **Icons** has two halves. The left half is the HUD's dark panel (#0F141C, here opaque): the three
   tab icons at 48 dp, the eleven item icons on their tiles at 64 dp (four to a line), the six HUD
   glyphs and the three result emblems at 48 dp, each tinted as the HUD tints it (see "Icons and
@@ -1074,13 +1097,14 @@ from any of them. The new pages are built by `art_gallery.gd` (Build and Seam by
   sits clear of the two corner buttons, which cover 24 to 144 px from the top and the left or right.
 
 To add an asset:
-- Add its layers as one rig `Node2D` under each of the four slots (grass A, grass B, sand A, sand B).
-  A building goes into `BUILDINGS` of `art_gallery_buildings.gd` instead: its cell is built from its
-  hull, team and turret files (the turret rule above applies to `defence_turret` only).
-- Put the rig in the group `gallery_team_a` or `gallery_team_b`, and name the layers `Hull`, `Team`
-  and `Turret` (a unit without a turret leaves `Turret` out).
-- The script `game/view/art_gallery.gd` tints `Team` and turns `Turret`. The team colours are exported
-  properties of the scene root.
+- A unit: add its model under `assets/art/models/` (see "Generated art", the generator writes its
+  frames) and its art id and name to `ROSTER_IDS` and `ROSTER_NAMES` in `art_gallery.gd`. The Iso
+  page lists every model by itself.
+- A building goes into `BUILDINGS` of `art_gallery_buildings.gd`: its cell is built from its hull,
+  team and turret files (the turret rule above applies to `defence_turret` only). A flag or any
+  other multi-layer sprite is a rig `Node2D` in the group `gallery_team_a` or `gallery_team_b` with
+  the layers `Hull`, `Team` and, for a gun head, `Turret`; the script tints `Team` and turns
+  `Turret`, and the team colours are exported properties of the scene root.
 - An icon goes on the Icons page: add its file name to the list of its kind in `art_gallery.gd`
   (`TAB_ICONS`, `ITEM_ICONS`, `HUD_GLYPHS`, `EMBLEMS`, `MAP_GLYPHS`) and, if the HUD tints it, to
   `GLYPH_TINTS`.
@@ -1093,9 +1117,11 @@ Michael, 2026-10-15: the game's look must stay replaceable as a whole without to
 (plan `docs/plans/2026-10-11-phase-2.md`, "Answers and follow-ups (P26t docs)"). A new look is
 made in three places, and the palette table above is the source for all three: change the
 palette first, then the three places from it.
-1. **Units**: the SVG layers in `assets/art/svg/units/`, found by name: `<type>_hull.svg`,
-   `<type>_team.svg` and `<type>_turret.svg` (`UnitLayer.ART_DIR`). Replace a unit's files under
-   the same names and keep the layer contract above.
+1. **Units**: the models `assets/art/models/<faction>/<type_id>.tres` and their generated frames
+   under `assets/art/iso/` (see "Generated art"), found by the sheet of the art id
+   (`assets/art/iso/index.tres`). Change the model and run `bash scripts/gen-art.sh`; never edit a
+   frame. The team colour is the faction's key triad inside the SVG text, replaced by the player's
+   at match start.
 2. **Terrain**: the `colors` and `tiles` exports of `game/view/MapView.gd`, with the gallery's
    copies and the "Fog and terrain" section above.
 3. **UI**: the central Theme of plan row P58, `game/ui/theme.tres`. It holds the HUD's font
@@ -1126,12 +1152,13 @@ Besides the three places, the same new look also replaces, in the same PR:
   128 px canvas, import scale 1.0 for icons and 0.5 for flags, the grey contract of the glyphs and
   the tint table under "Icons and glyphs", whose copy is the gallery's `GLYPH_TINTS`.
 - **The palette colours kept in `game/view`** as constants or exports: the team tints
-  (`UnitLayer.team_colors`), the feedback markers (`FeedbackStyle`, `MoveMarkerLayer`), and from
+  (the players' triads, "Generated art"), the feedback markers (`FeedbackStyle`,
+  `MoveMarkerLayer`), and from
   their PRs on the health bar, tracer and fog colours ("Health bars", "Combat effects", "Fog and
   terrain"). The gallery's copies follow them: `art_gallery.gd`'s team colours and
   `TERRAIN_COLORS`, and the `Grass` and `Sand` rects of `scenes/dev/art_gallery.tscn`.
 - **The tests that pin today's palette**: `tests/art/test_art_assets.gd` (`ATLAS_COLOURS`,
-  `REGIONS`, `SIDE_PX`, the ring, the terrain pictures), `tests/art/test_vehicle_art.gd`,
+  `REGIONS`, the ring, the terrain pictures), `tests/art/test_unit_models.gd`,
   `tests/art/test_icon_art.gd` and `tests/view/test_feedback.gd`.
 
 Renaming a unit or a unit type is a data change, not a reskin.
@@ -1177,7 +1204,8 @@ Renaming a unit or a unit type is a data change, not a reskin.
   - the ghost look under "Ghosts": its two pattern tiles, the alphas and the colours;
   - the Build and Ground gallery pages.
 - P92 (Phase 3), please approve the **(new)** items and judge them on the phone (Dev, Art gallery,
-  button at the top right: Vehicles, then Icons):
+  button at the top right: Vehicles, then Icons; the Vehicles page and the three top-down vehicles
+  went with P101, the icons stay):
   - the silhouettes of the heavy tank, the artillery (wheeled, with a spade) and the harvester
     (a combine with a toothed reel bar), and their team marks (a share of 20-35 % of the visible
     body, 22.8 to 30.0 % measured);
@@ -1200,14 +1228,19 @@ Renaming a unit or a unit type is a data change, not a reskin.
   - the team marks, now about 8 to 12 % of a building (question 3 = ja): stripes along eaves and
     cornices, bands round cylinders, rings on roofs, pennants. Judge at zoom 0.75, the Build page's
     third section, on both grounds;
-  - a tank behind a roof: on the Build page the north tank of the power plant and of the refinery is
-    partly hidden by the roof part (question 1 = ja); the light tank itself is still the v1 art until
-    P92b;
+  - a tank behind a roof: the Build page showed it until P101 took the top-down tanks out of the
+    cells (question 1 = ja); the isometric units of P101 and the buildings of P103 and P104 show it
+    again on the Iso page;
   - the seam on the Seam page: a building that a vision edge crosses shows its roof as seen over a
     dimmed base part (ADR 0022 section 4). If it is too ugly, the fallback is a fog shader on the roof
     layer;
   - the five building item icons on the Icons page, drawn in the same view;
   - the Build page itself: a long list to scroll, a section for each zoom level and team.
+- P101 (Phase 3), please judge on the phone (Dev, Art gallery, the first page: Units, then Iso) the
+  six Derrick League units: the silhouettes of "Derrick League units", their team marks (7 to 11 %
+  of a unit, as bands, rings and stripes) in both triads on both grounds, how the Flarejack looks
+  at zoom 0.75, 1 and 1.5 in the zoom row, and whether the hard hats, breather masks and the flare
+  pipe read as the Derrick League and nothing else.
 - For touch-ux-dev (requests from P91b, for P84, P84d and P86): the canvases are the footprint plus
   96 px at 2x (384x480, 256x352, 128x224, import scale 0.5) and `tests/art` pins them, so the view can
   read the rise off the texture. The turret head has the building's canvas and turns about
@@ -1215,10 +1248,9 @@ Renaming a unit or a unit type is a data change, not a reskin.
   middle line is `tex_h - foot_h * 32` px from the top of the texture. The building bar widths are the
   "Health bars" row (24, 40 and 56 dp, 6 dp high). Every layer's file name is unchanged.
 - For touch-ux-dev (requests from P92): the HUD finds each icon by name as above and tints it with
-  `modulate`; `UnitLayer` and the selection panel already skip a missing `turret` layer (the squads
-  have none), which the harvester relies on too. A map glyph brings its own seat (a dark plate, for
-  the arrow a disc, in the file): draw it as it is, tinted, with no backing of your own, and turn
-  the arrow about the canvas centre.
+  `modulate`. A map glyph brings its own seat (a dark plate, for the arrow a disc, in the file):
+  draw it as it is, tinted, with no backing of your own, and turn the arrow about the canvas
+  centre.
 - For the lead, before P70 starts (request from P91): the terrain id `ore` that P70 adds to
   `data/terrain/standard.tres` turns `tests/project/test_cross_file_facts.gd` red (every terrain id has
   a colour and a tile in both map views, and `MapView` and the gallery hold the same keys) until
@@ -1256,3 +1288,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-10-26 | v1.5 (P91b, art-director, Michael chose direction B on 2026-10-26, ADR 0022): the six buildings and the gun head redrawn in the oblique 3/4 view on new canvases (the footprint plus 96 px at 2x), the five building item icons, Look, Scale, Palette (A's muted materials), Drawing rules (thin edges, team marks about 8 to 12 %), Technical rules (defs, radialGradient, clipPath, use; 28 KB), Buildings (projection, canvas, anchor, the cut, the pivot), Ghosts (in the projection), the building row of Health bars, the Build page as a scrolling list with the camera zooms and the Seam page. |
 | 2026-10-26 | v1.6 (P99, art-director, ADR 0023 accepted by Michael 2026-10-26): Projection, Light and Generated art (the generator `tools/artgen/`, `scripts/gen-art.sh`, the model format, the files, the key band, the eight triads, the faction palettes as the key band changed them, the 28 blockout models and their 304 frames, an open derrick for the Deep Bore, team rings, bands and no roof plates), the gallery's Iso page. Older sections that disagree are superseded as P101 to P105 replace their art. |
 | 2026-10-27 | v1.7 (P99b, art-director): cast shadows (+gx, 0.8 x height, one group at 35 %), the sheets and the index (`IsoSheetDef`, `IsoIndex`: canvases, anchors, mounts per hull frame, bar, pick and muzzle lifts in world px), the generated item cards, the CLI flags `--all`, `--model PATH` and `--check` (exit 4), the selection ellipse with an even stroke, the Iso page's shadows, ellipses and card. |
+| 2026-10-27 | v1.8 (P101, art-director): the six Derrick League units modelled under their art ids (Roustabouts, Wildcatters, Flarejack, Bullhead, Mortar Rig, Tanker; "Derrick League units"), the top-down unit files deleted, the Layer contract narrowed to buildings and flags, the Catalogue, Enemy target look and Reskin reworded (no `UnitLayer.ART_DIR`, `<type>_team.svg` or `UnitLayer.team_colors`), the Units page rebuilt on the generated frames, the Vehicles page and the tanks of the Build page deleted. |
