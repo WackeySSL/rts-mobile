@@ -22,6 +22,8 @@ extends Node
 ## (`PickSnapshot.is_targetable`: the view draws an enemy building for any seen cell of its
 ## footprint, the sim sees it at the cell under its position) and is a ground tap if not; with a
 ## building selected a tap on the ground, or on an enemy unit, selects nothing and orders nothing.
+## While the strike is being aimed (P112, `strike_aim.active`) a tap places its point on the ground
+## and no gesture does anything else: nothing is selected, ordered or boxed.
 ## Each order shows its marker and the BoxOverlay follows a long-press and its box, both in the
 ## frame of the gesture. The selection rings follow `selection_changed` (wired in the scene).
 
@@ -37,6 +39,7 @@ signal selection_changed(ids: PackedInt32Array)
 @export var marker_layer: MoveMarkerLayer
 @export var box_overlay: BoxOverlay
 @export var army_bar: ArmyBar
+@export var strike_aim: StrikeAim  ## Without one there is no strike to aim.
 
 var selection: SelectionModel = SelectionModel.new()
 ## Receives each Command. Tests replace it.
@@ -65,6 +68,10 @@ func _ready() -> void:
 
 
 func handle_gesture(e: GestureEvent) -> void:
+	if strike_aim != null and strike_aim.active:
+		if e.kind == GestureEvent.Kind.TAP or e.kind == GestureEvent.Kind.DOUBLE_TAP:
+			strike_aim.place(IsoProjection.px_to_ground(camera.screen_to_world(e.position)))
+		return
 	match e.kind:
 		GestureEvent.Kind.TAP:
 			_tap(e.position)

@@ -55,7 +55,7 @@ fi
 run_step "C++ format (clang-format)" bash scripts/ci/check-cpp-format.sh
 
 if [ -f scripts/run-sim-smoke.sh ]; then
-  run_step "sim smoke (3 seeded AI-vs-AI matches)" bash scripts/run-sim-smoke.sh --matches 3
+  run_step "sim smoke (3 seeded AI-vs-AI matches)" env RUN_SIM_SMOKE_SKIP_IMPORT=1 bash scripts/run-sim-smoke.sh --matches 3
 else
   echo "::: sim smoke skipped (scripts/run-sim-smoke.sh not created yet)"
 fi

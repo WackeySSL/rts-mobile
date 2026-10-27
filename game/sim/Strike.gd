@@ -12,6 +12,11 @@ extends RefCounted
 ## so a SUPERWEAPON of tick `t + type_charge_ticks` is the first one accepted for a building placed
 ## in tick `t` (and for one fired in tick `t`), and not a tick earlier. Low power does not pause it.
 ##
+## A scenario may start a strike building part-way through its charge
+## (`SpawnDef.charge_elapsed_ticks`, P80): `WorldLoad` calls `age_charge` right after
+## `Buildings.add`, which takes those ticks off `ready_tick` (not below 0), so the base arena of 900
+## ticks can fire its strikes. A PLACE never does.
+##
 ## SUPERWEAPON (`apply_superweapon`, after `Sim._apply`'s playing gate: a defeated player, and every
 ## command once the match has ended, are dropped before it). Valid when all of these hold, else
 ## dropped and counted:
@@ -78,6 +83,14 @@ static func start_charge(world: World, row: int) -> void:
 	if type < mini(world.type_strike_kind.size(), world.type_charge_ticks.size()):
 		if world.type_strike_kind[type] > Kind.NONE:
 			world.ready_tick[row] = world.tick + 1 + world.type_charge_ticks[type]
+
+
+## Takes `ticks` off the charge of the new building row `row` (a scenario's `charge_elapsed_ticks`):
+## its `ready_tick` falls by that many, down to 0, so a SUPERWEAPON of tick `type_charge_ticks -
+## ticks` is the first one accepted. A negative `ticks` takes nothing, and a row that is no strike
+## building has `ready_tick` 0 and keeps it.
+static func age_charge(world: World, row: int, ticks: int) -> void:
+	world.ready_tick[row] = maxi(world.ready_tick[row] - maxi(ticks, 0), 0)
 
 
 ## SUPERWEAPON: true when the command fired the player's strike building (see the header for the
