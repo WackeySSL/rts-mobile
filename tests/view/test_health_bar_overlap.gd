@@ -1,40 +1,55 @@
 extends GdUnitTestSuite
 ## Bars of neighbours in a formation under the 2:1 projection (P117b). STYLE.md's two overlap
 ## inequalities (P34b's sweep) were measured on the top-down view, where a neighbour east of a unit
-## is a spacing to the right and one north a spacing above. In iso a grid step along x is
-## (32, 16) px x the spacing and one along y (-32, 16), so a formation's neighbours are 2:1
-## diagonals: the one on the grid's (1, 1) diagonal stands straight below, the one on (1, -1)
-## straight beside. Every bar of a class has the same lift, so two bars overlap exactly when their
-## units' screen offsets are under the bar's width and under its height. The sweep puts two own
-## units of a class at each of the four distinct neighbour steps at the class's formation spacing
-## (900 milli for squads, 1200 for tanks and mixed groups), selects both and reads the plan of the
-## layer, at the three zooms on every profile of both orientations (1.0 to 2.37 base px per dp).
-## The result, which the two tests pin: tank bars never overlap; squad bars never overlap either,
-## except those of grid-axis neighbours at zoom 0.75 on a screen above 1.8 px per dp (the two web
-## phones), where they overlap by at most 1.5 dp (a quarter of a bar's height) at the bar's edge.
-## Whether a bar covers the unit above it has no iso rule: the bar stands over its own unit's frame
-## and the unit above is only half a spacing higher, so a bar may cover that unit's feet.
+## is a spacing to the right and one north a spacing above. In iso a grid step along x is (32, 16)
+## px x the spacing and one along y (-32, 16), so a formation's neighbours are 2:1 diagonals: the
+## one on the grid's (1, 1) diagonal stands straight below, the one on (1, -1) straight beside.
+## A bar stands a lift above its unit's ground point and the lift is per type (`SpriteLift`: light
+## tank 24 px, heavy tank 30, artillery 28, harvester 26, a squad 24). Two bars overlap when their
+## units' screen offsets are under the bars' width and under the bar's height once the lower
+## unit's bar has risen by the difference of the lifts: below a light tank, a heavy tank has its bar
+## 6 px nearer to the light tank's than a second light tank would.
+## The sweep puts two own units at each of the four distinct neighbour steps, at the larger
+## formation_spacing of their two types (read from data/units: a group spaces by its largest type
+## spacing, Formation.gd; 900 milli for two squads, 1200 for two light tanks, 1300 for a heavy tank
+## with anything lighter), selects both and reads the plan of the layer, at the three zooms on
+## every profile of both orientations (1.0 to 2.37 base px per dp). Its pairs are the units of one
+## vehicle type, the squad pair, and every ordered pair of two different types out of the four
+## vehicle types of the lift table and the rifle squad: each type stands once in front of and once
+## behind every other, so all eight neighbour directions are covered. Units that stand closer than
+## their formation spacing (two orders, a unit pushed aside) are outside the rule, as in P34b.
+## The result, which the three tests pin: two vehicles of one type never overlap; squads, and any
+## two units of different types, overlap only at zoom 0.75 on a screen above 1.8 base px per dp
+## (web_phone, web_phone_small and web_phone_portrait) and then by at most 1.5 dp (a quarter of a
+## bar's height) at the bar's edge: by 1.44 dp for two squads and by 1.31 dp at the worst for two
+## types, a taller frame below a shorter one (a heavy tank below a light tank or a squad, on
+## web_phone_small). Whether a bar covers the unit above it has no iso rule: the bar stands over
+## its own unit's frame and the unit above is only half a spacing higher, so a bar may cover that
+## unit's feet.
 
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ARENA: String = "res://data/scenarios/perf_arena.tres"
+const UNITS_DIR: String = "res://data/units/"
 const EDGE: Color = Color("1C2127")
 const ZOOMS: Array[float] = [0.75, 1.0, 1.5]
-const SPACING_MILLI: Dictionary[StringName, int] = {&"vehicle": 1200, &"infantry": 900}
-const TYPE_OF: Dictionary[StringName, StringName] = {
-	&"vehicle": &"light_tank", &"infantry": &"rifle_squad"
-}
+const SQUAD: StringName = &"rifle_squad"
 ## The neighbours of a unit that differ: along grid x, along grid y, down the grid's diagonal (which
 ## is straight down the screen) and across it (straight sideways).
 const STEPS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, -1)]
-## Squads at zoom 0.75 overlap above this many base px per dp: 14.4 px x 0.75 is the vertical offset
-## of a grid-axis neighbour, and a bar is 6 dp high.
-const SQUAD_CLEAR_DP_PX: float = 1.8
+## Bars overlap only above this many base px per dp: two squads standing on a grid axis are 14.4
+## world px apart vertically, which is 10.8 px at zoom 0.75, and a bar is 6 dp high. A pair of two
+## types needs more (a light and a heavy tank 1.85, a light tank and an artillery piece 1.9).
+const OVERLAP_ABOVE_DP_PX: float = 1.8
 const MAX_OVERLAP_DP: float = 1.5
 
 var _runner: MatchRunner
 var _camera: RtsCamera
 var _units: UnitLayer
 var _bars: HealthBarLayer
+## Two own units of the arena, in two different type table entries. The sweep gives them the types
+## of the pair under test (the arena holds a light tank and two squad types).
+var _row_a: int = -1
+var _row_b: int = -1
 
 
 func before_test() -> void:
@@ -47,22 +62,60 @@ func after_test() -> void:
 	CommandQueue.clear()
 
 
-func test_tank_bars_of_formation_neighbours_never_overlap_on_any_screen() -> void:
-	for profile_name: StringName in _both_orientations():
-		UiScale.set_override(UiProfiles.by_name(profile_name))
-		_make_bars()
-		for zoom: float in ZOOMS:
-			_camera.zoom = Vector2(zoom, zoom)
-			for step: Vector2i in STEPS:
-				var note: String = "%s zoom %s step %s" % [profile_name, zoom, step]
-				(
-					assert_float(_overlap_dp(&"vehicle", step))
-					. override_failure_message("overlap in dp, " + note)
-					. is_equal(0.0)
-				)
+func test_bars_of_two_vehicles_of_one_type_never_overlap_on_any_screen() -> void:
+	var pairs: Array[Array] = []
+	for type_id: StringName in SpriteLift.BAR_PX:
+		pairs.append([type_id, type_id])
+	assert_int(pairs.size()).is_greater_equal(4)  # Light, heavy, artillery, harvester.
+	_sweep(pairs, false)
 
 
 func test_squad_bars_overlap_only_at_zoom_075_above_1_8_px_per_dp_and_by_at_most_1_5_dp() -> void:
+	var pairs: Array[Array] = [[SQUAD, SQUAD]]
+	# The residual is real, so a layer that stopped overlapping them would be noticed here too.
+	assert_float(_sweep(pairs, true)).is_greater(1.0)
+
+
+func test_mixed_type_bars_overlap_only_at_zoom_075_above_1_8_px_per_dp_by_at_most_1_5_dp() -> void:
+	var types: Array[StringName] = [SQUAD]
+	for type_id: StringName in SpriteLift.BAR_PX:
+		types.append(type_id)
+	var pairs: Array[Array] = []
+	for first: StringName in types:
+		for second: StringName in types:
+			if first != second:
+				pairs.append([first, second])
+	assert_int(pairs.size()).is_equal(types.size() * (types.size() - 1))
+	assert_float(_sweep(pairs, true)).is_greater(1.0)
+
+
+func test_the_sweep_pairs_the_types_it_names_at_the_larger_of_their_spacings() -> void:
+	assert_int(_spacing(&"rifle_squad", &"rifle_squad")).is_equal(900)
+	assert_int(_spacing(&"light_tank", &"heavy_tank")).is_equal(1300)
+	assert_int(_spacing(SQUAD, &"heavy_tank")).is_equal(1300)
+	assert_int(_spacing(&"heavy_tank", &"harvester")).is_equal(1400)
+	var rows: Array[int] = _place_pair(&"heavy_tank", SQUAD, Vector2i(1300, 0))
+	_frame()
+	var snap: MatchSnapshot = _runner.snapshot
+	var armours: Array[int] = [World.Armour.HEAVY, World.Armour.INFANTRY]
+	var widths_dp: Array[int] = [HealthBarLayer.VEHICLE_WIDTH_DP, HealthBarLayer.INFANTRY_WIDTH_DP]
+	for index: int in 2:
+		assert_int(rows[index]).is_not_equal(rows[1 - index])
+		assert_int(snap.owner[rows[index]]).is_equal(1)
+		assert_int(snap.type_armour[snap.type_index[rows[index]]]).is_equal(armours[index])
+		# The bar is a dp size: its width on the screen is its dp width in base px.
+		var box: Rect2 = _screen_box(rows[index])
+		assert_float(box.size.x).is_equal_approx(widths_dp[index] * UiScale.base_px_per_dp(), 0.01)
+	assert_str(String(snap.type_ids[snap.type_index[rows[0]]])).is_equal("heavy_tank")
+	assert_str(String(snap.type_ids[snap.type_index[rows[1]]])).is_equal("rifle_squad")
+	assert_int(snap.pos_x[rows[1]] - snap.pos_x[rows[0]]).is_equal(1300)
+
+
+## Runs the sweep for each pair of types in `pairs` (the pair is [first, second], the second
+## standing a step from the first): every profile, zoom and step. With `may_overlap` the bars may
+## overlap at zoom 0.75 on a screen above `OVERLAP_ABOVE_DP_PX`, by at most `MAX_OVERLAP_DP`, and
+## nowhere else; without it they never overlap. Returns the worst overlap in dp that it met.
+func _sweep(pairs: Array[Array], may_overlap: bool) -> float:
 	var worst: float = 0.0
 	for profile_name: StringName in _both_orientations():
 		UiScale.set_override(UiProfiles.by_name(profile_name))
@@ -71,29 +124,33 @@ func test_squad_bars_overlap_only_at_zoom_075_above_1_8_px_per_dp_and_by_at_most
 		assert_bool(dp_px >= 1.0 and dp_px <= 2.4).is_true()  # STYLE.md: 1.0 to 2.37 px per dp.
 		for zoom: float in ZOOMS:
 			_camera.zoom = Vector2(zoom, zoom)
-			for step: Vector2i in STEPS:
-				var note: String = "%s zoom %s step %s" % [profile_name, zoom, step]
-				var depth: float = _overlap_dp(&"infantry", step)
-				if zoom == 0.75 and dp_px > SQUAD_CLEAR_DP_PX:
-					(
-						assert_float(depth)
-						. override_failure_message("overlap in dp, " + note)
-						. is_less_equal(MAX_OVERLAP_DP)
+			for pair: Array in pairs:
+				var first: StringName = pair[0]
+				var second: StringName = pair[1]
+				for step: Vector2i in STEPS:
+					var note: String = (
+						"overlap in dp, %s zoom %s %s then %s step %s"
+						% [profile_name, zoom, first, second, step]
 					)
-					worst = maxf(worst, depth)
-				else:
-					assert_float(depth).override_failure_message("overlap in dp, " + note).is_equal(
-						0.0
-					)
-	# The residual is real, so a layer that stopped overlapping them would be noticed here too.
-	assert_float(worst).is_greater(1.0)
+					var depth: float = _overlap_dp(first, second, step)
+					if may_overlap and zoom == 0.75 and dp_px > OVERLAP_ABOVE_DP_PX:
+						assert_float(depth).override_failure_message(note).is_less_equal(
+							MAX_OVERLAP_DP
+						)
+						worst = maxf(worst, depth)
+					else:
+						assert_float(depth).override_failure_message(note).is_equal(0.0)
+	return worst
 
 
-## The depth in dp by which the bars of two own units of `class_key`, standing `step` formation
-## spacings apart, overlap on the screen under the profile and zoom that are in force: the smaller
-## side of the overlapping rect, 0 when the bars are clear of each other (touching is clear).
-func _overlap_dp(class_key: StringName, step: Vector2i) -> float:
-	var rows: Array[int] = _place_pair(class_key, step * SPACING_MILLI[class_key])
+## The depth in dp by which the bars of two own units, a `first_type` and a `second_type` one
+## `step` formation spacings from it, overlap on the screen under the profile and zoom that are in
+## force: the smaller side of the overlapping rect, 0 when the bars are clear of each other
+## (touching is clear).
+func _overlap_dp(first_type: StringName, second_type: StringName, step: Vector2i) -> float:
+	var rows: Array[int] = _place_pair(
+		first_type, second_type, step * _spacing(first_type, second_type)
+	)
 	_frame()
 	var first: Rect2 = _screen_box(rows[0])
 	var second: Rect2 = _screen_box(rows[1])
@@ -103,15 +160,25 @@ func _overlap_dp(class_key: StringName, step: Vector2i) -> float:
 	return minf(overlap.size.x, overlap.size.y) / UiScale.base_px_per_dp()
 
 
-## Puts two own units of `class_key` in the published snapshot, the first on the tile (20, 20) and
-## the second `offset` milli from it, selects both, points the camera at them and returns their
+## The formation spacing of a group of the two types: the larger of theirs (Formation.gd), in milli.
+func _spacing(first_type: StringName, second_type: StringName) -> int:
+	return maxi(_def(first_type).formation_spacing, _def(second_type).formation_spacing)
+
+
+func _def(type_id: StringName) -> UnitDef:
+	return load(UNITS_DIR + "%s.tres" % type_id)
+
+
+## Puts two own units in the published snapshot, a `first_type` on the tile (20, 20) and a
+## `second_type` `offset` milli from it, selects both, points the camera at them and returns their
 ## rows. Test-only writes into the snapshot (allowed in SYNC, ADR 0012 section 3).
-func _place_pair(class_key: StringName, offset: Vector2i) -> Array[int]:
-	var first: int = _first_row_of(TYPE_OF[class_key], 1)
-	var rows: Array[int] = [first, first + 1]
+func _place_pair(first_type: StringName, second_type: StringName, offset: Vector2i) -> Array[int]:
+	var rows: Array[int] = [_row_a, _row_b]
+	var types: Array[StringName] = [first_type, second_type]
 	var snap: MatchSnapshot = _runner.snapshot
 	var ids: PackedInt32Array = PackedInt32Array()
 	for index: int in 2:
+		_retype(rows[index], types[index])
 		var at: Vector2i = Vector2i(20000, 20000) + offset * index
 		snap.pos_x[rows[index]] = at.x
 		snap.pos_y[rows[index]] = at.y
@@ -121,6 +188,16 @@ func _place_pair(class_key: StringName, offset: Vector2i) -> Array[int]:
 	_units.set_selected(ids)
 	_camera.position = IsoProjection.ground_to_px(20000, 20000)
 	return rows
+
+
+## Gives `row` the type `type_id` in the snapshot's tables, the id and the armour from data/units
+## (the id picks the bar's lift, the armour its class). The row's type table entry is its own, so
+## the other row keeps its type.
+func _retype(row: int, type_id: StringName) -> void:
+	var snap: MatchSnapshot = _runner.snapshot
+	var type: int = snap.type_index[row]
+	snap.type_ids[type] = type_id
+	snap.type_armour[type] = _def(type_id).armour
 
 
 ## The names of every profile of both orientations: UiProfiles.all() and its portrait twins.
@@ -145,6 +222,12 @@ func _build() -> void:
 	_units.set_process(false)
 	_bars = null
 	_make_bars()
+	_row_a = _first_row_of(&"light_tank", 1)
+	_row_b = _first_row_of(SQUAD, 1)
+	assert_bool(_row_a >= 0 and _row_b >= 0).is_true()
+	assert_int(_runner.snapshot.type_index[_row_a]).is_not_equal(
+		_runner.snapshot.type_index[_row_b]
+	)
 
 
 ## A fresh bar layer, which reads the dp that is in force now.
