@@ -110,7 +110,10 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Tap the ready button | You aim: the button stays pressed and says "Tap map", and a check mark and an X appear beside it. Drag and pinch still move the map; nothing is selected, ordered or boxed while you aim | yes |
 | While aiming, tap the map | A ring on the ground shows where the strike will hit and how far it reaches (`strike_radius` of the building); tap again to move it. Tap the check mark → the strike is fired once and aiming ends. The check mark waits dimmed until you have tapped the map | yes |
 | While aiming, tap the X or the pressed button, or turn the phone | Aiming ends and nothing is fired | |
-| A Deep Bore is fired, by anyone | Every player sees a red ring on the ground at the target and a blinking warning triangle for the warning time (`strike_delay`), with a white ring closing in on the target; when it has closed, everything inside the ring, yours too, takes damage (the blast itself is not drawn yet, see below). Move out of the ring while it closes | yes |
+| A Deep Bore is fired, by anyone | Every player sees a red ring on the ground at the target and a blinking warning triangle for the warning time (`strike_delay`), with a white ring closing in on the target. Move out of the ring while it closes | yes |
+| A Deep Bore's ring has closed | A fireball bursts at the target and the ground splits: everything inside the ring, yours too, takes damage, and a crater as wide as the ring stays there for the rest of the match. You see the burst and the crater where you can see the ground at that moment; a rupture in the dark leaves no mark | yes |
+| A Blackout Array is fired | At once every building that is not the firing player's, inside its ring (`strike_radius`), is switched off for `strike_ticks`: it does not shoot, its power counts for nothing and its queue stands still. No warning shows before it | |
+| A building is switched off | An amber lightning bolt struck through by a brighter amber slash, on a dark badge with an amber rim, stands over the building for as long as it is off, yours and any enemy building you can see; it is gone when the building comes back on | yes |
 
 ## Not yet in the game
 Base building, harvesting, power, production, win and lose conditions, menus and rewards get
@@ -119,6 +122,5 @@ their entries when their phase ships them (ROADMAP Phases 3-6).
 | Action | Result | Teach |
 |---|---|---|
 | An "under attack" warning at the screen edge | Not shown yet: nothing points at a unit that is hit off screen | |
-| The ground splitting where a Deep Bore lands, and a mark on the buildings a Blackout Array switches off | Not shown yet: the blast, the crater and the marks come in another change; the damage and the shut-down already happen | |
 | Gas fields | Not shown yet: every field is oil. Once a map names its gas fields, one shows a pale crust with a glowing vent instead of a black pool, with the same full, half and dry steps | |
 | Play the Derrick League (oil and gas) or the Lumen Accord (green energy) | Not shown yet: no match lets you choose a side, and the preview's match gives both players Derrick League units. Every building and unit already belongs to one side, and your build menu shows only your side's. Once a match has both sides, each side plays its own buildings and units | |

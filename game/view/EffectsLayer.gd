@@ -75,6 +75,9 @@ const PUFF_DEFAULT_PX: float = 40.0
 const MUZZLE_DEFAULT_PX: float = 13.0
 const GEO_STRIDE: int = 5  ## A slot's x, y, end x, end y and size, in world px.
 const TRACER_STEP_MILLI: int = 250  ## A quarter tile: how far a clipped tracer is probed at a time.
+## A rupture's burst (P112b) is a BURST quad whose side is the horizontal semi-axis of the ring on
+## the ground, its centre this share of its side above the ground point.
+const RUPTURE_LIFT: float = 0.25
 
 ## Ring slots; the setter makes a new, empty ring.
 @export var capacity: int = 128:
@@ -87,6 +90,8 @@ const TRACER_STEP_MILLI: int = 250  ## A quarter tile: how far a clipped tracer 
 @export var world_sort: WorldSort
 ## Adds the effects on tiles the fog hides too: the perf arena, and tests that are not about fog.
 @export var reveal_enemies: bool = false
+## Where the crater of a landed rupture goes (P112b); null: the burst only.
+@export var decals: DecalLayer
 ## The look: palette colours, exports of this world-space layer like the other view layers'.
 @export var tracer_color: Color = Color("FFD84D")
 @export var edge_color: Color = FeedbackStyle.OUTLINE
@@ -139,6 +144,7 @@ var _size: int = 0  ## Slots in the ring (capacity when it was made).
 var _head: int = 0  ## The slot the next effect takes.
 var _count: int = 0  ## Slots in use, up to _size: the oldest is at _head - _count.
 var _live_until: int = 0  ## Clock ms after which no effect of the ring is alive.
+var _landings: StrikeLandings = StrikeLandings.new()  ## Finds the ruptures that land (P112b).
 var _kind: PackedInt32Array = PackedInt32Array()
 var _born: PackedInt64Array = PackedInt64Array()
 var _geo: PackedFloat32Array = PackedFloat32Array()
@@ -295,6 +301,31 @@ func _on_ticked(_tick: int) -> void:
 			_add_impact(snap, at, now)
 		elif kind == World.Event.DIED:
 			_add_death(snap, at, now)
+	_add_ruptures(snap, now)
+
+
+## A rupture that landed in this tick (`StrikeLandings`, ADR 0023 section 10) bursts at its point
+## and leaves its crater in `decals`, scale radius / 1500 (2 for the 3 tiles of the shipped Deep
+## Bore). It does both where the local player saw the point's tile as it hit: in the fog of the
+## last tick the rupture was in the air (`StrikeLandings.was_seen`, which the landing step's own
+## kills cannot take away) or in this tick's. That is the rule of the craters of `BuildingLayer`,
+## which tests the fog from before the deaths (a landing in the dark draws nothing, and a crater
+## stays for the match). The burst is a BURST of a ring slot, so a rupture takes no object.
+func _add_ruptures(snap: MatchSnapshot, now: int) -> void:
+	var viewer: int = 0 if reveal_enemies else FogLayer.local_player_of(runner)
+	var landed: int = _landings.update(snap, viewer)
+	var radius: int = StrikeLandings.rupture_radius(snap) if landed > 0 else 0
+	if radius <= 0:
+		return  # Nothing landed, or a roster with no rupture to give it a size.
+	var side: float = IsoProjection.ellipse_px(radius).x
+	for index: int in landed:
+		var at: Vector2i = _landings.point(index)
+		if not (_landings.was_seen(index) or _seen(snap, at.x, at.y)):
+			continue
+		var ground: Vector2 = IsoProjection.ground_to_px(at.x, at.y)
+		_push(Kind.BURST, now, ground - Vector2(0.0, side * RUPTURE_LIFT), Vector2.ZERO, side)
+		if decals != null:
+			decals.add_crater(ground, radius)
 
 
 ## Whether the point (x, y), in milli-tiles, is on a tile that the fog does not hide from the

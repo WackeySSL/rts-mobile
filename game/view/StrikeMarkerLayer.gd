@@ -59,17 +59,11 @@ func _draw() -> void:
 	if aim != null and aim.active and aim.has_point:
 		_zone(IsoProjection.ground_to_px(aim.point.x, aim.point.y), aim.radius, true, unit)
 	var snap: MatchSnapshot = runner.snapshot
-	var kinds: PackedInt32Array = snap.type_strike_kind  # Aliased once: no property read per row.
-	var radii: PackedInt32Array = snap.type_strike_radius
-	var landings: PackedInt32Array = snap.strike_tick
+	var landings: PackedInt32Array = snap.strike_tick  # Aliased once: no property read per row.
 	var xs: PackedInt32Array = snap.strike_x
 	var ys: PackedInt32Array = snap.strike_y
 	var now: float = snap.tick + runner.alpha()
-	var radius: int = 0
-	for type: int in kinds.size():  # The first rupture type's radius.
-		if kinds[type] == Strike.Kind.RUPTURE:
-			radius = radii[type]
-			break
+	var radius: int = StrikeLandings.rupture_radius(snap)  # The first rupture type's.
 	for player: int in landings.size():
 		var landing: int = landings[player]
 		if landing == 0:

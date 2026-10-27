@@ -39,13 +39,17 @@ const SCREEN_PROFILES: Array[StringName] = [
 	&"android_6in_portrait",
 	&"web_tablet_portrait",
 ]
-## The lines of HealthBarLayer._draw: the painted count, then one draw_rect per planned rect, in the
-## plan's order.
+## The lines of HealthBarLayer._draw: the painted counts, then one draw_rect per planned rect, in
+## the plan's order, and after them one tinted draw_texture_rect per planned offline glyph (P112b).
 const DRAW_BODY: Array[String] = [
 	"_drawn = 0",
+	"_drawn_glyphs = 0",
 	"for index: int in _rects:",
 	"draw_rect(rect_at(index), rect_color(index))",
 	"_drawn += 1",
+	"for index: int in _glyphs:",
+	"draw_texture_rect(GLYPH, glyph_rect(index), false, glyph_color)",
+	"_drawn_glyphs += 1",
 ]
 
 var _window_size_before: Vector2i
@@ -313,10 +317,12 @@ func test_the_ring_does_not_place_the_bar() -> void:
 	)
 
 
-func test_the_draw_code_paints_nothing_but_filled_rects() -> void:
-	# ADR 0011 section 3: one _draw(), filled rects only. Pixels cannot be read headless, so the
-	# script is: every draw call it makes is draw_rect with a rect and a colour and nothing else
-	# (a third argument would make it an outline), and there is one _draw().
+func test_the_draw_code_paints_nothing_but_filled_rects_and_the_offline_glyphs() -> void:
+	# ADR 0011 section 3: one _draw(), filled rects only, and since P112b the offline glyphs over
+	# them (ADR 0023 section 2). Pixels cannot be read headless, so the script is: every draw call
+	# it makes is draw_rect with a rect and a colour and nothing else (a third argument would make
+	# it an outline), or draw_texture_rect with the glyph, a rect, no tiling and a tint, and there
+	# is one _draw().
 	var source: String = ""
 	for line: String in FileAccess.get_file_as_string(SCRIPT_PATH).split("\n"):
 		source += line.get_slice("#", 0) + "\n"
@@ -325,9 +331,11 @@ func test_the_draw_code_paints_nothing_but_filled_rects() -> void:
 	while at >= 0:
 		var open: int = source.find("(", at)
 		calls.append(source.substr(at, open - at))
-		assert_int(_top_level_arguments(source, open)).is_equal(2)  # The rect and the colour.
+		var arguments: int = _top_level_arguments(source, open)
+		# The rect and the colour; the glyph, its rect, the tiling flag and the tint.
+		assert_int(arguments).is_equal(4 if calls[-1] == "draw_texture_rect" else 2)
 		at = source.find("draw_", open)
-	assert_array(calls).is_equal(["draw_rect"])
+	assert_array(calls).is_equal(["draw_rect", "draw_texture_rect"])
 	assert_int(source.count("func _draw()")).is_equal(1)
 	# Rect i is painted with rect i's colour: a draw with a fixed index (`rect_color(0)`) would
 	# paint the whole plan in one colour, and the plan's colours cannot be told from the painted

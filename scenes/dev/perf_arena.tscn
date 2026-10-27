@@ -99,12 +99,13 @@ runner = NodePath("../MatchRunner")
 world_sort = NodePath("../WorldSort")
 reveal_enemies = true
 
-[node name="EffectsLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
+[node name="EffectsLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort", "decals")]
 z_index = 50
 z_as_relative = false
 script = ExtResource("8_effects")
 runner = NodePath("../MatchRunner")
 world_sort = NodePath("../WorldSort")
+decals = NodePath("../DecalLayer")
 reveal_enemies = true
 
 [node name="FogLayer" type="Sprite2D" parent="." node_paths=PackedStringArray("runner")]
