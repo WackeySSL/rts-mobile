@@ -235,25 +235,32 @@ func fill_pick_snapshot(out: PickSnapshot, camera: RtsCamera) -> void:
 ## footprint) and its side, tiles.
 static func footprint_of(snap: MatchSnapshot, row: int) -> Rect2i:
 	var type: int = snap.type_index[row]
-	return _footprint_at(
+	return footprint_at(
 		snap.pos_x[row], snap.pos_y[row], snap.type_foot_w[type], snap.type_foot_h[type]
 	)
 
 
 ## Whether `player` sees any cell of the footprint of building row `row` in `snap`; true when its
 ## fog does not cover the player (the same rule as `FogLayer.is_seen`). For code outside loops: a
-## loop over buildings aliases the arrays itself and calls `_footprint_at` and `_any_cell_seen`.
+## loop over buildings aliases the arrays itself and calls `footprint_at` and `any_cell_seen`.
 static func is_seen(snap: MatchSnapshot, player: int, row: int) -> bool:
+	return footprint_seen(snap, player, footprint_of(snap, row))
+
+
+## Whether `player` sees any cell of the footprint `foot` (tiles) in `snap`, a building's or a last-
+## seen record's (`GhostMemoryLayer` draws a ghost exactly where this is false); true when the fog
+## does not cover the player. For code outside loops: a loop uses `any_cell_seen`.
+static func footprint_seen(snap: MatchSnapshot, player: int, foot: Rect2i) -> bool:
 	var fog: FogGrid = snap.fog
 	if not FogLayer.covers(fog, player):
 		return true
-	return _any_cell_seen(fog.visible, (player - 1) * fog.cells, fog.cols, footprint_of(snap, row))
+	return any_cell_seen(fog.visible, (player - 1) * fog.cells, fog.cols, foot)
 
 
 ## The footprint of `w` x `h` tiles whose centre is (`x`, `y`) in milli-tiles: its origin tile and
 ## side.
 @warning_ignore("integer_division")
-static func _footprint_at(x: int, y: int, w: int, h: int) -> Rect2i:
+static func footprint_at(x: int, y: int, w: int, h: int) -> Rect2i:
 	return Rect2i(
 		(x - w * World.TILE_CENTRE) / World.MILLI_PER_TILE,
 		(y - h * World.TILE_CENTRE) / World.MILLI_PER_TILE,
@@ -263,8 +270,9 @@ static func _footprint_at(x: int, y: int, w: int, h: int) -> Rect2i:
 
 
 ## Whether a cell of `foot` has a visible count above 0 in `counts`, a fog block of lines `cols`
-## cells wide that starts at `base`.
-static func _any_cell_seen(counts: PackedInt32Array, base: int, cols: int, foot: Rect2i) -> bool:
+## cells wide that starts at `base`. The form for a loop, which reads `fog.visible` into a local
+## once (`GhostMemoryLayer` and `_refresh_shown` do).
+static func any_cell_seen(counts: PackedInt32Array, base: int, cols: int, foot: Rect2i) -> bool:
 	for line: int in range(foot.position.y, foot.end.y):
 		for col: int in range(foot.position.x, foot.end.x):
 			if counts[base + line * cols + col] > 0:
@@ -412,11 +420,8 @@ func _refresh_shown(snap: MatchSnapshot) -> void:
 		var shown: bool = all or owners[row] == player
 		if not shown:
 			var type: int = types[row]
-			shown = _any_cell_seen(
-				counts,
-				base,
-				cols,
-				_footprint_at(cur_x[row], cur_y[row], foot_w[type], foot_h[type])
+			shown = any_cell_seen(
+				counts, base, cols, footprint_at(cur_x[row], cur_y[row], foot_w[type], foot_h[type])
 			)
 		if shown != entry.shown:
 			entry.shown = shown
