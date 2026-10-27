@@ -22,13 +22,12 @@ extends Node2D
 ## it is explored. A type with no art on the atlas is not drawn (the live building shows a flat
 ## diamond then; a ghost has no stand-in).
 ##
-## The sim's memory (`LastSeen`) looks at the centre tile only: it makes a record when that tile is
-## seen and drops it when that tile is seen and the building is gone. So the layer's any-cell rule
-## and the sim's differ for a footprint larger than one tile until `LastSeen` follows it (P115c's
-## request to gameplay-dev): the record of a building destroyed out of sight outlives a glimpse of
-## any other cell, so its ghost is hidden while that cell is seen and is drawn again when sight
-## leaves, and a building seen only at its edge has no record to draw. This layer needs no change
-## when the sim follows.
+## The sim's memory (`LastSeen`, plan row P77b) follows the same any-cell rule: it makes a record
+## when any cell of the footprint is seen, drops it when any cell is seen and the building is gone,
+## and drops it as the building falls when the player sees any cell then. So a building seen only
+## at its edge has a record to draw, and a glimpse of one cell of a spot that is empty ends the
+## record instead of hiding the ghost for as long as the glimpse lasts. A building that falls in
+## sight leaves no record, so no ghost stands on its crater. This layer needs no change for it.
 ##
 ## Sorting: the layer is flat in z (one z, 5) and `y_sort_enabled`, as `WorldSort` is, so the
 ## engine orders its sprites by their y, the footprint centre's projected point, which is the sort
