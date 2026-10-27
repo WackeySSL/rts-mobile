@@ -8,14 +8,31 @@ art_id = &"renew_radar"
 faction = &"renew"
 category = &"bld"
 footprint = 2
-silhouette = "A small white hexagonal base with a team band and a slim tapering hexagonal tower carrying a flat white panel and a mint light."
+silhouette = "A low white hexagonal relay house with a glass band and a wide team band beside a slim titanium pole with team rings that carries three upright hexagonal phased-array faces, each a blue-grey panel in a team-coloured frame, turned alternately to the front and to the side."
 prims = PackedStringArray(
-"box hull titanium 0 0 0 1.92 1.92 0.06",
-"prism hull ceramic 0.3 0.3 0.06 0.8 0.7 0.16 sides=6",
-"prism hull team 0.3 0.3 0.22 0.84 0.74 0.22 sides=6",
-"prism hull ceramic 0.3 0.3 0.44 0.8 0.7 0.06 sides=6",
-"prism hull titanium -0.4 -0.4 0.06 0.24 0.2 2.1 sides=6 taper=0.5",
-"box hull team -0.4 -0.4 2.16 0.6 0.06 0.1",
-"box hull ceramic -0.4 -0.4 2.26 0.6 0.06 0.4",
-"box hull mint -0.4 -0.4 2.66 0.08 0.08 0.08"
+"box hull graphite 0 0 0 1.92 1.92 0.06",
+"prism hull ceramic 0.3 -0.25 0.06 0.9 0.9 0.28 sides=6",
+"prism hull glass 0.3 -0.25 0.34 0.94 0.94 0.12 sides=6",
+"prism hull team 0.3 -0.25 0.46 0.96 0.96 0.18 sides=6",
+"prism hull ceramic 0.3 -0.25 0.64 0.9 0.9 0.12 sides=6",
+"prism hull team 0.3 -0.25 0.76 0.82 0.82 0.05 sides=6",
+"prism hull ceramic 0.3 -0.25 0.81 0.96 0.96 0.07 sides=6",
+"prism hull ceramic 0.15 -0.35 0.88 0.3 0.3 0.14 sides=6",
+"box hull mint 0.3 0.28 0.2 0.1 0.03 0.06",
+"prism hull graphite -0.4 0.3 0.06 0.46 0.46 0.12 sides=6",
+"prism hull titanium -0.4 0.3 0.18 0.2 0.2 0.62 sides=12",
+"prism hull team -0.4 0.3 0.8 0.3 0.3 0.12 sides=12",
+"prism hull titanium -0.4 0.3 0.92 0.16 0.16 0.66 sides=12",
+"prism hull team -0.4 0.3 1.58 0.22 0.22 0.1 sides=12",
+"prism hull titanium -0.4 0.3 1.68 0.12 0.12 0.6 sides=12",
+"prism hull graphite -0.4 0.3 2.28 0.24 0.24 0.05 sides=6",
+"prism hull team -0.4 0.44 0.89 0.62 0.13 0.62 sides=6 axis=y",
+"prism hull bluegrey -0.4 0.452 0.952 0.496 0.13 0.496 sides=6 axis=y",
+"box hull mint -0.4 0.525 1.16 0.07 0.03 0.07",
+"prism hull team -0.27 0.3 1.52 0.13 0.52 0.52 sides=6 axis=x",
+"prism hull bluegrey -0.258 0.3 1.572 0.13 0.416 0.416 sides=6 axis=x",
+"box hull mint -0.185 0.3 1.74 0.03 0.07 0.07",
+"prism hull team -0.4 0.42 1.85 0.42 0.13 0.42 sides=6 axis=y",
+"prism hull bluegrey -0.4 0.432 1.892 0.336 0.13 0.336 sides=6 axis=y",
+"box hull mint -0.4 0.505 2.02 0.07 0.03 0.07"
 )
