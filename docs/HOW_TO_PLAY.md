@@ -34,24 +34,27 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 |---|---|---|
 | Look at a building | Each building is drawn from the picture set of its side in its player's team colour, standing on its footprint with a soft shadow on the ground. It is drawn like a unit: a unit lower on the screen, in front of it, is drawn over it, and one higher up, behind it, is hidden by it. A defence's gun head turns on its own to face its target and stays turned while it has none | |
 | Look at the enemy's buildings | An enemy building is drawn only while you see the ground it stands on now; one cell of its footprint is enough, and then the whole building shows. Out of sight it is not drawn | |
-| A building is hit | A bar shows above it, as wide as its footprint (small, medium or large), filled by the hp it has left, for a few seconds after each hit. Your bars are plain, an enemy's has a notch in the top edge. An enemy building the fog hides shows none | |
+| A building is hit, or selected | A bar shows above it, as wide as its footprint (small, medium or large), filled by the hp it has left, for a few seconds after each hit and for as long as the building is selected. Your bars are plain, an enemy's has a notch in the top edge. An enemy building the fog hides shows none | |
 | A building is destroyed | It disappears from the map and the units behind it are no longer hidden | |
 
 ## Selection
 | Action | Result | Teach |
 |---|---|---|
 | Tap an own unit | Selects that unit only; selected units show a ring | |
-| Double-tap an own unit | Selects every own unit of that type on screen | yes |
+| Tap your own building | Selects that building only, and a unit standing at the same spot is picked instead of it. Tap anywhere on the building's picture, the part that stands up over the ground included, not only on the ground it covers; where two buildings overlap, the one drawn in front is selected. A building is easy to hit: at least 48 dp across (`hit_radius_dp` in `data/input_settings.tres`), however small it is drawn. It gets a frame of four corner brackets and its health bar, the panel names it, and a Headquarters, barracks or vehicle factory opens the tab it builds | |
+| Tap an enemy building you can see, with nothing selected | Selects it for its information only: an amber frame and its notched health bar show, and the panel names it. It takes no orders, and an enemy building the fog hides cannot be tapped | |
+| Tap the ground with a building selected | Lets go of the building. Nothing is ordered and nothing moves | |
+| Double-tap an own unit | Selects every own unit of that type on screen. A building never joins a double-tap, a box or "All army" | yes |
 | Long-press, then drag | Draws a box while the finger moves; on release it selects the own units inside (`long_press_ms` in `data/input_settings.tres`) | yes |
 | Long-press and drag a box with no own unit inside | Clears the selection (the only way to deselect) | yes |
-| Any selection | The panel at the bottom centre; at the top in portrait, in one line right of the Dev button. It shows each selected unit type with its icon, its display name (a very long name is cut short with an ellipsis) and its count, and a total for mixed types; it hides when nothing is selected. Tapping it does nothing. In portrait the line never grows past the screen: when the types do not fit it drops the names, then the total, and then shows the first types with a "+N" for the types it leaves out | |
-| A selected unit is destroyed | It leaves the selection, and the count in the panel drops | |
+| Any selection | The panel at the bottom centre; at the top in portrait, in one line right of the Dev button. It shows each selected unit type or building with its icon, its display name (a very long name is cut short with an ellipsis) and its count, and a total for mixed types; it hides when nothing is selected. Tapping it does nothing. In portrait the line never grows past the screen: when the types do not fit it drops the names, then the total, and then shows the first types with a "+N" for the types it leaves out | |
+| A selected unit or building is destroyed | It leaves the selection, and the count in the panel drops (a building's frame goes with it) | |
 
 ## Orders
 | Action | Result | Teach |
 |---|---|---|
 | With units selected, tap the ground | Move: the units drive there without fighting, also out of a fight; on arrival they fire at enemies within weapon range without moving; chevrons lying flat on the ground close in on the point | yes |
-| With units selected, tap an enemy | Attack: the units drive to weapon range of that enemy, stop there and fire at it until it is destroyed, then attack-move on to where it stood; a flat diamond on the ground marks it | yes |
+| With units selected, tap an enemy | Attack: the units drive to weapon range of that enemy, stop there and fire at it until it is destroyed, then attack-move on to where it stood; a flat diamond on the ground marks it. An enemy building is attacked the same way once the middle of it is in your sight: a tap anywhere on its picture counts, also where one of your own buildings is drawn in front of it. One you see only at its edge, or the fog hides, is a tap on the ground | yes |
 
 ## Combat
 | Action | Result | Teach |
@@ -89,7 +92,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Tap a tab | It opens: Structures, Infantry or Vehicles, as an icon; the open tab is the lighter one with a thick bar under it | |
 | Tap an item in the open tab | One of it is queued and paid for at once; the icon fills while it is built, and a number on it counts how many of it are queued. Each card shows the item's name under its cost (a long name is cut short with an ellipsis; the upright band's tiles show no name). A padlock on a dimmed icon means a building you need is missing (a power plant for a barracks, a barracks for infantry). Stripes mean it cannot be queued now: you cannot pay it (its cost turns amber) or its queue is full (`queue_slots` in `data/rules.tres`). A finished building shows "Ready" where its price was (tapping it does nothing yet). A tap on a padlocked or striped item shakes it and does nothing. The row scrolls sideways with a drag, and a drag never queues anything | yes |
 | Hold an item (`long_press_ms` in `data/input_settings.tres`) | The last one of it you queued is cancelled and its cost is paid back in full; the phone buzzes. An item with none queued does nothing, however long you hold | yes |
-| Tap your Headquarters, barracks or vehicle factory | The build menu opens the tab it builds: Structures, Infantry or Vehicles | |
+| Tap your Headquarters, barracks or vehicle factory | The building is selected (see Selection) and the build menu opens the tab it builds: Structures, Infantry or Vehicles. Tap it again after you opened another tab and the menu comes back to its tab | |
 | Open any tab | It lists only the buildings and units of your own side, and those that both sides share; the other side's items are never shown | |
 
 ## Not yet in the game
