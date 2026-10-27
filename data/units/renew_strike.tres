@@ -17,3 +17,7 @@ tab = 0
 requires = ExtResource("2_requires")
 footprint = Vector2i(3, 3)
 power = -60
+strike_kind = 2
+charge_ticks = 4500
+strike_radius = 4000
+strike_ticks = 450
