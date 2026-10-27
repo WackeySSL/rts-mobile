@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_aidef")
-id = &"dummy"
+id = &"dummy_fossil"
 build_order = Array[StringName]([&"power_plant", &"refinery", &"barracks", &"power_plant", &"vehicle_factory", &"defence_turret", &"defence_turret", &"power_plant"])
 hq_type = &"headquarters"
 harvester_type = &"harvester"
