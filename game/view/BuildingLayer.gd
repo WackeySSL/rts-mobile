@@ -145,31 +145,41 @@ func bar_lift_px(row: int) -> float:
 
 ## The footprint's cells of building row `row`: its origin tile (the position minus half the
 ## footprint) and its side, tiles.
-@warning_ignore("integer_division")
 static func footprint_of(snap: MatchSnapshot, row: int) -> Rect2i:
 	var type: int = snap.type_index[row]
-	var half_w: int = snap.type_foot_w[type] * World.TILE_CENTRE
-	var half_h: int = snap.type_foot_h[type] * World.TILE_CENTRE
-	return Rect2i(
-		(snap.pos_x[row] - half_w) / World.MILLI_PER_TILE,
-		(snap.pos_y[row] - half_h) / World.MILLI_PER_TILE,
-		snap.type_foot_w[type],
-		snap.type_foot_h[type]
+	return _footprint_at(
+		snap.pos_x[row], snap.pos_y[row], snap.type_foot_w[type], snap.type_foot_h[type]
 	)
 
 
 ## Whether `player` sees any cell of the footprint of building row `row` in `snap`; true when its
-## fog does not cover the player (the same rule as `FogLayer.is_seen`).
+## fog does not cover the player (the same rule as `FogLayer.is_seen`). For code outside loops: a
+## loop over buildings aliases the arrays itself and calls `_footprint_at` and `_any_cell_seen`.
 static func is_seen(snap: MatchSnapshot, player: int, row: int) -> bool:
 	var fog: FogGrid = snap.fog
 	if not FogLayer.covers(fog, player):
 		return true
-	var foot: Rect2i = footprint_of(snap, row)
-	var counts: PackedInt32Array = fog.visible
-	var base: int = (player - 1) * fog.cells
+	return _any_cell_seen(fog.visible, (player - 1) * fog.cells, fog.cols, footprint_of(snap, row))
+
+
+## The footprint of `w` x `h` tiles whose centre is (`x`, `y`) in milli-tiles: its origin tile and
+## side.
+@warning_ignore("integer_division")
+static func _footprint_at(x: int, y: int, w: int, h: int) -> Rect2i:
+	return Rect2i(
+		(x - w * World.TILE_CENTRE) / World.MILLI_PER_TILE,
+		(y - h * World.TILE_CENTRE) / World.MILLI_PER_TILE,
+		w,
+		h
+	)
+
+
+## Whether a cell of `foot` has a visible count above 0 in `counts`, a fog block of lines `cols`
+## cells wide that starts at `base`.
+static func _any_cell_seen(counts: PackedInt32Array, base: int, cols: int, foot: Rect2i) -> bool:
 	for line: int in range(foot.position.y, foot.end.y):
 		for col: int in range(foot.position.x, foot.end.x):
-			if counts[base + line * fog.cols + col] > 0:
+			if counts[base + line * cols + col] > 0:
 				return true
 	return false
 
@@ -287,14 +297,32 @@ func _drop(entry: Entry) -> void:
 
 
 ## Writes whether each enemy building is shown, from the fog of `snap`, and remembers the fog
-## version it did it for.
+## version it did it for. The snapshot's arrays are read into locals once, before the loop.
 func _refresh_shown(snap: MatchSnapshot) -> void:
 	_fog_version = _version_of(snap)
 	var player: int = FogLayer.local_player_of(runner)
+	var owners: PackedInt32Array = snap.owner
+	var types: PackedInt32Array = snap.type_index
+	var cur_x: PackedInt32Array = snap.pos_x
+	var cur_y: PackedInt32Array = snap.pos_y
+	var foot_w: PackedInt32Array = snap.type_foot_w
+	var foot_h: PackedInt32Array = snap.type_foot_h
+	var fog: FogGrid = snap.fog
+	var counts: PackedInt32Array = fog.visible
+	var base: int = (player - 1) * fog.cells
+	var cols: int = fog.cols
+	var all: bool = reveal_enemies or not FogLayer.covers(fog, player)
 	for entry: Entry in _entries.values():
-		var shown: bool = (
-			reveal_enemies or snap.owner[entry.row] == player or is_seen(snap, player, entry.row)
-		)
+		var row: int = entry.row
+		var shown: bool = all or owners[row] == player
+		if not shown:
+			var type: int = types[row]
+			shown = _any_cell_seen(
+				counts,
+				base,
+				cols,
+				_footprint_at(cur_x[row], cur_y[row], foot_w[type], foot_h[type])
+			)
 		if shown != entry.shown:
 			entry.shown = shown
 			entry.node.visible = shown
@@ -314,13 +342,20 @@ func _version_of(snap: MatchSnapshot) -> int:
 func _turn_heads(snap: MatchSnapshot, delta: float) -> void:
 	var step: float = turn_rate * delta
 	var alpha: float = runner.alpha()
+	var target_rows: PackedInt32Array = snap.target_row
+	var prev_x: PackedInt32Array = snap.prev_pos_x
+	var prev_y: PackedInt32Array = snap.prev_pos_y
+	var cur_x: PackedInt32Array = snap.pos_x
+	var cur_y: PackedInt32Array = snap.pos_y
+	var owners: PackedInt32Array = snap.owner
 	for entry: Entry in _heads:
-		var seen: int = snap.target_row[entry.row]
+		var row: int = entry.row
+		var seen: int = target_rows[row]
 		if seen < 0 or not entry.shown:
 			continue
 		var bearing: float = atan2(
-			lerpf(snap.prev_pos_y[seen], snap.pos_y[seen], alpha) - snap.pos_y[entry.row],
-			lerpf(snap.prev_pos_x[seen], snap.pos_x[seen], alpha) - snap.pos_x[entry.row]
+			lerpf(prev_y[seen], cur_y[seen], alpha) - cur_y[row],
+			lerpf(prev_x[seen], cur_x[seen], alpha) - cur_x[row]
 		)
 		if entry.head_angle == bearing:
 			continue
@@ -329,4 +364,4 @@ func _turn_heads(snap: MatchSnapshot, delta: float) -> void:
 		var dir: int = UnitLayer.frame_of(entry.head_angle, 16)
 		if dir != entry.head_dir:
 			entry.head_dir = dir
-			world_sort.show_frame(entry.head, entry.sheet, HEAD, dir, snap.owner[entry.row])
+			world_sort.show_frame(entry.head, entry.sheet, HEAD, dir, owners[row])
