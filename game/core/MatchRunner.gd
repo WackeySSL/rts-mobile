@@ -133,7 +133,13 @@ static var _live_workers: int = 0
 ## The computer players (ADR 0020 section 3): entry i plays player FIRST_OPPONENT + i, a null entry
 ## none; player 1 is the human. start() makes each one's controller with DummyAi.create, with the
 ## stream DetRng.create(match_seed, DetRandom.STREAM_AI_BASE + player), and hands them to the job.
-@export var opponents: Array[AiDef] = []
+## Typed, and not exported on purpose: Godot 4.7.2 keeps an exported default in a cache that
+## GDScript::clear() leaves alone, and this typed array would hold the AiDef script there. At exit
+## the editor (export, import) then frees AiDef while it clears MatchRunner; when AiDef is the next
+## script of its list, the walk stops early and the autoload scripts (DetRandom, Command, UiScale,
+## UiMetrics) leak: "resources still in use at exit", which fails scripts/export-web.sh. Which
+## script comes next depends on the file set. Set it in code.
+var opponents: Array[AiDef] = []
 
 ## The World, `loop`, `replay` and `probe` belong to the worker while a job runs (ADR 0012
 ## section 1): read or swap them in SYNC mode, inside `ticked` or after wait_idle(). Each is a
