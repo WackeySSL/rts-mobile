@@ -1,0 +1,55 @@
+[gd_resource type="Resource" script_class="ScenarioDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/ScenarioDef.gd" id="1_scenario"]
+[ext_resource type="Script" path="res://game/sim/defs/SpawnDef.gd" id="2_spawn"]
+[ext_resource type="Script" path="res://game/sim/defs/FactionDef.gd" id="3_faction"]
+[ext_resource type="Resource" path="res://data/maps/kestrel_flats.tres" id="4_map"]
+[ext_resource type="Resource" path="res://data/rules.tres" id="5_rules"]
+[ext_resource type="Resource" path="res://data/factions/fossil.tres" id="6_fossil"]
+[ext_resource type="Resource" path="res://data/factions/renew.tres" id="7_renew"]
+[ext_resource type="Resource" path="res://data/units/headquarters.tres" id="8_hq"]
+[ext_resource type="Resource" path="res://data/units/rifle_squad.tres" id="9_rifle"]
+[ext_resource type="Resource" path="res://data/units/renew_hq.tres" id="10_renew_hq"]
+[ext_resource type="Resource" path="res://data/units/renew_rifle.tres" id="11_renew_rifle"]
+
+[sub_resource type="Resource" id="Spawn_p1_hq"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("8_hq")
+count = 1
+origin_tile = Vector2i(7, 7)
+
+[sub_resource type="Resource" id="Spawn_p1_rifles"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("9_rifle")
+count = 2
+origin_tile = Vector2i(11, 11)
+columns = 2
+spacing = 2000
+
+[sub_resource type="Resource" id="Spawn_p2_hq"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("10_renew_hq")
+count = 1
+origin_tile = Vector2i(54, 54)
+
+[sub_resource type="Resource" id="Spawn_p2_rifles"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("11_renew_rifle")
+count = 2
+origin_tile = Vector2i(50, 52)
+columns = 2
+spacing = 2000
+
+[resource]
+script = ExtResource("1_scenario")
+map_size_tiles = Vector2i(64, 64)
+camera_start_tile = Vector2i(8, 8)
+spawns = Array[ExtResource("2_spawn")]([SubResource("Spawn_p1_hq"), SubResource("Spawn_p1_rifles"), SubResource("Spawn_p2_hq"), SubResource("Spawn_p2_rifles")])
+map = ExtResource("4_map")
+rules = ExtResource("5_rules")
+player_count = 2
+factions = Array[ExtResource("3_faction")]([null, ExtResource("6_fossil"), ExtResource("7_renew")])
