@@ -113,7 +113,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | A Deep Bore is fired, by anyone | Every player sees a red ring on the ground at the target and a blinking warning triangle for the warning time (`strike_delay`), with a white ring closing in on the target. Move out of the ring while it closes | yes |
 | A Deep Bore's ring has closed | A fireball bursts at the target and the ground splits: everything inside the ring, yours too, takes damage, and a crater as wide as the ring stays there for the rest of the match. You see the burst and the crater where you can see the ground at that moment; a rupture in the dark leaves no mark | yes |
 | A Blackout Array is fired | At once every building that is not the firing player's, inside its ring (`strike_radius`), is switched off for `strike_ticks`: it does not shoot, its power counts for nothing and its queue stands still. No warning shows before it | |
-| A building is switched off | A grey bolt with a slash across it, on an amber badge, stands over the building for as long as it is off, yours and any enemy building you can see; it is gone when the building comes back on | yes |
+| A building is switched off | An amber lightning bolt struck through by a brighter amber slash, on a dark badge with an amber rim, stands over the building for as long as it is off, yours and any enemy building you can see; it is gone when the building comes back on | yes |
 
 ## Not yet in the game
 Base building, harvesting, power, production, win and lose conditions, menus and rewards get

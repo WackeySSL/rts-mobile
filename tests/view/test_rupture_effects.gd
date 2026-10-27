@@ -2,16 +2,20 @@ extends GdUnitTestSuite
 ## What a landed rupture shows (plan P112b, ADR 0023 section 10, assets/art/STYLE.md "Fields"): a
 ## burst of the effects ring at the point, and the crater decal in the DecalLayer at the rupture's
 ## radius (the art is the circle of 1.5 tiles, so the Deep Bore's 3 tiles are scale 2). Both are
-## made where the local player sees the point's tile in the fog of the tick the rupture landed, the
-## rule of the craters that destroyed buildings leave; `reveal_enemies` shows them everywhere, as it
-## does every effect. The burst is a slot of the ring (nothing is made for it) and expires; the
-## crater stays. The warning before the landing is StrikeMarkerLayer's. On a 32 x 32 map: player
-## 1's Deep Bore at tile (4, 4) and player 2's Blackout Array at (20, 20); 1 dp is 1.75 px.
+## made where the local player sees the point's tile as the rupture hits: in the fog of the last
+## tick it was in the air or of the tick it landed, since the landing step's own kills take their
+## sight away before that tick's fog is made. That is the rule of the craters that destroyed
+## buildings leave; `reveal_enemies` shows them everywhere, as it does every effect. The burst is a
+## slot of the ring (nothing is made for it) and expires; the crater stays. The warning before the
+## landing is StrikeMarkerLayer's. On a 32 x 32 map: player 1's Deep Bore at tile (4, 4) and player
+## 2's Blackout Array at (20, 20); 1 dp is 1.75 px.
 
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const Strikes: GDScript = preload("res://tests/sim/support/strike_worlds.gd")
 const AT: Vector2i = Vector2i(14500, 20500)  ## Tile (14, 20).
 const NEXT_TILE: Vector2i = Vector2i(15500, 20500)  ## Tile (15, 20).
+const AT_TILE: Vector2i = Vector2i(14, 20)
 const TOL: Vector2 = Vector2(0.001, 0.001)
 const SPAWNS: Array[Array] = [[1, "fossil_strike", 4, 4], [2, "renew_strike", 20, 20]]
 
@@ -94,6 +98,58 @@ func test_the_fog_of_the_landing_tick_decides_and_not_a_later_sight() -> void:
 	assert_int(_decals.crater_count()).is_equal(0)
 
 
+## Sim.step lands the rupture, then unstamps the sight of the rows it killed, then the snapshot is
+## made: the fog of the landing tick is dark where the only own row that saw the point just died.
+## The ground was seen as the rupture hit, so it bursts and leaves its crater.
+func test_a_rupture_that_kills_the_only_row_seeing_its_point_still_bursts_and_leaves_a_crater(
+) -> void:
+	var world: World = Strikes.world(false)  # A real fog; the bores and the HQ are far away.
+	var tick: int = Strikes.fire_tick(world, Strikes.BORE_A)
+	Strikes.run_to(world, tick)
+	var seer: int = Strikes.add(world, 1, "rifle", Strikes.POINT.x, Strikes.POINT.y)
+	Strikes.stamp(world)
+	world.hp[world.index_of(seer)] = Strikes.damage_on(world, world.index_of(seer))
+	Strikes.step(world, [Strikes.fire(Strikes.BORE_A)])
+	_publish(world)
+	assert_int(world.strike_tick[1]).is_greater(0)
+	assert_bool(FogLayer.is_seen(_runner.snapshot, 1, Strikes.POINT.x, Strikes.POINT.y)).is_true()
+	while world.strike_tick[1] != 0:
+		Strikes.step(world)
+		_publish(world)
+	assert_int(world.index_of(seer)).is_equal(-1)  # Died in the landing step...
+	var snap: MatchSnapshot = _runner.snapshot
+	assert_bool(FogLayer.is_seen(snap, 1, Strikes.POINT.x, Strikes.POINT.y)).is_false()  # ...blind.
+	assert_int(_layer.active_count()).is_equal(2)  # The seer's own death burst and the rupture's.
+	assert_int(_decals.crater_count()).is_equal(1)
+
+
+func test_ground_seen_in_the_last_tick_in_the_air_counts_when_the_landing_tick_lost_it() -> void:
+	_land_in(AT, [[AT_TILE]], [])
+	assert_int(_layer.active_count()).is_equal(1)
+	assert_int(_decals.crater_count()).is_equal(1)
+
+
+func test_ground_seen_only_in_the_landing_tick_counts_too() -> void:
+	_land_in(AT, [[]], [AT_TILE])
+	assert_int(_layer.active_count()).is_equal(1)
+	assert_int(_decals.crater_count()).is_equal(1)
+
+
+func test_ground_seen_early_in_the_air_but_dark_in_the_last_tick_and_at_the_landing_is_not(
+) -> void:
+	_land_in(AT, [[AT_TILE], [], []], [])
+	assert_int(_layer.active_count()).is_equal(0)
+	assert_int(_decals.crater_count()).is_equal(0)
+
+
+func test_each_rupture_is_judged_by_its_own_sight_and_the_next_one_by_its_own() -> void:
+	_land_in(AT, [[AT_TILE]], [])
+	_land_in(NEXT_TILE, [[AT_TILE]], [])  # Seen tile is not the one it hits.
+	assert_int(_decals.crater_count()).is_equal(1)
+	_land_in(AT, [[AT_TILE]], [])
+	assert_int(_decals.crater_count()).is_equal(2)
+
+
 func test_reveal_enemies_shows_a_landing_in_the_dark_too() -> void:
 	Rig.see(_runner.snapshot, 1, [])
 	_layer.reveal_enemies = true
@@ -152,6 +208,30 @@ func _land(at: Vector2i) -> void:
 	snap.strike_tick[1] = snap.tick + 45
 	_runner.ticked.emit(snap.tick)
 	snap.strike_tick[1] = 0
+	_runner.ticked.emit(snap.tick)
+
+
+## Player 1's rupture at `at` is in the air for one tick per entry of `in_the_air`, each with the
+## tiles the local player sees in it, and lands in a tick in which it sees `at_landing`.
+func _land_in(at: Vector2i, in_the_air: Array, at_landing: Array) -> void:
+	var snap: MatchSnapshot = _runner.snapshot
+	snap.strike_x[1] = at.x
+	snap.strike_y[1] = at.y
+	snap.strike_tick[1] = snap.tick + 45
+	for tiles: Array in in_the_air:
+		Rig.see(snap, 1, tiles)
+		_runner.ticked.emit(snap.tick)
+	Rig.see(snap, 1, at_landing)
+	snap.strike_tick[1] = 0
+	_runner.ticked.emit(snap.tick)
+
+
+## Publishes the state of `world` as the runner's snapshot of a new tick.
+func _publish(world: World) -> void:
+	var snap: MatchSnapshot = MatchSnapshot.new()
+	snap.match_serial = _runner.snapshot.match_serial
+	snap.capture(world, null)
+	_runner.snapshot = snap
 	_runner.ticked.emit(snap.tick)
 
 

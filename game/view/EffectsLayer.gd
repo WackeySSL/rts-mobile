@@ -276,18 +276,21 @@ func _on_ticked(_tick: int) -> void:
 
 ## A rupture that landed in this tick (`StrikeLandings`, ADR 0023 section 10) bursts at its point
 ## and leaves its crater in `decals`, scale radius / 1500 (2 for the 3 tiles of the shipped Deep
-## Bore). It does both where the local player sees the point's tile in this tick's fog, the rule of
-## the craters of `BuildingLayer` (a landing in the dark draws nothing, and a crater stays for the
-## match). The burst is a BURST of a ring slot, so a rupture takes no object.
+## Bore). It does both where the local player saw the point's tile as it hit: in the fog of the
+## last tick the rupture was in the air (`StrikeLandings.was_seen`, which the landing step's own
+## kills cannot take away) or in this tick's. That is the rule of the craters of `BuildingLayer`,
+## which tests the fog from before the deaths (a landing in the dark draws nothing, and a crater
+## stays for the match). The burst is a BURST of a ring slot, so a rupture takes no object.
 func _add_ruptures(snap: MatchSnapshot, now: int) -> void:
-	var landed: int = _landings.update(snap)
+	var viewer: int = 0 if reveal_enemies else FogLayer.local_player_of(runner)
+	var landed: int = _landings.update(snap, viewer)
 	var radius: int = StrikeLandings.rupture_radius(snap) if landed > 0 else 0
 	if radius <= 0:
 		return  # Nothing landed, or a roster with no rupture to give it a size.
 	var side: float = IsoProjection.ellipse_px(radius).x
 	for index: int in landed:
 		var at: Vector2i = _landings.point(index)
-		if not _seen(snap, at.x, at.y):
+		if not (_landings.was_seen(index) or _seen(snap, at.x, at.y)):
 			continue
 		var ground: Vector2 = IsoProjection.ground_to_px(at.x, at.y)
 		_push(Kind.BURST, now, ground - Vector2(0.0, side * RUPTURE_LIFT), Vector2.ZERO, side)
