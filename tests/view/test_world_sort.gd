@@ -18,6 +18,7 @@ const TABLE: Dictionary[String, int] = {
 	"MapView": 0,
 	"DecalLayer": 1,
 	"FogLayer": 4,
+	"GhostMemoryLayer": 5,
 	"WorldSort": 10,
 	"HealthBarLayer": 30,
 	"ProjectileLayer": 40,

@@ -26,6 +26,7 @@
 [ext_resource type="Script" path="res://game/view/WorldSort.gd" id="22_sort"]
 [ext_resource type="Script" path="res://game/view/DecalLayer.gd" id="30_decals"]
 [ext_resource type="Script" path="res://game/view/BuildingLayer.gd" id="31_buildings"]
+[ext_resource type="Script" path="res://game/view/GhostMemoryLayer.gd" id="32_ghosts"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -98,6 +99,14 @@ z_index = 70
 z_as_relative = false
 script = ExtResource("11_markers")
 settings = ExtResource("6_settings")
+
+[node name="GhostMemoryLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
+y_sort_enabled = true
+z_index = 5
+z_as_relative = false
+script = ExtResource("32_ghosts")
+runner = NodePath("../MatchRunner")
+world_sort = NodePath("../WorldSort")
 
 [node name="Camera" type="Camera2D" parent="."]
 script = ExtResource("2_cam")
