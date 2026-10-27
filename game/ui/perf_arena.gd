@@ -28,6 +28,9 @@ extends Node2D
 ## layer-mode step starts, because the heavy window counts the rigs inside the camera. A finger
 ## still pans and zooms (to inspect on the preview), but a move while a run records makes it
 ## INVALID (`PerfHud.REASON_CAMERA_MOVED`): keep the phone on the table.
+## The per-match atlas (plan P113) is baked once in `_ready`, before the card's preflight and so
+## outside every timed window: both factions, each player in its faction's own key triad, scale 1.
+## Nothing draws from it yet (P114 does); the card and one console line give the bake time and page.
 ## The look is the theme's (`game/ui/theme.tres`): the scene sets it on the margin the controls sit
 ## in, and this script sets no colour, font or style.
 
@@ -48,6 +51,7 @@ const GAP_DP: float = 8.0
 ## for a window that never turns (split screen, a system that refuses the request): its run then
 ## starts anyway and `portrait` marks it, as on the web preview.
 const LANDSCAPE_WAIT_FRAMES: int = 120
+const ATLAS_SCALE: float = 1.0  ## The scale the arena asks the atlas for.
 
 @export var scenario: ScenarioDef
 ## The frame cap of the arena (ADR 0011 section 5).
@@ -83,6 +87,9 @@ var orientation_feature: Callable = DisplayServer.has_feature.bind(
 )
 var orientation_source: Callable = DisplayServer.screen_get_orientation
 var orientation_sink: Callable = DisplayServer.screen_set_orientation
+## Bakes the atlas (a test replaces it with a stub, since the real bake rasterises 480 frames).
+var atlas_source: Callable = _bake_atlas
+var atlas: IsoAtlas = null
 var layer_mode: String = MODE_ALL
 
 var _wait_left: int = 0  ## Frames the first run may still wait for landscape; 0: not waiting.
@@ -125,6 +132,7 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_apply_dp)
 	get_viewport().size_changed.connect(_on_view_resized)
 	_apply_dp()
+	_report_atlas()
 	hud.rigs_source = drawn_rigs
 	hud.fog_source = fog_update_usec
 	hud.camera_source = camera.visible_world_rect
@@ -252,3 +260,24 @@ func _apply_dp() -> void:
 	var gap: int = roundi(UiScale.dp(GAP_DP))
 	layout.add_theme_constant_override("separation", gap)
 	bar.add_theme_constant_override("separation", gap)
+
+
+## The atlas of both factions, each in its own key triad (`ArtPalette.KEYS` until the scenario
+## carries factions, P107 and P108; then `FactionDef.key_triad`).
+func _bake_atlas() -> IsoAtlas:
+	var players: Array[IsoPlayerArt] = []
+	for faction: StringName in ArtPalette.KEYS:
+		var key: PackedStringArray = PackedStringArray(ArtPalette.KEYS[faction])
+		players.append(IsoPlayerArt.make(faction, key, key))
+	return IsoAtlas.build(IsoAtlas.load_sheets(), players, ATLAS_SCALE)
+
+
+## Bakes the atlas and gives the card its numbers (and the console its one line).
+func _report_atlas() -> void:
+	atlas = atlas_source.call()
+	var page: Vector2i = atlas.page_px()
+	hud.atlas_bake_ms = atlas.bake_ms()
+	hud.atlas_page = "none"
+	if not atlas.is_empty():
+		hud.atlas_page = "%dx%d at %.3f" % [page.x, page.y, atlas.bake_scale()]
+		print("atlas_bake_ms %.1f | page %s" % [hud.atlas_bake_ms, hud.atlas_page])

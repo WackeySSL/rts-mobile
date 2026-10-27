@@ -14,9 +14,11 @@ const STATE: String = "%s job=%s world=%s serial=%d"
 
 
 ## The arena instantiated, not yet in the tree, its seams logging into `calls`. `ticks` is the
-## card's run length.
+## card's run length. The atlas bake (P113: 480 frames rasterised) is replaced by an empty atlas;
+## test_perf_arena_atlas.gd runs the real one.
 static func make(calls: Array[String], ticks: int = 900) -> Node2D:
 	var arena: Node2D = (load(SCENE) as PackedScene).instantiate() as Node2D
+	arena.atlas_source = func() -> IsoAtlas: return IsoAtlas.new()
 	var runner: MatchRunner = arena.runner
 	var hud: PerfHud = arena.hud
 	hud.run_ticks = ticks
