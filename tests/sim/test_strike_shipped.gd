@@ -15,7 +15,7 @@ extends GdUnitTestSuite
 ## The world is 40 x 30 open tiles with the shipped rules. Player 1 plays the Derrick League and
 ## owns its Headquarters (`HQ_1`, id 1) and Deep Bore (`BORE`, 2) at the north-west corner; player 2
 ## plays the Lumen Accord and owns its Grid Hub (`HQ_2`, 3) and Blackout Array (`ARRAY`, 4) at the
-## south-east corner. The types of both rosters are registered, in the order of the factions. The
+## south-east corner. The types of both rosters are registered, the spawned ones first. The
 ## weapons are taken from every type (`type_weapon` -1), so that no shot lands while a strike is in
 ## the air: only the strike changes a hit point or a flag. The cases step from tick 0 to the tick of
 ## the first possible firing: a few thousand steps of a near-empty World.
@@ -184,17 +184,27 @@ func test_the_blackout_takes_enemy_buildings_in_its_radius_offline_for_exactly_i
 	assert_array(_totals(world, 2)).is_equal(own)
 
 
-## `Strike.rupture_type` is the first type of kind RUPTURE. With both rosters loaded, in either
-## order, that is the Deep Bore: the Blackout Array is of kind BLACKOUT and the only other strike
-## type. The landing reads the radius and the weapon from it, and the weapon is the shipped file's.
+## `Strike.rupture_type` is the first type of kind RUPTURE. With both rosters loaded, that is the
+## Deep Bore whichever player plays which faction: with the Derrick League first its type index is
+## the lower one, and with the Lumen Accord first (its spawns come first, so its Blackout Array is
+## the first strike type of the World) the Blackout Array has the lower index and the rupture type
+## is still the Deep Bore. The Blackout Array is of kind BLACKOUT and the only other strike type.
+## The landing reads the radius and the weapon from it, and the weapon is the shipped file's.
 func test_the_rupture_type_is_the_deep_bore_when_both_rosters_are_loaded_in_either_order() -> void:
 	var reversed: Array[String] = [FACTIONS[1], FACTIONS[0]]
-	for paths: Array[String] in [FACTIONS, reversed]:
+	for flipped: bool in [false, true]:
+		var paths: Array[String] = reversed if flipped else FACTIONS
 		var world: World = _world(paths)
 		var bore: int = Strikes.type_of(world, "fossil_strike")
 		var array: int = Strikes.type_of(world, "renew_strike")
 		assert_int(bore).is_greater_equal(0)
 		assert_int(array).is_greater_equal(0)
+		# The order really is the one the case names, so that the Blackout Array comes first in the
+		# second pass and the lowest strike type is not the Deep Bore.
+		if flipped:
+			assert_int(array).override_failure_message(str(paths)).is_less(bore)
+		else:
+			assert_int(bore).override_failure_message(str(paths)).is_less(array)
 		assert_int(Strike.rupture_type(world)).override_failure_message(str(paths)).is_equal(bore)
 		assert_int(world.type_strike_kind.count(Strike.Kind.RUPTURE)).is_equal(1)
 		assert_int(world.type_strike_kind.count(Strike.Kind.BLACKOUT)).is_equal(1)
@@ -207,7 +217,9 @@ func test_the_rupture_type_is_the_deep_bore_when_both_rosters_are_loaded_in_eith
 
 
 ## A World of the shipped rosters of `paths` (the factions of players 1 and 2, in that order) with
-## each player's Headquarters and strike building, and no weapon fired by anyone.
+## each player's Headquarters and strike building, and no weapon fired by anyone. The spawns follow
+## the players, so the types of the first player's faction are registered first (the rosters come
+## last, ADR 0023 section 6): `paths` reversed puts the Blackout Array before the Deep Bore.
 func _world(paths: Array[String] = FACTIONS) -> World:
 	var scenario: ScenarioDef = ScenarioDef.new()
 	scenario.map_size_tiles = Vector2i(COLS, ROWS)
@@ -216,10 +228,15 @@ func _world(paths: Array[String] = FACTIONS) -> World:
 	scenario.factions.append(null)
 	for path: String in paths:
 		scenario.factions.append(load(path))
-	scenario.spawns.append(_spawn(1, "headquarters", Vector2i(2, 2)))
-	scenario.spawns.append(_spawn(1, "fossil_strike", Vector2i(8, 2)))
-	scenario.spawns.append(_spawn(2, "renew_hq", Vector2i(34, 24)))
-	scenario.spawns.append(_spawn(2, "renew_strike", Vector2i(30, 24)))
+	# The Headquarters and the strike building of each of FACTIONS, with their tiles.
+	var homes: Array[Array] = [
+		["headquarters", Vector2i(2, 2), "fossil_strike", Vector2i(8, 2)],
+		["renew_hq", Vector2i(34, 24), "renew_strike", Vector2i(30, 24)],
+	]
+	for index: int in paths.size():
+		var home: Array = homes[FACTIONS.find(paths[index])]
+		scenario.spawns.append(_spawn(index + 1, home[0], home[1]))
+		scenario.spawns.append(_spawn(index + 1, home[2], home[3]))
 	var world: World = World.from_scenario(scenario)
 	world.type_weapon.fill(-1)
 	return world
