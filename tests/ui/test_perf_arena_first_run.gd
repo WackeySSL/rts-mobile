@@ -22,7 +22,7 @@ const PREFLIGHT: Array[String] = [
 ]
 const RESTART: String = "restart serial=1"
 ## The framing of data/scenarios/perf_arena.tres at the arena's start zoom (test_perf_arena_camera).
-const FRAMED_POSITION: Vector2 = Vector2(2080.0, 2080.0)
+const FRAMED_POSITION: Vector2 = Vector2(0.0, 1040.0)
 const FRAMED_ZOOM: Vector2 = Vector2(0.75, 0.75)
 
 var _calls: Array[String] = []

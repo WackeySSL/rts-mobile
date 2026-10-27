@@ -6,7 +6,8 @@ extends GdUnitTestSuite
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const GestureSpy: GDScript = preload("res://tests/input/support/gesture_spy.gd")
-const MAP: Rect2 = Rect2(0, 0, 3072, 3072)
+const MAP_TILES: int = 48  ## The map is 48 x 48 tiles: a diamond 3072 px wide.
+const MAP_CENTRE: Vector2 = Vector2(0, 768)  ## The middle of that diamond.
 const BUTTON: Rect2 = Rect2(40, 40, 120, 120)  ## Base px, in the top-left corner.
 const AWAY: Vector2 = Vector2(800, 400)  ## A map point clear of the button.
 const INSIDE: Vector2 = Vector2(300, 400)  ## A map point clear of the button in either view.
@@ -52,8 +53,8 @@ func before_test() -> void:
 	_camera = auto_free(RtsCamera.new())
 	_camera.settings = _settings
 	add_child(_camera)
-	_camera.set_map_rect(MAP)
-	_camera.centre_on(MAP.get_center())
+	_camera.set_map_rect(IsoProjection.map_diamond(MAP_TILES, MAP_TILES))
+	_camera.centre_on(MAP_CENTRE)
 	var hud: CanvasLayer = auto_free(CanvasLayer.new())  # As in main.tscn: the camera cannot move it.
 	add_child(hud)
 	var button: Button = Button.new()
@@ -293,8 +294,8 @@ func test_the_camera_is_spared_whichever_handler_runs_first() -> void:
 	_camera = auto_free(RtsCamera.new())  # Connected after TouchInput's handler now.
 	_camera.settings = _settings
 	add_child(_camera)
-	_camera.set_map_rect(MAP)
-	_camera.centre_on(MAP.get_center())
+	_camera.set_map_rect(IsoProjection.map_diamond(MAP_TILES, MAP_TILES))
+	_camera.centre_on(MAP_CENTRE)
 	_touch.camera = _camera
 	_camera.zoom = Vector2(1.2, 1.2)
 	TouchEvents.press(_vp, 0, INSIDE)

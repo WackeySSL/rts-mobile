@@ -1,10 +1,14 @@
 class_name FogLayer
 extends Sprite2D
-## The fog of war over the map (ADR 0010 section 2, assets/art/STYLE.md "Fog and terrain"): one
-## RGBA8 texel of black per tile, drawn a tile wide and filtered linearly, so an edge is soft across
-## one tile. A texel's alpha is 255 on a tile the local player never saw, `explored_alpha` (140) on
-## one it saw before and 0 on one it sees. The layer draws at z 140, above the units, the
-## projectiles and the effects and below the markers (ADR 0012 section 6); the scene sets that.
+## The fog of war over the map (ADR 0010 section 2, ADR 0023 section 2, assets/art/STYLE.md "Fog and
+## terrain"): one RGBA8 texel of black per tile, filtered linearly, so an edge is soft across one
+## tile. The layer draws under `IsoProjection.cell_to_px()`, which turns each texel into a tile's
+## diamond, so the soft edge runs along the diamonds. A texel's alpha is 255 on a tile the local
+## player never saw, `explored_alpha` (140) on one it saw before and 0 on one it sees. The layer
+## lies on the ground at z 4: over the terrain, the decals, the shadows and the rings and under
+## every object (ADR 0023 section 2's table), which the scene sets. Objects need no fog of their
+## own: enemy rigs, bars and projectiles are drawn only where the local player sees them (the
+## static helpers below), and own units always stand on seen tiles.
 ##
 ## It reads only `runner.snapshot.fog` (ADR 0012 section 3). A new match (`match_serial`, which
 ## also brings another map size), another local player or explored alpha, an overflowed dirty list
@@ -52,7 +56,7 @@ var _update_usec: int = 0
 
 func _ready() -> void:
 	centered = false
-	scale = Vector2.ONE * ViewScale.PX_PER_TILE
+	transform = IsoProjection.cell_to_px()
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	if runner != null:
 		runner.ticked.connect(_on_ticked)

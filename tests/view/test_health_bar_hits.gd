@@ -287,7 +287,7 @@ func test_a_bar_follows_its_unit_between_ticks() -> void:
 		var top_left: Vector2 = _camera.world_to_screen(_bars.rect_at(0).position)
 		var bottom_right: Vector2 = _camera.world_to_screen(_bars.rect_at(0).end)
 		assert_float((top_left.x + bottom_right.x) * 0.5).is_equal_approx(at.x, 0.05)
-		assert_float(at.y - bottom_right.y).is_equal_approx(26.0 * _camera.zoom.x + 1.75, 0.05)
+		assert_float(at.y - bottom_right.y).is_equal_approx(24.0 * _camera.zoom.x + 1.75, 0.05)
 	assert_float(_runner.alpha()).is_equal_approx(0.75, 0.001)
 
 

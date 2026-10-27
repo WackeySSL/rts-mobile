@@ -11,6 +11,12 @@ const ROWS: PackedStringArray = [".:^#~.", ".:^#~."]
 const COLUMNS: Array[StringName] = [&"grass", &"sand", &"scrub", &"rock", &"water", &"grass"]
 const TILE: int = 8
 const GRASS: String = "5E7D4A"
+## The 6 x 2 map under the 2:1 projection (P117): its diamond's corners from the top, clockwise, and
+## the bounding rect of them, in world px.
+const MAP_DIAMOND: Array[Vector2] = [
+	Vector2(0, 0), Vector2(192, 96), Vector2(128, 128), Vector2(-64, 32)
+]
+const MAP_RECT: Rect2i = Rect2i(-64, 0, 256, 128)
 ## Per STYLE.md key: the tile (x, y), the probe texel (x, y) inside it and the colour.
 const PROBES: Dictionary[StringName, Array] = {
 	&"grass": [Vector2i(0, 0), Vector2i(3, 3), GRASS],
@@ -46,8 +52,11 @@ func after_test() -> void:
 	CommandQueue.clear()
 
 
-func test_map_rect_is_columns_times_rows_times_64_and_empty_without_a_runner() -> void:
-	assert_that(_view.map_rect_px()).is_equal(Rect2i(0, 0, 6 * 64, 2 * 64))
+func test_the_map_is_a_6_by_2_tile_diamond_and_empty_without_a_runner() -> void:
+	# 6 x 2 tiles: ground (0, 0), (6, 0), (6, 2) and (0, 2) at 64 x 32 px a tile (P117).
+	assert_array(_view.map_diamond_px()).contains_exactly(MAP_DIAMOND)
+	assert_that(_view.map_rect_px()).is_equal(MAP_RECT)
+	assert_int(auto_free(MapView.new()).map_diamond_px().size()).is_equal(0)
 	assert_that(auto_free(MapView.new()).map_rect_px()).is_equal(Rect2i())
 
 
@@ -158,14 +167,17 @@ func test_a_later_match_without_a_map_or_of_another_size_is_drawn_for_itself() -
 	await await_idle_frame()
 	await await_idle_frame()
 	assert_that(_view.image().get_size()).is_equal(Vector2i(2, 5) * TILE)
-	assert_that(_view.drawn_rect()).is_equal(Rect2(0, 0, 2 * 64, 5 * 64))
+	assert_that(_view.drawn_rect()).is_equal(Rect2(0, 0, 2, 5))  # Cells, under the cell transform.
+	assert_that(_view.drawn_transform()).is_equal(IsoProjection.cell_to_px())
 	assert_int(_view.draw_count()).is_equal(1)
 
 
 func test_the_map_is_one_draw_command_before_and_after_a_change() -> void:
 	await await_idle_frame()
 	assert_int(_view.draw_count()).is_equal(1)
-	assert_that(_view.drawn_rect()).is_equal(Rect2(0, 0, 6 * 64, 2 * 64))  # Whole map, from 0,0.
+	assert_that(_view.drawn_rect()).is_equal(Rect2(0, 0, 6, 2))  # Whole map, from 0,0, in cells.
+	# The rect's far corner under the transform is the diamond's bottom corner.
+	assert_that(_view.drawn_transform() * _view.drawn_rect().end).is_equal(MAP_DIAMOND[2])
 	_runner.world.set_terrain(0, 3)
 	_runner.run_ticks(1)  # The change reaches the snapshot at the next capture.
 	await await_idle_frame()
@@ -182,12 +194,12 @@ func test_the_map_comes_from_the_snapshot_and_never_from_the_world() -> void:
 	assert_int(_runner.world.map_cols).is_equal(0)  # The swap took: an empty World has no map.
 	await await_idle_frame()
 	await await_idle_frame()
-	assert_that(_view.map_rect_px()).is_equal(Rect2i(0, 0, 6 * 64, 2 * 64))
+	assert_that(_view.map_rect_px()).is_equal(MAP_RECT)
 	assert_int(_view.bake_count()).is_equal(1)  # Nothing to bake again: same match, same version.
-	assert_that(_view.drawn_rect()).is_equal(Rect2(0, 0, 6 * 64, 2 * 64))
+	assert_that(_view.drawn_rect()).is_equal(Rect2(0, 0, 6, 2))
 	var late: MapView = _add_view()  # A view made after the swap bakes the map of the snapshot.
 	assert_int(late.bake_count()).is_equal(1)
-	assert_that(late.map_rect_px()).is_equal(Rect2i(0, 0, 6 * 64, 2 * 64))
+	assert_that(late.map_rect_px()).is_equal(MAP_RECT)
 	assert_that(late.image().get_size()).is_equal(Vector2i(6 * TILE, 2 * TILE))  # Not the World's.
 	assert_str(_hex(late, Vector2i(1, 0), Vector2i(3, 3))).is_equal("CDB98F")  # Sand.
 
@@ -204,11 +216,12 @@ func test_a_view_with_no_runner_or_no_snapshot_bakes_nothing_until_it_has_one() 
 		assert_int(view.bake_count()).is_equal(0)
 		assert_bool(view.image().is_empty()).is_true()
 		assert_that(view.map_rect_px()).is_equal(Rect2i())
+		assert_int(view.map_diamond_px().size()).is_equal(0)
 		assert_int(view.draw_count()).is_equal(0)
 	waiting.start()
 	await await_idle_frame()
 	assert_int(idle.bake_count()).is_equal(1)
-	assert_that(idle.map_rect_px()).is_equal(Rect2i(0, 0, 6 * 64, 2 * 64))
+	assert_that(idle.map_rect_px()).is_equal(MAP_RECT)
 	assert_int(bare.bake_count()).is_equal(0)
 
 
