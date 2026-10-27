@@ -9,7 +9,7 @@ extends Control
 ## rasterises the frames itself. A turret or head sits at its mount (`ArtGen.mount_px`). Under
 ## every hull lies its cast shadow, every shadow below every hull (the game draws them in one layer
 ## at z 2); the default view of a unit at the three zooms also has its selection ellipse. The type's
-## item card is in the corner. Built on first show; view-only.
+## item card is left of the page button. Built on first show; view-only.
 
 const FACTION_NAMES: Dictionary[StringName, String] = {
 	&"fossil": "Derrick League", &"renew": "Lumen Accord"
@@ -66,7 +66,7 @@ func _ready() -> void:
 ## The list, the two buttons and the title, built when the page is first shown, so that a gallery
 ## that never turns to this page holds none of them.
 func _build_ui() -> void:
-	_paths = ArtGen.model_paths()
+	_paths = _model_paths()
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.name = "Scroll"
 	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -99,11 +99,16 @@ func _build_ui() -> void:
 	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_icon.anchor_left = 1.0
 	_icon.anchor_right = 1.0
-	_icon.offset_left = -24.0 - ICON_PX
-	_icon.offset_right = -24.0
+	_icon.offset_right = -(24.0 + BUTTON_PX + 16.0)  # Left of the page button.
+	_icon.offset_left = _icon.offset_right - ICON_PX
 	_icon.offset_top = 24.0
 	_icon.offset_bottom = 24.0 + ICON_PX
 	add_child(_icon)
+
+
+## The models the page steps through, in order: every one; a page built on this one may pick some.
+func _model_paths() -> Array[String]:
+	return ArtGen.model_paths()
 
 
 func _on_visibility_changed() -> void:

@@ -5,7 +5,8 @@ extends GdUnitTestSuite
 ## line, the Derrick League's two lines above the Lumen Accord's two, and the Flarejack in the
 ## scene's zoom row at the camera zoom levels, sharp at each. The page keeps the effects atlas and
 ## the terrain patch (tests/art/test_art_assets.gd); the pages after it are in
-## test_art_gallery_pages.gd and test_art_gallery_icon_pages.gd.
+## test_art_gallery_build.gd, test_art_gallery_pages.gd, test_art_gallery_icon_pages.gd,
+## test_art_gallery_iso.gd and test_art_gallery_ground.gd.
 
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"

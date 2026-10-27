@@ -441,8 +441,8 @@ func _spread(lums: Array[float]) -> float:
 	return sqrt(variance)
 
 
-## The sprites the player sees: the gallery opens on the Units page, and the sprites of the Build
-## and Ground pages stay hidden until the button turns to them (tests/art/test_building_art.gd).
+## The sprites the player sees: the gallery opens on the Units page, and the sprites of the pages
+## after it stay hidden until the button turns to them (tests/art/test_art_gallery_pages.gd).
 func _shown_sprites(gallery: Node) -> Array[Node]:
 	return gallery.find_children("*", "Sprite2D", true, false).filter(
 		func(node: Node) -> bool: return (node as CanvasItem).is_visible_in_tree()

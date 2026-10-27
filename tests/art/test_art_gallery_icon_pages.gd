@@ -1,8 +1,9 @@
 extends GdUnitTestSuite
 ## The Icons page of the art gallery (plan row P92): the tab, item and glyph icons at their size in
 ## dp on the HUD panel, the map glyphs and rally flags on grass and sand. The gallery opens on the
-## Units page (tests/art/test_art_gallery_units.gd); the Build and Ground pages are in
-## test_art_gallery_pages.gd. Plan row P101 deleted the Vehicles page with the top-down units.
+## Units page (tests/art/test_art_gallery_units.gd); the Build page is in
+## test_art_gallery_build.gd, the Ground page in test_art_gallery_pages.gd. Plan row P101 deleted
+## the Vehicles page with the top-down units.
 
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
@@ -25,7 +26,7 @@ func after() -> void:
 
 
 func test_the_gallery_has_six_pages_and_the_button_reaches_the_icons_page() -> void:
-	assert_array(Gallery.PAGES).is_equal(["Units", "Build", "Ground", "Icons", "Seam", "Iso"])
+	assert_array(Gallery.PAGES).is_equal(["Units", "Build", "Ground", "Icons", "Iso", "Terrain"])
 	var gallery: Control = await _open_gallery()
 	var button: Button = gallery.get_node("%PageButton")
 	_turn_to(gallery, ICONS_PAGE - 1)
