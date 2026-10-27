@@ -80,7 +80,8 @@ static func from_scenario(scenario: ScenarioDef, rng: DetRandom = null) -> World
 
 ## The buildings of a spawn whose unit is a BuildingDef (ADR 0017 section 1): `count` of them
 ## through World.add_building from `origin_tile`, in rows of `columns`, one footprint apart. Nothing
-## is drawn: `spacing` and `jitter` are for units.
+## is drawn: `spacing` and `jitter` are for units. A strike building starts `charge_elapsed_ticks`
+## into its charge (Strike.age_charge).
 @warning_ignore("integer_division")
 static func _place_buildings(world: World, spawn: SpawnDef, type: int) -> void:
 	var columns: int = maxi(spawn.columns, 1)
@@ -89,7 +90,8 @@ static func _place_buildings(world: World, spawn: SpawnDef, type: int) -> void:
 	for slot: int in spawn.count:
 		var col: int = spawn.origin_tile.x + slot % columns * width
 		var line: int = spawn.origin_tile.y + slot / columns * height
-		world.add_building(spawn.owner, type, col, line)
+		if world.add_building(spawn.owner, type, col, line) != 0:
+			Strike.age_charge(world, world.unit_count() - 1, spawn.charge_elapsed_ticks)
 
 
 ## Open grass over map_w x map_h rounded up to whole tiles (ADR 0007 section 2): terrain 0 on
