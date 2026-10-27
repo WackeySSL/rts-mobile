@@ -97,7 +97,8 @@ the same parts.
   0023 §12); left of it, stacked, credits and the power bar, icon-only tabs (48 dp) and one row of
   build icons (at least 64 dp) that scrolls sideways: at least three whole icons on the 6-inch
   phone, two at 360 dp wide.
-- Until Phase 3's sidebar row the portrait zone is not reserved (height 0); that row sets it.
+- The band's height is set by `BuildSidebar` (P85) through `HudLayout.bottom_zone_dp`; a scene
+  without the sidebar leaves the zone at 0. The tabs show icons only in the band.
 - Bottom-left: "All army" and groups 1-3, on the safe bottom edge while the zone is 0, then
   directly above the band.
 - Top line: the read-only selection panel, right of the top-left controls (8 dp gap), one row
