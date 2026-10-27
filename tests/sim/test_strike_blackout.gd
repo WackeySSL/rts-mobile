@@ -6,9 +6,12 @@ extends GdUnitTestSuite
 ## What reads `offline_until` is test_power_blackout's (the totals), test_blackout_defence's (the
 ## shots) and test_blackout_production's (the queues). The rig is `strike_worlds.gd`: the array
 ## (id 3, player 1) has a radius of 4000, a length of 90 ticks and a charge of 30, and every
-## expected tick, distance and length is read from the World's tables.
+## expected tick, distance and length is read from the World's tables. The replay case uses
+## `blackout_worlds.gd` instead, whose player 2 has the armed turrets and the queues that a recorded
+## blackout has to silence and freeze.
 
 const Strikes: GDScript = preload("res://tests/sim/support/strike_worlds.gd")
+const BlackoutRig: GDScript = preload("res://tests/sim/support/blackout_worlds.gd")
 const StrikeProbe: GDScript = preload("res://tests/sim/support/strike_probe.gd")
 
 
@@ -231,6 +234,94 @@ func test_a_blacked_out_strike_building_fires_again_exactly_when_it_is_back() ->
 	assert_int(world.ready_tick[world.index_of(enemy)]).is_equal(
 		until + Strikes.charge_of(world, "array")
 	)
+
+
+## A match recorded through the MatchLoop with a blackout in its log plays back to the same
+## checkpoints and the same final hash, also through the bytes of a saved replay, and the same
+## commands give the same hash twice. The blackout is real in the record: the rig's turret and
+## barracks in the radius have `offline_until` for the length of the table and the ones outside it
+## have none; checkpoints fall before it, inside it and after its end; and a twin match with no
+## SUPERWEAPON agrees with it up to the firing step and differs from the first checkpoint after
+## it, so that a replay of a command that did nothing could not pass for this one.
+@warning_ignore("integer_division")
+func test_a_replay_reproduces_the_blackout() -> void:
+	var recorded: World = BlackoutRig.world()
+	var fire_at: int = BlackoutRig.fire_tick(recorded)  # Before the firing restarts the charge.
+	var replay: Replay = _record(recorded, true)
+	var until: int = fire_at + 1 + BlackoutRig.length_of(recorded)
+	var victims: Array[int] = [BlackoutRig.TURRET_IN, BlackoutRig.BARRACKS]
+	var spared: Array[int] = [BlackoutRig.TURRET_OUT, BlackoutRig.FACTORY, BlackoutRig.PLANT]
+	for id: int in victims:
+		assert_int(recorded.offline_until[recorded.index_of(id)]).is_equal(until)
+	for id: int in spared:
+		assert_int(recorded.offline_until[recorded.index_of(id)]).is_equal(0)
+	assert_int(recorded.dropped_commands).is_equal(0)
+	var period: int = Replay.CHECKPOINT_PERIOD
+	var before: int = 0
+	var inside: int = 0
+	var after: int = 0
+	for tick: int in replay.checkpoint_ticks:
+		if tick <= fire_at:
+			before += 1
+		elif tick < until:
+			inside += 1
+		else:
+			after += 1
+	assert_int(before).is_greater_equal(1)
+	assert_int(inside).is_greater_equal(BlackoutRig.length_of(recorded) / period - 1)
+	assert_int(after).is_greater_equal(2)
+	var quiet_world: World = BlackoutRig.world()
+	var quiet: Replay = _record(quiet_world, false)
+	assert_array(quiet.checkpoint_ticks).is_equal(replay.checkpoint_ticks)
+	for at: int in replay.checkpoint_ticks.size():
+		var same: bool = replay.checkpoint_hashes[at] == quiet.checkpoint_hashes[at]
+		(
+			assert_bool(same)
+			. override_failure_message("checkpoint at tick %d" % replay.checkpoint_ticks[at])
+			. is_equal(replay.checkpoint_ticks[at] <= fire_at)
+		)
+	assert_int(replay.final_hash).is_not_equal(quiet.final_hash)
+	var twice_world: World = BlackoutRig.world()
+	var twice: Replay = _record(twice_world, true)
+	assert_array(twice.commands).is_equal(replay.commands)
+	assert_array(twice.checkpoint_hashes).is_equal(replay.checkpoint_hashes)
+	assert_int(twice.final_hash).is_equal(replay.final_hash)
+	var fresh: World = BlackoutRig.world()
+	assert_int(Replay.play(replay, fresh, replay.final_tick)).is_equal(Replay.PLAY_MATCHED)
+	assert_int(fresh.tick).is_equal(replay.final_tick)
+	assert_int(fresh.state_hash()).is_equal(replay.final_hash)
+	var loaded: Replay = Replay.from_bytes(replay.to_bytes())
+	var again: World = BlackoutRig.world()
+	assert_int(Replay.play(loaded, again, loaded.final_tick)).is_equal(Replay.PLAY_MATCHED)
+	assert_int(again.state_hash()).is_equal(replay.final_hash)
+	for each: World in [fresh, again]:
+		for id: int in victims + spared:
+			assert_int(each.offline_until[each.index_of(id)]).is_equal(
+				recorded.offline_until[recorded.index_of(id)]
+			)
+		assert_int(each.queue_progress[2 * World.TABS + World.Tab.INFANTRY]).is_equal(
+			recorded.queue_progress[2 * World.TABS + World.Tab.INFANTRY]
+		)
+
+
+## Records a match of `world` (a `blackout_worlds.gd` world at tick 0) through a MatchLoop and
+## returns its finished replay: player 2 queues a gunner and a jeep in tick 0, player 1 fires the
+## array on the first tick it may when `strike` is set, and the match runs 60 ticks past the end of
+## the blackout (also with no strike, so that a twin has the same ticks and checkpoints).
+func _record(world: World, strike: bool) -> Replay:
+	var loop: MatchLoop = MatchLoop.create(null, "", 11, world)
+	var fire_at: int = BlackoutRig.fire_tick(world)
+	var ticks: int = fire_at + 1 + BlackoutRig.length_of(world) + 60
+	while world.tick < ticks:
+		var queued: Array[Command] = []
+		if world.tick == 0:
+			queued.append(Command.queue(2, BlackoutRig.type_of(world, "gunner")))
+			queued.append(Command.queue(2, BlackoutRig.type_of(world, "jeep")))
+		if strike and world.tick == fire_at:
+			queued.append(BlackoutRig.fire())
+		loop.step(world, queued)
+	loop.replay.finish(world)
+	return loop.replay
 
 
 ## Each invalid SUPERWEAPON of the array is dropped and counted with nothing else changed, as the
