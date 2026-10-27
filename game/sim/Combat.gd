@@ -20,8 +20,11 @@ extends RefCounted
 ## - an offline defence does not shoot (ADR 0018 section 4): a building row (`type_foot_w` above 0)
 ##   of a player whose `power_used` is above its `power_made` (`Power.is_low`'s rule, inlined over
 ##   the aliased totals) keeps its `target` and its cooldown counts down, but it skips the shot, so
-##   it fires on the first FIRE after the totals stop being low, with no wind-up. TARGETING and its
-##   kernel are unchanged, and a mobile row never goes offline;
+##   it fires on the first FIRE after the totals stop being low, with no wind-up. A blacked-out
+##   building (P111, ADR 0023 section 10: `offline_until` above the stamp `world.tick + 1`) is
+##   offline the same way for the length of the blackout and fires at the stamp that reaches
+##   `offline_until`, also with no wind-up. TARGETING and its kernel are unchanged, and a mobile row
+##   never goes offline;
 ## - a shot writes `[SHOT, shooter id, shooter x, shooter y, target id, weapon, target x, target y]`
 ##   (ADR 0007 section 10, both positions read now, so a tracer can still be drawn after either unit
 ##   is removed) and sets the cooldown, and then either
@@ -186,6 +189,7 @@ static func fire(world: World) -> void:
 	var type_armour: PackedInt32Array = world.type_armour
 	var type_weapon: PackedInt32Array = world.type_weapon
 	var type_foot: PackedInt32Array = world.type_foot_w
+	var offline: PackedInt32Array = world.offline_until
 	var power_made: PackedInt32Array = world.power_made
 	var power_used: PackedInt32Array = world.power_used
 	var weapon_range: PackedInt32Array = world.weapon_range
@@ -207,6 +211,7 @@ static func fire(world: World) -> void:
 	var events: PackedInt32Array = world.events
 	var free_top: int = world.proj_free_top
 	var next_shell: int = world.next_projectile_id
+	var stamp: int = world.tick + 1
 	var overflow: int = 0
 	var weapons: int = weapon_range.size()
 	var footprints: int = type_foot.size()
@@ -226,8 +231,10 @@ static func fire(world: World) -> void:
 		if weapon < 0 or weapon >= weapons:
 			continue
 		var side: int = owners[row]
-		if type < footprints and type_foot[type] > 0 and side < players:
-			if power_used[side] > power_made[side]:
+		if type < footprints and type_foot[type] > 0:
+			if offline[row] > stamp:
+				continue  # Blacked out: the target stays, the shot waits for the blackout to end.
+			if side < players and power_used[side] > power_made[side]:
 				continue  # Offline: the target stays, the shot waits for power.
 		var at: int = ids.bsearch(held)
 		if at >= count or ids[at] != held or owners[at] == side or owners[at] == 0:

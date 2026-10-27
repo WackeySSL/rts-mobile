@@ -74,7 +74,7 @@ runner = NodePath("../MatchRunner")
 reveal_enemies = true
 
 [node name="FogLayer" type="Sprite2D" parent="." node_paths=PackedStringArray("runner")]
-z_index = 140
+z_index = 4
 z_as_relative = false
 script = ExtResource("9_fog")
 runner = NodePath("../MatchRunner")

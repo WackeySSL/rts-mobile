@@ -5,7 +5,8 @@
 [resource]
 script = ExtResource("1_building")
 type_id = &"headquarters"
-display_name = "Headquarters"
+display_name = "Rigworks"
+faction = &"fossil"
 max_hp = 2000
 armour = 3
 sight_range = 7000

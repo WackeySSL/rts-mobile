@@ -1,17 +1,23 @@
 class_name RtsCamera
 extends Camera2D
-## The RTS camera (ADR 0004 section 6): pan, pinch about a point, three zoom levels and a clamp
-## to the map. It reads no input: TouchInput calls these methods in base px (viewport coords).
-## For a PINCH gesture call `pan_by_screen(delta)` first, then `pinch(centre, scale)`.
+## The RTS camera (ADR 0004 section 6, ADR 0023 section 4): pan, pinch about a point, three zoom
+## levels and a clamp to the map's diamond. It reads no input: TouchInput calls these methods in
+## base px (viewport coords). For a PINCH gesture call `pan_by_screen(delta)` first, then
+## `pinch(centre, scale)`.
 ##
-## `limit_*` clamps only the rendered view, not `position`, which would leave a dead zone after
-## overscrolling. So after every move or zoom `position` is clamped to the map rect inset by half
-## the visible size.
+## After every move, zoom step and resize the view centre, `position`, is clamped into the map's
+## diamond (`IsoProjection.clamp_to_diamond`: its ground point into the map, projected back), so
+## the centre never leaves the map in any orientation and at any zoom; the view around it may show
+## the clear colour beyond the edge. The engine's `limit_*` is off: an enabled limit rect shifts the
+## rendered view away from `position` wherever the centre is within half a view of the diamond's
+## edge, which would put every ground tap and every pan off by that shift (a dead zone after
+## overscrolling, as the old rect clamp avoided by insetting `position`).
 ##
 ## A turn of the phone (ADR 0015 section 4) keeps the world point at the centre and the world size
 ## per dp: the camera remembers the window's orientation and `UiScale.base_px_per_dp()` from its
 ## last `size_changed`, and when the orientation differs it stops the snap, rescales the zoom by
-## the ratio of the two and puts the snap anchor at the new view centre.
+## the ratio of the two and puts the snap anchor at the new view centre. The clamp does not depend
+## on the view's size, so a turn never moves the centre.
 
 ## A ratio of base px per dp this close to 1 is the engine rounding the expanded axis of the
 ## stretch to whole base px (ADR 0015 section 2), not another screen: the zoom stays on its level.
@@ -19,7 +25,7 @@ const TURN_ROUNDING: float = 0.001
 
 @export var settings: InputSettings
 
-var _map_rect: Rect2 = Rect2()
+var _diamond: PackedVector2Array = PackedVector2Array()  ## The map's corners, world px.
 var _anchor: Vector2 = Vector2.ZERO  ## Screen point of the last pinch or step, kept for the snap.
 var _snap: Tween = null
 var _snap_level: int = -1  ## Level the snap in flight heads for, else -1.
@@ -35,16 +41,15 @@ func _ready() -> void:
 	_anchor = _view_size() * 0.5
 	_portrait = UiScale.is_portrait_size(get_tree().root.size)
 	_bppd = UiScale.base_px_per_dp()
+	limit_enabled = false  # The clamp on `position` is the only bound (class doc).
 	get_viewport().size_changed.connect(_on_size_changed)
 	_clamp_to_map()
 
 
-func set_map_rect(rect: Rect2) -> void:
-	_map_rect = rect
-	limit_left = floori(rect.position.x)
-	limit_top = floori(rect.position.y)
-	limit_right = ceili(rect.end.x)
-	limit_bottom = ceili(rect.end.y)
+## Sets the map as its diamond in world px, as `IsoProjection.map_diamond` gives it (an empty one
+## means no map and no clamp), and clamps the centre into it.
+func set_map_rect(diamond: PackedVector2Array) -> void:
+	_diamond = diamond
 	_clamp_to_map()
 
 
@@ -125,8 +130,8 @@ func _on_size_changed() -> void:
 
 
 ## The turn rule of ADR 0015 section 4. `position`, the world point at the centre, is not touched
-## and the clamp that follows moves it only as far as the new view needs. A turn does not snap to
-## a level: the next gesture end or wheel step does.
+## (the clamp does not move it either). A turn does not snap to a level: the next gesture end or
+## wheel step does.
 func _turn(bppd_ratio: float) -> void:
 	_stop_snap()
 	if absf(bppd_ratio - 1.0) >= TURN_ROUNDING:
@@ -180,12 +185,6 @@ func _bounded_zoom(value: float) -> float:
 
 
 func _clamp_to_map() -> void:
-	if not is_inside_tree() or not _map_rect.has_area():
-		return
-	var half_view: Vector2 = _view_size() * 0.5 / zoom
-	var low: Vector2 = _map_rect.position + half_view
-	var high: Vector2 = _map_rect.end - half_view
-	var centre: Vector2 = _map_rect.get_center()
-	# A map smaller than the view on an axis is centred on that axis.
-	position.x = centre.x if low.x > high.x else clampf(position.x, low.x, high.x)
-	position.y = centre.y if low.y > high.y else clampf(position.y, low.y, high.y)
+	var inside: Vector2 = IsoProjection.clamp_to_diamond(position, _diamond)
+	if inside != position:
+		position = inside

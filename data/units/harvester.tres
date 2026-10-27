@@ -5,7 +5,8 @@
 [resource]
 script = ExtResource("1_unit")
 type_id = &"harvester"
-display_name = "Harvester"
+display_name = "Tanker"
+faction = &"fossil"
 speed = 73
 radius = 450
 selection_radius = 650

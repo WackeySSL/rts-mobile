@@ -107,9 +107,9 @@ func test_a_red_rig_in_the_fog_is_hidden_and_not_pickable_and_a_tap_on_it_moves_
 	assert_array(_sent).has_size(1)
 	assert_int(_sent[0].type).is_equal(Command.Type.MOVE)
 	assert_array(_sent[0].unit_ids).is_equal(range(1, BLUE_TANKS + 1))
-	var ground: Vector2 = _camera.screen_to_world(at)
-	assert_int(_sent[0].target_x).is_equal(ViewScale.px_to_milli(ground.x))
-	assert_int(_sent[0].target_y).is_equal(ViewScale.px_to_milli(ground.y))
+	var ground: Vector2i = IsoProjection.px_to_ground(_camera.screen_to_world(at))
+	assert_int(_sent[0].target_x).is_equal(ground.x)
+	assert_int(_sent[0].target_y).is_equal(ground.y)
 
 
 func test_select_all_tap_a_visible_red_tank_and_fight_until_it_dies() -> void:
@@ -166,7 +166,7 @@ func test_select_all_tap_a_visible_red_tank_and_fight_until_it_dies() -> void:
 
 func _assert_panel(count: String) -> void:
 	assert_bool(_panel.visible).is_true()
-	assert_str((_panel.get_node("Rows/Row0/Name") as Label).text).is_equal("Light Tank")
+	assert_str((_panel.get_node("Rows/Row0/Name") as Label).text).is_equal("Flarejack")
 	assert_str((_panel.get_node("Rows/Row0/Count") as Label).text).is_equal(count)
 
 
@@ -191,11 +191,12 @@ func _assert_ordered_to_attack(ids: PackedInt32Array, target: int) -> void:
 
 
 ## The tick that destroyed a tank: its rig is gone and the layer holds one rig per unit left, and
-## a burst of the effects layer is planned on the place of its death.
+## a burst of the effects layer is planned on the place of its death, at the middle of a light
+## tank's frame (24 px high, ADR 0023 section 2, so 12 px above its ground point).
 func _assert_death_shown(record: PackedInt32Array) -> void:
 	assert_object(_layer.get_node_or_null("Unit%d" % record[1])).is_null()
 	assert_int(_layer.rig_count()).is_equal(_runner.snapshot.unit_id.size())
-	var place: Vector2 = ViewScale.milli_to_px_vec(record[2], record[3])
+	var place: Vector2 = IsoProjection.ground_to_px(record[2], record[3]) - Vector2(0.0, 12.0)
 	var bursts: int = 0
 	for index: int in _effects.quad_count():
 		var at: Vector2 = _effects.quad_rect(index).get_center()
