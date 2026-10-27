@@ -13,6 +13,10 @@ Status note (2026-10-26, P68e docs; ADR 0023 accepted 2026-10-26, Michael's answ
 carries a dated status note: in landscape the right-hand build sidebar zone becomes the canvas's
 floating panels (plan row P85d); portrait is unchanged. No accepted text changed.
 
+Status note (2026-10-26, P26ai docs): §5 carries a dated status note on the portrait band as P85
+(#193) merged it: its height rule, its 4 dp margins above and below, and the tab names. No
+accepted text changed.
+
 ## Context
 Michael, 2026-10-19, verbatim: **"Tilføj til tema at spillet også skal kunne spilles vertikale og
 ikke kun i landscape"**: the game shall be playable in portrait as well as landscape. That changes
@@ -373,6 +377,22 @@ panels (P85d checks every control at the six sizes: inside the safe rect, at lea
 overlap). The portrait column is unchanged: the bottom band, its budget, the minimap at its right
 end (now an isometric diamond, ADR 0023 §4, at most 40 % of the safe inner width) and the ArmyBar
 above the band. The general rules of this section hold.
+
+Status note (2026-10-26, P26ai docs, P85 as merged, #193, with P85c, #194, and P85b, #198; the
+text and the notes above stay as accepted and as dated):
+- **The band's height** is `HudLayout.band_dp` (`game/ui/HudLayout.gd`): 20 % of the safe height
+  and at least 200 dp, but no more than keeps the band and the ArmyBar line (the edge margin, the
+  8 dp gap and the 56 dp bar) within 40 % of the safe height; it gives way first, down to
+  `BAND_FLOOR_DP` 172. `BuildSidebar` writes it to `HudLayout.bottom_zone_dp`, the one place of
+  P61, on `_ready` and on every resize, and a scene without a sidebar leaves it at 0.
+- **Margins.** The sidebar's backdrop (`game/ui/theme.tres`) has 8 dp at the sides and 4 dp above
+  and below, not 8 dp, so a 200 dp band's inner height is 192 dp, not 184. The floor 172 is the
+  stacked left part (status line 32, tabs 48, items 64, two 8 dp gaps: 160) plus the two 4 dp
+  margins and 4 dp for the gaps' rounding to whole px. The band's inner height as the theme gives
+  it (192 dp for a 200 dp band) is the most the minimap's 2:1 box (plan row P88, ADR 0023 §4) may
+  take in height, within 40 % of the safe inner width.
+- **Tab names** show beside the icons only in landscape and only where all three tabs fit the
+  zone with them (`BuildSidebar._fit_names`); the portrait band shows icons only, however wide.
 
 ### 6. Tests
 - Window sizes for UI and layout tests: landscape 1280x720, 2400x1080 and 2048x1536 (today's),

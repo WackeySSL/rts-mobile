@@ -34,6 +34,10 @@ the build sidebar becomes floating panels, the ghost marks diamonds and is grabb
 silhouette, buildings are picked on their silhouettes (units first), the minimap is an isometric
 diamond, and low power shows a glyph instead of a dim. No accepted text changed.
 
+Status note (2026-10-26, P26ai docs): §1 and §6 carry dated status notes on the sidebar as P85,
+P85c and P85b merged it (the band, the tab names, a fifth tile state) and on the loss stats the
+result screen reads. No accepted text changed.
+
 ## Context
 - `touch-ui-rules` already fixes, in its gesture table and its "Building placement" section: tap an
   own building selects it and "a production building opens its build tab"; tap minimap moves the
@@ -82,6 +86,24 @@ the credits and power bar a pill at the top left (ADR 0023 §12); portrait keeps
 tiles, their states, tap to queue, long-press to cancel, ready structures, the power bar and the
 three tabs are unchanged, and the build menu lists only the local player's faction's types
 (`type_faction`, ADR 0023 §6).
+
+Status note (2026-10-26, P26ai docs, P85 as merged, #193, P85c, #194, and P85b, #198; the text
+and the note above stay as accepted and as dated), on `game/ui/BuildSidebar.gd` and
+`ItemTile.gd`:
+- **The zone.** The portrait band follows ADR 0015 §5 as that section's note of the same date
+  gives it (`HudLayout.band_dp`, 4 dp margins above and below). The tab names show only in
+  landscape where all three fit; the band shows icons only.
+- **The status line** (P85c): a coin glyph and the credits, then a bolt and the power bar of power
+  used against power made, with both numbers where the bar is wide enough; on low power the bar
+  is full and amber and the bolt becomes a warning triangle. The pulse and the under-attack cues
+  are plan row P89's.
+- **A fifth tile state, FULL** (P85b): the item's queue holds `queue_slots` items. It shows the
+  stripes of UNAFFORDABLE and differs from it only by the cost's colour (white, against amber for
+  money), so it leans on colour alone; touch-ux-dev's follow-up gives it a shape of its own. A tap
+  on a READY tile does nothing until plan row P86 enters placement mode there. Selecting an own
+  producer opens its tab through `BuildSidebar.set_selected`, wired to
+  `PlayerController.selection_changed`; it shows once plan row P115b puts building ids in the
+  selection.
 
 ### 2. Placement mode
 Local input state: no Command until the player confirms.
@@ -190,6 +212,11 @@ unchanged (plan rows P89, P112b).
   dialog; yes sends `SURRENDER` (question 3). In portrait it is one more top-left control, so the
   SelectionPanel's top line (ADR 0015 §5: from the top-left controls' right edge plus 8 dp) gets
   shorter; the row that adds the button re-checks the panel's worst case at 360 dp (plan row P90).
+
+Status note (2026-10-26, P26ai docs, P76 as merged, #197; the text above stays as accepted): the
+loss stats the overlay shows are counted only for a side that has had a producer (ADR 0018 §7's
+note of the same date). Every real match has one from its scenario buildings, so the result
+screen shows true counts; the perf arena and Worlds of units only show 0.
 
 ### 7. Where a match starts in Phase 3
 A dev route "Skirmish" loads the battle scene with the skirmish scenario and the dummy opponent as

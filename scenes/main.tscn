@@ -129,9 +129,10 @@ script = ExtResource("3_dev")
 [node name="DpMinSize" type="Node" parent="Hud/SafeArea/DevButton"]
 script = ExtResource("13_dp")
 
-[node name="BuildSidebar" type="PanelContainer" parent="Hud/SafeArea" node_paths=PackedStringArray("runner")]
+[node name="BuildSidebar" type="PanelContainer" parent="Hud/SafeArea" node_paths=PackedStringArray("runner", "controller")]
 script = ExtResource("21_sidebar")
 runner = NodePath("../../../MatchRunner")
+controller = NodePath("../../../PlayerController")
 
 [node name="ArmyBand" type="MarginContainer" parent="Hud/SafeArea"]
 mouse_filter = 2
