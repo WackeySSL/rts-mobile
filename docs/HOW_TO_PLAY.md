@@ -64,13 +64,22 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Hold a group (1-3) | Stores the current selection in that group; the phone buzzes and the count shows (`group_assign_ms` in `data/input_settings.tres`) | yes |
 | A grouped unit is destroyed | It leaves the group; the group's badge shows the new count, and an empty group shows only its number | |
 
-## Build sidebar
+## Factions
 | Action | Result | Teach |
 |---|---|---|
-| Look at the sidebar (on the right; at the bottom when the phone is upright) | It shows your credits, a power bar and three tabs: Structures, Infantry and Vehicles. The bar fills with the power your buildings use against the power they make and shows both numbers where it is wide enough; when you use more than you make, the bar is full and amber and its bolt becomes a warning triangle. Tap a tab to open it: the open tab is the lighter one with a thick bar under it. The tab names show beside the icons only where the sidebar is wide enough; a phone shows the icons alone | |
-| Tap an item in the open tab | One of it is queued and paid for at once; the icon fills while it is built, and a number on it counts how many of it are queued. A padlock on a dimmed icon means a building you need is missing (a power plant for a barracks, a barracks for infantry). Stripes mean it cannot be queued now: you cannot pay it (its cost turns amber) or its queue is full (`queue_slots` in `data/rules.tres`). A finished building shows "Ready" where its price was (tapping it does nothing yet). A tap on a padlocked or striped item shakes it and does nothing. The row scrolls with a drag, down in the sidebar on the right and sideways in the band at the bottom, and a drag never queues anything | yes |
+| Start a match | You play the Derrick League (oil and gas) or the Lumen Accord (green energy); each side has its own buildings and units, and your build menu shows only yours (and what both sides share). The side is the one your own buildings and units belong to | yes |
+
+## Build menu
+| Action | Result | Teach |
+|---|---|---|
+| Look at the screen with the phone sideways | The build menu floats over the map at the bottom right: three tabs as icons above one row of cards. Your credits and the power bar sit in a pill at the top left, next to the Dev button, and a panel at the top right is kept for the minimap (the minimap itself comes later). Nothing else moves: the army bar, the selection panel and the Dev button keep their places | |
+| Look at the screen with the phone upright | The build menu is the band at the bottom, and your credits and the power bar are its first line; the pill and the panel at the top right are not shown. Turning the phone moves the credits line between the two and changes nothing else | |
+| Look at the credits and the power bar | They show your credits and a power bar. The bar fills with the power your buildings use against the power they make and shows both numbers where it is wide enough; when you use more than you make, the bar is full and amber and its bolt becomes a warning triangle | |
+| Tap a tab | It opens: Structures, Infantry or Vehicles, as an icon; the open tab is the lighter one with a thick bar under it | |
+| Tap an item in the open tab | One of it is queued and paid for at once; the icon fills while it is built, and a number on it counts how many of it are queued. Each card shows the item's name under its cost (a long name is cut short with an ellipsis; the upright band's tiles show no name). A padlock on a dimmed icon means a building you need is missing (a power plant for a barracks, a barracks for infantry). Stripes mean it cannot be queued now: you cannot pay it (its cost turns amber) or its queue is full (`queue_slots` in `data/rules.tres`). A finished building shows "Ready" where its price was (tapping it does nothing yet). A tap on a padlocked or striped item shakes it and does nothing. The row scrolls sideways with a drag, and a drag never queues anything | yes |
 | Hold an item (`long_press_ms` in `data/input_settings.tres`) | The last one of it you queued is cancelled and its cost is paid back in full; the phone buzzes. An item with none queued does nothing, however long you hold | yes |
-| Tap your Headquarters, barracks or vehicle factory | The sidebar opens the tab it builds: Structures, Infantry or Vehicles | |
+| Tap your Headquarters, barracks or vehicle factory | The build menu opens the tab it builds: Structures, Infantry or Vehicles | |
+| Open any tab | It lists only the buildings and units of your own side, and those that both sides share; the other side's items are never shown | |
 
 ## Not yet in the game
 Base building, harvesting, power, production, win and lose conditions, menus and rewards get

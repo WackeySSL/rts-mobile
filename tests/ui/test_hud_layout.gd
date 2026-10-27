@@ -2,10 +2,12 @@ extends GdUnitTestSuite
 ## The battle-screen HUD in both orientations (plan P61, ADR 0015 section 5), at the six sizes of
 ## ScreenSizes.ALL with the engine's own metrics and at every profile of both orientations, also
 ## with a cutout: every HUD control is inside the safe rect, at least 48 dp on each axis and clear
-## of every other, and none enters the zone that the build sidebar takes (the right fifth in
-## landscape; in portrait the bottom band, which the sidebar sets and the ArmyBar sits above, P85).
-## Landscape selects the 30 tanks the scene starts with, portrait the six MVP types with 3-digit
-## counts.
+## of every other. In landscape that includes the floating panels (ADR 0023 section 12, P85d): the
+## build panel at the bottom right, the status pill at the top left and the minimap's slot at the
+## top right; the bottom row (the ArmyBar and the selection panel) stays left of the build panel's
+## zone. In portrait none enters the bottom band, which the sidebar sets and the ArmyBar sits above
+## (P85). Landscape selects the 30 tanks the scene starts with, portrait the six MVP types with
+## 3-digit counts.
 
 const Roster: GDScript = preload("res://tests/ui/support/mvp_roster.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -35,8 +37,7 @@ func after_test() -> void:
 	HudLayout.bottom_zone_dp = 0.0
 
 
-func test_every_hud_control_is_inside_the_safe_rect_48_dp_and_clear_of_the_others_in_the_zone(
-) -> void:
+func test_every_hud_control_is_inside_the_safe_rect_48_dp_and_clear_of_the_others() -> void:
 	for screen: Dictionary in _screens():
 		await _open(screen)
 		var why: String = str(screen["label"])
@@ -48,6 +49,9 @@ func test_every_hud_control_is_inside_the_safe_rect_48_dp_and_clear_of_the_other
 			"Panel": _rect(_panel),
 			"Sidebar": _rect("BuildSidebar"),
 		}
+		if not HudLayout.is_portrait():  # In portrait the pill and the slot are hidden.
+			big["Pill"] = _rect("StatusPill")
+			big["Slot"] = _rect("MinimapSlot")
 		var all: Dictionary[String, Rect2] = big.duplicate()
 		for button: String in ["AllArmy", "Group1", "Group2", "Group3"]:
 			all[button] = _rect(button)
@@ -67,10 +71,13 @@ func test_every_hud_control_is_inside_the_safe_rect_48_dp_and_clear_of_the_other
 				assert_bool(overlap).override_failure_message(pair).is_false()
 		var area: Rect2 = (_hud("SafeArea") as Control).get_global_rect()  # It must not grow.
 		assert_that(area).override_failure_message(why).is_equal(visible_rect)
-		if not HudLayout.is_portrait():  # The right zone is the sidebar's alone.
-			var zone: float = visible_rect.size.x - HudLayout.right_zone_px(visible_rect.size.x)
+		if not HudLayout.is_portrait():  # The bottom row's right end is the build panel's alone.
+			var inner_width: float = (
+				_inner_right() - _hud("SafeArea").get_theme_constant("margin_left")
+			)
+			var zone: float = _inner_right() - HudLayout.right_zone_px(inner_width)
 			for control: String in all:
-				if control == "Sidebar":
+				if control == "Sidebar" or control == "Slot":
 					continue
 				var at: String = "%s: %s %s, zone from %s" % [why, control, all[control], zone]
 				assert_float(all[control].end.x).override_failure_message(at).is_less_equal(
@@ -176,6 +183,12 @@ func _screen(label: String, size: Vector2i, metrics: UiMetrics, cutout: bool) ->
 func _inner_bottom() -> float:
 	var safe_area: Control = _hud("SafeArea")
 	return get_viewport().get_visible_rect().end.y - safe_area.get_theme_constant("margin_bottom")
+
+
+## The right edge of the safe area's inner rect.
+func _inner_right() -> float:
+	var safe_area: Control = _hud("SafeArea")
+	return get_viewport().get_visible_rect().end.x - safe_area.get_theme_constant("margin_right")
 
 
 func _hud(node_name: String) -> Node:

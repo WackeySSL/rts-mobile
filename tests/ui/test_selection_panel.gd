@@ -150,7 +150,7 @@ func test_the_panel_is_dp_sized_and_sits_in_its_band_in_both_orientations() -> v
 		var rect: Rect2 = _panel.get_global_rect()
 		var bar: Rect2 = (_hud("ArmyBar") as Control).get_global_rect()
 		var width: float = get_viewport().get_visible_rect().size.x
-		var sidebar: float = maxf(width * 0.2, UiScale.dp(200.0))  # 20%, at least 200 dp.
+		var sidebar: float = HudLayout.right_zone_px(_inner_width())  # The build panel and a gap.
 		var why: String = "%s: panel %s, bar %s" % [m.window_size, rect, bar]
 		var sizes: Array[int] = []
 		for path: String in ["Rows/Row0/Name", "Rows/Row0/Count", "Rows/Total"]:
@@ -194,7 +194,7 @@ func test_the_band_and_the_text_follow_a_window_resize() -> void:
 	UiScale.set_override(android)
 	get_window().size = android.window_size
 	await await_idle_frame()
-	var zone: float = maxf(get_viewport().get_visible_rect().size.x * 0.2, UiScale.dp(200.0))
+	var zone: float = HudLayout.right_zone_px(_inner_width())
 	assert_int(_panel.get_parent().get_theme_constant("margin_right")).is_equal(ceili(zone))
 	assert_int(_node("Rows/Row0/Name").get_theme_font_size("font_size")).is_equal(_px(16.0))
 	var title: Label = _node("Rows/Row0/Name")  # The cap is in px, so it is fitted again.
@@ -356,6 +356,15 @@ func _hud(node_name: String) -> Node:
 
 func _px(dp: float) -> int:
 	return roundi(UiScale.dp(dp))
+
+
+## The safe area's inner width, which the build panel's zone is a share of (HudLayout.panel_px).
+func _inner_width() -> float:
+	var area: Control = _hud("SafeArea")
+	var margins: float = area.get_theme_constant("margin_left")
+	return (
+		get_viewport().get_visible_rect().size.x - margins - area.get_theme_constant("margin_right")
+	)
 
 
 func _select(ids: Array) -> void:
