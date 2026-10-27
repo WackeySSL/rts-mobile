@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"harvester"
+faction = &"fossil"
+category = &"veh"
+silhouette = "A long olive tanker truck: a boxy cab at the front, a steel drum on a dark frame with two team bands, three axles."
+prims = PackedStringArray(
+"box hull iron -0.1 0 0.1 1.5 0.4 0.1",
+"prism hull iron 0.4 -0.3 0 0.26 0.12 0.26 axis=y sides=8",
+"prism hull iron 0.4 0.3 0 0.26 0.12 0.26 axis=y sides=8",
+"prism hull iron -0.2 -0.3 0 0.26 0.12 0.26 axis=y sides=8",
+"prism hull iron -0.2 0.3 0 0.26 0.12 0.26 axis=y sides=8",
+"prism hull iron -0.55 -0.3 0 0.26 0.12 0.26 axis=y sides=8",
+"prism hull iron -0.55 0.3 0 0.26 0.12 0.26 axis=y sides=8",
+"box hull olive 0.5 0 0.2 0.4 0.54 0.4",
+"box hull lamp 0.71 0 0.36 0.02 0.4 0.14",
+"prism hull steel -0.665 0 0.2 0.23 0.5 0.5 axis=x sides=12",
+"prism hull team -0.49 0 0.2 0.12 0.5 0.5 axis=x sides=12",
+"prism hull steel -0.24 0 0.2 0.38 0.5 0.5 axis=x sides=12",
+"prism hull team 0.01 0 0.2 0.12 0.5 0.5 axis=x sides=12",
+"prism hull steel 0.145 0 0.2 0.15 0.5 0.5 axis=x sides=12"
+)

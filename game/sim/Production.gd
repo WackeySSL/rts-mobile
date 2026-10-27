@@ -25,9 +25,11 @@ const PROGRESS_PER_TICK: int = 100
 ## `low_power_percent` of it on low power (every tab, STRUCTURES included), never past its goal. A
 ## done unit spawns (ProductionSpawn.spawn) and leaves the queue; one that cannot spawn yet waits at
 ## 100 %, and so does a done structure, until PLACE or CANCEL. Players ascending, then tabs. A queue
-## without a producer waits, and so does every queue of a defeated player. The loop runs over the
-## arrays as sized, so a hand-built World whose player_count was raised after prepare() has no queue
-## for the late players.
+## without a producer waits, and so does every queue of a defeated player, and every queue whose
+## producer is blacked out (P111, ADR 0023 section 10: its `offline_until` is above the stamp,
+## `world.tick + 1`): the head keeps its progress, nothing spawns, and it goes on from there at the
+## stamp that reaches `offline_until`. The loop runs over the arrays as sized, so a hand-built World
+## whose player_count was raised after prepare() has no queue for the late players.
 @warning_ignore("integer_division")
 static func run(world: World) -> void:
 	var defeated: PackedInt32Array = world.defeated_tick
@@ -35,7 +37,9 @@ static func run(world: World) -> void:
 	var progress: PackedInt32Array = world.queue_progress
 	var items: PackedInt32Array = world.queue_type
 	var build_ticks: PackedInt32Array = world.type_build_ticks
+	var offline: PackedInt32Array = world.offline_until
 	var slots: int = world.queue_slots
+	var stamp: int = world.tick + 1
 	for queue: int in range(World.TABS, counts.size()):
 		var tab: int = queue % World.TABS
 		if counts[queue] == 0:
@@ -44,7 +48,7 @@ static func run(world: World) -> void:
 		if defeated[player] != 0:
 			continue
 		var producer: int = producer_row(world, player, tab)
-		if producer < 0:
+		if producer < 0 or offline[producer] > stamp:
 			continue
 		var head: int = items[queue * slots]
 		var done: int = build_ticks[head] * PROGRESS_PER_TICK

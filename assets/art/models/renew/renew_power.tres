@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"renew_power"
+faction = &"renew"
+category = &"bld"
+footprint = 2
+silhouette = "A low white shed with a graphite roof and a team stripe, and two tall slim white masts with dark nacelles and mint lights."
+prims = PackedStringArray(
+"box hull titanium 0 0 0 1.92 1.92 0.06",
+"box hull ceramic 0.3 0.4 0.06 0.9 0.6 0.4",
+"wedge hull graphite 0.3 0.4 0.46 0.9 0.6 0.12 slope=0.5",
+"box hull team 0.3 0.72 0.18 0.9 0.04 0.2",
+"prism hull ceramic -0.45 -0.45 0.06 0.1 0.1 2.4 sides=6",
+"box hull graphite -0.45 -0.45 2.46 0.3 0.14 0.14",
+"box hull mint -0.28 -0.45 2.5 0.04 0.06 0.06",
+"prism hull ceramic -0.55 0.5 0.06 0.1 0.1 1.9 sides=6",
+"box hull graphite -0.55 0.5 1.96 0.3 0.14 0.14",
+"box hull mint -0.38 0.5 2 0.04 0.06 0.06"
+)

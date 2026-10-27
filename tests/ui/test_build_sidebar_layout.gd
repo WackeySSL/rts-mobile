@@ -1,20 +1,21 @@
 extends GdUnitTestSuite
-## The build sidebar's zone and its controls in both orientations (plan P85, ADR 0015 section 5
-## and ADR 0019 section 1): at the six sizes of ScreenSizes.ALL with the engine's own metrics and at
-## every profile of both orientations, also with a cutout. The sidebar fills its zone inside the
-## safe rect, its tabs are at least 48 dp and clear of each other, the credits line's glyphs, number
-## and bar sit inside it clear of each other (the glyphs at least 24 dp), the item slot keeps its
-## 64 dp, the portrait band is what HudLayout says (and gives way first on a short screen), the
-## tabs show names only where they fit and never in the band, and the band's height is the HUD's
-## one place for it: 0 in landscape and once the sidebar is gone. How the ArmyBar and the other
-## HUD parts sit around it is tests/ui/test_hud_layout.gd's.
+## The build menu's panel and its controls in both orientations (plan P85 and P85d, ADR 0015
+## section 5, ADR 0019 section 1 and ADR 0023 section 12): at the six sizes of ScreenSizes.ALL with
+## the engine's own metrics and at every profile of both orientations, also with a cutout. The
+## sidebar is the floating panel at the bottom right in landscape (HudLayout.panel_px wide) and the
+## band in portrait; its tabs are at least 48 dp and clear of each other, the credits line's
+## glyphs, number and bar sit inside the band in portrait and inside the pill in landscape, clear of
+## each other (the glyphs at least 24 dp), the item slot keeps its 64 dp, the portrait band is what
+## HudLayout says (and gives way first on a short screen), the tabs are icons alone, and the band's
+## height is the HUD's one place for it: 0 in landscape and once the sidebar is gone. How the
+## ArmyBar and the other HUD parts sit around it is tests/ui/test_hud_layout.gd's, and the pill, the
+## minimap's slot and the faction filter are tests/ui/test_floating_panels.gd's.
 
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const CUTOUT_PX: int = 100
 const TOLERANCE_PX: float = 0.5
 const TABS: Array[String] = ["TabStructures", "TabInfantry", "TabVehicles"]
-const NAMES: Array[String] = ["Structures", "Infantry", "Vehicles"]
 ## The edge margin (SafeAreaMargin's default), the gap and the bar: what the stack takes besides
 ## the band, in dp (BuildSidebar._place).
 const RESERVED_DP: float = 12.0 + 8.0 + 56.0
@@ -60,18 +61,26 @@ func test_the_sidebar_fills_its_zone_inside_the_safe_rect_with_its_controls_clea
 				HudLayout.band_dp(safe_dp, RESERVED_DP), 0.01
 			)
 		else:
-			_assert_edges(rect, [inner.end.x, inner.position.y, inner.end.y], [2, 1, 3], at)
+			_assert_edges(rect, [inner.end.x, inner.end.y], [2, 3], at)
 			assert_float(rect.size.x).override_failure_message(at).is_equal_approx(
-				HudLayout.right_zone_px(visible_rect.size.x), 1.0
+				HudLayout.panel_px(inner.size.x), 1.0
+			)
+			assert_float(rect.size.y).override_failure_message(at).is_equal_approx(
+				_sidebar.get_combined_minimum_size().y, 1.0
 			)
 			assert_float(HudLayout.bottom_zone_dp).override_failure_message(at).is_equal(0.0)
 		var area: Rect2 = (_hud("SafeArea") as Control).get_global_rect()  # It must not grow.
 		assert_that(area).override_failure_message(why).is_equal(visible_rect)
 		var parts: Dictionary[String, Rect2] = {}
-		for part: String in ["Status", "Items"] + TABS:
+		for part: String in ["Items"] + TABS + (["Status"] if HudLayout.is_portrait() else []):
 			parts[part] = _rect(part)
 			var inside: String = "%s: %s %s in %s" % [why, part, parts[part], rect]
 			assert_bool(rect.encloses(parts[part])).override_failure_message(inside).is_true()
+		var pill: Rect2 = _rect("StatusPill")  # In landscape the status line is the pill's.
+		var status: Rect2 = parts["Status"] if parts.has("Status") else _rect("Status")
+		if not HudLayout.is_portrait():
+			assert_bool(pill.encloses(status)).override_failure_message(why).is_true()
+			assert_bool(safe.encloses(pill)).override_failure_message(why).is_true()
 		var least: float = UiScale.dp(48.0) - TOLERANCE_PX
 		for tab: String in TABS:
 			assert_float(parts[tab].size.x).override_failure_message(why).is_greater_equal(least)
@@ -85,7 +94,7 @@ func test_the_sidebar_fills_its_zone_inside_the_safe_rect_with_its_controls_clea
 				var pair: String = "%s: %s and %s" % [why, names[first], names[second]]
 				var overlap: bool = parts[names[first]].intersects(parts[names[second]])
 				assert_bool(overlap).override_failure_message(pair).is_false()
-		_assert_status_line(parts["Status"], why)
+		_assert_status_line(status, why)
 
 
 ## ADR 0015 section 5: 20% of the safe height and at least 200 dp; where the band and the ArmyBar
@@ -151,29 +160,22 @@ func test_the_band_is_a_fifth_of_the_height_and_gives_way_first_on_a_short_scree
 		assert_that(area).override_failure_message(why).is_equal(get_viewport().get_visible_rect())
 
 
-## A tab shows its name where all three fit the zone with theirs, in landscape. The 6-inch phone's
-## zone is 200 dp, so there the tabs are icons, as in every portrait band.
-func test_the_tabs_show_their_names_only_where_they_fit_and_never_in_the_band() -> void:
+## The tabs are line icons alone, in the middle of their tabs, in the floating panel and in the band
+## (ADR 0023 section 12): no name beside them at any size, in either orientation.
+func test_the_tabs_are_icons_alone_in_both_orientations() -> void:
 	var wide: UiMetrics = UiMetrics.create(
 		"Linux", 96, 1.0, 1.5, ScreenSizes.LANDSCAPE[1], Rect2i()
-	)  # 480 dp of zone.
-	await _open(wide.window_size, wide)
-	assert_array(_texts()).is_equal(NAMES)
-	assert_array(_alignments()).is_equal(
-		[HORIZONTAL_ALIGNMENT_LEFT, HORIZONTAL_ALIGNMENT_LEFT, HORIZONTAL_ALIGNMENT_LEFT]
-	)
-	var row: Control = _hud("Tabs")
-	assert_float(row.get_combined_minimum_size().x).is_less_equal(row.size.x + TOLERANCE_PX)
-	var phone: UiMetrics = UiProfiles.by_name(&"android_6in")
-	await _open(phone.window_size, phone)
-	assert_array(_texts()).is_equal(["", "", ""])
-	assert_array(_alignments()).is_equal(
-		[HORIZONTAL_ALIGNMENT_CENTER, HORIZONTAL_ALIGNMENT_CENTER, HORIZONTAL_ALIGNMENT_CENTER]
-	)
-	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.portrait()
+	)  # 1600 dp of width: the panel at its widest.
+	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
+	profiles.merge(UiProfiles.portrait())
+	profiles[&"wide"] = wide
 	for profile_name: StringName in profiles:
 		await _open(profiles[profile_name].window_size, profiles[profile_name])
-		assert_array(_texts()).override_failure_message(str(profile_name)).is_equal(["", "", ""])
+		var why: String = str(profile_name)
+		assert_array(_texts()).override_failure_message(why).is_equal(["", "", ""])
+		assert_array(_alignments()).override_failure_message(why).is_equal(
+			[HORIZONTAL_ALIGNMENT_CENTER, HORIZONTAL_ALIGNMENT_CENTER, HORIZONTAL_ALIGNMENT_CENTER]
+		)
 
 
 ## The one place the ArmyBar reads is 0 in landscape and while no sidebar is in the tree, and the

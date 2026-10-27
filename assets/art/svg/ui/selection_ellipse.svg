@@ -1,0 +1,6 @@
+<!-- Selection ellipse: one shared sprite for every own selected unit, scaled by the view to the unit's radius (ADR 0023 section 3). -->
+<!-- Silhouette: a plain closed 2:1 ellipse lying on the ground, a white band on a dark outline, no fill, the same width all the way round. Centre line semi-axes 72 and 36 px: band 12 px (r/6), outline 4 px each side (r/18), as the circle it replaces. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="168" height="96" viewBox="0 0 168 96">
+  <ellipse cx="84" cy="48" rx="72" ry="36" fill="none" stroke="#1C2127" stroke-width="20"/>
+  <ellipse cx="84" cy="48" rx="72" ry="36" fill="none" stroke="#FFFFFF" stroke-width="12"/>
+</svg>
