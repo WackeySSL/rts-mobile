@@ -1,11 +1,13 @@
 extends GdUnitTestSuite
-## The art generator and its blockout models (plan row P99, ADR 0023 section 5, STYLE.md "Generated
-## art"): every Phase 3 type of both factions has a model, its frames are complete (16 directions
-## for a vehicle, turret and head, 8 for a squad, one view for a building), two runs give identical
-## bytes, every committed frame equals a fresh run, the frames use only the allowed elements and
-## sizes, and no colour outside a faction's key triad lies in that triad's hue band, so only a team
-## zone reads as team colour. The rules of the projection, the light and the writer are in
-## test_artgen_rules.gd; the pictures at 32 px are in test_artgen_readability.gd.
+## The art generator and its blockout models (plan rows P99 and P99b, ADR 0023 section 5, STYLE.md
+## "Generated art"): every Phase 3 type of both factions has a model, its frames are complete (16
+## directions for a vehicle, turret and head, 8 for a squad, one view for a building, a cast shadow
+## for each hull frame), two runs give identical bytes, every committed file (frames, sheets, item
+## cards, the index) equals a fresh run, the frames use only the allowed elements and sizes, and no
+## colour outside a faction's key triad lies in that triad's hue band, so only a team zone reads as
+## team colour. The rules of the projection, the light and the writer are in test_artgen_rules.gd;
+## the shadows, the sheets and the cards are in test_artgen_shadows.gd, test_artgen_sheets.gd and
+## test_artgen_cards.gd; the pictures at 32 px are in test_artgen_readability.gd.
 
 const ROSTER: Dictionary[String, PackedStringArray] = {
 	"fossil":
@@ -121,6 +123,11 @@ func test_vehicles_have_16_directions_squads_8_and_a_turret_or_head_16() -> void
 				. override_failure_message(path)
 				. is_true()
 			)
+			(
+				assert_bool(_fresh.has(ArtGen.frame_path(model, ArtModel.SHADOW, dir)))
+				. override_failure_message(path + " shadow")
+				. is_true()
+			)
 			frames += 1
 		assert_int(frames).override_failure_message(path).is_equal(expected[model.category])
 		if model.category == &"inf":
@@ -145,26 +152,34 @@ func test_every_committed_frame_equals_a_fresh_run() -> void:
 		var committed: String = FileAccess.get_file_as_string(path)
 		(
 			assert_bool(committed == _fresh[path])
-			. override_failure_message(
-				"%s is missing or stale: bash scripts/gen-art.sh --all" % path
-			)
+			. override_failure_message("%s is missing or stale: bash scripts/gen-art.sh" % path)
 			. is_true()
 		)
 
 
-func test_no_generated_frame_is_committed_that_a_run_does_not_make() -> void:
+func test_no_generated_file_is_committed_that_a_run_does_not_make() -> void:
 	var committed: Array[String] = _list("res://assets/art/iso", ".svg")
-	assert_int(committed.size() * 2).is_equal(_fresh.size())
+	committed.append_array(_list("res://assets/art/iso", ".tres"))
+	var generated: int = 0
+	for path: String in _fresh:
+		generated += int(not path.ends_with(".import"))
+	assert_int(committed.size()).is_equal(generated)
 	for path: String in committed:
+		assert_bool(_fresh.has(path)).override_failure_message(path).is_true()
 		var first: String = FileAccess.get_file_as_string(path).split("\n")[0]
-		if first.contains(ArtGen.MARKER):
-			assert_bool(_fresh.has(path)).override_failure_message(path).is_true()
-			assert_bool(_fresh.has(path + ".import")).override_failure_message(path).is_true()
+		assert_bool(first.contains(ArtGen.MARKER) or first.contains(ArtSheet.MARKER)).is_true()
+	# Every frame has its "Keep File" import; a card's is the texture import Godot writes.
+	for path: String in _fresh:
+		if path.ends_with(".svg") and not path.contains("/icons/"):
+			assert_bool(FileAccess.file_exists(path + ".import")).is_true()
+		if path.contains("/icons/"):
+			assert_str(FileAccess.get_file_as_string(path + ".import")).contains("texture")
 
 
 func test_frames_use_only_the_allowed_elements_and_sizes() -> void:
 	var tags: RegEx = RegEx.create_from_string("<([a-zA-Z]+)")
 	var decimals: RegEx = RegEx.create_from_string("\\d\\.\\d\\d")
+	var opacity: RegEx = RegEx.create_from_string('opacity="[^"]*"')
 	var lower_hex: RegEx = RegEx.create_from_string("#[0-9a-f]*[a-f][0-9a-f]*\\b")
 	for path: String in _fresh:
 		if not path.ends_with(".svg"):
@@ -178,7 +193,7 @@ func test_frames_use_only_the_allowed_elements_and_sizes() -> void:
 		for banned: String in ["href", "style", "<text", "<image", "<filter", "<script"]:
 			assert_bool(text.contains(banned)).override_failure_message(path).is_false()
 		(
-			assert_object(decimals.search(text))
+			assert_object(decimals.search(opacity.sub(text, "", true)))
 			. override_failure_message(path + ": a second decimal")
 			. is_null()
 		)
@@ -212,15 +227,22 @@ func test_a_part_has_one_canvas_in_every_direction_and_a_building_is_anchored_at
 					layout.size.y
 				)
 			assert_bool(Rect2i(Vector2i.ZERO, layout.size).has_point(layout.origin)).is_true()
-			if part == &"hull" and model.category == &"bld":
-				# A tile is 128 x 64 px at 2x: the canvas is the footprint wide, the origin its
-				# centre, the anchor the diamond's back corner 32 x n px above it (Spec 03).
-				assert_int(layout.size.x).override_failure_message(path).is_equal(
-					128 * model.footprint
-				)
-				assert_vector(Vector2(layout.origin)).is_equal(
-					Vector2(64 * model.footprint, layout.origin.y)
-				)
+			if part in [&"hull", ArtModel.SHADOW] and model.category == &"bld":
+				# A tile is 128 x 64 px at 2x: the canvas of the body is the footprint wide, the
+				# origin its centre, the anchor the diamond's back corner 32 x n px above it
+				# (Spec 03); the shadow reaches past the east corner and has the same anchor.
+				if part == &"hull":
+					assert_int(layout.size.x).override_failure_message(path).is_equal(
+						128 * model.footprint
+					)
+					assert_vector(Vector2(layout.origin)).is_equal(
+						Vector2(64 * model.footprint, layout.origin.y)
+					)
+				else:
+					assert_int(layout.size.x).override_failure_message(path).is_greater_equal(
+						128 * model.footprint
+					)
+					assert_int(layout.origin.x).is_greater_equal(64 * model.footprint)
 				assert_int(layout.origin.y - layout.anchor.y).is_equal(32 * model.footprint)
 				assert_int(layout.size.y - layout.origin.y).is_greater_equal(32 * model.footprint)
 				assert_int(layout.anchor.y).is_greater_equal(0)
@@ -256,9 +278,7 @@ func test_no_colour_but_the_key_triad_is_in_the_key_band_of_its_faction() -> voi
 	for path: String in _fresh:
 		if not path.ends_with(".svg"):
 			continue
-		var faction: StringName = StringName(
-			path.trim_prefix("res://assets/art/iso/").split("/")[0]
-		)
+		var faction: StringName = _faction_of(path)
 		var other: StringName = &"renew" if faction == &"fossil" else &"fossil"
 		for found: RegExMatch in colour.search_all(_fresh[path]):
 			var hex: String = found.get_string()
@@ -283,6 +303,16 @@ func test_no_colour_but_the_key_triad_is_in_the_key_band_of_its_faction() -> voi
 			for dir: int in model.directions(part):
 				zone = zone or key_count.has(ArtGen.frame_path(model, part, dir))
 		assert_bool(zone).override_failure_message(path + " has no team zone").is_true()
+
+
+## The faction of a generated file: the folder of a frame, the model of a card.
+func _faction_of(path: String) -> StringName:
+	if path.contains("/icons/"):
+		var id: String = path.get_file().trim_prefix("item_").trim_suffix(".svg")
+		for model_path: String in ArtGen.model_paths():
+			if model_path.get_file() == id + ".tres":
+				return (load(model_path) as ArtModel).faction
+	return StringName(path.trim_prefix("res://assets/art/iso/").split("/")[0])
 
 
 func _in_band(hex: String, faction: StringName) -> bool:

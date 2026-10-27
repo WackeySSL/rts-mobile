@@ -1,16 +1,18 @@
 extends GdUnitTestSuite
-## The command line of the art generator (plan row P99, ADR 0023 section 5): `scripts/gen-art.sh`
-## and `tools/artgen/gen_art.gd`. The exit codes are the contract that P99b and the art rows
-## P101 to P105 build on: 0 done (also when nothing changed), 1 a model is invalid or Godot printed
-## a script error (Godot itself exits 0 after one), 2 an argument was given, 3 Godot is missing.
+## The command line of the art generator (plan rows P99 and P99b, ADR 0023 section 5):
+## `scripts/gen-art.sh` and `tools/artgen/gen_art.gd`. The exit codes are the contract that the art
+## rows P101 to P105 build on: 0 done (also when nothing changed, or `--check` found nothing), 1 a
+## model is invalid or Godot printed a script error (Godot itself exits 0 after one), 2 a wrong
+## argument or a model file that is not there, 3 Godot is missing, 4 `--check` found a difference.
 ##
 ## The wrapper runs in a scratch project against a stand-in `godot` that prints a console file and
 ## exits with a chosen status (the pattern of tests/project/test_run_tests_failure_line.gd). The
-## generator's own codes run the real binary on this project: a run without an argument writes
-## nothing when the committed frames are fresh (test_artgen.gd fails when they are not).
+## generator's own codes run the real binary on this project and never write: `--check`, or a
+## scratch model whose files are not committed (`--check` names them and exits 4).
 
 const SCRIPT: String = "res://scripts/gen-art.sh"
 const GENERATOR: String = "res://tools/artgen/gen_art.gd"
+const LIGHT_TANK: String = "res://assets/art/models/fossil/light_tank.tres"
 ## What the wrapper runs before the generator: it seeds the extension list and imports; the
 ## stand-in answers an import at once and otherwise records its arguments, prints `console.txt` and
 ## exits with `exit_code`.
@@ -60,10 +62,10 @@ func test_an_error_in_the_log_is_exit_1_although_godot_exits_0() -> void:
 		assert_str(run["text"]).contains(console.strip_edges())
 
 
-## A clean log passes Godot's own status through (0 done, 1 an invalid model, 2 usage), and the log
-## itself is shown.
+## A clean log passes Godot's own status through (0 done, 1 an invalid model, 2 usage, 4 a
+## difference), and the log itself is shown.
 func test_a_clean_log_passes_the_status_of_godot_through() -> void:
-	for status: int in [0, 1, 2]:
+	for status: int in [0, 1, 2, 4]:
 		var run: Dictionary = _run(_project("gen-art: 0 written, 304 unchanged\n"), [], {}, status)
 		assert_int(run["code"]).override_failure_message("status %d" % status).is_equal(status)
 		assert_str(run["text"]).contains("gen-art: 0 written, 304 unchanged")
@@ -78,15 +80,86 @@ func test_the_wrapper_runs_the_generator_and_hands_on_its_arguments() -> void:
 	assert_str(args).contains("--headless --path . --script %s -- --bogus" % GENERATOR)
 
 
-## The generator with the real binary: an argument is exit 2 and the usage line; a run without one
-## is exit 0 and writes no file (the committed frames are fresh).
-func test_the_generator_refuses_an_argument_and_a_fresh_run_writes_nothing() -> void:
-	var refused: Dictionary = _generator(["--bogus"])
-	assert_int(refused["code"]).is_equal(2)
-	assert_str(refused["text"]).contains("gen-art: usage")
-	var fresh: Dictionary = _generator([])
-	assert_int(fresh["code"]).override_failure_message(fresh["text"]).is_equal(0)
-	assert_str(fresh["text"]).contains("gen-art: 0 written, ")
+## The wrapper hands every flag on, in the order given.
+func test_the_wrapper_hands_on_the_flags_of_a_one_model_check() -> void:
+	var root: String = _project("ok\n")
+	_run(root, ["--model", "assets/art/models/fossil/light_tank.tres", "--check"], {}, 0)
+	var args: String = FileAccess.get_file_as_string(root.path_join("args.txt"))
+	assert_str(args).contains("-- --model assets/art/models/fossil/light_tank.tres --check")
+
+
+## The generator with the real binary: a wrong argument is exit 2 and the usage line.
+func test_the_generator_refuses_a_wrong_argument_and_says_how_to_call_it() -> void:
+	for words: Array in [
+		["--bogus"],
+		["--model"],
+		["--model", LIGHT_TANK, "--model", LIGHT_TANK],
+		["--all", "--model", LIGHT_TANK],
+		["--check", "extra"],
+	]:
+		var args: Array[String] = []
+		args.assign(words)
+		var refused: Dictionary = _generator(args)
+		assert_int(refused["code"]).override_failure_message(str(args)).is_equal(2)
+		assert_str(refused["text"]).contains("gen-art: usage: gen-art.sh [--all | --model PATH]")
+	var missing: Dictionary = _generator(["--model", "res://assets/art/models/fossil/nope.tres"])
+	assert_int(missing["code"]).is_equal(2)
+	assert_str(missing["text"]).contains(
+		"gen-art: no model file res://assets/art/models/fossil/nope"
+	)
+
+
+## `--check` writes nothing and finds nothing on the committed files (test_artgen.gd names the stale
+## ones when it does), for every model and for one in each of the ways a path can be written.
+func test_a_check_of_the_fresh_files_is_exit_0_and_writes_nothing() -> void:
+	var all: Dictionary = _generator(["--check"])
+	assert_int(all["code"]).override_failure_message(all["text"]).is_equal(0)
+	assert_str(all["text"]).contains("gen-art: 0 differ, ")
+	for path: String in [
+		LIGHT_TANK,
+		"assets/art/models/fossil/light_tank.tres",
+		"./assets/art/models/fossil/light_tank.tres",
+		ProjectSettings.globalize_path(LIGHT_TANK),
+	]:
+		var one: Dictionary = _generator(["--model", path, "--check"])
+		assert_int(one["code"]).override_failure_message(path + "\n" + one["text"]).is_equal(0)
+		assert_str(one["text"]).contains("gen-art: 0 differ, ")
+	var explicit: Dictionary = _generator(["--all", "--check"])
+	assert_int(explicit["code"]).is_equal(0)
+
+
+## A model whose files are not committed is a difference: `--check` names them, writes none of
+## them and exits 4. An invalid model is exit 1 whatever the flags.
+func test_a_check_of_a_model_that_is_not_committed_names_its_files_and_is_exit_4() -> void:
+	var folder: String = _scratch("box hull steel 0 0 0 1 1 1")
+	var found: Dictionary = _generator(["--model", folder.path_join("zz_scratch.tres"), "--check"])
+	assert_int(found["code"]).override_failure_message(found["text"]).is_equal(4)
+	assert_str(found["text"]).contains(
+		"gen-art: differs: res://assets/art/iso/fossil/veh/zz_scratch_hull_d00.svg"
+	)
+	# 16 hull and 16 shadow frames with an import each, the sheet and the card.
+	assert_str(found["text"]).contains("gen-art: 66 differ, ")
+	assert_bool(FileAccess.file_exists("res://assets/art/iso/icons/item_zz_scratch.svg")).is_false()
+	var invalid: Dictionary = _generator(
+		["--model", _scratch("box hull no_such_material 0 0 0 1 1 1").path_join("zz_scratch.tres")]
+	)
+	assert_int(invalid["code"]).is_equal(1)
+	assert_str(invalid["text"]).contains("not a primitive or an unknown material")
+
+
+## A scratch folder with one model `zz_scratch.tres` of the Derrick League and the given primitive.
+func _scratch(prim: String) -> String:
+	var access: DirAccess = DirAccess.create_temp("gen_art_model_")
+	_projects.append(access)
+	var model: String = (
+		'[gd_resource type="Resource" script_class="ArtModel" format=3]\n\n'
+		+ '[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]\n\n'
+		+ '[resource]\nscript = ExtResource("1_model")\nart_id = &"zz_scratch"\n'
+		+ 'faction = &"fossil"\ncategory = &"veh"\n'
+		+ 'prims = PackedStringArray("%s")\n' % prim
+	)
+	_write(access.get_current_dir().path_join("zz_scratch.tres"), model)
+	return access.get_current_dir()
 
 
 ## A scratch project with the script under test, a stand-in for the script that seeds the extension

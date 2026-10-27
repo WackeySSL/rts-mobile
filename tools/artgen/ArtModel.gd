@@ -8,6 +8,8 @@ const CATEGORIES: Array[StringName] = [&"veh", &"inf", &"bld", &"fx"]
 ## The directions of the hull by category: a vehicle has 16, a squad 8, a building none (one view).
 const HULL_DIRECTIONS: Dictionary[StringName, int] = {&"veh": 16, &"inf": 8, &"bld": 1, &"fx": 1}
 const TURNING_DIRECTIONS: int = 16  ## A turret and a head turn in 16 steps.
+## The cast shadow is a frame set of its own (P99b): one frame per hull frame, never authored.
+const SHADOW: StringName = &"shadow"
 
 @export var art_id: StringName = &""  ## The unit or building type id; the file name too.
 @export var faction: StringName = &""  ## `fossil` or `renew`; never shown in the game.
@@ -30,6 +32,13 @@ func parts() -> Array[StringName]:
 	return found
 
 
+## The parts that have frames: the model's own and the cast shadow, last.
+func frame_parts() -> Array[StringName]:
+	var found: Array[StringName] = parts()
+	found.append(SHADOW)
+	return found
+
+
 ## The valid primitives of `part`, in the model's order.
 func primitives(part: StringName) -> Array[ArtPrim]:
 	var found: Array[ArtPrim] = []
@@ -40,10 +49,48 @@ func primitives(part: StringName) -> Array[ArtPrim]:
 	return found
 
 
+## Every primitive in the hull's frame, a turret's or head's moved to its mount (straight ahead):
+## what casts the shadow.
+func shadow_prims() -> Array[ArtPrim]:
+	var found: Array[ArtPrim] = []
+	for part: StringName in ArtPrim.PARTS:
+		for prim: ArtPrim in primitives(part):
+			if part != &"hull":
+				prim.centre += Vector2(mount.x, mount.y)
+				prim.z0 += mount.z
+			found.append(prim)
+	return found
+
+
+## The height of the muzzle above the ground, in tiles: the centre height of the primitive of the
+## firing part (the turret or head; a squad's or a gun-less vehicle's hull) that reaches farthest
+## along +x. 0 for a building without a head.
+func muzzle_z() -> float:
+	var part: StringName = &"hull"
+	for turning: StringName in [&"turret", &"head"]:
+		if not primitives(turning).is_empty():
+			part = turning
+	var forward: ArtPrim = null
+	for prim: ArtPrim in primitives(part):
+		if forward == null or prim.aabb().end.x > forward.aabb().end.x:
+			forward = prim
+	if forward == null or (part == &"hull" and category == &"bld"):
+		return 0.0
+	return forward.aabb().get_center().z + (0.0 if part == &"hull" else mount.z)
+
+
+## The direction of the default view (Spec 04): `d06` for the Derrick League, `d10` for the Lumen
+## Accord.
+func default_dir() -> int:
+	return 6 if faction == &"fossil" else 10
+
+
 ## The direction indices of a part's frames (0 to 15 as `d00` to `d15`); `[-1]` is the one view of a
-## building body. A squad has the even ones.
+## building body. A squad has the even ones. The shadow has the hull's.
 func directions(part: StringName) -> Array[int]:
-	var count: int = HULL_DIRECTIONS.get(category, 1) if part == &"hull" else TURNING_DIRECTIONS
+	var count: int = (
+		HULL_DIRECTIONS.get(category, 1) if part in [&"hull", SHADOW] else TURNING_DIRECTIONS
+	)
 	var found: Array[int] = []
 	for i: int in count:
 		found.append(i * roundi(16.0 / count) if count > 1 else -1)

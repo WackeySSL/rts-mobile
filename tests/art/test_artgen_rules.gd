@@ -286,7 +286,7 @@ func test_the_mount_turns_with_the_hull_and_a_model_without_a_hull_is_refused() 
 	assert_array(Array(model.problems())).contains(["x: no hull primitive"])
 
 
-func test_a_synthetic_model_builds_32_frames_for_a_vehicle_and_the_same_bytes_twice() -> void:
+func test_a_synthetic_model_builds_48_frames_a_sheet_and_a_card_and_the_same_bytes_twice() -> void:
 	var model: ArtModel = ArtModel.new()
 	model.art_id = &"x"
 	model.faction = &"renew"
@@ -296,7 +296,11 @@ func test_a_synthetic_model_builds_32_frames_for_a_vehicle_and_the_same_bytes_tw
 		[BOX.replace("steel", "team"), "prism turret graphite 0 0 0 0.5 0.5 0.5"]
 	)
 	var files: Dictionary[String, String] = ArtGen.build(model)
-	assert_int(files.size()).is_equal(64)
+	# 16 hull, 16 turret and 16 shadow frames with an import each, the sheet and the item card.
+	assert_int(files.size()).is_equal(98)
+	assert_bool(files.has("res://assets/art/iso/renew/veh/x_sheet.tres")).is_true()
+	assert_bool(files.has("res://assets/art/iso/icons/item_x.svg")).is_true()
+	assert_bool(files.has("res://assets/art/iso/renew/veh/x_shadow_d15.svg")).is_true()
 	assert_str(files["res://assets/art/iso/renew/veh/x_hull_d00.svg.import"]).is_equal(
 		ArtGen.IMPORT_TEXT
 	)
