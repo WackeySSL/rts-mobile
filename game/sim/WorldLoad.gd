@@ -12,10 +12,11 @@ extends RefCounted
 ## an empty one. The rules come from `scenario.rules`, else they stay the RulesDef defaults. A null
 ## `rng` keeps the default stream. The map grid comes from `scenario.map`, which also sets the map
 ## size; without a map, or with one that fails validate(), the world is open grass of
-## `map_size_tiles`. Types come from the spawns (one without a unit is skipped), then the roster.
-## `player_count` is the scenario's value, raised to the highest spawn owner. A spawn with a jitter
-## draws two values per unit (see _jittered). The SPAWNED events of the setup are dropped. Spawns
-## run before prepare(), so no row is refused here: data keeps their total within `max_rows`.
+## `map_size_tiles`. Types come from the spawns (one without a unit is skipped), then the roster,
+## then the roster of each listed faction by player. `player_count` is the scenario's value, raised
+## to the highest spawn owner. A spawn with a jitter draws two values per unit (see _jittered). The
+## SPAWNED events of the setup are dropped. Spawns run before prepare(), so no row is refused here:
+## data keeps their total within `max_rows`.
 static func from_scenario(scenario: ScenarioDef, rng: DetRandom = null) -> World:
 	var world: World = World.new()
 	if rng != null:
@@ -64,6 +65,13 @@ static func from_scenario(scenario: ScenarioDef, rng: DetRandom = null) -> World
 	for unit: UnitDef in scenario.roster:
 		if unit != null:
 			_type_for(world, unit)
+	# The listed factions' rosters last, by player (ADR 0023 section 6).
+	for faction: FactionDef in scenario.factions:
+		if faction == null:
+			continue
+		for unit: UnitDef in faction.roster:
+			if unit != null:
+				_type_for(world, unit)
 	world.prepare()
 	world.events.clear()
 	return world
@@ -153,10 +161,10 @@ static func _load_map(world: World, map: MapDef) -> void:
 
 
 ## The type index for `unit`'s type_id. A type seen for the first time is copied in, so each
-## definition is read once however many spawns use it. A BuildingDef also fills the footprint,
-## power, produced tab, free unit, dock and exit tables (a UnitDef pads them); the type it
-## `requires` and the `free_unit` of a building are copied in too, after it, when no earlier type
-## was theirs.
+## definition is read once however many spawns use it. The faction table takes the index of
+## `unit.faction` (_faction_for). A BuildingDef also fills the footprint, power, produced tab, free
+## unit, dock and exit tables (a UnitDef pads them); the type it `requires` and the `free_unit` of a
+## building are copied in too, after it, when no earlier type was theirs.
 static func _type_for(world: World, unit: UnitDef) -> int:
 	var found: int = world.type_ids.find(unit.type_id)
 	if found >= 0:
@@ -179,6 +187,7 @@ static func _type_for(world: World, unit: UnitDef) -> int:
 	world.type_tab.append(unit.tab)
 	world.type_requires.append(World.TYPE_PAD_NONE)
 	world.type_harvest.append(unit.harvest_capacity)
+	world.type_faction.append(_faction_for(world, unit.faction))
 	var building: BuildingDef = unit as BuildingDef
 	world.type_foot_w.append(building.footprint.x if building != null else World.TYPE_PAD_V0)
 	world.type_foot_h.append(building.footprint.y if building != null else World.TYPE_PAD_V0)
@@ -196,6 +205,18 @@ static func _type_for(world: World, unit: UnitDef) -> int:
 	if building != null and building.free_unit != null:
 		world.type_free_unit[index] = _type_for(world, building.free_unit)
 	return index
+
+
+## The faction index for `faction`, -1 for none (an empty id: any faction). A faction is known by
+## its id: the first type that names it adds it to `faction_ids`, so the order is first appearance.
+static func _faction_for(world: World, faction: StringName) -> int:
+	if faction.is_empty():
+		return World.TYPE_PAD_NONE
+	var found: int = world.faction_ids.find(faction)
+	if found >= 0:
+		return found
+	world.faction_ids.append(faction)
+	return world.faction_ids.size() - 1
 
 
 ## The weapon index for `weapon`, -1 for none. A weapon is known by its id like a type by its

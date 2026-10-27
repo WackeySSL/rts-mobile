@@ -104,7 +104,8 @@ func test_copied_and_not_copied_split_the_world_shape_lists_exactly_once() -> vo
 
 
 func test_each_id_list_is_an_equal_typed_copy_of_the_worlds() -> void:
-	assert_array(MatchSnapshot.ID_LISTS).is_equal([&"type_ids", &"weapon_ids", &"terrain_ids"])
+	var lists: Array[StringName] = [&"type_ids", &"weapon_ids", &"terrain_ids", &"faction_ids"]
+	assert_array(MatchSnapshot.ID_LISTS).is_equal(lists)
 	# Declared typed: a new snapshot already holds an empty Array[StringName] under each name.
 	var fresh: MatchSnapshot = MatchSnapshot.new()
 	for name: StringName in MatchSnapshot.ID_LISTS:
@@ -118,7 +119,9 @@ func test_each_id_list_is_an_equal_typed_copy_of_the_worlds() -> void:
 		assert_bool(shape.has(name)).is_false()
 		assert_int(typeof(mine)).is_equal(TYPE_ARRAY)
 		assert_int((mine as Array).get_typed_builtin()).is_equal(TYPE_STRING_NAME)
-		assert_bool((mine as Array).is_empty()).is_false()
+		# The perf arena lists no faction (tests/sim/test_factions.gd has the non-empty case).
+		if name != &"faction_ids":
+			assert_bool((mine as Array).is_empty()).is_false()
 		assert_array(mine as Array).is_equal(theirs as Array)
 		assert_bool(is_same(mine, theirs)).is_false()
 

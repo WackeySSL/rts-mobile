@@ -17,3 +17,7 @@ extends Resource
 @export var player_count: int = 0
 ## Unit types registered at setup even if no spawn uses them.
 @export var roster: Array[UnitDef] = []
+## The factions of the match by player: entry `p` is player p's faction, entry 0 is unused (null).
+## World.from_scenario registers every listed faction's roster after `roster` (ADR 0023 section 6).
+## Empty = no faction listed, as in every scenario before Phase 3's revision 5.
+@export var factions: Array[FactionDef] = []

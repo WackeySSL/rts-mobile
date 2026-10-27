@@ -236,7 +236,12 @@ func test_a_defeated_players_queue_and_cancel_are_dropped_by_the_gate() -> void:
 	assert_bool(Production.apply_queue(world, Rig.queue(world, 1, "rocket_squad"))).is_true()
 	assert_bool(Production.apply_cancel(world, Command.cancel(1, INFANTRY, 0))).is_true()
 	assert_array([world.credits[1], world.queue_count[queue]]).is_equal([1600 + 100, 1])
-	# The other player is still playing.
+	# The other player is still playing. With player 1 defeated by hand that player is the only one
+	# left, so the first step above ended the match (plan row P76), and an ended match drops every
+	# Command: this case is the gate's alone, so the end is taken back.
+	assert_array([world.match_end_tick, world.winner]).is_equal([2, 2])
+	world.match_end_tick = 0
+	world.winner = 0
 	Rig.step(world, [Rig.queue(world, 2, "rifle_squad")])
 	assert_int(world.dropped_commands).is_equal(2)
 	assert_int(world.credits[2]).is_equal(1900)

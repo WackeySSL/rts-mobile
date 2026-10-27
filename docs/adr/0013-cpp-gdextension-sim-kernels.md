@@ -131,6 +131,10 @@ Status note (2026-10-22, P68b docs; ADRs 0017 and 0021 accepted 2026-10-22): §1
 status note: Phase 3's three new phases start as GDScript, and the lead reads the port clauses at
 the Phase 3 plan's row P93. No accepted text changed.
 
+Status note (2026-10-26, P26ai docs): §2 carries a dated status note: TARGETING's checked list
+holds 41 names since P71b (#185), and P71's building-world lockstep runs 450 ticks. No accepted
+text changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.
@@ -825,6 +829,17 @@ absorbs next to the C++ phases.
     `test_fog_lockstep_cases.gd` and `test_fog_lockstep_random.gd` compare the twin and the kernel
     after every tick, the full fog state included; `bind/kernel_fog.cpp` and `core/fog.h` name
     them. The plan's sections P46n2 and P46b "As merged" hold the details.
+
+  Status note (2026-10-26, P26ai docs, P71 as merged, #184, and P71b, #185; the text and the
+  notes above stay as accepted and as dated):
+  - **TARGETING's checked list** holds 41 names (P46b's note above: 40): `type_speed` gains `PH_T`
+    again, because a lock on a target that stands still keeps the row's goal (ADR 0017 §1 and its
+    note of the same date). `tests/sim/native/test_kernel_abi.gd` pins it (`LIST_SIZES` 3: 41).
+  - **The building worlds:** `tests/sim/native/test_building_lockstep.gd` runs every ported
+    kernel on a world with buildings for 450 ticks, not §4's 900; the 900-tick locksteps of each
+    kernel stand as they are. `tests/sim/native/test_building_attack_lockstep.gd` is P71b's
+    lockstep for an `ATTACK` on a 1x1, a 2x2 and a 3x3 building with TARGETING alone, INTEGRATE
+    alone or every kernel in C++ (the artillery cases: TARGETING alone and every kernel).
 
 ### 3. Dispatch and the implementation switch
 - **`World` gains two members (P54):**

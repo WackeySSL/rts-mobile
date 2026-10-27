@@ -51,6 +51,7 @@ const COPIED: Array[StringName] = [
 	&"type_dock_y",
 	&"type_exit_x",
 	&"type_exit_y",
+	&"type_faction",
 	&"weapon_projectile_speed",
 	&"proj_id",
 	&"proj_owner",
@@ -127,7 +128,7 @@ const COPIED_SCALARS: Array[StringName] = [
 ]
 ## The World's Array[StringName] id lists, in no World shape list (ADR 0012's amendment). Each is
 ## copied by duplicate(): a shallow copy of a few immutable StringNames.
-const ID_LISTS: Array[StringName] = [&"type_ids", &"weapon_ids", &"terrain_ids"]
+const ID_LISTS: Array[StringName] = [&"type_ids", &"weapon_ids", &"terrain_ids", &"faction_ids"]
 
 ## Header. `match_serial` and `last_hash` come from the creator; capture() sets the rest.
 var match_serial: int = 0
@@ -183,7 +184,9 @@ var type_dock_x: PackedInt32Array = PackedInt32Array()
 var type_dock_y: PackedInt32Array = PackedInt32Array()
 var type_exit_x: PackedInt32Array = PackedInt32Array()
 var type_exit_y: PackedInt32Array = PackedInt32Array()
+var type_faction: PackedInt32Array = PackedInt32Array()
 var weapon_ids: Array[StringName] = []
+var faction_ids: Array[StringName] = []
 var weapon_projectile_speed: PackedInt32Array = PackedInt32Array()
 
 ## Projectile slots (proj_id 0 = free) and the previous snapshot's slots. A slot whose `proj_id`
@@ -350,6 +353,7 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	type_dock_y = world.type_dock_y.duplicate()
 	type_exit_x = world.type_exit_x.duplicate()
 	type_exit_y = world.type_exit_y.duplicate()
+	type_faction = world.type_faction.duplicate()
 	weapon_projectile_speed = world.weapon_projectile_speed.duplicate()
 	proj_id = world.proj_id.duplicate()
 	proj_owner = world.proj_owner.duplicate()
@@ -362,6 +366,7 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	ore_cell = world.ore_cell.duplicate()
 	_capture_players(world)
 	type_ids = world.type_ids.duplicate()
+	faction_ids = world.faction_ids.duplicate()
 	weapon_ids = world.weapon_ids.duplicate()
 	terrain_ids = world.terrain_ids.duplicate()
 	events = world.events.duplicate()

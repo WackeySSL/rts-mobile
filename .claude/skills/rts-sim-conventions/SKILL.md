@@ -185,6 +185,10 @@ because of these rules:
   `SYNC` or after `wait_idle()`. A published snapshot is never written by either thread.
 - A submitted `Command` belongs to the runner; every `Command` factory duplicates the arrays it
   is given.
+- GDScript shares a packed array by reference across assignment, member reads and Variant
+  boundaries; only `duplicate()` copies. A view-like object (`PlayerView`) copies what a caller can
+  reach or keeps it behind getters; `PlacementInput` and `MatchSnapshot.placement_input()` hand out
+  aliases that are read at once and never written.
 - Determinism does not depend on the mode: the golden hashes are equal in `SYNC` and `WORKER`.
 
 ## Determinism checks

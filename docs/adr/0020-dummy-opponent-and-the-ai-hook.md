@@ -32,6 +32,12 @@ Status note (2026-10-26, P68e docs; ADR 0023 accepted 2026-10-26): §4 carries a
 one dummy `AiDef` per faction; the dummy never builds or fires a superweapon. No accepted text
 changed.
 
+Status note (2026-10-26, P26ai docs): §1, §2, §3 and §4 carry dated status notes on `PlayerView`
+(P78), `AiDriver` (P82), the `game/ai` scan (P78q) and the dummy (P83, P83b) as merged: the
+answers for what a player cannot see, the end rule and the turn test, `game/ai` without the
+allocation check, the guard point as a data offset and the defence's cost. No accepted text
+changed.
+
 ## Context
 - CLAUDE.md rule 4: humans and AI act only through `Command` objects. Rule 3: randomness only
   through per-match `DetRandom` streams; `game/sim/DetRandom.gd` says "AI controllers use
@@ -67,6 +73,26 @@ records (ADR 0017 §3); `Placement.reason` for the player; and the World constan
 (tabs, harvest modes) re-exported, so `game/ai` never names `World`. An accessor asked about a
 row the player does not see answers as if the row did not exist.
 
+Status note (2026-10-26, P26ai docs, P78 as merged, #196, and P77, #203; the text above stays
+as accepted), on `game/sim/PlayerView.gd`:
+- **Rows.** `own_rows` and `seen_rows` are ascending World rows (seen: every other owner's row,
+  enemy or neutral, in a cell the player sees). The public getters (`row_id`, `row_owner`,
+  `row_type`, `row_pos`, `row_hp`) answer an own or a seen row; the own columns (`row_order`,
+  `row_harvest_mode`, `row_home`) an own row only; anything else answers `PlayerView.MISSING`
+  (-1), `row_pos` (-1, -1). A gap between two listed rows shows that hidden rows lie between them;
+  a controller does no arithmetic on row indexes.
+- **Placement.** `placement(type_index, col, row)` is `Placement.reason` for the player, which
+  reads every row, so a tile held by a mobile enemy row the player does not see answers
+  `OCCUPIED`. The sim's `PLACE` refuses it too, and no row is returned, so §5's "never returns a
+  row the player does not see" holds.
+- **Aliases.** Every public field is a copy; the row columns and the placement input are aliases
+  of the World's arrays behind an underscore, read only by the getters. GDScript has no private
+  members, so only the naming keeps a caller from them; `test_view_reads_snapshot.gd` keeps
+  `game/ai` off the name `World`, not off `._` members (ADR 0012 §3's note of the same date).
+- **Re-exports:** `Tab`, `HarvestMode`, `Order`, `TABS`, `MILLI_PER_TILE`, `TILE_CENTRE`, with
+  the World's values (a test pins each pair). P77 adds the last-seen records (`ghost_*` copies,
+  `ghost_of`, `ghost_pos`).
+
 ### 2. `AiController` and the driver
 - `game/ai/AiController.gd` (ai-dev): `class_name AiController extends RefCounted`, with
   `player_id`, `think_period` and `think_offset` ints and
@@ -80,6 +106,18 @@ row the player does not see answers as if the row did not exist.
 - `think_period` is 15 (data). `think_offset` puts the think on a tick whose step does not end in
   a checkpoint (a checkpoint hashes after the step that starts at `tick % 15 == 14`): the dummy of
   player p thinks at `tick % 15 == 7 + p - 2` for p in 2..4.
+
+Status note (2026-10-26, P26ai docs, P82 as merged, #205; the text above stays as accepted), on
+`game/core/AiDriver.gd`:
+- **The end.** Nothing thinks once `match_end_tick` is above 0: the sim drops every Command after
+  the end, and a controller cannot see the end through its view.
+- **The order** is picked in place, without scratch storage: each pass takes the due controller
+  with the smallest (player, list index) after the one that thought last, so two controllers of
+  one player think in list order. A null entry is skipped; a period below 1 counts as 1.
+- **The turn test** is GDScript's `%`, as written above, so a controller with a negative
+  `think_offset` would miss its turns. `DummyAi.create` gives an offset in 0 to `think_period` - 1
+  (`posmod`), so no merged controller is affected; a later controller keeps its offset in that
+  range.
 
 ### 3. Where it runs: inside the tick job
 This supersedes ADR 0012 §1's "The Phase 4 AI acts there" and §2's "Phase 4's AI and
@@ -99,6 +137,14 @@ This supersedes ADR 0012 §1's "The Phase 4 AI acts there" and §2's "Phase 4's 
 - `game/ai` joins the thread rules of ADR 0012 §2 (no Node, no autoload, no engine singleton, no
   clock) and the purity scan's rules for the sim; `test_view_reads_snapshot.gd` drops its `.world`
   allowance for `game/ai`, and a new rule fails on the name `World` there.
+
+Status note (2026-10-26, P26ai docs, P78q as merged, #201; the text above stays as accepted):
+the scan is applied. `tests/project/test_view_reads_snapshot.gd` fails on `.world`, `.loop`,
+`.replay`, `.probe` and the name `World` in `game/ai`, and `tests/project/test_sim_purity.gd`
+scans `game/ai` with the sim's purity and thread rules. **`game/ai` is exempt from the sim's
+allocation check** (no array literal, `duplicate()` or `slice()` in a loop body), the lead's
+decision of 2026-10-26: that check guards the loops of the per-tick phases, and a think runs on
+one tick in 15, counted and bounded by its tests (§4).
 
 ### 4. The dummy opponent
 `DummyAi extends AiController`, driven by `data/ai/dummy.tres` (`AiDef`):
@@ -124,6 +170,30 @@ accepted): with two factions (ADR 0023 §6) the dummy has one `AiDef` per factio
 opponent's faction in `MatchRunner.opponents` (plan rows P83d, P90). A build order lists only its
 faction's types. The dummy builds no strike building and never sends `SUPERWEAPON`; Phase 4's AI
 uses the superweapons. The rules above are unchanged.
+
+Status note (2026-10-26, P26ai docs, P83 as merged, #204, and P83b, #206; the text and the
+note above stay as accepted and as dated), on `game/ai/DummyAi.gd`, `PlacementSpiral.gd` and
+`DummyDefence.gd`:
+- **The def** (`AiDef`) also names the Headquarters' and the harvester's type ids (`hq_type`,
+  `harvester_type`), the spiral's stride (`place_stride_tiles`, the largest footprint plus one
+  free tile) and the think slot (`think_tick`: player p thinks at `tick % think_period ==
+  think_tick + p - 2`), and from P83b `guard_offset_tiles`. All numbers are in `data/ai/dummy.tres`.
+- **The guard point** is the Headquarters' centre (the first building's when there is none) moved
+  by `guard_offset_tiles`, each axis cut to half of `defend_radius_tiles`, so it lies inside the
+  radius whatever the data says.
+- **The destination** is the most pressing threat's position (the seen row of another non-neutral
+  owner nearest to its nearest own building, within the radius; ties to the lower row), else the
+  guard point. The defence orders an `IDLE` combat unit, or one it sent there itself; a unit that
+  a player or a rally point gave an order keeps it. A unit it sent keeps its order until the
+  destination changes (an order that ended short counts as arrived), so a still threat costs one
+  Command; a moving threat costs one per think.
+- **"Never farther than `defend_radius_tiles`"** holds for the order's target point.
+  `Formation.assign` spreads the units round that point, so a slot can lie a tile or so past the
+  radius, and an `ATTACK_MOVE` may chase a target past it (the way back to the guard point too).
+  The dummy still sends no order to a point outside the radius, so it never attacks.
+- **Cost.** A think visits its own rows, makes (seen enemy rows) x (own buildings) distance tests
+  for the threat (`DummyDefence.tests`, pinned) and asks at most `place_tries` spiral slots
+  (`DummyAi.placement_tries`): more than "visits the seen enemy rows", bounded and counted.
 
 ### 5. Proof
 - A dummy-vs-dummy match of 9 000 ticks (10 minutes) run twice from one seed gives the same
