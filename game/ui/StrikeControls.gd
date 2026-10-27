@@ -8,10 +8,10 @@ extends HBoxContainer
 ## Landscape: the top line, left of the minimap's slot. Portrait: the right edge, a gap above the
 ## ArmyBar's line, which is a gap above the build band. The parent `MarginContainer` is the band the
 ## row sits in; this node sets its margins, and it comes after the BuildSidebar in the scene, so the
-## band's height is in place. The row is 200 dp wide at most, which every phone's width holds.
+## band's height is in place. The row is about 216 dp wide, which every phone's width holds.
 
 const GAP_DP: float = 8.0
-const ACTION_DP: float = 56.0  ## The check mark and the X.
+const ACTION_DP: float = 64.0  ## The check mark and the X: placement's size (touch-ui-rules).
 const ICON_DP: float = 32.0
 const CARD_ART: String = "res://assets/art/iso/icons/item_%s.svg"
 
