@@ -28,10 +28,12 @@ extends Node2D
 ## layer-mode step starts, because the heavy window counts the rigs inside the camera. A finger
 ## still pans and zooms (to inspect on the preview), but a move while a run records makes it
 ## INVALID (`PerfHud.REASON_CAMERA_MOVED`): keep the phone on the table.
-## The per-match atlas (plans P113 and P114) is baked once in `_ready`, before the card's preflight
-## and so outside every timed window, by the sorted world that draws from it: the art of the
-## scenario's types for each player, in its faction's art and its own triad, scale 1. The card and
-## one console line give the bake time and page; the match start finds the atlas there and keeps it.
+## Two atlases are baked once in `_ready`, before the card's preflight and so outside every timed
+## window (plans P113 and P114). The sorted world draws from the first: the art of the scenario's
+## three types for each of its two players, scale 1; the match start finds it there and keeps it.
+## The card and one console line (`atlas_bake_ms`, `atlas_page`) describe the second, P113's
+## report-only bake: every sheet of both factions, each player in its faction's key triad, which is
+## what a real two-faction match start bakes (ADR 0023 section 2), whatever this scenario spawns.
 ## The look is the theme's (`game/ui/theme.tres`): the scene sets it on the margin the controls sit
 ## in, and this script sets no colour, font or style.
 
@@ -89,9 +91,10 @@ var orientation_feature: Callable = DisplayServer.has_feature.bind(
 )
 var orientation_source: Callable = DisplayServer.screen_get_orientation
 var orientation_sink: Callable = DisplayServer.screen_set_orientation
-## Bakes the atlas (a test replaces it with a stub: the real bake rasterises every frame).
+## Bakes the atlases and returns the card's (a test replaces it with a stub: the real bake
+## rasterises every frame).
 var atlas_source: Callable = _bake_atlas
-var atlas: IsoAtlas = null
+var atlas: IsoAtlas = null  ## The card's atlas, report-only; the drawing one is `world_sort.atlas`.
 var layer_mode: String = MODE_ALL
 
 var _wait_left: int = 0  ## Frames the first run may still wait for landscape; 0: not waiting.
@@ -258,11 +261,30 @@ func _apply_dp() -> void:
 	bar.add_theme_constant_override("separation", gap)
 
 
-## The atlas of the scenario's match, baked by the sorted world: `ScenarioDef.factions` give the
-## players their art and `FactionDef.key_triad` the colours the bake replaces.
+## Bakes the atlas the sorted world draws from (the scenario's match, so the match start finds it
+## and bakes nothing in a timed window) and returns the card's: all sheets of both factions, each of
+## two players in its faction's key triad (`FactionDef.key_triad`), the worst case of a match start
+## however few types the scenario spawns. The card's atlas is never drawn from.
 func _bake_atlas() -> IsoAtlas:
 	world_sort.bake_scale = ATLAS_SCALE
-	return world_sort.bake(scenario)
+	world_sort.bake(scenario)
+	var sheets: Array[IsoSheetDef] = IsoAtlas.load_sheets()
+	return IsoAtlas.build(sheets, _report_players(sheets), ATLAS_SCALE)
+
+
+## One player per faction that has a sheet, in the order of the faction ids, each wearing its
+## faction's key triad.
+static func _report_players(sheets: Array[IsoSheetDef]) -> Array[IsoPlayerArt]:
+	var ids: Array[String] = []
+	for sheet: IsoSheetDef in sheets:
+		if not ids.has(String(sheet.faction)):
+			ids.append(String(sheet.faction))
+	ids.sort()
+	var players: Array[IsoPlayerArt] = []
+	for id: String in ids:
+		var faction: FactionDef = load(WorldSort.FACTION_FILE % id) as FactionDef
+		players.append(IsoPlayerArt.make(faction.id, faction.key_triad, faction.key_triad))
+	return players
 
 
 ## Bakes the atlas and gives the card its numbers (and the console its one line).
