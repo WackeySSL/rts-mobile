@@ -191,11 +191,12 @@ func _assert_ordered_to_attack(ids: PackedInt32Array, target: int) -> void:
 
 
 ## The tick that destroyed a tank: its rig is gone and the layer holds one rig per unit left, and
-## a burst of the effects layer is planned on the place of its death.
+## a burst of the effects layer is planned on the place of its death, at the middle of a light
+## tank's frame (24 px high, ADR 0023 section 2, so 12 px above its ground point).
 func _assert_death_shown(record: PackedInt32Array) -> void:
 	assert_object(_layer.get_node_or_null("Unit%d" % record[1])).is_null()
 	assert_int(_layer.rig_count()).is_equal(_runner.snapshot.unit_id.size())
-	var place: Vector2 = IsoProjection.ground_to_px(record[2], record[3])
+	var place: Vector2 = IsoProjection.ground_to_px(record[2], record[3]) - Vector2(0.0, 12.0)
 	var bursts: int = 0
 	for index: int in _effects.quad_count():
 		var at: Vector2 = _effects.quad_rect(index).get_center()

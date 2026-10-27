@@ -21,6 +21,19 @@ extends Node2D
 ## always shows (its sight ends with it, so its own tile can be dark in that very tick), and
 ## `reveal_enemies` adds everything (the perf arena, and tests whose subject is not fog).
 ##
+## The fog layer lies on the ground at z 4, under this layer (ADR 0023 section 2), so it does not
+## cover what a tracer draws over a tile the player does not see: a tracer with both ends seen is
+## drawn whole, and one with a single end seen is clipped at birth to the seen tiles (ADR 0022
+## section 4, kept by ADR 0023). It runs on the ground from the seen end towards the other and stops
+## at the last point of a TRACER_STEP_MILLI step whose tile the local player sees in that tick's
+## fog, so it ends within one step of the first dark tile and the slot keeps the clipped end;
+## `_draw` does not change.
+##
+## Every effect is placed by `IsoProjection` (ADR 0023 section 1) and lifted by `SpriteLift`: a
+## flash, a tracer and a puff by the muzzle height of the shot's weapon (a shell flies level, so a
+## tracer's two ends and the puff where it lands stand at that height), a burst and a fade at the
+## middle of the frame of the unit that died.
+##
 ## `_process` plans the frame's lines and quads into reused packed arrays and `_draw` paints that
 ## plan: tracers as straight lines (butt caps: draw_line has no round ones, which STYLE.md asks
 ## for), everything else as quads of one atlas (ADR 0011 section 3, z 130 in ADR 0012 section 6).
@@ -60,6 +73,7 @@ const FLASH_DEFAULT_PX: float = 24.0
 const PUFF_DEFAULT_PX: float = 40.0
 const MUZZLE_DEFAULT_PX: float = 13.0
 const GEO_STRIDE: int = 5  ## A slot's x, y, end x, end y and size, in world px.
+const TRACER_STEP_MILLI: int = 250  ## A quarter tile: how far a clipped tracer is probed at a time.
 
 ## Ring slots; the setter makes a new, empty ring.
 @export var capacity: int = 128:
@@ -257,38 +271,77 @@ func _seen(snap: MatchSnapshot, x: int, y: int) -> bool:
 
 ## [SHOT, shooter id, shooter x, shooter y, target id, weapon, target x, target y]: a flash at
 ## the muzzle, which is on the way to the target and no farther than it, and for a hitscan weapon
-## a tracer from there to the target's position. The ends are the event's, not the rows'. The
-## flash needs the shooter's tile seen, the tracer either end's.
+## a tracer from there to the target's position. The ends are the event's, not the rows', lifted to
+## the weapon's muzzle height. The flash needs the shooter's tile seen, the tracer either end's: a
+## tracer with one end seen is clipped to the seen tiles (`_last_seen_point`).
 func _add_shot(snap: MatchSnapshot, at: int, now: int) -> void:
 	var events: PackedInt32Array = snap.events
+	var shooter_at: Vector2 = Vector2(events[at + 2], events[at + 3])  # Milli-tiles.
+	var target_at: Vector2 = Vector2(events[at + 6], events[at + 7])
 	var from_seen: bool = _seen(snap, events[at + 2], events[at + 3])
-	if not (from_seen or _seen(snap, events[at + 6], events[at + 7])):
+	var target_seen: bool = _seen(snap, events[at + 6], events[at + 7])
+	if not (from_seen or target_seen):
 		return
 	var weapon: int = events[at + 5]
 	var weapon_id: StringName = _weapon_id(snap, weapon)
-	var shooter: Vector2 = IsoProjection.ground_to_px(events[at + 2], events[at + 3])
-	var target: Vector2 = IsoProjection.ground_to_px(events[at + 6], events[at + 7])
+	var lift: float = SpriteLift.muzzle_lift_px(snap.weapon_ids, weapon)
+	var shooter: Vector2 = _lifted(shooter_at, lift)
+	var target: Vector2 = _lifted(target_at, lift)
 	var reach: float = muzzle_px.get(weapon_id, MUZZLE_DEFAULT_PX)
-	var muzzle: Vector2 = shooter + (target - shooter).limit_length(reach)
+	var span: float = shooter.distance_to(target)
+	var along: float = 1.0 if span <= reach else reach / span  # The muzzle's share of the line.
+	var muzzle: Vector2 = shooter.lerp(target, along)
 	var speeds: PackedInt32Array = snap.weapon_projectile_speed
 	if weapon >= 0 and weapon < speeds.size() and speeds[weapon] == 0:
-		_push(Kind.TRACER, now, muzzle, target, 0.0)
+		var from: Vector2 = muzzle
+		var to: Vector2 = target
+		var muzzle_at: Vector2 = shooter_at.lerp(target_at, along)  # The muzzle's ground point.
+		if not from_seen:  # Either end is seen, so the target is: the line starts from it.
+			from = _lifted(_last_seen_point(snap, target_at, muzzle_at), lift)
+		elif not target_seen:
+			to = _lifted(_last_seen_point(snap, muzzle_at, target_at), lift)
+		_push(Kind.TRACER, now, from, to, 0.0)
 	if from_seen:
 		_push(Kind.FLASH, now, muzzle, Vector2.ZERO, flash_px.get(weapon_id, FLASH_DEFAULT_PX))
 
 
-## [IMPACT, projectile id, x, y, target id or 0, weapon, 0, 0]: a puff where the shell came down.
+## The world px of the ground point `at` (milli-tiles, rounded to the milli) lifted `lift` px.
+static func _lifted(at: Vector2, lift: float) -> Vector2:
+	return IsoProjection.ground_to_px(roundi(at.x), roundi(at.y)) - Vector2(0.0, lift)
+
+
+## The last point on the ground line from `seen_end` towards `far_end` (milli-tiles) whose tile the
+## local player sees, probed in TRACER_STEP_MILLI steps from the seen end (the far end itself
+## last), at most one step more than the line holds; `seen_end` itself when the first step is
+## already dark. No allocation.
+func _last_seen_point(snap: MatchSnapshot, seen_end: Vector2, far_end: Vector2) -> Vector2:
+	var span: float = seen_end.distance_to(far_end)
+	if span <= 0.0:
+		return seen_end
+	var heading: Vector2 = (far_end - seen_end) / span
+	var last: Vector2 = seen_end
+	for step: int in range(1, int(span / TRACER_STEP_MILLI) + 2):
+		var point: Vector2 = seen_end + heading * minf(float(step * TRACER_STEP_MILLI), span)
+		if not _seen(snap, roundi(point.x), roundi(point.y)):
+			break
+		last = point
+	return last
+
+
+## [IMPACT, projectile id, x, y, target id or 0, weapon, 0, 0]: a puff where the shell came down,
+## at the height it flew.
 func _add_impact(snap: MatchSnapshot, at: int, now: int) -> void:
 	var events: PackedInt32Array = snap.events
 	if not _seen(snap, events[at + 2], events[at + 3]):
 		return
 	var weapon_id: StringName = _weapon_id(snap, events[at + 5])
-	var landing: Vector2 = IsoProjection.ground_to_px(events[at + 2], events[at + 3])
+	var lift: float = SpriteLift.muzzle_lift_px(snap.weapon_ids, events[at + 5])
+	var landing: Vector2 = _lifted(Vector2(events[at + 2], events[at + 3]), lift)
 	_push(Kind.PUFF, now, landing, Vector2.ZERO, puff_px.get(weapon_id, PUFF_DEFAULT_PX))
 
 
 ## [DIED, unit id, x, y, type index, owner, 0, 0]: a burst for a vehicle (any armour but
-## infantry, a building too) and a fade for infantry.
+## infantry, a building too) and a fade for infantry, centred on the middle of the unit's frame.
 func _add_death(snap: MatchSnapshot, at: int, now: int) -> void:
 	var events: PackedInt32Array = snap.events
 	var own: bool = events[at + 5] == FogLayer.local_player_of(runner)
@@ -299,7 +352,8 @@ func _add_death(snap: MatchSnapshot, at: int, now: int) -> void:
 	var infantry: bool = (
 		type >= 0 and type < armours.size() and armours[type] == World.Armour.INFANTRY
 	)
-	var place: Vector2 = IsoProjection.ground_to_px(events[at + 2], events[at + 3])
+	var lift: float = SpriteLift.centre_lift_px(snap.type_ids, armours, type)
+	var place: Vector2 = _lifted(Vector2(events[at + 2], events[at + 3]), lift)
 	if infantry:
 		_push(Kind.FADE, now, place, Vector2.ZERO, FADE_PX)
 	else:

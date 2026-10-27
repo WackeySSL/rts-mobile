@@ -1,11 +1,11 @@
 extends GdUnitTestSuite
 ## What ProjectileLayer plans and draws (plan P44a, assets/art/STYLE.md "Combat effects", ADR 0012
 ## sections 3 and 6): a live slot of the published snapshot as one atlas quad at the lerp of its two
-## positions, turned along the move; the SHELL or ROCKET region by `weapon_ids[proj_weapon]`; a new
-## slot (its `proj_id` differs from `prev_proj_id`) not drawn in its tick. Pixels cannot be read
-## headless, so the tests read the layer's plan (`active_count`, `quad_*`), which `_draw` paints one
-## for one (`drawn_count`), and `test_the_draw_code_paints_nothing_but_atlas_quads` reads the
-## script.
+## positions, projected and lifted to its weapon's muzzle height, turned along the move; the SHELL
+## or ROCKET region by `weapon_ids[proj_weapon]`; a new slot (its `proj_id` differs from
+## `prev_proj_id`) not drawn in its tick. Pixels cannot be read headless, so the tests read the
+## layer's plan (`active_count`, `quad_*`), which `_draw` paints one for one (`drawn_count`), and
+## `test_the_draw_code_paints_nothing_but_atlas_quads` reads the script.
 ## Exact cases write slots into the published snapshot, which ADR 0012 section 3 allows in SYNC
 ## mode; the others run the real sim: two light tanks 3 tiles apart on open grass fire at each other
 ## (flight time ceil(3000 / 600) = 5 ticks). The runner is not in the tree, so only the calls here
@@ -22,6 +22,10 @@ const SHELL: Rect2 = Rect2(84.0, 60.0, 16.0, 8.0)
 const ROCKET: Rect2 = Rect2(84.0, 72.0, 36.0, 12.0)
 const ATLAS_SIZE: Vector2 = Vector2(176.0, 84.0)
 const FRAME_QUARTER: float = 1.0 / 60.0  ## Seconds: a quarter of a 15 Hz tick.
+## The height a shell flies at, the muzzle height of its weapon in world px above the ground point
+## (ADR 0023 section 2; `SpriteLift`, test_sprite_lift.gd), typed again: cannon 14, rocket 13.
+const TANK_LIFT: float = 14.0
+const ROCKET_LIFT: float = 13.0
 const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
 ## The sizes every screen is tested at: base, 20:9 phone and 4:3 tablet, each held both ways.
 const SIZES: Array[Vector2i] = ScreenSizes.ALL
@@ -290,7 +294,8 @@ func test_a_full_pool_of_live_shells_is_planned_and_drawn_slot_for_slot() -> voi
 	var heading: float = IsoProjection.screen_angle(100.0, -50.0)
 	var wrong: Array[int] = []  # The quads that are not their slot's own, so that one assertion
 	for index: int in pool:  # covers all 512 of them.
-		var expected: Vector2 = _px(Vector2(10 * index, 4 * index))
+		var lift: float = ROCKET_LIFT if index % 2 == 1 else TANK_LIFT
+		var expected: Vector2 = _px(Vector2(10 * index, 4 * index), lift)
 		if (
 			_layer.quad_slot(index) != index
 			or _layer.quad_position(index).distance_to(expected) > 0.01
@@ -301,8 +306,9 @@ func test_a_full_pool_of_live_shells_is_planned_and_drawn_slot_for_slot() -> voi
 	assert_array(wrong).is_empty()
 	var last: int = pool - 1
 	assert_int(_layer.quad_slot(last)).is_equal(last)
+	var last_lift: float = ROCKET_LIFT if last % 2 == 1 else TANK_LIFT
 	assert_vector(_layer.quad_position(last)).is_equal_approx(
-		_px(Vector2(10 * last, 4 * last)), _eps()
+		_px(Vector2(10 * last, 4 * last), last_lift), _eps()
 	)
 	assert_float(_layer.quad_angle(last)).is_equal_approx(heading, 0.0001)
 	await await_idle_frame()
@@ -406,8 +412,10 @@ func test_the_main_scene_has_the_layer_after_the_bars_at_z_120_in_world_space_at
 		layer._process(0.0)
 		assert_int(layer.active_count()).is_equal(1)
 		# A world layer: the shell on the middle of the map is seen where the camera looks.
+		# Lifted by the weapon's muzzle height, so it is seen that much above the middle.
 		var seen: Vector2 = camera.world_to_screen(layer.to_global(layer.quad_position(0)))
-		assert_vector(seen).is_equal_approx(VIEWS[at_size] * 0.5, Vector2(0.01, 0.01))
+		var lifted: Vector2 = VIEWS[at_size] * 0.5 - Vector2(0.0, TANK_LIFT)
+		assert_vector(seen).is_equal_approx(lifted, Vector2(0.01, 0.01))
 
 
 ## A snapshot slot written for a view case: `slot` live with projectile id `id` of `owner_id`,
@@ -453,9 +461,9 @@ func _eps() -> Vector2:
 	return Vector2(0.001, 0.001)
 
 
-## The screen point (world px) of the ground point `milli`, as the layer projects it.
-func _px(milli: Vector2) -> Vector2:
-	return IsoProjection.ground_to_px(roundi(milli.x), roundi(milli.y))
+## The screen point (world px) of the ground point `milli`, as the layer projects it, `lift` px up.
+func _px(milli: Vector2, lift: float = TANK_LIFT) -> Vector2:
+	return IsoProjection.ground_to_px(roundi(milli.x), roundi(milli.y)) - Vector2(0.0, lift)
 
 
 ## The projectile slot of each quad in the plan, and its region.

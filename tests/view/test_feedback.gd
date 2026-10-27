@@ -4,6 +4,9 @@ extends GdUnitTestSuite
 ## (P117) tank 1 stands at world px (-320, 432) and red tank 31 at (768, 720); the camera starts on
 ## tile (12, 21), px (-288, 544). The expected numbers are STYLE.md's, as literals; a ring is a
 ## ground ellipse (a 2:1 oval, ADR 0023 section 2) whose horizontal radius is what they measure.
+## A mark lies on the ground too (P117b): its points are flattened to half their height, its strokes
+## are as wide as before, and the target diamond's corners are 1.3 x the ring's 24.9 px horizontal
+## radius, 32.4 px (STYLE.md's 45.8 was 1.3 x the top-down ring).
 
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -32,6 +35,8 @@ const AMBER: Color = Color("F5A524")
 const RED: Color = Color("E5484D")
 const TOL: Vector2 = Vector2(0.01, 0.01)
 const CORNERS: Array[Vector2] = [Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT, Vector2.UP]
+const FLAT: Vector2 = Vector2(1.0, 0.5)  ## A shape on the ground keeps its width, half its height.
+const DIAMOND_PX: float = 32.4
 
 var _window_size_before: Vector2i
 var _now_ms: int = 0
@@ -155,18 +160,23 @@ func test_chevrons_close_in_and_the_diamond_settles_at_the_spec_sizes() -> void:
 	for first: int in [0, 5]:  # The outline pass and the colour pass.
 		for k: int in 4:  # The east chevron's tip faces west, the others are turned by 90 degrees.
 			var arm: Line2D = chevrons.get_child(first + k)
-			assert_array(arm.points).is_equal([Vector2(7, -7), Vector2.ZERO, Vector2(7, 7)])
-			assert_float(arm.rotation).is_equal_approx(k * PI / 2.0, 0.0001)
+			assert_int(arm.points.size()).is_equal(3)
+			for at: int in 3:  # Turned by k quarter turns, then flattened: the node is not turned.
+				var corner: Vector2 = [Vector2(7, -7), Vector2.ZERO, Vector2(7, 7)][at]
+				var turned: Vector2 = corner.rotated(k * PI / 2.0) * FLAT
+				assert_vector(arm.points[at]).is_equal_approx(turned, TOL)
+			assert_float(arm.rotation).is_equal(0.0)
+			assert_vector(arm.scale).is_equal(Vector2.ONE)  # Strokes keep their width.
 	# Age in ms, chevron tip distance in dp (ease out: not 27 at 75 ms), diamond size.
 	for step: Array in [[0, 36.0, 1.5], [75, 21.375, 1.125], [150, 13.5, 1.0], [200, 12.0, 1.0]]:
 		_now_ms = step[0]
 		_markers._process(0.0)
 		for first: int in [0, 5]:  # Both passes move and show together.
 			for k: int in 4:
-				var tip: Vector2 = Vector2(step[1], 0).rotated(k * PI / 2.0)
+				var tip: Vector2 = Vector2(step[1], 0).rotated(k * PI / 2.0) * FLAT
 				assert_vector(chevrons.get_child(first + k).position).is_equal_approx(tip, TOL)
 				var corner: Vector2 = flash.get_child(first + 4).points[k] * flash.scale.x  # World px.
-				assert_vector(corner).is_equal_approx(CORNERS[k] * 45.8 * step[2], TOL)
+				assert_vector(corner).is_equal_approx(CORNERS[k] * FLAT * DIAMOND_PX * step[2], TOL)
 			assert_bool(chevrons.get_child(first).visible).is_true()
 			assert_bool(flash.get_child(first).visible).is_false()
 			assert_bool(flash.get_child(first + 4).visible).is_true()
