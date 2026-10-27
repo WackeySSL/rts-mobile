@@ -14,7 +14,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Drag one finger | Pans the map | |
 | Pinch | Zooms about the fingers; on release it settles on the nearest of three zoom levels (`zoom_levels` in `data/input_settings.tres`) | |
 | Look at the map | The map is drawn at an angle, as a diamond: every tile is a diamond and the map's corners point up, down, left and right. Drag, pinch and taps work as before, and a tap on the ground sends the units to the point under your finger | |
-| Drag the map to its edge | The camera stops at the map's edge: the middle of the screen never leaves the map. The edge can reach the middle of the screen, so what lies under the sidebar or the army bar can be scrolled into view; beyond the edge there is only empty ground. Turning the phone keeps the middle of the screen where it was | |
+| Drag the map to its edge | The camera stops at the map's edge: the middle of the screen never leaves the map. The edge can reach the middle of the screen, so what lies under the build menu, the army bar or the panels at the top can be scrolled into view; beyond the edge the screen is dark grey. Turning the phone keeps the middle of the screen where it was | |
 
 ## Turn the phone
 | Action | Result | Teach |
@@ -36,7 +36,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Look at the enemy's buildings | An enemy building is drawn only while you see the ground it stands on now; one cell of its footprint is enough, and then the whole building shows. Out of sight it is not drawn as it is, but see the next row | |
 | Look at the fog | An enemy building whose middle tile you have seen stays on the map as a dimmed picture, in its side's colours, where you last saw it, even if it has been destroyed since (a big building you saw only at its edge leaves no picture). The picture stays until you see that middle tile again: if the building is there, it shows as it is; if not, the picture goes. It is hidden while you see any tile of the building, and comes back when you look away. The dimmed picture has no health bar and cannot be tapped (a tap there is a tap on the ground), and your units are drawn in front of it | |
 | A building is hit, or selected | A bar shows above it, as wide as its footprint (small, medium or large), filled by the hp it has left, for a few seconds after each hit and for as long as the building is selected. Your bars are plain, an enemy's has a notch in the top edge. An enemy building the fog hides shows none | |
-| A building is destroyed | It disappears from the map and the units behind it are no longer hidden | |
+| A building is destroyed | It disappears from the map and the units behind it are no longer hidden. One you saw fall, and any of your own, leaves a crater on the ground where it stood, as wide as its footprint, for the rest of the match | |
 
 ## Selection
 | Action | Result | Teach |
@@ -47,7 +47,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Tap the ground with a building selected | Lets go of the building. Nothing is ordered and nothing moves | |
 | Double-tap an own unit | Selects every own unit of that type on screen. A building never joins a double-tap, a box or "All army" | yes |
 | Long-press, then drag | Draws a box while the finger moves; on release it selects the own units inside (`long_press_ms` in `data/input_settings.tres`) | yes |
-| Long-press and drag a box with no own unit inside | Clears the selection (the only way to deselect) | yes |
+| Long-press and drag a box with no own unit inside | Clears the selection. With units selected it is the only way to deselect them; a selected building also lets go on a tap on the ground | yes |
 | Any selection | The panel at the bottom centre; at the top in portrait, in one line right of the Dev button. It shows each selected unit type or building with its icon, its display name (a very long name is cut short with an ellipsis) and its count, and a total for mixed types; it hides when nothing is selected. Tapping it does nothing. In portrait the line never grows past the screen: when the types do not fit it drops the names, then the total, and then shows the first types with a "+N" for the types it leaves out | |
 | A selected unit or building is destroyed | It leaves the selection, and the count in the panel drops (a building's frame goes with it) | |
 
@@ -93,13 +93,13 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 ## Build menu
 | Action | Result | Teach |
 |---|---|---|
-| Look at the screen with the phone sideways | The build menu floats over the map at the bottom right: three tabs as icons above one row of cards. Your credits and the power bar sit in a pill at the top left, next to the Dev button, and a panel at the top right is kept for the minimap (the minimap itself comes later). Nothing else moves: the army bar, the selection panel and the Dev button keep their places | |
+| Look at the screen with the phone sideways | The build menu floats over the map at the bottom right: three tabs as icons above one row of cards. Your credits and the power bar sit in a pill at the top left, next to the Dev button, and a panel at the top right is kept for the minimap (the minimap itself comes later) | |
 | Look at the screen with the phone upright | The build menu is the band at the bottom, and your credits and the power bar are its first line; the pill and the panel at the top right are not shown. Turning the phone moves the credits line between the two and changes nothing else | |
 | Look at the credits and the power bar | They show your credits and a power bar. The bar fills with the power your buildings use against the power they make and shows both numbers where it is wide enough; when you use more than you make, the bar is full and amber and its bolt becomes a warning triangle | |
 | Tap a tab | It opens: Structures, Infantry or Vehicles, as an icon; the open tab is the lighter one with a thick bar under it | |
-| Tap an item in the open tab | One of it is queued and paid for at once; the icon fills while it is built, and a number on it counts how many of it are queued. Each card shows the item's name under its cost (a long name is cut short with an ellipsis; the upright band's tiles show no name). A padlock on a dimmed icon means a building you need is missing (a power plant for a barracks, a barracks for infantry). Stripes mean it cannot be queued now: you cannot pay it (its cost turns amber) or its queue is full (`queue_slots` in `data/rules.tres`). A finished building shows "Ready" where its price was (tapping it does nothing yet). A tap on a padlocked or striped item shakes it and does nothing. The row scrolls sideways with a drag, and a drag never queues anything | yes |
+| Tap an item in the open tab | One of it is queued and paid for at once; the icon fills while it is built, and a number on it counts how many of it are queued. Each card shows the item's name under its cost (a long name is cut short with an ellipsis; the upright band's tiles show no name). A padlock on a dimmed icon means a building you need is missing (for the Derrick League: a Turbine Hall for a Bunkhouse, a Bunkhouse for infantry, a Signal Mast for the Mortar Rig). Stripes mean it cannot be queued now: you cannot pay it (its cost turns amber) or its queue is full (`queue_slots` in `data/rules.tres`). A finished building shows "Ready" where its price was (tapping it does nothing yet). A tap on a padlocked or striped item shakes it and does nothing. The row scrolls sideways with a drag, and a drag never queues anything | yes |
 | Hold an item (`long_press_ms` in `data/input_settings.tres`) | The last one of it you queued is cancelled and its cost is paid back in full; the phone buzzes. An item with none queued does nothing, however long you hold | yes |
-| Tap your Headquarters, barracks or vehicle factory | The building is selected (see Selection) and the build menu opens the tab it builds: Structures, Infantry or Vehicles. Tap it again after you opened another tab and the menu comes back to its tab | |
+| Tap your Headquarters, barracks or vehicle factory (the Derrick League's Rigworks, Bunkhouse or Heavy Yard) | The building is selected (see Selection) and the build menu opens the tab it builds: Structures, Infantry or Vehicles. Tap it again after you opened another tab and the menu comes back to its tab | |
 | Open any tab | It lists only the buildings and units of your own side, and those that both sides share; the other side's items are never shown | |
 
 ## Superweapon
@@ -119,7 +119,6 @@ their entries when their phase ships them (ROADMAP Phases 3-6).
 | Action | Result | Teach |
 |---|---|---|
 | An "under attack" warning at the screen edge | Not shown yet: nothing points at a unit that is hit off screen | |
-| A crater where a destroyed building stood | Not shown yet: the ground art that draws it comes in another change; a building you saw fall leaves a crater then | |
 | The ground splitting where a Deep Bore lands, and a mark on the buildings a Blackout Array switches off | Not shown yet: the blast, the crater and the marks come in another change; the damage and the shut-down already happen | |
 | Gas fields | Not shown yet: every field is oil. Once a map names its gas fields, one shows a pale crust with a glowing vent instead of a black pool, with the same full, half and dry steps | |
-| Play the Derrick League (oil and gas) or the Lumen Accord (green energy) | Not shown yet: no match has sides, so no building or unit belongs to one side only. Once a match has them, each side has its own buildings and units and your build menu shows only yours (and what both sides share) | |
+| Play the Derrick League (oil and gas) or the Lumen Accord (green energy) | Not shown yet: no match lets you choose a side, and the preview's match gives both players Derrick League units. Every building and unit already belongs to one side, and your build menu shows only your side's. Once a match has both sides, each side plays its own buildings and units | |

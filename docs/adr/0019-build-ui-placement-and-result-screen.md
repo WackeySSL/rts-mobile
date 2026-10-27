@@ -38,6 +38,9 @@ Status note (2026-10-26, P26ai docs): §1 and §6 carry dated status notes on th
 P85c and P85b merged it (the band, the tab names, a fifth tile state) and on the loss stats the
 result screen reads. No accepted text changed.
 
+Status note (2026-10-27, P26ak docs): §3 carries a dated status note on building selection as
+P115b merged it. No accepted text changed.
+
 ## Context
 - `touch-ui-rules` already fixes, in its gesture table and its "Building placement" section: tap an
   own building selects it and "a production building opens its build tab"; tap minimap moves the
@@ -175,6 +178,16 @@ centre; among overlapping buildings the one drawn in front (the larger sort key)
 selection frame is four brackets round the silhouette box. Player-facing harvesters are tankers
 and ore is oil and gas (ADR 0018 §3's note). Plan row P115b applies it. The rest of §3 is
 unchanged.
+
+Status note (2026-10-27, P26ak docs, P115b as merged, #234; the text and the notes above stay as
+accepted and as dated):
+- **An enemy building** you see can be tapped with nothing selected: it is selected for its
+  information only (an amber frame, its notched bar, its name in the panel) and takes no orders.
+  With own units selected, a tap on an enemy building you see attacks it.
+- **With a building selected** (own or enemy), only units count as a selection for the pick
+  order: own unit > own or seen enemy building, and enemy units do not count. A tap on the ground,
+  or on an enemy unit, clears the selection; an empty box clears it too. P87 adds `RALLY` to that
+  ground tap for a barracks or a vehicle factory, as the text above says.
 
 ### 4. Minimap
 In the sidebar (top in landscape; at the right end of the portrait band, a square of the band's

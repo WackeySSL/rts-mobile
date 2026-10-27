@@ -92,7 +92,7 @@ buildings stay as reference until the art rows (P101-P105) replace them; new art
 
 ## Originality
 Describe each silhouette in words before drawing or modelling. No recognizable designs from other
-games, for example twin-barrel super-heavy tanks (single barrels only), tesla-coil or prism
+games, for example twin-barrel super-heavy tanks (single barrels only), a tank on four corner track pods, tesla-coil or prism
 towers, airships, a dome on a radar tower, a mobile base that unfolds into a headquarters, oil
 derricks to capture, engineers, flamethrower infantry, freeze or cryo weapons, or blue EMP
 lightning. No geography (decision 1 of ADR 0023): no national coding, no flags, stars, wreaths,

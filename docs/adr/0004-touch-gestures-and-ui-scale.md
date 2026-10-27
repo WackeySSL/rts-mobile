@@ -36,6 +36,9 @@ with the isometric view the camera clamps the view centre's ground point into th
 (ADR 0023 §4, plan row P117) instead of its position into the map rect; pan, pinch, the zoom levels
 and the snap are unchanged. No accepted text changed.
 
+Status note (2026-10-27, P26ak docs): §6 carries a second dated status note: the camera turns the
+engine limits off, as P117 merged it. No accepted text changed.
+
 ## Context
 Phase 1 is a go/no-go on controls. `touch-ui-rules` gives the gesture map and the 48 dp rule,
 but it leaves several things open: how tap, long-press, drag, pinch and double-tap are told
@@ -225,6 +228,13 @@ Facts checked on Godot 4.7.2:
    height, and outside the diamond the clear colour shows. Pan, pinch, `CAMERA_END`'s snap, the
    three zoom levels and the rotation rule of ADR 0015 §4 are unchanged; the clamp holds in both
    orientations.
+
+   Status note (2026-10-27, P26ak docs, P117 as merged, #209; the text and the note above stay as
+   accepted and as dated): `RtsCamera` clamps the view centre into the diamond and turns the
+   engine limits off (`limit_enabled = false`): an enabled limit rect shifts the rendered view
+   off `position`, which breaks ground taps. The top margin of the note above is not needed,
+   because the centre can reach the top corner. Beyond the diamond the screen shows STYLE.md's
+   off-map colour (`GroundLayer`, P116).
 7. **Feedback.** Selection rings, the move marker, the long-press anchor and the box are drawn
    procedurally in view code, so they stay crisp at every zoom and can be sized in dp. They
    are not SVG. art-director specifies their shape and colour in `assets/art/STYLE.md`, using
