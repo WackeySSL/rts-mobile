@@ -16,6 +16,11 @@ func _type(world: World, id: String) -> int:
 	return Worlds.type_of(world, id)
 
 
+## The cell of tile (`col`, `line`): the north-west corner of a building whose top-left tile it is.
+func _tile(col: int, line: int) -> int:
+	return line * Memory.COLS + col
+
+
 ## A World where player 1 has a Headquarters at (2, 2) and player 2 one at (16, 6), and the cell of
 ## player 2's, which the cases light for player 1.
 func _bases() -> World:
@@ -73,7 +78,7 @@ func test_own_neutral_and_mobile_rows_are_never_remembered() -> void:
 
 func test_a_building_out_of_sight_is_not_remembered() -> void:
 	var world: World = _bases()
-	Memory.show(world, 1, Memory.cell_of(16, 6, 3, 3) - 1)  # The tile west of it, not its own.
+	Memory.show(world, 1, Memory.cell_of(16, 6, 3, 3) - 2)  # The tile west of the footprint.
 	Memory.turn(world, 1)
 	assert_array(world.ghost_count).is_equal([0, 0, 0])
 	Memory.show(world, 1, Memory.cell_of(16, 6, 3, 3))
@@ -134,15 +139,16 @@ func test_a_building_that_stands_keeps_its_record_seen_or_not() -> void:
 		assert_array(Memory.records(world, 1)).is_equal(record)
 
 
-func test_a_building_destroyed_in_sight_is_dropped_on_the_next_turn() -> void:
+func test_a_building_destroyed_in_sight_is_dropped_as_it_dies() -> void:
 	var world: World = _bases()
 	var cell: int = Memory.cell_of(16, 6, 3, 3)
 	Memory.show(world, 1, cell)
 	Memory.turn(world, 1)
-	Memory.destroy(world, world.unit_id[1])
-	world.tick = Memory.idle_tick(world)  # Nobody's turn: the record is still there.
-	LastSeen.run(world)
 	assert_array(world.ghost_count).is_equal([0, 1, 0])
+	Memory.destroy(world, world.unit_id[1])  # The record goes with the row, before any turn.
+	assert_array(world.ghost_count).is_equal([0, 0, 0])
+	world.tick = Memory.idle_tick(world)
+	LastSeen.run(world)
 	Memory.turn(world, 1, world.tick + 1)
 	assert_array(world.ghost_count).is_equal([0, 0, 0])
 
@@ -160,8 +166,13 @@ func test_a_full_block_holds_ghost_cap_and_never_writes_past_it() -> void:
 	# The blocks of the neutral player and of player 2 hold nothing.
 	for entry: int in [0, 1, 4, 5]:
 		assert_array([world.ghost_id[entry], world.ghost_cell[entry]]).is_equal([0, 0])
-	# A record that goes frees its place for the building that was left out.
+	# A record that goes frees its place for the building that was left out. The first building
+	# falls out of sight, so its record stays; on the next turn a corner of its spot is seen empty
+	# and the record goes before the building left out is looked at (the forget comes first).
+	Memory.show(world, 1, Memory.cell_of(4, 4, 2, 2), false)
 	Memory.destroy(world, ids[0])
+	assert_array(Memory.ids(world, 1)).is_equal([ids[0], ids[1]])
+	Memory.show(world, 1, _tile(4, 4))
 	Memory.turn(world, 1, world.tick + 1)
 	assert_array(Memory.ids(world, 1)).is_equal([ids[1], ids[2]])
 	assert_int(world.ghost_id.size()).is_equal(world.ghost_cap * 3)
@@ -175,7 +186,13 @@ func test_records_keep_their_places_when_one_goes() -> void:
 		Memory.show(world, 1, Memory.cell_of(col, 4, 2, 2))
 	Memory.turn(world, 1)
 	assert_array(Memory.ids(world, 1)).is_equal(ids)
+	# The second building falls out of sight (its spot is dark): its record stays until a corner of
+	# the spot is seen empty on the player's turn, which closes the block up in order (the in-sight
+	# fall is pinned in test_last_seen_footprint.gd).
+	Memory.show(world, 1, Memory.cell_of(8, 4, 2, 2), false)
 	Memory.destroy(world, ids[1])
+	assert_array(Memory.ids(world, 1)).is_equal(ids)
+	Memory.show(world, 1, _tile(8, 4))
 	Memory.turn(world, 1, world.tick + 1)
 	assert_array(Memory.ids(world, 1)).is_equal([ids[0], ids[2], ids[3]])
 	var last: int = world.ghost_cap + 3  # The freed place after the three that are left.

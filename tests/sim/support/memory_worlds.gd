@@ -51,6 +51,24 @@ static func cell_of(col: int, line: int, width: int, height: int) -> int:
 	return (line + height / 2) * COLS + col + width / 2
 
 
+## Whether `player` sees a cell of the footprint of a building of type `type` whose centre tile is
+## `cell` in any World (the rule of the sim's memory and of the view's
+## `BuildingLayer.any_cell_seen`), read from the fog's visible counts one tile at a time.
+@warning_ignore("integer_division")
+static func sees_footprint(made: World, player: int, cell: int, type: int) -> bool:
+	var cols: int = made.fog.cols
+	var width: int = made.type_foot_w[type]
+	var height: int = made.type_foot_h[type]
+	var first_col: int = cell % cols - width / 2
+	var first_line: int = cell / cols - height / 2
+	for line: int in range(first_line, first_line + height):
+		for col: int in range(first_col, first_col + width):
+			var inside: bool = col >= 0 and col < cols and line >= 0 and line < made.fog.rows
+			if inside and made.fog.visible[(player - 1) * made.fog.cells + line * cols + col] > 0:
+				return true
+	return false
+
+
 ## The cell of the building `id`, as the World gives it for its position.
 static func cell_at(made: World, id: int) -> int:
 	var row: int = made.index_of(id)

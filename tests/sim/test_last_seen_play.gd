@@ -58,7 +58,7 @@ func _broken_rule(
 		var now: Array[Array] = Memory.records(world, player)
 		var problem: String = _shape_problem(world, player, now)
 		if problem == "" and (tick - player + 1) % world.fog_period_ticks != 0:
-			problem = "" if now == before[player] else "records changed off the player's fog turn"
+			problem = _off_turn_problem(world, before[player], now, tally)
 		elif problem == "":
 			problem = _turn_problem(world, player, before[player], now, tally)
 		if problem != "":
@@ -79,6 +79,23 @@ func _shape_problem(world: World, player: int, now: Array[Array]) -> String:
 	return ""
 
 
+## What a tick that is not the player's fog turn may do to its records (LastSeen's header): nothing,
+## but let go of the record of a building that died in sight in this tick (P77b), the others
+## keeping their order. `tally` counts those drops.
+func _off_turn_problem(
+	world: World, before: Array, now: Array[Array], tally: Dictionary[String, int]
+) -> String:
+	var kept: int = 0
+	for record: Array in before:
+		if kept < now.size() and now[kept] == record:
+			kept += 1
+		elif world.index_of(record[0]) >= 0:
+			return "a record of a building that stands was dropped off the player's fog turn"
+		else:
+			tally["fell"] += 1
+	return "" if kept == now.size() else "records changed off the player's fog turn"
+
+
 ## What a fog turn of `player` must have done to its records (see LastSeen's header): each record
 ## is an enemy building's, once, and agrees with the building if it stands and with the fog if it is
 ## gone; each one added is a building seen now; each one dropped is gone from a cell seen now; and
@@ -86,8 +103,6 @@ func _shape_problem(world: World, player: int, now: Array[Array]) -> String:
 func _turn_problem(
 	world: World, player: int, before: Array, now: Array[Array], tally: Dictionary[String, int]
 ) -> String:
-	var block: int = (player - 1) * world.fog.cells
-	var visible: PackedInt32Array = world.fog.visible
 	var known: Dictionary[int, bool] = {}
 	for record: Array in before:
 		known[record[0]] = true
@@ -99,13 +114,16 @@ func _turn_problem(
 		kept[record[0]] = true
 		if not known.has(record[0]):
 			tally["added"] += 1
-			if visible[block + record[3]] <= 0 or world.index_of(record[0]) < 0:
+			if not Memory.sees_footprint(world, player, record[3], record[1]):
 				return "a record added for a building the player does not see"
+			if world.index_of(record[0]) < 0:
+				return "a record added for a building that is gone"
 	for record: Array in before:
 		if not kept.has(record[0]):
 			tally["dropped"] += 1
-			if world.index_of(record[0]) >= 0 or visible[block + record[3]] <= 0:
-				return "a record dropped though its building stands or its cell is dark"
+			var fell: bool = _fell(world, record[0])  # Its fall lets it go whatever the sight now.
+			if world.index_of(record[0]) >= 0 or not (fell or _sees_record(world, player, record)):
+				return "a record dropped though its building stands or its spot is dark"
 	return _unrecorded_problem(world, player, kept) if now.size() < world.ghost_cap else ""
 
 
@@ -114,13 +132,13 @@ func _turn_problem(
 ## player does not see once it is gone.
 func _record_problem(world: World, player: int, record: Array, twice: bool) -> String:
 	var row: int = world.index_of(record[0])
-	var seen: bool = world.fog.visible[(player - 1) * world.fog.cells + record[3]] > 0
+	var seen: bool = _sees_record(world, player, record)
 	if twice:
 		return "a building is recorded twice"
 	if record[2] == player or record[2] < 1 or record[2] > world.player_count:
 		return "a record of a building that is not an enemy's"
 	if row < 0:
-		return "a record of a gone building on a cell the player sees" if seen else ""
+		return "a record of a gone building on a spot the player sees" if seen else ""
 	var cell: int = world.cell_of(world.pos_x[row], world.pos_y[row])
 	if world.type_index[row] != record[1] or world.owner[row] != record[2] or cell != record[3]:
 		return "a record that is not the building's type, owner and cell"
@@ -129,26 +147,37 @@ func _record_problem(world: World, player: int, record: Array, twice: bool) -> S
 
 ## The first enemy building that `player` sees now and has no record of (ids in `kept`), or "".
 func _unrecorded_problem(world: World, player: int, kept: Dictionary[int, bool]) -> String:
-	var block: int = (player - 1) * world.fog.cells
 	for row: int in world.unit_count():
 		var owner: int = world.owner[row]
+		var type: int = world.type_index[row]
 		var cell: int = world.cell_of(world.pos_x[row], world.pos_y[row])
-		var enemy_building: bool = (
-			world.type_foot_w[world.type_index[row]] > 0 and owner != player and owner >= 1
-		)
+		var enemy_building: bool = world.type_foot_w[type] > 0 and owner != player and owner >= 1
 		if (
 			enemy_building
-			and world.fog.visible[block + cell] > 0
+			and Memory.sees_footprint(world, player, cell, type)
 			and not kept.has(world.unit_id[row])
 		):
 			return "an enemy building the player sees has no record"
 	return ""
 
 
+## Whether building `id` died in the tick the World has just stepped (a DIED event of it).
+func _fell(world: World, id: int) -> bool:
+	for at: int in range(0, world.events.size(), World.EVENT_STRIDE):
+		if world.events[at] == World.Event.DIED and world.events[at + 1] == id:
+			return true
+	return false
+
+
+## Whether `player` sees a cell of the footprint of `record` ([id, type, owner, cell]).
+func _sees_record(world: World, player: int, record: Array) -> bool:
+	return Memory.sees_footprint(world, player, record[3], record[1])
+
+
 func test_every_rule_holds_after_every_tick_of_a_base_fight() -> void:
 	var world: World = Worlds.fight()
 	var loop: MatchLoop = MatchLoop.create(null, "", 0, world)
-	var tally: Dictionary[String, int] = {"added": 0, "dropped": 0}
+	var tally: Dictionary[String, int] = {"added": 0, "dropped": 0, "fell": 0}
 	var most: int = 0
 	for tick: int in TICKS:
 		var before: Dictionary = {}
@@ -160,10 +189,11 @@ func test_every_rule_holds_after_every_tick_of_a_base_fight() -> void:
 		if broken != "":
 			return
 		most = maxi(most, maxi(world.ghost_count[1], world.ghost_count[2]))
-	# What the run reached: both players remembered buildings, and a building that died in sight
-	# was forgotten.
+	# What the run reached: both players remembered buildings, and a building that died in sight was
+	# forgotten as it fell (the fight's two deaths are in sight, so no record goes on a later turn:
+	# test_last_seen.gd and the case below have the drops of a spot seen empty).
 	assert_int(tally["added"]).is_greater_equal(3)
-	assert_int(tally["dropped"]).is_greater_equal(1)
+	assert_int(tally["fell"]).is_greater_equal(1)
 	assert_int(most).is_greater_equal(2)
 
 
@@ -216,3 +246,28 @@ func test_a_scouted_headquarters_is_remembered_after_it_dies_out_of_sight_until_
 		if turn:
 			break
 	assert_int(PlayerView.of(world, 1).ghost_of(hq)).is_equal(PlayerView.MISSING)
+
+
+func test_a_headquarters_that_falls_in_sight_leaves_no_ghost_though_the_scout_looks_away() -> void:
+	var world: World = Memory.world()
+	var hq: int = Memory.build(world, 2, "headquarters", 16, 6)
+	var type: int = Worlds.type_of(world, "headquarters")
+	var scout: int = world.add_unit(1, Worlds.type_of(world, "rifle_squad"), 11500, 7500)
+	TargetingWorlds.stamp_fog(world)
+	var none: Array[Command] = []
+	Sim.step(world, none)  # Player 1's first turn: the Headquarters is seen and remembered.
+	assert_array(Memory.ids(world, 1)).is_equal([hq])
+	# It falls in the next tick, in the sight the player wrote at its turn, and the scout turns away.
+	world.hp[world.index_of(hq)] = 0
+	var row: int = world.index_of(scout)
+	world.pos_x[row] = 1500
+	world.pos_y[row] = 1500
+	Sim.step(world, none)
+	assert_int(world.index_of(hq)).is_equal(-1)
+	assert_array(world.ghost_count).is_equal([0, 0, 0])
+	# On the player's next turn the spot is dark, which is all the old rule had to go on.
+	for _step: int in 2 * world.fog_period_ticks:
+		Sim.step(world, none)
+		assert_int(world.ghost_count[1]).is_equal(0)
+	assert_bool(Memory.sees_footprint(world, 1, Memory.cell_of(16, 6, 3, 3), type)).is_false()
+	assert_int(PlayerView.of(world, 1).ghost_count).is_equal(0)

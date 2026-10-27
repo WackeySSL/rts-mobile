@@ -839,8 +839,9 @@ func _write_unit_event(at: int, kind: int, row: int) -> void:
 ## Removes every row with hp of 0 or less (ADR 0007 section 3): a DIED record per dead row, in row
 ## order, and its fog unstamped, then a stable compaction of every ROW_ARRAYS column, so the rows
 ## stay ascending by id. It bumps rows_version once and adds the rows that changed place to
-## stats[ROWS_COMPACTED]. A tick without a death costs one scan. It prepares the world first
-## (O(1) once prepared), so a hand-built world works: stats is sized by prepare().
+## stats[ROWS_COMPACTED]. The records of a building that dies in sight go before the rows do
+## (`LastSeen.forget_dead`, P77b). A tick without a death costs one scan. It prepares the world
+## first (O(1) once prepared), so a hand-built world works: stats is sized by prepare().
 func remove_dead() -> void:
 	prepare()
 	var count: int = unit_id.size()
@@ -852,6 +853,7 @@ func remove_dead() -> void:
 		return
 	Buildings.unblock_dead(self)  # Before the compaction: the origin comes from the position.
 	Outcome.count_losses(self)  # Likewise: the owner and the type of a dying row (ADR 0018 s. 7).
+	LastSeen.forget_dead(self, first)  # Likewise: the fog is still the sight the building fell in.
 	var dead: int = 0
 	for row: int in range(first, count):
 		if alive[row] <= 0:
