@@ -432,7 +432,9 @@ func test_start_during_a_job_rebuilds_every_rig_and_matches_a_fresh_run() -> voi
 	var new_rigs: Array[int] = worker.rig_ids()
 	assert_int(new_rigs.size()).is_equal(UNITS)
 	for id: int in new_rigs:
-		assert_array(old_rigs).not_contains([id])  # Every rig is a new node.
+		# The rigs of the match that ended wait in the layer's pool and the new match's rows take
+		# them (P114b): every rig is rebuilt for its new unit, and none is made for want of one.
+		assert_array(old_rigs).contains([id])
 	assert_bool(worker.positions() != old_positions).is_true()
 	assert_int(worker.fog.rebuild_count()).is_equal(rebuilds + 1)
 	assert_int(worker.runner.last_hash).is_not_equal(0)

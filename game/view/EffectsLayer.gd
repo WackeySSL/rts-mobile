@@ -32,7 +32,8 @@ extends Node2D
 ## Every effect is placed by `IsoProjection` (ADR 0023 section 1) and lifted by `SpriteLift`: a
 ## flash, a tracer and a puff by the muzzle height of the shot's weapon (a shell flies level, so a
 ## tracer's two ends and the puff where it lands stand at that height), a burst and a fade at the
-## middle of the frame of the unit that died.
+## middle of the frame of the unit that died. The heights are the sheets' (`world_sort`, the sorted
+## world's); a layer without one lifts by the defaults of `SpriteLift`.
 ##
 ## `_process` plans the frame's lines and quads into reused packed arrays and `_draw` paints that
 ## plan: tracers as straight lines (butt caps: draw_line has no round ones, which STYLE.md asks
@@ -81,6 +82,9 @@ const TRACER_STEP_MILLI: int = 250  ## A quarter tile: how far a clipped tracer 
 		capacity = maxi(value, 1)
 		_make_ring()
 @export var runner: MatchRunner
+## The sorted world, whose sheets say how high a muzzle and the middle of a frame stand. Without
+## one the heights are the defaults of `SpriteLift`.
+@export var world_sort: WorldSort
 ## Adds the effects on tiles the fog hides too: the perf arena, and tests that are not about fog.
 @export var reveal_enemies: bool = false
 ## The look: palette colours, exports of this world-space layer like the other view layers'.
@@ -284,7 +288,7 @@ func _add_shot(snap: MatchSnapshot, at: int, now: int) -> void:
 		return
 	var weapon: int = events[at + 5]
 	var weapon_id: StringName = _weapon_id(snap, weapon)
-	var lift: float = SpriteLift.muzzle_lift_px(snap.weapon_ids, weapon)
+	var lift: float = SpriteLift.muzzle_lift_px(snap.weapon_ids, weapon, _sheet_muzzle_px(weapon))
 	var shooter: Vector2 = _lifted(shooter_at, lift)
 	var target: Vector2 = _lifted(target_at, lift)
 	var reach: float = muzzle_px.get(weapon_id, MUZZLE_DEFAULT_PX)
@@ -335,7 +339,9 @@ func _add_impact(snap: MatchSnapshot, at: int, now: int) -> void:
 	if not _seen(snap, events[at + 2], events[at + 3]):
 		return
 	var weapon_id: StringName = _weapon_id(snap, events[at + 5])
-	var lift: float = SpriteLift.muzzle_lift_px(snap.weapon_ids, events[at + 5])
+	var lift: float = SpriteLift.muzzle_lift_px(
+		snap.weapon_ids, events[at + 5], _sheet_muzzle_px(events[at + 5])
+	)
 	var landing: Vector2 = _lifted(Vector2(events[at + 2], events[at + 3]), lift)
 	_push(Kind.PUFF, now, landing, Vector2.ZERO, puff_px.get(weapon_id, PUFF_DEFAULT_PX))
 
@@ -352,12 +358,22 @@ func _add_death(snap: MatchSnapshot, at: int, now: int) -> void:
 	var infantry: bool = (
 		type >= 0 and type < armours.size() and armours[type] == World.Armour.INFANTRY
 	)
-	var lift: float = SpriteLift.centre_lift_px(snap.type_ids, armours, type)
+	var sheet: IsoSheetDef = null
+	if world_sort != null and type >= 0 and type < snap.type_ids.size():
+		sheet = world_sort.sheet(snap.type_ids[type])
+	var lift: float = SpriteLift.centre_lift_px(
+		sheet, World.Armour.INFANTRY if infantry else World.Armour.LIGHT
+	)
 	var place: Vector2 = _lifted(Vector2(events[at + 2], events[at + 3]), lift)
 	if infantry:
 		_push(Kind.FADE, now, place, Vector2.ZERO, FADE_PX)
 	else:
 		_push(Kind.BURST, now, place, Vector2.ZERO, BURST_PX)
+
+
+## The sheets' muzzle height of weapon index `weapon`, 0 without a sorted world or a sheet.
+func _sheet_muzzle_px(weapon: int) -> float:
+	return world_sort.muzzle_px(weapon) if world_sort != null else 0.0
 
 
 ## The id of weapon index `weapon`, or an empty name for one the snapshot has no table row for.

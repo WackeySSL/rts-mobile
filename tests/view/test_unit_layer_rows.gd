@@ -1,6 +1,7 @@
 extends GdUnitTestSuite
-## UnitLayer's rigs follow the snapshot's rows by unit id (plan P40): a death frees its rig and the
-## others keep theirs, a spawn gets a rig at its position, another match rebuilds all, and calls
+## UnitLayer's rigs follow the snapshot's rows by unit id (plan P40): a death pools its rig and the
+## others keep theirs, a spawn gets a rig at its position (a pooled one when its kind has one,
+## P114b; the pool itself is test_rig_pool.gd's), another match gives every row a rig, and calls
 ## made inside `ticked` right after a change already use the new rows. On
 ## data/scenarios/controls_test.tres: 40 rigs, ids 1-30 blue and 31-40 red; tank 2 stands still at
 ## px (-272, 456) under the 2:1 projection (P117) and tank 30 (row 29) can drive out of the block
@@ -96,8 +97,10 @@ func test_a_dead_unit_loses_its_rig_and_the_others_keep_their_position_heading_a
 	assert_int(turned.get_child_count()).is_equal(4)
 	_layer.set_selected(PackedInt32Array([1, 2]))  # The dead unit is skipped like any unknown id.
 	assert_array(_ringed_ids()).is_equal([2])
-	await await_idle_frame()  # The dead rig is freed.
-	assert_bool(is_instance_valid(dead)).is_false()
+	await await_idle_frame()  # The dead rig waits in the pool, off the sort.
+	assert_bool(is_instance_valid(dead)).is_true()
+	assert_bool(dead.get_parent() == _layer.world_sort).is_false()
+	assert_bool(dead.is_visible_in_tree()).is_false()
 
 
 func test_a_unit_that_is_mid_turn_when_another_dies_keeps_its_heading_and_aim_apart() -> void:
@@ -212,12 +215,14 @@ func test_the_ringed_rows_are_the_last_selection_and_follow_their_units_through_
 func test_a_unit_spawned_mid_match_appears_at_its_position_with_its_tint_and_no_heading_or_ring(
 ) -> void:
 	var rig_0: Node2D = _rig(0)
+	assert_int(_layer.rigs_made()).is_equal(40)
 	assert_int(_runner.world.add_unit(2, 0, 30500, 12500)).is_equal(41)
 	_runner.run_ticks(1)
 	# Inside `ticked` a handler may ask at once, before any frame: the rig is already in place.
 	assert_that(_layer.unit_screen_position(40)).is_equal(
 		_camera.world_to_screen(Vector2(576, 688))
 	)
+	assert_int(_layer.rigs_made()).is_equal(41)  # Forty at the start, and a spawn finds no pooled one.
 	for frame: int in 3:  # Alpha 0, 0.25 and 0.5: a new unit does not slide in from anywhere.
 		_layer._process(0.05)
 		assert_int(_layer.rig_count()).is_equal(41)
@@ -250,8 +255,10 @@ func test_a_death_and_a_spawn_in_one_tick_keep_the_row_count_and_still_remap_the
 	assert_bool(_rig(0) == second).is_true()
 	assert_int(Frames.dir(_layer, 39, &"hull")).is_equal(6)  # Owner 2's frame.
 	assert_that(_rig(39).position).is_equal(Vector2(576, 688))
+	assert_bool(_rig(39) == dead).is_true()  # The unit that died left its rig to the new one.
+	assert_int(_layer.rigs_made()).is_equal(40)
+	assert_bool(is_instance_valid(dead) and dead.get_parent() == _layer.world_sort).is_true()
 	await await_idle_frame()
-	assert_bool(is_instance_valid(dead)).is_false()
 
 
 func test_deaths_in_a_row_and_apart_with_a_spawn_keep_every_survivor_rig_and_add_the_new_one_last(
@@ -275,7 +282,9 @@ func test_deaths_in_a_row_and_apart_with_a_spawn_keep_every_survivor_rig_and_add
 			)
 			row += 1
 	assert_str(_rig(37).name).is_equal("Unit41")
-	assert_bool(before.has(_rig(37))).is_false()
+	var left: Array[Node] = [before[0], before[1], before[20]]  # The rigs the three left behind.
+	assert_bool(left.has(_rig(37))).is_true()  # The new one is one of them, not a fourth rig.
+	assert_int(_layer.rigs_made()).is_equal(40)
 	await await_idle_frame()
 
 
@@ -293,7 +302,9 @@ func test_each_entry_point_alone_uses_the_new_rows_inside_ticked_right_after_a_d
 	var ring: Callable = func() -> void: _layer.set_selected(PackedInt32Array([3, 4]))
 	_kill_first_and_call(pick)
 	assert_array(seen[&"ids"]).is_equal(PackedInt32Array(range(2, 41)))
-	assert_that(seen[&"first"]).is_equal(_camera.world_to_screen(Vector2(-272, 456)))  # Unit 2.
+	# Unit 2, its lifted centre: the ground point raised by the light tank's pick lift (zoom 1).
+	var lift: float = float((load(IsoIndex.PATH) as IsoIndex).sheet(&"light_tank").pick_lift_px)
+	assert_that(seen[&"first"]).is_equal(_camera.world_to_screen(Vector2(-272, 456 - lift)))
 	assert_int(_layer.rig_count()).is_equal(39)
 	_kill_first_and_call(where)
 	assert_that(seen[&"last"]).is_equal(_camera.world_to_screen(Vector2(-320, 1136)))  # Unit 40.
@@ -332,8 +343,11 @@ func test_another_match_rebuilds_every_rig_even_when_the_rows_version_is_the_sam
 	_layer._process(0.0)
 	assert_int(_layer.rig_count()).is_equal(40)
 	assert_int(_layer.world_sort.get_child_count()).is_equal(40)
-	for rig: Node in _layer.world_sort.get_children():
-		assert_bool(before.has(rig)).is_false()
+	assert_int(_layer.rigs_made()).is_equal(40)  # The 40 rigs of the match that ended are reused.
+	for row: int in 40:  # None of them is the unit's own: every one is named and placed anew.
+		assert_bool(before.has(_rig(row))).is_true()
+		assert_str(_rig(row).name).is_equal("Unit%d" % _runner.snapshot.unit_id[row])
+		assert_float(_layer.heading(row)).is_equal(0.0)
 	# The layer never writes a snapshot, also not the one of the match it is leaving.
 	assert_int(old_snapshot.unit_count()).is_equal(40)
 	assert_int(old_snapshot.unit_id[0]).is_equal(1)
@@ -370,13 +384,15 @@ func test_deaths_spawns_rings_and_restarts_leave_no_objects_behind() -> void:
 	var base: int = counts[0]
 	# A spawn adds a rig and its Shadow, Hull and Turret (the tick's snapshot replaced the last one).
 	# The first Ring also loads the ring texture, `loaded` objects that every later ring shares, so
-	# the second adds one. A death frees the rig, its layers and its ring (5). The restart frees the
-	# 40 old rigs and the ring of tank 1, the last holder of the texture.
+	# the second adds one. A death frees nothing: the rig and its ring wait in the pool (P114b),
+	# and the restart pools the 40 old rigs, which the 40 rows of the new match take: nothing is
+	# made or freed, so a rig is never made twice for want of the pool.
 	var loaded: int = counts[2] - counts[1] - 1
 	assert_int(loaded).is_greater_equal(0)
 	var expected: Array[int] = [base, base + 4, base + 5 + loaded, base + 6 + loaded]
-	expected.append_array([base + 1 + loaded, base])
+	expected.append_array([base + 6 + loaded, base + 6 + loaded])
 	assert_array(counts).is_equal(expected)
+	assert_int(_layer.rigs_made()).is_equal(41)
 
 
 ## Tank 1, 2 or 3 (whichever is the first row) dies in a tick, and `entry` is the first call the
