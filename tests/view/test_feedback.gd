@@ -1,7 +1,12 @@
 extends GdUnitTestSuite
 ## Feedback in the main scene (STYLE.md "Feedback markers"): rings, chevrons, target diamond, anchor
-## and box, with one fake clock for TouchInput, MarkerLayer and BoxOverlay. Tank 1 stands at world
-## px (544, 1184) and red tank 31 at (2208, 672). The expected numbers are STYLE.md's, as literals.
+## and box, with one fake clock for TouchInput, MarkerLayer and BoxOverlay. Under the 2:1 projection
+## (P117) tank 1 stands at world px (-320, 432) and red tank 31 at (768, 720); the camera starts on
+## tile (12, 21), px (-288, 544). The expected numbers are STYLE.md's, as literals; a ring is a
+## ground ellipse (a 2:1 oval, ADR 0023 section 2) whose horizontal radius is what they measure.
+## A mark lies on the ground too (P117b): its points are flattened to half their height, its strokes
+## are as wide as before, and the target diamond's corners are 1.3 x the ring's 24.9 px horizontal
+## radius, 32.4 px (STYLE.md's 45.8 was 1.3 x the top-down ring).
 
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -15,9 +20,12 @@ const PROFILES: Array[StringName] = [
 	&"android_6in_portrait",
 	&"web_tablet_portrait",
 ]
-## No unit near it, right of the tank block: milli (17266, 21516). It is left of the build sidebar
-## at every profile (P85) and, in a portrait view 720 base px wide at the narrowest, at x 665.
-const GROUND: Vector2 = Vector2(1105, 1377)
+## No unit near it, past the tank block's upper right edge: milli (10000, 15000), 102 px or more
+## from every tank. On screen it is 128 px right of and 144 px above the middle of the view, clear
+## of the build sidebar, the selection panel and the army bar at every profile.
+const GROUND: Vector2 = Vector2(-160, 400)
+const CAMERA_START: Vector2 = Vector2(-288, 544)  ## The centre of tile (12, 21).
+const RED_TANK: Vector2 = Vector2(768, 720)  ## Tank 31, on tile (34, 10).
 const RING_TEXTURE: String = "res://assets/art/svg/ui/selection_ring.svg"
 ## The texture's centre-line radius in px, typed again from STYLE.md (not read from UnitLayer, so
 ## that a wrong UnitLayer.RING_TEX_RADIUS_PX fails; tests/art pins the texture to the same number).
@@ -27,6 +35,8 @@ const AMBER: Color = Color("F5A524")
 const RED: Color = Color("E5484D")
 const TOL: Vector2 = Vector2(0.01, 0.01)
 const CORNERS: Array[Vector2] = [Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT, Vector2.UP]
+const FLAT: Vector2 = Vector2(1.0, 0.5)  ## A shape on the ground keeps its width, half its height.
+const DIAMOND_PX: float = 32.4
 
 var _window_size_before: Vector2i
 var _now_ms: int = 0
@@ -78,17 +88,18 @@ func after_test() -> void:
 	CommandQueue.clear()
 
 
-func test_rings_show_for_exactly_the_selected_ids_and_are_31_5_35_2_and_52_8_px() -> void:
+func test_rings_show_for_exactly_the_selected_ids_and_are_31_5_31_5_and_37_3_px() -> void:
 	assert_bool(_controller.selection_changed.is_connected(_layer.set_selected)).is_true()
 	UiScale.set_override(UiProfiles.by_name(&"desktop"))  # 1 dp is 1 px.
 	_controller.selection.set_ids(PackedInt32Array([3, 7]))  # No frame has run.
 	assert_array(_ringed_ids()).is_equal([3, 7])
 	var first_ring: Sprite2D = _layer.get_child(2).get_node("Ring")  # Sized in the frame of the tap.
-	assert_float(first_ring.radius).is_equal_approx(35.2, 0.001)
+	assert_float(first_ring.radius).is_equal_approx(24.8901, 0.001)  # (500 + 50) * 32 * sqrt(2) / 1000
 	assert_float(first_ring.unit).is_equal_approx(1.0, 0.0001)
 	assert_str(first_ring.texture.resource_path).is_equal(RING_TEXTURE)
 	assert_float(UnitLayer.RING_TEX_RADIUS_PX).is_equal(RING_CENTRE_PX)
-	assert_float(first_ring.scale.x * RING_CENTRE_PX).is_equal_approx(35.2, 0.001)
+	assert_float(first_ring.scale.x * RING_CENTRE_PX).is_equal_approx(24.8901, 0.001)
+	assert_float(first_ring.scale.y * 2.0).is_equal_approx(first_ring.scale.x, 0.000001)  # 2:1
 	var rig_children: Array = _layer.get_child(2).get_children()
 	var names: Array = rig_children.map(func(n: Node) -> StringName: return n.name)
 	assert_array(names).is_equal([&"Ring", &"Hull", &"Team", &"Turret"])  # Under the layers.
@@ -96,10 +107,10 @@ func test_rings_show_for_exactly_the_selected_ids_and_are_31_5_35_2_and_52_8_px(
 	assert_array(_ringed_ids()).is_equal([7, 40])
 	_layer.set_selected(PackedInt32Array([999, 1]))  # An unknown id is skipped.
 	assert_array(_ringed_ids()).is_equal([1])
-	await _use(&"android_6in")  # 1 dp is 1.75 px: 18 dp is 31.5 px, the art 35.2 world px.
+	await _use(&"android_6in")  # 1 dp is 1.75 px: 18 dp is 31.5 px, the ellipse 24.89 world px.
 	_layer.set_selected(PackedInt32Array([1]))
 	var ring: Sprite2D = _layer.get_child(0).get_node("Ring")
-	for z: Array in [[0.75, 31.5], [1.0, 35.2], [1.5, 52.8]]:
+	for z: Array in [[0.75, 31.5], [1.0, 31.5], [1.5, 37.335]]:
 		_camera.zoom = Vector2(z[0], z[0])
 		_layer._process(0.0)
 		assert_float(ring.radius * z[0]).is_equal_approx(z[1], 0.001)
@@ -108,10 +119,10 @@ func test_rings_show_for_exactly_the_selected_ids_and_are_31_5_35_2_and_52_8_px(
 		# So the checks are the dp (unit) and the scale that sizes the texture to the radius.
 		assert_float(ring.unit * z[0]).is_equal_approx(1.75, 0.0001)
 		assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(ring.radius, 0.001)
-		assert_float(ring.scale.y).is_equal(ring.scale.x)
-	await _use(&"desktop")  # A resize under a ring: 1 dp is now 1 px, and the art is larger.
+		assert_float(ring.scale.y * 2.0).is_equal_approx(ring.scale.x, 0.000001)
+	await _use(&"desktop")  # A resize under a ring: 1 dp is now 1 px, and the ellipse is larger.
 	assert_float(ring.unit * 1.5).is_equal_approx(1.0, 0.0001)
-	assert_float(ring.radius * 1.5).is_equal_approx(52.8, 0.001)
+	assert_float(ring.radius * 1.5).is_equal_approx(37.335, 0.001)
 	assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(ring.radius, 0.001)
 	_assert_no_allocation(func() -> void: _layer._process(0.016))
 	_controller.selection.clear()
@@ -135,11 +146,11 @@ func test_the_markers_draw_at_z_150_above_every_band_of_the_unit_layers() -> voi
 func test_chevrons_close_in_and_the_diamond_settles_at_the_spec_sizes() -> void:
 	UiScale.set_override(UiProfiles.by_name(&"android_6in"))  # 1.75 px per dp.
 	_markers.show_attack_move(Vector2(1000, 2000))
-	_markers.show_target(Vector2(2208, 672))
+	_markers.show_target(RED_TANK)
 	var chevrons: CanvasGroup = _markers.get_child(0)
 	var flash: CanvasGroup = _markers.get_child(1)
 	assert_that(chevrons.position).is_equal(Vector2(1000, 2000))
-	assert_that(flash.position).is_equal(Vector2(2208, 672))
+	assert_that(flash.position).is_equal(RED_TANK)
 	assert_vector(chevrons.scale).is_equal_approx(Vector2(1.75, 1.75), TOL)  # Children are dp.
 	# Open chevrons, a closed diamond: the second cue.
 	assert_array(_strokes(chevrons, 0)).is_equal(
@@ -149,18 +160,23 @@ func test_chevrons_close_in_and_the_diamond_settles_at_the_spec_sizes() -> void:
 	for first: int in [0, 5]:  # The outline pass and the colour pass.
 		for k: int in 4:  # The east chevron's tip faces west, the others are turned by 90 degrees.
 			var arm: Line2D = chevrons.get_child(first + k)
-			assert_array(arm.points).is_equal([Vector2(7, -7), Vector2.ZERO, Vector2(7, 7)])
-			assert_float(arm.rotation).is_equal_approx(k * PI / 2.0, 0.0001)
+			assert_int(arm.points.size()).is_equal(3)
+			for at: int in 3:  # Turned by k quarter turns, then flattened: the node is not turned.
+				var corner: Vector2 = [Vector2(7, -7), Vector2.ZERO, Vector2(7, 7)][at]
+				var turned: Vector2 = corner.rotated(k * PI / 2.0) * FLAT
+				assert_vector(arm.points[at]).is_equal_approx(turned, TOL)
+			assert_float(arm.rotation).is_equal(0.0)
+			assert_vector(arm.scale).is_equal(Vector2.ONE)  # Strokes keep their width.
 	# Age in ms, chevron tip distance in dp (ease out: not 27 at 75 ms), diamond size.
 	for step: Array in [[0, 36.0, 1.5], [75, 21.375, 1.125], [150, 13.5, 1.0], [200, 12.0, 1.0]]:
 		_now_ms = step[0]
 		_markers._process(0.0)
 		for first: int in [0, 5]:  # Both passes move and show together.
 			for k: int in 4:
-				var tip: Vector2 = Vector2(step[1], 0).rotated(k * PI / 2.0)
+				var tip: Vector2 = Vector2(step[1], 0).rotated(k * PI / 2.0) * FLAT
 				assert_vector(chevrons.get_child(first + k).position).is_equal_approx(tip, TOL)
 				var corner: Vector2 = flash.get_child(first + 4).points[k] * flash.scale.x  # World px.
-				assert_vector(corner).is_equal_approx(CORNERS[k] * 45.8 * step[2], TOL)
+				assert_vector(corner).is_equal_approx(CORNERS[k] * FLAT * DIAMOND_PX * step[2], TOL)
 			assert_bool(chevrons.get_child(first).visible).is_true()
 			assert_bool(flash.get_child(first).visible).is_false()
 			assert_bool(flash.get_child(first + 4).visible).is_true()
@@ -236,7 +252,7 @@ func test_orders_rings_anchor_and_box_follow_the_fingers_at_every_profile() -> v
 		_runner.start()
 		await await_idle_frame()
 		_camera.zoom = Vector2.ONE
-		_camera.centre_on(Vector2(800, 1376))
+		_camera.centre_on(CAMERA_START)
 		_controller.selection.clear()
 		_now_ms += 5000
 		_markers._process(0.0)  # Earlier marks have expired.
@@ -247,13 +263,13 @@ func test_orders_rings_anchor_and_box_follow_the_fingers_at_every_profile() -> v
 		assert_array(_ringed_ids()).is_equal([1])
 		_tap(_camera.world_to_screen(ground))
 		assert_bool(_mark_at(ground).get_child(0).visible).is_true()  # Chevrons.
-		_camera.centre_on(Vector2(2208, 672))
+		_camera.centre_on(RED_TANK)
 		# The diamond is the subject, not the fog: red tank 31 is hidden at the start and a tap on a
 		# hidden enemy is a ground tap. Picking under fog is proven in test_player_controller.gd
 		# (the hidden-enemy cases) and test_picker.gd.
 		_layer.reveal_enemies = true
-		_tap(_layer.unit_screen_position(30) - Vector2(UiScale.dp(20), 0))  # An enemy.
-		assert_bool(_mark_at(Vector2(2208, 672)).get_child(4).visible).is_true()  # The diamond.
+		_tap(_layer.unit_screen_position(30) - Vector2(0, UiScale.dp(20)))  # An enemy, from above.
+		assert_bool(_mark_at(RED_TANK).get_child(4).visible).is_true()  # The diamond.
 		assert_int(_markers.active_count()).is_equal(2)
 		await _long_press_drag_release(false)
 		await _long_press_drag_release(true)

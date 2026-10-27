@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"power_plant"
+faction = &"fossil"
+category = &"bld"
+footprint = 2
+silhouette = "A long low concrete turbine hall under a pitched steel roof with a team stripe on its front wall and two stacks, one banded, beside its back."
+prims = PackedStringArray(
+"box hull concrete 0 0 0 1.92 1.92 0.06",
+"box hull concrete -0.1 0.1 0.06 1.3 1.4 0.8",
+"wedge hull steel -0.1 0.1 0.86 1.3 1.4 0.3 slope=0.8",
+"box hull team 0.57 0.1 0.4 0.04 1.4 0.24",
+"box hull team -0.1 0.81 0.4 1.3 0.04 0.24",
+"prism hull steel -0.55 -0.8 0.06 0.22 0.22 1.2",
+"prism hull team -0.55 -0.8 1.26 0.22 0.22 0.14",
+"prism hull steel -0.55 -0.8 1.4 0.22 0.22 0.14",
+"prism hull steel -0.15 -0.8 0.06 0.22 0.22 1.3"
+)

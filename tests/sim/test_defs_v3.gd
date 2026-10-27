@@ -9,7 +9,12 @@ const UNIT_FIELDS: Array[String] = ["cost", "build_ticks", "tab", "requires", "h
 const BUILDING_FIELDS: Array[String] = [
 	"footprint", "power", "produces", "free_unit", "dock", "exit"
 ]
+## The six strike exports BuildingDef gained in P109 (ADR 0023 section 10), after those.
+const STRIKE_FIELDS: Array[String] = [
+	"strike_kind", "charge_ticks", "strike_radius", "strike_delay", "strike_ticks", "strike_weapon"
+]
 const TAB_HINT: String = "None:-1,Structures:0,Infantry:1,Vehicles:2"
+const STRIKE_HINT: String = "None:0,Rupture:1,Blackout:2"
 
 
 func test_unit_def_defaults_are_not_buildable_and_not_a_harvester() -> void:
@@ -47,8 +52,10 @@ func test_building_def_is_a_unit_def_with_a_one_tile_footprint_and_nothing_else_
 	assert_array([building.cost, building.tab, building.harvest_capacity]).is_equal([0, -1, 0])
 
 
-func test_building_def_adds_exactly_its_six_fields_to_a_unit_def() -> void:
-	assert_array(_own_fields(UnitDef.new(), BuildingDef.new())).is_equal(BUILDING_FIELDS)
+func test_building_def_adds_exactly_its_twelve_fields_to_a_unit_def() -> void:
+	assert_array(_own_fields(UnitDef.new(), BuildingDef.new())).is_equal(
+		BUILDING_FIELDS + STRIKE_FIELDS
+	)
 	var types: Dictionary[String, int] = {}
 	for info: Dictionary in BuildingDef.new().get_property_list():
 		types[String(info["name"])] = int(info["type"])
@@ -59,6 +66,25 @@ func test_building_def_adds_exactly_its_six_fields_to_a_unit_def() -> void:
 	assert_int(types["free_unit"]).is_equal(TYPE_OBJECT)
 	assert_str(_hint_string(BuildingDef.new(), "free_unit")).is_equal("UnitDef")
 	assert_str(_hint_string(BuildingDef.new(), "produces")).is_equal(TAB_HINT)
+
+
+## A building is no strike building until its data says so: kind none, no lengths, no weapon. The
+## kind is an enum export (the inspector lists none, rupture and blackout), the rest are ints and
+## the weapon is a WeaponDef; the sim copies them into the six type_strike_* tables (test_world_v3).
+func test_a_building_def_has_no_strike_unless_its_data_says_so() -> void:
+	var building: BuildingDef = BuildingDef.new()
+	var numbers: Array[int] = [building.strike_kind, building.charge_ticks, building.strike_radius]
+	numbers.append_array([building.strike_delay, building.strike_ticks])
+	assert_array(numbers).is_equal([0, 0, 0, 0, 0])
+	assert_object(building.strike_weapon).is_null()
+	var types: Dictionary[String, int] = {}
+	for info: Dictionary in BuildingDef.new().get_property_list():
+		types[String(info["name"])] = int(info["type"])
+	for field: String in STRIKE_FIELDS.slice(0, 5):
+		assert_int(types[field]).override_failure_message(field).is_equal(TYPE_INT)
+	assert_int(types["strike_weapon"]).is_equal(TYPE_OBJECT)
+	assert_str(_hint_string(BuildingDef.new(), "strike_weapon")).is_equal("WeaponDef")
+	assert_str(_hint_string(BuildingDef.new(), "strike_kind")).is_equal(STRIKE_HINT)
 
 
 func test_a_scenario_roster_takes_a_building_def_because_it_is_a_unit_def() -> void:

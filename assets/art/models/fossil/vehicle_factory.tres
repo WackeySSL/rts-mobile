@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"vehicle_factory"
+faction = &"fossil"
+category = &"bld"
+footprint = 3
+silhouette = "A wide concrete hangar under a steep steel roof, a dark vehicle door on its front under a team lintel, with a rust chimney beside its back."
+prims = PackedStringArray(
+"box hull concrete 0 0 0 2.92 2.92 0.06",
+"box hull concrete -0.2 0 0.06 2 2 1",
+"wedge hull steel -0.2 0 1.06 2 2 0.4 slope=0.75",
+"box hull iron 0.82 0 0.06 0.04 1.1 0.75",
+"box hull team 0.82 0 0.81 0.04 1.1 0.2",
+"box hull team -0.2 1.02 0.5 2 0.04 0.24",
+"prism hull rust -1.32 0.7 0.06 0.2 0.2 1.9 sides=8"
+)

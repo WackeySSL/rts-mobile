@@ -22,7 +22,9 @@ extends Control
 ## zooms, at the 6-inch phone's ring radius) and the effects atlas at scale 1 to each ground.
 ##
 ## The button at the top right turns the pages: Units (all of the above), Build, Ground, Vehicles,
-## Icons and Seam. Build and Seam are built by `art_gallery_buildings.gd` (`_add_building_pages`):
+## Icons, Seam and Iso. Iso (`_add_iso_page`, `art_gallery_iso.gd`, ADR 0023) steps through the
+## generated blockouts of both factions, every direction in two team colours at the camera zooms.
+## Build and Seam are built by `art_gallery_buildings.gd` (`_add_building_pages`):
 ## Build is a list to scroll with the six buildings on grass and sand in both team colours at the
 ## camera zoom levels, a tank north and south of each, every building cut at its footprint's middle
 ## line and drawn in the view's order (ADR 0022); Seam shows a building with the explored fog over
@@ -93,8 +95,9 @@ const FRAME_COLOR: Color = Color("1C2127")
 const SQUAD_TILE_OFFSET_PX: float = 16.0  ## A squad pair fills one tile: 2 x 32 px.
 const TERRAIN_ROW_TOP: float = 0.02
 ## The pages the button at the top right cycles through; the button shows the page it is on.
-const PAGES: Array[String] = ["Units", "Build", "Ground", "Vehicles", "Icons", "Seam"]
+const PAGES: Array[String] = ["Units", "Build", "Ground", "Vehicles", "Icons", "Seam", "Iso"]
 const Buildings: GDScript = preload("res://game/view/art_gallery_buildings.gd")
+const IsoPage: GDScript = preload("res://game/view/art_gallery_iso.gd")
 const BUILDING_ART: String = "res://assets/art/svg/buildings/%s_%s.svg"
 const ORE_ART: String = "res://assets/art/svg/ore/ore_%s.svg"
 ## Ore tiles by `ore_<name>.svg`: the five fill levels, two variants of each from level 1 up. A
@@ -228,6 +231,7 @@ var _ground_page: Control = null
 var _vehicles_page: Control = null
 var _icons_page: Control = null
 var _seam_page: Control = null
+var _iso_page: Control = null
 
 @onready var _back_button: Button = %BackButton
 @onready var _page_button: Button = %PageButton
@@ -255,6 +259,7 @@ func _ready() -> void:
 	_add_vehicles_page()
 	_add_icons_page()
 	_add_building_pages()
+	_add_iso_page()
 	_tint_team_layers(TEAM_A_GROUP, team_a_color)
 	_tint_team_layers(TEAM_B_GROUP, team_b_color)
 	for node: Node in find_children(TURRET_LAYER, "Sprite2D", true, false):
@@ -450,6 +455,14 @@ func _add_building_pages() -> void:
 	)
 	_buildings_page = pages[0]
 	_seam_page = pages[1]
+
+
+## The Iso page (plan row P99, ADR 0023): the generated blockouts, built by `art_gallery_iso.gd`.
+func _add_iso_page() -> void:
+	_iso_page = IsoPage.new()
+	_iso_page.grass_color = TERRAIN_COLORS[&"grass_b"]
+	_iso_page.sand_color = TERRAIN_COLORS[&"sand"]
+	add_child(_iso_page)
 
 
 func _layer_sprite(layer: String, path: String) -> Sprite2D:
@@ -798,6 +811,7 @@ func _show_page(index: int) -> void:
 	_vehicles_page.visible = index == 3
 	_icons_page.visible = index == 4
 	_seam_page.visible = index == 5
+	_iso_page.visible = index == 6
 	_page_button.text = PAGES[index]
 
 
