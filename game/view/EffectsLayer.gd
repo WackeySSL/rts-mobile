@@ -91,14 +91,44 @@ const TRACER_STEP_MILLI: int = 250  ## A quarter tile: how far a clipped tracer 
 @export var tracer_color: Color = Color("FFD84D")
 @export var edge_color: Color = FeedbackStyle.OUTLINE
 ## Per weapon id (`weapon_ids[i]`): the flash quad's side, where the shot leaves the barrel
-## (px from the shooter towards the target) and the impact puff's side, in world px.
+## (px from the shooter towards the target) and the impact puff's side, in world px. Every weapon
+## a shipped `data/units` file fires has a row, a hitscan one no puff (it lands no IMPACT) (P117d).
+## The Phase 3 faction weapons take the row of the old weapon of the same kind of shooter, as
+## `SpriteLift.MUZZLE_PX` does: `breaker_rocket` the rocket's, `redoubt_gun` the turret's and
+## `arcline_gun` the artillery's. The heavy cannon, turret and artillery rows are the defaults
+## those weapons always had, written out.
 @export var flash_px: Dictionary[StringName, float] = {
-	&"tank_cannon": 32.0, &"rocket": 24.0, &"rifle": 16.0
+	&"tank_cannon": 32.0,
+	&"rocket": 24.0,
+	&"rifle": 16.0,
+	&"heavy_cannon": 24.0,
+	&"turret_gun": 24.0,
+	&"artillery_gun": 24.0,
+	&"breaker_rocket": 24.0,
+	&"redoubt_gun": 24.0,
+	&"arcline_gun": 24.0,
 }
 @export var muzzle_px: Dictionary[StringName, float] = {
-	&"tank_cannon": 31.0, &"rocket": 13.0, &"rifle": 13.0
+	&"tank_cannon": 31.0,
+	&"rocket": 13.0,
+	&"rifle": 13.0,
+	&"heavy_cannon": 13.0,
+	&"turret_gun": 13.0,
+	&"artillery_gun": 13.0,
+	&"breaker_rocket": 13.0,
+	&"redoubt_gun": 13.0,
+	&"arcline_gun": 13.0,
 }
-@export var puff_px: Dictionary[StringName, float] = {&"tank_cannon": 40.0, &"rocket": 56.0}
+@export var puff_px: Dictionary[StringName, float] = {
+	&"tank_cannon": 40.0,
+	&"rocket": 56.0,
+	&"heavy_cannon": 40.0,
+	&"turret_gun": 40.0,
+	&"artillery_gun": 40.0,
+	&"breaker_rocket": 56.0,
+	&"redoubt_gun": 40.0,
+	&"arcline_gun": 40.0,
+}
 
 ## The frame clock in ms that effects are born and expire by. Tests replace it.
 var clock: Callable = Time.get_ticks_msec
