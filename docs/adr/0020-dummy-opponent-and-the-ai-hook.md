@@ -38,6 +38,9 @@ answers for what a player cannot see, the end rule and the turn test, `game/ai` 
 allocation check, the guard point as a data offset and the defence's cost. No accepted text
 changed.
 
+Status note (2026-10-27, P26ak docs): §3 and §4 carry dated status notes: `MatchRunner.opponents`
+is not exported, and the dummy has its two defs as P83d merged them. No accepted text changed.
+
 ## Context
 - CLAUDE.md rule 4: humans and AI act only through `Command` objects. Rule 3: randomness only
   through per-match `DetRandom` streams; `game/sim/DetRandom.gd` says "AI controllers use
@@ -146,6 +149,15 @@ allocation check** (no array literal, `duplicate()` or `slice()` in a loop body)
 decision of 2026-10-26: that check guards the loops of the per-tick phases, and a think runs on
 one tick in 15, counted and bounded by its tests (§4).
 
+Status note (2026-10-27, P26ak docs, P109 as merged, #214, 1d7b2cb, which ported the change from
+P107's branch, e685d5e; the text and the note above stay as accepted and as dated):
+`MatchRunner.opponents` is a typed `Array[AiDef]` that is **not** exported. Godot 4.7.2 keeps an
+exported default in a cache that `GDScript::clear()` does not empty; with the typed array there, the
+editor's exit (export, import) can free `AiDef` while it clears `MatchRunner`, and the autoload
+scripts leak, which fails `scripts/export-web.sh`. No scene or `.tres` sets the list: the tests and
+the Skirmish route (P90) set it in code. Any exported typed array or dictionary of a `class_name`
+script in a long-lived script carries the same risk; the CI web export is its guard.
+
 ### 4. The dummy opponent
 `DummyAi extends AiController`, driven by `data/ai/dummy.tres` (`AiDef`):
 - **Build:** it follows the def's build order (a list of types), queuing the next affordable item
@@ -194,6 +206,13 @@ note above stay as accepted and as dated), on `game/ai/DummyAi.gd`, `PlacementSp
 - **Cost.** A think visits its own rows, makes (seen enemy rows) x (own buildings) distance tests
   for the threat (`DummyDefence.tests`, pinned) and asks at most `place_tries` spiral slots
   (`DummyAi.placement_tries`): more than "visits the seen enemy rows", bounded and counted.
+
+Status note (2026-10-27, P26ak docs, P83d as merged, #221; the text and the notes above stay as
+accepted and as dated): the defs are `data/ai/dummy_fossil.tres` (id `dummy_fossil`, the Derrick
+League's build order) and `data/ai/dummy_renew.tres` (id `dummy_renew`, the Lumen Accord's, the
+same order with the `renew_*` types); `data/ai/dummy.tres` is gone. The run-sim-smoke matches (P95)
+play the two against each other on Kestrel Flats; the Skirmish routes (P90) give the dummy the
+other faction's def.
 
 ### 5. Proof
 - A dummy-vs-dummy match of 9 000 ticks (10 minutes) run twice from one seed gives the same

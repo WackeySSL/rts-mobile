@@ -49,6 +49,11 @@ P106's `FactionDef` as merged and the palette words of §6's "Look"; what P68e w
 `GDD.md` bullet and the ROADMAP box; the question texts P68e changed after the answers. No
 accepted text changed.
 
+Status note (2026-10-27, P26ak docs): §2, §4, §5, §6, §10, §12, §13 and §14 carry dated status
+notes: the rows merged on 2026-10-27 (P117 to P116, P110d and P80 among them), Michael's
+withdrawal of the ground's soft rim the same day, and the Mammoth's stance on the legal screen.
+No accepted text changed.
+
 ## Decisions in short
 | # | Topic | Decision |
 | --- | --- | --- |
@@ -251,6 +256,27 @@ accepted text changed.
 - **Projectiles and effects** draw at the projected ground point lifted by the shooter's muzzle
   height from the sheet; shells fly straight in Phase 3 (arcs are Phase 5 polish).
 
+Status note (2026-10-27, P26ak docs, P114 #226, P114b #236, P115 #228, P116 #229 and P112 #237 as
+merged; the text above stays as accepted):
+- **The z table** gains `StrikeMarkerLayer` at z 65 (P112: the aim ring and the rupture
+  warning). The field stages are not decals: they are tiles of `FieldLayer`, a `TileMapLayer`
+  child of `GroundLayer` on the ground's page (z 0). The wellheads and their shadows are sprites at
+  z 1 in its `Props` node, not in `DecalLayer`. A wellhead is flat decor at z 1, so unit shadows,
+  rings, the fog and every sorted sprite draw over it. Moving the bodies into `WorldSort` is open;
+  it needs their picture on the sorted world's page.
+- **Buildings** (P115): each row is a `Node2D` at the footprint centre in `WorldSort` with a
+  `Body` `Sprite2D` (and a defence's `Head`) as children, or a diamond `Marker` where there is no
+  art, not one `Sprite2D`. The sort key is unchanged. A building that leaves the rows while it is
+  shown leaves a crater in `DecalLayer`, with a ground radius of 500 milli per footprint tile.
+- **Draw-call forecast:** decals count 2 once a crater exists (the shadows on the sorted world's
+  page, the craters on `decals/crater.svg`), so the base arena's forecast is 14, not 13.
+- **Muzzle height** (P114b): `WorldSort.muzzle_px(weapon)` reads the sheet of the first type that
+  carries the weapon, so a weapon that both factions carry takes the first carrier's height, not
+  the shooter's own; `SpriteLift.MUZZLE_PX` stays the fallback for a weapon without a sheet. The
+  shooter's own height is open.
+- **Owner 0** takes player 1's atlas slot (`WorldSort.slot_of`), so a neutral row wears player
+  1's triad. A neutral triad is open.
+
 ### 3. Picking, selection and placement
 - **Ground taps:** `IsoProjection.px_to_ground` of the camera's world point, rounded to milli.
 - **Units first** (ADR 0022 §3's order kept): with a selection enemy unit > own unit > enemy
@@ -285,6 +311,14 @@ accepted text changed.
   it (HUD board: a 148 x 86 panel). It is one cell texture at fog cadence drawn with the same skew
   as the fog, so the camera's frame is a plain rectangle on it. A plan view was rejected: its
   camera frame would be a turned quadrilateral and its north would not match the screen's.
+
+Status note (2026-10-27, P26ak docs, P117 as merged, #209, and P116, #229; the text above stays as
+accepted): `RtsCamera` clamps the view centre into the diamond (`IsoProjection.clamp_to_diamond`)
+and turns the engine limits off (`limit_enabled = false`): an enabled limit rect shifts the
+rendered view off `position`, which breaks ground taps. The top margin for the tallest sprite is
+not needed, because the centre can reach the top corner. Outside the diamond the screen shows
+STYLE.md's off-map colour #16191D, which `GroundLayer` sets as the clear colour while it is in the
+tree.
 
 ### 5. Art pipeline
 - **Rule kept:** only SVG authored in this repository (CLAUDE.md, Legal). The canvas images are a
@@ -366,6 +400,15 @@ accepted text changed.
   soft rim), new fonts (the canvas's Big Shoulders and Chakra Petch are SIL OFL, which CLAUDE.md's
   asset rule does not allow without a change).
 
+Status note (2026-10-27, P26ak docs, P113 #222 and P105 #220 as merged; the text above stays as
+accepted):
+- **The soft rim is withdrawn.** Michael withdrew the ground diamonds' soft rim on 2026-10-27,
+  because it read as a grid on the phone. The diamonds have no rim; row P105b takes it out of the
+  ground art.
+- **Team colour.** `IsoPlayerArt` replaces the key triad in one pass with one regular expression:
+  a key colour followed by no hex digit, matched without regard to case. A key colour written in
+  lower case would be replaced too; the generator writes upper case, so no frame has one.
+
 ### 6. Factions: names, look and data
 - **Names** (Michael's answer 1; screened in §13): the **Derrick League** (the oil and gas bloc;
   internal `fossil`) and the **Lumen Accord** (the green-energy alliance; internal `renew`). The
@@ -437,6 +480,12 @@ Status note (2026-10-26, P26ai docs, P106 as merged, #202; the text above stays 
   type's faction from `UnitDef.faction`, and the view and the UI read the rest from the scenario.
   `ScenarioDef.factions`' unused entry 0 is a data convention: `WorldLoad` skips null entries
   only, so a `FactionDef` at entry 0 would have its roster registered too.
+
+Status note (2026-10-27, P26ak docs, P85d as merged, #211; the text and the note above stay as
+accepted and as dated): the build menu takes the local player's faction from the first own row
+whose type has a faction (`type_faction` 0 or more, `BuildSidebar`), not from
+`factions[local_player]`, because the UI reads the snapshot and the snapshot carries no scenario.
+Where a player's spawns are of its listed faction, the two agree.
 
 ### 7. The asymmetric Phase 3 roster
 Derrick League keeps the twelve merged files (ids, sim numbers, P72's tests) and adds two; Lumen
@@ -547,6 +596,31 @@ reserves 20 for them.
   map, confirm), the warning marker for every player during the delay, the rupture crater decal and
   a blackout overlay (the offline glyph over each affected building, no tint, §2).
 
+Status note (2026-10-27, P26ak docs, P110 #215, P111 #216, P110d #223 and P80 #227 as merged; the
+text above stays as accepted):
+- **A strike weapon** has no range, no minimum range and no flight (`projectile_speed` 0):
+  nothing fires it from a position. Only the rupture has one (`data/weapons/fossil_rupture.tres`,
+  damage 600 at 100 % against every armour class, the (P) numbers kept for Phase 4's balance
+  runs); the blackout holds none, and no unit or building has it as its `weapon`
+  (`tests/sim/test_defs_strike_data.gd`).
+- **One pending rupture per player.** While a player's rupture is pending (`strike_tick` set), a
+  further `SUPERWEAPON` of that player, from any strike building of either kind, is dropped and
+  counted (the lead's decision of 2026-10-26). The commands of the landing step still see it
+  pending; the player may fire again from the next step.
+- **Which rupture.** The pending strike stores no type, so the landing reads the radius and the
+  weapon from `Strike.rupture_type`, the lowest type index of kind 1. The shipped rosters have one,
+  `fossil_strike`, which it finds with both rosters loaded. A roster with two rupture types with
+  different numbers needs a state column and a re-pin first.
+- **Point and radius.** The point is clamped to the map as `RALLY`'s is. A rupture in the air is
+  not recalled by the loss of its building, a surrender or a defeat. Both strikes hit neutral rows
+  (owner 0) like any other, and a row exactly on the radius is hit (squared distance at most the
+  radius squared).
+- **The blackout** keeps a longer `offline_until` that a building already has. A queue waits while
+  its primary producer (the lowest-id producer of its tab, ADR 0018 §5) is offline, even when a
+  second producer of that tab stands outside the radius: a design point for Phase 4.
+- **A scenario** may start a strike building part-way through its charge
+  (`SpawnDef.charge_elapsed_ticks`, P80, through `Strike.age_charge`); a `PLACE` never does.
+
 ### 11. Economy: oil and gas fields on the merged ore loop
 - **Mapping:** a field is the merged ore cells (`ore_cell`, `ore_amount`, `ore_cell_max` 20,
   `ore_regrow_ticks` 150); the tanker is the harvester (`harvest_capacity`, SEEK, MINE, RETURN,
@@ -582,6 +656,15 @@ reserves 20 for them.
 - **Not taken from the canvas HUD:** the command buttons (attack-move, guard, stop, patrol,
   formation), sell and repair, the Air tab, rank chevrons, the "PRIMARY" label: out of scope or
   too close to Red Alert 2's sidebar buttons (§13).
+
+Status note (2026-10-27, P26ak docs, P85d #211 and P112 #237 as merged; the text above stays as
+accepted): the landscape build panel takes the width that the bottom row leaves after the ArmyBar
+and the selection panel's row (`HudLayout.panel_px`, 184 to 372 dp), and its named cards are 80 x
+88 dp (64 dp of tile, the name's line under the cost). The minimap's panel is 148 x 86 dp and stays
+empty until P88. The strike button (P112) has its own place: in landscape on the top line, left of
+the minimap's panel; in portrait at the right edge, above the army bar. Its check mark and X are
+56 dp; row P112c takes them to 64 dp, the size `touch-ui-rules` gives placement's confirm and
+cancel.
 
 ### 13. Legal screen
 Screened against Command & Conquer (Tiberian Dawn, Red Alert 1-3 and expansions, Tiberian Sun and
@@ -645,6 +728,12 @@ its three name-list rows, for every name this ADR uses.
 | Big Shoulders, Chakra Petch fonts | A | SIL OFL fonts, not CC0 or CC-BY | not used (§5) |
 | The names of §6 and §7: Derrick League, Lumen Accord, Rigworks, Turbine Hall, Cracking Plant, Bunkhouse, Heavy Yard, Signal Mast, Redoubt, Deep Bore, Roustabouts, Wildcatters, Flarejack, Bullhead, Mortar Rig, Tanker, Grid Hub, Synthesis Works, Crew Hall, Relay Tower, Blackout Array, Linemen, Breakers, Torque, Arcline | this ADR | no known hit in the games above or among real military vehicles, aircraft, ships or weapon programmes. Flarejack (flare stack + pumpjack) and Arcline are coined; Bullhead is an oilfield word (bullheading, a well-control method); Roustabouts, Wildcatters and Linemen are trades (the AW159 Wildcat helicopter is another word); Redoubt, Tanker, Mortar Rig and Rail Battery are generic words; "derrick" is an oilfield word (Red Alert 2's and Generals' Oil Derrick is a capturable neutral building, another name and a dropped mechanic, row above). Rejected while choosing them: Roughnecks (Starship Troopers' Roughnecks, an RTS since 2022), Blockhouse (Age of Empires III), Thumper (Dune), Aegis (RA2 Aegis Cruiser; also a real naval combat system), Pylon (StarCraft), Longbow (RA1; also the AH-64D Longbow), Coyote, Longshot, Bulwark, Iron Compact (rows above) | used (Michael's answers 1 and 2, 2026-10-26) |
 
+Status note (2026-10-27, P26ak docs, from P102's review; the table above stays as accepted): the
+twin-barrel row covers the Mammoth's stance too, a tank standing on four corner track pods (TD's
+and RA's Mammoth). No unit stands on four corner pods. P102 as merged (#233, 280d189) took them
+out of the Torque in its fix round, so the Torque stands on one continuous track a side, and
+`svg-art-style` names the stance next to the twin barrels (Michael's yes of 2026-10-27).
+
 ### 14. Performance and the arenas
 - **Perf arena:** nothing here but §10 touches its state (§6 adds type data only, and its
   scenario lists no faction), so its golden hashes, `budget.cfg` and every `PERF` line stay;
@@ -660,6 +749,15 @@ its three name-list rows, for every name this ADR uses.
   headless stand-in for the call count); the bake's CPU image (triads, gutters, page size for the
   real art); the camera clamp; picking; the generator's determinism. On a renderer: P114's
   llvmpipe count (at most 15 for a base-arena-like scene) and the phone cards.
+
+Status note (2026-10-27, P26ak docs, P80 as merged, #227; the text above stays as accepted): the
+base arena is `data/scenarios/perf_bases.tres` on a 54 x 24 map. Each side has 14 buildings
+(every building type of its faction), 71 fighters and four tankers (150 mobile rows at the start),
+and orders at tick 0: the fighters to the firing line, the tankers to their oil, seven `QUEUE`
+items. `OrderDef` gains `unit` for `QUEUE` and `SUPERWEAPON` orders. Both strikes fall inside the
+900 measured ticks: `SpawnDef.charge_elapsed_ticks` starts both strike buildings charged, the
+Derrick League's rupture is ordered at tick 300 and lands at 346, and the Lumen Accord's blackout
+is ordered at tick 480 and still holds at tick 900. P93 pins the golden hashes.
 
 ### 15. What this supersedes and amends
 - **ADR 0022:** superseded. §1 (oblique buildings, top-down units), §2 (the middle-line cut, the
