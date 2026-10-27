@@ -91,6 +91,10 @@ Status note (2026-10-26, P68e docs; ADR 0023 accepted 2026-10-26): §6 carries a
 ADR 0023 §2's z table and one-atlas rule replace the z bands per type and owner and ADR 0022's
 table; the forecast is 13. No accepted text changed.
 
+Status note (2026-10-26, P26ai docs): §3 carries a dated status note: the `game/ai` scan is
+applied (P78q), and a packed array is shared by reference across assignment, so a view-like object
+copies what a caller can reach (P78). No accepted text changed.
+
 ## Context
 The Phase 2 plan (P26s) says that a contract the phone probe contradicts changes through a new ADR
 before P34 starts. The probe ran on 2026-10-12. The full reports are comments on PR #35.
@@ -640,6 +644,20 @@ Status note (2026-10-21, P26ae docs, after P50w, #140; the text above stays as a
   to 300 (rigs, fog image, checkpoints, `ticked` on the main thread), plus a held tick and
   `start()` during a job, with a `Logger` scan that fails on any error. The perf arena joins it
   later (plan rows P50b and P52).
+
+Status note (2026-10-26, P26ai docs, after P78, #196, P78q, #201, and P81, #187; the text and
+the notes above stay as accepted and as dated):
+- **The `game/ai` scan is applied** (P78q): `tests/project/test_view_reads_snapshot.gd` rejects
+  `.world`, `.loop`, `.replay` and `.probe` and the name `World` in `game/ai`, as the P68b note on
+  the bullet above says; ADR 0020 §3's note of the same date gives the rest (no allocation check
+  for `game/ai`).
+- **Packed arrays are shared, not copied.** The "Facts verified" of the Context hold: after
+  `b = a` a write through `b` changes `a`, and only `duplicate()` makes a copy (a lazy one).
+  P78 found the same for a member read and a pass through a Variant: an array a caller gets from
+  an object is that object's own. So `PlacementInput` (P71) and `MatchSnapshot.placement_input()`
+  (P81) hand out aliases in public fields (both document it: read at once, never kept or written),
+  and `PlayerView` copies every public field and keeps its aliases behind an underscore. Any later
+  view-like object copies what a caller can reach, or keeps it behind getters.
 
 ### 4. Gate and budget (replaces ADR 0011's acceptance-note values where the probe contradicts them)
 **Gate runs** use the release-template perf APK (plan P51r) in `WORKER` mode, three runs in a
