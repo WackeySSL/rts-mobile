@@ -18,7 +18,11 @@ func test_style_md_names_the_version_the_sections_and_the_tile_rules() -> void:
 	assert_str(terrain).contains("### Iso ground tiles (P105)")
 	assert_str(terrain).contains("**128 x 64 at 2x**")
 	assert_str(terrain).contains("`(column + row) % 2`")
-	assert_str(terrain).contains("The soft rim")
+	# The soft rim is withdrawn (Michael, 2026-10-27): the text says so and has no rim column.
+	assert_str(_flat(terrain)).contains("**No rim**")
+	assert_str(_flat(terrain)).contains("ADR 0023 section 5's soft rim is withdrawn")
+	assert_str(terrain).not_contains("| Rim")
+	assert_str(terrain).not_contains("The soft rim**")
 	assert_str(terrain).contains("`clipPath` called `inner`")
 	assert_str(_flat(_section(style, "## Fields"))).contains("**full** above two thirds")
 	assert_str(_flat(_section(style, "## Gallery"))).contains("**Terrain** (the sixth page")
