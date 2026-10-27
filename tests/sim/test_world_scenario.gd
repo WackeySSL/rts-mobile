@@ -51,6 +51,13 @@ func test_from_scenario_copies_the_unit_weapon_and_terrain_tables_of_the_arena()
 		&"type_exit_x": [0, 0, 0],
 		&"type_exit_y": [0, 0, 0],
 		&"type_faction": _faction_column(arena),
+		# No strike building in the arena: the six strike tables pad (P109; test_world_v3).
+		&"type_strike_kind": [0, 0, 0],
+		&"type_charge_ticks": [0, 0, 0],
+		&"type_strike_radius": [0, 0, 0],
+		&"type_strike_delay": [0, 0, 0],
+		&"type_strike_ticks": [0, 0, 0],
+		&"type_strike_weapon": [-1, -1, -1],
 		&"weapon_range": [4500, 4000, 5000],
 		&"weapon_min_range": [0, 0, 0],
 		&"weapon_damage": [30, 12, 50],
