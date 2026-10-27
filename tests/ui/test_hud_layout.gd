@@ -6,14 +6,18 @@ extends GdUnitTestSuite
 ## build panel at the bottom right, the status pill at the top left and the minimap's slot at the
 ## top right; the bottom row (the ArmyBar and the selection panel) stays left of the build panel's
 ## zone. In portrait none enters the bottom band, which the sidebar sets and the ArmyBar sits above
-## (P85). Landscape selects the 30 tanks the scene starts with, portrait the six MVP types with
-## 3-digit counts.
+## (P85). Portrait selects the six MVP types with 3-digit counts. Landscape selects the 30 tanks the
+## scene starts with, and again 120 rocket squads (the widest single row) and three types with
+## 3-digit counts (not the six: their column is taller than the smallest web phone): a row the
+## bottom row has no room for is clipped, never slid under the build panel.
 
 const Roster: GDScript = preload("res://tests/ui/support/mvp_roster.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const TANKS: Array[int] = [0, 0, 30]
 const SIX_TYPES: Array[int] = [120, 100, 150, 110, 130, 140]
+const ROCKETS: Array[int] = [0, 120]  ## "Rocket Squad ×120": the longest name, a 3-digit count.
+const THREE_TYPES: Array[int] = [120, 100, 150]  ## Rifle squads, rocket squads, light tanks.
 const STACK_LIMIT: float = 0.4  ## The bottom stack's share of the safe height, at most.
 const CUTOUT_PX: int = 100
 const TOLERANCE_PX: float = 0.5
@@ -38,7 +42,7 @@ func after_test() -> void:
 
 
 func test_every_hud_control_is_inside_the_safe_rect_48_dp_and_clear_of_the_others() -> void:
-	for screen: Dictionary in _screens():
+	for screen: Dictionary in _cases():
 		await _open(screen)
 		var why: String = str(screen["label"])
 		var safe: Rect2 = UiScale.safe_rect_base()
@@ -143,9 +147,9 @@ func test_in_landscape_the_bar_stays_on_the_bottom_edge_whatever_the_zone_it_is_
 
 
 ## Every screen to test, as {label, size, metrics (a profile, or null for the engine's own), cutout,
-## portrait}; `portrait` true or false leaves out the other orientation. Each profile comes twice,
-## the second time with a cutout of 100 px on the side where a phone has its camera (the left in
-## landscape, the top in portrait).
+## portrait, counts (its selection)}; `portrait` true or false leaves out the other orientation.
+## Each profile comes twice, the second time with a cutout of 100 px on the side where a phone has
+## its camera (the left in landscape, the top in portrait).
 func _screens(portrait: Variant = null) -> Array[Dictionary]:
 	var all: Array[Dictionary] = []
 	for size: Vector2i in ScreenSizes.ALL:
@@ -170,13 +174,30 @@ func _screens(portrait: Variant = null) -> Array[Dictionary]:
 
 
 func _screen(label: String, size: Vector2i, metrics: UiMetrics, cutout: bool) -> Dictionary:
+	var portrait: bool = UiScale.is_portrait_size(size)
 	return {
 		"label": label,
 		"size": size,
 		"metrics": metrics,
 		"cutout": cutout,
-		"portrait": UiScale.is_portrait_size(size),
+		"portrait": portrait,
+		"counts": SIX_TYPES if portrait else TANKS,
 	}
+
+
+## `_screens()` with each landscape screen again for the two long selections.
+func _cases() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for screen: Dictionary in _screens():
+		out.append(screen)
+		if screen["portrait"]:
+			continue
+		for counts: Array[int] in [ROCKETS, THREE_TYPES]:
+			var longer: Dictionary = screen.duplicate()
+			longer["label"] = "%s, %s" % [screen["label"], counts]
+			longer["counts"] = counts
+			out.append(longer)
+	return out
 
 
 ## The bottom of the safe area's inner rect, where the HUD may reach.
@@ -201,7 +222,7 @@ func _rect(control: Variant) -> Rect2:
 	return node.get_global_rect()
 
 
-## A new main scene on `screen` with a mixed selection the size of its orientation.
+## A new main scene on `screen` with its selection (`counts`).
 func _open(screen: Dictionary) -> void:
 	if _main != null and is_instance_valid(_main):
 		remove_child(_main)
@@ -216,5 +237,5 @@ func _open(screen: Dictionary) -> void:
 	add_child(_main)
 	await await_idle_frame()
 	_panel = _hud("SelectionPanel")
-	Roster.select(self, _panel, SIX_TYPES if screen["portrait"] else TANKS)
+	Roster.select(self, _panel, screen["counts"])
 	await await_idle_frame()

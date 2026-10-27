@@ -12,7 +12,8 @@ extends RefCounted
 
 ## The landscape build panel takes what the bottom row leaves the ArmyBar and the SelectionPanel's
 ## one row (`SELECTION_DP`): the canvas's 372 dp at most, two whole cards (2 x 80 dp, an 8 dp gap
-## and 8 dp padding each side) at least.
+## and 8 dp padding each side) at least. The SelectionPanel never grows past what is left of the
+## row, whatever its names and counts: it clips the names (`SelectionPanel._fit_zone`).
 const SELECTION_DP: float = 200.0
 const PANEL_MIN_DP: float = 184.0
 const PANEL_MAX_DP: float = 372.0

@@ -64,11 +64,6 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Hold a group (1-3) | Stores the current selection in that group; the phone buzzes and the count shows (`group_assign_ms` in `data/input_settings.tres`) | yes |
 | A grouped unit is destroyed | It leaves the group; the group's badge shows the new count, and an empty group shows only its number | |
 
-## Factions
-| Action | Result | Teach |
-|---|---|---|
-| Start a match | You play the Derrick League (oil and gas) or the Lumen Accord (green energy); each side has its own buildings and units, and your build menu shows only yours (and what both sides share). The side is the one your own buildings and units belong to | yes |
-
 ## Build menu
 | Action | Result | Teach |
 |---|---|---|
@@ -88,3 +83,4 @@ their entries when their phase ships them (ROADMAP Phases 3-6).
 | Action | Result | Teach |
 |---|---|---|
 | An "under attack" warning at the screen edge | Not shown yet: nothing points at a unit that is hit off screen | |
+| Play the Derrick League (oil and gas) or the Lumen Accord (green energy) | Not shown yet: no match has sides, so no building or unit belongs to one side only. Once a match has them, each side has its own buildings and units and your build menu shows only yours (and what both sides share) | |
