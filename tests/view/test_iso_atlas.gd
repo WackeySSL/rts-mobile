@@ -13,6 +13,7 @@ const KARMIN: PackedStringArray = ["#F26A5E", "#CF3A2E", "#922219"]
 const GREY: String = "#808080"
 const SMALL: Vector2i = Vector2i(16, 4)  ## The crafted hull: four stripes of 4 px.
 const GUTTER: int = RuntimeAtlas.GUTTER_PX
+const FRAME: Vector2i = Vector2i(8, 4)  ## A crafted vehicle frame: a direction colour, a stripe.
 const HEAD: String = '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d">'
 const BLOCK: String = '<polygon points="%d,0 %d,0 %d,%d %d,%d" fill="%s"/>'
 
@@ -178,6 +179,51 @@ func test_the_index_loads_every_sheet_of_both_factions() -> void:
 	assert_int(per_faction[&"renew"]).is_equal(14)
 
 
+func test_every_direction_of_a_part_holds_its_own_frame_for_each_player() -> void:
+	# A hull of 16 directions and a turret of 8 (d00, d02, ... d14), each frame painted in the colour
+	# of its part and its d<NN> number beside a key stripe, for two players.
+	var sheet: IsoSheetDef = _vehicle_sheet()
+	var players: Array[IsoPlayerArt] = [_art(KEY, KEY), _art(KEY, ARKTISK)]
+	var atlas: IsoAtlas = IsoAtlas.build([sheet], players, 1.0, true, _vehicle_reader())
+	var rects: Array[Rect2i] = []
+	for player: int in players.size():
+		for part_name: String in sheet.parts:
+			var part: StringName = StringName(part_name)
+			for dir: int in sheet.directions(part):
+				var rect: Rect2i = atlas.region(&"rover", part, dir, player)
+				var frame: Image = atlas.image().get_region(rect)
+				var label: String = "%s d%02d of player %d" % [part, dir, player]
+				assert_that(rect.size).override_failure_message(label).is_equal(FRAME)
+				assert_bool(rects.has(rect)).override_failure_message(label).is_false()
+				rects.append(rect)
+				var own: String = "#" + frame.get_pixel(2, 2).to_html(false).to_upper()
+				var stripe: String = "#" + frame.get_pixel(6, 2).to_html(false).to_upper()
+				assert_str(own).override_failure_message(label).is_equal(_paint(part, dir))
+				assert_str(stripe).override_failure_message(label).is_equal(
+					players[player].triad[1]
+				)
+	assert_int(rects.size()).is_equal(2 * (16 + 8))
+
+
+func test_a_real_frame_of_each_direction_is_the_file_of_that_direction() -> void:
+	# A 16-direction hull and turret (light tank) and an 8-direction squad hull, at three of their
+	# listed directions each: the region holds the recoloured file of that d<NN>, not of another.
+	var index: IsoIndex = load(IsoIndex.PATH) as IsoIndex
+	var tank: IsoSheetDef = index.sheet(&"light_tank")
+	var squad: IsoSheetDef = index.sheet(&"rifle_squad")
+	var player: IsoPlayerArt = _art(KEY, KARMIN)
+	var atlas: IsoAtlas = IsoAtlas.build([tank, squad], [player], 0.5, true)
+	assert_float(atlas.bake_scale()).is_equal(0.5)
+	_assert_directions_are_their_files(atlas, tank, &"hull", [0, 4, 10], player, 0.5)
+	_assert_directions_are_their_files(atlas, tank, &"turret", [0, 4, 10], player, 0.5)
+	_assert_directions_are_their_files(atlas, squad, &"hull", [0, 2, 10], player, 0.5)
+	for sheet: IsoSheetDef in [tank, squad]:
+		var next: int = sheet.directions(&"hull")[1]
+		var first: Image = atlas.image().get_region(atlas.region(sheet.art_id, &"hull", 0, 0))
+		var second: Image = atlas.image().get_region(atlas.region(sheet.art_id, &"hull", next, 0))
+		assert_that(second.get_data()).is_not_equal(first.get_data())
+
+
 func test_a_player_without_valid_art_and_a_frame_without_text_are_reported() -> void:
 	var sheet: IsoSheetDef = _sheet(&"crafted", &"fossil", SMALL)
 	var made: Array[IsoAtlas] = []
@@ -216,6 +262,39 @@ func _sheet(
 		sheet.sizes.append_array([canvas.x, canvas.y])
 		sheet.anchors.append_array([0, 0])
 	return sheet
+
+
+## The crafted sheet of a vehicle: a hull of 16 directions and a turret of 8, `FRAME` px each.
+func _vehicle_sheet() -> IsoSheetDef:
+	var sheet: IsoSheetDef = IsoSheetDef.new()
+	sheet.art_id = &"rover"
+	sheet.faction = &"fossil"
+	sheet.category = &"veh"
+	sheet.parts = PackedStringArray(["hull", "turret"])
+	sheet.counts = PackedInt32Array([16, 8])
+	sheet.sizes = PackedInt32Array([FRAME.x, FRAME.y, FRAME.x, FRAME.y])
+	sheet.anchors = PackedInt32Array([0, 0, 0, 0])
+	return sheet
+
+
+## The colour a crafted vehicle frame is painted in: unique to its part and its d<NN> number.
+func _paint(part: StringName, dir: int) -> String:
+	return "#%02X%02X30" % [0x40 if part == &"hull" else 0x80, 8 + 16 * dir]
+
+
+## The crafted vehicle frames: the left half in `_paint` of the part and direction the path names
+## (`rover_<part>_d<NN>.svg`), the right half a key stripe the player recolours.
+func _vehicle_reader() -> Callable:
+	return func(path: String) -> String:
+		var file: String = path.get_file().get_basename()
+		var part: StringName = &"turret" if file.contains("_turret_") else &"hull"
+		var dir: int = file.substr(file.length() - 2).to_int()
+		return (
+			HEAD % [FRAME.x, FRAME.y]
+			+ _block(0, 4, FRAME.y, _paint(part, dir))
+			+ _block(4, 8, FRAME.y, KEY[1])
+			+ "</svg>"
+		)
 
 
 ## `HEAD` and one block of `colour` from `left` to `right` across `height` rows.
@@ -292,6 +371,28 @@ func _raster(text: String, scale: float = 1.0) -> Image:
 ## Player 0 the Derrick League in its own Signal triad, player 1 the Lumen Accord in Arktisk.
 func _real_players() -> Array[IsoPlayerArt]:
 	return [_art(KEY, KEY), _art(ARKTISK, ARKTISK, &"renew")]
+
+
+## The regions of `sheet`'s `part` at `dirs` hold the recoloured text of the file of that very
+## direction, rasterised at `scale`.
+func _assert_directions_are_their_files(
+	atlas: IsoAtlas,
+	sheet: IsoSheetDef,
+	part: StringName,
+	dirs: Array[int],
+	player: IsoPlayerArt,
+	scale: float
+) -> void:
+	for dir: int in dirs:
+		assert_bool(sheet.directions(part).has(dir)).is_true()
+		var text: String = FileAccess.get_file_as_string(sheet.path(part, dir))
+		var want: Image = _raster(player.recolour(text), scale)
+		var got: Image = atlas.image().get_region(atlas.region(sheet.art_id, part, dir, 0))
+		(
+			assert_that(got.get_data())
+			. override_failure_message("%s %s d%02d" % [sheet.art_id, part, dir])
+			. is_equal(want.get_data())
+		)
 
 
 ## Each frame of each player's faction has a region of the size the engine rasterises its canvas
