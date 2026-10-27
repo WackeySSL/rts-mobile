@@ -13,6 +13,7 @@ config_version=5
 config/name="rts-mobile"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://assets/art/svg/icon/app_icon.svg"
 
 [autoload]
 
