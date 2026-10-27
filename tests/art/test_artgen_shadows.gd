@@ -34,6 +34,21 @@ func test_the_shadow_falls_the_same_way_whatever_the_yaw_of_what_casts_it() -> v
 		)
 
 
+func test_the_caster_is_turned_by_its_yaw_before_its_shadow_is_dropped() -> void:
+	# A thin pole 1 tile high, 1 tile ahead of the model's origin. Turned by the yaw it stands at
+	# (cos, sin) on the ground and its shadow runs 0.8 tiles along +gx from there: the middle of
+	# the shadow is at (cos + 0.4, sin). A caster that is not turned lies at (1.4, 0) in all of them.
+	for yaw: float in [0.0, 45.0, 90.0, 135.0, 180.0, 270.0]:
+		var polys: Array[ArtRender.Poly] = _shadow(["box hull steel 1 0 0 0.02 0.02 1"], yaw)
+		var foot: Vector2 = Vector2(cos(deg_to_rad(yaw)), sin(deg_to_rad(yaw)))
+		var want: Vector2 = ArtRender.project(Vector3(foot.x + REACH / 2.0, foot.y, 0.0))
+		(
+			assert_vector(ArtRender.bounds(polys).get_center())
+			. override_failure_message(str(yaw))
+			. is_equal_approx(want, Vector2.ONE * 2.0)
+		)
+
+
 func test_a_taller_primitive_casts_a_longer_shadow_in_proportion() -> void:
 	var low: Rect2 = ArtRender.bounds(_shadow(["box hull steel 0 0 0 0.1 0.1 0.5"], 0.0))
 	var high: Rect2 = ArtRender.bounds(_shadow(["box hull steel 0 0 0 0.1 0.1 1.0"], 0.0))
@@ -85,6 +100,19 @@ func test_a_turret_casts_from_its_mount_turned_with_the_hull() -> void:
 	# The source primitive is not changed: a second call gives the same answer.
 	assert_float(model.shadow_prims()[1].z0).is_equal_approx(0.2, 1e-6)
 	assert_float(model.primitives(&"turret")[0].z0).is_equal(0.0)
+	# Dropped, the mount turns with the hull: a turret 0.3 ahead, 0.2 to 0.4 high, casts from the
+	# ground point (0.3 cos + 0.8 x 0.3, 0.3 sin) at yaw 0 and at a quarter turn, not from (0.54, 0).
+	for yaw: float in [0.0, 90.0]:
+		var polys: Array[ArtRender.Poly] = ArtShadow.polys(found, yaw)
+		var turret: Array[ArtRender.Poly] = [polys[1]]
+		var at: Vector3 = Vector3(
+			0.3 * cos(deg_to_rad(yaw)) + REACH * 0.3, 0.3 * sin(deg_to_rad(yaw)), 0.0
+		)
+		(
+			assert_vector(ArtRender.bounds(turret).get_center())
+			. override_failure_message(str(yaw))
+			. is_equal_approx(ArtRender.project(at), Vector2.ONE * 0.1)
+		)
 
 
 func test_a_line_of_points_has_no_shadow_and_collinear_corners_are_dropped() -> void:

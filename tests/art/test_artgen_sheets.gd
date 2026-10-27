@@ -7,8 +7,14 @@ extends GdUnitTestSuite
 ## pinned here.
 
 const MOUNT_TOLERANCE: Vector2 = Vector2.ONE * 0.06  ## Written with one decimal, stored as floats.
+## STYLE.md: a bar clears three of four hull poses; written again so that a change of
+## `ArtSheet.BAR_CLEARS` fails here.
+const BAR_CLEARS: float = 0.75
+## A frame is written to one decimal and a mount too: the tops read off them are this close.
+const ROUNDING: float = 0.1
 
 var _index: IsoIndex = null
+var _points: RegEx = RegEx.create_from_string('points="([^"]*)"')
 
 
 func before() -> void:
@@ -82,36 +88,47 @@ func test_a_sheet_gives_the_mount_of_a_turret_or_head_for_every_hull_frame() -> 
 	assert_vector(_index.sheet(&"harvester").mount(6)).is_equal(Vector2.ZERO)
 
 
-func test_the_lifts_are_world_px_that_lie_inside_the_frame_and_the_bar_clears_most_poses() -> void:
+func test_the_bar_lift_is_the_lowest_top_that_clears_three_of_four_hull_poses_read_off_the_frames(
+) -> void:
 	for path: String in ArtGen.model_paths():
 		var model: ArtModel = load(path) as ArtModel
 		var sheet: IsoSheetDef = _index.sheet(model.art_id)
-		var layouts: Dictionary[StringName, ArtGen.Layout] = ArtGen.layouts(model)
-		# The highest point of any pose above the ground point, in 2x px, and the mean of the
-		# hulls alone (the turret only raises a pose).
-		var highest: float = layouts[&"hull"].origin.y
-		var hull_tops: float = 0.0
-		for dir: int in model.directions(&"hull"):
-			var turned: float = ArtGen.yaw(dir) if dir >= 0 else 0.0
-			var polys: Array[ArtRender.Poly] = ArtRender.render(
-				model.primitives(&"hull"), turned, model.faction
-			)
-			hull_tops -= ArtRender.bounds(polys).position.y
-			for part: StringName in [&"turret", &"head"]:
-				if layouts.has(part):
-					var at: Vector2 = ArtGen.mount_px(model, 6 if dir < 0 else dir)
-					highest = maxf(highest, layouts[part].anchor.y - at.y)
-		hull_tops /= model.directions(&"hull").size()
-		assert_float(sheet.bar_lift_px * 2.0).override_failure_message(path).is_less_equal(
-			highest + 2.0
+		var tops: Array[float] = _pose_tops(sheet)
+		var clears: int = 0
+		for top: float in tops:
+			clears += 1 if top <= sheet.bar_lift_px * 2.0 + ROUNDING else 0
+		# The claim of the guide: most poses stand under the bar ...
+		assert_int(clears).override_failure_message(path).is_greater_equal(
+			ceili(tops.size() * BAR_CLEARS)
 		)
-		assert_float(sheet.bar_lift_px * 2.0).override_failure_message(path).is_greater_equal(
-			hull_tops - 1.0
+		# ... and the bar is as low as it can be for that, which a hull-only or a mean value is not.
+		tops.sort()
+		var want: float = tops[ceili(tops.size() * BAR_CLEARS) - 1]
+		assert_int(sheet.bar_lift_px).override_failure_message(path).is_between(
+			ceili((want - ROUNDING) / 2.0), ceili((want + ROUNDING) / 2.0)
 		)
 		assert_int(sheet.pick_lift_px).is_equal(roundi(sheet.bar_lift_px / 2.0))
 		if model.category != &"bld":
-			# World px at zoom 1: a figure is 22, a vehicle 27 to 39 (the 2x number would be twice).
+			# World px at zoom 1: a figure is 22 to 25, a vehicle 31 to 41 (the 2x number would be
+			# twice).
 			assert_int(sheet.bar_lift_px).override_failure_message(path).is_between(14, 45)
+
+
+func test_the_bar_lift_counts_the_turret_straight_ahead_and_not_the_hull_alone() -> void:
+	var hull: String = "box hull steel 0 0 0 1 0.6 0.2"
+	var armed: ArtModel = _model(&"veh", [hull, "box turret iron 0 0 0 0.3 0.3 0.6"])
+	armed.mount = Vector3(0.0, 0.0, 0.2)
+	var bare: ArtModel = _model(&"veh", [hull])
+	# The turret stands 0.6 tiles over the deck (23 world px), of which the deck's own reach up the
+	# screen takes some back: the bars differ by 15 now, a hull-only value would not differ at all.
+	assert_int(_bar_lift(armed) - _bar_lift(bare)).is_greater_equal(10)
+
+
+func test_the_style_guide_says_what_the_bar_lift_is() -> void:
+	var guide: String = FileAccess.get_file_as_string("res://assets/art/STYLE.md")
+	guide = RegEx.create_from_string("\\s+").sub(guide, " ", true)
+	assert_str(guide).contains("in the pose that three of four hull frames stay under")
+	assert_float(ArtSheet.BAR_CLEARS).is_equal(BAR_CLEARS)
 
 
 func test_the_muzzle_lift_is_where_the_barrel_ends_and_zero_for_a_building_without_a_head() -> void:
@@ -221,6 +238,37 @@ func test_stale_names_the_files_that_are_missing_or_differ_and_only_those() -> v
 			"res://assets/art/iso/icons/item_not_there.svg"
 		]
 	)
+
+
+## How high each hull pose of the sheet reaches above the ground point, in px of the 2x art, read
+## off the committed frames: the hull's lowest polygon corner, and the turret's or head's frame
+## straight ahead (its pivot lies at the mount).
+func _pose_tops(sheet: IsoSheetDef) -> Array[float]:
+	var tops: Array[float] = []
+	for dir: int in sheet.directions(&"hull"):
+		var ahead: int = 6 if dir < 0 else dir
+		var top: float = _frame_top(sheet.path(&"hull", dir), sheet.origin(&"hull"))
+		for part: StringName in [&"turret", &"head"]:
+			if sheet.has_part(part):
+				var raised: float = _frame_top(sheet.path(part, ahead), sheet.origin(part))
+				top = maxf(top, raised - sheet.mount(ahead).y)
+		tops.append(top)
+	return tops
+
+
+## The height of the highest polygon corner of the frame at `path` above `origin`, in px.
+func _frame_top(path: String, origin: Vector2i) -> float:
+	var highest: float = INF
+	for found: RegExMatch in _points.search_all(FileAccess.get_file_as_string(path)):
+		for pair: String in found.get_string(1).split(" "):
+			highest = minf(highest, float(pair.get_slice(",", 1)))
+	return origin.y - highest
+
+
+## The `bar_lift_px` that a fresh run writes for `model`.
+func _bar_lift(model: ArtModel) -> int:
+	var text: String = ArtGen.build(model)[ArtGen.sheet_path(model)]
+	return int(RegEx.create_from_string("bar_lift_px = (\\d+)").search(text).get_string(1))
 
 
 func _model(category: StringName, lines: Array[String]) -> ArtModel:

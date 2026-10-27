@@ -24,7 +24,10 @@ const ROOT: String = "res://assets/art/iso"
 ## The turret's or head's pivot from the hull's ground point (a building's footprint centre), for
 ## each hull frame (one for a building); empty without a turret or head.
 @export var mounts: PackedVector2Array = PackedVector2Array()
-@export var bar_lift_px: int = 0  ## The frame's top above the ground point, bars stand on it.
+## Where a health bar stands above the ground point: the top of the pose that three of four hull
+## frames stay under (the turret or head straight ahead), so it clears most poses and covers only
+## a taller one (a long hull, a barrel that points up the screen). Not the top of every frame.
+@export var bar_lift_px: int = 0
 @export var pick_lift_px: int = 0  ## Half of that: a tap picks the unit round this height.
 @export var muzzle_lift_px: int = 0  ## Where shots leave; 0 for a building without a head.
 @export var icon: String = ""  ## The item card, a texture.

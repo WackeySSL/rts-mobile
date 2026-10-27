@@ -149,9 +149,10 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   the footprint's back corner, `origin(part)` gives the footprint's centre; a turret's or head's
   anchor is its pivot); `mounts`, the pivot of the turret or head from the hull's ground point for
   each hull frame (`mount(dir)`; one for a building's head, none without a turret); the three
-  lifts in **world px at zoom 1**, which is what the view counts in: `bar_lift_px` the mean over
-  the hull frames of how high the picture reaches above the ground point (a bar over it clears a
-  unit in most poses and may cover a barrel that points up the screen, which "Health bars" allows),
+  lifts in **world px at zoom 1**, which is what the view counts in: `bar_lift_px` how high the
+  picture reaches above the ground point in the pose that three of four hull frames stay under (the
+  turret or head straight ahead; a bar standing on it clears those poses and covers only a taller
+  one, a long hull or a barrel that points up the screen, which "Health bars" allows),
   `pick_lift_px` half of that (a tap picks a unit round its lifted middle), `muzzle_lift_px` the
   height of the muzzle (0 for a building without a head); and the card's path. The sheets are
   written by `ArtSheet` as `.tres` text by hand (Godot cannot save a resource to a string), so
