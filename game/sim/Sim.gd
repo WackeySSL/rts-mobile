@@ -17,7 +17,8 @@ const MILLI_PER_TILE: int = 1000
 ## pushed apart (SEPARATION), the steps and pushes are integrated, shells in flight move and those
 ## that arrive hit (PROJECTILES: `Combat.advance_projectiles`), armed units with a target in range
 ## fire (FIRE: `Combat.fire`, a hitscan hit or a new shell; a defence on low power keeps its target
-## and waits), dead rows leave and their vision ends (REMOVE), the players whose turn it is move
+## and waits; then `Strike.run` lands a due rupture, its damage lowering `hp` like a shot, P110),
+## dead rows leave and their vision ends (REMOVE), the players whose turn it is move
 ## their fog (FOG: `FogUpdate.run`, every `fog_period_ticks`, after `FogUpdate.begin` emptied their
 ## dirty lists), the economy runs (ECONOMY: `Power.run`, `Harvest.run`), the queues advance and the
 ## match outcome is checked (PRODUCTION: `Production.run`, `Outcome.run`), the last-seen records
@@ -72,6 +73,7 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 	if probe != null:
 		probe.mark(SimProbe.Phase.PROJECTILES)
 	Combat.fire(world)
+	Strike.run(world)  # A due rupture lands inside the FIRE mark (ADR 0023 section 10).
 	if probe != null:
 		probe.mark(SimProbe.Phase.FIRE)
 	FogUpdate.begin(world)
@@ -130,7 +132,7 @@ static func _apply(world: World, command: Command) -> void:
 			Command.Type.HARVEST:
 				applied = _playing(world, command) and Harvest.apply_harvest(world, command)
 			Command.Type.SUPERWEAPON:
-				applied = false  # P110 calls Strike.apply_superweapon here; until then it is dropped.
+				applied = _playing(world, command) and Strike.apply_superweapon(world, command)
 			Command.Type.SURRENDER:
 				applied = _playing(world, command) and Outcome.apply_surrender(world, command)
 	if not applied:

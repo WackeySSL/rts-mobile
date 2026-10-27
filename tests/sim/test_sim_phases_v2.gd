@@ -28,7 +28,7 @@ func test_every_new_command_type_is_dropped_and_counted_until_its_row() -> void:
 		"cancel": Command.cancel(1, 0, 0),
 		"rally": Command.rally(1, 1, 20500, 4500),
 		"harvest": Command.harvest(1, PackedInt32Array([1]), 20500, 4500),
-		"superweapon": Command.superweapon(1, 1, 20500, 4500),
+		"superweapon": Command.superweapon(1, 1, 20500, 4500),  # Id 1 is a unit, no strike building.
 	}
 	var base: World = _arena()
 	Sim.step(base, [])
