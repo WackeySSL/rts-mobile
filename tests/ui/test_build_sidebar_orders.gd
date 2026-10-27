@@ -210,33 +210,37 @@ func test_a_scroll_drag_in_the_portrait_row_sends_nothing_and_a_wobble_still_tap
 	assert_array(_sent[0].payload).is_equal([Sw.type_of(world, "barracks")])
 
 
-func test_a_scroll_drag_in_the_landscape_grid_goes_down_and_sends_nothing() -> void:
-	await _open(&"web_phone_small")  # 304 dp tall: three rows of tiles do not fit.
+## The floating panel's row scrolls sideways too (P85d): at the narrowest panel three whole cards
+## of the five structures are in view, and a drag that starts on a card moves the row and orders
+## nothing.
+func test_a_scroll_drag_in_the_landscape_row_goes_sideways_and_sends_nothing() -> void:
+	await _open(&"web_phone_small")
 	var world: World = Sw.world()
 	Sw.own(world, BASE)
 	Sw.enqueue(world, World.Tab.STRUCTURES, ["power_plant"])
 	await _publish(world)
 	var items: ScrollContainer = _sidebar.find_child("Items", true, false)
-	assert_int(items.vertical_scroll_mode).is_equal(ScrollContainer.SCROLL_MODE_SHOW_NEVER)
-	assert_int(items.horizontal_scroll_mode).is_equal(ScrollContainer.SCROLL_MODE_DISABLED)
+	assert_int(items.horizontal_scroll_mode).is_equal(ScrollContainer.SCROLL_MODE_SHOW_NEVER)
+	assert_int(items.vertical_scroll_mode).is_equal(ScrollContainer.SCROLL_MODE_DISABLED)
+	assert_int(_grid().columns).is_equal(_tiles_shown().size())  # One row.
 	var tile: ItemTile = _tile("power_plant")
 	var at: Vector2 = tile.get_global_rect().get_center()
 	var by: float = UiScale.dp(20.0)  # Beyond the slop, and the finger stays on its tile.
 	_press(tile, at)
-	TouchEvents.drag(get_viewport(), 0, at + Vector2(0.0, -by), Vector2(0.0, -by))
+	TouchEvents.drag(get_viewport(), 0, at + Vector2(-by, 0.0), Vector2(-by, 0.0))
 	_now_ms += _hold_ms * 2
 	tile._process(0.0)
-	TouchEvents.release(get_viewport(), 0, at + Vector2(0.0, -by))
+	TouchEvents.release(get_viewport(), 0, at + Vector2(-by, 0.0))
 	await await_idle_frame()
 	assert_array(_sent).is_empty()
 	assert_array(_buzzed).is_empty()
-	assert_int(items.scroll_vertical).is_greater(0)
+	assert_int(items.scroll_horizontal).is_greater(0)
+	assert_int(items.scroll_vertical).is_equal(0)
+	var next: Vector2 = _tile("barracks").get_global_rect().get_center()
+	_press(_tile("barracks"), next)  # A drag back, which can go no further than the start.
+	TouchEvents.drag(get_viewport(), 0, next + Vector2(3.0 * by, 0.0), Vector2(3.0 * by, 0.0))
+	TouchEvents.release(get_viewport(), 0, next + Vector2(3.0 * by, 0.0))
 	assert_int(items.scroll_horizontal).is_equal(0)
-	var last: Vector2 = _tile("defence_turret").get_global_rect().get_center()
-	_press(_tile("defence_turret"), last)  # A drag back down, from the last row.
-	TouchEvents.drag(get_viewport(), 0, last + Vector2(0.0, 3.0 * by), Vector2(0.0, 3.0 * by))
-	TouchEvents.release(get_viewport(), 0, last + Vector2(0.0, 3.0 * by))
-	assert_int(items.scroll_vertical).is_equal(0)  # Which can go no further than the top.
 	assert_array(_sent).is_empty()
 
 

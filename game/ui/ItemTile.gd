@@ -9,6 +9,9 @@ extends HoldButton
 ## is a share of that area. A READY structure is paid for, so its banner takes the foot in the
 ## plate's place (the cost is hidden): the count badge, always there on a ready tile, is at the top
 ## corner and the banner at the bottom, and the two never meet however many digits the count has.
+## In landscape the card is named (plan P85d, ADR 0023 section 12): `set_named(true)` makes it
+## `CARD_DP` and shows the type's display name in a line under the plate, in 14 dp type, cut with an
+## ellipsis where it does not fit; the portrait band's tile stays `SIZE_DP` and nameless.
 ## `BuildSidebar` tells it what to show (`show_state`); it tells the sidebar what the finger did:
 ## `chose` for a tap, `cancelled` for a hold of `hold_ms`, `dragged` for a drag beyond `slop_dp`,
 ## which scrolls the row and is then neither. The tile is a Button, so a touch on it never reaches
@@ -21,6 +24,8 @@ signal dragged(relative: Vector2)  ## The finger moved beyond `slop_dp`: the row
 enum State { AVAILABLE, LOCKED, UNAFFORDABLE, FULL, READY }
 
 const SIZE_DP: float = 64.0
+## The named card (landscape): 80 dp wide, and 64 dp of tile plus the 24 dp of the name's line high.
+const CARD_DP: Vector2 = Vector2(80.0, 88.0)
 const ICON_INSET_DP: float = 3.0
 const LOCK_DP: float = 32.0
 const STRIPE_DP: Vector2 = Vector2(14.0, 5.0)  ## The step between stripes and their width.
@@ -28,18 +33,21 @@ const VARIATION: StringName = &"ItemTile"
 const COST_VARIATION: StringName = &"ItemCost"
 const COST_LOW_VARIATION: StringName = &"ItemCostLow"
 const BANNER_VARIATION: StringName = &"ItemBanner"
+const CAPTION_VARIATION: StringName = &"ItemCaption"
 const LOCK_ART: String = "res://assets/art/svg/icons/glyph_lock.svg"
 const SHAKE_RAD: float = 0.08
 const SHAKE_S: float = 0.05
 
 var type_index: int = -1
 var tab: int = -1  ## The `World.Tab` whose queue builds the type.
+var faction: int = -1  ## The type's `type_faction` (an index into `faction_ids`), -1 for any.
 var state: State = State.AVAILABLE
 var queued: int = 0  ## The items of the type in the queue.
 var progress: float = 0.0  ## The head's progress when it is of the type (0 to 1).
 var slop_dp: float = 12.0  ## `InputSettings.tap_slop_dp`.
 var shakes: int = 0  ## How many times the tile has shaken, for the tests.
 
+var _fit: DpMinSize = DpMinSize.new()  ## The tile's least size: `SIZE_DP`, or `CARD_DP` named.
 var _icon: TextureRect = TextureRect.new()
 var _column: VBoxContainer = VBoxContainer.new()  ## The area above the foot, and the foot.
 var _stage: Control = Control.new()  ## The area above the foot (cost or banner): the shapes.
@@ -47,12 +55,14 @@ var _fill: ColorRect = ColorRect.new()
 var _stripes: Stripes = Stripes.new()
 var _lock: TextureRect = TextureRect.new()
 var _banner: Label = Label.new()
+var _caption: Label = Label.new()
 var _cost: Label = Label.new()
 var _badge: Label = Label.new()
 var _offset: Vector2 = Vector2.ZERO  ## The finger's move since the press.
 var _scrolling: bool = false
 var _shake: Tween = null
 var _shown: bool = false  ## `show_state` has been called once.
+var _named: bool = false
 
 
 ## The diagonal stripes of a tile that cannot take an item now.
@@ -76,9 +86,8 @@ func _init() -> void:
 	clip_contents = true
 	tapped.connect(_on_tapped)
 	held.connect(_on_held)
-	var min_size: DpMinSize = DpMinSize.new()
-	min_size.min_dp = Vector2(SIZE_DP, SIZE_DP)
-	add_child(min_size)
+	_fit.min_dp = Vector2(SIZE_DP, SIZE_DP)
+	add_child(_fit)
 	_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_lock.texture = load(LOCK_ART)
@@ -93,6 +102,10 @@ func _init() -> void:
 	_banner.text = "Ready"
 	_banner.theme_type_variation = BANNER_VARIATION
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_caption.theme_type_variation = CAPTION_VARIATION
+	_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_caption.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_caption.visible = false
 	_cost.theme_type_variation = COST_VARIATION
 	_cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_badge.theme_type_variation = COST_VARIATION
@@ -108,6 +121,7 @@ func _init() -> void:
 	_add(_stage, "Stage", _column)
 	_add(_cost, "Cost", _column)
 	_add(_banner, "Banner", _column)  # The foot of a READY tile, where the cost is not.
+	_add(_caption, "Caption", _column)  # Under the foot, in the named card.
 	_add(_fill, "Fill", _stage)
 	_add(_stripes, "Stripes", _stage)
 	_add(_lock, "Lock", _stage)
@@ -125,12 +139,22 @@ func _notification(what: int) -> void:
 		_look()
 
 
-## What the tile is: the type's index and tab, its icon and its cost.
-func setup(index: int, queue_tab: int, art: Texture2D, cost: int) -> void:
+## What the tile is: the type's index and tab, its icon, its cost and its display name.
+func setup(index: int, queue_tab: int, art: Texture2D, cost: int, label: String) -> void:
 	type_index = index
 	tab = queue_tab
 	_icon.texture = art
 	_cost.text = str(cost)
+	_caption.text = label
+
+
+## The landscape card with the name under its foot, or the portrait band's plain tile.
+func set_named(on: bool) -> void:
+	if on == _named:
+		return
+	_named = on
+	_caption.visible = on
+	_fit.min_dp = CARD_DP if on else Vector2(SIZE_DP, SIZE_DP)
 
 
 ## Shows the state, the queued count and the head's progress (a share, 0 to 1).

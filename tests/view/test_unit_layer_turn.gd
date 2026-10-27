@@ -7,8 +7,9 @@ extends GdUnitTestSuite
 ## The moves are written into the published snapshot, as test_unit_layer_rows.gd does for the speed
 ## of a type, so the cases do not depend on how the sim moves a unit: only on what the layer reads.
 ## On data/scenarios/controls_test.tres tank 30 is row 29. The runner is not in the tree: only the
-## calls here move time, and one frame of 0.2 s turns a hull by 12 rad/s * 0.2 s = 2.4 rad, more
-## than any turn below, so the heading reaches the aim in that frame.
+## calls here move time, and one frame of 0.3 s turns a hull by 12 rad/s * 0.3 s = 3.6 rad, more
+## than any turn below, so the heading reaches the aim in that frame. The aims are the moves as they
+## look on the screen under the 2:1 projection (P117): grid south (+y) is down and to the left.
 ## A cross-owner edit (tests/view is touch-ux-dev's), named in the P56d pull request.
 
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
@@ -16,7 +17,10 @@ const ROW: int = 29
 ## A full step of the type, in milli-tiles per tick (data/units/light_tank.tres is 120), written
 ## into the snapshot so that the numbers below stay right if that file is rebalanced.
 const FULL_STEP: int = 120
-const FRAME_SECONDS: float = 0.2
+const FRAME_SECONDS: float = 0.3
+## The aim of a move due south on the grid (0, +y), atan2(16, -32), and of one due west (-x, 0).
+const SOUTH: float = 2.677945
+const WEST: float = -2.677945
 
 var _runner: MatchRunner
 var _layer: UnitLayer
@@ -34,12 +38,12 @@ func before_test() -> void:
 
 ## 4 * 60 * 60 = 120 * 120: the boundary itself turns the hull, due south.
 func test_a_move_of_exactly_half_a_full_step_turns_the_hull() -> void:
-	assert_float(_frame(0, 60).rotation).is_equal_approx(PI / 2.0, 0.0001)
+	assert_float(_frame(0, 60).rotation).is_equal_approx(SOUTH, 0.0001)
 
 
 ## The same half step on a diagonal, 36 and 48 milli-tiles (3, 4, 5 times 12): both axes count.
 func test_a_diagonal_half_step_turns_the_hull_toward_it() -> void:
-	assert_float(_frame(36, 48).rotation).is_equal_approx(atan2(4.0, 3.0), 0.0001)
+	assert_float(_frame(36, 48).rotation).is_equal_approx(1.849096, 0.0001)
 
 
 ## One milli-tile short of half a step (4 * 59 * 59 < 120 * 120): the heading stays east.
@@ -50,9 +54,9 @@ func test_a_move_just_under_half_a_full_step_keeps_the_heading() -> void:
 ## The turn follows the move that was made last, so the rule is applied afresh in each tick: a
 ## half step south turns the hull, and a short move west after it leaves it facing south.
 func test_a_short_move_after_a_turn_keeps_the_new_heading() -> void:
-	assert_float(_frame(0, 60).rotation).is_equal_approx(PI / 2.0, 0.0001)
-	assert_float(_frame(-59, 0).rotation).is_equal_approx(PI / 2.0, 0.0001)
-	assert_float(_frame(-60, 0).rotation).is_equal_approx(PI, 0.0001)
+	assert_float(_frame(0, 60).rotation).is_equal_approx(SOUTH, 0.0001)
+	assert_float(_frame(-59, 0).rotation).is_equal_approx(SOUTH, 0.0001)
+	assert_float(_frame(-60, 0).rotation).is_equal_approx(WEST, 0.0001)
 
 
 ## Makes tank 30's last move `(move_x, move_y)` (its position stays, its previous position is

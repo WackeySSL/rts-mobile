@@ -46,8 +46,12 @@ func test_the_count_follows_every_way_the_selection_changes() -> void:
 		assert_that(rect.modulate).is_equal(Color("2F80ED") if part == "Team" else Color.WHITE)
 	_gesture(GestureEvent.Kind.DOUBLE_TAP, first)
 	_expect("double-tap", "×30")
-	var tanks_1_to_6: Rect2 = Rect2(first, Vector2.ZERO).expand(layer.unit_screen_position(5))
-	_gesture(GestureEvent.Kind.BOX_END, first, tanks_1_to_6.grow(30.0))
+	# The top of the diamond block under the 2:1 projection (P117): world (-440, 410) to (-200, 490)
+	# holds the six tanks 1, 2, 3, 7, 8 and 13 and no other.
+	var camera: RtsCamera = _main.get_node("Camera")
+	var top_left: Vector2 = camera.world_to_screen(Vector2(-440, 410))
+	var top_box: Rect2 = Rect2(top_left, camera.world_to_screen(Vector2(-200, 490)) - top_left)
+	_gesture(GestureEvent.Kind.BOX_END, first, top_box)
 	_expect("box", "×6")
 	_gesture(GestureEvent.Kind.BOX_END, first, Rect2(80, 300, 220, 200))  # No tank in it.
 	assert_bool(_panel.visible).override_failure_message("empty box").is_false()
@@ -150,7 +154,7 @@ func test_the_panel_is_dp_sized_and_sits_in_its_band_in_both_orientations() -> v
 		var rect: Rect2 = _panel.get_global_rect()
 		var bar: Rect2 = (_hud("ArmyBar") as Control).get_global_rect()
 		var width: float = get_viewport().get_visible_rect().size.x
-		var sidebar: float = maxf(width * 0.2, UiScale.dp(200.0))  # 20%, at least 200 dp.
+		var sidebar: float = HudLayout.right_zone_px(_inner_width())  # The build panel and a gap.
 		var why: String = "%s: panel %s, bar %s" % [m.window_size, rect, bar]
 		var sizes: Array[int] = []
 		for path: String in ["Rows/Row0/Name", "Rows/Row0/Count", "Rows/Total"]:
@@ -194,7 +198,7 @@ func test_the_band_and_the_text_follow_a_window_resize() -> void:
 	UiScale.set_override(android)
 	get_window().size = android.window_size
 	await await_idle_frame()
-	var zone: float = maxf(get_viewport().get_visible_rect().size.x * 0.2, UiScale.dp(200.0))
+	var zone: float = HudLayout.right_zone_px(_inner_width())
 	assert_int(_panel.get_parent().get_theme_constant("margin_right")).is_equal(ceili(zone))
 	assert_int(_node("Rows/Row0/Name").get_theme_font_size("font_size")).is_equal(_px(16.0))
 	var title: Label = _node("Rows/Row0/Name")  # The cap is in px, so it is fitted again.
@@ -220,9 +224,10 @@ func test_names_and_counts_come_from_the_snapshot_and_never_the_world() -> void:
 	assert_str(_panel.get_node("Rows/Row0/Name").text).is_not_equal("Light Tank")
 
 
-## A row is at most 40% of the band (the safe area's inner width): a name past that is clipped
-## with an ellipsis, and the icon and the count keep their room. "Light Tank" is not clipped.
-## web_phone_small is where the sidebar zone gives way to a long name; the cap holds there too.
+## A row is at most 40% of the band (the safe area's inner width) and at most what the ArmyBar and
+## the build panel's zone leave of it: a name past that is clipped with an ellipsis, and the icon
+## and the count keep their room. "Light Tank" is not clipped. On the phones the second limit is
+## the lower one, and the zone keeps its whole width: the panel ends before the build panel's gap.
 func test_a_long_name_is_clipped_at_the_cap_and_light_tank_is_not() -> void:
 	for profile: StringName in [&"desktop", &"android_6in", &"web_tablet", &"web_phone_small"]:
 		await _open(UiProfiles.by_name(profile))
@@ -241,6 +246,14 @@ func test_a_long_name_is_clipped_at_the_cap_and_light_tank_is_not() -> void:
 		(
 			assert_bool(_panel.get_global_rect().intersects(_hud("ArmyBar").get_global_rect()))
 			. is_false()
+		)
+		var zone: float = HudLayout.right_zone_px(_inner_width())
+		assert_int(_panel.get_parent().get_theme_constant("margin_right")).is_equal(ceili(zone))
+		var edge: float = get_viewport().get_visible_rect().end.x
+		var zone_start: float = edge - _hud("SafeArea").get_theme_constant("margin_right") - zone
+		var panel_end: float = _panel.get_global_rect().end.x
+		assert_float(panel_end).override_failure_message(str(profile)).is_less_equal(
+			zone_start + 0.5
 		)
 
 
@@ -321,19 +334,28 @@ func test_with_no_snapshot_to_count_from_the_panel_hides() -> void:
 ## The row `row_name` is the cap wide, its name clipped, and its icon and count keep their room.
 func _assert_capped(row_name: String, why: String) -> void:
 	var band_px: float = (_panel.get_parent() as Control).size.x
+	var cap: float = _row_cap(band_px)
 	var row: Control = _node("Rows/" + row_name)
 	var title: Label = _node("Rows/%s/Name" % row_name)
 	var count: Label = _node("Rows/%s/Count" % row_name)
-	var detail: String = "%s: row %s, band %s" % [why, row.size.x, band_px]
+	var detail: String = "%s: row %s, cap %s, band %s" % [why, row.size.x, cap, band_px]
 	assert_str(title.text).is_equal(LONG_NAME)  # The text stays whole; the draw clips it.
-	assert_float(_text_px(title)).override_failure_message(detail).is_greater(band_px * 0.4)
+	assert_float(_text_px(title)).override_failure_message(detail).is_greater(cap)
 	# The box layout rounds sizes to whole px, so the row is the cap to within a px or two.
-	assert_float(row.size.x).override_failure_message(detail).is_less_equal(band_px * 0.4 + 1.5)
-	assert_float(row.size.x).override_failure_message(detail).is_greater_equal(band_px * 0.4 - 1.5)
+	assert_float(row.size.x).override_failure_message(detail).is_less_equal(cap + 1.5)
+	assert_float(row.size.x).override_failure_message(detail).is_greater_equal(cap - 1.5)
 	assert_float(title.size.x).override_failure_message(detail).is_greater(UiScale.dp(16.0))
 	assert_float(count.size.x).override_failure_message(detail).is_greater_equal(
 		count.get_combined_minimum_size().x
 	)
+
+
+## The widest a row may be in landscape: 40% of the band, or what the ArmyBar and the build panel's
+## zone leave of it less the backdrop's padding, whichever is less.
+func _row_cap(band_px: float) -> float:
+	var left: float = ceilf(_hud("ArmyBar").get_combined_minimum_size().x + UiScale.dp(8.0))
+	var room: float = band_px - left - ceilf(HudLayout.right_zone_px(band_px))
+	return minf(band_px * 0.4, room - _panel.get_theme_stylebox(&"panel").get_minimum_size().x)
 
 
 func _expect(step: String, count: String) -> void:
@@ -356,6 +378,15 @@ func _hud(node_name: String) -> Node:
 
 func _px(dp: float) -> int:
 	return roundi(UiScale.dp(dp))
+
+
+## The safe area's inner width, which the build panel's zone is a share of (HudLayout.panel_px).
+func _inner_width() -> float:
+	var area: Control = _hud("SafeArea")
+	var margins: float = area.get_theme_constant("margin_left")
+	return (
+		get_viewport().get_visible_rect().size.x - margins - area.get_theme_constant("margin_right")
+	)
 
 
 func _select(ids: Array) -> void:
