@@ -1,9 +1,10 @@
 extends GdUnitTestSuite
 ## The iso ground of plan row P105 (ADR 0023 sections 5 and 6, STYLE.md "Iso ground tiles"): twelve
 ## 128 x 64 diamonds, an a and a b for each terrain id of `data/terrain/standard.tres`, that tile
-## together without a seam at the three camera zooms and share a soft rim, the greyscale means
-## that tell the six terrains apart at 32 px, and the off-map colour. The field stages, the
-## wellhead and the crater are in test_field_art.gd; the texts are in test_ground_art_docs.gd.
+## together without a seam at the three camera zooms and have no rim (Michael, 2026-10-27: the soft
+## rim of ADR 0023 section 5 read as a grid), the greyscale means that tell the six terrains apart
+## at 32 px, and the off-map colour. The field stages, the wellhead and the crater are in
+## test_field_art.gd; the texts are in test_ground_art_docs.gd.
 
 const Support: GDScript = preload("res://tests/art/ground_art_support.gd")
 const TerrainPage: GDScript = preload("res://game/view/art_gallery_ground.gd")
@@ -16,23 +17,21 @@ const BASE: Dictionary[StringName, String] = {
 	&"water": "#2A5978",
 	&"ore": "#51433A",
 }
-const RIM_OUTER: float = 0.95  ## The outer band of the rim, of the base's brightness.
-const RIM_INNER: float = 0.975  ## The band inside it.
 const ZOOMS: Array[float] = [0.375, 0.5, 0.75]  ## 0.75, 1 and 1.5 times the base scale of 0.5.
 ## Rec. 601 luminance means at 32 px, as STYLE.md ("Iso ground tiles") lists them.
 const GREY: Dictionary[String, int] = {
-	"grass_a": 124,
-	"grass_b": 124,
-	"sand_a": 183,
-	"sand_b": 183,
-	"scrub_a": 96,
-	"scrub_b": 95,
-	"rock_a": 108,
-	"rock_b": 109,
-	"water_a": 82,
-	"water_b": 82,
+	"grass_a": 126,
+	"grass_b": 126,
+	"sand_a": 185,
+	"sand_b": 185,
+	"scrub_a": 97,
+	"scrub_b": 96,
+	"rock_a": 109,
+	"rock_b": 110,
+	"water_a": 83,
+	"water_b": 83,
 	"ore_a": 70,
-	"ore_b": 69,
+	"ore_b": 70,
 }
 
 
@@ -101,31 +100,31 @@ func test_a_block_of_mixed_a_and_b_tiles_has_no_seam_at_the_three_camera_zooms()
 			assert_int(seams).override_failure_message("%s at %s" % [id, scale]).is_equal(0)
 
 
-## The soft rim (ADR 0023 section 5): two bands of the tile's own colour, 5 % and 2.5 % darker, on
-## all four edges, so the contrast is a few grey levels and never a line; a and b share it.
-func test_the_soft_rim_is_two_bands_of_the_base_colour_on_all_four_edges_in_a_and_in_b() -> void:
+## No rim (Michael, 2026-10-27): the base colour runs unbroken to every edge, so two equal tiles
+## show no line between them. Where the soft rim's two bands were (0.89 and 0.97 of the way to the
+## edge, and the 0.93 between them) every pixel is the base colour, in a and in b, and the file
+## has no `evenodd` band path.
+func test_the_diamonds_have_no_rim_the_base_colour_runs_to_every_edge_in_a_and_in_b() -> void:
 	for id: StringName in Support.TERRAIN_IDS:
 		var base: Color = Color(BASE[id])
 		for variant: String in ["a", "b"]:
-			var image: Image = Support.raster(Support.ground_path(id, variant), 1.0)
+			var path: String = Support.ground_path(id, variant)
+			assert_str(Support.text(path)).override_failure_message(path).not_contains("evenodd")
+			var image: Image = Support.raster(path, 1.0)
 			for corner: int in 4:
-				for band: Array in [[0.97, RIM_OUTER], [0.89, RIM_INNER]]:
-					var at: Vector2i = Support.edge_pixel(corner, band[0], Support.TILE)
-					var want: Color = Color(base.r * band[1], base.g * band[1], base.b * band[1])
+				for band: float in [0.89, 0.93, 0.97]:
+					var at: Vector2i = Support.edge_pixel(corner, band, Support.TILE)
 					var got: Color = image.get_pixel(at.x, at.y)
 					var off: float = (
-						absf(got.r8 - want.r8) + absf(got.g8 - want.g8) + absf(got.b8 - want.b8)
+						absf(got.r8 - base.r8) + absf(got.g8 - base.g8) + absf(got.b8 - base.b8)
 					)
 					(
 						assert_float(off)
 						. override_failure_message(
-							"%s_%s edge %d band %s: %s" % [id, variant, corner, band[0], got]
+							"%s_%s edge %d at %s: %s" % [id, variant, corner, band, got]
 						)
 						. is_less_equal(3.0)
 					)
-		# The rim is soft: the outer band is a few grey levels from the base, not a line.
-		var drop: float = Support.luminance(base) * (1.0 - RIM_OUTER)
-		assert_float(drop).override_failure_message(String(id)).is_between(2.0, 10.0)
 
 
 func test_a_and_b_differ_inside_and_agree_on_everything_near_the_edge() -> void:
@@ -146,8 +145,10 @@ func test_a_and_b_differ_inside_and_agree_on_everything_near_the_edge() -> void:
 		assert_int(inside).override_failure_message(String(id) + " is the same inside").is_greater(
 			60
 		)
-		assert_int(near_edge).override_failure_message(String(id) + " differs at the rim").is_equal(
-			0
+		(
+			assert_int(near_edge)
+			. override_failure_message(String(id) + " differs at the edge")
+			. is_equal(0)
 		)
 
 

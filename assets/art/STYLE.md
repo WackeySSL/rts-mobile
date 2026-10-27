@@ -680,21 +680,22 @@ by the number and size of the nuggets alone, and level 0 by its dark pits.
 
 ## Ghosts
 A ghost is a building drawn as a plan: where the player is about to place one (ADR 0019 section 2,
-ADR 0022 section 5), and a building last seen (ADR 0017 section 3, plan P84c, ADR 0022 section 4).
-Two pattern tiles do the work, both seamless, white and grey only and tinted at run time like a team
-layer: `ui/ghost_hatch.svg` and `ui/ghost_seen.svg`, 128x128 at 2x, import scale 0.5, so 64 px. They
-are drawn tiled (`TextureRect` with `stretch_mode` TILE, or a tiled `draw_texture_rect`): the hatch
-over the **footprint's diamond**, because it also shows which cells are blocked, and the dots over
-the **whole sprite box**, the building's canvas, because the remembered picture, roof included, is
-what they mark. Each meaning has its own shape (see "Shape as second cue"): bold
-diagonal bands rising to the right mean it does not fit, fine staggered dots mean last seen, and a
-solid frame and no pattern mean it fits.
+ADR 0023 section 3), and a building last seen (ADR 0017 section 3, plan P84c, ADR 0023 section 2's
+Fog and its decision 4, plan P115c). The two work differently. A **placement ghost** is a pattern
+and a wash on the ground with the faded building over them. The one pattern tile is
+`ui/ghost_hatch.svg`, seamless, white and grey only, tinted at run time like a team layer, 128x128
+at 2x, import scale 0.5, so 64 px, drawn tiled (`TextureRect` with `stretch_mode` TILE, or a tiled
+`draw_texture_rect`) over the **footprint's diamond**, because it also shows which cells are
+blocked. Each placement meaning has its own shape (see "Shape as second cue"): bold diagonal bands
+rising to the right mean it does not fit, and a solid frame and no pattern mean it fits. A
+**last-seen ghost** has no pattern at all: it is the remembered building itself, drawn whole and
+dimmed (below).
 
 | Ghost | Building | Wash | Pattern | Frame |
 | --- | --- | --- | --- | --- |
 | Fits | own team colour, the whole sprite, faded as one group | #30A46C on the footprint's diamond | none | solid round the diamond, #30A46C |
 | Does not fit | own team colour, the whole sprite, faded as one group | #E5484D on the footprint's diamond | `ghost_hatch.svg` tinted #E5484D over the diamond | solid round the diamond, #E5484D |
-| Last seen | the other team's colour, not faded | none | `ghost_seen.svg` tinted #9AA5B1 over the sprite box | none, no health bar |
+| Last seen | the other side's colour, the whole body, not faded, dimmed as one layer (below) | none | none | none, no health bar, no ring |
 
 A placement ghost is the building's sprite in the projection, anchored at the footprint's back corner
 like a placed building (ADR 0023 section 3); the marks lie on the footprint's cells as diamonds (the
@@ -706,16 +707,31 @@ frame of the barracks (`barracks_hull.svg`, Signal for the own ghost, Arktisk fo
 
 The numbers: sprite alpha 0.7 (the whole rig in one `CanvasGroup`, faded through its
 `CanvasGroup.self_modulate`: `modulate` would reach the hull sprite too and blend twice, as
-`MoveMarkerLayer` notes), wash alpha 0.3, hatch alpha 0.8, dots alpha 0.7 and a frame 3 dp wide
-(the marker stroke rule, dp over zoom in world space; the gallery draws 3 base px). A last-seen
-ghost is dimmed by the explored fog alpha (140) and carries no other dimming: its base part lies under
-the fog layer and its roof part carries the dim as its quad colour (ADR 0022 section 4), so both
-parts match. The reason's glyph for a placement that does not fit is
-`icons/glyph_reason_<reason>.svg` (see "Icons and glyphs"). It is drawn on top of the frame at
-32 dp and tinted danger red like the hatch under it, so its file carries a dark seat of its own:
-a glyph without one has the hatch's fill and the hatch's edge. The gallery centres
+`MoveMarkerLayer` notes), wash alpha 0.3, hatch alpha 0.8 and a frame 3 dp wide (the marker stroke
+rule, dp over zoom in world space; the gallery draws 3 base px). The reason's glyph for a placement
+that does not fit is `icons/glyph_reason_<reason>.svg` (see "Icons and glyphs"). It is drawn on top
+of the frame at 32 dp and tinted danger red like the hatch under it, so its file carries a dark seat
+of its own: a glyph without one has the hatch's fill and the hatch's edge. The gallery centres
 `glyph_reason_occupied` on the ghost that does not fit; the view of P86 places it.
-The gallery's `GHOST_*` constants hold these values and `tests/art` pins this paragraph to them;
+
+**Last seen** (P115c, `game/view/GhostMemoryLayer.gd`; ADR 0023, Fog and decision 4): the ghost is
+the remembered building's whole body, roof included, the same atlas region as the live building
+and in the colour of its owner's side, drawn in one layer at **z 5**, over the fog on the ground
+(z 4) and under every live object, so a unit that walks over a remembered building is drawn in
+front of it. The whole layer carries **one dim colour** (`modulate`, the black of the explored fog
+over the sprite: `1 - explored_alpha / 255` on each channel, 0.45 at the explored alpha of 140), so
+a remembered building is as dark as the ground it stands on, every ghost is one draw call and no
+sprite is tinted of its own. It has no dots, no pattern, no wash, no frame, no health bar, no ring
+and no pick shape: a sprite and nothing else. It is drawn only where no cell of its footprint is
+seen, so at any moment exactly one of the live building and its ghost is on the screen. ADR 0022's
+last-seen ghost (the dots of `ghost_seen.svg` tinted #9AA5B1 over the sprite box, the base part
+under the fog layer and the roof part dimmed by its quad colour) went with the oblique buildings
+and the seam. `ui/ghost_seen.svg` stays in the repository but the game no longer draws it; only the
+gallery's Ground page does, in its third ghost, as a sample of that retired look (dots alpha 0.7 in
+#9AA5B1 over the sprite box, and the explored fog over them), until a gallery row redraws that
+cell the way the layer does.
+
+The gallery's `GHOST_*` constants hold the values above and `tests/art` pins this section to them;
 the values are a proposal for touch-ux-dev to tune with Michael.
 
 ## Icons and glyphs
@@ -897,8 +913,8 @@ in doubt, choose a plainer real-world form.
 | Derrick League emblem | A regular octagon with a thick dark rim, a dark panel holding a white steel I-beam with tapered flanges and four rivets on the white ring at the diagonal corners. | `icons/emblem_fossil.svg`, 128x128, see "Buildings" |
 | Lumen Accord emblem | A regular flat-topped hexagon with a dark rim, a white ring with six rivets and a dark panel holding a white three-blade rotor on a round hub, turned off the vertical, above two shallow horizon arcs. | `icons/emblem_renew.svg`, 128x128, see "Buildings" |
 | Ghost hatch | Bold diagonal bands rising to the right, a seamless tile. | `ui/ghost_hatch.svg`, 128x128, see "Ghosts" |
-| Ghost dots | Small round dots in a staggered lattice, a seamless tile. | `ui/ghost_seen.svg`, 128x128, see "Ghosts" |
-| Ground diamond | One cell of ground seen at 2:1: a 128 x 64 diamond whose base colour reaches every edge, with a soft rim and a few objects (tufts, ripples, bushes, boulders, swells, pits) in the middle, an a and a b for each of the six terrains. | `ground/<terrain_id>_{a,b}.svg`, 128x64, see "Iso ground tiles" |
+| Ghost dots | Small round dots in a staggered lattice, a seamless tile. The game no longer draws it (the last-seen ghost is a dimmed body); the gallery's Ground page still does. | `ui/ghost_seen.svg`, 128x128, see "Ghosts" |
+| Ground diamond | One cell of ground seen at 2:1: a 128 x 64 diamond whose base colour reaches every edge, with no rim, and a few objects (tufts, ripples, bushes, boulders, swells, pits) in the middle, an a and a b for each of the six terrains. | `ground/<terrain_id>_{a,b}.svg`, 128x64, see "Iso ground tiles" |
 | Field stage | A cell of an oil or gas field as an overlay on the ore earth: a black pool with a sheen or a pale crust over a vent that fills the cell when full, shrinks to a pool clear of the sides when half and is a cracked stain or a dusty crust when dry. | `fields/<kind>_<stage>.svg`, 128x64, see "Fields" |
 | Wellhead | A square concrete pad with a squat valve tree: a stout steel column with two flanges and two short arms that end in valves with dark hand-wheels, a small lamp on the cap, and a low flowline with a choke block running off to the south-east; neutral, no team colour. | `fields/wellhead.svg`, 112x116, anchor (56, 88); `fields/wellhead_shadow.svg`, 140x72, anchor (56, 31) |
 | Crater | A dark round pit seen as a 2:1 ellipse, its north-west wall in shade, inside a ragged lit ring of thrown earth with cracks and rock chips across a wide soot stain, radius 1.5 tiles. | `decals/crater.svg`, 288x144, anchor (144, 72), see "Fields" |
@@ -1231,15 +1247,15 @@ squads there. The figures move by about 1 with the number of headings, and no te
 ### Iso ground tiles (P105)
 ADR 0023 sections 1, 5 and 6. When P116 lands, the ground is drawn from these diamonds. `MapView`'s
 8 px bake above stays the source of the minimap's colours and of P52's keys (`TERRAIN_COLORS` and
-`TERRAIN_TILES` keep every key and string), and its "no grid" rule stays for that bake; the diamonds
-have the soft rim that ADR 0023 section 5 asks for, below.
+`TERRAIN_TILES` keep every key and string), and its "no grid" rule stays for that bake and holds for
+the diamonds too: they have no rim (below).
 - **Files**: `ground/<terrain_id>_a.svg` and `ground/<terrain_id>_b.svg` for the six ids of
   `data/terrain/standard.tres` (grass, sand, scrub, rock, water, ore): 12 files, normal imports at
   scale 0.5, no team colour. A canvas is **128 x 64 at 2x**, so a tile is 64 x 32 px in game, one
   cell's diamond; its anchor is the canvas centre, the cell's centre. The variant is a fixed function
   of the cell, `(column + row) % 2` (a for 0), as the gallery draws it; the a and b of one terrain
-  are two arrangements of the same objects and share their base, their rim and everything within
-  the rim, so any mix of the two tiles together. `ore` is the stained earth under a field (see
+  are two arrangements of the same objects and share their base and everything near the edge, so
+  any mix of the two tiles together. `ore` is the stained earth under a field (see
   "Fields"), not a field stage.
 - **Made as**: a small projection script kept outside the repository (as for the app icon; the
   committed SVG is the source, edit it by hand or write a new script). Details are drawn in ground
@@ -1253,20 +1269,24 @@ have the soft rim that ADR 0023 section 5 asks for, below.
   no pixel inside the block that is not opaque. The details are clipped to the ground square of 0.42
   tiles (a `clipPath` called `inner`) and are placed within 0.3 tiles of the middle, so a bush or
   a boulder is hardly ever cut.
-- **The soft rim**: just inside the edge two bands of the tile's own base colour, 0.05 tile (2.9 px
-  at 2x) wide each, the outer one 5 % darker than the base and the inner one 2.5 % darker (the rim
-  colours column below). That is 4 grey levels on water and ore, 6 on grass and 9 on sand: a faint
-  relief that softens the join of two terrains, not a line. Judge it on the phone: if it reads as a grid, the two
-  `path` lines after the base polygon are what to take out ("Open points for Michael").
+- **No rim** (Michael, 2026-10-27, on the phone): the diamond is its base colour to the edge, with
+  no band, line or shading near it. The first draft had a soft rim (ADR 0023 section 5): two bands
+  of the tile's own base colour just inside the edge, 5 % and 2.5 % darker, 0.05 tile wide each. It
+  read as a faint grid wherever two equal tiles met, so the two `path` lines that drew it are gone
+  from all twelve files, and ADR 0023 section 5's soft rim is withdrawn (its note comes with
+  P26ak). The seamless rule above holds as it did: the base reaches 1 px past the edge. Two equal
+  tiles now meet with no line between them, and two different terrains meet on a hard edge, as the
+  8 px bake's do. `tests/art` pins the base colour at 0.89, 0.93 and 0.97 of the way to the middle
+  of each edge, in a and in b, and that no file has an `evenodd` band.
 
-| Terrain | Base (reaches every edge) | Rim, 95 % and 97.5 % | Tones of the details |
-| --- | --- | --- | --- |
-| grass | #6F8F57 | #698853, #6C8B55 | #5E7D4A tufts and flecks, #86A66B lit blade, #688A50 and #789A5F patches |
-| sand | #CDB98F | #C3B088, #C8B48B | #B59F72 ripples, #E4D6B3 crests and pebbles, #A58F63 pebble shade, #D6C49E and #C4AF84 swells |
-| scrub | #58653F | #54603C, #56623D | #6B7A4F bush, #8C9A6B lit side, #55633E shaded side, #3B4530 foot, #5D6B45 and #4B5733 patches |
-| rock | #726E69 | #6C6864, #6F6B66 | #8C8782 lit top, #7A7671 left side, #524E4B right side, #A29D97 and #7A756F chips, #78746F and #67635F patches |
-| water | #2A5978 | #285572, #295775 | #3C7396 ripples, #8FBBD2 crests, #285574 and #306180 swells |
-| ore | #51433A | #4D4037, #4F4139 | #7A6650 lips and grit, #2F251B pits, #46392B flecks, #66543F and #4E4030 mottles |
+| Terrain | Base (reaches every edge) | Tones of the details |
+| --- | --- | --- |
+| grass | #6F8F57 | #5E7D4A tufts and flecks, #86A66B lit blade, #688A50 and #789A5F patches |
+| sand | #CDB98F | #B59F72 ripples, #E4D6B3 crests and pebbles, #A58F63 pebble shade, #D6C49E and #C4AF84 swells |
+| scrub | #58653F | #6B7A4F bush, #8C9A6B lit side, #55633E shaded side, #3B4530 foot, #5D6B45 and #4B5733 patches |
+| rock | #726E69 | #8C8782 lit top, #7A7671 left side, #524E4B right side, #A29D97 and #7A756F chips, #78746F and #67635F patches |
+| water | #2A5978 | #3C7396 ripples, #8FBBD2 crests, #285574 and #306180 swells |
+| ore | #51433A | #7A6650 lips and grit, #2F251B pits, #46392B flecks, #66543F and #4E4030 mottles |
 
 Silhouettes: grass, a mid green turf with two soft patches and seven small three-blade tufts; sand,
 pale sand with four wind ripples along the +gx axis, a shade line under a light crest, and a few
@@ -1279,12 +1299,14 @@ Light is the one light of "Light": top lit, the left side mid, the right dark, t
 the south-east, 25 to 30 % black as one group.
 
 Greyscale check (P105, each tile rasterised 32 px wide, the Rec. 601 luminance of the 8-bit pixels
-with alpha above 0.9, the mean over the diamond): means (a and b) grass 124 and 124, sand 183 and 183,
-scrub 96 and 95, rock 108 and 109, water 82 and 82, ore 70 and 69. One terrain is one level and every
+with alpha above 0.9, the mean over the diamond): means (a and b) grass 126 and 126, sand 185 and 185,
+scrub 97 and 96, rock 109 and 110, water 83 and 83, ore 70 and 70 (with the rim, now gone, the means
+were 1 to 2 levels lower: grass 124, sand 183, rock 108). One terrain is one level and every
 two terrains are at least 11 grey levels apart (ore, water, scrub, rock, grass and sand rise by 12 to
-16 and 59), so the six read apart in greyscale by level; the spread inside a tile (grass 4, sand 7, ore
-7, rock 11, water 12, scrub 15) is the second cue, the water's ripples and the scrub's and rock's lumps.
-Ore is the darkest ground on purpose: it is the field's earth.
+16 and 59), so the six read apart in greyscale by level; the spread inside a tile (the standard
+deviation: grass 4, sand 6, ore 7, rock 11, water 12, scrub 15) is the second cue, the water's
+ripples and the scrub's and rock's lumps. Ore is the darkest ground on purpose: it is the field's
+earth.
 
 **Off-map colour**: **#16191D** (luminance 25, saturation 0.24) is the clear colour outside the map's
 diamond (ADR 0023 section 4: the camera is clamped into the diamond, so the strip a corner shows is
@@ -1330,13 +1352,25 @@ re-authored; nothing is copied.
   #CBC49F, the dusty ring #9C9576, fissures and vent #2B2620, the glow #BFE0E8 and #F4FBFC, the steam
   white at 40 to 55 %. None of them is a key colour or in a key band (these are not faction frames).
 - **Greyscale check** (P105, a stage over `ground/ore_a.svg`, 32 px wide, the mean Rec. 601 luminance of
-  the pixels with alpha above 0.9): oil full 32, half 44, dry 56 and gas full 207, half 166, dry 142.
+  the pixels with alpha above 0.9): oil full 30, half 44, dry 57 and gas full 213, half 166, dry 143
+  (without the ground's rim, P105b; with it they were 32, 44, 56 and 207, 166, 142).
   Oil is dark and steps up as it dries, gas is bright and steps down; the six are at least 11 grey
-  levels from each other and from every ground tile (the nearest are oil dry 56 and the ore earth
-  69, gas dry 142 and grass 124, gas half 166 and sand 183), and each gas stage is at least 80 above
+  levels from each other and from every ground tile (the nearest are oil dry 57 and the ore earth
+  70, gas dry 143 and grass 126, gas half 166 and sand 185), and each gas stage is at least 80 above
   the oil stage of its name. At 32 px a full oil cell is a black diamond, a half cell a black pool in
   brown, a dry cell a brown diamond with a dark cross; a full gas cell is a white diamond with a dark
   star, a half one a white pool in brown and a dry one a grey-beige pool with spokes.
+- **Gas crust, too bright (P105b, open)**: Michael's phone check of 2026-10-27 found the gas crust
+  too bright (a full cell is 213 at 32 px against sand 185) and asked for its pale tones 10 to 15 %
+  duller. The three gas files are **not changed yet**, because no single factor in that range keeps
+  the rule above (every stage 11 grey levels from every ground tile, and each gas stage 80 above its
+  oil stage). Scaling the crust, dust and ring tones of all three by one factor and leaving the
+  fissures, the vent, the glow and the steam alone, on the tree without the rim: a full cell falls
+  into the sand at 9 to 19 % (192 at 10 %, 182 at 15 %, sand 185) and is clear again from 20 %
+  (172) or up to 8 % (196); a dry cell falls into the grass at 5 % or more (131 at 10 %, 125 at 15 %,
+  grass 126), so it allows 4 % (138); a half cell is clear up to 20 % (138 at 20 %, 152 at 10 %).
+  One factor can therefore do 4 % at most (full 205, half 160, dry 138). The ways out are in "Open
+  points for Michael" (P105); until Michael picks one the gas stays as drawn.
 - **Wellhead** (`fields/wellhead.svg` and `fields/wellhead_shadow.svg`): a neutral prop that stands
   on a field, decor and not a row. A square concrete pad carries a squat valve tree, a stout steel
   column with two flanges and a cross of two short arms that end in valves with dark hand-wheels, a
@@ -1415,7 +1449,8 @@ three on first show) and start hidden, so the Units page is as it was.
   no gap), a mixed ore field of 6 x 3 tiles to judge the joins, the three ghosts of a barracks (fits,
   does not fit, last seen) and the two pattern tiles repeated three by two times. A ghost's cell is
   the building's canvas at zoom 1 (the generated frame, 128 x 91 px), with the diamond of its
-  footprint at the foot of it (the dots and the fog of the last-seen ghost cover the whole cell). The
+  footprint at the foot of it (the dots and the fog of the last-seen ghost, a sample of ADR 0022's
+  retired look, cover the whole cell; see "Ghosts" for what the game draws). The
   ghost that does not fit carries `glyph_reason_occupied` at 32 dp in the middle of its diamond (a
   `TextureRect` named `GlyphReasonOccupied`, tinted danger red, on top of the frame): this is where
   a reason glyph is seen, on the red wash and the hatch, so judge it there.
@@ -1435,7 +1470,7 @@ three on first show) and start hidden, so the Units page is as it was.
   stripes across each field, a wellhead on each and a crater on grass at scale 1 and on sand at
   scale 0.5), the six stages as blocks of 3 x 3 cells over the ore earth on a grass pad (`Fields`),
   and on a grass and a sand swatch (`Props`) the wellhead with its shadow at the camera zooms 0.75, 1
-  and 1.5 and the crater. It is where Michael judges the soft rim, the joins, the lake of full oil
+  and 1.5 and the crater. It is where Michael judges the joins (no line between equal tiles), the lake of full oil
   and the contrast of the crust on his phone.
 
 To add an asset:
@@ -1625,14 +1660,23 @@ Renaming a unit or a unit type is a data change, not a reskin.
   lines are gone. The other route is two tones per terrain, which drops the scrub highlight and the
   rock bevel: change this spec for it, not the contract.
 
-- **P105, for Michael on the phone (Dev, Art gallery, Terrain page):** (1) the soft rim of the ground
-  diamonds (5 % and 2.5 % darker, ADR 0023 section 5) is a faint grid by design; if it reads as a
-  grid he wants the older "no grid" look back, and the fix is to drop the two rim bands from the
-  twelve files, nothing else. (2) The gas crust is the brightest thing in the ground (207 at 32 px
-  against sand 183), on purpose, so a field is found from afar; he may want it duller. (3) A full oil
-  lake is nearly black (32): it reads as one lake, but on a dark map edge it nearly meets the
-  off-map colour (#16191D). (4) The crater is 3 tiles across at scale 1 (a rupture's radius is 3 tiles,
-  so its decal is scale 2): he may want a smaller one for a building.
+- **P105, for Michael on the phone (Dev, Art gallery, Terrain page), his answers of 2026-10-27:**
+  (1) The soft rim of the ground diamonds read as a grid: **dropped**, the two rim bands are gone
+  from the twelve files (P105b; "Iso ground tiles"). (2) The gas crust is too bright: he asked for
+  it 10 to 15 % duller, and this one is **still open** (below). (3) The full oil lake (30 at 32 px
+  now, nearly black) **stays**, and (4) the crater **stays** 3 tiles across at scale 1; neither is
+  changed. About (2): no single factor in 10 to 15 % keeps the 32 px rule (every stage 11 grey levels
+  from every ground, each gas stage 80 above its oil stage; "Fields", gas crust), so P105b left the
+  three gas files as drawn. Three ways, measured on the tree without the rim (full, half, dry; sand
+  185, grass 126): **A**, one factor of 4 % (205, 160, 138): every check holds and the change is
+  hardly visible. **B**, one factor for each stage, full 20 %, half 10 % and dry 4 % (172, 152,
+  138): every check holds and the brightest stage, the full crust, is clearly duller. **C**, one
+  factor of 10 to 15 %, with the rule relaxed for the gas stages (at 10 %: 192, 152, 131, so a full
+  cell is 7 above sand, a dry cell 5 above grass and 74 above dry oil): all three duller, but the 11
+  and 80 of `tests/art` become smaller numbers. The art director would take B. The change is the pale
+  crust, dust and ring tones of `gas_full.svg`, `gas_half.svg` and `gas_dry.svg` times the factor,
+  the fissures, the vent, its glow and the steam left alone, and the gas numbers in this file and in
+  `tests/art/test_field_art.gd` updated with it.
 
 ## Change log
 | Date | Change |
@@ -1654,3 +1698,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-10-27 | v1.9 (P103, art-director): the Derrick League's eight buildings as models under the blockouts' art ids (Rigworks, Turbine Hall, Cracking Plant, Bunkhouse, Heavy Yard, Signal Mast, Redoubt with 16 heads, Deep Bore as an open derrick), the emblem `emblem_fossil.svg`, the Build page (a tank in front of and behind each building at three zooms in two triads, through `IsoAtlas`), the ghost row on the iso barracks; P91b's six oblique buildings, their files, tests and the Build and Seam pages deleted. "Buildings", "Look", "Scale", "Palette", "Drawing rules", "Layer contract", "Ghosts", "Icons and glyphs", "Catalogue", "Readability check", "Health bars", "Gallery" and "Open points" brought up to date. |
 | 2026-10-27 | v1.10 (P101, art-director): the six Derrick League units modelled under their art ids (Roustabouts, Wildcatters, Flarejack, Bullhead, Mortar Rig, Tanker; "Derrick League units"), the top-down unit files deleted, the Layer contract narrowed to the rally flags, the Catalogue, Enemy target look and Reskin reworded (no `UnitLayer.ART_DIR`, `<type>_team.svg` or `UnitLayer.team_colors`), the Units page rebuilt on the generated frames, the Vehicles page deleted. |
 | 2026-10-27 | v1.11 (P104, art-director): the Lumen Accord's eight buildings as models under the blockouts' art ids (Grid Hub, Wind Park, Synthesis Works, Crew Hall, Motor Works, Relay Tower, Rail Battery with 16 heads, Blackout Array as an open frame, neither a spire nor a dish), the emblem `emblem_renew.svg` (a hexagon with a three-blade rotor and two horizon arcs), their canvases, heights and team shares, "The Lumen Accord's buildings" under "Buildings", the Build page for both factions, "Look", "Blockouts of Phase 3", "Icons and glyphs", "Catalogue", "Readability check", "Gallery" and "Open points" brought up to date. |
+| 2026-10-27 | v1.13 (P105b, art-director, Michael's phone-check answers on P105's ground): the ground diamonds lose their soft rim (the two rim `path` lines are gone from all twelve files; "Iso ground tiles", the rim column of the terrain table, the catalogue row and the Terrain page text; ADR 0023 section 5's soft rim is withdrawn), the greyscale means recomputed without it (grass 126, sand 185, scrub 97 and 96, rock 109 and 110, water 83, ore 70; oil 30, 44, 57; gas 213, 166, 143), the P105 open point answered (rim dropped, the full oil lake and the crater kept, the gas crust still open with three ways measured, none of 10 to 15 % as one factor), and "Ghosts" rewritten for P115c's last-seen ghost (the whole body at z 5 over the fog in one dim colour, no dots; ADR 0022's dotted ghost retired, kept only as the gallery's sample cell). |
