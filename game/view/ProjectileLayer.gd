@@ -2,13 +2,13 @@ class_name ProjectileLayer
 extends Node2D
 ## Draws the projectiles of the runner's published snapshot (assets/art/STYLE.md "Combat effects",
 ## ADR 0012 section 3, z 40 in ADR 0023 section 2): every live slot is one quad of the effects
-## atlas, the SHELL region for a shot of any weapon but the rocket, the ROCKET region for that one
-## (the weapon is `weapon_ids[proj_weapon]`). A quad stands at lerp(prev_proj, proj, alpha)
-## projected by `IsoProjection` (ADR 0023 section 1) and lifted by the muzzle height of its weapon
-## (`SpriteLift.muzzle_lift_px`, the `muzzle_lift_px` of the weapon's shooter's sheet, from
-## `world_sort`: a shell flies straight and level in Phase 3), turned along the move from prev_proj
-## to proj as that move looks on the screen, and is as big in world px as its region, so it scales
-## with the zoom.
+## atlas, the SHELL region for a shot of any weapon but a rocket, the ROCKET region for the two
+## launchers' (`rocket` and `breaker_rocket`; the weapon is `weapon_ids[proj_weapon]`). A quad
+## stands at lerp(prev_proj, proj, alpha) projected by `IsoProjection` (ADR 0023 section 1) and
+## lifted by the muzzle height of its weapon (`SpriteLift.muzzle_lift_px`, the `muzzle_lift_px` of
+## the weapon's shooter's sheet, from `world_sort`: a shell flies straight and level in Phase 3),
+## turned along the move from prev_proj to proj as that move looks on the screen, and is as big in
+## world px as its region, so it scales with the zoom.
 ## Whose shell it is does not matter: a slot of owner 0 (a neutral armed unit) is drawn like any.
 ##
 ## A slot whose `proj_id` differs from `prev_proj_id` is new in the last tick: it has no heading, so
@@ -36,7 +36,9 @@ const ROCKET_REGION: Rect2 = Rect2(84.0, 72.0, 36.0, 12.0)
 ## Where a quad lands relative to its centre: the region's size, centred (no scaling).
 const SHELL_QUAD: Rect2 = Rect2(-8.0, -4.0, 16.0, 8.0)
 const ROCKET_QUAD: Rect2 = Rect2(-18.0, -6.0, 36.0, 12.0)
+## The two weapons drawn as a rocket (P117d): the Wildcatters' and the Breakers' launchers.
 const ROCKET_ID: StringName = &"rocket"
+const BREAKER_ROCKET_ID: StringName = &"breaker_rocket"
 const KIND_SHELL: int = 0
 const KIND_ROCKET: int = 1
 const FLOATS_PER_QUAD: int = 3  ## x and y in world px, then the heading in radians.
@@ -115,6 +117,7 @@ func _plan() -> void:
 	var cur_y: PackedInt32Array = snap.proj_y
 	var weapon_ids: Array[StringName] = snap.weapon_ids
 	var rocket: int = weapon_ids.find(ROCKET_ID)  # -1 without one: no slot is a rocket.
+	var breaker: int = weapon_ids.find(BREAKER_ROCKET_ID)
 	var alpha: float = runner.alpha()
 	var geometry: PackedFloat32Array = _geometry
 	var player: int = FogLayer.local_player_of(runner)
@@ -150,7 +153,7 @@ func _plan() -> void:
 		geometry[out + 1] = place.y - SpriteLift.muzzle_lift_px(weapon_ids, weapon, sheet_px)
 		geometry[out + 2] = IsoProjection.screen_angle(float(to_x - from_x), float(to_y - from_y))
 		_slots[_quads] = slot
-		_kinds[_quads] = KIND_ROCKET if weapon == rocket else KIND_SHELL
+		_kinds[_quads] = KIND_ROCKET if weapon == rocket or weapon == breaker else KIND_SHELL
 		_quads += 1
 
 
