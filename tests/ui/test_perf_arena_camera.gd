@@ -9,9 +9,9 @@ extends GdUnitTestSuite
 ## runner looks like when they run, as test_perf_arena.gd's do.
 
 const Rig: GDScript = preload("res://tests/ui/support/arena_rig.gd")
-## The framing of data/scenarios/perf_arena.tres: tile (32, 32) and its half, 64 px a tile, at the
-## arena's start zoom.
-const FRAMED_POSITION: Vector2 = Vector2(2080.0, 2080.0)
+## The framing of data/scenarios/perf_arena.tres: the centre of tile (32, 32) under the 2:1
+## projection (P117) at the arena's start zoom.
+const FRAMED_POSITION: Vector2 = Vector2(0.0, 1040.0)
 const FRAMED_ZOOM: Vector2 = Vector2(0.75, 0.75)
 
 var _calls: Array[String] = []

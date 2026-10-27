@@ -92,8 +92,9 @@ func _pressed() -> Array[bool]:
 	return out
 
 
+## By name from the HUD: the status line is the pill's in landscape and the band's in portrait.
 func _node(node_name: String) -> Node:
-	return _sidebar.find_child(node_name, true, false)
+	return _main.get_node("Hud").find_child(node_name, true, false)
 
 
 ## A finger down and up in the middle of `node_name`.

@@ -1,19 +1,23 @@
 class_name BuildSidebar
 extends PanelContainer
-## The build sidebar (ADR 0019 section 1, plans P85, P85c and P85b): the zone at the end of the long
-## axis (ADR 0015 section 5) with the credits and the power bar on one line, the three tabs and,
-## below, the slot `Items` with the open tab's item tiles. It sends nothing to the sim but Commands
-## through `PlayerController.command_sink`: a tap on an available tile is one QUEUE, a hold on a
-## tile with items queued is one CANCEL of the last of them. It reads the published snapshot only
-## (the local player's credits, power, queue and rows, and the type tables) and never keeps one.
-## Landscape: the right zone, 20% of the width and at least 200 dp, the full height of the safe
-## area's inner rect. Portrait: the bottom band, the full inner width, `HudLayout.band_dp` high.
+## The build menu (ADR 0019 section 1, ADR 0023 section 12, plans P85, P85c, P85b and P85d): the
+## credits and the power bar on one line (`Status`), the three tabs and, below, the slot `Items`
+## with the open tab's item tiles. It sends nothing to the sim but Commands through
+## `PlayerController.command_sink`: a tap on an available tile is one QUEUE, a hold on a tile with
+## items queued is one CANCEL of the last of them. It reads the published snapshot only (the local
+## player's credits, power, queue and rows, and the type tables) and never keeps one.
+## Landscape (P85d): the floating build panel at the bottom right, `HudLayout.panel_px` wide and as
+## high as its tabs and one row of cards; the status line moves into `pill`, the floating pill at
+## the top left after `top_left`, and `minimap_slot`, the floating panel at the top right that P88
+## fills, shows. Portrait: the bottom band, the full inner width, `HudLayout.band_dp` high, with the
+## status line as its first line, and the pill and the slot hidden. A turn only moves things: the
+## state is what `_place` makes of the orientation.
 ## The band's height goes to `HudLayout.bottom_zone_dp`, the one place the ArmyBar reads, from
 ## `_ready` and on every resize: this node is the first of the HUD's siblings in the scene, so its
 ## `size_changed` handler runs before the ArmyBar's and the bar finds the new height.
-## Tabs: Structures, Infantry and Vehicles, each an icon (`tab_<name>`, grey at rest and white when
-## open, from the theme) and in landscape also its name where the three fit the zone with it. The
-## open tab is the lighter plate with the thick bar at its foot (theme `SidebarTab`).
+## Tabs: Structures, Infantry and Vehicles, each an icon alone (`tab_<name>`, grey at rest and white
+## when open, from the theme). The open tab is the lighter plate with the thick bar at its foot
+## (theme `SidebarTab`).
 ## Power: the bar is the share of the power made that is in use. On low power (`power_used` above
 ## `power_made`) it is full and amber and the glyph is the warning triangle: a shape and a colour.
 ## Its numbers are centred in the bar, white with a dark edge across the green fill and the dark
@@ -21,11 +25,14 @@ extends PanelContainer
 ## The credits keep the width of `CREDITS_DIGITS` digits, so the bar does not move when they gain or
 ## lose a digit.
 ## Items: one `ItemTile` per buildable type (icon `item_<type id>`), made per match from the
-## snapshot's type tables, those of the open tab shown: a grid scrolling down in landscape, one row
-## scrolling sideways in the portrait band (ADR 0015 section 5). A tile is READY (a finished
-## structure at the head of its queue: tapping it is placement mode, plan P86), LOCKED (the type's
-## requirement or the tab's producer is not among the player's rows), UNAFFORDABLE, FULL (no room in
-## the queue) or AVAILABLE, in that order. A tap on one that cannot take an item shakes it.
+## snapshot's type tables, those of the open tab and of the local player's faction shown, in one row
+## that scrolls sideways (the cards of the floating panel carry their names, the band's tiles do
+## not). The faction is that of the player's own rows (`type_faction`, the producer-faction rule of
+## `Production.apply_queue`): a type of another faction is never shown, one with none is shown to
+## all. A tile is READY (a finished structure at the head of its queue: tapping it is placement
+## mode, plan P86), LOCKED (the type's requirement or the tab's producer is not among the player's
+## rows), UNAFFORDABLE, FULL (no room in the queue) or AVAILABLE, in that order. A tap on one that
+## cannot take an item shakes it.
 ## Selecting an own production building opens its tab: `set_selected` is the hook, wired to
 ## `PlayerController.selection_changed` when `controller` is set.
 ## The look is the inherited theme's (`game/ui/theme.tres`: `BuildSidebar`, `SidebarTab`,
@@ -53,6 +60,9 @@ const BAR_DP: Vector2 = Vector2(24.0, 28.0)
 const TAB_DP: float = 48.0
 const TAB_ICON_DP: float = 32.0
 const ITEMS_DP: float = 64.0  ## The height of the slot for one row of item tiles.
+## The slot of the named cards is their height and this, because a box container sorts in whole px
+## and would otherwise leave a card a fraction of a px taller than the slot that holds it.
+const ROW_SLACK_DP: float = 2.0
 const GAP_DP: float = 8.0
 const TEXT_PAD_DP: float = 4.0  ## Each side of the numbers in the bar.
 const TEXT_EDGE_DP: float = 2.0  ## The dark edge of the numbers on the green bar.
@@ -62,6 +72,9 @@ const CREDITS_DIGITS: int = 5
 
 @export var runner: MatchRunner
 @export var controller: PlayerController  ## The Commands' sink, the haptic, the selection.
+@export var pill: Control  ## The landscape home of `Status` (a panel in a band at the top left).
+@export var minimap_slot: Control  ## The landscape panel at the top right, empty until P88.
+@export var top_left: Control  ## The pill starts after it (the Dev button).
 
 ## The open tab, a `World.Tab`.
 var tab: int = World.Tab.STRUCTURES
@@ -76,9 +89,11 @@ var _bar_text: Label = Label.new()
 var _tab_row: HBoxContainer = HBoxContainer.new()
 var _tabs: Array[Button] = []
 var _items: ScrollContainer = ScrollContainer.new()
+var _items_fit: DpMinSize = DpMinSize.new()  ## The least height of `_items`, by the tile in use.
 var _grid: GridContainer = GridContainer.new()
 var _tiles: Array[ItemTile] = []
 var _low: bool = false
+var _faction: int = -1  ## The local player's faction (`type_faction`); -1 until a row shows it.
 var _shown: Vector3i = Vector3i(-1, -1, -1)  ## Credits, power made and power used on screen.
 var _seen: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot last read.
 var _built: Vector2i = Vector2i(-1, -1)  ## Match serial and type count the tiles are made for.
@@ -96,11 +111,18 @@ func _ready() -> void:
 	_items.name = "Items"
 	_items.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_items.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_min_dp(_items, Vector2(0.0, ITEMS_DP))
+	_items.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER  # One row, sideways.
+	_items.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_items_fit.min_dp = Vector2(0.0, ITEMS_DP)
+	_items.add_child(_items_fit)
 	_items.add_child(_grid)
 	_stack.add_child(_items)
 	select_tab(tab)
 	_tint()
+	if pill != null:
+		_min_dp(pill, Vector2(HudLayout.PILL_DP, HudLayout.PILL_HEIGHT_DP))
+	if minimap_slot != null:
+		_min_dp(minimap_slot, HudLayout.SLOT_DP)
 	_apply_dp()  # Sets the zone before the ArmyBar's _ready lifts the bar.
 	get_viewport().size_changed.connect(_apply_dp)  # After the DpMinSize nodes' own handlers.
 	if controller != null:
@@ -251,6 +273,7 @@ func _build_tabs() -> void:
 		button.focus_mode = Control.FOCUS_NONE  # No focus ring left behind after a tap.
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.icon = load(ICON_ART % ("tab_" + TAB_NAMES[index].to_lower()))
+		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER  # The icon alone, in the tab's middle.
 		button.pressed.connect(select_tab.bind(index))
 		_min_dp(button, Vector2(TAB_DP, TAB_DP))
 		_tab_row.add_child(button)
@@ -267,9 +290,15 @@ func _refresh_items(snap: MatchSnapshot, player: int) -> void:
 		return
 	_owned.resize(snap.type_tab.size())
 	_owned.fill(0)
+	var faction: int = -1
 	for row: int in snap.unit_id.size():
 		if snap.owner[row] == player:
 			_owned[snap.type_index[row]] += 1
+			if faction < 0:
+				faction = snap.type_faction[snap.type_index[row]]
+	if faction >= 0 and faction != _faction:  # Kept when the last row of it is gone.
+		_faction = faction
+		_show_tab()
 	_producers.resize(World.TABS)
 	_producers.fill(0)
 	for type: int in _owned.size():
@@ -312,6 +341,7 @@ func _build_tiles(snap: MatchSnapshot) -> void:
 		_grid.remove_child(old)
 		old.queue_free()
 	_tiles.clear()
+	_faction = -1  # The match's own rows tell it again (`_refresh_items`).
 	var settings: InputSettings = InputSettings.new()  # The ADR table, as PlayerController does.
 	if controller != null and controller.settings != null:
 		settings = controller.settings
@@ -323,8 +353,13 @@ func _build_tiles(snap: MatchSnapshot) -> void:
 		var tile: ItemTile = ItemTile.new()
 		tile.name = "Tile_%s" % snap.type_ids[type]
 		tile.setup(
-			type, type_tab, load(art) if ResourceLoader.exists(art) else null, snap.type_cost[type]
+			type,
+			type_tab,
+			load(art) if ResourceLoader.exists(art) else null,
+			snap.type_cost[type],
+			snap.type_names[type]
 		)
+		tile.faction = snap.type_faction[type]
 		tile.hold_ms = settings.long_press_ms
 		tile.slop_dp = settings.tap_slop_dp
 		tile.chose.connect(_on_chose.bind(tile))
@@ -335,19 +370,17 @@ func _build_tiles(snap: MatchSnapshot) -> void:
 	_show_tab()
 
 
-## Shows the tiles of the open tab, in a row in the portrait band and in as many columns as the zone
-## holds in landscape.
+## Shows the tiles of the open tab that the local player's faction may queue, in one row: the cards
+## of the floating panel in landscape, named; the plain tiles of the portrait band.
 func _show_tab() -> void:
+	var named: bool = not HudLayout.is_portrait()
 	var shown: int = 0
 	for tile: ItemTile in _tiles:
-		tile.visible = tile.tab == tab
+		tile.set_named(named)
+		tile.visible = tile.tab == tab and (tile.faction < 0 or tile.faction == _faction)
 		shown += 1 if tile.visible else 0
-	var columns: int = maxi(shown, 1)
-	if not HudLayout.is_portrait():
-		var room: float = custom_minimum_size.x - get_theme_stylebox(&"panel").get_minimum_size().x
-		var step: float = UiScale.dp(ItemTile.SIZE_DP + GAP_DP)
-		columns = maxi(floori((room + UiScale.dp(GAP_DP)) / step), 1)
-	_grid.columns = columns
+	_items_fit.min_dp = Vector2(0.0, ItemTile.CARD_DP.y + ROW_SLACK_DP if named else ITEMS_DP)
+	_grid.columns = maxi(shown, 1)
 
 
 ## A tap: an available tile queues one item, a ready structure waits for placement mode (plan
@@ -447,29 +480,26 @@ func _apply_dp() -> void:
 		button.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(TAB_ICON_DP)))
 	_bar_text.add_theme_constant_override("outline_size", roundi(UiScale.dp(TEXT_EDGE_DP)))
 	_place()
-	_place_items(gap)
-	_fit_names(gap)
+	_grid.add_theme_constant_override("h_separation", gap)
+	_show_tab()
 	_fit_credits()
 	_fit_bar_text()
 
 
-## The item row scrolls sideways in the portrait band and down in the landscape zone.
-func _place_items(gap: int) -> void:
-	var portrait: bool = HudLayout.is_portrait()
-	_items.horizontal_scroll_mode = (
-		ScrollContainer.SCROLL_MODE_SHOW_NEVER if portrait else ScrollContainer.SCROLL_MODE_DISABLED
-	)
-	_items.vertical_scroll_mode = (
-		ScrollContainer.SCROLL_MODE_DISABLED if portrait else ScrollContainer.SCROLL_MODE_SHOW_NEVER
-	)
-	_grid.add_theme_constant_override("h_separation", gap)
-	_grid.add_theme_constant_override("v_separation", gap)
-	_show_tab()
-
-
-## Puts the sidebar in its zone and, in portrait, hands the band's height to the HUD.
+## Lays the three parts out for the orientation: the band in portrait, the floating panels in
+## landscape. The state is the orientation's alone, so a turn and back changes nothing.
 func _place() -> void:
-	if HudLayout.is_portrait():
+	var portrait: bool = HudLayout.is_portrait()
+	_house_status(portrait)
+	if minimap_slot != null:
+		minimap_slot.visible = not portrait
+	if pill != null:
+		pill.visible = not portrait
+		var band: MarginContainer = pill.get_parent() as MarginContainer
+		if band != null:  # The pill starts after the Dev button.
+			var after: float = 0.0 if top_left == null else top_left.get_combined_minimum_size().x
+			band.add_theme_constant_override("margin_left", ceili(after + UiScale.dp(GAP_DP)))
+	if portrait:
 		var safe: SafeAreaMargin = get_parent() as SafeAreaMargin
 		var edge_dp: float = 0.0 if safe == null else safe.margin_dp
 		var reserved_dp: float = edge_dp + ArmyBar.GAP_DP + ArmyBar.ALL_ARMY_DP.y
@@ -479,32 +509,20 @@ func _place() -> void:
 		size_flags_vertical = Control.SIZE_SHRINK_END
 		custom_minimum_size = Vector2(0.0, HudLayout.bottom_zone_px())
 	else:
-		HudLayout.bottom_zone_dp = 0.0  # The zone is the right fifth, which the SelectionPanel reads.
+		HudLayout.bottom_zone_dp = 0.0  # The panel floats: the SelectionPanel reads `right_zone_px`.
 		size_flags_horizontal = Control.SIZE_SHRINK_END
-		size_flags_vertical = Control.SIZE_FILL
-		custom_minimum_size = Vector2(
-			HudLayout.right_zone_px(get_viewport().get_visible_rect().size.x), 0.0
-		)
+		size_flags_vertical = Control.SIZE_SHRINK_END
+		var safe: SafeAreaMargin = get_parent() as SafeAreaMargin
+		var inset: int = 0 if safe == null else safe.apply().x  # It runs before the safe area's own.
+		var inner: float = get_viewport().get_visible_rect().size.x - 2.0 * inset
+		custom_minimum_size = Vector2(HudLayout.panel_px(inner), 0.0)
 
 
-## The names go with the icons in landscape where all three tabs fit the zone with them; in the
-## portrait band the tabs are icons only, each centred in its tab.
-func _fit_names(gap: int) -> void:
-	var named: bool = not HudLayout.is_portrait()
-	if named:
-		_set_names(true)
-		var room: float = custom_minimum_size.x - get_theme_stylebox(&"panel").get_minimum_size().x
-		var need: float = gap * (_tabs.size() - 1)
-		for button: Button in _tabs:
-			need += button.get_combined_minimum_size().x
-		named = need <= room
-	_set_names(named)
-
-
-## Shows the names beside the icons, or the icons alone in the middle of their tabs.
-func _set_names(named: bool) -> void:
-	for index: int in _tabs.size():
-		_tabs[index].text = TAB_NAMES[index] if named else ""
-		_tabs[index].icon_alignment = (
-			HORIZONTAL_ALIGNMENT_LEFT if named else HORIZONTAL_ALIGNMENT_CENTER
-		)
+## The status line is the pill's in landscape and the band's first line in portrait (or anywhere
+## the scene has no pill).
+func _house_status(portrait: bool) -> void:
+	var home: Control = _stack if portrait or pill == null else pill
+	if _status.get_parent() != home:
+		_status.reparent(home, false)
+		if home == _stack:
+			_stack.move_child(_status, 0)
