@@ -129,10 +129,13 @@ script = ExtResource("3_dev")
 [node name="DpMinSize" type="Node" parent="Hud/SafeArea/DevButton"]
 script = ExtResource("13_dp")
 
-[node name="BuildSidebar" type="PanelContainer" parent="Hud/SafeArea" node_paths=PackedStringArray("runner", "controller")]
+[node name="BuildSidebar" type="PanelContainer" parent="Hud/SafeArea" node_paths=PackedStringArray("runner", "controller", "pill", "minimap_slot", "top_left")]
 script = ExtResource("21_sidebar")
 runner = NodePath("../../../MatchRunner")
 controller = NodePath("../../../PlayerController")
+pill = NodePath("../StatusBand/StatusPill")
+minimap_slot = NodePath("../MinimapSlot")
+top_left = NodePath("../DevButton")
 
 [node name="ArmyBand" type="MarginContainer" parent="Hud/SafeArea"]
 mouse_filter = 2
@@ -155,6 +158,19 @@ runner = NodePath("../../../../MatchRunner")
 unit_layer = NodePath("../../../../UnitLayer")
 army_bar = NodePath("../../ArmyBand/ArmyBar")
 top_left = NodePath("../../DevButton")
+
+[node name="StatusBand" type="MarginContainer" parent="Hud/SafeArea"]
+mouse_filter = 2
+
+[node name="StatusPill" type="PanelContainer" parent="Hud/SafeArea/StatusBand"]
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_type_variation = &"BuildSidebar"
+
+[node name="MinimapSlot" type="PanelContainer" parent="Hud/SafeArea"]
+size_flags_horizontal = 8
+size_flags_vertical = 0
+theme_type_variation = &"BuildSidebar"
 
 [connection signal="selection_changed" from="PlayerController" to="UnitLayer" method="set_selected"]
 [connection signal="selection_changed" from="PlayerController" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="set_selected"]
