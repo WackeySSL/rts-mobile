@@ -30,6 +30,10 @@ class Run:
 	var done_tick: int = -1
 	var max_tries: int = 0
 	var max_queue: int = 0
+	## The tile of the first PLACE and the slots the think that sent it asked about (-1, -1 and 0
+	## while none was sent).
+	var first_place: Vector2i = Vector2i(-1, -1)
+	var first_place_slots: int = 0
 
 
 func before() -> void:
@@ -114,6 +118,17 @@ func test_a_think_asks_about_no_more_slots_than_place_tries_and_no_queue_overfil
 	assert_int(run.max_queue).is_equal(run.def.queue_target)
 
 
+func test_the_first_slot_that_placement_accepts_is_used(
+	faction: String, _test_parameters := _each()
+) -> void:
+	var run: Run = _runs[faction]
+	# Both Headquarters have their top-left tile at (6, 6), a 3 x 3 footprint and 7 tiles of sight
+	# from the centre. The first slot, (2, 2), is not explored yet, the second, (6, 2), is: two slots
+	# asked, and the dummy takes that one, not a later slot of the lattice.
+	assert_object(run.first_place).is_equal(Vector2i(6, 2))
+	assert_int(run.first_place_slots).is_equal(2)
+
+
 @warning_ignore("integer_division")
 func test_every_place_is_a_slot_of_the_lattice_round_the_headquarters(
 	faction: String, _test_parameters := _each()
@@ -170,6 +185,7 @@ func _each() -> Array[Array]:
 
 
 ## One dummy of `faction` as player 1 for TICKS ticks.
+@warning_ignore("integer_division")
 func _play(faction: String) -> Run:
 	var run: Run = Run.new()
 	run.world = Factions.start(faction, Factions.other(faction))
@@ -180,6 +196,10 @@ func _play(faction: String) -> Run:
 		var sent: Array[Command] = Rig.tick(run.world, loop, [ai])
 		run.sent.append_array(sent)
 		run.max_tries = maxi(run.max_tries, ai.placement_tries)
+		for command: Command in sent:
+			if command.type == Command.Type.PLACE and run.first_place_slots == 0:
+				run.first_place = Vector2i(command.target_x / 1000, command.target_y / 1000)
+				run.first_place_slots = ai.placement_tries
 		for queue: int in range(World.TABS, World.TABS * 2):
 			run.max_queue = maxi(run.max_queue, run.world.queue_count[queue])
 		if run.done_tick < 0 and _stands(run):
