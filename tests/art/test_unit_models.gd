@@ -1,12 +1,14 @@
 extends GdUnitTestSuite
-## The six Derrick League unit models of plan row P101 (ADR 0023 sections 6 and 7, STYLE.md
-## "Derrick League units"): each is named in its silhouette line, a squad is three figures, a
-## vehicle has the wheels or tracks its line says and stands in its size class, the gun of an armed
-## vehicle is the thing that reaches farthest forward, the team colour is 6 to 14 % of the default
-## view (the art rows aim at 8 to 12 %, ADR 0023 section 5), and the top-down unit files are gone.
-## Frames, sheets, shadows and the 32 px reading are pinned for every type in test_artgen*.gd.
+## The twelve unit models of plan rows P101 and P102 (ADR 0023 sections 6 and 7, STYLE.md "Derrick
+## League units" and "Lumen Accord units"): each is named in its silhouette line, a squad is three
+## figures, a vehicle has the wheels or tracks its line says and stands in its size class, the gun
+## of an armed vehicle is the thing that reaches farthest forward and stands on the centre line (one
+## barrel), the team colour is 6 to 14 % of the default view (the art rows aim at 8 to 12 %, ADR
+## 0023 section 5), each Lumen Accord unit carries the faction's hexagon and mint light, and the
+## top-down unit files are gone. Frames, sheets, shadows and the 32 px reading are pinned for every
+## type in test_artgen*.gd.
 
-const MODEL: String = "res://assets/art/models/fossil/%s.tres"
+const MODEL: String = "res://assets/art/models/%s/%s.tres"
 ## Michael's display names (ADR 0023 answer 2, section 7), by art id.
 const NAMES: Dictionary[String, String] = {
 	"rifle_squad": "Roustabouts",
@@ -15,11 +17,51 @@ const NAMES: Dictionary[String, String] = {
 	"heavy_tank": "Bullhead",
 	"artillery": "Mortar Rig",
 	"harvester": "Tanker",
+	"renew_rifle": "Linemen",
+	"renew_rocket": "Breakers",
+	"renew_scout": "Swift",
+	"renew_tank": "Torque",
+	"renew_artillery": "Arcline",
+	"renew_tanker": "Fuel Runner",
 }
-const SQUADS: Array[String] = ["rifle_squad", "rocket_squad"]
-const ARMED: Array[String] = ["light_tank", "heavy_tank", "artillery"]
+const ACCORD: Array[String] = [
+	"renew_rifle", "renew_rocket", "renew_scout", "renew_tank", "renew_artillery", "renew_tanker"
+]
+const SQUADS: Array[String] = ["rifle_squad", "rocket_squad", "renew_rifle", "renew_rocket"]
+const ARMED: Array[String] = [
+	"light_tank", "heavy_tank", "artillery", "renew_scout", "renew_tank", "renew_artillery"
+]
+## What a gun is made of, by faction.
+const GUN_MATERIALS: Dictionary[String, Array] = {
+	"fossil": [&"steel", &"iron"], "renew": [&"titanium", &"graphite"]
+}
+## The length of a vehicle's whole picture, gun straight ahead, by art id: the size classes of
+## STYLE.md "Scale" (a Lumen Accord unit stands in the class of its Derrick League twin).
+const LENGTHS: Dictionary[String, Vector2] = {
+	"light_tank": Vector2(0.9, 1.3),
+	"heavy_tank": Vector2(1.4, 2.0),
+	"artillery": Vector2(1.2, 1.6),
+	"harvester": Vector2(1.5, 1.9),
+	"renew_scout": Vector2(0.9, 1.3),
+	"renew_tank": Vector2(1.4, 2.0),
+	"renew_artillery": Vector2(1.2, 1.6),
+	"renew_tanker": Vector2(1.5, 1.9),
+}
+## Each faction's scout, tank, artillery and tanker: the tanker is longer than the artillery and the
+## scout shorter than the tank.
+const ROLES: Array[Array] = [
+	["light_tank", "heavy_tank", "artillery", "harvester"],
+	["renew_scout", "renew_tank", "renew_artillery", "renew_tanker"],
+]
 ## Wheels (a prism lying along y on the ground) by art id, as the silhouette lines count them.
-const WHEELS: Dictionary[String, int] = {"light_tank": 4, "artillery": 6, "harvester": 6}
+const WHEELS: Dictionary[String, int] = {
+	"light_tank": 4,
+	"artillery": 6,
+	"harvester": 6,
+	"renew_scout": 4,
+	"renew_artillery": 4,
+	"renew_tanker": 4,
+}
 const FIGURE_LINK: float = 0.12  ## Tiles: two ground contacts this close are one figure's legs.
 const TEAM_SHARE: Vector2 = Vector2(0.06, 0.14)
 const KEY_TOLERANCE: float = 0.06  ## Summed difference of the three channels in 0 to 1.
@@ -33,7 +75,7 @@ func test_each_model_is_the_unit_of_its_name_and_its_silhouette_line_starts_with
 	for id: String in NAMES:
 		var model: ArtModel = _model(id)
 		assert_str(model.art_id).is_equal(id)
-		assert_str(model.faction).is_equal("fossil")
+		assert_str(model.faction).is_equal("renew" if ACCORD.has(id) else "fossil")
 		assert_str(model.category).is_equal("inf" if SQUADS.has(id) else "veh")
 		(
 			assert_bool(model.silhouette.begins_with(NAMES[id] + ": "))
@@ -69,7 +111,7 @@ func test_a_squad_is_three_figures() -> void:
 		assert_int(feet.size()).override_failure_message(id).is_equal(6)
 
 
-func test_the_wheels_are_the_ones_the_silhouette_line_counts_and_the_bullhead_has_two_tracks(
+func test_the_wheels_are_the_ones_the_silhouette_line_counts_and_the_tanks_have_their_tracks(
 ) -> void:
 	for id: String in WHEELS:
 		var wheels: int = 0
@@ -81,6 +123,16 @@ func test_the_wheels_are_the_ones_the_silhouette_line_counts_and_the_bullhead_ha
 	for prim: ArtPrim in _model("heavy_tank").primitives(&"hull"):
 		tracks += int(is_zero_approx(prim.z0) and prim.size.x >= 1.0 and prim.size.y < 0.3)
 	assert_int(tracks).is_equal(2)
+	# The Torque stands on four separate pods, two a side with a gap between them.
+	var pods: Array[ArtPrim] = []
+	for prim: ArtPrim in _model("renew_tank").primitives(&"hull"):
+		if is_zero_approx(prim.z0) and prim.shape == &"box" and prim.size.x >= 0.4:
+			pods.append(prim)
+	assert_int(pods.size()).is_equal(4)
+	for pod: ArtPrim in pods:
+		for other: ArtPrim in pods:
+			if pod != other and signf(pod.centre.y) == signf(other.centre.y):
+				assert_float(absf(pod.centre.x - other.centre.x) - pod.size.x).is_greater(0.0)
 
 
 ## STYLE.md "Scale": a figure is about 18 px tall at zoom 1 (0.46 tile), a vehicle fills about a
@@ -98,17 +150,23 @@ func test_each_unit_stands_in_its_size_class() -> void:
 		else:
 			assert_float(box.size.z).override_failure_message(id).is_between(0.4, 0.95)
 			assert_float(box.size.y).override_failure_message(id).is_between(0.5, 1.1)
-	assert_float(lengths["light_tank"]).is_between(0.9, 1.3)
-	assert_float(lengths["heavy_tank"]).is_between(1.4, 2.0)
-	assert_float(lengths["artillery"]).is_between(1.2, 1.6)
-	assert_float(lengths["harvester"]).is_between(1.5, 1.9)
-	assert_float(lengths["harvester"]).is_greater(lengths["artillery"])
-	assert_float(lengths["light_tank"]).is_less(lengths["heavy_tank"])
+	for id: String in LENGTHS:
+		assert_float(lengths[id]).override_failure_message(id).is_between(
+			LENGTHS[id].x, LENGTHS[id].y
+		)
+	for roles: Array in ROLES:
+		var scout: float = lengths[roles[0] as String]
+		var tank: float = lengths[roles[1] as String]
+		var artillery: float = lengths[roles[2] as String]
+		var tanker: float = lengths[roles[3] as String]
+		assert_float(tanker).is_greater(artillery)
+		assert_float(scout).is_less(tank)
 
 
 ## The muzzle is the centre of what reaches farthest along +x (STYLE.md "Generated art"), so the
-## gun units need that to be a steel or iron barrel, not a hull plate; the Bullhead's barrel
-## reaches at least a third of a tile past the front of its hull.
+## gun units need that to be a barrel (steel or iron for the Derrick League, titanium or graphite
+## for the Lumen Accord), not a hull plate; a tank's barrel reaches at least a third of a tile past
+## the front of its hull.
 func test_the_gun_of_an_armed_vehicle_is_what_reaches_farthest_forward() -> void:
 	for id: String in ARMED:
 		var model: ArtModel = _model(id)
@@ -116,19 +174,52 @@ func test_the_gun_of_an_armed_vehicle_is_what_reaches_farthest_forward() -> void
 		for prim: ArtPrim in model.primitives(&"turret"):
 			if farthest == null or prim.aabb().end.x > farthest.aabb().end.x:
 				farthest = prim
-		(
-			assert_bool([&"steel", &"iron"].has(farthest.material))
-			. override_failure_message(id)
-			. is_true()
+		var made_of: Array = GUN_MATERIALS[model.faction]
+		assert_bool(made_of.has(farthest.material)).override_failure_message(id).is_true()
+	for id: String in ["heavy_tank", "renew_tank"]:
+		var tank: ArtModel = _model(id)
+		var front: float = 0.0
+		for prim: ArtPrim in tank.primitives(&"hull"):
+			front = maxf(front, prim.aabb().end.x)
+		var reach: float = 0.0
+		for prim: ArtPrim in tank.primitives(&"turret"):
+			reach = maxf(reach, prim.aabb().end.x + tank.mount.x)
+		assert_float(reach).override_failure_message(id).is_greater(front + 0.33)
+
+
+## One barrel, never a pair (ADR 0023 section 6 on originality: no twin-barrelled tank): the
+## farthest-reaching piece of the Lumen Accord's armed vehicles stands on the centre line.
+func test_the_lumen_accord_guns_are_single_barrels_on_the_centre_line() -> void:
+	for id: String in ARMED:
+		if not ACCORD.has(id):
+			continue
+		var farthest: ArtPrim = null
+		for prim: ArtPrim in _model(id).primitives(&"turret"):
+			if farthest == null or prim.aabb().end.x > farthest.aabb().end.x:
+				farthest = prim
+		assert_float(farthest.centre.y).override_failure_message(id).is_equal(0.0)
+		var long_pieces: int = 0
+		for prim: ArtPrim in _model(id).primitives(&"turret"):
+			var is_barrel: bool = prim.shape == &"prism" and prim.axis == 0 and prim.size.x >= 0.3
+			long_pieces += int(is_barrel and GUN_MATERIALS["renew"].has(prim.material))
+		# The Swift and the Torque have one long rail; the Arcline's is a stair of short steps.
+		assert_int(long_pieces).override_failure_message(id).is_equal(
+			0 if id == "renew_artillery" else 1
 		)
-	var tank: ArtModel = _model("heavy_tank")
-	var front: float = 0.0
-	for prim: ArtPrim in tank.primitives(&"hull"):
-		front = maxf(front, prim.aabb().end.x)
-	var reach: float = 0.0
-	for prim: ArtPrim in tank.primitives(&"turret"):
-		reach = maxf(reach, prim.aabb().end.x)
-	assert_float(reach).is_greater(front + 0.33)
+
+
+## The Lumen Accord's form language (ADR 0023 section 6): hexagons (a helmet, a turret ring, the
+## tank) and a mint status light on every unit, and none of the Derrick League's materials.
+func test_every_lumen_accord_unit_has_a_hexagon_and_a_mint_light() -> void:
+	for id: String in ACCORD:
+		var hexagons: int = 0
+		var mint: int = 0
+		for part: StringName in _model(id).parts():
+			for prim: ArtPrim in _model(id).primitives(part):
+				hexagons += int(prim.shape == &"prism" and prim.sides == 6)
+				mint += int(prim.material == &"mint")
+		assert_int(hexagons).override_failure_message(id).is_greater(0)
+		assert_int(mint).override_failure_message(id).is_greater(0)
 
 
 func test_the_team_colour_is_6_to_14_percent_of_the_default_view() -> void:
@@ -155,7 +246,7 @@ func test_the_top_down_unit_files_are_gone_and_nothing_names_their_folder() -> v
 
 
 func _model(id: String) -> ArtModel:
-	return load(MODEL % id) as ArtModel
+	return load(MODEL % ["renew" if ACCORD.has(id) else "fossil", id]) as ArtModel
 
 
 ## The box that holds `prims`.

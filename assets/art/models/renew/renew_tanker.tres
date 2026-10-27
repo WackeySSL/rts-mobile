@@ -7,20 +7,33 @@ script = ExtResource("1_model")
 art_id = &"renew_tanker"
 faction = &"renew"
 category = &"veh"
-silhouette = "A long white tanker truck: a smooth cab with a glass front, a hexagonal ceramic tank on a dark frame with two team bands, three axles."
+silhouette = "Fuel Runner: a quick white four-wheeled tanker with a glass-fronted cab and a team band, a long hexagonal glass tank in white cradle ribs with two team rings and white end caps, and a mint light bar on the nose."
 prims = PackedStringArray(
-"box hull graphite -0.1 0 0.1 1.5 0.4 0.1",
-"prism hull graphite 0.4 -0.3 0 0.26 0.12 0.26 axis=y sides=8",
-"prism hull graphite 0.4 0.3 0 0.26 0.12 0.26 axis=y sides=8",
-"prism hull graphite -0.2 -0.3 0 0.26 0.12 0.26 axis=y sides=8",
-"prism hull graphite -0.2 0.3 0 0.26 0.12 0.26 axis=y sides=8",
-"prism hull graphite -0.55 -0.3 0 0.26 0.12 0.26 axis=y sides=8",
-"prism hull graphite -0.55 0.3 0 0.26 0.12 0.26 axis=y sides=8",
-"box hull ceramic 0.5 0 0.2 0.4 0.54 0.4",
-"box hull glass 0.71 0 0.36 0.02 0.4 0.14",
-"prism hull ceramic -0.665 0 0.2 0.23 0.46 0.46 axis=x sides=6",
-"prism hull team -0.49 0 0.2 0.12 0.46 0.46 axis=x sides=6",
-"prism hull ceramic -0.24 0 0.2 0.38 0.46 0.46 axis=x sides=6",
-"prism hull team 0.01 0 0.2 0.12 0.46 0.46 axis=x sides=6",
-"prism hull ceramic 0.145 0 0.2 0.15 0.46 0.46 axis=x sides=6"
+"prism hull graphite 0.5 -0.31 0 0.3 0.1 0.3 axis=y sides=10",
+"prism hull titanium 0.5 -0.37 0.081 0.138 0.02 0.138 axis=y sides=8",
+"prism hull graphite 0.5 0.31 0 0.3 0.1 0.3 axis=y sides=10",
+"prism hull titanium 0.5 0.37 0.081 0.138 0.02 0.138 axis=y sides=8",
+"prism hull graphite -0.5 -0.31 0 0.3 0.1 0.3 axis=y sides=10",
+"prism hull titanium -0.5 -0.37 0.081 0.138 0.02 0.138 axis=y sides=8",
+"prism hull graphite -0.5 0.31 0 0.3 0.1 0.3 axis=y sides=10",
+"prism hull titanium -0.5 0.37 0.081 0.138 0.02 0.138 axis=y sides=8",
+"box hull graphite -0.05 0 0.1 1.7 0.4 0.07",
+"box hull team -0.2 -0.21 0.1 0.9 0.02 0.07",
+"box hull team -0.2 0.21 0.1 0.9 0.02 0.07",
+"box hull ceramic 0.6 0 0.17 0.36 0.54 0.12",
+"box hull team 0.6 0 0.29 0.4 0.58 0.06",
+"wedge hull glass 0.6 0 0.35 0.36 0.5 0.14 slope=0.95",
+"box hull graphite 0.8 0 0.12 0.05 0.5 0.08",
+"box hull mint 0.825 0 0.19 0.02 0.3 0.025",
+"box hull ceramic 0.2 0 0.17 0.05 0.5 0.08",
+"box hull ceramic -0.3 0 0.17 0.05 0.5 0.08",
+"box hull ceramic -0.72 0 0.17 0.05 0.5 0.08",
+"prism hull ceramic -0.82 0 0.2 0.2 0.44 0.4 axis=x sides=6 taper=0.72",
+"prism hull glass -0.555 0 0.17 0.33 0.5 0.46 axis=x sides=6",
+"prism hull team -0.35 0 0.17 0.08 0.54 0.5 axis=x sides=6",
+"prism hull glass -0.095 0 0.17 0.43 0.5 0.46 axis=x sides=6",
+"prism hull team 0.16 0 0.17 0.08 0.54 0.5 axis=x sides=6",
+"prism hull ceramic 0.31 0 0.2 0.2 0.44 0.4 axis=x sides=6 taper=0.72",
+"box hull graphite -0.3 0 0.74 0.8 0.07 0.03",
+"box hull mint -0.5 0 0.77 0.05 0.05 0.02"
 )

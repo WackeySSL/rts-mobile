@@ -34,6 +34,11 @@ top-down unit files (`svg/units/`, their imports, the Vehicles gallery page and 
 Build page's buildings). "Derrick League units" under "Generated art" says how they look; the
 sections on the layer contract, the catalogue, the enemy look, the gallery and the reskin follow.
 
+**v1.9 (Phase 3, P102)** models the six Lumen Accord units (Linemen, Breakers, Swift, Torque,
+Arcline, Fuel Runner) in place of their blockouts, under the same art ids, and adds them to the
+gallery's Units page under the Derrick League's. "Lumen Accord units" under "Generated art" says
+how they look; the catalogue, the readability results and the gallery follow.
+
 ## Look
 **Since ADR 0023 (Michael 2026-10-26) everything on the map is drawn in the isometric 2:1 view, flat
 shaded with three tones per face and one light from the north-west; see "Projection", "Light" and
@@ -219,7 +224,8 @@ team cap at its tip; that silhouette is another game's tower (CLAUDE.md, Legal).
 ### Blockouts of Phase 3 (P99)
 Boxes, wedges, prisms and spheres sized by size class or footprint with a team band each, so every
 view row builds against real frames, names and canvases; the art rows P101 to P105 replace the
-models under the same ids (P101 did the Derrick League's six units, "Derrick League units" below).
+models under the same ids (P101 did the Derrick League's six units, "Derrick League units" below,
+and P102 the Lumen Accord's, "Lumen Accord units").
 Frames per type: vehicle 16 hull (+ 16 turret), tanker 16, squad 8, building 1 (+ 16 head for the
 defence); 304 frames in all, and a shadow frame for each hull frame (176), a sheet and a card for
 each type.
@@ -255,7 +261,7 @@ the sheets, the index and the cards the bake and the page read).
 Plan row P101 replaces the six unit blockouts of the Derrick League by modelled units under the same
 art ids (ADR 0023 sections 6 and 7), regenerated with `bash scripts/gen-art.sh`: 16 hull frames
 and 16 turret frames for a vehicle, 8 hull frames for a squad, a cast shadow for each hull frame,
-the sheets and the item cards. The Lumen Accord's six stay blockouts until P102. The look is the
+the sheets and the item cards. The Lumen Accord's six are "Lumen Accord units" below. The look is the
 faction's: olive drab hulls, steel guns and drums, dark iron wheels and tracks, a rust accent, a warm
 lamp, pale concrete hard hats, wedges and drums; every unit carries its team colour as bands, rings
 and stripes. Each silhouette was written down before it was modelled; it is the `silhouette` line of
@@ -299,6 +305,69 @@ the figures below). Hull canvases are at 2x, in px; a unit's gun frame has its o
   forbids.
 - The gallery's **Units** page shows the six on both grounds in both triads ("Gallery"); the Iso
   page shows every direction.
+
+### Lumen Accord units (P102)
+Plan row P102 replaces the six unit blockouts of the Lumen Accord by modelled units under the same
+art ids (ADR 0023 sections 6 and 7), regenerated with `bash scripts/gen-art.sh` like the Derrick
+League's: 16 hull frames and 16 turret frames for an armed vehicle, 16 hull frames for the tanker, 8
+hull frames for a squad, a cast shadow for each hull frame, the sheets and the item cards. The
+default view is `d10` (facing south-west) and the team zones are keyed in Arktisk. The look is the
+faction's, the opposite of the Derrick League's: white ceramic and blue-grey bodies with dark
+graphite patches, wheels, track pods and legs, titanium rails, pale glass, hexagons (a helmet, a
+turret ring, a tank) in place of wedges and drums, and a mint status light on every unit. They
+are the lighter, finer side (ADR 0023 section 7: fast, precise, fragile): thin rail barrels and
+slim figures where the Derrick League has fat tubes and slabs. The silhouette of each was
+written down before it was modelled; it is the `silhouette` line of the model, which begins with
+the unit's display name (`tests/art/test_unit_models.gd` pins that, and the figures below).
+Column for column they stand in the class of their Derrick League twin, so a column of the Units
+page is one role.
+
+| Art id | Name | Hull canvas | What makes it |
+| --- | --- | --- | --- |
+| `renew_rifle` | Linemen | 90 x 70 | Three lean figures in a wide open arrowhead: a dark face plate under a smooth white hexagonal helmet with a mint visor strip, a blue-grey suit, a team band over chest and shoulders, a thin dark rail rifle across the chest, and on the back a dark cable reel between two team-coloured flanges. |
+| `renew_rocket` | Breakers | 116 x 78 | Three launcher crews in an inverted arrowhead (two ahead, one behind): the same helmet and band, a titanium battery pack on the back with a mint light, and over the right shoulder a long dark rail loaded with a short fat white hexagonal pod that has a team ring at each end. |
+| `renew_scout` | Swift | 116 x 90 | A low white ceramic wedge on four wide-set dark wheels: a pointed nose with a mint light bar, a hexagonal glass canopy, dark roof patches, a team stripe along each flank, a team-coloured shark fin at the tail with a mint tip, and over the nose a hexagonal gun pod on a team ring with one thin titanium rail. |
+| `renew_tank` | Torque | 152 x 96 | A long low blue-grey hull with a sloping nose on four separate dark track pods (two a side, a gap between them), white side skirts under a team stripe, dark roof patches, a team stripe across the nose, and a hexagonal white turret on a team ring with a white shroud and one long thin titanium rail. |
+| `renew_artillery` | Arcline | 162 x 106 | A long white four-wheeled carrier: a low cab with a team band and a glass front, a blue-grey bed with white side panels and team stripes, two dark stabiliser feet at the tail and, on a hexagonal turntable between two white cheek plates, one slim titanium rail raised in four steps towards the front. |
+| `renew_tanker` | Fuel Runner | 174 x 132 | A quick white four-wheeled tanker: a glass-fronted cab with a team band and a mint light bar on the nose, flank stripes along the dark frame, and a long hexagonal glass tank in white cradle ribs with white end caps, two team rings and a dark spine with a mint hatch light. |
+
+- **Size** (see "Scale"): a figure is 0.44 tile tall, a squad about 0.8 tile across; with its gun
+  straight ahead the Swift is 1.2 tiles long, the Arcline 1.5, the Torque 1.75 (its hull 1.4) and
+  the Fuel Runner 1.75, and the highest point of a vehicle (the tank's spine, the Arcline's raised
+  rail) is 0.5 to 0.8 tile over the ground. `bar_lift_px` in the sheets is 25 and 26 for a squad
+  and 29 to 42 for a vehicle (`tests/art` allows at most 45), `muzzle_lift_px` 10 and 13 for the
+  squads, 14, 17 and 22 for the three guns, 8 for the tanker.
+- **Team colour** is 7 to 12 % of each default view (`tests/art` pins 6 to 14 % for these twelve
+  units, 3 to 20 % for every type): a band over chest and shoulders and the flanges of the reel, the
+  rings of a pod, a turret ring, flank stripes standing on the skirts and the frame, a band
+  round a cab, rings between the segments of a tank, a fin. No roof plate and no cap
+  (`test_artgen_plates.gd`).
+- **No face is drawn.** Every head is a dark face plate under a smooth white helmet with a mint
+  visor strip, so no figure reads as a person of a colour or a caricature (ADR 0023 decision 1).
+  The helmet is a plain hexagonal dome, not a visor mask of another game's trooper.
+- **Distinct at 32 px**: the Linemen are three white-capped figures with a dark reel behind each,
+  the Breakers three figures with long white pods over their shoulders, the Swift a small white
+  wedge with a fin, the Torque a flat grey tank on four dark pods with a long thin rail, the
+  Arcline a long white carrier with a thin raised line, the Fuel Runner a long white tube on
+  wheels. Against the Derrick League's dark olive units the white bodies are much lighter, which
+  is what tells the two sides apart in greyscale.
+- **Modelling notes.** The generator has no tilted primitive: the Arcline's rail is a stair of
+  four prisms (0.06 tile a step, each 0.17 long and 0.065 thick, so the steps overlap in height
+  and read as one slope). A tank is a prism lying along x: the generator puts its flats to the
+  sides and a vertex at the top, so a hexagonal tank has a ridge. The sloping nose of the Torque
+  and the glass front of the cabs are wedges with `slope=0.6` and `slope=0.95`: **the generator
+  bug of P101 is still there** (a wedge with `slope=1` loses its sloped face), so no model uses
+  `slope=1` until the fix lands. A gun is the primitive of its turret that reaches farthest along
+  +x, a squad's weapon the one of its lead figure.
+- **Originality.** One barrel on the centre line of each gun (no twin barrels: `test_unit_models.gd`
+  pins it), no super-heavy tank, no flame, cryo or tesla infantry, no hover bike and no tower;
+  every form is a plain real-world one (a buggy, a tank on track pods, a carrier with a
+  rail, a tanker truck). The helmet and visor are a technician's, the reel is the cable drum of the
+  name "Linemen". The canvas's boards of this faction (a twin-gun rail tank on four track modules, a hover
+  bike, a six-wheeled harvester with a glass tank) were a reference for the mood only; none is
+  copied, and the twin gun is deliberately not used.
+- The gallery's **Units** page shows the six on both grounds in both triads under the Derrick
+  League's ("Gallery"); the Iso page shows every direction.
 
 ## Scale
 - 1 tile = 64 px in game at zoom 1. Author at 2x: 1 tile = 128 px in the SVG.
@@ -713,6 +782,12 @@ in doubt, choose a plainer real-world form.
 | Bullhead (`heavy_tank`) | A squat olive slab of a tank on two dark tracks, a steel ram plate across its nose, a wide wedge turret with a long gun and two short lamp-topped pipes at its front corners like horns. | `iso/fossil/veh/heavy_tank_{hull,turret}_d<NN>.svg`, 16 + 16 frames, 166x104 |
 | Mortar Rig (`artillery`) | A six-wheeled olive flatbed with a sloped armoured cab, a team band and two rust crates, and on the bed a turning rig of two steel cheek plates that cradle a fat mortar tube raised in steps towards the front. | `iso/fossil/veh/artillery_{hull,turret}_d<NN>.svg`, 16 + 16 frames, 144x100 |
 | Tanker (`harvester`) | A long olive tanker truck on six dark wheels, a boxed cab with a team band and a lamp bar, a long steel drum with two team rings, a catwalk and a hatch along its back and a rust-coloured bumper at the tail. | `iso/fossil/veh/harvester_hull_d<NN>.svg`, 16 frames, 182x138, no turret |
+| Linemen (`renew_rifle`) | Three lean blue-grey technicians in a wide open arrowhead, each in a smooth white hexagonal helmet with a mint visor strip over a dark face plate, a team-coloured band over chest and shoulders, a thin dark rail rifle across the chest and a dark cable reel with team-coloured flanges on the back. | `iso/renew/inf/renew_rifle_hull_d<NN>.svg`, 8 frames, 90x70, from `models/renew/renew_rifle.tres` |
+| Breakers (`renew_rocket`) | Three launcher crews in an inverted arrowhead, each in a white hexagonal helmet with a mint visor strip, a team-coloured band, a battery pack and a short fat white pod loaded on a long dark rail over the right shoulder with a team ring at each end. | `iso/renew/inf/renew_rocket_hull_d<NN>.svg`, 8 frames, 116x78 |
+| Swift (`renew_scout`) | A low white ceramic wedge on four wide-set dark wheels with a pointed nose, a hexagonal glass canopy, a team stripe on each flank, a team-coloured shark fin with a mint tip at the tail and a hexagonal gun pod over the nose with one thin rail. | `iso/renew/veh/renew_scout_{hull,turret}_d<NN>.svg`, 16 + 16 frames, 116x90 |
+| Torque (`renew_tank`) | A long low blue-grey hull with a sloping nose on four separate dark track pods, white side skirts under a team stripe, dark roof patches and a hexagonal turret on a team ring carrying one long thin titanium rail. | `iso/renew/veh/renew_tank_{hull,turret}_d<NN>.svg`, 16 + 16 frames, 152x96 |
+| Arcline (`renew_artillery`) | A long white four-wheeled carrier with a short glass-fronted cab and a team band, two stabiliser feet at the tail and, on a hexagonal turntable between two white cheek plates, a slim rail raised in four steps towards the front. | `iso/renew/veh/renew_artillery_{hull,turret}_d<NN>.svg`, 16 + 16 frames, 162x106 |
+| Fuel Runner (`renew_tanker`) | A quick white four-wheeled tanker with a glass-fronted cab and a team band, a mint light bar on the nose and a long hexagonal glass tank in white cradle ribs with two team rings and white end caps. | `iso/renew/veh/renew_tanker_hull_d<NN>.svg`, 16 frames, 174x132, no turret |
 | Infantry rally flag | A slim metal pole standing up from a round foot plate with a small triangular pennant, over a round ring on the ground. | `flags/rally_infantry_{hull,team}.svg`, 128x128 |
 | Vehicles rally flag | A slim metal pole standing up from a square foot plate with a wide notched swallowtail banner, over a square frame on the ground. | `flags/rally_vehicles_{hull,team}.svg`, 128x128 |
 | Tab, item and glyph icons | Three tab pictograms, eleven build tile icons and seventeen glyphs, one silhouette each. | `icons/<kind>_<name>.svg`, 128x128, import scale 1.0, see "Icons and glyphs" |
@@ -765,6 +840,16 @@ picture at 32 px in greyscale for every type (a body of 150 px and a spread of t
 six read apart as under "Derrick League units": three pale hats over dark legs, three dark heads
 with long tubes, an armoured car with a mast, a slab with a long gun and a bright flank stripe, a
 truck with a ribbed tube, a long truck with a drum.
+
+Generated unit results (P102, the default view `d10` at 0.5, a transparent page): the visible team
+share is 11.7 % (Linemen), 7.3 % (Breakers), 9.5 % (Swift), 7.9 % (Torque), 7.6 % (Arcline) and
+9.8 % (Fuel Runner) of the picture's opaque pixels. The largest frame of each is 15.6, 16.6, 8.1,
+8.1, 8.9 and 10.9 KB, under the 28 KB limit. At 32 px in greyscale the spread of tones (5th to 95th
+percentile, test minimum 80) is 215, 212, 207, 147, 192 and 182 (the Derrick League's Flarejack
+142, Bullhead 119) and the body is 313 to 390 px (test minimum 150); the six read apart as under
+"Lumen Accord units": three white-capped figures with a dark reel, three figures with long white
+pods, a small white wedge with a fin, a flat grey tank on dark pods with a thin rail, a long white
+carrier with a thin raised line, a long white tube on wheels.
 
 Building results (P91b, scratch script, imported scale 0.5, alpha above 0.5): the six team layers
 have no non-grey pixel. The visible team share, by the tank's definition (shadow left out, nothing
@@ -1045,13 +1130,18 @@ screen, the sand half the right. A button at the top right (120x120 base px, lab
 it is on) turns the pages: **Units**, **Build**, **Ground**, **Icons**, **Seam** and **Iso**, and the
 Back button leaves from any of them. The pages after Units are built by `art_gallery.gd` (Build and
 Seam by `art_gallery_buildings.gd`, Iso by `art_gallery_iso.gd`) and start hidden.
-- **Units** (the page the gallery opens on) shows the six Derrick League units as the generator draws
-  them (`art_gallery_units.gd`, "Derrick League units"). On each ground two lines of the six, left to
-  right Roustabouts, Wildcatters, Flarejack, Bullhead, Mortar Rig and Tanker, in their default view
-  (`d06`, facing south-east): `RosterA` in team A's triad (Signal) and under it `RosterB` in team B's
-  (Arktisk), the names under team B's line. A unit is a rig `Node2D` named by its art id in
-  PascalCase with the sprites `Shadow`, `Hull` and, for the three with a gun, `Gun`, in the team
-  group; a frame cannot turn, so nothing here turns (the sprite is not called `Turret`, which the
+- **Units** (the page the gallery opens on) shows the six Derrick League units and the six Lumen
+  Accord units as the generator draws them (`art_gallery_units.gd`, "Derrick League units" and "Lumen
+  Accord units"). On each ground four lines of the six, in the same role order so that a column is one
+  role: the Derrick League's two on top, left to right Roustabouts, Wildcatters, Flarejack, Bullhead,
+  Mortar Rig and Tanker, in their default view (`d06`, facing south-east): `RosterA` in team A's
+  triad (Signal) and under it `RosterB` in team B's (Arktisk), the names under team B's line; then
+  the Lumen Accord's two, Linemen, Breakers, Swift, Torque, Arcline and Fuel Runner in their default
+  view (`d10`, facing south-west): `AccordA` in Signal and `AccordB` in Arktisk with the names under
+  it. The Lumen Accord's art is keyed in Arktisk, so its team A line is the same frames with the
+  Arktisk triad replaced by Signal, as the bake does. A unit is a rig `Node2D` named by its art id in PascalCase (`RenewRifle`
+  for the Lumen Accord's) with the sprites `Shadow`, `Hull` and, for the six with a gun, `Gun`, in
+  the team group; a frame cannot turn, so nothing here turns (the sprite is not called `Turret`, which the
   gallery turns on a building). The team colour is in the SVG text: the frame is read with the
   faction's key triad replaced by the player's and rasterised at 0.5 x zoom, as the match-start bake
   does (until P113's `IsoAtlas` the gallery rasterises the frames itself). Under them the **zoom
@@ -1098,8 +1188,9 @@ Seam by `art_gallery_buildings.gd`, Iso by `art_gallery_iso.gd`) and start hidde
 
 To add an asset:
 - A unit: add its model under `assets/art/models/` (see "Generated art", the generator writes its
-  frames) and its art id and name to `ROSTER_IDS` and `ROSTER_NAMES` in `art_gallery.gd`. The Iso
-  page lists every model by itself.
+  frames) and its art id and name to `ROSTER_IDS` and `ROSTER_NAMES` (Derrick League) or
+  `ACCORD_IDS` and `ACCORD_NAMES` (Lumen Accord) in `art_gallery.gd`. The Iso page lists every
+  model by itself.
 - A building goes into `BUILDINGS` of `art_gallery_buildings.gd`: its cell is built from its hull,
   team and turret files (the turret rule above applies to `defence_turret` only). A flag or any
   other multi-layer sprite is a rig `Node2D` in the group `gallery_team_a` or `gallery_team_b` with
@@ -1241,6 +1332,14 @@ Renaming a unit or a unit type is a data change, not a reskin.
   of a unit, as bands, rings and stripes) in both triads on both grounds, how the Flarejack looks
   at zoom 0.75, 1 and 1.5 in the zoom row, and whether the hard hats, breather masks and the flare
   pipe read as the Derrick League and nothing else.
+- P102 (Phase 3), please judge on the phone (Dev, Art gallery, the first page: Units, then Iso) the
+  six Lumen Accord units under the Derrick League's, a column for a role: the silhouettes of
+  "Lumen Accord units", their team marks (7 to 12 % of a unit, as bands, rings, stripes and a fin)
+  in both triads on both grounds, whether the white and blue-grey bodies read as the lighter, finer
+  side against the olive ones, whether the hexagonal helmets, the cable reels, the four track pods
+  of the Torque and the glass tank of the Fuel Runner read as the Lumen Accord and nothing else, and
+  whether the Linemen's team-coloured reel flanges are too much colour (they are 11.7 % of the
+  squad, the most of the twelve).
 - For touch-ux-dev (requests from P91b, for P84, P84d and P86): the canvases are the footprint plus
   96 px at 2x (384x480, 256x352, 128x224, import scale 0.5) and `tests/art` pins them, so the view can
   read the rise off the texture. The turret head has the building's canvas and turns about
@@ -1289,3 +1388,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-10-26 | v1.6 (P99, art-director, ADR 0023 accepted by Michael 2026-10-26): Projection, Light and Generated art (the generator `tools/artgen/`, `scripts/gen-art.sh`, the model format, the files, the key band, the eight triads, the faction palettes as the key band changed them, the 28 blockout models and their 304 frames, an open derrick for the Deep Bore, team rings, bands and no roof plates), the gallery's Iso page. Older sections that disagree are superseded as P101 to P105 replace their art. |
 | 2026-10-27 | v1.7 (P99b, art-director): cast shadows (+gx, 0.8 x height, one group at 35 %), the sheets and the index (`IsoSheetDef`, `IsoIndex`: canvases, anchors, mounts per hull frame, bar, pick and muzzle lifts in world px), the generated item cards, the CLI flags `--all`, `--model PATH` and `--check` (exit 4), the selection ellipse with an even stroke, the Iso page's shadows, ellipses and card. |
 | 2026-10-27 | v1.8 (P101, art-director): the six Derrick League units modelled under their art ids (Roustabouts, Wildcatters, Flarejack, Bullhead, Mortar Rig, Tanker; "Derrick League units"), the top-down unit files deleted, the Layer contract narrowed to buildings and flags, the Catalogue, Enemy target look and Reskin reworded (no `UnitLayer.ART_DIR`, `<type>_team.svg` or `UnitLayer.team_colors`), the Units page rebuilt on the generated frames, the Vehicles page and the tanks of the Build page deleted. |
+| 2026-10-27 | v1.9 (P102, art-director): the six Lumen Accord units modelled under their art ids (Linemen, Breakers, Swift, Torque, Arcline, Fuel Runner; "Lumen Accord units"), the Catalogue and the readability results for them, the Units page extended with the Lumen Accord's two lines (`AccordA`, `AccordB`, `ACCORD_IDS`, `ACCORD_NAMES`) under the Derrick League's, the zoom row a little lower to make room. |
