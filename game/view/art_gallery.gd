@@ -22,21 +22,19 @@ extends Control
 ## zooms, at the 6-inch phone's ring radius) and the effects atlas at scale 1 to each ground.
 ##
 ## The button at the top right turns the pages: Units (all of the above), Build, Ground, Vehicles,
-## Icons, Seam, Iso and Terrain. Iso (`_add_iso_page`, `art_gallery_iso.gd`, ADR 0023) steps through
-## the generated blockouts of both factions, every direction in two team colours at the camera
+## Icons, Iso and Terrain. Build (`_add_build_page`, `art_gallery_build.gd`, plan row P103) shows
+## each building of both factions on the iso ground with a tank in front of it and one behind it at
+## the camera zooms in two triads. Iso (`_add_iso_page`, `art_gallery_iso.gd`, ADR 0023) steps
+## through the generated models of both factions, every direction in two team colours at the camera
 ## zooms. Terrain (`_add_terrain_page`, `art_gallery_ground.gd`, plan row P105) shows the iso
 ## ground diamonds, the oil and gas field stages, the wellhead and the crater on the off-map colour.
-## Build and Seam are built by `art_gallery_buildings.gd` (`_add_building_pages`):
-## Build is a list to scroll with the six buildings on grass and sand in both team colours at the
-## camera zoom levels, a tank north and south of each, every building cut at its footprint's middle
-## line and drawn in the view's order (ADR 0022); Seam shows a building with the explored fog over
-## its west column beside the same building seen. Ground (`_add_ground_page`) shows the ore cells by
-## level, a mixed ore field, and the ghost looks of STYLE.md ("Ghosts"), the one that does not fit
-## with its reason glyph. Vehicles (`_add_vehicles_page`) shows the light tank beside the heavy
-## tank, the artillery and the harvester at gameplay zoom, on grass and sand, in both team colours.
-## Icons (`_add_icons_page`) shows the sidebar's tab and item icons and the HUD glyphs at their
-## size in dp on a dark HUD panel, and the glyphs and rally flags that sit on the map on grass and
-## sand. All are built in code and start hidden.
+## Ground (`_add_ground_page`) shows the ore cells by level, a mixed ore field, and the ghost looks
+## of STYLE.md ("Ghosts") on the iso barracks, the one that does not fit with its reason glyph.
+## Vehicles (`_add_vehicles_page`) shows the light tank beside the heavy tank, the artillery and the
+## harvester at gameplay zoom, on grass and sand, in both team colours. Icons (`_add_icons_page`)
+## shows the sidebar's tab and item icons and the HUD glyphs at their size in dp on a dark HUD
+## panel, and the glyphs and rally flags that sit on the map on grass and sand. All are built in
+## code and start hidden.
 ##
 ## To add an asset: add its layers as a rig on both backgrounds, put the rig in a team group and
 ## keep the layer names. See assets/art/STYLE.md.
@@ -97,13 +95,10 @@ const FRAME_COLOR: Color = Color("1C2127")
 const SQUAD_TILE_OFFSET_PX: float = 16.0  ## A squad pair fills one tile: 2 x 32 px.
 const TERRAIN_ROW_TOP: float = 0.02
 ## The pages the button at the top right cycles through; the button shows the page it is on.
-const PAGES: Array[String] = [
-	"Units", "Build", "Ground", "Vehicles", "Icons", "Seam", "Iso", "Terrain"
-]
-const Buildings: GDScript = preload("res://game/view/art_gallery_buildings.gd")
+const PAGES: Array[String] = ["Units", "Build", "Ground", "Vehicles", "Icons", "Iso", "Terrain"]
+const BuildPage: GDScript = preload("res://game/view/art_gallery_build.gd")
 const IsoPage: GDScript = preload("res://game/view/art_gallery_iso.gd")
 const TerrainPage: GDScript = preload("res://game/view/art_gallery_ground.gd")
-const BUILDING_ART: String = "res://assets/art/svg/buildings/%s_%s.svg"
 const ORE_ART: String = "res://assets/art/svg/ore/ore_%s.svg"
 ## Ore tiles by `ore_<name>.svg`: the five fill levels, two variants of each from level 1 up. A
 ## row of a patch is one string of names, left to right (STYLE.md, "Ore").
@@ -114,7 +109,8 @@ const ORE_FIELD_TOP: float = 168.0
 const GHOST_ROW_TOP: float = 420.0
 const SWATCH_ROW_TOP: float = 560.0
 const GHOST_ART: String = "res://assets/art/svg/ui/ghost_%s.svg"
-const GHOST_BUILDING: String = "barracks"  ## A 2x2 building, so the ghost is 128 px square.
+const GHOST_BUILDING: String = "barracks"  ## A 2x2 building: a diamond 128 px wide.
+const GHOST_ART_SCALE: float = 0.5  ## The 2x art at zoom 1.
 const GHOST_GAP_PX: float = 28.0
 const SWATCH_SIZE: Vector2 = Vector2(192.0, 128.0)
 ## The ghost looks (STYLE.md, "Ghosts"): ok and danger are the UI accents, neutral the neutral team
@@ -235,7 +231,6 @@ var _buildings_page: Control = null
 var _ground_page: Control = null
 var _vehicles_page: Control = null
 var _icons_page: Control = null
-var _seam_page: Control = null
 var _iso_page: Control = null
 var _terrain_page: Control = null
 
@@ -264,7 +259,7 @@ func _ready() -> void:
 	_add_ground_page()
 	_add_vehicles_page()
 	_add_icons_page()
-	_add_building_pages()
+	_add_build_page()
 	_add_iso_page()
 	_add_terrain_page()
 	_tint_team_layers(TEAM_A_GROUP, team_a_color)
@@ -455,13 +450,13 @@ func _tint_team_layers(group: StringName, color: Color) -> void:
 			layer.modulate = color
 
 
-## The Build and Seam pages (STYLE.md, "Buildings"), built by `art_gallery_buildings.gd`.
-func _add_building_pages() -> void:
-	var pages: Array[Control] = Buildings.add_pages(
-		self, TERRAIN_COLORS[&"grass_b"], TERRAIN_COLORS[&"sand"], explored_fog_alpha
-	)
-	_buildings_page = pages[0]
-	_seam_page = pages[1]
+## The Build page (plan row P103, STYLE.md "Buildings"), built by `art_gallery_build.gd` on first
+## show.
+func _add_build_page() -> void:
+	_buildings_page = BuildPage.new()
+	_buildings_page.grass_color = TERRAIN_COLORS[&"grass_b"]
+	_buildings_page.sand_color = TERRAIN_COLORS[&"sand"]
+	add_child(_buildings_page)
 
 
 ## The Iso page (plan row P99, ADR 0023): the generated blockouts, built by `art_gallery_iso.gd`.
@@ -524,77 +519,110 @@ func _add_ore_patch(row: Control, spec_rows: Array[String]) -> void:
 
 
 ## Three ghosts of one 2x2 building: it fits, it does not fit, and it was last seen. A cell is the
-## footprint; the sprite stands on its south edge and rises above it (ADR 0022 section 5).
+## building's canvas box at zoom 1, which the diamond of its footprint fills the foot of (ADR 0023
+## section 3: the marks lie on the footprint's cells, the sprite rises from the back corner).
 func _add_ghost_row(row: Control) -> void:
-	var texture: Texture2D = load(BUILDING_ART % [GHOST_BUILDING, "hull"])
-	var footprint: Vector2 = Vector2.ONE * texture.get_size().x
-	var rise: float = texture.get_size().y - texture.get_size().x
+	var sheet: IsoSheetDef = (load(IsoIndex.PATH) as IsoIndex).sheet(StringName(GHOST_BUILDING))
+	var size: Vector2 = Vector2(sheet.frame_size(&"hull")) * GHOST_ART_SCALE
+	var half: Vector2 = Vector2(
+		sheet.footprint * IsoProjection.HALF_W, sheet.footprint * IsoProjection.HALF_H
+	)
+	var back: Vector2 = Vector2(size.x / 2.0, sheet.anchor(&"hull").y * GHOST_ART_SCALE)
+	var diamond: PackedVector2Array = PackedVector2Array(
+		[
+			back,
+			back + Vector2(half.x, half.y),
+			back + Vector2(0.0, 2.0 * half.y),
+			back + Vector2(-half.x, half.y)
+		]
+	)
 	var kinds: Array[String] = ["Valid", "Blocked", "Seen"]
 	for i: int in kinds.size():
 		var cell: Control = Control.new()
 		cell.name = "Ghost" + kinds[i]
 		cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cell.size = footprint
-		cell.position = Vector2((i - 1) * (footprint.x + GHOST_GAP_PX) - footprint.x / 2.0, 0.0)
+		cell.size = size
+		cell.position = Vector2((i - 1) * (size.x + GHOST_GAP_PX) - size.x / 2.0, 0.0)
 		row.add_child(cell)
-		_build_ghost(cell, kinds[i], rise)
+		_build_ghost(cell, kinds[i], diamond)
 
 
-## A ghost: own team's building at a fade over a wash on its footprint and a solid frame when it
+## A ghost: own building at a fade over a wash on its footprint's diamond and a solid frame when it
 ## fits; the same in danger red with the hatch tile and a reason glyph on top when it does not (the
 ## wash first, then the faded sprite, then hatch and frame, so the blocked cells read through it);
-## a building of the other team under the dots and the explored fog, over the whole sprite box, when
+## the other player's building under the dots and the explored fog, over the whole sprite box, when
 ## it was last seen.
-func _build_ghost(cell: Control, kind: String, rise: float) -> void:
-	var box: Rect2 = Rect2(0.0, -rise, cell.size.x, cell.size.y + rise)
+func _build_ghost(cell: Control, kind: String, diamond: PackedVector2Array) -> void:
+	var seen: bool = kind == "Seen"
 	var rig: CanvasGroup = CanvasGroup.new()
 	rig.name = "Rig"
-	rig.position = box.get_center()
-	rig.add_to_group(TEAM_B_GROUP if kind == "Seen" else TEAM_A_GROUP)
-	for layer: String in ["hull", "team"]:
-		rig.add_child(_layer_sprite(layer, BUILDING_ART % [GHOST_BUILDING, layer]))
-	if kind != "Seen":
-		# `self_modulate`, not `modulate`: modulate reaches the Hull and Team children too and the
-		# fade blends twice, so the hull shows through the team plate (as MoveMarkerLayer notes).
+	var hull: Sprite2D = Sprite2D.new()
+	hull.name = "Hull"
+	hull.texture = _ghost_texture(1 if seen else 0)
+	hull.centered = false
+	rig.add_child(hull)
+	if not seen:
+		# `self_modulate`, not `modulate`: modulate reaches the Hull child too (as MoveMarkerLayer
+		# notes), and the group is what is faded once.
 		rig.self_modulate = Color(1.0, 1.0, 1.0, GHOST_SPRITE_ALPHA)
-	if kind == "Seen":
+	if seen:
 		cell.add_child(rig)
-		var dots: TextureRect = _pattern_rect(box.size, "seen", GHOST_NEUTRAL, GHOST_DOTS_ALPHA)
-		dots.position = box.position
-		cell.add_child(dots)
+		cell.add_child(_pattern_rect(cell.size, "seen", GHOST_NEUTRAL, GHOST_DOTS_ALPHA))
 		var fog: ColorRect = ColorRect.new()
 		fog.name = "ExploredFog"
 		fog.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		fog.color = Color(0.0, 0.0, 0.0, explored_fog_alpha / 255.0)
-		fog.position = box.position
-		fog.size = box.size
+		fog.size = cell.size
 		cell.add_child(fog)
 		return
 	var accent: Color = GHOST_OK if kind == "Valid" else GHOST_DANGER
-	var wash: ColorRect = ColorRect.new()
+	var wash: Polygon2D = Polygon2D.new()
 	wash.name = "Wash"
-	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wash.polygon = diamond
 	wash.color = Color(accent, GHOST_WASH_ALPHA)
-	wash.size = cell.size
 	cell.add_child(wash)
 	cell.add_child(rig)
 	if kind == "Blocked":
-		cell.add_child(_pattern_rect(cell.size, "hatch", accent, GHOST_HATCH_ALPHA))
-	var frame: ReferenceRect = ReferenceRect.new()
+		var hatch: Polygon2D = Polygon2D.new()
+		hatch.name = "PatternHatch"
+		hatch.polygon = diamond
+		hatch.uv = diamond
+		hatch.texture = load(GHOST_ART % "hatch")
+		hatch.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+		hatch.color = Color(accent, GHOST_HATCH_ALPHA)
+		cell.add_child(hatch)
+	var frame: Line2D = Line2D.new()
 	frame.name = "Frame"
-	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.editor_only = false
-	frame.border_color = accent
-	frame.border_width = GHOST_FRAME_PX
-	frame.size = cell.size
+	frame.points = diamond
+	frame.closed = true
+	frame.width = GHOST_FRAME_PX
+	frame.default_color = accent
 	cell.add_child(frame)
 	if kind == "Blocked":
 		# The glyph on the hatch it is read against: it is tinted danger red like the hatch, so the
 		# seat in its file (STYLE.md, "Icons and glyphs") is what keeps it apart from the bands.
 		var size_px: float = MAP_GLYPH_DP * PX_PER_DP
+		var middle: Vector2 = (diamond[0] + diamond[2]) / 2.0
 		cell.add_child(
-			_icon_rect(GHOST_REASON_GLYPH, size_px, (cell.size - Vector2.ONE * size_px) / 2.0)
+			_icon_rect(GHOST_REASON_GLYPH, size_px, middle - Vector2.ONE * size_px / 2.0)
 		)
+
+
+## The ghost building's hull frame in the triad of player `triad` (0 Signal, 1 Arktisk), the
+## Derrick League's own art with its key triad replaced as the match-start bake does it, at the
+## scale of zoom 1.
+func _ghost_texture(triad: int) -> ImageTexture:
+	var path: String = IsoSheetDef.frame_path(
+		&"fossil", &"bld", StringName(GHOST_BUILDING), &"hull", -1
+	)
+	var art: IsoPlayerArt = IsoPlayerArt.make(
+		&"fossil",
+		PackedStringArray(ArtPalette.KEYS[&"fossil"]),
+		PackedStringArray(WorldSort.TRIADS[triad])
+	)
+	var image: Image = Image.new()
+	image.load_svg_from_string(art.recolour(FileAccess.get_file_as_string(path)), GHOST_ART_SCALE)
+	return ImageTexture.create_from_image(image)
 
 
 ## The two pattern tiles on their own, repeated over a rect, so the seams can be judged.
@@ -826,9 +854,8 @@ func _show_page(index: int) -> void:
 	_ground_page.visible = index == 2
 	_vehicles_page.visible = index == 3
 	_icons_page.visible = index == 4
-	_seam_page.visible = index == 5
-	_iso_page.visible = index == 6
-	_terrain_page.visible = index == 7
+	_iso_page.visible = index == 5
+	_terrain_page.visible = index == 6
 	_page_button.text = PAGES[index]
 
 

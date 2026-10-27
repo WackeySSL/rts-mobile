@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://kbxiima53jpe"
-path="res://.godot/imported/power_plant_team.svg-81314e4a7a24cfa5a7d4c3d43cefbdfc.ctex"
+uid="uid://cpdasr5uhf2kt"
+path="res://.godot/imported/emblem_fossil.svg-58c1cb2d4a350725f647815ecfd50596.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/art/svg/buildings/power_plant_team.svg"
-dest_files=["res://.godot/imported/power_plant_team.svg-81314e4a7a24cfa5a7d4c3d43cefbdfc.ctex"]
+source_file="res://assets/art/svg/icons/emblem_fossil.svg"
+dest_files=["res://.godot/imported/emblem_fossil.svg-58c1cb2d4a350725f647815ecfd50596.ctex"]
 
 [params]
 
@@ -38,6 +38,6 @@ process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
 detect_3d/compress_to=1
-svg/scale=0.5
+svg/scale=1.0
 editor/scale_with_editor_scale=false
 editor/convert_colors_with_editor_theme=false

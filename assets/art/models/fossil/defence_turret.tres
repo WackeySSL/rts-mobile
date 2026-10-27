@@ -8,15 +8,22 @@ art_id = &"defence_turret"
 faction = &"fossil"
 category = &"bld"
 footprint = 1
-silhouette = "A squat poured-concrete bunker with a team band and a sloped cap, carrying an octagonal gun head with one short thick barrel."
-mount = Vector3(0, 0, 0.6)
+silhouette = "A squat poured-concrete bunker with a team band and a short whip aerial, carrying an octagonal gun head with a team ring and one short thick barrel in a vented sleeve with a muzzle brake."
+mount = Vector3(0, 0, 0.72)
 prims = PackedStringArray(
 "box hull concrete 0 0 0 0.92 0.92 0.06",
-"box hull concrete 0 0 0.06 0.8 0.8 0.2",
-"box hull team 0 0 0.26 0.84 0.84 0.08",
-"box hull concrete 0 0 0.34 0.8 0.8 0.06",
-"wedge hull concrete 0 0 0.4 0.7 0.7 0.16 slope=0.5",
+"box hull concrete 0 0 0.06 0.8 0.8 0.28",
+"box hull team 0 0 0.34 0.84 0.84 0.1",
+"box hull concrete 0 0 0.44 0.8 0.8 0.1",
+"prism hull iron 0 0 0.54 0.6 0.6 0.06 sides=16",
+"box hull iron 0.41 0 0.14 0.02 0.3 0.1",
+"box hull iron 0 0.41 0.14 0.3 0.02 0.1",
+"prism hull steel -0.3 -0.3 0.6 0.04 0.04 0.35 sides=6",
 "prism head olive 0 0 0 0.5 0.5 0.14 sides=8",
-"box head iron 0 0 0.14 0.2 0.2 0.06",
-"box head steel 0.45 0 0.04 0.4 0.12 0.1"
+"prism head team 0 0 0.14 0.52 0.52 0.08 sides=8",
+"prism head olive 0 0 0.22 0.46 0.46 0.08 sides=8",
+"box head iron -0.1 0 0.3 0.2 0.2 0.05",
+"prism head rust 0.36 0 0.035 0.26 0.17 0.17 sides=8 axis=x",
+"prism head steel 0.54 0 0.065 0.18 0.11 0.11 sides=8 axis=x",
+"prism head iron 0.67 0 0.045 0.1 0.15 0.15 sides=8 axis=x"
 )

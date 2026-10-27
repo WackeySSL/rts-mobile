@@ -21,7 +21,7 @@ func test_style_md_names_the_version_the_sections_and_the_tile_rules() -> void:
 	assert_str(terrain).contains("The soft rim")
 	assert_str(terrain).contains("`clipPath` called `inner`")
 	assert_str(_flat(_section(style, "## Fields"))).contains("**full** above two thirds")
-	assert_str(_flat(_section(style, "## Gallery"))).contains("**Terrain** (the eighth page")
+	assert_str(_flat(_section(style, "## Gallery"))).contains("**Terrain** (the seventh page")
 
 
 func test_the_palette_table_starts_with_the_base_colour_each_file_fills_its_diamond_with() -> void:

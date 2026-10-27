@@ -6,7 +6,7 @@ extends GdUnitTestSuite
 const Support: GDScript = preload("res://tests/art/ground_art_support.gd")
 const TerrainPage: GDScript = preload("res://game/view/art_gallery_ground.gd")
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
-const TERRAIN_PAGE: int = 7
+const TERRAIN_PAGE: int = 6
 const BASE: Vector2 = Vector2(1280, 720)
 const CONTENT: String = "Scroll/Content/"
 
