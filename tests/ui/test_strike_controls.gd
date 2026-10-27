@@ -92,6 +92,61 @@ func test_every_part_is_inside_the_safe_rect_48_dp_clear_of_the_hud_and_the_hud_
 			_aim.cancel()
 
 
+## The check mark and the X are 64 dp (plan P112c), the size `touch-ui-rules` gives placement's
+## confirm and cancel: the constant, and the plates on every screen and profile, also with a
+## cutout. The whole row stays inside the safe rect, its three parts clear of one another (a gap
+## between them) and clear of the HUD, and the strike button keeps at least its 72 dp.
+func test_the_check_mark_and_the_x_are_64_dp_and_the_row_fits_the_safe_rect_without_overlap(
+) -> void:
+	assert_float(StrikeControls.ACTION_DP).is_equal(64.0)
+	for screen: Dictionary in _screens(null):
+		await _open(screen["size"], screen["metrics"], true)
+		_ready_to_fire()
+		_aim.begin()
+		await await_idle_frame()
+		var why: String = str(screen["label"])
+		var safe: Rect2 = UiScale.safe_rect_base()
+		var row: Rect2 = _rect("StrikeControls")
+		assert_bool(safe.encloses(row)).override_failure_message("%s: %s" % [why, row]).is_true()
+		var parts: Array[Rect2] = []
+		for part: String in TAPPABLE:
+			parts.append(_rect(part))
+		for index: int in 2:  # The check mark and the X, not the strike button.
+			var size: Vector2 = parts[index].size
+			var at: String = "%s: %s is %s" % [why, TAPPABLE[index], size]
+			assert_float(size.x).override_failure_message(at).is_equal_approx(
+				UiScale.dp(64.0), TOLERANCE_PX
+			)
+			assert_float(size.y).override_failure_message(at).is_equal_approx(
+				UiScale.dp(64.0), TOLERANCE_PX
+			)
+		# The strike button's foot can make it a little wider than its 72 dp, never narrower.
+		var round_size: String = "%s: the strike button %s" % [why, parts[2]]
+		var least: float = UiScale.dp(StrikeButton.SIZE_DP) - TOLERANCE_PX
+		assert_float(parts[2].size.x).override_failure_message(round_size).is_greater_equal(least)
+		assert_float(parts[2].size.y).override_failure_message(round_size).is_greater_equal(least)
+		var gap: float = UiScale.dp(8.0) - TOLERANCE_PX
+		for index: int in 2:  # The row runs check mark, X, strike button, each a gap from the next.
+			var clash: String = "%s: %s, %s" % [why, parts[index], parts[index + 1]]
+			(
+				assert_float(parts[index + 1].position.x - parts[index].end.x)
+				. override_failure_message(clash)
+				. is_greater_equal(gap)
+			)
+		for other: String in OTHERS:
+			var control: Control = _hud(other)
+			if control.is_visible_in_tree():
+				var clash: String = (
+					"%s: the row %s, %s %s" % [why, row, other, control.get_global_rect()]
+				)
+				(
+					assert_bool(row.intersects(control.get_global_rect()))
+					. override_failure_message(clash)
+					. is_false()
+				)
+		_aim.cancel()
+
+
 func test_landscape_has_the_row_on_the_top_line_left_of_the_slot_and_portrait_at_the_right_edge(
 ) -> void:
 	for screen: Dictionary in _screens(null):
