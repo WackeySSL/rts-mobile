@@ -1,9 +1,9 @@
 class_name SelectionPanel
 extends PanelContainer
 ## What is selected and how many (read-only in Phase 1): at the bottom centre in landscape, and in
-## portrait the top line, right of the top-left controls. One row per unit type: its own art (hull,
-## team layer in the owner colour, turret), its display name and "×N". With more than one type a
-## last row shows the total. Hidden when nothing is selected.
+## portrait the top line, right of the top-left controls. One row per unit type: its item card (the
+## generated picture of P99b, in the type's own colours), its display name and "×N". With more than
+## one type a last row shows the total. Hidden when nothing is selected.
 ## Fed by PlayerController.selection_changed (wired in the scene), so it works on a change only:
 ## a selected unit that dies leaves the selection first (PlayerController), which refreshes the
 ## counts. It reads `runner.snapshot` afresh at each call (ADR 0012 section 3), the names from its
@@ -30,6 +30,7 @@ extends PanelContainer
 ## backdrop is the `panel` style of the `SelectionPanel` variation (padding and corners in dp, in
 ## px once `HudTheme` has run), a name is a `Label`, the counts and the total are `NumberLabel`.
 
+const ICON_ART: String = "res://assets/art/iso/icons/item_%s.svg"
 const ICON_DP: float = 40.0
 const MIN_HEIGHT_DP: float = 48.0
 const GAP_DP: float = 8.0
@@ -44,7 +45,6 @@ const LEVEL_NO_TOTAL: int = 3
 const LEVEL_CHIP: int = 4
 
 @export var runner: MatchRunner
-@export var unit_layer: UnitLayer  ## Owner colours for the icons.
 @export var army_bar: ArmyBar  ## The landscape band starts after it.
 @export var top_left: Control  ## The portrait line starts after it (the Dev button).
 
@@ -57,11 +57,11 @@ var _level: int = LEVEL_NAMED  ## The fit level of the last layout (landscape: a
 var _counts: PackedInt32Array = PackedInt32Array()  ## Selected units per type index.
 
 
-## One unit type: the icon (three stacked layers), its name and its count.
+## One unit type: the icon (its item card), its name and its count.
 class Row:
 	extends HBoxContainer
 
-	var layers: Array[TextureRect] = []
+	var card: TextureRect = TextureRect.new()
 	var title: Label = Label.new()
 	var count: Label = Label.new()
 
@@ -72,14 +72,11 @@ class Row:
 		min_size.min_dp = Vector2(ICON_DP, ICON_DP)
 		icon.add_child(min_size)
 		add_child(icon)
-		for file: String in UnitLayer.LAYER_FILES:
-			var layer: TextureRect = TextureRect.new()
-			layer.name = file.capitalize()
-			layer.set_anchors_preset(Control.PRESET_FULL_RECT)
-			layer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			layer.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			icon.add_child(layer)
-			layers.append(layer)
+		card.name = "Card"
+		card.set_anchors_preset(Control.PRESET_FULL_RECT)
+		card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		card.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.add_child(card)
 		title.name = "Name"
 		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -89,12 +86,10 @@ class Row:
 			label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			add_child(label)
 
-	func show_type(id: StringName, label: String, number: int, tint: Color) -> void:
+	func show_type(id: StringName, label: String, number: int) -> void:
 		visible = true
-		for index: int in layers.size():  # A type without art shows a blank icon.
-			var path: String = "%s%s_%s.svg" % [UnitLayer.ART_DIR, id, UnitLayer.LAYER_FILES[index]]
-			layers[index].texture = load(path) if ResourceLoader.exists(path) else null
-		layers[UnitLayer.TEAM_LAYER].modulate = tint
+		var path: String = ICON_ART % id  # A type without a card shows a blank icon.
+		card.texture = load(path) if ResourceLoader.exists(path) else null
 		title.text = label
 		count.text = "×%d" % number
 
@@ -148,7 +143,6 @@ func set_selected(ids: PackedInt32Array) -> void:
 		if row < 0:
 			continue
 		_counts[type_index[row]] += 1
-	var tint: Color = unit_layer.team_color(runner.scenario.local_player)  # Own units only.
 	var shown: int = 0
 	var total: int = 0
 	for type: int in types:
@@ -156,7 +150,7 @@ func set_selected(ids: PackedInt32Array) -> void:
 			continue
 		if shown == _rows.size():
 			_add_row()
-		_rows[shown].show_type(snap.type_ids[type], snap.type_names[type], _counts[type], tint)
+		_rows[shown].show_type(snap.type_ids[type], snap.type_names[type], _counts[type])
 		shown += 1
 		total += _counts[type]
 	_shown = shown

@@ -36,7 +36,7 @@ extends Node2D
 ##
 ## `_process` plans the frame's lines and quads into reused packed arrays and `_draw` paints that
 ## plan: tracers as straight lines (butt caps: draw_line has no round ones, which STYLE.md asks
-## for), everything else as quads of one atlas (ADR 0011 section 3, z 130 in ADR 0012 section 6).
+## for), everything else as quads of one atlas (ADR 0011 section 3, z 50 in ADR 0023 section 2).
 ##
 ## A shell that overflowed the slot pool (P42b) has a SHOT and no IMPACT. The snapshot has no
 ## overflow count and STYLE.md names no look for it, so it gets what any projectile SHOT gets: the

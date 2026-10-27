@@ -48,7 +48,7 @@ const PINCH_CENTRE_PORTRAIT: Vector2 = Vector2(360, 300)
 ## and the world rect that holds exactly them.
 const TOP_TANKS: Array[int] = [1, 2, 3, 7, 8, 13]
 const TOP_BOX: Rect2 = Rect2(-440, 410, 240, 80)
-const RED: Color = Color("E5484D")
+const CARD: String = "res://assets/art/iso/icons/item_light_tank.svg"
 const IDLE: int = World.Order.IDLE
 
 var _window_size_before: Vector2i
@@ -234,7 +234,9 @@ func test_pinch_levels_then_tap_at_0_75(profile: String, _test_parameters := PRO
 
 ## The case deferred from the P15 and P21 reviews: nothing in the input path, the order or the panel
 ## may assume the player is 1. The scenario is a copy of controls_test with local_player 2 (red).
-func test_player_2_selects_orders_tints(profile: String, _test_parameters := PROFILES) -> void:
+func test_player_2_selects_orders_shows_its_card(
+	profile: String, _test_parameters := PROFILES
+) -> void:
 	var source: ScenarioDef = load(SCENARIO)
 	var scenario: ScenarioDef = source.duplicate()
 	scenario.local_player = 2
@@ -283,11 +285,11 @@ func _assert_panel(count: String) -> void:
 	assert_str((_panel.get_node("Rows/Row0/Count") as Label).text).is_equal(count)
 
 
-## The panel icon's Team layer wears team_color(2), red, and not team_color(1), blue.
+## The panel icon is the tank's item card, whose colours are its own: no tint of the owner's.
 func _assert_red_icon() -> void:
-	var tint: Color = (_panel.get_node("Rows/Row0/Icon/Team") as TextureRect).modulate
-	assert_that(tint).is_equal(RED)
-	assert_that(tint).is_equal(_layer.team_color(2))
+	var card: TextureRect = _panel.get_node("Rows/Row0/Icon/Card")
+	assert_str(card.texture.resource_path).is_equal(CARD)
+	assert_that(card.modulate).is_equal(Color.WHITE)
 
 
 func _hud(node_name: String) -> Control:

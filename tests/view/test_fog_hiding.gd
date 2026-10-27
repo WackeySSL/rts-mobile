@@ -16,6 +16,7 @@ extends GdUnitTestSuite
 ## tests read the rigs' `visible`, the bar plan (`bar_count`, `bar_row`), the projectile plan
 ## (`active_count`, `quad_slot`) and the effect plan (`active_count`, `line_count`, `quad_count`).
 
+const Frames: GDScript = preload("res://tests/view/support/rig_frames.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const Rig: GDScript = preload("res://tests/view/support/fog_rig.gd")
 const EffectsRig: GDScript = preload("res://tests/view/support/effects_rig.gd")
@@ -23,7 +24,6 @@ const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
 ## The screens every screen is tested at: base, 20:9 phone and 4:3 tablet, each held both ways.
 const TARGET_SIZES: Array[Vector2i] = ScreenSizes.ALL
-const RED: Color = Color("E5484D")
 ## Milli-tile points: a seen tile (tank 1's, tile (8, 18)), an unseen one (tile (40, 40)) and red
 ## tank 31's own tile (34, 10).
 const SEEN: Vector2i = Vector2i(8500, 18500)
@@ -139,9 +139,9 @@ func test_hiding_changes_only_visible_a_hidden_rig_keeps_its_place_tint_and_scre
 	var from: Vector2 = IsoProjection.ground_to_px(snap.prev_pos_x[30], snap.prev_pos_y[30])
 	var to: Vector2 = IsoProjection.ground_to_px(snap.pos_x[30], snap.pos_y[30])
 	assert_vector(_rig(30).position).is_equal_approx(from.lerp(to, 0.25), Vector2(0.001, 0.001))
-	assert_that(_rig(30).get_node("Team").modulate).is_equal(RED)
-	assert_that(_rig(30).get_node("Hull").modulate).is_equal(Color.WHITE)
+	assert_that(_rig(30).get_node("Hull").modulate).is_equal(Color.WHITE)  # No tint, no dimming.
 	assert_int(_rig(30).get_child_count()).is_equal(3)  # Nothing was added or taken away.
+	assert_int(Frames.dir(_units, 30, &"hull")).is_equal(6)  # Its frame is the one it was made with.
 	var pick: PickSnapshot = PickSnapshot.new()
 	for size: Vector2i in TARGET_SIZES:
 		get_window().size = size
@@ -464,7 +464,7 @@ func _frame() -> void:
 
 
 func _rig(row: int) -> Node2D:
-	return _units.get_child(row) as Node2D
+	return _units.rig(row)
 
 
 ## Projectile slot `slot` live with id `id`, going from `from` to `to` (milli-tiles), in the

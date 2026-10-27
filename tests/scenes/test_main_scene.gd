@@ -108,17 +108,16 @@ func test_camera_starts_on_the_scenario_camera_tile_and_sees_all_30_tanks_at_eve
 		assert_that(_camera.position).is_equal(Vector2(-288, 544))  # The centre of tile (12, 21).
 		assert_that(_camera.get_screen_center_position()).is_equal(Vector2(-288, 544))
 		for row: int in 30:
-			(
-				assert_bool(_camera.visible_world_rect().has_point(layer.get_child(row).position))
-				. is_true()
-			)
+			assert_bool(_camera.visible_world_rect().has_point(layer.rig(row).position)).is_true()
 
 
 func test_30_blue_and_10_red_tanks_stand_on_the_map_under_the_unit_layer() -> void:
 	var layer: UnitLayer = _main.get_node("UnitLayer")
-	var tints: Array[Color] = []
-	for rig: Node2D in layer.get_children():
-		tints.append(rig.get_node("Team").modulate)
+	var atlas: IsoAtlas = (_main.get_node("WorldSort") as WorldSort).atlas
+	var hulls: Array[Rect2] = []
+	for row: int in layer.rig_count():
+		var rig: Node2D = layer.rig(row)
+		hulls.append((rig.get_node("Hull") as Sprite2D).region_rect)
 		assert_bool(Rect2(_map.map_rect_px()).has_point(rig.position)).is_true()
 		var ground: Vector2i = IsoProjection.px_to_ground(rig.position)
 		(
@@ -126,8 +125,9 @@ func test_30_blue_and_10_red_tanks_stand_on_the_map_under_the_unit_layer() -> vo
 			. is_true()
 		)
 	assert_int(layer.rig_count()).is_equal(40)
-	assert_int(tints.count(Color("2F80ED"))).is_equal(30)
-	assert_int(tints.count(Color("E5484D"))).is_equal(10)
+	# The two owners wear their own triads, which are two frames of the one atlas.
+	assert_int(hulls.count(Rect2(atlas.region(&"light_tank", &"hull", 6, 0)))).is_equal(30)
+	assert_int(hulls.count(Rect2(atlas.region(&"light_tank", &"hull", 6, 1)))).is_equal(10)
 	assert_object(layer.runner).is_same(_main.get_node("MatchRunner"))
 	assert_object(layer.camera).is_same(_camera)
 	# The runner ticks before the layer reads it, the map is drawn under the units, the HUD above.

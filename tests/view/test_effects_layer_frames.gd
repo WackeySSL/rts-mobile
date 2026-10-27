@@ -2,7 +2,7 @@ extends GdUnitTestSuite
 ## EffectsLayer from the runner's side (plan P44b, ADR 0012 section 3): that every tick's events
 ## are read once when a frame plays several catch-up ticks, that a frame paints its plan and stops
 ## painting it when the last effect is gone, that frames make no object, that a record the tables
-## do not know draws something sane, and the layer's place in the main scene (z 130, after the
+## do not know draws something sane, and the layer's place in the main scene (z 50, after the
 ## health bars, before the markers). The events themselves are in test_effects_layer.gd and the
 ## look in time in test_effects_layer_curves.gd (gdlint allows 20 public methods per file).
 
@@ -298,7 +298,7 @@ func test_a_layer_without_a_runner_or_before_its_match_plans_nothing_and_raises_
 	assert_int(waiting.line_count() + waiting.quad_count()).is_equal(0)
 
 
-func test_the_main_scene_has_the_layer_at_z_130_between_the_health_bars_and_the_markers() -> void:
+func test_the_main_scene_has_the_layer_at_z_50_between_the_health_bars_and_the_markers() -> void:
 	get_window().size = BASE_SIZE
 	await await_idle_frame()
 	var main: Node2D = auto_free((load(MAIN_SCENE) as PackedScene).instantiate())
@@ -308,7 +308,7 @@ func test_the_main_scene_has_the_layer_at_z_130_between_the_health_bars_and_the_
 	runner.paused = true
 	var layer: EffectsLayer = main.get_node("EffectsLayer")
 	layer.reveal_enemies = true  # Tile (5, 5) is in the dark at the start of the match.
-	assert_int(layer.z_index).is_equal(130)
+	assert_int(layer.z_index).is_equal(50)  # ADR 0023 section 2.
 	assert_bool(layer.z_as_relative).is_false()
 	assert_object(layer.runner).is_same(runner)
 	assert_int(layer.capacity).is_equal(128)
@@ -322,7 +322,7 @@ func test_the_main_scene_has_the_layer_at_z_130_between_the_health_bars_and_the_
 		order.append(child.name)
 	assert_int(order.find(&"EffectsLayer")).is_greater(order.find(&"HealthBarLayer"))
 	assert_int(order.find(&"EffectsLayer")).is_less(order.find(&"MarkerLayer"))
-	if order.has(&"ProjectileLayer"):  # P44a's layer, z 120, comes first.
+	if order.has(&"ProjectileLayer"):  # P44a's layer, z 40, comes first.
 		assert_int(order.find(&"EffectsLayer")).is_greater(order.find(&"ProjectileLayer"))
 	# And it takes the events of the runner's ticks: this scene has tanks only.
 	var cannon: int = runner.snapshot.weapon_ids.find(&"tank_cannon")

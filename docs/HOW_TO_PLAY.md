@@ -23,6 +23,12 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Turn the phone while a finger is on the screen (a drag, a box or a pinch) | That gesture is cancelled, never turned into a tap or an order: no unit is selected or sent. Lift the finger and start the gesture again | |
 | Auto-rotate is off in the phone's settings | The game stays in the orientation the phone is in. The game cannot force a turn and has no lock of its own | |
 
+## Units
+| Action | Result | Teach |
+|---|---|---|
+| Look at your units | Each unit is drawn from the picture set of its side (the Derrick League or the Lumen Accord) in its player's team colour (the first player amber, the second cyan) with a shadow on the ground under it; units of two players on one side still differ by colour. The selection panel shows the unit's item card | |
+| Watch a unit drive or fight | The picture turns in steps to face where the unit drives (infantry in coarser steps); a tank's turret turns on its own to face its target while the hull keeps its heading; infantry turn as a whole toward their target. A unit lower on the screen is drawn in front of one above it | |
+
 ## Selection
 | Action | Result | Teach |
 |---|---|---|

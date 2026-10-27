@@ -97,7 +97,7 @@ func test_the_camera_starts_at_the_lowest_zoom_on_the_fight_at_every_size() -> v
 
 func test_a_hidden_rig_or_one_outside_the_view_is_not_a_drawn_rig() -> void:
 	var arena: Node2D = await _open(UiProfiles.by_name(&"desktop"))
-	var rig: Node2D = (arena.unit_layer as UnitLayer).get_child(0)
+	var rig: Node2D = (arena.unit_layer as UnitLayer).rig(0)
 	rig.position = arena.camera.position  # Inside the view.
 	var counted: int = arena.drawn_rigs()
 	rig.visible = false

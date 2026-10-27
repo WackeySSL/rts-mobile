@@ -395,7 +395,7 @@ func _check_hidden_enemy(
 		markers._process(0.0)
 		var world: World = _runner.world
 		var row: int = world.index_of(enemy_id)
-		var rig: Node2D = _layer.get_node("Unit%d" % enemy_id)
+		var rig: Node2D = _layer.rig(row)
 		assert_bool(_layer.is_shown(row)).is_false()
 		_camera.centre_on(rig.global_position)
 		var off_centre: Vector2 = _layer.unit_screen_position(row) - Vector2(0, UiScale.dp(20))
@@ -496,7 +496,7 @@ func _pan(by: Vector2) -> void:
 ## The ids of the rigs whose Ring shows, in row order.
 func _ringed_ids() -> Array[int]:
 	var ids: Array[int] = []
-	for rig: Node in _layer.get_children():
+	for rig: Node in _layer.world_sort.get_children():
 		var ring: Node2D = rig.get_node_or_null("Ring")
 		if ring != null and ring.visible:
 			ids.append(int(String(rig.name).trim_prefix("Unit")))

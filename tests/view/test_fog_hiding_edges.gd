@@ -168,7 +168,7 @@ func _build(scenario: ScenarioDef) -> void:
 
 
 func _rig(row: int) -> Node2D:
-	return _units.get_child(row) as Node2D
+	return _units.rig(row)
 
 
 ## Projectile slot `slot` live with id `id`, going from `from` to `to` (milli-tiles), in the
