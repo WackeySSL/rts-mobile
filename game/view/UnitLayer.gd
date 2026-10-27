@@ -525,7 +525,7 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 	var counts_at: int = (player - 1) * fog.cells
 	for row: int in rigs.size():
 		if rigs[row] == null:
-			continue  # A building: P115 draws it.
+			continue  # A building: BuildingLayer draws it.
 		var from: Vector2 = IsoProjection.ground_to_px(prev_x[row], prev_y[row])
 		var to: Vector2 = IsoProjection.ground_to_px(cur_x[row], cur_y[row])
 		var at: Vector2 = from.lerp(to, alpha)

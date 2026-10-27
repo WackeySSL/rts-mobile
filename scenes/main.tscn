@@ -24,6 +24,8 @@
 [ext_resource type="Script" path="res://game/view/FogLayer.gd" id="20_fog"]
 [ext_resource type="Script" path="res://game/ui/BuildSidebar.gd" id="21_sidebar"]
 [ext_resource type="Script" path="res://game/view/WorldSort.gd" id="22_sort"]
+[ext_resource type="Script" path="res://game/view/DecalLayer.gd" id="30_decals"]
+[ext_resource type="Script" path="res://game/view/BuildingLayer.gd" id="31_buildings"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -41,6 +43,11 @@ tick_mode = 2
 script = ExtResource("1_map")
 runner = NodePath("../MatchRunner")
 
+[node name="DecalLayer" type="Node2D" parent="."]
+z_index = 1
+z_as_relative = false
+script = ExtResource("30_decals")
+
 [node name="WorldSort" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
 y_sort_enabled = true
 z_index = 10
@@ -54,12 +61,19 @@ runner = NodePath("../MatchRunner")
 camera = NodePath("../Camera")
 world_sort = NodePath("../WorldSort")
 
-[node name="HealthBarLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "unit_layer")]
+[node name="BuildingLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort", "decals")]
+script = ExtResource("31_buildings")
+runner = NodePath("../MatchRunner")
+world_sort = NodePath("../WorldSort")
+decals = NodePath("../DecalLayer")
+
+[node name="HealthBarLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer")]
 z_index = 30
 z_as_relative = false
 script = ExtResource("18_bars")
 runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
+building_layer = NodePath("../BuildingLayer")
 
 [node name="ProjectileLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
 z_index = 40

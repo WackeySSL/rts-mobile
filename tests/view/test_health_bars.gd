@@ -397,7 +397,9 @@ func test_the_main_scene_has_the_layer_at_z_30_between_the_units_and_the_markers
 	var order: Array[StringName] = []
 	for child: Node in main.get_children():
 		order.append(child.name)
-	assert_int(order.find(&"HealthBarLayer")).is_equal(order.find(&"UnitLayer") + 1)
+	assert_int(order.find(&"BuildingLayer")).is_equal(order.find(&"UnitLayer") + 1)
+	assert_int(order.find(&"HealthBarLayer")).is_equal(order.find(&"BuildingLayer") + 1)
+	assert_object(layer.building_layer).is_same(main.get_node("BuildingLayer"))
 	assert_int(order.find(&"MarkerLayer")).is_greater(order.find(&"HealthBarLayer"))
 	assert_str(layer.get_script().resource_path).is_equal(SCRIPT_PATH)
 

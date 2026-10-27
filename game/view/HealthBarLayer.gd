@@ -10,7 +10,11 @@ extends Node2D
 ## the start of a frame (`sync_rows`), so the tree order of the two layers does not matter.
 ##
 ## A unit that the unit layer does not show (an enemy in the fog) gets no bar, whatever its hp did.
-## A row with a footprint is a building and gets no unit bar here (its bar is P115's).
+## A row with a footprint is a building (P115): its bar is the width of its footprint (24, 40 and
+## 56 dp for 1x1, 2x2 and 3x3, STYLE.md "Health bars"), centred on its footprint centre, and stands
+## the sheet's `bar_lift_px` above it (`building_layer.bar_lift_px`). It shows for the same few
+## seconds after a hit (a building cannot be selected before P115b), and only while
+## `building_layer.is_shown`: an enemy building whose footprint the fog hides has none.
 ##
 ## A bar is sized in dp, so it looks the same at every zoom: world px per dp is the base px per dp
 ## over the camera zoom. It is centred on its unit's projected ground point (`IsoProjection`, ADR
@@ -23,6 +27,11 @@ extends Node2D
 
 const VEHICLE_WIDTH_DP: int = 22
 const INFANTRY_WIDTH_DP: int = 16
+## The width of each bar class: a vehicle, an infantry squad, then a 1x1, a 2x2 and a 3x3 building
+## (a larger footprint takes the last).
+const CLASS_WIDTH_DP: Array[int] = [VEHICLE_WIDTH_DP, INFANTRY_WIDTH_DP, 24, 40, 56]
+const INFANTRY_CLASS: int = 1
+const BUILDING_CLASS: int = 2  ## A 1x1 building's class; a footprint of n has class 1 + n.
 const HEIGHT_DP: int = 6
 const GAP_DP: int = 1  ## Between the bar's bottom edge and the sprite.
 const NOTCH_WIDTH_DP: int = 4  ## An enemy bar's notch, open in the top edge.
@@ -34,6 +43,8 @@ const SHAPE_STRIDE: int = 5  ## A shape lists rects as x, y, w, h and 0 (edge) o
 
 @export var runner: MatchRunner
 @export var unit_layer: UnitLayer  ## Gives the selection, the hit times, the camera and the clock.
+## Says which buildings are shown and how high their bars stand; null: no building has a bar.
+@export var building_layer: BuildingLayer
 ## The look: the fills are not team colours (STYLE.md). They are exports of this world-space layer
 ## and not theme items, like the team tints of `UnitLayer`, so a new palette edits them here.
 @export var edge_color: Color = Color("1C2127")
@@ -51,8 +62,8 @@ var _bar_first: PackedInt32Array = PackedInt32Array()
 var _rects: int = 0
 var _bar_count: int = 0
 var _drawn: int = 0  ## Rects the last _draw painted.
-## The four shapes, own and enemy for each class (index 2 x enemy + infantry), made once: their
-## rects (SHAPE_STRIDE ints each), the rect count and the width in dp.
+## The shapes, own and enemy for each class (index class + enemy x CLASS_WIDTH_DP.size()), made
+## once: their rects (SHAPE_STRIDE ints each), the rect count and the width in dp.
 var _shapes: Array[PackedInt32Array] = []
 var _shape_rects: PackedInt32Array = PackedInt32Array()
 var _shape_width: PackedInt32Array = PackedInt32Array()
@@ -60,7 +71,7 @@ var _shape_width: PackedInt32Array = PackedInt32Array()
 @warning_ignore("integer_division")
 func _init() -> void:
 	for enemy: bool in [false, true]:
-		for width: int in [VEHICLE_WIDTH_DP, INFANTRY_WIDTH_DP]:
+		for width: int in CLASS_WIDTH_DP:
 			var shape: PackedInt32Array = _make_shape(enemy, width)
 			_shapes.append(shape)
 			_shape_rects.append(shape.size() / SHAPE_STRIDE)
@@ -167,6 +178,8 @@ func _plan() -> void:
 	if snap == null or unit_layer == null or unit_layer.camera == null:
 		return
 	unit_layer.sync_rows()  # One sync for the loop: the per-row answers below do not sync.
+	if building_layer != null:
+		building_layer.sync_rows()
 	var count: int = snap.unit_id.size()
 	# Sized by _bar_first, which the closing write below reaches at [bar count] even for 0 units.
 	if _bar_first.size() < count + 1:
@@ -194,23 +207,32 @@ func _plan() -> void:
 		var hit: int = unit_layer.hit_time_ms(row)
 		if not (unit_layer.is_ringed(row) or (hit >= 0 and hit >= recent_since)):
 			continue
-		if not unit_layer.is_shown(row):
-			continue  # A rig the fog hides has no bar either (ADR 0010 section 2).
 		var type: int = types[row]
-		if WorldSort.is_building(snap, type):
-			continue
-		var infantry: int = 1 if armours[type] == World.Armour.INFANTRY else 0
-		var shape: int = (2 if owners[row] != local_player else 0) + infantry
+		var building: bool = WorldSort.is_building(snap, type)
+		if building:
+			if building_layer == null or not building_layer.is_shown(row):
+				continue  # No layer to say, or the fog hides the footprint.
+		elif not unit_layer.is_shown(row):
+			continue  # A rig the fog hides has no bar either (ADR 0010 section 2).
+		var klass: int = INFANTRY_CLASS if armours[type] == World.Armour.INFANTRY else 0
+		if building:
+			var last: int = CLASS_WIDTH_DP.size() - BUILDING_CLASS  # The largest footprint with a width.
+			klass = BUILDING_CLASS - 1 + clampi(snap.type_foot_w[type], 1, last)
+		var shape: int = (0 if owners[row] == local_player else CLASS_WIDTH_DP.size()) + klass
 		var width: int = _shape_width[shape]
 		var fill_end: int = fill_end_dp(hps[row], max_hps[type], width)
-		var fill_color: Color = enemy_color if shape >= 2 else own_color
-		# The unit's ground point now, the way UnitLayer puts its rig, and the bar's top-left
-		# corner, a lift above the top of its frame.
+		var fill_color: Color = enemy_color if shape >= CLASS_WIDTH_DP.size() else own_color
+		# The unit's ground point now, the way UnitLayer puts its rig (a building's is its
+		# footprint centre), and the bar's top-left corner, a lift above the top of its frame.
 		var place: Vector2 = IsoProjection.ground_to_px(prev_x[row], prev_y[row]).lerp(
 			IsoProjection.ground_to_px(cur_x[row], cur_y[row]), alpha
 		)
 		var left: float = place.x - 0.5 * width * unit
-		var lift: float = SpriteLift.bar_lift_px(type_ids, armours, type)
+		var lift: float = (
+			building_layer.bar_lift_px(row)
+			if building
+			else SpriteLift.bar_lift_px(type_ids, armours, type)
+		)
 		var top: float = place.y - lift - (GAP_DP + HEIGHT_DP) * unit
 		_bars[_bar_count] = row
 		_bar_first[_bar_count] = _rects
