@@ -1,10 +1,11 @@
 extends GdUnitTestSuite
-## The Build page of the art gallery (plan row P103, ADR 0023 sections 2 and 5): one building at a
-## time on the iso ground with a tank of its faction in front of it and one behind it, at the
-## camera zoom levels 1, 0.75 and 1.5 in the two triads, grass on the left and sand on the right.
-## The frames are the one atlas `IsoAtlas` bakes for the two players, the rigs hang under one
-## y-sorted node, the cast shadows lie under every body, and a defence's head faces the tank in
-## front of it. The buildings themselves are pinned in test_fossil_buildings.gd.
+## The Build page of the art gallery (plan rows P103 and P104, ADR 0023 sections 2 and 5): one
+## building at a time on the iso ground with a tank of its faction in front of it and one behind
+## it, at the camera zoom levels 1, 0.75 and 1.5 in the two triads, grass on the left and sand on
+## the right. The frames are the one atlas `IsoAtlas` bakes for the two players, the rigs hang under
+## one y-sorted node, the cast shadows lie under every body, and a defence's head faces the tank in
+## front of it, for the Derrick League's eight buildings and the Lumen Accord's. The buildings
+## themselves are pinned in test_fossil_buildings.gd and test_renew_buildings.gd.
 
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
 const BUILD_PAGE: int = 1
@@ -22,6 +23,17 @@ const TRIAD_OF: Dictionary[String, int] = {"Signal": 0, "Arktisk": 1}
 const SIGNAL_MID: String = "E8681F"
 const ARKTISK_MID: String = "1FA6C8"
 const ART_SCALE: float = 0.5
+## Buildings of both factions the scene is checked on, each with the tank of its faction, and the
+## two that carry a head.
+const SCENES: Array[Array] = [
+	["barracks", "heavy_tank"],
+	["defence_turret", "heavy_tank"],
+	["headquarters", "heavy_tank"],
+	["renew_barracks", "renew_tank"],
+	["renew_defence", "renew_tank"],
+	["renew_hq", "renew_tank"],
+]
+const ARMED: Array[String] = ["defence_turret", "renew_defence"]
 
 
 ## A gallery switches `SceneTree.quit_on_go_back` off while it is open and restores what it found,
@@ -63,12 +75,19 @@ func test_the_page_steps_through_every_building_of_both_factions_with_two_big_bu
 	assert_str((page.get_node("Icon") as TextureRect).texture.resource_path).ends_with(
 		"item_barracks.svg"
 	)
+	# The Lumen Accord's building shows the Lumen Accord's emblem, tinted in Arktisk's mid colour.
+	await _show(page, "renew_barracks")
+	assert_str(emblem.texture.resource_path).ends_with("icons/emblem_renew.svg")
+	assert_that(emblem.modulate).is_equal(Color(ARKTISK_MID))
+	assert_str((page.get_node("Icon") as TextureRect).texture.resource_path).ends_with(
+		"item_renew_barracks.svg"
+	)
 
 
 func test_a_building_is_shown_at_three_zooms_in_two_triads_on_grass_and_sand() -> void:
 	var gallery: Control = await _open_gallery()
 	var page: Control = await _build_page(gallery)
-	for id: String in _fossil_ids():
+	for id: String in _building_ids():
 		await _show(page, id)
 		for ground: String in ["Grass", "Sand"]:
 			var rows: Node = page.get_node("Scroll/Content/" + ground)
@@ -90,16 +109,18 @@ func test_a_building_is_shown_at_three_zooms_in_two_triads_on_grass_and_sand() -
 
 ## The scene is what a match draws: the diamonds of the ground under a y-sorted node of three rigs,
 ## each Shadow (under every body), Hull and, for the tank, the Turret or, for the defence, the Head
-## at its mount, all regions of the one atlas at `0.5 / bake_scale` times the zoom.
+## at its mount, all regions of the one atlas at `0.5 / bake_scale` times the zoom. The same for a
+## building of the Derrick League with its Bullhead and one of the Lumen Accord's with its tank.
 func test_the_scene_is_a_sorted_world_of_one_building_and_two_tanks_on_iso_ground() -> void:
 	var gallery: Control = await _open_gallery()
 	var page: Control = await _build_page(gallery)
 	var checked: int = 0
-	for id: String in ["barracks", "defence_turret", "headquarters"]:
+	for pair: Array in SCENES:
+		var id: String = pair[0]
 		await _show(page, id)
 		var index: IsoIndex = load(IsoIndex.PATH) as IsoIndex
 		var sheet: IsoSheetDef = index.sheet(StringName(id))
-		var tank: IsoSheetDef = index.sheet(&"heavy_tank")
+		var tank: IsoSheetDef = index.sheet(StringName(pair[1]))
 		var n: int = sheet.footprint
 		for ground: String in ["Grass", "Sand"]:
 			for section: Node in page.get_node("Scroll/Content/" + ground).get_children():
@@ -136,39 +157,42 @@ func test_the_scene_is_a_sorted_world_of_one_building_and_two_tanks_on_iso_groun
 				)
 				assert_float(front.position.y).is_greater(16.0 * n * zoom)
 				assert_float(behind.position.y).is_less(-16.0 * n * zoom)
-				var parts: Array = (
-					["Shadow", "Hull", "Head"] if id == "defence_turret" else ["Shadow", "Hull"]
-				)
+				var parts: Array = ["Shadow", "Hull", "Head"] if id in ARMED else ["Shadow", "Hull"]
 				assert_array(building.get_children().map(_node_name)).is_equal(parts)
 				for unit: Node2D in [front, behind]:
 					assert_array(unit.get_children().map(_node_name)).is_equal(
 						["Shadow", "Hull", "Turret"]
 					)
 				_check_rig(page, building, sheet, -1, zoom, triad)
-				_check_rig(page, front, tank, 6, zoom, triad)
-				_check_rig(page, behind, tank, 6, zoom, triad)
+				# The units face their faction's default view: d06 for the Derrick League's Bullhead,
+				# d10 for the Lumen Accord's tank.
+				var heading: int = 6 if tank.faction == &"fossil" else 10
+				_check_rig(page, front, tank, heading, zoom, triad)
+				_check_rig(page, behind, tank, heading, zoom, triad)
 				checked += 1
-	assert_int(checked).is_equal(3 * 2 * SECTIONS.size())
+	assert_int(checked).is_equal(SCENES.size() * 2 * SECTIONS.size())
 
 
-## The Redoubt's head faces down the screen, at the tank in front, and stands at its mount.
+## The Redoubt's and the Rail Battery's head face down the screen, at the tank in front, and stand
+## at their mount.
 func test_the_defences_head_faces_the_tank_in_front_at_its_mount() -> void:
 	var gallery: Control = await _open_gallery()
 	var page: Control = await _build_page(gallery)
-	await _show(page, "defence_turret")
-	var sheet: IsoSheetDef = (load(IsoIndex.PATH) as IsoIndex).sheet(&"defence_turret")
-	for section: Node in page.get_node("Scroll/Content/Grass").get_children():
-		var zoom: float = _zoom(section)
-		var triad: int = TRIAD_OF[_triad_name(section)]
-		var head: Sprite2D = section.get_node("Scene/Rigs/Building/Head")
-		var atlas: IsoAtlas = page.atlas
-		assert_that(head.region_rect).is_equal(
-			Rect2(atlas.region(&"defence_turret", &"head", 8, triad))
-		)
-		assert_vector(head.position).is_equal_approx(
-			sheet.mount(0) * ART_SCALE * zoom, Vector2.ONE * 0.01
-		)
-		assert_bool(head.region_rect.has_area()).is_true()
+	for id: String in ARMED:
+		await _show(page, id)
+		var sheet: IsoSheetDef = (load(IsoIndex.PATH) as IsoIndex).sheet(StringName(id))
+		for section: Node in page.get_node("Scroll/Content/Grass").get_children():
+			var zoom: float = _zoom(section)
+			var triad: int = TRIAD_OF[_triad_name(section)]
+			var head: Sprite2D = section.get_node("Scene/Rigs/Building/Head")
+			var atlas: IsoAtlas = page.atlas
+			assert_that(head.region_rect).is_equal(
+				Rect2(atlas.region(StringName(id), &"head", 8, triad))
+			)
+			assert_vector(head.position).is_equal_approx(
+				sheet.mount(0) * ART_SCALE * zoom, Vector2.ONE * 0.01
+			)
+			assert_bool(head.region_rect.has_area()).is_true()
 
 
 ## Signal in the first row of each zoom and Arktisk in the second: the key triad of the Derrick
@@ -177,11 +201,18 @@ func test_the_defences_head_faces_the_tank_in_front_at_its_mount() -> void:
 func test_the_two_triads_are_the_two_players_of_the_atlas() -> void:
 	var gallery: Control = await _open_gallery()
 	var page: Control = await _build_page(gallery)
-	await _show(page, "headquarters")
-	var sheet: IsoSheetDef = (load(IsoIndex.PATH) as IsoIndex).sheet(&"headquarters")
+	for id: String in ["headquarters", "renew_hq"]:
+		await _show(page, id)
+		_check_triads(page, StringName(id))
+
+
+## The key triad of the building's faction is replaced by the player's: Signal's mid colour in the
+## first row of each zoom, Arktisk's in the second (the Lumen Accord's own triad stays Arktisk's).
+func _check_triads(page: Control, id: StringName) -> void:
+	var sheet: IsoSheetDef = (load(IsoIndex.PATH) as IsoIndex).sheet(id)
 	var image: Image = page.atlas.texture().get_image()
-	var signal_region: Rect2i = page.atlas.region(&"headquarters", &"hull", -1, 0)
-	var arktisk_region: Rect2i = page.atlas.region(&"headquarters", &"hull", -1, 1)
+	var signal_region: Rect2i = page.atlas.region(id, &"hull", -1, 0)
+	var arktisk_region: Rect2i = page.atlas.region(id, &"hull", -1, 1)
 	assert_bool(signal_region != arktisk_region).is_true()
 	assert_vector(Vector2(signal_region.size)).is_equal(
 		Vector2(sheet.frame_size(&"hull")) * page.atlas.bake_scale()
@@ -195,9 +226,7 @@ func test_the_two_triads_are_the_two_players_of_the_atlas() -> void:
 		for section: Node in page.get_node("Scroll/Content/" + ground).get_children():
 			var hull: Sprite2D = section.get_node("Scene/Rigs/Building/Hull")
 			var triad: int = TRIAD_OF[_triad_name(section)]
-			assert_that(hull.region_rect).is_equal(
-				Rect2(page.atlas.region(&"headquarters", &"hull", -1, triad))
-			)
+			assert_that(hull.region_rect).is_equal(Rect2(page.atlas.region(id, &"hull", -1, triad)))
 
 
 ## Every scene is inside its half of the screen and under the one before it, and the first is
@@ -208,7 +237,16 @@ func test_every_scene_fits_its_ground_and_keeps_clear_of_the_buttons_at_three_si
 		var page: Control = await _build_page(gallery)
 		var problems: Array[String] = []
 		var corners: Array[Rect2] = _corner_buttons(gallery)
-		for id: String in ["barracks", "defence_turret", "headquarters", "fossil_strike"]:
+		for id: String in [
+			"barracks",
+			"defence_turret",
+			"headquarters",
+			"fossil_strike",
+			"renew_barracks",
+			"renew_defence",
+			"renew_power",
+			"renew_strike",
+		]:
 			await _show(page, id)
 			for ground_name: String in ["Grass", "Sand"]:
 				var ground: ColorRect = page.get_node("Scroll/Content/" + ground_name)
@@ -230,8 +268,8 @@ func test_every_scene_fits_its_ground_and_keeps_clear_of_the_buttons_at_three_si
 		gallery.get_parent().free()
 
 
-## Both factions' buildings build: the blockouts of the Lumen Accord stand beside the Derrick
-## League's until the art row P104 replaces them, with the tank of their own faction.
+## Both factions' buildings build: the Lumen Accord's eight stand beside the Derrick League's,
+## each with the tank of its own faction (the Lumen Accord's is P99's blockout until P102).
 func test_every_building_of_both_factions_builds_with_frames_for_every_sprite() -> void:
 	var gallery: Control = await _open_gallery()
 	var page: Control = await _build_page(gallery)
@@ -326,11 +364,11 @@ func _building_paths() -> Array[String]:
 	return found
 
 
-func _fossil_ids() -> Array[String]:
+## The art ids of the buildings of both factions, in the page's order.
+func _building_ids() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in _building_paths():
-		if path.contains("/fossil/"):
-			found.append(path.get_file().get_basename())
+		found.append(path.get_file().get_basename())
 	return found
 
 
