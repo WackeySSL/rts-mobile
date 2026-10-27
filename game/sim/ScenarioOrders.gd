@@ -12,6 +12,9 @@ var _types: PackedInt64Array = PackedInt64Array()
 ## The centre of the order's target tile, in milli-tiles.
 var _target_x: PackedInt64Array = PackedInt64Array()
 var _target_y: PackedInt64Array = PackedInt64Array()
+## The `type_id` of the order's unit (QUEUE, SUPERWEAPON), &"" for none: the World's type table
+## gives the index when the order fires, so no def is kept.
+var _units: Array[StringName] = []
 
 
 ## The orders of `scenario`, copied. A null scenario, and a null entry in its orders, give none.
@@ -27,6 +30,7 @@ static func create(scenario: ScenarioDef) -> ScenarioOrders:
 		orders._types.append(order.type)
 		orders._target_x.append(order.target_tile.x * World.MILLI_PER_TILE + World.TILE_CENTRE)
 		orders._target_y.append(order.target_tile.y * World.MILLI_PER_TILE + World.TILE_CENTRE)
+		orders._units.append(order.unit.type_id if order.unit != null else &"")
 	return orders
 
 
@@ -41,7 +45,8 @@ func order_count() -> int:
 ## whose player has no such row still gives a Command, with no ids, which Sim.step drops and
 ## counts. `tick` and `sequence` are left as Command.new() has them: MatchLoop stamps them. A
 ## player with more than Command.MAX_UNITS such rows (data keeps `max_rows` within it) gives a
-## Command that Sim.step drops. Allocates only on a tick that has an order.
+## Command that Sim.step drops. A QUEUE or SUPERWEAPON order (plan P80) names no unit rows, see
+## `_command_for`. Allocates only on a tick that has an order.
 func collect(world: World, out: Array[Command]) -> void:
 	var tick: int = world.tick
 	var ticks: PackedInt64Array = _ticks
@@ -50,18 +55,33 @@ func collect(world: World, out: Array[Command]) -> void:
 			out.append(_command_for(world, index))
 
 
-## The Command of order `index` for the rows of `world` as they are now.
+## The Command of order `index` for the rows of `world` as they are now. QUEUE and SUPERWEAPON are
+## the factories' commands (`Command.queue`, `Command.superweapon`): QUEUE with the index of the
+## order's unit in the World's type table (-1 when it has none, which Sim.step drops and counts) and
+## no target, SUPERWEAPON at the centre of the target tile with the id of the player's first row of
+## the unit's type (0 when it has none, dropped and counted the same way).
 func _command_for(world: World, index: int) -> Command:
 	world.prepare()
-	var command: Command = Command.new()
 	var player: int = _players[index]
-	command.type = _types[index]
-	command.player_id = player
-	command.target_x = _target_x[index]
-	command.target_y = _target_y[index]
+	var type: int = _types[index]
+	if type == Command.Type.QUEUE:
+		return Command.queue(player, world.type_ids.find(_units[index]))
 	var ids: PackedInt32Array = world.unit_id
 	var owners: PackedInt32Array = world.owner
 	var types: PackedInt32Array = world.type_index
+	if type == Command.Type.SUPERWEAPON:
+		var unit_type: int = world.type_ids.find(_units[index])
+		var building: int = 0
+		for row: int in ids.size():
+			if owners[row] == player and types[row] == unit_type:
+				building = ids[row]
+				break
+		return Command.superweapon(player, building, _target_x[index], _target_y[index])
+	var command: Command = Command.new()
+	command.type = type
+	command.player_id = player
+	command.target_x = _target_x[index]
+	command.target_y = _target_y[index]
 	var speeds: PackedInt32Array = world.type_speed
 	var movers: PackedInt32Array = PackedInt32Array()
 	for row: int in ids.size():
