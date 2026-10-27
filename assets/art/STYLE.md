@@ -415,7 +415,7 @@ in wedges and trapezoids (ADR 0023 section 6). Each is placed from primitives in
 - **One view.** A building has one view and no direction in its file names: `<id>_hull.svg` and
   `<id>_shadow.svg` in `assets/art/iso/fossil/bld/`, one canvas each, with the sheet and the item
   card. The Redoubt alone has a second part, its gun head: `defence_turret_head_d00.svg` to `d15`,
-  16 frames of one canvas (144 x 84 px at 2x) anchored at the pivot, which the sheet's mount puts
+  16 frames of one canvas (136 x 82 px at 2x) anchored at the pivot, which the sheet's mount puts
   0.72 tile above the footprint's centre. The head is what turns; the bunker under it is the hull.
   The barrel's muzzle brake is the primitive that reaches farthest along +x, so the sheet's
   `muzzle_lift_px` is where a shot leaves (33 px at zoom 1).
@@ -436,7 +436,7 @@ in wedges and trapezoids (ADR 0023 section 6). Each is placed from primitives in
 | `barracks` | 256 x 200 | (128, 72) | 268 x 130 | 53 | 50-100 | 10.1 |
 | `vehicle_factory` | 384 x 346 | (192, 153) | 406 x 196 | 85 | 80-150 | 8.5 |
 | `fossil_radar` | 256 x 302 | (128, 173) | 298 x 130 | 98 | 50-100 | 9.7 |
-| `defence_turret` | 128 x 130 | (64, 65) | 164 x 84 | 42 | 40-60 | 7.3 |
+| `defence_turret` | 128 x 130 | (64, 65) | 162 x 82 | 42 | 40-60 | 7.7 |
 | `fossil_strike` | 384 x 362 | (192, 170) | 394 x 198 | 127 | 80-150 | 10.3 |
 
 - **Dock and exits.** `BuildingDef.dock` (the refinery) and `exit` (the factory and the barracks) are

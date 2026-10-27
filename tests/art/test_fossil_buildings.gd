@@ -48,8 +48,8 @@ const HEIGHT_PX: Dictionary[StringName, Vector2] = {
 }
 ## Canvas and anchor in px of the 2x art: hull width, hull height, hull anchor y, shadow width,
 ## shadow height. The anchor x is half the width, the shadow's anchor is the same back corner at
-## the top of its canvas. When the art changes on purpose, run `bash scripts/gen-art.sh` and read
-## the new numbers from the sheets.
+## the top of its canvas (y 0, pinned). When the art changes on purpose, run
+## `bash scripts/gen-art.sh` and read the new numbers from the sheets.
 const CANVAS: Dictionary[StringName, Array] = {
 	&"headquarters": [384, 382, 190, 384, 194],
 	&"power_plant": [256, 252, 123, 256, 130],
@@ -57,9 +57,13 @@ const CANVAS: Dictionary[StringName, Array] = {
 	&"barracks": [256, 200, 72, 268, 130],
 	&"vehicle_factory": [384, 346, 153, 406, 196],
 	&"fossil_radar": [256, 302, 173, 298, 130],
-	&"defence_turret": [128, 130, 65, 164, 84],
+	&"defence_turret": [128, 130, 65, 162, 82],
 	&"fossil_strike": [384, 362, 170, 394, 198],
 }
+## The Redoubt's head frames, px of the 2x art: canvas width, canvas height, pivot x, pivot y (the
+## anchor of a head is its pivot, which the sheet's mount puts on the bunker's roof).
+const HEAD_CANVAS: Array = [136, 82, 68, 50]
+const MUZZLE_LIFT_PX: int = 33  ## Where a shot leaves the Redoubt at zoom 1 (STYLE.md "Buildings").
 ## The team share of a default view, about a tenth (STYLE.md "Light"; the generator's own pin is 3
 ## to 20 %).
 const SHARE: Vector2 = Vector2(0.07, 0.13)
@@ -156,6 +160,9 @@ func test_every_canvas_and_anchor_is_pinned_and_the_anchor_is_the_back_corner() 
 			var size: Vector2i = sheet.frame_size(part)
 			var anchor: Vector2i = sheet.anchor(part)
 			assert_int(anchor.x).override_failure_message("%s %s" % [id, part]).is_equal(64 * n)
+			if part == &"shadow":
+				# The same back corner, at the top of the shadow's own canvas.
+				assert_int(anchor.y).override_failure_message("%s shadow" % id).is_equal(0)
 			assert_vector(Vector2(sheet.origin(part) - anchor)).is_equal(Vector2(0, 32 * n))
 			assert_bool(anchor.y >= 0 and anchor.y + 64 * n <= size.y).is_true()
 			assert_bool(size.x >= 128 * n).override_failure_message("%s" % id).is_true()
@@ -177,7 +184,16 @@ func test_the_redoubts_head_mounts_on_its_roof_and_has_one_canvas_in_all_16_dire
 	assert_float(sheet.mount(0).x).is_equal_approx(0.0, 0.01)
 	assert_float(sheet.mount(0).y).is_equal_approx(-model.mount.z * 78.38367, 0.1)
 	assert_vector(sheet.mount(0)).is_equal_approx(ArtGen.mount_px(model, 6), Vector2(0.1, 0.1))
-	var size: String = "%d %d" % [sheet.frame_size(&"head").x, sheet.frame_size(&"head").y]
+	var head: Vector2i = sheet.frame_size(&"head")
+	var pivot: Vector2i = sheet.anchor(&"head")
+	(
+		assert_array([head.x, head.y, pivot.x, pivot.y])
+		. override_failure_message("head canvas and pivot")
+		. is_equal(HEAD_CANVAS)
+	)
+	assert_vector(sheet.mount(0)).is_equal_approx(Vector2(0.0, -56.4), Vector2(0.1, 0.1))
+	assert_int(sheet.muzzle_lift_px).is_equal(MUZZLE_LIFT_PX)
+	var size: String = "%d %d" % [head.x, head.y]
 	for dir: int in 16:
 		(
 			assert_str(_svg_size(sheet.path(&"head", dir)))
@@ -193,6 +209,50 @@ func test_the_redoubts_head_mounts_on_its_roof_and_has_one_canvas_in_all_16_dire
 				. override_failure_message("%s" % id)
 				. is_equal(0)
 			)
+
+
+## The Redoubt's barrel is one gun, not floating blocks. An `axis=x` prism is `length width height`
+## (length first), so the sleeve starts inside the head's body, each piece of the barrel begins
+## before the one in front of it ends, the three share one axis height, and the muzzle brake is the
+## piece that reaches farthest along +x (the sheet's muzzle). Drawn at 2x, every one of the 16 head
+## frames is one connected shape, so the head turns as one piece at every heading.
+func test_the_redoubts_barrel_is_one_connected_gun_and_every_head_frame_is_one_shape() -> void:
+	var model: ArtModel = load(MODEL % &"defence_turret") as ArtModel
+	var body: ArtPrim = null
+	var barrel: Array[ArtPrim] = []
+	var reach: float = 0.0
+	for prim: ArtPrim in model.primitives(&"head"):
+		reach = maxf(reach, prim.aabb().end.x)
+		if prim.axis == 0:
+			barrel.append(prim)
+		elif body == null:
+			body = prim
+	assert_object(body).is_not_null()
+	assert_int(barrel.size()).is_equal(3)
+	barrel.sort_custom(
+		func(a: ArtPrim, b: ArtPrim) -> bool: return a.aabb().position.x < b.aabb().position.x
+	)
+	assert_float(barrel[0].aabb().position.x).is_less(body.aabb().end.x)
+	for i: int in range(1, barrel.size()):
+		(
+			assert_float(barrel[i].aabb().position.x)
+			. override_failure_message("barrel piece %d floats in front of piece %d" % [i, i - 1])
+			. is_less(barrel[i - 1].aabb().end.x)
+		)
+		assert_float(barrel[i].aabb().get_center().z).is_equal_approx(
+			barrel[0].aabb().get_center().z, 0.005
+		)
+	assert_float(barrel[2].aabb().end.x).is_equal_approx(reach, 0.0001)
+	var sheet: IsoSheetDef = _index.sheet(&"defence_turret")
+	for dir: int in 16:
+		var shapes: int = _pieces(
+			_raster(FileAccess.get_file_as_string(sheet.path(&"head", dir)), 1.0)
+		)
+		(
+			assert_int(shapes)
+			. override_failure_message("head d%02d is %d shapes" % [dir, shapes])
+			. is_equal(1)
+		)
 
 
 func test_each_type_is_as_tall_as_spec_05_says() -> void:
@@ -488,6 +548,37 @@ func _overlap(a: Image, b: Image) -> float:
 			both += int(in_a and in_b)
 			either += int(in_a or in_b)
 	return float(both) / maxi(either, 1)
+
+
+## The number of connected shapes (8 neighbours, pixels more than half opaque) in an image.
+func _pieces(image: Image) -> int:
+	image.convert(Image.FORMAT_RGBA8)
+	var data: PackedByteArray = image.get_data()
+	var w: int = image.get_width()
+	var h: int = image.get_height()
+	var seen: PackedByteArray = PackedByteArray()
+	seen.resize(w * h)
+	var count: int = 0
+	for first: int in w * h:
+		if seen[first] == 1 or data[first * 4 + 3] <= 127:
+			continue
+		count += 1
+		seen[first] = 1
+		var stack: PackedInt32Array = PackedInt32Array([first])
+		while not stack.is_empty():
+			var at: int = stack[stack.size() - 1]
+			stack.resize(stack.size() - 1)
+			for dy: int in range(-1, 2):
+				for dx: int in range(-1, 2):
+					var x: int = at % w + dx
+					var y: int = at / w + dy
+					if x < 0 or y < 0 or x >= w or y >= h:
+						continue
+					var next: int = y * w + x
+					if seen[next] == 0 and data[next * 4 + 3] > 127:
+						seen[next] = 1
+						stack.append(next)
+	return count
 
 
 func _raster(text: String, scale: float) -> Image:
