@@ -1,9 +1,7 @@
 class_name Strike
 extends RefCounted
 ## Superweapons (ADR 0023 section 10, plan rows P110 and P111): the charge of a strike building, the
-## SUPERWEAPON command and the Deep Bore's rupture. The Blackout Array's effect is P111's: until it
-## lands, a SUPERWEAPON of a blackout building is dropped and counted, as the whole command was
-## before this row.
+## SUPERWEAPON command, the Deep Bore's rupture and the Blackout Array's blackout.
 ##
 ## Ticks. "Stamp" is `world.tick + 1`, the tick the step in progress produces (the stamp
 ## `defeated_tick` and `match_end_tick` carry). A command is applied in the step of its own `tick`.
@@ -21,14 +19,29 @@ extends RefCounted
 ## - the player has no rupture pending (its `strike_tick` is 0): one pending strike per player is
 ##   all the state there is, so a further SUPERWEAPON of any kind waits for the landing (lead
 ##   decision of 2026-10-26, an ADR 0023 section 10 note);
-## - `target_id` is a row of the player's own whose type is a strike building: kind RUPTURE, the one
-##   kind with a rule yet;
+## - `target_id` is a row of the player's own whose type is a strike building (kind RUPTURE or
+##   BLACKOUT);
 ## - it has charged (the stamp is `ready_tick` or more) and is not offline (`offline_until` is
-##   not above the stamp; P111 writes it, a blacked-out building is back at that stamp).
-## A valid RUPTURE writes the player's pending strike: the point, clamped to the map as RALLY clamps
-## its point (so that the squared distances of the landing stay small and the point fits its
-## int32 column), and `strike_tick = stamp + type_strike_delay`. It sets the building's `ready_tick`
-## to stamp + `type_charge_ticks`. A delay of 0 lands in the same step, right after FIRE's shots.
+##   not above the stamp: a blacked-out building is back at that stamp).
+## A valid command clamps its point to the map as RALLY clamps its point (so that the squared
+## distances stay small and the point fits its int32 column) and sets the building's `ready_tick`
+## to stamp + `type_charge_ticks`. A RUPTURE then writes the player's pending strike,
+## `strike_tick = stamp + type_strike_delay` (a delay of 0 lands in the same step, right after
+## FIRE's shots). A BLACKOUT works at once, in the apply itself: see below.
+##
+## The blackout (`_black_out`, P111). In the command's apply, so in COMMANDS and at once, one pass
+## over the building rows in ascending row order: every building not owned by the firing player
+## (neutral ones included, as the rupture hits them) whose position is within `type_strike_radius`
+## of the point, by squared distance, gets `offline_until = stamp + type_strike_ticks` (a longer
+## blackout it already has is kept). It is offline at the stamps below that value, so for exactly
+## `type_strike_ticks` steps from the command's own, and back at the stamp that reaches it. The
+## radius and the length are those of the firing building's type (nothing is pending, so nothing
+## need be stored). What reads `offline_until`: `Power.run` counts neither the output nor the use of
+## an offline building, `Combat.fire` skips an offline defence's shot (it keeps its target) and
+## `Production.run` does not advance the queue of an offline producer; units are not affected, and
+## a SUPERWEAPON of an offline strike building is dropped (above). The firing player's own
+## buildings, and every row outside the radius, are untouched. Low power and a defeated owner do
+## not change any of it, and no state besides `offline_until` is written.
 ##
 ## The rupture (`run`, called by `Sim.step` right after `Combat.fire` and before `FogUpdate.begin`
 ## and `World.remove_dead`, inside the FIRE mark: no new phase, no second `remove_dead`). For every
@@ -68,7 +81,7 @@ static func start_charge(world: World, row: int) -> void:
 
 
 ## SUPERWEAPON: true when the command fired the player's strike building (see the header for the
-## rules and what a rupture writes). A kind without a rule yet (the blackout, P111) is dropped.
+## rules, what a rupture writes and what a blackout does at once).
 static func apply_superweapon(world: World, command: Command) -> bool:
 	var player: int = command.player_id
 	var pending: PackedInt32Array = world.strike_tick
@@ -83,11 +96,17 @@ static func apply_superweapon(world: World, command: Command) -> bool:
 		return false
 	if stamp < world.ready_tick[row] or world.offline_until[row] > stamp:
 		return false
-	if world.type_strike_kind[type] != Kind.RUPTURE:
+	var kind: int = world.type_strike_kind[type]
+	if kind != Kind.RUPTURE and kind != Kind.BLACKOUT:
 		return false
-	world.strike_x[player] = clampi(command.target_x, 0, maxi(world.map_w - 1, 0))
-	world.strike_y[player] = clampi(command.target_y, 0, maxi(world.map_h - 1, 0))
-	pending[player] = stamp + world.type_strike_delay[type]
+	var point_x: int = clampi(command.target_x, 0, maxi(world.map_w - 1, 0))
+	var point_y: int = clampi(command.target_y, 0, maxi(world.map_h - 1, 0))
+	if kind == Kind.RUPTURE:
+		world.strike_x[player] = point_x
+		world.strike_y[player] = point_y
+		pending[player] = stamp + world.type_strike_delay[type]
+	else:
+		_black_out(world, player, type, point_x, point_y)
 	world.ready_tick[row] = stamp + world.type_charge_ticks[type]
 	return true
 
@@ -143,3 +162,25 @@ static func _land(world: World, player: int) -> void:
 		var percent: int = percent_of[percents + armour_of[types[row]]]
 		if percent > 0:
 			hit_points[row] -= maxi(1, damage * percent / Combat.PERCENT)
+
+
+## The blackout of `player`'s strike building of type `type` around (point_x, point_y): every
+## building row of another owner within the type's radius goes offline until the stamp plus the
+## type's length (see the header). The building list is brought up to date first (a no-op when
+## `rows_version` has not moved since a QUEUE or ECONOMY did); a type past the length table has no
+## length, so it blacks out nothing.
+static func _black_out(world: World, player: int, type: int, point_x: int, point_y: int) -> void:
+	if type >= world.type_strike_ticks.size() or type >= world.type_strike_radius.size():
+		return
+	Buildings.rebuild_lists(world)
+	var reach: int = world.type_strike_radius[type] * world.type_strike_radius[type]
+	var until: int = world.tick + 1 + world.type_strike_ticks[type]
+	var owners: PackedInt32Array = world.owner
+	var pos_x: PackedInt32Array = world.pos_x
+	var pos_y: PackedInt32Array = world.pos_y
+	var offline: PackedInt32Array = world.offline_until
+	for row: int in world.building_rows:
+		var dx: int = pos_x[row] - point_x
+		var dy: int = pos_y[row] - point_y
+		if owners[row] != player and dx * dx + dy * dy <= reach:
+			offline[row] = maxi(offline[row], until)

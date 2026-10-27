@@ -3,10 +3,10 @@ extends GdUnitTestSuite
 ## a strike building fires exactly `type_charge_ticks` after it was placed and not a tick earlier,
 ## firing restarts the charge and writes the player's pending strike, and each invalid case (not
 ## the player's own, not a strike building, charging, offline, a defeated player, after the end, a
-## payload, the blackout kind before P111, and a rupture already pending) is dropped and counted
-## with nothing else changed. The rig (`strike_worlds.gd`) has the world, its rows and its numbers;
-## every expected tick, radius and cost is read from the World's tables. The landing is
-## test_strike_rupture's.
+## payload, and a rupture already pending) is dropped and counted with nothing else changed. The
+## blackout kind takes the same command and the same checks; its effect is test_strike_blackout's.
+## The rig (`strike_worlds.gd`) has the world, its rows and its numbers; every expected tick, radius
+## and cost is read from the World's tables. The landing is test_strike_rupture's.
 
 const Strikes: GDScript = preload("res://tests/sim/support/strike_worlds.gd")
 const UNIT: int = 6  # The id of the first row a case adds to the rig's world.
@@ -126,8 +126,8 @@ func test_a_building_that_is_not_the_players_own_strike_building_is_dropped() ->
 	_assert_dropped("a negative id", func() -> Command: return Strikes.fire(-1))
 
 
-## Charging, offline, a defeated player, the end of the match, a payload, a player that does not
-## exist and the blackout building (its effect is P111's, so its command is dropped until then).
+## Charging, offline, a defeated player, the end of the match, a payload and a player that does not
+## exist.
 func test_charging_offline_defeat_the_end_and_the_other_invalid_cases_are_dropped() -> void:
 	var offline: Callable = func(w: World) -> void:
 		w.offline_until[w.index_of(Strikes.BORE_A)] = w.tick + 2
@@ -146,7 +146,6 @@ func test_charging_offline_defeat_the_end_and_the_other_invalid_cases_are_droppe
 			return command
 	)
 	_assert_dropped("a player past the table", func() -> Command: return Strikes.fire(1, 3))
-	_assert_dropped("the blackout kind", func() -> Command: return Strikes.fire(Strikes.ARRAY))
 
 
 ## A building is offline while `offline_until` is above the stamp and back at the stamp itself: the
