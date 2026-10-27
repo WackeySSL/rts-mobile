@@ -156,18 +156,70 @@ func test_everything_stays_on_its_ground_at_the_base_size_and_under_the_two_corn
 		await await_idle_frame()
 
 
+func test_a_shadow_lies_under_every_rig_and_a_units_default_view_has_its_ellipse_and_its_card(
+) -> void:
+	var gallery: Control = await _open_gallery()
+	var page: Control = _show(gallery)
+	# The first type is the Derrick League's artillery, the second its barracks.
+	for index: int in 2:
+		var model: ArtModel = load(ArtGen.model_paths()[index]) as ArtModel
+		var layouts: Dictionary[StringName, ArtGen.Layout] = ArtGen.layouts(model)
+		assert_str((page.get_node("Icon") as TextureRect).texture.resource_path).is_equal(
+			ArtGen.icon_path(model)
+		)
+		for ground: String in ["Grass", "Sand"]:
+			for row_name: String in ROWS:
+				var row: Node = page.get_node("Scroll/Content/%s/%s" % [ground, row_name])
+				for node: Node in row.get_children():
+					if not node is Node2D:
+						continue
+					var shadow: Sprite2D = node.get_node("Shadow") as Sprite2D
+					var hull: Sprite2D = node.get_node("Hull") as Sprite2D
+					assert_int(shadow.z_index).is_less(hull.z_index)
+					var zoom: float = 1.0
+					if node.name.begins_with("Zoom"):
+						zoom = node.name.trim_prefix("Zoom").to_int() / 100.0
+					assert_vector(shadow.offset).is_equal_approx(
+						-Vector2(layouts[&"shadow"].origin) * 0.5 * zoom, Vector2.ONE * 1e-3
+					)
+					# The ring is the default view's, a unit's, on the ground between the two.
+					var ringed: bool = node.name.begins_with("Zoom") and model.category != &"bld"
+					assert_bool(node.has_node("Ring")).override_failure_message(node.name).is_equal(
+						ringed
+					)
+					if ringed:
+						var ring: Sprite2D = node.get_node("Ring") as Sprite2D
+						assert_str(ring.texture.resource_path).ends_with("ui/selection_ellipse.svg")
+						assert_int(ring.z_index).is_between(shadow.z_index + 1, hull.z_index - 1)
+						# A 600 milli radius: 600 x 32 x sqrt 2 / 1000 px along its long axis.
+						assert_float(ring.scale.x * 72.0).is_equal_approx(
+							0.6 * 32.0 * sqrt(2.0) * zoom, 1e-3
+						)
+		page.get_node("Next").pressed.emit()
+		await await_idle_frame()
+
+
 ## The Iso page lists the models and loads them at run time and uses the generator's global classes,
 ## and the dev menu (so the gallery) is on in the web preview and in the debug APK: no export preset
-## may leave out `tools/` or `assets/art/models/` (or the frames the page reads) while it does. The
-## page stops reading them when P113's `IsoAtlas` and P99b's `index.tres` replace the reads; the
-## exclusion of those folders waits for that, or for a preset that the dev menu is off in.
+## may leave out `tools/` or `assets/art/models/` (or the frames, shadows and cards the page reads)
+## while it does. P99b's `index.tres` and its sheets exist, and the per-match bake (P113) reads
+## them in a match, which needs `tools/artgen/IsoSheetDef.gd` and `IsoIndex.gd` too; the page stops
+## reading the models when `IsoAtlas` replaces its rasterising, and the exclusion of `tools/` and
+## `assets/art/models/` waits for that, or for a preset that the dev menu is off in.
 func test_no_export_preset_leaves_out_what_the_iso_page_reads() -> void:
 	var presets: ConfigFile = ConfigFile.new()
 	assert_int(presets.load("res://export_presets.cfg")).is_equal(OK)
 	var needed: Array[String] = [
 		"tools/artgen/ArtGen.gd",
+		"tools/artgen/IsoSheetDef.gd",
+		"tools/artgen/IsoIndex.gd",
 		"assets/art/models/fossil/headquarters.tres",
 		"assets/art/iso/fossil/bld/headquarters_hull.svg",
+		"assets/art/iso/fossil/bld/headquarters_shadow.svg",
+		"assets/art/iso/fossil/bld/headquarters_sheet.tres",
+		"assets/art/iso/index.tres",
+		"assets/art/iso/icons/item_headquarters.svg",
+		"assets/art/svg/ui/selection_ellipse.svg",
 	]
 	var filtered: int = 0
 	for section: String in presets.get_sections():

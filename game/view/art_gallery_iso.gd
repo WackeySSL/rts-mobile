@@ -6,8 +6,10 @@ extends Control
 ## one; the rows repeat for the second triad under the first. A frame is the SVG text with the
 ## faction's key triad replaced by the player's (the match-start bake does the same, ADR 0023
 ## section 2) and rasterised at 0.5 x zoom; until the per-match atlas exists (P113) the page
-## rasterises the frames itself. A turret or head sits at its mount (`ArtGen.mount_px`). Built on
-## first show; view-only.
+## rasterises the frames itself. A turret or head sits at its mount (`ArtGen.mount_px`). Under
+## every hull lies its cast shadow, every shadow below every hull (the game draws them in one layer
+## at z 2); the default view of a unit at the three zooms also has its selection ellipse. The type's
+## item card is in the corner. Built on first show; view-only.
 
 const FACTION_NAMES: Dictionary[StringName, String] = {
 	&"fossil": "Derrick League", &"renew": "Lumen Accord"
@@ -31,12 +33,20 @@ const LABEL_COLOR: Color = Color("1C2127")
 const BUTTON_PX: float = 120.0
 const BUTTON_FONT_PX: int = 40
 const TITLE_LEFT_PX: float = 432.0
+const ICON_PX: float = 96.0  ## The item card, in the top right corner.
+const RING_ART: String = "res://assets/art/svg/ui/selection_ellipse.svg"
+const RING_TEX_RX_PX: float = 72.0  ## The texture's centre-line horizontal semi-axis (STYLE.md).
+const RING_RADIUS_MILLI: int = 600  ## A selection radius for the rings shown here.
+const Z_SHADOW: int = 1  ## Shadows, then rings, then the hulls and what sits on them.
+const Z_RING: int = 2
+const Z_BODY: int = 3
 
 var grass_color: Color = Color("6F8F57")
 var sand_color: Color = Color("CDB98F")
 var _paths: Array[String] = []
 var _index: int = 0
 var _title: Label = null
+var _icon: TextureRect = null
 var _content: Control = null
 var _textures: Dictionary[String, ImageTexture] = {}
 
@@ -82,6 +92,18 @@ func _build_ui() -> void:
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_title.position = Vector2(TITLE_LEFT_PX + 24.0, 24.0 + BUTTON_PX / 2.0 - LABEL_PX / 2.0)
 	add_child(_title)
+	_icon = TextureRect.new()
+	_icon.name = "Icon"
+	_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_icon.anchor_left = 1.0
+	_icon.anchor_right = 1.0
+	_icon.offset_left = -24.0 - ICON_PX
+	_icon.offset_right = -24.0
+	_icon.offset_top = 24.0
+	_icon.offset_bottom = 24.0 + ICON_PX
+	add_child(_icon)
 
 
 func _on_visibility_changed() -> void:
@@ -107,6 +129,7 @@ func _fill() -> void:
 		"%d / %d  %s: %s (%s)"
 		% [_index + 1, _paths.size(), FACTION_NAMES[model.faction], model.art_id, model.category]
 	)
+	_icon.texture = load(ArtGen.icon_path(model)) as Texture2D
 	var layouts: Dictionary[StringName, ArtGen.Layout] = ArtGen.layouts(model)
 	var box: Rect2 = _box(model, layouts)
 	var grounds: Array[ColorRect] = [_ground("Grass", grass_color), _ground("Sand", sand_color)]
@@ -146,13 +169,13 @@ func _section(
 	var turning: StringName = &"head" if layouts.has(&"head") else &"hull"
 	if model.category != &"bld" or layouts.has(&"head"):
 		for dir: int in model.directions(turning):
-			rigs.append(_rig(model, layouts, dir, triad, 1.0, "Dir%02d" % dir))
+			rigs.append(_rig(model, layouts, dir, triad, 1.0, "Dir%02d" % dir, false))
 			zooms.append(1.0)
 	var y: float = _flow(row, rigs, zooms, box, LABEL_PX, _slot_cap(box))
 	rigs.clear()
-	var default_dir: int = 6 if model.faction == &"fossil" else 10
 	for zoom: float in ZOOMS:
-		rigs.append(_rig(model, layouts, default_dir, triad, zoom, "Zoom%d" % roundi(zoom * 100.0)))
+		var rig_name: String = "Zoom%d" % roundi(zoom * 100.0)
+		rigs.append(_rig(model, layouts, model.default_dir(), triad, zoom, rig_name, true))
 	return _flow(row, rigs, ZOOMS, box, y, INF)
 
 
@@ -200,19 +223,23 @@ func _flow(
 	return y
 
 
-## A hull and its turret or head, facing `dir` (a building has one view and only its head turns),
-## standing on the rig's origin.
+## A hull, its cast shadow and its turret or head, facing `dir` (a building has one view and only
+## its head turns), standing on the rig's origin; a unit's ring too when `ringed`.
 func _rig(
 	model: ArtModel,
 	layouts: Dictionary[StringName, ArtGen.Layout],
 	dir: int,
 	triad: int,
 	zoom: float,
-	rig_name: String
+	rig_name: String,
+	ringed: bool
 ) -> Node2D:
 	var rig: Node2D = Node2D.new()
 	rig.name = rig_name
 	var hull_dir: int = -1 if model.category == &"bld" else dir
+	rig.add_child(_sprite(model, ArtModel.SHADOW, hull_dir, layouts[&"shadow"], triad, zoom))
+	if ringed and model.category != &"bld":
+		rig.add_child(_ring(zoom))
 	rig.add_child(_sprite(model, &"hull", hull_dir, layouts[&"hull"], triad, zoom))
 	for part: StringName in [&"turret", &"head"]:
 		if layouts.has(part):
@@ -240,13 +267,28 @@ func _sprite(
 	sprite.texture = _textures[key]
 	sprite.centered = false
 	sprite.offset = -Vector2(layout.origin) * scale_px
+	sprite.z_index = Z_SHADOW if part == ArtModel.SHADOW else Z_BODY
 	return sprite
+
+
+## The selection ellipse on the ground round the rig's origin: its horizontal semi-axis is the
+## radius x 32 x sqrt 2 px at zoom 1 (ADR 0023 section 1), the texture's 72 px at scale 1.
+func _ring(zoom: float) -> Sprite2D:
+	var ring: Sprite2D = Sprite2D.new()
+	ring.name = "Ring"
+	ring.texture = load(RING_ART) as Texture2D
+	var semi_axis: float = RING_RADIUS_MILLI * 32.0 * sqrt(2.0) / 1000.0 * zoom
+	ring.scale = Vector2.ONE * semi_axis / RING_TEX_RX_PX
+	ring.z_index = Z_RING
+	return ring
 
 
 ## Everything a rig of the model can cover, in 2x px from its ground point.
 func _box(model: ArtModel, layouts: Dictionary[StringName, ArtGen.Layout]) -> Rect2:
 	var hull: ArtGen.Layout = layouts[&"hull"]
+	var shadow: ArtGen.Layout = layouts[&"shadow"]
 	var box: Rect2 = Rect2(-Vector2(hull.origin), Vector2(hull.size))
+	box = box.merge(Rect2(-Vector2(shadow.origin), Vector2(shadow.size)))
 	for part: StringName in [&"turret", &"head"]:
 		if layouts.has(part):
 			for dir: int in model.directions(part):
