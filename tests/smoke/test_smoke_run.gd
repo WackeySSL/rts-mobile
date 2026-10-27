@@ -7,9 +7,11 @@ extends GdUnitTestSuite
 ## the script header lists; the loop stops at the tick that ends a match; a dropped Command fails
 ## the run. The shell script's flags and exit codes are in `test_run_sim_smoke_script.gd`.
 ##
-## The dummies draw nothing from their streams today, so the seeds differ in the World's own stream
-## (spawn jitter and the hash of its state) and not yet in what the dummies do; the hashes still
-## differ, and a dummy that starts to draw from its stream changes the matches, not the checks.
+## Kestrel Flats has no spawn jitter and the dummies draw nothing from their streams today, so the
+## three matches play the same moves; their hashes differ only through the state of the World's sim
+## stream, which `WorldHash` adds to every hash. What the seed does reach is pinned apart, in the
+## test of the controllers: each one is built as MatchRunner builds it, so a dummy that starts to
+## draw from its stream changes the matches, not the checks.
 
 const Smoke: GDScript = preload("res://tests/smoke/smoke_run.gd")
 const SEEDS: Array[int] = [1, 2, 3]
@@ -90,6 +92,34 @@ func test_three_seeds_are_three_matches_with_three_final_hashes() -> void:
 	# The checkpoints differ from the first one on: the sim stream is in every hash.
 	var first_checkpoint: int = _loops[0].replay.checkpoint_hashes[0]
 	assert_int(_loops[1].replay.checkpoint_hashes[0]).is_not_equal(first_checkpoint)
+
+
+func test_each_controller_is_built_as_match_runner_builds_it() -> void:
+	for match_seed: int in SEEDS:
+		var controllers: Array[AiController] = Smoke.controllers_of(match_seed)
+		assert_int(controllers.size()).is_equal(Smoke.DEF_PATHS.size())
+		for index: int in controllers.size():
+			var player: int = index + 1
+			var controller: AiController = controllers[index]
+			# The dummy itself, made for this player.
+			assert_str((controller.get_script() as Script).get_global_name()).is_equal("DummyAi")
+			assert_int(controller.player_id).is_equal(player)
+			# The stream of the player and the match seed, never the sim's and never another seed's.
+			var stream: DetRandom = DetRandom.create(match_seed, DetRandom.STREAM_AI_BASE + player)
+			assert_array(Array(controller.rng.state())).is_equal(Array(stream.state()))
+			# The think rhythm is its def's and its player's: the controller thinks on the tick
+			# `think_tick + player - 2` of every period (ADR 0020 section 2).
+			var def: AiDef = load(Smoke.DEF_PATHS[index]) as AiDef
+			assert_int(controller.think_period).is_equal(def.think_period)
+			var phase: int = def.think_tick + player - 2 + controller.think_offset
+			assert_int(phase % controller.think_period).is_equal(0)
+	# Seeds 1 and 2 give a player two different streams, and one seed gives two players two.
+	var one: Array[AiController] = Smoke.controllers_of(SEEDS[0])
+	var two: Array[AiController] = Smoke.controllers_of(SEEDS[1])
+	for index: int in one.size():
+		assert_array(Array(two[index].rng.state())).is_not_equal(Array(one[index].rng.state()))
+	assert_array(Array(one[1].rng.state())).is_not_equal(Array(one[0].rng.state()))
+	assert_int(one[1].think_offset).is_not_equal(one[0].think_offset)
 
 
 func test_neither_dummy_has_a_command_dropped() -> void:
