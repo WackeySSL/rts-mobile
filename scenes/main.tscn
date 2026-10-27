@@ -65,7 +65,7 @@ script = ExtResource("19_effects")
 runner = NodePath("../MatchRunner")
 
 [node name="FogLayer" type="Sprite2D" parent="." node_paths=PackedStringArray("runner")]
-z_index = 140
+z_index = 4
 z_as_relative = false
 script = ExtResource("20_fog")
 runner = NodePath("../MatchRunner")

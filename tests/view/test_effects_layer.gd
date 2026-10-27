@@ -44,8 +44,8 @@ func test_a_rifle_shot_draws_a_tracer_from_the_muzzle_point_to_the_targets_posit
 	var shooter: Vector2i = Vector2i(10000, 20000)
 	var target: Vector2i = Vector2i(14000, 23000)  # 4 tiles east and 3 south: 5 tiles away.
 	_tick_with(Rig.shot(shooter, target, _weapon(&"rifle")))
-	var from_px: Vector2 = ViewScale.milli_to_px_vec(shooter.x, shooter.y)
-	var to_px: Vector2 = ViewScale.milli_to_px_vec(target.x, target.y)
+	var from_px: Vector2 = IsoProjection.ground_to_px(shooter.x, shooter.y)
+	var to_px: Vector2 = IsoProjection.ground_to_px(target.x, target.y)
 	assert_int(_layer.line_count()).is_equal(2)  # The outline pass, then the colour pass.
 	for index: int in 2:
 		var muzzle: Vector2 = _layer.line_from(index)
@@ -80,8 +80,8 @@ func test_a_tracer_ends_at_the_events_target_position_when_the_target_died_in_th
 			continue
 		killed_shots += 1
 		assert_array(_died_ids(events)).contains([events[at + 4]])
-		var target_px: Vector2 = ViewScale.milli_to_px_vec(events[at + 6], events[at + 7])
-		var shooter_px: Vector2 = ViewScale.milli_to_px_vec(events[at + 2], events[at + 3])
+		var target_px: Vector2 = IsoProjection.ground_to_px(events[at + 6], events[at + 7])
+		var shooter_px: Vector2 = IsoProjection.ground_to_px(events[at + 2], events[at + 3])
 		var drawn: bool = false
 		for index: int in _layer.line_count():
 			if _layer.line_to(index) == target_px:
@@ -95,7 +95,7 @@ func test_a_tracer_ends_at_the_events_target_position_when_the_target_died_in_th
 func test_a_shot_of_a_projectile_weapon_draws_only_a_flash_out_at_its_muzzle() -> void:
 	var shooter: Vector2i = Vector2i(10000, 20000)
 	var target: Vector2i = Vector2i(10000, 24000)  # 4 tiles south.
-	var from_px: Vector2 = ViewScale.milli_to_px_vec(shooter.x, shooter.y)
+	var from_px: Vector2 = IsoProjection.ground_to_px(shooter.x, shooter.y)
 	# STYLE.md: the flash is 32, 24 and 16 px wide, and it sits 31 (tank_cannon) or 13 px out.
 	var cases: Dictionary[StringName, Vector2] = {
 		&"tank_cannon": Vector2(32.0, 31.0),
@@ -112,7 +112,8 @@ func test_a_shot_of_a_projectile_weapon_draws_only_a_flash_out_at_its_muzzle() -
 		assert_float(_layer.quad_rect(0).size.x).is_equal_approx(cases[weapon_id].x, 0.001)
 		assert_float(_layer.quad_rect(0).size.y).is_equal_approx(cases[weapon_id].x, 0.001)
 		var centre: Vector2 = _layer.quad_rect(0).get_center()
-		assert_vector(centre).is_equal_approx(from_px + Vector2(0.0, cases[weapon_id].y), TOL)
+		var along: Vector2 = (IsoProjection.ground_to_px(target.x, target.y) - from_px).normalized()
+		assert_vector(centre).is_equal_approx(from_px + along * cases[weapon_id].y, TOL)
 
 
 func test_a_shot_has_a_tracer_when_its_weapons_projectile_speed_is_0_whatever_it_is_named() -> void:
@@ -136,18 +137,18 @@ func test_a_target_nearer_than_the_muzzle_leaves_the_muzzle_on_the_target() -> v
 	var shooter: Vector2i = Vector2i(10000, 20000)
 	var target: Vector2i = Vector2i(10100, 20000)  # 6.4 px away, and the muzzle is 13 px out.
 	_tick_with(Rig.shot(shooter, target, _weapon(&"rifle")))
-	var to_px: Vector2 = ViewScale.milli_to_px_vec(target.x, target.y)
+	var to_px: Vector2 = IsoProjection.ground_to_px(target.x, target.y)
 	assert_vector(_layer.line_from(1)).is_equal_approx(to_px, TOL)
 	assert_vector(_layer.line_to(1)).is_equal(to_px)
 	_now_ms += 1000
 	_tick_with(Rig.shot(shooter, shooter, _weapon(&"tank_cannon")))  # On top of each other.
-	var on_shooter: Vector2 = ViewScale.milli_to_px_vec(shooter.x, shooter.y)
+	var on_shooter: Vector2 = IsoProjection.ground_to_px(shooter.x, shooter.y)
 	assert_vector(_layer.quad_rect(0).get_center()).is_equal_approx(on_shooter, TOL)
 
 
 func test_an_impact_draws_a_puff_where_the_shell_came_down() -> void:
 	var landing: Vector2i = Vector2i(12500, 9500)
-	var landing_px: Vector2 = ViewScale.milli_to_px_vec(landing.x, landing.y)
+	var landing_px: Vector2 = IsoProjection.ground_to_px(landing.x, landing.y)
 	# STYLE.md: 40 px for a tank shell and 56 for a rocket, from 0.6 of that on the first frame.
 	# The first shell hit a unit (7), the second came down on nothing (0): both show a puff.
 	for case: Array in [[&"tank_cannon", 40.0, 7], [&"rocket", 56.0, 0]]:
@@ -165,7 +166,7 @@ func test_an_impact_draws_a_puff_where_the_shell_came_down() -> void:
 
 func test_a_vehicle_death_bursts_and_an_infantry_death_fades() -> void:
 	var place: Vector2i = Vector2i(15000, 8000)
-	var place_px: Vector2 = ViewScale.milli_to_px_vec(place.x, place.y)
+	var place_px: Vector2 = IsoProjection.ground_to_px(place.x, place.y)
 	var tank: int = _type(&"light_tank")
 	var squad: int = _type(&"rifle_squad")
 	_tick_with(Rig.died(place, tank))
@@ -267,8 +268,8 @@ func test_the_ring_never_grows_past_its_capacity_and_the_oldest_effect_is_overwr
 	assert_int(_layer.quad_count()).is_equal(4)
 	# Planned oldest first, so the newest is painted on top: shots 2 to 5 at x 4000 to 10000.
 	for index: int in 4:
-		var expected_x: float = ViewScale.milli_to_px(2000 * (index + 2))
-		assert_float(_layer.quad_rect(index).get_center().x).is_equal_approx(expected_x, 0.001)
+		var expected: Vector2 = _cannon_muzzle(Vector2i(2000 * (index + 2), 1000))
+		assert_vector(_layer.quad_rect(index).get_center()).is_equal_approx(expected, TOL)
 	# A tick with more events than the ring holds keeps the newest ones.
 	_now_ms += 1000
 	var many: PackedInt32Array = PackedInt32Array()
@@ -278,10 +279,10 @@ func test_the_ring_never_grows_past_its_capacity_and_the_oldest_effect_is_overwr
 		)
 	_tick_with(many)
 	assert_int(_layer.active_count()).is_equal(4)
-	var first_x: float = _layer.quad_rect(0).get_center().x
-	var last_x: float = _layer.quad_rect(3).get_center().x
-	assert_float(first_x).is_equal_approx(ViewScale.milli_to_px(5000), 0.001)
-	assert_float(last_x).is_equal_approx(ViewScale.milli_to_px(8000), 0.001)
+	var first: Vector2 = _layer.quad_rect(0).get_center()
+	var last: Vector2 = _layer.quad_rect(3).get_center()
+	assert_vector(first).is_equal_approx(_cannon_muzzle(Vector2i(5000, 1000)), TOL)
+	assert_vector(last).is_equal_approx(_cannon_muzzle(Vector2i(8000, 1000)), TOL)
 	_layer.capacity = 0  # A ring has a slot at least, and a new ring is empty.
 	assert_int(_layer.capacity).is_equal(1)
 	assert_int(_layer.active_count()).is_equal(0)
@@ -391,6 +392,14 @@ func _tick_with(events: PackedInt32Array) -> void:
 	_runner.snapshot.events = events
 	_runner.ticked.emit(_runner.snapshot.tick)
 	_layer._process(0.0)
+
+
+## Where the flash of a cannon shot from `shooter` at the point 8 tiles south of it stands: 31 px
+## out from the shooter's screen point, towards the target's.
+func _cannon_muzzle(shooter: Vector2i) -> Vector2:
+	var from_px: Vector2 = IsoProjection.ground_to_px(shooter.x, shooter.y)
+	var to_px: Vector2 = IsoProjection.ground_to_px(shooter.x, shooter.y + 8000)
+	return from_px + (to_px - from_px).limit_length(31.0)
 
 
 func _weapon(weapon_id: StringName) -> int:

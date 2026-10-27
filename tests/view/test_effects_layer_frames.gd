@@ -226,7 +226,7 @@ func test_records_the_tables_do_not_know_draw_something_sane_and_other_kinds_not
 	# tracer, a puff of the default size, and a type past them bursts. A SPAWNED record, or one of
 	# no kind, is ignored.
 	var at: Vector2i = Vector2i(5000, 5000)
-	var shooter: Vector2 = ViewScale.milli_to_px_vec(at.x, at.y)
+	var shooter: Vector2 = IsoProjection.ground_to_px(at.x, at.y)
 	for weapon: int in [99, -1]:
 		_now_ms += 1000
 		_deliver(Rig.shot(at, Vector2i(9000, 5000), weapon))
@@ -237,7 +237,9 @@ func test_records_the_tables_do_not_know_draw_something_sane_and_other_kinds_not
 		assert_float(_layer.quad_rect(0).size.x).is_equal_approx(24.0, 0.001)
 		var muzzle: Vector2 = _layer.quad_rect(0).get_center()
 		assert_float(muzzle.distance_to(shooter)).is_equal_approx(13.0, 0.001)
-		assert_float(muzzle.y).is_equal_approx(shooter.y, 0.001)  # On the way to the target.
+		var towards: Vector2 = IsoProjection.ground_to_px(9000, 5000) - shooter
+		var offset: Vector2 = muzzle - shooter
+		assert_vector(offset).is_equal_approx(towards.normalized() * 13.0, Vector2(0.001, 0.001))
 		_now_ms += 1000
 		_deliver(Rig.impact(at, weapon))
 		_layer._process(0.0)

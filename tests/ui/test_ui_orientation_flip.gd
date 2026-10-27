@@ -63,30 +63,30 @@ func test_the_perf_arena_ends_in_the_state_of_a_fresh_scene() -> void:
 
 ## The camera's turn rule (ADR 0015 section 4, P62) runs once per turn: the first run of a flip's
 ## two rescales the zoom (the web phone's toolbar takes another share of the screen in each
-## orientation) and clamps the kept position to the new view, a further run only clamps, and
-## turning back starts from the clamped position (no memory) with the zoom rescaled back.
+## orientation) and keeps the position, which the clamp into the map's diamond (ADR 0023 section 4)
+## does not move whatever the view's size, a further run changes neither, and turning back keeps
+## the position with the zoom rescaled back.
 func test_the_camera_turns_once_and_a_further_run_only_clamps() -> void:
 	await _resize(_web_phone())  # Landscape: stretch 1.2945, half the view is 927 by 360 world px.
 	var main: Node = await _open(&"main")
 	var camera: RtsCamera = main.get_node("Camera")
 	camera.zoom = Vector2.ONE
-	camera.position = Vector2(1000, 400)
+	camera.position = Vector2(-300, 700)  # Inside the 48 x 48 diamond, near its west edge.
 	var landscape: float = UiScale.base_px_per_dp()
 	await _resize(_web_phone_portrait())  # Portrait: 720 base px wide, stretch 1.5.
 	var factor: float = UiScale.base_px_per_dp() / landscape
 	assert_float(factor).is_between(0.86, 0.87)  # The turn rescales, so this is not vacuous.
 	assert_float(camera.zoom.x).is_equal_approx(factor, 0.000001)
-	# The map's top edge stops the view: the centre is half the visible rect over the zoom.
-	var half: Vector2 = get_window().get_visible_rect().size * 0.5 / camera.zoom
-	var clamped: Vector2 = Vector2(1000.0, half.y)
-	assert_that(camera.position).is_equal(clamped)
+	# The clamp is on the centre, so the turn does not move it, however much the view overhangs.
+	var kept: Vector2 = Vector2(-300, 700)
+	assert_that(camera.position).is_equal(kept)
 	var turned: Vector2 = camera.zoom
 	get_tree().root.size_changed.emit()  # A third run, as after a flip's two.
 	assert_that(camera.zoom).is_equal(turned)
-	assert_that(camera.position).is_equal(clamped)
+	assert_that(camera.position).is_equal(kept)
 	await _resize(_web_phone())
 	assert_float(camera.zoom.x).is_equal_approx(1.0, 0.000001)
-	assert_that(camera.position).is_equal(clamped)
+	assert_that(camera.position).is_equal(kept)
 	_close(main)
 
 

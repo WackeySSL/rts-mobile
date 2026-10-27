@@ -46,8 +46,12 @@ func test_the_count_follows_every_way_the_selection_changes() -> void:
 		assert_that(rect.modulate).is_equal(Color("2F80ED") if part == "Team" else Color.WHITE)
 	_gesture(GestureEvent.Kind.DOUBLE_TAP, first)
 	_expect("double-tap", "×30")
-	var tanks_1_to_6: Rect2 = Rect2(first, Vector2.ZERO).expand(layer.unit_screen_position(5))
-	_gesture(GestureEvent.Kind.BOX_END, first, tanks_1_to_6.grow(30.0))
+	# The top of the diamond block under the 2:1 projection (P117): world (-440, 410) to (-200, 490)
+	# holds the six tanks 1, 2, 3, 7, 8 and 13 and no other.
+	var camera: RtsCamera = _main.get_node("Camera")
+	var top_left: Vector2 = camera.world_to_screen(Vector2(-440, 410))
+	var top_box: Rect2 = Rect2(top_left, camera.world_to_screen(Vector2(-200, 490)) - top_left)
+	_gesture(GestureEvent.Kind.BOX_END, first, top_box)
 	_expect("box", "×6")
 	_gesture(GestureEvent.Kind.BOX_END, first, Rect2(80, 300, 220, 200))  # No tank in it.
 	assert_bool(_panel.visible).override_failure_message("empty box").is_false()

@@ -266,8 +266,8 @@ func _add_shot(snap: MatchSnapshot, at: int, now: int) -> void:
 		return
 	var weapon: int = events[at + 5]
 	var weapon_id: StringName = _weapon_id(snap, weapon)
-	var shooter: Vector2 = ViewScale.milli_to_px_vec(events[at + 2], events[at + 3])
-	var target: Vector2 = ViewScale.milli_to_px_vec(events[at + 6], events[at + 7])
+	var shooter: Vector2 = IsoProjection.ground_to_px(events[at + 2], events[at + 3])
+	var target: Vector2 = IsoProjection.ground_to_px(events[at + 6], events[at + 7])
 	var reach: float = muzzle_px.get(weapon_id, MUZZLE_DEFAULT_PX)
 	var muzzle: Vector2 = shooter + (target - shooter).limit_length(reach)
 	var speeds: PackedInt32Array = snap.weapon_projectile_speed
@@ -283,7 +283,7 @@ func _add_impact(snap: MatchSnapshot, at: int, now: int) -> void:
 	if not _seen(snap, events[at + 2], events[at + 3]):
 		return
 	var weapon_id: StringName = _weapon_id(snap, events[at + 5])
-	var landing: Vector2 = ViewScale.milli_to_px_vec(events[at + 2], events[at + 3])
+	var landing: Vector2 = IsoProjection.ground_to_px(events[at + 2], events[at + 3])
 	_push(Kind.PUFF, now, landing, Vector2.ZERO, puff_px.get(weapon_id, PUFF_DEFAULT_PX))
 
 
@@ -299,7 +299,7 @@ func _add_death(snap: MatchSnapshot, at: int, now: int) -> void:
 	var infantry: bool = (
 		type >= 0 and type < armours.size() and armours[type] == World.Armour.INFANTRY
 	)
-	var place: Vector2 = ViewScale.milli_to_px_vec(events[at + 2], events[at + 3])
+	var place: Vector2 = IsoProjection.ground_to_px(events[at + 2], events[at + 3])
 	if infantry:
 		_push(Kind.FADE, now, place, Vector2.ZERO, FADE_PX)
 	else:

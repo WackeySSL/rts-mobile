@@ -13,6 +13,8 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 |---|---|---|
 | Drag one finger | Pans the map | |
 | Pinch | Zooms about the fingers; on release it settles on the nearest of three zoom levels (`zoom_levels` in `data/input_settings.tres`) | |
+| Look at the map | The map is drawn at an angle, as a diamond: every tile is a diamond and the map's corners point up, down, left and right. Drag, pinch and taps work as before, and a tap on the ground sends the units to the point under your finger | |
+| Drag the map to its edge | The camera stops at the map's edge: the middle of the screen never leaves the map. The edge can reach the middle of the screen, so what lies under the sidebar or the army bar can be scrolled into view; beyond the edge there is only empty ground. Turning the phone keeps the middle of the screen where it was | |
 
 ## Turn the phone
 | Action | Result | Teach |

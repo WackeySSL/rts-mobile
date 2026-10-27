@@ -126,8 +126,8 @@ func test_hiding_changes_only_visible_a_hidden_rig_keeps_its_place_tint_and_scre
 	var snap: MatchSnapshot = _runner.snapshot
 	assert_bool(_rig(30).visible).is_false()
 	assert_int(snap.pos_x[30]).is_greater(snap.prev_pos_x[30])  # It is on the move.
-	var from: Vector2 = ViewScale.milli_to_px_vec(snap.prev_pos_x[30], snap.prev_pos_y[30])
-	var to: Vector2 = ViewScale.milli_to_px_vec(snap.pos_x[30], snap.pos_y[30])
+	var from: Vector2 = IsoProjection.ground_to_px(snap.prev_pos_x[30], snap.prev_pos_y[30])
+	var to: Vector2 = IsoProjection.ground_to_px(snap.pos_x[30], snap.pos_y[30])
 	assert_vector(_rig(30).position).is_equal_approx(from.lerp(to, 0.25), Vector2(0.001, 0.001))
 	assert_that(_rig(30).get_node("Team").modulate).is_equal(RED)
 	assert_that(_rig(30).get_node("Hull").modulate).is_equal(Color.WHITE)
