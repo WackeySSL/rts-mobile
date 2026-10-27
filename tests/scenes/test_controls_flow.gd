@@ -5,7 +5,9 @@ extends GdUnitTestSuite
 ## Fingers are window-px touches pushed into the viewport, through TouchInput, the
 ## GestureRecognizer and the PlayerController (HUD buttons through the GUI). Time is
 ## a fake clock, only run_ticks() moves the sim and Commands go through the real CommandQueue. Tank
-## n is row n - 1 of the 6-column block, ids 1-30 are blue (the player's), 31-40 red. No map touch
+## n is row n - 1 of the 6-column block, which the 2:1 projection (P117) shows as a diamond: column
+## c = (n - 1) % 6 and row r = (n - 1) / 6 stand at world px x = -320 + 48 (c - r) and
+## y = 432 + 24 (c + r). Ids 1-30 are blue (the player's), 31-40 red. No map touch
 ## starts on the SelectionPanel, the ArmyBar or the Dev button: they keep their touches. Timings,
 ## buzzes and the formation bound come from the data. The zoom levels and the scenario are pins.
 
@@ -23,22 +25,29 @@ const VIEW_WIDTH: Dictionary[String, float] = {
 	"web_phone_portrait": 720.0,
 }
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
-## World px with no unit near it, right of the tank block: milli (17266, 21516), where 17265.625
-## rounds up. It is left of the build sidebar at every profile (P85), flat at screen x 1105 and
-## upright, where the view is 720 base px wide, at x 665.
-const GROUND: Vector2 = Vector2(1105, 1377)
-## Where a drag's finger goes down: left of the build sidebar, with room to drag the map 784 px left
-## flat; upright 344 px, from near the right edge as before the sidebar.
+## World px with no unit near it, past the tank block's upper right edge: milli (10000, 15000). The
+## nearest tank is 102 px away, more than any hit area (49 px at most here), and the point is 128 px
+## right of and 144 px above the middle of the view: clear of the build sidebar, the selection panel
+## and the army bar at every profile (P85).
+const GROUND: Vector2 = Vector2(-160, 400)
+const GROUND_MILLI: Vector2i = Vector2i(10000, 15000)
+## Where a drag's finger goes down: left of the build sidebar. The map moves 888 px left flat (1015
+## on the wide web phone) and 448 px upright, and a finger may leave the screen.
 const DRAG_FROM: Vector2 = Vector2(900, 400)
 const DRAG_FROM_PORTRAIT: Vector2 = Vector2(660, 400)
-## A box with no tank in it, in base px: left of the block flat; upright the block starts at x 104,
-## so above it (its first row is at y 448 in the 1280 high view and lower in the taller ones).
+## A box with no tank in it, in base px: left of the block flat (it starts at x 576); upright the
+## block is at y 688 and lower, so above it.
 const EMPTY_BOX: Rect2 = Rect2(80, 300, 220, 200)
 const EMPTY_BOX_PORTRAIT: Rect2 = Rect2(80, 200, 220, 200)
 ## The middle of a pinch, clear of the tanks and the HUD, above the block: the fingers go 170 px
-## either side, so flat they stay left of the build sidebar, and upright above the band.
+## either side, so flat they stay left of the build sidebar, and upright above the band. The pinch
+## keeps the world point under it, so the camera centre follows a zoom (and stays in the map).
 const PINCH_CENTRE: Vector2 = Vector2(800, 100)
 const PINCH_CENTRE_PORTRAIT: Vector2 = Vector2(360, 300)
+## The tanks at the top of the diamond, c + r <= 2 (world y 432 to 480; the next ones are at 504),
+## and the world rect that holds exactly them.
+const TOP_TANKS: Array[int] = [1, 2, 3, 7, 8, 13]
+const TOP_BOX: Rect2 = Rect2(-440, 410, 240, 80)
 const RED: Color = Color("E5484D")
 const IDLE: int = World.Order.IDLE
 
@@ -151,26 +160,25 @@ func test_double_tap_selects_visible_tanks(profile: String, _test_parameters := 
 	await _double_tap(_layer.unit_screen_position(0))
 	assert_array(_controller.selection.selected).is_equal(range(1, 31))
 	_assert_panel("×30")
-	# Drag the map left by the middle of columns 2 and 3: 784 px flat (columns 0-2 at x 544, 640 and
-	# 736 leave the screen, 3-5 stay), 344 upright (they start at x 104, 200 and 296).
+	# Drag the map left by the middle of the screen x of tanks 3 and 4: world x -224 and -176, so the
+	# left edge of the screen becomes world x -200 and every tank with c - r under 3 leaves it (a
+	# tank stands at x = -320 + 48 (c - r)); tanks 4, 5, 6, 11, 12 and 18 stay. That is half the
+	# view's width plus 88 px: 888 flat, 1015 on the wide web phone, 448 upright.
 	var by: float = (_layer.unit_screen_position(2).x + _layer.unit_screen_position(3).x) * 0.5
-	assert_float(by).is_equal_approx(344.0 if _upright else 784.0, 0.5)
+	assert_float(by).is_equal_approx(VIEW_WIDTH[profile] * 0.5 + 88.0, 0.5)
 	await _drag(DRAG_FROM_PORTRAIT if _upright else DRAG_FROM, Vector2(-by, 0.0))
 	assert_float(_layer.unit_screen_position(0).x).is_less(0.0)
 	await _double_tap(_layer.unit_screen_position(3))  # Tank 4, column 3 of row 0.
-	var visible_columns: Array = [4, 5, 6, 10, 11, 12, 16, 17, 18, 22, 23, 24, 28, 29, 30]
-	assert_array(_controller.selection.selected).is_equal(visible_columns)
-	_assert_panel("×15")
+	assert_array(_controller.selection.selected).is_equal([4, 5, 6, 11, 12, 18])
+	_assert_panel("×6")
 	assert_array(_sent).is_empty()
 
 
 func test_long_press_box_selects_its_tanks(profile: String, _test_parameters := PROFILES) -> void:
 	await _open(profile)
 	_controller.selection.set_ids(PackedInt32Array([20]))
-	var first_row: Rect2 = Rect2(_layer.unit_screen_position(0), Vector2.ZERO)
-	first_row = first_row.expand(_layer.unit_screen_position(5)).grow(30.0)  # Tanks 1-6.
-	await _box(first_row.position, first_row.end)
-	assert_array(_controller.selection.selected).is_equal([1, 2, 3, 4, 5, 6])
+	await _box(_top_box().position, _top_box().end)  # The six tanks at the top of the diamond.
+	assert_array(_controller.selection.selected).is_equal(TOP_TANKS)
 	_assert_panel("×6")
 	assert_array(_buzzes).is_equal([_touch.settings.haptic_ms])  # The long-press, once.
 	var empty: Rect2 = EMPTY_BOX_PORTRAIT if _upright else EMPTY_BOX
@@ -187,16 +195,15 @@ func test_all_army_then_groups_1_to_3(profile: String, _test_parameters := PROFI
 	assert_array(_controller.selection.selected).is_equal(range(1, 31))
 	_assert_panel("×30")  # Rows/Row0/Count.
 	_press_hud("Group1", hold)  # A hold assigns the 30.
-	var corner: Vector2 = Vector2(30, 30)
-	await _box(_layer.unit_screen_position(0) - corner, _layer.unit_screen_position(5) + corner)
-	_press_hud("Group2", hold)  # Tanks 1-6.
+	await _box(_top_box().position, _top_box().end)
+	_press_hud("Group2", hold)  # Tanks 1, 2, 3, 7, 8 and 13.
 	await _tap(_layer.unit_screen_position(2))
 	_press_hud("Group3", hold)  # Tank 3.
 	for label: Array in [["Group1", "1\n30"], ["Group2", "2\n6"], ["Group3", "3\n1"]]:
 		assert_str((_hud(label[0]) as Button).text).is_equal(label[1])
 	var buzz: int = _touch.settings.haptic_ms
 	assert_array(_buzzes).is_equal([buzz, buzz, buzz, buzz])  # Three assigns, the box's long-press.
-	var recalled: Array = [[range(1, 31), "×30"], [[1, 2, 3, 4, 5, 6], "×6"], [[3], "×1"]]
+	var recalled: Array = [[range(1, 31), "×30"], [TOP_TANKS, "×6"], [[3], "×1"]]
 	for slot: int in [1, 2, 3, 2]:  # A tap recalls, whatever is selected now.
 		_press_hud("Group%d" % slot)
 		assert_array(_controller.selection.selected).is_equal(recalled[slot - 1][0])
@@ -235,7 +242,7 @@ func test_player_2_selects_orders_tints(profile: String, _test_parameters := PRO
 	assert_int(source.local_player).is_equal(1)  # The shared resource is untouched.
 	await _tap(_layer.unit_screen_position(0))  # A blue tank on screen: not ours, nothing selected.
 	assert_array(_controller.selection.selected).is_empty()
-	_camera.centre_on(Vector2(2208, 672))  # The red tanks 31-34.
+	_camera.centre_on(Vector2(768, 640))  # The red tanks 31-34, a little below the middle.
 	await _double_tap(_layer.unit_screen_position(30))  # All four red tanks are on screen.
 	assert_array(_controller.selection.selected).is_equal([31, 32, 33, 34])
 	_assert_panel("×4")
@@ -264,9 +271,15 @@ func test_the_profiles_are_two_phones_each_flat_and_upright() -> void:
 		assert_bool(VIEW_WIDTH.has(profile)).is_true()
 
 
+## The screen rect of TOP_BOX, from the camera as it is now.
+func _top_box() -> Rect2:
+	var top_left: Vector2 = _camera.world_to_screen(TOP_BOX.position)
+	return Rect2(top_left, _camera.world_to_screen(TOP_BOX.end) - top_left)
+
+
 func _assert_panel(count: String) -> void:
 	assert_bool(_panel.visible).is_true()
-	assert_str((_panel.get_node("Rows/Row0/Name") as Label).text).is_equal("Light Tank")
+	assert_str((_panel.get_node("Rows/Row0/Name") as Label).text).is_equal("Flarejack")
 	assert_str((_panel.get_node("Rows/Row0/Count") as Label).text).is_equal(count)
 
 
@@ -300,7 +313,7 @@ func _ground() -> Vector2:
 
 
 func _ground_milli() -> Vector2i:
-	return Vector2i(17266, 21516)
+	return GROUND_MILLI
 
 
 ## A new main scene on `profile` with the fake clock; Commands and buzzes are caught on their way.

@@ -1,11 +1,11 @@
 extends GdUnitTestSuite
 ## What ProjectileLayer plans and draws (plan P44a, assets/art/STYLE.md "Combat effects", ADR 0012
 ## sections 3 and 6): a live slot of the published snapshot as one atlas quad at the lerp of its two
-## positions, turned along the move; the SHELL or ROCKET region by `weapon_ids[proj_weapon]`; a new
-## slot (its `proj_id` differs from `prev_proj_id`) not drawn in its tick. Pixels cannot be read
-## headless, so the tests read the layer's plan (`active_count`, `quad_*`), which `_draw` paints one
-## for one (`drawn_count`), and `test_the_draw_code_paints_nothing_but_atlas_quads` reads the
-## script.
+## positions, projected and lifted to its weapon's muzzle height, turned along the move; the SHELL
+## or ROCKET region by `weapon_ids[proj_weapon]`; a new slot (its `proj_id` differs from
+## `prev_proj_id`) not drawn in its tick. Pixels cannot be read headless, so the tests read the
+## layer's plan (`active_count`, `quad_*`), which `_draw` paints one for one (`drawn_count`), and
+## `test_the_draw_code_paints_nothing_but_atlas_quads` reads the script.
 ## Exact cases write slots into the published snapshot, which ADR 0012 section 3 allows in SYNC
 ## mode; the others run the real sim: two light tanks 3 tiles apart on open grass fire at each other
 ## (flight time ceil(3000 / 600) = 5 ticks). The runner is not in the tree, so only the calls here
@@ -21,8 +21,11 @@ const MAIN_SCENE: String = "res://scenes/main.tscn"
 const SHELL: Rect2 = Rect2(84.0, 60.0, 16.0, 8.0)
 const ROCKET: Rect2 = Rect2(84.0, 72.0, 36.0, 12.0)
 const ATLAS_SIZE: Vector2 = Vector2(176.0, 84.0)
-const PX_PER_MILLI: float = 0.064  ## A tile is 64 px and 1000 milli-tiles.
 const FRAME_QUARTER: float = 1.0 / 60.0  ## Seconds: a quarter of a 15 Hz tick.
+## The height a shell flies at, the muzzle height of its weapon in world px above the ground point
+## (ADR 0023 section 2; `SpriteLift`, test_sprite_lift.gd), typed again: cannon 14, rocket 13.
+const TANK_LIFT: float = 14.0
+const ROCKET_LIFT: float = 13.0
 const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
 ## The sizes every screen is tested at: base, 20:9 phone and 4:3 tablet, each held both ways.
 const SIZES: Array[Vector2i] = ScreenSizes.ALL
@@ -89,42 +92,34 @@ func test_a_slot_is_drawn_at_the_lerp_of_its_two_positions_and_turned_along_the_
 	_frame()  # Alpha 0: each stands at its previous position.
 	assert_int(_layer.active_count()).is_equal(3)
 	assert_array(_slots()).is_equal([3, 5, 9])
-	assert_vector(_layer.quad_position(0)).is_equal_approx(
-		Vector2(7000, 24000) * PX_PER_MILLI, _eps()
-	)
+	assert_vector(_layer.quad_position(0)).is_equal_approx(_px(Vector2(7000, 24000)), _eps())
 	_runner._process(FRAME_QUARTER)
 	assert_float(_runner.alpha()).is_equal(0.25)
 	_frame()
 	var expected: Array[Vector2] = [Vector2(7750, 23000), Vector2(29250, 4000), Vector2(2000, 2000)]
-	var angles: Array[float] = [atan2(-4000.0, 3000.0), PI, PI / 2.0]
+	var angles: Array[float] = [  # The three moves as they look on the screen.
+		IsoProjection.screen_angle(3000.0, -4000.0),
+		IsoProjection.screen_angle(-3000.0, 0.0),
+		IsoProjection.screen_angle(0.0, 4000.0),
+	]
 	for index: int in 3:
 		var note: String = "quad %d" % index
 		assert_vector(_layer.quad_position(index)).override_failure_message(note).is_equal_approx(
-			expected[index] * PX_PER_MILLI, _eps()
+			_px(expected[index]), _eps()
 		)
 		assert_float(_layer.quad_angle(index)).override_failure_message(note).is_equal_approx(
 			angles[index], 0.0001
 		)
 	_runner._process(FRAME_QUARTER)  # Alpha 0.5.
 	_frame()
-	assert_vector(_layer.quad_position(0)).is_equal_approx(
-		Vector2(8500, 22000) * PX_PER_MILLI, _eps()
-	)
-	assert_vector(_layer.quad_position(1)).is_equal_approx(
-		Vector2(28500, 4000) * PX_PER_MILLI, _eps()
-	)
+	assert_vector(_layer.quad_position(0)).is_equal_approx(_px(Vector2(8500, 22000)), _eps())
+	assert_vector(_layer.quad_position(1)).is_equal_approx(_px(Vector2(28500, 4000)), _eps())
 	_runner._process(FRAME_QUARTER)  # Alpha 0.75: the last frame before the next tick.
 	assert_float(_runner.alpha()).is_equal(0.75)
 	_frame()
-	assert_vector(_layer.quad_position(0)).is_equal_approx(
-		Vector2(9250, 21000) * PX_PER_MILLI, _eps()
-	)
-	assert_vector(_layer.quad_position(1)).is_equal_approx(
-		Vector2(27750, 4000) * PX_PER_MILLI, _eps()
-	)
-	assert_vector(_layer.quad_position(2)).is_equal_approx(
-		Vector2(2000, 4000) * PX_PER_MILLI, _eps()
-	)
+	assert_vector(_layer.quad_position(0)).is_equal_approx(_px(Vector2(9250, 21000)), _eps())
+	assert_vector(_layer.quad_position(1)).is_equal_approx(_px(Vector2(27750, 4000)), _eps())
+	assert_vector(_layer.quad_position(2)).is_equal_approx(_px(Vector2(2000, 4000)), _eps())
 
 
 func test_the_drawn_count_is_the_live_slots_that_are_not_new() -> void:
@@ -161,8 +156,9 @@ func test_a_new_slot_is_not_drawn_in_its_tick_and_is_drawn_from_the_next() -> vo
 		var from: Vector2 = Vector2(snap.prev_proj_x[slot], snap.prev_proj_y[slot])
 		var to: Vector2 = Vector2(snap.proj_x[slot], snap.proj_y[slot])
 		assert_bool(to != from).is_true()
-		assert_vector(_layer.quad_position(index)).is_equal_approx(from * PX_PER_MILLI, _eps())
-		assert_float(_layer.quad_angle(index)).is_equal_approx((to - from).angle(), 0.0001)
+		assert_vector(_layer.quad_position(index)).is_equal_approx(_px(from), _eps())
+		var heading: float = IsoProjection.screen_angle(to.x - from.x, to.y - from.y)
+		assert_float(_layer.quad_angle(index)).is_equal_approx(heading, 0.0001)
 
 
 func test_every_tick_of_a_fight_draws_exactly_the_live_slots_that_are_not_new() -> void:
@@ -295,10 +291,11 @@ func test_a_full_pool_of_live_shells_is_planned_and_drawn_slot_for_slot() -> voi
 		_set_slot(slot, 100 + slot, from, from + Vector2i(100, -50), 1, slot % 2)
 	_frame()
 	assert_int(_layer.active_count()).is_equal(pool)
-	var heading: float = atan2(-50.0, 100.0)
+	var heading: float = IsoProjection.screen_angle(100.0, -50.0)
 	var wrong: Array[int] = []  # The quads that are not their slot's own, so that one assertion
 	for index: int in pool:  # covers all 512 of them.
-		var expected: Vector2 = Vector2(10 * index, 4 * index) * PX_PER_MILLI
+		var lift: float = ROCKET_LIFT if index % 2 == 1 else TANK_LIFT
+		var expected: Vector2 = _px(Vector2(10 * index, 4 * index), lift)
 		if (
 			_layer.quad_slot(index) != index
 			or _layer.quad_position(index).distance_to(expected) > 0.01
@@ -309,8 +306,9 @@ func test_a_full_pool_of_live_shells_is_planned_and_drawn_slot_for_slot() -> voi
 	assert_array(wrong).is_empty()
 	var last: int = pool - 1
 	assert_int(_layer.quad_slot(last)).is_equal(last)
+	var last_lift: float = ROCKET_LIFT if last % 2 == 1 else TANK_LIFT
 	assert_vector(_layer.quad_position(last)).is_equal_approx(
-		Vector2(10 * last, 4 * last) * PX_PER_MILLI, _eps()
+		_px(Vector2(10 * last, 4 * last), last_lift), _eps()
 	)
 	assert_float(_layer.quad_angle(last)).is_equal_approx(heading, 0.0001)
 	await await_idle_frame()
@@ -332,7 +330,7 @@ func test_the_plan_grows_when_a_later_snapshot_has_more_slots_than_the_first() -
 	assert_array(_slots()).is_equal(live)
 	var last: int = live.size() - 1
 	assert_vector(_layer.quad_position(last)).is_equal_approx(
-		Vector2(10 * live[last], 0) * PX_PER_MILLI, _eps()
+		_px(Vector2(10 * live[last], 0)), _eps()
 	)
 	_runner.snapshot = _small_snapshot(4, 3)  # And back to a short table: it is not outgrown.
 	_frame()
@@ -403,19 +401,21 @@ func test_the_main_scene_has_the_layer_after_the_bars_at_z_120_in_world_space_at
 		await await_idle_frame()
 		assert_vector(camera.get_viewport_rect().size).is_equal(VIEWS[at_size])
 		camera.zoom = Vector2.ONE
-		camera.centre_on(Vector2(1536, 1536))
+		camera.centre_on(IsoProjection.ground_to_px(24000, 24000))
 		var snap: MatchSnapshot = runner.snapshot
 		snap.proj_id[0] = 61
 		snap.prev_proj_id[0] = 61
-		snap.proj_x[0] = 24000  # The middle of the 48 x 48 map: 1536 px.
+		snap.proj_x[0] = 24000  # The middle of the 48 x 48 map: px (0, 768).
 		snap.proj_y[0] = 24000
 		snap.prev_proj_x[0] = 24000
 		snap.prev_proj_y[0] = 24000
 		layer._process(0.0)
 		assert_int(layer.active_count()).is_equal(1)
 		# A world layer: the shell on the middle of the map is seen where the camera looks.
+		# Lifted by the weapon's muzzle height, so it is seen that much above the middle.
 		var seen: Vector2 = camera.world_to_screen(layer.to_global(layer.quad_position(0)))
-		assert_vector(seen).is_equal_approx(VIEWS[at_size] * 0.5, Vector2(0.01, 0.01))
+		var lifted: Vector2 = VIEWS[at_size] * 0.5 - Vector2(0.0, TANK_LIFT)
+		assert_vector(seen).is_equal_approx(lifted, Vector2(0.01, 0.01))
 
 
 ## A snapshot slot written for a view case: `slot` live with projectile id `id` of `owner_id`,
@@ -459,6 +459,11 @@ func _frame() -> void:
 
 func _eps() -> Vector2:
 	return Vector2(0.001, 0.001)
+
+
+## The screen point (world px) of the ground point `milli`, as the layer projects it, `lift` px up.
+func _px(milli: Vector2, lift: float = TANK_LIFT) -> Vector2:
+	return IsoProjection.ground_to_px(roundi(milli.x), roundi(milli.y)) - Vector2(0.0, lift)
 
 
 ## The projectile slot of each quad in the plan, and its region.

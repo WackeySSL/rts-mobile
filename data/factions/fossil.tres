@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="FactionDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/FactionDef.gd" id="1_faction"]
+[ext_resource type="Script" path="res://game/sim/defs/UnitDef.gd" id="2_unit"]
+[ext_resource type="Resource" path="res://data/units/headquarters.tres" id="3_hq"]
+[ext_resource type="Resource" path="res://data/units/power_plant.tres" id="4_power"]
+[ext_resource type="Resource" path="res://data/units/refinery.tres" id="5_refinery"]
+[ext_resource type="Resource" path="res://data/units/barracks.tres" id="6_barracks"]
+[ext_resource type="Resource" path="res://data/units/vehicle_factory.tres" id="7_factory"]
+[ext_resource type="Resource" path="res://data/units/fossil_radar.tres" id="8_radar"]
+[ext_resource type="Resource" path="res://data/units/defence_turret.tres" id="9_defence"]
+[ext_resource type="Resource" path="res://data/units/fossil_strike.tres" id="10_strike"]
+[ext_resource type="Resource" path="res://data/units/rifle_squad.tres" id="11_rifle"]
+[ext_resource type="Resource" path="res://data/units/rocket_squad.tres" id="12_rocket"]
+[ext_resource type="Resource" path="res://data/units/light_tank.tres" id="13_scout"]
+[ext_resource type="Resource" path="res://data/units/heavy_tank.tres" id="14_tank"]
+[ext_resource type="Resource" path="res://data/units/artillery.tres" id="15_artillery"]
+[ext_resource type="Resource" path="res://data/units/harvester.tres" id="16_tanker"]
+
+[resource]
+script = ExtResource("1_faction")
+id = &"fossil"
+display_name = "Derrick League"
+emblem = &"emblem_fossil"
+key_triad = PackedStringArray("#FF9446", "#E8681F", "#B04B12")
+roster = Array[ExtResource("2_unit")]([ExtResource("3_hq"), ExtResource("4_power"), ExtResource("5_refinery"), ExtResource("6_barracks"), ExtResource("7_factory"), ExtResource("8_radar"), ExtResource("9_defence"), ExtResource("10_strike"), ExtResource("11_rifle"), ExtResource("12_rocket"), ExtResource("13_scout"), ExtResource("14_tank"), ExtResource("15_artillery"), ExtResource("16_tanker")])
