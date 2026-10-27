@@ -8,13 +8,27 @@ art_id = &"barracks"
 faction = &"fossil"
 category = &"bld"
 footprint = 2
-silhouette = "A long concrete bunkhouse under a pitched steel roof, a dark door with a warm lamp on its front, a team stripe down its long side and a small annex behind."
+silhouette = "A long low concrete bunkhouse under a gabled rust-coloured roof with a team stripe round its eaves and a team cap along its ridge, a row of lit windows along its right wall, a dark door beside a lamp on its front and a sandbag wall before it."
 prims = PackedStringArray(
 "box hull concrete 0 0 0 1.92 1.92 0.06",
-"box hull concrete 0 0.1 0.06 1.5 1.1 0.55",
-"wedge hull steel 0 0.1 0.61 1.5 1.1 0.25 slope=0.9",
-"box hull iron 0.77 0.1 0.06 0.04 0.4 0.4",
-"box hull lamp 0.77 0.1 0.48 0.04 0.12 0.06",
-"box hull team 0 0.67 0.3 1.5 0.04 0.18",
-"box hull concrete -0.35 -0.7 0.06 0.7 0.4 0.4"
+"box hull concrete 0 -0.1 0.06 1.3 1.6 0.42",
+"box hull team 0 -0.1 0.48 1.36 1.66 0.12",
+"wedge hull rust -0.325 -0.1 0.6 0.65 1.7 0.34 slope=-0.8",
+"wedge hull rust 0.325 -0.1 0.6 0.65 1.7 0.34 slope=0.8",
+"box hull iron 0.34 0.71 0.06 0.32 0.02 0.4",
+"box hull lamp 0.55 0.74 0.3 0.06 0.06 0.1",
+"box hull lamp 0.66 -0.65 0.24 0.02 0.18 0.12",
+"box hull lamp 0.66 -0.3 0.24 0.02 0.18 0.12",
+"box hull lamp 0.66 0.05 0.24 0.02 0.18 0.12",
+"box hull lamp 0.66 0.4 0.24 0.02 0.18 0.12",
+"box hull lamp -0.3 0.71 0.24 0.16 0.02 0.12",
+"box hull lamp 0 0.71 0.24 0.16 0.02 0.12",
+"box hull team 0 -0.1 0.94 0.06 1.7 0.1",
+"prism hull steel -0.25 -0.5 0.8 0.14 0.14 0.5 sides=8",
+"prism hull iron -0.25 -0.5 1.3 0.18 0.18 0.04 sides=8",
+"box hull rust -0.5 0.84 0.06 0.3 0.14 0.12",
+"box hull rust -0.35 0.84 0.18 0.3 0.14 0.1",
+"box hull rust -0.2 0.84 0.06 0.3 0.14 0.12",
+"box hull rust -0.05 0.84 0.18 0.3 0.14 0.1",
+"box hull rust 0.74 0.84 0.06 0.16 0.14 0.12"
 )

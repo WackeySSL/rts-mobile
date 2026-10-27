@@ -52,6 +52,9 @@ const REASONS: Array[String] = [
 ]
 const MAP_GLYPHS: Array[String] = ["glyph_offline", "glyph_under_attack"]
 const FLAGS: Array[String] = ["rally_infantry", "rally_vehicles"]
+## The factions' emblems (P103: the Derrick League's; P104 adds the Lumen Accord's), pinned in
+## test_fossil_buildings.gd.
+const EMBLEMS: Array[String] = ["emblem_fossil"]
 ## The colours the item icons and the flags may use: STYLE.md's palette with A's muted materials of
 ## ADR 0022 (the building icons use them; P92b brings the unit icons), the neutral team colour that
 ## a unit's item icon carries, and the greys of the team layer.
@@ -125,12 +128,13 @@ func test_the_icon_folder_holds_exactly_the_files_the_style_guide_lists() -> voi
 	expected.append_array(MAP_GLYPHS)
 	for reason: String in REASONS:
 		expected.append("glyph_reason_" + reason)
+	expected.append_array(EMBLEMS)
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(ICON_DIR, ".svg"):
 		found.append(path.get_file().get_basename())
 	expected.sort()
 	assert_array(found).is_equal(expected)
-	assert_int(found.size()).is_equal(31)
+	assert_int(found.size()).is_equal(32)
 
 
 func test_every_icon_is_a_128_px_canvas_imported_at_scale_one_and_every_flag_layer_at_half(
@@ -307,12 +311,13 @@ func test_every_map_glyph_sits_on_a_dark_seat_with_a_white_rim() -> void:
 		assert_bool(inner_corner > 0.5).override_failure_message(icon).is_equal(not is_disc)
 
 
-## An item icon is named by the art id of what it builds: a building's `buildings/<id>_hull.svg`
-## or a unit's `units/<id>_hull.svg`, so the sidebar finds the icon by the type id alone.
+## An item icon is named by the art id of what it builds: a building's model
+## `models/fossil/<id>.tres` (P103: the oblique files are gone) or a unit's `units/<id>_hull.svg`,
+## so the sidebar finds the icon by the type id alone.
 func test_every_item_icon_is_named_after_an_existing_building_or_unit_art_id() -> void:
 	for icon: String in ITEMS:
 		var id: String = icon.trim_prefix("item_")
-		var building: String = "res://assets/art/svg/buildings/%s_hull.svg" % id
+		var building: String = "res://assets/art/models/fossil/%s.tres" % id
 		var unit: String = "res://assets/art/svg/units/%s_hull.svg" % id
 		(
 			assert_bool(ResourceLoader.exists(building) or ResourceLoader.exists(unit))
