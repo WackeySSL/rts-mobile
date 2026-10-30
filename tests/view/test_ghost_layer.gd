@@ -4,11 +4,13 @@ extends GdUnitTestSuite
 ## red where it does not, its sprite is the building's body on the match's atlas (as `BuildingLayer`
 ## draws it) with the picture's rise the sheet's, and it redraws every frame while the mode is on,
 ## once more when it ends and never otherwise. `GhostMarks` makes the three marks of a cell from one
-## texture: the wash and the frame as diamonds, the hatch cut from the art director's file.
+## texture: the wash and the frame as diamonds, the hatch cut from the art director's file four
+## times, so that its bands run straight across the cells of a footprint.
 
 const Rig: GDScript = preload("res://tests/input/support/placement_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const AT: Vector2i = Vector2i(11, 7)  ## The tile that holds the middle of the plant at (10, 6).
+const HATCH_PERIOD: int = 32  ## The hatch art's bands repeat every 32 px of x + y.
 
 var _window_size_before: Vector2i
 var _main: Node2D
@@ -52,29 +54,38 @@ func test_the_marked_diamonds_are_the_footprints_cells_at_every_zoom_and_screen(
 			_camera.centre_on(IsoProjection.cell_centre_px(AT.x, AT.y))
 			_placement.begin(Rig.plant(_runner.snapshot))
 			var note: String = "%s at zoom %s" % [size, zoom]
+			# The footprint the ghost stands on: the plant's 2 x 2 cells from FITS, nothing else.
+			assert_vector(_placement.origin()).override_failure_message(note).is_equal(Rig.FITS)
 			var cells: Array[Vector2i] = _layer.cells()
-			assert_array(cells).override_failure_message(note).has_size(4)
-			var origin: Vector2i = _placement.origin()
+			var expected: Array[Vector2i] = []
+			for row: int in Rig.FOOT.y:
+				for col: int in Rig.FOOT.x:
+					expected.append(Rig.FITS + Vector2i(col, row))
+			assert_array(cells).override_failure_message(note).contains_exactly(expected)
 			for cell: Vector2i in cells:
-				(
-					assert_bool(Rect2i(origin, Rig.FOOT).has_point(cell))
-					. override_failure_message("%s: %s" % [note, cell])
-					. is_true()
-				)
-				# The quad is that cell's diamond: its four screen corners are the cell's corners.
-				var middle: Vector2 = IsoProjection.cell_centre_px(cell.x, cell.y)
-				var half: Vector2 = Vector2(GhostMarks.TILE) * 0.5
+				# The quad the layer draws for that cell: its diamond's four corners, the middles
+				# of the quad's edges, are on screen the cell's four corners on the ground.
+				var quad: Rect2 = GhostLayer.quad_rect(cell, 0)
+				var middle: Vector2 = quad.get_center()
 				var seen: Array[Vector2i] = []
 				for corner: Vector2 in [
-					Vector2(0, -half.y), Vector2(half.x, 0), Vector2(0, half.y), Vector2(-half.x, 0)
+					Vector2(middle.x, quad.position.y),
+					Vector2(quad.end.x, middle.y),
+					Vector2(middle.x, quad.end.y),
+					Vector2(quad.position.x, middle.y),
 				]:
-					var on_screen: Vector2 = _camera.world_to_screen(middle + corner)
+					var on_screen: Vector2 = _camera.world_to_screen(corner)
 					var ground: Vector2i = IsoProjection.px_to_ground(
 						_camera.screen_to_world(on_screen)
 					)
 					seen.append(Vector2i(roundi(ground.x / 1000.0), roundi(ground.y / 1000.0)))
 				assert_array(seen).override_failure_message("%s: %s" % [note, cell]).is_equal(
 					[cell, cell + Vector2i(1, 0), cell + Vector2i(1, 1), cell + Vector2i(0, 1)]
+				)
+				# The frame's quad is the same quad, wider by its margin on every side.
+				var frame: Rect2 = GhostLayer.quad_rect(cell, GhostMarks.FRAME_MARGIN)
+				assert_that(frame).override_failure_message(note).is_equal(
+					quad.grow(GhostMarks.FRAME_MARGIN)
 				)
 
 
@@ -86,8 +97,11 @@ func test_no_cells_while_the_mode_is_off_and_a_bigger_footprint_marks_more() -> 
 	assert_array(_layer.cells()).is_empty()
 	_placement.foot = Vector2i(3, 2)  # As the Headquarters' 3 x 3 would, and a wider one.
 	_placement.active = true
+	_layer.refresh()  # What `changed` does.
 	assert_array(_layer.cells()).has_size(6)
 	_placement.active = false
+	_layer.refresh()
+	assert_array(_layer.cells()).is_empty()
 
 
 func test_the_ghost_is_green_where_it_fits_and_red_with_the_reason_where_it_does_not() -> void:
@@ -115,6 +129,7 @@ func test_the_sprite_is_the_buildings_body_on_the_atlas_and_the_rise_is_the_shee
 	assert_that(_layer.body_region()).is_equal(region)  # What BuildingLayer cuts for a plant of 1.
 	assert_float(_layer.rise_px()).is_equal_approx(sheet.origin(&"hull").y * 0.5, 0.001)
 	_layer.world_sort = null  # No atlas: the marks alone.
+	_layer.refresh()
 	assert_array([_layer.body_region().has_area(), _layer.rise_px()]).is_equal([false, 0.0])
 
 
@@ -130,6 +145,8 @@ func test_the_layer_draws_every_frame_while_the_mode_is_on_and_once_more_when_it
 	await await_idle_frame()
 	var drawn: int = _layer.draws
 	assert_int(drawn).is_greater_equal(2)
+	# What a frame draws was read when the mode began, not by the frames.
+	assert_int(_layer.refreshes).is_equal(1)
 	_placement.cancel()
 	await await_idle_frame()
 	await await_idle_frame()
@@ -138,6 +155,7 @@ func test_the_layer_draws_every_frame_while_the_mode_is_on_and_once_more_when_it
 	await await_idle_frame()
 	await await_idle_frame()
 	assert_int(_layer.draws).is_equal(after_end)  # Over: nothing more is drawn.
+	assert_int(_layer.refreshes).is_equal(2)  # The end was read once.
 
 
 func test_the_marks_are_one_texture_with_a_wash_a_hatch_and_a_frame_diamond() -> void:
@@ -145,7 +163,7 @@ func test_the_marks_are_one_texture_with_a_wash_a_hatch_and_a_frame_diamond() ->
 	assert_object(marks.texture()).is_not_null()
 	var image: Image = marks.image()
 	var wash: Rect2i = marks.region(GhostMarks.WASH)
-	var hatch: Rect2i = marks.region(GhostMarks.HATCH)
+	var hatch: Rect2i = marks.region(GhostMarks.hatch_for(Vector2i.ZERO))
 	var frame: Rect2i = marks.region(GhostMarks.FRAME)
 	assert_that(wash.size).is_equal(GhostMarks.TILE)
 	assert_that(hatch.size).is_equal(GhostMarks.TILE)
@@ -178,3 +196,38 @@ func test_the_marks_are_one_texture_with_a_wash_a_hatch_and_a_frame_diamond() ->
 	assert_int(opaque).is_greater(200)
 	assert_int(clear).is_greater(200)
 	assert_float(image.get_pixelv(hatch.position).a).is_equal(0.0)
+
+
+## The hatch's bands are lines of x + y = const on the screen. Every pixel well inside the diamond
+## of a 3 x 3 footprint's cells, each as its quad shows it (the region `hatch_for` names), is looked
+## at by its place on the screen: pixels with the same x + y, modulo the art's period of 32, have
+## the same alpha, whichever cell they are in. A band that breaks at a cell edge would not.
+func test_the_hatch_bands_run_straight_across_the_cells_of_a_footprint() -> void:
+	var marks: RuntimeAtlas = GhostMarks.build()
+	var image: Image = marks.image()
+	var lows: Dictionary[int, float] = {}
+	var highs: Dictionary[int, float] = {}
+	for row: int in range(6, 9):
+		for col: int in range(10, 13):
+			var cell: Vector2i = Vector2i(col, row)
+			var region: Rect2i = marks.region(GhostMarks.hatch_for(cell))
+			var corner: Vector2i = Vector2i(GhostLayer.quad_rect(cell, 0).position)
+			for y: int in GhostMarks.TILE.y:
+				for x: int in GhostMarks.TILE.x:
+					var reach: float = absf(x + 0.5 - 32.0) / 32.0 + absf(y + 0.5 - 16.0) / 16.0
+					if (1.0 - reach) * GhostMarks.EDGE_PX < 1.0:
+						continue  # Near the edge, where the pixel is only partly this cell's.
+					var phase: int = posmod(corner.x + x + corner.y + y, HATCH_PERIOD)
+					var alpha: float = image.get_pixelv(region.position + Vector2i(x, y)).a
+					lows[phase] = minf(lows.get(phase, alpha), alpha)
+					highs[phase] = maxf(highs.get(phase, alpha), alpha)
+	assert_int(lows.size()).is_equal(HATCH_PERIOD)  # Every place in the period is seen.
+	var broken: Array[int] = []
+	for phase: int in lows:
+		if highs[phase] - lows[phase] > 0.05:
+			broken.append(phase)
+	(
+		assert_array(broken)
+		. override_failure_message("x + y mod 32 where cells differ: %s" % [broken])
+		. is_empty()
+	)

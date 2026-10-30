@@ -2,9 +2,10 @@ extends GdUnitTestSuite
 ## What ends placement mode and what it sends (plan P86, ADR 0019 section 2), in the main scene on
 ## the 6-inch phone: the check mark (`confirm`) sends exactly one PLACE for the ghost's origin tile
 ## and ends the mode, and only while the ghost fits; the X (`cancel`) sends nothing; a new match and
-## aiming a strike end it; each tick judges the ghost again. A PLACE from the controller runs in the
-## sim and builds the plant where the ghost stood. A turn of the phone during a ghost drag keeps the
-## tile and makes no Command: the state hash of the run, the tile, the camera's centre and the
+## aiming a strike end it; each tick judges the ghost again (a tank rolls onto it, a new match). A
+## PLACE from the controller runs in the sim and builds a 1x1, a 2x2 and a 3x3 structure of either
+## faction, for either player, where the ghost stood. A turn of the phone during a ghost drag keeps
+## the tile and makes no Command: the state hash of the run, the tile, the camera's centre and the
 ## queue are those of a run with no turn.
 
 const Rig: GDScript = preload("res://tests/input/support/placement_rig.gd")
@@ -12,6 +13,15 @@ const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const BUILD_TICKS: int = 160  ## The plant takes 150 ticks.
 const TARGET: Vector2i = Vector2i(14, 9)  ## A tile that holds the middle of a plant that fits.
+## A structure built through the real queue and placed with the ghost on tile (11, 7): [local
+## player, its Headquarters, further buildings it needs, the structure, its footprint].
+const BUILDS: Array[Array] = [
+	[1, "headquarters", [["barracks", 2, 10]], "defence_turret", Vector2i(1, 1)],
+	[1, "headquarters", [], "power_plant", Vector2i(2, 2)],
+	[1, "headquarters", [["power_plant", 2, 10]], "refinery", Vector2i(3, 3)],
+	[2, "renew_hq", [], "renew_power", Vector2i(2, 2)],
+]
+const HOME: Vector2i = Vector2i(11, 7)
 
 var _window_size_before: Vector2i
 var _main: Node2D
@@ -71,42 +81,78 @@ func test_confirm_waits_for_a_ghost_that_fits_and_the_x_sends_nothing() -> void:
 	assert_int(snap.queue_count[World.TABS + World.Tab.STRUCTURES]).is_equal(1)
 
 
-func test_the_sim_builds_the_plant_where_the_confirmed_place_named_the_origin() -> void:
-	await _open()
-	_controller.command_sink = CommandQueue.submit  # The real way in.
-	CommandQueue.submit(Command.queue(1, Rig.plant(_runner.snapshot)))
-	_runner.run_ticks(BUILD_TICKS)
-	var type: int = Rig.plant(_runner.snapshot)
-	assert_bool(_placement.begin(type)).is_true()
-	_place_at(Vector2i(11, 7))
-	assert_int(_placement.reason).is_equal(Placement.Reason.OK)
-	assert_bool(_placement.confirm()).is_true()
-	_runner.run_ticks(2)
-	var snap: MatchSnapshot = _runner.snapshot
-	var row: int = -1
-	for at: int in snap.unit_count():
-		if snap.type_index[at] == type and snap.owner[at] == 1:
-			row = at
-	assert_int(row).is_greater_equal(0)
-	assert_array([snap.pos_x[row], snap.pos_y[row]]).is_equal([11000, 7000])  # The 2x2 at (10, 6).
-	assert_int(snap.queue_count[World.TABS + World.Tab.STRUCTURES]).is_equal(0)
-	assert_int(_runner.world.dropped_commands).is_equal(0)
+## The structure stands on the ghost's tile if its footprint is odd (the middle of the tile), and
+## has the tile's top-left corner as its middle if even: worked out here from the tile alone, not
+## from the controller's own origin.
+func test_the_sim_builds_every_footprint_where_the_confirmed_place_named_the_origin() -> void:
+	for entry: Array in BUILDS:
+		var local: int = entry[0]
+		var foot: Vector2i = entry[4]
+		var note: String = "%s for player %s" % [entry[3], local]
+		if is_instance_valid(_main):
+			_main.free()
+		var made: ScenarioDef = Rig.scenario_for(local, entry[1], entry[2], [entry[3]])
+		await _open(made, false)
+		_controller.command_sink = CommandQueue.submit  # The real way in.
+		var type: int = _runner.snapshot.type_ids.find(StringName(entry[3]))
+		CommandQueue.submit(Command.queue(local, type))
+		_runner.run_ticks(_runner.snapshot.type_build_ticks[type] + 10)
+		var queue: int = local * World.TABS + World.Tab.STRUCTURES
+		assert_int(_runner.snapshot.queue_count[queue]).override_failure_message(note).is_equal(1)
+		assert_bool(_placement.begin(type)).override_failure_message(note).is_true()
+		_place_at(HOME)
+		assert_int(_placement.reason).override_failure_message(note).is_equal(Placement.Reason.OK)
+		assert_bool(_placement.confirm()).override_failure_message(note).is_true()
+		_runner.run_ticks(2)
+		var snap: MatchSnapshot = _runner.snapshot
+		var row: int = -1
+		for at: int in snap.unit_count():
+			if snap.type_index[at] == type and snap.owner[at] == local:
+				row = at
+		assert_int(row).override_failure_message(note).is_greater_equal(0)
+		var middle: Vector2i = HOME * 1000 + Vector2i(foot.x % 2, foot.y % 2) * 500
+		(
+			assert_vector(Vector2i(snap.pos_x[row], snap.pos_y[row]))
+			. override_failure_message(note)
+			. is_equal(middle)
+		)
+		assert_int(snap.queue_count[queue]).override_failure_message(note).is_equal(0)
+		assert_int(_runner.world.dropped_commands).override_failure_message(note).is_equal(0)
+		CommandQueue.clear()
 
 
+## The ghost is judged again on every tick's snapshot, which the sim made: a tank that rolls onto
+## its footprint turns it red and the check mark off, it green again when the tank leaves, and a
+## new match ends the mode. Nothing here calls `refresh` or touches the snapshot.
 func test_each_tick_judges_the_ghost_again_and_a_new_match_ends_the_mode() -> void:
-	await _open()
-	_place_at(Vector2i(11, 7))
+	var scenario: ScenarioDef = Rig.scenario_for(
+		1, "headquarters", [], ["power_plant", "barracks", "light_tank"]
+	)
+	await _open(scenario)
+	_place_at(HOME)
 	var changes: Array[int] = []
 	_placement.changed.connect(func() -> void: changes.append(_placement.reason))
-	var snap: MatchSnapshot = _runner.snapshot
-	snap.fog.explored[7 * snap.map_cols + 11] = 0  # The ground under the ghost is dark now.
-	_placement.refresh()
-	assert_int(_placement.reason).is_equal(Placement.Reason.UNEXPLORED)
-	_placement.refresh()  # Nothing changed: nothing is told.
-	assert_array(changes).is_equal([Placement.Reason.UNEXPLORED])
-	snap.match_serial += 1
-	_placement.refresh()
+	_runner.run_ticks(2)
+	assert_int(_placement.reason).is_equal(Placement.Reason.OK)
+	assert_array(changes).is_empty()  # Nothing changed: nothing is told.
+	var world: World = _runner.world
+	var tank: int = world.add_unit(1, world.type_ids.find(&"light_tank"), 10500, 6500)
+	_runner.run_ticks(1)
+	assert_int(_placement.reason).is_equal(Placement.Reason.OCCUPIED)
+	assert_array(changes).is_equal([Placement.Reason.OCCUPIED])
+	assert_bool((_hud("PlaceConfirm") as Button).disabled).is_true()
+	assert_bool(_placement.confirm()).is_false()
+	var row: int = world.index_of(tank)
+	world.pos_x[row] = 2500
+	world.goal_x[row] = 2500
+	_runner.run_ticks(1)
+	assert_int(_placement.reason).is_equal(Placement.Reason.OK)
+	assert_array(changes).is_equal([Placement.Reason.OCCUPIED, Placement.Reason.OK])
+	assert_bool((_hud("PlaceConfirm") as Button).disabled).is_false()
+	_runner.start()
+	_runner.run_ticks(1)
 	assert_bool(_placement.active).is_false()
+	assert_bool((_hud("Placement") as Control).visible).is_false()
 	assert_array(_sent).is_empty()
 
 
@@ -189,14 +235,16 @@ func _play(turn: bool) -> Dictionary:
 	}
 
 
-func _open() -> void:
+## A new main scene on the phone, in the rig's match unless `scenario` is given. With `ready` the
+## plant is made ready in the snapshot, the ground explored and the mode begun on it.
+func _open(scenario: ScenarioDef = null, ready: bool = true) -> void:
 	var phone: UiMetrics = UiProfiles.by_name(&"android_6in")
 	UiScale.set_override(phone)
 	get_window().size = phone.window_size
 	await await_idle_frame()
 	_main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	_runner = _main.get_node("MatchRunner")
-	_runner.scenario = Rig.scenario()
+	_runner.scenario = Rig.scenario() if scenario == null else scenario
 	_runner.paused = true  # Only run_ticks() moves time.
 	add_child(_main)
 	await await_idle_frame()
@@ -212,10 +260,11 @@ func _open() -> void:
 	_controller.command_sink = func(command: Command) -> void:
 		_sent.append(command)
 		CommandQueue.submit(command)
-	Rig.make_ready(_runner.snapshot)
-	Rig.explore(_runner.snapshot)
-	assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()
-	_camera.centre_on(IsoProjection.cell_centre_px(11, 7))
+	_camera.centre_on(IsoProjection.cell_centre_px(HOME.x, HOME.y))
+	if ready:
+		Rig.make_ready(_runner.snapshot)
+		Rig.explore(_runner.snapshot)
+		assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()
 
 
 ## The ghost on tile `tile` by a tap there.
@@ -225,6 +274,10 @@ func _place_at(tile: Vector2i) -> void:
 	tap.position = _screen_of(tile)
 	_controller.handle_gesture(tap)
 	assert_vector(_placement.tile).is_equal(tile)
+
+
+func _hud(node_name: String) -> Node:
+	return _main.get_node("Hud").find_child(node_name, true, false)
 
 
 func _screen_of(tile: Vector2i) -> Vector2:

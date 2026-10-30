@@ -8,7 +8,6 @@ extends RefCounted
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
 const HQ: int = 1
 const PLANT: StringName = &"power_plant"
-const SPAWNS: Array[Array] = [[1, "headquarters", 6, 6], [2, "renew_hq", 24, 24]]
 const FOOT: Vector2i = Vector2i(2, 2)  ## The power plant's footprint.
 ## A 2x2 origin tile that fits (the Headquarters' neighbour, in reach and explored) and ones that
 ## do not, with the reason each gets.
@@ -19,14 +18,24 @@ const OFF_THE_MAP: Vector2i = Vector2i(-1, 6)
 
 
 static func scenario() -> ScenarioDef:
-	var spawns: Array[SpawnDef] = []
-	for entry: Array in SPAWNS:
-		spawns.append(Rig.spawn(entry[0], entry[1], entry[2], entry[3]))
-	var made: ScenarioDef = Rig.scenario(spawns)
-	made.roster = [
-		load("res://data/units/power_plant.tres") as UnitDef,
-		load("res://data/units/barracks.tres") as UnitDef,  # A card that is not ready.
+	return scenario_for(1, "headquarters", [], ["power_plant", "barracks"])
+
+
+## The same map for `local` (1 or 2), whose Headquarters `hq` (a file of data/units) stands at tiles
+## 6-8 by 6-8 and the other player's, of the other faction, far away. `more` are further buildings
+## of the local player as [unit, x, y] (what a structure in `roster` requires); `roster` lists the
+## files of the units and structures the match knows.
+static func scenario_for(local: int, hq: String, more: Array, roster: Array) -> ScenarioDef:
+	var spawns: Array[SpawnDef] = [
+		Rig.spawn(local, hq, 6, 6),
+		Rig.spawn(3 - local, "renew_hq" if hq == "headquarters" else "headquarters", 24, 24),
 	]
+	for entry: Array in more:
+		spawns.append(Rig.spawn(local, entry[0], entry[1], entry[2]))
+	var made: ScenarioDef = Rig.scenario(spawns)
+	made.local_player = local
+	for unit: String in roster:
+		made.roster.append(load("res://data/units/%s.tres" % unit) as UnitDef)
 	return made
 
 

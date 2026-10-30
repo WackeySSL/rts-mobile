@@ -8,7 +8,8 @@ extends Node2D
 ## cells that will be blocked read through the sprite. Green with a solid frame fits; red with the
 ## hatch and the glyph of `Placement.reason` does not: never colour alone. The glyph keeps its dp
 ## size through any zoom, the quads scale with the map. It redraws every frame while the mode is
-## on and once more when it ends.
+## on and once more when it ends. What a frame draws is read once, in `refresh`, when the placement
+## changes (the cells, the sprite's region and rise, the glyph): a frame only draws.
 
 const Z_GHOST: int = 60
 const PART: StringName = BuildingLayer.BODY  ## The sheet part the ghost draws: a building's body.
@@ -27,14 +28,28 @@ const GLYPH_ART: String = "res://assets/art/svg/icons/glyph_reason_%s.svg"
 @export var world_sort: WorldSort
 
 var draws: int = 0  ## Frames drawn, for the tests.
+var refreshes: int = 0  ## Times the ghost was read again, for the tests.
+var last_marks: int = 0  ## Tile quads (wash, hatch, frame) the last frame drew, for the tests.
+var last_glyph: Texture2D = null  ## The glyph the last frame drew, null for none, for the tests.
 
 var _marks: RuntimeAtlas = null  ## Made when the first ghost is drawn.
 var _was_on: bool = false
+var _cells: Array[Vector2i] = []
+var _region: Rect2i = Rect2i()  ## The body's region on the atlas; empty without art.
+var _rise: float = 0.0
+var _sprite_origin: Vector2 = Vector2.ZERO  ## The sprite's origin in its picture, world px.
+var _sprite_size: Vector2 = Vector2.ZERO  ## The picture's size, world px.
+var _glyph_art: Texture2D = null  ## The glyph of the verdict; null while the ghost fits.
 
 
 func _init() -> void:
 	z_index = Z_GHOST
 	z_as_relative = false
+
+
+func _ready() -> void:
+	if placement != null:
+		placement.changed.connect(refresh)
 
 
 func _process(_delta: float) -> void:
@@ -44,17 +59,38 @@ func _process(_delta: float) -> void:
 	_was_on = on
 
 
-## The cells the diamonds mark: the footprint at the ghost's tile, (column, row), none while the
-## mode is off.
-func cells() -> Array[Vector2i]:
-	var out: Array[Vector2i] = []
+## Reads the ghost again (it runs when the placement changes): the cells of the footprint at the
+## ghost's tile, the sprite's region, rise and size, and the glyph of the verdict. All empty while
+## the mode is off.
+func refresh() -> void:
+	refreshes += 1
+	_cells.clear()
+	_region = Rect2i()
+	_rise = 0.0
+	_glyph_art = null
 	if placement == null or not placement.active:
-		return out
+		return
 	var origin: Vector2i = placement.origin()
 	for row: int in placement.foot.y:
 		for col: int in placement.foot.x:
-			out.append(origin + Vector2i(col, row))
-	return out
+			_cells.append(origin + Vector2i(col, row))
+	var sheet: IsoSheetDef = _sheet()
+	if sheet != null and not world_sort.atlas.is_empty():
+		var slot: int = world_sort.slot_of(runner.scenario.local_player)
+		_region = world_sort.atlas.region(sheet.art_id, PART, BuildingLayer.NO_FRAME, slot)
+	if _region.has_area():
+		_sprite_origin = Vector2(sheet.origin(PART)) * WorldSort.ART_SCALE
+		_sprite_size = Vector2(_region.size) * (WorldSort.ART_SCALE / world_sort.atlas.bake_scale())
+		_rise = _sprite_origin.y
+	if placement.reason != Placement.Reason.OK:
+		var key: String = String(Placement.Reason.find_key(placement.reason)).to_lower()
+		_glyph_art = load(GLYPH_ART % key) as Texture2D
+
+
+## The cells the diamonds mark: the footprint at the ghost's tile, (column, row), none while the
+## mode is off.
+func cells() -> Array[Vector2i]:
+	return _cells
 
 
 ## The colour of the wash and the frame: green where the building fits, danger red where not.
@@ -65,23 +101,23 @@ func tint() -> Color:
 ## The atlas region the sprite is cut from, the building's body for the local player; empty for a
 ## type with no art on the atlas (the ghost is then the marks alone).
 func body_region() -> Rect2i:
-	var sheet: IsoSheetDef = _sheet()
-	if sheet == null or world_sort.atlas.is_empty():
-		return Rect2i()
-	var owner_id: int = runner.scenario.local_player
-	var slot: int = world_sort.slot_of(owner_id)
-	return world_sort.atlas.region(sheet.art_id, PART, BuildingLayer.NO_FRAME, slot)
+	return _region
 
 
 ## How far the picture rises above the footprint's centre, world px at zoom 1; 0 without a sprite.
 func rise_px() -> float:
-	var sheet: IsoSheetDef = _sheet()
-	if sheet == null or not body_region().has_area():
-		return 0.0
-	return sheet.origin(PART).y * WorldSort.ART_SCALE
+	return _rise
+
+
+## The quad of `cell` in world px: its diamond's box, `margin` px wider on each side.
+static func quad_rect(cell: Vector2i, margin: int) -> Rect2:
+	var reach: Vector2 = Vector2(GhostMarks.TILE) * 0.5 + Vector2.ONE * margin
+	return Rect2(IsoProjection.cell_centre_px(cell.x, cell.y) - reach, reach * 2.0)
 
 
 func _draw() -> void:
+	last_marks = 0
+	last_glyph = null
 	if placement == null or not placement.active:
 		return
 	draws += 1
@@ -89,14 +125,13 @@ func _draw() -> void:
 		_marks = GhostMarks.build()
 	var fits: bool = placement.reason == Placement.Reason.OK
 	var accent: Color = tint()
-	var mine: Array[Vector2i] = cells()
-	for cell: Vector2i in mine:
+	for cell: Vector2i in _cells:
 		_tile(cell, GhostMarks.WASH, Color(accent, WASH_ALPHA), 0)
 	_sprite()
 	if not fits:
-		for cell: Vector2i in mine:
-			_tile(cell, GhostMarks.HATCH, Color(DANGER, HATCH_ALPHA), 0)
-	for cell: Vector2i in mine:
+		for cell: Vector2i in _cells:
+			_tile(cell, GhostMarks.hatch_for(cell), Color(DANGER, HATCH_ALPHA), 0)
+	for cell: Vector2i in _cells:
 		_tile(cell, GhostMarks.FRAME, accent, GhostMarks.FRAME_MARGIN)
 	if not fits:
 		_glyph()
@@ -107,36 +142,33 @@ func _tile(cell: Vector2i, mark: StringName, tint: Color, margin: int) -> void:
 	var region: Rect2i = _marks.region(mark)
 	if not region.has_area():
 		return
-	var reach: Vector2 = Vector2(GhostMarks.TILE) * 0.5 + Vector2.ONE * margin
-	var at: Vector2 = IsoProjection.cell_centre_px(cell.x, cell.y)
-	draw_texture_rect_region(_marks.texture(), Rect2(at - reach, reach * 2.0), Rect2(region), tint)
+	last_marks += 1
+	draw_texture_rect_region(_marks.texture(), quad_rect(cell, margin), Rect2(region), tint)
 
 
 ## The building's body, faded, with its origin on the footprint's centre.
 func _sprite() -> void:
-	var region: Rect2i = body_region()
-	if not region.has_area():
+	if not _region.has_area():
 		return
 	var ground: Vector2i = placement.centre_ground()
-	var origin: Vector2 = Vector2(_sheet().origin(PART)) * WorldSort.ART_SCALE
-	var size: Vector2 = Vector2(region.size) * (WorldSort.ART_SCALE / world_sort.atlas.bake_scale())
-	var top_left: Vector2 = IsoProjection.ground_to_px(ground.x, ground.y) - origin
+	var top_left: Vector2 = IsoProjection.ground_to_px(ground.x, ground.y) - _sprite_origin
 	draw_texture_rect_region(
 		world_sort.atlas.texture(),
-		Rect2(top_left, size),
-		Rect2(region),
+		Rect2(top_left, _sprite_size),
+		Rect2(_region),
 		Color(1.0, 1.0, 1.0, SPRITE_ALPHA)
 	)
 
 
 ## The reason's glyph over the footprint's centre, danger red, GLYPH_DP across whatever the zoom.
 func _glyph() -> void:
-	var key: String = String(Placement.Reason.find_key(placement.reason)).to_lower()
-	var glyph: Texture2D = load(GLYPH_ART % key) as Texture2D
+	if _glyph_art == null:
+		return
 	var side: float = GLYPH_DP * UiScale.base_px_per_dp() / get_canvas_transform().get_scale().x
 	var ground: Vector2i = placement.centre_ground()
 	var at: Vector2 = IsoProjection.ground_to_px(ground.x, ground.y) - Vector2.ONE * side * 0.5
-	draw_texture_rect(glyph, Rect2(at, Vector2.ONE * side), false, DANGER)
+	draw_texture_rect(_glyph_art, Rect2(at, Vector2.ONE * side), false, DANGER)
+	last_glyph = _glyph_art
 
 
 ## The sheet of the type being placed, after the atlas is baked for the match; null without one.

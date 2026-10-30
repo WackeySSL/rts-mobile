@@ -134,7 +134,10 @@ func _near(at: Vector2, margin: float) -> bool:
 		return false
 	if from.y <= margin:
 		return true
-	return absf(from.x) / half.x + from.y / half.y <= 1.0 + margin / half.x + margin / half.y
+	# The diamond's lower edges lie where |x| / a + y / b = 1; a line `margin` away from one is at
+	# 1 + margin * sqrt(1 / a^2 + 1 / b^2), so the margin is the same across the edge as everywhere.
+	var grown: float = 1.0 + margin * sqrt(1.0 / (half.x * half.x) + 1.0 / (half.y * half.y))
+	return absf(from.x) / half.x + from.y / half.y <= grown
 
 
 ## The tile that holds the ground point under the world px `world`.

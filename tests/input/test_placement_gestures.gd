@@ -155,7 +155,8 @@ func test_a_drag_that_starts_elsewhere_pans_the_map_and_leaves_the_ghost() -> vo
 
 
 ## The grab area is the silhouette grown by `ghost_grab_dp` on every side: the picture's top, the
-## walls, the diamond's lower half. A point inside it grabs and one a few px outside does not.
+## walls, the diamond's lower half, whose two lower edges are measured across (perpendicular), not
+## along an axis. A point inside it grabs and one a few px outside does not.
 func test_the_grab_area_is_the_silhouette_plus_the_margin_all_round() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _placing(size)
@@ -176,6 +177,15 @@ func test_the_grab_area_is_the_silhouette_plus_the_margin_all_round() -> void:
 			Vector2(middle, body.end.y + margin + 6.0),
 			Vector2(body.end.x + margin - 3.0, body.end.y + margin - 3.0),  # The box's corner.
 		]
+		# Across each lower edge of the diamond, from its middle: 3 px short of the margin, 3 past it.
+		var half: Vector2 = (
+			Vector2(IsoProjection.HALF_W, IsoProjection.HALF_H) * (2.0 * _camera.zoom.x)
+		)
+		for side: float in [-1.0, 1.0]:
+			var across: Vector2 = Vector2(side / half.x, 1.0 / half.y).normalized()
+			var edge_middle: Vector2 = _centre() + Vector2(side * half.x, half.y) * 0.5
+			inside.append(edge_middle + across * (margin - 3.0))
+			outside.append(edge_middle + across * (margin + 3.0))
 		for point: Vector2 in inside:
 			(
 				assert_bool(_placement.grabs(point))
@@ -188,6 +198,39 @@ func test_the_grab_area_is_the_silhouette_plus_the_margin_all_round() -> void:
 				. override_failure_message("%s outside %s" % [size, point])
 				. is_false()
 			)
+
+
+## What the layer draws for the verdict a tap on the ground gives: the wash and the frame of each
+## cell where the plant fits, and the hatch of each cell and the reason's glyph where it does not.
+func test_the_ghost_draws_the_hatch_and_the_reasons_glyph_only_where_it_does_not_fit() -> void:
+	var cases: Array[Array] = [
+		[Rig.FITS + Vector2i(0, 3), Placement.Reason.OK],
+		[Rig.TOO_FAR, Placement.Reason.TOO_FAR],
+		[Rig.ON_THE_HQ, Placement.Reason.GROUND],
+		[Rig.OFF_THE_MAP, Placement.Reason.OUTSIDE],
+	]
+	for size: Vector2i in ScreenSizes.ALL:
+		await _placing(size)
+		for entry: Array in cases:
+			var origin: Vector2i = entry[0]
+			var note: String = "%s %s" % [size, origin]
+			_camera.centre_on(IsoProjection.cell_centre_px(origin.x + 1, origin.y + 1))
+			_tap(_screen_of(origin + Vector2i.ONE))
+			await await_idle_frame()
+			await await_idle_frame()
+			assert_int(_placement.reason).override_failure_message(note).is_equal(entry[1])
+			var cells: int = _layer.cells().size()
+			assert_int(cells).override_failure_message(note).is_equal(4)
+			if entry[1] == Placement.Reason.OK:
+				assert_int(_layer.last_marks).override_failure_message(note).is_equal(cells * 2)
+				assert_object(_layer.last_glyph).override_failure_message(note).is_null()
+			else:
+				assert_int(_layer.last_marks).override_failure_message(note).is_equal(cells * 3)
+				var key: String = String(Placement.Reason.find_key(entry[1])).to_lower()
+				var drawn: Texture2D = _layer.last_glyph
+				var path: String = "" if drawn == null else drawn.resource_path
+				assert_str(path).override_failure_message(note).is_equal(GhostLayer.GLYPH_ART % key)
+		_camera.centre_on(IsoProjection.cell_centre_px(HOME.x, HOME.y))
 
 
 func test_a_release_alone_never_places_and_a_hold_starts_no_box() -> void:

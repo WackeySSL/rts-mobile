@@ -16,8 +16,14 @@ const FRAME_PX: float = 3.0  ## The stroke, centred on the diamond's edge.
 const EDGE_PX: float = 14.3108
 const HATCH_ART: String = "res://assets/art/svg/ui/ghost_hatch.svg"
 const WASH: StringName = &"wash"
-const HATCH: StringName = &"hatch"
 const FRAME: StringName = &"frame"
+## The hatch cuts, one per parity of (column + row). The art (64 px square at import scale 0.5)
+## has bands along x + y = const that repeat every 32 px of x + y. A cell's middle lies 48 px of
+## x + y further on for each column and 16 px less for each row, half a period either way, so the
+## cells of one parity take the cut HATCH_STEP_PX rows higher than the others and the bands lie on
+## straight lines through every cell edge of a footprint, not broken at each.
+const HATCHES: Array[StringName] = [&"hatch_0", &"hatch_1"]
+const HATCH_STEP_PX: int = 16
 
 
 ## The page with the three marks as regions; the hatch is left out when its file cannot be read.
@@ -28,8 +34,18 @@ static func build() -> RuntimeAtlas:
 	var art: Texture2D = load(HATCH_ART) as Texture2D
 	var hatch: Image = null if art == null else art.get_image()
 	if hatch != null and not hatch.is_empty():
-		sources[HATCH] = _cut(hatch)
+		if hatch.is_compressed():
+			hatch.decompress()
+		hatch.convert(Image.FORMAT_RGBA8)
+		for phase: int in HATCHES.size():
+			sources[HATCHES[phase]] = _cut(hatch, phase)
 	return RuntimeAtlas.build_images(sources, 256)
+
+
+## The hatch region of `cell`'s tile quad: the parity of (column + row) picks the cut that keeps the
+## bands on one line through the cell and its neighbours.
+static func hatch_for(cell: Vector2i) -> StringName:
+	return HATCHES[posmod(cell.x + cell.y, HATCHES.size())]
 
 
 ## An RGBA8 image of the diamond tile with a margin of `margin` px on every side: white where the
@@ -48,13 +64,11 @@ static func _diamond(margin: int, outline: bool) -> Image:
 	return image
 
 
-## The hatch's middle rows as a diamond tile: its own pixels, kept only inside the diamond.
+## Cut `phase` of the hatch (an RGBA8 image) as a diamond tile: its own pixels, kept only inside the
+## diamond. Phase 0 is the middle rows, phase 1 starts HATCH_STEP_PX rows higher.
 @warning_ignore("integer_division")
-static func _cut(hatch: Image) -> Image:
-	if hatch.is_compressed():
-		hatch.decompress()
-	hatch.convert(Image.FORMAT_RGBA8)
-	var top: int = maxi((hatch.get_height() - TILE.y) / 2, 0)
+static func _cut(hatch: Image, phase: int) -> Image:
+	var top: int = maxi((hatch.get_height() - TILE.y) / 2 - phase * HATCH_STEP_PX, 0)
 	var tile: Image = Image.create_empty(TILE.x, TILE.y, false, Image.FORMAT_RGBA8)
 	tile.blit_rect(hatch, Rect2i(0, top, TILE.x, TILE.y), Vector2i.ZERO)
 	for y: int in TILE.y:
