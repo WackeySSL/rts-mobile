@@ -24,6 +24,8 @@ extends Node
 ## building selected a tap on the ground, or on an enemy unit, selects nothing and orders nothing.
 ## While the strike is being aimed (P112, `strike_aim.active`) a tap places its point on the ground
 ## and no gesture does anything else: nothing is selected, ordered or boxed.
+## While placement mode is on (P86, `placement.active`) the gestures go to `placement` alone: a tap
+## or a ghost drag moves the ghost, and nothing is selected, ordered or boxed.
 ## Each order shows its marker and the BoxOverlay follows a long-press and its box, both in the
 ## frame of the gesture. The selection rings follow `selection_changed` (wired in the scene).
 
@@ -40,6 +42,7 @@ signal selection_changed(ids: PackedInt32Array)
 @export var box_overlay: BoxOverlay
 @export var army_bar: ArmyBar
 @export var strike_aim: StrikeAim  ## Without one there is no strike to aim.
+@export var placement: PlacementController  ## Without one there is no placement mode.
 
 var selection: SelectionModel = SelectionModel.new()
 ## Receives each Command. Tests replace it.
@@ -71,6 +74,9 @@ func handle_gesture(e: GestureEvent) -> void:
 	if strike_aim != null and strike_aim.active:
 		if e.kind == GestureEvent.Kind.TAP or e.kind == GestureEvent.Kind.DOUBLE_TAP:
 			strike_aim.place(IsoProjection.px_to_ground(camera.screen_to_world(e.position)))
+		return
+	if placement != null and placement.active:
+		placement.handle_gesture(e)
 		return
 	match e.kind:
 		GestureEvent.Kind.TAP:

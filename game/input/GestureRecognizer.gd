@@ -4,12 +4,23 @@ extends RefCounted
 ## positions are base px. Moving first is a pan, holding first is a box, a tap acts at once.
 ## A second finger starts MULTI: the first two fingers pinch and pan the camera together and any
 ## further finger is only remembered, so the pair can be re-formed when one of them lifts.
+## Placement mode (plan P86, ADR 0019 section 2) gives it two inputs: `grab_test`, asked for the
+## press point of a first finger, and `box_enabled`. A finger that went down on a grab and then
+## moves beyond the slop is a ghost drag (GHOST_DRAG with its position, GRAB state), not a pan, and
+## its release is no tap; with no box a hold stays a pending press, so a drag after it pans or
+## grabs and a release in the slop is a tap.
 
-enum State { IDLE, PENDING, PAN, BOX, MULTI }
+enum State { IDLE, PENDING, PAN, BOX, MULTI, GRAB }
 
 ## Two fingers closer than this count as one point, so PINCH keeps scale 1 there instead of
 ## dividing by about 0. A numeric guard, not a feel threshold.
 const MIN_PINCH_DP: float = 8.0
+
+## Called with the press point of a first finger (base px); true when a drag from there moves the
+## placement ghost. Unset: no press grabs.
+var grab_test: Callable = Callable()
+## False in placement mode: a hold starts no box.
+var box_enabled: bool = true
 
 var _state: int = State.IDLE
 var _events: Array[GestureEvent] = []
@@ -21,6 +32,7 @@ var _min_pinch_px: float = 0.0
 
 var _index: int = -1  ## The tracked finger.
 var _down_pos: Vector2 = Vector2.ZERO
+var _grabbing: bool = false  ## The press at `_down_pos` is on the ghost.
 var _down_ms: int = 0
 var _pos: Vector2 = Vector2.ZERO  ## Last position of the tracked finger.
 var _second_tap: bool = false  ## The press came in time and in range of the last tap.
@@ -68,6 +80,7 @@ func touch_down(index: int, pos: Vector2, now_ms: int) -> void:
 	_state = State.PENDING
 	_index = index
 	_down_pos = pos
+	_grabbing = grab_test.is_valid() and grab_test.call(pos)
 	_pos = pos
 	_down_ms = now_ms
 
@@ -115,7 +128,7 @@ func touch_up(index: int, pos: Vector2, now_ms: int, canceled: bool = false) -> 
 
 ## Call every frame: the long-press time passes without any finger event.
 func advance(now_ms: int) -> void:
-	if _state == State.PENDING and now_ms - _down_ms >= _long_press_ms:
+	if box_enabled and _state == State.PENDING and now_ms - _down_ms >= _long_press_ms:
 		_state = State.BOX
 		_second_tap = false
 		_emit(GestureEvent.Kind.LONG_PRESS).position = _down_pos
@@ -142,9 +155,15 @@ func _move_to(pos: Vector2) -> void:
 	match _state:
 		State.PENDING:
 			if pos.distance_to(_down_pos) > _slop_px:
-				_state = State.PAN
-				# The first delta is the whole way from the press: the map stays under the finger.
-				_emit(GestureEvent.Kind.PAN).delta = pos - _down_pos
+				if _grabbing:
+					_state = State.GRAB
+					_emit(GestureEvent.Kind.GHOST_DRAG).position = pos
+				else:
+					_state = State.PAN
+					# The first delta is the whole way from the press: the map stays under the finger.
+					_emit(GestureEvent.Kind.PAN).delta = pos - _down_pos
+		State.GRAB:
+			_emit(GestureEvent.Kind.GHOST_DRAG).position = pos
 		State.PAN:
 			_emit(GestureEvent.Kind.PAN).delta = pos - _pos
 		State.BOX:

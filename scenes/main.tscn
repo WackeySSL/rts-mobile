@@ -31,6 +31,8 @@
 [ext_resource type="Script" path="res://game/view/StrikeMarkerLayer.gd" id="33_strike_layer"]
 [ext_resource type="Script" path="res://game/ui/StrikeControls.gd" id="34_strike_controls"]
 [ext_resource type="Script" path="res://game/view/GhostMemoryLayer.gd" id="32_ghosts"]
+[ext_resource type="Script" path="res://game/input/PlacementController.gd" id="35_placement"]
+[ext_resource type="Script" path="res://game/view/GhostLayer.gd" id="36_ghost_layer"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -127,11 +129,19 @@ script = ExtResource("32_ghosts")
 runner = NodePath("../MatchRunner")
 world_sort = NodePath("../WorldSort")
 
+[node name="GhostLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "placement", "world_sort")]
+z_index = 60
+z_as_relative = false
+script = ExtResource("36_ghost_layer")
+runner = NodePath("../MatchRunner")
+placement = NodePath("../PlacementController")
+world_sort = NodePath("../WorldSort")
+
 [node name="Camera" type="Camera2D" parent="."]
 script = ExtResource("2_cam")
 settings = ExtResource("6_settings")
 
-[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer", "camera", "marker_layer", "box_overlay", "army_bar", "strike_aim")]
+[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer", "camera", "marker_layer", "box_overlay", "army_bar", "strike_aim", "placement")]
 script = ExtResource("10_player")
 runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
@@ -142,11 +152,20 @@ marker_layer = NodePath("../MarkerLayer")
 box_overlay = NodePath("../Hud/BoxOverlay")
 army_bar = NodePath("../Hud/SafeArea/ArmyBand/ArmyBar")
 strike_aim = NodePath("../StrikeAim")
+placement = NodePath("../PlacementController")
 
 [node name="StrikeAim" type="Node" parent="." node_paths=PackedStringArray("runner", "controller")]
 script = ExtResource("32_aim")
 runner = NodePath("../MatchRunner")
 controller = NodePath("../PlayerController")
+
+[node name="PlacementController" type="Node" parent="." node_paths=PackedStringArray("runner", "controller", "camera", "ghost_layer", "strike_aim")]
+script = ExtResource("35_placement")
+runner = NodePath("../MatchRunner")
+controller = NodePath("../PlayerController")
+camera = NodePath("../Camera")
+ghost_layer = NodePath("../GhostLayer")
+strike_aim = NodePath("../StrikeAim")
 
 [node name="TouchInput" type="Node" parent="." node_paths=PackedStringArray("camera", "controller")]
 script = ExtResource("5_touch")
@@ -187,13 +206,14 @@ script = ExtResource("3_dev")
 [node name="DpMinSize" type="Node" parent="Hud/SafeArea/DevButton"]
 script = ExtResource("13_dp")
 
-[node name="BuildSidebar" type="PanelContainer" parent="Hud/SafeArea" node_paths=PackedStringArray("runner", "controller", "pill", "minimap_slot", "top_left")]
+[node name="BuildSidebar" type="PanelContainer" parent="Hud/SafeArea" node_paths=PackedStringArray("runner", "controller", "pill", "minimap_slot", "top_left", "placement")]
 script = ExtResource("21_sidebar")
 runner = NodePath("../../../MatchRunner")
 controller = NodePath("../../../PlayerController")
 pill = NodePath("../StatusBand/StatusPill")
 minimap_slot = NodePath("../MinimapSlot")
 top_left = NodePath("../DevButton")
+placement = NodePath("../../../PlacementController")
 
 [node name="ArmyBand" type="MarginContainer" parent="Hud/SafeArea"]
 mouse_filter = 2

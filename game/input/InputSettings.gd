@@ -17,3 +17,7 @@ extends Resource
 @export var marker_ms: int = 600  ## Move-marker lifetime.
 @export var haptic_ms: int = 15  ## Vibration on long-press and group assign.
 @export var haptics_enabled: bool = true
+## Placement mode (ADR 0019 section 2, ADR 0023 section 3): a drag that starts within this many dp
+## of the ghost's silhouette moves it, and the ghost follows the finger this many dp above it.
+@export var ghost_grab_dp: float = 24.0
+@export var ghost_lift_dp: float = 64.0
