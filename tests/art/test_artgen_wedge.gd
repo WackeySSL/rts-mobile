@@ -23,38 +23,12 @@ const WEDGES: Array[String] = [
 
 func test_a_wedge_of_slope_1_keeps_its_sloped_face_wherever_it_stands() -> void:
 	for line: String in WEDGES:
-		var prim: ArtPrim = ArtPrim.parse(line)
-		var faces: Array[ArtMesh.Face] = ArtMesh.faces(prim)
-		# The low end has no face, so a wedge is a sloped top, a bottom, the tall end and two
-		# triangles.
-		assert_int(faces.size()).override_failure_message(line).is_equal(5)
-		var slopes: Array[Vector3] = []
-		for face: ArtMesh.Face in faces:
-			if face.normal.z > 0.0:
-				slopes.append(face.normal)
-		assert_int(slopes.size()).override_failure_message(line).is_equal(1)
-		if slopes.size() != 1:
-			continue
-		var want: Vector3 = Vector3(signf(prim.slope) * prim.size.z, 0.0, prim.size.x).normalized()
-		assert_vector(slopes[0]).override_failure_message(line).is_equal_approx(
-			want, Vector3.ONE * 1e-6
-		)
+		_assert_sloped_face_kept(line, ArtPrim.parse(line))
 
 
 func test_every_face_of_a_wedge_looks_away_from_the_inside_of_its_solid() -> void:
 	for line: String in WEDGES:
-		var prim: ArtPrim = ArtPrim.parse(line)
-		var inside: Vector3 = _inside(prim)
-		for face: ArtMesh.Face in ArtMesh.faces(prim):
-			var middle: Vector3 = Vector3.ZERO
-			for point: Vector3 in face.points:
-				middle += point / face.points.size()
-			(
-				assert_float(face.normal.dot(middle - inside))
-				. override_failure_message("%s normal %s" % [line, face.normal])
-				. is_greater(1e-3)
-			)
-			assert_float(face.normal.length()).is_equal_approx(1.0, 1e-6)
+		_assert_faces_look_away_from_inside(line, ArtPrim.parse(line))
 
 
 func test_the_sloped_face_is_drawn_exactly_when_it_faces_the_camera_at_all_16_yaws() -> void:
@@ -95,9 +69,12 @@ func test_no_model_stands_in_for_slope_1_with_0_95_and_every_unit_slope_keeps_it
 				)
 				if absf(prim.slope) == 1.0:
 					unit_slopes += 1
-					assert_int(ArtMesh.faces(prim).size()).override_failure_message(path).is_equal(
-						5
-					)
+					# The face count alone is 5 on the old generator too: it turned the sloped
+					# face's normal inward and left the face in the list, where the renderer culls
+					# it. So the normal itself is what is checked, for every wedge of every model.
+					var label: String = "%s: wedge at %s" % [path, prim.centre]
+					_assert_sloped_face_kept(label, prim)
+					_assert_faces_look_away_from_inside(label, prim)
 	# The cabs, glass fronts, hoods and solar panels of both factions, and the Heavy Yard's roof.
 	assert_int(unit_slopes).is_greater_equal(14)
 
@@ -109,3 +86,37 @@ func _inside(prim: ArtPrim) -> Vector3:
 	return Vector3(
 		prim.centre.x - tall * prim.size.x / 6.0, prim.centre.y, prim.z0 + prim.size.z / 3.0
 	)
+
+
+## A wedge of unit slope has five faces (the low end has none) and exactly one of them leans
+## towards the camera's side, the sloped face, with its normal pointing up and out of the slope.
+func _assert_sloped_face_kept(label: String, prim: ArtPrim) -> void:
+	var faces: Array[ArtMesh.Face] = ArtMesh.faces(prim)
+	# The low end has no face, so a wedge is a sloped top, a bottom, the tall end and two
+	# triangles.
+	assert_int(faces.size()).override_failure_message(label).is_equal(5)
+	var slopes: Array[Vector3] = []
+	for face: ArtMesh.Face in faces:
+		if face.normal.z > 0.0:
+			slopes.append(face.normal)
+	assert_int(slopes.size()).override_failure_message(label).is_equal(1)
+	if slopes.size() != 1:
+		return
+	var want: Vector3 = Vector3(signf(prim.slope) * prim.size.z, 0.0, prim.size.x).normalized()
+	assert_vector(slopes[0]).override_failure_message(label).is_equal_approx(
+		want, Vector3.ONE * 1e-6
+	)
+
+
+func _assert_faces_look_away_from_inside(label: String, prim: ArtPrim) -> void:
+	var inside: Vector3 = _inside(prim)
+	for face: ArtMesh.Face in ArtMesh.faces(prim):
+		var middle: Vector3 = Vector3.ZERO
+		for point: Vector3 in face.points:
+			middle += point / face.points.size()
+		(
+			assert_float(face.normal.dot(middle - inside))
+			. override_failure_message("%s normal %s" % [label, face.normal])
+			. is_greater(1e-3)
+		)
+		assert_float(face.normal.length()).is_equal_approx(1.0, 1e-6)
