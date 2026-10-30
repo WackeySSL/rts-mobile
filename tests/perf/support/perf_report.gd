@@ -13,6 +13,11 @@ const STAT_KEYS: Array[String] = ["mean_ms", "p50_ms", "p95_ms", "p99_ms", "max_
 ## line (P38p) has no impl key and keeps its format exactly, because P51 parses both lines.
 const IMPL_KEY: String = "impl"
 const IMPL_NATIVE: String = "native"
+## The heads of the `PERF` line: the perf arena's (P38p) and the base arena's (plan P93, ADR 0021
+## section 2), whose line has the same keys. P51 selects `^PERF sim`; the job summary of P96 adds
+## `^PERF bases`.
+const HEAD: String = "PERF sim"
+const BASES_HEAD: String = "PERF bases"
 ## The scalar keys of the `PERF` line in print order; `stats_max=`, `phases=` and `hash=` follow.
 const LINE_KEYS: Array[String] = [
 	"units",
@@ -182,9 +187,10 @@ static func finish(
 
 ## The one `PERF` line of ADR 0011 section 4 with ref_ms, the phone estimates and the stats maxima:
 ## `PERF sim units=150 ticks=900 runs=3 mean_ms=... phases=commands:0.050,flow:0.000,... hash=...`.
-## A report with an `impl` (finish(..., true)) prints `impl=native` right after `PERF sim`.
-static func line(report: Dictionary) -> String:
-	var parts: PackedStringArray = PackedStringArray(["PERF sim"])
+## A report with an `impl` (finish(..., true)) prints `impl=native` right after `PERF sim`. `head`
+## is BASES_HEAD for the base arena's line, with the same keys after it.
+static func line(report: Dictionary, head: String = HEAD) -> String:
+	var parts: PackedStringArray = PackedStringArray([head])
 	if report.has(IMPL_KEY):
 		parts.append("%s=%s" % [IMPL_KEY, report[IMPL_KEY]])
 	for key: String in LINE_KEYS:

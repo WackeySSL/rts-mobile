@@ -8,9 +8,12 @@ const PerfReport: GDScript = preload("res://tests/perf/support/perf_report.gd")
 const GATE_PATH: String = "res://data/dev/perf_gate.tres"
 ## Every field with this prefix is a printed phone / CI ratio, not a threshold (plan exception 5).
 const RATIO_PREFIX: String = "ci_ratio_"
-## The golden arrays hold the arena's hashes, which test_golden_hashes.gd (P49a) checks: here they
-## only have to pair up.
-const GOLDEN_FIELDS: Array[String] = ["golden_ticks", "golden_hex"]
+## The golden arrays hold the arenas' hashes (the perf arena's, and from P93 the base arena's, in
+## the `bases_` pair), which test_golden_hashes.gd (P49a, P93) checks: here they only have to pair
+## up.
+const GOLDEN_FIELDS: Array[String] = [
+	"golden_ticks", "golden_hex", "bases_golden_ticks", "bases_golden_hex"
+]
 ## The ratios of the impl=native line (ADR 0013 section 15). P54r gave PerfGateDef their defaults
 ## and P38pn wrote them to the file, so a missing line would load the same numbers.
 const NATIVE_RATIOS: Array[String] = ["ci_ratio_native_mean", "ci_ratio_native_p95"]
@@ -21,7 +24,9 @@ const EXEMPT_FIELDS_IN_FILE: Array[String] = [
 	"ci_ratio_native_mean",
 	"ci_ratio_native_p95",
 	"golden_ticks",
-	"golden_hex"
+	"golden_hex",
+	"bases_golden_ticks",
+	"bases_golden_hex"
 ]
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 ## A line made from known inputs, with PerfGateDef's ratios 4.4 and 5.9: 1.5 x 4.4 and 3 x 5.9.
@@ -202,6 +207,21 @@ func test_the_line_is_exactly_the_known_text() -> void:
 	assert_str(PerfReport.line(_known_report(PerfGateDef.new()))).is_equal(_known_line())
 
 
+## The base arena's line (plan P93) has the same keys under its own head: the known text with
+## `PERF bases` for `PERF sim`, and `impl=native` right after the head on the native one. The head
+## defaults to the perf arena's, so P51's `^PERF sim` selection is the same lines as before.
+func test_the_base_arena_line_is_the_known_text_under_the_bases_head() -> void:
+	assert_str(PerfReport.HEAD).is_equal("PERF sim")
+	assert_str(PerfReport.BASES_HEAD).is_equal("PERF bases")
+	var report: Dictionary = _known_report(PerfGateDef.new())
+	var expected: String = _known_line().replace("PERF sim units=", "PERF bases units=")
+	assert_str(PerfReport.line(report, PerfReport.BASES_HEAD)).is_equal(expected)
+	assert_str(PerfReport.line(report, PerfReport.HEAD)).is_equal(PerfReport.line(report))
+	var native: String = PerfReport.line(_known_report(PerfGateDef.new(), true), "PERF bases")
+	assert_str(native).starts_with("PERF bases impl=native units=")
+	assert_bool(native.begins_with("PERF sim")).is_false()
+
+
 ## The native line is the GDScript text with `impl=native` after `PERF sim` and the estimates of the
 ## native ratios 11.1 and 12.1: 1.5 x 11.1 and 3 x 12.1. Everything else stays as it is.
 func test_the_native_line_is_the_known_text_with_impl_native_and_the_native_estimates() -> void:
@@ -298,6 +318,9 @@ func test_the_gate_file_holds_the_contract_values() -> void:
 	assert_int(typeof(gate.golden_ticks)).is_equal(TYPE_PACKED_INT32_ARRAY)
 	assert_int(typeof(gate.golden_hex)).is_equal(TYPE_PACKED_STRING_ARRAY)
 	assert_int(gate.golden_ticks.size()).is_equal(gate.golden_hex.size())
+	assert_int(typeof(gate.bases_golden_ticks)).is_equal(TYPE_PACKED_INT32_ARRAY)
+	assert_int(typeof(gate.bases_golden_hex)).is_equal(TYPE_PACKED_STRING_ARRAY)
+	assert_int(gate.bases_golden_ticks.size()).is_equal(gate.bases_golden_hex.size())
 
 
 ## A line that is missing from the file loads as the script default, so it passes the test above,

@@ -29,3 +29,5 @@ ref_iterations = 1000
 ref_burst_ms = 400
 golden_ticks = PackedInt32Array(150, 300, 450, 600, 750, 900)
 golden_hex = PackedStringArray("aacfb15f9d84257c", "14b502939519100e", "79f2fafc2bf80e2e", "3d9ed74ccae8ff1c", "562da3e81c0c79f3", "21ef133c89e9a99f")
+bases_golden_ticks = PackedInt32Array(150, 300, 450, 600, 750, 900)
+bases_golden_hex = PackedStringArray("fdf5d0562d6d94dd", "402e154e3a6833d1", "06ba8a52c822d71c", "e8735811be139d71", "c4c1e99adff1f359", "a294900896cc6438")

@@ -147,8 +147,8 @@ func test_the_checkpoints_with_a_timing_probe_equal_a_run_without_it() -> void:
 
 
 ## PerfGateDef.new() holds the contract's values with their types, exported so perf_gate.tres
-## stores them, empty golden arrays, and no other field: ADR 0014 dropped on_time_ms and
-## on_time_share_pct.
+## stores them, empty golden arrays (the perf arena's and, from P93, the base arena's), and no
+## other field: ADR 0014 dropped on_time_ms and on_time_share_pct.
 func test_the_gate_def_defaults_are_the_contract_values() -> void:
 	var gate: PerfGateDef = PerfGateDef.new()
 	var names: Array[String] = []
@@ -163,12 +163,18 @@ func test_the_gate_def_defaults_are_the_contract_values() -> void:
 		assert_bool(value == GATE[name]).override_failure_message(name).is_true()
 	assert_array(gate.golden_ticks).is_empty()
 	assert_array(gate.golden_hex).is_empty()
+	assert_array(gate.bases_golden_ticks).is_empty()
+	assert_array(gate.bases_golden_hex).is_empty()
 	# Another array type drops perf_gate.tres's golden values without an error when it loads, and
 	# perf_gate.tres loads only as a Resource.
 	assert_int(typeof(gate.golden_ticks)).is_equal(TYPE_PACKED_INT32_ARRAY)
 	assert_int(typeof(gate.golden_hex)).is_equal(TYPE_PACKED_STRING_ARRAY)
+	assert_int(typeof(gate.bases_golden_ticks)).is_equal(TYPE_PACKED_INT32_ARRAY)
+	assert_int(typeof(gate.bases_golden_hex)).is_equal(TYPE_PACKED_STRING_ARRAY)
 	assert_str(gate.get_class()).is_equal("Resource")
-	var expected: Array[String] = ["golden_ticks", "golden_hex"]
+	var expected: Array[String] = [
+		"golden_ticks", "golden_hex", "bases_golden_ticks", "bases_golden_hex"
+	]
 	for name: String in GATE:
 		expected.append(name)
 	expected.sort()
