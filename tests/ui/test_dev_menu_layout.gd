@@ -1,17 +1,19 @@
 extends GdUnitTestSuite
 ## The dev menu in either orientation (plan P63, ADR 0015 section 5 "Other screens"): at the six
-## test sizes its title and its four buttons (test map, art gallery, touch probe, perf arena) lie
-## inside the safe rect, every button is at least dp(48) on each axis with text of 14 sp or more,
-## and nothing overlaps. The same holds on the phone browsers, with the cutouts of Michael's phone
-## and of the ADR's portrait phone, and after a turn. A window that is too short for the column
-## scrolls it, so no button is out of reach. Which scene a button opens is test_dev_routes.gd's.
+## test sizes its title and its five buttons (test map, strike test, art gallery, touch probe, perf
+## arena) lie inside the safe rect, every button is at least dp(48) on each axis with text of 14 sp
+## or more, and nothing overlaps. The same holds on the phone browsers (the five buttons are 48 dp
+## tall so that the column fits a phone browser held sideways without a scroll), with the cutouts of
+## Michael's phone and of the ADR's portrait phone, and after a turn. A window that is too short for
+## the column scrolls it, so no button is out of reach. Which scene a button opens is
+## test_dev_routes.gd's.
 
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const MIN_DP: float = 48.0
 const TOLERANCE_PX: float = 0.5
 const BUTTONS: Array[String] = [
-	"TestMapButton", "GalleryButton", "TouchProbeButton", "PerfArenaButton"
+	"TestMapButton", "StrikeTestButton", "GalleryButton", "TouchProbeButton", "PerfArenaButton"
 ]
 ## Michael's phone in landscape (a cutout on the left) and the ADR's phone in portrait (a cutout at
 ## the top, the gesture bar at the bottom), as window px of the profile they are put on.
@@ -77,6 +79,7 @@ func test_a_window_too_short_for_the_column_scrolls_to_every_button() -> void:
 	assert_dict(seen).is_equal(
 		{
 			"TestMapButton": true,
+			"StrikeTestButton": true,
 			"GalleryButton": true,
 			"TouchProbeButton": true,
 			"PerfArenaButton": true
@@ -115,7 +118,7 @@ func test_the_menu_follows_a_turn_of_the_window() -> void:
 	_close(menu)
 
 
-## `profile` shown: the title and the four buttons, then the checks of the plan's acceptance.
+## `profile` shown: the title and the five buttons, then the checks of the plan's acceptance.
 func _check_layout(profile: UiMetrics, label: String) -> void:
 	var menu: Control = await _open(profile)
 	var safe: Rect2 = UiScale.safe_rect_base()

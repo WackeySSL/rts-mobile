@@ -1,8 +1,8 @@
 extends Control
-## Developer menu: jump to the test map, the art gallery, the touch probe or the perf arena. When
-## the dev menu is not enabled (a release export without the `dev_menu` feature) it opens the main
-## scene instead.
-## One column of buttons that are at least 56 dp tall, in the safe area, in either orientation
+## Developer menu: jump to the test map, the strike test, the art gallery, the touch probe or the
+## perf arena. When the dev menu is not enabled (a release export without the `dev_menu` feature) it
+## opens the main scene instead.
+## One column of buttons that are at least 48 dp tall, in the safe area, in either orientation
 ## (ADR 0015 section 5). A window too short for the column (a phone browser held sideways) scrolls
 ## it. The look is the theme's, sized in dp by the `HudTheme` node; the gap is dp here.
 
@@ -10,6 +10,7 @@ const GAP_DP: float = 12.0
 
 @onready var _column: VBoxContainer = %Column
 @onready var _test_map_button: Button = %TestMapButton
+@onready var _strike_test_button: Button = %StrikeTestButton
 @onready var _gallery_button: Button = %GalleryButton
 @onready var _probe_button: Button = %TouchProbeButton
 @onready var _arena_button: Button = %PerfArenaButton
@@ -24,6 +25,7 @@ func _ready() -> void:
 	_probe_button.disabled = not ResourceLoader.exists(DevRoutes.TOUCH_PROBE_SCENE)
 	_arena_button.disabled = not ResourceLoader.exists(DevRoutes.PERF_ARENA_SCENE)
 	_test_map_button.pressed.connect(_on_test_map_pressed)
+	_strike_test_button.pressed.connect(_on_strike_test_pressed)
 	_gallery_button.pressed.connect(_on_gallery_pressed)
 	_probe_button.pressed.connect(_on_probe_pressed)
 	_arena_button.pressed.connect(_on_arena_pressed)
@@ -42,6 +44,10 @@ func _open_main() -> void:
 
 func _on_test_map_pressed() -> void:
 	DevRoutes.open(get_tree(), DevRoutes.MAIN_SCENE)
+
+
+func _on_strike_test_pressed() -> void:
+	DevRoutes.open_main_with(get_tree(), DevRoutes.STRIKE_TEST_SCENARIO)
 
 
 func _on_gallery_pressed() -> void:

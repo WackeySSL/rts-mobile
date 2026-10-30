@@ -1,0 +1,126 @@
+[gd_resource type="Resource" script_class="ScenarioDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/ScenarioDef.gd" id="1_scenario"]
+[ext_resource type="Script" path="res://game/sim/defs/SpawnDef.gd" id="2_spawn"]
+[ext_resource type="Script" path="res://game/sim/defs/FactionDef.gd" id="3_faction_script"]
+[ext_resource type="Resource" path="res://data/maps/controls_test.tres" id="4_map"]
+[ext_resource type="Resource" path="res://data/rules.tres" id="5_rules"]
+[ext_resource type="Resource" path="res://data/factions/fossil.tres" id="6_fossil"]
+[ext_resource type="Resource" path="res://data/factions/renew.tres" id="7_renew"]
+[ext_resource type="Resource" path="res://data/units/headquarters.tres" id="8_headquarters"]
+[ext_resource type="Resource" path="res://data/units/power_plant.tres" id="9_power_plant"]
+[ext_resource type="Resource" path="res://data/units/fossil_strike.tres" id="10_fossil_strike"]
+[ext_resource type="Resource" path="res://data/units/renew_strike.tres" id="11_renew_strike"]
+[ext_resource type="Resource" path="res://data/units/light_tank.tres" id="12_light_tank"]
+[ext_resource type="Resource" path="res://data/units/renew_hq.tres" id="13_renew_hq"]
+[ext_resource type="Resource" path="res://data/units/renew_power.tres" id="14_renew_power"]
+[ext_resource type="Resource" path="res://data/units/renew_barracks.tres" id="15_renew_barracks"]
+[ext_resource type="Resource" path="res://data/units/renew_refinery.tres" id="16_renew_refinery"]
+[ext_resource type="Resource" path="res://data/units/renew_defence.tres" id="17_renew_defence"]
+[ext_resource type="Resource" path="res://data/units/renew_tank.tres" id="18_renew_tank"]
+[ext_resource type="Resource" path="res://data/units/renew_rifle.tres" id="19_renew_rifle"]
+
+[sub_resource type="Resource" id="Spawn_p1_hq"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("8_headquarters")
+count = 1
+origin_tile = Vector2i(4, 10)
+
+[sub_resource type="Resource" id="Spawn_p1_power"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("9_power_plant")
+count = 2
+origin_tile = Vector2i(8, 10)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p1_deep_bore"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("10_fossil_strike")
+count = 1
+origin_tile = Vector2i(4, 14)
+charge_elapsed_ticks = 4500
+
+[sub_resource type="Resource" id="Spawn_p1_blackout_array"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("11_renew_strike")
+count = 1
+origin_tile = Vector2i(8, 14)
+charge_elapsed_ticks = 4440
+
+[sub_resource type="Resource" id="Spawn_p1_tanks"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("12_light_tank")
+count = 6
+origin_tile = Vector2i(20, 11)
+columns = 2
+spacing = 1500
+
+[sub_resource type="Resource" id="Spawn_p2_hq"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("13_renew_hq")
+count = 1
+origin_tile = Vector2i(28, 9)
+
+[sub_resource type="Resource" id="Spawn_p2_defence"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("17_renew_defence")
+count = 2
+origin_tile = Vector2i(28, 13)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_barracks"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("15_renew_barracks")
+count = 1
+origin_tile = Vector2i(28, 15)
+
+[sub_resource type="Resource" id="Spawn_p2_power"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("14_renew_power")
+count = 2
+origin_tile = Vector2i(32, 9)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_refinery"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("16_renew_refinery")
+count = 1
+origin_tile = Vector2i(32, 13)
+
+[sub_resource type="Resource" id="Spawn_p2_tanks"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("18_renew_tank")
+count = 2
+origin_tile = Vector2i(35, 12)
+columns = 2
+spacing = 1500
+
+[sub_resource type="Resource" id="Spawn_p2_rifles"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("19_renew_rifle")
+count = 4
+origin_tile = Vector2i(31, 17)
+columns = 4
+spacing = 1200
+
+[resource]
+script = ExtResource("1_scenario")
+map_size_tiles = Vector2i(48, 48)
+camera_start_tile = Vector2i(24, 12)
+spawns = Array[ExtResource("2_spawn")]([SubResource("Spawn_p1_hq"), SubResource("Spawn_p1_power"), SubResource("Spawn_p1_deep_bore"), SubResource("Spawn_p1_blackout_array"), SubResource("Spawn_p1_tanks"), SubResource("Spawn_p2_hq"), SubResource("Spawn_p2_defence"), SubResource("Spawn_p2_barracks"), SubResource("Spawn_p2_power"), SubResource("Spawn_p2_refinery"), SubResource("Spawn_p2_tanks"), SubResource("Spawn_p2_rifles")])
+rules = ExtResource("5_rules")
+map = ExtResource("4_map")
+player_count = 2
+factions = Array[ExtResource("3_faction_script")]([null, ExtResource("6_fossil"), ExtResource("7_renew")])
