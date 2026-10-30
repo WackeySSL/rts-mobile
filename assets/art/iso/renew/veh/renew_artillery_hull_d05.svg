@@ -76,9 +76,8 @@
 <polygon points="137.3,68.1 135.6,67.8 135.6,65.8 137.3,66.1" fill="#A8F5B0" stroke="#4C6E4F"/>
 <polygon points="147.7,55.6 137.3,68.1 137.3,66.1 147.7,53.6" fill="#7FB985" stroke="#4C6E4F"/>
 <polygon points="137.3,66.1 135.6,65.8 146,53.3 147.7,53.6" fill="#CDFFD7" stroke="#E1FFE7"/>
-<polygon points="128.4,58.6 99.9,52.7 99.9,42.5 128.4,58.1" fill="#B4C8CF" stroke="#515A5D"/>
-<polygon points="145.7,37.7 128.4,58.6 128.4,58.1 145.7,37.2" fill="#88979D" stroke="#515A5D"/>
-<polygon points="128.4,58.1 99.9,42.5 117.3,21.6 145.7,37.2" fill="#DCF4FC" stroke="#EAF8FD"/>
+<polygon points="128.4,58.6 99.9,52.7 99.9,42.5" fill="#B4C8CF" stroke="#515A5D"/>
+<polygon points="128.4,58.6 99.9,42.5 117.3,21.6 145.7,37.7" fill="#DCF4FC" stroke="#EAF8FD"/>
 <polygon points="120.3,65.8 122.8,73.6 119.3,77.8 116.8,70" fill="#31383D" stroke="#1D2124"/>
 <polygon points="122.8,73.6 120.3,80.4 116.8,84.6 119.3,77.8" fill="#31383D" stroke="#1D2124"/>
 <polygon points="110.2,64.2 116.8,70 119.3,77.8 116.8,84.6 110.2,87.7 102.1,86 95.5,80.1 93,72.4 95.5,65.6 102.1,62.5" fill="#414A51" stroke="#1D2124"/>

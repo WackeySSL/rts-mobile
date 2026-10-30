@@ -123,9 +123,8 @@
 <polygon points="151.6,99.8 150,99.5 150,97.5 151.6,97.9" fill="#A8F5B0" stroke="#4C6E4F"/>
 <polygon points="162,87.3 151.6,99.8 151.6,97.9 162,85.3" fill="#7FB985" stroke="#4C6E4F"/>
 <polygon points="151.6,97.9 150,97.5 160.3,85 162,85.3" fill="#CDFFD7" stroke="#E1FFE7"/>
-<polygon points="143.6,90.5 113.5,84.3 113.5,73.3 143.6,90" fill="#B4C8CF" stroke="#515A5D"/>
-<polygon points="160.9,69.6 143.6,90.5 143.6,90 160.9,69.1" fill="#88979D" stroke="#515A5D"/>
-<polygon points="143.6,90 113.5,73.3 130.8,52.4 160.9,69.1" fill="#DCF4FC" stroke="#EAF8FD"/>
+<polygon points="143.6,90.5 113.5,84.3 113.5,73.3" fill="#B4C8CF" stroke="#515A5D"/>
+<polygon points="143.6,90.5 113.5,73.3 130.8,52.4 160.9,69.6" fill="#DCF4FC" stroke="#EAF8FD"/>
 <polygon points="130.5,96.7 133,104.5 129.5,108.7 127,100.9" fill="#31383D" stroke="#1D2124"/>
 <polygon points="133,104.5 130.5,111.2 127,115.4 129.5,108.7" fill="#31383D" stroke="#1D2124"/>
 <polygon points="120.4,95 127,100.9 129.5,108.7 127,115.4 120.4,118.6 112.3,116.9 105.7,111 103.2,103.2 105.7,96.5 112.3,93.4" fill="#414A51" stroke="#1D2124"/>

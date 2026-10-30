@@ -61,8 +61,8 @@
 <polygon points="68,63.6 68,81.7 49.9,76.3 49.9,63.3" fill="#D5DBDC" stroke="#606363"/>
 <polygon points="68,43.6 68,44.5 49.9,49.6 49.9,49" fill="#FFFFFF" stroke="#FFFFFF"/>
 <polygon points="68,44.5 68,63.6 49.9,63.3 49.9,49.6" fill="#FFFFFF" stroke="#FFFFFF"/>
-<polygon points="49,77.9 16.4,77.9 16.4,77.3 49,66.9" fill="#B4C8CF" stroke="#515A5D"/>
-<polygon points="16.4,54.7 49,44.3 49,66.9 16.4,77.3" fill="#DCF4FC" stroke="#EAF8FD"/>
+<polygon points="49,77.9 16.4,77.9 49,66.9" fill="#B4C8CF" stroke="#515A5D"/>
+<polygon points="16.4,55.3 49,44.3 49,66.9 16.4,77.9" fill="#DCF4FC" stroke="#EAF8FD"/>
 <polygon points="121.8,66.9 121.8,79.7 115.5,79.7 115.5,66.9" fill="#1FA6C8" stroke="#137C99"/>
 <polygon points="121.8,79.7 121.8,85.3 115.5,85.3 115.5,79.7" fill="#137C99" stroke="#137C99"/>
 <polygon points="121.8,36.9 121.8,40.5 115.5,40.5 115.5,36.9" fill="#62D6EE" stroke="#62D6EE"/>

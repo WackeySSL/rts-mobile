@@ -20,7 +20,7 @@ prims = PackedStringArray(
 "prism hull steel -0.3 0.37 0.07 0.12 0.02 0.12 axis=y sides=8",
 "box hull iron 0 0 0.07 0.8 0.4 0.08",
 "box hull olive -0.16 0 0.15 0.58 0.5 0.15",
-"wedge hull olive 0.34 0 0.15 0.42 0.5 0.15 slope=0.95",
+"wedge hull olive 0.34 0 0.15 0.42 0.5 0.15 slope=1",
 "box hull team -0.12 -0.26 0.18 0.56 0.02 0.1",
 "box hull team -0.12 0.26 0.18 0.56 0.02 0.1",
 "box hull iron 0.58 0 0.13 0.04 0.44 0.1",

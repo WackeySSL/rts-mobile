@@ -32,9 +32,9 @@
 <polygon points="139,42.8 125.1,59.6 125.1,54.9 139,38.1" fill="#137C99" stroke="#137C99"/>
 <polygon points="125.1,59.6 76.6,49.5 76.6,44.8 125.1,54.9" fill="#1FA6C8" stroke="#137C99"/>
 <polygon points="139,38.1 125.1,54.9 76.6,44.8 90.5,28.1" fill="#62D6EE" stroke="#62D6EE"/>
-<polygon points="134.9,38.3 122.5,53.3 122.5,42.4 134.9,37.7" fill="#88979D" stroke="#515A5D"/>
+<polygon points="134.9,38.3 122.5,53.3 122.5,42.4" fill="#88979D" stroke="#515A5D"/>
 <polygon points="122.5,53.3 80.6,44.7 80.6,33.7 122.5,42.4" fill="#B4C8CF" stroke="#515A5D"/>
-<polygon points="134.9,37.7 122.5,42.4 80.6,33.7 93.1,29.1" fill="#DCF4FC" stroke="#EAF8FD"/>
+<polygon points="134.9,38.3 122.5,42.4 80.6,33.7 93.1,29.6" fill="#DCF4FC" stroke="#EAF8FD"/>
 <polygon points="112.7,66.7 112.7,48.6 114.4,41.7 114.4,54.8" fill="#A1A6A6" stroke="#606363"/>
 <polygon points="112.7,48.6 94.3,35.8 75.9,41 75.9,59.1 94.3,72 112.7,66.7" fill="#D5DBDC" stroke="#606363"/>
 <polygon points="112.7,48.6 94.3,35.8 101.2,32.5 114.4,41.7" fill="#D5DBDC" stroke="#FFFFFF"/>

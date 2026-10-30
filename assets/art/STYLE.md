@@ -69,6 +69,11 @@ rewritten for the last-seen ghost that P115c draws (the whole body in one dim co
 no dots). "Iso ground tiles" and "Fields" carry the new files and the new greyscale means, and the
 open point for P105 holds his answers.
 
+**v1.14 (Phase 3, P99c)** fixes the generator's wedge: a wedge with `slope=1` keeps its sloped
+face (see "Wedge faces" under "Generated art"), and the eight models that used `slope=0.95` as a
+stand-in for it use `slope=1`. The "Modelling notes" of both factions' units and of the Lumen
+Accord's buildings no longer warn about the bug; their frames and item cards are regenerated.
+
 ## Look
 **Since ADR 0023 (Michael 2026-10-26) everything on the map is drawn in the isometric 2:1 view, flat
 shaded with three tones per face and one light from the north-west; see "Projection", "Light" and
@@ -165,7 +170,7 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   one primitive per entry: `<shape> <part> <material> <cx> <cy> <z0> <sx> <sy> <sz> [options]`.
   Lengths are tiles; a unit faces +x and stands on its origin; a building's origin is its
   footprint's centre. Shapes: `box`; `wedge` (a box whose top slopes down towards +x, `slope=` 0
-  to 1); `prism` (`sides=` 3 to 24, default 12, `taper=` scales the top, `axis=x|y|z` lays it
+  to 1, a negative one slopes towards -x; 1 comes down to the bottom of the box); `prism` (`sides=` 3 to 24, default 12, `taper=` scales the top, `axis=x|y|z` lays it
   along its length; the size is the width across the flats, a hexagon is 1.155 times as long on
   its second axis); `sphere` (diameter `sx`). Parts: `hull`, `turret`, `head`. Material: a name of
   the faction's palette below, or `team`. The `shadow` part is never authored: it is made from the
@@ -176,6 +181,18 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   are apart along an axis and the other is on the camera's side. So keep primitives apart along an
   axis, touching is fine: split a drum into segments and put the band between them, put a
   turret's barrel against the face it comes out of.
+- **Wedge faces** (P99c). `ArtMesh` turns each face's normal away from the mean of the solid's
+  corners, which lies inside any convex solid. P99 turned it away from the middle of the
+  primitive's box, and a wedge with `slope=1` has its sloped face through that middle: the dot
+  product was zero, rounding noise picked the sign, and the renderer culled the face when it went
+  the wrong way (a `slope=1` hood at the Flarejack's place did). So `slope=1` (and `-1`, and a
+  `box` with a `slope=`) is safe at any position. The models that stood in for it with `slope=0.95` moved to
+  `slope=1`: the Flarejack's hood, the Bullhead's glacis, the Mortar Rig's cab, the Swift's nose,
+  the glass fronts of the Arcline and the Fuel Runner, the Grid Hub's two and the Crew Hall's three
+  solar panels (11 wedges in 8 models; 198 files regenerated: their frames, shadows and item
+  cards). The design slopes (0.9, 0.85, 0.8, 0.6, 0.5 and the Heavy Yard's -1) are as they were.
+  `tests/art/test_artgen_wedge.gd` pins the sloped face at 10 positions, its normal against a point
+  inside, its drawing at all 16 yaws and that no model uses `slope=0.95`.
 - **Files**: `assets/art/iso/<faction>/<category>/<type_id>_<part>_d<NN>.svg` (`d<NN>` left out for
   a building body), parts `hull`, `turret`, `head` and `shadow`, each with a "Keep File" `.import`
   (`importer="keep"`): the export carries the SVG text and the bake reads it. A frame is one comment
@@ -324,10 +341,9 @@ the figures below). Hull canvases are at 2x, in px; a unit's gun frame has its o
   dark heads with long tubes, the Flarejack an armoured car with a mast, the Bullhead a slab with a
   long gun and a stripe along its flank, the Mortar Rig a truck with a ribbed tube pointing up, the
   Tanker a long truck with a drum.
-- **Modelling notes.** A wedge with `slope=1` has its sloped face's mean at the middle of its box, so
-  the generator's outward test does not flip that face and it is culled: the models use `slope=0.95`
-  (a hood, a glacis). The generator has no tilted primitive: the mortar tube is a stair of short
-  prisms (0.05 tile a step). A gun is the primitive of its turret that reaches farthest along +x, a
+- **Modelling notes.** A hood or a glacis is a wedge with `slope=1` (P101 used `slope=0.95` until
+  P99c fixed the generator, "Wedge faces"). The generator has no tilted primitive: the mortar tube
+  is a stair of short prisms (0.05 tile a step). A gun is the primitive of its turret that reaches farthest along +x, a
   squad's weapon the one of its lead figure (the muzzle for `muzzle_lift_px`).
 - **Originality.** No twin barrels, no super-heavy tank, no tesla or flame infantry; every form is a
   plain real-world one (an armoured car, a dozer plate, a flatbed with a mortar, a tanker truck).
@@ -391,10 +407,9 @@ page is one role.
   Torque's) is a graphite box with a ten-sided prism lying along y at each end, so it is round at
   both ends, and a row of titanium road-wheel hubs on its outer face; the belly between the two
   tracks is filled so the hull does not float. The sloping nose of the Torque
-  and the glass front of the cabs are wedges with `slope=0.6` and `slope=0.95`: **the generator
-  bug of P101 is still there** (a wedge with `slope=1` loses its sloped face), so no model uses
-  `slope=1` until the fix lands. A gun is the primitive of its turret that reaches farthest along
-  +x, a squad's weapon the one of its lead figure.
+  and the glass front of the cabs are wedges with `slope=0.6` (a design slope, left as it is) and
+  `slope=1` (since P99c, "Wedge faces"; they used `slope=0.95` before). A gun is the primitive of
+  its turret that reaches farthest along +x, a squad's weapon the one of its lead figure.
 - **Originality.** One barrel on the centre line of each gun (no twin barrels: `test_unit_models.gd`
   pins it), no super-heavy tank, no flame, cryo or tesla infantry, no hover bike and no tower;
   every form is a plain real-world one (a buggy, a tank on two long tracks, a carrier with a
@@ -648,7 +663,7 @@ which is the wall with the door.
   status lights (a light over a door, guide lights across an apron, a node under a bar). Hexagons are
   the form (the Grid Hub's two tiers, the Crew Hall's rotunda, the Relay Tower's house, the Rail
   Battery, the Blackout Array's columns and core) beside round drums (the tanks, the towers, the
-  vents). Solar panels are dark wedges tilted to the south-east (`slope=0.95`, the generator's one
+  vents). Solar panels are dark wedges tilted to the south-east (`slope=1`, the generator's one
   tilted shape), battery cabinets small white boxes with a mint light. No geography, flag, star or
   insignia (ADR 0023 decision 1), no brick, no dome with a colonnade and no timber (dropped from the
   canvas's Concordia board as geography).
@@ -706,9 +721,9 @@ which is the wall with the door.
 - **Heights** follow Spec 05: the Grid Hub, the Motor Works and the Blackout Array are the tall ones
   (80 to 150 px), the Synthesis Works stays under 80, the Wind Park, the Crew Hall and the Relay
   Tower are 50 to 100 px and the Rail Battery 40 to 60.
-- **Modelling notes.** A wedge with `slope=1` loses its sloped face (the generator culls it): the
-  solar panels and the glazed roof use `slope=0.95`. An `axis=x` prism is (length, width, height),
-  an `axis=y` prism (width, length, height). A regular hexagon is a prism of `sides=6` with equal
+- **Modelling notes.** The solar panels are wedges with `slope=1` (P99c, "Wedge faces"; they used
+  `slope=0.95`), the Motor Works' glazed roof keeps its design slope of 0.9. An `axis=x` prism is
+  (length, width, height), an `axis=y` prism (width, length, height). A regular hexagon is a prism of `sides=6` with equal
   first and second sizes; it has flats towards +x and -x and corners towards +y and -y.
 - **Readability.** Each default view is identifiable at 32 px in greyscale (a body and a spread of
   tones, `test_artgen_readability.gd`), and the eight read apart: the largest overlap of two
@@ -1815,3 +1830,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-10-27 | v1.12 (P102, art-director): the six Lumen Accord units modelled under their art ids (Linemen, Breakers, Swift, Torque, Arcline, Fuel Runner; "Lumen Accord units"), the Catalogue and the readability results for them, the Units page extended with the Lumen Accord's two lines (`AccordA`, `AccordB`, `ACCORD_IDS`, `ACCORD_NAMES`) under the Derrick League's, the zoom row a little lower to make room. |
 | 2026-10-27 | v1.12 (P102 fix round, art-director; no version bump, the six units are the same row): the Torque stands on one continuous round-ended track a side with a row of titanium road wheels (it stood on four corner pods) and carries a graphite barrel with a muzzle block (it was titanium and vanished at 32 px; canvas 162 x 96), the Fuel Runner's tank is round (ten sides) with a hatch dome on a slim chassis (canvas 174 x 130), the Linemen's reel hub is wider than its team flanges, the Breakers' silhouette line says a team ring at each end; "Lumen Accord units", the Catalogue, the readability results and the open point for the phone brought up to date. |
 | 2026-10-27 | v1.13 (P105b, art-director, Michael's phone-check answers on P105's ground): the ground diamonds lose their soft rim (the two rim `path` lines are gone from all twelve files; "Iso ground tiles", the rim column of the terrain table, the catalogue row and the Terrain page text; ADR 0023 section 5's soft rim is withdrawn), the greyscale means recomputed without it (grass 126, sand 185, scrub 97 and 96, rock 109 and 110, water 83, ore 70; oil 30, 44, 57), the pale crust, dust and ring tones of `gas_full.svg`, `gas_half.svg` and `gas_dry.svg` duller by one factor for each stage (full x 0.80, half x 0.90, dry x 0.96, Michael's choice B; the fissures, vent, glow and steam as drawn; gas 173, 152, 138 at 32 px; "Fields"), the P105 open point answered (rim dropped, the full oil lake and the crater kept, the gas crust B), and "Ghosts" rewritten for P115c's last-seen ghost (the whole body at z 5 over the fog in one dim colour, no dots; ADR 0022's dotted ghost retired, kept only as the gallery's sample cell). |
+| 2026-10-30 | v1.14 (P99c, art-director): the generator keeps the sloped face of a wedge with `slope=1` (`ArtMesh` orients every normal against the mean of the solid's corners, not the middle of its box; "Wedge faces" under "Generated art"), the eleven wedges of eight models that stood in for it with `slope=0.95` use `slope=1` (Flarejack, Bullhead, Mortar Rig, Swift, Arcline, Fuel Runner, Grid Hub, Crew Hall), their 198 frames, shadows and item cards regenerated, the "generator bug of P101" warnings removed from "Derrick League units", "Lumen Accord units" and the Lumen Accord's buildings. |

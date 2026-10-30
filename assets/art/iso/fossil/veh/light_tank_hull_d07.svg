@@ -55,9 +55,8 @@
 <polygon points="61.3,12.1 58.9,9.2 58.9,3.7 61.3,6.6" fill="#FFF1D6" stroke="#736C60"/>
 <polygon points="67.2,10.9 61.3,12.1 61.3,6.6 67.2,5.4" fill="#C1B6A2" stroke="#736C60"/>
 <polygon points="61.3,6.6 58.9,3.7 64.7,2.5 67.2,5.4" fill="#FFFFFF" stroke="#FFFFFF"/>
-<polygon points="58.1,105.6 43.6,88 43.6,76.2 58.1,105" fill="#7D8562" stroke="#383C2C"/>
-<polygon points="100,96.9 58.1,105.6 58.1,105 100,96.3" fill="#5F654A" stroke="#383C2C"/>
-<polygon points="58.1,105 43.6,76.2 85.4,67.6 100,96.3" fill="#98A278" stroke="#C1C7AE"/>
+<polygon points="58.1,105.6 43.6,88 43.6,76.2" fill="#7D8562" stroke="#383C2C"/>
+<polygon points="58.1,105.6 43.6,76.2 85.4,67.6 100,96.9" fill="#98A278" stroke="#C1C7AE"/>
 <polygon points="43,87.3 23.6,63.8 23.6,56 43,79.4" fill="#E8681F" stroke="#B04B12"/>
 <polygon points="44.6,86.9 43,87.3 43,79.4 44.6,79.1" fill="#B04B12" stroke="#B04B12"/>
 <polygon points="43,79.4 23.6,56 25.2,55.7 44.6,79.1" fill="#FF9446" stroke="#FF9446"/>
