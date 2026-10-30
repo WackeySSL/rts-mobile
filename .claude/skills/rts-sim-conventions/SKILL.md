@@ -95,7 +95,10 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
   rebuild test at every checkpoint. `move_cost` stays in the map digest.
 - **Three phases after FOG** (marks ascend): `ECONOMY` 11 (`Power.run`, `Harvest.run`),
   `PRODUCTION` 12 (`Production.run`, then `Outcome.run`), `MEMORY` 13 (`LastSeen.run`), then
-  `tick += 1`. Loops go players, tabs, rows by id and ore cells ascending; no Phase 3 rule draws
+  `tick += 1`. LastSeen also drops records in `REMOVE`: `World.remove_dead` calls
+  `LastSeen.forget_dead` before its compaction, for a building that dies while a player sees a
+  cell of its footprint (P77b), and those checks count in `MEMORY_CHECKS`. Loops go players,
+  tabs, rows by id and ore cells ascending; no Phase 3 rule draws
   a random number. A placement in COMMANDS of tick t counts for power in t's ECONOMY; a produced
   unit enters the grids in t+1.
 - Ticks of an outcome are stored as `tick + 1` (0 = playing or running). Only a player whose

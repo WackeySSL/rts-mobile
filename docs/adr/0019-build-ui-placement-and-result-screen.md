@@ -41,6 +41,9 @@ result screen reads. No accepted text changed.
 Status note (2026-10-27, P26ak docs): §3 carries a dated status note on building selection as
 P115b merged it. No accepted text changed.
 
+Status note (2026-10-30, P26am docs): §3 carries a dated status note that narrows the P26ak note's
+attack on an enemy building to the one the sim takes. No accepted text changed.
+
 ## Context
 - `touch-ui-rules` already fixes, in its gesture table and its "Building placement" section: tap an
   own building selects it and "a production building opens its build tab"; tap minimap moves the
@@ -188,6 +191,14 @@ accepted and as dated):
   order: own unit > own or seen enemy building, and enemy units do not count. A tap on the ground,
   or on an enemy unit, clears the selection; an empty box clears it too. P87 adds `RALLY` to that
   ground tap for a barracks or a vehicle factory, as the text above says.
+
+Status note (2026-10-30, P26am docs, from the review of P26ak; the notes above stay as dated): the
+note above says too much in "With own units selected, a tap on an enemy building you see
+attacks it". P115b attacks a shown enemy building only when the sim takes the `ATTACK`
+(`PickSnapshot.is_targetable`): the local player sees the cell under the building's position, the
+cell `Targeting.sees` asks. One shown only for another cell of its footprint is not attacked: the
+tap is a tap on the ground and moves the selected units there. HOW_TO_PLAY's Orders row ("One you
+see only at its edge, or the fog hides, is a tap on the ground") already says so.
 
 ### 4. Minimap
 In the sidebar (top in landscape; at the right end of the portrait band, a square of the band's

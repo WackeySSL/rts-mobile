@@ -38,6 +38,9 @@ Status note (2026-10-26, P26ai docs): §1 carries a dated status note on the `AT
 as P71 and P71b merged it (the code in `Buildings.gd`, the two open choices, TARGETING's 41
 names). No accepted text changed.
 
+Status note (2026-10-30, P26am docs): §5 carries a dated status note on the second writer of the
+last-seen records, `LastSeen.forget_dead` in REMOVE (P77b, #241). No accepted text changed.
+
 ## Context
 What earlier ADRs already decided for Phase 3:
 - **ADR 0007 §2:** "Buildings (Phase 3) are rows of the same table", so targeting, damage, death
@@ -255,6 +258,23 @@ ECONOMY's `Power.run` sums power without it, PRODUCTION's `Outcome.run` counts a
 producer's loss for defeat on the same tick, and no ruptured row acts in the next tick. The
 blackout is applied in COMMANDS; ECONOMY, PRODUCTION and FIRE read its `offline_until` (ADR 0018
 §4-§5's note). Plan rows P110 and P111.
+
+Status note (2026-10-30, P26am docs, P77b as merged, #241, 0c2f7b1; the text above stays as
+accepted): MEMORY is no longer the only phase that writes the last-seen records. `World.remove_dead`
+calls `LastSeen.forget_dead(world, first)` in REMOVE, after `Buildings.unblock_dead` and
+`Outcome.count_losses` and before the DIED records, the fog unstamp and the compaction. For each
+building row that dies this tick, it drops the records of that building in the block of every
+other player who sees a cell of its footprint in the fog as it stands, the sight the player has
+when the building falls; a record whose whole footprint is dark stays until the player's next fog
+turn shows the spot empty, and a unit's death drops nothing. So the drop does not wait for the
+player's fog turn, and no ghost stands on a building the player watched fall. Each record that
+`forget_dead` looks at counts one `Stat.MEMORY_CHECKS`, as MEMORY's checks do; its time falls
+inside the REMOVE mark, not the MEMORY mark, so P93's base-arena bounds see these checks on every
+tick in which a building dies. A tick with any death, units included, adds one scan of the rows
+from the first dead row on (a few array reads per row, no allocation). P77b also made the seen
+rule the footprint's: `LastSeen` remembers a building when any cell of its footprint is visible
+to the player and forgets a record when any cell of its spot is seen empty, the rule of
+`BuildingLayer.any_cell_seen`, where P77 used the centre tile.
 
 ### 6. The snapshot
 P70 lists every new `ROW_ARRAYS`, `TYPE_ARRAYS` and `MAP_ARRAYS` name in `MatchSnapshot.NOT_COPIED`
