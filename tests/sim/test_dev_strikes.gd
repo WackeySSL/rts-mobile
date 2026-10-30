@@ -3,12 +3,15 @@ extends GdUnitTestSuite
 ## `data/scenarios/dev_strikes.tres`, the one place on `main` where the local player owns a strike
 ## building, so the phone preview can fire a rupture and a blackout. Player 1 (the Derrick League)
 ## owns a Headquarters, power, a Deep Bore that is charged at once and a Blackout Array that
-## charges for four more seconds. Player 2 (the Lumen Accord) is a small base across 6 tiles of
-## open ground, in sight of player 1's six tanks and out of everyone's weapon range, with
-## buildings of all three footprints and a few units. Nobody plays player 2 (the main scene sets
-## no opponent), so the base stays as it is. What the screen does with it is
-## test_dev_strike_route's. The layout numbers are literals (the data are layout); every rule
-## number is read from the World.
+## charges for four more seconds. Player 2 (the Lumen Accord) is a small base on open ground, with
+## buildings of all three footprints and a few units. Player 1's six tanks watch it from three
+## sides (two west of it, two north, two south), each pair 5 to 7 tiles from the buildings it
+## sees and out of everyone's weapon range, so that player 1 sees a cell of every enemy building
+## and the ground the strikes land on: the rupture's burst and crater show only where player 1
+## sees the landing tile (P112b), and a blackout's offline badge only on buildings it sees. Nobody
+## plays player 2 (the main scene sets no opponent), so the base stays as it is. What the screen
+## does with it is test_dev_strike_route's. The layout numbers are literals (the data are layout);
+## every rule number is read from the World.
 
 const PATH: String = "res://data/scenarios/dev_strikes.tres"
 const MAP_PATH: String = "res://data/maps/controls_test.tres"
@@ -17,6 +20,8 @@ const SEED: int = 1
 const ARRAY_READY_TICKS: int = 60
 ## A quiet stretch of the match: ten seconds with nobody giving an order.
 const QUIET_TICKS: int = 150
+## A long one: two minutes, the time a person may spend looking before the first order.
+const WATCH_TICKS: int = 1800
 ## The point between the enemy Headquarters and its two batteries, and the middle of its base.
 const RUPTURE_POINT: Vector2i = Vector2i(29000, 12000)
 const BLACKOUT_POINT: Vector2i = Vector2i(30000, 12500)
@@ -89,6 +94,35 @@ func test_the_enemy_base_shows_all_three_footprints_to_player_one_with_a_few_uni
 	assert_int(units).is_between(3, 8)
 
 
+## Every enemy building has a cell that player 1 sees once each player's fog has had its turn, so
+## a blackout's offline badge shows on all of them (BuildingLayer.is_seen: any cell of the
+## footprint). Nothing here moves: the sight of the start is the sight of the rest of the match.
+func test_after_the_first_fog_turn_player_one_sees_a_cell_of_every_enemy_building() -> void:
+	_run_ticks(_world.fog_period_ticks)
+	var buildings: int = 0
+	for row: int in _world.unit_count():
+		var type: int = _world.type_index[row]
+		if _world.owner[row] != 2 or _world.type_foot_w[type] <= 0:
+			continue
+		buildings += 1
+		var why: String = (
+			"%s at %s" % [_world.type_ids[type], _world.footprint_origin(row)]
+			+ " has no cell player 1 sees"
+		)
+		assert_bool(_visible_to_player_one(row)).override_failure_message(why).is_true()
+	assert_int(buildings).is_greater_equal(7)
+
+
+## The tile the rupture lands on is in sight, so its burst and crater show (P112b's rule: only where
+## the viewer sees the landing tile), and so is the tile the blackout is aimed at.
+func test_after_the_first_fog_turn_player_one_sees_the_rupture_point_and_the_blackout_point(
+) -> void:
+	_run_ticks(_world.fog_period_ticks)
+	for point: Vector2i in [RUPTURE_POINT, BLACKOUT_POINT]:
+		var cell: int = _world.cell_of(point.x, point.y)
+		assert_bool(_world.fog.is_visible(1, cell)).override_failure_message(str(point)).is_true()
+
+
 ## Nothing is in anyone's weapon reach at the start, so the match is quiet until the player moves:
 ## ten seconds with no order lose no hit point and no row.
 func test_nobody_fights_before_the_player_gives_an_order() -> void:
@@ -101,6 +135,25 @@ func test_nobody_fights_before_the_player_gives_an_order() -> void:
 	assert_array(_world.hp).is_equal(hit_points)
 	assert_int(_world.defeated_tick[1]).is_equal(0)
 	assert_int(_world.defeated_tick[2]).is_equal(0)
+
+
+## The watchers stand where they see the base from, and the base's batteries (5.5 tiles) do not
+## reach them: two minutes with no order lose none of player 1's units and none of their hit points.
+func test_player_ones_watchers_all_live_two_minutes_without_an_order() -> void:
+	var watchers: Dictionary[int, int] = {}  # Unit id -> hit points at the start.
+	for row: int in _world.unit_count():
+		if _world.owner[row] == 1 and _world.type_speed[_world.type_index[row]] > 0:
+			watchers[_world.unit_id[row]] = _world.hp[row]
+	assert_int(watchers.size()).is_equal(6)
+	_run_ticks(WATCH_TICKS)
+	var alive: Dictionary[int, int] = {}
+	for row: int in _world.unit_count():
+		alive[_world.unit_id[row]] = _world.hp[row]
+	for id: int in watchers:
+		assert_bool(alive.has(id)).override_failure_message("unit %d died" % id).is_true()
+		assert_int(alive.get(id, 0)).override_failure_message("unit %d was hit" % id).is_equal(
+			watchers[id]
+		)
 
 
 func test_a_rupture_from_player_one_is_accepted_and_hits_the_enemy_buildings_around_its_point(
@@ -158,6 +211,13 @@ func test_the_blackout_can_follow_the_rupture_once_it_has_landed() -> void:
 	_loop.step(_world, [Command.superweapon(1, array_id, BLACKOUT_POINT.x, BLACKOUT_POINT.y)])
 	assert_int(_world.dropped_commands).is_equal(0)
 	assert_int(_offline_enemy_buildings().size()).is_greater(0)
+
+
+## Steps the match `count` ticks with nobody giving an order.
+func _run_ticks(count: int) -> void:
+	var none: Array[Command] = []
+	for _tick: int in count:
+		_loop.step(_world, none)
 
 
 ## Rows of `player` by type id.
