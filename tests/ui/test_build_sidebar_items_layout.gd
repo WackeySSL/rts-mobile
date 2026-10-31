@@ -22,10 +22,11 @@ const TABS: Array[int] = [World.Tab.STRUCTURES, World.Tab.INFANTRY, World.Tab.VE
 const BASE: Array[String] = [
 	"headquarters", "power_plant", "barracks", "refinery", "vehicle_factory"
 ]
-## Whole tiles that a portrait band shows with the sidebar alone in it (the minimap of plan P88
-## takes the band's right end, ADR 0015 section 5: P88 re-runs this with it), and the whole cards
-## that the floating panel shows at its narrowest (HudLayout.PANEL_MIN_DP).
-const WHOLE_TILES: int = 3
+## Whole tiles that a portrait band shows beside the minimap (plan P88: at the band's right end, at
+## most 40 % of the safe inner width, ADR 0015 section 5): two at the narrowest, 360 dp wide;
+## test_minimap_layout pins the three of the 6-inch phone. And the whole cards that the floating
+## panel shows at its narrowest (HudLayout.PANEL_MIN_DP).
+const WHOLE_TILES: int = 2
 const WHOLE_CARDS: int = 2
 
 var _window_size_before: Vector2i

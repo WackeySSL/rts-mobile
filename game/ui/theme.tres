@@ -153,6 +153,10 @@ BuildSidebar/colors/credits = Color(0.94901961, 0.71764706, 0.01960784, 1)
 BuildSidebar/colors/power = Color(0.18823529, 0.64313725, 0.42352941, 1)
 BuildSidebar/colors/warning = Color(0.96078431, 0.64705882, 0.14117647, 1)
 BuildSidebar/styles/panel = SubResource("StyleBoxFlat_sidebar")
+; The minimap's camera frame (Minimap.gd, plan P88): a white line on a dark edge, so it reads on every terrain.
+Minimap/base_type = &"Control"
+Minimap/colors/frame = Color(1, 1, 1, 1)
+Minimap/colors/frame_edge = Color(0.06, 0.08, 0.11, 0.9)
 ; The three tabs: the icon is tinted #9AA5B1 at rest and white when the tab is open.
 SidebarTab/base_type = &"Button"
 SidebarTab/colors/icon_focus_color = Color(0.60392157, 0.64705882, 0.69411765, 1)

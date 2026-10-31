@@ -6,7 +6,8 @@ extends RefCounted
 ## for the SelectionPanel's band), the minimap's slot at the top right (`SLOT_DP`) and the status
 ## pill at the top left after the Dev button (`PILL_DP`). Portrait: the sidebar's bottom band,
 ## whose height `BuildSidebar` puts in `bottom_zone_dp` (`band_dp`) from `_ready` and on every
-## resize; every HUD part reads it here and nowhere else, so the ArmyBar sits a gap above the band.
+## resize, with the minimap at its right end (`minimap_box_px`); every HUD part reads it here and
+## nowhere else, so the ArmyBar sits a gap above the band.
 ## A scene without a sidebar leaves it at 0 (the sidebar puts it back when it leaves the tree).
 ## The orientation is the one rule of UiScale, applied to the window the UI scale is made for.
 
@@ -21,6 +22,7 @@ const PANEL_GAP_DP: float = 8.0  ## Between the build panel and the SelectionPan
 const PILL_DP: float = 240.0  ## The landscape status pill's least width (its height is 48 dp).
 const PILL_HEIGHT_DP: float = 48.0
 const SLOT_DP: Vector2 = Vector2(148.0, 86.0)  ## The minimap's panel at the top right (2:1 box).
+const MINIMAP_SHARE: float = 0.4  ## The most of the band's body row the portrait minimap takes.
 const BAND_SHARE: float = 0.2  ## The portrait band's share of the safe height.
 const BAND_MIN_DP: float = 200.0  ## The least the portrait band takes of it, in dp.
 const STACK_SHARE: float = 0.4  ## The most the band and the ArmyBar line take of the safe height.
@@ -65,3 +67,12 @@ static func bottom_zone_px() -> float:
 static func band_dp(safe_dp: float, reserved_dp: float) -> float:
 	var wanted: float = maxf(safe_dp * BAND_SHARE, BAND_MIN_DP)
 	return maxf(minf(wanted, safe_dp * STACK_SHARE - reserved_dp), BAND_FLOOR_DP)
+
+
+## The portrait minimap's 2:1 box in base px (ADR 0015 section 5, ADR 0023 section 4): at most
+## `MINIMAP_SHARE` of `row`, the width the band's body row gives it and the column beside it, which
+## is itself less than the safe inner width, and no higher than `room`, the height the band leaves
+## beside its tabs and item row.
+static func minimap_box_px(row: float, room: float) -> Vector2:
+	var width: float = minf(row * MINIMAP_SHARE, room * 2.0)
+	return Vector2(width, width / 2.0)

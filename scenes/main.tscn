@@ -33,6 +33,7 @@
 [ext_resource type="Script" path="res://game/view/GhostMemoryLayer.gd" id="32_ghosts"]
 [ext_resource type="Script" path="res://game/input/PlacementController.gd" id="35_placement"]
 [ext_resource type="Script" path="res://game/view/GhostLayer.gd" id="36_ghost_layer"]
+[ext_resource type="Script" path="res://game/ui/Minimap.gd" id="37_minimap"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -206,12 +207,13 @@ script = ExtResource("3_dev")
 [node name="DpMinSize" type="Node" parent="Hud/SafeArea/DevButton"]
 script = ExtResource("13_dp")
 
-[node name="BuildSidebar" type="PanelContainer" parent="Hud/SafeArea" node_paths=PackedStringArray("runner", "controller", "pill", "minimap_slot", "top_left", "placement")]
+[node name="BuildSidebar" type="PanelContainer" parent="Hud/SafeArea" node_paths=PackedStringArray("runner", "controller", "pill", "minimap_slot", "minimap", "top_left", "placement")]
 script = ExtResource("21_sidebar")
 runner = NodePath("../../../MatchRunner")
 controller = NodePath("../../../PlayerController")
 pill = NodePath("../StatusBand/StatusPill")
 minimap_slot = NodePath("../MinimapSlot")
+minimap = NodePath("../MinimapSlot/Minimap")
 top_left = NodePath("../DevButton")
 placement = NodePath("../../../PlacementController")
 
@@ -248,6 +250,13 @@ theme_type_variation = &"BuildSidebar"
 size_flags_horizontal = 8
 size_flags_vertical = 0
 theme_type_variation = &"BuildSidebar"
+
+[node name="Minimap" type="Control" parent="Hud/SafeArea/MinimapSlot" node_paths=PackedStringArray("runner", "camera", "map_view")]
+layout_mode = 2
+script = ExtResource("37_minimap")
+runner = NodePath("../../../../MatchRunner")
+camera = NodePath("../../../../Camera")
+map_view = NodePath("../../../../MapView")
 
 [node name="StrikeBand" type="MarginContainer" parent="Hud/SafeArea"]
 mouse_filter = 2
