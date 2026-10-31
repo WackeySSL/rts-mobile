@@ -4,7 +4,8 @@ extends GdUnitTestSuite
 ## own metrics and at every profile of both orientations, also with a cutout: every tile of each
 ## tab is clear of its neighbours, in one row that scrolls sideways in both orientations: the named
 ## cards of the floating panel are 80 x 88 dp with at least two whole cards in view, the portrait
-## band's tiles 64 dp with at least three; a short screen's band, which gives way to its floor,
+## band's tiles 64 dp with at least two beside the minimap (three on the 6-inch phone, which
+## test_minimap_layout pins); a short screen's band, which gives way to its floor,
 ## still holds the row; what a state draws over the icon (the fill, the padlock, the banner) is seen
 ## above the cost's plate, the "Ready" banner takes the plate's place and never meets the count
 ## badge, and a turn keeps the tiles and sends nothing. The zone itself is

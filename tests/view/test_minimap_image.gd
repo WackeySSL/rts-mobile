@@ -5,9 +5,11 @@ extends GdUnitTestSuite
 ## not now; own rows are always drawn, in their team's tones (a building its footprint in the mid
 ## tone, a unit one cell in the light one); an enemy row only where the player sees it now, a unit
 ## by its cell and a building by any cell of its footprint; a last-seen record dimmed where no cell
-## of its footprint is seen. A hidden enemy is never written. The fog part is patched from the dirty
-## list and the rows are painted at the fog's cadence, so the picture of a march equals a fresh one
-## at every paint and the number of paints stays at one in three ticks.
+## of its footprint is seen. A hidden enemy is never written. An own mark is exactly its cells
+## and an enemy one (a last-seen one too) those cells grown by one on every side without the four
+## corners, a plus for a unit: own and enemy differ in shape, not in colour alone. The fog part is
+## patched from the dirty list and the rows are painted at the fog's cadence, so the picture of a
+## march equals a fresh one at every paint and the paints stay at one per fog update.
 ## Cases on a 32 x 32 map, player 1 the local one: its Headquarters (3x3) at tile (4, 4) and a light
 ## tank at (10, 4); player 2's Headquarters (3x3, id 3, tiles 4-6 by 12-14) and a tank at (20, 20).
 ## The marches run on controls_test (48 x 48, blue tanks from tile (8, 18), red ones from (34, 10)).
@@ -88,6 +90,7 @@ func test_own_rows_are_drawn_in_their_teams_tones_a_building_by_its_footprint() 
 	assert_vector(_px(_snap.pos_x[tank] / 1000, _snap.pos_y[tank] / 1000)).is_equal(
 		_rgb(Color(first[0]))
 	)
+	assert_vector(_px(_snap.pos_x[tank] / 1000 + 1, _snap.pos_y[tank] / 1000)).is_equal(UNEXPLORED)
 	# Beside the footprint it is the unseen ground: the Headquarters sees nothing here (fog cleared).
 	assert_vector(_px(FIRST_HQ.x + 3, FIRST_HQ.y)).is_equal(UNEXPLORED)
 
@@ -102,7 +105,7 @@ func test_a_hidden_enemy_is_never_drawn_and_shows_only_while_a_cell_of_it_is_see
 	_see(1, [at], true)
 	assert_bool(_picture.update(_snap, 1)).is_true()
 	assert_vector(_px(at.x, at.y)).is_equal(_rgb(Color(WorldSort.TRIADS[1][0])))
-	assert_int(_count_team(2)).is_equal(1)
+	assert_int(_count_team(2)).is_equal(5)  # A plus: its cell and the four beside it.
 	# It leaves sight again: gone, over the ground seen before.
 	_see(1, [at], false)
 	assert_bool(_picture.update(_snap, 1)).is_true()
@@ -112,7 +115,7 @@ func test_a_hidden_enemy_is_never_drawn_and_shows_only_while_a_cell_of_it_is_see
 	# One corner cell of the Headquarters is seen: the whole footprint is drawn, as the view draws it.
 	_see(1, [ENEMY_HQ + Vector2i(2, 2)], true)
 	assert_bool(_picture.update(_snap, 1)).is_true()
-	assert_int(_count_team(2)).is_equal(9)
+	assert_int(_count_team(2)).is_equal(21)  # 5 x 5 without the corners.
 	assert_vector(_px(ENEMY_HQ.x, ENEMY_HQ.y)).is_equal(_rgb(Color(WorldSort.TRIADS[1][1])))
 	_see(1, [ENEMY_HQ + Vector2i(2, 2)], false)
 	assert_bool(_picture.update(_snap, 1)).is_true()
@@ -125,7 +128,7 @@ func test_a_last_seen_building_is_drawn_dimmed_where_no_cell_of_it_is_seen() -> 
 	Ghosts.remember(_snap, 1, [Ghosts.record(ENEMY_HQ_ID, &"renew_hq", 2, cell)])
 	assert_bool(_picture.update(_snap, 1)).is_true()
 	var ghost: Vector3i = _rgb(Color(WorldSort.TRIADS[1][1]), KEEP)
-	assert_int(_count_team(2)).is_equal(9)  # The memory alone: no live row is drawn.
+	assert_int(_count_team(2)).is_equal(21)  # The memory alone: no live row is drawn.
 	for line: int in range(ENEMY_HQ.y, ENEMY_HQ.y + 3):
 		for col: int in range(ENEMY_HQ.x, ENEMY_HQ.x + 3):
 			assert_vector(_px(col, line)).is_equal(ghost)
@@ -139,6 +142,141 @@ func test_a_last_seen_building_is_drawn_dimmed_where_no_cell_of_it_is_seen() -> 
 	Ghosts.remember(_snap, 2, [Ghosts.record(ENEMY_HQ_ID, &"renew_hq", 2, cell)])
 	assert_bool(_picture.update(_snap, 1)).is_true()
 	assert_int(_count_team(2)).is_equal(0)
+
+
+func test_an_enemy_mark_differs_from_an_own_one_in_shape_not_only_in_colour() -> void:
+	# Each team once as the player: its own marks are exactly their cells, the other team's are
+	# grown into a plus (a unit) or a rounded blob (a building), so the same shapes follow the
+	# role and not the colour, and a greyscale picture tells them apart.
+	var tank_of: Dictionary[int, StringName] = {1: &"light_tank", 2: &"renew_tank"}
+	var hq_of: Dictionary[int, Vector2i] = {1: FIRST_HQ, 2: ENEMY_HQ}
+	for player: int in [1, 2]:
+		var other: int = 3 - player
+		var own_tank: Vector2i = _cell_of(tank_of[player])
+		var enemy_tank: Vector2i = _cell_of(tank_of[other])
+		var seen: Array[Vector2i] = [enemy_tank, hq_of[other] + Vector2i(1, 1)]
+		_picture = _new_picture()
+		Rig.see(_snap, player, seen)
+		assert_bool(_picture.update(_snap, player)).is_true()
+		var why: String = "player %d" % player
+		(
+			assert_array(_marks(Rect2i(own_tank, Vector2i.ONE).grow(2)))
+			. override_failure_message(why)
+			. contains_exactly_in_any_order([own_tank])
+		)
+		(
+			assert_array(_marks(Rect2i(enemy_tank, Vector2i.ONE).grow(2)))
+			. override_failure_message(why)
+			. contains_exactly_in_any_order(
+				[
+					enemy_tank,
+					enemy_tank + Vector2i.LEFT,
+					enemy_tank + Vector2i.RIGHT,
+					enemy_tank + Vector2i.UP,
+					enemy_tank + Vector2i.DOWN
+				]
+			)
+		)
+		var own_foot: Rect2i = Rect2i(hq_of[player], Vector2i(3, 3))
+		(
+			assert_array(_marks(own_foot.grow(2)))
+			. override_failure_message(why)
+			. contains_exactly_in_any_order(_cells(own_foot, 0))
+		)
+		var enemy_foot: Rect2i = Rect2i(hq_of[other], Vector2i(3, 3))
+		(
+			assert_array(_marks(enemy_foot.grow(2)))
+			. override_failure_message(why)
+			. contains_exactly_in_any_order(_cells(enemy_foot, 1))
+		)
+
+
+func test_an_own_mark_is_never_covered_by_the_arms_of_an_enemy_next_to_it() -> void:
+	_clear_fog(1)
+	var own: Vector2i = _cell_of(&"light_tank")
+	var next_to: Vector2i = own + Vector2i.RIGHT  # The enemy's left arm would be on `own`.
+	_snap.pos_x[_row_of(&"renew_tank")] = next_to.x * 1000 + 500
+	_snap.pos_y[_row_of(&"renew_tank")] = next_to.y * 1000 + 500
+	_see(1, [next_to], true)
+	assert_bool(_picture.update(_snap, 1)).is_true()
+	assert_vector(_px(own.x, own.y)).is_equal(_rgb(Color(WorldSort.TRIADS[0][0])))
+	assert_vector(_px(next_to.x, next_to.y)).is_equal(_rgb(Color(WorldSort.TRIADS[1][0])))
+	# Its right arm.
+	assert_vector(_px(own.x + 2, own.y)).is_equal(_rgb(Color(WorldSort.TRIADS[1][0])))
+
+
+func test_a_remembered_building_whose_footprint_is_seen_is_not_drawn_when_nothing_stands_there(
+) -> void:
+	_clear_fog(1)
+	var spot: Vector2i = Vector2i(20, 6)  # Empty ground: no live row, only the record.
+	var cell: int = Ghosts.centre_cell(_snap, spot, 3, 3)
+	Ghosts.remember(_snap, 1, [Ghosts.record(99, &"renew_hq", 2, cell)])
+	assert_bool(_picture.update(_snap, 1)).is_true()
+	assert_int(_count_team(2)).is_equal(21)  # Unseen: the memory is drawn.
+	_see(1, [spot + Vector2i(1, 1)], true)  # One cell of the spot is seen, and nothing is there.
+	assert_bool(_picture.update(_snap, 1)).is_true()
+	assert_int(_count_team(2)).is_equal(0)
+
+
+func test_a_building_placed_or_lost_does_not_shade_the_ground_again_but_another_terrain_does(
+) -> void:
+	_start_march(1)
+	var cells: int = _snap.fog.cells
+	_snap.tick += 3  # The fog stands: only the period is due.
+	_snap.map_version += 1  # A building was placed: the move costs changed, the terrain did not.
+	assert_bool(_picture.update(_snap, 1)).is_true()
+	assert_int(_picture.shaded_count()).is_equal(0)  # The rows were painted, the ground not.
+	assert_int(_snap.terrain_ids.size()).is_greater(1)
+	var changed: PackedByteArray = _snap.terrain.duplicate()
+	changed[0] = (changed[0] + 1) % _snap.terrain_ids.size()
+	_snap.terrain = changed
+	_snap.map_version += 1
+	assert_bool(_picture.update(_snap, 1)).is_true()
+	assert_int(_picture.shaded_count()).is_equal(cells)
+	var fresh: MinimapImage = _new_picture()
+	assert_bool(fresh.update(_snap, 1)).is_true()
+	assert_bool(_picture.image().get_data() == fresh.image().get_data()).is_true()
+
+
+func test_a_gap_in_the_ticks_or_an_overflowed_dirty_list_shades_the_whole_ground() -> void:
+	_clear_fog(1)
+	assert_bool(_picture.update(_snap, 1)).is_true()
+	var cells: int = _snap.fog.cells
+	var spot: Array[Vector2i] = [Vector2i(14, 14), Vector2i(15, 14)]
+	_see(1, spot, true)  # The next tick, listed: a patch of the two cells.
+	assert_bool(_picture.update(_snap, 1)).is_true()
+	assert_int(_picture.shaded_count()).is_equal(2)
+	_assert_equals_fresh("a patch")
+	var later: Array[Vector2i] = [Vector2i(16, 14)]
+	FogRig.flip(_snap, 1, later, true, 2)  # Two ticks on: a tick was not seen.
+	assert_bool(_picture.update(_snap, 1)).is_true()
+	assert_int(_picture.shaded_count()).is_equal(cells)
+	_assert_equals_fresh("a gap")
+	var last: Array[Vector2i] = [Vector2i(17, 14)]
+	FogRig.flip(_snap, 1, last, true)  # The next tick, but the list is only a prefix.
+	_snap.fog.dirty_full[0] = 1
+	assert_bool(_picture.update(_snap, 1)).is_true()
+	assert_int(_picture.shaded_count()).is_equal(cells)
+	_assert_equals_fresh("an overflow")
+
+
+func test_the_period_is_at_least_one_tick_so_a_tick_is_never_painted_twice() -> void:
+	_start_march(1)
+	_picture.period_ticks = 0
+	assert_bool(_picture.update(_snap, 1)).is_false()  # The same snapshot again.
+	_runner.run_ticks(1)
+	_snap = _runner.snapshot
+	assert_bool(_picture.update(_snap, 1)).is_true()  # The next tick: one paint.
+	assert_bool(_picture.update(_snap, 1)).is_false()
+
+
+func test_a_team_takes_the_slot_the_atlas_gives_its_player() -> void:
+	# WorldSort gives players 1..N the triads in order, wrapping after eight; owner 0 is the first.
+	assert_int(MinimapImage.team_slot(0)).is_equal(0)
+	for owner_id: int in range(1, 25):
+		assert_int(MinimapImage.team_slot(owner_id)).is_equal(
+			(owner_id - 1) % WorldSort.TRIADS.size()
+		)
 
 
 func test_a_march_is_painted_at_the_fog_cadence_and_equals_a_fresh_picture_at_every_paint() -> void:
@@ -198,7 +336,7 @@ func test_another_player_or_match_paints_afresh_and_each_side_sees_only_its_own(
 
 func test_a_player_the_fog_has_no_grid_for_has_nothing_hidden() -> void:
 	assert_bool(_picture.update(_snap, 3)).is_true()
-	assert_int(_count_team(2)).is_equal(10)  # Player 2's Headquarters (9) and tank (1), in sight.
+	assert_int(_count_team(2)).is_equal(26)  # Player 2's Headquarters (21) and tank (5), in sight.
 	assert_int(_count_color(UNEXPLORED)).is_equal(0)
 
 
@@ -278,6 +416,51 @@ func _row_cells() -> Dictionary[int, bool]:
 			for col: int in range(foot.position.x, foot.end.x):
 				cells[line * _snap.map_cols + col] = true
 	return cells
+
+
+## The tile of the first row of type `type_id`.
+@warning_ignore("integer_division")
+func _cell_of(type_id: StringName) -> Vector2i:
+	var row: int = _row_of(type_id)
+	return Vector2i(_snap.pos_x[row] / 1000, _snap.pos_y[row] / 1000)
+
+
+## The cells of `foot`, grown by `grow` on every side without its four corners when it is grown.
+func _cells(foot: Rect2i, grow: int) -> Array[Vector2i]:
+	var area: Rect2i = foot.grow(grow)
+	var out: Array[Vector2i] = []
+	for line: int in range(area.position.y, area.end.y):
+		for col: int in range(area.position.x, area.end.x):
+			var corner: bool = line in [area.position.y, area.end.y - 1]
+			if grow > 0 and corner and col in [area.position.x, area.end.x - 1]:
+				continue
+			out.append(Vector2i(col, line))
+	return out
+
+
+## The cells of `window` whose texel is a mark of any team, whichever: the shape without the colour.
+func _marks(window: Rect2i) -> Array[Vector2i]:
+	var tones: Array[Vector3i] = []
+	for triad: Array in WorldSort.TRIADS:
+		tones.append_array(
+			[_rgb(Color(triad[0])), _rgb(Color(triad[1])), _rgb(Color(triad[1]), KEEP)]
+		)
+	var out: Array[Vector2i] = []
+	for cell: Vector2i in _cells(window, 0):
+		if _px(cell.x, cell.y) in tones:
+			out.append(cell)
+	return out
+
+
+## The picture is what a fresh one makes of the same snapshot.
+func _assert_equals_fresh(why: String) -> void:
+	var fresh: MinimapImage = _new_picture()
+	assert_bool(fresh.update(_snap, 1)).is_true()
+	(
+		assert_bool(_picture.image().get_data() == fresh.image().get_data())
+		. override_failure_message(why)
+		. is_true()
+	)
 
 
 ## How many texels of the image are a tone of the team of `player` (light, mid or dimmed mid).

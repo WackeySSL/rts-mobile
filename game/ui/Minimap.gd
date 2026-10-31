@@ -22,9 +22,8 @@ const FRAME_DP: float = 1.5  ## The frame's light line; its dark edge is as wide
 @export var runner: MatchRunner
 @export var camera: RtsCamera
 @export var map_view: MapView
-## Keep equal to `FogLayer.explored_alpha` and the sim's `fog_period_ticks`.
+## Keep equal to `FogLayer.explored_alpha`. The cadence is the scenario's `fog_period_ticks`.
 @export var explored_alpha: int = 140
-@export var period_ticks: int = 3
 
 var _picture: MinimapImage = MinimapImage.new()
 var _frame: Frame = Frame.new()
@@ -81,6 +80,8 @@ func _process(_delta: float) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_THEME_CHANGED:
 		_frame.queue_redraw()
+	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+		_finger = -1  # A finger that was down may never send its release, as in TouchInput.
 
 
 ## How many times the picture was painted: at the fog's cadence, not per frame.
@@ -138,22 +139,40 @@ func frame_rect() -> Rect2:
 	return Rect2(from, world_to_local(view.end) - from).intersection(box_rect())
 
 
-## Centres the camera on the ground point under `local`, kept inside the map (the diamond clamp).
-func jump_to(local: Vector2) -> void:
-	if camera == null or _picture.cols() <= 0:
-		return
+## The world px the camera is centred on for a touch at `local`: the ground point under it, kept
+## inside the map (clamped into `[0, cols] x [0, rows]` tiles) and projected back, so a touch beside
+## the diamond lands on its nearest edge. Zero without a map.
+func centre_for(local: Vector2) -> Vector2:
+	if _picture.cols() <= 0:
+		return Vector2.ZERO
 	var ground: Vector2i = ground_at(local)
 	var x: int = clampi(ground.x, 0, _picture.cols() * World.MILLI_PER_TILE)
 	var y: int = clampi(ground.y, 0, _picture.rows() * World.MILLI_PER_TILE)
-	camera.centre_on(IsoProjection.ground_to_px(x, y))
+	return IsoProjection.ground_to_px(x, y)
+
+
+## Centres the camera on the ground point under `local` (`centre_for`).
+func jump_to(local: Vector2) -> void:
+	if camera != null and _picture.cols() > 0:
+		camera.centre_on(centre_for(local))
+
+
+## The transform that turns a cell of the picture into its diamond on this control: the fog's
+## skew scaled to the box, with the map's top corner, ground (0, 0), where `world_to_local` puts it.
+## `_draw` draws the texture under it, so the picture and every touch and frame share one mapping.
+func cell_transform() -> Transform2D:
+	var skew: Transform2D = IsoProjection.cell_to_px()
+	var s: float = _scale()
+	return Transform2D(skew.x * s, skew.y * s, world_to_local(IsoProjection.ground_to_px(0, 0)))
 
 
 ## A press jumps and a drag of that finger goes on jumping; the release ends it. Only the first
-## finger counts, and one that started elsewhere never gets here.
+## finger counts, and one that started elsewhere never gets here. A press for the finger that is
+## down already is a release that was lost, and starts again.
 func _gui_input(event: InputEvent) -> void:
 	var touch: InputEventScreenTouch = event as InputEventScreenTouch
 	var drag: InputEventScreenDrag = event as InputEventScreenDrag
-	if touch != null and touch.pressed and _finger < 0:
+	if touch != null and touch.pressed and (_finger < 0 or touch.index == _finger):
 		_finger = touch.index
 		jump_to(touch.position)
 	elif touch != null and not touch.pressed and touch.index == _finger:
@@ -179,22 +198,17 @@ func _sync() -> void:
 	if map_view != null:
 		_picture.terrain_colours = map_view.colors
 	_picture.explored_alpha = explored_alpha
-	_picture.period_ticks = period_ticks
+	if runner.scenario != null and runner.scenario.rules != null:
+		_picture.period_ticks = runner.scenario.rules.fog_period_ticks
 	if _picture.update(snap, FogLayer.local_player_of(runner)):
 		queue_redraw()
 
 
-## The picture's cells as diamonds in the box: the fog's transform, scaled, with the map's top
-## corner at the box's top edge and `rows` half-tiles from its left.
+## The picture's cells as diamonds in the box, under `cell_transform`.
 func _draw() -> void:
 	var texture: ImageTexture = _picture.texture()
 	if texture == null:
 		return
-	var s: float = _scale()
-	var top: Vector2 = (
-		box_rect().position + Vector2(_picture.rows() * IsoProjection.HALF_W * s, 0.0)
-	)
-	var skew: Transform2D = IsoProjection.cell_to_px()
-	draw_set_transform_matrix(Transform2D(skew.x * s, skew.y * s, top))
+	draw_set_transform_matrix(cell_transform())
 	draw_texture_rect(texture, Rect2(0.0, 0.0, _picture.cols(), _picture.rows()), false)
 	_draws += 1

@@ -8,13 +8,26 @@ extends RefCounted
 ## it now (a unit by its cell, a building by any cell of its footprint, the view's rule), and a
 ## last-seen record dimmed where no cell of its footprint is seen (`GhostMemoryLayer`'s rule). A
 ## hidden enemy is never written. Rows take the mid and light tone of their owner's triad
-## (`WorldSort.TRIADS`): a building fills its footprint, a unit is one cell.
+## (`WorldSort.TRIADS`, the slot rule of the atlas's players): a building fills its footprint, a
+## unit is one cell.
+## Own and enemy marks differ in shape as well as in colour (the two teams' tones are about as
+## bright as each other, so in greyscale colour tells nothing; `touch-ui-rules`: never colour
+## alone): an enemy mark, a last-seen one too, is its cells grown by one cell on every side with
+## the four corner cells left out, so an enemy unit is a plus of five cells and an enemy building a
+## rounded blob, while an own mark is exactly its cells. Size and outline both read at one texel
+## per cell; a ring of ink would be 8 cells round a unit's one, and a hollow centre needs a 3x3.
+## Own marks are painted last, so an enemy's arms never cover one.
 ## `update` is called every frame and tick and does something only at the fog's cadence: the fog
 ## part of the picture (`_ground`) is patched from the player's dirty list when its fog version
 ## moved, as `FogLayer` does, and the rows are painted over a copy of it and uploaded when the
-## fog moved or `period_ticks` ticks (the fog's `fog_period_ticks`, 3) passed since the last paint.
-## So a redraw costs the rows and the dirty cells, never the map, and at most one comes in
-## `period_ticks` ticks. The CPU-side `image()` is what tests read, never the texture.
+## fog moved or `period_ticks` ticks (the fog's `fog_period_ticks`) passed since the last paint.
+## A paint costs the rows and the dirty cells. The whole ground is shaded again only for a new
+## match, player or map size, another terrain, a fog that gained or lost its grid, a gap in the
+## ticks or an overflowed dirty list; `map_version` moves with every building placed or lost and
+## does not count unless the terrain changed. A paint comes with each fog update and, while the
+## fog stands, once in `period_ticks` ticks; a row that dies moves the fog version off the fog's
+## turn (`remove_dead`), which paints at once. The CPU-side `image()` is what tests read, never
+## the texture.
 
 const BYTES_PER_TEXEL: int = 4  ## RGBA8; the alpha stays 255.
 const ALPHA_MAX: int = 255
@@ -31,7 +44,8 @@ const GHOST: int = 2
 var terrain_colours: Dictionary[StringName, Color] = {}
 ## The alpha of the black over a tile seen before and not now: keep it equal to the fog's.
 var explored_alpha: int = 140
-## Ticks between two paints when the fog did not move.
+## Ticks between two paints when the fog did not move: `Minimap` sets the rules' `fog_period_ticks`.
+## Below 1 it is 1, so a picture is never painted twice for a tick.
 var period_ticks: int = 3
 
 var _serial: int = -1  ## match_serial of the picture.
@@ -42,6 +56,7 @@ var _rows: int = 0
 var _version: int = -1  ## The player's fog version at the last update (-1: no fog for it).
 var _tick: int = -1  ## Tick of the last snapshot looked at.
 var _drawn: int = 0  ## Tick of the last paint.
+var _all_cells: PackedInt32Array = PackedInt32Array()  ## 0 .. cells - 1, for a whole pass.
 var _lit: PackedByteArray = PackedByteArray()  ## RGB per terrain index, in full light.
 var _dim: PackedByteArray = PackedByteArray()  ## The same, under the explored shade.
 var _team: PackedByteArray = PackedByteArray()  ## RGB per owner slot and tone.
@@ -94,12 +109,14 @@ func update(snap: MatchSnapshot, player: int) -> bool:
 	var covered: bool = FogLayer.covers(fog, player)
 	var fresh: bool = (
 		snap.match_serial != _serial
-		or snap.map_version != _map_version
 		or player != _player
 		or snap.map_cols != _cols
 		or snap.map_rows != _rows
 		or covered == _all_seen
 	)  # The fog gained or lost its grid for the player.
+	if not fresh and snap.map_version != _map_version:
+		_map_version = snap.map_version  # A building came or went: only another terrain repaints.
+		fresh = snap.terrain != _terrain
 	_all_seen = not covered
 	_counts = fog.visible
 	_explored = fog.explored
@@ -115,10 +132,10 @@ func update(snap: MatchSnapshot, player: int) -> bool:
 		return false
 	elif version != _version:
 		if fog.dirty_overflowed(player) or snap.tick != previous + 1:
-			_shade(PackedInt32Array(range(_cols * _rows)))
+			_shade(_all_cells)
 		else:
 			_shade(fog.dirty_cells(player))
-	elif snap.tick - _drawn < period_ticks and snap.tick >= _drawn:
+	elif snap.tick - _drawn < maxi(period_ticks, 1) and snap.tick >= _drawn:
 		return false
 	_version = version
 	_drawn = snap.tick
@@ -156,7 +173,9 @@ func _begin(snap: MatchSnapshot, player: int) -> bool:
 	_terrain = snap.terrain
 	_ground.resize(_cols * _rows * BYTES_PER_TEXEL)
 	_ground.fill(ALPHA_MAX)  # The colours are written below; the alpha stays.
-	_shade(PackedInt32Array(range(_cols * _rows)))
+	if _all_cells.size() != _cols * _rows:
+		_all_cells = PackedInt32Array(range(_cols * _rows))
+	_shade(_all_cells)
 	return true
 
 
@@ -194,32 +213,15 @@ func _shade(cells: PackedInt32Array) -> void:
 			ground[at + 2] = UNEXPLORED.b8
 
 
-## The ground with the memory, the buildings and the units on it, uploaded.
-@warning_ignore("integer_division")
+## The ground with the memory, the buildings and the units on it, uploaded. The enemy's marks
+## first and the player's own after them, so that an enemy's arms never cover an own mark.
 func _paint(snap: MatchSnapshot, player: int) -> void:
 	_bytes = _ground.duplicate()
-	var foot_w: PackedInt32Array = snap.type_foot_w
-	var foot_h: PackedInt32Array = snap.type_foot_h
-	var owners: PackedInt32Array = snap.owner
-	var types: PackedInt32Array = snap.type_index
-	var xs: PackedInt32Array = snap.pos_x
-	var ys: PackedInt32Array = snap.pos_y
 	_remember(snap, player)
-	for row: int in owners.size():
-		var w: int = foot_w[types[row]]
-		if w < 1:
-			continue
-		var foot: Rect2i = BuildingLayer.footprint_at(xs[row], ys[row], w, foot_h[types[row]])
-		if owners[row] == player or _seen_foot(foot):
-			_fill(foot, owners[row], MID)
-	for row: int in owners.size():
-		if foot_w[types[row]] > 0:
-			continue
-		var cell: Rect2i = Rect2i(
-			clampi(xs[row] / MILLI, 0, _cols - 1), clampi(ys[row] / MILLI, 0, _rows - 1), 1, 1
-		)
-		if owners[row] == player or _seen_foot(cell):
-			_fill(cell, owners[row], LIGHT)
+	_paint_rows(snap, player, true, false)
+	_paint_rows(snap, player, true, true)
+	_paint_rows(snap, player, false, false)
+	_paint_rows(snap, player, false, true)
 	_image.set_data(_cols, _rows, false, Image.FORMAT_RGBA8, _bytes)
 	if _texture != null and _texture.get_width() == _cols and _texture.get_height() == _rows:
 		_texture.update(_image)
@@ -227,8 +229,33 @@ func _paint(snap: MatchSnapshot, player: int) -> void:
 		_texture = ImageTexture.create_from_image(_image)
 
 
+## Paints the rows that are buildings (`buildings`) or units, the player's own (`own`) or not: an
+## own mark always, an enemy one where the player sees it, grown by a cell (`_fill`).
+@warning_ignore("integer_division")
+func _paint_rows(snap: MatchSnapshot, player: int, buildings: bool, own: bool) -> void:
+	var foot_w: PackedInt32Array = snap.type_foot_w
+	var foot_h: PackedInt32Array = snap.type_foot_h
+	var owners: PackedInt32Array = snap.owner
+	var types: PackedInt32Array = snap.type_index
+	var xs: PackedInt32Array = snap.pos_x
+	var ys: PackedInt32Array = snap.pos_y
+	var tone: int = MID if buildings else LIGHT
+	for row: int in owners.size():
+		var w: int = foot_w[types[row]]
+		if (w > 0) != buildings or (owners[row] == player) != own:
+			continue
+		var foot: Rect2i = Rect2i(
+			clampi(xs[row] / MILLI, 0, _cols - 1), clampi(ys[row] / MILLI, 0, _rows - 1), 1, 1
+		)
+		if buildings:
+			foot = BuildingLayer.footprint_at(xs[row], ys[row], w, foot_h[types[row]])
+		if own or _seen_foot(foot):
+			_fill(foot, owners[row], tone, 0 if own else 1)
+
+
 ## The player's last-seen records whose footprint no cell of is seen now, dimmed, as the ghosts
 ## are drawn (`GhostMemoryLayer`): record i of player p is entry `p * cap + i` of the four arrays.
+## They are an enemy's, so they take the enemy's shape.
 @warning_ignore("integer_division")
 func _remember(snap: MatchSnapshot, player: int) -> void:
 	var counts: PackedInt32Array = snap.ghost_count
@@ -245,7 +272,7 @@ func _remember(snap: MatchSnapshot, player: int) -> void:
 		var y: int = (snap.ghost_cell[entry] / _cols) * MILLI + (h % 2) * HALF
 		var foot: Rect2i = BuildingLayer.footprint_at(x, y, w, h)
 		if not _seen_foot(foot):
-			_fill(foot, snap.ghost_owner[entry], GHOST)
+			_fill(foot, snap.ghost_owner[entry], GHOST, 1)
 
 
 ## Whether the player sees any cell of `foot` now (everything, with no fog grid for it).
@@ -253,12 +280,23 @@ func _seen_foot(foot: Rect2i) -> bool:
 	return _all_seen or BuildingLayer.any_cell_seen(_counts, _from, _cols, foot)
 
 
-## Writes the tone of `owner`'s team over the cells of `foot` that lie on the map.
-func _fill(foot: Rect2i, owner_id: int, tone: int) -> void:
-	var at: int = (clampi(owner_id - 1, 0, WorldSort.TRIADS.size() - 1) * 3 + tone) * 3
+## The team slot of `owner_id`, as the atlas gives its players their triads (`WorldSort`): owners
+## 1..N take the triads in order and wrap after eight, owner 0 takes the first.
+static func team_slot(owner_id: int) -> int:
+	return posmod(maxi(owner_id, 1) - 1, WorldSort.TRIADS.size())
+
+
+## Writes the tone of `owner`'s team over the cells of `foot`, grown by `grow` cells on every side
+## with its four corner cells left out when it is grown, that lie on the map.
+func _fill(foot: Rect2i, owner_id: int, tone: int, grow: int = 0) -> void:
+	var at: int = (team_slot(owner_id) * 3 + tone) * 3
+	var area: Rect2i = foot.grow(grow)
 	var bytes: PackedByteArray = _bytes
-	for line: int in range(maxi(foot.position.y, 0), mini(foot.end.y, _rows)):
-		for col: int in range(maxi(foot.position.x, 0), mini(foot.end.x, _cols)):
+	for line: int in range(maxi(area.position.y, 0), mini(area.end.y, _rows)):
+		var edge: bool = grow > 0 and (line == area.position.y or line == area.end.y - 1)
+		for col: int in range(maxi(area.position.x, 0), mini(area.end.x, _cols)):
+			if edge and (col == area.position.x or col == area.end.x - 1):
+				continue
 			var texel: int = (line * _cols + col) * BYTES_PER_TEXEL
 			bytes[texel] = _team[at]
 			bytes[texel + 1] = _team[at + 1]

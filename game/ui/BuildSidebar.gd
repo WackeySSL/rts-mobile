@@ -561,9 +561,10 @@ func _house_status(portrait: bool) -> void:
 ## `Body` row upright: a 2:1 box of at most 40 % of the row and no higher than the band leaves
 ## beside the tabs and the item row (the backdrop and the status line are not its). It takes its
 ## width by the row's stretch (the box's share against `_left`'s) and asks for its height only, so
-## it adds nothing to the band's least width. That matters: the SafeArea grows while a wide
-## SelectionPanel line is being fitted and comes back only when its least width changes, so a band
-## whose least width is above the line's final one (tabs plus box) would leave it stuck wide.
+## the band's least width grows by the row's 8 dp gap and no more. That matters: the SafeArea grows
+## while a wide SelectionPanel line is being fitted and comes back only when its least width
+## changes, so a band whose least width is above the line's final one (tabs plus box) would leave
+## it stuck wide.
 func _place_minimap(portrait: bool) -> void:
 	if minimap == null:
 		return
