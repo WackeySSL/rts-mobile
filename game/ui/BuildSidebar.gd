@@ -502,6 +502,23 @@ func _apply_dp() -> void:
 	_show_tab()
 	_fit_credits()
 	_fit_bar_text()
+	_publish_top()
+
+
+## Writes `HudLayout.menu_top_px` once everything of this resize has its size. Portrait: the band
+## stands on the safe area's inner bottom, which is the margin above the screen's, and is as high
+## as its content needs where that is more than the zone, so the top is read from the combined
+## minimum height (what the container will draw it at). Landscape: nothing covers the map's bottom
+## edge, the panel floats.
+func _publish_top() -> void:
+	if not HudLayout.is_portrait():
+		HudLayout.menu_top_px = UiScale.safe_rect_base().end.y
+		return
+	var safe: SafeAreaMargin = get_parent() as SafeAreaMargin
+	var margin_y: int = 0 if safe == null else safe.apply().y
+	var screen_y: float = get_viewport().get_visible_rect().size.y
+	var band_px: float = maxf(HudLayout.bottom_zone_px(), get_combined_minimum_size().y)
+	HudLayout.menu_top_px = screen_y - margin_y - band_px
 
 
 ## Lays the three parts out for the orientation: the band in portrait, the floating panels in
@@ -517,8 +534,8 @@ func _place() -> void:
 		if band != null:  # The pill starts after the Dev button.
 			var after: float = 0.0 if top_left == null else top_left.get_combined_minimum_size().x
 			band.add_theme_constant_override("margin_left", ceili(after + UiScale.dp(GAP_DP)))
-	var safe: SafeAreaMargin = get_parent() as SafeAreaMargin
 	if portrait:
+		var safe: SafeAreaMargin = get_parent() as SafeAreaMargin
 		var edge_dp: float = 0.0 if safe == null else safe.margin_dp
 		var reserved_dp: float = edge_dp + ArmyBar.GAP_DP + ArmyBar.ALL_ARMY_DP.y
 		var safe_dp: float = UiScale.safe_rect_base().size.y / UiScale.base_px_per_dp()
@@ -526,15 +543,11 @@ func _place() -> void:
 		size_flags_horizontal = Control.SIZE_FILL
 		size_flags_vertical = Control.SIZE_SHRINK_END
 		custom_minimum_size = Vector2(0.0, HudLayout.bottom_zone_px())
-		# The band stands on the safe area's inner bottom, which is the margin above the screen's.
-		var margin_y: int = 0 if safe == null else safe.apply().y
-		var screen_y: float = get_viewport().get_visible_rect().size.y
-		HudLayout.menu_top_px = screen_y - margin_y - HudLayout.bottom_zone_px()
 	else:
 		HudLayout.bottom_zone_dp = 0.0  # The panel floats: the SelectionPanel reads `right_zone_px`.
 		size_flags_horizontal = Control.SIZE_SHRINK_END
 		size_flags_vertical = Control.SIZE_SHRINK_END
-		HudLayout.menu_top_px = UiScale.safe_rect_base().end.y  # Nothing covers the map's bottom edge.
+		var safe: SafeAreaMargin = get_parent() as SafeAreaMargin
 		var inset: int = 0 if safe == null else safe.apply().x  # It runs before the safe area's own.
 		var inner: float = get_viewport().get_visible_rect().size.x - 2.0 * inset
 		custom_minimum_size = Vector2(HudLayout.panel_px(inner), 0.0)

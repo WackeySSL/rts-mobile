@@ -181,6 +181,35 @@ func test_the_menus_real_top_is_the_bands_drawn_top_and_the_safe_bottom_in_lands
 	assert_float(HudLayout.map_bottom_px(safe_rect)).is_equal(420.0)
 
 
+## The band is as high as its content needs where that is more than the zone (a head line that
+## outgrows it), and the menu's top follows the drawn band, not the zone: with a control in the
+## band that makes it a zone taller, the top is a zone higher than the zone alone puts it.
+func test_the_menus_top_follows_a_band_its_content_makes_taller_than_the_zone() -> void:
+	var phone: UiMetrics = UiProfiles.by_name(&"android_6in_portrait")
+	var cut: Rect2i = Rect2i(0, CUTOUT_PX, phone.window_size.x, phone.window_size.y - CUTOUT_PX)
+	for metrics: UiMetrics in [phone, UiProfiles.with_safe_area(phone, cut)]:
+		var screen: Dictionary = _screen("phone", phone.window_size, metrics, false)
+		await _open(screen)
+		var sidebar: BuildSidebar = _hud("BuildSidebar")
+		var zone: float = HudLayout.bottom_zone_px()
+		var why: String = str(metrics.safe_area)
+		var rest: float = HudLayout.menu_top_px
+		assert_float(rest).override_failure_message(why).is_equal_approx(
+			_rect(sidebar).position.y, 1.0
+		)
+		var extra: Control = Control.new()
+		extra.custom_minimum_size = Vector2(0.0, zone)
+		sidebar.get_node("Stack").add_child(extra)
+		sidebar._apply_dp()  # What a resize does.
+		await await_idle_frame()
+		await await_idle_frame()
+		assert_float(_rect(sidebar).size.y).override_failure_message(why).is_greater(zone + 1.0)
+		assert_float(HudLayout.menu_top_px).override_failure_message(why).is_equal_approx(
+			_rect(sidebar).position.y, 1.0
+		)
+		assert_float(HudLayout.menu_top_px).override_failure_message(why).is_less(rest - zone * 0.5)
+
+
 ## Every screen to test, as {label, size, metrics (a profile, or null for the engine's own), cutout,
 ## portrait, counts (its selection)}; `portrait` true or false leaves out the other orientation.
 ## Each profile comes twice, the second time with a cutout of 100 px on the side where a phone has

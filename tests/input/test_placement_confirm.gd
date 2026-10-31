@@ -126,12 +126,17 @@ func test_the_sim_builds_every_footprint_where_the_confirmed_place_named_the_ori
 
 ## The ghost is judged again on every tick's snapshot, which the sim made: a tank that rolls onto
 ## its footprint turns it red and the check mark off, it green again when the tank leaves, and a
-## new match ends the mode. Nothing here calls `refresh` or touches the snapshot.
+## new match ends the mode. Nothing here calls `refresh` or touches the snapshot. The plant is
+## built through the queue, so it stays ready at the head and the mode with it (P86c: a structure
+## that is not ready any more ends the mode).
 func test_each_tick_judges_the_ghost_again_and_a_new_match_ends_the_mode() -> void:
 	var scenario: ScenarioDef = Rig.scenario_for(
 		1, "headquarters", [], ["power_plant", "barracks", "light_tank"]
 	)
-	await _open(scenario)
+	await _open(scenario, false)
+	CommandQueue.submit(Command.queue(1, Rig.plant(_runner.snapshot)))
+	_runner.run_ticks(BUILD_TICKS)
+	assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()
 	_place_at(HOME)
 	var changes: Array[int] = []
 	_placement.changed.connect(func() -> void: changes.append(_placement.reason))
