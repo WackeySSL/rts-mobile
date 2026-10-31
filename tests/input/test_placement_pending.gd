@@ -51,9 +51,9 @@ func test_a_pending_ghost_is_held_and_nothing_a_player_does_sends_a_second_place
 	assert_bool(_placement.can_confirm()).is_false()
 	assert_bool((_hud("PlaceConfirm") as Button).disabled).is_true()
 	assert_bool((_hud("PlaceCancel") as Button).disabled).is_false()
-	assert_bool((_hud("Items") as Control).visible).is_false()  # The cards wait for the answer.
+	assert_bool((_hud("Items") as Control).visible).is_true()  # The cards stay (P86c).
 	# The check mark pressed with a finger, and the call it makes, send nothing.
-	await _settle()  # The row has its layout.
+	await _settle()  # The buttons are beside the ghost.
 	var at: Vector2 = (_hud("PlaceConfirm") as Control).get_global_rect().get_center()
 	TouchEvents.press(get_viewport(), 0, at)
 	TouchEvents.release(get_viewport(), 0, at)
@@ -94,8 +94,8 @@ func test_a_building_in_the_snapshot_after_the_commands_tick_ends_the_mode() -> 
 	assert_int(_runner.world.dropped_commands).is_equal(0)
 	assert_array(_sent).has_size(1)
 	await _settle()
-	assert_bool((_hud("Items") as Control).visible).is_true()  # The cards are back.
-	assert_bool((_hud("Placement") as Control).visible).is_false()
+	assert_bool((_hud("Items") as Control).visible).is_true()  # The cards stayed.
+	assert_bool((_hud("GhostControls") as Control).visible).is_false()  # The buttons are gone.
 
 
 ## `refresh` reads the answer only from a snapshot past the Command's tick: not while the Command
@@ -137,7 +137,7 @@ func test_a_refused_place_blocks_the_ghost_and_keeps_the_mode() -> void:
 	await _settle()
 	assert_bool((_hud("PlaceConfirm") as Button).disabled).is_true()
 	assert_bool((_hud("PlaceCancel") as Button).disabled).is_false()
-	assert_bool((_hud("Items") as Control).visible).is_false()  # The mode stays.
+	assert_bool((_hud("GhostControls") as Control).visible).is_true()  # The mode stays.
 	_expect_blocked_drawn(Placement.Reason.OCCUPIED)
 	# The tank drives off: the verdict is green again, but the ghost stays blocked until it moves.
 	var row: int = world.index_of(tank)

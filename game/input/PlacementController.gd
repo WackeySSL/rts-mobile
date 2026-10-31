@@ -25,8 +25,12 @@ extends Node
 ## drag with no event). A new match, a strike aim and the X end the mode with no Command.
 ## Edge pan (P86b): while a ghost drag's finger is in the edge band, `TouchInput` calls `edge_pan`
 ## every frame, which scrolls the map that way and keeps the ghost on the tile under the finger's
-## lifted point. The bands lie inside the map view: the safe area, less the portrait build band
-## below. The dp and the safe area are read when the window changes (`read_metrics`), not per frame.
+## lifted point. The bands lie inside the map view: the safe area, less the build menu below it
+## (`HudLayout.menu_top_px`, its real top). The dp and the safe area are read when the window
+## changes (`read_metrics`), not per frame.
+## Beside the ghost (P86c, ADR 0024 section 10) stand the check mark and the X (`GhostControls`):
+## they hide while the ghost is dragged (`dragging`, set by `TouchInput`) and find their place from
+## the ghost's silhouette box (`silhouette_rect`).
 
 signal changed  ## The mode began or ended, or the ghost's tile, verdict or answer changed.
 
@@ -43,6 +47,9 @@ var tile: Vector2i = Vector2i.ZERO  ## The tile that holds the footprint's centr
 var reason: int = Placement.Reason.OK  ## `Placement.Reason` of the footprint at `tile`.
 var pending: bool = false  ## A PLACE was sent and the snapshot has not answered yet.
 var blocked: bool = false  ## The sim refused the last PLACE; the ghost is red until it moves.
+## A finger holds the ghost (the recognizer is in its GRAB state): `TouchInput` keeps it. The check
+## mark and the X hide meanwhile, so the ghost's edge pan and its lifted point have the screen.
+var dragging: bool = false
 
 var _serial: int = -1  ## match_serial the mode began in.
 var _command: Command = null  ## The PLACE in flight; the runner stamps its `tick`.
@@ -173,16 +180,17 @@ func handle_gesture(e: GestureEvent) -> void:
 ## Which way the map scrolls for a ghost drag whose finger is at `finger` (base px): a unit vector
 ## toward the edge band the finger is in, the diagonal in a corner, zero outside the bands. The
 ## bands lie `edge_band_dp` inside the edges of the map view: the safe area (a finger in a cutout
-## is in them too), whose bottom edge in portrait is the top of the build band, which covers the map
-## there (`HudLayout.bottom_zone_dp`, 0 in landscape). The ghost rides `ghost_lift_dp` above the
-## finger, so the top band is measured on the ghost's point: the map starts to scroll while the
-## ghost is still in view, not after it left it. The other three are measured on the finger,
-## because the ghost is never near the bottom edge.
+## is in them too), whose bottom edge is the build menu's real top (`HudLayout.menu_top_px`: in
+## portrait the band covers the map there, and with a top cutout it stands higher than the safe
+## area's bottom less its height). The ghost rides `ghost_lift_dp` above the finger, so the top
+## band is measured on the ghost's point: the map starts to scroll while the ghost is still in
+## view, not after it left it. The other three are measured on the finger, because the ghost is
+## never near the bottom edge.
 func edge_heading(finger: Vector2) -> Vector2:
 	var settings: InputSettings = controller.settings
 	var band: float = settings.edge_band_dp * _dp_px
 	var ghost_y: float = finger.y - settings.ghost_lift_dp * _dp_px
-	var bottom: float = _safe.end.y - HudLayout.bottom_zone_dp * _dp_px
+	var bottom: float = HudLayout.map_bottom_px(_safe)
 	var heading: Vector2 = Vector2.ZERO
 	if finger.x < _safe.position.x + band:
 		heading.x = -1.0
@@ -213,18 +221,42 @@ func edge_pan(finger: Vector2, delta: float) -> void:
 	_track(finger)
 
 
+## The box round the ghost's silhouette on the screen, base px (the `_near` shape with no margin):
+## the footprint's width, from the picture's top down to the diamond's lowest corner. Empty while
+## the mode is off. `GhostControls` stands its buttons beside it.
+func silhouette_rect() -> Rect2:
+	if not active:
+		return Rect2()
+	var half: Vector2 = _half_extent()
+	var rise: float = _rise(half)
+	return Rect2(_ghost_centre() - Vector2(half.x, rise), Vector2(half.x * 2.0, rise + half.y))
+
+
+## The screen point of the footprint's centre on the ground.
+func _ghost_centre() -> Vector2:
+	var ground: Vector2i = centre_ground()
+	return camera.world_to_screen(IsoProjection.ground_to_px(ground.x, ground.y))
+
+
+## Half the footprint's diamond on the screen, base px.
+func _half_extent() -> Vector2:
+	var side: float = camera.zoom.x * (foot.x + foot.y) * 0.5
+	return Vector2(IsoProjection.HALF_W, IsoProjection.HALF_H) * side
+
+
+## How far the picture rises above the footprint's centre, base px: not less than the diamond's.
+func _rise(half: Vector2) -> float:
+	return half.y if ghost_layer == null else maxf(ghost_layer.rise_px() * camera.zoom.x, half.y)
+
+
 ## Whether the ghost's silhouette (the footprint's diamond and the rectangle from its side corners
 ## up to the picture's top, ADR 0023 section 3), grown by `margin` base px all round, holds `at`.
 func _near(at: Vector2, margin: float) -> bool:
 	if not active:
 		return false
-	var zoom: float = camera.zoom.x
-	var ground: Vector2i = centre_ground()
-	var from: Vector2 = at - camera.world_to_screen(IsoProjection.ground_to_px(ground.x, ground.y))
-	var half: Vector2 = (
-		Vector2(IsoProjection.HALF_W, IsoProjection.HALF_H) * (zoom * (foot.x + foot.y) * 0.5)
-	)
-	var rise: float = half.y if ghost_layer == null else maxf(ghost_layer.rise_px() * zoom, half.y)
+	var from: Vector2 = at - _ghost_centre()
+	var half: Vector2 = _half_extent()
+	var rise: float = _rise(half)
 	if absf(from.x) > half.x + margin or from.y < -rise - margin or from.y > half.y + margin:
 		return false
 	if from.y <= margin:

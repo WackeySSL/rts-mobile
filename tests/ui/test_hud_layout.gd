@@ -39,6 +39,7 @@ func after() -> void:
 func after_test() -> void:
 	UiScale.clear_override()
 	HudLayout.bottom_zone_dp = 0.0
+	HudLayout.menu_top_px = INF
 
 
 func test_every_hud_control_is_inside_the_safe_rect_48_dp_and_clear_of_the_others() -> void:
@@ -144,6 +145,40 @@ func test_in_landscape_the_bar_stays_on_the_bottom_edge_whatever_the_zone_it_is_
 		(_hud("ArmyBar") as ArmyBar)._lift()
 		assert_int(_hud("ArmyBand").get_theme_constant("margin_bottom")).is_equal(0)
 		HudLayout.bottom_zone_dp = 0.0
+
+
+## The menu's real top (ADR 0024 section 4, P86c): in portrait the drawn top of the band, whatever
+## the safe area's insets (the band stands higher than the safe rect's bottom less its height, by
+## the margin and with a top cutout by the cutout too); in landscape the safe rect's bottom, where
+## nothing covers the map; nothing (INF) once the sidebar is gone. `map_bottom_px` is the smaller of
+## it and the safe rect's bottom.
+func test_the_menus_real_top_is_the_bands_drawn_top_and_the_safe_bottom_in_landscape() -> void:
+	for screen: Dictionary in _screens():
+		await _open(screen)
+		var why: String = str(screen["label"])
+		var safe: Rect2 = UiScale.safe_rect_base()
+		if screen["portrait"]:
+			var top: float = _rect("BuildSidebar").position.y
+			assert_float(HudLayout.menu_top_px).override_failure_message(why).is_equal_approx(
+				top, 1.0
+			)
+			assert_float(HudLayout.menu_top_px).override_failure_message(why).is_less(
+				safe.end.y - HudLayout.bottom_zone_px()
+			)
+		else:
+			assert_float(HudLayout.menu_top_px).override_failure_message(why).is_equal(safe.end.y)
+		assert_float(HudLayout.map_bottom_px(safe)).override_failure_message(why).is_equal(
+			minf(HudLayout.menu_top_px, safe.end.y)
+		)
+	remove_child(_main)
+	_main.free()
+	assert_bool(is_inf(HudLayout.menu_top_px)).is_true()  # No sidebar, no menu.
+	var safe_rect: Rect2 = Rect2(10.0, 20.0, 300.0, 400.0)
+	assert_float(HudLayout.map_bottom_px(safe_rect)).is_equal(420.0)
+	HudLayout.menu_top_px = 300.0
+	assert_float(HudLayout.map_bottom_px(safe_rect)).is_equal(300.0)
+	HudLayout.menu_top_px = 500.0  # Below the safe rect: it still ends the map there.
+	assert_float(HudLayout.map_bottom_px(safe_rect)).is_equal(420.0)
 
 
 ## Every screen to test, as {label, size, metrics (a profile, or null for the engine's own), cutout,

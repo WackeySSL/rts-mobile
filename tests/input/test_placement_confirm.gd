@@ -155,7 +155,7 @@ func test_each_tick_judges_the_ghost_again_and_a_new_match_ends_the_mode() -> vo
 	_runner.start()
 	_runner.run_ticks(1)
 	assert_bool(_placement.active).is_false()
-	assert_bool((_hud("Placement") as Control).visible).is_false()
+	assert_bool((_hud("GhostControls") as Control).visible).is_false()
 	assert_array(_sent).is_empty()
 
 

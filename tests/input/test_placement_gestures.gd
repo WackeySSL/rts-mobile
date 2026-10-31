@@ -116,7 +116,8 @@ func test_a_tap_on_the_ghost_itself_leaves_it_and_one_just_outside_the_grab_area
 		var away: Vector2 = Vector2(
 			body.end.x + UiScale.dp(_controller.settings.ghost_grab_dp), 0.0
 		)
-		_tap(Vector2(away.x + 8.0, _centre().y))  # Past the margin: the ground to the east.
+		# Past the margin, in the strip before the check mark and the X (P86c): the ground to the east.
+		_tap(Vector2(away.x + UiScale.dp(GhostControls.RING_GAP_DP) * 0.5, _centre().y))
 		assert_vector(_placement.tile).override_failure_message(note).is_not_equal(HOME)
 
 
