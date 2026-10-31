@@ -24,7 +24,7 @@ extends PanelContainer
 ## track, and dark on the amber (`PowerNumber`, `PowerNumberLow`).
 ## The credits keep the width of `CREDITS_DIGITS` digits, so the bar does not move when they gain or
 ## lose a digit.
-## Items: one `ItemTile` per buildable type (icon `item_<type id>`), made per match from the
+## Items: one `ItemTile` per buildable type (icon: its P99b item card), made per match from the
 ## snapshot's type tables, those of the open tab and of the local player's faction shown, in one row
 ## that scrolls sideways (the cards of the floating panel carry their names, the band's tiles do
 ## not). The faction is that of the player's own rows (`type_faction`, the producer-faction rule of
@@ -357,7 +357,7 @@ func _build_tiles(snap: MatchSnapshot) -> void:
 		var type_tab: int = snap.type_tab[type]
 		if type_tab < 0 or type_tab >= World.TABS:
 			continue
-		var art: String = ICON_ART % ("item_%s" % snap.type_ids[type])
+		var art: String = SelectionPanel.ICON_ART % snap.type_ids[type]  # The generated card (P99b).
 		var tile: ItemTile = ItemTile.new()
 		tile.name = "Tile_%s" % snap.type_ids[type]
 		tile.setup(
