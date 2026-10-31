@@ -24,7 +24,7 @@ prims = PackedStringArray(
 "box hull team -0.2 0.1 0.05 0.9 0.03 0.12",
 "box hull ceramic 0.6 0 0.17 0.36 0.54 0.12",
 "box hull team 0.6 0 0.29 0.4 0.58 0.06",
-"wedge hull glass 0.6 0 0.35 0.36 0.5 0.14 slope=0.95",
+"wedge hull glass 0.6 0 0.35 0.36 0.5 0.14 slope=1",
 "box hull graphite 0.8 0 0.12 0.05 0.5 0.08",
 "box hull mint 0.825 0 0.19 0.02 0.3 0.025",
 "box hull ceramic 0.2 0 0.17 0.05 0.5 0.08",

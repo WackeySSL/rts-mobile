@@ -30,8 +30,8 @@
 <polygon points="82.8,72.5 16,58.6 16,53.1 82.8,67" fill="#414A51" stroke="#1D2124"/>
 <polygon points="29.8,36.4 96.7,50.2 82.8,67 16,53.1" fill="#4F5A63" stroke="#969CA1"/>
 <polygon points="53.3,38.8 36,59.7 36,50.3 53.3,29.4" fill="#A1A6A6" stroke="#606363"/>
-<polygon points="36,59.7 2.5,52.8 2.5,52.3 36,50.3" fill="#D5DBDC" stroke="#606363"/>
-<polygon points="19.8,31.4 53.3,29.4 36,50.3 2.5,52.3" fill="#FFFFFF" stroke="#FFFFFF"/>
+<polygon points="36,59.7 2.5,52.8 36,50.3" fill="#D5DBDC" stroke="#606363"/>
+<polygon points="19.8,31.9 53.3,29.4 36,50.3 2.5,52.8" fill="#FFFFFF" stroke="#FFFFFF"/>
 <polygon points="98.1,46.6 97.4,47.4 97.4,41.1 98.1,40.3" fill="#137C99" stroke="#137C99"/>
 <polygon points="97.4,47.4 55.6,38.7 55.6,32.5 97.4,41.1" fill="#1FA6C8" stroke="#137C99"/>
 <polygon points="56.3,31.6 98.1,40.3 97.4,41.1 55.6,32.5" fill="#62D6EE" stroke="#62D6EE"/>

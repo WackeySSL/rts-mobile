@@ -28,6 +28,9 @@ static func faces(prim: ArtPrim) -> Array[Face]:
 	var circ: float = 0.5 / cos(PI / sides)
 	var bottom: PackedVector3Array = PackedVector3Array()
 	var top: PackedVector3Array = PackedVector3Array()
+	# The mean of the corners lies inside a convex solid. The middle of the box does not do: a wedge
+	# of slope 1 has its sloped face through it, and a normal oriented against it is a coin toss.
+	var inside: Vector3 = Vector3.ZERO
 	for i: int in sides:
 		var ring: Vector2 = dir((i + 0.5) * 360.0 / sides) * circ
 		var u: float = ring.x * dims.x
@@ -36,12 +39,13 @@ static func faces(prim: ArtPrim) -> Array[Face]:
 		var drop: float = prim.slope * t if prim.slope >= 0.0 else -prim.slope * (1.0 - t)
 		bottom.append(_local(prim, u, v, 0.0))
 		top.append(_local(prim, u * prim.taper, v * prim.taper, dims.z * (1.0 - drop)))
-	var centre: Vector3 = prim.aabb().get_center()
+		inside += bottom[i] + top[i]
+	inside /= 2.0 * sides
 	for i: int in sides:
 		var j: int = (i + 1) % sides
-		_add(found, PackedVector3Array([bottom[i], bottom[j], top[j], top[i]]), centre)
-	_add(found, top, centre)
-	_add(found, bottom, centre)
+		_add(found, PackedVector3Array([bottom[i], bottom[j], top[j], top[i]]), inside)
+	_add(found, top, inside)
+	_add(found, bottom, inside)
 	return found
 
 
@@ -69,8 +73,9 @@ static func _local(prim: ArtPrim, u: float, v: float, w: float) -> Vector3:
 	return Vector3(c.x + u, c.y + v, prim.z0 + w)
 
 
-## Adds the face of `ring` (points that coincide are dropped; a face without an area is not one).
-static func _add(found: Array[Face], ring: PackedVector3Array, centre: Vector3) -> void:
+## Adds the face of `ring` (points that coincide are dropped; a face without an area is not one),
+## its normal turned away from `inside`, a point inside the solid.
+static func _add(found: Array[Face], ring: PackedVector3Array, inside: Vector3) -> void:
 	var face: Face = Face.new()
 	for point: Vector3 in ring:
 		if face.points.is_empty() or not face.points[-1].is_equal_approx(point):
@@ -89,6 +94,6 @@ static func _add(found: Array[Face], ring: PackedVector3Array, centre: Vector3) 
 	if face.points.size() < 3 or normal.length() < 1e-9:
 		return
 	face.normal = normal.normalized()
-	if face.normal.dot(mean - centre) < 0.0:
+	if face.normal.dot(mean - inside) < 0.0:
 		face.normal = -face.normal
 	found.append(face)
