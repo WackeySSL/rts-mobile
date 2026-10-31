@@ -12,6 +12,9 @@ extends PanelContainer
 ## fills, shows. Portrait: the bottom band, the full inner width, `HudLayout.band_dp` high, with the
 ## status line as its first line, and the pill and the slot hidden. A turn only moves things: the
 ## state is what `_place` makes of the orientation.
+## The minimap (plan P88) is one node that lives in `minimap_slot` sideways and, upright, in the
+## band's `Body` row at its right end, beside the tabs and the item row (the status line above
+## them stays the band's full width): `HudLayout.minimap_box_px` sizes its 2:1 box.
 ## The band's height goes to `HudLayout.bottom_zone_dp`, the one place the ArmyBar reads, from
 ## `_ready` and on every resize: this node is the first of the HUD's siblings in the scene, so its
 ## `size_changed` handler runs before the ArmyBar's and the bar finds the new height.
@@ -24,7 +27,7 @@ extends PanelContainer
 ## track, and dark on the amber (`PowerNumber`, `PowerNumberLow`).
 ## The credits keep the width of `CREDITS_DIGITS` digits, so the bar does not move when they gain or
 ## lose a digit.
-## Items: one `ItemTile` per buildable type (icon `item_<type id>`), made per match from the
+## Items: one `ItemTile` per buildable type (icon: its P99b item card), made per match from the
 ## snapshot's type tables, those of the open tab and of the local player's faction shown, in one row
 ## that scrolls sideways (the cards of the floating panel carry their names, the band's tiles do
 ## not). The faction is that of the player's own rows (`type_faction`, the producer-faction rule of
@@ -73,7 +76,8 @@ const CREDITS_DIGITS: int = 5
 @export var runner: MatchRunner
 @export var controller: PlayerController  ## The Commands' sink, the haptic, the selection.
 @export var pill: Control  ## The landscape home of `Status` (a panel in a band at the top left).
-@export var minimap_slot: Control  ## The landscape panel at the top right, empty until P88.
+@export var minimap_slot: Control  ## The landscape panel at the top right: the minimap's home.
+@export var minimap: Control  ## The minimap: in `minimap_slot` sideways, in the band upright.
 @export var top_left: Control  ## The pill starts after it (the Dev button).
 @export var placement: PlacementController  ## A tap on a READY tile begins it. None: no placement.
 
@@ -81,6 +85,8 @@ const CREDITS_DIGITS: int = 5
 var tab: int = World.Tab.STRUCTURES
 
 var _stack: VBoxContainer = VBoxContainer.new()
+var _body: HBoxContainer = HBoxContainer.new()  ## Below the status line: `_left`, then the minimap.
+var _left: VBoxContainer = VBoxContainer.new()  ## The tabs and the item row.
 var _status: HBoxContainer = HBoxContainer.new()
 var _credits_glyph: TextureRect
 var _credits: Label = Label.new()
@@ -109,6 +115,12 @@ func _ready() -> void:
 	_stack.name = "Stack"
 	add_child(_stack)
 	_build_status()
+	_body.name = "Body"
+	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_stack.add_child(_body)
+	_left.name = "Left"
+	_left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_body.add_child(_left)
 	_build_tabs()
 	_items.name = "Items"
 	_items.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -118,12 +130,12 @@ func _ready() -> void:
 	_items_fit.min_dp = Vector2(0.0, ITEMS_DP)
 	_items.add_child(_items_fit)
 	_items.add_child(_grid)
-	_stack.add_child(_items)
+	_left.add_child(_items)
 	if placement != null:
 		_actions = PlacementControls.new()
 		_actions.name = "Placement"
 		_actions.placement = placement
-		_stack.add_child(_actions)
+		_left.add_child(_actions)
 		placement.changed.connect(_on_placement_changed)
 	select_tab(tab)
 	_tint()
@@ -272,7 +284,7 @@ func _build_status() -> void:
 
 func _build_tabs() -> void:
 	_tab_row.name = "Tabs"
-	_stack.add_child(_tab_row)
+	_left.add_child(_tab_row)
 	for index: int in TAB_NAMES.size():
 		var button: Button = Button.new()
 		button.name = "Tab%s" % TAB_NAMES[index]
@@ -357,7 +369,7 @@ func _build_tiles(snap: MatchSnapshot) -> void:
 		var type_tab: int = snap.type_tab[type]
 		if type_tab < 0 or type_tab >= World.TABS:
 			continue
-		var art: String = ICON_ART % ("item_%s" % snap.type_ids[type])
+		var art: String = SelectionPanel.ICON_ART % snap.type_ids[type]  # The generated card (P99b).
 		var tile: ItemTile = ItemTile.new()
 		tile.name = "Tile_%s" % snap.type_ids[type]
 		tile.setup(
@@ -489,7 +501,7 @@ func _fit_bar_text() -> void:
 ## Sizes are dp, so they follow a resize like DpMinSize does.
 func _apply_dp() -> void:
 	var gap: int = roundi(UiScale.dp(GAP_DP))
-	for row: BoxContainer in [_stack, _tab_row]:
+	for row: BoxContainer in [_stack, _body, _left, _tab_row]:
 		row.add_theme_constant_override("separation", gap)
 	_status.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP / 2.0)))
 	for button: Button in _tabs:
@@ -532,6 +544,7 @@ func _place() -> void:
 		var inset: int = 0 if safe == null else safe.apply().x  # It runs before the safe area's own.
 		var inner: float = get_viewport().get_visible_rect().size.x - 2.0 * inset
 		custom_minimum_size = Vector2(HudLayout.panel_px(inner), 0.0)
+	_place_minimap(portrait)
 
 
 ## The status line is the pill's in landscape and the band's first line in portrait (or anywhere
@@ -542,3 +555,38 @@ func _house_status(portrait: bool) -> void:
 		_status.reparent(home, false)
 		if home == _stack:
 			_stack.move_child(_status, 0)
+
+
+## The minimap goes to the floating panel sideways, where it fills the slot, and to the band's
+## `Body` row upright: a 2:1 box of at most 40 % of the row and no higher than the band leaves
+## beside the tabs and the item row (the backdrop and the status line are not its). It takes its
+## width by the row's stretch (the box's share against `_left`'s) and asks for its height only, so
+## the band's least width grows by the row's 8 dp gap and no more. That matters: the SafeArea grows
+## while a wide SelectionPanel line is being fitted and comes back only when its least width
+## changes, so a band whose least width is above the line's final one (tabs plus box) would leave
+## it stuck wide.
+func _place_minimap(portrait: bool) -> void:
+	if minimap == null:
+		return
+	var home: Control = _body if portrait or minimap_slot == null else minimap_slot
+	if minimap.get_parent() != home:
+		minimap.reparent(home, false)
+	minimap.custom_minimum_size = Vector2.ZERO
+	minimap.size_flags_stretch_ratio = 1.0
+	_left.size_flags_stretch_ratio = 1.0
+	if not portrait:
+		minimap.size_flags_horizontal = Control.SIZE_FILL
+		minimap.size_flags_vertical = Control.SIZE_FILL
+		return
+	var safe: SafeAreaMargin = get_parent() as SafeAreaMargin
+	var inset: int = 0 if safe == null else safe.apply().x
+	var chrome: Vector2 = get_theme_stylebox(&"panel").get_minimum_size()
+	var row: float = get_viewport().get_visible_rect().size.x - 2.0 * inset - chrome.x
+	var gap: float = roundi(UiScale.dp(GAP_DP))
+	var room: float = HudLayout.bottom_zone_px() - chrome.y - UiScale.dp(STATUS_DP + GAP_DP)
+	var box: Vector2 = HudLayout.minimap_box_px(row - gap, room)
+	minimap.custom_minimum_size = Vector2(0.0, box.y)
+	minimap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	minimap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	minimap.size_flags_stretch_ratio = box.x
+	_left.size_flags_stretch_ratio = maxf(row - gap - box.x, 1.0)

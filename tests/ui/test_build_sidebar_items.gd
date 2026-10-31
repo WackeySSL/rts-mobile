@@ -1,14 +1,16 @@
 extends GdUnitTestSuite
 ## The build sidebar's item tiles (plan P85b, ADR 0019 section 1) read from snapshots of a real
-## World with the shipped tables: which tiles the open tab shows and in what order, each tile's icon
-## by name and its cost, and the five states (available, locked, unaffordable, full, ready) with the
-## shape each one shows, the count badge and the head's fill. The match is paused, so only the
-## snapshots a test publishes are on show. What a finger does to a tile is in
-## test_build_sidebar_orders, the layout at the sizes in test_build_sidebar_items_layout.
+## World with the shipped tables: which tiles the open tab shows and in what order, each tile's item
+## card (P85e, the generated card of P99b) by name and its cost, and the five states (available,
+## locked, unaffordable, full, ready) with the shape each one shows, the count badge and the head's
+## fill. The match is paused, so only the snapshots a test publishes are on show. What a finger does
+## to a tile is in test_build_sidebar_orders, the layout at the sizes in
+## test_build_sidebar_items_layout.
 
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const Sw: GDScript = preload("res://tests/ui/support/sidebar_world.gd")
-const ICONS: String = "res://assets/art/svg/icons/%s.svg"
+const CARDS: String = "res://assets/art/iso/icons/item_%s.svg"
+const SKIRMISH: String = "res://data/scenarios/skirmish_kestrel_flats.tres"
 const AVAILABLE: int = ItemTile.State.AVAILABLE
 const LOCKED: int = ItemTile.State.LOCKED
 const UNAFFORDABLE: int = ItemTile.State.UNAFFORDABLE
@@ -53,7 +55,7 @@ func test_the_open_tab_shows_its_types_in_table_order_with_the_icon_by_name_and_
 	for id: String in STRUCTURES + INFANTRY + VEHICLES:
 		var tile: ItemTile = _tile(id)
 		var icon: TextureRect = tile.find_child("Icon", true, false)
-		assert_str(icon.texture.resource_path).is_equal(ICONS % ("item_" + id))
+		assert_str(icon.texture.resource_path).is_equal(CARDS % id)
 		var cost: int = world.type_cost[Sw.type_of(world, id)]
 		assert_str((tile.find_child("Cost", true, false) as Label).text).is_equal(str(cost))
 		assert_int(tile.tab).is_equal(world.type_tab[Sw.type_of(world, id)])
@@ -64,6 +66,29 @@ func test_the_open_tab_shows_its_types_in_table_order_with_the_icon_by_name_and_
 	_sidebar.select_tab(World.Tab.VEHICLES)
 	assert_array(_shown()).is_equal(VEHICLES)
 	assert_array(_sent).is_empty()
+
+
+func test_every_buildable_type_of_both_factions_has_a_tile_with_its_generated_item_card() -> void:
+	await _open()
+	var world: World = World.from_scenario(load(SKIRMISH) as ScenarioDef)  # Both factions' tables.
+	_publish(world)
+	var snap: MatchSnapshot = _runner.snapshot
+	var factions: Dictionary = {}
+	var buildable: int = 0
+	for type: int in snap.type_tab.size():
+		if snap.type_tab[type] < 0 or snap.type_tab[type] >= World.TABS:
+			continue
+		buildable += 1
+		factions[snap.type_faction[type]] = true
+		var id: String = snap.type_ids[type]
+		var tile: ItemTile = _tile(id)
+		assert_object(tile).override_failure_message("no tile for " + id).is_not_null()
+		var icon: TextureRect = tile.find_child("Icon", true, false)
+		assert_object(icon.texture).override_failure_message("no card for " + id).is_not_null()
+		assert_str(icon.texture.resource_path).is_equal(CARDS % id)
+	assert_array(_all_ids()).has_size(buildable)
+	assert_int(buildable).is_greater(Sw.IDS.size())  # More than the twelve types of P72.
+	assert_bool(factions.has(0) and factions.has(1)).is_true()  # Fossil and Renew both.
 
 
 func test_a_tile_is_locked_by_a_missing_requirement_or_a_missing_producer() -> void:

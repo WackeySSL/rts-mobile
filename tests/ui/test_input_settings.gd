@@ -22,6 +22,9 @@ func _table() -> Dictionary[String, Variant]:
 		"haptics_enabled": true,
 		"ghost_grab_dp": 24.0,
 		"ghost_lift_dp": 64.0,
+		"edge_band_dp": 32.0,
+		"edge_pan_dp_per_s": 300.0,
+		"edge_pan_max_step_ms": 100,
 	}
 
 
