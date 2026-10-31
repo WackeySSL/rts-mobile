@@ -21,7 +21,7 @@
 ; one here. An entry that stays in base px is listed in metadata/base_px by its path in this file.
 ; Type variations (DevButton, NumberLabel, SelectionPanel, PerfCard, BuildSidebar, SidebarTab, PowerBar,
 ; PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner, ItemCaption,
-; StrikeButton, StrikeConfirm) are set by
+; StrikeButton, StrikeConfirm, BuildButton, ReadyBadge) are set by
 ; theme_type_variation on the node, in main.tscn or at build in the script (the power bar's two
 ; pairs switch with the low-power state, the cost of an item tile with its money).
 ; The build sidebar's tints (the colours of BuildSidebar, STYLE.md "Icons and glyphs") are read by
@@ -87,6 +87,35 @@ corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_focus"]
+
+; The Ready badge of the collapsed build menu (BuildSidebar, ADR 0024 section 9): the READY banner's green
+; as a plate that holds the card's picture and the word, 4 dp above and below and 8 dp at the sides.
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_badge"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.18823529, 0.64313725, 0.42352941, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_badge_pressed"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.18823529, 0.64313725, 0.42352941, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 ; The power bar: a dark track with a green fill, and an amber fill on low power.
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_track"]
@@ -169,6 +198,28 @@ SidebarTab/styles/hover = SubResource("StyleBoxFlat_tab")
 SidebarTab/styles/hover_pressed = SubResource("StyleBoxFlat_tab_open")
 SidebarTab/styles/normal = SubResource("StyleBoxFlat_tab")
 SidebarTab/styles/pressed = SubResource("StyleBoxFlat_tab_open")
+; The Build button of the collapsed menu (BuildSidebar, ADR 0024 section 6): the tab's plates, its glyph
+; (glyph_menu_open, STYLE.md: none) in white, the open tab's colour, at rest and pressed.
+BuildButton/base_type = &"SidebarTab"
+BuildButton/colors/icon_focus_color = Color(1, 1, 1, 1)
+BuildButton/colors/icon_hover_color = Color(1, 1, 1, 1)
+BuildButton/colors/icon_hover_pressed_color = Color(1, 1, 1, 1)
+BuildButton/colors/icon_normal_color = Color(1, 1, 1, 1)
+BuildButton/colors/icon_pressed_color = Color(1, 1, 1, 1)
+; The Ready badge (BuildSidebar, ADR 0024 section 9): the READY banner's plate, the item's card and the
+; word in the banner's 14 dp dark type (5.8:1 on the green); a white edge while the finger is on it.
+ReadyBadge/base_type = &"Button"
+ReadyBadge/colors/font_color = Color(0.06, 0.08, 0.11, 1)
+ReadyBadge/colors/font_focus_color = Color(0.06, 0.08, 0.11, 1)
+ReadyBadge/colors/font_hover_color = Color(0.06, 0.08, 0.11, 1)
+ReadyBadge/colors/font_hover_pressed_color = Color(0.06, 0.08, 0.11, 1)
+ReadyBadge/colors/font_pressed_color = Color(0.06, 0.08, 0.11, 1)
+ReadyBadge/font_sizes/font_size = 14
+ReadyBadge/styles/focus = SubResource("StyleBoxEmpty_focus")
+ReadyBadge/styles/hover = SubResource("StyleBoxFlat_badge")
+ReadyBadge/styles/hover_pressed = SubResource("StyleBoxFlat_badge_pressed")
+ReadyBadge/styles/normal = SubResource("StyleBoxFlat_badge")
+ReadyBadge/styles/pressed = SubResource("StyleBoxFlat_badge_pressed")
 ; The build item tiles (ItemTile.gd, plan P85b): the icon (dimmed behind a padlock), the fill that rises
 ; over it with the head's progress, the padlock (#9AA5B1) and the stripes of a tile that cannot take an
 ; item (the warning amber, half clear). The cost and the count are 18 dp numbers on a plate (the cost

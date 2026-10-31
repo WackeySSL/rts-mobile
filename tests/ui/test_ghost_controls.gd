@@ -3,16 +3,18 @@ extends GdUnitTestSuite
 ## in the main scene through the real GUI at the six sizes of ScreenSizes.ALL with the engine's own
 ## metrics and at every profile of both orientations, also with a cutout (the two short landscape
 ## phones, web_phone_small and web_phone, among them): a tap on a READY card begins the mode, the
-## cards stay and the buttons stand beside the ghost, 64 dp each, inside the safe rect above the
-## menu's real top; they hide while the ghost is dragged (and during its edge pan), come back beside
-## the new tile, follow a turn, and the check mark is dimmed by `can_confirm()` (not fitting,
-## pending, "Blocked") while the X works. One press on the check mark sends one PLACE and the
-## recognizer sees no tap. The placement function on crafted rects is test_ghost_place.gd's.
+## menu goes down to its strip or plate and the buttons stand beside the ghost, 64 dp each, inside
+## the safe rect above the menu's real top; they hide while the ghost is dragged (and during its
+## edge pan), come back beside the new tile, follow a turn, and the check mark is dimmed by
+## `can_confirm()` (not fitting, pending, "Blocked") while the X works. One press on the check
+## mark sends one PLACE and the recognizer sees no tap. The placement function on crafted rects is
+## test_ghost_place.gd's.
 ## Player 1 has a Headquarters and a finished power plant in its queue.
 
 ## The sides the buttons may stand on, in the order they are tried; NONE is no free place.
 enum Spot { RIGHT, LEFT, ABOVE, NONE }
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/input/support/placement_rig.gd")
 const GestureSpy: GDScript = preload("res://tests/input/support/gesture_spy.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
@@ -47,10 +49,16 @@ func after() -> void:
 
 ## The override and the zone are static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 	HudLayout.bottom_zone_dp = 0.0
 	HudLayout.menu_top_px = INF
 	CommandQueue.clear()
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_the_node_stands_before_the_safe_area_with_the_hud_theme_and_the_old_row_is_gone() -> void:
@@ -69,7 +77,8 @@ func test_the_node_stands_before_the_safe_area_with_the_hud_theme_and_the_old_ro
 	assert_bool(_ghost.visible).is_false()  # No mode, no buttons.
 
 
-func test_a_tap_on_a_ready_card_stands_the_buttons_beside_the_ghost_and_the_cards_stay() -> void:
+func test_a_tap_on_a_ready_card_stands_the_buttons_beside_the_ghost_and_the_menu_goes_down(
+) -> void:
 	for screen: Dictionary in _screens(null):
 		await _open(screen["size"], screen["metrics"])
 		var why: String = str(screen["label"])
@@ -82,18 +91,32 @@ func test_a_tap_on_a_ready_card_stands_the_buttons_beside_the_ghost_and_the_card
 		assert_bool(_placement.active).override_failure_message(why).is_true()
 		assert_int(_placement.type_index).override_failure_message(why).is_equal(card.type_index)
 		assert_bool(_ghost.visible).override_failure_message(why).is_true()
-		assert_bool((_hud("Items") as Control).visible).override_failure_message(why).is_true()
+		# The menu went down (ADR 0024 section 5): the cards are not shown, the strip or the plate is.
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
+		assert_bool((_hud("Items") as Control).is_visible_in_tree()).is_false()
+		assert_float(_sidebar.get_global_rect().size.y).override_failure_message(why).is_less(
+			panel.size.y
+		)
+		(
+			assert_float(_sidebar.get_global_rect().size.y)
+			. override_failure_message(why)
+			. is_equal_approx(
+				UiScale.dp(HudLayout.STRIP_DP if HudLayout.is_portrait() else HudLayout.PLATE_DP),
+				1.5
+			)
+		)
+		assert_array(_sent).override_failure_message(why).is_empty()
+		_expect_placed(why)
+		_placement.cancel()  # The X: the menu comes back to the state it had.
+		await _settle()
+		assert_bool(_ghost.visible).override_failure_message(why).is_false()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+		assert_bool((_hud("Items") as Control).is_visible_in_tree()).is_true()
 		(
 			assert_vector(_sidebar.get_global_rect().size)
 			. override_failure_message(why)
 			. is_equal_approx(panel.size, Vector2.ONE * 1.5)
 		)
-		assert_array(_sent).override_failure_message(why).is_empty()
-		_expect_placed(why)
-		_placement.cancel()
-		await _settle()
-		assert_bool(_ghost.visible).override_failure_message(why).is_false()
-		assert_bool((_hud("Items") as Control).visible).override_failure_message(why).is_true()
 
 
 ## Where the buttons must stand, checked against an oracle that does not share the placement

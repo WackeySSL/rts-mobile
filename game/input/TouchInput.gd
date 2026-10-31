@@ -12,9 +12,27 @@ extends Node
 ## edge band (P86b), the controller scrolls the map: GHOST_DRAG comes only when the finger moves.
 ## While the recognizer is in the GRAB state `placement.dragging` is on (P86c): the check mark and
 ## the X beside the ghost hide until the finger lets go.
+## A gesture on the map tells `map_gesture` once, before its first event is routed (ADR 0024
+## section 5): the build menu collapses on it, and the gesture then does what it always did. The
+## kinds that count are TAP, DOUBLE_TAP, LONG_PRESS, PAN, PINCH and GHOST_DRAG, and a wheel step;
+## the ends and cancels of a gesture (BOX_*, CAMERA_END) do not. A press the GUI took (any HUD
+## control) never gets here, so a touch on a HUD control never counts.
 ## A turn of the phone cancels every gesture in flight (ADR 0015 section 3): the finger positions
 ## belong to the old layout. A box is cancelled for the controller, the camera never hears the end
 ## of a pan or pinch (it would snap the zoom about a stale anchor), and no tap is made.
+
+## The first event of a gesture on the map, or a wheel step: the menu collapses (BuildSidebar).
+signal map_gesture
+
+## The gestures whose first event is a touch of the map (the rest are ends and cancels).
+const COUNTED: Array[GestureEvent.Kind] = [
+	GestureEvent.Kind.TAP,
+	GestureEvent.Kind.DOUBLE_TAP,
+	GestureEvent.Kind.LONG_PRESS,
+	GestureEvent.Kind.PAN,
+	GestureEvent.Kind.PINCH,
+	GestureEvent.Kind.GHOST_DRAG,
+]
 
 @export var settings: InputSettings
 @export var camera: RtsCamera
@@ -30,6 +48,7 @@ var _portrait: bool = false  ## The window's orientation at the last size_change
 var _events: Array[GestureEvent] = []
 ## Fingers that started on the map and are still down. The values are unused.
 var _owned: Dictionary[int, bool] = {}
+var _counted: bool = false  ## The gesture in flight has told `map_gesture` already.
 
 
 func _ready() -> void:
@@ -59,6 +78,7 @@ func _on_size_changed() -> void:
 		return
 	_portrait = portrait
 	_recognizer.cancel_all()
+	_counted = false
 	_sync_drag()
 	if _recognizer.take_events(_events) == 0:
 		return
@@ -82,6 +102,7 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
 		_owned.clear()
 		_recognizer.cancel_all()
+		_counted = false
 		_dispatch()
 
 
@@ -99,6 +120,8 @@ func _input(event: InputEvent) -> void:
 	else:
 		return
 	_dispatch()
+	if _owned.is_empty():
+		_counted = false  # The last finger of the gesture is up.
 	if touch == null or not touch.pressed:
 		get_viewport().set_input_as_handled()
 
@@ -113,8 +136,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		_dispatch()
 	elif wheel != null and wheel.pressed:
 		if wheel.button_index == MOUSE_BUTTON_WHEEL_UP:
+			map_gesture.emit()
 			camera.step_zoom(1, wheel.position)
 		elif wheel.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			map_gesture.emit()
 			camera.step_zoom(-1, wheel.position)
 
 
@@ -134,6 +159,9 @@ func _sync_drag() -> void:
 
 
 func _route(e: GestureEvent) -> void:
+	if not _counted and COUNTED.has(e.kind):
+		_counted = true
+		map_gesture.emit()
 	match e.kind:
 		GestureEvent.Kind.PAN:
 			camera.pan_by_screen(e.delta)

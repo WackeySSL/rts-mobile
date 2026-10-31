@@ -11,6 +11,7 @@ extends GdUnitTestSuite
 ## (14, 14), which is selected; player 2 has a Headquarters, id 3 (tiles 20-22 by 20-22). The bore
 ## is made ready in the snapshot (its `ready_tick` is 0); the charge itself is test_strike_aim's.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -44,6 +45,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	get_window().size = ScreenSizes.LANDSCAPE[0]
 	await await_idle_frame()
 	var spawns: Array[SpawnDef] = []
@@ -66,6 +68,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	MenuRig.end()
 	CommandQueue.clear()
 
 

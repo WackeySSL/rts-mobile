@@ -10,6 +10,7 @@ extends GdUnitTestSuite
 ## finger. A turn of the phone ends the scroll, queues no Command and leaves the sim as it was. The
 ## frames are driven by hand (`TouchInput._process` with a delta), so no real frame adds a step.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/input/support/placement_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -45,6 +46,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	get_window().size = ScreenSizes.LANDSCAPE[0]
 	await _open_main(false)
 	Rig.make_ready(_runner.snapshot)
@@ -52,6 +54,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	MenuRig.end()
 	if is_instance_valid(_main):
 		_main.free()
 	UiScale.clear_override()
@@ -273,16 +276,18 @@ func test_the_metrics_are_read_when_the_window_changes_and_not_every_frame() -> 
 	assert_vector(_placement.edge_heading(narrow)).is_equal(Vector2.ZERO)
 
 
-## In portrait the build band covers the bottom of the map view, so the bottom band is the strip
-## just above it, not the safe area's last 32 dp under it: a drag south scrolls while the ghost is
-## still in view above the build band, and a finger at the safe area's bottom edge, deep in the
-## band, still scrolls (it has not let go).
+## In portrait the build menu covers the bottom of the map view, so the bottom band is the strip of
+## map just above it, not the safe area's last 32 dp under it: a drag south scrolls while the ghost
+## is still in view above the menu, and a finger at the safe area's bottom edge, deep in the menu,
+## still scrolls (it has not let go). Placement collapsed the menu to its 96 dp strip (ADR 0024
+## section 5), so the menu is the strip here.
 func test_in_portrait_the_bottom_band_is_above_the_build_band_and_the_ghost_stays_in_view() -> void:
 	for size: Vector2i in ScreenSizes.PORTRAIT:
 		get_window().size = size
 		await await_idle_frame()
 		await await_idle_frame()
 		_reset()
+		await await_idle_frame()  # Placement collapsed the menu: its drawn rect is the strip's now.
 		var note: String = str(size)
 		var safe: Rect2 = UiScale.safe_rect_base()
 		var band: float = UiScale.dp(_controller.settings.edge_band_dp)
@@ -326,6 +331,7 @@ func test_with_a_top_cutout_the_bottom_band_ends_at_the_drawn_top_of_the_build_b
 		await await_idle_frame()
 		await await_idle_frame()
 		_reset()
+		await await_idle_frame()  # Placement collapsed the menu: its drawn rect is the strip's now.
 		var note: String = str(profile_name)
 		var safe: Rect2 = UiScale.safe_rect_base()
 		var band: float = UiScale.dp(_controller.settings.edge_band_dp)

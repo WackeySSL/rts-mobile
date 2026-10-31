@@ -11,6 +11,7 @@ extends GdUnitTestSuite
 ## ArmyBar and the other HUD parts sit around it is tests/ui/test_hud_layout.gd's, and the pill, the
 ## minimap's slot and the faction filter are tests/ui/test_floating_panels.gd's.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const CUTOUT_PX: int = 100
@@ -36,8 +37,14 @@ func after() -> void:
 
 ## The override and the zone are static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 	HudLayout.bottom_zone_dp = 0.0
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_the_sidebar_fills_its_zone_inside_the_safe_rect_with_its_controls_clear_of_each_other(

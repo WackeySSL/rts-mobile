@@ -8,6 +8,7 @@ extends GdUnitTestSuite
 ## above the finger and snapping to tiles, and a drag that starts elsewhere pans the map and leaves
 ## the ghost. A release alone never places; a hold starts no box; a pinch zooms as ever.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/input/support/placement_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -34,6 +35,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	get_window().size = ScreenSizes.LANDSCAPE[0]
 	await await_idle_frame()
 	_main = auto_free((load("res://scenes/main.tscn") as PackedScene).instantiate())
@@ -56,6 +58,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	MenuRig.end()
 	CommandQueue.clear()
 
 

@@ -148,6 +148,11 @@ func setup(index: int, queue_tab: int, art: Texture2D, cost: int, label: String)
 	_caption.text = label
 
 
+## The picture of the card (the Ready badge of the collapsed menu shows it too).
+func art() -> Texture2D:
+	return _icon.texture
+
+
 ## The landscape card with the name under its foot, or the portrait band's plain tile.
 func set_named(on: bool) -> void:
 	if on == _named:

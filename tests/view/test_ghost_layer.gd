@@ -10,6 +10,7 @@ extends GdUnitTestSuite
 ## the wash and the frame as diamonds, the hatch cut from the art director's file twice, so that its
 ## bands run straight across the cells of a footprint.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/input/support/placement_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const AT: Vector2i = Vector2i(11, 7)  ## The tile that holds the middle of the plant at (10, 6).
@@ -32,6 +33,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	get_window().size = ScreenSizes.LANDSCAPE[0]
 	await await_idle_frame()
 	await _open(Rig.scenario(), Rig.PLANT)
@@ -53,6 +55,11 @@ func _open(scenario: ScenarioDef, ready: StringName) -> void:
 	_camera = _main.get_node("Camera")
 	_placement = _main.get_node("PlacementController")
 	_layer = _main.get_node("GhostLayer")
+
+
+## The slide override is static state: leaving it changes every later suite.
+func after_test() -> void:
+	MenuRig.end()
 
 
 func test_the_marked_diamonds_are_the_footprints_cells_at_every_zoom_and_screen() -> void:

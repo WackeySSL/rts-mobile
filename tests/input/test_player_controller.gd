@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 ## and y = 432 + 24 (c + r), so tank 1 is the top corner and has no unit above it. Red tank 31
 ## stands at px (768, 720), milli (34500, 10500), the top corner of the red block.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const TwoTypeLayer: GDScript = preload("res://tests/input/support/two_type_layer.gd")
@@ -47,6 +48,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	get_window().size = Vector2i(1280, 720)
 	await await_idle_frame()
 	_main = auto_free((load("res://scenes/main.tscn") as PackedScene).instantiate())
@@ -71,6 +73,7 @@ func before_test() -> void:
 
 ## The override is static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 	CommandQueue.clear()
 

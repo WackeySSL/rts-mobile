@@ -12,6 +12,7 @@ extends GdUnitTestSuite
 ## move time: runner._process() moves the interpolation clock (a 1/60 s frame is alpha 0.25) and
 ## layer._process() draws a frame.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const SCRIPT_PATH: String = "res://game/view/ProjectileLayer.gd"
 const ATLAS_PATH: String = "res://assets/art/svg/fx/effects_atlas.svg"
@@ -70,6 +71,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	get_window().size = BASE_SIZE
 	_runner = auto_free(MatchRunner.new())
 	_runner.scenario = _duel()
@@ -82,6 +84,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	MenuRig.end()
 	CommandQueue.clear()
 
 

@@ -6,6 +6,7 @@ extends GdUnitTestSuite
 ## BACKDROP, the Dev button's 40 base px, BoxOverlay's Color.WHITE with FeedbackStyle.OUTLINE and
 ## FILL), so a changed theme value fails here and changes in the same PR as a new look.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const HudThemes: GDScript = preload("res://tests/support/hud_theme.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -34,7 +35,13 @@ func after() -> void:
 
 ## The override is static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_the_theme_file_holds_the_hud_look_in_dp_and_marks_what_stays_in_base_px() -> void:

@@ -4,6 +4,7 @@ extends GdUnitTestSuite
 ## are on show, and the Commands the player controller would send are caught: reading the numbers
 ## sends none. The zone and the layout are in test_build_sidebar_layout.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ICONS: String = "res://assets/art/svg/icons/%s.svg"
 ## Another player's numbers sit beside the local player's (player 1): a read of the wrong index
@@ -33,7 +34,13 @@ func after() -> void:
 
 ## The override is static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_it_shows_the_local_players_credits_and_power_and_nobody_elses() -> void:

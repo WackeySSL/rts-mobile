@@ -11,6 +11,7 @@ extends GdUnitTestSuite
 ## 3-digit counts (not the six: their column is taller than the smallest web phone): a row the
 ## bottom row has no room for is clipped, never slid under the build panel.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Roster: GDScript = preload("res://tests/ui/support/mvp_roster.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -37,9 +38,15 @@ func after() -> void:
 
 ## The override and the zone are static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 	HudLayout.bottom_zone_dp = 0.0
 	HudLayout.menu_top_px = INF
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_every_hud_control_is_inside_the_safe_rect_48_dp_and_clear_of_the_others() -> void:

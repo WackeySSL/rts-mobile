@@ -4,7 +4,10 @@ extends HBoxContainer
 ## shows the counts it is given; PlayerController decides what a press does. A tap on a group asks
 ## to recall it, a hold of `settings.group_assign_ms` asks to assign the selection.
 ## It sits on the safe area's bottom edge in landscape, and in portrait directly above the build
-## band, whose height BuildSidebar puts in `HudLayout` (ADR 0015 section 5).
+## menu, whose height BuildSidebar puts in `HudLayout` (ADR 0015 section 5) and tells in
+## `zone_changed` (ADR 0024 section 4): the bar rides on the menu's top through its slide. The lift
+## of a slide frame uses the dp, the orientation and the height cached on the last resize and by
+## the signal, so no frame asks `UiScale` for anything (`read_metrics`).
 
 signal all_army_pressed
 signal group_tapped(slot: int)
@@ -17,6 +20,10 @@ const GAP_DP: float = 8.0
 @export var settings: InputSettings
 
 var _groups: Array[HoldButton] = []  ## Group `slot` is at `slot - 1`.
+var _dp_px: float = 1.0  ## `UiScale.base_px_per_dp()`, read when the window changes.
+var _portrait: bool = false  ## The orientation, likewise.
+var _zone_px: float = 0.0  ## The menu's height now, base px: `HudLayout`'s, then `zone_changed`'s.
+var _lifted: int = -1  ## The band's margin as last set; most frames do not change it.
 
 
 func _ready() -> void:
@@ -55,7 +62,24 @@ func _add(button: Button, node_name: String, label: String, size_dp: Vector2) ->
 
 ## The gaps are dp, so they follow a resize like DpMinSize does. The buttons' text is the theme's.
 func _apply_dp() -> void:
-	add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
+	read_metrics()
+	add_theme_constant_override("separation", roundi(GAP_DP * _dp_px))
+	_lifted = -1  # A resize writes the margin again.
+	_lift()
+
+
+## Reads the dp, the orientation and the menu's height again: a resize does it, and a test that
+## puts in another `UiScale` override must call it. Not per frame (`UiScale.current()` makes a new
+## `UiMetrics` each time).
+func read_metrics() -> void:
+	_dp_px = UiScale.base_px_per_dp()
+	_portrait = HudLayout.is_portrait()
+	_zone_px = HudLayout.bottom_zone_px()
+
+
+## The menu's top or height changed (`BuildSidebar.zone_changed`, base px): the bar follows.
+func _on_zone_changed(_top_px: float, height_px: float) -> void:
+	_zone_px = height_px
 	_lift()
 
 
@@ -67,6 +91,8 @@ func _lift() -> void:
 	var band: MarginContainer = get_parent() as MarginContainer
 	if band == null:
 		return
-	var zone: float = HudLayout.bottom_zone_px() if HudLayout.is_portrait() else 0.0
-	var lift: int = ceili(zone + UiScale.dp(GAP_DP)) if zone > 0.0 else 0
-	band.add_theme_constant_override("margin_bottom", lift)
+	var zone: float = _zone_px if _portrait else 0.0
+	var lift: int = ceili(zone + GAP_DP * _dp_px) if zone > 0.0 else 0
+	if lift != _lifted:
+		_lifted = lift
+		band.add_theme_constant_override("margin_bottom", lift)

@@ -217,7 +217,7 @@ script = ExtResource("3_dev")
 [node name="DpMinSize" type="Node" parent="Hud/SafeArea/DevButton"]
 script = ExtResource("13_dp")
 
-[node name="BuildSidebar" type="PanelContainer" parent="Hud/SafeArea" node_paths=PackedStringArray("runner", "controller", "pill", "minimap_slot", "minimap", "top_left", "placement")]
+[node name="BuildSidebar" type="Control" parent="Hud/SafeArea" node_paths=PackedStringArray("runner", "controller", "pill", "minimap_slot", "minimap", "top_left", "placement")]
 script = ExtResource("21_sidebar")
 runner = NodePath("../../../MatchRunner")
 controller = NodePath("../../../PlayerController")
@@ -280,3 +280,6 @@ runner = NodePath("../../../../MatchRunner")
 [connection signal="selection_changed" from="PlayerController" to="UnitLayer" method="set_selected"]
 [connection signal="selection_changed" from="PlayerController" to="BuildingLayer" method="set_selected"]
 [connection signal="selection_changed" from="PlayerController" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="set_selected"]
+[connection signal="map_gesture" from="TouchInput" to="Hud/SafeArea/BuildSidebar" method="collapse"]
+[connection signal="zone_changed" from="Hud/SafeArea/BuildSidebar" to="Hud/SafeArea/ArmyBand/ArmyBar" method="_on_zone_changed"]
+[connection signal="zone_changed" from="Hud/SafeArea/BuildSidebar" to="Hud/SafeArea/StrikeBand/StrikeControls" method="_on_zone_changed"]

@@ -11,6 +11,7 @@ extends GdUnitTestSuite
 ## RtsCamera and TouchInput, P63 the touch probe). The engine's own metrics are used, no override:
 ## the stretch has to follow.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/ui/support/arena_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -38,9 +39,15 @@ func after() -> void:
 
 
 func after_test() -> void:
+	MenuRig.end()
 	_calls.clear()
 	CommandQueue.clear()
 	HudLayout.bottom_zone_dp = 0.0
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 ## The BuildSidebar's zone and the ArmyBar's lift above its band are part of the main scene's state

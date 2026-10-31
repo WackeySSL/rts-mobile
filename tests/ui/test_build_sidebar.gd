@@ -2,6 +2,7 @@ extends GdUnitTestSuite
 ## The build sidebar's tabs (plan P85, ADR 0019 section 1) in the main scene. Fingers are touches
 ## through the real GUI. The zone and the layout are in test_build_sidebar_layout.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ICONS: String = "res://assets/art/svg/icons/%s.svg"
@@ -23,7 +24,13 @@ func after() -> void:
 
 ## The override is static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_the_structures_tab_is_open_and_a_tap_opens_another_and_tells_it() -> void:

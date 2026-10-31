@@ -12,6 +12,7 @@ extends GdUnitTestSuite
 ## one update into the published snapshot's fog, as ADR 0012 section 3 lets a SYNC test do, and emit
 ## `ticked`; the others play the real sim and compare the image with the grids after every tick.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/view/support/fog_rig.gd")
 const EffectsRig: GDScript = preload("res://tests/view/support/effects_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -42,6 +43,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	get_window().size = BASE_SIZE
 	_runner = null
 	_fog = null
@@ -49,6 +51,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	MenuRig.end()
 	CommandQueue.clear()
 
 

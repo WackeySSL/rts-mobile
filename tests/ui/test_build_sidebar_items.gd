@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 ## to a tile is in test_build_sidebar_orders, the layout at the sizes in
 ## test_build_sidebar_items_layout.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const Sw: GDScript = preload("res://tests/ui/support/sidebar_world.gd")
 const CARDS: String = "res://assets/art/iso/icons/item_%s.svg"
@@ -42,8 +43,14 @@ func after() -> void:
 
 ## The override is static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 	HudLayout.bottom_zone_dp = 0.0
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_the_open_tab_shows_its_types_in_table_order_with_the_icon_by_name_and_the_cost() -> void:

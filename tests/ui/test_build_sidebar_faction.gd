@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 ## faction stays while the match goes on and is read again for the next match. The scenarios that
 ## list no faction (every type -1) are test_build_sidebar_items' and show every type, as before.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const Sw: GDScript = preload("res://tests/ui/support/sidebar_world.gd")
 const FOSSIL: int = 0
@@ -52,8 +53,14 @@ func after() -> void:
 
 ## The override is static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 	HudLayout.bottom_zone_dp = 0.0
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_each_faction_sees_its_own_types_and_the_types_with_none_in_every_tab() -> void:

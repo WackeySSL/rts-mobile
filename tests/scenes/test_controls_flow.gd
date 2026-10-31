@@ -11,6 +11,7 @@ extends GdUnitTestSuite
 ## starts on the SelectionPanel, the ArmyBar or the Dev button: they keep their touches. Timings,
 ## buzzes and the formation bound come from the data. The zoom levels and the scenario are pins.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const PROFILES: Array = [
@@ -94,6 +95,7 @@ func before() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	_scan = LogScan.new()
 	OS.add_logger(_scan)
 
@@ -101,6 +103,7 @@ func before_test() -> void:
 ## Nothing in the log matches the error scan. The override, queue, window size and logger are global
 ## and must not outlive the test. The scene goes first, so no live HUD sees the resize.
 func after_test() -> void:
+	MenuRig.end()
 	assert_array(_scan.hits).is_empty()
 	OS.remove_logger(_scan)
 	if is_instance_valid(_main):

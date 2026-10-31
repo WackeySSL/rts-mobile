@@ -10,6 +10,7 @@ extends GdUnitTestSuite
 ## queues no Command: the state hash of the run, the Commands and the camera are those of a run
 ## with no turn.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/input/support/placement_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -34,11 +35,17 @@ func before() -> void:
 
 
 func after_test() -> void:
+	MenuRig.end()
 	if is_instance_valid(_main):
 		_main.free()
 	UiScale.clear_override()
 	CommandQueue.clear()
 	get_window().size = _window_size_before
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_a_pending_ghost_is_held_and_nothing_a_player_does_sends_a_second_place() -> void:
@@ -51,7 +58,7 @@ func test_a_pending_ghost_is_held_and_nothing_a_player_does_sends_a_second_place
 	assert_bool(_placement.can_confirm()).is_false()
 	assert_bool((_hud("PlaceConfirm") as Button).disabled).is_true()
 	assert_bool((_hud("PlaceCancel") as Button).disabled).is_false()
-	assert_bool((_hud("Items") as Control).visible).is_true()  # The cards stay (P86c).
+	assert_bool((_hud("Items") as Control).is_visible_in_tree()).is_false()  # The menu is down.
 	# The check mark pressed with a finger, and the call it makes, send nothing.
 	await _settle()  # The buttons are beside the ghost.
 	var at: Vector2 = (_hud("PlaceConfirm") as Control).get_global_rect().get_center()
@@ -94,7 +101,7 @@ func test_a_building_in_the_snapshot_after_the_commands_tick_ends_the_mode() -> 
 	assert_int(_runner.world.dropped_commands).is_equal(0)
 	assert_array(_sent).has_size(1)
 	await _settle()
-	assert_bool((_hud("Items") as Control).visible).is_true()  # The cards stayed.
+	assert_bool((_hud("Items") as Control).is_visible_in_tree()).is_true()  # The menu is back.
 	assert_bool((_hud("GhostControls") as Control).visible).is_false()  # The buttons are gone.
 
 

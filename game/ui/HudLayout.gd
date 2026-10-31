@@ -10,6 +10,8 @@ extends RefCounted
 ## nowhere else, so the ArmyBar sits a gap above the band. `menu_top_px` is the menu's real top on
 ## the screen (ADR 0024 section 4), for whatever measures the screen: the edge pan's bottom band
 ## and the buttons of placement.
+## Both follow the menu's state (ADR 0024 section 4): the open band's or the strip's, or between
+## the two while it slides (`BuildSidebar` tells whoever lifts something by it in `zone_changed`).
 ## A scene without a sidebar leaves it at 0 (the sidebar puts it back when it leaves the tree).
 ## The orientation is the one rule of UiScale, applied to the window the UI scale is made for.
 
@@ -31,16 +33,24 @@ const STACK_SHARE: float = 0.4  ## The most the band and the ArmyBar line take o
 ## The least the band gives way to: the status line 32, the tabs 48 and the item row 64 with two
 ## 8 dp gaps and 4 dp margins is 168 dp, and 4 dp more cover the gaps' rounding to whole px.
 const BAND_FLOOR_DP: float = 172.0
+## The collapsed menu (ADR 0024 section 2 and 3, Michael's R2): the portrait strip on the safe
+## bottom edge, whose height lives here and nowhere else, and the landscape plate at the bottom
+## right. The strip holds the status line (32 dp), a gap (8 dp) and the button row (48 dp) between
+## the backdrop's 4 dp above and below; the plate is the button row between the same 4 dp.
+const STRIP_DP: float = 96.0
+const PLATE_DP: float = 56.0
 
-## The portrait band's height in dp; 0 in landscape and while no BuildSidebar is in the tree. Static
-## state: a test that sets one puts it back in `after_test`, like the UiScale override.
+## The portrait menu's height in dp (the band's while open, `STRIP_DP` while collapsed, between the
+## two while it slides); 0 in landscape and while no BuildSidebar is in the tree. Static state: a
+## test that sets one puts it back in `after_test`, like the UiScale override.
 static var bottom_zone_dp: float = 0.0
-## The build menu's real top on the screen in base px: the y of the portrait band's rect, which
-## `BuildSidebar._place` writes, and the safe rect's bottom in landscape, where the panel floats.
-## The band's bottom is not the safe rect's bottom (`SafeAreaMargin` adds a margin and gives both
-## ends of an axis the larger inset), so with a top cutout the band sits higher than
-## `safe.end.y - bottom_zone_dp` says. INF while no BuildSidebar is in the tree: nothing covers the
-## map (read it through `map_bottom_px`). Static state like the zone: a test puts it back.
+## The build menu's real top on the screen in base px: the y of the portrait band's or strip's rect,
+## which `BuildSidebar` writes (when it lays out and each frame of a slide), and the safe rect's
+## bottom in landscape, where the panel floats. The band's bottom is not the safe rect's bottom
+## (`SafeAreaMargin` adds a margin and gives both ends of an axis the larger inset), so with a top
+## cutout the band sits higher than `safe.end.y - bottom_zone_dp` says. INF while no BuildSidebar is
+## in the tree: nothing covers the map (read it through `map_bottom_px`). Static state like the
+## zone: a test puts it back.
 static var menu_top_px: float = INF
 
 
