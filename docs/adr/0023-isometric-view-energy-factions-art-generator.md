@@ -54,6 +54,11 @@ notes: the rows merged on 2026-10-27 (P117 to P116, P110d and P80 among them), M
 withdrawal of the ground's soft rim the same day, and the Mammoth's stance on the legal screen.
 No accepted text changed.
 
+Status note (2026-10-30, P26am docs): §2, §3, §10 and §12 carry dated status notes: P112b's
+rupture craters in `DecalLayer` and the `StrikeMarkerLayer` the draw-call forecast left out, the
+pick order P115b merged, where a rupture's burst and crater show, and the strike's 64 dp check
+mark and X (P112c). No accepted text changed.
+
 ## Decisions in short
 | # | Topic | Decision |
 | --- | --- | --- |
@@ -277,6 +282,21 @@ merged; the text above stays as accepted):
 - **Owner 0** takes player 1's atlas slot (`WorldSort.slot_of`), so a neutral row wears player
   1's triad. A neutral triad is open.
 
+Status note (2026-10-30, P26am docs, P112b #244, 02947bb, as merged; the notes above stand):
+- **Rupture craters.** `EffectsLayer` now adds a landed rupture's crater to `DecalLayer` too
+  (`decals.add_crater`, scale radius / 1500, §10's note), next to the craters `BuildingLayer`
+  leaves. Nothing removes one during a match; `BuildingLayer`'s new-match clear (`_clear`, which
+  calls `decals.clear()`) removes the rupture craters with the shadows and the building craters.
+  They share `decals/crater.svg`, so they add no call to the forecast's 14. `DecalLayer`'s header
+  comment still says only `BuildingLayer` adds and removes its sprites (a view comment for the
+  next view row, not changed here).
+- **Draw-call forecast:** the revised 14 leaves out `StrikeMarkerLayer` (z 65), which the note
+  above adds to the z table. It draws nothing while no strike is aimed and no rupture is in the
+  air; while it draws (the aim ring, or a warning, which every player sees), it is a canvas item
+  of its own between other layers, so at least one more call: 15 at those moments in a base-arena
+  match, still far under the trigger of 40. Its exact count is for P114's counting method; nothing
+  has counted it yet.
+
 ### 3. Picking, selection and placement
 - **Ground taps:** `IsoProjection.px_to_ground` of the camera's world point, rounded to milli.
 - **Units first** (ADR 0022 §3's order kept): with a selection enemy unit > own unit > enemy
@@ -296,6 +316,16 @@ merged; the text above stays as accepted):
   then the building's sprite faded over them; the tile under the reference point is
   `floor(px_to_ground)`; the ghost still follows the finger 64 dp above it; the grab area is the
   silhouette plus 24 dp. The rest of ADR 0019 §2 is unchanged.
+
+Status note (2026-10-30, P26am docs, P115b as merged, #234, 3616a36; the text above stays as
+accepted): P115b's `Picker.pick` and `Picker.pick_building` widen "without one own unit > own
+building". A building alone as the selection counts as no selection. With nothing or a building
+selected, enemy units do not count, and an own unit beats any building shown, own or enemy; a
+shown enemy building is then selected for its information only (ADR 0019 §3's notes). With own
+units selected, an enemy building counts only when the sim takes an `ATTACK` on it
+(`PickSnapshot.is_targetable`: the local player sees the cell under its position, the cell
+`Targeting.sees` asks); one shown only for another cell of its footprint does not win, and a tap
+on it is a tap on the ground (a move). HOW_TO_PLAY's Selection and Orders rows say the same.
 
 ### 4. Camera, portrait and minimap
 - **Clamp to the diamond** (amends ADR 0004 §6 as `RtsCamera` implements it): after every move or
@@ -621,6 +651,24 @@ text above stays as accepted):
 - **A scenario** may start a strike building part-way through its charge
   (`SpawnDef.charge_elapsed_ticks`, P80, through `Strike.age_charge`); a `PLACE` never does.
 
+Status note (2026-10-30, P26am docs, P112b #244, 02947bb, as merged; the text above stays as
+accepted):
+- **Where a landing shows.** A rupture's burst (a BURST of the effects ring, no object) and its
+  crater (a `DecalLayer` crater of the rupture's radius, kept for the match) show where the local
+  player saw the tile of the landing point, either in the last tick in which the rupture
+  was still in the air (`StrikeLandings.was_seen`, a sight the landing step's own kills cannot take
+  away) or in the landing tick's fog (`EffectsLayer._add_ruptures`). A landing in the dark draws
+  neither. This is the rule of `BuildingLayer`'s craters, which reads the fog from before the
+  deaths, so a seer that leaves sight during the landing step still gets the mark.
+- **Only the point's tile counts**, not any tile within the rupture's radius: a ring whose seen
+  part covers own units but whose centre tile is dark leaves no mark. This is the rule P112b
+  chose; widening it to any seen tile within the radius (the footprint analogue of P77b) is open
+  for Michael's phone check.
+- **The blackout's mark** is the offline glyph (`glyph_offline.svg`, 32 dp, tinted amber) over the
+  place of each affected building's bar for as long as `offline_until` is above the tick, on an
+  enemy building only while `BuildingLayer.is_shown`. No ring stays on the ground after a
+  blackout fires; the amber circle is `StrikeMarkerLayer`'s aim, drawn only while aiming.
+
 ### 11. Economy: oil and gas fields on the merged ore loop
 - **Mapping:** a field is the merged ore cells (`ore_cell`, `ore_amount`, `ore_cell_max` 20,
   `ore_regrow_ticks` 150); the tanker is the harvester (`harvest_capacity`, SEEK, MINE, RETURN,
@@ -663,8 +711,10 @@ and the selection panel's row (`HudLayout.panel_px`, 184 to 372 dp), and its nam
 88 dp (64 dp of tile, the name's line under the cost). The minimap's panel is 148 x 86 dp and stays
 empty until P88. The strike button (P112) has its own place: in landscape on the top line, left of
 the minimap's panel; in portrait at the right edge, above the army bar. Its check mark and X are
-56 dp; row P112c takes them to 64 dp, the size `touch-ui-rules` gives placement's confirm and
-cancel.
+64 dp since P112c (#243, e93fa1b; P26am docs, 2026-10-30), the size `touch-ui-rules` gives
+placement's confirm and cancel (`StrikeControls.ACTION_DP`; P112 shipped them at 56 dp). The row
+is about 216 dp wide (64 + 8 + 64 + 8 + the 72 dp strike button) and still fits the safe rect on
+every screen, so nothing else moved.
 
 ### 13. Legal screen
 Screened against Command & Conquer (Tiberian Dawn, Red Alert 1-3 and expansions, Tiberian Sun and
