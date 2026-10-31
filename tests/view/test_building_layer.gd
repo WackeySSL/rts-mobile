@@ -277,6 +277,39 @@ func test_a_building_with_no_sheet_or_an_atlas_that_did_not_bake_is_a_flat_diamo
 		assert_object((sprite as Sprite2D).texture).is_null()
 
 
+## P112d: a player owns a building of the other faction (the strike test gives a Derrick League
+## player the Lumen Accord's Blackout Array). The atlas has no frames of that faction for the
+## player, so the Body would show nothing; the building must still be drawn, as the flat marker.
+func test_a_building_of_a_faction_its_owner_does_not_wear_is_a_marker_not_an_empty_body() -> void:
+	_open_with(
+		[
+			Rig.spawn(1, "headquarters", 4, 4),
+			Rig.spawn(1, "renew_strike", 10, 4),
+			Rig.spawn(2, "renew_hq", 4, 12),
+		]
+	)
+	var snap: MatchSnapshot = _runner.snapshot
+	var own: Node2D = _layer.building(snap.unit_id[Rig.row_of(snap, &"headquarters")])
+	var foreign_row: int = Rig.row_of(snap, &"renew_strike")
+	var foreign: Node2D = _layer.building(snap.unit_id[foreign_row])
+	# The art of the owner's own faction is a visible Body and no marker.
+	assert_bool((own.get_node("Body") as Sprite2D).visible).is_true()
+	assert_bool(own.has_node("Marker")).is_false()
+	# The other faction's building has no frame for player 1: its Body shows nothing, so the marker
+	# stands in, in player 1's colour and the size of the 3x3 footprint it blocks.
+	var body: Sprite2D = foreign.get_node("Body")
+	assert_bool(body.visible).is_false()
+	assert_bool(foreign.has_node("Marker")).is_true()
+	var marker: Node2D = foreign.get_node("Marker")
+	assert_that(marker.colour).is_equal(_layer.world_sort.mid_colour(1))
+	assert_int(marker.foot).is_equal(snap.type_foot_w[snap.type_index[foreign_row]])
+	assert_bool(foreign.visible).is_true()  # An own building is always shown.
+	# A building of player 2's own faction is drawn from the atlas, as before.
+	var enemy: Node2D = _layer.building(snap.unit_id[Rig.row_of(snap, &"renew_hq")])
+	assert_bool((enemy.get_node("Body") as Sprite2D).visible).is_true()
+	assert_bool(enemy.has_node("Marker")).is_false()
+
+
 func _open() -> void:
 	var spawns: Array[SpawnDef] = []
 	for entry: Array in SPAWNS:

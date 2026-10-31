@@ -7,8 +7,9 @@ extends Node2D
 ## (the team colour is in the atlas) whose origin is the footprint centre; a defence has a `Head`
 ## child at the sheet's mount that turns in 16 steps toward the building's target as a tank's
 ## turret does. Its cast shadow is a sprite in the `DecalLayer` at z 1, so the units in front of
-## the building stand on it. A building with no sheet, or an atlas that did not bake, gets a flat
-## diamond of its footprint in its owner's colour instead.
+## the building stand on it. A building with no sheet, an atlas that did not bake, or a sheet of a
+## faction its owner does not wear (the strike test's Blackout Array for a Derrick League player),
+## gets a flat diamond of its footprint in its owner's colour instead, so it is never invisible.
 ## Buildings are static, so a frame compares three integers and nothing more: the nodes are made
 ## when `rows_version` moves (`redraw_count` counts those merges) by a walk over the ascending unit
 ## ids, and an enemy building's visibility is written when the local player's fog version moves.
@@ -345,11 +346,13 @@ func _make(snap: MatchSnapshot, row: int) -> Entry:
 	entry.node.name = "Building%d" % entry.id
 	entry.node.position = IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row])
 	var sheet: IsoSheetDef = entry.sheet
+	var drawn: bool = false  # Whether the atlas has a body frame for this owner's faction.
 	entry.rise = float(entry.foot * IsoProjection.HALF_H)  # A flat diamond until a picture says more.
 	if sheet != null:
 		var body: Sprite2D = _sprite(entry.node, sheet, BODY, NO_FRAME, owner_id)
 		body.name = "Body"
-		if body.visible:  # The top of the region as it is drawn: offset and scale of the atlas.
+		drawn = body.visible
+		if drawn:  # The top of the region as it is drawn: offset and scale of the atlas.
 			entry.rise = maxf(entry.rise, -body.get_rect().position.y * body.scale.y)
 		entry.shadow = _sprite(null, sheet, SHADOW, NO_FRAME, owner_id)
 		entry.shadow.name = "Shadow%d" % entry.id
@@ -360,7 +363,7 @@ func _make(snap: MatchSnapshot, row: int) -> Entry:
 			entry.head.name = "Head"
 			entry.head.position = sheet.mount(UnitLayer.D_EAST) * WorldSort.ART_SCALE
 			_heads.append(entry)
-	if sheet == null or world_sort.atlas.is_empty():
+	if not drawn:  # No sheet, no atlas, or a sheet of a faction the owner's art does not carry.
 		var marker: Marker = Marker.new()
 		marker.name = "Marker"
 		marker.colour = world_sort.mid_colour(owner_id)
