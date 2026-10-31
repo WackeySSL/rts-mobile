@@ -51,9 +51,9 @@ func test_a_pending_ghost_is_held_and_nothing_a_player_does_sends_a_second_place
 	assert_bool(_placement.can_confirm()).is_false()
 	assert_bool((_hud("PlaceConfirm") as Button).disabled).is_true()
 	assert_bool((_hud("PlaceCancel") as Button).disabled).is_false()
-	assert_bool((_hud("Items") as Control).visible).is_false()  # The cards wait for the answer.
+	assert_bool((_hud("Items") as Control).visible).is_true()  # The cards stay (P86c).
 	# The check mark pressed with a finger, and the call it makes, send nothing.
-	await _settle()  # The row has its layout.
+	await _settle()  # The buttons are beside the ghost.
 	var at: Vector2 = (_hud("PlaceConfirm") as Control).get_global_rect().get_center()
 	TouchEvents.press(get_viewport(), 0, at)
 	TouchEvents.release(get_viewport(), 0, at)
@@ -94,8 +94,8 @@ func test_a_building_in_the_snapshot_after_the_commands_tick_ends_the_mode() -> 
 	assert_int(_runner.world.dropped_commands).is_equal(0)
 	assert_array(_sent).has_size(1)
 	await _settle()
-	assert_bool((_hud("Items") as Control).visible).is_true()  # The cards are back.
-	assert_bool((_hud("Placement") as Control).visible).is_false()
+	assert_bool((_hud("Items") as Control).visible).is_true()  # The cards stayed.
+	assert_bool((_hud("GhostControls") as Control).visible).is_false()  # The buttons are gone.
 
 
 ## `refresh` reads the answer only from a snapshot past the Command's tick: not while the Command
@@ -137,7 +137,7 @@ func test_a_refused_place_blocks_the_ghost_and_keeps_the_mode() -> void:
 	await _settle()
 	assert_bool((_hud("PlaceConfirm") as Button).disabled).is_true()
 	assert_bool((_hud("PlaceCancel") as Button).disabled).is_false()
-	assert_bool((_hud("Items") as Control).visible).is_false()  # The mode stays.
+	assert_bool((_hud("GhostControls") as Control).visible).is_true()  # The mode stays.
 	_expect_blocked_drawn(Placement.Reason.OCCUPIED)
 	# The tank drives off: the verdict is green again, but the ghost stays blocked until it moves.
 	var row: int = world.index_of(tank)
@@ -191,9 +191,10 @@ func test_a_refusal_on_a_tile_the_snapshot_calls_a_fit_is_blocked_too() -> void:
 	assert_bool(_placement.active).is_false()
 
 
-## The X while the PLACE is pending, then a tap on the card, which still says READY: the first PLACE
-## builds and uses the structure up. The new ghost's confirm is refused, and since no ready
-## structure is left the mode ends with the answer instead of "Blocked", which no move would cure.
+## The X while the PLACE is pending, then a tap on the card, which still says READY, and a second
+## confirm before any tick: the first PLACE builds and uses the structure up. The second one is
+## refused, and since no ready structure is left the mode ends with the answer instead of
+## "Blocked", which no move would cure.
 func test_the_x_and_a_new_begin_while_a_place_is_in_flight_end_with_the_second_answer() -> void:
 	await _open_with_plant()
 	_place_at(HOME)
@@ -201,19 +202,91 @@ func test_the_x_and_a_new_begin_while_a_place_is_in_flight_end_with_the_second_a
 	_placement.cancel()  # The X.
 	assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()  # The card says READY.
 	_place_at(ELSEWHERE)
-	_runner.run_ticks(1)  # The first PLACE builds at HOME.
+	assert_bool(_placement.confirm()).is_true()  # The ghost looks fine to the player.
+	_runner.run_ticks(1)  # The first PLACE builds at HOME, the second is refused.
 	assert_int(_buildings_at(_runner.snapshot, HOME)).is_equal(1)
-	assert_array([_placement.active, _placement.pending, _placement.blocked]).is_equal(
-		[true, false, false]
-	)
-	assert_bool(_placement.confirm()).is_true()  # The ghost still looks fine to the player.
-	_runner.run_ticks(1)
 	assert_array([_placement.active, _placement.pending, _placement.blocked]).is_equal(
 		[false, false, false]
 	)
 	assert_int(_runner.world.dropped_commands).is_equal(1)  # The second one, refused.
 	assert_array(_sent).has_size(2)
 	assert_int(_buildings_at(_runner.snapshot, ELSEWHERE)).is_equal(0)
+
+
+## The same, with the second ghost never confirmed: once the first PLACE has used the structure up,
+## the next snapshot ends the mode (P86c: it is not ready at the head any more), so the check mark
+## has nothing to send and no second PLACE leaves.
+func test_a_structure_the_first_place_used_up_ends_a_ghost_that_was_never_confirmed() -> void:
+	await _open_with_plant()
+	_place_at(HOME)
+	assert_bool(_placement.confirm()).is_true()
+	_placement.cancel()  # The X.
+	assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()
+	_place_at(ELSEWHERE)
+	_runner.run_ticks(1)
+	assert_int(_buildings_at(_runner.snapshot, HOME)).is_equal(1)
+	assert_array([_placement.active, _placement.pending, _placement.blocked]).is_equal(
+		[false, false, false]
+	)
+	assert_bool(_placement.confirm()).is_false()
+	assert_int(_runner.world.dropped_commands).is_equal(0)
+	assert_array(_sent).has_size(1)
+
+
+## The cards stay on show during placement (P86c), so the READY card can be tapped with a PLACE in
+## flight: that changes nothing. The ghost is held (`begin` would forget the Command in flight and
+## wake the check mark, and a second press would send a second PLACE), and no second PLACE leaves.
+## Outside pending the same tap puts the ghost back at the view's centre, as it always did.
+func test_a_tap_on_the_ready_card_while_the_place_is_pending_changes_nothing() -> void:
+	await _open_with_plant()
+	await _settle()  # The sidebar reads the finished plant.
+	assert_int(_card().state).is_equal(ItemTile.State.READY)
+	_place_at(ELSEWHERE)
+	_tap_card()  # Not pending: the ghost is back where the view's centre is.
+	assert_vector(_placement.tile).is_equal(HOME)
+	assert_bool(_placement.active).is_true()
+	_place_at(ELSEWHERE)
+	assert_bool(_placement.confirm()).is_true()
+	var place: Command = _sent[0]
+	_tap_card()
+	assert_array([_placement.active, _placement.pending, _placement.blocked]).is_equal(
+		[true, true, false]
+	)
+	assert_vector(_placement.tile).is_equal(ELSEWHERE)
+	assert_bool(_placement.can_confirm()).is_false()
+	assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_false()
+	await _settle()
+	assert_bool((_hud("PlaceConfirm") as Button).disabled).is_true()
+	var at: Vector2 = (_hud("PlaceConfirm") as Control).get_global_rect().get_center()
+	TouchEvents.press(get_viewport(), 0, at)
+	TouchEvents.release(get_viewport(), 0, at)
+	assert_array(_sent).has_size(1)
+	assert_bool(_sent[0] == place).is_true()
+	_runner.run_ticks(1)  # The one PLACE builds, and the answer ends the mode.
+	assert_int(_buildings_at(_runner.snapshot, ELSEWHERE)).is_equal(1)
+	assert_bool(_placement.active).is_false()
+	assert_int(_runner.world.dropped_commands).is_equal(0)
+
+
+## A hold on the READY card cancels the finished structure (CANCEL, paid back) and its ghost has
+## nothing left to place: the next snapshot ends the mode, with no Command of its own.
+func test_a_hold_on_the_ready_card_cancels_the_structure_and_ends_the_mode() -> void:
+	await _open_with_plant()
+	await _settle()
+	_place_at(ELSEWHERE)
+	var credits: int = _runner.snapshot.credits[1]
+	_hold_card()
+	assert_array(_sent).has_size(1)
+	assert_int(_sent[0].type).is_equal(Command.Type.CANCEL)
+	assert_bool(_placement.active).is_true()  # Until the sim has taken the CANCEL.
+	_runner.run_ticks(1)
+	assert_int(_runner.snapshot.credits[1]).is_greater(credits)  # Paid back.
+	assert_array([_placement.active, _placement.pending, _placement.blocked]).is_equal(
+		[false, false, false]
+	)
+	await _settle()
+	assert_bool((_hud("GhostControls") as Control).visible).is_false()
+	assert_array(_sent).has_size(1)
 
 
 ## What counts as built: the local player's building of the type being placed exactly at the ghost's
@@ -444,6 +517,29 @@ func _place_at(tile: Vector2i) -> void:
 	tap.position = _screen_of(tile)
 	_controller.handle_gesture(tap)
 	assert_vector(_placement.tile).is_equal(tile)
+
+
+func _card() -> ItemTile:
+	return _hud("Tile_%s" % Rig.PLANT) as ItemTile
+
+
+## A tap on the READY card with a finger: pressed and released at once, well before a hold.
+func _tap_card() -> void:
+	var at: Vector2 = _card().get_global_rect().get_center()
+	TouchEvents.press(get_viewport(), 0, at)
+	TouchEvents.release(get_viewport(), 0, at)
+
+
+## A hold on the READY card: the card's clock runs `hold_ms` between the press and the release.
+func _hold_card() -> void:
+	var card: ItemTile = _card()
+	var now: Array[int] = [0]
+	card.clock = func() -> int: return now[0]
+	var at: Vector2 = card.get_global_rect().get_center()
+	TouchEvents.press(get_viewport(), 0, at)
+	now[0] += card.hold_ms
+	card._process(0.0)
+	TouchEvents.release(get_viewport(), 0, at)
 
 
 func _settle() -> void:
