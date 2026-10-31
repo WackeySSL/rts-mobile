@@ -200,6 +200,56 @@ func test_a_run_is_judged_by_every_bound_and_a_move_over_one_gives_one_line() ->
 	assert_int(run.bound_lines(ALIVE_PIN, PROJ_PIN).size()).is_equal(judged)
 
 
+## The base arena (plan P93) bounds the three Phase 3 counters, each at its measured maximum over
+## the 900 ticks of the seed-42 run plus the margin, rounded up: ore cells scanned 72 (bound 90),
+## exit cells scanned 3 (bound 4) and last-seen checks 28 (bound 35). They are a set of their own:
+## the perf arena's bounds do not hold them (it has no harvester, producer or last-seen building),
+## and the base arena does not take the perf arena's.
+func test_the_base_arena_bounds_the_three_phase_3_counters_at_their_maxima_plus_a_quarter() -> void:
+	var bounds: Dictionary[int, int] = PerfBounds.base_cost_bounds()
+	assert_array(bounds.keys()).contains_exactly_in_any_order(
+		[World.Stat.ORE_SCANNED, World.Stat.EXIT_SCANNED, World.Stat.MEMORY_CHECKS]
+	)
+	assert_int(bounds[World.Stat.ORE_SCANNED]).is_equal(90)
+	assert_int(bounds[World.Stat.EXIT_SCANNED]).is_equal(4)
+	assert_int(bounds[World.Stat.MEMORY_CHECKS]).is_equal(35)
+	assert_int(PerfBounds.MEASURED_ORE_SCANNED).is_equal(72)
+	assert_int(PerfBounds.MEASURED_EXIT_SCANNED).is_equal(3)
+	assert_int(PerfBounds.MEASURED_MEMORY_CHECKS).is_equal(28)
+	var perf: Dictionary[int, int] = PerfBounds.cost_bounds(512, 16, 150)
+	for stat: int in bounds:
+		assert_bool(perf.has(stat)).is_false()
+
+
+## Run.base_bound_lines passes the readings of a base run to those three bounds and nothing else: a
+## run on all three bounds has no line, one over a bound gives exactly one line that names the
+## counter and one that reads 0 gives "reads 0" (a counter that never moves is not live), and the
+## counters of the perf arena's set are not judged at all, whatever they read.
+func test_a_base_run_is_judged_by_its_three_counters_and_by_nothing_else() -> void:
+	var names: PackedStringArray = PerfReport.stat_names()
+	var bounds: Dictionary[int, int] = PerfBounds.base_cost_bounds()
+	assert_array(_base_run_on_its_bounds().base_bound_lines()).is_empty()
+	for stat: int in bounds:
+		var run: Run = _base_run_on_its_bounds()
+		run.stats_max[stat] += 1
+		assert_str(_only(run.base_bound_lines())).contains(names[stat]).contains("above")
+		run = _base_run_on_its_bounds()
+		run.stats_max[stat] = 0
+		assert_str(_only(run.base_bound_lines())).contains(names[stat]).contains("reads 0")
+	var other: Run = _base_run_on_its_bounds()
+	for stat: int in [
+		World.Stat.FLOW_CELLS,
+		World.Stat.LINE_CHECKS,
+		World.Stat.SEP_PAIRS,
+		World.Stat.TARGET_CANDIDATES,
+		World.Stat.FOG_CELLS,
+		World.Stat.PROJ_STEPS,
+		World.Stat.ROWS_COMPACTED
+	]:
+		other.stats_max[stat] = 1_000_000
+	assert_array(other.base_bound_lines()).is_empty()
+
+
 ## Run.static_memory, the reading that test_sim_perf.gd takes at tick 100 and tick 900, is the live
 ## static memory, so it falls when memory is released. A buffer of 1 MiB is allocated and filled,
 ## read, released and read again, and the reading falls by at least half of the buffer (the margin
@@ -235,6 +285,16 @@ func _run_on_its_bounds() -> Run:
 	var bounds: Dictionary[int, int] = PerfBounds.cost_bounds(
 		run.flow_budget, run.sep_scan, run.units
 	)
+	for stat: int in bounds:
+		run.stats_max[stat] = bounds[stat]
+	return run
+
+
+## A run that no match produced, with each of the three base-arena counters on its bound.
+func _base_run_on_its_bounds() -> Run:
+	var run: Run = Run.new()
+	run.stats_max.resize(World.Stat.size())
+	var bounds: Dictionary[int, int] = PerfBounds.base_cost_bounds()
 	for stat: int in bounds:
 		run.stats_max[stat] = bounds[stat]
 	return run

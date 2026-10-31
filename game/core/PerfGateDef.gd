@@ -54,3 +54,9 @@ extends Resource
 ## The golden seed-42 arena checkpoints: ticks and their World.hash_hex() text, index by index.
 @export var golden_ticks: PackedInt32Array = PackedInt32Array()
 @export var golden_hex: PackedStringArray = PackedStringArray()
+## The same for the base arena (plan P93, ADR 0021 section 2): the checkpoints of the seed-42 run of
+## data/scenarios/perf_bases.tres, ticks and World.hash_hex() text, index by index. Pinned in
+## data/dev/perf_gate.tres by tests/perf/test_golden_hashes.gd; a card of the base arena checks its
+## run against them (P93c).
+@export var bases_golden_ticks: PackedInt32Array = PackedInt32Array()
+@export var bases_golden_hex: PackedStringArray = PackedStringArray()

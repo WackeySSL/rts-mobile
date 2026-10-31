@@ -28,6 +28,15 @@ const MARGIN_PERCENT: int = 25
 const MEASURED_LINE_CHECKS: int = 34
 const MEASURED_TARGET_CANDIDATES: int = 2193
 const MEASURED_FOG_CELLS: int = 7798
+## The maxima of the Phase 3 counters over the 900 ticks of the seed-42 base arena (plan P93, ADR
+## 0021 section 2; equal under both implementations, because ECONOMY, PRODUCTION and MEMORY are
+## GDScript phases): ore cells looked at, exit cells walked and last-seen checks in one tick. The
+## arena has no building death, so MEMORY_CHECKS here is the MEMORY phase alone (28 building rows on
+## the 600 ticks of a fog turn); a death in sight adds the in-sight drop's looks (LastSeen). They
+## carry P49a's margin like the perf arena's measured maxima.
+const MEASURED_ORE_SCANNED: int = 72
+const MEASURED_EXIT_SCANNED: int = 3
+const MEASURED_MEMORY_CHECKS: int = 28
 ## The two ticks at which Performance.MEMORY_STATIC is read, and how much it may have grown between
 ## them. The arena run does not grow it: the static memory of the 900 ticks through TickJob falls
 ## by 2.5 KB with the kernels and by 63.6 KB with the GDScript twins between tick 100 and tick 900
@@ -64,6 +73,16 @@ static func cost_bounds(
 		World.Stat.LINE_CHECKS: with_margin(MEASURED_LINE_CHECKS),
 		World.Stat.TARGET_CANDIDATES: with_margin(MEASURED_TARGET_CANDIDATES),
 		World.Stat.FOG_CELLS: with_margin(MEASURED_FOG_CELLS),
+	}
+
+
+## The bound of each Phase 3 counter that the base arena bounds (plan P93): the measured maxima
+## plus the margin. The three have no rule that bounds them, and the perf arena never moves them.
+static func base_cost_bounds() -> Dictionary[int, int]:
+	return {
+		World.Stat.ORE_SCANNED: with_margin(MEASURED_ORE_SCANNED),
+		World.Stat.EXIT_SCANNED: with_margin(MEASURED_EXIT_SCANNED),
+		World.Stat.MEMORY_CHECKS: with_margin(MEASURED_MEMORY_CHECKS),
 	}
 
 

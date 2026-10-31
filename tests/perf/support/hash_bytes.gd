@@ -11,6 +11,8 @@ extends RefCounted
 
 ## The head of the watch line (plan P65q): it does not start with `PERF `, which P51 copies.
 const HEAD: String = "WATCH sim hash_bytes"
+## The base arena's (plan P93, ADR 0021 section 2): the same line for its checkpoints.
+const BASES_HEAD: String = "WATCH bases hash_bytes"
 ## The block header: the tag and the byte count, two int64.
 const HEADER_BYTES: int = 16
 

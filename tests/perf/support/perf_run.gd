@@ -69,3 +69,15 @@ func bound_lines(alive_pin: int, proj_pin: int) -> Array[String]:
 	)
 	lines.append_array(PerfBounds.memory_violations(memory_first, memory_last, OS.is_debug_build()))
 	return lines
+
+
+## The base arena's version of bound_lines (plan P93): the Phase 3 counters above their bounds, or
+## reading 0 (a counter that never moves is not live). The arena has no unit count, projectile pin
+## or memory bound of the perf arena's kind. Empty when the run is inside them.
+func base_bound_lines() -> Array[String]:
+	var bounds: Dictionary[int, int] = PerfBounds.base_cost_bounds()
+	var lines: Array[String] = PerfBounds.cost_violations(stats_max, bounds)
+	for stat: int in bounds:
+		if stats_max[stat] <= 0:
+			lines.append("%s reads 0" % PerfReport.stat_names()[stat])
+	return lines

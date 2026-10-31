@@ -16,9 +16,20 @@ extends GdUnitTestSuite
 ## architecture (P51b runs it on arm64) and the native-clang CI job runs it beside the native
 ## suites (P51). A sim PR that moves the arena run (P46b is the first) updates the two arrays in
 ## the gate file on purpose, with a note: plan exception 3.
+##
+## The base arena (plan P93, ADR 0021 section 2) is pinned here too, the same way, because this is
+## the suite that the native-clang job and the arm64 job run: its seed-42 run of
+## data/scenarios/perf_bases.tres for 900 ticks must end on `bases_golden_ticks` and
+## `bases_golden_hex` of the gate file under both implementations. Each helper takes the prefix of
+## the gate fields ("" for the perf arena, BASES_PREFIX for the base arena), so a failure of the
+## base arena names its own fields and prints its own two lines to paste. A later sim row that moves
+## the base arena re-pins them under plan exception 3, with the reason.
 
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
+const BASES_PATH: String = "res://data/scenarios/perf_bases.tres"
+## The prefix of the base arena's gate fields: `bases_golden_ticks` and `bases_golden_hex`.
+const BASES_PREFIX: String = "bases_"
 const GATE_PATH: String = "res://data/dev/perf_gate.tres"
 const TICKS: int = 900
 const SEED: int = 42
@@ -71,28 +82,22 @@ class Played:
 func test_the_arena_ends_on_the_golden_hashes_under_both_implementations(
 	impl: int, _test_parameters := _both()
 ) -> void:
-	var gate: PerfGateDef = _gate()
-	var played: Played = _play(impl, gate)
-	assert_int(played.native_phases).is_equal(
-		SimImpls.expected_mask() if impl == SimImpls.Impl.NATIVE else 0
-	)
-	# A failure names the parts of the state at its tick, so the run took them at every golden tick.
-	var taken: Array[int] = []
-	taken.assign(played.parts.keys())
-	assert_array(taken).is_equal(Array(gate.golden_ticks))
-	for tick: int in played.parts:
-		assert_int(played.parts[tick].size()).is_equal(World.hash_section_names().size())
-	var problem: String = _first_difference(gate, played)
-	var label: String = "native" if impl == SimImpls.Impl.NATIVE else "gdscript"
-	assert_str(problem).override_failure_message("%s: %s" % [label, problem]).is_empty()
-	# The lines that a failure would print are the lines of the file when the run matches it (no
-	# second failure, and not the whole file in the message, when it does not).
-	if problem.is_empty():
-		assert_str(FileAccess.get_file_as_string(GATE_PATH)).contains(_repin_text(played))
+	_assert_ends_on_the_golden_hashes(impl, ARENA_PATH, "")
 
 
-## The test above runs once for each parameter set, so a `_both()` that dropped one would leave the
-## suite green with one implementation unchecked: the sets are the two implementations, once each.
+## The base arena (plan P93) ends every checkpoint of `bases_golden_ticks`, and its last tick, on
+## `bases_golden_hex`, in the GDScript twins and in the C++ kernels alike: one set of hashes for
+## both, as for the perf arena. The two implementations agreeing is the cross-check, and a native
+## run that attached nothing fails before the hashes are read.
+func test_the_base_arena_ends_on_its_golden_hashes_under_both_implementations(
+	impl: int, _test_parameters := _both()
+) -> void:
+	_assert_ends_on_the_golden_hashes(impl, BASES_PATH, BASES_PREFIX)
+
+
+## The two tests above run once for each parameter set, so a `_both()` that dropped one would leave
+## the suite green with one implementation unchecked: the sets are the two implementations, once
+## each.
 func test_the_parameter_sets_are_both_implementations_once_each() -> void:
 	var seen: Array[int] = []
 	for parameters: Array in _both():
@@ -114,6 +119,26 @@ func test_the_gate_file_holds_a_golden_hash_every_150_ticks_and_the_final() -> v
 	var distinct: Dictionary[String, bool] = {}
 	for hex: String in gate.golden_hex:
 		assert_object(form.search(hex)).override_failure_message(hex).is_not_null()
+		distinct[hex] = true
+	assert_int(distinct.size()).is_equal(expected.size())
+
+
+## The base arena's pair of arrays has the same shape (a hash every 150 ticks up to the 900th, each
+## a hash and each from another state), and none of its hashes is one of the perf arena's: the base
+## arena is another match (its own map, factions, buildings and strikes), so a pair copied from the
+## wrong arrays, or a scenario that fell back to the perf arena, shows here.
+func test_the_gate_file_holds_a_base_arena_hash_every_150_ticks_none_of_the_perf_arenas() -> void:
+	var gate: PerfGateDef = _gate()
+	var expected: Array[int] = []
+	for tick: int in range(GOLDEN_STEP, TICKS + 1, GOLDEN_STEP):
+		expected.append(tick)
+	assert_array(Array(gate.bases_golden_ticks)).is_equal(expected)
+	assert_int(gate.bases_golden_hex.size()).is_equal(expected.size())
+	var form: RegEx = RegEx.create_from_string(HEX_FORM)
+	var distinct: Dictionary[String, bool] = {}
+	for hex: String in gate.bases_golden_hex:
+		assert_object(form.search(hex)).override_failure_message(hex).is_not_null()
+		assert_bool(gate.golden_hex.has(hex)).override_failure_message(hex).is_false()
 		distinct[hex] = true
 	assert_int(distinct.size()).is_equal(expected.size())
 
@@ -193,6 +218,31 @@ func test_a_failure_ends_with_the_two_lines_that_would_pin_the_run() -> void:
 	assert_str(_repin_text(played)).starts_with(TICKS_LINE + "150, 300)\n")
 
 
+## A failure of the base arena reads and names its own fields: a hand-made gate with a wrong
+## `bases_golden_hex` is judged by its `bases_` arrays, and the lines to paste are
+## `bases_golden_ticks` and `bases_golden_hex`; the same gate read as the perf arena's, whose arrays
+## it leaves empty, is the "no golden hashes" failure; and a pair that does not pair up names the
+## base arena's arrays.
+func test_a_base_arena_failure_reads_and_names_the_bases_fields() -> void:
+	var played: Played = _hand_played(World.hash_section_names().size())
+	var right: PerfGateDef = _hand_gate(HAND_TICKS, HAND_HASHES, BASES_PREFIX)
+	assert_str(_first_difference(right, played, BASES_PREFIX)).is_empty()
+	var wrong: Array[int] = HAND_HASHES.duplicate()
+	wrong[2] ^= LAST_DIGITS_FLIP
+	var gate: PerfGateDef = _hand_gate(HAND_TICKS, wrong, BASES_PREFIX)
+	var message: String = _first_difference(gate, played, BASES_PREFIX)
+	assert_str(message).contains(_differing(450)).not_contains(_differing(300))
+	var lines: String = (
+		"%s150, 300, 450, 600)\n%s" % [BASES_PREFIX + TICKS_LINE, BASES_PREFIX + HEX_LINE]
+	)
+	assert_str(message).contains(lines)
+	assert_str(_repin_text(played, BASES_PREFIX)).starts_with(BASES_PREFIX + TICKS_LINE + "150, ")
+	assert_str(_first_difference(gate, played)).contains("no golden")
+	var short: PerfGateDef = _hand_gate(HAND_TICKS, HAND_HASHES, BASES_PREFIX)
+	short.bases_golden_hex = short.bases_golden_hex.slice(0, 3)
+	assert_str(_first_difference(short, played, BASES_PREFIX)).contains("bases_golden_ticks (4)")
+
+
 ## No clock and no probe in this file (the header's promise to P51b), by a scan of its own source.
 func test_the_suite_reads_no_clock_and_attaches_no_probe() -> void:
 	var source: String = FileAccess.get_file_as_string("res://tests/perf/test_golden_hashes.gd")
@@ -219,12 +269,48 @@ func _gate() -> PerfGateDef:
 	return gate
 
 
-## The seed-42 arena for TICKS ticks through MatchLoop, nothing else: no queued command, no probe.
-## `impl` is a SimImpls.Impl; the parts of the state are taken at the gate's golden ticks.
-func _play(impl: int, gate: PerfGateDef) -> Played:
-	var scenario: ScenarioDef = load(ARENA_PATH) as ScenarioDef
+## One arena under `impl` against its pair of arrays in the gate file (`prefix` "" for the perf
+## arena at `path`, BASES_PREFIX for the base arena): the run took the implementation asked for,
+## took the parts of the state at every golden tick, and ended on the golden hashes; and the lines a
+## failure would print are the lines of the file when it does.
+func _assert_ends_on_the_golden_hashes(impl: int, path: String, prefix: String) -> void:
+	var gate: PerfGateDef = _gate()
+	var played: Played = _play(impl, path, _ticks_of(gate, prefix))
+	assert_int(played.native_phases).is_equal(
+		SimImpls.expected_mask() if impl == SimImpls.Impl.NATIVE else 0
+	)
+	# A failure names the parts of the state at its tick, so the run took them at every golden tick.
+	var taken: Array[int] = []
+	taken.assign(played.parts.keys())
+	assert_array(taken).is_equal(Array(_ticks_of(gate, prefix)))
+	for tick: int in played.parts:
+		assert_int(played.parts[tick].size()).is_equal(World.hash_section_names().size())
+	var problem: String = _first_difference(gate, played, prefix)
+	var label: String = "native" if impl == SimImpls.Impl.NATIVE else "gdscript"
+	assert_str(problem).override_failure_message("%s: %s" % [label, problem]).is_empty()
+	# The lines that a failure would print are the lines of the file when the run matches it (no
+	# second failure, and not the whole file in the message, when it does not).
+	if problem.is_empty():
+		assert_str(FileAccess.get_file_as_string(GATE_PATH)).contains(_repin_text(played, prefix))
+
+
+## The golden ticks and the golden hashes of the gate for `prefix` ("" or BASES_PREFIX).
+func _ticks_of(gate: PerfGateDef, prefix: String) -> PackedInt32Array:
+	var ticks: PackedInt32Array = gate.get(prefix + "golden_ticks")
+	return ticks
+
+
+func _hexes_of(gate: PerfGateDef, prefix: String) -> PackedStringArray:
+	var hexes: PackedStringArray = gate.get(prefix + "golden_hex")
+	return hexes
+
+
+## The seed-42 scenario at `path` for TICKS ticks through MatchLoop, nothing else: no queued
+## command, no probe. `impl` is a SimImpls.Impl; the parts of the state are taken at `golden_ticks`.
+func _play(impl: int, path: String, golden_ticks: PackedInt32Array) -> Played:
+	var scenario: ScenarioDef = load(path) as ScenarioDef
 	var world: World = World.from_scenario(scenario, DetRandom.create(SEED, DetRandom.STREAM_SIM))
-	var loop: MatchLoop = MatchLoop.create(scenario, ARENA_PATH, SEED, world)
+	var loop: MatchLoop = MatchLoop.create(scenario, path, SEED, world)
 	assert_array(SimImpls.use(world, impl)).is_empty()
 	for phase: int in SimImpls.EXPECTED_PHASES:
 		assert_bool(SimImpls.is_native(world, phase)).is_equal(impl == SimImpls.Impl.NATIVE)
@@ -232,7 +318,7 @@ func _play(impl: int, gate: PerfGateDef) -> Played:
 	var queued: Array[Command] = []
 	for _tick: int in TICKS:
 		loop.step(world, queued)
-		if gate.golden_ticks.has(world.tick):
+		if golden_ticks.has(world.tick):
 			played.parts[world.tick] = world.hash_parts()
 	played.checkpoint_ticks = loop.replay.checkpoint_ticks
 	played.checkpoint_hashes = loop.replay.checkpoint_hashes
@@ -247,44 +333,50 @@ func _play(impl: int, gate: PerfGateDef) -> Played:
 ## whose arrays do not pair, a golden tick the run has no checkpoint at, the first checkpoint whose
 ## hash differs (its tick, both hashes and the parts of the state at that tick), then the final;
 ## the problem is followed by the lines that would pin the run (_repin_text).
-func _first_difference(gate: PerfGateDef, played: Played) -> String:
-	var problem: String = _gate_problem(gate)
+func _first_difference(gate: PerfGateDef, played: Played, prefix: String = "") -> String:
+	var problem: String = _gate_problem(gate, prefix)
 	if problem.is_empty():
-		problem = _checkpoint_problem(gate, played)
+		problem = _checkpoint_problem(gate, played, prefix)
 	if problem.is_empty():
-		problem = _final_problem(gate, played)
+		problem = _final_problem(gate, played, prefix)
 	if problem.is_empty():
 		return ""
 	return (
-		"%s\nlines of %s that would pin this run:\n%s" % [problem, GATE_PATH, _repin_text(played)]
+		"%s\nlines of %s that would pin this run:\n%s"
+		% [problem, GATE_PATH, _repin_text(played, prefix)]
 	)
 
 
 ## What is wrong with the gate's arrays alone: nothing in them, or unequal sizes.
-func _gate_problem(gate: PerfGateDef) -> String:
-	var ticks: int = gate.golden_ticks.size()
-	var hexes: int = gate.golden_hex.size()
+func _gate_problem(gate: PerfGateDef, prefix: String) -> String:
+	var ticks: int = _ticks_of(gate, prefix).size()
+	var hexes: int = _hexes_of(gate, prefix).size()
 	if ticks == 0 or hexes == 0:
 		return "the gate file holds no golden hashes"
 	if ticks != hexes:
-		return "golden_ticks (%d) and golden_hex (%d) do not pair up" % [ticks, hexes]
+		return (
+			"%sgolden_ticks (%d) and %sgolden_hex (%d) do not pair up"
+			% [prefix, ticks, prefix, hexes]
+		)
 	return ""
 
 
 ## The first golden tick that the run has no checkpoint at, or whose hash differs.
-func _checkpoint_problem(gate: PerfGateDef, played: Played) -> String:
-	for index: int in gate.golden_ticks.size():
-		var tick: int = gate.golden_ticks[index]
+func _checkpoint_problem(gate: PerfGateDef, played: Played, prefix: String) -> String:
+	var ticks: PackedInt32Array = _ticks_of(gate, prefix)
+	var hexes: PackedStringArray = _hexes_of(gate, prefix)
+	for index: int in ticks.size():
+		var tick: int = ticks[index]
 		var at: int = played.checkpoint_ticks.find(tick)
 		if at < 0:
 			return "golden tick %d: the run has no checkpoint at tick %d" % [tick, tick]
 		var got: String = World.hash_hex(played.checkpoint_hashes[at])
-		if got != gate.golden_hex[index]:
+		if got != hexes[index]:
 			return (
 				"%s golden %s, got %s; parts at that tick: %s"
 				% [
 					_differing(tick),
-					gate.golden_hex[index],
+					hexes[index],
 					got,
 					_parts_text(played.parts.get(tick, PackedInt64Array()))
 				]
@@ -293,17 +385,18 @@ func _checkpoint_problem(gate: PerfGateDef, played: Played) -> String:
 
 
 ## The last golden tick is the run's last tick, and the hash after it is the last golden hash.
-func _final_problem(gate: PerfGateDef, played: Played) -> String:
+func _final_problem(gate: PerfGateDef, played: Played, prefix: String) -> String:
+	var ticks: PackedInt32Array = _ticks_of(gate, prefix)
+	var hexes: PackedStringArray = _hexes_of(gate, prefix)
 	var final_hex: String = World.hash_hex(played.final_hash)
-	if gate.golden_ticks[-1] != played.final_tick:
+	if ticks[-1] != played.final_tick:
 		return (
 			"the last golden tick %d is not the run's last tick %d (final hash %s)"
-			% [gate.golden_ticks[-1], played.final_tick, final_hex]
+			% [ticks[-1], played.final_tick, final_hex]
 		)
-	if final_hex != gate.golden_hex[-1]:
+	if final_hex != hexes[-1]:
 		return (
-			"final hash at tick %d: golden %s, got %s"
-			% [played.final_tick, gate.golden_hex[-1], final_hex]
+			"final hash at tick %d: golden %s, got %s" % [played.final_tick, hexes[-1], final_hex]
 		)
 	return ""
 
@@ -314,8 +407,9 @@ func _differing(tick: int) -> String:
 
 
 ## The two lines of the gate file that would pin `played`: its checkpoints every GOLDEN_STEP ticks
-## up to its last tick, in the form of the file (a missing checkpoint is left out).
-func _repin_text(played: Played) -> String:
+## up to its last tick, in the form of the file (a missing checkpoint is left out); the fields are
+## the base arena's when `prefix` is BASES_PREFIX.
+func _repin_text(played: Played, prefix: String = "") -> String:
 	var ticks: PackedStringArray = PackedStringArray()
 	var hexes: PackedStringArray = PackedStringArray()
 	for tick: int in range(GOLDEN_STEP, played.final_tick + 1, GOLDEN_STEP):
@@ -323,7 +417,10 @@ func _repin_text(played: Played) -> String:
 		if at >= 0:
 			ticks.append(str(tick))
 			hexes.append('"%s"' % World.hash_hex(played.checkpoint_hashes[at]))
-	return "%s%s)\n%s%s)" % [TICKS_LINE, ", ".join(ticks), HEX_LINE, ", ".join(hexes)]
+	return (
+		"%s%s%s)\n%s%s%s)"
+		% [prefix, TICKS_LINE, ", ".join(ticks), prefix, HEX_LINE, ", ".join(hexes)]
+	)
 
 
 ## The parts of a state as `name=hex` pairs under World.hash_section_names(), in that order.
@@ -352,12 +449,13 @@ func _hand_played(section_count: int) -> Played:
 	return played
 
 
-## A gate with the given golden ticks and hashes (the hashes as ints, written in the file's form).
-func _hand_gate(ticks: Array[int], hashes: Array[int]) -> PerfGateDef:
+## A gate with the given golden ticks and hashes (the hashes as ints, written in the file's form),
+## in the perf arena's fields or, with BASES_PREFIX, the base arena's.
+func _hand_gate(ticks: Array[int], hashes: Array[int], prefix: String = "") -> PerfGateDef:
 	var gate: PerfGateDef = PerfGateDef.new()
-	gate.golden_ticks = PackedInt32Array(ticks)
+	gate.set(prefix + "golden_ticks", PackedInt32Array(ticks))
 	var hexes: PackedStringArray = PackedStringArray()
 	for hash_value: int in hashes:
 		hexes.append(World.hash_hex(hash_value))
-	gate.golden_hex = hexes
+	gate.set(prefix + "golden_hex", hexes)
 	return gate
