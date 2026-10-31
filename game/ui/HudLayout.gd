@@ -45,12 +45,12 @@ const PLATE_DP: float = 56.0
 ## test that sets one puts it back in `after_test`, like the UiScale override.
 static var bottom_zone_dp: float = 0.0
 ## The build menu's real top on the screen in base px: the y of the portrait band's or strip's rect,
-## which `BuildSidebar` writes (when it lays out and each frame of a slide), and the safe rect's
-## bottom in landscape, where the panel floats. The band's bottom is not the safe rect's bottom
-## (`SafeAreaMargin` adds a margin and gives both ends of an axis the larger inset), so with a top
-## cutout the band sits higher than `safe.end.y - bottom_zone_dp` says. INF while no BuildSidebar is
-## in the tree: nothing covers the map (read it through `map_bottom_px`). Static state like the
-## zone: a test puts it back.
+## which `BuildSidebar._publish_top` writes (when it lays out and each frame of a slide), and the
+## safe rect's bottom in landscape, where the panel floats. The band's bottom is not the safe rect's
+## bottom (`SafeAreaMargin` adds a margin and gives both ends of an axis the larger inset), so with
+## a top cutout the band sits higher than `safe.end.y - bottom_zone_dp` says. INF while no
+## BuildSidebar is in the tree: nothing covers the map (read it through `map_bottom_px`). Static
+## state like the zone: a test puts it back.
 static var menu_top_px: float = INF
 
 
