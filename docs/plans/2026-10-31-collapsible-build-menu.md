@@ -1,19 +1,21 @@
 # Plan: the collapsible build menu and the placement controls at the ghost
 
 Date: 2026-10-31. Base: `main` at 81c9b61. Decision: `docs/adr/0024-collapsible-build-menu-and-
-placement-controls-at-the-ghost.md` (**proposed**; its three questions answered on 2026-10-31: 1 A,
-2 A, 3 A). Phase: 3 (the battle-screen HUD of ROADMAP Phase 3, box 3's portrait check). Rows in
-the style of `docs/plans/2026-10-22-phase-3.md`; they join its lanes as a new thread, G2.
+placement-controls-at-the-ghost.md` (**accepted** 2026-10-31 on #255; its three questions answered
+the same day: 1 A, 2 A, 3 A). Phase: 3 (the battle-screen HUD of ROADMAP Phase 3, box 3's portrait
+check). Rows in the style of `docs/plans/2026-10-22-phase-3.md`; they join its lanes as a new
+thread, G2.
 
-**Status.** Proposed. Michael answered ADR 0024's questions on 2026-10-31: the Ready badge opens the
-menu on the Structures tab (1 A), a pinned menu stays open during placement (2 A), and a tap on an
-own producer opens the menu on its tab (3 A); he also said yes to the `touch-ui-rules` text of ADR
-0024 §11 once the ADR is accepted. On the review's two points he answered: after a build or the X
-the menu returns to the state placement began in, and a strike aim that ends placement leaves it
-collapsed (R1); the 96 dp strip is accepted, to be judged on the phone, its height in one constant
-(R2). No row starts before he accepts the ADR and the lead's docs row P26ao records it. P86b
-(`claude/p86b-pending-blocked-edge-pan`, head a19cee5) and P88 (`claude/p88-minimap`, 4f35204)
-finish and merge as they are first (Michael's L4, ADR 0024's Context); the rows below build on both.
+**Status.** Accepted, 2026-10-31 (Michael, on #255: "ADR 0024 accepted"); the lead's docs row P26ao
+recorded it in the same PR, and the rows below are plain rows. Michael answered ADR 0024's questions
+on 2026-10-31: the Ready badge opens the menu on the Structures tab (1 A), a pinned menu stays open
+during placement (2 A), and a tap on an own producer opens the menu on its tab (3 A); he also said
+yes to the `touch-ui-rules` text of ADR 0024 §11 once the ADR is accepted. On the review's two
+points he answered: after a build or the X the menu returns to the state placement began in, and a
+strike aim that ends placement leaves it collapsed (R1); the 96 dp strip is accepted, to be judged
+on the phone, its height in one constant (R2). P86b (#253, 6e845b5) and P88 (#254, 610e513) merged
+first, as they were (Michael's L4, ADR 0024's Context), and P85e (#252, 62f76bb) with them; the rows
+below build on `main` at 610e513.
 
 ## Goal
 Michael, 2026-10-31: the check mark and the X of placement move to the building being placed, and
@@ -109,16 +111,16 @@ commit passes 400 takes its named split.
 
 | Row | Lane | Owner | Title | Size | Depends | Box |
 | --- | --- | --- | --- | --- | --- | --- |
-| P26ao | - | lead | docs: ADR 0024 on acceptance (answers, status, dated notes on ADRs 0015 §5, 0019 §1, §2, §4 and 0023 §12, the `touch-ui-rules` text of ADR 0024 §11 with Michael's yes, one pointer line in the phase 3 plan) | 0 | ADR 0024's PR, Michael's answers | - |
+| P26ao | - | lead | docs: ADR 0024 on acceptance (status, the `touch-ui-rules` text of ADR 0024 §11 with Michael's yes, ADR 0019 §2's note, the rows in the phase 3 plan); folded into #255 | 0 | ADR 0024's PR, Michael's acceptance (2026-10-31) | - |
 | P85g | E | art-director | art: the build menu's glyphs `glyph_menu_open`, `glyph_pin`, `glyph_pin_off` (128 x 128 viewBox, white and grey, tinted at run time, like `glyph_check`), gallery entry | SVG | P26ao | - |
 | P86c | G2 | touch-ux-dev | input/ui: the check mark and X beside the ghost (`GhostControls`), `PlacementControls` and its card-row place removed | 170 | P86b, P88, P26ao | - |
 | P85f | G2 | touch-ux-dev | ui: the collapsible build menu (states, strip and plate, triggers, the slide, the Ready badge, the pin and its save) | 380, split P85f2 | P86c, P85g, P85e, P26ao | box 3's phone check waits for it |
 | P85f2 | G2 | touch-ux-dev | ui/meta: the pin and its save (`HudPrefs`), if P85f splits | 100 | P85f | - |
 
-**Lane order.** G2 is touch-ux-dev's new HUD thread: P86c → P85f (→ P85f2). It starts when P86b,
-P88 and P26ao have merged. Lane G keeps P88 → P88b → P90; lane E takes P85g at once after P26ao.
-P86c comes **before** P85f because P85f collapses the menu during placement, which would hide the
-card-row check mark and X; with P86c merged they are at the ghost.
+**Lane order.** G2 is touch-ux-dev's new HUD thread: P86c → P85f (→ P85f2). It starts when #255 (ADR
+0024 with P26ao) has merged; P86b and P88 already have. Lane G keeps P88 → P88b → P90; lane E takes
+P85g at once after P26ao. P86c comes **before** P85f because P85f collapses the menu during
+placement, which would hide the card-row check mark and X; with P86c merged they are at the ghost.
 
 **Critical path.** The phase 3 gate path (P88 → P88b → P90 → P94 → P93b) does not wait for these
 rows; G2's chain (P86c → P85f, three slots with P85f2) runs beside it and ends earlier. Box 3's
@@ -222,16 +224,16 @@ placement") should run after P85f, so that Michael checks the layout that ships.
   outer 2 px, the HUD glyphs (`glyph_pin` and `glyph_pin_off` among them) read apart at 32 px in
   greyscale, and STYLE.md names every icon and its tint. Michael sees them in the art gallery.
 
-### P26ao docs: ADR 0024 on acceptance (lead)
-- ADR 0024's status (accepted, once Michael accepts it; its answers are already recorded); the
-  dated notes of ADR 0024 §11 on ADRs 0015 §5, 0019 §1, §2 and §4 and 0023 §12; the
-  `touch-ui-rules` text quoted in ADR 0024 §11 (Michael's yes of 2026-10-31, applied on acceptance),
-  which also brings the skill's "Building placement" section up to P86 and P86b (the tap on the
-  silhouette and in the grab ring, `ghost_lift_dp` and `ghost_grab_dp`, placement and the strike aim
-  excluding each other, the edge-pan settings and bands); in the phase 3
-  plan one line in the current "Next" text pointing at this plan, and the rows of this plan in its
-  work-package table (lane G2). This plan's PR does not edit the phase 3 plan, because the lead's
-  open docs row P26an edits the same file.
+### P26ao docs: ADR 0024 on acceptance (lead; done, folded into #255)
+- Done on 2026-10-31: ADR 0024's status (accepted on #255); the `touch-ui-rules` text quoted in
+  ADR 0024 §11 (Michael's yes of 2026-10-31), which also brings the skill's "Building placement"
+  section up to P86 and P86b (the tap on the silhouette and in the grab ring, `ghost_lift_dp` and
+  `ghost_grab_dp`, placement and the strike aim excluding each other, the edge-pan settings and
+  bands) and its layout bullets to the menu's two states; a dated note on ADR 0019 §2 (P86b's
+  pending, "Blocked" and edge pan as merged); in the phase 3 plan, wave t as merged, the row P88b,
+  the rows of this plan (lane G2) as pointers here, and P26ao's own section.
+- Left for the lead's docs row after P86c and P85f: the dated notes of ADR 0024 §11 on ADRs 0015
+  §5, 0019 §1 and §4 and 0023 §12, written against the code as merged.
 
 ## Interactions with other rows
 - **P88b** (the minimap's long-press `MOVE`, lane G): the minimap is a HUD control, so its tap, drag
@@ -248,9 +250,9 @@ placement") should run after P85f, so that Michael checks the layout that ships.
   the new match with the menu open (ADR 0024 §1). The Surrender button is a top-left control and
   does not meet the strip or the plate; P90's re-check of the portrait SelectionPanel line is
   unaffected. P90 and P85f both add nodes to `scenes/main.tscn`: the second rebases.
-- **P86b and P88:** merge as they are (L4). P86c and P85f change their files afterwards: P86b's
-  `PlacementControls` lines go with the file in P86c, and P88's `Body` row gets the strip's layout
-  in P85f.
+- **P86b and P88:** merged as they were (L4; #253, #254). P86c and P85f change their files
+  afterwards: P86b's `PlacementControls` lines go with the file in P86c, and P88's `Body` row gets
+  the strip's layout in P85f.
 
 ## Risks
 - **The slide's frame cost on the phone** (container re-sorts for about ten frames): the content is

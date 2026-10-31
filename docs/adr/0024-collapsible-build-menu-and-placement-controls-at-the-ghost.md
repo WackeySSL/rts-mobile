@@ -1,8 +1,9 @@
 # ADR 0024: The collapsible build menu and the placement controls at the ghost
 
-Status: proposed, 2026-10-31. Base: `main` at 81c9b61. Builds on P86b
-(`claude/p86b-pending-blocked-edge-pan`, head a19cee5) and P88 (`claude/p88-minimap`, 4f35204) as
-they stand; both merge first, as they are. Amends ADR 0015 §5, ADR 0019 §1, §2 and §4, ADR 0023
+Status: accepted, 2026-10-31 (Michael, on #255: "ADR 0024 accepted"; his answers Q1 A, Q2 A,
+Q3 A, R1 and R2 below). Proposed 2026-10-31 on `main` at 81c9b61; accepted with the lead's docs row
+P26ao folded into #255, on `main` at 610e513. Builds on P86b (#253, 6e845b5) and P88 (#254,
+610e513), both merged as they were (L4). Amends ADR 0015 §5, ADR 0019 §1, §2 and §4, ADR 0023
 §12 and the `touch-ui-rules` lines quoted in §11, each only after Michael's yes. Plan:
 `docs/plans/2026-10-31-collapsible-build-menu.md` (rows P26ao, P85g, P86c, P85f, P85f2). No sim
 rule, Command, definition, data column or hash changes: everything here is view and input state.
@@ -11,7 +12,13 @@ Status note (2026-10-31): Michael answered the ADR's three questions the same da
 ADR's questions" below: Q1 A, Q2 A, Q3 A), confirmed the end-of-placement rule with a strike
 exception (R1) and accepted the 96 dp strip, to be judged on the phone (R2); he said yes to the
 `touch-ui-rules` edit of §11 once the ADR is accepted. The text below is written to those answers.
-The status stays proposed until he accepts the ADR as a whole.
+
+Status note (2026-10-31, P26ao docs, accepted on #255): Michael accepted the ADR as a whole. P26ao
+applied §11's `touch-ui-rules` text and a dated note on ADR 0019 §2 (P86b's pending, "Blocked" and
+edge pan as merged); the other dated notes §11 lists (ADRs 0015 §5, 0019 §1 and §4, 0023 §12) come
+with the lead's docs row after P86c and P85f. P86b (#253) and P88 (#254) merged after this ADR was
+written; where the text below cites their branches (a19cee5, 4f35204), the merged code is the
+same. No accepted text changed.
 
 ## Context
 **Michael, 2026-10-31**, after trying placement (P86) and the Strike test route (P112d) on his
@@ -61,7 +68,8 @@ He also said yes to the `touch-ui-rules` text of §11, applied once the ADR is a
 - **R2:** the 96 dp portrait strip is accepted, to be judged on the phone; its height lives in one
   place, `HudLayout.STRIP_DP`, so it can be tuned in one line (§2).
 
-**The code this changes** (`main` at 81c9b61, with P86b and P88 on their branches):
+**The code this changes** (`main` at 81c9b61, with P86b and P88 on their branches; both merged
+since, #253 and #254, as they were):
 - `BuildSidebar` (`game/ui/BuildSidebar.gd`) is one `PanelContainer` in `Hud/SafeArea`. Portrait:
   the bottom band, `HudLayout.band_dp` high (20 % of the safe height, at least 200 dp, at most what
   keeps the band and the ArmyBar line within 40 %, floor `BAND_FLOOR_DP` 172), the status line
@@ -408,7 +416,8 @@ accepted texts stay as they are):
   note).
 - **`.claude/skills/touch-ui-rules/SKILL.md`**: Michael said yes on 2026-10-31; P26ao edits the
   file once the ADR is accepted, not before. The text also brings the skill's "Building placement"
-  section up to P86 and P86b as merged or in flight. The lines and their proposed text:
+  section up to P86 and P86b as merged. The lines and their proposed text (applied by P26ao on
+  acceptance, 2026-10-31):
 
 > **Line 3 (frontmatter `description`):** "... build menu layout (floating panels in landscape, a
 > band in portrait, both collapsible, ADR 0024), safe areas, ..." (the rest unchanged).
