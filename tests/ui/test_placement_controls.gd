@@ -14,6 +14,7 @@ const Rig: GDScript = preload("res://tests/input/support/placement_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const BUILD_TICKS: int = 160  ## The plant takes 150 ticks.
 const CUTOUT_PX: int = 100
 const TOLERANCE_PX: float = 0.5
 const OTHERS: Array[String] = [
@@ -176,11 +177,12 @@ func test_every_control_is_64_dp_inside_the_safe_rect_and_its_panel_and_clear_of
 
 ## A PLACE pending and a ghost "Blocked" (P86b) change the check mark's state and nothing else: at
 ## every screen the two controls stay where they were, 64 dp across, the check mark dimmed and the
-## X working. The sim's refusal is stood in for by a tick that never got the Command (this suite's
-## sink only catches it), which the test stamps with the tick the runner would have taken it at.
+## X working. The plant is built through the queue, so it is still ready after the tick. The sim's
+## refusal is stood in for by a tick that never got the Command (this suite's sink only catches
+## it), which the test stamps with the tick the runner would have taken it at.
 func test_pending_and_blocked_dim_the_check_mark_and_leave_both_controls_where_they_are() -> void:
 	for screen: Dictionary in _screens(null):
-		await _open(screen["size"], screen["metrics"])
+		await _open(screen["size"], screen["metrics"], true)
 		var why: String = str(screen["label"])
 		_tap(_tile())
 		await _settle()
@@ -350,8 +352,9 @@ func _rect(node_name: String) -> Rect2:
 
 
 ## A new main scene at `size`, under `metrics` (a profile; null for the engine's own), its match
-## paused, the Commands caught, the plant ready in the snapshot and the sidebar showing it.
-func _open(size: Vector2i, metrics: UiMetrics) -> void:
+## paused, the Commands caught, the plant ready and the sidebar showing it: in the published
+## snapshot only, or with `built` through the queue, so that it stays ready on the next tick.
+func _open(size: Vector2i, metrics: UiMetrics, built: bool = false) -> void:
 	if _main != null and is_instance_valid(_main):
 		remove_child(_main)
 		_main.free()
@@ -367,7 +370,11 @@ func _open(size: Vector2i, metrics: UiMetrics) -> void:
 	_runner.paused = true
 	add_child(_main)
 	await await_idle_frame()
-	Rig.make_ready(_runner.snapshot)
+	if built:
+		CommandQueue.submit(Command.queue(1, Rig.plant(_runner.snapshot)))
+		_runner.run_ticks(BUILD_TICKS)
+	else:
+		Rig.make_ready(_runner.snapshot)
 	Rig.explore(_runner.snapshot)
 	_sidebar = _main.get_node("Hud").find_child("BuildSidebar", true, false)
 	_controller = _main.get_node("PlayerController")

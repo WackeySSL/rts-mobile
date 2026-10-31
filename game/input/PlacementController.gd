@@ -10,10 +10,13 @@ extends Node
 ## Pending and "Blocked" (P86b): after the PLACE the mode stays and the ghost is held (`pending`: it
 ## does not move, the check mark cannot send a second PLACE). The runner stamps the Command with the
 ## tick it is applied at, and the first snapshot published after that tick holds the sim's answer: a
-## building of the type at the ghost's centre ends the mode, no building means the sim refused (a
-## unit rolled onto the footprint after the snapshot the ghost was judged on) and the ghost turns
-## `blocked`: red, with the word, until the player moves it, then confirms again or cancels. The X
-## ends the mode in either state, also while pending (the PLACE is then already on its way).
+## building of the type at the ghost's centre ends the mode; no building and the structure still
+## ready at the head of the queue means the sim refused (a unit rolled onto the footprint after the
+## snapshot the ghost was judged on) and the ghost turns `blocked`: red, with the word, until the
+## player moves it, then confirms again or cancels; no building and no ready structure (an earlier
+## PLACE used it up) ends the mode. The X ends the mode in either state, also while pending (the
+## PLACE is then already on its way). While the match is paused no tick runs, so the ghost stays
+## pending and the X works; the answer comes when the ticks do. The end of the match ends the mode.
 ## Gestures (`PlayerController` hands them over while the mode is on): a drag that starts within
 ## `ghost_grab_dp` of the ghost's silhouette moves it, the ghost `ghost_lift_dp` above the finger
 ## and snapping to tiles (`grabs` is the recognizer's test, GHOST_DRAG its events); a drag elsewhere
@@ -21,7 +24,9 @@ extends Node
 ## alone never places and a hold draws no box. A turn keeps the tile (the recognizer cancels the
 ## drag with no event). A new match, a strike aim and the X end the mode with no Command.
 ## Edge pan (P86b): while a ghost drag's finger is in the edge band, `TouchInput` calls `edge_pan`
-## every frame, which scrolls the map that way and keeps the ghost on the tile under the finger.
+## every frame, which scrolls the map that way and keeps the ghost on the tile under the finger's
+## lifted point. The bands lie inside the map view: the safe area, less the portrait build band
+## below. The dp and the safe area are read when the window changes (`read_metrics`), not per frame.
 
 signal changed  ## The mode began or ended, or the ghost's tile, verdict or answer changed.
 
@@ -41,13 +46,26 @@ var blocked: bool = false  ## The sim refused the last PLACE; the ghost is red u
 
 var _serial: int = -1  ## match_serial the mode began in.
 var _command: Command = null  ## The PLACE in flight; the runner stamps its `tick`.
+var _dp_px: float = 1.0  ## `UiScale.base_px_per_dp()`, read when the window changes.
+var _safe: Rect2 = Rect2()  ## `UiScale.safe_rect_base()`, likewise.
 
 
 func _ready() -> void:
+	get_viewport().size_changed.connect(read_metrics)
+	read_metrics()
 	if runner != null:
 		runner.ticked.connect(refresh.unbind(1))
+		runner.match_ended.connect(cancel.unbind(1))
 	if strike_aim != null:
 		strike_aim.changed.connect(_on_aim_changed)
+
+
+## Reads the base px per dp and the safe area again: a resize does it, and a test that puts in
+## another `UiScale` override must call it. Every frame of an edge pan asks for them, and the
+## engine's metrics are not cheap (a new `UiMetrics`, the platform's dpi and safe area).
+func read_metrics() -> void:
+	_dp_px = UiScale.base_px_per_dp()
+	_safe = UiScale.safe_rect_base()
 
 
 ## Starts the mode for the structure of `type`: the ghost at the tile under the view's centre.
@@ -115,7 +133,10 @@ func cancel() -> void:
 
 
 ## Judges the ghost again on the latest snapshot; a new match ends the mode. While a PLACE is
-## pending it reads the sim's answer instead, once the snapshot is past the Command's tick.
+## pending it reads the sim's answer instead, once the snapshot is past the Command's tick. It runs
+## from `runner.ticked` only (a test may call it with the runner idle): it reads `Command.tick`,
+## which the worker stamps, and that is safe there alone, after the hand-off and before the next
+## job is posted.
 func refresh() -> void:
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
 	if not active or snap == null:
@@ -135,7 +156,7 @@ func refresh() -> void:
 ## The recognizer's test for a press at `at` (base px): within `ghost_grab_dp` of the silhouette.
 ## A pending ghost is held: nothing grabs it.
 func grabs(at: Vector2) -> bool:
-	return active and not pending and _near(at, UiScale.dp(controller.settings.ghost_grab_dp))
+	return active and not pending and _near(at, controller.settings.ghost_grab_dp * _dp_px)
 
 
 ## The gestures of the mode (PlayerController calls it while `active`): GHOST_DRAG moves the ghost
@@ -151,23 +172,25 @@ func handle_gesture(e: GestureEvent) -> void:
 
 ## Which way the map scrolls for a ghost drag whose finger is at `finger` (base px): a unit vector
 ## toward the edge band the finger is in, the diagonal in a corner, zero outside the bands. The
-## bands lie `edge_band_dp` inside the safe area's edges (a finger in a cutout is in them too). The
-## ghost rides `ghost_lift_dp` above the finger, so the top band is measured on the ghost's point:
-## the map starts to scroll while the ghost is still in view, not after it left it. The other three
-## are measured on the finger, because the ghost is never near the bottom edge.
+## bands lie `edge_band_dp` inside the edges of the map view: the safe area (a finger in a cutout
+## is in them too), whose bottom edge in portrait is the top of the build band, which covers the map
+## there (`HudLayout.bottom_zone_dp`, 0 in landscape). The ghost rides `ghost_lift_dp` above the
+## finger, so the top band is measured on the ghost's point: the map starts to scroll while the
+## ghost is still in view, not after it left it. The other three are measured on the finger,
+## because the ghost is never near the bottom edge.
 func edge_heading(finger: Vector2) -> Vector2:
 	var settings: InputSettings = controller.settings
-	var safe: Rect2 = UiScale.safe_rect_base()
-	var band: float = UiScale.dp(settings.edge_band_dp)
-	var ghost_y: float = finger.y - UiScale.dp(settings.ghost_lift_dp)
+	var band: float = settings.edge_band_dp * _dp_px
+	var ghost_y: float = finger.y - settings.ghost_lift_dp * _dp_px
+	var bottom: float = _safe.end.y - HudLayout.bottom_zone_dp * _dp_px
 	var heading: Vector2 = Vector2.ZERO
-	if finger.x < safe.position.x + band:
+	if finger.x < _safe.position.x + band:
 		heading.x = -1.0
-	elif finger.x > safe.end.x - band:
+	elif finger.x > _safe.end.x - band:
 		heading.x = 1.0
-	if ghost_y < safe.position.y + band:
+	if ghost_y < _safe.position.y + band:
 		heading.y = -1.0
-	elif finger.y > safe.end.y - band:
+	elif finger.y > bottom - band:
 		heading.y = 1.0
 	return heading.normalized()
 
@@ -175,14 +198,18 @@ func edge_heading(finger: Vector2) -> Vector2:
 ## Called every frame while a ghost drag's finger is at `finger`, `delta` seconds after the last
 ## call: in an edge band the map scrolls toward the edge at `edge_pan_dp_per_s` of screen (the
 ## same at any zoom and frame rate, within the camera's clamp) and the ghost stays on the tile under
-## the finger, though the finger has not moved. Nothing is sent. A pending ghost is held.
+## the finger's lifted point, though the finger has not moved. A frame that took longer than
+## `edge_pan_max_step_ms` scrolls that long and no more, so a stall is not a jump. Nothing is sent.
+## A pending ghost is held.
 func edge_pan(finger: Vector2, delta: float) -> void:
 	if not active or pending:
 		return
 	var heading: Vector2 = edge_heading(finger)
 	if heading == Vector2.ZERO:
 		return
-	camera.pan_by_screen(-heading * UiScale.dp(controller.settings.edge_pan_dp_per_s) * delta)
+	var settings: InputSettings = controller.settings
+	var step: float = minf(delta, settings.edge_pan_max_step_ms / 1000.0)
+	camera.pan_by_screen(-heading * settings.edge_pan_dp_per_s * _dp_px * step)
 	_track(finger)
 
 
@@ -219,7 +246,7 @@ func _tile_at(world: Vector2) -> Vector2i:
 
 ## The ghost on the tile under the point `ghost_lift_dp` above the finger at `finger`.
 func _track(finger: Vector2) -> void:
-	var lift: float = UiScale.dp(controller.settings.ghost_lift_dp)
+	var lift: float = controller.settings.ghost_lift_dp * _dp_px
 	_move_to(_tile_at(camera.screen_to_world(finger - Vector2(0.0, lift))))
 
 
@@ -236,12 +263,14 @@ func _move_to(next: Vector2i) -> void:
 
 ## The sim's answer to the PLACE in flight, once a snapshot is past the Command's tick (`tick` is -1
 ## until the runner takes the Command, and the snapshot of the tick it is applied at has the next
-## tick): a building at the ghost's centre ends the mode, none means "Blocked".
+## tick): a building at the ghost's centre ends the mode, and so does a queue with no ready
+## structure of the type (an earlier PLACE used it up: the X and a second tap on the card, within
+## two ticks); the structure still ready and no building there means the sim refused: "Blocked".
 func _answer(snap: MatchSnapshot) -> void:
 	if _command.tick < 0 or snap.tick <= _command.tick:
 		return
 	_forget_place()
-	if _built(snap):
+	if _built(snap) or not _ready_head(snap):
 		active = false
 	else:
 		blocked = true
@@ -262,6 +291,22 @@ func _built(snap: MatchSnapshot) -> bool:
 		):
 			return true
 	return false
+
+
+## Whether the head of the local player's STRUCTURES queue is a finished structure of the type being
+## placed (the sidebar's READY state, `Production.apply_place`'s first test).
+@warning_ignore("integer_division")
+func _ready_head(snap: MatchSnapshot) -> bool:
+	var queue: int = runner.scenario.local_player * World.TABS + World.Tab.STRUCTURES
+	if queue >= snap.queue_count.size() or snap.queue_count[queue] == 0:
+		return false
+	var slots: int = snap.queue_type.size() / (snap.credits.size() * World.TABS)
+	if snap.queue_type[queue * slots] != type_index:
+		return false
+	return (
+		snap.queue_progress[queue]
+		>= snap.type_build_ticks[type_index] * Production.PROGRESS_PER_TICK
+	)
 
 
 func _forget_place() -> void:

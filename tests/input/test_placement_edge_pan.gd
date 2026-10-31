@@ -55,6 +55,7 @@ func after_test() -> void:
 	if is_instance_valid(_main):
 		_main.free()
 	UiScale.clear_override()
+	HudLayout.bottom_zone_dp = 0.0
 	CommandQueue.clear()
 
 
@@ -86,6 +87,9 @@ func test_a_drag_in_each_edge_band_scrolls_the_map_that_way_at_the_configured_sp
 			assert_vector(_placement.tile).override_failure_message(note).is_equal(under)
 			assert_vector(_placement.tile).override_failure_message(note).is_not_equal(start)
 			assert_array(_sent).override_failure_message(note).is_empty()
+			if edge == DOWN and HudLayout.is_portrait():
+				var band_top: float = _build_band().position.y
+				assert_float(_centre().y).override_failure_message(note).is_less(band_top)
 			TouchEvents.release(get_viewport(), 0, finger)
 
 
@@ -97,7 +101,8 @@ func test_a_corner_scrolls_along_the_diagonal_at_the_same_speed() -> void:
 		_reset()
 		var safe: Rect2 = UiScale.safe_rect_base()
 		var band: float = UiScale.dp(_controller.settings.edge_band_dp)
-		var finger: Vector2 = Vector2(safe.end.x - band * 0.5, safe.end.y - band * 0.5)
+		var floor_y: float = safe.end.y - HudLayout.bottom_zone_px()
+		var finger: Vector2 = Vector2(safe.end.x - band * 0.5, floor_y - band * 0.5)
 		_grab_and_drag_to(finger)
 		var held: Vector2 = _camera.position
 		_hold(HOLD_FRAMES, FRAME)
@@ -176,7 +181,7 @@ func test_the_speed_is_the_same_at_any_frame_rate_and_any_zoom() -> void:
 		[HOLD_FRAMES, FRAME],
 		[HOLD_FRAMES / 2, FRAME * 2.0],
 		[HOLD_FRAMES * 2, FRAME * 0.5],
-		[1, total],
+		[2, total * 0.5],
 	]
 	var shifts: Array[Vector2] = []
 	for plan: Array in plans:
@@ -207,6 +212,100 @@ func test_the_speed_is_the_same_at_any_frame_rate_and_any_zoom() -> void:
 			UiScale.dp(_speed_dp()) * total, TOLERANCE_PX
 		)
 		TouchEvents.release(get_viewport(), 0, edge)
+
+
+## A frame that stalled (a hitch, an app coming back) scrolls for `edge_pan_max_step_ms` and no
+## longer: half a second in one frame moves the map as far as a tenth of one, not 150 dp at once.
+## The longest step is data too.
+func test_a_stalled_frame_scrolls_no_further_than_the_longest_step() -> void:
+	var tuned: InputSettings = _controller.settings.duplicate()
+	_controller.settings = tuned
+	var finger: Vector2 = _in_band(RIGHT)
+	var step: float = tuned.edge_pan_max_step_ms / 1000.0
+	var shifts: Array[float] = []
+	for delta: float in [step, step * 5.0, step * 50.0]:
+		_reset()
+		_grab_and_drag_to(finger)
+		var held: float = _camera.position.x
+		_hold(1, delta)
+		shifts.append(_camera.position.x - held)
+		TouchEvents.release(get_viewport(), 0, finger)
+	assert_float(shifts[0]).is_greater(0.0)
+	assert_float(shifts[1]).is_equal_approx(shifts[0], TOLERANCE_PX)
+	assert_float(shifts[2]).is_equal_approx(shifts[0], TOLERANCE_PX)
+	var expected: float = UiScale.dp(_speed_dp()) * step / _camera.zoom.x
+	assert_float(shifts[0]).is_equal_approx(expected, TOLERANCE_PX)
+	# A frame shorter than the step is scrolled whole; a shorter step cuts the stall shorter.
+	tuned.edge_pan_max_step_ms = 50
+	_reset()
+	_grab_and_drag_to(finger)
+	var before: float = _camera.position.x
+	_hold(1, step * 5.0)
+	assert_float(_camera.position.x - before).is_equal_approx(shifts[0] * 0.5, TOLERANCE_PX)
+	TouchEvents.release(get_viewport(), 0, finger)
+
+
+## The dp and the safe area are read when the window changes, not by every frame of a scroll: a
+## `UiScale` override put in without a resize is not seen until `read_metrics` (what the resize
+## does), which then takes the new bands.
+func test_the_metrics_are_read_when_the_window_changes_and_not_every_frame() -> void:
+	var band: float = UiScale.dp(_controller.settings.edge_band_dp)
+	var finger: Vector2 = Vector2(band + 8.0, UiScale.safe_rect_base().get_center().y)
+	assert_vector(_placement.edge_heading(finger)).is_equal(Vector2.ZERO)
+	var phone: UiMetrics = UiProfiles.by_name(&"android_6in")
+	UiScale.set_override(phone)
+	assert_float(UiScale.dp(_controller.settings.edge_band_dp)).is_greater(finger.x)  # A wider band.
+	assert_vector(_placement.edge_heading(finger)).is_equal(Vector2.ZERO)  # Not seen yet.
+	_placement.read_metrics()
+	assert_vector(_placement.edge_heading(finger)).is_equal(LEFT)
+	UiScale.clear_override()
+	_placement.read_metrics()
+	assert_vector(_placement.edge_heading(finger)).is_equal(Vector2.ZERO)
+	# A resize reads them by itself.
+	get_window().size = ScreenSizes.PORTRAIT[0]
+	await await_idle_frame()
+	var safe: Rect2 = UiScale.safe_rect_base()
+	var narrow: Vector2 = Vector2(safe.end.x - 1.0, safe.get_center().y)
+	assert_vector(_placement.edge_heading(narrow)).is_equal(RIGHT)
+	get_window().size = ScreenSizes.LANDSCAPE[0]
+	await await_idle_frame()
+	assert_vector(_placement.edge_heading(narrow)).is_equal(Vector2.ZERO)
+
+
+## In portrait the build band covers the bottom of the map view, so the bottom band is the strip
+## just above it, not the safe area's last 32 dp under it: a drag south scrolls while the ghost is
+## still in view above the build band, and a finger at the safe area's bottom edge, deep in the
+## band, still scrolls (it has not let go).
+func test_in_portrait_the_bottom_band_is_above_the_build_band_and_the_ghost_stays_in_view() -> void:
+	for size: Vector2i in ScreenSizes.PORTRAIT:
+		get_window().size = size
+		await await_idle_frame()
+		await await_idle_frame()
+		_reset()
+		var note: String = str(size)
+		var safe: Rect2 = UiScale.safe_rect_base()
+		var band: float = UiScale.dp(_controller.settings.edge_band_dp)
+		var covered: float = _build_band().position.y
+		assert_float(HudLayout.bottom_zone_px()).override_failure_message(note).is_greater(0.0)
+		assert_float(covered).override_failure_message(note).is_less(safe.end.y)
+		# The old band, the safe area's last 32 dp, lies inside the build band.
+		assert_float(safe.end.y - band * 0.5).override_failure_message(note).is_greater(covered)
+		var finger: Vector2 = _in_band(DOWN)
+		assert_vector(_placement.edge_heading(finger)).override_failure_message(note).is_equal(DOWN)
+		var above: Vector2 = Vector2(finger.x, safe.end.y - HudLayout.bottom_zone_px() - band * 1.5)
+		assert_vector(_placement.edge_heading(above)).override_failure_message(note).is_equal(
+			Vector2.ZERO
+		)
+		assert_vector(_placement.edge_heading(Vector2(finger.x, safe.end.y - 1.0))).is_equal(DOWN)
+		var start: Vector2 = _camera.position
+		_grab_and_drag_to(finger)
+		_hold(HOLD_FRAMES, FRAME)
+		assert_float(_camera.position.y).override_failure_message(note).is_greater(start.y)
+		assert_float(_centre().y).override_failure_message(note).is_less(covered)  # In view.
+		TouchEvents.release(get_viewport(), 0, finger)
+		assert_float(_centre().y).override_failure_message(note).is_less(covered)  # And stays.
+		assert_bool(_placement.active).override_failure_message(note).is_true()
+		assert_array(_sent).override_failure_message(note).is_empty()
 
 
 ## The band and the speed are data: another `edge_pan_dp_per_s` scrolls at that speed, another
@@ -267,25 +366,40 @@ func test_the_scroll_stops_at_the_cameras_clamp() -> void:
 ## edge but in the safe area's band scrolls, and one a band further in does not; the top band is
 ## the ghost's point's, `ghost_lift_dp` above the finger; the bottom one the finger's.
 func test_the_bands_follow_the_safe_area_and_the_top_one_the_ghost() -> void:
+	for zone_dp: float in [0.0, HudLayout.BAND_MIN_DP]:
+		HudLayout.bottom_zone_dp = zone_dp
+		_bands_follow_the_safe_area()
+	HudLayout.bottom_zone_dp = 0.0
+	UiScale.clear_override()
+	_placement.read_metrics()
+
+
+func _bands_follow_the_safe_area() -> void:
 	for profile_name: StringName in [&"android_6in", &"android_6in_portrait", &"web_tablet"]:
 		var m: UiMetrics = UiProfiles.by_name(profile_name)
+		if HudLayout.bottom_zone_dp > 0.0 and not UiScale.is_portrait_size(m.window_size):
+			continue  # Only a portrait screen has a build band.
 		var cut: Rect2i = Rect2i(
 			CUTOUT_PX, CUTOUT_PX, m.window_size.x - CUTOUT_PX * 2, m.window_size.y - CUTOUT_PX * 2
 		)
 		UiScale.set_override(UiProfiles.with_safe_area(m, cut))
+		_placement.read_metrics()
 		var safe: Rect2 = UiScale.safe_rect_base()
 		var band: float = UiScale.dp(_controller.settings.edge_band_dp)
 		var lift: float = UiScale.dp(_controller.settings.ghost_lift_dp)
 		var middle: Vector2 = safe.get_center()
 		var note: String = str(profile_name)
+		# The portrait build band covers the map view's bottom: its top is where the bottom band ends.
+		var floor_y: float = safe.end.y - HudLayout.bottom_zone_px()
 		# Each: the finger, the heading it earns. The cutout is wider than the band on every side.
 		var cases: Array[Array] = [
 			[Vector2(safe.position.x + band * 0.5, middle.y), LEFT],
 			[Vector2(safe.position.x + band * 1.5, middle.y), Vector2.ZERO],
 			[Vector2(safe.end.x - band * 0.5, middle.y), RIGHT],
 			[Vector2(safe.end.x - band * 1.5, middle.y), Vector2.ZERO],
-			[Vector2(middle.x, safe.end.y - band * 0.5), DOWN],
-			[Vector2(middle.x, safe.end.y - band * 1.5), Vector2.ZERO],
+			[Vector2(middle.x, floor_y - band * 0.5), DOWN],
+			[Vector2(middle.x, floor_y - band * 1.5), Vector2.ZERO],
+			[Vector2(middle.x, safe.end.y - 1.0), DOWN],
 			# The ghost is `lift` above the finger: the top band is that far lower.
 			[Vector2(middle.x, safe.position.y + band + lift - 1.0), UP],
 			[Vector2(middle.x, safe.position.y + band + lift + 1.0), Vector2.ZERO],
@@ -307,10 +421,10 @@ func test_the_bands_follow_the_safe_area_and_the_top_one_the_ghost() -> void:
 		)
 		# Without the cutout the same fingers are in the middle of the screen: nowhere near an edge.
 		UiScale.set_override(m)
+		_placement.read_metrics()
 		assert_vector(_placement.edge_heading(cases[1][0])).override_failure_message(note).is_equal(
 			Vector2.ZERO
 		)
-	UiScale.clear_override()
 
 
 func test_a_turn_during_the_scroll_ends_it_and_queues_no_command_or_hash_change() -> void:
@@ -416,8 +530,9 @@ func _hold(frames: int, delta: float) -> void:
 		_touch._process(delta)
 
 
-## A finger half a band inside the edge `edge` heads for, on the safe area; the other axis in the
-## middle, where it earns no heading (the top band counts from the ghost, `ghost_lift_dp` higher).
+## A finger half a band inside the edge `edge` heads for, on the map view (the safe area, less the
+## portrait build band at the bottom); the other axis in the middle, where it earns no heading (the
+## top band counts from the ghost, `ghost_lift_dp` higher).
 func _in_band(edge: Vector2) -> Vector2:
 	var safe: Rect2 = UiScale.safe_rect_base()
 	var band: float = UiScale.dp(_controller.settings.edge_band_dp)
@@ -430,8 +545,15 @@ func _in_band(edge: Vector2) -> Vector2:
 	elif edge == UP:
 		at.y = safe.position.y + band * 0.5 + lift
 	else:
-		at.y = safe.end.y - band * 0.5
+		at.y = safe.end.y - HudLayout.bottom_zone_px() - band * 0.5
 	return at
+
+
+## The build menu's box, base px (the portrait band, or the landscape panel).
+func _build_band() -> Rect2:
+	return (
+		(_main.get_node("Hud").find_child("BuildSidebar", true, false) as Control).get_global_rect()
+	)
 
 
 func _speed_dp() -> float:

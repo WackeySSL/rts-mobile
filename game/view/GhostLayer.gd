@@ -45,6 +45,8 @@ var last_glyph_px: float = 0.0  ## Its side on the screen, base px, for the test
 var last_word: String = ""  ## The word the last frame drew, "" for none, for the tests.
 var last_word_px: float = 0.0  ## Its font size on the screen, base px, for the tests.
 var last_parts: int = 0  ## Sprite regions (body, head) the last frame drew, for the tests.
+## The box the last frame drew the head in, world px, empty for none, for the tests.
+var last_head: Rect2 = Rect2()
 
 var _marks: RuntimeAtlas = null  ## Made when the first ghost is drawn.
 var _was_on: bool = false
@@ -151,15 +153,6 @@ func head_region() -> Rect2i:
 	return _head
 
 
-## Where the head is drawn, world px: its picture's box, whose pivot (`origin(head)` from its top
-## left) is on the sheet's mount; empty without a head.
-func head_rect() -> Rect2:
-	if not _head.has_area() or placement == null or not placement.active:
-		return Rect2()
-	var ground: Vector2i = placement.centre_ground()
-	return Rect2(IsoProjection.ground_to_px(ground.x, ground.y) + _head_origin, _head_size)
-
-
 ## How far the picture rises above the footprint's centre, world px at zoom 1; 0 without a sprite.
 func rise_px() -> float:
 	return _rise
@@ -174,6 +167,7 @@ static func quad_rect(cell: Vector2i, margin: int) -> Rect2:
 func _draw() -> void:
 	last_marks = 0
 	last_parts = 0
+	last_head = Rect2()
 	last_glyph = null
 	last_glyph_px = 0.0
 	last_word = ""
@@ -223,9 +217,8 @@ func _sprite() -> void:
 	)
 	last_parts = 1
 	if _head.has_area():
-		draw_texture_rect_region(
-			texture, Rect2(centre + _head_origin, _head_size), Rect2(_head), fade
-		)
+		last_head = Rect2(centre + _head_origin, _head_size)
+		draw_texture_rect_region(texture, last_head, Rect2(_head), fade)
 		last_parts = 2
 
 

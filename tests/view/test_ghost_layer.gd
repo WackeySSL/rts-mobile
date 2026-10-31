@@ -195,7 +195,7 @@ func test_a_defences_ghost_draws_its_head_on_the_mount_and_a_plant_draws_none() 
 	await await_idle_frame()
 	await await_idle_frame()
 	assert_bool(_layer.head_region().has_area()).is_false()
-	assert_bool(_layer.head_rect().has_area()).is_false()
+	assert_bool(_layer.last_head.has_area()).is_false()
 	assert_int(_layer.last_parts).is_equal(1)
 	_placement.cancel()
 	var roster: ScenarioDef = Rig.scenario_for(
@@ -217,13 +217,13 @@ func test_a_defences_ghost_draws_its_head_on_the_mount_and_a_plant_draws_none() 
 	var ground: Vector2i = _placement.centre_ground()
 	var centre: Vector2 = IsoProjection.ground_to_px(ground.x, ground.y)
 	var pivot: Vector2 = (
-		_layer.head_rect().position + Vector2(sheet.origin(&"head")) * WorldSort.ART_SCALE
+		_layer.last_head.position + Vector2(sheet.origin(&"head")) * WorldSort.ART_SCALE
 	)
 	assert_vector(pivot).is_equal_approx(
 		centre + sheet.mount(UnitLayer.D_EAST) * WorldSort.ART_SCALE, Vector2.ONE * 0.01
 	)
 	var drawn: Vector2 = Vector2(east.size) * (WorldSort.ART_SCALE / sort.atlas.bake_scale())
-	assert_vector(_layer.head_rect().size).is_equal_approx(drawn, Vector2.ONE * 0.01)
+	assert_vector(_layer.last_head.size).is_equal_approx(drawn, Vector2.ONE * 0.01)
 	_placement.cancel()
 	assert_bool(_layer.head_region().has_area()).is_false()
 

@@ -164,25 +164,98 @@ func test_a_refused_place_blocks_the_ghost_and_keeps_the_mode() -> void:
 	assert_int(_buildings_at(_runner.snapshot, HOME)).is_equal(0)
 
 
-## The refusal the snapshot did not foresee at all: it still calls the tile a fit (here the plant is
-## ready in the published snapshot only, so the sim finds nothing to place). The ghost is red with
-## the occupied glyph and the word all the same, and a confirm after a move goes out again.
+## The refusal the answering snapshot does not show: a tank touches the footprint's east edge when
+## the tick starts, so the sim refuses the PLACE, and drives off in that same tick, so the snapshot
+## calls the tile a fit again. The ghost is red with the occupied glyph and the word all the same,
+## and the structure is still ready.
 func test_a_refusal_on_a_tile_the_snapshot_calls_a_fit_is_blocked_too() -> void:
-	await _open_with_plant(false)
+	await _open_with_plant()
 	_place_at(HOME)
+	var world: World = _runner.world
+	var type: int = world.type_ids.find(&"light_tank")
+	var tank: int = world.add_unit(1, type, 12000 + world.type_radius[type], 7000)
+	CommandQueue.submit(Command.move(1, PackedInt32Array([tank]), 30000, 7000))
 	assert_bool(_placement.confirm()).is_true()
 	_runner.run_ticks(1)
+	assert_int(world.dropped_commands).is_equal(1)
 	assert_array([_placement.active, _placement.blocked]).is_equal([true, true])
-	assert_int(_placement.reason).is_equal(Placement.Reason.OK)
+	assert_int(_placement.reason).is_equal(Placement.Reason.OK)  # The tank has left the footprint.
 	assert_bool(_placement.fits()).is_false()
 	await _settle()
 	assert_that(_layer.tint()).is_equal(GhostLayer.DANGER)
 	_expect_blocked_drawn(Placement.Reason.OCCUPIED)
 	_place_at(ELSEWHERE)
 	assert_bool(_placement.confirm()).is_true()
-	assert_array(_sent).has_size(2)
 	_runner.run_ticks(1)
-	assert_bool(_placement.blocked).is_true()  # Refused again: blocked again.
+	assert_int(_buildings_at(_runner.snapshot, ELSEWHERE)).is_equal(1)  # Moved and built.
+	assert_bool(_placement.active).is_false()
+
+
+## The X while the PLACE is pending, then a tap on the card, which still says READY: the first PLACE
+## builds and uses the structure up. The new ghost's confirm is refused, and since no ready
+## structure is left the mode ends with the answer instead of "Blocked", which no move would cure.
+func test_the_x_and_a_new_begin_while_a_place_is_in_flight_end_with_the_second_answer() -> void:
+	await _open_with_plant()
+	_place_at(HOME)
+	assert_bool(_placement.confirm()).is_true()
+	_placement.cancel()  # The X.
+	assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()  # The card says READY.
+	_place_at(ELSEWHERE)
+	_runner.run_ticks(1)  # The first PLACE builds at HOME.
+	assert_int(_buildings_at(_runner.snapshot, HOME)).is_equal(1)
+	assert_array([_placement.active, _placement.pending, _placement.blocked]).is_equal(
+		[true, false, false]
+	)
+	assert_bool(_placement.confirm()).is_true()  # The ghost still looks fine to the player.
+	_runner.run_ticks(1)
+	assert_array([_placement.active, _placement.pending, _placement.blocked]).is_equal(
+		[false, false, false]
+	)
+	assert_int(_runner.world.dropped_commands).is_equal(1)  # The second one, refused.
+	assert_array(_sent).has_size(2)
+	assert_int(_buildings_at(_runner.snapshot, ELSEWHERE)).is_equal(0)
+
+
+## What counts as built: the local player's building of the type being placed exactly at the ghost's
+## centre. Another player's building of the type, the player's own of another type, and its own of
+## the type a tile off do not; the right one does.
+func test_only_the_local_players_building_of_the_type_at_the_ghosts_centre_counts_as_built(
+) -> void:
+	await _open_with_plant()
+	_place_at(HOME)
+	var plant: int = Rig.plant(_runner.snapshot)
+	var other: int = (plant + 1) % _runner.snapshot.type_ids.size()
+	assert_int(other).is_not_equal(plant)
+	var at: Vector2i = _placement.centre_ground()
+	var rows: Array[Array] = [
+		[2, plant, at.x, at.y],  # Another player's, of the type.
+		[1, other, at.x, at.y],  # The player's, of another type.
+		[1, plant, at.x + 1000, at.y],  # The player's, of the type, a tile east.
+		[1, plant, at.x, at.y + 1000],  # And a tile south.
+	]
+	var snap: MatchSnapshot = MatchSnapshot.new()
+	for row: Array in rows:
+		assert_bool(_placement._built(_snapshot_of(snap, [row]))).is_false()
+	assert_bool(_placement._built(_snapshot_of(snap, rows))).is_false()
+	rows.append([1, plant, at.x, at.y])
+	assert_bool(_placement._built(_snapshot_of(snap, rows))).is_true()
+
+
+## The end of the match ends a pending placement: no tick follows, so a PLACE that was never taken
+## would leave the ghost pending for good. Here the sink does not pass the Command on, and the
+## match ends by a surrender.
+func test_the_end_of_the_match_ends_a_pending_placement() -> void:
+	await _open_with_plant()
+	_controller.command_sink = func(command: Command) -> void: _sent.append(command)
+	_place_at(HOME)
+	assert_bool(_placement.confirm()).is_true()
+	assert_int(_sent[0].tick).is_equal(-1)  # Never taken by the runner.
+	CommandQueue.submit(Command.surrender(1))
+	_runner.run_ticks(3)
+	assert_int(_runner.snapshot.match_end_tick).is_greater(0)
+	assert_array([_placement.active, _placement.pending, _placement.blocked]).is_equal(
+		[false, false, false]
+	)
 
 
 ## The answer is a building at the ghost's centre, not any of the type: with a plant standing at
@@ -315,9 +388,9 @@ func _buildings_at(snap: MatchSnapshot, tile: Vector2i) -> int:
 
 
 ## A new main scene on the phone in the match of the rig with a light tank in the roster, the
-## Commands caught and passed on. With `real` the plant is built through the queue; without, it is
-## ready in the published snapshot only. The ground is explored and the mode begun on it.
-func _open_with_plant(real: bool = true) -> void:
+## Commands caught and passed on, the plant built through the queue (it is READY) and the mode
+## begun on it.
+func _open_with_plant() -> void:
 	if is_instance_valid(_main):
 		_main.free()
 	var phone: UiMetrics = UiProfiles.by_name(&"android_6in")
@@ -341,15 +414,27 @@ func _open_with_plant(real: bool = true) -> void:
 		_sent.append(command)
 		CommandQueue.submit(command)
 	_camera.centre_on(IsoProjection.cell_centre_px(HOME.x, HOME.y))
-	if real:
-		CommandQueue.submit(Command.queue(1, Rig.plant(_runner.snapshot)))
-		_runner.run_ticks(BUILD_TICKS)
-	else:
-		Rig.make_ready(_runner.snapshot)
-		Rig.explore(_runner.snapshot)
+	CommandQueue.submit(Command.queue(1, Rig.plant(_runner.snapshot)))
+	_runner.run_ticks(BUILD_TICKS)
 	var queue: int = World.TABS + World.Tab.STRUCTURES
 	assert_int(_runner.snapshot.queue_count[queue]).is_equal(1)
 	assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()
+
+
+## `snap` with the buildings of `rows`, each [owner, type index, x, y], and nothing else.
+func _snapshot_of(snap: MatchSnapshot, rows: Array[Array]) -> MatchSnapshot:
+	snap.unit_id = PackedInt32Array()
+	snap.owner = PackedInt32Array()
+	snap.type_index = PackedInt32Array()
+	snap.pos_x = PackedInt32Array()
+	snap.pos_y = PackedInt32Array()
+	for row: Array in rows:
+		snap.unit_id.append(snap.unit_id.size() + 1)
+		snap.owner.append(row[0])
+		snap.type_index.append(row[1])
+		snap.pos_x.append(row[2])
+		snap.pos_y.append(row[3])
+	return snap
 
 
 ## The ghost on tile `tile` by a tap there.
