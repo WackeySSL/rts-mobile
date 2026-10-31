@@ -44,6 +44,11 @@ P115b merged it. No accepted text changed.
 Status note (2026-10-30, P26am docs): §3 carries a dated status note that narrows the P26ak note's
 attack on an enemy building to the one the sim takes. No accepted text changed.
 
+Status note (2026-10-31, P26an docs): §2 carries a dated status note on placement as P86 merged
+it: a tap on the ghost's own silhouette leaves it and the 24 dp ring moves it, the lift and the
+grab margin are settings, and placement and the strike aim exclude each other. No accepted text
+changed.
+
 ## Context
 - `touch-ui-rules` already fixes, in its gesture table and its "Building placement" section: tap an
   own building selects it and "a production building opens its build tab"; tap minimap moves the
@@ -150,6 +155,23 @@ faded over them; the tile under the reference point is `floor` of `IsoProjection
 the grab area is the building's **silhouette plus 24 dp** (ADR 0023 §3). The ghost still follows
 the finger 64 dp above the touch point and snaps to tiles. In landscape the check mark and X sit in
 the floating build panel in place of the card row (§1's note). The rest of §2 is unchanged.
+
+Status note (2026-10-31, P26an docs, P86 as merged, #246, 8790d2b; the text and the notes above
+stay as accepted and as dated):
+- **Taps on and near the ghost.** "A tap on the ground moves the ghost to that tile" holds
+  everywhere but on the ghost itself: a tap on the ghost's own silhouette (no margin) leaves it
+  where it is, and a tap in the 24 dp ring round the silhouette moves it to the tapped tile like
+  any other ground tap. A drag that starts on the silhouette or in that ring moves the ghost.
+- **The settings.** The lift (64 dp) and the grab margin (24 dp) are `ghost_lift_dp` and
+  `ghost_grab_dp` in `data/input_settings.tres`, not constants. The margin is measured across
+  each edge of the silhouette, also past the diamond's two lower edges; at the corners of the box
+  part it reaches about 1.41 x 24 dp.
+- **Placement and the strike aim exclude each other** (P86's choice, in `PlacementController`; ADR
+  0023 §10 names only the targeting mode): entering placement ends a
+  strike aim, and starting a strike aim ends placement with no Command (the structure stays
+  ready), so one mode owns the map's taps.
+- **Not yet:** confirm ends the mode at once after its `PLACE`. The pending state, "Blocked" and
+  the edge pan are plan row P86b.
 
 ### 3. Buildings and harvesters on the map
 - Tap an own building: it alone is selected; the selection panel shows it. Buildings never join a
