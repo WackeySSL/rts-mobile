@@ -59,6 +59,9 @@ rupture craters in `DecalLayer` and the `StrikeMarkerLayer` the draw-call foreca
 pick order P115b merged, where a rupture's burst and crater show, and the strike's 64 dp check
 mark and X (P112c). No accepted text changed.
 
+Status note (2026-10-31, P26an docs): §2 carries a dated status note on the `GhostLayer` (P86)
+the draw-call forecast left out. No accepted text changed.
+
 ## Decisions in short
 | # | Topic | Decision |
 | --- | --- | --- |
@@ -296,6 +299,19 @@ Status note (2026-10-30, P26am docs, P112b #244, 02947bb, as merged; the notes a
   of its own between other layers, so at least one more call: 15 at those moments in a base-arena
   match, still far under the trigger of 40. Its exact count is for P114's counting method; nothing
   has counted it yet.
+
+Status note (2026-10-31, P26an docs, P86 as merged, #246, 8790d2b; the notes above stand):
+- **Draw-call forecast:** neither the forecast of 13 nor the notes above list `GhostLayer` (z 60,
+  in the z table since acceptance). It draws only while placement is on, and then from two pages
+  and one glyph: the wash on `GhostMarks`' page, the building's body faded on the match atlas,
+  the hatch and the frame on `GhostMarks`' page again, and, where the ghost does not fit, the
+  reason's glyph. So it adds about 3 calls while the ghost fits and 4 while it does not (1 or 2
+  for a type with no art on the atlas), between `EffectsLayer` and `RallyLayer`. Placement and the
+  strike aim exclude each other (ADR 0019 §2's note of 2026-10-31), so the aim ring never adds to
+  it; a rupture warning can (every player sees it). The worst case in a base-arena-like match is
+  then about 19, still far under the trigger of 40. Nothing has counted it yet; P114's method
+  counts it. The placement controls are HUD and outside the forecast, as every control is. The
+  perf arena scene has no build menu, so its card never draws a ghost.
 
 ### 3. Picking, selection and placement
 - **Ground taps:** `IsoProjection.px_to_ground` of the camera's world point, rounded to milli.

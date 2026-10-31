@@ -41,6 +41,10 @@ names). No accepted text changed.
 Status note (2026-10-30, P26am docs): §5 carries a dated status note on the second writer of the
 last-seen records, `LastSeen.forget_dead` in REMOVE (P77b, #241). No accepted text changed.
 
+Status note (2026-10-31, P26an docs): §5 carries a dated status note that narrows the P26am
+note's claim on P93's bounds: the base arena reaches neither the REMOVE drop nor a ghost (P93,
+#248). No accepted text changed.
+
 ## Context
 What earlier ADRs already decided for Phase 3:
 - **ADR 0007 §2:** "Buildings (Phase 3) are rows of the same table", so targeting, damage, death
@@ -275,6 +279,15 @@ from the first dead row on (a few array reads per row, no allocation). P77b also
 rule the footprint's: `LastSeen` remembers a building when any cell of its footprint is visible
 to the player and forgets a record when any cell of its spot is seen empty, the rule of
 `BuildingLayer.any_cell_seen`, where P77 used the centre tile.
+
+Status note (2026-10-31, P26an docs, P93 as merged, #248, f1798b2; the notes above stay as
+dated): the note above says too much in "P93's base-arena bounds see these checks on every tick
+in which a building dies". The base arena loses no building and no player in it records an enemy
+building, so P93's `MEMORY_CHECKS` bound (28 measured, 35 with the margin) is the MEMORY phase
+alone, one check per building row, and `LastSeen.forget_dead` in REMOVE is not exercised there.
+The `ghosts` section of the state hash is empty at every pinned checkpoint of both arenas, so no
+golden hash guards `LastSeen` yet. A later scenario row may let a side see or lose an enemy
+building and re-pin under exception 3; P93b re-measures the bound.
 
 ### 6. The snapshot
 P70 lists every new `ROW_ARRAYS`, `TYPE_ARRAYS` and `MAP_ARRAYS` name in `MatchSnapshot.NOT_COPIED`
