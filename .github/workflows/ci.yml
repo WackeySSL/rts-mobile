@@ -120,6 +120,10 @@ jobs:
       # P51: the two PERF lines of tests/perf/test_sim_perf.gd, the GDScript one (PERF sim units=) and the native
       # one (PERF sim impl=native), copied from the verify log. Without the SimKernels library the suite prints a
       # plain note, which is no PERF line, so only the first shows.
+      # P96: the two PERF lines of tests/perf/test_base_arena_perf.gd (PERF bases units= and PERF bases impl=native
+      # units=), copied the same way under their own heading, after the PERF sim lines, which show as before. Report
+      # only: nothing gates on them. The WATCH lines (WATCH sim hash_bytes and WATCH bases hash_bytes among them)
+      # stay in the verify log; the summary copies none of them.
       - name: Job summary
         if: always()
         env:
@@ -138,6 +142,12 @@ jobs:
             echo
             echo '```'
             grep -a -E '^PERF sim (units=|impl=native)' "$RUNNER_TEMP/verify.log" 2>/dev/null || echo "no PERF line (the perf suite did not run)"
+            echo '```'
+            echo
+            echo '### PERF bases (the base arena, report only)'
+            echo
+            echo '```'
+            grep -a -E '^PERF bases (units=|impl=native units=)' "$RUNNER_TEMP/verify.log" 2>/dev/null || echo "no PERF bases line (the base arena perf suite did not run)"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 

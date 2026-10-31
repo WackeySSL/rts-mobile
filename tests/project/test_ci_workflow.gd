@@ -76,6 +76,17 @@ const PERF_GREP: String = (
 	+ '"$RUNNER_TEMP/verify.log" 2>/dev/null'
 	+ ' || echo "no PERF line (the perf suite did not run)"'
 )
+## P96: under its own heading, after the PERF sim lines, the same step copies the two PERF lines of
+## the base arena (tests/perf/test_base_arena_perf.gd). Report only.
+const BASES_HEADING: String = "echo '### PERF bases (the base arena, report only)'"
+const BASES_PATTERN: String = "^PERF bases (units=|impl=native units=)"
+const BASES_GREP: String = (
+	"grep -a -E '"
+	+ BASES_PATTERN
+	+ "' "
+	+ '"$RUNNER_TEMP/verify.log" 2>/dev/null'
+	+ ' || echo "no PERF bases line (the base arena perf suite did not run)"'
+)
 const CACHE_STEP: String = "Cache godot-cpp and the SCons object cache"
 const CACHE_KEY: String = "key: ${{ steps.native-key.outputs.key }}"
 ## P55a, the Android job (ADR 0013 sections 8 and 10).
@@ -297,7 +308,8 @@ func test_verify_job_checks_the_native_suites_after_verify_sh() -> void:
 
 
 ## P51: the summary of the verify job copies the GDScript and the impl=native PERF line, after the
-## VERIFY SUMMARY block, in a step that runs when verify.sh failed too.
+## VERIFY SUMMARY block, in a step that runs when verify.sh failed too. P96: the same step then
+## copies the two `PERF bases` lines under a heading of their own (`_assert_perf_bases_summary`).
 func test_verify_job_summary_copies_the_two_perf_lines() -> void:
 	var job: PackedStringArray = _job(_lines("ci.yml"), "  verify:")
 	var step: Array = Array(_step(job, SUMMARY_STEP))
@@ -327,6 +339,7 @@ func test_verify_job_summary_copies_the_two_perf_lines() -> void:
 	]
 	for line: String in skipped:
 		assert_bool(_perf_selected(line)).is_false()
+	_assert_perf_bases_summary(step)
 
 
 ## P55: native-clang builds with the flags its cache key names; gdUnit4 runs only if a suite exists,
@@ -670,8 +683,43 @@ func _assert_cache_step(
 	assert_array(step).contains_exactly(wanted)
 
 
-func _perf_selected(line: String) -> bool:
-	return RegEx.create_from_string(PERF_PATTERN).search(line) != null
+## P96: the summary step also copies the two `PERF bases` lines, under a heading of their own after
+## the `PERF sim` block. The `PERF sim` selector is the one P51 set, so what that block shows does
+## not change: no `PERF bases` line reaches it, and no `PERF sim` line reaches the new one. The
+## `WATCH` lines (the `WATCH bases hash_bytes` line too) are no `PERF` line.
+func _assert_perf_bases_summary(step: Array) -> void:
+	assert_array(step).contains([BASES_HEADING, BASES_GREP])
+	var heading: int = step.find(BASES_HEADING)
+	assert_int(heading).is_greater(step.find(PERF_GREP))
+	assert_int(step.find(BASES_GREP)).is_greater(heading)
+	var bases_lines: Array[String] = [
+		"PERF bases units=178 ticks=900 runs=3 mean_ms=1.250 hash=a294900896cc6438",
+		"PERF bases impl=native units=178 ticks=900 runs=3 mean_ms=0.410 hash=a294900896cc6438",
+	]
+	var sim_lines: Array[String] = [
+		"PERF sim units=150 ticks=900 runs=3 mean_ms=1.020 hash=4eb974e71b2107be",
+		"PERF sim impl=native units=150 ticks=900 runs=3 mean_ms=0.308 hash=4eb974e71b2107be",
+	]
+	for line: String in bases_lines:
+		assert_bool(_perf_selected(line, BASES_PATTERN)).is_true()
+		assert_bool(_perf_selected(line)).is_false()
+	for line: String in sim_lines:
+		assert_bool(_perf_selected(line)).is_true()
+		assert_bool(_perf_selected(line, BASES_PATTERN)).is_false()
+	# The note without the library, the watch lines and a line that does not start the line are no
+	# PERF bases line.
+	var skipped: Array[String] = [
+		"perf: no PERF bases impl=native line, the SimKernels library is not loaded",
+		"WATCH bases hash_bytes checkpoints=60 min_bytes=20200 max_bytes=24996",
+		"WATCH sim hash_bytes checkpoints=60 min_bytes=19036 max_bytes=27688",
+		" PERF bases units=178 ticks=900",
+	]
+	for line: String in skipped:
+		assert_bool(_perf_selected(line, BASES_PATTERN)).is_false()
+
+
+func _perf_selected(line: String, pattern: String = PERF_PATTERN) -> bool:
+	return RegEx.create_from_string(pattern).search(line) != null
 
 
 func _pin(path: String, pin_name: String) -> String:
