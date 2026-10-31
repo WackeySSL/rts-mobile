@@ -7,6 +7,11 @@ they stand; both merge first, as they are. Amends ADR 0015 §5, ADR 0019 §1, §
 `docs/plans/2026-10-31-collapsible-build-menu.md` (rows P26ao, P85g, P86c, P85f, P85f2). No sim
 rule, Command, definition, data column or hash changes: everything here is view and input state.
 
+Status note (2026-10-31): Michael answered the ADR's three questions the same day ("Answers to
+this ADR's questions" below: 1 A, 2 A, 3 A) and said yes to the `touch-ui-rules` edit of §11 once
+the ADR is accepted. The text below is written to those answers. The status stays proposed until
+he accepts the ADR as a whole.
+
 ## Context
 **Michael, 2026-10-31**, after trying placement (P86) and the Strike test route (P112d) on his
 phone, verbatim: "Det hele virker, men jeg tænker man skulle flytte fluebenet og x ud på selve
@@ -37,6 +42,14 @@ ghost and a drag from it keep their P86 meanings), at least 64 dp each, hidden w
 dragged and shown on release, inside the safe area and the visible map (they flip to the other side
 near an edge), the dimmed check mark's rule unchanged (P86b's `can_confirm`), and with them the
 panel no longer needs the card row's place.
+
+**Answers to this ADR's questions** (Michael, 2026-10-31; the questions are at the end):
+1. **A:** a tap on the Ready badge opens the menu on the Structures tab; placement still starts from
+   the READY card (§6).
+2. **A:** a pinned menu stays open during placement; placement does not collapse it (§5, §10).
+3. **A:** a tap that selects an own Headquarters, barracks or vehicle factory on the map opens the
+   menu on the tab it builds (§6).
+He also said yes to the `touch-ui-rules` text of §11, applied once the ADR is accepted.
 
 **The code this changes** (`main` at 81c9b61, with P86b and P88 on their branches):
 - `BuildSidebar` (`game/ui/BuildSidebar.gd`) is one `PanelContainer` in `Hud/SafeArea`. Portrait:
@@ -70,9 +83,9 @@ panel no longer needs the card row's place.
 | 2 | Collapsed, portrait | A 96 dp strip on the safe bottom edge: the status line over the Build button and the Ready badge, the minimap at the right end (same box rule as the band) |
 | 3 | Collapsed, landscape | A 56 dp plate at the bottom right: the Ready badge and the Build button; credits and power stay in the pill, the minimap in its slot |
 | 4 | What moves | `HudLayout.bottom_zone_dp` is the menu's real top, animated; the ArmyBar, the strike row and P86b's edge band follow it every frame; the camera, its view rect and the minimap frame do not move |
-| 5 | Collapse | A map gesture (`TouchInput`: tap, double-tap, long-press, pan, pinch, ghost drag, wheel) and the start of placement; never a touch on a HUD control |
-| 6 | Open | The Build button; the Ready badge (question 1); a tap that selects one own producer (question 3); the end of placement restores the state it began in |
-| 7 | Pin (the lock) | A 48 dp toggle at the open menu's top-right corner, a new pin glyph; pinned, nothing collapses the menu (question 2); default unpinned; saved in `user://settings.cfg` by `game/meta` |
+| 5 | Collapse | A map gesture (`TouchInput`: tap, double-tap, long-press, pan, pinch, ghost drag, wheel) and the start of placement, both only while unpinned; never a touch on a HUD control |
+| 6 | Open | The Build button; the Ready badge, on the Structures tab (answer 1 A); a tap that selects one own producer, on its tab (answer 3 A); the end of placement |
+| 7 | Pin (the lock) | A 48 dp toggle at the open menu's top-right corner, a new pin glyph; pinned, nothing collapses the menu, placement included (answer 2 A); default unpinned; saved in `user://settings.cfg` by `game/meta` |
 | 8 | Slide | Height slides over `menu_slide_ms` (`data/input_settings.tres`, 160); the target layout is placed at once and clipped; input never waits; 0 = no slide |
 | 9 | Cues | The Ready badge (the item's picture and the word); low power as today on the status line (strip) or the pill (landscape) |
 | 10 | Check mark and X | `GhostControls`: a column right of the ghost's silhouette, `ghost_grab_dp` + 8 dp out, flipped left, then above, clear of the HUD; hidden during a ghost drag; `PlacementControls` and its card-row place go |
@@ -153,8 +166,9 @@ panel no longer needs the card row's place.
   `StrikeControls` re-run their lift on it (not only on `size_changed`), so **the ArmyBar line and
   the strike row ride on the menu**, 8 dp above its top, through the slide.
 - **P86b's bottom edge band** (`edge_heading`) already reads `bottom_zone_dp` on every call, so it
-  ends at the strip's top during placement (always collapsed, §5) and follows the slide. No line of
-  P86b changes; P85f's test pins it.
+  ends at the menu's real top during placement: the strip's top while unpinned (placement collapses
+  the menu, §5) and the open band's top while pinned (answer 2 A), and it follows the slide. No line
+  of P86b changes; P85f's test pins both cases.
 - **The camera does not move**, nor its zoom: a collapse is triggered by a touch on the map (§5),
   and a camera shift right then would be a pan the player did not make, under the finger that just
   touched. `RtsCamera.visible_world_rect()` stays the whole viewport, so **the minimap's frame does
@@ -175,27 +189,31 @@ panel no longer needs the card row's place.
   the menu itself (a card, a tab, the item row's scroll, a long-press cancel). The player is
   working in the menu while touching it, so it **stays open**. The GUI keeps such a press from the
   recognizer, so `map_gesture` never fires for it and the HUD controls need no change.
-- **The start of placement** (`PlacementController.changed` with `active` turning true): the menu
-  collapses, so the ghost has the screen (the check mark and the X are at the ghost, §10).
-- **Pinned** (§7), none of these collapses it (question 2 for placement).
+- **The start of placement** (`PlacementController.changed` with `active` turning true): an
+  unpinned menu collapses, so the ghost has the screen (the check mark and the X are at the ghost,
+  §10).
+- **Pinned** (§7), none of these collapses it, **placement included** (answer 2 A: Michael's answer
+  3, "it never collapses by itself", wins over "always during placement"). A pinned menu stays open
+  through placement with its cards showing; the check mark and the X stand beside the ghost in the
+  map above the open band (§10), and P86b's bottom edge band ends at the open band's top (§4).
 - Requests are applied in order and the last one in a frame wins; the slide (§8) starts from the
-  height the menu has, so a collapse and an open in the same frame (question 3's producer tap) end
+  height the menu has, so a collapse and an open in the same frame (answer 3's producer tap) end
   OPEN without a visible move.
 
 ### 6. What opens the menu
 - **The Build button** in the strip or the plate (64 x 48 dp, a new glyph, §7).
-- **The Ready badge** (question 1, recommended B): a tap **starts placement of the ready structure
-  at once**, as a tap on its READY card does (`PlacementController.begin`), and the menu stays
-  collapsed. With option A the badge opens the menu on the Structures tab and scrolls the READY card
-  into view instead.
-- **A tap that selects one own production building** (question 3, recommended A): `BuildSidebar`'s
+- **The Ready badge** (answer 1 A): a tap **opens the menu on the Structures tab** and scrolls the
+  item row so the READY card is in view; it starts nothing else. The player then taps the READY card
+  to place the structure, as before, so placement has one way in: the card.
+- **A tap that selects one own production building** (answer 3 A): `BuildSidebar`'s
   `set_selected` opens the menu as well as its tab, as the gesture table says today ("a production
   building opens its build tab"). The tap's own `map_gesture` collapsed it a moment earlier in the
   same frame; §5's last-wins rule leaves it open with no move.
-- **The end of placement** (built, the X, a "Blocked" ghost given up, the match end, a strike aim)
-  puts the menu back in the state it had **when placement began**: OPEN after a READY card's tap,
-  so the next item is one tap away; COLLAPSED after the Ready badge. Map gestures during placement
-  do not change that remembered state.
+- **The end of placement** (built, the X, a "Blocked" ghost given up, a strike aim) puts the menu
+  back in the state it had **when placement began**. Placement begins only on a READY card, in the
+  open menu (answer 1 A), so that state is OPEN: the menu comes back up and the next item is one tap
+  away. Map gestures during placement do not change it. The match's end is the exception: P90's
+  result screen covers the HUD, and the next match starts OPEN anyway (§1).
 - Nothing else opens it: no timer, no event of the match (a structure becoming ready shows the badge
   and does not open the menu).
 
@@ -252,7 +270,9 @@ panel no longer needs the card row's place.
   holds a finished structure at its head (the READY tile state, which the sidebar computes for the
   hidden tiles too). It shows the item's card picture (32 dp, `assets/art/iso/icons/item_<id>.svg`,
   P85e) and the word "Ready" (at least 14 sp), on the READY banner's plate from the theme: a picture,
-  a word and a shape. Hidden while the menu is open (the card says "Ready" there).
+  a word and a shape. Hidden while the menu is open (the card says "Ready" there). A tap on it opens
+  the menu on the Structures tab with the READY card in view (§6, answer 1 A); it is a cue and a way
+  in, not a second start of placement.
 - **Low power:** the strip's status line is the same node with P85c's look (the bar full and amber,
   the bolt a warning triangle); in landscape the pill shows it. P89's pulse goes on that node, so it
   shows in the pill, the band and the strip alike.
@@ -277,10 +297,11 @@ panel no longer needs the card row's place.
   4. If none fits, the right column clamped into the allowed rect: it may then lie under a HUD
      control (which keeps its touch) or over the ghost's grab ring. The edge pan (P86b) and a pan
      move the ghost out of that corner.
-  The allowed rect is the safe rect, its bottom raised by `bottom_zone_dp` (the strip's or the
-  band's real top); "clear of the HUD" means no overlap with a visible HUD control's rect (the
-  ArmyBar, the SelectionPanel, the strike row, the menu, the pill, the minimap's slot, the Dev
-  button). The placement is one static function of (silhouette box, allowed rect, HUD rects, dp,
+  The allowed rect is the safe rect, its bottom raised by `bottom_zone_dp`: the strip's top while
+  unpinned, the open band's top while pinned (answer 2 A), the slide's current height in between,
+  so the buttons never stand on the menu in either state; "clear of the HUD" means no overlap with
+  a visible HUD control's rect (the ArmyBar, the SelectionPanel, the strike row, the menu, the pill,
+  the minimap's slot, the Dev button). The placement is one static function of (silhouette box, allowed rect, HUD rects, dp,
   `ghost_grab_dp`), tested without a scene.
 - **Why right first, and a column:** the column is 64 dp wide, so a side fits on a 360 dp portrait
   screen even for a 3x3 footprint at zoom 1.5 (silhouette 144 dp: 72 + 32 + 64 = 168 dp from the
@@ -299,8 +320,11 @@ panel no longer needs the card row's place.
   the ghost's new tile. `PlacementController.dragging` is the flag, set by `TouchInput` while its
   recognizer is in `GRAB`. Shown while **pending** and **"Blocked"** (P86b): the check mark dimmed
   by `can_confirm()` (unchanged: the ghost fits, no PLACE in flight, not blocked), the X live in
-  every state. A pinned open menu (question 2 A) shows its cards as usual during placement; a tap on
-  the READY card again re-centres the ghost (P86's `begin`, unchanged).
+  every state. A pinned open menu (answer 2 A) shows its cards as usual during placement and is
+  itself in the HUD list the buttons keep clear of; the portrait map above the open band is at least
+  60 % of the safe height less the top line (about 450 dp on the 6-inch phone), so the 144 dp
+  column always finds room beside or above a ghost there. A tap on the READY card again re-centres the ghost (P86's
+  `begin`, unchanged); a tap on another card queues it, as at any time.
 - **The strike's check mark and X stay in the strike row** (ADR 0023 §10, P112). Putting them beside
   the aim's ring is a possible later change, not part of this ADR.
 
@@ -313,7 +337,7 @@ accepted texts stay as they are):
   floor is 188 dp (the head line with the pin). The P68b note's "during placement the check mark and
   X (64 dp) take the item row's place in the zone" no longer holds.
 - **ADR 0019 §1:** the build sidebar collapses and opens as §1-§7 say; selecting an own producer
-  opens it at its tab (question 3). **§2:** "a check mark and an X ... take the place of the item
+  opens it at its tab (answer 3 A). **§2:** "a check mark and an X ... take the place of the item
   row in the sidebar zone" becomes §10 here (beside the ghost); pending, "Blocked" and the dimmed
   check mark unchanged. **§4:** in portrait the minimap is at the right end of the band and of the
   strip.
@@ -321,8 +345,9 @@ accepted texts stay as they are):
   right end, `PANEL_MIN_DP` 232; "during placement the check mark and X take the card row's place"
   no longer holds (the P68e notes in ADR 0015 §5 and ADR 0019 §1-§2 say the same and get the same
   note).
-- **`.claude/skills/touch-ui-rules/SKILL.md`**, with Michael's yes (the file itself is edited only by
-  P26ao after it). The lines and their proposed text:
+- **`.claude/skills/touch-ui-rules/SKILL.md`**: Michael said yes on 2026-10-31; P26ao edits the
+  file once the ADR is accepted, not before. The text also brings the skill's "Building placement"
+  section up to P86 and P86b as merged or in flight. The lines and their proposed text:
 
 > **Line 3 (frontmatter `description`):** "... build menu layout (floating panels in landscape, a
 > band in portrait, both collapsible, ADR 0024), safe areas, ..." (the rest unchanged).
@@ -330,31 +355,54 @@ accepted texts stay as they are):
 > **Gesture table, four rows after line 38:**
 > | Any gesture on the map (tap, double-tap, long-press, drag, pinch) | Also collapses the build menu unless it is pinned; a touch on a HUD control never does |
 > | Tap the build menu's Build button | Open the menu |
-> | Tap the Ready badge | Place the finished structure (as a tap on its card) |
+> | Tap the Ready badge | Open the menu on the Structures tab, the ready card in view |
 > | Tap the pin | Pin or unpin the open build menu (remembered on the device) |
 >
-> **Lines 73-77 (Building placement, second bullet) become:** "Valid tiles are tinted green with a
-> solid outline, invalid red with a hatch and the reason's glyph (never colour alone), from
-> `Placement.reason` on the snapshot. Confirm with a check-mark button, cancel with an X, each at
-> least 64 dp, beside the ghost (ADR 0024 §10): a column right of its silhouette, outside the grab
-> margin, flipped left (then above) near an edge or a HUD control, inside the safe area and above
-> the build menu, hidden while the ghost is dragged. The check mark is dimmed while the ghost does
-> not fit, while a PLACE is pending and while it is "Blocked". Never place a building on touch
-> release alone."
+> **Lines 64-80 (the section "Building placement") become:**
+> "ADR 0019 §2 (Michael's answer 1 B), ADR 0024 §10. Placement mode is local input state; no Command
+> until confirm.
+> - Placement begins with a tap on a ready structure's card. The ghost starts at the tile under the
+>   view centre. A one-finger drag that starts on the ghost (its silhouette plus the grab margin,
+>   ADR 0023 §3) moves it; it follows the finger 64 dp above the touch point, so the finger never
+>   hides it, and snaps to tiles. A tap on the ghost's own silhouette leaves it where it is; a tap in
+>   the grab ring round it, or anywhere else on the ground, moves it to that tile. A one-finger drag
+>   that starts elsewhere pans as usual; pinch and two-finger pan are unchanged; the long-press box
+>   select is off. The lift and the grab margin are `ghost_lift_dp` (64) and `ghost_grab_dp` (24) in
+>   `data/input_settings.tres`.
+> - Placement and the strike aim exclude each other: entering one ends the other with no Command (the
+>   structure stays ready), so one mode owns the map's taps.
+> - Edge pan: while a dragged ghost is within `edge_band_dp` (32) of an edge of the map view, the
+>   camera pans toward that edge at `edge_pan_dp_per_s` (300) of screen at any zoom, one frame
+>   scrolling for at most `edge_pan_max_step_ms` (100), all in `data/input_settings.tres`. The top
+>   band counts from the lifted ghost point, the left, right and bottom bands from the finger. The
+>   bands lie inside the safe area, and in portrait the bottom band ends at the build menu's real top
+>   (`HudLayout.bottom_zone_dp`: the strip's top, or the open band's when the menu is pinned).
+> - Valid tiles are tinted green with a solid outline, invalid red with a hatch and the reason's
+>   glyph (never colour alone), from `Placement.reason` on the snapshot. Confirm with a check-mark
+>   button, cancel with an X, each at least 64 dp, beside the ghost: a column right of its
+>   silhouette, `ghost_grab_dp` + 8 dp out so it never covers the grab ring, flipped left (then above)
+>   near an edge or a HUD control, inside the safe area and above the build menu; hidden while the
+>   ghost is dragged, shown again on release. The check mark is dimmed while the ghost does not fit,
+>   while a PLACE is pending and while it is "Blocked"; the X works in every state. Never place a
+>   building on touch release alone.
+> - After confirm the ghost waits ("pending") until the snapshot shows the building; if the
+>   structure is still ready one published tick after the Command's tick, it turns invalid with
+>   "Blocked". Cancel keeps the structure ready. A turn keeps the ghost's tile and sends nothing; the
+>   check mark and X stay beside the ghost.
+> - Placement collapses the build menu unless it is pinned; a pinned menu stays open with its cards.
+>   When placement ends the menu returns to the state it had when placement began (open, since
+>   placement begins on a card)."
 >
-> **New bullet after line 80:** "Placement collapses the build menu unless it is pinned; when
-> placement ends the menu returns to the state it had when placement began."
->
-> **New section after line 80, "Collapsible build menu (ADR 0024)":**
+> **New section after "Building placement", "Collapsible build menu (ADR 0024)":**
 > - The build menu is open or collapsed. A match starts open. A gesture on the map and the start of
->   placement collapse it; a touch on a HUD control never does, and it stays open while the player
->   works in it. The Build button opens it, the Ready badge places the finished structure, and
->   selecting an own production building opens it at its tab.
+>   placement collapse it unless it is pinned; a touch on a HUD control never does, and it stays
+>   open while the player works in it. The Build button opens it, the Ready badge opens it on the
+>   Structures tab, and selecting an own production building opens it at its tab.
 > - Collapsed: in portrait a 96 dp strip (the credits and power line over the Build button and the
 >   Ready badge, the minimap at its right end); in landscape a 56 dp plate at the bottom right (the
 >   Ready badge and the Build button; the pill and the minimap panel stay).
-> - The pin (48 dp, the open menu's top-right corner) keeps it open; unpinned by default; saved in
->   `user://settings.cfg` by `game/meta`.
+> - The pin (48 dp, the open menu's top-right corner) keeps it open, placement included; unpinned by
+>   default; saved in `user://settings.cfg` by `game/meta`.
 > - The height slides over `menu_slide_ms` (`data/input_settings.tres`); input never waits for it;
 >   the camera never moves with it.
 >
@@ -387,9 +435,12 @@ accepted texts stay as they are):
 - The player gets the map back: in portrait 104 dp more height whenever the menu is collapsed and
   the whole bottom right in landscape; the check mark and X stand where the eye already is.
 - The ArmyBar's height in portrait now depends on the menu's state (it rides up about 100 dp when the
-  menu opens). The menu opens only on a player's tap (the Build button, the badge, a producer, the
+  menu opens). The menu opens only after a player's tap (the Build button, the badge, a producer, the
   end of a placement begun from a card), never by itself, which keeps the bar where the thumb left
   it.
+- Placing a building from the collapsed strip takes one more tap than a badge that placed at once
+  would (the badge, the card, then the check mark); Michael chose that (answer 1 A), so placement
+  keeps one way in, the card, and the menu opens to show what is ready.
 - `HudLayout.bottom_zone_dp` changes during a slide; every reader must follow `zone_changed`, not
   only `size_changed`. A future HUD part above the band joins that signal (review item).
 - One more save file on the device before Phase 5; its one key is the only stored setting until
@@ -398,7 +449,8 @@ accepted texts stay as they are):
   `test_build_sidebar_items_layout`, `test_floating_panels`, `test_hud_layout`,
   `test_minimap_layout` (P88), `test_strike_controls`, `test_touch_target_sizes`,
   `test_ui_orientation_flip`, the portrait profiles; `test_placement_controls` becomes
-  `test_ghost_controls`; `test_placement_edge_pan` (P86b) gains the strip case. Headless proof is
+  `test_ghost_controls`; `test_placement_edge_pan` (P86b) gains the strip case and the pinned
+  open-band case. Headless proof is
   listed in the plan; no timing run is needed.
 - `PlacementControls` and its card-row stand-in go; the strike's own check mark and X keep their
   place, so the two confirm pairs now differ in where they stand (aim: in the strike row; build: at
@@ -420,21 +472,26 @@ accepted texts stay as they are):
   and reopen the menu (a flicker), and a press that the GUI later hands to a control would count.
 - **Squashing the band's content while it slides:** a full re-layout of every tile each frame and
   a crushed picture; the clipped holder slides a finished layout.
+- **A Ready badge that starts placement at once** (the proposal's recommendation): one tap fewer,
+  but a second way into placement; not taken (answer 1 A).
+- **Placement collapsing a pinned menu too:** Michael's "always during placement" read literally;
+  not taken (answer 2 A: a pinned menu never collapses by itself).
+- **A producer tap that collapses the menu like any other map tap:** not taken (answer 3 A).
 - **A padlock for the lock:** it already means "requirement missing" on a card (§7).
 - **Remembering the pin for the session only:** Michael asked for it between matches, in save data.
 - **A swipe on the strip to open it:** a new gesture on a HUD control; Michael asked for a button.
   It can come later beside the button.
 
-## Questions for Michael
+## Questions for Michael (answered 2026-10-31)
+As proposed; "Answers to this ADR's questions" in the Context records the answers.
 1. **The Ready badge.** A: a tap opens the menu on the Structures tab, and you tap the "Ready" card
    to place it (the lead's suggestion). B: a tap starts placing the finished building at once,
-   and the menu stays down. Recommended: **B** (one tap fewer, and the menu does not pop up only to
-   go down again when placement starts).
+   and the menu stays down. Recommended: B. **Answered A** (2026-10-31).
 2. **A pinned menu while you place.** A: pinned means pinned; the menu stays open during placement
    too (the check mark and X are at the ghost, so the menu covers nothing they need). B: placement
    always pulls the menu down, pinned or not, and it comes back when you build or cancel.
-   Recommended: **A** (your answer 3: "it never collapses by itself").
+   Recommended: A. **Answered A** (2026-10-31).
 3. **Tapping your Headquarters, barracks or vehicle factory on the map.** A: the menu opens on the
    tab that building makes, as the tab switch does today. B: it goes down like any other tap on the
-   map; the tab is switched for the next time you open it. Recommended: **A** (you tap a factory to
-   build from it).
+   map; the tab is switched for the next time you open it. Recommended: A. **Answered A**
+   (2026-10-31).

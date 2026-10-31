@@ -1,11 +1,15 @@
 # Plan: the collapsible build menu and the placement controls at the ghost
 
 Date: 2026-10-31. Base: `main` at 81c9b61. Decision: `docs/adr/0024-collapsible-build-menu-and-
-placement-controls-at-the-ghost.md` (**proposed**; three questions for Michael). Phase: 3 (the
-battle-screen HUD of ROADMAP Phase 3, box 3's portrait check). Rows in the style of
-`docs/plans/2026-10-22-phase-3.md`; they join its lanes as a new thread, G2.
+placement-controls-at-the-ghost.md` (**proposed**; its three questions answered on 2026-10-31: 1 A,
+2 A, 3 A). Phase: 3 (the battle-screen HUD of ROADMAP Phase 3, box 3's portrait check). Rows in
+the style of `docs/plans/2026-10-22-phase-3.md`; they join its lanes as a new thread, G2.
 
-**Status.** Proposed. No row starts before the lead's docs row P26ao records Michael's answers.
+**Status.** Proposed. Michael answered ADR 0024's questions on 2026-10-31: the Ready badge opens
+the menu on the Structures tab (1 A), a pinned menu stays open during placement (2 A), and a tap on
+an own producer opens the menu on its tab (3 A); he also said yes to the `touch-ui-rules` text of
+ADR 0024 §11 once the ADR is accepted. No row starts before he accepts the ADR and the lead's docs
+row P26ao records it.
 P86b (`claude/p86b-pending-blocked-edge-pan`, head 78d54a9) and P88 (`claude/p88-minimap`,
 32ec566) finish and merge as they are first (Michael's answer 4); the rows below build on both.
 
@@ -37,8 +41,9 @@ on a button brings it back, and a pin keeps it open (remembered on the device).
 
 ## Command and data changes
 - **Commands:** none. Collapsing, opening, pinning and where the buttons stand are view state; the
-  check mark still sends the one `PLACE` of P86b, the Ready badge (question 1 B) calls the same
-  `PlacementController.begin` a READY card calls.
+  check mark still sends the one `PLACE` of P86b; the Ready badge only opens the menu on the
+  Structures tab (answer 1 A), and placement still begins with `PlacementController.begin` from the
+  READY card.
 - **Data:** `InputSettings.menu_slide_ms: int = 160` and its line in `data/input_settings.tres`
   (`tests/ui/test_input_settings.gd` pins script default = file). The ghost buttons' gap reads the
   existing `ghost_grab_dp`. Layout sizes stay `HudLayout` constants in dp, as today.
@@ -57,15 +62,18 @@ timing run (the perf suites only run inside `verify.sh` as usual).
   top-right corner in both.
 - **The zone is the real top:** at every step of a stepped slide, `HudLayout.bottom_zone_dp` equals
   the menu holder's drawn height, the ArmyBar's bottom is 8 dp above it (within 1 px), and P86b's
-  `edge_heading` turns south at the strip's top, not the band's.
+  `edge_heading` turns south at the strip's top while unpinned and at the open band's top while
+  pinned (answer 2 A).
 - **Triggers** (presses pushed through the viewport, as the scene suites do): a tap, a double-tap, a
   long-press, a pan and a pinch on the map collapse the menu and still do their own work (a move is
   queued, a selection made); a tap on the ArmyBar, the SelectionPanel, the minimap, a tab, a card, a
   long-press on a card and a scroll of the item row do not; entering placement collapses; the end of
-  placement restores the state it began in (from a card: open; from the badge: collapsed); the
+  placement opens the menu again (placement begins on a card, in the open menu); a tap on the Ready
+  badge opens the menu on the Structures tab with the READY card in view and starts no placement; the
   events of a turn's `cancel_all()` do not collapse; a turn keeps the state; a new match starts open;
-  pinned, nothing collapses (and, per question 2, placement does not either).
-- **The producer tap** (question 3 A): one tap on an own vehicle factory ends with the menu open on
+  pinned, nothing collapses, placement included (answer 2 A): the cards stay shown while the ghost
+  is out.
+- **The producer tap** (answer 3 A): one tap on an own vehicle factory ends with the menu open on
   the Vehicles tab and no slide started (heights equal before and after the frame).
 - **The slide:** with `menu_slide_ms` 0 the target shows at once; with 160 and stepped deltas the
   height moves monotonically and reaches the target at 160 ms; a reversal mid-slide continues from
@@ -76,9 +84,10 @@ timing run (the perf suites only run inside `verify.sh` as usual).
   written by a test (the path is a parameter).
 - **Ghost controls:** the static placement function on crafted rects: right; left near the right
   edge; above when neither side fits; the clamped fallback; slid clear of a HUD rect; never inside
-  the grab ring (`ghost_grab_dp` + 8 dp from the silhouette box). In the scene: hidden while the
-  recognizer is in `GRAB` and through an edge pan, shown on release beside the new tile; the check
-  mark dimmed by `can_confirm()` (not fitting, pending, "Blocked"), the X live in all three; one
+  the grab ring (`ghost_grab_dp` + 8 dp from the silhouette box); with the pinned open band in
+  portrait, the buttons stand above the band's real top and clear of it at the six sizes. In the
+  scene: hidden while the recognizer is in `GRAB` and through an edge pan, shown on release beside
+  the new tile; the check mark dimmed by `can_confirm()` (not fitting, pending, "Blocked"), the X live in all three; one
   press on the check mark sends exactly one `PLACE` and the recognizer sees no `TAP`; a press in the
   grab ring still grabs; a turn keeps the buttons beside the ghost at both orientations' sizes.
 - **View only:** a scripted main-scene run with collapses, opens, a pin, slides and a placement ends
@@ -119,7 +128,9 @@ placement") should run after P85f, so that Michael checks the layout that ships.
   inside the safe rect less `bottom_zone_dp`, clear of every visible HUD control or (fallback) under
   it; 64 dp each; hidden during a ghost drag and its edge pan, shown on release; dimmed check mark by
   `can_confirm()`; one press = one `PLACE`, no `TAP`; the card row shows its cards during placement
-  (until P85f, the open menu stays open). No allocation in the per-frame follow.
+  (until P85f, the open menu stays open, as a pinned menu will after it: the buttons then stand
+  above the open band's real top, which is the case P85f's pinned tests keep). No allocation in the
+  per-frame follow.
 - HOW_TO_PLAY (Build menu): the row "Tap a finished building" says "a check mark and an X appear
   beside the ghost, on its right (on its left near the right edge of the screen, above it when
   neither side has room); they hide while you drag the ghost and come back when you let go"; the
@@ -151,14 +162,16 @@ placement") should run after P85f, so that Michael checks the layout that ships.
     never close it" (yes)
   - "Tap Build → the menu slides back up. It also opens when you tap your Headquarters, barracks or
     vehicle factory (on the tab it builds), and when you finish or cancel a placement you began from
-    a card" (yes; the producer clause per question 3)
-  - "Tap the pin (lock) at the menu's top right → the menu stays open until you unpin it; the game
+    a card" (yes)
+  - "Tap the pin (lock) at the menu's top right → the menu stays open until you unpin it, also while
+    you place a building (the check mark and the X stand beside the ghost above it); the game
     remembers it on this device. Unpinned is the default" (yes)
-  - "Tap the "Ready" badge → placement of the finished building begins at once, as a tap on its card
-    does" (question 1 B; with A: "→ the menu opens on the Structures tab")
+  - "Tap the "Ready" badge → the menu opens on the Structures tab with the finished building's card
+    in view; tap that card to place it"
   - The "Look at the screen with the phone sideways/upright" rows add the collapsed forms and say a
     match starts with the menu open; the Army bar section's upright note says the bar rides on the
-    menu's top; the placement rows say placement pulls the menu down (unless pinned, question 2).
+    menu's top; the placement rows say placement pulls the menu down unless it is pinned, and that
+    the menu comes back up when you build or cancel.
 
 ### P85f2 ui/meta: the pin and its save (touch-ux-dev; P85f's named split)
 - The pin toggle in both corners, its glyphs, `game/meta/HudPrefs.gd`, the pinned rule in the
@@ -174,8 +187,12 @@ placement") should run after P85f, so that Michael checks the layout that ships.
   sees them in the art gallery.
 
 ### P26ao docs: ADR 0024 on acceptance (lead)
-- ADR 0024's status and answers; the dated notes of ADR 0024 §11 on ADRs 0015 §5, 0019 §1, §2 and
-  §4 and 0023 §12; the `touch-ui-rules` text quoted in ADR 0024 §11 (Michael's yes); in the phase 3
+- ADR 0024's status (accepted, once Michael accepts it; its answers are already recorded); the
+  dated notes of ADR 0024 §11 on ADRs 0015 §5, 0019 §1, §2 and §4 and 0023 §12; the
+  `touch-ui-rules` text quoted in ADR 0024 §11 (Michael's yes of 2026-10-31, applied on acceptance),
+  which also brings the skill's "Building placement" section up to P86 and P86b (the tap on the
+  silhouette and in the grab ring, `ghost_lift_dp` and `ghost_grab_dp`, placement and the strike aim
+  excluding each other, the edge-pan settings and bands); in the phase 3
   plan one line in the current "Next" text pointing at this plan, and the rows of this plan in its
   work-package table (lane G2). This plan's PR does not edit the phase 3 plan, because the lead's
   open docs row P26an edits the same file.
