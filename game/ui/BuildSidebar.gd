@@ -256,7 +256,8 @@ func open() -> void:
 	_set_open(true)
 
 
-## Collapses the menu to the strip or the plate (section 5). A touch on a HUD control never asks.
+## Collapses the menu to the strip or the plate (section 5): a map gesture, the start of placement
+## or the start of a strike aim asks for it; a touch on the menu's own controls never does.
 func collapse() -> void:
 	_set_open(false)
 
