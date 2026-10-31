@@ -120,6 +120,21 @@ func test_a_cancel_during_a_grab_ends_it_with_no_event_and_its_lift_is_nothing()
 	assert_str(_log()).is_empty()
 
 
+## The edge pan (P86b) asks, every frame, whether a ghost drag is on (the GRAB state) and where its
+## finger rests, because GHOST_DRAG comes only when the finger moves.
+func test_the_grab_position_is_where_the_finger_of_a_ghost_drag_rests() -> void:
+	_down(0, ON, 0)
+	_move(0, ON + Vector2(5, 0), 10)  # Inside the slop: not a drag yet.
+	assert_int(_rec.state()).is_equal(GestureRecognizer.State.PENDING)
+	_move(0, ON + Vector2(30, 0), 20)
+	assert_int(_rec.state()).is_equal(GestureRecognizer.State.GRAB)
+	assert_vector(_rec.grab_position()).is_equal(ON + Vector2(30, 0))
+	_move(0, ON + Vector2(40, 10), 30)
+	assert_vector(_rec.grab_position()).is_equal(ON + Vector2(40, 10))
+	_up(0, ON + Vector2(40, 10), 40)
+	assert_int(_rec.state()).is_equal(GestureRecognizer.State.IDLE)  # And then it is not a grab.
+
+
 func test_a_recognizer_with_no_grab_test_never_grabs() -> void:
 	_rec.grab_test = Callable()
 	_down(0, ON, 0)

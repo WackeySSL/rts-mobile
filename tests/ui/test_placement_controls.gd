@@ -2,8 +2,9 @@ extends GdUnitTestSuite
 ## The build menu's side of placement mode (plan P86, ADR 0019 section 2, ADR 0023 section 12), in
 ## the main scene through the real GUI. A tap on a READY card begins the mode; the check mark and
 ## the X take the card row's place in the floating panel (the band in portrait), the panel keeping
-## its size. The check mark is dimmed while the ghost does not fit; a tap on it sends exactly one
-## PLACE and ends the mode, and the X ends it with no Command. At the six sizes of ScreenSizes.ALL
+## its size. The check mark is dimmed while the ghost does not fit, while a PLACE is pending and
+## while the ghost is "Blocked" (P86b); a tap on it sends exactly one PLACE, and the X ends the mode
+## with no Command in every state. At the six sizes of ScreenSizes.ALL
 ## with the engine's own metrics and at every profile of both orientations, also with a cutout,
 ## each of the two is inside the safe rect and its panel, 64 dp across, a gap from the other and
 ## clear of every other HUD control, and the HUD does not grow. A turn keeps the ghost and moves the
@@ -89,14 +90,22 @@ func test_the_check_mark_sends_exactly_one_place_and_the_x_sends_nothing() -> vo
 	await _settle()
 	_move_ghost(Vector2i(11, 7))
 	_tap_control(_hud("PlaceConfirm"))
-	_tap_control(_hud("PlaceConfirm"))  # The controls are gone: a second tap finds no button.
+	await _settle()
+	assert_bool((_hud("PlaceConfirm") as Button).disabled).is_true()  # Spent: the PLACE is pending.
+	_tap_control(_hud("PlaceConfirm"))  # A second tap finds a dimmed button.
 	assert_array(_sent).has_size(1)
 	var place: Command = _sent[0]
 	assert_array([place.type, place.player_id]).is_equal([Command.Type.PLACE, 1])
 	assert_array([place.target_x, place.target_y]).is_equal([10500, 6500])
+	assert_bool(_placement.active).is_true()  # The mode waits for the sim's answer.
+	assert_bool(_placement.pending).is_true()
+	assert_bool((_hud("Items") as Control).visible).is_false()
+	assert_bool((_hud("PlaceCancel") as Button).disabled).is_false()  # The X works while pending.
+	_tap_control(_hud("PlaceCancel"))
 	assert_bool(_placement.active).is_false()
 	await _settle()
 	assert_bool((_hud("Items") as Control).visible).is_true()
+	assert_array(_sent).has_size(1)
 
 
 func test_the_check_mark_is_dimmed_while_the_ghost_does_not_fit_and_a_tap_on_it_does_nothing(
@@ -165,6 +174,38 @@ func test_every_control_is_64_dp_inside_the_safe_rect_and_its_panel_and_clear_of
 		assert_that(area).override_failure_message(why).is_equal(get_viewport().get_visible_rect())
 
 
+## A PLACE pending and a ghost "Blocked" (P86b) change the check mark's state and nothing else: at
+## every screen the two controls stay where they were, 64 dp across, the check mark dimmed and the
+## X working. The sim's refusal is stood in for by a tick that never got the Command (this suite's
+## sink only catches it), which the test stamps with the tick the runner would have taken it at.
+func test_pending_and_blocked_dim_the_check_mark_and_leave_both_controls_where_they_are() -> void:
+	for screen: Dictionary in _screens(null):
+		await _open(screen["size"], screen["metrics"])
+		var why: String = str(screen["label"])
+		_tap(_tile())
+		await _settle()
+		_move_ghost(Vector2i(11, 7))
+		await _settle()
+		var rests: Array[Rect2] = [_rect("PlaceConfirm"), _rect("PlaceCancel")]
+		(
+			assert_bool((_hud("PlaceConfirm") as Button).disabled)
+			. override_failure_message(why)
+			. is_false()
+		)
+		assert_bool(_placement.confirm()).override_failure_message(why).is_true()
+		await _settle()
+		_expect_dimmed_in_place(rests, why + " pending")
+		_sent[0].tick = _runner.snapshot.tick
+		_runner.run_ticks(1)
+		await _settle()
+		assert_bool(_placement.blocked).override_failure_message(why).is_true()
+		assert_bool(_placement.pending).override_failure_message(why).is_false()
+		_expect_dimmed_in_place(rests, why + " blocked")
+		_tap_control(_hud("PlaceCancel"))
+		assert_bool(_placement.active).override_failure_message(why).is_false()
+		assert_array(_sent).override_failure_message(why).has_size(1)
+
+
 ## A turn of the phone with the mode on: the ghost keeps its tile and the controls are in the
 ## other layout's panel, nothing is sent.
 func test_a_turn_keeps_the_ghost_and_the_controls_follow_the_layout() -> void:
@@ -214,6 +255,24 @@ func test_a_sidebar_without_a_placement_controller_ignores_a_ready_card() -> voi
 	_tap(_tile())
 	assert_bool(_placement.active).is_false()
 	assert_array(_sent).is_empty()
+
+
+## The check mark is dimmed and the X is not, both at `rests` (the check mark's and the X's rect
+## before), 64 dp across and inside the safe rect.
+func _expect_dimmed_in_place(rests: Array[Rect2], why: String) -> void:
+	assert_bool((_hud("PlaceConfirm") as Button).disabled).override_failure_message(why).is_true()
+	assert_bool((_hud("PlaceCancel") as Button).disabled).override_failure_message(why).is_false()
+	var safe: Rect2 = UiScale.safe_rect_base()
+	var now: Array[Rect2] = [_rect("PlaceConfirm"), _rect("PlaceCancel")]
+	for index: int in 2:
+		var at: String = "%s: %s was %s" % [why, now[index], rests[index]]
+		assert_vector(now[index].position).override_failure_message(at).is_equal_approx(
+			rests[index].position, Vector2.ONE * TOLERANCE_PX
+		)
+		assert_vector(now[index].size).override_failure_message(at).is_equal_approx(
+			Vector2.ONE * UiScale.dp(PlacementControls.ACTION_DP), Vector2.ONE * TOLERANCE_PX
+		)
+		assert_bool(safe.encloses(now[index])).override_failure_message(at).is_true()
 
 
 func _tile() -> ItemTile:

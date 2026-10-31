@@ -1,12 +1,13 @@
 extends GdUnitTestSuite
 ## What ends placement mode and what it sends (plan P86, ADR 0019 section 2), in the main scene on
 ## the 6-inch phone: the check mark (`confirm`) sends exactly one PLACE for the ghost's origin tile
-## and ends the mode, and only while the ghost fits; the X (`cancel`) sends nothing; a new match and
-## aiming a strike end it; each tick judges the ghost again (a tank rolls onto it, a new match). A
-## PLACE from the controller runs in the sim and builds a 1x1, a 2x2 and a 3x3 structure of either
-## faction, for either player, where the ghost stood. A turn of the phone during a ghost drag keeps
-## the tile and makes no Command: the state hash of the run, the tile, the camera's centre and the
-## queue are those of a run with no turn.
+## and holds the ghost pending, and only while the ghost fits (what the sim answers is
+## test_placement_pending.gd's); the X (`cancel`) sends nothing; a new match and aiming a strike end
+## the mode; each tick judges the ghost again (a tank rolls onto it, a new match). A PLACE from the
+## controller runs in the sim and builds a 1x1, a 2x2 and a 3x3 structure of either faction, for
+## either player, where the ghost stood. A turn of the phone during a ghost drag keeps the tile and
+## makes no Command: the state hash of the run, the tile, the camera's centre and the queue are
+## those of a run with no turn.
 
 const Rig: GDScript = preload("res://tests/input/support/placement_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
@@ -47,7 +48,7 @@ func after_test() -> void:
 	get_window().size = _window_size_before
 
 
-func test_confirm_sends_exactly_one_place_for_the_origin_tile_and_ends_the_mode() -> void:
+func test_confirm_sends_exactly_one_place_for_the_origin_tile_and_holds_the_ghost() -> void:
 	await _open()
 	_place_at(Vector2i(11, 7))
 	assert_bool(_placement.confirm()).is_true()
@@ -57,10 +58,14 @@ func test_confirm_sends_exactly_one_place_for_the_origin_tile_and_ends_the_mode(
 	# The origin tile's centre: the sim takes the tile of the point as the footprint's origin.
 	assert_array([place.target_x, place.target_y]).is_equal([10500, 6500])
 	assert_array(place.payload).is_empty()
-	assert_bool(_placement.active).is_false()
+	assert_bool(_placement.active).is_true()  # The mode waits for the sim's answer.
+	assert_bool(_placement.pending).is_true()
 	assert_array(_buzzed).is_equal([_controller.settings.haptic_ms])
-	assert_bool(_placement.confirm()).is_false()  # A second press finds no mode.
-	_placement.cancel()
+	assert_bool(_placement.confirm()).is_false()  # A second press finds a PLACE in flight.
+	assert_array(_sent).has_size(1)
+	_placement.cancel()  # The X ends the mode; the PLACE already sent is not recalled.
+	assert_bool(_placement.active).is_false()
+	assert_bool(_placement.pending).is_false()
 	assert_array(_sent).has_size(1)
 
 
@@ -89,8 +94,6 @@ func test_the_sim_builds_every_footprint_where_the_confirmed_place_named_the_ori
 		var local: int = entry[0]
 		var foot: Vector2i = entry[4]
 		var note: String = "%s for player %s" % [entry[3], local]
-		if is_instance_valid(_main):
-			_main.free()
 		var made: ScenarioDef = Rig.scenario_for(local, entry[1], entry[2], [entry[3]])
 		await _open(made, false)
 		_controller.command_sink = CommandQueue.submit  # The real way in.
@@ -186,7 +189,7 @@ func test_a_turn_during_a_ghost_drag_keeps_the_tile_and_makes_no_command_or_hash
 	var idle: Dictionary = await _play(false)
 	assert_int(idle["hash"]).is_not_equal(0)
 	var turned: Dictionary = await _play(true)
-	for key: String in ["hash", "commands", "pending", "tile", "active", "reason", "centre"]:
+	for key: String in ["hash", "commands", "pending", "tile", "active", "reason", "camera"]:
 		assert_that(turned[key]).override_failure_message(key).is_equal(idle[key])
 	assert_int(turned["commands"]).is_equal(0)
 	assert_vector(turned["tile"]).is_equal(TARGET)  # Where the drag had put it before the turn.
@@ -223,7 +226,6 @@ func _play(turn: bool) -> Dictionary:
 		TouchEvents.release(get_viewport(), 0, to)
 	await await_idle_frame()
 	_runner.run_ticks(30)
-	var ground: Vector2i = _placement.centre_ground()
 	return {
 		"hash": _runner.last_hash,
 		"commands": _sent.size(),
@@ -231,13 +233,16 @@ func _play(turn: bool) -> Dictionary:
 		"tile": _placement.tile,
 		"active": _placement.active,
 		"reason": _placement.reason,
-		"centre": ground,
+		"camera": _camera.position,
 	}
 
 
-## A new main scene on the phone, in the rig's match unless `scenario` is given. With `ready` the
-## plant is made ready in the snapshot, the ground explored and the mode begun on it.
+## A new main scene on the phone, in the rig's match unless `scenario` is given; the scene of the
+## run before, if a test opens more than one, is freed first. With `ready` the plant is made ready
+## in the snapshot, the ground explored and the mode begun on it.
 func _open(scenario: ScenarioDef = null, ready: bool = true) -> void:
+	if is_instance_valid(_main):
+		_main.free()
 	var phone: UiMetrics = UiProfiles.by_name(&"android_6in")
 	UiScale.set_override(phone)
 	get_window().size = phone.window_size

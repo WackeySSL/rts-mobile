@@ -3,7 +3,8 @@ extends HBoxContainer
 ## The check mark and the X of placement mode (plan P86, ADR 0019 section 2, ADR 0023 section 12):
 ## while the mode is on they take the card row's place, in the floating panel in landscape and in
 ## the band in portrait, `ACTION_DP` across (the strike's size) and a wide gap apart. The check
-## mark is dimmed while the ghost does not fit and sends the one PLACE; the X sends nothing.
+## mark is dimmed while the ghost does not fit, while a PLACE is pending and while the ghost is
+## "Blocked" (P86b); it sends the one PLACE. The X sends nothing and works in every state.
 ## `BuildSidebar` owns the row, hides its cards meanwhile and tells it the cards' height
 ## (`set_row_dp`) so the panel keeps its size. The plates are the strike's: one look for all.
 
@@ -57,10 +58,10 @@ func set_row_dp(height_dp: float) -> void:
 	_row.min_dp = Vector2(0.0, height_dp)
 
 
-## Shown while the mode is on; the check mark waits for a ghost that fits.
+## Shown while the mode is on; the check mark waits for a ghost that fits and is not pending.
 func _show() -> void:
 	visible = placement.active
-	_confirm.disabled = placement.reason != Placement.Reason.OK
+	_confirm.disabled = not placement.can_confirm()
 
 
 ## Sizes are dp, so they follow a resize like DpMinSize does.

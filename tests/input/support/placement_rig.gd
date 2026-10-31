@@ -44,12 +44,13 @@ static func plant(snap: MatchSnapshot) -> int:
 	return snap.type_ids.find(PLANT)
 
 
-## Player 1's STRUCTURES queue holds one finished power plant in `snap`.
+## Player 1's STRUCTURES queue holds one finished structure in `snap`: the power plant, or `of_type`
+## (a type index) when given. Only the published snapshot changes, not the World behind it.
 @warning_ignore("integer_division")
-static func make_ready(snap: MatchSnapshot) -> void:
+static func make_ready(snap: MatchSnapshot, of_type: int = -1) -> void:
 	var slots: int = snap.queue_type.size() / (snap.credits.size() * World.TABS)
 	var queue: int = 1 * World.TABS + World.Tab.STRUCTURES
-	var type: int = plant(snap)
+	var type: int = plant(snap) if of_type < 0 else of_type
 	snap.queue_type[queue * slots] = type
 	snap.queue_count[queue] = 1
 	snap.queue_progress[queue] = snap.type_build_ticks[type] * Production.PROGRESS_PER_TICK

@@ -1,11 +1,14 @@
 extends GdUnitTestSuite
-## The placement ghost's view (plan P86, ADR 0023 section 3, STYLE.md "Ghosts"): the cells it marks
-## are the footprint's cells at every zoom and every screen, it is green where the plant fits and
-## red where it does not, its sprite is the building's body on the match's atlas (as `BuildingLayer`
-## draws it) with the picture's rise the sheet's, and it redraws every frame while the mode is on,
-## once more when it ends and never otherwise. `GhostMarks` makes the three marks of a cell from one
-## texture: the wash and the frame as diamonds, the hatch cut from the art director's file four
-## times, so that its bands run straight across the cells of a footprint.
+## The placement ghost's view (plan P86 and P86b, ADR 0023 section 3, STYLE.md "Ghosts"): the cells
+## it marks are the footprint's cells at every zoom and every screen, it is green where the plant
+## fits and red with the glyph of its reason where it does not (all six reasons), its sprite is the
+## building's body on the match's atlas (as `BuildingLayer` draws it) with the picture's rise the
+## sheet's, and a defence's ghost has its head too, its pivot on the sheet's mount. A ghost the sim
+## refused is red with the occupied glyph and the word "Blocked", and the glyph and the word keep
+## their dp size at every screen and zoom. It redraws every frame while the mode is on, once more
+## when it ends and never otherwise. `GhostMarks` makes the three marks of a cell from one texture:
+## the wash and the frame as diamonds, the hatch cut from the art director's file twice, so that its
+## bands run straight across the cells of a footprint.
 
 const Rig: GDScript = preload("res://tests/input/support/placement_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -31,13 +34,21 @@ func after() -> void:
 func before_test() -> void:
 	get_window().size = ScreenSizes.LANDSCAPE[0]
 	await await_idle_frame()
+	await _open(Rig.scenario(), Rig.PLANT)
+
+
+## A new main scene in `scenario`, paused, the previous one freed, with the structure of type id
+## `ready` finished in the published snapshot and the ground explored.
+func _open(scenario: ScenarioDef, ready: StringName) -> void:
+	if is_instance_valid(_main):
+		_main.free()
 	_main = auto_free((load("res://scenes/main.tscn") as PackedScene).instantiate())
-	(_main.get_node("MatchRunner") as MatchRunner).scenario = Rig.scenario()
+	(_main.get_node("MatchRunner") as MatchRunner).scenario = scenario
 	add_child(_main)
 	await await_idle_frame()
 	_runner = _main.get_node("MatchRunner")
 	_runner.paused = true
-	Rig.make_ready(_runner.snapshot)
+	Rig.make_ready(_runner.snapshot, _runner.snapshot.type_ids.find(ready))
 	Rig.explore(_runner.snapshot)
 	_camera = _main.get_node("Camera")
 	_placement = _main.get_node("PlacementController")
@@ -111,12 +122,110 @@ func test_the_ghost_is_green_where_it_fits_and_red_with_the_reason_where_it_does
 	assert_that(_layer.tint()).is_equal(GhostLayer.FITS)
 	assert_that(GhostLayer.FITS).is_equal(Color("30A46C"))
 	assert_that(GhostLayer.DANGER).is_equal(Color("E5484D"))
-	for reason: int in [Placement.Reason.OUTSIDE, Placement.Reason.TOO_FAR, Placement.Reason.CAP]:
-		_placement.reason = reason
-		assert_that(_layer.tint()).is_equal(GhostLayer.DANGER)
-		# The glyph of every reason that can fail is there to be drawn.
-		var key: String = String(Placement.Reason.find_key(reason)).to_lower()
-		assert_bool(ResourceLoader.exists(GhostLayer.GLYPH_ART % key)).is_true()
+	for key: String in Placement.Reason.keys():
+		if Placement.Reason[key] == Placement.Reason.OK:
+			continue
+		_placement.reason = Placement.Reason[key]
+		_layer.refresh()  # What `changed` does.
+		await await_idle_frame()
+		await await_idle_frame()
+		assert_that(_layer.tint()).override_failure_message(key).is_equal(GhostLayer.DANGER)
+		# Every reason that can fail has its glyph drawn, with the hatch on every cell.
+		var drawn: Texture2D = _layer.last_glyph
+		var path: String = "" if drawn == null else drawn.resource_path
+		assert_str(path).override_failure_message(key).is_equal(
+			GhostLayer.GLYPH_ART % key.to_lower()
+		)
+		assert_int(_layer.last_marks).override_failure_message(key).is_equal(12)
+
+
+## The word and the glyph of a refused ghost: danger red, the occupied glyph when the snapshot still
+## calls the tile a fit, the reason's own otherwise, and "Blocked" under it. Moving the ghost, which
+## clears `blocked`, takes them away. Each is the same size in dp at every screen and zoom (so the
+## cached dp follows a resize): the glyph 32 dp across, the word 18 dp high.
+func test_a_blocked_ghost_has_the_word_and_the_glyph_at_their_dp_size_on_every_screen() -> void:
+	var levels: PackedFloat32Array = (_camera.settings as InputSettings).zoom_levels
+	for size: Vector2i in ScreenSizes.ALL:
+		get_window().size = size
+		await await_idle_frame()
+		for zoom: float in levels:
+			var note: String = "%s at zoom %s" % [size, zoom]
+			_camera.zoom = Vector2(zoom, zoom)
+			_camera.centre_on(IsoProjection.cell_centre_px(AT.x, AT.y))
+			_placement.begin(Rig.plant(_runner.snapshot))
+			await await_idle_frame()
+			await await_idle_frame()
+			assert_str(_layer.last_word).override_failure_message(note).is_empty()  # It fits.
+			assert_that(_layer.tint()).override_failure_message(note).is_equal(GhostLayer.FITS)
+			_placement.blocked = true
+			_layer.refresh()  # What `changed` does.
+			await await_idle_frame()
+			await await_idle_frame()
+			assert_str(_layer.last_word).override_failure_message(note).is_equal("Blocked")
+			assert_that(_layer.tint()).override_failure_message(note).is_equal(GhostLayer.DANGER)
+			assert_int(_layer.last_marks).override_failure_message(note).is_equal(12)
+			var glyph: Texture2D = _layer.last_glyph
+			var path: String = "" if glyph == null else glyph.resource_path
+			assert_str(path).override_failure_message(note).is_equal(
+				GhostLayer.GLYPH_ART % "occupied"
+			)
+			var glyph_px: float = UiScale.dp(GhostLayer.GLYPH_DP)
+			assert_float(_layer.last_glyph_px).override_failure_message(note).is_equal_approx(
+				glyph_px, 0.01
+			)
+			# A whole font size in world px: within half a px of the exact one on the screen.
+			assert_float(_layer.last_word_px).override_failure_message(note).is_equal_approx(
+				UiScale.dp(GhostLayer.WORD_DP), zoom * 0.5 + 0.01
+			)
+			_placement.blocked = false
+			_layer.refresh()
+			await await_idle_frame()
+			await await_idle_frame()
+			assert_str(_layer.last_word).override_failure_message(note).is_empty()
+			assert_that(_layer.tint()).override_failure_message(note).is_equal(GhostLayer.FITS)
+		_placement.cancel()
+
+
+## A defence has a head over its body (STYLE.md "Ghosts": the whole sprite): the east-facing frame
+## of the head part, its pivot on the sheet's mount, drawn after the body (two parts). A plant has
+## no head and draws one part.
+func test_a_defences_ghost_draws_its_head_on_the_mount_and_a_plant_draws_none() -> void:
+	_camera.centre_on(IsoProjection.cell_centre_px(AT.x, AT.y))
+	_placement.begin(Rig.plant(_runner.snapshot))
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_bool(_layer.head_region().has_area()).is_false()
+	assert_bool(_layer.head_rect().has_area()).is_false()
+	assert_int(_layer.last_parts).is_equal(1)
+	_placement.cancel()
+	var roster: ScenarioDef = Rig.scenario_for(
+		1, "headquarters", [["barracks", 2, 10]], ["defence_turret"]
+	)
+	await _open(roster, &"defence_turret")
+	var turret: int = _runner.snapshot.type_ids.find(&"defence_turret")
+	_camera.centre_on(IsoProjection.cell_centre_px(AT.x, AT.y))
+	assert_bool(_placement.begin(turret)).is_true()
+	await await_idle_frame()
+	await await_idle_frame()
+	var sort: WorldSort = _main.get_node("WorldSort")
+	var sheet: IsoSheetDef = (load(IsoIndex.PATH) as IsoIndex).sheet(&"defence_turret")
+	var east: Rect2i = sort.atlas.region(sheet.art_id, &"head", UnitLayer.D_EAST, sort.slot_of(1))
+	assert_bool(east.has_area()).is_true()
+	assert_that(_layer.head_region()).is_equal(east)
+	assert_int(_layer.last_parts).is_equal(2)
+	# Its pivot is on the mount: the box's top left plus the pivot is the mount from the centre.
+	var ground: Vector2i = _placement.centre_ground()
+	var centre: Vector2 = IsoProjection.ground_to_px(ground.x, ground.y)
+	var pivot: Vector2 = (
+		_layer.head_rect().position + Vector2(sheet.origin(&"head")) * WorldSort.ART_SCALE
+	)
+	assert_vector(pivot).is_equal_approx(
+		centre + sheet.mount(UnitLayer.D_EAST) * WorldSort.ART_SCALE, Vector2.ONE * 0.01
+	)
+	var drawn: Vector2 = Vector2(east.size) * (WorldSort.ART_SCALE / sort.atlas.bake_scale())
+	assert_vector(_layer.head_rect().size).is_equal_approx(drawn, Vector2.ONE * 0.01)
+	_placement.cancel()
+	assert_bool(_layer.head_region().has_area()).is_false()
 
 
 func test_the_sprite_is_the_buildings_body_on_the_atlas_and_the_rise_is_the_sheets() -> void:

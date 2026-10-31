@@ -1,20 +1,29 @@
 class_name PlacementController
 extends Node
-## Placement mode (plan P86, ADR 0019 section 2, ADR 0023 section 3): the local state of putting a
-## finished structure on the map. A tap on a READY card calls `begin`; the ghost then stands on a
-## tile, judged by `Placement.reason` over the latest snapshot, and no Command is sent until the
-## check mark (`confirm`: one PLACE through `controller.command_sink`, then the mode ends; whether
-## the sim took it is row P86b's "pending" and "Blocked"). It reads the snapshot afresh and writes
-## nothing to the sim. `tile` is the tile that holds the footprint's centre, as the sim names a
-## remembered building (`ghost_cell`); `origin()`, that less half the footprint, is the PLACE tile.
+## Placement mode (plan P86 and P86b, ADR 0019 section 2, ADR 0023 section 3): the local state of
+## putting a finished structure on the map. A tap on a READY card calls `begin`; the ghost then
+## stands on a tile, judged by `Placement.reason` over the latest snapshot, and no Command is sent
+## until the check mark (`confirm`: one PLACE through `controller.command_sink`). It reads the
+## snapshot afresh and writes nothing to the sim. `tile` is the tile that holds the footprint's
+## centre, as the sim names a remembered building (`ghost_cell`); `origin()`, that less half the
+## footprint, is the PLACE tile.
+## Pending and "Blocked" (P86b): after the PLACE the mode stays and the ghost is held (`pending`: it
+## does not move, the check mark cannot send a second PLACE). The runner stamps the Command with the
+## tick it is applied at, and the first snapshot published after that tick holds the sim's answer: a
+## building of the type at the ghost's centre ends the mode, no building means the sim refused (a
+## unit rolled onto the footprint after the snapshot the ghost was judged on) and the ghost turns
+## `blocked`: red, with the word, until the player moves it, then confirms again or cancels. The X
+## ends the mode in either state, also while pending (the PLACE is then already on its way).
 ## Gestures (`PlayerController` hands them over while the mode is on): a drag that starts within
 ## `ghost_grab_dp` of the ghost's silhouette moves it, the ghost `ghost_lift_dp` above the finger
 ## and snapping to tiles (`grabs` is the recognizer's test, GHOST_DRAG its events); a drag elsewhere
 ## pans; a tap anywhere but on the ghost itself moves it to the tile under the finger; a release
 ## alone never places and a hold draws no box. A turn keeps the tile (the recognizer cancels the
 ## drag with no event). A new match, a strike aim and the X end the mode with no Command.
+## Edge pan (P86b): while a ghost drag's finger is in the edge band, `TouchInput` calls `edge_pan`
+## every frame, which scrolls the map that way and keeps the ghost on the tile under the finger.
 
-signal changed  ## The mode began or ended, or the ghost's tile or verdict changed.
+signal changed  ## The mode began or ended, or the ghost's tile, verdict or answer changed.
 
 @export var runner: MatchRunner
 @export var controller: PlayerController  ## The Commands' sink, the haptic and the settings.
@@ -27,8 +36,11 @@ var type_index: int = -1  ## The World type being placed.
 var foot: Vector2i = Vector2i.ONE  ## Its footprint, tiles.
 var tile: Vector2i = Vector2i.ZERO  ## The tile that holds the footprint's centre.
 var reason: int = Placement.Reason.OK  ## `Placement.Reason` of the footprint at `tile`.
+var pending: bool = false  ## A PLACE was sent and the snapshot has not answered yet.
+var blocked: bool = false  ## The sim refused the last PLACE; the ghost is red until it moves.
 
 var _serial: int = -1  ## match_serial the mode began in.
+var _command: Command = null  ## The PLACE in flight; the runner stamps its `tick`.
 
 
 func _ready() -> void:
@@ -47,6 +59,7 @@ func begin(type: int) -> bool:
 	if strike_aim != null:
 		strike_aim.cancel()
 	active = true
+	_forget_place()
 	type_index = type
 	foot = Vector2i(snap.type_foot_w[type], snap.type_foot_h[type])
 	_serial = snap.match_serial
@@ -66,34 +79,52 @@ func centre_ground() -> Vector2i:
 	return (origin() * 2 + foot) * World.TILE_CENTRE
 
 
-## The check mark: one PLACE for the origin tile, then the mode ends. False, with no Command and
-## the mode kept, while the ghost does not fit.
+## Whether the ghost fits as far as anyone knows: the snapshot's verdict is OK and the sim has not
+## refused a PLACE here since the ghost last moved.
+func fits() -> bool:
+	return reason == Placement.Reason.OK and not blocked
+
+
+## Whether the check mark would send a PLACE: the ghost fits and none is in flight.
+func can_confirm() -> bool:
+	return active and not pending and fits()
+
+
+## The check mark: one PLACE for the origin tile. The mode stays, the ghost pending until the
+## snapshot answers (`refresh`). False, with no Command, while `can_confirm` is false.
 func confirm() -> bool:
-	var place: bool = active and reason == Placement.Reason.OK and controller != null
-	if place:
-		var at: Vector2i = origin() * World.MILLI_PER_TILE + Vector2i.ONE * World.TILE_CENTRE
-		var player: int = runner.scenario.local_player
-		controller.command_sink.call(Command.place(player, at.x, at.y))
-		if controller.settings.haptics_enabled:
-			controller.vibrate.call(controller.settings.haptic_ms)
-		cancel()
-	return place
+	if not can_confirm() or controller == null:
+		return false
+	var at: Vector2i = origin() * World.MILLI_PER_TILE + Vector2i.ONE * World.TILE_CENTRE
+	_command = Command.place(runner.scenario.local_player, at.x, at.y)
+	pending = true
+	controller.command_sink.call(_command)
+	if controller.settings.haptics_enabled:
+		controller.vibrate.call(controller.settings.haptic_ms)
+	changed.emit()
+	return true
 
 
-## The X: the mode ends and the structure stays ready. Nothing is sent.
+## The X: the mode ends and the structure stays ready. Nothing is sent. A PLACE already in flight
+## is not recalled.
 func cancel() -> void:
 	if active:
 		active = false
+		_forget_place()
 		changed.emit()
 
 
-## Judges the ghost again on the latest snapshot; a new match ends the mode.
+## Judges the ghost again on the latest snapshot; a new match ends the mode. While a PLACE is
+## pending it reads the sim's answer instead, once the snapshot is past the Command's tick.
 func refresh() -> void:
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
 	if not active or snap == null:
 		return
 	if snap.match_serial != _serial:
 		cancel()
+		return
+	if pending:
+		_answer(snap)
 		return
 	var next: int = _judge(snap)
 	if next != reason:
@@ -102,8 +133,9 @@ func refresh() -> void:
 
 
 ## The recognizer's test for a press at `at` (base px): within `ghost_grab_dp` of the silhouette.
+## A pending ghost is held: nothing grabs it.
 func grabs(at: Vector2) -> bool:
-	return active and _near(at, UiScale.dp(controller.settings.ghost_grab_dp))
+	return active and not pending and _near(at, UiScale.dp(controller.settings.ghost_grab_dp))
 
 
 ## The gestures of the mode (PlayerController calls it while `active`): GHOST_DRAG moves the ghost
@@ -111,11 +143,47 @@ func grabs(at: Vector2) -> bool:
 func handle_gesture(e: GestureEvent) -> void:
 	match e.kind:
 		GestureEvent.Kind.GHOST_DRAG:
-			var lift: float = UiScale.dp(controller.settings.ghost_lift_dp)
-			_move_to(_tile_at(camera.screen_to_world(e.position - Vector2(0.0, lift))))
+			_track(e.position)
 		GestureEvent.Kind.TAP, GestureEvent.Kind.DOUBLE_TAP:
 			if not _near(e.position, 0.0):
 				_move_to(_tile_at(camera.screen_to_world(e.position)))
+
+
+## Which way the map scrolls for a ghost drag whose finger is at `finger` (base px): a unit vector
+## toward the edge band the finger is in, the diagonal in a corner, zero outside the bands. The
+## bands lie `edge_band_dp` inside the safe area's edges (a finger in a cutout is in them too). The
+## ghost rides `ghost_lift_dp` above the finger, so the top band is measured on the ghost's point:
+## the map starts to scroll while the ghost is still in view, not after it left it. The other three
+## are measured on the finger, because the ghost is never near the bottom edge.
+func edge_heading(finger: Vector2) -> Vector2:
+	var settings: InputSettings = controller.settings
+	var safe: Rect2 = UiScale.safe_rect_base()
+	var band: float = UiScale.dp(settings.edge_band_dp)
+	var ghost_y: float = finger.y - UiScale.dp(settings.ghost_lift_dp)
+	var heading: Vector2 = Vector2.ZERO
+	if finger.x < safe.position.x + band:
+		heading.x = -1.0
+	elif finger.x > safe.end.x - band:
+		heading.x = 1.0
+	if ghost_y < safe.position.y + band:
+		heading.y = -1.0
+	elif finger.y > safe.end.y - band:
+		heading.y = 1.0
+	return heading.normalized()
+
+
+## Called every frame while a ghost drag's finger is at `finger`, `delta` seconds after the last
+## call: in an edge band the map scrolls toward the edge at `edge_pan_dp_per_s` of screen (the
+## same at any zoom and frame rate, within the camera's clamp) and the ghost stays on the tile under
+## the finger, though the finger has not moved. Nothing is sent. A pending ghost is held.
+func edge_pan(finger: Vector2, delta: float) -> void:
+	if not active or pending:
+		return
+	var heading: Vector2 = edge_heading(finger)
+	if heading == Vector2.ZERO:
+		return
+	camera.pan_by_screen(-heading * UiScale.dp(controller.settings.edge_pan_dp_per_s) * delta)
+	_track(finger)
 
 
 ## Whether the ghost's silhouette (the footprint's diamond and the rectangle from its side corners
@@ -149,13 +217,57 @@ func _tile_at(world: Vector2) -> Vector2i:
 	)
 
 
+## The ghost on the tile under the point `ghost_lift_dp` above the finger at `finger`.
+func _track(finger: Vector2) -> void:
+	var lift: float = UiScale.dp(controller.settings.ghost_lift_dp)
+	_move_to(_tile_at(camera.screen_to_world(finger - Vector2(0.0, lift))))
+
+
+## Moves the ghost to tile `next` and judges it: it clears "Blocked". A pending ghost is held.
 func _move_to(next: Vector2i) -> void:
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
-	if next == tile or snap == null:
+	if next == tile or snap == null or pending:
 		return
 	tile = next
+	blocked = false
 	reason = _judge(snap)
 	changed.emit()
+
+
+## The sim's answer to the PLACE in flight, once a snapshot is past the Command's tick (`tick` is -1
+## until the runner takes the Command, and the snapshot of the tick it is applied at has the next
+## tick): a building at the ghost's centre ends the mode, none means "Blocked".
+func _answer(snap: MatchSnapshot) -> void:
+	if _command.tick < 0 or snap.tick <= _command.tick:
+		return
+	_forget_place()
+	if _built(snap):
+		active = false
+	else:
+		blocked = true
+		reason = _judge(snap)
+	changed.emit()
+
+
+## Whether the snapshot has a building of the type being placed, the local player's, at the ghost.
+func _built(snap: MatchSnapshot) -> bool:
+	var at: Vector2i = centre_ground()
+	var player: int = runner.scenario.local_player
+	for row: int in snap.unit_count():
+		if (
+			snap.owner[row] == player
+			and snap.type_index[row] == type_index
+			and snap.pos_x[row] == at.x
+			and snap.pos_y[row] == at.y
+		):
+			return true
+	return false
+
+
+func _forget_place() -> void:
+	pending = false
+	blocked = false
+	_command = null
 
 
 func _judge(snap: MatchSnapshot) -> int:

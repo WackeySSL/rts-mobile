@@ -21,3 +21,8 @@ extends Resource
 ## of the ghost's silhouette moves it, and the ghost follows the finger this many dp above it.
 @export var ghost_grab_dp: float = 24.0
 @export var ghost_lift_dp: float = 64.0
+## The edge pan of a ghost drag (ADR 0019 section 2): while the finger is within `edge_band_dp` of
+## an edge of the safe area, the map scrolls toward that edge at `edge_pan_dp_per_s` of screen,
+## whatever the zoom and the frame rate.
+@export var edge_band_dp: float = 32.0
+@export var edge_pan_dp_per_s: float = 300.0

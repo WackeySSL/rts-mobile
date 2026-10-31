@@ -151,6 +151,11 @@ func state() -> int:
 	return _state
 
 
+## Where the finger of a ghost drag is now (base px); in the GRAB state the last place it was seen.
+func grab_position() -> Vector2:
+	return _pos
+
+
 func _move_to(pos: Vector2) -> void:
 	match _state:
 		State.PENDING:
