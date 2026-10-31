@@ -36,7 +36,8 @@ const BAND_FLOOR_DP: float = 172.0
 ## state: a test that sets one puts it back in `after_test`, like the UiScale override.
 static var bottom_zone_dp: float = 0.0
 ## The build menu's real top on the screen in base px: the y of the portrait band's rect, which
-## `BuildSidebar._place` writes, and the safe rect's bottom in landscape, where the panel floats.
+## `BuildSidebar._publish_top` writes, and the safe rect's bottom in landscape, where the panel
+## floats.
 ## The band's bottom is not the safe rect's bottom (`SafeAreaMargin` adds a margin and gives both
 ## ends of an axis the larger inset), so with a top cutout the band sits higher than
 ## `safe.end.y - bottom_zone_dp` says. INF while no BuildSidebar is in the tree: nothing covers the
