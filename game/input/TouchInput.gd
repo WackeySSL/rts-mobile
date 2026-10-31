@@ -132,6 +132,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	var wheel: InputEventMouseButton = event as InputEventMouseButton
 	if touch != null and touch.pressed:
 		_owned[touch.index] = true
+		if _recognizer.state() == GestureRecognizer.State.IDLE:
+			# A new gesture. A finger held through a turn is nobody's now but stays in `_owned`, so
+			# the last finger's lift never clears the flag.
+			_counted = false
 		_recognizer.touch_down(touch.index, touch.position, clock.call())
 		_dispatch()
 	elif wheel != null and wheel.pressed:

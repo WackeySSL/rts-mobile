@@ -23,12 +23,13 @@ extends Node
 ## pans; a tap anywhere but on the ghost itself moves it to the tile under the finger; a release
 ## alone never places and a hold draws no box. A turn keeps the tile (the recognizer cancels the
 ## drag with no event). A new match, a strike aim and the X end the mode with no Command.
-## The build menu goes down while the mode runs (P85f, `BuildSidebar`; a pinned menu would keep its
-## cards), so a tap on the READY card can reach `begin` again only where they are on show: outside
-## pending it puts the ghost back at the view's centre; while a PLACE is in flight it changes
-## nothing (the ghost is held, `begin` refuses). A hold on that card cancels the structure
-## (refunded): `refresh` ends the mode when it is no longer ready at the head of the queue,
-## whatever the cause, outside pending too.
+## The build menu goes down while the mode runs (P85f, `BuildSidebar`), but its Build button stays
+## live: brought up with it (or, from P85f2, kept up by a pin), the cards are on show and a tap on
+## the READY card reaches `begin` again: outside pending it puts the ghost back at the view's
+## centre; while a PLACE is in flight it changes nothing (the ghost is held, `begin` refuses). A
+## hold on that card cancels the last one of that building queued (refunded): `refresh` ends the
+## mode when the structure is no longer ready at the head of the queue, whatever the cause, outside
+## pending too.
 ## Edge pan (P86b): while a ghost drag's finger is in the edge band, `TouchInput` calls `edge_pan`
 ## every frame, which scrolls the map that way and keeps the ghost on the tile under the finger's
 ## lifted point. The bands lie inside the map view: the safe area, less the build menu below it

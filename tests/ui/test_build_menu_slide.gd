@@ -139,6 +139,40 @@ func test_the_height_eases_out_monotonically_and_ends_on_the_target_at_160_ms() 
 		assert_float(_sidebar.custom_minimum_size.y).override_failure_message(why).is_equal(open_h)
 
 
+## A turn during a slide ends it at its target: the layout is the orientation's and the state's, so
+## the strip or the plate of the new orientation shows at once and no frame moves it on.
+func test_a_turn_during_a_slide_ends_it_at_its_target() -> void:
+	for pair: Array in [
+		[ScreenSizes.PORTRAIT[1], ScreenSizes.LANDSCAPE[1]],
+		[ScreenSizes.LANDSCAPE[1], ScreenSizes.PORTRAIT[1]],
+	]:
+		await _open(pair[0], null)
+		BuildSidebar.set_slide_ms_override(SLIDE_MS)
+		var why: String = str(pair)
+		var open_h: float = _sidebar.custom_minimum_size.y
+		_sidebar.collapse()
+		for step: int in 3:
+			_sidebar.advance(STEP_S)
+		assert_float(_sidebar.custom_minimum_size.y).override_failure_message(why).is_less(open_h)
+		get_window().size = pair[1]  # The turn.
+		await _settle()
+		var target: float = UiScale.dp(
+			HudLayout.STRIP_DP if HudLayout.is_portrait() else HudLayout.PLATE_DP
+		)
+		assert_float(_sidebar.custom_minimum_size.y).override_failure_message(why).is_equal_approx(
+			target, 1.5
+		)
+		var at: float = _sidebar.custom_minimum_size.y
+		_sidebar.advance(0.5)  # No slide is left to run.
+		assert_float(_sidebar.custom_minimum_size.y).override_failure_message(why).is_equal(at)
+		assert_bool(_sidebar.is_open()).is_false()
+		(
+			assert_float(_sidebar.get_global_rect().size.y)
+			. override_failure_message(why)
+			. is_equal_approx(target, 1.5)
+		)
+
+
 ## The frames of the game move the slide: `_process` is what runs `advance`, with the frame's time.
 func test_the_frames_of_the_game_run_the_slide() -> void:
 	await _open(ScreenSizes.PORTRAIT[0], null)
@@ -344,7 +378,7 @@ func test_a_slide_frame_uses_the_metrics_cached_at_the_last_resize() -> void:
 ## function and no engine query. `read_metrics` (a resize's) is where the lifts ask.
 func test_the_per_frame_functions_name_no_ui_scale_and_no_engine_query() -> void:
 	var frame: Dictionary[String, Array] = {
-		"res://game/ui/BuildSidebar.gd": ["advance", "_apply_height"],
+		"res://game/ui/BuildSidebar.gd": ["advance", "_apply_height", "_publish_top"],
 		"res://game/ui/ArmyBar.gd": ["_lift", "_on_zone_changed"],
 		"res://game/ui/StrikeControls.gd": ["_lift", "_on_zone_changed"],
 	}

@@ -222,3 +222,23 @@ func test_a_turn_and_a_focus_loss_cancel_without_telling() -> void:
 	TouchEvents.press(_vp, 0, AWAY)  # The first finger is lost; a new gesture counts again.
 	TouchEvents.drag(_vp, 0, AWAY + Vector2(80, 0), Vector2(80, 0))
 	assert_array(_told).has_size(2)
+
+
+## A finger held through a turn is nobody's any more (the recognizer forgot it) but stays in the
+## touches TouchInput owns, so the lift of the last finger of a later gesture never clears the
+## flag that says the gesture was told. A press on an idle recognizer starts a new gesture: every
+## tap and pan after the turn tells again, while the old finger is still down.
+func test_a_finger_held_through_a_turn_does_not_silence_the_gestures_after_it() -> void:
+	TouchEvents.press(_vp, 0, AWAY)
+	TouchEvents.drag(_vp, 0, AWAY + Vector2(80, 0), Vector2(80, 0))  # A pan: told.
+	assert_array(_told).has_size(1)
+	var portrait: UiMetrics = UiProfiles.by_name(&"android_6in_portrait")
+	UiScale.set_override(portrait)
+	get_window().size = portrait.window_size
+	await await_idle_frame()  # The turn cancels the pan. Finger 0 stays down, held.
+	for round: int in 3:
+		TouchEvents.press(_vp, 1, AWAY)
+		_now_ms += 50
+		TouchEvents.release(_vp, 1, AWAY)  # A tap with another finger.
+		_now_ms += 1000
+		assert_array(_told).override_failure_message("tap %d" % round).has_size(2 + round)

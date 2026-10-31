@@ -36,7 +36,8 @@ const BAND_FLOOR_DP: float = 172.0
 ## The collapsed menu (ADR 0024 section 2 and 3, Michael's R2): the portrait strip on the safe
 ## bottom edge, whose height lives here and nowhere else, and the landscape plate at the bottom
 ## right. The strip holds the status line (32 dp), a gap (8 dp) and the button row (48 dp) between
-## the backdrop's 4 dp above and below; the plate is the button row between the same 4 dp.
+## the backdrop's 4 dp above and below; the plate is the button row between the same 4 dp. The
+## strip grows to its content, so it is at least 96 dp and a smaller `STRIP_DP` is ignored.
 const STRIP_DP: float = 96.0
 const PLATE_DP: float = 56.0
 

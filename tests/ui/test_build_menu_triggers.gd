@@ -42,6 +42,7 @@ var _buildings: BuildingLayer
 var _now_ms: int = 0
 var _sent: Array[Command] = []
 var _told: int = 0  ## `map_gesture`s since the last `_forget`.
+var _physics_before: int = 60
 
 
 func before() -> void:
@@ -54,10 +55,12 @@ func after() -> void:
 
 func before_test() -> void:
 	MenuRig.begin()
+	_physics_before = Engine.physics_ticks_per_second
 
 
 func after_test() -> void:
 	MenuRig.end()
+	Engine.physics_ticks_per_second = _physics_before
 	if is_instance_valid(_main):
 		_main.free()
 	UiScale.clear_override()
@@ -205,6 +208,7 @@ func test_a_tap_on_the_ready_badge_opens_the_structures_tab_with_the_card_in_vie
 		await _settle()
 		var badge: Control = _hud("Ready") as Control
 		assert_bool(badge.is_visible_in_tree()).override_failure_message(why).is_true()
+		_sidebar.set_process(true)  # The frames of the game scroll the card into view.
 		_tap(badge.get_global_rect().get_center())
 		await _settle()
 		await _settle()
@@ -229,6 +233,44 @@ func test_a_tap_on_the_ready_badge_opens_the_structures_tab_with_the_card_in_vie
 				. override_failure_message(in_view)
 				. is_greater(0)
 			)
+
+
+## The same on a screen whose frames run faster than the physics (90 and 120 Hz phones against 60
+## physics ticks, here 1) and for a touch that comes from the input queue, before the frame loop:
+## the row has the old tab's size when the tap lands, and the scroll that is clamped to it must be
+## made again once the row has laid out the new one. The game's own frames run the reveal.
+func test_a_real_touch_on_the_badge_scrolls_the_card_in_view_at_a_high_frame_rate() -> void:
+	var narrow: UiMetrics = UiProfiles.by_name(&"web_phone_portrait")
+	await _open(narrow.window_size, narrow)
+	var turret: int = _runner.snapshot.type_ids.find(&"defence_turret")
+	_runner.snapshot.queue_count[World.TABS + World.Tab.STRUCTURES] = 0
+	Rig.make_ready(_runner.snapshot, turret)
+	_sidebar.refresh()
+	_sidebar.select_tab(World.Tab.VEHICLES)
+	_sidebar.collapse()
+	await _settle()
+	_sidebar.set_process(true)  # The frames of the game.
+	Engine.physics_ticks_per_second = 1
+	var badge: Control = _hud("Ready") as Control
+	var at: Vector2 = get_viewport().get_final_transform() * badge.get_global_rect().get_center()
+	for pressed: bool in [true, false]:
+		var touch: InputEventScreenTouch = InputEventScreenTouch.new()
+		touch.index = 0
+		touch.position = at
+		touch.pressed = pressed
+		Input.parse_input_event(touch)
+	for frame: int in 8:
+		await await_idle_frame()
+	var items: ScrollContainer = _hud("Items") as ScrollContainer
+	var card: ItemTile = _sidebar.find_child("Tile_defence_turret", true, false) as ItemTile
+	var in_view: String = "card %s, row %s" % [card.get_global_rect(), items.get_global_rect()]
+	assert_bool(_sidebar.is_open()).override_failure_message(in_view).is_true()
+	assert_int(_sidebar.tab).override_failure_message(in_view).is_equal(World.Tab.STRUCTURES)
+	assert_int(items.scroll_horizontal).override_failure_message(in_view).is_greater(0)
+	(
+		assert_bool(items.get_global_rect().grow(TOLERANCE_PX).encloses(card.get_global_rect()))
+		. is_true()
+	)
 
 
 func test_a_tap_on_an_own_producer_opens_the_menu_on_its_tab_with_no_visible_move() -> void:
@@ -299,6 +341,26 @@ func test_placement_collapses_the_menu_and_a_build_or_the_x_gives_it_back() -> v
 		assert_bool((_hud("Items") as Control).is_visible_in_tree()).is_true()
 
 
+## The Build button stays live while the ghost is out (a HUD touch): the cards are back, the READY
+## card can be tapped again, and the end of placement leaves the menu up.
+func test_the_build_button_brings_the_cards_back_while_the_ghost_is_out() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size)
+		var why: String = str(size)
+		assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
+		await _settle()
+		_tap((_hud("Build") as Control).get_global_rect().get_center())
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+		assert_bool(_placement.active).override_failure_message(why).is_true()
+		assert_int(_told).override_failure_message(why).is_equal(0)
+		await _settle()
+		var card: ItemTile = _sidebar.find_child("Tile_power_plant", true, false) as ItemTile
+		assert_bool(card.is_visible_in_tree()).override_failure_message(why).is_true()
+		_placement.cancel()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+
+
 func test_a_build_gives_the_menu_back_and_a_strike_aim_or_the_matchs_end_does_not() -> void:
 	await _open(ScreenSizes.LANDSCAPE[0], null, true)
 	# A build: the check mark, the tick that answers it, and the menu is open again.
@@ -323,11 +385,12 @@ func test_a_build_gives_the_menu_back_and_a_strike_aim_or_the_matchs_end_does_no
 	assert_bool(_sidebar.is_open()).is_false()
 	aim.cancel()
 	assert_bool(_sidebar.is_open()).is_false()  # Ending the aim opens nothing either.
-	# The end of the match opens nothing (the result screen covers the HUD).
-	assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()
+	# The end of the match opens nothing (the result screen covers the HUD): placement began in the
+	# open menu, so only the match's end keeps it down.
 	_sidebar.open()
+	assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()
+	assert_bool(_sidebar.is_open()).is_false()
 	_runner.snapshot.match_end_tick = 5
-	_sidebar.collapse()
 	_placement.cancel()
 	assert_bool(_sidebar.is_open()).is_false()
 	# Placement that began in the collapsed menu ends in it.
@@ -336,6 +399,36 @@ func test_a_build_gives_the_menu_back_and_a_strike_aim_or_the_matchs_end_does_no
 	assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()
 	_placement.cancel()
 	assert_bool(_sidebar.is_open()).is_false()
+
+
+## The strike aim takes the menu down as it starts, as placement does (ADR 0024's R1 rule, extended
+## to the aim's start): upright the strike row rides on the menu's top, and the first tap on the map
+## that places the aim's point would otherwise slide it, with its check mark and X lit up, about
+## 100 dp under the thumb. Nothing moves between the aim's start and its confirm.
+func test_a_strike_aim_takes_the_menu_down_at_its_start_and_the_strike_row_stays_put() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size)
+		var why: String = str(size)
+		var aim: StrikeAim = _main.get_node("StrikeAim")
+		aim.owned = true
+		aim.building_id = 1
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+		assert_bool(aim.begin()).override_failure_message(why).is_true()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()  # Before any tap.
+		assert_int(_told).override_failure_message(why).is_equal(0)
+		await _settle()
+		var confirm: Control = _hud("StrikeConfirm") as Control
+		assert_bool(confirm.is_visible_in_tree()).override_failure_message(why).is_true()
+		var at: Rect2 = confirm.get_global_rect()
+		var zone: float = HudLayout.bottom_zone_dp
+		_tap(_ground())  # The aim's point.
+		await _settle()
+		assert_bool(aim.has_point).override_failure_message(why).is_true()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
+		assert_bool(confirm.get_global_rect() == at).override_failure_message(why).is_true()
+		assert_float(HudLayout.bottom_zone_dp).override_failure_message(why).is_equal(zone)
+		assert_bool(aim.confirm()).override_failure_message(why).is_true()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()  # Nothing reopens.
 
 
 func test_a_turn_and_a_cancelled_gesture_keep_the_state_and_a_new_match_starts_open() -> void:

@@ -217,7 +217,7 @@ script = ExtResource("3_dev")
 [node name="DpMinSize" type="Node" parent="Hud/SafeArea/DevButton"]
 script = ExtResource("13_dp")
 
-[node name="BuildSidebar" type="Control" parent="Hud/SafeArea" node_paths=PackedStringArray("runner", "controller", "pill", "minimap_slot", "minimap", "top_left", "placement")]
+[node name="BuildSidebar" type="Control" parent="Hud/SafeArea" node_paths=PackedStringArray("runner", "controller", "pill", "minimap_slot", "minimap", "top_left", "placement", "strike_aim")]
 script = ExtResource("21_sidebar")
 runner = NodePath("../../../MatchRunner")
 controller = NodePath("../../../PlayerController")
@@ -226,6 +226,7 @@ minimap_slot = NodePath("../MinimapSlot")
 minimap = NodePath("../MinimapSlot/Minimap")
 top_left = NodePath("../DevButton")
 placement = NodePath("../../../PlacementController")
+strike_aim = NodePath("../../../StrikeAim")
 
 [node name="ArmyBand" type="MarginContainer" parent="Hud/SafeArea"]
 mouse_filter = 2

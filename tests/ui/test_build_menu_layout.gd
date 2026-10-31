@@ -272,6 +272,42 @@ func test_sideways_the_plate_is_56_dp_at_the_bottom_right_and_the_pill_slot_and_
 			assert_vector(now[index].size).override_failure_message(moved).is_equal_approx(
 				open_parts[index].size, Vector2.ONE * TOLERANCE_PX
 			)
+		# The plate is as wide as its row: when the badge goes it narrows to the Build button, and
+		# when it comes back it widens again; the badge and the button are inside it each time.
+		var with_badge: Rect2 = _rect(_sidebar)
+		_runner.snapshot.queue_count[World.TABS + World.Tab.STRUCTURES] = 0
+		_sidebar.refresh()
+		await _settle()
+		var bare: Rect2 = _rect(_sidebar)
+		assert_bool((_hud("Ready") as Control).is_visible_in_tree()).is_false()
+		assert_float(bare.size.x).override_failure_message(why).is_less(
+			with_badge.size.x - 8.0 * dp
+		)
+		assert_float(bare.end.x).override_failure_message(why).is_equal_approx(
+			with_badge.end.x, TOLERANCE_PX
+		)
+		(
+			assert_bool(bare.grow(TOLERANCE_PX).encloses(_rect("Build")))
+			. override_failure_message(why)
+			. is_true()
+		)
+		Rig.make_ready(_runner.snapshot)
+		_sidebar.refresh()
+		await _settle()
+		var back: Rect2 = _rect(_sidebar)
+		assert_vector(back.size).override_failure_message(why).is_equal_approx(
+			with_badge.size, Vector2.ONE * TOLERANCE_PX
+		)
+		(
+			assert_bool(back.grow(TOLERANCE_PX).encloses(_rect("Ready")))
+			. override_failure_message(why)
+			. is_true()
+		)
+		(
+			assert_bool(back.grow(TOLERANCE_PX).encloses(_rect("Build")))
+			. override_failure_message(why)
+			. is_true()
+		)
 		_sidebar.open()
 		await _settle()
 		assert_vector(_rect(_sidebar).size).override_failure_message(why).is_equal_approx(
@@ -280,6 +316,55 @@ func test_sideways_the_plate_is_56_dp_at_the_bottom_right_and_the_pill_slot_and_
 		assert_float(_rect(_sidebar).end.x).override_failure_message(why).is_equal_approx(
 			panel.end.x, TOLERANCE_PX
 		)
+
+
+## The collapsed menu at every screen: each visible control is inside the safe rect, each that is
+## tapped at least 48 dp across, and no two overlap (the Dev button, the ArmyBar, the selection
+## panel, the Build button and the badge, the status line or the pill, the minimap).
+func test_collapsed_every_visible_hud_control_is_48_dp_inside_the_safe_rect_and_clear() -> void:
+	for screen: Dictionary in _screens(null):
+		await _open(screen["size"], screen["metrics"], screen["profile"])
+		var why: String = str(screen["label"])
+		_controller.selection.set_ids(PackedInt32Array([TANK]))
+		_sidebar.collapse()
+		await _settle()
+		var shown: Array[String] = ["DevButton", "AllArmy", "Group1", "Group2", "Group3"]
+		shown.append_array(["SelectionPanel", "Build", "Ready", "Minimap"])
+		var tapped: Array[String] = shown.duplicate()
+		shown.append("StatusPill" if not HudLayout.is_portrait() else "Status")
+		var least: float = UiScale.dp(48.0) - TOLERANCE_PX
+		var rects: Dictionary[String, Rect2] = {}
+		for part: String in shown:
+			var control: Control = _hud(part) as Control
+			(
+				assert_bool(control.is_visible_in_tree())
+				. override_failure_message("%s: %s" % [why, part])
+				. is_true()
+			)
+			rects[part] = control.get_global_rect()
+			var at: String = "%s: %s %s" % [why, part, rects[part]]
+			(
+				assert_bool(UiScale.safe_rect_base().encloses(rects[part]))
+				. override_failure_message(at)
+				. is_true()
+			)
+			if tapped.has(part):
+				assert_float(rects[part].size.x).override_failure_message(at).is_greater_equal(
+					least
+				)
+				assert_float(rects[part].size.y).override_failure_message(at).is_greater_equal(
+					least
+				)
+		for first: int in shown.size():
+			for second: int in range(first + 1, shown.size()):
+				var pair: String = "%s: %s and %s" % [why, shown[first], shown[second]]
+				var a: Rect2 = rects[shown[first]]
+				var b: Rect2 = rects[shown[second]]
+				(
+					assert_bool(a.grow(-0.5).intersects(b.grow(-0.5)))
+					. override_failure_message(pair)
+					. is_false()
+				)
 
 
 ## The parts that a collapse leaves where they are in landscape: the pill, the minimap's slot and

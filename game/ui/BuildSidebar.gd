@@ -8,9 +8,10 @@ extends Control
 ## player's credits, power, queue and rows, and the type tables) and never keeps one.
 ## OPEN or COLLAPSED (ADR 0024 sections 1 to 6), view state only: no Command, nothing in the sim.
 ## A match starts open. A gesture on the map (`TouchInput.map_gesture`) and the start of placement
-## collapse it; the Build button, the Ready badge, a tap that selects an own producer and the end of
-## placement (a build or the X; not a strike aim's) open it. A touch on a HUD control is never a map
-## gesture, so working in the menu keeps it open. Requests apply in order and the last one wins.
+## or of a strike aim collapse it; the Build button, the Ready badge, a tap that selects an own
+## producer and the end of placement (a build or the X; not a strike aim's) open it. A touch on a
+## HUD control is never a map gesture, so working in the menu keeps it open. Requests apply in
+## order and the last one wins.
 ## This node is the clipping holder (a plain `Control` with `clip_contents`; a container cannot be
 ## smaller than its children): `Backdrop`, the panel that holds the menu's parts, is placed at the
 ## size of the target state at once and the holder's height slides to it over `menu_slide_ms` (ADR
@@ -96,6 +97,10 @@ const GAP_DP: float = 8.0
 ## What the content's least height may pass the band's by (the gaps round to whole px) before the
 ## band grows to it instead of the content being cut.
 const ROUNDING_PX: float = 1.0
+const REVEAL_FRAMES: int = 30  ## The frames `_reveal_step` waits for the row's layout, at most.
+## What a card may stand off the place its least widths give it, per card before it (a grid sorts in
+## whole px). A card of the wrong tab's layout is off by a card or more.
+const REVEAL_SLACK_PX: float = 1.5
 const BUILD_DP: Vector2 = Vector2(64.0, 48.0)  ## The Build button.
 const BUTTONS_DP: float = 48.0  ## The button row's height. The Ready badge is 112 dp wide at most.
 const BADGE_ICON_DP: float = 32.0  ## The card's picture on the Ready badge.
@@ -116,6 +121,7 @@ static var _slide_override: int = -1
 @export var minimap: Control  ## The minimap: in `minimap_slot` sideways, in the band upright.
 @export var top_left: Control  ## The pill starts after it (the Dev button).
 @export var placement: PlacementController  ## A tap on a READY tile begins it. None: no placement.
+@export var strike_aim: StrikeAim  ## Aiming a strike takes the menu down, as placement does.
 
 ## The open tab, a `World.Tab`.
 var tab: int = World.Tab.STRUCTURES
@@ -148,9 +154,12 @@ var _built: Vector2i = Vector2i(-1, -1)  ## Match serial and type count the tile
 var _owned: PackedInt32Array = PackedInt32Array()  ## Scratch of a refresh: own rows per type.
 var _producers: PackedInt32Array = PackedInt32Array()  ## And own producers per tab.
 var _ready_tile: ItemTile = null  ## The tile of the finished structure at the head, if any.
+var _reveal: ItemTile = null  ## The tile the Ready badge's tap wants in view, until it is.
+var _reveal_left: int = 0
 var _open: bool = true
 var _placing: bool = false  ## Placement mode was on at the last `placement.changed`.
 var _before: bool = true  ## The state when placement began: what the end of it returns to.
+var _aiming: bool = false  ## The strike aim was on at the last `strike_aim.changed`.
 var _sliding: bool = false
 var _height: float = 0.0  ## The visible height now, base px (the holder's).
 var _target: float = 0.0  ## And where the slide goes.
@@ -213,6 +222,8 @@ func _ready() -> void:
 		controller.selection_changed.connect(set_selected)
 	if placement != null:
 		placement.changed.connect(_on_placement_changed)
+	if strike_aim != null:
+		strike_aim.changed.connect(_on_aim_changed)
 
 
 func _exit_tree() -> void:
@@ -240,6 +251,7 @@ func is_open() -> bool:
 
 
 ## Opens the menu: the open layout is placed at once and its height slides up (ADR 0024 section 6).
+## The Build button works while placement runs too: the ghost stays and the cards are on show.
 func open() -> void:
 	_set_open(true)
 
@@ -269,13 +281,13 @@ func _set_open(on: bool) -> void:
 	state_changed.emit()
 
 
-## The tap on the Ready badge: the Structures tab with the READY card in view; nothing else.
+## The tap on the Ready badge: the Structures tab with the READY card in view; nothing else. The
+## card is scrolled into view by `_reveal_step`, once the row has laid out the tab.
 func _on_badge() -> void:
 	select_tab(World.Tab.STRUCTURES)
 	open()
-	await get_tree().process_frame  # The open layout is sorted at the end of this frame.
-	if _ready_tile != null and _open:
-		_items.ensure_control_visible(_ready_tile)
+	_reveal = _ready_tile
+	_reveal_left = REVEAL_FRAMES
 
 
 ## Placement begins: the menu goes down, remembering its state. It ends with a build or the X: the
@@ -289,7 +301,7 @@ func _on_placement_changed() -> void:
 		_before = _open
 		collapse()
 	else:
-		var aimed: bool = placement.strike_aim != null and placement.strike_aim.active
+		var aimed: bool = strike_aim != null and strike_aim.active
 		var snap: MatchSnapshot = null if runner == null else runner.snapshot
 		var ended: bool = snap != null and snap.match_end_tick > 0
 		if _before and not aimed and not ended:
@@ -297,14 +309,57 @@ func _on_placement_changed() -> void:
 	_show_badge()
 
 
+## The strike aim begins: the menu goes down, so the strike row, which rides on its top upright, and
+## its check mark and X do not slide under the thumb at the first tap on the map (ADR 0024's R1 rule
+## for placement, extended to the aim's start). Ending the aim opens nothing.
+func _on_aim_changed() -> void:
+	if strike_aim.active and not _aiming:
+		collapse()
+	_aiming = strike_aim.active
+
+
 ## A frame moves the slide on, and reads the published snapshot when it is a new one (a tick, or a
 ## new match): a frame has at most one publish to see, and the numbers change only a few times a
 ## second.
 func _process(delta: float) -> void:
 	advance(delta)
+	if _reveal != null:
+		_reveal_step()
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
 	if snap != null and Vector2i(snap.match_serial, snap.tick) != _seen:
 		refresh()
+
+
+## Scrolls the READY card into view for the badge's tap. The layout of an opening and of a tab is
+## sorted at the end of a frame, after whatever a tap or a coroutine does in it, and the row clamps
+## a scroll to the size it had: so it waits until the card stands where its least size puts it in
+## the row (the tab is laid out), asks the row to show it, and goes on until the card is in view
+## (at most `REVEAL_FRAMES` frames).
+func _reveal_step() -> void:
+	var tile: ItemTile = _reveal
+	_reveal_left -= 1
+	if _reveal_left <= 0 or not _open or not tile.is_visible_in_tree():
+		_reveal = null
+		return
+	var slot: Vector2 = _tile_slot(tile)
+	if absf(tile.position.x - slot.x) > REVEAL_SLACK_PX * (slot.y + 1.0):
+		return  # Not laid out for this tab yet.
+	_items.ensure_control_visible(tile)
+	if _items.get_global_rect().grow(1.0).encloses(tile.get_global_rect()):
+		_reveal = null
+
+
+## Where `tile` stands in the grid when it is laid out, and how many shown tiles stand before it:
+## each of its least width and a gap.
+func _tile_slot(tile: ItemTile) -> Vector2:
+	var gap: float = _grid.get_theme_constant(&"h_separation")
+	var slot: Vector2 = Vector2.ZERO
+	for other: ItemTile in _tiles:
+		if other == tile:
+			break
+		if other.visible:
+			slot += Vector2(other.get_combined_minimum_size().x + gap, 1.0)
+	return slot
 
 
 ## Shows the local player's credits and power from the published snapshot.
@@ -560,6 +615,7 @@ func _build_tiles(snap: MatchSnapshot) -> void:
 	_tiles.clear()
 	_faction = -1  # The match's own rows tell it again (`_refresh_items`).
 	_ready_tile = null
+	_reveal = null
 	var settings: InputSettings = _input_settings()
 	for type: int in snap.type_tab.size():
 		var type_tab: int = snap.type_tab[type]
@@ -825,13 +881,13 @@ func _apply_height(height: float) -> void:
 
 
 ## Writes `HudLayout.menu_top_px`: the menu's drawn top (ADR 0024 section 4). Portrait: the band
-## stands on the safe area's inner bottom, which is the margin above the screen's, and is as high as
-## it is drawn (the holder's height, or more where its content needs more), so the top is read from
-## the cached foot and that height. Landscape: nothing covers the map's bottom edge, the panel
-## floats.
+## stands on the safe area's inner bottom, which is the margin above the screen's, and is drawn as
+## high as the holder is (`_place` raises the target to the content's least where that needs more),
+## so the top is the cached foot less that height. Landscape: nothing covers the map's bottom edge,
+## the panel floats.
 func _publish_top() -> void:
 	if _portrait:
-		HudLayout.menu_top_px = _bottom_edge - maxf(_height, get_combined_minimum_size().y)
+		HudLayout.menu_top_px = _bottom_edge - _height
 	else:
 		HudLayout.menu_top_px = _safe_end
 
