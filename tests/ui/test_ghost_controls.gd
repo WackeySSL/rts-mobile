@@ -150,6 +150,8 @@ func _expect_placed(why: String) -> void:
 		"%s: side %s, box %s, check mark %s, X %s, allowed %s"
 		% [why, Spot.find_key(side), box, confirm, cancel, allowed]
 	)
+	if HudLayout.is_portrait():  # ADR 0024 section 10: above the open band a side always has room.
+		assert_str(str(Spot.find_key(side))).override_failure_message(at).is_not_equal("NONE")
 	for rect: Rect2 in [confirm, cancel]:
 		assert_vector(rect.size).override_failure_message(at).is_equal_approx(
 			Vector2.ONE * button, Vector2.ONE * TOLERANCE_PX
@@ -201,9 +203,9 @@ func _room_on(side: Spot, box: Rect2, allowed: Rect2, hud: Array[Rect2], size: V
 	var low: float = allowed.position.y if vertical else allowed.position.x
 	var high: float = (allowed.end.y - size.y) if vertical else (allowed.end.x - size.x)
 	var across_ok: bool = (
-		fixed >= allowed.position.x - 0.01 and fixed + size.x <= allowed.end.x + 0.01
+		(fixed >= allowed.position.x - 0.01 and fixed + size.x <= allowed.end.x + 0.01)
 		if vertical
-		else fixed >= allowed.position.y - 0.01
+		else (fixed >= allowed.position.y - 0.01 and fixed + size.y <= allowed.end.y + 0.01)
 	)
 	if not across_ok or high < low:
 		return false

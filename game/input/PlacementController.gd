@@ -23,6 +23,12 @@ extends Node
 ## pans; a tap anywhere but on the ghost itself moves it to the tile under the finger; a release
 ## alone never places and a hold draws no box. A turn keeps the tile (the recognizer cancels the
 ## drag with no event). A new match, a strike aim and the X end the mode with no Command.
+## The build menu goes down while the mode runs (P85f, `BuildSidebar`; a pinned menu would keep its
+## cards), so a tap on the READY card can reach `begin` again only where they are on show: outside
+## pending it puts the ghost back at the view's centre; while a PLACE is in flight it changes
+## nothing (the ghost is held, `begin` refuses). A hold on that card cancels the structure
+## (refunded): `refresh` ends the mode when it is no longer ready at the head of the queue,
+## whatever the cause, outside pending too.
 ## Edge pan (P86b): while a ghost drag's finger is in the edge band, `TouchInput` calls `edge_pan`
 ## every frame, which scrolls the map that way and keeps the ghost on the tile under the finger's
 ## lifted point. The bands lie inside the map view: the safe area, less the build menu below it
@@ -76,10 +82,13 @@ func read_metrics() -> void:
 
 
 ## Starts the mode for the structure of `type`: the ghost at the tile under the view's centre.
-## False, with nothing changed, without a snapshot or for a type that has no footprint.
+## False, with nothing changed, without a snapshot, for a type that has no footprint and while a
+## PLACE is in flight (the card is still READY then, and a tap on it must not send a second one).
 func begin(type: int) -> bool:
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
 	if snap == null or type < 0 or type >= snap.type_foot_w.size() or snap.type_foot_w[type] < 1:
+		return false
+	if active and pending:
 		return false
 	if strike_aim != null:
 		strike_aim.cancel()
@@ -139,8 +148,10 @@ func cancel() -> void:
 		changed.emit()
 
 
-## Judges the ghost again on the latest snapshot; a new match ends the mode. While a PLACE is
-## pending it reads the sim's answer instead, once the snapshot is past the Command's tick. It runs
+## Judges the ghost again on the latest snapshot; a new match ends the mode, and so does a
+## structure that is no longer ready at the head of the queue (a hold on its card cancelled it, or
+## an earlier PLACE used it up). While a PLACE is pending it reads the sim's answer instead, once
+## the snapshot is past the Command's tick. It runs
 ## from `runner.ticked` only (a test may call it with the runner idle): it reads `Command.tick`,
 ## which the worker stamps, and that is safe there alone, after the hand-off and before the next
 ## job is posted.
@@ -153,6 +164,9 @@ func refresh() -> void:
 		return
 	if pending:
 		_answer(snap)
+		return
+	if not _ready_head(snap):
+		cancel()
 		return
 	var next: int = _judge(snap)
 	if next != reason:
