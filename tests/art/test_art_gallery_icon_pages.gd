@@ -49,7 +49,7 @@ func test_the_icons_page_has_the_hud_panel_and_the_two_grounds() -> void:
 		Gallery.TERRAIN_COLORS[&"sand"]
 	)
 	assert_array(page.get_node("Hud").get_children().map(_node_name)).is_equal(
-		["Tabs", "Items", "Glyphs", "Emblems"]
+		["Tabs", "Items", "Glyphs", "Emblems", "MenuGlyphs"]
 	)
 	for ground: String in ["Grass", "Sand"]:
 		assert_array(page.get_node(ground).get_children().map(_node_name)).is_equal(
@@ -67,6 +67,7 @@ func test_every_icon_is_shown_at_its_size_in_dp_with_its_tint_and_an_item_on_its
 		"Items": [Gallery.ITEM_ICONS, Gallery.ITEM_ICON_DP],
 		"Glyphs": [Gallery.HUD_GLYPHS, Gallery.HUD_GLYPH_DP],
 		"Emblems": [Gallery.EMBLEMS, Gallery.HUD_GLYPH_DP],
+		"MenuGlyphs": [Gallery.MENU_GLYPHS, Gallery.HUD_GLYPH_DP],
 	}
 	for row_name: String in groups:
 		var icons: Array = groups[row_name][0]
@@ -160,8 +161,8 @@ func test_the_icons_page_fits_each_half_and_keeps_clear_of_the_buttons_at_three_
 			for tile: Node in half_node.find_children("Tile*", "ColorRect", true, false):
 				if not half.encloses((tile as Control).get_global_rect()):
 					problems.append(str(tile.get_path()) + " is outside its half")
-		# 23 on the HUD panel, 12 on each ground (7 glyphs, the arrow and four flags).
-		assert_int(seen.size()).is_equal(23 + 12 + 12)
+		# 26 on the HUD panel, 12 on each ground (7 glyphs, the arrow and four flags).
+		assert_int(seen.size()).is_equal(26 + 12 + 12)
 		assert_array(problems).override_failure_message(str(base)).is_empty()
 		gallery.get_parent().free()
 

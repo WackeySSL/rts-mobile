@@ -844,7 +844,7 @@ selection ring does. The world art (units, buildings, flags) keeps scale 0.5.
 - `emblem_<faction>`: a faction's emblem (P103: `emblem_fossil`, the Derrick League's; P104:
   `emblem_renew`, the Lumen Accord's), drawn like a glyph in greys and tinted at run time; the art
   id `FactionDef.emblem` names. See "Buildings".
-- `glyph_<name>`: HUD, map and result glyphs. A placement reason's glyph is
+- `glyph_<name>`: HUD, build menu, map and result glyphs. A placement reason's glyph is
   `glyph_reason_<reason>`, the `Placement.Reason` name in lower case (`outside`, `ground`,
   `occupied`, `unexplored`, `too_far`, `cap`); the view finds it by name. `OK` has none, and the
   "Blocked" of a pending ghost uses `glyph_reason_occupied`.
@@ -877,7 +877,15 @@ The tints the HUD gives them (the gallery's `GLYPH_TINTS` holds the same values)
 | `glyph_power`, `glyph_check`, `glyph_victory` | #30A46C |
 | `glyph_low_power`, `glyph_offline` | #F5A524 |
 | `glyph_under_attack`, `glyph_cross`, `glyph_defeat`, every `glyph_reason_<reason>` | #E5484D |
-| `glyph_lock`, `glyph_draw` | #9AA5B1 |
+| `glyph_lock`, `glyph_draw`, `glyph_pin_off` | #9AA5B1 |
+| `glyph_menu_open`, `glyph_pin` | none (white) |
+
+The build menu's three glyphs (ADR 0024, plan row P85g): `glyph_menu_open` is the Build button's (the
+button that opens the collapsed menu), `glyph_pin` and `glyph_pin_off` the pin toggle at the open
+menu's corner. The pin is white when the menu is pinned and the neutral grey when it is not, and it
+sits on the tab's plate with its pressed look when pinned; the shape says the same (a pin driven
+upright into its board, or the same pin tilted and lifted out of it), so the state is never a tint
+alone. It is a pin and not a padlock: `glyph_lock` already means "a requirement is missing" on a card.
 
 Sizes in dp (1 dp = 1.75 base px on the 6-inch phone): an item icon fills its 64 dp tile (ADR 0015
 section 5 and ADR 0019 section 1), a tab icon 32 to 48 dp inside its 48 dp tab, a HUD glyph 24 to
@@ -921,6 +929,9 @@ under the 82 % bound for an icon.
 | `glyph_lock.svg` | A padlock: a wide rounded body with a keyhole under a tall rounded shackle. |
 | `glyph_check.svg` | One bold check mark, a short stroke down to the left and a long stroke up to the right. |
 | `glyph_cross.svg` | A bold X of two crossing strokes. |
+| `glyph_menu_open.svg` | One bold chevron pointing up over a row of three upright cards, each a white tile with a grey picture patch and a shaded foot. |
+| `glyph_pin.svg` | A thumbtack standing upright, a domed head over a broad flat flange, its steel needle driven straight down into a wide board. |
+| `glyph_pin_off.svg` | The same thumbtack pulled out and tilted, its whole steel needle showing and its tip hanging clear above a dark hole in the board. |
 | `glyph_reason_outside.svg` | An open square bracket, the map edge, with a fat arrow running out through its open side. |
 | `glyph_reason_ground.svg` | Two jagged mountain peaks side by side on one base line, a small one in front of a tall one. |
 | `glyph_reason_occupied.svg` | Two squares overlapping at a corner, a white one behind and a grey one in front. |
@@ -936,7 +947,8 @@ is drawn on the seat described above, and its file header says so.
 
 Each meaning has its own shape (see "Shape as second cue"): the state of a tile is never the tint
 alone. The glyphs of one group differ by silhouette, not by hue: the three tabs, the six placement
-reasons, the three results.
+reasons, the three results, and the pin from the pin off (the same pin in two postures, so the tilt,
+the lift and the whole needle must carry it: `tests/art` asks for a mean difference of 30 at 32 px).
 
 Results (P92, scratch script, imported scale 0.5 and 0.25, alpha above 0.5): every tab and glyph
 file has no non-grey pixel and no ink in the outer 1 px of its 64 px raster, and neither has an
@@ -945,10 +957,15 @@ ink is 72 to 110 against the HUD backdrop's 19 (a tab or HUD glyph: 160 to 200, 
 120 to 150). The icons were rasterised at 32 px
 in greyscale over the HUD backdrop and compared pair by pair (mean absolute luminance difference,
 0 to 255): the eleven item icons differ by 26 or more (the rifle and rocket squads are the
-closest pair), the three tabs by 56 and the six HUD glyphs and
-three result emblems by 29. At 32 px the eleven tile icons read apart by
+closest pair), the three tabs by 56 and the six HUD glyphs, three result emblems and three build
+menu glyphs by 29 (still the power bolt and the star; the pin and the pin off differ by 36, every
+other pair with a new glyph by 42 or more). At 32 px the eleven tile icons read apart by
 silhouette and interior: drums, silos and a gold funnel, the U, the stripes over a bay, the sandbag
-ring, four soldiers, two tubes, and the four vehicles by pods, turret and gun.
+ring, four soldiers, two tubes, and the four vehicles by pods, turret and gun. The build menu's three
+(P85g, the same measures; greys only, nothing within 2 px of the edge): the pin covers 37 % of the
+canvas, the pin off 40 % and the Build glyph 49 %, the mean luminance of their ink is 174 to 180. At
+32 px the Build glyph reads as a chevron over three small tiles, the pin as a dome and a flange on
+a needle going into a bar, and the pin off as the same dome tilted over its hole.
 
 The eight map glyphs are never white on the HUD, so they are checked as they are seen: tinted, over
 the base colour of each terrain (grass, grass_b, sand, scrub, rock, water) and over the two areas of
@@ -1012,7 +1029,7 @@ in doubt, choose a plainer real-world form.
 | Blackout Array | An open square frame of four tall white hexagonal columns with two team rings each and graphite caps, joined at their tops by a ring of graphite bars with a team light strip and a mint node under each bar, standing round a hexagonal capacitor core of stacked white drums with a team band, a glass ring and a mint cap. | `iso/renew/bld/renew_strike_{hull,shadow}.svg`, 384 wide |
 | Infantry rally flag | A slim metal pole standing up from a round foot plate with a small triangular pennant, over a round ring on the ground. | `flags/rally_infantry_{hull,team}.svg`, 128x128 |
 | Vehicles rally flag | A slim metal pole standing up from a square foot plate with a wide notched swallowtail banner, over a square frame on the ground. | `flags/rally_vehicles_{hull,team}.svg`, 128x128 |
-| Tab, item and glyph icons | Three tab pictograms, eleven build tile icons and seventeen glyphs, one silhouette each. | `icons/<kind>_<name>.svg`, 128x128, import scale 1.0, see "Icons and glyphs" |
+| Tab, item and glyph icons | Three tab pictograms, eleven build tile icons and twenty glyphs, one silhouette each. | `icons/<kind>_<name>.svg`, 128x128, import scale 1.0, see "Icons and glyphs" |
 | Ore cell | A square of dirt, bare or holding three to six gold nuggets and crystals by level. | `ore/ore_<level>[a\|b].svg`, 128x128, see "Ore" |
 | Derrick League emblem | A regular octagon with a thick dark rim, a dark panel holding a white steel I-beam with tapered flanges and four rivets on the white ring at the diagonal corners. | `icons/emblem_fossil.svg`, 128x128, see "Buildings" |
 | Lumen Accord emblem | A regular flat-topped hexagon with a dark rim, a white ring with six rivets and a dark panel holding a white three-blade rotor on a round hub, turned off the vertical, above two shallow horizon arcs. | `icons/emblem_renew.svg`, 128x128, see "Buildings" |
@@ -1583,12 +1600,14 @@ three on first show) and start hidden, so the Units page is as it was.
   a reason glyph is seen, on the red wash and the hatch, so judge it there.
 - **Icons** has two halves. The left half is the HUD's dark panel (#0F141C, here opaque): the three
   tab icons at 48 dp, the eleven item icons on their tiles at 64 dp (four to a line), the six HUD
-  glyphs and the three result emblems at 48 dp, each tinted as the HUD tints it (see "Icons and
-  glyphs"). The right half is grass above and sand below, each with the seven map glyphs at 32 dp,
-  the under-attack arrow at 48 dp and the two rally flags in team A and team B at scale 1. Every
-  icon is a `TextureRect` named by its file in PascalCase (`TabInfantry`, `ItemHeavyTank`,
-  `GlyphReasonTooFar`); a flag is a rig `Node2D` (`RallyInfantryA`) with `Hull` and `Team`. All of it
-  sits clear of the two corner buttons, which cover 24 to 144 px from the top and the left or right.
+  glyphs at 48 dp, and on the last line the three result emblems and the build menu's three glyphs
+  (`GlyphMenuOpen`, `GlyphPin`, `GlyphPinOff`) side by side at 48 dp, each tinted as the HUD tints
+  it (see "Icons and glyphs"). The right half is grass above and sand below, each with the seven
+  map glyphs at 32 dp, the under-attack arrow at 48 dp and the two rally flags in team A and team B
+  at scale 1. Every icon is a `TextureRect` named by its file in PascalCase (`TabInfantry`,
+  `ItemHeavyTank`, `GlyphReasonTooFar`); a flag is a rig `Node2D` (`RallyInfantryA`) with `Hull` and
+  `Team`. All of it sits clear of the two corner buttons, which cover 24 to 144 px from the top and
+  the left or right.
 - **Terrain** (the sixth page, `game/view/art_gallery_ground.gd`, built the first time it is shown,
   on the off-map colour **#16191D**; a list to drag, plan row P105) shows the iso ground the way P116
   will draw it, at gameplay zoom (a tile is 64 x 32 px): the six terrains in rows of a and b side by
@@ -1611,7 +1630,8 @@ To add an asset:
   `gallery_team_b` with the layers `Hull`, `Team` and, for a gun head, `Turret`; the script tints
   `Team` and turns `Turret`, and the team colours are exported properties of the scene root.
 - An icon goes on the Icons page: add its file name to the list of its kind in `art_gallery.gd`
-  (`TAB_ICONS`, `ITEM_ICONS`, `HUD_GLYPHS`, `EMBLEMS`, `MAP_GLYPHS`) and, if the HUD tints it, to
+  (`TAB_ICONS`, `ITEM_ICONS`, `HUD_GLYPHS`, `EMBLEMS`, `MENU_GLYPHS`, `MAP_GLYPHS`) and, if the HUD
+  tints it, to
   `GLYPH_TINTS`.
 - The Back button (120x120 base px, top-left) and the Android back request both return to the dev
   menu. While the gallery is open the script switches `SceneTree.quit_on_go_back` off (its default
