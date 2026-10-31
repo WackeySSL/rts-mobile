@@ -163,6 +163,8 @@ const HUD_GLYPHS: Array[String] = [
 	"glyph_cross",
 ]
 const EMBLEMS: Array[String] = ["glyph_victory", "glyph_defeat", "glyph_draw"]
+## The build menu's own glyphs (ADR 0024): the Build button's, and the pin, pinned and not.
+const MENU_GLYPHS: Array[String] = ["glyph_menu_open", "glyph_pin", "glyph_pin_off"]
 const MAP_GLYPHS: Array[String] = [
 	"glyph_reason_outside",
 	"glyph_reason_ground",
@@ -192,6 +194,7 @@ const GLYPH_TINTS: Dictionary[String, Color] = {
 	"glyph_power": Color("30A46C"),
 	"glyph_low_power": Color("F5A524"),
 	"glyph_lock": Color("9AA5B1"),
+	"glyph_pin_off": Color("9AA5B1"),
 	"glyph_check": Color("30A46C"),
 	"glyph_cross": Color("E5484D"),
 	"glyph_victory": Color("30A46C"),
@@ -207,9 +210,10 @@ const GLYPH_TINTS: Dictionary[String, Color] = {
 	"glyph_under_attack": Color("E5484D"),
 }
 ## Rows of the Icons page, in base px from the top of their half: the HUD panel (left) holds the
-## tabs, the item tiles, the HUD glyphs and the result emblems; the grass and sand strips (right)
-## each hold the map glyphs, then the arrow and the rally flags. Rows under the corner buttons,
-## which cover 24 to 144 px from the top and from the left or right edge.
+## tabs, the item tiles, the HUD glyphs, and on the last line the result emblems and the build
+## menu's glyphs side by side; the grass and sand strips (right) each hold the map glyphs, then the
+## arrow and the rally flags. Rows under the corner buttons, which cover 24 to 144 px from the top
+## and from the left or right edge.
 const HUD_ROW_TOPS: Array[float] = [12.0, 152.0, 520.0, 612.0]
 const MAP_ROW_TOPS: Dictionary[String, Array] = {"Grass": [152.0, 250.0], "Sand": [24.0, 132.0]}
 const FLAG_GAP_PX: float = 24.0
@@ -645,13 +649,16 @@ func _page_ground(page: Control, ground_name: String) -> ColorRect:
 	return ground
 
 
-## An empty Control `top` base px down the middle of `ground`, that a row of things is added to.
-func _pixel_row(ground: Control, row_name: String, top: float) -> Control:
+## An empty Control `top` base px down the middle of `ground`, `centre` base px right of the middle,
+## that a row of things is added to.
+func _pixel_row(ground: Control, row_name: String, top: float, centre: float = 0.0) -> Control:
 	var row: Control = Control.new()
 	row.name = row_name
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.anchor_left = 0.5
 	row.anchor_right = 0.5
+	row.offset_left = centre
+	row.offset_right = centre
 	row.offset_top = top
 	row.offset_bottom = top
 	ground.add_child(row)
@@ -659,9 +666,10 @@ func _pixel_row(ground: Control, row_name: String, top: float) -> Control:
 
 
 ## The Icons page. Left, a HUD panel (the dark backdrop of the sidebar) with the three tab icons at
-## 48 dp, the eleven item icons on their tiles at 64 dp, the HUD glyphs and the result emblems at
-## 48 dp. Right, the glyphs that sit on the map at 32 dp, the under-attack arrow at 48 dp and the
-## rally flags of both teams, on grass (top) and sand (bottom).
+## 48 dp, the eleven item icons on their tiles at 64 dp, the HUD glyphs at 48 dp, and the result
+## emblems and the build menu's glyphs at 48 dp side by side on the last line. Right, the glyphs
+## that sit on the map at 32 dp, the under-attack arrow at 48 dp and the rally flags of both teams,
+## on grass (top) and sand (bottom).
 func _add_icons_page() -> void:
 	_icons_page = _page_root("IconsPage")
 	var hud: ColorRect = _icons_half(_icons_page, "Hud", HUD_BACKDROP, Rect2(0.0, 0.0, 0.5, 1.0))
@@ -672,7 +680,13 @@ func _add_icons_page() -> void:
 	_icon_grid(
 		_pixel_row(hud, "Glyphs", HUD_ROW_TOPS[2]), HUD_GLYPHS, HUD_GLYPH_DP, HUD_GLYPHS.size()
 	)
-	_icon_grid(_pixel_row(hud, "Emblems", HUD_ROW_TOPS[3]), EMBLEMS, HUD_GLYPH_DP, EMBLEMS.size())
+	# The last line holds two groups of three, a gap apart and together centred on the panel.
+	var shift: float = EMBLEMS.size() * (HUD_GLYPH_DP * PX_PER_DP + ICON_GAP_PX) / 2.0
+	var last: float = HUD_ROW_TOPS[3]
+	_icon_grid(_pixel_row(hud, "Emblems", last, -shift), EMBLEMS, HUD_GLYPH_DP, EMBLEMS.size())
+	_icon_grid(
+		_pixel_row(hud, "MenuGlyphs", last, shift), MENU_GLYPHS, HUD_GLYPH_DP, MENU_GLYPHS.size()
+	)
 	for ground_name: String in ["Grass", "Sand"]:
 		var is_grass: bool = ground_name == "Grass"
 		var colour: Color = TERRAIN_COLORS[&"grass_b"] if is_grass else TERRAIN_COLORS[&"sand"]

@@ -8,6 +8,7 @@ extends GdUnitTestSuite
 ## above the finger and snapping to tiles, and a drag that starts elsewhere pans the map and leaves
 ## the ghost. A release alone never places; a hold starts no box; a pinch zooms as ever.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/input/support/placement_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -34,6 +35,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	get_window().size = ScreenSizes.LANDSCAPE[0]
 	await await_idle_frame()
 	_main = auto_free((load("res://scenes/main.tscn") as PackedScene).instantiate())
@@ -56,6 +58,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	MenuRig.end()
 	CommandQueue.clear()
 
 
@@ -116,7 +119,8 @@ func test_a_tap_on_the_ghost_itself_leaves_it_and_one_just_outside_the_grab_area
 		var away: Vector2 = Vector2(
 			body.end.x + UiScale.dp(_controller.settings.ghost_grab_dp), 0.0
 		)
-		_tap(Vector2(away.x + 8.0, _centre().y))  # Past the margin: the ground to the east.
+		# Past the margin, in the strip before the check mark and the X (P86c): the ground to the east.
+		_tap(Vector2(away.x + UiScale.dp(GhostControls.RING_GAP_DP) * 0.5, _centre().y))
 		assert_vector(_placement.tile).override_failure_message(note).is_not_equal(HOME)
 
 

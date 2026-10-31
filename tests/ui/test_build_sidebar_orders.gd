@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 ## the player sends them. Time is a clock the suite owns, so a hold is `long_press_ms` of it and no
 ## real time passes.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const Sw: GDScript = preload("res://tests/ui/support/sidebar_world.gd")
@@ -36,8 +37,14 @@ func after() -> void:
 
 ## The override is static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 	HudLayout.bottom_zone_dp = 0.0
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_a_tap_on_an_available_tile_is_one_queue_of_its_type_with_the_haptic() -> void:

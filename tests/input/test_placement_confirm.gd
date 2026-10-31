@@ -9,6 +9,7 @@ extends GdUnitTestSuite
 ## makes no Command: the state hash of the run, the tile, the camera's centre and the queue are
 ## those of a run with no turn.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/input/support/placement_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -41,11 +42,17 @@ func before() -> void:
 
 
 func after_test() -> void:
+	MenuRig.end()
 	if is_instance_valid(_main):
 		_main.free()
 	UiScale.clear_override()
 	CommandQueue.clear()
 	get_window().size = _window_size_before
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_confirm_sends_exactly_one_place_for_the_origin_tile_and_holds_the_ghost() -> void:
@@ -126,12 +133,17 @@ func test_the_sim_builds_every_footprint_where_the_confirmed_place_named_the_ori
 
 ## The ghost is judged again on every tick's snapshot, which the sim made: a tank that rolls onto
 ## its footprint turns it red and the check mark off, it green again when the tank leaves, and a
-## new match ends the mode. Nothing here calls `refresh` or touches the snapshot.
+## new match ends the mode. Nothing here calls `refresh` or touches the snapshot. The plant is
+## built through the queue, so it stays ready at the head and the mode with it (P86c: a structure
+## that is not ready any more ends the mode).
 func test_each_tick_judges_the_ghost_again_and_a_new_match_ends_the_mode() -> void:
 	var scenario: ScenarioDef = Rig.scenario_for(
 		1, "headquarters", [], ["power_plant", "barracks", "light_tank"]
 	)
-	await _open(scenario)
+	await _open(scenario, false)
+	CommandQueue.submit(Command.queue(1, Rig.plant(_runner.snapshot)))
+	_runner.run_ticks(BUILD_TICKS)
+	assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()
 	_place_at(HOME)
 	var changes: Array[int] = []
 	_placement.changed.connect(func() -> void: changes.append(_placement.reason))
@@ -155,7 +167,7 @@ func test_each_tick_judges_the_ghost_again_and_a_new_match_ends_the_mode() -> vo
 	_runner.start()
 	_runner.run_ticks(1)
 	assert_bool(_placement.active).is_false()
-	assert_bool((_hud("Placement") as Control).visible).is_false()
+	assert_bool((_hud("GhostControls") as Control).visible).is_false()
 	assert_array(_sent).is_empty()
 
 

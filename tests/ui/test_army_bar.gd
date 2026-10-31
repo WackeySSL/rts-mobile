@@ -2,6 +2,7 @@ extends GdUnitTestSuite
 ## The HUD of the main scene (ADR 0004 section 5): HoldButton, ArmyBar and the SafeAreaMargin around
 ## them. Fingers are touches through the real GUI, time is a fake clock. Ids 1-30 are the player's.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const HudThemes: GDScript = preload("res://tests/support/hud_theme.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -25,7 +26,13 @@ func after() -> void:
 
 ## The override is static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_a_tap_emits_tapped_and_a_hold_emits_held_and_not_tapped() -> void:

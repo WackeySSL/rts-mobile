@@ -11,6 +11,7 @@ extends GdUnitTestSuite
 ## 3-digit counts (not the six: their column is taller than the smallest web phone): a row the
 ## bottom row has no room for is clipped, never slid under the build panel.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Roster: GDScript = preload("res://tests/ui/support/mvp_roster.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -37,8 +38,15 @@ func after() -> void:
 
 ## The override and the zone are static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 	HudLayout.bottom_zone_dp = 0.0
+	HudLayout.menu_top_px = INF
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_every_hud_control_is_inside_the_safe_rect_48_dp_and_clear_of_the_others() -> void:
@@ -144,6 +152,69 @@ func test_in_landscape_the_bar_stays_on_the_bottom_edge_whatever_the_zone_it_is_
 		(_hud("ArmyBar") as ArmyBar)._lift()
 		assert_int(_hud("ArmyBand").get_theme_constant("margin_bottom")).is_equal(0)
 		HudLayout.bottom_zone_dp = 0.0
+
+
+## The menu's real top (ADR 0024 section 4, P86c): in portrait the drawn top of the band, whatever
+## the safe area's insets (the band stands higher than the safe rect's bottom less its height, by
+## the margin and with a top cutout by the cutout too); in landscape the safe rect's bottom, where
+## nothing covers the map; nothing (INF) once the sidebar is gone. `map_bottom_px` is the smaller of
+## it and the safe rect's bottom.
+func test_the_menus_real_top_is_the_bands_drawn_top_and_the_safe_bottom_in_landscape() -> void:
+	for screen: Dictionary in _screens():
+		await _open(screen)
+		var why: String = str(screen["label"])
+		var safe: Rect2 = UiScale.safe_rect_base()
+		if screen["portrait"]:
+			var top: float = _rect("BuildSidebar").position.y
+			assert_float(HudLayout.menu_top_px).override_failure_message(why).is_equal_approx(
+				top, 1.0
+			)
+			assert_float(HudLayout.menu_top_px).override_failure_message(why).is_less(
+				safe.end.y - HudLayout.bottom_zone_px()
+			)
+		else:
+			assert_float(HudLayout.menu_top_px).override_failure_message(why).is_equal(safe.end.y)
+		assert_float(HudLayout.map_bottom_px(safe)).override_failure_message(why).is_equal(
+			minf(HudLayout.menu_top_px, safe.end.y)
+		)
+	remove_child(_main)
+	_main.free()
+	assert_bool(is_inf(HudLayout.menu_top_px)).is_true()  # No sidebar, no menu.
+	var safe_rect: Rect2 = Rect2(10.0, 20.0, 300.0, 400.0)
+	assert_float(HudLayout.map_bottom_px(safe_rect)).is_equal(420.0)
+	HudLayout.menu_top_px = 300.0
+	assert_float(HudLayout.map_bottom_px(safe_rect)).is_equal(300.0)
+	HudLayout.menu_top_px = 500.0  # Below the safe rect: it still ends the map there.
+	assert_float(HudLayout.map_bottom_px(safe_rect)).is_equal(420.0)
+
+
+## The band is as high as its content needs where that is more than the zone (a head line that
+## outgrows it), and the menu's top follows the drawn band, not the zone: with a control in the
+## band that makes it a zone taller, the top is a zone higher than the zone alone puts it.
+func test_the_menus_top_follows_a_band_its_content_makes_taller_than_the_zone() -> void:
+	var phone: UiMetrics = UiProfiles.by_name(&"android_6in_portrait")
+	var cut: Rect2i = Rect2i(0, CUTOUT_PX, phone.window_size.x, phone.window_size.y - CUTOUT_PX)
+	for metrics: UiMetrics in [phone, UiProfiles.with_safe_area(phone, cut)]:
+		var screen: Dictionary = _screen("phone", phone.window_size, metrics, false)
+		await _open(screen)
+		var sidebar: BuildSidebar = _hud("BuildSidebar")
+		var zone: float = HudLayout.bottom_zone_px()
+		var why: String = str(metrics.safe_area)
+		var rest: float = HudLayout.menu_top_px
+		assert_float(rest).override_failure_message(why).is_equal_approx(
+			_rect(sidebar).position.y, 1.0
+		)
+		var extra: Control = Control.new()
+		extra.custom_minimum_size = Vector2(0.0, zone)
+		sidebar.find_child("Stack", true, false).add_child(extra)  # In the backdrop.
+		sidebar._apply_dp()  # What a resize does.
+		await await_idle_frame()
+		await await_idle_frame()
+		assert_float(_rect(sidebar).size.y).override_failure_message(why).is_greater(zone + 1.0)
+		assert_float(HudLayout.menu_top_px).override_failure_message(why).is_equal_approx(
+			_rect(sidebar).position.y, 1.0
+		)
+		assert_float(HudLayout.menu_top_px).override_failure_message(why).is_less(rest - zone * 0.5)
 
 
 ## Every screen to test, as {label, size, metrics (a profile, or null for the engine's own), cutout,

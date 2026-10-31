@@ -10,6 +10,7 @@ extends GdUnitTestSuite
 ## group with a ground tap first and tap a red tank only once it is in sight. The fight case then
 ## plays tick by tick until that tank is dead and a blue tank is lost, at most 900 ticks.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const Lifts: GDScript = preload("res://tests/view/support/lifts.gd")
@@ -72,6 +73,7 @@ func before() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	_scan = LogScan.new()
 	OS.add_logger(_scan)
 
@@ -79,6 +81,7 @@ func before_test() -> void:
 ## Nothing in the log matches the error scan. The override, queue, window size and logger are global
 ## and must not outlive the case. The scene goes first, so no live HUD sees the resize.
 func after_test() -> void:
+	MenuRig.end()
 	assert_array(_scan.hits).is_empty()
 	OS.remove_logger(_scan)
 	if is_instance_valid(_main):

@@ -6,6 +6,7 @@ extends GdUnitTestSuite
 ## BACKDROP, the Dev button's 40 base px, BoxOverlay's Color.WHITE with FeedbackStyle.OUTLINE and
 ## FILL), so a changed theme value fails here and changes in the same PR as a new look.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const HudThemes: GDScript = preload("res://tests/support/hud_theme.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -34,7 +35,13 @@ func after() -> void:
 
 ## The override is static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_the_theme_file_holds_the_hud_look_in_dp_and_marks_what_stays_in_base_px() -> void:
@@ -174,9 +181,10 @@ func test_every_control_that_is_a_child_of_the_hud_has_the_hud_theme() -> void:
 		assert_object(root.theme.get_meta(HudTheme.SOURCE_META)).is_not_null()  # A dp copy.
 	(
 		assert_array(_roots(hud).map(func(root: Control) -> String: return str(root.name)))
-		. contains_exactly(["BoxOverlay", "SafeArea"])
+		. contains_exactly(["BoxOverlay", "GhostControls", "SafeArea"])
 	)
-	assert_object(_roots(hud)[0].theme).is_same(_roots(hud)[1].theme)  # One copy for both.
+	for root: Control in _roots(hud):
+		assert_object(root.theme).is_same(_roots(hud)[0].theme)  # One copy for all.
 	# The case fails on a HUD root added without the theme, or with a theme that is not the HUD's.
 	var fixture: CanvasLayer = auto_free(CanvasLayer.new())
 	for pair: Array in [["Bare", null], ["Foreign", Theme.new()], ["Themed", HudThemes.source()]]:

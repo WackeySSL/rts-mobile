@@ -9,6 +9,7 @@ extends GdUnitTestSuite
 ## scene, whose fog the player does not see it through. The sizes are the shared list of
 ## `ScreenSizes`; a turn of the phone changes the dp, which the layers read again.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -44,8 +45,14 @@ func after() -> void:
 
 
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 	CommandQueue.clear()
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_both_scenes_wire_the_effects_to_the_decals_and_keep_the_z_table() -> void:

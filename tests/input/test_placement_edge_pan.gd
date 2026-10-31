@@ -10,6 +10,7 @@ extends GdUnitTestSuite
 ## finger. A turn of the phone ends the scroll, queues no Command and leaves the sim as it was. The
 ## frames are driven by hand (`TouchInput._process` with a delta), so no real frame adds a step.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/input/support/placement_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -45,6 +46,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	get_window().size = ScreenSizes.LANDSCAPE[0]
 	await _open_main(false)
 	Rig.make_ready(_runner.snapshot)
@@ -52,10 +54,12 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	MenuRig.end()
 	if is_instance_valid(_main):
 		_main.free()
 	UiScale.clear_override()
 	HudLayout.bottom_zone_dp = 0.0
+	HudLayout.menu_top_px = INF
 	CommandQueue.clear()
 
 
@@ -101,7 +105,7 @@ func test_a_corner_scrolls_along_the_diagonal_at_the_same_speed() -> void:
 		_reset()
 		var safe: Rect2 = UiScale.safe_rect_base()
 		var band: float = UiScale.dp(_controller.settings.edge_band_dp)
-		var floor_y: float = safe.end.y - HudLayout.bottom_zone_px()
+		var floor_y: float = HudLayout.map_bottom_px(safe)
 		var finger: Vector2 = Vector2(safe.end.x - band * 0.5, floor_y - band * 0.5)
 		_grab_and_drag_to(finger)
 		var held: Vector2 = _camera.position
@@ -272,16 +276,18 @@ func test_the_metrics_are_read_when_the_window_changes_and_not_every_frame() -> 
 	assert_vector(_placement.edge_heading(narrow)).is_equal(Vector2.ZERO)
 
 
-## In portrait the build band covers the bottom of the map view, so the bottom band is the strip
-## just above it, not the safe area's last 32 dp under it: a drag south scrolls while the ghost is
-## still in view above the build band, and a finger at the safe area's bottom edge, deep in the
-## band, still scrolls (it has not let go).
+## In portrait the build menu covers the bottom of the map view, so the bottom band is the strip of
+## map just above it, not the safe area's last 32 dp under it: a drag south scrolls while the ghost
+## is still in view above the menu, and a finger at the safe area's bottom edge, deep in the menu,
+## still scrolls (it has not let go). Placement collapsed the menu to its 96 dp strip (ADR 0024
+## section 5), so the menu is the strip here.
 func test_in_portrait_the_bottom_band_is_above_the_build_band_and_the_ghost_stays_in_view() -> void:
 	for size: Vector2i in ScreenSizes.PORTRAIT:
 		get_window().size = size
 		await await_idle_frame()
 		await await_idle_frame()
 		_reset()
+		await await_idle_frame()  # Placement collapsed the menu: its drawn rect is the strip's now.
 		var note: String = str(size)
 		var safe: Rect2 = UiScale.safe_rect_base()
 		var band: float = UiScale.dp(_controller.settings.edge_band_dp)
@@ -292,7 +298,7 @@ func test_in_portrait_the_bottom_band_is_above_the_build_band_and_the_ghost_stay
 		assert_float(safe.end.y - band * 0.5).override_failure_message(note).is_greater(covered)
 		var finger: Vector2 = _in_band(DOWN)
 		assert_vector(_placement.edge_heading(finger)).override_failure_message(note).is_equal(DOWN)
-		var above: Vector2 = Vector2(finger.x, safe.end.y - HudLayout.bottom_zone_px() - band * 1.5)
+		var above: Vector2 = Vector2(finger.x, HudLayout.map_bottom_px(safe) - band * 1.5)
 		assert_vector(_placement.edge_heading(above)).override_failure_message(note).is_equal(
 			Vector2.ZERO
 		)
@@ -306,6 +312,48 @@ func test_in_portrait_the_bottom_band_is_above_the_build_band_and_the_ghost_stay
 		assert_float(_centre().y).override_failure_message(note).is_less(covered)  # And stays.
 		assert_bool(_placement.active).override_failure_message(note).is_true()
 		assert_array(_sent).override_failure_message(note).is_empty()
+
+
+## With a top cutout the portrait band sits higher than the safe rect's bottom less its height (the
+## safe area's margin gives both ends of an axis the larger inset), so P86b's rule put the bottom
+## band up to a margin inside the build band. P86c ends it at the band's drawn top,
+## `HudLayout.menu_top_px`: a finger half a band above that top scrolls, one a band and a half above
+## does not, and the ghost stays in view above the drawn top.
+func test_with_a_top_cutout_the_bottom_band_ends_at_the_drawn_top_of_the_build_band() -> void:
+	var names: Array[StringName] = [
+		&"android_6in_portrait", &"web_phone_portrait", &"desktop_portrait", &"web_tablet_portrait"
+	]
+	for profile_name: StringName in names:
+		var m: UiMetrics = UiProfiles.by_name(profile_name)
+		var cut: Rect2i = Rect2i(0, CUTOUT_PX, m.window_size.x, m.window_size.y - CUTOUT_PX)
+		UiScale.set_override(UiProfiles.with_safe_area(m, cut))
+		get_window().size = m.window_size
+		await await_idle_frame()
+		await await_idle_frame()
+		_reset()
+		await await_idle_frame()  # Placement collapsed the menu: its drawn rect is the strip's now.
+		var note: String = str(profile_name)
+		var safe: Rect2 = UiScale.safe_rect_base()
+		var band: float = UiScale.dp(_controller.settings.edge_band_dp)
+		var top: float = _build_band().position.y
+		assert_float(HudLayout.menu_top_px).override_failure_message(note).is_equal_approx(top, 1.0)
+		# The old rule's bottom lies in the band by the cutout's margin: more than half a band.
+		var inside: float = safe.end.y - HudLayout.bottom_zone_px()
+		assert_float(inside).override_failure_message(note).is_greater(top + band * 0.5)
+		var x: float = safe.get_center().x
+		var half: Vector2 = Vector2(x, top - band * 0.5)
+		var far: Vector2 = Vector2(x, top - band * 1.5)
+		assert_vector(_placement.edge_heading(half)).override_failure_message(note).is_equal(DOWN)
+		assert_vector(_placement.edge_heading(far)).override_failure_message(note).is_equal(
+			Vector2.ZERO
+		)
+		assert_vector(_placement.edge_heading(Vector2(x, top + 1.0))).is_equal(DOWN)
+		var start: Vector2 = _camera.position
+		_grab_and_drag_to(half)
+		_hold(HOLD_FRAMES, FRAME)
+		assert_float(_camera.position.y).override_failure_message(note).is_greater(start.y)
+		assert_float(_centre().y).override_failure_message(note).is_less(top)  # In view.
+		TouchEvents.release(get_viewport(), 0, half)
 
 
 ## The band and the speed are data: another `edge_pan_dp_per_s` scrolls at that speed, another
@@ -367,17 +415,18 @@ func test_the_scroll_stops_at_the_cameras_clamp() -> void:
 ## the ghost's point's, `ghost_lift_dp` above the finger; the bottom one the finger's.
 func test_the_bands_follow_the_safe_area_and_the_top_one_the_ghost() -> void:
 	for zone_dp: float in [0.0, HudLayout.BAND_MIN_DP]:
-		HudLayout.bottom_zone_dp = zone_dp
-		_bands_follow_the_safe_area()
-	HudLayout.bottom_zone_dp = 0.0
+		_bands_follow_the_safe_area(zone_dp)
+	HudLayout.menu_top_px = INF
 	UiScale.clear_override()
 	_placement.read_metrics()
 
 
-func _bands_follow_the_safe_area() -> void:
+## `zone_dp` is the height of a build band standing on the safe rect's bottom: its top is what the
+## sidebar would publish (`HudLayout.menu_top_px`); 0 is no band.
+func _bands_follow_the_safe_area(zone_dp: float) -> void:
 	for profile_name: StringName in [&"android_6in", &"android_6in_portrait", &"web_tablet"]:
 		var m: UiMetrics = UiProfiles.by_name(profile_name)
-		if HudLayout.bottom_zone_dp > 0.0 and not UiScale.is_portrait_size(m.window_size):
+		if zone_dp > 0.0 and not UiScale.is_portrait_size(m.window_size):
 			continue  # Only a portrait screen has a build band.
 		var cut: Rect2i = Rect2i(
 			CUTOUT_PX, CUTOUT_PX, m.window_size.x - CUTOUT_PX * 2, m.window_size.y - CUTOUT_PX * 2
@@ -390,7 +439,8 @@ func _bands_follow_the_safe_area() -> void:
 		var middle: Vector2 = safe.get_center()
 		var note: String = str(profile_name)
 		# The portrait build band covers the map view's bottom: its top is where the bottom band ends.
-		var floor_y: float = safe.end.y - HudLayout.bottom_zone_px()
+		HudLayout.menu_top_px = INF if zone_dp == 0.0 else safe.end.y - UiScale.dp(zone_dp)
+		var floor_y: float = HudLayout.map_bottom_px(safe)
 		# Each: the finger, the heading it earns. The cutout is wider than the band on every side.
 		var cases: Array[Array] = [
 			[Vector2(safe.position.x + band * 0.5, middle.y), LEFT],
@@ -545,7 +595,7 @@ func _in_band(edge: Vector2) -> Vector2:
 	elif edge == UP:
 		at.y = safe.position.y + band * 0.5 + lift
 	else:
-		at.y = safe.end.y - HudLayout.bottom_zone_px() - band * 0.5
+		at.y = HudLayout.map_bottom_px(safe) - band * 0.5
 	return at
 
 

@@ -6,9 +6,13 @@ extends HBoxContainer
 ## a point is placed) and a tap on the pressed one ends it; the check mark (dimmed until a point is
 ## placed) sends the one SUPERWEAPON, the X cancels.
 ## Landscape: the top line, left of the minimap's slot. Portrait: the right edge, a gap above the
-## ArmyBar's line, which is a gap above the build band. The parent `MarginContainer` is the band the
-## row sits in; this node sets its margins, and it comes after the BuildSidebar in the scene, so the
-## band's height is in place. The row is about 216 dp wide, which every phone's width holds.
+## ArmyBar's line, which is a gap above the build menu (the band, or the strip while it is
+## collapsed). The parent `MarginContainer` is the band the row sits in; this node sets its margins,
+## and it comes after the BuildSidebar in the scene, so the menu's height is in place. It follows
+## the menu's slide through `zone_changed` (ADR 0024 section 4): the lift of a slide frame uses the
+## dp and the orientation cached on the last resize and the height the signal carries, and the
+## theme overrides are set on a resize only. The row is about 216 dp wide, which every phone's width
+## holds.
 
 const GAP_DP: float = 8.0
 const ACTION_DP: float = 64.0  ## The check mark and the X: placement's size (touch-ui-rules).
@@ -23,6 +27,10 @@ var _confirm: Button = Button.new()
 var _cancel: Button = Button.new()
 var _card: Texture2D = null
 var _card_type: int = -1
+var _dp_px: float = 1.0  ## `UiScale.base_px_per_dp()`, read when the window changes.
+var _portrait: bool = false  ## The orientation, likewise.
+var _zone_px: float = 0.0  ## The menu's height now, base px: `HudLayout`'s, then `zone_changed`'s.
+var _lifted: int = -1  ## The band's bottom margin as last set.
 
 
 func _ready() -> void:
@@ -81,19 +89,43 @@ func _show() -> void:
 
 ## Sizes are dp, so they follow a resize like DpMinSize does; then the band's margins.
 func _apply_dp() -> void:
-	var gap: float = UiScale.dp(GAP_DP)
-	add_theme_constant_override("separation", roundi(gap))
+	read_metrics()
+	add_theme_constant_override("separation", roundi(GAP_DP * _dp_px))
 	for button: Button in [_confirm, _cancel]:
-		button.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(ICON_DP)))
+		button.add_theme_constant_override("icon_max_width", roundi(ICON_DP * _dp_px))
+	_lifted = -1  # A resize writes the margins again.
+	_lift()
+
+
+## Reads the dp, the orientation and the menu's height again: a resize does it, and a test that
+## puts in another `UiScale` override must call it. Not per frame (`UiScale.current()` makes a new
+## `UiMetrics` each time).
+func read_metrics() -> void:
+	_dp_px = UiScale.base_px_per_dp()
+	_portrait = HudLayout.is_portrait()
+	_zone_px = HudLayout.bottom_zone_px()
+
+
+## The menu's top or height changed (`BuildSidebar.zone_changed`, base px): the row follows.
+func _on_zone_changed(_top_px: float, height_px: float) -> void:
+	_zone_px = height_px
+	_lift()
+
+
+## The row's place in the band: above the ArmyBar's line in portrait, left of the minimap's slot in
+## landscape.
+func _lift() -> void:
 	var band: MarginContainer = get_parent() as MarginContainer
 	if band == null:
 		return
-	var portrait: bool = HudLayout.is_portrait()
-	var bar: int = (
-		ceili(HudLayout.bottom_zone_px() + gap) + ceili(UiScale.dp(ArmyBar.ALL_ARMY_DP.y))
-	)
+	var gap: float = GAP_DP * _dp_px
+	var bar: int = ceili(_zone_px + gap) + ceili(ArmyBar.ALL_ARMY_DP.y * _dp_px)
+	var bottom: int = bar + ceili(gap) if _portrait else 0
+	if bottom == _lifted:
+		return
+	_lifted = bottom
 	size_flags_horizontal = Control.SIZE_SHRINK_END
-	size_flags_vertical = Control.SIZE_SHRINK_END if portrait else Control.SIZE_SHRINK_BEGIN
-	band.add_theme_constant_override("margin_bottom", bar + ceili(gap) if portrait else 0)
-	var slot: float = UiScale.dp(HudLayout.SLOT_DP.x) + gap
-	band.add_theme_constant_override("margin_right", 0 if portrait else ceili(slot))
+	size_flags_vertical = Control.SIZE_SHRINK_END if _portrait else Control.SIZE_SHRINK_BEGIN
+	band.add_theme_constant_override("margin_bottom", bottom)
+	var slot: float = HudLayout.SLOT_DP.x * _dp_px + gap
+	band.add_theme_constant_override("margin_right", 0 if _portrait else ceili(slot))

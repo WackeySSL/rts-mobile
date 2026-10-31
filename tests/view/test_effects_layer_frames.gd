@@ -6,6 +6,7 @@ extends GdUnitTestSuite
 ## health bars, before the markers). The events themselves are in test_effects_layer.gd and the
 ## look in time in test_effects_layer_curves.gd (gdlint allows 20 public methods per file).
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const Rig: GDScript = preload("res://tests/view/support/effects_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -70,6 +71,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	UiScale.set_override(UiProfiles.by_name(&"android_6in"))
 	_now_ms = 0
 	_expected.clear()
@@ -81,6 +83,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 	CommandQueue.clear()
 

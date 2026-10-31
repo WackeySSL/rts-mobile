@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 ## tick 60 is the one of a run with no gesture and no turn. Time is a fake clock, only run_ticks()
 ## moves the sim, and the Commands are caught on their way into the real CommandQueue.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const START_PROFILE: StringName = &"android_6in"
@@ -36,11 +37,17 @@ func before() -> void:
 ## The override, queue and window size are global and must not outlive the test. The scene goes
 ## first, so no live HUD sees the resize.
 func after_test() -> void:
+	MenuRig.end()
 	if is_instance_valid(_main):
 		_main.free()
 	UiScale.clear_override()
 	CommandQueue.clear()
 	get_window().size = _window_size_before
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_a_turn_during_a_pan_a_box_a_pinch_or_a_press_makes_no_command_and_keeps_the_hash(

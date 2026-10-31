@@ -11,6 +11,7 @@ extends GdUnitTestSuite
 ## jumping the camera. How the rest of the band sits is test_build_sidebar_layout's and
 ## test_build_sidebar_items_layout's, and the jump itself is test_minimap's.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -38,8 +39,14 @@ func after() -> void:
 
 ## The override and the zone are static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 	HudLayout.bottom_zone_dp = 0.0
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_sideways_the_minimap_fills_the_panel_at_the_top_right_with_a_2_to_1_box() -> void:
@@ -82,7 +89,7 @@ func test_upright_the_minimap_is_at_the_bands_right_end_within_its_height_and_40
 		var box: Rect2 = _box()
 		var status: Rect2 = _rect("Status")
 		var inner: Rect2 = _inner()
-		var edge: StyleBox = _sidebar.get_theme_stylebox(&"panel")
+		var edge: StyleBox = _hud("Backdrop").get_theme_stylebox(&"panel")
 		var band_inner: Rect2 = Rect2(
 			band.position + Vector2(edge.get_margin(SIDE_LEFT), edge.get_margin(SIDE_TOP)),
 			band.size - edge.get_minimum_size()

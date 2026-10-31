@@ -4,6 +4,7 @@ extends GdUnitTestSuite
 ## Fingers are touches through the real GUI, time is a fake clock. Tank n is row n - 1 of the
 ## 6-column block, and ids 1-30 are the player's.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const HudThemes: GDScript = preload("res://tests/support/hud_theme.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -30,7 +31,13 @@ func after() -> void:
 
 ## The override is static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_the_count_follows_every_way_the_selection_changes() -> void:
