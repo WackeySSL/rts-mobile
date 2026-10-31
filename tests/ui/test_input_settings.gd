@@ -20,6 +20,8 @@ func _table() -> Dictionary[String, Variant]:
 		"marker_ms": 600,
 		"haptic_ms": 15,
 		"haptics_enabled": true,
+		"ghost_grab_dp": 24.0,
+		"ghost_lift_dp": 64.0,
 	}
 
 

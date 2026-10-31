@@ -29,10 +29,10 @@ extends PanelContainer
 ## that scrolls sideways (the cards of the floating panel carry their names, the band's tiles do
 ## not). The faction is that of the player's own rows (`type_faction`, the producer-faction rule of
 ## `Production.apply_queue`): a type of another faction is never shown, one with none is shown to
-## all. A tile is READY (a finished structure at the head of its queue: tapping it is placement
-## mode, plan P86), LOCKED (the type's requirement or the tab's producer is not among the player's
-## rows), UNAFFORDABLE, FULL (no room in the queue) or AVAILABLE, in that order. A tap on one that
-## cannot take an item shakes it.
+## all. A tile is READY (a finished structure at the head of its queue: a tap enters placement mode,
+## plan P86, and the check mark and the X take the card row's place until it ends), LOCKED (the
+## type's requirement or the tab's producer is not among the player's rows), UNAFFORDABLE, FULL (no
+## room in the queue) or AVAILABLE, in that order. A tap on one that cannot take an item shakes it.
 ## Selecting an own production building opens its tab: `set_selected` is the hook, wired to
 ## `PlayerController.selection_changed` when `controller` is set.
 ## The look is the inherited theme's (`game/ui/theme.tres`: `BuildSidebar`, `SidebarTab`,
@@ -75,6 +75,7 @@ const CREDITS_DIGITS: int = 5
 @export var pill: Control  ## The landscape home of `Status` (a panel in a band at the top left).
 @export var minimap_slot: Control  ## The landscape panel at the top right, empty until P88.
 @export var top_left: Control  ## The pill starts after it (the Dev button).
+@export var placement: PlacementController  ## A tap on a READY tile begins it. None: no placement.
 
 ## The open tab, a `World.Tab`.
 var tab: int = World.Tab.STRUCTURES
@@ -91,6 +92,7 @@ var _tabs: Array[Button] = []
 var _items: ScrollContainer = ScrollContainer.new()
 var _items_fit: DpMinSize = DpMinSize.new()  ## The least height of `_items`, by the tile in use.
 var _grid: GridContainer = GridContainer.new()
+var _actions: PlacementControls = null  ## Check mark and X, the row's stand-in; with `placement`.
 var _tiles: Array[ItemTile] = []
 var _low: bool = false
 var _faction: int = -1  ## The local player's faction (`type_faction`); -1 until a row shows it.
@@ -117,6 +119,12 @@ func _ready() -> void:
 	_items.add_child(_items_fit)
 	_items.add_child(_grid)
 	_stack.add_child(_items)
+	if placement != null:
+		_actions = PlacementControls.new()
+		_actions.name = "Placement"
+		_actions.placement = placement
+		_stack.add_child(_actions)
+		placement.changed.connect(_on_placement_changed)
 	select_tab(tab)
 	_tint()
 	if pill != null:
@@ -380,19 +388,27 @@ func _show_tab() -> void:
 		tile.visible = tile.tab == tab and (tile.faction < 0 or tile.faction == _faction)
 		shown += 1 if tile.visible else 0
 	_items_fit.min_dp = Vector2(0.0, ItemTile.CARD_DP.y + ROW_SLACK_DP if named else ITEMS_DP)
+	if _actions != null:
+		_actions.set_row_dp(_items_fit.min_dp.y)
 	_grid.columns = maxi(shown, 1)
 
 
-## A tap: an available tile queues one item, a ready structure waits for placement mode (plan
-## P86), any other tile shakes.
+## A tap: an available tile queues one item, a ready structure enters placement mode (plan P86),
+## any other tile shakes.
 func _on_chose(tile: ItemTile) -> void:
 	match tile.state:
 		ItemTile.State.AVAILABLE:
 			_send(Command.queue(_local_player(), tile.type_index))
 		ItemTile.State.READY:
-			pass
+			if placement != null:
+				placement.begin(tile.type_index)
 		_:
 			tile.shake()
+
+
+## The check mark and the X replace the cards while placement mode is on.
+func _on_placement_changed() -> void:
+	_items.visible = not placement.active
 
 
 ## A hold: the last queued item of the tile's type leaves its queue (and is paid back).
