@@ -8,7 +8,8 @@ extends Node
 ## panning and never presses it. A touch that starts on a Control stays with it. Mouse buttons and
 ## motion are ignored (desktop clicks arrive as emulated touches); only the wheel steps the zoom.
 ## In placement mode (P86) a press on the ghost's silhouette grabs it: its drag is a GHOST_DRAG for
-## the controller, not a pan, and a hold starts no box.
+## the controller, not a pan, and a hold starts no box. Every frame the grabbing finger is in an
+## edge band (P86b), the controller scrolls the map: GHOST_DRAG comes only when the finger moves.
 ## A turn of the phone cancels every gesture in flight (ADR 0015 section 3): the finger positions
 ## belong to the old layout. A box is cancelled for the controller, the camera never hears the end
 ## of a pan or pinch (it would snap the zoom about a stale anchor), and no tap is made.
@@ -64,9 +65,13 @@ func _on_size_changed() -> void:
 	_events.clear()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_recognizer.advance(clock.call())  # A long-press arrives while the finger rests.
 	_dispatch()
+	# A ghost drag whose finger rests in an edge band keeps scrolling the map (P86b).
+	var placement: PlacementController = null if controller == null else controller.placement
+	if placement != null and _recognizer.state() == GestureRecognizer.State.GRAB:
+		placement.edge_pan(_recognizer.grab_position(), delta)
 
 
 func _notification(what: int) -> void:

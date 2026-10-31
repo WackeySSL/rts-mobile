@@ -34,7 +34,7 @@ Tick a box in the PR that meets the criterion.
 - [x] Gate: 150 units at 60 fps on a mid-range Android phone, and the same seed gives the same match
 
 ## Phase 3: Base building and economy
-- [ ] Buildings from the GDD with placement (ghost, valid and invalid tint, confirm and cancel)
+- [x] Buildings from the GDD with placement (ghost, valid and invalid tint, confirm and cancel)
 - [ ] Build sidebar with tabs, queues, cost and progress; power bar and low-power effects
 - [ ] Portrait and landscape on the battle screen (ADR 0015): the HUD, selection and build sidebar keep their dp sizes in both
   orientations and follow ADR 0015 §5's layout (the sidebar row sets the portrait bottom zone, so the ArmyBar moves above the
