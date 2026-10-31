@@ -285,9 +285,10 @@ dated): the note above says too much in "P93's base-arena bounds see these check
 in which a building dies". The base arena loses no building and no player in it records an enemy
 building, so P93's `MEMORY_CHECKS` bound (28 measured, 35 with the margin) is the MEMORY phase
 alone, one check per building row, and `LastSeen.forget_dead` in REMOVE is not exercised there.
-The `ghosts` section of the state hash is empty at every pinned checkpoint of both arenas, so no
-golden hash guards `LastSeen` yet. A later scenario row may let a side see or lose an enemy
-building and re-pin under exception 3; P93b re-measures the bound.
+The `ghosts` section of the state hash holds no record (only its counts) at every pinned
+checkpoint of both arenas, so no golden hash exercises a `LastSeen` record yet. A later scenario row
+may let a side see or lose an enemy building and re-pin under exception 3; P93b re-measures the
+bound.
 
 ### 6. The snapshot
 P70 lists every new `ROW_ARRAYS`, `TYPE_ARRAYS` and `MAP_ARRAYS` name in `MatchSnapshot.NOT_COPIED`

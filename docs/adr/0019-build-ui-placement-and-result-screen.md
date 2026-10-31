@@ -166,7 +166,8 @@ stay as accepted and as dated):
   `ghost_grab_dp` in `data/input_settings.tres`, not constants. The margin is measured across
   each edge of the silhouette, also past the diamond's two lower edges; at the corners of the box
   part it reaches about 1.41 x 24 dp.
-- **Placement and the strike aim exclude each other** (ADR 0023 §10): entering placement ends a
+- **Placement and the strike aim exclude each other** (P86's choice, in `PlacementController`; ADR
+  0023 §10 names only the targeting mode): entering placement ends a
   strike aim, and starting a strike aim ends placement with no Command (the structure stays
   ready), so one mode owns the map's taps.
 - **Not yet:** confirm ends the mode at once after its `PLACE`. The pending state, "Blocked" and
