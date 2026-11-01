@@ -174,9 +174,10 @@ func test_every_control_that_is_a_child_of_the_hud_has_the_hud_theme() -> void:
 		assert_object(root.theme.get_meta(HudTheme.SOURCE_META)).is_not_null()  # A dp copy.
 	(
 		assert_array(_roots(hud).map(func(root: Control) -> String: return str(root.name)))
-		. contains_exactly(["BoxOverlay", "SafeArea"])
+		. contains_exactly(["BoxOverlay", "GhostControls", "SafeArea"])
 	)
-	assert_object(_roots(hud)[0].theme).is_same(_roots(hud)[1].theme)  # One copy for both.
+	for root: Control in _roots(hud):
+		assert_object(root.theme).is_same(_roots(hud)[0].theme)  # One copy for all.
 	# The case fails on a HUD root added without the theme, or with a theme that is not the HUD's.
 	var fixture: CanvasLayer = auto_free(CanvasLayer.new())
 	for pair: Array in [["Bare", null], ["Foreign", Theme.new()], ["Themed", HudThemes.source()]]:

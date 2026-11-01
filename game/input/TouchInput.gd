@@ -10,6 +10,8 @@ extends Node
 ## In placement mode (P86) a press on the ghost's silhouette grabs it: its drag is a GHOST_DRAG for
 ## the controller, not a pan, and a hold starts no box. Every frame the grabbing finger is in an
 ## edge band (P86b), the controller scrolls the map: GHOST_DRAG comes only when the finger moves.
+## While the recognizer is in the GRAB state `placement.dragging` is on (P86c): the check mark and
+## the X beside the ghost hide until the finger lets go.
 ## A turn of the phone cancels every gesture in flight (ADR 0015 section 3): the finger positions
 ## belong to the old layout. A box is cancelled for the controller, the camera never hears the end
 ## of a pan or pinch (it would snap the zoom about a stale anchor), and no tap is made.
@@ -57,6 +59,7 @@ func _on_size_changed() -> void:
 		return
 	_portrait = portrait
 	_recognizer.cancel_all()
+	_sync_drag()
 	if _recognizer.take_events(_events) == 0:
 		return
 	for e: GestureEvent in _events:
@@ -116,11 +119,18 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _dispatch() -> void:
+	_sync_drag()
 	if _recognizer.take_events(_events) == 0:
 		return
 	for e: GestureEvent in _events:
 		_route(e)
 	_events.clear()
+
+
+## Tells the placement controller whether a finger holds the ghost: the recognizer is in GRAB.
+func _sync_drag() -> void:
+	if controller != null and controller.placement != null:
+		controller.placement.dragging = _recognizer.state() == GestureRecognizer.State.GRAB
 
 
 func _route(e: GestureEvent) -> void:

@@ -7,7 +7,9 @@ extends RefCounted
 ## pill at the top left after the Dev button (`PILL_DP`). Portrait: the sidebar's bottom band,
 ## whose height `BuildSidebar` puts in `bottom_zone_dp` (`band_dp`) from `_ready` and on every
 ## resize, with the minimap at its right end (`minimap_box_px`); every HUD part reads it here and
-## nowhere else, so the ArmyBar sits a gap above the band.
+## nowhere else, so the ArmyBar sits a gap above the band. `menu_top_px` is the menu's real top on
+## the screen (ADR 0024 section 4), for whatever measures the screen: the edge pan's bottom band
+## and the buttons of placement.
 ## A scene without a sidebar leaves it at 0 (the sidebar puts it back when it leaves the tree).
 ## The orientation is the one rule of UiScale, applied to the window the UI scale is made for.
 
@@ -33,6 +35,14 @@ const BAND_FLOOR_DP: float = 172.0
 ## The portrait band's height in dp; 0 in landscape and while no BuildSidebar is in the tree. Static
 ## state: a test that sets one puts it back in `after_test`, like the UiScale override.
 static var bottom_zone_dp: float = 0.0
+## The build menu's real top on the screen in base px: the y of the portrait band's rect, which
+## `BuildSidebar._publish_top` writes, and the safe rect's bottom in landscape, where the panel
+## floats.
+## The band's bottom is not the safe rect's bottom (`SafeAreaMargin` adds a margin and gives both
+## ends of an axis the larger inset), so with a top cutout the band sits higher than
+## `safe.end.y - bottom_zone_dp` says. INF while no BuildSidebar is in the tree: nothing covers the
+## map (read it through `map_bottom_px`). Static state like the zone: a test puts it back.
+static var menu_top_px: float = INF
 
 
 ## Whether the window is a portrait one (UiScale.is_portrait_size), for the metrics in force.
@@ -58,6 +68,12 @@ static func right_zone_px(inner: float) -> float:
 ## The portrait bottom zone's height in base px, at the bottom of the safe area's inner rect.
 static func bottom_zone_px() -> float:
 	return UiScale.dp(bottom_zone_dp)
+
+
+## Where the map view ends at the bottom, in base px: the build menu's real top, or the bottom of
+## `safe` where no menu covers the map.
+static func map_bottom_px(safe: Rect2) -> float:
+	return minf(menu_top_px, safe.end.y)
 
 
 ## The portrait band's height in dp for a safe rect `safe_dp` dp tall: 20% of it and at least

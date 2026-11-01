@@ -17,7 +17,9 @@ extends PanelContainer
 ## them stays the band's full width): `HudLayout.minimap_box_px` sizes its 2:1 box.
 ## The band's height goes to `HudLayout.bottom_zone_dp`, the one place the ArmyBar reads, from
 ## `_ready` and on every resize: this node is the first of the HUD's siblings in the scene, so its
-## `size_changed` handler runs before the ArmyBar's and the bar finds the new height.
+## `size_changed` handler runs before the ArmyBar's and the bar finds the new height. Its real top
+## on the screen goes to `HudLayout.menu_top_px` (ADR 0024 section 4), which the edge pan and the
+## placement buttons measure by.
 ## Tabs: Structures, Infantry and Vehicles, each an icon alone (`tab_<name>`, grey at rest and white
 ## when open, from the theme). The open tab is the lighter plate with the thick bar at its foot
 ## (theme `SidebarTab`).
@@ -33,9 +35,10 @@ extends PanelContainer
 ## not). The faction is that of the player's own rows (`type_faction`, the producer-faction rule of
 ## `Production.apply_queue`): a type of another faction is never shown, one with none is shown to
 ## all. A tile is READY (a finished structure at the head of its queue: a tap enters placement mode,
-## plan P86, and the check mark and the X take the card row's place until it ends), LOCKED (the
-## type's requirement or the tab's producer is not among the player's rows), UNAFFORDABLE, FULL (no
-## room in the queue) or AVAILABLE, in that order. A tap on one that cannot take an item shakes it.
+## plan P86; the cards stay while it runs, and the check mark and the X stand beside the ghost,
+## `GhostControls`), LOCKED (the type's requirement or the tab's producer is not among the player's
+## rows), UNAFFORDABLE, FULL (no room in the queue) or AVAILABLE, in that order. A tap on one that
+## cannot take an item shakes it.
 ## Selecting an own production building opens its tab: `set_selected` is the hook, wired to
 ## `PlayerController.selection_changed` when `controller` is set.
 ## The look is the inherited theme's (`game/ui/theme.tres`: `BuildSidebar`, `SidebarTab`,
@@ -98,7 +101,6 @@ var _tabs: Array[Button] = []
 var _items: ScrollContainer = ScrollContainer.new()
 var _items_fit: DpMinSize = DpMinSize.new()  ## The least height of `_items`, by the tile in use.
 var _grid: GridContainer = GridContainer.new()
-var _actions: PlacementControls = null  ## Check mark and X, the row's stand-in; with `placement`.
 var _tiles: Array[ItemTile] = []
 var _low: bool = false
 var _faction: int = -1  ## The local player's faction (`type_faction`); -1 until a row shows it.
@@ -131,12 +133,6 @@ func _ready() -> void:
 	_items.add_child(_items_fit)
 	_items.add_child(_grid)
 	_left.add_child(_items)
-	if placement != null:
-		_actions = PlacementControls.new()
-		_actions.name = "Placement"
-		_actions.placement = placement
-		_left.add_child(_actions)
-		placement.changed.connect(_on_placement_changed)
 	select_tab(tab)
 	_tint()
 	if pill != null:
@@ -151,6 +147,7 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	HudLayout.bottom_zone_dp = 0.0
+	HudLayout.menu_top_px = INF
 
 
 func _notification(what: int) -> void:
@@ -400,8 +397,6 @@ func _show_tab() -> void:
 		tile.visible = tile.tab == tab and (tile.faction < 0 or tile.faction == _faction)
 		shown += 1 if tile.visible else 0
 	_items_fit.min_dp = Vector2(0.0, ItemTile.CARD_DP.y + ROW_SLACK_DP if named else ITEMS_DP)
-	if _actions != null:
-		_actions.set_row_dp(_items_fit.min_dp.y)
 	_grid.columns = maxi(shown, 1)
 
 
@@ -416,11 +411,6 @@ func _on_chose(tile: ItemTile) -> void:
 				placement.begin(tile.type_index)
 		_:
 			tile.shake()
-
-
-## The check mark and the X replace the cards while placement mode is on.
-func _on_placement_changed() -> void:
-	_items.visible = not placement.active
 
 
 ## A hold: the last queued item of the tile's type leaves its queue (and is paid back).
@@ -512,6 +502,23 @@ func _apply_dp() -> void:
 	_show_tab()
 	_fit_credits()
 	_fit_bar_text()
+	_publish_top()
+
+
+## Writes `HudLayout.menu_top_px` once everything of this resize has its size. Portrait: the band
+## stands on the safe area's inner bottom, which is the margin above the screen's, and is as high
+## as its content needs where that is more than the zone, so the top is read from the combined
+## minimum height (what the container will draw it at). Landscape: nothing covers the map's bottom
+## edge, the panel floats.
+func _publish_top() -> void:
+	if not HudLayout.is_portrait():
+		HudLayout.menu_top_px = UiScale.safe_rect_base().end.y
+		return
+	var safe: SafeAreaMargin = get_parent() as SafeAreaMargin
+	var margin_y: int = 0 if safe == null else safe.apply().y
+	var screen_y: float = get_viewport().get_visible_rect().size.y
+	var band_px: float = maxf(HudLayout.bottom_zone_px(), get_combined_minimum_size().y)
+	HudLayout.menu_top_px = screen_y - margin_y - band_px
 
 
 ## Lays the three parts out for the orientation: the band in portrait, the floating panels in
