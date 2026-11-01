@@ -49,6 +49,10 @@ it: a tap on the ghost's own silhouette leaves it and the 24 dp ring moves it, t
 grab margin are settings, and placement and the strike aim exclude each other. No accepted text
 changed.
 
+Status note (2026-10-31, P26ao docs, ADR 0024 accepted the same day on #255): §2 carries a dated
+status note: P86b (#253) did the pending state, "Blocked" and the edge pan, and ADR 0024 moves the
+check mark and X beside the ghost. No accepted text changed.
+
 ## Context
 - `touch-ui-rules` already fixes, in its gesture table and its "Building placement" section: tap an
   own building selects it and "a production building opens its build tab"; tap minimap moves the
@@ -172,6 +176,19 @@ stay as accepted and as dated):
   ready), so one mode owns the map's taps.
 - **Not yet:** confirm ends the mode at once after its `PLACE`. The pending state, "Blocked" and
   the edge pan are plan row P86b.
+
+Status note (2026-10-31, P26ao docs; the text and the notes above stay as accepted and as dated):
+the note above's "Not yet" is done. P86b (#253, 6e845b5) keeps the mode after the check mark's one
+`PLACE` and holds the ghost as pending until the published snapshot past the Command's tick
+answers: a building of the type at the ghost ends the mode; the structure still ready and no
+building turns the ghost red with the word "Blocked" (the mode stays, and moving the ghost clears
+it); neither ends the mode. The X works in every state. The check mark is dimmed unless the ghost
+fits, no `PLACE` is pending and it is not "Blocked". The edge pan runs while a dragged ghost is in
+an edge band: `edge_band_dp` 32, `edge_pan_dp_per_s` 300 and `edge_pan_max_step_ms` 100 in
+`data/input_settings.tres`; the top band counts from the lifted ghost point, the others from the
+finger, inside the safe area, and in portrait the bottom band ends at the build menu's top. ADR
+0024 (accepted 2026-10-31) moves the check mark and X from the item row's place to beside the ghost
+(its §10, plan row P86c) and lets the build menu collapse; until P86c merges they stay in the row.
 
 ### 3. Buildings and harvesters on the map
 - Tap an own building: it alone is selected; the selection panel shows it. Buildings never join a
