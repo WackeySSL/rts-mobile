@@ -8,6 +8,7 @@ extends GdUnitTestSuite
 ## of the top-down view is not used by the layer any more. Sizes and dp are those of the window
 ## (`UiScale`), which a turn of the window changes.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const ArenaRig: GDScript = preload("res://tests/ui/support/arena_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const MAIN_SCENE: String = "res://scenes/main.tscn"
@@ -30,8 +31,14 @@ func after() -> void:
 
 
 func after_test() -> void:
+	MenuRig.end()
 	CommandQueue.clear()
 	_calls.clear()
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_a_ring_is_the_ground_ellipse_at_z_3_in_the_main_scene_at_every_size() -> void:

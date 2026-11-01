@@ -15,6 +15,7 @@ extends GdUnitTestSuite
 ## Cases run the real main scene (controls_test: a 48 x 48 map, 30 blue tanks, the red ones out of
 ## sight), paused, with the Commands caught.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const TOLERANCE_PX: float = 0.5
@@ -41,9 +42,15 @@ func after() -> void:
 
 ## The override is static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 	HudLayout.bottom_zone_dp = 0.0
 	CommandQueue.clear()
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_the_diamond_is_inscribed_in_a_2_to_1_box_and_the_cells_are_drawn_under_one_transform(

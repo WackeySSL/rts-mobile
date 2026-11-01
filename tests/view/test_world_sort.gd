@@ -9,6 +9,7 @@ extends GdUnitTestSuite
 ## inputs, the node's `y_sort_enabled` and the y of each child, a rig's position or a building's
 ## footprint centre (`(c + r + n) * 16` px for an n x n footprint at tile (c, r)).
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Frames: GDScript = preload("res://tests/view/support/rig_frames.gd")
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const ARENA_SCENE: String = "res://scenes/dev/perf_arena.tscn"
@@ -33,11 +34,13 @@ var _layer: UnitLayer
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	_camera = auto_free(RtsCamera.new())
 	add_child(_camera)
 
 
 func after_test() -> void:
+	MenuRig.end()
 	CommandQueue.clear()
 
 

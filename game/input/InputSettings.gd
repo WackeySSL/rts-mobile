@@ -29,3 +29,6 @@ extends Resource
 @export var edge_band_dp: float = 32.0
 @export var edge_pan_dp_per_s: float = 300.0
 @export var edge_pan_max_step_ms: int = 100
+## The build menu's slide (ADR 0024 section 8): the time its height takes between the collapsed
+## and the open state, eased out. 0 shows the state's layout at once.
+@export var menu_slide_ms: int = 160

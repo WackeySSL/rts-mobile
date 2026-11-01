@@ -9,6 +9,7 @@ extends GdUnitTestSuite
 ## makes no Command: the state hash of the run, the tile, the camera's centre and the queue are
 ## those of a run with no turn.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/input/support/placement_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -41,11 +42,17 @@ func before() -> void:
 
 
 func after_test() -> void:
+	MenuRig.end()
 	if is_instance_valid(_main):
 		_main.free()
 	UiScale.clear_override()
 	CommandQueue.clear()
 	get_window().size = _window_size_before
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_confirm_sends_exactly_one_place_for_the_origin_tile_and_holds_the_ghost() -> void:

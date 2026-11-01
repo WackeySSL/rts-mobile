@@ -4,6 +4,7 @@ extends GdUnitTestSuite
 ## can carry and that a restyle may add (border widths, expand margins, shadows, a line's
 ## thickness) is scaled with the font sizes, the content margins and the corner radii.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const HudThemes: GDScript = preload("res://tests/support/hud_theme.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const MAIN_SCENE: String = "res://scenes/main.tscn"
@@ -21,7 +22,13 @@ func after() -> void:
 
 ## The override is static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 ## The Phase 5 rule (a menu root sets the theme file on itself) holds for a root that is added

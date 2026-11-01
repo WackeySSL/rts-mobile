@@ -10,6 +10,7 @@ extends GdUnitTestSuite
 ## queues no Command: the state hash of the run, the Commands and the camera are those of a run
 ## with no turn.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/input/support/placement_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -34,11 +35,17 @@ func before() -> void:
 
 
 func after_test() -> void:
+	MenuRig.end()
 	if is_instance_valid(_main):
 		_main.free()
 	UiScale.clear_override()
 	CommandQueue.clear()
 	get_window().size = _window_size_before
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_a_pending_ghost_is_held_and_nothing_a_player_does_sends_a_second_place() -> void:
@@ -51,7 +58,7 @@ func test_a_pending_ghost_is_held_and_nothing_a_player_does_sends_a_second_place
 	assert_bool(_placement.can_confirm()).is_false()
 	assert_bool((_hud("PlaceConfirm") as Button).disabled).is_true()
 	assert_bool((_hud("PlaceCancel") as Button).disabled).is_false()
-	assert_bool((_hud("Items") as Control).visible).is_true()  # The cards stay (P86c).
+	assert_bool((_hud("Items") as Control).is_visible_in_tree()).is_false()  # The menu is down.
 	# The check mark pressed with a finger, and the call it makes, send nothing.
 	await _settle()  # The buttons are beside the ghost.
 	var at: Vector2 = (_hud("PlaceConfirm") as Control).get_global_rect().get_center()
@@ -94,7 +101,7 @@ func test_a_building_in_the_snapshot_after_the_commands_tick_ends_the_mode() -> 
 	assert_int(_runner.world.dropped_commands).is_equal(0)
 	assert_array(_sent).has_size(1)
 	await _settle()
-	assert_bool((_hud("Items") as Control).visible).is_true()  # The cards stayed.
+	assert_bool((_hud("Items") as Control).is_visible_in_tree()).is_true()  # The menu is back.
 	assert_bool((_hud("GhostControls") as Control).visible).is_false()  # The buttons are gone.
 
 
@@ -233,13 +240,15 @@ func test_a_structure_the_first_place_used_up_ends_a_ghost_that_was_never_confir
 	assert_array(_sent).has_size(1)
 
 
-## The cards stay on show during placement (P86c), so the READY card can be tapped with a PLACE in
-## flight: that changes nothing. The ghost is held (`begin` would forget the Command in flight and
+## The Build button brings the cards back with the ghost still out (a HUD touch, ADR 0024 section 6;
+## placement had taken the menu down), so the READY card can be tapped with a PLACE in flight: that
+## changes nothing. The ghost is held (`begin` would forget the Command in flight and
 ## wake the check mark, and a second press would send a second PLACE), and no second PLACE leaves.
 ## Outside pending the same tap puts the ghost back at the view's centre, as it always did.
 func test_a_tap_on_the_ready_card_while_the_place_is_pending_changes_nothing() -> void:
 	await _open_with_plant()
 	await _settle()  # The sidebar reads the finished plant.
+	await _bring_the_cards_back()
 	assert_int(_card().state).is_equal(ItemTile.State.READY)
 	_place_at(ELSEWHERE)
 	_tap_card()  # Not pending: the ghost is back where the view's centre is.
@@ -273,6 +282,7 @@ func test_a_tap_on_the_ready_card_while_the_place_is_pending_changes_nothing() -
 func test_a_hold_on_the_ready_card_cancels_the_structure_and_ends_the_mode() -> void:
 	await _open_with_plant()
 	await _settle()
+	await _bring_the_cards_back()
 	_place_at(ELSEWHERE)
 	var credits: int = _runner.snapshot.credits[1]
 	_hold_card()
@@ -517,6 +527,18 @@ func _place_at(tile: Vector2i) -> void:
 	tap.position = _screen_of(tile)
 	_controller.handle_gesture(tap)
 	assert_vector(_placement.tile).is_equal(tile)
+
+
+## Placement took the menu down; a tap on the Build button, with the ghost still out, brings it up.
+func _bring_the_cards_back() -> void:
+	var sidebar: BuildSidebar = _hud("BuildSidebar") as BuildSidebar
+	assert_bool(sidebar.is_open()).is_false()
+	var at: Vector2 = (_hud("Build") as Control).get_global_rect().get_center()
+	TouchEvents.press(get_viewport(), 0, at)
+	TouchEvents.release(get_viewport(), 0, at)
+	assert_bool(sidebar.is_open()).is_true()
+	assert_bool(_placement.active).is_true()
+	await _settle()
 
 
 func _card() -> ItemTile:

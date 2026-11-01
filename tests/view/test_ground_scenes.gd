@@ -5,9 +5,20 @@ extends GdUnitTestSuite
 ## builds its field layer and props itself, so the scene lists no child of it. The scene files are
 ## read, not run, for the layout; the perf arena is also run, for its ground to fill.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const SCENES: Array[String] = ["res://scenes/main.tscn", "res://scenes/dev/perf_arena.tscn"]
 const ARENA: String = "res://scenes/dev/perf_arena.tscn"
 const GROUND_SCRIPT: String = "res://game/view/GroundLayer.gd"
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
+
+
+## The slide override is static state: leaving it changes every later suite.
+func after_test() -> void:
+	MenuRig.end()
 
 
 func test_both_scenes_hold_a_ground_layer_after_the_map_view_and_before_the_sorted_world() -> void:

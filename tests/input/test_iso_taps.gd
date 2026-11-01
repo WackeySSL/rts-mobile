@@ -8,6 +8,7 @@ extends GdUnitTestSuite
 ## tank 30. What the unit tests of IsoProjection pin (the formulas, the inverse, the clamp) is here
 ## proved through a finger.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const CAMERA_START: Vector2 = Vector2(-288, 544)
@@ -43,6 +44,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	get_window().size = ScreenSizes.LANDSCAPE[0]
 	await await_idle_frame()
 	_main = auto_free((load("res://scenes/main.tscn") as PackedScene).instantiate())
@@ -61,6 +63,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	MenuRig.end()
 	CommandQueue.clear()
 
 

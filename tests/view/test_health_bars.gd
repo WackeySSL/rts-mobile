@@ -15,6 +15,7 @@ extends GdUnitTestSuite
 ## perf arena has tanks, rifle squads (max hp 100) and rocket squads, both sides. The runner is not
 ## in the tree: only the calls here move time, so alpha is 0 and a unit stands at its prev position.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const CONTROLS: String = "res://data/scenarios/controls_test.tres"
@@ -68,11 +69,13 @@ func after() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	UiScale.set_override(UiProfiles.by_name(&"android_6in"))  # 1 dp is 1.75 px.
 	_build(CONTROLS)
 
 
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 	CommandQueue.clear()
 

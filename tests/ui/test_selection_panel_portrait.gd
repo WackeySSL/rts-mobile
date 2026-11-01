@@ -4,6 +4,7 @@ extends GdUnitTestSuite
 ## come from tests/ui/support/mvp_roster.gd. The line is changed with a cutout in the safe area, so
 ## a case can put it between the widths of two levels whatever the font measures.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Roster: GDScript = preload("res://tests/ui/support/mvp_roster.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -37,7 +38,13 @@ func after() -> void:
 
 ## The override is static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_the_panel_is_one_row_in_the_top_line_right_of_the_dev_button_at_every_portrait_profile(

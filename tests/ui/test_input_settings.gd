@@ -25,6 +25,7 @@ func _table() -> Dictionary[String, Variant]:
 		"edge_band_dp": 32.0,
 		"edge_pan_dp_per_s": 300.0,
 		"edge_pan_max_step_ms": 100,
+		"menu_slide_ms": 160,
 	}
 
 

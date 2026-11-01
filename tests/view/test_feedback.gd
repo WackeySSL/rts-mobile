@@ -8,6 +8,7 @@ extends GdUnitTestSuite
 ## are as wide as before, and the target diamond's corners are 1.3 x the ring's 24.9 px horizontal
 ## radius, 32.4 px (STYLE.md's 45.8 was 1.3 x the top-down ring).
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -59,6 +60,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	get_window().size = ScreenSizes.LANDSCAPE[0]
 	await await_idle_frame()
 	var main: Node2D = auto_free((load("res://scenes/main.tscn") as PackedScene).instantiate())
@@ -84,6 +86,7 @@ func before_test() -> void:
 
 ## The override is static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 	CommandQueue.clear()
 

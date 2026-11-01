@@ -14,6 +14,7 @@ extends GdUnitTestSuite
 ## centre is px (0, 176), inside the Headquarters' picture; and player 2's Headquarters id 5
 ## (tiles 20-22 by 20-22).
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -52,6 +53,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	get_window().size = ScreenSizes.LANDSCAPE[0]
 	await await_idle_frame()
 	var spawns: Array[SpawnDef] = []
@@ -76,6 +78,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	MenuRig.end()
 	CommandQueue.clear()
 
 

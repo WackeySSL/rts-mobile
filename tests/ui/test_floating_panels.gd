@@ -9,6 +9,7 @@ extends GdUnitTestSuite
 ## and keeps its nodes. A touch on the pill or the slot orders nothing. How every HUD control sits
 ## among the others is test_hud_layout's, the zone and the tabs are test_build_sidebar_layout's.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -35,8 +36,14 @@ func after() -> void:
 
 ## The override and the zone are static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 	HudLayout.bottom_zone_dp = 0.0
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_the_pill_the_slot_and_the_panel_are_at_their_corners_in_landscape_at_every_size() -> void:

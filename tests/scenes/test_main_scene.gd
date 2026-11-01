@@ -10,6 +10,7 @@ extends GdUnitTestSuite
 ## hit-tests silently miss until the window has the base size. Tests that resize the window reset
 ## it in before_test.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const Rig: GDScript = preload("res://tests/view/support/ground_rig.gd")
@@ -51,6 +52,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	_pressed_count = 0
 	get_window().size = BASE_SIZE
 	await await_idle_frame()
@@ -62,6 +64,11 @@ func before_test() -> void:
 	_camera = _main.get_node("Camera") as RtsCamera
 	_touch = _main.get_node("TouchInput") as TouchInput
 	_touch.clock = func() -> int: return 0  # No long-press, however long the test stalls.
+
+
+## The slide override is static state: leaving it changes every later suite.
+func after_test() -> void:
+	MenuRig.end()
 
 
 func test_map_is_a_48_by_48_tile_diamond_from_the_scenario() -> void:

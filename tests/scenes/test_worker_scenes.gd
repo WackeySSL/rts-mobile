@@ -31,6 +31,7 @@ extends GdUnitTestSuite
 ## no order script, for the gate's 900 ticks: the native worker arena against the GDScript sync
 ## arena at every published tick, and both on the golden checkpoints of data/dev/perf_gate.tres.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const GatedProbe: GDScript = preload("res://tests/core/gated_probe.gd")
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const ArenaRig: GDScript = preload("res://tests/ui/support/arena_rig.gd")
@@ -295,6 +296,7 @@ class MainScene:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	CommandQueue.clear()
 	_workers_before = MatchRunner.live_workers()
 	_max_fps_before = Engine.max_fps
@@ -309,6 +311,7 @@ func before_test() -> void:
 ## scenes go in the reverse order of their opening, so each arena puts back the cap that it found.
 ## The logger and the queue are global and must not outlive the case.
 func after_test() -> void:
+	MenuRig.end()
 	for probe: SimProbe in _probes:
 		probe.release()
 	for scene: MainScene in _scenes:

@@ -14,6 +14,7 @@ extends GdUnitTestSuite
 ## side (`_stand_at`, checked with the real FogGrid mask by `_assert_sees`), and needs no
 ## `reveal_enemies`.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const PROFILES: Array[StringName] = [&"desktop", &"android_6in", &"web_tablet"]
@@ -46,6 +47,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	get_window().size = Vector2i(1280, 720)
 	await await_idle_frame()
 	var main: Node2D = auto_free((load("res://scenes/main.tscn") as PackedScene).instantiate())
@@ -66,6 +68,7 @@ func before_test() -> void:
 
 ## The override is static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 	CommandQueue.clear()
 

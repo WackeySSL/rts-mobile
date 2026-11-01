@@ -12,6 +12,7 @@ extends GdUnitTestSuite
 ## test_build_sidebar_layout's, the tiles' states and orders are test_build_sidebar_items and
 ## test_build_sidebar_orders, and the names and the faction filter are test_floating_panels'.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const Sw: GDScript = preload("res://tests/ui/support/sidebar_world.gd")
@@ -46,8 +47,14 @@ func after() -> void:
 
 ## The override and the zone are static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 	HudLayout.bottom_zone_dp = 0.0
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_the_tiles_of_every_tab_fit_the_zone_in_both_orientations_at_every_size() -> void:

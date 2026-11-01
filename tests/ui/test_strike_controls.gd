@@ -12,6 +12,7 @@ extends GdUnitTestSuite
 ## Player 1 (local) has a Deep Bore, id 1, and a light tank, id 2, which is selected; player 2 has a
 ## Headquarters. The bore's wait is set in the snapshot (the charge is test_strike_aim's).
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -48,9 +49,15 @@ func after() -> void:
 
 ## The override and the zone are static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 	HudLayout.bottom_zone_dp = 0.0
 	CommandQueue.clear()
+
+
+## The menu's slide is off for the test (tests/support/menu_rig.gd).
+func before_test() -> void:
+	MenuRig.begin()
 
 
 func test_every_part_is_inside_the_safe_rect_48_dp_clear_of_the_hud_and_the_hud_does_not_grow(
