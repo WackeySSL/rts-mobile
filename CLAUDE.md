@@ -90,8 +90,9 @@ injected only by the release workflow. UMP consent before any ad request. Detail
 - Never copy code from EA's C&C source release or OpenRA. They are GPL and would force the whole
   project to GPL.
 - Assets: only SVG authored in this repo (by hand or by `tools/artgen/`), or CC0/CC-BY with
-  an entry in `assets/CREDITS.md`. No asset-store packs, no AI images from outside tools,
-  no web images.
+  an entry in `assets/CREDITS.md`. Fonts may also be under SIL OFL 1.1, shipped with their
+  license text and listed in `assets/CREDITS.md` (Michael, 2026-11-01; ADR 0025 §13). No
+  asset-store packs, no AI images from outside tools, no web images.
 - Never read, print or commit secrets: keystores, `.godot/export_credentials.cfg`, `.env`, API keys.
 
 ## Workflow
