@@ -1,0 +1,17 @@
+<!-- Pin off glyph: white and grey only, tinted at run time (the build menu is not pinned). -->
+<!-- Shape: the same thumbtack pulled out and tilted, its whole steel needle showing and its tip hanging clear above a dark hole in the board. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- the board with the hole the pin left -->
+  <rect x="8" y="86" width="112" height="28" rx="8" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="12" y="102" width="104" height="8" rx="4" fill="#BFBFBF"/>
+  <rect x="40" y="88" width="24" height="7" rx="3.5" fill="#4D4D4D"/>
+  <!-- the pin, tilted about the middle of its flange and lifted -->
+  <g transform="translate(78 41) rotate(35)">
+    <polygon points="-5,5 5,5 0,45" fill="#BFBFBF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M-25 -7 A25 30 0 0 1 25 -7 Z" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M25 -7 A25 30 0 0 0 17.7 -28.2 Q12 -17 12 -7 Z" fill="#BFBFBF"/>
+    <path d="M-25 -7 A25 30 0 0 1 25 -7 Z" fill="none" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+    <rect x="-39" y="-7" width="78" height="14" rx="7" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+    <rect x="-33" y="0" width="66" height="4" rx="2" fill="#BFBFBF"/>
+  </g>
+</svg>

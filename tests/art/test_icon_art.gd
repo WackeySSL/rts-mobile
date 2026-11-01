@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## The icon and flag art of plan row P92 (Phase 3), as STYLE.md ("Icons and glyphs", "Rally flags")
-## describes it: the three tab icons, the eleven item icons and the seventeen glyphs, 128 px
+## describes it: the three tab icons, the eleven item icons and the twenty glyphs, 128 px
 ## canvases at import scale 1.0, tab and glyph files in greys only, item icons in palette colours,
 ## nothing on the outer pixel, and icons that read apart at 32 px in greyscale over the HUD
 ## backdrop; the eight glyphs of the map on a dark seat that keeps them apart from grass, sand and
@@ -39,6 +39,9 @@ const HUD_GLYPHS: Array[String] = [
 	"glyph_victory",
 	"glyph_defeat",
 	"glyph_draw",
+	"glyph_menu_open",
+	"glyph_pin",
+	"glyph_pin_off",
 ]
 ## A glyph for each `Placement.Reason` but OK, by the reason's name in lower case, and the two
 ## glyphs of the map that are no reason.
@@ -96,6 +99,10 @@ const HUD_BACKDROP: Color = Color("0F141C")
 const ITEM_DIFFERENCE_MIN: float = 20.0
 const TAB_DIFFERENCE_MIN: float = 40.0
 const HUD_DIFFERENCE_MIN: float = 25.0
+## The pin and the pin off are one drawing in two postures (ADR 0024 section 7): the pin driven into
+## its board, the same pin tilted and lifted out of it. They are told apart by shape alone, so by
+## more than the group's margin: the tilt, the lift and the whole needle make the difference.
+const PIN_DIFFERENCE_MIN: float = 30.0
 ## A map glyph is seen tinted, on a ground, and every one shares its seat, which is about three
 ## quarters of the canvas, so the mean over the canvas is smaller than for the HUD groups.
 const MAP_DIFFERENCE_MIN: float = 9.0
@@ -134,7 +141,7 @@ func test_the_icon_folder_holds_exactly_the_files_the_style_guide_lists() -> voi
 		found.append(path.get_file().get_basename())
 	expected.sort()
 	assert_array(found).is_equal(expected)
-	assert_int(found.size()).is_equal(33)
+	assert_int(found.size()).is_equal(36)
 
 
 func test_every_icon_is_a_128_px_canvas_imported_at_scale_one_and_every_flag_layer_at_half(
@@ -193,7 +200,7 @@ func test_every_new_svg_names_its_shape_in_one_line_and_item_icons_and_flags_use
 			if not PALETTE.has(found.get_string().to_upper()):
 				problems.append("%s uses %s" % [path, found.get_string()])
 	assert_array(problems).is_empty()
-	assert_int(paths.size()).is_equal(35)
+	assert_int(paths.size()).is_equal(38)
 
 
 ## The outer 2 px of the 128 px canvas (1 px of a 64 px raster) hold no ink, so an icon never
@@ -242,6 +249,12 @@ func test_the_three_tabs_read_apart_at_32_px_in_greyscale() -> void:
 
 func test_the_hud_glyphs_and_result_emblems_read_apart_at_32_px_in_greyscale() -> void:
 	assert_float(_closest_pair(HUD_GLYPHS)).is_greater_equal(HUD_DIFFERENCE_MIN)
+
+
+## Untinted, so by shape: the HUD tints the pin off the neutral grey and leaves the pin white, but a
+## tint is never the whole cue (STYLE.md, "Shape as second cue").
+func test_the_pin_and_the_pin_off_read_apart_at_32_px_by_shape_alone() -> void:
+	assert_float(_closest_pair(["glyph_pin", "glyph_pin_off"])).is_greater_equal(PIN_DIFFERENCE_MIN)
 
 
 ## The eight glyphs of the map are never seen white on the HUD: they are tinted (the gallery's

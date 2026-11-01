@@ -1,0 +1,22 @@
+<!-- Menu-open glyph: white and grey only, tinted at run time (the Build button that opens the collapsed build menu). -->
+<!-- Shape: one bold chevron pointing up over a row of three upright cards, each card a white tile with a grey picture patch and a shaded foot. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- chevron: edge grey under, white over -->
+  <polyline points="26,50 64,22 102,50" fill="none" stroke="#4D4D4D" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="26,50 64,22 102,50" fill="none" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- the three cards -->
+  <g fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round">
+    <rect x="10" y="76" width="30" height="42" rx="6"/>
+    <rect x="49" y="76" width="30" height="42" rx="6"/>
+    <rect x="88" y="76" width="30" height="42" rx="6"/>
+  </g>
+  <!-- picture patch and shaded foot of each card -->
+  <g fill="#BFBFBF">
+    <rect x="16" y="82" width="18" height="16" rx="3"/>
+    <rect x="55" y="82" width="18" height="16" rx="3"/>
+    <rect x="94" y="82" width="18" height="16" rx="3"/>
+    <rect x="16" y="104" width="18" height="8" rx="3"/>
+    <rect x="55" y="104" width="18" height="8" rx="3"/>
+    <rect x="94" y="104" width="18" height="8" rx="3"/>
+  </g>
+</svg>

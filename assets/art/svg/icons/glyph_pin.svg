@@ -1,0 +1,16 @@
+<!-- Pin glyph: white and grey only, tinted at run time (the build menu is pinned open). -->
+<!-- Shape: a thumbtack standing upright, a domed head over a broad flat flange, its steel needle driven straight down into a wide board. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- the needle, going into the board -->
+  <polygon points="59,60 69,60 64,98" fill="#BFBFBF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- the board, drawn over the needle's foot -->
+  <rect x="8" y="86" width="112" height="28" rx="8" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="12" y="102" width="104" height="8" rx="4" fill="#BFBFBF"/>
+  <!-- the head: a dome with shade on its right -->
+  <path d="M39 57 A25 30 0 0 1 89 57 Z" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M89 57 A25 30 0 0 0 81.7 35.8 Q76 46 76 57 Z" fill="#BFBFBF"/>
+  <path d="M39 57 A25 30 0 0 1 89 57 Z" fill="none" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- the flange -->
+  <rect x="25" y="50" width="78" height="14" rx="7" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="31" y="57" width="66" height="4" rx="2" fill="#BFBFBF"/>
+</svg>
