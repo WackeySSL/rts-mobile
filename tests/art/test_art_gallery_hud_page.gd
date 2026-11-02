@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## The Hud page of the art gallery (plan row P118g, STYLE.md "Gallery"): the fourteen glyphs of the
 ## corner HUD at 48 dp with their names, the glyphs they stand beside, the fourteen again at 32 and
-## 24 dp, and each faction's power building with the construction badge and the offline glyph over
+## 24 dp, and each faction's vehicle factory with the construction badge and the offline glyph over
 ## it, all on the HUD panel's backdrop, laid out to fit at the three base sizes of the gallery. The
 ## glyph files are in test_icon_art.gd and test_hud_v2_glyphs.gd, the other pages in
 ## test_art_gallery_icon_pages.gd and test_art_gallery_pages.gd.
@@ -102,10 +102,10 @@ func test_the_fourteen_new_glyphs_are_shown_again_at_32_and_24_dp() -> void:
 			assert_vector(rect.size).is_equal(Vector2.ONE * dp * PX_PER_DP)
 
 
-## Each faction's power building on its ground with the construction badge and the offline glyph
+## Each faction's vehicle factory on its ground with the construction badge and the offline glyph
 ## side by side over its body, at the size of a glyph on the map, so that Michael sees how the badge
-## stands on a white ceramic roof and on the Derrick League's concrete, beside the glyph it is
-## meant to match.
+## stands on the Lumen Accord's white ceramic hangar and on the Derrick League's concrete, beside
+## the glyph it is meant to match.
 func test_each_faction_has_a_building_with_the_two_badges_over_it() -> void:
 	var gallery: Control = await _open_gallery()
 	var sites: Node = gallery.get_node("HudPage/Hud/Sites")
@@ -125,8 +125,8 @@ func test_each_faction_has_a_building_with_the_two_badges_over_it() -> void:
 			["Building", "GlyphConstruct", "GlyphOffline"]
 		)
 		var building: TextureRect = swatch.get_node("Building")
-		assert_vector(building.size).is_greater(Vector2(100, 100))
-		assert_vector(building.size).is_less(Vector2(Gallery.HUD_SITE_SIZE.x, 140.0))
+		assert_vector(building.size).is_greater(Vector2(150, 150))
+		assert_vector(building.size).is_less(Gallery.HUD_SITE_SIZE)
 		var construct: TextureRect = swatch.get_node("GlyphConstruct")
 		var offline: TextureRect = swatch.get_node("GlyphOffline")
 		for badge: TextureRect in [construct, offline]:

@@ -921,7 +921,7 @@ By the part of the HUD that uses them:
 `glyph_construct` is the one of the fourteen that is a **map glyph**: ADR 0026 section 9 puts its
 badge over a building on the map, like the offline glyph and in its layer, so it carries the seat of
 "Map glyphs sit on a seat" below, untinted (a dark grey plate with a white rim). The Hud page's last
-strip shows it beside `glyph_offline` over each faction's power building. The other thirteen are
+strip shows it beside `glyph_offline` over each faction's vehicle factory. The other thirteen are
 plain HUD glyphs on the dark panel and have no seat.
 
 Sizes in dp (1 dp = 1.75 base px on the 6-inch phone): an item icon fills its 64 dp tile (ADR 0015
@@ -931,20 +931,19 @@ tabs at 48, the items at 64, the HUD glyphs at 48 and the map glyphs at 32 dp, a
 its Hud page shows the corner HUD's fourteen at 48, 32 and 24 dp.
 
 **Map glyphs sit on a seat (new).** The nine glyphs that are drawn over the map, the six
-`glyph_reason_<reason>`, `glyph_offline`, `glyph_construct` and `glyph_under_attack`, carry their own
-seat in the file:
-#4D4D4D with a 4 px white rim inside a 3 px dark edge, and the drawing scaled to 0.8 into it, so
-that no ink touches the rim. The reasons, the offline glyph and the construction badge sit on a
-rounded plate (6 to 122 px, corner radius 22); the arrow, which the HUD turns, on a disc (radius 60)
-that looks the same turned. The HUD tints the seat with the glyph, so it is a dark red (luminance 36)
-or amber (53) plate with a light rim on any ground: the glyph is one badge whatever lies under it.
-The construction badge is the one that is not tinted: its plate is the dark grey of the seat (77)
-with a white rim and a white crane, which stand out from a white ceramic roof and from concrete. Why it is in the file: a
-danger-tinted glyph lies on the hatch of the ghost that does not fit, which has the same red, the
-same white band and the same #4D4D4D edge, and on grass, which is as bright as a red-tinted white
-(110 against 114), so its thin edge was all that set it apart. The tabs and the HUD glyphs are seen
-on the dark HUD panel and have no seat. The seat keeps the file at 79.5 % cover (the arrow 69 %),
-under the 82 % bound for an icon.
+`glyph_reason_<reason>`, `glyph_offline`, `glyph_construct` and `glyph_under_attack`, carry their
+own seat in the file: #4D4D4D with a 4 px white rim inside a 3 px dark edge, and the drawing scaled
+to 0.8 into it, so that no ink touches the rim. The reasons, the offline glyph and the construction
+badge sit on a rounded plate (6 to 122 px, corner radius 22); the arrow, which the HUD turns, on a
+disc (radius 60) that looks the same turned. The HUD tints the seat with the glyph, so it is a dark
+red (luminance 36) or amber (53) plate with a light rim on any ground: the glyph is one badge
+whatever lies under it. The construction badge is the one that is not tinted: its plate is the dark
+grey of the seat (77) with a white rim and a white crane, which stand out from a white ceramic wall
+and from concrete. Why the seat is in the file: a danger-tinted glyph lies on the hatch of the ghost
+that does not fit, which has the same red, the same white band and the same #4D4D4D edge, and on
+grass, which is as bright as a red-tinted white (110 against 114), so its thin edge was all that set
+it apart. The tabs and the HUD glyphs are seen on the dark HUD panel and have no seat. The seat
+keeps the file at 79.5 % cover (the arrow 69 %), under the 82 % bound for an icon.
 
 | File | Silhouette |
 | --- | --- |
@@ -1702,14 +1701,14 @@ three on first show) and start hidden, so the Units page is as it was.
   and `Beside`, eight glyphs they stand next to (Build, the pin and the pin off, the check mark, the
   cross, the warning triangle, the coin and the bolt), each at 48 dp with its name under it and
   tinted as the HUD tints it. Then `Small32` and `Small24`, the fourteen new glyphs again at 32 and
-  24 dp (the smallest sizes of a HUD glyph), and `Sites`: the Derrick League's Turbine Hall on grass
-  and the Lumen Accord's Wind Park on sand at zoom 1, each with the construction badge and the
+  24 dp (the smallest sizes of a HUD glyph), and `Sites`: the Derrick League's Heavy Yard on grass
+  and the Lumen Accord's Motor Works on sand at zoom 1, each with the construction badge and the
   offline glyph side by side over its body at 32 dp, and a line that says so. A glyph is a
   `TextureRect` named by its file in PascalCase (`GlyphDeselect`) and its name a `Label`
   (`LabelDeselect`). Everything is clear of the two corner buttons and of every other thing at
   1280 x 720, 1600 x 720 and 1280 x 960. It is where Michael judges whether the fourteen look like
-  one family with the older glyphs, and whether the badge holds on a white ceramic roof and on
-  concrete.
+  one family with the older glyphs, and whether the badge holds on the white ceramic of the Motor
+  Works and on the concrete of the Heavy Yard.
 
 To add an asset:
 - A unit: add its model under `assets/art/models/` (see "Generated art", the generator writes its
@@ -1922,7 +1921,7 @@ Renaming a unit or a unit type is a data change, not a reskin.
   To judge on the phone: do they read as one family with the older glyphs; does `glyph_deselect`
   (the flat selection ring cut by a slash) say "clear the selection" and not "forbidden"; does
   `glyph_all_army` (a soldier before a tank) say "every fighting unit"; and does the crane on
-  `glyph_construct`'s plate hold on a white roof and on concrete beside `glyph_offline` (the page's
+  `glyph_construct`'s plate hold on a white hangar and on concrete beside `glyph_offline` (the page's
   last strip shows both)? The badge is white; if it is too heavy beside the amber and red badges, a
   tint is a one-line change in `GLYPH_TINTS`.
 

@@ -105,7 +105,7 @@ func test_the_deselect_glyph_is_neither_the_padlock_nor_the_cross_nor_the_offlin
 func test_the_deselect_glyph_is_a_flat_oval_ring_cut_by_a_diagonal_slash() -> void:
 	var image: Image = _image("glyph_deselect")
 	_assert_ink(image, [Vector2i(8, 66), Vector2i(120, 66), Vector2i(50, 40)], true)
-	_assert_ink(image, [Vector2i(64, 22), Vector2i(64, 110), Vector2i(110, 24)], false)
+	_assert_ink(image, [Vector2i(64, 28), Vector2i(64, 104), Vector2i(110, 24)], false)
 	_assert_ink(image, [Vector2i(18, 108), Vector2i(8, 8), Vector2i(120, 120)], false)
 	_assert_ink(image, [Vector2i(46, 48), Vector2i(96, 100), Vector2i(30, 28)], true)
 	assert_int(_rightmost(image, 66) - _leftmost(image, 66)).is_greater(105)
@@ -132,8 +132,8 @@ func test_the_chevron_points_right_and_is_centred_for_the_code_that_turns_it() -
 	assert_int(_leftmost(image, 26)).is_less(_leftmost(image, 64) - 8)
 	assert_int(_leftmost(image, 102)).is_less(_leftmost(image, 64) - 8)
 	var box: Rect2i = _ink_box(image)
-	assert_float(box.position.x + box.size.x / 2.0).is_equal_approx(64.0, 1.5)
-	assert_float(box.position.y + box.size.y / 2.0).is_equal_approx(64.0, 1.5)
+	assert_float(box.position.x + box.size.x / 2.0).is_equal_approx(64.0, 0.5)
+	assert_float(box.position.y + box.size.y / 2.0).is_equal_approx(64.0, 0.5)
 
 
 ## ADR 0025: a pennant, not a white flag, struck down to the foot of the pole (the colours are

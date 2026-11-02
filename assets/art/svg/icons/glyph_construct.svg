@@ -1,4 +1,4 @@
-<!-- Construct glyph: white and grey only, tinted at run time (the badge on a building site). -->
+<!-- Construct glyph: white and grey only, drawn untinted on its seat (the badge over a building site). -->
 <!-- Shape: a tall straight-sided lattice mast of crossed braces on a flat foot, a long level jib across its top with a grey counterweight block at its back end and a hook hanging from the far end. It sits on a dark rounded plate with a white rim. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
   <!-- seat: a dark plate with a white rim, so the glyph reads on grass, sand and a building -->

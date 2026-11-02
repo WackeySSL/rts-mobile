@@ -27,7 +27,7 @@ extends Control
 ## dp on a dark HUD panel, and the glyphs and rally flags that sit on the map on grass and sand.
 ## Hud (`_add_hud_page`, plan row P118g, ADR 0025 and 0026) shows the fourteen glyphs of the corner
 ## HUD at 48 dp with their names, the glyphs they sit beside, all fourteen at 32 and 24 dp, and each
-## faction's power building with the construction badge and the offline glyph over it. The pages
+## faction's vehicle factory with the construction badge and the offline glyph over it. The pages
 ## after Units are built in code and start hidden.
 ##
 ## To add a unit: its model goes under `assets/art/models/` (STYLE.md "Generated art") and its art
@@ -262,23 +262,23 @@ const HUD_SITES_TOP: float = 510.0
 const HUD_CAPTION_PX: int = 16
 const HUD_CAPTION_HEIGHT_PX: float = 23.0
 const HUD_CAPTION_COLOR: Color = Color("9AA5B1")
-## The strip: each faction's own 2x2 power building at zoom 1 on a ground, with the badges that are
+## The strip: each faction's own 3x3 vehicle factory at zoom 1 on a ground, with the badges that are
 ## drawn over a building on the map side by side over its body (`HUD_SITE_BADGES`): the
 ## construction mast of ADR 0026 and the offline glyph, both at 32 dp and both on their seats.
-const HUD_SITE_SIZE: Vector2 = Vector2(176.0, 168.0)
+const HUD_SITE_SIZE: Vector2 = Vector2(208.0, 196.0)
 const HUD_SITE_MARGIN_PX: float = 12.0
 const HUD_SITES: Array[Dictionary] = [
 	{
 		"name": "SiteFossil",
 		"faction": &"fossil",
-		"art": &"power_plant",
+		"art": &"vehicle_factory",
 		"triad": 0,
 		"ground": &"grass_b"
 	},
 	{
 		"name": "SiteRenew",
 		"faction": &"renew",
-		"art": &"renew_power",
+		"art": &"renew_factory",
 		"triad": 1,
 		"ground": &"sand"
 	},
@@ -788,7 +788,7 @@ func _icons_half(page: Control, node_name: String, colour: Color, anchors: Rect2
 
 ## The Hud page (plan row P118g): the HUD panel's backdrop over the whole page, the rows of
 ## `HUD_V2_ROWS` at 48 dp with the name of each glyph under it, the fourteen new glyphs again at
-## each of `HUD_SMALL_DP`, and each faction's power building with the construction badge and the
+## each of `HUD_SMALL_DP`, and each faction's vehicle factory with the construction badge and the
 ## offline glyph over it, where a site's badge is seen. Every row is centred, so the page fits at
 ## any base width from 1280.
 func _add_hud_page() -> void:
@@ -812,7 +812,7 @@ func _add_hud_page() -> void:
 	_add_site_row(_pixel_row(panel, "Sites", HUD_SITES_TOP))
 
 
-## Each faction's 2x2 power building at zoom 1 on grass or sand with the construction badge and the
+## Each faction's 3x3 vehicle factory at zoom 1 on grass or sand with the construction badge and the
 ## offline glyph over its body, both at the size of a glyph on the map, and a line that says so.
 func _add_site_row(row: Control) -> void:
 	var size_px: float = MAP_GLYPH_DP * PX_PER_DP
