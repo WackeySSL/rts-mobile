@@ -1145,6 +1145,8 @@ in doubt, choose a plainer real-world form.
 | Field stage | A cell of an oil or gas field as an overlay on the ore earth: a black pool with a sheen or a pale crust over a vent that fills the cell when full, shrinks to a pool clear of the sides when half and is a cracked stain or a dusty crust when dry. | `fields/<kind>_<stage>.svg`, 128x64, see "Fields" |
 | Wellhead | A square concrete pad with a squat valve tree: a stout steel column with two flanges and two short arms that end in valves with dark hand-wheels, a small lamp on the cap, and a low flowline with a choke block running off to the south-east; neutral, no team colour. | `fields/wellhead.svg`, 112x116, anchor (56, 88); `fields/wellhead_shadow.svg`, 140x72, anchor (56, 31) |
 | Crater | A dark round pit seen as a 2:1 ellipse, its north-west wall in shade, inside a ragged lit ring of thrown earth with cracks and rock chips across a wide soot stain, radius 1.5 tiles. | `decals/crater.svg`, 288x144, anchor (144, 72), see "Fields" |
+| Life atlas | Lumpy grey and white cloud puffs of five or six round lobes in three tones with a dark rim, tall single and low three-tongue yellow-white flames with a charcoal edge, small pointed sparks and low flat heaps of dust, each on its own clear cell. | `fx/life_atlas.svg`, 552x320, import scale 0.5, see "Life effects" |
+| Strike atlas | A dark auger lance of steel with a collar, four helical flights and a ragged yellow-white burn, falling or rising; a mint teardrop seed with a trail; a flat mint hexagon of light with a dark green edge; a yellow-white and a mint flash; a flat ground ring and a shadow. | `fx/strike_atlas.svg`, 480x472, import scale 0.5, see "Life effects" |
 
 ## Readability check (every asset)
 1. Rasterise each layer at 32 px with `Image.load_svg_from_buffer` (scale = 32 / canvas, so 0.25 for
@@ -1349,6 +1351,102 @@ The regions have 4 px of clear space between them and no ink outside (the rocket
 sheet's edge). On grass and sand, in colour and in greyscale, all five read apart by shape at zoom
 0.75 / 1.0 / 1.5; the dark outline keeps the shell body (luminance 180, sand 186) and the cloud (134,
 grass 127) readable.
+
+## Life effects (plan row P135, ADR 0027)
+The effects of the unit-life layers are two hand-written atlases, no team colour. Both are imported at
+scale 0.5 like `fx/effects_atlas.svg`, so a region's numbers are px of the imported texture, which at
+camera zoom 1 are world px, and the SVG is twice as large.
+- `fx/life_atlas.svg`, 552 x 320 at 2x (276 x 160 px, about 17 KB): the sprites of `GroundFx` (z 3) and
+  `AirFx` (z 25), the smokes, the flames, the sparks and the dust.
+- `fx/strike_atlas.svg`, 480 x 472 at 2x (240 x 236 px, about 8 KB): the sprites of `StrikeFx` (z 55), the
+  two superweapon looks.
+
+A layer draws a frame as a quad of its region, with `modulate` Color(1, 1, 1, alpha) and no other
+tint (the colours are baked in), growing and fading as its own rows say (the numbers are in
+`data/life_settings.tres`, not here). Each frame is authored at about the size a puff or a flame has
+in the middle of its life, so a layer scales it between about 0.5 and 1.5 and stays soft but never
+blocky. A layer may mirror a cloud, a heap of dust or a flame horizontally for a second look; it
+never turns a quad, and never mirrors a lance, the seed or a hexagon (they are lit from the
+north-west like everything else). Frame k of a kind is the region at x + k x step. Every sprite is
+drawn at least 1 px inside its region and the regions are at least 4 px apart, with no ink outside
+them (the two strips are the exception below).
+
+| Kind | Atlas | Region (x, y, w, h) | Frames | Step | Anchor in a frame | Look | Used by |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `dust` | life | 0, 130, 50, 26 | 3 | 54 | centre 25, 13 | A low heap of four flattened lobes in a warm grey, twice as wide as tall (a 2:1 heap on the ground), three tones lit from the north-west inside a darker rim; the three frames differ in their lobes. | `GroundFx` dust behind vehicles (P138), the factory exit puff (P150) |
+| `smoke` | life | 0, 0, 42, 38 | 3 | 46 | centre 21, 19 | A lumpy cumulus puff of five or six round lobes in dark greys with two lighter lit lobes on the north-west and a near-black rim. | `AirFx` stack and refinery smoke (P145) |
+| `soot` | life | 0, 42, 42, 38 | 2 | 46 | centre 21, 19 | A ragged cloud of five lobes in black-greys, darker and lumpier than the smoke, with a small knob riding one shoulder. | damage smoke (P148) |
+| `steam` | life | 140, 0, 42, 38 | 2 | 46 | centre 21, 19 | Round billows of four lobes in near-white with a cool grey shade and a blue-grey rim. | steam (P145) |
+| `puff` | life | 140, 42, 22, 20 | 2 | 26 | centre 11, 10 | A small mid-grey burst of three lobes. | muzzle smoke (P149) |
+| `exhaust` | life | 192, 42, 22, 20 | 2 | 26 | centre 11, 10 | A small near-black puff of three lobes. | exhaust puffs (P149), the thin trail of a damaged vehicle (P148) |
+| `flare` | life | 0, 84, 26, 42 | 4 | 30 | base 13, 38 | One tall yellow-white flame, round at its foot and drawn out to a tip that leans, with a small lick at its side and a white heart; the four frames flicker (upright, right, left, short). | flare flames (P145) |
+| `fire` | life | 124, 84, 26, 34 | 3 | 30 | base 13, 30 | A low burn of three unequal tongues on a wide foot, yellow-white with a white heart; the frames differ in which tongue is tallest. | damage fire on a roof (P148) |
+| `spark` | life | 218, 84, 16, 16 | 3 | 20 | centre 8, 8 | Three bright flecks: a pointed four-ray star, an eight-ray flash, and a comet (a round head with a short tapering tail to the lower left). | construction sparks (P150) |
+| `lance_down` | strike | 0, 0, 34, 164 | 1 | 0 | tip 17, 157 | The Deep Bore's lance falling: a dark auger bit, a long cone of steel with a lit left half and a shaded right half and four slanting helical flights cut across it, below a heavy square collar with a lit top and a dark foot, and above the collar a ragged yellow-white burn of five tongues. | `StrikeFx` the fall (P141) |
+| `lance_up` | strike | 38, 0, 34, 164 | 1 | 0 | tip 17, 7 | The same lance rising: point up, collar below the cone, the burn spraying down from the collar. | the launch (P141) |
+| `trail` | strike | 76, 0, 16, 64 | 1 | 0 | bottom centre 8, 64 | A tapering yellow-white streak, white at its flush bottom edge and fading to nothing towards the point; a layer stretches it up the fall behind the lance. | the fall (P141) |
+| `shadow` | strike | 76, 68, 50, 26 | 1 | 0 | centre 25, 13 | A flat dark ellipse (2:1), soft at the edge, that grows under the falling lance. | the fall (P141) |
+| `seed` | strike | 96, 0, 18, 34 | 1 | 0 | centre 9, 17 | The Blackout Array's light seed: a mint teardrop with a pale inner drop and a white heart, point up, inside a dark green edge. | the launch (P141) |
+| `seed_trail` | strike | 118, 0, 12, 64 | 1 | 0 | top centre 6, 0 | A mint streak, white and wide at its flush top edge and fading away downwards; a layer stretches it down the rise below the seed. | the launch (P141) |
+| `glint` | strike | 134, 0, 14, 14 | 1 | 0 | centre 7, 7 | A thin four-point mint-white sparkle in a dark green edge. | the net's landing (P141) |
+| `hex` | strike | 134, 18, 36, 18 | 1 | 0 | centre 18, 9 | One ground-plane hexagon of the net, a hexagon of side 16 squashed 2:1 (width 32, height 14, a vertex at each side, a flat top and bottom): a light line with a dark green edge, a faint mint fill and a white dot at each corner. | the falling net (P141) |
+| `hex_lit` | strike | 134, 40, 36, 18 | 1 | 0 | centre 18, 9 | The same hexagon filled bright mint with a white inner hexagon, for the moment the net lands. | the net's landing (P141) |
+| `launch_flash` | strike | 0, 168, 66, 66 | 1 | 0 | centre 33, 33 | An uneven yellow-white sunburst of seven long and seven short spikes with a white core, where the lance leaves the derrick. | the launch (P141) |
+| `core_flash` | strike | 70, 168, 66, 66 | 1 | 0 | centre 33, 33 | A mint hexagon with six long and six short spikes and a white heart, where the seed leaves the core. | the launch (P141) |
+| `launch_ring` | strike | 140, 168, 98, 50 | 1 | 0 | centre 49, 25 | A flat grey-white ring on the ground (a 2:1 ellipse, light with a blue-grey edge) for the dust that leaves a launch site. | the launch (P141) |
+
+**The net.** The Blackout Array's net is a lattice of `hex` cells on the ground ellipse of the strike's
+radius: flat-topped hexagons of side 16 world px, so a column every 24 px, a row every 13.9 px and
+every other column shifted 6.9 px; neighbours share an edge. The net falls as that lattice (the
+layer's own offset and scale), lands, and settles as the outer ring of cells with the interior
+fading; `hex_lit` is the flash at the landing and `glint` the sparkle on its corners. The lines of
+the net that the layer draws in code (ADR 0027 §3) use the same light line (#D8FFE0) over the same
+dark edge (#1F5C3A).
+
+**The lance.** The collar is the same in both: its centre is at y 65 in `lance_down` and y 99 in
+`lance_up`. The burn is the one part of the lance that is a flame; the body carries no fins and no
+nozzle, and the flights are an auger's, so it never reads as a missile (the originality list bans a
+missile out of silo doors and a column from orbit). `trail` and `seed_trail` are the two strips that
+touch their region's edge (their flush end), so a layer stretches them along the fall or the rise
+and the join with the sprite stays closed.
+
+**Colours.** Life effects carry no team colour (ADR 0027 §4): none of the six key hexes
+(#FF9446, #E8681F, #B04B12, #62D6EE, #1FA6C8, #137C99) is in either file, and no colour of
+saturation 0.30 or more lies within 20 degrees of a key colour's hue (1.6 to 45.3 degrees for the
+Derrick League, 169 to 213 for the Lumen Accord). Every colour of both files is listed here.
+- **Flames** are yellow-white, hue 46 degrees or more: outer #FFD84D (46.9), spark #FFE066 (47.8),
+  mid #FFE98A (48.7), core #FFF8D2 (50.7) and heart #FFFFFF, inside a neutral charcoal edge
+  #2C2C2C (a neutral edge keeps the hue of a yellow that blends into it; no orange or red anywhere,
+  which is also why a fire here is a bright yellow one and never the Derrick League's orange).
+- **Smoke** (rim, shade, mid, light): #23282C, #3B4247, #59636A, #707D86. **Soot**: #14171A, #22262A,
+  #353B40, #4A5258. **Steam**: #6F7D86, #AEB9C0, #D2DBE0, #F2F6F8. **Puff**: #3A4146, #6E767C,
+  #939CA2, #B0B8BD. **Exhaust**: #14171A, #2F353A, #474F55, #5E686F.
+- **Dust** (rim, shade, mid, light), a warm grey whose mid tone sits between the grass (luminance
+  127) and the sand (186): #5A5446, #8D8574, #A39B89, #B8B09E.
+- **Lance:** edge #222222, collar #4A5048 with a lit top #9AA39B and a dark foot #2B2F2A, body lit
+  #6B7366 and shaded #3B3F39 with the burn colours above. **Launch ring:** #6F7D86, #D2DBE0,
+  #F2F6F8. **Shadow** and the other soft fades: #000000 or the colour of their sprite at falling
+  opacity.
+- **Mint** (the Lumen Accord's status light, hue 127 degrees, outside both key bands): #A8F5B0 body,
+  #D8FFE0 light line, #FFFFFF heart, edge #1F5C3A.
+
+**Readability.** Every cloud has a dark rim, every flame a charcoal edge and every hexagon a dark
+green edge, so each reads on both grounds. The mean luminance of the opaque pixels of each kind
+(Rec. 601; the grass is 127 and the sand 186) is soot 55, exhaust 71, smoke 93, puff 143, dust 150,
+steam 210, flare 179, fire 172 and the lance 115; none of the clouds and heaps lies within 15 of
+either ground, and soot, exhaust, smoke, dust and steam are at least 15 apart
+(`tests/art/test_life_atlases.gd`). In greyscale at zoom 0.75 on both grounds the three clouds, the
+heap, the two flames and the lance read apart by shape and tone: the smoke is a dark round cloud, the
+soot a black one with a knob, the steam a white one, the dust a flat pale heap, the flares tall
+white tongues and the fire a low comb of them. The one faint pairing is the dust on sand (36 apart
+in luminance, the heap's own rim carries it); the seed's trail and the net's faint hexagons are
+meant to be faint.
+
+The Life page of the gallery shows every kind at the three camera zooms on grass and on sand (see
+"Gallery"). The numbers of a life effect (sizes, lifetimes, rates, the quotas of ADR 0027 §3) are in
+`data/life_settings.tres`; this section owns only the looks and the regions. Not drawn yet: the track
+marks of P151 and the wrecks of P152 append their regions below y 156 of the life atlas (the canvas
+grows downwards, so no region here moves).
 
 ## Health bars (new)
 Bars are filled rects only, drawn in one `_draw()` (ADR 0011 section 3), sized in dp so they look the
@@ -1649,10 +1747,11 @@ re-authored; nothing is copied.
 `scenes/dev/art_gallery.tscn` (opened from the dev menu, also in the web preview) shows every asset
 at gameplay zoom on grass and sand, in team A and team B. The grass half is the left half of the
 screen, the sand half the right. A button at the top right (120x120 base px, labelled with the page
-it is on) turns the pages: **Units**, **Build**, **Ground**, **Icons**, **Iso**, **Terrain** and **Hud**, and
-the Back button leaves from any of them. The pages after Units are built by `art_gallery.gd` (Build
-by `art_gallery_build.gd`, Iso by `art_gallery_iso.gd`, Terrain by `art_gallery_ground.gd`, the last
-three on first show) and start hidden, so the Units page is as it was.
+it is on) turns the pages: **Units**, **Build**, **Ground**, **Icons**, **Iso**, **Terrain**, **Hud** and
+**Life**, and the Back button leaves from any of them. The pages after Units are built by
+`art_gallery.gd` (Build by `art_gallery_build.gd`, Iso by `art_gallery_iso.gd`, Terrain by
+`art_gallery_ground.gd`, Life by `art_gallery_life.gd`, the last three on first show) and start
+hidden, so the Units page is as it was.
 - **Units** (the page the gallery opens on) shows the six Derrick League units and the six Lumen
   Accord units as the generator draws them (`art_gallery_units.gd`, "Derrick League units" and "Lumen
   Accord units"). On each ground four lines of the six, in the same role order so that a column is one
@@ -1739,6 +1838,17 @@ three on first show) and start hidden, so the Units page is as it was.
   1280 x 720, 1600 x 720 and 1280 x 960. It is where Michael judges whether the fourteen look like
   one family with the older glyphs, and whether the badge holds on the white ceramic of the Motor
   Works and on the concrete of the Heavy Yard.
+- **Life** (the eighth page, plan row P135, built by `art_gallery_life.gd` on first show, "Life
+  effects") has the grass colour on its left half and the sand on its right and one scrolling list
+  over both (drag it; the first row starts below the corner buttons). `RowAtlases` shows the life
+  atlas and the strike atlas whole at scale 1 on each ground. Then a row for every kind of the
+  region table, in its order (`RowDust`, `RowSmoke`, ... `RowLaunchRing`), named on the grass half
+  (`Label`: the kind and its frame count): on each ground the frames of the kind in a line at the
+  camera zoom 0.75 (`Z075`), 1.0 (`Z100`) and 1.5 (`Z150`), each a `TextureRect` named `F0`, `F1`,
+  ... that holds a region of the imported atlas at its size in world px times the zoom, standing on
+  one ground line. Everything lies inside its half at 1280 x 720, 1600 x 720 and 1280 x 960. It is
+  where Michael judges on his phone whether the smoke, the flames, the dust, the lance and the net
+  read on both grounds and at every zoom.
 
 To add an asset:
 - A unit: add its model under `assets/art/models/` (see "Generated art", the generator writes its
@@ -1996,3 +2106,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-10-30 | v1.14 (P99c, art-director): the generator keeps the sloped face of a wedge with `slope=1` (`ArtMesh` orients every normal against the mean of the solid's corners, not the middle of its box; "Wedge faces" under "Generated art"), the eleven wedges of eight models that stood in for it with `slope=0.95` use `slope=1` (Flarejack, Bullhead, Mortar Rig, Swift, Arcline, Fuel Runner, Grid Hub, Crew Hall), their 198 frames, shadows and item cards regenerated, the "generator bug of P101" warnings removed from "Derrick League units", "Lumen Accord units" and the Lumen Accord's buildings. |
 | 2026-11-02 | v1.15 (P118, art-director; P118b, release-engineer): the HUD fonts (Big Shoulders Display ExtraBold and Chakra Petch Medium, SemiBold and Bold, unmodified upstream files under SIL OFL 1.1 in `assets/art/fonts/`, their `OFL.txt` in every build), the HUD v2 palette rows, the two accent pairs (Lumen Accord cyan, Derrick League orange #E07628 / #FFA25C / #2A1405), the rule that danger always carries its glyph beside an accent, the Reskin note's tracking numbers (4/5/6 px; 7.1 to 10.3 % on phones) and the Licences line. |
 | 2026-11-02 | v1.16 (P118g, art-director): fourteen HUD v2 glyphs (`glyph_menu`, `glyph_deselect` as the game's 2:1 selection ring cut by a slash, `glyph_stop`, `glyph_plus`, `glyph_collapse`, `glyph_chevron`, `glyph_resume`, `glyph_restart`, `glyph_surrender` struck to the pole's foot, `glyph_exit`, `glyph_vibration`, `glyph_alert`, `glyph_all_army` as a soldier before a tank, and `glyph_construct` as a crane on the offline glyph's seat, a ninth map glyph, untinted white by Michael's choice), their shape lines, tints and measures, and the gallery's Hud page with the badges over the Heavy Yard and the Motor Works. |
+| 2026-11-02 | v1.17 (P135, art-director, ADR 0027): the two hand-written atlases of the unit-life layers, `fx/life_atlas.svg` (nine kinds: dust, smoke, soot, steam, puff, exhaust, flare, fire, spark) and `fx/strike_atlas.svg` (twelve: the bore lance falling and rising, its trail, shadow and launch flash and ring, the light seed and its trail, the mint hexagon of the net lit and unlit, a glint and the core flash), the section "Life effects" with the region table, the net lattice, the colours (no team colour, flames hue 46 degrees or more, smoke and dust greys, mint) and the readability numbers, two catalogue rows, and the gallery's Life page. |
