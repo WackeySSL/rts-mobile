@@ -18,6 +18,29 @@ const CODES: Dictionary[StringName, int] = {
 	&"hull": 0x40, &"walk": 0x60, &"idle": 0x80, &"anim": 0xA0
 }
 const ARRIVALS: int = 400  ## Frame changes of the no-key proof.
+## What a frame path may not name: a string made some way, and (the tokens of
+## test_effects_layer_frames.gd) a call or a literal that makes or grows an array or a dictionary.
+const STRINGS: Array[String] = ["%", '"', "'", "String", "str(", "_key(", ".base(", "base_of("]
+const ALLOCATING: Array[String] = [
+	"Array(",
+	".new(",
+	".append",
+	".push_back(",
+	".resize(",
+	".duplicate(",
+	".map(",
+	".filter(",
+	"func(",
+	"{",
+	"[]",
+	"= [",
+	"([",
+	", [",
+	"return [",
+	" in [",
+	": Array",
+	"Array[",
+]
 const SCRIPT_ATLAS: String = "res://game/view/IsoAtlas.gd"
 const SCRIPT_SORT: String = "res://game/view/WorldSort.gd"
 
@@ -186,12 +209,11 @@ func test_a_frame_change_builds_no_key_and_a_base_is_resolved_once() -> void:
 	assert_int(IsoAtlas.keys_built() - before).is_equal(0)
 
 
-func test_the_frame_path_names_no_string_in_its_source() -> void:
+func test_the_frame_path_builds_no_string_and_allocates_nothing_in_its_source() -> void:
 	# The hook counts the keys; this keeps a string from arriving some other way (a format, a
-	# StringName or String made of the part, a literal) in the functions a frame change runs.
-	var tokens: Array[String] = [
-		"%", '"', "'", "StringName(", "String(", "str(", "_key(", ".base(", "base_of("
-	]
+	# StringName or String made of the part, a literal), and an array, dictionary or lambda from
+	# being made (ADR 0027 section 9, as test_effects_layer_frames.gd scans), in the functions a
+	# frame change runs.
 	var runs: Array = [
 		[SCRIPT_ATLAS, "frame_region"],
 		[SCRIPT_ATLAS, "frame_count_at"],
@@ -201,8 +223,11 @@ func test_the_frame_path_names_no_string_in_its_source() -> void:
 	for entry: Array in runs:
 		var code: String = _code_of(entry[0], entry[1])
 		assert_int(code.count("\n")).is_greater(1)  # The function and not its first line.
-		for token: String in tokens:
+		for token: String in STRINGS:
 			var note: String = "%s makes a string with %s" % [entry[1], token]
+			assert_bool(code.contains(token)).override_failure_message(note).is_false()
+		for token: String in ALLOCATING:
+			var note: String = "%s makes an array or a lambda with %s" % [entry[1], token]
 			assert_bool(code.contains(token)).override_failure_message(note).is_false()
 
 

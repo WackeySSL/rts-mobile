@@ -160,7 +160,7 @@ func show_frame(
 ## The atlas base index (`IsoAtlas.base`) of direction `dir` of `part` for `owner_id`: what a layer
 ## keeps for a sprite from the time it is dressed or turns, and hands to `show_base`. -1 when the
 ## owner's faction lacks the frames. A base belongs to the atlas it came from: `sync` makes a new
-## one for a new match's art, so ask again when sprites are dressed (as `dress` does).
+## one for a new match's art, so ask again after a `sync`, when the sprites are dressed.
 func base_of(sheet_def: IsoSheetDef, part: StringName, dir: int, owner_id: int) -> int:
 	return atlas.base(sheet_def.art_id, part, dir, slot_of(owner_id))
 
