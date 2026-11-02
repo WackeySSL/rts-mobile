@@ -90,9 +90,14 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
   adds the strike state: the row columns `ready_tick` and `offline_until` and the player arrays
   `strike_x`, `strike_y` and `strike_tick`; the six strike type tables (`type_strike_kind`,
   `type_charge_ticks`, `type_strike_radius`, `type_strike_delay`, `type_strike_ticks`,
-  `type_strike_weapon`) are in `TYPE_ARRAYS`, so in `defs_hash`. The power totals and the building
-  and harvester lists are derived, rebuilt when `rows_version` moves, out of the hash, with a
-  rebuild test at every checkpoint. `move_cost` stays in the map digest.
+  `type_strike_weapon`) are in `TYPE_ARRAYS`, so in `defs_hash`. `STATE_FORMAT` 5 (ADR 0026, P128)
+  adds the row column `build_left` (hundredths of a tick of work left; 0 = complete, −1 = a
+  cancelled site until REMOVE; every "is it complete" test reads `== 0` or `!= 0`), and the three
+  rule ints `construct_start_hp_percent`, `construct_refund_percent` and `construction_sites_max`
+  are in `RULE_SCALARS`, so in `defs_hash`. The power totals and the building and harvester lists
+  are derived, rebuilt when `rows_version` moves, out of the hash, with a rebuild test at every
+  checkpoint; a PRODUCTION step that completes a site ends with `Power.run` again, so the totals
+  still equal a rebuild. `move_cost` stays in the map digest.
 - **Three phases after FOG** (marks ascend): `ECONOMY` 11 (`Power.run`, `Harvest.run`),
   `PRODUCTION` 12 (`Production.run`, then `Outcome.run`), `MEMORY` 13 (`LastSeen.run`), then
   `tick += 1`. LastSeen also drops records in `REMOVE`: `World.remove_dead` calls
