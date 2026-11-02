@@ -14,11 +14,11 @@ extends Node2D
 ## and shows another frame by a region (`show_frame`): a sheet's px are 2x art, so a region draws
 ## at 0.5 / bake_scale. A part with several frames per direction (ADR 0027 section 4) takes the
 ## frame number as the last argument; a layer that changes it at a rate keeps `base_of` from the
-## time it dresses or turns the sprite and calls `show_base`, a table read with no string.
-## The players of the atlas are the owners 1..N in order; `slot_of` maps an
-## owner to its place, one past the ends to the nearest. A scenario that lists no factions gives
-## each player the faction of the first of its spawns whose type has a sheet (the Derrick League
-## when none has).
+## time it dresses or turns the sprite and calls `show_base`, a table read with no string;
+## `frame_count_at` is the length to wrap the frame number by. The players of the atlas are the
+## owners 1..N in order; `slot_of` maps an owner to its place, one past the ends to the nearest. A
+## scenario that lists no factions gives each player the faction of the first of its spawns whose
+## type has a sheet (the Derrick League when none has).
 
 const Z_SORT: int = 10  ## Unit rigs and buildings.
 const Z_SHADOW: int = 2  ## A rig's Shadow, under the rings (3) and the fog (4).
@@ -142,7 +142,8 @@ func dress(sprite: Sprite2D, sheet_def: IsoSheetDef, part: StringName) -> void:
 ## building's body or `anim`) of `part` for `owner_id`. A frame the owner's faction does not have,
 ## and a `frame` the part does not have, hide the sprite. It builds one key (`IsoAtlas.base`): call
 ## it when a sprite is dressed or turns, and change the frames of a pose with `base_of` once and
-## `show_base` after it.
+## `show_base` after it. Returns the base it resolved, so a dress or a turn that keeps it builds
+## one key and not two.
 func show_frame(
 	sprite: Sprite2D,
 	sheet_def: IsoSheetDef,
@@ -150,15 +151,24 @@ func show_frame(
 	dir: int,
 	owner_id: int,
 	frame: int = 0
-) -> void:
-	show_base(sprite, base_of(sheet_def, part, dir, owner_id), frame)
+) -> int:
+	var base_index: int = base_of(sheet_def, part, dir, owner_id)
+	show_base(sprite, base_index, frame)
+	return base_index
 
 
 ## The atlas base index (`IsoAtlas.base`) of direction `dir` of `part` for `owner_id`: what a layer
 ## keeps for a sprite from the time it is dressed or turns, and hands to `show_base`. -1 when the
-## owner's faction lacks the frames.
+## owner's faction lacks the frames. A base belongs to the atlas it came from: `sync` makes a new
+## one for a new match's art, so ask again when sprites are dressed (as `dress` does).
 func base_of(sheet_def: IsoSheetDef, part: StringName, dir: int, owner_id: int) -> int:
 	return atlas.base(sheet_def.art_id, part, dir, slot_of(owner_id))
+
+
+## How many frames the group at `base_index` (`base_of`) has: what a layer wraps its frame number
+## by, so a pose with a new frame count needs no change in the layer. 0 for no base.
+func frame_count_at(base_index: int) -> int:
+	return atlas.frame_count_at(base_index)
 
 
 ## Shows frame `frame` of the group at `base_index` (`base_of`) on `sprite`: a table read, so a

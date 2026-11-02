@@ -10,12 +10,13 @@ extends RefCounted
 ## bake_scale()`. When none fits, or there is no frame, the atlas is empty and the caller decides.
 ## A frame no key colour touches (a shadow) is baked once and shared by the players of a faction.
 ## The CPU page is dropped after the upload unless `keep_image` is set (tests read it).
-## The frame axis (ADR 0027 section 4): a part may have several frames per direction (`IsoSheetDef.
-## frame_count`), each its own file and slot. The regions of all frames lie in one packed table, a
-## group of `frame_count` entries per (player, art id, part, direction), frame 0 first. `base` finds
-## a group's first index with one key built from strings, which a caller asks when a sprite is
-## dressed or turns; a frame change after it is `frame_region(base, frame)`, a table read that
-## builds no string (`keys_built` is the test hook that proves it).
+## The frame axis (ADR 0027 section 4): a part may have several frames per direction
+## (`IsoSheetDef.frame_count`), each its own file and slot. The regions of all frames lie in one
+## packed table, a group of `frame_count` entries per (player, art id, part, direction), frame 0
+## first. `base` finds a group's first index with one key built from strings, which a caller asks
+## when a sprite is dressed or turns; a frame change after it is `frame_region(base, frame)`, a
+## table read that builds no string (`keys_built` is the test hook that proves it), and
+## `frame_count_at(base)` is the group's own length, for a caller that wraps its frames.
 
 const PAGE_MAX_PX: int = 4096
 const SCALE_STEP: float = 0.875  ## A step of 7/8 keeps scale times a canvas exact in a float.
@@ -111,15 +112,22 @@ func region(
 
 ## The index of frame 0 of (`art_id`, `part`, `dir`) for `player` in the region table, -1 for a
 ## frame the player's faction lacks. Builds one key, so a caller asks when a sprite is dressed or
-## its direction changes and keeps the number.
+## its direction changes and keeps the number. A base belongs to the atlas it came from: a new
+## bake (`WorldSort.sync`) makes a new atlas, so a caller asks again when it dresses its sprites.
 func base(art_id: StringName, part: StringName, dir: int, player: int = 0) -> int:
 	return _index.get(_key(player, art_id, part, dir), -1)
+
+
+## How many frames the group at `base_index` has: what a caller wraps its frame number by. 0 for
+## no base (-1) and for an index that is no base.
+func frame_count_at(base_index: int) -> int:
+	return _spans[base_index] if base_index >= 0 and base_index < _spans.size() else 0
 
 
 ## The region of frame `frame` of the group at `base_index` (see `base`): one table read, no
 ## string. An empty Rect2i for no base (-1) and for a frame the group does not have.
 func frame_region(base_index: int, frame: int) -> Rect2i:
-	if base_index < 0 or base_index >= _spans.size() or frame < 0 or frame >= _spans[base_index]:
+	if frame < 0 or frame >= frame_count_at(base_index):
 		return Rect2i()
 	return _table[base_index + frame]
 
@@ -200,7 +208,7 @@ static func _collect_sheet(
 ) -> void:
 	for part_name: String in sheet.parts:
 		var part: StringName = StringName(part_name)
-		var count: int = sheet.frame_count(part)
+		var count: int = maxi(sheet.frame_count(part), 1)  # A sheet that says 0 has the one frame.
 		for dir: int in sheet.directions(part):
 			plan.keys.append(_key(player, sheet.art_id, part, dir))
 			plan.spans.append(count)

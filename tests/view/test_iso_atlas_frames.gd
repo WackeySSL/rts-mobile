@@ -162,14 +162,17 @@ func test_a_frame_change_builds_no_key_and_a_base_is_resolved_once() -> void:
 	var base: int = sort.base_of(sheet, &"walk", 6, 1)
 	assert_int(IsoAtlas.keys_built() - before).is_equal(1)
 	assert_int(base).is_greater_equal(0)
+	# A dress or a turn through show_frame builds that one key too and hands the base back.
 	before = IsoAtlas.keys_built()
-	sort.show_frame(sprite, sheet, &"walk", 6, 1)
+	assert_int(sort.show_frame(sprite, sheet, &"walk", 6, 1)).is_equal(base)
 	assert_int(IsoAtlas.keys_built() - before).is_equal(1)
-	# Frame changes: a table read each, which builds nothing.
+	# Frame changes, wrapped by the atlas's own count: a table read each, which builds nothing.
 	before = IsoAtlas.keys_built()
+	var count: int = sort.frame_count_at(base)
+	assert_int(count).is_equal(4)
 	for step: int in ARRIVALS:
-		sort.show_base(sprite, base, step % 4)
-		assert_that(sprite.region_rect).is_equal(want[step % 4])
+		sort.show_base(sprite, base, step % count)
+		assert_that(sprite.region_rect).is_equal(want[step % count])
 		assert_bool(sprite.visible).is_true()
 	assert_int(IsoAtlas.keys_built() - before).is_equal(0)
 	# A frame the part lacks hides the sprite, and the next real one shows it again.
@@ -185,13 +188,19 @@ func test_a_frame_change_builds_no_key_and_a_base_is_resolved_once() -> void:
 
 func test_the_frame_path_names_no_string_in_its_source() -> void:
 	# The hook counts the keys; this keeps a string from arriving some other way (a format, a
-	# StringName or String made of the part) in the two functions a frame change runs.
+	# StringName or String made of the part, a literal) in the functions a frame change runs.
 	var tokens: Array[String] = [
-		"%", "StringName(", "String(", "str(", "_key(", ".base(", "base_of("
+		"%", '"', "'", "StringName(", "String(", "str(", "_key(", ".base(", "base_of("
 	]
-	for entry: Array in [[SCRIPT_ATLAS, "frame_region"], [SCRIPT_SORT, "show_base"]]:
+	var runs: Array = [
+		[SCRIPT_ATLAS, "frame_region"],
+		[SCRIPT_ATLAS, "frame_count_at"],
+		[SCRIPT_SORT, "show_base"],
+		[SCRIPT_SORT, "frame_count_at"]
+	]
+	for entry: Array in runs:
 		var code: String = _code_of(entry[0], entry[1])
-		assert_int(code.count("\n")).is_greater(2)  # The function and not its first line.
+		assert_int(code.count("\n")).is_greater(1)  # The function and not its first line.
 		for token: String in tokens:
 			var note: String = "%s makes a string with %s" % [entry[1], token]
 			assert_bool(code.contains(token)).override_failure_message(note).is_false()
@@ -217,6 +226,52 @@ func test_show_frame_with_no_frame_is_what_it_was_and_a_frame_is_its_last_argume
 	assert_that(Rect2i(sprite.region_rect)).is_not_equal(sort.atlas.region(&"squad", &"idle", 2, 0))
 	sort.show_frame(sprite, sheet, &"idle", 2, 1, 2)  # The part has two frames.
 	assert_bool(sprite.visible).is_false()
+
+
+func test_the_atlas_says_how_many_frames_a_group_has() -> void:
+	var sheet: IsoSheetDef = _squad_sheet()
+	var sort: WorldSort = _sort([sheet])
+	var atlas: IsoAtlas = sort.atlas
+	for part_name: String in sheet.parts:
+		var part: StringName = StringName(part_name)
+		for dir: int in sheet.directions(part):
+			var base: int = atlas.base(&"squad", part, dir, 0)
+			assert_int(atlas.frame_count_at(base)).is_equal(sheet.frame_count(part))
+			assert_int(sort.frame_count_at(base)).is_equal(sheet.frame_count(part))
+	var walk: int = atlas.base(&"squad", &"walk", 0, 0)
+	assert_int(atlas.frame_count_at(walk)).is_equal(4)
+	assert_int(atlas.frame_count_at(atlas.base(&"squad", &"idle", 0, 0))).is_equal(2)
+	assert_int(atlas.frame_count_at(atlas.base(&"squad", &"hull", 0, 0))).is_equal(1)
+	# No base, an index that is no base (the second frame of a group) and one past the table: 0.
+	assert_int(atlas.frame_count_at(-1)).is_equal(0)
+	assert_int(atlas.frame_count_at(walk + 1)).is_equal(0)
+	assert_int(atlas.frame_count_at(99999)).is_equal(0)
+	assert_int(sort.frame_count_at(-1)).is_equal(0)
+	assert_int(IsoAtlas.new().frame_count_at(0)).is_equal(0)
+
+
+func test_a_part_a_sheet_gives_0_frames_has_its_one_frame_and_not_the_next_groups() -> void:
+	# A malformed sheet (`frames` 0 for `walk`) must not leave its groups pointing at the base of
+	# the next part's, which would show another part's picture: it is read as one frame.
+	var sheet: IsoSheetDef = _squad_sheet()
+	sheet.frames = PackedInt32Array([1, 0, 2, 1])
+	var reads: Array[String] = []
+	var atlas: IsoAtlas = IsoAtlas.build([sheet], [_art(KEY, ARKTISK)], 1.0, true, _reader(reads))
+	assert_bool(reads.has("res://assets/art/iso/fossil/inf/squad_walk_d04.svg")).is_true()
+	for dir: int in sheet.directions(&"walk"):
+		var base: int = atlas.base(&"squad", &"walk", dir, 0)
+		assert_int(atlas.frame_count_at(base)).is_equal(1)
+		var picture: Image = atlas.image().get_region(atlas.frame_region(base, 0))
+		var own: String = "#" + picture.get_pixel(2, 2).to_html(false).to_upper()
+		assert_str(own).is_equal(_paint(&"walk", dir, 0))
+		assert_that(atlas.frame_region(base, 1)).is_equal(Rect2i())
+	# The parts after it keep their own groups.
+	var idle: int = atlas.base(&"squad", &"idle", 4, 0)
+	assert_int(atlas.frame_count_at(idle)).is_equal(2)
+	var idle_picture: Image = atlas.image().get_region(atlas.frame_region(idle, 1))
+	assert_str("#" + idle_picture.get_pixel(2, 2).to_html(false).to_upper()).is_equal(
+		_paint(&"idle", 4, 1)
+	)
 
 
 func test_the_planned_page_is_the_page_of_the_bake_and_grows_with_the_frames() -> void:
