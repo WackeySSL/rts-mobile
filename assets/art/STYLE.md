@@ -457,6 +457,13 @@ page is one role.
 | Team A / team B / neutral | #2F80ED / #E5484D / #9AA5B1 | 116 / 120 / 163 |
 | UI accents: warning / danger / ok | #F5A524 / #E5484D / #30A46C | |
 | HUD panel backdrop | #0F141C at 78% | 19 |
+| HUD panel (v2) / its edge | #0A0E11 at 84%, no blur / #2C383E | 13 / 53 |
+| HUD money and power (v2) | #F2C14E | 195 |
+| HUD danger (v2) | #FF5A3C | 136 |
+| HUD ok and income (v2) | #6EDC5F | 173 |
+| HUD text on the dark panel (v2) | #FFFFFF | 255 |
+| Accent, Lumen Accord (cyan): accent / light / text on accent (v2) | #1FA6C8 / #62D6EE / #05202A | 130 / 182 / 25 |
+| Accent, Derrick League (orange): accent / light / text on accent (v2) | #E07628 / #FFA25C / #2A1405 | 141 / 182 / 25 |
 
 Luminance is 0.299 R + 0.587 G + 0.114 B. Use it when you judge the greyscale check below.
 
@@ -468,9 +475,27 @@ draws with its faction's palette ("Palette per faction"); the ore art and the un
 older rows. The outline row stays the edge colour of icons, effects and
 markers; a generated frame's edge is a dark shade of the face's own material (0.45 of its mid tone).
 
-The HUD panel backdrop is the one palette value that lives in the UI Theme (`game/ui/theme.tres`,
-`Color(0.06, 0.08, 0.11, 0.78)`, behind the selection panel). The hex is the 8-bit rounding of the
-theme's floats: the theme is the value of record, and `tests/ui/test_ui_theme.gd` pins the floats.
+The HUD panel backdrop lives in the UI Theme (`game/ui/theme.tres`, `Color(0.06, 0.08, 0.11, 0.78)`,
+behind the selection panel), and so do the rows marked (v2), the tokens and the accent pairs of the
+HUD v2 (ADR 0025 section 13, plan row P118): `HudTokens` (the panel colour for a draw call, its
+edge, money, danger, ok and text), `HudPanel` (the same panel as a flat StyleBox: no blur, a 1 dp
+edge, 8 dp corners; a flat box is cheap on a weak phone) and `AccentRenew` and `AccentFossil` (accent,
+light and the text on the accent, read by the faction's id). The hex is the 8-bit rounding of the
+theme's floats: the theme is the value of record, and `tests/ui/test_ui_theme.gd` and
+`tests/ui/test_ui_theme_fonts.gd` pin the floats. The (v2) rows are the HUD v2's: the older "UI
+accents" row above stays for the parts that the HUD v2 rows replace, until each is replaced. Rows on
+the radar keep their team colours, and the design's fixed "enemy" colour #FF9446 is not a token: it is
+almost the Derrick League accent. The local player's side is the faction of its own rows (P85d's rule);
+accent never carries meaning alone, and the team colours stay per player (GDD).
+
+**The Derrick League's accent** is picked by the two checks of ADR 0025 section 13, pinned by
+`tests/ui/test_ui_theme_fonts.gd`. (1) The hue is at least 15 degrees from danger (#FF5A3C, 9.2
+degrees) and from money (#F2C14E, 42.1 degrees): the accent #E07628 is at 25.4 degrees, 16.2 from
+danger and 16.6 from money, and its light #FFA25C at 25.8, 16.5 and 16.3. The ADR's starting
+point, #E07B2A and #FFAE5C, had the accent 15.4 degrees from money and the light 11.9, so both moved
+to centre in the window of 24.2 to 27.1 degrees that the two limits leave. (2) The text on the
+accent is #2A1405 at 5.7:1 (4.5:1 asked), and 8.8:1 on the light. The Lumen Accord's cyan pair is the
+design's (text 5.9:1 on the accent, 9.9:1 on the light; hue 192 degrees, far from every token).
 
 **Team layer greys (new)**: white #FFFFFF, shade grey #BFBFBF, edge grey #4D4D4D. Every colour in
 a team layer has R = G = B, so the runtime tint stays clean.
@@ -1649,21 +1674,30 @@ palette first, then the three places from it.
    at match start.
 2. **Terrain**: the `colors` and `tiles` exports of `game/view/MapView.gd`, with the gallery's
    copies and the "Fog and terrain" section above.
-3. **UI**: the central Theme of plan row P58, `game/ui/theme.tres`. It holds the HUD's font
-   sizes, the selection panel's backdrop (palette row "HUD panel backdrop") and the colours of the
-   selection box and anchor. The text and button colours, the Button StyleBoxes and the HUD font
-   are the engine's defaults and are not in the file: a restyle adds them there
-   (`Label/colors/font_color`, `Button/styles/normal`, a Font) with no code change, and gives the
-   neutrals a palette row then. The file is written in dp, and `game/ui/HudTheme.gd` is the dp
+3. **UI**: the central Theme of plan row P58, `game/ui/theme.tres`. It holds the HUD's fonts
+   (Chakra Petch as the default font and for numbers; Big Shoulders Display ExtraBold as one
+   `FontVariation` per size class of buttons and titles, P118), the font sizes, the selection
+   panel's backdrop (palette row "HUD panel backdrop"), the HUD v2 tokens and the two accent pairs
+   (the palette rows marked (v2)) and the colours of the selection box and anchor. The text and
+   button colours and the Button StyleBoxes are the engine's defaults and are not in the file: a
+   restyle adds them there (`Label/colors/font_color`, `Button/styles/normal`) with no code change,
+   and gives the neutrals a palette row then. The file is written in dp, and `game/ui/HudTheme.gd` is the dp
    step: on a resize it gives the HUD roots a copy in px, scaling every font size and every
    StyleBox size (content margins, corner radii, border widths, expand margins, shadows, a line's
    thickness) but not a StyleBoxTexture's texture margins or the theme's constants (add one to
    `HudTheme.scaled()` before using it). An entry that stays in base px is listed in the file's
    `metadata/base_px`. The selection box and anchor take their fill and dark pass from the theme,
    and the world-space move markers from `FeedbackStyle` in `game/view`: they share one fill and
-   one dark pass, so a new palette changes both places. A new font goes under `assets/art/fonts/`,
-   with a row in `assets/CREDITS.md` (author, source URL, licence) and its licence text in the
-   Licences screen, and is referenced only from the theme.
+   one dark pass, so a new palette changes both places. A new font goes under
+   `assets/art/fonts/<family>/` as the unmodified upstream file with the family's `OFL.txt`, with a
+   row in `assets/CREDITS.md` (author, source URL, licence) and its licence text beside every build
+   (P118b) and, from Phase 5's settings on, in its Licences screen, and is referenced only from the
+   theme: `tests/project/test_ui_theme_scan.gd` flags a font named in any other script, scene or
+   resource under `game/` and `scenes/`. The tracking of a Big Shoulders `FontVariation`
+   (`spacing_glyph`, whole base px) is not scaled by the dp step and is listed in `metadata/base_px`;
+   the three classes (button 22 dp with 3 px, title 28 dp with 4 px, big title 36 dp with 5 px) keep
+   it at 6 to 14 % of the size, within 0.3 points, at every profile of `ui_profiles.gd`. Chakra Petch
+   has no OpenType `tnum`, so a number that changes keeps fixed digit slots in code (P119).
 
 Besides the three places, the same new look also replaces, in the same PR:
 - **The art without a naming convention**, in place. The selection ring

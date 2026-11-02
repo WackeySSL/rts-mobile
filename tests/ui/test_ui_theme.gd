@@ -15,6 +15,14 @@ const ARMY_FONT_DP: float = 18.0
 const NAME_FONT_DP: float = 16.0
 const NUMBER_FONT_DP: float = 20.0
 const DEV_FONT_PX: int = 40  ## Base px, not dp.
+## What the file keeps in base px: the Dev button's size and, since P118, the three tracking
+## entries of the Big Shoulders FontVariations (tests/ui/test_ui_theme_fonts.gd).
+const BASE_PX_ENTRIES: Array[String] = [
+	"DevButton/font_sizes/font_size",
+	"CapsButton/fonts/font",
+	"CapsTitle/fonts/font",
+	"CapsBigTitle/fonts/font",
+]
 const PAD_DP: float = 8.0
 const BACKDROP: Color = Color(0.06, 0.08, 0.11, 0.78)
 const FILL: Color = Color(1.0, 1.0, 1.0, 0.15)
@@ -53,7 +61,7 @@ func test_the_theme_file_holds_the_hud_look_in_dp_and_marks_what_stays_in_base_p
 	assert_str(str(theme.get_type_variation_base("DevButton"))).is_equal("Button")
 	assert_str(str(theme.get_type_variation_base("NumberLabel"))).is_equal("Label")
 	assert_str(str(theme.get_type_variation_base("SelectionPanel"))).is_equal("PanelContainer")
-	assert_array(theme.get_meta(HudTheme.BASE_PX_META)).is_equal(["DevButton/font_sizes/font_size"])
+	assert_array(theme.get_meta(HudTheme.BASE_PX_META)).is_equal(BASE_PX_ENTRIES)
 	var backdrop: StyleBoxFlat = theme.get_stylebox("panel", "SelectionPanel")
 	assert_that(backdrop.bg_color).is_equal(BACKDROP)
 	for side: int in 4:
@@ -87,7 +95,7 @@ func test_the_dp_step_scales_the_theme_and_leaves_the_source_and_the_marked_entr
 	assert_that(copy.get_color("fill", "BoxOverlay")).is_equal(FILL)
 	assert_str(str(copy.get_type_variation_base("DevButton"))).is_equal("Button")
 	assert_object(copy.get_meta(HudTheme.SOURCE_META)).is_same(source)
-	assert_array(copy.get_meta(HudTheme.BASE_PX_META)).is_equal(["DevButton/font_sizes/font_size"])
+	assert_array(copy.get_meta(HudTheme.BASE_PX_META)).is_equal(BASE_PX_ENTRIES)
 	var again: Theme = HudTheme.scaled(source, 1.0)  # From the source, so nothing compounds.
 	assert_int(again.get_font_size("font_size", "Button")).is_equal(18)
 	assert_float(again.get_stylebox("panel", "SelectionPanel").get_content_margin(0)).is_equal(8.0)

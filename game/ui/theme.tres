@@ -1,15 +1,33 @@
 ; The HUD's one Theme (plan row P58, Michael's decision of 2026-10-15): the look of the HUD's
-; Controls lives here, so a new look is this file alone (STYLE.md "Reskin"). It holds the font
-; sizes, the selection panel's backdrop and the colours of the selection box and anchor. The text
-; and button colours, the Button StyleBoxes and the HUD font are the engine's defaults and are
-; not in this file: a restyle adds them here (Label/colors/font_color, Button/styles/normal, a
-; Font) with no code change. main.tscn sets the theme on the Controls under Hud (Hud/SafeArea and
-; Hud/BoxOverlay); every Control below inherits it, and so does a HUD root added later with this
-; theme on it. A new font goes under assets/art/fonts/ (CREDITS.md row, Licences screen) and is
-; referenced from here only.
+; Controls lives here, so a new look is this file alone (STYLE.md "Reskin"). It holds the fonts,
+; the font sizes, the selection panel's backdrop, the HUD v2 tokens and accent pairs (P118, ADR
+; 0025 section 13) and the colours of the selection box and anchor. The text and button colours
+; and the Button StyleBoxes are the engine's defaults and are not in this file: a restyle adds
+; them here (Label/colors/font_color, Button/styles/normal) with no code change. main.tscn sets
+; the theme on the Controls under Hud (Hud/SafeArea and Hud/BoxOverlay); every Control below
+; inherits it, and so does a HUD root added later with this theme on it. A new font goes under
+; assets/art/fonts/ (CREDITS.md row; its licence text beside every build (P118b) and, from
+; Phase 5's settings on, in its Licences screen) and is referenced from here only: the scan of
+; tests/project/test_ui_theme_scan.gd flags a font named in any other script, scene or resource.
 ; The backdrop has a palette row in STYLE.md ("HUD panel backdrop"); this file is its value of
 ; record. BoxOverlay's fill and outline are also FeedbackStyle.FILL and OUTLINE, which the
 ; world-space move markers draw with (game/view): a new palette changes both.
+;
+; Fonts (P118, SIL OFL 1.1, the unmodified upstream files of assets/art/fonts/): Chakra Petch is
+; the body and number face, weight 500 as the theme's default font, 600 for NumberLabel and
+; 700 for the numbers that sit across a bar or a plate (PowerNumber, ItemCost). The file has no
+; OpenType tnum (checked in P118), so the digits of a number that changes keep fixed slots in
+; code (P119), not a font feature. Big Shoulders Display ExtraBold (800), the condensed upper-case
+; display cut, is the face of buttons and titles in three size classes (CapsButton, CapsTitle,
+; CapsBigTitle), each its own FontVariation whose spacing_glyph is the tracking in whole base px:
+; the dp step turns the font size into px and leaves the tracking, so the tracking is 6 to 14 %
+; of the size, to within 0.3 points, across the profiles' dp-to-px ratios of 1.0 to 2.37 (one
+; whole-px tracking cannot hold the band exactly over that range; tests/ui/test_ui_theme_fonts.gd
+; pins the spread). The three tracking entries are listed in metadata/base_px. HudTokens holds the colours
+; of ADR 0025 section 13, HudPanel the flat panel (no blur, a flat box is cheap on a weak phone),
+; AccentRenew and AccentFossil the accent of each side (accent, light and the text on the accent,
+; read with get_theme_color by the faction's id). The design's fixed enemy colour #FF9446 is not
+; a token. Palette rows: STYLE.md "Palette".
 ;
 ; Sizes are dp: HudTheme.gd turns every font size and every StyleBox size (content margins,
 ; corner radii, border widths, expand margins, shadows, a line's thickness and grow) into px on a
@@ -21,12 +39,50 @@
 ; one here. An entry that stays in base px is listed in metadata/base_px by its path in this file.
 ; Type variations (DevButton, NumberLabel, SelectionPanel, PerfCard, BuildSidebar, SidebarTab, PowerBar,
 ; PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner, ItemCaption,
-; StrikeButton, StrikeConfirm, BuildButton, ReadyBadge) are set by
+; StrikeButton, StrikeConfirm, BuildButton, ReadyBadge, HudPanel, CapsButton, CapsTitle,
+; CapsBigTitle) are set by
 ; theme_type_variation on the node, in main.tscn or at build in the script (the power bar's two
 ; pairs switch with the low-power state, the cost of an item tile with its money).
 ; The build sidebar's tints (the colours of BuildSidebar, STYLE.md "Icons and glyphs") are read by
 ; BuildSidebar.gd with get_theme_color; its tabs get theirs from the icon colours of SidebarTab.
 [gd_resource type="Theme" format=3]
+
+[ext_resource type="FontFile" path="res://assets/art/fonts/chakra-petch/ChakraPetch-Medium.ttf" id="1_chakra_500"]
+[ext_resource type="FontFile" path="res://assets/art/fonts/chakra-petch/ChakraPetch-SemiBold.ttf" id="2_chakra_600"]
+[ext_resource type="FontFile" path="res://assets/art/fonts/chakra-petch/ChakraPetch-Bold.ttf" id="3_chakra_700"]
+[ext_resource type="FontFile" path="res://assets/art/fonts/big-shoulders/BigShouldersDisplay-ExtraBold.ttf" id="4_shoulders_800"]
+
+; Big Shoulders Display ExtraBold at the three size classes: the tracking in whole base px (the
+; font size of each class is under CapsButton, CapsTitle and CapsBigTitle below, in dp).
+[sub_resource type="FontVariation" id="FontVariation_caps_button"]
+base_font = ExtResource("4_shoulders_800")
+spacing_glyph = 3
+
+[sub_resource type="FontVariation" id="FontVariation_caps_title"]
+base_font = ExtResource("4_shoulders_800")
+spacing_glyph = 4
+
+[sub_resource type="FontVariation" id="FontVariation_caps_big_title"]
+base_font = ExtResource("4_shoulders_800")
+spacing_glyph = 5
+
+; The HUD v2 panel (ADR 0025 section 13): rgba(10, 14, 17, 0.84), a flat box with no blur, a 1 dp
+; edge in #2C383E, 8 dp corners and 8 dp inside.
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud_panel"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.03921569, 0.05490196, 0.06666667, 0.84)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.17254902, 0.21960784, 0.24313725, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_backdrop"]
 content_margin_left = 8.0
@@ -156,6 +212,8 @@ corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
 [resource]
+; The body face: Chakra Petch 500 (the file's header says where the other weights go).
+default_font = ExtResource("1_chakra_500")
 ; The long-press anchor and the selection box (BoxOverlay.gd): fill, dark pass, stroke.
 BoxOverlay/colors/fill = Color(1, 1, 1, 0.15)
 BoxOverlay/colors/outline = Color(0.10980392, 0.12941177, 0.15294118, 1)
@@ -169,6 +227,7 @@ DevButton/font_sizes/font_size = 40
 Label/font_sizes/font_size = 16
 NumberLabel/base_type = &"Label"
 NumberLabel/font_sizes/font_size = 20
+NumberLabel/fonts/font = ExtResource("2_chakra_600")
 ; The selection panel's backdrop.
 SelectionPanel/base_type = &"PanelContainer"
 SelectionPanel/styles/panel = SubResource("StyleBoxFlat_backdrop")
@@ -238,6 +297,7 @@ ItemTile/styles/pressed = SubResource("StyleBoxFlat_tab_open")
 ItemCost/base_type = &"NumberLabel"
 ItemCost/colors/font_color = Color(1, 1, 1, 1)
 ItemCost/font_sizes/font_size = 18
+ItemCost/fonts/font = ExtResource("3_chakra_700")
 ItemCost/styles/normal = SubResource("StyleBoxFlat_plate")
 ItemCostLow/base_type = &"ItemCost"
 ItemCostLow/colors/font_color = Color(0.96078431, 0.64705882, 0.14117647, 1)
@@ -277,8 +337,56 @@ PowerNumber/base_type = &"NumberLabel"
 PowerNumber/colors/font_color = Color(1, 1, 1, 1)
 PowerNumber/colors/font_outline_color = Color(0.06, 0.08, 0.11, 1)
 PowerNumber/font_sizes/font_size = 18
+PowerNumber/fonts/font = ExtResource("3_chakra_700")
 PowerNumberLow/base_type = &"NumberLabel"
 PowerNumberLow/colors/font_color = Color(0.06, 0.08, 0.11, 1)
 PowerNumberLow/colors/font_outline_color = Color(0.06, 0.08, 0.11, 0)
 PowerNumberLow/font_sizes/font_size = 18
-metadata/base_px = PackedStringArray("DevButton/font_sizes/font_size")
+PowerNumberLow/fonts/font = ExtResource("3_chakra_700")
+; The HUD v2 tokens (P118, ADR 0025 section 13; STYLE.md "Palette"): the panel's rgba(10, 14, 17,
+; 0.84) for a draw call that is not a StyleBox (the radar scope), its edge #2C383E, money and power
+; #F2C14E, danger #FF5A3C, ok and income #6EDC5F, and the text on the dark panel, white. The design's
+; fixed enemy colour #FF9446 is not a token: rows on the radar keep their team colours.
+HudTokens/base_type = &"Control"
+HudTokens/colors/border = Color(0.17254902, 0.21960784, 0.24313725, 1)
+HudTokens/colors/danger = Color(1, 0.35294118, 0.23529412, 1)
+HudTokens/colors/money = Color(0.94901961, 0.75686275, 0.30588235, 1)
+HudTokens/colors/ok = Color(0.43137255, 0.8627451, 0.37254902, 1)
+HudTokens/colors/panel = Color(0.03921569, 0.05490196, 0.06666667, 0.84)
+HudTokens/colors/text = Color(1, 1, 1, 1)
+HudPanel/base_type = &"PanelContainer"
+HudPanel/styles/panel = SubResource("StyleBoxFlat_hud_panel")
+; The accent of each side (ADR 0025 section 13): the faction of the local player's own rows, read as
+; get_theme_color(&"accent", &"AccentRenew") and so on. Accent never carries meaning alone. Lumen
+; Accord (renew): cyan, the design's values; the text on it is 5.9:1. Derrick League (fossil): orange
+; for its flare stacks and amber lamps, picked by the two checks of the ADR: the accent's hue is 25.4
+; degrees and the light's 25.8, each at least 16 degrees from danger (9.2) and from money (42.1),
+; and the text on the accent is 5.7:1 (4.5:1 asked). tests/ui/test_ui_theme_fonts.gd pins both.
+AccentRenew/base_type = &"Control"
+AccentRenew/colors/accent = Color(0.12156863, 0.65098039, 0.78431373, 1)
+AccentRenew/colors/light = Color(0.38431373, 0.83921569, 0.93333333, 1)
+AccentRenew/colors/on_accent = Color(0.01960784, 0.1254902, 0.16470588, 1)
+AccentFossil/base_type = &"Control"
+AccentFossil/colors/accent = Color(0.87843137, 0.4627451, 0.15686275, 1)
+AccentFossil/colors/light = Color(1, 0.63529412, 0.36078431, 1)
+AccentFossil/colors/on_accent = Color(0.16470588, 0.07843137, 0.01960784, 1)
+; Buttons and titles: Big Shoulders Display ExtraBold, upper case in the text itself (a Label has no
+; case transform), white. The size is dp, the tracking base px (the file's header): a button 22 dp
+; with 3 px, a title 28 dp with 4 px, a big title 36 dp with 5 px.
+CapsButton/base_type = &"Button"
+CapsButton/colors/font_color = Color(1, 1, 1, 1)
+CapsButton/colors/font_focus_color = Color(1, 1, 1, 1)
+CapsButton/colors/font_hover_color = Color(1, 1, 1, 1)
+CapsButton/colors/font_hover_pressed_color = Color(1, 1, 1, 1)
+CapsButton/colors/font_pressed_color = Color(1, 1, 1, 1)
+CapsButton/font_sizes/font_size = 22
+CapsButton/fonts/font = SubResource("FontVariation_caps_button")
+CapsTitle/base_type = &"Label"
+CapsTitle/colors/font_color = Color(1, 1, 1, 1)
+CapsTitle/font_sizes/font_size = 28
+CapsTitle/fonts/font = SubResource("FontVariation_caps_title")
+CapsBigTitle/base_type = &"Label"
+CapsBigTitle/colors/font_color = Color(1, 1, 1, 1)
+CapsBigTitle/font_sizes/font_size = 36
+CapsBigTitle/fonts/font = SubResource("FontVariation_caps_big_title")
+metadata/base_px = PackedStringArray("DevButton/font_sizes/font_size", "CapsButton/fonts/font", "CapsTitle/fonts/font", "CapsBigTitle/fonts/font")
