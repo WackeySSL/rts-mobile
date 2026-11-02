@@ -81,6 +81,8 @@ var _chip_text: DigitRow = DigitRow.new()
 var _displayed: int = 0  ## The credits on screen: counting down after a fall, else the real ones.
 var _count_from: int = 0
 var _count_ms: float = 0.0  ## Frame time left of the count-down.
+var _count_total: float = 1.0  ## Its whole time, as it was when it began.
+var _written: int = 0  ## The number the credits row shows (it starts at "0").
 var _chip_amount: int = 0  ## The change the chip shows, signed.
 var _chip_ms: float = 0.0  ## Frame time left of the chip.
 
@@ -173,7 +175,7 @@ func refresh() -> void:
 	if snap == null or runner.scenario == null:
 		return
 	var player: int = runner.scenario.local_player
-	var quiet: bool = snap.match_serial != _seen.x or _shown.x < 0  # The first read, a new match.
+	var quiet: bool = snap.match_serial != _seen.x  # The first read, or a new match.
 	_seen = Vector2i(snap.match_serial, snap.tick)
 	var numbers: Vector3i = Vector3i(
 		_entry(snap.credits, player),
@@ -249,8 +251,8 @@ func _build_overlays() -> void:
 		card.minimum_size_changed.connect(place)
 
 
-## The card follows `HudState` a frame later: the touch that closes it is still on it when the GUI
-## looks for a control, and the card must be there to take that touch.
+## The card follows `HudState` at the end of the frame: `call_deferred` runs after the GUI has
+## routed the press that closed it, so the card still takes that press (it is no tap on the map).
 func _on_unfold_changed(_previous: HudState.Unfold) -> void:
 	if not _sync_queued:
 		_sync_queued = true
@@ -285,6 +287,7 @@ func _flash(credits: int) -> void:
 	else:
 		_count_from = _displayed
 		_count_ms = total
+		_count_total = total
 	_write_credits()
 	_chip_text.set_text("%+d" % _chip_amount)
 	_chip.theme_type_variation = CHIP_LOSS_VARIATION if _chip_amount < 0 else CHIP_GAIN_VARIATION
@@ -304,7 +307,7 @@ func _end_flashes(credits: int) -> void:
 func _advance(ms: float) -> void:
 	if _count_ms > 0.0:
 		_count_ms = maxf(_count_ms - ms, 0.0)
-		var left: float = _count_ms / maxf(float(_flash_ms()), 1.0)
+		var left: float = _count_ms / _count_total
 		_displayed = _shown.x + roundi((_count_from - _shown.x) * left)
 		_write_credits()
 	if _chip_ms > 0.0:
@@ -318,7 +321,9 @@ func _flash_ms() -> int:
 
 
 func _write_credits() -> void:
-	_credits.set_text(str(_displayed))
+	if _displayed != _written:  # No string is made while the shown integer stays.
+		_written = _displayed
+		_credits.set_text(str(_displayed))
 
 
 ## The chip shows while its time runs and the card (which has the credits) does not, under the

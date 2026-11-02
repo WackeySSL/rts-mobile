@@ -13,7 +13,10 @@ const PANEL_VARIATION: StringName = &"HudPanel"
 const NUMBER_VARIATION: StringName = &"NumberLabel"
 const TOKENS: StringName = &"HudTokens"
 const GLYPH_DP: float = 24.0
-const GAP_DP: float = 4.0
+const GAP_DP: float = 4.0  ## Between chips side by side.
+## Between the rows: small, so the card at its tallest (six consumers and the low-power line) fits
+## under the pill on the shortest screen at any px rounding of the text.
+const ROW_GAP_DP: float = 2.0
 const CHIP_VARIATION: StringName = &"EconomyConsumer"
 const CREDITS_DIGITS: int = 5
 ## What low power does (GDD "Economy"; the percentage is `data/rules.tres`'s). Two lines of their
@@ -177,9 +180,9 @@ func _glyph(line: HBoxContainer, node_name: String, icon: String) -> TextureRect
 	glyph.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	glyph.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	glyph.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var size: DpMinSize = DpMinSize.new()
-	size.min_dp = Vector2(GLYPH_DP, GLYPH_DP)
-	glyph.add_child(size)
+	var min_size: DpMinSize = DpMinSize.new()
+	min_size.min_dp = Vector2(GLYPH_DP, GLYPH_DP)
+	glyph.add_child(min_size)
 	line.add_child(glyph)
 	return glyph
 
@@ -199,10 +202,10 @@ func _tint() -> void:
 
 ## Sizes are dp, so they follow a resize.
 func _apply_dp() -> void:
-	var gap: int = roundi(UiScale.dp(GAP_DP))
-	_column.add_theme_constant_override("separation", gap)
-	_grid.add_theme_constant_override("h_separation", gap)
-	_grid.add_theme_constant_override("v_separation", gap)
+	var row_gap: int = roundi(UiScale.dp(ROW_GAP_DP))
+	_column.add_theme_constant_override("separation", row_gap)
+	_grid.add_theme_constant_override("h_separation", roundi(UiScale.dp(GAP_DP)))
+	_grid.add_theme_constant_override("v_separation", row_gap)
 	_tint()
 
 

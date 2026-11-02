@@ -13,6 +13,7 @@ extends GdUnitTestSuite
 ## Bunkhouses, a Heavy Yard and a Redoubt (they use 100), two Tankers and a Flarejack; player 2 has
 ## buildings and a tanker of its own, which the card must not count.
 
+const CardHeights: GDScript = preload("res://tests/support/card_heights.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/input/support/placement_rig.gd")
 const Buildings: GDScript = preload("res://tests/view/support/building_rig.gd")
@@ -147,7 +148,8 @@ func test_the_card_stands_where_the_layout_puts_it_at_every_profile() -> void:
 ## What the card says is the snapshot's: the credits, the income per minute of the last minute of
 ## `stat_harvested`, the tankers, the power used and made, and a chip for each own building type
 ## that uses power, with the power its buildings use together. The other player's rows are not
-## counted. Everything is inside the card and nothing overlaps; the numbers are HUD numbers.
+## counted. Everything is inside the card and nothing overlaps; the numbers are HUD numbers and
+## their digits keep fixed slots, so the figure does not jitter while the card is open.
 func test_the_card_shows_the_economy_of_the_snapshot() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
@@ -173,6 +175,15 @@ func test_the_card_shows_the_economy_of_the_snapshot() -> void:
 		var caption: Label = _node("CardTankersCaption") as Label
 		points = float(caption.get_theme_font_size(&"font_size")) / UiScale.base_px_per_dp()
 		assert_float(points).override_failure_message(why).is_greater_equal(13.5)  # 14 dp text.
+		# The digits keep their slots too: another figure of as many digits stands in the same places.
+		var narrow: Array[Rect2] = _digit_rects(_node("CardCredits") as DigitRow)
+		snap.credits[PLAYER] = 8888
+		snap.tick += 1
+		_pill.refresh()
+		var wide: Array[Rect2] = _digit_rects(_node("CardCredits") as DigitRow)
+		assert_array(narrow).has_size(4)
+		for index: int in narrow.size():
+			assert_that(wide[index]).override_failure_message(why).is_equal(narrow[index])
 
 
 ## The chips follow the building types in the order of the snapshot's types, and a building counts
@@ -197,12 +208,13 @@ func test_the_chips_count_a_building_as_the_power_rule_does() -> void:
 	assert_dict(_chips()).is_equal({"Bunkhouse": 40, "Heavy Yard": 40})
 	assert_str(_text("CardPower")).is_equal("80/120")
 	snap.build_left[turret] = 0
-	snap.offline_until[turret] = snap.tick + 5  # Blacked out: nothing either.
-	snap.tick += 1
+	var until: int = snap.tick + 5
+	snap.offline_until[turret] = until  # Blacked out: nothing, up to the tick before `until`...
+	snap.tick = until - 1
 	_pill.refresh()
 	assert_dict(_chips()).is_equal({"Bunkhouse": 40, "Heavy Yard": 40})
-	snap.tick += 5
-	_pill.refresh()  # Back online at the stamp it reaches.
+	snap.tick = until  # ...and counted again at the stamp that reaches it (Power.run's rule).
+	_pill.refresh()
 	assert_dict(_chips()).is_equal(CHIPS)
 	var barracks: int = _row_of(snap, &"barracks")
 	snap.hp[barracks] = 0
@@ -251,41 +263,92 @@ func test_low_power_adds_the_line_and_the_triangle_to_the_card() -> void:
 		assert_str(_glyph("CardPowerGlyph")).is_equal(ICONS % "glyph_power")
 
 
-## The card at its tallest (every kind of consumer, low power) still stands inside the safe rect
-## on the shortest phone screens and the narrowest upright one, and the chips keep to the card.
-func test_the_card_at_its_tallest_fits_every_profile() -> void:
+## The card at its tallest (every kind of consumer, low power) is `CardHeights.TALLEST_DP` high
+## (within its spread) and stands inside the safe rect at the six sizes and at every profile, the
+## shortest phone screens and the narrowest upright one included, with its chips inside it. The
+## command bar may lie under it there (HudCorners lets the card cover it).
+func test_the_card_at_its_tallest_fits_every_size_and_profile() -> void:
 	await _open(ScreenSizes.ALL[0], ALL_CONSUMERS, ALL_ROSTER)
+	var places: Array[Callable] = []
+	for size: Vector2i in ScreenSizes.ALL:
+		places.append(_to_size.bind(size))
 	for profile: StringName in _every_profile():
-		await _turn(profile)
+		places.append(_turn.bind(profile))
+	var tallest: float = 0.0
+	for place: Callable in places:
+		await place.call()
 		var snap: MatchSnapshot = _runner.snapshot
 		snap.power_made[PLAYER] = 10
 		snap.tick += 1
 		await _tap_control("PowerTap")
-		var why: String = str(profile)
+		var why: String = "%s" % [get_window().size]
 		assert_int(_chip_names().size()).override_failure_message(why).is_equal(6)
 		assert_bool((_node("CardWarning") as Control).visible).is_true()
 		_check_rect(why)
 		_check_inside(why)
+		var height: float = _card().size.y / UiScale.base_px_per_dp()
+		assert_float(height).override_failure_message(why).is_between(
+			CardHeights.TALLEST_DP - CardHeights.SPREAD_DP, CardHeights.TALLEST_DP
+		)
+		tallest = maxf(tallest, height)
+		await _tap(_ground())
+		await _settle()
+	assert_float(tallest).is_greater(CardHeights.TALLEST_DP - 4.0)  # The number is the card's.
+
+
+## The opening state (a Headquarters and a power plant: no consumer, no low-power line) is a short
+## card, as tall as its content and not as tall as a default: at every size and profile it is the
+## layout's rect, and well under the 120 dp a card that was not measured would have.
+func test_the_card_with_no_consumer_is_as_tall_as_its_content() -> void:
+	var opening: Array = [["power_plant", 10, 6]]
+	await _open(ScreenSizes.ALL[0], opening, ["headquarters", "power_plant"])
+	var places: Array[Callable] = []
+	for size: Vector2i in ScreenSizes.ALL:
+		places.append(_to_size.bind(size))
+	for profile: StringName in _every_profile():
+		places.append(_turn.bind(profile))
+	for place: Callable in places:
+		await place.call()
+		await _tap_control("CreditsTap")
+		var why: String = "%s" % [get_window().size]
+		assert_int(_chip_names().size()).override_failure_message(why).is_equal(0)
+		assert_bool((_node("CardWarning") as Control).visible).is_false()
+		_check_rect(why)
+		_check_inside(why)
+		var height: float = _card().size.y / UiScale.base_px_per_dp()
+		assert_float(height).override_failure_message("%s: %s dp" % [why, height]).is_less(100.0)
 		await _tap(_ground())
 		await _settle()
 
 
-## The digits of the card's credits keep their slots too, so the figure does not jitter while the
-## card is open and the credits change.
-func test_the_cards_digits_keep_fixed_slots() -> void:
-	for size: Vector2i in ScreenSizes.ALL:
-		await _open(size)
-		var snap: MatchSnapshot = _runner.snapshot
-		snap.credits[PLAYER] = 1111
-		await _tap_control("CreditsTap")
-		var narrow: Array[Rect2] = _digit_rects(_node("CardCredits") as DigitRow)
-		snap.credits[PLAYER] = 8888
-		snap.tick += 1
+## The chips are the sim's own power totals, tick by tick: a blackout on a World turret, a tick at
+## a time through the real sim and the pill's reads of each published snapshot. On every tick the
+## chips add up to `power_used`, the turret's chip is gone for exactly the blackout and back at the
+## tick that reaches `offline_until`.
+func test_the_chips_add_up_to_the_sims_power_used_through_a_blackout() -> void:
+	await _open(ScreenSizes.ALL[0])
+	await _tap_control("CreditsTap")
+	var world: World = _runner.world
+	var snap: MatchSnapshot = _runner.snapshot
+	var row: int = world.index_of(snap.unit_id[_row_of(snap, &"defence_turret")])
+	var until: int = world.tick + 4
+	world.offline_until[row] = until
+	var seen: Dictionary[bool, int] = {true: 0, false: 0}  # Ticks with the turret out, and in.
+	for _step: int in 8:
+		_runner.run_ticks(1)
+		snap = _runner.snapshot
 		_pill.refresh()
-		var wide: Array[Rect2] = _digit_rects(_node("CardCredits") as DigitRow)
-		assert_array(narrow).has_size(4)
-		for index: int in narrow.size():
-			assert_that(wide[index]).override_failure_message(str(size)).is_equal(narrow[index])
+		var total: int = 0
+		for sum: int in _chips().values():
+			total += sum
+		var out: bool = until > snap.tick
+		var why: String = "tick %d (offline until %d)" % [snap.tick, until]
+		assert_int(total).override_failure_message(why).is_equal(snap.power_used[PLAYER])
+		assert_bool(_chips().has("Redoubt")).override_failure_message(why).is_equal(not out)
+		assert_str(_text("CardPower")).is_equal("%d/%d" % [total, snap.power_made[PLAYER]])
+		seen[out] += 1
+	assert_int(seen[true]).is_equal(3)  # Ticks until-3 .. until-1 (the first step is until-3).
+	assert_int(seen[false]).is_greater(0)
 
 
 ## A second tap on the numbers closes the card and does not open it again, and the next one opens
@@ -330,6 +393,7 @@ func test_any_next_touch_closes_the_card_and_does_its_own_work() -> void:
 		assert_bool(_card().visible).override_failure_message(why).is_false()
 		assert_array(_sent).override_failure_message(why).is_empty()
 		assert_array(_controller.selection.selected).is_equal(tank)
+		_controller.selection.set_ids(PackedInt32Array())  # So that All army has something to do.
 		await _tap_control("PowerTap")
 		await _tap_control("AllArmy")  # A control of the HUD: its own work, the selection.
 		await _settle()
@@ -484,7 +548,8 @@ func test_a_press_for_a_finger_still_down_counts_as_a_lost_release() -> void:
 
 
 ## ADR 0025 section 19's P119b row: the card, "tap the numbers again to close", the red "-N" and the
-## green "+N", in "The screen in battle", with the setting named and no number in the text.
+## green "+N", in "The screen in battle", with the setting named and no number in the text, and no
+## Teach mark (the ADR gives the row none).
 func test_how_to_play_has_the_p119b_rows() -> void:
 	var text: String = FileAccess.get_file_as_string(HOW_TO_PLAY)
 	var section: String = text.get_slice("## The screen in battle", 1).get_slice("\n## ", 0)
@@ -506,11 +571,10 @@ func test_how_to_play_has_the_p119b_rows() -> void:
 		"economy_flash_ms",
 	]:
 		assert_bool(joined.contains(phrase.to_lower())).override_failure_message(phrase).is_true()
-	for row: String in rows:
-		(
-			assert_bool(row.ends_with("| yes |") or row.ends_with("|  |") or row.ends_with("| |"))
-			. is_true()
-		)
+	assert_bool(joined.contains("on a control (which then does its own work)")).is_true()
+	assert_bool(joined.contains("under construction")).is_false()  # Not a thing before P130.
+	for row: String in rows:  # ADR 0025 section 19 marks neither row "(yes)": Teach stays empty.
+		assert_bool(row.ends_with("| |")).override_failure_message(row.left(40)).is_true()
 
 
 ## The expected rect of the card: the layout's own function on the pill's inputs.
@@ -750,6 +814,13 @@ func _node(node_name: String) -> Node:
 func _settle() -> void:
 	await await_idle_frame()
 	await await_idle_frame()
+
+
+## The window at one of the six sizes with the engine's own metrics, settled.
+func _to_size(size: Vector2i) -> void:
+	UiScale.clear_override()
+	get_window().size = size
+	await _settle()
 
 
 ## Turns the window to a profile's size, with its metrics, and lets the handlers and the

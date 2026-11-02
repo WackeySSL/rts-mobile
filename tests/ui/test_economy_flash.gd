@@ -318,6 +318,30 @@ func test_the_flash_time_is_the_settings_and_zero_turns_it_off() -> void:
 	assert_str(_credits().text).is_equal("900")
 
 
+## A count-down keeps the time it began with: a change of `economy_flash_ms` in the middle of one
+## does not make the number jump or overshoot, the count ends when it was due to, and the credits
+## row remembers what it shows.
+func test_a_count_keeps_its_own_time_when_the_setting_changes_in_the_middle() -> void:
+	await _open(ScreenSizes.ALL[0])
+	_publish(1000)
+	_publish(400)  # A count of 1 000 ms.
+	_step(500)
+	assert_str(_credits().text).is_equal("700")
+	var settings: InputSettings = _feed.state.settings.duplicate() as InputSettings
+	settings.economy_flash_ms = 400
+	_feed.state.settings = settings
+	_step(250)  # Three quarters of the count's own time.
+	assert_str(_credits().text).is_equal("550")
+	_step(249)
+	assert_str(_credits().text).is_equal("401")
+	_step(1)
+	assert_str(_credits().text).is_equal("400")
+	settings.economy_flash_ms = 0
+	_step(100)
+	assert_str(_credits().text).is_equal("400")
+	assert_int(_pill._written).is_equal(400)
+
+
 ## A turn mid-flash keeps the chip, its sum and its time, and moves it under the credits of the
 ## other layout.
 func test_a_turn_keeps_the_flash_and_moves_the_chip_under_the_credits() -> void:
