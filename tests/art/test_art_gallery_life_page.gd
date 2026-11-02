@@ -1,14 +1,18 @@
 extends GdUnitTestSuite
 ## The Life page of the art gallery (plan row P135, STYLE.md "Gallery" and "Life effects"): the two
 ## life atlases whole, then a row for every kind of the region table with its frames at the three
-## camera zooms on grass and on sand, laid out to fit at the three base sizes of the gallery. The
-## atlases are in test_life_atlases.gd, the other pages in test_art_gallery_pages.gd.
+## camera zooms on grass and on sand, laid out to fit at the three base sizes of the gallery and to
+## scroll sideways to the sand on a narrow screen. The regions the page draws are held to the cells
+## STYLE.md's table implies (tests/art/life_art_support.gd), not to `LifeRegions` alone. The atlases
+## are in test_life_atlases.gd, the other pages in test_art_gallery_pages.gd.
 
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
 const Life: GDScript = preload("res://game/view/art_gallery_life.gd")
+const Support: GDScript = preload("res://tests/art/life_art_support.gd")
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
 ## The tightest 16:9 phone, a wider one and a 4:3 tablet (the sizes of test_art_assets.gd).
 const BASES: Array[Vector2] = [Vector2(1280, 720), Vector2(1600, 720), Vector2(1280, 960)]
+const PORTRAIT: Vector2 = Vector2(720, 1280)
 const LIFE_PAGE: int = 7
 const ZOOM_GROUPS: Dictionary[String, float] = {"Z075": 0.75, "Z100": 1.0, "Z150": 1.5}
 
@@ -34,94 +38,100 @@ func test_the_life_page_is_the_last_of_eight_and_is_built_when_the_button_first_
 	_turn_to(gallery, LIFE_PAGE)
 	assert_str((gallery.get_node("%PageButton") as Button).text).is_equal("Life")
 	assert_bool(page.visible).is_true()
-	assert_array(page.get_children().map(_node_name)).is_equal(["Grass", "Sand", "Scroll"])
-	assert_that((page.get_node("Grass") as ColorRect).color).is_equal(
-		Gallery.TERRAIN_COLORS[&"grass_b"]
-	)
-	assert_that((page.get_node("Sand") as ColorRect).color).is_equal(
-		Gallery.TERRAIN_COLORS[&"sand"]
-	)
+	assert_array(page.get_children().map(_node_name)).is_equal(["Scroll"])
 	_turn_to(gallery, 1)
 	assert_str((gallery.get_node("%PageButton") as Button).text).is_equal("Units")
 	assert_bool(page.visible).is_false()
 
 
+## The first row after the spacer, then one for every kind of the table in the guide's order; every
+## half of every row is its ground.
 func test_the_rows_are_the_atlases_then_every_kind_of_the_table_in_order() -> void:
 	var gallery: Control = await _open_gallery()
 	_turn_to(gallery, LIFE_PAGE)
 	var want: Array[String] = ["Spacer", "RowAtlases"]
-	for kind: String in Life.LIFE_KINDS:
-		want.append("Row" + kind.to_pascal_case())
-	for kind: String in Life.STRIKE_KINDS:
-		want.append("Row" + kind.to_pascal_case())
+	for row: Dictionary in Support.table():
+		want.append("Row" + String(row["kind"]).to_pascal_case())
 	var rows: Node = gallery.get_node("LifePage/Scroll/Rows")
 	assert_array(rows.get_children().map(_node_name)).is_equal(want)
-	assert_int(Life.LIFE_KINDS.size() + Life.STRIKE_KINDS.size()).is_equal(21)
+	assert_int(want.size()).is_equal(23)
+	for row: Node in rows.get_children():
+		assert_array(row.get_children().map(_node_name)).is_equal(["Grass", "Sand"])
+		assert_that((row.get_node("Grass") as ColorRect).color).is_equal(
+			Gallery.TERRAIN_COLORS[&"grass_b"]
+		)
+		assert_that((row.get_node("Sand") as ColorRect).color).is_equal(
+			Gallery.TERRAIN_COLORS[&"sand"]
+		)
 
 
 func test_the_atlas_row_shows_both_atlases_whole_at_scale_1_on_each_ground() -> void:
 	var gallery: Control = await _open_gallery()
 	_turn_to(gallery, LIFE_PAGE)
 	var row: Node = gallery.get_node("LifePage/Scroll/Rows/RowAtlases")
-	assert_array(row.get_children().map(_node_name)).is_equal(["Grass", "Sand"])
 	for ground: String in ["Grass", "Sand"]:
 		var half: Node = row.get_node(ground)
 		for atlas: String in ["LifeAtlas", "StrikeAtlas"]:
 			var rect: TextureRect = half.get_node(atlas)
 			assert_vector(rect.size).is_equal(rect.texture.get_size())
-		assert_str((half.get_node("LifeAtlas") as TextureRect).texture.resource_path).ends_with(
-			"fx/life_atlas.svg"
+		assert_str((half.get_node("LifeAtlas") as TextureRect).texture.resource_path).is_equal(
+			LifeRegions.LIFE_ART
 		)
-		assert_str((half.get_node("StrikeAtlas") as TextureRect).texture.resource_path).ends_with(
-			"fx/strike_atlas.svg"
+		assert_str((half.get_node("StrikeAtlas") as TextureRect).texture.resource_path).is_equal(
+			LifeRegions.STRIKE_ART
 		)
 	assert_bool(row.get_node("Grass").has_node("Label")).is_true()
 	assert_bool(row.get_node("Sand").has_node("Label")).is_false()
 
 
-## Every frame is a region of the imported atlas, as big as the region in world px times the zoom,
-## standing on the row's ground line, the kind named on the grass half only.
+## Every frame is the region STYLE.md's table implies for it (frame 0 moved by frame x step), of the
+## atlas the table names, as big as the region in world px times the zoom, standing on the row's
+## ground line, the kind named on the grass half only. One texture is made for each frame and the
+## three zooms and both grounds share it.
 func test_each_kind_shows_its_frames_at_the_three_zooms_on_both_grounds() -> void:
 	var gallery: Control = await _open_gallery()
 	_turn_to(gallery, LIFE_PAGE)
 	var shown: int = 0
-	for atlas: String in ["life", "strike"]:
-		var kinds: Dictionary[String, String] = (
-			Life.LIFE_KINDS if atlas == "life" else Life.STRIKE_KINDS
+	var textures: Dictionary[AtlasTexture, bool] = {}
+	for row_data: Dictionary in Support.table():
+		var kind: String = row_data["kind"]
+		var frames: int = row_data["frames"]
+		var row: Node = gallery.get_node("LifePage/Scroll/Rows/Row" + kind.to_pascal_case())
+		var tallest: float = (row_data["rect"] as Rect2i).size.y * 1.5
+		var path: String = (
+			LifeRegions.LIFE_ART if row_data["atlas"] == "life" else LifeRegions.STRIKE_ART
 		)
-		var path: String = Life.LIFE_ART if atlas == "life" else Life.STRIKE_ART
-		for kind: String in kinds:
-			var spec: String = kinds[kind]
-			var frames: int = Life.frame_count(spec)
-			var row: Node = gallery.get_node("LifePage/Scroll/Rows/Row" + kind.to_pascal_case())
-			var tallest: float = Life.region(spec).size.y * Life.MAX_ZOOM
-			for ground: String in ["Grass", "Sand"]:
-				var half: Node = row.get_node(ground)
-				assert_bool(half.has_node("Label")).is_equal(ground == "Grass")
-				if ground == "Grass":
-					assert_str((half.get_node("Label") as Label).text).is_equal(
-						"%s (%d)" % [kind, frames]
+		for ground: String in ["Grass", "Sand"]:
+			var half: Node = row.get_node(ground)
+			assert_bool(half.has_node("Label")).is_equal(ground == "Grass")
+			if ground == "Grass":
+				assert_str((half.get_node("Label") as Label).text).is_equal(
+					"%s (%d)" % [kind, frames]
+				)
+			for group_name: String in ZOOM_GROUPS:
+				var group: Node = half.get_node(group_name)
+				assert_int(group.get_child_count()).is_equal(frames)
+				for frame: int in frames:
+					var rect: TextureRect = group.get_node("F%d" % frame)
+					var texture: AtlasTexture = rect.texture as AtlasTexture
+					var box: Rect2i = _cell(row_data, frame)
+					assert_str(texture.atlas.resource_path).is_equal(path)
+					(
+						assert_that(texture.region)
+						. override_failure_message("%s %d" % [kind, frame])
+						. is_equal(Rect2(box))
 					)
-				for group_name: String in ZOOM_GROUPS:
-					var group: Node = half.get_node(group_name)
-					assert_int(group.get_child_count()).is_equal(frames)
-					for frame: int in frames:
-						var rect: TextureRect = group.get_node("F%d" % frame)
-						var texture: AtlasTexture = rect.texture as AtlasTexture
-						var box: Rect2i = Life.region(spec, frame)
-						assert_str(texture.atlas.resource_path).is_equal(path)
-						assert_that(texture.region).is_equal(Rect2(box))
-						assert_vector(rect.size).is_equal(
-							Vector2(box.size) * ZOOM_GROUPS[group_name]
-						)
-						assert_float(rect.position.y + rect.size.y).is_equal(tallest)
-						shown += 1
+					assert_vector(rect.size).is_equal(Vector2(box.size) * ZOOM_GROUPS[group_name])
+					assert_float(rect.position.y + rect.size.y).is_equal(tallest)
+					textures[texture] = true
+					shown += 1
 	# 24 frames of the life atlas and 12 of the strike atlas, each on two grounds at three zooms.
-	assert_int(shown).is_equal((3 + 3 + 2 + 2 + 2 + 2 + 4 + 3 + 3 + 12) * 2 * 3)
+	assert_int(shown).is_equal(36 * 2 * 3)
+	assert_int(textures.size()).is_equal(36)
 
 
 ## Everything is inside its half, clear of the corner buttons and of the other frames and rows, at
-## the three base sizes.
+## the three base sizes; the halves are the same width and meet.
 func test_the_life_page_fits_each_half_and_keeps_clear_of_the_buttons_at_three_sizes() -> void:
 	for base: Vector2 in BASES:
 		var gallery: Control = await _open_gallery(base)
@@ -132,8 +142,6 @@ func test_the_life_page_fits_each_half_and_keeps_clear_of_the_buttons_at_three_s
 		var rows: Node = gallery.get_node("LifePage/Scroll/Rows")
 		var above: float = -1.0
 		for row: Node in rows.get_children():
-			if row.name == &"Spacer":
-				continue
 			var grass: Control = row.get_node("Grass")
 			var sand: Control = row.get_node("Sand")
 			var grass_rect: Rect2 = grass.get_global_rect()
@@ -157,18 +165,29 @@ func test_the_life_page_fits_each_half_and_keeps_clear_of_the_buttons_at_three_s
 			. override_failure_message(str(base) + str(problems.slice(0, 4)))
 			. is_empty()
 		)
-		# The two ground colours cover the halves of the page.
-		var page: Rect2 = (gallery.get_node("LifePage") as Control).get_global_rect()
-		assert_that((gallery.get_node("LifePage/Grass") as Control).get_global_rect()).is_equal(
-			Rect2(page.position, Vector2(base.x / 2.0, base.y))
-		)
-		(
-			assert_float(
-				(gallery.get_node("LifePage/Sand") as Control).get_global_rect().position.x
-			)
-			. is_equal(base.x / 2.0)
-		)
 		gallery.get_parent().free()
+
+
+## The page scrolls (it is longer than the screen), and on a narrow screen it scrolls sideways too,
+## so the sand half is reachable.
+func test_the_page_scrolls_up_and_down_and_on_a_narrow_screen_sideways() -> void:
+	var wide: Control = await _open_gallery()
+	_turn_to(wide, LIFE_PAGE)
+	await await_idle_frame()
+	await await_idle_frame()
+	var scroll: ScrollContainer = wide.get_node("LifePage/Scroll")
+	assert_float(scroll.get_v_scroll_bar().max_value).is_greater(scroll.get_v_scroll_bar().page)
+	assert_float(scroll.get_h_scroll_bar().max_value).is_less_equal(scroll.get_h_scroll_bar().page)
+	wide.get_parent().free()
+	var narrow: Control = await _open_gallery(PORTRAIT)
+	_turn_to(narrow, LIFE_PAGE)
+	await await_idle_frame()
+	await await_idle_frame()
+	scroll = narrow.get_node("LifePage/Scroll")
+	assert_float(scroll.get_h_scroll_bar().max_value).is_greater(scroll.get_h_scroll_bar().page)
+	var sand: Control = narrow.get_node("LifePage/Scroll/Rows/RowAtlases/Sand")
+	assert_float(sand.get_global_rect().end.x).is_greater(PORTRAIT.x)
+	narrow.get_parent().free()
 
 
 ## Frames and labels of `half` that are outside it or over one another.
@@ -187,6 +206,12 @@ func _clashes(half: Control, row_name: String) -> Array[String]:
 				found.append("%s %s overlaps %s" % [row_name, thing.get_path(), other])
 		seen.append(rect)
 	return found
+
+
+## The cell of frame `frame` of a row of the table: frame 0 moved right by frame x step.
+func _cell(row: Dictionary, frame: int) -> Rect2i:
+	var box: Rect2i = row["rect"]
+	return Rect2i(box.position + Vector2i(frame * row["step"], 0), box.size)
 
 
 func _turn_to(gallery: Control, steps: int) -> void:

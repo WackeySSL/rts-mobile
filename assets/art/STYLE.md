@@ -1145,8 +1145,8 @@ in doubt, choose a plainer real-world form.
 | Field stage | A cell of an oil or gas field as an overlay on the ore earth: a black pool with a sheen or a pale crust over a vent that fills the cell when full, shrinks to a pool clear of the sides when half and is a cracked stain or a dusty crust when dry. | `fields/<kind>_<stage>.svg`, 128x64, see "Fields" |
 | Wellhead | A square concrete pad with a squat valve tree: a stout steel column with two flanges and two short arms that end in valves with dark hand-wheels, a small lamp on the cap, and a low flowline with a choke block running off to the south-east; neutral, no team colour. | `fields/wellhead.svg`, 112x116, anchor (56, 88); `fields/wellhead_shadow.svg`, 140x72, anchor (56, 31) |
 | Crater | A dark round pit seen as a 2:1 ellipse, its north-west wall in shade, inside a ragged lit ring of thrown earth with cracks and rock chips across a wide soot stain, radius 1.5 tiles. | `decals/crater.svg`, 288x144, anchor (144, 72), see "Fields" |
-| Life atlas | Lumpy grey and white cloud puffs of five or six round lobes in three tones with a dark rim, tall single and low three-tongue yellow-white flames with a charcoal edge, small pointed sparks and low flat heaps of dust, each on its own clear cell. | `fx/life_atlas.svg`, 552x320, import scale 0.5, see "Life effects" |
-| Strike atlas | A dark auger lance of steel with a collar, four helical flights and a ragged yellow-white burn, falling or rising; a mint teardrop seed with a trail; a flat mint hexagon of light with a dark green edge; a yellow-white and a mint flash; a flat ground ring and a shadow. | `fx/strike_atlas.svg`, 480x472, import scale 0.5, see "Life effects" |
+| Life atlas | Lumpy grey and white cloud puffs of three to six round lobes in three tones with a dark rim, tall single and low three-tongue yellow-white flames with a charcoal edge, small pointed sparks and low flat heaps of dust, each on its own clear cell. | `fx/life_atlas.svg`, 552x320, import scale 0.5, see "Life effects" |
+| Strike atlas | A dark auger lance of steel with a collar, four helical flights and a swept-back yellow-white burn, falling or rising; a mint teardrop seed with a trail; a flat mint hexagon of light with a dark green edge; a yellow-white and a mint flash; a flat ground ring and a shadow. | `fx/strike_atlas.svg`, 480x472, import scale 0.5, see "Life effects" |
 
 ## Readability check (every asset)
 1. Rasterise each layer at 32 px with `Image.load_svg_from_buffer` (scale = 32 / canvas, so 0.25 for
@@ -1356,20 +1356,23 @@ grass 127) readable.
 The effects of the unit-life layers are two hand-written atlases, no team colour. Both are imported at
 scale 0.5 like `fx/effects_atlas.svg`, so a region's numbers are px of the imported texture, which at
 camera zoom 1 are world px, and the SVG is twice as large.
-- `fx/life_atlas.svg`, 552 x 320 at 2x (276 x 160 px, about 17 KB): the sprites of `GroundFx` (z 3) and
+- `fx/life_atlas.svg`, 552 x 320 at 2x (276 x 160 px, about 18 KB): the sprites of `GroundFx` (z 3) and
   `AirFx` (z 25), the smokes, the flames, the sparks and the dust.
-- `fx/strike_atlas.svg`, 480 x 472 at 2x (240 x 236 px, about 8 KB): the sprites of `StrikeFx` (z 55), the
+- `fx/strike_atlas.svg`, 480 x 472 at 2x (240 x 236 px, about 10 KB): the sprites of `StrikeFx` (z 55), the
   two superweapon looks.
 
 A layer draws a frame as a quad of its region, with `modulate` Color(1, 1, 1, alpha) and no other
 tint (the colours are baked in), growing and fading as its own rows say (the numbers are in
 `data/life_settings.tres`, not here). Each frame is authored at about the size a puff or a flame has
 in the middle of its life, so a layer scales it between about 0.5 and 1.5 and stays soft but never
-blocky. A layer may mirror a cloud, a heap of dust or a flame horizontally for a second look; it
-never turns a quad, and never mirrors a lance, the seed or a hexagon (they are lit from the
-north-west like everything else). Frame k of a kind is the region at x + k x step. Every sprite is
-drawn at least 1 px inside its region and the regions are at least 4 px apart, with no ink outside
-them (the two strips are the exception below).
+blocky. A layer never turns a quad. It may mirror a flame or a spark horizontally for a second
+look (they give light, so nothing on them is lit from a side); it never mirrors a cloud, a heap of
+dust, a lance, the seed or a hexagon, which are lit from the north-west like everything else.
+`LifeRegions` (`game/view/LifeRegions.gd`) holds the table below as constants and the layers read it
+from there; `tests/art/test_life_atlases.gd` holds it equal to this table and to the ink of the
+two files. Frame k of a kind is the region at x + k x step. Every sprite is drawn at least 1 px
+inside its region and the regions are at least 4 px apart, with no ink outside them (the two
+strips touch their region's edge at one end, below).
 
 | Kind | Atlas | Region (x, y, w, h) | Frames | Step | Anchor in a frame | Look | Used by |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -1382,33 +1385,44 @@ them (the two strips are the exception below).
 | `flare` | life | 0, 84, 26, 42 | 4 | 30 | base 13, 38 | One tall yellow-white flame, round at its foot and drawn out to a tip that leans, with a small lick at its side and a white heart; the four frames flicker (upright, right, left, short). | flare flames (P145) |
 | `fire` | life | 124, 84, 26, 34 | 3 | 30 | base 13, 30 | A low burn of three unequal tongues on a wide foot, yellow-white with a white heart; the frames differ in which tongue is tallest. | damage fire on a roof (P148) |
 | `spark` | life | 218, 84, 16, 16 | 3 | 20 | centre 8, 8 | Three bright flecks: a pointed four-ray star, an eight-ray flash, and a comet (a round head with a short tapering tail to the lower left). | construction sparks (P150) |
-| `lance_down` | strike | 0, 0, 34, 164 | 1 | 0 | tip 17, 157 | The Deep Bore's lance falling: a dark auger bit, a long cone of steel with a lit left half and a shaded right half and four slanting helical flights cut across it, below a heavy square collar with a lit top and a dark foot, and above the collar a ragged yellow-white burn of five tongues. | `StrikeFx` the fall (P141) |
-| `lance_up` | strike | 38, 0, 34, 164 | 1 | 0 | tip 17, 7 | The same lance rising: point up, collar below the cone, the burn spraying down from the collar. | the launch (P141) |
+| `lance_down` | strike | 0, 0, 34, 164 | 1 | 0 | tip 17, 157 | The Deep Bore's lance falling: a dark auger bit, a long cone of steel with a lit left half and a shaded right half and four slanting helical flights cut across it, below a heavy square collar with a lit top and a dark foot, and above the collar the burn: five narrow, straight yellow-white streaks of unequal length on flat bases that sit on the collar, swept back up the fall with no round foot, so it never reads as a torch and it hands over into `trail`. | `StrikeFx` the fall (P141) |
+| `lance_up` | strike | 38, 0, 34, 164 | 1 | 0 | tip 17, 7 | The same lance rising: point up, collar below the cone, a ragged spray of yellow-white tongues falling away below the collar. It is drawn on its own, not as the other turned upside down: the collar's lit band is still on top, its dark foot below, and the light still catches the upper edge of each flight. | the launch (P141) |
 | `trail` | strike | 76, 0, 16, 64 | 1 | 0 | bottom centre 8, 64 | A tapering yellow-white streak, white at its flush bottom edge and fading to nothing towards the point; a layer stretches it up the fall behind the lance. | the fall (P141) |
 | `shadow` | strike | 76, 68, 50, 26 | 1 | 0 | centre 25, 13 | A flat dark ellipse (2:1), soft at the edge, that grows under the falling lance. | the fall (P141) |
 | `seed` | strike | 96, 0, 18, 34 | 1 | 0 | centre 9, 17 | The Blackout Array's light seed: a mint teardrop with a pale inner drop and a white heart, point up, inside a dark green edge. | the launch (P141) |
 | `seed_trail` | strike | 118, 0, 12, 64 | 1 | 0 | top centre 6, 0 | A mint streak, white and wide at its flush top edge and fading away downwards; a layer stretches it down the rise below the seed. | the launch (P141) |
 | `glint` | strike | 134, 0, 14, 14 | 1 | 0 | centre 7, 7 | A thin four-point mint-white sparkle in a dark green edge. | the net's landing (P141) |
-| `hex` | strike | 134, 18, 36, 18 | 1 | 0 | centre 18, 9 | One ground-plane hexagon of the net, a hexagon of side 16 squashed 2:1 (width 32, height 14, a vertex at each side, a flat top and bottom): a light line with a dark green edge, a faint mint fill and a white dot at each corner. | the falling net (P141) |
-| `hex_lit` | strike | 134, 40, 36, 18 | 1 | 0 | centre 18, 9 | The same hexagon filled bright mint with a white inner hexagon, for the moment the net lands. | the net's landing (P141) |
+| `hex` | strike | 134, 18, 38, 20 | 1 | 0 | centre 19, 10 | One ground-plane hexagon of the net, a hexagon of side 16 squashed 2:1 (width 32, height 13.86, a vertex at each side, a flat top and bottom, so the corners are at 3, 10 and 35, 10 and the flat edges at y 3.07 and 16.93): a light line 1.5 px wide over a dark green edge 3 px wide, a faint mint fill and a white dot at each corner. | the falling net (P141) |
+| `hex_lit` | strike | 134, 42, 38, 20 | 1 | 0 | centre 19, 10 | The same hexagon filled bright mint with a white inner hexagon, for the moment the net lands. | the net's landing (P141) |
 | `launch_flash` | strike | 0, 168, 66, 66 | 1 | 0 | centre 33, 33 | An uneven yellow-white sunburst of seven long and seven short spikes with a white core, where the lance leaves the derrick. | the launch (P141) |
 | `core_flash` | strike | 70, 168, 66, 66 | 1 | 0 | centre 33, 33 | A mint hexagon with six long and six short spikes and a white heart, where the seed leaves the core. | the launch (P141) |
 | `launch_ring` | strike | 140, 168, 98, 50 | 1 | 0 | centre 49, 25 | A flat grey-white ring on the ground (a 2:1 ellipse, light with a blue-grey edge) for the dust that leaves a launch site. | the launch (P141) |
 
 **The net.** The Blackout Array's net is a lattice of `hex` cells on the ground ellipse of the strike's
-radius: flat-topped hexagons of side 16 world px, so a column every 24 px, a row every 13.9 px and
-every other column shifted 6.9 px; neighbours share an edge. The net falls as that lattice (the
-layer's own offset and scale), lands, and settles as the outer ring of cells with the interior
-fading; `hex_lit` is the flash at the landing and `glint` the sparkle on its corners. The lines of
-the net that the layer draws in code (ADR 0027 §3) use the same light line (#D8FFE0) over the same
-dark edge (#1F5C3A).
+radius: flat-topped hexagons of side 16 world px, so a column every 24 px, a row every 13.9 px
+(13.86 exactly) and every other column shifted 6.9 px; neighbours share an edge, so a layer places
+the cells at those exact distances (no rounding to whole px, or the two light lines of a shared
+edge part and a dark seam shows between them) and their lines coincide in one. The net falls as
+that lattice (the layer's own offset and scale), lands, and settles as the outer ring of cells with
+the interior fading; `hex_lit` is the flash at the landing and `glint` the sparkle on its corners.
+The lines of the net that the layer draws in code (ADR 0027 section 3) are a light line (#D8FFE0)
+1.5 world px wide over a dark edge (#1F5C3A) 3 px wide, the widths of the sprite's own lines (a
+thinner light line is under a pixel at zoom 0.75 and vanishes); `LifeRegions` holds the lattice
+distances, the colours and the widths.
 
 **The lance.** The collar is the same in both: its centre is at y 65 in `lance_down` and y 99 in
 `lance_up`. The burn is the one part of the lance that is a flame; the body carries no fins and no
 nozzle, and the flights are an auger's, so it never reads as a missile (the originality list bans a
-missile out of silo doors and a column from orbit). `trail` and `seed_trail` are the two strips that
-touch their region's edge (their flush end), so a layer stretches them along the fall or the rise
-and the join with the sprite stays closed.
+missile out of silo doors and a column from orbit).
+
+**Strips and joins.** `trail` and `seed_trail` are the two strips whose one end touches their
+region's edge (the bottom of `trail`, the top of `seed_trail`, the anchor's end), so a layer
+stretches them along the fall or the rise and the join with the sprite stays closed. `trail` joins
+`lance_down` at 17, 65 (the collar's centre) and `seed_trail` joins `seed` at 9, 17: the layer puts
+the strip's anchor on that point of the sprite and draws the strip first, so the sprite covers the
+seam. A layer stretches a strip to at most 2 times its region's length (128 px), always fading out
+at the far end, so the fall or the rise stays a short streak and never becomes a bright column from
+the sky to the ground (the originality list bans a beam or column from orbit).
 
 **Colours.** Life effects carry no team colour (ADR 0027 §4): none of the six key hexes
 (#FF9446, #E8681F, #B04B12, #62D6EE, #1FA6C8, #137C99) is in either file, and no colour of
@@ -1433,9 +1447,11 @@ Derrick League, 169 to 213 for the Lumen Accord). Every colour of both files is 
 **Readability.** Every cloud has a dark rim, every flame a charcoal edge and every hexagon a dark
 green edge, so each reads on both grounds. The mean luminance of the opaque pixels of each kind
 (Rec. 601; the grass is 127 and the sand 186) is soot 55, exhaust 71, smoke 93, puff 143, dust 150,
-steam 210, flare 179, fire 172 and the lance 115; none of the clouds and heaps lies within 15 of
-either ground, and soot, exhaust, smoke, dust and steam are at least 15 apart
-(`tests/art/test_life_atlases.gd`). In greyscale at zoom 0.75 on both grounds the three clouds, the
+steam 210, flare 179, fire 172, spark 194 and the lance 115; none of the clouds and heaps lies within 15 of
+either ground, and soot, exhaust, smoke, dust and steam are at least 15 apart. The sparks and the
+glint are bright flecks, not dark crosses: their rays are at least 4 px wide at their foot at 2x,
+under an edge that shows 1 px at 2x, and the mean luminance of their ink is at least 140 on grass
+and on sand (`tests/art/test_life_atlases.gd`). In greyscale at zoom 0.75 on both grounds the three clouds, the
 heap, the two flames and the lance read apart by shape and tone: the smoke is a dark round cloud, the
 soot a black one with a knob, the steam a white one, the dust a flat pale heap, the flares tall
 white tongues and the fire a low comb of them. The one faint pairing is the dust on sand (36 apart
@@ -1750,7 +1766,7 @@ screen, the sand half the right. A button at the top right (120x120 base px, lab
 it is on) turns the pages: **Units**, **Build**, **Ground**, **Icons**, **Iso**, **Terrain**, **Hud** and
 **Life**, and the Back button leaves from any of them. The pages after Units are built by
 `art_gallery.gd` (Build by `art_gallery_build.gd`, Iso by `art_gallery_iso.gd`, Terrain by
-`art_gallery_ground.gd`, Life by `art_gallery_life.gd`, the last three on first show) and start
+`art_gallery_ground.gd`, Life by `art_gallery_life.gd`, the last four on first show) and start
 hidden, so the Units page is as it was.
 - **Units** (the page the gallery opens on) shows the six Derrick League units and the six Lumen
   Accord units as the generator draws them (`art_gallery_units.gd`, "Derrick League units" and "Lumen
@@ -1839,16 +1855,17 @@ hidden, so the Units page is as it was.
   one family with the older glyphs, and whether the badge holds on the white ceramic of the Motor
   Works and on the concrete of the Heavy Yard.
 - **Life** (the eighth page, plan row P135, built by `art_gallery_life.gd` on first show, "Life
-  effects") has the grass colour on its left half and the sand on its right and one scrolling list
-  over both (drag it; the first row starts below the corner buttons). `RowAtlases` shows the life
-  atlas and the strike atlas whole at scale 1 on each ground. Then a row for every kind of the
-  region table, in its order (`RowDust`, `RowSmoke`, ... `RowLaunchRing`), named on the grass half
-  (`Label`: the kind and its frame count): on each ground the frames of the kind in a line at the
-  camera zoom 0.75 (`Z075`), 1.0 (`Z100`) and 1.5 (`Z150`), each a `TextureRect` named `F0`, `F1`,
-  ... that holds a region of the imported atlas at its size in world px times the zoom, standing on
-  one ground line. Everything lies inside its half at 1280 x 720, 1600 x 720 and 1280 x 960. It is
-  where Michael judges on his phone whether the smoke, the flames, the dust, the lance and the net
-  read on both grounds and at every zoom.
+  effects") is one scrolling list (drag it; the first row starts below the corner buttons). Every
+  row is two halves side by side, the grass colour on the left and the sand on the right, each at
+  least 600 px wide, so at a narrow width (720) the page scrolls sideways to the sand. `RowAtlases`
+  shows the life atlas and the strike atlas whole at scale 1 on each ground. Then a row for every
+  kind of the region table (`LifeRegions`), in its order (`RowDust`, `RowSmoke`, ...
+  `RowLaunchRing`), named on the grass half (`Label`: the kind and its frame count): on each
+  ground the frames of the kind in a line at the camera zoom 0.75 (`Z075`), 1.0 (`Z100`) and 1.5
+  (`Z150`), each a `TextureRect` named `F0`, `F1`, ... that holds a region of the imported atlas
+  at its size in world px times the zoom, standing on one ground line. Everything lies inside its
+  half at 1280 x 720, 1600 x 720 and 1280 x 960. It is where Michael judges on his phone whether
+  the smoke, the flames, the dust, the lance and the net read on both grounds and at every zoom.
 
 To add an asset:
 - A unit: add its model under `assets/art/models/` (see "Generated art", the generator writes its
