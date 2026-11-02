@@ -17,14 +17,18 @@
 ; the body and number face, weight 500 as the theme's default font, 600 for NumberLabel and
 ; 700 for the numbers that sit across a bar or a plate (PowerNumber, ItemCost). The file has no
 ; OpenType tnum (checked in P118), so the digits of a number that changes keep fixed slots in
-; code (P119), not a font feature. Big Shoulders Display ExtraBold (800), the condensed upper-case
-; display cut, is the face of buttons and titles in three size classes (CapsButton, CapsTitle,
-; CapsBigTitle), each its own FontVariation whose spacing_glyph is the tracking in whole base px:
-; the dp step turns the font size into px and leaves the tracking, so the tracking is 6 to 14 %
-; of the size, to within 0.3 points, across the profiles' dp-to-px ratios of 1.0 to 2.37 (one
-; whole-px tracking cannot hold the band exactly over that range; tests/ui/test_ui_theme_fonts.gd
-; pins the spread). The three tracking entries are listed in metadata/base_px. HudTokens holds the colours
-; of ADR 0025 section 13, HudPanel the flat panel (no blur, a flat box is cheap on a weak phone),
+; code (P119), not a font feature. Big Shoulders Display ExtraBold (800: upstream's ExtraBold
+; instance, whose OS/2 weight class is 733 and which Godot reads as 700, so the face is chosen by
+; file and never by weight), the condensed upper-case display cut, is the face of buttons and
+; titles in three size classes (CapsButton, CapsTitle, CapsBigTitle), each its own FontVariation
+; whose spacing_glyph is the tracking in whole base px: the dp step turns the font size into px and
+; leaves the tracking. ADR 0025 section 13 asks 6 to 14 % of the size. One whole-px tracking cannot
+; hold that over the profiles' dp-to-px ratios of 1.0 to 2.37, so it is held on the phones (ratios
+; 1.75 to 2.37: 7.1 to 10.3 %) and not on the tablet (13.3 to 14.3 %) or the desktop window (16.7 to
+; 18.2 %), which sit above the band; tests/ui/test_ui_theme_fonts.gd pins all three. The three
+; tracking entries are listed in metadata/base_px, but they are inert today: the dp step reads only
+; font_sizes/ and styles/ and never touches a font, so the entries mark what a later step that
+; scales fonts must leave alone. HudTokens holds the colours of ADR 0025 section 13, HudPanel the flat panel (no blur, a flat box is cheap on a weak phone),
 ; AccentRenew and AccentFossil the accent of each side (accent, light and the text on the accent,
 ; read with get_theme_color by the faction's id). The design's fixed enemy colour #FF9446 is not
 ; a token. Palette rows: STYLE.md "Palette".
@@ -56,15 +60,15 @@
 ; font size of each class is under CapsButton, CapsTitle and CapsBigTitle below, in dp).
 [sub_resource type="FontVariation" id="FontVariation_caps_button"]
 base_font = ExtResource("4_shoulders_800")
-spacing_glyph = 3
+spacing_glyph = 4
 
 [sub_resource type="FontVariation" id="FontVariation_caps_title"]
 base_font = ExtResource("4_shoulders_800")
-spacing_glyph = 4
+spacing_glyph = 5
 
 [sub_resource type="FontVariation" id="FontVariation_caps_big_title"]
 base_font = ExtResource("4_shoulders_800")
-spacing_glyph = 5
+spacing_glyph = 6
 
 ; The HUD v2 panel (ADR 0025 section 13): rgba(10, 14, 17, 0.84), a flat box with no blur, a 1 dp
 ; edge in #2C383E, 8 dp corners and 8 dp inside.
@@ -370,9 +374,10 @@ AccentFossil/base_type = &"Control"
 AccentFossil/colors/accent = Color(0.87843137, 0.4627451, 0.15686275, 1)
 AccentFossil/colors/light = Color(1, 0.63529412, 0.36078431, 1)
 AccentFossil/colors/on_accent = Color(0.16470588, 0.07843137, 0.01960784, 1)
-; Buttons and titles: Big Shoulders Display ExtraBold, upper case in the text itself (a Label has no
-; case transform), white. The size is dp, the tracking base px (the file's header): a button 22 dp
-; with 3 px, a title 28 dp with 4 px, a big title 36 dp with 5 px.
+; Buttons and titles: Big Shoulders Display ExtraBold, upper case written in the text itself (a
+; Button has no case property, a Label has `uppercase`: one rule serves both), white. The size is
+; dp, the tracking base px (the file's header): a button 22 dp with 4 px, a title 28 dp with 5 px,
+; a big title 36 dp with 6 px.
 CapsButton/base_type = &"Button"
 CapsButton/colors/font_color = Color(1, 1, 1, 1)
 CapsButton/colors/font_focus_color = Color(1, 1, 1, 1)

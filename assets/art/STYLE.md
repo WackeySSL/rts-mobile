@@ -487,6 +487,11 @@ accents" row above stays for the parts that the HUD v2 rows replace, until each 
 the radar keep their team colours, and the design's fixed "enemy" colour #FF9446 is not a token: it is
 almost the Derrick League accent. The local player's side is the faction of its own rows (P85d's rule);
 accent never carries meaning alone, and the team colours stay per player (GDD).
+**Danger always carries its glyph (the warning triangle or the "!") where it sits on or next to
+an accent.** The Derrick League's accent #E07628 and danger #FF5A3C have the same brightness
+(WCAG contrast 1.002:1), so only the hue tells them apart; the Lumen Accord's cyan is 1.08:1
+against danger. A danger mark, bar or word in the pill, the toast or the command bar is never a
+colour alone, and the accent is never used for a warning.
 
 **The Derrick League's accent** is picked by the two checks of ADR 0025 section 13, pinned by
 `tests/ui/test_ui_theme_fonts.gd`. (1) The hue is at least 15 degrees from danger (#FF5A3C, 9.2
@@ -1695,9 +1700,15 @@ palette first, then the three places from it.
    theme: `tests/project/test_ui_theme_scan.gd` flags a font named in any other script, scene or
    resource under `game/` and `scenes/`. The tracking of a Big Shoulders `FontVariation`
    (`spacing_glyph`, whole base px) is not scaled by the dp step and is listed in `metadata/base_px`;
-   the three classes (button 22 dp with 3 px, title 28 dp with 4 px, big title 36 dp with 5 px) keep
-   it at 6 to 14 % of the size, within 0.3 points, at every profile of `ui_profiles.gd`. Chakra Petch
-   has no OpenType `tnum`, so a number that changes keeps fixed digit slots in code (P119).
+   the three classes (button 22 dp with 4 px, title 28 dp with 5 px, big title 36 dp with 6 px) keep
+   it at 7.1 to 10.3 % of the size on every phone profile of `ui_profiles.gd` (ratios 1.75 to 2.37;
+   ADR 0025 section 13 asks 6 to 14 %), at 13.3 to 14.3 % on the tablet profiles (1.25) and at 16.7
+   to 18.2 % in the desktop window (1.0, the dev window): one whole-px tracking cannot hold the
+   band over ratios of 1.0 to 2.37, and the phones are what it is held for. The dp step reads only
+   `font_sizes/` and `styles/`, so the three `*/fonts/font` entries in `metadata/base_px` are inert
+   today and mark what a later step that scales fonts must leave alone. Chakra Petch has no
+   OpenType `tnum` (its digits are proportional), so a number that changes keeps fixed digit slots
+   in code (P119).
 
 Besides the three places, the same new look also replaces, in the same PR:
 - **The art without a naming convention**, in place. The selection ring

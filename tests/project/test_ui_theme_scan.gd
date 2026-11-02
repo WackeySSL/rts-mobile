@@ -32,7 +32,11 @@ extends GdUnitTestSuite
 ## matches nothing fails, and every exception must still be needed.
 ## The font rule alone reads every script, scene and resource under `game/` and `scenes/` (the whole
 ## scene and the developer scenes too, not the Hud subtree only; plan row P118, ADR 0025 section
-## 13): `game/ui/theme.tres` is the only file that may name a font, as its FontVariations do.
+## 13): `game/ui/theme.tres` is the only file that may name a font, as its FontVariations do. That
+## rule also flags a font put to use without a file named: `set_font(`, `add_theme_font_override`
+## and a `theme_override_fonts/` key. `ThemeDB.fallback_font` (the ghost's word in
+## `game/view/GhostLayer.gd`) is not flagged and is on the follow-up list: a later HUD row moves it
+## to the theme's font.
 ## The scan is a line lint with documented gaps, not a proof that the look is in the theme alone.
 ## What a line scan cannot see:
 ## - data flow beyond the channel rule: a colour or a size that reaches a StyleBox, a Theme or a
@@ -83,6 +87,14 @@ const LOOK_WRITE: String = r"\.(?:set_color|set_font)\s*\("
 ## `.fontdata`).
 const FONT_FILE: String = (
 	r"\b(?:FontFile|SystemFont|FontVariation)\b|" + r"\.(?:ttf|otf|woff2?|fnt|fontdata)\b"
+)
+## What the widened font rule reads (P118): FONT_FILE, and a font put to use without a file named:
+## `.set_font(` on a Theme or any other object, `add_theme_font_override`, and a
+## `theme_override_fonts/` key (in a script's string, such as `set("theme_override_fonts/font", f)`,
+## or a scene's key). `ThemeDB.fallback_font` is not one: the ghost's word (game/view/GhostLayer.gd)
+## draws with it, and a later HUD row moves it to the theme's font (follow-up list).
+const FONT_USE: String = (
+	FONT_FILE + r"|\.set_font\s*\(|\badd_theme_font_override\b|\btheme_override_fonts/"
 )
 
 ## One rule per kind of file it reads: `name`, `kind`, the `regex` applied to a line, and the
@@ -407,7 +419,7 @@ const NODE_HEADER: String = r'^\[node name="([^"]*)"(?:[^\]]*?\sparent="([^"]*)"
 var _regexes: Array[RegEx] = []  ## One per entry of RULES.
 var _token: RegEx
 var _node_header: RegEx
-var _font_regex: RegEx  ## The font rule's, for the files of FONT_DIRS.
+var _font_regex: RegEx  ## The widened font rule's (FONT_USE), for the files of FONT_DIRS.
 
 
 func before() -> void:
@@ -417,7 +429,7 @@ func before() -> void:
 		_regexes.append(regex)
 	_token = RegEx.create_from_string(TOKEN)
 	_node_header = RegEx.create_from_string(NODE_HEADER)
-	_font_regex = RegEx.create_from_string(FONT_FILE)
+	_font_regex = RegEx.create_from_string(FONT_USE)
 	assert_bool(_font_regex.is_valid()).is_true()
 
 
@@ -580,6 +592,43 @@ func test_the_font_rule_flags_a_font_wherever_it_is_named() -> void:
 	assert_array(_font_lines("res://game/ui/any.tres", resource)).is_equal([1, 3])
 	var clean: String = 'extends Node\nvar font_name: String = "x"\nvar fontsize: int = 3\n'
 	assert_array(_font_lines("res://game/view/Clean.gd", clean)).is_empty()
+
+
+## A font put to use without a file named, in a script outside game/ui or in a scene key, is
+## flagged too; a font size or the engine's fallback font is not (the latter is a follow-up).
+func test_the_font_rule_flags_a_font_put_to_use_without_naming_a_file() -> void:
+	var script: String = (
+		"\n"
+		. join(
+			[
+				"extends Node",
+				"theme.set_font(&'font', &'Label', font)",
+				'label.add_theme_font_override(&"font", font)',
+				'label.set("theme_override_fonts/font", font)',
+				'out.set_font ("font", "Label", font)',
+				"# label.add_theme_font_override() in a comment",
+				"label.add_theme_font_size_override(&'font_size', 18)",
+				"theme.set_font_size(&'font_size', &'Label', 18)",
+				"draw_string(ThemeDB.fallback_font, at, text)",
+				"var font: Font = label.get_theme_font(&'font')",
+			]
+		)
+	)
+	assert_array(_font_lines("res://game/view/Any.gd", script)).is_equal([2, 3, 4, 5])
+	assert_array(_font_lines("res://game/core/Any.gd", script)).is_equal([2, 3, 4, 5])
+	assert_array(_font_lines("res://scenes/dev/any.gd", script)).is_equal([2, 3, 4, 5])
+	var scene: String = (
+		"\n"
+		. join(
+			[
+				'[node name="Label" type="Label" parent="."]',
+				'theme_override_fonts/font = ExtResource("1_font")',
+				"theme_override_font_sizes/font_size = 40",
+				"; theme_override_fonts/font in a comment",
+			]
+		)
+	)
+	assert_array(_font_lines("res://scenes/dev/any.tscn", scene)).is_equal([2])
 
 
 ## A scan that reads nothing passes everything.

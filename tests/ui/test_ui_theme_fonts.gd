@@ -11,19 +11,32 @@ const HudThemes: GDScript = preload("res://tests/support/hud_theme.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const CHAKRA: String = "res://assets/art/fonts/chakra-petch/"
 const SHOULDERS: String = "res://assets/art/fonts/big-shoulders/BigShouldersDisplay-ExtraBold.ttf"
-## The size classes of Big Shoulders: type, base type, font size in dp, tracking in base px.
+## The size classes of Big Shoulders as the theme is meant to have them: type, base type, font size
+## in dp, tracking in base px. Every test that needs a number reads the theme and compares.
 const CLASSES: Array[Dictionary] = [
-	{"type": &"CapsButton", "base": &"Button", "dp": 22, "tracking": 3},
-	{"type": &"CapsTitle", "base": &"Label", "dp": 28, "tracking": 4},
-	{"type": &"CapsBigTitle", "base": &"Label", "dp": 36, "tracking": 5},
+	{"type": &"CapsButton", "base": &"Button", "dp": 22, "tracking": 4},
+	{"type": &"CapsTitle", "base": &"Label", "dp": 28, "tracking": 5},
+	{"type": &"CapsBigTitle", "base": &"Label", "dp": 36, "tracking": 6},
 ]
 ## ADR 0025 section 13: tracking +6 to +14 % of the size. One tracking in base px cannot hold that
-## band at every phone: the profiles' dp-to-px ratios run from 1.0 (the desktop window) to 2.37
+## band at every profile: the dp-to-px ratios run from 1.0 (the desktop window) to 2.37
 ## (web_phone_small), a ratio of 2.37 where 14 / 6 allows 2.33, and the tracking is a whole number
-## of px. The classes are chosen so that every profile stays within SLACK of the band.
+## of px. It is held on the phones, strictly. The tablet profiles (1.25) sit a little above it and
+## the desktop window (1.0) well above it, and the tests pin those two as what they are.
 const BAND_LOW: float = 0.06
 const BAND_HIGH: float = 0.14
-const SLACK: float = 0.003
+const PHONES: Array[StringName] = [
+	&"android_6in",
+	&"web_phone",
+	&"web_phone_small",
+	&"android_6in_portrait",
+	&"web_phone_portrait",
+]
+const TABLETS: Array[StringName] = [&"web_tablet", &"web_tablet_portrait"]
+const DESKTOPS: Array[StringName] = [&"desktop", &"desktop_portrait"]
+## The shares that the tablet and the desktop window have today (13.3 to 14.3 %, 16.7 to 18.2 %).
+const TABLET_SHARE: Array[float] = [0.130, 0.144]
+const DESKTOP_SHARE: Array[float] = [0.165, 0.183]
 ## ADR 0025 section 13's checks of an accent.
 const MIN_HUE_DISTANCE: float = 15.0
 const MIN_TEXT_CONTRAST: float = 4.5
@@ -59,6 +72,8 @@ func test_each_big_shoulders_class_has_its_own_font_variation_with_the_tracking_
 	var theme: Theme = HudThemes.source()
 	var kept: PackedStringArray = theme.get_meta(HudTheme.BASE_PX_META)
 	var variations: Array[FontVariation] = []
+	var sizes: Array[int] = []
+	var trackings: Array[int] = []
 	for spec: Dictionary in CLASSES:
 		var type: StringName = spec["type"]
 		assert_str(str(theme.get_type_variation_base(type))).is_equal(str(spec["base"]))
@@ -72,13 +87,15 @@ func test_each_big_shoulders_class_has_its_own_font_variation_with_the_tracking_
 		)
 		assert_array(kept).override_failure_message(str(type)).contains(["%s/fonts/font" % type])
 		variations.append(variation)
+		sizes.append(theme.get_font_size(&"font_size", type))
+		trackings.append(variation.spacing_glyph)
 	# One FontVariation per class: three objects, not one shared.
 	assert_bool(variations[0] != variations[1] and variations[1] != variations[2]).is_true()
-	# The sizes grow with the class, and so does the tracking.
-	(
-		assert_bool(CLASSES[0]["dp"] < CLASSES[1]["dp"] and CLASSES[1]["dp"] < CLASSES[2]["dp"])
-		. is_true()
-	)
+	# The size and the tracking grow with the class, as the theme has them.
+	var sizes_grow: bool = sizes[0] < sizes[1] and sizes[1] < sizes[2]
+	assert_bool(sizes_grow).override_failure_message("sizes %s" % [sizes]).is_true()
+	var tracking_grows: bool = trackings[0] < trackings[1] and trackings[1] < trackings[2]
+	assert_bool(tracking_grows).override_failure_message("tracking %s" % [trackings]).is_true()
 
 
 ## The dp step turns the font size into px and leaves the tracking: the copy holds the very same
@@ -106,33 +123,47 @@ func test_the_dp_step_scales_the_class_sizes_and_leaves_the_tracking() -> void:
 	)
 
 
-## The band of ADR 0025 section 13 at every profile of ui_profiles.gd, landscape and portrait, from
-## the theme as the HUD gets it (the font size in px after the dp step, the tracking as written).
-func test_the_tracking_stays_within_six_to_fourteen_percent_at_every_profile() -> void:
-	var source: Theme = HudThemes.source()
+## The band of ADR 0025 section 13 on the phones, strictly: each class's tracking as the scaled
+## copy of the theme holds it, over its font size in px after the dp step. No slack.
+func test_the_tracking_stays_within_six_to_fourteen_percent_at_every_phone_profile() -> void:
+	for profile: StringName in PHONES:
+		for share: Dictionary in _shares(profile):
+			var why: String = (
+				"%s %s: %d px of %d px is %.2f %%"
+				% [profile, share["type"], share["spacing"], share["px"], share["share"] * 100.0]
+			)
+			assert_float(share["share"]).override_failure_message(why).is_between(
+				BAND_LOW, BAND_HIGH
+			)
+
+
+## The tablet and the desktop window are above the band, and the test says by how much: a tablet by
+## up to 0.3 points, the desktop window (the dev window, not a phone) well above. Every profile of
+## ui_profiles.gd is in exactly one of the three lists, so a new one has to be put in one.
+func test_the_tablet_and_the_desktop_window_are_pinned_above_the_phones_band() -> void:
 	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
 	profiles.merge(UiProfiles.portrait())
-	assert_int(profiles.size()).is_equal(9)
-	var lowest: float = 1.0
-	var highest: float = 0.0
-	for profile: StringName in profiles:
-		var factor: float = UiScale.base_px_per_dp_for(profiles[profile])
-		var copy: Theme = HudTheme.scaled(source, factor)
-		for spec: Dictionary in CLASSES:
-			var px: int = copy.get_font_size(&"font_size", spec["type"])
-			var share: float = float(spec["tracking"]) / float(px)
-			var why: String = (
-				"%s %s: %d px of %d px is %.1f %%"
-				% [profile, spec["type"], spec["tracking"], px, share * 100.0]
+	var listed: Array[StringName] = []
+	listed.append_array(PHONES)
+	listed.append_array(TABLETS)
+	listed.append_array(DESKTOPS)
+	listed.sort()
+	var known: Array[StringName] = []
+	known.assign(profiles.keys())
+	known.sort()
+	assert_array(listed).is_equal(known)
+	for profile: StringName in TABLETS:
+		for share: Dictionary in _shares(profile):
+			var why: String = "%s %s: %.2f %%" % [profile, share["type"], share["share"] * 100.0]
+			assert_float(share["share"]).override_failure_message(why).is_between(
+				TABLET_SHARE[0], TABLET_SHARE[1]
 			)
-			assert_float(share).override_failure_message(why).is_between(
-				BAND_LOW - SLACK, BAND_HIGH + SLACK
+	for profile: StringName in DESKTOPS:
+		for share: Dictionary in _shares(profile):
+			var why: String = "%s %s: %.2f %%" % [profile, share["type"], share["share"] * 100.0]
+			assert_float(share["share"]).override_failure_message(why).is_between(
+				DESKTOP_SHARE[0], DESKTOP_SHARE[1]
 			)
-			lowest = minf(lowest, share)
-			highest = maxf(highest, share)
-	# The band is used, not a narrower one: the spread is the point of the check.
-	assert_float(lowest).is_less(BAND_LOW + 0.01)
-	assert_float(highest).is_greater(BAND_HIGH - 0.01)
 
 
 func test_the_hud_tokens_are_the_values_of_the_adr() -> void:
@@ -224,6 +255,22 @@ func test_the_two_sides_accents_are_far_apart_in_hue() -> void:
 	var renew: float = theme.get_color(&"accent", &"AccentRenew").h * 360.0
 	var fossil: float = theme.get_color(&"accent", &"AccentFossil").h * 360.0
 	assert_float(_hue_distance(renew, fossil)).is_greater(90.0)
+
+
+## For each class: the type, the font size in px and the tracking that the scaled copy of the theme
+## holds at `profile` (the dp step as the HUD gets it), and the tracking's share of the size.
+func _shares(profile: StringName) -> Array[Dictionary]:
+	var factor: float = UiScale.base_px_per_dp_for(UiProfiles.by_name(profile))
+	var copy: Theme = HudTheme.scaled(HudThemes.source(), factor)
+	var found: Array[Dictionary] = []
+	for spec: Dictionary in CLASSES:
+		var type: StringName = spec["type"]
+		var px: int = copy.get_font_size(&"font_size", type)
+		var spacing: int = (copy.get_font(&"font", type) as FontVariation).spacing_glyph
+		found.append(
+			{"type": type, "px": px, "spacing": spacing, "share": float(spacing) / float(px)}
+		)
+	return found
 
 
 ## The path of the font that a Control of `base_type` with the type variation `variation` resolves

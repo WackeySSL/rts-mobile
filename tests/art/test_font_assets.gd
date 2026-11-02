@@ -107,9 +107,20 @@ func test_the_chakra_petch_files_are_the_weights_the_theme_names() -> void:
 		assert_str(font.get_font_name()).override_failure_message(name).contains("Chakra Petch")
 
 
+## The theme and CREDITS call the Big Shoulders file "800". Its OS/2 weight class is 733 (upstream's
+## ExtraBold instance) and Godot reads 700: the face is picked by file, never by weight, and this
+## pins what Godot reads, so a new upstream file that reads otherwise is noticed.
+func test_big_shoulders_extrabold_reads_as_weight_700_in_godot() -> void:
+	var font: FontFile = load(FONT_DIR.path_join("big-shoulders/BigShouldersDisplay-ExtraBold.ttf"))
+	assert_int(font.font_weight).is_equal(700)
+	assert_str(font.get_font_name()).is_equal("Big Shoulders Display ExtraBold")
+	assert_str(font.get_font_style_name()).is_equal("ExtraBold")
+
+
 ## The theme says the digits of a changing number keep fixed slots in code because Chakra Petch has
 ## no `tnum`. A new version of the font that has one fails here: the theme's header, the CREDITS row
-## and P119's fallback change in the same PR.
+## and P119's fallback change in the same PR. The reason for the slots is that the digits are
+## proportional: the "1" is much narrower than the "0".
 func test_chakra_petch_has_no_tabular_figures_so_the_digits_keep_fixed_slots() -> void:
 	var server: TextServer = TextServerManager.get_primary_interface()
 	var tnum: int = server.name_to_tag("tnum")
@@ -121,6 +132,13 @@ func test_chakra_petch_has_no_tabular_figures_so_the_digits_keep_fixed_slots() -
 			assert_bool(features.has(server.name_to_tag("kern")))
 			. override_failure_message(name)
 			. is_true()
+		)
+		var one: float = font.get_char_size("1".unicode_at(0), 100).x
+		var zero: float = font.get_char_size("0".unicode_at(0), 100).x
+		(
+			assert_float(one)
+			. override_failure_message("%s: 1 is %s, 0 is %s" % [name, one, zero])
+			. is_less(zero * 0.75)
 		)
 
 
