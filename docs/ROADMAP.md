@@ -44,7 +44,7 @@ Tick a box in the PR that meets the criterion.
 - [x] The Android build follows the device's sensor (ADR 0015 §7: `window/handheld/orientation=6`, manifest
   `screenOrientation` 13), as the last row of `docs/plans/2026-10-19-portrait.md`
 - [ ] Ore fields, harvester loop, refinery and credits
-- [ ] Production of all MVP units with rally points
+- [x] Production of all MVP units with rally points
 - [ ] Victory and defeat conditions and a result screen
 - [ ] Two original factions with their own buildings, units and superweapon (ADR 0023): the Derrick League and the
   Lumen Accord, each with eight buildings, six unit types and one superweapon, both playable; the build menu shows only the

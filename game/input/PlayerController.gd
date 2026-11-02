@@ -21,7 +21,13 @@ extends Node
 ## units selected a tap on an enemy building attacks it, if the sim would take that attack
 ## (`PickSnapshot.is_targetable`: the view draws an enemy building for any seen cell of its
 ## footprint, the sim sees it at the cell under its position) and is a ground tap if not; with a
-## building selected a tap on the ground, or on an enemy unit, selects nothing and orders nothing.
+## building selected a tap on an enemy unit selects nothing and orders nothing.
+## With own units selected a tap on the ground moves them, and tankers alone (P87) HARVEST when the
+## tap is on or near an oil or gas field (`OrderRules.near_field`, a fingertip of reach). With one
+## own barracks or vehicle factory selected a tap on the ground sets that tab's rally point (RALLY)
+## and the building stays selected, so `RallyLayer` shows its flag and line; with any other building
+## selected, a Headquarters included, it lets go of the selection. "All army" and a box leave
+## tankers out unless the box holds nothing else (`OrderRules`).
 ## While the strike is being aimed (P112, `strike_aim.active`) a tap places its point on the ground
 ## and no gesture does anything else: nothing is selected, ordered or boxed.
 ## While placement mode is on (P86, `placement.active`) the gestures go to `placement` alone: a tap
@@ -93,24 +99,16 @@ func handle_gesture(e: GestureEvent) -> void:
 			box_overlay.hide_all()
 			_refresh()
 			Picker.own_in_rect(_snap, e.rect, _local_player(), _found)
-			selection.set_ids(_found)  # No unit in the box: this clears the selection.
+			# No unit in the box: this clears the selection. Tankers join only a box of tankers.
+			selection.set_ids(OrderRules.box_selection(runner.snapshot, _found))
 
 
-## "All army": every own unit that can move, wherever it is (ADR 0004 section 5).
+## "All army": every own unit that can move, wherever it is, tankers left out (ADR 0004 section 5,
+## ADR 0019 section 3).
 func select_all_army() -> void:
 	var snap: MatchSnapshot = runner.snapshot
-	if snap == null:
-		return
-	var local_player: int = _local_player()
-	var unit_ids: PackedInt32Array = snap.unit_id
-	var owners: PackedInt32Array = snap.owner
-	var types: PackedInt32Array = snap.type_index
-	var speeds: PackedInt32Array = snap.type_speed
-	var ids: PackedInt32Array = PackedInt32Array()
-	for row: int in unit_ids.size():
-		if owners[row] == local_player and speeds[types[row]] > 0:
-			ids.append(unit_ids[row])
-	selection.set_ids(ids)
+	if snap != null:
+		selection.set_ids(OrderRules.all_army(snap, _local_player()))
 
 
 func tap_group(slot: int) -> void:
@@ -141,10 +139,39 @@ func _tap(pos: Vector2) -> void:
 		elif shape >= 0 and not hostile:
 			_select_building(_snap.building_ids[shape])
 		elif units:
-			var ground: Vector2i = IsoProjection.px_to_ground(camera.screen_to_world(pos))
-			_move(ground.x, ground.y)
+			_ground_tap(pos)
 		else:
-			selection.clear()  # A building was selected: a tap on the ground lets go of it.
+			_building_ground_tap(pos)
+
+
+## A tap on the ground with own units selected (P87): tankers alone, on or near a field, HARVEST
+## there; everything else moves.
+func _ground_tap(pos: Vector2) -> void:
+	var world: Vector2 = camera.screen_to_world(pos)
+	var ground: Vector2i = IsoProjection.px_to_ground(world)
+	var snap: MatchSnapshot = runner.snapshot
+	var reach: float = UiScale.dp(settings.hit_radius_dp) / camera.zoom.x
+	if (
+		OrderRules.only_tankers(snap, selection.selected)
+		and OrderRules.near_field(snap, world, reach)
+	):
+		_harvest(ground.x, ground.y)
+	else:
+		_move(ground.x, ground.y)
+
+
+## A tap on the ground with a building (or nothing) selected (P87, ADR 0019 section 3): an own
+## barracks or vehicle factory alone gets the rally point there and stays selected; any other
+## selection, a Headquarters or an enemy building included, is let go.
+func _building_ground_tap(pos: Vector2) -> void:
+	var building: int = OrderRules.rally_building(
+		runner.snapshot, selection.selected, _local_player()
+	)
+	if building == 0:
+		selection.clear()
+		return
+	var ground: Vector2i = IsoProjection.px_to_ground(camera.screen_to_world(pos))
+	command_sink.call(Command.rally(_local_player(), building, ground.x, ground.y))
 
 
 ## Selects building `id` alone. The model does not fire for the building that is the selection
@@ -223,6 +250,13 @@ func _show_group_count(slot: int) -> void:
 ## radius, so the units stop that much off the marker.
 func _move(target_x: int, target_y: int) -> void:
 	command_sink.call(Command.move(_local_player(), selection.selected, target_x, target_y))
+	marker_layer.show_attack_move(IsoProjection.ground_to_px(target_x, target_y))
+
+
+## Send the selected tankers to the field at a point in milli-tiles, with the same chevrons. The sim
+## takes the ore nearest the point (`harvest_pick_milli`) and drops the order when there is none.
+func _harvest(target_x: int, target_y: int) -> void:
+	command_sink.call(Command.harvest(_local_player(), selection.selected, target_x, target_y))
 	marker_layer.show_attack_move(IsoProjection.ground_to_px(target_x, target_y))
 
 
