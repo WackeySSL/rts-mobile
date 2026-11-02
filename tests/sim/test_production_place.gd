@@ -232,12 +232,13 @@ func test_a_ready_structure_can_be_cancelled_for_its_whole_cost() -> void:
 	)
 
 
-## A payload, a player with no queue and a head that is not there are refused by the module.
+## A payload of two ints, a player with no queue and a head that is not there are refused by the
+## module. (A payload of one int is the place-first path since P128, ADR 0026: test_site_place.)
 func test_place_refuses_a_payload_another_players_queue_and_an_empty_queue() -> void:
 	var world: World = _ready_world()
 	var rows: int = world.unit_count()
 	var payload: Command = PlaceRig.place(6, 5)
-	payload.payload = PackedInt32Array([Worlds.type_of(world, "power_plant")])
+	payload.payload = PackedInt32Array([Worlds.type_of(world, "power_plant"), 0])
 	assert_bool(Production.apply_place(world, payload)).is_false()
 	assert_bool(Production.apply_place(world, PlaceRig.place(6, 5, 2))).is_false()
 	assert_array([world.unit_count(), world.queue_count[PlaceRig.queue()]]).is_equal([rows, 1])

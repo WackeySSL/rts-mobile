@@ -310,6 +310,9 @@ static func copy_rules(world: World, rules: RulesDef) -> void:
 	world.unit_cap = rules.unit_cap
 	world.building_cap = rules.building_cap
 	world.ghost_cap = rules.ghost_cap
+	world.construct_start_hp_percent = rules.construct_start_hp_percent
+	world.construct_refund_percent = rules.construct_refund_percent
+	world.construction_sites_max = rules.construction_sites_max
 
 
 ## Sizes the player, ore and ghost state at its start values (ADR 0017 section 3), from the player

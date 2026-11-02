@@ -15,8 +15,9 @@
 // counts), so 1 stays known. 3 (P70, ADR 0017 section 7, plan exception 10): Phase 3's state joined the hash; the
 // dump holds the same records as 1 and 2 (no kernel reads the new state), so both stay known. 4 (P109, ADR 0023
 // section 10, plan exception 10): the strike columns joined the hash; the dump holds the same records as 1 to 3 (no
-// kernel reads them), so all stay known.
-inline constexpr uint32_t KNOWN_FORMATS[] = { 1, 2, 3, 4 };
+// kernel reads them), so all stay known. 5 (P128, ADR 0026 section 10, plan exception 10): the row column build_left
+// joined the hash; the dump holds the same records as 1 to 4 (no kernel reads it), so all stay known.
+inline constexpr uint32_t KNOWN_FORMATS[] = { 1, 2, 3, 4, 5 };
 
 class Dump {
 public:

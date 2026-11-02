@@ -25,13 +25,13 @@ const TYPE_COLUMNS: Array[StringName] = [
 
 
 func test_the_layout_version_and_the_new_arrays_are_the_contract() -> void:
-	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([4, 7])
-	assert_array(World.ROW_ARRAYS.slice(-2)).is_equal(ROW_COLUMNS)
+	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([5, 7])
+	assert_array(World.ROW_ARRAYS.slice(-3, -1)).is_equal(ROW_COLUMNS)  # build_left (P128) follows.
 	assert_array(World.PLAYER_ARRAYS.slice(-3)).is_equal(PLAYER_COLUMNS)
 	assert_array(World.TYPE_ARRAYS.slice(-6)).is_equal(TYPE_COLUMNS)
-	var tail: Array[String] = ["home", "ready_tick", "offline_until", "projectiles", "fog"]
-	tail.append_array(["players", "ore", "ghosts"])
-	assert_array(World.hash_section_names().slice(-8)).is_equal(tail)
+	var tail: Array[String] = ["home", "ready_tick", "offline_until", "build_left", "projectiles"]
+	tail.append_array(["fog", "players", "ore", "ghosts"])
+	assert_array(World.hash_section_names().slice(-9)).is_equal(tail)
 	assert_int(World.hash_section_names().size()).is_equal(
 		World.ROW_ARRAYS.size() + World.HASH_OTHER_SECTIONS
 	)

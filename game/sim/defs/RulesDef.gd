@@ -64,3 +64,10 @@ extends Resource
 @export var unit_cap: int = 75
 @export var building_cap: int = 40
 @export var ghost_cap: int = 40
+
+## Place-first construction (ADR 0026 section 12): a site starts at this percent of its type's hit
+## points and rises with the work, a cancelled site refunds this percent of its price, and a player
+## builds this many sites at once.
+@export var construct_start_hp_percent: int = 10
+@export var construct_refund_percent: int = 75
+@export var construction_sites_max: int = 1
