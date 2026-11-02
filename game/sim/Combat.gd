@@ -23,8 +23,10 @@ extends RefCounted
 ##   it fires on the first FIRE after the totals stop being low, with no wind-up. A blacked-out
 ##   building (P111, ADR 0023 section 10: `offline_until` above the stamp `world.tick + 1`) is
 ##   offline the same way for the length of the blackout and fires at the stamp that reaches
-##   `offline_until`, also with no wind-up. TARGETING and its kernel are unchanged, and a mobile row
-##   never goes offline;
+##   `offline_until`, also with no wind-up. A building that is not complete (`build_left` not 0: a
+##   site under construction, or one cancelled and waiting for REMOVE, ADR 0026 sections 4 and 6)
+##   is offline in the same way until it is complete. TARGETING and its kernel are
+##   unchanged, and a mobile row never goes offline;
 ## - a shot writes `[SHOT, shooter id, shooter x, shooter y, target id, weapon, target x, target y]`
 ##   (ADR 0007 section 10, both positions read now, so a tracer can still be drawn after either unit
 ##   is removed) and sets the cooldown, and then either
@@ -190,6 +192,7 @@ static func fire(world: World) -> void:
 	var type_weapon: PackedInt32Array = world.type_weapon
 	var type_foot: PackedInt32Array = world.type_foot_w
 	var offline: PackedInt32Array = world.offline_until
+	var sites: PackedInt32Array = world.build_left
 	var power_made: PackedInt32Array = world.power_made
 	var power_used: PackedInt32Array = world.power_used
 	var weapon_range: PackedInt32Array = world.weapon_range
@@ -232,8 +235,8 @@ static func fire(world: World) -> void:
 			continue
 		var side: int = owners[row]
 		if type < footprints and type_foot[type] > 0:
-			if offline[row] > stamp:
-				continue  # Blacked out: the target stays, the shot waits for the blackout to end.
+			if offline[row] > stamp or sites[row] != 0:
+				continue  # Blacked out or not complete (a site, or a cancelled one, build_left -1).
 			if side < players and power_used[side] > power_made[side]:
 				continue  # Offline: the target stays, the shot waits for power.
 		var at: int = ids.bsearch(held)

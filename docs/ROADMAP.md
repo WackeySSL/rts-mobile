@@ -44,7 +44,7 @@ Tick a box in the PR that meets the criterion.
 - [x] The Android build follows the device's sensor (ADR 0015 §7: `window/handheld/orientation=6`, manifest
   `screenOrientation` 13), as the last row of `docs/plans/2026-10-19-portrait.md`
 - [ ] Ore fields, harvester loop, refinery and credits
-- [ ] Production of all MVP units with rally points
+- [x] Production of all MVP units with rally points
 - [ ] Victory and defeat conditions and a result screen
 - [ ] Two original factions with their own buildings, units and superweapon (ADR 0023): the Derrick League and the
   Lumen Accord, each with eight buildings, six unit types and one superweapon, both playable; the build menu shows only the
@@ -71,7 +71,10 @@ Tick a box in the PR that meets the criterion.
   need an in-game notice), plus the LLVM libc++ licence (`docs/licenses/llvm-libc++/`) on Android,
   because Godot's Android template ships `libc++_shared.so` (Phase 2 plan, P26l), and godot-cpp's
   MIT licence (`docs/licenses/godot-cpp-4.5-stable/`) on builds that contain the C++ sim kernels
-  (ADR 0013 §11), and the game's own boot splash instead of Godot's default
+  (ADR 0013 §11), and the OFL texts of the HUD's two font families, Big Shoulders and Chakra Petch
+  (`assets/art/fonts/*/OFL.txt`, SIL Open Font License; ADR 0025 §13, P118b; until this screen exists
+  they ship beside every build in `THIRD_PARTY_LICENSES.txt` and in the pack), and the game's own
+  boot splash instead of Godot's default
 - [ ] Every menu screen (main menu, map select, settings, tutorial, How to play, Licences) works in portrait and landscape
   (ADR 0015 §5) and is tested at the six sizes of ADR 0015 §6
 - [ ] Second and third map

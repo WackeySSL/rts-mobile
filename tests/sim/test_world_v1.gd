@@ -53,6 +53,9 @@ const RULES: Dictionary[String, int] = {
 	"unit_cap": 75,
 	"building_cap": 40,
 	"ghost_cap": 40,
+	"construct_start_hp_percent": 10,
+	"construct_refund_percent": 75,
+	"construction_sites_max": 1,
 }
 
 
@@ -69,8 +72,9 @@ func test_the_enums_and_the_event_stride_are_the_contract() -> void:
 	assert_dict(World.NavMode).is_equal(nav)
 	# 2 since P65 (ADR 0016, exception 10): fog.visible left the state hash. 3 since P70 (ADR 0017
 	# section 7, exception 10): Phase 3's state joined it. 4 since P109 (ADR 0023 section 10,
-	# exception 10): the strike columns joined it.
-	assert_array([World.EVENT_STRIDE, World.STATE_FORMAT]).is_equal([8, 4])
+	# exception 10): the strike columns joined it. 5 since P128 (ADR 0026 section 10, exception 10):
+	# the construction column `build_left` joined it.
+	assert_array([World.EVENT_STRIDE, World.STATE_FORMAT]).is_equal([8, 5])
 
 
 ## A Phase 1-shaped world: the rule ints and the stream exist, player_count follows the owners
@@ -82,7 +86,7 @@ func test_a_hand_built_world_has_the_rule_defaults_and_the_default_stream() -> v
 	for info: Dictionary in defaults.get_property_list():
 		if (int(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0:
 			fields.append(String(info["name"]))
-	assert_int(fields.size()).is_equal(33)
+	assert_int(fields.size()).is_equal(36)
 	for field: String in fields:
 		assert_that(world.get(field)).override_failure_message(field).is_equal(defaults.get(field))
 	for field: String in RULES:
@@ -195,6 +199,7 @@ func test_add_unit_writes_every_column_at_its_spawn_value_and_one_spawned_record
 		&"home": [0],
 		&"ready_tick": [0],
 		&"offline_until": [0],
+		&"build_left": [0],
 	}
 	assert_array(World.ROW_ARRAYS).is_equal(expected.keys())
 	assert_int(world.add_unit(2, 0, 3500, 4500)).is_equal(1)
@@ -310,8 +315,8 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 			skipped.append(column)
 		else:
 			others.append(column)
-	assert_int(packed.size()).is_equal(110)
-	assert_int(ints.size()).is_equal(53)
+	assert_int(packed.size()).is_equal(111)
+	assert_int(ints.size()).is_equal(56)
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
 	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper
 	# objects and the bool `prepared`. The one non-state member, the kernels, is skipped by name, so

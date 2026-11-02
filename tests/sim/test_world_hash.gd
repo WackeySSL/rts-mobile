@@ -22,8 +22,13 @@ const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 ## P109 (ADR 0023 section 10, exception 10): STATE_FORMAT became 4 and the strike state joined the
 ## hash (the row columns "ready_tick" and "offline_until", the player arrays strike_x, strike_y and
 ## strike_tick), so the header, the two new row sections and the "players" section changed, and the
-## digest changed from a9dc4b12c176bc8f; no row, rule or run moved.
-const TICK_0_SEED_1: String = "27f335e9bd1439ee"
+## digest changed from a9dc4b12c176bc8f; no row, rule or run moved. P128 (ADR 0026 section 10,
+## exception 10): STATE_FORMAT became 5 and the row column "build_left" joined the hash, so the
+## header, the new row section and the five sections after the rows (projectiles, fog, players, ore,
+## ghosts: a block carries its section index as its tag, and that moved by one) changed, and the
+## digest changed from 27f335e9bd1439ee; no row, rule or run moved (every row is complete, so the
+## new column is all zeros).
+const TICK_0_SEED_1: String = "a9e33d0d17b232fe"
 
 
 ## Every int, bool and Packed array member of a helper, private ones too, is in HASHED or UNHASHED
@@ -51,14 +56,15 @@ func test_every_helper_member_is_listed_once() -> void:
 
 
 ## The rule ints defs_hash covers are the RulesDef ints (UNHASHED_SCALARS holds them by name): the
-## 15 of Phase 2 and the 18 of Phase 3 (ADR 0018 section 9), 33 names in all.
+## 15 of Phase 2, the 18 of Phase 3 (ADR 0018 section 9) and the 3 of place-first construction
+## (ADR 0026 section 12), 36 names in all.
 func test_the_rule_scalars_are_the_rules_def_ints() -> void:
 	var rule_ints: Array[StringName] = []
 	for info: Dictionary in RulesDef.new().get_property_list():
 		if (int(info.usage) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0 and info.type == TYPE_INT:
 			rule_ints.append(StringName(info.name))
 	assert_array(World.RULE_SCALARS).contains_exactly_in_any_order(rule_ints)
-	assert_int(rule_ints.size()).is_equal(33)
+	assert_int(rule_ints.size()).is_equal(36)
 
 
 ## A `+` on typed constants gives an untyped Array (Godot 4.7.2), which a typed local or parameter
@@ -231,10 +237,10 @@ func test_hash_hex_is_sixteen_lower_case_digits_least_significant_byte_first() -
 func test_the_sections_are_named_in_hash_order() -> void:
 	var names: PackedStringArray = World.hash_section_names()
 	assert_array(names.slice(0, 4)).is_equal(["header", "map", "unit_id", "owner"])
-	assert_array(names.slice(25)).is_equal(
-		["home", "ready_tick", "offline_until", "projectiles", "fog", "players", "ore", "ghosts"]
-	)
-	assert_array(names.slice(2, 28)).is_equal(World.ROW_ARRAYS)
+	var tail: Array[String] = ["home", "ready_tick", "offline_until", "build_left", "projectiles"]
+	tail.append_array(["fog", "players", "ore", "ghosts"])
+	assert_array(names.slice(25)).is_equal(tail)
+	assert_array(names.slice(2, 29)).is_equal(World.ROW_ARRAYS)
 	assert_int(_world().hash_parts().size()).is_equal(names.size())
 
 

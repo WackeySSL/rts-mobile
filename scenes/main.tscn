@@ -35,6 +35,7 @@
 [ext_resource type="Script" path="res://game/view/GhostLayer.gd" id="36_ghost_layer"]
 [ext_resource type="Script" path="res://game/ui/Minimap.gd" id="37_minimap"]
 [ext_resource type="Script" path="res://game/ui/GhostControls.gd" id="38_ghost_controls"]
+[ext_resource type="Script" path="res://game/view/RallyLayer.gd" id="39_rally_layer"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -115,6 +116,13 @@ z_index = 70
 z_as_relative = false
 script = ExtResource("11_markers")
 settings = ExtResource("6_settings")
+
+[node name="RallyLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
+z_index = 61
+z_as_relative = false
+script = ExtResource("39_rally_layer")
+runner = NodePath("../MatchRunner")
+world_sort = NodePath("../WorldSort")
 
 [node name="StrikeMarkerLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "aim")]
 z_index = 65
@@ -262,12 +270,13 @@ size_flags_horizontal = 8
 size_flags_vertical = 0
 theme_type_variation = &"BuildSidebar"
 
-[node name="Minimap" type="Control" parent="Hud/SafeArea/MinimapSlot" node_paths=PackedStringArray("runner", "camera", "map_view")]
+[node name="Minimap" type="Control" parent="Hud/SafeArea/MinimapSlot" node_paths=PackedStringArray("runner", "camera", "map_view", "controller")]
 layout_mode = 2
 script = ExtResource("37_minimap")
 runner = NodePath("../../../../MatchRunner")
 camera = NodePath("../../../../Camera")
 map_view = NodePath("../../../../MapView")
+controller = NodePath("../../../../PlayerController")
 
 [node name="StrikeBand" type="MarginContainer" parent="Hud/SafeArea"]
 mouse_filter = 2
@@ -280,6 +289,8 @@ runner = NodePath("../../../../MatchRunner")
 
 [connection signal="selection_changed" from="PlayerController" to="UnitLayer" method="set_selected"]
 [connection signal="selection_changed" from="PlayerController" to="BuildingLayer" method="set_selected"]
+[connection signal="selection_changed" from="PlayerController" to="RallyLayer" method="set_selected"]
+[connection signal="rally_ordered" from="PlayerController" to="RallyLayer" method="show_pending"]
 [connection signal="selection_changed" from="PlayerController" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="set_selected"]
 [connection signal="map_gesture" from="TouchInput" to="Hud/SafeArea/BuildSidebar" method="collapse"]
 [connection signal="zone_changed" from="Hud/SafeArea/BuildSidebar" to="Hud/SafeArea/ArmyBand/ArmyBar" method="_on_zone_changed"]

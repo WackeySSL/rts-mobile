@@ -57,6 +57,10 @@ Status: pre-alpha. See [docs/ROADMAP.md](docs/ROADMAP.md).
   every Android build ships as `libc++_shared.so`. Its licence text (LLVM `llvmorg-21.1.0`) is in
   [docs/licenses/llvm-libc++/](docs/licenses/llvm-libc++/), and the `THIRD_PARTY_LICENSES.txt` of
   every Android and web build includes it.
+- Fonts: the HUD uses Big Shoulders and Chakra Petch (SIL Open Font License 1.1), the unmodified
+  upstream files in [assets/art/fonts/](assets/art/fonts/), each family with its `OFL.txt`; their
+  sources and authors are in [assets/CREDITS.md](assets/CREDITS.md). Every web build and APK ships
+  each `OFL.txt` in `THIRD_PARTY_LICENSES.txt` and in its pack.
 - The game's name and logo are not covered by the MIT licence and remain the property of
   AppCode ApS.
 

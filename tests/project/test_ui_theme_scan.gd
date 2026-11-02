@@ -12,7 +12,7 @@ extends GdUnitTestSuite
 ##   modulate that is changed and put back (`var tint: Color = modulate`, `tint.a = 0.5`,
 ##   `modulate = tint`) shows at its middle line;
 ## - a font: `FontFile`, `SystemFont`, `FontVariation`, a `.ttf`, `.otf`, `.woff`, `.woff2`, `.fnt`
-##   or `.fontdata` path;
+##   or `.fontdata` path (this rule reads further than the others, see below);
 ## - `LabelSettings`, the class and the `label_settings` scene key: a Label's own colour, font and
 ##   size, which the theme would not see;
 ## - a StyleBox made in code;
@@ -30,6 +30,13 @@ extends GdUnitTestSuite
 ## scene (`PerfHud.gd`, `perf_arena.gd`) is scanned like the others until it is listed in
 ## EXCEPTIONS with its reason. Every rule has fixture lines that it must flag, so a scan that
 ## matches nothing fails, and every exception must still be needed.
+## The font rule alone reads every script, scene and resource under `game/` and `scenes/` (the whole
+## scene and the developer scenes too, not the Hud subtree only; plan row P118, ADR 0025 section
+## 13): `game/ui/theme.tres` is the only file that may name a font, as its FontVariations do. That
+## rule also flags a font put to use without a file named: `set_font(`, `add_theme_font_override`
+## and a `theme_override_fonts/` key. `ThemeDB.fallback_font` (the ghost's word in
+## `game/view/GhostLayer.gd`) is not flagged and is on the follow-up list: a later HUD row moves it
+## to the theme's font.
 ## The scan is a line lint with documented gaps, not a proof that the look is in the theme alone.
 ## What a line scan cannot see:
 ## - data flow beyond the channel rule: a colour or a size that reaches a StyleBox, a Theme or a
@@ -50,6 +57,9 @@ const MAIN_SCENE: String = "res://scenes/main.tscn"
 const THEME_PATH: String = "res://game/ui/theme.tres"
 const GD: String = "gd"
 const TSCN: String = "tscn"
+## The font rule's files: every script, scene and resource below these folders, except the theme.
+const FONT_DIRS: Array[String] = ["res://game", "res://scenes"]
+const FONT_EXTENSIONS: Array[String] = [".gd", ".tscn", ".tres"]
 
 ## A `modulate`, `self_modulate` or `color`, or one part of it (`.a`, `.a8`, `.v`: any member, or
 ## a subscript: `[3]`, `["a"]`), set with `=` or a compound `+=`, `-=`, `*=`, `/=` to a number
@@ -77,6 +87,14 @@ const LOOK_WRITE: String = r"\.(?:set_color|set_font)\s*\("
 ## `.fontdata`).
 const FONT_FILE: String = (
 	r"\b(?:FontFile|SystemFont|FontVariation)\b|" + r"\.(?:ttf|otf|woff2?|fnt|fontdata)\b"
+)
+## What the widened font rule reads (P118): FONT_FILE, and a font put to use without a file named:
+## `.set_font(` on a Theme or any other object, `add_theme_font_override`, and a
+## `theme_override_fonts/` key (in a script's string, such as `set("theme_override_fonts/font", f)`,
+## or a scene's key). `ThemeDB.fallback_font` is not one: the ghost's word (game/view/GhostLayer.gd)
+## draws with it, and a later HUD row moves it to the theme's font (follow-up list).
+const FONT_USE: String = (
+	FONT_FILE + r"|\.set_font\s*\(|\badd_theme_font_override\b|\btheme_override_fonts/"
 )
 
 ## One rule per kind of file it reads: `name`, `kind`, the `regex` applied to a line, and the
@@ -401,6 +419,7 @@ const NODE_HEADER: String = r'^\[node name="([^"]*)"(?:[^\]]*?\sparent="([^"]*)"
 var _regexes: Array[RegEx] = []  ## One per entry of RULES.
 var _token: RegEx
 var _node_header: RegEx
+var _font_regex: RegEx  ## The widened font rule's (FONT_USE), for the files of FONT_DIRS.
 
 
 func before() -> void:
@@ -410,6 +429,8 @@ func before() -> void:
 		_regexes.append(regex)
 	_token = RegEx.create_from_string(TOKEN)
 	_node_header = RegEx.create_from_string(NODE_HEADER)
+	_font_regex = RegEx.create_from_string(FONT_USE)
+	assert_bool(_font_regex.is_valid()).is_true()
 
 
 func test_every_rule_flags_each_of_its_fixture_lines() -> void:
@@ -508,6 +529,108 @@ func test_the_hud_look_is_in_the_theme_alone() -> void:
 	)
 
 
+## Plan row P118: no script, scene or resource under game/ and scenes/ names a font but the theme.
+func test_no_font_is_named_outside_the_theme() -> void:
+	var problems: Array[String] = []
+	for path: String in _font_files():
+		for line: int in _font_lines(path, FileAccess.get_file_as_string(path)):
+			problems.append("%s:%d" % [path, line])
+	(
+		assert_array(problems)
+		. override_failure_message(
+			(
+				"A font named outside game/ui/theme.tres (the theme loads it):\n%s"
+				% "\n".join(problems)
+			)
+		)
+		. is_empty()
+	)
+
+
+## The font rule is wider than the HUD rules: scripts of every folder, whole scenes (the Hud subtree
+## and the rest, the developer scenes) and resources; the theme alone is out.
+func test_the_font_rule_reads_every_script_scene_and_resource_under_game_and_scenes() -> void:
+	var files: Array[String] = _font_files()
+	for path: String in [
+		"res://game/ui/ArmyBar.gd",
+		"res://game/view/UnitLayer.gd",
+		"res://game/sim/World.gd",
+		"res://scenes/main.tscn",
+		"res://scenes/dev/art_gallery.tscn",
+	]:
+		assert_array(files).override_failure_message(path).contains([path])
+	assert_array(files).not_contains([THEME_PATH])
+	assert_int(files.size()).is_greater_equal(100)
+	var extensions: Dictionary[String, int] = {}
+	for path: String in files:
+		extensions[path.get_extension()] = extensions.get(path.get_extension(), 0) + 1
+	# No resource of game/ or scenes/ but the theme exists yet; one added later is read too.
+	assert_array(extensions.keys()).contains(["gd", "tscn"])
+	# The theme does name fonts: it is the one file the rule must leave out, and the rule sees them.
+	var theme: String = FileAccess.get_file_as_string(THEME_PATH)
+	assert_array(_font_lines(THEME_PATH, theme)).is_not_empty()
+
+
+## A font in a script anywhere (comments aside), in a scene outside the Hud subtree and in a
+## resource is flagged; a `;` comment line of a scene or resource is not.
+func test_the_font_rule_flags_a_font_wherever_it_is_named() -> void:
+	var script: String = (
+		'# FontFile.new() in a comment\nvar a: int = 1\nvar f: Font = load("res://a.ttf")\n'
+		+ "var v: FontVariation = null\n"
+	)
+	assert_array(_font_lines("res://game/view/Any.gd", script)).is_equal([3, 4])
+	var scene: String = (
+		'[gd_scene format=3]\n\n[node name="Main" type="Node2D"]\n; a FontFile in a comment\n'
+		+ '[node name="Label" type="Label" parent="."]\n'
+		+ 'theme_override_fonts/font = ExtResource("1_font") ; res://assets/art/fonts/a.otf\n'
+	)
+	assert_array(_font_lines("res://scenes/dev/any.tscn", scene)).is_equal([6])
+	var resource: String = (
+		'[ext_resource type="FontFile" path="res://x.woff2" id="1"]\n; FontVariation\n'
+		+ '[sub_resource type="FontVariation" id="2"]\n'
+	)
+	assert_array(_font_lines("res://game/ui/any.tres", resource)).is_equal([1, 3])
+	var clean: String = 'extends Node\nvar font_name: String = "x"\nvar fontsize: int = 3\n'
+	assert_array(_font_lines("res://game/view/Clean.gd", clean)).is_empty()
+
+
+## A font put to use without a file named, in a script outside game/ui or in a scene key, is
+## flagged too; a font size or the engine's fallback font is not (the latter is a follow-up).
+func test_the_font_rule_flags_a_font_put_to_use_without_naming_a_file() -> void:
+	var script: String = (
+		"\n"
+		. join(
+			[
+				"extends Node",
+				"theme.set_font(&'font', &'Label', font)",
+				'label.add_theme_font_override(&"font", font)',
+				'label.set("theme_override_fonts/font", font)',
+				'out.set_font ("font", "Label", font)',
+				"# label.add_theme_font_override() in a comment",
+				"label.add_theme_font_size_override(&'font_size', 18)",
+				"theme.set_font_size(&'font_size', &'Label', 18)",
+				"draw_string(ThemeDB.fallback_font, at, text)",
+				"var font: Font = label.get_theme_font(&'font')",
+			]
+		)
+	)
+	assert_array(_font_lines("res://game/view/Any.gd", script)).is_equal([2, 3, 4, 5])
+	assert_array(_font_lines("res://game/core/Any.gd", script)).is_equal([2, 3, 4, 5])
+	assert_array(_font_lines("res://scenes/dev/any.gd", script)).is_equal([2, 3, 4, 5])
+	var scene: String = (
+		"\n"
+		. join(
+			[
+				'[node name="Label" type="Label" parent="."]',
+				'theme_override_fonts/font = ExtResource("1_font")',
+				"theme_override_font_sizes/font_size = 40",
+				"; theme_override_fonts/font in a comment",
+			]
+		)
+	)
+	assert_array(_font_lines("res://scenes/dev/any.tscn", scene)).is_equal([2])
+
+
 ## A scan that reads nothing passes everything.
 func test_the_scan_reads_the_scripts_and_the_hud_nodes_it_should() -> void:
 	var files: Array[String] = _scanned_files()
@@ -583,6 +706,32 @@ func _scanned_files() -> Array[String]:
 	var files: Array[String] = FileScan.list_files(UI_DIR, ".gd")
 	files.append(MAIN_SCENE)
 	return files
+
+
+## The files of the font rule: the scripts, scenes and resources under game/ and scenes/, except the
+## theme.
+func _font_files() -> Array[String]:
+	var files: Array[String] = []
+	for dir: String in FONT_DIRS:
+		for extension: String in FONT_EXTENSIONS:
+			files.append_array(FileScan.list_files(dir, extension))
+	files.erase(THEME_PATH)
+	files.sort()
+	return files
+
+
+## The line numbers (from 1) of `text`, the content of the file at `path`, that name a font. A
+## script is read without its comments, a scene or a resource whole, a line that starts with `;`
+## being its comment.
+func _font_lines(path: String, text: String) -> Array[int]:
+	var lines: PackedStringArray = _code_lines(text) if path.ends_with(".gd") else text.split("\n")
+	var found: Array[int] = []
+	for index: int in lines.size():
+		if lines[index].strip_edges().begins_with(";") and not path.ends_with(".gd"):
+			continue
+		if _font_regex.search(lines[index]) != null:
+			found.append(index + 1)
+	return found
 
 
 ## The violations of one file: its code, or the Hud subtree of a scene.

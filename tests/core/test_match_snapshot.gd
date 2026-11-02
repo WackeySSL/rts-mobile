@@ -98,8 +98,43 @@ func test_copied_and_not_copied_split_the_world_shape_lists_exactly_once() -> vo
 		if not MatchSnapshot.NOT_COPIED.has(name):
 			misplaced.append(name)
 	assert_array(misplaced).is_empty()
-	assert_array(MatchSnapshot.COPIED_SCALARS).is_equal(
-		[&"match_end_tick", &"winner", &"build_reach_tiles", &"building_cap"]
+	(
+		assert_array(MatchSnapshot.COPIED_SCALARS)
+		. is_equal(
+			[
+				&"match_end_tick",
+				&"winner",
+				&"build_reach_tiles",
+				&"building_cap",
+				&"construct_refund_percent",
+				&"construction_sites_max",
+			]
+		)
+	)
+
+
+## ADR 0026 section 10 (exception 19): the construction column and the two rule ints the
+## construction UI reads reach the view. A site (a row with work left) is copied, and a later write
+## to the World does not reach the published snapshot; the rule ints are the World's (75 % refund,
+## 1 site).
+func test_a_site_and_the_construction_rules_are_copied() -> void:
+	_play(2)
+	var row: int = _world.index_of(40)
+	_world.build_left[row] = 1234
+	var snap: MatchSnapshot = _capture(null, 1)
+	assert_int(snap.build_left.size()).is_equal(_world.unit_count())
+	assert_int(snap.build_left[row]).is_equal(1234)
+	assert_array(snap.build_left).is_equal(_world.build_left)
+	_world.build_left[row] = 0
+	assert_int(snap.build_left[row]).is_equal(1234)
+	assert_array([snap.construct_refund_percent, snap.construction_sites_max]).is_equal([75, 1])
+	_world.construction_sites_max = 2
+	_world.construct_refund_percent = 60
+	(
+		assert_array(
+			[_capture(null, 2).construct_refund_percent, _capture(null, 2).construction_sites_max]
+		)
+		. is_equal([60, 2])
 	)
 
 

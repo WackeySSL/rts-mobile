@@ -32,6 +32,7 @@ const COPIED: Array[StringName] = [
 	&"home",
 	&"ready_tick",
 	&"offline_until",
+	&"build_left",
 	&"type_speed",
 	&"type_radius",
 	&"type_selection_radius",
@@ -133,9 +134,15 @@ const NOT_COPIED: Array[StringName] = [
 	&"harvester_rows",
 ]
 ## The World ints the snapshot carries besides its header: the end of the match (ADR 0018 section
-## 7; 0 while it runs) and the two rule ints Placement.reason reads (PlacementInput).
+## 7; 0 while it runs), the two rule ints Placement.reason reads (PlacementInput) and the two the
+## construction UI reads (ADR 0026 section 10: the Cancel button's refund, the cards' busy state).
 const COPIED_SCALARS: Array[StringName] = [
-	&"match_end_tick", &"winner", &"build_reach_tiles", &"building_cap"
+	&"match_end_tick",
+	&"winner",
+	&"build_reach_tiles",
+	&"building_cap",
+	&"construct_refund_percent",
+	&"construction_sites_max",
 ]
 ## The World's Array[StringName] id lists, in no World shape list (ADR 0012's amendment). Each is
 ## copied by duplicate(): a shallow copy of a few immutable StringNames.
@@ -169,6 +176,8 @@ var home: PackedInt32Array = PackedInt32Array()
 ## The tick a strike building may fire and the tick a blacked-out building comes back (0 = none).
 var ready_tick: PackedInt32Array = PackedInt32Array()
 var offline_until: PackedInt32Array = PackedInt32Array()
+## The construction work left in hundredths of a tick: 0 = complete, above 0 = a site (ADR 0026).
+var build_left: PackedInt32Array = PackedInt32Array()
 ## The row of `target` in this snapshot, -1 for no target (0) or one that is gone.
 var target_row: PackedInt32Array = PackedInt32Array()
 ## The positions one tick before, aligned to these rows (a new row starts at its position).
@@ -262,6 +271,10 @@ var power_used: PackedInt32Array = PackedInt32Array()
 ## The rule ints Placement.reason reads (RulesDef).
 var build_reach_tiles: int = 0
 var building_cap: int = 0
+## The rule ints the construction UI reads (RulesDef): the refund share of a cancel, in percent, and
+## how many sites a player builds at once.
+var construct_refund_percent: int = 0
+var construction_sites_max: int = 0
 
 ## This tick's events (World.EVENT_STRIDE ints each) and work counts (World.Stat).
 var events: PackedInt32Array = PackedInt32Array()
@@ -342,6 +355,8 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	winner = world.winner
 	build_reach_tiles = world.build_reach_tiles
 	building_cap = world.building_cap
+	construct_refund_percent = world.construct_refund_percent
+	construction_sites_max = world.construction_sites_max
 	unit_id = world.unit_id.duplicate()
 	owner = world.owner.duplicate()
 	type_index = world.type_index.duplicate()
@@ -356,6 +371,7 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	home = world.home.duplicate()
 	ready_tick = world.ready_tick.duplicate()
 	offline_until = world.offline_until.duplicate()
+	build_left = world.build_left.duplicate()
 	type_speed = world.type_speed.duplicate()
 	type_radius = world.type_radius.duplicate()
 	type_selection_radius = world.type_selection_radius.duplicate()

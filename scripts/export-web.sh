@@ -11,15 +11,17 @@
 #        in the Godot export_templates/4.7.2.stable folder of the platform.
 #        docs/licenses/godot-<version>/{LICENSE,COPYRIGHT}.txt, the engine's licence notices,
 #        and docs/licenses/llvm-libc++/LICENSE.TXT, the LLVM libc++ notice, which the script
-#        writes to <dir>/THIRD_PARTY_LICENSES.txt next to the build, followed by the godot-cpp
-#        section that scripts/ci/godot-cpp-notice.sh prints (the web build packs no native library;
-#        ADR 0013 section 11). export-android.sh writes the same notice text, so the two stay
-#        identical (ADR 0005 section 5).
+#        writes to <dir>/THIRD_PARTY_LICENSES.txt next to the build, with the OFL.txt of every font
+#        folder under assets/art/fonts/ before the libc++ section (scripts/ci/font-notice.sh prints
+#        them, P118b) and the godot-cpp section that scripts/ci/godot-cpp-notice.sh prints after it
+#        (the web build packs no native library; ADR 0013 section 11). export-android.sh writes the
+#        same notice text, so the two stay identical (ADR 0005 section 5).
 # Exit:  0 ok
 #        1 export failed, an error in this run's log, an artifact missing or empty, wasm of
 #          50 MiB or more, threads on, the dev_menu custom feature missing from the pack, a
-#          .gdextension in the pack (the Web preset excludes native/*), or
-#          a licence notice source (Godot's, libc++'s or godot-cpp's) or
+#          .gdextension in the pack (the Web preset excludes native/*), the OFL.txt of a font folder
+#          missing from the pack (the preset's include_filter, P118b), or
+#          a licence notice source (Godot's, libc++'s, godot-cpp's or a font folder's OFL.txt) or
 #          <dir>/THIRD_PARTY_LICENSES.txt missing or empty
 #        2 usage error, or --out inside the project but not under build/
 #        3 Godot missing or not 4.7.2.stable (also: the strings tool is missing)
@@ -196,6 +198,10 @@ done
 if [ ! -s "$LIBCXX_DIR/LICENSE.TXT" ]; then
   die 1 "licence notice source $LIBCXX_DIR/LICENSE.TXT is missing or empty"
 fi
+# The fonts of the HUD are under the SIL Open Font License, which asks for the licence text with every copy
+# (P118b). font-notice.sh finds every font folder and stops here when one has no OFL.txt; its list is what the
+# pack check below looks for.
+fonts_list="$(bash scripts/ci/font-notice.sh --list)" || die 1 "a font licence text is missing (scripts/ci/font-notice.sh says which)"
 godot_tag="${GODOT_VERSION%.stable}-stable"
 {
   printf '%s\n' "rts-mobile web build: third-party licences"
@@ -213,6 +219,9 @@ godot_tag="${GODOT_VERSION%.stable}-stable"
   printf '%s\n' "the Apache License v2.0 with LLVM Exceptions. Its libcxx/LICENSE.TXT for tag"
   printf '%s\n' "${LIBCXX_TAG} follows unchanged."
   printf '\n'
+  printf '%s\n' "This build also packs the fonts of its interface, which are licensed under the SIL Open Font"
+  printf '%s\n' "License. The OFL.txt of every font family follows unchanged, after Godot's notices."
+  printf '\n'
   printf '%s\n' "--------------------------------------------------------------------------------"
   printf '%s\n' "Godot Engine ${godot_tag}: LICENSE.txt"
   printf '%s\n' "--------------------------------------------------------------------------------"
@@ -222,6 +231,7 @@ godot_tag="${GODOT_VERSION%.stable}-stable"
   printf '%s\n' "Godot Engine ${godot_tag}: COPYRIGHT.txt"
   printf '%s\n' "--------------------------------------------------------------------------------"
   cat "$LICENSE_DIR/COPYRIGHT.txt"
+  bash scripts/ci/font-notice.sh
   printf '\n'
   printf '%s\n' "--------------------------------------------------------------------------------"
   printf '%s\n' "LLVM libc++ ${LIBCXX_TAG}: LICENSE.TXT"
@@ -257,6 +267,15 @@ packed="$(strings "$out_abs/index.pck" | grep -F '.gdextension' || true)"
 if [ -n "$packed" ]; then
   die 1 "the pack holds a .gdextension (the Web preset must exclude native/*): $(grep -F -m 1 'res://' <<<"$packed" || head -n 1 <<<"$packed")"
 fi
+# The OFL.txt of every font folder travels in the pack too (P118b): all_resources does not export a .txt file,
+# the preset's include_filter does. The pack directory stores a path as plain text without the res:// prefix, and
+# a printable byte of the next field can follow it, so the match is a substring.
+pack_strings="$(strings "$out_abs/index.pck")"
+while IFS= read -r ofl; do
+  if ! grep -Fq -- "$ofl" <<<"$pack_strings"; then
+    die 1 "the pack lacks $ofl (the preset include_filter must name assets/art/fonts/*/OFL.txt, P118b)"
+  fi
+done <<<"$fonts_list"
 
 rm -f "$log"
 echo "export-web: OK $out"

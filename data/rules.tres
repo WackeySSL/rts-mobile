@@ -37,3 +37,6 @@ build_reach_tiles = 4
 unit_cap = 75
 building_cap = 40
 ghost_cap = 40
+construct_start_hp_percent = 10
+construct_refund_percent = 75
+construction_sites_max = 1
