@@ -1,11 +1,13 @@
 # ADR 0025: HUD v2: the corner HUD, the build drawer, the radar scope, the command bar and the pause menu
 
 Status: proposed, 2026-11-01, on `main` at 5203ce0 (ADR 0024 accepted, P85g #256, P86c #257 and
-P85f #258 merged). Plan: `docs/plans/2026-11-01-hud-v2.md`. Companion: ADR 0026 (place first,
-build afterwards; a sim rule, implemented after this ADR's rows). Amends ADR 0015 §5, ADR 0019
+P85f #258 merged); revised 2026-11-02 after the lead's one-lens review (the layout numbers of §2,
+the freeze of §1, the swipe, the screen of HUD words, eight questions). Plan:
+`docs/plans/2026-11-01-hud-v2.md`. Companion: ADR 0026 (place first, build afterwards; a sim rule
+whose player-facing row lands after this ADR's drawer). Amends ADR 0015 §5, ADR 0019
 §1, §4, §5 and §6, ADR 0023 §5, §12 and §13 and ADR 0024 (§18), each only on Michael's yes. No
 sim rule, Command, definition, data column or hash changes here: everything is view, input and UI
-state, plus two settings keys and font files.
+state, plus one settings key, new `input_settings` keys and font files.
 
 ## Context
 **Michael's design (2026-11-01).** A new page "HUD & startside" in his Claude Design canvas
@@ -55,19 +57,19 @@ closes it while the game runs on.
 | # | Topic | Decision |
 | --- | --- | --- |
 | 1 | States | One unfolded panel at a time: none (battle), the build drawer, the full radar map, the economy card or pause; placement and the strike aim are modes. The command bar follows the selection and is not an unfold. A map gesture closes the unfold and still does its work (ADR 0024 §5 kept) |
-| 2 | Corners | Pill top left, scope top right, BUILD bottom right, command bar bottom left (only with a selection), group column on the left edge, strike button above BUILD; every target at least 48 dp; layout is one pure function of (safe rect, orientation, dp, mirror, what shows) |
+| 2 | Corners | Pill top left, scope top right, BUILD bottom right, command bar bottom left (only with a selection), group column on the left edge, the 72 dp strike button above BUILD; every target at least 48 dp; layout is one pure function of (safe rect, orientation, dp, mirror, what shows), pinned with one table of numbers for the short screens; placement and the strike aim freeze the bottom layout |
 | 3 | Economy pill | Menu button, credits, power bar in one 48 dp pill; spend and income flashes; low-power look with the word; a tap on the numbers shows a detail card, closed by the next touch; hidden while the drawer is open (the drawer's head shows the economy) |
 | 4 | BUILD | Round, 64 dp, `glyph_menu_open` and the word; a ring with the first-finishing item's progress, a count badge, a "stalled" look (grey ring, "!") for a queue that cannot advance; a "Ready" chip until ADR 0026's UI row |
-| 5 | Drawer | Landscape: a side panel from the right; portrait: a bottom sheet of half the height; economy head, close button, tabs Structures / Infantry / Vehicles with names, a card grid, a queue row (tap an item = cancel, full refund); replaces the band, strip, plate and floating panel |
+| 5 | Drawer | Landscape: a side panel from the right; portrait: a bottom sheet of half the height; economy head, close button and swipe to close, tabs Structures / Infantry / Vehicles with names, a card grid, a queue row (tap an item = cancel, full refund); replaces the band, strip, plate and floating panel |
 | 6 | From ADR 0024 | Kept: holder and slide, `map_gesture`, `zone_changed` and `menu_top_px`, the return after placement (R1), the producer tap (Q3 A), `GhostControls`. Dropped: strip, plate, Ready badge (after ADR 0026), the build menu pin (P85f2; question 1) |
 | 7 | Radar | A 56 dp round scope of the area round the camera (a crop of P88's minimap texture); a tap unfolds P88's full map under it with a pin and a collapse button; closes after `radar_close_ms` without touch unless pinned; never "offline" (question 5) |
-| 8 | Attack cues | A 4 s toast at the top middle ("<name> under attack", tap = jump), a red marker on the scope's rim, a ping on the full map; they replace P89's edge arrows (question 9) |
+| 8 | Attack cues | A 4 s toast at the top middle ("<name> under attack", tap = jump), a red marker on the scope's rim, a ping on the full map (no toast while the full map is open); they replace P89's planned edge arrows |
 | 9 | Command bar | Selection chip (picture, x N, health; "+N" for more types) and the orders that exist: Attack (one-shot attack-move mode) and Stop; a building shows its chip and its orders (none today; Cancel with ADR 0026); later orders slot in; portrait BUILD lifts above it |
 | 10 | Groups | A column on the left edge: "All army" on top (question 3), saved groups, "+" to save the selection; tap selects, long-press overwrites |
 | 11 | Pause | The menu button pauses the match (`MatchRunner.paused`): objective card, Resume, Restart, Surrender, Exit to menu, Vibration; no ad; Settings, Sound and Music come with Phase 5 |
-| 12 | Start page | Specified here, built with ROADMAP Phase 5's main menu (question 7): Treadline, the two sides, Skirmish, Settings, the version line, a banner slot only when Phase 6's `AdService` exists |
+| 12 | Start page | Specified here, built with ROADMAP Phase 5's main menu: Treadline, the two sides, Skirmish, Settings, the version line, a banner slot only when Phase 6's `AdService` exists |
 | 13 | Look | The design's tokens in `theme.tres`; panel without blur; Big Shoulders 800 and Chakra Petch 500-700 under `assets/art/fonts/` with their OFL texts; accent per side (Lumen Accord cyan, Derrick League orange) |
-| 14 | Left-handed | Later (Phase 5 settings, question 8); the layout function takes a mirror flag from the first row and is tested mirrored |
+| 14 | Left-handed | Later (Phase 5 settings); the layout function takes a mirror flag from the first row and is tested mirrored |
 
 ## Decision
 
@@ -75,8 +77,16 @@ closes it while the game runs on.
 - A new view object, `HudState` (`game/ui/`, `RefCounted`, no Node), holds which panel is
   unfolded: `NONE`, `DRAWER`, `RADAR`, `ECONOMY` or `PAUSE`. Opening one closes the open one (the
   last request in a frame wins, ADR 0024 §5). The command bar is not an unfold: it shows while the
-  selection is not empty, in any state but `PAUSE`. Placement and the strike aim stay the input
+  selection is not empty, in battle, `RADAR` and `ECONOMY`, and in landscape beside the open drawer
+  (the portrait sheet covers it); never in `PAUSE`. Placement and the strike aim stay the input
   modes of P86 and P112; starting either closes the unfold (as ADR 0024 §5 collapses the menu).
+- **Placement and the strike aim freeze the bottom layout.** While either mode runs, the command
+  bar keeps the slot it had when the mode began (shown or not), so BUILD's portrait lift (§9) and
+  the strike button and its check mark and X above it never move under the thumb: a group tap
+  during the aim (the groups still select, HOW_TO_PLAY's Superweapon row) changes the bar's chip,
+  not its slot; a selection that empties leaves an empty plate until the mode ends. This keeps
+  Michael's R1 (ADR 0024: "the strike row's check mark and X do not move under the player's
+  thumb"). The layout follows the selection again when the mode ends.
 - **A gesture on the map closes the unfold** (`TouchInput.map_gesture`, ADR 0024 §5: tap,
   double-tap, long-press, pan, pinch, ghost drag, wheel), except a pinned full map (§7) and `PAUSE`
   (a modal panel that takes every touch). The gesture still does its own work: the tap that closes
@@ -85,8 +95,9 @@ closes it while the game runs on.
   does), except the economy card, which any next touch closes (§3).
 - **The game runs on** behind every unfold but `PAUSE`. The state is view state: no Command,
   nothing in the sim, the replay or the hash. A turn keeps it; a new match starts at `NONE` with the
-  drawer closed (ADR 0024 §1's "a match starts OPEN" is dropped: the drawer covers 40-50 % of the
-  screen, and the design's battle state is the empty field).
+  drawer closed. This drops ADR 0024 §1's accepted "a match starts OPEN" (the drawer covers 40-50 %
+  of the screen, and the design's battle state is the empty field), so Michael confirms it
+  (question 8).
 
 ### 2. The corners
 Sizes in dp, inside the safe rect (`SafeAreaMargin`: the OS insets plus 12 dp, the larger inset on
@@ -96,15 +107,16 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
 
 | Part | Landscape | Portrait | Shows |
 | --- | --- | --- | --- |
-| Pill (§3) | Top left, 48 high, width to content: the power bar takes what is left (P85c's fit), least about 200 dp | Same; until P124 after the Dev button | Always but under the drawer and pause |
+| Pill (§3) | Top left (until P124 after the Dev button, as P85d's pill), 48 high, width to content: the power bar takes what is left (P85c's fit), least about 200 dp | Same | Always but under the drawer and pause |
 | Radar scope (§7) | Top right, 56 round | Same | Always but under the landscape drawer and pause |
-| Toast (§8) | Top middle, 280 x 48 | Under the pill, the safe width less 16, at most 360 | 4 s per cue |
-| BUILD (§4) | Bottom right, 64 round | Bottom right; 8 dp above the command bar while it shows | Always but under the drawer and pause |
-| Strike button (§10) | 8 dp above BUILD, 56 round; its check mark and X to its left | Same | While the player owns a strike building |
-| Command bar (§9) | Bottom left, 64 high, width to content, at most the bottom row less BUILD's column | Bottom, the full safe width less 16 | While something is selected |
-| Group column (§9) | Left edge, from the pill's bottom down to the command bar's top (or the safe bottom), 56 x 56 buttons; a second column if one does not fit | Left edge, above the command bar | Always (question 3) |
-| Full map (§7) | Under the scope, right-aligned: a 48 dp head over a 2:1 map box, 240 wide | Under the scope, 260 wide | On a tap of the scope |
-| Economy card (§3) | Under the pill, 280 wide | Same, the safe width less 16 at most | On a tap of the pill's numbers |
+| Toast (§8) | Centred in the room between the pill (or the safe left edge while the pill hides) and the scope (or the open drawer), 48 high, at most 280 wide | Under the pill (8 dp gap), the safe width, at most 360 | 4 s per cue; never while the full map is open (§8) |
+| BUILD (§4) | Bottom right, 64 round | Bottom right; 8 dp above the command bar while it shows (§1's freeze) | Always but under the drawer and pause |
+| Ready chip (§4) | Left of BUILD, 8 dp gap, 48 high, at most 112 wide | Same | While a structure is ready (until P130) |
+| Strike button (§10) | 8 dp above BUILD, 72 round (`StrikeButton.SIZE_DP`, kept); its check mark and X to its left | Same | While the player owns a strike building |
+| Command bar (§9) | Bottom left, 64 high, width to content, at most the safe width less BUILD's column (72), the Ready chip (120) while shown, the open drawer and their 8 dp gaps | Bottom, the full safe width | While something is selected (§1) |
+| Group column (§9) | Left edge, in the room from the pill's bottom + 8 to the command bar's top - 8 (or the safe bottom), 56 x 56 buttons, as many per column as fit, further columns to the right | Left edge, above the command bar; its room ends at the 40 % line (below) | Always (question 3) |
+| Full map (§7) | Under the scope when the room down to the right column's next part (the strike button, else BUILD) less 8 dp holds the 48 dp head and a 2:1 box at least 96 dp high; else left of the right column, its top at the safe top. The box is at most 240 x 120 | Under the scope, the box at most 260 x 130 | On a tap of the scope |
+| Economy card (§3) | Under the pill, 280 wide | Same, the safe width at most | On a tap of the pill's numbers |
 
 - **Touch targets** (CLAUDE.md, `touch-ui-rules`; the design's 44 pt is overruled, §15): the pill
   is 48 high and each of its three tap areas (menu, credits, power) at least 48 wide; group buttons
@@ -112,12 +124,27 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   toast 48 high, queue items 56, tabs 48, order buttons 64 high and at least 56 wide.
 - **One layout function.** `HudCorners.place(safe_rect, portrait, dp, mirror, shown) -> rects`, a
   static pure function in `game/ui/HudCorners.gd`, gives every part's rect; the scene applies them.
-  `shown` says which optional parts are visible (command bar, strike button, full map, toast). No
-  part overlaps another, every rect is inside the safe rect. The share of the screen in battle
-  (pill, scope, BUILD) is about 5 % on the 6-inch phone, landscape and portrait.
-- **Short screens:** the group column needs `n x 56 + (n - 1) x 8` dp; where the room between the
-  pill and the command bar is shorter (`web_phone_small`, 800 x 304 dp, gives about 176 dp), it
-  flows into a second column beside the first. The plan's tests pin it.
+  `shown` says which optional parts are visible (command bar, Ready chip, strike button, full map,
+  toast, open drawer, the group count). No part overlaps another, every rect is inside the safe
+  rect. The share of the screen in battle (pill, scope, BUILD) is about 5 % on the 6-inch phone,
+  landscape and portrait.
+- **The numbers on the short screens** (the safe rect is the screen less 12 dp a side,
+  `SafeAreaMargin`; one set of numbers, which the plan's tests pin):
+
+  | Profile (screen dp) | Safe rect | Right column, from the bottom | Full map | Group column room | Items per column |
+  | --- | --- | --- | --- | --- | --- |
+  | `web_phone_small` (800 x 304) | 776 x 280 | BUILD y 216-280, strike 136-208 | with the strike button: left of the column, y 0-168 (head 48, box 240 x 120); without: under the scope, y 64-208 (head 48, box 192 x 96) | 152 with the bar (y 56-208), 224 without | 2 with the bar, 3 without |
+  | `web_phone` (914 x 355) | 890 x 331 | BUILD y 267-331, strike 187-259 | with the strike button: left of the column; without: under the scope, y 64-232 (box 240 x 120) | 203 with the bar, 275 without | 3, 4 without |
+  | 6-inch landscape (914 x 411) | 890 x 387 | BUILD y 323-387, strike 243-315 | under the scope, y 64-232 | 259 with the bar | 4 |
+  | `web_phone_portrait` (360 x 700) | 336 x 676 | BUILD 8 dp above the bar: y 540-604, strike 460-532 | under the scope, y 64-242 (box 260 x 130) | to the 40 % line: 270 - 72 = 198 above the bar | 3 |
+
+- **The 40 % rule in portrait** (ADR 0015 §5) holds for the bottom stack in battle: the command bar
+  (64 + 8) and the group column (at most `floor((room + 8) / 64)` buttons per column, further
+  columns to the right) stay within 40 % of the safe height (270 dp at 360 x 700); BUILD and the
+  strike button stand in the right column (the bar 64, BUILD 8 + 64 and the strike button 8 + 72:
+  216 dp from the safe bottom).
+  Five group items at 360 x 700 take two columns (120 dp wide), which leave the Ready chip and BUILD
+  their 184 dp on the right (336 dp safe width).
 - **What leaves:** the portrait band and strip, the landscape floating panel and plate, `StatusPill`,
   `MinimapSlot`, `SelectionPanel`, `ArmyBar` and the Dev button on the battle screen (the dev menu
   moves into the pause menu, §11). Their logic is reused where the table names it.
@@ -134,8 +161,8 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   once per frame, never a string per frame at rest.
 - **Low power** (`power_used > power_made`): the pill's border and the bar turn danger red, the bolt
   becomes the warning triangle (P85c) and the word "LOW POWER" shows: a word, a shape and a colour.
-  P89's pulse goes on this node. GDD: low power halves production and takes defences offline; the
-  card's text says exactly that, nothing about the radar (§7).
+  P89's pulse goes on this node. GDD: low power slows production (`low_power_percent`) and takes
+  defences offline; the card's text says that, nothing about the radar (§7).
 - **Detail card:** a tap on the credits or the power opens a card under the pill (`ECONOMY`):
   credits with "+N/min" (the view's difference of the snapshot's `stat_harvested` over the last 60 s
   of match ticks, from a ring of 60 one-second samples allocated once), the number of the player's
@@ -163,8 +190,9 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   the ring and is not "stalled".
 - **Ready chip** (interim, until ADR 0026's UI row P130): while a finished structure waits at the
   head of the Structures queue, a "Ready" chip (the card's picture and the word, ADR 0024 §9's
-  badge) shows left of BUILD; a tap opens the drawer on the Structures tab with the READY card in
-  view (ADR 0024 Q1 A kept). ADR 0026 removes the READY state and the chip with it.
+  badge, 48 dp high, at most 112 wide, an entry of `HudCorners`' `shown`) shows left of BUILD; a
+  tap opens the drawer on the Structures tab with the READY card in view (ADR 0024 Q1 A kept).
+  ADR 0026 removes the READY state and the chip with it.
 
 ### 5. The build drawer
 - **Container:** ADR 0024's clipping holder and slide (M1): `menu_slide_ms` (160) drives the
@@ -174,11 +202,19 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   the churn).
 - **Landscape: a side panel** at the right edge, the full safe height, 40 % of the screen width,
   clamped to [312, 420] dp (three 88 dp cards, two gaps and 16 dp padding each side is 312); its
-  backdrop runs to the screen's right edge, its content stays in the safe rect. It covers the scope;
-  the pill hides (§3).
+  backdrop runs to the screen's right edge, its content stays in the safe rect. It covers the scope
+  and the right column; the pill hides (§3). On a short screen the card grid scrolls: on
+  `web_phone_small` (280 dp safe height) the head (48), the tabs (48), the queue row (56 and its
+  20 dp label) and three 8 dp gaps leave 84 dp, less than one 96 dp card row, so the grid is a
+  vertical scroll there (a test pins it).
 - **Portrait: a bottom sheet** of the full width and half the screen height, at least the head,
   the tabs, one row of cards and the queue row (about 312 dp); taller content scrolls inside the
   sheet. The command bar and BUILD hide under it; the pill hides; the scope stays.
+- **Swipe to close** (the design's rule; a lead decision of 2026-11-01): a drag toward the edge the
+  drawer came from, past `drawer_swipe_dp` (`data/input_settings.tres`, 48), closes it. In
+  landscape any horizontal drag on the panel counts (the grid scrolls vertically); in portrait only
+  a drag that starts on the sheet's head with its handle counts, because the grid's own scroll is
+  vertical. ADR 0024's "Alternatives" left a swipe for later; this takes it, for closing only.
 - **From the top:** the head (48 dp): the economy (credits with "+N/min", the power bar with
   "used/made POWER") and the close button (48 dp, a chevron towards the edge it leaves by); the tabs
   (48 dp, an icon and the name: Structures, Infantry, Vehicles; never "Base", §16); the card grid;
@@ -195,20 +231,22 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   asked for); **locked** (padlock, dimmed, and the words "Needs <display_name>" of the missing
   requirement or producer); **ready** (structures, until P130: "Ready" banner; a tap starts
   placement).
-- **Taps:** a unit card: +1 (`QUEUE`). A long-press on a unit card (`long_press_ms`): +5, that is
-  as many `QUEUE`s as the queue has room for and the credits pay, at most 5 (question 2; today's
-  long-press cancels the last one of the type, ADR 0019 Q2). A structure card: as today until P130
+- **Taps:** a unit card: +1 (`QUEUE`). A long-press on a unit card (`long_press_ms`): as many
+  `QUEUE`s as the queue has room for and the credits pay, at most `queue_hold_count`
+  (`data/input_settings.tres`, 5) (question 2; today's long-press cancels the last one of the type,
+  ADR 0019 Q2). A structure card: as today until P130
   (queue it, or start placement when it is ready), then ADR 0026's tap-to-place.
 - **Queue row** (the open tab's queue): the producer's display name and "N IN QUEUE" (after
   ADR 0026, on Structures: "CONSTRUCTION" and the building's name and percent, or "NOTHING
   BUILDING" with the hint "Tap a building, then place it on the map"), then one 56 dp thumb per item,
   the head with a progress bar, empty slots dashed. **A tap on an item cancels it** (`CANCEL [tab,
-  slot]`, full refund, ADR 0018 §5) with the haptic. The design's repeat button is dropped: no repeat
-  production exists.
+  slot]`, full refund, ADR 0018 §5) with the haptic. After a cancel the row ignores taps until the
+  next published snapshot shows the queue again, so a quick second tap never sends a slot index the
+  first cancel has shifted. The design's repeat button is dropped: no repeat production exists.
 - **Opens** on BUILD, on the Ready chip (Structures tab) and on a tap that selects an own producer
   (its tab; ADR 0024 Q3 A kept); after a placement that began in the drawer ends by a build or the
   X (ADR 0024 R1 kept; a strike aim leaves it closed). **Closes** on its close button, a map gesture
-  (§1), the start of placement or of a strike aim, `PAUSE`. No pin (§6).
+  (§1), a swipe, the start of placement or of a strike aim, `PAUSE`. No pin (§6).
 
 ### 6. What this does to ADR 0024's parts
 | Part (ADR 0024) | Here | Why |
@@ -222,13 +260,14 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
 | `map_gesture`, "never a touch on a HUD control" | Kept; closes any unfold (§1) | M1 |
 | `zone_changed`, `bottom_zone_dp`, `menu_top_px` | Kept: the drawer's height and real top in portrait (0 and INF while closed); in landscape 0 and INF (the panel is at the side) | Placement and the strike aim close the drawer, so the edge pan and `GhostControls` see a closed drawer; the command bar and BUILD are islands that `GhostControls.clear_of` lists |
 | The return after placement (R1) and the producer tap (Q3 A) | Kept | Michael's answers stand |
-| `GhostControls` (P86c) | Kept beside the ghost (M2); after ADR 0026 the check mark shows the price under its glyph ("600", tabular, 14 sp), which fits its 64 dp | M2 |
+| `GhostControls` (P86c) | Kept beside the ghost (M2); after ADR 0026 the check mark shows the price under its glyph ("600", tabular, 18 sp as `touch-ui-rules` asks of HUD numbers and as the theme's `ItemCost` is), which fits its 64 dp (32 dp glyph, a 22 dp line) | M2 |
 | `HudPrefs` and `user://settings.cfg` | Kept as the settings file; first key `[hud] haptics` (§11) | P85f2's file without its key |
 
 ### 7. The radar scope and the full map
 - **Scope:** a 56 dp disc at the top right showing the ground round the camera: a crop of P88's
-  `MinimapImage` texture (one texel per cell, the fog's cadence) centred on the camera's ground
-  centre, `scope_radius_tiles` (`data/input_settings.tres`, 16) to the rim, drawn as one textured
+  `MinimapImage` texture (one texel per cell, the fog's cadence), drawn under the same iso skew as
+  the full map (`IsoProjection.cell_to_px`), so up on the scope is up on the screen and the frame,
+  the pings and the rim wedges point as the screen does; centred on the camera's ground centre, `scope_radius_tiles` (`data/input_settings.tres`, 16) to the rim, drawn as one textured
   polygon of 32 points (the Compatibility renderer, no shader), with the camera's frame as a white
   rectangle clipped to the disc. It redraws when the camera moves or the picture changes, not per
   frame at rest. A tap opens `RADAR`. It replaces `MinimapSlot`, and in portrait the minimap leaves
@@ -243,7 +282,7 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   in frame time in `game/ui` (a test steps it). The pin is view state for the match, not saved.
 - **Never offline.** The design's "offline" (noise, no blips) without a radar building or on low
   power is a new gameplay rule: the GDD says a radar unlocks artillery and the superweapon and low
-  power halves production and silences defences, nothing about the minimap; and a radar building
+  power slows production and silences defences, nothing about the minimap; and a radar building
   that switches the minimap on, or low power that switches it off, is Command & Conquer's
   (Communications Center, Radar Dome), which ADR 0023 §13 rejected ("radar is a tech gate, the
   minimap is always on"). It is question 5, recommended no.
@@ -255,21 +294,23 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   outside the camera's visible world rect raises one cue per area (`attack_cue_area_tiles`) and
   interval (`attack_cue_ms`), both in `data/input_settings.tres` (ADR 0019 §5). The cue reads the
   published events only.
-- **Toast:** a 48 dp panel at the top middle (portrait: under the pill), danger border and the
+- **Toast:** a 48 dp panel at the top (§2's place), danger border and the
   warning glyph, "<display_name> UNDER ATTACK" (the hit row's own `display_name`, "UNITS UNDER
   ATTACK" for a unit) over "Tap to jump there", for `attack_toast_ms` (4000); a newer cue replaces
   it. A tap jumps the camera to the point and closes the unfold. The design's place words ("Oil
-  field, south") need map region names, which do not exist; not shown.
+  field, south") need map region names, which do not exist; not shown. **While the full map is
+  open no toast shows** (the design's rule: an attack is then a ping on the map); in portrait both
+  would stand at the top right.
 - **Scope rim:** a red wedge on the scope's rim in the direction of the attack (from the camera's
   ground centre) for the same time, with the shape of a wedge, not colour alone; an attack inside the
   scope's radius pings inside it instead. **Full map:** a ping at the point.
 - **Replaces** P89's screen-edge arrows (ADR 0019 §5's "arrow of at least 48 dp at the screen
-  edge"): the rim marker is the direction cue, the toast the jump (question 9). P89 keeps the
+  edge"): the rim marker is the direction cue, the toast the jump. touch-ui-rules' "edge-of-screen
+  indicator" becomes the rim marker on acceptance (§18). P89 keeps the
   low-power part: the glyph on each consuming building and the pill's pulse.
 
 ### 9. The command bar, the groups and the portrait BUILD lift
-- **Shows** while the selection is not empty, in battle, `DRAWER` (landscape only), `RADAR` and
-  `ECONOMY`; never in `PAUSE`. It holds:
+- **Shows** as §1 says (and keeps its slot through placement and the strike aim). It holds:
   - **The selection chip** (64 dp): the first type's item card picture, "xN" and the health of the
     selection (a bar of the summed hp against the summed max). More types show a "+N" chip;
     a building shows its picture, name and health, an enemy building its amber frame and notch
@@ -279,7 +320,8 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
     `game/input/PlayerController.gd`): **Attack** (`ATTACK_MOVE`, which the sim takes and only the
     AI sends today): a tap arms it, the button shows pressed, the next ground tap sends one
     `ATTACK_MOVE` there and disarms it (an enemy tap is an `ATTACK` as always; a map pan keeps it
-    armed; a second tap on the button disarms). **Stop** (`STOP`): one tap, one Command. A ground tap
+    armed; a second tap on the button disarms it, and so do a selection that changes or empties,
+    the start of placement or of a strike aim, opening the drawer and pause). **Stop** (`STOP`): one tap, one Command. A ground tap
     without Attack armed stays a `MOVE` that stops an attack (CLAUDE.md, Mobile UX). The design's
     "ATTACK as the default" would change that rule: question 4.
   - **Later orders slot in:** the bar is a row of 64 dp buttons from a list (an order id, a glyph, a
@@ -292,9 +334,11 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
     56 dp.
 - **Portrait BUILD lift:** while the bar shows, BUILD (and the strike button above it) stands 8 dp
   above the bar's top (the design's y 744 against 818); they move without a slide when the bar
-  appears, as the selection changes under the player's tap.
+  appears, as the selection changes under the player's tap, and never during placement or the
+  strike aim (§1's freeze).
 - **Groups** (replacing `ArmyBar`): a column on the left edge (landscape: below the pill; portrait:
-  above the bar). On top **"All army"** (48 dp high, an icon and "ALL", question 3), then each saved
+  above the bar; §2 gives its room and the columns). On top **"All army"** (56 dp, an icon and
+  "ALL", question 3), then each saved
   group (1-3, `SelectionModel.GROUP_COUNT`) with its number and count, then **"+"** while units are
   selected and a group is free. Tap a group: select it. Tap "+": save the selection into the lowest
   free group, with the haptic. Long-press a group (`group_assign_ms`): overwrite it with the
@@ -303,8 +347,9 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   `SelectionModel` stay.
 
 ### 10. The strike button
-- The strike button (P112) moves from the top line (landscape) and the right edge (portrait) to
-  56 dp above BUILD, in the thumb zone with the other actions; its row (the check mark and X, 64 dp,
+- The strike button (P112, 72 dp: `StrikeButton.SIZE_DP` with its 40 dp card, 6 dp ring and foot
+  label, kept) moves from the top line (landscape) and the right edge (portrait) to 8 dp above
+  BUILD, in the thumb zone with the other actions; its row (the check mark and X, 64 dp,
   ADR 0024 §10's last bullet) stands to its left. It rides with BUILD's portrait lift. Nothing else
   of P112 changes. The design has no superweapon; the game has, so the HUD shows it (the lead's
   rule).
@@ -312,7 +357,8 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
 ### 11. The pause menu
 - **Opens** on the pill's menu button; **pauses the match** (`MatchRunner.paused = true`; the sim
   only stops ticking, no Command, so replays and hashes do not see it); closes every other unfold;
-  a modal panel over a dimmed field. **Resume** (or a turn, which keeps it open) unpauses.
+  a modal panel over a dimmed field. **Resume** unpauses; a turn keeps the menu open and the match
+  paused.
 - **Card:** "SKIRMISH" and the map's display name; the objective "Destroy the enemy Headquarters and
   every production building" (GDD victory rule); the time and "Units lost" (P76's stats). No mission,
   no difficulty (no campaign in version 1; difficulty is Phase 4).
@@ -331,19 +377,21 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   (§15).
 
 ### 12. The start page (Phase 5)
-- Built by ROADMAP Phase 5's "Main menu" box, not in this wave (question 7): ADR 0019 §7 Q4 keeps
+- Built by ROADMAP Phase 5's "Main menu" box, not in this wave (a decision from the roadmap, not a
+  question: ADR 0019 §7 Q4 keeps
   the preview opening on the controls test until then, and a start page with one working button is
   a menu screen to maintain twice.
 - **Content when built:** the title "TREADLINE" (ADR 0006); the two sides with their emblems and
   names, "DERRICK LEAGUE vs LUMEN ACCORD" (ADR 0023 §6), each name in its side's accent; a tagline
   in the energy-bloc framing (the design's "Oil runs along the border. Two blocs want it." is the
   border framing ADR 0023 dropped; proposed "Oil and gas against wind and sun. Choose your side.",
-  question 11); **Skirmish** (the route P90 makes per faction); a settings button (the Phase 5
+  which Michael confirms or rewrites in P126's PR, where it first shows); **Skirmish** (the route P90 makes per faction); a settings button (the Phase 5
   settings screen); the version line ("v<version> · © AppCode ApS"). Continue (save and resume,
   Phase 5's local save) shows only once a save exists; Campaign and Multiplayer are not in version 1
   (GDD) and are not shown.
-- **Ads:** a banner only when Phase 6's `AdService` exists, at the bottom, at least 16 dp from any
-  button (admob-policy's menu row), with "Advertisement" over it; the "+500 starting credits"
+- **Ads:** a banner only when Phase 6's `AdService` exists, at the bottom, with "Advertisement" over
+  it and 48 dp of air to the nearest button (the design's gap; stricter than admob-policy's floor
+  of 16 dp, so it is kept); the "+500 starting credits"
   rewarded offer is Phase 6's. Both orientations as the boards show.
 
 ### 13. Look: theme, fonts and the accent
@@ -360,7 +408,7 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   #FFAE5C, text #2A1405). The local player's side is the faction of its own rows (P85d's rule).
   Accent never carries meaning alone. The team colours stay per player (GDD), so a Lumen Accord
   player 1 sees orange units under a cyan HUD unless the routes give the local player its side's
-  colour (question 10).
+  colour (question 7; a ja also changes the GDD's team-colour line, P26ap).
 - **Fonts (M4):** **Big Shoulders** (weight 800) for buttons and titles, upper case, tracking +6 to
   +14 %; **Chakra Petch** (500 to 700) for numbers and body text, tabular figures (OpenType `tnum`)
   for every number that changes. Home: **`assets/art/fonts/<family>/`**, the folder `STYLE.md`
@@ -369,8 +417,17 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   the unmodified upstream font files and its `OFL.txt` (the SIL Open Font License 1.1 with the
   family's copyright line), one `assets/CREDITS.md` row per family (file, author, source URL,
   licence "SIL OFL 1.1", notes), and the OFL texts ship in every export beside
-  `THIRD_PARTY_LICENSES.txt` (P118b). The fonts are referenced only from `theme.tres` (as
-  `FontVariation`s: the `tnum` feature and the tracking), never from code. P118 checks three facts
+  `THIRD_PARTY_LICENSES.txt` (P118b). `STYLE.md` ("Reskin", item 3) and the `theme.tres` header also
+  ask for the licence text "in the Licences screen", which does not exist yet: P118 amends both
+  lines to "beside every build (P118b) and, from Phase 5's settings screen on, in its Licences
+  screen", and the Phase 5 plan gets that screen. The fonts are referenced only from `theme.tres`
+  (as `FontVariation`s: the `tnum` feature and the tracking), never from code:
+  `tests/project/test_ui_theme_scan.gd` already flags a font class or `set_font` in a `game/ui`
+  script, and P118 widens its font rule to every script under `game/` and `scenes/` instead of adding
+  a scan. **The tracking needs no code:** one `FontVariation` per size class (button, title, big
+  title) in `theme.tres` with its `spacing_glyph` in base px, listed in the file's
+  `metadata/base_px` (the existing way to keep an entry out of `HudTheme`'s dp step); across the
+  phones' dp-to-px ratios the tracking then stays inside the design's 6-14 % band. P118 checks three facts
   before committing: the families' Reserved Font Names (if any, the files stay unmodified: no
   subsetting under the same name), the glyph coverage of Danish and German letters (æ ø å ä ö ü ß;
   the GDD's later languages), and whether Chakra Petch has `tnum` (if not, the numbers use
@@ -379,7 +436,8 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
 - **Sizes stay `touch-ui-rules`'**: body at least 14 sp, HUD numbers at least 18 sp.
 
 ### 14. Left-handed mode
-- Later: the switch comes with Phase 5's settings (question 8). From P119 on, `HudCorners.place`
+- Later: the switch comes with Phase 5's settings (a scope decision from the roadmap, not a
+  question). From P119 on, `HudCorners.place`
   takes `mirror` and swaps left and right for every part (the pill and the scope, BUILD and the
   command bar, the group column, the drawer's side in landscape); its tests run both. No other row
   reads the flag until the switch exists.
@@ -400,6 +458,11 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
 | "BYG" | "BUILD"; every player-facing string English | CLAUDE.md; the design's own rule |
 | The check mark and X in the BUILD corner | Beside the ghost | M2 |
 | Tabs "Base, Infantry, Vehicles" | "Structures, Infantry, Vehicles" | ADR 0023 §13 (RA2's sidebar tabs) |
+| Confirms only for Surrender and Exit | Restart confirms too: it throws the match away like Surrender (a lead decision, 2026-11-01) | lead |
+| Start page: Continue, Campaign, Multiplayer | Skirmish and Settings; Continue once a save exists; the page itself in Phase 5 | GDD "Not in version 1"; ROADMAP Phase 5; ADR 0019 §7 Q4 |
+
+The design's swipe to close the drawer and its 48 dp gap round a menu banner are taken as drawn
+(§5, §12), not overruled.
 
 ### 16. Legal
 - **The layout is not Command & Conquer's.** C&C's and Red Alert's sidebar is a permanent column at
@@ -414,6 +477,14 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   Red Alert 2 sidebar or command labels (ADR 0023 §12, §13). None is used now; a later row that adds
   such an order screens its label against ADR 0023 §13's list first, and the lead adds it to the
   trademark list.
+- **Generic HUD words, screened** (ADR 0023 §13 asks for the screen to be written down): "RADAR"
+  (C&C calls its minimap the radar, and its announcer says "radar online" and "radar offline"),
+  "LOW POWER" (the announcer's "low power"), "UNDER ATTACK" ("our base is under attack"),
+  "BUILDING" and "CONSTRUCTION" ("building", "construction complete"). Each is a plain English word
+  for what it labels and stays as a word; what is not taken is the announcer's phrasing as a
+  line: no "ONLINE"/"OFFLINE" status beside "RADAR" (the radar is never offline, §7), no "Base
+  under attack", "Construction complete" or "Unit ready" text or voice. The toast names the hit
+  building by its `display_name` instead.
 - **Names and look:** no design name is used (§15); every glyph is drawn in this repository
   (P118g); the fonts are OFL and credited (§13). The design's note that place-first is "one step
   fewer than Red Alert's build, ready, place" names a game, not an asset: placing a foundation first
@@ -433,7 +504,8 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   run) watches it.
 - **Headless proof** (the plan's test plan): the layout function at the six sizes, the portrait
   profiles, the short landscape profiles and the design's notch profile, mirrored and not: inside the
-  safe rect, no overlap, every target at least 48 dp; the unfold rules (one at a time, map gesture
+  safe rect, no overlap, every target at least 48 dp, §2's table of numbers row by row; the freeze
+  (a group tap during the strike aim moves nothing at the bottom); the unfold rules (one at a time, map gesture
   closes, pinned map stays, the economy card's next touch, the radar's timer stepped); BUILD's ring,
   badge, stalled look and Ready chip from crafted snapshots; the pill's flashes from two crafted
   snapshots; the cues from crafted events; the command bar's orders and their Commands; pause sets
@@ -458,9 +530,15 @@ accepted texts stay):
   because the sim has them; guard, patrol, formation, sell, repair, the Air tab and PRIMARY stay out.
   **§13:** the fonts row's decision becomes "used (SIL OFL allowed, M4, 2026-11-01)".
 - **ADR 0024:** §6 above; `touch-ui-rules`' "Collapsible build menu" section is replaced.
-- **CLAUDE.md:** the Legal line of M4 (the lead, in this PR). **`docs/GDD.md`:** no change.
+- **CLAUDE.md:** the Legal line of M4 (the lead, a5b945e in this PR). **`docs/GDD.md`:** the
+  team-colour line ("player 1 orange and player 2 cyan by default") if question 7 is ja; nothing
+  else. **`docs/ROADMAP.md`:** box 3's wording ("the sidebar row sets the portrait bottom zone, so
+  the ArmyBar moves above the band"; "jump with the minimap") becomes "the build drawer and the
+  corner HUD keep their dp sizes ... jump with the radar's full map"; P26ap writes it, no box is
+  ticked.
+- **`assets/art/STYLE.md` and the `theme.tres` header:** the "Licences screen" line (§13, P118).
 - **`.claude/skills/touch-ui-rules/SKILL.md`** (applied by P26ap only on Michael's yes at
-  acceptance, with the answers to questions 1-4, 8 and 9 written in):
+  acceptance, with the answers to questions 1-4 and 8 written in):
 
 > **Line 3 (frontmatter `description`):** "... hit areas in dp, the corner HUD and the build drawer
 > (ADR 0025), safe areas, ..." (the rest unchanged).
@@ -471,9 +549,10 @@ accepted texts stay):
 > "Long-press a build icon with items queued" become "Tap a unit card | Queue one (`QUEUE`, paid at
 > once)", "Long-press a unit card | Queue up to five, as room and credits allow" and "Tap an item
 > in the queue row | Cancel it (`CANCEL`, full refund)". The ADR 0024 rows (any map gesture, the
-> Build button, the Ready badge, the pin) become:
+> Build button, the Ready badge, the pin) become (with the hold count named `queue_hold_count`):
 > | Any gesture on the map | Also closes the open drawer, full map (unless pinned) or economy card; the gesture still does its work; a touch on a HUD control never closes them |
 > | Tap BUILD | Open the build drawer |
+> | Swipe the drawer toward its edge (portrait: from its head) | Close it (`drawer_swipe_dp`) |
 > | Tap the pill's menu button | Pause the match and open the pause menu |
 > | Tap the credits or the power in the pill | Show the economy card; the next touch closes it |
 > | Tap the attack toast | Jump the camera to the attack |
@@ -487,6 +566,8 @@ accepted texts stay):
 >   right, BUILD bottom right, the strike button above BUILD when owned, the group column on the
 >   left edge, and the command bar bottom left (portrait: bottom, with BUILD lifted 8 dp above it)
 >   while something is selected. One function places them (`HudCorners.place`), mirror-ready.
+>   Placement and the strike aim freeze the bar's slot and BUILD's lift, so nothing moves under
+>   the thumb while the player places or aims.
 > - One unfold at a time: the build drawer, the full map, the economy card, the pause menu. A map
 >   gesture closes it (not a pinned full map, not pause) and still does its work; the game runs on
 >   behind all but pause, which pauses the match.
@@ -497,8 +578,8 @@ accepted texts stay):
 >   BUILD, on a producer's selection (its tab) and after a placement begun in it.
 > - The full map closes after `radar_close_ms` without a touch unless pinned; the scope is never
 >   offline.
-> - Under attack: a toast at the top middle (tap to jump), a marker on the scope's rim and a ping on
->   the full map.
+> - Under attack: a toast at the top (tap to jump), a marker on the scope's rim and a ping on the
+>   full map; while the full map is open only the ping.
 >
 > **The sections "Layout in landscape" and "Layout in portrait":** their build-menu, minimap,
 > credits, army-bar and selection-panel bullets are replaced by a pointer to the section above and
@@ -525,16 +606,16 @@ Each row adds or rewrites these entries in `docs/HOW_TO_PLAY.md` in its own PR (
 | P119 | same | Use more power than you make → the pill turns red with "LOW POWER" and a warning triangle |
 | P119b | same | Tap the credits or the power in the pill → a card shows your income per minute, your tankers, the power you use and make and what uses it; the next touch closes it. When you spend, a red "-N" shows for a moment and the number counts down; when a tanker delivers, a green "+N" |
 | P121 | Camera | Look at the round radar at the top right → the ground round your view, with a white frame for what the screen shows. Tap it → the whole map unfolds under it: tap or drag there to jump the view; with units selected, hold it to send them there; it folds away by itself after a few seconds without a touch (`radar_close_ms`), unless you tap its pin; the arrows button folds it at once. Replaces the two minimap rows (yes) |
-| P120 | Build menu | Tap BUILD → the build drawer slides in (sideways from the right, upright up from the bottom); your credits and power move into its top; the game runs on behind it. Touch the map, or tap the drawer's arrow, and it slides away (yes) |
+| P120 | Build menu | Tap BUILD → the build drawer slides in (sideways from the right, upright up from the bottom); your credits and power move into its top; the game runs on behind it. Touch the map, tap the drawer's arrow or swipe it back toward its edge (upright: from its top), and it slides away (yes) |
 | P120 | Build menu | Watch BUILD → its ring fills with the item that finishes first and the number counts what is queued |
 | P120c | Build menu | A grey ring with "!" on BUILD → a queue cannot go on (its factory is gone or switched off, or you have as many units as you may). A "Ready" chip beside BUILD → a building is finished; tap it to open the drawer on Structures (until P130). Own a Deep Bore or a Blackout Array → its round button stands above BUILD (the Superweapon row's place words change) |
 | P120 | Build menu | Tap a tab → Structures, Infantry or Vehicles, each with its name; a padlocked card says what you need for it ("Needs <name>") |
-| P120b | Build menu | Tap a unit card → one is queued and paid at once; hold it → up to five (as room and credits allow) (yes; replaces "Hold an item → cancelled"; if question 2 is B, the hold row stays as it is) |
+| P120b | Build menu | Tap a unit card → one is queued and paid at once; hold it → several at once, as many as room and credits allow up to `queue_hold_count` (yes; replaces "Hold an item → cancelled"; if question 2 is B, the hold row stays as it is) |
 | P120b | Build menu | Tap an item in the queue row at the drawer's foot → it is cancelled and paid back in full (yes) |
 | P122 | Orders | Select units → a bar at the bottom left (upright: the bottom, BUILD above it) shows them and their health and the orders Attack and Stop. Tap Attack, then the ground → they attack-move there, fighting what they meet; tap Stop → they stop. A ground tap alone still moves without fighting (yes) |
 | P122 | Selection | Any selection → shown in the bar's chip with its count; more types show "+N". Replaces the selection-panel row |
-| P122b | Army bar → "Groups" | Tap "+" with units selected → they are saved as the next free group; tap a group → it is selected; hold a group → it is overwritten with the selection, the phone buzzes; "All army" on top selects every own unit that can fight (yes; replaces the hold-to-assign row) |
-| P123 | Combat | A unit or building of yours is hit out of view → a red message at the top says what (tap it to jump there), a red mark on the radar's rim points that way, and the full map pings (replaces the "Not yet" row) (yes) |
+| P122b | Army bar → "Groups" (runs before P122) | Tap "+" with units selected → they are saved as the next free group; tap a group → it is selected; hold a group → it is overwritten with the selection, the phone buzzes; "All army" on top selects every own unit that can fight (yes; replaces the hold-to-assign row) |
+| P123 | Combat | A unit or building of yours is hit out of view → a red message at the top says what (tap it to jump there), a red mark on the radar's rim points that way, and the full map pings; while the full map is open you get only the ping (replaces the "Not yet" row) (yes) |
 | P124 | Pause (new) | Tap the menu button in the pill → the match pauses: the goal, the time and your losses, and Resume, Restart, Surrender, Exit to menu and Vibration; Restart, Surrender and Exit ask first (yes) |
 | P120 + P121 | Turn the phone | The drawer, the full map and the toast keep their state through a turn and move to the other layout |
 | P130 (ADR 0026) | Build menu | ADR 0026 §9's rows |
@@ -569,20 +650,25 @@ Each row adds or rewrites these entries in `docs/HOW_TO_PLAY.md` in its own PR (
 - **The minimap at the top right as a rectangle** (ADR 0023 §12's slot): the scope is smaller (56
   against 148 x 86 dp) and the full map is one tap away.
 - **The check mark and X in the BUILD corner** (the design): M2.
-- **The start page now:** question 7.
+- **The start page now:** a Phase 5 box pulled forward, with one working button (§12).
 - **Edge arrows and the toast together:** more on screen for one event; the rim marker gives the
-  direction at the same glance as the radar (question 9 keeps the choice open).
+  direction at the same glance as the radar.
+- **The strike button shrunk to 56 dp** to match the scope: its 40 dp card, 6 dp ring and foot
+  label do not fit; it keeps P112's 72 dp.
 
 ## Questions for Michael
+Only what the rules do not answer: each one goes against one of Michael's own earlier answers, a
+CLAUDE.md rule or his new design. The start page's timing, left-handed mode, the attack cues and
+the tagline are decisions above (§12, §14, §8; the tagline in P126's PR).
 1. **The build menu's pin** (P85f2, asked for on 2026-10-31). A: drop it; the drawer opens on BUILD
-   and closes on a map touch (sideways a pinned panel would be a permanent right-hand column, the
-   C&C sidebar look; upright it would halve the field); the pin glyphs go to the radar. B: keep it
-   upright only. Recommended: A.
+   and closes on a map touch or a swipe (sideways a pinned panel would be a permanent right-hand
+   column, the C&C sidebar look; upright it would halve the field); the pin glyphs go to the radar.
+   B: keep it upright only. Recommended: A.
 2. **Holding a unit card.** A: as the design says, a hold queues up to five, and you cancel by
    tapping the item in the queue row. B: a hold keeps cancelling the last one of that type (your
    "ja" of 2026-10-22), and the queue row's tap cancels too. Recommended: A.
-3. **"All army".** A: keep it at the top of the group column, always shown. B: drop it (double-tap
-   and the box select remain). Recommended: A.
+3. **"All army".** A: keep it at the top of the group column, always shown. B: drop it, as the
+   design does (double-tap and the box select remain). Recommended: A.
 4. **Attack.** A: a tap on the ground keeps moving without fighting, and Attack is a button you tap
    before the ground tap to attack-move there. B: as the design says, Attack is the default, so a
    ground tap attack-moves (this changes CLAUDE.md's "tap ground = move (stops an attack)").
@@ -592,14 +678,9 @@ Each row adds or rewrites these entries in `docs/HOW_TO_PLAY.md` in its own PR (
 6. **Queue without the money** (the design: an item too expensive can still be queued and BUILD
    waits for credits). That is pay-as-you-go, a sim change to "paid when queued" (your answer of
    2026-10-22). Recommended: no; "stalled" shows a queue that cannot go on for other reasons.
-7. **The start page.** A: build it with Phase 5's main menu (specified here). B: now, before Phase 3
-   ends, replacing the controls test as the first screen. Recommended: A.
-8. **Left-handed mode.** A: the switch comes with Phase 5's settings; the layout is ready and
-   tested mirrored from now on. B: a switch now in the pause menu. Recommended: A.
-9. **Under-attack cues.** A: the toast and the scope's rim marker replace the planned arrows at the
-   screen's edge. B: keep the edge arrows too. Recommended: A.
-10. **Team colour.** In a skirmish, should your units take your side's HUD colour (Lumen Accord
-    cyan, Derrick League orange), so HUD and army match? (ja/nej; recommended: ja; the routes of
-    P90 set it, a data choice)
-11. **The tagline** for the start page: "Oil and gas against wind and sun. Choose your side." (ja,
-    or your own words)
+7. **Team colour.** In a skirmish, should your units take your side's HUD colour (Lumen Accord
+   cyan, Derrick League orange), so HUD and army match? It changes the GDD's "player 1 orange,
+   player 2 cyan by default". (ja/nej; recommended: ja; P90's routes set it, a data choice)
+8. **A match starts with everything folded away**, the build drawer closed, instead of ADR 0024's
+   "a match starts with the menu open" (accepted 2026-10-31). (ja/nej; recommended: ja: the open
+   drawer would cover 40-50 % of the screen at the first look, and BUILD is one tap away)
