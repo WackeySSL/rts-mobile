@@ -40,6 +40,8 @@ const LIGHT: int = 0
 const MID: int = 1
 const GHOST: int = 2
 
+## The scenario's `team_triads`, set by `Minimap` before the first update of a match.
+var team_triads: PackedInt32Array = PackedInt32Array()
 ## The terrain colours by terrain id: `MapView.colors`.
 var terrain_colours: Dictionary[StringName, Color] = {}
 ## The alpha of the black over a tile seen before and not now: keep it equal to the fog's.
@@ -282,14 +284,14 @@ func _seen_foot(foot: Rect2i) -> bool:
 
 ## The team slot of `owner_id`, as the atlas gives its players their triads (`WorldSort`): owners
 ## 1..N take the triads in order and wrap after eight, owner 0 takes the first.
-static func team_slot(owner_id: int) -> int:
-	return posmod(maxi(owner_id, 1) - 1, WorldSort.TRIADS.size())
+static func team_slot(owner_id: int, triads: PackedInt32Array = PackedInt32Array()) -> int:
+	return WorldSort.triad_index(triads, owner_id)
 
 
 ## Writes the tone of `owner`'s team over the cells of `foot`, grown by `grow` cells on every side
 ## with its four corner cells left out when it is grown, that lie on the map.
 func _fill(foot: Rect2i, owner_id: int, tone: int, grow: int = 0) -> void:
-	var at: int = (team_slot(owner_id) * 3 + tone) * 3
+	var at: int = (team_slot(owner_id, team_triads) * 3 + tone) * 3
 	var area: Rect2i = foot.grow(grow)
 	var bytes: PackedByteArray = _bytes
 	for line: int in range(maxi(area.position.y, 0), mini(area.end.y, _rows)):

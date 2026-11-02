@@ -14,6 +14,12 @@ const PERF_ARENA_SCENE: String = "res://scenes/dev/perf_arena.tscn"
 ## The "Strike test" scenario (plan P112d): the local player owns a Deep Bore and a Blackout Array
 ## with a short charge, facing a still enemy base, so the phone preview can fire both strikes.
 const STRIKE_TEST_SCENARIO: String = "res://data/scenarios/dev_strikes.tres"
+## The two Skirmish routes (plan P90), one per side: Kestrel Flats with the player on the Derrick
+## League, or on the Lumen Accord (player 1 is local in both), and the dummy of the other side.
+const SKIRMISH_DERRICK: String = "res://data/scenarios/skirmish_kestrel_flats.tres"
+const SKIRMISH_LUMEN: String = "res://data/scenarios/skirmish_kestrel_flats_mirrored.tres"
+const DUMMY_FOSSIL: String = "res://data/ai/dummy_fossil.tres"
+const DUMMY_RENEW: String = "res://data/ai/dummy_renew.tres"
 
 
 static func is_enabled() -> bool:
@@ -29,10 +35,13 @@ static func open(tree: SceneTree, scene_path: String) -> Error:
 
 
 ## Changes to the main scene with `scenario_path` in the MatchRunner in place of the scene's own
-## scenario (Test map's). The runner starts its match in its own `_ready`, so the scenario is set on
+## scenario (Test map's), and `opponents` as its computer players (`MatchRunner.opponents` is not
+## exported, so it is set here). The runner starts its match in its own `_ready`, so both are set on
 ## the new scene before it enters the tree. Reports a missing scenario with push_error instead of
 ## crashing.
-static func open_main_with(tree: SceneTree, scenario_path: String) -> Error:
+static func open_main_with(
+	tree: SceneTree, scenario_path: String, opponents: Array[AiDef] = []
+) -> Error:
 	var scenario: ScenarioDef = (
 		load(scenario_path) as ScenarioDef if ResourceLoader.exists(scenario_path) else null
 	)
@@ -40,5 +49,17 @@ static func open_main_with(tree: SceneTree, scenario_path: String) -> Error:
 		push_error("DevRoutes: scenario not found: %s" % scenario_path)
 		return ERR_FILE_NOT_FOUND
 	var main: Node = (load(MAIN_SCENE) as PackedScene).instantiate()
-	(main.get_node("MatchRunner") as MatchRunner).scenario = scenario
+	var runner: MatchRunner = main.get_node("MatchRunner")
+	runner.scenario = scenario
+	runner.opponents = opponents
 	return tree.change_scene_to_node(main)
+
+
+## A Skirmish: `scenario_path` against the dummy `dummy_path` as player 2.
+static func open_skirmish(tree: SceneTree, scenario_path: String, dummy_path: String) -> Error:
+	var dummy: AiDef = load(dummy_path) as AiDef if ResourceLoader.exists(dummy_path) else null
+	if dummy == null:
+		push_error("DevRoutes: dummy not found: %s" % dummy_path)
+		return ERR_FILE_NOT_FOUND
+	var opponents: Array[AiDef] = [dummy]
+	return open_main_with(tree, scenario_path, opponents)

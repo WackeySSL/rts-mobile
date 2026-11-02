@@ -57,47 +57,70 @@ theme_type_variation = &"NumberLabel"
 text = "Dev menu"
 horizontal_alignment = 1
 
-[node name="TestMapButton" type="Button" parent="SafeArea/Scroll/Center/Column"]
+[node name="Grid" type="GridContainer" parent="SafeArea/Scroll/Center/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 2
+
+[node name="SkirmishDerrickButton" type="Button" parent="SafeArea/Scroll/Center/Column/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Skirmish (Derrick League)"
+
+[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/Grid/SkirmishDerrickButton"]
+script = ExtResource("5_dp")
+min_dp = Vector2(240, 48)
+
+[node name="SkirmishLumenButton" type="Button" parent="SafeArea/Scroll/Center/Column/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Skirmish (Lumen Accord)"
+
+[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/Grid/SkirmishLumenButton"]
+script = ExtResource("5_dp")
+min_dp = Vector2(240, 48)
+
+[node name="TestMapButton" type="Button" parent="SafeArea/Scroll/Center/Column/Grid"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Test map"
 
-[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/TestMapButton"]
+[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/Grid/TestMapButton"]
 script = ExtResource("5_dp")
 min_dp = Vector2(240, 48)
 
-[node name="StrikeTestButton" type="Button" parent="SafeArea/Scroll/Center/Column"]
+[node name="StrikeTestButton" type="Button" parent="SafeArea/Scroll/Center/Column/Grid"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Strike test"
 
-[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/StrikeTestButton"]
+[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/Grid/StrikeTestButton"]
 script = ExtResource("5_dp")
 min_dp = Vector2(240, 48)
 
-[node name="GalleryButton" type="Button" parent="SafeArea/Scroll/Center/Column"]
+[node name="GalleryButton" type="Button" parent="SafeArea/Scroll/Center/Column/Grid"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Art gallery"
 
-[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/GalleryButton"]
+[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/Grid/GalleryButton"]
 script = ExtResource("5_dp")
 min_dp = Vector2(240, 48)
 
-[node name="TouchProbeButton" type="Button" parent="SafeArea/Scroll/Center/Column"]
+[node name="TouchProbeButton" type="Button" parent="SafeArea/Scroll/Center/Column/Grid"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Touch probe"
 
-[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/TouchProbeButton"]
+[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/Grid/TouchProbeButton"]
 script = ExtResource("5_dp")
 min_dp = Vector2(240, 48)
 
-[node name="PerfArenaButton" type="Button" parent="SafeArea/Scroll/Center/Column"]
+[node name="PerfArenaButton" type="Button" parent="SafeArea/Scroll/Center/Column/Grid"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Perf arena"
 
-[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/PerfArenaButton"]
+[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/Grid/PerfArenaButton"]
 script = ExtResource("5_dp")
 min_dp = Vector2(240, 48)

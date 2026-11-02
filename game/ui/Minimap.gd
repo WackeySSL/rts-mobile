@@ -283,6 +283,8 @@ func _sync() -> void:
 	if map_view != null:
 		_picture.terrain_colours = map_view.colors
 	_picture.explored_alpha = explored_alpha
+	if runner.scenario != null:
+		_picture.team_triads = runner.scenario.team_triads
 	if runner.scenario != null and runner.scenario.rules != null:
 		_picture.period_ticks = runner.scenario.rules.fog_period_ticks
 	if _picture.update(snap, FogLayer.local_player_of(runner)):

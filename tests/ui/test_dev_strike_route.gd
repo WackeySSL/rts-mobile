@@ -36,14 +36,14 @@ func after_test() -> void:
 
 func test_the_dev_menu_lists_strike_test_right_after_test_map_as_an_enabled_button() -> void:
 	var menu: Node = await _open_menu()
-	var column: Node = menu.find_child("Column", true, false)
+	var grid: Node = menu.find_child("Grid", true, false)
 	var test_map: Button = menu.find_child("TestMapButton", true, false)
 	var strike: Button = menu.find_child("StrikeTestButton", true, false)
 	assert_object(strike).is_not_null()
 	assert_str(strike.text).is_equal("Strike test")
 	assert_bool(strike.disabled).is_false()
 	assert_int(strike.get_index()).is_equal(test_map.get_index() + 1)
-	assert_object(strike.get_parent()).is_same(column)
+	assert_object(strike.get_parent()).is_same(grid)
 
 
 func test_strike_test_opens_the_main_scene_with_the_strike_scenario() -> void:
