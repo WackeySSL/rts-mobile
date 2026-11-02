@@ -1,10 +1,10 @@
 class_name HudLayout
 extends RefCounted
 ## Where the battle-screen HUD keeps room for the build menu (ADR 0015 section 5, ADR 0023 section
-## 12, plan rows P85 and P85d). Landscape: three floating panels over the map, the build panel at
+## 12, plan rows P85 and P85d). Landscape: two floating panels over the map, the build panel at
 ## the bottom right (`panel_px` wide, the bottom row's right end, which `right_zone_px` reserves
-## for the SelectionPanel's band), the minimap's slot at the top right (`SLOT_DP`) and the status
-## pill at the top left after the Dev button (`PILL_DP`). Portrait: the sidebar's bottom band,
+## for the SelectionPanel's band) and the minimap's slot at the top right (`SLOT_DP`); the economy
+## pill at the top left is `HudCorners`' (P119, ADR 0025). Portrait: the sidebar's bottom band,
 ## whose height `BuildSidebar` puts in `bottom_zone_dp` (`band_dp`) from `_ready` and on every
 ## resize, with the minimap at its right end (`minimap_box_px`); every HUD part reads it here and
 ## nowhere else, so the ArmyBar sits a gap above the band. `menu_top_px` is the menu's real top on
@@ -23,8 +23,6 @@ const SELECTION_DP: float = 200.0
 const PANEL_MIN_DP: float = 184.0
 const PANEL_MAX_DP: float = 372.0
 const PANEL_GAP_DP: float = 8.0  ## Between the build panel and the SelectionPanel's band.
-const PILL_DP: float = 240.0  ## The landscape status pill's least width (its height is 48 dp).
-const PILL_HEIGHT_DP: float = 48.0
 const SLOT_DP: Vector2 = Vector2(148.0, 86.0)  ## The minimap's panel at the top right (2:1 box).
 const MINIMAP_SHARE: float = 0.4  ## The most of the band's body row the portrait minimap takes.
 const BAND_SHARE: float = 0.2  ## The portrait band's share of the safe height.

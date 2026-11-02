@@ -44,7 +44,7 @@
 ; Type variations (DevButton, NumberLabel, SelectionPanel, PerfCard, BuildSidebar, SidebarTab, PowerBar,
 ; PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner, ItemCaption,
 ; StrikeButton, StrikeConfirm, BuildButton, ReadyBadge, HudPanel, CapsButton, CapsTitle,
-; CapsBigTitle) are set by
+; CapsBigTitle, EconomyPill, EconomyPillLow, PillWord) are set by
 ; theme_type_variation on the node, in main.tscn or at build in the script (the power bar's two
 ; pairs switch with the low-power state, the cost of an item tile with its money).
 ; The build sidebar's tints (the colours of BuildSidebar, STYLE.md "Icons and glyphs") are read by
@@ -83,6 +83,41 @@ border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.17254902, 0.21960784, 0.24313725, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+; The economy pill (EconomyPill.gd, P119): the HUD panel's colour and edge with 4 dp at the sides and
+; none above and below, so its tap areas are the pill's whole 48 dp height. On low power the edge is
+; danger red and 2 dp thick, a shape as well as a colour (the word and the triangle are the others).
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pill"]
+content_margin_left = 4.0
+content_margin_top = 0.0
+content_margin_right = 4.0
+content_margin_bottom = 0.0
+bg_color = Color(0.03921569, 0.05490196, 0.06666667, 0.84)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.17254902, 0.21960784, 0.24313725, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pill_low"]
+content_margin_left = 4.0
+content_margin_top = 0.0
+content_margin_right = 4.0
+content_margin_bottom = 0.0
+bg_color = Color(0.03921569, 0.05490196, 0.06666667, 0.84)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.35294118, 0.23529412, 1)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
@@ -177,7 +212,8 @@ corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
-; The power bar: a dark track with a green fill, and an amber fill on low power.
+; The power bar: a dark track with a green fill, and a danger red fill on low power (HudTokens danger,
+; ADR 0025 section 3).
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_track"]
 bg_color = Color(0.11, 0.13, 0.15, 1)
 border_width_left = 2
@@ -198,7 +234,7 @@ corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_low_power"]
-bg_color = Color(0.96078431, 0.64705882, 0.14117647, 1)
+bg_color = Color(1, 0.35294118, 0.23529412, 1)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
@@ -335,8 +371,8 @@ PowerBarLow/styles/background = SubResource("StyleBoxFlat_track")
 PowerBarLow/styles/fill = SubResource("StyleBoxFlat_low_power")
 ; The numbers in the power bar, 18 dp (the least a HUD number may be). On the green bar they sit across
 ; the fill and the dark track: white with a dark edge (the size of the edge is set in code, in dp), 3.2:1
-; against the fill without the edge. On low power the bar is full and amber under all of them: dark and
-; with no edge, 9:1 against the amber (WCAG AA asks 4.5:1).
+; against the fill without the edge. On low power the bar is full and danger red under all of them: dark and
+; with no edge, 5.9:1 against the red (WCAG AA asks 4.5:1).
 PowerNumber/base_type = &"NumberLabel"
 PowerNumber/colors/font_color = Color(1, 1, 1, 1)
 PowerNumber/colors/font_outline_color = Color(0.06, 0.08, 0.11, 1)
@@ -394,4 +430,15 @@ CapsBigTitle/base_type = &"Label"
 CapsBigTitle/colors/font_color = Color(1, 1, 1, 1)
 CapsBigTitle/font_sizes/font_size = 36
 CapsBigTitle/fonts/font = SubResource("FontVariation_caps_big_title")
+; The economy pill (EconomyPill.gd, P119, ADR 0025 section 3): the HUD panel's look; on low power the
+; same with a thick danger red edge. PillWord is the word "LOW POWER" in the power bar: the caps face
+; at 14 dp (the body text's least), dark on the red bar (5.9:1).
+EconomyPill/base_type = &"PanelContainer"
+EconomyPill/styles/panel = SubResource("StyleBoxFlat_pill")
+EconomyPillLow/base_type = &"EconomyPill"
+EconomyPillLow/styles/panel = SubResource("StyleBoxFlat_pill_low")
+PillWord/base_type = &"Label"
+PillWord/colors/font_color = Color(0.06, 0.08, 0.11, 1)
+PillWord/font_sizes/font_size = 14
+PillWord/fonts/font = SubResource("FontVariation_caps_button")
 metadata/base_px = PackedStringArray("DevButton/font_sizes/font_size", "CapsButton/fonts/font", "CapsTitle/fonts/font", "CapsBigTitle/fonts/font")

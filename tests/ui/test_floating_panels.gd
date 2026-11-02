@@ -1,13 +1,13 @@
 extends GdUnitTestSuite
 ## The floating panels of the battle screen in landscape (plan P85d, ADR 0023 section 12) and the
 ## band in portrait, at the six sizes of ScreenSizes.ALL with the engine's own metrics and at every
-## profile of both orientations, also with a cutout. Landscape: the status pill is at the top left
-## after the Dev button, the minimap's slot at the top right and the build panel at the bottom
-## right, each inside the safe rect, at least 48 dp on both axes, the slot above the panel; the
-## status line is the pill's, and the cards of the panel carry their names. Portrait: no pill and no
-## slot, the status line is the band's first line, the tiles are plain. A turn moves the status line
-## and keeps its nodes. A touch on the pill or the slot orders nothing. How every HUD control sits
-## among the others is test_hud_layout's, the zone and the tabs are test_build_sidebar_layout's.
+## profile of both orientations, also with a cutout. Landscape: the economy pill (P119) is at the
+## top left after the Dev button, the minimap's slot at the top right and the build panel at the
+## bottom right, each inside the safe rect, at least 48 dp on both axes, the slot above the panel;
+## the cards of the panel carry their names. Portrait: the pill is there too, no slot, the band's
+## head line is empty, the tiles are plain. A turn keeps the pill's nodes and what they show. A
+## touch on the pill or the slot orders nothing. How every HUD control sits among the others is
+## test_hud_layout's, the zone and the tabs are test_build_sidebar_layout's.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -53,18 +53,15 @@ func test_the_pill_the_slot_and_the_panel_are_at_their_corners_in_landscape_at_e
 		var inner: Rect2 = _inner()
 		var safe: Rect2 = UiScale.safe_rect_base()
 		var dev: Rect2 = _rect("DevButton")
-		var pill: Rect2 = _rect("StatusPill")
+		var pill: Rect2 = _rect("EconomyPill")
 		var slot: Rect2 = _rect("MinimapSlot")
 		var panel: Rect2 = _rect(_sidebar)
 		var at: String = (
 			"%s: pill %s, slot %s, panel %s, inner %s" % [why, pill, slot, panel, inner]
 		)
-		for visible_part: String in ["StatusPill", "MinimapSlot"]:
-			(
-				assert_bool((_hud(visible_part) as Control).visible)
-				. override_failure_message(at)
-				. is_true()
-			)
+		for visible_part: String in ["EconomyPill", "MinimapSlot"]:
+			var shown: bool = (_hud(visible_part) as Control).visible
+			assert_bool(shown).override_failure_message(at).is_true()
 		# The top left: the pill starts a gap after the Dev button, on the same top line.
 		assert_float(pill.position.y).override_failure_message(at).is_equal_approx(
 			inner.position.y, TOLERANCE_PX
@@ -88,7 +85,7 @@ func test_the_pill_the_slot_and_the_panel_are_at_their_corners_in_landscape_at_e
 			assert_float(rect.size.x).override_failure_message(at).is_greater_equal(least)
 			assert_float(rect.size.y).override_failure_message(at).is_greater_equal(least)
 		assert_float(pill.size.x).override_failure_message(at).is_greater_equal(
-			UiScale.dp(HudLayout.PILL_DP) - TOLERANCE_PX
+			UiScale.dp(HudCorners.PILL_DP.x) - TOLERANCE_PX
 		)
 		var slot_dp: Vector2 = UiScale.dp_vec(HudLayout.SLOT_DP.x, HudLayout.SLOT_DP.y)
 		assert_float(slot.size.x).override_failure_message(at).is_greater_equal(
@@ -97,57 +94,47 @@ func test_the_pill_the_slot_and_the_panel_are_at_their_corners_in_landscape_at_e
 		assert_float(slot.size.y).override_failure_message(at).is_greater_equal(
 			slot_dp.y - TOLERANCE_PX
 		)
-		# The status line is the pill's, and it is whole inside it.
-		assert_object(_hud("Status").get_parent()).is_same(_hud("StatusPill"))
-		assert_bool(pill.encloses(_rect("Status"))).override_failure_message(at).is_true()
+		# The credits and the power are the pill's, and whole inside it.
+		assert_bool(pill.encloses(_rect("Line"))).override_failure_message(at).is_true()
+		assert_object(_hud("Status")).is_null()  # The band and the strip have no status line.
 
 
-func test_in_portrait_there_is_no_pill_and_no_slot_and_the_status_line_is_the_bands_first() -> void:
+func test_in_portrait_the_pill_shows_there_is_no_slot_and_the_bands_head_line_is_empty() -> void:
 	for screen: Dictionary in _screens(true):
 		await _open(screen["size"], screen["metrics"])
 		var why: String = str(screen["label"])
-		(
-			assert_bool((_hud("StatusPill") as Control).visible)
-			. override_failure_message(why)
-			. is_false()
-		)
-		(
-			assert_bool((_hud("MinimapSlot") as Control).visible)
-			. override_failure_message(why)
-			. is_false()
-		)
-		var status: Node = _hud("Status")
-		assert_object(status.get_parent()).override_failure_message(why).is_same(_hud("Stack"))
-		assert_int(status.get_index()).override_failure_message(why).is_equal(0)
-		(
-			assert_bool(_rect(_sidebar).encloses(_rect("Status")))
-			. override_failure_message(why)
-			. is_true()
-		)
+		var pill_shown: bool = (_hud("EconomyPill") as Control).visible
+		assert_bool(pill_shown).override_failure_message(why).is_true()
+		var slot_shown: bool = (_hud("MinimapSlot") as Control).visible
+		assert_bool(slot_shown).override_failure_message(why).is_false()
+		var head: Node = _hud("Head")  # What the pin's place keeps until P120 replaces the band.
+		assert_object(head.get_parent()).override_failure_message(why).is_same(_hud("Stack"))
+		assert_int(head.get_index()).override_failure_message(why).is_equal(0)
+		assert_int(head.get_child_count()).is_equal(1)  # Only its DpMinSize.
+		var inside: bool = _rect(_sidebar).encloses(_rect("Head"))
+		assert_bool(inside).override_failure_message(why).is_true()
 
 
-## A turn moves the status line between the pill and the band, keeps its nodes (the same credits
-## label and bar) and what they show, and sends nothing.
-func test_a_turn_moves_the_status_line_between_the_pill_and_the_band_and_keeps_its_nodes() -> void:
+## A turn keeps the pill's nodes (the same credits label and bar) and what they show, and sends
+## nothing; the slot comes and goes with the orientation, the pill stays.
+func test_a_turn_keeps_the_pills_nodes_and_what_they_show() -> void:
 	var landscape: UiMetrics = UiProfiles.by_name(&"android_6in")
 	var portrait: UiMetrics = UiProfiles.by_name(&"android_6in_portrait")
 	await _open(landscape.window_size, landscape)
-	var status: Node = _hud("Status")
-	var credits: Label = _hud("Credits")
+	var pill: Node = _hud("EconomyPill")
+	var credits: DigitRow = _hud("Credits")
 	var bar: ProgressBar = _hud("PowerBar")
-	credits.text = "1234"
+	credits.set_text("1234")
 	for turn: UiMetrics in [portrait, landscape, portrait, landscape]:
 		UiScale.set_override(turn)
 		get_window().size = turn.window_size
 		await await_idle_frame()
 		await await_idle_frame()
-		var home: Node = _hud("StatusPill") if turn == landscape else _hud("Stack")
-		assert_object(_hud("Status")).is_same(status)
-		assert_object(status.get_parent()).is_same(home)
+		assert_object(_hud("EconomyPill")).is_same(pill)
 		assert_object(_hud("Credits")).is_same(credits)
 		assert_object(_hud("PowerBar")).is_same(bar)
 		assert_str(credits.text).is_equal("1234")
-		assert_bool((_hud("StatusPill") as Control).visible).is_equal(turn == landscape)
+		assert_bool((_hud("EconomyPill") as Control).visible).is_true()
 		assert_bool((_hud("MinimapSlot") as Control).visible).is_equal(turn == landscape)
 	assert_array(_sent).is_empty()
 
@@ -206,7 +193,7 @@ func test_a_touch_on_the_pill_or_the_slot_orders_nothing_and_a_touch_on_the_map_
 	await _open(phone.window_size, phone)
 	var controller: PlayerController = _main.get_node("PlayerController")
 	controller.selection.set_ids(PackedInt32Array([1, 2]))
-	for part: String in ["StatusPill", "MinimapSlot"]:
+	for part: String in ["EconomyPill", "MinimapSlot"]:
 		var at: Vector2 = _rect(part).get_center()
 		TouchEvents.press(get_viewport(), 0, at)
 		TouchEvents.release(get_viewport(), 0, at)

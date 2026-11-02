@@ -77,8 +77,8 @@ func test_every_part_is_inside_the_safe_rect_48_dp_clear_of_the_hud_and_the_hud_
 				var control: Control = _hud(other)
 				if control.is_visible_in_tree():
 					others.append(control.get_global_rect())
+			others.append(_rect("EconomyPill"))
 			if not HudLayout.is_portrait():
-				others.append(_rect("StatusPill"))
 				others.append(_rect("MinimapSlot"))
 			for part: String in TAPPABLE:
 				var control: Control = _hud(part)

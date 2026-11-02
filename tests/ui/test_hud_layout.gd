@@ -3,9 +3,10 @@ extends GdUnitTestSuite
 ## ScreenSizes.ALL with the engine's own metrics and at every profile of both orientations, also
 ## with a cutout: every HUD control is inside the safe rect, at least 48 dp on each axis and clear
 ## of every other. In landscape that includes the floating panels (ADR 0023 section 12, P85d): the
-## build panel at the bottom right, the status pill at the top left and the minimap's slot at the
-## top right; the bottom row (the ArmyBar and the selection panel) stays left of the build panel's
-## zone. In portrait none enters the bottom band, which the sidebar sets and the ArmyBar sits above
+## build panel at the bottom right and the minimap's slot at the top right; the economy pill (P119)
+## is at the top left in both orientations; the bottom row (the ArmyBar and the selection panel)
+## stays left of the build panel's zone. In portrait none enters the bottom band, which the sidebar
+## sets and the ArmyBar sits above
 ## (P85). Portrait selects the six MVP types with 3-digit counts. Landscape selects the 30 tanks the
 ## scene starts with, and again 120 rocket squads (the widest single row) and three types with
 ## 3-digit counts (not the six: their column is taller than the smallest web phone): a row the
@@ -61,8 +62,8 @@ func test_every_hud_control_is_inside_the_safe_rect_48_dp_and_clear_of_the_other
 			"Panel": _rect(_panel),
 			"Sidebar": _rect("BuildSidebar"),
 		}
-		if not HudLayout.is_portrait():  # In portrait the pill and the slot are hidden.
-			big["Pill"] = _rect("StatusPill")
+		big["Pill"] = _rect("EconomyPill")  # In both orientations (P119).
+		if not HudLayout.is_portrait():  # In portrait the slot is hidden.
 			big["Slot"] = _rect("MinimapSlot")
 		var all: Dictionary[String, Rect2] = big.duplicate()
 		for button: String in ["AllArmy", "Group1", "Group2", "Group3"]:

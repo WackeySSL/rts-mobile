@@ -1,8 +1,10 @@
 extends GdUnitTestSuite
-## The build sidebar's credits line and power bar (plan P85c, ADR 0019 section 1), read from
-## crafted snapshots in the main scene. The match is paused, so only the snapshots a test writes
-## are on show, and the Commands the player controller would send are caught: reading the numbers
-## sends none. The zone and the layout are in test_build_sidebar_layout.
+## The economy pill (plan P119, ADR 0025 section 3), read from crafted snapshots in the main scene:
+## the credits and the power bar of the local player, the low-power look (a word, a shape and a
+## colour), the fixed digit slots, the tap areas and the pill's place at the six sizes and after a
+## turn. The match is paused, so only the snapshots a test writes are on show, and the Commands the
+## player controller would send are caught: reading the numbers sends none. Where the pill stands
+## among the other parts is test_hud_corners.gd's, and the build menu's layout is its own suites'.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -18,7 +20,7 @@ const AA_LARGE_TEXT: float = 3.0
 var _window_size_before: Vector2i
 var _main: Node2D
 var _runner: MatchRunner
-var _sidebar: BuildSidebar
+var _pill: EconomyPill
 var _controller: PlayerController
 var _sent: Array[Command] = []
 var _tick: int = 0
@@ -50,7 +52,7 @@ func test_it_shows_the_local_players_credits_and_power_and_nobody_elses() -> voi
 	var bar: ProgressBar = _node("PowerBar")
 	assert_float(bar.max_value).is_equal(100.0)
 	assert_float(bar.value).is_equal(40.0)
-	assert_str((_node("PowerText") as Label).text).is_equal("40/100")
+	assert_str(_numbers().text).is_equal("40/100")
 	assert_bool(_low()).is_false()
 	var other: ScenarioDef = _runner.scenario.duplicate() as ScenarioDef  # The file stays as it is.
 	other.local_player = 2
@@ -73,8 +75,9 @@ func test_low_power_is_more_used_than_made_and_shows_a_triangle_and_a_full_bar()
 	assert_bool(_low()).is_true()
 	assert_str(_glyph("PowerGlyph")).is_equal(ICONS % "glyph_low_power")
 	assert_str(str((_node("PowerBar") as Control).theme_type_variation)).is_equal("PowerBarLow")
+	assert_str(str(_pill.theme_type_variation)).is_equal("EconomyPillLow")  # The red edge.
 	assert_float((_node("PowerBar") as ProgressBar).value).is_equal(100.0)
-	assert_str((_node("PowerText") as Label).text).is_equal("101/100")
+	assert_str(_numbers().text).is_equal("101/100")
 	_publish(0, 0, 5)  # Nothing made at all: full, with a bar that can hold it.
 	assert_bool(_low()).is_true()
 	assert_float((_node("PowerBar") as ProgressBar).value).is_equal(
@@ -84,6 +87,7 @@ func test_low_power_is_more_used_than_made_and_shows_a_triangle_and_a_full_bar()
 	assert_bool(_low()).is_false()
 	assert_str(_glyph("PowerGlyph")).is_equal(ICONS % "glyph_power")
 	assert_str(str((_node("PowerBar") as Control).theme_type_variation)).is_equal("PowerBar")
+	assert_str(str(_pill.theme_type_variation)).is_equal("EconomyPill")
 	assert_float((_node("PowerBar") as ProgressBar).value).is_equal(30.0)
 
 
@@ -92,7 +96,7 @@ func test_a_player_with_no_buildings_has_an_empty_bar_that_is_not_low() -> void:
 	_publish(2000, 0, 0)
 	assert_bool(_low()).is_false()
 	assert_float((_node("PowerBar") as ProgressBar).value).is_equal(0.0)
-	assert_str((_node("PowerText") as Label).text).is_equal("0/0")
+	assert_str(_numbers().text).is_equal("0/0")
 
 
 func test_the_glyphs_have_their_icons_and_their_tints_from_the_theme() -> void:
@@ -100,15 +104,61 @@ func test_the_glyphs_have_their_icons_and_their_tints_from_the_theme() -> void:
 	_publish(0, 100, 40)
 	assert_str(_glyph("CreditsGlyph")).is_equal(ICONS % "glyph_credits")
 	assert_str(_glyph("PowerGlyph")).is_equal(ICONS % "glyph_power")
-	var credits: Color = _sidebar.get_theme_color(&"credits", &"BuildSidebar")
-	var power: Color = _sidebar.get_theme_color(&"power", &"BuildSidebar")
-	var warning: Color = _sidebar.get_theme_color(&"warning", &"BuildSidebar")
-	assert_that((_node("CreditsGlyph") as Control).modulate).is_equal(credits)
-	assert_that((_node("PowerGlyph") as Control).modulate).is_equal(power)
+	var money: Color = _pill.get_theme_color(&"money", &"HudTokens")
+	var danger: Color = _pill.get_theme_color(&"danger", &"HudTokens")
+	assert_that((_node("CreditsGlyph") as Control).modulate).is_equal(money)
+	assert_that((_node("PowerGlyph") as Control).modulate).is_equal(money)
 	_publish(0, 100, 140)
-	assert_that((_node("PowerGlyph") as Control).modulate).is_equal(warning)
-	assert_that(credits).is_not_equal(power)
-	assert_that(power).is_not_equal(warning)
+	assert_that((_node("PowerGlyph") as Control).modulate).is_equal(danger)
+	assert_that(money).is_not_equal(danger)
+	assert_that(_pill.get_theme_stylebox(&"panel", &"EconomyPillLow")).is_not_equal(
+		_pill.get_theme_stylebox(&"panel", &"EconomyPill")
+	)
+	var edge: StyleBoxFlat = _pill.get_theme_stylebox(&"panel", &"EconomyPillLow") as StyleBoxFlat
+	assert_that(edge.border_color).is_equal(danger)
+	(
+		assert_that((_node("PowerBar") as ProgressBar).get_theme_stylebox(&"fill") as StyleBoxFlat)
+		. is_not_null()
+	)
+	var fill: StyleBoxFlat = (
+		(_node("PowerBar") as Control).get_theme_stylebox(&"fill") as StyleBoxFlat
+	)
+	assert_that(fill.bg_color).is_equal(danger)  # The bar turns danger red too.
+
+
+## Low power is a word as well: "LOW POWER" takes the numbers' place in the bar, and the numbers
+## come back with the power. The bar (and with it the pill, as far as the layout has room) is wide
+## enough for the word at every profile of both orientations.
+func test_low_power_shows_the_word_in_the_bar_at_every_size() -> void:
+	await _open()
+	var word: Label = _node("PowerWord")
+	assert_bool(word.uppercase).is_true()
+	assert_str(word.text.to_upper()).is_equal("LOW POWER")
+	for profile: StringName in _every_profile():
+		await _turn(profile)
+		_publish(0, 6, 4)
+		await await_idle_frame()
+		var rest: float = _pill.size.x
+		assert_bool(word.visible).override_failure_message(str(profile)).is_false()
+		_publish(0, 6, 9)
+		await await_idle_frame()
+		await await_idle_frame()
+		var room: float = _rect("PowerBar").size.x - 2.0 * UiScale.dp(2.0)
+		var why: String = "%s: word %s in a bar of %s" % [profile, word.size.x, room]
+		assert_bool(word.visible).override_failure_message(why).is_true()
+		assert_bool(_node("PowerText").visible).is_false()  # The word has the place.
+		var needs: float = word.get_combined_minimum_size().x
+		assert_float(needs).override_failure_message(why).is_less_equal(room)
+		assert_float(_pill.size.x).is_greater_equal(rest)  # The pill grew for it, never shrank.
+		var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), 12.0)
+		var inside: bool = safe.grow(0.5).encloses(_pill.get_global_rect())
+		assert_bool(inside).override_failure_message(why).is_true()
+		_publish(0, 6, 4)
+		await await_idle_frame()
+		await await_idle_frame()
+		assert_bool(word.visible).override_failure_message(str(profile)).is_false()
+		assert_bool(_node("PowerText").visible).override_failure_message(str(profile)).is_true()
+		assert_float(_pill.size.x).is_equal_approx(rest, 0.5)  # And back to its width.
 
 
 ## The numbers are in the bar where it is wide enough for them and left out where it is not: the
@@ -130,68 +180,81 @@ func test_the_numbers_are_in_the_bar_only_where_it_is_wide_enough() -> void:
 
 ## A turn changes the bar's width without a new snapshot, so only the bar's own `resized` makes
 ## the numbers follow it (the fit at the end of `_apply_dp` still reads the old width, as a
-## container sorts later). Portrait gives the bar room for numbers that landscape has none for.
+## container sorts later). At every profile the numbers show exactly where they fit the bar.
 func test_the_numbers_follow_the_bar_when_a_turn_changes_its_width() -> void:
 	await _open()
-	_publish(2000, 99999, 99999)
-	await await_idle_frame()
-	var landscape_px: float = (_node("PowerBar") as Control).size.x
-	assert_bool((_node("PowerText") as Control).visible).is_false()
-	await _turn(&"android_6in_portrait")
-	var portrait_px: float = (_node("PowerBar") as Control).size.x
-	assert_float(portrait_px).is_greater(landscape_px)  # The turn moved the bar: not vacuous.
-	assert_bool((_node("PowerText") as Control).visible).is_true()
-	await _turn(&"android_6in")
-	assert_float((_node("PowerBar") as Control).size.x).is_equal_approx(landscape_px, 1.0)
-	assert_bool((_node("PowerText") as Control).visible).is_false()
+	var shown: Dictionary[bool, int] = {true: 0, false: 0}
+	for profile: StringName in _every_profile():
+		await _turn(profile)
+		for made: int in [60, 99999]:
+			_publish(2000, made, made - 20)
+			await await_idle_frame()
+			var text: Control = _node("PowerText")
+			var fits: bool = (
+				text.get_combined_minimum_size().x + 2.0 * UiScale.dp(4.0)
+				<= ((_node("PowerBar") as Control).size.x)
+			)
+			(
+				assert_bool(text.visible)
+				. override_failure_message("%s, %d made" % [profile, made])
+				. is_equal(fits)
+			)
+			shown[text.visible] += 1
+	assert_int(shown[true]).is_greater(0)  # Not vacuous: some bars hold the numbers, some not.
+	assert_int(shown[false]).is_greater(0)
 
 
 ## The numbers are in the middle of the bar, not hanging from its top: a line of text is taller
 ## than the bar's inside, so a label that grew only downwards rested on the bottom border. Their
-## rect is inside the bar's and has the same centre, in both states and on every screen.
-func test_the_numbers_sit_inside_the_bar_and_centred_in_it_at_every_size() -> void:
+## rect is inside the bar's and has the same centre, in both states and on every screen; on low
+## power the word has the same place.
+func test_the_numbers_and_the_word_sit_inside_the_bar_and_centred_in_it_at_every_size() -> void:
 	await _open()
 	for profile: StringName in _every_profile():
 		await _turn(profile)
 		for used: int in [4, 9]:  # Of 6 made: power to spare, then low power.
 			_publish(2000, 6, used)
 			await await_idle_frame()
+			await await_idle_frame()
 			var why: String = "%s, %d/6 (%s)" % [profile, used, get_window().size]
-			var text: Control = _node("PowerText")
-			assert_bool(text.visible).override_failure_message(why + ": hidden").is_true()
+			var shown: Control = _node("PowerText" if used < 6 else "PowerWord")
+			assert_bool(shown.visible).override_failure_message(why + ": hidden").is_true()
 			var bar: Rect2 = _rect("PowerBar")
-			var numbers: Rect2 = _rect("PowerText")
-			var inside: String = "%s: numbers %s in the bar %s" % [why, numbers, bar]
-			assert_bool(bar.grow(0.5).encloses(numbers)).override_failure_message(inside).is_true()
-			var off: float = absf(numbers.get_center().y - bar.get_center().y)
-			var centred: String = "%s: numbers %s px off the bar's middle" % [why, off]
+			var rect: Rect2 = shown.get_global_rect()
+			var inside: String = "%s: %s in the bar %s" % [why, rect, bar]
+			assert_bool(bar.grow(0.5).encloses(rect)).override_failure_message(inside).is_true()
+			var off: float = absf(rect.get_center().y - bar.get_center().y)
+			var centred: String = "%s: %s px off the bar's middle" % [why, off]
 			assert_float(off).override_failure_message(centred).is_less_equal(UiScale.dp(1.0))
 
 
-## The numbers' colours are the theme's and read against what is under them (WCAG): on the amber
-## of low power the bar is full, so all of the text is on amber and is dark; on the green bar the
+## The numbers' colours are the theme's and read against what is under them (WCAG): on the danger
+## red of low power the bar is full, so all of the text is on red and is dark; on the green bar the
 ## text crosses the fill and the dark track, so it is white with a dark edge that reads on both.
-func test_the_numbers_read_on_the_amber_and_on_the_green() -> void:
+func test_the_numbers_read_on_the_red_and_on_the_green() -> void:
 	await _open()
 	var bar: ProgressBar = _node("PowerBar")
-	var text: Label = _node("PowerText")
 	_publish(0, 100, 130)
-	var amber: Color = (bar.get_theme_stylebox(&"fill") as StyleBoxFlat).bg_color
-	var dark: Color = text.get_theme_color(&"font_color")
-	assert_float(_contrast(dark, amber)).is_greater_equal(AA_TEXT)
-	assert_float(text.get_theme_color(&"font_outline_color").a).is_equal(0.0)  # No edge on amber.
+	var red: Color = (bar.get_theme_stylebox(&"fill") as StyleBoxFlat).bg_color
+	var dark: Color = _pill.get_theme_color(&"font_color", &"PowerNumberLow")
+	assert_float(_contrast(dark, red)).is_greater_equal(AA_TEXT)
+	assert_float(_pill.get_theme_color(&"font_outline_color", &"PowerNumberLow").a).is_equal(0.0)
+	var word: Color = _pill.get_theme_color(&"font_color", &"PillWord")
+	assert_float(_contrast(word, red)).is_greater_equal(AA_TEXT)  # The word is on the red too.
 	_publish(0, 100, 40)
 	var green: Color = (bar.get_theme_stylebox(&"fill") as StyleBoxFlat).bg_color
 	var track: Color = (bar.get_theme_stylebox(&"background") as StyleBoxFlat).bg_color
-	var white: Color = text.get_theme_color(&"font_color")
-	var edge: Color = text.get_theme_color(&"font_outline_color")
-	assert_that(green).is_not_equal(amber)  # The look did change with the state.
+	var white: Color = _pill.get_theme_color(&"font_color", &"PowerNumber")
+	var edge: Color = _pill.get_theme_color(&"font_outline_color", &"PowerNumber")
+	assert_that(green).is_not_equal(red)  # The look did change with the state.
 	assert_float(_contrast(white, green)).is_greater_equal(AA_LARGE_TEXT)
 	assert_float(_contrast(white, track)).is_greater_equal(AA_TEXT)
 	assert_float(_contrast(edge, white)).is_greater_equal(AA_TEXT)
 	assert_float(_contrast(edge, green)).is_greater_equal(AA_TEXT)
 	assert_float(edge.a).is_equal(1.0)
-	assert_int(text.get_theme_constant(&"outline_size")).is_greater_equal(1)
+	var digit: Label = _numbers().get_child(0) as Label  # The edge size is in dp, set per label.
+	assert_int(digit.get_theme_constant(&"outline_size")).is_greater_equal(1)
+	assert_str(str(digit.theme_type_variation)).is_equal("PowerNumber")
 
 
 ## The credits keep one width, so the bar does not move when they gain or lose a digit.
@@ -219,11 +282,11 @@ func test_the_bar_does_not_move_when_the_credits_gain_a_digit() -> void:
 func test_a_snapshot_without_player_columns_shows_zeros() -> void:
 	await _open()
 	_runner.snapshot = MatchSnapshot.new()
-	_sidebar.refresh()
+	_pill.refresh()
 	assert_str(_credits().text).is_equal("0")
-	assert_str((_node("PowerText") as Label).text).is_equal("0/0")
-	_sidebar.runner = null  # No match at all: nothing is read, nothing breaks.
-	_sidebar.refresh()
+	assert_str(_numbers().text).is_equal("0/0")
+	_pill.runner = null  # No match at all: nothing is read, nothing breaks.
+	_pill.refresh()
 	await await_idle_frame()
 	assert_str(_credits().text).is_equal("0")
 
@@ -265,10 +328,10 @@ func _craft(credits: int, made: int, used: int) -> MatchSnapshot:
 ## Publishes a crafted tick and reads it at once.
 func _publish(credits: int, made: int, used: int) -> void:
 	_runner.snapshot = _craft(credits, made, used)
-	_sidebar.refresh()
+	_pill.refresh()
 
 
-## The rects of the status line's pieces, by name.
+## The rects of the pill's pieces, by name.
 func _status_rects() -> Dictionary[String, Rect2]:
 	var rects: Dictionary[String, Rect2] = {}
 	for node_name: String in ["CreditsGlyph", "Credits", "PowerGlyph", "PowerBar"]:
@@ -315,11 +378,15 @@ func _glyph(node_name: String) -> String:
 	return (_node(node_name) as TextureRect).texture.resource_path
 
 
-func _credits() -> Label:
+func _credits() -> DigitRow:
 	return _node("Credits")
 
 
-## By name from the HUD: the status line is the pill's in landscape and the band's in portrait.
+func _numbers() -> DigitRow:
+	return _node("PowerText")
+
+
+## By name from the HUD.
 func _node(node_name: String) -> Node:
 	return _main.get_node("Hud").find_child(node_name, true, false)
 
@@ -345,7 +412,7 @@ func _open() -> void:
 	add_child(_main)
 	await await_idle_frame()
 	_runner = _main.get_node("MatchRunner")
-	_sidebar = _main.get_node("Hud").find_child("BuildSidebar", true, false)
+	_pill = _main.get_node("Hud/EconomyPill")
 	_controller = _main.get_node("PlayerController")
 	_sent.clear()
 	_controller.command_sink = func(command: Command) -> void: _sent.append(command)

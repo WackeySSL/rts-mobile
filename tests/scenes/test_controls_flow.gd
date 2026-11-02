@@ -37,9 +37,9 @@ const GROUND_MILLI: Vector2i = Vector2i(10000, 15000)
 const DRAG_FROM: Vector2 = Vector2(900, 400)
 const DRAG_FROM_PORTRAIT: Vector2 = Vector2(660, 400)
 ## A box with no tank in it, in base px: left of the block flat (it starts at x 576); upright the
-## block is at y 688 and lower, so above it.
+## block is at y 688 and lower, so above it and under the selection panel (P119: under the pill).
 const EMPTY_BOX: Rect2 = Rect2(80, 300, 220, 200)
-const EMPTY_BOX_PORTRAIT: Rect2 = Rect2(80, 200, 220, 200)
+const EMPTY_BOX_PORTRAIT: Rect2 = Rect2(80, 300, 220, 200)
 ## The middle of a pinch, clear of the tanks and the HUD, above the block: the fingers go 170 px
 ## either side, so flat they stay left of the build sidebar, and upright above the band. The pinch
 ## keeps the world point under it, so the camera centre follows a zoom (and stays in the map).

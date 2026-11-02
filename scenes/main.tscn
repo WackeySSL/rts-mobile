@@ -36,6 +36,7 @@
 [ext_resource type="Script" path="res://game/ui/Minimap.gd" id="37_minimap"]
 [ext_resource type="Script" path="res://game/ui/GhostControls.gd" id="38_ghost_controls"]
 [ext_resource type="Script" path="res://game/view/RallyLayer.gd" id="39_rally_layer"]
+[ext_resource type="Script" path="res://game/ui/EconomyPill.gd" id="40_pill"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -203,7 +204,7 @@ mouse_filter = 2
 theme = ExtResource("16_theme")
 script = ExtResource("38_ghost_controls")
 placement = NodePath("../../PlacementController")
-clear_of = [NodePath("../SafeArea/DevButton"), NodePath("../SafeArea/ArmyBand/ArmyBar"), NodePath("../SafeArea/SelectionBand/SelectionPanel"), NodePath("../SafeArea/StrikeBand/StrikeControls"), NodePath("../SafeArea/BuildSidebar"), NodePath("../SafeArea/StatusBand/StatusPill"), NodePath("../SafeArea/MinimapSlot")]
+clear_of = [NodePath("../SafeArea/DevButton"), NodePath("../SafeArea/ArmyBand/ArmyBar"), NodePath("../SafeArea/SelectionBand/SelectionPanel"), NodePath("../SafeArea/StrikeBand/StrikeControls"), NodePath("../SafeArea/BuildSidebar"), NodePath("../EconomyPill"), NodePath("../SafeArea/MinimapSlot")]
 
 [node name="SafeArea" type="MarginContainer" parent="Hud"]
 anchors_preset = 15
@@ -225,14 +226,12 @@ script = ExtResource("3_dev")
 [node name="DpMinSize" type="Node" parent="Hud/SafeArea/DevButton"]
 script = ExtResource("13_dp")
 
-[node name="BuildSidebar" type="Control" parent="Hud/SafeArea" node_paths=PackedStringArray("runner", "controller", "pill", "minimap_slot", "minimap", "top_left", "placement", "strike_aim")]
+[node name="BuildSidebar" type="Control" parent="Hud/SafeArea" node_paths=PackedStringArray("runner", "controller", "minimap_slot", "minimap", "placement", "strike_aim")]
 script = ExtResource("21_sidebar")
 runner = NodePath("../../../MatchRunner")
 controller = NodePath("../../../PlayerController")
-pill = NodePath("../StatusBand/StatusPill")
 minimap_slot = NodePath("../MinimapSlot")
 minimap = NodePath("../MinimapSlot/Minimap")
-top_left = NodePath("../DevButton")
 placement = NodePath("../../../PlacementController")
 strike_aim = NodePath("../../../StrikeAim")
 
@@ -257,14 +256,6 @@ runner = NodePath("../../../../MatchRunner")
 army_bar = NodePath("../../ArmyBand/ArmyBar")
 top_left = NodePath("../../DevButton")
 
-[node name="StatusBand" type="MarginContainer" parent="Hud/SafeArea"]
-mouse_filter = 2
-
-[node name="StatusPill" type="PanelContainer" parent="Hud/SafeArea/StatusBand"]
-size_flags_horizontal = 0
-size_flags_vertical = 0
-theme_type_variation = &"BuildSidebar"
-
 [node name="MinimapSlot" type="PanelContainer" parent="Hud/SafeArea"]
 size_flags_horizontal = 8
 size_flags_vertical = 0
@@ -286,6 +277,13 @@ mouse_filter = 2
 script = ExtResource("34_strike_controls")
 aim = NodePath("../../../../StrikeAim")
 runner = NodePath("../../../../MatchRunner")
+
+[node name="EconomyPill" type="PanelContainer" parent="Hud" node_paths=PackedStringArray("runner", "safe_area", "top_left")]
+theme = ExtResource("16_theme")
+script = ExtResource("40_pill")
+runner = NodePath("../../MatchRunner")
+safe_area = NodePath("../SafeArea")
+top_left = NodePath("../SafeArea/DevButton")
 
 [connection signal="selection_changed" from="PlayerController" to="UnitLayer" method="set_selected"]
 [connection signal="selection_changed" from="PlayerController" to="BuildingLayer" method="set_selected"]

@@ -80,7 +80,7 @@ func test_a_touch_on_the_sidebar_orders_nothing_and_a_touch_on_the_map_does() ->
 	_controller.selection.set_ids(PackedInt32Array([1, 2]))
 	_tap("TabVehicles")
 	_tap("Items")
-	_tap("Status")
+	_tap("Backdrop")
 	var padding: Vector2 = _sidebar.get_global_rect().position + Vector2(2.0, 2.0)
 	TouchEvents.press(get_viewport(), 0, padding)  # The panel's own padding.
 	TouchEvents.release(get_viewport(), 0, padding)
@@ -99,7 +99,7 @@ func _pressed() -> Array[bool]:
 	return out
 
 
-## By name from the HUD: the status line is the pill's in landscape and the band's in portrait.
+## By name from the HUD.
 func _node(node_name: String) -> Node:
 	return _main.get_node("Hud").find_child(node_name, true, false)
 
