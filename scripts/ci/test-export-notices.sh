@@ -6,9 +6,13 @@
 # ends with the unchanged libc++ LICENSE.TXT and then the godot-cpp LICENSE.md, that the two notices agree line
 # for line after their header line, that the tags they name and the SHA-256 of the libc++ licence are the ones
 # the README and build-native.sh record, and that each script exits 1 when either licence file is missing or
-# empty. For export-android.sh it checks that the APK's library holds the built bytes, that libc++_shared.so is
-# required, that a failing ELF check fails the export and, from the stubs' log, which files the checks and the
-# description ran on. For export-android.sh --release (P51r, the perf APK of the gate) it checks the preset and
+# empty. Since P118b both scripts also put the OFL.txt of every font folder under assets/art/fonts/ into the
+# notice (scripts/ci/font-notice.sh): the test checks that each block holds the OFL.txt unchanged and names the
+# family's font files, that a font folder nobody listed is picked up, that a font folder without a non-empty
+# OFL.txt stops both scripts with exit 1, and that the pack (web) or the APK (Android, both modes) must hold each
+# OFL.txt, which the include_filter of the presets does. For export-android.sh it checks that the APK's library
+# holds the built bytes, that libc++_shared.so is required, that a failing ELF check fails the export and, from
+# the stubs' log, which files the checks and the description ran on. For export-android.sh --release (P51r, the perf APK of the gate) it checks the preset and
 # the template it exports with, the release keystore variables, the library entry android.release.arm64 and the
 # three checks of that mode: not debuggable, the dev_menu feature in the pack and the release template's engine
 # library. ci.yml runs it in android-debug-apk, next to the offline test of publish-dev-release.sh.
@@ -40,6 +44,13 @@ if [ "$1" != "--version" ] && [ -f native/sim_kernels.gdextension ] && ! grep -F
   echo "stub godot: started without the seeded extension list" >&2
   exit 134
 fi
+# The OFL.txt files that the preset's include_filter packs: all of them, except those whose path holds STUB_NO_OFL
+# (OFL.txt for none of them, a folder name for one family).
+packed_ofl() {
+  for f in $(find assets/art/fonts -name OFL.txt | sort); do
+    case "$f" in *"${STUB_NO_OFL:-@none@}"*) ;; *) echo "$f" ;; esac
+  done
+}
 case "$*" in
   --version*) echo "4.7.2.stable.official.0000000" ;;
   *"--export-release Web "*)
@@ -48,10 +59,19 @@ case "$*" in
     echo js >"$dir/index.js"
     echo wasm >"$dir/index.wasm"
     printf 'project\n_custom_features\ndev_menu\n%s\n' "$STUB_PCK_EXTRA" >"$dir/index.pck"
+    # The pack directory lists a path without res://.
+    packed_ofl >>"$dir/index.pck"
     ;;
   *"--export-debug Android "* | *"--export-release Android perf "*)
     echo "$ANDROID_HOME/build-tools/36.0.0/apksigner sign --ks stub"
     cp "$STUB_APK" "${!#}"
+    # The same files as APK entries: the project file res://<path> is assets/<path>.
+    pack="$(mktemp -d)"
+    for ofl in $(packed_ofl); do
+      mkdir -p "$pack/assets/$(dirname "$ofl")"
+      cp "$ofl" "$pack/assets/$ofl"
+    done
+    if [ -d "$pack/assets" ]; then (cd "$pack" && zip -q -g -r -D "${!#}" assets); fi
     ;;
 esac
 STUB
@@ -160,8 +180,15 @@ tree() {
   echo kernels >"$root/$1/native/bin/$native_release"
   cp "$repo/scripts/export-web.sh" "$repo/scripts/export-android.sh" "$repo/scripts/seed-extension-list.sh" \
     "$repo/scripts/build-native.sh" "$repo/scripts/verify-allowlist.txt" "$root/$1/scripts/"
-  cp "$repo/scripts/ci/check-android-elf.sh" "$repo/scripts/ci/godot-cpp-notice.sh" "$root/$1/scripts/ci/"
+  cp "$repo/scripts/ci/check-android-elf.sh" "$repo/scripts/ci/godot-cpp-notice.sh" "$repo/scripts/ci/font-notice.sh" \
+    "$root/$1/scripts/ci/"
   cp -R "$repo/docs/licenses" "$root/$1/docs/licenses"
+  # The font folders of the project: each OFL.txt as it is, and an empty file in place of each font (the notice
+  # reads only their names).
+  while IFS= read -r f; do
+    mkdir -p "$root/$1/$(dirname "$f")"
+    case "$f" in */OFL.txt) cp "$repo/$f" "$root/$1/$f" ;; *) : >"$root/$1/$f" ;; esac
+  done < <(cd "$repo" && find assets/art/fonts -type f \( -name OFL.txt -o -iname '*.ttf' -o -iname '*.otf' -o -iname '*.woff' -o -iname '*.woff2' \))
 }
 
 # run NAME web|android|release: runs the export script in the tree NAME (release: export-android.sh --release, with the
@@ -178,9 +205,43 @@ run() {
   fi
   out="$(cd "$root/$1" && env -i PATH="$root/bin:$PATH" HOME="${STUB_HOME:-$root/home}" TMPDIR="$root/tmp" GODOT="$root/bin/godot" \
     JAVA_HOME="$root/jdk" ANDROID_HOME="$root/sdk" STUB_APK="${STUB_APK:-$apk}" STUB_ALIGN="${STUB_ALIGN:-0x4000}" \
-    STUB_PCK_EXTRA="${STUB_PCK_EXTRA:-}" STUB_DEBUGGABLE="${STUB_DEBUGGABLE:-}" STUB_ORIENTATION="${STUB_ORIENTATION:-}" STUB_LOG="$root/$1.stub.log" \
+    STUB_PCK_EXTRA="${STUB_PCK_EXTRA:-}" STUB_NO_OFL="${STUB_NO_OFL:-}" STUB_DEBUGGABLE="${STUB_DEBUGGABLE:-}" STUB_ORIENTATION="${STUB_ORIENTATION:-}" STUB_LOG="$root/$1.stub.log" \
     GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$root/keystore" GODOT_ANDROID_KEYSTORE_DEBUG_USER=u \
     GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=p ${keys[@]+"${keys[@]}"} bash "scripts/export-$script.sh" $args 2>&1)" || rc=$?
+}
+
+# font_blocks LABEL NOTICE TREE: every OFL.txt under TREE/assets/art/fonts is one block of NOTICE (P118b): one title line
+# "Font family <Name>: <path>", the OFL.txt unchanged five lines below it (a rule, the files line, a note and a blank
+# line come between), and the name of each font file of that folder on the files line. No other block is there.
+font_blocks() {
+  local label="$1" notice="$2" tree="$3" count=0 ofl rel title lines missing font titles
+  while IFS= read -r ofl; do
+    count=$((count + 1))
+    rel="${ofl#"$tree"/}"
+    title="$(grep -n "^Font family .*: $rel\$" "$notice" | cut -d: -f1 || true)"
+    lines="$(wc -l <"$ofl" | tr -d ' ')"
+    if [ -z "$title" ] || [ "$(wc -w <<<"$title" | tr -d ' ')" != 1 ] ||
+      ! head -n $((title + 4 + lines)) "$notice" | tail -n "$lines" | cmp -s - "$ofl"; then
+      fail "$label: the notice has no single block with $rel unchanged (title at line '${title:-none}')"
+      continue
+    fi
+    missing=""
+    for font in "$(dirname "$ofl")"/*; do
+      [ "$font" = "$ofl" ] || sed -n "$((title + 2))p" "$notice" | grep -Fq "$(basename "$font")" ||
+        missing="$missing $(basename "$font")"
+    done
+    if [ -z "$missing" ]; then
+      pass "$label: the notice holds $rel unchanged, and its files line names the font files"
+    else
+      fail "$label: the files line of the $rel block lacks:$missing"
+    fi
+  done < <(find "$tree/assets/art/fonts" -name OFL.txt | LC_ALL=C sort)
+  titles="$(grep -c '^Font family .*: assets/art/fonts/.*OFL\.txt$' "$notice" || true)"
+  if [ "$count" -gt 0 ] && [ "$titles" = "$count" ]; then
+    pass "$label: $count font block(s) in the notice, one for each OFL.txt of the project"
+  else
+    fail "$label: the notice has $titles font block(s) for $count OFL.txt file(s) in the project"
+  fi
 }
 
 # (1) Both scripts run through with the stubs and write a notice that ends with the godot-cpp licence, after
@@ -202,6 +263,7 @@ for kind in web android; do
     continue
   fi
   pass "$kind: the export runs through with stub tools"
+  font_blocks "$kind" "$notice" "$root/ok"
   # The godot-cpp section ends the notice (a blank line, a rule, the title line and a rule come before its text).
   title="$(grep -n '^godot-cpp .*: LICENSE\.md$' "$notice" | cut -d: -f1 || true)"
   if [ -n "$title" ] && head -n $((title - 3)) "$notice" | tail -c "$size" | cmp -s - "$license"; then
@@ -266,10 +328,13 @@ for spec in "libgodot_android.so:r29 14206865" "libc++_shared.so:r28 13004108"; 
 done
 
 # (3) A missing or empty libc++ or godot-cpp licence file stops each script with exit 1 and a message that names it.
+# P118b: the OFL.txt of every font folder of the project, found by the same rule as the script's.
+ofl_rels="$(cd "$repo" && find assets/art/fonts -name OFL.txt | LC_ALL=C sort)"
+[ -n "$ofl_rels" ] || fail "the project has no assets/art/fonts/*/OFL.txt"
 for kind in web android; do
-  for file in "$libcxx/LICENSE.TXT" "$cpp_dir/LICENSE.md"; do
+  for file in "$libcxx/LICENSE.TXT" "$cpp_dir/LICENSE.md" $ofl_rels; do
     for state in missing empty; do
-      name="$kind-$state-$(basename "$file")"
+      name="$kind-$state-${file//\//_}"
       tree "$name"
       if [ "$state" = missing ]; then rm "$root/$name/$file"; else : >"$root/$name/$file"; fi
       run "$name" "$kind"
@@ -371,6 +436,86 @@ else
 fi
 # The debug export runs none of those checks: the dev APK is debuggable and has no dev_menu feature in its pack.
 STUB_DEBUGGABLE=all native_case "the debug export does not run the release checks" 0 "export-android: OK build/android/rts-mobile-debug.apk"
+
+# (7) P118b: the font folders. The rule has no list of families: a folder under assets/art/fonts/ that holds a font file is
+# picked up, and without a non-empty OFL.txt it stops the export. fonts_tree NAME [OFL-STATE] makes a tree with a third
+# font folder, new-family, whose OFL.txt is ok (the default), missing or empty. The notice is in build/web or build/android.
+fonts_tree() {
+  tree "$1"
+  mkdir -p "$root/$1/assets/art/fonts/new-family"
+  : >"$root/$1/assets/art/fonts/new-family/NewFamily-Regular.otf"
+  : >"$root/$1/assets/art/fonts/new-family/NewFamily-Italic.otf"
+  case "${2:-ok}" in
+    ok) printf 'Copyright 2026 The New Family Authors\n\nThis Font Software is licensed under the SIL Open Font License, Version 1.1.\n' \
+      >"$root/$1/assets/art/fonts/new-family/OFL.txt" ;;
+    empty) : >"$root/$1/assets/art/fonts/new-family/OFL.txt" ;;
+  esac
+}
+for kind in web android release; do
+  where=android
+  if [ "$kind" = web ]; then where=web; fi
+  fonts_tree "new-$kind"
+  run "new-$kind" "$kind"
+  notice="$root/new-$kind/build/$where/THIRD_PARTY_LICENSES.txt"
+  if [ "$rc" != 0 ] || [ ! -s "$notice" ]; then
+    fail "$kind: a new font folder: the export did not run through (exit $rc): $(tail -n 3 <<<"$out")"
+    continue
+  fi
+  font_blocks "$kind, with a third font folder" "$notice" "$root/new-$kind"
+  if grep -Fxq "Font family New Family: assets/art/fonts/new-family/OFL.txt" "$notice"; then
+    pass "$kind: the family is named after its folder (new-family: New Family)"
+  else
+    fail "$kind: the notice lacks the title 'Font family New Family: assets/art/fonts/new-family/OFL.txt'"
+  fi
+  # A font folder that holds a font file but no usable licence text stops the export, as a missing libc++ licence does.
+  for state in missing empty; do
+    fonts_tree "nofl-$kind-$state" "$state"
+    run "nofl-$kind-$state" "$kind"
+    if [ "$rc" = 1 ] && grep -Fq "assets/art/fonts/new-family/OFL.txt is missing or empty" <<<"$out"; then
+      pass "$kind: exit 1 when a new font folder's OFL.txt is $state"
+    else
+      fail "$kind: wanted exit 1 and 'assets/art/fonts/new-family/OFL.txt is missing or empty' with the file $state, got exit $rc: $(tail -n 1 <<<"$out")"
+    fi
+  done
+  # A project without any font file would ship a notice without fonts while the theme still loads them: exit 1.
+  tree "nofont-$kind"
+  rm -rf "$root/nofont-$kind/assets/art/fonts"
+  run "nofont-$kind" "$kind"
+  if [ "$rc" = 1 ] && grep -Fq "no font file under assets/art/fonts" <<<"$out"; then
+    pass "$kind: exit 1 when the project holds no font file"
+  else
+    fail "$kind: wanted exit 1 and 'no font file under assets/art/fonts', got exit $rc: $(tail -n 1 <<<"$out")"
+  fi
+done
+# The pack (web) or the APK (Android debug and perf) must hold each OFL.txt: the include_filter of the presets does that, and
+# the scripts look for every file the discovery rule finds, the last family too.
+for kind in web android release; do
+  gone="the APK lacks assets/assets/art/fonts"
+  if [ "$kind" = web ]; then gone="the pack lacks assets/art/fonts"; fi
+  fonts_tree "nopack-$kind"
+  STUB_NO_OFL=OFL.txt run "nopack-$kind" "$kind"
+  if [ "$rc" = 1 ] && grep -Fq "$gone/big-shoulders/OFL.txt" <<<"$out"; then
+    pass "$kind: exit 1 when the build packs none of the OFL.txt files"
+  else
+    fail "$kind: wanted exit 1 and '$gone/big-shoulders/OFL.txt' with no OFL.txt packed, got exit $rc: $(tail -n 1 <<<"$out")"
+  fi
+  fonts_tree "nopack-new-$kind"
+  STUB_NO_OFL=new-family run "nopack-new-$kind" "$kind"
+  if [ "$rc" = 1 ] && grep -Fq "$gone/new-family/OFL.txt" <<<"$out"; then
+    pass "$kind: exit 1 when only the third family's OFL.txt is not packed"
+  else
+    fail "$kind: wanted exit 1 and '$gone/new-family/OFL.txt' with that file not packed, got exit $rc: $(tail -n 1 <<<"$out")"
+  fi
+done
+# The discovery rule alone: the paths --list prints are the OFL.txt files of the project, and an unknown argument is a usage error.
+if [ "$(cd "$repo" && bash scripts/ci/font-notice.sh --list)" = "$ofl_rels" ]; then
+  pass "font-notice.sh --list prints the OFL.txt of each font folder of the project"
+else
+  fail "font-notice.sh --list differs from the OFL.txt files of the project: $(cd "$repo" && bash scripts/ci/font-notice.sh --list | tr '\n' ' ')"
+fi
+rc=0
+(cd "$repo" && bash scripts/ci/font-notice.sh --nonsense >/dev/null 2>&1) || rc=$?
+if [ "$rc" = 2 ]; then pass "font-notice.sh: exit 2 for an unknown argument"; else fail "font-notice.sh: wanted exit 2 for an unknown argument, got $rc"; fi
 
 if [ "$failures" -ne 0 ]; then
   echo "test-export-notices: $failures case(s) failed" >&2
