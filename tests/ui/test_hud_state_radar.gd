@@ -52,6 +52,7 @@ func test_the_count_starts_when_the_full_map_opens_and_runs_for_it_alone() -> vo
 
 func test_a_pinned_full_map_never_times_out_and_unpinning_starts_a_fresh_count() -> void:
 	_state.open(HudState.Unfold.RADAR)
+	_state.advance(CLOSE_MS - 1.0)  # Nearly out of time when the pin goes on.
 	_state.pinned = true
 	_state.advance(100.0 * CLOSE_MS)
 	assert_int(_state.current).is_equal(HudState.Unfold.RADAR)

@@ -15,7 +15,9 @@ extends RefCounted
 ##   work (the order, the selection, the pan) is its router's: this class only folds.
 ## - A finger down anywhere (`touch_down`) closes the economy card and nothing else, so a touch on
 ##   a HUD control leaves the drawer and the full map as they are. That touch's own release cannot
-##   open the card again (a tap on the pill's numbers while the card shows only dismisses it).
+##   open the card again (a tap on the pill's numbers while the card shows only dismisses it): after
+##   a touch closes the card, `open(ECONOMY)` is refused until the next first finger down (a code
+##   path that opens the card with no finger down would be refused; none exists today).
 ## - The full map folds `radar_close_ms` of frame time after it opened or was last touched
 ##   (`touch_radar`), unless it is pinned. The pin is view state for the match.
 ## - A turn is no event here: the state is kept. A new match (`reset`) starts with nothing unfolded.
@@ -28,9 +30,13 @@ signal changed(previous: Unfold)
 enum Unfold { NONE, DRAWER, RADAR, ECONOMY, PAUSE }
 
 var settings: InputSettings  ## `radar_close_ms` is read from here at each frame.
+## The open unfold. Read-only: change it with `open` and `close`, so that the rules and `changed`
+## run. (A property with a getter alone ignores an assignment without a word; this one asserts.)
 var current: Unfold:
 	get:
 		return _current
+	set(_value):
+		assert(false, "HudState.current is read-only: use open() and close().")
 ## The full map stays open: no gesture, no timer closes it. Opening another unfold, the collapse
 ## button (`close(RADAR)`) and a new match do.
 var pinned: bool:
@@ -46,7 +52,7 @@ var pinned: bool:
 var _current: Unfold = Unfold.NONE
 var _pinned: bool = false
 var _idle_ms: float = 0.0  ## Frame time since the full map opened or was touched.
-var _card_guard: bool = false  ## The finger down that closed the card is still down or just up.
+var _card_guard: bool = false  ## A touch closed the card; no first finger has gone down since.
 
 
 func _init(from: InputSettings = null) -> void:
@@ -85,9 +91,12 @@ func mode_started() -> void:
 	_fold_for_map()
 
 
-## A finger went down, on the map or on a HUD control.
-func touch_down() -> void:
-	_card_guard = false
+## A finger went down, on the map or on a HUD control; `first` says that no other finger was down.
+## It closes the economy card. Only a first finger clears the card's guard, so a second finger
+## cannot let the first one's release open the card again.
+func touch_down(first: bool = true) -> void:
+	if first:
+		_card_guard = false
 	if _current == Unfold.ECONOMY:
 		_card_guard = true
 		_switch(Unfold.NONE)

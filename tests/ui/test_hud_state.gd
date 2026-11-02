@@ -121,6 +121,20 @@ func test_the_touch_that_closes_the_card_cannot_open_it_again() -> void:
 	assert_int(_state.current).is_equal(HudState.Unfold.ECONOMY)
 
 
+## Only a first finger down (no other finger was down) makes a touch new: a second finger neither
+## clears the guard of the touch that closed the card nor can be undone by it.
+func test_only_a_first_finger_clears_the_cards_guard() -> void:
+	_state.open(HudState.Unfold.ECONOMY)
+	_state.touch_down(true)  # The first finger closes the card.
+	_state.touch_down(false)  # A second finger goes down while the first still holds.
+	assert_bool(_state.open(HudState.Unfold.ECONOMY)).is_false()  # The first one's release.
+	_state.touch_down(true)  # Both are up; a new touch.
+	assert_bool(_state.open(HudState.Unfold.ECONOMY)).is_true()
+	_state.touch_down(false)  # A second finger closes the card too, and guards it.
+	assert_int(_state.current).is_equal(HudState.Unfold.NONE)
+	assert_bool(_state.open(HudState.Unfold.ECONOMY)).is_false()
+
+
 func test_pause_takes_every_touch_and_nothing_opens_behind_it() -> void:
 	_state.open(HudState.Unfold.DRAWER)
 	assert_bool(_state.open(HudState.Unfold.PAUSE)).is_true()  # Opening it closes the drawer.

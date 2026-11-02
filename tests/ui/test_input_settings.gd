@@ -28,12 +28,12 @@ func _table() -> Dictionary[String, Variant]:
 		"edge_pan_dp_per_s": 300.0,
 		"edge_pan_max_step_ms": 100,
 		"menu_slide_ms": 160,
-		# The corner HUD (ADR 0025, plan HUD v2).
+		# The corner HUD (ADR 0025, plan HUD v2). The two attack_cue keys are placeholders (P123 tunes).
 		"economy_flash_ms": 1000,
 		"radar_close_ms": 4000,
 		"scope_radius_tiles": 16,
 		"attack_toast_ms": 4000,
-		"attack_cue_ms": 8000,
+		"attack_cue_ms": 4000,
 		"attack_cue_area_tiles": 12,
 		"drawer_swipe_dp": 48.0,
 		"queue_hold_count": 5,

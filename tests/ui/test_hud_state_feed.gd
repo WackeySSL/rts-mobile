@@ -80,6 +80,7 @@ func test_the_feed_is_in_the_scene_and_a_match_starts_with_nothing_unfolded() ->
 		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.NONE)
 		assert_bool(_state.pinned).override_failure_message(why).is_false()
 		assert_object(_feed.settings).is_same(_touch.settings)  # The file's table, shared.
+		assert_object(_state.settings).is_same(_touch.settings)  # And the state reads that table.
 		assert_int(_state.settings.radar_close_ms).is_equal(4000)
 
 
@@ -162,6 +163,63 @@ func test_a_tap_on_the_pill_while_the_card_shows_only_closes_it() -> void:
 		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.NONE)
 
 
+## The card is open; a finger goes down on the pill's numbers (the card closes), a second one goes
+## down on a HUD control or pans the map, and the first one lifts: the tap asks for the card, and
+## the card stays shut. The next first finger opens it.
+func test_a_second_finger_cannot_let_the_first_ones_release_reopen_the_card() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size)
+		_pill.economy_pressed.connect(_on_economy_pressed)
+		var pill: Vector2 = (_hud("CreditsTap") as Control).get_global_rect().get_center()
+		var control: Vector2 = (_hud("AllArmy") as Control).get_global_rect().get_center()
+		var ground: Vector2 = _ground()
+		for second: StringName in [&"a HUD control", &"the map"]:
+			var why: String = "%s: the second finger on %s" % [size, second]
+			_tap(pill)
+			assert_int(_state.current).override_failure_message(why).is_equal(
+				HudState.Unfold.ECONOMY
+			)
+			var taps: int = _taps_on_pill
+			TouchEvents.press(get_viewport(), 0, pill)  # The card closes.
+			assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.NONE)
+			if second == &"the map":
+				TouchEvents.press(get_viewport(), 1, ground)
+				TouchEvents.drag(
+					get_viewport(), 1, ground + Vector2(80.0, 30.0), Vector2(80.0, 30.0)
+				)
+			else:
+				TouchEvents.press(get_viewport(), 1, control)
+			_now_ms += 50
+			TouchEvents.release(get_viewport(), 0, pill)  # The pill's tap: it asks for the card.
+			assert_int(_taps_on_pill).override_failure_message(why).is_equal(taps + 1)
+			assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.NONE)
+			TouchEvents.release(get_viewport(), 1, ground if second == &"the map" else control)
+			_now_ms += 1000
+			assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.NONE)
+			_tap(pill)  # A new touch opens it again.
+			assert_int(_state.current).override_failure_message(why).is_equal(
+				HudState.Unfold.ECONOMY
+			)
+			_tap(ground)
+			assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.NONE)
+
+
+## A focus loss ends every finger: the release of the one that was down may never come, and the
+## next finger must still count as the first.
+func test_a_focus_loss_forgets_the_fingers_down() -> void:
+	await _open(ScreenSizes.LANDSCAPE[1])
+	var pill: Vector2 = (_hud("CreditsTap") as Control).get_global_rect().get_center()
+	_state.touch_down()
+	_state.open(HudState.Unfold.ECONOMY)
+	TouchEvents.press(get_viewport(), 0, pill)  # Closes the card; its release is lost.
+	assert_int(_state.current).is_equal(HudState.Unfold.NONE)
+	_feed.notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
+	TouchEvents.press(get_viewport(), 1, _ground())  # The first finger of a new touch.
+	assert_bool(_state.open(HudState.Unfold.ECONOMY)).is_true()
+	TouchEvents.release(get_viewport(), 1, _ground())
+	TouchEvents.release(get_viewport(), 0, pill)
+
+
 func test_pause_takes_every_touch() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
@@ -215,6 +273,33 @@ func test_placement_and_a_strike_aim_that_begin_fold_what_a_gesture_folds() -> v
 		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
 		_placement.cancel()
 		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
+
+
+## Only the start of a mode folds: `PlacementController.changed` also fires when the ghost is
+## judged again and `StrikeAim.changed` when its status moves, and a mode's end opens or folds
+## nothing (the drawer's return after placement is P120's, ADR 0024 R1).
+func test_only_the_start_of_a_mode_folds_not_its_later_changes_or_its_end() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size)
+		var why: String = str(size)
+		var aim: StrikeAim = _main.get_node("StrikeAim")
+		assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()
+		_state.open(HudState.Unfold.RADAR)  # Opened during placement.
+		_placement.changed.emit()
+		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
+		_state.open(HudState.Unfold.DRAWER)
+		_placement.cancel()  # The end of the mode.
+		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.DRAWER)
+		_state.close(HudState.Unfold.DRAWER)
+		aim.owned = true
+		aim.building_id = 1
+		assert_bool(aim.begin()).is_true()
+		_state.open(HudState.Unfold.RADAR)
+		aim.changed.emit()
+		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
+		_state.open(HudState.Unfold.DRAWER)
+		aim.cancel()
+		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.DRAWER)
 
 
 func test_the_full_map_folds_after_radar_close_ms_of_frame_time() -> void:
