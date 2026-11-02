@@ -1,11 +1,11 @@
 extends GdUnitTestSuite
 ## PlayerController.move_selected_to, the entry point of the minimap's hold (plan P88b, ADR 0019
 ## section 4), in the main scene (controls_test: a 48 x 48 map, 30 blue tanks) with the Commands
-## caught at `command_sink`. It is the MOVE a ground tap sends, to the point given as it is (the sim
-## clamps a point beyond the map), for the selected own units, with the ground-tap marker and the
-## buzz of a long-press that the settings allow; with nothing selected, or while a strike is aimed
-## or a building placed, it sends nothing and says so. The minimap's side (the hold, the
-## thresholds, the six sizes) is tests/ui/test_minimap_hold.gd.
+## caught at `command_sink`. It is the MOVE a ground tap sends, to the point given as it is (the
+## minimap gives one inside the map, so its chevrons are on the map), for the selected own units,
+## with the ground-tap marker and the buzz of a long-press that the settings allow; with nothing
+## selected, or while a strike is aimed or a building placed, it sends nothing and says so. The
+## minimap's side (the hold, the thresholds, the six sizes) is tests/ui/test_minimap_hold.gd.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -93,7 +93,7 @@ func test_it_sends_the_move_a_ground_tap_sends() -> void:
 	assert_array(_controller.selection.selected).is_equal([2, 9, 30])  # Ordering keeps it.
 
 
-## The point is sent as it is, so a point beyond the map is the sim's to clamp.
+## The point is sent as it is, also one beyond the map (the caller keeps it inside; the sim clamps).
 func test_the_point_is_sent_as_given_also_beyond_the_map() -> void:
 	_controller.selection.set_ids(PackedInt32Array([1]))
 	assert_bool(_controller.move_selected_to(FAR)).is_true()

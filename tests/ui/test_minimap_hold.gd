@@ -2,14 +2,18 @@ extends GdUnitTestSuite
 ## The minimap's hold (plan P88b, ADR 0019 section 4, ADR 0024 section 5), in the main scene through
 ## the real GUI at the six sizes of ScreenSizes.ALL with a fake clock. A finger that rests on the
 ## minimap for `long_press_ms` within `tap_slop_dp` of where it went down, with own units selected,
-## sends exactly one MOVE to the ground point under it (the inverse projection, unclamped), with
-## the marker and the buzz of a long-press; the press jumped the camera there already. A tap, a
+## sends exactly one MOVE to the ground point under it (the inverse projection, kept inside the
+## map as the camera's jump is: a hold beside the diamond orders the nearest point of the map and
+## its chevrons are on the screen), with the marker and the buzz of a long-press; the press jumped
+## the camera there already, and a resize during the hold does not move the point. A tap, a
 ## release before the time, a finger that moves beyond the slop first (a drag), a hold with nothing
-## or a building selected, one while a strike is aimed or a building placed, one that a focus loss
-## or a turn cut short, and a minimap without a controller send nothing, and the camera still
-## jumps. A second finger never holds, a finger that holds again after a release orders again, and
-## the hold never collapses the build menu or reaches the map's recognizer. The jump itself is
-## test_minimap's, the controller's entry point test_player_controller_hold_move's.
+## or a building selected, one while a strike is aimed or a building placed, one that a focus loss,
+## a turn (also when nothing moves the minimap) or the minimap being hidden cut short, and a
+## minimap without a controller send nothing, and the camera still jumps. A second finger never
+## holds and its tap leaves the first finger's hold alone, a finger that holds again after a
+## release orders again, and the hold never collapses the build menu or reaches the map's
+## recognizer. The jump itself is test_minimap's, the controller's entry point
+## test_player_controller_hold_move's.
 ## Player 1 has a Headquarters (id 1) and two light tanks (ids 3 and 4) on a 32 x 32 map.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
@@ -111,27 +115,81 @@ func test_a_hold_with_units_selected_sends_one_move_to_the_ground_under_the_fing
 		TouchEvents.release(get_viewport(), 0, _global(elsewhere))
 
 
-## The point is the one the inverse projection gives under the finger, also in a corner of the box
-## beside the diamond: the minimap sends it as it is and the sim clamps it.
-func test_the_move_goes_to_the_unclamped_ground_point_beside_the_diamond() -> void:
+## A hold in a corner of the box, beside the diamond, orders the nearest point of the map and not
+## the point the inverse projection gives past it: the units go where the camera went, and the
+## chevrons are on the map and on the screen.
+func test_a_hold_beside_the_diamond_orders_the_nearest_point_of_the_map_where_the_camera_went(
+) -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size)
+		var box: Rect2 = _minimap.box_rect()
+		var side: int = 32 * World.MILLI_PER_TILE
+		var corners: Array[Vector2] = [
+			box.position + Vector2(2.0, 2.0),
+			Vector2(box.end.x - 2.0, box.position.y + 2.0),
+			box.end - Vector2(2.0, 2.0),
+			Vector2(box.position.x + 2.0, box.end.y - 2.0),
+		]
+		for corner: Vector2 in corners:
+			var why: String = "%s, corner %s" % [size, corner]
+			_controller.selection.set_ids(PackedInt32Array([TANK_A]))
+			_sent.clear()
+			_wait(_controller.settings.marker_ms * 2)  # The last corner's chevrons are gone.
+			_markers._process(0.0)
+			var beyond: Vector2i = _minimap.ground_at(corner)
+			var past: bool = beyond.x < 0 or beyond.y < 0 or beyond.x > side or beyond.y > side
+			assert_bool(past).override_failure_message("%s: %s" % [why, beyond]).is_true()
+			TouchEvents.press(get_viewport(), 0, _global(corner))
+			_wait(_controller.settings.long_press_ms)
+			assert_int(_sent.size()).override_failure_message(why).is_equal(1)
+			var sent: Vector2i = Vector2i(_sent[0].target_x, _sent[0].target_y)
+			assert_bool(sent.x >= 0 and sent.y >= 0 and sent.x <= side and sent.y <= side).is_true()
+			# It is where the camera went (a milli-tile or two of rounding through the window's px).
+			var centre: Vector2i = IsoProjection.px_to_ground(_camera.position)
+			assert_int(absi(sent.x - centre.x)).override_failure_message(why).is_less_equal(1)
+			assert_int(absi(sent.y - centre.y)).override_failure_message(why).is_less_equal(1)
+			var clamped: Vector2i = _minimap.clamped_ground_at(corner)
+			assert_int(absi(sent.x - clamped.x)).override_failure_message(why).is_less_equal(2)
+			assert_int(absi(sent.y - clamped.y)).override_failure_message(why).is_less_equal(2)
+			# The chevrons are at the ordered point, inside what the camera shows.
+			var marks: Array[MoveMarkerLayer.Mark] = _shown_marks()
+			assert_int(marks.size()).override_failure_message(why).is_equal(1)
+			assert_vector(marks[0].position).override_failure_message(why).is_equal_approx(
+				IsoProjection.ground_to_px(sent.x, sent.y), Vector2(0.05, 0.05)
+			)
+			var shown: Rect2 = _camera.visible_world_rect()
+			assert_bool(shown.has_point(marks[0].position)).override_failure_message(why).is_true()
+			TouchEvents.release(get_viewport(), 0, _global(corner))
+
+
+## The point is taken at the finger's last event: a resize during the hold changes the minimap's
+## layout, and the ordered point stays the one the camera jumped to.
+func test_a_resize_during_the_hold_does_not_move_the_ordered_point() -> void:
+	var moved: int = 0  # The sizes at which the resize changed what the press point means.
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
 		var why: String = str(size)
-		_controller.selection.set_ids(PackedInt32Array([TANK_A]))
-		var corner: Vector2 = _minimap.box_rect().position + Vector2(2.0, 2.0)
-		TouchEvents.press(get_viewport(), 0, _global(corner))
-		_wait(_controller.settings.long_press_ms)
-		assert_int(_sent.size()).override_failure_message(why).is_equal(1)
-		var ground: Vector2i = _minimap.ground_at(corner)
-		(
-			assert_vector(Vector2i(_sent[0].target_x, _sent[0].target_y))
-			. override_failure_message(why)
-			. is_equal(ground)
+		var hold_ms: int = _controller.settings.long_press_ms
+		var same: Array[Vector2i] = (
+			ScreenSizes.PORTRAIT if UiScale.is_portrait_size(size) else ScreenSizes.LANDSCAPE
 		)
-		var side: int = 32 * World.MILLI_PER_TILE
-		var outside: bool = ground.x < 0 or ground.y < 0 or ground.x > side or ground.y > side
-		assert_bool(outside).override_failure_message("%s: %s" % [why, ground]).is_true()
-		TouchEvents.release(get_viewport(), 0, _global(corner))
+		var other: Vector2i = same[(same.find(size) + 1) % same.size()]  # Not a turn.
+		_controller.selection.set_ids(PackedInt32Array([TANK_A]))
+		var at: Vector2 = _local(FIRST)
+		TouchEvents.press(get_viewport(), 0, _global(at))
+		_wait(hold_ms / 2)
+		get_window().size = other
+		await _settle()
+		_wait(hold_ms)
+		assert_int(_sent.size()).override_failure_message(why).is_equal(1)
+		var sent: Vector2i = Vector2i(_sent[0].target_x, _sent[0].target_y)
+		assert_int(absi(sent.x - FIRST.x)).override_failure_message(why).is_less_equal(2)
+		assert_int(absi(sent.y - FIRST.y)).override_failure_message(why).is_less_equal(2)
+		var now: Vector2i = _minimap.clamped_ground_at(at)
+		if absi(now.x - FIRST.x) > 50 or absi(now.y - FIRST.y) > 50:
+			moved += 1
+		TouchEvents.release(get_viewport(), 0, _global(at))
+	assert_int(moved).is_greater(0)  # The test would pass vacuously if no resize moved it.
 
 
 func test_a_tap_and_a_drag_send_nothing_and_a_wobble_inside_the_slop_still_holds() -> void:
@@ -170,7 +228,7 @@ func test_a_tap_and_a_drag_send_nothing_and_a_wobble_inside_the_slop_still_holds
 		assert_int(_sent.size()).override_failure_message(why).is_equal(1)
 		# The finger's position arrives through the window's px, so the point may be a milli-tile off.
 		var sent: Vector2i = Vector2i(_sent[0].target_x, _sent[0].target_y)
-		var wanted: Vector2i = _minimap.ground_at(wobble)
+		var wanted: Vector2i = _minimap.clamped_ground_at(wobble)
 		assert_int(absi(sent.x - wanted.x)).override_failure_message(why).is_less_equal(2)
 		assert_int(absi(sent.y - wanted.y)).override_failure_message(why).is_less_equal(2)
 		# And it is not the press point: the hold goes where the finger is now.
@@ -228,16 +286,28 @@ func test_a_hold_while_placing_a_building_or_aiming_a_strike_orders_nothing() ->
 		assert_int(_sent.size()).override_failure_message(why).is_equal(1)
 
 
-## Only the first finger counts: a second one on the minimap neither jumps nor holds.
-func test_a_second_finger_never_holds() -> void:
+## Only the first finger counts: a second one on the minimap neither jumps nor holds, and its tap
+## or its release leaves the first finger's hold alone.
+func test_a_second_finger_never_holds_and_its_tap_leaves_the_first_ones_hold_alone() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
 		var why: String = str(size)
 		var hold_ms: int = _controller.settings.long_press_ms
 		_controller.selection.set_ids(PackedInt32Array([TANK_A]))
+		# A tap of a second finger before the first one's time is up: the hold still lands.
+		TouchEvents.press(get_viewport(), 0, _global(_local(FIRST)))
+		_wait(hold_ms / 4)
+		TouchEvents.press(get_viewport(), 1, _global(_local(SECOND)))
+		TouchEvents.release(get_viewport(), 1, _global(_local(SECOND)))
+		_wait(hold_ms - hold_ms / 4)
+		assert_int(_sent.size()).override_failure_message(why).is_equal(1)
+		assert_vector(Vector2i(_sent[0].target_x, _sent[0].target_y)).is_equal(FIRST)
+		TouchEvents.release(get_viewport(), 0, _global(_local(FIRST)))
+		_sent.clear()
+		# A second finger that goes down late and stays: its own time is not up, and it never holds.
 		TouchEvents.press(get_viewport(), 0, _global(_local(FIRST)))
 		_wait(hold_ms / 2)
-		TouchEvents.press(get_viewport(), 1, _global(_local(SECOND)))  # Late: its own time is not up.
+		TouchEvents.press(get_viewport(), 1, _global(_local(SECOND)))
 		_wait(hold_ms / 2)
 		assert_int(_sent.size()).override_failure_message(why).is_equal(1)
 		assert_vector(Vector2i(_sent[0].target_x, _sent[0].target_y)).is_equal(FIRST)
@@ -284,6 +354,74 @@ func test_a_focus_loss_and_a_turn_end_a_hold_in_flight() -> void:
 		TouchEvents.release(get_viewport(), 0, _global(_local(SECOND)))
 
 
+## The minimap ends the finger on a turn by itself, not through being moved: with the sidebar not
+## holding the node or its slot, nothing reparents or hides it, and the hold still sends no MOVE
+## (a turn never issues a Command). Sideways the node stays shown, which isolates the turn.
+func test_a_turn_ends_a_hold_when_nothing_moves_the_minimap() -> void:
+	var isolated: int = 0  # The turns after which the minimap was still where it was and shown.
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size)
+		var why: String = str(size)
+		var hold_ms: int = _controller.settings.long_press_ms
+		_sidebar.minimap = null
+		_sidebar.minimap_slot = null
+		var home: Node = _minimap.get_parent()
+		_controller.selection.set_ids(PackedInt32Array([TANK_A]))
+		TouchEvents.press(get_viewport(), 0, _global(_local(FIRST)))
+		_wait(hold_ms / 2)
+		get_window().size = Vector2i(size.y, size.x)
+		await _settle()
+		assert_object(_minimap.get_parent()).override_failure_message(why).is_same(home)
+		if _minimap.is_visible_in_tree():
+			isolated += 1
+		_wait(hold_ms * 2)
+		assert_array(_sent).override_failure_message(why).is_empty()
+		TouchEvents.release(get_viewport(), 0, _global(_local(FIRST)))
+	assert_int(isolated).is_greater_equal(ScreenSizes.LANDSCAPE.size())
+
+
+## A minimap that is hidden, or folded away with its parent, holds no more; shown again, the next
+## touch holds as usual.
+func test_a_hidden_minimap_holds_no_more() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size)
+		var hold_ms: int = _controller.settings.long_press_ms
+		for hide_parent: bool in [false, true]:
+			var why: String = "%s, %s" % [size, "its parent" if hide_parent else "itself"]
+			var folded: CanvasItem = _minimap.get_parent() if hide_parent else _minimap
+			_sent.clear()
+			_controller.selection.set_ids(PackedInt32Array([TANK_A]))
+			TouchEvents.press(get_viewport(), 0, _global(_local(FIRST)))
+			_wait(hold_ms / 2)
+			folded.visible = false
+			assert_bool(_minimap.is_visible_in_tree()).override_failure_message(why).is_false()
+			_wait(hold_ms * 2)
+			assert_array(_sent).override_failure_message(why).is_empty()
+			folded.visible = true
+			TouchEvents.release(get_viewport(), 0, _global(_local(FIRST)))
+			TouchEvents.press(get_viewport(), 0, _global(_local(SECOND)))
+			_wait(hold_ms)
+			assert_int(_sent.size()).override_failure_message(why).is_equal(1)
+			TouchEvents.release(get_viewport(), 0, _global(_local(SECOND)))
+
+
+## A minimap taken out of the tree during the hold (its place is gone) holds no more either.
+func test_a_minimap_that_leaves_the_tree_holds_no_more() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size)
+		var why: String = str(size)
+		var hold_ms: int = _controller.settings.long_press_ms
+		_controller.selection.set_ids(PackedInt32Array([TANK_A]))
+		TouchEvents.press(get_viewport(), 0, _global(_local(FIRST)))
+		_wait(hold_ms / 2)
+		var home: Node = _minimap.get_parent()
+		home.remove_child(_minimap)
+		home.add_child(_minimap)
+		_wait(hold_ms * 2)
+		assert_array(_sent).override_failure_message(why).is_empty()
+		TouchEvents.release(get_viewport(), 0, _global(_local(FIRST)))
+
+
 func test_without_a_controller_a_hold_orders_nothing_and_the_minimap_still_jumps() -> void:
 	await _open(ScreenSizes.LANDSCAPE[0])
 	_minimap.controller = null
@@ -318,10 +456,20 @@ func test_the_hold_never_collapses_the_build_menu_or_reaches_the_maps_recognizer
 		assert_int(_told).override_failure_message(why).is_equal(0)
 
 
-## Advances the fake clock and runs the minimap's frame, as the engine does while a finger rests.
+## Advances the fake clock and runs the frame of the minimap and of the map's recognizer, as the
+## engine does while a finger rests: a touch the GUI did not take would show in `_told`.
 func _wait(ms: int) -> void:
 	_now_ms += ms
+	_touch._process(0.0)
 	_minimap._process(0.0)
+
+
+func _shown_marks() -> Array[MoveMarkerLayer.Mark]:
+	var shown: Array[MoveMarkerLayer.Mark] = []
+	for mark: MoveMarkerLayer.Mark in _markers.get_children():
+		if mark.visible:
+			shown.append(mark)
+	return shown
 
 
 func _global(local: Vector2) -> Vector2:

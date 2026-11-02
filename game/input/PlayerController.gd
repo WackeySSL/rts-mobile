@@ -227,7 +227,8 @@ func _move(target_x: int, target_y: int) -> void:
 
 
 ## The minimap's hold (P88b, ADR 0019 section 4): the MOVE a ground tap sends, with its marker, to
-## `ground` (milli-tiles; the sim clamps a point beyond the map), and the buzz of a long-press. Only
+## `ground` (milli-tiles), and the buzz of a long-press. The point is sent and drawn as given, so
+## a caller keeps it inside the map (the minimap sends the point its camera jump went to). Only
 ## own units take it: with nothing or a building selected, or while a strike is aimed or a building
 ## is placed (nothing is ordered then), it sends nothing. True when it sent the MOVE.
 func move_selected_to(ground: Vector2i) -> bool:
