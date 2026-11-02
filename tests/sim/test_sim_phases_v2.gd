@@ -29,6 +29,7 @@ func test_every_new_command_type_is_dropped_and_counted_until_its_row() -> void:
 		"rally": Command.rally(1, 1, 20500, 4500),
 		"harvest": Command.harvest(1, PackedInt32Array([1]), 20500, 4500),
 		"superweapon": Command.superweapon(1, 1, 20500, 4500),  # Id 1 is a unit, no strike building.
+		"cancel_build": Command.cancel_build(1, 1),  # Id 1 is a unit, no site.
 	}
 	var base: World = _arena()
 	Sim.step(base, [])
@@ -44,9 +45,9 @@ func test_every_new_command_type_is_dropped_and_counted_until_its_row() -> void:
 		assert_array(world.defeated_tick).is_equal([0, 0, 0])
 
 
-## Types 16-19 and 21-29 stay reserved: no branch, so dropped as unknown like any other.
+## Types 17-19 and 21-29 stay reserved: no branch, so dropped as unknown like any other.
 func test_the_reserved_types_next_to_the_new_ones_are_still_unknown() -> void:
-	for type: int in [9, 16, 19, 21, 29]:
+	for type: int in [9, 17, 19, 21, 29]:
 		var command: Command = Command.surrender(1)
 		command.type = type
 		command.tick = 0

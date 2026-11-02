@@ -4,8 +4,9 @@ extends RefCounted
 ## target is a point in milli-tiles, not a cell. Sim.step applies a command at the start of the
 ## tick that equals `tick`, in `compare` order. PLACE, QUEUE, CANCEL, RALLY and HARVEST (10-14) are
 ## the Phase 3 economy and production commands, SUPERWEAPON (15) fires a strike building (ADR 0023
-## section 10) and SURRENDER (20) is the first match-level one (ADR 0017 section 4); 16-19 and 21-29
-## stay reserved. Every type without a branch in Sim.step is dropped as unknown.
+## section 10), CANCEL_BUILD (16) cancels a construction site (ADR 0026 section 6) and SURRENDER
+## (20) is the first match-level one (ADR 0017 section 4); 17-19 and 21-29 stay reserved. Every
+## type without a branch in Sim.step is dropped as unknown.
 
 enum Type {
 	NONE = 0,
@@ -19,6 +20,7 @@ enum Type {
 	RALLY = 13,
 	HARVEST = 14,
 	SUPERWEAPON = 15,
+	CANCEL_BUILD = 16,
 	SURRENDER = 20,
 }
 
@@ -47,8 +49,8 @@ var type: int = Type.NONE
 var unit_ids: PackedInt32Array = PackedInt32Array()
 var target_x: int = 0
 var target_y: int = 0
-## The unit an ATTACK goes after, the production building a RALLY sets or the strike building a
-## SUPERWEAPON fires, 0 = none.
+## The unit an ATTACK goes after, the production building a RALLY sets, the strike building a
+## SUPERWEAPON fires or the site a CANCEL_BUILD cancels, 0 = none.
 var target_id: int = 0
 ## Type-specific ints (ADR 0017 section 4): QUEUE `[type_index]`, CANCEL `[tab, slot]`, PLACE
 ## `[type_index]` or empty (ADR 0026), empty for every other type.
@@ -150,6 +152,15 @@ static func superweapon(player_id: int, building_id: int, target_x: int, target_
 	command.target_id = building_id
 	command.target_x = target_x
 	command.target_y = target_y
+	return command
+
+
+## Cancel the own building under construction `building_id` (ADR 0026 section 6): the site is
+## removed and part of its price comes back. The payload is empty.
+@warning_ignore("shadowed_variable")
+static func cancel_build(player_id: int, building_id: int) -> Command:
+	var command: Command = _of(Type.CANCEL_BUILD, player_id, PackedInt32Array())
+	command.target_id = building_id
 	return command
 
 

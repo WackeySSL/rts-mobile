@@ -21,7 +21,10 @@ extends RefCounted
 ## `build_left` against 0, so a cancelled row, -1, is no more complete than a site). The walk comes
 ## first, so a barracks that completes in a step serves its queue in the same step; the queues
 ## still use the power totals of ECONOMY, and a step that completed a site ends with `Power.run`
-## again, so that the totals equal a rebuild from the rows at the checkpoint.
+## again, so that the totals equal a rebuild from the rows at the checkpoint. `CANCEL_BUILD`
+## (`apply_cancel_build`) gives back `construct_refund_percent` of the price in COMMANDS and marks
+## the site `CANCELLED` with 0 hit points; REMOVE takes the row out, counting no loss (ADR 0026
+## section 6).
 ##
 ## A queue is identified by `queue = player * TABS + tab`. Its items are the `queue_count[queue]`
 ## type indexes in `queue_type` from `queue * queue_slots` on, the head first; a slot past the count
@@ -34,6 +37,16 @@ extends RefCounted
 ## 1,000 milli). A head gains this much per tick (ADR 0018 section 5), or `low_power_percent` of it
 ## while its player is on low power (`Power.scaled`, ADR 0018 section 4).
 const PROGRESS_PER_TICK: int = 100
+
+## The `build_left` of a site that CANCEL_BUILD cancelled: it has 0 hit points and leaves in the
+## REMOVE of the same tick, so it is gone for every phase after REMOVE (FLOW to FIRE still see it in
+## that tick). Not complete (0), not a site under way (above 0), but it still holds the site slot,
+## its tiles and its reach until REMOVE (`_sites_of`).
+const CANCELLED: int = -1
+
+## Where in a DIED record (`World.remove_dead`) the cancel flag is: 1 for a row whose `build_left`
+## was `CANCELLED`, 0 for every other death. The view reads it to draw no wreck or crater.
+const DIED_CANCEL_FLAG_AT: int = 6
 
 ## One PRODUCTION step: the head of every queue that has a producer gains PROGRESS_PER_TICK, or
 ## `low_power_percent` of it on low power (every tab, STRUCTURES included), never past its goal. A
@@ -214,15 +227,47 @@ static func _place_site(world: World, command: Command) -> bool:
 	return true
 
 
-## How many sites `player` has: building rows with `build_left` above 0 (a cancelled row, -1, is
-## none). The derived building list is brought up to date first. Event cadence.
+## CANCEL_BUILD (ADR 0026 section 6): true when the site `target_id` was cancelled. Valid when the
+## payload is empty and the id names a row of the command's player with work left (`build_left`
+## above 0): an enemy's row, a neutral or complete building, a unit, a row already cancelled this
+## tick and an unknown id are dropped. Then `construct_refund_percent` of the type's price goes back
+## to the player (`refund`, whatever the work done or the damage taken), the hit points fall to 0
+## and `build_left` becomes `CANCELLED`. The row stays until REMOVE, later in the same tick: its
+## tiles block, it still gives reach and holds the site slot until then (so a PLACE of the same tick
+## starts nothing), and TARGETING and FIRE may still pick it, as for any row. Event cadence.
+static func apply_cancel_build(world: World, command: Command) -> bool:
+	if not command.payload.is_empty():
+		return false
+	var row: int = world.index_of(command.target_id)
+	var player: int = command.player_id
+	if row < 0 or world.owner[row] != player or world.build_left[row] <= 0:
+		return false
+	var price: int = world.type_cost[world.type_index[row]]
+	world.credits[player] += refund(price, world.construct_refund_percent)
+	world.hp[row] = 0
+	world.build_left[row] = CANCELLED
+	return true
+
+
+## What a cancel gives back: `percent` of `cost`, in integers (truncated). The sim's math, which the
+## Cancel button's label shares (`construct_refund_percent` of the snapshot).
+@warning_ignore("integer_division")
+static func refund(cost: int, percent: int) -> int:
+	return cost * percent / 100
+
+
+## How many sites `player` has: building rows with `build_left` not 0, the sites under way and the
+## cancelled rows that REMOVE has not taken out yet (-1). A cancelled row keeps its slot until it
+## leaves, as it keeps its tiles, its building-cap place and its reach (`Placement`), so a
+## CANCEL_BUILD and a PLACE of one tick cannot move a site across the map. The derived building list
+## is brought up to date first. Event cadence.
 static func _sites_of(world: World, player: int) -> int:
 	Buildings.rebuild_lists(world)
 	var owners: PackedInt32Array = world.owner
 	var pending: PackedInt32Array = world.build_left
 	var count: int = 0
 	for row: int in world.building_rows:
-		if owners[row] == player and pending[row] > 0:
+		if owners[row] == player and pending[row] != 0:
 			count += 1
 	return count
 
