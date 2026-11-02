@@ -551,7 +551,7 @@ var home: PackedInt32Array = PackedInt32Array()
 var ready_tick: PackedInt32Array = PackedInt32Array()
 var offline_until: PackedInt32Array = PackedInt32Array()
 ## The construction work left, in hundredths of a tick (`Production.PROGRESS_PER_TICK` a tick): 0 =
-## complete, above 0 = a site under construction (ADR 0026 section 1). Production writes it.
+## complete, above 0 = a site, -1 = cancelled until REMOVE; Production writes it (ADR 0026 s. 1, 6).
 var build_left: PackedInt32Array = PackedInt32Array()
 
 ## Per player (index 0 = neutral, unused; prepare() sizes them to player_count + 1): the credits
@@ -857,7 +857,8 @@ func _write_unit_event(at: int, kind: int, row: int) -> void:
 ## order, and its fog unstamped, then a stable compaction of every ROW_ARRAYS column, so the rows
 ## stay ascending by id. It bumps rows_version once and adds the rows that changed place to
 ## stats[ROWS_COMPACTED]. The records of a building that dies in sight go before the rows do
-## (`LastSeen.forget_dead`, P77b). A tick without a death costs one scan. It prepares the world
+## (`LastSeen.forget_dead`, P77b). A cancelled site's record (`Production.CANCELLED`) has 1 in its
+## seventh int (ADR 0026 section 6). A tick without a death costs one scan. It prepares the world
 ## first (O(1) once prepared), so a hand-built world works: stats is sized by prepare().
 func remove_dead() -> void:
 	prepare()
@@ -878,15 +879,17 @@ func remove_dead() -> void:
 	# One resize for all the records, then the writes: the loops allocate nothing. A stamped row's
 	# vision ends here (ADR 0010 section 1); `explored` stays.
 	var at: int = events.size()
-	events.resize(at + dead * EVENT_STRIDE)  # The last two ints of each record stay 0.
+	events.resize(at + dead * EVENT_STRIDE)  # The eighth int stays 0, the seventh is the cancel flag.
 	var owners: PackedInt32Array = owner
 	var types: PackedInt32Array = type_index
 	var stamped: PackedInt32Array = fog_cell
+	var pending: PackedInt32Array = build_left
 	var pad: int = type_sight.size()
 	var has_fog: bool = fog.cells > 0
 	for row: int in range(first, count):
 		if alive[row] <= 0:
 			_write_unit_event(at, Event.DIED, row)
+			events[at + Production.DIED_CANCEL_FLAG_AT] = int(pending[row] == Production.CANCELLED)
 			at += EVENT_STRIDE
 			if has_fog and stamped[row] >= 0:
 				fog.stamp(owners[row], stamped[row], mini(types[row], pad), -1)

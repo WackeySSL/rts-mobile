@@ -48,10 +48,12 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
   target point in milli-tiles and no payload.
 - Applied at the start of their tick in (tick, player_id, sequence) order. Invalid commands are
   dropped and counted; they never crash the sim.
-- Validation is per type (`match command.type`). Unknown and reserved types (5-9, 16-19, 21-29)
+- Validation is per type (`match command.type`). Unknown and reserved types (5-9, 17-19, 21-29)
   are dropped as unknown. ADR 0017 §4 fixes `PLACE` 10, `QUEUE` 11, `CANCEL` 12, `RALLY` 13,
   `HARVEST` 14 and `SURRENDER` 20 (P70b), ADR 0023 §10 `SUPERWEAPON` 15 (P109; applied by
-  `Strike.apply_superweapon` from P110); `Sim._apply` gates each on an undefeated player
+  `Strike.apply_superweapon` from P110), ADR 0026 §6 `CANCEL_BUILD` 16 (P128b;
+  `Production.apply_cancel_build`: an own row with `build_left` above 0, the refund and the cancel
+  mark in COMMANDS); `Sim._apply` gates each on an undefeated player
   (`_playing`), and each stays dropped and counted until its row (P73-P76) fills its module's
   `apply_*`. From P76 on, every Command is dropped once `match_end_tick` is above 0.
 - `MatchLoop` stamps tick and sequence and records the command; it is the only tick driver
@@ -92,7 +94,10 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
   `type_charge_ticks`, `type_strike_radius`, `type_strike_delay`, `type_strike_ticks`,
   `type_strike_weapon`) are in `TYPE_ARRAYS`, so in `defs_hash`. `STATE_FORMAT` 5 (ADR 0026, P128)
   adds the row column `build_left` (hundredths of a tick of work left; 0 = complete, -1 = a
-  site cancelled by CANCEL_BUILD (P128b) until REMOVE; every "is it complete" test reads `== 0`
+  site cancelled by CANCEL_BUILD (P128b, `Production.CANCELLED`; hp 0, the row leaves in REMOVE,
+  `Outcome.count_losses` skips it, its DIED record has 1 at `Production.DIED_CANCEL_FLAG_AT`, and
+  until REMOVE it holds its site slot, tiles and reach: `Production._sites_of` counts
+  `build_left != 0`); every "is it complete" test reads `== 0`
   or `!= 0`), and the three
   rule ints `construct_start_hp_percent`, `construct_refund_percent` and `construction_sites_max`
   are in `RULE_SCALARS`, so in `defs_hash`. The power totals and the building and harvester lists

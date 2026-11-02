@@ -27,7 +27,8 @@ extends RefCounted
 ## `stat_lost_units` (any other row), once per death, for an owner whose `had_producer` is 1 (lead
 ## decision of 2026-10-26: every real match sets it at load through its scenario buildings, while
 ## the perf arena and a World of units only never do, so their `players` section and golden hashes
-## stay as they were). Neutral rows (owner 0) count for nobody.
+## stay as they were). Neutral rows (owner 0) count for nobody. A site that CANCEL_BUILD cancelled
+## (`build_left` -1, hit points 0 until REMOVE) is no loss: the owner chose it and got its refund.
 
 
 ## The defeat and victory check, after the queues. No end yet, one pass over the players ascending
@@ -96,9 +97,11 @@ static func apply_surrender(world: World, command: Command) -> bool:
 ## rows as they stand, so `World.remove_dead` calls it before the compaction, once per tick that has
 ## a death; a row is gone after that and cannot count twice. One pass over the rows ascending, over
 ## aliased arrays, no allocation. An owner past the per-player arrays of a hand-built World, or a
-## type past the footprint table, is a unit (or nobody) rather than an error.
+## type past the footprint table, is a unit (or nobody) rather than an error. A cancelled site
+## (`Production.CANCELLED`) counts for nobody.
 static func count_losses(world: World) -> void:
 	var alive: PackedInt32Array = world.hp
+	var pending: PackedInt32Array = world.build_left
 	var owners: PackedInt32Array = world.owner
 	var types: PackedInt32Array = world.type_index
 	var widths: PackedInt32Array = world.type_foot_w
@@ -109,6 +112,8 @@ static func count_losses(world: World) -> void:
 	for row: int in alive.size():
 		var player: int = owners[row]
 		if alive[row] > 0 or player < 1 or player >= players or had[player] != 1:
+			continue
+		if pending[row] == Production.CANCELLED:
 			continue
 		if types[row] < widths.size() and widths[types[row]] > 0:
 			lost_buildings[player] += 1
