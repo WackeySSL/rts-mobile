@@ -36,6 +36,10 @@
 [ext_resource type="Script" path="res://game/ui/Minimap.gd" id="37_minimap"]
 [ext_resource type="Script" path="res://game/ui/GhostControls.gd" id="38_ghost_controls"]
 [ext_resource type="Script" path="res://game/view/RallyLayer.gd" id="39_rally_layer"]
+[ext_resource type="Script" path="res://game/ui/SurrenderButton.gd" id="90_surrender"]
+[ext_resource type="Script" path="res://game/ui/TopLeftStack.gd" id="90_stack"]
+[ext_resource type="Script" path="res://game/ui/ConfirmDialog.gd" id="90_confirm"]
+[ext_resource type="Script" path="res://game/ui/ResultScreen.gd" id="90_result"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -203,7 +207,7 @@ mouse_filter = 2
 theme = ExtResource("16_theme")
 script = ExtResource("38_ghost_controls")
 placement = NodePath("../../PlacementController")
-clear_of = [NodePath("../SafeArea/DevButton"), NodePath("../SafeArea/ArmyBand/ArmyBar"), NodePath("../SafeArea/SelectionBand/SelectionPanel"), NodePath("../SafeArea/StrikeBand/StrikeControls"), NodePath("../SafeArea/BuildSidebar"), NodePath("../SafeArea/StatusBand/StatusPill"), NodePath("../SafeArea/MinimapSlot")]
+clear_of = [NodePath("../SafeArea/TopLeft"), NodePath("../SafeArea/ArmyBand/ArmyBar"), NodePath("../SafeArea/SelectionBand/SelectionPanel"), NodePath("../SafeArea/StrikeBand/StrikeControls"), NodePath("../SafeArea/BuildSidebar"), NodePath("../SafeArea/StatusBand/StatusPill"), NodePath("../SafeArea/MinimapSlot")]
 
 [node name="SafeArea" type="MarginContainer" parent="Hud"]
 anchors_preset = 15
@@ -215,14 +219,33 @@ mouse_filter = 2
 theme = ExtResource("16_theme")
 script = ExtResource("12_safe")
 
-[node name="DevButton" type="Button" parent="Hud/SafeArea"]
+[node name="TopLeft" type="VBoxContainer" parent="Hud/SafeArea"]
+mouse_filter = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+script = ExtResource("90_stack")
+
+[node name="DevButton" type="Button" parent="Hud/SafeArea/TopLeft"]
 size_flags_horizontal = 0
 size_flags_vertical = 0
 theme_type_variation = &"DevButton"
 text = "Dev"
 script = ExtResource("3_dev")
 
-[node name="DpMinSize" type="Node" parent="Hud/SafeArea/DevButton"]
+[node name="DpMinSize" type="Node" parent="Hud/SafeArea/TopLeft/DevButton"]
+script = ExtResource("13_dp")
+
+[node name="SurrenderButton" type="Button" parent="Hud/SafeArea/TopLeft" node_paths=PackedStringArray("runner", "controller", "dialog")]
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_type_variation = &"DevButton"
+text = "Surrender"
+script = ExtResource("90_surrender")
+runner = NodePath("../../../../MatchRunner")
+controller = NodePath("../../../../PlayerController")
+dialog = NodePath("../../../SurrenderDialog")
+
+[node name="DpMinSize" type="Node" parent="Hud/SafeArea/TopLeft/SurrenderButton"]
 script = ExtResource("13_dp")
 
 [node name="BuildSidebar" type="Control" parent="Hud/SafeArea" node_paths=PackedStringArray("runner", "controller", "pill", "minimap_slot", "minimap", "top_left", "placement", "strike_aim")]
@@ -232,7 +255,7 @@ controller = NodePath("../../../PlayerController")
 pill = NodePath("../StatusBand/StatusPill")
 minimap_slot = NodePath("../MinimapSlot")
 minimap = NodePath("../MinimapSlot/Minimap")
-top_left = NodePath("../DevButton")
+top_left = NodePath("../TopLeft")
 placement = NodePath("../../../PlacementController")
 strike_aim = NodePath("../../../StrikeAim")
 
@@ -255,7 +278,7 @@ size_flags_vertical = 8
 script = ExtResource("15_selection")
 runner = NodePath("../../../../MatchRunner")
 army_bar = NodePath("../../ArmyBand/ArmyBar")
-top_left = NodePath("../../DevButton")
+top_left = NodePath("../../TopLeft")
 
 [node name="StatusBand" type="MarginContainer" parent="Hud/SafeArea"]
 mouse_filter = 2
@@ -286,6 +309,23 @@ mouse_filter = 2
 script = ExtResource("34_strike_controls")
 aim = NodePath("../../../../StrikeAim")
 runner = NodePath("../../../../MatchRunner")
+
+[node name="SurrenderDialog" type="Control" parent="Hud"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme = ExtResource("16_theme")
+script = ExtResource("90_confirm")
+question = "SURRENDER?"
+detail = "You lose the match at once."
+yes_text = "SURRENDER"
+no_text = "KEEP PLAYING"
+
+[node name="ResultScreen" type="Control" parent="Hud" node_paths=PackedStringArray("runner")]
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme = ExtResource("16_theme")
+script = ExtResource("90_result")
+runner = NodePath("../../MatchRunner")
 
 [connection signal="selection_changed" from="PlayerController" to="UnitLayer" method="set_selected"]
 [connection signal="selection_changed" from="PlayerController" to="BuildingLayer" method="set_selected"]

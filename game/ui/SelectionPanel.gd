@@ -193,6 +193,9 @@ func _fit_band() -> void:
 		_fit_line(band, band_px)
 	else:
 		_fit_zone(band, band_px)
+	# The widest state above sized the safe area at once (setting its margins does), and a size grown
+	# to it stays when the final minimum equals the last one: anchoring it again sizes it afresh.
+	safe.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 ## Landscape: the band's margins are the ArmyBar on the left and the build panel's zone on the

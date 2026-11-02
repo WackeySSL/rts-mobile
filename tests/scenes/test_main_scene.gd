@@ -234,7 +234,7 @@ func _on_dev_button_pressed() -> void:
 
 ## Replaces the Dev button's scene change with a counter, so no scene is changed inside a test.
 func _count_dev_button_presses() -> Button:
-	var button: Button = _main.get_node("Hud/SafeArea/DevButton")
+	var button: Button = _main.get_node("Hud/SafeArea/TopLeft/DevButton")
 	for connection: Dictionary in button.pressed.get_connections():
 		var callable: Callable = connection["callable"]
 		button.pressed.disconnect(callable)

@@ -21,3 +21,7 @@ extends Resource
 ## World.from_scenario registers every listed faction's roster after `roster` (ADR 0023 section 6).
 ## Empty = no faction listed, as in every scenario before Phase 3's revision 5.
 @export var factions: Array[FactionDef] = []
+## The team colour per player, for the view alone: entry `p` is the index into `WorldSort.TRIADS` of
+## the triad player p wears (entry 0 unused). Empty, or past the end: triad p - 1, so the first
+## player is orange and the second cyan; the Lumen Accord's route swaps them (ADR 0025, answer 7).
+@export var team_triads: PackedInt32Array = PackedInt32Array()

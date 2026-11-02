@@ -75,6 +75,7 @@ class Frame:
 
 
 func _ready() -> void:
+	add_to_group(TouchInput.CANCEL_GROUP)
 	mouse_filter = Control.MOUSE_FILTER_STOP  # A touch on the minimap never reaches the map.
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # A cell is a crisp diamond.
 	_frame.name = "Frame"
@@ -229,6 +230,11 @@ func _gui_input(event: InputEvent) -> void:
 		jump_to(drag.position)
 
 
+## A modal covers the screen: the finger on the minimap is nobody's (TouchInput.CANCEL_GROUP).
+func cancel_gestures() -> void:
+	_end_finger()
+
+
 ## The finger is up, or gone: nothing of it is left.
 func _end_finger() -> void:
 	_finger = -1
@@ -283,6 +289,8 @@ func _sync() -> void:
 	if map_view != null:
 		_picture.terrain_colours = map_view.colors
 	_picture.explored_alpha = explored_alpha
+	if runner.scenario != null:
+		_picture.team_triads = runner.scenario.team_triads
 	if runner.scenario != null and runner.scenario.rules != null:
 		_picture.period_ticks = runner.scenario.rules.fog_period_ticks
 	if _picture.update(snap, FogLayer.local_player_of(runner)):

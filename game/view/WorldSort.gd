@@ -23,7 +23,8 @@ const Z_RING: int = 3
 const ART_SCALE: float = 0.5  ## World px per px of the 2x art, before the bake scale.
 const FACTION_FILE: String = "res://data/factions/%s.tres"
 const DEFAULT_FACTION: StringName = &"fossil"
-## The triads a player can wear (ADR 0023 section 5): player 1 the first, player 2 the second.
+## The triads a player can wear (ADR 0023 section 5): player 1 the first, player 2 the second,
+## unless the scenario says otherwise (`ScenarioDef.team_triads`, `triad_index`).
 const TRIADS: Array[Array] = [
 	["#FF9446", "#E8681F", "#B04B12"],
 	["#62D6EE", "#1FA6C8", "#137C99"],
@@ -56,6 +57,14 @@ func _init() -> void:
 ## Whether type `type` of `snap` has a footprint: a building, which no unit rig stands for.
 static func is_building(snap: MatchSnapshot, type: int) -> bool:
 	return type >= 0 and type < snap.type_foot_w.size() and snap.type_foot_w[type] > 0
+
+
+## The index into TRIADS of the triad `player` wears: its entry of the scenario's `team_triads`,
+## else its own place (player 1 the first, wrapping after eight). The neutral player wears player
+## 1's, as `slot_of` gives it art. The minimap reads the same rule.
+static func triad_index(triads: PackedInt32Array, player: int) -> int:
+	var at: int = maxi(player, 1)
+	return posmod(triads[at] if at < triads.size() else at - 1, TRIADS.size())
 
 
 ## Bakes the atlas for the runner's match when its `match_serial` is new and its scenario's art or
@@ -163,7 +172,9 @@ static func _player_arts(scenario: ScenarioDef, sheets: Array[IsoSheetDef]) -> A
 		count = maxi(count, spawn.owner)
 	for player: int in range(1, count + 1):
 		var faction: FactionDef = _faction_of(scenario, sheets, player)
-		var triad: PackedStringArray = PackedStringArray(TRIADS[(player - 1) % TRIADS.size()])
+		var triad: PackedStringArray = PackedStringArray(
+			TRIADS[triad_index(scenario.team_triads, player)]
+		)
 		arts.append(IsoPlayerArt.make(faction.id, faction.key_triad, triad))
 	return arts
 
