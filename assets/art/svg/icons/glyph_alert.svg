@@ -1,0 +1,9 @@
+<!-- Alert glyph: white and grey only, tinted at run time (the BUILD button's stalled mark). -->
+<!-- Shape: a round white disc with a dark rim, one dark exclamation mark in it, a tapered bar over a round dot. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <circle cx="64" cy="64" r="52" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="5"/>
+  <path d="M106.5,75.4 A44 44 0 0 1 49,105.3" fill="none" stroke="#BFBFBF" stroke-width="5"/>
+  <!-- the mark -->
+  <polygon points="55,28 73,28 69,72 59,72" fill="#4D4D4D" stroke="#4D4D4D" stroke-width="5" stroke-linejoin="round"/>
+  <circle cx="64" cy="94" r="9" fill="#4D4D4D"/>
+</svg>

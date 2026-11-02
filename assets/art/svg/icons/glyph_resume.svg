@@ -1,0 +1,7 @@
+<!-- Resume glyph: white and grey only, tinted at run time (the pause menu's Resume button). -->
+<!-- Shape: one solid triangle with rounded corners pointing right, its lower half shaded grey. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <polygon points="38,26 96,64 38,102" fill="#4D4D4D" stroke="#4D4D4D" stroke-width="24" stroke-linejoin="round"/>
+  <polygon points="38,26 96,64 38,102" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="14" stroke-linejoin="round"/>
+  <polygon points="38,86 96,64 38,102" fill="#BFBFBF" stroke="#BFBFBF" stroke-width="14" stroke-linejoin="round"/>
+</svg>

@@ -13,7 +13,7 @@ extends Control
 ## player as the match-start bake does. `_add_atlas` adds the effects atlas at scale 1 to each
 ## ground, and `_add_terrain_row` a patch of map tiles with the explored fog over its second row.
 ##
-## The button at the top right turns the pages: Units, Build, Ground, Icons, Iso and Terrain.
+## The button at the top right turns the pages: Units, Build, Ground, Icons, Iso, Terrain and Hud.
 ## Build (`_add_build_page`, `art_gallery_build.gd`, plan row P103, STYLE.md "Buildings") shows each
 ## building of both factions on the iso ground with a tank in front of it and one behind it at the
 ## camera zooms in two triads, the faction's emblem beside the item card. Iso (`_add_iso_page`,
@@ -25,7 +25,9 @@ extends Control
 ## STYLE.md ("Ghosts") on the iso barracks, the one that does not fit with its reason glyph. Icons
 ## (`_add_icons_page`) shows the sidebar's tab and item icons and the HUD glyphs at their size in
 ## dp on a dark HUD panel, and the glyphs and rally flags that sit on the map on grass and sand.
-## The pages after Units are built in code and start hidden.
+## Hud (`_add_hud_page`, plan row P118g, ADR 0025 and 0026) shows the fourteen glyphs of the corner
+## HUD at 48 dp with their names, the glyphs they sit beside, all fourteen at 32 and 24 dp, and the
+## construction mast on grass and sand. The pages after Units are built in code and start hidden.
 ##
 ## To add a unit: its model goes under `assets/art/models/` (STYLE.md "Generated art") and its art
 ## id into `ROSTER_IDS` (Derrick League) or `ACCORD_IDS` (Lumen Accord). A building goes into the
@@ -103,7 +105,7 @@ const FRAME_PX: float = 4.0  ## The dark frame around the patch, so every tile e
 const FRAME_COLOR: Color = Color("1C2127")
 const TERRAIN_ROW_TOP: float = 0.02
 ## The pages the button at the top right cycles through; the button shows the page it is on.
-const PAGES: Array[String] = ["Units", "Build", "Ground", "Icons", "Iso", "Terrain"]
+const PAGES: Array[String] = ["Units", "Build", "Ground", "Icons", "Iso", "Terrain", "Hud"]
 const BuildPage: GDScript = preload("res://game/view/art_gallery_build.gd")
 const Units: GDScript = preload("res://game/view/art_gallery_units.gd")
 const IsoPage: GDScript = preload("res://game/view/art_gallery_iso.gd")
@@ -165,6 +167,33 @@ const HUD_GLYPHS: Array[String] = [
 const EMBLEMS: Array[String] = ["glyph_victory", "glyph_defeat", "glyph_draw"]
 ## The build menu's own glyphs (ADR 0024): the Build button's, and the pin, pinned and not.
 const MENU_GLYPHS: Array[String] = ["glyph_menu_open", "glyph_pin", "glyph_pin_off"]
+## The Hud page's rows (STYLE.md, "Icons and glyphs"): the fourteen glyphs of ADR 0025 and 0026 by
+## the part of the HUD that uses them, then the existing glyphs they stand beside, at 48 dp.
+const HUD_V2_ROWS: Dictionary[String, Array] = {
+	"Bar": ["glyph_deselect", "glyph_stop", "glyph_all_army", "glyph_plus"],
+	"Pause":
+	[
+		"glyph_menu",
+		"glyph_resume",
+		"glyph_restart",
+		"glyph_surrender",
+		"glyph_exit",
+		"glyph_vibration",
+	],
+	"Panels": ["glyph_collapse", "glyph_chevron", "glyph_alert", "glyph_construct"],
+	"Beside":
+	[
+		"glyph_menu_open",
+		"glyph_pin",
+		"glyph_pin_off",
+		"glyph_check",
+		"glyph_cross",
+		"glyph_low_power",
+		"glyph_credits",
+		"glyph_power",
+	],
+}
+const HUD_V2_NEW_ROWS: Array[String] = ["Bar", "Pause", "Panels"]
 const MAP_GLYPHS: Array[String] = [
 	"glyph_reason_outside",
 	"glyph_reason_ground",
@@ -180,6 +209,8 @@ const ITEM_ICON_DP: float = 64.0
 const TAB_ICON_DP: float = 48.0
 const HUD_GLYPH_DP: float = 48.0
 const MAP_GLYPH_DP: float = 32.0
+## The Hud page's two smaller sizes, in dp: a glyph in a 48 dp button's corner and the smallest.
+const HUD_SMALL_DP: Array[float] = [32.0, 24.0]
 const ICON_GAP_PX: float = 10.0
 const ITEM_COLUMNS: int = 4
 const HUD_BACKDROP: Color = Color("0F141C")  ## STYLE.md: the HUD panel backdrop, here opaque.
@@ -195,6 +226,7 @@ const GLYPH_TINTS: Dictionary[String, Color] = {
 	"glyph_low_power": Color("F5A524"),
 	"glyph_lock": Color("9AA5B1"),
 	"glyph_pin_off": Color("9AA5B1"),
+	"glyph_alert": Color("9AA5B1"),
 	"glyph_check": Color("30A46C"),
 	"glyph_cross": Color("E5484D"),
 	"glyph_victory": Color("30A46C"),
@@ -217,6 +249,17 @@ const GLYPH_TINTS: Dictionary[String, Color] = {
 const HUD_ROW_TOPS: Array[float] = [12.0, 152.0, 520.0, 612.0]
 const MAP_ROW_TOPS: Dictionary[String, Array] = {"Grass": [152.0, 250.0], "Sand": [24.0, 132.0]}
 const FLAG_GAP_PX: float = 24.0
+## The Hud page, in base px from the top of the page: the four 48 dp rows with a name under each
+## glyph, the two small rows (one for each of `HUD_SMALL_DP`) and the strip of the mast on the
+## ground. Rows are centred, none wider than the 992 px between the corner buttons at 1280 wide.
+const HUD_PAGE_ROW_TOPS: Array[float] = [16.0, 134.0, 252.0, 370.0]
+const HUD_SMALL_TOPS: Array[float] = [500.0, 572.0]
+const HUD_SITES_TOP: float = 640.0
+const HUD_CAPTION_PX: int = 16
+const HUD_CAPTION_HEIGHT_PX: float = 22.0
+const HUD_CAPTION_COLOR: Color = Color("9AA5B1")
+const HUD_SITE_SIZE: Vector2 = Vector2(120.0, 64.0)
+const HUD_SITE_GLYPH: String = "glyph_construct"
 
 @export var team_a_color: Color = Color("2F80ED")
 @export var team_b_color: Color = Color("E5484D")
@@ -235,6 +278,7 @@ var _ground_page: Control = null
 var _icons_page: Control = null
 var _iso_page: Control = null
 var _terrain_page: Control = null
+var _hud_page: Control = null
 
 @onready var _back_button: Button = %BackButton
 @onready var _page_button: Button = %PageButton
@@ -264,6 +308,7 @@ func _ready() -> void:
 	_add_build_page()
 	_add_iso_page()
 	_add_terrain_page()
+	_add_hud_page()
 	_tint_team_layers(TEAM_A_GROUP, team_a_color)
 	_tint_team_layers(TEAM_B_GROUP, team_b_color)
 	for node: Node in find_children(TURRET_LAYER, "Sprite2D", true, false):
@@ -712,10 +757,67 @@ func _icons_half(page: Control, node_name: String, colour: Color, anchors: Rect2
 	return half
 
 
+## The Hud page (plan row P118g): the HUD panel's backdrop over the whole page, the rows of
+## `HUD_V2_ROWS` at 48 dp with the name of each glyph under it, the fourteen new glyphs again at
+## each of `HUD_SMALL_DP`, and the construction mast on a grass and a sand swatch, where a site's
+## badge is seen. Every row is centred, so the page fits at any base width from 1280.
+func _add_hud_page() -> void:
+	_hud_page = _page_root("HudPage")
+	var panel: ColorRect = _icons_half(_hud_page, "Hud", HUD_BACKDROP, Rect2(0.0, 0.0, 1.0, 1.0))
+	var fresh: Array[String] = []
+	for index: int in HUD_V2_ROWS.size():
+		var row_name: String = HUD_V2_ROWS.keys()[index]
+		var icons: Array[String] = []
+		icons.assign(HUD_V2_ROWS[row_name])
+		if HUD_V2_NEW_ROWS.has(row_name):
+			fresh.append_array(icons)
+		var row: Control = _pixel_row(panel, row_name, HUD_PAGE_ROW_TOPS[index])
+		_icon_grid(row, icons, HUD_GLYPH_DP, icons.size(), false, true)
+	for index: int in HUD_SMALL_DP.size():
+		var dp: float = HUD_SMALL_DP[index]
+		var row: Control = _pixel_row(panel, "Small%d" % int(dp), HUD_SMALL_TOPS[index])
+		_icon_grid(row, fresh, dp, fresh.size())
+	_add_site_row(_pixel_row(panel, "Sites", HUD_SITES_TOP))
+
+
+## The construction mast at the size of a glyph on the map, on a swatch of grass and one of sand,
+## with a line that says what it shows.
+func _add_site_row(row: Control) -> void:
+	var size_px: float = MAP_GLYPH_DP * PX_PER_DP
+	var at: float = 0.0
+	for ground_name: String in ["Grass", "Sand"]:
+		var swatch: ColorRect = ColorRect.new()
+		swatch.name = "Site" + ground_name
+		swatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		swatch.color = TERRAIN_COLORS[&"grass_b" if ground_name == "Grass" else &"sand"]
+		swatch.position = Vector2(at, 0.0)
+		swatch.size = HUD_SITE_SIZE
+		var middle: Vector2 = (HUD_SITE_SIZE - Vector2.ONE * size_px) / 2.0
+		swatch.add_child(_icon_rect(HUD_SITE_GLYPH, size_px, middle))
+		row.add_child(swatch)
+		at += HUD_SITE_SIZE.x + ICON_GAP_PX
+	var note: Label = Label.new()
+	note.name = "LabelSites"
+	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	note.text = "construct on the map"
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	note.add_theme_font_size_override(&"font_size", HUD_CAPTION_PX)
+	note.add_theme_color_override(&"font_color", HUD_CAPTION_COLOR)
+	note.size = Vector2(HUD_SITE_SIZE.x * 2.0, HUD_CAPTION_HEIGHT_PX)
+	note.position = Vector2(-note.size.x - ICON_GAP_PX, (HUD_SITE_SIZE.y - note.size.y) / 2.0)
+	row.add_child(note)
+
+
 ## Icons of `dp` dp in lines of `columns`, each line centred on the row. An item icon sits on its
-## tile, a step lighter than the panel, the way the sidebar draws it.
+## tile, a step lighter than the panel, the way the sidebar draws it; with `captions` each glyph has
+## its name under it.
 func _icon_grid(
-	row: Control, icons: Array[String], dp: float, columns: int, tiles: bool = false
+	row: Control,
+	icons: Array[String],
+	dp: float,
+	columns: int,
+	tiles: bool = false,
+	captions: bool = false
 ) -> void:
 	var size_px: float = dp * PX_PER_DP
 	for i: int in icons.size():
@@ -732,6 +834,23 @@ func _icon_grid(
 			tile.size = Vector2.ONE * (size_px + 2.0 * TILE_MARGIN_PX)
 			row.add_child(tile)
 		row.add_child(_icon_rect(icons[i], size_px, at))
+		if captions:
+			row.add_child(_icon_caption(icons[i], at, size_px))
+
+
+## The name of a glyph, centred under it: the file's name without `glyph_`.
+func _icon_caption(icon: String, at: Vector2, size_px: float) -> Label:
+	var short: String = icon.trim_prefix("glyph_")
+	var label: Label = Label.new()
+	label.name = "Label" + short.to_pascal_case()
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.text = short.replace("_", " ")
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override(&"font_size", HUD_CAPTION_PX)
+	label.add_theme_color_override(&"font_color", HUD_CAPTION_COLOR)
+	label.size = Vector2(size_px + ICON_GAP_PX, HUD_CAPTION_HEIGHT_PX)
+	label.position = at + Vector2((size_px - label.size.x) / 2.0, size_px + 2.0)
+	return label
 
 
 ## An icon file as a square `TextureRect` of `size_px` at `at`, tinted as the HUD tints it.
@@ -781,6 +900,7 @@ func _show_page(index: int) -> void:
 	_icons_page.visible = index == 3
 	_iso_page.visible = index == 4
 	_terrain_page.visible = index == 5
+	_hud_page.visible = index == 6
 	_page_button.text = PAGES[index]
 
 

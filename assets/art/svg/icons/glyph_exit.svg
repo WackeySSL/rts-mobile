@@ -1,0 +1,16 @@
+<!-- Exit glyph: white and grey only, tinted at run time (the pause menu's Exit to menu button). -->
+<!-- Shape: a tall closed doorway frame holding a door leaf swung open as a trapezoid, a fat arrow leaving it to the right. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- the doorway: a closed frame -->
+  <rect x="16" y="18" width="48" height="92" rx="6" fill="none" stroke="#4D4D4D" stroke-width="18" stroke-linejoin="round"/>
+  <rect x="16" y="18" width="48" height="92" rx="6" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linejoin="round"/>
+  <!-- the door leaf, swung open into the room -->
+  <polygon points="26,34 52,42 52,88 26,96" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <polygon points="40,40 52,42 52,88 40,92" fill="#BFBFBF"/>
+  <polygon points="26,34 52,42 52,88 26,96" fill="none" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- the arrow out -->
+  <line x1="82" y1="64" x2="102" y2="64" stroke="#4D4D4D" stroke-width="24" stroke-linecap="round"/>
+  <polygon points="98,38 122,64 98,90" fill="#4D4D4D" stroke="#4D4D4D" stroke-width="6" stroke-linejoin="round"/>
+  <line x1="82" y1="64" x2="102" y2="64" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round"/>
+  <polygon points="99,43 116,64 99,85" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="4" stroke-linejoin="round"/>
+</svg>

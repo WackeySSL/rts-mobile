@@ -385,7 +385,9 @@ func test_the_gallery_terrain_row_is_inside_and_clear_of_the_back_button_atlases
 		for ground: String in ["Grass", "Sand"]:
 			avoid.append((gallery.get_node(ground + "/EffectsAtlas") as Control).get_global_rect())
 		for label: Node in gallery.find_children("*", "Label", true, false):
-			avoid.append((label as Control).get_global_rect())
+			# the names on the Hud page (plan row P118g) lie on a page that is hidden
+			if (label as Control).is_visible_in_tree():
+				avoid.append((label as Control).get_global_rect())
 		for sprite: Node in _shown_sprites(gallery):
 			if not row.is_ancestor_of(sprite):
 				avoid.append(_box(sprite))

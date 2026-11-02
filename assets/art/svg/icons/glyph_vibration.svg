@@ -1,0 +1,19 @@
+<!-- Vibration glyph: white and grey only, tinted at run time (the pause menu's Vibration toggle). -->
+<!-- Shape: an upright phone with a grey screen and a round button, a pair of curved shake marks bulging away from each side of it. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- the waves: edge grey under, white over -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M28,46 Q16,64 28,82" stroke="#4D4D4D" stroke-width="17"/>
+    <path d="M100,46 Q112,64 100,82" stroke="#4D4D4D" stroke-width="17"/>
+    <path d="M16,34 Q8,64 16,94" stroke="#4D4D4D" stroke-width="17"/>
+    <path d="M112,34 Q120,64 112,94" stroke="#4D4D4D" stroke-width="17"/>
+    <path d="M28,46 Q16,64 28,82" stroke="#FFFFFF" stroke-width="9"/>
+    <path d="M100,46 Q112,64 100,82" stroke="#FFFFFF" stroke-width="9"/>
+    <path d="M16,34 Q8,64 16,94" stroke="#FFFFFF" stroke-width="9"/>
+    <path d="M112,34 Q120,64 112,94" stroke="#FFFFFF" stroke-width="9"/>
+  </g>
+  <!-- the phone -->
+  <rect x="44" y="14" width="40" height="100" rx="9" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="5" stroke-linejoin="round"/>
+  <rect x="51" y="24" width="26" height="62" rx="4" fill="#BFBFBF"/>
+  <circle cx="64" cy="99" r="5" fill="#BFBFBF"/>
+</svg>

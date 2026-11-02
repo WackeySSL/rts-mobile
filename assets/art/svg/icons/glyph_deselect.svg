@@ -1,0 +1,14 @@
+<!-- Deselect glyph: white and grey only, tinted at run time (the command bar's Clear button, drops the selection). -->
+<!-- Shape: the wide oval ring drawn under a selected unit, cut across by one thick diagonal slash from the upper left to the lower right. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- the oval ring -->
+  <ellipse cx="64" cy="66" rx="48" ry="29" fill="none" stroke="#4D4D4D" stroke-width="22"/>
+  <ellipse cx="64" cy="66" rx="48" ry="29" fill="none" stroke="#FFFFFF" stroke-width="12"/>
+  <path d="M115,70.5 A51.5 32.5 0 0 1 55.1,98" fill="none" stroke="#BFBFBF" stroke-width="5"/>
+  <!-- the slash that breaks it, its own dark edge cutting the ring either side -->
+  <g fill="none" stroke-linecap="round">
+    <line x1="30" y1="28" x2="98" y2="104" stroke="#4D4D4D" stroke-width="32"/>
+    <line x1="30" y1="28" x2="98" y2="104" stroke="#FFFFFF" stroke-width="16"/>
+    <line x1="39.7" y1="31.4" x2="95.7" y2="94" stroke="#BFBFBF" stroke-width="5" stroke-linecap="butt"/>
+  </g>
+</svg>

@@ -877,8 +877,8 @@ The tints the HUD gives them (the gallery's `GLYPH_TINTS` holds the same values)
 | `glyph_power`, `glyph_check`, `glyph_victory` | #30A46C |
 | `glyph_low_power`, `glyph_offline` | #F5A524 |
 | `glyph_under_attack`, `glyph_cross`, `glyph_defeat`, every `glyph_reason_<reason>` | #E5484D |
-| `glyph_lock`, `glyph_draw`, `glyph_pin_off` | #9AA5B1 |
-| `glyph_menu_open`, `glyph_pin` | none (white) |
+| `glyph_lock`, `glyph_draw`, `glyph_pin_off`, `glyph_alert` | #9AA5B1 |
+| `glyph_menu_open`, `glyph_pin` and the other thirteen glyphs of the corner HUD (below) | none (white) |
 
 The build menu's three glyphs (ADR 0024, plan row P85g): `glyph_menu_open` is the Build button's (the
 button that opens the collapsed menu), `glyph_pin` and `glyph_pin_off` the pin toggle at the open
@@ -886,11 +886,42 @@ menu's corner. The pin is white when the menu is pinned and the neutral grey whe
 sits on the tab's plate with its pressed look when pinned; the shape says the same (a pin driven
 upright into its board, or the same pin tilted and lifted out of it), so the state is never a tint
 alone. It is a pin and not a padlock: `glyph_lock` already means "a requirement is missing" on a card.
+(ADR 0025 drops the build menu's own pin, so the same two glyphs serve the radar map's pin.)
+
+**The corner HUD's fourteen glyphs** (ADR 0025 and ADR 0026, plan row P118g) are drawn like the
+others: white with the edge grey under it and a shade on the lower right facets, nothing within 2 px
+of the canvas edge, a two-line header with the shape line. All are white on the HUD's plates and
+tinted by the code where a state needs it; only `glyph_alert` has a tint of its own (the table).
+By the part of the HUD that uses them:
+- **Command bar:** `glyph_deselect`, the Clear button (Michael, 2026-11-02): the oval ring the game
+  draws under a selected unit, cut across by one slash. It is neither the padlock (a missing
+  requirement) nor `glyph_cross` (placement's X, the strike's and ADR 0026's Cancel), and the ring is
+  the game's own, not another game's icon. `glyph_stop`, the Stop order: a square in a ring.
+- **Group column:** `glyph_all_army`, three helmeted soldiers, and `glyph_plus`, the save-as-group
+  button.
+- **Pause menu:** `glyph_menu` (the pill's button that opens it), `glyph_resume`, `glyph_restart`,
+  `glyph_surrender`, `glyph_exit` and `glyph_vibration`. The surrender is a plain pennant on a pole,
+  hanging, not a white flag, with no colour or emblem (the game has no national flags, ADR 0023
+  decision 1); the exit is a doorway with its door swung open and an arrow leaving it, drawn apart
+  from `glyph_reason_outside`'s bracket (a closed frame and a door leaf, not an open side).
+- **Panels and marks:** `glyph_collapse` (the radar map's fold-away button, two arrows pointing at
+  each other), `glyph_chevron` (the drawer's close button), `glyph_alert` (BUILD's stalled queue:
+  the "!" in a disc, tinted the neutral grey, so the colour, the shape and the word say it together)
+  and `glyph_construct` (ADR 0026's site badge). The chevron points right and the code turns it by
+  90, 180 or 270 degrees, so the drawer on either side and in portrait share one file. The construct
+  glyph is a lattice mast with a jib across its top and a hook: a crane, so a site is read as a
+  site and not as an aerial or an oil derrick.
+
+`glyph_construct` is a plain HUD glyph with no seat, like the other thirteen. Where the badge is
+drawn straight onto the map (a white mast with its dark edge on grass or sand, as the Hud page shows
+it), the plate of `glyph_offline` ("Map glyphs sit on a seat" below) may be needed behind it: an
+open point for the row that draws the badge (P130).
 
 Sizes in dp (1 dp = 1.75 base px on the 6-inch phone): an item icon fills its 64 dp tile (ADR 0015
 section 5 and ADR 0019 section 1), a tab icon 32 to 48 dp inside its 48 dp tab, a HUD glyph 24 to
 48 dp, a glyph on the map 32 dp, and the under-attack arrow at least 48 dp. The gallery shows the
-tabs at 48, the items at 64, the HUD glyphs at 48 and the map glyphs at 32 dp, and the arrow at 48.
+tabs at 48, the items at 64, the HUD glyphs at 48 and the map glyphs at 32 dp, and the arrow at 48;
+its Hud page shows the corner HUD's fourteen at 48, 32 and 24 dp.
 
 **Map glyphs sit on a seat (new).** The eight glyphs that are drawn over the map, the six
 `glyph_reason_<reason>`, `glyph_offline` and `glyph_under_attack`, carry their own seat in the file:
@@ -941,14 +972,30 @@ under the 82 % bound for an icon.
 | `glyph_victory.svg` | A fat five-pointed star, point up. |
 | `glyph_defeat.svg` | A heater shield with a pointed foot, split by a dark zigzag crack. |
 | `glyph_draw.svg` | A round disc with two level bars across it, an equals sign. |
+| `glyph_menu.svg` | Three level rounded bars of one length stacked with equal gaps, each white with a grey shaded foot. |
+| `glyph_deselect.svg` | The wide oval ring drawn under a selected unit, cut across by one thick diagonal slash from the upper left to the lower right. |
+| `glyph_stop.svg` | A round ring with a clear gap inside it and one rounded square block in the middle, white with a grey shaded foot. |
+| `glyph_plus.svg` | A bold plus of two crossing strokes, one level and one upright, round at every end. |
+| `glyph_collapse.svg` | Two fat diagonal arrows on one line from the upper right and the lower left, their square-cornered heads pointing at each other. |
+| `glyph_chevron.svg` | One bold chevron pointing right, two round-ended strokes meeting at a rounded point. |
+| `glyph_resume.svg` | One solid triangle with rounded corners pointing right, a grey wedge along its lower edge. |
+| `glyph_restart.svg` | A thick circular arrow, a ring open at the top whose end runs into a wide triangular head pointing clockwise. |
+| `glyph_surrender.svg` | A slim upright pole with a round ball on its top and a broad foot, one long triangular pennant hanging from it to a low point. |
+| `glyph_exit.svg` | A tall closed doorway frame holding a door leaf swung open as a trapezoid, a fat arrow leaving it to the right. |
+| `glyph_vibration.svg` | An upright phone with a grey screen and a round button, a pair of curved shake marks bulging away from each side of it. |
+| `glyph_alert.svg` | A round white disc with a dark rim, one dark exclamation mark in it, a tapered bar over a round dot. |
+| `glyph_all_army.svg` | Three soldiers shown from the chest up in a row, a tall one in front of two lower ones, each head under a grey half-dome helmet. |
+| `glyph_construct.svg` | A tall tapering lattice mast of crossed braces on a flat foot, a long level jib across its top with a grey counterweight block behind and a hook hanging from the far end. |
 
 The line names the symbol. Each of the eight map glyphs (the six reasons, offline and under attack)
 is drawn on the seat described above, and its file header says so.
 
 Each meaning has its own shape (see "Shape as second cue"): the state of a tile is never the tint
 alone. The glyphs of one group differ by silhouette, not by hue: the three tabs, the six placement
-reasons, the three results, and the pin from the pin off (the same pin in two postures, so the tilt,
-the lift and the whole needle must carry it: `tests/art` asks for a mean difference of 30 at 32 px).
+reasons, the HUD group (the twelve glyphs and result emblems of before and the corner HUD's fourteen:
+no new one is nearer than 29 to any other, `tests/art` asks for it), and the pin from the pin off (the
+same pin in two postures, so the tilt, the lift and the whole needle must carry it: `tests/art` asks
+for a mean difference of 30 at 32 px).
 
 Results (P92, scratch script, imported scale 0.5 and 0.25, alpha above 0.5): every tab and glyph
 file has no non-grey pixel and no ink in the outer 1 px of its 64 px raster, and neither has an
@@ -966,6 +1013,20 @@ ring, four soldiers, two tubes, and the four vehicles by pods, turret and gun. T
 canvas, the pin off 40 % and the Build glyph 49 %, the mean luminance of their ink is 174 to 180. At
 32 px the Build glyph reads as a chevron over three small tiles, the pin as a dome and a flange on
 a needle going into a bar, and the pin off as the same dome tilted over its hole.
+
+The corner HUD's fourteen (P118g, the same measures; greys only, nothing within 2 px of the edge)
+cover 26 % (`glyph_surrender`) to 57 % (`glyph_alert`) of the canvas, and the mean luminance of their
+ink is 151 to 199 (the pennant and the Deselect glyph are the darkest, for their edges). The 32 px
+check now runs over the twenty-six glyphs of the HUD group: its closest pair is still the bolt and
+the star (29.3), and no new glyph is nearer than 29.8 to any other (the Resume triangle against the
+star; against the coin stack 30.7, against the chevron 35.4). The Alert disc is 35.9 from the Draw
+disc and 39.3 from the shield, the Plus 97.8 from the cross and the Deselect glyph 74.8 from the
+padlock and 63.6 from the cross; `tests/art` keeps every new glyph at 29 or more from the others and
+the Deselect glyph at 40 or more from the padlock and the cross. At 32 px they read as a ring cut by
+a slash, a ring round a square, three heads over broad shoulders, a plus, three bars, a play
+triangle, a ring with an arrowhead, a pole with a hanging point, a doorway with an arrow, a phone
+between shake marks, two arrows meeting, a chevron, a disc with a bar and a dot, and a tower with a
+long arm and a hook.
 
 The eight map glyphs are never white on the HUD, so they are checked as they are seen: tinted, over
 the base colour of each terrain (grass, grass_b, sand, scrub, rock, water) and over the two areas of
@@ -1029,7 +1090,7 @@ in doubt, choose a plainer real-world form.
 | Blackout Array | An open square frame of four tall white hexagonal columns with two team rings each and graphite caps, joined at their tops by a ring of graphite bars with a team light strip and a mint node under each bar, standing round a hexagonal capacitor core of stacked white drums with a team band, a glass ring and a mint cap. | `iso/renew/bld/renew_strike_{hull,shadow}.svg`, 384 wide |
 | Infantry rally flag | A slim metal pole standing up from a round foot plate with a small triangular pennant, over a round ring on the ground. | `flags/rally_infantry_{hull,team}.svg`, 128x128 |
 | Vehicles rally flag | A slim metal pole standing up from a square foot plate with a wide notched swallowtail banner, over a square frame on the ground. | `flags/rally_vehicles_{hull,team}.svg`, 128x128 |
-| Tab, item and glyph icons | Three tab pictograms, eleven build tile icons and twenty glyphs, one silhouette each. | `icons/<kind>_<name>.svg`, 128x128, import scale 1.0, see "Icons and glyphs" |
+| Tab, item and glyph icons | Three tab pictograms, eleven build tile icons and thirty-four glyphs, one silhouette each. | `icons/<kind>_<name>.svg`, 128x128, import scale 1.0, see "Icons and glyphs" |
 | Ore cell | A square of dirt, bare or holding three to six gold nuggets and crystals by level. | `ore/ore_<level>[a\|b].svg`, 128x128, see "Ore" |
 | Derrick League emblem | A regular octagon with a thick dark rim, a dark panel holding a white steel I-beam with tapered flanges and four rivets on the white ring at the diagonal corners. | `icons/emblem_fossil.svg`, 128x128, see "Buildings" |
 | Lumen Accord emblem | A regular flat-topped hexagon with a dark rim, a white ring with six rivets and a dark panel holding a white three-blade rotor on a round hub, turned off the vertical, above two shallow horizon arcs. | `icons/emblem_renew.svg`, 128x128, see "Buildings" |
@@ -1543,7 +1604,7 @@ re-authored; nothing is copied.
 `scenes/dev/art_gallery.tscn` (opened from the dev menu, also in the web preview) shows every asset
 at gameplay zoom on grass and sand, in team A and team B. The grass half is the left half of the
 screen, the sand half the right. A button at the top right (120x120 base px, labelled with the page
-it is on) turns the pages: **Units**, **Build**, **Ground**, **Icons**, **Iso** and **Terrain**, and
+it is on) turns the pages: **Units**, **Build**, **Ground**, **Icons**, **Iso**, **Terrain** and **Hud**, and
 the Back button leaves from any of them. The pages after Units are built by `art_gallery.gd` (Build
 by `art_gallery_build.gd`, Iso by `art_gallery_iso.gd`, Terrain by `art_gallery_ground.gd`, the last
 three on first show) and start hidden, so the Units page is as it was.
@@ -1618,6 +1679,18 @@ three on first show) and start hidden, so the Units page is as it was.
   and on a grass and a sand swatch (`Props`) the wellhead with its shadow at the camera zooms 0.75, 1
   and 1.5 and the crater. It is where Michael judges the joins (no line between equal tiles), the lake of full oil
   and the contrast of the crust on his phone.
+- **Hud** (the seventh page, plan row P118g, built by `art_gallery.gd`) is the HUD panel's backdrop
+  (#0F141C) over the whole page, with rows centred and none wider than the 992 px between the
+  corner buttons at 1280 wide: `Bar` (Deselect, Stop, All army, Plus), `Pause` (Menu, Resume,
+  Restart, Surrender, Exit, Vibration), `Panels` (Collapse, Chevron, Alert, Construct) and `Beside`,
+  eight glyphs they stand next to (Build, the pin and the pin off, the check mark, the cross, the
+  warning triangle, the coin and the bolt), each at 48 dp with its name under it and tinted as the
+  HUD tints it. Then `Small32` and `Small24`, the fourteen new glyphs again at 32 and 24 dp (the
+  smallest sizes of a HUD glyph), and `Sites`, the construction mast at 32 dp on a swatch of grass
+  and one of sand with a line that names it. A glyph is a `TextureRect` named by its file in
+  PascalCase (`GlyphDeselect`) and its name a `Label` (`LabelDeselect`). Everything is clear of the
+  two corner buttons and of every other thing at 1280 x 720, 1600 x 720 and 1280 x 960. It is where
+  Michael judges whether the fourteen look like one family with the older glyphs.
 
 To add an asset:
 - A unit: add its model under `assets/art/models/` (see "Generated art", the generator writes its
@@ -1631,8 +1704,8 @@ To add an asset:
   `Team` and turns `Turret`, and the team colours are exported properties of the scene root.
 - An icon goes on the Icons page: add its file name to the list of its kind in `art_gallery.gd`
   (`TAB_ICONS`, `ITEM_ICONS`, `HUD_GLYPHS`, `EMBLEMS`, `MENU_GLYPHS`, `MAP_GLYPHS`) and, if the HUD
-  tints it, to
-  `GLYPH_TINTS`.
+  tints it, to `GLYPH_TINTS`. A glyph of the corner HUD goes into a row of `HUD_V2_ROWS` instead
+  (the Hud page).
 - The Back button (120x120 base px, top-left) and the Android back request both return to the dev
   menu. While the gallery is open the script switches `SceneTree.quit_on_go_back` off (its default
   is on, which would quit the app) and restores it on exit.
@@ -1826,6 +1899,11 @@ Renaming a unit or a unit type is a data change, not a reskin.
   (172.5, 151.9, 138.0; sand 185, grass 126), so every check of `tests/art` holds ("Fields", gas
   crust). (3) The full oil lake (30 at 32 px now, nearly black) **stays**, and (4) the crater
   **stays** 3 tiles across at scale 1; neither is changed.
+- **HUD v2 glyphs (P118g, asked 2026-11-02).** The fourteen new glyphs are on the gallery's Hud page.
+  To judge on the phone: do they read as one family with the older glyphs; does `glyph_deselect`
+  (the selection ring cut by a slash) say "clear the selection" and not "forbidden"; is a crane mast
+  the right badge for a building site; and does the white `glyph_construct` hold on grass and sand
+  without the plate of `glyph_offline` (the page's last strip shows both)?
 
 ## Change log
 | Date | Change |
