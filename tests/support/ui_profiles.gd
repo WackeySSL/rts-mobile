@@ -8,7 +8,10 @@ extends RefCounted
 ## android_6in: a 6-inch phone, 420 dpi. web_phone and web_phone_small: phone browsers with
 ## 914x355 and 800x304 CSS px viewports. web_tablet: a 4:3 tablet. desktop: the base size.
 ## `all()` is landscape only. `portrait()` holds the portrait twins (ADR 0015 section 6), which a
-## suite joins in its own row; `by_name` finds both.
+## suite joins in its own row; `by_name` finds both and `notch_design()`'s too.
+## `notch_design()` is the 6-inch phone with the insets of Michael's HUD design (ADR 0025 section
+## 2, plan HUD v2): landscape 59 dp at the sides and 21 at the bottom, portrait 59 at the top and 34
+## at the bottom. It is a profile of its own, so the suites that walk `all()` are unchanged.
 
 
 ## Fresh metrics for every profile: profile name -> UiMetrics.
@@ -39,9 +42,31 @@ static func portrait() -> Dictionary[StringName, UiMetrics]:
 	}
 
 
+## The 6-inch phone, both ways, with the design's insets (dp turned to window px).
+static func notch_design() -> Dictionary[StringName, UiMetrics]:
+	var land: UiMetrics = all()[&"android_6in"]
+	var upright: UiMetrics = portrait()[&"android_6in_portrait"]
+	var px: float = UiScale.window_px_per_dp(land)
+	var side: int = roundi(59.0 * px)
+	var land_safe: Rect2i = Rect2i(
+		side, 0, land.window_size.x - 2 * side, land.window_size.y - roundi(21.0 * px)
+	)
+	var top: int = roundi(59.0 * px)
+	var port_safe: Rect2i = Rect2i(
+		0, top, upright.window_size.x, upright.window_size.y - top - roundi(34.0 * px)
+	)
+	return {
+		&"notch_design": with_safe_area(land, land_safe),
+		&"notch_design_portrait": with_safe_area(upright, port_safe),
+	}
+
+
 static func by_name(profile_name: StringName) -> UiMetrics:
 	var landscape: Dictionary[StringName, UiMetrics] = all()
-	return landscape[profile_name] if landscape.has(profile_name) else portrait()[profile_name]
+	if landscape.has(profile_name):
+		return landscape[profile_name]
+	var upright: Dictionary[StringName, UiMetrics] = portrait()
+	return upright[profile_name] if upright.has(profile_name) else notch_design()[profile_name]
 
 
 ## A copy of `m` with another safe area (window px).
