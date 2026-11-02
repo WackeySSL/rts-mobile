@@ -309,16 +309,25 @@ func test_a_player_builds_at_most_construction_sites_max_sites_at_once() -> void
 	_assert_dropped("no site allowed", none, SiteRig.place(none, "power_plant", SiteRig.SPOT))
 
 
-## A cancelled row (`build_left` -1, written by CANCEL_BUILD and gone in the same tick's REMOVE) is
-## no site: it does not count against the limit.
-func test_a_cancelled_row_does_not_count_against_the_limit() -> void:
+## A cancelled row (`build_left` -1, written by CANCEL_BUILD and gone in the same tick's REMOVE)
+## still holds its site slot until REMOVE, as it holds its tiles and its reach (P128b, ADR 0026
+## section 6): it counts against the limit, and the slot is free once the row has left.
+func test_a_cancelled_row_holds_its_slot_until_it_leaves() -> void:
 	var made: World = SiteRig.world()
 	SiteRig.step(made, [SiteRig.place(made, "power_plant", SiteRig.SPOT)])
 	assert_int(Production._sites_of(made, 1)).is_equal(1)
-	made.build_left[SiteRig.last(made)] = -1
+	var row: int = SiteRig.last(made)
+	var id: int = made.unit_id[row]
+	made.build_left[row] = -1
+	assert_int(Production._sites_of(made, 1)).is_equal(1)
+	assert_int(Production._sites_of(made, 2)).is_equal(0)  # Only its owner's slot.
+	_assert_dropped("the second site", made, SiteRig.place(made, "barracks", SiteRig.WIDE))
+	made.hp[row] = 0  # REMOVE takes it out in the next step.
+	SiteRig.step(made)
+	assert_int(made.index_of(id)).is_equal(-1)
 	assert_int(Production._sites_of(made, 1)).is_equal(0)
 	_assert_started(
-		"the second site",
+		"the second site, once the row has left",
 		made,
 		SiteRig.place(made, "barracks", SiteRig.WIDE),
 		SiteRig.cost(made, "barracks")
