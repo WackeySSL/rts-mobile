@@ -73,8 +73,9 @@ static func run(world: World) -> void:
 
 
 ## Whether `player` is on low power: the totals `run` built have it using more than it makes. False
-## for the neutral player and for a player past the arrays. The totals are as ECONOMY left them, so
-## a row added since then does not count yet.
+## for the neutral player and for a player past the arrays. The totals are as ECONOMY left them, or
+## as `Production.run` summed them again at the end of a step that completed a site, so a site
+## counts from the end of its completing step and a row added since then does not count yet.
 static func is_low(world: World, player: int) -> bool:
 	var made: PackedInt32Array = world.power_made
 	var used: PackedInt32Array = world.power_used

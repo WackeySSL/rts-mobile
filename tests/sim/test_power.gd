@@ -214,15 +214,21 @@ func test_the_totals_are_in_no_hash_section_and_a_rebuild_from_the_rows_restores
 ## One match of two bases with buildings that are placed and destroyed while the armies fight: a
 ## second turret for player 1 at tick 60, its plant dying at tick 150 (low power) and a new one at
 ## tick 300 (enough again), a plant of player 2 dying at tick 210, and (ADR 0026) a plant that
-## player 1 places first at tick 45: a site for 150 steps, complete in the PRODUCTION step that
-## leaves tick 195, a checkpoint, after ECONOMY has summed the totals. At every checkpoint the
-## totals are compared with a scan of the rows and with a rebuild from the rows (wiped, run again),
-## and the state hash is the same before and after the rebuild.
+## player 1 places first at tick 45. Its build time is a literal here, 135 ticks, so that no data
+## file decides when it completes: 105 steps at the full rate (tick 45 up to 149), then, with player
+## 1's plant dead from tick 150 and the player on low power, 60 steps at half the rate. It is
+## complete in the PRODUCTION step that leaves tick 210, a checkpoint, after ECONOMY has summed the
+## totals, so the totals hold its power only if `Production.run` sums them again; the case asserts
+## that tick and that it is a checkpoint. At every checkpoint the totals are compared with a scan of
+## the rows and with a rebuild from the rows (wiped, run again), and the state hash is the same
+## before and after the rebuild.
 func test_every_checkpoint_of_a_match_with_buildings_equals_a_rebuild_from_the_rows() -> void:
 	var world: World = Worlds.fight()
 	var loop: MatchLoop = MatchLoop.create(null, "", 0, world)
 	var seen: Dictionary[String, int] = {"checkpoints": 0, "low": 0, "changes": 0}
 	var last: Array[int] = [-1, -1]
+	var completed: int = -1
+	world.type_build_ticks[Worlds.type_of(world, "power_plant")] = 135
 	for tick: int in 450:
 		var orders: Array[Command] = []
 		if tick == 0:
@@ -240,6 +246,8 @@ func test_every_checkpoint_of_a_match_with_buildings_equals_a_rebuild_from_the_r
 		if tick == 300:
 			world.add_building(1, Worlds.type_of(world, "power_plant"), 10, 12)
 		loop.step(world, orders)
+		if completed < 0 and world.stat_built[1] == 1:
+			completed = world.tick  # The tick the completing step left behind.
 		if world.tick % Replay.CHECKPOINT_PERIOD != 0:
 			continue
 		seen["checkpoints"] += 1
@@ -270,6 +278,8 @@ func test_every_checkpoint_of_a_match_with_buildings_equals_a_rebuild_from_the_r
 		assert_int(world.state_hash()).is_equal(hash_before)
 	assert_int(world.dropped_commands).is_equal(0)  # The site was placed.
 	assert_int(world.stat_built[1]).is_equal(1)  # And it was completed: stat_built counts it.
+	assert_int(completed).is_equal(210)
+	assert_int(completed % Replay.CHECKPOINT_PERIOD).is_equal(0)  # On a checkpoint, compared there.
 	assert_int(seen["checkpoints"]).is_equal(30)
 	assert_int(seen["changes"]).is_greater_equal(3)  # Made and used moved at least thrice.
 	assert_int(seen["low"]).is_greater(0)  # The run met low power, so it checked that side too.

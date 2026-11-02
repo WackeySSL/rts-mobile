@@ -306,6 +306,43 @@ func test_a_barracks_that_completes_serves_its_queue_in_the_same_step() -> void:
 	assert_int(Production.producer_row(made, 1, World.Tab.INFANTRY)).is_equal(row)
 
 
+## The queues of the step in which a site completes run on ECONOMY's totals (the `Production.run`
+## header); the closing `Power.run` is for the checkpoint and the next step. Player 1 is on low
+## power until a plant site completes, so the site itself rises at the low rate too: its rifle
+## squad gains the low step in every step up to and including the completing one, and the full step
+## in the next.
+@warning_ignore("integer_division")
+func test_the_queues_of_the_completing_step_run_on_the_totals_of_economy() -> void:
+	var made: World = SiteRig.world()
+	made.type_power[SiteRig.type_of(made, "barracks")] = -150  # Player 1 makes 120, uses 180.
+	SiteRig.fast(made, "power_plant", 3)
+	var queue: int = 1 * World.TABS + World.Tab.INFANTRY
+	var low: int = STEP * made.low_power_percent / 100
+	assert_bool(low > 0 and low < STEP).is_true()
+	var steps: int = (SiteRig.done(made, "power_plant") + low - 1) / low  # 6 steps at 50 of 300.
+	SiteRig.step(
+		made,
+		[
+			Command.queue(1, SiteRig.type_of(made, "rifle_squad")),
+			SiteRig.place(made, "power_plant", SiteRig.SPOT)
+		]
+	)
+	var row: int = SiteRig.last(made)
+	for step: int in range(1, steps):
+		assert_bool(Power.is_low(made, 1)).override_failure_message("step %d" % step).is_true()
+		assert_array([made.build_left[row] > 0, made.queue_progress[queue]]).is_equal(
+			[true, step * low]
+		)
+		SiteRig.step(made)
+	# The completing step: the head still gains the low step.
+	assert_int(made.build_left[row]).is_equal(0)
+	assert_int(made.queue_progress[queue]).is_equal(steps * low)
+	assert_bool(Power.is_low(made, 1)).is_false()  # The closing sum holds the new plant's power.
+	assert_array([made.power_made[1], made.power_used[1]]).is_equal([220, 180])
+	SiteRig.step(made)  # The next step: ECONOMY's totals are not low, the head gains the full step.
+	assert_int(made.queue_progress[queue]).is_equal(steps * low + STEP)
+
+
 ## Completion, ADR 0026 section 3: a refinery site gives its free harvester (its `home` the
 ## refinery) when it is complete and not before.
 func test_a_refinery_site_gives_its_free_harvester_at_completion() -> void:
