@@ -13,6 +13,8 @@ extends RefCounted
 ## A blacked-out building (P111, ADR 0023 section 10: `offline_until` above the stamp `world.tick +
 ## 1` of the step in progress) counts neither its output nor its use, so the totals fall for exactly
 ## the blackout's `type_strike_ticks` steps and come back at the stamp that reaches `offline_until`.
+## A site under construction (`build_left` above 0, ADR 0026) counts neither output nor use, as an
+## offline row does, until it is complete.
 ## The totals are therefore a function of the hashed rows and of the step they were built in (the
 ## stamp is a value, not a field to keep): a rebuild after that step must run with that step's tick,
 ## one back from the tick the step left behind (`tests/sim/test_power_blackout.gd`).
@@ -42,6 +44,7 @@ static func run(world: World) -> void:
 	var owners: PackedInt32Array = world.owner
 	var types: PackedInt32Array = world.type_index
 	var offline: PackedInt32Array = world.offline_until
+	var pending: PackedInt32Array = world.build_left
 	var table: PackedInt32Array = world.type_power
 	var known: int = table.size()
 	var stamp: int = world.tick + 1
@@ -50,8 +53,15 @@ static func run(world: World) -> void:
 		var type: int = types[row]
 		# Entry 0 is the neutral player's and stays 0; a player past the arrays (a hand-built World
 		# whose player_count was raised after prepare()) and a type past the table have no entry.
-		# A blacked-out building (offline until a later stamp) has none for this step either.
-		if player < 1 or player >= players or type >= known or offline[row] > stamp:
+		# A blacked-out building (offline until a later stamp) has none for this step either, and
+		# neither has a site under construction (ADR 0026 section 4).
+		if (
+			player < 1
+			or player >= players
+			or type >= known
+			or offline[row] > stamp
+			or pending[row] > 0
+		):
 			continue
 		var power: int = table[type]
 		if power > 0:

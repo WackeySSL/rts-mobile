@@ -15,11 +15,14 @@ extends RefCounted
 ## SPAWNED event, `rows_version`, the row cap). Then every footprint tile costs 0 for every class,
 ## `map_version` goes up once, the flow cache is invalidated, and an owner whose building produces
 ## a tab has had a producer for good (`had_producer`, ADR 0018 section 7), a strike building starts
-## its charge (`Strike.start_charge`), and every ATTACK row whose goal tile is now inside the
-## footprint re-picks its approach point. A world with a size but
+## its charge (`Strike.start_charge`; not with `complete` false, a site that `Production` finishes
+## later, ADR 0026 section 1), and every ATTACK row whose goal tile is now inside the footprint
+## re-picks its approach point. A world with a size but
 ## no grid yet gets the open grass prepare() would make. The ground is not checked: Placement
 ## judges that for a PLACE, and data keeps a scenario's buildings apart.
-static func add(world: World, owner: int, type: int, col: int, line: int) -> int:
+static func add(
+	world: World, owner: int, type: int, col: int, line: int, complete: bool = true
+) -> int:
 	var width: int = _entry(world.type_foot_w, type, 0)
 	var height: int = _entry(world.type_foot_h, type, 0)
 	if world.map_cols == 0 and world.map_w > 0 and world.map_h > 0:
@@ -42,7 +45,8 @@ static func add(world: World, owner: int, type: int, col: int, line: int) -> int
 	)
 	if id == 0:
 		return 0
-	Strike.start_charge(world, world.unit_id.size() - 1)  # A strike building charges from now.
+	if complete:
+		Strike.start_charge(world, world.unit_id.size() - 1)  # A strike building charges from now.
 	_write_cost(world, col, line, width, height, false)
 	world.map_version += 1
 	world.flow.invalidate(world.map_version)

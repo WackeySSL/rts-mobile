@@ -294,11 +294,17 @@ static func _choose(world: World, row: int) -> void:
 	var dock_ys: PackedInt32Array = world.type_dock_y
 	var pos_x: PackedInt32Array = world.pos_x
 	var pos_y: PackedInt32Array = world.pos_y
+	var pending: PackedInt32Array = world.build_left
 	var best: int = -1
 	var best_d2: int = 0
 	for at: int in world.building_rows:
 		var type: int = types[at]
-		if owners[at] != owners[row] or (dock_xs[type] == 0 and dock_ys[type] == 0):
+		# A refinery under construction takes no tanker (ADR 0026 section 4).
+		if (
+			owners[at] != owners[row]
+			or pending[at] > 0
+			or (dock_xs[type] == 0 and dock_ys[type] == 0)
+		):
 			continue
 		var dx: int = pos_x[at] - pos_x[row]
 		var dy: int = pos_y[at] - pos_y[row]

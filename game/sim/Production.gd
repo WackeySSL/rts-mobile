@@ -2,12 +2,22 @@ class_name Production
 extends RefCounted
 ## The PRODUCTION phase and its Commands (ADR 0017 section 5, ADR 0018 section 5): the queues
 ## advance, finished units spawn at their exit and leave for the rally point, finished structures
-## turn ready. QUEUE pays and joins the queue of the item's tab, CANCEL refunds, `run` advances each
-## queue's head and ProductionSpawn puts a finished unit on the map. A finished structure (the
+## turn ready, and a structure placed first rises on the map. QUEUE pays and joins the queue of the
+## item's tab, CANCEL refunds, `run` advances each queue's head and ProductionSpawn puts a finished
+## unit on the map. A finished structure (the
 ## STRUCTURES tab, plan row P73b) is not spawned: its head stops at 100 % and waits, with no state
 ## of its own ("ready" is progress at the goal), until PLACE puts it on the map or CANCEL takes it
 ## out; PLACE builds it complete through `World.add_building` and ProductionSpawn gives a refinery
 ## its free harvester.
+##
+## Place first (ADR 0026, plan row P128, beside the queue path until P131): `PLACE [type]` takes the
+## whole price at once and puts the building on the map as a site (`build_left` above 0, its tiles
+## blocked, hit points at `construct_start_hp_percent`); `run` first advances every site by
+## `PROGRESS_PER_TICK` (`Power.scaled`: less on low power) while its owner is not defeated and it is
+## not blacked out, its hit points rising with the work (`_site_hp`), and at 0 it is complete: its
+## strike charge starts, a refinery's free harvester comes and `stat_built` counts it. A site makes
+## and uses no power, produces nothing, meets no requirement and keeps nobody alive (the skips are
+## in `producer_row`, `_owns`, `Power`, `Combat`, `Strike`, `Harvest` and `Outcome`).
 ##
 ## A queue is identified by `queue = player * TABS + tab`. Its items are the `queue_count[queue]`
 ## type indexes in `queue_type` from `queue * queue_slots` on, the head first; a slot past the count
@@ -32,6 +42,7 @@ const PROGRESS_PER_TICK: int = 100
 ## whose player_count was raised after prepare() has no queue for the late players.
 @warning_ignore("integer_division")
 static func run(world: World) -> void:
+	_build_sites(world)
 	var defeated: PackedInt32Array = world.defeated_tick
 	var counts: PackedInt32Array = world.queue_count
 	var progress: PackedInt32Array = world.queue_progress
@@ -114,7 +125,8 @@ static func apply_cancel(world: World, command: Command) -> bool:
 	return true
 
 
-## PLACE: true when the player's ready STRUCTURES head was built at the point (ADR 0018 section 5).
+## PLACE: true when the player's ready STRUCTURES head was built at the point (ADR 0018 section 5),
+## or, with the payload `[type_index]`, a site of that type was started there (`_place_site`).
 ## The payload is empty and the head is ready (its progress at the goal; a producer is not asked
 ## for, so a structure finished before its Headquarters died can still be placed). The footprint's
 ## origin is the tile that holds the point, and `Placement.reason` must say OK: a failing reason
@@ -125,6 +137,8 @@ static func apply_cancel(world: World, command: Command) -> bool:
 ## call.
 @warning_ignore("integer_division")
 static func apply_place(world: World, command: Command) -> bool:
+	if command.payload.size() == 1:
+		return _place_site(world, command)
 	if not command.payload.is_empty():
 		return false
 	var player: int = command.player_id
@@ -149,6 +163,109 @@ static func apply_place(world: World, command: Command) -> bool:
 	return true
 
 
+## PLACE `[type_index]` (ADR 0026 section 2): true when a site of the type was started at the point.
+## Valid when the type is a STRUCTURES type with a build time of at least 1; the player owns a
+## complete STRUCTURES producer that is not blacked out and whose faction allows the type; the
+## type's requirement is owned complete; the credits cover the price; the player has fewer than
+## `construction_sites_max` sites; and `Placement.reason` says OK for the tile that holds the point
+## and `Buildings.add` accepts the row. Then the whole price is paid, `build_left` is the type's
+## build time in hundredths of a tick and the hit points are the starting share. Event cadence.
+@warning_ignore("integer_division")
+static func _place_site(world: World, command: Command) -> bool:
+	var type: int = command.payload[0]
+	var player: int = command.player_id
+	if type < 0 or type >= world.type_tab.size() or world.type_build_ticks[type] < 1:
+		return false
+	if world.type_tab[type] != World.Tab.STRUCTURES:
+		return false
+	var producer: int = producer_row(world, player, World.Tab.STRUCTURES)
+	if producer < 0 or world.offline_until[producer] > world.tick + 1:
+		return false
+	var cost: int = world.type_cost[type]
+	if (
+		not _faction_allows(world, type, producer)
+		or not _owns(world, player, world.type_requires[type])
+		or world.credits[player] < cost
+		or _sites_of(world, player) >= world.construction_sites_max
+	):
+		return false
+	# A negative point is outside the map; `/` would truncate it to tile 0.
+	var col: int = command.target_x / World.MILLI_PER_TILE if command.target_x >= 0 else -1
+	var line: int = command.target_y / World.MILLI_PER_TILE if command.target_y >= 0 else -1
+	var input: PlacementInput = PlacementInput.of_world(world)
+	if Placement.reason(input, player, type, col, line) != Placement.Reason.OK:
+		return false
+	if Buildings.add(world, player, type, col, line, false) == 0:
+		return false
+	var row: int = world.unit_id.size() - 1
+	world.credits[player] -= cost
+	world.build_left[row] = world.type_build_ticks[type] * PROGRESS_PER_TICK
+	world.hp[row] = _site_hp(world, type, 0)
+	return true
+
+
+## How many sites (building rows with `build_left` above 0) `player` has. The derived building list
+## is brought up to date first. Event cadence.
+static func _sites_of(world: World, player: int) -> int:
+	Buildings.rebuild_lists(world)
+	var owners: PackedInt32Array = world.owner
+	var pending: PackedInt32Array = world.build_left
+	var count: int = 0
+	for row: int in world.building_rows:
+		if owners[row] == player and pending[row] > 0:
+			count += 1
+	return count
+
+
+## The hit points of a site of `type` after `work` hundredths of a tick of work: the starting share
+## of `type_max_hp` (`construct_start_hp_percent`, at least 1) plus the rest in proportion to the
+## work done, `max_hp` at the type's whole build time. Integers; `_build_sites` adds the difference
+## of two of these per step, so damage a site has taken stays taken (ADR 0026 section 3).
+@warning_ignore("integer_division")
+static func _site_hp(world: World, type: int, work: int) -> int:
+	var top: int = world.type_max_hp[type]
+	var start: int = mini(maxi(1, top * world.construct_start_hp_percent / 100), top)
+	return start + (top - start) * work / (world.type_build_ticks[type] * PROGRESS_PER_TICK)
+
+
+## The construction walk of `run` (ADR 0026 section 3): the building rows ascending, each with
+## `build_left` above 0 whose owner is not defeated and which is not blacked out (its
+## `offline_until` is not above the stamp `world.tick + 1`) gains `Power.scaled(PROGRESS_PER_TICK)`
+## of work, never past its goal, and its hit points rise by the step of `_site_hp`. A site that
+## reaches 0 is complete in the same step: `Strike.start_charge`, the free unit of a refinery
+## (`ProductionSpawn.spawn_free`) and `stat_built`. The site goes on when its owner's Headquarters
+## is gone. The list is rebuilt first (a no-op when `rows_version` has not moved since ECONOMY);
+## a free unit only appends a row, so the list the walk reads stays valid. No allocation.
+static func _build_sites(world: World) -> void:
+	Buildings.rebuild_lists(world)
+	var owners: PackedInt32Array = world.owner
+	var types: PackedInt32Array = world.type_index
+	var pending: PackedInt32Array = world.build_left
+	var hit_points: PackedInt32Array = world.hp
+	var offline: PackedInt32Array = world.offline_until
+	var defeated: PackedInt32Array = world.defeated_tick
+	var stamp: int = world.tick + 1
+	for row: int in world.building_rows:
+		var left: int = pending[row]
+		var player: int = owners[row]
+		if left <= 0 or player < 1 or player >= defeated.size() or defeated[player] != 0:
+			continue
+		if offline[row] > stamp:
+			continue
+		var type: int = types[row]
+		var done: int = world.type_build_ticks[type] * PROGRESS_PER_TICK
+		if done < 1:
+			continue  # A hand-built site of a type with no build time; PLACE drops such a type.
+		var step: int = mini(Power.scaled(world, player, PROGRESS_PER_TICK), left)
+		var work: int = done - left
+		pending[row] = left - step
+		hit_points[row] += _site_hp(world, type, work + step) - _site_hp(world, type, work)
+		if left == step:
+			Strike.start_charge(world, row)
+			world.stat_built[player] += 1
+			ProductionSpawn.spawn_free(world, row)
+
+
 ## Takes the item in `slot` out of `queue` and moves the later ones up, leaving -1 in the freed last
 ## slot. Removing the head (slot 0) resets the progress, so the next item starts at 0. The credits
 ## and the stats are the caller's.
@@ -165,16 +282,18 @@ static func remove_item(world: World, queue: int, slot: int) -> void:
 
 
 ## The row of the player's primary producer of `tab` (ADR 0018 section 5): the lowest-id building
-## of that player whose type produces the tab; -1 when there is none. The derived building list is
-## brought up to date first (a no-op when `rows_version` has not moved since ECONOMY rebuilt it).
+## of that player whose type produces the tab and which is complete (a site is no producer, ADR 0026
+## section 4); -1 when there is none. The derived building list is brought up to date first (a
+## no-op when `rows_version` has not moved since ECONOMY rebuilt it).
 static func producer_row(world: World, player: int, tab: int) -> int:
 	Buildings.rebuild_lists(world)
 	var owners: PackedInt32Array = world.owner
 	var types: PackedInt32Array = world.type_index
 	var produces: PackedInt32Array = world.type_produces
 	var buildings: PackedInt32Array = world.building_rows
+	var pending: PackedInt32Array = world.build_left
 	for row: int in buildings:
-		if owners[row] == player and produces[types[row]] == tab:
+		if owners[row] == player and produces[types[row]] == tab and pending[row] == 0:
 			return row
 	return -1
 
@@ -187,13 +306,14 @@ static func _faction_allows(world: World, type: int, producer: int) -> bool:
 	return faction < 0 or faction == world.type_faction[world.type_index[producer]]
 
 
-## Whether the player owns a row of `type` (-1 = no requirement).
+## Whether the player owns a complete row of `type` (-1 = no requirement); a site meets none.
 static func _owns(world: World, player: int, type: int) -> bool:
 	if type < 0:
 		return true
 	var owners: PackedInt32Array = world.owner
 	var types: PackedInt32Array = world.type_index
+	var pending: PackedInt32Array = world.build_left
 	for row: int in owners.size():
-		if owners[row] == player and types[row] == type:
+		if owners[row] == player and types[row] == type and pending[row] == 0:
 			return true
 	return false

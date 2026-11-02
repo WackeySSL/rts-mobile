@@ -50,8 +50,8 @@ var target_y: int = 0
 ## The unit an ATTACK goes after, the production building a RALLY sets or the strike building a
 ## SUPERWEAPON fires, 0 = none.
 var target_id: int = 0
-## Type-specific ints (ADR 0017 section 4): QUEUE `[type_index]`, CANCEL `[tab, slot]`, empty for
-## every other type.
+## Type-specific ints (ADR 0017 section 4): QUEUE `[type_index]`, CANCEL `[tab, slot]`, PLACE
+## `[type_index]` or empty (ADR 0026), empty for every other type.
 var payload: PackedInt32Array = PackedInt32Array()
 
 ## An attack-move order. Every factory copies the ids it is given (a command changes hands once,
@@ -92,13 +92,17 @@ static func stop(player_id: int, unit_ids: PackedInt32Array) -> Command:
 	return _of(Type.STOP, player_id, unit_ids)
 
 
-## Place the ready head of the player's STRUCTURES queue, its footprint's origin tile being the tile
-## of the point (milli-tiles).
+## Place a structure, its footprint's origin tile being the tile of the point (milli-tiles). With
+## `type_index` (the payload `[type_index]`, ADR 0026) a site of that type starts there and its
+## price is paid; with the default -1 the payload is empty and the ready head of the player's
+## STRUCTURES queue is placed (the old path, until P131).
 @warning_ignore("shadowed_variable")
-static func place(player_id: int, target_x: int, target_y: int) -> Command:
+static func place(player_id: int, target_x: int, target_y: int, type_index: int = -1) -> Command:
 	var command: Command = _of(Type.PLACE, player_id, PackedInt32Array())
 	command.target_x = target_x
 	command.target_y = target_y
+	if type_index != -1:
+		command.payload = PackedInt32Array([type_index])
 	return command
 
 

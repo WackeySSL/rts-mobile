@@ -12,11 +12,12 @@ extends RefCounted
 ##   `Targeting.sees` (the cell holding the row, in the player's block of `fog.visible`). Both are
 ##   ascending World rows, built in one pass over the table. A row is the index the per-row getters
 ##   take. It is only good for the tick the view was made on (the table compacts when a row dies).
-## - Per-row getters. The public columns (`row_id`, `row_owner`, `row_type`, `row_pos`, `row_hp`) of
-##   an own or a seen row; the own columns (`row_order`, `row_harvest_mode`, `row_home`) of an own
-##   row only. Any other row, a row index outside the table and an own column of an enemy row all
-##   answer MISSING (`row_pos` as (MISSING, MISSING)), as if the row did not exist. `row_of(id)`
-##   is the way back from an id and answers MISSING for an id the player does not see.
+## - Per-row getters. The public columns (`row_id`, `row_owner`, `row_type`, `row_pos`, `row_hp`,
+##   `row_build_left`: a seen site is visible state, ADR 0026 section 8) of an own or a seen row;
+##   the own columns (`row_order`, `row_harvest_mode`, `row_home`) of an own row only. Any other
+##   row, a row index outside the table and an own column of an enemy row all answer MISSING
+##   (`row_pos` as (MISSING, MISSING)), as if the row did not exist. `row_of(id)` is the way back
+##   from an id and answers MISSING for an id the player does not see.
 ## - The player's own state: `credits`; its queues per tab (`queue_count`, `queue_progress`,
 ##   `queue_type`, `rally_x`, `rally_y`, indexed by tab, and `queue_type` by `tab * queue_slots +
 ##   slot`, as the World's arrays with the player stripped off) and `structure_ready()`; the
@@ -146,6 +147,7 @@ var _type: PackedInt32Array = PackedInt32Array()
 var _pos_x: PackedInt32Array = PackedInt32Array()
 var _pos_y: PackedInt32Array = PackedInt32Array()
 var _hp: PackedInt32Array = PackedInt32Array()
+var _build_left: PackedInt32Array = PackedInt32Array()
 var _order: PackedInt32Array = PackedInt32Array()
 var _harvest_mode: PackedInt32Array = PackedInt32Array()
 var _home: PackedInt32Array = PackedInt32Array()
@@ -205,6 +207,13 @@ func row_pos(row: int) -> Vector2i:
 
 func row_hp(row: int) -> int:
 	return _hp[row] if _level(row) != _HIDDEN else MISSING
+
+
+## The construction work left of an own or a seen row in hundredths of a tick
+## (`Production.PROGRESS_PER_TICK` a tick): 0 for a complete building and for a unit, above 0 for a
+## site (ADR 0026). MISSING for a hidden row.
+func row_build_left(row: int) -> int:
+	return _build_left[row] if _level(row) != _HIDDEN else MISSING
 
 
 ## The own columns of an own row, MISSING for any other: its order (`Order`), its harvest mode
@@ -360,6 +369,7 @@ func _take_rows(world: World) -> void:
 	_pos_x = world.pos_x
 	_pos_y = world.pos_y
 	_hp = world.hp
+	_build_left = world.build_left
 	_order = world.order
 	_harvest_mode = world.harvest_mode
 	_home = world.home

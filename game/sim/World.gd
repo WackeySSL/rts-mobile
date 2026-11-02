@@ -44,8 +44,9 @@ const TABS: int = 3
 ## The layout version of the hashed state. 2: fog.visible left the hash, because the rows it is
 ## derived from stay in it (ADR 0016). 3: Phase 3's state joined it (ADR 0017 section 7): four row
 ## columns, the sections players, ore and ghosts, and the scalars match_end_tick and winner. 4: the
-## strike state joined it (ADR 0023 section 10): two row columns and three player arrays.
-const STATE_FORMAT: int = 4
+## strike state joined it (ADR 0023 section 10): two row columns and three player arrays. 5: the
+## construction work left joined it (ADR 0026): the row column `build_left`.
+const STATE_FORMAT: int = 5
 ## The hash sections that are not a ROW_ARRAYS column: header, map, projectiles, fog, players, ore
 ## and ghosts.
 const HASH_OTHER_SECTIONS: int = 7
@@ -111,6 +112,7 @@ const ROW_ARRAYS: Array[StringName] = [
 	&"home",
 	&"ready_tick",
 	&"offline_until",
+	&"build_left",
 ]
 ## The per-type tables, one entry per type_ids entry once prepare() has run.
 const TYPE_ARRAYS: Array[StringName] = [
@@ -265,6 +267,9 @@ const RULE_SCALARS: Array[StringName] = [
 	&"unit_cap",
 	&"building_cap",
 	&"ghost_cap",
+	&"construct_start_hp_percent",
+	&"construct_refund_percent",
+	&"construction_sites_max",
 ]
 ## The other int properties, none in the state hash: the map size, the view's rows_version,
 ## native_phases (which implementation runs a phase is never state, ADR 0013 section 3), the map
@@ -312,7 +317,10 @@ const UNHASHED_SCALARS: Array[StringName] = [
 	&"build_reach_tiles",
 	&"unit_cap",
 	&"building_cap",
-	&"ghost_cap"
+	&"ghost_cap",
+	&"construct_start_hp_percent",
+	&"construct_refund_percent",
+	&"construction_sites_max"
 ]
 ## The members that are not state (ADR 0013 section 3): the coverage test, the state hash and the
 ## reachability walk skip exactly these. `kernels` is the native kernels object, or null.
@@ -396,6 +404,11 @@ var build_reach_tiles: int = 0
 var unit_cap: int = 0
 var building_cap: int = 0
 var ghost_cap: int = 0
+## Place-first construction (ADR 0026 section 1): a site's starting hit points and the share of its
+## price a cancel refunds, both in percent, and how many sites a player builds at once.
+var construct_start_hp_percent: int = 0
+var construct_refund_percent: int = 0
+var construction_sites_max: int = 0
 
 ## Per type. The index is the order of first appearance in the scenario's spawns, then its roster.
 ## The ranges named on these tables and the weapon tables hold for data that passes test_defs_data;
@@ -537,6 +550,9 @@ var home: PackedInt32Array = PackedInt32Array()
 ## comes back (0 = on), ADR 0023 section 10. Strike writes them (P110, P111).
 var ready_tick: PackedInt32Array = PackedInt32Array()
 var offline_until: PackedInt32Array = PackedInt32Array()
+## The construction work left, in hundredths of a tick (`Production.PROGRESS_PER_TICK` a tick): 0 =
+## complete, above 0 = a site under construction (ADR 0026 section 1). Production writes it.
+var build_left: PackedInt32Array = PackedInt32Array()
 
 ## Per player (index 0 = neutral, unused; prepare() sizes them to player_count + 1): the credits
 ## (start_credits), the tick the defeating step produced (0 = still playing), 1 once the player has
@@ -801,6 +817,7 @@ func add_unit(owner: int, type_index: int, x: int, y: int) -> int:
 	home.append(0)
 	ready_tick.append(0)
 	offline_until.append(0)
+	build_left.append(0)
 	_push_unit_event(Event.SPAWNED, unit_id.size() - 1)
 	rows_version += 1
 	player_count = maxi(player_count, owner)

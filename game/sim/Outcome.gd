@@ -8,9 +8,10 @@ extends RefCounted
 ## Defeat. A player is defeated when `defeated_tick` is set, to the tick the defeating step
 ## produces, `world.tick + 1` (0 keeps meaning "playing", so a defeat on the first step reads 1).
 ## SURRENDER sets it in COMMANDS. `run` sets it for a player still playing whose `had_producer` is 1
-## and who owns no building that produces a tab; a ready structure in a queue does not save the
-## player, and a side that never owned a producer (the perf arena, the controls scenario, a
-## hand-built World with units only) is never defeated by this rule.
+## and who owns no complete building that produces a tab; a ready structure in a queue does not
+## save the player, nor does a site under construction (ADR 0026 section 4), and a side that never
+## owned a producer (the perf arena, the controls scenario, a hand-built World with units only) is
+## never defeated by this rule.
 ##
 ## The end. Once somebody has been defeated and at most one player is still playing, the match ends:
 ## `match_end_tick` is `world.tick + 1` and `winner` is the player left, or 0 when the last players
@@ -115,15 +116,17 @@ static func count_losses(world: World) -> void:
 			lost_units[player] += 1
 
 
-## Whether `player` owns a building whose type produces a tab (a Headquarters, a barracks or a
-## vehicle factory). The first one found ends the scan; the derived building list is brought up to
-## date first (a no-op when `rows_version` has not moved since ECONOMY rebuilt it).
+## Whether `player` owns a complete building whose type produces a tab (a Headquarters, a barracks
+## or a vehicle factory; a site keeps nobody alive, ADR 0026 section 4). The first one found ends
+## the scan; the derived building list is brought up to date first (a no-op when `rows_version`
+## has not moved since ECONOMY rebuilt it).
 static func _owns_producer(world: World, player: int) -> bool:
 	Buildings.rebuild_lists(world)
 	var owners: PackedInt32Array = world.owner
 	var types: PackedInt32Array = world.type_index
 	var produces: PackedInt32Array = world.type_produces
+	var pending: PackedInt32Array = world.build_left
 	for row: int in world.building_rows:
-		if owners[row] == player and produces[types[row]] >= 0:
+		if owners[row] == player and produces[types[row]] >= 0 and pending[row] == 0:
 			return true
 	return false
