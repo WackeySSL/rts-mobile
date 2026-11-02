@@ -6,10 +6,12 @@ extends Resource
 ## Sizes, anchors and mounts are px of the 2x art (a tile on the ground is 128 x 64); the three
 ## lifts are world px at zoom 1, half of that, which is what the view counts in.
 ##
-## A part is `hull`, `turret` or `head` and `shadow`, each with one canvas and one anchor for all
-## its frames. The anchor is where a unit's ground point lies in the canvas; a building's body and
-## shadow are anchored at the back corner of the footprint (Spec 03), `origin` gives the footprint's
-## centre. A turret's or head's anchor is its pivot, which `mount` puts at its place in the hull.
+## A part is `hull`, `turret` or `head`, a pose part (`walk`, `idle` or `anim`, ADR 0027 section 4)
+## and `shadow`, each with one canvas and one anchor for all its frames. The anchor is where a
+## unit's ground point lies in the canvas; a building's body and shadow are anchored at the back
+## corner of the footprint (Spec 03), `origin` gives the footprint's centre. A turret's or head's
+## anchor is its pivot, which `mount` puts at its place in the hull. A pose part is anchored at the
+## ground point (a building's `anim` at the footprint's centre: `origin` and `anchor` are the same).
 
 const ROOT: String = "res://assets/art/iso"
 
@@ -18,7 +20,11 @@ const ROOT: String = "res://assets/art/iso"
 @export var category: StringName = &"veh"  ## `veh`, `inf` or `bld`.
 @export var footprint: int = 0  ## n of an n x n building, 0 for a unit.
 @export var parts: PackedStringArray = PackedStringArray()  ## In file order, `shadow` last.
-@export var counts: PackedInt32Array = PackedInt32Array()  ## Frames per part: 16, 8 or 1.
+@export var counts: PackedInt32Array = PackedInt32Array()  ## Directions per part: 16, 8 or 1.
+## Frames per direction of each part, in the order of `parts`: 1 except a pose part's 2 to 16. The
+## file of a part with more than one is `..._f<K>.svg`. A sheet written before the frame axis (and
+## every sheet with no pose part) has none of this array; read it through `frame_count`.
+@export var frames: PackedInt32Array = PackedInt32Array()
 @export var sizes: PackedInt32Array = PackedInt32Array()  ## Canvas x and y per part.
 @export var anchors: PackedInt32Array = PackedInt32Array()  ## Anchor x and y per part.
 ## The turret's or head's pivot from the hull's ground point (a building's footprint centre), for
@@ -31,19 +37,44 @@ const ROOT: String = "res://assets/art/iso"
 @export var pick_lift_px: int = 0  ## Half of that: a tap picks the unit round this height.
 @export var muzzle_lift_px: int = 0  ## Where shots leave; 0 for a building without a head.
 @export var icon: String = ""  ## The item card, a texture.
+## A squad's ground travel per walk cycle in milli-tiles (the walk frame advances every quarter of
+## it, ADR 0027 section 5); 0 without a `walk` part.
+@export var stride_milli: int = 0
+@export var anim_ms: int = 0  ## The time of one frame of the `anim` part, ms; 0 without one.
+## The kinds of the places things come out of (`smoke`, `steam`, `flame`, `exhaust`, `launch`), one
+## for each emitter. `emitter_points` has the point of each: px of the 2x art from the hull's
+## ground point (a building's footprint centre), for each hull frame, emitter after emitter (one
+## point for a building), so `emitter_point` finds it. Both empty without an emitter.
+@export var emitters: PackedStringArray = PackedStringArray()
+@export var emitter_points: PackedVector2Array = PackedVector2Array()
+## What a vehicle's running gear leaves on the ground: `tracks`, `wheels` or empty (none).
+@export var marks: StringName = &""
 
 
-## `res://assets/art/iso/<faction>/<category>/<art_id>_<part>[_d<NN>].svg`; `dir` -1 has no suffix.
+## `res://assets/art/iso/<faction>/<category>/<art_id>_<part>[_d<NN>][_f<K>].svg`; `dir` -1 and
+## `frame` -1 have no suffix.
 static func frame_path(
-	faction_id: StringName, category_id: StringName, id: StringName, part: StringName, dir: int
+	faction_id: StringName,
+	category_id: StringName,
+	id: StringName,
+	part: StringName,
+	dir: int,
+	frame: int = -1
 ) -> String:
-	var suffix: String = "" if dir < 0 else "_d%02d" % dir
+	var suffix: String = ("" if dir < 0 else "_d%02d" % dir) + ("" if frame < 0 else "_f%d" % frame)
 	var name: String = "%s_%s%s.svg" % [id, part, suffix]
 	return ROOT.path_join(String(faction_id)).path_join(String(category_id)).path_join(name)
 
 
-func path(part: StringName, dir: int) -> String:
-	return frame_path(faction, category, art_id, part, dir)
+## The file of frame `frame` of a part in direction `dir`; a part with one frame has no `_f<K>`.
+func path(part: StringName, dir: int, frame: int = 0) -> String:
+	return frame_path(faction, category, art_id, part, dir, frame if frame_count(part) > 1 else -1)
+
+
+## The frames per direction of a part: 1, also for a sheet that has no `frames`.
+func frame_count(part: StringName) -> int:
+	var at: int = parts.find(String(part))
+	return frames[at] if at >= 0 and at < frames.size() else 1
 
 
 func has_part(part: StringName) -> bool:
@@ -83,3 +114,10 @@ func mount(dir: int) -> Vector2:
 	if mounts.is_empty():
 		return Vector2.ZERO
 	return mounts[0] if mounts.size() == 1 else mounts[dir * mounts.size() / 16]
+
+
+## Where emitter `index` lies for the hull facing `dir` (`d<NN>`), px of the 2x art from the hull's
+## ground point; any `dir` for a building.
+func emitter_point(index: int, dir: int) -> Vector2:
+	var per: int = emitter_points.size() / maxi(emitters.size(), 1)
+	return emitter_points[index * per + (0 if per == 1 else dir * per / 16)]

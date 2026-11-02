@@ -6,7 +6,8 @@
 #                                 same path from the project root)
 #          --check                write nothing; name the files that differ
 # Output: assets/art/iso/<faction>/<category>/<type_id>_<part>_d<NN>.svg (parts hull, turret, head,
-#         shadow) with a "Keep File" .import next to each, <type_id>_sheet.tres, the item card
+#         shadow; a pose part walk, idle or anim has several frames per direction, _d<NN>_f<K>.svg,
+#         a building's anim part <type_id>_anim_f<K>.svg) with a "Keep File" .import next to each, <type_id>_sheet.tres, the item card
 #         assets/art/iso/icons/item_<type_id>.svg and assets/art/iso/index.tres. The output is
 #         deterministic: a second run writes nothing. Godot writes the .import of a new card on the
 #         next import (any test run or this script's first step).

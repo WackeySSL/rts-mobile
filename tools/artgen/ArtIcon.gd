@@ -21,9 +21,9 @@ const CORNER_PX: int = 36  ## The key-colour corner, top left.
 static func card(model: ArtModel) -> String:
 	var dir: int = model.default_dir()
 	var yaw: float = 0.0 if model.category == &"bld" else ArtGen.yaw(dir)
-	var body: Array[ArtRender.Poly] = ArtRender.render(
-		model.primitives(&"hull"), yaw, model.faction
-	)
+	# The moving element of a building stands at rest in the card, sorted with the hull.
+	var at_rest: Array[ArtPrim] = model.primitives(&"hull") + model.primitives(ArtPrim.ANIM)
+	var body: Array[ArtRender.Poly] = ArtRender.render(at_rest, yaw, model.faction)
 	for part: StringName in [&"turret", &"head"]:
 		var parts: Array[ArtRender.Poly] = ArtRender.render(
 			model.primitives(part), ArtGen.yaw(dir), model.faction
