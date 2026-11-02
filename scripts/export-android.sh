@@ -20,12 +20,14 @@
 #        --target template_debug (template_release) builds it), docs/licenses/godot-<version>/
 #        {LICENSE,COPYRIGHT}.txt, docs/licenses/llvm-libc++/LICENSE.TXT and the godot-cpp licence that
 #        scripts/ci/godot-cpp-notice.sh prints (the licence notices written next to the APK;
-#        export-web.sh writes the same notice text, ADR 0005 section 5), and readelf and nm (binutils,
-#        or the NDK's llvm tools) for scripts/ci/check-android-elf.sh.
+#        export-web.sh writes the same notice text, ADR 0005 section 5), the OFL.txt of every font folder
+#        under assets/art/fonts/ (scripts/ci/font-notice.sh prints them into the same notice, P118b), and
+#        readelf and nm (binutils, or the NDK's llvm tools) for scripts/ci/check-android-elf.sh.
 # Exit:  0 ok
 #        1 export failed, an error in this run's log, a check of the APK failed (the packed library
 #          is not the bytes CI built, libc++_shared.so is missing, the ELF or libc++ symbol checks
-#          fail), or a licence notice source is missing or empty
+#          fail), the APK lacks the OFL.txt of a font folder (the preset's include_filter, P118b), or a
+#          licence notice source (a font folder's OFL.txt too) is missing or empty
 #        2 usage error, or --out not under build/
 #        3 Godot missing or not 4.7.2.stable
 #        4 export template, Android library, JDK 17 or Android SDK piece missing (the message names each)
@@ -160,6 +162,10 @@ fi
 [ -s "$LICENSE_DIR/LICENSE.txt" ] && [ -s "$LICENSE_DIR/COPYRIGHT.txt" ] ||
   die 1 "licence notice sources in $LICENSE_DIR are missing or empty"
 [ -s "$LIBCXX_DIR/LICENSE.TXT" ] || die 1 "licence notice source $LIBCXX_DIR/LICENSE.TXT is missing or empty"
+# The fonts of the HUD are under the SIL Open Font License, which asks for the licence text with every copy
+# (P118b). font-notice.sh finds every font folder and stops here when one has no OFL.txt; its list is what the
+# APK check below looks for.
+fonts_list="$(bash scripts/ci/font-notice.sh --list)" || die 1 "a font licence text is missing (scripts/ci/font-notice.sh says which)"
 godot_tag="${GODOT_VERSION%.stable}-stable"
 rule="--------------------------------------------------------------------------------"
 {
@@ -178,11 +184,15 @@ This build also contains LLVM libc++, the C++ standard library that the Godot ex
 template links (on Android it is the file libc++_shared.so). libc++ is licensed under
 the Apache License v2.0 with LLVM Exceptions. Its libcxx/LICENSE.TXT for tag
 ${LIBCXX_TAG} follows unchanged.
+
+This build also packs the fonts of its interface, which are licensed under the SIL Open Font
+License. The OFL.txt of every font family follows unchanged, after Godot's notices.
 EOF
   for source in LICENSE.txt COPYRIGHT.txt; do
     printf '\n%s\nGodot Engine %s: %s\n%s\n' "$rule" "$godot_tag" "$source" "$rule"
     cat "$LICENSE_DIR/$source"
   done
+  bash scripts/ci/font-notice.sh
   printf '\n%s\nLLVM libc++ %s: LICENSE.TXT\n%s\n' "$rule" "$LIBCXX_TAG" "$rule"
   cat "$LIBCXX_DIR/LICENSE.TXT"
   bash scripts/ci/godot-cpp-notice.sh # the same section export-web.sh appends (ADR 0013 section 11)
@@ -202,6 +212,12 @@ other_abis="$(grep '^lib/' <<<"$listing" | grep -v '^lib/arm64-v8a/' || true)"
 [ -z "$other_abis" ] || die 1 "the APK holds libraries for other ABIs (arm64-v8a only): $(head -n 3 <<<"$other_abis")"
 # Project files sit under assets/. Without the boot scene there the next check proves nothing.
 grep -qx 'assets/scenes/main.tscn.remap' <<<"$listing" || die 1 "the APK lacks assets/scenes/main.tscn.remap"
+# The OFL.txt of every font folder travels in the APK too (P118b): all_resources does not export a .txt file, the
+# preset's include_filter does, and a project file res://<path> is the APK entry assets/<path>.
+while IFS= read -r ofl; do
+  grep -Fxq -- "assets/$ofl" <<<"$listing" ||
+    die 1 "the APK lacks assets/$ofl (the preset include_filter must name assets/art/fonts/*/OFL.txt, P118b; its OFL entries: $(grep -F OFL <<<"$listing" | head -n 3 | tr '\n' ' '))"
+done <<<"$fonts_list"
 test_files="$(grep -E '^assets/(tests|addons/gdUnit4)/' <<<"$listing" || true)"
 [ -z "$test_files" ] || die 1 "the APK holds test files: $(head -n 3 <<<"$test_files")"
 "$signer" verify --print-certs "$apk" || die 1 "apksigner verify failed"
