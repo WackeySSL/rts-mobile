@@ -38,9 +38,7 @@ func test_a_second_site_waits_until_the_first_is_finished() -> void:
 
 
 func test_the_limit_is_the_rules_number_and_a_think_sends_one_place() -> void:
-	var rules: RulesDef = (load(Rig.RULES_PATH) as RulesDef).duplicate() as RulesDef
-	rules.construction_sites_max = 2
-	var world: World = Rig.start(NO_ROWS, rules)
+	var world: World = Rig.start(NO_ROWS, _rules_with_sites(2))
 	Rig.explore_all(world)
 	world.credits[1] = 20000
 	var loop: MatchLoop = Rig.loop_of(world)
@@ -60,9 +58,7 @@ func test_the_limit_is_the_rules_number_and_a_think_sends_one_place() -> void:
 
 
 func test_a_limit_of_zero_places_nothing() -> void:
-	var rules: RulesDef = (load(Rig.RULES_PATH) as RulesDef).duplicate() as RulesDef
-	rules.construction_sites_max = 0
-	var world: World = Rig.start(NO_ROWS, rules)
+	var world: World = Rig.start(NO_ROWS, _rules_with_sites(0))
 	assert_int(PlayerView.of(world, 1).construction_sites_max).is_equal(0)
 	assert_array(_think(world, Rig.dummy(1))).is_empty()
 
@@ -87,8 +83,74 @@ func test_a_site_is_not_placed_twice_and_a_destroyed_one_is_wanted_again() -> vo
 	assert_int(world.dropped_commands).is_equal(0)
 
 
-func test_a_requirement_is_owned_only_once_its_site_is_finished() -> void:
+func test_a_site_is_had_though_the_limit_would_allow_another() -> void:
+	# Room for two sites and one plant in the order: only "a site is had" stops a second plant.
+	var world: World = Rig.start(NO_ROWS, _rules_with_sites(2))
+	Rig.explore_all(world)
+	var loop: MatchLoop = Rig.loop_of(world)
+	var ai: DummyAi = Rig.ai_of(Rig.def_with(["power_plant"]), 1)
+	Rig.step(world, loop, _think(world, ai))
+	assert_int(_sites(world, 1)).is_equal(1)
+	assert_array(_think(world, ai)).is_empty()
+	Rig.run(world, loop, [], 15)
+	assert_array(_think(world, ai)).is_empty()
+	assert_int(Rig.count_of(world, 1, "power_plant")).is_equal(1)
+
+
+func test_a_unit_wish_behind_a_rising_site_is_queued_in_a_later_think() -> void:
+	var world: World = _barracks_start()
+	var loop: MatchLoop = Rig.loop_of(world)
+	var order: Array[String] = ["power_plant", "power_plant", "rifle_squad", "rifle_squad"]
+	order.append("rifle_squad")
+	var ai: DummyAi = Rig.ai_of(Rig.def_with(order), 1)
+	# The credits pay the second plant and not the squad behind it; the site rises, and a think
+	# later the credits are there. The plant is had (a site), so the squad is next, not the plant.
+	world.credits[1] = 300
+	var first: Array[Command] = _think(world, ai)
+	assert_array(_names(world, _starts(first))).is_equal(["power_plant"])
+	Rig.step(world, loop, first)
+	assert_int(_sites(world, 1)).is_equal(1)
+	world.credits[1] = 1000
+	var later: Array[Command] = _think(world, ai)
+	assert_array(_names(world, _starts(later))).is_equal(["rifle_squad"])
+	Rig.step(world, loop, later)
+	assert_int(world.dropped_commands).is_equal(0)
+
+
+func test_a_structure_that_finds_no_slot_holds_the_units_behind_it() -> void:
+	var world: World = _barracks_start()
+	Rig.explore_all(world)
+	# One slot may be asked about, and a tanker stands on it: the plant has no place to go.
+	Rig.add_unit_of(world, 1, "harvester", 2500, 2500)
+	var def: AiDef = Rig.def_with(["power_plant", "power_plant", "rifle_squad", "rifle_squad"])
+	def.build_order.append(&"rifle_squad")
+	def.place_tries = 1
+	var ai: DummyAi = Rig.ai_of(def, 1)
+	# The order holds: the squad behind the plant is waited for, not queued in its stead.
+	assert_array(_think(world, ai)).is_empty()
+	assert_int(ai.placement_tries).is_equal(1)
+	# The tanker drives off: the plant is placed and the squad follows in the same think.
+	world.pos_x[world.index_of(Rig.ids_of(world, 1, "harvester")[0])] = 30000
+	var sent: Array[Command] = _think(world, ai)
+	assert_array(_names(world, _starts(sent))).is_equal(["power_plant", "rifle_squad"])
+	Rig.step(world, Rig.loop_of(world), sent)
+	assert_int(world.dropped_commands).is_equal(0)
+
+
+func test_a_queue_target_of_zero_still_places_structures() -> void:
 	var world: World = Rig.start()
+	var def: AiDef = Rig.dummy_def().duplicate() as AiDef
+	def.queue_target = 0
+	# The target is the size of a unit queue: structures have none, and are placed one at a time.
+	var sent: Array[Command] = _think(world, Rig.ai_of(def, 1))
+	assert_array(_names(world, _starts(sent))).is_equal(["power_plant"])
+	Rig.step(world, Rig.loop_of(world), sent)
+	assert_int(world.dropped_commands).is_equal(0)
+
+
+func test_a_requirement_is_owned_only_once_its_site_is_finished() -> void:
+	# Room for two sites, so that the site limit is not what holds the refinery back.
+	var world: World = Rig.start(NO_ROWS, _rules_with_sites(2))
 	world.credits[1] = 20000
 	var loop: MatchLoop = Rig.loop_of(world)
 	var ai: DummyAi = Rig.ai_of(Rig.def_with(["power_plant", "refinery"]), 1)
@@ -96,6 +158,7 @@ func test_a_requirement_is_owned_only_once_its_site_is_finished() -> void:
 	var plant: int = Rig.row_of(world, 1, "power_plant")
 	Rig.run(world, loop, [], 100)
 	assert_int(world.build_left[plant]).is_greater(0)
+	assert_int(_sites(world, 1)).is_less(world.construction_sites_max)
 	# The refinery needs a power plant; the plant is a site, and the credits are there.
 	assert_array(_think(world, ai)).is_empty()
 	Rig.run(world, loop, [], 60)
@@ -227,6 +290,14 @@ func test_a_seen_enemy_site_is_a_threat_like_any_enemy_building() -> void:
 			found.append(Vector2i(command.target_x, command.target_y))
 	# The turret stands on the tile (11, 7): the point is its centre.
 	assert_array(found).is_equal([Vector2i(11500, 7500)])
+
+
+## The shipped rules with `count` as `construction_sites_max` (a copy: the shipped file is not
+## touched).
+func _rules_with_sites(count: int) -> RulesDef:
+	var rules: RulesDef = (load(Rig.RULES_PATH) as RulesDef).duplicate() as RulesDef
+	rules.construction_sites_max = count
+	return rules
 
 
 ## One think of `ai` on a fresh view of its player: its economy commands, or with `all` every

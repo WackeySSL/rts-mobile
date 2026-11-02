@@ -149,11 +149,13 @@ func _take_census(view: PlayerView) -> bool:
 
 
 ## The wishes in turn, while one can be started and paid: a structure is placed (one PLACE, which
-## takes the whole price), a unit is queued.
+## takes the whole price), a unit is queued. Each pass starts one wish, so the passes are bounded
+## by what one think can start: `room` units on each of the unit tabs and one PLACE. The structures
+## tab has no queue, so `queue_target` (the size of a unit queue) does not limit the PLACE.
 func _act(view: PlayerView, out: Array[Command]) -> void:
 	var budget: int = view.credits
 	var room: int = mini(_queue_target, view.queue_slots)
-	for _step: int in room * PlayerView.TABS:
+	for _step: int in room * (PlayerView.TABS - 1) + 1:
 		var type: int = _next(view, room)
 		if type < 0 or view.type_cost[type] > budget:
 			return
