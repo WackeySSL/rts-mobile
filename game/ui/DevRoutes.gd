@@ -1,7 +1,8 @@
 class_name DevRoutes
 extends RefCounted
 ## Scene paths and gating for the developer-only screens (dev menu, art gallery, touch probe, perf
-## arena) and the main scene's scenario for the "Strike test" route.
+## arena), the main scene's scenario for the "Strike test" route and the two Skirmish routes (a
+## scenario and the dummy of the other side).
 ##
 ## The dev menu is available in debug builds and in any export that sets the custom feature
 ## `dev_menu` (the Web preview preset does). Store presets must not set it.

@@ -75,6 +75,7 @@ class Frame:
 
 
 func _ready() -> void:
+	add_to_group(TouchInput.CANCEL_GROUP)
 	mouse_filter = Control.MOUSE_FILTER_STOP  # A touch on the minimap never reaches the map.
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # A cell is a crisp diamond.
 	_frame.name = "Frame"
@@ -227,6 +228,11 @@ func _gui_input(event: InputEvent) -> void:
 			var slop: float = UiScale.dp(_input_settings().tap_slop_dp)
 			_hold_open = drag.position.distance_to(_pressed_at) <= slop
 		jump_to(drag.position)
+
+
+## A modal covers the screen: the finger on the minimap is nobody's (TouchInput.CANCEL_GROUP).
+func cancel_gestures() -> void:
+	_end_finger()
 
 
 ## The finger is up, or gone: nothing of it is left.

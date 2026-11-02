@@ -19,7 +19,7 @@ func test_an_entry_names_the_triad_and_a_player_past_the_end_keeps_its_place() -
 	assert_int(WorldSort.triad_index(swapped, 1)).is_equal(1)
 	assert_int(WorldSort.triad_index(swapped, 2)).is_equal(0)
 	assert_int(WorldSort.triad_index(swapped, 3)).is_equal(2)  # Past the end: its own place.
-	assert_int(WorldSort.triad_index(swapped, 0)).is_equal(0)  # Entry 0 is never read.
+	assert_int(WorldSort.triad_index(swapped, 0)).is_equal(1)  # Neutral wears player 1's.
 	var odd: PackedInt32Array = PackedInt32Array([5, 9, -1])
 	assert_int(WorldSort.triad_index(odd, 1)).is_equal(1)  # Wrapped: 9 mod 8.
 	assert_int(WorldSort.triad_index(odd, 2)).is_equal(7)  # Wrapped: -1 mod 8.
@@ -31,6 +31,7 @@ func test_the_minimap_reads_the_same_rule() -> void:
 	assert_int(MinimapImage.team_slot(2)).is_equal(1)
 	assert_int(MinimapImage.team_slot(1, swapped)).is_equal(1)
 	assert_int(MinimapImage.team_slot(2, swapped)).is_equal(0)
+	assert_int(MinimapImage.team_slot(0, swapped)).is_equal(1)  # As the atlas's slot_of(0).
 
 
 ## The atlas bakes the swap: the two players of a scenario with `team_triads` wear each other's
@@ -42,6 +43,7 @@ func test_the_atlas_players_wear_the_triads_the_scenario_names() -> void:
 	assert_bool(atlas.is_empty()).is_false()
 	assert_str(sorted.mid_colour(1).to_html(false)).is_equal(Color("1FA6C8").to_html(false))
 	assert_str(sorted.mid_colour(2).to_html(false)).is_equal(Color("E8681F").to_html(false))
+	assert_str(sorted.mid_colour(0).to_html(false)).is_equal(sorted.mid_colour(1).to_html(false))
 	assert_object(sorted.bake(scenario)).is_same(atlas)
 	var plain: ScenarioDef = load("res://data/scenarios/skirmish_kestrel_flats.tres")
 	sorted.bake(plain)

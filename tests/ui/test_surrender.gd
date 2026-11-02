@@ -3,7 +3,8 @@ extends GdUnitTestSuite
 ## least 48 dp under the Dev button at the top left; a tap opens a dialog and sends nothing; the
 ## no button closes it; only the yes button sends SURRENDER, once, through the controller's sink as
 ## a Command, which the sim takes (the match ends and the result screen follows). The dialog
-## covers the HUD and takes every touch. At the six sizes and on the phone browsers the button, the
+## covers the HUD and takes every touch (test_modal_input has the wheel and the fingers already
+## down). At the six sizes and on the phone browsers the button, the
 ## dialog and its two buttons lie inside the safe rect.
 
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
@@ -164,11 +165,50 @@ func test_a_match_that_ends_under_the_dialog_closes_it() -> void:
 	_surrender().pressed.emit()
 	await await_idle_frame()
 	assert_bool(_dialog().visible).is_true()
-	await MatchRig.end(_main, [2])
+	MatchRig.end(_main, [2])
 	assert_bool(_dialog().visible).is_false()
 	assert_bool(_surrender().disabled).is_true()
 	assert_bool((_main.get_node("Hud/ResultScreen") as Control).visible).is_true()
 	assert_array(_sent).is_empty()
+
+
+## A release build hides the Dev button (dev_menu_button.gd), and the stack then starts with the
+## Surrender button: the credits pill (sideways) and the selection line (upright) stand after it and
+## not on it, at every size.
+func test_without_the_dev_button_surrender_is_clear_of_the_pill_and_the_selection_line() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		get_window().size = size
+		await await_idle_frame()
+		await _open()
+		(_main.find_child("DevButton", true, false) as Control).visible = false
+		get_viewport().size_changed.emit()  # Measured again, as a release build measures it.
+		(_main.get_node("PlayerController") as PlayerController).selection.set_ids(
+			MatchRig.units_of(_main, 1)
+		)
+		await await_idle_frame()
+		await await_idle_frame()
+		var rect: Rect2 = _surrender().get_global_rect()
+		var where: String = "%s: Surrender %s" % [size, rect]
+		(
+			assert_bool(UiScale.safe_rect_base().encloses(rect))
+			. override_failure_message(where)
+			. is_true()
+		)
+		var pill: Control = _main.find_child("StatusPill", true, false)
+		var line: Control = _main.find_child("SelectionPanel", true, false)
+		var next: Control = pill if pill.is_visible_in_tree() else line
+		assert_bool(next.is_visible_in_tree()).override_failure_message(where).is_true()
+		var other: Rect2 = next.get_global_rect()
+		(
+			assert_bool(rect.intersects(other))
+			. override_failure_message("%s, %s" % [where, other])
+			. is_false()
+		)
+		assert_float(other.position.x).override_failure_message(where).is_equal_approx(
+			rect.end.x + UiScale.dp(8.0), 1.5
+		)
+		_main.free()
+		await await_idle_frame()
 
 
 ## The button's text and the dialog's words: what the player reads.

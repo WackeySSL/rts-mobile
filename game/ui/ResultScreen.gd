@@ -14,14 +14,18 @@ const STAT_NAMES: Array[String] = [
 
 @export var runner: MatchRunner
 
-var _body: BoxContainer = BoxContainer.new()
-var _emblem: TextureRect = TextureRect.new()
+var _body: BoxContainer
+var _emblem: TextureRect
 var _title: Label
 var _time: Label
-var _grid: GridContainer = GridContainer.new()
+var _grid: GridContainer
+var _again: Button
 
 
 func _ready() -> void:
+	_body = BoxContainer.new()  # Before `super()`, whose `_apply_dp` sizes them.
+	_emblem = TextureRect.new()
+	_grid = GridContainer.new()
 	super()
 	column.add_child(_body)
 	var banner: VBoxContainer = VBoxContainer.new()
@@ -36,7 +40,8 @@ func _ready() -> void:
 	_body.add_child(_grid)
 	var row: HBoxContainer = HBoxContainer.new()
 	column.add_child(row)
-	add_button(row, "PLAY AGAIN", _play_again).name = &"PlayAgainButton"
+	_again = add_button(row, "PLAY AGAIN", _play_again)
+	_again.name = &"PlayAgainButton"
 	add_button(row, "BACK", _back).name = &"BackButton"
 	runner.match_ended.connect(_on_match_ended)
 	_apply_dp()
@@ -81,7 +86,7 @@ func _on_match_ended(winner: int) -> void:
 			var number: Label = add_label(_grid, str(counts[line][player]), &"NumberLabel")
 			number.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_apply_dp()
-	visible = true
+	show_over(_again)
 
 
 func _play_again() -> void:

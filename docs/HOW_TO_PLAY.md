@@ -29,7 +29,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 ## Units
 | Action | Result | Teach |
 |---|---|---|
-| Look at your units | Each unit is drawn from the picture set of its side (the Derrick League or the Lumen Accord) in its player's team colour (your side's own: orange for the Derrick League, cyan for the Lumen Accord, and the other player wears the other one, also in a match of one side against itself) with a shadow on the ground under it; units of two players on one side still differ by colour. The selection panel shows the unit's item card | |
+| Look at your units | Each unit is drawn from the picture set of its side (the Derrick League or the Lumen Accord) in its player's team colour (your side's own: orange for the Derrick League, cyan for the Lumen Accord, and the other player wears the other one) with a shadow on the ground under it; units of two players on one side still differ by colour. The selection panel shows the unit's item card | |
 | Watch a unit drive or fight | The picture turns in steps to face where the unit drives (infantry in coarser steps); a tank's turret turns on its own to face its target while the hull keeps its heading; infantry turn as a whole toward their target. A unit lower on the screen is drawn in front of one above it | |
 
 ## Buildings
@@ -138,8 +138,8 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 ## Winning
 | Action | Result | Teach |
 |---|---|---|
-| Destroy the enemy's Headquarters, barracks and vehicle factories | You win: the match ends at once. Lose all of yours and you lose it; if both sides fall in the same moment the match is a draw | yes |
-| Tap Surrender (top left, under the Dev button) | A question stands over the screen. "Keep playing" closes it and nothing happens; "Surrender" loses the match at once. Nothing is sent before you answer, and the map and the buttons behind the question do not react while it stands | |
+| Destroy the enemy's Headquarters and every building that trains units or builds vehicles | You win: the match ends at once. Lose all of yours and you lose it; if both sides fall in the same moment the match is a draw | yes |
+| Tap Surrender (top left, under the Dev button) | A question stands over the screen. "Keep playing" closes it and nothing happens; "Surrender" loses the match at once. Nothing is sent before you answer, and the map and the buttons behind the question do not react while it stands (a finger already on the map or the minimap when it opens is let go: it orders and pans nothing, and the mouse wheel does not zoom) | |
 | The match ends | A screen covers the game with a word and a picture: VICTORY (a star), DEFEAT (a broken shield) or DRAW (an equals sign), the time the match took, and for you and for the enemy the units built, the units lost, the buildings lost and the credits harvested (the losses count only for a side that had a production building). "Play again" starts a new match of the same Skirmish against the same computer side, "Back" returns to the dev menu. The game does not go on behind the screen | |
 
 ## Not yet in the game

@@ -60,12 +60,11 @@ static func is_building(snap: MatchSnapshot, type: int) -> bool:
 
 
 ## The index into TRIADS of the triad `player` wears: its entry of the scenario's `team_triads`,
-## else its own place (player 1 the first, wrapping after eight). The minimap reads the same rule.
+## else its own place (player 1 the first, wrapping after eight). The neutral player wears player
+## 1's, as `slot_of` gives it art. The minimap reads the same rule.
 static func triad_index(triads: PackedInt32Array, player: int) -> int:
-	var place: int = (
-		triads[player] if player > 0 and player < triads.size() else maxi(player, 1) - 1
-	)
-	return posmod(place, TRIADS.size())
+	var at: int = maxi(player, 1)
+	return posmod(triads[at] if at < triads.size() else at - 1, TRIADS.size())
 
 
 ## Bakes the atlas for the runner's match when its `match_serial` is new and its scenario's art or

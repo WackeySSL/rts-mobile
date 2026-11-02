@@ -119,7 +119,7 @@ static var _slide_override: int = -1
 @export var pill: Control  ## The landscape home of `Status` (a panel in a band at the top left).
 @export var minimap_slot: Control  ## The landscape panel at the top right: the minimap's home.
 @export var minimap: Control  ## The minimap: in `minimap_slot` sideways, in the band upright.
-@export var top_left: Control  ## The pill starts after it (the Dev button).
+@export var top_left: Control  ## The pill starts after its first visible child (Dev, or Surrender).
 @export var placement: PlacementController  ## A tap on a READY tile begins it. None: no placement.
 @export var strike_aim: StrikeAim  ## Aiming a strike takes the menu down, as placement does.
 
@@ -786,7 +786,7 @@ func _measure() -> void:
 		pill.visible = not _portrait
 		var band: MarginContainer = pill.get_parent() as MarginContainer
 		if band != null:  # The pill starts after the Dev button.
-			var after: float = 0.0 if top_left == null else top_left.get_combined_minimum_size().x
+			var after: float = HudLayout.first_visible_width(top_left)
 			band.add_theme_constant_override("margin_left", ceili(after + UiScale.dp(GAP_DP)))
 	var safe: SafeAreaMargin = get_parent() as SafeAreaMargin
 	var inset: Vector2i = Vector2i.ZERO

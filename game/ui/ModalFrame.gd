@@ -8,11 +8,13 @@ extends Control
 const GAP_DP: float = 12.0
 const BUTTON_DP: Vector2 = Vector2(136.0, 64.0)
 
-var column: VBoxContainer = VBoxContainer.new()
+var column: VBoxContainer
 
 
 func _ready() -> void:
 	visible = false
+	mouse_force_pass_scroll_events = false  # The wheel is the modal's too, not the map's.
+	column = VBoxContainer.new()
 	var scrim: PanelContainer = PanelContainer.new()
 	scrim.theme_type_variation = &"Scrim"
 	add_child(scrim)
@@ -32,6 +34,7 @@ func _ready() -> void:
 	centre.add_child(panel)
 	panel.add_child(column)
 	get_viewport().size_changed.connect(_apply_dp)
+	visibility_changed.connect(_on_visibility_changed)
 	_apply_dp()
 
 
@@ -56,6 +59,18 @@ func add_button(parent: Node, text: String, action: Callable) -> Button:
 	button.pressed.connect(action)
 	parent.add_child(button)
 	return button
+
+
+## Shows the modal with the keyboard focus on `first`, so a key never reaches the HUD behind it.
+func show_over(first: Button) -> void:
+	visible = true
+	first.grab_focus()
+
+
+## A modal that shows ends every gesture in flight under it (a held finger, a hold, a pan).
+func _on_visibility_changed() -> void:
+	if is_visible_in_tree():
+		get_tree().call_group(TouchInput.CANCEL_GROUP, &"cancel_gestures")
 
 
 ## The gaps are dp: a resize and a turn change them.

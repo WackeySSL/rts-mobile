@@ -13,11 +13,18 @@ const DUMMY_OF: Dictionary[String, String] = {
 
 
 ## A main scene of `suite` on `scenario_path` against that route's dummy, in the tree for two
-## frames. The way `DevRoutes.open_main_with` makes it, without the scene change.
-static func open(suite: GdUnitTestSuite, scenario_path: String = DERRICK) -> Node:
+## frames, with `local_player` as the player (a copy of the scenario when it is another than the
+## scenario's). The way `DevRoutes.open_main_with` makes it, without the scene change.
+static func open(
+	suite: GdUnitTestSuite, scenario_path: String = DERRICK, local_player: int = 1
+) -> Node:
 	var main: Node = (load(DevRoutes.MAIN_SCENE) as PackedScene).instantiate()
 	var runner: MatchRunner = main.get_node("MatchRunner")
-	runner.scenario = load(scenario_path)
+	var scenario: ScenarioDef = load(scenario_path)
+	if scenario.local_player != local_player:
+		scenario = scenario.duplicate()
+		scenario.local_player = local_player
+	runner.scenario = scenario
 	var opponents: Array[AiDef] = [load(DUMMY_OF[scenario_path]) as AiDef]
 	runner.opponents = opponents
 	suite.add_child(main)

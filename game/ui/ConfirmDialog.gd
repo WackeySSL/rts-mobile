@@ -11,6 +11,8 @@ signal cancelled
 @export var yes_text: String = ""
 @export var no_text: String = ""
 
+var _no: Button
+
 
 func _ready() -> void:
 	super()
@@ -19,12 +21,13 @@ func _ready() -> void:
 	var row: HBoxContainer = HBoxContainer.new()
 	column.add_child(row)
 	row.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
-	add_button(row, no_text, _answer.bind(false)).name = &"NoButton"
+	_no = add_button(row, no_text, _answer.bind(false))
+	_no.name = &"NoButton"
 	add_button(row, yes_text, _answer.bind(true)).name = &"YesButton"
 
 
 func open() -> void:
-	visible = true
+	show_over(_no)
 
 
 ## Hides the dialog without an answer (the match ended under it).

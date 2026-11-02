@@ -5,7 +5,8 @@ extends GdUnitTestSuite
 ## emblem and its two buttons lie inside the safe rect, the buttons are at least 48 dp each way (64
 ## dp high), and the panel fits without a scroll. "Play again" opens a new main scene of the same
 ## scenario and opponents, "Back" the dev menu. The Surrender button that leads here is
-## test_surrender's, the routes are test_skirmish_routes'.
+## test_surrender's, the wheel and the fingers already down under the screen are
+## test_modal_input's, the routes are test_skirmish_routes'.
 
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
@@ -57,7 +58,7 @@ func test_the_screen_is_hidden_while_the_match_runs_and_covers_the_hud_when_it_e
 	assert_bool(screen.visible).is_false()
 	(_main.get_node("MatchRunner") as MatchRunner).run_ticks(30)
 	assert_bool(screen.visible).is_false()
-	await MatchRig.end(_main, [1])
+	MatchRig.end(_main, [1])
 	assert_bool(screen.visible).is_true()
 	assert_bool(screen.get_rect().is_equal_approx(get_viewport().get_visible_rect())).is_true()
 	var hud: Node = _main.get_node("Hud")
@@ -69,7 +70,7 @@ func test_each_outcome_shows_its_word_and_its_emblem_in_its_colour() -> void:
 		_main = await MatchRig.open(self)
 		var surrenderers: Array[int] = []
 		surrenderers.assign(outcome[0])
-		await MatchRig.end(_main, surrenderers)
+		MatchRig.end(_main, surrenderers)
 		var screen: ResultScreen = _screen()
 		var runner: MatchRunner = _main.get_node("MatchRunner")
 		var label: String = str(outcome[1])
@@ -114,7 +115,7 @@ func test_the_time_and_the_stats_are_the_published_snapshots() -> void:
 	runner.world.stat_lost_units[2] = 9
 	runner.world.stat_lost_buildings[2] = 2
 	runner.world.stat_harvested[2] = 1250
-	await MatchRig.end(_main, [1])
+	MatchRig.end(_main, [1])
 	var screen: ResultScreen = _screen()
 	assert_int(runner.snapshot.match_end_tick / Sim.TICK_RATE).is_equal(3)
 	assert_str(_time(screen).text).is_equal("Match time 0:03")
@@ -144,12 +145,30 @@ func test_the_time_and_the_stats_are_the_published_snapshots() -> void:
 	)
 
 
+## "You" is the player the scenario names, whichever it is: with player 2 local, player 1's
+## surrender is a victory and the column of player 2 is the one headed "You".
+func test_the_local_player_is_the_one_the_scenario_names() -> void:
+	for case: Array in [[1, "VICTORY", ["", "Enemy", "You"]], [2, "DEFEAT", ["", "Enemy", "You"]]]:
+		_main = auto_free(await MatchRig.open(self, MatchRig.DERRICK, 2))
+		var runner: MatchRunner = _main.get_node("MatchRunner")
+		runner.world.stat_built[1] = 5
+		runner.world.stat_built[2] = 9
+		MatchRig.end(_main, [case[0]])
+		var texts: Array[String] = _texts(_grid(_screen()))
+		assert_str(_title(_screen()).text).override_failure_message(str(case)).is_equal(case[1])
+		assert_array(texts.slice(0, 3)).is_equal(case[2])
+		assert_array(texts.slice(3, 6)).is_equal(["Units built", "5", "9"])
+		_main.free()
+		CommandQueue.clear()
+		await await_idle_frame()
+
+
 ## A long match shows minutes: 61 s is 1:01.
 func test_a_match_of_over_a_minute_shows_minutes_and_seconds() -> void:
 	_main = auto_free(await MatchRig.open(self))
 	var runner: MatchRunner = _main.get_node("MatchRunner")
 	runner.run_ticks(61 * Sim.TICK_RATE - 1 - runner.snapshot.tick)  # The frames played some.
-	await MatchRig.end(_main, [2])
+	MatchRig.end(_main, [2])
 	assert_int(runner.snapshot.match_end_tick).is_equal(61 * Sim.TICK_RATE)
 	assert_str(_time(_screen()).text).is_equal("Match time 1:01")
 
@@ -159,7 +178,7 @@ func test_the_panel_and_the_buttons_fit_the_six_sizes() -> void:
 		get_window().size = size
 		await await_idle_frame()
 		_main = await MatchRig.open(self)
-		await MatchRig.end(_main, [1])
+		MatchRig.end(_main, [1])
 		await await_idle_frame()
 		_check_layout(_screen(), str(size))
 		_main.free()
@@ -184,7 +203,7 @@ func test_the_phone_browsers_and_the_cutouts_keep_everything_inside_without_a_sc
 		get_window().size = cases[label].window_size
 		await await_idle_frame()
 		_main = await MatchRig.open(self)
-		await MatchRig.end(_main, [1])
+		MatchRig.end(_main, [1])
 		await await_idle_frame()
 		var screen: ResultScreen = _screen()
 		_check_layout(screen, label)
@@ -206,7 +225,7 @@ func test_the_body_follows_a_turn_of_the_window() -> void:
 	get_window().size = ScreenSizes.LANDSCAPE[1]
 	await await_idle_frame()
 	_main = auto_free(await MatchRig.open(self))
-	await MatchRig.end(_main, [1])
+	MatchRig.end(_main, [1])
 	var screen: ResultScreen = _screen()
 	for size: Vector2i in [
 		ScreenSizes.LANDSCAPE[1], ScreenSizes.PORTRAIT[1], ScreenSizes.LANDSCAPE[1]
@@ -241,7 +260,7 @@ func test_a_tap_on_the_map_or_the_hud_under_the_screen_does_nothing() -> void:
 	await await_idle_frame()
 	assert_array(sent).has_size(1)
 	sent.clear()
-	await MatchRig.end(_main, [1])
+	MatchRig.end(_main, [1])
 	var dev: Button = _main.find_child("DevButton", true, false)
 	var pressed: Array[int] = [0]
 	dev.pressed.connect(func() -> void: pressed[0] += 1)
@@ -262,7 +281,7 @@ func test_play_again_opens_a_new_match_of_the_same_scenario_and_opponents() -> v
 		remove_child(old)
 		tree.root.add_child(old)
 		tree.current_scene = old
-		await MatchRig.end(old, [1])
+		MatchRig.end(old, [1])
 		var old_runner: MatchRunner = old.get_node("MatchRunner")
 		var dummy_id: StringName = old_runner.opponents[0].id
 		var button: Button = _screen_of(old).find_child("PlayAgainButton", true, false)
@@ -290,7 +309,7 @@ func test_back_opens_the_dev_menu() -> void:
 	remove_child(old)
 	tree.root.add_child(old)
 	tree.current_scene = old
-	await MatchRig.end(old, [2])
+	MatchRig.end(old, [2])
 	(_screen_of(old).find_child("BackButton", true, false) as Button).pressed.emit()
 	await await_idle_frame()
 	await await_idle_frame()
