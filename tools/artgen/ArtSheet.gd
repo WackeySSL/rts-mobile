@@ -67,10 +67,11 @@ static func of(model: ArtModel, shots: Dictionary[StringName, ArtGen.Shot]) -> I
 	return sheet
 
 
-## The `.tres` text of a sheet, one value a line in the order of its exports (`var_to_str` writes
-## a value as the resource text does; the mounts and the emitter points are written by hand to one
-## decimal). The frame axis follows the icon, and only what the sheet has: `frames` when a part has
-## more than one frame, the numbers when they are not 0, the lists and `marks` when not empty.
+## The `.tres` text of a sheet, one value a line: the exports of `FIELDS` in their order
+## (`var_to_str` writes a value as the resource text does; the mounts and the emitter points are
+## written by hand to one decimal), then those of `LIFE_FIELDS` that the sheet has: `frames` when a
+## part has more than one frame, the numbers when they are not 0, the lists and `marks` when not
+## empty.
 static func text(sheet: IsoSheetDef) -> String:
 	var lines: PackedStringArray = _header("IsoSheetDef", "res://tools/artgen/IsoSheetDef.gd")
 	for field: StringName in FIELDS:
@@ -139,9 +140,9 @@ static func _header(
 
 ## How high the picture reaches above the ground point (px of the 2x art) in the pose that a share
 ## `BAR_CLEARS` of the hull frames stay under, the turret or head straight ahead in each and the
-## `anim` element in its highest frame: a bar
-## standing on it clears at least that share of the poses, and covers only a taller one (a long
-## hull, or a barrel that points up the screen, which "Health bars" allows).
+## `anim` element in its highest frame: a bar standing on it clears at least that share of the
+## poses, and covers only a taller one (a long hull, or a barrel that points up the screen, which
+## "Health bars" allows).
 static func _clearing_top(model: ArtModel, shots: Dictionary[StringName, ArtGen.Shot]) -> float:
 	var hull: ArtGen.Shot = shots[&"hull"]
 	var tops: Array[float] = []

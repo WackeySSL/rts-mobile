@@ -116,8 +116,10 @@ func mount(dir: int) -> Vector2:
 	return mounts[0] if mounts.size() == 1 else mounts[dir * mounts.size() / 16]
 
 
-## Where emitter `index` lies for the hull facing `dir` (`d<NN>`), px of the 2x art from the hull's
-## ground point; any `dir` for a building.
+## Where emitter `index` lies for the hull facing `dir` (`d<NN>`, 0 to 15 for a unit; any for a
+## building), px of the 2x art from the hull's ground point. (0, 0) for an index the sheet lacks.
 func emitter_point(index: int, dir: int) -> Vector2:
-	var per: int = emitter_points.size() / maxi(emitters.size(), 1)
-	return emitter_points[index * per + (0 if per == 1 else dir * per / 16)]
+	if index < 0 or index >= emitters.size():
+		return Vector2.ZERO
+	var per: int = emitter_points.size() / emitters.size()
+	return emitter_points[index * per + (0 if per == 1 else clampi(dir, 0, 15) * per / 16)]

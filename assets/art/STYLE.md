@@ -219,13 +219,17 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   bake (P113) loads `index.tres` and reads each frame at `sheet.path(part, dir)` (`sheet.path(part,
   dir, frame)` with the frame axis, next bullet).
 - **The frame axis** (P134, ADR 0027 section 4; no model has a pose yet, P139 and P143 add them).
-  A primitive may carry `group=<name>`; its part may be `anim`, a building's moving element, drawn
-  only by the `anim` frames (not by `hull`) and at rest in the shadow and the card. A model's
-  `poses`: `<part> <frames>` (`walk`, `idle` or `anim`, 2 to 16 frames per direction) and one move
-  a line, `<part> <frame> <group> shift <dx> <dy> <dz>` or `... turn <x|y|z> <degrees> <px> <py>
-  <pz>` (tiles; a turn goes about the axis through the pivot, positive as the hull's yaw: x towards
-  y about z, y towards z about x, z towards x about y; moves apply in line order). `walk` and
-  `idle` pose a squad's `hull`, `anim` the `anim` primitives; they have the hull's directions (a
+  The sets (ADR 0027): a squad gets `walk` (4 frames) and `idle` (2) in its 8 directions, a
+  building's `anim` has at most 16 frames, cropped to the moving element; shadows are not posed (the
+  standing shadow serves every pose). A primitive may carry `group=<name>` (hull and `anim`
+  primitives only); its part may be `anim`, a building's moving element, drawn only by the `anim`
+  frames (not by `hull`) and at rest in the shadow and the card. The `anim` sprite draws over the
+  whole body, so no hull part can hide the element: model it where nothing stands in front. A
+  model's `poses`: `<part> <frames>` (`walk`, `idle` or `anim`, 2 to 16 frames per direction) and
+  one move a line, `<part> <frame> <group> shift <dx> <dy> <dz>` or `... turn <x|y|z> <degrees> <px>
+  <py> <pz>` (tiles; a turn goes about the axis through the pivot, positive as the hull's yaw: x
+  towards y about z, y towards z about x, z towards x about y; moves apply in line order). `walk`
+  and `idle` pose a squad's `hull`, `anim` the `anim` primitives; they have the hull's directions (a
   building's `anim` none). Files `<id>_<part>_d<NN>_f<K>.svg` (K from 0), a building's
   `<id>_anim_f<K>.svg`; a part of one frame has no `_f<K>`. A pose part has one canvas, anchored at
   the ground point (an `anim` at the footprint centre); the bar lift clears the `anim` element in

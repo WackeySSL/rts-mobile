@@ -202,6 +202,10 @@ func problems() -> PackedStringArray:
 		var prim: ArtPrim = ArtPrim.parse(line)
 		if prim == null or not ArtPalette.has_material(faction, prim.material):
 			found.append("%s: not a primitive or an unknown material: %s" % [art_id, line])
+		elif prim.group != &"" and prim.part in [&"turret", &"head"]:
+			found.append(
+				"%s: group= is for hull and anim primitives, which poses move: %s" % [art_id, line]
+			)
 	if primitives(&"hull").is_empty():
 		found.append("%s: no hull primitive" % art_id)
 	if mount == Vector3.ZERO and parts().size() > 1:
@@ -221,19 +225,27 @@ func _pose_problems() -> PackedStringArray:
 		if move != null:
 			if move.frame >= pose_frames(move.part) or not _groups(move.part).has(move.group):
 				found.append("%s: no such frame or group: %s" % [art_id, line])
-		elif header and words[1].to_int() in range(MIN_FRAMES, MAX_FRAMES + 1):
+		elif (
+			header
+			and words[1].is_valid_int()
+			and words[1].to_int() in range(MIN_FRAMES, MAX_FRAMES + 1)
+		):
 			headers[StringName(words[0])] = headers.get(StringName(words[0]), 0) + 1
 		else:
 			found.append("%s: not a header (2 to 16 frames) or a move: %s" % [art_id, line])
 	for part: StringName in headers:
-		if headers[part] > 1 or (part != ArtPrim.ANIM and category != &"inf"):
-			found.append("%s: one %s header, and only a squad has walk or idle" % [art_id, part])
+		if headers[part] > 1:
+			found.append("%s: more than one %s header" % [art_id, part])
+		if (part == ArtPrim.ANIM) == (category == &"inf"):
+			found.append(
+				"%s: walk and idle are a squad's, anim a building's or a vehicle's" % art_id
+			)
 	if (pose_frames(ArtPrim.ANIM) > 0) == primitives(ArtPrim.ANIM).is_empty():
 		found.append("%s: anim primitives and an anim pose go together" % art_id)
-	if (stride_milli > 0) != (pose_frames(&"walk") > 0):
-		found.append("%s: stride_milli goes with a walk pose, and only with it" % art_id)
-	if (anim_ms > 0) != (pose_frames(ArtPrim.ANIM) > 0):
-		found.append("%s: anim_ms goes with an anim pose, and only with it" % art_id)
+	if stride_milli < 0 or (stride_milli != 0) != (pose_frames(&"walk") > 0):
+		found.append("%s: stride_milli is above 0 with a walk pose, and 0 without" % art_id)
+	if anim_ms < 0 or (anim_ms != 0) != (pose_frames(ArtPrim.ANIM) > 0):
+		found.append("%s: anim_ms is above 0 with an anim pose, and 0 without" % art_id)
 	if emitter_list().size() != emitters.size():
 		found.append("%s: an emitter is a kind of %s and three numbers" % [art_id, EMITTER_KINDS])
 	if marks != &"" and (marks not in MARKS or category != &"veh"):

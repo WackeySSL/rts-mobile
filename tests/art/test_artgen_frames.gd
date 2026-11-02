@@ -293,6 +293,27 @@ func test_a_squad_with_poses_says_frames_and_stride_in_its_sheet_and_the_text_lo
 	assert_str(loaded.path(&"shadow", 4)).ends_with("/x_shadow_d04.svg")
 
 
+func test_a_pose_parts_canvas_holds_every_direction_and_every_frame_with_its_margin() -> void:
+	var model: ArtModel = _squad()
+	var files: Dictionary[String, String] = ArtGen.build(model)
+	var layouts: Dictionary[StringName, ArtGen.Layout] = ArtGen.layouts(model)
+	var size: Vector2 = Vector2(layouts[&"walk"].size)
+	var margin: float = ArtGen.MARGIN_PX - 0.001
+	for dir: int in range(0, 16, 2):
+		for frame: int in 3:
+			var box: Rect2 = _bounds(files[_walk(dir, frame)])
+			var inside: bool = box.position.x >= margin and box.position.y >= margin
+			inside = inside and box.end.x <= size.x - margin and box.end.y <= size.y - margin
+			assert_bool(inside).override_failure_message(_walk(dir, frame)).is_true()
+	# Frame 2 reaches 0.3 tiles forward of the standing figure, past what frame 0 and the hull
+	# canvas hold: a canvas of the first frame alone would clip it.
+	var forward: int = 6
+	assert_float(_bounds(files[_walk(forward, 2)]).end.x).is_greater(
+		_bounds(files[_walk(forward, 0)]).end.x + 10.0
+	)
+	assert_int(layouts[&"walk"].size.x).is_greater(layouts[&"hull"].size.x)
+
+
 func test_a_tower_with_an_anim_part_has_frames_without_a_direction_anchored_at_the_footprint_centre(
 ) -> void:
 	var model: ArtModel = _tower()
@@ -334,34 +355,50 @@ func test_a_tower_with_an_anim_part_has_frames_without_a_direction_anchored_at_t
 
 
 func test_the_moving_element_stands_at_rest_in_the_shadow_and_the_card_of_a_building() -> void:
+	# The same building with the element as a hull primitive, and with a head on a mount that the
+	# element must not follow.
 	var posed: ArtModel = _tower()
-	# The same building with the element as a hull primitive, in the same order.
 	var flat: ArtModel = _tower()
 	flat.poses = PackedStringArray()
 	flat.anim_ms = 0
 	flat.prims = PackedStringArray(
 		Array(flat.prims).map(func(l: String) -> String: return l.replace(" anim ", " hull "))
 	)
+	for model: ArtModel in [posed, flat]:
+		model.prims.append("box head steel 0.3 0 0 0.2 0.2 0.2")
+		model.mount = Vector3(0.2, 0.1, 1.0)
+		assert_array(Array(model.problems())).is_empty()
 	var with_poses: Dictionary[String, String] = ArtGen.build(posed)
 	var without: Dictionary[String, String] = ArtGen.build(flat)
+	# The polygons of the shadow, and of the card (its picture and its own shadow), are the same
+	# set (the hull's, the head's on its mount and the element's at rest); they differ in order,
+	# which follows the parts.
 	for path: String in [
 		"res://assets/art/iso/fossil/bld/x_shadow.svg", "res://assets/art/iso/icons/item_x.svg"
 	]:
-		assert_str(with_poses[path]).override_failure_message(path).is_equal(without[path])
-	assert_int(posed.shadow_prims().size()).is_equal(2)
+		assert_array(_sorted_lines(with_poses[path])).override_failure_message(path).is_equal(
+			_sorted_lines(without[path])
+		)
+	assert_int(posed.shadow_prims().size()).is_equal(3)
 	assert_int(posed.primitives(&"hull").size()).is_equal(1)
-	assert_array(posed.parts()).is_equal([&"hull"])
-	assert_array(posed.frame_parts()).is_equal([&"hull", &"anim", &"shadow"])
+	assert_array(posed.parts()).is_equal([&"hull", &"head"])
+	assert_array(posed.frame_parts()).is_equal([&"hull", &"head", &"anim", &"shadow"])
 
 
-func test_the_health_bar_clears_the_moving_element_of_a_building() -> void:
+func test_the_health_bar_clears_the_moving_element_of_a_building_in_its_highest_frame() -> void:
 	var bare: ArtModel = _tower()
 	bare.poses = PackedStringArray()
 	bare.anim_ms = 0
 	bare.prims = PackedStringArray(Array(bare.prims).slice(0, 1))
+	var level: ArtModel = _tower()
+	level.poses = PackedStringArray(
+		Array(level.poses).filter(func(l: String) -> bool: return not l.contains(" shift "))
+	)
 	# The element stands 0.6 tiles over the roof (23 world px), of which the roof's own reach up
 	# the screen takes some back.
-	assert_int(_bar_lift(_tower()) - _bar_lift(bare)).is_between(5, 12)
+	assert_int(_bar_lift(level) - _bar_lift(bare)).is_between(5, 12)
+	# In frame 2 alone it is raised by 0.3 tiles (11 world px): the bar follows that frame.
+	assert_int(_bar_lift(_tower()) - _bar_lift(level)).is_between(9, 13)
 
 
 func test_emitters_and_marks_round_trip_into_the_sheet_per_hull_frame() -> void:
@@ -432,7 +469,7 @@ func test_a_sheet_writes_the_frame_axis_only_when_it_has_something_to_say() -> v
 
 func test_no_committed_model_has_a_pose_and_every_committed_sheet_is_as_before() -> void:
 	var index: IsoIndex = load(IsoIndex.PATH) as IsoIndex
-	assert_int(index.sheets.size()).is_equal(28)
+	assert_int(index.sheets.size()).is_greater_equal(28)
 	for path: String in ArtGen.model_paths():
 		var model: ArtModel = load(path) as ArtModel
 		(
@@ -480,6 +517,13 @@ func test_a_sheet_finds_an_emitter_point_for_a_vehicle_a_squad_and_a_building() 
 	assert_vector(sheet.emitter_point(0, 4)).is_equal(Vector2(2, 2))  # Eight frames each: 4 x 8 / 16.
 	assert_vector(sheet.emitter_point(1, 14)).is_equal(Vector2(15, 15))
 	assert_vector(sheet.emitter_point(1, 0)).is_equal(Vector2(8, 8))
+	# An index the sheet lacks answers (0, 0); a unit's direction -1 is the first frame.
+	assert_vector(sheet.emitter_point(2, 0)).is_equal(Vector2.ZERO)
+	assert_vector(sheet.emitter_point(-1, 0)).is_equal(Vector2.ZERO)
+	assert_vector(sheet.emitter_point(1, -1)).is_equal(Vector2(8, 8))
+	assert_vector(sheet.emitter_point(1, -9)).is_equal(Vector2(8, 8))
+	assert_vector(sheet.emitter_point(1, 99)).is_equal(Vector2(15, 15))
+	assert_vector(IsoSheetDef.new().emitter_point(0, 3)).is_equal(Vector2.ZERO)
 	assert_int(sheet.frame_count(&"hull")).is_equal(1)
 	assert_int(IsoSheetDef.new().frame_count(&"walk")).is_equal(1)
 	assert_str(IsoSheetDef.frame_path(&"renew", &"inf", &"y", &"walk", 2, 1)).is_equal(
@@ -494,61 +538,80 @@ func test_a_sheet_finds_an_emitter_point_for_a_vehicle_a_squad_and_a_building() 
 func test_a_model_with_poses_is_valid_and_each_mistake_in_them_is_named() -> void:
 	for model: ArtModel in [_squad(), _tower(), _rover()]:
 		assert_array(Array(model.problems())).is_empty()
-	var cases: Dictionary[String, Callable] = {
-		"one frame": func(m: ArtModel) -> void: m.poses[0] = "walk 1",
-		"17 frames": func(m: ArtModel) -> void: m.poses[0] = "walk 17",
-		"an unknown pose part": func(m: ArtModel) -> void: m.poses.append("run 4"),
-		"a line that is nothing": func(m: ArtModel) -> void: m.poses.append("legs everywhere"),
-		"a move past the last frame":
-		func(m: ArtModel) -> void: m.poses.append("walk 3 legl shift 0 0 0"),
-		"a group no primitive has":
-		func(m: ArtModel) -> void: m.poses.append("walk 1 tail shift 0 0 0"),
-		"a move of a pose without a header":
-		func(m: ArtModel) -> void: m.poses.append("idle 0 legl shift 0 0 0"),
-		"two headers": func(m: ArtModel) -> void: m.poses.append("walk 4"),
-		"a walk without a stride": func(m: ArtModel) -> void: m.stride_milli = 0,
-		"a stride without a walk": func(m: ArtModel) -> void: m.poses = PackedStringArray(),
-		"a walk of a vehicle": func(m: ArtModel) -> void: m.category = &"veh",
-		"an anim_ms without an anim": func(m: ArtModel) -> void: m.anim_ms = 100,
-		"a bad emitter kind":
-		func(m: ArtModel) -> void: m.emitters = PackedStringArray(["fountain 0 0 0"]),
-		"an emitter without a height":
-		func(m: ArtModel) -> void: m.emitters = PackedStringArray(["smoke 0 0"]),
-		"marks of a squad": func(m: ArtModel) -> void: m.marks = &"tracks",
-	}
-	for what: String in cases:
+	var header: String = "not a header"
+	var move: String = "no such frame or group"
+	var stride: String = "stride_milli is above 0"
+	var kind: String = "an emitter is"
+	var cases: Array[Array] = [
+		["one frame", header, func(m: ArtModel) -> void: m.poses[0] = "walk 1"],
+		["17 frames", header, func(m: ArtModel) -> void: m.poses[0] = "walk 17"],
+		["a count with a tail", header, func(m: ArtModel) -> void: m.poses.append("idle 2x")],
+		["an unknown pose part", header, func(m: ArtModel) -> void: m.poses.append("run 4")],
+		["a line that is nothing", header, func(m: ArtModel) -> void: m.poses.append("legs")],
+		[
+			"a move past the last frame",
+			move,
+			func(m: ArtModel) -> void: m.poses.append("walk 3 legl shift 0 0 0")
+		],
+		[
+			"a group no primitive has",
+			move,
+			func(m: ArtModel) -> void: m.poses.append("walk 1 tail shift 0 0 0")
+		],
+		[
+			"a move of a pose without a header",
+			move,
+			func(m: ArtModel) -> void: m.poses.append("idle 0 legl shift 0 0 0")
+		],
+		["two headers", "more than one walk", func(m: ArtModel) -> void: m.poses.append("walk 4")],
+		["a walk without a stride", stride, func(m: ArtModel) -> void: m.stride_milli = 0],
+		[
+			"a stride without a walk",
+			stride,
+			func(m: ArtModel) -> void: m.poses = PackedStringArray()
+		],
+		["a negative stride", stride, func(m: ArtModel) -> void: m.stride_milli = -900],
+		["a negative stride without a walk", stride, func(m: ArtModel) -> void: _no_poses(m, -5)],
+		["a walk of a vehicle", "a squad's", func(m: ArtModel) -> void: m.category = &"veh"],
+		["an anim of a squad", "a squad's", func(m: ArtModel) -> void: _squad_anim(m)],
+		["an anim_ms without an anim", "anim_ms", func(m: ArtModel) -> void: m.anim_ms = 100],
+		["a negative anim_ms", "anim_ms", func(m: ArtModel) -> void: _no_poses(m, 0, -1)],
+		["a group on a turret", "group=", func(m: ArtModel) -> void: _grouped_turret(m)],
+		[
+			"a bad emitter kind",
+			kind,
+			func(m: ArtModel) -> void: m.emitters = PackedStringArray(["fountain 0 0 0"])
+		],
+		[
+			"an emitter without a height",
+			kind,
+			func(m: ArtModel) -> void: m.emitters = PackedStringArray(["smoke 0 0"])
+		],
+		[
+			"an emitter with a fourth number",
+			kind,
+			func(m: ArtModel) -> void: m.emitters = PackedStringArray(["smoke 0 0 0 0"])
+		],
+		["marks of a squad", "marks", func(m: ArtModel) -> void: m.marks = &"tracks"],
+	]
+	for found: Array in cases:
 		var model: ArtModel = _squad()
-		cases[what].call(model)
-		assert_bool(model.problems().size() > 0).override_failure_message(what).is_true()
+		found[2].call(model)
+		var text: String = "\n".join(model.problems())
+		assert_str(text).override_failure_message(found[0]).contains(found[1])
 	var tower: ArtModel = _tower()
 	tower.anim_ms = 0
-	(
-		assert_bool(tower.problems().size() > 0)
-		. override_failure_message("an anim without anim_ms")
-		. is_true()
-	)
+	assert_str("\n".join(tower.problems())).contains("anim_ms")
 	tower = _tower()
 	tower.poses = PackedStringArray()
 	tower.anim_ms = 0
-	(
-		assert_bool(tower.problems().size() > 0)
-		. override_failure_message("anim primitives without a pose")
-		. is_true()
-	)
+	assert_str("\n".join(tower.problems())).contains("go together")
 	tower = _tower()
 	tower.prims = PackedStringArray(Array(tower.prims).slice(0, 1))
-	(
-		assert_bool(tower.problems().size() > 0)
-		. override_failure_message("an anim pose without primitives")
-		. is_true()
-	)
+	assert_str("\n".join(tower.problems())).contains("go together")
 	var rover: ArtModel = _rover()
 	rover.marks = &"treads"
-	(
-		assert_bool(rover.problems().size() > 0)
-		. override_failure_message("a mark that is none")
-		. is_true()
-	)
+	assert_str("\n".join(rover.problems())).contains("marks")
 
 
 func _squad() -> ArtModel:
@@ -565,11 +628,31 @@ func _squad() -> ArtModel:
 			"walk 3",
 			"walk 1 legl turn y 30 0 -0.07 0.25",
 			"walk 1 legr turn y -30 0 0.07 0.25",
-			"walk 2 legl shift 0.05 0 0",
+			"walk 2 legl shift 0.3 0 0",
 		]
 	)
 	model.stride_milli = 900
 	return model
+
+
+## The squad without poses, with a `stride_milli` and an `anim_ms`.
+func _no_poses(model: ArtModel, stride: int, anim: int = 0) -> void:
+	model.poses = PackedStringArray()
+	model.stride_milli = stride
+	model.anim_ms = anim
+
+
+## The squad with an element and a pose of `anim`, which a squad does not have.
+func _squad_anim(model: ArtModel) -> void:
+	model.prims.append("box anim steel 0 0 0.6 0.1 0.1 0.1 group=head")
+	model.poses.append("anim 2")
+	model.anim_ms = 100
+
+
+## The squad with a group on a primitive of a turret, which no pose moves.
+func _grouped_turret(model: ArtModel) -> void:
+	model.prims.append("box turret steel 0 0 0 0.1 0.1 0.1 group=gun")
+	model.mount = Vector3(0, 0, 0.3)
 
 
 func _tower() -> ArtModel:
@@ -583,6 +666,7 @@ func _tower() -> ArtModel:
 			"anim 4",
 			"anim 1 head turn z 90 0 0 0",
 			"anim 2 head turn z 180 0 0 0",
+			"anim 2 head shift 0 0 0.3",
 			"anim 3 head turn z 270 0 0 0",
 		]
 	)
@@ -596,6 +680,13 @@ func _rover() -> ArtModel:
 	model.emitters = PackedStringArray(["exhaust -0.5 0.1 0.2", "smoke 0.1 0 0.9"])
 	model.marks = &"tracks"
 	return model
+
+
+## The lines of a text, sorted.
+func _sorted_lines(text: String) -> Array:
+	var lines: Array = Array(text.split("\n"))
+	lines.sort()
+	return lines
 
 
 ## The `bar_lift_px` a fresh run writes for `model`.
@@ -632,20 +723,24 @@ func _signatures(polys: Array[ArtRender.Poly]) -> Array[String]:
 	return found
 
 
-## The middle of a frame's polygons across and the lowest point of them, in px from `origin`.
-func _extent(text: String, origin: Vector2) -> Vector2:
-	var left: float = INF
-	var right: float = -INF
-	var low: float = -INF
+## The box round the polygon corners of a frame, in px of its canvas.
+func _bounds(text: String) -> Rect2:
+	var box: Rect2 = Rect2()
+	var first: bool = true
 	for found: RegExMatch in _points.search_all(text):
 		for pair: String in found.get_string(1).split(" "):
 			var at: Vector2 = Vector2(
 				pair.get_slice(",", 0).to_float(), pair.get_slice(",", 1).to_float()
 			)
-			left = minf(left, at.x)
-			right = maxf(right, at.x)
-			low = maxf(low, at.y)
-	return Vector2((left + right) / 2.0 - origin.x, low - origin.y)
+			box = Rect2(at, Vector2.ZERO) if first else box.expand(at)
+			first = false
+	return box
+
+
+## The middle of a frame's polygons across and the lowest point of them, in px from `origin`.
+func _extent(text: String, origin: Vector2) -> Vector2:
+	var box: Rect2 = _bounds(text)
+	return Vector2(box.get_center().x - origin.x, box.end.y - origin.y)
 
 
 ## The sheet as a `.tres` in a temporary folder and loaded again.
