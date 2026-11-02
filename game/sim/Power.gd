@@ -13,8 +13,10 @@ extends RefCounted
 ## A blacked-out building (P111, ADR 0023 section 10: `offline_until` above the stamp `world.tick +
 ## 1` of the step in progress) counts neither its output nor its use, so the totals fall for exactly
 ## the blackout's `type_strike_ticks` steps and come back at the stamp that reaches `offline_until`.
-## A site under construction (`build_left` above 0, ADR 0026) counts neither output nor use, as an
-## offline row does, until it is complete.
+## A building that is not complete (`build_left` not 0, ADR 0026: a site, or a cancelled one) counts
+## neither output nor use, as an offline row does. A site completes in PRODUCTION, after this sum,
+## so `Production.run` calls `run` again at the end of a step in which one did; a second call in a
+## step is safe (the totals are zeroed and summed from the rows, with the stamp of the step).
 ## The totals are therefore a function of the hashed rows and of the step they were built in (the
 ## stamp is a value, not a field to keep): a rebuild after that step must run with that step's tick,
 ## one back from the tick the step left behind (`tests/sim/test_power_blackout.gd`).
@@ -60,7 +62,7 @@ static func run(world: World) -> void:
 			or player >= players
 			or type >= known
 			or offline[row] > stamp
-			or pending[row] > 0
+			or pending[row] != 0
 		):
 			continue
 		var power: int = table[type]

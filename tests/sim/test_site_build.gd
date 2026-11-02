@@ -280,6 +280,32 @@ func test_a_site_destroyed_while_it_rises_is_lost_with_its_price() -> void:
 	assert_array([made.stat_built[1], made.unit_count()]).is_equal([0, 5])
 
 
+## The step order of `Production.run` (ADR 0026 section 3): the construction walk comes before the
+## queues, so a barracks that completes in a step serves its queue in that same step. The rifle
+## squad queued at the first barracks waits while there is none (it died), the site's steps leave
+## the progress alone, and the completing step moves it by one step.
+func test_a_barracks_that_completes_serves_its_queue_in_the_same_step() -> void:
+	var made: World = SiteRig.world()
+	var queue: int = 1 * World.TABS + World.Tab.INFANTRY
+	SiteRig.step(made, [Command.queue(1, SiteRig.type_of(made, "rifle_squad"))])
+	assert_int(made.queue_progress[queue]).is_equal(STEP)
+	made.hp[made.index_of(SiteRig.BARRACKS)] = 0
+	SiteRig.step(made)
+	assert_int(made.index_of(SiteRig.BARRACKS)).is_equal(-1)
+	var before: int = made.queue_progress[queue]
+	assert_int(before).is_equal(STEP)  # The queue waited in the step the barracks died.
+	SiteRig.fast(made, "barracks", 3)
+	SiteRig.step(made, [SiteRig.place(made, "barracks", SiteRig.WIDE)])
+	var row: int = SiteRig.last(made)
+	assert_array([made.build_left[row], made.queue_progress[queue]]).is_equal([2 * STEP, before])
+	SiteRig.step(made)
+	assert_array([made.build_left[row], made.queue_progress[queue]]).is_equal([STEP, before])
+	SiteRig.step(made)  # The completing step.
+	assert_int(made.build_left[row]).is_equal(0)
+	assert_int(made.queue_progress[queue]).is_equal(before + STEP)
+	assert_int(Production.producer_row(made, 1, World.Tab.INFANTRY)).is_equal(row)
+
+
 ## Completion, ADR 0026 section 3: a refinery site gives its free harvester (its `home` the
 ## refinery) when it is complete and not before.
 func test_a_refinery_site_gives_its_free_harvester_at_completion() -> void:

@@ -36,13 +36,18 @@ func _step(world: World, commands: Array = []) -> void:
 	Rig.step(world, commands)
 
 
-## What a scan of the rows gives for `player`: [made, used], from the type table alone.
+## What a scan of the rows gives for `player`: [made, used], from the type table alone. A site under
+## construction (`build_left` not 0, ADR 0026 section 4) makes and uses nothing.
 func _scan(world: World, player: int) -> Array[int]:
 	var made: int = 0
 	var used: int = 0
 	for row: int in world.unit_count():
 		var type: int = world.type_index[row]
-		if world.owner[row] == player and world.type_foot_w[type] > 0:
+		if (
+			world.owner[row] == player
+			and world.type_foot_w[type] > 0
+			and world.build_left[row] == 0
+		):
 			if world.type_power[type] > 0:
 				made += world.type_power[type]
 			else:
@@ -208,9 +213,11 @@ func test_the_totals_are_in_no_hash_section_and_a_rebuild_from_the_rows_restores
 
 ## One match of two bases with buildings that are placed and destroyed while the armies fight: a
 ## second turret for player 1 at tick 60, its plant dying at tick 150 (low power) and a new one at
-## tick 300 (enough again), a plant of player 2 dying at tick 210. At every checkpoint the totals
-## are compared with a scan of the rows and with a rebuild from the rows (wiped, run again), and the
-## state hash is the same before and after the rebuild.
+## tick 300 (enough again), a plant of player 2 dying at tick 210, and (ADR 0026) a plant that
+## player 1 places first at tick 45: a site for 150 steps, complete in the PRODUCTION step that
+## leaves tick 195, a checkpoint, after ECONOMY has summed the totals. At every checkpoint the
+## totals are compared with a scan of the rows and with a rebuild from the rows (wiped, run again),
+## and the state hash is the same before and after the rebuild.
 func test_every_checkpoint_of_a_match_with_buildings_equals_a_rebuild_from_the_rows() -> void:
 	var world: World = Worlds.fight()
 	var loop: MatchLoop = MatchLoop.create(null, "", 0, world)
@@ -221,6 +228,9 @@ func test_every_checkpoint_of_a_match_with_buildings_equals_a_rebuild_from_the_r
 		if tick == 0:
 			orders.append(Command.attack_move(1, _army(world, 1), 22500, 7500))
 			orders.append(Command.attack_move(2, _army(world, 2), 5500, 7500))
+		if tick == 45:
+			var plant: int = Worlds.type_of(world, "power_plant")
+			orders.append(Command.place(1, 6700, 6300, plant))  # The tile (6, 6).
 		if tick == 60:
 			world.add_building(1, Worlds.type_of(world, "defence_turret"), 6, 12)
 		if tick == 150:
@@ -258,6 +268,8 @@ func test_every_checkpoint_of_a_match_with_buildings_equals_a_rebuild_from_the_r
 			. is_equal(wiped)
 		)
 		assert_int(world.state_hash()).is_equal(hash_before)
+	assert_int(world.dropped_commands).is_equal(0)  # The site was placed.
+	assert_int(world.stat_built[1]).is_equal(1)  # And it was completed: stat_built counts it.
 	assert_int(seen["checkpoints"]).is_equal(30)
 	assert_int(seen["changes"]).is_greater_equal(3)  # Made and used moved at least thrice.
 	assert_int(seen["low"]).is_greater(0)  # The run met low power, so it checked that side too.

@@ -145,6 +145,37 @@ func test_a_strike_site_cannot_fire_and_a_site_starts_no_charge() -> void:
 	assert_array([made.dropped_commands, made.strike_tick[1] > 0]).is_equal([1, true])
 
 
+## ADR 0026 section 1: CANCEL_BUILD (P128b) writes -1 into `build_left` and 0 into `hp`, and the row
+## leaves in REMOVE, after FIRE and after the commands of its own tick. Every "is it complete" test
+## reads `build_left == 0`, so a cancelled row, hand-set here, fires no last shot and its strike
+## building accepts no SUPERWEAPON in that window.
+func test_a_cancelled_row_fires_no_gun_and_no_strike_before_it_leaves() -> void:
+	var made: World = SiteRig.world()
+	var turret: int = made.add_building(1, SiteRig.type_of(made, "defence_turret"), 6, 5)
+	made.add_unit(2, SiteRig.type_of(made, "rifle_squad"), 10500, 6000)
+	var row: int = _row(made, turret)
+	SiteRig.unfinish(made, row)  # A site picks its target and holds it (the case above).
+	SiteRig.run(made, 10)
+	assert_int(made.target[row]).is_not_equal(0)
+	assert_int(made.cooldown[row]).is_equal(0)
+	made.build_left[row] = -1
+	made.hp[row] = 0
+	SiteRig.step(made)
+	for at: int in range(0, made.events.size(), World.EVENT_STRIDE):
+		var shot: bool = made.events[at] == World.Event.SHOT
+		assert_bool(shot and made.events[at + 1] == turret).is_false()
+	assert_int(made.index_of(turret)).is_equal(-1)  # Removed in the same tick.
+	# The strike building: ready_tick is 0 (as a site's), build_left -1, hp 0.
+	var other: World = SiteRig.world()
+	var strike: int = other.add_building(1, SiteRig.type_of(other, "fossil_strike"), 12, 8)
+	var strike_row: int = _row(other, strike)
+	other.ready_tick[strike_row] = 0
+	other.build_left[strike_row] = -1
+	other.hp[strike_row] = 0
+	SiteRig.step(other, [Command.superweapon(1, strike, 15500, 4500)])
+	assert_array([other.dropped_commands, other.strike_tick[1]]).is_equal([1, 0])
+
+
 ## A full tanker returns to the nearest complete refinery: the site that stands nearer is skipped,
 ## and with no complete refinery at all the tanker finds no home and waits.
 func test_a_refinery_site_takes_no_tanker() -> void:

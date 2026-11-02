@@ -24,8 +24,10 @@ const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 ## strike_tick), so the header, the two new row sections and the "players" section changed, and the
 ## digest changed from a9dc4b12c176bc8f; no row, rule or run moved. P128 (ADR 0026 section 10,
 ## exception 10): STATE_FORMAT became 5 and the row column "build_left" joined the hash, so the
-## header and the new row section changed, and the digest changed from 27f335e9bd1439ee; no row,
-## rule or run moved (every row is complete, so the new column is all zeros).
+## header, the new row section and the five sections after the rows (projectiles, fog, players, ore,
+## ghosts: a block carries its section index as its tag, and that moved by one) changed, and the
+## digest changed from 27f335e9bd1439ee; no row, rule or run moved (every row is complete, so the
+## new column is all zeros).
 const TICK_0_SEED_1: String = "a9e33d0d17b232fe"
 
 

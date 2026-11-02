@@ -3,7 +3,8 @@ extends GdUnitTestSuite
 ## row column `build_left` and the three rule ints `construct_start_hp_percent`,
 ## `construct_refund_percent` and `construction_sites_max`, each in exactly the lists the ADR names;
 ## what is state (the column, in the hash) and what is not (the rule ints, in `defs_hash`); and the
-## perf arena, which places no structure, keeping the column at its start value. The rules of a
+## perf arena and the base arena, which place no structure, keeping the column at its start value
+## for 300 ticks (the golden hashes pin all 900). The rules of a
 ## site are in test_site_place, test_site_build and test_site_unfinished. The layout re-pin itself
 ## is pinned where the hashes are (test_world_hash's TICK_0_SEED_1, data/dev/perf_gate.tres through
 ## tests/perf/test_golden_hashes). Numbers are literals, so no data file can agree with a wrong
@@ -145,6 +146,28 @@ func test_the_column_is_state_and_the_rule_ints_are_not() -> void:
 			base.state_hash()
 		)
 		assert_int(other.defs_hash()).override_failure_message(rule_name).is_not_equal(defs)
+
+
+## The two arenas place no structure, so no row of either is ever a site: the column is all zeros
+## at every golden tick of the first 300 (behaviour did not move; the golden hashes pin the rest).
+func test_the_arenas_never_write_the_column() -> void:
+	for path: String in [ARENA_PATH, "res://data/scenarios/perf_bases.tres"]:
+		var scenario: ScenarioDef = load(path) as ScenarioDef
+		var made: World = World.from_scenario(scenario, DetRandom.create(42, DetRandom.STREAM_SIM))
+		var loop: MatchLoop = MatchLoop.create(scenario, path, 42, made)
+		var queued: Array[Command] = []
+		for _tick: int in 300:
+			loop.step(made, queued)
+			if made.tick % 150 == 0:
+				var pending: int = 0
+				for value: int in made.build_left:
+					pending += absi(value)
+				(
+					assert_int(pending)
+					. override_failure_message("%s, tick %d" % [path, made.tick])
+					. is_equal(0)
+				)
+				assert_int(made.build_left.size()).is_equal(made.unit_count())
 
 
 func _arena() -> World:

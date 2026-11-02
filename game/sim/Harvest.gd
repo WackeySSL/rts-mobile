@@ -302,7 +302,7 @@ static func _choose(world: World, row: int) -> void:
 		# A refinery under construction takes no tanker (ADR 0026 section 4).
 		if (
 			owners[at] != owners[row]
-			or pending[at] > 0
+			or pending[at] != 0
 			or (dock_xs[type] == 0 and dock_ys[type] == 0)
 		):
 			continue

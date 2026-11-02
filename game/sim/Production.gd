@@ -17,7 +17,11 @@ extends RefCounted
 ## not blacked out, its hit points rising with the work (`_site_hp`), and at 0 it is complete: its
 ## strike charge starts, a refinery's free harvester comes and `stat_built` counts it. A site makes
 ## and uses no power, produces nothing, meets no requirement and keeps nobody alive (the skips are
-## in `producer_row`, `_owns`, `Power`, `Combat`, `Strike`, `Harvest` and `Outcome`).
+## in `producer_row`, `_owns`, `Power`, `Combat`, `Strike`, `Harvest` and `Outcome`; each tests
+## `build_left` against 0, so a cancelled row, -1, is no more complete than a site). The walk comes
+## first, so a barracks that completes in a step serves its queue in the same step; the queues
+## still use the power totals of ECONOMY, and a step that completed a site ends with `Power.run`
+## again, so that the totals equal a rebuild from the rows at the checkpoint.
 ##
 ## A queue is identified by `queue = player * TABS + tab`. Its items are the `queue_count[queue]`
 ## type indexes in `queue_type` from `queue * queue_slots` on, the head first; a slot past the count
@@ -39,10 +43,12 @@ const PROGRESS_PER_TICK: int = 100
 ## producer is blacked out (P111, ADR 0023 section 10: its `offline_until` is above the stamp,
 ## `world.tick + 1`): the head keeps its progress, nothing spawns, and it goes on from there at the
 ## stamp that reaches `offline_until`. The loop runs over the arrays as sized, so a hand-built World
-## whose player_count was raised after prepare() has no queue for the late players.
+## whose player_count was raised after prepare() has no queue for the late players. The
+## construction walk (`_build_sites`) runs before the queues; a step that completed a site sums the
+## power totals again after them.
 @warning_ignore("integer_division")
 static func run(world: World) -> void:
-	_build_sites(world)
+	var built: bool = _build_sites(world)
 	var defeated: PackedInt32Array = world.defeated_tick
 	var counts: PackedInt32Array = world.queue_count
 	var progress: PackedInt32Array = world.queue_progress
@@ -72,6 +78,8 @@ static func run(world: World) -> void:
 		):
 			remove_item(world, queue, 0)
 			world.stat_built[player] += 1
+	if built:
+		Power.run(world)  # A site that is complete now makes or uses power (see _build_sites).
 
 
 ## QUEUE `[type_index]`: true when the item joined the player's queue and its cost was paid. The
@@ -198,14 +206,16 @@ static func _place_site(world: World, command: Command) -> bool:
 	if Buildings.add(world, player, type, col, line, false) == 0:
 		return false
 	var row: int = world.unit_id.size() - 1
+	var done: int = world.type_build_ticks[type] * PROGRESS_PER_TICK
 	world.credits[player] -= cost
-	world.build_left[row] = world.type_build_ticks[type] * PROGRESS_PER_TICK
-	world.hp[row] = _site_hp(world, type, 0)
+	world.build_left[row] = done
+	var top: int = world.type_max_hp[type]
+	world.hp[row] = _site_hp(top, world.construct_start_hp_percent, done, 0)
 	return true
 
 
-## How many sites (building rows with `build_left` above 0) `player` has. The derived building list
-## is brought up to date first. Event cadence.
+## How many sites `player` has: building rows with `build_left` above 0 (a cancelled row, -1, is
+## none). The derived building list is brought up to date first. Event cadence.
 static func _sites_of(world: World, player: int) -> int:
 	Buildings.rebuild_lists(world)
 	var owners: PackedInt32Array = world.owner
@@ -217,15 +227,15 @@ static func _sites_of(world: World, player: int) -> int:
 	return count
 
 
-## The hit points of a site of `type` after `work` hundredths of a tick of work: the starting share
-## of `type_max_hp` (`construct_start_hp_percent`, at least 1) plus the rest in proportion to the
-## work done, `max_hp` at the type's whole build time. Integers; `_build_sites` adds the difference
-## of two of these per step, so damage a site has taken stays taken (ADR 0026 section 3).
+## The hit points of a site after `work` hundredths of a tick of the `done` its type takes: the
+## starting share of `top` (the type's max hp; `percent` is `construct_start_hp_percent`, at least
+## 1 hit point) plus the rest in proportion to the work done, `top` at `done`. Integers, from values
+## alone, so a loop over the sites aliases the tables once; `_build_sites` adds the difference of
+## two of these per step, so damage a site has taken stays taken (ADR 0026 section 3).
 @warning_ignore("integer_division")
-static func _site_hp(world: World, type: int, work: int) -> int:
-	var top: int = world.type_max_hp[type]
-	var start: int = mini(maxi(1, top * world.construct_start_hp_percent / 100), top)
-	return start + (top - start) * work / (world.type_build_ticks[type] * PROGRESS_PER_TICK)
+static func _site_hp(top: int, percent: int, done: int, work: int) -> int:
+	var start: int = mini(maxi(1, top * percent / 100), top)
+	return start + (top - start) * work / done
 
 
 ## The construction walk of `run` (ADR 0026 section 3): the building rows ascending, each with
@@ -235,8 +245,12 @@ static func _site_hp(world: World, type: int, work: int) -> int:
 ## reaches 0 is complete in the same step: `Strike.start_charge`, the free unit of a refinery
 ## (`ProductionSpawn.spawn_free`) and `stat_built`. The site goes on when its owner's Headquarters
 ## is gone. The list is rebuilt first (a no-op when `rows_version` has not moved since ECONOMY);
-## a free unit only appends a row, so the list the walk reads stays valid. No allocation.
-static func _build_sites(world: World) -> void:
+## a free unit only appends a row, so the list the walk reads stays valid. No allocation. Returns
+## whether a site was completed: it makes or uses power from now on, but ECONOMY summed the totals
+## before this walk, so `run` sums them again at its end (`Power.run` writes the totals from the
+## rows alone and uses the stamp of the step, so a second call in one step equals a rebuild; ADR
+## 0016, the rebuild test at every checkpoint).
+static func _build_sites(world: World) -> bool:
 	Buildings.rebuild_lists(world)
 	var owners: PackedInt32Array = world.owner
 	var types: PackedInt32Array = world.type_index
@@ -244,7 +258,11 @@ static func _build_sites(world: World) -> void:
 	var hit_points: PackedInt32Array = world.hp
 	var offline: PackedInt32Array = world.offline_until
 	var defeated: PackedInt32Array = world.defeated_tick
+	var build_ticks: PackedInt32Array = world.type_build_ticks
+	var max_hp: PackedInt32Array = world.type_max_hp
+	var percent: int = world.construct_start_hp_percent
 	var stamp: int = world.tick + 1
+	var finished: bool = false
 	for row: int in world.building_rows:
 		var left: int = pending[row]
 		var player: int = owners[row]
@@ -253,17 +271,22 @@ static func _build_sites(world: World) -> void:
 		if offline[row] > stamp:
 			continue
 		var type: int = types[row]
-		var done: int = world.type_build_ticks[type] * PROGRESS_PER_TICK
+		var done: int = build_ticks[type] * PROGRESS_PER_TICK
 		if done < 1:
 			continue  # A hand-built site of a type with no build time; PLACE drops such a type.
 		var step: int = mini(Power.scaled(world, player, PROGRESS_PER_TICK), left)
 		var work: int = done - left
+		var top: int = max_hp[type]
 		pending[row] = left - step
-		hit_points[row] += _site_hp(world, type, work + step) - _site_hp(world, type, work)
+		hit_points[row] += (
+			_site_hp(top, percent, done, work + step) - _site_hp(top, percent, done, work)
+		)
 		if left == step:
+			finished = true
 			Strike.start_charge(world, row)
 			world.stat_built[player] += 1
 			ProductionSpawn.spawn_free(world, row)
+	return finished
 
 
 ## Takes the item in `slot` out of `queue` and moves the later ones up, leaving -1 in the freed last

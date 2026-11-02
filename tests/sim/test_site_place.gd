@@ -141,6 +141,33 @@ func test_a_type_that_is_not_a_structure_or_not_a_type_is_dropped() -> void:
 	_assert_dropped("two payload ints", made, two)
 
 
+## The tab rule alone: each type below passes every other rule (a build time, the faction, no
+## requirement, a price the credits cover, the ground and the reach), so only its tab drops it. The
+## controls put it on the Structures tab and it starts.
+func test_only_the_tab_drops_a_type_that_passes_every_other_rule() -> void:
+	var made: World = SiteRig.world()
+	SiteRig.fast(made, "headquarters", 5)
+	var hq: int = SiteRig.type_of(made, "headquarters")  # Tab -1, price 0, fossil, no requirement.
+	assert_int(made.type_tab[hq]).is_equal(-1)
+	_assert_dropped("no tab", made, SiteRig.place(made, "headquarters", SiteRig.WIDE))
+	made.type_tab[hq] = World.Tab.STRUCTURES
+	_assert_started(
+		"control: the Structures tab", made, SiteRig.place(made, "headquarters", SiteRig.WIDE), 0
+	)
+	var other: World = SiteRig.world()
+	var plant: int = SiteRig.type_of(other, "power_plant")
+	for tab: int in [World.Tab.INFANTRY, World.Tab.VEHICLES]:
+		other.type_tab[plant] = tab
+		_assert_dropped("tab %d" % tab, other, SiteRig.place(other, "power_plant", SiteRig.SPOT))
+	other.type_tab[plant] = World.Tab.STRUCTURES
+	_assert_started(
+		"control: the plant on the Structures tab",
+		other,
+		SiteRig.place(other, "power_plant", SiteRig.SPOT),
+		SiteRig.cost(other, "power_plant")
+	)
+
+
 func test_a_structures_type_with_no_build_time_is_dropped() -> void:
 	var made: World = SiteRig.world()
 	SiteRig.fast(made, "power_plant", 0)
@@ -280,6 +307,22 @@ func test_a_player_builds_at_most_construction_sites_max_sites_at_once() -> void
 	var none: World = SiteRig.world()
 	none.construction_sites_max = 0
 	_assert_dropped("no site allowed", none, SiteRig.place(none, "power_plant", SiteRig.SPOT))
+
+
+## A cancelled row (`build_left` -1, written by CANCEL_BUILD and gone in the same tick's REMOVE) is
+## no site: it does not count against the limit.
+func test_a_cancelled_row_does_not_count_against_the_limit() -> void:
+	var made: World = SiteRig.world()
+	SiteRig.step(made, [SiteRig.place(made, "power_plant", SiteRig.SPOT)])
+	assert_int(Production._sites_of(made, 1)).is_equal(1)
+	made.build_left[SiteRig.last(made)] = -1
+	assert_int(Production._sites_of(made, 1)).is_equal(0)
+	_assert_started(
+		"the second site",
+		made,
+		SiteRig.place(made, "barracks", SiteRig.WIDE),
+		SiteRig.cost(made, "barracks")
+	)
 
 
 ## A finished building is not a site: the limit counts the rows under construction only.

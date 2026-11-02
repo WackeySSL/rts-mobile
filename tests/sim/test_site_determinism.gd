@@ -54,6 +54,8 @@ class Played:
 	extends RefCounted
 	var world: World
 	var loop: MatchLoop
+	## SHOT records whose target was a site (a row with work left) when the step began.
+	var shots_at_sites: int = 0
 
 
 func _play(impl: int, with_sites: bool = true) -> Played:
@@ -62,7 +64,15 @@ func _play(impl: int, with_sites: bool = true) -> Played:
 	assert_array(SimImpls.use(played.world, impl)).is_empty()
 	played.loop = MatchLoop.create(null, "", SEED, played.world)
 	for _tick: int in TICKS:
+		var rising: Dictionary[int, bool] = {}
+		for row: int in played.world.unit_count():
+			if played.world.build_left[row] > 0:
+				rising[played.world.unit_id[row]] = true
 		played.loop.step(played.world, _commands_at(played.world, played.world.tick, with_sites))
+		var events: PackedInt32Array = played.world.events
+		for at: int in range(0, events.size(), World.EVENT_STRIDE):
+			if events[at] == World.Event.SHOT and rising.has(events[at + 4]):
+				played.shots_at_sites += 1
 	played.loop.replay.finish(played.world)
 	return played
 
@@ -71,9 +81,12 @@ func test_the_script_exercises_sites_drops_and_both_paths() -> void:
 	var played: Played = _play(SimImpls.Impl.GDSCRIPT)
 	var made: World = played.world
 	assert_int(made.dropped_commands).is_equal(1)  # Only the second PLACE of tick 12.
-	# The plant and the Wind Park finished (the count includes the old path's plant, placed at 90).
+	# The plant and the Wind Park finished; player 1 built the plant site, the Barracks site and (the
+	# old path, placed at 90) a second plant.
 	assert_int(made.stat_built[2]).is_equal(1)
-	assert_int(made.stat_built[1]).is_greater_equal(2)
+	assert_int(made.stat_built[1]).is_equal(3)
+	# Player 2's rifles shot at a site while it rose, so TARGETING, FIRE and the kernels met one.
+	assert_int(played.shots_at_sites).is_greater(0)
 	var plants: Array[int] = SiteRig.rows_of(made, 1, "power_plant")
 	assert_int(plants.size()).is_equal(3)  # The shipped one, the site's and the old path's.
 	assert_int(made.credits[1]).is_less(made.start_credits)
@@ -101,8 +114,8 @@ func test_two_runs_agree_and_the_sites_are_part_of_the_state() -> void:
 	assert_array(first.loop.replay.checkpoint_hashes).is_equal(second.loop.replay.checkpoint_hashes)
 	var bare: Played = _play(SimImpls.Impl.GDSCRIPT, false)
 	assert_int(bare.world.state_hash()).is_not_equal(first.world.state_hash())
-	# The first checkpoint after the first PLACE (tick 3) already differs: build_left and the
-	# credits are hashed.
+	# The first checkpoint after the first PLACE (tick 3) already differs (the credits fall at once;
+	# that the column itself is hashed is test_world_v4's case).
 	var at: int = first.loop.replay.checkpoint_ticks.find(15)
 	assert_int(at).is_greater_equal(0)
 	assert_int(bare.loop.replay.checkpoint_hashes[at]).is_not_equal(
