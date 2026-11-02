@@ -41,7 +41,9 @@ static func age_ms(now_ms: float, born_ms: float) -> float:
 ## pair in every run and on every device, spread evenly over 0 to 2^31 - 1. Integer only, so no
 ## platform can differ. GDScript ints are 64 bit and wrap, and every product is masked to 32 bits.
 static func mix(id: int, salt: int) -> int:
-	var x: int = ((id & MASK32) * MUL_ID + (salt & MASK32) * MUL_SALT + ADD) & MASK32
+	var by_id: int = ((id & MASK31) * MUL_ID) & MASK32
+	var by_salt: int = ((salt & MASK31) * MUL_SALT) & MASK32
+	var x: int = (by_id + by_salt + ADD) & MASK32
 	x ^= x >> 15
 	x = (x * ROUND_A) & MASK32
 	x ^= x >> 12

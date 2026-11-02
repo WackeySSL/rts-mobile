@@ -811,7 +811,7 @@ func _kick_rigs(snap: MatchSnapshot) -> void:
 func _apply_kick(row: int, turret_offset: Vector2, hull_offset: Vector2) -> void:
 	var rig: Rig = _rigs[row] as Rig
 	var at: int = row * PARTS
-	if hull_offset != rig.hull_kick:
+	if hull_offset != rig.hull_kick and _layers[at + HULL] != null:  # A sheet may lack the Hull.
 		rig.hull_kick = hull_offset
 		_layers[at + HULL].position = hull_offset
 		_rig_life.writes += 1

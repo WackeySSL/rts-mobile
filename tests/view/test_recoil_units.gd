@@ -194,6 +194,15 @@ func test_a_turret_that_turns_with_its_hull_mid_kick_keeps_the_kick_on_its_new_m
 	assert_int(dir).is_not_equal(UnitLayer.D_EAST)
 	var mount: Vector2 = _sheet(row).mount(dir) * WorldSort.ART_SCALE
 	assert_vector(turret.position).is_equal_approx(mount + Vector2(-3.0, 0.0), TOL)
+	# The kick's next steps are written on the new mount too, not on the mount of the first frame:
+	# 100 ms is 1.5 px, and the mounts of the two frames are a whole 17 px apart.
+	assert_vector(_sheet(row).mount(UnitLayer.D_EAST) * WorldSort.ART_SCALE - mount).is_not_equal(
+		Vector2.ZERO
+	)
+	_frame(31, 0.5)
+	assert_vector(turret.position).is_equal_approx(mount + Vector2(-1.5, 0.0), TOL)
+	_frame(33, 0.0)  # And home: on the new mount.
+	assert_vector(turret.position).is_equal_approx(mount, TOL)
 
 
 func test_a_new_match_starts_every_rig_on_its_rest_with_no_kick() -> void:
@@ -214,6 +223,46 @@ func test_a_new_match_starts_every_rig_on_its_rest_with_no_kick() -> void:
 	assert_vector(turret.position).is_equal_approx(
 		sheet.mount(UnitLayer.D_EAST) * WorldSort.ART_SCALE, TOL
 	)
+	# A stale kick on the rig would show at its next hull turn, which puts the turret on the mount
+	# plus what the rig believes it is off by: turn the hull and the turret is on the mount exactly.
+	var snap: MatchSnapshot = _runner.snapshot
+	snap.prev_pos_y[row] = snap.pos_y[row] - snap.type_speed[snap.type_index[row]]
+	_layer._process(1.0)
+	var dir: int = Frames.dir(_layer, row, &"hull")
+	assert_int(dir).is_not_equal(UnitLayer.D_EAST)
+	assert_vector(turret.position).is_equal(sheet.mount(dir) * WorldSort.ART_SCALE)
+
+
+func test_a_unit_that_dies_mid_kick_takes_its_kick_with_it_and_gives_it_to_no_other_rig() -> void:
+	# Four heavy tanks of the local player, the last of them the last row. The first fires and dies
+	# in the next tick: its id is gone, and a row of -1 must not reach the last rig, which GDScript
+	# would index from the end of the array.
+	var spawns: Array[SpawnDef] = [Buildings.spawn(2, "renew_tank", 28, 28)]
+	for column: int in 4:
+		spawns.append(Buildings.spawn(1, "heavy_tank", 4 + 4 * column, 4))
+	_runner = auto_free(Buildings.runner(Buildings.scenario(spawns)))
+	_layer = _make_layer(null)
+	var snap: MatchSnapshot = _runner.snapshot
+	var first: int = snap.unit_id[1]
+	var last_row: int = snap.unit_count() - 1
+	var last: Node2D = _rig(last_row)
+	var last_mount: Vector2 = (last.get_node("Turret") as Sprite2D).position
+	assert_bool(_layer.is_shown(last_row)).is_true()
+	_shoot(first, Rig.EAST_ON_SCREEN, &"heavy_cannon", 0)
+	_frame(0, 0.75)  # The peak: the first tank's Hull 1 px and Turret 5 px back.
+	assert_int(_layer.kick_count()).is_equal(1)
+	assert_vector((_rig(1).get_node("Hull") as Sprite2D).position).is_equal_approx(
+		Vector2(-1.0, 0.0), TOL
+	)
+	_runner.world.hp[1] = 0  # It dies in the next tick, and the rows after it move up.
+	_runner.run_ticks(1)
+	_layer._process(0.0)
+	assert_int(_runner.snapshot.index_of(first)).is_equal(-1)
+	assert_int(_layer.kick_count()).is_equal(0)
+	last = _rig(_runner.snapshot.unit_count() - 1)
+	assert_vector((last.get_node("Hull") as Sprite2D).position).is_equal(Vector2.ZERO)
+	assert_vector((last.get_node("Turret") as Sprite2D).position).is_equal(last_mount)
+	assert_int(_layer.life_writes()).is_equal(2)  # The dead tank's two, and none after.
 
 
 ## A layer on the fixture runner with the settings `life` (null: the data file's).

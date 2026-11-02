@@ -18,6 +18,7 @@ const GOLDEN: Array[Vector3i] = [
 	Vector3i(100, 5, 107494402),
 	Vector3i(12345, 678, 1170323460),
 	Vector3i(2147483647, 0, 1623258970),
+	Vector3i(2147483647, 2147483647, 922299706),  # The largest pair: no product passes 2^63.
 ]
 ## Ids 1 to 1000 in each of four windows, for salts 0 and 1, and in each of ten for salt 0.
 const FOUR_WINDOWS_SALT_0: Array[int] = [258, 232, 245, 265]

@@ -17,7 +17,7 @@ extends RefCounted
 
 const QUANT_PX: float = 0.5  ## Offsets are written in steps of this many world px.
 
-var settings: LifeSettings = null
+var life: LifeSettings = null  ## The numbers (`@export var life` of the layer that carries it).
 ## Sprite writes the layers made for life since `setup` (ADR 0027 section 9's hook).
 var writes: int = 0
 
@@ -34,10 +34,11 @@ var _hull: PackedVector2Array = PackedVector2Array()
 var _done: PackedByteArray = PackedByteArray()  ## 1 once the kick is over or its rig is gone.
 
 
-## Sizes the table from `new_settings.kick_slots` and empties it. Not on the frame path.
-func setup(new_settings: LifeSettings) -> void:
-	settings = new_settings
-	var slots: int = maxi(new_settings.kick_slots, 1)
+## Takes the numbers `new_life` and sizes the table from its `kick_slots`, empty. Not on the frame
+## path.
+func setup(new_life: LifeSettings) -> void:
+	life = new_life
+	var slots: int = maxi(new_life.kick_slots, 1)
 	_id.resize(slots)
 	_born.resize(slots)
 	_back.resize(slots)
@@ -96,8 +97,8 @@ func shot(snap: MatchSnapshot, at: int, rock: bool) -> void:
 	if weapon < 0 or weapon >= snap.weapon_ids.size():
 		return
 	var weapon_id: StringName = snap.weapon_ids[weapon]
-	var recoil: float = settings.recoil_px.get(weapon_id, 0.0)
-	var rocking: float = settings.rock_px.get(weapon_id, 0.0) if rock else 0.0
+	var recoil: float = life.recoil_px.get(weapon_id, 0.0)
+	var rocking: float = life.rock_px.get(weapon_id, 0.0) if rock else 0.0
 	if recoil <= 0.0 and rocking <= 0.0:
 		return
 	var aim: Vector2 = (
@@ -123,8 +124,8 @@ func shot(snap: MatchSnapshot, at: int, rock: bool) -> void:
 ## kick's offsets are then in `turret_offset` and `hull_offset`; one that has run its course reads
 ## zero and is marked, so the layer writes that last zero and `sweep` drops it.
 func advance(now_ms: float) -> int:
-	var out_ms: float = float(maxi(settings.recoil_out_ms, 1))
-	var back_ms: float = maxf(float(settings.recoil_back_ms), out_ms + 1.0)
+	var out_ms: float = float(maxi(life.recoil_out_ms, 1))
+	var back_ms: float = maxf(float(life.recoil_back_ms), out_ms + 1.0)
 	for slot: int in _count:
 		var age: float = maxf(_age[slot], LifeClock.age_ms(now_ms, LifeClock.tick_ms(_born[slot])))
 		_age[slot] = age
