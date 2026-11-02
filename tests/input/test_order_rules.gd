@@ -141,3 +141,51 @@ func test_any_cell_of_the_field_counts_and_no_field_or_no_map_is_nowhere() -> vo
 	_snap.ore_cell = PackedInt32Array([10])
 	_snap.map_cols = 0
 	assert_bool(OrderRules.near_field(_snap, IsoProjection.cell_centre_px(2, 1), 50.0)).is_false()
+
+
+func test_the_tab_a_building_produces_by_its_id() -> void:
+	assert_int(OrderRules.rally_tab(_snap, BARRACKS)).is_equal(World.Tab.INFANTRY)
+	assert_int(OrderRules.rally_tab(_snap, FACTORY)).is_equal(World.Tab.VEHICLES)
+	assert_int(OrderRules.rally_tab(_snap, HQ)).is_equal(World.Tab.STRUCTURES)
+	for id: int in [PLANT, RIFLE, 99]:
+		assert_int(OrderRules.rally_tab(_snap, id)).override_failure_message(str(id)).is_equal(-1)
+
+
+## One ore cell, index 0 = cell 10 of a map 8 tiles wide: tile (2, 1), whose centre is the ground
+## point (2500, 1500). The sim looks at a box and then a circle round the HARVEST's point, both
+## inclusive (`Harvest._scan`), and only at cells with ore in them.
+func test_ore_is_within_reach_in_the_sims_own_box_and_circle_and_only_where_there_is_some() -> void:
+	_snap.map_cols = 8
+	_snap.ore_cell = PackedInt32Array([10])
+	_snap.ore_amount = PackedInt32Array([5])
+	assert_bool(OrderRules.ore_within(_snap, Vector2i(2500, 1500), 3000)).is_true()
+	assert_bool(OrderRules.ore_within(_snap, Vector2i(5500, 1500), 3000)).is_true()  # On the edge.
+	assert_bool(OrderRules.ore_within(_snap, Vector2i(5501, 1500), 3000)).is_false()
+	assert_bool(OrderRules.ore_within(_snap, Vector2i(2500, 4501), 3000)).is_false()
+	# 2121 along both axes is 2999.8 away: in; 2122 is 3000.6: out. The box alone would let it in.
+	assert_bool(OrderRules.ore_within(_snap, Vector2i(4621, 3621), 3000)).is_true()
+	assert_bool(OrderRules.ore_within(_snap, Vector2i(4622, 3622), 3000)).is_false()
+	_snap.ore_amount = PackedInt32Array([0])  # Dry: nothing to take.
+	assert_bool(OrderRules.ore_within(_snap, Vector2i(2500, 1500), 3000)).is_false()
+
+
+func test_a_dry_cell_beside_a_cell_with_ore_is_not_the_field_being_dry() -> void:
+	_snap.map_cols = 8
+	_snap.ore_cell = PackedInt32Array([10, 11])  # Tiles (2, 1) and (3, 1).
+	_snap.ore_amount = PackedInt32Array([0, 7])
+	assert_bool(OrderRules.ore_within(_snap, Vector2i(2500, 1500), 1000)).is_true()  # The next one.
+	assert_bool(OrderRules.ore_within(_snap, Vector2i(2500, 1500), 999)).is_false()
+	assert_bool(OrderRules.ore_within(_snap, Vector2i(2500, 1500), 0)).is_false()
+	assert_bool(OrderRules.ore_within(_snap, Vector2i(3500, 1500), 0)).is_true()
+
+
+func test_no_map_no_cells_or_a_short_amount_column_means_no_ore() -> void:
+	_snap.ore_cell = PackedInt32Array([10])
+	_snap.ore_amount = PackedInt32Array([5])
+	assert_bool(OrderRules.ore_within(_snap, Vector2i(2500, 1500), 3000)).is_false()  # No map.
+	_snap.map_cols = 8
+	_snap.ore_amount = PackedInt32Array()  # A column shorter than the cells.
+	assert_bool(OrderRules.ore_within(_snap, Vector2i(2500, 1500), 3000)).is_false()
+	_snap.ore_cell = PackedInt32Array()
+	assert_bool(OrderRules.ore_within(_snap, Vector2i(2500, 1500), 3000)).is_false()
+	assert_bool(OrderRules.ore_within(_snap, Vector2i(2500, 1500), -5)).is_false()

@@ -6,9 +6,10 @@ extends RefCounted
 ## at (11, 2)), refinery `REFINERY` (3x3 at (2, 7)), power plant `PLANT` (2x2 at (7, 7)), turret
 ## `TURRET` (at (11, 7)), two tankers `TANKER_A` and `TANKER_B` (at (6, 12) and (8, 12)), a light
 ## tank `TANK` (at (6, 15)) and a rifle squad `RIFLE` (at (8, 15)); player 2's Headquarters
-## `ENEMY_HQ` (3x3 at (24, 24)). `GROUND` is a tile no row stands within five tiles of and no
-## field is near. An instance holds the scene, a fake clock and the Commands the controller sent,
-## and taps and boxes through the real TouchInput the way a finger does.
+## `ENEMY_HQ` (3x3 at (24, 24)) and a rifle squad `ENEMY_RIFLE` (at (20, 18)), which player 1 sees.
+## `GROUND` is a tile no row stands within five tiles of and no field is near. An instance holds the
+## scene, a fake clock, the Commands the controller sent and the haptics it asked for, and taps and
+## boxes through the real TouchInput the way a finger does.
 
 const BuildingRig: GDScript = preload("res://tests/view/support/building_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
@@ -24,6 +25,7 @@ const TANKER_B: int = 8
 const TANK: int = 9
 const RIFLE: int = 10
 const ENEMY_HQ: int = 11
+const ENEMY_RIFLE: int = 12
 const SPAWNS: Array[Array] = [
 	[1, "headquarters", 2, 2],
 	[1, "barracks", 7, 2],
@@ -36,6 +38,7 @@ const SPAWNS: Array[Array] = [
 	[1, "light_tank", 6, 15],
 	[1, "rifle_squad", 8, 15],
 	[2, "renew_hq", 24, 24],
+	[2, "renew_rifle", 20, 18],
 ]
 const FIELD_TILES: Array[Vector2i] = [
 	Vector2i(16, 16), Vector2i(17, 16), Vector2i(16, 17), Vector2i(17, 17)
@@ -51,6 +54,7 @@ var buildings: BuildingLayer
 var units: UnitLayer
 var now_ms: int = 0
 var sent: Array[Command] = []
+var buzzes: Array[int] = []  ## The ms of every haptic the controller asked for.
 
 
 ## The scenario of this rig: the spawns above on a map with the field. A suite sets it on the
@@ -84,11 +88,14 @@ func bind(scene: Node2D) -> void:
 	controller = main.get_node("PlayerController")
 	buildings = main.get_node("BuildingLayer")
 	units = main.get_node("UnitLayer")
-	BuildingRig.see(runner.snapshot, 1, [Vector2i(25, 25)])  # The cell under the enemy's position.
+	# The cells under the enemy Headquarters' position and the enemy rifle squad's.
+	BuildingRig.see(runner.snapshot, 1, [Vector2i(25, 25), Vector2i(20, 18)])
 	now_ms = 0
 	sent.clear()
+	buzzes.clear()
 	touch.clock = func() -> int: return now_ms
 	controller.command_sink = func(command: Command) -> void: sent.append(command)
+	controller.vibrate = func(ms: int) -> void: buzzes.append(ms)
 
 
 ## Passes the Commands on to the real queue as well as recording them, so a tick applies them.
@@ -103,6 +110,7 @@ func reset() -> void:
 	camera.zoom = Vector2.ONE
 	controller.selection.clear()
 	sent.clear()
+	buzzes.clear()
 
 
 ## The world px of the middle of tile (`col`, `row`).

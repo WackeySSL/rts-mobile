@@ -63,6 +63,14 @@ func test_a_ground_tap_with_a_barracks_selected_sends_one_rally_for_it_and_keeps
 			[Rig.BARRACKS]
 		)
 		assert_int(_rig.main.get_node("MarkerLayer").active_count()).is_equal(0)  # Not a move.
+		# The feedback: the flag stands at once, and the phone gives its light buzz.
+		await _frames()
+		assert_array(_flags.last_flags.keys()).override_failure_message(note).is_equal(
+			[World.Tab.INFANTRY]
+		)
+		assert_array(_rig.buzzes).override_failure_message(note).is_equal(
+			[_rig.controller.settings.haptic_ms]
+		)
 
 
 func test_a_ground_tap_with_a_vehicle_factory_selected_sends_one_rally_for_it() -> void:
@@ -89,6 +97,139 @@ func test_each_tap_sends_a_new_rally_and_the_selection_stays_on_the_building() -
 	assert_int(_rig.sent[1].type).is_equal(Command.Type.RALLY)
 	assert_bool(_rig.sent[0].target_x == _rig.sent[1].target_x).is_false()
 	assert_array(_rig.controller.selection.selected).is_equal([Rig.BARRACKS])
+
+
+func test_the_flag_and_its_line_show_at_once_at_the_tapped_point_before_any_tick() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _show(size)
+		var note: String = str(size)
+		var ticked: int = _rig.runner.snapshot.tick
+		_rig.tap_building(Rig.BARRACKS)
+		_rig.tap_world(Rig.tile_px(Rig.GROUND.x, Rig.GROUND.y))
+		await _frames()
+		var snap: MatchSnapshot = _rig.runner.snapshot
+		assert_int(snap.tick).override_failure_message(note).is_equal(ticked)  # No tick ran.
+		assert_int(snap.rally_x[World.TABS + World.Tab.INFANTRY]).is_equal(-1)  # Nothing published.
+		assert_bool(_flags.has_pending(World.Tab.INFANTRY)).override_failure_message(note).is_true()
+		var flag: Vector2 = IsoProjection.ground_to_px(_rig.sent[0].target_x, _rig.sent[0].target_y)
+		assert_array(_flags.last_flags.keys()).override_failure_message(note).is_equal(
+			[World.Tab.INFANTRY]
+		)
+		assert_vector(_flags.last_flags[World.Tab.INFANTRY]).is_equal_approx(
+			flag, Vector2.ONE * 0.01
+		)
+		assert_array(_flags.last_lines).override_failure_message(note).is_equal(
+			[World.Tab.INFANTRY]
+		)
+		assert_vector(_flags.last_line_to).is_equal_approx(flag, Vector2.ONE * 0.01)
+
+
+func test_a_tap_beyond_the_map_shows_the_flag_where_the_sim_clamps_the_point() -> void:
+	await _show(ScreenSizes.LANDSCAPE[1])
+	_rig.send_to_the_sim()
+	_rig.tap_building(Rig.BARRACKS)
+	_rig.camera.centre_on(Vector2.ZERO)  # The north tip: the view overhangs the map above it.
+	_rig.tap(get_viewport().get_visible_rect().size * 0.5 - Vector2(0.0, 150.0))
+	assert_bool(_rig.sent[0].target_x < 0 and _rig.sent[0].target_y < 0).is_true()  # Off the map.
+	await _frames()
+	assert_vector(_flags.last_flags[World.Tab.INFANTRY]).is_equal_approx(Vector2.ZERO, Vector2.ONE)
+	_rig.runner.run_ticks(2)  # The sim clamps it to the corner: the same place.
+	await _frames()
+	var infantry: int = World.TABS + World.Tab.INFANTRY
+	assert_int(_rig.runner.snapshot.rally_x[infantry]).is_equal(0)
+	assert_int(_rig.runner.snapshot.rally_y[infantry]).is_equal(0)
+	assert_bool(_flags.has_pending(World.Tab.INFANTRY)).is_false()
+	assert_vector(_flags.last_flags[World.Tab.INFANTRY]).is_equal_approx(Vector2.ZERO, Vector2.ONE)
+
+
+func test_the_pending_flag_gives_way_to_the_snapshots_point_without_moving() -> void:
+	await _show(ScreenSizes.PORTRAIT[1])
+	_rig.send_to_the_sim()
+	_rig.tap_building(Rig.BARRACKS)
+	_rig.tap_world(Rig.tile_px(Rig.GROUND.x, Rig.GROUND.y))
+	await _frames()
+	assert_bool(_flags.has_pending(World.Tab.INFANTRY)).is_true()
+	var shown: Vector2 = _flags.last_flags[World.Tab.INFANTRY]
+	_rig.runner.run_ticks(2)
+	await _frames()
+	assert_bool(_flags.has_pending(World.Tab.INFANTRY)).is_false()
+	assert_vector(_flags.last_flags[World.Tab.INFANTRY]).is_equal_approx(shown, Vector2.ONE * 0.01)
+
+
+## A RALLY the sim never gets (here the sink only records it, as if it was refused: the building
+## died first) leaves the flag for `PENDING_TICKS` published ticks and then takes it away.
+func test_a_rally_the_sim_does_not_take_drops_its_flag_after_a_few_ticks() -> void:
+	await _show(ScreenSizes.LANDSCAPE[0])
+	_rig.tap_building(Rig.BARRACKS)
+	_rig.tap_world(Rig.tile_px(Rig.GROUND.x, Rig.GROUND.y))
+	_rig.runner.run_ticks(RallyLayer.PENDING_TICKS)
+	await _frames()
+	assert_bool(_flags.has_pending(World.Tab.INFANTRY)).is_true()
+	assert_array(_flags.last_flags.keys()).is_equal([World.Tab.INFANTRY])
+	_rig.runner.run_ticks(1)
+	await _frames()
+	assert_bool(_flags.has_pending(World.Tab.INFANTRY)).is_false()
+	assert_dict(_flags.last_flags).is_empty()
+	assert_array(_flags.last_lines).is_empty()
+
+
+func test_a_rally_tap_buzzes_once_and_a_let_go_tap_does_not_and_the_setting_is_kept() -> void:
+	await _show(ScreenSizes.PORTRAIT[0])
+	var ms: int = _rig.controller.settings.haptic_ms
+	_rig.tap_building(Rig.BARRACKS)
+	assert_array(_rig.buzzes).is_empty()  # Selecting is no order.
+	_rig.tap_world(Rig.tile_px(Rig.GROUND.x, Rig.GROUND.y))
+	assert_array(_rig.buzzes).is_equal([ms])
+	_rig.tap_world(Rig.tile_px(20, 14))
+	assert_array(_rig.buzzes).is_equal([ms, ms])
+	_rig.tap_building(Rig.HQ)
+	_rig.tap_world(Rig.tile_px(Rig.GROUND.x, Rig.GROUND.y))  # A let-go: no order, no buzz.
+	assert_array(_rig.controller.selection.selected).is_empty()
+	assert_array(_rig.buzzes).is_equal([ms, ms])
+	var quiet: InputSettings = _rig.controller.settings.duplicate()
+	quiet.haptics_enabled = false
+	_rig.controller.settings = quiet
+	_rig.sent.clear()
+	_rig.tap_building(Rig.FACTORY)
+	_rig.tap_world(Rig.tile_px(Rig.GROUND.x, Rig.GROUND.y))
+	assert_int(_rig.sent[0].type).is_equal(Command.Type.RALLY)  # The order goes, silently.
+	assert_array(_rig.buzzes).is_equal([ms, ms])
+
+
+## Enemy units do not count with a building selected (`Picker.pick`), so a tap on one is a tap on
+## the ground: a barracks sets its rally point there, any other building lets go (ADR 0019 s. 3).
+func test_with_a_building_selected_a_tap_on_an_enemy_unit_is_a_tap_on_the_ground() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _show(size)
+		var note: String = str(size)
+		var snap: MatchSnapshot = _rig.runner.snapshot
+		var row: int = snap.index_of(Rig.ENEMY_RIFLE)
+		var place: Vector2 = IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row])
+		_rig.tap_building(Rig.BARRACKS)
+		_rig.tap_unit(Rig.ENEMY_RIFLE)
+		assert_array(_rig.sent).override_failure_message(note).has_size(1)
+		assert_int(_rig.sent[0].type).override_failure_message(note).is_equal(Command.Type.RALLY)
+		assert_int(_rig.sent[0].target_id).is_equal(Rig.BARRACKS)
+		_assert_near(Vector2i(_rig.sent[0].target_x, _rig.sent[0].target_y), place, note)
+		assert_array(_rig.controller.selection.selected).override_failure_message(note).is_equal(
+			[Rig.BARRACKS]
+		)
+		_rig.sent.clear()
+		_rig.tap_building(Rig.HQ)
+		_rig.tap_unit(Rig.ENEMY_RIFLE)
+		assert_array(_rig.controller.selection.selected).override_failure_message(note).is_empty()
+		assert_array(_rig.sent).override_failure_message(note).is_empty()  # No ATTACK either.
+
+
+func test_the_team_layer_and_the_line_wear_the_players_colour() -> void:
+	await _show(ScreenSizes.LANDSCAPE[0])
+	var sort: WorldSort = _rig.main.get_node("WorldSort")
+	_rig.tap_building(Rig.BARRACKS)
+	_rig.tap_world(Rig.tile_px(Rig.GROUND.x, Rig.GROUND.y))
+	await _frames()
+	assert_that(_flags.last_tint).is_equal(sort.mid_colour(1))
+	assert_bool(_flags.last_tint == Color.WHITE).is_false()  # The art's own white is not the colour.
+	assert_bool(sort.mid_colour(1) == sort.mid_colour(2)).is_false()  # The players differ.
 
 
 func test_a_ground_tap_with_any_other_building_selected_lets_go_and_sends_nothing() -> void:

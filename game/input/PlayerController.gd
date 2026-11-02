@@ -20,14 +20,18 @@ extends Node
 ## follow `selection_changed`. A building never joins a box, a double-tap or "All army". With own
 ## units selected a tap on an enemy building attacks it, if the sim would take that attack
 ## (`PickSnapshot.is_targetable`: the view draws an enemy building for any seen cell of its
-## footprint, the sim sees it at the cell under its position) and is a ground tap if not; with a
-## building selected a tap on an enemy unit selects nothing and orders nothing.
+## footprint, the sim sees it at the cell under its position) and is a ground tap if not. With a
+## building selected enemy units do not count (`Picker.pick`), so a tap on one is a tap on the
+## ground (ADR 0019 section 3's note of P26ak).
 ## With own units selected a tap on the ground moves them, and tankers alone (P87) HARVEST when the
-## tap is on or near an oil or gas field (`OrderRules.near_field`, a fingertip of reach). With one
-## own barracks or vehicle factory selected a tap on the ground sets that tab's rally point (RALLY)
-## and the building stays selected, so `RallyLayer` shows its flag and line; with any other building
-## selected, a Headquarters included, it lets go of the selection. "All army" and a box leave
-## tankers out unless the box holds nothing else (`OrderRules`).
+## tap is on or near an oil or gas field (`OrderRules.near_field`, a fingertip of reach) and the
+## sim would take the order (`OrderRules.ore_within`: ore left within the rules'
+## `harvest_pick_milli` of the point); a dry field or a tap too far from the ore is a move. With one
+## own barracks or vehicle factory selected a tap on the ground sets that tab's rally point (RALLY),
+## shows the flag at once (`rally_ordered`, which `RallyLayer` listens to) and buzzes lightly, and
+## the building stays selected; with any other building selected, a Headquarters included, it lets
+## go of the selection. "All army" and a box leave tankers out unless the box holds nothing else
+## (`OrderRules`).
 ## While the strike is being aimed (P112, `strike_aim.active`) a tap places its point on the ground
 ## and no gesture does anything else: nothing is selected, ordered or boxed.
 ## While placement mode is on (P86, `placement.active`) the gestures go to `placement` alone: a tap
@@ -38,6 +42,9 @@ extends Node
 ## Emitted with the new `selection.selected` after every real change, and again when a tap lands on
 ## the one building that is selected already: the sidebar goes back to the tab it builds.
 signal selection_changed(ids: PackedInt32Array)
+## Emitted with every RALLY a ground tap sends: the tab it is for (a `World.Tab`) and the point as
+## sent, in milli-tiles. `RallyLayer` shows the flag at once, before the sim has applied the order.
+signal rally_ordered(tab: int, x: int, y: int)
 
 @export var runner: MatchRunner
 @export var unit_layer: UnitLayer
@@ -144,8 +151,8 @@ func _tap(pos: Vector2) -> void:
 			_building_ground_tap(pos)
 
 
-## A tap on the ground with own units selected (P87): tankers alone, on or near a field, HARVEST
-## there; everything else moves.
+## A tap on the ground with own units selected (P87): tankers alone, on or near a field that has
+## ore the sim would take, HARVEST there; everything else moves.
 func _ground_tap(pos: Vector2) -> void:
 	var world: Vector2 = camera.screen_to_world(pos)
 	var ground: Vector2i = IsoProjection.px_to_ground(world)
@@ -154,6 +161,7 @@ func _ground_tap(pos: Vector2) -> void:
 	if (
 		OrderRules.only_tankers(snap, selection.selected)
 		and OrderRules.near_field(snap, world, reach)
+		and OrderRules.ore_within(snap, ground, _harvest_pick_milli())
 	):
 		_harvest(ground.x, ground.y)
 	else:
@@ -172,6 +180,9 @@ func _building_ground_tap(pos: Vector2) -> void:
 		return
 	var ground: Vector2i = IsoProjection.px_to_ground(camera.screen_to_world(pos))
 	command_sink.call(Command.rally(_local_player(), building, ground.x, ground.y))
+	rally_ordered.emit(OrderRules.rally_tab(runner.snapshot, building), ground.x, ground.y)
+	if settings.haptics_enabled:
+		vibrate.call(settings.haptic_ms)
 
 
 ## Selects building `id` alone. The model does not fire for the building that is the selection
@@ -253,8 +264,15 @@ func _move(target_x: int, target_y: int) -> void:
 	marker_layer.show_attack_move(IsoProjection.ground_to_px(target_x, target_y))
 
 
+## `harvest_pick_milli` of the match's rules, how far from a HARVEST's point the sim looks for ore
+## (the scenario's rules, or the script defaults when it has none, as the ground layer reads them).
+func _harvest_pick_milli() -> int:
+	var rules: RulesDef = runner.scenario.rules if runner.scenario != null else null
+	return (rules if rules != null else RulesDef.new()).harvest_pick_milli
+
+
 ## Send the selected tankers to the field at a point in milli-tiles, with the same chevrons. The sim
-## takes the ore nearest the point (`harvest_pick_milli`) and drops the order when there is none.
+## takes the ore nearest the point; `_ground_tap` has seen to it that there is some in reach.
 func _harvest(target_x: int, target_y: int) -> void:
 	command_sink.call(Command.harvest(_local_player(), selection.selected, target_x, target_y))
 	marker_layer.show_attack_move(IsoProjection.ground_to_px(target_x, target_y))
