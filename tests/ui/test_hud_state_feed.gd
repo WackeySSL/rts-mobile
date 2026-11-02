@@ -116,23 +116,33 @@ func test_a_pinned_full_map_stays_through_every_gesture_and_the_gesture_works() 
 
 
 func test_a_touch_on_a_hud_control_closes_nothing_but_the_economy_card() -> void:
+	var panel: BuildSidebar = null
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
+		panel = _hud("BuildSidebar") as BuildSidebar
 		_controller.selection.set_ids(PackedInt32Array([TANK_A]))
 		await _settle()
 		for label: String in CONTROLS:
+			# Sideways the open full map folds the build panel (P121, one unfold at a time) and the
+			# open panel closes the map: the panel is open again for each control, and a control the
+			# map has folded away is not there to touch.
+			panel.open()
 			var control: Control = _hud(label) as Control
 			var at: Vector2 = control.get_global_rect().get_center()
 			for unfold: HudState.Unfold in [HudState.Unfold.DRAWER, HudState.Unfold.RADAR]:
 				var why: String = "%s: a tap on %s with %d open" % [size, label, unfold]
 				_state.open(unfold)
-				_tap(at)
-				assert_int(_state.current).override_failure_message(why).is_equal(unfold)
+				if control.is_visible_in_tree():
+					_tap(at)
+					assert_int(_state.current).override_failure_message(why).is_equal(unfold)
+			panel.open()
 			_state.pinned = true
 			_state.open(HudState.Unfold.RADAR)
-			_tap(at)
-			assert_int(_state.current).is_equal(HudState.Unfold.RADAR)
+			if control.is_visible_in_tree():
+				_tap(at)
+				assert_int(_state.current).is_equal(HudState.Unfold.RADAR)
 			_state.pinned = false
+			panel.open()
 			_state.open(HudState.Unfold.ECONOMY)
 			_tap(at)
 			(

@@ -9,15 +9,17 @@ const CUTOUT_PX: int = 100
 
 
 ## Every screen to test, as {label, size, metrics (a profile, or null for the engine's own)}: the
-## six sizes of ScreenSizes.ALL, then every profile of both orientations twice, the second time with
-## a cutout of 100 px on the side where a phone has its camera (the left in landscape, the top in
-## portrait). `portrait`: only that orientation (true or false), or both (null).
+## six sizes of ScreenSizes.ALL, then every profile of both orientations (the design's insets,
+## `notch_design`, among them) twice, the second time with a cutout of 100 px on the side where a
+## phone has its camera (the left in landscape, the top in portrait). `portrait`: only that
+## orientation (true or false), or both (null).
 static func screens(portrait: Variant = null) -> Array[Dictionary]:
 	var all: Array[Dictionary] = []
 	for size: Vector2i in ScreenSizes.ALL:
 		all.append({"label": "size %s" % size, "size": size, "metrics": null})
 	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
 	profiles.merge(UiProfiles.portrait())
+	profiles.merge(UiProfiles.notch_design())  # The design's insets, both ways.
 	for profile_name: StringName in profiles:
 		var m: UiMetrics = profiles[profile_name]
 		var cut: Rect2i = Rect2i(0, CUTOUT_PX, m.window_size.x, m.window_size.y - CUTOUT_PX)

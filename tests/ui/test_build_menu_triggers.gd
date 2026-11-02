@@ -2,8 +2,9 @@ extends GdUnitTestSuite
 ## What opens and collapses the build menu (plan P85f, ADR 0024 sections 1, 5, 6 and 9), in the main
 ## scene through the real GUI at the six sizes of ScreenSizes.ALL. A match starts open. A tap, a
 ## double-tap, a long-press with its box, a pan, a pinch and a wheel step on the map collapse it and
-## still do their own work; a touch on the ArmyBar, the SelectionPanel, the radar scope, a tab, a
-## card, a hold on a card or a scroll of the item row never does. The start of placement collapses
+## still do their own work; a touch on the ArmyBar, the SelectionPanel, a tab, a card, a hold on a
+## card or a scroll of the item row never does (the radar scope's tap does sideways, as the full
+## map and the panel are one unfold at a time: test_radar_map's). The start of placement collapses
 ## it, the end of placement by a build or the X opens it again (it returns to the state placement
 ## began in) and a strike aim that ends placement leaves it down; the Ready badge shows only while
 ## the menu is collapsed and no placement runs, and a tap on it opens the menu on the Structures tab
@@ -136,7 +137,6 @@ func test_a_touch_on_a_hud_control_never_collapses_the_menu() -> void:
 			_hud("TabVehicles") as Control,
 			_hud("TabStructures") as Control,
 			card,
-			_hud("RadarScope") as Control,  # Last: it unfolds the full map (P121).
 		]
 		for control: Control in touches:
 			var note: String = "%s: a tap on %s" % [why, control.name]

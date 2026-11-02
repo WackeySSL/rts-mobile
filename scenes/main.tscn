@@ -312,13 +312,15 @@ minimap = NodePath("../RadarMap/Minimap")
 camera = NodePath("../../Camera")
 safe_area = NodePath("../SafeArea")
 
-[node name="RadarMap" type="Control" parent="Hud" node_paths=PackedStringArray("feed", "minimap", "safe_area")]
+[node name="RadarMap" type="Control" parent="Hud" node_paths=PackedStringArray("feed", "minimap", "safe_area", "sidebar", "strike_row")]
 visible = false
 theme = ExtResource("16_theme")
 script = ExtResource("43_radar_map")
 feed = NodePath("../HudStateFeed")
 minimap = NodePath("Minimap")
 safe_area = NodePath("../SafeArea")
+sidebar = NodePath("../SafeArea/BuildSidebar")
+strike_row = NodePath("../SafeArea/StrikeBand/StrikeControls")
 
 [node name="Minimap" type="Control" parent="Hud/RadarMap" node_paths=PackedStringArray("runner", "camera", "map_view", "controller")]
 anchors_preset = 0

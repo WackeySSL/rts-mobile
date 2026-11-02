@@ -10,8 +10,9 @@ extends GdUnitTestSuite
 ## count and a finger held still on it (which sends no event) keeps it open; the unfold rules
 ## through `HudState` (one at a time, a gesture on the map closes it and still does its work, a
 ## touch on a HUD control or on the map itself closes nothing); P88's tap, drag and hold on the
-## moved node; and the pinned map is an island that the placement buttons keep clear of
-## (`GhostControls.clear_of`).
+## moved node; the pinned map is an island that the placement buttons keep clear of
+## (`GhostControls.clear_of`); and, until P120 and P120c, sideways the map and the build panel are
+## one unfold at a time and the map keeps clear of the strike row (also on a short screen).
 ## The scope that opens it is test_radar_scope's, the state's own rules are test_hud_state's.
 ## Player 1 has a Headquarters, two light tanks, a Heavy Yard and a Bunkhouse.
 
@@ -34,6 +35,9 @@ const STRIKE_SPAWNS: Array[Array] = [
 	[1, "fossil_strike", 6, 6], [1, "light_tank", 14, 14], [2, "renew_hq", 20, 20]
 ]
 const HOME: Vector2i = Vector2i(11, 7)
+const BORE: int = 1  ## The Deep Bore of STRIKE_SPAWNS.
+const HQ: int = 1  ## The Headquarters of the placement rig, a producer.
+const TABS: Array[String] = ["TabStructures", "TabInfantry", "TabVehicles"]  ## By `World.Tab`.
 const CLOSE_MS: float = 4000.0
 const STEP_S: float = 0.25
 const TOLERANCE_PX: float = 1.5
@@ -54,6 +58,8 @@ var _camera: RtsCamera
 var _touch: TouchInput
 var _controller: PlayerController
 var _placement: PlacementController
+var _sidebar: BuildSidebar
+var _aim: StrikeAim
 var _feed: HudStateFeed
 var _state: HudState
 var _scope: RadarScope
@@ -326,8 +332,16 @@ func test_an_unpinned_map_folds_after_radar_close_ms_and_a_touch_starts_the_coun
 		_tap(_minimap.get_global_rect().get_center())  # The box: the camera jumps, the map stays.
 		_step(3750.0)
 		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
-		_tap(_pin().get_global_rect().get_center())  # The pin: it is a touch on the map too.
-		_tap(_pin().get_global_rect().get_center())
+		# The pin is a touch on the map too. Its lift flips the pin and the flip starts a count of its
+		# own, so the press alone shows it: held, the step that would have been the 4 000th ms is not.
+		var pin_at: Vector2 = _pin().get_global_rect().get_center()
+		TouchEvents.press(get_viewport(), 0, pin_at)
+		_step(STEP_S * 1000.0)
+		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
+		TouchEvents.release(get_viewport(), 0, pin_at)
+		assert_bool(_state.pinned).override_failure_message(why).is_true()
+		_tap(pin_at)  # Off again.
+		assert_bool(_state.pinned).override_failure_message(why).is_false()
 		_step(CLOSE_MS - STEP_S * 1000.0)
 		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
 		_step(STEP_S * 1000.0)
@@ -449,12 +463,14 @@ func test_the_maps_tap_drag_and_hold_work_on_the_moved_node() -> void:
 		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
 
 
-## Until P120c the strike button stands on the top line, left of the scope, 72 dp high, and the full
-## map starts 64 dp below the top: the open map covers the foot of the button (8 dp) and nothing of
-## its middle, and the button's 64 dp stay tappable. Upright the button stands at the right edge
-## above the army bar, far from the map.
-func test_with_a_strike_building_the_open_map_covers_only_the_foot_of_the_button_in_landscape(
-) -> void:
+## Until P120c the strike row stands on the top line, left of the scope, 72 dp high. Where the full
+## map stands under the scope (starting 64 dp below the top) it covers the foot of the button (8 dp)
+## and nothing of its middle; where the screen is too short for that, the map stands left of the
+## right column and ends a gap left of the row, the check mark and the X included while aiming.
+## Either way the button's centre tap is the button's (it nudges), and a pinned map that stays open
+## through the aim leaves the check mark, the X and the button their whole rects (the short screen)
+## or at least their middles. Upright the row stands at the right edge, far from the map.
+func test_with_a_strike_building_the_open_map_keeps_clear_of_the_strike_row_in_landscape() -> void:
 	var spawns: Array[SpawnDef] = []
 	for entry: Array in STRIKE_SPAWNS:
 		spawns.append(BuildingRig.spawn(entry[0], entry[1], entry[2], entry[3]))
@@ -463,22 +479,221 @@ func test_with_a_strike_building_the_open_map_covers_only_the_foot_of_the_button
 		UiProfiles.by_name(&"web_phone"),
 		UiProfiles.by_name(&"web_phone_small"),
 		UiProfiles.by_name(&"android_6in_portrait"),
+		RadarRig.short_landscape(),
 	]:
 		await _open(screen.window_size, screen, BuildingRig.scenario(spawns))
+		_feed.set_process(false)
 		_state.open(HudState.Unfold.RADAR)
 		await _settle()
-		var button: Rect2 = _rect("StrikeButton")
+		var button: StrikeButton = _hud("StrikeButton") as StrikeButton
 		var map: Rect2 = _map.get_global_rect()
-		var why: String = "%s: button %s, map %s" % [screen.window_size, button, map]
-		assert_bool((_hud("StrikeButton") as Control).is_visible_in_tree()).is_true()
-		assert_bool(map.has_point(button.get_center())).override_failure_message(why).is_false()
-		if HudLayout.is_portrait():
-			assert_bool(button.intersects(map)).override_failure_message(why).is_false()
+		var scope: Rect2 = _scope.get_global_rect()
+		var left_of_column: bool = map.position.y < scope.end.y  # Not under the scope.
+		var why: String = "%s: button %s, map %s" % [screen.window_size, _rect("StrikeButton"), map]
+		assert_bool(button.is_visible_in_tree()).is_true()
+		var short: bool = screen.window_size == RadarRig.short_landscape().window_size
+		assert_bool(left_of_column).override_failure_message(why).is_equal(short)
+		_expect_clear_of_row(why, map, left_of_column, ["StrikeButton", "StrikeControls"])
+		if left_of_column:  # Clear of the pill too, the row being the button alone.
+			(
+				assert_bool(map.intersects(_rect("EconomyPill")))
+				. override_failure_message(why)
+				. is_false()
+			)
+		var nudges: int = button.nudges  # A tap on its middle is the button's, not the map's.
+		_tap(_rect("StrikeButton").get_center())
+		assert_int(button.nudges).override_failure_message(why).is_equal(nudges + 1)
+		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
+		# The aim, with the map pinned open through it.
+		_state.pinned = true
+		var snap: MatchSnapshot = _runner.snapshot
+		snap.ready_tick[snap.index_of(BORE)] = snap.tick + 1
+		_aim.refresh()
+		assert_bool(_aim.begin()).override_failure_message(why).is_true()
+		await _settle()
+		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
+		map = _map.get_global_rect()
+		var aiming: Array = ["StrikeConfirm", "StrikeCancel", "StrikeButton", "StrikeControls"]
+		_expect_clear_of_row(why + ", aiming", map, left_of_column, aiming)
+		assert_bool(_aim.active).override_failure_message(why).is_true()
+		_tap(_rect("StrikeCancel").get_center())  # The X is the X: the aim ends, the map stays.
+		assert_bool(_aim.active).override_failure_message(why).is_false()
+		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
+		assert_array(_sent).override_failure_message(why).is_empty()
+		_state.pinned = false
+
+
+## The parts named stand clear of the map. Left of the right column the map ends a gap left of the
+## row (the whole rects are clear); under the scope the middle of each part is clear and at most
+## the 8 dp where the map's head begins (64 dp from the top) covers the foot of a 72 dp part.
+func _expect_clear_of_row(why: String, map: Rect2, left_of_column: bool, parts: Array) -> void:
+	if HudLayout.is_portrait():
+		for part: String in parts:
+			assert_bool(map.intersects(_rect(part))).override_failure_message(why).is_false()
+		return
+	for part: String in parts:
+		var rect: Rect2 = _rect(part)
+		var at: String = "%s: %s %s, map %s" % [why, part, rect, map]
+		assert_bool(map.has_point(rect.get_center())).override_failure_message(at).is_false()
+		if left_of_column:
+			assert_bool(map.intersects(rect)).override_failure_message(at).is_false()
+			assert_float(rect.position.x - map.end.x).override_failure_message(at).is_greater_equal(
+				UiScale.dp(HudCorners.GAP_DP) - TOLERANCE_PX
+			)
 		else:
-			var covered: float = button.intersection(map).size.y
-			assert_float(covered).override_failure_message(why).is_less_equal(
+			assert_float(rect.intersection(map).size.y).override_failure_message(at).is_less_equal(
 				UiScale.dp(8.0) + TOLERANCE_PX
 			)
+
+
+## Until P120's drawer, sideways, the open full map and the open build panel are one unfold at a
+## time (ADR 0025 section 1): the map folds the panel when it opens, so the map never meets the
+## panel's backdrop, tabs or cards (the plate that stays is clear of it too) and a tap on a tab
+## reaches the tab; the Build button opens the panel again and closes the map, pinned or not.
+## Upright the band and the map are far apart and both stay open. At every screen, the design's
+## insets and a screen too short for the box under the scope among them.
+func test_the_open_map_never_meets_the_build_menu_and_the_tabs_still_take_the_touch() -> void:
+	var screens: Array[Dictionary] = RadarRig.screens()
+	var short: UiMetrics = RadarRig.short_landscape()
+	screens.append({"label": "short landscape", "size": short.window_size, "metrics": short})
+	for screen: Dictionary in screens:
+		await _open(screen["size"], screen["metrics"])
+		_feed.set_process(false)
+		var why: String = str(screen["label"])
+		var sideways: bool = not HudLayout.is_portrait()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()  # A match opens it.
+		_state.open(HudState.Unfold.RADAR)
+		await _settle()
+		var map: Rect2 = _map.get_global_rect()
+		for part: String in ["Backdrop", "Tabs", "Items"]:
+			var node: Control = _hud(part) as Control
+			var at: String = (
+				"%s: %s %s against the map %s" % [why, part, node.get_global_rect(), map]
+			)
+			if node.is_visible_in_tree():
+				(
+					assert_bool(map.intersects(node.get_global_rect()))
+					. override_failure_message(at)
+					. is_false()
+				)
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_equal(not sideways)
+		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
+		if sideways:
+			_state.pinned = true  # Pinned, the open panel still closes it.
+			_tap(_rect("Build").get_center())
+			assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+			assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.NONE)
+			assert_bool(_state.pinned).override_failure_message(why).is_true()  # The pin outlives it.
+			_state.pinned = false
+			await _settle()
+		for index: int in [2, 1, 0]:  # Vehicles, Infantry, Structures: each one is another tab.
+			var tab: Button = _hud(TABS[index]) as Button
+			assert_bool(tab.is_visible_in_tree()).override_failure_message(why).is_true()
+			_tap(tab.get_global_rect().get_center())
+			(
+				assert_int(_sidebar.tab)
+				. override_failure_message("%s: %s" % [why, TABS[index]])
+				. is_equal(index)
+			)
+			assert_bool(tab.button_pressed).override_failure_message(why).is_true()
+		if not sideways:  # Upright the map stayed open beside the band, and a tab touch closes nothing.
+			assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
+		assert_array(_sent).override_failure_message(why).is_empty()
+
+
+## The two directions of the same rule, sideways: every way the panel opens (the Build button, the
+## Ready chip, a tap on an own producer) closes a pinned map and leaves the pin; opening the map
+## folds the panel; a turn to landscape with both open folds the panel; upright both stay.
+func test_opening_the_panel_closes_the_map_and_opening_the_map_folds_the_panel_sideways() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size)
+		_feed.set_process(false)
+		var why: String = str(size)
+		var sideways: bool = not HudLayout.is_portrait()
+		Rig.make_ready(_runner.snapshot)  # The Ready chip shows while the panel is down.
+		_sidebar.refresh()
+		_tap(_scope.get_global_rect().get_center())
+		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_equal(not sideways)
+		if not sideways:  # Upright: collapse and open the band again, and the map stays.
+			_sidebar.collapse()
+			_sidebar.open()
+			assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
+			continue
+		for how: String in ["the Build button", "the Ready chip", "a producer tap"]:
+			var note: String = "%s: %s" % [why, how]
+			_state.pinned = true
+			_state.open(HudState.Unfold.RADAR)
+			await _settle()
+			assert_bool(_sidebar.is_open()).override_failure_message(note).is_false()
+			match how:
+				"the Build button":
+					_tap(_rect("Build").get_center())
+				"the Ready chip":
+					assert_bool((_hud("Ready") as Control).is_visible_in_tree()).is_true()
+					_tap(_rect("Ready").get_center())
+				_:
+					_controller.selection.set_ids(PackedInt32Array([HQ]))
+			assert_bool(_sidebar.is_open()).override_failure_message(note).is_true()
+			assert_int(_state.current).override_failure_message(note).is_equal(HudState.Unfold.NONE)
+			assert_bool(_state.pinned).override_failure_message(note).is_true()
+			_controller.selection.clear()
+			_sidebar.collapse()
+			await _settle()
+		_state.pinned = false
+	# A turn to landscape with the band and the map open folds the band, and the map stays.
+	var portrait: UiMetrics = UiProfiles.by_name(&"android_6in_portrait")
+	var landscape: UiMetrics = UiProfiles.by_name(&"android_6in")
+	await _open(portrait.window_size, portrait)
+	_feed.set_process(false)
+	_state.open(HudState.Unfold.RADAR)
+	assert_bool(_sidebar.is_open()).is_true()
+	UiScale.set_override(landscape)
+	get_window().size = landscape.window_size
+	await _settle()
+	assert_bool(_sidebar.is_open()).is_false()
+	assert_int(_state.current).is_equal(HudState.Unfold.RADAR)
+	assert_bool(_map.get_global_rect().intersects(_rect("Backdrop"))).is_false()
+
+
+## A focus loss ends every finger on the map (a lift may never come): the count runs on, the map
+## folds on time and nothing keeps touching. A press for an index that is still held drops the
+## stale finger first, so a press elsewhere leaves no ghost behind.
+func test_a_focus_loss_ends_the_fingers_on_the_map_and_a_press_drops_a_stale_one() -> void:
+	for lost: int in [NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_WINDOW_FOCUS_OUT]:
+		await _open(ScreenSizes.LANDSCAPE[0])
+		_feed.set_process(false)
+		_minimap.clock = func() -> int: return _now_ms
+		_state.open(HudState.Unfold.RADAR)
+		await _settle()
+		var why: String = "focus out %d" % lost
+		var at: Vector2 = _minimap.get_global_rect().get_center()
+		TouchEvents.press(get_viewport(), 0, at)
+		assert_bool(_map.is_processing()).override_failure_message(why).is_true()
+		_map.notification(lost)
+		assert_bool(_map.is_processing()).override_failure_message(why).is_false()
+		for frame: int in 80:  # Twenty seconds, the finger never lifted.
+			_feed._process(STEP_S)
+			_map._process(STEP_S)
+		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.NONE)
+		TouchEvents.release(get_viewport(), 0, at)
+	# A press for an index whose lift was lost: the old finger goes, the new one counts only where
+	# it went down. Pinned, so that a press on the ground does not fold the map under the case.
+	await _open(ScreenSizes.LANDSCAPE[0])
+	_state.pinned = true
+	_state.open(HudState.Unfold.RADAR)
+	await _settle()
+	var inside: Vector2 = _minimap.get_global_rect().get_center()
+	TouchEvents.press(get_viewport(), 0, inside)
+	assert_bool(_map.is_processing()).is_true()
+	TouchEvents.press(get_viewport(), 0, _ground())  # Index 0 again, on the ground.
+	assert_bool(_map.is_processing()).is_false()
+	TouchEvents.release(get_viewport(), 0, _ground())
+	TouchEvents.press(get_viewport(), 0, inside)  # And again on the map: one finger, one count.
+	TouchEvents.press(get_viewport(), 0, inside)
+	TouchEvents.release(get_viewport(), 0, inside)
+	assert_bool(_map.is_processing()).is_false()
+	_state.pinned = false
 
 
 ## The pinned map is an island the check mark and the X keep clear of (ADR 0025 section 6): the
@@ -626,12 +841,14 @@ func _open(size: Vector2i, metrics: UiMetrics = null, scenario: ScenarioDef = nu
 	_touch = _main.get_node("TouchInput")
 	_controller = _main.get_node("PlayerController")
 	_placement = _main.get_node("PlacementController")
+	_aim = _main.get_node("StrikeAim")
+	_sidebar = _hud("BuildSidebar") as BuildSidebar
 	_feed = _hud("HudStateFeed") as HudStateFeed
 	_state = _feed.state
 	_scope = _hud("RadarScope") as RadarScope
 	_map = _hud("RadarMap") as RadarMap
 	_minimap = _hud("Minimap") as Minimap
-	(_hud("BuildSidebar") as BuildSidebar).set_process(false)
+	_sidebar.set_process(false)
 	var instant: InputSettings = _camera.settings.duplicate()  # The snap is a tween on wall time.
 	instant.zoom_snap_ms = 0
 	_camera.settings = instant

@@ -353,6 +353,38 @@ func test_a_tap_opens_the_full_map_and_nothing_else_happens() -> void:
 		_state.close(HudState.Unfold.RADAR)
 
 
+## A tap on the scope while the full map is open is another touch on it, not a toggle: the map
+## stays open and its count starts over (HudState.open on an open map restarts it).
+func test_a_tap_on_the_scope_while_the_map_is_open_keeps_it_open_and_restarts_the_count() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size)
+		_feed.set_process(false)
+		var why: String = str(size)
+		_state.open(HudState.Unfold.RADAR)
+		_step(3750.0)
+		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
+		_tap(_scope.get_global_rect().get_center())
+		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
+		_step(3750.0)
+		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
+		_step(250.0)
+		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.NONE)
+		assert_int(_told).override_failure_message(why).is_equal(0)
+
+
+## A modal that opens between the press and the lift spends the finger (TouchInput.CANCEL_GROUP):
+## the lift opens nothing, and the next tap opens the map as usual.
+func test_a_modal_between_the_press_and_the_lift_spends_the_tap() -> void:
+	await _open(ScreenSizes.LANDSCAPE[1])
+	var at: Vector2 = _scope.get_global_rect().get_center()
+	TouchEvents.press(get_viewport(), 0, at)
+	get_tree().call_group(TouchInput.CANCEL_GROUP, "cancel_gestures")
+	TouchEvents.release(get_viewport(), 0, at)
+	assert_int(_state.current).is_equal(HudState.Unfold.NONE)
+	_tap(at)
+	assert_int(_state.current).is_equal(HudState.Unfold.RADAR)
+
+
 ## Release build, 360 dp upright: the Dev button is hidden, the Surrender button stands first at
 ## the top left and the pill's 200 dp minimum (a Control does not shrink below it) reaches into
 ## the scope's corner, as `EconomyPill.gd` documents. The scope is drawn over the pill and wins the
@@ -392,6 +424,23 @@ func _area(points: PackedVector2Array) -> float:
 		var next: Vector2 = points[(index + 1) % points.size()]
 		twice += points[index].x * next.y - next.x * points[index].y
 	return absf(twice) * 0.5
+
+
+## Frames of `ms` in 250 ms steps through the feed, as the engine would run them.
+func _step(ms: float) -> void:
+	var left: float = ms
+	while left > 0.0:
+		var step: float = minf(left, 250.0)
+		_feed._process(step / 1000.0)
+		left -= step
+
+
+## A finger down and up at `at` (base px), then a pause past the double-tap time.
+func _tap(at: Vector2) -> void:
+	TouchEvents.press(get_viewport(), 0, at)
+	_now_ms += 50
+	TouchEvents.release(get_viewport(), 0, at)
+	_now_ms += 1000
 
 
 func _hud(node_name: String) -> Node:

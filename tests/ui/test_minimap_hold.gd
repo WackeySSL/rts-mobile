@@ -39,6 +39,7 @@ var _touch: TouchInput
 var _controller: PlayerController
 var _minimap: Minimap
 var _sidebar: BuildSidebar
+var _state: HudState
 var _markers: MoveMarkerLayer
 var _now_ms: int = 0
 var _sent: Array[Command] = []
@@ -243,6 +244,7 @@ func test_a_hold_with_nothing_or_a_building_selected_orders_nothing_and_the_came
 		for selected: Array in [[], [HQ]]:
 			var ids: PackedInt32Array = PackedInt32Array(selected)
 			_controller.selection.set_ids(ids)
+			_state.open(HudState.Unfold.RADAR)  # An own producer opens the build panel, which folds it.
 			_camera.centre_on(Vector2.ZERO)
 			var at: Vector2 = _local(FIRST)
 			TouchEvents.press(get_viewport(), 0, _global(at))
@@ -434,23 +436,26 @@ func test_without_a_controller_a_hold_orders_nothing_and_the_minimap_still_jumps
 
 
 ## The minimap is a HUD control: the GUI takes the touch, so the map's recognizer never hears of it
-## (no long-press anchor, no box, no `map_gesture`) and the build menu stays open.
+## (no long-press anchor, no box, no `map_gesture`) and the build menu stays as it was: upright it
+## is open beside the map, sideways the open map has folded it (ADR 0025 section 1, one unfold at a
+## time) and the hold does not open it again.
 func test_the_hold_never_collapses_the_build_menu_or_reaches_the_maps_recognizer() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
 		var why: String = str(size)
 		var overlay: BoxOverlay = _main.find_child("BoxOverlay", true, false) as BoxOverlay
 		_controller.selection.set_ids(PackedInt32Array([TANK_A]))
-		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+		var menu: bool = HudLayout.is_portrait()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_equal(menu)
 		TouchEvents.press(get_viewport(), 0, _global(_local(FIRST)))
 		_wait(_controller.settings.long_press_ms * 2)
 		assert_int(_sent.size()).override_failure_message(why).is_equal(1)
-		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_equal(menu)
 		assert_int(_told).override_failure_message(why).is_equal(0)
 		assert_bool(overlay.is_showing()).override_failure_message(why).is_false()
 		TouchEvents.release(get_viewport(), 0, _global(_local(FIRST)))
 		_wait(_controller.settings.long_press_ms)
-		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_equal(menu)
 		assert_int(_told).override_failure_message(why).is_equal(0)
 
 
@@ -501,9 +506,9 @@ func _open(size: Vector2i) -> void:
 	await _settle()
 	# The full map is an unfold since P121 (ADR 0025 section 7): open and pinned, so that no timer
 	# folds it under a case. The node is P88's, moved under the scope.
-	var state: HudState = (_main.get_node("Hud/HudStateFeed") as HudStateFeed).state
-	state.pinned = true
-	state.open(HudState.Unfold.RADAR)
+	_state = (_main.get_node("Hud/HudStateFeed") as HudStateFeed).state
+	_state.pinned = true
+	_state.open(HudState.Unfold.RADAR)
 	await _settle()
 	_camera = _main.get_node("Camera")
 	_touch = _main.get_node("TouchInput")
