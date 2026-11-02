@@ -60,3 +60,47 @@ func test_the_site_limit_is_the_worlds_rule_for_every_player() -> void:
 	assert_int(view.construction_sites_max).is_equal(3)
 	world.construction_sites_max = 5
 	assert_int(view.construction_sites_max).is_equal(3)
+
+
+## `row_offline` (ADR 0023 section 10, ADR 0026 section 2 rule 2) is the test `Production` makes
+## before a PLACE may start a site: `offline_until` above `tick + 1`, the stamp of the tick a
+## Command of this think is applied in. At `tick + 1` the building is back (the edge), one tick
+## later it is not.
+func test_row_offline_is_the_sims_test_at_its_edge() -> void:
+	var world: World = ViewWorlds.crafted()
+	var hq: int = world.index_of(ViewWorlds.HQ_1)
+	var view: PlayerView = PlayerView.of(world, 1)
+	assert_bool(view.row_offline(view.row_of(ViewWorlds.HQ_1))).is_false()
+	var expected: Dictionary[int, bool] = {0: false, 1: false, 2: true, 3: true, 500: true}
+	for ahead: int in expected:
+		world.offline_until[hq] = world.tick + ahead
+		view = PlayerView.of(world, 1)
+		var row: int = view.row_of(ViewWorlds.HQ_1)
+		assert_bool(view.row_offline(row)).override_failure_message(str(ahead)).is_equal(
+			expected[ahead]
+		)
+	# Back for good: a stamp past `offline_until` is online whatever the column still holds.
+	world.offline_until[hq] = 7
+	world.tick = 100
+	view = PlayerView.of(world, 1)
+	assert_bool(view.row_offline(view.row_of(ViewWorlds.HQ_1))).is_false()
+
+
+## An own column: an enemy row answers false whether or not the player sees it, so a blackout of
+## the enemy is not read off the view; neither does a row outside the table.
+func test_row_offline_is_false_for_rows_that_are_not_the_players() -> void:
+	var world: World = ViewWorlds.crafted()
+	for id: int in [ViewWorlds.HQ_1, ViewWorlds.NEAR_FOE, ViewWorlds.FAR_FOE]:
+		world.offline_until[world.index_of(id)] = world.tick + 500
+	var view: PlayerView = PlayerView.of(world, 1)
+	assert_bool(view.row_offline(view.row_of(ViewWorlds.HQ_1))).is_true()
+	# Seen enemy row, unseen enemy row (as the table has it), neutral rows: all false.
+	assert_int(view.row_of(ViewWorlds.NEAR_FOE)).is_greater_equal(0)
+	assert_bool(view.row_offline(view.row_of(ViewWorlds.NEAR_FOE))).is_false()
+	assert_bool(view.row_offline(world.index_of(ViewWorlds.FAR_FOE))).is_false()
+	for row: int in [-1, world.unit_count(), world.unit_count() + 5]:
+		assert_bool(view.row_offline(row)).override_failure_message(str(row)).is_false()
+	# The other player reads its own row the other way round.
+	var other: PlayerView = PlayerView.of(world, 2)
+	assert_bool(other.row_offline(world.index_of(ViewWorlds.FAR_FOE))).is_true()
+	assert_bool(other.row_offline(world.index_of(ViewWorlds.HQ_1))).is_false()

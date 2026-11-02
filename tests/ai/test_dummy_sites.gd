@@ -203,14 +203,19 @@ func test_a_refinery_site_wants_no_harvester() -> void:
 	assert_array(_names(world, _starts(_think(world, ai)))).is_equal(["harvester", "harvester"])
 
 
-func test_a_cancelled_row_is_neither_had_nor_a_site() -> void:
+func test_a_cancelled_row_holds_a_place_among_the_sites_until_it_leaves() -> void:
+	# The sim counts a row marked -1 (CANCEL_BUILD, P128b) against the limit until REMOVE takes it
+	# out, so the dummy does too. The view never shows one today (the AI thinks before `loop.step`,
+	# and a cancel and its REMOVE happen in one step): this is the rule for the day it does.
 	var world: World = Rig.start()
-	var ai: DummyAi = Rig.ai_of(Rig.def_with(["power_plant"]), 1)
+	var ai: DummyAi = Rig.ai_of(Rig.def_with(["power_plant", "power_plant"]), 1)
 	Rig.give(world, 1, "power_plant", 10, 2)
-	assert_array(_think(world, ai)).is_empty()
-	# The mark of a cancel (-1) lives until the end of its tick: not a finished plant, not a site.
-	world.build_left[Rig.row_of(world, 1, "power_plant")] = -1
+	# One plant stands and the second is wanted: placed.
 	assert_array(_names(world, _starts(_think(world, ai)))).is_equal(["power_plant"])
+	# Marked -1, the standing one is neither finished nor gone: it holds the place of a site, so the
+	# second plant waits. (Counted as finished, or not counted, it would be placed at once.)
+	world.build_left[Rig.row_of(world, 1, "power_plant")] = -1
+	assert_array(_think(world, ai)).is_empty()
 
 
 func test_a_site_goes_on_without_the_headquarters_and_the_dummy_sends_nothing_more() -> void:
@@ -225,7 +230,9 @@ func test_a_site_goes_on_without_the_headquarters_and_the_dummy_sends_nothing_mo
 	Rig.kill(world, loop, Rig.row_of(world, 1, "headquarters"))
 	assert_int(world.defeated_tick[1]).is_equal(0)
 	assert_int(world.build_left[world.index_of(plant)]).is_greater(0)
-	# No complete building produces structures now: the sim would drop every PLACE.
+	# No complete building produces structures now, and the plant's own requirement, the
+	# Headquarters, is gone too (`test_no_headquarters_with_the_requirement_met_places_nothing`
+	# isolates the producer rule).
 	assert_array(_think(world, ai)).is_empty()
 	# Low power (the barracks draws, the plant is still a site) halves the pace: 300 ticks, and 250
 	# more cover it.
@@ -234,6 +241,60 @@ func test_a_site_goes_on_without_the_headquarters_and_the_dummy_sends_nothing_mo
 	# The site went on (ADR 0026, Michael's answer 4 A) and was finished; the dummy sent nothing.
 	assert_int(world.build_left[world.index_of(plant)]).is_equal(0)
 	assert_int(Rig.count_of(world, 1, "power_plant")).is_equal(1)
+	assert_int(world.dropped_commands).is_equal(0)
+
+
+func test_no_headquarters_with_the_requirement_met_places_nothing() -> void:
+	var world: World = Rig.start()
+	Rig.explore_all(world)
+	Rig.give(world, 1, "power_plant", 10, 2)
+	Rig.give(world, 1, "barracks", 20, 6)
+	world.credits[1] = 20000
+	var loop: MatchLoop = Rig.loop_of(world)
+	Rig.kill(world, loop, Rig.row_of(world, 1, "headquarters"))
+	assert_int(world.defeated_tick[1]).is_equal(0)
+	# The refinery is next, its requirement (a finished power plant) is owned and the credits are
+	# there: only the missing structures producer stops the PLACE, which the sim would drop
+	# (ADR 0026 section 2, rule 2).
+	var sent: Array[Command] = _think(
+		world, Rig.ai_of(Rig.def_with(["power_plant", "refinery"]), 1)
+	)
+	assert_array(sent).is_empty()
+	Rig.step(world, loop, sent)
+	assert_int(world.dropped_commands).is_equal(0)
+
+
+func test_a_player_left_with_only_a_producer_site_is_defeated_and_sends_nothing() -> void:
+	var world: World = Rig.start()
+	var loop: MatchLoop = Rig.loop_of(world)
+	var barracks: int = Rig.give(world, 1, "barracks", 20, 6)
+	world.build_left[world.index_of(barracks)] = 5000
+	Rig.kill(world, loop, Rig.row_of(world, 1, "headquarters"))
+	# A barracks that is still a site produces nothing and keeps nobody alive; the dummy counts it
+	# as no producer either, so not even its defence orders its squads.
+	assert_int(world.defeated_tick[1]).is_greater(0)
+	var sent: Array[Command] = _think(world, Rig.dummy(1), true)
+	assert_array(sent).is_empty()
+	Rig.step(world, loop, sent)
+	assert_int(world.dropped_commands).is_equal(0)
+
+
+func test_a_think_that_needs_every_pass_starts_them_all() -> void:
+	var world: World = _economy_start()
+	Rig.explore_all(world)
+	Rig.give(world, 1, "barracks", 24, 2)
+	var order: Array[String] = ["power_plant", "power_plant", "rifle_squad", "rifle_squad"]
+	order.append_array(["rifle_squad", "rifle_squad"])
+	var def: AiDef = Rig.def_with(order)
+	def.harvesters_wanted = 3
+	var sent: Array[Command] = _think(world, Rig.ai_of(def, 1))
+	# The most one think can start: the vehicle queue's room in tankers (2 of the 3 wanted), the one
+	# PLACE (the second plant) and the infantry queue's room in squads (2 of the 4 the order lists,
+	# the start has two).
+	var expected: Array[String] = ["harvester", "harvester", "power_plant"]
+	expected.append_array(["rifle_squad", "rifle_squad"])
+	assert_array(_names(world, _starts(sent))).is_equal(expected)
+	Rig.step(world, Rig.loop_of(world), sent)
 	assert_int(world.dropped_commands).is_equal(0)
 
 

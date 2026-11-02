@@ -135,6 +135,15 @@ func test_the_spiral_is_centred_on_the_type_the_def_names() -> void:
 	assert_array(_places(_think(world, Rig.ai_of(def, 1)))).is_equal([Vector2i(16500, 2500)])
 
 
+func test_the_spiral_falls_back_to_the_first_building_when_the_def_names_no_centre() -> void:
+	var world: World = Rig.start()
+	Rig.explore_all(world)
+	var def: AiDef = Rig.dummy_def().duplicate() as AiDef
+	# No type of the player's has this id: the first building (the Headquarters) is the centre.
+	def.hq_type = &"nothing"
+	assert_array(_places(_think(world, Rig.ai_of(def, 1)))).is_equal([Vector2i(2500, 2500)])
+
+
 func test_without_a_headquarters_nothing_is_placed_and_nothing_is_dropped() -> void:
 	var world: World = Rig.start()
 	Rig.explore_all(world)
@@ -142,8 +151,10 @@ func test_without_a_headquarters_nothing_is_placed_and_nothing_is_dropped() -> v
 	var loop: MatchLoop = Rig.loop_of(world)
 	Rig.kill(world, loop, Rig.row_of(world, 1, "headquarters"))
 	assert_int(world.defeated_tick[1]).is_equal(0)
-	# The barracks keeps the player in the match, but no complete building produces structures: the
-	# sim would drop a PLACE (ADR 0026 section 2, rule 2), so the dummy sends none.
+	# The barracks keeps the player in the match, but no complete building produces structures (and
+	# the plant's requirement, the Headquarters, is gone): the sim would drop a PLACE, so the dummy
+	# sends none. The producer rule alone is
+	# `test_dummy_sites::test_no_headquarters_with_the_requirement_met_places_nothing`.
 	var sent: Array[Command] = _think(world, Rig.dummy(1))
 	assert_array(sent).is_empty()
 	Rig.step(world, loop, sent)

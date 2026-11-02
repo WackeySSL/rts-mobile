@@ -81,14 +81,34 @@ func test_the_def_is_copied_when_the_dummy_is_made() -> void:
 	var def: AiDef = Rig.def_with(["power_plant", "refinery"])
 	var ai: DummyAi = DummyAi.create(def, 1, DetRandom.create(1, DetRandom.STREAM_AI_BASE + 1))
 	# The order is emptied in place: binding a new array to the property would leave the one that a
-	# dummy holding a reference kept, and the test would pass without a copy.
+	# dummy holding a reference kept, and the test would pass without a copy. A structure is placed
+	# whatever `queue_target` says, so `place_tries` is the number a live read would show: with 0 no
+	# slot is asked and nothing is sent.
 	def.build_order.clear()
 	def.queue_target = 0
+	def.place_tries = 0
 	def.hq_type = &"nothing"
 	var world: World = Rig.start()
 	var sent: Array[Command] = []
 	ai.think(PlayerView.of(world, 1), sent)
 	assert_array(_types(world, sent)).is_equal(["power_plant"])
+
+
+func test_the_unit_queue_target_is_copied_when_the_dummy_is_made() -> void:
+	var def: AiDef = Rig.def_with(["rifle_squad", "rifle_squad", "rifle_squad", "rifle_squad"])
+	var ai: DummyAi = DummyAi.create(def, 1, DetRandom.create(1, DetRandom.STREAM_AI_BASE + 1))
+	def.build_order.clear()
+	def.queue_target = 0
+	def.harvesters_wanted = 0
+	# The start has two rifle squads and the order wants four. A live queue target of 0 would queue
+	# none; the copy of 2 queues the two.
+	var world: World = Rig.start()
+	Rig.give(world, 1, "power_plant", 10, 2)
+	Rig.give(world, 1, "barracks", 24, 2)
+	world.credits[1] = 20000
+	var sent: Array[Command] = []
+	ai.think(PlayerView.of(world, 1), sent)
+	assert_array(_types(world, sent)).is_equal(["rifle_squad", "rifle_squad"])
 
 
 func test_a_dummy_draws_no_random_number() -> void:

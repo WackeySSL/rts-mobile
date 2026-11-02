@@ -28,8 +28,6 @@ var _max_tries: int = 0
 var _max_queue: int = 0
 var _sites_at_place: Array[int] = []
 var _max_sites: int = 0
-var _first_harvester_tick: int = -1
-var _refinery_done_tick: int = -1
 
 
 func before() -> void:
@@ -48,8 +46,6 @@ func before() -> void:
 		for queue: int in range(World.TABS + 1, World.TABS * 2):
 			_max_queue = maxi(_max_queue, _world.queue_count[queue])
 		_max_sites = maxi(_max_sites, _sites())
-		if _refinery_done_tick < 0 and _complete_of("refinery") > 0:
-			_refinery_done_tick = _world.tick
 		if _done_tick < 0 and _stands():
 			_done_tick = _world.tick
 
@@ -95,17 +91,19 @@ func test_a_think_asks_about_no_more_slots_than_place_tries() -> void:
 
 
 func test_no_unit_queue_holds_more_than_queue_target() -> void:
-	# The harvester queue holds the tanker the refinery did not bring, and the dummy asks for one.
+	# The harvester queue holds the one tanker the refinery did not bring, so this run never fills
+	# a queue: the pin on the bound is `test_dummy_wishes::test_a_queue_holds_queue_target_items...`.
 	assert_int(_max_queue).is_between(1, _def.queue_target)
 
 
 func test_it_keeps_two_harvesters_for_its_one_refinery() -> void:
 	assert_int(Rig.count_of(_world, 1, "refinery")).is_equal(1)
 	assert_int(Rig.count_of(_world, 1, "harvester")).is_equal(_def.harvesters_wanted)
-	# The refinery brought one; the dummy asked for the other and for no more, and not before the
-	# refinery was finished (a site takes no tanker): it asked after the refinery stood.
+	# The refinery brought one; the dummy asked for the other and for no more. (That a refinery
+	# still a site wants no tanker is `test_dummy_sites::test_a_refinery_site_wants_no_harvester`:
+	# here a tanker needs the vehicle factory, which needs a finished refinery, so the order of the
+	# two cannot fail.)
 	assert_int(_harvesters_queued).is_equal(_def.harvesters_wanted - 1)
-	assert_int(_first_harvester_tick).is_greater(_refinery_done_tick)
 
 
 func test_the_first_slot_that_placement_accepts_is_used() -> void:
@@ -151,8 +149,6 @@ func _note(command: Command, slots: int) -> void:
 		var id: String = String(_world.type_ids[command.payload[0]])
 		if id == String(_def.harvester_type):
 			_harvesters_queued += 1
-			if _first_harvester_tick < 0:
-				_first_harvester_tick = _world.tick
 		else:
 			_structures_queued += 1
 

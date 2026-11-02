@@ -10,7 +10,8 @@ extends Resource
 ## What the player builds, in order: type ids of buildings (a unit type works the same way, on its
 ## tab). The player wants as many of a type as the list has up to the item, so a lost building is
 ## wanted again at its place. An id the roster lacks is left out. A structure is placed first and
-## built on the spot, one site at a time (ADR 0026 section 8); a unit is queued.
+## built on the spot, up to `construction_sites_max` sites and one PLACE a think (ADR 0026 section
+## 8); a unit is queued.
 @export var build_order: Array[StringName] = []
 ## The type id of the player's Headquarters (the placement spiral's centre) and of its harvester.
 @export var hq_type: StringName = &"headquarters"

@@ -127,7 +127,9 @@ func test_a_think_asks_about_no_more_slots_than_place_tries_and_no_queue_overfil
 ) -> void:
 	var run: Run = _runs[faction]
 	assert_int(run.max_tries).is_between(1, run.def.place_tries)
-	# Units only: the tanker the refinery did not bring. The structures tab has no queue to fill.
+	# Units only: the one tanker the refinery did not bring, so this run never fills a queue (the pin
+	# on the bound is `test_dummy_wishes::test_a_queue_holds_queue_target_items...`). The structures
+	# tab has no queue to fill.
 	assert_int(run.max_queue).is_between(1, run.def.queue_target)
 
 

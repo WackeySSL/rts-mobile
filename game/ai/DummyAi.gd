@@ -6,8 +6,9 @@ extends AiController
 ## `PlayerView` of its think, uses no random number and no bonus, and sends only Commands the sim
 ## accepts: a QUEUE only for a unit its queue has room for, its player can pay and its buildings
 ## let it build, a PLACE only for a structure it can pay, that its complete buildings let it build,
-## while it has fewer sites than `construction_sites_max`, and only on a slot that `placement`
-## answers OK for, an ATTACK_MOVE only for units it has.
+## while it has fewer sites than `construction_sites_max` and its Headquarters (the structures
+## producer the sim picks) is not blacked out, and only on a slot that `placement` answers OK for,
+## an ATTACK_MOVE only for units it has.
 ##
 ## One think (`think`):
 ## - it acts on its wishes, while the credits last: first a harvester when the player has fewer than
@@ -50,7 +51,8 @@ var _spiral: PackedInt32Array = PackedInt32Array()
 ## type indexes of the view's roster (-1: the roster lacks the id), the player's complete rows per
 ## type, its rows (sites included) and queued items per type, its complete producers per tab, the
 ## units this think queued per tab, its complete refinery count, its sites under way at the start of
-## the think, and whether this think has sent a PLACE.
+## the think, whether this think has sent a PLACE, and whether the structures producer that the sim
+## would pick (the lowest-id complete one, `Production.producer_row`) is blacked out.
 var _order: PackedInt32Array = PackedInt32Array()
 var _hq_type: int = -1
 var _harvester_type: int = -1
@@ -61,6 +63,7 @@ var _added: PackedInt32Array = PackedInt32Array()
 var _refineries: int = 0
 var _sites: int = 0
 var _placed: bool = false
+var _structures_offline: bool = false
 
 ## A dummy for `player_id` driven by `def`, which it copies and does not keep. It thinks on the
 ## ticks with `tick % think_period == think_tick + player_id - 2`: player 2 on `think_tick`, each
@@ -105,11 +108,14 @@ func _resolve(view: PlayerView) -> void:
 			_order.append(type)
 
 
-## Counts the player's rows, producers and queued items. A site (`row_build_left` above 0) counts
-## as had and as one of the sites under way, and for nothing else: not as an owned type that a
-## requirement asks for, not as a producer, not as a refinery (ADR 0026 section 4). False when
-## there is nothing to do: the player has no queues in the view, or no complete building that
-## produces a tab.
+## Counts the player's rows, producers and queued items. A site (`row_build_left` not 0) counts as
+## had and as one of the sites under way, and for nothing else: not as an owned type that a
+## requirement asks for, not as a producer, not as a refinery (ADR 0026 section 4). A cancelled row
+## (-1) is a site until it leaves, as the sim counts it against the limit; the view never shows one
+## today (the AI thinks before `loop.step`, and a cancel and its REMOVE happen in one step). Notes
+## whether the first complete structures producer, the one a PLACE is judged by, is blacked out.
+## False when there is nothing to do: the player has no queues in the view, or no complete building
+## that produces a tab.
 func _take_census(view: PlayerView) -> bool:
 	var tabs: int = PlayerView.TABS
 	if view.queue_count.size() < tabs:
@@ -125,19 +131,20 @@ func _take_census(view: PlayerView) -> bool:
 	_refineries = 0
 	_sites = 0
 	_placed = false
+	_structures_offline = false
 	var producing: int = 0
 	for row: int in view.own_rows:
 		var type: int = view.row_type(row)
 		var left: int = view.row_build_left(row)
-		if left < 0:
-			continue  # A cancelled row: gone at the end of its tick, never had.
 		_have[type] += 1
-		if left > 0:
+		if left != 0:
 			_sites += 1
 			continue
 		_owned[type] += 1
 		var tab: int = view.type_produces[type]
 		if tab >= 0 and tab < tabs:
+			if tab == PlayerView.Tab.STRUCTURES and _producers[tab] == 0:
+				_structures_offline = view.row_offline(row)
 			_producers[tab] += 1
 			producing += 1
 		if view.is_refinery(type):
@@ -237,8 +244,10 @@ func _next(view: PlayerView, room: int) -> int:
 ## Whether a QUEUE (a unit) or a PLACE (a structure) of `type` would be applied but for the credits
 ## and, for a PLACE, the slot: the type's tab has a complete producer of the player's, its
 ## requirement is owned complete, and there is room: in the unit queue counting the items this
-## think queued, or among the sites (`construction_sites_max`). A think sends one PLACE at most: the
-## view does not show the site it starts, so a second PLACE would ask about the same slot.
+## think queued, or among the sites (`construction_sites_max`) with the structures producer not
+## blacked out (a QUEUE is accepted at a blacked-out producer, a PLACE is not). A think sends one
+## PLACE at most: the view does not show the site it starts, so a second PLACE would ask about the
+## same slot.
 func _can_start(view: PlayerView, type: int, room: int) -> bool:
 	var tab: int = view.type_tab[type]
 	if tab < 0 or tab >= PlayerView.TABS or _producers[tab] == 0:
@@ -247,5 +256,5 @@ func _can_start(view: PlayerView, type: int, room: int) -> bool:
 	if need >= 0 and _owned[need] == 0:
 		return false
 	if tab == PlayerView.Tab.STRUCTURES:
-		return not _placed and _sites < view.construction_sites_max
+		return not _placed and not _structures_offline and _sites < view.construction_sites_max
 	return view.queue_count[tab] + _added[tab] < room
