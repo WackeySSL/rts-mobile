@@ -27,7 +27,9 @@ funded by optional rewarded ads and capped post-match interstitials.
   green-energy alliance (white ceramic, glass, wind turbines, solar panels, blue-grey vehicles;
   fast, precise, fragile). Invented energy blocs with original lore: no geography, no flags, stars
   or real insignia, no link to existing franchises. Mirror matches are allowed.
-- Team colours: eight three-tone colours; player 1 orange and player 2 cyan by default.
+- Team colours: eight three-tone colours. By default each player takes its side's colour, which
+  is also its HUD's accent: Derrick League orange, Lumen Accord cyan; in a mirror match player 2
+  takes the other one (ADR 0025, Michael's answer 7 of 2026-11-02).
 - Start: one Headquarters, 2 000 credits and 2 rifle squads of the player's faction.
 - Victory: the enemy has neither a Headquarters nor a production building left.
 - Target: median match length 8-10 minutes, checked by the balance harness.
@@ -41,6 +43,10 @@ funded by optional rewarded ads and capped post-match interstitials.
 
 ## Buildings (MVP)
 Each faction builds its own eight; every footprint is square.
+Structures are placed first and built on the spot (ADR 0026): the player picks the place, the price
+is paid when the place is confirmed, and the building rises there, one at a time; while it rises it
+can be attacked and does nothing for its owner (no power, production or shots); a cancel refunds
+75 % of the price.
 
 | Role | Derrick League | Lumen Accord | Size | Cost | Power | Requires | Purpose |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -74,7 +80,7 @@ Armour classes: infantry, light, heavy, building. Weapons deal a percentage of d
 the table lives in `data/`.
 
 ## Superweapons (MVP)
-One per faction, built after the radar. It charges for 5 minutes from placement; then the player
+One per faction, built after the radar. It charges for 5 minutes from completion; then the player
 taps its button and a spot and confirms:
 - **Deep Bore** (Derrick League): after a 3-second warning every player sees, the ground splits
   and everything within 3 tiles, own units and buildings included, takes heavy damage.

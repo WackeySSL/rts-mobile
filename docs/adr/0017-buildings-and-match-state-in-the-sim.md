@@ -45,6 +45,12 @@ Status note (2026-10-31, P26an docs): §5 carries a dated status note that narro
 note's claim on P93's bounds: the base arena reaches neither the REMOVE drop nor a ghost (P93,
 #248). No accepted text changed.
 
+Status note (2026-11-02, P26ap docs; ADR 0026 accepted 2026-11-02 on #259): from plan row P128 on
+(`docs/plans/2026-11-01-hud-v2.md`), §1: a building row may be unfinished (`build_left` above 0, a
+new row column); §4: `PLACE` carries `[type_index]` and starts a construction (the empty payload is
+dropped from P131), and `CANCEL_BUILD` takes 16 of the reserved 16-19; §7: `STATE_FORMAT` 5, one
+re-pin. ADR 0026 §1-§7 and §10 have the rules. No accepted text changed.
+
 ## Context
 What earlier ADRs already decided for Phase 3:
 - **ADR 0007 §2:** "Buildings (Phase 3) are rows of the same table", so targeting, damage, death

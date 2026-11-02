@@ -17,6 +17,15 @@ Status note (2026-10-26, P26ai docs): §5 carries a dated status note on the por
 (#193) merged it: its height rule, its 4 dp margins above and below, and the tab names. No
 accepted text changed.
 
+Status note (2026-11-02, P26ap docs; ADR 0025 accepted 2026-11-02 on #259): §5 carries a dated
+status note: from the rows of `docs/plans/2026-11-01-hud-v2.md` on, the battle screen is ADR 0025's
+corner HUD in both orientations. The portrait build band and strip go; the build menu is a
+transient drawer (a bottom sheet of half the height in portrait, a side panel in landscape); the
+portrait bottom stack is the command bar with BUILD lifted above it and the group column, still
+within 40 % of the safe height; the portrait top line holds the economy pill and the radar scope;
+the SelectionPanel's line and fit levels move into the command bar's chips; the minimap is the
+radar's full map at the top right. No accepted text changed.
+
 ## Context
 Michael, 2026-10-19, verbatim: **"Tilføj til tema at spillet også skal kunne spilles vertikale og
 ikke kun i landscape"**: the game shall be playable in portrait as well as landscape. That changes

@@ -34,6 +34,16 @@ built every ECONOMY, the loss stats counted only for a side that has had a produ
 decision, Option A), the end that needs somebody defeated and RALLY for unit producers only. No
 accepted text changed.
 
+Status note (2026-11-02, P26ap docs; ADR 0026 accepted 2026-11-02 on #259, Michael's answers 1 B,
+2 A, 3 ja, 4 A): from plan rows P128-P131 on (`docs/plans/2026-11-01-hud-v2.md`), §5: structures
+are no longer queued, built and then placed; `PLACE [type]` takes the whole price at the check mark
+and the building goes up on the spot, `construction_sites_max` (1) at a time, at the queue head's
+rate (`low_power_percent` on low power), paused while the site is offline, going on if the
+Headquarters dies; it starts at `construct_start_hp_percent` of its hit points; a cancel refunds
+`construct_refund_percent` (75); `QUEUE` of a structure is dropped from P131. Units keep their
+queues and "paid when queued". §7: an unfinished producer keeps no player alive. No accepted text
+changed.
+
 ## Context
 - `docs/GDD.md`, "Match setup": one Headquarters, 2 000 credits and 2 rifle squads at the start;
   victory when "the enemy has neither a Headquarters nor a production building left".

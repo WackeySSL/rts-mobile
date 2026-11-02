@@ -1,7 +1,10 @@
 # ADR 0024: The collapsible build menu and the placement controls at the ghost
 
 Status: accepted, 2026-10-31 (Michael, on #255: "ADR 0024 accepted"; his answers Q1 A, Q2 A,
-Q3 A, R1 and R2 below). Proposed 2026-10-31 on `main` at 81c9b61; accepted with the lead's docs row
+Q3 A, R1 and R2 below). Partly replaced on 2026-11-02 by ADR 0025 (accepted on #259; its §6): the
+strip, the plate, "a match starts OPEN" and the pin go, the Ready badge lives on as a chip until
+ADR 0026's P130; the holder and slide, `map_gesture`, `zone_changed`, `menu_top_px`, R1, Q3 A and
+`GhostControls` stay. Proposed 2026-10-31 on `main` at 81c9b61; accepted with the lead's docs row
 P26ao folded into #255, on `main` at 610e513. Builds on P86b (#253, 6e845b5) and P88 (#254,
 610e513), both merged as they were (L4). Amends ADR 0015 §5, ADR 0019 §1, §2 and §4, ADR 0023
 §12 and the `touch-ui-rules` lines quoted in §11, each only after Michael's yes. Plan:
@@ -19,6 +22,16 @@ edge pan as merged); the other dated notes §11 lists (ADRs 0015 §5, 0019 §1 a
 with the lead's docs row after P86c and P85f. P86b (#253) and P88 (#254) merged after this ADR was
 written; where the text below cites their branches (a19cee5, 4f35204), the merged code is the
 same. No accepted text changed.
+
+Status note (2026-11-02, P26ap docs; ADR 0025 accepted 2026-11-02 on #259): ADR 0025 §6 replaces
+parts of this ADR from the rows of `docs/plans/2026-11-01-hud-v2.md` on. Dropped: the open and
+collapsed menu with the strip and the plate (a closed or open build drawer instead), "a match starts
+OPEN" (it starts closed, Michael's answer 8), and the pin (P85f2 withdrawn, answer 1 A; its glyphs
+serve the radar's pin). Kept: the holder and the slide (for the drawer), `map_gesture`,
+`zone_changed`, `menu_top_px`, the return after placement (R1), the producer tap (Q3 A) and
+`GhostControls` (§10). The Ready badge becomes a Ready chip beside BUILD until ADR 0026's UI row
+P130 removes the READY state; `HudPrefs` and `user://settings.cfg` arrive with P124's Vibration key.
+P85f merged as #258 (5203ce0) without the pin. No accepted text changed.
 
 ## Context
 **Michael, 2026-10-31**, after trying placement (P86) and the Strike test route (P112d) on his
