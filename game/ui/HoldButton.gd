@@ -17,6 +17,7 @@ var _is_held: bool = false
 
 
 func _init() -> void:
+	add_to_group(TouchInput.CANCEL_GROUP)
 	button_down.connect(_on_down)
 	button_up.connect(set_process.bind(false))
 	pressed.connect(_on_pressed)
@@ -40,6 +41,12 @@ func _on_down() -> void:
 	_down_ms = clock.call()
 	_is_held = false
 	set_process(true)
+
+
+## A modal covers the screen: the press is spent, no hold and no tap (TouchInput.CANCEL_GROUP).
+func cancel_gestures() -> void:
+	_is_held = true
+	set_process(false)
 
 
 ## Released inside the button. No frame may have run since the time passed, so look again.

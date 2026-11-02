@@ -179,18 +179,8 @@ func _apply_dp() -> void:
 
 
 ## Lays the panel out for the window's orientation: all rows with their names first (the cap of
-## every name is set on that), then the landscape band or the portrait line. The first step is
-## wider than the line, and a SafeArea that has seen a wide least width stays wide when the final
-## one is what it was before (it grows with the panel and comes back only when its least width
-## changes): so the panel is hidden for the fit and the SafeArea sees the final width alone.
+## every name is set on that), then the landscape band or the portrait line.
 func _fit_band() -> void:
-	var was_visible: bool = visible
-	visible = false
-	_fit_hidden()
-	visible = was_visible
-
-
-func _fit_hidden() -> void:
 	_show_level(LEVEL_NAMED, _shown)
 	var band: MarginContainer = get_parent() as MarginContainer
 	var safe: SafeAreaMargin = null if band == null else band.get_parent() as SafeAreaMargin
@@ -205,6 +195,9 @@ func _fit_hidden() -> void:
 		_fit_line(band, band_px)
 	else:
 		_fit_zone(band, band_px)
+	# The widest state above sized the safe area at once (setting its margins does), and a size grown
+	# to it stays when the final minimum equals the last one: anchoring it again sizes it afresh.
+	safe.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 ## Landscape: the band's margins are the ArmyBar on the left and the build panel's zone on the

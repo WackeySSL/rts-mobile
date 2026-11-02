@@ -37,14 +37,15 @@ const GROUND_MILLI: Vector2i = Vector2i(10000, 15000)
 const DRAG_FROM: Vector2 = Vector2(900, 400)
 const DRAG_FROM_PORTRAIT: Vector2 = Vector2(660, 400)
 ## A box with no tank in it, in base px: left of the block flat (it starts at x 576); upright the
-## block is at y 688 and lower, so above it and under the selection panel (P119: under the pill).
+## block is at y 688 and lower, so above it, under the Surrender button (P90) and under the
+## selection panel (P119: under the pill and the Dev and Surrender buttons, down to y 360 at most).
 const EMPTY_BOX: Rect2 = Rect2(80, 300, 220, 200)
-const EMPTY_BOX_PORTRAIT: Rect2 = Rect2(80, 300, 220, 200)
+const EMPTY_BOX_PORTRAIT: Rect2 = Rect2(80, 372, 220, 120)
 ## The middle of a pinch, clear of the tanks and the HUD, above the block: the fingers go 170 px
 ## either side, so flat they stay left of the build sidebar, and upright above the band. The pinch
 ## keeps the world point under it, so the camera centre follows a zoom (and stays in the map).
 const PINCH_CENTRE: Vector2 = Vector2(800, 100)
-const PINCH_CENTRE_PORTRAIT: Vector2 = Vector2(360, 300)
+const PINCH_CENTRE_PORTRAIT: Vector2 = Vector2(360, 420)
 ## The tanks at the top of the diamond, c + r <= 2 (world y 432 to 480; the next ones are at 504),
 ## and the world rect that holds exactly them, once the box has been raised by the light tank's pick
 ## lift (a box takes the units whose lifted centres it covers, P114b).
@@ -308,7 +309,9 @@ func _assert_off_hud(at: Vector2) -> void:
 	await await_idle_frame()
 	var screen: Rect2 = get_viewport().get_visible_rect()
 	assert_bool(screen.has_point(at)).override_failure_message("%s is off screen" % at).is_true()
-	for node_name: String in ["SelectionPanel", "ArmyBar", "DevButton", "BuildSidebar"]:
+	for node_name: String in [
+		"SelectionPanel", "ArmyBar", "DevButton", "SurrenderButton", "EconomyPill", "BuildSidebar"
+	]:
 		var hud: Control = _hud(node_name)
 		var why: String = "%s is on %s %s" % [at, node_name, hud.get_global_rect()]
 		var under: bool = hud.is_visible_in_tree() and hud.get_global_rect().has_point(at)

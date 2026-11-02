@@ -53,6 +53,17 @@ static var bottom_zone_dp: float = 0.0
 static var menu_top_px: float = INF
 
 
+## The width of the first visible child of `row`, 0 for none: what the credits pill stands after at
+## the top left, the Dev button, or in a release build, where it is hidden, the Surrender button.
+static func first_visible_width(row: Control) -> float:
+	if row != null:
+		for child: Node in row.get_children():
+			var control: Control = child as Control
+			if control != null and control.visible:
+				return control.get_combined_minimum_size().x
+	return 0.0
+
+
 ## Whether the window is a portrait one (UiScale.is_portrait_size), for the metrics in force.
 static func is_portrait() -> bool:
 	return UiScale.is_portrait_size(UiScale.current().window_size)

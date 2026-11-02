@@ -1,9 +1,10 @@
 extends GdUnitTestSuite
 ## The SelectionPanel in portrait (plan P61, ADR 0015 section 5; moved by P119, ADR 0025 section 2):
-## a line at the top, from the safe left edge and a gap under the economy pill's line, one row
-## high, with four fit levels, and never wider than its line. The mixed selections
-## come from tests/ui/support/mvp_roster.gd. The line is changed with a cutout in the safe area, so
-## a case can put it between the widths of two levels whatever the font measures.
+## a line at the top, from the safe left edge and a gap under the economy pill's line and under the
+## Dev and Surrender buttons (plan P90) where they show, one row high, with four fit levels, and
+## never wider than its line. The mixed selections come from tests/ui/support/mvp_roster.gd. The
+## line is changed with a cutout in the safe area, so a case can put it between the widths of two
+## levels whatever the font measures.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Roster: GDScript = preload("res://tests/ui/support/mvp_roster.gd")
@@ -54,6 +55,8 @@ func test_the_panel_is_one_row_under_the_pills_line_at_every_portrait_profile() 
 		await _open(profiles[profile_name])
 		var dev: Rect2 = _rect("DevButton")
 		var pill: Rect2 = _rect("EconomyPill")
+		var surrender: Rect2 = _rect("SurrenderButton")
+		var top_left: Rect2 = _rect("TopLeft")
 		var bar: Rect2 = _rect("ArmyBar")
 		var safe: Rect2 = UiScale.safe_rect_base()
 		var screen: Rect2 = get_viewport().get_visible_rect()
@@ -76,7 +79,7 @@ func test_the_panel_is_one_row_under_the_pills_line_at_every_portrait_profile() 
 			)
 			var centres: Array[float] = _centres()
 			assert_float(centres.max() - centres.min()).override_failure_message(why).is_less(2.0)
-			var gap: float = rect.position.y - maxf(pill.end.y, dev.end.y)  # 8 dp, up to a whole px.
+			var gap: float = rect.position.y - maxf(pill.end.y, top_left.end.y)  # 8 dp, up to a px.
 			assert_float(gap).override_failure_message(why).is_between(
 				UiScale.dp(8.0) - 0.5, UiScale.dp(8.0) + 1.5
 			)
@@ -85,6 +88,7 @@ func test_the_panel_is_one_row_under_the_pills_line_at_every_portrait_profile() 
 			assert_bool(safe.encloses(rect)).override_failure_message(why).is_true()
 			assert_bool(rect.intersects(dev)).override_failure_message(why).is_false()
 			assert_bool(rect.intersects(pill)).override_failure_message(why).is_false()
+			assert_bool(rect.intersects(surrender)).override_failure_message(why).is_false()
 			assert_bool(rect.intersects(bar)).override_failure_message(why).is_false()
 			var area: Rect2 = (_hud("SafeArea") as Control).get_global_rect()  # It must not grow.
 			assert_that(area).override_failure_message(why).is_equal(screen)
@@ -155,13 +159,17 @@ func test_each_fit_level_is_reached_by_a_case_built_for_it() -> void:
 		)
 
 
-## The plan's worst case: six types with 3-digit counts on a 360 dp wide phone with the Dev
-## button and the pill. The panel keeps its line, shows a row or more and says how many types it
+## The plan's worst case (re-run by P90 with the Surrender button): six types with 3-digit counts
+## on a 360 dp wide phone with the Dev and Surrender buttons and the pill. The panel keeps its line,
+## stays inside the safe rect and clear of all three, shows a row or more and says how many types it
 ## left out; a smaller selection brings the first level back.
 func test_six_types_with_3_digit_counts_fit_the_line_of_a_360_dp_phone_with_a_chip() -> void:
 	await _open(UiProfiles.by_name(&"web_phone_portrait"))
 	var dev: Rect2 = _rect("DevButton")
+	var surrender: Rect2 = _rect("SurrenderButton")
 	var safe: Rect2 = UiScale.safe_rect_base()
+	assert_float(surrender.size.y).is_greater_equal(UiScale.dp(48.0) - 0.5)
+	assert_float(surrender.position.y).is_greater_equal(dev.end.y)  # Under the Dev button.
 	Roster.select(self, _panel, SIX_TYPES)
 	await await_idle_frame()
 	var rect: Rect2 = _panel.get_global_rect()
@@ -174,11 +182,9 @@ func test_six_types_with_3_digit_counts_fit_the_line_of_a_360_dp_phone_with_a_ch
 	assert_bool(_panel._total.visible).is_false()
 	assert_bool(safe.encloses(rect)).override_failure_message(str(rect)).is_true()
 	assert_bool(rect.intersects(dev)).override_failure_message(str(rect)).is_false()
-	(
-		assert_bool(rect.intersects(_rect("EconomyPill")))
-		. override_failure_message(str(rect))
-		. is_false()
-	)
+	var pill: Rect2 = _rect("EconomyPill")
+	assert_bool(rect.intersects(pill)).override_failure_message(str(rect)).is_false()
+	assert_bool(rect.intersects(surrender)).override_failure_message(str(rect)).is_false()
 	assert_bool(rect.intersects(_rect("ArmyBar"))).override_failure_message(str(rect)).is_false()
 	assert_float(rect.size.y).is_less_equal(UiScale.dp(72.0))
 	for row: SelectionPanel.Row in _shown_rows():  # Icon and count only.
@@ -216,9 +222,10 @@ func test_a_name_is_cut_at_the_line_and_light_tank_is_whole_on_a_360_dp_phone() 
 	assert_int(_panel._level).is_equal(SelectionPanel.LEVEL_NAMED)  # One row: the name gives way.
 
 
-## The line starts at the safe area's left edge, under the pill's line, with the Dev button or
-## without it (a release build hides it): the pill is 48 dp high either way.
-func test_the_line_starts_at_the_left_edge_with_the_dev_button_and_without_it() -> void:
+## The line starts at the safe area's left edge, with the Dev and Surrender buttons above it and
+## without them (a release build hides the Dev button, and the Surrender button goes to the pause
+## menu with P124): then it stands a gap under the pill's line, higher than with the buttons.
+func test_the_line_starts_at_the_left_edge_with_the_top_left_buttons_and_without_them() -> void:
 	await _open(UiProfiles.by_name(&"android_6in_portrait"))
 	Roster.select(self, _panel, THREE_TYPES)
 	await await_idle_frame()
@@ -226,13 +233,17 @@ func test_the_line_starts_at_the_left_edge_with_the_dev_button_and_without_it() 
 	edge += (_hud("SafeArea") as Control).get_theme_constant("margin_left")
 	var with_dev: Rect2 = _panel.get_global_rect()
 	assert_float(with_dev.position.x).is_equal_approx(edge, 0.5)
-	(_hud("DevButton") as Control).visible = false
+	assert_float(with_dev.position.y).is_greater_equal(
+		_rect("TopLeft").end.y + UiScale.dp(8.0) - 0.5
+	)
+	(_hud("TopLeft") as Control).visible = false
 	_panel.set_selected(PackedInt32Array(range(1, 25)))
 	await await_idle_frame()
 	var without: Rect2 = _panel.get_global_rect()
 	assert_float(without.position.x).is_equal_approx(edge, 0.5)
-	assert_float(without.position.y).is_equal_approx(with_dev.position.y, 3.0)
-	assert_float(without.position.y).is_greater_equal(_rect("EconomyPill").end.y)
+	var pill_end: float = _rect("EconomyPill").end.y
+	assert_float(without.position.y).is_greater_equal(pill_end + UiScale.dp(8.0) - 0.5)
+	assert_float(without.position.y).is_less(with_dev.position.y)  # The buttons made it lower.
 
 
 ## The panel keeps its touches in its new place: a tap on it orders nothing and keeps the selection,

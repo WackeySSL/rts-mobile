@@ -240,6 +240,34 @@ func test_the_pills_parts_are_inside_it_clear_of_each_other_and_the_glyphs_24_dp
 			assert_float(size.y).override_failure_message(small).is_greater_equal(least)
 
 
+## In a release build the Dev button is hidden and the Surrender button (P90) is the first of the
+## top-left row: the pill starts a gap after it, clear of it, at every profile and after a turn.
+func test_without_the_dev_button_the_pill_starts_after_the_surrender_button() -> void:
+	await _open()
+	(_node("DevButton") as Control).visible = false
+	for profile: StringName in _every_profile():
+		await _turn(profile)
+		get_viewport().size_changed.emit()  # Measured again, as a release build measures it.
+		await await_idle_frame()
+		await await_idle_frame()
+		var surrender: Rect2 = _rect("SurrenderButton")
+		var pill: Rect2 = _pill.get_global_rect()
+		var why: String = "%s: pill %s, Surrender %s" % [profile, pill, surrender]
+		assert_bool(surrender.intersects(pill)).override_failure_message(why).is_false()
+		assert_float(pill.position.x).override_failure_message(why).is_equal_approx(
+			surrender.end.x + UiScale.dp(8.0), 1.5
+		)
+		assert_float(pill.position.y).override_failure_message(why).is_equal_approx(
+			(
+				SafeAreaMargin
+				. rect_inside(get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP)
+				. position
+				. y
+			),
+			0.5
+		)
+
+
 func _shown_like_the_pill(dp: float) -> HudCorners.Shown:
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	shown.left_taken = (_node("DevButton") as Control).get_combined_minimum_size().x / dp

@@ -262,7 +262,8 @@ func _read_main(main: Node) -> Dictionary:
 	for row: int in [1, 39]:
 		var ring: Sprite2D = main.get_node("UnitLayer").rig(row).get_node("Ring")
 		rings.append([ring.unit, ring.radius, ring.scale])
-	var button_sizes: Array[Vector2] = [main.get_node("Hud/SafeArea/DevButton").custom_minimum_size]
+	var dev: Control = main.get_node("Hud/SafeArea/TopLeft/DevButton")
+	var button_sizes: Array[Vector2] = [dev.custom_minimum_size]
 	for child: Node in army.get_children():
 		button_sizes.append((child as Button).custom_minimum_size)
 	return {

@@ -19,10 +19,15 @@ extends Node
 ## control) never gets here, so a touch on a HUD control never counts.
 ## A turn of the phone cancels every gesture in flight (ADR 0015 section 3): the finger positions
 ## belong to the old layout. A box is cancelled for the controller, the camera never hears the end
-## of a pan or pinch (it would snap the zoom about a stale anchor), and no tap is made.
+## of a pan or pinch (it would snap the zoom about a stale anchor), and no tap is made. A modal
+## (P90: the result screen, a confirm) does the same when it shows, through CANCEL_GROUP: nothing
+## that holds a finger goes on under it.
 
 ## The first event of a gesture on the map, or a wheel step: the menu collapses (BuildSidebar).
 signal map_gesture
+
+## What holds a finger joins this group and answers `cancel_gestures()`; a modal calls the group.
+const CANCEL_GROUP: StringName = &"cancel_gestures"
 
 ## The gestures whose first event is a touch of the map (the rest are ends and cancels).
 const COUNTED: Array[GestureEvent.Kind] = [
@@ -52,6 +57,7 @@ var _counted: bool = false  ## The gesture in flight has told `map_gesture` alre
 
 
 func _ready() -> void:
+	add_to_group(CANCEL_GROUP)
 	if settings == null:
 		settings = InputSettings.new()  # The script defaults are the ADR table.
 	_portrait = UiScale.is_portrait_size(get_tree().root.size)
@@ -100,10 +106,16 @@ func _process(delta: float) -> void:
 func _notification(what: int) -> void:
 	# A finger that was down when the app lost focus may never send its release.
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
-		_owned.clear()
-		_recognizer.cancel_all()
-		_counted = false
-		_dispatch()
+		cancel_gestures()
+
+
+## Ends every finger and gesture in flight: no tap, no order, no more pan. The fingers go on to the
+## GUI, which has the screen now.
+func cancel_gestures() -> void:
+	_owned.clear()
+	_recognizer.cancel_all()
+	_counted = false
+	_dispatch()
 
 
 ## Runs before the GUI, so a release is never missed and a pan drag never reaches a Control.

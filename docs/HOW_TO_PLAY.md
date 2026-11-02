@@ -29,7 +29,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 ## Units
 | Action | Result | Teach |
 |---|---|---|
-| Look at your units | Each unit is drawn from the picture set of its side (the Derrick League or the Lumen Accord) in its player's team colour (the first player amber, the second cyan) with a shadow on the ground under it; units of two players on one side still differ by colour. The selection panel shows the unit's item card | |
+| Look at your units | Each unit is drawn from the picture set of its side (the Derrick League or the Lumen Accord) in its player's team colour (your side's own: orange for the Derrick League, cyan for the Lumen Accord, and the other player wears the other one) with a shadow on the ground under it; units of two players on one side still differ by colour. The selection panel shows the unit's item card | |
 | Watch a unit drive or fight | The picture turns in steps to face where the unit drives (infantry in coarser steps); a tank's turret turns on its own to face its target while the hull keeps its heading; infantry turn as a whole toward their target. A unit lower on the screen is drawn in front of one above it | |
 
 ## Buildings
@@ -51,7 +51,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Double-tap an own unit | Selects every own unit of that type on screen. A building never joins a double-tap, a box or "All army" | yes |
 | Long-press, then drag | Draws a box while the finger moves; on release it selects the own units inside (`long_press_ms` in `data/input_settings.tres`). A box with a unit that fights among tankers leaves the tankers out; a box with only tankers in it selects them | yes |
 | Long-press and drag a box with no own unit inside | Clears the selection, a selected barracks or vehicle factory included | yes |
-| Any selection | The panel at the bottom centre; in portrait a line at the top, from the left edge and under the pill's line (the Dev button and the pill stand above it). It shows each selected unit type or building with its icon, its display name (a very long name is cut short with an ellipsis) and its count, and a total for mixed types; it hides when nothing is selected. Tapping it does nothing. In portrait the line never grows past the screen: when the types do not fit it drops the names, then the total, and then shows the first types with a "+N" for the types it leaves out | |
+| Any selection | The panel at the bottom centre; in portrait a line at the top, from the left edge and under the pill's line (the Dev and Surrender buttons and the pill stand above it). It shows each selected unit type or building with its icon, its display name (a very long name is cut short with an ellipsis) and its count, and a total for mixed types; it hides when nothing is selected. Tapping it does nothing. In portrait the line never grows past the screen: when the types do not fit it drops the names, then the total, and then shows the first types with a "+N" for the types it leaves out | |
 | A selected unit or building is destroyed | It leaves the selection, and the count in the panel drops (a building's frame goes with it) | |
 
 ## Orders
@@ -99,7 +99,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 ## The screen in battle
 | Action | Result | Teach |
 |---|---|---|
-| Look at the screen | Your credits and your power are in a pill at the top left, after the Dev button, sideways and upright alike; the build menu does not repeat them. The pill shows the coin and your credits, and a bolt and a power bar that fills with the power your buildings use against the power they make, with both numbers inside it: the pill grows to make room for them as far as the screen allows (never into the top-right corner), and on a narrow screen they are left out and the bar and the bolt say it alone. The digits keep their places, so the numbers do not jitter as they change | yes |
+| Look at the screen | Your credits and your power are in a pill at the top left, after the Dev button (after the Surrender button where Dev is hidden), sideways and upright alike; the build menu does not repeat them. The pill shows the coin and your credits, and a bolt and a power bar that fills with the power your buildings use against the power they make, with both numbers inside it: the pill grows to make room for them as far as the screen allows (never into the top-right corner), and on a narrow screen they are left out and the bar and the bolt say it alone. The digits keep their places, so the numbers do not jitter as they change | yes |
 | Use more power than you make | The pill gets a red edge, the bar turns red and full, the bolt becomes a warning triangle and the word "LOW POWER" takes the place of the numbers in the bar: what you queue is built slower (`low_power_percent` in `data/rules.tres`) and your defences hold their fire until you make enough power again | yes |
 
 ## Build menu
@@ -135,12 +135,22 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | A Blackout Array is fired | At once every building that is not the firing player's and whose middle is within reach of the spot it was fired at (`strike_radius` of the Blackout Array, counted from that spot) is switched off for `strike_ticks`: it does not shoot, its power counts for nothing and its queue stands still. No warning shows before it, and no ring stays on the ground after it | |
 | A building is switched off | An amber lightning bolt struck through by a brighter amber slash, on a dark badge with an amber rim, stands over the building for as long as it is off, yours and any enemy building you can see; it is gone when the building comes back on | yes |
 
+## Factions
+| Action | Result | Teach |
+|---|---|---|
+| Open the dev menu (the Dev button) and choose "Skirmish (Derrick League)" or "Skirmish (Lumen Accord)" | A match on Kestrel Flats begins, and you play that side from the top of the map while the computer plays the other side from the bottom. You play the Derrick League (oil and gas) or the Lumen Accord (green energy); each side has its own buildings and units, and your build menu shows only yours. Your units and buildings wear your side's colour, orange for the Derrick League and cyan for the Lumen Accord, and the computer's wear the other one | yes |
+
+## Winning
+| Action | Result | Teach |
+|---|---|---|
+| Destroy the enemy's Headquarters and every building that trains units or builds vehicles | You win: the match ends at once. Lose all of yours and you lose it; if both sides fall in the same moment the match is a draw | yes |
+| Tap Surrender (top left, under the Dev button) | A question stands over the screen. "Keep playing" closes it and nothing happens; "Surrender" loses the match at once. Nothing is sent before you answer, and the map and the buttons behind the question do not react while it stands (a finger already on the map or the minimap when it opens is let go: it orders and pans nothing, and the mouse wheel does not zoom) | |
+| The match ends | A screen covers the game with a word and a picture: VICTORY (a star), DEFEAT (a broken shield) or DRAW (an equals sign), the time the match took, and for you and for the enemy the units built, the units lost, the buildings lost and the credits harvested (the losses count only for a side that had a production building). "Play again" starts a new match of the same Skirmish against the same computer side, "Back" returns to the dev menu. The game does not go on behind the screen | |
+
 ## Not yet in the game
-Base building, harvesting, power, production, win and lose conditions, menus and rewards get
-their entries when their phase ships them (ROADMAP Phases 3-6).
+Menus and rewards get their entries when their phase ships them (ROADMAP Phases 5-6).
 
 | Action | Result | Teach |
 |---|---|---|
 | An "under attack" warning at the screen edge | Not shown yet: nothing points at a unit that is hit off screen | |
 | Gas fields | Not shown yet: every field is oil. Once a map names its gas fields, one shows a pale crust with a glowing vent instead of a black pool, with the same full, half and dry steps | |
-| Play the Derrick League (oil and gas) or the Lumen Accord (green energy) | Not shown yet: no match lets you choose a side, and the preview's match gives both players Derrick League units. Every building and unit already belongs to one side, and your build menu shows only your side's. Once a match has both sides, each side plays its own buildings and units | |

@@ -29,7 +29,14 @@ const TOLERANCE_PX: float = 0.5
 ## The parts of the row, and the other HUD controls they must clear.
 const TAPPABLE: Array[String] = ["StrikeConfirm", "StrikeCancel", "StrikeButton"]
 const OTHERS: Array[String] = [
-	"DevButton", "AllArmy", "Group1", "Group2", "Group3", "SelectionPanel", "BuildSidebar"
+	"DevButton",
+	"SurrenderButton",
+	"AllArmy",
+	"Group1",
+	"Group2",
+	"Group3",
+	"SelectionPanel",
+	"BuildSidebar"
 ]
 
 var _window_size_before: Vector2i

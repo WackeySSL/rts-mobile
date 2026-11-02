@@ -53,3 +53,4 @@ map = ExtResource("4_map")
 rules = ExtResource("5_rules")
 player_count = 2
 factions = Array[ExtResource("3_faction")]([null, ExtResource("7_renew"), ExtResource("6_fossil")])
+team_triads = PackedInt32Array(0, 1, 0)

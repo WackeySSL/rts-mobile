@@ -10,7 +10,8 @@ extends PanelContainer
 ## and a colour: the pill's border and the bar turn danger red, the bolt becomes the warning
 ## triangle and the word "LOW POWER" takes the numbers' place in the bar where it fits.
 ## This node takes the pill's rect from `HudCorners.place` (after what stands at the top left,
-## `top_left`: the Dev button), on `_ready`, on every resize and when its content changes size.
+## `top_left`: the first visible of the Dev and Surrender buttons), on `_ready`, on every resize and
+## when its content changes size.
 ## The pill is as wide as its content and asks the layout for the room the numbers (on low power the
 ## word) need in the bar: the bar takes what is left (P85c's fit), the layout gives what the safe
 ## rect and the scope's corner leave, and what does not fit drops (the numbers, then the word; the
@@ -42,7 +43,7 @@ const CREDITS_DIGITS: int = 5
 
 @export var runner: MatchRunner
 @export var safe_area: SafeAreaMargin  ## Its gap is the safe rect's (ADR 0025 section 2).
-@export var top_left: Control  ## The pill starts after it (the Dev button).
+@export var top_left: Control  ## The pill starts after its first visible child (Dev, or Surrender).
 
 var _line: HBoxContainer = HBoxContainer.new()
 var _menu: Button = Button.new()
@@ -70,6 +71,11 @@ class TapArea:
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_STOP
+		add_to_group(TouchInput.CANCEL_GROUP)
+
+	## A modal covers the screen: a finger that went down here is spent (TouchInput.CANCEL_GROUP).
+	func cancel_gestures() -> void:
+		_finger = -1
 
 	func _gui_input(event: InputEvent) -> void:
 		var touch: InputEventScreenTouch = event as InputEventScreenTouch
@@ -163,10 +169,12 @@ func is_low() -> bool:
 ## (its content and the room the bar's text needs, at least 200 dp, at most what the layout has),
 ## inside the safe rect, in both orientations.
 func place() -> void:
+	if not is_inside_tree():  # A deferred call that outlived the match's scene.
+		return
 	var dp: float = UiScale.base_px_per_dp()
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	if top_left != null and top_left.visible:
-		shown.left_taken = top_left.get_combined_minimum_size().x / dp
+		shown.left_taken = HudLayout.first_visible_width(top_left) / dp
 	shown.pill_width = _wanted_dp()
 	var margin_dp: float = (
 		SafeAreaMargin.DEFAULT_MARGIN_DP if safe_area == null else safe_area.margin_dp
