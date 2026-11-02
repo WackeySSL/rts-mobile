@@ -8,11 +8,20 @@ extends Control
 ## and the camera's frame is a plain rectangle on it: the camera's visible world rect through the
 ## same scale. The frame is a child (`Frame`) that redraws only when it moves, so the texture is
 ## drawn on a new picture, a resize or a turn and never because the camera moved. The minimap reads
-## the snapshot's picture and the camera, and sends nothing to the sim.
+## the snapshot's picture and the camera, and sends nothing to the sim itself.
 ## A touch that starts on it (the GUI takes it, so it never reaches the map) jumps the camera to the
 ## ground point under the finger, through the inverse projection (`ground_at`), kept inside the
-## map; a drag goes on jumping. A finger that started elsewhere never reaches it. The look of the
-## frame is the theme's (`Minimap`: `frame`, `frame_edge`), its widths dp.
+## map; a drag goes on jumping. A finger that started elsewhere never reaches it.
+## A hold (P88b, ADR 0019 section 4) orders: a finger that rests on it for `long_press_ms` within
+## `tap_slop_dp` of where it went down asks `controller` to MOVE the selected units to the ground
+## point under it (`ground_at`, unclamped, the sim clamps it), once per finger. The press already
+## jumped the camera there. A tap, a finger that moves beyond the slop first (a drag), and a hold
+## with no unit selected order nothing; the camera jumps in every case. The clock is polled in
+## `_process` while the finger rests, as the map's long-press is (`GestureRecognizer.advance`), so a
+## release never turns into a hold. A HUD control takes the touch, so the hold never reaches the
+## map's recognizer and never collapses the build menu (ADR 0024 section 5). All of it is this
+## node's own, so it goes wherever the node goes. The look of the frame is the theme's (`Minimap`:
+## `frame`, `frame_edge`), its widths dp.
 
 const THEME_TYPE: StringName = &"Minimap"
 const FRAME_DP: float = 1.5  ## The frame's light line; its dark edge is as wide again each side.
@@ -22,12 +31,23 @@ const FRAME_DP: float = 1.5  ## The frame's light line; its dark edge is as wide
 @export var runner: MatchRunner
 @export var camera: RtsCamera
 @export var map_view: MapView
+## Sends the hold's MOVE and gives the thresholds (`long_press_ms`, `tap_slop_dp`); without one a
+## hold does nothing.
+@export var controller: PlayerController
 ## Keep equal to `FogLayer.explored_alpha`. The cadence is the scenario's `fog_period_ticks`.
 @export var explored_alpha: int = 140
+
+## Returns the time in ms. Tests replace it.
+var clock: Callable = Time.get_ticks_msec
 
 var _picture: MinimapImage = MinimapImage.new()
 var _frame: Frame = Frame.new()
 var _finger: int = -1  ## The index of the finger that is on the minimap, else -1.
+var _pressed_at: Vector2 = Vector2.ZERO  ## Where that finger went down, local.
+var _rests_at: Vector2 = Vector2.ZERO  ## Where it is now, local.
+var _down_ms: int = 0
+var _hold_open: bool = false  ## It may still hold: within the slop, and no MOVE asked for yet.
+var _default_settings: InputSettings = null
 var _draws: int = 0
 var _frames: int = 0
 
@@ -65,10 +85,11 @@ func _ready() -> void:
 
 ## A finger that was down when the node left the tree (a turn moves it) is over.
 func _exit_tree() -> void:
-	_finger = -1
+	_end_finger()
 
 
 func _process(_delta: float) -> void:
+	_poll_hold()
 	_sync()
 	var rect: Rect2 = frame_rect()
 	if rect != _frame.rect:
@@ -81,7 +102,7 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_THEME_CHANGED:
 		_frame.queue_redraw()
 	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
-		_finger = -1  # A finger that was down may never send its release, as in TouchInput.
+		_end_finger()  # A finger that was down may never send its release, as in TouchInput.
 
 
 ## How many times the picture was painted: at the fog's cadence, not per frame.
@@ -168,17 +189,53 @@ func cell_transform() -> Transform2D:
 
 ## A press jumps and a drag of that finger goes on jumping; the release ends it. Only the first
 ## finger counts, and one that started elsewhere never gets here. A press for the finger that is
-## down already is a release that was lost, and starts again.
+## down already is a release that was lost, and starts again. The press also starts the hold
+## (`_poll_hold`), and a drag beyond the slop ends its chance.
 func _gui_input(event: InputEvent) -> void:
 	var touch: InputEventScreenTouch = event as InputEventScreenTouch
 	var drag: InputEventScreenDrag = event as InputEventScreenDrag
 	if touch != null and touch.pressed and (_finger < 0 or touch.index == _finger):
 		_finger = touch.index
+		_pressed_at = touch.position
+		_rests_at = touch.position
+		_down_ms = clock.call()
+		_hold_open = controller != null
 		jump_to(touch.position)
 	elif touch != null and not touch.pressed and touch.index == _finger:
-		_finger = -1
+		_end_finger()
 	elif drag != null and drag.index == _finger:
+		_rests_at = drag.position
+		if _hold_open:  # Beyond the slop it is a drag, and never a hold.
+			var slop: float = UiScale.dp(_input_settings().tap_slop_dp)
+			_hold_open = _rests_at.distance_to(_pressed_at) <= slop
 		jump_to(drag.position)
+
+
+## The finger is up, or gone: nothing of it is left.
+func _end_finger() -> void:
+	_finger = -1
+	_hold_open = false
+
+
+## Once the finger has rested for `long_press_ms` without leaving the slop, asks the controller for
+## the MOVE (it sends none without units selected). It asks once: the hold is spent either way.
+func _poll_hold() -> void:
+	if not _hold_open:
+		return
+	var now_ms: int = clock.call()
+	if now_ms - _down_ms < _input_settings().long_press_ms:
+		return
+	_hold_open = false
+	controller.move_selected_to(ground_at(_rests_at))
+
+
+## The thresholds: the controller's, or the ADR table as PlayerController has it.
+func _input_settings() -> InputSettings:
+	if controller != null and controller.settings != null:
+		return controller.settings
+	if _default_settings == null:
+		_default_settings = InputSettings.new()
+	return _default_settings
 
 
 func _on_ticked(_tick: int) -> void:

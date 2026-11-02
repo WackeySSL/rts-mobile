@@ -226,6 +226,21 @@ func _move(target_x: int, target_y: int) -> void:
 	marker_layer.show_attack_move(IsoProjection.ground_to_px(target_x, target_y))
 
 
+## The minimap's hold (P88b, ADR 0019 section 4): the MOVE a ground tap sends, with its marker, to
+## `ground` (milli-tiles; the sim clamps a point beyond the map), and the buzz of a long-press. Only
+## own units take it: with nothing or a building selected, or while a strike is aimed or a building
+## is placed (nothing is ordered then), it sends nothing. True when it sent the MOVE.
+func move_selected_to(ground: Vector2i) -> bool:
+	var aiming: bool = strike_aim != null and strike_aim.active
+	var placing: bool = placement != null and placement.active
+	if aiming or placing or not _units_selected():
+		return false
+	_move(ground.x, ground.y)
+	if settings.haptics_enabled:
+		vibrate.call(settings.haptic_ms)
+	return true
+
+
 ## Attack the enemy with id `target`, drawn at `at` on the screen (base px). The sim takes the order
 ## only if the target is still a valid enemy there. The diamond marks it where it is drawn.
 func _attack(target: int, at: Vector2) -> void:
