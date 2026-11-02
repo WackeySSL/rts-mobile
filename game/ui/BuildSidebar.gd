@@ -20,16 +20,12 @@ extends Control
 ## 0024 section 8). Input never waits: the parts outside the holder are neither drawn nor picked.
 ## Landscape (P85d): the floating build panel at the bottom right, `HudLayout.panel_px` wide and as
 ## high as its tabs and one row of cards, or the plate (`HudLayout.PLATE_DP`: the Ready badge and
-## the Build button); `minimap_slot`, the floating panel at the top right that P88 fills, shows.
-## Portrait: the bottom band, the full inner width, `HudLayout.band_dp` high, with the empty head
-## line as its first line, or the strip (`HudLayout.STRIP_DP`: the head line over the Build button
-## and the Ready badge, the minimap at its right end), and the slot hidden. A turn only
-## moves things: the layout is what `_place` makes of the orientation and the state, and a turn ends
-## a slide at its target.
-## The minimap (plan P88) is one node that lives in `minimap_slot` sideways and, upright, in the
-## `Body` row at its right end, beside the tabs and the item row, or beside the strip's left column
-## (the head line above them stays the band's full width): `HudLayout.minimap_box_px` sizes its
-## 2:1 box, in a room taken from the target state so the box keeps its size through a slide.
+## the Build button). Portrait: the bottom band, the full inner width, `HudLayout.band_dp` high,
+## with the empty head line as its first line, or the strip (`HudLayout.STRIP_DP`: the head line
+## over the Build button and the Ready badge). The minimap is not here since P121: the radar
+## scope and the full map under it are `RadarScope`'s and `RadarMap`'s (ADR 0025 section 7). A turn
+## only moves things: the layout is what `_place` makes of the orientation and the state, and a
+## turn ends a slide at its target.
 ## The menu's height goes to `HudLayout.bottom_zone_dp` and its real top on the screen to
 ## `HudLayout.menu_top_px` (ADR 0024 section 4) each time they change, and `zone_changed` tells
 ## whoever lifts something by them (the ArmyBar, the strike row); the first is the one place the
@@ -96,8 +92,6 @@ static var _slide_override: int = -1
 
 @export var runner: MatchRunner
 @export var controller: PlayerController  ## The Commands' sink, the haptic, the selection.
-@export var minimap_slot: Control  ## The landscape panel at the top right: the minimap's home.
-@export var minimap: Control  ## The minimap: in `minimap_slot` sideways, in the band upright.
 @export var placement: PlacementController  ## A tap on a READY tile begins it. None: no placement.
 @export var strike_aim: StrikeAim  ## Aiming a strike takes the menu down, as placement does.
 
@@ -106,7 +100,7 @@ var tab: int = World.Tab.STRUCTURES
 
 var _backdrop: PanelContainer = PanelContainer.new()  ## The menu's panel, at the target's size.
 var _stack: VBoxContainer = VBoxContainer.new()
-var _body: HBoxContainer = HBoxContainer.new()  ## Below the head line: `_left`, then the minimap.
+var _body: HBoxContainer = HBoxContainer.new()  ## Below the head line: `_left` or the strip.
 var _left: VBoxContainer = VBoxContainer.new()  ## The tabs and the item row.
 var _strip: VBoxContainer = VBoxContainer.new()  ## Collapsed upright: the head line, the buttons.
 var _buttons: HBoxContainer = HBoxContainer.new()  ## The Build button and the Ready badge.
@@ -184,8 +178,6 @@ func _ready() -> void:
 	_items.add_child(_grid)
 	_left.add_child(_items)
 	select_tab(tab)
-	if minimap_slot != null:
-		_min_dp(minimap_slot, HudLayout.SLOT_DP)
 	_apply_dp()  # Sets the zone before the ArmyBar's _ready lifts the bar.
 	get_viewport().size_changed.connect(_apply_dp)  # After the DpMinSize nodes' own handlers.
 	if controller != null:
@@ -638,8 +630,6 @@ func _apply_dp() -> void:
 func _measure() -> void:
 	_portrait = HudLayout.is_portrait()
 	_dp_px = UiScale.base_px_per_dp()
-	if minimap_slot != null:
-		minimap_slot.visible = not _portrait
 	var safe: SafeAreaMargin = get_parent() as SafeAreaMargin
 	var inset: Vector2i = Vector2i.ZERO
 	if safe != null:
@@ -671,7 +661,6 @@ func _measure() -> void:
 ## layout is the orientation's and the state's alone, so a turn and back changes nothing.
 func _place(settle: bool) -> void:
 	_house(_portrait)
-	_place_minimap()
 	var least: Vector2 = _backdrop.get_combined_minimum_size()
 	var width: float = _wide
 	if not _portrait:
@@ -764,42 +753,3 @@ func _house(portrait: bool) -> void:
 	_strip.visible = strip
 	_left.visible = _open
 	_body.visible = portrait or _open
-
-
-## The minimap goes to the floating panel sideways, where it fills the slot, and to the `Body` row
-## upright: a 2:1 box of at most 40 % of the row and no higher than the menu leaves beside its
-## tabs and item row (the band's) or beside the strip's two lines (the backdrop and the band's
-## head line are not its). The room is the target state's, so the box is one size through a slide;
-## on a phone the width rule binds, and it is the same in both states. It takes its width by the
-## row's stretch (the box's share against the left column's) and asks for its height only, so the
-## band's least width grows by the row's 8 dp gap and no more. That matters: the SafeArea grows
-## while a wide SelectionPanel line is being fitted and comes back only when its least width
-## changes, so a band whose least width is above the line's final one (tabs plus box) would leave
-## it stuck wide.
-func _place_minimap() -> void:
-	if minimap == null:
-		return
-	var home: Control = _body if _portrait or minimap_slot == null else minimap_slot
-	if minimap.get_parent() != home:
-		minimap.reparent(home, false)
-	minimap.custom_minimum_size = Vector2.ZERO
-	minimap.size_flags_stretch_ratio = 1.0
-	_left.size_flags_stretch_ratio = 1.0
-	_strip.size_flags_stretch_ratio = 1.0
-	if not _portrait:
-		minimap.size_flags_horizontal = Control.SIZE_FILL
-		minimap.size_flags_vertical = Control.SIZE_FILL
-		return
-	var chrome: Vector2 = _backdrop.get_theme_stylebox(&"panel").get_minimum_size()
-	var row: float = _inner - chrome.x
-	var gap: float = roundi(UiScale.dp(GAP_DP))
-	var room: float = (_open_px if _open else _closed_px) - chrome.y
-	if _open:
-		room -= UiScale.dp(STATUS_DP + GAP_DP)
-	var box: Vector2 = HudLayout.minimap_box_px(row - gap, room)
-	minimap.custom_minimum_size = Vector2(0.0, box.y)
-	minimap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	minimap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	minimap.size_flags_stretch_ratio = box.x
-	_left.size_flags_stretch_ratio = maxf(row - gap - box.x, 1.0)
-	_strip.size_flags_stretch_ratio = _left.size_flags_stretch_ratio

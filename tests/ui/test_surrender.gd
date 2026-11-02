@@ -18,7 +18,7 @@ const TOLERANCE_PX: float = 0.5
 ## Open ground at 1280x720, left of the panel and clear of the Dev button and the army bar.
 const GROUND_POINT: Vector2 = Vector2(80, 300)
 ## The HUD controls the button must clear when they show.
-const NEIGHBOURS: Array[String] = ["DevButton", "EconomyPill", "MinimapSlot", "ArmyBar"]
+const NEIGHBOURS: Array[String] = ["DevButton", "EconomyPill", "RadarScope", "ArmyBar"]
 
 var _window_size_before: Vector2i
 var _main: Node

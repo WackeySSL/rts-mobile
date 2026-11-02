@@ -197,6 +197,8 @@ func test_every_control_that_is_a_child_of_the_hud_has_the_hud_theme() -> void:
 				"GhostControls",
 				"SafeArea",
 				"EconomyPill",
+				"RadarScope",
+				"RadarMap",
 				"SurrenderDialog",
 				"ResultScreen"
 			]

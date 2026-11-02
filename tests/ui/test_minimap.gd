@@ -429,6 +429,12 @@ func _open(scenario: ScenarioDef, profile: StringName) -> void:
 	_runner.paused = true
 	add_child(_main)
 	await _settle()
+	# The full map is an unfold since P121 (ADR 0025 section 7): open and pinned, so that no timer
+	# folds it under a case. The node is P88's, moved under the scope.
+	var state: HudState = (_main.get_node("Hud/HudStateFeed") as HudStateFeed).state
+	state.pinned = true
+	state.open(HudState.Unfold.RADAR)
+	await _settle()
 	_minimap = _main.get_node("Hud").find_child("Minimap", true, false)
 	_camera = _main.get_node("Camera")
 	_controller = _main.get_node("PlayerController")

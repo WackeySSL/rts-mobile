@@ -354,17 +354,15 @@ func test_a_focus_loss_and_a_turn_end_a_hold_in_flight() -> void:
 		TouchEvents.release(get_viewport(), 0, _global(_local(SECOND)))
 
 
-## The minimap ends the finger on a turn by itself, not through being moved: with the sidebar not
-## holding the node or its slot, nothing reparents or hides it, and the hold still sends no MOVE
-## (a turn never issues a Command). Sideways the node stays shown, which isolates the turn.
+## The minimap ends the finger on a turn by itself, not through being moved: since P121 nothing
+## reparents it on a turn (the full map is open and pinned in its panel under the scope, in both
+## orientations), and the hold still sends no MOVE (a turn never issues a Command).
 func test_a_turn_ends_a_hold_when_nothing_moves_the_minimap() -> void:
 	var isolated: int = 0  # The turns after which the minimap was still where it was and shown.
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
 		var why: String = str(size)
 		var hold_ms: int = _controller.settings.long_press_ms
-		_sidebar.minimap = null
-		_sidebar.minimap_slot = null
 		var home: Node = _minimap.get_parent()
 		_controller.selection.set_ids(PackedInt32Array([TANK_A]))
 		TouchEvents.press(get_viewport(), 0, _global(_local(FIRST)))
@@ -377,7 +375,7 @@ func test_a_turn_ends_a_hold_when_nothing_moves_the_minimap() -> void:
 		_wait(hold_ms * 2)
 		assert_array(_sent).override_failure_message(why).is_empty()
 		TouchEvents.release(get_viewport(), 0, _global(_local(FIRST)))
-	assert_int(isolated).is_greater_equal(ScreenSizes.LANDSCAPE.size())
+	assert_int(isolated).is_equal(ScreenSizes.ALL.size())
 
 
 ## A minimap that is hidden, or folded away with its parent, holds no more; shown again, the next
@@ -500,6 +498,12 @@ func _open(size: Vector2i) -> void:
 	_runner.scenario = Rig.scenario_for(1, "headquarters", MORE, ROSTER)
 	_runner.paused = true
 	add_child(_main)
+	await _settle()
+	# The full map is an unfold since P121 (ADR 0025 section 7): open and pinned, so that no timer
+	# folds it under a case. The node is P88's, moved under the scope.
+	var state: HudState = (_main.get_node("Hud/HudStateFeed") as HudStateFeed).state
+	state.pinned = true
+	state.open(HudState.Unfold.RADAR)
 	await _settle()
 	_camera = _main.get_node("Camera")
 	_touch = _main.get_node("TouchInput")

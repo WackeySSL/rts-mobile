@@ -28,9 +28,11 @@ const GESTURES: Array[StringName] = [&"tap", &"double_tap", &"box", &"pan", &"pi
 const FOLDING: Array[HudState.Unfold] = [
 	HudState.Unfold.DRAWER, HudState.Unfold.ECONOMY, HudState.Unfold.RADAR
 ]
-## HUD controls of the scene as it stands (the band, the army bar, the minimap), found by name.
+## HUD controls of the scene as it stands (the band, the army bar, the pill), found by name. The
+## scope is left out: a tap on it opens the full map, and the full map's own touches are
+## test_radar_map's.
 const CONTROLS: Array[String] = [
-	"AllArmy", "Group1", "SelectionPanel", "Minimap", "TabVehicles", "TabStructures", "CreditsTap"
+	"AllArmy", "Group1", "SelectionPanel", "TabVehicles", "TabStructures", "CreditsTap"
 ]
 
 var _window_size_before: Vector2i

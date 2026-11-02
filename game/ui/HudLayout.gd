@@ -1,15 +1,14 @@
 class_name HudLayout
 extends RefCounted
 ## Where the battle-screen HUD keeps room for the build menu (ADR 0015 section 5, ADR 0023 section
-## 12, plan rows P85 and P85d). Landscape: two floating panels over the map, the build panel at
-## the bottom right (`panel_px` wide, the bottom row's right end, which `right_zone_px` reserves
-## for the SelectionPanel's band) and the minimap's slot at the top right (`SLOT_DP`); the economy
-## pill at the top left is `HudCorners`' (P119, ADR 0025). Portrait: the sidebar's bottom band,
-## whose height `BuildSidebar` puts in `bottom_zone_dp` (`band_dp`) from `_ready` and on every
-## resize, with the minimap at its right end (`minimap_box_px`); every HUD part reads it here and
-## nowhere else, so the ArmyBar sits a gap above the band. `menu_top_px` is the menu's real top on
-## the screen (ADR 0024 section 4), for whatever measures the screen: the edge pan's bottom band
-## and the buttons of placement.
+## 12, plan rows P85 and P85d). Landscape: the build panel floats over the map at the bottom right
+## (`panel_px` wide, the bottom row's right end, which `right_zone_px` reserves for the
+## SelectionPanel's band); the economy pill at the top left and the radar scope at the top right
+## are `HudCorners`' (P119 and P121, ADR 0025). Portrait: the sidebar's bottom band, whose height
+## `BuildSidebar` puts in `bottom_zone_dp` (`band_dp`) from `_ready` and on every resize; every HUD
+## part reads it here and nowhere else, so the ArmyBar sits a gap above the band. `menu_top_px` is
+## the menu's real top on the screen (ADR 0024 section 4), for whatever measures the screen: the
+## edge pan's bottom band and the buttons of placement.
 ## Both follow the menu's state (ADR 0024 section 4): the open band's or the strip's, or between
 ## the two while it slides (`BuildSidebar` tells whoever lifts something by it in `zone_changed`).
 ## A scene without a sidebar leaves it at 0 (the sidebar puts it back when it leaves the tree).
@@ -23,8 +22,6 @@ const SELECTION_DP: float = 200.0
 const PANEL_MIN_DP: float = 184.0
 const PANEL_MAX_DP: float = 372.0
 const PANEL_GAP_DP: float = 8.0  ## Between the build panel and the SelectionPanel's band.
-const SLOT_DP: Vector2 = Vector2(148.0, 86.0)  ## The minimap's panel at the top right (2:1 box).
-const MINIMAP_SHARE: float = 0.4  ## The most of the band's body row the portrait minimap takes.
 const BAND_SHARE: float = 0.2  ## The portrait band's share of the safe height.
 const BAND_MIN_DP: float = 200.0  ## The least the portrait band takes of it, in dp.
 const STACK_SHARE: float = 0.4  ## The most the band and the ArmyBar line take of the safe height.
@@ -102,12 +99,3 @@ static func map_bottom_px(safe: Rect2) -> float:
 static func band_dp(safe_dp: float, reserved_dp: float) -> float:
 	var wanted: float = maxf(safe_dp * BAND_SHARE, BAND_MIN_DP)
 	return maxf(minf(wanted, safe_dp * STACK_SHARE - reserved_dp), BAND_FLOOR_DP)
-
-
-## The portrait minimap's 2:1 box in base px (ADR 0015 section 5, ADR 0023 section 4): at most
-## `MINIMAP_SHARE` of `row`, the width the band's body row gives it and the column beside it, which
-## is itself less than the safe inner width, and no higher than `room`, the height the band leaves
-## beside its tabs and item row.
-static func minimap_box_px(row: float, room: float) -> Vector2:
-	var width: float = minf(row * MINIMAP_SHARE, room * 2.0)
-	return Vector2(width, width / 2.0)

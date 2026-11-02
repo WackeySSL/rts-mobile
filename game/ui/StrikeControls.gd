@@ -5,7 +5,7 @@ extends HBoxContainer
 ## mark and the X before it. A tap on the ready button starts the aim (its foot asks "Tap map" until
 ## a point is placed) and a tap on the pressed one ends it; the check mark (dimmed until a point is
 ## placed) sends the one SUPERWEAPON, the X cancels.
-## Landscape: the top line, left of the minimap's slot. Portrait: the right edge, a gap above the
+## Landscape: the top line, left of the radar scope. Portrait: the right edge, a gap above the
 ## ArmyBar's line, which is a gap above the build menu (the band, or the strip while it is
 ## collapsed). The parent `MarginContainer` is the band the row sits in; this node sets its margins,
 ## and it comes after the BuildSidebar in the scene, so the menu's height is in place. It follows
@@ -112,7 +112,7 @@ func _on_zone_changed(_top_px: float, height_px: float) -> void:
 	_lift()
 
 
-## The row's place in the band: above the ArmyBar's line in portrait, left of the minimap's slot in
+## The row's place in the band: above the ArmyBar's line in portrait, left of the radar scope in
 ## landscape.
 func _lift() -> void:
 	var band: MarginContainer = get_parent() as MarginContainer
@@ -127,5 +127,5 @@ func _lift() -> void:
 	size_flags_horizontal = Control.SIZE_SHRINK_END
 	size_flags_vertical = Control.SIZE_SHRINK_END if _portrait else Control.SIZE_SHRINK_BEGIN
 	band.add_theme_constant_override("margin_bottom", bottom)
-	var slot: float = HudLayout.SLOT_DP.x * _dp_px + gap
+	var slot: float = HudCorners.SCOPE_DP * _dp_px + gap
 	band.add_theme_constant_override("margin_right", 0 if _portrait else ceili(slot))
