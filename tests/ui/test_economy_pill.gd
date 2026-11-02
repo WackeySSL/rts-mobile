@@ -65,7 +65,7 @@ func test_it_shows_the_local_players_credits_and_power_and_nobody_elses() -> voi
 
 
 ## Low power is more used than made (ADR 0018 section 4), and the bar says so with a shape as well
-## as with a colour: the warning triangle for the bolt, and the amber bar, full.
+## as with a colour: the warning triangle for the bolt, and the red bar, full.
 func test_low_power_is_more_used_than_made_and_shows_a_triangle_and_a_full_bar() -> void:
 	await _open()
 	_publish(0, 100, 100)  # Exactly enough is not low.
@@ -150,7 +150,9 @@ func test_low_power_shows_the_word_in_the_bar_at_every_size() -> void:
 		var needs: float = word.get_combined_minimum_size().x
 		assert_float(needs).override_failure_message(why).is_less_equal(room)
 		assert_float(_pill.size.x).is_greater_equal(rest)  # The pill grew for it, never shrank.
-		var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), 12.0)
+		var safe: Rect2 = SafeAreaMargin.rect_inside(
+			get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
+		)
 		var inside: bool = safe.grow(0.5).encloses(_pill.get_global_rect())
 		assert_bool(inside).override_failure_message(why).is_true()
 		_publish(0, 6, 4)
@@ -161,26 +163,66 @@ func test_low_power_shows_the_word_in_the_bar_at_every_size() -> void:
 		assert_float(_pill.size.x).is_equal_approx(rest, 0.5)  # And back to its width.
 
 
-## The numbers are in the bar where it is wide enough for them and left out where it is not: the
-## bar and the glyph still say it. A bar follows its line, so a frame runs before the look is read.
-## The credits keep a five-digit slot, so on the 6-inch phone in landscape "40/60" fits and
-## "40/100" does not.
-func test_the_numbers_are_in_the_bar_only_where_it_is_wide_enough() -> void:
+## The numbers are the pill's to show (ADR 0025 section 2: the pill is as wide as its content and
+## the bar takes what is left): the pill asks the layout for the width they need beyond its least,
+## so the numbers of a first power plant, "120/200", show on the 6-inch phone sideways and upright,
+## on the web phone and on the tablet, in a pill wider than its 200 dp least.
+func test_the_numbers_of_a_power_plant_show_where_the_layout_has_room_for_them() -> void:
 	await _open()
-	_publish(2000, 60, 40)
-	await await_idle_frame()
-	assert_bool((_node("PowerText") as Control).visible).is_true()
-	_publish(2000, 99999, 99999)
-	await await_idle_frame()
-	assert_bool((_node("PowerText") as Control).visible).is_false()
-	_publish(2000, 60, 40)
-	await await_idle_frame()
-	assert_bool((_node("PowerText") as Control).visible).is_true()
+	for profile: StringName in [
+		&"android_6in", &"android_6in_portrait", &"web_phone", &"web_tablet"
+	]:
+		await _turn(profile)
+		_publish(2000, 200, 120)
+		await await_idle_frame()
+		await await_idle_frame()
+		var text: Control = _node("PowerText")
+		var why: String = "%s: numbers %s, bar %s" % [profile, text.size, _rect("PowerBar")]
+		assert_bool(text.visible).override_failure_message(why).is_true()
+		assert_str(_numbers().text).is_equal("120/200")
+		assert_bool(_rect("PowerBar").grow(0.5).encloses(text.get_global_rect())).is_true()
+		assert_bool(_node("PowerWord").visible).is_false()
+		assert_float(_pill.size.x).override_failure_message(why).is_greater(UiScale.dp(200.0) + 2.0)
+		assert_float(_pill.size.x).is_less_equal(UiScale.dp(HudCorners.PILL_MAX_DP) + 0.5)
 
 
-## A turn changes the bar's width without a new snapshot, so only the bar's own `resized` makes
-## the numbers follow it (the fit at the end of `_apply_dp` still reads the old width, as a
-## container sorts later). At every profile the numbers show exactly where they fit the bar.
+## Where the layout has no room the numbers drop (and then the word; the triangle and the red edge
+## stay), and the pill never reaches the scope's corner: on the narrowest portrait screen (360 dp,
+## the Dev button before the pill) it ends at least 64 dp before the safe rect's end, normal and on
+## low power, with the menu button shown or not, and is 48 dp high.
+func test_on_the_narrowest_portrait_the_pill_ends_before_the_scopes_corner() -> void:
+	await _open()
+	await _turn(&"web_phone_portrait")
+	var states: Array[Vector3i] = [Vector3i(2000, 200, 120), Vector3i(2000, 6, 9)]
+	states.append(Vector3i(99999, 99999, 79999))
+	for menu: bool in [false, true]:
+		_pill.set_menu_shown(menu)
+		for state: Vector3i in states:
+			_publish(state.x, state.y, state.z)
+			await await_idle_frame()
+			await await_idle_frame()
+			var dp: float = UiScale.base_px_per_dp()
+			var safe: Rect2 = SafeAreaMargin.rect_inside(
+				get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
+			)
+			var rect: Rect2 = _pill.get_global_rect()
+			var why: String = "menu %s, %s: pill %s, safe %s" % [menu, state, rect, safe]
+			assert_float(rect.end.x).override_failure_message(why).is_less_equal(
+				safe.end.x - 64.0 * dp + 0.5
+			)
+			assert_bool(safe.grow(0.5).encloses(rect)).override_failure_message(why).is_true()
+			assert_float(rect.size.y / dp).override_failure_message(why).is_between(47.5, 49.0)
+			assert_bool(_low()).override_failure_message(why).is_equal(state.y < state.z)
+			for text: String in ["PowerText", "PowerWord"]:  # What shows fits the bar.
+				var part: Control = _node(text)
+				if part.visible:
+					var inside: bool = _rect("PowerBar").grow(0.5).encloses(part.get_global_rect())
+					assert_bool(inside).override_failure_message(why + text).is_true()
+
+
+## A turn changes the bar's width without a new snapshot, so the bar's own `resized` makes the
+## numbers follow it (a container sorts a frame after the handlers). At every profile the numbers
+## show exactly where they fit the bar.
 func test_the_numbers_follow_the_bar_when_a_turn_changes_its_width() -> void:
 	await _open()
 	var shown: Dictionary[bool, int] = {true: 0, false: 0}
@@ -191,7 +233,7 @@ func test_the_numbers_follow_the_bar_when_a_turn_changes_its_width() -> void:
 			await await_idle_frame()
 			var text: Control = _node("PowerText")
 			var fits: bool = (
-				text.get_combined_minimum_size().x + 2.0 * UiScale.dp(4.0)
+				text.get_combined_minimum_size().x + 2.0 * UiScale.dp(EconomyPill.TEXT_PAD_DP)
 				<= ((_node("PowerBar") as Control).size.x)
 			)
 			(
@@ -201,7 +243,7 @@ func test_the_numbers_follow_the_bar_when_a_turn_changes_its_width() -> void:
 			)
 			shown[text.visible] += 1
 	assert_int(shown[true]).is_greater(0)  # Not vacuous: some bars hold the numbers, some not.
-	assert_int(shown[false]).is_greater(0)
+	assert_int(shown[false]).is_greater(0)  # The 360 dp portrait has no room for 11 digits.
 
 
 ## The numbers are in the middle of the bar, not hanging from its top: a line of text is taller

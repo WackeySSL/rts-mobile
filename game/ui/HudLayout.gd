@@ -28,12 +28,12 @@ const MINIMAP_SHARE: float = 0.4  ## The most of the band's body row the portrai
 const BAND_SHARE: float = 0.2  ## The portrait band's share of the safe height.
 const BAND_MIN_DP: float = 200.0  ## The least the portrait band takes of it, in dp.
 const STACK_SHARE: float = 0.4  ## The most the band and the ArmyBar line take of the safe height.
-## The least the band gives way to: the status line 32, the tabs 48 and the item row 64 with two
+## The least the band gives way to: the head line 32, the tabs 48 and the item row 64 with two
 ## 8 dp gaps and 4 dp margins is 168 dp, and 4 dp more cover the gaps' rounding to whole px.
 const BAND_FLOOR_DP: float = 172.0
 ## The collapsed menu (ADR 0024 section 2 and 3, Michael's R2): the portrait strip on the safe
 ## bottom edge, whose height lives here and nowhere else, and the landscape plate at the bottom
-## right. The strip holds the status line (32 dp), a gap (8 dp) and the button row (48 dp) between
+## right. The strip holds the head line (32 dp), a gap (8 dp) and the button row (48 dp) between
 ## the backdrop's 4 dp above and below; the plate is the button row between the same 4 dp. The
 ## strip grows to its content, so it is at least 96 dp and a smaller `STRIP_DP` is ignored.
 const STRIP_DP: float = 96.0

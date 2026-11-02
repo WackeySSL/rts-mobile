@@ -11,6 +11,11 @@ extends PanelContainer
 ## triangle and the word "LOW POWER" takes the numbers' place in the bar where it fits.
 ## This node takes the pill's rect from `HudCorners.place` (after what stands at the top left,
 ## `top_left`: the Dev button), on `_ready`, on every resize and when its content changes size.
+## The pill is as wide as its content and asks the layout for the room the numbers (on low power the
+## word) need in the bar: the bar takes what is left (P85c's fit), the layout gives what the safe
+## rect and the scope's corner leave, and what does not fit drops (the numbers, then the word; the
+## triangle and the red edge stay). That room is never part of the pill's minimum size: a Control
+## does not shrink below it, so the layout's cap would no longer work.
 
 signal menu_pressed
 signal economy_pressed  ## The credits or the power was tapped.
@@ -24,11 +29,13 @@ const BAR_LOW_VARIATION: StringName = &"PowerBarLow"
 const NUMBER_VARIATION: StringName = &"PowerNumber"
 const NUMBER_LOW_VARIATION: StringName = &"PowerNumberLow"
 const GLYPH_DP: float = 24.0
+const MENU_ICON_DP: float = 28.0  ## The menu button's glyph (the button is 48 dp).
 const BAR_DP: Vector2 = Vector2(24.0, 28.0)  ## The bar's least size; it takes the rest of the pill.
 const TAP_DP: float = 48.0
 const GAP_DP: float = 4.0
 const TEXT_PAD_DP: float = 2.0  ## Each side of the numbers and the word in the bar.
 const TEXT_EDGE_DP: float = 2.0  ## The dark edge of the numbers on the bar.
+const SLACK_DP: float = 1.0  ## What the containers' rounding to whole px may take of the bar.
 ## The credits' slot: 99 999. The rules set no ceiling (a snapshot holds an int32); a bigger bank
 ## widens the pill by a digit once.
 const CREDITS_DIGITS: int = 5
@@ -46,7 +53,6 @@ var _credits: DigitRow = DigitRow.new()
 var _power_tap: TapArea = TapArea.new()
 var _power_glyph: TextureRect
 var _bar: ProgressBar = ProgressBar.new()
-var _bar_fit: DpMinSize = DpMinSize.new()  ## The bar's least size: wider on low power (the word).
 var _numbers: DigitRow = DigitRow.new()
 var _word: Label = Label.new()
 var _low: bool = false
@@ -114,7 +120,8 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_THEME_CHANGED and _power_glyph != null:
 		_tint()
-		_fit_bar()
+		_fit_bar_text()
+		place.call_deferred()  # After the labels below have heard of the theme too.
 
 
 ## A frame reads the published snapshot when it is a new one (a tick, or a new match).
@@ -147,25 +154,41 @@ func set_menu_shown(shown: bool) -> void:
 	_divider.visible = shown
 
 
+## Whether the pill shows low power: the hook of P89's pulse (kept although nothing reads it yet).
 func is_low() -> bool:
 	return _low
 
 
-## Takes the rect `HudCorners.place` gives the pill: after the top-left control, as wide as its
-## content (at least 200 dp), inside the safe rect, in both orientations.
+## Takes the rect `HudCorners.place` gives the pill: after the top-left control, as wide as it asks
+## (its content and the room the bar's text needs, at least 200 dp, at most what the layout has),
+## inside the safe rect, in both orientations.
 func place() -> void:
 	var dp: float = UiScale.base_px_per_dp()
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	if top_left != null and top_left.visible:
 		shown.left_taken = top_left.get_combined_minimum_size().x / dp
-	shown.pill_width = get_combined_minimum_size().x / dp
-	var margin_dp: float = 12.0 if safe_area == null else safe_area.margin_dp
+	shown.pill_width = _wanted_dp()
+	var margin_dp: float = (
+		SafeAreaMargin.DEFAULT_MARGIN_DP if safe_area == null else safe_area.margin_dp
+	)
 	var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), margin_dp)
 	var rects: Dictionary[StringName, Rect2] = HudCorners.place(
 		safe, HudLayout.is_portrait(), dp, false, shown
 	)
 	position = rects[HudCorners.PILL].position
 	size = rects[HudCorners.PILL].size
+
+
+## The width the pill asks of the layout, in dp: its content (the bar at its least) and what the
+## numbers, or on low power the word, still need beyond that bar. The bar takes all the room the
+## pill is given, so this is the width at which the text fits.
+func _wanted_dp() -> float:
+	var content: float = _line.get_combined_minimum_size().x
+	content += get_theme_stylebox(&"panel").get_minimum_size().x
+	var text: Control = _word if _low else _numbers
+	var more: float = text.get_combined_minimum_size().x + 2.0 * UiScale.dp(TEXT_PAD_DP)
+	more += UiScale.dp(SLACK_DP) - UiScale.dp(BAR_DP.x)
+	return (content + maxf(more, 0.0)) / UiScale.base_px_per_dp()
 
 
 static func _entry(values: PackedInt32Array, player: int) -> int:
@@ -204,8 +227,7 @@ func _build_bar() -> void:
 	_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_bar.max_value = 1.0
 	_bar.value = 0.0
-	_bar_fit.min_dp = BAR_DP
-	_bar.add_child(_bar_fit)
+	_min_dp(_bar, BAR_DP)
 	_power_tap.add_child(_bar)
 	_numbers.name = "PowerText"
 	_numbers.variation = NUMBER_VARIATION
@@ -225,8 +247,8 @@ func _build_bar() -> void:
 		_bar.add_child(overlay)
 	# A theme change reaches a label after its parents: the fit follows the labels' own sizes too.
 	_bar.resized.connect(_fit_bar_text)
-	_word.minimum_size_changed.connect(_fit_bar)
-	_numbers.minimum_size_changed.connect(_fit_bar_text)
+	_word.minimum_size_changed.connect(_text_changed)
+	_numbers.minimum_size_changed.connect(_text_changed)
 
 
 ## The numbers of the pill. The look changes only when the low state does.
@@ -243,7 +265,8 @@ func _show(credits: int, made: int, used: int) -> void:
 		_numbers.variation = NUMBER_LOW_VARIATION if low else NUMBER_VARIATION
 		_power_glyph.texture = load(ICON_ART % ("glyph_low_power" if low else "glyph_power"))
 		_tint()
-	_fit_bar()
+		place()  # The text that needs the room is another one.
+	_fit_bar_text()
 
 
 ## The glyphs' tints come from the theme's HUD tokens: money for the coin and the bolt, danger for
@@ -253,12 +276,10 @@ func _tint() -> void:
 	_power_glyph.modulate = get_theme_color(&"danger" if _low else &"money", TOKENS)
 
 
-## On low power the bar is wide enough for the word, and so the pill is (up to the room the layout
-## has); then the word or the numbers show as they fit.
-func _fit_bar() -> void:
-	var word_dp: float = _word.get_combined_minimum_size().x / UiScale.base_px_per_dp()
-	var wide: float = maxf(BAR_DP.x, word_dp + 2.0 * TEXT_PAD_DP)
-	_bar_fit.min_dp = Vector2(wide if _low else BAR_DP.x, BAR_DP.y)
+## The text of the bar changed its size (a number, the theme): the pill asks again, and the text
+## shows where it fits.
+func _text_changed() -> void:
+	place()
 	_fit_bar_text()
 
 
@@ -275,6 +296,8 @@ func _apply_dp() -> void:
 	_line.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
 	for tap: TapArea in [_credits_tap, _power_tap]:
 		tap.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
+	_menu.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(MENU_ICON_DP)))
 	_tint()
-	_fit_bar()
+	_fit_bar_text()
 	place()
+	place.call_deferred()  # The labels' sizes follow the theme a moment later.

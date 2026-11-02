@@ -106,7 +106,8 @@ static func place(
 		if shown.strike:
 			out[STRIKE] = strike
 			if shown.aim:
-				var row: Vector2 = Vector2(2.0 * 64.0 + GAP_DP, 64.0)
+				var action: float = StrikeControls.ACTION_DP
+				var row: Vector2 = Vector2(2.0 * action + StrikeControls.GAP_DP, action)
 				out[STRIKE_ROW] = Rect2(
 					strike.position.x - GAP_DP - row.x,
 					strike.position.y + (StrikeButton.SIZE_DP - row.y) * 0.5,
@@ -168,13 +169,14 @@ static func _bar(
 	return Rect2(0.0, h - BAR_DP.y, minf(maxf(shown.bar_width, BAR_DP.x), room), BAR_DP.y)
 
 
-## The toast: portrait, under the pill at the start; landscape, centred between the pill (or the
-## safe edge) and the scope (or the open panel).
+## The toast: portrait, under the pill at the start, a gap under the scope's foot (the scope is 56
+## dp, the pill's line 48); landscape, centred between the pill (or the safe edge) and the scope
+## (or the open panel).
 static func _toast(
 	w: float, portrait: bool, placed: Dictionary[StringName, Rect2], open: Rect2
 ) -> Rect2:
 	if portrait:
-		return Rect2(0.0, PILL_DP.y + GAP_DP, minf(w, TOAST_W_DP.y), TOAST_H_DP)
+		return Rect2(0.0, SCOPE_DP + GAP_DP, minf(w, TOAST_W_DP.y), TOAST_H_DP)
 	var left: float = 0.0
 	if placed.has(PILL):
 		left = placed[PILL].end.x + GAP_DP

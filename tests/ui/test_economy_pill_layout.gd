@@ -108,17 +108,28 @@ func test_the_pill_is_48_dp_high_with_tap_areas_of_48_dp_and_no_menu_button_yet(
 	_pill.set_menu_shown(true)  # What the pause menu row does.
 	for profile: StringName in _every_profile():
 		await _turn(profile)
+		var dp: float = UiScale.base_px_per_dp()
 		var menu_rect: Rect2 = _rect("Menu")
-		var least: float = UiScale.dp(48.0) - 0.5
-		var shown: String = "%s: menu %s in pill %s" % [profile, menu_rect, _pill.get_global_rect()]
+		var pill_rect: Rect2 = _pill.get_global_rect()
+		var shown: String = "%s: menu %s in pill %s" % [profile, menu_rect, pill_rect]
 		assert_bool((_node("Menu") as Control).visible).override_failure_message(shown).is_true()
 		assert_bool((_node("Divider") as Control).visible).is_true()
-		assert_float(menu_rect.size.x).override_failure_message(shown).is_greater_equal(least)
-		assert_float(menu_rect.size.y).override_failure_message(shown).is_greater_equal(least)
-		var inside: bool = _pill.get_global_rect().grow(0.5).encloses(menu_rect)
-		assert_bool(inside).override_failure_message(shown).is_true()
-		var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), 12.0)
-		assert_bool(safe.grow(0.5).encloses(_pill.get_global_rect())).is_true()
+		# The button is 48 x 48 dp (its glyph is capped, not its own 128 px) and so is the pill high.
+		assert_float(menu_rect.size.x / dp).override_failure_message(shown).is_between(47.5, 48.5)
+		assert_float(menu_rect.size.y / dp).override_failure_message(shown).is_between(47.5, 48.5)
+		assert_float(pill_rect.size.y / dp).override_failure_message(shown).is_between(47.5, 49.0)
+		(
+			assert_bool(pill_rect.grow(0.5).encloses(menu_rect))
+			. override_failure_message(shown)
+			. is_true()
+		)
+		var safe: Rect2 = SafeAreaMargin.rect_inside(
+			get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
+		)
+		assert_bool(safe.grow(0.5).encloses(pill_rect)).override_failure_message(shown).is_true()
+		assert_float(pill_rect.end.x).override_failure_message(shown).is_less_equal(
+			safe.end.x - 64.0 * dp + 0.5
+		)
 
 
 ## A tap on the credits or on the power says so; the pill takes the touch, so with units selected it
@@ -135,9 +146,19 @@ func test_a_tap_on_the_credits_or_the_power_is_the_pills_and_orders_nothing() ->
 		TouchEvents.press(get_viewport(), 0, at)
 		TouchEvents.release(get_viewport(), 0, at)
 	assert_int(taps[0]).is_equal(2)
-	var rim: Vector2 = _pill.get_global_rect().position + Vector2(1.0, 1.0)  # The pill's padding.
-	TouchEvents.press(get_viewport(), 0, rim)
-	TouchEvents.release(get_viewport(), 0, rim)
+	# The pill's right padding (no tap area is there) eats the touch too: it orders nothing, where
+	# the same point is ground, and orders a MOVE, once the pill is out of the way.
+	var rect: Rect2 = _pill.get_global_rect()
+	var padding: Vector2 = Vector2(rect.end.x - 1.0, rect.get_center().y)
+	TouchEvents.press(get_viewport(), 0, padding)
+	TouchEvents.release(get_viewport(), 0, padding)
+	assert_array(_sent).override_failure_message("the padding let a touch through").is_empty()
+	_pill.visible = false
+	TouchEvents.press(get_viewport(), 0, padding)
+	TouchEvents.release(get_viewport(), 0, padding)
+	assert_array(_sent).override_failure_message("the control point is no ground").has_size(1)
+	_sent.clear()
+	_pill.visible = true
 	var away: Vector2 = _rect("CreditsTap").get_center()  # Down on it, up beside it: no tap.
 	TouchEvents.press(get_viewport(), 0, away)
 	TouchEvents.release(get_viewport(), 0, away + Vector2(400.0, 300.0))

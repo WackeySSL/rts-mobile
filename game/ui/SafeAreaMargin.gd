@@ -8,7 +8,9 @@ extends MarginContainer
 ## bottom get the larger of the two (ADR 0015 section 3). Make it a full-rect child of a
 ## CanvasLayer.
 
-@export var margin_dp: float = 12
+const DEFAULT_MARGIN_DP: float = 12.0  ## ADR 0025 section 2: the safe rect's gap on every side.
+
+@export var margin_dp: float = DEFAULT_MARGIN_DP
 
 
 func _ready() -> void:

@@ -13,6 +13,7 @@ const TOLERANCE: float = 0.01
 ## The unfolds and modes of ADR 0025 section 1: at most one at a time. The card is an overlay on
 ## the toast and the group column, so those pairs are left out of the overlap check.
 const EXTRAS: Array[String] = ["", "map", "toast", "drawer", "card", "aim"]
+const WIDE_BAR_DP: float = 2000.0  ## A bar that asks for more than any screen has.
 
 
 func after_test() -> void:
@@ -30,6 +31,17 @@ func test_the_adr_table_of_numbers_row_by_row() -> void:
 	_assert_rect(lined[HudCorners.group_key(0)], Rect2(0.0, 56.0, 56.0, 56.0))
 	_assert_rect(lined[HudCorners.group_key(1)], Rect2(0.0, 120.0, 56.0, 56.0))
 	_assert_rect(lined[HudCorners.group_key(2)], Rect2(64.0, 56.0, 56.0, 56.0))
+	# The bar, as wide as it asks, ends a gap before BUILD's column (72 dp), before the Ready chip's
+	# 120 dp more, and before the open panel (the panel is 312 dp here: 40 % of 776 is less).
+	var wide: Dictionary[StringName, Rect2] = _place(small, false, _shown(["bar"], 1, 2000.0))
+	assert_float(wide[HudCorners.BAR].end.x).is_equal(776.0 - 72.0)
+	wide = _place(small, false, _shown(["bar", "ready"], 1, 2000.0))
+	assert_float(wide[HudCorners.BAR].end.x).is_equal(776.0 - 192.0)
+	_assert_rect(wide[HudCorners.READY], Rect2(592.0, 224.0, 112.0, 48.0))  # A gap left of BUILD.
+	wide = _place(small, false, _shown(["bar", "drawer"], 1, 2000.0))
+	assert_float(wide[HudCorners.BAR].end.x).is_equal(wide[HudCorners.DRAWER].position.x - 8.0)
+	wide = _place(small, false, _shown(["strike", "aim"]))
+	_assert_rect(wide[HudCorners.STRIKE_ROW], Rect2(560.0, 140.0, 136.0, 64.0))  # A gap left of it.
 	var map: Dictionary[StringName, Rect2] = _place(small, false, _shown(["strike", "map"]))
 	_assert_rect(map[HudCorners.MAP], Rect2(456.0, 0.0, 240.0, 168.0))  # Left of the column.
 	_assert_rect(map[HudCorners.MAP_BOX], Rect2(456.0, 48.0, 240.0, 120.0))
@@ -137,7 +149,7 @@ func test_the_toast_sits_between_the_pill_and_the_scope_or_under_the_pill() -> v
 	var upright: Dictionary[StringName, Rect2] = _place(
 		Rect2(0.0, 0.0, 336.0, 676.0), true, _shown(["toast"])
 	)
-	_assert_rect(upright[HudCorners.TOAST], Rect2(0.0, 56.0, 336.0, 48.0))
+	_assert_rect(upright[HudCorners.TOAST], Rect2(0.0, 64.0, 336.0, 48.0))  # Under the scope.
 	upright = _place(Rect2(0.0, 0.0, 800.0, 900.0), true, _shown(["toast"]))
 	assert_float(upright[HudCorners.TOAST].size.x).is_equal(360.0)
 	var open: Dictionary[StringName, Rect2] = _place(
@@ -207,8 +219,9 @@ func test_every_part_is_inside_the_safe_rect_48_dp_and_clear_of_the_others() -> 
 				)
 				var why: String = "%s, mirror %s, %s" % [screen["label"], mirror, _describe(shown)]
 				_assert_parts(out, safe, dp, why)
-				if screen["portrait"] and shown.bar and not shown.ready:
-					_assert_stack_within_40_percent(out, safe, dp, why)
+				_assert_gaps(out, dp, why, str(screen["label"]).begins_with("web_phone_portrait"))
+				if screen["portrait"] and shown.bar:
+					_assert_stack_within_40_percent(out, safe, dp, why, shown)
 				checked += 1
 	assert_int(checked).is_greater(2000)
 
@@ -246,9 +259,11 @@ func test_the_sizes_the_adr_names_hold_at_every_screen() -> void:
 
 
 ## ADR 0015 section 5: the bottom stack (the bar and the group column) is at most 40 % of the safe
-## height, whole dp. With the Ready chip the column may take more height to leave BUILD its width.
+## height, whole dp. With the Ready chip the column leaves BUILD's column and the chip their width,
+## so it has as many columns as that leaves and as many to a column as those need: the real bound
+## there is the taller of the 40 % line and that column (declared in the PR).
 func _assert_stack_within_40_percent(
-	out: Dictionary[StringName, Rect2], safe: Rect2, dp: float, why: String
+	out: Dictionary[StringName, Rect2], safe: Rect2, dp: float, why: String, shown: HudCorners.Shown
 ) -> void:
 	var top: float = safe.end.y
 	for key: StringName in out:
@@ -256,8 +271,48 @@ func _assert_stack_within_40_percent(
 			top = minf(top, out[key].position.y)
 	var stack: float = (safe.end.y - top) / dp
 	var limit: float = floorf(HudLayout.STACK_SHARE * safe.size.y / dp)
+	if shown.ready:
+		var right: float = HudCorners.BUILD_DP + HudCorners.GAP_DP + HudCorners.READY_DP.x + 8.0
+		var columns: int = maxi(floori((safe.size.x / dp - right) / 64.0), 1)
+		var rows: int = ceili(float(shown.groups) / columns)
+		limit = maxf(limit, HudCorners.BAR_DP.y + HudCorners.GAP_DP + rows * 64.0 - 8.0)
 	var message: String = "%s: stack %s dp of at most %s" % [why, stack, limit]
 	assert_float(stack).override_failure_message(message).is_less_equal(limit + TOLERANCE)
+
+
+## ADR 0025 section 2: gaps of 8 dp. Every two parts that show are at least 8 dp apart on one axis.
+## Two exemptions, each for a reason: the economy card, which is an overlay (it hangs under the pill
+## over the toast, the groups and the scope's foot); and the strike button's check mark and X
+## against the group column at 360 x 700 dp with five group items, where the ADR's own numbers (a
+## 120 dp column, the 136 dp row, 8 dp, the 72 dp button: 336 dp) leave no gap, which the lead takes
+## to the architect before P120c and P122b.
+func _assert_gaps(out: Dictionary[StringName, Rect2], dp: float, why: String, narrow: bool) -> void:
+	var keys: Array = out.keys()
+	for first: int in keys.size():
+		for second: int in range(first + 1, keys.size()):
+			var a: StringName = keys[first]
+			var b: StringName = keys[second]
+			if _nested(a, b) or a == HudCorners.CARD or b == HudCorners.CARD:
+				continue
+			var row_and_column: bool = (
+				narrow
+				and (
+					(a == HudCorners.STRIKE_ROW and str(b).begins_with("group_"))
+					or (b == HudCorners.STRIKE_ROW and str(a).begins_with("group_"))
+				)
+			)
+			if row_and_column:
+				continue
+			var gap: float = _gap(out[a], out[b]) / dp
+			var pair: String = "%s: %s and %s are %s dp apart" % [why, a, b, gap]
+			assert_float(gap).override_failure_message(pair).is_greater_equal(8.0 - TOLERANCE)
+
+
+## The distance between two rects along the axis that separates them (negative while they overlap).
+static func _gap(a: Rect2, b: Rect2) -> float:
+	var across: float = maxf(a.position.x - b.end.x, b.position.x - a.end.x)
+	var down: float = maxf(a.position.y - b.end.y, b.position.y - a.end.y)
+	return maxf(across, down)
 
 
 func _assert_parts(out: Dictionary[StringName, Rect2], safe: Rect2, dp: float, why: String) -> void:
@@ -293,22 +348,25 @@ static func _overlay(a: StringName, b: StringName) -> bool:
 	)
 
 
-## Every set of the optional parts: the bar, the Ready chip and the strike button each way, with
-## one of the unfolds and modes (or none) and one group count.
+## Every set of the optional parts: the bar (at its least and as wide as it can ask), the Ready chip
+## and the strike button each way, with one of the unfolds and modes (or none) and one group count.
 func _combinations() -> Array[HudCorners.Shown]:
 	var out: Array[HudCorners.Shown] = []
 	for bits: int in 8:
 		for extra: String in EXTRAS:
 			for groups: int in [1, 5]:
-				var names: Array[String] = []
-				for index: int in 3:
-					if bits & (1 << index):
-						names.append(["bar", "ready", "strike"][index])
-				if extra != "":
-					names.append(extra)
-				if extra == "aim" and not names.has("strike"):
-					continue
-				out.append(_shown(names, groups))
+				for bar_width: float in [0.0, WIDE_BAR_DP]:
+					if bar_width > 0.0 and not bits & 1:
+						continue
+					var names: Array[String] = []
+					for index: int in 3:
+						if bits & (1 << index):
+							names.append(["bar", "ready", "strike"][index])
+					if extra != "":
+						names.append(extra)
+					if extra == "aim" and not names.has("strike"):
+						continue
+					out.append(_shown(names, groups, bar_width))
 	return out
 
 
@@ -317,7 +375,7 @@ func _describe(shown: HudCorners.Shown) -> String:
 	for property: String in ["bar", "ready", "strike", "aim", "map", "toast", "card", "drawer"]:
 		if shown.get(property):
 			parts.append(property)
-	return "%s, %d groups" % [parts, shown.groups]
+	return "%s, %d groups, bar %s dp" % [parts, shown.groups, shown.bar_width]
 
 
 ## The six sizes (the engine's own metrics: a dp is a window px) and every profile of both
@@ -361,11 +419,12 @@ func _screen(label: String, metrics: UiMetrics) -> Dictionary:
 
 
 ## `Shown` with the named parts on (bar, ready, strike, aim, map, toast, card, drawer).
-func _shown(names: Array[String], groups: int = 1) -> HudCorners.Shown:
+func _shown(names: Array[String], groups: int = 1, bar_width: float = 0.0) -> HudCorners.Shown:
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	for part: String in names:
 		shown.set(part, true)
 	shown.groups = groups
+	shown.bar_width = bar_width
 	return shown
 
 

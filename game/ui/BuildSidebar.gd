@@ -89,11 +89,6 @@ const REVEAL_SLACK_PX: float = 1.5
 const BUILD_DP: Vector2 = Vector2(64.0, 48.0)  ## The Build button.
 const BUTTONS_DP: float = 48.0  ## The button row's height. The Ready badge is 112 dp wide at most.
 const BADGE_ICON_DP: float = 32.0  ## The card's picture on the Ready badge.
-const TEXT_PAD_DP: float = 4.0  ## Each side of the numbers in the bar.
-const TEXT_EDGE_DP: float = 2.0  ## The dark edge of the numbers on the green bar.
-## The credits' slot: 99 999. The rules set no ceiling (a snapshot holds an int32); a bigger bank
-## widens the line by a digit once.
-const CREDITS_DIGITS: int = 5
 
 ## Tests only, like `UiScale`'s override: the slide's duration in ms, or -1 for the settings'. A
 ## test that sets one clears it in `after_test`, and never writes `menu_slide_ms` into the resource.
