@@ -1,10 +1,10 @@
 extends GdUnitTestSuite
 ## The Hud page of the art gallery (plan row P118g, STYLE.md "Gallery"): the fourteen glyphs of the
 ## corner HUD at 48 dp with their names, the glyphs they stand beside, the fourteen again at 32 and
-## 24 dp, and the construction mast on grass and sand, all on the HUD panel's backdrop, laid out to
-## fit at the three base sizes of the gallery. The glyph files are in test_icon_art.gd and
-## test_hud_v2_glyphs.gd, the other pages in test_art_gallery_icon_pages.gd and
-## test_art_gallery_pages.gd.
+## 24 dp, and each faction's power building with the construction badge and the offline glyph over
+## it, all on the HUD panel's backdrop, laid out to fit at the three base sizes of the gallery. The
+## glyph files are in test_icon_art.gd and test_hud_v2_glyphs.gd, the other pages in
+## test_art_gallery_icon_pages.gd and test_art_gallery_pages.gd.
 
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
@@ -76,6 +76,12 @@ func test_each_row_shows_its_glyphs_at_48_dp_with_their_tints_and_names() -> voi
 			var label: Label = row.get_node("Label" + short.to_pascal_case())
 			assert_str(label.text).is_equal(short.replace("_", " "))
 			assert_float(label.get_rect().position.y).is_greater_equal(rect.get_rect().end.y)
+			# the name is under its own glyph, not one pitch to either side
+			(
+				assert_float(label.get_rect().get_center().x)
+				. override_failure_message(icon)
+				. is_equal_approx(rect.get_rect().get_center().x, 0.5)
+			)
 			shown += 1
 	assert_int(shown).is_equal(14 + 8)
 
@@ -96,24 +102,41 @@ func test_the_fourteen_new_glyphs_are_shown_again_at_32_and_24_dp() -> void:
 			assert_vector(rect.size).is_equal(Vector2.ONE * dp * PX_PER_DP)
 
 
-## The construction mast on grass and on sand at the size of a glyph on the map, so that Michael
-## sees how a white glyph with its dark edge stands on each ground.
-func test_the_construction_mast_is_on_a_grass_and_a_sand_swatch() -> void:
+## Each faction's power building on its ground with the construction badge and the offline glyph
+## side by side over its body, at the size of a glyph on the map, so that Michael sees how the badge
+## stands on a white ceramic roof and on the Derrick League's concrete, beside the glyph it is
+## meant to match.
+func test_each_faction_has_a_building_with_the_two_badges_over_it() -> void:
 	var gallery: Control = await _open_gallery()
 	var sites: Node = gallery.get_node("HudPage/Hud/Sites")
 	assert_array(sites.get_children().map(_node_name)).is_equal(
-		["SiteGrass", "SiteSand", "LabelSites"]
+		["SiteFossil", "SiteRenew", "LabelSites"]
 	)
-	var colours: Dictionary[String, Color] = {
-		"SiteGrass": Gallery.TERRAIN_COLORS[&"grass_b"], "SiteSand": Gallery.TERRAIN_COLORS[&"sand"]
+	var grounds: Dictionary[String, Color] = {
+		"SiteFossil": Gallery.TERRAIN_COLORS[&"grass_b"],
+		"SiteRenew": Gallery.TERRAIN_COLORS[&"sand"]
 	}
-	for swatch_name: String in colours:
+	assert_array(Gallery.HUD_SITE_BADGES).is_equal(["glyph_construct", "glyph_offline"])
+	for swatch_name: String in grounds:
 		var swatch: ColorRect = sites.get_node(swatch_name)
-		assert_that(swatch.color).is_equal(colours[swatch_name])
+		assert_that(swatch.color).is_equal(grounds[swatch_name])
 		assert_vector(swatch.size).is_equal(Gallery.HUD_SITE_SIZE)
-		var rect: TextureRect = swatch.get_node("GlyphConstruct")
-		assert_vector(rect.size).is_equal(Vector2.ONE * Gallery.MAP_GLYPH_DP * PX_PER_DP)
-		assert_vector(rect.position * 2.0 + rect.size).is_equal(swatch.size)
+		assert_array(swatch.get_children().map(_node_name)).is_equal(
+			["Building", "GlyphConstruct", "GlyphOffline"]
+		)
+		var building: TextureRect = swatch.get_node("Building")
+		assert_vector(building.size).is_greater(Vector2(100, 100))
+		assert_vector(building.size).is_less(Vector2(Gallery.HUD_SITE_SIZE.x, 140.0))
+		var construct: TextureRect = swatch.get_node("GlyphConstruct")
+		var offline: TextureRect = swatch.get_node("GlyphOffline")
+		for badge: TextureRect in [construct, offline]:
+			assert_vector(badge.size).is_equal(Vector2.ONE * Gallery.MAP_GLYPH_DP * PX_PER_DP)
+			# over the building's body, inside its frame
+			assert_bool(building.get_rect().encloses(badge.get_rect())).is_true()
+		assert_that(construct.modulate).is_equal(Color.WHITE)
+		assert_that(offline.modulate).is_equal(Gallery.GLYPH_TINTS["glyph_offline"])
+		assert_float(construct.get_rect().end.x).is_less(offline.get_rect().position.x)
+		assert_float(construct.position.y).is_equal(offline.position.y)
 
 
 ## Only the glyph that says a state has a tint of its own: the stalled queue's "!" in the neutral

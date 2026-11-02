@@ -163,8 +163,8 @@ func test_the_icons_page_fits_each_half_and_keeps_clear_of_the_buttons_at_three_
 			for tile: Node in half_node.find_children("Tile*", "ColorRect", true, false):
 				if not half.encloses((tile as Control).get_global_rect()):
 					problems.append(str(tile.get_path()) + " is outside its half")
-		# 26 on the HUD panel, 12 on each ground (7 glyphs, the arrow and four flags).
-		assert_int(seen.size()).is_equal(26 + 12 + 12)
+		# 26 on the HUD panel, 13 on each ground (8 glyphs, the arrow and four flags).
+		assert_int(seen.size()).is_equal(26 + 13 + 13)
 		assert_array(problems).override_failure_message(str(base)).is_empty()
 		gallery.get_parent().free()
 

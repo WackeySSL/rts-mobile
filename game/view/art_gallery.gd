@@ -26,8 +26,9 @@ extends Control
 ## (`_add_icons_page`) shows the sidebar's tab and item icons and the HUD glyphs at their size in
 ## dp on a dark HUD panel, and the glyphs and rally flags that sit on the map on grass and sand.
 ## Hud (`_add_hud_page`, plan row P118g, ADR 0025 and 0026) shows the fourteen glyphs of the corner
-## HUD at 48 dp with their names, the glyphs they sit beside, all fourteen at 32 and 24 dp, and the
-## construction mast on grass and sand. The pages after Units are built in code and start hidden.
+## HUD at 48 dp with their names, the glyphs they sit beside, all fourteen at 32 and 24 dp, and each
+## faction's power building with the construction badge and the offline glyph over it. The pages
+## after Units are built in code and start hidden.
 ##
 ## To add a unit: its model goes under `assets/art/models/` (STYLE.md "Generated art") and its art
 ## id into `ROSTER_IDS` (Derrick League) or `ACCORD_IDS` (Lumen Accord). A building goes into the
@@ -202,6 +203,7 @@ const MAP_GLYPHS: Array[String] = [
 	"glyph_reason_too_far",
 	"glyph_reason_cap",
 	"glyph_offline",
+	"glyph_construct",
 ]
 const ARROW_GLYPH: String = "glyph_under_attack"  ## At least 48 dp on screen (ADR 0019 section 5).
 const RALLY_FLAGS: Array[String] = ["rally_infantry", "rally_vehicles"]
@@ -250,16 +252,39 @@ const HUD_ROW_TOPS: Array[float] = [12.0, 152.0, 520.0, 612.0]
 const MAP_ROW_TOPS: Dictionary[String, Array] = {"Grass": [152.0, 250.0], "Sand": [24.0, 132.0]}
 const FLAG_GAP_PX: float = 24.0
 ## The Hud page, in base px from the top of the page: the four 48 dp rows with a name under each
-## glyph, the two small rows (one for each of `HUD_SMALL_DP`) and the strip of the mast on the
-## ground. Rows are centred, none wider than the 992 px between the corner buttons at 1280 wide.
-const HUD_PAGE_ROW_TOPS: Array[float] = [16.0, 134.0, 252.0, 370.0]
-const HUD_SMALL_TOPS: Array[float] = [500.0, 572.0]
-const HUD_SITES_TOP: float = 640.0
+## glyph (the last two share one line, their centres `HUD_ROW_CENTRES` from the page's middle, the
+## two above are no wider than the 992 px between the corner buttons at 1280 wide), the two small
+## rows (one for each of `HUD_SMALL_DP`) and the strip of the site badges on a building.
+const HUD_PAGE_ROW_TOPS: Array[float] = [16.0, 134.0, 252.0, 252.0]
+const HUD_ROW_CENTRES: Array[float] = [0.0, 0.0, -395.0, 207.0]
+const HUD_SMALL_TOPS: Array[float] = [378.0, 450.0]
+const HUD_SITES_TOP: float = 510.0
 const HUD_CAPTION_PX: int = 16
-const HUD_CAPTION_HEIGHT_PX: float = 22.0
+const HUD_CAPTION_HEIGHT_PX: float = 23.0
 const HUD_CAPTION_COLOR: Color = Color("9AA5B1")
-const HUD_SITE_SIZE: Vector2 = Vector2(120.0, 64.0)
-const HUD_SITE_GLYPH: String = "glyph_construct"
+## The strip: each faction's own 2x2 power building at zoom 1 on a ground, with the badges that are
+## drawn over a building on the map side by side over its body (`HUD_SITE_BADGES`): the
+## construction mast of ADR 0026 and the offline glyph, both at 32 dp and both on their seats.
+const HUD_SITE_SIZE: Vector2 = Vector2(176.0, 168.0)
+const HUD_SITE_MARGIN_PX: float = 12.0
+const HUD_SITES: Array[Dictionary] = [
+	{
+		"name": "SiteFossil",
+		"faction": &"fossil",
+		"art": &"power_plant",
+		"triad": 0,
+		"ground": &"grass_b"
+	},
+	{
+		"name": "SiteRenew",
+		"faction": &"renew",
+		"art": &"renew_power",
+		"triad": 1,
+		"ground": &"sand"
+	},
+]
+const HUD_SITE_BADGES: Array[String] = ["glyph_construct", "glyph_offline"]
+const HUD_BADGE_GAP_PX: float = 6.0
 
 @export var team_a_color: Color = Color("2F80ED")
 @export var team_b_color: Color = Color("E5484D")
@@ -629,12 +654,16 @@ func _build_ghost(cell: Control, kind: String, diamond: PackedVector2Array) -> v
 ## Derrick League's own art with its key triad replaced as the match-start bake does it, at the
 ## scale of zoom 1.
 func _ghost_texture(triad: int) -> ImageTexture:
-	var path: String = IsoSheetDef.frame_path(
-		&"fossil", &"bld", StringName(GHOST_BUILDING), &"hull", -1
-	)
+	return _building_texture(&"fossil", StringName(GHOST_BUILDING), triad)
+
+
+## The hull frame of building `art_id` of `faction` in the triad of player `triad`, its key triad
+## replaced as the match-start bake does it, at the scale of zoom 1.
+func _building_texture(faction: StringName, art_id: StringName, triad: int) -> ImageTexture:
+	var path: String = IsoSheetDef.frame_path(faction, &"bld", art_id, &"hull", -1)
 	var art: IsoPlayerArt = IsoPlayerArt.make(
-		&"fossil",
-		PackedStringArray(ArtPalette.KEYS[&"fossil"]),
+		faction,
+		PackedStringArray(ArtPalette.KEYS[faction]),
 		PackedStringArray(WorldSort.TRIADS[triad])
 	)
 	var image: Image = Image.new()
@@ -759,8 +788,9 @@ func _icons_half(page: Control, node_name: String, colour: Color, anchors: Rect2
 
 ## The Hud page (plan row P118g): the HUD panel's backdrop over the whole page, the rows of
 ## `HUD_V2_ROWS` at 48 dp with the name of each glyph under it, the fourteen new glyphs again at
-## each of `HUD_SMALL_DP`, and the construction mast on a grass and a sand swatch, where a site's
-## badge is seen. Every row is centred, so the page fits at any base width from 1280.
+## each of `HUD_SMALL_DP`, and each faction's power building with the construction badge and the
+## offline glyph over it, where a site's badge is seen. Every row is centred, so the page fits at
+## any base width from 1280.
 func _add_hud_page() -> void:
 	_hud_page = _page_root("HudPage")
 	var panel: ColorRect = _icons_half(_hud_page, "Hud", HUD_BACKDROP, Rect2(0.0, 0.0, 1.0, 1.0))
@@ -771,7 +801,9 @@ func _add_hud_page() -> void:
 		icons.assign(HUD_V2_ROWS[row_name])
 		if HUD_V2_NEW_ROWS.has(row_name):
 			fresh.append_array(icons)
-		var row: Control = _pixel_row(panel, row_name, HUD_PAGE_ROW_TOPS[index])
+		var row: Control = _pixel_row(
+			panel, row_name, HUD_PAGE_ROW_TOPS[index], HUD_ROW_CENTRES[index]
+		)
 		_icon_grid(row, icons, HUD_GLYPH_DP, icons.size(), false, true)
 	for index: int in HUD_SMALL_DP.size():
 		var dp: float = HUD_SMALL_DP[index]
@@ -780,30 +812,43 @@ func _add_hud_page() -> void:
 	_add_site_row(_pixel_row(panel, "Sites", HUD_SITES_TOP))
 
 
-## The construction mast at the size of a glyph on the map, on a swatch of grass and one of sand,
-## with a line that says what it shows.
+## Each faction's 2x2 power building at zoom 1 on grass or sand with the construction badge and the
+## offline glyph over its body, both at the size of a glyph on the map, and a line that says so.
 func _add_site_row(row: Control) -> void:
 	var size_px: float = MAP_GLYPH_DP * PX_PER_DP
+	var badges: int = HUD_SITE_BADGES.size()
+	var pair: float = badges * size_px + (badges - 1) * HUD_BADGE_GAP_PX
 	var at: float = 0.0
-	for ground_name: String in ["Grass", "Sand"]:
+	for site: Dictionary in HUD_SITES:
 		var swatch: ColorRect = ColorRect.new()
-		swatch.name = "Site" + ground_name
+		swatch.name = site["name"]
 		swatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		swatch.color = TERRAIN_COLORS[&"grass_b" if ground_name == "Grass" else &"sand"]
+		swatch.color = TERRAIN_COLORS[site["ground"]]
 		swatch.position = Vector2(at, 0.0)
 		swatch.size = HUD_SITE_SIZE
-		var middle: Vector2 = (HUD_SITE_SIZE - Vector2.ONE * size_px) / 2.0
-		swatch.add_child(_icon_rect(HUD_SITE_GLYPH, size_px, middle))
+		var building: TextureRect = TextureRect.new()
+		building.name = "Building"
+		building.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		building.texture = _building_texture(site["faction"], site["art"], site["triad"])
+		building.size = building.texture.get_size()
+		building.position = Vector2((HUD_SITE_SIZE.x - building.size.x) / 2.0, HUD_SITE_MARGIN_PX)
+		swatch.add_child(building)
+		var badge_at: Vector2 = Vector2(
+			(HUD_SITE_SIZE.x - pair) / 2.0, building.position.y + building.size.y * 0.42
+		)
+		for badge: String in HUD_SITE_BADGES:
+			swatch.add_child(_icon_rect(badge, size_px, badge_at))
+			badge_at.x += size_px + HUD_BADGE_GAP_PX
 		row.add_child(swatch)
 		at += HUD_SITE_SIZE.x + ICON_GAP_PX
 	var note: Label = Label.new()
 	note.name = "LabelSites"
 	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	note.text = "construct on the map"
+	note.text = "badges on a building"
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	note.add_theme_font_size_override(&"font_size", HUD_CAPTION_PX)
 	note.add_theme_color_override(&"font_color", HUD_CAPTION_COLOR)
-	note.size = Vector2(HUD_SITE_SIZE.x * 2.0, HUD_CAPTION_HEIGHT_PX)
+	note.size = Vector2(HUD_SITE_SIZE.x, HUD_CAPTION_HEIGHT_PX)
 	note.position = Vector2(-note.size.x - ICON_GAP_PX, (HUD_SITE_SIZE.y - note.size.y) / 2.0)
 	row.add_child(note)
 
