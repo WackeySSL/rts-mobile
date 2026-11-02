@@ -1,0 +1,6 @@
+<!-- Chevron glyph: white and grey only, tinted at run time (the drawer's close button, which the code turns to face the edge it leaves by). -->
+<!-- Shape: one bold chevron pointing right, two round-ended strokes meeting at a rounded point; rotated in code for the other three directions. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <polyline points="43,24 85,64 43,104" fill="none" stroke="#4D4D4D" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="43,24 85,64 43,104" fill="none" stroke="#FFFFFF" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

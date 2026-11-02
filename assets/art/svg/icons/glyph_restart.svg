@@ -1,0 +1,11 @@
+<!-- Restart glyph: white and grey only, tinted at run time (the pause menu's Restart button). -->
+<!-- Shape: a thick circular arrow, a ring open at the top whose end runs into a wide triangular head pointing clockwise. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- the arc and the head: edge grey first -->
+  <path d="M96.6,54.8 A36 36 0 1 1 52.9,35.8" fill="none" stroke="#4D4D4D" stroke-width="26" stroke-linecap="round"/>
+  <polygon points="47.3,18.6 79.5,27.1 58.4,52.9" fill="#4D4D4D" stroke="#4D4D4D" stroke-width="10" stroke-linejoin="round"/>
+  <!-- then white over it -->
+  <path d="M96.6,54.8 A36 36 0 1 1 52.9,35.8" fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round"/>
+  <polygon points="47.3,18.6 79.5,27.1 58.4,52.9" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M103.9,77 A40.5 40.5 0 0 1 57,109.9" fill="none" stroke="#BFBFBF" stroke-width="6"/>
+</svg>

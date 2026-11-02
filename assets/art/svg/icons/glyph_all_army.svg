@@ -1,0 +1,22 @@
+<!-- All army glyph: white and grey only, tinted at run time (the group column's All army button). -->
+<!-- Shape: a soldier from the chest up under a grey half-dome helmet, in front of a small side-on tank with a sloped hull, a boxy turret and one barrel to the right. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- the tank behind: a track pod, a sloped hull, a turret and one barrel -->
+  <g fill="#BFBFBF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round">
+    <rect x="64" y="64" width="38" height="10" rx="3" fill="#FFFFFF"/>
+    <rect x="100" y="66" width="20" height="6" rx="2"/>
+    <polygon points="50,96 116,96 106,72 60,72"/>
+    <rect x="44" y="92" width="76" height="22" rx="10" fill="#FFFFFF"/>
+  </g>
+  <g fill="#BFBFBF">
+    <circle cx="60" cy="103" r="5"/>
+    <circle cx="82" cy="103" r="5"/>
+    <circle cx="104" cy="103" r="5"/>
+  </g>
+  <!-- the soldier in front: shoulders, head and a grey half-dome helmet -->
+  <g fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round">
+    <path d="M8,116 Q8,70 36,68 Q64,70 64,116 Z"/>
+    <circle cx="36" cy="44" r="17"/>
+  </g>
+  <path d="M17,46 A19 19 0 0 1 55,46 Z" fill="#BFBFBF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+</svg>

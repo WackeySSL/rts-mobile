@@ -1,0 +1,33 @@
+<!-- Construct glyph: white and grey only, drawn untinted on its seat (the badge over a building site). -->
+<!-- Shape: a tall straight-sided lattice mast of crossed braces on a flat foot, a long level jib across its top with a grey counterweight block at its back end and a hook hanging from the far end. It sits on a dark rounded plate with a white rim. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- seat: a dark plate with a white rim, so the glyph reads on grass, sand and a building -->
+  <rect x="6" y="6" width="116" height="116" rx="22" fill="#4D4D4D"/>
+  <rect x="11" y="11" width="106" height="106" rx="17" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+  <g transform="translate(64 64) scale(0.8) translate(-64 -64)">
+    <!-- the mast: legs, a rung and crossed braces; edge grey under, white over -->
+    <g fill="none" stroke-linecap="round">
+      <line x1="38" y1="69" x2="64" y2="69" stroke="#4D4D4D" stroke-width="11"/>
+      <line x1="38" y1="106" x2="64" y2="69" stroke="#4D4D4D" stroke-width="11"/>
+      <line x1="64" y1="106" x2="38" y2="69" stroke="#4D4D4D" stroke-width="11"/>
+      <line x1="38" y1="69" x2="64" y2="32" stroke="#4D4D4D" stroke-width="11"/>
+      <line x1="64" y1="69" x2="38" y2="32" stroke="#4D4D4D" stroke-width="11"/>
+      <line x1="38" y1="106" x2="38" y2="32" stroke="#4D4D4D" stroke-width="18"/>
+      <line x1="64" y1="106" x2="64" y2="32" stroke="#4D4D4D" stroke-width="18"/>
+      <line x1="38" y1="69" x2="64" y2="69" stroke="#FFFFFF" stroke-width="6"/>
+      <line x1="38" y1="106" x2="64" y2="69" stroke="#FFFFFF" stroke-width="6"/>
+      <line x1="64" y1="106" x2="38" y2="69" stroke="#FFFFFF" stroke-width="6"/>
+      <line x1="38" y1="69" x2="64" y2="32" stroke="#FFFFFF" stroke-width="6"/>
+      <line x1="64" y1="69" x2="38" y2="32" stroke="#FFFFFF" stroke-width="6"/>
+      <line x1="38" y1="106" x2="38" y2="32" stroke="#FFFFFF" stroke-width="11"/>
+      <line x1="64" y1="106" x2="64" y2="32" stroke="#FFFFFF" stroke-width="11"/>
+    </g>
+    <!-- the foot, the jib with the counterweight at its back end, and the hook -->
+    <rect x="22" y="104" width="60" height="14" rx="4" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+    <rect x="8" y="12" width="112" height="17" rx="5" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+    <rect x="14" y="22" width="100" height="3" rx="1.5" fill="#BFBFBF"/>
+    <rect x="8" y="29" width="24" height="22" rx="3" fill="#BFBFBF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M108 29 V64 q0 12 -10 12 q-8 0 -8 -8" fill="none" stroke="#4D4D4D" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M108 29 V64 q0 12 -10 12 q-8 0 -8 -8" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

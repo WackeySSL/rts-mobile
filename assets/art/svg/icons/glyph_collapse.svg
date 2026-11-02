@@ -1,0 +1,20 @@
+<!-- Collapse glyph: white and grey only, tinted at run time (the radar map's fold-away button). -->
+<!-- Shape: two fat diagonal arrows on one line from the upper right and the lower left, their square-cornered heads pointing at each other. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- shafts: edge grey under, white over -->
+  <g fill="none" stroke-linecap="round">
+    <line x1="89" y1="39" x2="108" y2="20" stroke="#4D4D4D" stroke-width="26"/>
+    <line x1="39" y1="89" x2="20" y2="108" stroke="#4D4D4D" stroke-width="26"/>
+    <line x1="89" y1="39" x2="108" y2="20" stroke="#FFFFFF" stroke-width="16"/>
+    <line x1="39" y1="89" x2="20" y2="108" stroke="#FFFFFF" stroke-width="16"/>
+  </g>
+  <!-- heads: a right angle at the tip, the tips facing each other -->
+  <g fill="#FFFFFF" stroke="#4D4D4D" stroke-width="5" stroke-linejoin="round">
+    <polygon points="68,60 68,18 110,60"/>
+    <polygon points="60,68 60,110 18,68"/>
+  </g>
+  <g fill="#BFBFBF">
+    <polygon points="68,60 110,60 89,39"/>
+    <polygon points="60,68 18,68 39,89"/>
+  </g>
+</svg>
