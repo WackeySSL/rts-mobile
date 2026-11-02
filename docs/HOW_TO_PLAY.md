@@ -99,8 +99,8 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 ## The screen in battle
 | Action | Result | Teach |
 |---|---|---|
-| Look at the screen | Your credits and your power are in a pill at the top left, after the Dev button, sideways and upright alike; the build menu does not repeat them. The pill shows the coin and your credits, and a bolt and a power bar that fills with the power your buildings use against the power they make, with both numbers inside it: the pill grows to make room for them as far as the screen allows (never into the radar's corner), and on a narrow screen they are left out and the bar and the bolt say it alone. The digits keep their places, so the numbers do not jitter as they change | yes |
-| Use more power than you make | The pill gets a red edge, the bar turns red and full, the bolt becomes a warning triangle and the word "LOW POWER" takes the place of the numbers in the bar: what you queue is built slower until you make enough power again (`low_power_percent` in `data/rules.tres`); the GDD's switched-off defences are not in the game yet (see Not yet in the game) | yes |
+| Look at the screen | Your credits and your power are in a pill at the top left, after the Dev button, sideways and upright alike; the build menu does not repeat them. The pill shows the coin and your credits, and a bolt and a power bar that fills with the power your buildings use against the power they make, with both numbers inside it: the pill grows to make room for them as far as the screen allows (never into the top-right corner), and on a narrow screen they are left out and the bar and the bolt say it alone. The digits keep their places, so the numbers do not jitter as they change | yes |
+| Use more power than you make | The pill gets a red edge, the bar turns red and full, the bolt becomes a warning triangle and the word "LOW POWER" takes the place of the numbers in the bar: what you queue is built slower (`low_power_percent` in `data/rules.tres`) and your defences hold their fire until you make enough power again | yes |
 
 ## Build menu
 | Action | Result | Teach |
@@ -141,7 +141,6 @@ their entries when their phase ships them (ROADMAP Phases 3-6).
 
 | Action | Result | Teach |
 |---|---|---|
-| Low power switching your defences off | Not shown yet: low power only slows what you queue, and your defences keep firing | |
 | An "under attack" warning at the screen edge | Not shown yet: nothing points at a unit that is hit off screen | |
 | Gas fields | Not shown yet: every field is oil. Once a map names its gas fields, one shows a pale crust with a glowing vent instead of a black pool, with the same full, half and dry steps | |
 | Play the Derrick League (oil and gas) or the Lumen Accord (green energy) | Not shown yet: no match lets you choose a side, and the preview's match gives both players Derrick League units. Every building and unit already belongs to one side, and your build menu shows only your side's. Once a match has both sides, each side plays its own buildings and units | |
