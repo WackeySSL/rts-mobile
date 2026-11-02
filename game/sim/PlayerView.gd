@@ -38,6 +38,7 @@ extends RefCounted
 ##   and `ghost_pos(i)` gives its position, the footprint centre in milli-tiles as `row_pos` gives
 ##   it for a live building.
 ## - The rules, which no fog hides: the type tables the AI reads (`type_cost`, `type_tab`, ...),
+##   `construction_sites_max` (how many sites one player builds at a time, ADR 0026 section 5),
 ##   `type_index_of(id)`, `is_refinery(type)`, and the World's constants it needs, re-exported
 ##   (`Tab`, `HarvestMode`, `Order`, `TABS`, `MILLI_PER_TILE`, `TILE_CENTRE`).
 ##
@@ -138,6 +139,9 @@ var type_weapon: PackedInt32Array = PackedInt32Array()
 var type_harvest: PackedInt32Array = PackedInt32Array()
 var type_power: PackedInt32Array = PackedInt32Array()
 var type_build_ticks: PackedInt32Array = PackedInt32Array()
+## The most buildings one player has under construction at a time (`data/rules.tres`, ADR 0026
+## section 5): a PLACE past it is dropped.
+var construction_sites_max: int = 0
 
 ## The row columns, aliases of the World's (see the header): behind the getters, which hide the rows
 ## the player does not see. `_shown` holds `_OWN`, `_SEEN` or `_HIDDEN` for each row.
@@ -315,6 +319,7 @@ func _take_tables(world: World) -> void:
 	type_harvest = world.type_harvest.duplicate()
 	type_power = world.type_power.duplicate()
 	type_build_ticks = world.type_build_ticks.duplicate()
+	construction_sites_max = world.construction_sites_max
 	_dock_x = world.type_dock_x.duplicate()
 	_dock_y = world.type_dock_y.duplicate()
 	_type_ids = world.type_ids.duplicate()

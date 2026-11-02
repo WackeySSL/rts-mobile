@@ -45,3 +45,18 @@ func test_the_getter_reads_the_row_columns_and_not_a_public_array() -> void:
 	for property: Dictionary in view.get_property_list():
 		properties.append(String(property["name"]))
 	assert_bool(properties.has("build_left")).is_false()
+
+
+## The site limit is a rule (`construction_sites_max`, ADR 0026 section 5), and no fog hides a
+## rule: every player's view carries the World's number, so an AI keeps to the limit of the rules
+## without a literal of its own (rule 5). An int, so the view's field is its own copy.
+func test_the_site_limit_is_the_worlds_rule_for_every_player() -> void:
+	var world: World = ViewWorlds.crafted()
+	world.construction_sites_max = 1
+	for player: int in [1, 2]:
+		assert_int(PlayerView.of(world, player).construction_sites_max).is_equal(1)
+	world.construction_sites_max = 3
+	var view: PlayerView = PlayerView.of(world, 1)
+	assert_int(view.construction_sites_max).is_equal(3)
+	world.construction_sites_max = 5
+	assert_int(view.construction_sites_max).is_equal(3)

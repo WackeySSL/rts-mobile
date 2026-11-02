@@ -52,17 +52,23 @@ func test_both_bases_are_built_from_their_own_faction_and_the_match_goes_on() ->
 	assert_array([_first.match_end_tick, _first.winner]).is_equal([0, 0])
 
 
-func test_no_dummy_queues_a_type_of_the_other_faction() -> void:
+func test_no_dummy_starts_a_type_of_the_other_faction() -> void:
+	var placed: Dictionary[int, int] = {}
 	var queued: Dictionary[int, int] = {}
 	for command: Command in _sent:
-		if command.type == Command.Type.QUEUE:
-			queued[command.player_id] = queued.get(command.player_id, 0) + 1
+		if command.type == Command.Type.QUEUE or command.type == Command.Type.PLACE:
+			var count: Dictionary[int, int] = (
+				placed if command.type == Command.Type.PLACE else queued
+			)
+			count[command.player_id] = count.get(command.player_id, 0) + 1
 			var faction: String = Factions.faction_of(_first, command.payload[0])
 			assert_str(faction).is_equal([FIRST, SECOND][command.player_id - 1])
-	# Each queued its build order and the harvester the refinery did not bring, and nothing else.
+	# Each placed its build order (never queued a structure) and queued the harvester the refinery
+	# did not bring, and nothing else.
 	for player: int in [1, 2]:
 		var def: AiDef = Factions.def_of([FIRST, SECOND][player - 1])
-		assert_int(queued[player]).is_equal(def.build_order.size() + def.harvesters_wanted - 1)
+		assert_int(placed[player]).is_equal(def.build_order.size())
+		assert_int(queued[player]).is_equal(def.harvesters_wanted - 1)
 
 
 func test_each_dummy_commands_on_its_own_tick() -> void:

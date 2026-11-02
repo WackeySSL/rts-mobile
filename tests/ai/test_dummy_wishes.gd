@@ -1,8 +1,10 @@
 extends GdUnitTestSuite
-## What the dummy queues at one think (plan row P83, ADR 0020 section 4): the next wish of the build
-## order, the harvesters it wants, the room of a queue and the credits. Each case is a think on a
+## What the dummy starts at one think (plan rows P83 and P129, ADR 0020 section 4, ADR 0026 section
+## 8): the next wish of the build order (a unit is queued, a structure is placed and built on the
+## spot), the harvesters it wants, the room of a queue and the credits. Each case is a think on a
 ## start of `ai_rig.gd` that the case changed (a building given, credits set), and where it matters
 ## the Commands are applied through the loop to show the sim keeps every one (`dropped_commands` 0).
+## The rules of a site (one at a time, complete buildings only) are in test_dummy_sites.gd.
 
 const Rig: GDScript = preload("res://tests/ai/support/ai_rig.gd")
 const VEHICLES: int = World.Tab.VEHICLES
@@ -10,10 +12,11 @@ const INFANTRY: int = World.Tab.INFANTRY
 const STRUCTURES: int = World.Tab.STRUCTURES
 
 
-func test_the_first_think_queues_only_the_power_plant() -> void:
+func test_the_first_think_places_only_the_power_plant() -> void:
 	var world: World = Rig.start()
 	var sent: Array[Command] = _think(world, Rig.dummy(1))
-	assert_array(_queued(world, sent)).is_equal(["power_plant"])
+	assert_array(_wanted(world, sent)).is_equal(["power_plant"])
+	assert_array(_queued(world, sent)).is_empty()
 	assert_int(sent.size()).is_equal(1)
 	assert_int(sent[0].player_id).is_equal(1)
 	Rig.step(world, Rig.loop_of(world), sent)
@@ -26,7 +29,7 @@ func test_a_wish_the_credits_do_not_cover_waits() -> void:
 	world.credits[1] = 299
 	assert_array(_think(world, Rig.dummy(1))).is_empty()
 	world.credits[1] = 300
-	assert_array(_queued(world, _think(world, Rig.dummy(1)))).is_equal(["power_plant"])
+	assert_array(_wanted(world, _think(world, Rig.dummy(1)))).is_equal(["power_plant"])
 
 
 func test_a_wish_the_credits_do_not_cover_keeps_them_from_a_cheaper_one_behind_it() -> void:
@@ -38,7 +41,7 @@ func test_a_wish_the_credits_do_not_cover_keeps_them_from_a_cheaper_one_behind_i
 	var ai: DummyAi = Rig.ai_of(Rig.def_with(["refinery", "barracks"]), 1)
 	assert_array(_think(world, ai)).is_empty()
 	world.credits[1] = 1500
-	assert_array(_queued(world, _think(world, ai))).is_equal(["refinery"])
+	assert_array(_wanted(world, _think(world, ai))).is_equal(["refinery"])
 
 
 func test_a_wish_whose_requirement_is_missing_is_waited_for_not_skipped() -> void:
@@ -49,12 +52,13 @@ func test_a_wish_whose_requirement_is_missing_is_waited_for_not_skipped() -> voi
 	assert_array(_think(world, ai)).is_empty()
 
 
-func test_a_queued_item_counts_as_had_and_a_requirement_must_be_owned() -> void:
+func test_a_site_counts_as_had_and_a_requirement_must_be_owned_finished() -> void:
 	var world: World = Rig.start()
 	var loop: MatchLoop = Rig.loop_of(world)
 	var ai: DummyAi = Rig.dummy(1)
 	Rig.step(world, loop, _think(world, ai))
-	# The plant is queued, not placed: the refinery behind it has no power plant to stand on yet.
+	# The plant is a site, not finished: it is not placed twice, and the refinery behind it has no
+	# power plant to stand on yet.
 	assert_array(_think(world, ai)).is_empty()
 
 
@@ -71,10 +75,11 @@ func test_a_lost_building_is_wanted_again_at_its_place_in_the_order() -> void:
 	assert_int(Rig.count_of(world, 1, "power_plant")).is_equal(1)
 	var next: Array[String] = []
 	for _step: int in 600:
-		next = _queued(world, Rig.tick(world, loop, [ai]))
+		next = _wanted(world, Rig.tick(world, loop, [ai]))
 		if not next.is_empty():
 			break
-	# The second plant of the order comes before the vehicle factory that is next after it.
+	# The second plant of the order comes before the vehicle factory that is next after it, and
+	# after the site that was under way when the first plant died.
 	assert_array(next).is_equal(["power_plant"])
 	assert_int(world.dropped_commands).is_equal(0)
 
@@ -116,28 +121,42 @@ func test_unit_types_in_the_order_are_queued_on_their_tab() -> void:
 
 func test_a_queue_holds_queue_target_items_and_never_more_than_it_has_slots() -> void:
 	var world: World = _barracks_start()
-	var turrets: Array[String] = ["defence_turret", "defence_turret", "defence_turret"]
-	var sent: Array[Command] = _think(world, Rig.ai_of(Rig.def_with(turrets), 1))
-	assert_array(_queued(world, sent)).is_equal(["defence_turret", "defence_turret"])
+	# The start has two rifle squads: four in the order are two more to queue.
+	var squads: Array[String] = ["rifle_squad", "rifle_squad", "rifle_squad", "rifle_squad"]
+	var sent: Array[Command] = _think(world, Rig.ai_of(Rig.def_with(squads), 1))
+	assert_array(_queued(world, sent)).is_equal(["rifle_squad", "rifle_squad"])
 	# A target above the rules' 5 slots is cut to the slots.
-	var many: AiDef = Rig.def_with(["defence_turret", "defence_turret", "defence_turret"])
+	var many: AiDef = Rig.def_with(squads)
 	many.queue_target = 9
-	many.build_order.append_array([&"defence_turret", &"defence_turret", &"defence_turret"])
+	many.build_order.append_array([&"rifle_squad", &"rifle_squad", &"rifle_squad", &"rifle_squad"])
 	var loop: MatchLoop = Rig.loop_of(world)
 	var big: Array[Command] = _think(world, Rig.ai_of(many, 1))
 	assert_int(big.size()).is_equal(world.queue_slots)
 	Rig.step(world, loop, big)
-	assert_int(world.queue_count[1 * World.TABS + STRUCTURES]).is_equal(world.queue_slots)
+	assert_int(world.queue_count[1 * World.TABS + INFANTRY]).is_equal(world.queue_slots)
+	assert_int(world.dropped_commands).is_equal(0)
+
+
+func test_queue_target_does_not_make_the_dummy_start_two_structures() -> void:
+	var world: World = _barracks_start()
+	var def: AiDef = Rig.def_with(["defence_turret", "defence_turret", "defence_turret"])
+	def.queue_target = 5
+	var sent: Array[Command] = _think(world, Rig.ai_of(def, 1))
+	# One site at a time, whatever the queue target: the structure tab has no queue to fill.
+	assert_array(_wanted(world, sent)).is_equal(["defence_turret"])
+	Rig.step(world, Rig.loop_of(world), sent)
+	assert_int(world.queue_count[1 * World.TABS + STRUCTURES]).is_equal(0)
 	assert_int(world.dropped_commands).is_equal(0)
 
 
 func test_one_think_queues_no_more_than_the_credits_pay() -> void:
-	var world: World = Rig.start()
-	var def: AiDef = Rig.def_with(["power_plant", "power_plant", "power_plant"])
+	var world: World = _barracks_start()
+	var def: AiDef = Rig.def_with(["rifle_squad", "rifle_squad", "rifle_squad", "rifle_squad"])
 	def.queue_target = 5
-	world.credits[1] = 650
+	var price: int = world.type_cost[Rig.type_of(world, "rifle_squad")]
+	world.credits[1] = price * 2 + 50
 	var sent: Array[Command] = _think(world, Rig.ai_of(def, 1))
-	assert_array(_queued(world, sent)).is_equal(["power_plant", "power_plant"])
+	assert_array(_queued(world, sent)).is_equal(["rifle_squad", "rifle_squad"])
 	Rig.step(world, Rig.loop_of(world), sent)
 	assert_array([world.credits[1], world.dropped_commands]).is_equal([50, 0])
 
@@ -148,7 +167,7 @@ func test_an_id_the_roster_lacks_and_a_type_no_tab_builds_are_left_out() -> void
 	# the order, it would hold the strict order for good and the power plant would never be queued.
 	var order: Array[String] = ["flying_pig", "headquarters", "headquarters", "power_plant"]
 	var ai: DummyAi = Rig.ai_of(Rig.def_with(order), 1)
-	assert_array(_queued(world, _think(world, ai))).is_equal(["power_plant"])
+	assert_array(_wanted(world, _think(world, ai))).is_equal(["power_plant"])
 
 
 func test_a_player_with_no_producer_sends_nothing() -> void:
@@ -176,11 +195,20 @@ func _think(world: World, ai: AiController, player: int = -1, all: bool = false)
 	return sent if all else Rig.economy(sent)
 
 
-## The type ids that the QUEUE commands of `sent` name, in order.
+## The type ids that the QUEUE commands of `sent` name, in order (units: a structure is placed).
 func _queued(world: World, sent: Array[Command]) -> Array[String]:
 	var found: Array[String] = []
 	for command: Command in sent:
 		if command.type == Command.Type.QUEUE:
+			found.append(String(world.type_ids[command.payload[0]]))
+	return found
+
+
+## The type ids that the QUEUE and PLACE commands of `sent` name, in order: what the think started.
+func _wanted(world: World, sent: Array[Command]) -> Array[String]:
+	var found: Array[String] = []
+	for command: Command in sent:
+		if command.type == Command.Type.QUEUE or command.type == Command.Type.PLACE:
 			found.append(String(world.type_ids[command.payload[0]]))
 	return found
 

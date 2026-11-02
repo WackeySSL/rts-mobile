@@ -13,9 +13,10 @@ extends GdUnitTestSuite
 const DummyStart: GDScript = preload("res://tests/core/support/dummy_start.gd")
 const RecordingAi: GDScript = preload("res://tests/core/support/recording_ai.gd")
 const SEED: int = 42
-## Ticks of the dummy match: 40 checkpoints, in which the dummy queues and places its power plant
-## and queues the next items of its build order. Its last think is at tick 592, and the job a
-## WORKER runner runs ahead (tick 600 to 601) adds no Command and no checkpoint.
+## Ticks of the dummy match: 40 checkpoints, in which the dummy places its power plant and, once
+## that stands (place first, ADR 0026 section 8: a PLACE with the type starts a site), its
+## refinery. Its last think is at tick 592, and the job a WORKER runner runs ahead (tick 600 to
+## 601) adds no Command and no checkpoint.
 const TICKS: int = 600
 ## The human's MOVE: stamped on a tick the dummy of player 2 thinks on (7 + 2 - 2, ADR 0020
 ## section 2), to a grass tile north-east of player 1's Headquarters.
@@ -140,8 +141,9 @@ func test_a_dummy_match_is_the_same_in_sync_in_worker_and_in_a_headless_loop() -
 
 ## The log of the dummy match (the runners' equals it, above): the human's MOVE is the one Command
 ## of player 1, stamped HUMAN_TICK and logged before the dummy's Commands of that tick; every
-## Command of player 2 is stamped on its think ticks, QUEUE and PLACE among them. Replay.play on a
-## fresh World of the scenario, with no AI, reaches every checkpoint and the run's final state.
+## Command of player 2 is stamped on its think ticks, the two PLACE (with their type) among them.
+## Replay.play on a fresh World of the scenario, with no AI, reaches every checkpoint and the run's
+## final state.
 func test_the_dummys_commands_are_in_the_replay_and_it_replays_without_the_ai() -> void:
 	var world: World = _start_world()
 	var loop: MatchLoop = _headless_match(world)
@@ -161,7 +163,9 @@ func test_the_dummys_commands_are_in_the_replay_and_it_replays_without_the_ai() 
 			assert_int(record[PLAYER]).is_equal(2)
 			assert_int((record[TICK] + dummy.think_offset) % dummy.think_period).is_equal(0)
 			types[record[TYPE]] = types.get(record[TYPE], 0) + 1
-	assert_bool(types.has(Command.Type.QUEUE) and types.has(Command.Type.PLACE)).is_true()
+	# The plant and the refinery: structures are placed, never queued, and no unit is wanted yet.
+	assert_int(types.get(Command.Type.PLACE, 0)).is_equal(2)
+	assert_bool(types.has(Command.Type.QUEUE)).is_false()
 	var replayed: World = _start_world()
 	assert_int(Replay.play(loop.replay, replayed, world.tick)).is_equal(Replay.PLAY_MATCHED)
 	assert_array([replayed.tick, replayed.state_hash()]).is_equal([TICKS, world.state_hash()])

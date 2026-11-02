@@ -1,21 +1,23 @@
 extends GdUnitTestSuite
-## The dummy's economy for each faction (plan row P83d, ADR 0020 section 4, ADR 0023 section 6):
-## the start test of P83's `test_dummy_economy.gd` run for the Derrick League and for the Lumen
-## Accord. One dummy as player 1 of the faction start of `faction_rig.gd` (its Headquarters, two
-## rifle squads, the rules' start credits, ore near, real fog; player 2 passive and of the other
-## faction, so the World holds both rosters), run once per faction for 3,600 ticks through the
-## headless loop. Each faction's whole build order stands within a bound of ticks (counted), the sim
-## drops nothing, the dummy queues only types of its own faction, and its harvesters bring ore in.
+## The dummy's economy for each faction (plan rows P83d and P129, ADR 0020 section 4, ADR 0023
+## section 6, ADR 0026 section 8): the start test of `test_dummy_economy.gd` run for the Derrick
+## League and for the Lumen Accord. One dummy as player 1 of the faction start of `faction_rig.gd`
+## (its Headquarters, two rifle squads, the rules' start credits, ore near, real fog; player 2
+## passive and of the other faction, so the World holds both rosters), run once per faction for
+## 3,600 ticks through the headless loop. Each faction's whole build order stands finished within a
+## bound of ticks (counted), the sim drops nothing, the dummy places and queues only types of its
+## own faction, one site at a time, and its harvesters bring ore in.
 
 const Rig: GDScript = preload("res://tests/ai/support/ai_rig.gd")
 const Factions: GDScript = preload("res://tests/ai/support/faction_rig.gd")
 const TICKS: int = 3600
 ## The ticks the wrongly paired dummy runs for.
 const WRONG_TICKS: int = 900
-## The ticks in which the whole build order must stand, per faction (measured 3,112 and 2,767 on the
-## shipped defs, rules and rosters; the Lumen Accord's power plant costs less). Each bound leaves
-## room for a rebalance of a few percent and nothing more, so a dummy that dithers fails it.
-const DONE_BOUND: Dictionary[String, int] = {"fossil": 3300, "renew": 2950}
+## The ticks in which the whole build order must stand finished, per faction (measured 2,856 and
+## 2,751 on the shipped defs, rules and rosters; the old queue path took 3,112 and 2,767). Each
+## bound leaves room for a rebalance of a few percent and nothing more, so a dummy that dithers
+## fails it.
+const DONE_BOUND: Dictionary[String, int] = {"fossil": 3000, "renew": 2900}
 
 var _runs: Dictionary[String, Run] = {}
 
@@ -25,11 +27,12 @@ class Run:
 	var world: World
 	var def: AiDef
 	var sent: Array[Command] = []
-	## The tick at which the build order first stood, the most slots one think asked about and the
-	## most items one queue held.
+	## The tick at which the build order first stood finished, the most slots one think asked
+	## about, the most items one unit queue held and the most sites under way at once.
 	var done_tick: int = -1
 	var max_tries: int = 0
 	var max_queue: int = 0
+	var max_sites: int = 0
 	## The tile of the first PLACE and the slots the think that sent it asked about (-1, -1 and 0
 	## while none was sent).
 	var first_place: Vector2i = Vector2i(-1, -1)
@@ -61,33 +64,42 @@ func test_it_never_sends_a_command_the_sim_drops(
 	assert_int(run.world.spawn_refused).is_equal(0)
 
 
-func test_structures_are_queued_in_the_order_of_the_def(
+func test_structures_are_placed_in_the_order_of_the_def_and_never_queued(
 	faction: String, _test_parameters := _each()
 ) -> void:
 	var run: Run = _runs[faction]
-	var queued: Array[String] = []
+	var placed: Array[String] = []
 	for command: Command in run.sent:
-		if command.type == Command.Type.QUEUE:
-			var id: String = String(run.world.type_ids[command.payload[0]])
-			if id != String(run.def.harvester_type):
-				queued.append(id)
+		var id: String = ""
+		if command.payload.size() == 1:
+			id = String(run.world.type_ids[command.payload[0]])
+		if command.type == Command.Type.PLACE:
+			placed.append(id)
+		elif command.type == Command.Type.QUEUE:
+			assert_str(id).is_equal(String(run.def.harvester_type))
 	var expected: Array[String] = []
 	expected.assign(run.def.build_order)
-	assert_array(queued).is_equal(expected)
+	assert_array(placed).is_equal(expected)
 
 
-func test_it_queues_and_owns_only_types_of_its_own_faction(
+func test_one_site_is_under_way_at_a_time(faction: String, _test_parameters := _each()) -> void:
+	var run: Run = _runs[faction]
+	assert_int(run.max_sites).is_equal(1)
+	assert_int(run.max_sites).is_equal(run.world.construction_sites_max)
+
+
+func test_it_places_queues_and_owns_only_types_of_its_own_faction(
 	faction: String, _test_parameters := _each()
 ) -> void:
 	var run: Run = _runs[faction]
 	# Both rosters are in the World, so a type of the other faction was there to be picked.
 	assert_array(run.world.faction_ids).contains_exactly_in_any_order([&"fossil", &"renew"])
-	var queued: int = 0
+	var started: int = 0
 	for command: Command in run.sent:
-		if command.type == Command.Type.QUEUE:
-			queued += 1
+		if command.type == Command.Type.QUEUE or command.type == Command.Type.PLACE:
+			started += 1
 			assert_str(Factions.faction_of(run.world, command.payload[0])).is_equal(faction)
-	assert_int(queued).is_greater(run.def.build_order.size())
+	assert_int(started).is_greater(run.def.build_order.size())
 	assert_bool(Factions.owns_only(run.world, 1, faction)).is_true()
 
 
@@ -115,7 +127,8 @@ func test_a_think_asks_about_no_more_slots_than_place_tries_and_no_queue_overfil
 ) -> void:
 	var run: Run = _runs[faction]
 	assert_int(run.max_tries).is_between(1, run.def.place_tries)
-	assert_int(run.max_queue).is_equal(run.def.queue_target)
+	# Units only: the tanker the refinery did not bring. The structures tab has no queue to fill.
+	assert_int(run.max_queue).is_between(1, run.def.queue_target)
 
 
 func test_the_first_slot_that_placement_accepts_is_used(
@@ -200,8 +213,9 @@ func _play(faction: String) -> Run:
 			if command.type == Command.Type.PLACE and run.first_place_slots == 0:
 				run.first_place = Vector2i(command.target_x / 1000, command.target_y / 1000)
 				run.first_place_slots = ai.placement_tries
-		for queue: int in range(World.TABS, World.TABS * 2):
+		for queue: int in range(World.TABS + 1, World.TABS * 2):
 			run.max_queue = maxi(run.max_queue, run.world.queue_count[queue])
+		run.max_sites = maxi(run.max_sites, _sites(run.world))
 		if run.done_tick < 0 and _stands(run):
 			run.done_tick = run.world.tick
 	return run
@@ -224,10 +238,29 @@ func _counts(def: AiDef) -> Dictionary[String, int]:
 	return counts
 
 
-## Whether player 1 owns at least as many of each type as the build order lists.
+## How many sites (rows with work left) player 1 has.
+func _sites(world: World) -> int:
+	var found: int = 0
+	for row: int in world.unit_count():
+		if world.owner[row] == 1 and world.build_left[row] > 0:
+			found += 1
+	return found
+
+
+## Whether player 1 owns at least as many finished buildings of each type as the build order lists
+## (a site is not one).
 func _stands(run: Run) -> bool:
 	var counts: Dictionary[String, int] = _counts(run.def)
 	for id: String in counts:
-		if Rig.count_of(run.world, 1, id) < counts[id]:
+		var type: int = Rig.type_of(run.world, id)
+		var finished: int = 0
+		for row: int in run.world.unit_count():
+			if (
+				run.world.owner[row] == 1
+				and run.world.type_index[row] == type
+				and run.world.build_left[row] == 0
+			):
+				finished += 1
+		if finished < counts[id]:
 			return false
 	return true

@@ -9,13 +9,15 @@ extends Resource
 @export var id: StringName = &""
 ## What the player builds, in order: type ids of buildings (a unit type works the same way, on its
 ## tab). The player wants as many of a type as the list has up to the item, so a lost building is
-## wanted again at its place. An id the roster lacks is left out.
+## wanted again at its place. An id the roster lacks is left out. A structure is placed first and
+## built on the spot, one site at a time (ADR 0026 section 8); a unit is queued.
 @export var build_order: Array[StringName] = []
 ## The type id of the player's Headquarters (the placement spiral's centre) and of its harvester.
 @export var hq_type: StringName = &"headquarters"
 @export var harvester_type: StringName = &"harvester"
-## The most items one production queue holds at a time, the harvesters kept per own refinery (the
-## refinery's free one included), and the most spiral tiles one think asks `placement` about.
+## The most units one production queue holds at a time (structures have no queue: they are placed),
+## the harvesters kept per own refinery (the refinery's free one included), and the most spiral
+## tiles one think asks `placement` about.
 @export var queue_target: int = 2
 @export var harvesters_wanted: int = 2
 @export var place_tries: int = 64

@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## The controller contract (plan row P83, ADR 0020 section 2): `AiController`'s fields and `think`,
 ## what `DummyAi.create` copies from its def and where its thinks fall. The economy is in
-## test_dummy_economy.gd and test_dummy_wishes.gd, the placement in test_dummy_placement.gd.
+## test_dummy_economy.gd and test_dummy_wishes.gd, the placement in test_dummy_placement.gd and the
+## rules of a site in test_dummy_sites.gd.
 
 const Rig: GDScript = preload("res://tests/ai/support/ai_rig.gd")
 
@@ -100,10 +101,10 @@ func test_a_dummy_draws_no_random_number() -> void:
 	assert_array(Array(stream.state())).is_equal(Array(before))
 
 
-## The type ids that the QUEUE commands of `sent` name.
+## The type ids that the QUEUE and PLACE commands of `sent` name.
 func _types(world: World, sent: Array[Command]) -> Array[String]:
 	var found: Array[String] = []
 	for command: Command in sent:
-		if command.type == Command.Type.QUEUE:
+		if command.type == Command.Type.QUEUE or command.type == Command.Type.PLACE:
 			found.append(String(world.type_ids[command.payload[0]]))
 	return found
