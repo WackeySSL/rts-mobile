@@ -59,7 +59,7 @@ Tick a box in the PR that meets the criterion.
 - [ ] Gate: Normal wins 40-60% against the mirror AI over 100 matches, no match lasts over 15 minutes, every unit type is used
 
 ## Phase 5: Polish and meta
-- [ ] Main menu, map select, settings (sound, haptics, privacy options placeholder)
+- [ ] Main menu, map select, settings (sound, haptics, reduced effects (ADR 0027), privacy options placeholder)
 - [ ] Commander rank, XP, unlocks and local save; save and resume when the app goes to the background
 - [ ] Sound effects (CC0 or generated) and music volume
 - [ ] Interactive tutorial of about 3 minutes that teaches how to play, including every entry marked
