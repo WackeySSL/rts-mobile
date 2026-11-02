@@ -37,6 +37,7 @@ const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const ArenaRig: GDScript = preload("res://tests/ui/support/arena_rig.gd")
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const GATE_PATH: String = "res://data/dev/perf_gate.tres"
+const LIFE_PATH: String = "res://data/life_settings.tres"
 ## The delta of a frame that moves the runner's clock by exactly one tick (the runner rounds it to
 ## 1_000_000 micro ticks).
 const PERIOD: float = 1.0 / Sim.TICK_RATE
@@ -146,8 +147,15 @@ class MainScene:
 		runner.tick_mode = mode
 		runner.sim_impl = impl
 		runner.ticked.connect(_on_ticked)
-		parent.add_child(main)
 		units = main.get_node("UnitLayer") as UnitLayer
+		# The idle look turns a turret by a region of the match time (tick + alpha), which is not a
+		# function of the published tick: a worker's alpha at one tick is not a sync scene's. The
+		# published state is what these cases compare, so the look is off (P140; its own suite is
+		# tests/view/test_idle_units.gd).
+		var life: LifeSettings = (load(LIFE_PATH) as LifeSettings).duplicate() as LifeSettings
+		life.look_ms = 0
+		units.life = life
+		parent.add_child(main)
 		fog = main.get_node("FogLayer") as FogLayer
 		runner.set_process(false)
 		for node: Node in main.find_children("*", "", true, false):

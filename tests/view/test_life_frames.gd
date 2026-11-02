@@ -27,10 +27,24 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"_slot_of",
 		"_curve",
 		"_quantised",
+		"shake_offset",
+		"look_side",
+		"sweep_offset",
+		"_forever",
 	],
 	"res://game/view/LifeClock.gd": ["ms", "tick_ms", "age_ms", "mix", "pick"],
-	"res://game/view/UnitLayer.gd": ["_on_ticked", "_note_shot", "_kick_rigs", "_apply_kick"],
-	"res://game/view/BuildingLayer.gd": ["_on_ticked", "_note_shot", "_kick_heads"],
+	"res://game/view/UnitLayer.gd":
+	[
+		"_on_ticked",
+		"_note_shot",
+		"_kick_rigs",
+		"_apply_kick",
+		"_idle_rigs",
+		"_idle_rig",
+		"_apply_shake",
+		"_apply_look",
+	],
+	"res://game/view/BuildingLayer.gd": ["_on_ticked", "_note_shot", "_kick_heads", "_sweep_heads"],
 }
 const ALLOCATING: Array[String] = [
 	"Array(",
@@ -174,11 +188,13 @@ func _make_layers() -> void:
 	_units = auto_free(UnitLayer.new())
 	_units.runner = _runner
 	_units.camera = camera
+	_units.life = Rig.calmed(null)  # The recoil's share: the idle life has suites of its own.
 	add_child(_units)
 	_units.set_process(false)
 	_units._process(0.0)
 	_buildings = auto_free(BuildingLayer.new())
 	_buildings.runner = _runner
+	_buildings.life = Rig.calmed(null)
 	add_child(_buildings)
 	_buildings.set_process(false)
 	_buildings._process(0.0)

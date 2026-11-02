@@ -1,0 +1,577 @@
+extends GdUnitTestSuite
+## The idle life of vehicles (plan P140, ADR 0027 sections 1, 3, 6 and 8): a vehicle that stood
+## still in the last tick with no target, inside the view rect, shakes its Hull and Turret together
+## by a half pixel at most, with one new offset per `shake_ms` at the most. A vehicle that moves or
+## has a target does not, nor does a squad, a hidden enemy, a rig out of view, or anything with
+## `reduced` set. Life moves child sprites only: the rig's node, its picks and its Shadow stay. The
+## turret's look is in test_idle_looks.gd. The functions are in
+## test_idle_life.gd; this is the layer's use of them. Fixtures: recoil_rig.gd (a paused runner
+## whose tick and alpha the test sets, `_process` once for a frame; match time = (tick + alpha) x
+## 1000 / 15 ms). The camera starts far away, so every rig is made at rest; a test points it at a
+## rig (`_watch`) and the rig rests for one step before it shakes (a rig that has just become idle
+## starts at its own next step, which spreads a halting column's first writes over `shake_ms`). The
+## light tank (id 1) shakes (0, 0) for its first 166 ms from 2000 ms, by the Python restatement of
+## the functions, and the heavy tank (id 2) is held down by a target in the tests of the light one.
+
+const Rig: GDScript = preload("res://tests/view/support/recoil_rig.gd")
+const Buildings: GDScript = preload("res://tests/view/support/building_rig.gd")
+const Frames: GDScript = preload("res://tests/view/support/rig_frames.gd")
+const TOL: Vector2 = Vector2(0.001, 0.001)
+const FRAMES_PER_TICK: int = 4  ## A 60 fps frame is a quarter of a 15 Hz tick, 16.7 ms.
+const HEAVY_TANKS: int = 40
+const LIGHT_TANKS: int = 30
+const FAR: float = 1.0e6
+
+var _runner: MatchRunner
+var _layer: UnitLayer
+var _camera: RtsCamera
+var _life: LifeSettings
+var _expect: RigLife  ## The same numbers, to say what a frame should show.
+
+
+func before_test() -> void:
+	_runner = auto_free(Rig.runner())
+	_start(LifeSettings.new())
+
+
+func after_test() -> void:
+	CommandQueue.clear()
+
+
+func test_a_standing_vehicle_shakes_hull_and_turret_together_as_the_function_says() -> void:
+	_life.look_ms = 0  # The shake alone.
+	_pin_down(Rig.HEAVY)
+	var row: int = _runner.snapshot.index_of(Rig.LIGHT)
+	var hull: Sprite2D = _rig(row).get_node("Hull")
+	var turret: Sprite2D = _rig(row).get_node("Turret")
+	var mount: Vector2 = turret.position
+	_watch(Rig.LIGHT)
+	var off_rule: int = 0
+	var apart: int = 0
+	var seen: Dictionary[Vector2, bool] = {}
+	var changes: int = 0
+	var last: Vector2 = Vector2.ZERO
+	for frame: int in 300:  # 5 s.
+		_frame(frame)
+		var want: Vector2 = _expect.shake_offset(Rig.LIGHT, _now())
+		if not hull.position.is_equal_approx(want):
+			off_rule += 1
+		if not (turret.position - mount).is_equal_approx(want):
+			apart += 1
+		if absf(hull.position.x) > 0.5 or absf(hull.position.y) > 0.5:
+			off_rule += 1
+		seen[hull.position] = true
+		if hull.position != last:
+			changes += 1
+			last = hull.position
+	assert_int(off_rule).is_equal(0)
+	assert_int(apart).is_equal(0)  # The Turret rides with the Hull.
+	assert_int(seen.size()).is_greater_equal(6)  # It does move, over a good part of the nine.
+	# At most one new offset per shake_ms: 5 s hold 62.5 steps of 80 ms. The Hull and the Turret are
+	# written together, so two sprite writes for each change.
+	assert_int(changes).is_between(40, 63)
+	assert_int(_layer.life_writes()).is_equal(2 * changes)
+
+
+func test_the_pinned_first_offsets_of_the_light_tank() -> void:
+	# The Python restatement: ten frames at rest, then (-0.5, 0) for four, (0.5, 0.5) for five.
+	_life.look_ms = 0
+	_pin_down(Rig.HEAVY)
+	var row: int = _runner.snapshot.index_of(Rig.LIGHT)
+	var hull: Sprite2D = _rig(row).get_node("Hull")
+	_watch(Rig.LIGHT)
+	var offsets: Array[Vector2] = []
+	for frame: int in 20:
+		_frame(frame)
+		offsets.append(hull.position)
+	assert_vector(offsets[0]).is_equal(Vector2.ZERO)
+	assert_vector(offsets[9]).is_equal(Vector2.ZERO)
+	assert_vector(offsets[10]).is_equal(Vector2(-0.5, 0.0))
+	assert_vector(offsets[13]).is_equal(Vector2(-0.5, 0.0))
+	assert_vector(offsets[14]).is_equal(Vector2(0.5, 0.5))
+	assert_vector(offsets[18]).is_equal(Vector2(0.5, 0.5))
+	assert_vector(offsets[19]).is_equal(Vector2(0.0, -0.5))
+	assert_int(_layer.life_writes()).is_equal(6)  # Three changes from rest, Hull and Turret each.
+
+
+func test_a_vehicle_that_has_just_become_idle_rests_for_its_step_before_it_shakes() -> void:
+	# A column that halts together would write every sprite in one frame. A rig rests for the step
+	# it finds itself in and shakes from the next, which its own phase puts anywhere in 80 ms. The
+	# heavy tank would shake (0.5, 0) at 2050 ms; seen first at that instant it stays at rest, and
+	# shakes when the next step comes.
+	_life.look_ms = 0
+	_pin_down(Rig.LIGHT)
+	var row: int = _runner.snapshot.index_of(Rig.HEAVY)
+	var hull: Sprite2D = _rig(row).get_node("Hull")
+	_camera.position = _rig(row).position
+	_at_ms(2050.0)
+	assert_vector(_expect.shake_offset(Rig.HEAVY, 2050.0)).is_equal(Vector2(0.5, 0.0))
+	assert_vector(hull.position).is_equal(Vector2.ZERO)
+	assert_int(_layer.life_writes()).is_equal(0)
+	_at_ms(2050.0 + 80.0)
+	assert_vector(hull.position).is_equal(_expect.shake_offset(Rig.HEAVY, _now()))
+	assert_int(_layer.life_writes()).is_equal(2 if hull.position != Vector2.ZERO else 0)
+
+
+func test_the_node_the_shadow_and_the_picks_never_move() -> void:
+	var row: int = _runner.snapshot.index_of(Rig.LIGHT)
+	var rig: Node2D = _rig(row)
+	var at: Vector2 = rig.position
+	var shadow: Vector2 = (rig.get_node("Shadow") as Sprite2D).position
+	_watch(Rig.LIGHT)
+	var picks: PickSnapshot = PickSnapshot.new()
+	_layer.fill_pick_snapshot(picks, 24.0)
+	var screen: Vector2 = _layer.unit_screen_position(row)
+	var bar: float = _layer.bar_lift_px(row)
+	var moved: int = 0
+	for frame: int in 120:
+		_frame(frame)
+		if rig.position != at or (rig.get_node("Shadow") as Sprite2D).position != shadow:
+			moved += 1
+	assert_int(_layer.life_writes()).is_greater(0)  # It shook.
+	assert_int(moved).is_equal(0)
+	var during: PickSnapshot = PickSnapshot.new()
+	_layer.fill_pick_snapshot(during, 24.0)
+	assert_array(during.screen_pos).is_equal(picks.screen_pos)
+	assert_array(during.lift_px).is_equal(picks.lift_px)
+	assert_vector(_layer.unit_screen_position(row)).is_equal(screen)
+	assert_float(_layer.bar_lift_px(row)).is_equal(bar)
+
+
+func test_a_moving_vehicle_does_not_shake_and_one_that_starts_moving_is_calmed_at_once() -> void:
+	_life.look_ms = 0
+	_pin_down(Rig.HEAVY)
+	var row: int = _runner.snapshot.index_of(Rig.LIGHT)
+	var hull: Sprite2D = _rig(row).get_node("Hull")
+	var turret: Sprite2D = _rig(row).get_node("Turret")
+	var mount: Vector2 = turret.position
+	var snap: MatchSnapshot = _runner.snapshot
+	_watch(Rig.LIGHT)
+	_frame(10)  # Frames 10 to 13 hold (-0.5, 0).
+	assert_vector(hull.position).is_equal(Vector2(-0.5, 0.0))
+	var before: int = _layer.life_writes()
+	snap.prev_pos_x[row] = snap.pos_x[row] - 10  # It moved a hair in the last tick: not standing.
+	_frame(11)
+	assert_vector(hull.position).is_equal(Vector2.ZERO)
+	assert_vector(turret.position).is_equal_approx(mount, TOL)
+	assert_int(_layer.life_writes()).is_equal(before + 2)  # One write each, to rest.
+	for later: int in range(12, 70):  # Never again while it moves.
+		_frame(later)
+		assert_vector(hull.position).is_equal(Vector2.ZERO)
+	assert_int(_layer.life_writes()).is_equal(before + 2)
+	snap.prev_pos_x[row] = snap.pos_x[row]  # It stands again: rest for a step, then the shake.
+	var shook: bool = false
+	for later: int in range(70, 130):
+		_frame(later)
+		shook = shook or hull.position != Vector2.ZERO
+	assert_bool(shook).is_true()
+
+
+func test_a_vehicle_with_a_target_does_not_shake_and_is_calmed_when_it_gets_one() -> void:
+	_life.look_ms = 0
+	_pin_down(Rig.HEAVY)
+	var row: int = _runner.snapshot.index_of(Rig.LIGHT)
+	var hull: Sprite2D = _rig(row).get_node("Hull")
+	var turret: Sprite2D = _rig(row).get_node("Turret")
+	var mount: Vector2 = turret.position
+	var snap: MatchSnapshot = _runner.snapshot
+	_watch(Rig.LIGHT)
+	_frame(10)
+	assert_vector(hull.position).is_not_equal(Vector2.ZERO)
+	snap.target[row] = Rig.ENEMY_TANK  # A target it holds, as the sim writes it.
+	snap.target_row[row] = snap.index_of(Rig.ENEMY_TANK)
+	var shook: int = 0
+	for frame: int in range(11, 130):
+		_frame(frame)
+		if hull.position != Vector2.ZERO or not turret.position.is_equal_approx(mount):
+			shook += 1
+	assert_int(shook).is_equal(0)
+	snap.target[row] = 99999  # A target that is gone but still held also counts as one.
+	snap.target_row[row] = -1
+	for frame: int in range(130, 200):
+		_frame(frame)
+		assert_vector(hull.position).is_equal(Vector2.ZERO)
+	snap.target[row] = 0  # And with none it shakes again.
+	var again: bool = false
+	for frame: int in range(200, 260):
+		_frame(frame)
+		again = again or hull.position != Vector2.ZERO
+	assert_bool(again).is_true()
+
+
+func test_a_vehicle_out_of_the_view_rect_does_not_shake_and_one_inside_it_does() -> void:
+	_life.look_ms = 0
+	_pin_down(Rig.HEAVY)
+	var row: int = _runner.snapshot.index_of(Rig.LIGHT)
+	var hull: Sprite2D = _rig(row).get_node("Hull")
+	var tank: Vector2 = _rig(row).position
+	var half: float = _camera.visible_world_rect().size.x * 0.5
+	var reach: float = half + UnitLayer.IDLE_MARGIN_PX  # The rect grown by a tile, to the east.
+	_camera.position = tank + Vector2(reach + 8.0, 0.0)  # 8 px beyond the grown rect.
+	for frame: int in range(0, 130):
+		_frame(frame)
+	assert_int(_layer.life_writes()).is_equal(0)
+	assert_vector(hull.position).is_equal(Vector2.ZERO)
+	_camera.position = tank + Vector2(reach - 8.0, 0.0)  # 8 px inside it.
+	for frame: int in range(130, 200):
+		_frame(frame)
+	assert_int(_layer.life_writes()).is_greater(0)
+
+
+func test_a_hidden_enemy_vehicle_does_not_shake_and_a_seen_one_does() -> void:
+	_life.look_ms = 0
+	_pin_down(Rig.HEAVY)  # The own tanks in view are held down: only the enemy is left to write.
+	_pin_down(Rig.LIGHT)
+	var row: int = _runner.snapshot.index_of(Rig.ENEMY_TANK)
+	var hull: Sprite2D = _rig(row).get_node("Hull")
+	_watch(Rig.ENEMY_TANK)  # In view, but the fog hides it.
+	assert_bool(_layer.is_shown(row)).is_false()
+	for frame: int in 120:
+		_frame(frame)
+	assert_int(_layer.life_writes()).is_equal(0)
+	assert_vector(hull.position).is_equal(Vector2.ZERO)
+	Buildings.see(_runner.snapshot, 1, [Rig.FAR_TILE])
+	assert_bool(_layer.is_shown(row)).is_true()
+	for frame: int in range(120, 240):
+		_frame(frame)
+	assert_int(_layer.life_writes()).is_greater(0)
+
+
+func test_a_squad_has_no_idle_life() -> void:
+	var squad_row: int = _runner.snapshot.index_of(Rig.SQUAD)
+	var squad: Node2D = _rig(squad_row)
+	var tank: Node2D = _rig(_runner.snapshot.index_of(Rig.LIGHT))
+	_camera.position = (squad.position + tank.position) * 0.5  # Both inside the view.
+	_at_ms(1900.0)
+	for frame: int in 240:
+		_frame(frame)
+		assert_vector((squad.get_node("Hull") as Sprite2D).position).is_equal(Vector2.ZERO)
+	assert_int(_layer.life_writes()).is_greater(0)  # The tank beside it did shake.
+
+
+func test_reduced_drops_the_shake_and_the_look_and_switching_to_it_calms_the_rig() -> void:
+	_life.look_ms = 0
+	_pin_down(Rig.HEAVY)
+	var row: int = _runner.snapshot.index_of(Rig.LIGHT)
+	var hull: Sprite2D = _rig(row).get_node("Hull")
+	var turret: Sprite2D = _rig(row).get_node("Turret")
+	var mount: Vector2 = turret.position
+	_life.reduced = true
+	_watch(Rig.LIGHT)
+	for frame: int in 240:
+		_frame(frame)
+	assert_int(_layer.life_writes()).is_equal(0)
+	_life.reduced = false
+	var frame: int = 240
+	while hull.position == Vector2.ZERO and frame < 600:  # On: it shakes within a few steps.
+		_frame(frame)
+		frame += 1
+	assert_vector(hull.position).is_not_equal(Vector2.ZERO)
+	var written: int = _layer.life_writes()
+	_life.reduced = true  # Switched on mid-shake: one write each to rest, and then none.
+	_frame(frame)
+	assert_vector(hull.position).is_equal(Vector2.ZERO)
+	assert_vector(turret.position).is_equal_approx(mount, TOL)
+	assert_int(_layer.life_writes()).is_equal(written + 2)
+	for later: int in range(frame + 1, frame + 60):
+		_frame(later)
+	assert_int(_layer.life_writes()).is_equal(written + 2)
+
+
+func test_a_pause_freezes_the_shake_with_the_match() -> void:
+	_life.look_ms = 0
+	_pin_down(Rig.HEAVY)
+	var row: int = _runner.snapshot.index_of(Rig.LIGHT)
+	var hull: Sprite2D = _rig(row).get_node("Hull")
+	_watch(Rig.LIGHT)
+	_frame(14)  # (0.5, 0.5).
+	assert_vector(hull.position).is_equal(Vector2(0.5, 0.5))
+	var writes: int = _layer.life_writes()
+	_runner.paused = true
+	for _frame_index: int in 120:  # Seconds of real frames; the match does not move.
+		_runner._process(0.5)
+		_layer._process(0.05)
+	assert_vector(hull.position).is_equal(Vector2(0.5, 0.5))
+	assert_int(_layer.life_writes()).is_equal(writes)
+
+
+func test_the_shake_rides_on_top_of_the_recoil_and_both_go_home() -> void:
+	# The heavy tank stands with no target when its shell is fired (the target died): the Hull is
+	# at the rock (-1, 0) plus the shake (0.5, 0) of that instant, the Turret at its mount plus the
+	# recoil (-5, 0) plus the same shake; 200 ms later the kick is over and the shake stays.
+	_life.look_ms = 0
+	var row: int = _runner.snapshot.index_of(Rig.HEAVY)
+	var hull: Sprite2D = _rig(row).get_node("Hull")
+	var turret: Sprite2D = _rig(row).get_node("Turret")
+	var mount: Vector2 = turret.position
+	_watch(Rig.HEAVY)
+	var from: Vector2i = Rig.position_of(_runner, Rig.HEAVY)
+	Rig.deliver(
+		_runner,
+		Rig.shot(_runner, Rig.HEAVY, from, Rig.EAST_ON_SCREEN, &"heavy_cannon"),
+		Rig.SHOT_TICK
+	)
+	Rig.at(_runner, Rig.SHOT_TICK, 0.75)  # 50 ms into the kick, match time 2050 ms.
+	_layer._process(0.0)
+	assert_vector(_expect.shake_offset(Rig.HEAVY, 2050.0)).is_equal(Vector2(0.5, 0.0))
+	assert_vector(hull.position).is_equal_approx(Vector2(-0.5, 0.0), TOL)
+	assert_vector(turret.position - mount).is_equal_approx(Vector2(-4.5, 0.0), TOL)
+	Rig.at(_runner, 34, 0.0)  # 266.7 ms: the kick is over.
+	_layer._process(0.0)
+	var shake: Vector2 = _expect.shake_offset(Rig.HEAVY, _now())
+	assert_vector(hull.position).is_equal_approx(shake, TOL)
+	assert_vector(turret.position - mount).is_equal_approx(shake, TOL)
+
+
+func test_a_hull_turn_keeps_the_shake_on_the_new_mount() -> void:
+	_life.look_ms = 0
+	_pin_down(Rig.LIGHT)
+	var row: int = _runner.snapshot.index_of(Rig.HEAVY)
+	var hull: Sprite2D = _rig(row).get_node("Hull")
+	var turret: Sprite2D = _rig(row).get_node("Turret")
+	var snap: MatchSnapshot = _runner.snapshot
+	_watch(Rig.HEAVY)
+	snap.prev_pos_y[row] = snap.pos_y[row] - snap.type_speed[snap.type_index[row]]
+	_layer._process(1.0)  # It drove south in the last tick: the hull turns, the mount moves.
+	snap.prev_pos_y[row] = snap.pos_y[row]  # And stands again.
+	var dir: int = Frames.dir(_layer, row, &"hull")
+	assert_int(dir).is_not_equal(UnitLayer.D_EAST)
+	var sheet: IsoSheetDef = _layer.world_sort.sheet(snap.type_ids[snap.type_index[row]])
+	var mount: Vector2 = sheet.mount(dir) * WorldSort.ART_SCALE
+	var frame: int = 0
+	_frame(frame)  # Rests for its first step...
+	while hull.position == Vector2.ZERO and frame < 300:  # ... then shakes, on the new mount.
+		frame += 1
+		_frame(frame)
+	assert_vector(hull.position).is_not_equal(Vector2.ZERO)
+	assert_vector(turret.position).is_equal_approx(mount + hull.position, TOL)
+
+
+func test_the_shake_stays_on_the_turret_through_every_step_of_a_kick() -> void:
+	# The light tank (3 px of recoil) stands and shakes when it fires, at tick 33 (2200 ms), where it
+	# shakes (-0.5, 0) until 2233 ms and (0.5, 0.5) from then to 2313. The kick moves every 25 ms
+	# sample, the shake once in 80 ms: at each sample the Turret is at its mount plus the pinned
+	# recoil plus the shake of that instant, and the Hull at the shake alone (no rock). Samples in
+	# the middle of a shake step are the ones that tell: only the kick moves there.
+	_life.look_ms = 0
+	_pin_down(Rig.HEAVY)
+	var row: int = _runner.snapshot.index_of(Rig.LIGHT)
+	var hull: Sprite2D = _rig(row).get_node("Hull")
+	var turret: Sprite2D = _rig(row).get_node("Turret")
+	var mount: Vector2 = turret.position
+	_watch(Rig.LIGHT)
+	var from: Vector2i = Rig.position_of(_runner, Rig.LIGHT)
+	Rig.deliver(
+		_runner,
+		Rig.shot(_runner, Rig.LIGHT, from, Rig.EAST_ON_SCREEN, &"tank_cannon"),
+		Rig.SHOT_TICK + 3
+	)
+	var wrong: int = 0
+	var shaken: int = 0
+	for index: int in Rig.SAMPLES.size():
+		Rig.at(_runner, int(Rig.SAMPLES[index].x) + 3, Rig.SAMPLES[index].y)
+		_layer._process(0.0)
+		var shake: Vector2 = _expect.shake_offset(Rig.LIGHT, _now())
+		var back: Vector2 = Vector2(-Rig.TANK_CANNON_BACK[index], 0.0)
+		if not (turret.position - mount).is_equal_approx(back + shake):
+			wrong += 1
+		if not hull.position.is_equal_approx(shake):
+			wrong += 1
+		shaken += 1 if shake != Vector2.ZERO else 0
+	assert_int(wrong).is_equal(0)
+	assert_int(shaken).is_equal(9)  # By the restatement, the shake is off rest at all nine.
+
+
+func test_a_hull_that_is_still_turning_when_it_stops_keeps_the_shake_on_every_new_mount() -> void:
+	# The heavy tank drives one step west and stops: its heading takes 16 frames to swing round,
+	# and it is idle, and shaking, for most of them. Each frame the Turret is at the mount of the
+	# hull frame it shows plus the shake.
+	_life.look_ms = 0
+	_pin_down(Rig.LIGHT)
+	var row: int = _runner.snapshot.index_of(Rig.HEAVY)
+	var snap: MatchSnapshot = _runner.snapshot
+	var hull: Sprite2D = _rig(row).get_node("Hull")
+	var turret: Sprite2D = _rig(row).get_node("Turret")
+	var sheet: IsoSheetDef = _layer.world_sort.sheet(snap.type_ids[snap.type_index[row]])
+	_watch(Rig.HEAVY)
+	snap.prev_pos_x[row] = snap.pos_x[row] + snap.type_speed[snap.type_index[row]]
+	Rig.at(_runner, 30, 0.0)
+	_layer._process(1.0 / 60.0)  # It moved west a full step in the last tick.
+	snap.prev_pos_x[row] = snap.pos_x[row]  # And stands: the swing goes on.
+	var wrong: int = 0
+	var turning_and_shaking: int = 0
+	var last_dir: int = Frames.dir(_layer, row, &"hull")
+	for index: int in range(1, 40):
+		Rig.at(_runner, 30 + index / FRAMES_PER_TICK, float(index % FRAMES_PER_TICK) / 4.0)
+		_layer._process(1.0 / 60.0)
+		var dir: int = Frames.dir(_layer, row, &"hull")
+		var mount: Vector2 = sheet.mount(dir) * WorldSort.ART_SCALE
+		if not (turret.position - mount).is_equal_approx(hull.position):
+			wrong += 1
+		if dir != last_dir and hull.position != Vector2.ZERO:
+			turning_and_shaking += 1
+		last_dir = dir
+	assert_int(last_dir).is_not_equal(UnitLayer.D_EAST)  # It did turn, and a long way.
+	assert_int(wrong).is_equal(0)
+	assert_int(turning_and_shaking).is_greater_equal(2)
+
+
+func test_a_pooled_rig_starts_a_new_match_at_rest() -> void:
+	_life.look_ms = 0
+	_pin_down(Rig.HEAVY)
+	var row: int = _runner.snapshot.index_of(Rig.LIGHT)
+	_watch(Rig.LIGHT)
+	var frame: int = 0
+	while (_rig(row).get_node("Hull") as Sprite2D).position == Vector2.ZERO and frame < 300:
+		_frame(frame)
+		frame += 1
+	assert_vector((_rig(row).get_node("Hull") as Sprite2D).position).is_not_equal(Vector2.ZERO)
+	var made: int = _layer.rigs_made()
+	_runner.start()  # Another match of the same scenario: the rigs come out of the pool.
+	Rig.at(_runner, 0, 0.0)
+	_layer._process(0.0)
+	assert_int(_layer.rigs_made()).is_equal(made)
+	row = _runner.snapshot.index_of(Rig.LIGHT)
+	var snap: MatchSnapshot = _runner.snapshot
+	var sheet: IsoSheetDef = _layer.world_sort.sheet(snap.type_ids[snap.type_index[row]])
+	assert_vector((_rig(row).get_node("Hull") as Sprite2D).position).is_equal(Vector2.ZERO)
+	assert_vector((_rig(row).get_node("Turret") as Sprite2D).position).is_equal_approx(
+		sheet.mount(UnitLayer.D_EAST) * WorldSort.ART_SCALE, TOL
+	)
+
+
+func test_frames_of_idle_life_leave_no_object_or_node_behind() -> void:
+	# Over 25 s the light tank looks to both sides and shakes throughout.
+	_watch(Rig.LIGHT)
+	for frame: int in 1500:
+		_frame(frame)
+	var objects: int = roundi(Performance.get_monitor(Performance.OBJECT_COUNT))
+	var nodes: int = roundi(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
+	var writes: int = _layer.life_writes()
+	for frame: int in range(1500, 2500):
+		_frame(frame)
+	var objects_after: int = roundi(Performance.get_monitor(Performance.OBJECT_COUNT))
+	var nodes_after: int = roundi(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
+	assert_int(_layer.life_writes()).is_greater(writes)
+	assert_int(objects_after).is_equal(objects)  # Read before the asserts, which make objects.
+	assert_int(nodes_after).is_equal(nodes)
+
+
+func test_seventy_standing_tanks_write_inside_the_budget_and_each_at_most_once_per_shake_ms(
+) -> void:
+	# 40 heavy and 30 light tanks, all standing in view with no target, 10 s at 60 fps. Per tank the
+	# Hull changes at most once per 80 ms (and both sprites together); over all, at most 60 sprite
+	# writes a frame on average and 150 in any frame (ADR 0027 section 9). The per-id phases spread
+	# the writes over the frames: no frame takes them all.
+	_runner = auto_free(Buildings.runner(_crowd_scenario()))
+	_start(LifeSettings.new())
+	_life.look_ms = 0
+	var snap: MatchSnapshot = _runner.snapshot
+	assert_int(snap.unit_count()).is_equal(HEAVY_TANKS + LIGHT_TANKS)
+	_camera.position = Vector2(0.0, 240.0)
+	_camera.zoom = Vector2(0.5, 0.5)
+	assert_int(_layer.count_in(_camera.visible_world_rect())).is_equal(HEAVY_TANKS + LIGHT_TANKS)
+	_at_ms(1900.0)
+	assert_int(_layer.life_writes()).is_equal(0)  # 70 tanks found idle at once: no write yet.
+	var hulls: Array[Sprite2D] = []
+	var last: PackedVector2Array = PackedVector2Array()
+	var changes: PackedInt32Array = PackedInt32Array()
+	for row: int in snap.unit_count():
+		hulls.append(_rig(row).get_node("Hull"))
+		last.append(Vector2.ZERO)
+		changes.append(0)
+	var total: int = 0
+	var busiest: int = 0
+	var frames: int = 600
+	for frame: int in frames:
+		var before: int = _layer.life_writes()
+		_frame(frame)
+		var written: int = _layer.life_writes() - before
+		total += written
+		busiest = maxi(busiest, written)
+		for row: int in hulls.size():
+			if hulls[row].position != last[row]:
+				changes[row] += 1
+				last[row] = hulls[row].position
+	var most: int = 0
+	var fewest: int = frames
+	for row: int in changes.size():
+		most = maxi(most, changes[row])
+		fewest = mini(fewest, changes[row])
+	# 10 s hold 125 steps of 80 ms, one in nine of them repeats the offset before.
+	assert_int(most).is_less_equal(126)
+	assert_int(fewest).is_greater_equal(90)
+	assert_float(float(total) / frames).is_less_equal(60.0)
+	assert_int(busiest).is_less_equal(150)
+	assert_int(busiest).is_less(2 * (HEAVY_TANKS + LIGHT_TANKS))  # No frame takes every sprite.
+
+
+## A layer on the fixture runner with the settings `life`, and the `RigLife` that says what a frame
+## should show.
+func _start(life: LifeSettings) -> void:
+	if is_instance_valid(_layer):
+		_layer.free()
+	_life = life
+	_expect = RigLife.new()
+	_expect.setup(_life)
+	_layer = auto_free(UnitLayer.new())
+	_layer.runner = _runner
+	_layer.life = _life
+	if not is_instance_valid(_camera):
+		_camera = auto_free(RtsCamera.new())
+		add_child(_camera)
+	_camera.position = Vector2(FAR, FAR)  # Nothing in view, so every rig is made at rest.
+	_layer.camera = _camera
+	add_child(_layer)
+	_layer.set_process(false)
+	_layer._process(0.0)
+
+
+## Points the camera at the rig of unit `id`, and lets the rig settle: a rig that has just become
+## idle rests for the step it is in and shakes from the next one, so a frame 100 ms before the
+## play (match time 1900 ms, the play starts at 2000) comes first.
+func _watch(id: int) -> void:
+	_camera.position = _rig(_runner.snapshot.index_of(id)).position
+	_at_ms(1900.0)
+
+
+## Gives unit `id` a target it holds, as the sim writes it, so it is not idle.
+func _pin_down(id: int) -> void:
+	_runner.snapshot.target[_runner.snapshot.index_of(id)] = 99999
+
+
+## Frame `index` of a 60 fps play from tick 30: four frames to a tick.
+func _frame(index: int) -> void:
+	Rig.at(_runner, 30 + index / FRAMES_PER_TICK, float(index % FRAMES_PER_TICK) / FRAMES_PER_TICK)
+	_layer._process(0.0)
+
+
+## One frame at match time `ms`.
+func _at_ms(ms: float) -> void:
+	var ticks: float = ms * float(Sim.TICK_RATE) / 1000.0
+	var tick: int = floori(ticks)
+	Rig.at(_runner, tick, ticks - float(tick))
+	_layer._process(0.0)
+
+
+## The match time the layer reads, as `LifeClock` gives it.
+func _now() -> float:
+	return LifeClock.ms(_runner.snapshot, _runner.alpha())
+
+
+func _rig(row: int) -> Node2D:
+	return _layer.rig(row)
+
+
+## 40 heavy and 30 light tanks of player 1 in blocks on the 32 x 32 map, none with a target.
+func _crowd_scenario() -> ScenarioDef:
+	var heavy: SpawnDef = Buildings.spawn(1, "heavy_tank", 2, 2)
+	heavy.count = HEAVY_TANKS
+	heavy.columns = 8
+	heavy.spacing = 1300
+	var light: SpawnDef = Buildings.spawn(1, "light_tank", 2, 16)
+	light.count = LIGHT_TANKS
+	light.columns = 8
+	light.spacing = 1300
+	var spawns: Array[SpawnDef] = [heavy, light]
+	return Buildings.scenario(spawns)

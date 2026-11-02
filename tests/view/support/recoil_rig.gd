@@ -42,6 +42,19 @@ const SAMPLES: Array[Vector2] = [
 const TANK_CANNON_BACK: Array[float] = [1.5, 3.0, 2.0, 1.5, 1.0, 0.5, 0.0, 0.0, 0.0]
 
 
+## `life` (the data file's numbers when null) with the idle life off: the recoil suites read exact
+## offsets and write counts, which a shaking tank, a tank looking aside or a sweeping head would
+## change. The idle life has suites of its own.
+static func calmed(life: LifeSettings) -> LifeSettings:
+	var out: LifeSettings = life
+	if out == null:
+		out = (load("res://data/life_settings.tres") as LifeSettings).duplicate() as LifeSettings
+	out.shake_px = 0.0
+	out.look_ms = 0
+	out.sweep_frames = 0
+	return out
+
+
 ## A paused, started runner on the fixture match.
 static func runner() -> MatchRunner:
 	var spawns: Array[SpawnDef] = [

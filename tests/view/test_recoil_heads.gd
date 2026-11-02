@@ -166,7 +166,7 @@ func _make_layer(life: LifeSettings) -> BuildingLayer:
 		_layer.free()
 	var layer: BuildingLayer = auto_free(BuildingLayer.new())
 	layer.runner = _runner
-	layer.life = life
+	layer.life = Rig.calmed(life)
 	add_child(layer)
 	layer.set_process(false)
 	layer._process(0.0)

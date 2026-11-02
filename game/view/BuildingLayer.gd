@@ -23,6 +23,9 @@ extends Node2D
 ## numbers in `life`), on the head sprite only: the node, the Body and the shadow never move. The
 ## kick is noted in `ticked` for a building the local player sees in that tick's fog and drawn on
 ## match time (`LifeClock`), so a pause freezes it.
+## Idle life (P140): a shown defence that is complete and online and has no target sweeps its head
+## a few frames either side of its last aim (`RigLife.sweep_offset`), by the head's region only. A
+## target, a site, a blackout and `reduced` put the head back on its aim.
 ## A tap picks a building on its silhouette (P115b, ADR 0023 section 3): `fill_pick_snapshot` lists
 ## the shown buildings with the footprint's diamond and the height of the picture above it (the
 ## top of the Body sprite, so the atlas region and its bake scale), for the `Picker`. A selection
@@ -78,6 +81,10 @@ class Entry:
 	var head_angle: float = 0.0  ## Grid angle, east 0, as the unit layer's.
 	var head_rest: Vector2 = Vector2.ZERO  ## Where the head stands on its mount.
 	var kick: Vector2 = Vector2.ZERO  ## What the head stands off its mount by life now.
+	var sweep: int = 0  ## Frames the head shows off `head_dir` by the idle sweep (0 on a target).
+	var sweep_want: int = 0  ## What `RigLife.sweep_offset` said for the stretch [from, to) of ms.
+	var sweep_from: float = 0.0
+	var sweep_to: float = -1.0
 
 
 ## What stands in for art that is not on the atlas: the footprint's diamond in the owner's colour.
@@ -122,6 +129,7 @@ func _process(delta: float) -> void:
 		return
 	if not _heads.is_empty():
 		_turn_heads(snap, delta)
+		_sweep_heads(snap)
 	_kick_heads(snap)  # Also with no head left: the kicks of the heads that died end.
 
 
@@ -497,6 +505,7 @@ func _turn_heads(snap: MatchSnapshot, delta: float) -> void:
 		var dir: int = UnitLayer.frame_of(entry.head_angle, 16)
 		if dir != entry.head_dir:
 			entry.head_dir = dir
+			entry.sweep = 0  # The head shows its aim, not a frame off it.
 			world_sort.show_frame(entry.head, entry.sheet, HEAD, dir, owners[row])
 
 
@@ -545,3 +554,35 @@ func _kick_heads(snap: MatchSnapshot) -> void:
 			entry.head.position = entry.head_rest + offset
 			_rig_life.writes += 1
 	_rig_life.sweep()
+
+
+## Idle life of the heads, once a frame: a shown head whose building has no target, is complete
+## (`build_left` 0) and is not in a blackout sweeps for the match time; any other shown head shows
+## its aim. The sweep's answer holds for a stretch of match time, asked again only outside it, and a
+## region is written only when the sweep's frame changed. A hidden head is left as it is.
+func _sweep_heads(snap: MatchSnapshot) -> void:
+	var now_ms: float = LifeClock.ms(snap, runner.alpha())
+	var targets: PackedInt32Array = snap.target_row
+	var building: PackedInt32Array = snap.build_left
+	var offline: PackedInt32Array = snap.offline_until
+	for entry: Entry in _heads:
+		if not entry.shown:
+			continue
+		var row: int = entry.row
+		var frames: int = 0
+		if (
+			not life.reduced
+			and targets[row] < 0
+			and building[row] == 0
+			and offline[row] <= snap.tick
+		):
+			if now_ms < entry.sweep_from or now_ms >= entry.sweep_to:
+				entry.sweep_want = _rig_life.sweep_offset(entry.id, now_ms)
+				entry.sweep_from = _rig_life.span_from
+				entry.sweep_to = _rig_life.span_to
+			frames = entry.sweep_want
+		if frames != entry.sweep:
+			entry.sweep = frames
+			var dir: int = posmod(entry.head_dir + frames, UnitLayer.DIRECTIONS)
+			world_sort.show_frame(entry.head, entry.sheet, HEAD, dir, snap.owner[row])
+			_rig_life.writes += 1

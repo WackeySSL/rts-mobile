@@ -10,6 +10,7 @@ extends GdUnitTestSuite
 ## enemy buildings are shown (`reveal_enemies`) unless a case is about the fog.
 
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
+const Recoil: GDScript = preload("res://tests/view/support/recoil_rig.gd")
 const SPAWNS: Array[Array] = [
 	[1, "headquarters", 4, 4],
 	[1, "power_plant", 10, 4],
@@ -321,6 +322,7 @@ func _open_with(spawns: Array[SpawnDef]) -> void:
 	_runner = auto_free(Rig.runner(Rig.scenario(spawns)))
 	_layer = auto_free(BuildingLayer.new())
 	_layer.runner = _runner
+	_layer.life = Recoil.calmed(null)  # A head holds its aim here; the idle sweep has its own suite.
 	_layer.reveal_enemies = true
 	add_child(_layer)
 	_layer.set_process(false)
