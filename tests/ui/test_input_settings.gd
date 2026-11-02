@@ -1,6 +1,8 @@
 extends GdUnitTestSuite
 ## InputSettings: the ADR 0004 section 2 table as literals, for the script defaults and for
-## data/input_settings.tres. When the file is tuned after the phone test, this table changes too.
+## data/input_settings.tres, with the corner HUD's keys (ADR 0025, plan P119c: every key of HUD v2
+## is here, so that no two rows edit this table). When the file is tuned after the phone test, this
+## table changes too.
 
 const SETTINGS_PATH: String = "res://data/input_settings.tres"
 
@@ -26,6 +28,15 @@ func _table() -> Dictionary[String, Variant]:
 		"edge_pan_dp_per_s": 300.0,
 		"edge_pan_max_step_ms": 100,
 		"menu_slide_ms": 160,
+		# The corner HUD (ADR 0025, plan HUD v2).
+		"economy_flash_ms": 1000,
+		"radar_close_ms": 4000,
+		"scope_radius_tiles": 16,
+		"attack_toast_ms": 4000,
+		"attack_cue_ms": 8000,
+		"attack_cue_area_tiles": 12,
+		"drawer_swipe_dp": 48.0,
+		"queue_hold_count": 5,
 	}
 
 
