@@ -4,6 +4,8 @@ extends GdUnitTestSuite
 ## APK, a keystore value in the file leaks a secret. scripts/export-android.sh checks the APK in
 ## CI; this test catches the edit before that.
 
+const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
+
 const SECTION: String = "preset.1"
 const OPTIONS: String = "preset.1.options"
 
@@ -18,6 +20,18 @@ const ICON_FILES: Dictionary[String, String] = {
 	FOREGROUND_ICON: "res://assets/art/svg/icon/icon_foreground.svg",
 	BACKGROUND_ICON: "res://assets/art/svg/icon/icon_background.svg",
 }
+
+## Plan row P118b: every preset ("Web", "Android", "Android perf") packs the OFL.txt of each font
+## folder. export_filter all_resources leaves out a .txt file, so the include_filter names them;
+## the SIL Open Font License asks for its text with every copy of the fonts. export-web.sh and
+## export-android.sh look for each OFL.txt in the pack or the APK, and scripts/ci/font-notice.sh
+## puts the same texts into THIRD_PARTY_LICENSES.txt beside the build.
+const ALL_PRESETS: Array[String] = ["preset.0", "preset.1", "preset.2"]
+const FONT_DIR: String = "res://assets/art/fonts"
+const OFL_NAME: String = "OFL.txt"
+## A family folder that does not exist yet: the filter must cover it without an edit.
+const FUTURE_OFL: String = "res://assets/art/fonts/some-future-family/OFL.txt"
+
 ## The Play Store asks for a 512 px icon.
 const MIN_MAIN_ICON_PX: int = 512
 ## An adaptive layer is 108 dp at 4x.
@@ -138,6 +152,45 @@ func test_web_preset_exports_the_project_icon_as_the_favicon() -> void:
 	var config: ConfigFile = _config()
 	assert_str(config.get_value("preset.0", "name")).is_equal("Web")
 	assert_bool(config.get_value("preset.0.options", "html/export_icon")).is_true()
+
+
+func test_every_preset_packs_the_ofl_text_of_each_font_folder() -> void:
+	var config: ConfigFile = _config()
+	var texts: Array[String] = FileScan.list_files(FONT_DIR, OFL_NAME)
+	assert_int(texts.size()).is_greater_equal(2)  # Big Shoulders and Chakra Petch.
+	texts.append(FUTURE_OFL)
+	for section: String in ALL_PRESETS:
+		var include: String = config.get_value(section, "include_filter", "")
+		var exclude: String = config.get_value(section, "exclude_filter", "")
+		for path: String in texts:
+			var where: String = "%s packs %s" % [section, path]
+			(
+				assert_bool(_filter_matches(include, path))
+				. override_failure_message(
+					where + ": its include_filter '%s' does not match it" % include
+				)
+				. is_true()
+			)
+			(
+				assert_bool(_filter_matches(exclude, path))
+				. override_failure_message(where + ": its exclude_filter '%s' removes it" % exclude)
+				. is_false()
+			)
+
+
+## A filter list: comma separated globs, taken from the project root unless one starts with res://
+## or a star (the shape of the filters in this file). The real proof that the exporter packs the
+## files is export-web.sh's and export-android.sh's look into the pack and the APK.
+func _filter_matches(filters: String, path: String) -> bool:
+	for entry: String in filters.split(","):
+		var glob: String = entry.strip_edges()
+		if glob.is_empty():
+			continue
+		if not glob.begins_with("res://") and not glob.begins_with("*"):
+			glob = "res://" + glob
+		if path.matchn(glob):
+			return true
+	return false
 
 
 ## The size of an icon file as the Android exporter reads it. The exporter's icon loader
