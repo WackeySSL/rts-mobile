@@ -1,0 +1,16 @@
+---
+name: project-unit-life-decisions
+description: ADR 0027 (unit life and effects, view-only) proposed 2026-11-02 on base 3c29b16, plan docs/plans/2026-11-02-unit-life.md (rows P132-P154, acceptance P26aq)
+metadata:
+  type: project
+---
+
+- ADR 0027 PROPOSED 2026-11-02: life is view and art only; one sim change, `Event.STRIKE = 5` `[5, building id, x, y, kind, owner, landing tick or 0, 0]` from `Strike.apply_superweapon` (a blackout keeps no point, so the view could not place its fall). Events are not state: no re-pin.
+- Life clock = match time `(tick + alpha) x 1000 / 15` (freezes on pause, same at the same tick); variation `LifeClock.mix(id, salt)` integer hash; no Time/randi/randf/RNG/hash()/Particles in life files (`test_life_purity.gd`). Existing frame-clock users unchanged.
+- Life never moves a rig's or building's node (sort key, pick, bars); only child sprite offsets and regions; one `Anim` child per animated building. Layers under one `LifeFx` node (main.tscn once, between DecalLayer and WorldSort): GroundFx z 3 (under fog, before rings in tree), AirFx z 25 (under bars), StrikeFx z 55. Forecast 14 -> 16.
+- Atlas frame axis: `frames` per part, `_f<K>` names, parts walk/idle/anim; budget rule: cross-faction 2-player page at bake 1.0 <= 3584 px tall (today 2682 by my replica of RuntimeAtlas.layout; ~3450 with all life frames). Walk frame from travelled distance and `stride_milli` (sheet).
+- Reduced effects = `data/life_settings.tres` `reduced` flag now, player switch with Phase 5 settings. Budget 0.56 ms/frame (10 % of 5.6), writes <= 60 avg / 150 max per frame, rings 96/96/8.
+- Lanes: L P133, A P134->P139->P143, A2 P135, V1 P136->P140->P142->P144 (owns UnitLayer/BuildingLayer/RigLife), V2 P137 (IsoAtlas/WorldSort), V3 P138->P145->optional P148-P152, V4 P141, V5 P147 after P93c, H P146. Start at once after P26aq: P133-P136. Questions Q1-Q6 (rec: now, yes P148-P150, flag A, freeze, looks A, glyphs at once A).
+- Pitfall: Combat.gd's "first events writer is advance_projectiles" comment is stale since PLACE's SPAWNED in COMMANDS (add_building -> add_unit pushes SPAWNED); check who writes events before claiming an order.
+- Pitfall: the snapshot has no move class (type_move_class NOT_COPIED); tracks vs wheels must come from the art sheet (`marks`), not sim data. Flames in Derrick League frames would fall in its key band (1.6-45.3 deg, sat >= 0.30): fire goes in hand-drawn fx sheets, yellow-white hue >= 46.
+- Pitfall: HUD lanes own HealthBarLayer, EffectsLayer, DecalLayer (P89, P130); new view work goes into new files to avoid them. UnitLayer.gd is 708 lines: keep logic in helpers.
