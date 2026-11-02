@@ -53,6 +53,18 @@ Status note (2026-10-31, P26ao docs, ADR 0024 accepted the same day on #255): §
 status note: P86b (#253) did the pending state, "Blocked" and the edge pan, and ADR 0024 moves the
 check mark and X beside the ghost. No accepted text changed.
 
+Status note (2026-11-02, P26ap docs; ADRs 0025 and 0026 accepted 2026-11-02 on #259): from the rows
+of `docs/plans/2026-11-01-hud-v2.md` on, §1: the build sidebar is ADR 0025's build drawer; a hold
+on a unit card queues up to `queue_hold_count` and a tap on an item in the drawer's queue row
+cancels it (answer 2 A). §2 (ADR 0026, from P130): placement starts with a tap on a structure's
+card, the check mark pays the price and the building goes up on the spot; there is no READY state;
+"Blocked" means no own building of the type at the ghost one published tick after the Command.
+§3: a Deselect button at the command bar's start clears the selection (Michael's answer 4); a
+ground tap still moves and an enemy tap attacks, with no attack-move button. §4: the minimap is the
+radar's full map under a 56 dp scope at the top right. §5: the under-attack arrows are a toast, a
+marker on the scope's rim and a ping on the full map. §6: Surrender moves into the pause menu
+(P124). No accepted text changed.
+
 ## Context
 - `touch-ui-rules` already fixes, in its gesture table and its "Building placement" section: tap an
   own building selects it and "a production building opens its build tab"; tap minimap moves the

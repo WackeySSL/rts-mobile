@@ -81,6 +81,16 @@ the draw-call forecast left out. No accepted text changed.
 | 14 | HUD | The canvas's floating panels in landscape (question 4 A, P85d); ADR 0019's tiles, queues and placement stay |
 | 15 | Legal | Every canvas name screened (§13); hits replaced; no mobile base, no capture of neutral derricks, no freeze, no flamethrower infantry, no engineers in Phase 3 |
 
+Status note (2026-11-02, P26ap docs; ADRs 0025 and 0026 accepted 2026-11-02 on #259): §5: new fonts
+are no longer out of scope (SIL OFL allowed, CLAUDE.md's line of 2026-11-01; Big Shoulders and
+Chakra Petch under `assets/art/fonts/`, ADR 0025 §13). §10 (ADR 0026, from P128): a strike building
+charges from its completion, not its placement, and an unfinished one cannot fire or advance while
+blacked out. §12: the floating panels become ADR 0025's corner HUD; of the canvas's command
+buttons only Stop is shown, with a new Deselect button; attack-move, guard, patrol, formation,
+sell, repair, the Air tab and PRIMARY stay out. §13: the fonts row's decision is now "used (SIL OFL
+allowed, 2026-11-01)", and ADR 0025 §16 adds the screen of the HUD's generic words. No accepted text
+changed.
+
 ## Context
 - **Michael's canvas.** "Iron Meridian - grafisk udkast" (Claude Design) has two versions. A: a
   science alliance against an industrial bloc, violet crystals. B ("Øst/Vest"): the same mechanics

@@ -1,13 +1,23 @@
 # ADR 0026: Place first, build afterwards (structures are built on the spot)
 
-Status: proposed, 2026-11-01, on `main` at 5203ce0; revised 2026-11-02 after the lead's one-lens
-review. Plan: `docs/plans/2026-11-01-hud-v2.md` (rows P128-P131). Michael asked for it after the HUD
+Status: accepted, 2026-11-02 (Michael, on #259: "Ja til anbefalinger", yes to the recommendations;
+his answers below). Proposed 2026-11-01 on `main` at 5203ce0; revised 2026-11-02 after the lead's
+one-lens review; accepted the same day with the lead's docs row P26ap folded into #259. Plan: `docs/plans/2026-11-01-hud-v2.md` (rows P128-P131). Michael asked for it after the HUD
 rows; the lead reads that as the player-facing switch (P130) landing after the drawer: the sim rows
 P128-P128c and P129 may run beside the HUD rows where files do not collide, and P130 waits for P120b
 and P124 (lead decision, 2026-11-01). Amends ADR 0017 §1, §4 and §7, ADR
 0018 §5 and §7, ADR 0019 §1 and §2, ADR 0020 §4, ADR 0023 §10, ADR 0024 §9 and ADR 0025 §4 and §6
-(§12), each only on Michael's yes. A sim rule change: one new row column, a changed `PLACE`, one
+(§12); accepted, so the lead's P26ap wrote the dated notes. A sim rule change: one new row column, a changed `PLACE`, one
 new Command, `STATE_FORMAT` 5 and one re-pin of every golden hash.
+
+## Michael's answers (2026-11-02, on #259)
+1. **B:** a cancelled site refunds 75 % of its price (`construct_refund_percent` 75).
+2. **A:** a site starts at `construct_start_hp_percent` (10) of its hit points and rises with the
+   work.
+3. **Ja:** a strike building charges from completion; the GDD's Superweapons line says so (P26ap).
+4. **A:** a site keeps building when its owner's Headquarters is destroyed.
+The text below is written to these answers. The lines that offered the other option stay as the
+record of the choice.
 
 ## Context
 - **Michael, 2026-11-01** (M3 in ADR 0025), answering the lead on his HUD design's layout rule 2
@@ -52,7 +62,7 @@ new Command, `STATE_FORMAT` 5 and one re-pin of every golden hash.
 - **Three rule ints** in `RulesDef` and `data/rules.tres` (rule 5: no number in code), copied by
   `WorldLoad.copy_rules` into World scalars listed in `World.RULE_SCALARS` and `UNHASHED_SCALARS`
   (so in `defs_hash`, not in the state hash): `construct_start_hp_percent` (10),
-  `construct_refund_percent` (75; 100 if question 1 is A) and `construction_sites_max` (1).
+  `construct_refund_percent` (75, answer 1 B) and `construction_sites_max` (1).
 - **World.gd's room:** it has 969 of gdlint's 1,000 lines and `tests/sim/test_world_split.gd` pins
   it without the max-file-lines pragma. The column, the three scalars, their list entries and doc
   lines take about 20; P128 counts before it writes, and if the file would pass about 990 lines it
@@ -106,7 +116,7 @@ new Command, `STATE_FORMAT` 5 and one re-pin of every golden hash.
   Array pauses a site as it pauses a queue). The step is `Power.scaled(world, owner,
   PROGRESS_PER_TICK)` (100, or `low_power_percent` of it on low power, as the queue head's). So the
   build time is `type_build_ticks` as before: the item now waits on the map, not in the queue.
-- **The Headquarters dies while a site rises** (question 4): recommended, the site **goes on**. It
+- **The Headquarters dies while a site rises** (question 4, answered A): the site **goes on**. It
   is paid for and on the map; without a complete Headquarters no new site can start (`PLACE` rule
   2); and a player with no complete producer left is defeated by `Outcome` in the same PRODUCTION
   step whatever its sites are (§4), so a site cannot keep a beaten player in the match. Today the
@@ -276,8 +286,7 @@ to P128, P128b, P128c and P131 (they touch `game/sim/`).
 
 ### 12. Data, and what this amends
 - **`data/rules.tres`** (`RulesDef`, copied by `WorldLoad.copy_rules` into World scalars, §1):
-  `construct_start_hp_percent = 10`, `construct_refund_percent = 75` (question 1; 100 if Michael
-  says A) and `construction_sites_max = 1`. `type_cost` and `type_build_ticks` keep their numbers
+  `construct_start_hp_percent = 10`, `construct_refund_percent = 75` (answer 1 B) and `construction_sites_max = 1`. `type_cost` and `type_build_ticks` keep their numbers
   and meaning; `tests/sim/test_defs_data.gd` gains "a Structures type has `build_ticks` >= 1".
 - **Amends** (dated notes by the lead's docs row on acceptance): ADR 0017 §1 (a building row may be
   unfinished), §4 (the `PLACE` payload; Command 16), §7 (`STATE_FORMAT` 5); ADR 0018 §5 (structures
@@ -314,7 +323,7 @@ to P128, P128b, P128c and P131 (they touch `game/sim/`).
   which REMOVE's order exists to avoid.
 - **A player array for the one site:** §1.
 
-## Questions for Michael
+## Questions for Michael (answered 2026-11-02, on #259: 1 B, 2 A, 3 ja, 4 A)
 Only what the rules do not answer. One site at a time (a data number, `construction_sites_max`)
 and "an unfinished building counts for nothing" (what under construction means) are decisions
 (§4, §5).

@@ -41,6 +41,11 @@ changed.
 Status note (2026-10-27, P26ak docs): §3 and §4 carry dated status notes: `MatchRunner.opponents`
 is not exported, and the dummy has its two defs as P83d merged them. No accepted text changed.
 
+Status note (2026-11-02, P26ap docs; ADR 0026 accepted 2026-11-02 on #259): from plan row P129 on
+(`docs/plans/2026-11-01-hud-v2.md`), §4: the dummy no longer queues structures; when it has no
+site under way and can pay, it sends one `PLACE [type]` on the first spiral slot `placement`
+accepts, under the player's rules (ADR 0026 §8). No accepted text changed.
+
 ## Context
 - CLAUDE.md rule 4: humans and AI act only through `Command` objects. Rule 3: randomness only
   through per-match `DetRandom` streams; `game/sim/DetRandom.gd` says "AI controllers use

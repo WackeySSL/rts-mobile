@@ -1,13 +1,36 @@
 # ADR 0025: HUD v2: the corner HUD, the build drawer, the radar scope, the command bar and the pause menu
 
-Status: proposed, 2026-11-01, on `main` at 5203ce0 (ADR 0024 accepted, P85g #256, P86c #257 and
-P85f #258 merged); revised 2026-11-02 after the lead's one-lens review (the layout numbers of §2,
-the freeze of §1, the swipe, the screen of HUD words, eight questions). Plan:
+Status: accepted, 2026-11-02 (Michael, on #259: "Ja til anbefalinger undtagen attack. Punkt 4 behold
+som det er i dag men lav en knap så man kan fjerne sin markering af en enhed"; his answers below).
+Proposed 2026-11-01 on `main` at 5203ce0 (ADR 0024 accepted, P85g #256, P86c #257 and P85f #258
+merged); revised 2026-11-02 after the lead's one-lens review (the layout numbers of §2, the freeze
+of §1, the swipe, the screen of HUD words, eight questions); accepted the same day with the lead's
+docs row P26ap folded into #259. Plan:
 `docs/plans/2026-11-01-hud-v2.md`. Companion: ADR 0026 (place first, build afterwards; a sim rule
 whose player-facing row lands after this ADR's drawer). Amends ADR 0015 §5, ADR 0019
-§1, §4, §5 and §6, ADR 0023 §5, §12 and §13 and ADR 0024 (§18), each only on Michael's yes. No
+§1, §3, §4, §5 and §6, ADR 0023 §5, §12 and §13 and ADR 0024 (§18); accepted, so the lead's P26ap wrote the dated notes (the skill text waits for its own yes). No
 sim rule, Command, definition, data column or hash changes here: everything is view, input and UI
 state, plus one settings key, new `input_settings` keys and font files.
+
+Status note (2026-11-02, acceptance): the text below is written to Michael's answers. Question 4
+was answered with neither option: a ground tap keeps moving and an enemy tap keeps attacking, there
+is **no Attack button and no attack-move mode**, and the command bar gets a **Deselect** button
+instead (§9). The `touch-ui-rules` text of §18 is applied by its own commit, after Michael's yes to
+the skill change.
+
+## Michael's answers (2026-11-02, on #259)
+"Ja til anbefalinger undtagen attack" (yes to the recommendations except attack):
+1. **A:** the build menu's pin is dropped (P85f2 withdrawn); its glyphs serve the radar pin.
+2. **A:** a hold on a unit card queues up to `queue_hold_count`; the queue row's tap cancels.
+3. **A:** "All army" stays at the top of the group column, always shown.
+4. **Neither A nor B:** "Punkt 4 behold som det er i dag men lav en knap så man kan fjerne sin
+   markering af en enhed" (keep point 4 as it is today, but make a button to remove your selection
+   of a unit). No Attack button or mode; a Deselect button in the command bar (§9).
+5. **No:** the radar is never offline.
+6. **No:** items are paid when queued; "stalled" shows a queue that cannot go on.
+7. **Ja:** in a skirmish the local player's units take its side's colour (Lumen Accord cyan,
+   Derrick League orange); the GDD's team-colour line changes (P26ap).
+8. **Ja:** a match starts with everything folded away, the drawer closed.
 
 ## Context
 **Michael's design (2026-11-01).** A new page "HUD & startside" in his Claude Design canvas
@@ -64,7 +87,7 @@ closes it while the game runs on.
 | 6 | From ADR 0024 | Kept: holder and slide, `map_gesture`, `zone_changed` and `menu_top_px`, the return after placement (R1), the producer tap (Q3 A), `GhostControls`. Dropped: strip, plate, Ready badge (after ADR 0026), the build menu pin (P85f2; question 1) |
 | 7 | Radar | A 56 dp round scope of the area round the camera (a crop of P88's minimap texture); a tap unfolds P88's full map under it with a pin and a collapse button; closes after `radar_close_ms` without touch unless pinned; never "offline" (question 5) |
 | 8 | Attack cues | A 4 s toast at the top middle ("<name> under attack", tap = jump), a red marker on the scope's rim, a ping on the full map (no toast while the full map is open); they replace P89's planned edge arrows |
-| 9 | Command bar | Selection chip (picture, x N, health; "+N" for more types) and the orders that exist: Attack (one-shot attack-move mode) and Stop; a building shows its chip and its orders (none today; Cancel with ADR 0026); later orders slot in; portrait BUILD lifts above it |
+| 9 | Command bar | A Deselect button (48 dp, at the bar's start), the selection chip (picture, x N, health; "+N" for more types) and the orders that exist: Stop; a building shows Deselect, its chip and its orders (none today; Cancel with ADR 0026); later orders slot in; no Attack button (question 4); portrait BUILD lifts above it |
 | 10 | Groups | A column on the left edge: "All army" on top (question 3), saved groups, "+" to save the selection; tap selects, long-press overwrites |
 | 11 | Pause | The menu button pauses the match (`MatchRunner.paused`): objective card, Resume, Restart, Surrender, Exit to menu, Vibration; no ad; Settings, Sound and Music come with Phase 5 |
 | 12 | Start page | Specified here, built with ROADMAP Phase 5's main menu: Treadline, the two sides, Skirmish, Settings, the version line, a banner slot only when Phase 6's `AdService` exists |
@@ -233,8 +256,8 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   placement).
 - **Taps:** a unit card: +1 (`QUEUE`). A long-press on a unit card (`long_press_ms`): as many
   `QUEUE`s as the queue has room for and the credits pay, at most `queue_hold_count`
-  (`data/input_settings.tres`, 5) (question 2; today's long-press cancels the last one of the type,
-  ADR 0019 Q2). A structure card: as today until P130
+  (`data/input_settings.tres`, 5) (answer 2 A; before it the long-press cancelled the last one of
+  the type, ADR 0019 Q2). A structure card: as today until P130
   (queue it, or start placement when it is ready), then ADR 0026's tap-to-place.
 - **Queue row** (the open tab's queue): the producer's display name and "N IN QUEUE" (after
   ADR 0026, on Structures: "CONSTRUCTION" and the building's name and percent, or "NOTHING
@@ -310,20 +333,35 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   low-power part: the glyph on each consuming building and the pill's pulse.
 
 ### 9. The command bar, the groups and the portrait BUILD lift
-- **Shows** as §1 says (and keeps its slot through placement and the strike aim). It holds:
+- **Shows** as §1 says (and keeps its slot through placement and the strike aim). It holds, from
+  the bar's start:
+  - **Deselect** (Michael's answer 4): a 48 x 64 dp button (the bar's height) at the bar's start,
+    before the chip; `glyph_deselect` (P118g: the oval selection ring the game draws under a
+    selected unit, broken by a diagonal stroke; not the padlock, which means "a requirement is
+    missing", and not `glyph_cross`, which is placement's and the strike's X and ADR 0026's Cancel)
+    over the word "CLEAR". A tap clears the whole selection (`SelectionModel`, as an empty box does
+    today): units or a building, own or an enemy building selected for its info; the rings and the
+    frame go and, outside placement and the strike aim, the bar hides. It is view and input state
+    only: no Command, nothing in the sim, the replay or the hash. **Why the start:** it acts on the
+    selection the chip shows, so it sits beside the chip, apart from the orders that send Commands;
+    its neighbours are the screen edge and the read-only chip, so a miss never sends an order and
+    an order's miss never clears; in landscape the bar's start is the bottom-left corner under the
+    left thumb, in portrait the left end (left-handed mode mirrors it). **During placement and the
+    strike aim** it still clears, and §1's freeze holds: the bar keeps its slot as an empty plate,
+    so BUILD, the strike button and its check mark and X do not move until the mode ends. A tap on
+    the chip itself stays read-only; making it narrow the selection to that type is a possible later
+    order, not planned. Screened (§16): "Deselect" and "Clear" are plain words and no RTS this ADR
+    screens has such a button.
   - **The selection chip** (64 dp): the first type's item card picture, "xN" and the health of the
     selection (a bar of the summed hp against the summed max). More types show a "+N" chip;
     a building shows its picture, name and health, an enemy building its amber frame and notch
     (P115b). It replaces `SelectionPanel` and keeps its fit rule (the chips that fit, then "+N").
     The design's "x2" badge is the count.
   - **Orders, only those the game has** (the lead's rule; checked in `game/sim/Command.gd` and
-    `game/input/PlayerController.gd`): **Attack** (`ATTACK_MOVE`, which the sim takes and only the
-    AI sends today): a tap arms it, the button shows pressed, the next ground tap sends one
-    `ATTACK_MOVE` there and disarms it (an enemy tap is an `ATTACK` as always; a map pan keeps it
-    armed; a second tap on the button disarms it, and so do a selection that changes or empties,
-    the start of placement or of a strike aim, opening the drawer and pause). **Stop** (`STOP`): one tap, one Command. A ground tap
-    without Attack armed stays a `MOVE` that stops an attack (CLAUDE.md, Mobile UX). The design's
-    "ATTACK as the default" would change that rule: question 4.
+    `game/input/PlayerController.gd`): **Stop** (`STOP`, which the sim takes and nothing sends
+    today): one tap, one Command, for units. **No Attack button and no attack-move mode**
+    (Michael's answer 4): a ground tap stays a `MOVE` that stops an attack and a tap on an enemy an
+    `ATTACK`, as CLAUDE.md's Mobile UX line says; the design's ATTACK button is not taken.
   - **Later orders slot in:** the bar is a row of 64 dp buttons from a list (an order id, a glyph, a
     label, a visibility predicate on the selection); a row that adds an order adds a list entry, its
     glyph and its HOW_TO_PLAY line. Guard, Patrol and Scatter (units) and Repair, Sell, Rally and
@@ -408,7 +446,7 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   #FFAE5C, text #2A1405). The local player's side is the faction of its own rows (P85d's rule).
   Accent never carries meaning alone. The team colours stay per player (GDD), so a Lumen Accord
   player 1 sees orange units under a cyan HUD unless the routes give the local player its side's
-  colour (question 7; a ja also changes the GDD's team-colour line, P26ap).
+  colour (answer 7 ja: the routes do, and the GDD's team-colour line says so, P26ap).
 - **Fonts (M4):** **Big Shoulders** (weight 800) for buttons and titles, upper case, tracking +6 to
   +14 %; **Chakra Petch** (500 to 700) for numbers and body text, tabular figures (OpenType `tnum`)
   for every number that changes. Home: **`assets/art/fonts/<family>/`**, the folder `STYLE.md`
@@ -454,7 +492,7 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
 | Guard, Patrol, Scatter; Repair, Sell, Rally button, Primary; repeat production; Campaign, Continue, Multiplayer; Sound and Music toggles; mission objectives | Not shown until the feature exists | GDD "Not in version 1"; ADR 0023 §8; lead's rule |
 | Radar offline without a radar building or on low power | Never offline (question 5) | GDD; ADR 0023 §13 |
 | "Too expensive" items still queue; BUILD "waiting for credits" | Pay at queue stays; "stalled" means a queue that cannot advance (question 6) | ADR 0018 §5 (question 2 A) |
-| ATTACK as the default for a ground tap | A ground tap moves (stops an attack); Attack is a one-shot mode (question 4) | CLAUDE.md Mobile UX |
+| ATTACK as the default for a ground tap, and the ATTACK button | A ground tap moves (stops an attack), an enemy tap attacks; no Attack button or mode; a Deselect button instead (question 4) | CLAUDE.md Mobile UX; Michael's answer 4 |
 | "BYG" | "BUILD"; every player-facing string English | CLAUDE.md; the design's own rule |
 | The check mark and X in the BUILD corner | Beside the ghost | M2 |
 | Tabs "Base, Infantry, Vehicles" | "Structures, Infantry, Vehicles" | ADR 0023 §13 (RA2's sidebar tabs) |
@@ -480,7 +518,8 @@ The design's swipe to close the drawer and its 48 dp gap round a menu banner are
 - **Generic HUD words, screened** (ADR 0023 §13 asks for the screen to be written down): "RADAR"
   (C&C calls its minimap the radar, and its announcer says "radar online" and "radar offline"),
   "LOW POWER" (the announcer's "low power"), "UNDER ATTACK" ("our base is under attack"),
-  "BUILDING" and "CONSTRUCTION" ("building", "construction complete"). Each is a plain English word
+  "BUILDING" and "CONSTRUCTION" ("building", "construction complete"); "CLEAR" on the Deselect
+  button (§9; no screened game has such a button, and the glyph is a broken selection ring). Each is a plain English word
   for what it labels and stays as a word; what is not taken is the announcer's phrasing as a
   line: no "ONLINE"/"OFFLINE" status beside "RADAR" (the radar is never offline, §7), no "Base
   under attack", "Construction complete" or "Unit ready" text or voice. The toast names the hit
@@ -508,7 +547,7 @@ The design's swipe to close the drawer and its 48 dp gap round a menu banner are
   (a group tap during the strike aim moves nothing at the bottom); the unfold rules (one at a time, map gesture
   closes, pinned map stays, the economy card's next touch, the radar's timer stepped); BUILD's ring,
   badge, stalled look and Ready chip from crafted snapshots; the pill's flashes from two crafted
-  snapshots; the cues from crafted events; the command bar's orders and their Commands; pause sets
+  snapshots; the cues from crafted events; the command bar's Stop and its Command, Deselect clearing the selection with no Command; pause sets
   `paused` and a scripted run with HUD actions ends with the same state hash as without them
   (P62's method); no ad node in the battle scene; the font files, OFL texts and CREDITS rows exist,
   `theme.tres` is the only reference to them.
@@ -522,16 +561,19 @@ accepted texts stay):
   top line holds the pill and the scope, the SelectionPanel's line and its fit levels move into the
   command bar's chips. The minimap is no longer at the bottom in portrait: the scope and its full
   map are at the top right (the often-tapped action, BUILD, stays at the bottom).
-- **ADR 0019 §1:** the sidebar is the drawer (§5); the long-press cancel becomes +5 if question 2 is
-  A. **§4:** the minimap is the radar's full map (§7). **§5:** the under-attack arrows become the
+- **ADR 0019 §1:** the sidebar is the drawer (§5); the long-press cancel becomes the hold that
+  queues up to `queue_hold_count` (answer 2 A). **§3:** a Deselect button clears the selection
+  (§9), beside the empty box. **§4:** the minimap is the radar's full map (§7). **§5:** the
+  under-attack arrows become the
   toast and the rim marker (§8). **§6:** Surrender moves into the pause menu (§11).
 - **ADR 0023 §5:** "new fonts" are no longer out of scope (M4). **§12:** the floating panels become
-  the corner HUD; of the canvas's command buttons Attack (attack-move) and Stop are now shown,
-  because the sim has them; guard, patrol, formation, sell, repair, the Air tab and PRIMARY stay out.
+  the corner HUD; of the canvas's command buttons only Stop is shown (the sim has it; attack-move
+  stays out by Michael's answer 4), and a Deselect button is added; guard, patrol, formation, sell,
+  repair, the Air tab and PRIMARY stay out.
   **§13:** the fonts row's decision becomes "used (SIL OFL allowed, M4, 2026-11-01)".
 - **ADR 0024:** §6 above; `touch-ui-rules`' "Collapsible build menu" section is replaced.
 - **CLAUDE.md:** the Legal line of M4 (the lead, a5b945e in this PR). **`docs/GDD.md`:** the
-  team-colour line ("player 1 orange and player 2 cyan by default") if question 7 is ja; nothing
+  team-colour line ("player 1 orange and player 2 cyan by default"), answer 7 ja (P26ap); nothing
   else. **`docs/ROADMAP.md`:** box 3's wording ("the sidebar row sets the portrait bottom zone, so
   the ArmyBar moves above the band"; "jump with the minimap") becomes "the build drawer and the
   corner HUD keep their dp sizes ... jump with the radar's full map"; P26ap writes it, no box is
@@ -556,7 +598,7 @@ accepted texts stay):
 > | Tap the pill's menu button | Pause the match and open the pause menu |
 > | Tap the credits or the power in the pill | Show the economy card; the next touch closes it |
 > | Tap the attack toast | Jump the camera to the attack |
-> | Tap Attack, then the ground | Attack-move there (`ATTACK_MOVE`); the ground tap alone still moves |
+> | Tap Deselect at the command bar's start | Clear the selection (no Command); the bar hides, except during placement or a strike aim, when it keeps its place |
 > | Tap Stop | Stop the selected units (`STOP`) |
 > | Tap a group / "+" / long-press a group | Select it / save the selection in the lowest free group / overwrite it |
 >
@@ -610,9 +652,10 @@ Each row adds or rewrites these entries in `docs/HOW_TO_PLAY.md` in its own PR (
 | P120 | Build menu | Watch BUILD → its ring fills with the item that finishes first and the number counts what is queued |
 | P120c | Build menu | A grey ring with "!" on BUILD → a queue cannot go on (its factory is gone or switched off, or you have as many units as you may). A "Ready" chip beside BUILD → a building is finished; tap it to open the drawer on Structures (until P130). Own a Deep Bore or a Blackout Array → its round button stands above BUILD (the Superweapon row's place words change) |
 | P120 | Build menu | Tap a tab → Structures, Infantry or Vehicles, each with its name; a padlocked card says what you need for it ("Needs <name>") |
-| P120b | Build menu | Tap a unit card → one is queued and paid at once; hold it → several at once, as many as room and credits allow up to `queue_hold_count` (yes; replaces "Hold an item → cancelled"; if question 2 is B, the hold row stays as it is) |
+| P120b | Build menu | Tap a unit card → one is queued and paid at once; hold it → several at once, as many as room and credits allow up to `queue_hold_count` (yes; replaces "Hold an item → cancelled") |
 | P120b | Build menu | Tap an item in the queue row at the drawer's foot → it is cancelled and paid back in full (yes) |
-| P122 | Orders | Select units → a bar at the bottom left (upright: the bottom, BUILD above it) shows them and their health and the orders Attack and Stop. Tap Attack, then the ground → they attack-move there, fighting what they meet; tap Stop → they stop. A ground tap alone still moves without fighting (yes) |
+| P122 | Orders | Select units → a bar at the bottom left (upright: the bottom, BUILD above it) shows them and their health, a Deselect button at its start and the order Stop; tap Stop → they stop where they are (yes) |
+| P122 | Selection | Tap Deselect ("CLEAR", at the start of the bar) → nothing is selected any more and the bar goes away; it works for units and buildings alike. The rows "Long-press and drag a box with no own unit inside" and "Tap the ground with a building selected" lose "the only way to deselect" (yes) |
 | P122 | Selection | Any selection → shown in the bar's chip with its count; more types show "+N". Replaces the selection-panel row |
 | P122b | Army bar → "Groups" (runs before P122) | Tap "+" with units selected → they are saved as the next free group; tap a group → it is selected; hold a group → it is overwritten with the selection, the phone buzzes; "All army" on top selects every own unit that can fight (yes; replaces the hold-to-assign row) |
 | P123 | Combat | A unit or building of yours is hit out of view → a red message at the top says what (tap it to jump there), a red mark on the radar's rim points that way, and the full map pings; while the full map is open you get only the ping (replaces the "Not yet" row) (yes) |
@@ -631,7 +674,7 @@ Each row adds or rewrites these entries in `docs/HOW_TO_PLAY.md` in its own PR (
   `test_floating_panels`, `test_hud_layout`, `test_minimap_layout`, `test_strike_controls`,
   `test_touch_target_sizes`, `test_ui_orientation_flip`, the selection panel and army bar suites)
   are rewritten against `HudCorners`; this is most of the plan's test work.
-- P85f2 is withdrawn if question 1 is answered as recommended; `HudPrefs` arrives with P124's
+- P85f2 is withdrawn (answer 1 A); `HudPrefs` arrives with P124's
   Vibration key instead. P89 keeps only its low-power part; P90's Surrender button lives in the top
   left only until P124.
 - The fonts add a few hundred KB to every build and two OFL texts to every export.
@@ -656,31 +699,37 @@ Each row adds or rewrites these entries in `docs/HOW_TO_PLAY.md` in its own PR (
 - **The strike button shrunk to 56 dp** to match the scope: its 40 dp card, 6 dp ring and foot
   label do not fit; it keeps P112's 72 dp.
 
-## Questions for Michael
+## Questions for Michael (answered 2026-11-02, on #259)
+As proposed; "Michael's answers" at the top records the answers.
 Only what the rules do not answer: each one goes against one of Michael's own earlier answers, a
 CLAUDE.md rule or his new design. The start page's timing, left-handed mode, the attack cues and
 the tagline are decisions above (§12, §14, §8; the tagline in P126's PR).
 1. **The build menu's pin** (P85f2, asked for on 2026-10-31). A: drop it; the drawer opens on BUILD
    and closes on a map touch or a swipe (sideways a pinned panel would be a permanent right-hand
    column, the C&C sidebar look; upright it would halve the field); the pin glyphs go to the radar.
-   B: keep it upright only. Recommended: A.
+   B: keep it upright only. Recommended: A. **Answered A.**
 2. **Holding a unit card.** A: as the design says, a hold queues up to five, and you cancel by
    tapping the item in the queue row. B: a hold keeps cancelling the last one of that type (your
-   "ja" of 2026-10-22), and the queue row's tap cancels too. Recommended: A.
+   "ja" of 2026-10-22), and the queue row's tap cancels too. Recommended: A. **Answered A.**
 3. **"All army".** A: keep it at the top of the group column, always shown. B: drop it, as the
-   design does (double-tap and the box select remain). Recommended: A.
+   design does (double-tap and the box select remain). Recommended: A. **Answered A.**
 4. **Attack.** A: a tap on the ground keeps moving without fighting, and Attack is a button you tap
    before the ground tap to attack-move there. B: as the design says, Attack is the default, so a
    ground tap attack-moves (this changes CLAUDE.md's "tap ground = move (stops an attack)").
-   Recommended: A.
+   Recommended: A. **Answered neither:** keep today's taps, no Attack button or mode, and add a
+   button that clears the selection (Deselect, §9).
 5. **Radar offline** without a radar building or on low power (the design): a new gameplay rule,
-   and Command & Conquer's own (ADR 0023 §13). Recommended: no; the radar is always on.
+   and Command & Conquer's own (ADR 0023 §13). Recommended: no; the radar is always on. **Answered
+   no.**
 6. **Queue without the money** (the design: an item too expensive can still be queued and BUILD
    waits for credits). That is pay-as-you-go, a sim change to "paid when queued" (your answer of
    2026-10-22). Recommended: no; "stalled" shows a queue that cannot go on for other reasons.
+   **Answered no.**
 7. **Team colour.** In a skirmish, should your units take your side's HUD colour (Lumen Accord
    cyan, Derrick League orange), so HUD and army match? It changes the GDD's "player 1 orange,
    player 2 cyan by default". (ja/nej; recommended: ja; P90's routes set it, a data choice)
+   **Answered ja.**
 8. **A match starts with everything folded away**, the build drawer closed, instead of ADR 0024's
    "a match starts with the menu open" (accepted 2026-10-31). (ja/nej; recommended: ja: the open
    drawer would cover 40-50 % of the screen at the first look, and BUILD is one tap away)
+   **Answered ja.**
