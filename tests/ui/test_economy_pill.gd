@@ -367,10 +367,13 @@ func _craft(credits: int, made: int, used: int) -> MatchSnapshot:
 	return snap
 
 
-## Publishes a crafted tick and reads it at once.
+## Publishes a crafted tick and reads it at once. A fall in the credits counts down for
+## `economy_flash_ms` (P119b, test_economy_flash.gd), so the time passes here: the number shows at
+## once, as these tests read it.
 func _publish(credits: int, made: int, used: int) -> void:
 	_runner.snapshot = _craft(credits, made, used)
 	_pill.refresh()
+	_pill._process(10.0)
 
 
 ## The rects of the pill's pieces, by name.

@@ -28,9 +28,11 @@ const GESTURES: Array[StringName] = [&"tap", &"double_tap", &"box", &"pan", &"pi
 const FOLDING: Array[HudState.Unfold] = [
 	HudState.Unfold.DRAWER, HudState.Unfold.ECONOMY, HudState.Unfold.RADAR
 ]
-## HUD controls of the scene as it stands (the band, the army bar, the minimap), found by name.
+## HUD controls of the scene as it stands (the band, the army bar, the minimap), found by name. The
+## pill's numbers are not among them: a tap on them asks for the economy card, and opening an
+## unfold closes the open one (test_economy_card.gd has the pill's touches).
 const CONTROLS: Array[String] = [
-	"AllArmy", "Group1", "SelectionPanel", "Minimap", "TabVehicles", "TabStructures", "CreditsTap"
+	"AllArmy", "Group1", "SelectionPanel", "Minimap", "TabVehicles", "TabStructures"
 ]
 
 var _window_size_before: Vector2i
@@ -46,7 +48,7 @@ var _state: HudState
 var _pill: EconomyPill
 var _now_ms: int = 0
 var _sent: Array[Command] = []
-var _taps_on_pill: int = 0  ## `economy_pressed`s: each one asks for the card, as P119b's pill will.
+var _taps_on_pill: int = 0  ## `economy_pressed`s: each one asks for the card (the pill does that).
 
 
 func before() -> void:
@@ -143,8 +145,8 @@ func test_a_touch_on_a_hud_control_closes_nothing_but_the_economy_card() -> void
 
 
 ## A tap on the pill's numbers while the card shows is the touch that closes it; its release asks
-## for the card (as P119b's `economy_pressed` handler will) and the card stays shut. The next tap
-## opens it.
+## for the card (the pill's own `economy_pressed` handler, P119b) and the card stays shut. The next
+## tap opens it.
 func test_a_tap_on_the_pill_while_the_card_shows_only_closes_it() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
@@ -410,10 +412,9 @@ func _open(size: Vector2i) -> void:
 	await _settle()
 
 
-## What P119b's pill will do with a tap on its numbers: ask for the economy card.
+## Counts the taps on the pill's numbers; the pill itself asks for the economy card (P119b).
 func _on_economy_pressed() -> void:
 	_taps_on_pill += 1
-	_state.open(HudState.Unfold.ECONOMY)
 
 
 ## The selection, the camera and the Commands as a gesture's work expects them, and a finger down

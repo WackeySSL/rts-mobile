@@ -4,11 +4,17 @@ extends PanelContainer
 ## in one 48 dp pill at the top left, sideways and upright alike. It replaces `StatusPill` and the
 ## status line of the build band and strip. It reads the published snapshot only (the local
 ## player's credits and power) and sends nothing to the sim.
-## Credits and power are tap areas of at least 48 dp each (`economy_pressed`; the detail card is
-## P119b), the menu button (`menu_pressed`) stays hidden until the pause menu (P124). Numbers keep
-## fixed digit slots (`DigitRow`). Low power (`power_used` above `power_made`) is a word, a shape
-## and a colour: the pill's border and the bar turn danger red, the bolt becomes the warning
-## triangle and the word "LOW POWER" takes the numbers' place in the bar where it fits.
+## Credits and power are tap areas of at least 48 dp each; a tap asks `HudState` for the ECONOMY
+## unfold, which shows the detail card `EconomyCard` under the pill, and the next touch closes it.
+## The menu button (`menu_pressed`) stays hidden until the pause menu (P124). Numbers keep fixed
+## digit slots (`DigitRow`). Low power (`power_used` above `power_made`) is a word, a shape and a
+## colour: the pill's border and the bar turn danger red, the bolt becomes the warning triangle and
+## the word "LOW POWER" takes the numbers' place in the bar where it fits.
+## Flashes (plan P119b, view only, from the published snapshots): a fall in the credits shows a red
+## chip "-N" under the credits and a rise a green "+N", for `economy_flash_ms` of frame time (a
+## further change inside that time adds to the chip and starts the time again); after a fall the
+## number counts down to the new value in that time, a rise shows at once. A new match starts
+## without a flash.
 ## This node takes the pill's rect from `HudCorners.place` (after what stands at the top left,
 ## `top_left`: the first visible of the Dev and Surrender buttons), on `_ready`, on every resize and
 ## when its content changes size.
@@ -19,7 +25,7 @@ extends PanelContainer
 ## does not shrink below it, so the layout's cap would no longer work.
 
 signal menu_pressed
-signal economy_pressed  ## The credits or the power was tapped.
+signal economy_pressed  ## The credits or the power was tapped; the pill asks for the card itself.
 
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
 const VARIATION: StringName = &"EconomyPill"
@@ -40,10 +46,18 @@ const SLACK_DP: float = 1.0  ## What the containers' rounding to whole px may ta
 ## The credits' slot: 99 999. The rules set no ceiling (a snapshot holds an int32); a bigger bank
 ## widens the pill by a digit once.
 const CREDITS_DIGITS: int = 5
+const CHIP_VARIATION: StringName = &"PowerNumberLow"  ## Dark digits, for a chip on a colour.
+const CHIP_LOSS_VARIATION: StringName = &"EconomyChipLoss"
+const CHIP_GAIN_VARIATION: StringName = &"EconomyChipGain"
+const CHIP_GAP_DP: float = 4.0  ## Between the pill and the chip under its credits.
 
 @export var runner: MatchRunner
 @export var safe_area: SafeAreaMargin  ## Its gap is the safe rect's (ADR 0025 section 2).
 @export var top_left: Control  ## The pill starts after its first visible child (Dev, or Surrender).
+@export var feed: HudStateFeed  ## Its `state` is asked for the card; none: the pill has no card.
+## The detail card, a root of the HUD beside the pill (a control outside a container cannot take a
+## touch from a child of one, so the card is not the pill's child). Hidden until the ECONOMY unfold.
+@export var card: EconomyCard
 
 var _line: HBoxContainer = HBoxContainer.new()
 var _menu: Button = Button.new()
@@ -59,6 +73,16 @@ var _word: Label = Label.new()
 var _low: bool = false
 var _shown: Vector3i = Vector3i(-1, -1, -1)  ## Credits, power made and power used on screen.
 var _seen: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot last read.
+var _ring: IncomeRing = IncomeRing.new()  ## The card's income, fed from every snapshot.
+var _sync_queued: bool = false
+var _defaults: InputSettings = InputSettings.new()  ## The flash time when there is no feed.
+var _chip: PanelContainer = PanelContainer.new()  ## The flash: a coloured chip under the credits.
+var _chip_text: DigitRow = DigitRow.new()
+var _displayed: int = 0  ## The credits on screen: counting down after a fall, else the real ones.
+var _count_from: int = 0
+var _count_ms: float = 0.0  ## Frame time left of the count-down.
+var _chip_amount: int = 0  ## The change the chip shows, signed.
+var _chip_ms: float = 0.0  ## Frame time left of the chip.
 
 
 ## A part of the pill that takes a tap: a press and a release on it, by the same finger.
@@ -118,6 +142,10 @@ func _ready() -> void:
 	_numbers.set_text("0/0")
 	for tap: TapArea in [_credits_tap, _power_tap]:
 		tap.tapped.connect(economy_pressed.emit)
+	_build_overlays()
+	if feed != null:
+		economy_pressed.connect(feed.state.open.bind(HudState.Unfold.ECONOMY))
+		feed.state.changed.connect(_on_unfold_changed)
 	get_viewport().size_changed.connect(_apply_dp)
 	minimum_size_changed.connect(place)
 	_apply_dp()
@@ -130,8 +158,10 @@ func _notification(what: int) -> void:
 		place.call_deferred()  # After the labels below have heard of the theme too.
 
 
-## A frame reads the published snapshot when it is a new one (a tick, or a new match).
-func _process(_delta: float) -> void:
+## A frame moves the flashes on by its time, then reads the published snapshot when it is a new
+## one (a tick, or a new match), so a flash that starts now has all its time left.
+func _process(delta: float) -> void:
+	_advance(delta * 1000.0)
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
 	if snap != null and Vector2i(snap.match_serial, snap.tick) != _seen:
 		refresh()
@@ -143,15 +173,24 @@ func refresh() -> void:
 	if snap == null or runner.scenario == null:
 		return
 	var player: int = runner.scenario.local_player
+	var quiet: bool = snap.match_serial != _seen.x or _shown.x < 0  # The first read, a new match.
 	_seen = Vector2i(snap.match_serial, snap.tick)
 	var numbers: Vector3i = Vector3i(
 		_entry(snap.credits, player),
 		_entry(snap.power_made, player),
 		_entry(snap.power_used, player)
 	)
+	if quiet:
+		_ring.reset()
+		_end_flashes(numbers.x)
+	elif numbers.x != _shown.x:
+		_flash(numbers.x)
+	_ring.feed(snap.tick, _entry(snap.stat_harvested, player))
 	if numbers != _shown:
 		_shown = numbers
-		_show(numbers.x, numbers.y, numbers.z)
+		_show(numbers.y, numbers.z)
+	if card != null and card.visible:
+		card.show_from(snap, player, _ring.per_minute())
 
 
 ## The menu button and its divider show from the pause menu's row (P124) on.
@@ -176,6 +215,9 @@ func place() -> void:
 	if top_left != null and top_left.visible:
 		shown.left_taken = HudLayout.first_visible_width(top_left) / dp
 	shown.pill_width = _wanted_dp()
+	shown.card = card != null and card.visible
+	if shown.card:
+		shown.card_height = card.get_combined_minimum_size().y / dp
 	var margin_dp: float = (
 		SafeAreaMargin.DEFAULT_MARGIN_DP if safe_area == null else safe_area.margin_dp
 	)
@@ -185,6 +227,108 @@ func place() -> void:
 	)
 	position = rects[HudCorners.PILL].position
 	size = rects[HudCorners.PILL].size
+	if shown.card:
+		card.position = rects[HudCorners.CARD].position
+		card.size = rects[HudCorners.CARD].size
+	_update_chip()
+
+
+## The flash chip is the pill's child outside its container, hanging under the credits. It is a
+## cue and takes no touch. The card is `card`, placed in `place`.
+func _build_overlays() -> void:
+	_chip.name = "Flash"
+	_chip.theme_type_variation = CHIP_LOSS_VARIATION
+	_chip.top_level = true
+	_chip.visible = false
+	_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_chip_text.name = "FlashText"
+	_chip_text.variation = CHIP_VARIATION
+	_chip.add_child(_chip_text)
+	add_child(_chip)
+	if card != null:
+		card.minimum_size_changed.connect(place)
+
+
+## The card follows `HudState` a frame later: the touch that closes it is still on it when the GUI
+## looks for a control, and the card must be there to take that touch.
+func _on_unfold_changed(_previous: HudState.Unfold) -> void:
+	if not _sync_queued:
+		_sync_queued = true
+		_sync_card.call_deferred()
+
+
+func _sync_card() -> void:
+	_sync_queued = false
+	var want: bool = feed != null and card != null and feed.state.is_open(HudState.Unfold.ECONOMY)
+	if card == null or want == card.visible:
+		return
+	card.visible = want
+	var snap: MatchSnapshot = null if runner == null else runner.snapshot
+	if want and snap != null and runner.scenario != null:
+		card.show_from(snap, runner.scenario.local_player, _ring.per_minute())
+	_update_chip()
+	place()
+
+
+## The credits changed to `credits`: the chip adds the change to what it shows (or starts), the
+## shown number counts down after a fall and shows a rise at once.
+func _flash(credits: int) -> void:
+	var total: float = float(_flash_ms())
+	if total <= 0.0:
+		_end_flashes(credits)
+		return
+	_chip_amount = (_chip_amount if _chip_ms > 0.0 else 0) + credits - _shown.x
+	_chip_ms = total
+	if credits >= _displayed:
+		_displayed = credits
+		_count_ms = 0.0
+	else:
+		_count_from = _displayed
+		_count_ms = total
+	_write_credits()
+	_chip_text.set_text("%+d" % _chip_amount)
+	_chip.theme_type_variation = CHIP_LOSS_VARIATION if _chip_amount < 0 else CHIP_GAIN_VARIATION
+	_update_chip()
+
+
+## No flash: the credits show as they are.
+func _end_flashes(credits: int) -> void:
+	_chip_ms = 0.0
+	_count_ms = 0.0
+	_displayed = credits
+	_write_credits()
+	_update_chip()
+
+
+## `ms` of frame time passed: the count-down and the chip run on, and end after `economy_flash_ms`.
+func _advance(ms: float) -> void:
+	if _count_ms > 0.0:
+		_count_ms = maxf(_count_ms - ms, 0.0)
+		var left: float = _count_ms / maxf(float(_flash_ms()), 1.0)
+		_displayed = _shown.x + roundi((_count_from - _shown.x) * left)
+		_write_credits()
+	if _chip_ms > 0.0:
+		_chip_ms -= ms
+		if _chip_ms <= 0.0:
+			_update_chip()
+
+
+func _flash_ms() -> int:
+	return (_defaults if feed == null else feed.state.settings).economy_flash_ms
+
+
+func _write_credits() -> void:
+	_credits.set_text(str(_displayed))
+
+
+## The chip shows while its time runs and the card (which has the credits) does not, under the
+## credits.
+func _update_chip() -> void:
+	_chip.visible = _chip_ms > 0.0 and _chip_amount != 0 and not (card != null and card.visible)
+	if _chip.visible:
+		_chip.reset_size()
+		var below: float = global_position.y + size.y + UiScale.dp(CHIP_GAP_DP)
+		_chip.position = Vector2(_credits_tap.global_position.x, below)
 
 
 ## The width the pill asks of the layout, in dp: its content (the bar at its least) and what the
@@ -259,10 +403,10 @@ func _build_bar() -> void:
 	_numbers.minimum_size_changed.connect(_text_changed)
 
 
-## The numbers of the pill. The look changes only when the low state does.
-func _show(credits: int, made: int, used: int) -> void:
+## The power numbers of the pill (the credits are `_write_credits`'). The look changes only when
+## the low state does.
+func _show(made: int, used: int) -> void:
 	var low: bool = used > made
-	_credits.set_text(str(credits))
 	_bar.max_value = maxi(made, 1)
 	_bar.value = _bar.max_value if low else used
 	_numbers.set_text("%d/%d" % [used, made])
