@@ -76,8 +76,7 @@ func test_the_standard_terrain_set_is_grass_sand_scrub_rock_water_ore_in_that_or
 	)
 
 
-func test_rules_file_holds_the_thirty_three_starting_ints_and_the_script_defaults_equal_it(
-) -> void:
+func test_rules_file_holds_the_thirty_six_starting_ints_and_the_script_defaults_equal_it() -> void:
 	var expected: Dictionary[String, int] = {
 		"retarget_period_ticks": 5,
 		"fog_period_ticks": 3,
@@ -113,6 +112,10 @@ func test_rules_file_holds_the_thirty_three_starting_ints_and_the_script_default
 		"unit_cap": 75,
 		"building_cap": 40,
 		"ghost_cap": 40,
+		# Place-first construction (ADR 0026 section 12).
+		"construct_start_hp_percent": 10,
+		"construct_refund_percent": 75,
+		"construction_sites_max": 1,
 	}
 	var rules: RulesDef = load(RULES_PATH)
 	var defaults: RulesDef = RulesDef.new()
@@ -216,6 +219,19 @@ func test_every_phase_3_rule_accepts_its_edge_values_and_reports_the_next_ones()
 		["queue_slots", [1], [0], below_1 % "queue_slots"],
 		["harvest_resume_ticks", [0, 1], [-1], "harvest_resume_ticks is negative"],
 		["low_power_percent", [0, 100], [-1, 101], "low_power_percent is not in 0..100"],
+		[
+			"construct_start_hp_percent",
+			[1, 100],
+			[0, 101],
+			"construct_start_hp_percent is not in 1..100"
+		],
+		[
+			"construct_refund_percent",
+			[0, 100],
+			[-1, 101],
+			"construct_refund_percent is not in 0..100"
+		],
+		["construction_sites_max", [0, 1, 2], [-1], "construction_sites_max is negative"],
 		["harvest_reach_milli", [0], [-1], "a reach is negative"],
 		["dock_reach_milli", [0], [-1], "a reach is negative"],
 		["harvest_pick_milli", [0], [-1], "a reach is negative"],
@@ -310,6 +326,34 @@ func test_the_phase_3_unit_and_building_rules_accept_their_edge_values_and_repor
 	# A plain unit is not held to the building rules: a mobile unit has speed and a radius.
 	var tank: UnitDef = _fine_unit()
 	assert_array(_economy_problems("tank.tres", tank, RulesDef.new())).is_empty()
+
+
+## ADR 0026 section 2: a type on the Structures tab takes at least 1 tick to build. A type on
+## another tab, or on none, may have 0 (a unit is not placed), and every shipped Structures type is
+## above it.
+func test_a_structures_type_needs_a_build_time_of_at_least_one_tick() -> void:
+	var message: String = "depot.tres: a Structures type has build_ticks below 1"
+	for tab: int in [-1, World.Tab.INFANTRY, World.Tab.VEHICLES]:
+		var other: BuildingDef = _fine_building()
+		other.tab = tab
+		other.build_ticks = 0
+		assert_array(_economy_problems("depot.tres", other, RulesDef.new())).is_empty()
+	for ticks: int in [1, 150]:
+		var fine: BuildingDef = _fine_building()
+		fine.tab = World.Tab.STRUCTURES
+		fine.build_ticks = ticks
+		assert_array(_economy_problems("depot.tres", fine, RulesDef.new())).is_empty()
+	var instant: BuildingDef = _fine_building()
+	instant.tab = World.Tab.STRUCTURES
+	instant.build_ticks = 0
+	assert_array(_economy_problems("depot.tres", instant, RulesDef.new())).is_equal([message])
+	var structures: int = 0
+	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
+		var unit: UnitDef = load(path)
+		if unit.tab == World.Tab.STRUCTURES:
+			structures += 1
+			assert_int(unit.build_ticks).override_failure_message(path).is_greater_equal(1)
+	assert_int(structures).is_greater_equal(1)
 
 
 ## from_scenario swaps a map that fails validate() for open grass without a message (gdUnit4
@@ -633,11 +677,13 @@ func _fine_unit() -> UnitDef:
 
 
 ## A building that breaks no rule when its file is depot.tres: 2x2, speed 0, radius 0, armour
-## Building, not buildable by the player (tab -1).
+## Building, not buildable by the player (tab -1), and a build time of 1 tick, so that a case which
+## puts it on the Structures tab (ADR 0026 section 2) breaks no rule either.
 func _fine_building() -> BuildingDef:
 	var building: BuildingDef = BuildingDef.new()
 	building.footprint = Vector2i(2, 2)
 	building.armour = 3
+	building.build_ticks = 1
 	return building
 
 
@@ -648,6 +694,9 @@ func _economy_problems(file: String, unit: UnitDef, rules: RulesDef) -> PackedSt
 	var broken: Dictionary[String, bool] = {
 		"cost is negative": unit.cost < 0,
 		"build_ticks is negative": unit.build_ticks < 0,
+		# ADR 0026 section 2: a site never passes through completion with no build time.
+		"a Structures type has build_ticks below 1":
+		unit.tab == World.Tab.STRUCTURES and unit.build_ticks < 1,
 		"tab is not -1..2": unit.tab < -1 or unit.tab > 2,
 		"harvest_capacity is not a multiple":
 		unit.harvest_capacity < 0 or unit.harvest_capacity % rules.credits_per_ore != 0,
@@ -692,6 +741,11 @@ func _rule_problems(rules: RulesDef) -> PackedStringArray:
 		"harvest_resume_ticks is negative": rules.harvest_resume_ticks < 0,
 		"low_power_percent is not in 0..100":
 		rules.low_power_percent < 0 or rules.low_power_percent > 100,
+		"construct_start_hp_percent is not in 1..100":
+		rules.construct_start_hp_percent < 1 or rules.construct_start_hp_percent > 100,
+		"construct_refund_percent is not in 0..100":
+		rules.construct_refund_percent < 0 or rules.construct_refund_percent > 100,
+		"construction_sites_max is negative": rules.construction_sites_max < 0,
 		"a reach is negative":
 		(
 			mini(

@@ -270,12 +270,13 @@ size_flags_horizontal = 8
 size_flags_vertical = 0
 theme_type_variation = &"BuildSidebar"
 
-[node name="Minimap" type="Control" parent="Hud/SafeArea/MinimapSlot" node_paths=PackedStringArray("runner", "camera", "map_view")]
+[node name="Minimap" type="Control" parent="Hud/SafeArea/MinimapSlot" node_paths=PackedStringArray("runner", "camera", "map_view", "controller")]
 layout_mode = 2
 script = ExtResource("37_minimap")
 runner = NodePath("../../../../MatchRunner")
 camera = NodePath("../../../../Camera")
 map_view = NodePath("../../../../MapView")
+controller = NodePath("../../../../PlayerController")
 
 [node name="StrikeBand" type="MarginContainer" parent="Hud/SafeArea"]
 mouse_filter = 2

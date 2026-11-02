@@ -11,7 +11,11 @@ const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const Lifts: GDScript = preload("res://tests/view/support/lifts.gd")
 const CARD: String = "res://assets/art/iso/icons/item_light_tank.svg"
-const LONG_NAME: String = "Heavily Armoured Experimental Siege Tank Destroyer Mark Seven"
+## Long enough to pass the cap (40 % of the band) at 16 dp in the HUD font, Chakra Petch (P118),
+## on the desktop profile too, where the cap is widest.
+const LONG_NAME: String = (
+	"Heavily Armoured Experimental Siege Tank Destroyer " + "Mark Seven Prototype Without Sponsors"
+)
 
 var _window_size_before: Vector2i
 var _now_ms: int = 0

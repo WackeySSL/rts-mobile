@@ -6,8 +6,9 @@ extends RefCounted
 ## Ticks. "Stamp" is `world.tick + 1`, the tick the step in progress produces (the stamp
 ## `defeated_tick` and `match_end_tick` carry). A command is applied in the step of its own `tick`.
 ##
-## The charge. A strike building (`type_strike_kind` above 0) starts charging when it is placed:
-## `start_charge`, called by `Buildings.add` for a PLACE and for a scenario's building alike, sets
+## The charge. A strike building (`type_strike_kind` above 0) starts charging when it is complete:
+## `start_charge`, called by `Buildings.add` for a scenario's building and by
+## `Production._build_sites` for a site that reaches 0 (ADR 0026), sets
 ## its `ready_tick` to stamp + `type_charge_ticks`. It may fire once the stamp reaches `ready_tick`,
 ## so a SUPERWEAPON of tick `t + type_charge_ticks` is the first one accepted for a building placed
 ## in tick `t` (and for one fired in tick `t`), and not a tick earlier. Low power does not pause it.
@@ -27,7 +28,9 @@ extends RefCounted
 ## - `target_id` is a row of the player's own whose type is a strike building (kind RUPTURE or
 ##   BLACKOUT);
 ## - it has charged (the stamp is `ready_tick` or more) and is not offline (`offline_until` is
-##   not above the stamp: a blacked-out building is back at that stamp).
+##   not above the stamp: a blacked-out building is back at that stamp), and is complete
+##   (`build_left` is 0, not above and not -1: a site charges from its completion,
+##   `Production._build_sites`).
 ## A valid command clamps its point to the map as RALLY clamps its point (so that the squared
 ## distances stay small and the point fits its int32 column) and sets the building's `ready_tick`
 ## to stamp + `type_charge_ticks`. A RUPTURE then writes the player's pending strike,
@@ -109,6 +112,8 @@ static func apply_superweapon(world: World, command: Command) -> bool:
 		return false
 	if stamp < world.ready_tick[row] or world.offline_until[row] > stamp:
 		return false
+	if world.build_left[row] != 0:
+		return false  # Not complete (ADR 0026): a site's ready_tick is 0; a cancelled one has -1.
 	var kind: int = world.type_strike_kind[type]
 	if kind != Kind.RUPTURE and kind != Kind.BLACKOUT:
 		return false

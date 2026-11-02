@@ -36,7 +36,7 @@ func test_the_tabs_and_harvest_modes_are_the_contract() -> void:
 	assert_int(World.TABS).is_equal(World.Tab.size())
 	var modes: Dictionary = {"IDLE": 0, "SEEK": 1, "MINE": 2, "RETURN": 3, "UNLOAD": 4}
 	assert_dict(World.HarvestMode).is_equal(modes)
-	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([4, 7])
+	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([5, 7])
 
 
 ## The lists that Phase 3 declares at once (ADR 0017 section 3), by name and in order. The other
@@ -73,9 +73,10 @@ func test_the_eighteen_phase_3_rule_ints_follow_max_rows_and_equal_the_file() ->
 	for rule_name: String in PHASE_3_RULES:
 		names.append(StringName(rule_name))
 	var at: int = World.RULE_SCALARS.find(&"max_rows") + 1
-	assert_array(World.RULE_SCALARS.slice(at)).is_equal(names)
-	assert_array(World.UNHASHED_SCALARS.slice(-names.size())).is_equal(names)
-	assert_int(World.RULE_SCALARS.size()).is_equal(33)
+	assert_array(World.RULE_SCALARS.slice(at, at + names.size())).is_equal(names)
+	# The three rules of place-first construction (P128, test_world_v4) come after them.
+	assert_array(World.UNHASHED_SCALARS.slice(-names.size() - 3, -3)).is_equal(names)
+	assert_int(World.RULE_SCALARS.size()).is_equal(36)
 	var world: World = World.new()
 	var file: RulesDef = load(RULES_PATH) as RulesDef
 	for rule_name: String in PHASE_3_RULES:
