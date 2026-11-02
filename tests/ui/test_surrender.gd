@@ -220,6 +220,18 @@ func test_the_words_on_the_button_and_the_dialog() -> void:
 	assert_str(_dialog().question).is_equal("SURRENDER?")
 
 
+## A tap opens the dialog with the keyboard focus on KEEP PLAYING, and no focus ring shows.
+func test_the_dialog_takes_the_focus_without_a_ring() -> void:
+	get_window().size = ScreenSizes.LANDSCAPE[0]
+	await await_idle_frame()
+	await _open()
+	_tap(_surrender())
+	await await_idle_frame()
+	var no_button: Button = _dialog().find_child("NoButton", true, false) as Button
+	assert_bool(no_button.has_focus()).is_true()
+	assert_bool(no_button.has_focus(true)).is_false()
+
+
 ## A main scene on the Derrick League's Skirmish whose controller keeps its Commands in `_sent`.
 func _open() -> void:
 	_main = auto_free(await MatchRig.open(self))

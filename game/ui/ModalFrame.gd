@@ -62,9 +62,10 @@ func add_button(parent: Node, text: String, action: Callable) -> Button:
 
 
 ## Shows the modal with the keyboard focus on `first`, so a key never reaches the HUD behind it.
+## The focus is hidden (no focus ring after a tap, as the rest of the HUD); a key shows it.
 func show_over(first: Button) -> void:
 	visible = true
-	first.grab_focus()
+	first.grab_focus(true)
 
 
 ## A modal that shows ends every gesture in flight under it (a held finger, a hold, a pan).
