@@ -1,6 +1,6 @@
 ---
 name: touch-ui-rules
-description: Touch controls, camera, HUD and layout rules for rts-mobile on phones in landscape and portrait (ADR 0015) - gesture map, thresholds, hit areas in dp, build menu layout (floating panels in landscape, a band in portrait, both collapsible, ADR 0024), safe areas, text sizes and feedback. Use whenever building or reviewing input handling, camera, selection, HUD, the build menu, menus or any on-screen control.
+description: Touch controls, camera, HUD and layout rules for rts-mobile on phones in landscape and portrait (ADR 0015) - gesture map, thresholds, hit areas in dp, the corner HUD and the build drawer (ADR 0025), safe areas, text sizes and feedback. Use whenever building or reviewing input handling, camera, selection, HUD, the build menu, menus or any on-screen control.
 paths:
   - "game/input/**"
   - "game/ui/**"
@@ -32,14 +32,24 @@ with the phone; no UI code assumes width > height.
 | One-finger drag beyond 12 dp | Pan the camera |
 | Two-finger pinch | Zoom between 3 levels, smoothly |
 | Two-finger drag | Pan, always |
-| Tap minimap | Move the camera there |
-| Long-press minimap with units selected | Move the units there |
-| Tap a build icon | Queue one (`QUEUE`, paid at once) |
-| Long-press a build icon with items queued | Cancel the last queued item of that type (`CANCEL`, refunded) |
-| Any gesture on the map (tap, double-tap, long-press, drag, pinch) | Also collapses the build menu unless it is pinned; a touch on a HUD control never does |
-| Tap the build menu's Build button | Open the menu |
-| Tap the Ready badge | Open the menu on the Structures tab, the ready card in view |
-| Tap the pin | Pin or unpin the open build menu (remembered on the device) |
+| Tap the radar scope | Unfold the full map under it |
+| Tap or drag the full map | Move the camera there; with units selected a long-press moves them there |
+| Tap a unit card | Queue one (`QUEUE`, paid at once) |
+| Long-press a unit card | Queue as many as room and credits allow, at most `queue_hold_count` |
+| Tap an item in the queue row | Cancel it (`CANCEL`, full refund) |
+| Any gesture on the map | Also closes the open drawer, full map (unless pinned) or economy card; the gesture still does its work; a touch on a HUD control never closes them |
+| Tap BUILD | Open the build drawer |
+| Swipe the drawer toward its edge (portrait: from its head) | Close it (`drawer_swipe_dp`) |
+| Tap the Ready chip (until ADR 0026's P130) | Open the drawer on the Structures tab, the ready card in view |
+| Tap the pill's menu button | Pause the match and open the pause menu |
+| Tap the credits or the power in the pill | Show the economy card; the next touch closes it |
+| Tap the attack toast | Jump the camera to the attack |
+| Tap Deselect at the command bar's start | Clear the selection (no Command); the bar hides, except during placement or a strike aim, when it keeps its place |
+| Tap Stop | Stop the selected units (`STOP`) |
+| Tap a group / "+" / long-press a group | Select it / save the selection in the lowest free group / overwrite it |
+
+There is no Attack button and no attack-move mode (Michael, 2026-11-02, ADR 0025 answer 4): a tap
+on the ground moves, a tap on an enemy attacks.
 
 Thresholds live in `data/input_settings.tres`, never in code.
 
@@ -83,91 +93,78 @@ until confirm.
   scrolling for at most `edge_pan_max_step_ms` (100), all in `data/input_settings.tres`. The top
   band counts from the lifted ghost point, the left, right and bottom bands from the finger. The
   bands lie inside the safe area, and in portrait the bottom band ends at the build menu's real top
-  (`HudLayout.menu_top_px`: the strip's top, or the open band's when the menu is pinned; until
-  plan row P86c adds it, `safe.end.y - bottom_zone_dp`).
+  (`HudLayout.menu_top_px`: the strip's top, or the open band's when the menu is pinned; with ADR
+  0025's drawer, which placement always closes, the safe bottom).
 - Valid tiles are tinted green with a solid outline, invalid red with a hatch and the reason's
   glyph (never colour alone), from `Placement.reason` on the snapshot. Confirm with a check-mark
   button, cancel with an X, each at least 64 dp, beside the ghost: a column right of its
   silhouette, `ghost_grab_dp` + 8 dp out so it never covers the grab ring, flipped left (then
   above) near an edge or a HUD control, inside the safe area and above the build menu; hidden while
-  the ghost is dragged, shown again on release (until plan row P86c they stand in place of the card
-  row). The check mark is dimmed while the ghost does not fit, while a PLACE is pending and while it
-  is "Blocked"; the X works in every state. Never place a building on touch release alone.
+  the ghost is dragged, shown again on release. The check mark is dimmed while the ghost does not
+  fit, while a PLACE is pending and while it is "Blocked"; the X works in every state. Never place a
+  building on touch release alone.
 - After confirm the ghost waits ("pending") until the snapshot shows the building; if the
   structure is still ready one published tick after the Command's tick, it turns invalid with
   "Blocked" (the word under the glyph; moving the ghost clears it). Cancel keeps the structure
   ready. A turn keeps the ghost's tile and sends nothing; the check mark and X stay beside the
   ghost.
-- Placement collapses the build menu unless it is pinned; a pinned menu stays open with its cards.
-  When a build or the X ends placement, the menu returns to the state it had when placement began
-  (open, since placement begins on a card); a strike aim that ends placement leaves it collapsed,
-  so the strike row does not move.
+- Placement closes the build drawer; when a build or the X ends it, the drawer comes back if
+  placement began in it; a strike aim that ends placement leaves it closed.
+- From ADR 0026's row P130 on, placement begins with a tap on a structure's card (there is no
+  "Ready" state), the check mark shows the price (18 sp) and pays it, and the building goes up on
+  the spot.
 
-## Collapsible build menu (ADR 0024)
-- The build menu is open or collapsed. A match starts open. A gesture on the map and the start of
-  placement collapse it unless it is pinned; a touch on a HUD control never does, and it stays open
-  while the player works in it. The Build button opens it, the Ready badge opens it on the
-  Structures tab, and selecting an own production building opens it at its tab.
-- Collapsed: in portrait a 96 dp strip (`HudLayout.STRIP_DP`; the credits and power line over the
-  Build button and the Ready badge, the minimap at its right end); in landscape a 56 dp plate at
-  the bottom right (the Ready badge and the Build button; the pill and the minimap panel stay). The
-  Ready badge hides while the menu is open and while placement runs.
-- The pin (48 dp, the open menu's top-right corner) keeps it open, placement included; unpinned by
-  default; saved in `user://settings.cfg` by `game/meta`.
-- The height slides over `menu_slide_ms` (`data/input_settings.tres`); input never waits for it;
-  the camera never moves with it.
-- Plan rows P86c, P85f and P85f2 (`docs/plans/2026-10-31-collapsible-build-menu.md`) build it; until
-  they merge the menu stays open.
+## Corner HUD and build drawer (ADR 0025)
+Plan rows P119-P125 (`docs/plans/2026-11-01-hud-v2.md`) build it; until a row merges, the part it
+replaces works as ADR 0024 decided (the open or collapsed menu, the strip and the plate), and the
+plan's "Interim places" say where each part stands meanwhile.
+- In battle only the corners show: the pill (menu, credits, power) top left, the radar scope top
+  right, BUILD bottom right, the strike button (72 dp) above BUILD when owned, the group column on
+  the left edge, and the command bar bottom left (portrait: bottom, with BUILD lifted 8 dp above it)
+  while something is selected. One function places them (`HudCorners.place`), mirror-ready; ADR
+  0025 §2's table gives the numbers on the short screens. Placement and the strike aim freeze the
+  bar's slot and BUILD's lift, so nothing moves under the thumb while the player places or aims.
+- One unfold at a time: the build drawer, the full map, the economy card, the pause menu. A map
+  gesture closes it (not a pinned full map, not pause) and still does its work; the game runs on
+  behind all but pause, which pauses the match. A match starts with nothing unfolded.
+- The drawer: landscape a side panel from the right (40 % of the width, 312 to 420 dp), portrait a
+  bottom sheet of half the height; the economy in its head (the pill hides), a close button and the
+  swipe, the tabs with names (Structures, Infantry, Vehicles), the card grid (cards at least 88 x 96
+  dp, as many columns as fit, at least two; it scrolls on short screens), the queue row (tap an item
+  to cancel). It slides over `menu_slide_ms`; no pin. It opens on BUILD, on a producer's selection
+  (its tab) and after a placement begun in it.
+- The command bar: Deselect (48 x 64 dp) at its start, then the selection chip, then the orders the
+  game has (Stop for units; none for a building until ADR 0026's Cancel for a site). No Attack
+  button. Later orders join the list with a glyph and a HOW_TO_PLAY line.
+- The groups: "All army" on top, the saved groups, "+" while units are selected and a group is free;
+  56 dp buttons, more columns where one does not fit.
+- The full map closes after `radar_close_ms` without a touch unless pinned; the scope is never
+  offline.
+- Under attack: a toast at the top (tap to jump), a marker on the scope's rim and a ping on the
+  full map; while the full map is open only the ping.
 
-## Layout in landscape
-The canvas's floating panels (ADR 0023 §12, Michael's answer 4 A; plan row P85d); the map fills
-the rest.
-- Build panel at the bottom right, as wide as the bottom row leaves after the army line and the
-  selection panel's row (`HudLayout.panel_px`, 184 to 372 dp): the tabs (Structures, Infantry,
-  Vehicles) as line icons above one row of named cards, 80 x 88 dp (`ItemTile.CARD_DP`), that show
-  the item's icon, its cost with the name under it, and progress; the pin at the tab row's right
-  end (so at least 232 dp wide); collapsed, a plate at the bottom right (ADR 0024 §3).
-- Minimap: a floating panel at the top right, an isometric diamond (ADR 0023 §4).
-- Credits and the power bar: a pill at the top left.
-- Bottom-left: "All army" and groups 1-3 (tap selects, long-press assigns).
-- Top-left: pause and menu.
-- No ads on this screen, ever.
-- Keep every control inside `DisplayServer.get_display_safe_area()`.
-
-## Layout in portrait (ADR 0015 §5)
+## Layout in both orientations
 - Same sizes as landscape on the same phone: a portrait window uses the base size 720x1280 instead
   of 1280x720 (ADR 0015 §2, from P59), so the stretch, every dp and every base-px size match.
   Decide the shape only through `UiScale`'s orientation function (P59; height > width is
   portrait).
-- Build menu zone: a bottom band, the full safe width, 20% of the height and at least 200 dp when
-  open: the credits and power line across the full width (a 48 dp head line with the pin at its
-  right end from P85f), then the icon-only tabs (48 dp) above one row of build icons (at least
-  64 dp) that scrolls sideways, at least three whole icons on the 6-inch phone and two at 360 dp
-  wide, with the minimap at the right end beside them (an isometric diamond, a 2:1 box of at most
-  40% of the row, P88). Collapsed it is a 96 dp strip (ADR 0024 §2), the minimap at its right end.
-- The zone's height is set by `BuildSidebar` through `HudLayout.bottom_zone_dp` (the menu's height
-  in either state and during the slide; `HudLayout.menu_top_px` is its real top on the screen); a
-  scene without the sidebar leaves it at 0. The tabs show icons only in the band.
-- Bottom-left: "All army" and groups 1-3, on the safe bottom edge while the zone is 0, then 8 dp
-  above the band or the strip, moving with it.
-- Top line: the read-only selection panel, right of the top-left controls (8 dp gap), one row
-  high, never wider than that line. Fit levels, first that fits: names; icon and count; without
-  the Total; the first rows that fit and a "+N" chip for the types not shown. Top-left: Dev
-  button, pause and menu.
-- Taps players make often (army, groups, build, minimap) stay at the bottom; the bottom stack
-  (band or strip plus army line) takes at most 40% of the safe height, and the band gives way
-  first.
-- No ads on this screen, ever.
-- Safe areas: the same `SafeAreaMargin` rule (both sides of an axis get the larger inset).
+- Where each part stands: the section above and ADR 0025 §2's table.
+- The bottom stack (command bar, BUILD and the group column) takes at most 40% of the safe height;
+  the drawer is transient and may take half.
+- No ads on this screen, ever (pause included).
+- Keep every control inside `DisplayServer.get_display_safe_area()`; safe areas: the same
+  `SafeAreaMargin` rule (both sides of an axis get the larger inset).
 - A turn keeps the camera centre and the world size per dp (ADR 0015 §4) and cancels gestures in
   flight; it never issues a Command.
 
 ## Text and feedback
 - At least 14 sp body text and 18 sp HUD numbers. Never use colour alone for meaning; team
   colours also differ by marker shape.
+- Fonts: Big Shoulders for buttons and titles (upper case), Chakra Petch for numbers (tabular) and
+  body, from `theme.tres` only (ADR 0025 §13).
 - Every command gets instant feedback: selection ring, move marker, short sound, optional light
   haptic (`Input.vibrate_handheld(15)`, can be turned off in settings).
-- Under attack: edge-of-screen indicator and a minimap ping.
+- Under attack: a toast with a jump, a marker on the radar scope's rim and a ping on the full map.
 
 ## Project settings
 - `display/window/handheld/orientation = sensor` (6, Android manifest `fullUser`, ADR 0015)
