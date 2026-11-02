@@ -1,9 +1,10 @@
 class_name SelectionPanel
 extends PanelContainer
 ## What is selected and how many (read-only in Phase 1): at the bottom centre in landscape, and in
-## portrait the top line, right of the top-left controls. One row per unit type: its item card (the
-## generated picture of P99b, in the type's own colours), its display name and "×N". With more than
-## one type a last row shows the total. Hidden when nothing is selected.
+## portrait a line at the top, under the economy pill's (and the top-left controls') line. One row
+## per unit type: its item card (the generated picture of P99b, in the type's own colours), its
+## display name and "×N". With more than one type a last row shows the total. Hidden when nothing
+## is selected.
 ## Fed by PlayerController.selection_changed (wired in the scene), so it works on a change only:
 ## a selected unit that dies leaves the selection first (PlayerController), which refreshes the
 ## counts. It reads `runner.snapshot` afresh at each call (ADR 0012 section 3), the names from its
@@ -21,11 +22,12 @@ extends PanelContainer
 ## band's own) and at most what the ArmyBar and the zone leave of it: a longer name or a larger
 ## count clips the name with an ellipsis, so the panel stays between the two. Only a screen too
 ## narrow for the least row (see `_fit_zone`) lets the zone give way.
-## Portrait (ADR 0015 section 5): the rows stand side by side in one line at the top, after the
-## `top_left` control and a gap. The panel never grows past the line (an overflow would grow the
-## SafeArea and push the HUD off the screen); it takes the first of four fit levels whose line
-## fits (`_fit_line`): the names; icon and count; without the total; the first rows that fit and
-## a "+N" chip for the types left out.
+## Portrait (ADR 0015 section 5, ADR 0025 section 2): the rows stand side by side in one line at
+## the top, from the safe left edge, one gap under the pill's line (the pill is 48 dp high, or the
+## `top_left` control if that is taller) until the command bar replaces this panel (P122). The panel
+## never grows past the line (an overflow would grow the SafeArea and push the HUD off the screen);
+## it takes the first of four fit levels whose line fits (`_fit_line`): the names; icon and count;
+## without the total; the first rows that fit and a "+N" chip for the types left out.
 ## Its look is the inherited theme's (`game/ui/theme.tres`, set on the HUD roots by main.tscn): the
 ## backdrop is the `panel` style of the `SelectionPanel` variation (padding and corners in dp, in
 ## px once `HudTheme` has run), a name is a `Label`, the counts and the total are `NumberLabel`.
@@ -46,7 +48,7 @@ const LEVEL_CHIP: int = 4
 
 @export var runner: MatchRunner
 @export var army_bar: ArmyBar  ## The landscape band starts after it.
-@export var top_left: Control  ## The portrait line starts after it (the Dev button).
+@export var top_left: Control  ## The portrait line starts below it and the pill (the Dev button).
 
 var _list: BoxContainer = BoxContainer.new()  ## A column in landscape, a line in portrait.
 var _total: Label = Label.new()
@@ -219,22 +221,26 @@ func _fit_zone(band: MarginContainer, band_px: float) -> void:
 	var room: float = band_px - left - get_combined_minimum_size().x
 	band.add_theme_constant_override("margin_left", left)
 	band.add_theme_constant_override("margin_right", mini(ceili(zone), maxi(floori(room), 0)))
+	band.add_theme_constant_override("margin_top", 0)
 
 
-## Portrait: the line runs from the `top_left` control's right edge plus a gap to the band's right
-## edge, and the panel takes the first fit level whose width fits it. A name may take the whole
-## line (one row is cut at its end, not at BAND_SHARE of the width, which would cut "Light Tank" on
-## a narrow phone); with more rows the next level takes the names away. Level 4 drops rows from the
-## end, one at a time, until the rest and the chip fit; the first row always stays. Only a line
-## narrower than any phone leaves the panel wider than the line.
+## Portrait: the line runs from the safe left edge to the band's right edge, one gap under the
+## pill's line (`HudCorners.PILL_DP`, or the `top_left` control's height), and the panel takes the
+## first fit level whose width fits it. A name may take the whole line (one row is cut at its end,
+## not at BAND_SHARE of the width, which would cut "Light Tank" on a narrow phone); with more rows
+## the next level takes the names away. Level 4 drops rows from the end, one at a time, until the
+## rest and the chip fit; the first row always stays. Only a line narrower than any phone leaves
+## the panel wider than the line.
 func _fit_line(band: MarginContainer, band_px: float) -> void:
 	size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	var left: int = 0
+	var row: float = UiScale.dp(HudCorners.PILL_DP.y)
 	if top_left != null and top_left.visible:
-		left = ceili(top_left.get_combined_minimum_size().x + UiScale.dp(GAP_DP))
+		row = maxf(row, top_left.get_combined_minimum_size().y)
 	band.add_theme_constant_override("margin_left", left)
 	band.add_theme_constant_override("margin_right", 0)
+	band.add_theme_constant_override("margin_top", ceili(row + UiScale.dp(GAP_DP)))
 	var line: float = band_px - left
 	_fit_rows(line - get_theme_stylebox(&"panel").get_minimum_size().x)  # A row may take the line.
 	var level: int = LEVEL_NAMED

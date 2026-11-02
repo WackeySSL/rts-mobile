@@ -18,7 +18,7 @@ const TOLERANCE_PX: float = 0.5
 ## Open ground at 1280x720, left of the panel and clear of the Dev button and the army bar.
 const GROUND_POINT: Vector2 = Vector2(80, 300)
 ## The HUD controls the button must clear when they show.
-const NEIGHBOURS: Array[String] = ["DevButton", "StatusPill", "MinimapSlot", "ArmyBar"]
+const NEIGHBOURS: Array[String] = ["DevButton", "EconomyPill", "MinimapSlot", "ArmyBar"]
 
 var _window_size_before: Vector2i
 var _main: Node
@@ -173,8 +173,8 @@ func test_a_match_that_ends_under_the_dialog_closes_it() -> void:
 
 
 ## A release build hides the Dev button (dev_menu_button.gd), and the stack then starts with the
-## Surrender button: the credits pill (sideways) and the selection line (upright) stand after it and
-## not on it, at every size.
+## Surrender button: the credits pill (both ways) stands after it and not on it, and the selection
+## line (upright, with a selection) stands under it and not on it, at every size.
 func test_without_the_dev_button_surrender_is_clear_of_the_pill_and_the_selection_line() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		get_window().size = size
@@ -194,11 +194,10 @@ func test_without_the_dev_button_surrender_is_clear_of_the_pill_and_the_selectio
 			. override_failure_message(where)
 			. is_true()
 		)
-		var pill: Control = _main.find_child("StatusPill", true, false)
-		var line: Control = _main.find_child("SelectionPanel", true, false)
-		var next: Control = pill if pill.is_visible_in_tree() else line
-		assert_bool(next.is_visible_in_tree()).override_failure_message(where).is_true()
-		var other: Rect2 = next.get_global_rect()
+		# The credits pill stands after the Surrender button, sideways and upright alike.
+		var pill: Control = _main.find_child("EconomyPill", true, false)
+		assert_bool(pill.is_visible_in_tree()).override_failure_message(where).is_true()
+		var other: Rect2 = pill.get_global_rect()
 		(
 			assert_bool(rect.intersects(other))
 			. override_failure_message("%s, %s" % [where, other])
@@ -207,6 +206,17 @@ func test_without_the_dev_button_surrender_is_clear_of_the_pill_and_the_selectio
 		assert_float(other.position.x).override_failure_message(where).is_equal_approx(
 			rect.end.x + UiScale.dp(8.0), 1.5
 		)
+		# Upright the selection line stands under the Surrender button, not on it: it starts at
+		# least 8 dp below its foot (the line is under the top-left row, whichever buttons show).
+		if UiScale.is_portrait_size(size):
+			var line: Control = _main.find_child("SelectionPanel", true, false)
+			assert_bool(line.is_visible_in_tree()).override_failure_message(where).is_true()
+			var below: Rect2 = line.get_global_rect()
+			var message: String = "%s, selection line %s" % [where, below]
+			assert_bool(rect.intersects(below)).override_failure_message(message).is_false()
+			assert_float(below.position.y).override_failure_message(message).is_greater_equal(
+				rect.end.y + UiScale.dp(8.0) - 0.5
+			)
 		_main.free()
 		await await_idle_frame()
 

@@ -33,7 +33,7 @@ const EPSILON: float = 0.01  ## Base px: a rect that ends where another starts d
 
 @export var placement: PlacementController
 ## The HUD controls the buttons keep clear of while they are visible: the Dev button, the ArmyBar,
-## the SelectionPanel, the strike row, the build menu, the status pill and the minimap's slot.
+## the SelectionPanel, the strike row, the build menu, the economy pill and the minimap's slot.
 @export var clear_of: Array[Control] = []
 
 var _confirm: Button = Button.new()

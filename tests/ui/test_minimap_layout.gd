@@ -3,10 +3,10 @@ extends GdUnitTestSuite
 ## every profile of both orientations, also with a cutout (plan P88, ADR 0015 section 5, ADR 0023
 ## sections 4 and 12). Sideways it fills the floating panel at the top right (`MinimapSlot`, which
 ## keeps its 148 x 86 dp) with a 2:1 box of at least 120 dp across. Upright it is at the right end
-## of the band, beside the tabs and the item row, under the status line (which keeps the band's
+## of the band, beside the tabs and the item row, under the head line (which keeps the band's
 ## full width): a 2:1 box of at most 40 % of the safe inner width and no higher than the band's
 ## inner height, inside the safe rect and the band, at least 48 dp on both axes and clear of the
-## tabs, the items and the status line. The item row keeps its three whole tiles on the 6-inch
+## tabs, the items and the head line. The item row keeps its three whole tiles on the 6-inch
 ## phone and two at 360 dp. A turn moves the one minimap node between the two homes and it goes on
 ## jumping the camera. How the rest of the band sits is test_build_sidebar_layout's and
 ## test_build_sidebar_items_layout's, and the jump itself is test_minimap's.
@@ -87,7 +87,7 @@ func test_upright_the_minimap_is_at_the_bands_right_end_within_its_height_and_40
 		var band: Rect2 = _rect(_sidebar)
 		var mini: Rect2 = _rect(_minimap)
 		var box: Rect2 = _box()
-		var status: Rect2 = _rect("Status")
+		var head: Rect2 = _rect("Head")
 		var inner: Rect2 = _inner()
 		var edge: StyleBox = _hud("Backdrop").get_theme_stylebox(&"panel")
 		var band_inner: Rect2 = Rect2(
@@ -95,8 +95,8 @@ func test_upright_the_minimap_is_at_the_bands_right_end_within_its_height_and_40
 			band.size - edge.get_minimum_size()
 		)
 		var at: String = (
-			"%s: band %s (inner %s), minimap %s, status %s, safe inner %s"
-			% [screen["label"], band, band_inner, mini, status, inner]
+			"%s: band %s (inner %s), minimap %s, head %s, safe inner %s"
+			% [screen["label"], band, band_inner, mini, head, inner]
 		)
 		assert_object(_minimap.get_parent()).override_failure_message(at).is_same(_hud("Body"))
 		(
@@ -124,13 +124,11 @@ func test_upright_the_minimap_is_at_the_bands_right_end_within_its_height_and_40
 		var least: float = UiScale.dp(48.0) - TOLERANCE_PX
 		assert_float(mini.size.x).override_failure_message(at).is_greater_equal(least)
 		assert_float(mini.size.y).override_failure_message(at).is_greater_equal(least)
-		# Under the status line, which stays the band's full width; beside the tabs and the items.
+		# Under the head line, which stays the band's full width; beside the tabs and the items.
 		assert_float(mini.position.y).override_failure_message(at).is_greater_equal(
-			status.end.y - TOLERANCE_PX
+			head.end.y - TOLERANCE_PX
 		)
-		assert_float(status.end.x).override_failure_message(at).is_equal_approx(
-			band_inner.end.x, 1.5
-		)
+		assert_float(head.end.x).override_failure_message(at).is_equal_approx(band_inner.end.x, 1.5)
 		for part: String in ["Tabs", "Items"]:
 			var rect: Rect2 = _rect(part)
 			var beside: String = "%s: %s %s" % [at, part, rect]
@@ -138,7 +136,7 @@ func test_upright_the_minimap_is_at_the_bands_right_end_within_its_height_and_40
 			assert_float(rect.end.x).override_failure_message(beside).is_less_equal(
 				mini.position.x + TOLERANCE_PX
 			)
-		assert_bool(status.intersects(mini)).override_failure_message(at).is_false()
+		assert_bool(head.intersects(mini)).override_failure_message(at).is_false()
 		assert_array(_sent).is_empty()
 
 

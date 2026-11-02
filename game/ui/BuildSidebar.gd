@@ -1,8 +1,10 @@
 class_name BuildSidebar
 extends Control
-## The build menu (ADR 0019 section 1, ADR 0023 section 12, ADR 0024; plans P85, P85c, P85b, P85d
-## and P85f): the credits and the power bar on one line (`Status`), the three tabs and, below, the
-## slot `Items` with the open tab's item tiles. It sends nothing to the sim but Commands through
+## The build menu (ADR 0019 section 1, ADR 0023 section 12, ADR 0024; plans P85, P85b, P85d and
+## P85f): the three tabs and, below, the slot `Items` with the open tab's item tiles. The credits
+## and the power bar are the `EconomyPill`'s since P119 (ADR 0025 section 3); the head line they
+## had in the portrait band and strip stays as an empty line of `STATUS_DP` until P120 replaces
+## the band. It sends nothing to the sim but Commands through
 ## `PlayerController.command_sink`: a tap on an available tile is one QUEUE, a hold on a tile with
 ## items queued is one CANCEL of the last of them. It reads the published snapshot only (the local
 ## player's credits, power, queue and rows, and the type tables) and never keeps one.
@@ -18,16 +20,15 @@ extends Control
 ## 0024 section 8). Input never waits: the parts outside the holder are neither drawn nor picked.
 ## Landscape (P85d): the floating build panel at the bottom right, `HudLayout.panel_px` wide and as
 ## high as its tabs and one row of cards, or the plate (`HudLayout.PLATE_DP`: the Ready badge and
-## the Build button); the status line moves into `pill`, the floating pill at the top left after
-## `top_left`, and `minimap_slot`, the floating panel at the top right that P88 fills, shows.
-## Portrait: the bottom band, the full inner width, `HudLayout.band_dp` high, with the status line
-## as its first line, or the strip (`HudLayout.STRIP_DP`: the status line over the Build button and
-## the Ready badge, the minimap at its right end), and the pill and the slot hidden. A turn only
+## the Build button); `minimap_slot`, the floating panel at the top right that P88 fills, shows.
+## Portrait: the bottom band, the full inner width, `HudLayout.band_dp` high, with the empty head
+## line as its first line, or the strip (`HudLayout.STRIP_DP`: the head line over the Build button
+## and the Ready badge, the minimap at its right end), and the slot hidden. A turn only
 ## moves things: the layout is what `_place` makes of the orientation and the state, and a turn ends
 ## a slide at its target.
 ## The minimap (plan P88) is one node that lives in `minimap_slot` sideways and, upright, in the
 ## `Body` row at its right end, beside the tabs and the item row, or beside the strip's left column
-## (the status line above them stays the band's full width): `HudLayout.minimap_box_px` sizes its
+## (the head line above them stays the band's full width): `HudLayout.minimap_box_px` sizes its
 ## 2:1 box, in a room taken from the target state so the box keeps its size through a slide.
 ## The menu's height goes to `HudLayout.bottom_zone_dp` and its real top on the screen to
 ## `HudLayout.menu_top_px` (ADR 0024 section 4) each time they change, and `zone_changed` tells
@@ -37,12 +38,6 @@ extends Control
 ## Tabs: Structures, Infantry and Vehicles, each an icon alone (`tab_<name>`, grey at rest and white
 ## when open, from the theme). The open tab is the lighter plate with the thick bar at its foot
 ## (theme `SidebarTab`).
-## Power: the bar is the share of the power made that is in use. On low power (`power_used` above
-## `power_made`) it is full and amber and the glyph is the warning triangle: a shape and a colour.
-## Its numbers are centred in the bar, white with a dark edge across the green fill and the dark
-## track, and dark on the amber (`PowerNumber`, `PowerNumberLow`).
-## The credits keep the width of `CREDITS_DIGITS` digits, so the bar does not move when they gain or
-## lose a digit.
 ## Items: one `ItemTile` per buildable type (icon: its P99b item card), made per match from the
 ## snapshot's type tables, those of the open tab and of the local player's faction shown, in one row
 ## that scrolls sideways (the cards of the floating panel carry their names, the band's tiles do
@@ -59,8 +54,7 @@ extends Control
 ## Selecting an own production building opens its tab, and the menu: `set_selected` is the hook,
 ## wired to `PlayerController.selection_changed` when `controller` is set.
 ## The look is the inherited theme's (`game/ui/theme.tres`: `BuildSidebar`, `SidebarTab`,
-## `BuildButton`, `ReadyBadge`, `PowerBar`, `PowerBarLow`, `PowerNumber`, `PowerNumberLow`,
-## `NumberLabel` and the `ItemTile` family), the sizes are dp.
+## `BuildButton`, `ReadyBadge` and the `ItemTile` family), the sizes are dp.
 
 ## Emitted when another tab opens, by a tap or by `select_tab`.
 signal tab_selected(tab: int)
@@ -73,20 +67,11 @@ signal zone_changed(top_px: float, height_px: float)
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
 const THEME_TYPE: StringName = &"BuildSidebar"
 const TAB_VARIATION: StringName = &"SidebarTab"
-const BAR_VARIATION: StringName = &"PowerBar"
-const BAR_LOW_VARIATION: StringName = &"PowerBarLow"
-const NUMBER_VARIATION: StringName = &"NumberLabel"
-const BAR_NUMBER_VARIATION: StringName = &"PowerNumber"
-const BAR_NUMBER_LOW_VARIATION: StringName = &"PowerNumberLow"
 const BUILD_VARIATION: StringName = &"BuildButton"
 const BADGE_VARIATION: StringName = &"ReadyBadge"
 ## The tab names by `World.Tab`; the icon of a tab is `tab_<name in lower case>`.
 const TAB_NAMES: PackedStringArray = ["Structures", "Infantry", "Vehicles"]
-const STATUS_DP: float = 32.0  ## The credits and power line.
-const GLYPH_DP: float = 24.0
-## The bar's least size; it takes the rest of the line. It is taller than a line of its numbers
-## (18 dp text is about 25 dp), which are centred in it.
-const BAR_DP: Vector2 = Vector2(24.0, 28.0)
+const STATUS_DP: float = 32.0  ## The head line, empty since P119 (the economy is the pill's).
 const TAB_DP: float = 48.0
 const TAB_ICON_DP: float = 32.0
 const ITEMS_DP: float = 64.0  ## The height of the slot for one row of item tiles.
@@ -104,11 +89,6 @@ const REVEAL_SLACK_PX: float = 1.5
 const BUILD_DP: Vector2 = Vector2(64.0, 48.0)  ## The Build button.
 const BUTTONS_DP: float = 48.0  ## The button row's height. The Ready badge is 112 dp wide at most.
 const BADGE_ICON_DP: float = 32.0  ## The card's picture on the Ready badge.
-const TEXT_PAD_DP: float = 4.0  ## Each side of the numbers in the bar.
-const TEXT_EDGE_DP: float = 2.0  ## The dark edge of the numbers on the green bar.
-## The credits' slot: 99 999. The rules set no ceiling (a snapshot holds an int32); a bigger bank
-## widens the line by a digit once.
-const CREDITS_DIGITS: int = 5
 
 ## Tests only, like `UiScale`'s override: the slide's duration in ms, or -1 for the settings'. A
 ## test that sets one clears it in `after_test`, and never writes `menu_slide_ms` into the resource.
@@ -116,10 +96,8 @@ static var _slide_override: int = -1
 
 @export var runner: MatchRunner
 @export var controller: PlayerController  ## The Commands' sink, the haptic, the selection.
-@export var pill: Control  ## The landscape home of `Status` (a panel in a band at the top left).
 @export var minimap_slot: Control  ## The landscape panel at the top right: the minimap's home.
 @export var minimap: Control  ## The minimap: in `minimap_slot` sideways, in the band upright.
-@export var top_left: Control  ## The pill starts after its first visible child (Dev, or Surrender).
 @export var placement: PlacementController  ## A tap on a READY tile begins it. None: no placement.
 @export var strike_aim: StrikeAim  ## Aiming a strike takes the menu down, as placement does.
 
@@ -128,27 +106,20 @@ var tab: int = World.Tab.STRUCTURES
 
 var _backdrop: PanelContainer = PanelContainer.new()  ## The menu's panel, at the target's size.
 var _stack: VBoxContainer = VBoxContainer.new()
-var _body: HBoxContainer = HBoxContainer.new()  ## Below the status line: `_left`, then the minimap.
+var _body: HBoxContainer = HBoxContainer.new()  ## Below the head line: `_left`, then the minimap.
 var _left: VBoxContainer = VBoxContainer.new()  ## The tabs and the item row.
-var _strip: VBoxContainer = VBoxContainer.new()  ## Collapsed upright: the status line, the buttons.
+var _strip: VBoxContainer = VBoxContainer.new()  ## Collapsed upright: the head line, the buttons.
 var _buttons: HBoxContainer = HBoxContainer.new()  ## The Build button and the Ready badge.
 var _build: Button = Button.new()
 var _badge: Button = Button.new()
-var _status: HBoxContainer = HBoxContainer.new()
-var _credits_glyph: TextureRect
-var _credits: Label = Label.new()
-var _power_glyph: TextureRect
-var _bar: ProgressBar = ProgressBar.new()
-var _bar_text: Label = Label.new()
+var _head: Control = Control.new()  ## The empty head line of the portrait band and strip.
 var _tab_row: HBoxContainer = HBoxContainer.new()
 var _tabs: Array[Button] = []
 var _items: ScrollContainer = ScrollContainer.new()
 var _items_fit: DpMinSize = DpMinSize.new()  ## The least height of `_items`, by the tile in use.
 var _grid: GridContainer = GridContainer.new()
 var _tiles: Array[ItemTile] = []
-var _low: bool = false
 var _faction: int = -1  ## The local player's faction (`type_faction`); -1 until a row shows it.
-var _shown: Vector3i = Vector3i(-1, -1, -1)  ## Credits, power made and power used on screen.
 var _seen: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot last read.
 var _built: Vector2i = Vector2i(-1, -1)  ## Match serial and type count the tiles are made for.
 var _owned: PackedInt32Array = PackedInt32Array()  ## Scratch of a refresh: own rows per type.
@@ -189,7 +160,9 @@ func _ready() -> void:
 	add_child(_backdrop)
 	_stack.name = "Stack"
 	_backdrop.add_child(_stack)
-	_build_status()
+	_head.name = "Head"
+	_min_dp(_head, Vector2(0.0, STATUS_DP))
+	_stack.add_child(_head)
 	_body.name = "Body"
 	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_stack.add_child(_body)
@@ -211,9 +184,6 @@ func _ready() -> void:
 	_items.add_child(_grid)
 	_left.add_child(_items)
 	select_tab(tab)
-	_tint()
-	if pill != null:
-		_min_dp(pill, Vector2(HudLayout.PILL_DP, HudLayout.PILL_HEIGHT_DP))
 	if minimap_slot != null:
 		_min_dp(minimap_slot, HudLayout.SLOT_DP)
 	_apply_dp()  # Sets the zone before the ArmyBar's _ready lifts the bar.
@@ -229,12 +199,6 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	HudLayout.bottom_zone_dp = 0.0
 	HudLayout.menu_top_px = INF
-
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_THEME_CHANGED and _credits_glyph != null and _power_glyph != null:
-		_tint()
-		_fit_credits()
 
 
 ## Tests only: the slide takes `ms` (0: the state's layout shows at once) whatever the settings say.
@@ -363,7 +327,7 @@ func _tile_slot(tile: ItemTile) -> Vector2:
 	return slot
 
 
-## Shows the local player's credits and power from the published snapshot.
+## Reads the published snapshot: the item tiles' states from the local player's queues and rows.
 func refresh() -> void:
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
 	if snap == null or runner.scenario == null:
@@ -372,14 +336,6 @@ func refresh() -> void:
 	if _seen.x >= 0 and _seen.x != snap.match_serial:
 		open()  # A new match starts with the menu open (ADR 0024 section 1).
 	_seen = Vector2i(snap.match_serial, snap.tick)
-	var numbers: Vector3i = Vector3i(
-		_entry(snap.credits, player),
-		_entry(snap.power_made, player),
-		_entry(snap.power_used, player)
-	)
-	if numbers != _shown:
-		_shown = numbers
-		_show(numbers.x, numbers.y, numbers.z)
 	_refresh_items(snap, player)
 
 
@@ -435,54 +391,6 @@ static func _min_dp(control: Control, size_dp: Vector2) -> void:
 	var min_size: DpMinSize = DpMinSize.new()
 	min_size.min_dp = size_dp
 	control.add_child(min_size)
-
-
-func _glyph(node_name: String, icon: String) -> TextureRect:
-	var rect: TextureRect = TextureRect.new()
-	rect.name = node_name
-	rect.texture = load(ICON_ART % icon)
-	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_min_dp(rect, Vector2(GLYPH_DP, GLYPH_DP))
-	return rect
-
-
-func _build_status() -> void:
-	_status.name = "Status"
-	_min_dp(_status, Vector2(0.0, STATUS_DP))
-	_stack.add_child(_status)
-	_credits_glyph = _glyph("CreditsGlyph", "glyph_credits")
-	_status.add_child(_credits_glyph)
-	_credits.name = "Credits"
-	_credits.theme_type_variation = NUMBER_VARIATION
-	_credits.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_credits.text = "0"
-	_status.add_child(_credits)
-	_power_glyph = _glyph("PowerGlyph", "glyph_power")
-	_status.add_child(_power_glyph)
-	_bar.name = "PowerBar"
-	_bar.theme_type_variation = BAR_VARIATION
-	_bar.show_percentage = false
-	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_bar.max_value = 1.0
-	_bar.value = 0.0
-	_min_dp(_bar, BAR_DP)
-	_status.add_child(_bar)
-	_bar_text.name = "PowerText"
-	_bar_text.theme_type_variation = BAR_NUMBER_VARIATION
-	# The full width and the middle of the bar. A line of text can be taller than the bar at some
-	# size: it then grows up and down alike, never down alone.
-	_bar_text.set_anchors_preset(Control.PRESET_HCENTER_WIDE)
-	_bar_text.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_bar_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_bar_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_bar_text.clip_text = true  # It adds nothing to the line's width: it is shown where it fits.
-	_bar_text.text = "0/0"
-	_bar.add_child(_bar_text)
-	_bar.resized.connect(_fit_bar_text)
 
 
 func _build_tabs() -> void:
@@ -698,52 +606,6 @@ func _send(command: Command) -> void:
 		controller.vibrate.call(controller.settings.haptic_ms)
 
 
-## The numbers of the line. The look changes only when the low state does.
-func _show(credits: int, made: int, used: int) -> void:
-	var low: bool = used > made
-	_credits.text = str(credits)
-	_bar.max_value = maxi(made, 1)
-	_bar.value = _bar.max_value if low else used
-	_bar_text.text = "%d/%d" % [used, made]
-	if low != _low:
-		_low = low
-		_bar.theme_type_variation = BAR_LOW_VARIATION if low else BAR_VARIATION
-		_bar_text.theme_type_variation = BAR_NUMBER_LOW_VARIATION if low else BAR_NUMBER_VARIATION
-		_power_glyph.texture = load(ICON_ART % ("glyph_low_power" if low else "glyph_power"))
-		_tint()
-	_fit_bar_text()
-
-
-## The glyphs' tints come from the theme: credits, power, or the warning on low power.
-func _tint() -> void:
-	_credits_glyph.modulate = get_theme_color(&"credits", THEME_TYPE)
-	_power_glyph.modulate = get_theme_color(&"warning" if _low else &"power", THEME_TYPE)
-
-
-## The credits' least width is that of the widest `CREDITS_DIGITS` digits at the theme's font and
-## size, so the line (and the bar, which takes the rest) keeps still as the credits change length.
-func _fit_credits() -> void:
-	var font: Font = _credits.get_theme_font(&"font")
-	var font_px: int = _credits.get_theme_font_size(&"font_size")
-	var widest: float = 0.0
-	for digit: String in "0123456789":
-		var slot: String = digit.repeat(CREDITS_DIGITS)
-		widest = maxf(
-			widest, font.get_string_size(slot, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_px).x
-		)
-	_credits.custom_minimum_size = Vector2(ceilf(widest), 0.0)
-
-
-## The numbers show in the bar where the bar is wider than they are; else the bar speaks alone.
-func _fit_bar_text() -> void:
-	var font: Font = _bar_text.get_theme_font(&"font")
-	var font_px: int = _bar_text.get_theme_font_size(&"font_size")
-	var text_px: float = (
-		font.get_string_size(_bar_text.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_px).x
-	)
-	_bar_text.visible = text_px + 2.0 * UiScale.dp(TEXT_PAD_DP) <= _bar.size.x
-
-
 ## The thresholds and timings: the controller's, or the ADR table as PlayerController has it.
 func _input_settings() -> InputSettings:
 	if controller != null and controller.settings != null:
@@ -759,19 +621,15 @@ func _apply_dp() -> void:
 	var gap: int = roundi(UiScale.dp(GAP_DP))
 	for row: BoxContainer in [_stack, _body, _left, _tab_row, _strip, _buttons]:
 		row.add_theme_constant_override("separation", gap)
-	_status.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP / 2.0)))
 	for button: Button in _tabs:
 		button.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(TAB_ICON_DP)))
 	_build.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(TAB_ICON_DP)))
 	_badge.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(BADGE_ICON_DP)))
 	_badge.add_theme_constant_override("h_separation", roundi(UiScale.dp(GAP_DP / 2.0)))
-	_bar_text.add_theme_constant_override("outline_size", roundi(UiScale.dp(TEXT_EDGE_DP)))
 	_grid.add_theme_constant_override("h_separation", gap)
 	_show_tab()
 	_measure()
 	_place(true)
-	_fit_credits()
-	_fit_bar_text()
 
 
 ## Reads what the window decides, once per resize: the orientation and the dp, the safe area's inner
@@ -782,12 +640,6 @@ func _measure() -> void:
 	_dp_px = UiScale.base_px_per_dp()
 	if minimap_slot != null:
 		minimap_slot.visible = not _portrait
-	if pill != null:
-		pill.visible = not _portrait
-		var band: MarginContainer = pill.get_parent() as MarginContainer
-		if band != null:  # The pill starts after the Dev button.
-			var after: float = HudLayout.first_visible_width(top_left)
-			band.add_theme_constant_override("margin_left", ceili(after + UiScale.dp(GAP_DP)))
 	var safe: SafeAreaMargin = get_parent() as SafeAreaMargin
 	var inset: Vector2i = Vector2i.ZERO
 	if safe != null:
@@ -893,17 +745,16 @@ func _publish_top() -> void:
 		HudLayout.menu_top_px = _safe_end
 
 
-## Which parts show, and where the status line, the buttons and the minimap are housed: the
-## status line is the pill's in landscape; upright, the band's first line or the strip's; the
-## button row is the strip's second line or, sideways, the plate itself.
+## Which parts show, and where the head line and the buttons are housed: the head line is the
+## band's first line or the strip's, upright only; the button row is the strip's second line or,
+## sideways, the plate itself.
 func _house(portrait: bool) -> void:
-	var line: bool = portrait or pill == null
-	var strip: bool = line and not _open
-	var home: Control = _strip if strip else _stack if line else pill
-	if _status.get_parent() != home:
-		_status.reparent(home, false)
-	if home != pill:
-		home.move_child(_status, 0)
+	var strip: bool = portrait and not _open
+	var home: Control = _strip if strip else _stack
+	if _head.get_parent() != home:
+		_head.reparent(home, false)
+	home.move_child(_head, 0)
+	_head.visible = portrait
 	var row: Control = _strip if strip else _stack
 	if _buttons.get_parent() != row:
 		_buttons.reparent(row, false)
@@ -912,13 +763,13 @@ func _house(portrait: bool) -> void:
 	_buttons.visible = not _open
 	_strip.visible = strip
 	_left.visible = _open
-	_body.visible = line or _open
+	_body.visible = portrait or _open
 
 
 ## The minimap goes to the floating panel sideways, where it fills the slot, and to the `Body` row
 ## upright: a 2:1 box of at most 40 % of the row and no higher than the menu leaves beside its
 ## tabs and item row (the band's) or beside the strip's two lines (the backdrop and the band's
-## status line are not its). The room is the target state's, so the box is one size through a slide;
+## head line are not its). The room is the target state's, so the box is one size through a slide;
 ## on a phone the width rule binds, and it is the same in both states. It takes its width by the
 ## row's stretch (the box's share against the left column's) and asks for its height only, so the
 ## band's least width grows by the row's 8 dp gap and no more. That matters: the SafeArea grows

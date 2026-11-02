@@ -156,6 +156,32 @@ func test_a_hold_button_does_not_hold_or_tap_under_a_modal() -> void:
 		_main.free()
 
 
+## The economy pill takes a tap on its credits or its power (`economy_pressed`). A modal ends a
+## finger that went down there before it showed (no tap when it lifts), and a tap while it shows
+## lands on the modal: the pill stands under it in the HUD's order.
+func test_a_tap_on_the_pill_is_spent_or_taken_by_a_modal() -> void:
+	for modal: String in MODALS:
+		await _open()
+		var pill: EconomyPill = _main.get_node("Hud/EconomyPill")
+		var taps: Array[int] = [0]
+		pill.economy_pressed.connect(func() -> void: taps[0] += 1)
+		var at: Vector2 = (
+			(pill.find_child("CreditsTap", true, false) as Control).get_global_rect().get_center()
+		)
+		TouchEvents.press(get_viewport(), 0, at)
+		TouchEvents.release(get_viewport(), 0, at)
+		assert_int(taps[0]).override_failure_message(modal).is_equal(1)  # The control.
+		TouchEvents.press(get_viewport(), 0, at)
+		await _show(modal, false)
+		TouchEvents.release(get_viewport(), 0, at)
+		assert_int(taps[0]).override_failure_message(modal).is_equal(1)  # The finger was spent.
+		TouchEvents.press(get_viewport(), 0, at)
+		TouchEvents.release(get_viewport(), 0, at)
+		assert_int(taps[0]).override_failure_message(modal).is_equal(1)  # The modal took this one.
+		assert_array(_sent).override_failure_message(modal).is_empty()
+		_main.free()
+
+
 ## A main scene on the Derrick League's Skirmish with the units selected, Commands and the
 ## `map_gesture` count caught, the clock fixed (no long-press by itself) and the zoom instant.
 func _open() -> void:

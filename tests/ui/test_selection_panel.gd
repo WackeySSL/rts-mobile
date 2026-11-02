@@ -189,10 +189,12 @@ func test_the_panel_is_dp_sized_and_sits_in_its_band_in_both_orientations() -> v
 		var area: Rect2 = (_hud("SafeArea") as Control).get_global_rect()  # It must not grow.
 		assert_that(area).override_failure_message(why).is_equal(get_viewport().get_visible_rect())
 		assert_bool(rect.intersects(bar)).override_failure_message(why).is_false()
-		if UiScale.is_portrait_size(m.window_size):  # The top line, level with the Dev button.
-			assert_float(rect.position.y).override_failure_message(why).is_equal_approx(
-				dev.position.y, 0.5
+		if UiScale.is_portrait_size(m.window_size):  # The top line, under the pill's line.
+			var pill: Rect2 = (_hud("EconomyPill") as Control).get_global_rect()
+			assert_float(rect.position.y).override_failure_message(why).is_greater_equal(
+				maxf(pill.end.y, dev.end.y) + UiScale.dp(8.0) - 0.5
 			)
+			assert_bool(rect.intersects(pill)).override_failure_message(why).is_false()
 			continue  # The rest is the landscape band (test_selection_panel_portrait has the line).
 		assert_float(rect.end.y).override_failure_message(why).is_equal_approx(bar.end.y, 0.5)
 		if m == xhdpi:  # No room for the whole zone beside the panel: the zone gives way.

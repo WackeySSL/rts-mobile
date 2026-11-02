@@ -2,7 +2,7 @@ extends GdUnitTestSuite
 ## The collapsible build menu laid out in both states (plan P85f, ADR 0024 sections 2 to 4 and 9),
 ## in the main scene at the six sizes of ScreenSizes.ALL with the engine's own metrics and at every
 ## profile of both orientations, also with a cutout. Upright: the open band, or the 96 dp strip on
-## the safe bottom edge (the status line over the Build button and the Ready badge, the minimap at
+## the safe bottom edge (the head line over the Build button and the Ready badge, the minimap at
 ## its right end in the same size on the phone profiles), the ArmyBar 8 dp above whichever shows,
 ## the strike row above the ArmyBar's line, the bottom stack within 40 % of the safe height.
 ## Sideways: the floating panel, or the plate, 56 dp high, at the bottom right with the Build
@@ -89,24 +89,24 @@ func test_upright_the_open_band_and_the_strip_stand_on_the_safe_bottom_edge_with
 		_expect_zone(why + " open again", _rect(_sidebar), band_px)
 
 
-## The strip: the status line over the Build button and the Ready badge, the minimap at the right
+## The strip: the head line over the Build button and the Ready badge, the minimap at the right
 ## end, all inside it and clear of each other; the Build button 64 x 48 dp, the badge at most 112 dp
 ## across and 48 dp high, and the word "Ready" in 14 dp type.
 func _expect_strip(why: String, strip: Rect2) -> void:
 	var inner: Rect2 = _inner()
-	var status: Rect2 = _rect("Status")
+	var head: Rect2 = _rect("Head")
 	var build: Rect2 = _rect("Build")
 	var badge: Rect2 = _rect("Ready")
 	var mini: Rect2 = _rect("Minimap")
 	var dp: float = UiScale.base_px_per_dp()
 	assert_bool((_hud("Items") as Control).is_visible_in_tree()).is_false()
 	assert_bool((_hud("Tabs") as Control).is_visible_in_tree()).is_false()
-	assert_bool((_hud("Status") as Control).is_visible_in_tree()).is_true()
+	assert_bool((_hud("Head") as Control).is_visible_in_tree()).is_true()
 	assert_bool((_hud("Build") as Control).is_visible_in_tree()).is_true()
 	assert_bool((_hud("Ready") as Control).is_visible_in_tree()).is_true()  # A structure is ready.
 	assert_bool(_minimap().is_visible_in_tree()).override_failure_message(why).is_true()
 	var parts: Dictionary[String, Rect2] = {
-		"Status": status, "Build": build, "Ready": badge, "Minimap": mini
+		"Head": head, "Build": build, "Ready": badge, "Minimap": mini
 	}
 	for part: String in parts:
 		var at: String = "%s: %s %s in the strip %s" % [why, part, parts[part], strip]
@@ -122,7 +122,7 @@ func _expect_strip(why: String, strip: Rect2) -> void:
 			var pair: String = "%s: %s and %s" % [why, names[first], names[second]]
 			var overlap: bool = parts[names[first]].intersects(parts[names[second]])
 			assert_bool(overlap).override_failure_message(pair).is_false()
-	assert_float(status.end.y).override_failure_message(why).is_less_equal(
+	assert_float(head.end.y).override_failure_message(why).is_less_equal(
 		build.position.y + TOLERANCE_PX
 	)
 	assert_float(build.position.x).override_failure_message(why).is_less(badge.position.x)
@@ -135,9 +135,9 @@ func _expect_strip(why: String, strip: Rect2) -> void:
 	assert_float(badge.size.y).override_failure_message(why).is_greater_equal(
 		48.0 * dp - TOLERANCE_PX
 	)
-	assert_float(status.size.x).override_failure_message(why).is_greater_equal(
+	assert_float(head.size.x).override_failure_message(why).is_greater_equal(
 		139.0 * dp - TOLERANCE_PX
-	)  # The status line's least width (ADR 0024 section 2).
+	)  # The head line spans the strip (ADR 0024 section 2).
 	assert_float(mini.end.x).override_failure_message(why).is_equal_approx(
 		strip.end.x - UiScale.dp(8.0), TOLERANCE_PX
 	)
@@ -257,8 +257,7 @@ func test_sideways_the_plate_is_56_dp_at_the_bottom_right_and_the_pill_slot_and_
 			48.0 * dp - TOLERANCE_PX
 		)
 		assert_bool((_hud("Items") as Control).is_visible_in_tree()).is_false()
-		assert_bool((_hud("Status") as Control).is_visible_in_tree()).is_true()  # In the pill.
-		assert_object(_hud("Status").get_parent()).is_same(_hud("StatusPill"))
+		assert_bool((_hud("EconomyPill") as Control).is_visible_in_tree()).is_true()
 		assert_object(_minimap().get_parent()).is_same(_hud("MinimapSlot"))
 		# The pill, the minimap's slot and the SelectionPanel do not move with the collapse.
 		var now: Array[Rect2] = _fixed()
@@ -320,7 +319,7 @@ func test_sideways_the_plate_is_56_dp_at_the_bottom_right_and_the_pill_slot_and_
 
 ## The collapsed menu at every screen: each visible control is inside the safe rect, each that is
 ## tapped at least 48 dp across, and no two overlap (the Dev button, the ArmyBar, the selection
-## panel, the Build button and the badge, the status line or the pill, the minimap).
+## panel, the Build button and the badge, the economy pill, the minimap).
 func test_collapsed_every_visible_hud_control_is_48_dp_inside_the_safe_rect_and_clear() -> void:
 	for screen: Dictionary in _screens(null):
 		await _open(screen["size"], screen["metrics"], screen["profile"])
@@ -331,7 +330,7 @@ func test_collapsed_every_visible_hud_control_is_48_dp_inside_the_safe_rect_and_
 		var shown: Array[String] = ["DevButton", "AllArmy", "Group1", "Group2", "Group3"]
 		shown.append_array(["SelectionPanel", "Build", "Ready", "Minimap"])
 		var tapped: Array[String] = shown.duplicate()
-		shown.append("StatusPill" if not HudLayout.is_portrait() else "Status")
+		shown.append("EconomyPill")
 		var least: float = UiScale.dp(48.0) - TOLERANCE_PX
 		var rects: Dictionary[String, Rect2] = {}
 		for part: String in shown:
@@ -370,7 +369,7 @@ func test_collapsed_every_visible_hud_control_is_48_dp_inside_the_safe_rect_and_
 ## The parts that a collapse leaves where they are in landscape: the pill, the minimap's slot and
 ## the SelectionPanel.
 func _fixed() -> Array[Rect2]:
-	return [_rect("StatusPill"), _rect("MinimapSlot"), _rect("SelectionPanel")]
+	return [_rect("EconomyPill"), _rect("MinimapSlot"), _rect("SelectionPanel")]
 
 
 func _minimap() -> Control:

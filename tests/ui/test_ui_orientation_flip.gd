@@ -276,6 +276,7 @@ func _read_main(main: Node) -> Dictionary:
 		"panel_line": _panel_line(panel),
 		"army_lift": army.get_parent().get_theme_constant("margin_bottom"),
 		"sidebar": _sidebar_state(sidebar),
+		"pill": _pill_state(main.get_node("Hud/EconomyPill")),
 		"font_size": army.get_node("AllArmy").get_theme_font_size("font_size"),
 		"slops": [recognizer._slop_px, recognizer._double_tap_slop_px, recognizer._min_pinch_px],
 		"rings": rings,
@@ -285,7 +286,7 @@ func _read_main(main: Node) -> Dictionary:
 
 
 ## How the BuildSidebar is placed and sized: its zone, size flags and minimum, the gaps, the tabs'
-## sizes, icon sizes, names and icon alignment, and the item slot and status line.
+## sizes, icon sizes, names and icon alignment, and the item slot and head line.
 func _sidebar_state(sidebar: BuildSidebar) -> Dictionary:
 	var tabs: Array[Button] = sidebar._tabs
 	var texts: Array[String] = []
@@ -305,14 +306,27 @@ func _sidebar_state(sidebar: BuildSidebar) -> Dictionary:
 		[
 			sidebar._stack.get_theme_constant("separation"),
 			sidebar._tab_row.get_theme_constant("separation"),
-			sidebar._status.get_theme_constant("separation"),
 		],
 		"tab_sizes": sizes,
 		"tab_texts": texts,
 		"tab_aligns": aligns,
 		"icon_widths": icon_widths,
 		"items_min": sidebar._items.custom_minimum_size,
-		"status_min": sidebar._status.custom_minimum_size,
+		"head_min": sidebar._head.custom_minimum_size,
+	}
+
+
+## How the economy pill is placed: its rect (the layout function's, so a flip and a fresh scene end
+## alike), the separation and the minimum sizes of its parts.
+func _pill_state(pill: EconomyPill) -> Dictionary:
+	var parts: Array[Vector2] = []
+	for part: String in ["CreditsTap", "PowerTap", "PowerBar", "CreditsGlyph", "Credits"]:
+		parts.append((pill.find_child(part, true, false) as Control).custom_minimum_size)
+	return {
+		"rect": Rect2(pill.position, pill.size),
+		"gap": pill.get_node("Line").get_theme_constant("separation"),
+		"parts": parts,
+		"min": pill.get_combined_minimum_size(),
 	}
 
 

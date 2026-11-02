@@ -16,12 +16,14 @@ const NAME_FONT_DP: float = 16.0
 const NUMBER_FONT_DP: float = 20.0
 const DEV_FONT_PX: int = 40  ## Base px, not dp.
 ## What the file keeps in base px: the Dev button's size and, since P118, the three tracking
-## entries of the Big Shoulders FontVariations (tests/ui/test_ui_theme_fonts.gd).
+## entries of the Big Shoulders FontVariations and, since P119, the pill word's
+## (tests/ui/test_ui_theme_fonts.gd).
 const BASE_PX_ENTRIES: Array[String] = [
 	"DevButton/font_sizes/font_size",
 	"CapsButton/fonts/font",
 	"CapsTitle/fonts/font",
 	"CapsBigTitle/fonts/font",
+	"PillWord/fonts/font",
 ]
 const PAD_DP: float = 8.0
 const BACKDROP: Color = Color(0.06, 0.08, 0.11, 0.78)
@@ -190,7 +192,14 @@ func test_every_control_that_is_a_child_of_the_hud_has_the_hud_theme() -> void:
 	(
 		assert_array(_roots(hud).map(func(root: Control) -> String: return str(root.name)))
 		. contains_exactly(
-			["BoxOverlay", "GhostControls", "SafeArea", "SurrenderDialog", "ResultScreen"]
+			[
+				"BoxOverlay",
+				"GhostControls",
+				"SafeArea",
+				"EconomyPill",
+				"SurrenderDialog",
+				"ResultScreen"
+			]
 		)
 	)
 	for root: Control in _roots(hud):
