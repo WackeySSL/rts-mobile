@@ -89,14 +89,18 @@ func test_a_look_ends_when_the_vehicle_moves_or_fires_and_reduced_has_none() -> 
 	snap.target[row] = 0
 	_at_ms(2900.0)
 	assert_int(Frames.dir(_layer, row, &"turret")).is_equal(5)
+	assert_int(_layer.life_writes()).is_equal(5)  # Aside, back, aside, back, aside: one each.
 	_life.reduced = true
 	_at_ms(3000.0)
 	assert_int(Frames.dir(_layer, row, &"turret")).is_equal(6)
+	assert_int(_layer.life_writes()).is_equal(6)  # `reduced` puts it back on its aim: one write.
 	_at_ms(10300.0)  # The second window (10160 to 11060): nothing with `reduced`.
 	assert_int(Frames.dir(_layer, row, &"turret")).is_equal(6)
+	assert_int(_layer.life_writes()).is_equal(6)
 	_life.reduced = false
 	_at_ms(10400.0)
 	assert_int(Frames.dir(_layer, row, &"turret")).is_equal(5)
+	assert_int(_layer.life_writes()).is_equal(7)
 
 
 func test_a_look_is_one_frame_off_the_aim_the_turret_has_and_a_squad_never_looks() -> void:

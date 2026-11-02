@@ -39,6 +39,18 @@ const PERIODS: Array[int] = [
 	9853
 ]
 
+## Each id's shake phase, mix(id, SALT_SHAKE) of 80: its 80 ms steps end at the ms with
+## (ms + phase) % 80 == 0.
+const SHAKE_PHASES: Array[int] = [
+	7, 57, 0, 65, 41, 35, 41, 20, 6, 33, 25, 61, 39, 54, 7, 65, 21, 55, 33, 47
+]
+## The windows that ids 1, 4, 7 and 14 open in 120 s (a window cut off at the start counts too).
+const WINDOWS_120S: Dictionary[int, int] = {1: 19, 4: 12, 7: 13, 14: 12}
+## The windows each of the 20 ids opens in 24 s when every cycle is 6 s (look_every_spread_ms 0).
+const WINDOWS_24S_SIX_SECOND_CYCLES: Array[int] = [
+	5, 4, 4, 4, 4, 4, 5, 4, 4, 4, 4, 4, 4, 4, 4, 5, 4, 4, 4, 4
+]
+
 var _life: LifeSettings
 var _rig: RigLife
 
@@ -75,11 +87,14 @@ func test_the_shake_of_20_ids_at_one_instant_is_spread_over_the_nine_offsets_as_
 
 
 func test_the_shake_is_in_whole_half_pixels_within_shake_px_and_changes_once_per_shake_ms() -> void:
-	# For every id, over 2 s in 1 ms steps: each axis is a multiple of 0.5 and at most shake_px, and
-	# the offset changes only at an 80 ms boundary (25 of them in 2 s, one more at most for the
-	# phase), so never twice inside one.
+	# For every id, over 2 s in 1 ms steps: each axis is a multiple of 0.5 and at most shake_px, the
+	# offset changes only on a step boundary of the id, (ms + phase) % 80 == 0 (25 of them in 2 s, an
+	# eighth of which repeat the offset), so never twice inside one, 441 times in all for the 20
+	# ids and 25 at the most for one.
 	var off_grid: int = 0
 	var too_far: int = 0
+	var off_boundary: int = 0
+	var total: int = 0
 	var most_changes: int = 0
 	for id: int in range(1, IDS + 1):
 		var changes: int = 0
@@ -93,10 +108,15 @@ func test_the_shake_is_in_whole_half_pixels_within_shake_px_and_changes_once_per
 			if offset != last:
 				changes += 1
 				last = offset
+				if (ms + SHAKE_PHASES[id - 1]) % 80 != 0:
+					off_boundary += 1
+		total += changes
 		most_changes = maxi(most_changes, changes)
 	assert_int(too_far).is_equal(0)
 	assert_int(off_grid).is_equal(0)
-	assert_int(most_changes).is_between(10, 26)  # 25 boundaries, an eighth of them repeat.
+	assert_int(off_boundary).is_equal(0)
+	assert_int(total).is_equal(441)
+	assert_int(most_changes).is_equal(25)
 
 
 func test_the_shake_follows_the_numbers_of_the_settings() -> void:
@@ -117,18 +137,26 @@ func test_the_shake_follows_the_numbers_of_the_settings() -> void:
 	_life.shake_px = 0.5
 	_life.shake_ms = 0
 	assert_vector(_rig.shake_offset(1, 0.0)).is_equal(Vector2.ZERO)
-	_life.shake_ms = 160  # Half as often: at most 13 changes in 2 s (12.5 boundaries).
+	_life.shake_ms = 160  # Half as often: 12.5 boundaries in 2 s, 220 changes in all, 13 at the most.
 	var most: int = 0
+	var total: int = 0
+	var off_boundary: int = 0
 	for id: int in range(1, IDS + 1):
 		var changes: int = 0
+		var phase: int = LifeClock.pick(id, RigLife.SALT_SHAKE, 160)
 		var last: Vector2 = _rig.shake_offset(id, 0.0)
 		for ms: int in range(1, 2000):
 			var offset: Vector2 = _rig.shake_offset(id, float(ms))
 			if offset != last:
 				changes += 1
 				last = offset
+				if (ms + phase) % 160 != 0:
+					off_boundary += 1
+		total += changes
 		most = maxi(most, changes)
-	assert_int(most).is_between(5, 13)
+	assert_int(off_boundary).is_equal(0)
+	assert_int(total).is_equal(220)
+	assert_int(most).is_equal(13)
 
 
 func test_the_shake_is_the_same_on_two_runs() -> void:
@@ -209,8 +237,8 @@ func test_a_look_is_one_frame_aside_for_look_ms_once_per_cycle_and_never_back_to
 		assert_int(bad_length).override_failure_message(note).is_equal(0)
 		assert_int(mixed_sides).override_failure_message(note).is_equal(0)
 		assert_int(too_close).override_failure_message(note).is_equal(0)
-		# 120 s hold 120000 / period cycles, plus or minus the one the scan cuts at an end.
-		assert_int(starts.size()).is_between(120000 / period, 120000 / period + 1)
+		# 120 s hold 120000 / period cycles, plus or minus the one the scan cuts at an end: pinned.
+		assert_int(starts.size()).override_failure_message(note).is_equal(WINDOWS_120S[id])
 	assert_bool(sides.has(-1) and sides.has(1)).is_true()
 
 
@@ -224,6 +252,7 @@ func test_a_look_is_off_for_a_zero_window_and_for_one_as_long_as_the_cycle() -> 
 	assert_int(_rig.look_side(1, 0.0)).is_equal(0)
 	assert_int(_rig.look_side(3, 1000.0)).is_equal(0)
 	_life.look_every_spread_ms = 0  # Every cycle 6 s.
+	var counts: Array[int] = []
 	for id: int in range(1, IDS + 1):
 		var windows: int = 0
 		var before: int = 0
@@ -232,7 +261,8 @@ func test_a_look_is_off_for_a_zero_window_and_for_one_as_long_as_the_cycle() -> 
 			if side != 0 and before == 0:
 				windows += 1
 			before = side
-		assert_int(windows).is_between(3, 5)  # 24 s of 6 s cycles, an edge window cut or not.
+		counts.append(windows)  # 24 s of 6 s cycles: four, and a fifth where the phase cuts one.
+	assert_array(counts).is_equal(WINDOWS_24S_SIX_SECOND_CYCLES)
 
 
 func test_the_sweep_matches_its_golden_values() -> void:
@@ -291,7 +321,7 @@ func test_the_sweep_walks_one_frame_at_a_time_within_reach_and_holds_each_frame_
 	assert_int(at).is_greater_equal(0)
 	for index: int in walk.size():
 		assert_int(walk[index]).is_equal(cycle[(at + index) % 8])
-	assert_int(walk.size()).is_greater_equal(24)  # 3 cycles of 8 steps; the scan may cut the first.
+	assert_int(walk.size()).is_equal(25)  # The frame at 0 and 24 changes (245 + 700 k, k < 24).
 
 
 func test_the_sweep_follows_the_numbers_of_the_settings() -> void:
@@ -313,7 +343,7 @@ func test_the_sweep_follows_the_numbers_of_the_settings() -> void:
 		if frames != last:
 			steps += 1
 			last = frames
-	assert_int(steps).is_between(7, 8)  # 2800 ms / 350 ms = 8 holds.
+	assert_int(steps).is_equal(8)  # 2800 ms / 350 ms = 8 holds.
 
 
 func test_an_answer_holds_for_the_span_the_function_reports() -> void:

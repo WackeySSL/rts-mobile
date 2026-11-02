@@ -31,6 +31,9 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"look_side",
 		"sweep_offset",
 		"_forever",
+		"idle_clock",
+		"idle_step",
+		"sweep_step",
 	],
 	"res://game/view/LifeClock.gd": ["ms", "tick_ms", "age_ms", "mix", "pick"],
 	"res://game/view/UnitLayer.gd":
@@ -39,10 +42,7 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"_note_shot",
 		"_kick_rigs",
 		"_apply_kick",
-		"_idle_rigs",
-		"_idle_rig",
-		"_apply_shake",
-		"_apply_look",
+		"_apply_idle",
 	],
 	"res://game/view/BuildingLayer.gd": ["_on_ticked", "_note_shot", "_kick_heads", "_sweep_heads"],
 }

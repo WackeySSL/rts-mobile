@@ -234,6 +234,7 @@ func _start(life: LifeSettings) -> void:
 	if is_instance_valid(_layer):
 		_layer.free()
 	_life = life
+	Rig.at(_runner, 0, 0.0)  # A new layer starts at the start of the match.
 	_layer = auto_free(BuildingLayer.new())
 	_layer.runner = _runner
 	_layer.life = _life
