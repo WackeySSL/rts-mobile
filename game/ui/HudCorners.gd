@@ -7,8 +7,9 @@ extends RefCounted
 ## The frame is the safe rect's own: every size is in dp, the rect it returns is in base px, inside
 ## `safe`. Mirrored, every rect is flipped about the safe rect's middle (left-handed mode, Phase 5).
 ## Drawer open: the landscape panel covers the right column (BUILD, the Ready chip, the strike
-## button, the scope) and the pill, the portrait sheet covers the bottom stack and the pill, and
-## the scope stays. The economy card, the full map and the strike aim's row are one unfold or mode
+## button, the scope), the portrait sheet covers the bottom stack and the scope stays; the pill
+## goes too, unless `Shown.pill_over_drawer` keeps it (P120, until P120d).
+## The economy card, the full map and the strike aim's row are one unfold or mode
 ## at a time (ADR 0025 section 1), so a set that holds more than one of them is not a screen the
 ## HUD shows. The card is a transient overlay (any next touch closes it): it may cover the toast,
 ## the group column and, on the short landscape screens, the command bar (its tallest content is
@@ -66,6 +67,8 @@ class Shown:
 	var card: bool = false  ## The economy card.
 	var card_height: float = 120.0
 	var drawer: bool = false
+	## The pill stays while the drawer is open (until P120d puts the economy in the drawer's head).
+	var pill_over_drawer: bool = false
 	var groups: int = 1  ## Buttons in the group column: "All army", saved groups, "+".
 
 
@@ -119,8 +122,9 @@ static func place(
 	if not side:
 		out[SCOPE] = Rect2(w - SCOPE_DP, 0.0, SCOPE_DP, SCOPE_DP)
 	var pill_x: float = shown.left_taken + (GAP_DP if shown.left_taken > 0.0 else 0.0)
-	if not shown.drawer:
-		var room: float = minf(PILL_MAX_DP, w - pill_x - SCOPE_DP - GAP_DP)
+	if not shown.drawer or shown.pill_over_drawer:
+		var edge: float = open.position.x if side else w - SCOPE_DP  # The pill ends a gap short.
+		var room: float = minf(PILL_MAX_DP, edge - GAP_DP - pill_x)
 		var pill_w: float = minf(maxf(shown.pill_width, PILL_DP.x), room)
 		out[PILL] = Rect2(pill_x, 0.0, pill_w, PILL_DP.y)
 		if shown.card:

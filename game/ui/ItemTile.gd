@@ -9,9 +9,10 @@ extends HoldButton
 ## is a share of that area. A READY structure is paid for, so its banner takes the foot in the
 ## plate's place (the cost is hidden): the count badge, always there on a ready tile, is at the top
 ## corner and the banner at the bottom, and the two never meet however many digits the count has.
-## In landscape the card is named (plan P85d, ADR 0023 section 12): `set_named(true)` makes it
-## `CARD_DP` and shows the type's display name in a line under the plate, in 14 dp type, cut with an
-## ellipsis where it does not fit; the portrait band's tile stays `SIZE_DP` and nameless.
+## The card is named (ADR 0025 section 5, plan P120): `set_card(size)` makes it
+## `CARD_DP` sideways or
+## `CARD_PORTRAIT_DP` upright and shows the type's display name in a line under the plate, in 14 dp
+## type, cut with an ellipsis where it does not fit; `SIZE_DP` is the nameless plate it starts as.
 ## `BuildSidebar` tells it what to show (`show_state`); it tells the sidebar what the finger did:
 ## `chose` for a tap, `cancelled` for a hold of `hold_ms`, `dragged` for a drag beyond `slop_dp`,
 ## which scrolls the row and is then neither. The tile is a Button, so a touch on it never reaches
@@ -24,8 +25,9 @@ signal dragged(relative: Vector2)  ## The finger moved beyond `slop_dp`: the row
 enum State { AVAILABLE, LOCKED, UNAFFORDABLE, FULL, READY }
 
 const SIZE_DP: float = 64.0
-## The named card (landscape): 80 dp wide, and 64 dp of tile plus the 24 dp of the name's line high.
-const CARD_DP: Vector2 = Vector2(80.0, 88.0)
+## The named card: the drawer's size sideways, and upright (ADR 0025 section 5, at least).
+const CARD_DP: Vector2 = Vector2(88.0, 96.0)
+const CARD_PORTRAIT_DP: Vector2 = Vector2(92.0, 100.0)
 const ICON_INSET_DP: float = 3.0
 const LOCK_DP: float = 32.0
 const STRIPE_DP: Vector2 = Vector2(14.0, 5.0)  ## The step between stripes and their width.
@@ -62,7 +64,6 @@ var _offset: Vector2 = Vector2.ZERO  ## The finger's move since the press.
 var _scrolling: bool = false
 var _shake: Tween = null
 var _shown: bool = false  ## `show_state` has been called once.
-var _named: bool = false
 
 
 ## The diagonal stripes of a tile that cannot take an item now.
@@ -153,13 +154,10 @@ func art() -> Texture2D:
 	return _icon.texture
 
 
-## The landscape card with the name under its foot, or the portrait band's plain tile.
-func set_named(on: bool) -> void:
-	if on == _named:
-		return
-	_named = on
-	_caption.visible = on
-	_fit.min_dp = CARD_DP if on else Vector2(SIZE_DP, SIZE_DP)
+## The card of `size_dp` with the name under its foot.
+func set_card(size_dp: Vector2) -> void:
+	_caption.visible = true
+	_fit.min_dp = size_dp
 
 
 ## Shows the state, the queued count and the head's progress (a share, 0 to 1).

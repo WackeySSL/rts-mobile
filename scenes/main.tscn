@@ -41,6 +41,7 @@
 [ext_resource type="Script" path="res://game/ui/EconomyCard.gd" id="42_economy_card"]
 [ext_resource type="Script" path="res://game/ui/RadarScope.gd" id="42_scope"]
 [ext_resource type="Script" path="res://game/ui/RadarMap.gd" id="43_radar_map"]
+[ext_resource type="Script" path="res://game/ui/BuildButton.gd" id="44_build_button"]
 [ext_resource type="Script" path="res://game/ui/SurrenderButton.gd" id="90_surrender"]
 [ext_resource type="Script" path="res://game/ui/TopLeftStack.gd" id="90_stack"]
 [ext_resource type="Script" path="res://game/ui/ConfirmDialog.gd" id="90_confirm"]
@@ -220,7 +221,7 @@ mouse_filter = 2
 theme = ExtResource("16_theme")
 script = ExtResource("38_ghost_controls")
 placement = NodePath("../../PlacementController")
-clear_of = [NodePath("../SafeArea/TopLeft"), NodePath("../SafeArea/ArmyBand/ArmyBar"), NodePath("../SafeArea/SelectionBand/SelectionPanel"), NodePath("../SafeArea/StrikeBand/StrikeControls"), NodePath("../SafeArea/BuildSidebar"), NodePath("../EconomyPill"), NodePath("../RadarScope"), NodePath("../RadarMap")]
+clear_of = [NodePath("../SafeArea/TopLeft"), NodePath("../SafeArea/ArmyBand/ArmyBar"), NodePath("../SafeArea/SelectionBand/SelectionPanel"), NodePath("../SafeArea/StrikeBand/StrikeControls"), NodePath("../BuildButton"), NodePath("../BuildSidebar"), NodePath("../EconomyPill"), NodePath("../RadarScope"), NodePath("../RadarMap")]
 
 [node name="SafeArea" type="MarginContainer" parent="Hud"]
 anchors_preset = 15
@@ -260,13 +261,6 @@ dialog = NodePath("../../../SurrenderDialog")
 
 [node name="DpMinSize" type="Node" parent="Hud/SafeArea/TopLeft/SurrenderButton"]
 script = ExtResource("13_dp")
-
-[node name="BuildSidebar" type="Control" parent="Hud/SafeArea" node_paths=PackedStringArray("runner", "controller", "placement", "strike_aim")]
-script = ExtResource("21_sidebar")
-runner = NodePath("../../../MatchRunner")
-controller = NodePath("../../../PlayerController")
-placement = NodePath("../../../PlacementController")
-strike_aim = NodePath("../../../StrikeAim")
 
 [node name="ArmyBand" type="MarginContainer" parent="Hud/SafeArea"]
 mouse_filter = 2
@@ -320,14 +314,13 @@ minimap = NodePath("../RadarMap/Minimap")
 camera = NodePath("../../Camera")
 safe_area = NodePath("../SafeArea")
 
-[node name="RadarMap" type="Control" parent="Hud" node_paths=PackedStringArray("feed", "minimap", "safe_area", "sidebar", "strike_row")]
+[node name="RadarMap" type="Control" parent="Hud" node_paths=PackedStringArray("feed", "minimap", "safe_area", "strike_row")]
 visible = false
 theme = ExtResource("16_theme")
 script = ExtResource("43_radar_map")
 feed = NodePath("../HudStateFeed")
 minimap = NodePath("Minimap")
 safe_area = NodePath("../SafeArea")
-sidebar = NodePath("../SafeArea/BuildSidebar")
 strike_row = NodePath("../SafeArea/StrikeBand/StrikeControls")
 
 [node name="Minimap" type="Control" parent="Hud/RadarMap" node_paths=PackedStringArray("runner", "camera", "map_view", "controller")]
@@ -337,6 +330,23 @@ runner = NodePath("../../../MatchRunner")
 camera = NodePath("../../../Camera")
 map_view = NodePath("../../../MapView")
 controller = NodePath("../../../PlayerController")
+
+[node name="BuildButton" type="Button" parent="Hud" node_paths=PackedStringArray("runner", "feed", "safe_area")]
+theme = ExtResource("16_theme")
+script = ExtResource("44_build_button")
+runner = NodePath("../../MatchRunner")
+feed = NodePath("../HudStateFeed")
+safe_area = NodePath("../SafeArea")
+
+[node name="BuildSidebar" type="Control" parent="Hud" node_paths=PackedStringArray("runner", "controller", "placement", "strike_aim", "feed", "safe_area")]
+theme = ExtResource("16_theme")
+script = ExtResource("21_sidebar")
+runner = NodePath("../../MatchRunner")
+controller = NodePath("../../PlayerController")
+placement = NodePath("../../PlacementController")
+strike_aim = NodePath("../../StrikeAim")
+feed = NodePath("../HudStateFeed")
+safe_area = NodePath("../SafeArea")
 
 [node name="SurrenderDialog" type="Control" parent="Hud"]
 anchor_right = 1.0
@@ -360,6 +370,5 @@ runner = NodePath("../../MatchRunner")
 [connection signal="selection_changed" from="PlayerController" to="RallyLayer" method="set_selected"]
 [connection signal="rally_ordered" from="PlayerController" to="RallyLayer" method="show_pending"]
 [connection signal="selection_changed" from="PlayerController" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="set_selected"]
-[connection signal="map_gesture" from="TouchInput" to="Hud/SafeArea/BuildSidebar" method="collapse"]
-[connection signal="zone_changed" from="Hud/SafeArea/BuildSidebar" to="Hud/SafeArea/ArmyBand/ArmyBar" method="_on_zone_changed"]
-[connection signal="zone_changed" from="Hud/SafeArea/BuildSidebar" to="Hud/SafeArea/StrikeBand/StrikeControls" method="_on_zone_changed"]
+[connection signal="zone_changed" from="Hud/BuildSidebar" to="Hud/SafeArea/ArmyBand/ArmyBar" method="_on_zone_changed"]
+[connection signal="zone_changed" from="Hud/BuildSidebar" to="Hud/SafeArea/StrikeBand/StrikeControls" method="_on_zone_changed"]

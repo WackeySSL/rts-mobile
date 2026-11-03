@@ -70,7 +70,7 @@ func before_test() -> void:
 	_controller = _main.get_node("PlayerController")
 	_buildings = _main.get_node("BuildingLayer")
 	Rig.see(_runner.snapshot, 1, [Vector2i(21, 21)])  # A cell of the enemy Headquarters.
-	_sidebar = _main.get_node("Hud/SafeArea/BuildSidebar")
+	_sidebar = _main.get_node("Hud/BuildSidebar")
 	_now_ms = 0
 	_sent.clear()
 	_touch.clock = func() -> int: return _now_ms
@@ -146,7 +146,7 @@ func test_the_building_drawn_in_front_wins_where_two_pictures_overlap() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _show(size)
 		var note: String = str(size)
-		_camera.centre_on(Vector2(48, 250))
+		_aim(Vector2(48, 250))
 		var both: Vector2 = _camera.world_to_screen(Vector2(64, 220))  # In both silhouettes.
 		_tap(both)
 		assert_array(_controller.selection.selected).override_failure_message(note).is_equal(
@@ -188,7 +188,7 @@ func test_a_double_tap_on_a_building_selects_it_alone_and_a_box_or_all_army_neve
 	for size: Vector2i in ScreenSizes.ALL:
 		await _show(size)
 		var note: String = str(size)
-		_camera.centre_on(Vector2(0, 208))
+		_aim(Vector2(0, 208))
 		var on_hq: Vector2 = _camera.world_to_screen(Vector2(-60, 200))
 		_tap(on_hq, true)
 		assert_array(_controller.selection.selected).override_failure_message(note).is_equal([HQ])
@@ -327,14 +327,22 @@ func _show(size: Vector2i) -> void:
 ## footprint's centre, lifted by `lift` of its rise.
 func _tap_building(id: int, lift: float, offset: Vector2 = Vector2.ZERO) -> void:
 	var node: Node2D = _buildings.building(id)
-	_camera.centre_on(node.position)
+	_aim(node.position)
 	var row: Array = _row(id)
 	_tap(row[1] + offset + Vector2(0, -lift * row[3]))
 
 
+## Centres the camera on `world`; upright, a quarter of the screen higher, because the build drawer
+## a tap on a producer opens (a sheet over the lower half) would cover the spot for the next tap.
+func _aim(world: Vector2) -> void:
+	_camera.centre_on(world)
+	if HudLayout.is_portrait():
+		_camera.position.y += get_viewport().get_visible_rect().size.y * 0.25 / _camera.zoom.y
+
+
 ## Centres the camera on `world` and taps it.
 func _tap_world(world: Vector2) -> void:
-	_camera.centre_on(world)
+	_aim(world)
 	_tap(_camera.world_to_screen(world))
 
 

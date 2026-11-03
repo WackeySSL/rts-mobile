@@ -12,13 +12,11 @@ extends Control
 ## and every frame a finger stays down on it, even one that sends no event, call `touch_radar`.
 ## The map's own touches (a tap and a drag jump the camera, a hold with units selected sends MOVE)
 ## are the `Minimap` node's. This node takes its rect on `_ready` and on every resize.
-## Until P120's drawer replaces the build panel (ADR 0025 section 1, one unfold at a time) and
-## P120c moves the strike button, three things meet here, landscape only (upright the band and the
-## strike button stand at the bottom, far from the map): the open map folds the open build panel
-## (`sidebar.collapse()`), opening the panel closes the map even when it is
-## pinned (ADR 0025 section 7: another unfold closes a pinned map), and where the map stands left
-## of the right column (a short screen) it ends a gap left of the strike row (the button, and its
-## check mark and X while aiming), which stands on the top line left of the scope.
+## Opening the build drawer closes the map and opening the map closes the drawer, even a pinned
+## map (one unfold at a time, `HudState`, ADR 0025 section 1). Until P120c moves the strike button,
+## where the map stands left of the right column (a short screen, landscape) it ends a gap left of
+## the strike row (the button, and its check mark and X while aiming), which stands on the top line
+## left of the scope.
 
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
 const TITLE: String = "RADAR"
@@ -32,7 +30,6 @@ const TAB_TYPE: StringName = &"SidebarTab"  ## Its grey (`icon_normal_color`) ti
 @export var feed: HudStateFeed
 @export var minimap: Minimap  ## The full map: a child, placed in the box under the head.
 @export var safe_area: SafeAreaMargin  ## Its gap is the safe rect's (ADR 0025 section 2).
-@export var sidebar: BuildSidebar  ## The interim build panel: one unfold at a time with the map.
 @export var strike_row: Control  ## The interim strike row (P112): the map keeps clear of it.
 
 var _panel: Panel = Panel.new()
@@ -74,8 +71,6 @@ func _ready() -> void:
 	_pin.pressed.connect(_on_pin_pressed)
 	_collapse.pressed.connect(_on_collapse_pressed)
 	feed.state.changed.connect(_on_changed)
-	if sidebar != null:
-		sidebar.state_changed.connect(_on_panel_changed)
 	if strike_row != null:
 		strike_row.item_rect_changed.connect(place)  # The aim widens it; a turn moves it.
 		strike_row.visibility_changed.connect(place)
@@ -150,12 +145,6 @@ func _on_changed(_previous: HudState.Unfold) -> void:
 	_sync()
 
 
-## The build panel was opened or collapsed: opening it closes the map, even a pinned one.
-func _on_panel_changed() -> void:
-	if sidebar.is_open() and not HudLayout.is_portrait():
-		feed.state.close(HudState.Unfold.RADAR)
-
-
 ## Shows the map while `RADAR` is open, and the pin as it is (the pin outlives the opening).
 func _sync() -> void:
 	var state: HudState = feed.state
@@ -163,17 +152,10 @@ func _sync() -> void:
 	if not visible:
 		_fingers.clear()
 		set_process(false)
-	_make_room()
 	_pin.icon = load(ICON_ART % ("glyph_pin" if state.pinned else "glyph_pin_off"))
 	_pin.modulate = get_theme_color(
 		&"icon_pressed_color" if state.pinned else &"icon_normal_color", TAB_TYPE
 	)
-
-
-## Landscape: the open map and the open build panel would meet, so the map folds the panel.
-func _make_room() -> void:
-	if visible and sidebar != null and not HudLayout.is_portrait():
-		sidebar.collapse()
 
 
 func _on_pin_pressed() -> void:
@@ -189,9 +171,7 @@ func _apply_dp() -> void:
 	_head.add_theme_constant_override("separation", 0)
 	for button: Button in [_pin, _collapse]:
 		button.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(GLYPH_DP)))
-	place()
 	place.call_deferred()  # The strike row's band sorts a moment after the resize.
-	_make_room()  # A turn to landscape with both open.
 
 
 ## One head button: flat, its glyph alone and centred, 48 dp each way, no focus ring left behind.

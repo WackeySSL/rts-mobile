@@ -1,90 +1,67 @@
 class_name BuildSidebar
 extends Control
-## The build menu (ADR 0019 section 1, ADR 0023 section 12, ADR 0024; plans P85, P85b, P85d and
-## P85f): the three tabs and, below, the slot `Items` with the open tab's item tiles. The credits
-## and the power bar are the `EconomyPill`'s since P119 (ADR 0025 section 3); the head line they
-## had in the portrait band and strip stays as an empty line of `STATUS_DP` until P120 replaces
-## the band. It sends nothing to the sim but Commands through
-## `PlayerController.command_sink`: a tap on an available tile is one QUEUE, a hold on a tile with
-## items queued is one CANCEL of the last of them. It reads the published snapshot only (the local
-## player's credits, power, queue and rows, and the type tables) and never keeps one.
-## OPEN or COLLAPSED (ADR 0024 sections 1 to 6), view state only: no Command, nothing in the sim.
-## A match starts open. A gesture on the map (`TouchInput.map_gesture`) and the start of placement
-## or of a strike aim collapse it; the Build button, the Ready badge, a tap that selects an own
-## producer and the end of placement (a build or the X; not a strike aim's) open it. A touch on a
-## HUD control is never a map gesture, so working in the menu keeps it open. Requests apply in
-## order and the last one wins.
-## This node is the clipping holder (a plain `Control` with `clip_contents`; a container cannot be
-## smaller than its children): `Backdrop`, the panel that holds the menu's parts, is placed at the
-## size of the target state at once and the holder's height slides to it over `menu_slide_ms` (ADR
-## 0024 section 8). Input never waits: the parts outside the holder are neither drawn nor picked.
-## Landscape (P85d): the floating build panel at the bottom right, `HudLayout.panel_px` wide and as
-## high as its tabs and one row of cards, or the plate (`HudLayout.PLATE_DP`: the Ready badge and
-## the Build button). Portrait: the bottom band, the full inner width, `HudLayout.band_dp` high,
-## with the empty head line as its first line, or the strip (`HudLayout.STRIP_DP`: the head line
-## over the Build button and the Ready badge). The minimap is not here since P121: the radar
-## scope and the full map under it are `RadarScope`'s and `RadarMap`'s (ADR 0025 section 7). A turn
-## only moves things: the layout is what `_place` makes of the orientation and the state, and a
-## turn ends a slide at its target.
-## The menu's height goes to `HudLayout.bottom_zone_dp` and its real top on the screen to
-## `HudLayout.menu_top_px` (ADR 0024 section 4) each time they change, and `zone_changed` tells
-## whoever lifts something by them (the ArmyBar, the strike row); the first is the one place the
-## ArmyBar reads at start-up: this node is the first of the HUD's siblings in the scene, so its
-## `size_changed` handler runs before the ArmyBar's and the bar finds the new height.
-## Tabs: Structures, Infantry and Vehicles, each an icon alone (`tab_<name>`, grey at rest and white
-## when open, from the theme). The open tab is the lighter plate with the thick bar at its foot
-## (theme `SidebarTab`).
-## Items: one `ItemTile` per buildable type (icon: its P99b item card), made per match from the
-## snapshot's type tables, those of the open tab and of the local player's faction shown, in one row
-## that scrolls sideways (the cards of the floating panel carry their names, the band's tiles do
-## not). The faction is that of the player's own rows (`type_faction`, the producer-faction rule of
-## `Production.apply_queue`): a type of another faction is never shown, one with none is shown to
-## all. A tile is READY (a finished structure at the head of its queue: a tap enters placement mode,
-## plan P86, which collapses the menu; the check mark and the X stand beside the ghost,
-## `GhostControls`), LOCKED (the type's requirement or the tab's producer is not among the player's
-## rows), UNAFFORDABLE, FULL (no room in the queue) or AVAILABLE, in that order. A tap on one that
-## cannot take an item shakes it.
-## Collapsed, the READY state shows as the Ready badge (the card's picture and the word) beside the
-## Build button; hidden while the menu is open or placement runs. A tap on it opens the menu on the
-## Structures tab with the READY card in view and starts nothing else.
-## Selecting an own production building opens its tab, and the menu: `set_selected` is the hook,
-## wired to `PlayerController.selection_changed` when `controller` is set.
-## The look is the inherited theme's (`game/ui/theme.tres`: `BuildSidebar`, `SidebarTab`,
-## `BuildButton`, `ReadyBadge` and the `ItemTile` family), the sizes are dp.
+## The build drawer (ADR 0025 sections 5 and 6, plan P120; it grew out of ADR 0019 section 1, ADR
+## 0023 section 12 and ADR 0024): a side panel at the right edge in landscape, a bottom sheet in
+## portrait, over the map. From the top: the head with the close button, the three tabs (an icon
+## over the name) and the grid of the open tab's item cards, which scrolls vertically. BUILD
+## (`BuildButton`) opens it. The credits and the power are the `EconomyPill`'s (it stays on screen
+## until P120d puts the economy in the head). It sends nothing to the sim but Commands through
+## `PlayerController.command_sink`: a tap on an available card is one QUEUE, a hold on a card with
+## items queued is one CANCEL of the last of them (P120b replaces that). It reads the published
+## snapshot only and never keeps one.
+## Open or closed is `HudState`'s DRAWER (`feed.state`, ADR 0025 section 1), view state only: no
+## Command, nothing in the sim. A match starts closed. A gesture on the map, the start of placement
+## or of a strike aim, another unfold and the close button fold it (the feed and the state do the
+## folding; a swipe past `drawer_swipe_dp` toward the edge it came from does too: landscape any
+## horizontal drag on the panel, portrait a drag that starts on the head). BUILD, a tap that selects
+## an own producer (its tab, `set_selected`) and the end of a placement that began in the drawer
+## (ADR 0024 R1; not after a strike aim, not at the match's end) open it. Starting a placement from
+## the drawer again (a READY card tapped while one runs) closes it, as the first start did.
+## This node is the clipping holder (a plain `Control` with `clip_contents`), over the part of
+## the drawer that has slid in: `Backdrop` is at the drawer's full size (`HudCorners`' DRAWER
+## rect, reaching on to the screen's edge, its content inside the safe rect) and the holder's extent
+## slides over `menu_slide_ms` (ADR 0024 section 8): its width in landscape, its height in portrait.
+## Input never waits: what is outside the holder is neither drawn nor picked. A turn ends a slide at
+## its target and lays the drawer out for the other orientation.
+## The sheet's height goes to `HudLayout.bottom_zone_dp` and its real top on the screen to
+## `HudLayout.menu_top_px` (ADR 0024 section 4), and `zone_changed` tells whoever lifts something by
+## them (the ArmyBar, the strike row). Upright the zone is BUILD's row while the drawer is closed
+## (`HudLayout.BUILD_ROW_DP`, until P122b), the sheet's height while it is open; sideways it is 0.
+## Cards: one `ItemTile` per buildable type (icon: its P99b item card), made per match from the
+## snapshot's type tables, those of the open tab and of the local player's faction shown. The
+## faction is that of the player's own rows (`type_faction`, the producer-faction rule of
+## `Production.apply_queue`). A tile is READY (a finished structure at the head of its queue: a tap
+## enters placement mode, plan P86; the check mark and the X stand beside the ghost,
+## `GhostControls`), LOCKED, UNAFFORDABLE, FULL or AVAILABLE, in that order. A tap on one that
+## cannot take an item shakes it. Until P120c the READY card is reached through BUILD and the
+## Structures tab.
+## The look is the inherited theme's (`BuildSidebar`, `SidebarTab` and the `ItemTile` family), the
+## sizes are dp.
 
 ## Emitted when another tab opens, by a tap or by `select_tab`.
 signal tab_selected(tab: int)
-## The menu was asked to open or to collapse (at the request, not at the end of the slide).
+## The drawer was opened or closed (at the request, not at the end of the slide).
 signal state_changed
-## The menu's top on the screen and its height changed, both base px: a request, a frame of the
-## slide, a resize. What rides on the menu (the ArmyBar, the strike row) lifts by these.
+## The sheet's top on the screen and the zone's height changed, both base px: a request, a frame of
+## the slide, a resize. What rides on the drawer (the ArmyBar, the strike row) lifts by these.
 signal zone_changed(top_px: float, height_px: float)
 
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
 const THEME_TYPE: StringName = &"BuildSidebar"
 const TAB_VARIATION: StringName = &"SidebarTab"
-const BUILD_VARIATION: StringName = &"BuildButton"
-const BADGE_VARIATION: StringName = &"ReadyBadge"
 ## The tab names by `World.Tab`; the icon of a tab is `tab_<name in lower case>`.
 const TAB_NAMES: PackedStringArray = ["Structures", "Infantry", "Vehicles"]
-const STATUS_DP: float = 32.0  ## The head line, empty since P119 (the economy is the pill's).
-const TAB_DP: float = 48.0
-const TAB_ICON_DP: float = 32.0
-const ITEMS_DP: float = 64.0  ## The height of the slot for one row of item tiles.
-## The slot of the named cards is their height and this, because a box container sorts in whole px
-## and would otherwise leave a card a fraction of a px taller than the slot that holds it.
-const ROW_SLACK_DP: float = 2.0
+const TAB_DP: float = 56.0  ## An icon over the name needs more than the 48 dp of a bare icon.
+const TAB_ICON_DP: float = 24.0
+const CLOSE_DP: float = 48.0
+const CLOSE_ICON_DP: float = 28.0
+## Beside the backdrop's own 8 dp: the 16 dp each side that three 88 dp cards need 312 dp for.
+const PAD_DP: float = 8.0
 const GAP_DP: float = 8.0
-## What the content's least height may pass the band's by (the gaps round to whole px) before the
-## band grows to it instead of the content being cut.
-const ROUNDING_PX: float = 1.0
-const REVEAL_FRAMES: int = 30  ## The frames `_reveal_step` waits for the row's layout, at most.
-## What a card may stand off the place its least widths give it, per card before it (a grid sorts in
-## whole px). A card of the wrong tab's layout is off by a card or more.
-const REVEAL_SLACK_PX: float = 1.5
-const BUILD_DP: Vector2 = Vector2(64.0, 48.0)  ## The Build button.
-const BUTTONS_DP: float = 48.0  ## The button row's height. The Ready badge is 112 dp wide at most.
-const BADGE_ICON_DP: float = 32.0  ## The card's picture on the Ready badge.
+## The slot of the cards is their height and this, because a box container sorts in whole px and
+## would otherwise leave a card a fraction of a px taller than the slot that holds it.
+const ROW_SLACK_DP: float = 2.0
+const COLUMNS_LEAST: int = 2
 
 ## Tests only, like `UiScale`'s override: the slide's duration in ms, or -1 for the settings'. A
 ## test that sets one clears it in `after_test`, and never writes `menu_slide_ms` into the resource.
@@ -92,25 +69,24 @@ static var _slide_override: int = -1
 
 @export var runner: MatchRunner
 @export var controller: PlayerController  ## The Commands' sink, the haptic, the selection.
-@export var placement: PlacementController  ## A tap on a READY tile begins it. None: no placement.
-@export var strike_aim: StrikeAim  ## Aiming a strike takes the menu down, as placement does.
+@export var placement: PlacementController  ## A tap on a READY card begins it. None: no placement.
+@export var strike_aim: StrikeAim  ## Aiming a strike takes the drawer down, as placement does.
+@export var feed: HudStateFeed  ## Its `state` says whether the drawer is open.
+@export var safe_area: SafeAreaMargin  ## Its gap is the safe rect's (ADR 0025 section 2).
 
 ## The open tab, a `World.Tab`.
 var tab: int = World.Tab.STRUCTURES
 
-var _backdrop: PanelContainer = PanelContainer.new()  ## The menu's panel, at the target's size.
+var _backdrop: PanelContainer = PanelContainer.new()  ## The drawer, at its full size.
+var _pad: MarginContainer = MarginContainer.new()  ## The padding, and the screen edge beyond.
 var _stack: VBoxContainer = VBoxContainer.new()
-var _body: HBoxContainer = HBoxContainer.new()  ## Below the head line: `_left` or the strip.
-var _left: VBoxContainer = VBoxContainer.new()  ## The tabs and the item row.
-var _strip: VBoxContainer = VBoxContainer.new()  ## Collapsed upright: the head line, the buttons.
-var _buttons: HBoxContainer = HBoxContainer.new()  ## The Build button and the Ready badge.
-var _build: Button = Button.new()
-var _badge: Button = Button.new()
-var _head: Control = Control.new()  ## The empty head line of the portrait band and strip.
+var _head: HBoxContainer = HBoxContainer.new()
+var _close: Button = Button.new()
+var _chevron: TextureRect = TextureRect.new()  ## Faces the edge the drawer leaves by.
 var _tab_row: HBoxContainer = HBoxContainer.new()
 var _tabs: Array[Button] = []
 var _items: ScrollContainer = ScrollContainer.new()
-var _items_fit: DpMinSize = DpMinSize.new()  ## The least height of `_items`, by the tile in use.
+var _items_fit: DpMinSize = DpMinSize.new()  ## The least height of `_items`: one row of cards.
 var _grid: GridContainer = GridContainer.new()
 var _tiles: Array[ItemTile] = []
 var _faction: int = -1  ## The local player's faction (`type_faction`); -1 until a row shows it.
@@ -118,74 +94,58 @@ var _seen: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot last 
 var _built: Vector2i = Vector2i(-1, -1)  ## Match serial and type count the tiles are made for.
 var _owned: PackedInt32Array = PackedInt32Array()  ## Scratch of a refresh: own rows per type.
 var _producers: PackedInt32Array = PackedInt32Array()  ## And own producers per tab.
-var _ready_tile: ItemTile = null  ## The tile of the finished structure at the head, if any.
-var _reveal: ItemTile = null  ## The tile the Ready badge's tap wants in view, until it is.
-var _reveal_left: int = 0
-var _open: bool = true
 var _placing: bool = false  ## Placement mode was on at the last `placement.changed`.
-var _before: bool = true  ## The state when placement began: what the end of it returns to.
-var _aiming: bool = false  ## The strike aim was on at the last `strike_aim.changed`.
+var _before: bool = false  ## The drawer was open when placement began: what its end returns to.
 var _sliding: bool = false
-var _height: float = 0.0  ## The visible height now, base px (the holder's).
-var _target: float = 0.0  ## And where the slide goes.
+var _extent: float = 0.0  ## How far the drawer has slid in, base px along its axis.
+var _target: float = 0.0  ## And where the slide goes: 0 or `_open_px`.
 var _from: float = 0.0
 var _elapsed: float = 0.0  ## Ms into the slide.
 var _duration: float = 0.0  ## Ms the slide takes: the share of `menu_slide_ms` its distance needs.
-var _open_px: float = 0.0  ## The open menu's height and the collapsed one's, base px.
-var _closed_px: float = 0.0
-var _wide: float = 0.0  ## The holder's width while open, and (landscape) once the plate is in.
-var _narrow: float = 0.0
-var _dp_px: float = 1.0  ## `UiScale.base_px_per_dp()` and the orientation, read by `_place`: the
+var _open_px: float = 0.0  ## The open drawer's extent along its axis, base px.
+var _rect: Rect2 = Rect2()  ## The drawer's rect from `HudCorners.place`, base px.
+var _edge: float = 0.0  ## From the safe rect to the screen's edge the drawer leaves by, base px.
+var _dp_px: float = 1.0  ## `UiScale.base_px_per_dp()` and the orientation, read by `_measure`: the
 var _portrait: bool = false  ## frames of a slide ask `UiScale` for nothing.
-var _inner: float = 0.0  ## The safe area's inner width, base px.
-var _bottom_edge: float = 0.0  ## Where the safe area's inner rect ends (portrait): the menu's foot.
-var _safe_end: float = 0.0  ## Where the safe rect ends: the "top" of a landscape panel that floats.
 var _placed: bool = false  ## The first layout is in: a later change may slide.
 var _told: Vector2 = Vector2(NAN, NAN)  ## The top and the height `zone_changed` last said.
+var _swipe: int = -1  ## The index of the finger that may swipe the drawer shut, else -1.
+var _swipe_from: Vector2 = Vector2.ZERO
 var _default_settings: InputSettings = null
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # Only the backdrop takes touches.
 	clip_contents = true  # What the slide has not uncovered is neither drawn nor picked.
+	visible = false
 	_backdrop.name = "Backdrop"
-	_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP  # A touch on the menu never reaches the map.
+	_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP  # A touch on the drawer never reaches the map.
 	_backdrop.theme_type_variation = THEME_TYPE
 	add_child(_backdrop)
+	_pad.name = "Pad"
+	_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_backdrop.add_child(_pad)
 	_stack.name = "Stack"
-	_backdrop.add_child(_stack)
-	_head.name = "Head"
-	_min_dp(_head, Vector2(0.0, STATUS_DP))
-	_stack.add_child(_head)
-	_body.name = "Body"
-	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_stack.add_child(_body)
-	_left.name = "Left"
-	_left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_body.add_child(_left)
-	_strip.name = "Strip"
-	_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_body.add_child(_strip)
-	_build_buttons()
+	_pad.add_child(_stack)
+	_build_head()
 	_build_tabs()
 	_items.name = "Items"
 	_items.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_items.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_items.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER  # One row, sideways.
-	_items.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_items_fit.min_dp = Vector2(0.0, ITEMS_DP)
+	_items.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_items.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER  # A finger drags it.
 	_items.add_child(_items_fit)
+	_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_items.add_child(_grid)
-	_left.add_child(_items)
+	_stack.add_child(_items)
 	select_tab(tab)
-	_apply_dp()  # Sets the zone before the ArmyBar's _ready lifts the bar.
-	get_viewport().size_changed.connect(_apply_dp)  # After the DpMinSize nodes' own handlers.
+	_apply_dp()  # Sets the zone before the ArmyBar reads it.
+	get_viewport().size_changed.connect(_apply_dp)
+	feed.state.changed.connect(_on_hud_changed)
 	if controller != null:
 		controller.selection_changed.connect(set_selected)
 	if placement != null:
 		placement.changed.connect(_on_placement_changed)
-	if strike_aim != null:
-		strike_aim.changed.connect(_on_aim_changed)
 
 
 func _exit_tree() -> void:
@@ -203,22 +163,20 @@ static func clear_slide_ms_override() -> void:
 
 
 func is_open() -> bool:
-	return _open
+	return feed.state.is_open(HudState.Unfold.DRAWER)
 
 
-## Opens the menu: the open layout is placed at once and its height slides up (ADR 0024 section 6).
-## The Build button works while placement runs too: the ghost stays and the cards are on show.
+## Opens the drawer (an unfold: it closes the radar's full map and the economy card).
 func open() -> void:
-	_set_open(true)
+	feed.state.open(HudState.Unfold.DRAWER)
 
 
-## Collapses the menu to the strip or the plate (section 5): a map gesture, the start of placement
-## or the start of a strike aim asks for it; a touch on the menu's own controls never does.
+## Closes the drawer (its close button; a gesture on the map does it through the feed).
 func collapse() -> void:
-	_set_open(false)
+	feed.state.close(HudState.Unfold.DRAWER)
 
 
-## Moves the slide on by `seconds`: the frame's work, and what a test steps by hand. The height
+## Moves the slide on by `seconds`: the frame's work, and what a test steps by hand. The extent
 ## eases out (cubic); the end is the target exactly.
 func advance(seconds: float) -> void:
 	if not _sliding:
@@ -226,53 +184,34 @@ func advance(seconds: float) -> void:
 	_elapsed += seconds * 1000.0
 	var share: float = clampf(_elapsed / _duration, 0.0, 1.0)
 	_sliding = share < 1.0
-	_apply_height(lerpf(_from, _target, 1.0 - pow(1.0 - share, 3.0)))
+	_apply_extent(lerpf(_from, _target, 1.0 - pow(1.0 - share, 3.0)))
 
 
-func _set_open(on: bool) -> void:
-	if on == _open:
-		return
-	_open = on
-	_sync_badge()  # Before the layout: the plate is as wide as its row.
-	_place(false)
-	state_changed.emit()
+## The unfold changed: slide to the new state, and keep what placement or the aim folded.
+func _on_hud_changed(previous: HudState.Unfold) -> void:
+	var folded: bool = previous == HudState.Unfold.DRAWER and not is_open()
+	if folded and placement != null and placement.active and not _placing:
+		_before = true  # The feed folded it for the placement that is just beginning.
+	if folded or is_open():
+		_place(false)
+		state_changed.emit()
 
 
-## The tap on the Ready badge: the Structures tab with the READY card in view; nothing else. The
-## card is scrolled into view by `_reveal_step`, once the row has laid out the tab.
-func _on_badge() -> void:
-	select_tab(World.Tab.STRUCTURES)
-	open()
-	_reveal = _ready_tile
-	_reveal_left = REVEAL_FRAMES
-
-
-## Placement begins: the menu goes down, remembering its state. It ends with a build or the X: the
-## menu returns to that state, but not after a strike aim (which would move its row under the thumb)
-## and not at the match's end.
+## Placement ends with a build or the X: the drawer returns if it was open when placement began,
+## but not after a strike aim (which would move its row under the thumb) and not at the match's end.
 func _on_placement_changed() -> void:
 	if placement == null or placement.active == _placing:
 		return
 	_placing = placement.active
 	if _placing:
-		_before = _open
-		collapse()
-	else:
-		var aimed: bool = strike_aim != null and strike_aim.active
-		var snap: MatchSnapshot = null if runner == null else runner.snapshot
-		var ended: bool = snap != null and snap.match_end_tick > 0
-		if _before and not aimed and not ended:
-			open()
-	_show_badge()
-
-
-## The strike aim begins: the menu goes down, so the strike row, which rides on its top upright, and
-## its check mark and X do not slide under the thumb at the first tap on the map (ADR 0024's R1 rule
-## for placement, extended to the aim's start). Ending the aim opens nothing.
-func _on_aim_changed() -> void:
-	if strike_aim.active and not _aiming:
-		collapse()
-	_aiming = strike_aim.active
+		return
+	var aimed: bool = strike_aim != null and strike_aim.active
+	var snap: MatchSnapshot = null if runner == null else runner.snapshot
+	var ended: bool = snap != null and snap.match_end_tick > 0
+	var back: bool = _before and not aimed and not ended
+	_before = false
+	if back:
+		open()
 
 
 ## A frame moves the slide on, and reads the published snapshot when it is a new one (a tick, or a
@@ -280,53 +219,43 @@ func _on_aim_changed() -> void:
 ## second.
 func _process(delta: float) -> void:
 	advance(delta)
-	if _reveal != null:
-		_reveal_step()
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
 	if snap != null and Vector2i(snap.match_serial, snap.tick) != _seen:
 		refresh()
 
 
-## Scrolls the READY card into view for the badge's tap. The layout of an opening and of a tab is
-## sorted at the end of a frame, after whatever a tap or a coroutine does in it, and the row clamps
-## a scroll to the size it had: so it waits until the card stands where its least size puts it in
-## the row (the tab is laid out), asks the row to show it, and goes on until the card is in view
-## (at most `REVEAL_FRAMES` frames).
-func _reveal_step() -> void:
-	var tile: ItemTile = _reveal
-	_reveal_left -= 1
-	if _reveal_left <= 0 or not _open or not tile.is_visible_in_tree():
-		_reveal = null
+## A drag toward the edge the drawer came from, past `drawer_swipe_dp`, closes it (ADR 0025 section
+## 5). Seen before the GUI and consumed by no one: the cards and the head still get their touches.
+## Landscape: any horizontal drag that starts on the panel; upright only one that starts on the head
+## (the grid's own scroll is vertical).
+func _input(event: InputEvent) -> void:
+	if not is_open():
 		return
-	var slot: Vector2 = _tile_slot(tile)
-	if absf(tile.position.x - slot.x) > REVEAL_SLACK_PX * (slot.y + 1.0):
-		return  # Not laid out for this tab yet.
-	_items.ensure_control_visible(tile)
-	if _items.get_global_rect().grow(1.0).encloses(tile.get_global_rect()):
-		_reveal = null
+	var touch: InputEventScreenTouch = event as InputEventScreenTouch
+	var drag: InputEventScreenDrag = event as InputEventScreenDrag
+	if touch != null:
+		var zone: Control = _head if _portrait else _backdrop
+		var on: bool = touch.pressed and zone.get_global_rect().has_point(touch.position)
+		if on and _swipe < 0:
+			_swipe = touch.index
+			_swipe_from = touch.position
+		elif touch.index == _swipe:
+			_swipe = -1
+	elif drag != null and drag.index == _swipe:
+		var moved: Vector2 = drag.position - _swipe_from
+		var toward: float = moved.y if _portrait else moved.x
+		var across: float = moved.x if _portrait else moved.y
+		if toward >= UiScale.dp(_input_settings().drawer_swipe_dp) and toward > absf(across):
+			_swipe = -1
+			collapse()
 
 
-## Where `tile` stands in the grid when it is laid out, and how many shown tiles stand before it:
-## each of its least width and a gap.
-func _tile_slot(tile: ItemTile) -> Vector2:
-	var gap: float = _grid.get_theme_constant(&"h_separation")
-	var slot: Vector2 = Vector2.ZERO
-	for other: ItemTile in _tiles:
-		if other == tile:
-			break
-		if other.visible:
-			slot += Vector2(other.get_combined_minimum_size().x + gap, 1.0)
-	return slot
-
-
-## Reads the published snapshot: the item tiles' states from the local player's queues and rows.
+## Reads the published snapshot: the cards' states from the local player's queues and rows.
 func refresh() -> void:
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
 	if snap == null or runner.scenario == null:
 		return
 	var player: int = runner.scenario.local_player
-	if _seen.x >= 0 and _seen.x != snap.match_serial:
-		open()  # A new match starts with the menu open (ADR 0024 section 1).
 	_seen = Vector2i(snap.match_serial, snap.tick)
 	_refresh_items(snap, player)
 
@@ -339,14 +268,13 @@ func select_tab(index: int) -> void:
 		_tabs[at].set_pressed_no_signal(at == index)  # A tap on the open tab keeps it open.
 	if index != tab:
 		tab = index
-		_items.scroll_horizontal = 0
 		_items.scroll_vertical = 0
 		_show_tab()
 		tab_selected.emit(index)
 
 
 ## The selection hook (ADR 0019 section 1, ADR 0024 section 6): a lone own building that produces a
-## tab opens it, and opens the menu (the tap's own map gesture collapsed it a moment ago in the same
+## tab opens it, and opens the drawer (the tap's own map gesture closed it a moment ago in the same
 ## frame, and the last request wins). The building selection (plan P84d) needs only to put the
 ## building's id in the selection; units and anything else leave the open tab and the state as they
 ## are.
@@ -385,9 +313,35 @@ static func _min_dp(control: Control, size_dp: Vector2) -> void:
 	control.add_child(min_size)
 
 
+## The head: room for the economy (P120d), and the close button at the end.
+func _build_head() -> void:
+	_head.name = "Head"
+	_stack.add_child(_head)
+	var room: Control = Control.new()
+	room.name = "HeadRoom"
+	room.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	room.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_head.add_child(room)
+	_close.name = "Close"
+	_close.flat = true
+	_close.focus_mode = Control.FOCUS_NONE
+	_close.pressed.connect(collapse)
+	_min_dp(_close, Vector2(CLOSE_DP, CLOSE_DP))
+	_chevron.texture = load(ICON_ART % "glyph_chevron")
+	_chevron.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_chevron.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_chevron.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_chevron.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_chevron.resized.connect(func() -> void: _chevron.pivot_offset = _chevron.size / 2.0)
+	_close.add_child(_chevron)
+	_head.add_child(_close)
+
+
+## The tabs: an icon over the name each (`tab_<name>`, grey at rest and white when open, from the
+## theme). The open tab is the lighter plate with the thick bar at its foot (theme `SidebarTab`).
 func _build_tabs() -> void:
 	_tab_row.name = "Tabs"
-	_left.add_child(_tab_row)
+	_stack.add_child(_tab_row)
 	for index: int in TAB_NAMES.size():
 		var button: Button = Button.new()
 		button.name = "Tab%s" % TAB_NAMES[index]
@@ -395,35 +349,16 @@ func _build_tabs() -> void:
 		button.toggle_mode = true
 		button.focus_mode = Control.FOCUS_NONE  # No focus ring left behind after a tap.
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.text = TAB_NAMES[index]
+		button.clip_text = true
 		button.icon = load(ICON_ART % ("tab_" + TAB_NAMES[index].to_lower()))
-		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER  # The icon alone, in the tab's middle.
+		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+		button.expand_icon = false
 		button.pressed.connect(select_tab.bind(index))
 		_min_dp(button, Vector2(TAB_DP, TAB_DP))
 		_tab_row.add_child(button)
 		_tabs.append(button)
-
-
-## The collapsed menu's row: the Build button, and the Ready badge when a structure is ready.
-func _build_buttons() -> void:
-	_buttons.name = "Buttons"
-	_buttons.visible = false
-	_stack.add_child(_buttons)
-	_build.name = "Build"
-	_build.theme_type_variation = BUILD_VARIATION
-	_build.icon = load(ICON_ART % "glyph_menu_open")
-	_build.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER  # The icon alone, in the plate.
-	_build.focus_mode = Control.FOCUS_NONE
-	_build.pressed.connect(open)
-	_min_dp(_build, BUILD_DP)
-	_buttons.add_child(_build)
-	_badge.name = "Ready"
-	_badge.theme_type_variation = BADGE_VARIATION
-	_badge.text = "Ready"
-	_badge.focus_mode = Control.FOCUS_NONE
-	_badge.visible = false
-	_badge.pressed.connect(_on_badge)
-	_min_dp(_badge, Vector2(0.0, BUTTONS_DP))
-	_buttons.add_child(_badge)
 
 
 ## Makes the tiles again when the match or the type tables changed, then shows each one's state.
@@ -451,35 +386,8 @@ func _refresh_items(snap: MatchSnapshot, player: int) -> void:
 		if _owned[type] > 0 and snap.type_produces[type] >= 0:
 			_producers[snap.type_produces[type]] += 1
 	var slots: int = _queue_slots(snap)
-	_ready_tile = null
 	for tile: ItemTile in _tiles:
 		_show_tile(tile, snap, player, slots)
-		if tile.state == ItemTile.State.READY:
-			_ready_tile = tile
-	_show_badge()
-
-
-## The Ready badge: the finished structure's card and the word, only while the menu is collapsed
-## and no placement runs (the ready structure is then the one on the map).
-func _badge_wanted() -> bool:
-	return _ready_tile != null and not _open and not _placing
-
-
-## Shows or hides the badge as `_badge_wanted` says and gives it the card's picture. True when it
-## came or went.
-func _sync_badge() -> bool:
-	var shown: bool = _badge_wanted()
-	if shown and _badge.icon != _ready_tile.art():
-		_badge.icon = _ready_tile.art()
-	var changed: bool = shown != _badge.visible
-	_badge.visible = shown
-	return changed
-
-
-## The badge came or went: the sideways plate is as wide as its row, so it is laid out again.
-func _show_badge() -> void:
-	if _sync_badge() and not _open and not _portrait:
-		_place(false)
 
 
 ## One tile's state, queued count and progress from the player's queue of its tab.
@@ -515,8 +423,6 @@ func _build_tiles(snap: MatchSnapshot) -> void:
 		old.queue_free()
 	_tiles.clear()
 	_faction = -1  # The match's own rows tell it again (`_refresh_items`).
-	_ready_tile = null
-	_reveal = null
 	var settings: InputSettings = _input_settings()
 	for type: int in snap.type_tab.size():
 		var type_tab: int = snap.type_tab[type]
@@ -543,28 +449,27 @@ func _build_tiles(snap: MatchSnapshot) -> void:
 	_show_tab()
 
 
-## Shows the tiles of the open tab that the local player's faction may queue, in one row: the cards
-## of the floating panel in landscape, named; the plain tiles of the portrait band.
+## Shows the tiles of the open tab that the local player's faction may queue, as cards of the
+## orientation's size, in as many columns as the drawer's width holds (at least two).
 func _show_tab() -> void:
-	var named: bool = not HudLayout.is_portrait()
-	var shown: int = 0
+	var card: Vector2 = ItemTile.CARD_PORTRAIT_DP if _portrait else ItemTile.CARD_DP
 	for tile: ItemTile in _tiles:
-		tile.set_named(named)
+		tile.set_card(card)
 		tile.visible = tile.tab == tab and (tile.faction < 0 or tile.faction == _faction)
-		shown += 1 if tile.visible else 0
-	_items_fit.min_dp = Vector2(0.0, ItemTile.CARD_DP.y + ROW_SLACK_DP if named else ITEMS_DP)
-	_grid.columns = maxi(shown, 1)
+	_items_fit.min_dp = Vector2(0.0, card.y + ROW_SLACK_DP)
+	var room: float = _rect.size.x / _dp_px - 4.0 * PAD_DP + GAP_DP
+	_grid.columns = maxi(floori(room / (card.x + GAP_DP)), COLUMNS_LEAST)
 
 
-## A tap: an available tile queues one item, a ready structure enters placement mode (plan P86),
-## any other tile shakes.
+## A tap: an available tile queues one item, a ready structure enters placement mode (plan P86) and
+## closes the drawer (also when a placement runs already: it restarts), any other tile shakes.
 func _on_chose(tile: ItemTile) -> void:
 	match tile.state:
 		ItemTile.State.AVAILABLE:
 			_send(Command.queue(_local_player(), tile.type_index))
 		ItemTile.State.READY:
-			if placement != null:
-				placement.begin(tile.type_index)
+			if placement != null and placement.begin(tile.type_index):
+				collapse()
 		_:
 			tile.shake()
 
@@ -583,9 +488,8 @@ func _on_cancelled(tile: ItemTile) -> void:
 			return
 
 
-## The row follows a finger that went beyond the slop on a tile.
+## The grid follows a finger that went beyond the slop on a tile.
 func _scroll_by(relative: Vector2) -> void:
-	_items.scroll_horizontal -= roundi(relative.x)
 	_items.scroll_vertical -= roundi(relative.y)
 
 
@@ -610,92 +514,59 @@ func _input_settings() -> InputSettings:
 ## Sizes are dp, so they follow a resize like DpMinSize does. A resize settles the layout: a turn
 ## during a slide ends it at its target.
 func _apply_dp() -> void:
+	_measure()
 	var gap: int = roundi(UiScale.dp(GAP_DP))
-	for row: BoxContainer in [_stack, _body, _left, _tab_row, _strip, _buttons]:
+	for row: BoxContainer in [_stack, _tab_row]:
 		row.add_theme_constant_override("separation", gap)
+	_grid.add_theme_constant_override("h_separation", gap)
+	_grid.add_theme_constant_override("v_separation", gap)
 	for button: Button in _tabs:
 		button.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(TAB_ICON_DP)))
-	_build.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(TAB_ICON_DP)))
-	_badge.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(BADGE_ICON_DP)))
-	_badge.add_theme_constant_override("h_separation", roundi(UiScale.dp(GAP_DP / 2.0)))
-	_grid.add_theme_constant_override("h_separation", gap)
+	_chevron.rotation = PI / 2.0 if _portrait else 0.0  # Toward the edge it leaves by.
+	var pad: int = roundi(UiScale.dp(PAD_DP))
+	_pad.add_theme_constant_override("margin_left", pad)
+	_pad.add_theme_constant_override("margin_top", 0)
+	_pad.add_theme_constant_override("margin_right", pad + (0 if _portrait else roundi(_edge)))
+	_pad.add_theme_constant_override("margin_bottom", pad + (roundi(_edge) if _portrait else 0))
 	_show_tab()
-	_measure()
 	_place(true)
 
 
-## Reads what the window decides, once per resize: the orientation and the dp, the safe area's inner
-## rect, the open and the collapsed heights and the panel's width. A slide frame and a change of
-## state use these and ask `UiScale` for nothing.
+## Reads what the window decides, once per resize: the orientation and the dp, the drawer's rect
+## (`HudCorners.place`, the safe rect of `safe_area`) and the screen's edge beyond it. A slide frame
+## uses these and asks `UiScale` for nothing.
 func _measure() -> void:
 	_portrait = HudLayout.is_portrait()
 	_dp_px = UiScale.base_px_per_dp()
-	var safe: SafeAreaMargin = get_parent() as SafeAreaMargin
-	var inset: Vector2i = Vector2i.ZERO
-	if safe != null:
-		inset = safe.apply()  # It runs before the safe area's own handler.
-	var screen: Vector2 = get_viewport().get_visible_rect().size
-	_inner = screen.x - 2.0 * inset.x
-	var safe_rect: Rect2 = UiScale.safe_rect_base()
-	size_flags_vertical = Control.SIZE_SHRINK_END
-	if _portrait:
-		# The band stands on the safe area's inner bottom, which is the margin above the screen's.
-		var edge_dp: float = 0.0 if safe == null else safe.margin_dp
-		var reserved_dp: float = edge_dp + ArmyBar.GAP_DP + ArmyBar.ALL_ARMY_DP.y
-		_open_px = HudLayout.band_dp(safe_rect.size.y / _dp_px, reserved_dp) * _dp_px
-		_closed_px = HudLayout.STRIP_DP * _dp_px
-		_bottom_edge = screen.y - inset.y
-		_wide = _inner
-		size_flags_horizontal = Control.SIZE_FILL
-	else:
-		_closed_px = HudLayout.PLATE_DP * _dp_px
-		_safe_end = safe_rect.end.y  # The panel floats: nothing covers the map's bottom edge.
-		_wide = HudLayout.panel_px(_inner)
-		size_flags_horizontal = Control.SIZE_SHRINK_END
+	var full: Rect2 = get_viewport().get_visible_rect()
+	var margin_dp: float = (
+		SafeAreaMargin.DEFAULT_MARGIN_DP if safe_area == null else safe_area.margin_dp
+	)
+	var safe: Rect2 = SafeAreaMargin.rect_inside(full, margin_dp)
+	var shown: HudCorners.Shown = HudCorners.Shown.new()
+	shown.drawer = true
+	_rect = HudCorners.place(safe, _portrait, _dp_px, false, shown)[HudCorners.DRAWER]
+	_open_px = _rect.size.y if _portrait else _rect.size.x
+	_edge = full.end.y - safe.end.y if _portrait else full.end.x - safe.end.x
 
 
-## Lays the menu out for the orientation and the state: the open band or the strip in portrait, the
-## floating panel or the plate in landscape. The parts are placed at the target's size at once, in
-## the backdrop, and the holder goes to the target's height: at once when `settle` (a resize), the
-## first time, with no slide in the settings or when it is there already, else over the slide. The
-## layout is the orientation's and the state's alone, so a turn and back changes nothing.
+## Lays the drawer out for the state: the holder goes to the target's extent, at once when `settle`
+## (a resize), the first time, with no slide in the settings or when it is there already, else over
+## the slide (the share of `menu_slide_ms` that the distance needs); a request mid-slide starts from
+## the extent the drawer has.
 func _place(settle: bool) -> void:
-	_house(_portrait)
-	var least: Vector2 = _backdrop.get_combined_minimum_size()
-	var width: float = _wide
-	if not _portrait:
-		if _open:
-			_open_px = least.y  # The panel is as high as its tabs and one row of cards.
-		else:
-			width = least.x  # The plate is as wide as its row.
-			_narrow = width
-	var to: float = _open_px if _open else _closed_px
-	if _portrait and least.y > to + ROUNDING_PX:
-		to = least.y  # A band whose content needs more is that high (P86c), not clipped.
-		if _open:
-			_open_px = to
-		else:
-			_closed_px = to
-	_backdrop.size = Vector2(width, to)
-	_retarget(to, settle)
-
-
-## The holder goes to `to` base px: at once, or by a slide of the share of `menu_slide_ms` that the
-## distance needs (the whole of it for the distance between the states); a request mid-slide starts
-## from the height the menu has.
-func _retarget(to: float, settle: bool) -> void:
-	_target = to
-	var distance: float = absf(to - _height)
+	_target = _open_px if is_open() else 0.0
+	var distance: float = absf(_target - _extent)
 	var ms: float = float(_slide_ms())
 	if settle or not _placed or ms <= 0.0 or distance < 0.5:
 		_sliding = false
-		_apply_height(to)
+		_apply_extent(_target)
 	else:
 		_sliding = true
-		_from = _height
+		_from = _extent
 		_elapsed = 0.0
-		_duration = ms * distance / maxf(absf(_open_px - _closed_px), distance)
-		_apply_height(_height)  # A landscape panel widens now; its height follows.
+		_duration = ms * distance / _open_px
+		_apply_extent(_extent)
 	_placed = true
 
 
@@ -703,53 +574,32 @@ func _slide_ms() -> int:
 	return _slide_override if _slide_override >= 0 else _input_settings().menu_slide_ms
 
 
-## Sets the holder's height and publishes the menu's height and top (ADR 0024 section 4). A frame of
-## the slide is this alone: the parts are laid out and the metrics cached, so it asks `UiScale`
+## Sets the holder over the part that has slid in and publishes the zone and the top (ADR 0024
+## section 4). A frame of the slide is this alone: the metrics are cached, so it asks `UiScale`
 ## nothing and allocates nothing but the signal's.
-func _apply_height(height: float) -> void:
-	_height = height
-	# The landscape panel narrows to the plate at the end of a collapse, and widens at the start of
-	# an opening: the holder keeps the panel's width while the plate slides down.
-	var width: float = _wide if _portrait or _open or _sliding else _narrow
-	custom_minimum_size = Vector2(0.0 if _portrait else width, height)
-	_backdrop.position = Vector2(width - _backdrop.size.x, 0.0)
-	var zone: float = height if _portrait else 0.0  # The landscape panel floats: no zone.
+func _apply_extent(extent: float) -> void:
+	_extent = extent
+	visible = extent > 0.0
+	var holder: Vector2
+	if _portrait:
+		position = Vector2(_rect.position.x, _rect.end.y - extent)
+		holder = Vector2(_rect.size.x, extent + _edge)
+		_backdrop.size = Vector2(_rect.size.x, _rect.size.y + _edge)
+		size = holder
+		_backdrop.position = Vector2(0.0, holder.y - _backdrop.size.y)
+	else:
+		position = Vector2(_rect.end.x - extent, _rect.position.y)
+		holder = Vector2(extent + _edge, _rect.size.y)
+		_backdrop.size = Vector2(_rect.size.x + _edge, _rect.size.y)
+		size = holder
+		_backdrop.position = Vector2(holder.x - _backdrop.size.x, 0.0)
+	var zone: float = 0.0
+	var top: float = INF
+	if _portrait:
+		zone = maxf(extent, HudLayout.BUILD_ROW_DP * _dp_px)
+		top = _rect.end.y - extent if extent > 0.0 else INF
 	HudLayout.bottom_zone_dp = zone / _dp_px
-	_publish_top()
-	var top: float = HudLayout.menu_top_px
+	HudLayout.menu_top_px = top
 	if top != _told.x or zone != _told.y:
 		_told = Vector2(top, zone)
 		zone_changed.emit(top, zone)
-
-
-## Writes `HudLayout.menu_top_px`: the menu's drawn top (ADR 0024 section 4). Portrait: the band
-## stands on the safe area's inner bottom, which is the margin above the screen's, and is drawn as
-## high as the holder is (`_place` raises the target to the content's least where that needs more),
-## so the top is the cached foot less that height. Landscape: nothing covers the map's bottom edge,
-## the panel floats.
-func _publish_top() -> void:
-	if _portrait:
-		HudLayout.menu_top_px = _bottom_edge - _height
-	else:
-		HudLayout.menu_top_px = _safe_end
-
-
-## Which parts show, and where the head line and the buttons are housed: the head line is the
-## band's first line or the strip's, upright only; the button row is the strip's second line or,
-## sideways, the plate itself.
-func _house(portrait: bool) -> void:
-	var strip: bool = portrait and not _open
-	var home: Control = _strip if strip else _stack
-	if _head.get_parent() != home:
-		_head.reparent(home, false)
-	home.move_child(_head, 0)
-	_head.visible = portrait
-	var row: Control = _strip if strip else _stack
-	if _buttons.get_parent() != row:
-		_buttons.reparent(row, false)
-	row.move_child(_buttons, row.get_child_count() - 1)
-	_buttons.move_child(_badge, 1 if portrait else 0)  # The Build button is the right thumb's.
-	_buttons.visible = not _open
-	_strip.visible = strip
-	_left.visible = _open
-	_body.visible = portrait or _open

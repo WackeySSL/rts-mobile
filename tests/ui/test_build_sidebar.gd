@@ -121,6 +121,8 @@ func _open() -> void:
 	add_child(_main)
 	await await_idle_frame()
 	_sidebar = _main.get_node("Hud").find_child("BuildSidebar", true, false)
+	_sidebar.open()
+	await await_idle_frame()
 	_controller = _main.get_node("PlayerController")
 	_sent.clear()
 	_controller.command_sink = func(command: Command) -> void: _sent.append(command)

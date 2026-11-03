@@ -217,6 +217,8 @@ func place() -> void:
 	if top_left != null and top_left.visible:
 		shown.left_taken = HudLayout.first_visible_width(top_left) / dp
 	shown.pill_width = _wanted_dp()
+	shown.drawer = feed != null and feed.state.is_open(HudState.Unfold.DRAWER)
+	shown.pill_over_drawer = true  # The economy is the pill's until P120d.
 	shown.card = card != null and card.visible
 	if shown.card:
 		shown.card_height = card.get_combined_minimum_size().y / dp
@@ -263,6 +265,7 @@ func _sync_card() -> void:
 	_sync_queued = false
 	var want: bool = feed != null and card != null and feed.state.is_open(HudState.Unfold.ECONOMY)
 	if card == null or want == card.visible:
+		place()  # The drawer opening or closing narrows or widens the pill's room.
 		return
 	card.visible = want
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
