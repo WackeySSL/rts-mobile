@@ -343,7 +343,8 @@ func _build_head() -> void:
 		_economy.pill = pill
 		_economy.set_anchors_preset(Control.PRESET_FULL_RECT)
 		room.add_child(_economy)
-		room.add_child(_economy.chip())
+		# Last in the holder: it draws over the tabs, and stays inside the holder's clip.
+		add_child(_economy.chip())
 	_handle.name = "Handle"
 	_handle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_handle.set_anchors_preset(Control.PRESET_CENTER_TOP)
@@ -580,12 +581,13 @@ func _apply_dp() -> void:
 		content.offset_bottom = -plate.get_margin(SIDE_BOTTOM)
 	_handle.visible = _portrait
 	# Upright the head grows by the handle and its gap, the line stands under them, and the handle
-	# is centred on the sheet: the room is the close button's width short of the head's middle.
+	# is centred on the sheet: the room is short of its middle by the close button and a separation.
 	var lift: float = HANDLE_DP.y + HANDLE_GAP_DP if _portrait else 0.0
 	_room_fit.min_dp = Vector2(0.0, CLOSE_DP + lift)
 	_economy.offset_top = UiScale.dp(lift)
-	_handle.offset_left = UiScale.dp(CLOSE_DP * 0.5)
-	_handle.offset_right = UiScale.dp(CLOSE_DP * 0.5)
+	var shift: float = UiScale.dp(CLOSE_DP) * 0.5 + _head.get_theme_constant("separation") * 0.5
+	_handle.offset_left = shift
+	_handle.offset_right = shift
 	_handle.custom_minimum_size = Vector2(UiScale.dp(HANDLE_DP.x), UiScale.dp(HANDLE_DP.y))
 	_handle.color = _tab_tint(false)  # The resting grey of the tabs' icons.
 	for at: int in _tab_icons.size():

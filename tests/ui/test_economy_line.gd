@@ -250,7 +250,7 @@ func test_the_handle_is_centred_and_clear_of_the_line_and_the_chip_is_clipped() 
 		assert_bool(handle.visible).is_true()
 		var middle: float = handle.get_global_rect().get_center().x
 		assert_float(middle).override_failure_message(str(profile)).is_equal_approx(
-			back.get_center().x, 2.0
+			back.get_center().x, 1.0
 		)
 		var line: Rect2 = _line.get_global_rect()
 		assert_float(handle.get_global_rect().end.y).override_failure_message(str(profile)).is_less(
@@ -259,6 +259,15 @@ func test_the_handle_is_centred_and_clear_of_the_line_and_the_chip_is_clipped() 
 		var chip: Control = _line.chip()
 		assert_bool(chip.top_level).is_false()
 		assert_bool(_sidebar().is_ancestor_of(chip)).is_true()
+		var tabs: Control = _main.find_child("Tabs", true, false) as Control
+		_publish(1000, 40, 11, 0)
+		_pill._process(2.0)
+		_publish(400, 40, 11, 0)
+		await _frames()
+		assert_bool(chip.visible).is_true()
+		# It draws after the tabs it hangs over, and lies inside the drawer.
+		assert_bool(chip.is_greater_than(tabs)).override_failure_message(str(profile)).is_true()
+		assert_bool(back.grow(0.5).encloses(chip.get_global_rect())).is_true()
 
 
 func _sidebar() -> Control:
