@@ -110,6 +110,9 @@ func test_the_ring_holds_dust_slots_and_the_oldest_puff_is_overwritten() -> void
 		oldest = mini(oldest, _layer.puff_born(slot))
 	assert_int(oldest).is_equal(_tick - 47)  # The 49th overwrote the first, and so on.
 	_frame_at(0.0)
+	for index: int in range(1, _layer.quad_count()):  # Oldest first, so a newer puff lands over.
+		assert_float(_layer.quad_alpha(index)).is_greater(_layer.quad_alpha(index - 1))
+	_frame_at(0.0)
 	assert_int(_layer.quad_count()).is_equal(48)
 
 
@@ -172,13 +175,13 @@ func test_reduced_makes_no_dust_and_the_switch_empties_the_ring() -> void:
 
 
 func test_a_new_match_empties_the_ring_and_the_travel() -> void:
-	_drive(Rig.LIGHT, STEP, 0, 2)  # 600 milli of travel, no puff yet.
-	_drive(Rig.LIGHT, 0, 900, 2)
+	_drive(Rig.HEAVY, 0, 900, 2)  # Two puffs in the ring.
+	_drive(Rig.LIGHT, STEP, 0, 2)  # 600 milli of debt, no puff yet.
 	assert_int(_layer.slot_count()).is_equal(2)
-	_runner.snapshot.match_serial += 1
+	_runner.snapshot.match_serial += 1  # The new match reuses the ids 1 to n.
 	_layer._process(0.0)
 	assert_int(_layer.slot_count()).is_equal(0)
-	_drive(Rig.LIGHT, STEP, 0, 1)  # The travel before the new match is forgotten.
+	_drive(Rig.LIGHT, STEP, 0, 1)  # 600 + 300 would puff; the debt is forgotten, so 300.
 	assert_int(_layer.slot_count()).is_equal(0)
 
 
@@ -187,6 +190,59 @@ func test_a_change_of_rows_keeps_the_travel_of_the_units_that_stay() -> void:
 	_runner.snapshot.rows_version += 1  # A unit was made elsewhere; the light tank stays.
 	_drive(Rig.LIGHT, STEP, 0, 1)
 	assert_int(_layer.slot_count()).is_equal(1)  # 900 in all, carried over the new table.
+
+
+func test_a_vehicle_that_stands_for_many_ticks_never_leaves_dust() -> void:
+	_drive(Rig.LIGHT, 0, 0, 720)  # More than 700: a floor of one milli per tick must not add up.
+	assert_int(_layer.slot_count()).is_equal(0)
+
+
+func test_the_view_rect_is_grown_by_a_tile_and_not_more() -> void:
+	_aim_at_east_edge(0, 900, -8.0)  # 8 px inside the grown rect.
+	_drive(Rig.LIGHT, 0, 900, 1)
+	assert_int(_layer.slot_count()).is_equal(1)
+	_aim_at_east_edge(0, 900, 8.0)  # 8 px beyond it.
+	_drive(Rig.LIGHT, 0, 900, 1)
+	assert_int(_layer.slot_count()).is_equal(1)  # Made none: the puff was unseen.
+
+
+func test_diagonal_travel_counts_in_a_straight_line_and_the_puff_trails_on_both_axes() -> void:
+	_drive(Rig.LIGHT, 300, 300, 10)  # 424 milli a tick, so 4240 in all: 6 puffs (a sum would be 8).
+	assert_int(_layer.slot_count()).is_equal(6)
+	var rows: Array[Vector2i] = [Vector2i(300, 300), Vector2i(-300, 300), Vector2i(-300, -300)]
+	for step: Vector2i in rows:
+		_layer.free()
+		_start(LifeSettings.new())
+		_drive(Rig.LIGHT, step.x, step.y, 2)  # 848 milli: the second tick makes the puff.
+		assert_int(_layer.slot_count()).is_equal(1)
+		var snap: MatchSnapshot = _runner.snapshot
+		var row: int = snap.index_of(Rig.LIGHT)
+		var back: Vector2 = Vector2(step) * float(_life.dust_back_milli) / Vector2(step).length()
+		var want: Vector2 = IsoProjection.ground_to_px(
+			roundi(snap.prev_pos_x[row] - back.x), roundi(snap.prev_pos_y[row] - back.y)
+		)
+		assert_vector(_layer.puff_at(0)).is_equal_approx(want, Vector2(0.15, 0.15))
+		_watch(Rig.LIGHT)
+
+
+func test_a_death_before_the_driver_keeps_the_drivers_travel() -> void:
+	_watch(Rig.HEAVY)
+	_drive(Rig.HEAVY, STEP, 0, 2)  # 600 owed, row 1.
+	_remove_first_row()  # The light tank dies: the heavy tank is row 0 now.
+	_drive(Rig.HEAVY, STEP, 0, 1)  # 900: a puff, if the debt came along.
+	assert_int(_layer.slot_count()).is_equal(1)
+
+
+func test_a_birth_with_a_new_id_starts_at_nothing_and_takes_nobody_elses_debt() -> void:
+	_drive(Rig.LIGHT, 400, 0, 1)  # 400 owed by the light tank (row 0).
+	_drive(Rig.HEAVY, STEP, 0, 2)  # 600 owed by the heavy tank (row 1).
+	_insert_first_row(0)  # A new unit, id 0, sorts first: every old row moves down one.
+	_drive(0, STEP, 0, 1)  # 300 owed, not the light tank's 400 + 300.
+	assert_int(_layer.slot_count()).is_equal(0)
+	_drive(Rig.HEAVY, STEP, 0, 1)  # 900: a puff, for it kept its 600 on its new row.
+	assert_int(_layer.slot_count()).is_equal(1)
+	_drive(Rig.LIGHT, 300, 0, 1)  # 700 in all: the light tank keeps its own.
+	assert_int(_layer.slot_count()).is_equal(2)
 
 
 func _start(life: LifeSettings) -> void:
@@ -204,6 +260,70 @@ func _watch(id: int) -> void:
 	var snap: MatchSnapshot = _runner.snapshot
 	var row: int = snap.index_of(id)
 	_camera.position = IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row])
+
+
+## The camera so that the puff a step of (dx, dy) from where the light tank stands would leave lies
+## `past` px beyond the east edge of the view rect grown by a tile (below 0: inside it).
+func _aim_at_east_edge(dx: int, dy: int, past: float) -> void:
+	var snap: MatchSnapshot = _runner.snapshot
+	var row: int = snap.index_of(Rig.LIGHT)
+	var back: Vector2 = Vector2(dx, dy) * float(_life.dust_back_milli) / Vector2(dx, dy).length()
+	var spot: Vector2 = IsoProjection.ground_to_px(
+		roundi(snap.pos_x[row] - back.x), roundi(snap.pos_y[row] - back.y)
+	)
+	var half: float = _camera.visible_world_rect().size.x * 0.5
+	# The margin is a tile (HALF_W x 2), typed again so that a changed constant cannot hide itself.
+	_camera.position = spot - Vector2(half + IsoProjection.HALF_W * 2.0 + past, 0.0)
+
+
+## Drops row 0 from the arrays the layer reads, as new arrays, and moves `rows_version`.
+func _remove_first_row() -> void:
+	var snap: MatchSnapshot = _runner.snapshot
+	var ids: PackedInt32Array = snap.unit_id.duplicate()
+	var owner: PackedInt32Array = snap.owner.duplicate()
+	var type_index: PackedInt32Array = snap.type_index.duplicate()
+	var pos_x: PackedInt32Array = snap.pos_x.duplicate()
+	var pos_y: PackedInt32Array = snap.pos_y.duplicate()
+	var prev_x: PackedInt32Array = snap.prev_pos_x.duplicate()
+	var prev_y: PackedInt32Array = snap.prev_pos_y.duplicate()
+	for column: PackedInt32Array in [ids, owner, type_index, pos_x, pos_y, prev_x, prev_y]:
+		column.remove_at(0)
+	snap.unit_id = ids
+	snap.owner = owner
+	snap.type_index = type_index
+	snap.pos_x = pos_x
+	snap.pos_y = pos_y
+	snap.prev_pos_x = prev_x
+	snap.prev_pos_y = prev_y
+	snap.rows_version += 1
+
+
+## Adds a standing light tank of id `id` (below every id there is) as row 0, as new arrays.
+func _insert_first_row(id: int) -> void:
+	var snap: MatchSnapshot = _runner.snapshot
+	var light: int = snap.index_of(Rig.LIGHT)
+	var ids: PackedInt32Array = snap.unit_id.duplicate()
+	var owner: PackedInt32Array = snap.owner.duplicate()
+	var type_index: PackedInt32Array = snap.type_index.duplicate()
+	var pos_x: PackedInt32Array = snap.pos_x.duplicate()
+	var pos_y: PackedInt32Array = snap.pos_y.duplicate()
+	var prev_x: PackedInt32Array = snap.prev_pos_x.duplicate()
+	var prev_y: PackedInt32Array = snap.prev_pos_y.duplicate()
+	ids.insert(0, id)
+	owner.insert(0, snap.owner[light])
+	type_index.insert(0, snap.type_index[light])
+	pos_x.insert(0, snap.pos_x[light])
+	pos_y.insert(0, snap.pos_y[light])
+	prev_x.insert(0, snap.pos_x[light])
+	prev_y.insert(0, snap.pos_y[light])
+	snap.unit_id = ids
+	snap.owner = owner
+	snap.type_index = type_index
+	snap.pos_x = pos_x
+	snap.pos_y = pos_y
+	snap.prev_pos_x = prev_x
+	snap.prev_pos_y = prev_y
+	snap.rows_version += 1
 
 
 ## `ticks` ticks of unit `id` moving by (dx, dy) milli-tiles each, each one delivered the way the

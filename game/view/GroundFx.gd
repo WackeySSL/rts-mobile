@@ -181,6 +181,8 @@ func _on_ticked(_tick: int) -> void:
 	_make_ring_if_resized()
 	_sync_rows(snap)
 	var every: int = life.dust_every_milli
+	var back: int = life.dust_back_milli
+	var tick: int = snap.tick
 	var types: PackedInt32Array = snap.type_index
 	var speeds: PackedInt32Array = snap.type_speed
 	var armours: PackedInt32Array = snap.type_armour
@@ -208,6 +210,8 @@ func _on_ticked(_tick: int) -> void:
 		if travelled < every:
 			_travel[row] = travelled
 			continue
+		# At most one puff a tick: a vehicle goes about 147 milli a tick against 700 a puff, and a
+		# longer step would drop its extra debt here.
 		_travel[row] = travelled % every
 		if (
 			not reveal_enemies
@@ -215,12 +219,11 @@ func _on_ticked(_tick: int) -> void:
 			and not FogLayer.is_seen(snap, player, cur_x[row], cur_y[row])
 		):
 			continue
-		var back: int = life.dust_back_milli
 		var spot: Vector2 = IsoProjection.ground_to_px(
 			prev_x[row] - dx * back / dist, prev_y[row] - dy * back / dist
 		)
 		if view.has_point(spot):
-			_add(spot, snap.tick, LifeClock.pick(ids[row], SALT_DUST + snap.tick, _regions.size()))
+			_add(spot, tick, LifeClock.pick(ids[row], SALT_DUST + tick, _regions.size()))
 
 
 ## Keeps `_travel` aligned with the snapshot's rows: when the rows change, each unit that is still
@@ -236,7 +239,7 @@ func _sync_rows(snap: MatchSnapshot) -> void:
 		if old < _ids.size() and _ids[old] == ids[row]:
 			next[row] = _travel[old]
 	_travel = next
-	_ids = ids
+	_ids = ids  # An alias: published snapshots are never written, so it cannot change under us.
 	_rows_version = snap.rows_version
 
 
@@ -259,12 +262,17 @@ func _plan(snap: MatchSnapshot) -> void:
 	var now_ms: float = LifeClock.ms(snap, runner.alpha())
 	var span: float = float(life.dust_life_ms)
 	var size: Vector2 = _regions[0].size
-	for slot: int in _count:
+	var grow_from: float = life.dust_grow_from
+	var grow_to: float = life.dust_grow_to
+	var alpha: float = life.dust_alpha
+	var oldest: int = _head - _count + _size  # Oldest first, so a newer puff lands over an older.
+	for step: int in _count:
+		var slot: int = (oldest + step) % _size
 		var age: float = LifeClock.age_ms(now_ms, LifeClock.tick_ms(_born[slot]))
 		if age >= span:
 			continue
 		var t: float = age / span
-		var grow: float = lerpf(life.dust_grow_from, life.dust_grow_to, t)
+		var grow: float = lerpf(grow_from, grow_to, t)
 		var corner: Vector2 = _at[slot] - _anchor * grow
 		var out: int = _quads * 4
 		_quad_rect[out] = corner.x
@@ -272,5 +280,5 @@ func _plan(snap: MatchSnapshot) -> void:
 		_quad_rect[out + 2] = size.x * grow
 		_quad_rect[out + 3] = size.y * grow
 		_quad_frame[_quads] = _frame[slot]
-		_quad_alpha[_quads] = life.dust_alpha * (1.0 - t)
+		_quad_alpha[_quads] = alpha * (1.0 - t)
 		_quads += 1

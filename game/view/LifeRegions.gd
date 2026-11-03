@@ -169,7 +169,7 @@ const NET_EDGE_PX: float = 3.0
 
 ## The region of frame `frame` of `kind`, in imported px.
 static func region(kind: StringName, frame: int = 0) -> Rect2i:
-	assert(frame >= 0 and frame < FRAMES[kind], "frame %d of %s" % [frame, kind])
+	assert(frame >= 0 and frame < FRAMES[kind], "frame out of range")
 	var first: Rect2i = FIRST[kind]
 	return Rect2i(first.position + Vector2i(frame * STEP[kind], 0), first.size)
 
