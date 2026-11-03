@@ -15,6 +15,8 @@ const HALL_B: int = 3
 const LUMEN: int = 4
 const BARRACKS: int = 5
 const HQ: int = 6
+const STRIKE: int = 7
+const TANK: int = 8
 const EMITTING: Array[int] = [REFINERY, HALL, HALL_B, LUMEN, HQ]
 const SALT: int = 0x60000000  ## The phase's salt, restated.
 const SMOKE: int = 0
@@ -39,9 +41,11 @@ func before_test() -> void:
 		Buildings.spawn(2, "renew_refinery", 12, 12),
 		Buildings.spawn(1, "barracks", 14, 6),
 		Buildings.spawn(1, "headquarters", 10, 4),
+		Buildings.spawn(1, "fossil_strike", 2, 10),
+		Buildings.spawn(1, "light_tank", 3, 3),
 	]
 	_runner = auto_free(Buildings.runner(Buildings.scenario(spawns)))
-	for id: int in [REFINERY, HALL, HALL_B, LUMEN, BARRACKS, HQ]:
+	for id: int in [REFINERY, HALL, HALL_B, LUMEN, BARRACKS, HQ, STRIKE, TANK]:
 		assert_int(_runner.snapshot.index_of(id)).is_greater_equal(0)
 	assert_int(_runner.snapshot.owner[_runner.snapshot.index_of(LUMEN)]).is_equal(2)
 	_life = DATA.duplicate() as LifeSettings
@@ -175,23 +179,24 @@ func test_a_puff_rises_drifts_east_grows_and_fades_the_way_the_data_says() -> vo
 	assert_int(_air.quad_count()).is_equal(0)
 
 
-func test_a_flame_shrinks_while_it_rises_and_steam_grows() -> void:
+func test_a_flame_stays_on_its_stack_and_shrinks_and_steam_grows() -> void:
 	_life.emit_ms = {&"smoke": 700, &"steam": 0, &"flare": 500}  # The Refinery's flame alone.
 	var born: int = _lone(REFINERY, 450)
 	var spot: Vector2 = _spot(REFINERY, 1)
 	_frame(born, 0.0)
 	var size_new: Vector2 = _air.quad_rect(0).size
 	assert_vector(size_new).is_equal_approx(Vector2(LifeRegions.FIRST[&"flare"].size), Vector2.ONE)
-	_frame(born + 4, 0.0)
-	var size_old: Vector2 = _air.quad_rect(0).size
-	assert_float(size_old.x).is_less(size_new.x)
-	var t: float = 4.0 * TICK_MS / 450.0
-	assert_float(size_old.x / size_new.x).is_equal_approx(lerpf(1.0, 0.6, t), 0.001)
-	var flipped: bool = _air.quad_flipped(0)
-	var anchor: Vector2 = LifeRegions.ANCHOR[&"flare"] * (size_old.x / size_new.x)
-	var reach: float = size_old.x - anchor.x if flipped else anchor.x  # Mirrored: the other side.
-	assert_float(_air.quad_rect(0).position.x + reach).is_equal_approx(spot.x + 6.0 * t, 0.01)
-	assert_float(_air.quad_rect(0).position.y + anchor.y).is_equal_approx(spot.y - 24.0 * t, 0.01)
+	for age: int in range(0, 6):  # The base is on the emitter point for the whole life.
+		_frame(born + age, 0.0)
+		assert_int(_air.quad_count()).is_equal(1)
+		var rect: Rect2 = _air.quad_rect(0)
+		var grow: float = rect.size.x / size_new.x
+		var anchor: Vector2 = LifeRegions.ANCHOR[&"flare"] * grow
+		var reach: float = rect.size.x - anchor.x if _air.quad_flipped(0) else anchor.x
+		assert_float(rect.position.x + reach).is_equal_approx(spot.x, 0.01)
+		assert_float(rect.position.y + anchor.y).is_equal_approx(spot.y, 0.01)
+		var t: float = float(age) * TICK_MS / 450.0
+		assert_float(grow).is_equal_approx(lerpf(1.0, 0.7, t), 0.001)
 	# Steam grows.
 	_life.emit_ms = {&"smoke": 700, &"steam": 600, &"flare": 0}
 	_air._empty()
@@ -200,6 +205,66 @@ func test_a_flame_shrinks_while_it_rises_and_steam_grows() -> void:
 	var small: float = _air.quad_rect(0).size.x
 	_frame(steam + 4, 0.0)
 	assert_float(_air.quad_rect(0).size.x).is_greater(small)
+
+
+func test_the_flame_is_a_steady_fire_that_changes_frame_at_each_birth() -> void:
+	_life.emit_ms = {&"smoke": 0, &"steam": 0, &"flare": 500}
+	var frames: Dictionary[int, bool] = {}
+	var overlaps: int = 0
+	var base: Vector2 = _spot(REFINERY, 1)
+	for tick: int in range(START, START + 200):
+		Rig.deliver(_runner, PackedInt32Array(), tick)
+		_frame(tick, 0.0)
+		var near: int = 0
+		for index: int in _air.quad_count():
+			var centre: Vector2 = _air.quad_rect(index).get_center()
+			if _air.quad_kind(index) == FLAME and centre.distance_to(base) < 40.0:
+				near += 1
+				frames[_air.quad_frame(index)] = true
+		overlaps += 1 if near >= 2 else 0
+		if tick > START + 20:
+			assert_int(near).override_failure_message("tick %d" % tick).is_greater(0)  # Never bare.
+	assert_int(frames.size()).is_greater(2)
+	assert_int(overlaps).is_greater(20)
+
+
+func test_a_strike_building_and_a_vehicle_leave_their_launch_and_exhaust_points_dark() -> void:
+	var launch: Vector2 = _spot(STRIKE, 0)
+	assert_str(_sheet(STRIKE).emitters[0]).is_equal("launch")
+	var snap: MatchSnapshot = _runner.snapshot
+	var tank: Vector2 = _centre(TANK)
+	var exhaust: IsoSheetDef = _buildings.world_sort.sheet(
+		snap.type_ids[snap.type_index[snap.index_of(TANK)]]
+	)
+	assert_bool(exhaust.emitters.has("exhaust")).is_true()
+	_run(START, START + 60)
+	assert_int(_air.slot_count()).is_greater(0)  # The others do puff.
+	for slot: int in _air.slot_count():
+		assert_float(_air.puff_at(slot).distance_to(launch)).is_greater(30.0)
+		for dir: int in 16:  # The exhaust point of every hull facing.
+			var point: Vector2 = (
+				tank + exhaust.emitter_point(exhaust.emitters.find("exhaust"), dir) * 0.5
+			)
+			assert_float(_air.puff_at(slot).distance_to(point)).is_greater(2.0)
+
+
+func test_the_view_margin_is_a_tile_and_a_pan_back_makes_no_catch_up() -> void:
+	var margin: float = BuildingLayer.ANIM_MARGIN_PX
+	var spot: Vector2 = _spot(HQ, 0)
+	_set_camera_for(spot, -margin * 0.5)  # Just outside the view, inside the grown rect.
+	assert_bool(_camera.visible_world_rect().has_point(spot)).is_false()
+	assert_bool(_camera.visible_world_rect().grow(margin).has_point(spot)).is_true()
+	assert_int(_lone(HQ, 450)).is_greater(0)  # Born (it fails when it never puffs).
+	_set_camera_for(spot, -margin * 1.5)  # Outside the grown rect too.
+	assert_bool(_camera.visible_world_rect().grow(margin).has_point(spot)).is_false()
+	_air._empty()
+	_run(START, START + 60)
+	assert_int(_air.slot_count()).is_equal(0)
+	_set_camera_for(spot, 100.0)  # Pan back: the time away is not made up.
+	_run(START + 60, START + 61)
+	for slot: int in _air.slot_count():
+		assert_int(_air.puff_born(slot)).is_greater_equal(START + 60)
+	assert_int(_air.slot_count()).is_less_equal(1)
 
 
 func test_a_site_and_a_blacked_out_building_do_not_puff_and_a_finished_one_starts() -> void:
@@ -311,15 +376,6 @@ func test_with_reduced_nothing_is_born_the_ring_empties_on_the_switch_and_comes_
 	assert_int(_air.slot_count()).is_greater(0)
 
 
-func test_a_new_match_empties_the_ring() -> void:
-	_run(START, START + 45)
-	assert_int(_air.slot_count()).is_greater(0)
-	_runner.start()
-	_air._process(0.0)
-	assert_int(_air.slot_count()).is_equal(0)
-	assert_int(_air.quad_count()).is_equal(0)
-
-
 func test_only_a_flame_is_ever_mirrored_and_both_looks_occur() -> void:
 	var flipped: Dictionary[int, int] = {SMOKE: 0, STEAM: 0, FLAME: 0}
 	var plain: Dictionary[int, int] = {SMOKE: 0, STEAM: 0, FLAME: 0}
@@ -345,7 +401,7 @@ func test_only_a_flame_is_ever_mirrored_and_both_looks_occur() -> void:
 	assert_bool(LifeRegions.mirrorable(&"smoke")).is_false()
 
 
-func test_the_layer_is_at_absolute_z_25_and_off_with_zero_slots_or_zero_rate() -> void:
+func test_z_25_off_switches_a_new_match_and_a_pause_gap() -> void:
 	assert_int(_air.z_index).is_equal(25)
 	assert_bool(_air.z_as_relative).is_false()
 	_life.emitter_slots = 0
@@ -355,6 +411,16 @@ func test_the_layer_is_at_absolute_z_25_and_off_with_zero_slots_or_zero_rate() -
 	_life.emit_ms = {&"smoke": 0, &"steam": 0, &"flare": 0}
 	_run(START + 45, START + 90)
 	assert_int(_air.slot_count()).is_equal(0)
+	_life.emit_ms = DATA.emit_ms
+	_run(START + 90, START + 93)
+	var before: int = _air.slot_count()
+	_run(START + 600, START + 601)  # A gap of 500 ticks (a pause), then one tick: no burst.
+	assert_int(_air.slot_count() - before).is_less_equal(EMITTING.size() * 2)
+	assert_int(_air.slot_count()).is_greater(0)
+	_runner.start()  # A new match empties the ring.
+	_air._process(0.0)
+	assert_int(_air.slot_count()).is_equal(0)
+	assert_int(_air.quad_count()).is_equal(0)
 
 
 func _sees_all() -> void:
@@ -457,3 +523,9 @@ func _lone(id: int, life_ms: int) -> int:
 func _frame(tick: int, alpha: float) -> void:
 	Rig.at(_runner, tick, alpha)
 	_air._process(0.0)
+
+
+## Puts the camera so that `spot` is `inside` px inside the left edge of the view rect (negative:
+## outside it), whatever the camera's size.
+func _set_camera_for(spot: Vector2, inside: float) -> void:
+	_camera.position.x += spot.x - inside - _camera.visible_world_rect().position.x

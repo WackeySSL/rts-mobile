@@ -123,9 +123,11 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 @export var launch_ring_grow_to: float = 2.0
 
 ## `AirFx`, the rest of its numbers (P145): a puff of smoke or steam grows from `emit_grow_from` to
-## `emit_grow_to` times its frame while it rises and drifts, a flame shrinks from full size to
-## `emit_grow_from`; all fade from `emit_alpha` to 0 in the puff's life. An `emit_ms` of 0 for a
-## kind, or an `emitter_slots` of 0, turns it off.
+## `emit_grow_to` times its frame while it rises and drifts; a flame stays on its point and goes
+## from `emit_flame_from` to `emit_flame_to` times its frame; all fade from `emit_alpha` to 0 in
+## the puff's life. An `emit_ms` of 0 for a kind, or an `emitter_slots` of 0, turns it off.
 @export var emit_alpha: float = 0.85
 @export var emit_grow_from: float = 0.6
 @export var emit_grow_to: float = 1.2
+@export var emit_flame_from: float = 1.0
+@export var emit_flame_to: float = 0.7

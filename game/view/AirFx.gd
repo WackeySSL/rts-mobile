@@ -15,10 +15,13 @@ extends Node2D
 ## not puff in step. The cycle is a function of the tick alone, so a run is the same on every
 ## device. The ring overwrites its oldest puff when full.
 ## A puff lives `emit_life_ms` of its kind (at most `MAX_LIFE_MS`) of match time (`LifeClock`): it
-## rises `emit_rise_px` and drifts `emit_drift_px` east, smoke and steam grow from `emit_grow_from`
-## to `emit_grow_to` times their frame and a flame shrinks from full size to `emit_grow_from`, all
-## fading from `emit_alpha` to 0. Which frame a puff shows, and whether a flame is mirrored (the
-## only kind that may be, `LifeRegions.mirrorable`), is `LifeClock.mix` of the id and the tick.
+## rises `emit_rise_px` and drifts `emit_drift_px` east while smoke and steam grow from
+## `emit_grow_from` to `emit_grow_to` times their frame. A flame keeps its base on its point (no
+## rise, no drift) and changes size from `emit_flame_from` to `emit_flame_to`; with a birth every
+## 500 ms and a life of 700 the flames overlap into one steady fire that changes frame at each
+## birth. All fade from `emit_alpha` to 0. Which frame a puff shows, and whether a flame is
+## mirrored (the only kind that may be, `LifeRegions.mirrorable`), is `LifeClock.mix` of the id and
+## the tick.
 ## The ambient is dropped by `life.reduced`: nothing is born and the ring is emptied on the switch;
 ## a new match empties it too.
 
@@ -39,6 +42,8 @@ const MAX_LIFE_MS: int = 2000
 @export var runner: MatchRunner
 @export var camera: RtsCamera
 @export var life: LifeSettings
+## Kept for the wiring `LifeFx` gives every layer; unread here: who is shown follows
+## `building_layer.is_shown` (which has its own `reveal_enemies`).
 @export var reveal_enemies: bool = false
 ## Says whether a building is shown to the local player, and where its sheet is.
 @export var building_layer: BuildingLayer
@@ -249,6 +254,7 @@ func _sync_types(snap: MatchSnapshot) -> bool:
 	var sort: WorldSort = building_layer.world_sort
 	if sort == null:
 		return false
+	sort.sync()  # The sheets of this match's baked atlas, whichever layer ticked first.
 	_types_serial = snap.match_serial
 	_type_first.clear()
 	_em_kind.clear()
@@ -342,6 +348,8 @@ func _plan(snap: MatchSnapshot) -> void:
 	var drift: float = life.emit_drift_px
 	var grow_from: float = life.emit_grow_from
 	var grow_to: float = life.emit_grow_to
+	var flame_from: float = life.emit_flame_from
+	var flame_to: float = life.emit_flame_to
 	var alpha: float = life.emit_alpha
 	var oldest: int = _head - _count + _size  # Oldest first, so a newer puff lands over an older.
 	for step: int in _count:
@@ -353,11 +361,12 @@ func _plan(snap: MatchSnapshot) -> void:
 			continue
 		var t: float = age / span
 		var grow: float = (
-			lerpf(1.0, grow_from, t) if kind == FLAME else lerpf(grow_from, grow_to, t)
+			lerpf(flame_from, flame_to, t) if kind == FLAME else lerpf(grow_from, grow_to, t)
 		)
 		var anchor: Vector2 = _anchors[kind]
 		var size: Vector2 = _regions[_first_region[kind] + _frame[slot]].size * grow
-		var at: Vector2 = _at[slot] + Vector2(drift * t, -rise * t)
+		var moved: float = 0.0 if kind == FLAME else t  # A flame stays on its stack.
+		var at: Vector2 = _at[slot] + Vector2(drift * moved, -rise * moved)
 		var reach: float = anchor.x * grow
 		var left: float = at.x - ((size.x - reach) if _flip[slot] == 1 else reach)
 		var out: int = _quads * 4
