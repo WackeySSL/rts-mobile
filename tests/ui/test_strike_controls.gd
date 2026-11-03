@@ -251,7 +251,13 @@ func test_the_group_column_keeps_clear_of_the_strike_row_during_the_aim() -> voi
 				_buzzes.clear()
 				_controller.selection.set_ids(PackedInt32Array([BORE]))  # A spurious tap would recall.
 				var camera_before: Vector2 = (_main.get_node("Camera") as Camera2D).position
-				await _drag_item("Group2", Vector2(0.0, -dp * 90.0))  # A finger moves the items.
+				# Out and back to the start of the press: a drag, so neither a tap nor a hold.
+				await _drag_item("Group2", Vector2(0.0, -dp * 30.0), true)
+				assert_int(scroll.scroll_vertical).override_failure_message(tall).is_between(0, 3)
+				await _drag_item("Group2", Vector2(0.0, -dp * 40.0))  # A finger moves the items.
+				var moved: float = scroll.scroll_vertical  # By as much as the finger went.
+				assert_float(moved).override_failure_message(tall).is_equal_approx(dp * 40.0, 3.0)
+				await _drag_item("Group2", Vector2(0.0, -dp * 60.0))
 				var last: Rect2 = _rect("Group3")
 				var reached: bool = (
 					last.end.y <= column.end.y + 1.5 and last.position.y >= column.position.y - 1.5
@@ -281,13 +287,17 @@ func _assert_drag_did_nothing(camera_before: Vector2, why: String) -> void:
 
 
 ## A finger down on the middle of the item `name`, moved by `by` in small steps, and lifted.
-func _drag_item(item: String, by: Vector2) -> void:
+func _drag_item(item: String, by: Vector2, and_back: bool = false) -> void:
 	var at: Vector2 = (_hud(item) as Control).get_global_rect().get_center()
 	TouchEvents.press(get_viewport(), 0, at)
 	var steps: int = 6
 	for step: int in steps:
 		at += by / steps
 		TouchEvents.drag(get_viewport(), 0, at, by / steps)
+	if and_back:
+		for step: int in steps:
+			at -= by / steps
+			TouchEvents.drag(get_viewport(), 0, at, -by / steps)
 	TouchEvents.release(get_viewport(), 0, at)
 	await await_idle_frame()
 
@@ -305,6 +315,9 @@ func test_the_charge_countdown_does_not_lay_the_column_out_again() -> void:
 	var column: GroupColumn = _hud("GroupColumn")
 	var laid: Array[int] = [0]
 	column.laid_out.connect(func() -> void: laid[0] += 1)
+	column.place()  # Placing again where nothing moved tells nobody.
+	column.place()
+	assert_int(laid[0]).is_equal(0)
 	for wait: int in range(39, 0, -1):  # 39 ticks of the countdown.
 		_wait(wait)
 	assert_int(laid[0]).is_equal(0)
