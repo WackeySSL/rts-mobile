@@ -76,10 +76,11 @@ z_index = 1
 z_as_relative = false
 script = ExtResource("30_decals")
 
-[node name="LifeFx" type="Node2D" parent="." node_paths=PackedStringArray("runner", "camera")]
+[node name="LifeFx" type="Node2D" parent="." node_paths=PackedStringArray("runner", "camera", "building_layer")]
 script = ExtResource("138_life_fx")
 runner = NodePath("../MatchRunner")
 camera = NodePath("../Camera")
+building_layer = NodePath("../BuildingLayer")
 
 [node name="WorldSort" type="Node2D" parent="." node_paths=PackedStringArray("runner")]
 y_sort_enabled = true

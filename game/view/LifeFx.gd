@@ -3,10 +3,10 @@ extends Node2D
 ## The pooled effect layers of the unit life (ADR 0027 section 3): one node in `main.tscn`, between
 ## `DecalLayer` and `WorldSort`, that makes its layers in code, so a later row adds a layer here
 ## and the scene stays as it is. Each layer is a ring of slots in packed arrays, drawn in one
-## `_draw` from one texture. Today it holds `GroundFx` (z 3: dust behind vehicles); P141 adds
-## `StrikeFx` and P145 `AirFx` one line each.
+## `_draw` from one texture. Today it holds `GroundFx` (z 3: dust behind vehicles) and `StrikeFx`
+## (z 55: the superweapons' launch and fall); P145 adds `AirFx` one line.
 ## View only: it reads the runner's snapshot and writes nothing back. The layers get this node's
-## `runner`, `camera`, `life` and `reveal_enemies`.
+## `runner`, `camera`, `life`, `reveal_enemies` and `building_layer`.
 
 const DEFAULT_LIFE: LifeSettings = preload("res://data/life_settings.tres")
 
@@ -18,13 +18,18 @@ const DEFAULT_LIFE: LifeSettings = preload("res://data/life_settings.tres")
 ## Shows the effects of tiles the fog hides too: the perf arena, and tests that are not about fog.
 @export var reveal_enemies: bool = false
 
+## Says which buildings are shown to the local player, and where their pictures are (`StrikeFx`).
+@export var building_layer: BuildingLayer
+
 var ground: GroundFx = null
+var strike: StrikeFx = null
 
 
 func _ready() -> void:
 	if life == null:
 		life = DEFAULT_LIFE
 	ground = _make_layer(GroundFx.new(), &"GroundFx") as GroundFx
+	strike = _make_layer(StrikeFx.new(), &"StrikeFx") as StrikeFx
 
 
 func _make_layer(layer: Node2D, layer_name: StringName) -> Node2D:
@@ -33,5 +38,6 @@ func _make_layer(layer: Node2D, layer_name: StringName) -> Node2D:
 	layer.set("camera", camera)
 	layer.set("life", life)
 	layer.set("reveal_enemies", reveal_enemies)
+	layer.set("building_layer", building_layer)
 	add_child(layer)
 	return layer
