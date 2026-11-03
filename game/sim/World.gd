@@ -11,7 +11,9 @@ extends RefCounted
 enum Order { IDLE = 0, ATTACK_MOVE = 1, MOVE = 2, ATTACK = 3 }
 enum Armour { INFANTRY = 0, LIGHT = 1, HEAVY = 2, BUILDING = 3 }
 enum MoveClass { FOOT = 0, WHEELED = 1, TRACKED = 2 }
-enum Event { SPAWNED = 1, DIED = 2, SHOT = 3, IMPACT = 4 }
+## The kinds of `events` (ADR 0007 section 10). STRIKE (ADR 0027 section 7) is `[5, building id, x,
+## y, Strike.Kind, owner, landing tick or 0, 0]`, written by an accepted SUPERWEAPON.
+enum Event { SPAWNED = 1, DIED = 2, SHOT = 3, IMPACT = 4, STRIKE = 5 }
 enum NavMode { NONE = 0, DIRECT = 1, FIELD = 2, HOLD = 3, CHASE = 4 }
 ## The production tabs (ADR 0017 section 3): a queue, a rally point and a buildable type's `tab`.
 enum Tab { STRUCTURES = 0, INFANTRY = 1, VEHICLES = 2 }
