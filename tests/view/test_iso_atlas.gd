@@ -145,6 +145,9 @@ func test_the_real_blockouts_of_both_factions_with_two_players_fit_one_page_at_f
 	assert_bool(atlas.image().is_empty()).is_true()  # The CPU page is dropped after the upload.
 	assert_float(atlas.bake_ms()).is_greater(0.0)
 	_assert_every_frame_has_its_rasterised_size(atlas, sheets, 1.0)
+	# The page budget test (P137) plans the page from the files: it is this page, canvases of every
+	# size packed in the order of the bake.
+	assert_that(IsoAtlas.planned_page(sheets, _real_players(), 1.0)).is_equal(atlas.page_px())
 
 
 func test_every_real_frame_comes_out_of_the_engine_at_the_size_the_rule_counts() -> void:
@@ -152,6 +155,20 @@ func test_every_real_frame_comes_out_of_the_engine_at_the_size_the_rule_counts()
 	var atlas: IsoAtlas = IsoAtlas.build(sheets, _real_players(), 49.0 / 64.0)
 	assert_float(atlas.bake_scale()).is_equal(49.0 / 64.0)  # It fits, so the request is kept.
 	_assert_every_frame_has_its_rasterised_size(atlas, sheets, 49.0 / 64.0)
+	# The planned page at the scale the bake kept is the page it made (another packing than at 1.0).
+	assert_that(IsoAtlas.planned_page(sheets, _real_players(), 49.0 / 64.0)).is_equal(
+		atlas.page_px()
+	)
+
+
+func test_the_planned_page_of_a_mirror_match_is_the_page_of_its_bake() -> void:
+	# Two Derrick League players, the second in another triad, so no frame is shared but the
+	# shadows (P137's budget test plans the mirror pages from the files).
+	var sheets: Array[IsoSheetDef] = IsoAtlas.load_sheets()
+	var players: Array[IsoPlayerArt] = [_art(KEY, KEY), _art(KEY, ARKTISK)]
+	var atlas: IsoAtlas = IsoAtlas.build(sheets, players, 0.5)
+	assert_float(atlas.bake_scale()).is_equal(0.5)
+	assert_that(IsoAtlas.planned_page(sheets, players, 0.5)).is_equal(atlas.page_px())
 
 
 func test_a_real_frame_is_read_from_its_file_and_recoloured_for_each_player() -> void:
