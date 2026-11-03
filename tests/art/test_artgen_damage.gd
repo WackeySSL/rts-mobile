@@ -104,7 +104,7 @@ func test_a_pose_moves_hides_and_scorches_its_group() -> void:
 func test_char_mixes_the_faces_towards_the_char_colour_and_spares_the_team_zone() -> void:
 	var model: ArtModel = _model()
 	var intact: Array[ArtRender.Poly] = ArtRender.render(model.primitives(&"hull"), 0.0, &"fossil")
-	var burnt: Array[ArtRender.Poly] = ArtRender.render(model.damage_prims(1), 0.0, &"fossil")
+	var burnt: Array[ArtRender.Poly] = ArtGen.stage_polys(model, 1)
 	var rust_fill: String = ArtPalette.tone(&"fossil", &"rust", ArtPalette.TOP)
 	var want: String = ArtPalette.scorched(rust_fill, 60.0)
 	assert_str(want).is_not_equal(rust_fill)
@@ -115,26 +115,41 @@ func test_char_mixes_the_faces_towards_the_char_colour_and_spares_the_team_zone(
 	assert_str(ArtPalette.scorched("#6E5D50", 0.0)).is_equal("#6E5D50")
 	assert_str(ArtPalette.scorched("#6E5D50", 100.0)).is_equal(ArtPalette.CHAR)
 	# The flag is charred at stage 2 and keeps its key triad.
-	var stage2: Array[ArtRender.Poly] = ArtRender.render(model.damage_prims(2), 0.0, &"fossil")
+	var stage2: Array[ArtRender.Poly] = ArtGen.stage_polys(model, 2)
 	for key: String in ArtPalette.KEYS[&"fossil"]:
 		assert_array(_fills(stage2)).contains([key])
 
 
 func test_the_seated_groups_may_not_be_touched() -> void:
-	for line: String in [
-		"dmg1 0 mount shift 0 0 -0.1",  # the group mount
-		"dmg2 0 beacon hide",  # an anim group
-		"dmg1 0 nothing hide",  # no such group
-		"dmg1 1 roof hide",  # one frame
-	]:
-		var model: ArtModel = _model([line])
-		assert_int(model.problems().size()).override_failure_message(line).is_equal(1)
-	# Damage is a building's, and only its hull has the tag.
-	var vehicle: ArtModel = _model()
+	var anim_named: Array[String] = ["box hull steel 0.2 0.2 1.0 0.1 0.1 0.1 group=beacon"]
+	var cases: Array[Array] = [
+		[[], "dmg1 0 mount shift 0 0 -0.1", "moving element or mount"],
+		[[], "dmg2 0 beacon hide", "no such hull group"],
+		[anim_named, "dmg2 0 beacon hide", "moving element or mount"],
+		[[], "dmg1 0 nothing hide", "no such hull group"],
+		[[], "dmg1 1 roof hide", "frame 0"],
+	]
+	for found: Array in cases:
+		var extra: Array[String] = []
+		extra.assign(found[0])
+		var line: String = found[1]
+		var model: ArtModel = _model([line], extra)
+		var problems: PackedStringArray = model.problems()
+		assert_int(problems.size()).override_failure_message(line).is_equal(1)
+		assert_str(problems[0]).override_failure_message(line).contains(found[2])
+	# Damage is a building's: a vehicle with a damage pose is refused by that rule, and the
+	# primitive tag is the hull's of a building.
+	var vehicle: ArtModel = ArtModel.new()
+	vehicle.art_id = &"tank"
+	vehicle.faction = &"fossil"
 	vehicle.category = &"veh"
-	vehicle.footprint = 0
-	assert_int(vehicle.problems().size()).is_greater(0)
-	assert_int(_model([], ["box turret steel 0 0 0 1 1 1 damage=1"]).problems().size()).is_equal(1)
+	vehicle.prims = PackedStringArray(["box hull steel 0 0 0 1 1 1 group=roof"])
+	vehicle.poses = PackedStringArray(["dmg1 0 roof hide"])
+	var refused: String = "\n".join(vehicle.problems())
+	assert_str(refused).contains("a damage pose is a building's")
+	var turret: PackedStringArray = _model([], ["box turret steel 0 0 0 1 1 1 damage=1"]).problems()
+	assert_int(turret.size()).is_equal(1)
+	assert_str(turret[0]).contains("damage= is for the hull primitives of a building")
 
 
 func test_the_cut_row_is_the_lowest_row_of_what_the_stage_changes() -> void:
@@ -150,7 +165,7 @@ func test_the_cut_row_is_the_lowest_row_of_what_the_stage_changes() -> void:
 					var one: Array[ArtPrim] = [prim]
 					var polys: Array[ArtRender.Poly] = ArtRender.render(one, 0.0, &"fossil")
 					low = maxf(low, ArtRender.bounds(polys).end.y)
-		assert_int(shots[part].cut).is_equal(ceili(low) + body.origin.y)
+		assert_int(shots[part].cut).is_equal(ceili(low + 1.0) + body.origin.y)
 
 
 func test_the_cut_is_in_the_top_third_of_the_body() -> void:
@@ -171,12 +186,10 @@ func test_below_the_cut_the_stage_picture_is_the_intact_one() -> void:
 	var intact: Image = _image(shots[&"hull"].polys[0], body)
 	for part: StringName in ArtModel.DAMAGE_PARTS:
 		var stage: int = ArtModel.DAMAGE_PARTS.find(part) + 1
-		var full: Array[ArtRender.Poly] = ArtRender.render(
-			model.damage_prims(stage), 0.0, &"fossil"
-		)
+		var full: Array[ArtRender.Poly] = ArtGen.stage_polys(model, stage)
 		var posed: Image = _image(full, body)
 		var cut: int = shots[part].cut
-		assert_int(_differing_rows(intact, posed, cut + 1, body.size.y)).is_equal(0)
+		assert_int(_differing_rows(intact, posed, cut, body.size.y)).is_equal(0)
 		assert_int(_differing_rows(intact, posed, 0, cut)).is_greater(0)  # it does change above
 
 
@@ -195,18 +208,32 @@ func test_the_patch_over_the_body_gives_the_stage_picture() -> void:
 		assert_int(layout.size.x % 2).is_equal(0)
 		assert_int(layout.size.y % 2).is_equal(0)
 		assert_vector(Vector2(layout.anchor)).is_equal(Vector2(layout.origin - Vector2i(0, 64)))
-		# The patch laid over the intact body at the shared model origin gives the stage picture.
-		var full: Array[ArtRender.Poly] = ArtRender.render(
-			model.damage_prims(stage), 0.0, &"fossil"
-		)
-		var posed: Image = _image(full, body)
+		# The view's composition: the body from the cut down, the patch over it at the shared model
+		# origin. That is the stage picture in every row.
+		var posed: Image = _image(ArtGen.stage_polys(model, stage), body)
 		var comp: Image = _image(shots[&"hull"].polys[0], body)
+		comp.fill_rect(Rect2i(0, 0, body.size.x, shot.cut), Color(0, 0, 0, 0))
 		var patch: Image = Image.create(layout.size.x, layout.size.y, false, Image.FORMAT_RGBA8)
 		patch.load_svg_from_string(files[ArtGen.frame_path(model, part, -1)], SCALE)
 		var at: Vector2i = body.origin - layout.origin
-		comp.fill_rect(Rect2i(at.x, at.y, layout.size.x, layout.size.y), Color(0, 0, 0, 0))
 		comp.blend_rect(patch, Rect2i(Vector2i.ZERO, layout.size), at)
-		assert_int(_differing_rows(comp, posed, at.y, bottom, 6)).is_equal(0)
+		var overlap: int = shot.cut + ArtGen.CUT_OVERLAP_PX
+		assert_int(_differing_rows(comp, posed, 0, shot.cut, 6)).is_equal(0)
+		assert_int(_differing_rows(comp, posed, overlap, body.size.y, 6)).is_equal(0)
+		# In the overlap both pictures are the same and an edge is drawn twice: the antialiased
+		# fringe of the edge pixels doubles (up to about 80 of 255), nothing else differs.
+		assert_int(_differing_rows(comp, posed, shot.cut, overlap, 90)).is_equal(0)
+		# Cropped to its ink left and right: the ink starts and ends within the margin, and the
+		# patch is narrower than the body.
+		assert_int(layout.size.x).is_less(body.size.x)
+		var columns: Array[int] = []
+		for x: int in layout.size.x:
+			for y: int in layout.size.y:
+				if patch.get_pixel(x, y).a > 0.0:
+					columns.append(x)
+					break
+		assert_int(columns.min()).is_less_equal(ArtGen.MARGIN_PX + 1)
+		assert_int(layout.size.x - 1 - columns.max()).is_less_equal(ArtGen.MARGIN_PX + 2)
 
 
 func test_the_sheet_lists_the_patches_cuts_and_files() -> void:
@@ -268,7 +295,7 @@ func test_each_move_alone_sets_the_cut_at_its_own_outline() -> void:
 		var model: ArtModel = _model()
 		model.prims = PackedStringArray(LID)
 		model.anim_ms = 0
-		model.poses = PackedStringArray([move])
+		model.poses = PackedStringArray([move, "dmg2 0 lid hide"])
 		assert_array(Array(model.problems())).override_failure_message(move).is_empty()
 		var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
 		cuts[move] = shots[&"dmg1"].cut
@@ -286,28 +313,39 @@ func test_each_move_alone_sets_the_cut_at_its_own_outline() -> void:
 
 func test_the_damage_and_hang_kinds_are_emitters() -> void:
 	var model: ArtModel = _model()
-	model.emitters = PackedStringArray(
-		["damage 0.2 0.1 1.2", "damage -0.2 0.1 1.2", "hang 0.5 0.5 0.3"]
-	)
+	model.emitters = PackedStringArray(["damage 0.2 0.1 1.2", "damage -0.2 0.1 1.2"])
 	assert_array(Array(model.problems())).is_empty()
-	assert_int(model.emitter_list().size()).is_equal(3)
 	var sheet: IsoSheetDef = ArtSheet.of(model, ArtGen.all_shots(model))
-	assert_array(Array(sheet.emitters)).is_equal(["damage", "damage", "hang"])
-	assert_int(sheet.emitter_points.size()).is_equal(3)
-	model.emitters = PackedStringArray(["scorch 0 0 0"])
-	assert_int(model.problems().size()).is_equal(1)
+	assert_array(Array(sheet.emitters)).is_equal(["damage", "damage"])
+	assert_int(sheet.emitter_points.size()).is_equal(2)  # a building: one point each
+	var tank: ArtModel = _vehicle()
+	tank.emitters = PackedStringArray(["damage 0.1 0 0.5", "hang 0.5 0.5 0.3"])
+	assert_array(Array(tank.problems())).is_empty()
+	assert_int(tank.emitter_list().size()).is_equal(2)
+	sheet = ArtSheet.of(tank, ArtGen.all_shots(tank))
+	assert_array(Array(sheet.emitters)).is_equal(["damage", "hang"])
+	assert_int(sheet.emitter_points.size()).is_equal(32)  # a vehicle: a point per hull frame
+	tank.emitters = PackedStringArray(["scorch 0 0 0"])
+	assert_int(tank.problems().size()).is_equal(1)
 
 
-func test_scar_milli_is_a_sheet_number_written_when_set() -> void:
-	var model: ArtModel = _model()
+func test_scar_milli_is_a_vehicles_sheet_number_written_when_set() -> void:
+	var model: ArtModel = _vehicle()
 	var plain: String = ArtSheet.text(ArtSheet.of(model, ArtGen.all_shots(model)))
 	assert_str(plain).not_contains("scar_milli")
 	model.scar_milli = 850
+	assert_array(Array(model.problems())).is_empty()
 	var sheet: IsoSheetDef = ArtSheet.of(model, ArtGen.all_shots(model))
 	assert_int(sheet.scar_milli).is_equal(850)
 	assert_str(ArtSheet.text(sheet)).contains("scar_milli = 850")
 	model.scar_milli = -1
 	assert_int(model.problems().size()).is_equal(1)
+	# Like `marks`, it is a vehicle's.
+	var building: ArtModel = _model()
+	building.scar_milli = 850
+	var refused: PackedStringArray = building.problems()
+	assert_int(refused.size()).is_equal(1)
+	assert_str(refused[0]).contains("scar_milli")
 
 
 func test_root_empty_is_the_generated_tree_and_set_is_its_own_folder() -> void:
@@ -332,10 +370,12 @@ func test_root_empty_is_the_generated_tree_and_set_is_its_own_folder() -> void:
 	assert_str(ArtSheet.text(sheet)).contains('root = "res://assets/art/svg/damage"')
 	sheet.root = ""
 	assert_str(ArtSheet.text(sheet)).not_contains("root")
-	# The generator never sets it.
+	# The generator never sets it: no committed sheet writes one.
 	for path: String in ArtGen.model_paths():
 		var found: ArtModel = load(path) as ArtModel
-		assert_str(ArtSheet.of(found, ArtGen.all_shots(found)).root).is_empty()
+		var text: String = FileAccess.get_file_as_string(ArtGen.sheet_path(found))
+		assert_str(text).override_failure_message(path).is_not_empty()
+		assert_str(text).override_failure_message(path).not_contains("\nroot =")
 
 
 func test_clip_below_cuts_a_polygon_at_the_row() -> void:
@@ -352,6 +392,15 @@ func test_clip_below_cuts_a_polygon_at_the_row() -> void:
 	assert_float(ArtRender.bounds(kept).end.y).is_equal(4.0)
 	assert_float(ArtRender.bounds(kept).size.x).is_equal(10.0)
 	assert_str(kept[0].fill).is_equal("#FFFFFF")
+
+
+func _vehicle() -> ArtModel:
+	var model: ArtModel = ArtModel.new()
+	model.art_id = &"tank"
+	model.faction = &"fossil"
+	model.category = &"veh"
+	model.prims = PackedStringArray(["box hull steel 0 0 0 1.2 0.8 0.4"])
+	return model
 
 
 func _find(prims: Array[ArtPrim], group: StringName) -> ArtPrim:
@@ -378,8 +427,8 @@ func _image(polys: Array, layout: ArtGen.Layout) -> Image:
 	return image
 
 
-## How many rows from `from` to `to` (exclusive) differ between two images of one size, a channel
-## by more than `tolerance`.
+## premultiplied channel or the alpha by more than `tolerance` (a faint fringe does not count).
+## channel or the alpha by more than `tolerance` (so a faint fringe does not count).
 func _differing_rows(a: Image, b: Image, from: int, to: int, tolerance: int = 0) -> int:
 	var rows: int = 0
 	for y: int in range(maxi(from, 0), mini(to, a.get_height())):
@@ -387,7 +436,8 @@ func _differing_rows(a: Image, b: Image, from: int, to: int, tolerance: int = 0)
 		for x: int in a.get_width():
 			var pa: Color = a.get_pixel(x, y)
 			var pb: Color = b.get_pixel(x, y)
-			for c: int in 4:
-				differs = differs or absi(roundi(pa[c] * 255.0) - roundi(pb[c] * 255.0)) > tolerance
+			for c: int in 3:
+				differs = (differs or absf(pa[c] * pa.a - pb[c] * pb.a) * 255.0 > tolerance)
+			differs = differs or absf(pa.a - pb.a) * 255.0 > tolerance
 		rows += 1 if differs else 0
 	return rows

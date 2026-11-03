@@ -39,6 +39,7 @@ var group: StringName = &""
 var damage: int = 0  ## The stage it appears from; 0 is always drawn.
 var hidden: bool = false  ## A `hide` move of a damage pose: not drawn.
 var char_percent: float = 0.0  ## A `char` move: faces mixed this far towards the char colour.
+var index: int = 0  ## The line of the model it was parsed from, set by `ArtModel`.
 var line: String = ""  ## What it was parsed from, which `moved` parses again.
 var moves: Array[ArtMove] = []  ## Applied in order after the rest placement; see `moved`.
 
@@ -99,6 +100,7 @@ func moved(by: Array[ArtMove]) -> ArtPrim:
 		return self
 	var copy: ArtPrim = ArtPrim.parse(line)
 	copy.moves = mine
+	copy.index = index
 	for move: ArtMove in mine:
 		copy.hidden = copy.hidden or move.kind == &"hide"
 		if move.kind == &"char":

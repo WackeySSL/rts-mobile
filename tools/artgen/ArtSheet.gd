@@ -71,7 +71,12 @@ static func of(model: ArtModel, shots: Dictionary[StringName, ArtGen.Shot]) -> I
 	for emitter: Array in model.emitter_list():
 		sheet.emitters.append(String(emitter[0]))
 		for dir: int in model.directions(&"hull"):
-			var at: Vector2 = ArtGen.point_px(emitter[1], 6 if dir < 0 else dir)
+			var turned: int = 6 if dir < 0 else dir
+			var at: Vector2 = (
+				ArtGen.hang_point_px(emitter[1], turned)
+				if emitter[0] == &"hang"
+				else ArtGen.point_px(emitter[1], turned)
+			)
 			sheet.emitter_points.append(at.snapped(Vector2.ONE * 0.1))
 	sheet.bar_lift_px = ceili(_clearing_top(model, shots) / 2.0)
 	sheet.pick_lift_px = roundi(sheet.bar_lift_px / 2.0)

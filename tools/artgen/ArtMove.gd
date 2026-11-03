@@ -20,6 +20,8 @@ extends RefCounted
 ## the palette's char colour (a team zone keeps its key colours).
 
 const KINDS: Array[StringName] = [&"shift", &"turn", &"hide", &"char"]
+## The words of a line by kind.
+const WORDS: Dictionary[StringName, int] = {&"turn": 9, &"shift": 7, &"hide": 4, &"char": 5}
 ## The kinds only a damage pose may use.
 const DAMAGE_KINDS: Array[StringName] = [&"hide", &"char"]
 
@@ -43,7 +45,7 @@ static func parse(line: String) -> ArtMove:
 		return null
 	var turning: bool = words[3] == "turn"
 	var kind: StringName = StringName(words[3])
-	var size: int = {&"turn": 9, &"shift": 7, &"hide": 4, &"char": 5}[kind]
+	var size: int = WORDS[kind]
 	var damage_part: bool = StringName(words[0]) in ArtModel.DAMAGE_PARTS
 	if words.size() != size or not (damage_part or StringName(words[0]) in ArtModel.POSE_PARTS):
 		return null

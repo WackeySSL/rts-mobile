@@ -27,8 +27,9 @@ const DAMAGE_PARTS: Array[StringName] = [&"dmg1", &"dmg2"]
 const SEATED_GROUP: StringName = &"mount"
 const MIN_FRAMES: int = 2
 const MAX_FRAMES: int = 16
-## What an emitter is (a smoke, steam, flame, exhaust or launch point) and what a vehicle leaves on
-## the ground.
+## What an emitter is (a smoke, steam, flame, exhaust or launch point; `damage`, where a scar sits
+## and damage smoke starts; `hang`, a vehicle's bracket, on the camera side) and what a vehicle
+## leaves on the ground.
 const EMITTER_KINDS: Array[StringName] = [
 	&"smoke", &"steam", &"flame", &"exhaust", &"launch", &"damage", &"hang"
 ]
@@ -171,9 +172,8 @@ func emitter_list() -> Array[Array]:
 ## `damage=K` are left out, they appear in `damage_prims` only.
 func primitives(part: StringName) -> Array[ArtPrim]:
 	var found: Array[ArtPrim] = []
-	for line: String in prims:
-		var prim: ArtPrim = ArtPrim.parse(line)
-		if prim != null and prim.part == part and prim.damage == 0:
+	for prim: ArtPrim in _parsed():
+		if prim.part == part and prim.damage == 0:
 			found.append(prim)
 	return found
 
@@ -191,9 +191,40 @@ func damage_prims(stage: int) -> Array[ArtPrim]:
 	return found
 
 
+## The draw order of `damage_prims(stage)` (indices into it) in which the primitives the stage does
+## not change keep the relative order they have in the intact body (ADR 0028 section 3): the stage's
+## own order is taken, the slots of the changed and added primitives stay, and the other slots are
+## refilled with the untouched ones in their intact order. `ArtRender._order` is a greedy pick, so
+## taking away or moving one primitive could otherwise swap two untouched ones that overlap on the
+## screen, below the cut.
+func damage_order(stage: int) -> Array[int]:
+	var posed: Array[ArtPrim] = damage_prims(stage)
+	var intact: Array[ArtPrim] = primitives(&"hull")
+	var rank: Dictionary[int, int] = {}
+	var seen: Array[int] = ArtRender.draw_order(intact, 0.0)
+	for at: int in seen.size():
+		rank[intact[seen[at]].index] = at
+	var order: Array[int] = ArtRender.draw_order(posed, 0.0)
+	var slots: Array[int] = []
+	var untouched: Array[int] = []
+	for at: int in order.size():
+		var prim: ArtPrim = posed[order[at]]
+		if prim.damage == 0 and prim.moves.is_empty():
+			slots.append(at)
+			untouched.append(order[at])
+	untouched.sort_custom(
+		func(a: int, b: int) -> bool: return rank[posed[a].index] < rank[posed[b].index]
+	)
+	for k: int in slots.size():
+		order[slots[k]] = untouched[k]
+	return order
+
+
 ## The hull primitives that the stage changes, as [intact, posed] pairs: a moved, turned, hidden or
 ## charred one (the intact one and the posed one, which is null when hidden), an added one (a null
-## intact one). The cut line is the lowest of their outlines.
+## intact one). A `damage=K` primitive that a move hides is still listed as added, with its posed
+## copy, whose outline is then drawn by nothing: the cut stays conservative there. The cut line is
+## the lowest of their outlines.
 func damage_changes(stage: int) -> Array[Array]:
 	var found: Array[Array] = []
 	var by: Array[ArtMove] = pose_moves(DAMAGE_PARTS[stage - 1], 0)
@@ -211,9 +242,19 @@ func damage_changes(stage: int) -> Array[Array]:
 ## Every valid hull primitive, also those that appear at a damage stage, in the model's order.
 func _hull_prims() -> Array[ArtPrim]:
 	var found: Array[ArtPrim] = []
-	for line: String in prims:
-		var prim: ArtPrim = ArtPrim.parse(line)
-		if prim != null and prim.part == &"hull":
+	for prim: ArtPrim in _parsed():
+		if prim.part == &"hull":
+			found.append(prim)
+	return found
+
+
+## Every valid primitive in the model's order, each with the index of its line.
+func _parsed() -> Array[ArtPrim]:
+	var found: Array[ArtPrim] = []
+	for i: int in prims.size():
+		var prim: ArtPrim = ArtPrim.parse(prims[i])
+		if prim != null:
+			prim.index = i
 			found.append(prim)
 	return found
 
@@ -292,6 +333,8 @@ func problems() -> PackedStringArray:
 	if mount == Vector3.ZERO and parts().size() > 1:
 		found.append("%s: a turret or head part needs a mount" % art_id)
 	found.append_array(_pose_problems())
+	if found.is_empty() and not damage_parts().is_empty():
+		found.append_array(ArtGen.damage_problems(self))
 	return found
 
 
@@ -331,8 +374,17 @@ func _pose_problems() -> PackedStringArray:
 		found.append("%s: anim_ms is above 0 with an anim pose, and 0 without" % art_id)
 	if emitter_list().size() != emitters.size():
 		found.append("%s: an emitter is a kind of %s and three numbers" % [art_id, EMITTER_KINDS])
-	if scar_milli < 0:
-		found.append("%s: scar_milli is 0 or above" % art_id)
+	if scar_milli < 0 or (scar_milli > 0 and category != &"veh"):
+		found.append("%s: scar_milli is 0 or above, and a vehicle's" % art_id)
+	if damage_parts() == [DAMAGE_PARTS[0]]:
+		found.append("%s: dmg1 without dmg2 (a building has both stages, or dmg2 alone)" % art_id)
+	var kinds: Array[StringName] = []
+	for emitter: Array in emitter_list():
+		kinds.append(emitter[0])
+	if kinds.count(&"hang") > (1 if category == &"veh" else 0):
+		found.append("%s: hang is a vehicle's, one at most" % art_id)
+	if category == &"veh" and kinds.count(&"damage") > 1:
+		found.append("%s: a vehicle has one damage point at most" % art_id)
 	if marks != &"" and (marks not in MARKS or category != &"veh"):
 		found.append("%s: marks are tracks or wheels, of a vehicle" % art_id)
 	return found

@@ -2,22 +2,26 @@ class_name IsoSheetDef
 extends Resource
 ## The sheet of one art id (ADR 0023 sections 2 and 5): which frames it has and where each lies in
 ## its canvas, written by `bash scripts/gen-art.sh` next to the frames (`assets/art/iso/<faction>/
-## <category>/<art_id>_sheet.tres`, listed in `assets/art/iso/index.tres`). Never edit one by hand.
+## <category>/<art_id>_sheet.tres`, listed in `assets/art/iso/index.tres`). Never edit a generated
+## one by hand; the one hand-written sheet is the neutral damage overlays' (`root` set, ADR 0028
+## section 4).
 ## Sizes, anchors and mounts are px of the 2x art (a tile on the ground is 128 x 64); the three
 ## lifts are world px at zoom 1, half of that, which is what the view counts in.
 ##
-## A part is `hull`, `turret` or `head`, a pose part (`walk`, `idle` or `anim`, ADR 0027 section 4)
-## and `shadow`, each with one canvas and one anchor for all its frames. The anchor is where a
+## A part is `hull`, `turret` or `head`, a pose part (`walk`, `idle` or `anim`, ADR 0027 section
+## 4), a building's damage patch (`dmg1` or `dmg2`, ADR 0028 section 3) and `shadow`, each with
+## one canvas and one anchor for all its frames. The anchor is where a
 ## unit's ground point lies in the canvas; a building's body and shadow are anchored at the back
 ## corner of the footprint (Spec 03), `origin` gives the footprint's centre. A turret's or head's
 ## anchor is its pivot, which `mount` puts at its place in the hull. A pose part is anchored at the
 ## ground point (a building's `anim` at the footprint's centre: `origin` and `anchor` are the same).
+## A damage patch is anchored like the body (the footprint's back corner), in a canvas of its own.
 
 const ROOT: String = "res://assets/art/iso"
 
 @export var art_id: StringName = &""
 @export var faction: StringName = &""  ## `fossil` or `renew`; never shown in the game.
-@export var category: StringName = &"veh"  ## `veh`, `inf` or `bld`.
+@export var category: StringName = &"veh"  ## `veh`, `inf` or `bld`; a neutral sheet's is `dmg`.
 @export var footprint: int = 0  ## n of an n x n building, 0 for a unit.
 @export var parts: PackedStringArray = PackedStringArray()  ## In file order, `shadow` last.
 @export var counts: PackedInt32Array = PackedInt32Array()  ## Directions per part: 16, 8 or 1.
@@ -41,16 +45,20 @@ const ROOT: String = "res://assets/art/iso"
 ## it, ADR 0027 section 5); 0 without a `walk` part.
 @export var stride_milli: int = 0
 @export var anim_ms: int = 0  ## The time of one frame of the `anim` part, ms; 0 without one.
-## The kinds of the places things come out of (`smoke`, `steam`, `flame`, `exhaust`, `launch`), one
-## for each emitter. `emitter_points` has the point of each: px of the 2x art from the hull's
+## The kinds of the places things come out of (`smoke`, `steam`, `flame`, `exhaust`, `launch`,
+## `damage` for where a scar sits and damage smoke starts, `hang` for a vehicle's bracket, mirrored
+## to the side that faces the camera in every hull frame), one for each emitter. `emitter_points`
+## has the point of each: px of the 2x art from the hull's
 ## ground point (a building's footprint centre), for each hull frame, emitter after emitter (one
 ## point for a building), so `emitter_point` finds it. Both empty without an emitter.
 @export var emitters: PackedStringArray = PackedStringArray()
 @export var emitter_points: PackedVector2Array = PackedVector2Array()
 ## What a vehicle's running gear leaves on the ground: `tracks`, `wheels` or empty (none).
 @export var marks: StringName = &""
-## The cut row of each damage stage in the body's canvas (ADR 0028 section 3), `[stage 1, stage 2]`,
-## 0 for a stage with no patch; empty for a sheet without damage parts (`dmg1`, `dmg2`).
+## The cut row of each damage stage in the body's canvas (ADR 0028 section 3), `[stage 1, stage 2]`:
+## the first row that is intact, so the view shows the body from this row down and the patch over
+## it (the patch reaches `ArtGen.CUT_OVERLAP_PX` rows below the cut). 0 for a stage with no patch;
+## empty for a sheet without damage parts (`dmg1`, `dmg2`).
 @export var cuts: PackedInt32Array = PackedInt32Array()
 ## A vehicle's damage scar scale, 1000 for the battle tank's hull top; 0 for a sheet without one.
 @export var scar_milli: int = 0

@@ -194,7 +194,9 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   `tests/art/test_artgen_wedge.gd` pins the sloped face at 10 positions, its normal against a point
   inside, its drawing at all 16 yaws and that no model uses `slope=0.95`.
 - **Files**: `assets/art/iso/<faction>/<category>/<type_id>_<part>_d<NN>.svg` (`d<NN>` left out for
-  a building body), parts `hull`, `turret`, `head` and `shadow`, each with a "Keep File" `.import`
+  a building body), parts `hull`, `turret`, `head`, a building's damage patches `dmg1` and `dmg2`
+  (`<type_id>_dmg1.svg`, one frame, no direction; "Damage poses" below) and `shadow`, each with a
+  "Keep File" `.import`
   (`importer="keep"`): the export carries the SVG text and the bake reads it. A frame is one comment
   line (the model it came from), the root with the canvas, one `g` with the 2 px edge and one
   `polygon` per face; hex colours in upper case, coordinates with one decimal. At most 28 KB (the
@@ -205,8 +207,8 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
 - **Sheets** (`IsoSheetDef`, a `Resource` in `tools/artgen/`; `IsoIndex` holds all of them, sorted
   by art id, `IsoIndex.sheet(art_id)`): per part the frame count (16, 8 or 1), the canvas and the
   anchor, in px of the 2x art (a unit's anchor is its ground point, a building's body and shadow
-  the footprint's back corner, `origin(part)` gives the footprint's centre; a turret's or head's
-  anchor is its pivot); `mounts`, the pivot of the turret or head from the hull's ground point for
+  the footprint's back corner, `origin(part)` gives the footprint's centre, and so for a damage
+  patch; a turret's or head's anchor is its pivot); `mounts`, the pivot of the turret or head from the hull's ground point for
   each hull frame (`mount(dir)`; one for a building's head, none without a turret); the three
   lifts in **world px at zoom 1**, which is what the view counts in: `bar_lift_px` how high the
   picture reaches above the ground point in the pose that three of four hull frames stay under (the
@@ -235,11 +237,48 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   `<id>_anim_f<K>.svg`; a part of one frame has no `_f<K>`. A pose part has one canvas, anchored at
   the ground point (an `anim` at the footprint centre); the bar lift clears the `anim` element in
   its highest frame. Model fields `stride_milli` (needs `walk`), `anim_ms` (needs `anim`),
-  `emitters` (`<kind> <x> <y> <z>` in tiles; `smoke`, `steam`, `flame`, `exhaust`, `launch`) and
+  `emitters` (`<kind> <x> <y> <z>` in tiles; `smoke`, `steam`, `flame`, `exhaust`, `launch`,
+  `damage` and `hang`, see "Damage poses") and
   `marks` (`tracks` or `wheels`, vehicles). The sheet gains `frames` (`frame_count(part)` says 1
   when absent), `stride_milli`, `anim_ms`, `emitters` with `emitter_points` (px of the 2x art, per
   hull frame for each, once for a building: `emitter_point(index, dir)`) and `marks`, each written
   only when set, so today's sheets are unchanged. `tests/art/test_artgen_frames.gd` pins it.
+- **Damage poses** (P156, ADR 0028 sections 3 and 4; generator v4, no model uses them yet). A
+  building's `poses` gain `dmg1` and `dmg2`, its body at damage stage 1 and 2, a move a line, frame
+  0 and no header line: `dmg1|dmg2 0 <group> shift <dx> <dy> <dz>`, `... turn <x|y|z> <degrees>
+  <px> <py> <pz>`, `... hide` (the group is not drawn) or `... char <percent>` (0 to 100: its
+  face colours, edges too, are mixed that far towards the char colour **#2A2522**; a `team`
+  primitive keeps its key triad, so the bake can still recolour it). The groups are the hull's. A
+  hull primitive tagged `damage=K` (1 or 2) is drawn from stage K on and never in the intact body,
+  the shadow or the card. **Stage 2 does not inherit stage 1's moves** (list them again), but the
+  `damage=1` primitives do appear at stage 2. A model has both stages or stage 2 alone. The group
+  `mount` (a defence's Head seat in P158) and the groups of the `anim` primitives may not be touched
+  by a damage move: the generator fails such a model, so the moving element stays seated and the
+  `anim` part keeps running at both stages.
+  **The patch.** Each stage is a part of its own, `<type_id>_dmg1.svg` and `_dmg2.svg`, drawn with
+  today's projection, light, edge and team key. The stage's draw order keeps the order the intact
+  body has for every primitive the stage leaves alone (the stage's own greedy order is taken, the
+  changed and added primitives keep their slots, the others are refilled in intact order), so a
+  hidden or moved primitive never reorders two untouched ones below the cut. The cut is read off
+  the geometry, not by comparing pixels: `cuts` (in the sheet, `[stage 1, stage 2]`, body canvas
+  rows) is **the first intact row**, the lowest screen row of the outlines of what the stage changes
+  (moved, turned, hidden, charred or added primitives, intact and posed) plus half the 2 px edge,
+  rounded up; from that row down the stage picture equals the intact one. The patch is the stage
+  picture from its top down to the cut plus a 4 px overlap, cropped left and right to its ink, with
+  the body's anchor rule (the back corner, `origin(part)` the footprint's centre). The view shows the
+  body from the cut down and the patch over it; in the four overlap rows an edge is drawn by both,
+  which doubles its antialiased fringe (up to about 80 of 255, edge pixels only). The generator
+  refuses a change that is wholly above the body's canvas or reaches the foot of the body (the
+  overlap would not fit), and a stage that changes nothing. The art rule is that damage sits in the
+  top third of a body; the page test, not a percentage, is the arbiter.
+  **Sheet and model fields.** `cuts`; `scar_milli` (a vehicle's scar scale, 1000 for the battle
+  tank, vehicles only); the emitter kinds `damage` (where a scar sits and damage smoke starts: a
+  vehicle has one, a building up to two) and `hang` (a vehicle's bracket, one at most, none on a
+  building; the generator mirrors the point across the hull's long axis in every hull frame so it
+  is on the side that faces the camera); and `IsoSheetDef.root`, empty for every generated sheet
+  (the frames are in `assets/art/iso/<faction>/<category>/`), set only by the hand-written neutral
+  sheet of the damage overlays (P160), where it is the folder its frames are in.
+  `tests/art/test_artgen_damage.gd` and `test_artgen_damage_rules.gd` pin it on crafted models.
 - **Item cards** (`ArtIcon`): 128 x 128 px, a dark plate (#1C2127, rim #2F363D, the corners cut), a
   faint 2:1 grid (#2A3036, lines every 16 px through the centre, so the diamonds are 32 x 16), the
   type's default view (`d06`, `d10` for the Lumen Accord, a building's one view, a turret or head
@@ -2304,3 +2343,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-03 | v1.19 (P139, art-director, ADR 0027 sections 4 and 5): walk (4) and idle (2) poses for the four squads ("Squad poses" under "Generated art": pose groups per figure and limb, `stride_milli` 352, 352, 376 and 376, 192 new frames drawn in the standing figure's order with its light edges, `ArtRender.render`'s `rest`, `ArtModel.frame_rest`), the sorted world's cross-faction page 2682 to 3066 px (mirrors 2206 to 2524 and 2226 to 2624), the Units page of the gallery plays them; the standing frames, shadows and cards are unchanged. |
 | 2026-11-03 | v1.20 (art-director, plan row P89): `glyph_low_power_map.svg`, the seated map copy of the low-power glyph (offline plate, triangle and bolt at 0.8), tinted #FF8A1F, the tenth map glyph; "Icons and glyphs" (tint table, "Map glyphs sit on a seat", catalogue) brought up to date. |
 | 2026-11-03 | v1.21 (P143, art-director, ADR 0027 sections 4 and 5): `anim` parts for eight buildings (Signal Mast 16 frames, Relay Tower 16, Wind Park 6, Turbine Hall 4, Deep Bore 4, Blackout Array 4, Grid Hub 2, Crew Hall 2), `emitters` on six building models and every vehicle, `marks` on every vehicle ("Building life (P143)" under "Generated art"), the sorted world's cross-faction page 3066 to 3266 px (mirrors 2524 to 2702 and 2624 to 2894), the Build page of the gallery plays the frames; 40 existing generated files changed, 108 are new, 1361 are byte for byte as before. |
+| 2026-11-03 | v1.22 (P156, art-director, ADR 0028 sections 3 and 4): generator v4, the damage poses (`dmg1`, `dmg2`: `shift`, `turn`, `hide`, `char`, `damage=<k>` primitives), the geometric cut row and the patch parts with their 4 px overlap, `cuts`, `scar_milli`, the `damage` and `hang` emitter kinds (`hang` on the camera side) and `IsoSheetDef.root` ("Damage poses" under "Generated art"); no model uses them, every committed frame and sheet is byte for byte as before. |

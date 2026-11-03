@@ -20,6 +20,8 @@ const TILE_W_PX: int = 128  ## A tile on the ground at 2x is 128 x 64.
 ## A damage patch reaches this far below its stage's cut row, so a rounding or a filter seam at the
 ## cut is covered by it (ADR 0028 section 3): at least one texel at any bake scale.
 const CUT_OVERLAP_PX: int = 4
+## `damage_cut` of a stage that changes nothing.
+const NO_CUT: int = -2147483648
 
 
 ## Where a part's frames lie in their canvas (all in px at 2x).
@@ -171,6 +173,66 @@ static func all_shots(model: ArtModel) -> Dictionary[StringName, Shot]:
 	return found
 
 
+## The polygons of the whole body at damage `stage`, the untouched primitives in their intact order.
+static func stage_polys(model: ArtModel, stage: int) -> Array[ArtRender.Poly]:
+	return ArtRender.render(
+		model.damage_prims(stage), 0.0, model.faction, [], model.damage_order(stage)
+	)
+
+
+## The cut row of a stage in the body's canvas (`IsoSheetDef.cuts`): the first row that no changed
+## primitive can reach. It is the lowest screen row of the outlines of the primitives the stage
+## changes, as they are intact and as the stage poses them, plus half the edge that is drawn round
+## a face, rounded up to a whole row; so from this row down the stage picture is the intact one.
+## `NO_CUT` when the stage changes nothing.
+static func damage_cut(model: ArtModel, stage: int, body: Layout) -> int:
+	var low: float = -INF
+	for pair: Array in model.damage_changes(stage):
+		for prim: ArtPrim in pair:
+			if prim != null:
+				var one: Array[ArtPrim] = [prim]
+				low = maxf(low, ArtRender.bounds(ArtRender.render(one, 0.0, model.faction)).end.y)
+	if is_inf(low):
+		return NO_CUT
+	return ceili(low + ArtSvg.EDGE_PX / 2.0) + body.origin.y
+
+
+## What is wrong with the damage stages of a model that is otherwise valid: a stage that changes
+## nothing, a change wholly above the body's canvas (the cut would read as "no patch") or one that
+## reaches the foot of the body (the overlap would not fit the canvas).
+static func damage_problems(model: ArtModel) -> PackedStringArray:
+	var found: PackedStringArray = PackedStringArray()
+	var body: Layout = _shoot(model, &"hull").layout
+	for part: StringName in model.damage_parts():
+		var stage: int = ArtModel.DAMAGE_PARTS.find(part) + 1
+		var cut: int = damage_cut(model, stage, body)
+		if cut == NO_CUT:
+			found.append("%s: %s changes nothing" % [model.art_id, part])
+		elif cut <= 0:
+			found.append(
+				"%s: %s: a damage change is above the canvas of the body" % [model.art_id, part]
+			)
+		elif cut + CUT_OVERLAP_PX > body.size.y:
+			found.append(
+				(
+					"%s: %s: a damage change reaches below the body (cut row %d, canvas %d rows)"
+					% [model.art_id, part, cut, body.size.y]
+				)
+			)
+	return found
+
+
+## Where a `hang` point lies for the hull facing `dir`: the bracket is on the side that faces the
+## camera (ADR 0028 section 4), so the point is mirrored across the hull's long axis (y to -y) when
+## the side it is on turns away from the camera.
+static func hang_point_px(point: Vector3, dir: int) -> Vector2:
+	var side: Vector3 = ArtRender.rotate(Vector3(0.0, signf(point.y), 0.0), yaw(dir))
+	var seen: Vector3 = point
+	if side.dot(ArtRender.VIEW) < -1e-6:
+		seen.y = -point.y
+	return point_px(seen, dir)
+
+
 ## The patch of a damage stage (ADR 0028 section 3): the stage's picture from its top down to the
 ## cut row and `CUT_OVERLAP_PX` below it, cropped left and right to its ink, in a canvas of its own
 ## with the body's anchor. The cut row is the lowest screen row of the outlines of the primitives
@@ -178,16 +240,10 @@ static func all_shots(model: ArtModel) -> Dictionary[StringName, Shot]:
 ## picture is the intact one; it is read off the geometry, not by comparing pixels.
 static func _shoot_damage(model: ArtModel, part: StringName, body: Shot) -> Shot:
 	var stage: int = ArtModel.DAMAGE_PARTS.find(part) + 1
-	var low: float = -INF
-	for pair: Array in model.damage_changes(stage):
-		for prim: ArtPrim in pair:
-			if prim != null:
-				var one: Array[ArtPrim] = [prim]
-				low = maxf(low, ArtRender.bounds(ArtRender.render(one, 0.0, model.faction)).end.y)
-	var cut: int = ceili(low) + body.layout.origin.y
-	var bottom: int = mini(cut + CUT_OVERLAP_PX, body.layout.size.y) - body.layout.origin.y
+	var cut: int = damage_cut(model, stage, body.layout)
+	var bottom: int = cut + CUT_OVERLAP_PX - body.layout.origin.y
 	var polys: Array[ArtRender.Poly] = ArtRender.clip_below(
-		ArtRender.render(model.damage_prims(stage), 0.0, model.faction), bottom + ArtSvg.EDGE_PX
+		stage_polys(model, stage), bottom + ArtSvg.EDGE_PX
 	)
 	var box: Rect2 = ArtRender.bounds(polys)
 	var top: Vector2i = (
