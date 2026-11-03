@@ -44,9 +44,14 @@ const TRIADS: Array[Array] = [
 @export var bake_scale: float = 1.0
 
 var atlas: IsoAtlas = IsoAtlas.new()  ## Empty until the first `bake`.
+## Where the neutral sheet is read from; a test points it at a crafted sheet.
+var neutral_path: String = IsoAtlas.NEUTRAL_SHEET
 var _sheets: Dictionary[StringName, IsoSheetDef] = {}  ## The baked art ids.
 var _arts: Array[IsoPlayerArt] = []  ## Owner n is entry n - 1.
 var _muzzles: PackedFloat32Array = PackedFloat32Array()  ## Per weapon index of the match, px.
+var _neutral: IsoSheetDef  ## The neutral sheet of this bake, null when there is none.
+## Part -> the bases of the neutral sheet, player slot major: `slot * directions + direction index`.
+var _neutral_bases: Dictionary[StringName, PackedInt32Array] = {}
 var _key: String = ""  ## The art and players the atlas holds.
 var _serial: int = -1  ## match_serial last synced.
 
@@ -89,7 +94,14 @@ func bake(scenario: ScenarioDef) -> IsoAtlas:
 		if ids.has(sheet.art_id):
 			sheets.append(sheet)
 	var arts: Array[IsoPlayerArt] = _player_arts(scenario, sheets)
-	var key: String = "%s|%s" % [ids.keys(), arts.map(_describe)]
+	# After the art-id filter and after `_player_arts`, whose faction lookup reads the type sheets.
+	var neutral: IsoSheetDef = IsoAtlas.load_neutral_sheet(neutral_path)
+	if neutral != null:
+		sheets.append(neutral)
+	var key: String = (
+		"%s|%s|%s"
+		% [ids.keys(), arts.map(_describe), String(neutral.art_id) if neutral != null else ""]
+	)
 	if key != _key:
 		_key = key
 		_arts = arts
@@ -97,8 +109,24 @@ func bake(scenario: ScenarioDef) -> IsoAtlas:
 		for sheet: IsoSheetDef in sheets:
 			_sheets[sheet.art_id] = sheet
 		atlas = IsoAtlas.build(sheets, arts, bake_scale)
+		_resolve_neutral(neutral)
 		print(atlas.report())  # `atlas_bake_ms` for the log of CI and the web preview's console.
 	return atlas
+
+
+## The atlas base of `part` of the neutral sheet for `owner_id` (`dir` as `directions` lists it, -1
+## for a one-view part), resolved once per bake: a table read, no string. -1 without the sheet.
+func neutral_base(part: StringName, owner_id: int, dir: int = -1) -> int:
+	var bases: PackedInt32Array = _neutral_bases.get(part, PackedInt32Array())
+	var views: int = bases.size() / maxi(_arts.size(), 1)
+	if views == 0:
+		return -1
+	return bases[slot_of(owner_id) * views + (0 if dir < 0 or views == 1 else dir * views / 16)]
+
+
+## The neutral sheet of this bake, null while its file does not exist.
+func neutral_sheet() -> IsoSheetDef:
+	return _neutral
 
 
 ## The sheet of art id `art_id` in the atlas, null for a type without one.
@@ -177,6 +205,21 @@ func show_base(sprite: Sprite2D, base_index: int, frame: int) -> void:
 	var region: Rect2i = atlas.frame_region(base_index, frame)
 	sprite.visible = region.has_area()
 	sprite.region_rect = Rect2(region)
+
+
+## Resolves every base of the neutral sheet for every player slot (the only place it builds keys).
+func _resolve_neutral(neutral: IsoSheetDef) -> void:
+	_neutral = neutral
+	_neutral_bases.clear()
+	if neutral == null:
+		return
+	for part_name: String in neutral.parts:
+		var part: StringName = StringName(part_name)
+		var bases: PackedInt32Array = PackedInt32Array()
+		for slot: int in _arts.size():
+			for dir: int in neutral.directions(part):
+				bases.append(atlas.base(neutral.art_id, part, dir, slot))
+		_neutral_bases[part] = bases
 
 
 ## Every art id the scenario registers: its spawns, its roster and the rosters of its factions.

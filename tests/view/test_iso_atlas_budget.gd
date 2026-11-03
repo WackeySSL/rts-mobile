@@ -25,6 +25,11 @@ const CRAFTED: String = (
 	+ '<polygon points="0,0 8,0 8,4" fill="#E8681F"/></svg>'
 )
 
+const NEUTRAL_FRAME: String = (
+	'<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4">'
+	+ '<polygon points="0,0 8,0 8,4" fill="#808080"/></svg>'
+)
+
 
 func test_the_budget_is_seven_eighths_of_the_page() -> void:
 	assert_int(BUDGET_PX).is_equal(3584)
@@ -81,6 +86,43 @@ func test_a_set_of_frames_past_the_budget_is_seen() -> void:
 	assert_int(page.y).is_greater(BUDGET_PX)
 	assert_failure(func() -> void: _assert_within_budget("giant", page)).is_failed()
 	assert_failure(func() -> void: _assert_today("giant", page, TODAY_CROSS)).is_failed()
+
+
+func test_the_neutral_sheet_is_counted_once_for_all_players() -> void:
+	# A neutral sheet (P157, ADR 0028 section 4) is on every match's page as shared slots: a crafted
+	# one of 16 frames of 1000 x 500 px takes 16 slots for two players, where a faction's sheet with
+	# frames of the same colour takes 32 (a key colour in each, so one per player).
+	var players: Array[IsoPlayerArt] = [_art(&"fossil", 0), _art(&"fossil", 1)]
+	var base: int = _page(players).y
+	var reader: Callable = _giant_reader(NEUTRAL_FRAME)
+	var shared: Vector2i = IsoAtlas.planned_page(_with_giant(&"neutral"), players, 1.0, reader)
+	var shelf: int = 500 + 2 * RuntimeAtlas.GUTTER_PX
+	assert_int(shared.y).is_equal(base + 4 * shelf)  # 16 cells, 4 to a shelf, tallest first.
+	var own: Vector2i = IsoAtlas.planned_page(
+		_with_giant(&"fossil"), players, 1.0, _giant_reader(CRAFTED)
+	)
+	assert_int(own.y).is_equal(base + 8 * shelf)  # A slot per player: 32 cells.
+
+
+## Reads the committed frames, except the crafted sheet's, which are `text`.
+func _giant_reader(text: String) -> Callable:
+	return func(path: String) -> String:
+		return text if "/giant_" in path else FileAccess.get_file_as_string(path)
+
+
+func _with_giant(faction: StringName) -> Array[IsoSheetDef]:
+	var sheet: IsoSheetDef = IsoSheetDef.new()
+	sheet.art_id = &"giant"
+	sheet.faction = faction
+	sheet.category = &"dmg"
+	sheet.parts = PackedStringArray(["anim"])
+	sheet.counts = PackedInt32Array([1])
+	sheet.frames = PackedInt32Array([16])
+	sheet.sizes = PackedInt32Array([1000, 500])
+	sheet.anchors = PackedInt32Array([0, 0])
+	var sheets: Array[IsoSheetDef] = IsoAtlas.load_sheets()
+	sheets.append(sheet)
+	return sheets
 
 
 ## The page of the committed sheets for `players` at bake scale 1.0, nothing lowered.

@@ -9,6 +9,7 @@ extends RefCounted
 ## fits; a texel is a px of the 2x art times it, so a sprite draws its region at `0.5 /
 ## bake_scale()`. When none fits, or there is no frame, the atlas is empty and the caller decides.
 ## A frame no key colour touches (a shadow) is baked once and shared by the players of a faction.
+## A sheet of faction `neutral` is collected for every player, so each of its frames is one slot.
 ## The CPU page is dropped after the upload unless `keep_image` is set (tests read it).
 ## The frame axis (ADR 0027 section 4): a part may have several frames per direction
 ## (`IsoSheetDef.frame_count`), each its own file and slot. The regions of all frames lie in one
@@ -21,6 +22,10 @@ extends RefCounted
 const PAGE_MAX_PX: int = 4096
 const SCALE_STEP: float = 0.875  ## A step of 7/8 keeps scale times a canvas exact in a float.
 const MIN_SCALE: float = 0.25
+## The hand-written neutral sheet of the damage overlays (ADR 0028 section 4), read from this one
+## path and not through the index; the file may not exist yet (row P160), and then there is none.
+const NEUTRAL_SHEET: String = "res://assets/art/svg/damage/damage_sheet.tres"
+const NEUTRAL: StringName = &"neutral"  ## The faction of a sheet every player's atlas carries.
 
 static var _keys_built: int = 0
 
@@ -40,6 +45,18 @@ static func load_sheets() -> Array[IsoSheetDef]:
 		push_error("IsoAtlas: no sheet index at %s" % IsoIndex.PATH)
 		return []
 	return index.sheets.duplicate()
+
+
+## The neutral sheet at `path`, null while the file does not exist: no error, no slot, a bake as
+## it was before the sheet. A file that is there but is no `IsoSheetDef` is an error, and null.
+static func load_neutral_sheet(path: String = NEUTRAL_SHEET) -> IsoSheetDef:
+	if not ResourceLoader.exists(path):
+		return null
+	var sheet: IsoSheetDef = load(path) as IsoSheetDef
+	if sheet == null or sheet.faction != NEUTRAL:
+		push_error("IsoAtlas: %s is no neutral IsoSheetDef" % path)
+		return null
+	return sheet
 
 
 ## The atlas of `players` (index = player slot, see `region`) over `sheets`, requesting
@@ -196,7 +213,7 @@ static func _collect(
 			push_error("IsoAtlas: player %d has no valid art (a faction and two triads)" % player)
 			continue
 		for sheet: IsoSheetDef in sheets:
-			if sheet.faction == art.faction:
+			if sheet.faction == art.faction or sheet.faction == NEUTRAL:
 				_collect_sheet(plan, sheet, art, player, read)
 	return plan
 
