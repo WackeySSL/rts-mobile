@@ -537,12 +537,12 @@ adds (the body, the shadow and the card do not move).
 
   | Building (art id) | Frames | `anim_ms` | The element |
   | --- | --- | --- | --- |
-  | Signal Mast (`fossil_radar`) | 16 | 140 | the slatted antenna panel with its end posts and the whip, turning a full round on the mast head in 22.5 degree steps |
-  | Relay Tower (`renew_radar`) | 16 | 150 | the three hexagonal array faces turning round the pole (the pole's upper part is in `anim`, not grouped, so a face that passes behind it is drawn behind it), 22.5 degree steps from a phase of 11 |
+  | Signal Mast (`fossil_radar`) | 16 | 140 | the slatted antenna panel with its end posts and the whip (an octagon in `group=ant`, so it turns with the panel and stays out of its sweep's sorting), turning a full round on the mast head in 22.5 degree steps |
+  | Relay Tower (`renew_radar`) | 16 | 150 | the three hexagonal array faces turning round the pole (each team frame has a thin bluegrey back panel flush behind it, so a face that shows its back reads as a panel in a frame, never a bare team hexagon; the pole's upper part is in `anim`, not grouped, so a face that passes behind it is drawn behind it), 22.5 degree steps from a phase of 11 |
   | Wind Park (`renew_power`) | 6 | 90 | both four-bladed rotors with their hubs, turning a quarter in 15 degree steps from a phase of 2.5, the second rotor three frames ahead of the first |
   | Turbine Hall (`power_plant`) | 4 | 90 | a two-armed fan (new: two steel arms and a hub) on each of the three fan housings, a quarter turn in 22.5 degree steps, each fan a frame ahead of the one before |
   | Deep Bore (`fossil_strike`) | 4 | 200 | a kelly rising 0.36 tile above the crown block's drum with a cross of lugs, and a cross of spokes on the drum's face, a quarter turn in 22.5 degree steps (new; the string itself stands inside the near corner posts, where a sprite over the body cannot be drawn right) |
-  | Blackout Array (`renew_strike`) | 4 | 220 | two mint sparks (new) climbing 0.1 tile a frame out of the core's cap, 0.2 apart in phase, then starting again |
+  | Blackout Array (`renew_strike`) | 4 | 220 | two mint sparks (new, on graphite halos) climbing 0.06 tile a frame from 2.33 tiles up, above the near ring beam's reach, two frames apart in phase, then starting again |
   | Grid Hub (`renew_hq`) | 2 | 600 | a turning beacon on the mast: a mint bar on a dark housing, turned a quarter between frames (replaces the mast's mint box) |
   | Crew Hall (`renew_barracks`) | 2 | 600 | the same on the signal pole beside the door |
 
@@ -558,7 +558,7 @@ adds (the body, the shadow and the card do not move).
 - **The canvas.** One canvas for the part's frames, anchored at the footprint's centre; the generator
   keeps the anchor inside the canvas (P134), so the frame reaches down to it: the Signal Mast's is 90
   x 246, the Relay Tower's 86 x 194, the Wind Park's 172 x 206, the Turbine Hall's 96 x 54, the Deep
-  Bore's 50 x 288, the Blackout Array's 22 x 204, the Grid Hub's 26 x 266 and the Crew Hall's 26 x 40
+  Bore's 50 x 288, the Blackout Array's 36 x 212, the Grid Hub's 26 x 266 and the Crew Hall's 26 x 40
   (px at 2x). Dropping the anchor from the crop would save most of the empty rows; it is left for
   P153 if the page needs it.
 - **Light.** The cuts of `ArtRender` suit box faces at 16 yaws. A box or a bar
@@ -579,9 +579,9 @@ adds (the body, the shadow and the card do not move).
   fails on a vehicle model without them.
 - **Cost.** The sorted world's page at bake scale 1.0 grows from 3066 to 3266 px for the cross-faction
   match (3286 in other triads; budget 3584, 318 left), from 2524 to 2702 for a Derrick League mirror
-  and from 2624 to 2894 for a Lumen Accord mirror (`tests/view/test_iso_atlas_budget.gd`). 144 files
-  of the generator changed or were written (36 existing: 5 bodies, 6 shadows, 6 cards, 19 sheets; 108
-  new: 54 frames and their imports); the other 1365 are byte for byte as before.
+  and from 2624 to 2894 for a Lumen Accord mirror (`tests/view/test_iso_atlas_budget.gd`). 148 files
+  of the generator changed or were written (40 existing: 5 bodies, 8 shadows, 8 cards, 19 sheets; 108
+  new: 54 frames and their imports); the other 1361 are byte for byte as before.
 - **The gallery's Build page** plays them: each building with an `anim` part has an `Anim` sprite
   after its `Hull` in every rig of the page, which cycles its frames every `anim_ms` from the page's
   `_process`, written only when the frame changes (`art_gallery_build.gd`, `AnimPlay`). The game
@@ -2298,4 +2298,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-02 | v1.17 (P135, art-director, ADR 0027): the two hand-written atlases of the unit-life layers, `fx/life_atlas.svg` (nine kinds: dust, smoke, soot, steam, puff, exhaust, flare, fire, spark) and `fx/strike_atlas.svg` (twelve: the bore lance falling and rising, its trail, shadow and launch flash and ring, the light seed and its trail, the mint hexagon of the net lit and unlit, a glint and the core flash), the section "Life effects" with the region table, the net lattice, the colours (no team colour, flames hue 46 degrees or more, smoke and dust greys, mint) and the readability numbers, two catalogue rows, and the gallery's Life page. |
 | 2026-11-02 | v1.18 (P134, art-director, ADR 0027 section 4): the generator's frame axis ("The frame axis" under "Generated art": `group=`, the `anim` part, `poses`, `_f<K>` files, `frames`, `stride_milli`, `anim_ms`, `emitters` with `emitter_points`, `marks`); no model has a pose, every committed frame and sheet is as before. |
 | 2026-11-03 | v1.19 (P139, art-director, ADR 0027 sections 4 and 5): walk (4) and idle (2) poses for the four squads ("Squad poses" under "Generated art": pose groups per figure and limb, `stride_milli` 352, 352, 376 and 376, 192 new frames drawn in the standing figure's order with its light edges, `ArtRender.render`'s `rest`, `ArtModel.frame_rest`), the sorted world's cross-faction page 2682 to 3066 px (mirrors 2206 to 2524 and 2226 to 2624), the Units page of the gallery plays them; the standing frames, shadows and cards are unchanged. |
-| 2026-11-03 | v1.20 (P143, art-director, ADR 0027 sections 4 and 5): `anim` parts for eight buildings (Signal Mast 16 frames, Relay Tower 16, Wind Park 6, Turbine Hall 4, Deep Bore 4, Blackout Array 4, Grid Hub 2, Crew Hall 2), `emitters` on six building models and every vehicle, `marks` on every vehicle ("Building life (P143)" under "Generated art"), the sorted world's cross-faction page 3066 to 3266 px (mirrors 2524 to 2702 and 2624 to 2894), the Build page of the gallery plays the frames; 36 existing generated files changed, 1365 are byte for byte as before. |
+| 2026-11-03 | v1.20 (P143, art-director, ADR 0027 sections 4 and 5): `anim` parts for eight buildings (Signal Mast 16 frames, Relay Tower 16, Wind Park 6, Turbine Hall 4, Deep Bore 4, Blackout Array 4, Grid Hub 2, Crew Hall 2), `emitters` on six building models and every vehicle, `marks` on every vehicle ("Building life (P143)" under "Generated art"), the sorted world's cross-faction page 3066 to 3266 px (mirrors 2524 to 2702 and 2624 to 2894), the Build page of the gallery plays the frames; 40 existing generated files changed, 108 are new, 1361 are byte for byte as before. |

@@ -32,6 +32,10 @@ const Support: GDScript = preload("res://tests/art/building_picture_support.gd")
 ## The most a default view may show of the team colour in any frame of a loop (STYLE.md: about a
 ## tenth, never a large plate): the pins of the building suites.
 const SHARE_MAX: Dictionary[StringName, float] = {&"fossil": 0.13, &"renew": 0.125}
+## The Relay Tower's cap is lower: its worst frame is 0.0995, and a face that shows its back as a
+## bare team hexagon (one back panel missing) lifts the worst frame to 0.111 to 0.120, which the
+## faction's cap would let through.
+const SHARE_MAX_ID: Dictionary[StringName, float] = {&"renew_radar": 0.105}
 const MIN_FACING: float = 0.12  ## A face seen at a sliver is not judged (as in test_artgen_poses).
 ## Where each model's emitters are (kinds, in file order); the vehicles' is one `exhaust`.
 const EMITTERS: Dictionary[StringName, Array] = {
@@ -239,9 +243,32 @@ func test_no_frame_of_a_loop_shows_a_team_plate_the_backs_of_the_array_faces_inc
 			(
 				assert_float(share)
 				. override_failure_message("%s frame %d shows %.3f team" % [id, frame, share])
-				. is_less_equal(SHARE_MAX[sheet.faction])
+				. is_less_equal(SHARE_MAX_ID.get(id, SHARE_MAX[sheet.faction]))
 			)
 	assert_float(worst[&"renew_radar"]).is_greater(0.05)
+
+
+func test_every_array_frame_has_a_thin_panel_flush_behind_it_on_its_own_axis() -> void:
+	var anim: Array[ArtPrim] = _model(&"renew_radar").primitives(&"anim")
+	var frames: int = 0
+	for frame: ArtPrim in anim:
+		if frame.material != &"team" or frame.group != &"arr" or frame.shape != &"prism":
+			continue
+		frames += 1
+		var along: int = frame.axis
+		var backs: int = 0
+		for back: ArtPrim in anim:
+			if back.material != &"bluegrey" or back.axis != along or back.size[along] > 0.05:
+				continue
+			var at: Vector3 = back.aabb().get_center() - frame.aabb().get_center()
+			var flush: float = (frame.size[along] + back.size[along]) / 2.0
+			if is_equal_approx(absf(at[along]), flush) and at[along] < 0.0:
+				var others: Array[int] = [0, 1, 2]
+				others.erase(along)
+				if absf(at[others[0]]) < 0.001 and absf(at[others[1]]) < 0.001:
+					backs += 1
+		assert_int(backs).override_failure_message(frame.line).is_equal(1)
+	assert_int(frames).is_equal(3)
 
 
 func test_the_blinking_lamps_are_a_lit_bar_that_turns_on_its_housing() -> void:
