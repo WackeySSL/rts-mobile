@@ -3,7 +3,8 @@ extends RefCounted
 ## The flat faces of an `ArtPrim`, in the model's frame, each with its outward normal. A box, a
 ## wedge and a prism are all one solid: a ring of `sides` points at the bottom and the same ring,
 ## scaled by `taper` and cut by `slope`, at the top, joined by one quad per side. A sphere has no
-## faces (`ArtRender` draws it as discs).
+## faces (`ArtRender` draws it as discs). A primitive with moves (a pose frame, `ArtPrim.moved`) has
+## its faces placed by them, after the rest faces are built.
 
 
 ## One convex face: its points and the unit normal that points out of the solid.
@@ -46,6 +47,11 @@ static func faces(prim: ArtPrim) -> Array[Face]:
 		_add(found, PackedVector3Array([bottom[i], bottom[j], top[j], top[i]]), inside)
 	_add(found, top, inside)
 	_add(found, bottom, inside)
+	if not prim.moves.is_empty():
+		for face: Face in found:
+			for i: int in face.points.size():
+				face.points[i] = prim.place(face.points[i])
+			face.normal = prim.spin(face.normal)
 	return found
 
 

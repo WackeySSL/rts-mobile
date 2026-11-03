@@ -48,6 +48,10 @@ Status note (2026-10-26, P68e docs; ADR 0023 accepted 2026-10-26, Michael's answ
 carry dated status notes: the Deep Bore's rupture is applied inside step 10 (the FIRE mark), and
 Command type 15 is fixed as `SUPERWEAPON`; no phase id changes and no accepted text changed.
 
+Status note (2026-11-02, P132 docs; ADR 0027 accepted 2026-11-02): §10 carries a dated status note:
+event kind 5, `STRIKE`, written by an accepted `SUPERWEAPON` for the view's launch and strike
+effects; no accepted text changed and no hash moves.
+
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state
 hash. Phase 1 shipped the v0 shapes of ADR 0003: a struct-of-arrays `World` that never removes a
@@ -607,6 +611,13 @@ accepted):
   - `IMPACT` `[4, projectile id, x, y, target id or 0, weapon, 0, 0]`.
 - `MatchRunner` emits `ticked` after every step, and view handlers read `runner.world.events`
   inside that signal. Up to 4 ticks per frame then lose no event.
+
+Status note (2026-11-02, P132 docs; ADR 0027 accepted 2026-11-02; the text above stays as
+accepted): a fifth kind, `STRIKE` `[5, building id, x, y, kind, owner, landing tick or 0, 0]`, is
+appended by `Strike.apply_superweapon` for every accepted `SUPERWEAPON` (row P133), in COMMANDS, so
+in command order beside the `SPAWNED` record a `PLACE` writes there. The kind is the strike kind (1
+rupture, 2 blackout) and the landing tick the rupture's `strike_tick` (0 for a blackout). Events
+stay out of the state: no hash moves.
 
 ## Consequences
 - Supersedes ADR 0003 §2 (Command and World shapes) and §3 (application rules) where they

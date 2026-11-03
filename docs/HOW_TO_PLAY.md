@@ -30,7 +30,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Action | Result | Teach |
 |---|---|---|
 | Look at your units | Each unit is drawn from the picture set of its side (the Derrick League or the Lumen Accord) in its player's team colour (your side's own: orange for the Derrick League, cyan for the Lumen Accord, and the other player wears the other one) with a shadow on the ground under it; units of two players on one side still differ by colour. The selection panel shows the unit's item card | |
-| Watch a unit drive or fight | The picture turns in steps to face where the unit drives (infantry in coarser steps); a tank's turret turns on its own to face its target while the hull keeps its heading; infantry turn as a whole toward their target. A unit lower on the screen is drawn in front of one above it | |
+| Watch a unit drive or fight | The picture turns in steps to face where the unit drives (infantry in coarser steps); a tank's turret turns on its own to face its target while the hull keeps its heading; infantry turn as a whole toward their target. A turret kicks back when it fires, only for a shot you can see. A unit lower on the screen is drawn in front of one above it | |
 
 ## Buildings
 | Action | Result | Teach |

@@ -71,6 +71,12 @@ buildings) stay while `BuildSidebar` reads them. New art follows this file.
 - The silhouette must be identifiable at 32 px in greyscale. No detail thinner than 2 px at 2x.
 - Team colour covers about 8-12 % of the visible surface as bands, cranes, stripes and light
   strips, never large team plates.
+- Life (ADR 0027): poses are model poses (`walk` 4 and `idle` 2 frames per squad direction, a
+  building's `anim` at most 16 frames cropped to the moving element), never edited frames; shadows
+  are not posed. Life effects (`svg/fx/life_atlas.svg`, `svg/fx/strike_atlas.svg`) carry no team
+  colour: flames yellow-white (hue 46° or more), smoke and dust grey. The sorted world's
+  cross-faction page stays at most 3584 px tall at bake scale 1.0
+  (`tests/view/test_iso_atlas_budget.gd`).
 
 ## Technical rules
 - One drawing per file with `width`, `height` and `viewBox="0 0 W H"` set to the canvas.
@@ -86,7 +92,9 @@ buildings) stay while `BuildSidebar` reads them. New art follows this file.
 - At most 28 KB per file; integer or one-decimal coordinates in hand-drawn files.
 - Naming (ADR 0023 §5): `assets/art/iso/<faction>/<category>/<type_id>_<part>_d<NN>.svg`, with
   `faction` `fossil` or `renew`, `category` `veh`, `inf`, `bld` or `fx`, `part` `hull`, `turret`,
-  `head` or `shadow`; a building's body and shadow carry no direction (`.../bld/refinery_hull.svg`).
+  `head`, `shadow`, `walk`, `idle` or `anim`; a building's body and shadow carry no direction
+  (`.../bld/refinery_hull.svg`); a part with more than one frame per direction adds `_f<K>` (K from
+  0), and a building's `anim` part has no direction (`.../bld/fossil_radar_anim_f0.svg`).
   `assets/art/iso/index.tres` maps each `type_id` to its sheet. Models:
   `assets/art/models/<faction>/<type_id>.tres`.
 - Import: iso frames use the "Keep File" importer (the bake reads the SVG text; commit the
@@ -99,8 +107,8 @@ buildings) stay while `BuildSidebar` reads them. New art follows this file.
 Describe each silhouette in words before drawing or modelling. No recognizable designs from other
 games, for example twin-barrel super-heavy tanks (single barrels only), a tank on four corner track pods, tesla-coil or prism
 towers, airships, a dome on a radar tower, a mobile base that unfolds into a headquarters, oil
-derricks to capture, engineers, flamethrower infantry, freeze or cryo weapons, or blue EMP
-lightning. No geography (decision 1 of ADR 0023): no national coding, no flags, stars, wreaths,
+derricks to capture, engineers, flamethrower infantry, freeze or cryo weapons, blue EMP
+lightning, a beam or column from orbit, a missile rising from silo doors, or a mushroom cloud. No geography (decision 1 of ADR 0023): no national coding, no flags, stars, wreaths,
 crests or real insignia, no copied real weapons. When in doubt, choose a plainer real-world form.
 
 ## Gallery

@@ -19,6 +19,10 @@ extends Node2D
 ## sight and leaves a crater in the decal layer; a hidden one, or a new match, leaves none. The hit
 ## times of a building's bar are the unit layer's (it notes the hp of every row); the bar layer
 ## reads `is_shown`, `is_selected`, `frame_box` and `bar_lift_px` from here.
+## Life (ADR 0027, P136): a `SHOT` of a defence kicks its `Head` back along the aim (`RigLife`,
+## numbers in `life`), on the head sprite only: the node, the Body and the shadow never move. The
+## kick is noted in `ticked` for a building the local player sees in that tick's fog and drawn on
+## match time (`LifeClock`), so a pause freezes it.
 ## A tap picks a building on its silhouette (P115b, ADR 0023 section 3): `fill_pick_snapshot` lists
 ## the shown buildings with the footprint's diamond and the height of the picture above it (the
 ## top of the Body sprite, so the atlas region and its bake scale), for the `Picker`. A selection
@@ -31,6 +35,8 @@ const SHADOW: StringName = &"shadow"
 const NO_FRAME: int = -1  ## The `dir` of a frame without a direction, a building's body.
 ## A crater's ground radius per footprint tile, milli: the circle inside the footprint.
 const CRATER_MILLI_PER_TILE: int = 500
+## The life numbers when `life` is unset (ADR 0027 section 8).
+const DEFAULT_LIFE: LifeSettings = preload("res://data/life_settings.tres")
 
 ## How fast a head turns, in radians per second.
 @export var turn_rate: float = 12.0
@@ -43,6 +49,8 @@ const CRATER_MILLI_PER_TILE: int = 500
 ## Shows every enemy building whatever the fog says: the perf arena, and tests whose subject is not
 ## fog.
 @export var reveal_enemies: bool = false
+## The numbers of the building life (the head's recoil); `data/life_settings.tres` when unset.
+@export var life: LifeSettings
 
 var _entries: Dictionary[int, Entry] = {}  ## The building of each unit id.
 var _selected: PackedInt32Array = PackedInt32Array()  ## Ids of the selected buildings.
@@ -51,6 +59,7 @@ var _serial: int = -1  ## match_serial the entries were made for.
 var _rows_version: int = -1  ## rows_version they follow.
 var _fog_version: int = -1  ## The local player's fog version their visibility was written for.
 var _redraws: int = 0
+var _rig_life: RigLife = RigLife.new()  ## The kicks that run now (P136).
 
 
 ## One building: its row (moved by every merge), the nodes it owns and what its head shows.
@@ -67,6 +76,8 @@ class Entry:
 	var shown: bool = true
 	var head_dir: int = UnitLayer.D_EAST
 	var head_angle: float = 0.0  ## Grid angle, east 0, as the unit layer's.
+	var head_rest: Vector2 = Vector2.ZERO  ## Where the head stands on its mount.
+	var kick: Vector2 = Vector2.ZERO  ## What the head stands off its mount by life now.
 
 
 ## What stands in for art that is not on the atlas: the footprint's diamond in the owner's colour.
@@ -97,13 +108,21 @@ func _ready() -> void:
 	if decals == null:
 		decals = DecalLayer.new()
 		add_child(decals)
+	if life == null:
+		life = DEFAULT_LIFE
+	_rig_life.setup(life)
+	if runner != null:
+		runner.ticked.connect(_on_ticked)
 	_sync()
 
 
 func _process(delta: float) -> void:
 	var snap: MatchSnapshot = _sync()
-	if snap != null and not _heads.is_empty():
+	if snap == null:
+		return
+	if not _heads.is_empty():
 		_turn_heads(snap, delta)
+	_kick_heads(snap)  # Also with no head left: the kicks of the heads that died end.
 
 
 ## The buildings that have a node now: no sync.
@@ -115,6 +134,16 @@ func building_count() -> int:
 ## a new match. It moves with nothing else.
 func redraw_count() -> int:
 	return _redraws
+
+
+## The life sprite writes so far: one for each head position the recoil set (ADR 0027 section 9).
+func life_writes() -> int:
+	return _rig_life.writes
+
+
+## The kicks that run now, the heads that are off their mount (a test hook). No sync.
+func kick_count() -> int:
+	return _rig_life.count()
 
 
 ## The node of the building with unit id `id`, null for an id that is no building. No sync.
@@ -361,7 +390,8 @@ func _make(snap: MatchSnapshot, row: int) -> Entry:
 		if sheet.has_part(HEAD):
 			entry.head = _sprite(entry.node, sheet, HEAD, UnitLayer.D_EAST, owner_id)
 			entry.head.name = "Head"
-			entry.head.position = sheet.mount(UnitLayer.D_EAST) * WorldSort.ART_SCALE
+			entry.head_rest = sheet.mount(UnitLayer.D_EAST) * WorldSort.ART_SCALE
+			entry.head.position = entry.head_rest
 			_heads.append(entry)
 	if not drawn:  # No sheet, no atlas, or a sheet of a faction the owner's art does not carry.
 		var marker: Marker = Marker.new()
@@ -468,3 +498,50 @@ func _turn_heads(snap: MatchSnapshot, delta: float) -> void:
 		if dir != entry.head_dir:
 			entry.head_dir = dir
 			world_sort.show_frame(entry.head, entry.sheet, HEAD, dir, owners[row])
+
+
+## Notes the kicks of one tick's SHOT records, once per tick (`ticked`): a defence that the local
+## player owns or sees in this tick's fog (a cell of its footprint, as `is_shown` says). A hidden
+## enemy defence's shot kicks nothing. A defence has no hull to rock: only its head kicks.
+func _on_ticked(_tick: int) -> void:
+	var snap: MatchSnapshot = runner.snapshot
+	if snap == null:
+		return
+	_rig_life.follow(snap.match_serial)
+	var events: PackedInt32Array = snap.events
+	for at: int in range(0, events.size(), World.EVENT_STRIDE):
+		if events[at] == World.Event.SHOT:
+			_note_shot(snap, at)
+
+
+## [SHOT, shooter id, ...]: a kick when the shooter is a building with a head that is seen.
+func _note_shot(snap: MatchSnapshot, at: int) -> void:
+	var id: int = snap.events[at + 1]
+	var entry: Entry = _entries.get(id)
+	var row: int = snap.index_of(id)
+	if entry == null or entry.head == null or row < 0:
+		return
+	var player: int = FogLayer.local_player_of(runner)
+	if not reveal_enemies and snap.owner[row] != player and not is_seen(snap, player, row):
+		return
+	_rig_life.shot(snap, at, false)
+
+
+## Draws the kicks at match time (`LifeClock`, which a pause stops): the head's offset from its
+## mount, written only when it changed. A kick whose building is gone ends.
+func _kick_heads(snap: MatchSnapshot) -> void:
+	_rig_life.follow(snap.match_serial)
+	if _rig_life.count() == 0:
+		return
+	var live: int = _rig_life.advance(LifeClock.ms(snap, runner.alpha()))
+	for slot: int in live:
+		var entry: Entry = _entries.get(_rig_life.id_at(slot))
+		if entry == null or entry.head == null:
+			_rig_life.end(slot)
+			continue
+		var offset: Vector2 = _rig_life.turret_offset(slot)
+		if offset != entry.kick:
+			entry.kick = offset
+			entry.head.position = entry.head_rest + offset
+			_rig_life.writes += 1
+	_rig_life.sweep()
