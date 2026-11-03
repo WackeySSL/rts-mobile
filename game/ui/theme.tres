@@ -441,6 +441,7 @@ HudTokens/colors/danger = Color(1, 0.35294118, 0.23529412, 1)
 HudTokens/colors/money = Color(0.94901961, 0.75686275, 0.30588235, 1)
 HudTokens/colors/ok = Color(0.43137255, 0.8627451, 0.37254902, 1)
 HudTokens/colors/panel = Color(0.03921569, 0.05490196, 0.06666667, 0.84)
+HudTokens/colors/pulse_dim = Color(1, 1, 1, 0.6)
 HudTokens/colors/text = Color(1, 1, 1, 1)
 HudPanel/base_type = &"PanelContainer"
 HudPanel/styles/panel = SubResource("StyleBoxFlat_hud_panel")

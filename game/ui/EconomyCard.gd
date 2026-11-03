@@ -129,16 +129,13 @@ func _scan(snap: MatchSnapshot, player: int) -> int:
 	_used.resize(types)
 	_used.fill(0)
 	var tankers: int = 0
-	var building_left: PackedInt32Array = snap.build_left
-	var offline: PackedInt32Array = snap.offline_until
 	for row: int in snap.unit_count():
 		if snap.owner[row] != player:
 			continue
 		var type: int = snap.type_index[row]
 		tankers += 1 if OrderRules.is_tanker(snap, type) else 0
-		var power: int = snap.type_power[type] if type < types else 0
-		if power < 0 and building_left[row] == 0 and offline[row] <= snap.tick:
-			_used[type] -= power
+		if PowerConsumers.is_consumer(snap, row):
+			_used[type] -= snap.type_power[type]
 	return tankers
 
 

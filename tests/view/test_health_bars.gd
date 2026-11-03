@@ -49,7 +49,7 @@ const DRAW_BODY: Array[String] = [
 	"draw_rect(rect_at(index), rect_color(index))",
 	"_drawn += 1",
 	"for index: int in _glyphs:",
-	"draw_texture_rect(GLYPH, glyph_rect(index), false, glyph_color)",
+	"draw_texture_rect(glyph_texture(index), glyph_rect(index), false, glyph_tint(index))",
 	"_drawn_glyphs += 1",
 ]
 

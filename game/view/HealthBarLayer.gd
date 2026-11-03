@@ -25,7 +25,10 @@ extends Node2D
 ## 0023 section 10) wears the offline glyph (`glyph_offline.svg`, GLYPH_DP square, amber) for as
 ## long as it is off, hit or not, over the place of its bar and centred on its footprint centre; an
 ## enemy one only while `building_layer.is_shown`. The glyphs are planned after the frames and
-## painted after the rects, as `glyph_count()` squares at `glyph_rect(i)`.
+## painted after the rects, as `glyph_count()` squares at `glyph_rect(i)`. While the local player's
+## published `power_used` is above its `power_made` (low power, P89, ADR 0025 section 8) every own
+## building that uses power (`PowerConsumers`, the economy card's rows) wears the low-power glyph
+## in danger red at the same place, planned after the offline ones; nothing is dimmed.
 ##
 ## A bar is sized in dp, so it looks the same at every zoom: world px per dp is the base px per dp
 ## over the camera zoom. It is centred on its unit's projected ground point (`IsoProjection`, ADR
@@ -57,6 +60,7 @@ const FRAME_RECTS: int = 16  ## Two arms for each of four corners, each as an ou
 ## The offline glyph (assets/art/STYLE.md "Icons and glyphs": 32 dp for a glyph on the map, drawn
 ## tinted with its seat) and its gap over the bar's place.
 const GLYPH: Texture2D = preload("res://assets/art/svg/icons/glyph_offline.svg")
+const LOW_GLYPH: Texture2D = preload("res://assets/art/svg/icons/glyph_low_power.svg")
 const GLYPH_DP: int = 32
 const GLYPH_GAP_DP: int = 1
 
@@ -71,6 +75,8 @@ const GLYPH_GAP_DP: int = 1
 @export var enemy_color: Color = Color("F5A524")  ## Fill of an enemy bar (warning).
 @export var frame_color: Color = Color("FFFFFF")  ## Brackets of an own selected building.
 @export var glyph_color: Color = Color("F5A524")  ## The offline glyph's tint (STYLE.md, warning).
+## The low-power glyph's tint: the HUD's danger token, like the triangle in the economy pill.
+@export var low_power_color: Color = Color("FF5A3C")
 
 var _dp_px: float = 1.0  ## Base px per dp, read when the window changes.
 ## Rect `i` of the frame: x, y, width and height in world px at 4i, and its colour. `_bars` holds
@@ -88,6 +94,7 @@ var _none: PackedInt32Array = PackedInt32Array()  ## The selected buildings when
 var _drawn: int = 0  ## Rects the last _draw painted.
 var _glyph_at: PackedFloat32Array = PackedFloat32Array()  ## Top-left x, y of glyph `i` at 2i.
 var _glyphs: int = 0
+var _offline_glyphs: int = 0  ## The first glyphs are offline ones, the rest low-power ones.
 var _glyph_side: float = 0.0  ## World px, the same for every glyph of the frame.
 var _drawn_glyphs: int = 0
 ## The shapes, own and enemy for each class (index class + enemy x CLASS_WIDTH_DP.size()), made
@@ -147,6 +154,20 @@ func glyph_count() -> int:
 
 func drawn_glyphs() -> int:
 	return _drawn_glyphs
+
+
+## How many of the planned glyphs are offline ones; the rest (low power, P89) follow them.
+func offline_glyph_count() -> int:
+	return _offline_glyphs
+
+
+## Glyph `index`'s art and tint: the offline glyph in amber, then the low-power one in danger red.
+func glyph_texture(index: int) -> Texture2D:
+	return GLYPH if index < _offline_glyphs else LOW_GLYPH
+
+
+func glyph_tint(index: int) -> Color:
+	return glyph_color if index < _offline_glyphs else low_power_color
 
 
 func glyph_rect(index: int) -> Rect2:
@@ -313,29 +334,46 @@ func _plan() -> void:
 			_rects += 1
 	_bar_first[_bar_count] = _rects
 	_plan_frames(snap, chosen, unit, local_player)
-	_plan_glyphs(snap, unit)
+	_plan_glyphs(snap, unit, local_player)
 
 
 ## Plans the offline glyph of each shown building a blackout has switched off: its bottom edge
-## stands GLYPH_GAP_DP over the top of the bar's place, so a bar and a glyph never overlap.
-func _plan_glyphs(snap: MatchSnapshot, unit: float) -> void:
+## stands GLYPH_GAP_DP over the top of the bar's place, so a bar and a glyph never overlap. While
+## the local player uses more power than it makes (`power_used` over `power_made` of the snapshot),
+## every own building that uses power (`PowerConsumers`) gets the low-power glyph at the same
+## place, after the offline ones. A switched-off building uses none, so it never has both.
+func _plan_glyphs(snap: MatchSnapshot, unit: float, local_player: int) -> void:
 	_glyph_side = GLYPH_DP * unit
+	_offline_glyphs = 0
 	if building_layer == null:
 		return
 	var until: PackedInt32Array = snap.offline_until  # Aliased once: no property read per row.
-	var cur_x: PackedInt32Array = snap.pos_x
-	var cur_y: PackedInt32Array = snap.pos_y
 	var tick: int = snap.tick
 	var rise: float = (GAP_DP + HEIGHT_DP + GLYPH_GAP_DP + GLYPH_DP) * unit
 	for row: int in until.size():
-		if until[row] <= tick or not building_layer.is_shown(row):
-			continue
-		if _glyph_at.size() < _glyphs * 2 + 2:
-			_glyph_at.resize(_glyph_at.size() + 16)
-		var place: Vector2 = IsoProjection.ground_to_px(cur_x[row], cur_y[row])
-		_glyph_at[_glyphs * 2] = place.x - 0.5 * _glyph_side
-		_glyph_at[_glyphs * 2 + 1] = place.y - building_layer.bar_lift_px(row) - rise
-		_glyphs += 1
+		if until[row] > tick and building_layer.is_shown(row):
+			_put_glyph(snap, row, rise)
+	_offline_glyphs = _glyphs
+	var made: PackedInt32Array = snap.power_made
+	var used: PackedInt32Array = snap.power_used
+	if local_player < 0 or local_player >= mini(made.size(), used.size()):
+		return
+	if used[local_player] <= made[local_player]:
+		return
+	var owners: PackedInt32Array = snap.owner
+	for row: int in until.size():
+		if owners[row] == local_player and PowerConsumers.is_consumer(snap, row):
+			_put_glyph(snap, row, rise)
+
+
+## Appends the glyph square of building `row`, `rise` over its footprint centre's ground point.
+func _put_glyph(snap: MatchSnapshot, row: int, rise: float) -> void:
+	if _glyph_at.size() < _glyphs * 2 + 2:
+		_glyph_at.resize(_glyph_at.size() + 16)
+	var place: Vector2 = IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row])
+	_glyph_at[_glyphs * 2] = place.x - 0.5 * _glyph_side
+	_glyph_at[_glyphs * 2 + 1] = place.y - building_layer.bar_lift_px(row) - rise
+	_glyphs += 1
 
 
 ## Plans the frame of each selected building that is shown, after the bars.
@@ -386,5 +424,5 @@ func _draw() -> void:
 		draw_rect(rect_at(index), rect_color(index))
 		_drawn += 1
 	for index: int in _glyphs:
-		draw_texture_rect(GLYPH, glyph_rect(index), false, glyph_color)
+		draw_texture_rect(glyph_texture(index), glyph_rect(index), false, glyph_tint(index))
 		_drawn_glyphs += 1
