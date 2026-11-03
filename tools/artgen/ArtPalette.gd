@@ -39,6 +39,9 @@ const MATERIALS: Dictionary[StringName, Dictionary] = {
 		&"mint": "#A8F5B0",
 	},
 }
+## The colour a `char` move mixes a group towards (ADR 0028 section 3): soot-black with a warm
+## cast, outside both factions' key bands.
+const CHAR: String = "#2A2522"
 const DARK_EDGE: float = 0.45  ## The edge of a material: its mid tone at this factor.
 const LIGHT_EDGE: float = 0.4  ## The thin light edge on top faces: top tone towards white.
 
@@ -62,6 +65,14 @@ static func edge(faction: StringName, material: StringName, light: bool) -> Stri
 		return _hex(_channels(faction, material, DARK_EDGE))
 	var top: Vector3 = _channels(faction, material, SHADES[TOP] / SHADES[LEFT])
 	return _hex(top + (Vector3(255.0, 255.0, 255.0) - top) * LIGHT_EDGE)
+
+
+## `hex` mixed `percent` of the way (0 to 100) towards `CHAR`.
+static func scorched(hex: String, percent: float) -> String:
+	var from: Color = Color(hex)
+	var to: Color = Color(CHAR)
+	var k: float = clampf(percent, 0.0, 100.0) / 100.0
+	return _hex(Vector3(from.r8, from.g8, from.b8).lerp(Vector3(to.r8, to.g8, to.b8), k))
 
 
 static func _channels(faction: StringName, material: StringName, factor: float) -> Vector3:

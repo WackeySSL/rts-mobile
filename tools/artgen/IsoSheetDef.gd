@@ -49,6 +49,14 @@ const ROOT: String = "res://assets/art/iso"
 @export var emitter_points: PackedVector2Array = PackedVector2Array()
 ## What a vehicle's running gear leaves on the ground: `tracks`, `wheels` or empty (none).
 @export var marks: StringName = &""
+## The cut row of each damage stage in the body's canvas (ADR 0028 section 3), `[stage 1, stage 2]`,
+## 0 for a stage with no patch; empty for a sheet without damage parts (`dmg1`, `dmg2`).
+@export var cuts: PackedInt32Array = PackedInt32Array()
+## A vehicle's damage scar scale, 1000 for the battle tank's hull top; 0 for a sheet without one.
+@export var scar_milli: int = 0
+## The folder the frames are in. Empty is `ROOT/<faction>/<category>/`, which every generated sheet
+## has; a hand-written sheet (the neutral damage overlays, ADR 0028 section 4) sets it.
+@export var root: String = ""
 
 
 ## `res://assets/art/iso/<faction>/<category>/<art_id>_<part>[_d<NN>][_f<K>].svg`; `dir` -1 and
@@ -68,7 +76,10 @@ static func frame_path(
 
 ## The file of frame `frame` of a part in direction `dir`; a part with one frame has no `_f<K>`.
 func path(part: StringName, dir: int, frame: int = 0) -> String:
-	return frame_path(faction, category, art_id, part, dir, frame if frame_count(part) > 1 else -1)
+	var found: String = frame_path(
+		faction, category, art_id, part, dir, frame if frame_count(part) > 1 else -1
+	)
+	return found if root == "" else root.path_join(found.get_file())
 
 
 ## The frames per direction of a part: 1, also for a sheet that has no `frames`.
@@ -92,9 +103,9 @@ func anchor(part: StringName) -> Vector2i:
 
 
 ## Where the model's origin lies in the canvas: a unit's ground point, a building's footprint
-## centre (32 px per footprint tile below its anchor).
+## centre (32 px per footprint tile below its anchor); a damage patch is anchored like the body.
 func origin(part: StringName) -> Vector2i:
-	var body: bool = footprint > 0 and part in [&"hull", &"shadow"]
+	var body: bool = footprint > 0 and part in [&"hull", &"shadow", &"dmg1", &"dmg2"]
 	return anchor(part) + (Vector2i(0, 32 * footprint) if body else Vector2i.ZERO)
 
 

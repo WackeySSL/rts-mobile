@@ -19,11 +19,19 @@ const POSE_SOURCE: Dictionary[StringName, StringName] = {
 }
 ## The pose parts that are drawn in their rest order: the figures of a squad.
 const REST_ORDER: Array[StringName] = [&"walk", &"idle"]
+## The damage poses of a building (ADR 0028 section 3): the body at damage stage 1 and 2, each a
+## list of moves (`shift`, `turn`, `hide`, `char`) of the hull's groups, frame 0. Each has one frame
+## and no direction, and is a part of its own (`<id>_dmg1.svg`), a patch over the top of the body.
+const DAMAGE_PARTS: Array[StringName] = [&"dmg1", &"dmg2"]
+## A hull group no damage move may touch, as the `anim` groups are not: it holds what moves.
+const SEATED_GROUP: StringName = &"mount"
 const MIN_FRAMES: int = 2
 const MAX_FRAMES: int = 16
 ## What an emitter is (a smoke, steam, flame, exhaust or launch point) and what a vehicle leaves on
 ## the ground.
-const EMITTER_KINDS: Array[StringName] = [&"smoke", &"steam", &"flame", &"exhaust", &"launch"]
+const EMITTER_KINDS: Array[StringName] = [
+	&"smoke", &"steam", &"flame", &"exhaust", &"launch", &"damage", &"hang"
+]
 const MARKS: Array[StringName] = [&"tracks", &"wheels"]
 
 @export var art_id: StringName = &""  ## The unit or building type id; the file name too.
@@ -49,6 +57,8 @@ const MARKS: Array[StringName] = [&"tracks", &"wheels"]
 @export var emitters: PackedStringArray = PackedStringArray()
 ## What a vehicle's running gear leaves on the ground: `tracks`, `wheels` or empty.
 @export var marks: StringName = &""
+## A vehicle's damage scar scale, 1000 for the battle tank's hull top (ADR 0028 section 4); 0 none.
+@export var scar_milli: int = 0
 
 
 ## The parts the model has, in file order: hull, turret, head.
@@ -64,7 +74,21 @@ func parts() -> Array[StringName]:
 func frame_parts() -> Array[StringName]:
 	var found: Array[StringName] = parts()
 	found.append_array(pose_parts())
+	found.append_array(damage_parts())
 	found.append(SHADOW)
+	return found
+
+
+## The damage poses that change the picture: those with a move, or with a primitive that appears at
+## that stage or before, in the order of `DAMAGE_PARTS`.
+func damage_parts() -> Array[StringName]:
+	var found: Array[StringName] = []
+	for i: int in DAMAGE_PARTS.size():
+		var changes: bool = not pose_moves(DAMAGE_PARTS[i], 0).is_empty()
+		for prim: ArtPrim in _hull_prims():
+			changes = changes or (prim.damage > 0 and prim.damage <= i + 1)
+		if changes:
+			found.append(DAMAGE_PARTS[i])
 	return found
 
 
@@ -143,12 +167,53 @@ func emitter_list() -> Array[Array]:
 	return found
 
 
-## The valid primitives of `part`, in the model's order.
+## The valid primitives of `part` that are drawn intact, in the model's order: those tagged
+## `damage=K` are left out, they appear in `damage_prims` only.
 func primitives(part: StringName) -> Array[ArtPrim]:
 	var found: Array[ArtPrim] = []
 	for line: String in prims:
 		var prim: ArtPrim = ArtPrim.parse(line)
-		if prim != null and prim.part == part:
+		if prim != null and prim.part == part and prim.damage == 0:
+			found.append(prim)
+	return found
+
+
+## The hull primitives at damage `stage` (1 or 2): every hull primitive that is drawn from that
+## stage on or before it, placed by the stage's moves, without the hidden ones.
+func damage_prims(stage: int) -> Array[ArtPrim]:
+	var found: Array[ArtPrim] = []
+	var by: Array[ArtMove] = pose_moves(DAMAGE_PARTS[stage - 1], 0)
+	for prim: ArtPrim in _hull_prims():
+		if prim.damage <= stage:
+			var posed: ArtPrim = prim.moved(by)
+			if not posed.hidden:
+				found.append(posed)
+	return found
+
+
+## The hull primitives that the stage changes, as [intact, posed] pairs: a moved, turned, hidden or
+## charred one (the intact one and the posed one, which is null when hidden), an added one (a null
+## intact one). The cut line is the lowest of their outlines.
+func damage_changes(stage: int) -> Array[Array]:
+	var found: Array[Array] = []
+	var by: Array[ArtMove] = pose_moves(DAMAGE_PARTS[stage - 1], 0)
+	for prim: ArtPrim in _hull_prims():
+		if prim.damage > stage:
+			continue
+		var posed: ArtPrim = prim.moved(by)
+		if prim.damage > 0:
+			found.append([null, posed])
+		elif posed != prim:
+			found.append([prim, null if posed.hidden else posed])
+	return found
+
+
+## Every valid hull primitive, also those that appear at a damage stage, in the model's order.
+func _hull_prims() -> Array[ArtPrim]:
+	var found: Array[ArtPrim] = []
+	for line: String in prims:
+		var prim: ArtPrim = ArtPrim.parse(line)
+		if prim != null and prim.part == &"hull":
 			found.append(prim)
 	return found
 
@@ -195,7 +260,7 @@ func directions(part: StringName) -> Array[int]:
 	var count: int = (
 		HULL_DIRECTIONS.get(category, 1)
 		if part in [&"hull", SHADOW] or part in POSE_PARTS
-		else TURNING_DIRECTIONS
+		else (1 if part in DAMAGE_PARTS else TURNING_DIRECTIONS)
 	)
 	var found: Array[int] = []
 	for i: int in count:
@@ -214,6 +279,10 @@ func problems() -> PackedStringArray:
 		var prim: ArtPrim = ArtPrim.parse(line)
 		if prim == null or not ArtPalette.has_material(faction, prim.material):
 			found.append("%s: not a primitive or an unknown material: %s" % [art_id, line])
+		elif prim.damage > 0 and (prim.part != &"hull" or category != &"bld"):
+			found.append(
+				"%s: damage= is for the hull primitives of a building: %s" % [art_id, line]
+			)
 		elif prim.group != &"" and prim.part in [&"turret", &"head"]:
 			found.append(
 				"%s: group= is for hull and anim primitives, which poses move: %s" % [art_id, line]
@@ -234,7 +303,9 @@ func _pose_problems() -> PackedStringArray:
 		var move: ArtMove = ArtMove.parse(line)
 		var words: PackedStringArray = line.split(" ", false)
 		var header: bool = words.size() == 2 and StringName(words[0]) in POSE_PARTS
-		if move != null:
+		if move != null and move.part in DAMAGE_PARTS:
+			found.append_array(_damage_problems(move, line))
+		elif move != null:
 			if move.frame >= pose_frames(move.part) or not _groups(move.part).has(move.group):
 				found.append("%s: no such frame or group: %s" % [art_id, line])
 		elif (
@@ -260,8 +331,29 @@ func _pose_problems() -> PackedStringArray:
 		found.append("%s: anim_ms is above 0 with an anim pose, and 0 without" % art_id)
 	if emitter_list().size() != emitters.size():
 		found.append("%s: an emitter is a kind of %s and three numbers" % [art_id, EMITTER_KINDS])
+	if scar_milli < 0:
+		found.append("%s: scar_milli is 0 or above" % art_id)
 	if marks != &"" and (marks not in MARKS or category != &"veh"):
 		found.append("%s: marks are tracks or wheels, of a vehicle" % art_id)
+	return found
+
+
+## What is wrong with a move of a damage pose: not a building, not frame 0, not a group of the hull,
+## or a group that holds the moving element (an `anim` group or the group `mount`), which must stay
+## seated (ADR 0028 section 3).
+func _damage_problems(move: ArtMove, line: String) -> PackedStringArray:
+	var found: PackedStringArray = PackedStringArray()
+	if category != &"bld" or move.frame != 0:
+		found.append("%s: a damage pose is a building's, frame 0: %s" % [art_id, line])
+	var hull_groups: PackedStringArray = PackedStringArray()
+	for prim: ArtPrim in _hull_prims():
+		hull_groups.append(prim.group)
+	if not hull_groups.has(move.group):
+		found.append("%s: no such hull group: %s" % [art_id, line])
+	elif move.group == SEATED_GROUP or _groups(ArtPrim.ANIM).has(move.group):
+		found.append(
+			"%s: a damage move may not touch the moving element or mount: %s" % [art_id, line]
+		)
 	return found
 
 

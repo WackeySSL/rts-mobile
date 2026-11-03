@@ -3,13 +3,15 @@ extends RefCounted
 ## One primitive of an `ArtModel` (ADR 0023 section 5), parsed from one line of its `prims`:
 ##
 ##   <shape> <part> <material> <cx> <cy> <z0> <sx> <sy> <sz> [sides=N] [taper=T] [slope=S] [axis=A]
-##                                                          [group=NAME]
+##                                                          [group=NAME] [damage=K]
 ##
 ## Lengths are tiles in the model's frame (a unit faces +x; a building's origin is its footprint's
 ## centre). `cx cy` is the centre on the ground, `z0` the bottom, `sx sy sz` the extent along x, y
 ## and z. Shapes: `box`; `wedge`, a box whose top slopes down towards +x by `slope` (default 1);
 ## `prism`, a ring of `sides` (default 12, width across the flats) that `taper` scales at the top
 ## and `axis` (x, y or z, default z) lays along its length (sx, sy or sz); `sphere` of diameter sx.
+## `damage=K` (1 or 2, a hull primitive of a building) draws the primitive only from damage stage K
+## on, so the intact picture has none of them (ADR 0028 section 3).
 ## `group` names the pose group the primitive belongs to (ADR 0027 section 4): a pose moves the
 ## primitives of a group together, see `ArtMove`. `moved` returns the primitive as a pose frame
 ## places it, which `aabb`, `ArtMesh.faces` and `ArtRender` all read.
@@ -34,6 +36,9 @@ var taper: float = 1.0
 var slope: float = 0.0
 var axis: int = 2
 var group: StringName = &""
+var damage: int = 0  ## The stage it appears from; 0 is always drawn.
+var hidden: bool = false  ## A `hide` move of a damage pose: not drawn.
+var char_percent: float = 0.0  ## A `char` move: faces mixed this far towards the char colour.
 var line: String = ""  ## What it was parsed from, which `moved` parses again.
 var moves: Array[ArtMove] = []  ## Applied in order after the rest placement; see `moved`.
 
@@ -94,6 +99,10 @@ func moved(by: Array[ArtMove]) -> ArtPrim:
 		return self
 	var copy: ArtPrim = ArtPrim.parse(line)
 	copy.moves = mine
+	for move: ArtMove in mine:
+		copy.hidden = copy.hidden or move.kind == &"hide"
+		if move.kind == &"char":
+			copy.char_percent = maxf(copy.char_percent, move.char_percent)
 	return copy
 
 
@@ -148,6 +157,9 @@ func _set_option(word: String) -> bool:
 		"group":
 			group = StringName(pair[1])
 			allowed = pair[1].is_valid_identifier()
+		"damage":
+			damage = int(value)
+			allowed = pair[1].is_valid_int() and damage >= 1 and damage <= 2
 		"taper":
 			taper = value
 			allowed = taper > 0.0 and shape != &"sphere"
