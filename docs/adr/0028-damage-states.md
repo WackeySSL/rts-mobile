@@ -1,7 +1,10 @@
 # ADR 0028: Damage states of buildings and vehicles (view and art only)
 
 Status: accepted 2026-11-03 (Michael's answers: 1 A, 2 A; see "Questions for Michael"). Written on
-`main` at 64f0402 (P141 merged; P145 `AirFx` in review on `claude/p145-air-fx` at a803e2f). Plan: `docs/plans/2026-11-03-damage-states.md`
+`main` at 64f0402 (P141 merged; P145 `AirFx` in review on `claude/p145-air-fx` at a803e2f).
+Revised the same day before merge, after the review lens: the neutral sheet moved out of the
+generated tree (§4), one write budget for both layers (§8), the review's smaller points (§2, §3,
+§4, §6); no answer of Michael's changes. Plan: `docs/plans/2026-11-03-damage-states.md`
 (rows P155-P162 and the reworked P148; P155 is this ADR and plan). On acceptance the lead's P26ar
 writes the dated notes in ADR 0027 §3, §4 and §8, ADR 0023 §2 and §5 and the unit-life plan's P148
 row (not done here: another lane edits those files today). It amends ADR 0027 §3 (the damage quota
@@ -65,8 +68,8 @@ golden hash changes.
    in a damage ring of 64 slots of its own.
 7. **Reduced effects** keep every stage picture, the overlays, the damage smoke and the fire; they
    drop the sparks.
-8. **Budget:** no new draw call; stage changes are rare and capped per frame; the page stays at most
-   3584.
+8. **Budget:** no new draw call; stage writes share one budget of 60 a frame (20 buildings, 40
+   vehicles); the page stays at most 3584.
 
 ## Decision
 
@@ -99,7 +102,13 @@ golden hash changes.
   keeps its stage; hp only falls, so the newest snapshot's stage is the one to show). Buildings: in
   `BuildingLayer`'s `ticked` handler (every publish emits `ticked`, also each tick of a frame that
   plays several), over its entries (at most about 60), so the remembered stage of §5 is the one of
-  the last tick the building was shown. A changed stage is queued and applied in the frame (§8).
+  the last tick the building was shown. That walk calls `_sync()` first: after a death the rows
+  compact and an entry's `row` is stale until the merge has run. A changed stage is queued and
+  applied in the frame (§8).
+- **Applied stage.** Each building entry and each rig keeps the stage its sprites show. A stage is
+  applied only to a shown building or a visible rig; a building that is shown again, a rig that
+  turns visible and a rig dressed for a new row (out of the pool or new) compare their applied stage
+  with the row's and queue the difference, so nothing keeps a stale stage.
 
 ### 3. Building stages: generated top patches
 - **How the generator makes them** (art-director, `tools/artgen/`). A model gains damage poses
@@ -128,8 +137,10 @@ golden hash changes.
   A building's node, sort key, `rise`, `frame_box`, pick shape and `bar_lift_px` keep their intact
   values, so a tap, a bar and the sort do not move with the stage.
 - **Why patches, not whole variants** (estimates, a replica of `IsoAtlas.planned_page`, tallest-first
-  shelves with the 2 px gutter, over the committed sheets; it gives today's 3266, 2698 and 2894
-  exactly; P158's page test measures the real page):
+  shelves with the 2 px gutter, over the committed sheets; it gives today's pinned 3266 and 2894
+  exactly, and for the Derrick mirror 2698, the value the test names when no player wears the key
+  triad, against the pinned 2702 with it; the reviewer's own replica gives 3528 to 3531 for the
+  30 % row; P158's page test measures the real page):
 
   | Building pictures added (both factions) | Cross-faction page | Fits 3584? |
   | --- | --- | --- |
@@ -153,7 +164,8 @@ golden hash changes.
   page test (≤ 3584) is the arbiter, not a per-building percentage.
 - **Fallback, in order, if the measured page passes 3584:** (a) tighter patches (lower damage moved
   up, crops to ink); (b) stage 1 by the neutral scar overlays of §4 placed at the building's `damage`
-  points, and only stage 2 as a patch of up to half the body (3418 estimated). Never a lower bake
+  points (so P159 then also waits for P160's sheet), and only stage 2 as a patch of up to half the
+  body (3418 estimated). Never a lower bake
   scale, a second page or the 512 rows above 3584 that ADR 0027 §4 keeps for later types.
 - **The `anim` part keeps running at both stages, at its rate.** A held loop already means "site or
   blackout" (ADR 0027 §6, P144); a radar that stops at stage 2 would read as switched off. A slower
@@ -170,11 +182,25 @@ golden hash changes.
   sorts with its vehicle, so it is a sprite in `WorldSort`; a sprite of another texture there splits
   the one batch at every damaged vehicle. Drawing it in `AirFx` (z 25) instead would put a tank's
   scorch over a building in front of it. So the overlays are a **neutral sheet**: hand-written SVG
-  (CLAUDE.md Legal: authored in this repo, no outside art) in `assets/art/iso/neutral/dmg/`, with its
-  sheet `assets/art/iso/neutral/dmg/damage_sheet.tres` (`faction` `neutral`), which `IsoAtlas` bakes
-  for every match once. It has no key colour, so each frame is one slot shared by all players
-  (`_collect_sheet`'s rule). Estimated page cost: 0 px (its eight slots of up to 64 x 48 px fit
-  the shelves' free ends).
+  (CLAUDE.md Legal: authored in this repo, no outside art) baked onto the page in every match.
+- **Where the files are: outside the generated tree.** Everything under `assets/art/iso/` is
+  generator output with its marker (`tests/art/test_artgen.gd` checks every `.svg` and `.tres`
+  there), and `IsoAtlas.load_sheets()` reads only the generated `index.tres` (28 sheets, pinned by
+  `test_artgen_sheets.gd`). So the overlays live with the other hand-written art, in
+  `assets/art/svg/damage/` (`test_art_assets.gd`'s hand-drawn rules apply to them), each SVG with a
+  "Keep File" import (`importer="keep"`, as STYLE.md's "Files" asks of every frame the bake reads,
+  so the export carries the SVG text), beside a hand-written sheet
+  `assets/art/svg/damage/damage_sheet.tres` (`IsoSheetDef`, `faction` `neutral`, category `dmg`).
+  `IsoSheetDef` gains `root` (P156): empty is today's `assets/art/iso/<faction>/<category>/`; set,
+  it is the folder the sheet's frames are in, so `path()` finds the neutral frames with no second
+  path scheme. The bake (P157) loads the sheet from one fixed path (`IsoAtlas.NEUTRAL_SHEET`), not
+  through the index; `WorldSort.bake` adds it after its art-id filter, for every scenario, and after
+  `_player_arts` (whose faction lookup reads the sheets: `neutral` is no player's faction);
+  `IsoAtlas._collect` collects a `neutral` sheet for every player. It has no key colour, so each
+  frame is one slot shared by all players (`_collect_sheet`'s rule). Estimated page cost: 0 px (its
+  eight slots of up to 64 x 48 px fit the shelves' free ends). **Rejected:** keeping it under
+  `assets/art/iso/neutral/` with an exemption in the generated-file test (a hand-written island in a
+  tree whose rule is "generated, never edited").
 - **The sprites** (two looks each, a frame of the part, picked by `LifeClock.mix(id, salt)`):
   - `scar1`: a cluster of soot smudges and scratches on a top face, near-black at partial alpha;
   - `scar2`: a larger char patch with a torn edge, bare-metal scratches and a thin ember seam
@@ -195,9 +221,10 @@ golden hash changes.
   `scar_milli` scales the scar to the hull's top (1000 = the battle tank). The positions are written
   only when the hull frame changes (§8).
 - **No tint.** A darker hull by `modulate` splits the batch at every damaged vehicle (up to `2k + 1`
-  calls, ADR 0023 §2); a darkened copy of each hull frame, even at half resolution, costs about
-  268 page rows (3534 alone; 3656 to 3768 beside any of §3's building pictures, so it does not fit
-  with them); a shader is a material per sprite. The burnt look is the scar, the char and the
+  calls, ADR 0023 §2); a darkened copy of each hull and turret frame, even at half resolution,
+  costs about 268 page rows (3534 alone; 3656 to 3768 beside any of §3's building pictures), and of
+  the hull frames alone about 173 (3439 alone; 3596 to 3660 beside them), so neither fits with the
+  buildings' pictures; a shader is a material per sprite. The burnt look is the scar, the char and the
   smoke.
 - **Originality** (CLAUDE.md Legal, ADR 0023 §13): every picture is drawn here from our own models
   and our own fx sheets; nothing copies another game's damaged frames, burning-wreck sprites, its
@@ -214,7 +241,9 @@ golden hash changes.
   the local player changes. An id it has no entry for is stage 0.
 - **Ghosts:** `GhostMemoryLayer` (a new `building_layer` export, one line in `main.tscn`) draws a
   record at the remembered stage: the trimmed body and a `Damage` child per ghost sprite (pooled with
-  the sprite, as `BuildingAnims.dress_ghost` does the `Anim`), dim like the rest. It redraws on the
+  the sprite, as `BuildingAnims.dress_ghost` does the `Anim`), dim like the rest. The `Damage`
+  child comes before the `Anim` (it is drawn under the moving element), and `dress_ghost` today
+  takes `get_child(0)` as the `Anim`, so P159 makes it find its child by name. It redraws on the
   fog version, as today: a building leaves sight in the tick the fog moves, and its stage of that
   tick is already noted. A ghost has no smoke, fire or sparks (ADR 0027 §6: no life on a ghost).
 - **Why it is honest:** a stage changes only from what the player saw; the ghost of a building that
@@ -234,6 +263,14 @@ golden hash changes.
   as `AirFx`'s emitters do; a vehicle's puff is born at the rig's drawn point and stays in the world,
   so a moving vehicle trails smoke. Damage smoke goes on in a blackout (power does not put a fire
   out); a site never smokes.
+- **Accepted draw order:** `AirFx` is at z 25, so a vehicle's flame, smoke and sparks draw over a
+  building that stands in front of the vehicle. §4 rejects `AirFx` for the scar, and the difference
+  is time: a scar is a mark on the hull that stays as long as the damage, so over a building in
+  front it would float there for minutes; a flame is a puff of at most 0.7 s that rises off the hull
+  into the air, like the stack smoke ADR 0027 §3 accepts over units in front of a building, and a
+  fire seen over a roof reads as a fire behind it. The vehicle is shown, so it reveals nothing.
+  Putting the flame on the hull instead would need a sprite in `WorldSort` with frame writes for its
+  flicker; rejected for the writes.
 - **Who sees it:** a source that is shown in that tick (`BuildingLayer.is_shown`; `UnitLayer.is_shown`
   through a new `unit_layer` export on `LifeFx`) and inside the view rect grown by a tile. A puff lives
   out its time.
@@ -254,13 +291,39 @@ golden hash changes.
 - **Draw calls: none new.** Patches, trimmed bodies and overlays are regions of the sorted world's
   page (one batch); the ghosts' patches are in the ghost layer (one texture, one dim); damage puffs
   are in `AirFx`'s one `_draw`. ADR 0027's forecast stays 16 (about 22 in the worst moment).
-- **Writes.** A stage change is a building's up to 5 writes (the body's region and offset, the
-  patch's region, offset and visibility) or a vehicle's up to 6 (the scar's region, visibility and position, the
-  loose part's with its flip), at most twice per row per match. A rupture can push 40 rows over a
-  line in one tick, so stage changes are applied at most `damage_changes_per_frame` (12) rows per
-  frame, oldest first; the rest follow in the next frames (a 40-row burst takes 4 frames, about
-  67 ms). A damaged vehicle whose hull frame changes adds up to 3 writes (two positions, a flip). The
-  writes count in `life_writes` and stay inside ADR 0027 §9's 60 per frame on average and 150 at most.
+- **What a change costs** (sprite writes, counted in `life_writes`):
+
+  | Change | Writes |
+  | --- | --- |
+  | building 0 → 1, 0 → 2 | 5: the body's region and offset, the patch's region, offset and visibility |
+  | building 1 → 2 | 4: the body's region and offset, the patch's region and offset |
+  | vehicle 0 → 1 | 3: the scar's region, visibility and position |
+  | vehicle 1 → 2 | 5: the scar's region; the loose part's region, visibility, position and flip |
+  | vehicle 0 → 2 | 7 |
+  | a damaged vehicle's hull frame changes (follow) | 1 at stage 1, 2 at stage 2 (the positions), +1 for the flip only when the hang point changes side (twice a full turn) |
+
+- **One write budget for both layers:** `damage_writes_per_frame` (60) per frame, of which
+  `damage_building_writes` (20) are `BuildingLayer`'s and the rest (40) `UnitLayer`'s. It is a fixed
+  split, not a counter the two layers share, so the result does not depend on which layer's
+  `_process` runs first. In each layer the follow writes go first and are never deferred (an overlay
+  stays on its hull); then the queued stage changes are applied oldest first while the next one's
+  cost fits what is left of the layer's share, and the rest wait for the next frame. A rupture that
+  pushes 40 buildings and vehicles over a line in one tick, or P162's crafted snapshot that drops
+  100 vehicles to 40 % at once (300 writes), is spread over frames: 100 vehicle changes at 3 writes,
+  40 a frame, take 8 frames, about 0.13 s.
+- **The worst frame against ADR 0027 §9's 150:** buildings at most 20; vehicles at most 40 while the
+  follow writes fit in their share, so the damage states add at most 60. The other life rows add at
+  most about 47 in a full fight (the unit-life plan's table: recoil about 15, rumble 20, walk 10,
+  animations 2), so about 107. The follow writes are the one part that is not capped: they come with
+  a hull's own frame change, which happens at most every other frame for a turning vehicle (a turn
+  rate of 12 rad/s at 60 fps against 22.5° frame steps), but a group order turns a whole group in
+  step. A group of 30 damaged vehicles at stage 2 turning in step adds 60 in the frames where their
+  frames change: 20 + 60 + 47 = 127; 40 such vehicles reach 147. P162 pins the worst frame on the
+  base arena with every vehicle damaged and turned in step; past 150, `damage_loose` (a flag in
+  `data/life_settings.tres`, on) drops the loose part, which halves the follow writes. A layer whose
+  share the follow writes use up applies no stage change in that frame; the change waits (a delay,
+  never a lost stage). The average stays far under 60: a stage changes at most twice per row per
+  match.
 - **Nodes:** `Damage` per building and `Scar` and `Loose` per vehicle rig are made with the building
   or the rig, so node counts stay flat after warm-up. A damaged vehicle draws one or two more quads
   in the sorted batch; P162 counts them, P147's phone card judges the cost.
@@ -272,7 +335,8 @@ golden hash changes.
   `test_iso_atlas_budget.gd`; P158 and P160 update its `TODAY_*` values.
 
 ### 9. Numbers in data
-`data/life_settings.tres` gains `damage_stage_percent` ([50, 25]), `damage_changes_per_frame` (12),
+`data/life_settings.tres` gains `damage_stage_percent` ([50, 25]), `damage_writes_per_frame` (60),
+`damage_building_writes` (20; a data test holds it above 0 and under the total), `damage_loose` (on),
 and for P148 `damage_emit_ms` and `damage_life_ms` per kind (`soot`, `fire`, `spark`, `exhaust`, a
 building's and a vehicle's), `damage_vehicle_fire_scale` (0.6) and `damage_slots` (64). The art's
 numbers (`cuts`, `scar_milli`, the `damage` and `hang` points) are sheet fields the generator writes.

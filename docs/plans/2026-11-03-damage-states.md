@@ -21,15 +21,17 @@ wrecks stay a separate row), sound, camera shake, any sim rule, state or event.
 
 ## Affected modules
 - `tools/artgen/`: `ArtModel.gd`, `ArtMove.gd`, `ArtGen.gd`, `ArtSheet.gd`, `ArtRender.gd`,
-  `ArtPalette.gd` (the char colour), `IsoSheetDef.gd` (`cuts`, `scar_milli`); the `damage` and `hang`
-  emitter kinds (P156).
+  `ArtPalette.gd` (the char colour), `IsoSheetDef.gd` (`cuts`, `scar_milli`, `root`); the `damage`
+  and `hang` emitter kinds (P156).
 - Art: `assets/art/models/*/*.tres` (damage poses, `damage` and `hang` points), generated
   `<id>_dmg1.svg` and `<id>_dmg2.svg` under `assets/art/iso/*/bld/`, new hand-written
-  `assets/art/iso/neutral/dmg/*.svg` and `damage_sheet.tres`, `assets/art/STYLE.md` ("Damage stages"
-  under Generated art, "Damage overlays").
-- `game/view/`: new `BuildingDamage.gd`, `VehicleDamage.gd`; changed `IsoAtlas.gd` (the neutral
-  sheet), `BuildingLayer.gd`, `GhostMemoryLayer.gd`, `UnitLayer.gd` (calls only), `AirFx.gd`,
-  `LifeFx.gd` (one export), `LifeSettings.gd`; `art_gallery_build.gd`, `art_gallery_units.gd`.
+  `assets/art/svg/damage/*.svg` (each with a "Keep File" `.import`) and the hand-written sheet
+  `assets/art/svg/damage/damage_sheet.tres`, outside the generated tree (ADR 0028 §4);
+  `assets/art/STYLE.md` ("Damage stages" under Generated art, "Damage overlays").
+- `game/view/`: new `BuildingDamage.gd`, `VehicleDamage.gd`; changed `IsoAtlas.gd` and
+  `WorldSort.gd` (the neutral sheet), `BuildingLayer.gd`, `BuildingAnims.gd` (`dress_ghost` finds
+  its `Anim` by name), `GhostMemoryLayer.gd`, `UnitLayer.gd` (calls only), `AirFx.gd`, `LifeFx.gd`
+  (one export), `LifeSettings.gd`; `art_gallery_build.gd`, `art_gallery_units.gd`.
 - `data/life_settings.tres` (new fields); `scenes/main.tscn` (two exports wired: P159, P148).
 - Tests: `tests/art/` (generator, patches, overlays), `tests/view/` (stages, ghosts, overlays, the
   damage ring, the page test's `TODAY_*`), `tests/view/test_life_budget.gd` (P162).
@@ -37,12 +39,14 @@ wrecks stay a separate row), sound, camera shake, any sim rule, state or event.
 
 ## Command and data changes
 - No Command, event, state column or hash. The sim is untouched (ADR 0028 §1).
-- `data/life_settings.tres` (`LifeSettings`, view-only): `damage_stage_percent` ([50, 25]) and
-  `damage_changes_per_frame` (12) from P159; P148 appends `damage_emit_ms`, `damage_life_ms`,
+- `data/life_settings.tres` (`LifeSettings`, view-only): `damage_stage_percent` ([50, 25]), the one
+  write budget `damage_writes_per_frame` (60) and its building share `damage_building_writes` (20)
+  from P159; `damage_loose` (on) from P161; P148 appends `damage_emit_ms`, `damage_life_ms`,
   `damage_vehicle_fire_scale`, `damage_slots` (64).
 - Sheet fields the generator writes: `cuts` (buildings), `scar_milli` (vehicles), emitter kinds
   `damage` (buildings: two points; vehicles: one per hull frame) and `hang` (vehicles, one per hull
-  frame).
+  frame). `IsoSheetDef.root` (empty for every generated sheet) is set only in the hand-written
+  neutral sheet.
 
 ## Rows
 Size = production lines (tests, fixtures, models, generated frames and SVG not counted).
@@ -52,12 +56,12 @@ Size = production lines (tests, fixtures, models, generated frames and SVG not c
 | --- | --- | --- | --- | --- | --- | --- |
 | P155 | - | architect | docs: this plan and ADR 0028 (accepted 2026-11-03); done on `claude/damage-states-plan` | 0 | - | - |
 | P26ar | - | lead | docs: ADR 0028 on acceptance: Michael's answers in it, the dated notes in ADR 0027 §3, §4, §8, ADR 0023 §2, §5 and the unit-life plan's P148 row | 0 | P155 | - |
-| P156 | A | art-director | art: generator v4, damage poses (`dmg1`, `dmg2`: `shift`, `turn`, `hide`, `char`, `damage=<k>` primitives), the geometric cut row, the patch crop with its overlap, `cuts`, `scar_milli`, the `damage` and `hang` kinds; no model gets them here, today's files byte-identical (at once) | 220 | P26ar | - |
-| P157 | V2 | touch-ux-dev | view: the neutral sheet in the bake (`faction` `neutral`, collected for every match, shared slots) and its bases in `WorldSort`; the page test counts it (at once) | 60 | P26ar | - |
+| P156 | A | art-director | art: generator v4, damage poses (`dmg1`, `dmg2`: `shift`, `turn`, `hide`, `char`, `damage=<k>` primitives), the geometric cut row, the patch crop with its overlap, `cuts`, `scar_milli`, the `damage` and `hang` kinds, `IsoSheetDef.root`; no model gets them here, today's files byte-identical (at once) | 230 | P26ar | - |
+| P157 | V2 | touch-ux-dev | view: the neutral sheet in the bake: loaded from `IsoAtlas.NEUTRAL_SHEET` (not the index), added by `WorldSort.bake` after its art-id filter and after `_player_arts`, collected for every player as shared slots, its bases resolved once per bake; the page test counts it | 70 | P156 | - |
 | P158 | A | art-director | art: `dmg1` and `dmg2` of the sixteen buildings, two `damage` points each, the gallery's stage view, STYLE.md "Damage stages", the page test's `TODAY_*` | models + 40 | P156 | - |
-| P159 | V1 | touch-ux-dev | view: building stages (`BuildingDamage`, the trimmed body and `Damage` child, the stage queue), the remembered stage, ghosts at their stage (`GhostMemoryLayer.building_layer`, `main.tscn`), the `LifeSettings` fields; HOW_TO_PLAY Buildings | 220 | P158 | - |
-| P160 | A2 | art-director | art: the overlays (`scar1`, `scar2`, `loose`) in `assets/art/iso/neutral/dmg/`, their sheet, STYLE.md "Damage overlays"; `damage`, `hang` and `scar_milli` on the eight vehicle models; the gallery | SVG + models + 30 | P156, P157 | - |
-| P161 | V1 | touch-ux-dev | view: vehicle overlays (`VehicleDamage`, `Scar` and `Loose` children of `Hull`, the rig kind bit, positions per hull frame, the pool reset); HOW_TO_PLAY Units | 180 | P159, P160 | - |
+| P159 | V1 | touch-ux-dev | view: building stages (`BuildingDamage`, the trimmed body and `Damage` child, the stage queue in the buildings' write share), the remembered stage, ghosts at their stage (`GhostMemoryLayer.building_layer`, `main.tscn`, `BuildingAnims.dress_ghost` by name), the `LifeSettings` fields; HOW_TO_PLAY Buildings | 230 | P158; also P160 if P158 took ADR 0028 §3's fallback (b) | - |
+| P160 | A2 | art-director | art: the hand-written overlays (`scar1`, `scar2`, `loose`) in `assets/art/svg/damage/` with "Keep File" imports, their hand-written sheet `damage_sheet.tres` there (`root` set), STYLE.md "Damage overlays"; `damage`, `hang` and `scar_milli` on the eight vehicle models; the gallery | SVG + models + 30 | P156, P157 | - |
+| P161 | V1 | touch-ux-dev | view: vehicle overlays (`VehicleDamage`, `Scar` and `Loose` children of `Hull`, the rig kind bit, positions per hull frame, the pool reset, the stage queue in the vehicles' write share, `damage_loose`); HOW_TO_PLAY Units | 190 | P159, P160 | - |
 | P148 | V3 | touch-ux-dev | view (reworked, ADR 0028 §6): `AirFx`'s damage ring (64), soot, fire and sparks by stage from the `damage` points of buildings and vehicles, `LifeFx.unit_layer`; HOW_TO_PLAY Buildings and Units clauses | 200 | P145, P159, P160 | - |
 | P162 | H | qa-engineer | test: the damage budget on the base arena (`perf_bases.tres`), in `test_life_budget.gd` | 0 | P146, P148, P161 | - |
 
@@ -73,14 +77,17 @@ for its art (pick order, they share `AirFx.gd`).
 ## Lanes, files and order
 - **A** (art-director): P156 → P158. Owns `tools/artgen/`, the building models,
   `art_gallery_build.gd`. Today's generated files stay byte-identical in P156 (staleness test).
-- **A2** (art-director): P160. Owns `assets/art/iso/neutral/`, the vehicle models' damage tags,
+- **A2** (art-director): P160. Owns `assets/art/svg/damage/`, the vehicle models' damage tags,
   `art_gallery_units.gd`. It waits for P157, so no sheet is committed that the bake cannot read (the
-  pitfall of ADR 0027 §4), and for P156, whose validation knows the `damage` and `hang` kinds. P158
+  pitfall of ADR 0027 §4), and for P156, whose validation knows the `damage` and `hang` kinds and
+  whose `IsoSheetDef` has `root`. Nothing it commits is under `assets/art/iso/`, so
+  `test_artgen.gd`'s generated-file check and the index's 28 sheets stay as they are. P158
   and P160 both regenerate sheets, of different models: no file in common but the page test's
   `TODAY_*` and STYLE.md's change log (the second to merge rebases).
-- **V2** (touch-ux-dev): P157. Owns `IsoAtlas.gd`, `WorldSort.gd`.
-- **V1** (touch-ux-dev): P159 → P161. Owns `BuildingLayer.gd`, `GhostMemoryLayer.gd`, `UnitLayer.gd`,
-  `BuildingDamage.gd`, `VehicleDamage.gd`, `LifeSettings.gd` and `data/life_settings.tres` (P148
+- **V2** (touch-ux-dev): P157, after P156 (it reads `IsoSheetDef.root`). Owns `IsoAtlas.gd`,
+  `WorldSort.gd`.
+- **V1** (touch-ux-dev): P159 → P161. Owns `BuildingLayer.gd`, `BuildingAnims.gd`,
+  `GhostMemoryLayer.gd`, `UnitLayer.gd`, `BuildingDamage.gd`, `VehicleDamage.gd`, `LifeSettings.gd` and `data/life_settings.tres` (P148
   appends its fields after P159). `UnitLayer.gd` is 916 lines: P161 adds calls only (at most about
   30 lines); the logic lives in `VehicleDamage.gd`.
 - **V3** (touch-ux-dev): P148 (with the unit-life plan's P149, P150 in pick order). Owns `AirFx.gd`,
@@ -91,9 +98,10 @@ for its art (pick order, they share `AirFx.gd`).
   checks the combined tree once. `docs/HOW_TO_PLAY.md`: P159 and P148 edit the Buildings rows, P161
   and P148 the Units row "Watch a unit drive or fight": P148 rebases on whichever merged first.
   `assets/art/STYLE.md`: P156, P158, P160 (different sections, one change log).
-- **Start at once after P26ar:** P156 and P157. Then P158 (after P156), P160 (after P156 and P157),
-  P159 (after P158), P161 and P148 (after P159 and P160), P162.
-- **Path:** P156 → P158 → P159 → P161 → P162 (five slots; P148 runs beside P161).
+- **Start at once after P26ar:** P156. Then P157 and P158 (after P156), P160 (after P157), P159
+  (after P158; and after P160 if P158 took fallback (b)), P161 and P148 (after P159 and P160), P162.
+- **Path:** P156 → P158 → P159 → P161 → P162 (five slots); the vehicle chain P156 → P157 → P160 →
+  P161 is as long, so P161 waits for whichever ends last. P148 runs beside P161.
 
 ## Acceptance per row
 Every row: its suite passes alone, gdformat and gdlint are clean, no `Time`, `randi`, `randf`,
@@ -110,13 +118,19 @@ the PR. `mix`-driven tests assert exact counts for fixed id sets.
   crafted case shows no pixel below it differs; the patch ends 4 art px under the cut and is cropped
   to its ink; `cuts` and the patch anchors round-trip in the sheet; a damage move of an `anim` group
   or a `mount` primitive fails the model with its line; the `damage` and `hang` kinds validate (one
-  `hang` and one `damage` per hull frame for a vehicle); every committed frame and sheet is
-  byte-identical (staleness test); the key band rules hold for charred faces.
-- **P157** A sheet of faction `neutral` is collected for every player of every match and each frame
-  with no key colour is one slot (a test with two triads finds one region for both players);
-  `WorldSort` resolves its bases once per bake (no string key per change, the P137 hook); a frame of
-  it that is missing logs no error unless the sheet lists it; the page tests of the cross-faction and
-  both mirror matches include it; `atlas_bake_ms` reported in the PR.
+  `hang` and one `damage` per hull frame for a vehicle); `IsoSheetDef.root` empty gives today's
+  paths for every committed sheet and set gives `<root>/<id>_<part>[_d<NN>][_f<K>].svg`; every
+  committed frame and sheet is byte-identical (staleness test); the key band rules hold for charred
+  faces.
+- **P157** `IsoAtlas.load_sheets()` is unchanged (the index only); the neutral sheet is loaded from
+  `IsoAtlas.NEUTRAL_SHEET`, and while that file does not exist yet (before P160) the bake is today's,
+  with no error; `WorldSort.bake` adds it after its art-id filter for every scenario (a scenario
+  with no vehicle bakes it too) and after `_player_arts`, so a scenario with no factions still finds
+  its players' factions from the type sheets alone (a test); a sheet of faction `neutral` is
+  collected for every player and each frame with no key colour is one slot (two triads, one region);
+  `WorldSort` resolves its bases once per bake (no string key per change, the P137 hook); the page
+  tests of the cross-faction and both mirror matches include it (with a crafted neutral sheet until
+  P160); `atlas_bake_ms` reported in the PR.
 - **P158** Each of the sixteen buildings has `dmg1` and `dmg2` from its model's poses (none
   hand-edited), damage in the top part of the picture (the examples: broken roof edges, missing
   panels, tilted or fallen chimneys, masts and stacks, scorch), the `anim` element's group and mount
@@ -128,7 +142,10 @@ the PR. `mix`-driven tests assert exact counts for fixed id sets.
 - **P160** The neutral overlays (`scar1` 2 frames, `scar2` 2, `loose` 4: two skirt plates for
   `tracks`, two fenders for `wheels`) pass the hand-drawn rules (STYLE.md, no pattern or filter, no
   colour in either key band at saturation 0.30 or more, embers at hue 46° or more), hold ink inside
-  their canvas with the gutter, and are authored in this repo (CREDITS unchanged); every vehicle
+  their canvas with the gutter, and are authored in this repo (CREDITS unchanged); they and their
+  sheet are under `assets/art/svg/damage/`, each SVG with a "Keep File" import (`importer="keep"`),
+  the sheet's `root` set to that folder and `faction` `neutral`; `test_artgen.gd`'s generated-file
+  check, the 28-sheet index and `test_art_assets.gd`'s hand-drawn rules pass unchanged; every vehicle
   model has a `damage` point on its top face and a `hang` point on the camera side per hull frame and
   a `scar_milli`; the gallery shows each vehicle at stage 1 and 2 in its 16 directions; the page test
   passes and its `TODAY_*` are updated (estimate: unchanged).
@@ -140,20 +157,32 @@ the PR. `mix`-driven tests assert exact counts for fixed id sets.
   shows stage 0 whatever its hp, and a site that took hits shows its stage in the frame it is
   complete; the `Anim` keeps its frames and rate at both stages; a hidden enemy building's stage
   change writes nothing and shows when it is seen again; `last_seen_stage` is written only while the
-  enemy building is shown, in `ticked` (a frame that plays two ticks notes both), cleared on a new
-  match and on a change of the local player; a ghost shows its remembered stage (trimmed sprite and
-  `Damage` child, dim, no smoke) and an unknown id shows stage 0; at most `damage_changes_per_frame`
-  stage changes are applied in one frame (a crafted 40-building burst takes 4 frames); writes counted
-  in `life_writes`; the same snapshots give the same regions on two runs; `reduced` keeps it all.
+  enemy building is shown, in `ticked` (a frame that plays two ticks notes both), after a `_sync()`
+  (a test kills a lower row in the same tick, so the entries' rows compact: the right building is
+  noted); a building shown again applies its stage of now; the memory is cleared on a new match and
+  on a change of the local player; a ghost shows its remembered stage (trimmed sprite and `Damage`
+  child before its `Anim`, dim, no smoke), `dress_ghost` finds the `Anim` by name (a ghost with both
+  children shows the rest frame on the `Anim`, not on the patch), and an unknown id shows stage 0;
+  the stage writes cost 5 (0 → 1, 0 → 2) and 4 (1 → 2) and never pass `damage_building_writes` (20)
+  in a frame: a crafted 40-building burst at stage 1 is applied 4 a frame in 10 frames, oldest first;
+  writes counted in `life_writes`; the same snapshots give the same regions on two runs; `reduced`
+  keeps it all. Under fallback (b) the stage-1 scars come from P160's sheet at the building's
+  `damage` points (the same costs).
   HOW_TO_PLAY Buildings row (below).
 - **P161** A vehicle (any non-`INFANTRY` armour) whose hp crosses a line shows `Scar` (`scar1` or
   `scar2`, the look by `mix(id, salt)`, scaled by `scar_milli`) and at stage 2 `Loose` (the `marks`
   look), both children of `Hull`, at the sheet's `damage` and `hang` points of the hull frame shown,
-  `Loose` mirrored when its point is left of the centre; a hull frame change writes their positions
-  (at most 3 writes), a recoil rock or a drive rumble writes none to them and they move with `Hull`;
-  a squad never gets them (the rig kind bit: a squad and a tanker never share a pooled rig); a rig out
-  of the pool shows stage 0 until its unit's stage says otherwise; a hidden enemy rig's overlays are
-  hidden with it; node counts flat after warm-up (the children are made with the rig); the `WorldSort`
+  `Loose` mirrored when its point is left of the centre; a stage change costs 3 (0 → 1), 5 (1 → 2)
+  or 7 (0 → 2) writes; a hull frame change of a damaged vehicle writes 1 (stage 1) or 2 (stage 2)
+  positions, and the flip only when the hang point changes side; those follow writes are applied in
+  the frame, first, and the queued stage changes take what is left of the vehicles' share
+  (`damage_writes_per_frame` minus `damage_building_writes`, 40), oldest first, so a crafted drop of
+  100 vehicles to 40 % in one snapshot is applied in 8 frames and no frame's vehicle stage writes
+  pass 40; a recoil rock or a drive rumble writes none to them and they move with `Hull`; a squad
+  never gets them (the rig kind bit: a squad and a tanker never share a pooled rig); a rig out of the
+  pool, a new rig and a rig that turns visible apply their row's stage of now; a hidden enemy rig's
+  overlays are hidden with it and its stage changes write nothing; `damage_loose` off shows no
+  `Loose`; node counts flat after warm-up (the children are made with the rig); the `WorldSort`
   batch draws from one texture; `reduced` keeps them. HOW_TO_PLAY Units row (below).
 - **P148** `AirFx` has a damage ring of `damage_slots` (64), its own, drawn in the same `_draw` from
   the same texture; a shown, complete building at stage 1 emits `soot` from each `damage` point every
@@ -167,10 +196,15 @@ the PR. `mix`-driven tests assert exact counts for fixed id sets.
   emitters of P145 are unchanged (their tests green). HOW_TO_PLAY clauses (below).
 - **P162** On `data/scenarios/perf_bases.tres` (150 mobile rows, 28 buildings, both strikes inside
   900 ticks, so real damage happens), plus a crafted pass that sets every building and vehicle row's
-  hp to 40 % and then 20 % of its max in the snapshot (view input only): node and object counts flat
-  after warm-up; life writes at most 60 per frame on average and 150 in any frame; the damage ring
-  within 64; `WorldSort` and the ghost layer each draw from one texture; `LifeFx`'s draw items
-  unchanged in number; the page at most 3584. Pinned numbers in the PR.
+  hp to 40 % and then 20 % of its max in the snapshot (view input only), plus a pass that turns
+  every damaged vehicle in step (one group move order): node and object counts flat after warm-up;
+  the damage stage writes never above 20 (buildings) and 40 (vehicles) in a frame; all life writes at
+  most 60 per frame on average and 150 in any frame (ADR 0028 §8's worst frame: 20 + up to 60 follow
+  writes + about 47 of the other life rows, about 127 for 30 vehicles turning in step); if the
+  in-step pass passes 150, the PR reports it and the lead sets `damage_loose` off in
+  `data/life_settings.tres` (ADR 0028 §8's fallback); the damage ring within 64; `WorldSort` and the
+  ghost layer each draw from one texture; `LifeFx`'s draw items unchanged in number; the page at
+  most 3584. Pinned numbers in the PR.
 
 ## Test plan (what is proven headless)
 - **Sim untouched:** no file in `game/sim` or `native/` changes in any row; golden and checkpoint
@@ -193,13 +227,18 @@ the PR. `mix`-driven tests assert exact counts for fixed id sets.
 ## Performance estimate
 | Row | Work per frame | Writes |
 | --- | --- | --- |
-| P159 buildings | a stage check per building entry per tick (about 60 integer compares) | up to 5 per stage change, at most 12 changes per frame, twice per building per match |
+| P159 buildings | a stage check per building entry per tick (about 60 integer compares) | 4 or 5 per stage change, at most 20 a frame (the buildings' share), twice per building per match |
 | P159 ghosts | only on a ghost redraw (fog version) | a region and a child per ghost on a redraw |
-| P161 vehicles | the stage check rides on `_note_hits`' hp compare | up to 6 per stage change; up to 3 per hull frame change of a damaged vehicle |
+| P161 vehicles | the stage check rides on `_note_hits`' hp compare | 3, 5 or 7 per stage change, at most 40 a frame with the follow writes (the vehicles' share); follow: 1 or 2 per hull frame change of a damaged vehicle, +1 flip on a side change, never deferred |
 | P148 damage ring | one schedule test per damaged source in view per tick; at most 64 quads planned | 0 (quads) |
 
-About 0.05 ms per frame on average and 0.15 ms in the worst moment on the phone (GDScript's 1 to
-2 µs per touched row, an estimate the phone card judges), inside ADR 0027 §9's 0.56 ms with the
+Worst frame of writes: 20 + 40 = 60 from the damage states while the follow writes fit the
+vehicles' share, about 107 with the other life rows; a group of 30 damaged vehicles turning in step
+gives 20 + 60 + 47 = 127, 40 of them 147, against ADR 0027 §9's 150 (P162 pins it; `damage_loose`
+off is the fallback).
+
+Work: about 0.05 ms per frame on average and 0.15 ms in the worst moment on the phone (GDScript's 1
+to 2 µs per touched row, an estimate the phone card judges), inside ADR 0027 §9's 0.56 ms with the
 other life rows (about 0.3 ms). Draw calls unchanged (16, about 22 in the worst moment).
 
 ## HOW_TO_PLAY impact
@@ -229,8 +268,8 @@ look), each with its recommendation.
   where a seam would show.
 - **Canvas items.** A battle with many damaged vehicles adds up to two sprites each to the sorted
   batch; cheap on the GPU, but each is a canvas item for the renderer. P162 counts them; P147's
-  phone run decides; the fallbacks, in order, are the scar only from stage 2 and `Loose` dropped
-  under `reduced` (a row of its own, with ADR 0028 §7 amended by a dated note).
+  phone run decides; the fallback is `damage_loose` off (a `.tres` edit), then the scar only from
+  stage 2 (a row of its own, with ADR 0028 §4 amended by a dated note).
 - **Readability:** smoke and fire from many sources can drown the battle; every rate and life is in
   `data/life_settings.tres`, and the quota caps the puffs.
 - **Art effort:** sixteen damage models with two stages each are real model work (P158); blockout
