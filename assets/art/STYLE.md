@@ -1075,6 +1075,7 @@ The tints the HUD gives them (the gallery's `GLYPH_TINTS` holds the same values)
 | `glyph_credits` | #F2B705 |
 | `glyph_power`, `glyph_check`, `glyph_victory` | #30A46C |
 | `glyph_low_power`, `glyph_offline` | #F5A524 |
+| `glyph_low_power_map` | #FF8A1F |
 | `glyph_under_attack`, `glyph_cross`, `glyph_defeat`, every `glyph_reason_<reason>` | #E5484D |
 | `glyph_lock`, `glyph_draw`, `glyph_pin_off`, `glyph_alert` | #9AA5B1 |
 | `glyph_menu_open`, `glyph_pin` and the other thirteen glyphs of the corner HUD (below) | none (white) |
@@ -1129,10 +1130,10 @@ section 5 and ADR 0019 section 1), a tab icon 32 to 48 dp inside its 48 dp tab, 
 tabs at 48, the items at 64, the HUD glyphs at 48 and the map glyphs at 32 dp, and the arrow at 48;
 its Hud page shows the corner HUD's fourteen at 48, 32 and 24 dp.
 
-**Map glyphs sit on a seat (new).** The nine glyphs that are drawn over the map, the six
-`glyph_reason_<reason>`, `glyph_offline`, `glyph_construct` and `glyph_under_attack`, carry their
+**Map glyphs sit on a seat (new).** The ten glyphs that are drawn over the map, the six
+`glyph_reason_<reason>`, `glyph_offline`, `glyph_low_power_map`, `glyph_construct` and `glyph_under_attack`, carry their
 own seat in the file: #4D4D4D with a 4 px white rim inside a 3 px dark edge, and the drawing scaled
-to 0.8 into it, so that no ink touches the rim. The reasons, the offline glyph and the construction
+to 0.8 into it, so that no ink touches the rim. The reasons, the offline glyph, the low-power map glyph and the construction
 badge sit on a rounded plate (6 to 122 px, corner radius 22); the arrow, which the HUD turns, on a
 disc (radius 60) that looks the same turned. The HUD tints the seat with the glyph, so it is a dark
 red (luminance 36) or amber (53) plate with a light rim on any ground: the glyph is one badge
@@ -1143,6 +1144,8 @@ that does not fit, which has the same red, the same white band and the same #4D4
 grass, which is as bright as a red-tinted white (110 against 114), so its thin edge was all that set
 it apart. The tabs and the HUD glyphs are seen on the dark HUD panel and have no seat. The seat
 keeps the file at 79.5 % cover (the arrow 69 %), under the 82 % bound for an icon.
+
+**The low-power glyph has a map copy (new).** `glyph_low_power.svg` is the HUD glyph (the power bar and the economy pill, on the dark panel, no seat). The one over a consuming building on the map is `glyph_low_power_map.svg`, the same triangle and bolt on the offline glyph's plate, scaled 0.8 into it. Its tint is orange #FF8A1F, not the HUD amber #F5A524 that `glyph_offline` wears: a step from the amber of "warning" toward the danger red, so the two badges on one base differ in hue (38 against 28 degrees), in light (plate luminance 49 against 53, rim 161 against 174) and above all in shape (a triangle against a struck bolt). A lighter yellow (#FFD84D, plate 64) was tried and rejected: its plate is only 18 from scrub and 22 from water (83 and 86), under the 25 that a map glyph must clear. Tinted, the plate is luminance 49 and the rim 161: the plate stands 61 and 78 under the two grasses (110 and 127), 138 under sand (186) and 34 under scrub (83), and the triangle (161) stands 34 over grass_b (127), so the badge holds on every ground (on sand the dark plate carries it; the rim is 25 under it). A defence that is short of power shows the offline glyph, not this one.
 
 | File | Silhouette |
 | --- | --- |
@@ -1163,6 +1166,7 @@ keeps the file at 79.5 % cover (the arrow 69 %), under the 82 % bound for an ico
 | `glyph_credits.svg` | A short stack of three coins from the side, the top coin turned up as an ellipse with a second ring. |
 | `glyph_power.svg` | One fat zigzag lightning bolt leaning right, flat on top and pointed at the foot. |
 | `glyph_low_power.svg` | A rounded warning triangle, point up, with a dark lightning bolt in its middle. |
+| `glyph_low_power_map.svg` | The low-power glyph for the map: a white warning triangle, point up, with a dark lightning bolt cut into it, on the seat. |
 | `glyph_offline.svg` | A grey lightning bolt struck through by one thick white slash from top left to bottom right. |
 | `glyph_under_attack.svg` | A fat block arrow pointing right with a stubby tail and a wide head carrying an exclamation mark. |
 | `glyph_lock.svg` | A padlock: a wide rounded body with a keyhole under a tall rounded shackle. |
@@ -1195,7 +1199,7 @@ keeps the file at 79.5 % cover (the arrow 69 %), under the 82 % bound for an ico
 | `glyph_all_army.svg` | A soldier from the chest up under a grey half-dome helmet, in front of a small side-on tank with a sloped hull, a boxy turret and one barrel to the right. |
 | `glyph_construct.svg` | A tall straight-sided lattice mast of crossed braces on a flat foot, a long level jib across its top with a grey counterweight block at its back end and a hook hanging from the far end, on a dark rounded plate with a white rim. |
 
-The line names the symbol. Each of the nine map glyphs (the six reasons, offline, the construction
+The line names the symbol. Each of the ten map glyphs (the six reasons, offline, low power, the construction
 badge and under attack) is drawn on the seat described above, and its file header says so.
 
 Each meaning has its own shape (see "Shape as second cue"): the state of a tile is never the tint
@@ -1235,10 +1239,10 @@ more from the others and the Deselect glyph at 40 or more from the padlock, the 
 offline glyph. At 32 px they read as a flat ring cut by a slash, a ring round a square, a soldier
 before a tank, a plus, three bars, a play triangle, a ring with an arrowhead, a pole with a pennant
 at its foot, a doorway with an arrow, a phone between shake marks, two arrows meeting, a chevron,
-and a disc with a bar and a dot; the construction badge, one of the nine map glyphs, reads as a
+and a disc with a bar and a dot; the construction badge, one of the ten map glyphs, reads as a
 crane on a plate.
 
-The nine map glyphs are never seen plain on the HUD, so they are checked as they are seen: tinted
+The ten map glyphs are never seen plain on the HUD, so they are checked as they are seen: tinted
 (the construction badge is white, untinted), over
 the base colour of each terrain (grass, grass_b, sand, scrub, rock, water) and over the two areas of
 the ghost that does not fit (the wash over grass, and the hatch band over the wash). They differ
@@ -1251,7 +1255,7 @@ luminance at 32 px, the white body of the occupied glyph hardly at all (24 % on 
 seat it is 56 to 73 % (`tests/art` pins at least 50 %), on every one of those grounds; the white
 construction badge is 52 % on scrub and on water, where its dark plate (77) is hardly brighter than
 the ground (92 and 86), and 70 to 84 % on the others, and it is 52.8 or more from the nearest of the
-nine (the offline glyph) on every ground.
+ten (the offline glyph) on every ground.
 
 ## Rally flags
 Each producing tab has a rally flag (ADR 0019 section 3). Two layers share one 128x128 canvas at
@@ -2298,4 +2302,5 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-02 | v1.17 (P135, art-director, ADR 0027): the two hand-written atlases of the unit-life layers, `fx/life_atlas.svg` (nine kinds: dust, smoke, soot, steam, puff, exhaust, flare, fire, spark) and `fx/strike_atlas.svg` (twelve: the bore lance falling and rising, its trail, shadow and launch flash and ring, the light seed and its trail, the mint hexagon of the net lit and unlit, a glint and the core flash), the section "Life effects" with the region table, the net lattice, the colours (no team colour, flames hue 46 degrees or more, smoke and dust greys, mint) and the readability numbers, two catalogue rows, and the gallery's Life page. |
 | 2026-11-02 | v1.18 (P134, art-director, ADR 0027 section 4): the generator's frame axis ("The frame axis" under "Generated art": `group=`, the `anim` part, `poses`, `_f<K>` files, `frames`, `stride_milli`, `anim_ms`, `emitters` with `emitter_points`, `marks`); no model has a pose, every committed frame and sheet is as before. |
 | 2026-11-03 | v1.19 (P139, art-director, ADR 0027 sections 4 and 5): walk (4) and idle (2) poses for the four squads ("Squad poses" under "Generated art": pose groups per figure and limb, `stride_milli` 352, 352, 376 and 376, 192 new frames drawn in the standing figure's order with its light edges, `ArtRender.render`'s `rest`, `ArtModel.frame_rest`), the sorted world's cross-faction page 2682 to 3066 px (mirrors 2206 to 2524 and 2226 to 2624), the Units page of the gallery plays them; the standing frames, shadows and cards are unchanged. |
-| 2026-11-03 | v1.20 (P143, art-director, ADR 0027 sections 4 and 5): `anim` parts for eight buildings (Signal Mast 16 frames, Relay Tower 16, Wind Park 6, Turbine Hall 4, Deep Bore 4, Blackout Array 4, Grid Hub 2, Crew Hall 2), `emitters` on six building models and every vehicle, `marks` on every vehicle ("Building life (P143)" under "Generated art"), the sorted world's cross-faction page 3066 to 3266 px (mirrors 2524 to 2702 and 2624 to 2894), the Build page of the gallery plays the frames; 40 existing generated files changed, 108 are new, 1361 are byte for byte as before. |
+| 2026-11-03 | v1.20 (art-director, plan row P89): `glyph_low_power_map.svg`, the seated map copy of the low-power glyph (offline plate, triangle and bolt at 0.8), tinted #FF8A1F, the tenth map glyph; "Icons and glyphs" (tint table, "Map glyphs sit on a seat", catalogue) brought up to date. |
+| 2026-11-03 | v1.21 (P143, art-director, ADR 0027 sections 4 and 5): `anim` parts for eight buildings (Signal Mast 16 frames, Relay Tower 16, Wind Park 6, Turbine Hall 4, Deep Bore 4, Blackout Array 4, Grid Hub 2, Crew Hall 2), `emitters` on six building models and every vehicle, `marks` on every vehicle ("Building life (P143)" under "Generated art"), the sorted world's cross-faction page 3066 to 3266 px (mirrors 2524 to 2702 and 2624 to 2894), the Build page of the gallery plays the frames; 40 existing generated files changed, 108 are new, 1361 are byte for byte as before. |

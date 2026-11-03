@@ -356,6 +356,24 @@ func test_a_new_tick_is_read_on_the_next_frame_and_the_same_one_is_not_read_agai
 	assert_str(_credits().text).is_equal("50")
 
 
+## The pulse runs in a match: a published low-power tick read by `refresh()` and then plain frames
+## (`_process`, the engine's path, not `_pulse`) breathe the pill and the triangle, and enough
+## power brings them back to full (plan P89).
+func test_the_pulse_runs_from_the_frame_loop_on_low_power_and_stops_when_power_is_enough() -> void:
+	await _open()
+	_runner.snapshot = _craft(1000, 60, 100)
+	_pill.refresh()
+	_pill._process(0.7)  # Half a period: the dimmest step.
+	assert_int(_pill.pulse_step()).is_greater(0)
+	assert_float(_pill.self_modulate.a).is_less(1.0)
+	assert_float((_node("PowerGlyph") as TextureRect).self_modulate.a).is_less(1.0)
+	_runner.snapshot = _craft(1000, 100, 40)
+	_pill.refresh()
+	_pill._process(0.016)
+	assert_int(_pill.pulse_step()).is_equal(0)
+	assert_float(_pill.self_modulate.a).is_equal(1.0)
+
+
 ## The numbers of one crafted tick: three players' columns, the local player's in index 1.
 func _craft(credits: int, made: int, used: int) -> MatchSnapshot:
 	var snap: MatchSnapshot = MatchSnapshot.new()

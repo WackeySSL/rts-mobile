@@ -40,6 +40,8 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"pose_step",
 		"pose_idle",
 	],
+	"res://game/view/GroundFx.gd":
+	["_process", "_draw", "_plan", "_on_ticked", "_add", "_empty", "quad_rect"],
 	"res://game/view/SquadPoses.gd": ["begin", "step", "turn", "_resolve"],
 	"res://game/view/LifeClock.gd": ["ms", "tick_ms", "age_ms", "mix", "pick"],
 	"res://game/view/UnitLayer.gd":

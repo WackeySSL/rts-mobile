@@ -261,6 +261,45 @@ func test_every_part_is_inside_the_safe_rect_48_dp_and_clear_of_the_others() -> 
 	assert_int(checked).is_greater(2000)
 
 
+## The top-left stack's height (Dev over Surrender, until P124) moves the upright toast under it:
+## with the stack at 48, 104 and 160 dp, at every screen and set of parts, mirrored or not, every
+## part is inside and clear of the others, and the toast is clear of the stack's rect.
+func test_the_toast_stands_clear_of_a_top_left_stack_of_any_height() -> void:
+	var checked: int = 0
+	for screen: Dictionary in _screens():
+		var safe: Rect2 = screen["safe"]
+		var dp: float = screen["dp"]
+		for shown: HudCorners.Shown in _combinations():
+			if not shown.toast or shown.map:
+				continue
+			shown.left_taken = 77.0
+			for height: float in [48.0, 104.0, 160.0]:
+				shown.left_height = height
+				for mirror: bool in [false, true]:
+					var out: Dictionary[StringName, Rect2] = HudCorners.place(
+						safe, screen["portrait"], dp, mirror, shown
+					)
+					var why: String = (
+						"%s, stack %s dp, mirror %s, %s"
+						% [screen["label"], height, mirror, _describe(shown)]
+					)
+					_assert_parts(out, safe, dp, why)
+					_assert_gaps(
+						out, dp, why, str(screen["label"]).begins_with("web_phone_portrait")
+					)
+					var stack: Rect2 = Rect2(Vector2.ZERO, Vector2(77.0, height) * dp)
+					stack.position = safe.position
+					if mirror:
+						stack.position.x = safe.end.x - stack.size.x
+					(
+						assert_bool(out[HudCorners.TOAST].intersects(stack))
+						. override_failure_message(why)
+						. is_false()
+					)
+					checked += 1
+	assert_int(checked).is_greater(200)
+
+
 func test_the_sizes_the_adr_names_hold_at_every_screen() -> void:
 	for screen: Dictionary in _screens():
 		var dp: float = screen["dp"]
