@@ -63,6 +63,42 @@ func test_dress_draws_every_part_over_its_canvas_at_odd_sizes_and_scales() -> vo
 			)
 
 
+func test_the_pose_offsets_and_the_ghost_anim_agree_with_dress_below_scale_1() -> void:
+	var sheet: IsoSheetDef = _sheet(
+		{&"hull": Vector2i(101, 71), &"walk": Vector2i(101, 71), &"idle": Vector2i(101, 71)}
+	)
+	sheet.art_id = &"squad"
+	sheet.stride_milli = 1000
+	sheet.frames = PackedInt32Array([1, 4, 2, 1])
+	sheet.footprint = 0
+	var building: IsoSheetDef = _sheet({&"hull": Vector2i(103, 73), &"anim": Vector2i(51, 33)})
+	building.art_id = &"mast"
+	var sheets: Array[IsoSheetDef] = [sheet, building]
+	for scale: float in [1.0, 0.875]:
+		var sort: WorldSort = auto_free(WorldSort.new())
+		sort.atlas = IsoAtlas.build(sheets, [_art()], scale, false, _reader(sheet, building))
+		var pose: RigLife.Pose = RigLife.Pose.new()
+		assert_bool(pose.dress(sheet, sort.atlas.bake_scale())).is_true()
+		for index: int in RigLife.POSE_PARTS.size():
+			var part: StringName = RigLife.POSE_PARTS[index]
+			var sprite: Sprite2D = auto_free(Sprite2D.new())
+			sort.dress(sprite, sheet, part)
+			assert_vector(pose.offsets[index]).is_equal_approx(sprite.offset, Vector2(1e-4, 1e-4))
+		var body: Sprite2D = auto_free(Sprite2D.new())
+		var live: Sprite2D = auto_free(Sprite2D.new())
+		sort.dress(live, building, &"anim")
+		sort.dress(body, building, &"hull")
+		BuildingAnims.dress_ghost(body, sort, building, 1)
+		var child: Sprite2D = body.get_child(0) as Sprite2D
+		assert_object(child).is_not_null()
+		auto_free(child)
+		var ghost_scale: Vector2 = body.scale * child.scale
+		assert_vector(ghost_scale).is_equal_approx(live.scale, Vector2(1e-4, 1e-4))
+		assert_vector(child.offset * ghost_scale).is_equal_approx(
+			live.offset * live.scale, Vector2(1e-3, 1e-3)
+		)
+
+
 func test_a_patch_canvas_taller_than_a_body_but_raster_shorter_packs_after_it() -> void:
 	var sheet: IsoSheetDef = _sheet({&"hull": Vector2i(100, 100), &"dmg1": Vector2i(100, 120)})
 	var atlas: IsoAtlas = IsoAtlas.build([sheet], [_art()], 1.0, true, _reader(sheet))
@@ -188,13 +224,16 @@ func _art() -> IsoPlayerArt:
 
 
 ## Every frame is an SVG of its canvas size, distinct per file so no two frames share a slot.
-func _reader(sheet: IsoSheetDef = null) -> Callable:
+func _reader(sheet: IsoSheetDef = null, other: IsoSheetDef = null) -> Callable:
 	var sheet_def: IsoSheetDef = sheet if sheet != null else _sheet()
 	return func(path: String) -> String:
 		var size: Vector2i = Vector2i(ART_PX, ART_PX)
-		for part: String in sheet_def.parts:
-			if path.get_file().contains(part):
-				size = sheet_def.frame_size(StringName(part))
+		for def: IsoSheetDef in [sheet_def, other]:
+			if def == null or not path.contains(String(def.art_id)):
+				continue
+			for part: String in def.parts:
+				if path.get_file().contains(part):
+					size = def.frame_size(StringName(part))
 		var grey: int = 16 + (path.hash() % 200)
 		return (
 			'<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d">' % [size.x, size.y]

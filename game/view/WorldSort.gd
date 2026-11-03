@@ -12,8 +12,9 @@ extends Node2D
 ## `IsoAtlas`), and `sync` does it again for a match whose art or players differ from what the
 ## atlas holds, so a restart of the same scenario costs nothing. A sprite is dressed once (`dress`)
 ## and shows another frame by a region (`show_frame`): a sheet's px are 2x art, so a region draws
-## at 0.5 / bake_scale. A part with several frames per direction (ADR 0027 section 4) takes the
-## frame number as the last argument; a layer that changes it at a rate keeps `base_of` from the
+## at 0.5 / texels, per axis (`texels`). A part with several frames per direction (ADR 0027
+## section 4) takes the frame number as the last argument; a layer that changes it at a rate
+## keeps `base_of` from the
 ## time it dresses or turns the sprite and calls `show_base`, a table read with no string;
 ## `frame_count_at` is the length to wrap the frame number by. The players of the atlas are the
 ## owners 1..N in order; `slot_of` maps an owner to its place, one past the ends to the nearest. A
@@ -166,12 +167,16 @@ func dress(sprite: Sprite2D, sheet_def: IsoSheetDef, part: StringName) -> void:
 	if not atlas.is_empty():
 		# The engine rounds a raster per axis and stretches the art to it, so a sprite is sized per
 		# axis from the raster; a damage patch is baked at IsoAtlas.DAMAGE_SCALE of the bake scale.
-		var canvas: Vector2i = sheet_def.frame_size(part)
-		var texels: Vector2 = (
-			Vector2(IsoAtlas.raster_size(canvas, atlas.part_scale(part))) / Vector2(canvas)
-		)
-		sprite.scale = Vector2(ART_SCALE / texels.x, ART_SCALE / texels.y)
-		sprite.offset = -Vector2(sheet_def.origin(part)) * texels
+		var per_px: Vector2 = texels(sheet_def, part)
+		sprite.scale = Vector2(ART_SCALE / per_px.x, ART_SCALE / per_px.y)
+		sprite.offset = -Vector2(sheet_def.origin(part)) * per_px
+
+
+## The texels per px of the 2x art that `part` of `sheet_def` has on the atlas, per axis: what
+## `dress` sizes the sprite and its offset by. The pose offsets and the ghost's Anim child use it
+## too, so that all writers of one sprite agree below scale 1.0.
+func texels(sheet_def: IsoSheetDef, part: StringName) -> Vector2:
+	return IsoAtlas.texels_per_px(sheet_def.frame_size(part), atlas.part_scale(part))
 
 
 ## Shows frame number `frame` (0 for a part with one frame) of direction `dir` (`d<NN>`, -1 for a

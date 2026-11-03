@@ -5,10 +5,11 @@ extends RefCounted
 ## with `Image.load_svg_from_string` and packed by `RuntimeAtlas` into one page (`texture()`), so
 ## every sorted sprite batches into one call. `build` is for the main thread at match start.
 ## The page is 4096 px wide and at most 4096 tall, cells packed tallest raster first (canvas height
-## times `part_factor`). The bake scale is
-## the largest `bake_scale * SCALE_STEP ^ k` (k = 0, 1, 2, ...), not below MIN_SCALE, whose page
-## fits; a texel is a px of the 2x art times it, so a sprite draws its region at `0.5 /
-## bake_scale()`. When none fits, or there is no frame, the atlas is empty and the caller decides.
+## times `part_factor`). The bake scale is the largest `bake_scale * SCALE_STEP ^ k` (k = 0, 1,
+## 2, ...), not below MIN_SCALE, whose page fits; the engine rounds a raster per axis, so a
+## sprite draws its region at `0.5 / texels` per axis, `texels = raster_size / canvas` (see
+## `texels_per_px`). When none fits, or there is no frame, the atlas is empty and the caller
+## decides.
 ## A frame no key colour touches (a shadow) is baked once and shared by the players of a faction.
 ## A sheet of faction `neutral` is collected for every player, so each of its frames is one slot.
 ## The CPU page is dropped after the upload unless `keep_image` is set (tests read it).
@@ -21,7 +22,7 @@ extends RefCounted
 ## `frame_count_at(base)` is the group's own length, for a caller that wraps its frames.
 
 const PAGE_MAX_PX: int = 4096
-const SCALE_STEP: float = 0.875  ## A step of 7/8 keeps scale times a canvas exact in a float32.
+const SCALE_STEP: float = 0.875  ## A step of 7/8 keeps scale times a canvas exact in a float.
 const MIN_SCALE: float = 0.25
 ## The hand-written neutral sheet of the damage overlays (ADR 0028 section 4), read from this one
 ## path and not through the index; the file may not exist yet (row P160), and then there is none.
@@ -33,12 +34,17 @@ const NEUTRAL: StringName = &"neutral"  ## The faction of a sheet every player's
 ## part stays at `bake_scale`. A view constant, not balance. `part_factor` is the one place that
 ## names the parts; `WorldSort.dress` sizes a sprite per axis from the raster, so it is right for
 ## a patch too. The generator's 4 px art overlap at the cut is 3 texels at bake scale 1.0 and
-## under one at MIN_SCALE, so the rule for the Damage child (P159) is, with the body clipped and
-## the overlap > 0 at every scale (the drawn position at MIN_SCALE is P159's test):
+## under one at MIN_SCALE, so the rule for the Damage child (P159) keeps the body clipped and the
+## overlap > 0 at every scale (the drawn position at MIN_SCALE is P159's test). It assumes even
+## canvases, as all 80 real parts are: an odd one at 0.25 gives exactly 0 (H=101, cut=97).
+## Every row below holds for a patch that is a sibling of the body (same parent, same position);
+## under the ghost body (`BuildingAnims.dress_ghost`) the patch is a child with `scale =
+## body_texels / patch_texels` and `offset = -origin * patch_texels`, as the ghost's Anim.
+## `show_frame` and `show_base` rewrite `region_rect`, so apply the trim again after each one.
 ## (a) trim the body at T = `body_cut_row(cut, canvas_h, region_h)` texels: `region.position.y +=
 ## T`, `region.size.y -= T`, `offset.y += T`; (b) set `region_filter_clip_enabled = true` on the
-## trimmed body; (c) the patch uses its whole region, through `dress`; (d) invariant:
-## `(patch.offset.y + patch region.size.y) * patch.scale.y >= body.offset.y * body.scale.y`.
+## trimmed body; (c) the patch uses its whole region, through `dress`; (d) invariant, strict:
+## `(patch.offset.y + patch region.size.y) * patch.scale.y > body.offset.y * body.scale.y`.
 const DAMAGE_SCALE: float = 0.75
 const DAMAGE_PARTS: Array[StringName] = [&"dmg1", &"dmg2"]
 
@@ -120,6 +126,15 @@ static func planned_page(
 	return page_size(_canvases(plan, order), scale, _factors(plan, order))
 
 
+## The texels per px of the 2x art a canvas of `canvas` px really has at `scale`, per axis: the
+## raster is rounded, so this is `raster_size / canvas`, not `scale`. A sprite draws at `0.5 /
+## this` and its offset is `-origin * this`. `Vector2.ONE` for a zero canvas.
+static func texels_per_px(canvas: Vector2i, scale: float) -> Vector2:
+	if canvas.x <= 0 or canvas.y <= 0:
+		return Vector2.ONE * scale
+	return Vector2(raster_size(canvas, scale)) / Vector2(canvas)
+
+
 ## The size in texels the engine rasterises a canvas of `canvas` px (2x art) to at `scale`.
 static func raster_size(canvas: Vector2i, scale: float) -> Vector2i:
 	return Vector2i(maxi(1, roundi(canvas.x * scale)), maxi(1, roundi(canvas.y * scale)))
@@ -168,6 +183,7 @@ func part_scale(part: StringName) -> float:
 
 ## The first body row, in texels, below a cut `cut` art px down a canvas `canvas_h` art px tall
 ## whose raster is `region_h` texels tall: the integer ceil of `cut * region_h / canvas_h`.
+@warning_ignore("integer_division")
 static func body_cut_row(cut: int, canvas_h: int, region_h: int) -> int:
 	return (cut * region_h + canvas_h - 1) / canvas_h
 
