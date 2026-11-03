@@ -58,8 +58,9 @@ Size = production lines (tests, fixtures, models, generated frames and SVG not c
 | P26ar | - | lead | docs: ADR 0028 on acceptance: Michael's answers in it, the dated notes in ADR 0027 §3, §4, §8, ADR 0023 §2, §5 and the unit-life plan's P148 row | 0 | P155 | - |
 | P156 | A | art-director | art: generator v4, damage poses (`dmg1`, `dmg2`: `shift`, `turn`, `hide`, `char`, `damage=<k>` primitives), the geometric cut row, the patch crop with its overlap, `cuts`, `scar_milli`, the `damage` and `hang` kinds, `IsoSheetDef.root`; no model gets them here, today's files byte-identical (at once) | 230 | P26ar | - |
 | P157 | V2 | touch-ux-dev | view: the neutral sheet in the bake: loaded from `IsoAtlas.NEUTRAL_SHEET` (not the index), added by `WorldSort.bake` after its art-id filter and after `_player_arts`, collected for every player as shared slots, its bases resolved once per bake; the page test counts it | 70 | P156 | - |
-| P158 | A | art-director | art: `dmg1` and `dmg2` of the sixteen buildings, two `damage` points each, the gallery's stage view, STYLE.md "Damage stages", the page test's `TODAY_*`; 2026-11-03 (Michael, ADR 0028 §3's amendment): stage 1 shows holes, down to half the body; stage 2 has largely collapsed, down to just above the foot | models + 40 | P156 | - |
-| P159 | V1 | touch-ux-dev | view: building stages (`BuildingDamage`, the trimmed body and `Damage` child, the stage queue in the buildings' write share), the remembered stage, ghosts at their stage (`GhostMemoryLayer.building_layer`, `main.tscn`, `BuildingAnims.dress_ghost` by name), the `LifeSettings` fields; HOW_TO_PLAY Buildings | 230 | P158; also P160 if P158 took ADR 0028 §3's fallback (b) | - |
+| P157b | V2 | touch-ux-dev | view (2026-11-03, ADR 0028 §3's second amendment): the damage patches baked at `DAMAGE_SCALE` (`IsoAtlas.build` and `planned_page` rasterise `dmg1`/`dmg2` parts at `bake_scale x DAMAGE_SCALE`; each region carries its own scale; `WorldSort`'s dress or the sprite scale uses it); the page test counts the patches at that scale | 60 | P157 | - |
+| P158 | A | art-director | art: `dmg1` and `dmg2` of the sixteen buildings, two `damage` points each, the gallery's stage view, STYLE.md "Damage stages", the page test's `TODAY_*`; 2026-11-03 (Michael, ADR 0028 §3's amendment): stage 1 shows holes, down to half the body; stage 2 has largely collapsed, down to just above the foot; again 2026-11-03: stage 2 a low ruin (rubble, wall stubs) | models + 40 | P156; P157b for its final `TODAY_*` | - |
+| P159 | V1 | touch-ux-dev | view: building stages (`BuildingDamage`, the trimmed body and `Damage` child, the stage queue in the buildings' write share), the remembered stage, ghosts at their stage (`GhostMemoryLayer.building_layer`, `main.tscn`, `BuildingAnims.dress_ghost` by name), the `LifeSettings` fields; HOW_TO_PLAY Buildings; 2026-11-03: the `Damage` child at its region's scale, at least 1 texel of overlap (ADR 0028 §3's second amendment) | 230 | P158; also P160 if P158 took ADR 0028 §3's fallback (b) | - |
 | P160 | A2 | art-director | art: the hand-written overlays (`scar1`, `scar2`, `loose`) in `assets/art/svg/damage/` with "Keep File" imports, their hand-written sheet `damage_sheet.tres` there (`root` set), STYLE.md "Damage overlays"; `damage`, `hang` and `scar_milli` on the eight vehicle models; the gallery | SVG + models + 30 | P156, P157 | - |
 | P161 | V1 | touch-ux-dev | view: vehicle overlays (`VehicleDamage`, `Scar` and `Loose` children of `Hull`, the rig kind bit, positions per hull frame, the pool reset, the stage queue in the vehicles' write share, `damage_loose`); HOW_TO_PLAY Units | 190 | P159, P160 | - |
 | P148 | V3 | touch-ux-dev | view (reworked, ADR 0028 §6): `AirFx`'s damage ring (64), soot, fire and sparks by stage from the `damage` points of buildings and vehicles, `LifeFx.unit_layer`; HOW_TO_PLAY Buildings and Units clauses | 200 | P145, P159, P160 | - |
@@ -84,8 +85,8 @@ for its art (pick order, they share `AirFx.gd`).
   `test_artgen.gd`'s generated-file check and the index's 28 sheets stay as they are. P158
   and P160 both regenerate sheets, of different models: no file in common but the page test's
   `TODAY_*` and STYLE.md's change log (the second to merge rebases).
-- **V2** (touch-ux-dev): P157, after P156 (it reads `IsoSheetDef.root`). Owns `IsoAtlas.gd`,
-  `WorldSort.gd`.
+- **V2** (touch-ux-dev): P157, after P156 (it reads `IsoSheetDef.root`), then P157b (2026-11-03:
+  the patches at `DAMAGE_SCALE`). Owns `IsoAtlas.gd`, `WorldSort.gd`.
 - **V1** (touch-ux-dev): P159 → P161. Owns `BuildingLayer.gd`, `BuildingAnims.gd`,
   `GhostMemoryLayer.gd`, `UnitLayer.gd`, `BuildingDamage.gd`, `VehicleDamage.gd`, `LifeSettings.gd` and `data/life_settings.tres` (P148
   appends its fields after P159). `UnitLayer.gd` is 916 lines: P161 adds calls only (at most about
@@ -100,8 +101,11 @@ for its art (pick order, they share `AirFx.gd`).
   `assets/art/STYLE.md`: P156, P158, P160 (different sections, one change log).
 - **Start at once after P26ar:** P156. Then P157 and P158 (after P156), P160 (after P157), P159
   (after P158; and after P160 if P158 took fallback (b)), P161 and P148 (after P159 and P160), P162.
+  (2026-11-03: P157b after P157; P158's final `TODAY_*` after P157b, so P159 waits for both.)
 - **Path:** P156 → P158 → P159 → P161 → P162 (five slots); the vehicle chain P156 → P157 → P160 →
-  P161 is as long, so P161 waits for whichever ends last. P148 runs beside P161.
+  P161 is as long, so P161 waits for whichever ends last. P148 runs beside P161. (2026-11-03: P157b
+  joins the building path before P158's final `TODAY_*`: P156 → P157 → P157b → P158 → P159 → P161
+  → P162; P158's model work may run beside P157 and P157b.)
 
 ## Acceptance per row
 Every row: its suite passes alone, gdformat and gdlint are clean, no `Time`, `randi`, `randf`,
@@ -131,6 +135,13 @@ the PR. `mix`-driven tests assert exact counts for fixed id sets.
   `WorldSort` resolves its bases once per bake (no string key per change, the P137 hook); the page
   tests of the cross-faction and both mirror matches include it (with a crafted neutral sheet until
   P160); `atlas_bake_ms` reported in the PR.
+- **P157b** (2026-11-03, ADR 0028 §3's second amendment) `IsoAtlas.DAMAGE_SCALE` = 0.75;
+  `IsoAtlas.build` and `planned_page` rasterise the `dmg1` and `dmg2` parts at `bake_scale x
+  DAMAGE_SCALE` and every other part at `bake_scale` (a test: a crafted sheet's patch region is 75 %
+  of its full-scale size, its body unchanged); each region carries its own scale, and `WorldSort`'s
+  dress (or the sprite scale) draws a patch at `ART_SCALE / (bake_scale x DAMAGE_SCALE)`, so it
+  lands on the same world px as at full scale; the page tests count the patches at that scale; it
+  states the overlap rule P159 uses (at least 1 texel at every bake scale down to `MIN_SCALE`).
 - **P158** Each of the sixteen buildings has `dmg1` and `dmg2` from its model's poses (none
   hand-edited), damage in the top part of the picture (the examples: broken roof edges, missing
   panels, tilted or fallen chimneys, masts and stacks, scorch), the `anim` element's group and mount
@@ -146,8 +157,11 @@ the PR. `mix`-driven tests assert exact counts for fixed id sets.
   foot is still refused); the footprint, the foot outline and the `mount` and `anim` groups stay;
   stage 2 reads clearly stronger at game zoom without smoke. The first pass measured 3376 / 2774 /
   3002; the rework reports the real figures. If the page passes 3584, the lead and Michael choose
-  the fallback, not this row; `tests/art/test_artgen_damage.gd`'s "cut in the top third" case is
-  on P156's fixture model, not a rule for the sixteen buildings.)
+  the fallback, not this row (chosen the same day: P157b); `tests/art/test_artgen_damage.gd`'s
+  "cut in the top third" case is on P156's fixture model, not a rule for the sixteen buildings.) (Amended again 2026-11-03: stage 2
+  is a low ruin, only rubble and wall stubs on the footprint, a `mount` or `anim` element alone on a
+  stub; the patches are baked at `DAMAGE_SCALE` (P157b), and the final `TODAY_*` are measured after
+  P157b.)
 - **P160** The neutral overlays (`scar1` 2 frames, `scar2` 2, `loose` 4: two skirt plates for
   `tracks`, two fenders for `wheels`) pass the hand-drawn rules (STYLE.md, no pattern or filter, no
   colour in either key band at saturation 0.30 or more, embers at hue 46° or more), hold ink inside
@@ -176,7 +190,9 @@ the PR. `mix`-driven tests assert exact counts for fixed id sets.
   in a frame: a crafted 40-building burst at stage 1 is applied 4 a frame in 10 frames, oldest first;
   writes counted in `life_writes`; the same snapshots give the same regions on two runs; `reduced`
   keeps it all. Under fallback (b) the stage-1 scars come from P160's sheet at the building's
-  `damage` points (the same costs).
+  `damage` points (the same costs). (2026-11-03, ADR 0028 §3's second amendment: the `Damage`
+  child is drawn at its region's scale (P157b), and the trimmed body and the patch keep at least 1
+  texel of overlap at every bake scale, a test at `MIN_SCALE`.)
   HOW_TO_PLAY Buildings row (below).
 - **P161** A vehicle (any non-`INFANTRY` armour) whose hp crosses a line shows `Scar` (`scar1` or
   `scar2`, the look by `mix(id, salt)`, scaled by `scar_milli`) and at stage 2 `Loose` (the `marks`
@@ -274,7 +290,8 @@ look), each with its recommendation.
   and never touch the bake scale. P153 and P154 (unit-life plan) may then not fit: their rows already
   land only if the page has room. (2026-11-03, ADR 0028 §3's amendment: the first pass measured
   3376; stage 1 now reaches half the body and stage 2 nearly the foot, so the page may pass 3584;
-  P158's rework measures it and the lead and Michael choose the fallback.)
+  P158's rework measures it and the lead and Michael choose the fallback. Chosen the same day: the
+  patches at `DAMAGE_SCALE` 0.75, P157b.)
 - **The cut seam.** A sub-rectangle of a filtered texture samples the row above its top edge; the
   4 px overlap covers it at bake scale 0.75 and 0.5 too. P158's gallery check at the three zooms is
   where a seam would show.

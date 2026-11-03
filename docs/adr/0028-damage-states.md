@@ -21,7 +21,9 @@ lead decision). No accepted text changed.
 Status note (2026-11-03, Michael, after seeing P158's first pass): answer 1's "top third" is
 amended: stage 1 shows holes and may reach down to half the body, stage 2 has largely collapsed and
 may reach down to just above the foot (§3's amendment; also Decisions in short 3, the
-Consequences and the Answers). No accepted text changed.
+Consequences and the Answers). A second amendment the same day makes stage 2 a low ruin and bakes
+the damage patches at 75 % of the bake scale (`IsoAtlas.DAMAGE_SCALE`, Michael's choice of
+fallback). No accepted text changed.
 
 ## Context
 - **Michael, 2026-11-03** (his own answers): buildings and vehicles under 50 % hp must look as if
@@ -238,7 +240,30 @@ rule that follows" above; the text above stays as accepted:
   Deeper patches use more of that, and a stage-2 patch can now be most of the body, so the page may
   pass 3584. P158's rework measures the real figures. If it does not fit, the lead and Michael
   choose the fallback (for example a second page, or a lower scale for stage 2 only, which the
-  "Never" above would otherwise rule out); it is not decided here.
+  "Never" above would otherwise rule out); it is not decided here. (Decided the same day: the
+  second amendment below.)
+
+Amended again 2026-11-03 (Michael, after the P158 probe; the text and the amendment above stand
+where this does not change them):
+- **Strength** ("Endnu mere"): stage 2 is a **low ruin**: only rubble and stubs of the walls on the
+  footprint. A `mount` or `anim` element that must stay stands alone on a stub. Stage 1 is
+  unchanged from the amendment above: holes, roofs torn out, the dark inside showing.
+- **The page fallback (Michael's choice):** with all sixteen buildings at this strength the
+  cross-faction page passes 3584 (about 3780 estimated at full resolution; the probe of four
+  buildings measured 3478). **The damage patches (`dmg1`, `dmg2`) are baked at 75 % of the bake
+  scale; every other frame stays at full scale.** The factor is `IsoAtlas.DAMAGE_SCALE` = 0.75, a
+  view constant, not balance. This replaces §3's "Never a lower bake scale" for this one fallback;
+  the rest of that sentence stands. Not chosen: the whole atlas a little softer, a second page
+  (memory and draw calls), a smaller collapse.
+- **Consequences:**
+  - A patch is drawn at `WorldSort.ART_SCALE / (bake_scale x DAMAGE_SCALE)` per texel; each region
+    carries its own scale (P157b).
+  - The 4 px overlap becomes 3 px of art at 75 %; at `MIN_SCALE` 0.25 that is 0.75 texel, under 1.
+    The view must keep at least 1 texel of overlap: P159 trims the body at the `floor` of the
+    patch's cut in texels, or the overlap grows. **Open point**, for P157b and P159 to fix; the
+    P26ar note's `ceil(cut x bake_scale)` is reopened with it.
+  - The sharpness seam at the cut (a softer patch over a sharp body) is accepted: the damaged top
+    is rubble.
 
 ### 4. Vehicle overlays
 - **Where the sprites live: on the sorted world's page, not in `fx/life_atlas.svg`.** An overlay
@@ -473,3 +498,8 @@ ember seam and a hanging plate or fender, plus smoke, fire and sparks).
 shows holes and may reach down to half the body; stage 2 has largely collapsed and may reach down to
 just above the foot (§3's amendment). The fallback, if the page does not fit, is chosen by the lead
 and Michael then.
+
+**Amended again (Michael, 2026-11-03, after the P158 probe):** "Endnu mere": stage 2 is a low ruin
+(rubble and wall stubs; a `mount` or `anim` element alone on a stub). His fallback for the page:
+the damage patches baked at 75 % of the bake scale (`IsoAtlas.DAMAGE_SCALE`), everything else at
+full scale (§3's second amendment).

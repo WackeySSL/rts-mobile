@@ -255,7 +255,9 @@ as accepted):
   bake scale drops" rule stand; ADR 0028 §3 lists the fallback order. (Amended 2026-11-03: ADR
   0028 §3's amendment makes the patches deeper, down to half the body at stage 1 and nearly the foot
   at stage 2; P158's first pass measured 3376, its rework measures the page, and a fallback past
-  3584 is the lead's and Michael's choice.)
+  3584 is the lead's and Michael's choice. Chosen the same day: the damage patches alone are baked
+  at `IsoAtlas.DAMAGE_SCALE` (0.75) of the bake scale, ADR 0028 §3's second amendment; this
+  amends the "before any bake scale drops" rule for those parts only.)
 
 ### 5. Walking without sliding feet
 - A squad shows `walk` while it moved in the last tick by at least half its type's step (the hull's
