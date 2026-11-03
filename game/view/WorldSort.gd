@@ -157,14 +157,18 @@ func mid_colour(owner_id: int) -> Color:
 ## Makes `sprite` the sprite of `part` of `sheet` on the atlas, white, whose origin is the part's
 ## `IsoSheetDef.origin`: a unit's ground point, a building's footprint centre (for its body and
 ## its shadow), a turret's or head's pivot. Frames come from `show_frame`.
+## A damage patch (`dmg1`, `dmg2`) is sized by `IsoAtlas.part_scale`: `dress` handles it by name.
 func dress(sprite: Sprite2D, sheet_def: IsoSheetDef, part: StringName) -> void:
 	sprite.texture = atlas.texture()
 	sprite.region_enabled = true
 	sprite.centered = false
 	sprite.modulate = Color.WHITE
 	if not atlas.is_empty():
-		sprite.scale = Vector2.ONE * (ART_SCALE / atlas.bake_scale())
-		sprite.offset = -Vector2(sheet_def.origin(part)) * atlas.bake_scale()
+		# A damage patch is baked at DAMAGE_SCALE of the bake scale (ADR 0028 section 3): its sprite
+		# is that much larger per texel and its offset (texels) that much smaller.
+		var texels: float = atlas.part_scale(part)
+		sprite.scale = Vector2.ONE * (ART_SCALE / texels)
+		sprite.offset = -Vector2(sheet_def.origin(part)) * texels
 
 
 ## Shows frame number `frame` (0 for a part with one frame) of direction `dir` (`d<NN>`, -1 for a

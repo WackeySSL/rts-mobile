@@ -27,6 +27,13 @@ const MIN_SCALE: float = 0.25
 const NEUTRAL_SHEET: String = "res://assets/art/svg/damage/damage_sheet.tres"
 const NEUTRAL: StringName = &"neutral"  ## The faction of a sheet every player's atlas carries.
 
+## The damage patches (`dmg1`, `dmg2`, ADR 0028 section 3, amended 2026-11-03) are rasterised at
+## `bake_scale * DAMAGE_SCALE` so that their large frames keep the page in its budget; every other
+## part stays at `bake_scale`. A view constant, not balance. `part_factor` is the one place that
+## names the parts; `WorldSort.dress` sizes a sprite by it. The 4 px art overlap at the cut is 3 px
+## at this scale (0.75 texel at MIN_SCALE): see `patch_overlap_texels`.
+const DAMAGE_SCALE: float = 0.75
+
 static var _keys_built: int = 0
 
 var _atlas: RuntimeAtlas = RuntimeAtlas.new()
@@ -83,7 +90,7 @@ static func build(
 	var atlas: IsoAtlas = IsoAtlas.new()
 	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else read_text)
 	var order: Array[StringName] = _packing_order(plan)
-	var scale: float = fit_scale(_canvases(plan, order), bake_scale)
+	var scale: float = fit_scale(_canvases(plan, order), bake_scale, _factors(plan, order))
 	if scale > 0.0 and not order.is_empty():
 		atlas._bake(plan, order, scale, keep_image)
 	atlas._bake_usec = Time.get_ticks_usec() - started
@@ -100,7 +107,8 @@ static func planned_page(
 	reader: Callable = Callable()
 ) -> Vector2i:
 	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else read_text)
-	return page_size(_canvases(plan, _packing_order(plan)), scale)
+	var order: Array[StringName] = _packing_order(plan)
+	return page_size(_canvases(plan, order), scale, _factors(plan, order))
 
 
 ## The size in texels the engine rasterises a canvas of `canvas` px (2x art) to at `scale`.
@@ -108,24 +116,55 @@ static func raster_size(canvas: Vector2i, scale: float) -> Vector2i:
 	return Vector2i(maxi(1, roundi(canvas.x * scale)), maxi(1, roundi(canvas.y * scale)))
 
 
-## The page `canvases` (2x art px, in packing order) take at `scale`, gutters included.
-static func page_size(canvases: Array[Vector2i], scale: float) -> Vector2i:
+## The page `canvases` (2x art px, in packing order) take at `scale`, gutters included. `factors`
+## (parallel to `canvases`, empty for all 1.0) is each canvas's `part_factor`.
+static func page_size(
+	canvases: Array[Vector2i], scale: float, factors: Array[float] = []
+) -> Vector2i:
 	var cells: Array[Vector2i] = []
-	for canvas: Vector2i in canvases:
-		cells.append(RuntimeAtlas.cell_size(raster_size(canvas, scale)))
+	for at: int in canvases.size():
+		var factor: float = factors[at] if at < factors.size() else 1.0
+		cells.append(RuntimeAtlas.cell_size(raster_size(canvases[at], scale * factor)))
 	var places: Array[Vector2i] = []
 	return RuntimeAtlas.layout(cells, PAGE_MAX_PX, places)
 
 
 ## The scale a bake of `canvases` gets when `requested`: see the class comment. 0.0 when none.
-static func fit_scale(canvases: Array[Vector2i], requested: float) -> float:
+static func fit_scale(
+	canvases: Array[Vector2i], requested: float, factors: Array[float] = []
+) -> float:
 	var scale: float = requested
 	while scale >= MIN_SCALE:
-		var page: Vector2i = page_size(canvases, scale)
+		var page: Vector2i = page_size(canvases, scale, factors)
 		if page.x <= PAGE_MAX_PX and page.y <= PAGE_MAX_PX:
 			return scale
 		scale *= SCALE_STEP
 	return 0.0
+
+
+## How much of the bake scale a frame of `part` is rasterised at: DAMAGE_SCALE for a damage patch,
+## else 1.0. Frame-path safe: comparisons only.
+static func part_factor(part: StringName) -> float:
+	return DAMAGE_SCALE if part == &"dmg1" or part == &"dmg2" else 1.0
+
+
+## The texels per px of the 2x art that `part` was baked at; 0.0 for an empty atlas. A sprite of
+## the part draws its region at `0.5 / part_scale(part)`, its offset is `-origin * part_scale`.
+func part_scale(part: StringName) -> float:
+	return _scale * part_factor(part)
+
+
+## For the patch cut (rule for P159): the overlap of `overlap_art_px` (the generator's 4) is
+## `ceil(overlap * scale * DAMAGE_SCALE)` texels of a patch, at least 1, and the body is trimmed
+## by `body_trim_texels` = `floor(overlap * scale)` texels. Trim in the world never exceeds the
+## overlap and the patch reaches at least one texel past it, so no seam opens at any scale.
+static func patch_overlap_texels(overlap_art_px: float, scale: float) -> int:
+	return maxi(1, ceili(overlap_art_px * scale * DAMAGE_SCALE))
+
+
+## The texels to trim off the body at the cut; see `patch_overlap_texels`.
+static func body_trim_texels(overlap_art_px: float, scale: float) -> int:
+	return floori(overlap_art_px * scale)
 
 
 ## The region of frame `frame` of a part, in texels of `texture()`: `dir` is the frame's `d<NN>`
@@ -255,6 +294,7 @@ static func _collect_sheet(
 				)
 				plan.texts[slot] = baked
 				plan.sizes[slot] = sheet.frame_size(part)
+				plan.parts[slot] = part
 				plan.slots.append(slot)
 
 
@@ -272,6 +312,13 @@ static func _packing_order(plan: Plan) -> Array[StringName]:
 	return order
 
 
+static func _factors(plan: Plan, order: Array[StringName]) -> Array[float]:
+	var factors: Array[float] = []
+	for slot: StringName in order:
+		factors.append(part_factor(plan.parts[slot]))
+	return factors
+
+
 static func _canvases(plan: Plan, order: Array[StringName]) -> Array[Vector2i]:
 	var canvases: Array[Vector2i] = []
 	for slot: StringName in order:
@@ -284,7 +331,10 @@ func _bake(plan: Plan, order: Array[StringName], scale: float, keep_image: bool)
 	var images: Dictionary[StringName, Image] = {}
 	for slot: StringName in order:
 		var image: Image = Image.new()
-		if image.load_svg_from_string(plan.texts[slot], scale) != OK:
+		if (
+			image.load_svg_from_string(plan.texts[slot], scale * part_factor(plan.parts[slot]))
+			!= OK
+		):
 			image = null  # RuntimeAtlas reports it by name.
 		images[slot] = image
 	_atlas = RuntimeAtlas.build_images(images, PAGE_MAX_PX, keep_image)
@@ -305,6 +355,7 @@ func _bake(plan: Plan, order: Array[StringName], scale: float, keep_image: bool)
 class Plan:
 	var texts: Dictionary[StringName, String] = {}
 	var sizes: Dictionary[StringName, Vector2i] = {}
+	var parts: Dictionary[StringName, StringName] = {}  ## Slot -> the part it is a frame of.
 	var keys: Array[StringName] = []
 	var spans: PackedInt32Array = PackedInt32Array()
 	var slots: Array[StringName] = []
