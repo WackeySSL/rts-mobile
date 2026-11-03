@@ -49,6 +49,9 @@ const SCALARS: Dictionary[StringName, Variant] = {
 	&"net_alpha": 0.9,
 	&"net_settle_ms": 500,
 	&"launch_ring_grow_to": 2.0,
+	&"emit_alpha": 0.85,
+	&"emit_grow_from": 0.6,
+	&"emit_grow_to": 1.2,
 }
 const RECOIL: Dictionary[StringName, float] = {
 	&"tank_cannon": 3.0,
