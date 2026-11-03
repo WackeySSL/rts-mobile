@@ -47,15 +47,13 @@ var _life: LifeSettings
 var _layer: StrikeFx
 
 
-func test_a_lance_rises_from_the_footprint_centre_lifted_by_the_rise_and_fades_in_launch_ms(
-) -> void:
+func test_a_lance_rises_from_the_launch_emitter_and_fades_in_launch_ms() -> void:
 	_fire(BORE, RUPTURE, T0 + 45)
 	_frame(T0, 0.0)  # Born.
 	assert_int(_layer.slot_count()).is_equal(1)
 	var centre: Vector2 = _centre(BORE)
-	var box: Rect2 = _buildings.frame_box(_row(BORE))
-	assert_float(box.position.y).is_less(centre.y - 10.0)  # The picture has a rise.
-	var launch: Vector2 = Vector2(centre.x, box.position.y)
+	var launch: Vector2 = _emitter_launch(&"fossil_strike", centre)  # P143: above the kelly.
+	assert_float(launch.y).is_less(centre.y - 10.0)  # The emitter has a rise.
 	assert_vector(_layer.launch_point(0)).is_equal_approx(launch, Vector2(TOL, TOL))
 	assert_array(_parts()).is_equal([RING, FLASH, LANCE_UP])
 	assert_vector(_anchor_of(2, &"lance_up")).is_equal_approx(launch, Vector2(TOL, TOL))
@@ -70,6 +68,14 @@ func test_a_lance_rises_from_the_footprint_centre_lifted_by_the_rise_and_fades_i
 	assert_float(_layer.quad_alpha(1)).is_equal_approx(0.0, TOL)  # launch_flash_ms is 250.
 	_frame(T0 + 10, 0.6)  # Past 700 ms: the launch is over and the fall has not begun.
 	assert_int(_layer.quad_count()).is_equal(0)
+
+
+## The real sheet's `launch` emitter (P143) over the footprint centre, world px.
+func _emitter_launch(type_id: StringName, centre: Vector2) -> Vector2:
+	var sheet: IsoSheetDef = _buildings.world_sort.sheet(type_id)
+	var index: int = sheet.emitters.find("launch")
+	assert_int(index).is_greater_equal(0)
+	return centre + sheet.emitter_point(index, -1) * WorldSort.ART_SCALE
 
 
 func test_the_launch_point_is_the_sheets_launch_emitter_when_there_is_one() -> void:
@@ -203,9 +209,7 @@ func test_a_seed_rises_and_a_net_falls_onto_the_spot_when_the_player_fired_it() 
 	_fire(ARRAY, BLACKOUT, 0)  # Player 1's own Blackout Array at a dark point.
 	_frame(T0, 0.0)
 	assert_array(_parts()).is_equal([CORE, SEED_TRAIL, SEED])
-	var top_of_array: Vector2 = Vector2(
-		_centre(ARRAY).x, _buildings.frame_box(_row(ARRAY)).position.y
-	)
+	var top_of_array: Vector2 = _emitter_launch(&"renew_strike", _centre(ARRAY))  # P143: the core.
 	assert_vector(_anchor_of(2, &"seed")).is_equal_approx(top_of_array, Vector2(TOL, TOL))
 	assert_vector(_anchor_of(0, &"core_flash")).is_equal_approx(top_of_array, Vector2(TOL, TOL))
 	assert_int(_layer.net_count()).is_equal(1)
