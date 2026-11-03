@@ -181,8 +181,8 @@ the same texture: soot, fire and sparks by stage, from the sheets' `damage` poin
 (two each) and vehicles (one per hull frame), not from `mix`-chosen roof points. When it is full
 the oldest puff goes. `AirFx` then holds three rings: emitters 80 (P145), damage 64 (P148), muzzle
 and exhaust 24 (P149). A vehicle's flame and smoke over a building in front of it is accepted (ADR
-0028 §6); its scar and loose part are sprites on the sorted world's page (ADR 0028 §4), not life
-layers.
+0028 §6); its scar and loose part are sprites on the sorted world's page (ADR 0028 §4), not in
+`LifeFx`.
 
 ### 4. Art: the frame axis and the atlas budget
 - **The frame axis** (the generator, art-director): an `ArtPrim` may carry `group=<name>`; an
@@ -250,8 +250,8 @@ as accepted):
   `IsoSheetDef.cuts`; the frame axis is unchanged (its frames share one canvas per part).
 - **The page rows spent:** the patches of about 30 % of the body height take about 268 of the 318
   rows left after P143 (estimate 3534 of 3584 for the cross-faction page), so about 50 remain for
-  P153 and P154. The neutral overlay sheet (`assets/art/svg/damage/damage_sheet.tres`, found
-  through `IsoSheetDef.root`) is estimated at 0 px. The budget rule of 3584 and the "cut before a
+  P153 and P154. The neutral overlay sheet (`assets/art/svg/damage/damage_sheet.tres`, loaded from
+  `IsoAtlas.NEUTRAL_SHEET`; its frames found through `IsoSheetDef.root`) is estimated at 0 px. The budget rule of 3584 and the "cut before a
   bake scale drops" rule stand; ADR 0028 §3 lists the fallback order.
 
 ### 5. Walking without sliding feet

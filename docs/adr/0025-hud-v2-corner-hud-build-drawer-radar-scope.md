@@ -26,11 +26,11 @@ interim portrait zone of 64 dp; the ring of a READY head and the placement resta
 own buildings out of view raises no cue (an open question). No accepted text changed.
 
 Status note (2026-11-03, P26ar docs; P120d #293, P120c #295 and P122b #296 as merged, main
-1a6209c): §2, §4 and §5 carry dated status notes from wave z's lead decisions: the drawer head's
-economy line takes no touch, drops the "POWER" caption and is 54 dp upright; the toast's top-left
-check; what "stalled" means on low power; a pinned full map on very short screens during the aim;
-a hold on a group with nothing selected; the group column under the portrait sheet. No accepted
-text changed.
+1a6209c): §2, §4, §5 and §7 carry dated status notes from wave z's lead decisions: the drawer
+head's economy line takes no touch, drops the "POWER" caption and is 54 dp upright; the toast's
+top-left check; what "stalled" means on low power; a pinned full map on very short screens during
+the aim (§7); a hold on a group with nothing selected; the group column under the portrait sheet.
+No accepted text changed.
 
 ## Michael's answers (2026-11-02, on #259)
 "Ja til anbefalinger undtagen attack" (yes to the recommendations except attack):
@@ -275,12 +275,10 @@ that "finishes first" and **the ring shows full** until it is placed (until P130
 Status note (2026-11-03, P26ar docs; lead decisions on P120c #295, as merged; the text and the note
 above stand):
 - **Stalled** means that no queue head advanced between two published snapshots. Low power is no
-  exception and needs none: every head with a producer still advances, at `low_power_percent`. So
-  a producer that is blacked out (or destroyed) on low power is a stall like any other.
-- **Very short screens** (about 680 dp wide or less; the test rig's `tiny_short_landscape`,
-  680 x 293 dp): where a pinned full map cannot stand beside the pill and the aim's row even at its
-  least width, it folds when the aim begins (the pin stays), and a tap on the scope opens it again
-  after the aim. A follow-up row will let `HudCorners` leave MAP out instead.
+  exception and needs none: on low power alone, every head still advances, at
+  `low_power_percent` (a unit head at the cap or with no free exit does not). So a producer that is
+  blacked out (or destroyed) on low power is a stall like any other.
+- A pinned full map on very short screens during the strike aim: see §7's note.
 
 ### 5. The build drawer
 - **Container:** ADR 0024's clipping holder and slide (M1): `menu_slide_ms` (160) drives the
@@ -404,6 +402,13 @@ accepted):
   minimap is always on"). It is question 5, recommended no.
 - **What P88 and P88b keep:** the picture, its cadence, the frame, the jump, the long-press `MOVE`;
   P88b lands on the `Minimap` node as planned, and P121 moves the node.
+
+Status note (2026-11-03, P26ar docs; a lead decision on P120c #295, as merged; the text above stays
+as accepted): on very short screens (a safe width under about 680 dp; the test rig's
+`tiny_short_landscape` is 680 dp wide with 656 dp safe, while 728 dp with 704 dp safe keeps the
+map open), a pinned full map cannot stand beside the pill and the strike aim's row (§10) even at
+its least width. It folds when the aim begins (the pin stays), and a tap on the scope opens it
+again after the aim. A follow-up row will let `HudCorners` leave MAP out instead.
 
 ### 8. Attack cues
 - **Detection** (P89's rule, moved): a `SHOT` or `IMPACT` event on an own row whose point is

@@ -368,9 +368,9 @@ stand where ADR 0028 does not change them):
 - **"A damaged building looks intact" is withdrawn**, and so is the P132 note's "a damaged building
   still keeps one picture". A complete building and a vehicle under 50 % hp show stage 1, under
   25 % stage 2 (infantry and sites none). A building's stage is a generated top patch on the sorted
-  world's page over its trimmed `Body`; a vehicle's is a scar and, at stage 2, a loose part, sprites
-  under `Hull` from a neutral sheet on the same page (one shared slot per frame, no key colour).
-  Smoke, fire and sparks stay in `AirFx`.
+  world's page over its trimmed `Body`; a vehicle's is a scar and, at stage 2, a loose part,
+  children of `Hull` (drawn over it, under the `Turret`) from a neutral sheet on the same page (one
+  shared slot per frame, no key colour). Smoke, fire and sparks stay in `AirFx`.
 - **No new draw call and no tint:** "nothing tints a sorted sprite" holds (the burnt look is the
   scar, the char and the smoke); the forecast stays 16. The page stays at most 3584 rows.
 - **Destroyed** is unchanged: a destroyed building still leaves its crater.

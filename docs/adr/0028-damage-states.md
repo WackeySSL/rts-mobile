@@ -196,8 +196,10 @@ above stays as accepted):
     (`ArtModel.damage_swaps`): such a swap shows only where the two overlap.
   - The 4 overlap rows (`CUT_OVERLAP_PX`) draw an edge's anti-aliased fringe twice, the patch's
     over the body's (edge pixels only). P159 trims the body at `ceil(cut x bake_scale)`
-    texels and draws the patch over it.
-- **Damage parts and points** (`ArtModel.problems`, `_damage_problems`):
+    texels and draws the patch over it (a lead decision, 2026-11-03: at `MIN_SCALE` 0.25 the 4 px
+    overlap is still at least 1 texel).
+- **Damage parts and points** (`ArtModel._pose_problems` for the part, count and `scar_milli`
+  rules; `ArtModel._damage_problems` for the moves; `ArtGen.damage_problems` for the stages):
   - A building with stage 1 only (`dmg1` without `dmg2`) is refused; stage 2 only is allowed
     (fallback (b)).
   - The seated group is the hull group named `mount` (`ArtModel.SEATED_GROUP`); a damage move may
@@ -205,6 +207,8 @@ above stays as accepted):
   - Count rules: a building has at most two `damage` points and no `hang`; a vehicle at most one
     of each; infantry none.
   - `scar_milli` is for vehicles only (0 on every other model).
+  - A stage is refused when it changes nothing, when a change lies wholly above the body's canvas,
+    or when a change reaches the body's foot (the overlap would not fit the canvas).
 
 ### 4. Vehicle overlays
 - **Where the sprites live: on the sorted world's page, not in `fx/life_atlas.svg`.** An overlay
@@ -363,11 +367,16 @@ above stays as accepted):
 - **Page:** at most 3584 at bake scale 1.0 for the cross-faction two-player match, pinned by
   `test_iso_atlas_budget.gd`; P158 and P160 update its `TODAY_*` values.
 
-Status note (2026-11-03, P26ar docs; a lead decision of 2026-11-03 on P156 #294; the table above
+Status note (2026-11-03, P26ar docs; a lead decision of 2026-11-03 on P156 #294; the text above
 stays as accepted): the generator mirrors the `hang` point per hull frame to the side that faces the
 camera (`ArtGen.hang_point_px`); the edge-on frames `d00` and `d08` keep the model's side. So the
 hang point changes side about **four times per full turn, not twice** (+1 write for the flip each
-time), and at the switch it jumps across the hull (from `d08` to `d09`).
+time). At each of the two switches in a full turn it jumps across the hull; which frames they fall
+on depends on the model's side: a point on +y jumps at `d08` to `d09` and `d15` to `d00`, a point on
+-y at `d00` to `d01` and `d07` to `d08`. The worst-frame sums above count 2 follow writes per
+stage-2 vehicle; a group turning in step across a side switch writes 3 each (about 157 at 30
+vehicles, 187 at 40, against ADR 0027 §9's 150). P162's in-step turn must include a side-switch
+frame; `damage_loose` off removes both the loose part's position write and its flip write.
 
 ### 9. Numbers in data
 `data/life_settings.tres` gains `damage_stage_percent` ([50, 25]), `damage_writes_per_frame` (60),
