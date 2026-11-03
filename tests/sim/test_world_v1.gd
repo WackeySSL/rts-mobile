@@ -67,7 +67,10 @@ func test_the_enums_and_the_event_stride_are_the_contract() -> void:
 	assert_dict(World.Order).is_equal({"IDLE": 0, "ATTACK_MOVE": 1, "MOVE": 2, "ATTACK": 3})
 	assert_dict(World.Armour).is_equal({"INFANTRY": 0, "LIGHT": 1, "HEAVY": 2, "BUILDING": 3})
 	assert_dict(World.MoveClass).is_equal({"FOOT": 0, "WHEELED": 1, "TRACKED": 2})
-	assert_dict(World.Event).is_equal({"SPAWNED": 1, "DIED": 2, "SHOT": 3, "IMPACT": 4})
+	# STRIKE joined with P133 (ADR 0027 section 7, an ADR 0007 section 10 note): events are not state.
+	assert_dict(World.Event).is_equal(
+		{"SPAWNED": 1, "DIED": 2, "SHOT": 3, "IMPACT": 4, "STRIKE": 5}
+	)
 	var nav: Dictionary = {"NONE": 0, "DIRECT": 1, "FIELD": 2, "HOLD": 3, "CHASE": 4}
 	assert_dict(World.NavMode).is_equal(nav)
 	# 2 since P65 (ADR 0016, exception 10): fog.visible left the state hash. 3 since P70 (ADR 0017
