@@ -77,20 +77,44 @@ func test_a_tap_emits_tapped_and_a_hold_emits_held_and_not_tapped() -> void:
 	assert_bool(button.is_processing()).is_false()
 
 
-func test_buttons_are_56_dp_and_an_empty_group_is_not_shown_at_every_profile() -> void:
-	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
-	profiles.merge(UiProfiles.portrait())
-	for profile_name: StringName in profiles:
-		await _open(profiles[profile_name])
-		_save_groups(2)
+func test_buttons_are_56_dp_with_8_dp_gaps_and_an_empty_group_is_not_shown_at_every_screen(
+) -> void:
+	for screen: Dictionary in _screens():
+		await _open(screen["metrics"], screen["size"])
+		_save_groups(3)  # Three counted groups and, with a unit selected, no "+" (none free).
 		await await_idle_frame()
-		for button_name: String in ["AllArmy", "Group1", "Group2", "AddGroup"]:
-			var size: Vector2 = _rect(button_name).size
-			var why: String = "%s: %s is %s" % [profile_name, button_name, size]
-			assert_vector(size).override_failure_message(why).is_equal_approx(
-				UiScale.dp_vec(56.0, 56.0), Vector2.ONE
+		var dp: float = UiScale.base_px_per_dp()
+		var why: String = str(screen["label"])
+		var rects: Array[Rect2] = []
+		for button_name: String in ["AllArmy", "Group1", "Group2", "Group3"]:
+			var rect: Rect2 = _rect(button_name)
+			rects.append(rect)
+			var at: String = "%s: %s is %s" % [why, button_name, rect.size]
+			assert_vector(rect.size).override_failure_message(at).is_equal_approx(
+				Vector2(56.0, 56.0) * dp, Vector2.ONE
 			)
-		assert_bool((_hud("Group3") as Button).visible).is_false()
+		for first: int in rects.size():
+			for second: int in range(first + 1, rects.size()):
+				var apart: float = maxf(
+					maxf(
+						rects[first].position.x - rects[second].end.x,
+						rects[second].position.x - rects[first].end.x
+					),
+					maxf(
+						rects[first].position.y - rects[second].end.y,
+						rects[second].position.y - rects[first].end.y
+					)
+				)
+				var gap: String = (
+					"%s: buttons %d and %d are %s px apart" % [why, first, second, apart]
+				)
+				assert_float(apart).override_failure_message(gap).is_greater_equal(8.0 * dp - 1.0)
+		_controller.selection.clear()  # No unit selected: "+" goes too; and an empty group is hidden.
+		assert_bool((_hud("AddGroup") as Control).visible).override_failure_message(why).is_false()
+	await _open(UiProfiles.by_name(&"android_6in"))
+	_select([1])
+	assert_bool((_hud("Group3") as Control).visible).is_false()
+	assert_vector(_rect("AddGroup").size).is_equal_approx(UiScale.dp_vec(56.0, 56.0), Vector2.ONE)
 
 
 func test_the_column_stays_inside_the_safe_area_at_every_screen() -> void:
@@ -194,9 +218,32 @@ func test_plus_saves_into_the_lowest_free_group_tap_recalls_and_hold_overwrites(
 	_controller.settings.haptics_enabled = false
 	selection.clear()
 	assert_bool((_hud("AddGroup") as Control).visible).is_false()  # Nothing selected.
-	_touch_button("Group3", 500)  # The empty selection empties the group.
-	assert_array(_badges()).is_equal(["1\n2", "2\n1"])
+	_touch_button("Group3", 500)  # A hold with no unit selected changes nothing, and is silent.
+	assert_array(selection.group(3)).is_equal([10])
+	assert_array(_badges()).is_equal(["1\n2", "2\n1", "3\n1"])
 	assert_array(_buzzes).has_size(4)
+	assert_array(_sent).is_empty()
+
+
+## "+" shows only while units are selected (a group free), and neither "+" nor a hold nor
+## `save_group` does anything with no unit selected: the groups stay and the phone stays quiet.
+func test_plus_and_a_hold_do_nothing_without_a_unit_selected() -> void:
+	await _open(UiProfiles.by_name(&"android_6in"))
+	var selection: SelectionModel = _controller.selection
+	_select([1, 2])
+	_touch_button("AddGroup")  # Group 1; groups 2 and 3 are free.
+	assert_array(selection.group(1)).is_equal([1, 2])
+	assert_bool((_hud("AddGroup") as Control).visible).is_true()
+	assert_array(_buzzes).has_size(1)
+	selection.clear()
+	assert_bool((_hud("AddGroup") as Control).visible).is_false()  # Free groups, no unit.
+	_controller.save_group()  # Nothing selected: the free group stays empty, no buzz.
+	assert_array(selection.group(2)).is_empty()
+	assert_array(_buzzes).has_size(1)
+	_touch_button("Group1", 500)  # A hold with nothing selected: unchanged, silent.
+	assert_array(selection.group(1)).is_equal([1, 2])
+	assert_array(_buzzes).has_size(1)
+	assert_array(_badges()).is_equal(["1\n2"])
 	assert_array(_sent).is_empty()
 
 
@@ -332,7 +379,7 @@ func _badges() -> Array[String]:
 	for slot: int in range(1, 4):
 		var button: Button = _hud("Group%d" % slot)
 		if button.visible:
-			texts.append(button.text)
+			texts.append((_hud("GroupColumn") as GroupColumn).badge_text(slot))
 	return texts
 
 

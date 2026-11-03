@@ -124,19 +124,23 @@ func tap_group(slot: int) -> void:
 	selection.recall_group(slot)
 
 
-## Stores the selection in group `slot` (a hold on it overwrites it), shows the count and buzzes.
+## Stores the selected units in group `slot` (a hold on it overwrites it), shows the count and
+## buzzes. With no unit selected (nothing, or a building) it changes nothing and does not buzz: a
+## finger resting on a group never wipes it.
 func assign_group(slot: int) -> void:
+	if not _units_selected():
+		return
 	selection.assign_group(slot)
 	_show_groups()
 	if settings.haptics_enabled:
 		vibrate.call(settings.haptic_ms)
 
 
-## "+": stores the selected units in the lowest free group, with the buzz. Nothing when no unit is
-## selected or all groups hold some.
+## "+": stores the selected units in the lowest free group, with the buzz. Nothing when all groups
+## hold some (`assign_group` sees to the units).
 func save_group() -> void:
 	var slot: int = selection.lowest_free_group()
-	if slot > 0 and _units_selected():
+	if slot > 0:
 		assign_group(slot)
 
 

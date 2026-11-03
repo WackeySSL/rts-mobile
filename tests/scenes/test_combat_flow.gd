@@ -180,7 +180,7 @@ func _assert_blue_left(ids: Array) -> void:
 	assert_array(_controller.selection.selected).is_equal(ids)
 	assert_array(_controller.selection.group(1)).is_equal(ids)
 	_assert_panel("×%d" % ids.size())
-	assert_str((_hud("Group1") as Button).text).is_equal("1\n%d" % ids.size())
+	assert_str((_hud("GroupColumn") as GroupColumn).badge_text(1)).is_equal("1\n%d" % ids.size())
 
 
 ## Every unit of `ids` has the ATTACK order on `target` in the World, the tick after the tap.

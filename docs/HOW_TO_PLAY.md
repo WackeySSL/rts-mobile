@@ -94,7 +94,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Tap "ALL" at the top of the column on the left edge | Selects every own unit that can fight, anywhere on the map. Tankers are left out, and so is every building | |
 | Tap "+" with units selected | Saves them as the next free group (1-3); the phone buzzes and the group appears in the column with its number and count. "+" is gone while no unit is selected or all three groups hold units | yes |
 | Tap a group | Selects the units stored in that group | |
-| Hold a group (`group_assign_ms` in `data/input_settings.tres`) | Overwrites it with the current selection; the phone buzzes and the count shows | yes |
+| Hold a group (`group_assign_ms` in `data/input_settings.tres`) | Overwrites it with the current selection; the phone buzzes and the count shows. With no unit selected a hold does nothing, so a resting finger never empties a group | yes |
 | A grouped unit is destroyed | It leaves the group; the group's count shows the new number, and a group with no unit left leaves the column | |
 | Look at the group column | It stands on the left edge, sideways under the Dev and Surrender buttons, upright above the bottom edge and left of BUILD; more groups than fit in a column make a second column to the right. While you aim a strike, upright, it shows three buttons in one column and the rest scroll, so it never sits against the check mark and the X | |
 

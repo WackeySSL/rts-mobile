@@ -5,9 +5,11 @@ extends GdUnitTestSuite
 ## a scene, turns the window and turns it back, and compares what the handlers made of the dp with
 ## a scene opened at that size; the middle step is compared with a fresh scene too. The handlers
 ## are the ones of main.tscn (DpMinSize, SafeAreaMargin, HudTheme, TouchInput, BuildSidebar,
-## ArmyBar, SelectionPanel, UnitLayer's rings, HealthBarLayer, EffectsLayer and RtsCamera), of the
+## the group column, SelectionPanel, UnitLayer's rings, HealthBarLayer, EffectsLayer and
+## RtsCamera), of the
 ## touch probe, of the dev menu (P63) and of the perf arena (PerfHud and the arena's own). A
-## handler that a later row rewrites extends its case there (P61 SelectionPanel and ArmyBar, P62
+## handler that a later row rewrites extends its case there (P61 SelectionPanel and the group
+## column, P62
 ## RtsCamera and TouchInput, P63 the touch probe). The engine's own metrics are used, no override:
 ## the stretch has to follow.
 

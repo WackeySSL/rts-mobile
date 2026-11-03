@@ -26,8 +26,7 @@ extends Control
 ## The sheet's height goes to `HudLayout.bottom_zone_dp` and its real top on the screen to
 ## `HudLayout.menu_top_px` (ADR 0024 section 4), and `zone_changed` tells whoever lifts something by
 ## them (the strike row). Upright the zone is the sheet's height while the drawer is open and 0
-## while
-## it is closed; sideways it is 0.
+## while it is closed; sideways it is 0.
 ## Cards: one `ItemTile` per buildable type (icon: its P99b item card), made per match from the
 ## snapshot's type tables, those of the open tab and of the local player's faction shown. The
 ## faction is that of the player's own rows (`type_faction`, the producer-faction rule of

@@ -209,8 +209,9 @@ func test_all_army_then_groups_1_to_3(profile: String, _test_parameters := PROFI
 	_press_hud("AddGroup")  # Group 2: tanks 1, 2, 3, 7, 8 and 13.
 	await _tap(_layer.unit_screen_position(2))
 	_press_hud("AddGroup")  # Group 3: tank 3.
-	for label: Array in [["Group1", "1\n30"], ["Group2", "2\n6"], ["Group3", "3\n1"]]:
-		assert_str((_hud(label[0]) as Button).text).is_equal(label[1])
+	var column: GroupColumn = _hud("GroupColumn")
+	for label: Array in [[1, "1\n30"], [2, "2\n6"], [3, "3\n1"]]:
+		assert_str(column.badge_text(label[0])).is_equal(label[1])
 	var buzz: int = _touch.settings.haptic_ms
 	assert_array(_buzzes).is_equal([buzz, buzz, buzz, buzz])  # Three assigns, the box's long-press.
 	var recalled: Array = [[range(1, 31), "×30"], [TOP_TANKS, "×6"], [[3], "×1"]]

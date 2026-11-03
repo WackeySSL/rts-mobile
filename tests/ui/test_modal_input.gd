@@ -137,8 +137,7 @@ func test_a_hold_button_does_not_hold_or_tap_under_a_modal() -> void:
 	for modal: String in MODALS:
 		await _open()
 		var controller: PlayerController = _main.get_node("PlayerController")
-		controller.selection.set_ids(PackedInt32Array([1]))
-		controller.assign_group(1)  # An empty group is not shown: save one.
+		controller.assign_group(1)  # An empty group is not shown: save the units `_open` selected.
 		var group: HoldButton = _hud("Group1") as HoldButton
 		group.clock = func() -> int: return _now[0]
 		var counts: Dictionary[String, int] = {"held": 0, "tapped": 0}
