@@ -76,6 +76,7 @@ func place() -> void:
 	feed.state.fill(shown)
 	shown.map = false  # Hidden then; the rect is still the toast's own.
 	shown.toast = true
+	shown.pill_over_drawer = true  # The economy is the pill's until P120d: it stays beside the drawer.
 	if pill != null:
 		shown.pill_width = pill.size.x / dp
 	if top_left != null and top_left.visible:

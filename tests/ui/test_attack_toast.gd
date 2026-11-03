@@ -69,6 +69,20 @@ func test_the_toast_keeps_clear_at_every_screen_with_units_selected() -> void:
 	assert_int(panels).is_greater(0)
 
 
+## The open drawer, landscape and portrait: the toast keeps clear of the pill (which stays), the
+## scope, the stack and the drawer, and keeps its least width, at every screen.
+func test_the_toast_keeps_clear_of_the_pill_and_the_drawer_at_every_screen() -> void:
+	var screens: Array[Dictionary] = RadarRig.screens()
+	var short: UiMetrics = RadarRig.short_landscape()
+	screens.append({"label": "short landscape", "size": short.window_size, "metrics": short})
+	for screen: Dictionary in screens:
+		await _open(screen["size"], screen["metrics"])
+		_controller.select_all_army()
+		_hit(_unit, _far())
+		await _settle()
+		await _expect_toast_clear_of_drawer(str(screen["label"]))
+
+
 ## A turn moves the toast to the other layout's place, still clear of the panel.
 func test_a_turn_replaces_the_toast() -> void:
 	await _open(ScreenSizes.LANDSCAPE[0])

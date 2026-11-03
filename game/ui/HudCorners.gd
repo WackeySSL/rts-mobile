@@ -25,6 +25,9 @@ const BAR_DP: Vector2 = Vector2(120.0, 64.0)  ## Least width (Deselect and a chi
 const GROUP_DP: float = 56.0
 const TOAST_H_DP: float = 48.0
 const TOAST_W_DP: Vector2 = Vector2(280.0, 360.0)  ## At most, landscape then portrait.
+## Least landscape width beside the pill: glyph 24, gap 6, padding and a title of about 14 letters
+## ("UNITS UNDER ATTACK"); longer names are trimmed. Below it the toast stands under the top line.
+const TOAST_LEAST_DP: float = 200.0
 const MAP_HEAD_DP: float = 48.0
 const MAP_BOX_LEAST_H_DP: float = 96.0
 const MAP_BOX_DP: Vector2 = Vector2(240.0, 120.0)  ## At most; portrait 260 x 130.
@@ -181,7 +184,11 @@ static func _bar(
 
 ## The toast: portrait, under the pill at the start, a gap under the scope's foot (the scope is 56
 ## dp, the pill's line 48) and under the top-left stack (`left_height`); landscape, centred between
-## the pill (or the safe edge) and the scope (or the open panel).
+## the pill (or the safe edge) and the scope (or the open panel). Where that room is under
+## `TOAST_LEAST_DP` (a wide pill beside the open panel on a narrow phone) the toast stands under
+## the top line instead, as the portrait rule has it: from the pill's start (right of the top-left
+## stack's first row), a gap under the scope's foot and under the stack (`left_height`), no further
+## right than the open panel or the safe edge.
 static func _toast(
 	w: float, portrait: bool, placed: Dictionary[StringName, Rect2], open: Rect2, left_height: float
 ) -> Rect2:
@@ -191,7 +198,12 @@ static func _toast(
 	var left: float = 0.0
 	if placed.has(PILL):
 		left = placed[PILL].end.x + GAP_DP
-	var right: float = (open.position.x if open.size.x > 0.0 else w - SCOPE_DP) - GAP_DP
+	var edge: float = (open.position.x if open.size.x > 0.0 else w) - GAP_DP
+	var right: float = edge if open.size.x > 0.0 else w - SCOPE_DP - GAP_DP
+	if right - left < TOAST_LEAST_DP:
+		var start: float = placed[PILL].position.x if placed.has(PILL) else 0.0
+		var top: float = maxf(SCOPE_DP, left_height) + GAP_DP
+		return Rect2(start, top, maxf(minf(TOAST_W_DP.x, edge - start), 0.0), TOAST_H_DP)
 	var width: float = minf(TOAST_W_DP.x, right - left)
 	return Rect2(left + (right - left - width) * 0.5, 0.0, width, TOAST_H_DP)
 
