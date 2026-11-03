@@ -101,6 +101,11 @@ Status note (2026-11-03, the docs row after wave y): §2 carries a dated status 
 flags as P87 merged them (always drawn while set, the line only while the producer is selected) and
 on the ghost's "Blocked" word in the draw-call forecast. No accepted text changed.
 
+Status note (2026-11-03, P26ar docs; ADR 0028 accepted 2026-11-03 on #291): §2 and §5 carry dated
+status notes: "a damaged building looks intact" is withdrawn (two damage stages, view and art only,
+no new draw call); new part names `dmg1` and `dmg2`, new sheet fields and emitter kinds, and a
+hand-written neutral sheet outside the generated tree. No accepted text changed.
+
 ## Context
 - **Michael's canvas.** "Iron Meridian - grafisk udkast" (Claude Design) has two versions. A: a
   science alliance against an industrial bloc, violet crystals. B ("Øst/Vest"): the same mechanics
@@ -358,6 +363,18 @@ the notes above stand):
 - **"Blocked"** (P86b): the ghost's word is drawn with the fallback font (`GhostLayer`), one more
   texture, so the ghost adds about 1 call to the P26an note's count while the word shows.
 
+Status note (2026-11-03, P26ar docs; ADR 0028 accepted 2026-11-03; the text and the notes above
+stand where ADR 0028 does not change them):
+- **"A damaged building looks intact" is withdrawn**, and so is the P132 note's "a damaged building
+  still keeps one picture". A complete building and a vehicle under 50 % hp show stage 1, under
+  25 % stage 2 (infantry and sites none). A building's stage is a generated top patch on the sorted
+  world's page over its trimmed `Body`; a vehicle's is a scar and, at stage 2, a loose part,
+  children of `Hull` (drawn over it, under the `Turret`) from a neutral sheet on the same page (one
+  shared slot per frame, no key colour). Smoke, fire and sparks stay in `AirFx`.
+- **No new draw call and no tint:** "nothing tints a sorted sprite" holds (the burnt look is the
+  scar, the char and the smoke); the forecast stays 16. The page stays at most 3584 rows.
+- **Destroyed** is unchanged: a destroyed building still leaves its crater.
+
 ### 3. Picking, selection and placement
 - **Ground taps:** `IsoProjection.px_to_ground` of the camera's world point, rounded to milli.
 - **Units first** (ADR 0022 §3's order kept): with a selection enemy unit > own unit > enemy
@@ -513,6 +530,19 @@ stand where ADR 0027 does not change them):
 - **The page budget:** with every life frame the cross-faction two-player page at bake scale 1.0
   stays at most 3584 px tall (`tests/view/test_iso_atlas_budget.gd`, P137); a set that would pass
   it is cut before a bake scale drops.
+
+Status note (2026-11-03, P26ar docs; ADR 0028 accepted 2026-11-03; P156 #294 as merged; the text
+and the notes above stand where ADR 0028 does not change them):
+- **Two new part names:** `dmg1` and `dmg2`, a building's damage patches, one frame and no
+  direction each (`<type_id>_dmg1.svg`, `<type_id>_dmg2.svg`), generated like every part.
+  `IsoSheetDef` gains `cuts` (buildings), `scar_milli` (vehicles) and `root`; the emitter kinds gain
+  `damage` and `hang`.
+- **The neutral sheet:** the vehicle overlays (`scar1`, `scar2`, `loose`) are hand-written SVG in
+  `assets/art/svg/damage/` with "Keep File" imports and a hand-written `damage_sheet.tres`
+  (`faction` `neutral`), outside the generated tree, whose rule ("generated, never hand-edited")
+  stands. Its `IsoSheetDef.root` names that folder (empty on every generated sheet); the bake loads
+  it from `IsoAtlas.NEUTRAL_SHEET`, not through the index.
+- **"Out of Phase 3: building damage states"** is now withdrawn in full: ADR 0028 adds them.
 
 ### 6. Factions: names, look and data
 - **Names** (Michael's answer 1; screened in §13): the **Derrick League** (the oil and gas bloc;

@@ -12,6 +12,19 @@ of `AirFx`), §8 (what `reduced` keeps) and the unit-life plan's P148; ADR 0023 
 building looks intact") and §5 (two new part names). No rule, state column, Command, event or
 golden hash changes.
 
+Status note (2026-11-03, P26ar docs; accepted on #291; P156 #294 as merged): the dated notes
+in ADR 0027 §3, §4 and §8, ADR 0023 §2 and §5 and the unit-life plan's P148 row are written. §3
+and §8 carry dated notes from P156's review: the stage's draw order and its cut row, the overlap's
+double fringe, the rules on damage parts and points, and the `hang` point's side per hull frame (a
+lead decision). No accepted text changed.
+
+Status note (2026-11-03, Michael, after seeing P158's first pass): answer 1's "top third" is
+amended: stage 1 shows holes and may reach down to half the body, stage 2 has largely collapsed and
+may reach down to just above the foot (§3's amendment; also Decisions in short 3, the
+Consequences and the Answers). A second amendment the same day makes stage 2 a low ruin and bakes
+the damage patches at 75 % of the bake scale (`IsoAtlas.DAMAGE_SCALE`, Michael's choice of
+fallback); a third hides a building's `Anim` at stage 2. No accepted text changed.
+
 ## Context
 - **Michael, 2026-11-03** (his own answers): buildings and vehicles under 50 % hp must look as if
   they are falling apart; infantry not. Two stages: under 50 % cracks, soot and smoke; under 25 %
@@ -70,6 +83,10 @@ golden hash changes.
    drop the sparks.
 8. **Budget:** no new draw call; stage writes share one budget of 60 a frame (20 buildings, 40
    vehicles); the page stays at most 3584.
+
+Amended 2026-11-03 (Michael; §3's amendment): item 3's "about a third of the body height" is
+replaced: stage 1 down to half the body, stage 2 down to just above the foot; item 8's page bound
+is measured again by P158's rework.
 
 ## Decision
 
@@ -176,6 +193,90 @@ golden hash changes.
 - **Intact by rule:** the cast shadow (`DecalLayer`; a fallen chimney's shadow error is accepted),
   the build card (`assets/art/iso/icons/item_*.svg`), a defence's `Head` (16 directions per stage
   would cost page rows), the crater and the site look.
+
+Status note (2026-11-03, P26ar docs; P156 #294, 732cb6c, as merged in `tools/artgen/`; the text
+above stays as accepted):
+- **The stage and its cut.**
+  - A stage is drawn in its own greedy painter's order (`ArtGen.stage_polys`), not in the intact
+    body's.
+  - `cuts` holds the **first intact row**, not the last changed one:
+    `ceili(low + 1) + origin.y` (`ArtGen.damage_cut`), where `low` is the lowest outline row and
+    1 is half of the 2 px edge (`ArtSvg.EDGE_PX / 2`).
+  - The cut also covers the screen overlap (the intersection, not the union) of every pair of
+    untouched primitives that the stage draws in the other order than the intact body
+    (`ArtModel.damage_swaps`): such a swap shows only where the two overlap.
+  - The 4 overlap rows (`CUT_OVERLAP_PX`) draw an edge's anti-aliased fringe twice, the patch's
+    over the body's (edge pixels only). P159 trims the body at `ceil(cut x bake_scale)`
+    texels and draws the patch over it (a lead decision, 2026-11-03: at `MIN_SCALE` 0.25 the 4 px
+    overlap is still at least 1 texel).
+- **Damage parts and points** (`ArtModel._pose_problems` for the part, count and `scar_milli`
+  rules; `ArtModel._damage_problems` for the moves; `ArtGen.damage_problems` for the stages):
+  - A building with stage 1 only (`dmg1` without `dmg2`) is refused; stage 2 only is allowed
+    (fallback (b)).
+  - The seated group is the hull group named `mount` (`ArtModel.SEATED_GROUP`); a damage move may
+    not touch it or an `anim` group. P158 puts a defence's `Head` seat in it.
+  - Count rules: a building has at most two `damage` points and no `hang`; a vehicle at most one
+    of each; infantry none.
+  - `scar_milli` is for vehicles only (0 on every other model).
+  - A stage is refused when it changes nothing, when a change lies wholly above the body's canvas,
+    or when a change reaches the body's foot (the overlap would not fit the canvas).
+
+Amended 2026-11-03 (Michael, after seeing P158's first pass, the sixteen buildings with patches at
+17-37 % of the body: "Meget kraftigere", then "det er slet ikke skade nok der skal være hul i
+bygningen eller være helt styrtet sammen", not nearly enough damage: there must be holes in the
+building, or it must have completely collapsed). This replaces answer 1's "top third" and "The art
+rule that follows" above; the text above stays as accepted:
+- **Stage 1 (under 50 %):** clear holes: roof or wall sections gone and the dark inside visible.
+  The change may reach down to half the body (the cut at most at 50 % of the body's rows, measured
+  from its top).
+- **Stage 2 (under 25 %):** largely collapsed: most of the upper structure gone or fallen, the
+  walls lowered or broken, rubble on what remains, the dark inside showing. The change may reach
+  down to just above the foot; the generator still refuses a change that reaches the body's foot
+  (`ArtGen.damage_problems`). The footprint and the foot outline stay, and the `mount` and `anim`
+  groups stay untouched. Stage 2 is clearly stronger than stage 1 and reads at game zoom without
+  smoke.
+- **The page:** P158's first pass measured `TODAY_CROSS` 3376, `TODAY_MIRROR_DERRICK` 2774 and
+  `TODAY_MIRROR_LUMEN` 3002 against the 3584 budget (208 rows left on the cross-faction page).
+  Deeper patches use more of that, and a stage-2 patch can now be most of the body, so the page may
+  pass 3584. P158's rework measures the real figures. If it does not fit, the lead and Michael
+  choose the fallback (for example a second page, or a lower scale for stage 2 only, which the
+  "Never" above would otherwise rule out); it is not decided here. (Decided the same day: the
+  second amendment below.)
+
+Amended again 2026-11-03 (Michael, after the P158 probe; the text and the amendment above stand
+where this does not change them):
+- **Strength** ("Endnu mere"): stage 2 is a **low ruin**: only rubble and stubs of the walls on the
+  footprint. A `mount` or `anim` element that must stay stands alone on a stub. Stage 1 is
+  unchanged from the amendment above: holes, roofs torn out, the dark inside showing.
+- **The page fallback (Michael's choice):** with all sixteen buildings at this strength the
+  cross-faction page passes 3584 (about 3780 estimated at full resolution; the probe of four
+  buildings measured 3478). **The damage patches (`dmg1`, `dmg2`) are baked at 75 % of the bake
+  scale; every other frame stays at full scale.** The factor is `IsoAtlas.DAMAGE_SCALE` = 0.75, a
+  view constant, not balance. This replaces §3's "Never a lower bake scale" for this one fallback;
+  the rest of that sentence stands. Not chosen: the whole atlas a little softer, a second page
+  (memory and draw calls), a smaller collapse.
+- **Consequences:**
+  - A patch is drawn at `WorldSort.ART_SCALE / (bake_scale x DAMAGE_SCALE)` per texel; each region
+    carries its own scale (P157b).
+  - The 4 px overlap becomes 3 px of art at 75 %; at `MIN_SCALE` 0.25 that is 0.75 texel, under 1.
+    The view must keep at least 1 texel of overlap: P159 trims the body at the `floor` of the
+    patch's cut in texels, or the overlap grows. **Open point**, for P157b and P159 to fix; the
+    P26ar note's `ceil(cut x bake_scale)` is reopened with it.
+  - The sharpness seam at the cut (a softer patch over a sharp body) is accepted: the damaged top
+    is rubble.
+
+Amended a third time 2026-11-03 (Michael, after seeing all sixteen buildings at the new strength:
+"Ja, styrt dem"; this replaces "The `anim` part keeps running at both stages" above and the second
+amendment's "a `mount` or `anim` element ... stands alone on a stub" for `anim`):
+- **At stage 2 the building's `Anim` child is hidden** (lamps, beacons, drill, radar, rotors, fans),
+  so the tall rests that only carried an anim element may collapse too. It shows again when the
+  stage falls back to 1 or 0 (a later repair), like every stage picture.
+- **Stage 1:** the `Anim` still runs, at its rate.
+- **A defence's `Head`** (seated on `mount`) stays at both stages: defences still aim and shoot.
+- The generator's rule is unchanged: a damage move may not touch an `anim` group or `mount`; the
+  anim element is its own part, and the hull groups that carry it may move.
+- Writes: hiding or showing the `Anim` is one visibility write more in the building's 0 → 2 and
+  1 → 2 changes (and back), inside `damage_building_writes`.
 
 ### 4. Vehicle overlays
 - **Where the sprites live: on the sorted world's page, not in `fx/life_atlas.svg`.** An overlay
@@ -334,6 +435,17 @@ golden hash changes.
 - **Page:** at most 3584 at bake scale 1.0 for the cross-faction two-player match, pinned by
   `test_iso_atlas_budget.gd`; P158 and P160 update its `TODAY_*` values.
 
+Status note (2026-11-03, P26ar docs; a lead decision of 2026-11-03 on P156 #294; the text above
+stays as accepted): the generator mirrors the `hang` point per hull frame to the side that faces the
+camera (`ArtGen.hang_point_px`); the edge-on frames `d00` and `d08` keep the model's side. So the
+hang point changes side about **four times per full turn, not twice** (+1 write for the flip each
+time). At each of the two switches in a full turn it jumps across the hull; which frames they fall
+on depends on the model's side: a point on +y jumps at `d08` to `d09` and `d15` to `d00`, a point on
+-y at `d00` to `d01` and `d07` to `d08`. The worst-frame sums above count 2 follow writes per
+stage-2 vehicle; a group turning in step across a side switch writes 3 each (about 157 at 30
+vehicles, 187 at 40, against ADR 0027 §9's 150). P162's in-step turn must include a side-switch
+frame; `damage_loose` off removes both the loose part's position write and its flip write.
+
 ### 9. Numbers in data
 `data/life_settings.tres` gains `damage_stage_percent` ([50, 25]), `damage_writes_per_frame` (60),
 `damage_building_writes` (20; a data test holds it above 0 and under the total), `damage_loose` (on),
@@ -348,6 +460,7 @@ numbers (`cuts`, `scar_milli`, the `damage` and `hang` points) are sheet fields 
   sixteen buildings; the patches spend about 268 of the page's 318 free rows, which leaves about 50
   for P153 and P154 (they may not fit; their rows already say they land only if the page has room).
 - Building damage sits in the top third of the picture; walls below the cut stay as they were.
+  (Amended 2026-11-03, §3: stage 1 down to half the body, stage 2 down to just above the foot.)
 - Two layers gain a small view memory (the last-seen stage) and `LifeFx` and `GhostMemoryLayer` gain
   one export each, wired in `main.tscn`.
 - `AirFx` gains its second ring; the damage quota grows from 24 to 64.
@@ -392,3 +505,14 @@ numbers (`cuts`, `scar_milli`, the `damage` and `hang` points) are sheet fields 
 **Answers (Michael, 2026-11-03):** 1 A (both stages are generated pictures of the top third; the
 automatic fallback to B stays if A does not fit), 2 A (no vehicle tint; soot patch, char patch with an
 ember seam and a hanging plate or fender, plus smoke, fire and sparks).
+
+**Amended answer 1 (Michael, 2026-11-03, after seeing P158's first pass):** "Meget kraftigere", then
+"det er slet ikke skade nok der skal være hul i bygningen eller være helt styrtet sammen". Stage 1
+shows holes and may reach down to half the body; stage 2 has largely collapsed and may reach down to
+just above the foot (§3's amendment). The fallback, if the page does not fit, is chosen by the lead
+and Michael then.
+
+**Amended again (Michael, 2026-11-03, after the P158 probe):** "Endnu mere": stage 2 is a low ruin
+(rubble and wall stubs; a `mount` or `anim` element alone on a stub). His fallback for the page:
+the damage patches baked at 75 % of the bake scale (`IsoAtlas.DAMAGE_SCALE`), everything else at
+full scale (§3's second amendment).

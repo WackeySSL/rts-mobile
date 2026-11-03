@@ -14,6 +14,12 @@ status notes: a standing vehicle never shakes, and a driving one rumbles (Michae
 2026-11-03, P140b); `StrikeFx` draws up to four line calls per net while it settles (P141); the idle
 gates stay in `UnitLayer`. No accepted text changed.
 
+Status note (2026-11-03, P26ar docs; ADR 0028 accepted 2026-11-03 on #291): §3, §4 and §8 carry
+dated status notes for ADR 0028 (damage states): `AirFx`'s damage quota becomes a ring of 64 for
+buildings and vehicles; building stages are parts, not frames, and spend about 268 of the page's
+free rows; `reduced` keeps the stages and drops the sparks. P148 is reworked there. No accepted text
+changed.
+
 ## Michael's answers (2026-11-02)
 1. **Now:** the life lanes run beside HUD v2; where the lead must choose, HUD and the Phase 3 gate
    rows go first.
@@ -168,6 +174,16 @@ interior and the ring of its boundary cells fade apart, `net_settle_ms`), agains
 forecast above. If each call is a draw call, the worst moment is about 25 instead of about 22,
 still under the trigger of 40; P146 and P147 count it on the base arena and the phone card.
 
+Status note (2026-11-03, P26ar docs; ADR 0028 §6 accepted 2026-11-03; the table above stays as
+accepted): the `AirFx` row "damage smoke and flame | 24 | at most 2 points per building in view"
+becomes a **damage ring of 64 slots of its own** (`damage_slots`), drawn in the same `_draw` from
+the same texture: soot, fire and sparks by stage, from the sheets' `damage` points of buildings
+(two each) and vehicles (one per hull frame), not from `mix`-chosen roof points. When it is full
+the oldest puff goes. `AirFx` then holds three rings: emitters 80 (P145), damage 64 (P148), muzzle
+and exhaust 24 (P149). A vehicle's flame and smoke over a building in front of it is accepted (ADR
+0028 §6); its scar and loose part are sprites on the sorted world's page (ADR 0028 §4), not in
+`LifeFx`.
+
 ### 4. Art: the frame axis and the atlas budget
 - **The frame axis** (the generator, art-director): an `ArtPrim` may carry `group=<name>`; an
   `ArtModel` may list poses, each a part (`walk`, `idle` or `anim`), a frame count and, per frame,
@@ -226,6 +242,22 @@ still under the trigger of 40; P146 and P147 count it on the base arena and the 
   launches), lightning, a mushroom cloud. The "radar dish" Michael asked for is the Signal Mast's
   slatted antenna panel and the Relay Tower's array faces turning, as modelled in P103 and P104,
   never a dish on a dome (svg-art-style bans "a dome on a radar tower").
+
+Status note (2026-11-03, P26ar docs; ADR 0028 §3 and §4 accepted 2026-11-03; the text above stays
+as accepted):
+- **A damage stage is a part, not a frame.** A building's stages are two one-frame parts with no
+  direction, `dmg1` and `dmg2` (`<type_id>_dmg1.svg`), each a top patch with its own size, and
+  `IsoSheetDef.cuts`; the frame axis is unchanged (its frames share one canvas per part).
+- **The page rows spent:** the patches of about 30 % of the body height take about 268 of the 318
+  rows left after P143 (estimate 3534 of 3584 for the cross-faction page), so about 50 remain for
+  P153 and P154. The neutral overlay sheet (`assets/art/svg/damage/damage_sheet.tres`, loaded from
+  `IsoAtlas.NEUTRAL_SHEET`; its frames found through `IsoSheetDef.root`) is estimated at 0 px. The budget rule of 3584 and the "cut before a
+  bake scale drops" rule stand; ADR 0028 §3 lists the fallback order. (Amended 2026-11-03: ADR
+  0028 §3's amendment makes the patches deeper, down to half the body at stage 1 and nearly the foot
+  at stage 2; P158's first pass measured 3376, its rework measures the page, and a fallback past
+  3584 is the lead's and Michael's choice. Chosen the same day: the damage patches alone are baked
+  at `IsoAtlas.DAMAGE_SCALE` (0.75) of the bake scale, ADR 0028 §3's second amendment; this
+  amends the "before any bake scale drops" rule for those parts only.)
 
 ### 5. Walking without sliding feet
 - A squad shows `walk` while it moved in the last tick by at least half its type's step (the hull's
@@ -317,6 +349,21 @@ rumbles nor counts as standing. `shake_px` and `shake_ms` above are now `drive_s
 and `drive_shake_ms` (80); "idle shake" in §1, §3 and "Reduced" means this rumble, which
 `reduced` still drops. The look-around and the head sweep are unchanged. Michael's phone test of
 64f0402 accepted it ("Test ok", 2026-11-03).
+
+Status note (2026-11-03, P26ar docs; ADR 0028 §7 and §9 accepted 2026-11-03; the text above stays
+as accepted):
+- **Reduced** also keeps the damage stages: the building patches, the vehicle overlays and the
+  ghost's stage, with the damage smoke and the fire it kept already. It drops the damage **sparks**.
+  On the switch the ambient rings empty as before; the damage ring keeps its puffs.
+- **"The damage thresholds"** of `AirFx` above are the two stages, `damage_stage_percent` ([50,
+  25]) in `data/life_settings.tres`, one function for buildings, vehicles and `AirFx`
+  (`BuildingDamage.stage_of`); the field list grows by ADR 0028 §9's (`damage_writes_per_frame`,
+  `damage_building_writes`, `damage_loose`, and for P148 `damage_emit_ms`, `damage_life_ms`,
+  `damage_vehicle_fire_scale`, `damage_slots`).
+- **Building animations at stage 2** (Michael, 2026-11-03, ADR 0028 §3's third amendment): a
+  building under 25 % hp hides its `Anim` child, so "building animations (they hold when a building
+  is offline or a site)" above and §6's hold rule gain a third case: hidden at stage 2. At stage 1
+  it runs; a defence's `Head` stays.
 
 ### 9. Budget and proof
 - **Work:** life costs at most 0.56 ms of main-thread work per frame on the phone card, judged by
