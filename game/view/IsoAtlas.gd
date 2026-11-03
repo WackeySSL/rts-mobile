@@ -48,15 +48,23 @@ static func load_sheets() -> Array[IsoSheetDef]:
 
 
 ## The neutral sheet at `path`, null while the file does not exist: no error, no slot, a bake as
-## it was before the sheet. A file that is there but is no `IsoSheetDef` is an error, and null.
+## it was before the sheet. A file there that is no neutral `IsoSheetDef` is an error, and null.
 static func load_neutral_sheet(path: String = NEUTRAL_SHEET) -> IsoSheetDef:
 	if not ResourceLoader.exists(path):
 		return null
 	var sheet: IsoSheetDef = load(path) as IsoSheetDef
-	if sheet == null or sheet.faction != NEUTRAL:
-		push_error("IsoAtlas: %s is no neutral IsoSheetDef" % path)
+	var problem: String = neutral_problem(sheet, path)
+	if problem != "":
+		push_error(problem)
 		return null
 	return sheet
+
+
+## What is wrong with `sheet` read from `path` as the neutral sheet, "" when nothing is.
+static func neutral_problem(sheet: IsoSheetDef, path: String) -> String:
+	if sheet == null or sheet.faction != NEUTRAL:
+		return "IsoAtlas: %s is no neutral IsoSheetDef" % path
+	return ""
 
 
 ## The atlas of `players` (index = player slot, see `region`) over `sheets`, requesting
@@ -70,7 +78,7 @@ static func build(
 ) -> IsoAtlas:
 	var started: int = Time.get_ticks_usec()
 	var atlas: IsoAtlas = IsoAtlas.new()
-	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else _read_text)
+	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else read_text)
 	var order: Array[StringName] = _packing_order(plan)
 	var scale: float = fit_scale(_canvases(plan, order), bake_scale)
 	if scale > 0.0 and not order.is_empty():
@@ -88,7 +96,7 @@ static func planned_page(
 	scale: float,
 	reader: Callable = Callable()
 ) -> Vector2i:
-	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else _read_text)
+	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else read_text)
 	return page_size(_canvases(plan, _packing_order(plan)), scale)
 
 
@@ -198,7 +206,8 @@ static func _key(player: int, art_id: StringName, part: StringName, dir: int) ->
 	return StringName("%d/%s/%s/%d" % [player, art_id, part, dir])
 
 
-static func _read_text(path: String) -> String:
+## The text of the file at `path`, "" when there is none.
+static func read_text(path: String) -> String:
 	return FileAccess.get_file_as_string(path)
 
 

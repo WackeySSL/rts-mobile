@@ -25,6 +25,7 @@ const CRAFTED: String = (
 	+ '<polygon points="0,0 8,0 8,4" fill="#E8681F"/></svg>'
 )
 
+const CRAFTED_ROOT: String = "res://tests/crafted_damage"
 const NEUTRAL_FRAME: String = (
 	'<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4">'
 	+ '<polygon points="0,0 8,0 8,4" fill="#808080"/></svg>'
@@ -105,9 +106,9 @@ func test_the_neutral_sheet_is_counted_once_for_all_players() -> void:
 
 
 ## Reads the committed frames, except the crafted sheet's, which are `text`.
-func _giant_reader(text: String) -> Callable:
+func _giant_reader(text: String, marker: String = "/giant_") -> Callable:
 	return func(path: String) -> String:
-		return text if "/giant_" in path else FileAccess.get_file_as_string(path)
+		return text if marker in path else FileAccess.get_file_as_string(path)
 
 
 func _with_giant(faction: StringName) -> Array[IsoSheetDef]:
@@ -126,8 +127,34 @@ func _with_giant(faction: StringName) -> Array[IsoSheetDef]:
 
 
 ## The page of the committed sheets for `players` at bake scale 1.0, nothing lowered.
+## The neutral damage sheet (P157, ADR 0028 section 4) is in it: the committed one once its file
+## exists (P160), else a crafted one of the ADR's shape, 8 slots of 64 x 48 px.
 func _page(players: Array[IsoPlayerArt]) -> Vector2i:
-	return IsoAtlas.planned_page(IsoAtlas.load_sheets(), players, 1.0)
+	var sheets: Array[IsoSheetDef] = IsoAtlas.load_sheets()
+	var neutral: IsoSheetDef = IsoAtlas.load_neutral_sheet()
+	var reader: Callable = Callable()
+	if neutral == null:
+		neutral = _crafted_neutral()
+		reader = _giant_reader(NEUTRAL_FRAME, CRAFTED_ROOT)
+	sheets.append(neutral)
+	var page: Vector2i = IsoAtlas.planned_page(sheets, players, 1.0, reader)
+	print("atlas page with the neutral sheet (%s): %dx%d" % [neutral.root, page.x, page.y])
+	return page
+
+
+## scar1 and scar2 (2 frames each) and loose (4), each frame 64 x 48 px, faction neutral.
+func _crafted_neutral() -> IsoSheetDef:
+	var sheet: IsoSheetDef = IsoSheetDef.new()
+	sheet.art_id = &"damage"
+	sheet.faction = IsoAtlas.NEUTRAL
+	sheet.category = &"dmg"
+	sheet.root = CRAFTED_ROOT
+	sheet.parts = PackedStringArray(["scar1", "scar2", "loose"])
+	sheet.counts = PackedInt32Array([1, 1, 1])
+	sheet.frames = PackedInt32Array([2, 2, 4])
+	sheet.sizes = PackedInt32Array([64, 48, 64, 48, 64, 48])
+	sheet.anchors = PackedInt32Array([0, 0, 0, 0, 0, 0])
+	return sheet
 
 
 func _assert_within_budget(label: String, page: Vector2i) -> void:

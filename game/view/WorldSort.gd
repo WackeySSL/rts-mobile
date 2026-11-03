@@ -19,6 +19,9 @@ extends Node2D
 ## owners 1..N in order; `slot_of` maps an owner to its place, one past the ends to the nearest. A
 ## scenario that lists no factions gives each player the faction of the first of its spawns whose
 ## type has a sheet (the Derrick League when none has).
+## The neutral damage sheet (ADR 0028 section 4, `IsoAtlas.NEUTRAL_SHEET`) is baked after the type
+## sheets for every scenario once its file exists: `neutral_sheet` is it (null before), and
+## `neutral_base` the base of one of its parts for an owner, resolved once per bake.
 
 const Z_SORT: int = 10  ## Unit rigs and buildings.
 const Z_SHADOW: int = 2  ## A rig's Shadow, under the rings (3) and the fog (4).
@@ -96,35 +99,33 @@ func bake(scenario: ScenarioDef) -> IsoAtlas:
 	var arts: Array[IsoPlayerArt] = _player_arts(scenario, sheets)
 	# After the art-id filter and after `_player_arts`, whose faction lookup reads the type sheets.
 	var neutral: IsoSheetDef = IsoAtlas.load_neutral_sheet(neutral_path)
-	if neutral != null:
-		sheets.append(neutral)
-	var key: String = (
-		"%s|%s|%s"
-		% [ids.keys(), arts.map(_describe), String(neutral.art_id) if neutral != null else ""]
-	)
+	var key: String = "%s|%s|%s" % [ids.keys(), arts.map(_describe), _neutral_key(neutral)]
 	if key != _key:
 		_key = key
 		_arts = arts
 		_sheets.clear()
 		for sheet: IsoSheetDef in sheets:
 			_sheets[sheet.art_id] = sheet
-		atlas = IsoAtlas.build(sheets, arts, bake_scale)
+		var baked: Array[IsoSheetDef] = sheets.duplicate()
+		if neutral != null:
+			baked.append(neutral)
+			if neutral_clash(ids, neutral):
+				push_error("WorldSort: a type has the neutral sheet's art id %s" % neutral.art_id)
+		atlas = IsoAtlas.build(baked, arts, bake_scale)
 		_resolve_neutral(neutral)
 		print(atlas.report())  # `atlas_bake_ms` for the log of CI and the web preview's console.
 	return atlas
 
 
-## The atlas base of `part` of the neutral sheet for `owner_id` (`dir` as `directions` lists it, -1
-## for a one-view part), resolved once per bake: a table read, no string. -1 without the sheet.
-func neutral_base(part: StringName, owner_id: int, dir: int = -1) -> int:
-	var bases: PackedInt32Array = _neutral_bases.get(part, PackedInt32Array())
-	var views: int = bases.size() / maxi(_arts.size(), 1)
-	if views == 0:
+## The atlas base of `part` of the neutral sheet for `owner_id` (every overlay has one view; its
+## frames come from `show_base`), resolved once per bake: a table read, no string. -1 without it.
+func neutral_base(part: StringName, owner_id: int) -> int:
+	if not _neutral_bases.has(part):
 		return -1
-	return bases[slot_of(owner_id) * views + (0 if dir < 0 or views == 1 else dir * views / 16)]
+	return _neutral_bases[part][slot_of(owner_id)]
 
 
-## The neutral sheet of this bake, null while its file does not exist.
+## The neutral sheet of this bake, null while its file does not exist (P160).
 func neutral_sheet() -> IsoSheetDef:
 	return _neutral
 
@@ -207,19 +208,42 @@ func show_base(sprite: Sprite2D, base_index: int, frame: int) -> void:
 	sprite.region_rect = Rect2(region)
 
 
-## Resolves every base of the neutral sheet for every player slot (the only place it builds keys).
+## Resolves every base of the neutral sheet for every player slot (the only place it builds keys),
+## and reports a frame that cannot work: one with a key colour (it would not be shared).
 func _resolve_neutral(neutral: IsoSheetDef) -> void:
 	_neutral = neutral
 	_neutral_bases.clear()
-	if neutral == null:
+	if neutral == null or _arts.is_empty():
 		return
 	for part_name: String in neutral.parts:
 		var part: StringName = StringName(part_name)
 		var bases: PackedInt32Array = PackedInt32Array()
 		for slot: int in _arts.size():
-			for dir: int in neutral.directions(part):
-				bases.append(atlas.base(neutral.art_id, part, dir, slot))
+			bases.append(atlas.base(neutral.art_id, part, neutral.directions(part)[0], slot))
 		_neutral_bases[part] = bases
+		for frame: int in maxi(neutral.frame_count(part), 1):
+			var text: String = IsoAtlas.read_text(
+				neutral.path(part, neutral.directions(part)[0], frame)
+			)
+			if has_key_colour(text, _arts):
+				push_error("WorldSort: a key colour in a neutral frame of %s" % part)
+
+
+## Whether a registered type has the art id of `neutral`, which the sheet could not tell apart.
+static func neutral_clash(ids: Dictionary[StringName, bool], neutral: IsoSheetDef) -> bool:
+	return ids.has(neutral.art_id)
+
+
+## Whether a player's recolour changes `text`: it holds a key colour, so it would not be shared.
+static func has_key_colour(text: String, arts: Array[IsoPlayerArt]) -> bool:
+	for art: IsoPlayerArt in arts:
+		if art.recolour(text) != text:
+			return true
+	return false
+
+
+static func _neutral_key(neutral: IsoSheetDef) -> String:
+	return neutral.resource_path if neutral != null else ""
 
 
 ## Every art id the scenario registers: its spawns, its roster and the rosters of its factions.

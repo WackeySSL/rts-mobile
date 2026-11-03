@@ -231,6 +231,16 @@ func test_the_frame_path_builds_no_string_and_allocates_nothing_in_its_source() 
 			assert_bool(code.contains(token)).override_failure_message(note).is_false()
 
 
+func test_the_neutral_base_read_makes_no_string_and_allocates_nothing_in_its_body() -> void:
+	# Its signature names `StringName`, so the scan starts after the first line.
+	var code: String = _code_of(SCRIPT_SORT, "neutral_base")
+	code = code.substr(code.find("\n") + 1)
+	assert_int(code.count("\n")).is_greater(1)
+	for token: String in STRINGS + ALLOCATING:
+		var note: String = "neutral_base makes a string or an allocation with %s" % token
+		assert_bool(code.contains(token)).override_failure_message(note).is_false()
+
+
 func test_show_frame_with_no_frame_is_what_it_was_and_a_frame_is_its_last_argument() -> void:
 	var sheet: IsoSheetDef = _squad_sheet()
 	var sort: WorldSort = _sort([sheet])
