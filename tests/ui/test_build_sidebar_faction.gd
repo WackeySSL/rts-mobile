@@ -174,4 +174,6 @@ func _open() -> void:
 	_runner = auto_free(MatchRunner.new())
 	_runner.scenario = _main.get_node("MatchRunner").scenario
 	_sidebar = _main.get_node("Hud").find_child("BuildSidebar", true, false)
+	_sidebar.open()
+	await await_idle_frame()
 	_sidebar.runner = _runner

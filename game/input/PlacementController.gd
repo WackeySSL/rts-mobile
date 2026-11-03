@@ -23,17 +23,18 @@ extends Node
 ## pans; a tap anywhere but on the ghost itself moves it to the tile under the finger; a release
 ## alone never places and a hold draws no box. A turn keeps the tile (the recognizer cancels the
 ## drag with no event). A new match, a strike aim and the X end the mode with no Command.
-## The build menu goes down while the mode runs (P85f, `BuildSidebar`), but its Build button stays
-## live: brought up with it (or, from P85f2, kept up by a pin), the cards are on show and a tap on
-## the READY card reaches `begin` again: outside pending it puts the ghost back at the view's
+## The build drawer closes when the mode begins (`HudState`, ADR 0025 section 1), but BUILD stays
+## live: brought up with it, the cards are on show and a tap on the READY card reaches `begin`
+## again (and closes the drawer again): outside pending it puts the ghost back at the view's
 ## centre; while a PLACE is in flight it changes nothing (the ghost is held, `begin` refuses). A
 ## hold on that card cancels the last one of that building queued (refunded): `refresh` ends the
 ## mode when the structure is no longer ready at the head of the queue, whatever the cause, outside
 ## pending too.
 ## Edge pan (P86b): while a ghost drag's finger is in the edge band, `TouchInput` calls `edge_pan`
 ## every frame, which scrolls the map that way and keeps the ghost on the tile under the finger's
-## lifted point. The bands lie inside the map view: the safe area, less the build menu below it
-## (`HudLayout.menu_top_px`, its real top). The dp and the safe area are read when the window
+## lifted point. The bands lie inside the map view: the safe area, less the open sheet below it
+## (`HudLayout.menu_top_px`, its real top; INF while the drawer is closed, which a ghost drag
+## itself brings about). The dp and the safe area are read when the window
 ## changes (`read_metrics`), not per frame.
 ## Beside the ghost (P86c, ADR 0024 section 10) stand the check mark and the X (`GhostControls`):
 ## they hide while the ghost is dragged (`dragging`, set by `TouchInput`) and find their place from
@@ -195,12 +196,12 @@ func handle_gesture(e: GestureEvent) -> void:
 ## Which way the map scrolls for a ghost drag whose finger is at `finger` (base px): a unit vector
 ## toward the edge band the finger is in, the diagonal in a corner, zero outside the bands. The
 ## bands lie `edge_band_dp` inside the edges of the map view: the safe area (a finger in a cutout
-## is in them too), whose bottom edge is the build menu's real top (`HudLayout.menu_top_px`: in
-## portrait the band covers the map there, and with a top cutout it stands higher than the safe
-## area's bottom less its height). The ghost rides `ghost_lift_dp` above the finger, so the top
-## band is measured on the ghost's point: the map starts to scroll while the ghost is still in
-## view, not after it left it. The other three are measured on the finger, because the ghost is
-## never near the bottom edge.
+## is in them too), whose bottom edge is the open sheet's real top (`HudLayout.menu_top_px`: upright
+## the sheet covers the map there, and with a top cutout it stands higher than the safe area's
+## bottom less its height; otherwise the safe area's own bottom). The ghost rides `ghost_lift_dp`
+## above the finger, so the top band is measured on the ghost's point: the map starts to scroll
+## while the ghost is still in view, not after it left it. The other three are measured on the
+## finger, because the ghost is never near the bottom edge.
 func edge_heading(finger: Vector2) -> Vector2:
 	var settings: InputSettings = controller.settings
 	var band: float = settings.edge_band_dp * _dp_px

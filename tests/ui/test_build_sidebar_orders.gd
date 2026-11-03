@@ -169,44 +169,41 @@ func test_a_tap_on_a_ready_structure_sends_nothing_and_a_hold_on_it_cancels_it()
 	_assert_cancel(_sent[0], World.Tab.STRUCTURES, 0)
 
 
-## A drag beyond the slop scrolls the row, sends nothing and ends the touch as neither a tap nor a
+## A drag beyond the slop scrolls the grid, sends nothing and ends the touch as neither a tap nor a
 ## hold, whether the finger stays on its tile or leaves it, and whether it lifts at once (a flick)
 ## or after a hold's time (a tile with an item queued and money to queue another: a tap or a hold
-## would send one); a finger that only wobbles still taps. The portrait row scrolls sideways, at
-## 360 dp where five tiles do not fit.
-func test_a_scroll_drag_in_the_portrait_row_sends_nothing_and_a_wobble_still_taps() -> void:
-	await _open(&"web_phone_portrait")
+## would send one); a finger that only wobbles still taps. The drawer's grid scrolls vertically
+## (ADR 0025 section 5); on the smallest web phone the five structures do not fit its room.
+func test_a_scroll_drag_in_the_grid_goes_vertically_and_sends_nothing_and_a_wobble_still_taps(
+) -> void:
+	await _open(&"web_phone_small")
 	var world: World = Sw.world()
 	Sw.own(world, BASE)
 	Sw.enqueue(world, World.Tab.STRUCTURES, ["power_plant"])
 	await _publish(world)
 	var items: ScrollContainer = _sidebar.find_child("Items", true, false)
-	assert_int(items.scroll_horizontal).is_equal(0)
-	assert_int(items.horizontal_scroll_mode).is_equal(ScrollContainer.SCROLL_MODE_SHOW_NEVER)
-	assert_int(items.vertical_scroll_mode).is_equal(ScrollContainer.SCROLL_MODE_DISABLED)
+	assert_int(items.horizontal_scroll_mode).is_equal(ScrollContainer.SCROLL_MODE_DISABLED)
+	assert_int(items.scroll_vertical).is_equal(0)
 	var tile: ItemTile = _tile("power_plant")
-	# [dp dragged, ms the finger rests before it lifts], each from the row's left end. The first is a
-	# flick: it lifts long before a hold, on the tile that the scroll carried under it, so only the
-	# tile's own scroll flag keeps the lift from being a tap. The second is as long as a hold, on its
-	# tile too, and the third is as long as a hold and ends well off its tile (the row's range is
-	# about a tile, so it cannot follow the finger that far).
-	for drag: Array in [[20.0, 50], [20.0, _hold_ms * 2], [100.0, _hold_ms * 2]]:
-		var by: float = UiScale.dp(drag[0] as float)
-		items.scroll_horizontal = 0
+	for drag: Array in [[20.0, 50], [20.0, _hold_ms * 2]]:
+		var by: float = UiScale.dp(drag[0] as float)  # Beyond the slop.
+		items.scroll_vertical = 0
 		await await_idle_frame()
 		var at: Vector2 = tile.get_global_rect().get_center()
 		_press(tile, at)
-		TouchEvents.drag(get_viewport(), 0, at + Vector2(-by / 2.0, 0.0), Vector2(-by / 2.0, 0.0))
-		TouchEvents.drag(get_viewport(), 0, at + Vector2(-by, 0.0), Vector2(-by / 2.0, 0.0))
+		TouchEvents.drag(get_viewport(), 0, at + Vector2(0.0, -by / 2.0), Vector2(0.0, -by / 2.0))
+		TouchEvents.drag(get_viewport(), 0, at + Vector2(0.0, -by), Vector2(0.0, -by / 2.0))
 		_now_ms += drag[1] as int
 		tile._process(0.0)
-		TouchEvents.release(get_viewport(), 0, at + Vector2(-by, 0.0))
+		TouchEvents.release(get_viewport(), 0, at + Vector2(0.0, -by))
 		await await_idle_frame()
 		assert_array(_sent).is_empty()
 		assert_array(_buzzed).is_empty()
-		assert_int(items.scroll_horizontal).is_greater(0)
-		assert_int(items.scroll_vertical).is_equal(0)
+		assert_int(items.scroll_vertical).is_greater(0)
+		assert_int(items.scroll_horizontal).is_equal(0)
 	var wobble: float = UiScale.dp(4.0)  # Well inside the slop: a tap with a shaky finger.
+	items.scroll_vertical = 0
+	await await_idle_frame()
 	var again: Vector2 = _tile("barracks").get_global_rect().get_center()
 	_press(_tile("barracks"), again)
 	TouchEvents.drag(get_viewport(), 0, again + Vector2(wobble, 0.0), Vector2(wobble, 0.0))
@@ -215,40 +212,6 @@ func test_a_scroll_drag_in_the_portrait_row_sends_nothing_and_a_wobble_still_tap
 	assert_int(_sent.size()).is_equal(1)
 	assert_int(_sent[0].type).is_equal(Command.Type.QUEUE)
 	assert_array(_sent[0].payload).is_equal([Sw.type_of(world, "barracks")])
-
-
-## The floating panel's row scrolls sideways too (P85d): at the narrowest panel three whole cards
-## of the five structures are in view, and a drag that starts on a card moves the row and orders
-## nothing.
-func test_a_scroll_drag_in_the_landscape_row_goes_sideways_and_sends_nothing() -> void:
-	await _open(&"web_phone_small")
-	var world: World = Sw.world()
-	Sw.own(world, BASE)
-	Sw.enqueue(world, World.Tab.STRUCTURES, ["power_plant"])
-	await _publish(world)
-	var items: ScrollContainer = _sidebar.find_child("Items", true, false)
-	assert_int(items.horizontal_scroll_mode).is_equal(ScrollContainer.SCROLL_MODE_SHOW_NEVER)
-	assert_int(items.vertical_scroll_mode).is_equal(ScrollContainer.SCROLL_MODE_DISABLED)
-	assert_int(_grid().columns).is_equal(_tiles_shown().size())  # One row.
-	var tile: ItemTile = _tile("power_plant")
-	var at: Vector2 = tile.get_global_rect().get_center()
-	var by: float = UiScale.dp(20.0)  # Beyond the slop, and the finger stays on its tile.
-	_press(tile, at)
-	TouchEvents.drag(get_viewport(), 0, at + Vector2(-by, 0.0), Vector2(-by, 0.0))
-	_now_ms += _hold_ms * 2
-	tile._process(0.0)
-	TouchEvents.release(get_viewport(), 0, at + Vector2(-by, 0.0))
-	await await_idle_frame()
-	assert_array(_sent).is_empty()
-	assert_array(_buzzed).is_empty()
-	assert_int(items.scroll_horizontal).is_greater(0)
-	assert_int(items.scroll_vertical).is_equal(0)
-	var next: Vector2 = _tile("barracks").get_global_rect().get_center()
-	_press(_tile("barracks"), next)  # A drag back, which can go no further than the start.
-	TouchEvents.drag(get_viewport(), 0, next + Vector2(3.0 * by, 0.0), Vector2(3.0 * by, 0.0))
-	TouchEvents.release(get_viewport(), 0, next + Vector2(3.0 * by, 0.0))
-	assert_int(items.scroll_horizontal).is_equal(0)
-	assert_array(_sent).is_empty()
 
 
 ## The hook the building selection calls (plan P84d): the ids a selection holds. A lone own
@@ -391,6 +354,8 @@ func _open(profile: StringName) -> void:
 	_runner = auto_free(MatchRunner.new())
 	_runner.scenario = _main.get_node("MatchRunner").scenario
 	_sidebar = _main.get_node("Hud").find_child("BuildSidebar", true, false)
+	_sidebar.open()
+	await await_idle_frame()
 	_sidebar.runner = _runner
 	_controller = _main.get_node("PlayerController")
 	_hold_ms = _controller.settings.long_press_ms

@@ -118,25 +118,31 @@ static func tile_px(col: int, row: int) -> Vector2:
 	return IsoProjection.cell_centre_px(col, row)
 
 
+## Centres the camera on `world`; upright, a quarter of the screen higher, so that the build
+## drawer a tap on a producer opens (a sheet over the lower half) does not cover the next tap.
+func aim(world: Vector2) -> void:
+	camera.centre_on(world)
+	if HudLayout.is_portrait():
+		camera.position.y += main.get_viewport().get_visible_rect().size.y * 0.25 / camera.zoom.y
+
+
 ## Centres the camera on `world` and taps it.
 func tap_world(world: Vector2) -> void:
-	camera.centre_on(world)
+	aim(world)
 	tap(camera.world_to_screen(world))
 
 
 ## Selects building `id` with a tap on the middle of its footprint.
 func tap_building(id: int) -> void:
 	var node: Node2D = buildings.building(id)
-	camera.centre_on(node.position)
+	aim(node.position)
 	tap(camera.world_to_screen(node.position))
 
 
 ## Selects unit `id` with a tap on its picture (the unit layer's row of the id).
 func tap_unit(id: int, twice: bool = false) -> void:
 	var row: int = runner.snapshot.index_of(id)
-	camera.centre_on(
-		IsoProjection.ground_to_px(runner.snapshot.pos_x[row], runner.snapshot.pos_y[row])
-	)
+	aim(IsoProjection.ground_to_px(runner.snapshot.pos_x[row], runner.snapshot.pos_y[row]))
 	tap(units.unit_screen_position(row), twice)
 
 

@@ -257,7 +257,7 @@ func _read_main(main: Node) -> Dictionary:
 	var band: Control = main.get_node("Hud/SafeArea/SelectionBand")
 	var panel: SelectionPanel = main.get_node("Hud/SafeArea/SelectionBand/SelectionPanel")
 	var recognizer: GestureRecognizer = (main.get_node("TouchInput") as TouchInput)._recognizer
-	var sidebar: BuildSidebar = main.get_node("Hud/SafeArea/BuildSidebar")
+	var sidebar: BuildSidebar = main.get_node("Hud/BuildSidebar")
 	var rings: Array[Array] = []
 	for row: int in [1, 39]:
 		var ring: Sprite2D = main.get_node("UnitLayer").rig(row).get_node("Ring")

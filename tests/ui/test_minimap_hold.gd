@@ -439,13 +439,13 @@ func test_without_a_controller_a_hold_orders_nothing_and_the_minimap_still_jumps
 ## (no long-press anchor, no box, no `map_gesture`) and the build menu stays as it was: upright it
 ## is open beside the map, sideways the open map has folded it (ADR 0025 section 1, one unfold at a
 ## time) and the hold does not open it again.
-func test_the_hold_never_collapses_the_build_menu_or_reaches_the_maps_recognizer() -> void:
+func test_the_hold_never_opens_the_drawer_or_reaches_the_maps_recognizer() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
 		var why: String = str(size)
 		var overlay: BoxOverlay = _main.find_child("BoxOverlay", true, false) as BoxOverlay
 		_controller.selection.set_ids(PackedInt32Array([TANK_A]))
-		var menu: bool = HudLayout.is_portrait()
+		var menu: bool = false  # The drawer is closed while the full map is open.
 		assert_bool(_sidebar.is_open()).override_failure_message(why).is_equal(menu)
 		TouchEvents.press(get_viewport(), 0, _global(_local(FIRST)))
 		_wait(_controller.settings.long_press_ms * 2)

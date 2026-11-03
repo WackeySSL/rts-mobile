@@ -80,11 +80,9 @@ func test_the_minimap_fills_the_box_of_the_full_map_in_both_orientations() -> vo
 		assert_array(_sent).is_empty()
 
 
-## Nothing of the minimap is in the build menu any more, in the open band or the strip upright or
-## the floating panel sideways: no `MinimapSlot`, no minimap among the band's descendants, the item
-## row as wide as the band's inner row, and neither the scope nor the open full map in the band.
-func test_the_band_the_strip_and_the_panel_have_no_minimap_and_the_radar_stays_off_the_bottom(
-) -> void:
+## Nothing of the minimap is in the build drawer: no `MinimapSlot`, no minimap among its
+## descendants, and upright neither the scope nor the open full map reaches down to BUILD.
+func test_the_drawer_has_no_minimap_and_the_radar_stays_off_the_bottom() -> void:
 	for screen: Dictionary in RadarRig.screens():
 		await _open(screen["size"], screen["metrics"])
 		var why: String = str(screen["label"])
@@ -98,47 +96,15 @@ func test_the_band_the_strip_and_the_panel_have_no_minimap_and_the_radar_stays_o
 		assert_object(_minimap.get_parent()).override_failure_message(why).is_same(_hud("RadarMap"))
 		if not UiScale.is_portrait_size(screen["size"]):
 			continue
-		for collapsed: bool in [false, true]:
-			if collapsed:
-				_sidebar.collapse()
-			_open_radar()
-			await _settle()
-			var band: Rect2 = _rect(_sidebar)
-			var at: String = "%s, %s: band %s" % [why, "strip" if collapsed else "band", band]
-			for part: String in ["RadarScope", "RadarMap"]:
-				(
-					assert_float(_rect(part).end.y)
-					. override_failure_message("%s, %s %s" % [at, part, _rect(part)])
-					. is_less_equal(band.position.y + TOLERANCE_PX)
-				)
-			if not collapsed:
-				var edge: StyleBox = _hud("Backdrop").get_theme_stylebox(&"panel")
-				var inner_end: float = band.end.x - edge.get_margin(SIDE_RIGHT)
-				assert_float(_rect("Items").end.x).override_failure_message(at).is_equal_approx(
-					inner_end, 1.5
-				)
-				assert_float(_rect("Tabs").end.x).override_failure_message(at).is_less_equal(
-					inner_end + TOLERANCE_PX
-				)
-		_sidebar.open()
-
-
-## ADR 0015 section 5's budget: the item row keeps three whole 64 dp tiles on the 6-inch phone and
-## two at 360 dp, and the three tabs 48 dp (the minimap no longer takes a share of the row, P121).
-func test_the_item_row_keeps_three_whole_tiles_on_the_6_inch_phone_and_two_at_360_dp() -> void:
-	for case: Array in [[&"android_6in_portrait", 3], [&"web_phone_portrait", 2]]:
-		var metrics: UiMetrics = UiProfiles.by_name(case[0])
-		await _open(metrics.window_size, metrics)
-		var items: Rect2 = _rect("Items")
-		var whole: int = 0
-		for node: Node in _sidebar.find_children("Tile_*", "", true, false):
-			var tile: Control = node as Control
-			whole += 1 if tile.visible and items.encloses(tile.get_global_rect().grow(-1.0)) else 0
-		var why: String = "%s: %d whole tiles in %s" % [case[0], whole, items]
-		assert_int(whole).override_failure_message(why).is_greater_equal(case[1])
-		var least: float = UiScale.dp(48.0) - TOLERANCE_PX
-		for tab: String in ["TabStructures", "TabInfantry", "TabVehicles"]:
-			assert_float(_rect(tab).size.x).override_failure_message(why).is_greater_equal(least)
+		_open_radar()
+		await _settle()
+		var band: Rect2 = _rect("BuildButton")
+		for part: String in ["RadarScope", "RadarMap"]:
+			(
+				assert_float(_rect(part).end.y)
+				. override_failure_message("%s, %s %s, BUILD %s" % [why, part, _rect(part), band])
+				. is_less_equal(band.position.y + TOLERANCE_PX)
+			)
 
 
 ## A turn keeps the one node, its parent and its picture, puts the box in the other orientation's
@@ -226,6 +192,7 @@ func _open(size: Vector2i, metrics: UiMetrics) -> void:
 	var runner: MatchRunner = auto_free(MatchRunner.new())
 	runner.scenario = _main.get_node("MatchRunner").scenario
 	_sidebar = _hud("BuildSidebar")
+	_sidebar.open()
 	_sidebar.runner = runner
 	var world: World = Sw.world()
 	Sw.own(world, BASE)

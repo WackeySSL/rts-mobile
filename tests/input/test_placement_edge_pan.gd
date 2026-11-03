@@ -91,9 +91,9 @@ func test_a_drag_in_each_edge_band_scrolls_the_map_that_way_at_the_configured_sp
 			assert_vector(_placement.tile).override_failure_message(note).is_equal(under)
 			assert_vector(_placement.tile).override_failure_message(note).is_not_equal(start)
 			assert_array(_sent).override_failure_message(note).is_empty()
-			if edge == DOWN and HudLayout.is_portrait():
-				var band_top: float = _build_band().position.y
-				assert_float(_centre().y).override_failure_message(note).is_less(band_top)
+			if edge == DOWN:  # Nothing covers the map during a ghost drag: the ghost stays in view.
+				var floor_y: float = UiScale.safe_rect_base().end.y
+				assert_float(_centre().y).override_failure_message(note).is_less(floor_y)
 			TouchEvents.release(get_viewport(), 0, finger)
 
 
@@ -276,84 +276,46 @@ func test_the_metrics_are_read_when_the_window_changes_and_not_every_frame() -> 
 	assert_vector(_placement.edge_heading(narrow)).is_equal(Vector2.ZERO)
 
 
-## In portrait the build menu covers the bottom of the map view, so the bottom band is the strip of
-## map just above it, not the safe area's last 32 dp under it: a drag south scrolls while the ghost
-## is still in view above the menu, and a finger at the safe area's bottom edge, deep in the menu,
-## still scrolls (it has not let go). Placement collapsed the menu to its 96 dp strip (ADR 0024
-## section 5), so the menu is the strip here.
-func test_in_portrait_the_bottom_band_is_above_the_build_band_and_the_ghost_stays_in_view() -> void:
-	for size: Vector2i in ScreenSizes.PORTRAIT:
-		get_window().size = size
-		await await_idle_frame()
-		await await_idle_frame()
-		_reset()
-		await await_idle_frame()  # Placement collapsed the menu: its drawn rect is the strip's now.
-		var note: String = str(size)
-		var safe: Rect2 = UiScale.safe_rect_base()
-		var band: float = UiScale.dp(_controller.settings.edge_band_dp)
-		var covered: float = _build_band().position.y
-		assert_float(HudLayout.bottom_zone_px()).override_failure_message(note).is_greater(0.0)
-		assert_float(covered).override_failure_message(note).is_less(safe.end.y)
-		# The old band, the safe area's last 32 dp, lies inside the build band.
-		assert_float(safe.end.y - band * 0.5).override_failure_message(note).is_greater(covered)
-		var finger: Vector2 = _in_band(DOWN)
-		assert_vector(_placement.edge_heading(finger)).override_failure_message(note).is_equal(DOWN)
-		var above: Vector2 = Vector2(finger.x, HudLayout.map_bottom_px(safe) - band * 1.5)
-		assert_vector(_placement.edge_heading(above)).override_failure_message(note).is_equal(
-			Vector2.ZERO
-		)
-		assert_vector(_placement.edge_heading(Vector2(finger.x, safe.end.y - 1.0))).is_equal(DOWN)
-		var start: Vector2 = _camera.position
-		_grab_and_drag_to(finger)
-		_hold(HOLD_FRAMES, FRAME)
-		assert_float(_camera.position.y).override_failure_message(note).is_greater(start.y)
-		assert_float(_centre().y).override_failure_message(note).is_less(covered)  # In view.
-		TouchEvents.release(get_viewport(), 0, finger)
-		assert_float(_centre().y).override_failure_message(note).is_less(covered)  # And stays.
-		assert_bool(_placement.active).override_failure_message(note).is_true()
-		assert_array(_sent).override_failure_message(note).is_empty()
-
-
-## With a top cutout the portrait band sits higher than the safe rect's bottom less its height (the
-## safe area's margin gives both ends of an axis the larger inset), so P86b's rule put the bottom
-## band up to a margin inside the build band. P86c ends it at the band's drawn top,
-## `HudLayout.menu_top_px`: a finger half a band above that top scrolls, one a band and a half above
-## does not, and the ghost stays in view above the drawn top.
-func test_with_a_top_cutout_the_bottom_band_ends_at_the_drawn_top_of_the_build_band() -> void:
-	var names: Array[StringName] = [
-		&"android_6in_portrait", &"web_phone_portrait", &"desktop_portrait", &"web_tablet_portrait"
-	]
-	for profile_name: StringName in names:
-		var m: UiMetrics = UiProfiles.by_name(profile_name)
+## In portrait the open sheet covers the bottom of the map view, but a ghost drag is a gesture
+## on the
+## map and folds it (ADR 0025 section 1): while the finger drags, nothing covers the map and the
+## bottom band is the safe area's last `edge_band_dp`, the sheet's top (`menu_top_px`) being INF
+## again. A drag south scrolls there, also with a top cutout, and the ghost stays in view.
+func test_a_ghost_drag_folds_the_sheet_and_the_bottom_band_is_the_safe_areas() -> void:
+	var cut_for: Callable = func(m: UiMetrics) -> UiMetrics:
 		var cut: Rect2i = Rect2i(0, CUTOUT_PX, m.window_size.x, m.window_size.y - CUTOUT_PX)
-		UiScale.set_override(UiProfiles.with_safe_area(m, cut))
-		get_window().size = m.window_size
-		await await_idle_frame()
-		await await_idle_frame()
-		_reset()
-		await await_idle_frame()  # Placement collapsed the menu: its drawn rect is the strip's now.
-		var note: String = str(profile_name)
-		var safe: Rect2 = UiScale.safe_rect_base()
-		var band: float = UiScale.dp(_controller.settings.edge_band_dp)
-		var top: float = _build_band().position.y
-		assert_float(HudLayout.menu_top_px).override_failure_message(note).is_equal_approx(top, 1.0)
-		# The old rule's bottom lies in the band by the cutout's margin: more than half a band.
-		var inside: float = safe.end.y - HudLayout.bottom_zone_px()
-		assert_float(inside).override_failure_message(note).is_greater(top + band * 0.5)
-		var x: float = safe.get_center().x
-		var half: Vector2 = Vector2(x, top - band * 0.5)
-		var far: Vector2 = Vector2(x, top - band * 1.5)
-		assert_vector(_placement.edge_heading(half)).override_failure_message(note).is_equal(DOWN)
-		assert_vector(_placement.edge_heading(far)).override_failure_message(note).is_equal(
-			Vector2.ZERO
-		)
-		assert_vector(_placement.edge_heading(Vector2(x, top + 1.0))).is_equal(DOWN)
-		var start: Vector2 = _camera.position
-		_grab_and_drag_to(half)
-		_hold(HOLD_FRAMES, FRAME)
-		assert_float(_camera.position.y).override_failure_message(note).is_greater(start.y)
-		assert_float(_centre().y).override_failure_message(note).is_less(top)  # In view.
-		TouchEvents.release(get_viewport(), 0, half)
+		return UiProfiles.with_safe_area(m, cut)
+	for profile_name: StringName in [&"android_6in_portrait", &"web_phone_portrait"]:
+		var m: UiMetrics = UiProfiles.by_name(profile_name)
+		for metrics: UiMetrics in [m, cut_for.call(m)]:
+			UiScale.set_override(metrics)
+			get_window().size = m.window_size
+			await await_idle_frame()
+			await await_idle_frame()
+			_reset()
+			_ghost_above_the_sheet()
+			_build_sheet().open()  # Placement closed the drawer; BUILD brings the sheet up again.
+			await await_idle_frame()
+			var note: String = "%s, safe %s" % [profile_name, metrics.safe_area]
+			var safe: Rect2 = UiScale.safe_rect_base()
+			var band: float = UiScale.dp(_controller.settings.edge_band_dp)
+			assert_float(HudLayout.menu_top_px).override_failure_message(note).is_less(safe.end.y)
+			var start: Vector2 = _camera.position
+			var finger: Vector2 = Vector2(safe.get_center().x, safe.end.y - band * 0.5)
+			_grab_and_drag_to(finger)
+			assert_bool(_build_sheet().is_open()).override_failure_message(note).is_false()
+			assert_bool(is_inf(HudLayout.menu_top_px)).override_failure_message(note).is_true()
+			assert_vector(_placement.edge_heading(finger)).override_failure_message(note).is_equal(
+				DOWN
+			)
+			var above: Vector2 = Vector2(finger.x, safe.end.y - band * 1.5)
+			assert_vector(_placement.edge_heading(above)).is_equal(Vector2.ZERO)
+			_hold(HOLD_FRAMES, FRAME)
+			assert_float(_camera.position.y).override_failure_message(note).is_greater(start.y)
+			assert_float(_centre().y).override_failure_message(note).is_less(safe.end.y)  # In view.
+			TouchEvents.release(get_viewport(), 0, finger)
+			assert_bool(_placement.active).override_failure_message(note).is_true()
+			assert_array(_sent).override_failure_message(note).is_empty()
 
 
 ## The band and the speed are data: another `edge_pan_dp_per_s` scrolls at that speed, another
@@ -414,7 +376,7 @@ func test_the_scroll_stops_at_the_cameras_clamp() -> void:
 ## edge but in the safe area's band scrolls, and one a band further in does not; the top band is
 ## the ghost's point's, `ghost_lift_dp` above the finger; the bottom one the finger's.
 func test_the_bands_follow_the_safe_area_and_the_top_one_the_ghost() -> void:
-	for zone_dp: float in [0.0, HudLayout.BAND_MIN_DP]:
+	for zone_dp: float in [0.0, HudCorners.SHEET_LEAST_DP]:
 		_bands_follow_the_safe_area(zone_dp)
 	HudLayout.menu_top_px = INF
 	UiScale.clear_override()
@@ -600,10 +562,16 @@ func _in_band(edge: Vector2) -> Vector2:
 
 
 ## The build menu's box, base px (the portrait band, or the landscape panel).
-func _build_band() -> Rect2:
-	return (
-		(_main.get_node("Hud").find_child("BuildSidebar", true, false) as Control).get_global_rect()
-	)
+## A tap on the ground a quarter of the screen up moves the ghost there, clear of the sheet.
+func _ghost_above_the_sheet() -> void:
+	var tap: GestureEvent = GestureEvent.new(GestureEvent.Kind.TAP)
+	var size: Vector2 = get_viewport().get_visible_rect().size
+	tap.position = Vector2(size.x * 0.5, size.y * 0.25)
+	_controller.handle_gesture(tap)
+
+
+func _build_sheet() -> BuildSidebar:
+	return _main.get_node("Hud").find_child("BuildSidebar", true, false) as BuildSidebar
 
 
 func _speed_dp() -> float:

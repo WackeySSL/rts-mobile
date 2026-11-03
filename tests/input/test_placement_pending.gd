@@ -501,6 +501,7 @@ func _open_with_plant() -> void:
 	_runner.run_ticks(BUILD_TICKS)
 	var queue: int = World.TABS + World.Tab.STRUCTURES
 	assert_int(_runner.snapshot.queue_count[queue]).is_equal(1)
+	(_hud("BuildSidebar") as BuildSidebar).open()  # Placement began in the open drawer.
 	assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()
 
 
@@ -533,7 +534,7 @@ func _place_at(tile: Vector2i) -> void:
 func _bring_the_cards_back() -> void:
 	var sidebar: BuildSidebar = _hud("BuildSidebar") as BuildSidebar
 	assert_bool(sidebar.is_open()).is_false()
-	var at: Vector2 = (_hud("Build") as Control).get_global_rect().get_center()
+	var at: Vector2 = (_hud("BuildButton") as Control).get_global_rect().get_center()
 	TouchEvents.press(get_viewport(), 0, at)
 	TouchEvents.release(get_viewport(), 0, at)
 	assert_bool(sidebar.is_open()).is_true()

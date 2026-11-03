@@ -116,6 +116,22 @@ func test_the_pill_starts_after_what_stands_at_the_top_left_and_stays_clear_of_t
 	assert_float(out[HudCorners.PILL].size.x).is_equal(HudCorners.PILL_MAX_DP)
 
 
+func test_the_pill_stays_with_the_drawer_open_only_when_asked_and_ends_short_of_the_panel() -> void:
+	var shown: HudCorners.Shown = _shown(["drawer"], 1)
+	shown.left_taken = 48.0
+	shown.pill_width = 900.0
+	var safe: Rect2 = Rect2(0.0, 0.0, 776.0, 280.0)
+	var out: Dictionary[StringName, Rect2] = _place(safe, false, shown)
+	assert_bool(out.has(HudCorners.PILL)).is_false()  # As before: the drawer covers it.
+	shown.pill_over_drawer = true  # P120, until P120d puts the economy in the drawer's head.
+	out = _place(safe, false, shown)
+	assert_bool(out.has(HudCorners.PILL)).is_true()
+	assert_float(out[HudCorners.PILL].end.x).is_less_equal(out[HudCorners.DRAWER].position.x - 8.0)
+	out = _place(Rect2(0.0, 0.0, 336.0, 676.0), true, shown)  # Under the sheet's top: the pill too.
+	assert_bool(out.has(HudCorners.PILL)).is_true()
+	assert_bool(out[HudCorners.PILL].intersects(out[HudCorners.DRAWER])).is_false()
+
+
 func test_the_drawer_is_a_side_panel_of_40_percent_between_312_and_420_dp_or_a_half_sheet() -> void:
 	var shown: HudCorners.Shown = _shown(["drawer", "bar", "strike", "ready"], 4)
 	var out: Dictionary[StringName, Rect2] = _place(Rect2(0.0, 0.0, 776.0, 280.0), false, shown)

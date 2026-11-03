@@ -1,17 +1,15 @@
 extends GdUnitTestSuite
-## What opens and collapses the build menu (plan P85f, ADR 0024 sections 1, 5, 6 and 9), in the main
-## scene through the real GUI at the six sizes of ScreenSizes.ALL. A match starts open. A tap, a
-## double-tap, a long-press with its box, a pan, a pinch and a wheel step on the map collapse it and
-## still do their own work; a touch on the ArmyBar, the SelectionPanel, a tab, a card, a hold on a
-## card or a scroll of the item row never does (the radar scope's tap does sideways, as the full
-## map and the panel are one unfold at a time: test_radar_map's). The start of placement collapses
-## it, the end of placement by a build or the X opens it again (it returns to the state placement
-## began in) and a strike aim that ends placement leaves it down; the Ready badge shows only while
-## the menu is collapsed and no placement runs, and a tap on it opens the menu on the Structures tab
-## with the READY card in view and starts nothing; a tap on an own producer opens the menu on its
-## tab with no visible move; a turn and a cancel_all() keep the state; a new match starts open.
-## Player 1 has a Headquarters, two light tanks, a Heavy Yard and a Bunkhouse, and a finished
-## structure in its queue.
+## What opens and closes the build drawer (plan P120, ADR 0025 sections 1 and 5; it grew out of
+## P85f, ADR 0024 sections 1, 5, 6 and 9), in the main scene through the real GUI at the six sizes
+## of ScreenSizes.ALL. A match starts closed. A tap, a double-tap, a long-press with its box, a pan,
+## a pinch and a wheel step on the map close it and still do their own work; a touch on the ArmyBar,
+## the SelectionPanel, a tab, a card, a hold on a card or a scroll of the grid never does. The start
+## of placement closes it, and so does a restart of placement by a READY card tapped in a drawer
+## opened meanwhile; the end of placement by a build or the X opens it again (it returns to the
+## state placement began in) and a strike aim that ends placement leaves it closed; a tap on an own
+## producer opens it on its tab with no visible move; a turn and a cancel_all() keep the state; a
+## new match starts closed. Player 1 has a Headquarters, two light tanks, a Heavy Yard and a
+## Bunkhouse, and a finished structure in its queue.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/input/support/placement_rig.gd")
@@ -71,14 +69,13 @@ func after_test() -> void:
 	get_window().size = _window_size_before
 
 
-func test_a_match_starts_open_and_each_gesture_on_the_map_collapses_it_and_still_does_its_work(
-) -> void:
+func test_each_gesture_on_the_map_closes_the_drawer_and_still_does_its_work() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
 		var why: String = str(size)
 		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
-		_camera.centre_on(IsoProjection.cell_centre_px(16, 12))
-		var ground: Vector2 = get_viewport().get_visible_rect().size * 0.5
+		_aim_camera(IsoProjection.cell_centre_px(16, 12))
+		var ground: Vector2 = _view_point()
 		# A tap on the ground with a tank selected: the tank is ordered there.
 		_controller.selection.set_ids(PackedInt32Array([TANK_A]))
 		_tap(ground)
@@ -95,7 +92,7 @@ func test_a_match_starts_open_and_each_gesture_on_the_map_collapses_it_and_still
 		)
 		# A long-press and a drag: a box with no tank in it clears the selection.
 		_reopen()
-		_camera.centre_on(IsoProjection.cell_centre_px(16, 12))
+		_aim_camera(IsoProjection.cell_centre_px(16, 12))
 		_box(ground, ground + Vector2(60.0, 40.0))
 		_expect_down(why + " long-press")
 		assert_array(_controller.selection.selected).override_failure_message(why).is_empty()
@@ -120,7 +117,7 @@ func test_a_match_starts_open_and_each_gesture_on_the_map_collapses_it_and_still
 		assert_float(_camera.zoom.x).override_failure_message(why).is_not_equal(zoom)
 
 
-func test_a_touch_on_a_hud_control_never_collapses_the_menu() -> void:
+func test_a_touch_on_a_hud_control_never_closes_the_drawer() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
 		var why: String = str(size)
@@ -160,120 +157,7 @@ func test_a_touch_on_a_hud_control_never_collapses_the_menu() -> void:
 		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
 
 
-func test_the_ready_badge_shows_only_while_collapsed_and_not_placing() -> void:
-	for size: Vector2i in ScreenSizes.ALL:
-		await _open(size)
-		var why: String = str(size)
-		var badge: Control = _hud("Ready") as Control
-		assert_bool(badge.is_visible_in_tree()).override_failure_message(why).is_false()  # Open.
-		_sidebar.collapse()
-		await _settle()
-		assert_bool(badge.is_visible_in_tree()).override_failure_message(why).is_true()
-		_sidebar.open()
-		await _settle()
-		assert_bool(badge.is_visible_in_tree()).override_failure_message(why).is_false()
-		_sidebar.collapse()
-		assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()
-		await _settle()
-		assert_bool(badge.is_visible_in_tree()).override_failure_message(why).is_false()
-		_placement.cancel()  # Placement began collapsed: it ends collapsed.
-		await _settle()
-		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
-		assert_bool(badge.is_visible_in_tree()).override_failure_message(why).is_true()
-		# Nothing ready, nothing to show.
-		_runner.snapshot.queue_count[World.TABS + World.Tab.STRUCTURES] = 0
-		_sidebar.refresh()
-		await _settle()
-		assert_bool(badge.is_visible_in_tree()).override_failure_message(why).is_false()
-
-
-## A tap on the badge opens the menu on the Structures tab, the READY card in view, and starts no
-## placement and no Command. The ready structure is the last card of its tab, so on the narrow
-## phone the row has to scroll to it.
-func test_a_tap_on_the_ready_badge_opens_the_structures_tab_with_the_card_in_view() -> void:
-	var cases: Array[Dictionary] = []
-	for size: Vector2i in ScreenSizes.ALL:
-		cases.append({"size": size, "metrics": null, "label": str(size)})
-	var narrow: UiMetrics = UiProfiles.by_name(&"web_phone_portrait")
-	cases.append({"size": narrow.window_size, "metrics": narrow, "label": "web_phone_portrait"})
-	for case: Dictionary in cases:
-		await _open(case["size"], case["metrics"])
-		var why: String = str(case["label"])
-		var turret: int = _runner.snapshot.type_ids.find(&"defence_turret")
-		_runner.snapshot.queue_count[World.TABS + World.Tab.STRUCTURES] = 0
-		Rig.make_ready(_runner.snapshot, turret)
-		_sidebar.refresh()
-		_sidebar.select_tab(World.Tab.VEHICLES)
-		_sidebar.collapse()
-		await _settle()
-		var badge: Control = _hud("Ready") as Control
-		assert_bool(badge.is_visible_in_tree()).override_failure_message(why).is_true()
-		_sidebar.set_process(true)  # The frames of the game scroll the card into view.
-		_tap(badge.get_global_rect().get_center())
-		await _settle()
-		await _settle()
-		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
-		assert_int(_sidebar.tab).override_failure_message(why).is_equal(World.Tab.STRUCTURES)
-		assert_bool(_placement.active).override_failure_message(why).is_false()
-		assert_array(_sent).override_failure_message(why).is_empty()
-		assert_int(_told).override_failure_message(why).is_equal(0)  # A HUD touch.
-		var card: ItemTile = _sidebar.find_child("Tile_defence_turret", true, false) as ItemTile
-		assert_int(card.state).is_equal(ItemTile.State.READY)
-		var items: Control = _hud("Items") as Control
-		var card_rect: Rect2 = card.get_global_rect()
-		var in_view: String = "%s: card %s, row %s" % [why, card_rect, items.get_global_rect()]
-		(
-			assert_bool(items.get_global_rect().grow(TOLERANCE_PX).encloses(card_rect))
-			. override_failure_message(in_view)
-			. is_true()
-		)
-		if case["label"] == "web_phone_portrait":  # The fifth of five cards on a 360 dp phone.
-			(
-				assert_int((items as ScrollContainer).scroll_horizontal)
-				. override_failure_message(in_view)
-				. is_greater(0)
-			)
-
-
-## The same on a screen whose frames run faster than the physics (90 and 120 Hz phones against 60
-## physics ticks, here 1) and for a touch that comes from the input queue, before the frame loop:
-## the row has the old tab's size when the tap lands, and the scroll that is clamped to it must be
-## made again once the row has laid out the new one. The game's own frames run the reveal.
-func test_a_real_touch_on_the_badge_scrolls_the_card_in_view_at_a_high_frame_rate() -> void:
-	var narrow: UiMetrics = UiProfiles.by_name(&"web_phone_portrait")
-	await _open(narrow.window_size, narrow)
-	var turret: int = _runner.snapshot.type_ids.find(&"defence_turret")
-	_runner.snapshot.queue_count[World.TABS + World.Tab.STRUCTURES] = 0
-	Rig.make_ready(_runner.snapshot, turret)
-	_sidebar.refresh()
-	_sidebar.select_tab(World.Tab.VEHICLES)
-	_sidebar.collapse()
-	await _settle()
-	_sidebar.set_process(true)  # The frames of the game.
-	Engine.physics_ticks_per_second = 1
-	var badge: Control = _hud("Ready") as Control
-	var at: Vector2 = get_viewport().get_final_transform() * badge.get_global_rect().get_center()
-	for pressed: bool in [true, false]:
-		var touch: InputEventScreenTouch = InputEventScreenTouch.new()
-		touch.index = 0
-		touch.position = at
-		touch.pressed = pressed
-		Input.parse_input_event(touch)
-	for frame: int in 8:
-		await await_idle_frame()
-	var items: ScrollContainer = _hud("Items") as ScrollContainer
-	var card: ItemTile = _sidebar.find_child("Tile_defence_turret", true, false) as ItemTile
-	var in_view: String = "card %s, row %s" % [card.get_global_rect(), items.get_global_rect()]
-	assert_bool(_sidebar.is_open()).override_failure_message(in_view).is_true()
-	assert_int(_sidebar.tab).override_failure_message(in_view).is_equal(World.Tab.STRUCTURES)
-	assert_int(items.scroll_horizontal).override_failure_message(in_view).is_greater(0)
-	(
-		assert_bool(items.get_global_rect().grow(TOLERANCE_PX).encloses(card.get_global_rect()))
-		. is_true()
-	)
-
-
-func test_a_tap_on_an_own_producer_opens_the_menu_on_its_tab_with_no_visible_move() -> void:
+func test_a_tap_on_an_own_producer_opens_the_drawer_on_its_tab_with_no_visible_move() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
 		var why: String = str(size)
@@ -317,7 +201,7 @@ func test_a_tap_on_an_own_producer_opens_the_menu_on_its_tab_with_no_visible_mov
 		assert_int(_sidebar.tab).override_failure_message(why).is_equal(World.Tab.VEHICLES)
 
 
-func test_placement_collapses_the_menu_and_a_build_or_the_x_gives_it_back() -> void:
+func test_placement_closes_the_drawer_and_a_build_or_the_x_gives_it_back() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
 		var why: String = str(size)
@@ -343,25 +227,52 @@ func test_placement_collapses_the_menu_and_a_build_or_the_x_gives_it_back() -> v
 
 ## The Build button stays live while the ghost is out (a HUD touch): the cards are back, the READY
 ## card can be tapped again, and the end of placement leaves the menu up.
-func test_the_build_button_brings_the_cards_back_while_the_ghost_is_out() -> void:
+func test_build_brings_the_cards_back_while_the_ghost_is_out_and_ready_restarts_it_closed() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
-		await _open(size)
+		await _open(size, null, false, false)
 		var why: String = str(size)
 		assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()
 		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
 		await _settle()
-		_tap((_hud("Build") as Control).get_global_rect().get_center())
+		_tap((_hud("BuildButton") as Control).get_global_rect().get_center())
 		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
 		assert_bool(_placement.active).override_failure_message(why).is_true()
 		assert_int(_told).override_failure_message(why).is_equal(0)
 		await _settle()
 		var card: ItemTile = _sidebar.find_child("Tile_power_plant", true, false) as ItemTile
 		assert_bool(card.is_visible_in_tree()).override_failure_message(why).is_true()
+		# ADR 0025 section 5: the start of placement closes the drawer, a restart too.
+		card.clock = func() -> int: return _now_ms
+		_tap(card.get_global_rect().get_center())
+		assert_bool(_placement.active).override_failure_message(why).is_true()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
 		_placement.cancel()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()  # Began closed.
+
+
+## A tap on the READY card closes the drawer only when placement really begins: where the game
+## refuses it (here the type has no footprint in the snapshot) the drawer stays open, nothing is
+## sent and no placement runs.
+func test_a_ready_tap_that_placement_refuses_leaves_the_drawer_open_and_sends_nothing() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size)
+		var why: String = str(size)
+		var card: ItemTile = _sidebar.find_child("Tile_power_plant", true, false) as ItemTile
+		assert_int(card.state).override_failure_message(why).is_equal(ItemTile.State.READY)
+		card.clock = func() -> int: return _now_ms
+		var foot: int = _runner.snapshot.type_foot_w[card.type_index]
+		_runner.snapshot.type_foot_w[card.type_index] = 0
+		_tap(card.get_global_rect().get_center())
+		assert_bool(_placement.active).override_failure_message(why).is_false()
 		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+		assert_array(_sent).override_failure_message(why).is_empty()
+		_runner.snapshot.type_foot_w[card.type_index] = foot
+		_tap(card.get_global_rect().get_center())  # Accepted now: it begins and closes the drawer.
+		assert_bool(_placement.active).override_failure_message(why).is_true()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
 
 
-func test_a_build_gives_the_menu_back_and_a_strike_aim_or_the_matchs_end_does_not() -> void:
+func test_a_build_gives_the_drawer_back_and_a_strike_aim_or_the_matchs_end_does_not() -> void:
 	await _open(ScreenSizes.LANDSCAPE[0], null, true)
 	# A build: the check mark, the tick that answers it, and the menu is open again.
 	assert_bool(_sidebar.is_open()).is_true()
@@ -405,7 +316,7 @@ func test_a_build_gives_the_menu_back_and_a_strike_aim_or_the_matchs_end_does_no
 ## to the aim's start): upright the strike row rides on the menu's top, and the first tap on the map
 ## that places the aim's point would otherwise slide it, with its check mark and X lit up, about
 ## 100 dp under the thumb. Nothing moves between the aim's start and its confirm.
-func test_a_strike_aim_takes_the_menu_down_at_its_start_and_the_strike_row_stays_put() -> void:
+func test_a_strike_aim_closes_the_drawer_at_its_start_and_the_strike_row_stays_put() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
 		var why: String = str(size)
@@ -431,15 +342,15 @@ func test_a_strike_aim_takes_the_menu_down_at_its_start_and_the_strike_row_stays
 		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()  # Nothing reopens.
 
 
-func test_a_turn_and_a_cancelled_gesture_keep_the_state_and_a_new_match_starts_open() -> void:
+func test_a_turn_and_a_cancelled_gesture_keep_the_state_and_a_new_match_starts_closed() -> void:
 	await _open(ScreenSizes.LANDSCAPE[1], null)
 	for open: bool in [true, false]:
 		if open:
 			_sidebar.open()
 		else:
 			_sidebar.collapse()
-		_camera.centre_on(IsoProjection.cell_centre_px(16, 12))
-		var ground: Vector2 = get_viewport().get_visible_rect().size * 0.5
+		_aim_camera(IsoProjection.cell_centre_px(16, 12))
+		var ground: Vector2 = _view_point()
 		TouchEvents.press(get_viewport(), 0, ground)  # A finger down, no gesture yet.
 		for size: Vector2i in [ScreenSizes.PORTRAIT[1], ScreenSizes.LANDSCAPE[1]]:
 			get_window().size = size
@@ -449,11 +360,113 @@ func test_a_turn_and_a_cancelled_gesture_keep_the_state_and_a_new_match_starts_o
 		TouchEvents.release(get_viewport(), 0, ground)
 		assert_int(_told).is_equal(0)  # And the lift after it makes no tap.
 		assert_bool(_sidebar.is_open()).is_equal(open)
-	# A new match starts open, whatever the state at the end of the last.
-	_sidebar.collapse()
+	# A new match starts closed, whatever the state at the end of the last.
+	_sidebar.open()
 	_runner.start()
 	_sidebar.refresh()
-	assert_bool(_sidebar.is_open()).is_true()
+	await _settle()
+	assert_bool(_sidebar.is_open()).is_false()
+
+
+func test_a_match_starts_closed_and_build_close_and_the_map_unfold_it() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size, null, false, false)
+		var why: String = str(size)
+		var feed: HudStateFeed = _main.get_node("Hud/HudStateFeed")
+		var build: Control = _hud("BuildButton") as Control
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
+		assert_bool(_sidebar.visible).override_failure_message(why).is_false()
+		assert_bool(build.visible).override_failure_message(why).is_true()
+		_tap(build.get_global_rect().get_center())  # BUILD opens it and hides itself.
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+		assert_bool(feed.state.is_open(HudState.Unfold.DRAWER)).is_true()
+		assert_bool(build.visible).override_failure_message(why).is_false()
+		assert_int(_told).override_failure_message(why).is_equal(0)  # A HUD touch, no map gesture.
+		await _settle()
+		var close: Control = _hud("Close") as Control
+		assert_float(close.size.x).is_greater_equal(UiScale.dp(48.0) - 0.5)
+		_tap(close.get_global_rect().get_center())
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
+		assert_bool(build.visible).override_failure_message(why).is_true()
+		# The drawer folds the full map, and the full map folds the drawer.
+		feed.state.open(HudState.Unfold.RADAR)
+		_sidebar.open()
+		(
+			assert_bool(feed.state.is_open(HudState.Unfold.RADAR))
+			. override_failure_message(why)
+			. is_false()
+		)
+		assert_bool(_sidebar.is_open()).is_true()
+		feed.state.open(HudState.Unfold.RADAR)
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
+
+
+## ADR 0025 section 5: a drag toward the edge the drawer came from, past `drawer_swipe_dp`, closes
+## it. Landscape: any horizontal drag on the panel; upright: one that starts on the head, while a
+## vertical drag on the grid scrolls it and a drag the wrong way or too short closes nothing.
+func test_a_swipe_toward_the_edge_closes_the_drawer_from_the_panel_or_the_head() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size)
+		var why: String = str(size)
+		var portrait: bool = HudLayout.is_portrait()
+		var far: float = UiScale.dp(_touch.settings.drawer_swipe_dp) + 10.0
+		var toward: Vector2 = Vector2(0.0, 1.0) if portrait else Vector2(1.0, 0.0)
+		var head: Vector2 = (_hud("Head") as Control).get_global_rect().get_center() - toward * 8.0
+		var grid: Vector2 = (_hud("Tile_power_plant") as Control).get_global_rect().get_center()
+		var panel: Vector2 = head if portrait else grid
+		_swipe(panel, -toward * far)  # The wrong way.
+		_swipe(panel, toward * (far - 20.0))  # Too short.
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+		if portrait:
+			_swipe(grid, toward * far * 1.5)  # From the grid: a scroll, not a swipe.
+			assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+		else:
+			_swipe(head, Vector2(0.0, far * 1.5))  # Vertical: the grid scrolls.
+			assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+		_swipe(panel, toward * far)
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
+		assert_int(_told).override_failure_message(why).is_equal(0)
+
+
+## A finger that went down on the drawer and then saw it fold (another unfold, the close button)
+## swipes nothing when the drawer opens again under it: its swipe ended with the fold.
+func test_a_finger_down_when_the_drawer_folds_swipes_nothing_when_it_opens_again() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size)
+		var why: String = str(size)
+		var portrait: bool = HudLayout.is_portrait()
+		var toward: Vector2 = Vector2(0.0, 1.0) if portrait else Vector2(1.0, 0.0)
+		var far: float = UiScale.dp(_touch.settings.drawer_swipe_dp) + 10.0
+		var zone: Control = (_hud("Head") if portrait else _hud("Backdrop")) as Control
+		var from: Vector2 = zone.get_global_rect().get_center()
+		TouchEvents.press(get_viewport(), 0, from)  # On the drawer.
+		_sidebar.collapse()  # It folds under the finger,
+		_sidebar.open()  # and opens again.
+		TouchEvents.drag(get_viewport(), 0, from + toward * far * 0.5, toward * far * 0.5)
+		TouchEvents.drag(get_viewport(), 0, from + toward * far, toward * far * 0.5)
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+		TouchEvents.release(get_viewport(), 0, from + toward * far)
+
+
+## The pill stays on screen while the drawer is open (until P120d puts the economy in its head).
+func test_the_pill_stays_shown_while_the_drawer_is_open() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size, null, false, false)
+		var pill: Control = _hud("EconomyPill") as Control
+		var before: Rect2 = pill.get_global_rect()
+		_sidebar.open()
+		await _settle()
+		assert_bool(pill.is_visible_in_tree()).override_failure_message(str(size)).is_true()
+		assert_bool(pill.get_global_rect() == before).override_failure_message(str(size)).is_true()
+		assert_bool(pill.get_global_rect().intersects(_sidebar.get_global_rect())).is_false()
+
+
+func _swipe(from: Vector2, by: Vector2) -> void:
+	TouchEvents.press(get_viewport(), 0, from)
+	TouchEvents.drag(get_viewport(), 0, from + by * 0.5, by * 0.5)
+	TouchEvents.drag(get_viewport(), 0, from + by, by * 0.5)
+	TouchEvents.release(get_viewport(), 0, from + by)
+	_now_ms += 1000
 
 
 ## Fails when a gesture's work left the menu open or told the wrong number of times.
@@ -527,22 +540,36 @@ func _pinch(centre: Vector2, from_half: float, to_half: float) -> void:
 ## Where unit `id` is on the screen, with the camera on it.
 func _tank_at(id: int) -> Vector2:
 	var row: int = _runner.snapshot.index_of(id)
-	_camera.centre_on(_camera.screen_to_world(_units.unit_screen_position(row)))
+	_aim_camera(_camera.screen_to_world(_units.unit_screen_position(row)))
 	return _units.unit_screen_position(row)
 
 
 ## A tap on the picture of building `id`, the camera on it.
 func _tap_building(id: int) -> void:
 	var node: Node2D = _buildings.building(id)
-	_camera.centre_on(node.position)
+	_aim_camera(node.position)
 	_forget()
 	_tap(_camera.world_to_screen(node.position))
 
 
+## The point of the screen where the camera's aim is held: the middle, and upright the middle of
+## the upper half, because the open sheet covers the lower half.
+func _view_point() -> Vector2:
+	var size: Vector2 = get_viewport().get_visible_rect().size
+	return Vector2(size.x * 0.5, size.y * (0.25 if HudLayout.is_portrait() else 0.5))
+
+
+## Centres the camera on `world` so that it shows at `_view_point()`.
+func _aim_camera(world: Vector2) -> void:
+	_camera.centre_on(world)
+	if HudLayout.is_portrait():
+		_camera.position.y += get_viewport().get_visible_rect().size.y * 0.25 / _camera.zoom.y
+
+
 ## A ground point clear of the HUD and of the buildings, at the middle of the view.
 func _ground() -> Vector2:
-	_camera.centre_on(IsoProjection.cell_centre_px(16, 12))
-	return get_viewport().get_visible_rect().size * 0.5
+	_aim_camera(IsoProjection.cell_centre_px(16, 12))
+	return _view_point()
 
 
 func _move_ghost(tile: Vector2i) -> void:
@@ -565,7 +592,9 @@ func _settle() -> void:
 ## paused, the Commands caught and the structure ready in the published snapshot, or with `built`
 ## through the queue so that it stays ready on the next tick. The menu's slide runs on the test's
 ## steps, and so does the touch input's clock.
-func _open(size: Vector2i, metrics: UiMetrics = null, built: bool = false) -> void:
+func _open(
+	size: Vector2i, metrics: UiMetrics = null, built: bool = false, drawer: bool = true
+) -> void:
 	if _main != null and is_instance_valid(_main):
 		remove_child(_main)
 		_main.free()
@@ -611,4 +640,6 @@ func _open(size: Vector2i, metrics: UiMetrics = null, built: bool = false) -> vo
 		Rig.make_ready(_runner.snapshot)
 	Rig.explore(_runner.snapshot)
 	_sidebar.refresh()
+	if drawer:
+		_sidebar.open()
 	await _settle()

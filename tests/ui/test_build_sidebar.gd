@@ -62,7 +62,8 @@ func test_each_tab_has_its_icon_by_name_and_the_open_one_is_a_different_plate() 
 	var icons: Array[String] = ["tab_structures", "tab_infantry", "tab_vehicles"]
 	for index: int in names.size():
 		var button: Button = _node(names[index])
-		assert_str(button.icon.resource_path).is_equal(ICONS % icons[index])
+		var icon: TextureRect = button.find_child("Icon", true, false) as TextureRect
+		assert_str(icon.texture.resource_path).is_equal(ICONS % icons[index])
 		assert_bool(button.toggle_mode).is_true()
 		assert_int(button.focus_mode).is_equal(Control.FOCUS_NONE)
 	var rest: StyleBoxFlat = _sidebar.get_theme_stylebox(&"normal", &"SidebarTab") as StyleBoxFlat
@@ -121,6 +122,8 @@ func _open() -> void:
 	add_child(_main)
 	await await_idle_frame()
 	_sidebar = _main.get_node("Hud").find_child("BuildSidebar", true, false)
+	_sidebar.open()
+	await await_idle_frame()
 	_controller = _main.get_node("PlayerController")
 	_sent.clear()
 	_controller.command_sink = func(command: Command) -> void: _sent.append(command)
