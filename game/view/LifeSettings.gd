@@ -89,7 +89,7 @@ extends Resource
 
 ## `AirFx` emitters (P145), per emitter kind (`smoke`, `steam`, `flare`): the time between puffs
 ## (at least 500, so an emitter has at most four puffs alive) and a puff's life (at most 2000),
-## then how far a puff rises and drifts in its life, in world px, and the quota of the ring.
+## then how far smoke and steam rise and drift in their life, in world px, and the ring's quota.
 @export var emit_ms: Dictionary[StringName, int] = {&"smoke": 700, &"steam": 600, &"flare": 500}
 @export
 var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200, &"flare": 700}
@@ -124,8 +124,9 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 
 ## `AirFx`, the rest of its numbers (P145): a puff of smoke or steam grows from `emit_grow_from` to
 ## `emit_grow_to` times its frame while it rises and drifts; a flame stays on its point and goes
-## from `emit_flame_from` to `emit_flame_to` times its frame; all fade from `emit_alpha` to 0 in
-## the puff's life. An `emit_ms` of 0 for a kind, or an `emitter_slots` of 0, turns it off.
+## from `emit_flame_from` to `emit_flame_to` times its frame. Smoke and steam fade from `emit_alpha`
+## to 0 in the puff's life; a flame holds `emit_alpha` until the next flame is born and fades in
+## the overlap that is left. An `emit_ms` of 0 for a kind, or an `emitter_slots` of 0, turns it off.
 @export var emit_alpha: float = 0.85
 @export var emit_grow_from: float = 0.6
 @export var emit_grow_to: float = 1.2

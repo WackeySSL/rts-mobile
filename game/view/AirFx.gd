@@ -19,7 +19,9 @@ extends Node2D
 ## `emit_grow_from` to `emit_grow_to` times their frame. A flame keeps its base on its point (no
 ## rise, no drift) and changes size from `emit_flame_from` to `emit_flame_to`; with a birth every
 ## 500 ms and a life of 700 the flames overlap into one steady fire that changes frame at each
-## birth. All fade from `emit_alpha` to 0. Which frame a puff shows, and whether a flame is
+## birth. Smoke and steam fade from `emit_alpha` to 0 over their life; a flame holds `emit_alpha`
+## and fades only over the overlap at the end of its life (the life beyond the time between
+## births), so the fire does not pulse. Which frame a puff shows, and whether a flame is
 ## mirrored (the only kind that may be, `LifeRegions.mirrorable`), is `LifeClock.mix` of the id and
 ## the tick.
 ## The ambient is dropped by `life.reduced`: nothing is born and the ring is emptied on the switch;
@@ -377,5 +379,8 @@ func _plan(snap: MatchSnapshot) -> void:
 		_quad_kind[_quads] = kind
 		_quad_frame[_quads] = _frame[slot]
 		_quad_flip[_quads] = _flip[slot]
-		_quad_alpha[_quads] = alpha * (1.0 - t)
+		var fade: float = 1.0 - t
+		if kind == FLAME:
+			fade = clampf((span - age) / maxf(span - float(_emit_ms[kind]), 1.0), 0.0, 1.0)
+		_quad_alpha[_quads] = alpha * fade
 		_quads += 1

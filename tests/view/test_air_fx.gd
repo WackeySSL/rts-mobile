@@ -3,8 +3,9 @@ extends GdUnitTestSuite
 ## 9): which building emits and which does not, when a puff is born (the cycle of its kind from a
 ## per-id phase), what a puff does in its life, the quota, `reduced`, and the mirror rule.
 ## Fixtures: player 1 (local) has a Refinery (id 1: a steam and a flame emitter), two Turbine Halls
-## (ids 2 and 3: two smoke stacks each), a Barracks (id 5, no emitter) and a Headquarters (id 6:
-## one smoke); player 2 has a Lumen Refinery (id 4: two steam emitters). The test sets the tick
+## (ids 2 and 3: two smoke stacks each), a Barracks (id 5, no emitter), a Headquarters (id 6: one
+## smoke), a strike building (id 7: a launch point only) and a Light Tank (id 8: an exhaust
+## point only); player 2 has a Lumen Refinery (id 4: two steam emitters). The test sets the tick
 ## (`Rig.deliver` publishes it and emits `ticked`) and the layer plans a frame with `_process`.
 
 const Buildings: GDScript = preload("res://tests/view/support/building_rig.gd")
@@ -149,7 +150,7 @@ func test_the_kinds_use_their_own_sprite_and_a_flame_is_the_flare() -> void:
 		var first: Rect2i = LifeRegions.FIRST[sprite]
 		assert_float(_air.quad_rect(index).size.x).is_less_equal(first.size.x * 1.21)
 		assert_int(_air.quad_frame(index)).is_less(LifeRegions.FRAMES[sprite])
-		assert_float(_air.quad_alpha(index)).is_between(0.0, 0.85)
+		assert_float(_air.quad_alpha(index)).is_between(0.0, 0.851)
 	assert_array(seen.keys()).contains_exactly_in_any_order([SMOKE, STEAM, FLAME])
 	assert_str(_air.texture().resource_path).is_equal(LifeRegions.LIFE_ART)
 
@@ -214,16 +215,24 @@ func test_the_flame_is_a_steady_fire_that_changes_frame_at_each_birth() -> void:
 	var base: Vector2 = _spot(REFINERY, 1)
 	for tick: int in range(START, START + 200):
 		Rig.deliver(_runner, PackedInt32Array(), tick)
-		_frame(tick, 0.0)
-		var near: int = 0
-		for index: int in _air.quad_count():
-			var centre: Vector2 = _air.quad_rect(index).get_center()
-			if _air.quad_kind(index) == FLAME and centre.distance_to(base) < 40.0:
-				near += 1
-				frames[_air.quad_frame(index)] = true
-		overlaps += 1 if near >= 2 else 0
-		if tick > START + 20:
-			assert_int(near).override_failure_message("tick %d" % tick).is_greater(0)  # Never bare.
+		for alpha: float in [0.0, 0.5]:
+			_frame(tick, alpha)
+			var near: int = 0
+			var brightest: float = 0.0
+			for index: int in _air.quad_count():
+				var centre: Vector2 = _air.quad_rect(index).get_center()
+				if _air.quad_kind(index) == FLAME and centre.distance_to(base) < 40.0:
+					near += 1
+					brightest = maxf(brightest, _air.quad_alpha(index))
+					frames[_air.quad_frame(index)] = true
+			overlaps += 1 if near >= 2 and alpha == 0.0 else 0
+			if tick > START + 20:
+				var note: String = "tick %d alpha %.1f" % [tick, alpha]
+				assert_int(near).override_failure_message(note).is_greater(0)  # Never bare.
+				# Steady, not a pulse: the brightest flame stays near the full alpha.
+				assert_float(brightest).override_failure_message(note).is_greater_equal(
+					0.8 * DATA.emit_alpha
+				)
 	assert_int(frames.size()).is_greater(2)
 	assert_int(overlaps).is_greater(20)
 
@@ -431,7 +440,7 @@ func _sees_all() -> void:
 	Buildings.see(_runner.snapshot, 1, tiles)
 
 
-## Delivers ticks `from` up to (not including) `to`, then frames the last at alpha 0.
+## Delivers ticks `from` up to (not including) `to`, each published with `ticked`; no frame.
 func _run(from: int, to: int) -> void:
 	for tick: int in range(from, to):
 		Rig.deliver(_runner, PackedInt32Array(), tick)
