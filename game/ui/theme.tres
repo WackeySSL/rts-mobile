@@ -44,7 +44,7 @@
 ; Type variations (DevButton, NumberLabel, SelectionPanel, PerfCard, SidebarTab, PowerBar,
 ; PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner, ItemCaption,
 ; StrikeButton, StrikeConfirm, BuildButton, ReadyBadge, HudPanel, CapsButton, CapsTitle,
-; CapsBigTitle, EconomyPill, EconomyPillLow, PillWord, EconomyChipLoss, EconomyChipGain,
+; CapsBigTitle, EconomyPill, EconomyPillLow, PillWord, AttackTitle, EconomyChipLoss, EconomyChipGain,
 ; EconomyConsumer, ResultScreen, Scrim) are set by
 ; theme_type_variation on the node, in main.tscn or at build in the script (the power bar's two
 ; pairs switch with the low-power state, the cost of an item tile with its money).
@@ -74,6 +74,12 @@ spacing_glyph = 6
 ; The word "LOW POWER" of the economy pill (PillWord): the same face at 14 dp, so its tracking is
 ; 3 base px (the 4 of CapsButton is tuned for 22 dp and would be 14 to 16 % of the size here).
 [sub_resource type="FontVariation" id="FontVariation_pill_word"]
+base_font = ExtResource("4_shoulders_800")
+spacing_glyph = 3
+
+; The title of the attack toast (AttackToast.gd): the same face at 16 dp with 3 px tracking (ADR 0025
+; section 13's 6 to 14 % band), so that the longest building name ("SYNTHESIS WORKS UNDER ATTACK") fits.
+[sub_resource type="FontVariation" id="FontVariation_attack_title"]
 base_font = ExtResource("4_shoulders_800")
 spacing_glyph = 3
 
@@ -478,6 +484,10 @@ PillWord/base_type = &"Label"
 PillWord/colors/font_color = Color(0.06, 0.08, 0.11, 1)
 PillWord/font_sizes/font_size = 14
 PillWord/fonts/font = SubResource("FontVariation_pill_word")
+AttackTitle/base_type = &"Label"
+AttackTitle/colors/font_color = Color(1, 1, 1, 1)
+AttackTitle/font_sizes/font_size = 16
+AttackTitle/fonts/font = SubResource("FontVariation_attack_title")
 ; The result screen (ResultScreen.gd, plan P90): the tint of the emblem, STYLE.md "Icons and glyphs"
 ; (glyph_victory #30A46C, glyph_defeat #E5484D, glyph_draw #9AA5B1); the word beside it says the rest.
 ResultScreen/base_type = &"Control"
@@ -486,4 +496,4 @@ ResultScreen/colors/draw = Color(0.60392157, 0.64705882, 0.69411765, 1)
 ResultScreen/colors/victory = Color(0.18823529, 0.64313725, 0.42352941, 1)
 Scrim/base_type = &"PanelContainer"
 Scrim/styles/panel = SubResource("StyleBoxFlat_scrim")
-metadata/base_px = PackedStringArray("DevButton/font_sizes/font_size", "CapsButton/fonts/font", "CapsTitle/fonts/font", "CapsBigTitle/fonts/font", "PillWord/fonts/font")
+metadata/base_px = PackedStringArray("DevButton/font_sizes/font_size", "CapsButton/fonts/font", "CapsTitle/fonts/font", "CapsBigTitle/fonts/font", "PillWord/fonts/font", "AttackTitle/fonts/font")
