@@ -14,10 +14,17 @@ static func dir(layer: UnitLayer, row: int, part: StringName) -> int:
 	if node == null or sheet == null:
 		return -3
 	var slot: int = layer.world_sort.slot_of(snap.owner[row])
-	for frame: int in sheet.directions(part):
-		var region: Rect2i = layer.world_sort.atlas.region(art_id, part, frame, slot)
-		if Rect2i(node.region_rect) == region:
-			return frame
+	var parts: Array[StringName] = [part]
+	if part == &"hull":  # A squad's Hull shows its walk and idle frames too (P142).
+		parts.append_array([&"walk", &"idle"])
+	for shown: StringName in parts:
+		if not sheet.has_part(shown):
+			continue
+		for frame: int in sheet.directions(shown):
+			for k: int in sheet.frame_count(shown):
+				var region: Rect2i = layer.world_sort.atlas.region(art_id, shown, frame, slot, k)
+				if Rect2i(node.region_rect) == region:
+					return frame
 	return -2
 
 

@@ -21,6 +21,7 @@ var _life: LifeSettings
 func before_test() -> void:
 	_runner = auto_free(Rig.runner())
 	_life = LifeSettings.new()
+	_life.idle_ms = 0  # The squad's idle pose is a life write too (test_squad_poses.gd).
 	_layer = auto_free(UnitLayer.new())
 	_layer.runner = _runner
 	_layer.life = _life

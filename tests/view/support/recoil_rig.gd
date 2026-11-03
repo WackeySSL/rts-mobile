@@ -52,6 +52,7 @@ static func calmed(life: LifeSettings) -> LifeSettings:
 	out.shake_px = 0.0
 	out.look_ms = 0
 	out.sweep_frames = 0
+	out.idle_ms = 0  # And no squad fidgets: a pose write is a life write too.
 	return out
 
 

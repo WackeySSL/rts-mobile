@@ -382,16 +382,16 @@ func test_deaths_spawns_rings_and_restarts_leave_no_objects_behind() -> void:
 	await await_idle_frame()
 	counts.append(roundi(Performance.get_monitor(Performance.OBJECT_COUNT)))
 	var base: int = counts[0]
-	# A spawn adds a rig, its Shadow, Hull and Turret and its idle record (`RigLife.Idle`, P140; the
-	# tick's snapshot replaced the last one). The first Ring also loads the ring texture, `loaded`
-	# objects that every later ring shares, so the second adds one. A death frees nothing: the rig
-	# and its ring wait in the pool (P114b), and the restart pools the 40 old rigs, which the 40
-	# rows of the new match take: nothing is made or freed, so a rig is never made twice for want of
-	# the pool.
+	# A spawn adds a rig, its Shadow, Hull and Turret, its idle record (`RigLife.Idle`, P140) and its
+	# pose record (`RigLife.Pose`, P142; the tick's snapshot replaced the last one). The first Ring
+	# also loads the ring texture, `loaded` objects that every later ring shares, so the second adds
+	# one. A death frees nothing: the rig and its ring wait in the pool (P114b), and the restart
+	# pools the 40 old rigs, which the 40 rows of the new match take: nothing is made or freed, so a
+	# rig is never made twice for want of the pool.
 	var loaded: int = counts[2] - counts[1] - 1
 	assert_int(loaded).is_greater_equal(0)
-	var expected: Array[int] = [base, base + 5, base + 6 + loaded, base + 7 + loaded]
-	expected.append_array([base + 7 + loaded, base + 7 + loaded])
+	var expected: Array[int] = [base, base + 6, base + 7 + loaded, base + 8 + loaded]
+	expected.append_array([base + 8 + loaded, base + 8 + loaded])
 	assert_array(counts).is_equal(expected)
 	assert_int(_layer.rigs_made()).is_equal(41)
 

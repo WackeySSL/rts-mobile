@@ -34,20 +34,27 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"idle_clock",
 		"idle_step",
 		"sweep_step",
+		"note_shots",
+		"travel_step",
+		"walk_frame",
+		"pose_step",
+		"pose_idle",
 	],
 	"res://game/view/GroundFx.gd":
 	["_process", "_draw", "_plan", "_on_ticked", "_add", "_empty", "quad_rect"],
+	"res://game/view/SquadPoses.gd": ["begin", "step", "turn", "_resolve"],
 	"res://game/view/LifeClock.gd": ["ms", "tick_ms", "age_ms", "mix", "pick"],
 	"res://game/view/UnitLayer.gd":
 	[
 		"_on_ticked",
-		"_note_shot",
+		"_shot_seen",
 		"_kick_rigs",
 		"_apply_kick",
 		"_apply_idle",
 		"_update_rigs",
+		"_show_hull",
 	],
-	"res://game/view/BuildingLayer.gd": ["_on_ticked", "_note_shot", "_kick_heads", "_sweep_heads"],
+	"res://game/view/BuildingLayer.gd": ["_on_ticked", "_shot_seen", "_kick_heads", "_sweep_heads"],
 }
 const ALLOCATING: Array[String] = [
 	"Array(",
@@ -132,6 +139,18 @@ func test_shots_and_frames_leave_no_object_or_node_behind() -> void:
 	assert_int(roundi(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))).is_equal(nodes)
 	assert_int(_units.life_writes()).is_greater(0)  # The shots did kick.
 	assert_int(_buildings.life_writes()).is_greater(0)
+
+
+func test_a_new_match_empties_the_kick_tables_of_both_layers_at_the_first_tick() -> void:
+	_make_layers()  # The tick's SHOT loop is shared (`RigLife.note_shots`): it follows the match.
+	var shooters: Array[int] = [Rig.LIGHT, Rig.REDOUBT]
+	_play_frame(0, shooters)
+	assert_int(_units.kick_count()).is_greater(0)
+	assert_int(_buildings.kick_count()).is_greater(0)
+	_runner.start()  # Another match: the next tick, with no shot in it, empties both tables.
+	Rig.deliver(_runner, PackedInt32Array(), 1)
+	assert_int(_units.kick_count()).is_equal(0)
+	assert_int(_buildings.kick_count()).is_equal(0)
 
 
 func test_a_volley_of_seventy_tanks_stays_inside_the_sprite_write_budget() -> void:
