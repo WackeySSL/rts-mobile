@@ -1,0 +1,19 @@
+---
+name: project-building-destruction-decisions
+description: ADR 0029 (buildings shot to pieces: four stages, ruin, collapse, hit feedback, collapse-only shake) proposed 2026-11-03 on 4b5c26d, plan rows P163-P167, P157c, P158a/b, re-scoped P159/P148/P162 in docs/plans/2026-11-03-damage-states.md; acceptance P26at
+metadata:
+  type: project
+---
+
+- ADR 0029 PROPOSED 2026-11-03 (P26as): amends ADR 0028 §2/§3/§6-§9 (new ADR, not a 4th amendment: three new systems + both stage meanings). Michael's sheets + "Kun grafik" (ruin blocks nothing, a building on its tiles removes it at once) = given; still view and art only, no hash change.
+- Stages INTAKT/SKADET/KRITISK/RUIN; buildings `building_stage_percent` [67, 34] (strict under: 67 % intact, 34 % SKADET); vehicles `vehicle_stage_percent` [50, 25] pending Q1. dmg1 = SKADET, dmg2 = KRITISK (patches, Anim hidden at stage 2 stays), RUIN = whole low sprite part `ruin`, shown by re-dressing the dying building's own Body at 700 ms.
+- P158 art re-slotted: its dmg1 (holes to half) -> start of new dmg2 KRITISK; its dmg2 (low ruin) -> start of `ruin`; new dmg1 SKADET is new work. Gallery Stage button, page-test structure, DAMAGE_PARTS pin carried into P158a (Fossil) / P158b (Renew).
+- Generator v5 (P163, P163b): ruin pose damage=3, shapes `broken` (teeth) and `rod` (bend), helpers `petals`, `rubble`, materials interior/slab/hole/rebar/beam, moves `blow`, `soot`, char of key faces only out of the band, key-share raster test (55-85/20-50/1-20 %), 2-4 typed damage points (`damage`, `dmg_gas`, `dmg_spark`) on SKADET breaks, 1-3 `ruin` points, odd body canvas refused.
+- Particles: burning points by LifeClock.pick (SKADET 1, KRITISK up to 3 consecutive), <= 30 smoke per building (data test), one alpha glow pass first in AirFx's _draw (additive = +1 call, rejected), rings 80/128/24/64/32 = 328 quads (~0.7 ms worst vs 0.56: data fallbacks).
+- Collapse on match time from DIED: 0-250 flash + today's burst, sink in 6 steps to 40 %, switch at 700 under dust, ruin from 900, 45 s, then sinks away (no alpha fade: batch split, Q4) over the crater laid at DIED as today. Ruin = BuildingRuins keeps the node, max 16; fog rule of a live building; no ghost; unseen death -> nothing invented. Site death: no ruin; cancelled site: nothing, no crater.
+- Hit: white flash at the hit point (not whole building: page or batch split, Q3) + 3-5 chips from IMPACT on shown buildings. Shake: Camera2D.offset only, collapse seen and on screen (own or enemy), one at a time, pause ends it, none in reduced; screen_to_world/world_to_screen add the offset.
+- Page estimate (from P158 573f720 sheets): ruin = 0.6-0.81 of the two patches' texels -> 129-171 rows at 75 %; cross 3605-3647 with ruin at 75 % (over); steps: crop to ink, ruin at DAMAGE_SCALE (P157c), SKADET <= 35 % (lead), then Michael Q2: ruin at 50 % (3533-3552, rec) or all damage at 62.5 % (3502-3531).
+- Seam rule (§12, replaces ADR 0028 §3 2nd amendment's open point and P26ar's ceil(cut x bake_scale)): sibling, T = IsoAtlas.body_cut_row(cut, canvas_h, region_h) (integer ceil), region_filter_clip_enabled, patch whole region, strict overlap > 0 for even canvases, ghost child scale = body_texels/patch_texels, re-trim after show_frame/show_base.
+- Pitfall: a ruin/part without key colours saves nothing on the cross-faction page (each faction's sheets are baked for its one player); only mirrors gain. Check which page is binding before proposing a "shared" fallback.
+- Pitfall: game/view reads no Production.DIED_CANCEL_FLAG_AT, so a shown cancelled site seems to get the DIED burst and a crater; any DIED-driven view feature must read the cancel flag.
+- Pitfall: BuildingLayer._drop frees the node at DIED and the row is gone; anything shown after DIED must take the entry over (leave _entries for picks/bars/selection) rather than make a node at DIED.
