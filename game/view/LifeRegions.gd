@@ -151,6 +151,14 @@ const MAX_STRETCH: Dictionary[StringName, float] = {
 	&"trail": 2.0,
 	&"seed_trail": 2.0,
 }
+## The sprite kind of each emitter kind the sheets name (`IsoSheetDef.emitters`, ADR 0027 section
+## 4): a building's `flame` is drawn with the `flare` sprite. The one place the two names meet;
+## `LifeSettings.emit_ms` and `emit_life_ms` are keyed by the sprite kind.
+const EMITTER_SPRITE: Dictionary[StringName, StringName] = {
+	&"smoke": &"smoke",
+	&"steam": &"steam",
+	&"flame": &"flare",
+}
 ## The kinds a layer may draw mirrored in x for a second look: the ones that give light, so nothing
 ## on them is lit from a side (STYLE.md "Life effects"). A cloud, a heap of dust, a lance, the seed
 ## and a hexagon are lit from the north-west and are never mirrored.

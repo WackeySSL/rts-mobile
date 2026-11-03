@@ -4,11 +4,11 @@ extends Control
 ## 0023 section 12 and ADR 0024): a side panel at the right edge in landscape, a bottom sheet in
 ## portrait, over the map. From the top: the head with the close button, the three tabs (an icon
 ## over the name) and the grid of the open tab's item cards, which scrolls vertically. BUILD
-## (`BuildButton`) opens it. The credits and the power are the `EconomyPill`'s (it stays on screen
-## until P120d puts the economy in the head). It sends nothing to the sim but Commands through
-## `PlayerController.command_sink`: a tap on an available card is one QUEUE, a hold on a card with
-## items queued is one CANCEL of the last of them (P120b replaces that). It reads the published
-## snapshot only and never keeps one.
+## (`BuildButton`) opens it. The head shows the credits and the power (`EconomyLine`, a mirror of
+## the `EconomyPill`, which folds while the drawer is open). It sends nothing to the sim but
+## Commands through `PlayerController.command_sink`: a tap on an available card is one QUEUE, a
+## hold on a card with items queued is one CANCEL of the last of them (P120b replaces that). It
+## reads the published snapshot only and never keeps one.
 ## Open or closed is `HudState`'s DRAWER (`feed.state`, ADR 0025 section 1), view state only: no
 ## Command, nothing in the sim. A match starts closed. A gesture on the map, the start of placement
 ## or of a strike aim, another unfold and the close button fold it (the feed and the state do the
@@ -57,6 +57,7 @@ const TAB_ICON_DP: float = 22.0
 const NAME_VARIATION: StringName = &"ItemCaption"  ## 14 sp: "Structures" fits a tab.
 const HANDLE_DP: Vector2 = Vector2(40.0, 4.0)  ## The sheet's handle (ADR 0025 section 5).
 const CLOSE_DP: float = 48.0
+const HANDLE_GAP_DP: float = 2.0  ## Between the handle and the economy line below it.
 const CLOSE_ICON_DP: float = 28.0
 ## Beside the backdrop's own 8 dp: the 16 dp each side that three 88 dp cards need 312 dp for.
 const PAD_DP: float = 8.0
@@ -75,6 +76,7 @@ static var _slide_override: int = -1
 @export var placement: PlacementController  ## A tap on a READY card begins it. None: no placement.
 @export var strike_aim: StrikeAim  ## Aiming a strike takes the drawer down, as placement does.
 @export var feed: HudStateFeed  ## Its `state` says whether the drawer is open.
+@export var pill: EconomyPill  ## What the head's economy line mirrors; none: no line.
 @export var safe_area: SafeAreaMargin  ## Its gap is the safe rect's (ADR 0025 section 2).
 
 ## The open tab, a `World.Tab`.
@@ -84,6 +86,9 @@ var _backdrop: PanelContainer = PanelContainer.new()  ## The drawer, at its full
 var _pad: MarginContainer = MarginContainer.new()  ## The padding, and the screen edge beyond.
 var _stack: VBoxContainer = VBoxContainer.new()
 var _head: HBoxContainer = HBoxContainer.new()
+var _economy: EconomyLine = EconomyLine.new()
+var _room: Control  ## The head's room for the line (and the handle upright).
+var _room_fit: DpMinSize = DpMinSize.new()
 var _close: Button = Button.new()
 var _chevron: TextureRect = TextureRect.new()  ## Faces the edge the drawer leaves by.
 var _tab_row: HBoxContainer = HBoxContainer.new()
@@ -347,25 +352,29 @@ static func _min_dp(control: Control, size_dp: Vector2) -> void:
 	control.add_child(min_size)
 
 
-## The head: room for the economy (P120d), and the close button at the end.
+## The head: the economy line (P120d) with the handle on its top edge, and the close button.
 func _build_head() -> void:
 	_head.name = "Head"
 	_stack.add_child(_head)
-	var pad: Control = Control.new()  # As wide as the close button, so that the room is centred.
-	pad.name = "HeadPad"
-	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_min_dp(pad, Vector2(CLOSE_DP, CLOSE_DP))
-	_head.add_child(pad)
 	var room: Control = Control.new()
 	room.name = "HeadRoom"
 	room.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	room.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_room_fit.min_dp = Vector2(0.0, CLOSE_DP)
+	room.add_child(_room_fit)
 	_head.add_child(room)
+	_room = room
+	if pill != null:
+		_economy.name = "Economy"
+		_economy.pill = pill
+		_economy.set_anchors_preset(Control.PRESET_FULL_RECT)
+		room.add_child(_economy)
+		# Last in the holder: it draws over the tabs, and stays inside the holder's clip.
+		add_child(_economy.chip())
 	_handle.name = "Handle"
 	_handle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_handle.set_anchors_preset(Control.PRESET_CENTER)
+	_handle.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_handle.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_handle.grow_vertical = Control.GROW_DIRECTION_BOTH
 	room.add_child(_handle)
 	_close.name = "Close"
 	_close.flat = true
@@ -597,6 +606,14 @@ func _apply_dp() -> void:
 		content.offset_right = -plate.get_margin(SIDE_RIGHT)
 		content.offset_bottom = -plate.get_margin(SIDE_BOTTOM)
 	_handle.visible = _portrait
+	# Upright the head grows by the handle and its gap, the line stands under them, and the handle
+	# is centred on the sheet: the room is short of its middle by the close button and a separation.
+	var lift: float = HANDLE_DP.y + HANDLE_GAP_DP if _portrait else 0.0
+	_room_fit.min_dp = Vector2(0.0, CLOSE_DP + lift)
+	_economy.offset_top = UiScale.dp(lift)
+	var shift: float = UiScale.dp(CLOSE_DP) * 0.5 + _head.get_theme_constant("separation") * 0.5
+	_handle.offset_left = shift
+	_handle.offset_right = shift
 	_handle.custom_minimum_size = Vector2(UiScale.dp(HANDLE_DP.x), UiScale.dp(HANDLE_DP.y))
 	_handle.color = _tab_tint(false)  # The resting grey of the tabs' icons.
 	for at: int in _tab_icons.size():

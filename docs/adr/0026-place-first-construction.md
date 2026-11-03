@@ -10,6 +10,10 @@ and P124 (lead decision, 2026-11-01). Amends ADR 0017 §1, §4 and §7, ADR
 (§12); accepted, so the lead's P26ap wrote the dated notes. A sim rule change: one new row column, a changed `PLACE`, one
 new Command, `STATE_FORMAT` 5 and one re-pin of every golden hash.
 
+Status note (2026-11-03, the docs row after wave y; P128b #265 as merged): §6 carries a dated
+status note that a cancelled row holds its site slot until REMOVE, and §12's list of amended
+sections gains ADR 0007 §10 (the `DIED` record's cancel flag). No accepted text changed.
+
 ## Michael's answers (2026-11-02, on #259)
 1. **B:** a cancelled site refunds 75 % of its price (`construct_refund_percent` 75).
 2. **A:** a site starts at `construct_start_hp_percent` (10) of its hit points and rises with the
@@ -172,6 +176,13 @@ not a question.
   draw fire (TARGETING and FIRE run before REMOVE), in both twins alike, so it stays deterministic.
 - A site that is destroyed is lost, with no refund (§4).
 
+Status note (2026-11-03, the docs row after wave y; P128b #265, 3c29b16, as merged; the text above
+stays as accepted): a cancelled row **holds its site slot** until REMOVE, as it holds its tiles and
+its reach: `Production._sites_of` counts every own row with `build_left != 0`, the cancel mark -1
+included. So §5's limit still counts it for the rest of the tick, and a `PLACE` after the
+`CANCEL_BUILD` in the same tick's command order is dropped at the limit; the next tick's `PLACE`
+is not.
+
 ### 7. The STRUCTURES queue
 - **P128** adds the new path beside the old: `PLACE [type]` starts a construction, while `QUEUE` of
   a structure and the empty `PLACE` work as today. The UI and the dummy keep the old path, so every
@@ -300,6 +311,10 @@ to P128, P128b, P128c and P131 (they touch `game/sim/`).
   "from completion" (question 3); `.claude/skills/rts-sim-conventions/SKILL.md` line 51 (16 leaves
   the reserved 16-19 for `CANCEL_BUILD`; lines 51-53 name it beside `SUPERWEAPON` 15) and line 89
   (`STATE_FORMAT` 5 adds `build_left`).
+
+Status note (2026-11-03, the docs row after wave y; the list above stays as accepted): the list
+also amends **ADR 0007 §10**: §6's cancel flag is the `DIED` record's seventh int, which ADR 0007
+had always 0 (its note of 2026-11-03).
 
 ## Consequences
 - One tap fewer per building and the choice of place comes first; the money leaves at the check
