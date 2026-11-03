@@ -49,7 +49,8 @@ var ready_type: int = -1  ## The finished structure at the head of the Structure
 var draws: int = 0  ## How many times it was drawn, for the tests.
 var badge_font: Font = null  ## The face and size the badge's digits were last drawn with.
 var badge_font_size: int = 0
-var ring_color: Color = Color.TRANSPARENT  ## The colour the progress arc was last drawn in.
+var ring_color: Color  ## The colour the progress arc was last drawn in (when `ring_drawn`).
+var ring_drawn: bool = false  ## The last draw had the progress arc.
 var mark_drawn: bool = false  ## The last draw had the "!" disc.
 
 var _glyph: Texture2D = null
@@ -193,7 +194,7 @@ func _on_changed(_previous: HudState.Unfold) -> void:
 
 func _draw() -> void:
 	draws += 1
-	ring_color = Color.TRANSPARENT
+	ring_drawn = false
 	mark_drawn = false
 	var dp: float = _dp
 	var middle: Vector2 = size * 0.5
@@ -211,6 +212,7 @@ func _draw() -> void:
 			else get_theme_color(&"light", accent)
 		)
 		draw_arc(middle, outer - ring * 0.5, -PI * 0.5, to, ARC_POINTS, ring_color, ring)
+		ring_drawn = true
 	draw_circle(middle, outer - ring, get_theme_color(&"accent", accent))
 	var side: float = GLYPH_DP * dp
 	draw_texture_rect(
