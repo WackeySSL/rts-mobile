@@ -11,8 +11,9 @@ extends GdUnitTestSuite
 ## through `HudState` (one at a time, a gesture on the map closes it and still does its work, a
 ## touch on a HUD control or on the map itself closes nothing); P88's tap, drag and hold on the
 ## moved node; the pinned map is an island that the placement buttons keep clear of
-## (`GhostControls.clear_of`); and, until P120 and P120c, sideways the map and the build panel are
-## one unfold at a time and the map keeps clear of the strike row (also on a short screen).
+## (`GhostControls.clear_of`); and, with the strike button above BUILD (P120c), the map keeps clear
+## of the button and, through a strike aim, of its check mark and X, the pill and the scope, also on
+## the short screens and when it is pinned.
 ## The scope that opens it is test_radar_scope's, the state's own rules are test_hud_state's.
 ## Player 1 has a Headquarters, two light tanks, a Heavy Yard and a Bunkhouse.
 
@@ -29,8 +30,7 @@ const MORE: Array = [
 	["light_tank", 12, 10], ["light_tank", 13, 10], ["vehicle_factory", 14, 3], ["barracks", 10, 14]
 ]
 const TANK_A: int = 3
-## A match where player 1 owns a Deep Bore: the strike button stands at the top, left of the scope,
-## until P120c moves it above BUILD.
+## A match where player 1 owns a Deep Bore: the strike button stands above BUILD.
 const STRIKE_SPAWNS: Array[Array] = [
 	[1, "fossil_strike", 6, 6], [1, "light_tank", 14, 14], [2, "renew_hq", 20, 20]
 ]
@@ -50,6 +50,8 @@ const TABLE_DP: Dictionary[String, Vector2] = {
 	"web_phone_portrait": Vector2(260.0, 178.0),
 }
 const TABLE_TOP_DP: float = 64.0
+## Window widths (px at 3 px per dp) either side of the pinned map's fold: the first keeps it.
+const FOLD_WIDTHS: Array[int] = [2124, 2088]
 
 var _window_size_before: Vector2i
 var _main: Node2D
@@ -463,24 +465,36 @@ func test_the_maps_tap_drag_and_hold_work_on_the_moved_node() -> void:
 		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
 
 
-## Until P120c the strike row stands on the top line, left of the scope, 72 dp high. Where the full
-## map stands under the scope (starting 64 dp below the top) it covers the foot of the button (8 dp)
-## and nothing of its middle; where the screen is too short for that, the map stands left of the
-## right column and ends a gap left of the row, the check mark and the X included while aiming.
-## Either way the button's centre tap is the button's (it nudges), and a pinned map that stays open
-## through the aim leaves the check mark, the X and the button their whole rects (the short screen)
-## or at least their middles. Upright the row stands at the right edge, far from the map.
-func test_with_a_strike_building_the_open_map_keeps_clear_of_the_strike_row_in_landscape() -> void:
+## The strike button stands 8 dp above BUILD (P120c), its check mark and X left of it while aiming.
+## Where the room down to the button holds the head and a 96 dp box the full map stands under the
+## scope, clear of the button by its height; else (a short screen, and `web_phone` with the button,
+## ADR 0025 section 2's table) left of the right column, and then, with the map pinned open through
+## the aim, a gap left of the check mark and the X, narrowed (2:1, 192 dp wide at the least) to
+## start a gap right of the pill (the narrower short screen shows the narrowing). The button's
+## centre tap is the button's (it nudges), the X ends the aim and the map stays; no part
+## of the row, the pill or the scope is covered, in both orientations.
+func test_with_a_strike_building_the_open_map_keeps_clear_of_the_strike_row_and_the_pill() -> void:
 	var spawns: Array[SpawnDef] = []
 	for entry: Array in STRIKE_SPAWNS:
 		spawns.append(BuildingRig.spawn(entry[0], entry[1], entry[2], entry[3]))
-	for screen: UiMetrics in [
-		UiProfiles.by_name(&"android_6in"),
-		UiProfiles.by_name(&"web_phone"),
-		UiProfiles.by_name(&"web_phone_small"),
-		UiProfiles.by_name(&"android_6in_portrait"),
-		RadarRig.short_landscape(),
-	]:
+	var sideways: Dictionary[String, bool] = {  # Whether the map stands left of the right column.
+		"android_6in": false,
+		"web_phone": true,
+		"web_phone_small": true,
+		"android_6in_portrait": false,
+		"short": true,
+		"narrow": true,
+	}
+	var screens: Dictionary[String, UiMetrics] = {
+		"android_6in": UiProfiles.by_name(&"android_6in"),
+		"web_phone": UiProfiles.by_name(&"web_phone"),
+		"web_phone_small": UiProfiles.by_name(&"web_phone_small"),
+		"android_6in_portrait": UiProfiles.by_name(&"android_6in_portrait"),
+		"short": RadarRig.short_landscape(),
+		"narrow": RadarRig.narrow_short_landscape(),
+	}
+	for label: String in screens:
+		var screen: UiMetrics = screens[label]
 		await _open(screen.window_size, screen, BuildingRig.scenario(spawns))
 		_feed.set_process(false)
 		_state.open(HudState.Unfold.RADAR)
@@ -489,17 +503,11 @@ func test_with_a_strike_building_the_open_map_keeps_clear_of_the_strike_row_in_l
 		var map: Rect2 = _map.get_global_rect()
 		var scope: Rect2 = _scope.get_global_rect()
 		var left_of_column: bool = map.position.y < scope.end.y  # Not under the scope.
-		var why: String = "%s: button %s, map %s" % [screen.window_size, _rect("StrikeButton"), map]
+		var why: String = "%s: button %s, map %s" % [label, _rect("StrikeButton"), map]
 		assert_bool(button.is_visible_in_tree()).is_true()
-		var short: bool = screen.window_size == RadarRig.short_landscape().window_size
-		assert_bool(left_of_column).override_failure_message(why).is_equal(short)
-		_expect_clear_of_row(why, map, left_of_column, ["StrikeButton", "StrikeControls"])
-		if left_of_column:  # Clear of the pill too, the row being the button alone.
-			(
-				assert_bool(map.intersects(_rect("EconomyPill")))
-				. override_failure_message(why)
-				. is_false()
-			)
+		assert_bool(left_of_column).override_failure_message(why).is_equal(sideways[label])
+		_expect_clear_of_row(why, map, ["StrikeButton", "StrikeControls"])
+		_expect_clear_of_hud(why, map)
 		var nudges: int = button.nudges  # A tap on its middle is the button's, not the map's.
 		_tap(_rect("StrikeButton").get_center())
 		assert_int(button.nudges).override_failure_message(why).is_equal(nudges + 1)
@@ -513,8 +521,16 @@ func test_with_a_strike_building_the_open_map_keeps_clear_of_the_strike_row_in_l
 		await _settle()
 		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
 		map = _map.get_global_rect()
+		why += " (aiming: map %s, pill %s)" % [map, _rect("EconomyPill")]
+		if label == "narrow":  # Narrowed to fit between the pill and the row, not below 192 dp.
+			var dp: float = UiScale.dp(1.0)
+			assert_float(map.size.x).override_failure_message(why).is_less(240.0 * dp - 1.0)
+			assert_float(map.size.x).override_failure_message(why).is_greater_equal(
+				192.0 * dp - 1.0
+			)
 		var aiming: Array = ["StrikeConfirm", "StrikeCancel", "StrikeButton", "StrikeControls"]
-		_expect_clear_of_row(why + ", aiming", map, left_of_column, aiming)
+		_expect_clear_of_row(why, map, aiming, true)
+		_expect_clear_of_hud(why, map)
 		assert_bool(_aim.active).override_failure_message(why).is_true()
 		_tap(_rect("StrikeCancel").get_center())  # The X is the X: the aim ends, the map stays.
 		assert_bool(_aim.active).override_failure_message(why).is_false()
@@ -523,27 +539,64 @@ func test_with_a_strike_building_the_open_map_keeps_clear_of_the_strike_row_in_l
 		_state.pinned = false
 
 
-## The parts named stand clear of the map. Left of the right column the map ends a gap left of the
-## row (the whole rects are clear); under the scope the middle of each part is clear and at most
-## the 8 dp where the map's head begins (64 dp from the top) covers the foot of a 72 dp part.
-func _expect_clear_of_row(why: String, map: Rect2, left_of_column: bool, parts: Array) -> void:
-	if HudLayout.is_portrait():
-		for part: String in parts:
-			assert_bool(map.intersects(_rect(part))).override_failure_message(why).is_false()
-		return
+## The map's whole rect stands clear of the parts named (their real rects), and is the rect
+## `HudCorners.place` gives for what shows, within 1.5 px, whose own gap to the aim's row and to the
+## button is the 8 dp (the plates round up to whole pixels, so the real rects may differ a little
+## from the layout's).
+func _expect_clear_of_row(why: String, map: Rect2, parts: Array, aiming: bool = false) -> void:
 	for part: String in parts:
 		var rect: Rect2 = _rect(part)
 		var at: String = "%s: %s %s, map %s" % [why, part, rect, map]
-		assert_bool(map.has_point(rect.get_center())).override_failure_message(at).is_false()
-		if left_of_column:
-			assert_bool(map.intersects(rect)).override_failure_message(at).is_false()
-			assert_float(rect.position.x - map.end.x).override_failure_message(at).is_greater_equal(
-				UiScale.dp(HudCorners.GAP_DP) - TOLERANCE_PX
+		assert_bool(map.intersects(rect)).override_failure_message(at).is_false()
+	var dp: float = UiScale.dp(1.0)
+	var pill: Control = _hud("EconomyPill") as Control
+	var shown: HudCorners.Shown = HudCorners.Shown.new()
+	shown.map = true
+	shown.strike = true
+	shown.aim = aiming
+	shown.left_taken = HudLayout.first_visible_width(_hud("TopLeft") as Control) / dp
+	shown.pill_width = pill.size.x / dp
+	var safe: Rect2 = SafeAreaMargin.rect_inside(
+		get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
+	)
+	var wanted: Dictionary[StringName, Rect2] = HudCorners.place(
+		safe, HudLayout.is_portrait(), dp, false, shown
+	)
+	var near: String = "%s: map %s, layout %s" % [why, map, wanted[HudCorners.MAP]]
+	assert_vector(map.position).override_failure_message(near).is_equal_approx(
+		wanted[HudCorners.MAP].position, Vector2.ONE * TOLERANCE_PX
+	)
+	assert_vector(map.size).override_failure_message(near).is_equal_approx(
+		wanted[HudCorners.MAP].size, Vector2.ONE * TOLERANCE_PX
+	)
+	for key: StringName in [HudCorners.STRIKE, HudCorners.STRIKE_ROW]:
+		if wanted.has(key):
+			var rect: Rect2 = wanted[key]
+			var across: float = maxf(
+				rect.position.x - wanted[HudCorners.MAP].end.x,
+				wanted[HudCorners.MAP].position.x - rect.end.x
 			)
-		else:
-			assert_float(rect.intersection(map).size.y).override_failure_message(at).is_less_equal(
-				UiScale.dp(8.0) + TOLERANCE_PX
+			var along: float = rect.position.y - wanted[HudCorners.MAP].end.y
+			var apart: float = maxf(across, along)
+			assert_float(apart).override_failure_message("%s: %s" % [near, key]).is_greater_equal(
+				8.0 * dp - TOLERANCE_PX
 			)
+
+
+## ... and of the pill (a gap away, where the map stands beside it), the scope and BUILD. The toast
+## is hidden while the map is open; test_strike_controls checks the button against a shown one.
+func _expect_clear_of_hud(why: String, map: Rect2) -> void:
+	for part: String in ["EconomyPill", "RadarScope", "BuildButton"]:
+		var rect: Rect2 = _rect(part)
+		var at: String = "%s: %s %s, map %s" % [why, part, rect, map]
+		assert_bool(map.intersects(rect)).override_failure_message(at).is_false()
+	var pill: Rect2 = _rect("EconomyPill")
+	if map.position.y < pill.end.y:  # Beside the pill, not under it.
+		var apart: float = map.position.x - pill.end.x
+		var at: String = "%s: map %s, pill %s" % [why, map, pill]
+		assert_float(apart).override_failure_message(at).is_greater_equal(
+			UiScale.dp(HudCorners.GAP_DP) - TOLERANCE_PX
+		)
 
 
 ## The open full map and the open drawer are one unfold at a time (ADR 0025 section 1), in both

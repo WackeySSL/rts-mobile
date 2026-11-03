@@ -13,10 +13,10 @@ extends Control
 ## The map's own touches (a tap and a drag jump the camera, a hold with units selected sends MOVE)
 ## are the `Minimap` node's. This node takes its rect on `_ready` and on every resize.
 ## Opening the build drawer closes the map and opening the map closes the drawer, even a pinned
-## map (one unfold at a time, `HudState`, ADR 0025 section 1). Until P120c moves the strike button,
-## where the map stands left of the right column (a short screen, landscape) it ends a gap left of
-## the strike row (the button, and its check mark and X while aiming), which stands on the top line
-## left of the scope.
+## map (one unfold at a time, `HudState`, ADR 0025 section 1). The strike button stands above BUILD
+## (P120c): where the map stands left of the right column (a short screen, landscape) it is left of
+## the button, and while a pinned map stays open through the aim it narrows and ends a gap left of
+## the check mark and the X, clear of the pill (`HudCorners._map`).
 
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
 const TITLE: String = "RADAR"
@@ -30,7 +30,8 @@ const TAB_TYPE: StringName = &"SidebarTab"  ## Its grey (`icon_normal_color`) ti
 @export var feed: HudStateFeed
 @export var minimap: Minimap  ## The full map: a child, placed in the box under the head.
 @export var safe_area: SafeAreaMargin  ## Its gap is the safe rect's (ADR 0025 section 2).
-@export var strike_row: Control  ## The interim strike row (P112): the map keeps clear of it.
+@export var strike_row: StrikeControls  ## The strike button and its aim row: the map keeps clear.
+@export var pill: Control  ## The economy pill, whose right end the narrowed map keeps clear of.
 
 var _panel: Panel = Panel.new()
 var _head: HBoxContainer = HBoxContainer.new()
@@ -74,6 +75,8 @@ func _ready() -> void:
 	if strike_row != null:
 		strike_row.item_rect_changed.connect(place)  # The aim widens it; a turn moves it.
 		strike_row.visibility_changed.connect(place)
+	if pill != null:
+		pill.item_rect_changed.connect(place)  # Its width follows the digits.
 	get_viewport().size_changed.connect(_apply_dp)
 	_apply_dp()
 	_sync()
@@ -93,27 +96,36 @@ func _notification(what: int) -> void:
 
 ## Takes the rect `HudCorners.place` gives the full map, its head and its box.
 func place() -> void:
-	var rects: Dictionary[StringName, Rect2] = RadarScope.corners(get_viewport(), safe_area, true)
+	var shown: HudCorners.Shown = HudCorners.Shown.new()
+	shown.map = true
+	var margin_dp: float = (
+		SafeAreaMargin.DEFAULT_MARGIN_DP if safe_area == null else safe_area.margin_dp
+	)
+	var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), margin_dp)
+	var dp: float = UiScale.base_px_per_dp()
+	if strike_row != null and strike_row.is_visible_in_tree():
+		shown.strike = true
+		shown.aim = strike_row.aim.active
+	if pill != null:  # Where the pill stands now, in the layout's terms (as `EconomyPill.place`).
+		var from: float = (pill.position.x - safe.position.x) / dp
+		shown.left_taken = maxf(from - HudCorners.GAP_DP, 0.0) if from > 0.5 else 0.0
+		shown.pill_width = pill.size.x / dp
+	var rects: Dictionary[StringName, Rect2] = HudCorners.place(
+		safe, HudLayout.is_portrait(), dp, false, shown
+	)
 	var map: Rect2 = rects[HudCorners.MAP]
-	position = map.position + Vector2(_clear_of_strike_row(rects), 0.0)
+	if shown.aim and visible and rects.has(HudCorners.PILL):
+		var pill_rect: Rect2 = rects[HudCorners.PILL]
+		var room: float = UiScale.dp(HudCorners.GAP_DP) - 0.5
+		if map.position.y < pill_rect.end.y and map.position.x < pill_rect.end.x + room:
+			feed.state.close.call_deferred(HudState.Unfold.RADAR)  # No room beside the pill.
+	position = map.position
 	size = map.size
 	_head.position = rects[HudCorners.MAP_HEAD].position - map.position
 	_head.size = rects[HudCorners.MAP_HEAD].size
 	if minimap != null:
 		minimap.position = rects[HudCorners.MAP_BOX].position - map.position
 		minimap.size = rects[HudCorners.MAP_BOX].size
-
-
-## How far left (a number at most 0, base px) the map must stand to end a gap left of the strike
-## row. Only where the map is left of the right column (its top above the scope's foot) and only in
-## landscape; elsewhere the row and the map do not meet but for the button's foot (P120c).
-func _clear_of_strike_row(rects: Dictionary[StringName, Rect2]) -> float:
-	if strike_row == null or not strike_row.is_visible_in_tree() or HudLayout.is_portrait():
-		return 0.0
-	if rects[HudCorners.MAP].position.y >= rects[HudCorners.SCOPE].end.y:
-		return 0.0
-	var limit: float = strike_row.get_global_rect().position.x - UiScale.dp(HudCorners.GAP_DP)
-	return minf(limit - rects[HudCorners.MAP].end.x, 0.0)
 
 
 ## A press on the map or its head starts a finger's count; its lift starts the count over. The
@@ -152,6 +164,8 @@ func _sync() -> void:
 	if not visible:
 		_fingers.clear()
 		set_process(false)
+	if visible:
+		place()  # An opening during an aim finds out at once whether it fits.
 	_pin.icon = load(ICON_ART % ("glyph_pin" if state.pinned else "glyph_pin_off"))
 	_pin.modulate = get_theme_color(
 		&"icon_pressed_color" if state.pinned else &"icon_normal_color", TAB_TYPE
@@ -172,7 +186,7 @@ func _apply_dp() -> void:
 	for button: Button in [_pin, _collapse]:
 		button.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(GLYPH_DP)))
 	place()  # At once, so the open map does not stand at its old place for a frame.
-	place.call_deferred()  # The strike row's band sorts a moment after the resize.
+	place.call_deferred()  # The pill and the strike row settle a moment after the resize.
 
 
 ## One head button: flat, its glyph alone and centred, 48 dp each way, no focus ring left behind.

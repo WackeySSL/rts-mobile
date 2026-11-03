@@ -119,6 +119,7 @@ var _dp_px: float = 1.0  ## `UiScale.base_px_per_dp()` and the orientation, read
 var _portrait: bool = false  ## frames of a slide ask `UiScale` for nothing.
 var _placed: bool = false  ## The first layout is in: a later change may slide.
 var _told: Vector2 = Vector2(NAN, NAN)  ## The top and the height `zone_changed` last said.
+var _rise: float = 0.0  ## dp over BUILD that the strike button takes upright (interim, below).
 var _swipe: int = -1  ## The index of the finger that may swipe the drawer shut, else -1.
 var _swipe_from: Vector2 = Vector2.ZERO
 var _default_settings: InputSettings = null
@@ -156,6 +157,8 @@ func _ready() -> void:
 		controller.selection_changed.connect(set_selected)
 	if placement != null:
 		placement.changed.connect(_on_placement_changed)
+	if strike_aim != null:
+		strike_aim.changed.connect(_on_strike_changed)
 
 
 func _exit_tree() -> void:
@@ -180,6 +183,19 @@ func is_open() -> bool:
 ## Opens the drawer (an unfold: it closes the radar's full map and the economy card).
 func open() -> void:
 	feed.state.open(HudState.Unfold.DRAWER)
+
+
+## The Ready chip's tap (ADR 0025 section 4, until P130): opens the drawer on the Structures tab
+## with the finished structure's card in view. The grid sorts a moment after the tab changes, so
+## the scroll waits a frame.
+func show_ready() -> void:
+	select_tab(World.Tab.STRUCTURES)
+	open()
+	await get_tree().process_frame
+	for tile: ItemTile in _tiles:
+		if tile.tab == World.Tab.STRUCTURES and tile.state == ItemTile.State.READY:
+			_items.ensure_control_visible(tile)
+			return
 
 
 ## Closes the drawer (its close button; a gesture on the map does it through the feed).
@@ -207,6 +223,16 @@ func _on_hud_changed(previous: HudState.Unfold) -> void:
 	if folded or is_open():
 		_place(false)
 		state_changed.emit()
+
+
+## Interim, until P122b takes the ArmyBar away: upright the strike button stands over BUILD (ADR
+## 0025 section 10), so the zone the ArmyBar stands above grows by its height and a gap while a
+## strike building is owned.
+func _on_strike_changed() -> void:
+	var rise: float = HudCorners.GAP_DP + StrikeButton.SIZE_DP if strike_aim.owned else 0.0
+	if rise != _rise:
+		_rise = rise
+		_apply_extent(_extent)
 
 
 ## Placement ends with a build or the X: the drawer returns if it was open when placement began,
@@ -669,7 +695,7 @@ func _apply_extent(extent: float) -> void:
 	var zone: float = 0.0
 	var top: float = INF
 	if _portrait:
-		zone = maxf(extent, HudLayout.BUILD_ZONE_DP * _dp_px)
+		zone = maxf(extent, (HudLayout.BUILD_ZONE_DP + _rise) * _dp_px)
 		top = _rect.end.y - extent if extent > 0.0 else INF
 	HudLayout.bottom_zone_dp = zone / _dp_px
 	HudLayout.menu_top_px = top
