@@ -9,14 +9,15 @@ extends GdUnitTestSuite
 ## updates them in the PR that changes them, so that the PR shows how much of the budget it spent.
 
 const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
-## The pages of the committed sheets, px tall (4096 wide), before any pose frame: P139 and P143
-## (and P153, P154) update these in the PR that changes them. The cross-faction page does not
-## depend on the triads the two players wear (2682 for every pair of the eight); a mirror page can:
-## Derrick's is 2206 when a player wears Signal, its key triad (the default match), 2196 when
-## neither does (the slot names, which break ties between frames of one height, order the shelves).
-const TODAY_CROSS: int = 2682
-const TODAY_MIRROR_DERRICK: int = 2206
-const TODAY_MIRROR_LUMEN: int = 2226
+## The pages of the committed sheets, px tall (4096 wide), with the squads' walk and idle frames
+## (P139; before them the pages were 2682, 2206 and 2226): P143 (and P153, P154) update these in the
+## PR that changes them. The cross-faction page does not depend on the triads the two players wear
+## (3066 for every pair of the eight); a mirror page can: Derrick's is 2524 when a player wears
+## Signal, its key triad (the default match), 2516 when neither does (the slot names, which break
+## ties between frames of one height, order the shelves).
+const TODAY_CROSS: int = 3066
+const TODAY_MIRROR_DERRICK: int = 2524
+const TODAY_MIRROR_LUMEN: int = 2624
 const CRAFTED: String = (
 	'<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4">'
 	+ '<polygon points="0,0 8,0 8,4" fill="#E8681F"/></svg>'

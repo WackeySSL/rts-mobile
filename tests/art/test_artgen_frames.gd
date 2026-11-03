@@ -3,10 +3,10 @@ extends GdUnitTestSuite
 ## `group=`, a model lists poses (a pose part, a frame count and the moves of groups in each frame),
 ## and the generator draws every pose frame with today's projection, light and shadow rules into
 ## `<id>_<part>_d<NN>_f<K>.svg` (a building's `anim` part into `<id>_anim_f<K>.svg`). The sheet says
-## `frames`, `stride_milli`, `anim_ms`, `emitters` and `marks`. No committed model has a pose, so
-## every committed frame and sheet is what it was before the row: that the bytes equal a fresh run
-## is test_artgen.gd; that no sheet gained a field is pinned here. The models used here are crafted
-## in memory and nothing is written to the project.
+## `frames`, `stride_milli`, `anim_ms`, `emitters` and `marks`. Only the four squads have poses
+## (P139, test_artgen_poses.gd); every other committed model is as it was before P134: that the
+## bytes equal a fresh run is test_artgen.gd; that no other sheet gained a field is pinned here. The
+## models used here are crafted in memory and nothing is written to the project.
 
 const TOLERANCE: float = 1e-6
 const POINT_TOLERANCE: Vector2 = Vector2.ONE * 0.06  ## Written with one decimal.
@@ -467,16 +467,16 @@ func test_a_sheet_writes_the_frame_axis_only_when_it_has_something_to_say() -> v
 	assert_bool(lines[-3].begins_with("emitter_points = PackedVector2Array(")).is_true()
 
 
-func test_no_committed_model_has_a_pose_and_every_committed_sheet_is_as_before() -> void:
+func test_only_the_four_squads_have_a_pose_and_every_other_committed_sheet_is_as_before() -> void:
 	var index: IsoIndex = load(IsoIndex.PATH) as IsoIndex
 	assert_int(index.sheets.size()).is_greater_equal(28)
+	var posed: Array[String] = []
 	for path: String in ArtGen.model_paths():
 		var model: ArtModel = load(path) as ArtModel
-		(
-			assert_bool(model.poses.is_empty() and model.emitters.is_empty())
-			. override_failure_message(path)
-			. is_true()
-		)
+		if not model.poses.is_empty():
+			posed.append(String(model.art_id))
+			continue
+		assert_bool(model.emitters.is_empty()).override_failure_message(path).is_true()
 		assert_bool(model.stride_milli == 0 and model.anim_ms == 0 and model.marks == &"").is_true()
 		assert_array(model.pose_parts()).override_failure_message(path).is_empty()
 		assert_array(model.frame_parts()).override_failure_message(path).is_equal(
@@ -502,6 +502,9 @@ func test_no_committed_model_has_a_pose_and_every_committed_sheet_is_as_before()
 				. is_false()
 			)
 		assert_str(ArtSheet.text(fresh)).override_failure_message(path).is_equal(committed)
+	# The squads are the only models with a pose: P143 adds the buildings' `anim` parts.
+	posed.sort()
+	assert_array(posed).is_equal(["renew_rifle", "renew_rocket", "rifle_squad", "rocket_squad"])
 
 
 func test_a_sheet_finds_an_emitter_point_for_a_vehicle_a_squad_and_a_building() -> void:

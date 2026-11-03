@@ -6,9 +6,11 @@ extends GdUnitTestSuite
 ## scene's zoom row at the camera zoom levels, sharp at each. The page keeps the effects atlas and
 ## the terrain patch (tests/art/test_art_assets.gd); the pages after it are in
 ## test_art_gallery_build.gd, test_art_gallery_pages.gd, test_art_gallery_icon_pages.gd,
-## test_art_gallery_iso.gd and test_art_gallery_ground.gd.
+## test_art_gallery_iso.gd and test_art_gallery_ground.gd. The squads play their walk and idle poses
+## there too (plan row P139).
 
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
+const Units: GDScript = preload("res://game/view/art_gallery_units.gd")
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
 ## The tightest 16:9 phone, a wider one and a 4:3 tablet (the sizes of test_art_assets.gd).
 const BASES: Array[Vector2] = [Vector2(1280, 720), Vector2(1600, 720), Vector2(1280, 960)]
@@ -35,6 +37,13 @@ const SIGNAL: Array[String] = ["#FF9446", "#E8681F", "#B04B12"]
 const ARKTISK: Array[String] = ["#62D6EE", "#1FA6C8", "#137C99"]
 const TOLERANCE: float = 0.05  ## Summed difference of the three channels in 0 to 1.
 const LEVELS: Array[float] = [0.75, 1.0, 1.5]
+## The squads that play poses, with the faction folder of their model.
+const SQUADS: Array[Array] = [
+	["rifle_squad", "fossil"],
+	["rocket_squad", "fossil"],
+	["renew_rifle", "renew"],
+	["renew_rocket", "renew"],
+]
 
 
 ## A gallery switches `SceneTree.quit_on_go_back` off while it is open and restores what it found,
@@ -154,6 +163,89 @@ func test_the_zoom_row_shows_the_flarejack_at_each_camera_zoom_in_its_grounds_te
 		assert_array(scales).is_equal(LEVELS)
 
 
+## A squad stands for a second, walks for 2.4 s (a frame every 0.1 s), stands again for a second and
+## idles for 2.6 s (a frame every 0.6 s); the squad made next is 0.9 s further on in the script. The
+## hull sprite shows the very frame of the model's walk or idle that the script asks for, in the
+## squad's default view, on the canvas of that pose part.
+func test_a_squad_plays_its_standing_frame_walk_and_idle_in_its_default_view() -> void:
+	for spec: Array in SQUADS:
+		var model: ArtModel = _squad_model(spec)
+		var units: RefCounted = Units.new()
+		var rig: Node2D = auto_free(units.make(String(model.art_id), 0))
+		var hull: Sprite2D = rig.get_node("Hull")
+		var layouts: Dictionary[StringName, ArtGen.Layout] = ArtGen.layouts(model)
+		assert_array(hull.texture.get_image().get_data()).is_equal(
+			_frame_data(model, &"hull", -1, 0)
+		)
+		# Seconds into the script, the part it shows and the frame of it.
+		var script: Array[Array] = [
+			[0.5, &"hull", -1],
+			[1.55, &"walk", 1],
+			[1.65, &"walk", 2],
+			[2.55, &"walk", 3],
+			[3.5, &"hull", -1],
+			[4.7, &"idle", 0],
+			[5.2, &"idle", 1],
+			[7.2, &"hull", -1],
+		]
+		var clock: float = 0.0
+		for step: Array in script:
+			units.advance(float(step[0]) - clock)
+			clock = float(step[0])
+			var part: StringName = step[1]
+			var label: String = "%s %s f%d at %.2f s" % [model.art_id, part, step[2], clock]
+			(
+				assert_array(hull.texture.get_image().get_data())
+				. override_failure_message(label)
+				. is_equal(_frame_data(model, part, int(step[2]), 0))
+			)
+			var want: Vector2 = -Vector2(layouts[part].origin) * 0.5
+			assert_vector(hull.offset).override_failure_message(label).is_equal_approx(
+				want, Vector2.ONE * 0.01
+			)
+	# The squad made second is 0.9 s on: at 0.25 s the first still stands, the second is 0.15 s
+	# into its walk.
+	var pair: RefCounted = Units.new()
+	var first: Node2D = auto_free(pair.make("rifle_squad", 0))
+	var second: Node2D = auto_free(pair.make("rocket_squad", 0))
+	pair.advance(0.25)
+	var first_model: ArtModel = _squad_model(SQUADS[0])
+	var second_model: ArtModel = _squad_model(SQUADS[1])
+	assert_array((first.get_node("Hull") as Sprite2D).texture.get_image().get_data()).is_equal(
+		_frame_data(first_model, &"hull", -1, 0)
+	)
+	assert_array((second.get_node("Hull") as Sprite2D).texture.get_image().get_data()).is_equal(
+		_frame_data(second_model, &"walk", 1, 0)
+	)
+
+
+## In the gallery the page's own `_process` plays the squads: the standing frame is what the page
+## shows first, 1.55 s in it is the squad's walk frame 1, the rigs keep their Shadow and Hull and a
+## tank is untouched.
+func test_the_page_plays_the_squads_poses_and_leaves_the_other_units_alone() -> void:
+	var gallery: Control = await _open_gallery()
+	var squad: Sprite2D = gallery.get_node("Grass/RosterA/RifleSquad/Hull")
+	var model: ArtModel = _squad_model(SQUADS[0])
+	var tank: Sprite2D = gallery.get_node("Grass/RosterA/LightTank/Hull")
+	var tank_data: PackedByteArray = tank.texture.get_image().get_data()
+	# The page may have run a frame or two already: the script starts again from its first second.
+	var units: RefCounted = gallery.get("_units")
+	units.set("_clock", 0.0)
+	units.call("advance", 0.0)
+	assert_array(squad.texture.get_image().get_data()).is_equal(_frame_data(model, &"hull", -1, 0))
+	gallery.call("_process", 1.55)  # The first squad is 0.55 s into its walk: its frame 1.
+	assert_array(squad.texture.get_image().get_data()).is_equal(_frame_data(model, &"walk", 1, 0))
+	assert_array(tank.texture.get_image().get_data()).is_equal(tank_data)
+	for ground: String in ["Grass", "Sand"]:
+		for row_name: String in ROWS:
+			for rig: Node in gallery.get_node("%s/%s" % [ground, row_name]).get_children():
+				if rig is Node2D:
+					var parts: Array[String] = ["Shadow", "Hull"]
+					if ARMED.has(String(rig.name).to_snake_case()):
+						parts.append("Gun")
+					assert_array(rig.get_children().map(_node_name)).is_equal(parts)
+
+
 ## A frame cannot turn (the view picks one of 16), and the gallery turns every sprite named
 ## `Turret`: the generated parts are not called that, so `_process` leaves them alone.
 func test_generated_units_do_not_turn_with_the_gallery_turrets() -> void:
@@ -238,6 +330,24 @@ func test_the_roster_fits_each_half_and_keeps_clear_of_the_buttons_atlas_patch_a
 		assert_array(problems).override_failure_message(str(base)).is_empty()
 		# One at a time: galleries alive together restore quit_on_go_back in a bad order.
 		gallery.get_parent().free()
+
+
+func _squad_model(spec: Array) -> ArtModel:
+	return load("res://assets/art/models/%s/%s.tres" % [spec[1], spec[0]]) as ArtModel
+
+
+## The raw pixels of frame `frame` of `part` of the model in its default view for team `triad`,
+## rasterised as the gallery does (the key triad replaced by the player's, half size).
+func _frame_data(model: ArtModel, part: StringName, frame: int, triad: int) -> PackedByteArray:
+	var text: String = FileAccess.get_file_as_string(
+		ArtGen.frame_path(model, part, model.default_dir(), frame)
+	)
+	var triads: Array[Array] = [SIGNAL, ARKTISK]
+	for tone: int in 3:
+		text = text.replace(ArtPalette.KEYS[model.faction][tone], triads[triad][tone])
+	var image: Image = Image.new()
+	image.load_svg_from_string(text, 0.5)
+	return image.get_data()
 
 
 ## The pixels of `image` that are within `TOLERANCE` of one of the three colours of a triad.
