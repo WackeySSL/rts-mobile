@@ -63,6 +63,7 @@ var _rows_version: int = -1  ## rows_version they follow.
 var _fog_version: int = -1  ## The local player's fog version their visibility was written for.
 var _redraws: int = 0
 var _rig_life: RigLife = RigLife.new()  ## The kicks that run now (P136).
+var _shot_check: Callable = _shot_seen  ## What `note_shots` asks, made once.
 
 
 ## One building: its row (moved by every merge), the nodes it owns and what its head shows.
@@ -513,24 +514,19 @@ func _on_ticked(_tick: int) -> void:
 	var snap: MatchSnapshot = runner.snapshot
 	if snap == null:
 		return
-	_rig_life.follow(snap.match_serial)
-	var events: PackedInt32Array = snap.events
-	for at: int in range(0, events.size(), World.EVENT_STRIDE):
-		if events[at] == World.Event.SHOT:
-			_note_shot(snap, at)
+	_rig_life.note_shots(snap, false, _shot_check)
 
 
-## [SHOT, shooter id, ...]: a kick when the shooter is a building with a head that is seen.
-func _note_shot(snap: MatchSnapshot, at: int) -> void:
+## [SHOT, shooter id, ...]: whether it kicks, when the shooter is a building with a head that is
+## seen.
+func _shot_seen(snap: MatchSnapshot, at: int) -> bool:
 	var id: int = snap.events[at + 1]
 	var entry: Entry = _entries.get(id)
 	var row: int = snap.index_of(id)
 	if entry == null or entry.head == null or row < 0:
-		return
+		return false
 	var player: int = FogLayer.local_player_of(runner)
-	if not reveal_enemies and snap.owner[row] != player and not is_seen(snap, player, row):
-		return
-	_rig_life.shot(snap, at, false)
+	return reveal_enemies or snap.owner[row] == player or is_seen(snap, player, row)
 
 
 ## Draws the kicks at match time (`LifeClock`, which a pause stops): the head's offset from its
