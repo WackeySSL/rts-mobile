@@ -86,11 +86,12 @@ func test_the_shake_of_20_ids_at_one_instant_is_spread_over_the_nine_offsets_as_
 	assert_int(counts[Vector2(0.5, 0.5)]).is_equal(4)
 
 
-func test_the_shake_is_in_whole_half_pixels_within_shake_px_and_changes_once_per_shake_ms() -> void:
-	# For every id, over 2 s in 1 ms steps: each axis is a multiple of 0.5 and at most shake_px, the
-	# offset changes only on a step boundary of the id, (ms + phase) % 80 == 0 (25 of them in 2 s, an
-	# eighth of which repeat the offset), so never twice inside one, 441 times in all for the 20
-	# ids and 25 at the most for one.
+func test_the_rumble_is_in_whole_half_pixels_within_drive_shake_px_and_changes_once_per_step(
+) -> void:
+	# For every id, over 2 s in 1 ms steps: each axis is a multiple of 0.5 and at most
+	# drive_shake_px, the offset changes only on a step boundary of the id, (ms + phase) % 80 == 0
+	# (25 of them in 2 s, an eighth of which repeat the offset), so never twice inside one, 441
+	# times in all for the 20 ids and 25 at the most for one.
 	var off_grid: int = 0
 	var too_far: int = 0
 	var off_boundary: int = 0
@@ -101,7 +102,7 @@ func test_the_shake_is_in_whole_half_pixels_within_shake_px_and_changes_once_per
 		var last: Vector2 = _rig.shake_offset(id, 0.0)
 		for ms: int in range(1, 2000):
 			var offset: Vector2 = _rig.shake_offset(id, float(ms))
-			if absf(offset.x) > _life.shake_px or absf(offset.y) > _life.shake_px:
+			if absf(offset.x) > _life.drive_shake_px or absf(offset.y) > _life.drive_shake_px:
 				too_far += 1
 			if fposmod(offset.x, 0.5) != 0.0 or fposmod(offset.y, 0.5) != 0.0:
 				off_grid += 1
@@ -120,24 +121,24 @@ func test_the_shake_is_in_whole_half_pixels_within_shake_px_and_changes_once_per
 
 
 func test_the_shake_follows_the_numbers_of_the_settings() -> void:
-	_life.shake_px = 0.4  # Under one step: nothing shakes.
+	_life.drive_shake_px = 0.4  # Under one step: nothing shakes.
 	assert_vector(_rig.shake_offset(1, 0.0)).is_equal(Vector2.ZERO)
-	_life.shake_px = 0.0
+	_life.drive_shake_px = 0.0
 	assert_vector(_rig.shake_offset(1, 0.0)).is_equal(Vector2.ZERO)
-	_life.shake_px = 1.0  # Two steps either way, at most 1 px.
+	_life.drive_shake_px = 1.0  # Two steps either way, at most 1 px.
 	var widest: float = 0.0
 	for id: int in range(1, IDS + 1):
 		for step: int in 50:
 			var offset: Vector2 = _rig.shake_offset(id, float(step * 80))
 			widest = maxf(widest, maxf(absf(offset.x), absf(offset.y)))
 	assert_float(widest).is_equal(1.0)
-	_life.shake_px = 0.9  # Whole steps below it: 0.5.
+	_life.drive_shake_px = 0.9  # Whole steps below it: 0.5.
 	for id: int in range(1, IDS + 1):
 		assert_float(absf(_rig.shake_offset(id, 123.0).x)).is_less_equal(0.5)
-	_life.shake_px = 0.5
-	_life.shake_ms = 0
+	_life.drive_shake_px = 0.5
+	_life.drive_shake_ms = 0
 	assert_vector(_rig.shake_offset(1, 0.0)).is_equal(Vector2.ZERO)
-	_life.shake_ms = 160  # Half as often: 12.5 boundaries in 2 s, 220 changes in all, 13 at the most.
+	_life.drive_shake_ms = 160  # Half as often: 12.5 boundaries in 2 s, 13 changes at the most.
 	var most: int = 0
 	var total: int = 0
 	var off_boundary: int = 0
@@ -368,7 +369,7 @@ func test_an_answer_holds_for_the_span_the_function_reports() -> void:
 
 
 func test_a_function_that_is_off_holds_for_ever() -> void:
-	_life.shake_px = 0.0
+	_life.drive_shake_px = 0.0
 	_life.look_ms = 0
 	_life.sweep_frames = 0
 	for call: Callable in [

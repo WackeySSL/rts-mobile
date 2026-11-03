@@ -3,7 +3,7 @@ extends GdUnitTestSuite
 ## standing in view it turns its turret one frame aside (d05 or d07 off the d06 it faces) for
 ## `look_ms` in each cycle of 6 to 10 s, by the turret's region only. A move, a target and `reduced`
 ## put it back on its aim, a squad never looks, and the look is a frame off the aim the turret has
-## now. The function is in test_idle_life.gd; the shake is in test_idle_units.gd. Fixtures:
+## now. The function is in test_idle_life.gd; the rumble is in test_idle_units.gd. Fixtures:
 ## recoil_rig.gd; the light tank (id 1) looks west for 900 ms from 2192, 10160 and 15321 ms, east
 ## from 21730 and west from 26998 (the Python restatement of the function).
 
@@ -39,10 +39,9 @@ func after_test() -> void:
 
 
 func test_a_turreted_vehicle_looks_one_frame_aside_in_the_pinned_windows() -> void:
-	# The light tank (id 1) over 30 s, a frame every 100 ms, shake off so only the look is on: its
+	# The light tank (id 1) over 30 s, a frame every 100 ms, standing: its
 	# turret shows the hull's frame d06, and one frame aside (d05 or d07) for 900 ms in each of the
 	# windows the Python restatement gives: 2192 (west), 10160, 15321, 21730 (east) and 26998 ms.
-	_life.shake_px = 0.0
 	_pin_down(Rig.HEAVY)
 	var row: int = _runner.snapshot.index_of(Rig.LIGHT)
 	var turret: Sprite2D = _rig(row).get_node("Turret")
@@ -71,7 +70,6 @@ func test_a_turreted_vehicle_looks_one_frame_aside_in_the_pinned_windows() -> vo
 
 
 func test_a_look_ends_when_the_vehicle_moves_or_fires_and_reduced_has_none() -> void:
-	_life.shake_px = 0.0
 	_pin_down(Rig.HEAVY)
 	var row: int = _runner.snapshot.index_of(Rig.LIGHT)
 	var snap: MatchSnapshot = _runner.snapshot
@@ -105,7 +103,6 @@ func test_a_look_ends_when_the_vehicle_moves_or_fires_and_reduced_has_none() -> 
 
 
 func test_a_look_is_one_frame_off_the_aim_the_turret_has_and_a_squad_never_looks() -> void:
-	_life.shake_px = 0.0
 	_pin_down(Rig.HEAVY)
 	var row: int = _runner.snapshot.index_of(Rig.LIGHT)
 	var snap: MatchSnapshot = _runner.snapshot
@@ -121,6 +118,66 @@ func test_a_look_is_one_frame_off_the_aim_the_turret_has_and_a_squad_never_looks
 	assert_int(absi(posmod(Frames.dir(_layer, row, &"turret") - aim + 8, 16) - 8)).is_equal(1)
 	var squad: int = snap.index_of(Rig.SQUAD)
 	assert_int(Frames.dir(_layer, squad, &"hull")).is_equal(UnitLayer.D_EAST)
+
+
+func test_a_standing_vehicle_never_shakes_and_still_looks_with_its_gun() -> void:
+	# Over 60 s of a stand, with no target and in view, neither tank's Hull or Turret moves by a
+	# pixel: the writes are the looks alone, which change the Turret's region (the light tank looks
+	# west at 2192 ms, d05 off its d06).
+	var light: int = _runner.snapshot.index_of(Rig.LIGHT)
+	var heavy: int = _runner.snapshot.index_of(Rig.HEAVY)
+	var parts: Array[Node2D] = [_rig(light), _rig(heavy)]
+	var rest: Array[Vector2] = []
+	for rig: Node2D in parts:
+		rest.append((rig.get_node("Hull") as Sprite2D).position)
+		rest.append((rig.get_node("Turret") as Sprite2D).position)
+	_camera.position = (parts[0].position + parts[1].position) * 0.5
+	_at_ms(1900.0)
+	var moved: int = 0
+	var looked: bool = false
+	for ms: int in range(1900, 61900, 50):
+		_at_ms(float(ms))
+		for index: int in parts.size():
+			var hull: Sprite2D = parts[index].get_node("Hull")
+			var turret: Sprite2D = parts[index].get_node("Turret")
+			if not hull.position.is_equal_approx(rest[2 * index]):
+				moved += 1
+			if not turret.position.is_equal_approx(rest[2 * index + 1]):
+				moved += 1
+		looked = looked or Frames.dir(_layer, light, &"turret") != UnitLayer.D_EAST
+	assert_int(moved).is_equal(0)
+	assert_bool(looked).is_true()  # The impatient look of the gun is still there.
+	assert_int(_layer.life_writes()).is_greater(0)
+
+
+func test_a_standing_vehicle_with_the_look_off_writes_nothing_over_a_long_stand() -> void:
+	_life.look_ms = 0
+	_watch(Rig.LIGHT)
+	for ms: int in range(1900, 91900, 50):
+		_at_ms(float(ms))
+	assert_int(_layer.life_writes()).is_equal(0)
+
+
+func test_a_creep_under_half_a_step_neither_rumbles_nor_looks() -> void:
+	# The separation pushes a unit that has arrived by a few milli a tick for a while: not a drive
+	# (no rumble), and not a stand (no look either). Over 12 s, which hold the light tank's
+	# windows at 2192 and 10160 ms, with a creep of 1 to 5 milli in each tick the Hull never
+	# moves, the turret never looks, and nothing is written.
+	var row: int = _runner.snapshot.index_of(Rig.LIGHT)
+	var snap: MatchSnapshot = _runner.snapshot
+	_pin_down(Rig.HEAVY)
+	snap.order[row] = World.Order.MOVE  # Even on an order: a slow final approach is no drive.
+	var hull: Sprite2D = _rig(row).get_node("Hull")
+	_watch(Rig.LIGHT)
+	var wrong: int = 0
+	for creep: int in range(1, 6):
+		snap.prev_pos_x[row] = snap.pos_x[row] - creep
+		for ms: int in range(2000, 12000, 100):
+			_at_ms(float(ms))
+			wrong += 0 if hull.position == Vector2.ZERO else 1
+			wrong += 0 if Frames.dir(_layer, row, &"turret") == UnitLayer.D_EAST else 1
+	assert_int(wrong).is_equal(0)
+	assert_int(_layer.life_writes()).is_equal(0)
 
 
 ## Points the camera at the rig of unit `id`, and lets the rig settle with a frame at 1900 ms.

@@ -49,7 +49,7 @@ static func calmed(life: LifeSettings) -> LifeSettings:
 	var out: LifeSettings = life
 	if out == null:
 		out = (load("res://data/life_settings.tres") as LifeSettings).duplicate() as LifeSettings
-	out.shake_px = 0.0
+	out.drive_shake_px = 0.0
 	out.look_ms = 0
 	out.sweep_frames = 0
 	out.idle_ms = 0  # And no squad fidgets: a pose write is a life write too.

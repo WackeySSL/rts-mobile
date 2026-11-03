@@ -37,10 +37,10 @@ extends Node2D
 ## is noted in `ticked` for a shooter the local player sees in that tick's fog and drawn on match
 ## time (`LifeClock`), so a pause freezes it; the rig's own node, and so its sort key, pick and bar,
 ## never moves.
-## Idle life (P140): a vehicle that stood still in the last tick with no target, inside the view
-## rect, shakes its Hull and Turret by a fraction of a px (`RigLife.shake_offset`) and, with a
-## turret, looks one frame aside now and then (`look_side`). Any move, any target and `reduced`
-## calm it to its rest at once.
+## Idle life (P140, P140b): a vehicle that drove half a step or more on an order, in view, rumbles:
+## its Hull and Turret shift by a fraction of a px (`RigLife.shake_offset`). One that stood still
+## with no target does not shake; with a turret it looks one frame aside now and then
+## (`look_side`). A stop, a move, a target and `reduced` calm the other effect to its rest at once.
 ## Squad poses (P142): the walk cycle and idle frames of a squad's Hull are `SquadPoses`'s, fed from
 ## the per-row walk table `_walk`.
 
@@ -65,7 +65,7 @@ const NEVER_HIT: int = -1  ## What hit_time_ms answers for a unit whose hp has n
 ## The life numbers when `life` is unset (ADR 0027 section 8).
 const DEFAULT_LIFE: LifeSettings = preload("res://data/life_settings.tres")
 ## The view rect is grown by a tile before the idle life asks whether a rig is in it (ADR 0027
-## section 9), so a sprite whose foot is just off the edge keeps its shake.
+## section 9), so a sprite whose foot is just off the edge keeps its rumble.
 const IDLE_MARGIN_PX: float = IsoProjection.HALF_W * 2.0
 
 ## How fast a hull, a turret or a squad rig turns, in radians per second.
@@ -156,7 +156,7 @@ class Rig:
 	var ring: Ring = null
 	var turret_kick: Vector2 = Vector2.ZERO  ## What the Turret stands off its mount by life now.
 	var hull_kick: Vector2 = Vector2.ZERO  ## What the Hull stands off its rest by life now.
-	var idle: RigLife.Idle = RigLife.Idle.new()  ## The idle shake and look, on top of the kicks.
+	var idle: RigLife.Idle = RigLife.Idle.new()  ## The drive rumble and the look, on top of the kicks.
 	var pose: RigLife.Pose = RigLife.Pose.new()  ## What a squad's Hull shows (P142).
 
 
@@ -700,6 +700,7 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 		view = camera.visible_world_rect().grow(IDLE_MARGIN_PX)
 	var idle_ms: float = _rig_life.idle_clock(snap, alpha)
 	var armours: PackedInt32Array = snap.type_armour
+	var orders: PackedInt32Array = snap.order
 	var reduced: bool = life.reduced
 	_poses.begin(snap.tick, alpha, idle_ms, _walk, ids, targets)
 	for row: int in rigs.size():
@@ -742,10 +743,19 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 			and armours[types[row]] != World.Armour.INFANTRY
 			and not reduced
 		)
+		# A vehicle that drove at least half a step in the last tick on an order rumbles (P140b). A
+		# unit with no order that the separation pushes (up to half a step a tick, for about a
+		# second after it arrives) and a creep under half a step are neither driving nor standing.
+		var drives: bool = (
+			walking
+			and orders[row] != World.Order.IDLE
+			and armours[types[row]] != World.Armour.INFANTRY
+			and not reduced
+		)
 		var idle: RigLife.Idle = (rigs[row] as Rig).idle
-		if stands or idle.live:  # A rig that moves or fires and is at rest is not asked.
+		if stands or drives or idle.live:  # A rig that is at rest and fires is not asked.
 			var changed: int = _rig_life.idle_step(
-				idle, ids[row], idle_ms, stands, shown and view.has_point(at)
+				idle, ids[row], idle_ms, stands, drives, shown and view.has_point(at)
 			)
 			if changed != 0:
 				_apply_idle(row, changed, owners[row])

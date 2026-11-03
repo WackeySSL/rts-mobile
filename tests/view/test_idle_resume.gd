@@ -4,7 +4,7 @@ extends GdUnitTestSuite
 ## can step back by up to one tick, and nothing may play backwards. The idle functions are functions
 ## of match time, so each layer reads them at an idle clock that never goes back in a match
 ## (`RigLife.idle_clock`) and starts again with the next one. A frame that steps back changes no
-## region and no offset and writes nothing, in the unit layer (shake and look) and in the building
+## region and no offset and writes nothing, in the unit layer (rumble and look) and in the building
 ## layer (sweep). Fixtures: recoil_rig.gd. By the restatement of the functions: the light tank
 ## (id 1) at tick 32 and alpha 0.9 (2193.3 ms) is at (-0.5, 0) and looking west (d05), at tick 32
 ## and alpha 0 (2133.3 ms) it would be at rest and straight, at tick 33 (2200 ms) it is as at
@@ -47,28 +47,44 @@ func after_test() -> void:
 	CommandQueue.clear()
 
 
-func test_a_resume_plays_the_vehicles_shake_and_look_no_pose_backwards() -> void:
+func test_a_resume_plays_the_driving_vehicles_rumble_no_pose_backwards() -> void:
+	_pin_down(Rig.HEAVY)
+	_drive(Rig.LIGHT)
+	var row: int = _runner.snapshot.index_of(Rig.LIGHT)
+	var hull: Sprite2D = _units.rig(row).get_node("Hull")
+	_camera.position = _units.rig(row).position
+	_frame(28, 0.5)  # 1900 ms: seen, at rest.
+	_frame(32, 0.9)  # 2193.3 ms: rumbling (-0.5, 0), turret straight (it drives, it does not look).
+	assert_vector(hull.position).is_equal(Vector2(-0.5, 0.0))
+	assert_int(Frames.dir(_units, row, &"turret")).is_equal(AIM)
+	var writes: int = _units.life_writes()
+	assert_int(writes).is_equal(2)  # Hull and Turret.
+	_frame(32, 0.0)  # The resume: alpha restarts at 0, a pose 60 ms back.
+	assert_vector(hull.position).is_equal(Vector2(-0.5, 0.0))
+	assert_int(_units.life_writes()).is_equal(writes)
+	_frame(33, 0.0)  # And the tick after it, back at the pose it had.
+	assert_vector(hull.position).is_equal(Vector2(-0.5, 0.0))
+	assert_int(_units.life_writes()).is_equal(writes)
+	_frame(34, 0.5)  # 2300 ms: on, forward again, (0.5, 0.5).
+	assert_vector(hull.position).is_equal(Vector2(0.5, 0.5))
+	assert_int(_units.life_writes()).is_equal(writes + 2)
+
+
+func test_a_resume_plays_the_standing_vehicles_look_no_pose_backwards() -> void:
 	_pin_down(Rig.HEAVY)
 	var row: int = _runner.snapshot.index_of(Rig.LIGHT)
 	var hull: Sprite2D = _units.rig(row).get_node("Hull")
 	_camera.position = _units.rig(row).position
 	_frame(28, 0.5)  # 1900 ms: seen, at rest.
-	_frame(32, 0.9)  # 2193.3 ms: shaking (-0.5, 0) and looking west.
-	assert_vector(hull.position).is_equal(Vector2(-0.5, 0.0))
+	_frame(32, 0.9)  # 2193.3 ms: looking west, and the hull does not shake.
+	assert_vector(hull.position).is_equal(Vector2.ZERO)
 	assert_int(Frames.dir(_units, row, &"turret")).is_equal(5)
-	var writes: int = _units.life_writes()
-	assert_int(writes).is_equal(3)  # Hull, Turret and the look.
-	_frame(32, 0.0)  # The resume: alpha restarts at 0, a pose 60 ms back.
-	assert_vector(hull.position).is_equal(Vector2(-0.5, 0.0))
+	assert_int(_units.life_writes()).is_equal(1)
+	_frame(32, 0.0)  # The resume: a pose 60 ms back, straight on; nothing is played back.
 	assert_int(Frames.dir(_units, row, &"turret")).is_equal(5)
-	assert_int(_units.life_writes()).is_equal(writes)
-	_frame(33, 0.0)  # And the tick after it, back at the pose it had.
-	assert_vector(hull.position).is_equal(Vector2(-0.5, 0.0))
+	_frame(33, 0.0)
 	assert_int(Frames.dir(_units, row, &"turret")).is_equal(5)
-	assert_int(_units.life_writes()).is_equal(writes)
-	_frame(34, 0.5)  # 2300 ms: on, forward again, (0.5, 0.5) in the same window.
-	assert_vector(hull.position).is_equal(Vector2(0.5, 0.5))
-	assert_int(_units.life_writes()).is_equal(writes + 2)
+	assert_int(_units.life_writes()).is_equal(1)
 
 
 func test_a_resume_plays_the_defences_sweep_no_frame_backwards() -> void:
@@ -105,6 +121,14 @@ func test_a_new_match_starts_the_idle_clock_again() -> void:
 	_frame(28, 0.5)  # 1900 ms: the light tank is seen at rest.
 	_frame(32, 0.9)  # 2193.3 ms: it looks west.
 	assert_int(Frames.dir(_units, row, &"turret")).is_equal(5)
+
+
+## Makes unit `id` drive: it moved a full step east in the last tick.
+func _drive(id: int) -> void:
+	var row: int = _runner.snapshot.index_of(id)
+	var snap: MatchSnapshot = _runner.snapshot
+	snap.prev_pos_x[row] = snap.pos_x[row] - snap.type_speed[snap.type_index[row]]
+	snap.order[row] = World.Order.MOVE
 
 
 ## Gives unit `id` a target it holds, as the sim writes it, so it is not idle.

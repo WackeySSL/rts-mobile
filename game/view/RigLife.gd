@@ -14,14 +14,17 @@ extends RefCounted
 ## step back by a tick when WORKER mode restarts alpha after a pause).
 ## The kicks live in a fixed table of `kick_slots` keyed by unit id, sized in `setup`: a shot of a
 ## rig that kicks restarts its slot, and one that finds the table full kicks nothing.
-## Idle life (P140): `shake_offset`, `look_side` and `sweep_offset` are functions of the unit id and
-## the match time alone, drawn with `LifeClock.mix`, so two runs, a replay and a second viewer see
-## the same pose at the same tick. The layer says who is idle (a vehicle that stands with no
-## target, a complete, online defence with none) and `idle_step` and `sweep_step` bring the `Idle`
-## record of one rig up to the layer's idle clock and say what changed, for the layer to write. The
-## idle clock (`idle_clock`) is the match time that never goes back, so a WORKER resume, whose alpha
-## restarts at 0, does not play a pose backwards. A record holds the answer and the stretch of
-## match time it holds for, so a rig is asked again only outside it: two compares, not a hash.
+## Idle life (P140, P140b): `shake_offset`, `look_side` and `sweep_offset` are functions of the unit
+## id and the match time alone, drawn with `LifeClock.mix`, so two runs, a replay and a second
+## viewer see the same pose at the same tick. The layer says who stands (a vehicle that stands with
+## no target looks around, a complete, online defence with none sweeps) and who drives (a vehicle
+## that drove half a step or more in the last tick on an order rumbles; a standing one never shakes;
+## a creep under half a step, or a push on a unit with no order, does neither), and `idle_step` and
+## `sweep_step` bring the `Idle` record of one rig up to the layer's idle clock and say what
+## changed, for the layer to write. The idle clock (`idle_clock`) is the match time that never goes
+## back, so a WORKER resume, whose alpha restarts at 0, does not play a pose backwards. A record
+## holds the answer and the stretch of match time it holds for, so a rig is asked again only outside
+## it: two compares, not a hash.
 ## Squad poses (P142, ADR 0027 section 5): `travel_step` and `walk_frame` turn the ground a squad
 ## covered into a walk frame (the cadence follows the speed and stops with the squad), `pose_step`
 ## and `pose_idle` give the idle frame of a squad that has stood a while, and `Pose` is the record
@@ -34,7 +37,7 @@ const QUANT_PX: float = 0.5  ## Offsets are written in steps of this many world 
 const SALT_SHAKE: int = 0x10000000
 const SALT_LOOK: int = 0x20000000
 const SALT_SWEEP: int = 0x30000000
-## What `idle_step` says changed: the shake offset (the layer writes the Hull and the Turret) and
+## What `idle_step` says changed: the rumble offset (the layer writes the Hull and the Turret) and
 ## the look (it writes the turret's region).
 const CHANGED_SHAKE: int = 1
 const CHANGED_LOOK: int = 2
@@ -80,7 +83,7 @@ var _done: PackedByteArray = PackedByteArray()  ## 1 once the kick is over or it
 
 ## The idle state of one rig or head, held by its layer and made with it: what is shown now
 ## (`shake`, `look`, `sweep`) and, for each, the stretch of match time [from, to) its last answer
-## holds for. A `to` below 0 means "never asked": the rig has not been idle yet.
+## holds for. A `to` below 0 means "never asked": the rig has not stood or driven yet.
 class Idle:
 	extends RefCounted
 
@@ -89,9 +92,9 @@ class Idle:
 	var sweep: int = 0  ## Frames a head shows off its aim.
 	var sweep_want: int = 0  ## What `sweep_offset` last said for the stretch of `sweep_from`/`to`.
 	var turns: bool = false  ## Whether the rig has a turret of 16 frames to look with.
-	## Whether the record may differ from rest: `idle_step` has settled a standing vehicle since the
-	## last `reset` or calm. A layer calls `idle_step` for a rig that does not stand only while this
-	## is set, so a moving or firing rig costs one flag.
+	## Whether the record may differ from rest: `idle_step` has settled a standing or driving
+	## vehicle since the last `reset` or calm. A layer calls `idle_step` for a rig that neither
+	## stands nor drives only while this is set, so a firing rig costs one flag.
 	var live: bool = false
 	var shake_from: float = 0.0
 	var shake_to: float = -1.0
@@ -322,38 +325,43 @@ func idle_clock(snap: MatchSnapshot, alpha: float) -> float:
 
 
 ## Brings the idle record `state` of vehicle `id` to idle-clock time `now_ms` and returns what
-## changed (CHANGED_SHAKE, CHANGED_LOOK, or 0), for the layer to write. `idle`: the vehicle stood
-## still in the last tick, has no target and `reduced` is off. `seen`: it is shown and in view. A
-## rig that is not idle goes back to rest, seen or not. An idle rig that is not seen is left as it
-## is, and rests for one step when it is seen again, like one that has just become idle: its phase
-## spreads those first steps over `shake_ms`, so a column that halts together, or a camera that pans
-## back to parked vehicles, does not write every sprite in one frame. It looks aside only if
-## `state.turns`.
-func idle_step(state: Idle, id: int, now_ms: float, idle: bool, seen: bool) -> int:
+## changed (CHANGED_SHAKE, CHANGED_LOOK, or 0), for the layer to write. `stands`: the vehicle stood
+## still in the last tick, has no target and `reduced` is off; it looks aside (only if
+## `state.turns`) and never shakes. `driving`: it drove half a step in the last tick on an order and
+## `reduced` is off; it rumbles and does not look. `seen`: it is shown and in view. A rig that does
+## neither goes back to rest, seen or not, and a rig that stops driving loses its rumble at once. A
+## rig that is not seen is left as it is, and rests for one step when it is seen again, like one
+## that has just begun: its phase spreads those first steps over `drive_shake_ms`, so a column that
+## sets off together, or a camera that pans back to a convoy, does not write every sprite in one
+## frame.
+func idle_step(state: Idle, id: int, now_ms: float, stands: bool, driving: bool, seen: bool) -> int:
 	var changed: int = 0
-	if not idle:
-		if state.live:
-			changed = CHANGED_SHAKE if state.shake != Vector2.ZERO else 0
-			changed |= CHANGED_LOOK if state.look != 0 else 0
+	if not driving:
+		if state.shake != Vector2.ZERO:
 			state.shake = Vector2.ZERO
+			changed = CHANGED_SHAKE
+		state.shake_to = -1.0
+	if not stands:
+		if state.look != 0:
 			state.look = 0
-			state.shake_to = -1.0
-			state.look_to = -1.0
-			state.live = false
+			changed |= CHANGED_LOOK
+		state.look_to = -1.0
+	if not (stands or driving):
+		state.live = false
 		return changed
 	if not seen:
 		state.shake_to = -1.0
-		return 0
+		return changed
 	state.live = true
-	if now_ms < state.shake_from or now_ms >= state.shake_to:
+	if driving and (now_ms < state.shake_from or now_ms >= state.shake_to):
 		var settled: bool = state.shake_to >= 0.0
 		var shake: Vector2 = shake_offset(id, now_ms)
 		state.shake_from = span_from
 		state.shake_to = span_to
 		if settled and shake != state.shake:
 			state.shake = shake
-			changed = CHANGED_SHAKE
-	if state.turns and (now_ms < state.look_from or now_ms >= state.look_to):
+			changed |= CHANGED_SHAKE
+	if stands and state.turns and (now_ms < state.look_from or now_ms >= state.look_to):
 		var side: int = look_side(id, now_ms)
 		state.look_from = span_from
 		state.look_to = span_to
@@ -380,20 +388,21 @@ func sweep_step(state: Idle, id: int, now_ms: float, active: bool) -> bool:
 	return true
 
 
-## The idle shake of vehicle `id` at match time `now_ms`, world px for its Hull and Turret together:
-## each axis is a whole number of QUANT_PX steps, at most `shake_px` away from rest, drawn afresh by
-## `mix(id, step)` once per `shake_ms`. The step counts from a phase of the id's own, so the
-## vehicles of a column do not all write in one frame. Zero when `shake_px` is below one step. The
-## answer holds for the step: `span_from` and `span_to` say for how long.
+## The engine rumble of driving vehicle `id` at match time `now_ms`, world px for its Hull and
+## Turret together: each axis is a whole number of QUANT_PX steps, at most `drive_shake_px` away
+## from rest, drawn afresh by `mix(id, step)` once per `drive_shake_ms`. The step counts from a
+## phase of the id's own, so the vehicles of a column do not all write in one frame. Zero when
+## `drive_shake_px` is below one step. The answer holds for the step: `span_from` and `span_to` say
+## for how long.
 func shake_offset(id: int, now_ms: float) -> Vector2:
 	_forever()
-	var reach: int = floori(life.shake_px / QUANT_PX)
-	if reach <= 0 or life.shake_ms <= 0:
+	var reach: int = floori(life.drive_shake_px / QUANT_PX)
+	if reach <= 0 or life.drive_shake_ms <= 0:
 		return Vector2.ZERO
-	var phase: int = LifeClock.pick(id, SALT_SHAKE, life.shake_ms)
-	var step: int = floori((now_ms + float(phase)) / float(life.shake_ms))
-	span_from = float(step * life.shake_ms - phase)
-	span_to = span_from + float(life.shake_ms)
+	var phase: int = LifeClock.pick(id, SALT_SHAKE, life.drive_shake_ms)
+	var step: int = floori((now_ms + float(phase)) / float(life.drive_shake_ms))
+	span_from = float(step * life.drive_shake_ms - phase)
+	span_to = span_from + float(life.drive_shake_ms)
 	var span: int = 2 * reach + 1
 	var x: int = LifeClock.pick(id, SALT_SHAKE + 2 * step + 1, span) - reach
 	var y: int = LifeClock.pick(id, SALT_SHAKE + 2 * step + 2, span) - reach
