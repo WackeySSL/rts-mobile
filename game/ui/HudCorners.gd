@@ -55,6 +55,8 @@ class Shown:
 	extends RefCounted
 
 	var left_taken: float = 0.0  ## Width of what stands at the top left already (the Dev button).
+	## Height of that stack (Dev over Surrender, until P124); the portrait toast stands under it.
+	var left_height: float = 0.0
 	var pill_width: float = 0.0  ## The pill's content width; 0 is its least.
 	var bar: bool = false  ## The command bar (a selection, or the slot a mode keeps).
 	var bar_width: float = 0.0  ## Landscape content width; 0 is the least.
@@ -130,7 +132,9 @@ static func place(
 	if bar_on:
 		out[BAR] = _bar(w, h, portrait, shown, open, side)
 	if shown.toast and not shown.map:
-		out[TOAST] = _toast(w, portrait, out, open if side else Rect2(w, 0.0, 0.0, 0.0))
+		out[TOAST] = _toast(
+			w, portrait, out, open if side else Rect2(w, 0.0, 0.0, 0.0), shown.left_height
+		)
 	if shown.map and not shown.drawer:
 		_map(out, w, portrait, strike if shown.strike else build)
 	if not sheet:
@@ -172,13 +176,14 @@ static func _bar(
 
 
 ## The toast: portrait, under the pill at the start, a gap under the scope's foot (the scope is 56
-## dp, the pill's line 48); landscape, centred between the pill (or the safe edge) and the scope
-## (or the open panel).
+## dp, the pill's line 48) and under the top-left stack (`left_height`); landscape, centred between
+## the pill (or the safe edge) and the scope (or the open panel).
 static func _toast(
-	w: float, portrait: bool, placed: Dictionary[StringName, Rect2], open: Rect2
+	w: float, portrait: bool, placed: Dictionary[StringName, Rect2], open: Rect2, left_height: float
 ) -> Rect2:
 	if portrait:
-		return Rect2(0.0, SCOPE_DP + GAP_DP, minf(w, TOAST_W_DP.y), TOAST_H_DP)
+		var top: float = maxf(SCOPE_DP, left_height) + GAP_DP
+		return Rect2(0.0, top, minf(w, TOAST_W_DP.y), TOAST_H_DP)
 	var left: float = 0.0
 	if placed.has(PILL):
 		left = placed[PILL].end.x + GAP_DP
