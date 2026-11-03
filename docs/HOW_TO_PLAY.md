@@ -96,7 +96,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Tap a group | Selects the units stored in that group | |
 | Hold a group (`group_assign_ms` in `data/input_settings.tres`) | Overwrites it with the current selection; the phone buzzes and the count shows. With no unit selected a hold does nothing, so a resting finger never empties a group | yes |
 | A grouped unit is destroyed | It leaves the group; the group's count shows the new number, and a group with no unit left leaves the column | |
-| Look at the group column | It stands on the left edge, sideways under the Dev and Surrender buttons, upright above the bottom edge and left of BUILD; more groups than fit in a column make a second column to the right. While you aim a strike, upright, it shows three buttons in one column and the rest scroll, so it never sits against the check mark and the X | |
+| Look at the group column | It stands on the left edge, sideways under the Dev and Surrender buttons, upright above the bottom edge and left of BUILD; more groups than fit in a column make a second column to the right. While you aim a strike, upright, it shows three buttons in one column and the rest scroll, so it never sits against the check mark and the X; drag the column to reach the rest (a drag selects nothing) | |
 
 ## The screen in battle
 | Action | Result | Teach |

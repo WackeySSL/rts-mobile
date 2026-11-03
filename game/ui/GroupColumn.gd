@@ -114,8 +114,8 @@ func show_groups(counts: PackedInt32Array, can_save: bool) -> void:
 ## The text of group `slot`'s button, its number over its count ("2\n30"); the number alone for an
 ## empty group.
 func badge_text(slot: int) -> String:
-	var count: int = _counts[slot - 1]
-	return "%d\n%d" % [slot, count] if count > 0 else str(slot)
+	var count: String = _totals[slot - 1].text
+	return "%s\n%s" % [_numbers[slot - 1].text, count] if _counts[slot - 1] > 0 else str(slot)
 
 
 ## How many buttons show: "All army", the saved groups and "+".

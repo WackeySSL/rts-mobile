@@ -6,12 +6,11 @@ extends GdUnitTestSuite
 ## last, and every format of the table prints.
 ## The layout cases put it in a SafeAreaMargin, as the HUD roots are, at every UiProfiles entry (the
 ## portrait ones too, plan P63) and on Michael's phone (2424x1080 with the cutout Rect2i(152, 0,
-## 2272, 1080), as test_group_column and test_selection_panel build it): the whole card lies inside
-## the
-## safe area, its text is 14 sp or more, every button of it is at least dp(48), and a finger drag
-## scrolls the text. The look is the `PerfCard` variation of game/ui/theme.tres. The two buttons
-## under the text, "Copy report" and "Run again" (P50a3), are laid out here; what they do is
-## test_perf_hud_copy.gd's.
+## 2272, 1080), as test_group_column and test_selection_panel build it): the whole card lies
+## inside the safe area, its text is 14 sp or more, every button of it is at least dp(48), and a
+## finger drag scrolls the text. The look is the `PerfCard` variation of game/ui/theme.tres. The
+## two buttons under the text, "Copy report" and "Run again" (P50a3), are laid out here; what they
+## do is test_perf_hud_copy.gd's.
 
 const Rig: GDScript = preload("res://tests/ui/support/perf_hud_rig.gd")
 const HudThemes: GDScript = preload("res://tests/support/hud_theme.gd")

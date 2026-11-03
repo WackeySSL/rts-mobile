@@ -46,7 +46,8 @@ func test_a_tap_emits_tapped_and_a_hold_emits_held_and_not_tapped() -> void:
 	add_child(column)
 	await await_idle_frame()
 	var button: HoldButton = column.find_child("Group3", true, false)
-	assert_int(button.get_theme_font_size("font_size")).is_equal(roundi(UiScale.dp(18.0)))
+	var count: Label = button.get_node("Face/Count")
+	assert_int(count.get_theme_font_size("font_size")).is_equal(roundi(UiScale.dp(20.0)))
 	assert_bool(button.is_processing()).is_false()  # Frames watch the clock only with a finger down.
 	assert_bool(button.clock == Callable(Time, &"get_ticks_msec")).is_true()
 	button.clock = func() -> int: return _now_ms
@@ -79,7 +80,12 @@ func test_a_tap_emits_tapped_and_a_hold_emits_held_and_not_tapped() -> void:
 
 func test_buttons_are_56_dp_with_8_dp_gaps_and_an_empty_group_is_not_shown_at_every_screen(
 ) -> void:
-	for screen: Dictionary in _screens():
+	var michael: UiMetrics = UiMetrics.create(
+		"Android", 420, 1.0, 1.5, Vector2i(2424, 1080), Rect2i(152, 0, 2272, 1080)
+	)
+	var screens: Array[Dictionary] = _screens()
+	screens.append({"label": "michael", "size": michael.window_size, "metrics": michael})
+	for screen: Dictionary in screens:
 		await _open(screen["metrics"], screen["size"])
 		_save_groups(3)  # Three counted groups and, with a unit selected, no "+" (none free).
 		await await_idle_frame()
@@ -148,8 +154,8 @@ func test_margins_follow_all_four_sides_of_the_safe_area_and_a_window_change() -
 	assert_vector(_rect("DevButton").position).is_equal(Vector2(88, 68))
 	assert_float(_column().position.x).is_equal(88.0)
 	assert_float(_column().position.y).is_greater_equal(_rect("TopLeft").end.y + UiScale.dp(8.0))
-	var font_size: int = (_hud("Group1") as Button).get_theme_font_size("font_size")
-	assert_int(font_size).is_equal(roundi(UiScale.dp(18.0)))
+	var number: Label = _hud("Group1").get_node("Face/Number")
+	assert_int(number.get_theme_font_size("font_size")).is_equal(roundi(UiScale.dp(16.0)))
 	await _open(UiProfiles.with_safe_area(android, Rect2i(50, 70, 2250, 980)))  # Turned.
 	assert_array(_margins()).is_equal([88, 68, 88, 68])
 
@@ -278,10 +284,9 @@ func test_a_groups_badge_shows_the_live_count_and_an_empty_group_leaves_the_colu
 
 
 ## ADR 0025 section 2: four items (All army and three groups) take two columns on web_phone_small
-## (2 to a column under the Dev stack). Upright, with no command bar yet (P122), the room is the 40
-## %
-## line down to the safe bottom, 270 dp at web_phone_portrait: 4 to a column, so one column; the
-## two columns of the ADR's table come with the bar's 72 dp (test_hud_corners pins them).
+## (2 to a column under the Dev stack). Upright, with no command bar yet (P122), the room is the
+## 40 % line down to the safe bottom, 270 dp at web_phone_portrait: 4 to a column, so one column;
+## the two columns of the ADR's table come with the bar's 72 dp (test_hud_corners pins them).
 func test_four_items_take_two_columns_on_the_small_phone_and_one_upright_without_the_bar() -> void:
 	for profile_name: StringName in [&"web_phone_small", &"web_phone_portrait"]:
 		await _open(UiProfiles.by_name(profile_name))

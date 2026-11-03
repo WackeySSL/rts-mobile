@@ -30,7 +30,7 @@ const SCENARIO: String = "res://data/scenarios/controls_test.tres"
 ## World px with no unit near it, past the tank block's upper right edge: milli (10000, 15000). The
 ## nearest tank is 102 px away, more than any hit area (49 px at most here), and the point is 128 px
 ## right of and 144 px above the middle of the view: clear of the build sidebar, the selection panel
-## and the army bar at every profile (P85).
+## and the group column at every profile (P85).
 const GROUND: Vector2 = Vector2(-160, 400)
 const GROUND_MILLI: Vector2i = Vector2i(10000, 15000)
 ## Where a drag's finger goes down: left of the build sidebar. The map moves 888 px left flat (1015

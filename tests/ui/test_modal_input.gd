@@ -131,7 +131,7 @@ func test_a_hold_on_the_minimap_orders_nothing_under_a_modal() -> void:
 		_main.free()
 
 
-## A hold button (an army-bar group here, an item tile is the same class) assigns its group once
+## A hold button (a group button here, an item tile is the same class) assigns its group once
 ## the finger has rested for `hold_ms`; under a modal the press is spent: no hold and no tap.
 func test_a_hold_button_does_not_hold_or_tap_under_a_modal() -> void:
 	for modal: String in MODALS:

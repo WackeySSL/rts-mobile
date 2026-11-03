@@ -6,12 +6,10 @@ extends GdUnitTestSuite
 ## a scene opened at that size; the middle step is compared with a fresh scene too. The handlers
 ## are the ones of main.tscn (DpMinSize, SafeAreaMargin, HudTheme, TouchInput, BuildSidebar,
 ## the group column, SelectionPanel, UnitLayer's rings, HealthBarLayer, EffectsLayer and
-## RtsCamera), of the
-## touch probe, of the dev menu (P63) and of the perf arena (PerfHud and the arena's own). A
-## handler that a later row rewrites extends its case there (P61 SelectionPanel and the group
-## column, P62
-## RtsCamera and TouchInput, P63 the touch probe). The engine's own metrics are used, no override:
-## the stretch has to follow.
+## RtsCamera), of the touch probe, of the dev menu (P63) and of the perf arena
+## (PerfHud and the arena's own). A handler that a later row rewrites extends its case there (P61
+## SelectionPanel and the group column, P62 RtsCamera and TouchInput, P63 the touch probe). The
+## engine's own metrics are used, no override: the stretch has to follow.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/ui/support/arena_rig.gd")
@@ -53,7 +51,7 @@ func before_test() -> void:
 
 
 ## The BuildSidebar's zone and the group column's place are part of the main scene's state
-## (P61, P85): the band's height differs between the two orientations, and the bar follows it.
+## (P61, P85): the band's height differs between the two orientations, and the column follows it.
 func test_the_main_scene_handlers_end_in_the_state_of_a_fresh_scene() -> void:
 	await _check_flips(&"main")
 
@@ -276,7 +274,7 @@ func _read_main(main: Node) -> Dictionary:
 		"column_rect": Rect2(column.position, column.size),
 		"sidebar": _sidebar_state(sidebar),
 		"pill": _pill_state(main.get_node("Hud/EconomyPill")),
-		"font_size": column.find_child("AllArmy", true, false).get_theme_font_size("font_size"),
+		"font_size": column.find_child("Count", true, false).get_theme_font_size("font_size"),
 		"slops": [recognizer._slop_px, recognizer._double_tap_slop_px, recognizer._min_pinch_px],
 		"rings": rings,
 		"bar_dp": main.get_node("HealthBarLayer")._dp_px,

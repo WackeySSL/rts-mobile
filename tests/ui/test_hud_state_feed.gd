@@ -28,7 +28,7 @@ const GESTURES: Array[StringName] = [&"tap", &"double_tap", &"box", &"pan", &"pi
 const FOLDING: Array[HudState.Unfold] = [
 	HudState.Unfold.DRAWER, HudState.Unfold.ECONOMY, HudState.Unfold.RADAR
 ]
-## HUD controls of the scene as it stands (the band, the army bar), found by name. The pill's
+## HUD controls of the scene as it stands (the band, the group column), found by name. The pill's
 ## numbers are not among them: a tap on them asks for the economy card, and opening an unfold
 ## closes the open one (test_economy_card.gd has the pill's touches). The scope is left out too:
 ## a tap on it opens the full map, and the full map's own touches are test_radar_map's.
