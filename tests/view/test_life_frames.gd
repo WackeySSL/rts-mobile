@@ -43,6 +43,7 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"_kick_rigs",
 		"_apply_kick",
 		"_apply_idle",
+		"_update_rigs",
 	],
 	"res://game/view/BuildingLayer.gd": ["_on_ticked", "_note_shot", "_kick_heads", "_sweep_heads"],
 }
@@ -68,6 +69,13 @@ const ALLOCATING: Array[String] = [
 	'" % ',  # A string being formatted; the modulo of two numbers is no allocation.
 	"str(",
 	"String(",
+]
+## The two lines of `UnitLayer._update_rigs` that name an array type without making an array: local
+## names for the layer's own arrays. They are taken out before the tokens are looked for, and the
+## test checks that they are there, so nothing else is let through.
+const ALIASES: Array[String] = [
+	"var rigs: Array[Node2D] = _rigs",
+	"var layers: Array[Sprite2D] = _layers",
 ]
 const HEAVY_TANKS: int = 40
 const LIGHT_TANKS: int = 30
@@ -98,6 +106,10 @@ func test_the_tick_and_frame_path_makes_no_array_and_grows_none() -> void:
 		for func_name: String in FRAME_PATH[path]:
 			var code: String = SourceScan.function(path, func_name)
 			assert_int(code.count("\n")).override_failure_message(func_name).is_greater(2)
+			if func_name == "_update_rigs":
+				for alias: String in ALIASES:
+					assert_bool(code.contains(alias)).override_failure_message(alias).is_true()
+					code = code.replace(alias, "")
 			for token: String in ALLOCATING:
 				var note: String = (
 					"%s %s makes an array or grows one with %s" % [path, func_name, token]

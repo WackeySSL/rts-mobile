@@ -480,9 +480,7 @@ func test_the_error_scan_flags_an_error_and_not_a_warning() -> void:
 
 
 ## An instance of the main scene, with the first frame drawn: the engine draws the snapshot of tick
-## 0 before anything is compared, and a WORKER scene's refill frame runs its layers at tick 0 where
-## a SYNC scene's would not (no frame is played while both are at tick 0). Without it the idle look,
-## which is a region by match time, shows in one scene and not in the other at tick 0.
+## 0 before anything is compared, and the layers' life reads the match time from the first frame.
 func _open(mode: int, impl: int) -> MainScene:
 	var scene: MainScene = MainScene.new()
 	scene.open(self, mode, impl)

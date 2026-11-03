@@ -706,11 +706,13 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 			and armours[types[row]] != World.Armour.INFANTRY
 			and not life.reduced
 		)
-		var changed: int = _rig_life.idle_step(
-			(rigs[row] as Rig).idle, ids[row], idle_ms, stands, shown and view.has_point(at)
-		)
-		if changed != 0:
-			_apply_idle(row, changed, owners[row])
+		var idle: RigLife.Idle = (rigs[row] as Rig).idle
+		if stands or idle.live:  # A rig that moves or fires and is at rest is not asked.
+			var changed: int = _rig_life.idle_step(
+				idle, ids[row], idle_ms, stands, shown and view.has_point(at)
+			)
+			if changed != 0:
+				_apply_idle(row, changed, owners[row])
 		var seen: int = target_rows[row]
 		var turret: Sprite2D = layers[row * PARTS + TURRET]
 		var bearing: float = 0.0  # To the target as drawn, from rig to rig, on the grid.

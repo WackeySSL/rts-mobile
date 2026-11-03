@@ -68,6 +68,10 @@ class Idle:
 	var sweep: int = 0  ## Frames a head shows off its aim.
 	var sweep_want: int = 0  ## What `sweep_offset` last said for the stretch of `sweep_from`/`to`.
 	var turns: bool = false  ## Whether the rig has a turret of 16 frames to look with.
+	## Whether the record may differ from rest: `idle_step` has settled a standing vehicle since the
+	## last `reset` or calm. A layer calls `idle_step` for a rig that does not stand only while this
+	## is set, so a moving or firing rig costs one flag.
+	var live: bool = false
 	var shake_from: float = 0.0
 	var shake_to: float = -1.0
 	var look_from: float = 0.0
@@ -77,6 +81,7 @@ class Idle:
 
 	## Back to a rig at rest that has never been idle (a rig out of the pool, a new head).
 	func reset() -> void:
+		live = false
 		shake = Vector2.ZERO
 		look = 0
 		sweep = 0
@@ -229,24 +234,28 @@ func idle_clock(snap: MatchSnapshot, alpha: float) -> float:
 
 ## Brings the idle record `state` of vehicle `id` to idle-clock time `now_ms` and returns what
 ## changed (CHANGED_SHAKE, CHANGED_LOOK, or 0), for the layer to write. `idle`: the vehicle stood
-## still in the last tick, has no target and `reduced` is off. `seen`: it is shown and in view; an
-## idle rig that is not seen is left as it is. A rig that is not idle goes back to rest. A rig that
-## has just become idle rests for the step it is in and shakes from the next one, which the per-id
-## phase spreads over `shake_ms`: a column that halts together does not write every sprite in one
-## frame. It looks aside only if `state.turns`.
+## still in the last tick, has no target and `reduced` is off. `seen`: it is shown and in view. A
+## rig that is not idle goes back to rest, seen or not. An idle rig that is not seen is left as it
+## is, and rests for one step when it is seen again, like one that has just become idle: its phase
+## spreads those first steps over `shake_ms`, so a column that halts together, or a camera that pans
+## back to parked vehicles, does not write every sprite in one frame. It looks aside only if
+## `state.turns`.
 func idle_step(state: Idle, id: int, now_ms: float, idle: bool, seen: bool) -> int:
 	var changed: int = 0
 	if not idle:
-		if state.shake_to >= 0.0 or state.look_to >= 0.0:  # It was idle: back to rest.
+		if state.live:
 			changed = CHANGED_SHAKE if state.shake != Vector2.ZERO else 0
 			changed |= CHANGED_LOOK if state.look != 0 else 0
 			state.shake = Vector2.ZERO
 			state.look = 0
 			state.shake_to = -1.0
 			state.look_to = -1.0
+			state.live = false
 		return changed
 	if not seen:
+		state.shake_to = -1.0
 		return 0
+	state.live = true
 	if now_ms < state.shake_from or now_ms >= state.shake_to:
 		var settled: bool = state.shake_to >= 0.0
 		var shake: Vector2 = shake_offset(id, now_ms)

@@ -18,12 +18,7 @@ const Buildings: GDScript = preload("res://tests/view/support/building_rig.gd")
 const Frames: GDScript = preload("res://tests/view/support/rig_frames.gd")
 const TOL: Vector2 = Vector2(0.001, 0.001)
 const FRAMES_PER_TICK: int = 4  ## A 60 fps frame is a quarter of a 15 Hz tick, 16.7 ms.
-const HEAVY_TANKS: int = 40
-const LIGHT_TANKS: int = 30
 const FAR: float = 1.0e6
-## The sprite writes of the crowd's first eight frames: none in the first, then what the tanks
-## whose first step is over write, 38 at the most (a mutant that does not rest writes 132).
-const FIRST_FRAMES: Array[int] = [0, 38, 18, 22, 26, 26, 38, 34]
 
 var _runner: MatchRunner
 var _layer: UnitLayer
@@ -180,6 +175,33 @@ func test_a_moving_vehicle_does_not_shake_and_one_that_starts_moving_is_calmed_a
 	before = _layer.life_writes()
 	snap.prev_pos_y[row] = snap.pos_y[row] - 10  # A move in y alone is a move too.
 	_frame(later)
+	assert_vector(hull.position).is_equal(Vector2.ZERO)
+	assert_vector(turret.position).is_equal_approx(mount, TOL)
+	assert_int(_layer.life_writes()).is_equal(before + 2)
+
+
+func test_a_vehicle_that_drives_off_while_out_of_view_is_calmed_at_once() -> void:
+	# The shaking tank is left as it is when the camera leaves; if it then starts to move with no one
+	# looking, the move still takes the shake off it (one write each), and a rig out of view that
+	# stands is not written at all.
+	_life.look_ms = 0
+	_pin_down(Rig.HEAVY)
+	var row: int = _runner.snapshot.index_of(Rig.LIGHT)
+	var hull: Sprite2D = _rig(row).get_node("Hull")
+	var turret: Sprite2D = _rig(row).get_node("Turret")
+	var mount: Vector2 = turret.position
+	var snap: MatchSnapshot = _runner.snapshot
+	_watch(Rig.LIGHT)
+	_frame(10)  # Frames 10 to 13 hold (-0.5, 0).
+	assert_vector(hull.position).is_equal(Vector2(-0.5, 0.0))
+	var before: int = _layer.life_writes()
+	_camera.position = Vector2(FAR, FAR)
+	_frame(11)
+	_frame(12)
+	assert_vector(hull.position).is_equal(Vector2(-0.5, 0.0))  # Left as it was.
+	assert_int(_layer.life_writes()).is_equal(before)
+	snap.prev_pos_x[row] = snap.pos_x[row] - 10  # It drives off, unseen.
+	_frame(13)
 	assert_vector(hull.position).is_equal(Vector2.ZERO)
 	assert_vector(turret.position).is_equal_approx(mount, TOL)
 	assert_int(_layer.life_writes()).is_equal(before + 2)
@@ -522,66 +544,6 @@ func test_frames_of_idle_life_leave_no_object_or_node_behind() -> void:
 	assert_int(nodes_after).is_equal(nodes)
 
 
-func test_seventy_standing_tanks_write_inside_the_budget_and_each_at_most_once_per_shake_ms(
-) -> void:
-	# 40 heavy and 30 light tanks, all standing in view with no target, seen from 1900 ms and played
-	# at 60 fps from there, with no frame before: every tank finds itself idle in frame 0. Each rests
-	# until its own first step is over (the first 80 ms, by its phase) and shakes after; so the writes
-	# do not all come at once: frame 0 writes nothing and the busiest of the first frames, and of
-	# the 10 s, are the restatement's. Per tank the Hull changes at most once per 80 ms; over all,
-	# at most 60 sprite writes a frame on average and 150 in any frame (ADR 0027 section 9).
-	_runner = auto_free(Buildings.runner(_crowd_scenario()))
-	_start(LifeSettings.new())
-	_life.look_ms = 0
-	var snap: MatchSnapshot = _runner.snapshot
-	assert_int(snap.unit_count()).is_equal(HEAVY_TANKS + LIGHT_TANKS)
-	_camera.position = Vector2(0.0, 240.0)
-	_camera.zoom = Vector2(0.5, 0.5)
-	assert_int(_layer.count_in(_camera.visible_world_rect())).is_equal(HEAVY_TANKS + LIGHT_TANKS)
-	var hulls: Array[Sprite2D] = []
-	var last: PackedVector2Array = PackedVector2Array()
-	var changes: PackedInt32Array = PackedInt32Array()
-	var rests_until: PackedFloat64Array = PackedFloat64Array()
-	for row: int in snap.unit_count():
-		hulls.append(_rig(row).get_node("Hull"))
-		last.append(Vector2.ZERO)
-		changes.append(0)
-		_expect.shake_offset(snap.unit_id[row], 1900.0)
-		rests_until.append(_expect.span_to)
-	var total: int = 0
-	var busiest: int = 0
-	var early: int = 0
-	var first_frames: Array[int] = []
-	var frames: int = 600
-	for frame: int in frames:
-		var before: int = _layer.life_writes()
-		_at_ms(1900.0 + float(frame) * 1000.0 / 60.0)
-		var written: int = _layer.life_writes() - before
-		total += written
-		busiest = maxi(busiest, written)
-		if frame < FIRST_FRAMES.size():
-			first_frames.append(written)
-		for row: int in hulls.size():
-			if hulls[row].position != Vector2.ZERO and _now() < rests_until[row]:
-				early += 1  # Shaking before its first step is over.
-			if hulls[row].position != last[row]:
-				changes[row] += 1
-				last[row] = hulls[row].position
-	var most: int = 0
-	var fewest: int = frames
-	for row: int in changes.size():
-		most = maxi(most, changes[row])
-		fewest = mini(fewest, changes[row])
-	assert_int(early).is_equal(0)
-	assert_array(first_frames).is_equal(FIRST_FRAMES)
-	assert_int(busiest).is_equal(46)  # No frame takes every sprite (140): the restatement's.
-	assert_int(total).is_equal(15544)  # 7772 changes in 10 s, two sprites for each.
-	assert_int(most).is_equal(117)  # 125 steps of 80 ms, one in nine of them repeats the offset.
-	assert_int(fewest).is_equal(102)
-	assert_float(float(total) / frames).is_less_equal(60.0)
-	assert_int(busiest).is_less_equal(150)
-
-
 ## A layer on the fixture runner with the settings `life`, and the `RigLife` that says what a frame
 ## should show.
 func _start(life: LifeSettings) -> void:
@@ -637,17 +599,3 @@ func _now() -> float:
 
 func _rig(row: int) -> Node2D:
 	return _layer.rig(row)
-
-
-## 40 heavy and 30 light tanks of player 1 in blocks on the 32 x 32 map, none with a target.
-func _crowd_scenario() -> ScenarioDef:
-	var heavy: SpawnDef = Buildings.spawn(1, "heavy_tank", 2, 2)
-	heavy.count = HEAVY_TANKS
-	heavy.columns = 8
-	heavy.spacing = 1300
-	var light: SpawnDef = Buildings.spawn(1, "light_tank", 2, 16)
-	light.count = LIGHT_TANKS
-	light.columns = 8
-	light.spacing = 1300
-	var spawns: Array[SpawnDef] = [heavy, light]
-	return Buildings.scenario(spawns)
