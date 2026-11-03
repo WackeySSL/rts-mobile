@@ -32,3 +32,17 @@ extends Resource
 ## The build menu's slide (ADR 0024 section 8): the time its height takes between the collapsed
 ## and the open state, eased out. 0 shows the state's layout at once.
 @export var menu_slide_ms: int = 160
+## The corner HUD (ADR 0025, plan HUD v2). All of its numbers are here so that the rows that use
+## them (P119b the pill, P120 the drawer, P121 the scope, P123 the cues) only read them.
+@export var economy_flash_ms: int = 1000  ## A spend or income chip on the pill stays this long.
+@export var radar_close_ms: int = 4000  ## An unpinned full map folds after this long untouched.
+@export var scope_radius_tiles: int = 16  ## Tiles from the camera's ground centre to the rim.
+@export var attack_toast_ms: int = 4000  ## The attack toast and the rim wedge stay this long.
+## One attack cue per area and interval: a hit within `attack_cue_area_tiles` of the last cue's
+## point, less than `attack_cue_ms` after it, raises none (ADR 0025 section 8). PLACEHOLDERS: no
+## planned values exist (ADR 0019 section 5 names none); P123, the row that builds the cues, tunes
+## them on the phone. The interval is the toast's, so a steady attack keeps one toast up.
+@export var attack_cue_ms: int = 4000
+@export var attack_cue_area_tiles: int = 12
+@export var drawer_swipe_dp: float = 48.0  ## A drag past this toward its edge closes the drawer.
+@export var queue_hold_count: int = 5  ## A long-press on a unit card queues up to this many.

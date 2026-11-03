@@ -5,13 +5,15 @@ extends GdUnitTestSuite
 ## with the design's insets) and mirrored and not: every rect is inside the safe rect, no two
 ## overlap, every rect is at least 48 dp on each side, and the sizes the ADR names hold.
 
+const CardHeights: GDScript = preload("res://tests/support/card_heights.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const MARGIN_DP: float = 12.0  ## SafeAreaMargin's gap on every side.
 const CUTOUT_PX: int = 100
 const TOLERANCE: float = 0.01
 ## The unfolds and modes of ADR 0025 section 1: at most one at a time. The card is an overlay on
-## the toast and the group column, so those pairs are left out of the overlap check.
+## the toast, the group column and the command bar, so those pairs are left out of the overlap
+## check.
 const EXTRAS: Array[String] = ["", "map", "toast", "drawer", "card", "aim"]
 const WIDE_BAR_DP: float = 2000.0  ## A bar that asks for more than any screen has.
 
@@ -176,6 +178,39 @@ func test_the_economy_card_hangs_under_the_pill_280_wide() -> void:
 	assert_float(out[HudCorners.CARD].end.x).is_less_equal(300.0)
 
 
+## The economy card at its tallest (six kinds of consumer and the low-power line, `CardHeights`;
+## test_economy_card.gd measures the real one against that number) under the pill after the Dev
+## button, with every combination of the other parts, at every screen, mirrored and not: inside the
+## safe rect, and clear of every part but the three it may cover (the toast, the groups and, on the
+## short landscape screens, the command bar).
+func test_the_tallest_economy_card_stays_inside_and_covers_only_its_overlay() -> void:
+	var checked: int = 0
+	var covered_bar: int = 0
+	for screen: Dictionary in _screens():
+		var safe: Rect2 = screen["safe"]
+		var dp: float = screen["dp"]
+		for shown: HudCorners.Shown in _combinations():
+			if not shown.card:
+				continue
+			shown.card_height = CardHeights.TALLEST_DP
+			shown.left_taken = 48.0  # The Dev button.
+			for mirror: bool in [false, true]:
+				var out: Dictionary[StringName, Rect2] = HudCorners.place(
+					safe, screen["portrait"], dp, mirror, shown
+				)
+				var why: String = "%s, mirror %s, %s" % [screen["label"], mirror, _describe(shown)]
+				_assert_parts(out, safe, dp, why)
+				var card: Rect2 = out[HudCorners.CARD]
+				assert_float(card.size.y / dp).override_failure_message(why).is_equal_approx(
+					CardHeights.TALLEST_DP, TOLERANCE
+				)
+				if out.has(HudCorners.BAR) and card.intersects(out[HudCorners.BAR]):
+					covered_bar += 1
+				checked += 1
+	assert_int(checked).is_greater(200)
+	assert_int(covered_bar).is_greater(0)  # The short screens: the card does cover the bar.
+
+
 func test_mirrored_every_rect_is_the_other_side_of_the_safe_rect() -> void:
 	var safe: Rect2 = Rect2(24.0, 12.0, 890.0, 387.0)
 	var shown: HudCorners.Shown = _shown(["bar", "ready", "strike", "toast"], 3)
@@ -282,10 +317,10 @@ func _assert_stack_within_40_percent(
 
 ## ADR 0025 section 2: gaps of 8 dp. Every two parts that show are at least 8 dp apart on one axis.
 ## Two exemptions, each for a reason: the economy card, which is an overlay (it hangs under the pill
-## over the toast, the groups and the scope's foot); and the strike button's check mark and X
-## against the group column at 360 x 700 dp with five group items, where the ADR's own numbers (a
-## 120 dp column, the 136 dp row, 8 dp, the 72 dp button: 336 dp) leave no gap, which the lead takes
-## to the architect before P120c and P122b.
+## over the toast, the groups, the command bar and the scope's foot); and the strike button's check
+## mark and X against the group column at 360 x 700 dp with five group items, where the ADR's own
+## numbers (a 120 dp column, the 136 dp row, 8 dp, the 72 dp button: 336 dp) leave no gap, which
+## the lead takes to the architect before P120c and P122b.
 func _assert_gaps(out: Dictionary[StringName, Rect2], dp: float, why: String, narrow: bool) -> void:
 	var keys: Array = out.keys()
 	for first: int in keys.size():
@@ -335,17 +370,20 @@ func _assert_parts(out: Dictionary[StringName, Rect2], safe: Rect2, dp: float, w
 			assert_bool(shrunk.intersects(out[b])).override_failure_message(pair).is_false()
 
 
-## The map's parts are inside the map; the pill's card is the toast's and the groups' overlay.
+## The map's parts are inside the map; the pill's card is the overlay of the toast, the groups and
+## the command bar.
 static func _nested(a: StringName, b: StringName) -> bool:
 	var map: Array[StringName] = [HudCorners.MAP, HudCorners.MAP_HEAD, HudCorners.MAP_BOX]
 	return map.has(a) and map.has(b)
 
 
 static func _overlay(a: StringName, b: StringName) -> bool:
-	return (
-		(a == HudCorners.CARD and (b == HudCorners.TOAST or str(b).begins_with("group_")))
-		or (b == HudCorners.CARD and (a == HudCorners.TOAST or str(a).begins_with("group_")))
-	)
+	return (a == HudCorners.CARD and _under_card(b)) or (b == HudCorners.CARD and _under_card(a))
+
+
+## What the card may cover.
+static func _under_card(key: StringName) -> bool:
+	return key == HudCorners.TOAST or key == HudCorners.BAR or str(key).begins_with("group_")
 
 
 ## Every set of the optional parts: the bar (at its least and as wide as it can ask), the Ready chip

@@ -37,6 +37,8 @@
 [ext_resource type="Script" path="res://game/ui/GhostControls.gd" id="38_ghost_controls"]
 [ext_resource type="Script" path="res://game/view/RallyLayer.gd" id="39_rally_layer"]
 [ext_resource type="Script" path="res://game/ui/EconomyPill.gd" id="40_pill"]
+[ext_resource type="Script" path="res://game/ui/HudStateFeed.gd" id="41_hud_state"]
+[ext_resource type="Script" path="res://game/ui/EconomyCard.gd" id="42_economy_card"]
 [ext_resource type="Script" path="res://game/ui/SurrenderButton.gd" id="90_surrender"]
 [ext_resource type="Script" path="res://game/ui/TopLeftStack.gd" id="90_stack"]
 [ext_resource type="Script" path="res://game/ui/ConfirmDialog.gd" id="90_confirm"]
@@ -193,6 +195,14 @@ controller = NodePath("../PlayerController")
 [node name="HudTheme" type="Node" parent="Hud"]
 script = ExtResource("17_hud_theme")
 
+[node name="HudStateFeed" type="Node" parent="Hud" node_paths=PackedStringArray("touch_input", "runner", "placement", "strike_aim")]
+script = ExtResource("41_hud_state")
+settings = ExtResource("6_settings")
+touch_input = NodePath("../../TouchInput")
+runner = NodePath("../../MatchRunner")
+placement = NodePath("../../PlacementController")
+strike_aim = NodePath("../../StrikeAim")
+
 [node name="BoxOverlay" type="Control" parent="Hud"]
 visible = false
 anchor_right = 1.0
@@ -301,12 +311,19 @@ script = ExtResource("34_strike_controls")
 aim = NodePath("../../../../StrikeAim")
 runner = NodePath("../../../../MatchRunner")
 
-[node name="EconomyPill" type="PanelContainer" parent="Hud" node_paths=PackedStringArray("runner", "safe_area", "top_left")]
+[node name="EconomyPill" type="PanelContainer" parent="Hud" node_paths=PackedStringArray("runner", "safe_area", "top_left", "feed", "card")]
 theme = ExtResource("16_theme")
 script = ExtResource("40_pill")
 runner = NodePath("../../MatchRunner")
 safe_area = NodePath("../SafeArea")
 top_left = NodePath("../SafeArea/TopLeft")
+feed = NodePath("../HudStateFeed")
+card = NodePath("../EconomyCard")
+
+[node name="EconomyCard" type="PanelContainer" parent="Hud"]
+visible = false
+theme = ExtResource("16_theme")
+script = ExtResource("42_economy_card")
 
 [node name="SurrenderDialog" type="Control" parent="Hud"]
 anchor_right = 1.0

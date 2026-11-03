@@ -32,6 +32,11 @@ extends Node2D
 ## An enemy rig stands on a tile its owner's opponent may not see: the local player's fog hides it
 ## there (`is_shown`, ADR 0010 section 2) by its `visible` flag alone, so a hidden rig keeps its
 ## position, heading and frame and still answers `unit_screen_position`. Own rigs are always shown.
+## Life (ADR 0027, P136): a `SHOT` of a rig with a turret kicks the turret back along the aim and
+## rocks the hull with a heavy gun (`RigLife`, numbers in `life`), on child sprites only. The kick
+## is noted in `ticked` for a shooter the local player sees in that tick's fog and drawn on match
+## time (`LifeClock`), so a pause freezes it; the rig's own node, and so its sort key, pick and bar,
+## never moves.
 
 const RING_ART: String = "res://assets/art/svg/ui/selection_ellipse.svg"
 ## The per-row sprites of `_layers`, at PARTS * row + part; the turret is null for a type without.
@@ -51,6 +56,8 @@ const RING_MIN_DP: float = 18.0
 ## 36, so one scale gives the 2:1 ground ellipse.
 const RING_TEX_RX_PX: float = 72.0
 const NEVER_HIT: int = -1  ## What hit_time_ms answers for a unit whose hp has not dropped.
+## The life numbers when `life` is unset (ADR 0027 section 8).
+const DEFAULT_LIFE: LifeSettings = preload("res://data/life_settings.tres")
 
 ## How fast a hull, a turret or a squad rig turns, in radians per second.
 @export var turn_rate: float = 12.0
@@ -61,6 +68,8 @@ const NEVER_HIT: int = -1  ## What hit_time_ms answers for a unit whose hp has n
 @export var world_sort: WorldSort
 ## Shows every enemy rig whatever the fog says: the perf arena, and tests whose subject is not fog.
 @export var reveal_enemies: bool = false
+## The numbers of the unit life (recoil, rock); `data/life_settings.tres` when unset.
+@export var life: LifeSettings
 
 ## The frame clock in ms that hit times are stamped by (the frame that saw the hp drop). Tests
 ## replace it.
@@ -91,6 +100,9 @@ var _made: int = 0  ## Rigs made, which are the pool's misses.
 var _last_hp: PackedInt32Array = PackedInt32Array()
 var _hit_ms: PackedInt64Array = PackedInt64Array()
 var _hp_tick: int = -1  ## Tick of the snapshot whose hp is in _last_hp, -1 before the first.
+var _rig_life: RigLife = RigLife.new()  ## The kicks that run now (P136).
+var _turret_serial: int = -1  ## match_serial `_has_turret` was built for.
+var _has_turret: PackedByteArray = PackedByteArray()  ## Per type index: 1 for a turret on its art.
 var _ring_zoom: float = 1.0  ## Camera zoom the rings are sized for.
 var _dp_px: float = 1.0  ## Base px per dp, read when the selection or the window changes.
 
@@ -128,6 +140,8 @@ class Rig:
 	var sprites: Array[Sprite2D] = [null, null, null]
 	var marker: Marker = null
 	var ring: Ring = null
+	var turret_kick: Vector2 = Vector2.ZERO  ## What the Turret stands off its mount by life now.
+	var hull_kick: Vector2 = Vector2.ZERO  ## What the Hull stands off its rest by life now.
 
 
 func _ready() -> void:
@@ -139,6 +153,11 @@ func _ready() -> void:
 	_pool_root.name = "Pool"
 	_pool_root.visible = false
 	add_child(_pool_root)
+	if life == null:
+		life = DEFAULT_LIFE
+	_rig_life.setup(life)
+	if runner != null:
+		runner.ticked.connect(_on_ticked)
 	get_viewport().size_changed.connect(_resize_rings)
 	_sync_rigs()
 
@@ -147,6 +166,7 @@ func _process(delta: float) -> void:
 	var snap: MatchSnapshot = _sync_rigs()
 	if snap != null:
 		_update_rigs(snap, delta)
+		_kick_rigs(snap)
 		if not _ringed.is_empty() and camera.zoom.x != _ring_zoom:
 			_refresh_rings(snap)
 
@@ -159,6 +179,16 @@ func rig_count() -> int:
 ## The rigs made since the layer began, one for each unit that found none of its kind in the pool.
 func rigs_made() -> int:
 	return _made
+
+
+## The life sprite writes so far: one for each position the recoil set (ADR 0027 section 9's hook).
+func life_writes() -> int:
+	return _rig_life.writes
+
+
+## The kicks that run now, the rigs that are off their rest (a test hook). No sync.
+func kick_count() -> int:
+	return _rig_life.count()
 
 
 ## The rig of unit row `row`, null for a building or a row out of range. No sync.
@@ -508,6 +538,10 @@ func _new_rig(
 		if rig.sprites[part] != null:
 			world_sort.dress(rig.sprites[part], sheet, PART_NAMES[part])
 			world_sort.show_frame(rig.sprites[part], sheet, PART_NAMES[part], D_EAST, owner_id)
+	rig.turret_kick = Vector2.ZERO  # A rig out of the pool may have been kicked.
+	rig.hull_kick = Vector2.ZERO
+	if rig.sprites[HULL] != null:
+		rig.sprites[HULL].position = Vector2.ZERO
 	if rig.sprites[TURRET] != null:
 		rig.sprites[TURRET].position = sheet.mount(D_EAST) * WorldSort.ART_SCALE
 	if rig.marker != null:
@@ -692,8 +726,9 @@ func _show_hull(row: int, owner_id: int) -> void:
 	var at: int = row * PARTS
 	world_sort.show_frame(_layers[at + HULL], sheet, PART_NAMES[HULL], dir, owner_id)
 	world_sort.show_frame(_layers[at + SHADOW], sheet, PART_NAMES[SHADOW], dir, owner_id)
-	if _layers[at + TURRET] != null:
-		_layers[at + TURRET].position = sheet.mount(dir) * WorldSort.ART_SCALE
+	if _layers[at + TURRET] != null:  # On its mount, off it by the recoil that runs.
+		var kick: Vector2 = (_rigs[row] as Rig).turret_kick
+		_layers[at + TURRET].position = sheet.mount(dir) * WorldSort.ART_SCALE + kick
 
 
 ## Shows the turret frame of row `row`'s turret angle, written only when the frame index changed.
@@ -706,3 +741,82 @@ func _show_turret(row: int, owner_id: int) -> void:
 		return
 	_frames[row * 2 + 1] = dir
 	world_sort.show_frame(_layers[row * PARTS + TURRET], sheet, PART_NAMES[TURRET], dir, owner_id)
+
+
+## Notes the kicks of one tick's SHOT records, once per tick (`ticked`, also each tick of a frame
+## that plays several): a shooter with a turret that the local player may see, as `is_shown` says
+## it, by the tile of its position in this tick's fog. A hidden enemy's shot kicks nothing, so
+## nothing it does is drawn. The frame draws the kicks (`_kick_rigs`).
+func _on_ticked(_tick: int) -> void:
+	var snap: MatchSnapshot = runner.snapshot
+	if snap == null:
+		return
+	_rig_life.follow(snap.match_serial)
+	var events: PackedInt32Array = snap.events
+	for at: int in range(0, events.size(), World.EVENT_STRIDE):
+		if events[at] == World.Event.SHOT:
+			_note_shot(snap, at)
+
+
+## [SHOT, shooter id, shooter x, shooter y, ...]: a kick when the shooter is a unit whose art has a
+## turret (a squad has none) and the local player sees its tile or owns it.
+func _note_shot(snap: MatchSnapshot, at: int) -> void:
+	var events: PackedInt32Array = snap.events
+	var row: int = snap.index_of(events[at + 1])
+	if row < 0:
+		return
+	if _turret_serial != snap.match_serial:
+		_build_turret_table(snap)
+	var type: int = snap.type_index[row]
+	if type >= _has_turret.size() or _has_turret[type] == 0:
+		return
+	var player: int = FogLayer.local_player_of(runner)
+	if not reveal_enemies and snap.owner[row] != player:
+		if not FogLayer.is_seen(snap, player, events[at + 2], events[at + 3]):
+			return
+	_rig_life.shot(snap, at, true)
+
+
+## Which types of `snap` have a turret on their sheet, once for each match.
+func _build_turret_table(snap: MatchSnapshot) -> void:
+	_turret_serial = snap.match_serial
+	world_sort.sync()  # The sheets are those of the baked atlas.
+	_has_turret.resize(snap.type_ids.size())
+	for type: int in _has_turret.size():
+		var sheet: IsoSheetDef = world_sort.sheet(snap.type_ids[type])
+		_has_turret[type] = 1 if sheet != null and sheet.has_part(PART_NAMES[TURRET]) else 0
+
+
+## Draws the kicks at match time (`LifeClock`, which a pause stops): the offsets of every kick that
+## runs, written to the Turret and the Hull of its rig only when they changed. A kick whose rig is
+## gone, or has no turret on the atlas, ends.
+func _kick_rigs(snap: MatchSnapshot) -> void:
+	_rig_life.follow(snap.match_serial)
+	if _rig_life.count() == 0:
+		return
+	var live: int = _rig_life.advance(LifeClock.ms(snap, runner.alpha()))
+	for slot: int in live:
+		var row: int = snap.index_of(_rig_life.id_at(slot))
+		if row < 0 or row >= _rigs.size() or _rigs[row] == null or _sheets[row] == null:
+			_rig_life.end(slot)
+		elif _layers[row * PARTS + TURRET] == null:
+			_rig_life.end(slot)
+		else:
+			_apply_kick(row, _rig_life.turret_offset(slot), _rig_life.hull_offset(slot))
+	_rig_life.sweep()
+
+
+## Puts the Turret of row `row` at its mount plus `turret_offset` and its Hull at `hull_offset`,
+## each only when it is not there already.
+func _apply_kick(row: int, turret_offset: Vector2, hull_offset: Vector2) -> void:
+	var rig: Rig = _rigs[row] as Rig
+	var at: int = row * PARTS
+	if hull_offset != rig.hull_kick and _layers[at + HULL] != null:  # A sheet may lack the Hull.
+		rig.hull_kick = hull_offset
+		_layers[at + HULL].position = hull_offset
+		_rig_life.writes += 1
+	if turret_offset != rig.turret_kick:
+		rig.turret_kick = turret_offset
+		var mount: Vector2 = _sheets[row].mount(_frames[row * 2]) * WorldSort.ART_SCALE
+		_layers[at + TURRET].position = mount + turret_offset
+		_rig_life.writes += 1
