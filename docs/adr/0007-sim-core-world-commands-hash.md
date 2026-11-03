@@ -52,6 +52,10 @@ Status note (2026-11-02, P132 docs; ADR 0027 accepted 2026-11-02): §10 carries 
 event kind 5, `STRIKE`, written by an accepted `SUPERWEAPON` for the view's launch and strike
 effects; no accepted text changed and no hash moves.
 
+Status note (2026-11-03, the docs row after wave y): §10 carries a dated status note: a `DIED`
+record's seventh int (index 6) is 1 for a cancelled construction site (ADR 0026 §6, P128b). No
+accepted text changed and no hash moves.
+
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state
 hash. Phase 1 shipped the v0 shapes of ADR 0003: a struct-of-arrays `World` that never removes a
@@ -618,6 +622,13 @@ appended by `Strike.apply_superweapon` for every accepted `SUPERWEAPON` (row P13
 in command order beside the `SPAWNED` record a `PLACE` writes there. The kind is the strike kind (1
 rupture, 2 blackout) and the landing tick the rupture's `strike_tick` (0 for a blackout). Events
 stay out of the state: no hash moves.
+
+Status note (2026-11-03, the docs row after wave y; P128b #265, 3c29b16, as merged; the text above
+stays as accepted and the note above as dated): `DIED` is `[2, id, x, y, type, owner, cancelled,
+0]`. Index 6 (`Production.DIED_CANCEL_FLAG_AT`) is 1 when the row was a construction site
+cancelled by `CANCEL_BUILD` (ADR 0026 §6, `build_left` -1) and 0 for every other death. The view
+is to give such a record no burst, wreck or crater (P130, ADR 0026 §6 and §9); the attack cue
+already skips it (ADR 0025 §8's note of 2026-11-03).
 
 ## Consequences
 - Supersedes ADR 0003 §2 (Command and World shapes) and §3 (application rules) where they
