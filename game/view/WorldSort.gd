@@ -14,12 +14,11 @@ extends Node2D
 ## and shows another frame by a region (`show_frame`): a sheet's px are 2x art, so a region draws
 ## at 0.5 / texels, per axis (`texels`). A part with several frames per direction (ADR 0027
 ## section 4) takes the frame number as the last argument; a layer that changes it at a rate
-## keeps `base_of` from the
-## time it dresses or turns the sprite and calls `show_base`, a table read with no string;
-## `frame_count_at` is the length to wrap the frame number by. The players of the atlas are the
-## owners 1..N in order; `slot_of` maps an owner to its place, one past the ends to the nearest. A
-## scenario that lists no factions gives each player the faction of the first of its spawns whose
-## type has a sheet (the Derrick League when none has).
+## keeps `base_of` from the time it dresses or turns the sprite and calls `show_base`, a table
+## read with no string; `frame_count_at` is the length to wrap the frame number by. The players of
+## the atlas are the owners 1..N in order; `slot_of` maps an owner to its place, one past the ends
+## to the nearest. A scenario that lists no factions gives each player the faction of the first of
+## its spawns whose type has a sheet (the Derrick League when none has).
 ## The neutral damage sheet (ADR 0028 section 4, `IsoAtlas.NEUTRAL_SHEET`) is baked after the type
 ## sheets for every scenario once its file exists: `neutral_sheet` is it (null before), and
 ## `neutral_base` the base of one of its parts for an owner, resolved once per bake.
