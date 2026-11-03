@@ -479,10 +479,12 @@ func test_the_error_scan_flags_an_error_and_not_a_warning() -> void:
 	assert_array(scan.hits()).is_equal(["a.gd:3 code why", "c.gd:5 code why"])
 
 
-## An instance of the main scene.
+## An instance of the main scene, with the first frame drawn: the engine draws the snapshot of tick
+## 0 before anything is compared, and the layers' life reads the match time from the first frame.
 func _open(mode: int, impl: int) -> MainScene:
 	var scene: MainScene = MainScene.new()
 	scene.open(self, mode, impl)
+	scene.draw_first_frame()
 	_scenes.append(scene)
 	return scene
 

@@ -10,6 +10,7 @@ extends GdUnitTestSuite
 ## into the published snapshot, which the layer reads (ADR 0012 section 3), and alpha is 0.
 
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
+const Recoil: GDScript = preload("res://tests/view/support/recoil_rig.gd")
 const Frames: GDScript = preload("res://tests/view/support/rig_frames.gd")
 const REDOUBT: int = 1
 const TANK: int = 2  ## The Derrick League's, east of the Redoubt.
@@ -31,6 +32,7 @@ func before_test() -> void:
 	_runner = auto_free(Rig.runner(Rig.scenario(spawns)))
 	_layer = auto_free(BuildingLayer.new())
 	_layer.runner = _runner
+	_layer.life = Recoil.calmed(null)  # The turning only: the idle sweep has its own suite.
 	add_child(_layer)
 	_layer.set_process(false)
 	_layer._process(0.0)

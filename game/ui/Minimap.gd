@@ -1,8 +1,9 @@
 class_name Minimap
 extends Control
-## The minimap (ADR 0019 section 4, ADR 0023 sections 4 and 12, plan P88): the map as an isometric
-## diamond in a 2:1 box, in the floating panel at the top right sideways and at the right end of
-## the build band upright (`BuildSidebar` moves the one node between them). `MinimapImage` paints
+## The minimap (ADR 0019 section 4, ADR 0023 section 4, ADR 0025 section 7, plans P88 and P121): the
+## map as an isometric diamond in a 2:1 box. Since P121 it is the full radar map: this one node
+## stands in the box under the head of `RadarMap`, which shows it while `RADAR` is unfolded (the
+## picture goes on painting while it is folded away, for `RadarScope`'s crop). `MinimapImage` paints
 ## one texel per cell at the fog's cadence, and this node draws that one texture under the fog's
 ## skew (`IsoProjection.cell_to_px`) scaled to the box, so the map's diamond is inscribed in the box
 ## and the camera's frame is a plain rectangle on it: the camera's visible world rect through the

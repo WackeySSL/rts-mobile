@@ -2,12 +2,12 @@ extends GdUnitTestSuite
 ## The floating panels of the battle screen in landscape (plan P85d, ADR 0023 section 12) and the
 ## band in portrait, at the six sizes of ScreenSizes.ALL with the engine's own metrics and at every
 ## profile of both orientations, also with a cutout. Landscape: the economy pill (P119) is at the
-## top left after the Dev button, the minimap's slot at the top right and the build panel at the
-## bottom right, each inside the safe rect, at least 48 dp on both axes, the slot above the panel;
-## the cards of the panel carry their names. Portrait: the pill is there too, no slot, the band's
-## head line is empty, the tiles are plain. A turn keeps the pill's nodes and what they show. A
-## touch on the pill or the slot orders nothing. How every HUD control sits among the others is
-## test_hud_layout's, the zone and the tabs are test_build_sidebar_layout's.
+## top left after the Dev button, the radar scope (P121) at the top right and the build panel at the
+## bottom right, each inside the safe rect, at least 48 dp on both axes, the scope above the panel;
+## the cards of the panel carry their names. Portrait: the pill and the scope are there too, the
+## band's head line is empty, the tiles are plain. A turn keeps the pill's nodes and what they
+## show. A touch on the pill or the scope orders nothing. How every HUD control sits among the
+## others is test_hud_layout's, the zone and the tabs are test_build_sidebar_layout's.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -46,7 +46,8 @@ func before_test() -> void:
 	MenuRig.begin()
 
 
-func test_the_pill_the_slot_and_the_panel_are_at_their_corners_in_landscape_at_every_size() -> void:
+func test_the_pill_the_scope_and_the_panel_are_at_their_corners_in_landscape_at_every_size(
+) -> void:
 	for screen: Dictionary in _screens(false):
 		await _open(screen["size"], screen["metrics"])
 		var why: String = str(screen["label"])
@@ -54,12 +55,12 @@ func test_the_pill_the_slot_and_the_panel_are_at_their_corners_in_landscape_at_e
 		var safe: Rect2 = UiScale.safe_rect_base()
 		var dev: Rect2 = _rect("DevButton")
 		var pill: Rect2 = _rect("EconomyPill")
-		var slot: Rect2 = _rect("MinimapSlot")
+		var scope: Rect2 = _rect("RadarScope")
 		var panel: Rect2 = _rect(_sidebar)
 		var at: String = (
-			"%s: pill %s, slot %s, panel %s, inner %s" % [why, pill, slot, panel, inner]
+			"%s: pill %s, scope %s, panel %s, inner %s" % [why, pill, scope, panel, inner]
 		)
-		for visible_part: String in ["EconomyPill", "MinimapSlot"]:
+		for visible_part: String in ["EconomyPill", "RadarScope"]:
 			var shown: bool = (_hud(visible_part) as Control).visible
 			assert_bool(shown).override_failure_message(at).is_true()
 		# The top left: the pill starts a gap after the Dev button, on the same top line.
@@ -70,14 +71,14 @@ func test_the_pill_the_slot_and_the_panel_are_at_their_corners_in_landscape_at_e
 			dev.end.x + UiScale.dp(8.0), 1.5
 		)
 		# The top right, and the bottom right below it.
-		assert_float(slot.end.x).override_failure_message(at).is_equal_approx(inner.end.x, 0.5)
-		assert_float(slot.position.y).override_failure_message(at).is_equal_approx(
+		assert_float(scope.end.x).override_failure_message(at).is_equal_approx(inner.end.x, 0.5)
+		assert_float(scope.position.y).override_failure_message(at).is_equal_approx(
 			inner.position.y, TOLERANCE_PX
 		)
 		assert_float(panel.end.x).override_failure_message(at).is_equal_approx(inner.end.x, 0.5)
 		assert_float(panel.end.y).override_failure_message(at).is_equal_approx(inner.end.y, 0.5)
-		assert_float(slot.end.y).override_failure_message(at).is_less_equal(panel.position.y)
-		var sizes: Dictionary[String, Rect2] = {"pill": pill, "slot": slot, "panel": panel}
+		assert_float(scope.end.y).override_failure_message(at).is_less_equal(panel.position.y)
+		var sizes: Dictionary[String, Rect2] = {"pill": pill, "scope": scope, "panel": panel}
 		for part: String in sizes:
 			var rect: Rect2 = sizes[part]
 			var least: float = UiScale.dp(48.0) - TOLERANCE_PX
@@ -87,26 +88,24 @@ func test_the_pill_the_slot_and_the_panel_are_at_their_corners_in_landscape_at_e
 		assert_float(pill.size.x).override_failure_message(at).is_greater_equal(
 			UiScale.dp(HudCorners.PILL_DP.x) - TOLERANCE_PX
 		)
-		var slot_dp: Vector2 = UiScale.dp_vec(HudLayout.SLOT_DP.x, HudLayout.SLOT_DP.y)
-		assert_float(slot.size.x).override_failure_message(at).is_greater_equal(
-			slot_dp.x - TOLERANCE_PX
-		)
-		assert_float(slot.size.y).override_failure_message(at).is_greater_equal(
-			slot_dp.y - TOLERANCE_PX
+		var scope_px: float = UiScale.dp(HudCorners.SCOPE_DP)  # 56 dp round (ADR 0025 section 2).
+		assert_vector(scope.size).override_failure_message(at).is_equal_approx(
+			Vector2(scope_px, scope_px), Vector2(1.0, 1.0)
 		)
 		# The credits and the power are the pill's, and whole inside it.
 		assert_bool(pill.encloses(_rect("Line"))).override_failure_message(at).is_true()
 		assert_object(_hud("Status")).is_null()  # The band and the strip have no status line.
 
 
-func test_in_portrait_the_pill_shows_there_is_no_slot_and_the_bands_head_line_is_empty() -> void:
+func test_in_portrait_the_pill_and_the_scope_show_and_the_bands_head_line_is_empty() -> void:
 	for screen: Dictionary in _screens(true):
 		await _open(screen["size"], screen["metrics"])
 		var why: String = str(screen["label"])
 		var pill_shown: bool = (_hud("EconomyPill") as Control).visible
 		assert_bool(pill_shown).override_failure_message(why).is_true()
-		var slot_shown: bool = (_hud("MinimapSlot") as Control).visible
-		assert_bool(slot_shown).override_failure_message(why).is_false()
+		var scope_shown: bool = (_hud("RadarScope") as Control).visible
+		assert_bool(scope_shown).override_failure_message(why).is_true()
+		assert_object(_hud("MinimapSlot")).override_failure_message(why).is_null()  # P121.
 		var head: Node = _hud("Head")  # What the pin's place keeps until P120 replaces the band.
 		assert_object(head.get_parent()).override_failure_message(why).is_same(_hud("Stack"))
 		assert_int(head.get_index()).override_failure_message(why).is_equal(0)
@@ -116,7 +115,7 @@ func test_in_portrait_the_pill_shows_there_is_no_slot_and_the_bands_head_line_is
 
 
 ## A turn keeps the pill's nodes (the same credits label and bar) and what they show, and sends
-## nothing; the slot comes and goes with the orientation, the pill stays.
+## nothing; the pill and the scope stay through every turn.
 func test_a_turn_keeps_the_pills_nodes_and_what_they_show() -> void:
 	var landscape: UiMetrics = UiProfiles.by_name(&"android_6in")
 	var portrait: UiMetrics = UiProfiles.by_name(&"android_6in_portrait")
@@ -135,7 +134,7 @@ func test_a_turn_keeps_the_pills_nodes_and_what_they_show() -> void:
 		assert_object(_hud("PowerBar")).is_same(bar)
 		assert_str(credits.text).is_equal("1234")
 		assert_bool((_hud("EconomyPill") as Control).visible).is_true()
-		assert_bool((_hud("MinimapSlot") as Control).visible).is_equal(turn == landscape)
+		assert_bool((_hud("RadarScope") as Control).visible).is_true()
 	assert_array(_sent).is_empty()
 
 
@@ -186,14 +185,14 @@ func test_the_cards_carry_the_types_names_in_landscape_and_the_band_tiles_do_not
 			assert_int(tiles).override_failure_message(why).is_greater(0)
 
 
-## A touch on the pill or on the slot is the panel's own: with units selected it orders nothing,
+## A touch on the pill or on the scope is the panel's own: with units selected it orders nothing,
 ## where a tap on the map does.
-func test_a_touch_on_the_pill_or_the_slot_orders_nothing_and_a_touch_on_the_map_does() -> void:
+func test_a_touch_on_the_pill_or_the_scope_orders_nothing_and_a_touch_on_the_map_does() -> void:
 	var phone: UiMetrics = UiProfiles.by_name(&"android_6in")
 	await _open(phone.window_size, phone)
 	var controller: PlayerController = _main.get_node("PlayerController")
 	controller.selection.set_ids(PackedInt32Array([1, 2]))
-	for part: String in ["EconomyPill", "MinimapSlot"]:
+	for part: String in ["EconomyPill", "RadarScope"]:
 		var at: Vector2 = _rect(part).get_center()
 		TouchEvents.press(get_viewport(), 0, at)
 		TouchEvents.release(get_viewport(), 0, at)

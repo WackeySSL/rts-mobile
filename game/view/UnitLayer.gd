@@ -37,6 +37,10 @@ extends Node2D
 ## is noted in `ticked` for a shooter the local player sees in that tick's fog and drawn on match
 ## time (`LifeClock`), so a pause freezes it; the rig's own node, and so its sort key, pick and bar,
 ## never moves.
+## Idle life (P140): a vehicle that stood still in the last tick with no target, inside the view
+## rect, shakes its Hull and Turret by a fraction of a px (`RigLife.shake_offset`) and, with a
+## turret, looks one frame aside now and then (`look_side`). Any move, any target and `reduced`
+## calm it to its rest at once; a squad has none of it.
 
 const RING_ART: String = "res://assets/art/svg/ui/selection_ellipse.svg"
 ## The per-row sprites of `_layers`, at PARTS * row + part; the turret is null for a type without.
@@ -58,6 +62,9 @@ const RING_TEX_RX_PX: float = 72.0
 const NEVER_HIT: int = -1  ## What hit_time_ms answers for a unit whose hp has not dropped.
 ## The life numbers when `life` is unset (ADR 0027 section 8).
 const DEFAULT_LIFE: LifeSettings = preload("res://data/life_settings.tres")
+## The view rect is grown by a tile before the idle life asks whether a rig is in it (ADR 0027
+## section 9), so a sprite whose foot is just off the edge keeps its shake.
+const IDLE_MARGIN_PX: float = IsoProjection.HALF_W * 2.0
 
 ## How fast a hull, a turret or a squad rig turns, in radians per second.
 @export var turn_rate: float = 12.0
@@ -142,6 +149,7 @@ class Rig:
 	var ring: Ring = null
 	var turret_kick: Vector2 = Vector2.ZERO  ## What the Turret stands off its mount by life now.
 	var hull_kick: Vector2 = Vector2.ZERO  ## What the Hull stands off its rest by life now.
+	var idle: RigLife.Idle = RigLife.Idle.new()  ## The idle shake and look, on top of the kicks.
 
 
 func _ready() -> void:
@@ -538,8 +546,10 @@ func _new_rig(
 		if rig.sprites[part] != null:
 			world_sort.dress(rig.sprites[part], sheet, PART_NAMES[part])
 			world_sort.show_frame(rig.sprites[part], sheet, PART_NAMES[part], D_EAST, owner_id)
-	rig.turret_kick = Vector2.ZERO  # A rig out of the pool may have been kicked.
+	rig.turret_kick = Vector2.ZERO  # A rig out of the pool may have been kicked, shaken or turned.
 	rig.hull_kick = Vector2.ZERO
+	rig.idle.reset()
+	rig.idle.turns = rig.sprites[TURRET] != null and sheet.counts[TURRET] == DIRECTIONS
 	if rig.sprites[HULL] != null:
 		rig.sprites[HULL].position = Vector2.ZERO
 	if rig.sprites[TURRET] != null:
@@ -652,6 +662,7 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 	var speeds: PackedInt32Array = snap.type_speed
 	var targets: PackedInt32Array = snap.target
 	var target_rows: PackedInt32Array = snap.target_row
+	var ids: PackedInt32Array = snap.unit_id
 	var rigs: Array[Node2D] = _rigs
 	var layers: Array[Sprite2D] = _layers
 	# The fog hides an enemy rig on a tile the local player does not see. The tile is the one of
@@ -662,6 +673,12 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 	var fogged: bool = not reveal_enemies and FogLayer.covers(fog, player)
 	var counts: PackedInt32Array = fog.visible
 	var counts_at: int = (player - 1) * fog.cells
+	# Idle life (P140): the view rect, grown by a tile, and the clock that never goes back.
+	var view: Rect2 = Rect2()  # Without a camera nothing is in view.
+	if camera != null:
+		view = camera.visible_world_rect().grow(IDLE_MARGIN_PX)
+	var idle_ms: float = _rig_life.idle_clock(snap, alpha)
+	var armours: PackedInt32Array = snap.type_armour
 	for row: int in rigs.size():
 		if rigs[row] == null:
 			continue  # A building: BuildingLayer draws it.
@@ -683,6 +700,19 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 		var speed: int = speeds[types[row]]
 		if moved > 0 and 4 * moved >= speed * speed:
 			_aim[row] = atan2(float(moved_y), float(moved_x))
+		var stands: bool = (  # A vehicle that stood still with no target is idle.
+			moved == 0
+			and targets[row] == 0
+			and armours[types[row]] != World.Armour.INFANTRY
+			and not life.reduced
+		)
+		var idle: RigLife.Idle = (rigs[row] as Rig).idle
+		if stands or idle.live:  # A rig that moves or fires and is at rest is not asked.
+			var changed: int = _rig_life.idle_step(
+				idle, ids[row], idle_ms, stands, shown and view.has_point(at)
+			)
+			if changed != 0:
+				_apply_idle(row, changed, owners[row])
 		var seen: int = target_rows[row]
 		var turret: Sprite2D = layers[row * PARTS + TURRET]
 		var bearing: float = 0.0  # To the target as drawn, from rig to rig, on the grid.
@@ -726,9 +756,11 @@ func _show_hull(row: int, owner_id: int) -> void:
 	var at: int = row * PARTS
 	world_sort.show_frame(_layers[at + HULL], sheet, PART_NAMES[HULL], dir, owner_id)
 	world_sort.show_frame(_layers[at + SHADOW], sheet, PART_NAMES[SHADOW], dir, owner_id)
-	if _layers[at + TURRET] != null:  # On its mount, off it by the recoil that runs.
-		var kick: Vector2 = (_rigs[row] as Rig).turret_kick
-		_layers[at + TURRET].position = sheet.mount(dir) * WorldSort.ART_SCALE + kick
+	if _layers[at + TURRET] != null:  # On its mount, off it by the recoil and the shake that run.
+		var rig: Rig = _rigs[row] as Rig
+		_layers[at + TURRET].position = (
+			sheet.mount(dir) * WorldSort.ART_SCALE + rig.turret_kick + rig.idle.shake
+		)
 
 
 ## Shows the turret frame of row `row`'s turret angle, written only when the frame index changed.
@@ -736,8 +768,9 @@ func _show_turret(row: int, owner_id: int) -> void:
 	var sheet: IsoSheetDef = _sheets[row]
 	if sheet == null:
 		return
-	var dir: int = frame_of(_turret[row], sheet.counts[TURRET])  # The turret is the second part.
-	if dir == _frames[row * 2 + 1]:
+	var aside: int = (_rigs[row] as Rig).idle.look  # An idle look: one frame off the aim.
+	var dir: int = posmod(frame_of(_turret[row], sheet.counts[TURRET]) + aside, DIRECTIONS)
+	if dir == _frames[row * 2 + 1]:  # The turret is the second part.
 		return
 	_frames[row * 2 + 1] = dir
 	world_sort.show_frame(_layers[row * PARTS + TURRET], sheet, PART_NAMES[TURRET], dir, owner_id)
@@ -813,10 +846,28 @@ func _apply_kick(row: int, turret_offset: Vector2, hull_offset: Vector2) -> void
 	var at: int = row * PARTS
 	if hull_offset != rig.hull_kick and _layers[at + HULL] != null:  # A sheet may lack the Hull.
 		rig.hull_kick = hull_offset
-		_layers[at + HULL].position = hull_offset
+		_layers[at + HULL].position = hull_offset + rig.idle.shake
 		_rig_life.writes += 1
 	if turret_offset != rig.turret_kick:
 		rig.turret_kick = turret_offset
 		var mount: Vector2 = _sheets[row].mount(_frames[row * 2]) * WorldSort.ART_SCALE
-		_layers[at + TURRET].position = mount + turret_offset
+		_layers[at + TURRET].position = mount + turret_offset + rig.idle.shake
+		_rig_life.writes += 1
+
+
+## Writes what `RigLife.idle_step` changed for row `row`: the shake moves the Hull and the Turret
+## off their rest (on top of the kicks), a look changes the Turret's region.
+func _apply_idle(row: int, changed: int, owner_id: int) -> void:
+	var rig: Rig = _rigs[row] as Rig
+	var at: int = row * PARTS
+	if (changed & RigLife.CHANGED_SHAKE) != 0:
+		if _layers[at + HULL] != null:
+			_layers[at + HULL].position = rig.hull_kick + rig.idle.shake
+			_rig_life.writes += 1
+		if _layers[at + TURRET] != null:
+			var mount: Vector2 = _sheets[row].mount(_frames[row * 2]) * WorldSort.ART_SCALE
+			_layers[at + TURRET].position = mount + rig.turret_kick + rig.idle.shake
+			_rig_life.writes += 1
+	if (changed & RigLife.CHANGED_LOOK) != 0:
+		_show_turret(row, owner_id)
 		_rig_life.writes += 1

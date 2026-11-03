@@ -13,16 +13,19 @@ extends Node2D
 ## Buildings are static, so a frame compares three integers and nothing more: the nodes are made
 ## when `rows_version` moves (`redraw_count` counts those merges) by a walk over the ascending unit
 ## ids, and an enemy building's visibility is written when the local player's fog version moves.
-## Only the heads, while they have a target, change in a frame. An own building is always shown, an
-## enemy one where any cell of its footprint is seen now (`is_seen`), whole, with its shadow;
-## `reveal_enemies` shows all. A building that leaves the rows while it is shown was destroyed in
-## sight and leaves a crater in the decal layer; a hidden one, or a new match, leaves none. The hit
-## times of a building's bar are the unit layer's (it notes the hp of every row); the bar layer
-## reads `is_shown`, `is_selected`, `frame_box` and `bar_lift_px` from here.
+## Only the heads, while they have a target or sweep, change in a frame. An own building is always
+## shown, an enemy one where any cell of its footprint is seen now (`is_seen`), whole, with its
+## shadow; `reveal_enemies` shows all. A building that leaves the rows while it is shown was
+## destroyed in sight and leaves a crater in the decal layer; a hidden one, or a new match, leaves
+## none. The hit times of a building's bar are the unit layer's (it notes the hp of every row); the
+## bar layer reads `is_shown`, `is_selected`, `frame_box` and `bar_lift_px` from here.
 ## Life (ADR 0027, P136): a `SHOT` of a defence kicks its `Head` back along the aim (`RigLife`,
 ## numbers in `life`), on the head sprite only: the node, the Body and the shadow never move. The
 ## kick is noted in `ticked` for a building the local player sees in that tick's fog and drawn on
 ## match time (`LifeClock`), so a pause freezes it.
+## Idle life (P140): a shown defence that is complete and online and has no target sweeps its head
+## a few frames either side of its last aim (`RigLife.sweep_offset`), by the head's region only. A
+## target, a site, a blackout and `reduced` put the head back on its aim.
 ## A tap picks a building on its silhouette (P115b, ADR 0023 section 3): `fill_pick_snapshot` lists
 ## the shown buildings with the footprint's diamond and the height of the picture above it (the
 ## top of the Body sprite, so the atlas region and its bake scale), for the `Picker`. A selection
@@ -78,6 +81,7 @@ class Entry:
 	var head_angle: float = 0.0  ## Grid angle, east 0, as the unit layer's.
 	var head_rest: Vector2 = Vector2.ZERO  ## Where the head stands on its mount.
 	var kick: Vector2 = Vector2.ZERO  ## What the head stands off its mount by life now.
+	var idle: RigLife.Idle = RigLife.Idle.new()  ## The idle sweep: frames off `head_dir` it shows.
 
 
 ## What stands in for art that is not on the atlas: the footprint's diamond in the owner's colour.
@@ -122,6 +126,7 @@ func _process(delta: float) -> void:
 		return
 	if not _heads.is_empty():
 		_turn_heads(snap, delta)
+		_sweep_heads(snap)
 	_kick_heads(snap)  # Also with no head left: the kicks of the heads that died end.
 
 
@@ -497,6 +502,7 @@ func _turn_heads(snap: MatchSnapshot, delta: float) -> void:
 		var dir: int = UnitLayer.frame_of(entry.head_angle, 16)
 		if dir != entry.head_dir:
 			entry.head_dir = dir
+			entry.idle.sweep = 0  # The head shows its aim, not a frame off it.
 			world_sort.show_frame(entry.head, entry.sheet, HEAD, dir, owners[row])
 
 
@@ -545,3 +551,26 @@ func _kick_heads(snap: MatchSnapshot) -> void:
 			entry.head.position = entry.head_rest + offset
 			_rig_life.writes += 1
 	_rig_life.sweep()
+
+
+## Idle life of the heads, once a frame: a shown head whose building has no target, is complete
+## (`build_left` 0) and is not in a blackout sweeps for the idle clock (it never goes back, so a
+## resume does not sweep backwards); any other shown head shows its aim. A region is written only
+## when the sweep's frame changed. A hidden head is left as it is.
+func _sweep_heads(snap: MatchSnapshot) -> void:
+	var now_ms: float = _rig_life.idle_clock(snap, runner.alpha())
+	var targets: PackedInt32Array = snap.target_row
+	var building: PackedInt32Array = snap.build_left
+	var offline: PackedInt32Array = snap.offline_until
+	for entry: Entry in _heads:
+		var row: int = entry.row
+		var active: bool = (
+			not life.reduced
+			and targets[row] < 0
+			and building[row] == 0
+			and offline[row] <= snap.tick
+		)
+		if entry.shown and _rig_life.sweep_step(entry.idle, entry.id, now_ms, active):
+			var dir: int = posmod(entry.head_dir + entry.idle.sweep, UnitLayer.DIRECTIONS)
+			world_sort.show_frame(entry.head, entry.sheet, HEAD, dir, snap.owner[row])
+			_rig_life.writes += 1
