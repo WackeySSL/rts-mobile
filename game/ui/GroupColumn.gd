@@ -33,6 +33,7 @@ const ICON_DP: float = 24.0
 @export var strike_aim: StrikeAim
 ## The Dev over Surrender stack (until P124): the column stands under it.
 @export var top_left: Control
+@export var build_button: BuildButton  ## Its Ready chip takes room beside BUILD upright.
 
 var _all: Button = Button.new()
 var _groups: Array[HoldButton] = []  ## Group `slot` is at `slot - 1`.
@@ -91,6 +92,8 @@ func _ready() -> void:
 		feed.state.changed.connect(_on_unfold_changed)
 	if strike_aim != null:
 		strike_aim.changed.connect(_on_aim_changed)
+	if build_button != null:
+		build_button.ready_changed.connect(place)
 	get_viewport().size_changed.connect(_apply_dp)
 	_apply_dp()
 
@@ -132,6 +135,7 @@ func place() -> void:
 	if feed != null:
 		feed.state.fill(shown)
 	shown.groups = _items.size()
+	shown.ready = build_button != null and build_button.ready_type >= 0  # The chip beside BUILD.
 	if strike_aim != null and strike_aim.owned:  # The aim's check mark and X stand left of it.
 		shown.strike = true
 		shown.aim = strike_aim.active

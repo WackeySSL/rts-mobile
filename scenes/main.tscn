@@ -293,7 +293,7 @@ top_left = NodePath("../SafeArea/TopLeft")
 feed = NodePath("../HudStateFeed")
 card = NodePath("../EconomyCard")
 
-[node name="GroupColumn" type="Control" parent="Hud" node_paths=PackedStringArray("feed", "safe_area", "strike_aim", "top_left")]
+[node name="GroupColumn" type="Control" parent="Hud" node_paths=PackedStringArray("feed", "safe_area", "strike_aim", "top_left", "build_button")]
 mouse_filter = 2
 theme = ExtResource("16_theme")
 script = ExtResource("14_group_column")
@@ -302,6 +302,7 @@ feed = NodePath("../HudStateFeed")
 safe_area = NodePath("../SafeArea")
 strike_aim = NodePath("../../StrikeAim")
 top_left = NodePath("../SafeArea/TopLeft")
+build_button = NodePath("../BuildButton")
 
 [node name="AttackCues" type="Node" parent="Hud" node_paths=PackedStringArray("runner", "camera", "feed")]
 script = ExtResource("44_attack_cues")
@@ -309,7 +310,7 @@ runner = NodePath("../../MatchRunner")
 camera = NodePath("../../Camera")
 feed = NodePath("../HudStateFeed")
 
-[node name="AttackToast" type="PanelContainer" parent="Hud" node_paths=PackedStringArray("cues", "feed", "camera", "safe_area", "pill", "top_left", "selection", "group_column")]
+[node name="AttackToast" type="PanelContainer" parent="Hud" node_paths=PackedStringArray("cues", "feed", "camera", "safe_area", "pill", "top_left", "selection", "group_column", "build_button")]
 visible = false
 theme = ExtResource("16_theme")
 script = ExtResource("45_attack_toast")
@@ -321,6 +322,7 @@ pill = NodePath("../EconomyPill")
 top_left = NodePath("../SafeArea/TopLeft")
 selection = NodePath("../SafeArea/SelectionBand/SelectionPanel")
 group_column = NodePath("../GroupColumn")
+build_button = NodePath("../BuildButton")
 
 [node name="EconomyCard" type="PanelContainer" parent="Hud"]
 visible = false

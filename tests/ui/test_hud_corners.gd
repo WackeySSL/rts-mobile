@@ -238,14 +238,15 @@ func test_the_pill_folds_with_the_drawer_open_and_the_toast_starts_after_the_sta
 
 
 ## Where the room from the stack to the panel is under `TOAST_LEAST_DP` (the pill is folded, so the
-## room starts at the pill's place), the toast stands under the top line, from that place.
+## room starts at the pill's place), the toast stands under the top line, from that place or, where
+## the group column stands there, a gap right of the column (it is 56 dp wide: 64).
 func test_a_folded_pill_leaves_the_toast_its_least_width_or_the_top_line() -> void:
 	var shown: HudCorners.Shown = _shown(["drawer", "toast"], 1)
 	shown.left_taken = 48.0
 	shown.left_height = 104.0  # Dev over Surrender.
 	var safe: Rect2 = Rect2(0.0, 0.0, 526.0, 280.0)  # Panel at 214..526: 56..206 is 150 dp.
 	var out: Dictionary[StringName, Rect2] = _place(safe, false, shown)
-	_assert_rect(out[HudCorners.TOAST], Rect2(56.0, 112.0, 150.0, 48.0))
+	_assert_rect(out[HudCorners.TOAST], Rect2(64.0, 112.0, 142.0, 48.0))
 	safe = Rect2(0.0, 0.0, 576.0, 280.0)  # 56..256 is exactly the least width: beside the stack.
 	out = _place(safe, false, shown)
 	assert_float(out[HudCorners.TOAST].position.y).is_equal(0.0)
@@ -710,7 +711,6 @@ func test_sideways_the_column_stands_under_the_stack_and_the_short_toast_clear_o
 		for height: float in [0.0, 48.0, 104.0]:
 			for groups: int in [1, 3, 5]:
 				var shown: HudCorners.Shown = _shown(["toast", "drawer"], groups)
-				shown.pill_over_drawer = true
 				shown.pill_width = 320.0
 				shown.left_taken = 77.0 if height > 0.0 else 0.0
 				shown.left_height = height
@@ -728,10 +728,6 @@ func test_sideways_the_column_stands_under_the_stack_and_the_short_toast_clear_o
 					var rect: Rect2 = out[HudCorners.group_key(index)]
 					var toast: Rect2 = out[HudCorners.TOAST]
 					assert_bool(rect.intersects(toast)).override_failure_message(why).is_false()
-					(
-						assert_bool(rect.intersects(out[HudCorners.PILL]))
-						. override_failure_message(why)
-						. is_false()
-					)
+					assert_bool(out.has(HudCorners.PILL)).override_failure_message(why).is_false()
 				checked += 1
 	assert_int(checked).is_greater(40)

@@ -29,6 +29,7 @@ const HINT: String = "Tap to jump there"
 ## Landscape, where the room beside the pill is short, the toast stands under the top line: right
 ## of this column, which starts on that line.
 @export var group_column: GroupColumn
+@export var build_button: BuildButton  ## The column's width upright depends on its Ready chip.
 
 var _row: HBoxContainer = HBoxContainer.new()
 var _glyph: TextureRect = TextureRect.new()
@@ -85,6 +86,7 @@ func place() -> void:
 		shown.pill_width = pill.size.x / dp
 	if group_column != null:
 		shown.groups = group_column.item_count()
+	shown.ready = build_button != null and build_button.ready_type >= 0
 	if top_left != null and top_left.visible:
 		shown.left_taken = HudLayout.first_visible_width(top_left) / dp
 		shown.left_height = top_left.get_combined_minimum_size().y / dp

@@ -194,10 +194,8 @@ func test_upright_the_riders_stay_a_gap_above_the_drawer_at_every_step() -> void
 		_sidebar.advance(STEP_S)
 		var zone: float = _sidebar._extent
 		var why: String = "step %d, zone %s" % [step, zone]
-		(
-			assert_float(HudLayout.bottom_zone_px())
-			. override_failure_message(why)
-			. is_equal_approx(zone, TOLERANCE_PX)
+		assert_float(HudLayout.bottom_zone_px()).override_failure_message(why).is_equal_approx(
+			zone, TOLERANCE_PX
 		)
 	await _settle()
 	assert_float(HudLayout.menu_top_px).is_less(safe_end)

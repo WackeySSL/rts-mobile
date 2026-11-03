@@ -352,6 +352,7 @@ func test_the_group_column_keeps_clear_of_the_strike_row_during_the_aim() -> voi
 	for screen: Dictionary in _screens(null):
 		await _open(screen["size"], screen["metrics"], true)
 		var why: String = str(screen["label"])
+		_make_ready()  # The Ready chip stands beside BUILD: the column leaves it its width too.
 		var tank: Array = [2]
 		for slot: int in range(1, 4):
 			_controller.selection.set_ids(PackedInt32Array(tank))
@@ -367,8 +368,10 @@ func test_the_group_column_keeps_clear_of_the_strike_row_during_the_aim() -> voi
 			var parts: Array[Rect2] = []
 			for part: String in TAPPABLE:
 				parts.append(_rect(part))
+			parts.append(_rect("ReadyChip"))
 			var shown: HudCorners.Shown = HudCorners.Shown.new()
 			shown.groups = 4
+			shown.ready = true
 			shown.strike = true
 			shown.aim = aiming
 			var dp: float = UiScale.base_px_per_dp()
