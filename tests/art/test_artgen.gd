@@ -232,7 +232,10 @@ func test_a_part_has_one_canvas_in_every_direction_and_a_building_is_anchored_at
 					assert_int(_attribute(root, "height")).override_failure_message(file).is_equal(
 						layout.size.y
 					)
-			assert_bool(Rect2i(Vector2i.ZERO, layout.size).has_point(layout.origin)).is_true()
+			# The origin is in the canvas; a building's `anim` part is cropped to its element and the
+			# origin, which then lies on the bottom edge (the footprint's centre is the anchor).
+			var canvas: Rect2i = Rect2i(Vector2i.ZERO, layout.size + Vector2i.ONE)
+			assert_bool(canvas.has_point(layout.origin)).override_failure_message(path).is_true()
 			if part in [&"hull", ArtModel.SHADOW] and model.category == &"bld":
 				# A tile is 128 x 64 px at 2x: the canvas of the body is the footprint wide, the
 				# origin its centre, the anchor the diamond's back corner 32 x n px above it

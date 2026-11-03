@@ -46,3 +46,7 @@ prims = PackedStringArray(
 "prism turret titanium 0.66 0 0.24 0.17 0.065 0.065 axis=x sides=6",
 "prism turret titanium 0.82 0 0.3 0.17 0.065 0.065 axis=x sides=6"
 )
+emitters = PackedStringArray(
+"exhaust -0.76 0.2 0.14"
+)
+marks = &"wheels"

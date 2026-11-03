@@ -26,7 +26,8 @@ static func svg_size(path: String) -> String:
 
 
 ## The default view of a building on a transparent page at zoom 1, its footprint's centre at
-## GROUND_POINT: the body, and the head at its mount facing `head_dir`.
+## GROUND_POINT: the body, the first frame of its `anim` part (P143) and the head at its mount
+## facing `head_dir`.
 static func default_picture(sheet: IsoSheetDef, head_dir: int) -> Image:
 	var picture: Image = Image.create_empty(PAGE.x, PAGE.y, false, Image.FORMAT_RGBA8)
 	var body: Image = raster(FileAccess.get_file_as_string(sheet.path(&"hull", -1)), SCALE)
@@ -35,6 +36,13 @@ static func default_picture(sheet: IsoSheetDef, head_dir: int) -> Image:
 		Rect2i(Vector2i.ZERO, body.get_size()),
 		GROUND_POINT - Vector2i(Vector2(sheet.origin(&"hull")) * SCALE)
 	)
+	if sheet.has_part(&"anim"):
+		var moving: Image = raster(FileAccess.get_file_as_string(sheet.path(&"anim", -1, 0)), SCALE)
+		picture.blend_rect(
+			moving,
+			Rect2i(Vector2i.ZERO, moving.get_size()),
+			GROUND_POINT - Vector2i(Vector2(sheet.origin(&"anim")) * SCALE)
+		)
 	if sheet.has_part(&"head"):
 		var head: Image = raster(
 			FileAccess.get_file_as_string(sheet.path(&"head", head_dir)), SCALE
@@ -130,10 +138,10 @@ static func pieces(image: Image) -> int:
 	return count
 
 
-## The tallest point of a model in tiles, a head at its mount.
+## The tallest point of a model in tiles, a head at its mount and the moving element at rest.
 static func top(model: ArtModel) -> float:
 	var tallest: float = 0.0
-	for part: StringName in model.parts():
+	for part: StringName in model.parts() + [ArtPrim.ANIM]:
 		for prim: ArtPrim in model.primitives(part):
 			var lift: float = model.mount.z if part == &"head" else 0.0
 			tallest = maxf(tallest, prim.aabb().end.z + lift)

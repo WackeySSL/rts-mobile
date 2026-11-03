@@ -18,3 +18,5 @@ bar_lift_px = 142
 pick_lift_px = 71
 muzzle_lift_px = 0
 icon = "res://assets/art/iso/icons/item_headquarters.svg"
+emitters = PackedStringArray("smoke")
+emitter_points = PackedVector2Array(0, -274.2)

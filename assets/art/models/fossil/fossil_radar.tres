@@ -50,12 +50,31 @@ prims = PackedStringArray(
 "box hull team -0.4 -0.56 1.84 0.41 0.09 0.12",
 "box hull team -0.4 -0.24 1.84 0.41 0.09 0.12",
 "box hull steel -0.4 -0.4 1.9 0.4 0.4 0.08",
-"box hull steel -0.36 -0.4 1.98 0.06 0.1 0.1",
-"box hull steel -0.3 -0.4 2.02 0.05 0.8 0.46",
-"box hull iron -0.26 -0.4 2.08 0.03 0.74 0.07",
-"box hull iron -0.26 -0.4 2.21 0.03 0.74 0.07",
-"box hull iron -0.26 -0.4 2.34 0.03 0.74 0.07",
-"box hull team -0.3 -0.83 2 0.08 0.05 0.5",
-"box hull team -0.3 0.03 2 0.08 0.05 0.5",
-"prism hull steel -0.52 -0.28 1.98 0.04 0.04 0.5 sides=6"
+"box anim steel -0.36 -0.4 1.98 0.06 0.1 0.1 group=ant",
+"box anim steel -0.3 -0.4 2.02 0.05 0.8 0.46 group=ant",
+"box anim iron -0.26 -0.4 2.08 0.03 0.74 0.07 group=ant",
+"box anim iron -0.26 -0.4 2.21 0.03 0.74 0.07 group=ant",
+"box anim iron -0.26 -0.4 2.34 0.03 0.74 0.07 group=ant",
+"box anim team -0.3 -0.83 2 0.08 0.05 0.5 group=ant",
+"box anim team -0.3 0.03 2 0.08 0.05 0.5 group=ant",
+"prism anim steel -0.52 -0.28 1.98 0.04 0.04 0.5 sides=6"
 )
+poses = PackedStringArray(
+"anim 16",
+"anim 1 ant turn z 22.5 -0.4 -0.4 0",
+"anim 2 ant turn z 45 -0.4 -0.4 0",
+"anim 3 ant turn z 67.5 -0.4 -0.4 0",
+"anim 4 ant turn z 90 -0.4 -0.4 0",
+"anim 5 ant turn z 112.5 -0.4 -0.4 0",
+"anim 6 ant turn z 135 -0.4 -0.4 0",
+"anim 7 ant turn z 157.5 -0.4 -0.4 0",
+"anim 8 ant turn z 180 -0.4 -0.4 0",
+"anim 9 ant turn z 202.5 -0.4 -0.4 0",
+"anim 10 ant turn z 225 -0.4 -0.4 0",
+"anim 11 ant turn z 247.5 -0.4 -0.4 0",
+"anim 12 ant turn z 270 -0.4 -0.4 0",
+"anim 13 ant turn z 292.5 -0.4 -0.4 0",
+"anim 14 ant turn z 315 -0.4 -0.4 0",
+"anim 15 ant turn z 337.5 -0.4 -0.4 0"
+)
+anim_ms = 140

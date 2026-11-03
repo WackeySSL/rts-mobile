@@ -18,3 +18,6 @@ bar_lift_px = 36
 pick_lift_px = 18
 muzzle_lift_px = 22
 icon = "res://assets/art/iso/icons/item_renew_artillery.svg"
+emitters = PackedStringArray("exhaust")
+emitter_points = PackedVector2Array(18.1, 23.4, -9.6, 24.3, -35.8, 19.7, -56.6, 10.6, -68.8, -1.9, -70.5, -15.8, -61.4, -28.9, -43, -39.3, -18.1, -45.4, 9.6, -46.2, 35.8, -41.7, 56.6, -32.5, 68.8, -20, 70.5, -6.2, 61.4, 6.9, 43, 17.3)
+marks = &"wheels"

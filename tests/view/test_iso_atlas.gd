@@ -418,6 +418,7 @@ func _assert_every_frame_has_its_rasterised_size(
 							. is_equal(want)
 						)
 						frames += 1
-	# The 480 frames of the blockouts and the squads' poses (P139): 2 factions x 2 squads x 8
-	# directions x (4 walk + 2 idle) frames.
-	assert_int(frames).is_equal(480 + 192)
+	# The 480 frames of the blockouts, the squads' poses (P139): 2 factions x 2 squads x 8
+	# directions x (4 walk + 2 idle) frames, and the buildings' `anim` frames (P143): 16 + 16 + 6 +
+	# 4 + 4 + 4 + 2 + 2.
+	assert_int(frames).is_equal(480 + 192 + 54)

@@ -63,12 +63,12 @@ const HEIGHT_PX: Dictionary[StringName, Vector2] = {
 ## the top of its own canvas (y 0, pinned). When the art changes on purpose, run
 ## `bash scripts/gen-art.sh` and read the new numbers from the sheets.
 const CANVAS: Dictionary[StringName, Array] = {
-	&"renew_hq": [384, 358, 165, 384, 194],
-	&"renew_power": [256, 268, 139, 316, 134],
+	&"renew_hq": [384, 352, 160, 384, 194],
+	&"renew_power": [256, 236, 107, 316, 134],
 	&"renew_refinery": [384, 294, 101, 398, 202],
-	&"renew_barracks": [256, 236, 107, 258, 154],
+	&"renew_barracks": [256, 236, 107, 258, 156],
 	&"renew_factory": [384, 332, 139, 454, 216],
-	&"renew_radar": [256, 258, 130, 260, 132],
+	&"renew_radar": [256, 160, 32, 260, 132],
 	&"renew_defence": [128, 104, 39, 184, 94],
 	&"renew_strike": [384, 388, 195, 480, 242],
 }
@@ -78,8 +78,9 @@ const HEAD_CANVAS: Array = [204, 114, 102, 70]
 const MUZZLE_LIFT_PX: int = 33  ## Where a shot leaves the Rail Battery at zoom 1.
 const HEAD_DIR: int = 10  ## The Lumen Accord's default view (Spec 04): south-west.
 ## The team share of a default view, about a twelfth (STYLE.md "Light"; the generator's own pin is 3
-## to 20 %).
-const SHARE: Vector2 = Vector2(0.065, 0.125)
+## to 20 %). The picture is the body with frame 0 of its `anim` part (P143): the Relay Tower's is
+## its array turned by a phase of 11 degrees, which shows a little less of the team frames (0.062).
+const SHARE: Vector2 = Vector2(0.06, 0.125)
 const MAX_OVERLAP: float = 0.85  ## Silhouettes of two types at 32 px: intersection over union.
 ## The Blackout Array is an open frame: between the plate and the ring beam its members cover at
 ## most `FRAME_MEAN` of the box they stand in on average and `FRAME_MAX` at any height (the core's
@@ -130,6 +131,10 @@ func test_a_building_has_one_view_and_a_cast_shadow_and_the_rail_battery_has_16_
 		var armed: bool = id == &"renew_defence"
 		var parts: Array = ["hull", "head", "shadow"] if armed else ["hull", "shadow"]
 		var counts: Array = [1, 16, 1] if armed else [1, 1]
+		if sheet.has_part(&"anim"):
+			# The moving element (P143) is a part of its own, between the body and the shadow.
+			parts.insert(parts.size() - 1, "anim")
+			counts.insert(counts.size() - 1, 1)
 		assert_array(Array(sheet.parts)).override_failure_message("%s" % id).is_equal(parts)
 		assert_array(Array(sheet.counts)).override_failure_message("%s" % id).is_equal(counts)
 		assert_array(Array(sheet.directions(&"hull"))).is_equal([-1])
@@ -433,7 +438,7 @@ func test_the_wind_park_has_two_four_bladed_turbines_of_different_heights() -> v
 	var blades: int = 0
 	var tips: int = 0
 	var rings: int = 0
-	for prim: ArtPrim in model.primitives(&"hull"):
+	for prim: ArtPrim in model.primitives(&"hull") + model.primitives(ArtPrim.ANIM):
 		if prim.shape == &"prism" and prim.axis == 1 and prim.sides == 8:
 			hubs.append(prim.aabb().get_center().z)
 		blades += int(prim.shape == &"prism" and prim.sides == 4 and prim.taper != 1.0)
@@ -453,7 +458,7 @@ func test_the_relay_tower_carries_three_array_faces_on_one_slim_pole() -> void:
 	var faces: Array[int] = []
 	var frames: int = 0
 	var pole: int = 0
-	for prim: ArtPrim in model.primitives(&"hull"):
+	for prim: ArtPrim in model.primitives(&"hull") + model.primitives(ArtPrim.ANIM):
 		if prim.shape == &"prism" and prim.axis != 2 and prim.sides == 6:
 			if prim.material == &"bluegrey":
 				faces.append(prim.axis)

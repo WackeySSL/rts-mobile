@@ -58,5 +58,23 @@ prims = PackedStringArray(
 "prism hull iron 0 0 2.94 0.3 0.5 0.3 sides=12 axis=y",
 "box hull concrete 0 1 0.34 0.8 0.45 0.3",
 "box hull rust 0 1 0.64 0.86 0.5 0.06",
-"box hull iron 0 1.23 0.34 0.3 0.02 0.24"
+"box hull iron 0 1.23 0.34 0.3 0.02 0.24",
+"box anim steel 0 0 3.24 0.1 0.1 0.36 group=kelly",
+"box anim iron 0 0 3.42 0.34 0.06 0.05 group=kelly",
+"box anim iron 0 0 3.47 0.06 0.34 0.05 group=kelly",
+"box anim steel 0 0.265 3.07 0.26 0.03 0.04 group=spoke",
+"box anim steel 0 0.295 2.96 0.04 0.03 0.26 group=spoke"
+)
+poses = PackedStringArray(
+"anim 4",
+"anim 1 kelly turn z 22.5 0 0 0",
+"anim 1 spoke turn y 22.5 0 0 3.09",
+"anim 2 kelly turn z 45 0 0 0",
+"anim 2 spoke turn y 45 0 0 3.09",
+"anim 3 kelly turn z 67.5 0 0 0",
+"anim 3 spoke turn y 67.5 0 0 3.09"
+)
+anim_ms = 200
+emitters = PackedStringArray(
+"launch 0 0 3.64"
 )
