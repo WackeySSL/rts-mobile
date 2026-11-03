@@ -41,7 +41,8 @@ const SCREEN_PROFILES: Array[StringName] = [
 	&"web_tablet_portrait",
 ]
 ## The lines of HealthBarLayer._draw: the painted counts, then one draw_rect per planned rect, in
-## the plan's order, and after them one tinted draw_texture_rect per planned offline glyph (P112b).
+## the plan's order, and after them one tinted draw_texture_rect per planned glyph (offline, P112b,
+## or low power, P89).
 const DRAW_BODY: Array[String] = [
 	"_drawn = 0",
 	"_drawn_glyphs = 0",

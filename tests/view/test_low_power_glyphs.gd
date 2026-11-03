@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## The low-power glyph (plan P89 revision 5, ADR 0023 section 2, ADR 0025 section 8): while the
 ## local player's published `power_used` is above its `power_made`, every own building that uses
-## power wears the low-power glyph in the bar layer at z 30, no dim and no sprite touched. The rows
+## power wears the low-power map glyph (an own defence wears the offline glyph) in the bar layer at
+## z 30, no dim and no sprite touched. The rows
 ## are `PowerConsumers`' (the economy card's too, and `Power.run`'s): not a construction site, not
 ## held offline by a blackout, not a producer, not a unit, not the enemy's. The squares are the
 ## offline glyph's (GLYPH_DP square, over the place of the bar) and follow the offline ones in the
@@ -20,8 +21,12 @@ const SPAWNS: Array[Array] = [
 	[2, "renew_barracks", 10, 22],
 ]
 const CONSUMERS: Array[int] = [2, 3, 4]
+## The glyph order on low power: the defence (row 3) joins the offline group, then the others.
+const ORDER: Array[int] = [3, 2, 4]
 const GLYPH_DP: int = 32
-const DANGER: Color = Color("FF5A3C")
+const GALLERY: GDScript = preload("res://game/view/art_gallery.gd")
+const OFFLINE_ART: String = "res://assets/art/svg/icons/glyph_offline.svg"
+const LOW_ART: String = "res://assets/art/svg/icons/glyph_low_power_map.svg"
 const PLAYER: int = 1
 
 var _runner: MatchRunner
@@ -70,14 +75,29 @@ func after_test() -> void:
 func test_every_own_consumer_wears_the_glyph_on_low_power_and_nothing_else_does() -> void:
 	_power(60, 100)
 	_frame()
-	assert_int(_bars.offline_glyph_count()).is_equal(0)
+	assert_int(_bars.offline_glyph_count()).is_equal(1)  # The defence.
 	assert_int(_bars.glyph_count()).is_equal(CONSUMERS.size())
 	var unit: float = UiScale.base_px_per_dp() / _camera.zoom.x
-	for at: int in CONSUMERS.size():
+	for at: int in ORDER.size():
 		var rect: Rect2 = _bars.glyph_rect(at)
-		var node: Node2D = _buildings.building(_id(CONSUMERS[at]))
+		var node: Node2D = _buildings.building(_id(ORDER[at]))
 		assert_float(rect.size.x).is_equal_approx(GLYPH_DP * unit, 0.01)
 		assert_float(rect.get_center().x).is_equal_approx(node.position.x, 0.01)
+
+
+## A defence holds its fire on low power, so it wears the offline glyph; the other consumers wear
+## the low-power one (the plan's revision 5).
+func test_a_low_power_defence_wears_the_offline_glyph_and_the_others_the_low_power_one() -> void:
+	_power(60, 100)
+	_frame()
+	assert_str(_bars.glyph_texture(0).resource_path).is_equal(OFFLINE_ART)
+	assert_that(_bars.glyph_tint(0)).is_equal(_bars.glyph_color)
+	assert_float(_bars.glyph_rect(0).get_center().x).is_equal_approx(
+		_buildings.building(_id(3)).position.x, 0.01
+	)
+	for at: int in [1, 2]:
+		assert_str(_bars.glyph_texture(at).resource_path).is_equal(LOW_ART)
+		assert_that(_bars.glyph_tint(at)).is_equal(_bars.low_power_color)
 
 
 func test_no_glyph_while_power_is_enough_and_it_goes_with_the_shortage() -> void:
@@ -119,6 +139,39 @@ func test_a_site_and_a_blacked_out_building_are_no_consumers() -> void:
 	assert_float(_bars.glyph_rect(1).get_center().x).is_equal_approx(
 		_buildings.building(_id(4)).position.x, 0.01
 	)
+
+
+## Offline glyphs come first (a blackout, then a defence on low power), then low-power ones; each
+## index has its own art and tint.
+func test_the_glyphs_are_ordered_offline_first_and_each_has_its_own_art_and_tint() -> void:
+	_power(60, 100)
+	var snap: MatchSnapshot = _runner.snapshot
+	snap.offline_until[2] = snap.tick + 100  # The Bunkhouse is blacked out: offline glyph.
+	_frame()
+	assert_int(_bars.glyph_count()).is_equal(3)  # Bunkhouse, defence, refinery.
+	assert_int(_bars.offline_glyph_count()).is_equal(2)
+	var arts: Array[String] = [OFFLINE_ART, OFFLINE_ART, LOW_ART]
+	for at: int in 3:
+		assert_str(_bars.glyph_texture(at).resource_path).is_equal(arts[at])
+		var tint: Color = _bars.glyph_color if at < 2 else _bars.low_power_color
+		assert_that(_bars.glyph_tint(at)).is_equal(tint)
+	var centres: Array[int] = [2, 3, 4]
+	for at: int in 3:
+		assert_float(_bars.glyph_rect(at).get_center().x).is_equal_approx(
+			_buildings.building(_id(centres[at])).position.x, 0.01
+		)
+
+
+func test_a_site_that_finishes_gets_its_glyph_that_frame() -> void:
+	_power(60, 100)
+	var snap: MatchSnapshot = _runner.snapshot
+	snap.build_left[4] = 30  # The refinery is a site.
+	_frame()
+	assert_int(_bars.glyph_count()).is_equal(2)
+	snap.build_left[4] = 0
+	_frame()
+	assert_int(_bars.glyph_count()).is_equal(3)
+	assert_str(_bars.glyph_texture(2).resource_path).is_equal(LOW_ART)
 
 
 func test_the_consumers_are_the_rows_the_power_rule_counts() -> void:
@@ -163,7 +216,7 @@ func test_the_plan_allocates_nothing_after_the_first_low_power_frame() -> void:
 	assert_int(_bars.glyph_count()).is_equal(CONSUMERS.size())
 
 
-func test_no_sprite_is_dimmed_and_the_glyph_is_painted_danger_red_from_the_art() -> void:
+func test_no_sprite_is_dimmed_and_the_glyph_is_painted_in_the_map_tint_from_the_map_art() -> void:
 	var before: Array[Color] = []
 	for row: int in CONSUMERS:
 		before.append(_buildings.building(_id(row)).modulate)
@@ -173,10 +226,9 @@ func test_no_sprite_is_dimmed_and_the_glyph_is_painted_danger_red_from_the_art()
 		var node: Node2D = _buildings.building(_id(CONSUMERS[at]))
 		assert_that(node.modulate).is_equal(before[at])
 		assert_that(node.self_modulate).is_equal(Color.WHITE)
-	assert_str(HealthBarLayer.LOW_GLYPH.resource_path).is_equal(
-		"res://assets/art/svg/icons/glyph_low_power.svg"
-	)
-	assert_that(_bars.low_power_color).is_equal(DANGER)
+	assert_str(HealthBarLayer.LOW_GLYPH.resource_path).is_equal(LOW_ART)
+	# The tint is STYLE.md's map tint, which the gallery's table carries (#FF8A1F).
+	assert_that(_bars.low_power_color).is_equal(GALLERY.GLYPH_TINTS["glyph_low_power_map"])
 	await await_idle_frame()
 	assert_int(_bars.drawn_glyphs()).is_equal(CONSUMERS.size())
 

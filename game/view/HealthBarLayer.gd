@@ -27,8 +27,10 @@ extends Node2D
 ## enemy one only while `building_layer.is_shown`. The glyphs are planned after the frames and
 ## painted after the rects, as `glyph_count()` squares at `glyph_rect(i)`. While the local player's
 ## published `power_used` is above its `power_made` (low power, P89, ADR 0025 section 8) every own
-## building that uses power (`PowerConsumers`, the economy card's rows) wears the low-power glyph
-## in danger red at the same place, planned after the offline ones; nothing is dimmed.
+## defence that uses power wears the offline glyph too (it holds its fire), and every other own
+## building that uses power (`PowerConsumers`, the economy card's rows) wears the low-power map
+## glyph (`glyph_low_power_map.svg`, tinted `low_power_color`), planned after the offline ones at
+## the same place; nothing is dimmed.
 ##
 ## A bar is sized in dp, so it looks the same at every zoom: world px per dp is the base px per dp
 ## over the camera zoom. It is centred on its unit's projected ground point (`IsoProjection`, ADR
@@ -60,7 +62,7 @@ const FRAME_RECTS: int = 16  ## Two arms for each of four corners, each as an ou
 ## The offline glyph (assets/art/STYLE.md "Icons and glyphs": 32 dp for a glyph on the map, drawn
 ## tinted with its seat) and its gap over the bar's place.
 const GLYPH: Texture2D = preload("res://assets/art/svg/icons/glyph_offline.svg")
-const LOW_GLYPH: Texture2D = preload("res://assets/art/svg/icons/glyph_low_power.svg")
+const LOW_GLYPH: Texture2D = preload("res://assets/art/svg/icons/glyph_low_power_map.svg")
 const GLYPH_DP: int = 32
 const GLYPH_GAP_DP: int = 1
 
@@ -75,8 +77,8 @@ const GLYPH_GAP_DP: int = 1
 @export var enemy_color: Color = Color("F5A524")  ## Fill of an enemy bar (warning).
 @export var frame_color: Color = Color("FFFFFF")  ## Brackets of an own selected building.
 @export var glyph_color: Color = Color("F5A524")  ## The offline glyph's tint (STYLE.md, warning).
-## The low-power glyph's tint: the HUD's danger token, like the triangle in the economy pill.
-@export var low_power_color: Color = Color("FF5A3C")
+## The low-power map glyph's tint (STYLE.md's tint table; the gallery's `GLYPH_TINTS` has it too).
+@export var low_power_color: Color = Color("FF8A1F")
 
 var _dp_px: float = 1.0  ## Base px per dp, read when the window changes.
 ## Rect `i` of the frame: x, y, width and height in world px at 4i, and its colour. `_bars` holds
@@ -360,9 +362,25 @@ func _plan_glyphs(snap: MatchSnapshot, unit: float, local_player: int) -> void:
 		return
 	if used[local_player] <= made[local_player]:
 		return
+	# Low power: an own defence (a building with a weapon, `Combat.fire`'s rule) is offline, so it
+	# joins the offline group; every other consumer follows with the low-power glyph.
 	var owners: PackedInt32Array = snap.owner
+	var weapons: PackedInt32Array = snap.type_weapon
+	var types: PackedInt32Array = snap.type_index
 	for row: int in until.size():
-		if owners[row] == local_player and PowerConsumers.is_consumer(snap, row):
+		if (
+			owners[row] == local_player
+			and weapons[types[row]] >= 0
+			and PowerConsumers.is_consumer(snap, row)
+		):
+			_put_glyph(snap, row, rise)
+	_offline_glyphs = _glyphs
+	for row: int in until.size():
+		if (
+			owners[row] == local_player
+			and weapons[types[row]] < 0
+			and PowerConsumers.is_consumer(snap, row)
+		):
 			_put_glyph(snap, row, rise)
 
 

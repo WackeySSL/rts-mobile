@@ -49,10 +49,10 @@ const CREDITS_DIGITS: int = 5
 const CHIP_VARIATION: StringName = &"PowerNumberLow"  ## Dark digits, for a chip on a colour.
 const CHIP_LOSS_VARIATION: StringName = &"EconomyChipLoss"
 const CHIP_GAIN_VARIATION: StringName = &"EconomyChipGain"
-## The low-power pulse (plan P89): the power area breathes between the text token (full) and the
-## `pulse_dim` token of HudTokens (alpha 0.6, so the word and the triangle stay legible) over
-## PULSE_MS, in PULSE_STEPS steps, so the tint is written only when the step changes. View feel,
-## not a rule: no data key.
+## The low-power pulse (plan P89): the pill's border and the warning triangle breathe between the
+## pill type's `pulse_full` (white) and `pulse_dim` colours over PULSE_MS in PULSE_STEPS steps, so
+## the tint is written only when the step changes. The word stays at full strength: it is dark on
+## the red bar and would lose its contrast. View feel, not a rule: no data key.
 const PULSE_MS: float = 1400.0
 const PULSE_STEPS: int = 6
 const CHIP_GAP_DP: float = 4.0  ## Between the pill and the chip under its credits.
@@ -325,23 +325,28 @@ func _advance(ms: float) -> void:
 			_update_chip()
 
 
-## `ms` passed: on low power the power area's alpha follows a triangle wave in PULSE_STEPS steps,
-## written only when the step changes; off low power it is full again and the wave starts over.
+## `ms` passed: on low power the pill's own drawing (its border) and the triangle follow a triangle
+## wave in PULSE_STEPS steps (`self_modulate`, so the word and the numbers stay full), written only
+## when the step changes; off low power both are full again and the wave starts over.
 func _pulse(ms: float) -> void:
 	var step: int = 0
 	if _low:
 		_pulse_ms = fmod(_pulse_ms + ms, PULSE_MS)
-		step = roundi((1.0 - absf(2.0 * _pulse_ms / PULSE_MS - 1.0)) * PULSE_STEPS)
+		step = clampi(
+			roundi((1.0 - absf(2.0 * _pulse_ms / PULSE_MS - 1.0)) * PULSE_STEPS), 0, PULSE_STEPS
+		)
 	else:
 		_pulse_ms = 0.0
 	if step != _pulse_step:
 		_pulse_step = step
-		_power_tap.modulate = get_theme_color(&"text", TOKENS).lerp(
-			get_theme_color(&"pulse_dim", TOKENS), float(step) / PULSE_STEPS
+		var tint: Color = get_theme_color(&"pulse_full", VARIATION).lerp(
+			get_theme_color(&"pulse_dim", VARIATION), float(step) / PULSE_STEPS
 		)
+		self_modulate = tint
+		_power_glyph.self_modulate = tint
 
 
-## The step of the pulse the power area shows now (0 full).
+## The step of the pulse the pill shows now (0 full).
 func pulse_step() -> int:
 	return _pulse_step
 
