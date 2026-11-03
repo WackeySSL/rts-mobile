@@ -24,6 +24,7 @@ const BASE_PX_ENTRIES: Array[String] = [
 	"CapsTitle/fonts/font",
 	"CapsBigTitle/fonts/font",
 	"PillWord/fonts/font",
+	"AttackTitle/fonts/font",
 ]
 const PAD_DP: float = 8.0
 const BACKDROP: Color = Color(0.06, 0.08, 0.11, 0.78)
@@ -197,6 +198,7 @@ func test_every_control_that_is_a_child_of_the_hud_has_the_hud_theme() -> void:
 				"GhostControls",
 				"SafeArea",
 				"EconomyPill",
+				"AttackToast",
 				"EconomyCard",
 				"RadarScope",
 				"RadarMap",

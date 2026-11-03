@@ -42,6 +42,8 @@
 [ext_resource type="Script" path="res://game/ui/EconomyCard.gd" id="42_economy_card"]
 [ext_resource type="Script" path="res://game/ui/RadarScope.gd" id="42_scope"]
 [ext_resource type="Script" path="res://game/ui/RadarMap.gd" id="43_radar_map"]
+[ext_resource type="Script" path="res://game/ui/AttackCues.gd" id="44_attack_cues"]
+[ext_resource type="Script" path="res://game/ui/AttackToast.gd" id="45_attack_toast"]
 [ext_resource type="Script" path="res://game/ui/SurrenderButton.gd" id="90_surrender"]
 [ext_resource type="Script" path="res://game/ui/TopLeftStack.gd" id="90_stack"]
 [ext_resource type="Script" path="res://game/ui/ConfirmDialog.gd" id="90_confirm"]
@@ -226,7 +228,7 @@ mouse_filter = 2
 theme = ExtResource("16_theme")
 script = ExtResource("38_ghost_controls")
 placement = NodePath("../../PlacementController")
-clear_of = [NodePath("../SafeArea/TopLeft"), NodePath("../SafeArea/ArmyBand/ArmyBar"), NodePath("../SafeArea/SelectionBand/SelectionPanel"), NodePath("../SafeArea/StrikeBand/StrikeControls"), NodePath("../SafeArea/BuildSidebar"), NodePath("../EconomyPill"), NodePath("../RadarScope"), NodePath("../RadarMap")]
+clear_of = [NodePath("../SafeArea/TopLeft"), NodePath("../SafeArea/ArmyBand/ArmyBar"), NodePath("../SafeArea/SelectionBand/SelectionPanel"), NodePath("../SafeArea/StrikeBand/StrikeControls"), NodePath("../SafeArea/BuildSidebar"), NodePath("../EconomyPill"), NodePath("../RadarScope"), NodePath("../RadarMap"), NodePath("../AttackToast")]
 
 [node name="SafeArea" type="MarginContainer" parent="Hud"]
 anchors_preset = 15
@@ -313,18 +315,37 @@ top_left = NodePath("../SafeArea/TopLeft")
 feed = NodePath("../HudStateFeed")
 card = NodePath("../EconomyCard")
 
+[node name="AttackCues" type="Node" parent="Hud" node_paths=PackedStringArray("runner", "camera", "feed")]
+script = ExtResource("44_attack_cues")
+runner = NodePath("../../MatchRunner")
+camera = NodePath("../../Camera")
+feed = NodePath("../HudStateFeed")
+
+[node name="AttackToast" type="PanelContainer" parent="Hud" node_paths=PackedStringArray("cues", "feed", "camera", "safe_area", "pill", "top_left", "selection")]
+visible = false
+theme = ExtResource("16_theme")
+script = ExtResource("45_attack_toast")
+cues = NodePath("../AttackCues")
+feed = NodePath("../HudStateFeed")
+camera = NodePath("../../Camera")
+safe_area = NodePath("../SafeArea")
+pill = NodePath("../EconomyPill")
+top_left = NodePath("../SafeArea/TopLeft")
+selection = NodePath("../SafeArea/SelectionBand/SelectionPanel")
+
 [node name="EconomyCard" type="PanelContainer" parent="Hud"]
 visible = false
 theme = ExtResource("16_theme")
 script = ExtResource("42_economy_card")
 
-[node name="RadarScope" type="Control" parent="Hud" node_paths=PackedStringArray("feed", "minimap", "camera", "safe_area")]
+[node name="RadarScope" type="Control" parent="Hud" node_paths=PackedStringArray("feed", "minimap", "camera", "safe_area", "cues")]
 theme = ExtResource("16_theme")
 script = ExtResource("42_scope")
 feed = NodePath("../HudStateFeed")
 minimap = NodePath("../RadarMap/Minimap")
 camera = NodePath("../../Camera")
 safe_area = NodePath("../SafeArea")
+cues = NodePath("../AttackCues")
 
 [node name="RadarMap" type="Control" parent="Hud" node_paths=PackedStringArray("feed", "minimap", "safe_area", "sidebar", "strike_row")]
 visible = false
@@ -336,13 +357,14 @@ safe_area = NodePath("../SafeArea")
 sidebar = NodePath("../SafeArea/BuildSidebar")
 strike_row = NodePath("../SafeArea/StrikeBand/StrikeControls")
 
-[node name="Minimap" type="Control" parent="Hud/RadarMap" node_paths=PackedStringArray("runner", "camera", "map_view", "controller")]
+[node name="Minimap" type="Control" parent="Hud/RadarMap" node_paths=PackedStringArray("runner", "camera", "map_view", "controller", "cues")]
 anchors_preset = 0
 script = ExtResource("37_minimap")
 runner = NodePath("../../../MatchRunner")
 camera = NodePath("../../../Camera")
 map_view = NodePath("../../../MapView")
 controller = NodePath("../../../PlayerController")
+cues = NodePath("../../AttackCues")
 
 [node name="SurrenderDialog" type="Control" parent="Hud"]
 anchor_right = 1.0
