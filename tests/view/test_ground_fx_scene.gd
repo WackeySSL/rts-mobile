@@ -65,7 +65,7 @@ func test_life_fx_makes_ground_fx_at_absolute_z_3_with_its_numbers_and_wiring() 
 	assert_object(ground.camera).is_same(_camera)
 	assert_object(ground.life).is_same(_fx.life)
 	assert_object(_fx.life).is_same(load("res://data/life_settings.tres"))  # The fallback.
-	assert_int(_fx.get_child_count()).is_equal(1)  # P141 and P145 add theirs.
+	assert_int(_fx.get_child_count()).is_equal(2)  # GroundFx and StrikeFx; P145 adds AirFx.
 
 
 func test_the_layer_draws_one_texture_the_life_atlas_and_paints_its_plan_one_for_one() -> void:

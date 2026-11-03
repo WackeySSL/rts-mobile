@@ -37,6 +37,24 @@ const FRAME_PATH: Dictionary[String, Array] = {
 	],
 	"res://game/view/GroundFx.gd":
 	["_process", "_draw", "_plan", "_on_ticked", "_add", "_empty", "quad_rect"],
+	"res://game/view/StrikeFx.gd":
+	[
+		"_process",
+		"_draw",
+		"_on_ticked",
+		"_add_strike",
+		"_take_slot",
+		"_radius_of",
+		"_launch_point",
+		"_plan",
+		"_plan_launch",
+		"_plan_fall",
+		"_plan_settle",
+		"_net",
+		"_quad",
+		"_empty",
+		"quad_rect",
+	],
 	"res://game/view/LifeClock.gd": ["ms", "tick_ms", "age_ms", "mix", "pick"],
 	"res://game/view/UnitLayer.gd":
 	[

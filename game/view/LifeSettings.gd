@@ -104,3 +104,16 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 @export var dust_alpha: float = 0.8
 @export var dust_grow_from: float = 0.6
 @export var dust_grow_to: float = 1.2
+
+## `StrikeFx`, the rest of its numbers (P141): the lance (or the seed) rises `strike_rise_px` in
+## `launch_ms` and fades, the launch flash lasts `launch_flash_ms`; the shadow of the falling lance
+## grows from `shadow_from` of its size to the full one and to `shadow_alpha`; the net starts
+## `net_scale_from` times its size, lands at full size with `net_alpha`, then settles for
+## `net_settle_ms` (its lines fade, the landing flash and the glints with them).
+@export var strike_rise_px: float = 96.0
+@export var launch_flash_ms: int = 250
+@export var shadow_from: float = 0.4
+@export var shadow_alpha: float = 0.5
+@export var net_scale_from: float = 1.6
+@export var net_alpha: float = 0.9
+@export var net_settle_ms: int = 500
