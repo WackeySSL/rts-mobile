@@ -57,20 +57,13 @@ static func level(normal: Vector3) -> int:
 ## a face and never what is drawn over what or which edge is light (a leg swung 36 degrees has a
 ## side face that faces 0.59 up, but it is not a roof). The fill still follows the posed normal.
 ## Without `rest` the posed primitives decide both, as a moving element that turns all round
-## (`anim`) needs. `order`, when given, is the draw order itself (a damage stage keeps the order of
-## the untouched primitives, `ArtModel.damage_order`).
+## (`anim`) needs.
 static func render(
-	prims: Array[ArtPrim],
-	yaw: float,
-	faction: StringName,
-	rest: Array[ArtPrim] = [],
-	order: Array[int] = []
+	prims: Array[ArtPrim], yaw: float, faction: StringName, rest: Array[ArtPrim] = []
 ) -> Array[Poly]:
 	var turn: Vector2 = ArtMesh.dir(yaw)
 	var out: Array[Poly] = []
-	for i: int in (
-		order if not order.is_empty() else draw_order(prims if rest.is_empty() else rest, yaw)
-	):
+	for i: int in draw_order(prims if rest.is_empty() else rest, yaw):
 		var prim: ArtPrim = prims[i]
 		if prim.shape == &"sphere":
 			for disc: Poly in _discs(prim, turn, faction):

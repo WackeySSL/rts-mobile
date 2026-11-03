@@ -20,7 +20,8 @@ extends Resource
 const ROOT: String = "res://assets/art/iso"
 
 @export var art_id: StringName = &""
-@export var faction: StringName = &""  ## `fossil` or `renew`; never shown in the game.
+## `fossil` or `renew`, never shown in the game; `neutral` for the damage overlays' sheet.
+@export var faction: StringName = &""
 @export var category: StringName = &"veh"  ## `veh`, `inf` or `bld`; a neutral sheet's is `dmg`.
 @export var footprint: int = 0  ## n of an n x n building, 0 for a unit.
 @export var parts: PackedStringArray = PackedStringArray()  ## In file order, `shadow` last.

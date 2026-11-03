@@ -219,7 +219,7 @@ func test_the_patch_over_the_body_gives_the_stage_picture() -> void:
 		comp.blend_rect(patch, Rect2i(Vector2i.ZERO, layout.size), at)
 		var overlap: int = shot.cut + ArtGen.CUT_OVERLAP_PX
 		assert_int(_differing_rows(comp, posed, 0, shot.cut, 6)).is_equal(0)
-		assert_int(_differing_rows(comp, posed, overlap, body.size.y, 6)).is_equal(0)
+		assert_int(_differing_rows(comp, posed, overlap, body.size.y)).is_equal(0)
 		# In the overlap both pictures are the same and an edge is drawn twice: the antialiased
 		# fringe of the edge pixels doubles (up to about 80 of 255), nothing else differs.
 		assert_int(_differing_rows(comp, posed, shot.cut, overlap, 90)).is_equal(0)
@@ -427,8 +427,8 @@ func _image(polys: Array, layout: ArtGen.Layout) -> Image:
 	return image
 
 
-## premultiplied channel or the alpha by more than `tolerance` (a faint fringe does not count).
-## channel or the alpha by more than `tolerance` (so a faint fringe does not count).
+## How many rows from `from` to `to` (exclusive) differ between two images of one size, a
+## premultiplied channel or the alpha by more than `tolerance` (255 is a whole channel).
 func _differing_rows(a: Image, b: Image, from: int, to: int, tolerance: int = 0) -> int:
 	var rows: int = 0
 	for y: int in range(maxi(from, 0), mini(to, a.get_height())):

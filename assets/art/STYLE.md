@@ -208,8 +208,8 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   by art id, `IsoIndex.sheet(art_id)`): per part the frame count (16, 8 or 1), the canvas and the
   anchor, in px of the 2x art (a unit's anchor is its ground point, a building's body and shadow
   the footprint's back corner, `origin(part)` gives the footprint's centre, and so for a damage
-  patch; a turret's or head's anchor is its pivot); `mounts`, the pivot of the turret or head from the hull's ground point for
-  each hull frame (`mount(dir)`; one for a building's head, none without a turret); the three
+  patch; a turret's or head's anchor is its pivot); `mounts`, the pivot of the turret or head from
+  the hull's ground point for each hull frame (`mount(dir)`; one for a building's head, none without a turret); the three
   lifts in **world px at zoom 1**, which is what the view counts in: `bar_lift_px` how high the
   picture reaches above the ground point in the pose that three of four hull frames stay under (the
   turret or head straight ahead; a bar standing on it clears those poses and covers only a taller
@@ -256,21 +256,23 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   by a damage move: the generator fails such a model, so the moving element stays seated and the
   `anim` part keeps running at both stages.
   **The patch.** Each stage is a part of its own, `<type_id>_dmg1.svg` and `_dmg2.svg`, drawn with
-  today's projection, light, edge and team key. The stage's draw order keeps the order the intact
-  body has for every primitive the stage leaves alone (the stage's own greedy order is taken, the
-  changed and added primitives keep their slots, the others are refilled in intact order), so a
-  hidden or moved primitive never reorders two untouched ones below the cut. The cut is read off
-  the geometry, not by comparing pixels: `cuts` (in the sheet, `[stage 1, stage 2]`, body canvas
+  today's projection, light, edge and team key. The stage is drawn in its own greedy painter's
+  order (the depth between the changed and the untouched primitives is the stage's). Taking away or
+  moving one primitive can draw two untouched ones in the other order than the intact body, so the
+  cut also covers where such a pair overlaps on the screen (the intersection of their outlines, not
+  their union: the patch grows only where the swap shows). The cut is read off the geometry, not by
+  comparing pixels: `cuts` (in the sheet, `[stage 1, stage 2]`, body canvas
   rows) is **the first intact row**, the lowest screen row of the outlines of what the stage changes
-  (moved, turned, hidden, charred or added primitives, intact and posed) plus half the 2 px edge,
-  rounded up; from that row down the stage picture equals the intact one. The patch is the stage
-  picture from its top down to the cut plus a 4 px overlap, cropped left and right to its ink, with
+  (moved, turned, hidden, charred or added primitives, intact and posed) and of the swapped
+  overlaps, plus half the 2 px edge, rounded up; from that row down the stage picture equals the
+  intact one. The patch is the stage picture from its top down to the cut plus a 4 px overlap, cropped left and right to its ink, with
   the body's anchor rule (the back corner, `origin(part)` the footprint's centre). The view shows the
   body from the cut down and the patch over it; in the four overlap rows an edge is drawn by both,
   which doubles its antialiased fringe (up to about 80 of 255, edge pixels only). The generator
   refuses a change that is wholly above the body's canvas or reaches the foot of the body (the
-  overlap would not fit), and a stage that changes nothing. The art rule is that damage sits in the
-  top third of a body; the page test, not a percentage, is the arbiter.
+  overlap would not fit), and a stage that changes nothing; its message names the primitive that
+  sets the lowest row, with its line in the model and the pose lines that move it. The art rule is
+  that damage sits in the top third of a body; the page test, not a percentage, is the arbiter.
   **Sheet and model fields.** `cuts`; `scar_milli` (a vehicle's scar scale, 1000 for the battle
   tank, vehicles only); the emitter kinds `damage` (where a scar sits and damage smoke starts: a
   vehicle has one, a building up to two) and `hang` (a vehicle's bracket, one at most, none on a

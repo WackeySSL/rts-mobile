@@ -191,13 +191,11 @@ func damage_prims(stage: int) -> Array[ArtPrim]:
 	return found
 
 
-## The draw order of `damage_prims(stage)` (indices into it) in which the primitives the stage does
-## not change keep the relative order they have in the intact body (ADR 0028 section 3): the stage's
-## own order is taken, the slots of the changed and added primitives stay, and the other slots are
-## refilled with the untouched ones in their intact order. `ArtRender._order` is a greedy pick, so
-## taking away or moving one primitive could otherwise swap two untouched ones that overlap on the
-## screen, below the cut.
-func damage_order(stage: int) -> Array[int]:
+## The pairs of untouched primitives (a posed copy each) that the stage draws in the other order
+## than the intact body does (ADR 0028 section 3). The stage is drawn in its own greedy order,
+## `ArtRender._order`, so taking away or moving one primitive can swap two others that overlap on
+## the screen; the cut must then cover where those two overlap.
+func damage_swaps(stage: int) -> Array[Array]:
 	var posed: Array[ArtPrim] = damage_prims(stage)
 	var intact: Array[ArtPrim] = primitives(&"hull")
 	var rank: Dictionary[int, int] = {}
@@ -205,19 +203,16 @@ func damage_order(stage: int) -> Array[int]:
 	for at: int in seen.size():
 		rank[intact[seen[at]].index] = at
 	var order: Array[int] = ArtRender.draw_order(posed, 0.0)
-	var slots: Array[int] = []
-	var untouched: Array[int] = []
-	for at: int in order.size():
-		var prim: ArtPrim = posed[order[at]]
-		if prim.damage == 0 and prim.moves.is_empty():
-			slots.append(at)
-			untouched.append(order[at])
-	untouched.sort_custom(
-		func(a: int, b: int) -> bool: return rank[posed[a].index] < rank[posed[b].index]
-	)
-	for k: int in slots.size():
-		order[slots[k]] = untouched[k]
-	return order
+	var found: Array[Array] = []
+	for i: int in order.size():
+		for j: int in range(i + 1, order.size()):
+			var first: ArtPrim = posed[order[i]]
+			var second: ArtPrim = posed[order[j]]
+			var untouched: bool = first.damage == 0 and second.damage == 0
+			untouched = untouched and first.moves.is_empty() and second.moves.is_empty()
+			if untouched and rank[first.index] > rank[second.index]:
+				found.append([first, second])
+	return found
 
 
 ## The hull primitives that the stage changes, as [intact, posed] pairs: a moved, turned, hidden or
@@ -381,10 +376,13 @@ func _pose_problems() -> PackedStringArray:
 	var kinds: Array[StringName] = []
 	for emitter: Array in emitter_list():
 		kinds.append(emitter[0])
-	if kinds.count(&"hang") > (1 if category == &"veh" else 0):
+	if category != &"inf" and kinds.count(&"hang") > (1 if category == &"veh" else 0):
 		found.append("%s: hang is a vehicle's, one at most" % art_id)
-	if category == &"veh" and kinds.count(&"damage") > 1:
-		found.append("%s: a vehicle has one damage point at most" % art_id)
+	var damage_points: int = kinds.count(&"damage")
+	if category == &"inf" and (damage_points > 0 or kinds.has(&"hang")):
+		found.append("%s: damage and hang points are for buildings and vehicles" % art_id)
+	elif damage_points > (1 if category == &"veh" else 2):
+		found.append("%s: a vehicle has one damage point, a building two at most" % art_id)
 	if marks != &"" and (marks not in MARKS or category != &"veh"):
 		found.append("%s: marks are tracks or wheels, of a vehicle" % art_id)
 	return found

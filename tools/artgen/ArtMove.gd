@@ -26,6 +26,7 @@ const WORDS: Dictionary[StringName, int] = {&"turn": 9, &"shift": 7, &"hide": 4,
 const DAMAGE_KINDS: Array[StringName] = [&"hide", &"char"]
 
 var part: StringName = &""
+var line: String = ""  ## What it was parsed from.
 var kind: StringName = &"shift"
 var frame: int = 0
 var group: StringName = &""
@@ -59,6 +60,7 @@ static func parse(line: String) -> ArtMove:
 			return null
 		nums.append(words[i].to_float())
 	var move: ArtMove = ArtMove.new()
+	move.line = line
 	move.part = StringName(words[0])
 	move.frame = words[1].to_int()
 	move.group = StringName(words[2])

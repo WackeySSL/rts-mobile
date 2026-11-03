@@ -165,33 +165,53 @@ static func point_px(point: Vector3, dir: int) -> Vector2:
 static func all_shots(model: ArtModel) -> Dictionary[StringName, Shot]:
 	var found: Dictionary[StringName, Shot] = {}
 	for part: StringName in model.frame_parts():
-		found[part] = (
-			_shoot_damage(model, part, found[&"hull"])
-			if part in ArtModel.DAMAGE_PARTS
-			else _shoot(model, part)
-		)
+		if part not in ArtModel.DAMAGE_PARTS:
+			found[part] = _shoot(model, part)
+		else:
+			# A stage that changes nothing has no patch (`problems` refuses such a model).
+			var patch: Shot = _shoot_damage(model, part, found[&"hull"])
+			if patch != null:
+				found[part] = patch
 	return found
 
 
-## The polygons of the whole body at damage `stage`, the untouched primitives in their intact order.
+## The polygons of the whole body at damage `stage`, in the stage's own greedy draw order.
 static func stage_polys(model: ArtModel, stage: int) -> Array[ArtRender.Poly]:
-	return ArtRender.render(
-		model.damage_prims(stage), 0.0, model.faction, [], model.damage_order(stage)
-	)
+	return ArtRender.render(model.damage_prims(stage), 0.0, model.faction)
 
 
-## The cut row of a stage in the body's canvas (`IsoSheetDef.cuts`): the first row that no changed
-## primitive can reach. It is the lowest screen row of the outlines of the primitives the stage
-## changes, as they are intact and as the stage poses them, plus half the edge that is drawn round
-## a face, rounded up to a whole row; so from this row down the stage picture is the intact one.
-## `NO_CUT` when the stage changes nothing.
-static func damage_cut(model: ArtModel, stage: int, body: Layout) -> int:
-	var low: float = -INF
+## How far down a damage stage reaches, as a dictionary: `low`, the lowest screen row (px from the
+## model's origin) of the outlines of the primitives the stage changes, as they are intact and as
+## the stage poses them, and of where each pair of untouched primitives that the stage draws in
+## the other order than the intact body overlaps (the swap shows only there); `prim`, the
+## primitive whose outline or overlap sets it, and `swap`, the other one of such a pair (else
+## null). `low` is -INF when the stage changes nothing.
+static func damage_reach(model: ArtModel, stage: int) -> Dictionary:
+	var reach: Dictionary = {"low": -INF, "prim": null, "swap": null}
 	for pair: Array in model.damage_changes(stage):
 		for prim: ArtPrim in pair:
 			if prim != null:
-				var one: Array[ArtPrim] = [prim]
-				low = maxf(low, ArtRender.bounds(ArtRender.render(one, 0.0, model.faction)).end.y)
+				var low: float = ArtRender.bounds(_outline(model, prim)).end.y
+				if low > reach["low"]:
+					reach = {"low": low, "prim": prim, "swap": null}
+	for pair: Array in model.damage_swaps(stage):
+		var low: float = -INF
+		for a: ArtRender.Poly in _outline(model, pair[0]):
+			for b: ArtRender.Poly in _outline(model, pair[1]):
+				for part: PackedVector2Array in Geometry2D.intersect_polygons(a.points, b.points):
+					for point: Vector2 in part:
+						low = maxf(low, point.y)
+		if low > reach["low"]:
+			reach = {"low": low, "prim": pair[0], "swap": pair[1]}
+	return reach
+
+
+## The cut row of a stage in the body's canvas (`IsoSheetDef.cuts`): the first row that nothing the
+## stage changes can reach. It is the `low` of `damage_reach` plus half the edge that is drawn round
+## a face, rounded up to a whole row; so from this row down the stage picture is the intact one.
+## `NO_CUT` when the stage changes nothing.
+static func damage_cut(model: ArtModel, stage: int, body: Layout) -> int:
+	var low: float = damage_reach(model, stage)["low"]
 	if is_inf(low):
 		return NO_CUT
 	return ceili(low + ArtSvg.EDGE_PX / 2.0) + body.origin.y
@@ -199,27 +219,55 @@ static func damage_cut(model: ArtModel, stage: int, body: Layout) -> int:
 
 ## What is wrong with the damage stages of a model that is otherwise valid: a stage that changes
 ## nothing, a change wholly above the body's canvas (the cut would read as "no patch") or one that
-## reaches the foot of the body (the overlap would not fit the canvas).
+## reaches the foot of the body (the overlap would not fit the canvas). A message names the
+## primitive (its line in the model, and the pose lines that move it) that sets the lowest row.
 static func damage_problems(model: ArtModel) -> PackedStringArray:
 	var found: PackedStringArray = PackedStringArray()
 	var body: Layout = _shoot(model, &"hull").layout
 	for part: StringName in model.damage_parts():
 		var stage: int = ArtModel.DAMAGE_PARTS.find(part) + 1
 		var cut: int = damage_cut(model, stage, body)
+		var what: String = "%s: %s" % [model.art_id, part]
 		if cut == NO_CUT:
-			found.append("%s: %s changes nothing" % [model.art_id, part])
-		elif cut <= 0:
-			found.append(
-				"%s: %s: a damage change is above the canvas of the body" % [model.art_id, part]
-			)
+			found.append("%s changes nothing" % what)
+			continue
+		var line: String = _describe(model, part, damage_reach(model, stage))
+		if cut <= 0:
+			found.append("%s: %s is above the canvas of the body" % [what, line])
 		elif cut + CUT_OVERLAP_PX > body.size.y:
 			found.append(
 				(
-					"%s: %s: a damage change reaches below the body (cut row %d, canvas %d rows)"
-					% [model.art_id, part, cut, body.size.y]
+					"%s: %s reaches below the body (cut row %d, canvas %d rows)"
+					% [what, line, cut, body.size.y]
 				)
 			)
 	return found
+
+
+## The faces of one primitive alone, at the stage's yaw.
+static func _outline(model: ArtModel, prim: ArtPrim) -> Array[ArtRender.Poly]:
+	var one: Array[ArtPrim] = [prim]
+	return ArtRender.render(one, 0.0, model.faction)
+
+
+## The primitive of a reach as a message names it: `box ...` (line N), the pose lines of `part`
+## that move its group, and the other primitive of a swapped pair.
+static func _describe(model: ArtModel, part: StringName, reach: Dictionary) -> String:
+	var prim: ArtPrim = reach["prim"]
+	var text: String = "`%s` (line %d)" % [prim.line, prim.index + 1]
+	var moves: PackedStringArray = PackedStringArray()
+	for move: ArtMove in model.pose_moves(part, 0):
+		if prim.group != &"" and move.group == prim.group:
+			moves.append("`%s`" % move.line)
+	if not moves.is_empty():
+		text += " moved by " + ", ".join(moves)
+	var other: ArtPrim = reach["swap"]
+	if other != null:
+		text += (
+			" and `%s` (line %d), drawn in another order than intact, overlap"
+			% [other.line, other.index + 1]
+		)
+	return text
 
 
 ## Where a `hang` point lies for the hull facing `dir`: the bracket is on the side that faces the
@@ -241,6 +289,8 @@ static func hang_point_px(point: Vector3, dir: int) -> Vector2:
 static func _shoot_damage(model: ArtModel, part: StringName, body: Shot) -> Shot:
 	var stage: int = ArtModel.DAMAGE_PARTS.find(part) + 1
 	var cut: int = damage_cut(model, stage, body.layout)
+	if cut == NO_CUT:
+		return null
 	var bottom: int = cut + CUT_OVERLAP_PX - body.layout.origin.y
 	var polys: Array[ArtRender.Poly] = ArtRender.clip_below(
 		stage_polys(model, stage), bottom + ArtSvg.EDGE_PX
