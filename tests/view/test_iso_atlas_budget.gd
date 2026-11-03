@@ -89,6 +89,16 @@ func test_a_set_of_frames_past_the_budget_is_seen() -> void:
 	assert_failure(func() -> void: _assert_today("giant", page, TODAY_CROSS)).is_failed()
 
 
+func test_the_pages_of_the_budget_include_the_neutral_sheet() -> void:
+	var sheets: Array[IsoSheetDef] = _page_sheets()
+	assert_int(sheets.size()).is_equal(IsoAtlas.load_sheets().size() + 1)
+	assert_str(sheets[-1].faction).is_equal(String(IsoAtlas.NEUTRAL))
+	var frames: int = 0
+	for part: String in sheets[-1].parts:
+		frames += sheets[-1].frame_count(StringName(part))
+	assert_int(frames).is_greater_equal(8)  # scar1 x2, scar2 x2, loose x4 at least (ADR 0028).
+
+
 func test_the_neutral_sheet_is_counted_once_for_all_players() -> void:
 	# A neutral sheet (P157, ADR 0028 section 4) is on every match's page as shared slots: a crafted
 	# one of 16 frames of 1000 x 500 px takes 16 slots for two players, where a faction's sheet with
@@ -130,16 +140,21 @@ func _with_giant(faction: StringName) -> Array[IsoSheetDef]:
 ## The neutral damage sheet (P157, ADR 0028 section 4) is in it: the committed one once its file
 ## exists (P160), else a crafted one of the ADR's shape, 8 slots of 64 x 48 px.
 func _page(players: Array[IsoPlayerArt]) -> Vector2i:
+	var sheets: Array[IsoSheetDef] = _page_sheets()
+	var reader: Callable = Callable()
+	if IsoAtlas.load_neutral_sheet() == null:
+		reader = _giant_reader(NEUTRAL_FRAME, CRAFTED_ROOT)
+	var page: Vector2i = IsoAtlas.planned_page(sheets, players, 1.0, reader)
+	print("atlas page with the neutral sheet (%s): %dx%d" % [sheets[-1].root, page.x, page.y])
+	return page
+
+
+## The committed sheets and, last, the neutral one (the committed one, else the crafted one).
+func _page_sheets() -> Array[IsoSheetDef]:
 	var sheets: Array[IsoSheetDef] = IsoAtlas.load_sheets()
 	var neutral: IsoSheetDef = IsoAtlas.load_neutral_sheet()
-	var reader: Callable = Callable()
-	if neutral == null:
-		neutral = _crafted_neutral()
-		reader = _giant_reader(NEUTRAL_FRAME, CRAFTED_ROOT)
-	sheets.append(neutral)
-	var page: Vector2i = IsoAtlas.planned_page(sheets, players, 1.0, reader)
-	print("atlas page with the neutral sheet (%s): %dx%d" % [neutral.root, page.x, page.y])
-	return page
+	sheets.append(neutral if neutral != null else _crafted_neutral())
+	return sheets
 
 
 ## scar1 and scar2 (2 frames each) and loose (4), each frame 64 x 48 px, faction neutral.
