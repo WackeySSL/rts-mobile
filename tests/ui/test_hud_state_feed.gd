@@ -124,9 +124,9 @@ func test_a_touch_on_a_hud_control_closes_nothing_but_the_economy_card() -> void
 		_controller.selection.set_ids(PackedInt32Array([TANK_A]))
 		await _settle()
 		for label: String in CONTROLS:
-			# Sideways the open full map folds the build panel (P121, one unfold at a time) and the
-			# open panel closes the map: the panel is open again for each control, and a control the
-			# map has folded away is not there to touch.
+			# The open full map folds the drawer (one unfold at a time, both orientations) and the
+			# open drawer closes the map: the drawer is open again for each control, and a control
+			# the other unfold has folded away (the tabs, with the map open) is not there to touch.
 			panel.open()
 			await _settle()  # The drawer lays itself out when it opens.
 			var control: Control = _hud(label) as Control

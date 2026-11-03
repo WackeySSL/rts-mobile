@@ -96,20 +96,38 @@ func test_the_ring_is_the_first_finishing_head_and_the_badge_counts_every_queue(
 func test_it_redraws_when_the_ring_or_the_badge_changes_and_not_at_rest() -> void:
 	var phone: UiMetrics = UiProfiles.by_name(&"android_6in")
 	await _open(phone.window_size, phone)
+	_button.set_process(true)  # The game's frames read the published snapshot.
 	var world: World = Sw.world()
 	Sw.own(world, BASE)
 	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad"], 100)
-	_publish(world, 1)
+	_post(world, 1)
+	await await_idle_frame()
 	await await_idle_frame()
 	var drawn: int = _button.draws
-	for tick: int in 3:  # The same queue on later ticks: nothing to redraw.
-		_publish(world, 2 + tick)
+	assert_int(drawn).is_greater(0)
+	for tick: int in 3:  # The same queue on later ticks and over idle frames: nothing to redraw.
+		_post(world, 2 + tick)
 		await await_idle_frame()
+	await await_idle_frame()
+	await await_idle_frame()
 	assert_int(_button.draws).is_equal(drawn)
 	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad"], 600)
-	_publish(world, 9)
+	_post(world, 9)
+	await await_idle_frame()
 	await await_idle_frame()
 	assert_int(_button.draws).is_equal(drawn + 1)
+
+
+## The badge is a HUD number: 18 sp at the least (touch-ui-rules, ADR 0025 section 13), in the
+## theme's number face; the word is the theme's 14 dp caps.
+func test_the_badge_is_an_18_sp_number_and_the_word_a_14_dp_caps_face_from_the_theme() -> void:
+	var phone: UiMetrics = UiProfiles.by_name(&"android_6in")
+	await _open(phone.window_size, phone)
+	var dp: float = UiScale.dp(1.0)
+	var number: int = _button.get_theme_font_size(&"font_size", BuildButton.NUMBER_FONT)
+	assert_float(float(number)).is_greater_equal(roundf(18.0 * dp) - 0.5)
+	var word: int = _button.get_theme_font_size(&"font_size", BuildButton.WORD_FONT)
+	assert_float(float(word)).is_greater_equal(roundf(14.0 * dp) - 0.5)
 
 
 func test_it_hides_under_the_drawer_and_the_pause_menu_and_a_tap_opens_the_drawer() -> void:
@@ -133,6 +151,14 @@ func test_it_hides_under_the_drawer_and_the_pause_menu_and_a_tap_opens_the_drawe
 		assert_bool(_button.visible).is_true()
 
 
+## The snapshot of `world` at `tick`, published to the runner the button reads (its own frames
+## pick it up).
+func _post(world: World, tick: int) -> void:
+	var snap: MatchSnapshot = Sw.snapshot(world, 0)
+	snap.tick = tick
+	_runner.snapshot = snap
+
+
 func _publish(world: World, tick: int) -> void:
 	var snap: MatchSnapshot = Sw.snapshot(world, 0)
 	snap.tick = tick
@@ -153,6 +179,7 @@ func _screens() -> Array[Dictionary]:
 		all.append({"label": "size %s" % size, "size": size, "metrics": null})
 	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
 	profiles.merge(UiProfiles.portrait())
+	profiles.merge(UiProfiles.notch_design())
 	for profile_name: StringName in profiles:
 		var m: UiMetrics = profiles[profile_name]
 		var cut: Rect2i = Rect2i(0, CUTOUT_PX, m.window_size.x, m.window_size.y - CUTOUT_PX)
@@ -190,6 +217,5 @@ func _open(size: Vector2i, metrics: UiMetrics) -> void:
 	_runner.scenario = _main.get_node("MatchRunner").scenario
 	_button = _main.get_node("Hud/BuildButton")
 	_button.runner = _runner
-	_button.set_process(false)
 	_feed = _main.get_node("Hud/HudStateFeed")
 	await await_idle_frame()

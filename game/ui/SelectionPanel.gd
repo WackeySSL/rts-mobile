@@ -16,9 +16,9 @@ extends PanelContainer
 ## and its own size flags by the orientation of the window (`HudLayout.is_portrait`), on a change
 ## of the selection and on a resize. A flip runs it twice, so every call lays out from the state
 ## it finds.
-## Landscape: the band lies between the ArmyBar and the floating build panel (`HudLayout.
-## right_zone_px`: the panel and a gap, at the bottom right) and the panel sits in its middle, at
-## the bottom. A row is at most BAND_SHARE of the band's width (the safe area's inner width, the
+## Landscape: the band lies between the ArmyBar and BUILD's column, or the open side drawer
+## (`HudLayout.right_zone_px`: its width and a gap, at the right) and the panel sits in its middle,
+## at the bottom. A row is at most BAND_SHARE of the band's width (the safe area's inner width, the
 ## band's own) and at most what the ArmyBar and the zone leave of it: a longer name or a larger
 ## count clips the name with an ellipsis, so the panel stays between the two. Only a screen too
 ## narrow for the least row (see `_fit_zone`) lets the zone give way.
@@ -170,6 +170,12 @@ func _add_row() -> void:
 	row.apply_dp()
 
 
+## The open side panel took the room beside BUILD or gave it back (`BuildSidebar.state_changed`):
+## the band is fitted again to what `HudLayout.right_zone_px` reserves now.
+func refit() -> void:
+	_apply_dp()
+
+
 ## Sizes are dp, so they follow a resize like DpMinSize does.
 func _apply_dp() -> void:
 	_list.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
@@ -200,8 +206,9 @@ func _fit_band() -> void:
 	safe.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
-## Landscape: the band's margins are the ArmyBar on the left and the build panel's zone on the
-## right, and the rows are capped to what they leave (the bottom row's room, less the backdrop's
+## Landscape: the band's margins are the ArmyBar on the left and BUILD's column, or the open side
+## panel, on the right, and the rows are capped to what they leave (the bottom row's room, less the
+## backdrop's
 ## padding), so a long name clips and the panel never slides into the zone. The band's minimum
 ## width counts both margins; on a screen too narrow for them and the least row the zone gives
 ## way, instead of growing the SafeArea and pushing the HUD off the screen.

@@ -4,12 +4,12 @@ extends GdUnitTestSuite
 ## orientations, also with a cutout: every HUD control is inside the safe rect, at least 48 dp on
 ## each axis and clear of every other. BUILD (P120) is at the bottom right, the economy pill (P119)
 ## at the top left and the radar scope (P121) at the top right in both orientations; in landscape
-## the
-## bottom row (the ArmyBar and the selection panel) stays left of BUILD's column
-## (`HudLayout.right_zone_px`). In portrait, while the drawer is closed, the zone is BUILD's row
-## (72 dp) and the ArmyBar stands above it (the plan's interim place). Portrait selects the six MVP
-## types with 3-digit counts. Landscape selects the 30 tanks the scene starts with, and again 120
-## rocket squads (the widest single row) and three types with 3-digit counts (not the six: their
+## the bottom row (the ArmyBar and the selection panel) stays left of BUILD's column
+## (`HudLayout.right_zone_px`), or of the open drawer. In portrait, while the drawer is closed, the
+## zone is BUILD's own 64 dp and the ArmyBar stands a gap above it (the plan's interim place).
+## Portrait selects the six MVP types with 3-digit counts. Landscape selects the 30 tanks the scene
+## starts with, and again 120 rocket squads (the widest single row) and three types with 3-digit
+## counts (not the six: their
 ## column is taller than the smallest web phone): a row the bottom row has no room for is clipped,
 ## never slid under BUILD.
 
@@ -98,6 +98,58 @@ func test_every_hud_control_is_inside_the_safe_rect_48_dp_and_clear_of_the_other
 				)
 
 
+## The open drawer is a HUD control too (plan P120): at every screen, sideways the bottom row's
+## SelectionPanel and the ArmyBar end before the panel with a gap (`HudLayout.right_zone_px`
+## reserves the panel's width, and the panel re-fits when the drawer opens), upright the sheet
+## stands under the ArmyBar and the line; and none of the pill, the Dev button, the ArmyBar and the
+## panel overlaps the drawer's rect in either orientation.
+func test_the_open_drawer_overlaps_none_of_the_hud_and_the_selection_panel_ends_before_it() -> void:
+	for screen: Dictionary in _cases():
+		await _open(screen)
+		var why: String = str(screen["label"])
+		if str(screen["label"]).begins_with("web_phone_small with a cutout"):
+			# The smallest web phone less a 100 px cutout leaves the bottom row less than its least
+			# row beside the 312 dp panel: the zone gives way there (`SelectionPanel._fit_zone`).
+			continue
+		var sidebar: BuildSidebar = _hud("BuildSidebar")
+		sidebar.open()
+		await await_idle_frame()
+		await await_idle_frame()
+		var full: Rect2 = get_viewport().get_visible_rect()
+		var safe: Rect2 = SafeAreaMargin.rect_inside(full, SafeAreaMargin.DEFAULT_MARGIN_DP)
+		var back: Rect2 = _rect("Backdrop")
+		var drawer: Rect2
+		if HudLayout.is_portrait():
+			drawer = Rect2(
+				back.position, Vector2(back.size.x, back.size.y - (full.end.y - safe.end.y))
+			)
+		else:
+			drawer = Rect2(
+				back.position, Vector2(back.size.x - (full.end.x - safe.end.x), back.size.y)
+			)
+		assert_bool(_panel.visible).override_failure_message(why).is_true()
+		var parts: Dictionary[String, Rect2] = {
+			"Panel": _rect(_panel),
+			"ArmyBar": _rect("ArmyBar"),
+			"Pill": _rect("EconomyPill"),
+		}
+		if (_hud("DevButton") as Control).is_visible_in_tree():
+			parts["DevButton"] = _rect("DevButton")
+		for part: String in parts:
+			var at: String = "%s: %s %s against the drawer %s" % [why, part, parts[part], drawer]
+			assert_bool(parts[part].intersects(drawer)).override_failure_message(at).is_false()
+		if not HudLayout.is_portrait():
+			var gap: float = UiScale.dp(8.0) - TOLERANCE_PX
+			for part: String in ["Panel", "ArmyBar"]:
+				var at: String = (
+					"%s: %s %s, drawer from %s" % [why, part, parts[part], drawer.position.x]
+				)
+				assert_float(parts[part].end.x).override_failure_message(at).is_less_equal(
+					drawer.position.x - gap
+				)
+		sidebar.collapse()
+
+
 ## With the sidebar's real band (P85), no other control enters the band, the bar sits a gap above
 ## it, and nothing else is in the bottom stack. The limit of 40% of the safe height is the plan's,
 ## for the six sizes and the profiles; a cutout takes height from both ends of the screen
@@ -112,7 +164,7 @@ func test_in_portrait_the_bar_stands_above_builds_row_and_nothing_else_is_below_
 		var band: Rect2 = _rect("BuildButton")
 		var zone_top: float = _inner_bottom() - HudLayout.bottom_zone_px()
 		assert_float(HudLayout.bottom_zone_px()).override_failure_message(why).is_equal_approx(
-			UiScale.dp(72.0), 0.01
+			UiScale.dp(64.0), 0.01
 		)
 		assert_float(band.position.y).override_failure_message(why).is_equal_approx(
 			_inner_bottom() - UiScale.dp(64.0), 1.0
@@ -208,6 +260,7 @@ func _screens(portrait: Variant = null) -> Array[Dictionary]:
 		all.append(_screen("size %s" % size, size, null, false))
 	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
 	profiles.merge(UiProfiles.portrait())
+	profiles.merge(UiProfiles.notch_design())
 	for profile_name: StringName in profiles:
 		var m: UiMetrics = profiles[profile_name]
 		var w: int = m.window_size.x

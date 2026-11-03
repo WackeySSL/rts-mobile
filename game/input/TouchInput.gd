@@ -23,7 +23,8 @@ extends Node
 ## (P90: the result screen, a confirm) does the same when it shows, through CANCEL_GROUP: nothing
 ## that holds a finger goes on under it.
 
-## The first event of a gesture on the map, or a wheel step: the menu collapses (BuildSidebar).
+## The first event of a gesture on the map, or a wheel step: `HudState` folds the unfold, the build
+## drawer among them (`HudStateFeed`).
 signal map_gesture
 
 ## What holds a finger joins this group and answers `cancel_gestures()`; a modal calls the group.

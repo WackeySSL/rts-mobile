@@ -91,9 +91,9 @@ func test_a_drag_in_each_edge_band_scrolls_the_map_that_way_at_the_configured_sp
 			assert_vector(_placement.tile).override_failure_message(note).is_equal(under)
 			assert_vector(_placement.tile).override_failure_message(note).is_not_equal(start)
 			assert_array(_sent).override_failure_message(note).is_empty()
-			if edge == DOWN and HudLayout.is_portrait():
-				var band_top: float = _build_band().position.y
-				assert_float(_centre().y).override_failure_message(note).is_less(band_top)
+			if edge == DOWN:  # Nothing covers the map during a ghost drag: the ghost stays in view.
+				var floor_y: float = UiScale.safe_rect_base().end.y
+				assert_float(_centre().y).override_failure_message(note).is_less(floor_y)
 			TouchEvents.release(get_viewport(), 0, finger)
 
 
@@ -572,12 +572,6 @@ func _ghost_above_the_sheet() -> void:
 
 func _build_sheet() -> BuildSidebar:
 	return _main.get_node("Hud").find_child("BuildSidebar", true, false) as BuildSidebar
-
-
-func _build_band() -> Rect2:
-	return (
-		(_main.get_node("Hud").find_child("BuildSidebar", true, false) as Control).get_global_rect()
-	)
 
 
 func _speed_dp() -> float:

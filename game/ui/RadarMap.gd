@@ -171,6 +171,7 @@ func _apply_dp() -> void:
 	_head.add_theme_constant_override("separation", 0)
 	for button: Button in [_pin, _collapse]:
 		button.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(GLYPH_DP)))
+	place()  # At once, so the open map does not stand at its old place for a frame.
 	place.call_deferred()  # The strike row's band sorts a moment after the resize.
 
 

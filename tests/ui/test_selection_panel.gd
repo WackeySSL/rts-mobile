@@ -396,7 +396,7 @@ func _px(dp: float) -> int:
 	return roundi(UiScale.dp(dp))
 
 
-## The safe area's inner width, which the build panel's zone is a share of (HudLayout.panel_px).
+## The safe area's inner width, the band the panel's zone is cut from (HudLayout.right_zone_px).
 func _inner_width() -> float:
 	var area: Control = _hud("SafeArea")
 	var margins: float = area.get_theme_constant("margin_left")

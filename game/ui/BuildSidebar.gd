@@ -26,7 +26,7 @@ extends Control
 ## The sheet's height goes to `HudLayout.bottom_zone_dp` and its real top on the screen to
 ## `HudLayout.menu_top_px` (ADR 0024 section 4), and `zone_changed` tells whoever lifts something by
 ## them (the ArmyBar, the strike row). Upright the zone is BUILD's row while the drawer is closed
-## (`HudLayout.BUILD_ROW_DP`, until P122b), the sheet's height while it is open; sideways it is 0.
+## (`HudLayout.BUILD_ZONE_DP`, until P122b), the sheet's height while it is open; sideways it is 0.
 ## Cards: one `ItemTile` per buildable type (icon: its P99b item card), made per match from the
 ## snapshot's type tables, those of the open tab and of the local player's faction shown. The
 ## faction is that of the player's own rows (`type_faction`, the producer-faction rule of
@@ -47,12 +47,14 @@ signal state_changed
 signal zone_changed(top_px: float, height_px: float)
 
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
-const THEME_TYPE: StringName = &"BuildSidebar"
+const THEME_TYPE: StringName = &"HudPanel"  ## ADR 0025 section 13: the panel token and its edge.
 const TAB_VARIATION: StringName = &"SidebarTab"
 ## The tab names by `World.Tab`; the icon of a tab is `tab_<name in lower case>`.
 const TAB_NAMES: PackedStringArray = ["Structures", "Infantry", "Vehicles"]
 const TAB_DP: float = 56.0  ## An icon over the name needs more than the 48 dp of a bare icon.
-const TAB_ICON_DP: float = 24.0
+const TAB_ICON_DP: float = 22.0
+const NAME_VARIATION: StringName = &"ItemCaption"  ## 14 sp: "Structures" fits a tab.
+const HANDLE_DP: Vector2 = Vector2(40.0, 4.0)  ## The sheet's handle (ADR 0025 section 5).
 const CLOSE_DP: float = 48.0
 const CLOSE_ICON_DP: float = 28.0
 ## Beside the backdrop's own 8 dp: the 16 dp each side that three 88 dp cards need 312 dp for.
@@ -85,6 +87,8 @@ var _close: Button = Button.new()
 var _chevron: TextureRect = TextureRect.new()  ## Faces the edge the drawer leaves by.
 var _tab_row: HBoxContainer = HBoxContainer.new()
 var _tabs: Array[Button] = []
+var _tab_icons: Array[TextureRect] = []
+var _handle: ColorRect = ColorRect.new()  ## Upright only, on the head.
 var _items: ScrollContainer = ScrollContainer.new()
 var _items_fit: DpMinSize = DpMinSize.new()  ## The least height of `_items`: one row of cards.
 var _grid: GridContainer = GridContainer.new()
@@ -151,6 +155,7 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	HudLayout.bottom_zone_dp = 0.0
 	HudLayout.menu_top_px = INF
+	HudLayout.drawer_side_dp = 0.0
 
 
 ## Tests only: the slide takes `ms` (0: the state's layout shows at once) whatever the settings say.
@@ -189,6 +194,7 @@ func advance(seconds: float) -> void:
 
 ## The unfold changed: slide to the new state, and keep what placement or the aim folded.
 func _on_hud_changed(previous: HudState.Unfold) -> void:
+	_swipe = -1  # A finger still down on a folded drawer swipes nothing.
 	var folded: bool = previous == HudState.Unfold.DRAWER and not is_open()
 	if folded and placement != null and placement.active and not _placing:
 		_before = true  # The feed folded it for the placement that is just beginning.
@@ -266,6 +272,7 @@ func select_tab(index: int) -> void:
 		return
 	for at: int in _tabs.size():
 		_tabs[at].set_pressed_no_signal(at == index)  # A tap on the open tab keeps it open.
+		_tab_icons[at].modulate = _tab_tint(at == index)
 	if index != tab:
 		tab = index
 		_items.scroll_vertical = 0
@@ -322,6 +329,12 @@ func _build_head() -> void:
 	room.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	room.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_head.add_child(room)
+	_handle.name = "Handle"
+	_handle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_handle.set_anchors_preset(Control.PRESET_CENTER)
+	_handle.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_handle.grow_vertical = Control.GROW_DIRECTION_BOTH
+	room.add_child(_handle)
 	_close.name = "Close"
 	_close.flat = true
 	_close.focus_mode = Control.FOCUS_NONE
@@ -338,7 +351,9 @@ func _build_head() -> void:
 
 
 ## The tabs: an icon over the name each (`tab_<name>`, grey at rest and white when open, from the
-## theme). The open tab is the lighter plate with the thick bar at its foot (theme `SidebarTab`).
+## theme's `SidebarTab` colours). The open tab is the lighter plate with the thick bar at its foot.
+## The icon and the name are the tab's own children, so the name takes the 14 sp of `ItemCaption`
+## and the tab stays `TAB_DP` high (a Button's own icon over text measured 84 dp).
 func _build_tabs() -> void:
 	_tab_row.name = "Tabs"
 	_stack.add_child(_tab_row)
@@ -349,16 +364,38 @@ func _build_tabs() -> void:
 		button.toggle_mode = true
 		button.focus_mode = Control.FOCUS_NONE  # No focus ring left behind after a tap.
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.text = TAB_NAMES[index]
-		button.clip_text = true
-		button.icon = load(ICON_ART % ("tab_" + TAB_NAMES[index].to_lower()))
-		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-		button.expand_icon = false
 		button.pressed.connect(select_tab.bind(index))
 		_min_dp(button, Vector2(TAB_DP, TAB_DP))
+		var content: VBoxContainer = VBoxContainer.new()
+		content.name = "Content"
+		content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		content.alignment = BoxContainer.ALIGNMENT_CENTER
+		content.add_theme_constant_override("separation", 0)
+		content.set_anchors_preset(Control.PRESET_FULL_RECT)
+		button.add_child(content)
+		var icon: TextureRect = TextureRect.new()
+		icon.name = "Icon"
+		icon.texture = load(ICON_ART % ("tab_" + TAB_NAMES[index].to_lower()))
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_min_dp(icon, Vector2(TAB_ICON_DP, TAB_ICON_DP))
+		content.add_child(icon)
+		var label: Label = Label.new()
+		label.name = "Name"
+		label.text = TAB_NAMES[index]
+		label.theme_type_variation = NAME_VARIATION
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		content.add_child(label)
 		_tab_row.add_child(button)
 		_tabs.append(button)
+		_tab_icons.append(icon)
+
+
+## The icon's tint: the open tab's white or the resting grey, from the tab's theme colours.
+func _tab_tint(open: bool) -> Color:
+	return get_theme_color(&"icon_pressed_color" if open else &"icon_normal_color", TAB_VARIATION)
 
 
 ## Makes the tiles again when the match or the type tables changed, then shows each one's state.
@@ -520,8 +557,18 @@ func _apply_dp() -> void:
 		row.add_theme_constant_override("separation", gap)
 	_grid.add_theme_constant_override("h_separation", gap)
 	_grid.add_theme_constant_override("v_separation", gap)
-	for button: Button in _tabs:
-		button.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(TAB_ICON_DP)))
+	for button: Button in _tabs:  # The content stands inside the plate's margins.
+		var plate: StyleBox = button.get_theme_stylebox(&"normal", TAB_VARIATION)
+		var content: Control = button.get_node("Content")
+		content.offset_left = plate.get_margin(SIDE_LEFT)
+		content.offset_top = plate.get_margin(SIDE_TOP)
+		content.offset_right = -plate.get_margin(SIDE_RIGHT)
+		content.offset_bottom = -plate.get_margin(SIDE_BOTTOM)
+	_handle.visible = _portrait
+	_handle.custom_minimum_size = Vector2(UiScale.dp(HANDLE_DP.x), UiScale.dp(HANDLE_DP.y))
+	_handle.color = _tab_tint(false)  # The resting grey of the tabs' icons.
+	for at: int in _tab_icons.size():
+		_tab_icons[at].modulate = _tab_tint(_tabs[at].button_pressed)
 	_chevron.rotation = PI / 2.0 if _portrait else 0.0  # Toward the edge it leaves by.
 	var pad: int = roundi(UiScale.dp(PAD_DP))
 	_pad.add_theme_constant_override("margin_left", pad)
@@ -556,6 +603,7 @@ func _measure() -> void:
 ## the extent the drawer has.
 func _place(settle: bool) -> void:
 	_target = _open_px if is_open() else 0.0
+	HudLayout.drawer_side_dp = _open_px / _dp_px if is_open() and not _portrait else 0.0
 	var distance: float = absf(_target - _extent)
 	var ms: float = float(_slide_ms())
 	if settle or not _placed or ms <= 0.0 or distance < 0.5:
@@ -596,7 +644,7 @@ func _apply_extent(extent: float) -> void:
 	var zone: float = 0.0
 	var top: float = INF
 	if _portrait:
-		zone = maxf(extent, HudLayout.BUILD_ROW_DP * _dp_px)
+		zone = maxf(extent, HudLayout.BUILD_ZONE_DP * _dp_px)
 		top = _rect.end.y - extent if extent > 0.0 else INF
 	HudLayout.bottom_zone_dp = zone / _dp_px
 	HudLayout.menu_top_px = top

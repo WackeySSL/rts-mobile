@@ -370,5 +370,6 @@ runner = NodePath("../../MatchRunner")
 [connection signal="selection_changed" from="PlayerController" to="RallyLayer" method="set_selected"]
 [connection signal="rally_ordered" from="PlayerController" to="RallyLayer" method="show_pending"]
 [connection signal="selection_changed" from="PlayerController" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="set_selected"]
+[connection signal="state_changed" from="Hud/BuildSidebar" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="refit"]
 [connection signal="zone_changed" from="Hud/BuildSidebar" to="Hud/SafeArea/ArmyBand/ArmyBar" method="_on_zone_changed"]
 [connection signal="zone_changed" from="Hud/BuildSidebar" to="Hud/SafeArea/StrikeBand/StrikeControls" method="_on_zone_changed"]

@@ -250,6 +250,28 @@ func test_build_brings_the_cards_back_while_the_ghost_is_out_and_ready_restarts_
 		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()  # Began closed.
 
 
+## A tap on the READY card closes the drawer only when placement really begins: where the game
+## refuses it (here the type has no footprint in the snapshot) the drawer stays open, nothing is
+## sent and no placement runs.
+func test_a_ready_tap_that_placement_refuses_leaves_the_drawer_open_and_sends_nothing() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size)
+		var why: String = str(size)
+		var card: ItemTile = _sidebar.find_child("Tile_power_plant", true, false) as ItemTile
+		assert_int(card.state).override_failure_message(why).is_equal(ItemTile.State.READY)
+		card.clock = func() -> int: return _now_ms
+		var foot: int = _runner.snapshot.type_foot_w[card.type_index]
+		_runner.snapshot.type_foot_w[card.type_index] = 0
+		_tap(card.get_global_rect().get_center())
+		assert_bool(_placement.active).override_failure_message(why).is_false()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+		assert_array(_sent).override_failure_message(why).is_empty()
+		_runner.snapshot.type_foot_w[card.type_index] = foot
+		_tap(card.get_global_rect().get_center())  # Accepted now: it begins and closes the drawer.
+		assert_bool(_placement.active).override_failure_message(why).is_true()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
+
+
 func test_a_build_gives_the_drawer_back_and_a_strike_aim_or_the_matchs_end_does_not() -> void:
 	await _open(ScreenSizes.LANDSCAPE[0], null, true)
 	# A build: the check mark, the tick that answers it, and the menu is open again.
@@ -404,6 +426,26 @@ func test_a_swipe_toward_the_edge_closes_the_drawer_from_the_panel_or_the_head()
 		_swipe(panel, toward * far)
 		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
 		assert_int(_told).override_failure_message(why).is_equal(0)
+
+
+## A finger that went down on the drawer and then saw it fold (another unfold, the close button)
+## swipes nothing when the drawer opens again under it: its swipe ended with the fold.
+func test_a_finger_down_when_the_drawer_folds_swipes_nothing_when_it_opens_again() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size)
+		var why: String = str(size)
+		var portrait: bool = HudLayout.is_portrait()
+		var toward: Vector2 = Vector2(0.0, 1.0) if portrait else Vector2(1.0, 0.0)
+		var far: float = UiScale.dp(_touch.settings.drawer_swipe_dp) + 10.0
+		var zone: Control = (_hud("Head") if portrait else _hud("Backdrop")) as Control
+		var from: Vector2 = zone.get_global_rect().get_center()
+		TouchEvents.press(get_viewport(), 0, from)  # On the drawer.
+		_sidebar.collapse()  # It folds under the finger,
+		_sidebar.open()  # and opens again.
+		TouchEvents.drag(get_viewport(), 0, from + toward * far * 0.5, toward * far * 0.5)
+		TouchEvents.drag(get_viewport(), 0, from + toward * far, toward * far * 0.5)
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+		TouchEvents.release(get_viewport(), 0, from + toward * far)
 
 
 ## The pill stays on screen while the drawer is open (until P120d puts the economy in its head).

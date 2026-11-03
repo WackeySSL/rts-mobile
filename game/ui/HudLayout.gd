@@ -16,6 +16,9 @@ const STACK_SHARE: float = 0.4  ## The most the bottom stack takes of the portra
 ## BUILD's row upright while the drawer is closed (BUILD 64 dp and a gap): the zone the ArmyBar
 ## stands above (ADR 0025 "Interim places"; P122b takes it back to 0).
 const BUILD_ROW_DP: float = 72.0  # HudCorners.BUILD_DP + GAP_DP; pinned equal by a test.
+## The portrait zone while the drawer is closed: BUILD's own height. Whatever stands above it adds
+## its 8 dp gap, as it does above the open sheet.
+const BUILD_ZONE_DP: float = 64.0  # HudCorners.BUILD_DP; pinned equal by a test.
 
 ## The portrait zone in dp (see the header); 0 in landscape and while no BuildSidebar is in the
 ## tree. Static state: a test that sets one puts it back in `after_test`, like the UiScale override.
@@ -24,6 +27,9 @@ static var bottom_zone_dp: float = 0.0
 ## while it is closed, sideways, or no BuildSidebar is in the tree: nothing covers the map (read it
 ## through `map_bottom_px`). Static state like the zone: a test puts it back.
 static var menu_top_px: float = INF
+## The open side panel's width in dp (the safe part, `BuildSidebar` writes it), 0 while it is
+## closed, upright, or no BuildSidebar is in the tree: `right_zone_px` reserves it for the row.
+static var drawer_side_dp: float = 0.0
 
 
 ## The width of the first visible child of `row`, 0 for none: what the credits pill stands after at
@@ -42,10 +48,10 @@ static func is_portrait() -> bool:
 	return UiScale.is_portrait_size(UiScale.current().window_size)
 
 
-## What the bottom row reserves at its right end in landscape: BUILD and a gap, in base px. (The
-## bottom row's `inner` width no longer matters; BUILD is a fixed size.)
+## What the bottom row reserves at its right end in landscape, in base px: BUILD and a gap, or the
+## open side panel and a gap, whichever is wider. (The row's `inner` width no longer matters.)
 static func right_zone_px(_inner: float) -> float:
-	return UiScale.dp(BUILD_ROW_DP)
+	return UiScale.dp(maxf(BUILD_ROW_DP, drawer_side_dp + HudCorners.GAP_DP))
 
 
 ## The portrait bottom zone's height in base px, at the bottom of the safe area's inner rect.

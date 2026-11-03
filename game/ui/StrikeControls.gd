@@ -6,13 +6,13 @@ extends HBoxContainer
 ## a point is placed) and a tap on the pressed one ends it; the check mark (dimmed until a point is
 ## placed) sends the one SUPERWEAPON, the X cancels.
 ## Landscape: the top line, left of the radar scope. Portrait: the right edge, a gap above the
-## ArmyBar's line, which is a gap above the build menu (the band, or the strip while it is
-## collapsed). The parent `MarginContainer` is the band the row sits in; this node sets its margins,
-## and it comes after the BuildSidebar in the scene, so the menu's height is in place. It follows
-## the menu's slide through `zone_changed` (ADR 0024 section 4): the lift of a slide frame uses the
-## dp and the orientation cached on the last resize and the height the signal carries, and the
-## theme overrides are set on a resize only. The row is about 216 dp wide, which every phone's width
-## holds.
+## ArmyBar's line, which is a gap above the zone (BUILD's height while the drawer is closed, the
+## open sheet's height while it is up, P120). The parent `MarginContainer` is the band the row sits
+## in; this node sets its margins and takes the zone from `HudLayout`, then `zone_changed`. It
+## follows the drawer's slide through `zone_changed` (ADR 0024 section 4): the lift of a slide
+## frame uses the dp and the orientation cached on the last resize and the height the signal
+## carries, and the theme overrides are set on a resize only. The row is about 216 dp wide, which
+## every phone's width holds.
 
 const GAP_DP: float = 8.0
 const ACTION_DP: float = 64.0  ## The check mark and the X: placement's size (touch-ui-rules).

@@ -12,12 +12,12 @@ extends Button
 
 const ICON: String = "res://assets/art/svg/icons/glyph_menu_open.svg"
 const TOKENS: StringName = &"HudTokens"
-const WORD_FONT: StringName = &"CapsButton"
+const WORD_FONT: StringName = &"PillWord"  ## 14 dp caps face with its tracking, in the theme.
+const NUMBER_FONT: StringName = &"ItemCost"  ## The badge: 18 sp Chakra Petch, as a card's count.
 const WORD: String = "BUILD"
 const RING_DP: float = 4.0
 const GLYPH_DP: float = 26.0
-const WORD_SP: float = 14.0
-const BADGE_DP: float = 10.0  ## The badge's radius.
+const BADGE_DP: float = 12.5  ## The badge's radius: 18 sp digits fit it.
 const ARC_POINTS: int = 48
 ## One of the two accents (the theme's `AccentRenew`, `AccentFossil`) by the faction's index.
 const ACCENTS: Array[StringName] = [&"AccentRenew", &"AccentFossil"]
@@ -33,6 +33,7 @@ var draws: int = 0  ## How many times it was drawn, for the tests.
 var _glyph: Texture2D = null
 var _seen: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot last read.
 var _faction: int = 0
+var _dp: float = 1.0  ## Base px per dp, read by `place` (a resize): a frame asks `UiScale` nothing.
 
 
 func _ready() -> void:
@@ -55,6 +56,7 @@ func _process(_delta: float) -> void:
 
 ## Takes the rect `HudCorners.place` gives BUILD (64 dp, the safe rect's bottom right corner).
 func place() -> void:
+	_dp = UiScale.dp(1.0)
 	var margin_dp: float = SafeAreaMargin.DEFAULT_MARGIN_DP
 	margin_dp = margin_dp if safe_area == null else safe_area.margin_dp
 	var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), margin_dp)
@@ -107,7 +109,7 @@ func _on_changed(_previous: HudState.Unfold) -> void:
 
 func _draw() -> void:
 	draws += 1
-	var dp: float = UiScale.dp(1.0)
+	var dp: float = _dp
 	var middle: Vector2 = size * 0.5
 	var ring: float = RING_DP * dp
 	var outer: float = minf(size.x, size.y) * 0.5
@@ -134,7 +136,7 @@ func _draw() -> void:
 		false
 	)
 	var font: Font = get_theme_font(&"font", WORD_FONT)
-	var font_size: int = roundi(WORD_SP * dp)
+	var font_size: int = get_theme_font_size(&"font_size", WORD_FONT)
 	var width: float = font.get_string_size(WORD, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 	draw_string(
 		font,
@@ -148,14 +150,16 @@ func _draw() -> void:
 	if count > 0:
 		var at: Vector2 = Vector2(size.x - BADGE_DP * dp, BADGE_DP * dp)
 		draw_circle(at, BADGE_DP * dp, get_theme_color(&"text", TOKENS))
+		var number: Font = get_theme_font(&"font", NUMBER_FONT)
+		var digits: int = get_theme_font_size(&"font_size", NUMBER_FONT)
 		var text: String = str(count)
-		var span: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		var span: float = number.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, digits).x
 		draw_string(
-			font,
-			at + Vector2(-span * 0.5, font_size * 0.35),
+			number,
+			at + Vector2(-span * 0.5, digits * 0.35),
 			text,
 			HORIZONTAL_ALIGNMENT_LEFT,
 			-1,
-			font_size,
+			digits,
 			get_theme_color(&"on_accent", accent)
 		)
