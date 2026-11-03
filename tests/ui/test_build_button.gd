@@ -306,6 +306,7 @@ func test_the_stalled_look_redraws_once_per_change_and_nothing_per_snapshot() ->
 	var faction: Color = _button.get_theme_color(&"light", BuildButton.ACCENTS[0])
 	assert_bool(grey.is_equal_approx(faction)).is_false()
 	# What _draw really did: the grey arc and the "!" disc.
+	assert_bool(_button.ring_drawn).is_true()
 	assert_bool(_button.ring_color.is_equal_approx(grey)).is_true()
 	assert_bool(_button.mark_drawn).is_true()
 	var drawn: int = _button.draws
@@ -320,6 +321,7 @@ func test_the_stalled_look_redraws_once_per_change_and_nothing_per_snapshot() ->
 	await await_idle_frame()
 	assert_bool(_button.stalled).is_false()
 	assert_int(_button.draws).is_equal(drawn + 1)
+	assert_bool(_button.ring_drawn).is_true()
 	assert_bool(_button.ring_color.is_equal_approx(faction)).is_true()  # The faction's, no mark.
 	assert_bool(_button.mark_drawn).is_false()
 	# The comparison keeps its numbers in arrays made once: `refresh` makes nothing.
