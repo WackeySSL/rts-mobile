@@ -82,8 +82,10 @@ extends RefCounted
 ## first and resizes once. No decision here reads `events`, and none depends on an earlier shot or
 ## impact except through the arrays and scalars a kernel holds the same way: the free stack and its
 ## top, the next projectile id and `hp`. So only the order of the records and the ints written have
-## to match. The first `events` writer of a tick is `advance_projectiles` (its IMPACTs), the second
-## `fire` (its SHOTs).
+## to match. The records of a tick go in phase order: COMMANDS write first (a PLACE's SPAWNED, and a
+## refinery's free harvester after it, and a SUPERWEAPON's STRIKE, in command order), then
+## `advance_projectiles` (its IMPACTs), then `fire` (its SHOTs), then REMOVE (DIED) and PRODUCTION
+## (SPAWNED). So a port appends at `events.size()` and does not assume the array is empty.
 
 ## The event kinds the phases write, as the World's ints.
 const SHOT: int = World.Event.SHOT
