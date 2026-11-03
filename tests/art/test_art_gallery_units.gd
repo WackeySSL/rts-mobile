@@ -163,10 +163,11 @@ func test_the_zoom_row_shows_the_flarejack_at_each_camera_zoom_in_its_grounds_te
 		assert_array(scales).is_equal(LEVELS)
 
 
-## A squad stands for a second, walks for 2.4 s (a frame every 0.1 s), stands again for a second and
-## idles for 2.6 s (a frame every 0.6 s); the squad made next is 0.9 s further on in the script. The
-## hull sprite shows the very frame of the model's walk or idle that the script asks for, in the
-## squad's default view, on the canvas of that pose part.
+## A squad stands for a second, walks for 2.4 s (a frame every 0.1 s), stands again for a second,
+## shows idle 0 for 1.3 s, stands for a second and shows idle 1 for 1.3 s (what the game will show,
+## P142: an idle window, then the standing frame, then the other idle frame); the squad made next is
+## 0.9 s further on in the script. The hull sprite shows the very frame of the model's walk or idle
+## that the script asks for, in the squad's default view, on the canvas of that pose part.
 func test_a_squad_plays_its_standing_frame_walk_and_idle_in_its_default_view() -> void:
 	for spec: Array in SQUADS:
 		var model: ArtModel = _squad_model(spec)
@@ -185,8 +186,11 @@ func test_a_squad_plays_its_standing_frame_walk_and_idle_in_its_default_view() -
 			[2.55, &"walk", 3],
 			[3.5, &"hull", -1],
 			[4.7, &"idle", 0],
-			[5.2, &"idle", 1],
-			[7.2, &"hull", -1],
+			[5.6, &"idle", 0],
+			[6.0, &"hull", -1],
+			[6.8, &"idle", 1],
+			[7.9, &"idle", 1],
+			[8.2, &"hull", -1],
 		]
 		var clock: float = 0.0
 		for step: Array in script:
@@ -203,6 +207,16 @@ func test_a_squad_plays_its_standing_frame_walk_and_idle_in_its_default_view() -
 			assert_vector(hull.offset).override_failure_message(label).is_equal_approx(
 				want, Vector2.ONE * 0.01
 			)
+	# The squad writes its sprite when its frame changes and not on every advance.
+	var steady: RefCounted = Units.new()
+	var steady_rig: Node2D = auto_free(steady.make("rifle_squad", 0))
+	var steady_hull: Sprite2D = steady_rig.get_node("Hull")
+	steady.advance(1.55)  # Walk frame 1, which lasts until 1.6 s.
+	steady_hull.offset = Vector2(999.0, 999.0)
+	steady.advance(0.02)
+	assert_vector(steady_hull.offset).is_equal(Vector2(999.0, 999.0))
+	steady.advance(0.05)  # 1.62 s: walk frame 2.
+	assert_bool(steady_hull.offset.x < 100.0).is_true()
 	# The squad made second is 0.9 s on: at 0.25 s the first still stands, the second is 0.15 s
 	# into its walk.
 	var pair: RefCounted = Units.new()

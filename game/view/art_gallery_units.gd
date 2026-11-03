@@ -25,20 +25,49 @@ const BASE_SCALE: float = 0.5  ## 2x art at zoom 1: one tile is 64 px.
 const SHADOW: String = "Shadow"
 const HULL: String = "Hull"
 const GUN: String = "Gun"
-## A squad's script in seconds: the standing frame, the walk, the standing frame, the idle. A walk
-## frame lasts about a quarter of a real walk cycle (2 to 3 a second), an idle frame is slow.
+## A squad's script in seconds, as the game will show it (P142): the standing frame, the walk, the
+## standing frame, idle 0, the standing frame, idle 1. A walk frame lasts about a quarter of a real
+## walk cycle (2 to 3 a second), an idle frame a window of its own.
 const STAND_S: float = 1.0
 const WALK_S: float = 2.4
-const IDLE_S: float = 2.6
+const IDLE_S: float = 1.3
 const WALK_FRAME_S: float = 0.1
-const IDLE_FRAME_S: float = 0.6
-const POSE_CYCLE_S: float = STAND_S + WALK_S + STAND_S + IDLE_S
+const POSE_CYCLE_S: float = 3.0 * STAND_S + WALK_S + 2.0 * IDLE_S
 const POSE_PHASE_S: float = 0.9  ## Each squad starts this much after the one made before it.
+
+
+## A squad that plays its poses: the frames its hull sprite can show (the standing one, the walk,
+## then the idle) and the one it shows, written to the sprite only when it changes.
+class Squad:
+	extends RefCounted
+	var hull: Sprite2D = null
+	var textures: Array[ImageTexture] = []
+	var offsets: PackedVector2Array = PackedVector2Array()
+	var walk_frames: int = 0
+	var phase: float = 0.0  ## Seconds further on in the script than the gallery's clock.
+	var shown: int = 0
+
+	## The frame (an index of `textures`) `t` seconds into the script.
+	func frame_at(t: float) -> int:
+		if t >= STAND_S and t < STAND_S + WALK_S:
+			return 1 + int((t - STAND_S) / WALK_FRAME_S) % walk_frames
+		var idle_at: float = t - 2.0 * STAND_S - WALK_S
+		if idle_at >= 0.0 and idle_at < IDLE_S:
+			return 1 + walk_frames
+		return 2 + walk_frames if idle_at >= IDLE_S + STAND_S else 0
+
+	func play(t: float) -> void:
+		var index: int = frame_at(t)
+		if index != shown:
+			shown = index
+			hull.texture = textures[index]
+			hull.offset = offsets[index]
+
 
 var _origins: Dictionary[String, Vector2] = {}  ## "<art id> <part>": the frame's origin, 2x px.
 var _mounts: Dictionary[String, Vector2] = {}  ## art id: where the turret sits, in px at zoom 1.
 var _textures: Dictionary[String, ImageTexture] = {}
-var _squads: Array[Dictionary] = []  ## The squads that play poses: hull, stand, walk, idle, phase.
+var _squads: Array[Squad] = []  ## The squads that play poses.
 var _clock: float = 0.0
 
 
@@ -68,46 +97,27 @@ func fill(unit: Node2D, art_id: String, triad: int, zoom: float) -> void:
 		unit.add_child(_sprite(model, &"turret", triad, zoom, GUN, _mounts[art_id]))
 
 
-## Where in the script the squads are `delta` seconds later: each hull sprite shows the frame its
-## turn of the script asks for, a squad a little behind the one before it.
+## Where in the script the squads are `delta` seconds later: a squad a little behind the one made
+## before it.
 func advance(delta: float) -> void:
 	_clock += delta
-	for squad: Dictionary in _squads:
-		var frame: Array = _frame_at(squad, fposmod(_clock + float(squad["phase"]), POSE_CYCLE_S))
-		var hull: Sprite2D = squad["hull"]
-		hull.texture = frame[0]
-		hull.offset = frame[1]
-
-
-## The squad's frame (texture, offset) `t` seconds into its script.
-func _frame_at(squad: Dictionary, t: float) -> Array:
-	var walk: Array = squad["walk"]
-	var idle: Array = squad["idle"]
-	if t >= 2.0 * STAND_S + WALK_S:
-		return idle[int((t - 2.0 * STAND_S - WALK_S) / IDLE_FRAME_S) % idle.size()]
-	if t >= STAND_S and t < STAND_S + WALK_S:
-		return walk[int((t - STAND_S) / WALK_FRAME_S) % walk.size()]
-	return squad["stand"]
+	for squad: Squad in _squads:
+		squad.play(fposmod(_clock + squad.phase, POSE_CYCLE_S))
 
 
 func _add_squad(model: ArtModel, hull: Sprite2D, triad: int, zoom: float) -> void:
-	var squad: Dictionary = {
-		"hull": hull,
-		"stand": [hull.texture, hull.offset],
-		"walk": _frames(model, &"walk", triad, zoom),
-		"idle": _frames(model, &"idle", triad, zoom),
-		"phase": _squads.size() * POSE_PHASE_S,
-	}
+	var squad: Squad = Squad.new()
+	squad.hull = hull
+	squad.phase = _squads.size() * POSE_PHASE_S
+	squad.walk_frames = model.frames(&"walk")
+	squad.textures.append(hull.texture as ImageTexture)
+	squad.offsets.append(hull.offset)
+	for part: StringName in [&"walk", &"idle"]:
+		var origin: Vector2 = _origins["%s %s" % [model.art_id, part]]
+		for frame: int in model.frames(part):
+			squad.textures.append(_texture(model, part, triad, zoom, frame))
+			squad.offsets.append(-origin * BASE_SCALE * zoom)
 	_squads.append(squad)
-
-
-## The (texture, offset) of every frame of a pose part in the default view.
-func _frames(model: ArtModel, part: StringName, triad: int, zoom: float) -> Array:
-	var found: Array = []
-	var origin: Vector2 = _origins["%s %s" % [model.art_id, part]]
-	for frame: int in model.frames(part):
-		found.append([_texture(model, part, triad, zoom, frame), -origin * BASE_SCALE * zoom])
-	return found
 
 
 func _sprite(

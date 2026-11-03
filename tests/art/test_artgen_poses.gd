@@ -73,6 +73,10 @@ func test_every_frame_of_a_direction_is_a_picture_of_its_own() -> void:
 			for frame: int in IDLE_FRAMES:
 				names.append(ArtGen.frame_path(model, &"idle", dir, frame))
 			for path: String in names:
+				var there: bool = FileAccess.file_exists(path)
+				assert_bool(there).override_failure_message("%s is missing" % path).is_true()
+				if not there:
+					continue
 				# The first line names the file, so it is left out of the comparison.
 				var text: String = FileAccess.get_file_as_string(path).split("\n", true, 1)[1]
 				(
@@ -86,9 +90,11 @@ func test_every_frame_of_a_direction_is_a_picture_of_its_own() -> void:
 			assert_int(seen.size()).is_equal(1 + WALK_FRAMES + IDLE_FRAMES)
 
 
-## A figure's step is what its groups do in a frame, without the pivot (which is the figure's own
-## place). The three figures of a squad are a frame apart: figure `i` does in frame `f` what figure
-## `a` does in frame `f + i`, so a squad never marches in lockstep (ADR 0027 section 5).
+## A figure's step is what its groups do in a frame: the kind and axis, the angle, the shift and the
+## pivot counted from the figure's own place. The three figures of a squad are a frame apart: figure
+## `i` does in frame `f` what figure `a` does in frame `f + i`, so a squad never marches in lockstep
+## (ADR 0027 section 5). Idle has two frames for three figures, so `a` and `c` would take the same
+## pose every frame: `c` looks the other way (its head's angle is the opposite).
 func test_the_figures_of_a_frame_are_a_frame_apart_in_their_step() -> void:
 	for id: StringName in SQUADS:
 		var model: ArtModel = _model(id)
@@ -110,8 +116,11 @@ func test_the_figures_of_a_frame_are_a_frame_apart_in_their_step() -> void:
 			for frame: int in count:
 				for i: int in FIGURES.size():
 					for limb: String in LIMBS:
+						var mirrored: bool = part == &"idle" and i == 2 and limb == "head"
 						var mine: String = _step(model, part, frame, "%s_%s" % [FIGURES[i], limb])
-						var lead: String = _step(model, part, (frame + i) % count, "a_" + limb)
+						var lead: String = _step(
+							model, part, (frame + i) % count, "a_" + limb, mirrored
+						)
 						(
 							assert_str(mine)
 							. override_failure_message(
@@ -119,6 +128,12 @@ func test_the_figures_of_a_frame_are_a_frame_apart_in_their_step() -> void:
 							)
 							. is_equal(lead)
 						)
+		# In an idle frame the heads of a and c look opposite ways.
+		for frame: int in IDLE_FRAMES:
+			var here: String = _step(model, &"idle", frame, "c_head")
+			assert_str(here).override_failure_message(id).is_not_equal(
+				_step(model, &"idle", frame, "a_head")
+			)
 		# In a walk frame the three figures stand in three different steps, and a figure's four
 		# frames are four different steps.
 		for frame: int in WALK_FRAMES:
@@ -183,13 +198,24 @@ func test_the_feet_stand_on_the_ground_in_every_pose_frame() -> void:
 ## chosen for box faces at 16 yaws), or the figure would band from one frame to the next.
 func test_no_turned_face_of_a_pose_sits_on_a_light_cut() -> void:
 	var checked: int = 0
+	var crossed: int = 0
 	for id: StringName in SQUADS:
 		var model: ArtModel = _model(id)
+		var standing: Array[ArtPrim] = model.primitives(&"hull")
 		for part: StringName in [&"walk", &"idle"]:
 			for frame: int in model.frames(part):
-				for prim: ArtPrim in model.frame_prims(part, frame):
+				var posed: Array[ArtPrim] = model.frame_prims(part, frame)
+				for at: int in posed.size():
+					var prim: ArtPrim = posed[at]
 					if not _turns(prim):
 						continue
+					# A face that stood on its side and now faces 0.5 or more up crosses the edge cut:
+					# it is not a roof (the next test draws it with a dark edge).
+					var rest_faces: Array[ArtMesh.Face] = ArtMesh.faces(standing[at])
+					var faces: Array[ArtMesh.Face] = ArtMesh.faces(prim)
+					for n: int in faces.size():
+						if faces[n].normal.z >= 0.5 and rest_faces[n].normal.z < 0.5:
+							crossed += 1
 					for dir: int in model.directions(part):
 						for face: ArtMesh.Face in ArtMesh.faces(prim):
 							var normal: Vector3 = ArtRender.rotate(face.normal, ArtGen.yaw(dir))
@@ -211,6 +237,83 @@ func test_no_turned_face_of_a_pose_sits_on_a_light_cut() -> void:
 							)
 							checked += 1
 	assert_int(checked).is_greater(4000)
+	assert_int(crossed).is_greater(20)
+
+
+## A pose frame is drawn in the order of the standing figure (`ArtRender.render` gets the standing
+## primitives to order by). A leg that swings or lifts rises into the boxes of its own torso, and
+## the centre-depth fallback of the posed boxes drew it over the waist, the pack or the rifle (a
+## dark notch a pixel or two wide that came and went). The polygons of a frame come primitive by
+## primitive in the order `ArtRender.draw_order` gives the standing ones, and a leg comes before
+## every primitive that stands over it on the ground.
+func test_a_pose_frame_is_drawn_in_the_order_of_the_standing_figure() -> void:
+	var frames: int = 0
+	for id: StringName in SQUADS:
+		var model: ArtModel = _model(id)
+		var standing: Array[ArtPrim] = model.primitives(&"hull")
+		var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
+		for part: StringName in [&"walk", &"idle"]:
+			var shot: ArtGen.Shot = shots[part]
+			for i: int in shot.dirs.size():
+				var order: Array[int] = ArtRender.draw_order(standing, ArtGen.yaw(shot.dirs[i]))
+				for frame: int in shot.frames:
+					var drawn: Array[int] = []
+					for poly: ArtRender.Poly in shot.polys[i * shot.frames + frame]:
+						if drawn.is_empty() or drawn[-1] != poly.prim:
+							drawn.append(poly.prim)
+					var label: String = "%s %s d%02d f%d" % [id, part, shot.dirs[i], frame]
+					var last: int = -1
+					for prim: int in drawn:
+						var at: int = order.find(prim)
+						assert_bool(at > last).override_failure_message(label).is_true()
+						last = at
+					for leg: int in drawn:
+						if not String(standing[leg].group).contains("_leg"):
+							continue
+						for body: int in drawn:
+							if _is_over(standing[body], standing[leg]):
+								(
+									assert_bool(drawn.find(leg) < drawn.find(body))
+									. override_failure_message(label + " leg over its body")
+									. is_true()
+								)
+					frames += 1
+	assert_int(frames).is_equal(4 * 8 * (WALK_FRAMES + IDLE_FRAMES))
+
+
+## A pose changes the shade of a face and never which edge is light: the thin light edge is for the
+## top faces of the standing figure. A leg swung 36 degrees has a side face that faces 0.59 up,
+## which the posed normal alone would have taken for a roof (a grey edge on the dark leg in every
+## contact frame). A primitive has no more light edges in a pose frame than it has top faces at
+## rest.
+func test_a_pose_never_gives_a_side_face_the_light_edge() -> void:
+	var checked: int = 0
+	for id: StringName in SQUADS:
+		var model: ArtModel = _model(id)
+		var standing: Array[ArtPrim] = model.primitives(&"hull")
+		var tops: Array[int] = []
+		for prim: ArtPrim in standing:
+			var count: int = 0
+			for face: ArtMesh.Face in ArtMesh.faces(prim):
+				count += int(face.normal.z >= 0.5)
+			tops.append(count)
+		var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
+		for part: StringName in [&"walk", &"idle"]:
+			var shot: ArtGen.Shot = shots[part]
+			for polys: Array in shot.polys:
+				var light: Dictionary[int, int] = {}
+				for poly: ArtRender.Poly in polys:
+					var prim: ArtPrim = standing[poly.prim]
+					if poly.stroke == ArtPalette.edge(model.faction, prim.material, true):
+						light[poly.prim] = light.get(poly.prim, 0) + 1
+				for at: int in light:
+					(
+						assert_int(light[at])
+						. override_failure_message("%s %s: %s" % [id, part, standing[at].line])
+						. is_less_equal(tops[at])
+					)
+					checked += 1
+	assert_int(checked).is_greater(1000)
 
 
 func test_the_pose_frames_use_only_the_palette_of_their_faction() -> void:
@@ -264,6 +367,9 @@ func test_every_squad_of_both_rosters_walks_1_5_to_3_5_cycles_a_second_at_its_sp
 		var sheet: IsoSheetDef = _index.sheet(unit.type_id)
 		assert_int(unit.speed).override_failure_message(unit.type_id).is_greater(0)
 		assert_int(sheet.stride_milli).override_failure_message(unit.type_id).is_greater(0)
+		# The view floors `stride_milli / 4` (P142): a stride that is not a multiple of 4 would
+		# make the four walk frames unequal.
+		assert_int(sheet.stride_milli % 4).override_failure_message(unit.type_id).is_equal(0)
 		var cycles: float = float(unit.speed * Sim.TICK_RATE) / float(sheet.stride_milli)
 		(
 			assert_float(cycles)
@@ -284,13 +390,47 @@ func _model(id: StringName) -> ArtModel:
 	return load("res://assets/art/models/%s/%s.tres" % [faction, id]) as ArtModel
 
 
-## What the moves of `group` do in a frame, in order, without their pivot.
-func _step(model: ArtModel, part: StringName, frame: int, group: String) -> String:
+## What the moves of `group` do in a frame, in order: kind and axis, angle (`mirror` takes the
+## opposite of it), shift and pivot, the pivot counted from the figure's rest position, so a figure
+## turned about a wrong point is not the figure it should be.
+func _step(
+	model: ArtModel, part: StringName, frame: int, group: String, mirror: bool = false
+) -> String:
 	var found: PackedStringArray = PackedStringArray()
+	var origin: Vector3 = _origin(model, group.split("_")[0])
 	for move: ArtMove in model.pose_moves(part, frame):
-		if move.group == StringName(group):
-			found.append("%d %s %s" % [move.axis, move.degrees, move.shift])
+		if move.group != StringName(group):
+			continue
+		var pivot: Vector3 = (move.pivot - origin) if move.axis >= 0 else Vector3.ZERO
+		found.append(
+			(
+				"%d %s %s %s"
+				% [
+					move.axis,
+					_fmt(-move.degrees if mirror else move.degrees),
+					_fmt3(move.shift),
+					_fmt3(pivot)
+				]
+			)
+		)
 	return ";".join(found)
+
+
+## The rest position of a figure on the ground: the centre of the first primitive of its body.
+func _origin(model: ArtModel, figure: String) -> Vector3:
+	for prim: ArtPrim in model.primitives(&"hull"):
+		if prim.group == StringName(figure + "_body"):
+			return Vector3(prim.centre.x, prim.centre.y, 0.0)
+	return Vector3.ZERO
+
+
+## A number to four decimals, so that rounding noise and a negative zero compare equal.
+func _fmt(value: float) -> String:
+	return "%.4f" % (0.0 if absf(value) < 0.00005 else value)
+
+
+func _fmt3(vector: Vector3) -> String:
+	return "%s %s %s" % [_fmt(vector.x), _fmt(vector.y), _fmt(vector.z)]
 
 
 ## The two legs of a figure in a walk frame.
@@ -302,6 +442,16 @@ func _legs(model: ArtModel, frame: int, figure: String) -> String:
 			_step(model, &"walk", frame, figure + "_legr")
 		]
 	)
+
+
+## Whether `above` stands over `below` at rest: it starts at the top of `below` or higher, and their
+## places on the ground overlap.
+func _is_over(above: ArtPrim, below: ArtPrim) -> bool:
+	var up: AABB = above.aabb()
+	var down: AABB = below.aabb()
+	var apart: bool = up.position.x >= down.end.x or down.position.x >= up.end.x
+	apart = apart or up.position.y >= down.end.y or down.position.y >= up.end.y
+	return up.position.z >= down.end.z - 0.0001 and not apart
 
 
 ## Whether a pose frame turns the primitive (a shift keeps every shade it had).

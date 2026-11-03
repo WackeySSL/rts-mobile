@@ -19,4 +19,4 @@ pick_lift_px = 12
 muzzle_lift_px = 13
 icon = "res://assets/art/iso/icons/item_rocket_squad.svg"
 frames = PackedInt32Array(1, 4, 2, 1)
-stride_milli = 380
+stride_milli = 352

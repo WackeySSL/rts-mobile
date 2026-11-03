@@ -41,59 +41,59 @@
 <polygon points="74.7,25.1 64.5,30.3 64.5,27.5 74.7,22.4" fill="#5F6971" stroke="#383F44"/>
 <polygon points="64.5,30.3 58.1,27.1 58.1,24.3 64.5,27.5" fill="#7D8B96" stroke="#383F44"/>
 <polygon points="68.3,19.2 74.7,22.4 64.5,27.5 58.1,24.3" fill="#98AAB7" stroke="#C1CCD4"/>
-<polygon points="71,24.5 63.6,25.5 63.6,22.4 71,21.4" fill="#31383D" stroke="#1D2124"/>
-<polygon points="63.6,25.5 61.8,22.2 61.8,19.1 63.6,22.4" fill="#414A51" stroke="#1D2124"/>
-<polygon points="69.2,18.1 71,21.4 63.6,22.4 61.8,19.1" fill="#4F5A63" stroke="#969CA1"/>
 <polygon points="69.4,17.2 61.5,18.2 61.5,15.9 69.4,14.8" fill="#7FB985" stroke="#4C6E4F"/>
 <polygon points="61.5,18.2 60.8,16.9 60.8,14.6 61.5,15.9" fill="#A8F5B0" stroke="#4C6E4F"/>
 <polygon points="68.7,13.5 69.4,14.8 61.5,15.9 60.8,14.6" fill="#CDFFD7" stroke="#E1FFE7"/>
+<polygon points="71,24.5 63.6,25.5 63.6,22.4 71,21.4" fill="#31383D" stroke="#1D2124"/>
+<polygon points="63.6,25.5 61.8,22.2 61.8,19.1 63.6,22.4" fill="#414A51" stroke="#1D2124"/>
+<polygon points="69.2,18.1 71,21.4 63.6,22.4 61.8,19.1" fill="#4F5A63" stroke="#969CA1"/>
 <polygon points="78.2,37.3 69.9,41.4 69.9,30.5 78.2,26.3" fill="#686F73" stroke="#3E4244"/>
 <polygon points="69.9,41.4 66.1,39.5 66.1,28.5 69.9,30.5" fill="#8A9398" stroke="#3E4244"/>
 <polygon points="74.4,24.4 78.2,26.3 69.9,30.5 66.1,28.5" fill="#A8B3B9" stroke="#CBD2D5"/>
 <polygon points="76.4,33.4 73.2,35 73.2,33.5 76.4,31.9" fill="#7FB985" stroke="#4C6E4F"/>
 <polygon points="73.2,35 72.4,34.6 72.4,33.1 73.2,33.5" fill="#A8F5B0" stroke="#4C6E4F"/>
 <polygon points="75.6,31.5 76.4,31.9 73.2,33.5 72.4,33.1" fill="#CDFFD7" stroke="#E1FFE7"/>
-<polygon points="62.9,29.9 60.3,31.1 60.3,27.2 62.9,25.9" fill="#5F6971" stroke="#383F44"/>
-<polygon points="60.3,31.1 57.1,29.5 57.1,25.6 60.3,27.2" fill="#7D8B96" stroke="#383F44"/>
-<polygon points="59.7,24.3 62.9,25.9 60.3,27.2 57.1,25.6" fill="#98AAB7" stroke="#C1CCD4"/>
-<polygon points="72.5,19.4 70.8,22.4 70.8,16.6 72.5,13.5" fill="#A1A6A6" stroke="#606363"/>
-<polygon points="70.8,22.4 64.8,23.3 64.8,17.4 70.8,16.6" fill="#A1A6A6" stroke="#606363"/>
-<polygon points="64.8,23.3 60.3,21 60.3,15.2 64.8,17.4" fill="#D5DBDC" stroke="#606363"/>
-<polygon points="68,11.3 72.5,13.5 70.8,16.6 64.8,17.4 60.3,15.2 62,12.1" fill="#FFFFFF" stroke="#FFFFFF"/>
 <polygon points="29.9,22.8 29.9,26.9 25,22.9 25,20.1" fill="#D5DBDC" stroke="#606363"/>
 <polygon points="35.7,19.9 32.8,19.3 29.9,22.8 29.9,26.9 32.8,27.4 35.7,24" fill="#A1A6A6" stroke="#606363"/>
 <polygon points="35.7,19.9 32.8,19.3 27,17.6 29.1,18.1" fill="#FFFFFF" stroke="#FFFFFF"/>
 <polygon points="32.8,19.3 29.9,22.8 25,20.1 27,17.6" fill="#FFFFFF" stroke="#FFFFFF"/>
-<polygon points="42.2,61.1 38.4,63 40.1,51.5 44,49.6" fill="#31383D" stroke="#1D2124"/>
-<polygon points="38.4,63 34.6,60.3 36.3,48.8 40.1,51.5" fill="#414A51" stroke="#1D2124"/>
-<polygon points="40.2,46.9 44,49.6 40.1,51.5 36.3,48.8" fill="#4F5A63" stroke="#969CA1"/>
 <polygon points="32.5,23.9 32.5,28.8 29.3,27.2 29.3,22.3" fill="#1FA6C8" stroke="#137C99"/>
 <polygon points="39.5,20.3 36,19.6 32.5,23.9 32.5,28.8 36,29.6 39.5,25.3" fill="#137C99" stroke="#137C99"/>
 <polygon points="39.5,20.3 36,19.6 32.8,18 36.3,18.7" fill="#1FA6C8" stroke="#62D6EE"/>
 <polygon points="36,19.6 32.5,23.9 29.3,22.3 32.8,18" fill="#62D6EE" stroke="#62D6EE"/>
-<polygon points="65.1,26.9 65.1,31 60.2,27.1 60.2,24.2" fill="#D5DBDC" stroke="#606363"/>
-<polygon points="70.9,24.1 68,23.5 65.1,26.9 65.1,31 68,31.6 70.9,28.1" fill="#A1A6A6" stroke="#606363"/>
-<polygon points="70.9,24.1 68,23.5 62.2,21.8 64.3,22.2" fill="#FFFFFF" stroke="#FFFFFF"/>
-<polygon points="68,23.5 65.1,26.9 60.2,24.2 62.2,21.8" fill="#FFFFFF" stroke="#FFFFFF"/>
+<polygon points="42.2,61.1 38.4,63 40.1,51.5 44,49.6" fill="#31383D" stroke="#1D2124"/>
+<polygon points="38.4,63 34.6,60.3 36.3,48.8 40.1,51.5" fill="#414A51" stroke="#1D2124"/>
+<polygon points="40.2,46.9 44,49.6 40.1,51.5 36.3,48.8" fill="#4F5A63" stroke="#969CA1"/>
 <polygon points="45,47.8 42.4,49.1 42.4,45.2 45,43.9" fill="#5F6971" stroke="#383F44"/>
 <polygon points="42.4,49.1 39.2,47.5 39.2,43.6 42.4,45.2" fill="#7D8B96" stroke="#383F44"/>
 <polygon points="41.8,42.3 45,43.9 42.4,45.2 39.2,43.6" fill="#98AAB7" stroke="#C1CCD4"/>
 <polygon points="38.9,64.5 35,66.4 35,53.9 38.9,52" fill="#31383D" stroke="#1D2124"/>
 <polygon points="35,66.4 31.2,64.5 31.2,52 35,53.9" fill="#414A51" stroke="#1D2124"/>
 <polygon points="35,50.1 38.9,52 35,53.9 31.2,52" fill="#4F5A63" stroke="#969CA1"/>
-<polygon points="77.4,65.2 73.6,67.1 75.3,55.7 79.2,53.8" fill="#31383D" stroke="#1D2124"/>
-<polygon points="73.6,67.1 69.8,64.4 71.5,53 75.3,55.7" fill="#414A51" stroke="#1D2124"/>
-<polygon points="75.4,51 79.2,53.8 75.3,55.7 71.5,53" fill="#4F5A63" stroke="#969CA1"/>
+<polygon points="91.4,44.2 88.8,45.5 88.8,42.3 91.4,41.1" fill="#31383D" stroke="#1D2124"/>
+<polygon points="88.8,45.5 56.8,29.5 56.8,26.3 88.8,42.3" fill="#414A51" stroke="#1D2124"/>
+<polygon points="59.4,25.1 91.4,41.1 88.8,42.3 56.8,26.3" fill="#4F5A63" stroke="#969CA1"/>
+<polygon points="72.5,19.4 70.8,22.4 70.8,16.6 72.5,13.5" fill="#A1A6A6" stroke="#606363"/>
+<polygon points="70.8,22.4 64.8,23.3 64.8,17.4 70.8,16.6" fill="#A1A6A6" stroke="#606363"/>
+<polygon points="64.8,23.3 60.3,21 60.3,15.2 64.8,17.4" fill="#D5DBDC" stroke="#606363"/>
+<polygon points="68,11.3 72.5,13.5 70.8,16.6 64.8,17.4 60.3,15.2 62,12.1" fill="#FFFFFF" stroke="#FFFFFF"/>
+<polygon points="62.9,29.9 60.3,31.1 60.3,27.2 62.9,25.9" fill="#5F6971" stroke="#383F44"/>
+<polygon points="60.3,31.1 57.1,29.5 57.1,25.6 60.3,27.2" fill="#7D8B96" stroke="#383F44"/>
+<polygon points="59.7,24.3 62.9,25.9 60.3,27.2 57.1,25.6" fill="#98AAB7" stroke="#C1CCD4"/>
+<polygon points="65.1,26.9 65.1,31 60.2,27.1 60.2,24.2" fill="#D5DBDC" stroke="#606363"/>
+<polygon points="70.9,24.1 68,23.5 65.1,26.9 65.1,31 68,31.6 70.9,28.1" fill="#A1A6A6" stroke="#606363"/>
+<polygon points="70.9,24.1 68,23.5 62.2,21.8 64.3,22.2" fill="#FFFFFF" stroke="#FFFFFF"/>
+<polygon points="68,23.5 65.1,26.9 60.2,24.2 62.2,21.8" fill="#FFFFFF" stroke="#FFFFFF"/>
 <polygon points="67.7,28 67.7,33 64.5,31.4 64.5,26.4" fill="#1FA6C8" stroke="#137C99"/>
 <polygon points="74.7,24.5 71.2,23.8 67.7,28 67.7,33 71.2,33.7 74.7,29.5" fill="#137C99" stroke="#137C99"/>
 <polygon points="74.7,24.5 71.2,23.8 68,22.2 71.5,22.9" fill="#1FA6C8" stroke="#62D6EE"/>
 <polygon points="71.2,23.8 67.7,28 64.5,26.4 68,22.2" fill="#62D6EE" stroke="#62D6EE"/>
-<polygon points="91.4,44.2 88.8,45.5 88.8,42.3 91.4,41.1" fill="#31383D" stroke="#1D2124"/>
-<polygon points="88.8,45.5 56.8,29.5 56.8,26.3 88.8,42.3" fill="#414A51" stroke="#1D2124"/>
-<polygon points="59.4,25.1 91.4,41.1 88.8,42.3 56.8,26.3" fill="#4F5A63" stroke="#969CA1"/>
 <polygon points="56.2,40 53.6,41.3 53.6,38.2 56.2,36.9" fill="#31383D" stroke="#1D2124"/>
 <polygon points="53.6,41.3 21.6,25.3 21.6,22.2 53.6,38.2" fill="#414A51" stroke="#1D2124"/>
 <polygon points="24.2,20.9 56.2,36.9 53.6,38.2 21.6,22.2" fill="#4F5A63" stroke="#969CA1"/>
+<polygon points="77.4,65.2 73.6,67.1 75.3,55.7 79.2,53.8" fill="#31383D" stroke="#1D2124"/>
+<polygon points="73.6,67.1 69.8,64.4 71.5,53 75.3,55.7" fill="#414A51" stroke="#1D2124"/>
+<polygon points="75.4,51 79.2,53.8 75.3,55.7 71.5,53" fill="#4F5A63" stroke="#969CA1"/>
 <polygon points="44,50.7 33.8,55.8 33.8,50.3 44,45.2" fill="#5F6971" stroke="#383F44"/>
 <polygon points="33.8,55.8 27.4,52.6 27.4,47.1 33.8,50.3" fill="#7D8B96" stroke="#383F44"/>
 <polygon points="37.6,42 44,45.2 33.8,50.3 27.4,47.1" fill="#98AAB7" stroke="#C1CCD4"/>
@@ -120,6 +120,9 @@
 <polygon points="44,40.5 33.8,45.6 33.8,42.9 44,37.8" fill="#5F6971" stroke="#383F44"/>
 <polygon points="33.8,45.6 27.4,42.4 27.4,39.7 33.8,42.9" fill="#7D8B96" stroke="#383F44"/>
 <polygon points="37.6,34.6 44,37.8 33.8,42.9 27.4,39.7" fill="#98AAB7" stroke="#C1CCD4"/>
+<polygon points="33.2,32.4 31.1,36.3 31.1,34 33.2,30" fill="#7FB985" stroke="#4C6E4F"/>
+<polygon points="31.1,36.3 28.5,36 28.5,33.6 31.1,34" fill="#A8F5B0" stroke="#4C6E4F"/>
+<polygon points="30.6,29.7 33.2,30 31.1,34 28.5,33.6" fill="#CDFFD7" stroke="#E1FFE7"/>
 <polygon points="40,37.3 38,41 38,37.9 40,34.2" fill="#31383D" stroke="#1D2124"/>
 <polygon points="38,41 31.4,40.1 31.4,37 38,37.9" fill="#414A51" stroke="#1D2124"/>
 <polygon points="33.4,33.3 40,34.2 38,37.9 31.4,37" fill="#4F5A63" stroke="#969CA1"/>
@@ -129,19 +132,16 @@
 <polygon points="79.2,54.9 69,60 69,54.5 79.2,49.4" fill="#5F6971" stroke="#383F44"/>
 <polygon points="69,60 62.6,56.8 62.6,51.3 69,54.5" fill="#7D8B96" stroke="#383F44"/>
 <polygon points="72.8,46.2 79.2,49.4 69,54.5 62.6,51.3" fill="#98AAB7" stroke="#C1CCD4"/>
-<polygon points="33.2,32.4 31.1,36.3 31.1,34 33.2,30" fill="#7FB985" stroke="#4C6E4F"/>
-<polygon points="31.1,36.3 28.5,36 28.5,33.6 31.1,34" fill="#A8F5B0" stroke="#4C6E4F"/>
-<polygon points="30.6,29.7 33.2,30 31.1,34 28.5,33.6" fill="#CDFFD7" stroke="#E1FFE7"/>
+<polygon points="41.7,34.8 40.1,37.8 40.1,31.9 41.7,28.9" fill="#A1A6A6" stroke="#606363"/>
+<polygon points="40.1,37.8 34.1,38.6 34.1,32.7 40.1,31.9" fill="#A1A6A6" stroke="#606363"/>
+<polygon points="34.1,38.6 29.6,36.4 29.6,30.5 34.1,32.7" fill="#D5DBDC" stroke="#606363"/>
+<polygon points="31.2,27.5 37.3,26.7 41.7,28.9 40.1,31.9 34.1,32.7 29.6,30.5" fill="#FFFFFF" stroke="#FFFFFF"/>
 <polygon points="45.7,48.8 42.5,50.4 42.5,48.8 45.7,47.2" fill="#7FB985" stroke="#4C6E4F"/>
 <polygon points="42.5,50.4 41.7,50 41.7,48.4 42.5,48.8" fill="#A8F5B0" stroke="#4C6E4F"/>
 <polygon points="44.9,46.8 45.7,47.2 42.5,48.8 41.7,48.4" fill="#CDFFD7" stroke="#E1FFE7"/>
 <polygon points="32.2,45.2 29.6,46.5 29.6,42.6 32.2,41.3" fill="#5F6971" stroke="#383F44"/>
 <polygon points="29.6,46.5 26.4,44.9 26.4,41 29.6,42.6" fill="#7D8B96" stroke="#383F44"/>
 <polygon points="29,39.7 32.2,41.3 29.6,42.6 26.4,41" fill="#98AAB7" stroke="#C1CCD4"/>
-<polygon points="41.7,34.8 40.1,37.8 40.1,31.9 41.7,28.9" fill="#A1A6A6" stroke="#606363"/>
-<polygon points="40.1,37.8 34.1,38.6 34.1,32.7 40.1,31.9" fill="#A1A6A6" stroke="#606363"/>
-<polygon points="34.1,38.6 29.6,36.4 29.6,30.5 34.1,32.7" fill="#D5DBDC" stroke="#606363"/>
-<polygon points="31.2,27.5 37.3,26.7 41.7,28.9 40.1,31.9 34.1,32.7 29.6,30.5" fill="#FFFFFF" stroke="#FFFFFF"/>
 <polygon points="67.4,58.4 64.8,59.7 64.8,55.8 67.4,54.5" fill="#5F6971" stroke="#383F44"/>
 <polygon points="64.8,59.7 61.6,58.1 61.6,54.2 64.8,55.8" fill="#7D8B96" stroke="#383F44"/>
 <polygon points="64.2,52.9 67.4,54.5 64.8,55.8 61.6,54.2" fill="#98AAB7" stroke="#C1CCD4"/>
@@ -159,24 +159,24 @@
 <polygon points="79.2,44.7 69,49.8 69,47 79.2,41.9" fill="#5F6971" stroke="#383F44"/>
 <polygon points="69,49.8 62.6,46.6 62.6,43.8 69,47" fill="#7D8B96" stroke="#383F44"/>
 <polygon points="72.8,38.7 79.2,41.9 69,47 62.6,43.8" fill="#98AAB7" stroke="#C1CCD4"/>
-<polygon points="75.2,41.5 73.2,45.2 73.2,42 75.2,38.3" fill="#31383D" stroke="#1D2124"/>
-<polygon points="73.2,45.2 66.6,44.3 66.6,41.2 73.2,42" fill="#414A51" stroke="#1D2124"/>
-<polygon points="68.6,37.5 75.2,38.3 73.2,42 66.6,41.2" fill="#4F5A63" stroke="#969CA1"/>
+<polygon points="73.9,36.7 66,37.7 66,35.4 73.9,34.3" fill="#7FB985" stroke="#4C6E4F"/>
+<polygon points="66,37.7 65.3,36.4 65.3,34.1 66,35.4" fill="#A8F5B0" stroke="#4C6E4F"/>
+<polygon points="73.2,33 73.9,34.3 66,35.4 65.3,34.1" fill="#CDFFD7" stroke="#E1FFE7"/>
+<polygon points="75.5,44 68,45 68,41.9 75.5,40.9" fill="#31383D" stroke="#1D2124"/>
+<polygon points="68,45 66.3,41.7 66.3,38.6 68,41.9" fill="#414A51" stroke="#1D2124"/>
+<polygon points="73.7,37.6 75.5,40.9 68,41.9 66.3,38.6" fill="#4F5A63" stroke="#969CA1"/>
 <polygon points="82.7,56.8 74.4,61 74.4,50 82.7,45.8" fill="#686F73" stroke="#3E4244"/>
 <polygon points="74.4,61 70.6,59 70.6,48.1 74.4,50" fill="#8A9398" stroke="#3E4244"/>
 <polygon points="78.9,43.9 82.7,45.8 74.4,50 70.6,48.1" fill="#A8B3B9" stroke="#CBD2D5"/>
-<polygon points="68.4,36.5 66.3,40.5 66.3,38.1 68.4,34.2" fill="#7FB985" stroke="#4C6E4F"/>
-<polygon points="66.3,40.5 63.7,40.1 63.7,37.8 66.3,38.1" fill="#A8F5B0" stroke="#4C6E4F"/>
-<polygon points="65.8,33.8 68.4,34.2 66.3,38.1 63.7,37.8" fill="#CDFFD7" stroke="#E1FFE7"/>
+<polygon points="76.9,38.9 75.3,42 75.3,36.1 76.9,33.1" fill="#A1A6A6" stroke="#606363"/>
+<polygon points="75.3,42 69.3,42.8 69.3,36.9 75.3,36.1" fill="#A1A6A6" stroke="#606363"/>
+<polygon points="69.3,42.8 64.8,40.6 64.8,34.7 69.3,36.9" fill="#D5DBDC" stroke="#606363"/>
+<polygon points="72.5,30.8 76.9,33.1 75.3,36.1 69.3,36.9 64.8,34.7 66.4,31.7" fill="#FFFFFF" stroke="#FFFFFF"/>
 <polygon points="80.9,52.9 77.7,54.5 77.7,53 80.9,51.4" fill="#7FB985" stroke="#4C6E4F"/>
 <polygon points="77.7,54.5 76.9,54.2 76.9,52.6 77.7,53" fill="#A8F5B0" stroke="#4C6E4F"/>
 <polygon points="80.1,51 80.9,51.4 77.7,53 76.9,52.6" fill="#CDFFD7" stroke="#E1FFE7"/>
 <polygon points="67.4,49.4 64.8,50.7 64.8,46.7 67.4,45.5" fill="#5F6971" stroke="#383F44"/>
 <polygon points="64.8,50.7 61.6,49.1 61.6,45.1 64.8,46.7" fill="#7D8B96" stroke="#383F44"/>
 <polygon points="64.2,43.9 67.4,45.5 64.8,46.7 61.6,45.1" fill="#98AAB7" stroke="#C1CCD4"/>
-<polygon points="76.9,38.9 75.3,42 75.3,36.1 76.9,33.1" fill="#A1A6A6" stroke="#606363"/>
-<polygon points="75.3,42 69.3,42.8 69.3,36.9 75.3,36.1" fill="#A1A6A6" stroke="#606363"/>
-<polygon points="69.3,42.8 64.8,40.6 64.8,34.7 69.3,36.9" fill="#D5DBDC" stroke="#606363"/>
-<polygon points="66.4,31.7 72.5,30.8 76.9,33.1 75.3,36.1 69.3,36.9 64.8,34.7" fill="#FFFFFF" stroke="#FFFFFF"/>
 </g>
 </svg>

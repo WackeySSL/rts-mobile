@@ -469,23 +469,35 @@ and team bands.
   frame `f` what figure `a` does in frame `f + i` (modulo the frame count, 4 for a walk and 2 for
   an idle), so a squad does not march in lockstep (`test_artgen_poses.gd` pins it move for move).
 - **Idle, 2 frames.** The head turns 25 degrees (30 for the hexagonal Lumen Accord helmets) to one
-  side and the body sways 0.03 tile to it, while the opposite foot steps 10 degrees out; the second
-  frame does the other side. Both frames differ from the standing frame, so a squad that fidgets
-  always shows a change. No arm moves: the weapon is held across the chest and moves with the body.
+  side and the body sways 0.03 tile to it, while the opposite foot steps 10 degrees forward (a
+  `turn y`, set on the ground); the second frame does the other side. Both frames differ from the
+  standing frame, so a squad that fidgets always shows a change. Two frames for three figures
+  leave `a` and `c` in the same pose, so `c` looks the other way (its head's angle is the opposite;
+  the sway and the foot are `a`'s). No arm moves: the weapon is held across the chest and moves
+  with the body.
 - **`stride_milli`** is the ground travel of one walk cycle in milli-tiles (the frame advances every
-  quarter of it, ADR 0027 section 5): 400 for the Roustabouts, 380 for the Wildcatters, 420 for the
-  Linemen, 380 for the Breakers. At their speeds (67, 60, 73 and 60 milli-tiles a tick, 15 ticks a
-  second) they walk 2.5, 2.4, 2.6 and 2.4 cycles a second; `test_artgen_poses.gd` holds every squad
-  of `data/units` to 1.5 to 3.5. A figure's leg is 0.15 tile (0.16 for the Lumen Accord) long, so a
-  36 degree swing carries the foot 0.09 tile either way, 0.18 over a half cycle where a stride of
-  0.4 tile asks for 0.2: the feet slide a little, which at 17 px of figure is not seen.
-- **Light.** `ArtRender`'s cuts were chosen for box faces at 16 yaws. A face turned by a pose can
+  quarter of it, ADR 0027 section 5): 352 for the Roustabouts and the Wildcatters, 376 for the
+  Linemen and the Breakers. A figure's leg is 0.15 tile (0.16 for the Lumen Accord) long, so a 36
+  degree swing carries its foot 2 x 0.15 x sin 36 = 0.176 tile back over a half cycle, which is
+  what half of 352 asks (and 0.188 for 376): the planted foot does not slide (4 x leg x sin 36
+  is the stride, a multiple of 4 because the view floors a quarter of it, a test pins it). At their
+  speeds (67, 60, 73 and 60 milli-tiles a tick, 15 ticks a second) the squads walk 2.9, 2.6, 2.9 and
+  2.4 cycles a second; `test_artgen_poses.gd` holds every squad of `data/units` to 1.5 to 3.5.
+- **Light.** `ArtRender`'s fill cuts were chosen for box faces at 16 yaws. A face turned by a pose can
   land on one and band from frame to frame, so the angles are in the windows that keep every
   visible turned face at least 0.016 of shade from a cut: 9 to 11 and 35 to 38 degrees about the
   hip, 25 degrees about z for an octagonal or boxy head, 30 for a hexagonal one (a hexagon's best,
   as far from the cut as the standing helmets). `test_artgen_poses.gd` checks every face of every
   turned primitive in every frame and direction. No new colour: a pose frame uses the faction's
   materials, its triad and their edges, and the key band holds.
+- **Order and edges.** A pose frame is drawn in the order of the standing figure and its light
+  edges are the standing figure's top faces (`ArtRender.render` takes the standing primitives, `rest`,
+  from `ArtModel.frame_rest`): a leg that swings or lifts rises into the boxes of its own torso,
+  where the centre-depth fallback would draw it over the waist, the pack or the rifle (a dark notch
+  that came and went), and a leg swung 36 degrees has a side face that faces 0.59 up, which is not a
+  roof and gets no light edge (a grey blink on the dark legs in every contact frame). The fill still
+  follows the posed face, so a tilted face is a little lighter. An `anim` element turns all round
+  and is judged as posed. `test_artgen_poses.gd` pins the order and the edges of all 192 frames.
 - **Cost.** A pose canvas is the union of its frames and directions, at most 4 px wider or taller
   than the hull's (walk and idle: 86 x 66 and 86 x 66 for the Roustabouts, 104 x 76 and 108 x 76
   for the Wildcatters, 90 x 72 for the Linemen, 116 x 78 and 120 x 78 for the Breakers). The sorted
@@ -494,8 +506,10 @@ and team bands.
   mirror (`tests/view/test_iso_atlas_budget.gd` pins them); the 192 files are 2.4 MiB of SVG, at
   most 16.6 KB each.
 - **The gallery's Units page** plays them: each squad of the four lines stands for a second, walks
-  2.4 s, stands again and idles 2.6 s, the squad made next 0.9 s further on in the script, in the
-  default view (`art_gallery_units.gd`, `advance`). The game shows them with P142.
+  2.4 s, stands, shows idle 0 for 1.3 s, stands, shows idle 1 for 1.3 s (an idle window, the
+  standing frame, the other idle frame, as the game will), the squad made next 0.9 s further on in
+  the script, in the default view (`art_gallery_units.gd`, an inner class `Squad` that writes the
+  sprite only when its frame changes). The game shows them with P142.
 - **Readability.** At 32 px in greyscale every pose frame keeps a body and a spread of tones
   (`test_artgen_readability.gd`), the legs reading as a dark wedge that opens and closes under the
   pale hats (Roustabouts) or the dark heads (Wildcatters).
@@ -2081,4 +2095,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-02 | v1.15 (P118, art-director; P118b, release-engineer): the HUD fonts (Big Shoulders Display ExtraBold and Chakra Petch Medium, SemiBold and Bold, unmodified upstream files under SIL OFL 1.1 in `assets/art/fonts/`, their `OFL.txt` in every build), the HUD v2 palette rows, the two accent pairs (Lumen Accord cyan, Derrick League orange #E07628 / #FFA25C / #2A1405), the rule that danger always carries its glyph beside an accent, the Reskin note's tracking numbers (4/5/6 px; 7.1 to 10.3 % on phones) and the Licences line. |
 | 2026-11-02 | v1.16 (P118g, art-director): fourteen HUD v2 glyphs (`glyph_menu`, `glyph_deselect` as the game's 2:1 selection ring cut by a slash, `glyph_stop`, `glyph_plus`, `glyph_collapse`, `glyph_chevron`, `glyph_resume`, `glyph_restart`, `glyph_surrender` struck to the pole's foot, `glyph_exit`, `glyph_vibration`, `glyph_alert`, `glyph_all_army` as a soldier before a tank, and `glyph_construct` as a crane on the offline glyph's seat, a ninth map glyph, untinted white by Michael's choice), their shape lines, tints and measures, and the gallery's Hud page with the badges over the Heavy Yard and the Motor Works. |
 | 2026-11-02 | P134 (art-director, ADR 0027 section 4): the generator's frame axis ("The frame axis" under "Generated art": `group=`, the `anim` part, `poses`, `_f<K>` files, `frames`, `stride_milli`, `anim_ms`, `emitters` with `emitter_points`, `marks`); no model has a pose, every committed frame and sheet is as before. |
-| 2026-11-03 | P139 (art-director, ADR 0027 sections 4 and 5): walk (4) and idle (2) poses for the four squads ("Squad poses" under "Generated art": pose groups per figure and limb, `stride_milli` 400, 380, 420 and 380, 192 new frames), the sorted world's cross-faction page 2682 to 3066 px (mirrors 2206 to 2524 and 2226 to 2624), the Units page of the gallery plays them; the standing frames, shadows and cards are unchanged. |
+| 2026-11-03 | v1.19 (P139, art-director, ADR 0027 sections 4 and 5): walk (4) and idle (2) poses for the four squads ("Squad poses" under "Generated art": pose groups per figure and limb, `stride_milli` 352, 352, 376 and 376, 192 new frames drawn in the standing figure's order with its light edges, `ArtRender.render`'s `rest`, `ArtModel.frame_rest`), the sorted world's cross-faction page 2682 to 3066 px (mirrors 2206 to 2524 and 2226 to 2624), the Units page of the gallery plays them; the standing frames, shadows and cards are unchanged. |

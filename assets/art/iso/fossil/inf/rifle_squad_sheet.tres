@@ -19,4 +19,4 @@ pick_lift_px = 12
 muzzle_lift_px = 10
 icon = "res://assets/art/iso/icons/item_rifle_squad.svg"
 frames = PackedInt32Array(1, 4, 2, 1)
-stride_milli = 400
+stride_milli = 352

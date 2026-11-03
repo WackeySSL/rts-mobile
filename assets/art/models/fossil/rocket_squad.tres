@@ -143,7 +143,7 @@ poses = PackedStringArray(
 "idle 0 b_body shift 0 -0.03 0",
 "idle 0 b_legr turn y -10 -0.02 -0.16 0.15",
 "idle 0 b_legr shift 0 0 0.0034",
-"idle 0 c_head turn z 25 -0.2 0.17 0",
+"idle 0 c_head turn z -25 -0.2 0.17 0",
 "idle 0 c_head shift 0 0.03 0",
 "idle 0 c_body shift 0 0.03 0",
 "idle 0 c_legl turn y -10 -0.2 0.13 0.15",
@@ -158,10 +158,10 @@ poses = PackedStringArray(
 "idle 1 b_body shift 0 0.03 0",
 "idle 1 b_legl turn y -10 -0.02 -0.24 0.15",
 "idle 1 b_legl shift 0 0 0.0034",
-"idle 1 c_head turn z -25 -0.2 0.17 0",
+"idle 1 c_head turn z 25 -0.2 0.17 0",
 "idle 1 c_head shift 0 -0.03 0",
 "idle 1 c_body shift 0 -0.03 0",
 "idle 1 c_legr turn y -10 -0.2 0.21 0.15",
 "idle 1 c_legr shift 0 0 0.0034"
 )
-stride_milli = 380
+stride_milli = 352
