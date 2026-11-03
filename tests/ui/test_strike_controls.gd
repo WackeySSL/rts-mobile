@@ -5,7 +5,8 @@ extends GdUnitTestSuite
 ## is shown only while the local player owns a strike building; every part is inside the safe rect,
 ## at least 48 dp on both axes and clear of every other HUD control, and the HUD does not grow.
 ## Landscape: the top line, left of the radar scope; portrait: the right edge, a gap above the
-## ArmyBar. The ring and the foot follow the charge (time left, then "Ready"), a tap on a charging
+## build button. The ring and the foot follow the charge (time left, then "Ready"), a tap on a
+## charging
 ## button does nothing but nudge it, a tap on a ready one aims (its foot asks "Tap map" until a
 ## point is placed), the check mark waits for a point and sends exactly one SUPERWEAPON, the X, the
 ## button's second tap and a turn of the phone leave the aim with no Command.
@@ -29,15 +30,7 @@ const TOLERANCE_PX: float = 0.5
 ## The parts of the row, and the other HUD controls they must clear.
 const TAPPABLE: Array[String] = ["StrikeConfirm", "StrikeCancel", "StrikeButton"]
 const OTHERS: Array[String] = [
-	"DevButton",
-	"SurrenderButton",
-	"AllArmy",
-	"Group1",
-	"Group2",
-	"Group3",
-	"SelectionPanel",
-	"BuildSidebar",
-	"BuildButton"
+	"DevButton", "SurrenderButton", "GroupColumn", "SelectionPanel", "BuildSidebar", "BuildButton"
 ]
 
 var _window_size_before: Vector2i
@@ -175,7 +168,7 @@ func test_landscape_has_the_row_on_the_top_line_left_of_the_scope_and_portrait_a
 		var gap: float = UiScale.dp(8.0)
 		assert_float(strike.end.x).override_failure_message(why).is_equal_approx(row.end.x, 1.0)
 		if HudLayout.is_portrait():
-			var bar: Rect2 = _rect("ArmyBar")
+			var bar: Rect2 = _rect("BuildButton")
 			assert_float(strike.end.x).override_failure_message(why).is_equal_approx(
 				inner.end.x, 1.0
 			)
@@ -191,6 +184,77 @@ func test_landscape_has_the_row_on_the_top_line_left_of_the_scope_and_portrait_a
 			assert_float(strike.end.x).override_failure_message(why).is_less_equal(
 				scope.position.x - gap + 1.5
 			)
+
+
+## Lead decision (P122b): upright, during the aim, the group column holds three items in one column
+## (the rest scroll), so it keeps 8 dp or more from the check mark and the X, at every screen with
+## all three groups saved. Against the strike place of today (the band) and the one P120c gives
+## (`HudCorners.STRIKE_ROW`, 8 dp above BUILD). Outside the aim the strike button alone stands
+## there.
+func test_the_group_column_keeps_clear_of_the_strike_row_during_the_aim() -> void:
+	var gap: float = 0.0
+	for screen: Dictionary in _screens(null):
+		await _open(screen["size"], screen["metrics"], true)
+		var why: String = str(screen["label"])
+		var tank: Array = [2]
+		for slot: int in range(1, 4):
+			_controller.selection.set_ids(PackedInt32Array(tank))
+			_controller.assign_group(slot)
+		for aiming: bool in [false, true]:
+			_ready_to_fire()
+			if aiming:
+				assert_bool(_aim.begin()).override_failure_message(why).is_true()
+			await await_idle_frame()
+			await await_idle_frame()
+			var column: Rect2 = _rect("GroupColumn")
+			var near: float = UiScale.dp(8.0) - TOLERANCE_PX
+			var parts: Array[Rect2] = []
+			for part: String in TAPPABLE:
+				parts.append(_rect(part))
+			var shown: HudCorners.Shown = HudCorners.Shown.new()
+			shown.groups = 4
+			shown.strike = true
+			shown.aim = aiming
+			var dp: float = UiScale.base_px_per_dp()
+			var margin: float = (_hud("SafeArea") as SafeAreaMargin).margin_dp
+			var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), margin)
+			var placed: Dictionary[StringName, Rect2] = HudCorners.place(
+				safe, HudLayout.is_portrait(), dp, false, shown
+			)
+			if aiming:
+				parts.append(placed[HudCorners.STRIKE_ROW])
+			for rect: Rect2 in parts:
+				var at: String = "%s, aim %s: column %s, part %s" % [why, aiming, column, rect]
+				assert_bool(column.intersects(rect)).override_failure_message(at).is_false()
+				if aiming:
+					gap = maxf(column.position.x - rect.end.x, rect.position.x - column.end.x)
+					gap = maxf(
+						gap, maxf(column.position.y - rect.end.y, rect.position.y - column.end.y)
+					)
+					assert_float(gap).override_failure_message(at).is_greater_equal(near)
+			if aiming and HudLayout.is_portrait():
+				var three: float = dp * (3.0 * 56.0 + 2.0 * 8.0)
+				var tall: String = "%s: column %s holds more than three" % [why, column]
+				assert_float(column.size.y).override_failure_message(tall).is_less_equal(
+					three + 1.5
+				)
+				assert_float(column.size.x).override_failure_message(tall).is_less_equal(
+					dp * 56.0 + 1.5
+				)
+				# The fourth item is reached by scrolling.
+				var scroll: ScrollContainer = _hud("ColumnScroll")
+				assert_int(scroll.vertical_scroll_mode).is_not_equal(
+					ScrollContainer.SCROLL_MODE_DISABLED
+				)
+				scroll.scroll_vertical = 100000
+				await await_idle_frame()
+				var last: Rect2 = _rect("Group3")
+				var reached: bool = (
+					last.end.y <= column.end.y + 1.5 and last.position.y >= column.position.y - 1.5
+				)
+				var fits: bool = last.size.y <= dp * 56.0 + 1.5  # The text can ask for more on a tiny dp.
+				assert_bool(reached or not fits).override_failure_message(tall).is_true()
+			_aim.cancel()
 
 
 func test_the_row_is_shown_only_while_a_strike_building_is_owned() -> void:

@@ -25,8 +25,9 @@ extends Control
 ## its target and lays the drawer out for the other orientation.
 ## The sheet's height goes to `HudLayout.bottom_zone_dp` and its real top on the screen to
 ## `HudLayout.menu_top_px` (ADR 0024 section 4), and `zone_changed` tells whoever lifts something by
-## them (the ArmyBar, the strike row). Upright the zone is BUILD's row while the drawer is closed
-## (`HudLayout.BUILD_ZONE_DP`, until P122b), the sheet's height while it is open; sideways it is 0.
+## them (the strike row). Upright the zone is the sheet's height while the drawer is open and 0
+## while
+## it is closed; sideways it is 0.
 ## Cards: one `ItemTile` per buildable type (icon: its P99b item card), made per match from the
 ## snapshot's type tables, those of the open tab and of the local player's faction shown. The
 ## faction is that of the player's own rows (`type_faction`, the producer-faction rule of
@@ -44,7 +45,7 @@ signal tab_selected(tab: int)
 ## anew by a resize while open.
 signal state_changed
 ## The sheet's top on the screen and the zone's height changed, both base px: a request, a frame of
-## the slide, a resize. What rides on the drawer (the ArmyBar, the strike row) lifts by these.
+## the slide, a resize. What rides on the drawer (the strike row) lifts by these.
 signal zone_changed(top_px: float, height_px: float)
 
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
@@ -144,7 +145,7 @@ func _ready() -> void:
 	_items.add_child(_grid)
 	_stack.add_child(_items)
 	select_tab(tab)
-	_apply_dp()  # Sets the zone before the ArmyBar reads it.
+	_apply_dp()  # Sets the zone before the strike row reads it.
 	get_viewport().size_changed.connect(_apply_dp)
 	feed.state.changed.connect(_on_hud_changed)
 	if controller != null:
@@ -652,7 +653,7 @@ func _apply_extent(extent: float) -> void:
 	var zone: float = 0.0
 	var top: float = INF
 	if _portrait:
-		zone = maxf(extent, HudLayout.BUILD_ZONE_DP * _dp_px)
+		zone = extent
 		top = _rect.end.y - extent if extent > 0.0 else INF
 	HudLayout.bottom_zone_dp = zone / _dp_px
 	HudLayout.menu_top_px = top

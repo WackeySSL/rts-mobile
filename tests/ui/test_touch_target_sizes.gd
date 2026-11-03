@@ -56,9 +56,10 @@ func test_every_visible_button_is_at_least_dp_48_at_every_profile() -> void:
 			)
 			var none_message: String = "no visible button in %s" % path
 			assert_array(buttons).override_failure_message(none_message).is_not_empty()
-			if path == DevRoutes.MAIN_SCENE:  # Dev, Surrender, All army, groups 1-3, BUILD.
+			## Dev, Surrender, All army, BUILD (groups and "+" need a selection).
+			if path == DevRoutes.MAIN_SCENE:
 				var hud: String = "HUD buttons at %s" % profile_name
-				assert_int(buttons.size()).override_failure_message(hud).is_equal(7)
+				assert_int(buttons.size()).override_failure_message(hud).is_equal(4)
 			for button: BaseButton in buttons:
 				if button.size.x < min_px or button.size.y < min_px:
 					var where: String = "%s at %s" % [path, profile_name]

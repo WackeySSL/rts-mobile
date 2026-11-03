@@ -2,7 +2,8 @@ extends GdUnitTestSuite
 ## The army filter by gestures (plan P87, ADR 0019 section 3): "All army" and a box that holds any
 ## unit that fights leave tankers out, a box with only tankers selects them, a double-tap on a
 ## tanker selects the tankers on screen, and no building joins any of them. Through the real
-## TouchInput, GestureRecognizer, PlayerController and ArmyBar in the main scene at the six screens
+## TouchInput, GestureRecognizer, PlayerController and GroupColumn in the main scene at the six
+## screens
 ## (ScreenSizes.ALL), with a fake clock. The scene is `OrdersRig`'s: player 1 has two tankers, a
 ## light tank and a rifle squad, apart from the tank by 2 tiles or more, and six buildings.
 
@@ -141,7 +142,7 @@ func _show(size: Vector2i) -> void:
 
 
 func _press_all_army() -> void:
-	var button: Button = _rig.main.get_node("Hud/SafeArea/ArmyBand/ArmyBar/AllArmy")
+	var button: Button = _rig.main.get_node("Hud/GroupColumn").find_child("AllArmy", true, false)
 	button.pressed.emit()
 
 

@@ -57,7 +57,7 @@ func test_the_panel_is_one_row_under_the_pills_line_at_every_portrait_profile() 
 		var pill: Rect2 = _rect("EconomyPill")
 		var surrender: Rect2 = _rect("SurrenderButton")
 		var top_left: Rect2 = _rect("TopLeft")
-		var bar: Rect2 = _rect("ArmyBar")
+		var bar: Rect2 = _rect("GroupColumn")
 		var safe: Rect2 = UiScale.safe_rect_base()
 		var screen: Rect2 = get_viewport().get_visible_rect()
 		var left: float = (_hud("SafeArea") as Control).get_theme_constant("margin_left")
@@ -185,7 +185,11 @@ func test_six_types_with_3_digit_counts_fit_the_line_of_a_360_dp_phone_with_a_ch
 	var pill: Rect2 = _rect("EconomyPill")
 	assert_bool(rect.intersects(pill)).override_failure_message(str(rect)).is_false()
 	assert_bool(rect.intersects(surrender)).override_failure_message(str(rect)).is_false()
-	assert_bool(rect.intersects(_rect("ArmyBar"))).override_failure_message(str(rect)).is_false()
+	(
+		assert_bool(rect.intersects(_rect("GroupColumn")))
+		. override_failure_message(str(rect))
+		. is_false()
+	)
 	assert_float(rect.size.y).is_less_equal(UiScale.dp(72.0))
 	for row: SelectionPanel.Row in _shown_rows():  # Icon and count only.
 		assert_bool(row.title.visible).is_false()
@@ -256,7 +260,8 @@ func test_a_tap_on_the_portrait_panel_orders_nothing_and_a_tap_on_the_ground_doe
 	_tap(_panel.get_global_rect().get_center())
 	assert_array(_sent).is_empty()
 	assert_array(_controller.selection.selected).is_equal([1, 2])
-	_tap(Vector2(690, 1000))  # Plain ground, clear of the tanks, the panel, the army bar and the band.
+	## Plain ground, clear of the tanks, the panel, the group column and the band.
+	_tap(Vector2(690, 1000))
 	assert_array(_sent).has_size(1)
 
 

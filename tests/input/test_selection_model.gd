@@ -125,3 +125,22 @@ func test_remove_ids_of_units_outside_the_selection_changes_no_selection() -> vo
 	assert_array(_model.group(3)).is_empty()
 	assert_bool(_model.recall_group(3)).is_false()
 	assert_int(_changes).is_equal(1)
+
+
+func test_the_lowest_free_group_and_the_group_sizes() -> void:
+	var model: SelectionModel = SelectionModel.new()
+	assert_int(model.lowest_free_group()).is_equal(1)
+	assert_int(model.group_size(1)).is_equal(0)
+	model.set_ids(PackedInt32Array([4, 5]))
+	model.assign_group(1)
+	assert_int(model.group_size(1)).is_equal(2)
+	assert_int(model.lowest_free_group()).is_equal(2)
+	model.assign_group(3)
+	assert_int(model.lowest_free_group()).is_equal(2)  # The lowest, not the next after the last.
+	model.assign_group(2)
+	assert_int(model.lowest_free_group()).is_equal(0)  # None free.
+	model.clear()
+	model.assign_group(1)  # An empty group is free again.
+	assert_int(model.lowest_free_group()).is_equal(1)
+	assert_int(model.group_size(0)).is_equal(0)
+	assert_int(model.group_size(4)).is_equal(0)

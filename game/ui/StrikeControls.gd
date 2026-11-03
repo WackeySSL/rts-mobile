@@ -6,8 +6,9 @@ extends HBoxContainer
 ## a point is placed) and a tap on the pressed one ends it; the check mark (dimmed until a point is
 ## placed) sends the one SUPERWEAPON, the X cancels.
 ## Landscape: the top line, left of the radar scope. Portrait: the right edge, a gap above the
-## ArmyBar's line, which is a gap above the zone (BUILD's height while the drawer is closed, the
-## open sheet's height while it is up, P120). The parent `MarginContainer` is the band the row sits
+## BUILD's row (a line of `LINE_DP` and two gaps above the zone, which is 0 while the drawer is
+## closed and the open sheet's height while it is up). The parent `MarginContainer` is the band the
+## row sits
 ## in; this node sets its margins and takes the zone from `HudLayout`, then `zone_changed`. It
 ## follows the drawer's slide through `zone_changed` (ADR 0024 section 4): the lift of a slide
 ## frame uses the dp and the orientation cached on the last resize and the height the signal
@@ -17,6 +18,9 @@ extends HBoxContainer
 const GAP_DP: float = 8.0
 const ACTION_DP: float = 64.0  ## The check mark and the X: placement's size (touch-ui-rules).
 const ICON_DP: float = 32.0
+## The line above the zone the row stands on, with its gap: with the zone at 0 it is BUILD's row
+## (64 + 8 dp) until P120c puts the row at `HudCorners.STRIKE`.
+const LINE_DP: float = 56.0
 const CARD_ART: String = "res://assets/art/iso/icons/item_%s.svg"
 
 @export var aim: StrikeAim
@@ -112,14 +116,15 @@ func _on_zone_changed(_top_px: float, height_px: float) -> void:
 	_lift()
 
 
-## The row's place in the band: above the ArmyBar's line in portrait, left of the radar scope in
+## The row's place in the band: above BUILD's row (or the sheet) in portrait, left of the radar
+## scope in
 ## landscape.
 func _lift() -> void:
 	var band: MarginContainer = get_parent() as MarginContainer
 	if band == null:
 		return
 	var gap: float = GAP_DP * _dp_px
-	var bar: int = ceili(_zone_px + gap) + ceili(ArmyBar.ALL_ARMY_DP.y * _dp_px)
+	var bar: int = ceili(_zone_px + gap) + ceili(LINE_DP * _dp_px)
 	var bottom: int = bar + ceili(gap) if _portrait else 0
 	if bottom == _lifted:
 		return

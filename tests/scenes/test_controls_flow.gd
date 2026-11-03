@@ -8,7 +8,8 @@ extends GdUnitTestSuite
 ## n is row n - 1 of the 6-column block, which the 2:1 projection (P117) shows as a diamond: column
 ## c = (n - 1) % 6 and row r = (n - 1) / 6 stand at world px x = -320 + 48 (c - r) and
 ## y = 432 + 24 (c + r). Ids 1-30 are blue (the player's), 31-40 red. No map touch
-## starts on the SelectionPanel, the ArmyBar or the Dev button: they keep their touches. Timings,
+## starts on the SelectionPanel, the group column or the Dev button: they keep their touches.
+## Timings,
 ## buzzes and the formation bound come from the data. The zoom levels and the scenario are pins.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
@@ -58,6 +59,7 @@ const IDLE: int = World.Order.IDLE
 
 var _window_size_before: Vector2i
 var _upright: bool = false  ## The profile of `_open` is a portrait window.
+var _column_aside: bool = false
 var _now_ms: int = 0
 var _main: Node2D
 var _runner: MatchRunner
@@ -164,6 +166,7 @@ func test_tap_ground_450_ticks_idle_slots(profile: String, _test_parameters := P
 ## The type filter is proven in tests/input/test_player_controller.gd until a second type exists.
 func test_double_tap_selects_visible_tanks(profile: String, _test_parameters := PROFILES) -> void:
 	await _open(profile)
+	_aside_column()
 	await _double_tap(_layer.unit_screen_position(0))
 	assert_array(_controller.selection.selected).is_equal(range(1, 31))
 	_assert_panel("×30")
@@ -183,6 +186,7 @@ func test_double_tap_selects_visible_tanks(profile: String, _test_parameters := 
 
 func test_long_press_box_selects_its_tanks(profile: String, _test_parameters := PROFILES) -> void:
 	await _open(profile)
+	_aside_column()
 	_controller.selection.set_ids(PackedInt32Array([20]))
 	await _box(_top_box().position, _top_box().end)  # The six tanks at the top of the diamond.
 	assert_array(_controller.selection.selected).is_equal(TOP_TANKS)
@@ -197,15 +201,14 @@ func test_long_press_box_selects_its_tanks(profile: String, _test_parameters := 
 
 func test_all_army_then_groups_1_to_3(profile: String, _test_parameters := PROFILES) -> void:
 	await _open(profile)
-	var hold: int = _touch.settings.group_assign_ms
 	_press_hud("AllArmy")
 	assert_array(_controller.selection.selected).is_equal(range(1, 31))
 	_assert_panel("×30")  # Rows/Row0/Count.
-	_press_hud("Group1", hold)  # A hold assigns the 30.
+	_press_hud("AddGroup")  # "+" saves the 30 in group 1.
 	await _box(_top_box().position, _top_box().end)
-	_press_hud("Group2", hold)  # Tanks 1, 2, 3, 7, 8 and 13.
+	_press_hud("AddGroup")  # Group 2: tanks 1, 2, 3, 7, 8 and 13.
 	await _tap(_layer.unit_screen_position(2))
-	_press_hud("Group3", hold)  # Tank 3.
+	_press_hud("AddGroup")  # Group 3: tank 3.
 	for label: Array in [["Group1", "1\n30"], ["Group2", "2\n6"], ["Group3", "3\n1"]]:
 		assert_str((_hud(label[0]) as Button).text).is_equal(label[1])
 	var buzz: int = _touch.settings.haptic_ms
@@ -311,8 +314,15 @@ func _assert_off_hud(at: Vector2) -> void:
 	var screen: Rect2 = get_viewport().get_visible_rect()
 	assert_bool(screen.has_point(at)).override_failure_message("%s is off screen" % at).is_true()
 	for node_name: String in [
-		"SelectionPanel", "ArmyBar", "DevButton", "SurrenderButton", "EconomyPill", "BuildSidebar"
+		"SelectionPanel",
+		"GroupColumn",
+		"DevButton",
+		"SurrenderButton",
+		"EconomyPill",
+		"BuildSidebar"
 	]:
+		if _column_aside and node_name == "GroupColumn":
+			continue
 		var hud: Control = _hud(node_name)
 		var why: String = "%s is on %s %s" % [at, node_name, hud.get_global_rect()]
 		var under: bool = hud.is_visible_in_tree() and hud.get_global_rect().has_point(at)
@@ -330,6 +340,7 @@ func _ground_milli() -> Vector2i:
 
 ## A new main scene on `profile` with the fake clock; Commands and buzzes are caught on their way.
 func _open(profile: String, scenario: ScenarioDef = null) -> void:
+	_column_aside = false
 	var metrics: UiMetrics = UiProfiles.by_name(StringName(profile))
 	_upright = UiScale.is_portrait_size(metrics.window_size)
 	UiScale.set_override(metrics)
@@ -385,6 +396,14 @@ func _touch_at(at: Vector2) -> void:
 	TouchEvents.press(get_viewport(), 0, at)
 	_now_ms += 50
 	TouchEvents.release(get_viewport(), 0, at)
+
+
+## These two tests use the map's left strip, where the group column stands (its touches are tested
+## in test_group_column): its buttons let every touch through and it is left out of the HUD check.
+func _aside_column() -> void:
+	_column_aside = true
+	for button: Node in _hud("GroupColumn").find_children("*", "BaseButton", true, false):
+		(button as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 ## Holds 300 ms at `from` (the long-press), drags to `to` and lets go.

@@ -191,20 +191,14 @@ func test_on_the_smallest_web_phone_the_grid_scrolls_vertically() -> void:
 	assert_bool(items.get_global_rect().grow(TOLERANCE_PX).encloses(first)).is_true()
 
 
-func test_the_interim_zone_is_builds_row_upright_while_closed_and_zero_sideways() -> void:
+func test_the_zone_is_zero_while_closed_upright_and_sideways() -> void:
 	for screen: Dictionary in _screens():
 		await _open(screen["size"], screen["metrics"], false)
 		var why: String = str(screen["label"])
 		assert_bool(_sidebar.visible).override_failure_message(why).is_false()
-		if HudLayout.is_portrait():
-			assert_float(HudLayout.bottom_zone_dp).override_failure_message(why).is_equal_approx(
-				HudCorners.BUILD_DP, 0.01
-			)
-		else:
-			assert_float(HudLayout.bottom_zone_dp).override_failure_message(why).is_equal(0.0)
+		assert_float(HudLayout.bottom_zone_dp).override_failure_message(why).is_equal(0.0)
 		assert_bool(is_inf(HudLayout.menu_top_px)).override_failure_message(why).is_true()
 	assert_float(HudLayout.BUILD_ROW_DP).is_equal(HudCorners.BUILD_DP + HudCorners.GAP_DP)
-	assert_float(HudLayout.BUILD_ZONE_DP).is_equal(HudCorners.BUILD_DP)
 
 
 func test_the_slide_eases_out_ends_on_the_target_and_the_zone_follows_it() -> void:

@@ -32,7 +32,8 @@ const ICON_ART: String = "res://assets/art/svg/icons/glyph_%s.svg"
 const EPSILON: float = 0.01  ## Base px: a rect that ends where another starts does not overlap it.
 
 @export var placement: PlacementController
-## The HUD controls the buttons keep clear of while they are visible: the Dev button, the ArmyBar,
+## The HUD controls the buttons keep clear of while they are visible: the Dev button, the group
+## column,
 ## the SelectionPanel, the strike row, the build menu, the economy pill, the radar scope and the
 ## full map (an island while it is pinned open, ADR 0025 section 6) and the attack toast (ADR 0025
 ## section 8).

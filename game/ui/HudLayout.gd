@@ -4,21 +4,17 @@ extends RefCounted
 ## sections 2 and 5, plan rows P85d and P120). The corner parts (the pill, the scope, BUILD) are
 ## `HudCorners`'. Landscape: the drawer is a side panel and takes no bottom zone; `right_zone_px`
 ## reserves BUILD's column at the bottom row's right end for the SelectionPanel's band. Portrait:
-## `BuildSidebar` puts the zone in `bottom_zone_dp`: BUILD's row while the drawer is closed, the
-## sheet's height while it is open, between the two while it slides; every HUD part reads it here
-## and nowhere else, so the ArmyBar sits a gap above it. `menu_top_px` is the sheet's real top on
+## `BuildSidebar` puts the zone in `bottom_zone_dp`: 0 while the drawer is closed, the sheet's
+## height while it is open, between the two while it slides; every HUD part reads it here
+## and nowhere else, so the strike row sits a gap above it. `menu_top_px` is the sheet's real top on
 ## the screen (ADR 0024 section 4), for whatever measures the screen: the edge pan's bottom band and
 ## the buttons of placement. `BuildSidebar` tells whoever lifts something by them in `zone_changed`.
 ## A scene without a sidebar leaves them at 0 and INF (the sidebar puts them back when it leaves).
 ## The orientation is the one rule of UiScale, applied to the window the UI scale is made for.
 
 const STACK_SHARE: float = 0.4  ## The most the bottom stack takes of the portrait safe height.
-## BUILD's row upright while the drawer is closed (BUILD 64 dp and a gap): the zone the ArmyBar
-## stands above (ADR 0025 "Interim places"; P122b takes it back to 0).
+## BUILD and a gap (BUILD 64 dp, 8 dp): what the landscape bottom row leaves at its right end.
 const BUILD_ROW_DP: float = 72.0  # HudCorners.BUILD_DP + GAP_DP; pinned equal by a test.
-## The portrait zone while the drawer is closed: BUILD's own height. Whatever stands above it adds
-## its 8 dp gap, as it does above the open sheet.
-const BUILD_ZONE_DP: float = 64.0  # HudCorners.BUILD_DP; pinned equal by a test.
 
 ## The portrait zone in dp (see the header); 0 in landscape and while no BuildSidebar is in the
 ## tree. Static state: a test that sets one puts it back in `after_test`, like the UiScale override.

@@ -26,6 +26,9 @@ const HINT: String = "Tap to jump there"
 @export var top_left: Control  ## Upright: the toast stands under this stack (Dev over Surrender).
 ## Upright the selection panel stands on the top line too (until P122): the toast goes under it.
 @export var selection: Control
+## Landscape, where the room beside the pill is short, the toast stands under the top line: right
+## of this column, which starts on that line.
+@export var group_column: GroupColumn
 
 var _row: HBoxContainer = HBoxContainer.new()
 var _glyph: TextureRect = TextureRect.new()
@@ -64,6 +67,8 @@ func _ready() -> void:
 	if selection != null:  # The panel grows, shrinks and hides with the selection.
 		selection.item_rect_changed.connect(_replace)
 		selection.visibility_changed.connect(_replace)
+	if group_column != null:  # More or fewer groups move the column's right edge.
+		group_column.laid_out.connect(_replace)
 	feed.state.changed.connect(_on_unfold_changed)
 	get_viewport().size_changed.connect(_apply_dp)
 	_apply_dp()
@@ -79,6 +84,8 @@ func place() -> void:
 	shown.pill_over_drawer = true  # The economy is the pill's until P120d: it stays beside the drawer.
 	if pill != null:
 		shown.pill_width = pill.size.x / dp
+	if group_column != null:
+		shown.groups = group_column.item_count()
 	if top_left != null and top_left.visible:
 		shown.left_taken = HudLayout.first_visible_width(top_left) / dp
 		shown.left_height = top_left.get_combined_minimum_size().y / dp

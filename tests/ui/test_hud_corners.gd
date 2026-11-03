@@ -270,7 +270,7 @@ func test_every_part_is_inside_the_safe_rect_48_dp_and_clear_of_the_others() -> 
 				)
 				var why: String = "%s, mirror %s, %s" % [screen["label"], mirror, _describe(shown)]
 				_assert_parts(out, safe, dp, why)
-				_assert_gaps(out, dp, why, str(screen["label"]).begins_with("web_phone_portrait"))
+				_assert_gaps(out, dp, why)
 				if screen["portrait"] and shown.bar:
 					_assert_stack_within_40_percent(out, safe, dp, why, shown)
 				checked += 1
@@ -300,9 +300,7 @@ func test_the_toast_stands_clear_of_a_top_left_stack_of_any_height() -> void:
 						% [screen["label"], height, mirror, _describe(shown)]
 					)
 					_assert_parts(out, safe, dp, why)
-					_assert_gaps(
-						out, dp, why, str(screen["label"]).begins_with("web_phone_portrait")
-					)
+					_assert_gaps(out, dp, why)
 					var stack: Rect2 = Rect2(Vector2.ZERO, Vector2(77.0, height) * dp)
 					stack.position = safe.position
 					if mirror:
@@ -371,27 +369,18 @@ func _assert_stack_within_40_percent(
 
 
 ## ADR 0025 section 2: gaps of 8 dp. Every two parts that show are at least 8 dp apart on one axis.
-## Two exemptions, each for a reason: the economy card, which is an overlay (it hangs under the pill
-## over the toast, the groups, the command bar and the scope's foot); and the strike button's check
-## mark and X against the group column at 360 x 700 dp with five group items, where the ADR's own
-## numbers (a 120 dp column, the 136 dp row, 8 dp, the 72 dp button: 336 dp) leave no gap, which
-## the lead takes to the architect before P120c and P122b.
-func _assert_gaps(out: Dictionary[StringName, Rect2], dp: float, why: String, narrow: bool) -> void:
+## One exemption: the economy card, which is an overlay (it hangs under the pill over the toast, the
+## groups, the command bar and the scope's foot). The strike aim's check mark and X against the
+## group
+## column are no exemption: upright the aim holds the column to three items in one column (lead
+## decision, P122b), where the ADR's own numbers (a 120 dp column, the 136 dp row) leave no gap.
+func _assert_gaps(out: Dictionary[StringName, Rect2], dp: float, why: String) -> void:
 	var keys: Array = out.keys()
 	for first: int in keys.size():
 		for second: int in range(first + 1, keys.size()):
 			var a: StringName = keys[first]
 			var b: StringName = keys[second]
 			if _nested(a, b) or a == HudCorners.CARD or b == HudCorners.CARD:
-				continue
-			var row_and_column: bool = (
-				narrow
-				and (
-					(a == HudCorners.STRIKE_ROW and str(b).begins_with("group_"))
-					or (b == HudCorners.STRIKE_ROW and str(a).begins_with("group_"))
-				)
-			)
-			if row_and_column:
 				continue
 			var gap: float = _gap(out[a], out[b]) / dp
 			var pair: String = "%s: %s and %s are %s dp apart" % [why, a, b, gap]
@@ -540,3 +529,88 @@ func _assert_rect(actual: Rect2, expected: Rect2) -> void:
 	assert_that(actual).override_failure_message("%s, expected %s" % [actual, expected]).is_equal(
 		expected
 	)
+
+
+## Lead decision (P122b): upright, while the strike aim shows, the group column holds at most three
+## items in one column (the rest scroll), so it never meets the check mark and X, at 8 dp or more,
+## at
+## every screen; sideways nothing changes. Without the aim the columns follow section 2.
+func test_upright_during_the_aim_the_column_holds_three_items_in_one_column() -> void:
+	var checked: int = 0
+	for screen: Dictionary in _screens():
+		var safe: Rect2 = screen["safe"]
+		var dp: float = screen["dp"]
+		for groups: int in [1, 4, 5]:
+			for bar: bool in [false, true]:
+				var shown: HudCorners.Shown = _shown(["strike", "aim"], groups)
+				shown.bar = bar
+				var out: Dictionary[StringName, Rect2] = HudCorners.place(
+					safe, screen["portrait"], dp, false, shown
+				)
+				var why: String = "%s, %d groups, bar %s" % [screen["label"], groups, bar]
+				var held: int = 0
+				for index: int in groups:
+					if out.has(HudCorners.group_key(index)):
+						held += 1
+						var gap: float = _gap(
+							out[HudCorners.group_key(index)], out[HudCorners.STRIKE_ROW]
+						)
+						assert_float(gap / dp).override_failure_message(why).is_greater_equal(
+							8.0 - TOLERANCE
+						)
+				if screen["portrait"]:
+					assert_int(held).override_failure_message(why).is_between(1, mini(groups, 3))
+					assert_int(_column(out, held)).override_failure_message(why).is_equal(held)
+				else:
+					assert_int(held).override_failure_message(why).is_equal(groups)
+				checked += 1
+	assert_int(checked).is_greater(40)
+	# 360 x 700 dp: the ADR's own numbers, the column of five takes two columns (120 dp) without the
+	# aim.
+	var upright: Rect2 = Rect2(0.0, 0.0, 336.0, 676.0)
+	var lined: Dictionary[StringName, Rect2] = _place(upright, true, _shown(["bar", "strike"], 5))
+	assert_float(lined[HudCorners.group_key(4)].end.x).is_equal(120.0)
+	lined = _place(upright, true, _shown(["bar", "strike", "aim"], 5))
+	assert_bool(lined.has(HudCorners.group_key(3))).is_false()
+	assert_float(lined[HudCorners.group_key(2)].end.x).is_equal(56.0)
+	assert_float(lined[HudCorners.STRIKE_ROW].position.x - 56.0).is_equal(64.0)
+
+
+## The column starts under the Dev stack (`left_height`) sideways, and the toast, when it stands
+## under the top line, starts right of the column: at every screen, the stack at 48, 104 and 160 dp,
+## a wide pill beside the open drawer, one to five group items.
+func test_sideways_the_column_stands_under_the_stack_and_the_short_toast_clear_of_it() -> void:
+	var checked: int = 0
+	for screen: Dictionary in _screens():
+		if screen["portrait"]:
+			continue
+		var safe: Rect2 = screen["safe"]
+		var dp: float = screen["dp"]
+		for height: float in [0.0, 48.0, 104.0]:
+			for groups: int in [1, 3, 5]:
+				var shown: HudCorners.Shown = _shown(["toast", "drawer"], groups)
+				shown.pill_over_drawer = true
+				shown.pill_width = 320.0
+				shown.left_taken = 77.0 if height > 0.0 else 0.0
+				shown.left_height = height
+				var out: Dictionary[StringName, Rect2] = HudCorners.place(
+					safe, false, dp, false, shown
+				)
+				var why: String = "%s, stack %s, %d groups" % [screen["label"], height, groups]
+				var first: Rect2 = out[HudCorners.group_key(0)]
+				(
+					assert_float(first.position.y - safe.position.y)
+					. override_failure_message(why)
+					. is_greater_equal(maxf(48.0, height) * dp + 8.0 * dp - TOLERANCE)
+				)
+				for index: int in groups:
+					var rect: Rect2 = out[HudCorners.group_key(index)]
+					var toast: Rect2 = out[HudCorners.TOAST]
+					assert_bool(rect.intersects(toast)).override_failure_message(why).is_false()
+					(
+						assert_bool(rect.intersects(out[HudCorners.PILL]))
+						. override_failure_message(why)
+						. is_false()
+					)
+				checked += 1
+	assert_int(checked).is_greater(40)
