@@ -70,7 +70,8 @@ func test_the_node_stands_before_the_safe_area_with_the_hud_theme_and_the_old_ro
 	assert_int(_ghost.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
 	assert_object(_ghost.theme).is_same((safe as Control).theme)  # The dp copy of theme.tres.
 	assert_object(_ghost.theme.get_meta(HudTheme.SOURCE_META)).is_not_null()
-	assert_array(_ghost.clear_of).has_size(10)  # BUILD (P120), scope and map (P121), toast (P123).
+	# BUILD and its Ready chip (P120, P120c), scope and map (P121), toast (P123).
+	assert_array(_ghost.clear_of).has_size(11)
 	assert_object(_sidebar.find_child("Placement", true, false)).is_null()
 	for global: Dictionary in ProjectSettings.get_global_class_list():
 		assert_str(str(global["class"])).is_not_equal("PlacementControls")
@@ -316,6 +317,34 @@ func test_the_scenes_hud_list_is_what_the_buttons_keep_clear_of() -> void:
 		block.visible = false
 	await _settle()
 	_expect_placed("blocks hidden")
+	await _expect_column_clear_of_the_ready_chip()
+
+
+## Part of the previous test. The Ready chip stands left of BUILD while a structure is finished (it
+## always is during placement), outside BUILD's own rect: a ghost just left of it gets its column
+## beside the chip, not on it, at every screen.
+func _expect_column_clear_of_the_ready_chip() -> void:
+	var tried: int = 0
+	for screen: Dictionary in _screens(null):
+		await _open(screen["size"], screen["metrics"])
+		var why: String = str(screen["label"])
+		(_main.get_node("Hud/BuildButton") as BuildButton).refresh(_runner.snapshot)
+		var chip: Control = _hud("ReadyChip") as Control
+		assert_bool(chip.visible).override_failure_message(why).is_true()
+		assert_bool(_ghost.clear_of.has(chip)).override_failure_message(why).is_true()
+		_tap(_tile())
+		await _settle()
+		for k: float in [30.0, 60.0, 90.0, 130.0]:
+			var rect: Rect2 = chip.get_global_rect()
+			_ghost_at(Vector2(rect.position.x - UiScale.dp(k), rect.get_center().y))
+			await _settle()
+			var group: Rect2 = _group()
+			var at: String = (
+				"%s, ghost %s dp left of the chip %s: column %s" % [why, k, rect, group]
+			)
+			assert_bool(group.intersects(rect.grow(-0.5))).override_failure_message(at).is_false()
+			tried += 1
+	assert_int(tried).is_greater(0)
 
 
 ## Where nothing fits (a HUD control over the whole allowed rect) the right column is clamped into

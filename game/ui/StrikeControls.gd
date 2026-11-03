@@ -12,6 +12,8 @@ extends HBoxContainer
 ## or the pause menu is open (the landscape panel covers its column, the portrait sheet the bottom
 ## stack).
 
+signal reserved_changed  ## The room the aim's row takes changed (`HudLayout.aim_zone_dp`).
+
 const GAP_DP: float = 8.0
 const ACTION_DP: float = 64.0  ## The check mark and the X: placement's size (touch-ui-rules).
 const ICON_DP: float = 32.0
@@ -127,6 +129,17 @@ func place() -> void:
 	# toward the screen's inside (left and up), never out of the safe rect.
 	size = span.size.max(_least())
 	position = span.end - size
+	var room: float = 0.0
+	if _aiming and not HudLayout.is_portrait():
+		room = (safe.end.x - rects[HudCorners.STRIKE_ROW].position.x) / UiScale.base_px_per_dp()
+		room += HudCorners.GAP_DP
+	if room != HudLayout.aim_zone_dp:
+		HudLayout.aim_zone_dp = room
+		reserved_changed.emit()
+
+
+func _exit_tree() -> void:
+	HudLayout.aim_zone_dp = 0.0
 
 
 ## What the shown plates ask for, in a row: the container's own cached answer lags a frame behind

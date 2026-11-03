@@ -527,7 +527,7 @@ func test_with_a_strike_building_the_open_map_keeps_clear_of_the_strike_row_and_
 				192.0 * dp - 1.0
 			)
 		var aiming: Array = ["StrikeConfirm", "StrikeCancel", "StrikeButton", "StrikeControls"]
-		_expect_clear_of_row(why, map, aiming)
+		_expect_clear_of_row(why, map, aiming, true)
 		_expect_clear_of_hud(why, map)
 		assert_bool(_aim.active).override_failure_message(why).is_true()
 		_tap(_rect("StrikeCancel").get_center())  # The X is the X: the aim ends, the map stays.
@@ -537,16 +537,94 @@ func test_with_a_strike_building_the_open_map_keeps_clear_of_the_strike_row_and_
 		_state.pinned = false
 
 
-## The map's whole rect stands clear of the parts named, a gap away on one axis at least.
-func _expect_clear_of_row(why: String, map: Rect2, parts: Array) -> void:
-	var gap: float = UiScale.dp(HudCorners.GAP_DP) - 4.0  # The plates round up to whole pixels.
+## Where the pinned map cannot fit beside the pill and the aim's row (a safe width under about 680
+## dp) it folds when the aim begins, the pin kept, instead of covering the pill's end; opened again
+## during the aim it folds again. On the narrower screen of the test above it stays.
+func test_a_pinned_map_that_cannot_fit_beside_the_pill_folds_when_the_aim_begins() -> void:
+	var spawns: Array[SpawnDef] = []
+	for entry: Array in STRIKE_SPAWNS:
+		spawns.append(BuildingRig.spawn(entry[0], entry[1], entry[2], entry[3]))
+	var tiny: UiMetrics = RadarRig.tiny_short_landscape()
+	for screen: UiMetrics in [RadarRig.narrow_short_landscape(), tiny]:
+		await _open(screen.window_size, screen, BuildingRig.scenario(spawns))
+		_feed.set_process(false)
+		var why: String = str(screen.window_size)
+		_state.open(HudState.Unfold.RADAR)
+		_state.pinned = true
+		await _settle()
+		var snap: MatchSnapshot = _runner.snapshot
+		snap.ready_tick[snap.index_of(BORE)] = snap.tick + 1
+		_aim.refresh()
+		assert_bool(_aim.begin()).override_failure_message(why).is_true()
+		await _settle()
+		await _settle()
+		var folds: bool = screen.window_size == tiny.window_size
+		assert_bool(_state.is_open(HudState.Unfold.RADAR)).override_failure_message(why).is_equal(
+			not folds
+		)
+		assert_bool(_state.pinned).override_failure_message(why).is_true()
+		assert_bool(_aim.active).override_failure_message(why).is_true()
+		if folds:
+			_state.open(HudState.Unfold.RADAR)  # Opened during the aim: folds again.
+			await _settle()
+			await _settle()
+			(
+				assert_bool(_state.is_open(HudState.Unfold.RADAR))
+				. override_failure_message(why)
+				. is_false()
+			)
+		else:
+			var pill: Rect2 = _rect("EconomyPill")
+			(
+				assert_bool(_map.get_global_rect().intersects(pill))
+				. override_failure_message(why)
+				. is_false()
+			)
+		_state.pinned = false
+
+
+## The map's whole rect stands clear of the parts named (their real rects), and is the rect
+## `HudCorners.place` gives for what shows, within 1.5 px, whose own gap to the aim's row and to the
+## button is the 8 dp (the plates round up to whole pixels, so the real rects may differ a little
+## from the layout's).
+func _expect_clear_of_row(why: String, map: Rect2, parts: Array, aiming: bool = false) -> void:
 	for part: String in parts:
 		var rect: Rect2 = _rect(part)
 		var at: String = "%s: %s %s, map %s" % [why, part, rect, map]
 		assert_bool(map.intersects(rect)).override_failure_message(at).is_false()
-		var across: float = maxf(rect.position.x - map.end.x, map.position.x - rect.end.x)
-		var along: float = maxf(rect.position.y - map.end.y, map.position.y - rect.end.y)
-		assert_float(maxf(across, along)).override_failure_message(at).is_greater_equal(gap)
+	var dp: float = UiScale.dp(1.0)
+	var pill: Control = _hud("EconomyPill") as Control
+	var shown: HudCorners.Shown = HudCorners.Shown.new()
+	shown.map = true
+	shown.strike = true
+	shown.aim = aiming
+	shown.left_taken = HudLayout.first_visible_width(_hud("TopLeft") as Control) / dp
+	shown.pill_width = pill.size.x / dp
+	var safe: Rect2 = SafeAreaMargin.rect_inside(
+		get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
+	)
+	var wanted: Dictionary[StringName, Rect2] = HudCorners.place(
+		safe, HudLayout.is_portrait(), dp, false, shown
+	)
+	var near: String = "%s: map %s, layout %s" % [why, map, wanted[HudCorners.MAP]]
+	assert_vector(map.position).override_failure_message(near).is_equal_approx(
+		wanted[HudCorners.MAP].position, Vector2.ONE * TOLERANCE_PX
+	)
+	assert_vector(map.size).override_failure_message(near).is_equal_approx(
+		wanted[HudCorners.MAP].size, Vector2.ONE * TOLERANCE_PX
+	)
+	for key: StringName in [HudCorners.STRIKE, HudCorners.STRIKE_ROW]:
+		if wanted.has(key):
+			var rect: Rect2 = wanted[key]
+			var across: float = maxf(
+				rect.position.x - wanted[HudCorners.MAP].end.x,
+				wanted[HudCorners.MAP].position.x - rect.end.x
+			)
+			var along: float = rect.position.y - wanted[HudCorners.MAP].end.y
+			var apart: float = maxf(across, along)
+			assert_float(apart).override_failure_message("%s: %s" % [near, key]).is_greater_equal(
+				8.0 * dp - TOLERANCE_PX
+			)
 
 
 ## ... and of the pill (a gap away, where the map stands beside it), the scope and BUILD. The toast

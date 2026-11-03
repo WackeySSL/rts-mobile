@@ -18,6 +18,8 @@ extends Button
 ## gives READY, with the finished structure's card and "Ready"; a tap opens the drawer on the
 ## Structures tab with that card in view (`BuildSidebar.show_ready`). It hides with BUILD.
 
+signal reserved_changed  ## The room the chip takes beside BUILD changed (`HudLayout.chip_zone_dp`).
+
 const ICON: String = "res://assets/art/svg/icons/glyph_menu_open.svg"
 const TOKENS: StringName = &"HudTokens"
 const WORD_FONT: StringName = &"PillWord"  ## 14 dp caps face with its tracking, in the theme.
@@ -28,8 +30,6 @@ const GLYPH_DP: float = 26.0
 const BADGE_DP: float = 12.5  ## The badge's radius: 18 sp digits fit it.
 const ARC_POINTS: int = 48
 const STALLED: StringName = &"BuildButton"  ## The theme type that holds the stalled ring's grey.
-const CHIP_VARIATION: StringName = &"ReadyBadge"
-const CHIP_WORD: String = "Ready"
 const CHIP_ICON_DP: float = 28.0
 const MARK: String = "!"
 ## One of the two accents (the theme's `AccentRenew`, `AccentFossil`) by the faction's index.
@@ -49,14 +49,15 @@ var badge_font: Font = null  ## The face and size the badge's digits were last d
 var badge_font_size: int = 0
 
 var _glyph: Texture2D = null
-var _chip: Button = Button.new()
 var _chip_type: int = -1  ## The type whose card the chip shows.
 var _compared: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot last compared.
 var _before_count: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## By tab, at that snapshot:
 var _before_done: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## items and the head's progress.
 var _seen: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot last read.
 var _faction: int = 0
+var _chip_room: float = 0.0  ## dp from the safe right edge to the chip's left, and a gap.
 var _dp: float = 1.0  ## Base px per dp, read by `place` (a resize): a frame asks `UiScale` nothing.
+@onready var _chip: Button = $ReadyChip  ## In the scene, so that placement's buttons can clear it.
 
 
 func _ready() -> void:
@@ -64,14 +65,7 @@ func _ready() -> void:
 	focus_mode = Control.FOCUS_NONE
 	_glyph = load(ICON)
 	pressed.connect(func() -> void: feed.state.open(HudState.Unfold.DRAWER))
-	_chip.name = "ReadyChip"
-	_chip.theme_type_variation = CHIP_VARIATION
-	_chip.text = CHIP_WORD
-	_chip.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_chip.focus_mode = Control.FOCUS_NONE
-	_chip.visible = false
 	_chip.pressed.connect(func() -> void: sidebar.show_ready())
-	add_child(_chip)
 	feed.state.changed.connect(_on_changed)
 	get_viewport().size_changed.connect(place)
 	place()
@@ -101,7 +95,21 @@ func place() -> void:
 	_chip.position = rects[HudCorners.READY].position - position
 	_chip.size = rects[HudCorners.READY].size
 	_chip.add_theme_constant_override("icon_max_width", roundi(CHIP_ICON_DP * _dp))
+	_chip_room = (safe.end.x - rects[HudCorners.READY].position.x) / _dp + HudCorners.GAP_DP
+	_reserve()
 	queue_redraw()
+
+
+## Tells the SelectionPanel's band how much room the chip takes (landscape, while it shows).
+func _reserve() -> void:
+	var room: float = _chip_room if _chip.visible and not HudLayout.is_portrait() else 0.0
+	if room != HudLayout.chip_zone_dp:
+		HudLayout.chip_zone_dp = room
+		reserved_changed.emit()
+
+
+func _exit_tree() -> void:
+	HudLayout.chip_zone_dp = 0.0
 
 
 ## The ring, the badge, the stalled look and the Ready chip from the snapshot's queues of the local
@@ -169,6 +177,7 @@ func refresh(snap: MatchSnapshot) -> void:
 func _show_ready(snap: MatchSnapshot, type: int) -> void:
 	ready_type = type
 	_chip.visible = type >= 0
+	_reserve()
 	if type >= 0 and type != _chip_type:
 		_chip_type = type
 		var art: String = SelectionPanel.ICON_ART % snap.type_ids[type]
@@ -238,7 +247,7 @@ func _draw() -> void:
 			HORIZONTAL_ALIGNMENT_LEFT,
 			-1,
 			face_size,
-			get_theme_color(&"text", TOKENS)
+			get_theme_color(&"font_color", &"ReadyBadge")  # The dark type: about 6:1 on the red.
 		)
 	if count > 0:
 		var at: Vector2 = Vector2(size.x - BADGE_DP * dp, BADGE_DP * dp)

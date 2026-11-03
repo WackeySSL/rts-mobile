@@ -114,6 +114,11 @@ func place() -> void:
 		safe, HudLayout.is_portrait(), dp, false, shown
 	)
 	var map: Rect2 = rects[HudCorners.MAP]
+	if shown.aim and visible and rects.has(HudCorners.PILL):
+		var pill_rect: Rect2 = rects[HudCorners.PILL]
+		var room: float = UiScale.dp(HudCorners.GAP_DP) - 0.5
+		if map.position.y < pill_rect.end.y and map.position.x < pill_rect.end.x + room:
+			feed.state.close.call_deferred(HudState.Unfold.RADAR)  # No room beside the pill.
 	position = map.position
 	size = map.size
 	_head.position = rects[HudCorners.MAP_HEAD].position - map.position
@@ -159,6 +164,8 @@ func _sync() -> void:
 	if not visible:
 		_fingers.clear()
 		set_process(false)
+	if visible:
+		place()  # An opening during an aim finds out at once whether it fits.
 	_pin.icon = load(ICON_ART % ("glyph_pin" if state.pinned else "glyph_pin_off"))
 	_pin.modulate = get_theme_color(
 		&"icon_pressed_color" if state.pinned else &"icon_normal_color", TAB_TYPE

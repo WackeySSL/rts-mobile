@@ -9,11 +9,12 @@ extends RefCounted
 ## Drawer open: the landscape panel covers the right column (BUILD, the Ready chip, the strike
 ## button, the scope), the portrait sheet covers the bottom stack and the scope stays; the pill
 ## goes too, unless `Shown.pill_over_drawer` keeps it (P120, until P120d).
-## The economy card, the full map and the strike aim's row are one unfold or mode
-## at a time (ADR 0025 section 1), so a set that holds more than one of them is not a screen the
-## HUD shows. The card is a transient overlay (any next touch closes it): it may cover the toast,
-## the group column and, on the short landscape screens, the command bar (its tallest content is
-## about 220 dp, the room under the pill on the 800 x 304 dp screen is 224 dp).
+## The economy card and the full map are one unfold at a time (ADR 0025 section 1), and the card
+## and the strike aim's row are not shown together either; a pinned full map does stay open
+## through the aim (`_map` keeps it clear of the row and the pill). The card is a transient overlay
+## (any next touch closes it): it may cover the toast, the group column and, on the short landscape
+## screens, the command bar (its tallest content is about 220 dp, the room under the pill on the
+## 800 x 304 dp screen is 224 dp).
 
 const GAP_DP: float = 8.0
 const PILL_DP: Vector2 = Vector2(200.0, 48.0)  ## The pill's least width and its height.

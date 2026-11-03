@@ -54,6 +54,12 @@ static func narrow_short_landscape() -> UiMetrics:
 	return UiMetrics.create("Web", 288, 3.0, 880.0 / 720.0, Vector2i(2184, 880), Rect2i())
 
 
+## Narrower still: 680 dp by 293, 656 dp of safe width, where the pinned map cannot fit beside the
+## pill and the aim's row even at its least width, so it folds when the aim begins.
+static func tiny_short_landscape() -> UiMetrics:
+	return UiMetrics.create("Web", 288, 3.0, 880.0 / 720.0, Vector2i(2040, 880), Rect2i())
+
+
 ## The rects `HudCorners.place` gives for the screen in force (the safe rect of the viewport, the
 ## engine's orientation and dp), with the full map shown or not and nothing else.
 static func rects(viewport: Viewport, map: bool) -> Dictionary[StringName, Rect2]:

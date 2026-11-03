@@ -27,7 +27,9 @@ const SPAWNS: Array[Array] = [
 	[1, "fossil_strike", 6, 6],
 	[1, "light_tank", 14, 14],
 	[2, "renew_hq", 20, 20],
+	[1, "rifle_squad", 15, 15],
 ]
+const RIFLE: int = 4  ## The second unit type of the local player (for a two-type selection).
 const CUTOUT_PX: int = 100
 const TOLERANCE_PX: float = 0.5
 ## The parts of the row, and the other HUD controls they must clear.
@@ -259,6 +261,63 @@ func test_the_row_hides_with_build_under_the_drawer_and_the_pause_menu() -> void
 		_aim.cancel()
 
 
+## The SelectionPanel's band (landscape) reserves the Ready chip's room and, while aiming, the
+## row's, from `HudLayout.right_zone_px`: with one or two unit types selected the panel stays clear
+## of the chip and the row at every screen, the short and the narrow short ones included. Upright
+## it stands under the pill and meets neither.
+func test_the_selection_panel_stays_clear_of_the_ready_chip_and_the_aim_row() -> void:
+	var screens: Array[Dictionary] = _screens_and_short()
+	var narrow: UiMetrics = RadarRig.narrow_short_landscape()
+	screens.append({"label": "narrow short", "size": narrow.window_size, "metrics": narrow})
+	for screen: Dictionary in screens:
+		await _open(screen["size"], screen["metrics"], true)
+		var why: String = str(screen["label"])
+		_make_ready()
+		var chip: Control = _hud("ReadyChip") as Control
+		assert_bool(chip.visible).override_failure_message(why).is_true()
+		var panel: Control = _hud("SelectionPanel") as Control
+		for ids: Array in [[TANK], [TANK, RIFLE]]:
+			for aiming: bool in [false, true]:
+				_aim.cancel()
+				_controller.selection.set_ids(PackedInt32Array(ids))
+				_wait(0)
+				if aiming:
+					assert_bool(_aim.begin()).is_true()
+				for frame: int in 3:
+					await await_idle_frame()
+				var at: String = (
+					"%s: %d types, aiming %s: panel %s"
+					% [why, ids.size(), aiming, panel.get_global_rect()]
+				)
+				assert_bool(panel.is_visible_in_tree()).override_failure_message(at).is_true()
+				var rect: Rect2 = panel.get_global_rect()
+				var parts: Array[Control] = [chip, _hud("StrikeControls") as Control]
+				for part: Control in parts:
+					var gap: String = "%s, %s %s" % [at, part.name, part.get_global_rect()]
+					(
+						assert_bool(rect.intersects(part.get_global_rect()))
+						. override_failure_message(gap)
+						. is_false()
+					)
+		_aim.cancel()
+
+
+## Upright, a strike building owned lifts the zone the ArmyBar stands above by the button and its
+## gap (the interim until P122b); not owned, it is BUILD's own height.
+func test_upright_the_zone_rises_over_the_strike_button_only_while_a_strike_building_is_owned(
+) -> void:
+	var phone: UiMetrics = UiProfiles.by_name(&"android_6in_portrait")
+	await _open(phone.window_size, phone, false)
+	assert_float(HudLayout.bottom_zone_dp).is_equal_approx(64.0, 0.01)
+	await _open(phone.window_size, phone, true)
+	_wait(0)
+	await await_idle_frame()
+	assert_bool(_aim.owned).is_true()
+	assert_float(HudLayout.bottom_zone_dp).is_equal_approx(64.0 + 8.0 + 72.0, 0.01)
+	var army: Rect2 = _rect("ArmyBar")
+	assert_float(army.end.y).is_less_equal(_rect("StrikeButton").position.y - 7.0)
+
+
 func test_the_row_is_shown_only_while_a_strike_building_is_owned() -> void:
 	var phone: UiMetrics = UiProfiles.by_name(&"android_6in")
 	await _open(phone.window_size, phone, false)
@@ -393,6 +452,21 @@ func _wait(wait: int) -> void:
 	var snap: MatchSnapshot = _main.get_node("MatchRunner").snapshot
 	snap.ready_tick[snap.index_of(BORE)] = snap.tick + 1 + wait
 	_aim.refresh()
+
+
+## The player's Structures queue holds a finished power plant, and BUILD has read it: the Ready
+## chip shows.
+func _make_ready() -> void:
+	var runner: MatchRunner = _main.get_node("MatchRunner")
+	var snap: MatchSnapshot = runner.snapshot
+	var plant: int = snap.type_ids.find("power_plant")
+	var slots: int = BuildSidebar._queue_slots(snap)
+	var queue: int = runner.scenario.local_player * World.TABS + World.Tab.STRUCTURES
+	snap.queue_count[queue] = 1
+	snap.queue_type[queue * slots] = plant
+	snap.queue_progress[queue] = snap.type_build_ticks[plant] * Production.PROGRESS_PER_TICK
+	snap.tick += 1
+	(_hud("BuildButton") as BuildButton).refresh(snap)
 
 
 func _ready_to_fire() -> void:

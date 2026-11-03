@@ -188,6 +188,19 @@ func test_stalled_is_no_head_advancing_between_two_snapshots_with_a_queue_not_em
 	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad"], 100)
 	_publish(world, 1)
 	assert_bool(_button.stalled).override_failure_message("a first snapshot").is_false()
+	# A queue that appears at progress 0 is no stall at its first snapshot (nothing to compare).
+	Sw.enqueue(world, World.Tab.INFANTRY, [])
+	_publish(world, 20)
+	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad"], 0)
+	_publish(world, 21)
+	assert_bool(_button.stalled).override_failure_message("appears at 0").is_false()
+	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad"], 100)
+	_publish(world, 22)
+	assert_bool(_button.stalled).override_failure_message("then moves").is_false()
+	Sw.enqueue(world, World.Tab.INFANTRY, [])
+	_publish(world, 23)
+	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad"], 100)
+	_publish(world, 24)
 	_publish(world, 2)  # The same progress one tick later: stalled.
 	assert_bool(_button.stalled).override_failure_message("no advance").is_true()
 	_button.refresh(_runner.snapshot)  # The same snapshot again changes nothing.
@@ -223,6 +236,27 @@ func test_stalled_is_no_head_advancing_between_two_snapshots_with_a_queue_not_em
 	_publish(world, 12)
 	assert_bool(_button.stalled).override_failure_message("empty").is_false()
 	assert_int(_button.count).is_equal(0)
+
+
+## A structure that is still being built (a queue that runs, not finished) shows no chip; finished
+## it does, and the chip goes when the queue empties.
+func test_the_chip_is_hidden_while_the_structure_is_unfinished() -> void:
+	var phone: UiMetrics = UiProfiles.by_name(&"android_6in")
+	await _open(phone.window_size, phone)
+	var chip: Control = _button.get_node("ReadyChip") as Control
+	var world: World = Sw.world()
+	Sw.own(world, BASE)
+	var plant: int = Sw.type_of(world, "power_plant")
+	var goal: int = world.type_build_ticks[plant] * Production.PROGRESS_PER_TICK
+	for tick: int in 3:
+		Sw.enqueue(world, World.Tab.STRUCTURES, ["power_plant"], goal - 100 + tick * 10)
+		_publish(world, 1 + tick)
+		assert_bool(chip.visible).is_false()
+		assert_int(_button.ready_type).is_equal(-1)
+	Sw.enqueue(world, World.Tab.STRUCTURES, ["power_plant"], goal)
+	_publish(world, 5)
+	assert_bool(chip.visible).is_true()
+	assert_int(_button.ready_type).is_equal(plant)
 
 
 ## A finished structure waiting to be placed is no stall (the chip shows it); another queue that is
@@ -350,9 +384,16 @@ func test_the_ready_chip_stands_left_of_build_where_the_layout_puts_it() -> void
 ## size and in both orientations (the grid scrolls: upright the sheet holds few rows), even from
 ## another tab; it sends no Command and does not place anything.
 func test_a_tap_on_the_ready_chip_opens_the_drawer_on_structures_with_the_card_in_view() -> void:
+	var screens: Array[Dictionary] = []
 	for size: Vector2i in ScreenSizes.ALL:
-		await _open(size, null)
-		var why: String = str(size)
+		screens.append({"label": str(size), "size": size, "metrics": null})
+	for profile: StringName in [&"web_phone_small", &"web_phone", &"web_phone_portrait"]:
+		var metrics: UiMetrics = UiProfiles.by_name(profile)
+		screens.append({"label": str(profile), "size": metrics.window_size, "metrics": metrics})
+	var scrolled: int = 0
+	for screen: Dictionary in screens:
+		await _open(screen["size"], screen["metrics"])
+		var why: String = str(screen["label"])
 		var sidebar: BuildSidebar = _main.get_node("Hud/BuildSidebar")
 		sidebar.runner = _runner
 		var sent: Array[Command] = []
@@ -360,10 +401,18 @@ func test_a_tap_on_the_ready_chip_opens_the_drawer_on_structures_with_the_card_i
 		controller.command_sink = func(command: Command) -> void: sent.append(command)
 		var world: World = Sw.world()
 		Sw.own(world, BASE)
-		var plant: int = Sw.type_of(world, "power_plant")
-		var goal: int = world.type_build_ticks[plant] * Production.PROGRESS_PER_TICK
-		Sw.enqueue(world, World.Tab.STRUCTURES, ["power_plant"], goal)
-		_publish(world, 1)
+		_publish(world, 1)  # The tiles are made from the first snapshot.
+		sidebar.refresh()
+		# The last Structures card of the drawer: the one furthest down the grid.
+		var last: ItemTile = null
+		for tile: ItemTile in sidebar._tiles:
+			if tile.tab == World.Tab.STRUCTURES and (tile.faction < 0 or tile.faction == 0):
+				last = tile
+		assert_object(last).override_failure_message(why).is_not_null()
+		var id: String = last.name.trim_prefix("Tile_")
+		var goal: int = world.type_build_ticks[Sw.type_of(world, id)] * Production.PROGRESS_PER_TICK
+		Sw.enqueue(world, World.Tab.STRUCTURES, [id], goal)
+		_publish(world, 2)
 		sidebar.refresh()
 		sidebar.select_tab(World.Tab.VEHICLES)  # Another tab was open.
 		var chip: Control = _button.get_node("ReadyChip") as Control
@@ -376,15 +425,16 @@ func test_a_tap_on_the_ready_chip_opens_the_drawer_on_structures_with_the_card_i
 			HudState.Unfold.DRAWER
 		)
 		assert_int(sidebar.tab).override_failure_message(why).is_equal(World.Tab.STRUCTURES)
-		var tile: ItemTile = sidebar.find_child("Tile_power_plant", true, false) as ItemTile
-		assert_int(tile.state).override_failure_message(why).is_equal(ItemTile.State.READY)
-		var items: Control = sidebar.find_child("Items", true, false) as Control
-		var seen: bool = items.get_global_rect().encloses(tile.get_global_rect().grow(-1.0))
+		assert_int(last.state).override_failure_message(why).is_equal(ItemTile.State.READY)
+		var items: ScrollContainer = sidebar.find_child("Items", true, false) as ScrollContainer
+		var seen: bool = items.get_global_rect().encloses(last.get_global_rect().grow(-1.0))
 		var cards: String = (
-			"%s: card %s, grid %s" % [why, tile.get_global_rect(), items.get_global_rect()]
+			"%s: card %s, grid %s" % [why, last.get_global_rect(), items.get_global_rect()]
 		)
 		assert_bool(seen).override_failure_message(cards).is_true()
+		scrolled += int(items.scroll_vertical > 0)
 		assert_array(sent).override_failure_message(why).is_empty()
+	assert_int(scrolled).override_failure_message("the scroll was never needed").is_greater(0)
 
 
 ## The snapshot of `world` at `tick`, published to the runner the button reads (its own frames
