@@ -203,7 +203,7 @@ func test_a_defences_ghost_draws_its_head_on_the_mount_and_a_plant_draws_none() 
 	await await_idle_frame()
 	assert_bool(_layer.head_region().has_area()).is_false()
 	assert_bool(_layer.last_head.has_area()).is_false()
-	assert_int(_layer.last_parts).is_equal(1)
+	assert_int(_layer.last_parts).is_equal(2)  # Its body and its fans (P144).
 	_placement.cancel()
 	var roster: ScenarioDef = Rig.scenario_for(
 		1, "headquarters", [["barracks", 2, 10]], ["defence_turret"]
@@ -219,7 +219,8 @@ func test_a_defences_ghost_draws_its_head_on_the_mount_and_a_plant_draws_none() 
 	var east: Rect2i = sort.atlas.region(sheet.art_id, &"head", UnitLayer.D_EAST, sort.slot_of(1))
 	assert_bool(east.has_area()).is_true()
 	assert_that(_layer.head_region()).is_equal(east)
-	assert_int(_layer.last_parts).is_equal(2)
+	assert_int(_layer.last_parts).is_equal(2)  # A defence has no moving element: body and head.
+	assert_bool(_layer.anim_region().has_area()).is_false()
 	# Its pivot is on the mount: the box's top left plus the pivot is the mount from the centre.
 	var ground: Vector2i = _placement.centre_ground()
 	var centre: Vector2 = IsoProjection.ground_to_px(ground.x, ground.y)
@@ -233,6 +234,42 @@ func test_a_defences_ghost_draws_its_head_on_the_mount_and_a_plant_draws_none() 
 	assert_vector(_layer.last_head.size).is_equal_approx(drawn, Vector2.ONE * 0.01)
 	_placement.cancel()
 	assert_bool(_layer.head_region().has_area()).is_false()
+
+
+## A building with a moving element (P144) is drawn with it at its rest frame, frame 0: the
+## Turbine Hall's fans over its body, in the footprint's centre, at the body's alpha.
+func test_a_ghost_draws_the_moving_element_at_frame_0_over_the_body() -> void:
+	_camera.centre_on(IsoProjection.cell_centre_px(AT.x, AT.y))
+	_placement.begin(Rig.plant(_runner.snapshot))
+	await await_idle_frame()
+	await await_idle_frame()
+	var sort: WorldSort = _main.get_node("WorldSort")
+	var sheet: IsoSheetDef = (load(IsoIndex.PATH) as IsoIndex).sheet(Rig.PLANT)
+	var slot: int = sort.slot_of(1)
+	var frame0: Rect2i = sort.atlas.region(Rig.PLANT, &"anim", -1, slot, 0)
+	assert_bool(frame0.has_area()).is_true()
+	assert_that(_layer.anim_region()).is_equal(frame0)
+	assert_that(_layer.anim_region()).is_not_equal(_layer.body_region())
+	var ground: Vector2i = _placement.centre_ground()
+	var centre: Vector2 = IsoProjection.ground_to_px(ground.x, ground.y)
+	var per_px: float = WorldSort.ART_SCALE / sort.atlas.bake_scale()
+	assert_vector(_layer.last_anim.position).is_equal_approx(
+		centre - Vector2(sheet.origin(&"anim")) * WorldSort.ART_SCALE, Vector2.ONE * 0.01
+	)
+	assert_vector(_layer.last_anim.size).is_equal_approx(
+		Vector2(frame0.size) * per_px, Vector2.ONE * 0.01
+	)
+	assert_float(_layer.rise_px()).is_greater_equal(float(sheet.origin(&"anim").y) * 0.5 - 0.01)
+	# The element is as faded as the body, whatever the verdict: a fit and a refusal.
+	var fade: Color = Color(1.0, 1.0, 1.0, GhostLayer.SPRITE_ALPHA)
+	assert_that(_layer.last_anim_tint).is_equal(fade)
+	_placement.blocked = true
+	_layer.refresh()
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_that(_layer.tint()).is_equal(GhostLayer.DANGER)
+	assert_bool(_layer.last_anim.has_area()).is_true()
+	assert_that(_layer.last_anim_tint).is_equal(fade)
 
 
 func test_the_sprite_is_the_buildings_body_on_the_atlas_and_the_rise_is_the_sheets() -> void:

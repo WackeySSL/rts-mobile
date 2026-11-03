@@ -31,6 +31,8 @@ func before_test() -> void:
 	_units = auto_free(UnitLayer.new())
 	_units.runner = _runner
 	_units.camera = _camera
+	_units.life = LifeSettings.new()
+	_units.life.idle_ms = 0  # The squad's idle pose is a life write too (test_squad_poses.gd).
 	add_child(_units)
 	_units.set_process(false)
 	_units._process(0.0)

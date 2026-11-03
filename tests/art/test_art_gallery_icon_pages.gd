@@ -129,10 +129,10 @@ func test_the_map_glyphs_the_arrow_and_the_rally_flags_are_on_both_grounds() -> 
 			assert_bool(rig.is_in_group(group)).is_true()
 
 
-## The tints are palette colours (STYLE.md): the neutral team colour, the ore colour and the three
-## UI accents; every tinted file exists.
+## The tints are palette colours (STYLE.md): the neutral team colour, the ore colour, the three
+## UI accents and the low-power map glyph's orange; every tinted file exists.
 func test_the_glyph_tints_are_palette_colours_of_icons_that_exist() -> void:
-	var palette: PackedStringArray = ["9AA5B1", "F2B705", "30A46C", "F5A524", "E5484D"]
+	var palette: PackedStringArray = ["9AA5B1", "F2B705", "30A46C", "F5A524", "E5484D", "FF8A1F"]
 	for icon: String in Gallery.GLYPH_TINTS:
 		var tint: String = (Gallery.GLYPH_TINTS[icon] as Color).to_html(false).to_upper()
 		assert_bool(palette.has(tint)).override_failure_message(icon + " " + tint).is_true()
@@ -163,8 +163,8 @@ func test_the_icons_page_fits_each_half_and_keeps_clear_of_the_buttons_at_three_
 			for tile: Node in half_node.find_children("Tile*", "ColorRect", true, false):
 				if not half.encloses((tile as Control).get_global_rect()):
 					problems.append(str(tile.get_path()) + " is outside its half")
-		# 26 on the HUD panel, 13 on each ground (8 glyphs, the arrow and four flags).
-		assert_int(seen.size()).is_equal(26 + 13 + 13)
+		# 26 on the HUD panel, 14 on each ground (9 glyphs, the arrow and four flags).
+		assert_int(seen.size()).is_equal(26 + 14 + 14)
 		assert_array(problems).override_failure_message(str(base)).is_empty()
 		gallery.get_parent().free()
 

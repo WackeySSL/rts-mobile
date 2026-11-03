@@ -34,6 +34,17 @@ const SCENES: Array[Array] = [
 	["renew_hq", "renew_tank"],
 ]
 const ARMED: Array[String] = ["defence_turret", "renew_defence"]
+## The buildings with an `anim` part (P143).
+const ANIMATED: Array[String] = [
+	"fossil_radar",
+	"fossil_strike",
+	"power_plant",
+	"renew_barracks",
+	"renew_hq",
+	"renew_power",
+	"renew_radar",
+	"renew_strike",
+]
 
 
 ## A gallery switches `SceneTree.quit_on_go_back` off while it is open and restores what it found,
@@ -157,7 +168,11 @@ func test_the_scene_is_a_sorted_world_of_one_building_and_two_tanks_on_iso_groun
 				)
 				assert_float(front.position.y).is_greater(16.0 * n * zoom)
 				assert_float(behind.position.y).is_less(-16.0 * n * zoom)
-				var parts: Array = ["Shadow", "Hull", "Head"] if id in ARMED else ["Shadow", "Hull"]
+				var parts: Array = ["Shadow", "Hull"]
+				if sheet.has_part(&"anim"):
+					parts.append("Anim")
+				if id in ARMED:
+					parts.append("Head")
 				assert_array(building.get_children().map(_node_name)).is_equal(parts)
 				for unit: Node2D in [front, behind]:
 					assert_array(unit.get_children().map(_node_name)).is_equal(
@@ -171,6 +186,75 @@ func test_the_scene_is_a_sorted_world_of_one_building_and_two_tanks_on_iso_groun
 				_check_rig(page, behind, tank, heading, zoom, triad)
 				checked += 1
 	assert_int(checked).is_equal(SCENES.size() * 2 * SECTIONS.size())
+
+
+## A building with an `anim` part (plan row P143) has an `Anim` sprite after its `Hull` that plays
+## the part's frames on the page's clock: frame 0 when the page is built, the frame of the elapsed
+## time after `_process`, wrapping at the last, written only when the frame changes.
+func test_an_animated_building_plays_its_anim_frames_on_the_pages_clock() -> void:
+	var gallery: Control = await _open_gallery()
+	var page: Control = await _build_page(gallery)
+	var index: IsoIndex = load(IsoIndex.PATH) as IsoIndex
+	var played: int = 0
+	for id: String in ANIMATED:
+		await _show(page, id)
+		var sheet: IsoSheetDef = index.sheet(StringName(id))
+		var anims: Array[Node] = page.find_children("Anim", "Sprite2D", true, false)
+		assert_int(anims.size()).override_failure_message(id).is_equal(2 * SECTIONS.size())
+		var frames: int = sheet.frame_count(&"anim")
+		var frame_s: float = sheet.anim_ms / 1000.0
+		# Built at frame 0 in every section, in its own triad.
+		for anim: Sprite2D in anims:
+			var triad: int = TRIAD_OF[_triad_name(anim.get_node("../../../.."))]
+			var want: Rect2i = page.atlas.region(sheet.art_id, &"anim", -1, triad, 0)
+			assert_bool(want.has_area()).override_failure_message(id).is_true()
+			assert_that(anim.region_rect).override_failure_message(id).is_equal(Rect2(want))
+			assert_int(anim.z_index).is_equal(0)
+			var hull: Node = anim.get_parent().get_node("Hull")
+			assert_int(anim.get_index()).is_equal(hull.get_index() + 1)
+		var clock: float = page._clock_ms / 1000.0
+		for step: int in [1, 2, frames - 1, frames, frames + 1]:
+			# Move the clock to the middle of frame `step` counted from where it stands.
+			var base: float = floorf(clock / (frames * frame_s)) * frames * frame_s
+			var target: float = base + (step + 0.5) * frame_s
+			page._process(target - clock)
+			clock = target
+			var shown: int = step % frames
+			for anim: Sprite2D in anims:
+				var triad: int = TRIAD_OF[_triad_name(anim.get_node("../../../.."))]
+				var want: Rect2i = page.atlas.region(sheet.art_id, &"anim", -1, triad, shown)
+				(
+					assert_that(anim.region_rect)
+					. override_failure_message("%s step %d frame %d" % [id, step, shown])
+					. is_equal(Rect2(want))
+				)
+			played += 1
+		# A tick inside the same frame writes nothing: a sentinel region stays until the frame
+		# changes, and then the frame's region replaces it.
+		var sentinel: Rect2 = Rect2(1, 2, 3, 4)
+		for anim: Sprite2D in anims:
+			anim.region_rect = sentinel
+		page._process(frame_s * 0.1)
+		for anim: Sprite2D in anims:
+			assert_that(anim.region_rect).override_failure_message(id).is_equal(sentinel)
+		page._process(frame_s)
+		for anim: Sprite2D in anims:
+			assert_that(anim.region_rect).override_failure_message(id).is_not_equal(sentinel)
+		# The scene's bounds hold the `anim` canvas, which can reach past the body's.
+		var tank: IsoSheetDef = index.sheet(
+			&"renew_tank" if sheet.faction == &"renew" else &"heavy_tank"
+		)
+		var bounds: Rect2 = page._scene_bounds(sheet, tank, 1.0)
+		var canvas: Rect2 = page._frame_rect(sheet, &"anim", Vector2.ZERO, 1.0)
+		(
+			assert_bool(canvas.has_area() and bounds.encloses(canvas))
+			. override_failure_message(id)
+			. is_true()
+		)
+	assert_int(played).is_equal(ANIMATED.size() * 5)
+	# A building without an `anim` part has no `Anim` sprite and the page plays nothing for it.
+	await _show(page, "barracks")
+	assert_int(page.find_children("Anim", "Sprite2D", true, false).size()).is_equal(0)
 
 
 ## The Redoubt's and the Rail Battery's head face down the screen, at the tank in front, and stand

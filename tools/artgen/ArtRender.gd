@@ -9,12 +9,14 @@ extends RefCounted
 ## (a cube of one tile is 39.2 px high at 1x, Spec 01).
 
 
-## A drawn polygon in px, relative to the model's origin. An empty `stroke` draws no edge.
+## A drawn polygon in px, relative to the model's origin. An empty `stroke` draws no edge. `prim` is
+## the index (in the list given to `render`) of the primitive it belongs to, -1 for any other.
 class Poly:
 	extends RefCounted
 	var points: PackedVector2Array = PackedVector2Array()
 	var fill: String = ""
 	var stroke: String = ""
+	var prim: int = -1
 
 
 const Z_PX: float = 78.38367176906169  ## 128 x sqrt(6) / 4: a tile of height at 2x.
@@ -49,22 +51,36 @@ static func level(normal: Vector3) -> int:
 	return ArtPalette.LEFT if shade >= CUT_LEFT else ArtPalette.RIGHT
 
 
-## The polygons of `prims` turned by `yaw` degrees about the origin, back to front.
-static func render(prims: Array[ArtPrim], yaw: float, faction: StringName) -> Array[Poly]:
+## The polygons of `prims` turned by `yaw` degrees about the origin, back to front. `rest` (the
+## same primitives at rest, in the same order) is for a pose frame of a squad: it fixes the draw
+## order and which faces are tops (the light edge, the second pass), so a pose changes the shade of
+## a face and never what is drawn over what or which edge is light (a leg swung 36 degrees has a
+## side face that faces 0.59 up, but it is not a roof). The fill still follows the posed normal.
+## Without `rest` the posed primitives decide both, as a moving element that turns all round
+## (`anim`) needs.
+static func render(
+	prims: Array[ArtPrim], yaw: float, faction: StringName, rest: Array[ArtPrim] = []
+) -> Array[Poly]:
 	var turn: Vector2 = ArtMesh.dir(yaw)
 	var out: Array[Poly] = []
-	for i: int in _order(prims, _unturn(VIEW, turn)):
+	for i: int in draw_order(prims if rest.is_empty() else rest, yaw):
 		var prim: ArtPrim = prims[i]
 		if prim.shape == &"sphere":
-			out.append_array(_discs(prim, turn, faction))
+			for disc: Poly in _discs(prim, turn, faction):
+				disc.prim = i
+				out.append(disc)
 			continue
 		var tops: Array[Poly] = []
-		for face: ArtMesh.Face in ArtMesh.faces(prim):
+		var faces: Array[ArtMesh.Face] = ArtMesh.faces(prim)
+		var at_rest: Array[ArtMesh.Face] = faces if rest.is_empty() else ArtMesh.faces(rest[i])
+		for k: int in faces.size():
+			var face: ArtMesh.Face = faces[k]
 			var normal: Vector3 = _turn(face.normal, turn)
 			if normal.dot(VIEW) < MIN_FACING:
 				continue
-			var is_top: bool = normal.z >= 0.5
+			var is_top: bool = at_rest[k].normal.z >= 0.5
 			var poly: Poly = Poly.new()
+			poly.prim = i
 			for point: Vector3 in face.points:
 				poly.points.append(project(_turn(point, turn)))
 			poly.fill = ArtPalette.tone(faction, prim.material, level(normal))
@@ -72,6 +88,11 @@ static func render(prims: Array[ArtPrim], yaw: float, faction: StringName) -> Ar
 			(tops if is_top else out).append(poly)
 		out.append_array(tops)
 	return out
+
+
+## The indices of `prims` from the farthest to the nearest as `render` draws them for `yaw`.
+static func draw_order(prims: Array[ArtPrim], yaw: float) -> Array[int]:
+	return _order(prims, _unturn(VIEW, ArtMesh.dir(yaw)))
 
 
 ## `v` turned about the vertical axis by `yaw` degrees (a direction `dNN` is `(NN - 6) x 22.5`).

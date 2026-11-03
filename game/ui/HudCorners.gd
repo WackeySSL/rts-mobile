@@ -7,8 +7,9 @@ extends RefCounted
 ## The frame is the safe rect's own: every size is in dp, the rect it returns is in base px, inside
 ## `safe`. Mirrored, every rect is flipped about the safe rect's middle (left-handed mode, Phase 5).
 ## Drawer open: the landscape panel covers the right column (BUILD, the Ready chip, the strike
-## button, the scope) and the pill, the portrait sheet covers the bottom stack and the pill, and
-## the scope stays. The economy card, the full map and the strike aim's row are one unfold or mode
+## button, the scope), the portrait sheet covers the bottom stack and the scope stays; the pill
+## goes too, unless `Shown.pill_over_drawer` keeps it (P120, until P120d).
+## The economy card, the full map and the strike aim's row are one unfold or mode
 ## at a time (ADR 0025 section 1), so a set that holds more than one of them is not a screen the
 ## HUD shows. The card is a transient overlay (any next touch closes it): it may cover the toast,
 ## the group column and, on the short landscape screens, the command bar (its tallest content is
@@ -24,6 +25,9 @@ const BAR_DP: Vector2 = Vector2(120.0, 64.0)  ## Least width (Deselect and a chi
 const GROUP_DP: float = 56.0
 const TOAST_H_DP: float = 48.0
 const TOAST_W_DP: Vector2 = Vector2(280.0, 360.0)  ## At most, landscape then portrait.
+## Least landscape width beside the pill: glyph 24, gap 6, padding and a title of about 14 letters
+## ("UNITS UNDER ATTACK"); longer names are trimmed. Below it the toast stands under the top line.
+const TOAST_LEAST_DP: float = 200.0
 const MAP_HEAD_DP: float = 48.0
 const MAP_BOX_LEAST_H_DP: float = 96.0
 const MAP_BOX_DP: Vector2 = Vector2(240.0, 120.0)  ## At most; portrait 260 x 130.
@@ -55,6 +59,8 @@ class Shown:
 	extends RefCounted
 
 	var left_taken: float = 0.0  ## Width of what stands at the top left already (the Dev button).
+	## Height of that stack (Dev over Surrender, until P124); the portrait toast stands under it.
+	var left_height: float = 0.0
 	var pill_width: float = 0.0  ## The pill's content width; 0 is its least.
 	var bar: bool = false  ## The command bar (a selection, or the slot a mode keeps).
 	var bar_width: float = 0.0  ## Landscape content width; 0 is the least.
@@ -66,6 +72,8 @@ class Shown:
 	var card: bool = false  ## The economy card.
 	var card_height: float = 120.0
 	var drawer: bool = false
+	## The pill stays while the drawer is open (until P120d puts the economy in the drawer's head).
+	var pill_over_drawer: bool = false
 	var groups: int = 1  ## Buttons in the group column: "All army", saved groups, "+".
 
 
@@ -119,8 +127,9 @@ static func place(
 	if not side:
 		out[SCOPE] = Rect2(w - SCOPE_DP, 0.0, SCOPE_DP, SCOPE_DP)
 	var pill_x: float = shown.left_taken + (GAP_DP if shown.left_taken > 0.0 else 0.0)
-	if not shown.drawer:
-		var room: float = minf(PILL_MAX_DP, w - pill_x - SCOPE_DP - GAP_DP)
+	if not shown.drawer or shown.pill_over_drawer:
+		var edge: float = open.position.x if side else w - SCOPE_DP  # The pill ends a gap short.
+		var room: float = minf(PILL_MAX_DP, edge - GAP_DP - pill_x)
 		var pill_w: float = minf(maxf(shown.pill_width, PILL_DP.x), room)
 		out[PILL] = Rect2(pill_x, 0.0, pill_w, PILL_DP.y)
 		if shown.card:
@@ -130,7 +139,9 @@ static func place(
 	if bar_on:
 		out[BAR] = _bar(w, h, portrait, shown, open, side)
 	if shown.toast and not shown.map:
-		out[TOAST] = _toast(w, portrait, out, open if side else Rect2(w, 0.0, 0.0, 0.0))
+		out[TOAST] = _toast(
+			w, portrait, out, open if side else Rect2(w, 0.0, 0.0, 0.0), shown.left_height
+		)
 	if shown.map and not shown.drawer:
 		_map(out, w, portrait, strike if shown.strike else build)
 	if not sheet:
@@ -172,17 +183,27 @@ static func _bar(
 
 
 ## The toast: portrait, under the pill at the start, a gap under the scope's foot (the scope is 56
-## dp, the pill's line 48); landscape, centred between the pill (or the safe edge) and the scope
-## (or the open panel).
+## dp, the pill's line 48) and under the top-left stack (`left_height`); landscape, centred between
+## the pill (or the safe edge) and the scope (or the open panel). Where that room is under
+## `TOAST_LEAST_DP` (a wide pill beside the open panel on a narrow phone) the toast stands under
+## the top line instead, as the portrait rule has it: from the pill's start (right of the top-left
+## stack's first row), a gap under the scope's foot and under the stack (`left_height`), no further
+## right than the open panel or the safe edge.
 static func _toast(
-	w: float, portrait: bool, placed: Dictionary[StringName, Rect2], open: Rect2
+	w: float, portrait: bool, placed: Dictionary[StringName, Rect2], open: Rect2, left_height: float
 ) -> Rect2:
 	if portrait:
-		return Rect2(0.0, SCOPE_DP + GAP_DP, minf(w, TOAST_W_DP.y), TOAST_H_DP)
+		var top: float = maxf(SCOPE_DP, left_height) + GAP_DP
+		return Rect2(0.0, top, minf(w, TOAST_W_DP.y), TOAST_H_DP)
 	var left: float = 0.0
 	if placed.has(PILL):
 		left = placed[PILL].end.x + GAP_DP
-	var right: float = (open.position.x if open.size.x > 0.0 else w - SCOPE_DP) - GAP_DP
+	var edge: float = (open.position.x if open.size.x > 0.0 else w) - GAP_DP
+	var right: float = edge if open.size.x > 0.0 else w - SCOPE_DP - GAP_DP
+	if right - left < TOAST_LEAST_DP:
+		var start: float = placed[PILL].position.x if placed.has(PILL) else 0.0
+		var top: float = maxf(SCOPE_DP, left_height) + GAP_DP
+		return Rect2(start, top, maxf(minf(TOAST_W_DP.x, edge - start), 0.0), TOAST_H_DP)
 	var width: float = minf(TOAST_W_DP.x, right - left)
 	return Rect2(left + (right - left - width) * 0.5, 0.0, width, TOAST_H_DP)
 

@@ -252,6 +252,11 @@ func _pose_tops(sheet: IsoSheetDef) -> Array[float]:
 			if sheet.has_part(part):
 				var raised: float = _frame_top(sheet.path(part, ahead), sheet.origin(part))
 				top = maxf(top, raised - sheet.mount(ahead).y)
+		if sheet.has_part(&"anim"):
+			# The moving element of a building is part of the picture: the bar clears it in its
+			# highest frame.
+			for frame: int in sheet.frame_count(&"anim"):
+				top = maxf(top, _frame_top(sheet.path(&"anim", -1, frame), sheet.origin(&"anim")))
 		tops.append(top)
 	return tops
 

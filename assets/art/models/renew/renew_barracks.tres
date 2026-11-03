@@ -42,8 +42,14 @@ prims = PackedStringArray(
 "box hull team 0.22 0.79 0.16 0.06 0.05 0.34",
 "box hull team 0.78 0.79 0.16 0.06 0.05 0.34",
 "prism hull titanium 0.86 0.86 0.06 0.07 0.07 0.95 sides=6",
-"box hull mint 0.86 0.86 1.01 0.1 0.1 0.1",
 "box hull mint 0.36 0.88 0.06 0.06 0.1 0.02",
 "box hull mint 0.5 0.88 0.06 0.06 0.1 0.02",
-"box hull mint 0.64 0.88 0.06 0.06 0.1 0.02"
+"box hull mint 0.64 0.88 0.06 0.06 0.1 0.02",
+"box anim graphite 0.86 0.86 1.01 0.14 0.14 0.04",
+"box anim mint 0.86 0.86 1.05 0.26 0.06 0.06 group=beacon"
 )
+poses = PackedStringArray(
+"anim 2",
+"anim 1 beacon turn z 90 0.86 0.86 0"
+)
+anim_ms = 600

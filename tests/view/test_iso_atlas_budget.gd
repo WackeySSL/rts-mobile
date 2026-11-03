@@ -9,14 +9,17 @@ extends GdUnitTestSuite
 ## updates them in the PR that changes them, so that the PR shows how much of the budget it spent.
 
 const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
-## The pages of the committed sheets, px tall (4096 wide), before any pose frame: P139 and P143
-## (and P153, P154) update these in the PR that changes them. The cross-faction page does not
-## depend on the triads the two players wear (2682 for every pair of the eight); a mirror page can:
-## Derrick's is 2206 when a player wears Signal, its key triad (the default match), 2196 when
+## The pages of the committed sheets, px tall (4096 wide), with the squads' walk and idle frames
+## (P139; before them the pages were 2682, 2206 and 2226) and the buildings' `anim` frames (P143;
+## before them 3066, 2524 and 2624): P153 and P154 update these in the PR that changes them. The
+## cross-faction page is 3266 for the default pair (Signal and Arktisk, the key triads) and 3286
+## for Karmin and Kobolt (`OTHER_TRIADS_PX` allows that much); a mirror page can differ too:
+## Derrick's is 2702 when a player wears Signal, its key triad (the default match), 2698 when
 ## neither does (the slot names, which break ties between frames of one height, order the shelves).
-const TODAY_CROSS: int = 2682
-const TODAY_MIRROR_DERRICK: int = 2206
-const TODAY_MIRROR_LUMEN: int = 2226
+const TODAY_CROSS: int = 3266
+const TODAY_MIRROR_DERRICK: int = 2702
+const TODAY_MIRROR_LUMEN: int = 2894
+const OTHER_TRIADS_PX: int = 40  ## How far another pair of triads may move the page.
 const CRAFTED: String = (
 	'<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4">'
 	+ '<polygon points="0,0 8,0 8,4" fill="#E8681F"/></svg>'
@@ -34,9 +37,12 @@ func test_the_cross_faction_page_at_full_scale_is_within_the_budget() -> void:
 	var page: Vector2i = _page(players)
 	_assert_within_budget("cross-faction", page)
 	_assert_today("cross-faction", page, TODAY_CROSS)
-	# Another pair of triads gives the same page: no frame is shared between two factions.
+	# Another pair of triads gives a page of nearly the same height (the slot names break ties
+	# between frames of one height, so the shelves can fall differently: 3286 for this pair).
 	var others: Array[IsoPlayerArt] = [_art(&"fossil", 2), _art(&"renew", 3)]
-	assert_that(_page(others)).is_equal(page)
+	var other: Vector2i = _page(others)
+	_assert_within_budget("cross-faction in other triads", other)
+	assert_int(absi(other.y - page.y)).is_less_equal(OTHER_TRIADS_PX)
 
 
 func test_the_derrick_league_mirror_page_is_within_the_budget() -> void:

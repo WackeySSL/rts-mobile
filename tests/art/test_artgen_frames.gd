@@ -3,10 +3,10 @@ extends GdUnitTestSuite
 ## `group=`, a model lists poses (a pose part, a frame count and the moves of groups in each frame),
 ## and the generator draws every pose frame with today's projection, light and shadow rules into
 ## `<id>_<part>_d<NN>_f<K>.svg` (a building's `anim` part into `<id>_anim_f<K>.svg`). The sheet says
-## `frames`, `stride_milli`, `anim_ms`, `emitters` and `marks`. No committed model has a pose, so
-## every committed frame and sheet is what it was before the row: that the bytes equal a fresh run
-## is test_artgen.gd; that no sheet gained a field is pinned here. The models used here are crafted
-## in memory and nothing is written to the project.
+## `frames`, `stride_milli`, `anim_ms`, `emitters` and `marks`. Only the four squads have poses
+## (P139, test_artgen_poses.gd); every other committed model is as it was before P134: that the
+## bytes equal a fresh run is test_artgen.gd; that no other sheet gained a field is pinned here. The
+## models used here are crafted in memory and nothing is written to the project.
 
 const TOLERANCE: float = 1e-6
 const POINT_TOLERANCE: Vector2 = Vector2.ONE * 0.06  ## Written with one decimal.
@@ -47,7 +47,10 @@ func test_a_frame_file_is_the_pose_frame_drawn_in_the_direction_of_its_name() ->
 	for dir: int in range(0, 16, 2):
 		for frame: int in 3:
 			var polys: Array[ArtRender.Poly] = ArtRender.render(
-				model.frame_prims(&"walk", frame), ArtGen.yaw(dir), model.faction
+				model.frame_prims(&"walk", frame),
+				ArtGen.yaw(dir),
+				model.faction,
+				model.frame_rest(&"walk")
 			)
 			var comment: String = (
 				"x walk d%02d f%d: %s from assets/art/models/fossil/x.tres, do not edit"
@@ -84,6 +87,50 @@ func test_frame_0_without_a_move_is_the_standing_figure_and_a_move_changes_only_
 	assert_int(in_2[1].moves.size()).is_equal(1)
 	assert_int(in_2[2].moves.size()).is_equal(0)
 	assert_vector(in_2[0].size).is_equal(prims[0].size)
+
+
+## A pose frame of a squad is drawn in the order of the standing primitives and its top faces are
+## the standing ones (`rest` of `ArtRender.render`, `ArtModel.frame_rest`): a leg turned 36 degrees
+## and lifted rises into the box of the torso above it, where the posed boxes alone leave the order
+## to the centre depth (the torso is thin here, so the leg's boxes overlap it all through and the
+## fallback draws the leg over it at some yaws), and its front face then faces 0.59 up, which is not
+## a roof and gets no light edge. A part without a rest (an `anim` element, which turns all round)
+## is judged as posed.
+func test_a_posed_leg_keeps_the_draw_order_and_the_light_edge_of_the_standing_figure() -> void:
+	var torso: ArtPrim = ArtPrim.parse("box hull olive 0 0 0.25 0.2 0.3 0.05")
+	var leg: ArtPrim = ArtPrim.parse("box hull iron 0 -0.07 0 0.1 0.08 0.25 group=leg")
+	var by: Array[ArtMove] = [
+		ArtMove.parse("walk 0 leg turn y -36 0 -0.07 0.25"),
+		ArtMove.parse("walk 0 leg shift 0 0 0.035")
+	]
+	var standing: Array[ArtPrim] = [torso, leg]
+	var posed: Array[ArtPrim] = [torso, leg.moved(by)]
+	var light: String = ArtPalette.edge(&"fossil", &"iron", true)
+	var late: int = 0  # The yaws at which the posed order alone draws the leg over the torso.
+	for yaw: float in [0.0, 45.0, 67.5, 90.0, 112.5, 135.0, 180.0, -45.0, -90.0, -135.0]:
+		var polys: Array[ArtRender.Poly] = ArtRender.render(posed, yaw, &"fossil", standing)
+		var edges: int = 0
+		for poly: ArtRender.Poly in polys:
+			edges += int(poly.prim == 1 and poly.stroke == light)
+		(
+			assert_bool(_leg_comes_first(polys))
+			. override_failure_message("yaw %s: the leg is drawn after the torso" % yaw)
+			. is_true()
+		)
+		late += int(not _leg_comes_first(ArtRender.render(posed, yaw, &"fossil")))
+		# The one top face of the leg has the light edge when it is seen (tilted back, it is not
+		# at every yaw), and no side face has.
+		assert_int(edges).override_failure_message("yaw %s" % yaw).is_less_equal(1)
+		if yaw == 0.0:
+			assert_int(edges).is_equal(1)
+	# Control: without the standing primitives the order goes wrong at some yaws.
+	assert_int(late).is_greater(0)
+	# As posed (no rest) the tilted front face is taken for a roof: a second light edge.
+	var as_posed: Array[ArtRender.Poly] = ArtRender.render(posed, 0.0, &"fossil")
+	var tilted: int = 0
+	for poly: ArtRender.Poly in as_posed:
+		tilted += int(poly.prim == 1 and poly.stroke == light)
+	assert_int(tilted).is_greater(1)
 
 
 func test_a_shift_moves_the_group_by_tiles_and_renders_as_the_box_built_there() -> void:
@@ -467,17 +514,20 @@ func test_a_sheet_writes_the_frame_axis_only_when_it_has_something_to_say() -> v
 	assert_bool(lines[-3].begins_with("emitter_points = PackedVector2Array(")).is_true()
 
 
-func test_no_committed_model_has_a_pose_and_every_committed_sheet_is_as_before() -> void:
+func test_only_squads_and_eight_buildings_have_a_pose_and_every_other_committed_sheet_is_as_before(
+) -> void:
 	var index: IsoIndex = load(IsoIndex.PATH) as IsoIndex
 	assert_int(index.sheets.size()).is_greater_equal(28)
+	var posed: Array[String] = []
 	for path: String in ArtGen.model_paths():
 		var model: ArtModel = load(path) as ArtModel
-		(
-			assert_bool(model.poses.is_empty() and model.emitters.is_empty())
-			. override_failure_message(path)
-			. is_true()
-		)
-		assert_bool(model.stride_milli == 0 and model.anim_ms == 0 and model.marks == &"").is_true()
+		if not model.poses.is_empty():
+			posed.append(String(model.art_id))
+			continue
+		# P143 tags the vehicles with marks and an exhaust and some buildings with emitters (the
+		# sheet says so, below); no model but a posed one has a stride or an `anim_ms`.
+		assert_bool(model.stride_milli == 0 and model.anim_ms == 0).is_true()
+		var tagged: bool = not model.emitters.is_empty() or model.marks != &""
 		assert_array(model.pose_parts()).override_failure_message(path).is_empty()
 		assert_array(model.frame_parts()).override_failure_message(path).is_equal(
 			model.parts() + [ArtModel.SHADOW]
@@ -487,7 +537,9 @@ func test_no_committed_model_has_a_pose_and_every_committed_sheet_is_as_before()
 		assert_array(Array(fresh.frames)).override_failure_message(path).is_equal(
 			Array(fresh.counts).map(func(_count: int) -> int: return 1)
 		)
-		assert_bool(fresh.emitters.is_empty() and fresh.emitter_points.is_empty()).is_true()
+		assert_bool(fresh.emitters.is_empty() and fresh.emitter_points.is_empty()).is_equal(
+			model.emitters.is_empty()
+		)
 		var sheet: IsoSheetDef = index.sheet(model.art_id)
 		assert_array(Array(sheet.frames)).override_failure_message(path).is_empty()
 		for part: String in sheet.parts:
@@ -496,12 +548,35 @@ func test_no_committed_model_has_a_pose_and_every_committed_sheet_is_as_before()
 			)
 		var committed: String = FileAccess.get_file_as_string(ArtGen.sheet_path(model))
 		for field: StringName in ArtSheet.LIFE_FIELDS:
+			if tagged and field in [&"emitters", &"emitter_points", &"marks"]:
+				continue
 			(
 				assert_bool(committed.contains("\n%s = " % field))
 				. override_failure_message(path)
 				. is_false()
 			)
 		assert_str(ArtSheet.text(fresh)).override_failure_message(path).is_equal(committed)
+	# The four squads (P139) and the eight animated buildings (P143) are the only models with a pose.
+	posed.sort()
+	(
+		assert_array(posed)
+		. is_equal(
+			[
+				"fossil_radar",
+				"fossil_strike",
+				"power_plant",
+				"renew_barracks",
+				"renew_hq",
+				"renew_power",
+				"renew_radar",
+				"renew_rifle",
+				"renew_rocket",
+				"renew_strike",
+				"rifle_squad",
+				"rocket_squad",
+			]
+		)
+	)
 
 
 func test_a_sheet_finds_an_emitter_point_for_a_vehicle_a_squad_and_a_building() -> void:
@@ -653,6 +728,18 @@ func _squad_anim(model: ArtModel) -> void:
 func _grouped_turret(model: ArtModel) -> void:
 	model.prims.append("box turret steel 0 0 0 0.1 0.1 0.1 group=gun")
 	model.mount = Vector3(0, 0, 0.3)
+
+
+## Whether every polygon of primitive 1 (the leg) comes before every polygon of primitive 0.
+func _leg_comes_first(polys: Array[ArtRender.Poly]) -> bool:
+	var last_leg: int = -1
+	var first_torso: int = polys.size()
+	for at: int in polys.size():
+		if polys[at].prim == 1:
+			last_leg = at
+		elif polys[at].prim == 0:
+			first_torso = mini(first_torso, at)
+	return last_leg >= 0 and last_leg < first_torso
 
 
 func _tower() -> ArtModel:

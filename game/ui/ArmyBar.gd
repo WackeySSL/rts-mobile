@@ -3,11 +3,12 @@ extends HBoxContainer
 ## The bottom-left army controls (touch-ui-rules): "All army" and groups 1-3. It reports presses and
 ## shows the counts it is given; PlayerController decides what a press does. A tap on a group asks
 ## to recall it, a hold of `settings.group_assign_ms` asks to assign the selection.
-## It sits on the safe area's bottom edge in landscape, and in portrait directly above the build
-## menu, whose height BuildSidebar puts in `HudLayout` (ADR 0015 section 5) and tells in
-## `zone_changed` (ADR 0024 section 4): the bar rides on the menu's top through its slide. The lift
-## of a slide frame uses the dp, the orientation and the height cached on the last resize and by
-## the signal, so no frame asks `UiScale` for anything (`read_metrics`).
+## It sits on the safe area's bottom edge in landscape, and in portrait a gap above the zone
+## BuildSidebar puts in `HudLayout` (ADR 0015 section 5) and tells in `zone_changed` (ADR 0024
+## section 4): BUILD's height while the drawer is closed, the open sheet's while it is up, so the
+## bar rides on the sheet's top through its slide. The lift of a slide frame uses the dp, the
+## orientation and the height cached on the last resize and by the signal, so no frame asks
+## `UiScale` for anything (`read_metrics`).
 
 signal all_army_pressed
 signal group_tapped(slot: int)

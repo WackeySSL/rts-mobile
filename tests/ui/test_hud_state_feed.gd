@@ -124,27 +124,39 @@ func test_a_touch_on_a_hud_control_closes_nothing_but_the_economy_card() -> void
 		_controller.selection.set_ids(PackedInt32Array([TANK_A]))
 		await _settle()
 		for label: String in CONTROLS:
-			# Sideways the open full map folds the build panel (P121, one unfold at a time) and the
-			# open panel closes the map: the panel is open again for each control, and a control the
-			# map has folded away is not there to touch.
+			# The open full map folds the drawer (one unfold at a time, both orientations) and the
+			# open drawer closes the map: the drawer is open again for each control, and a control
+			# the other unfold has folded away (the tabs, with the map open) is not there to touch.
 			panel.open()
+			await _settle()  # The drawer lays itself out when it opens.
 			var control: Control = _hud(label) as Control
 			var at: Vector2 = control.get_global_rect().get_center()
 			for unfold: HudState.Unfold in [HudState.Unfold.DRAWER, HudState.Unfold.RADAR]:
 				var why: String = "%s: a tap on %s with %d open" % [size, label, unfold]
 				_state.open(unfold)
-				if control.is_visible_in_tree():
+				# The tabs are the drawer's: with the map open they are hidden, and say so.
+				var there: bool = unfold == HudState.Unfold.DRAWER or not label.begins_with("Tab")
+				assert_bool(control.is_visible_in_tree()).override_failure_message(why).is_equal(
+					there
+				)
+				if there:
 					_tap(at)
 					assert_int(_state.current).override_failure_message(why).is_equal(unfold)
 			panel.open()
 			_state.pinned = true
 			_state.open(HudState.Unfold.RADAR)
-			if control.is_visible_in_tree():
+			var shown: bool = not label.begins_with("Tab")  # The drawer's tabs are folded away.
+			assert_bool(control.is_visible_in_tree()).override_failure_message(label).is_equal(
+				shown
+			)
+			if shown:
 				_tap(at)
 				assert_int(_state.current).is_equal(HudState.Unfold.RADAR)
 			_state.pinned = false
 			panel.open()
-			_state.open(HudState.Unfold.ECONOMY)
+			_state.open(HudState.Unfold.ECONOMY)  # One unfold at a time: the drawer folds.
+			if not shown:
+				continue  # The drawer's tabs are not there to touch; the next label is.
 			_tap(at)
 			(
 				assert_int(_state.current)
@@ -435,13 +447,13 @@ func _prepare() -> void:
 	_sent.clear()
 	_controller.selection.clear()
 	_camera.zoom = Vector2.ONE
-	_camera.centre_on(IsoProjection.cell_centre_px(16, 12))
+	_aim_camera(IsoProjection.cell_centre_px(16, 12))
 	_state.pinned = false
 
 
 ## Makes gesture `kind` on the map and returns what its own work missed, or "" when it was done.
 func _gesture(kind: StringName) -> String:
-	var ground: Vector2 = get_viewport().get_visible_rect().size * 0.5
+	var ground: Vector2 = _view_point()
 	var missed: String = "no such gesture"
 	var zoom: float = _camera.zoom.x
 	var at: Vector2 = _camera.position
@@ -526,14 +538,28 @@ func _pinch(centre: Vector2, from_half: float, to_half: float) -> void:
 ## Where unit `id` is on the screen, with the camera on it.
 func _tank_at(id: int) -> Vector2:
 	var row: int = _runner.snapshot.index_of(id)
-	_camera.centre_on(_camera.screen_to_world(_units.unit_screen_position(row)))
+	_aim_camera(_camera.screen_to_world(_units.unit_screen_position(row)))
 	return _units.unit_screen_position(row)
 
 
 ## A ground point clear of the HUD and of the buildings, at the middle of the view.
+## Where the camera's aim is held: the middle of the screen, and upright the middle of the upper
+## half, because the open drawer is a sheet over the lower half.
+func _view_point() -> Vector2:
+	var size: Vector2 = get_viewport().get_visible_rect().size
+	return Vector2(size.x * 0.5, size.y * (0.25 if HudLayout.is_portrait() else 0.5))
+
+
+## Centres the camera on `world` so that it shows at `_view_point()`.
+func _aim_camera(world: Vector2) -> void:
+	_camera.centre_on(world)
+	if HudLayout.is_portrait():
+		_camera.position.y += get_viewport().get_visible_rect().size.y * 0.25 / _camera.zoom.y
+
+
 func _ground() -> Vector2:
-	_camera.centre_on(IsoProjection.cell_centre_px(16, 12))
-	return get_viewport().get_visible_rect().size * 0.5
+	_aim_camera(IsoProjection.cell_centre_px(16, 12))
+	return _view_point()
 
 
 func _hud(node_name: String) -> Node:

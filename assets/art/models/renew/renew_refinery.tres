@@ -54,3 +54,7 @@ prims = PackedStringArray(
 "box hull mint 0.1 1.36 0.06 0.05 0.16 0.02",
 "box hull mint 0.3 1.36 0.06 0.05 0.16 0.02"
 )
+emitters = PackedStringArray(
+"steam -0.95 0.3 1.12",
+"steam -0.55 0.3 1.12"
+)

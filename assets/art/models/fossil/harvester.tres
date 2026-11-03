@@ -40,3 +40,7 @@ prims = PackedStringArray(
 "prism hull steel -0.1 0 0.71 0.1 0.1 0.08 sides=6",
 "box hull rust -0.92 0 0.08 0.08 0.5 0.12"
 )
+emitters = PackedStringArray(
+"exhaust -0.97 0.2 0.14"
+)
+marks = &"wheels"

@@ -26,6 +26,12 @@ extends Node2D
 ## Idle life (P140): a shown defence that is complete and online and has no target sweeps its head
 ## a few frames either side of its last aim (`RigLife.sweep_offset`), by the head's region only. A
 ## target, a site, a blackout and `reduced` put the head back on its aim.
+## Animations (P144, `BuildingAnims`): a building whose sheet has an `anim` part gets one `Anim`
+## child after its `Body`, at the footprint centre, that loops its frames from a per-id phase on
+## two clocks that never go back (the local player's own buildings slow to `life.low_power_rate`
+## while it is short of power; an enemy's never depend on its owner's power). A site, a blackout
+## and a building not shown or not in the view rect (grown by a tile) are not written; a held loop
+## shows frame 0. A region is written only when the frame changes. `reduced` keeps them.
 ## A tap picks a building on its silhouette (P115b, ADR 0023 section 3): `fill_pick_snapshot` lists
 ## the shown buildings with the footprint's diamond and the height of the picture above it (the
 ## top of the Body sprite, so the atlas region and its bake scale), for the `Picker`. A selection
@@ -35,6 +41,8 @@ extends Node2D
 const HEAD: StringName = &"head"
 const BODY: StringName = &"hull"  ## The sheet part of a building's body.
 const SHADOW: StringName = &"shadow"
+## The view rect is grown by a tile before the animations ask whether a building is in it.
+const ANIM_MARGIN_PX: float = IsoProjection.HALF_W * 2.0
 const NO_FRAME: int = -1  ## The `dir` of a frame without a direction, a building's body.
 ## A crater's ground radius per footprint tile, milli: the circle inside the footprint.
 const CRATER_MILLI_PER_TILE: int = 500
@@ -44,6 +52,8 @@ const DEFAULT_LIFE: LifeSettings = preload("res://data/life_settings.tres")
 ## How fast a head turns, in radians per second.
 @export var turn_rate: float = 12.0
 @export var runner: MatchRunner
+## The view the animations are written for; without one no building is in view.
+@export var camera: RtsCamera
 ## The sorted world the buildings stand in and the atlas they draw from; a scene shares one with
 ## the unit layer. Without one the layer makes its own, as a child.
 @export var world_sort: WorldSort
@@ -63,6 +73,13 @@ var _rows_version: int = -1  ## rows_version they follow.
 var _fog_version: int = -1  ## The local player's fog version their visibility was written for.
 var _redraws: int = 0
 var _rig_life: RigLife = RigLife.new()  ## The kicks that run now (P136).
+var _shot_check: Callable = _shot_seen  ## What `note_shots` asks, made once.
+var _anims: Array[Entry] = []  ## The buildings that have an `Anim`, for the frame.
+var _anim_now: float = -1.0  ## The idle clock the animation clocks were last brought to; -1 none.
+var _anim_all_ms: float = 0.0  ## The clock of the loops of every building that is not the local
+## player's, at full rate.
+var _anim_own_ms: float = 0.0  ## The local player's loops' clock: slowed while short of power.
+var _anim_reach: float = 0.0  ## The highest `rise` of a building with an `Anim`, world px.
 
 
 ## One building: its row (moved by every merge), the nodes it owns and what its head shows.
@@ -82,6 +99,12 @@ class Entry:
 	var head_rest: Vector2 = Vector2.ZERO  ## Where the head stands on its mount.
 	var kick: Vector2 = Vector2.ZERO  ## What the head stands off its mount by life now.
 	var idle: RigLife.Idle = RigLife.Idle.new()  ## The idle sweep: frames off `head_dir` it shows.
+	var anim: Sprite2D = null  ## The moving element (P144); null for a building with none.
+	var anim_base: int = -1  ## Its frame 0 in the atlas's region table.
+	var anim_frames: int = 1
+	var anim_ms: int = 1  ## The time of one frame.
+	var anim_phase: int = 0  ## Ms into the loop at clock 0, by id.
+	var anim_shown: int = 0  ## The frame its region shows.
 
 
 ## What stands in for art that is not on the atlas: the footprint's diamond in the owner's colour.
@@ -128,6 +151,8 @@ func _process(delta: float) -> void:
 		_turn_heads(snap, delta)
 		_sweep_heads(snap)
 	_kick_heads(snap)  # Also with no head left: the kicks of the heads that died end.
+	if not _anims.is_empty():
+		_play_anims(snap)
 
 
 ## The buildings that have a node now: no sync.
@@ -141,7 +166,8 @@ func redraw_count() -> int:
 	return _redraws
 
 
-## The life sprite writes so far: one for each head position the recoil set (ADR 0027 section 9).
+## The life sprite writes so far: one for each head position the recoil or the idle sweep set and
+## each `Anim` region a new frame set (ADR 0027 section 9).
 func life_writes() -> int:
 	return _rig_life.writes
 
@@ -224,11 +250,12 @@ func frame_box(row: int) -> Rect2:
 
 
 ## Fills the building arrays of `out` for the `Picker` with the shown buildings, on the screen of
-## `camera` (centre, diamond, height of the picture, sort key and whether an attack on it is taken;
-## see `PickSnapshot`). The unit arrays are left alone. A building the fog hides is left out, so no
-## tap reaches it. One shown for a corner cell alone is listed, but not targetable: the sim sees an
-## enemy building at the cell under its position (`Targeting.sees`, as `UnitLayer`'s `pickable`).
-func fill_pick_snapshot(out: PickSnapshot, camera: RtsCamera) -> void:
+## `view_camera` (centre, diamond, height of the picture, sort key and whether an attack on it is
+## taken; see `PickSnapshot`). The unit arrays are left alone. A building the fog hides is left
+## out, so no tap reaches it. One shown for a corner cell alone is listed, but not targetable: the
+## sim sees an enemy building at the cell under its position (`Targeting.sees`, as `UnitLayer`'s
+## `pickable`).
+func fill_pick_snapshot(out: PickSnapshot, view_camera: RtsCamera) -> void:
 	var snap: MatchSnapshot = _sync()
 	out.building_ids.clear()
 	out.building_owners.clear()
@@ -239,7 +266,7 @@ func fill_pick_snapshot(out: PickSnapshot, camera: RtsCamera) -> void:
 	out.building_targetable.clear()
 	if snap == null:
 		return
-	var zoom: float = camera.zoom.x
+	var zoom: float = view_camera.zoom.x
 	var owners: PackedInt32Array = snap.owner
 	var cur_x: PackedInt32Array = snap.pos_x
 	var cur_y: PackedInt32Array = snap.pos_y
@@ -254,7 +281,7 @@ func fill_pick_snapshot(out: PickSnapshot, camera: RtsCamera) -> void:
 		var row: int = entry.row
 		out.building_ids.append(entry.id)
 		out.building_owners.append(owners[row])
-		out.building_centres.append(camera.world_to_screen(entry.node.position))
+		out.building_centres.append(view_camera.world_to_screen(entry.node.position))
 		out.building_half.append(
 			Vector2(IsoProjection.HALF_W, IsoProjection.HALF_H) * (entry.foot * zoom)
 		)
@@ -342,6 +369,11 @@ func _clear() -> void:
 	_entries.clear()
 	_selected.clear()
 	_heads.clear()
+	_anims.clear()
+	_anim_now = -1.0
+	_anim_all_ms = 0.0
+	_anim_own_ms = 0.0
+	_anim_reach = 0.0
 	decals.clear()
 	_fog_version = -1
 
@@ -388,6 +420,7 @@ func _make(snap: MatchSnapshot, row: int) -> Entry:
 		drawn = body.visible
 		if drawn:  # The top of the region as it is drawn: offset and scale of the atlas.
 			entry.rise = maxf(entry.rise, -body.get_rect().position.y * body.scale.y)
+			_dress_anim(entry, sheet, owner_id)
 		entry.shadow = _sprite(null, sheet, SHADOW, NO_FRAME, owner_id)
 		entry.shadow.name = "Shadow%d" % entry.id
 		entry.shadow.position = entry.node.position
@@ -406,6 +439,30 @@ func _make(snap: MatchSnapshot, row: int) -> Entry:
 		entry.node.add_child(marker)
 	world_sort.add_child(entry.node)
 	return entry
+
+
+## Gives the entry its `Anim` child when the sheet has an `anim` part the owner's faction has on the
+## atlas, showing frame 0, and raises `rise` to its top. The names are resolved here, once.
+func _dress_anim(entry: Entry, sheet: IsoSheetDef, owner_id: int) -> void:
+	if not sheet.has_part(BuildingAnims.ANIM):
+		return
+	var base: int = world_sort.base_of(sheet, BuildingAnims.ANIM, NO_FRAME, owner_id)
+	var frames: int = world_sort.frame_count_at(base)
+	if frames < 1:
+		return
+	var sprite: Sprite2D = Sprite2D.new()
+	sprite.name = "Anim"
+	world_sort.dress(sprite, sheet, BuildingAnims.ANIM)
+	world_sort.show_base(sprite, base, BuildingAnims.REST)
+	entry.node.add_child(sprite)
+	entry.anim = sprite
+	entry.anim_base = base
+	entry.anim_frames = frames
+	entry.anim_ms = maxi(sheet.anim_ms, 1)
+	entry.anim_phase = BuildingAnims.phase_ms(entry.id, frames, entry.anim_ms)
+	entry.rise = maxf(entry.rise, -sprite.get_rect().position.y * sprite.scale.y)
+	_anim_reach = maxf(_anim_reach, entry.rise)
+	_anims.append(entry)
 
 
 ## A sprite of `part` of `sheet` showing frame `dir` for `owner_id`, a child of `parent` if given.
@@ -429,6 +486,7 @@ func _drop(entry: Entry) -> void:
 	if entry.shadow != null:
 		decals.remove_shadow(entry.shadow)
 	_heads.erase(entry)
+	_anims.erase(entry)
 	var chosen: int = _selected.find(entry.id)
 	if chosen >= 0:
 		_selected.remove_at(chosen)
@@ -513,24 +571,19 @@ func _on_ticked(_tick: int) -> void:
 	var snap: MatchSnapshot = runner.snapshot
 	if snap == null:
 		return
-	_rig_life.follow(snap.match_serial)
-	var events: PackedInt32Array = snap.events
-	for at: int in range(0, events.size(), World.EVENT_STRIDE):
-		if events[at] == World.Event.SHOT:
-			_note_shot(snap, at)
+	_rig_life.note_shots(snap, false, _shot_check)
 
 
-## [SHOT, shooter id, ...]: a kick when the shooter is a building with a head that is seen.
-func _note_shot(snap: MatchSnapshot, at: int) -> void:
+## [SHOT, shooter id, ...]: whether it kicks, when the shooter is a building with a head that is
+## seen.
+func _shot_seen(snap: MatchSnapshot, at: int) -> bool:
 	var id: int = snap.events[at + 1]
 	var entry: Entry = _entries.get(id)
 	var row: int = snap.index_of(id)
 	if entry == null or entry.head == null or row < 0:
-		return
+		return false
 	var player: int = FogLayer.local_player_of(runner)
-	if not reveal_enemies and snap.owner[row] != player and not is_seen(snap, player, row):
-		return
-	_rig_life.shot(snap, at, false)
+	return reveal_enemies or snap.owner[row] == player or is_seen(snap, player, row)
 
 
 ## Draws the kicks at match time (`LifeClock`, which a pause stops): the head's offset from its
@@ -573,4 +626,48 @@ func _sweep_heads(snap: MatchSnapshot) -> void:
 		if entry.shown and _rig_life.sweep_step(entry.idle, entry.id, now_ms, active):
 			var dir: int = posmod(entry.head_dir + entry.idle.sweep, UnitLayer.DIRECTIONS)
 			world_sort.show_frame(entry.head, entry.sheet, HEAD, dir, snap.owner[row])
+			_rig_life.writes += 1
+
+
+## Plays the loops once a frame, while a building with an `Anim` exists. The two clocks go on by
+## the match time that passed since the last such frame (the idle clock never goes back, so a
+## resume after a pause does not play a frame backwards); the local player's own is scaled by
+## `low_power_rate` while it is short of power. A shown building whose centre is in the view rect
+## grown by a tile (and at the bottom by the tallest picture, whose moving part stands above the
+## centre) shows frame 0 while it is a site or offline, else the frame of its clock; a region is
+## written only when that frame is not the one shown.
+func _play_anims(snap: MatchSnapshot) -> void:
+	var now: float = _rig_life.idle_clock(snap, runner.alpha())
+	var player: int = FogLayer.local_player_of(runner)
+	if _anim_now < 0.0:  # The first frame of a match: both clocks start at the match time.
+		_anim_all_ms = now
+		_anim_own_ms = now
+	else:
+		var step: float = maxf(now - _anim_now, 0.0)
+		_anim_all_ms += step
+		_anim_own_ms += (
+			step * (life.low_power_rate if BuildingAnims.low_power(snap, player) else 1.0)
+		)
+	_anim_now = now
+	var view: Rect2 = Rect2()  # Without a camera nothing is in view.
+	if camera != null:
+		var m: float = ANIM_MARGIN_PX
+		view = camera.visible_world_rect().grow_individual(m, m, m, m + _anim_reach)
+	var tick: int = snap.tick
+	var owners: PackedInt32Array = snap.owner
+	var building: PackedInt32Array = snap.build_left
+	var offline: PackedInt32Array = snap.offline_until
+	for entry: Entry in _anims:
+		if not entry.shown or not view.has_point(entry.node.position):
+			continue
+		var row: int = entry.row
+		var frame: int = BuildingAnims.REST
+		if building[row] == 0 and offline[row] <= tick:
+			var clock: float = _anim_own_ms if owners[row] == player else _anim_all_ms
+			frame = BuildingAnims.frame_at(
+				entry.anim_phase, clock, entry.anim_frames, entry.anim_ms
+			)
+		if frame != entry.anim_shown:
+			entry.anim_shown = frame
+			world_sort.show_base(entry.anim, entry.anim_base, frame)
 			_rig_life.writes += 1

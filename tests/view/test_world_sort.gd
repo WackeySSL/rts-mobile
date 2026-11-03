@@ -76,6 +76,10 @@ func test_both_scenes_hold_the_z_table_of_adr_0023_with_the_sort_between_fog_and
 		assert_that(decals).is_equal(NodePath("../DecalLayer"))
 		var bars: Variant = _scene_value(state, "HealthBarLayer", &"building_layer", null)
 		assert_that(bars).is_equal(NodePath("../BuildingLayer"))
+		# P144: the animations and the idle life cull on the camera; without it they all stop.
+		for layer_name: String in ["UnitLayer", "BuildingLayer"]:
+			var cam: Variant = _scene_value(state, layer_name, &"camera", null)
+			assert_that(cam).override_failure_message(layer_name).is_equal(NodePath("../Camera"))
 		# P114b: the shells and the effects take their muzzle heights from the scene's sheets.
 		for layer_name: String in ["ProjectileLayer", "EffectsLayer"]:
 			var sheets: Variant = _scene_value(state, layer_name, &"world_sort", null)

@@ -116,6 +116,22 @@ func test_the_pill_starts_after_what_stands_at_the_top_left_and_stays_clear_of_t
 	assert_float(out[HudCorners.PILL].size.x).is_equal(HudCorners.PILL_MAX_DP)
 
 
+func test_the_pill_stays_with_the_drawer_open_only_when_asked_and_ends_short_of_the_panel() -> void:
+	var shown: HudCorners.Shown = _shown(["drawer"], 1)
+	shown.left_taken = 48.0
+	shown.pill_width = 900.0
+	var safe: Rect2 = Rect2(0.0, 0.0, 776.0, 280.0)
+	var out: Dictionary[StringName, Rect2] = _place(safe, false, shown)
+	assert_bool(out.has(HudCorners.PILL)).is_false()  # As before: the drawer covers it.
+	shown.pill_over_drawer = true  # P120, until P120d puts the economy in the drawer's head.
+	out = _place(safe, false, shown)
+	assert_bool(out.has(HudCorners.PILL)).is_true()
+	assert_float(out[HudCorners.PILL].end.x).is_less_equal(out[HudCorners.DRAWER].position.x - 8.0)
+	out = _place(Rect2(0.0, 0.0, 336.0, 676.0), true, shown)  # Under the sheet's top: the pill too.
+	assert_bool(out.has(HudCorners.PILL)).is_true()
+	assert_bool(out[HudCorners.PILL].intersects(out[HudCorners.DRAWER])).is_false()
+
+
 func test_the_drawer_is_a_side_panel_of_40_percent_between_312_and_420_dp_or_a_half_sheet() -> void:
 	var shown: HudCorners.Shown = _shown(["drawer", "bar", "strike", "ready"], 4)
 	var out: Dictionary[StringName, Rect2] = _place(Rect2(0.0, 0.0, 776.0, 280.0), false, shown)
@@ -259,6 +275,45 @@ func test_every_part_is_inside_the_safe_rect_48_dp_and_clear_of_the_others() -> 
 					_assert_stack_within_40_percent(out, safe, dp, why, shown)
 				checked += 1
 	assert_int(checked).is_greater(2000)
+
+
+## The top-left stack's height (Dev over Surrender, until P124) moves the upright toast under it:
+## with the stack at 48, 104 and 160 dp, at every screen and set of parts, mirrored or not, every
+## part is inside and clear of the others, and the toast is clear of the stack's rect.
+func test_the_toast_stands_clear_of_a_top_left_stack_of_any_height() -> void:
+	var checked: int = 0
+	for screen: Dictionary in _screens():
+		var safe: Rect2 = screen["safe"]
+		var dp: float = screen["dp"]
+		for shown: HudCorners.Shown in _combinations():
+			if not shown.toast or shown.map:
+				continue
+			shown.left_taken = 77.0
+			for height: float in [48.0, 104.0, 160.0]:
+				shown.left_height = height
+				for mirror: bool in [false, true]:
+					var out: Dictionary[StringName, Rect2] = HudCorners.place(
+						safe, screen["portrait"], dp, mirror, shown
+					)
+					var why: String = (
+						"%s, stack %s dp, mirror %s, %s"
+						% [screen["label"], height, mirror, _describe(shown)]
+					)
+					_assert_parts(out, safe, dp, why)
+					_assert_gaps(
+						out, dp, why, str(screen["label"]).begins_with("web_phone_portrait")
+					)
+					var stack: Rect2 = Rect2(Vector2.ZERO, Vector2(77.0, height) * dp)
+					stack.position = safe.position
+					if mirror:
+						stack.position.x = safe.end.x - stack.size.x
+					(
+						assert_bool(out[HudCorners.TOAST].intersects(stack))
+						. override_failure_message(why)
+						. is_false()
+					)
+					checked += 1
+	assert_int(checked).is_greater(200)
 
 
 func test_the_sizes_the_adr_names_hold_at_every_screen() -> void:

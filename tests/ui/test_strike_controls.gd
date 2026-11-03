@@ -36,7 +36,8 @@ const OTHERS: Array[String] = [
 	"Group2",
 	"Group3",
 	"SelectionPanel",
-	"BuildSidebar"
+	"BuildSidebar",
+	"BuildButton"
 ]
 
 var _window_size_before: Vector2i

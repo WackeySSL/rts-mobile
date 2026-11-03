@@ -9,7 +9,9 @@ extends "res://game/view/art_gallery_iso.gd"
 ## another is drawn after it, as `WorldSort` does) and the cast shadows lie under every body. A
 ## building's rig stands at its footprint's centre, a unit's at its ground point and facing its
 ## faction's default view; a defence's head faces the tank in front of it. The faction's emblem sits
-## left of the item card. Built on first show; view-only.
+## left of the item card. A building with an `anim` part gets an `Anim` sprite after its `Hull` that
+## plays the part's frames, one every `anim_ms`, written only when the frame changes (P143; the game
+## draws it with P144). Built on first show; view-only.
 
 const GROUND_ART: String = "res://assets/art/svg/ground/%s_%s.svg"
 const EMBLEM_ART: String = "res://assets/art/svg/icons/emblem_%s.svg"
@@ -39,11 +41,42 @@ const TITLE_WIDTH_PX: float = 460.0  ## Clear of the emblem.
 
 var atlas: IsoAtlas = IsoAtlas.new()  ## The bake of the building shown; empty before the first.
 var _emblem: TextureRect = null
+var _plays: Array[AnimPlay] = []  ## The `Anim` sprites of the page's scenes.
+var _clock_ms: float = 0.0
+
+
+## A building's `Anim` sprite and what it plays: the region of frame `shown`, rewritten only when
+## the frame changes.
+class AnimPlay:
+	extends RefCounted
+	var sprite: Sprite2D = null
+	var atlas: IsoAtlas = null
+	var base: int = -1  ## The region table's index of frame 0.
+	var frames: int = 1
+	var frame_ms: int = 1
+	var shown: int = 0
+
+	## The frame `ms` into the loop.
+	func frame_at(ms: float) -> int:
+		return int(ms / frame_ms) % frames
+
+	func play(ms: float) -> void:
+		var frame: int = frame_at(ms)
+		if frame != shown:
+			shown = frame
+			sprite.region_rect = Rect2(atlas.frame_region(base, frame))
 
 
 func _init() -> void:
 	super()
 	name = "BuildingsPage"
+
+
+## The `anim` parts play on the clock of the page's frames.
+func _process(delta: float) -> void:
+	_clock_ms += delta * 1000.0
+	for play: AnimPlay in _plays:
+		play.play(_clock_ms)
 
 
 ## The name of a section: the zoom in percent and the triad, `Zoom75Arktisk`.
@@ -93,6 +126,7 @@ func _fill() -> void:
 	for child: Node in _content.get_children():
 		_content.remove_child(child)
 		child.queue_free()
+	_plays.clear()
 	var model: ArtModel = load(_paths[_index]) as ArtModel
 	_title.text = (
 		"%d / %d  %s: %s (%dx%d)"
@@ -155,12 +189,12 @@ func _scene_section(
 
 
 ## Everything the scene covers, in px from the footprint's centre at `zoom`: the ground, the
-## building and its shadow, and a tank's frames at each of the two places.
+## building with its `anim` canvas and its shadow, and a tank's frames at each of the two places.
 func _scene_bounds(building: IsoSheetDef, tank: IsoSheetDef, zoom: float) -> Rect2:
 	var cells: int = building.footprint + 2 * MARGIN_CELLS
 	var reach: Vector2 = Vector2(cells * TILE_HALF.x, cells * TILE_HALF.y) * zoom
 	var box: Rect2 = Rect2(-reach, 2.0 * reach)
-	for part: StringName in [&"hull", &"shadow"]:
+	for part: StringName in [&"hull", &"anim", &"shadow"]:
 		box = box.merge(_frame_rect(building, part, Vector2.ZERO, zoom))
 	for where: StringName in [&"Front", &"Behind"]:
 		var at: Vector2 = _px(unit_milli(building.footprint, where), zoom)
@@ -240,7 +274,30 @@ func _scene_rig(
 			var mount_dir: int = 6 if sheet.category == &"bld" else dir
 			sprite.position = sheet.mount(mount_dir) * BASE_SCALE * zoom
 		rig.add_child(sprite)
+		if part == &"hull" and sheet.has_part(&"anim"):
+			rig.add_child(_anim_sprite(sheet, zoom, triad))
 	return rig
+
+
+## The `Anim` sprite of a building: frame 0 of its `anim` part, at the footprint's centre, playing
+## from the page's clock.
+func _anim_sprite(sheet: IsoSheetDef, zoom: float, triad: int) -> Sprite2D:
+	var play: AnimPlay = AnimPlay.new()
+	play.atlas = atlas
+	play.base = atlas.base(sheet.art_id, &"anim", -1, triad)
+	play.frames = maxi(sheet.frame_count(&"anim"), 1)
+	play.frame_ms = maxi(sheet.anim_ms, 1)
+	var sprite: Sprite2D = Sprite2D.new()
+	sprite.name = "Anim"
+	sprite.texture = atlas.texture()
+	sprite.region_enabled = true
+	sprite.centered = false
+	sprite.region_rect = Rect2(atlas.frame_region(play.base, 0))
+	sprite.scale = Vector2.ONE * BASE_SCALE * zoom / atlas.bake_scale()
+	sprite.offset = -Vector2(sheet.origin(&"anim")) * atlas.bake_scale()
+	play.sprite = sprite
+	_plays.append(play)
+	return sprite
 
 
 func _px(milli: Vector2i, zoom: float) -> Vector2:

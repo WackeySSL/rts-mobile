@@ -207,6 +207,7 @@ const MAP_GLYPHS: Array[String] = [
 	"glyph_reason_too_far",
 	"glyph_reason_cap",
 	"glyph_offline",
+	"glyph_low_power_map",
 	"glyph_construct",
 ]
 const ARROW_GLYPH: String = "glyph_under_attack"  ## At least 48 dp on screen (ADR 0019 section 5).
@@ -245,6 +246,7 @@ const GLYPH_TINTS: Dictionary[String, Color] = {
 	"glyph_reason_too_far": Color("E5484D"),
 	"glyph_reason_cap": Color("E5484D"),
 	"glyph_offline": Color("F5A524"),
+	"glyph_low_power_map": Color("FF8A1F"),
 	"glyph_under_attack": Color("E5484D"),
 }
 ## Rows of the Icons page, in base px from the top of their half: the HUD panel (left) holds the
@@ -356,6 +358,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	var step: float = turret_turn_speed * delta
+	_units.advance(delta)
 	for turret: Sprite2D in _turrets:
 		turret.rotation = wrapf(turret.rotation + step, 0.0, TAU)
 

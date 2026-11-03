@@ -49,6 +49,12 @@ func test_a_card_ends_in_the_default_view_of_the_hull_and_its_turret_over_the_sh
 				ArtGen.frame_path(model, &"hull", -1 if model.category == &"bld" else dir)
 			)
 		)
+		if not model.primitives(ArtPrim.ANIM).is_empty():
+			# The moving element of a building stands at rest in the card, sorted with the hull.
+			var at_rest: Array[ArtPrim] = model.primitives(&"hull") + model.primitives(ArtPrim.ANIM)
+			want.clear()
+			for poly: ArtRender.Poly in ArtRender.render(at_rest, 0.0, model.faction):
+				want.append(poly.fill)
 		for part: StringName in [&"turret", &"head"]:
 			if model.parts().has(part):
 				want.append_array(

@@ -70,7 +70,7 @@ func test_the_node_stands_before_the_safe_area_with_the_hud_theme_and_the_old_ro
 	assert_int(_ghost.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
 	assert_object(_ghost.theme).is_same((safe as Control).theme)  # The dp copy of theme.tres.
 	assert_object(_ghost.theme.get_meta(HudTheme.SOURCE_META)).is_not_null()
-	assert_array(_ghost.clear_of).has_size(8)  # P121: the scope and the full map, no slot.
+	assert_array(_ghost.clear_of).has_size(10)  # BUILD (P120), scope and map (P121), toast (P123).
 	assert_object(_sidebar.find_child("Placement", true, false)).is_null()
 	for global: Dictionary in ProjectSettings.get_global_class_list():
 		assert_str(str(global["class"])).is_not_equal("PlacementControls")
@@ -91,20 +91,11 @@ func test_a_tap_on_a_ready_card_stands_the_buttons_beside_the_ghost_and_the_menu
 		assert_bool(_placement.active).override_failure_message(why).is_true()
 		assert_int(_placement.type_index).override_failure_message(why).is_equal(card.type_index)
 		assert_bool(_ghost.visible).override_failure_message(why).is_true()
-		# The menu went down (ADR 0024 section 5): the cards are not shown, the strip or the plate is.
+		# The drawer went down (ADR 0025 section 1): the cards are not shown, BUILD is.
 		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
 		assert_bool((_hud("Items") as Control).is_visible_in_tree()).is_false()
-		assert_float(_sidebar.get_global_rect().size.y).override_failure_message(why).is_less(
-			panel.size.y
-		)
-		(
-			assert_float(_sidebar.get_global_rect().size.y)
-			. override_failure_message(why)
-			. is_equal_approx(
-				UiScale.dp(HudLayout.STRIP_DP if HudLayout.is_portrait() else HudLayout.PLATE_DP),
-				1.5
-			)
-		)
+		assert_bool(_sidebar.visible).override_failure_message(why).is_false()
+		assert_bool((_hud("BuildButton") as Control).visible).is_true()
 		assert_array(_sent).override_failure_message(why).is_empty()
 		_expect_placed(why)
 		_placement.cancel()  # The X: the menu comes back to the state it had.
@@ -256,13 +247,15 @@ func test_the_buttons_flip_left_near_the_right_edge_and_stay_right_near_the_left
 
 
 ## The ghost low in the map view, just above the build menu: the column slides up, never onto the
-## menu (in portrait the open band, the case a pinned menu will keep), and a ghost at the top slides
+## drawer (upright the open sheet, opened again by BUILD while the ghost is out), and a ghost at
+## the top slides
 ## it down inside the safe rect.
 func test_the_column_stays_above_the_menus_real_top_and_below_the_safe_rects_top() -> void:
 	for screen: Dictionary in _screens(null):
 		await _open(screen["size"], screen["metrics"])
 		var why: String = str(screen["label"])
 		_tap(_tile())
+		_sidebar.open()  # BUILD works while the ghost is out: the sheet is up again.
 		await _settle()
 		var safe: Rect2 = UiScale.safe_rect_base()
 		var low: float = HudLayout.map_bottom_px(safe) - UiScale.dp(30.0)
@@ -336,6 +329,7 @@ func test_where_nothing_fits_the_clamped_column_stays_above_the_menus_real_top()
 			await _open(metrics.window_size, metrics)
 			var why: String = "%s, safe %s" % [profile_name, metrics.safe_area]
 			_tap(_tile())
+			_sidebar.open()  # BUILD works while the ghost is out: the sheet is up again.
 			await _settle()
 			var safe: Rect2 = UiScale.safe_rect_base()
 			# The band sits higher than the safe rect's bottom less its height: the margin is above it.
@@ -791,6 +785,7 @@ func _open(size: Vector2i, metrics: UiMetrics, built: bool = false) -> void:
 		Rig.make_ready(_runner.snapshot)
 	Rig.explore(_runner.snapshot)
 	_sidebar = _main.get_node("Hud").find_child("BuildSidebar", true, false)
+	_sidebar.open()
 	_ghost = _main.get_node("Hud/GhostControls")
 	_camera = _main.get_node("Camera")
 	_touch = _main.get_node("TouchInput")
