@@ -423,15 +423,23 @@ func test_any_next_touch_closes_the_card_and_does_its_own_work() -> void:
 
 
 ## Opening one unfold closes the other, both ways: the card closes the drawer and the full map
-## (pinned too) when the pill asks for it, and the drawer, the full map and the pause menu close
-## the card. PAUSE takes every touch, so the pill cannot open the card behind it.
+## (pinned too; the pill asks for it, but it is folded while the drawer is open), and the drawer,
+## the full map and the pause menu close the card. PAUSE takes every touch,
+## so the pill cannot open the card behind it.
 func test_the_card_and_the_other_unfolds_close_one_another() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
 		for other: HudState.Unfold in [HudState.Unfold.DRAWER, HudState.Unfold.RADAR]:
 			var why: String = "%s: %d" % [size, other]
 			_state.open(other)
-			await _tap_control("CreditsTap")  # The pill asks, and opening the card closes the other.
+			if other == HudState.Unfold.DRAWER:
+				# The pill is folded while the drawer is open (P120d), so nothing taps it there.
+				await _settle()
+				assert_bool(_pill.visible).override_failure_message(why).is_false()
+				_state.open(HudState.Unfold.ECONOMY)
+				await _settle()
+			else:
+				await _tap_control("CreditsTap")  # The pill asks, and opening the card closes it.
 			assert_int(_state.current).override_failure_message(why).is_equal(
 				HudState.Unfold.ECONOMY
 			)
@@ -440,6 +448,7 @@ func test_the_card_and_the_other_unfolds_close_one_another() -> void:
 			await _settle()
 			assert_bool(_card().visible).override_failure_message(why).is_false()
 			_state.close(other)
+			await _settle()  # The pill is back when the drawer is gone.
 		_state.open(HudState.Unfold.RADAR)
 		_state.pinned = true
 		await _tap_control("PowerTap")

@@ -103,9 +103,9 @@ func _expect_toast_placed(why: String) -> void:
 		)
 
 
-## With the drawer open and the pill on low power (its widest), the toast keeps clear of the pill,
-## the scope, the top-left stack, the drawer and BUILD, and is at least `TOAST_LEAST_DP` wide.
-## The pill stays on screen then (P120, until P120d), so the toast must agree with it.
+## With the drawer open (the pill folded, P120d) and the pill on low power (its widest when it is
+## back), the toast keeps clear of the scope, the top-left stack, the drawer and BUILD, and is at
+## least `TOAST_LEAST_DP` wide.
 func _expect_toast_clear_of_drawer(why: String) -> void:
 	var pill_node: EconomyPill = _hud("EconomyPill") as EconomyPill
 	_runner.snapshot.power_made = PackedInt32Array([0, 4, 4])
@@ -117,18 +117,19 @@ func _expect_toast_clear_of_drawer(why: String) -> void:
 	await _settle()
 	var toast: Rect2 = _toast.get_global_rect()
 	var drawer: Rect2 = (_hud("BuildSidebar") as Control).get_global_rect()
-	var at: String = "%s: toast %s, pill %s, drawer %s" % [why, toast, _rect("EconomyPill"), drawer]
+	var at: String = "%s: toast %s, drawer %s" % [why, toast, drawer]
 	var gap: float = UiScale.dp(HudCorners.GAP_DP) - 0.5
 	assert_bool(pill_node.is_low()).override_failure_message(at).is_true()
 	assert_bool(_toast.visible).override_failure_message(at).is_true()
-	assert_bool(pill_node.visible).override_failure_message(at).is_true()
+	assert_bool(pill_node.visible).override_failure_message(at).is_false()  # Folded.
 	assert_float(toast.size.x).override_failure_message(at).is_greater_equal(
 		UiScale.dp(HudCorners.TOAST_LEAST_DP) - 0.5
 	)
 	assert_float(toast.size.y).override_failure_message(at).is_greater_equal(UiScale.dp(48.0) - 0.5)
-	var parts: Array[Rect2] = [
-		_rect("EconomyPill"), _scope.get_global_rect(), _rect("TopLeft"), drawer
-	]
+	var parts: Array[Rect2] = [_scope.get_global_rect(), drawer]
+	# The stack's second row can be wider than its first, which the toast stands after: it must not
+	# touch the stack, and leaves it the gap of the first row at least.
+	assert_bool(toast.intersects(_rect("TopLeft"))).override_failure_message(at).is_false()
 	var build: Control = _hud("BuildButton") as Control
 	if build.is_visible_in_tree():
 		parts.append(build.get_global_rect())
