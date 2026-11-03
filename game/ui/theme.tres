@@ -334,15 +334,11 @@ SidebarTab/styles/hover = SubResource("StyleBoxFlat_tab")
 SidebarTab/styles/hover_pressed = SubResource("StyleBoxFlat_tab_open")
 SidebarTab/styles/normal = SubResource("StyleBoxFlat_tab")
 SidebarTab/styles/pressed = SubResource("StyleBoxFlat_tab_open")
-; The Build button of the collapsed menu (BuildSidebar, ADR 0024 section 6): the tab's plates, its glyph
-; (glyph_menu_open, STYLE.md: none) in white, the open tab's colour, at rest and pressed.
-BuildButton/base_type = &"SidebarTab"
-BuildButton/colors/icon_focus_color = Color(1, 1, 1, 1)
-BuildButton/colors/icon_hover_color = Color(1, 1, 1, 1)
-BuildButton/colors/icon_hover_pressed_color = Color(1, 1, 1, 1)
-BuildButton/colors/icon_normal_color = Color(1, 1, 1, 1)
-BuildButton/colors/icon_pressed_color = Color(1, 1, 1, 1)
-; The Ready badge (BuildSidebar, ADR 0024 section 9): the READY banner's plate, the item's card and the
+; BUILD (BuildButton.gd, ADR 0025 section 4, plan P120c): the grey of its ring while no queue head advances
+; (stalled). The button draws itself; the colour is read by this type's name.
+BuildButton/base_type = &"Button"
+BuildButton/colors/ring_stalled = Color(0.60392157, 0.64705882, 0.69411765, 1)
+; The Ready chip beside BUILD (BuildButton.gd, ADR 0025 section 4; ADR 0024 section 9's badge): the READY banner's plate, the item's card and the
 ; word in the banner's 14 dp dark type (5.8:1 on the green); a white edge while the finger is on it.
 ReadyBadge/base_type = &"Button"
 ReadyBadge/colors/font_color = Color(0.06, 0.08, 0.11, 1)

@@ -84,6 +84,92 @@ func test_the_adr_table_of_numbers_row_by_row() -> void:
 	assert_float(676.0 - top).is_less_equal(floorf(0.4 * 676.0))  # Within 270 dp.
 
 
+## The pinned full map stays open through a strike aim (plan P120c). Under the scope it is clear of
+## the row by its height; left of the column on a short screen it ends a gap left of the check mark
+## and the X and narrows (2:1, 192 dp wide at the least) to start a gap right of the pill, however
+## wide the pill is (up to its 320 dp), down to the width where both fit; with no aim, or a row
+## that stands below the map, it is the ADR table's.
+func test_the_pinned_map_with_the_aim_keeps_clear_of_the_row_and_the_pill() -> void:
+	var plain: Dictionary[StringName, Rect2] = _place(
+		Rect2(0.0, 0.0, 776.0, 280.0), false, _shown(["strike", "map"])
+	)
+	_assert_rect(plain[HudCorners.MAP], Rect2(456.0, 0.0, 240.0, 168.0))  # The ADR table's.
+	for width: float in [776.0, 760.0, 744.0]:
+		for pill: float in [200.0, 260.0, 320.0]:
+			var shown: HudCorners.Shown = _shown(["strike", "aim", "map"])
+			shown.pill_width = pill
+			var out: Dictionary[StringName, Rect2] = _place(
+				Rect2(0.0, 0.0, width, 280.0), false, shown
+			)
+			var why: String = "safe %s, pill %s: %s" % [width, pill, out]
+			var map: Rect2 = out[HudCorners.MAP]
+			var box: Rect2 = out[HudCorners.MAP_BOX]
+			assert_float(box.size.y).override_failure_message(why).is_greater_equal(96.0)
+			assert_float(box.size.x).override_failure_message(why).is_equal_approx(
+				2.0 * box.size.y, TOLERANCE
+			)
+			assert_float(box.size.x).override_failure_message(why).is_less_equal(240.0)
+			assert_float(out[HudCorners.STRIKE_ROW].position.x - map.end.x).is_greater_equal(8.0)
+			(
+				assert_float(map.position.x - out[HudCorners.PILL].end.x)
+				. override_failure_message(why)
+				. is_greater_equal(8.0 - TOLERANCE)
+			)
+			for key: StringName in [
+				HudCorners.PILL,
+				HudCorners.SCOPE,
+				HudCorners.STRIKE,
+				HudCorners.STRIKE_ROW,
+				HudCorners.BUILD
+			]:
+				(
+					assert_bool(map.intersects(out[key]))
+					. override_failure_message("%s: %s" % [why, key])
+					. is_false()
+				)
+	# Under the scope (a taller screen) the aim changes nothing: the map ends above the button.
+	var tall_shown: HudCorners.Shown = _shown(["strike", "aim", "map"])
+	var tall: Dictionary[StringName, Rect2] = _place(
+		Rect2(0.0, 0.0, 890.0, 387.0), false, tall_shown
+	)
+	_assert_rect(tall[HudCorners.MAP], Rect2(650.0, 64.0, 240.0, 168.0))
+	assert_bool(tall[HudCorners.MAP].intersects(tall[HudCorners.STRIKE_ROW])).is_false()
+	# A row that stands below the map's foot leaves it where the table puts it.
+	var low: Dictionary[StringName, Rect2] = _place(
+		Rect2(0.0, 0.0, 776.0, 330.0), false, _shown(["strike", "aim", "map"])
+	)
+	assert_bool(low[HudCorners.MAP].intersects(low[HudCorners.STRIKE_ROW])).is_false()
+
+
+## ADR 0025 section 10: the strike button 8 dp above BUILD at 72 dp, its row to its left, upright
+## too (the lift of the command bar included), on every table profile; the rects the lead checks
+## against the group column are these.
+func test_the_strike_button_is_8_dp_above_build_and_its_row_left_of_it() -> void:
+	for portrait: bool in [false, true]:
+		for bar: bool in [false, true]:
+			var names: Array[String] = ["strike", "aim"]
+			if bar:
+				names.append("bar")
+			var shown: HudCorners.Shown = _shown(names)
+			var safe: Rect2 = (
+				Rect2(0.0, 0.0, 336.0, 676.0) if portrait else Rect2(0.0, 0.0, 776.0, 280.0)
+			)
+			var out: Dictionary[StringName, Rect2] = _place(safe, portrait, shown)
+			var why: String = "portrait %s, bar %s" % [portrait, bar]
+			var build: Rect2 = out[HudCorners.BUILD]
+			var strike: Rect2 = out[HudCorners.STRIKE]
+			assert_float(strike.size.x).override_failure_message(why).is_equal(72.0)
+			assert_float(strike.end.x).override_failure_message(why).is_equal(build.end.x)
+			assert_float(build.position.y - strike.end.y).override_failure_message(why).is_equal(
+				8.0
+			)
+			var row: Rect2 = out[HudCorners.STRIKE_ROW]
+			assert_float(strike.position.x - row.end.x).override_failure_message(why).is_equal(8.0)
+			assert_float(row.size.x).is_equal(136.0)
+			assert_float(row.size.y).is_equal(64.0)
+			assert_float(row.get_center().y).is_equal(strike.get_center().y)
+
+
 func test_with_nothing_shown_only_the_four_anchors_and_all_army_are_placed() -> void:
 	var out: Dictionary[StringName, Rect2] = _place(
 		Rect2(0.0, 0.0, 890.0, 387.0), false, HudCorners.Shown.new()

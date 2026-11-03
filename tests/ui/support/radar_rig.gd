@@ -47,6 +47,13 @@ static func short_landscape() -> UiMetrics:
 	return UiMetrics.create("Web", 288, 3.0, 880.0 / 720.0, Vector2i(2400, 880), Rect2i())
 
 
+## A narrower short landscape screen than `short_landscape` (the plan's second case): 728 dp by 293,
+## 704 dp of safe width. There the pinned map, the aim's row and the pill fit side by side only
+## because the map narrows (`HudCorners._map`: about 218 dp instead of 240).
+static func narrow_short_landscape() -> UiMetrics:
+	return UiMetrics.create("Web", 288, 3.0, 880.0 / 720.0, Vector2i(2184, 880), Rect2i())
+
+
 ## The rects `HudCorners.place` gives for the screen in force (the safe rect of the viewport, the
 ## engine's orientation and dp), with the full map shown or not and nothing else.
 static func rects(viewport: Viewport, map: bool) -> Dictionary[StringName, Rect2]:

@@ -143,7 +143,8 @@ static func place(
 			w, portrait, out, open if side else Rect2(w, 0.0, 0.0, 0.0), shown.left_height
 		)
 	if shown.map and not shown.drawer:
-		_map(out, w, portrait, strike if shown.strike else build)
+		var row: Rect2 = out.get(STRIKE_ROW, Rect2())
+		_map(out, w, portrait, strike if shown.strike else build, row)
 	if not sheet:
 		# Upright, the column leaves BUILD (and the Ready chip) their width: that many columns.
 		var columns: int = 1 << 20
@@ -210,7 +211,12 @@ static func _toast(
 
 ## The full map: under the scope, right-aligned, when the room down to the right column's next part
 ## holds the head and a box 96 dp high at least; else left of the column, from the safe top.
-static func _map(out: Dictionary[StringName, Rect2], w: float, portrait: bool, next: Rect2) -> void:
+## Left of the column, while the strike aim's row (`row`, empty when it does not show) stands in
+## its way, the map ends a gap left of the row and narrows (the box stays 2:1, 192 dp wide at the
+## least) to start a gap right of the pill: the pinned map and the aim meet only here.
+static func _map(
+	out: Dictionary[StringName, Rect2], w: float, portrait: bool, next: Rect2, row: Rect2
+) -> void:
 	var cap: Vector2 = MAP_BOX_PORTRAIT_DP if portrait else MAP_BOX_DP
 	var top: float = SCOPE_DP + GAP_DP
 	var box_h: float = minf(cap.y, next.position.y - GAP_DP - top - MAP_HEAD_DP)
@@ -218,7 +224,13 @@ static func _map(out: Dictionary[StringName, Rect2], w: float, portrait: bool, n
 	if box_h >= MAP_BOX_LEAST_H_DP:
 		box = Rect2(w - 2.0 * box_h, top + MAP_HEAD_DP, 2.0 * box_h, box_h)
 	else:
-		box = Rect2(w - StrikeButton.SIZE_DP - GAP_DP - cap.x, MAP_HEAD_DP, cap.x, cap.y)
+		var right: float = w - StrikeButton.SIZE_DP - GAP_DP
+		var width: float = cap.x
+		if row.size.x > 0.0 and row.position.y < MAP_HEAD_DP + cap.y + GAP_DP:
+			right = row.position.x - GAP_DP
+			var from: float = out[PILL].end.x + GAP_DP if out.has(PILL) else 0.0
+			width = clampf(right - from, 2.0 * MAP_BOX_LEAST_H_DP, cap.x)
+		box = Rect2(right - width, MAP_HEAD_DP, width, width * cap.y / cap.x)
 	out[MAP_HEAD] = Rect2(box.position.x, box.position.y - MAP_HEAD_DP, box.size.x, MAP_HEAD_DP)
 	out[MAP_BOX] = box
 	out[MAP] = out[MAP_HEAD].merge(box)

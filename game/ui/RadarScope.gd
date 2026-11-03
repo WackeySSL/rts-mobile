@@ -47,14 +47,10 @@ func _ready() -> void:
 	place()
 
 
-## The scope's and the full map's rects for the screen in force (`HudCorners.place`, the safe rect
-## of `safe_area`), nothing else shown: P121 applies the radar's parts only, the others keep their
-## places until their rows. `map` adds the full map's rects.
-static func corners(
-	viewport: Viewport, safe_area: SafeAreaMargin, map: bool = false
-) -> Dictionary[StringName, Rect2]:
+## The scope's rects for the screen in force (`HudCorners.place`, the safe rect of `safe_area`),
+## nothing else shown.
+static func corners(viewport: Viewport, safe_area: SafeAreaMargin) -> Dictionary[StringName, Rect2]:
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
-	shown.map = map
 	var margin_dp: float = (
 		SafeAreaMargin.DEFAULT_MARGIN_DP if safe_area == null else safe_area.margin_dp
 	)

@@ -1,14 +1,17 @@
 extends GdUnitTestSuite
 ## The strike button and its aiming controls in the battle-screen HUD (plan P112, ADR 0023 section
-## 10), at the six sizes of ScreenSizes.ALL with the engine's own metrics and at every profile of
-## both orientations, also with a cutout. The row of controls (check mark, X and the strike button)
-## is shown only while the local player owns a strike building; every part is inside the safe rect,
-## at least 48 dp on both axes and clear of every other HUD control, and the HUD does not grow.
-## Landscape: the top line, left of the radar scope; portrait: the right edge, a gap above the
-## ArmyBar. The ring and the foot follow the charge (time left, then "Ready"), a tap on a charging
-## button does nothing but nudge it, a tap on a ready one aims (its foot asks "Tap map" until a
-## point is placed), the check mark waits for a point and sends exactly one SUPERWEAPON, the X, the
-## button's second tap and a turn of the phone leave the aim with no Command.
+## 10; P120c moved it above BUILD), at the six sizes of ScreenSizes.ALL with the engine's own
+## metrics, at every profile of both orientations, also with a cutout, and on a short landscape
+## screen. The row of controls (check mark, X and the strike button) is shown only while the local
+## player owns a strike building; every part is inside the safe rect, at least 48 dp on both axes
+## and clear of every other HUD control (the pill, the scope, the toast and BUILD among them), and
+## the HUD does not grow. The button stands 8 dp above BUILD at its 72 dp, in both orientations,
+## the check mark and the X to its left where `HudCorners` puts them, and hides with BUILD under the
+## drawer and the pause menu. The ring and the foot follow the charge (time left, then "Ready"), a
+## tap on a charging button does nothing but nudge it, a tap on a ready one aims (its foot asks "Tap
+## map" until a point is placed), the check mark waits for a point and sends exactly one
+## SUPERWEAPON, the X, the button's second tap and a turn of the phone leave the aim with no
+## Command.
 ## Player 1 (local) has a Deep Bore, id 1, and a light tank, id 2, which is selected; player 2 has a
 ## Headquarters. The bore's wait is set in the snapshot (the charge is test_strike_aim's).
 
@@ -17,6 +20,7 @@ const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const RadarRig: GDScript = preload("res://tests/ui/support/radar_rig.gd")
 const BORE: int = 1
 const TANK: int = 2
 const SPAWNS: Array[Array] = [
@@ -70,7 +74,7 @@ func before_test() -> void:
 
 func test_every_part_is_inside_the_safe_rect_48_dp_clear_of_the_hud_and_the_hud_does_not_grow(
 ) -> void:
-	for screen: Dictionary in _screens(null):
+	for screen: Dictionary in _screens_and_short():
 		await _open(screen["size"], screen["metrics"], true)
 		var why: String = str(screen["label"])
 		var safe: Rect2 = UiScale.safe_rect_base()
@@ -87,6 +91,10 @@ func test_every_part_is_inside_the_safe_rect_48_dp_clear_of_the_hud_and_the_hud_
 					others.append(control.get_global_rect())
 			others.append(_rect("EconomyPill"))
 			others.append(_rect("RadarScope"))  # In both orientations (P121).
+			var toast: AttackToast = _hud("AttackToast") as AttackToast
+			toast.visible = true  # A cue is up: the toast stands where `HudCorners` puts it.
+			toast.place()
+			others.append(toast.get_global_rect())
 			for part: String in TAPPABLE:
 				var control: Control = _hud(part)
 				var at: String = "%s: %s %s, safe %s" % [why, part, control.get_global_rect(), safe]
@@ -161,36 +169,94 @@ func test_the_check_mark_and_the_x_are_64_dp_and_the_row_fits_the_safe_rect_with
 		_aim.cancel()
 
 
-func test_landscape_has_the_row_on_the_top_line_left_of_the_scope_and_portrait_at_the_right_edge(
+## ADR 0025 section 10: the button is 8 dp above BUILD at its 72 dp, flush with BUILD's right edge,
+## in both orientations; aiming, the check mark and the X stand to its left, a gap from it and from
+## each other, centred on it, clear of BUILD, and the rects are the ones `HudCorners.place` gives.
+func test_the_button_stands_8_dp_above_build_with_the_row_to_its_left_in_both_orientations(
 ) -> void:
-	for screen: Dictionary in _screens(null):
+	for screen: Dictionary in _screens_and_short():
 		await _open(screen["size"], screen["metrics"], true)
 		_ready_to_fire()
-		_aim.begin()
 		await await_idle_frame()
 		var why: String = str(screen["label"])
-		var inner: Rect2 = _inner()
-		var row: Rect2 = _rect("StrikeControls")
+		var dp: float = UiScale.dp(1.0)
+		var build: Rect2 = _rect("BuildButton")
 		var strike: Rect2 = _rect("StrikeButton")
-		var gap: float = UiScale.dp(8.0)
-		assert_float(strike.end.x).override_failure_message(why).is_equal_approx(row.end.x, 1.0)
-		if HudLayout.is_portrait():
-			var bar: Rect2 = _rect("ArmyBar")
-			assert_float(strike.end.x).override_failure_message(why).is_equal_approx(
-				inner.end.x, 1.0
+		var at: String = "%s: strike %s, BUILD %s" % [why, strike, build]
+		assert_float(strike.end.x).override_failure_message(at).is_equal_approx(build.end.x, 1.0)
+		assert_float(strike.end.y).override_failure_message(at).is_equal_approx(
+			build.position.y - 8.0 * dp, 1.5
+		)
+		assert_float(strike.size.x).override_failure_message(at).is_equal_approx(72.0 * dp, 1.5)
+		assert_float(strike.size.y).override_failure_message(at).is_equal_approx(72.0 * dp, 1.5)
+		_aim.begin()
+		await await_idle_frame()
+		var shown: HudCorners.Shown = HudCorners.Shown.new()
+		shown.strike = true
+		shown.aim = true
+		var wanted: Dictionary[StringName, Rect2] = HudCorners.place(
+			SafeAreaMargin.rect_inside(
+				get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
+			),
+			HudLayout.is_portrait(),
+			dp,
+			false,
+			shown
+		)
+		var confirm: Rect2 = _rect("StrikeConfirm")
+		var cancel: Rect2 = _rect("StrikeCancel")
+		strike = _rect("StrikeButton")
+		var row: Rect2 = confirm.merge(cancel)
+		var pair: String = "%s: strike %s, row %s, wanted %s" % [why, strike, row, wanted]
+		(
+			assert_bool(_near(strike, wanted[HudCorners.STRIKE]))
+			. override_failure_message(pair)
+			. is_true()
+		)
+		(
+			assert_bool(_near(row, wanted[HudCorners.STRIKE_ROW]))
+			. override_failure_message(pair)
+			. is_true()
+		)
+		assert_float(confirm.end.x + 8.0 * dp).override_failure_message(pair).is_equal_approx(
+			cancel.position.x, 1.0
+		)
+		assert_float(cancel.end.x + 8.0 * dp).override_failure_message(pair).is_equal_approx(
+			strike.position.x, 1.0
+		)
+		for part: Rect2 in [confirm, cancel]:
+			assert_float(part.get_center().y).override_failure_message(pair).is_equal_approx(
+				strike.get_center().y, 1.0
 			)
-			var at: String = "%s: strike %s, bar %s, gap %s" % [why, strike, bar, gap]
-			assert_float(strike.end.y).override_failure_message(at).is_between(
-				bar.position.y - gap - 2.5, bar.position.y - gap + TOLERANCE_PX
-			)
-		else:
-			var scope: Rect2 = _rect("RadarScope")
-			assert_float(strike.position.y).override_failure_message(why).is_equal_approx(
-				inner.position.y, 1.0
-			)
-			assert_float(strike.end.x).override_failure_message(why).is_less_equal(
-				scope.position.x - gap + 1.5
-			)
+			assert_bool(part.intersects(build)).override_failure_message(pair).is_false()
+		assert_bool(confirm.intersects(cancel)).override_failure_message(pair).is_false()
+		_aim.cancel()
+
+
+## The column stands under the drawer's panel (sideways) or its sheet (upright) and under the pause
+## menu, as BUILD does: the whole row hides with it and comes back when it closes, aim or not.
+func test_the_row_hides_with_build_under_the_drawer_and_the_pause_menu() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size, null, true)
+		var why: String = str(size)
+		var feed: HudStateFeed = _main.get_node("Hud/HudStateFeed")
+		var row: Control = _hud("StrikeControls") as Control
+		var build: Control = _hud("BuildButton") as Control
+		assert_bool(row.is_visible_in_tree()).override_failure_message(why).is_true()
+		for unfold: HudState.Unfold in [HudState.Unfold.DRAWER, HudState.Unfold.PAUSE]:
+			feed.state.open(unfold)
+			assert_bool(row.visible).override_failure_message(why).is_equal(build.visible)
+			assert_bool(row.visible).override_failure_message(why).is_false()
+			feed.state.close(unfold)
+			assert_bool(row.visible).override_failure_message(why).is_true()
+		_wait(0)
+		_aim.begin()
+		await await_idle_frame()
+		feed.state.open(HudState.Unfold.PAUSE)
+		assert_bool(row.visible).override_failure_message(why).is_false()
+		feed.state.close(HudState.Unfold.PAUSE)
+		assert_bool((_hud("StrikeConfirm") as Control).is_visible_in_tree()).is_true()
+		_aim.cancel()
 
 
 func test_the_row_is_shown_only_while_a_strike_building_is_owned() -> void:
@@ -370,6 +436,20 @@ func _screens(portrait: Variant) -> Array[Dictionary]:
 		if portrait == null or UiScale.is_portrait_size(screen["size"]) == portrait:
 			out.append(screen)
 	return out
+
+
+## The rects agree to the few pixels that the plates' rounding up to whole pixels allows.
+func _near(a: Rect2, b: Rect2) -> bool:
+	var apart: Vector2 = (a.position - b.position).abs().max((a.end - b.end).abs())
+	return maxf(apart.x, apart.y) <= 4.0
+
+
+## `_screens(null)` and the short landscape screen of the radar suites.
+func _screens_and_short() -> Array[Dictionary]:
+	var all: Array[Dictionary] = _screens(null)
+	var short: UiMetrics = RadarRig.short_landscape()
+	all.append({"label": "short landscape", "size": short.window_size, "metrics": short})
+	return all
 
 
 ## The safe area's inner rect, where the HUD may reach.
