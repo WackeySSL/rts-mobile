@@ -3,7 +3,8 @@ extends Node2D
 ## The launch and the fall of the superweapons (ADR 0027 sections 3, 6 and 7, plan P141), at
 ## absolute z 55 (over the effects, under the ghost and the strike marks). A ring of
 ## `life.strike_slots` slots in packed arrays, one slot a strike, drawn in one `_draw` from the
-## strike atlas (quads, and for the net two `draw_multiline` calls). It costs no object per strike
+## strike atlas (quads, and for each net two `draw_multiline` calls, four while it settles). It
+## costs no object per strike
 ## and allocates nothing per frame. Each strike is read from the `STRIKE` event of a tick:
 ## - Launch: at a building the local player is shown (`BuildingLayer.is_shown`) the Deep Bore's
 ##   lance (kind 1) or the Blackout Array's light seed (kind 2) rises from the building's launch

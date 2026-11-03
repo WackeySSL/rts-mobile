@@ -68,7 +68,12 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"ring_alpha",
 		"lattice_of",
 		"draw",
-		"_lines",
+		"_pass",
+		"drawn_nets",
+		"drawn_segments",
+		"drawn_alpha",
+		"drawn_edge_width",
+		"drawn_light_width",
 	],
 	"res://game/view/LifeClock.gd": ["ms", "tick_ms", "age_ms", "mix", "pick"],
 	"res://game/view/UnitLayer.gd":

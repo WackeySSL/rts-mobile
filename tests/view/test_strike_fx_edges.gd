@@ -8,14 +8,14 @@ const Buildings: GDScript = preload("res://tests/view/support/building_rig.gd")
 const Rig: GDScript = preload("res://tests/view/support/recoil_rig.gd")
 const SizedCamera: GDScript = preload("res://tests/view/support/sized_camera.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
-const BORE: int = 1
-const ARRAY: int = 2
+const ARRAY: int = 1  ## Own Blackout Array.
+const BORE: int = 2  ## Own Deep Bore: its id is not its owner's.
 const ENEMY_ARRAY: int = 3
 const RUPTURE: int = 1
 const BLACKOUT: int = 2
 const T0: int = 100  ## The tick of the event.
-const POINT: Vector2i = Vector2i(20500, 20500)  ## Tile (20, 20), dark.
-const SEEN_TILE: Vector2i = Vector2i(20, 20)
+const POINT: Vector2i = Vector2i(28500, 8500)  ## Tile (28, 8), dark and off the diagonal.
+const SEEN_TILE: Vector2i = Vector2i(28, 8)
 const ENEMY_TILE: Vector2i = Vector2i(26, 26)
 const TOL: float = 0.01
 const EPS: float = 0.01
@@ -36,37 +36,6 @@ var _camera: RtsCamera
 var _buildings: BuildingLayer
 var _life: LifeSettings
 var _layer: StrikeFx
-
-
-func test_the_ring_is_the_closed_hexagons_of_the_cells_on_the_boundary() -> void:
-	var axes: Vector2 = IsoProjection.ellipse_px(_radius(ARRAY))
-	var net: StrikeNet = StrikeNet.new()
-	var ring: PackedVector2Array = net.ring(net.lattice_for(axes))
-	assert_int(ring.size()).is_greater(0)
-	assert_int(ring.size() % 12).is_equal(0)  # Six edges of two ends for each cell.
-	var offsets: Array[Vector2] = [
-		Vector2(0.0, -LifeRegions.NET_ROW_PX),
-		Vector2(0.0, LifeRegions.NET_ROW_PX),
-		Vector2(LifeRegions.NET_COLUMN_PX, -LifeRegions.NET_SHIFT_PX),
-		Vector2(LifeRegions.NET_COLUMN_PX, LifeRegions.NET_SHIFT_PX),
-		Vector2(-LifeRegions.NET_COLUMN_PX, -LifeRegions.NET_SHIFT_PX),
-		Vector2(-LifeRegions.NET_COLUMN_PX, LifeRegions.NET_SHIFT_PX),
-	]
-	var boundary: int = 0
-	var inside: int = 0
-	for col: int in range(-12, 13):
-		for row: int in range(-12, 13):
-			var c: Vector2 = StrikeNet.centre_of(col, row)
-			if not _in_ellipse(c, axes):
-				continue
-			inside += 1
-			for offset: Vector2 in offsets:
-				if not _in_ellipse(c + offset, axes):
-					boundary += 1
-					break
-	assert_int(ring.size() / 12).is_equal(boundary)
-	assert_int(boundary).is_less(inside)  # An interior is left to fade.
-	assert_int(boundary).is_greater(inside / 4)
 
 
 func test_the_net_settles_as_a_ring_the_ring_brighter_than_the_interior_while_it_fades() -> void:
@@ -158,12 +127,12 @@ func test_a_point_above_the_visible_top_edge_falls_from_above_the_point_itself()
 
 func test_a_free_slot_is_reused_before_a_live_one_is_overwritten() -> void:
 	_fire_on(T0, BORE, RUPTURE, T0, 1, POINT)  # Slot 0: a launch alone, 700 ms.
-	var far: Vector2i = Vector2i(8500, 8500)
+	var far: Vector2i = Vector2i(8500, 3500)
 	_fire_on(T0 + 1, BORE, RUPTURE, T0 + 100, 1, far)  # Slot 1: a long fall.
 	_frame(T0 + 11, 0.6)  # Slot 0 is over and freed; slot 1 lives.
 	assert_int(_layer.slot_count()).is_equal(1)
-	_fire_on(T0 + 11, BORE, RUPTURE, T0 + 111, 1, Vector2i(5500, 5500))
-	var want: Vector2 = IsoProjection.ground_to_px(5500, 5500)
+	_fire_on(T0 + 11, BORE, RUPTURE, T0 + 111, 1, Vector2i(5500, 9500))
+	var want: Vector2 = IsoProjection.ground_to_px(5500, 9500)
 	assert_vector(_layer.landing_point(0)).is_equal_approx(want, Vector2(TOL, TOL))
 	assert_vector(_layer.landing_point(1)).is_equal_approx(
 		IsoProjection.ground_to_px(far.x, far.y), Vector2(TOL, TOL)
@@ -222,8 +191,8 @@ func test_a_long_run_of_strikes_makes_no_object_and_no_node() -> void:
 
 func before_test() -> void:
 	var spawns: Array[SpawnDef] = [
-		Buildings.spawn(1, "fossil_strike", 10, 10),
 		Buildings.spawn(1, "renew_strike", 16, 10),
+		Buildings.spawn(1, "fossil_strike", 6, 12),
 		Buildings.spawn(2, "renew_strike", 26, 26),
 	]
 	_runner = auto_free(Buildings.runner(Buildings.scenario(spawns)))
@@ -303,6 +272,21 @@ func _centre(id: int) -> Vector2:
 ## Where the anchor of quad `index` (of kind `kind`) is: its corner plus the anchor's offset.
 func _anchor_of(index: int, kind: StringName) -> Vector2:
 	return _layer.quad_rect(index).position + LifeRegions.ANCHOR[kind]
+
+
+func test_a_net_whose_firing_building_died_in_the_tick_takes_the_blackout_types_radius() -> void:
+	var gone: int = 99  # No such row in the snapshot.
+	assert_int(_runner.snapshot.index_of(gone)).is_equal(-1)
+	_fire_on(T0, gone, BLACKOUT, 0, 1, POINT)  # The local player fired it, so the net shows.
+	_frame(T0 + 4, 0.5)
+	assert_int(_layer.net_count()).is_equal(1)
+	var wanted: Vector2 = IsoProjection.ellipse_px(_radius(ARRAY))
+	var net: StrikeNet = _layer.nets()
+	var lattice: int = net.lattice_of(0)
+	# The lattice is the one of the blackout type's ellipse, not an empty one.
+	assert_int(lattice).is_equal(net.lattice_for(wanted))
+	assert_int(net.edges(lattice).size()).is_greater(0)
+	assert_array(_parts()).is_empty()  # And no launch from a building that is not there.
 
 
 ## Whether `at` (relative to the net's centre) is inside the ellipse of semi-axes `axes`.

@@ -5,8 +5,9 @@ extends GdUnitTestSuite
 ## delay starts the fall at the event; the seed and the net of the Blackout Array show where the
 ## player sees the point or fired; the ring of 8 slots; the clock that never steps back; `reduced`
 ## and a new match. The scene and the cost are in test_strike_fx_scene.gd.
-## Fixture: the 32 x 32 building match, player 1 the local one with a Deep Bore (id 1, tile 10, 10)
-## and a Blackout Array (id 2, tile 16, 10); player 2 a Blackout Array (id 3, tile 26, 26) in the
+## Fixture: the 32 x 32 building match, player 1 the local one with a Blackout Array (id 1, tile
+## 16, 10)
+## and a Deep Bore (id 2, tile 6, 12); player 2 a Blackout Array (id 3, tile 26, 26) in the
 ## dark. The runner is paused and not in the tree: the test sets the snapshot's tick and the alpha,
 ## delivers a tick's events the way the runner does and calls `_process` for a frame. Events are
 ## `[STRIKE, building id, x, y, kind, owner, landing tick, 0]`. A frame sits a hundredth of a tick
@@ -16,14 +17,14 @@ const Buildings: GDScript = preload("res://tests/view/support/building_rig.gd")
 const Rig: GDScript = preload("res://tests/view/support/recoil_rig.gd")
 const SizedCamera: GDScript = preload("res://tests/view/support/sized_camera.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
-const BORE: int = 1
-const ARRAY: int = 2
+const ARRAY: int = 1  ## Own Blackout Array.
+const BORE: int = 2  ## Own Deep Bore: its id is not its owner's.
 const ENEMY_ARRAY: int = 3
 const RUPTURE: int = 1
 const BLACKOUT: int = 2
 const T0: int = 100  ## The tick of the event.
-const POINT: Vector2i = Vector2i(20500, 20500)  ## Tile (20, 20), dark.
-const SEEN_TILE: Vector2i = Vector2i(20, 20)
+const POINT: Vector2i = Vector2i(28500, 8500)  ## Tile (28, 8), dark and off the diagonal.
+const SEEN_TILE: Vector2i = Vector2i(28, 8)
 const ENEMY_TILE: Vector2i = Vector2i(26, 26)
 const TOL: float = 0.01
 const EPS: float = 0.01
@@ -58,6 +59,9 @@ func test_a_lance_rises_from_the_footprint_centre_lifted_by_the_rise_and_fades_i
 	assert_vector(_layer.launch_point(0)).is_equal_approx(launch, Vector2(TOL, TOL))
 	assert_array(_parts()).is_equal([RING, FLASH, LANCE_UP])
 	assert_vector(_anchor_of(2, &"lance_up")).is_equal_approx(launch, Vector2(TOL, TOL))
+	# The ring of dust lies on the ground at the footprint centre, the flash in the air above it.
+	assert_vector(_anchor_of(0, &"launch_ring")).is_equal_approx(centre, Vector2(TOL, TOL))
+	assert_vector(_anchor_of(1, &"launch_flash")).is_equal_approx(launch, Vector2(TOL, TOL))
 	assert_float(_layer.quad_alpha(1)).is_equal_approx(1.0, TOL)  # The flash at full.
 	_frame(T0 + 5, 0.25)  # 350 ms of 700: u 0.5, risen 0.75 of the way, 0.75 of the alpha.
 	var risen: Vector2 = _anchor_of(2, &"lance_up")
@@ -199,6 +203,11 @@ func test_a_seed_rises_and_a_net_falls_onto_the_spot_when_the_player_fired_it() 
 	_fire(ARRAY, BLACKOUT, 0)  # Player 1's own Blackout Array at a dark point.
 	_frame(T0, 0.0)
 	assert_array(_parts()).is_equal([CORE, SEED_TRAIL, SEED])
+	var top_of_array: Vector2 = Vector2(
+		_centre(ARRAY).x, _buildings.frame_box(_row(ARRAY)).position.y
+	)
+	assert_vector(_anchor_of(2, &"seed")).is_equal_approx(top_of_array, Vector2(TOL, TOL))
+	assert_vector(_anchor_of(0, &"core_flash")).is_equal_approx(top_of_array, Vector2(TOL, TOL))
 	assert_int(_layer.net_count()).is_equal(1)
 	assert_float(_layer.net_alpha(0)).is_equal_approx(0.0, TOL)  # Born: fades in.
 	assert_float(_layer.net_scale(0)).is_equal_approx(_life.net_scale_from, TOL)
@@ -255,6 +264,7 @@ func test_the_net_is_a_closed_lattice_of_hexagons_inside_the_ellipse_of_the_stri
 		degree[key] = degree.get(key, 0) + 1
 	for key: Vector2i in degree:  # Every vertex is on two lines or more: no loose end.
 		assert_int(degree[key]).override_failure_message(str(key)).is_greater_equal(2)
+	_assert_partition(net, lattice, axes)
 	# The first edge is a cell's top: sixteen px wide (a hexagon of side 16 has a top of 16).
 	assert_vector(edges[1] - edges[0]).is_equal_approx(
 		Vector2(LifeRegions.NET_SIDE_PX, 0.0), Vector2(TOL, TOL)
@@ -351,8 +361,8 @@ func test_the_ring_holds_strike_slots_and_overwrites_the_oldest() -> void:
 
 func before_test() -> void:
 	var spawns: Array[SpawnDef] = [
-		Buildings.spawn(1, "fossil_strike", 10, 10),
 		Buildings.spawn(1, "renew_strike", 16, 10),
+		Buildings.spawn(1, "fossil_strike", 6, 12),
 		Buildings.spawn(2, "renew_strike", 26, 26),
 	]
 	_runner = auto_free(Buildings.runner(Buildings.scenario(spawns)))
@@ -432,3 +442,78 @@ func _centre(id: int) -> Vector2:
 ## Where the anchor of quad `index` (of kind `kind`) is: its corner plus the anchor's offset.
 func _anchor_of(index: int, kind: StringName) -> Vector2:
 	return _layer.quad_rect(index).position + LifeRegions.ANCHOR[kind]
+
+
+## Every edge is in `edges` once; `ring` and `interior` split it with no edge in both; and `ring`
+## is exactly the edges of the hexagons of the boundary cells (a neighbour centre outside),
+## counted here from the geometry.
+func _assert_partition(net: StrikeNet, lattice: int, axes: Vector2) -> void:
+	var all_keys: Dictionary[Vector4i, bool] = {}
+	var edges: PackedVector2Array = net.edges(lattice)
+	for index: int in range(0, edges.size(), 2):
+		var key: Vector4i = _edge_key(edges[index], edges[index + 1])
+		assert_bool(all_keys.has(key)).override_failure_message("twice %s" % key).is_false()
+		all_keys[key] = true
+	var ring_keys: Dictionary[Vector4i, bool] = {}
+	var ring: PackedVector2Array = net.ring(lattice)
+	for index: int in range(0, ring.size(), 2):
+		ring_keys[_edge_key(ring[index], ring[index + 1])] = true
+	assert_int(ring_keys.size()).is_equal(ring.size() / 2)  # None twice.
+	var interior: PackedVector2Array = net.interior(lattice)
+	for index: int in range(0, interior.size(), 2):
+		var key: Vector4i = _edge_key(interior[index], interior[index + 1])
+		assert_bool(ring_keys.has(key)).is_false()
+		assert_bool(all_keys.has(key)).is_true()
+	assert_int(ring.size() + interior.size()).is_equal(edges.size())
+	# The ring: the six edges of each boundary cell, counted apart from the lattice's code.
+	var boundary_keys: Dictionary[Vector4i, bool] = {}
+	var offsets: Array[Vector2] = [
+		Vector2(0.0, -LifeRegions.NET_ROW_PX),
+		Vector2(0.0, LifeRegions.NET_ROW_PX),
+		Vector2(LifeRegions.NET_COLUMN_PX, -LifeRegions.NET_SHIFT_PX),
+		Vector2(LifeRegions.NET_COLUMN_PX, LifeRegions.NET_SHIFT_PX),
+		Vector2(-LifeRegions.NET_COLUMN_PX, -LifeRegions.NET_SHIFT_PX),
+		Vector2(-LifeRegions.NET_COLUMN_PX, LifeRegions.NET_SHIFT_PX),
+	]
+	var inside: int = 0
+	var boundary: int = 0
+	for col: int in range(-12, 13):
+		for row: int in range(-12, 13):
+			var c: Vector2 = StrikeNet.centre_of(col, row)
+			if not _in_ellipse(c, axes):
+				continue
+			inside += 1
+			var edge_cell: bool = false
+			for offset: Vector2 in offsets:
+				edge_cell = edge_cell or not _in_ellipse(c + offset, axes)
+			if not edge_cell:
+				continue
+			boundary += 1
+			var corners: Array[Vector2] = [
+				c + Vector2(LifeRegions.NET_SIDE_PX, 0.0),
+				c + Vector2(LifeRegions.NET_SIDE_PX * 0.5, LifeRegions.NET_SHIFT_PX),
+				c + Vector2(-LifeRegions.NET_SIDE_PX * 0.5, LifeRegions.NET_SHIFT_PX),
+				c + Vector2(-LifeRegions.NET_SIDE_PX, 0.0),
+				c + Vector2(-LifeRegions.NET_SIDE_PX * 0.5, -LifeRegions.NET_SHIFT_PX),
+				c + Vector2(LifeRegions.NET_SIDE_PX * 0.5, -LifeRegions.NET_SHIFT_PX),
+			]
+			for corner: int in 6:
+				boundary_keys[_edge_key(corners[corner], corners[(corner + 1) % 6])] = true
+	assert_dict(ring_keys).is_equal(boundary_keys)
+	assert_int(boundary).is_less(inside)  # An interior is left to fade.
+	assert_int(interior.size()).is_greater(0)
+
+
+## An edge as one key, whichever end is first, at a quarter of a pixel.
+func _edge_key(a: Vector2, b: Vector2) -> Vector4i:
+	var first: Vector2i = Vector2i(roundi(a.x * 4.0), roundi(a.y * 4.0))
+	var second: Vector2i = Vector2i(roundi(b.x * 4.0), roundi(b.y * 4.0))
+	if first.x > second.x or (first.x == second.x and first.y > second.y):
+		var swap: Vector2i = first
+		first = second
+		second = swap
+	return Vector4i(first.x, first.y, second.x, second.y)
+
+
+func _in_ellipse(at: Vector2, axes: Vector2) -> bool:
+	return (at.x * at.x) / (axes.x * axes.x) + (at.y * at.y) / (axes.y * axes.y) <= 1.0
