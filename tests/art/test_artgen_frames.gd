@@ -514,7 +514,8 @@ func test_a_sheet_writes_the_frame_axis_only_when_it_has_something_to_say() -> v
 	assert_bool(lines[-3].begins_with("emitter_points = PackedVector2Array(")).is_true()
 
 
-func test_only_the_four_squads_have_a_pose_and_every_other_committed_sheet_is_as_before() -> void:
+func test_only_squads_and_eight_buildings_have_a_pose_and_every_other_committed_sheet_is_as_before(
+) -> void:
 	var index: IsoIndex = load(IsoIndex.PATH) as IsoIndex
 	assert_int(index.sheets.size()).is_greater_equal(28)
 	var posed: Array[String] = []
@@ -523,8 +524,10 @@ func test_only_the_four_squads_have_a_pose_and_every_other_committed_sheet_is_as
 		if not model.poses.is_empty():
 			posed.append(String(model.art_id))
 			continue
-		assert_bool(model.emitters.is_empty()).override_failure_message(path).is_true()
-		assert_bool(model.stride_milli == 0 and model.anim_ms == 0 and model.marks == &"").is_true()
+		# P143 tags the vehicles with marks and an exhaust and some buildings with emitters (the
+		# sheet says so, below); no model but a posed one has a stride or an `anim_ms`.
+		assert_bool(model.stride_milli == 0 and model.anim_ms == 0).is_true()
+		var tagged: bool = not model.emitters.is_empty() or model.marks != &""
 		assert_array(model.pose_parts()).override_failure_message(path).is_empty()
 		assert_array(model.frame_parts()).override_failure_message(path).is_equal(
 			model.parts() + [ArtModel.SHADOW]
@@ -534,7 +537,9 @@ func test_only_the_four_squads_have_a_pose_and_every_other_committed_sheet_is_as
 		assert_array(Array(fresh.frames)).override_failure_message(path).is_equal(
 			Array(fresh.counts).map(func(_count: int) -> int: return 1)
 		)
-		assert_bool(fresh.emitters.is_empty() and fresh.emitter_points.is_empty()).is_true()
+		assert_bool(fresh.emitters.is_empty() and fresh.emitter_points.is_empty()).is_equal(
+			model.emitters.is_empty()
+		)
 		var sheet: IsoSheetDef = index.sheet(model.art_id)
 		assert_array(Array(sheet.frames)).override_failure_message(path).is_empty()
 		for part: String in sheet.parts:
@@ -543,15 +548,35 @@ func test_only_the_four_squads_have_a_pose_and_every_other_committed_sheet_is_as
 			)
 		var committed: String = FileAccess.get_file_as_string(ArtGen.sheet_path(model))
 		for field: StringName in ArtSheet.LIFE_FIELDS:
+			if tagged and field in [&"emitters", &"emitter_points", &"marks"]:
+				continue
 			(
 				assert_bool(committed.contains("\n%s = " % field))
 				. override_failure_message(path)
 				. is_false()
 			)
 		assert_str(ArtSheet.text(fresh)).override_failure_message(path).is_equal(committed)
-	# The squads are the only models with a pose: P143 adds the buildings' `anim` parts.
+	# The four squads (P139) and the eight animated buildings (P143) are the only models with a pose.
 	posed.sort()
-	assert_array(posed).is_equal(["renew_rifle", "renew_rocket", "rifle_squad", "rocket_squad"])
+	(
+		assert_array(posed)
+		. is_equal(
+			[
+				"fossil_radar",
+				"fossil_strike",
+				"power_plant",
+				"renew_barracks",
+				"renew_hq",
+				"renew_power",
+				"renew_radar",
+				"renew_rifle",
+				"renew_rocket",
+				"renew_strike",
+				"rifle_squad",
+				"rocket_squad",
+			]
+		)
+	)
 
 
 func test_a_sheet_finds_an_emitter_point_for_a_vehicle_a_squad_and_a_building() -> void:

@@ -18,3 +18,5 @@ bar_lift_px = 98
 pick_lift_px = 49
 muzzle_lift_px = 0
 icon = "res://assets/art/iso/icons/item_renew_refinery.svg"
+emitters = PackedStringArray("steam", "steam")
+emitter_points = PackedVector2Array(-80, -108.6, -54.4, -95.8)

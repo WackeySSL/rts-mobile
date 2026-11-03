@@ -56,7 +56,7 @@ const CANVAS: Dictionary[StringName, Array] = {
 	&"refinery": [384, 294, 102, 444, 194],
 	&"barracks": [256, 200, 72, 268, 130],
 	&"vehicle_factory": [384, 346, 153, 406, 196],
-	&"fossil_radar": [256, 302, 173, 298, 130],
+	&"fossil_radar": [256, 260, 132, 298, 130],
 	&"defence_turret": [128, 130, 65, 162, 82],
 	&"fossil_strike": [384, 362, 170, 394, 198],
 }
@@ -121,6 +121,10 @@ func test_a_building_has_one_view_and_a_cast_shadow_and_the_redoubt_has_16_heads
 		var armed: bool = id == &"defence_turret"
 		var parts: Array = ["hull", "head", "shadow"] if armed else ["hull", "shadow"]
 		var counts: Array = [1, 16, 1] if armed else [1, 1]
+		if sheet.has_part(&"anim"):
+			# The moving element (P143) is a part of its own, between the body and the shadow.
+			parts.insert(parts.size() - 1, "anim")
+			counts.insert(counts.size() - 1, 1)
 		assert_array(Array(sheet.parts)).override_failure_message("%s" % id).is_equal(parts)
 		assert_array(Array(sheet.counts)).override_failure_message("%s" % id).is_equal(counts)
 		assert_array(Array(sheet.directions(&"hull"))).is_equal([-1])
@@ -508,6 +512,15 @@ func _default_picture(model: ArtModel) -> Image:
 		Rect2i(Vector2i.ZERO, body.get_size()),
 		GROUND_POINT - Vector2i(Vector2(sheet.origin(&"hull")) * SCALE)
 	)
+	if sheet.has_part(&"anim"):
+		var moving: Image = _raster(
+			FileAccess.get_file_as_string(sheet.path(&"anim", -1, 0)), SCALE
+		)
+		picture.blend_rect(
+			moving,
+			Rect2i(Vector2i.ZERO, moving.get_size()),
+			GROUND_POINT - Vector2i(Vector2(sheet.origin(&"anim")) * SCALE)
+		)
 	if sheet.has_part(&"head"):
 		var head: Image = _raster(FileAccess.get_file_as_string(sheet.path(&"head", 6)), SCALE)
 		var at: Vector2 = sheet.mount(0) - Vector2(sheet.origin(&"head"))

@@ -40,5 +40,31 @@ prims = PackedStringArray(
 "prism hull iron -0.3 -0.78 1.2 0.27 0.27 0.06 sides=12",
 "box hull iron -0.2 0.86 0.06 0.3 0.02 0.3",
 "box hull lamp -0.5 0.86 0.2 0.14 0.02 0.1",
-"box hull lamp 0.1 0.86 0.2 0.14 0.02 0.1"
+"box hull lamp 0.1 0.86 0.2 0.14 0.02 0.1",
+"box anim steel 0.62 -0.5 0.5 0.3 0.05 0.03 group=fan_a",
+"box anim steel 0.62 -0.5 0.53 0.05 0.3 0.03 group=fan_a",
+"prism anim iron 0.62 -0.5 0.56 0.1 0.1 0.04 sides=8",
+"box anim steel 0.62 0 0.5 0.3 0.05 0.03 group=fan_b",
+"box anim steel 0.62 0 0.53 0.05 0.3 0.03 group=fan_b",
+"prism anim iron 0.62 0 0.56 0.1 0.1 0.04 sides=8",
+"box anim steel 0.62 0.5 0.5 0.3 0.05 0.03 group=fan_c",
+"box anim steel 0.62 0.5 0.53 0.05 0.3 0.03 group=fan_c",
+"prism anim iron 0.62 0.5 0.56 0.1 0.1 0.04 sides=8"
+)
+poses = PackedStringArray(
+"anim 4",
+"anim 0 fan_b turn z 22.5 0.62 0 0",
+"anim 0 fan_c turn z 45 0.62 0.5 0",
+"anim 1 fan_a turn z 22.5 0.62 -0.5 0",
+"anim 1 fan_b turn z 45 0.62 0 0",
+"anim 1 fan_c turn z 67.5 0.62 0.5 0",
+"anim 2 fan_a turn z 45 0.62 -0.5 0",
+"anim 2 fan_b turn z 67.5 0.62 0 0",
+"anim 3 fan_a turn z 67.5 0.62 -0.5 0",
+"anim 3 fan_c turn z 22.5 0.62 0.5 0"
+)
+anim_ms = 90
+emitters = PackedStringArray(
+"smoke -0.72 -0.78 1.7",
+"smoke -0.3 -0.78 1.3"
 )
