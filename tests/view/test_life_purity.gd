@@ -14,6 +14,7 @@ const LIFE_FILES: Array[String] = [
 	"res://game/view/LifeSettings.gd",
 	"res://game/view/RigLife.gd",
 	"res://game/view/SquadPoses.gd",
+	"res://game/view/BuildingAnims.gd",
 ]
 ## The life functions of the layers, by file.
 const LIFE_FUNCTIONS: Dictionary[String, Array] = {
@@ -28,7 +29,8 @@ const LIFE_FUNCTIONS: Dictionary[String, Array] = {
 		"_apply_idle",
 		"_show_hull",
 	],
-	"res://game/view/BuildingLayer.gd": ["_on_ticked", "_shot_seen", "_kick_heads", "_sweep_heads"],
+	"res://game/view/BuildingLayer.gd":
+	["_on_ticked", "_shot_seen", "_kick_heads", "_sweep_heads", "_dress_anim", "_play_anims"],
 }
 const BANNED: String = (
 	r"\bTime\b|\bOS\s*\.\s*get_ticks\w*|\bEngine\s*\.\s*get_(frames|physics)\w*"

@@ -103,6 +103,35 @@ func test_the_layer_is_flat_at_z_5_sorted_by_y_and_carries_one_dim_colour() -> v
 	assert_int(fresh.explored_alpha).is_equal(fog.explored_alpha)
 
 
+## A remembered building with a moving element (P144) keeps it: an `Anim` child of the ghost's
+## sprite shows frame 0 of the owner's `anim` part at the footprint's centre, under the layer's
+## dim; one without (the Redoubt) has none, and a pooled sprite that is reused for it hides it.
+func test_a_ghost_keeps_the_moving_element_at_frame_0() -> void:
+	_remember_all()
+	_look([])
+	var bake: float = _sort.atlas.bake_scale()
+	for id: int in [HQ_ID, POWER_ID]:
+		var ghost: Sprite2D = _ghosts.ghost(id)
+		var anim: Sprite2D = ghost.get_node("Anim")
+		var sheet: IsoSheetDef = _sort.sheet(_runner.snapshot.type_ids[_type_of(id)])
+		assert_bool(anim.visible).is_true()
+		assert_that(anim.region_rect).is_equal(
+			Rect2(_sort.atlas.region(sheet.art_id, &"anim", -1, _sort.slot_of(2), 0))
+		)
+		assert_vector(anim.position).is_equal(Vector2.ZERO)
+		assert_vector(anim.scale).is_equal(Vector2.ONE)  # The ghost sprite's scale carries it.
+		assert_vector(anim.offset).is_equal_approx(
+			-Vector2(sheet.origin(&"anim")) * bake, Vector2.ONE * 0.001
+		)
+		assert_bool(anim.get_index() > -1 and anim.get_parent() == ghost).is_true()
+	var defence: Sprite2D = _ghosts.ghost(DEFENCE_ID)
+	assert_object(defence.get_node_or_null("Anim")).is_null()
+
+
+func _type_of(id: int) -> int:
+	return _runner.snapshot.type_index[_runner.snapshot.index_of(id)]
+
+
 func test_a_building_out_of_sight_is_drawn_where_its_footprint_centre_is() -> void:
 	_remember_all()
 	_look([])
@@ -351,7 +380,15 @@ func test_a_ghost_is_a_plain_sprite_in_white_on_the_atlas_page_with_no_input_sur
 		assert_that(sprite.modulate).is_equal(Color.WHITE)  # The dim is the layer's, one for all.
 		assert_that(sprite.self_modulate).is_equal(Color.WHITE)
 		assert_object(sprite.material).is_null()
-		assert_int(sprite.get_child_count()).is_equal(0)  # No head, no bar, no ring.
+		# No head, no bar, no ring: at most the moving element (P144), a plain sprite as well.
+		assert_int(sprite.get_child_count()).is_less_equal(1)
+		for child: Node in sprite.get_children():
+			assert_str(child.name).is_equal("Anim")
+			var anim: Sprite2D = child as Sprite2D
+			assert_object(anim.texture).is_same(_sort.atlas.texture())
+			assert_that(anim.modulate).is_equal(Color.WHITE)
+			assert_object(anim.material).is_null()
+			assert_int(anim.get_child_count()).is_equal(0)
 	assert_array(_ghosts.find_children("*", "CollisionObject2D", true, false)).is_empty()
 	assert_array(_ghosts.find_children("*", "Control", true, false)).is_empty()
 	assert_bool(_ghosts.is_class("Control")).is_false()

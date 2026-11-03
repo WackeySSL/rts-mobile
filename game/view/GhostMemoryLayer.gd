@@ -20,7 +20,9 @@ extends Node2D
 ## live enemy building (`BuildingLayer.any_cell_seen`): at every moment exactly one of the live
 ## building and its ghost is drawn. A record is made on a tile the player saw, so the ground under
 ## it is explored. A type with no art on the atlas is not drawn (the live building shows a flat
-## diamond then; a ghost has no stand-in).
+## diamond then; a ghost has no stand-in). A building with a moving element (`anim`, P144) has it
+## as an `Anim` child of the ghost's sprite at its rest frame (`BuildingAnims`), so the antenna, the
+## array or the rotors are not missing from the memory; it is as dim as the body and does not play.
 ##
 ## The sim's memory (`LastSeen`, plan row P77b) follows the same any-cell rule: it makes a record
 ## when any cell of the footprint is seen, drops it when any cell is seen and the building is gone,
@@ -173,6 +175,7 @@ func _place(snap: MatchSnapshot, player: int) -> int:
 		sprite.position = IsoProjection.ground_to_px(x, y)
 		world_sort.dress(sprite, sheet, PART)
 		world_sort.show_frame(sprite, sheet, PART, BuildingLayer.NO_FRAME, owners[entry])
+		BuildingAnims.dress_ghost(sprite, world_sort, sheet, owners[entry])
 		if sprite.visible:  # A frame the owner's faction has not hides it, and its slot is reused.
 			_ids.append(ids[entry])
 			drawn += 1

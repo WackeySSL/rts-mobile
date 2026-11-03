@@ -85,9 +85,10 @@ runner = NodePath("../MatchRunner")
 camera = NodePath("../Camera")
 world_sort = NodePath("../WorldSort")
 
-[node name="BuildingLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort", "decals")]
+[node name="BuildingLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "camera", "world_sort", "decals")]
 script = ExtResource("31_buildings")
 runner = NodePath("../MatchRunner")
+camera = NodePath("../Camera")
 world_sort = NodePath("../WorldSort")
 decals = NodePath("../DecalLayer")
 
