@@ -161,7 +161,7 @@ static func _is_behind(a: AABB, b: AABB, cam: Vector3) -> bool:
 static func _discs(prim: ArtPrim, turn: Vector2, faction: StringName) -> Array[Poly]:
 	var radius: float = prim.size.x / 2.0
 	var middle: Vector3 = Vector3(prim.centre.x, prim.centre.y, prim.z0 + radius)
-	var centre: Vector2 = project(_turn(middle, turn))
+	var centre: Vector2 = project(_turn(prim.place(middle), turn))
 	var out: Array[Poly] = []
 	for disc: Vector3 in DISCS:
 		var poly: Poly = Poly.new()

@@ -216,7 +216,29 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   height of the muzzle (0 for a building without a head); and the card's path. The sheets are
   written by `ArtSheet` as `.tres` text by hand (Godot cannot save a resource to a string), so
   they are bytes like the frames and `tests/art` compares them with a fresh run. The per-match
-  bake (P113) loads `index.tres` and reads each frame at `sheet.path(part, dir)`.
+  bake (P113) loads `index.tres` and reads each frame at `sheet.path(part, dir)` (`sheet.path(part,
+  dir, frame)` with the frame axis, next bullet).
+- **The frame axis** (P134, ADR 0027 section 4; no model has a pose yet, P139 and P143 add them).
+  The sets (ADR 0027): a squad gets `walk` (4 frames) and `idle` (2) in its 8 directions, a
+  building's `anim` has at most 16 frames, cropped to the moving element; shadows are not posed (the
+  standing shadow serves every pose). A primitive may carry `group=<name>` (hull and `anim`
+  primitives only); its part may be `anim`, a building's moving element, drawn only by the `anim`
+  frames (not by `hull`) and at rest in the shadow and the card. The `anim` sprite draws over the
+  whole body, so no hull part can hide the element: model it where nothing stands in front. A
+  model's `poses`: `<part> <frames>` (`walk`, `idle` or `anim`, 2 to 16 frames per direction) and
+  one move a line, `<part> <frame> <group> shift <dx> <dy> <dz>` or `... turn <x|y|z> <degrees> <px>
+  <py> <pz>` (tiles; a turn goes about the axis through the pivot, positive as the hull's yaw: x
+  towards y about z, y towards z about x, z towards x about y; moves apply in line order). `walk`
+  and `idle` pose a squad's `hull`, `anim` the `anim` primitives; they have the hull's directions (a
+  building's `anim` none). Files `<id>_<part>_d<NN>_f<K>.svg` (K from 0), a building's
+  `<id>_anim_f<K>.svg`; a part of one frame has no `_f<K>`. A pose part has one canvas, anchored at
+  the ground point (an `anim` at the footprint centre); the bar lift clears the `anim` element in
+  its highest frame. Model fields `stride_milli` (needs `walk`), `anim_ms` (needs `anim`),
+  `emitters` (`<kind> <x> <y> <z>` in tiles; `smoke`, `steam`, `flame`, `exhaust`, `launch`) and
+  `marks` (`tracks` or `wheels`, vehicles). The sheet gains `frames` (`frame_count(part)` says 1
+  when absent), `stride_milli`, `anim_ms`, `emitters` with `emitter_points` (px of the 2x art, per
+  hull frame for each, once for a building: `emitter_point(index, dir)`) and `marks`, each written
+  only when set, so today's sheets are unchanged. `tests/art/test_artgen_frames.gd` pins it.
 - **Item cards** (`ArtIcon`): 128 x 128 px, a dark plate (#1C2127, rim #2F363D, the corners cut), a
   faint 2:1 grid (#2A3036, lines every 16 px through the centre, so the diamonds are 32 x 16), the
   type's default view (`d06`, `d10` for the Lumen Accord, a building's one view, a turret or head
@@ -2124,3 +2146,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-02 | v1.15 (P118, art-director; P118b, release-engineer): the HUD fonts (Big Shoulders Display ExtraBold and Chakra Petch Medium, SemiBold and Bold, unmodified upstream files under SIL OFL 1.1 in `assets/art/fonts/`, their `OFL.txt` in every build), the HUD v2 palette rows, the two accent pairs (Lumen Accord cyan, Derrick League orange #E07628 / #FFA25C / #2A1405), the rule that danger always carries its glyph beside an accent, the Reskin note's tracking numbers (4/5/6 px; 7.1 to 10.3 % on phones) and the Licences line. |
 | 2026-11-02 | v1.16 (P118g, art-director): fourteen HUD v2 glyphs (`glyph_menu`, `glyph_deselect` as the game's 2:1 selection ring cut by a slash, `glyph_stop`, `glyph_plus`, `glyph_collapse`, `glyph_chevron`, `glyph_resume`, `glyph_restart`, `glyph_surrender` struck to the pole's foot, `glyph_exit`, `glyph_vibration`, `glyph_alert`, `glyph_all_army` as a soldier before a tank, and `glyph_construct` as a crane on the offline glyph's seat, a ninth map glyph, untinted white by Michael's choice), their shape lines, tints and measures, and the gallery's Hud page with the badges over the Heavy Yard and the Motor Works. |
 | 2026-11-02 | v1.17 (P135, art-director, ADR 0027): the two hand-written atlases of the unit-life layers, `fx/life_atlas.svg` (nine kinds: dust, smoke, soot, steam, puff, exhaust, flare, fire, spark) and `fx/strike_atlas.svg` (twelve: the bore lance falling and rising, its trail, shadow and launch flash and ring, the light seed and its trail, the mint hexagon of the net lit and unlit, a glint and the core flash), the section "Life effects" with the region table, the net lattice, the colours (no team colour, flames hue 46 degrees or more, smoke and dust greys, mint) and the readability numbers, two catalogue rows, and the gallery's Life page. |
+| 2026-11-02 | v1.18 (P134, art-director, ADR 0027 section 4): the generator's frame axis ("The frame axis" under "Generated art": `group=`, the `anim` part, `poses`, `_f<K>` files, `frames`, `stride_milli`, `anim_ms`, `emitters` with `emitter_points`, `marks`); no model has a pose, every committed frame and sheet is as before. |
