@@ -12,6 +12,7 @@ extends PanelContainer
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
 const VARIATION: StringName = &"EconomyPillLow"  ## The pill's danger edge.
 const TEXT_VARIATION: StringName = &"ItemCaption"
+const TITLE_VARIATION: StringName = &"AttackTitle"  ## The caps face, tinted danger.
 const TOKENS: StringName = &"HudTokens"
 const GLYPH_DP: float = 24.0
 const GAP_DP: float = 6.0
@@ -23,7 +24,10 @@ const HINT: String = "Tap to jump there"
 @export var safe_area: SafeAreaMargin
 @export var pill: Control  ## Landscape: the toast stands after it.
 @export var top_left: Control  ## Upright: the toast stands under this stack (Dev over Surrender).
+## Upright the selection panel stands on the top line too (until P122): the toast goes under it.
+@export var selection: Control
 
+var _row: HBoxContainer = HBoxContainer.new()
 var _glyph: TextureRect = TextureRect.new()
 var _title: Label = Label.new()
 var _hint: Label = Label.new()
@@ -35,26 +39,29 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP  # A touch on the toast never reaches the map.
 	theme_type_variation = VARIATION
 	visible = false
-	var row: HBoxContainer = HBoxContainer.new()
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(row)
+	_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_row)
 	_glyph.texture = load(ICON_ART % "glyph_alert")
 	_glyph.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_glyph.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(_glyph)
+	_row.add_child(_glyph)
 	var lines: VBoxContainer = VBoxContainer.new()
 	lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lines.alignment = BoxContainer.ALIGNMENT_CENTER
 	lines.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(lines)
+	_row.add_child(lines)
+	_title.theme_type_variation = TITLE_VARIATION
+	_hint.theme_type_variation = TEXT_VARIATION
 	for label: Label in [_title, _hint]:
-		label.theme_type_variation = TEXT_VARIATION
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		lines.add_child(label)
 	_hint.text = HINT
 	cues.cue_changed.connect(_sync)
+	if selection != null:  # The panel grows, shrinks and hides with the selection.
+		selection.item_rect_changed.connect(_replace)
+		selection.visibility_changed.connect(_replace)
 	feed.state.changed.connect(_on_unfold_changed)
 	get_viewport().size_changed.connect(_apply_dp)
 	_apply_dp()
@@ -76,6 +83,9 @@ func place() -> void:
 		SafeAreaMargin.DEFAULT_MARGIN_DP if safe_area == null else safe_area.margin_dp
 	)
 	var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), margin_dp)
+	if selection != null and selection.is_visible_in_tree() and HudLayout.is_portrait():
+		var below: float = (selection.get_global_rect().end.y - safe.position.y) / dp
+		shown.left_height = maxf(shown.left_height, below)
 	var rect: Rect2 = HudCorners.place(safe, HudLayout.is_portrait(), dp, false, shown)[
 		HudCorners.TOAST
 	]
@@ -111,6 +121,11 @@ func cancel_gestures() -> void:
 	_finger = -1
 
 
+func _replace() -> void:
+	if visible:
+		place()
+
+
 func _on_unfold_changed(_previous: HudState.Unfold) -> void:
 	_sync()
 
@@ -133,8 +148,6 @@ func _apply_dp() -> void:
 	_glyph.custom_minimum_size = Vector2(edge, edge)
 	_glyph.modulate = get_theme_color(&"danger", TOKENS)
 	_title.modulate = get_theme_color(&"danger", TOKENS)
-	(get_child(0) as HBoxContainer).add_theme_constant_override(
-		"separation", roundi(UiScale.dp(GAP_DP))
-	)
+	_row.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
 	if visible:
 		place()

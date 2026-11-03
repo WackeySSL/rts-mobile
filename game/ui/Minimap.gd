@@ -57,6 +57,7 @@ var _hold_open: bool = false  ## It may still hold: within the slop, and no MOVE
 var _default_settings: InputSettings = null
 var _portrait: bool = false  ## The window's orientation at the last resize.
 var _draws: int = 0
+var _pings: int = 0
 var _frames: int = 0
 
 
@@ -129,6 +130,11 @@ func redraw_count() -> int:
 ## each time, and none for a frame that only moved the camera.
 func draw_count() -> int:
 	return _draws
+
+
+## How many attack-cue pings were drawn (one per draw while a cue stands).
+func ping_count() -> int:
+	return _pings
 
 
 ## How many times the camera's frame moved.
@@ -318,3 +324,4 @@ func _draw() -> void:
 		var danger: Color = get_theme_color(&"danger", &"HudTokens")
 		draw_arc(at, radius, 0.0, TAU, 24, get_theme_color(&"frame_edge", THEME_TYPE), radius * 0.6)
 		draw_arc(at, radius, 0.0, TAU, 24, danger, UiScale.dp(FRAME_DP) * 2.0)
+		_pings += 1

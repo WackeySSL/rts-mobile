@@ -1,16 +1,21 @@
 class_name AttackCues
 extends Node
 ## The attack cue (ADR 0025 section 8, plan P123): the one place that decides an own row was hit
-## out of view. It reads the published events only (`SHOT` and `IMPACT`, each tick) and sends
-## nothing. A hit on a row of the local player whose point lies outside the camera's visible world
-## rect raises a cue, unless the last cue was less than `attack_cue_ms` ago and within
-## `attack_cue_area_tiles` of this point (both in `data/input_settings.tres`): a steady attack keeps
-## one cue up. A newer cue replaces the one that shows. A cue lives `attack_toast_ms` of frame
-## time.
-## The toast, the scope's rim wedge and the full map's ping read it; none of them keeps a copy. One
-## cue is kept, so nothing is allocated per hit but the text of a new cue. A new match clears it.
+## out of view. It reads the published events only (`SHOT` and `IMPACT` on an own row, and the
+## `DIED` of one, which a lethal hit leaves instead) and sends nothing. A hit whose point lies
+## outside the camera's visible world rect raises a cue, unless its area (within
+## `attack_cue_area_tiles` of an earlier cue's point) had a cue less than `attack_cue_ms` ago: a
+## small table of areas, allocated once, remembers them, so two fronts hit in turn raise two cues,
+## not a swap on every hit. A hit in the shown cue's own area keeps that cue up, so a steady attack
+## shows one cue without a gap. A newer cue replaces the one that shows; a cue lives
+## `attack_toast_ms` of frame time. A new match clears everything.
+## The toast, the scope's rim wedge and the full map's ping read it; none of them keeps a copy.
+## The numbers are `data/input_settings.tres`'s (ADR 0019 section 5).
 
 signal cue_changed  ## A cue was raised, replaced, dismissed or ran out.
+
+const AREAS: int = 4  ## Areas remembered at once, each with the time of its last cue.
+const NEVER: float = -1.0e9
 
 @export var runner: MatchRunner
 @export var camera: RtsCamera
@@ -22,14 +27,24 @@ var title: String = ""  ## "<NAME> UNDER ATTACK", "UNITS UNDER ATTACK" for a uni
 
 var _left_ms: float = 0.0  ## What the shown cue has left.
 var _clock_ms: float = 0.0  ## Frame time since the node entered the tree.
-var _last_ms: float = -1.0e9  ## When the last cue was raised, and where (milli-tiles).
-var _last_ground: Vector2i = Vector2i.ZERO
+## The table of areas, allocated once: where each cue was raised (milli-tiles) and when.
+var _area_x: PackedInt32Array = PackedInt32Array()
+var _area_y: PackedInt32Array = PackedInt32Array()
+var _area_ms: PackedFloat64Array = PackedFloat64Array()
+var _shown_area: int = -1  ## The table entry of the shown cue.
 var _serial: int = -1
 
 
 func _ready() -> void:
 	if runner != null:
 		runner.ticked.connect(_on_ticked)
+
+
+func _init() -> void:
+	_area_x.resize(AREAS)
+	_area_y.resize(AREAS)
+	_area_ms.resize(AREAS)
+	_forget()
 
 
 func _process(delta: float) -> void:
@@ -45,60 +60,94 @@ func advance(delta_ms: float) -> void:
 			dismiss()
 
 
+## What the shown cue has left, ms (0 for none).
+func remaining_ms() -> float:
+	return maxf(_left_ms, 0.0) if active else 0.0
+
+
 ## Takes the cue away (a tap on the toast, a new match, its time).
 func dismiss() -> void:
+	_shown_area = -1
 	if active:
 		active = false
 		cue_changed.emit()
 
 
 ## Looks through `snap`'s events for a hit on a row of `player` outside `view` (the camera's visible
-## world rect). True when it raised a cue.
+## world rect): a SHOT or IMPACT on an own row, or the DIED of one (a row that one hit killed is
+## gone from the snapshot). True when it raised a cue.
 func scan(snap: MatchSnapshot, player: int, view: Rect2) -> bool:
 	if snap.match_serial != _serial:
 		_serial = snap.match_serial
-		_last_ms = -1.0e9
+		_forget()
 		dismiss()
 	var raised: bool = false
 	var events: PackedInt32Array = snap.events
 	for at: int in range(0, events.size(), World.EVENT_STRIDE):
 		var kind: int = events[at]
-		if kind != World.Event.SHOT and kind != World.Event.IMPACT:
+		var type: int = -1
+		var ground: Vector2i = Vector2i.ZERO
+		if kind == World.Event.DIED:
+			if events[at + 5] != player or events[at + Production.DIED_CANCEL_FLAG_AT] != 0:
+				continue  # Not ours, or a cancelled site (the player's own doing).
+			type = events[at + 4]
+			ground = Vector2i(events[at + 2], events[at + 3])
+		elif kind == World.Event.SHOT or kind == World.Event.IMPACT:
+			var row: int = snap.index_of(events[at + 4])  # The hit row; 0 (no target) is none.
+			if row < 0 or snap.owner[row] != player:
+				continue
+			type = snap.type_index[row]
+			var shot: bool = kind == World.Event.SHOT
+			ground = Vector2i(events[at + (6 if shot else 2)], events[at + (7 if shot else 3)])
+		else:
 			continue
-		var row: int = snap.index_of(events[at + 4])  # The hit row; 0 (no target) is none.
-		if row < 0 or snap.owner[row] != player:
-			continue
-		var shot: bool = kind == World.Event.SHOT
-		var ground: Vector2i = Vector2i(
-			events[at + (6 if shot else 2)], events[at + (7 if shot else 3)]
-		)
-		var px: Vector2 = IsoProjection.ground_to_px(ground.x, ground.y)
-		if view.has_point(px) or _is_repeat(ground):
-			continue
-		_raise(snap, row, ground, px)
-		raised = true
+		if not view.has_point(IsoProjection.ground_to_px(ground.x, ground.y)):
+			raised = _note(snap, type, ground) or raised
 	return raised
 
 
-## Whether `ground` is the area of the last cue within its interval.
-func _is_repeat(ground: Vector2i) -> bool:
-	if _clock_ms - _last_ms >= float(_settings().attack_cue_ms):
+## One hit out of view. In the shown cue's own area it keeps that cue up (a steady attack is one
+## cue, with no gap). A repeat in another area that is still within its interval raises nothing;
+## anything else raises a cue.
+func _note(snap: MatchSnapshot, type: int, ground: Vector2i) -> bool:
+	var area: int = _area_of(ground)
+	if area >= 0 and active and area == _shown_area:
+		_left_ms = float(_settings().attack_toast_ms)
+		_area_ms[area] = _clock_ms
 		return false
-	var reach: int = _settings().attack_cue_area_tiles * World.MILLI_PER_TILE
-	var offset: Vector2i = ground - _last_ground
-	return int(offset.x) * offset.x + int(offset.y) * offset.y < reach * reach
-
-
-func _raise(snap: MatchSnapshot, row: int, ground: Vector2i, px: Vector2) -> void:
-	var type: int = snap.type_index[row]
+	if area >= 0 and _clock_ms - _area_ms[area] < float(_settings().attack_cue_ms):
+		return false
+	if area < 0:  # A new area takes the entry that was cued longest ago.
+		area = 0
+		for index: int in range(1, AREAS):
+			if _area_ms[index] < _area_ms[area]:
+				area = index
+	_area_x[area] = ground.x
+	_area_y[area] = ground.y
+	_area_ms[area] = _clock_ms
+	_shown_area = area
 	var building: bool = snap.type_foot_w[type] > 0
 	title = (snap.type_names[type].to_upper() if building else "UNITS") + " UNDER ATTACK"
-	point = px
+	point = IsoProjection.ground_to_px(ground.x, ground.y)
 	active = true
 	_left_ms = float(_settings().attack_toast_ms)
-	_last_ms = _clock_ms
-	_last_ground = ground
 	cue_changed.emit()
+	return true
+
+
+## The table entry whose centre `ground` is within `attack_cue_area_tiles` of (strictly), else -1.
+func _area_of(ground: Vector2i) -> int:
+	var reach: int = _settings().attack_cue_area_tiles * World.MILLI_PER_TILE
+	for index: int in AREAS:
+		var dx: int = ground.x - _area_x[index]
+		var dy: int = ground.y - _area_y[index]
+		if _area_ms[index] > NEVER and dx * dx + dy * dy < reach * reach:
+			return index
+	return -1
+
+
+func _forget() -> void:
+	_area_ms.fill(NEVER)
 
 
 func _on_ticked(_tick: int) -> void:

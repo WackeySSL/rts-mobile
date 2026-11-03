@@ -77,6 +77,12 @@ spacing_glyph = 6
 base_font = ExtResource("4_shoulders_800")
 spacing_glyph = 3
 
+; The title of the attack toast (AttackToast.gd): the same face with a 1 px tracking, so that the
+; longest building name ("SYNTHESIS WORKS UNDER ATTACK") fits the toast's 280 dp.
+[sub_resource type="FontVariation" id="FontVariation_attack_title"]
+base_font = ExtResource("4_shoulders_800")
+spacing_glyph = 1
+
 ; The HUD v2 panel (ADR 0025 section 13): rgba(10, 14, 17, 0.84), a flat box with no blur, a 1 dp
 ; edge in #2C383E, 8 dp corners and 8 dp inside.
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud_panel"]
@@ -495,6 +501,10 @@ PillWord/base_type = &"Label"
 PillWord/colors/font_color = Color(0.06, 0.08, 0.11, 1)
 PillWord/font_sizes/font_size = 14
 PillWord/fonts/font = SubResource("FontVariation_pill_word")
+AttackTitle/base_type = &"Label"
+AttackTitle/colors/font_color = Color(1, 1, 1, 1)
+AttackTitle/font_sizes/font_size = 16
+AttackTitle/fonts/font = SubResource("FontVariation_attack_title")
 ; The result screen (ResultScreen.gd, plan P90): the tint of the emblem, STYLE.md "Icons and glyphs"
 ; (glyph_victory #30A46C, glyph_defeat #E5484D, glyph_draw #9AA5B1); the word beside it says the rest.
 ResultScreen/base_type = &"Control"
