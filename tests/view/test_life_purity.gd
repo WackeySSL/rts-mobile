@@ -12,6 +12,8 @@ const SourceScan: GDScript = preload("res://tests/view/support/source_scan.gd")
 const LIFE_FILES: Array[String] = [
 	"res://game/view/LifeClock.gd",
 	"res://game/view/LifeSettings.gd",
+	"res://game/view/LifeFx.gd",
+	"res://game/view/GroundFx.gd",
 	"res://game/view/RigLife.gd",
 	"res://game/view/SquadPoses.gd",
 ]
