@@ -5,7 +5,9 @@ extends RefCounted
 ## keyed by its `res://` path: the frames of its parts and its cast shadow, its sheet and its item
 ## card; `scripts/gen-art.sh` writes them, `tests/art` compares them with the committed files. A
 ## part's frames share one canvas and one anchor, the union over all of its directions
-## (`layouts`), which is what an atlas sheet needs.
+## (`layouts`), which is what an atlas sheet needs. A pose part (ADR 0027 section 4) has several
+## frames per direction, each drawn from the model's moves of that frame, and its files end in
+## `_f<K>`.
 
 const MODELS_DIR: String = "res://assets/art/models"
 const OUT_DIR: String = IsoSheetDef.ROOT
@@ -25,11 +27,14 @@ class Layout:
 	var anchor: Vector2i = Vector2i.ZERO  ## A unit's ground point, a building's back corner.
 
 
-## The frames of one part: its directions, the polygons of each (an Array of `ArtRender.Poly`).
+## The frames of one part: its directions, and the polygons of each frame (an Array of
+## `ArtRender.Poly`) in the order direction, then frame: `polys[i * frames + k]` is frame `k` of
+## direction `dirs[i]`. A part that is not a pose part has `frames` 1.
 class Shot:
 	extends RefCounted
 	var layout: Layout = null
 	var dirs: Array[int] = []
+	var frames: int = 1
 	var polys: Array[Array] = []
 
 
@@ -56,9 +61,10 @@ static func yaw(dir: int) -> float:
 	return (dir - 6) * 22.5
 
 
-## `res://assets/art/iso/<faction>/<category>/<id>_<part>[_d<NN>].svg`; `dir` -1 has no suffix.
-static func frame_path(model: ArtModel, part: StringName, dir: int) -> String:
-	return IsoSheetDef.frame_path(model.faction, model.category, model.art_id, part, dir)
+## `res://assets/art/iso/<faction>/<category>/<id>_<part>[_d<NN>][_f<K>].svg`; `dir` -1 and `frame`
+## -1 have no suffix.
+static func frame_path(model: ArtModel, part: StringName, dir: int, frame: int = -1) -> String:
+	return IsoSheetDef.frame_path(model.faction, model.category, model.art_id, part, dir, frame)
 
 
 ## The model's sheet, beside its frames.
@@ -76,14 +82,18 @@ static func icon_path(model: ArtModel) -> String:
 static func build(model: ArtModel) -> Dictionary[String, String]:
 	var files: Dictionary[String, String] = {}
 	var source: String = "assets/art/models/%s/%s.tres" % [model.faction, model.art_id]
-	var shots: Dictionary[StringName, Shot] = _shots(model)
+	var shots: Dictionary[StringName, Shot] = all_shots(model)
 	for part: StringName in shots:
 		var shot: Shot = shots[part]
-		for i: int in shot.dirs.size():
-			var path: String = frame_path(model, part, shot.dirs[i])
+		for i: int in shot.dirs.size() * shot.frames:
+			var dir: int = shot.dirs[i / shot.frames]
+			var frame: int = i % shot.frames if shot.frames > 1 else -1
+			var path: String = frame_path(model, part, dir, frame)
 			var what: String = "%s %s" % [model.art_id, part]
-			if shot.dirs[i] >= 0:
-				what += " d%02d" % shot.dirs[i]
+			if dir >= 0:
+				what += " d%02d" % dir
+			if frame >= 0:
+				what += " f%d" % frame
 			var comment: String = "%s: %s from %s, do not edit" % [what, MARKER, source]
 			var polys: Array[ArtRender.Poly] = []
 			polys.assign(shot.polys[i])
@@ -127,7 +137,7 @@ static func stale(files: Dictionary[String, String]) -> Array[String]:
 ## The canvas, origin and anchor of each part of the model, the shadow too.
 static func layouts(model: ArtModel) -> Dictionary[StringName, Layout]:
 	var found: Dictionary[StringName, Layout] = {}
-	var shots: Dictionary[StringName, Shot] = _shots(model)
+	var shots: Dictionary[StringName, Shot] = all_shots(model)
 	for part: StringName in shots:
 		found[part] = shots[part].layout
 	return found
@@ -136,11 +146,17 @@ static func layouts(model: ArtModel) -> Dictionary[StringName, Layout]:
 ## Where the turret or head part's origin lies from the hull's ground point, in px, when the hull
 ## faces direction `dir`: the mount, turned with the hull and projected.
 static func mount_px(model: ArtModel, dir: int) -> Vector2:
-	return ArtRender.project(ArtRender.rotate(model.mount, yaw(dir)))
+	return point_px(model.mount, dir)
+
+
+## Where a point of the model's frame (tiles) lies from the hull's ground point, in px, when the
+## hull faces direction `dir`: turned with the hull and projected. The emitters of a sheet use it.
+static func point_px(point: Vector3, dir: int) -> Vector2:
+	return ArtRender.project(ArtRender.rotate(point, yaw(dir)))
 
 
 ## The shots of every frame part of the model, in file order.
-static func _shots(model: ArtModel) -> Dictionary[StringName, Shot]:
+static func all_shots(model: ArtModel) -> Dictionary[StringName, Shot]:
 	var found: Dictionary[StringName, Shot] = {}
 	for part: StringName in model.frame_parts():
 		found[part] = _shoot(model, part)
@@ -149,21 +165,25 @@ static func _shots(model: ArtModel) -> Dictionary[StringName, Shot]:
 
 static func _shoot(model: ArtModel, part: StringName) -> Shot:
 	var shot: Shot = Shot.new()
-	var prims: Array[ArtPrim] = (
-		model.shadow_prims() if part == ArtModel.SHADOW else model.primitives(part)
-	)
+	shot.frames = model.frames(part)
+	var posed: Array[Array] = []
+	for frame: int in shot.frames:
+		posed.append(model.frame_prims(part, frame))
 	var box: Rect2 = Rect2()
 	for dir: int in model.directions(part):
 		var turn: float = yaw(dir) if dir >= 0 else 0.0
-		var polys: Array[ArtRender.Poly] = (
-			ArtShadow.polys(prims, turn)
-			if part == ArtModel.SHADOW
-			else ArtRender.render(prims, turn, model.faction)
-		)
-		var bounds: Rect2 = ArtRender.bounds(polys)
-		box = bounds if shot.dirs.is_empty() else box.merge(bounds)
+		for frame: int in shot.frames:
+			var prims: Array[ArtPrim] = []
+			prims.assign(posed[frame])
+			var polys: Array[ArtRender.Poly] = (
+				ArtShadow.polys(prims, turn)
+				if part == ArtModel.SHADOW
+				else ArtRender.render(prims, turn, model.faction)
+			)
+			var bounds: Rect2 = ArtRender.bounds(polys)
+			box = bounds if shot.polys.is_empty() else box.merge(bounds)
+			shot.polys.append(polys)
 		shot.dirs.append(dir)
-		shot.polys.append(polys)
 	shot.layout = _layout(box, model.footprint if part in [&"hull", ArtModel.SHADOW] else 0)
 	return shot
 

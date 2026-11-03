@@ -13,7 +13,8 @@ extends Control
 ## player as the match-start bake does. `_add_atlas` adds the effects atlas at scale 1 to each
 ## ground, and `_add_terrain_row` a patch of map tiles with the explored fog over its second row.
 ##
-## The button at the top right turns the pages: Units, Build, Ground, Icons, Iso, Terrain and Hud.
+## The button at the top right turns the pages: Units, Build, Ground, Icons, Iso, Terrain, Hud
+## and Life.
 ## Build (`_add_build_page`, `art_gallery_build.gd`, plan row P103, STYLE.md "Buildings") shows each
 ## building of both factions on the iso ground with a tank in front of it and one behind it at the
 ## camera zooms in two triads, the faction's emblem beside the item card. Iso (`_add_iso_page`,
@@ -27,8 +28,10 @@ extends Control
 ## dp on a dark HUD panel, and the glyphs and rally flags that sit on the map on grass and sand.
 ## Hud (`_add_hud_page`, plan row P118g, ADR 0025 and 0026) shows the fourteen glyphs of the corner
 ## HUD at 48 dp with their names, the glyphs they sit beside, all fourteen at 32 and 24 dp, and each
-## faction's vehicle factory with the construction badge and the offline glyph over it. The pages
-## after Units are built in code and start hidden.
+## faction's vehicle factory with the construction badge and the offline glyph over it. Life
+## (`_add_life_page`, `art_gallery_life.gd`, plan row P135, ADR 0027) shows the two life atlases and
+## every sprite of them at the three camera zooms on grass and sand. The pages after Units are built
+## in code and start hidden.
 ##
 ## To add a unit: its model goes under `assets/art/models/` (STYLE.md "Generated art") and its art
 ## id into `ROSTER_IDS` (Derrick League) or `ACCORD_IDS` (Lumen Accord). A building goes into the
@@ -106,11 +109,12 @@ const FRAME_PX: float = 4.0  ## The dark frame around the patch, so every tile e
 const FRAME_COLOR: Color = Color("1C2127")
 const TERRAIN_ROW_TOP: float = 0.02
 ## The pages the button at the top right cycles through; the button shows the page it is on.
-const PAGES: Array[String] = ["Units", "Build", "Ground", "Icons", "Iso", "Terrain", "Hud"]
+const PAGES: Array[String] = ["Units", "Build", "Ground", "Icons", "Iso", "Terrain", "Hud", "Life"]
 const BuildPage: GDScript = preload("res://game/view/art_gallery_build.gd")
 const Units: GDScript = preload("res://game/view/art_gallery_units.gd")
 const IsoPage: GDScript = preload("res://game/view/art_gallery_iso.gd")
 const TerrainPage: GDScript = preload("res://game/view/art_gallery_ground.gd")
+const LifePage: GDScript = preload("res://game/view/art_gallery_life.gd")
 const ORE_ART: String = "res://assets/art/svg/ore/ore_%s.svg"
 ## Ore tiles by `ore_<name>.svg`: the five fill levels, two variants of each from level 1 up. A
 ## row of a patch is one string of names, left to right (STYLE.md, "Ore").
@@ -304,6 +308,7 @@ var _icons_page: Control = null
 var _iso_page: Control = null
 var _terrain_page: Control = null
 var _hud_page: Control = null
+var _life_page: Control = null
 
 @onready var _back_button: Button = %BackButton
 @onready var _page_button: Button = %PageButton
@@ -334,6 +339,7 @@ func _ready() -> void:
 	_add_iso_page()
 	_add_terrain_page()
 	_add_hud_page()
+	_add_life_page()
 	_tint_team_layers(TEAM_A_GROUP, team_a_color)
 	_tint_team_layers(TEAM_B_GROUP, team_b_color)
 	for node: Node in find_children(TURRET_LAYER, "Sprite2D", true, false):
@@ -516,6 +522,15 @@ func _add_terrain_page() -> void:
 	_terrain_page.grass_color = TERRAIN_COLORS[&"grass_b"]
 	_terrain_page.sand_color = TERRAIN_COLORS[&"sand"]
 	add_child(_terrain_page)
+
+
+## The Life page (plan row P135, ADR 0027): the life atlases and their sprites, built by
+## `art_gallery_life.gd` on first show.
+func _add_life_page() -> void:
+	_life_page = LifePage.new()
+	_life_page.grass_color = TERRAIN_COLORS[&"grass_b"]
+	_life_page.sand_color = TERRAIN_COLORS[&"sand"]
+	add_child(_life_page)
 
 
 func _layer_sprite(layer: String, path: String) -> Sprite2D:
@@ -946,6 +961,7 @@ func _show_page(index: int) -> void:
 	_iso_page.visible = index == 4
 	_terrain_page.visible = index == 5
 	_hud_page.visible = index == 6
+	_life_page.visible = index == 7
 	_page_button.text = PAGES[index]
 
 

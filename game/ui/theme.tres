@@ -44,7 +44,8 @@
 ; Type variations (DevButton, NumberLabel, SelectionPanel, PerfCard, BuildSidebar, SidebarTab, PowerBar,
 ; PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner, ItemCaption,
 ; StrikeButton, StrikeConfirm, BuildButton, ReadyBadge, HudPanel, CapsButton, CapsTitle,
-; CapsBigTitle, EconomyPill, EconomyPillLow, PillWord, ResultScreen, Scrim) are set by
+; CapsBigTitle, EconomyPill, EconomyPillLow, PillWord, EconomyChipLoss, EconomyChipGain,
+; EconomyConsumer, ResultScreen, Scrim) are set by
 ; theme_type_variation on the node, in main.tscn or at build in the script (the power bar's two
 ; pairs switch with the low-power state, the cost of an item tile with its money).
 ; The tabs of the build sidebar get their tints from the icon colours of SidebarTab; the glyphs of
@@ -112,6 +113,43 @@ corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
+
+; The chips of the economy pill (EconomyPill.gd, EconomyCard.gd, P119b): a spend chip in the danger
+; red and an income chip in the ok green under the credits, with 6 dp corners; the card's consumer
+; chips on the panel's edge colour. The digits on the red and the green are PowerNumberLow's (dark,
+; 5.9:1 on the red).
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_chip_loss"]
+content_margin_left = 6.0
+content_margin_top = 2.0
+content_margin_right = 6.0
+content_margin_bottom = 2.0
+bg_color = Color(1, 0.35294118, 0.23529412, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_chip_gain"]
+content_margin_left = 6.0
+content_margin_top = 2.0
+content_margin_right = 6.0
+content_margin_bottom = 2.0
+bg_color = Color(0.43137255, 0.8627451, 0.37254902, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_consumer"]
+content_margin_left = 6.0
+content_margin_top = 2.0
+content_margin_right = 6.0
+content_margin_bottom = 2.0
+bg_color = Color(0.17254902, 0.21960784, 0.24313725, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pill_low"]
 content_margin_left = 4.0
@@ -447,6 +485,12 @@ EconomyPill/base_type = &"PanelContainer"
 EconomyPill/styles/panel = SubResource("StyleBoxFlat_pill")
 EconomyPillLow/base_type = &"EconomyPill"
 EconomyPillLow/styles/panel = SubResource("StyleBoxFlat_pill_low")
+EconomyChipLoss/base_type = &"PanelContainer"
+EconomyChipLoss/styles/panel = SubResource("StyleBoxFlat_chip_loss")
+EconomyChipGain/base_type = &"PanelContainer"
+EconomyChipGain/styles/panel = SubResource("StyleBoxFlat_chip_gain")
+EconomyConsumer/base_type = &"PanelContainer"
+EconomyConsumer/styles/panel = SubResource("StyleBoxFlat_consumer")
 PillWord/base_type = &"Label"
 PillWord/colors/font_color = Color(0.06, 0.08, 0.11, 1)
 PillWord/font_sizes/font_size = 14

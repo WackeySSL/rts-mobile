@@ -37,6 +37,14 @@ extends RefCounted
 ## `strike_tick = stamp + type_strike_delay` (a delay of 0 lands in the same step, right after
 ## FIRE's shots). A BLACKOUT works at once, in the apply itself: see below.
 ##
+## The STRIKE event (ADR 0027 section 7). A valid command, of either kind, also appends one record
+## to `events`, last of its apply: `[STRIKE, the building's id, point x, point y, kind, owner,
+## landing tick, 0]`. The point is the clamped one the sim uses, `kind` is `Kind`, the landing tick
+## is the rupture's `strike_tick` and 0 for a blackout (it keeps no point and no landing). A dropped
+## command writes none. The record sits in COMMANDS, in command order, so before this step's
+## IMPACT, SHOT and DIED records. The view reads it for the launch and the fall of the strike; it is
+## not state, so no hash covers it. No kernel writes events in COMMANDS.
+##
 ## The blackout (`_black_out`, P111). In the command's apply, so in COMMANDS and at once, one pass
 ## over the building rows in ascending row order: every building not owned by the firing player
 ## (neutral ones included, as the rupture hits them) whose position is within `type_strike_radius`
@@ -119,14 +127,33 @@ static func apply_superweapon(world: World, command: Command) -> bool:
 		return false
 	var point_x: int = clampi(command.target_x, 0, maxi(world.map_w - 1, 0))
 	var point_y: int = clampi(command.target_y, 0, maxi(world.map_h - 1, 0))
+	var landing: int = 0  # A blackout has none.
 	if kind == Kind.RUPTURE:
+		landing = stamp + world.type_strike_delay[type]
 		world.strike_x[player] = point_x
 		world.strike_y[player] = point_y
-		pending[player] = stamp + world.type_strike_delay[type]
+		pending[player] = landing
 	else:
 		_black_out(world, player, type, point_x, point_y)
 	world.ready_tick[row] = stamp + world.type_charge_ticks[type]
+	_push_event(world, row, point_x, point_y, kind, landing)
 	return true
+
+
+## Appends the STRIKE record of the accepted command of building row `row` (see the header).
+static func _push_event(
+	world: World, row: int, point_x: int, point_y: int, kind: int, landing: int
+) -> void:
+	var events: PackedInt32Array = world.events
+	var at: int = events.size()
+	events.resize(at + World.EVENT_STRIDE)  # The last int of the record stays 0.
+	events[at] = World.Event.STRIKE
+	events[at + 1] = world.unit_id[row]
+	events[at + 2] = point_x
+	events[at + 3] = point_y
+	events[at + 4] = kind
+	events[at + 5] = world.owner[row]
+	events[at + 6] = landing
 
 
 ## The rupture, in FIRE after the shots (see the header): lands the pending strike of every player

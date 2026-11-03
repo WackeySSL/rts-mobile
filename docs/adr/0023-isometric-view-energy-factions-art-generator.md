@@ -91,6 +91,12 @@ sell, repair, the Air tab and PRIMARY stay out. §13: the fonts row's decision i
 allowed, 2026-11-01)", and ADR 0025 §16 adds the screen of the HUD's generic words. No accepted text
 changed.
 
+Status note (2026-11-02, P132 docs; ADR 0027 accepted 2026-11-02): §2 and §5 carry dated status
+notes: unit life (recoil, walk and idle poses, building animations, smoke and flame, the
+superweapons' launch and fall) is view-only and no longer out of Phase 3; three new layers (z 3,
+25, 55) and a forecast of 16; frame names with `_f<K>` and a page budget of 3584 px. No accepted
+text changed.
+
 ## Context
 - **Michael's canvas.** "Iron Meridian - grafisk udkast" (Claude Design) has two versions. A: a
   science alliance against an industrial bloc, violet crystals. B ("Øst/Vest"): the same mechanics
@@ -323,6 +329,20 @@ Status note (2026-10-31, P26an docs, P86 as merged, #246, 8790d2b; the notes abo
   counts it. The placement controls are HUD and outside the forecast, as every control is. The
   perf arena scene has no build menu, so its card never draws a ghost.
 
+Status note (2026-11-02, P132 docs; ADR 0027 accepted 2026-11-02; the text and the notes above
+stand where ADR 0027 does not change them):
+- **Animations are no longer "not Phase 3".** ADR 0027 adds view-only life: turret and head recoil,
+  squad walk and idle poses, building animations (an `Anim` child sprite on the same atlas, made with
+  the building), damage smoke and flame, and the superweapons' launch and fall. A damaged building
+  still keeps one picture; damage shows as smoke and flame in a layer, not as a damage state.
+- **The z table** gains three layers under one `LifeFx` node: `GroundFx` z 3 (dust, track marks,
+  wrecks; before `WorldSort` in the tree, so rings draw over it, and under the fog), `AirFx` z 25
+  (smoke, steam, flames, sparks; under the bars) and `StrikeFx` z 55.
+- **Draw-call forecast:** 16 (14 + `GroundFx` + `AirFx`), about 22 in the worst moment (19 + 3
+  during a strike).
+- **Nothing tints a sorted sprite** and life never moves a rig's or building's node: offsets and
+  regions of child sprites only, so the one batch and the sort keys hold.
+
 ### 3. Picking, selection and placement
 - **Ground taps:** `IsoProjection.px_to_ground` of the camera's world point, rounded to milli.
 - **Units first** (ADR 0022 §3's order kept): with a selection enemy unit > own unit > enemy
@@ -464,6 +484,20 @@ accepted):
 - **Team colour.** `IsoPlayerArt` replaces the key triad in one pass with one regular expression:
   a key colour followed by no hex digit, matched without regard to case. A key colour written in
   lower case would be replaced too; the generator writes upper case, so no frame has one.
+
+Status note (2026-11-02, P132 docs; ADR 0027 accepted 2026-11-02; the text and the notes above
+stand where ADR 0027 does not change them):
+- **Frame names.** A part may have several frames per direction: `walk`, `idle` (squads) and
+  `anim` (buildings, no direction). Such a frame is named `<type_id>_<part>_d<NN>_f<K>.svg` (K from
+  0), a building's `anim` frame `<type_id>_anim_f<K>.svg` (e.g. `fossil_radar_anim_f0.svg`);
+  today's names are unchanged. `IsoSheetDef` gains `frames`, `stride_milli`, `anim_ms`,
+  `emitters` and `marks`.
+- **"Out of Phase 3: building damage states and animations"** is withdrawn for what ADR 0027 adds
+  (building animations; damage shown as smoke and flame, not as damage states). @3x atlases and
+  terrain transition tiles stay out.
+- **The page budget:** with every life frame the cross-faction two-player page at bake scale 1.0
+  stays at most 3584 px tall (`tests/view/test_iso_atlas_budget.gd`, P137); a set that would pass
+  it is cut before a bake scale drops.
 
 ### 6. Factions: names, look and data
 - **Names** (Michael's answer 1; screened in §13): the **Derrick League** (the oil and gas bloc;

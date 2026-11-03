@@ -10,7 +10,9 @@ extends RefCounted
 ## button, the scope) and the pill, the portrait sheet covers the bottom stack and the pill, and
 ## the scope stays. The economy card, the full map and the strike aim's row are one unfold or mode
 ## at a time (ADR 0025 section 1), so a set that holds more than one of them is not a screen the
-## HUD shows; the card is an overlay on the toast and the group column.
+## HUD shows. The card is a transient overlay (any next touch closes it): it may cover the toast,
+## the group column and, on the short landscape screens, the command bar (its tallest content is
+## about 220 dp, the room under the pill on the 800 x 304 dp screen is 224 dp).
 
 const GAP_DP: float = 8.0
 const PILL_DP: Vector2 = Vector2(200.0, 48.0)  ## The pill's least width and its height.

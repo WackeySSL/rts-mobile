@@ -3,15 +3,23 @@ extends RefCounted
 ## One primitive of an `ArtModel` (ADR 0023 section 5), parsed from one line of its `prims`:
 ##
 ##   <shape> <part> <material> <cx> <cy> <z0> <sx> <sy> <sz> [sides=N] [taper=T] [slope=S] [axis=A]
+##                                                          [group=NAME]
 ##
 ## Lengths are tiles in the model's frame (a unit faces +x; a building's origin is its footprint's
 ## centre). `cx cy` is the centre on the ground, `z0` the bottom, `sx sy sz` the extent along x, y
 ## and z. Shapes: `box`; `wedge`, a box whose top slopes down towards +x by `slope` (default 1);
 ## `prism`, a ring of `sides` (default 12, width across the flats) that `taper` scales at the top
 ## and `axis` (x, y or z, default z) lays along its length (sx, sy or sz); `sphere` of diameter sx.
+## `group` names the pose group the primitive belongs to (ADR 0027 section 4): a pose moves the
+## primitives of a group together, see `ArtMove`. `moved` returns the primitive as a pose frame
+## places it, which `aabb`, `ArtMesh.faces` and `ArtRender` all read.
 
 const SHAPES: Array[StringName] = [&"box", &"wedge", &"prism", &"sphere"]
 const PARTS: Array[StringName] = [&"hull", &"turret", &"head"]
+## The moving element of a building (or of a vehicle): only the pose part `anim` draws it, and it
+## is not a part with frames of its own.
+const ANIM: StringName = &"anim"
+const ALL_PARTS: Array[StringName] = [&"hull", &"turret", &"head", &"anim"]
 const AXES: String = "xyz"
 const FIELDS: int = 9
 
@@ -25,6 +33,9 @@ var sides: int = 4
 var taper: float = 1.0
 var slope: float = 0.0
 var axis: int = 2
+var group: StringName = &""
+var line: String = ""  ## What it was parsed from, which `moved` parses again.
+var moves: Array[ArtMove] = []  ## Applied in order after the rest placement; see `moved`.
 
 
 ## The primitive of a line, or null when the line is not one (a wrong count, an unknown shape or
@@ -33,9 +44,10 @@ static func parse(line: String) -> ArtPrim:
 	var words: PackedStringArray = line.split(" ", false)
 	if words.size() < FIELDS or StringName(words[0]) not in SHAPES:
 		return null
-	if StringName(words[1]) not in PARTS:
+	if StringName(words[1]) not in ALL_PARTS:
 		return null
 	var prim: ArtPrim = ArtPrim.new()
+	prim.line = line
 	prim.shape = StringName(words[0])
 	prim.part = StringName(words[1])
 	prim.material = StringName(words[2])
@@ -58,9 +70,50 @@ static func parse(line: String) -> ArtPrim:
 	return prim
 
 
-## The box that holds the primitive, in the model's frame. A ring of 6 (or any count that has no
-## vertex on the ring's second axis) is longer along it than its size says; the box allows for that.
+## The box that holds the primitive, in the model's frame, after its moves (the box of the moved
+## corners of the rest box).
 func aabb() -> AABB:
+	var box: AABB = _rest_box()
+	if moves.is_empty():
+		return box
+	var moved_box: AABB = AABB(place(box.position), Vector3.ZERO)
+	for i: int in 8:
+		var corner: Vector3 = box.get_endpoint(i)
+		moved_box = moved_box.expand(place(corner))
+	return moved_box
+
+
+## The primitive as a pose frame places it: a new one, parsed from its line again, that carries
+## `by`'s moves of its group, or this one when it has no group or none of the moves is for it.
+func moved(by: Array[ArtMove]) -> ArtPrim:
+	var mine: Array[ArtMove] = []
+	for move: ArtMove in by:
+		if group != &"" and move.group == group:
+			mine.append(move)
+	if mine.is_empty():
+		return self
+	var copy: ArtPrim = ArtPrim.parse(line)
+	copy.moves = mine
+	return copy
+
+
+## `point` of the model's frame after the moves.
+func place(point: Vector3) -> Vector3:
+	for move: ArtMove in moves:
+		point = move.place(point)
+	return point
+
+
+## A direction (a face's normal) after the moves: only their turns act on it.
+func spin(direction: Vector3) -> Vector3:
+	for move: ArtMove in moves:
+		direction = move.spin(direction)
+	return direction
+
+
+## The box of the primitive at rest. A ring of 6 (or any count that has no vertex on the ring's
+## second axis) is longer along it than its size says; the box allows for that.
+func _rest_box() -> AABB:
 	var s: Vector3 = size
 	if shape == &"prism":
 		var f: Vector2 = Vector2.ZERO
@@ -81,7 +134,7 @@ func aabb() -> AABB:
 ## Applies one `key=value` option; false when the key or the value is not allowed for the shape.
 func _set_option(word: String) -> bool:
 	var pair: PackedStringArray = word.split("=")
-	if pair.size() != 2 or not (pair[1].is_valid_float() or pair[0] == "axis"):
+	if pair.size() != 2 or not (pair[1].is_valid_float() or pair[0] in ["axis", "group"]):
 		return false
 	var value: float = pair[1].to_float()
 	var allowed: bool = false
@@ -92,6 +145,9 @@ func _set_option(word: String) -> bool:
 		"sides":
 			sides = int(value)
 			allowed = shape == &"prism" and sides >= 3 and sides <= 24
+		"group":
+			group = StringName(pair[1])
+			allowed = pair[1].is_valid_identifier()
 		"taper":
 			taper = value
 			allowed = taper > 0.0 and shape != &"sphere"
