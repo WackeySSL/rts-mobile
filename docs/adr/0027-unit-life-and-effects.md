@@ -360,6 +360,10 @@ as accepted):
   (`BuildingDamage.stage_of`); the field list grows by ADR 0028 §9's (`damage_writes_per_frame`,
   `damage_building_writes`, `damage_loose`, and for P148 `damage_emit_ms`, `damage_life_ms`,
   `damage_vehicle_fire_scale`, `damage_slots`).
+- **Building animations at stage 2** (Michael, 2026-11-03, ADR 0028 §3's third amendment): a
+  building under 25 % hp hides its `Anim` child, so "building animations (they hold when a building
+  is offline or a site)" above and §6's hold rule gain a third case: hidden at stage 2. At stage 1
+  it runs; a defence's `Head` stays.
 
 ### 9. Budget and proof
 - **Work:** life costs at most 0.56 ms of main-thread work per frame on the phone card, judged by

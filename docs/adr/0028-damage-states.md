@@ -23,7 +23,7 @@ amended: stage 1 shows holes and may reach down to half the body, stage 2 has la
 may reach down to just above the foot (§3's amendment; also Decisions in short 3, the
 Consequences and the Answers). A second amendment the same day makes stage 2 a low ruin and bakes
 the damage patches at 75 % of the bake scale (`IsoAtlas.DAMAGE_SCALE`, Michael's choice of
-fallback). No accepted text changed.
+fallback); a third hides a building's `Anim` at stage 2. No accepted text changed.
 
 ## Context
 - **Michael, 2026-11-03** (his own answers): buildings and vehicles under 50 % hp must look as if
@@ -264,6 +264,19 @@ where this does not change them):
     P26ar note's `ceil(cut x bake_scale)` is reopened with it.
   - The sharpness seam at the cut (a softer patch over a sharp body) is accepted: the damaged top
     is rubble.
+
+Amended a third time 2026-11-03 (Michael, after seeing all sixteen buildings at the new strength:
+"Ja, styrt dem"; this replaces "The `anim` part keeps running at both stages" above and the second
+amendment's "a `mount` or `anim` element ... stands alone on a stub" for `anim`):
+- **At stage 2 the building's `Anim` child is hidden** (lamps, beacons, drill, radar, rotors, fans),
+  so the tall rests that only carried an anim element may collapse too. It shows again when the
+  stage falls back to 1 or 0 (a later repair), like every stage picture.
+- **Stage 1:** the `Anim` still runs, at its rate.
+- **A defence's `Head`** (seated on `mount`) stays at both stages: defences still aim and shoot.
+- The generator's rule is unchanged: a damage move may not touch an `anim` group or `mount`; the
+  anim element is its own part, and the hull groups that carry it may move.
+- Writes: hiding or showing the `Anim` is one visibility write more in the building's 0 → 2 and
+  1 → 2 changes (and back), inside `damage_building_writes`.
 
 ### 4. Vehicle overlays
 - **Where the sprites live: on the sorted world's page, not in `fx/life_atlas.svg`.** An overlay

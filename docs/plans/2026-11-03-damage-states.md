@@ -59,8 +59,8 @@ Size = production lines (tests, fixtures, models, generated frames and SVG not c
 | P156 | A | art-director | art: generator v4, damage poses (`dmg1`, `dmg2`: `shift`, `turn`, `hide`, `char`, `damage=<k>` primitives), the geometric cut row, the patch crop with its overlap, `cuts`, `scar_milli`, the `damage` and `hang` kinds, `IsoSheetDef.root`; no model gets them here, today's files byte-identical (at once) | 230 | P26ar | - |
 | P157 | V2 | touch-ux-dev | view: the neutral sheet in the bake: loaded from `IsoAtlas.NEUTRAL_SHEET` (not the index), added by `WorldSort.bake` after its art-id filter and after `_player_arts`, collected for every player as shared slots, its bases resolved once per bake; the page test counts it | 70 | P156 | - |
 | P157b | V2 | touch-ux-dev | view (2026-11-03, ADR 0028 §3's second amendment): the damage patches baked at `DAMAGE_SCALE` (`IsoAtlas.build` and `planned_page` rasterise `dmg1`/`dmg2` parts at `bake_scale x DAMAGE_SCALE`; each region carries its own scale; `WorldSort`'s dress or the sprite scale uses it); the page test counts the patches at that scale | 60 | P157 | - |
-| P158 | A | art-director | art: `dmg1` and `dmg2` of the sixteen buildings, two `damage` points each, the gallery's stage view, STYLE.md "Damage stages", the page test's `TODAY_*`; 2026-11-03 (Michael, ADR 0028 §3's amendment): stage 1 shows holes, down to half the body; stage 2 has largely collapsed, down to just above the foot; again 2026-11-03: stage 2 a low ruin (rubble, wall stubs) | models + 40 | P156; P157b for its final `TODAY_*` | - |
-| P159 | V1 | touch-ux-dev | view: building stages (`BuildingDamage`, the trimmed body and `Damage` child, the stage queue in the buildings' write share), the remembered stage, ghosts at their stage (`GhostMemoryLayer.building_layer`, `main.tscn`, `BuildingAnims.dress_ghost` by name), the `LifeSettings` fields; HOW_TO_PLAY Buildings; 2026-11-03: the `Damage` child at its region's scale, at least 1 texel of overlap (ADR 0028 §3's second amendment) | 230 | P158; also P160 if P158 took ADR 0028 §3's fallback (b) | - |
+| P158 | A | art-director | art: `dmg1` and `dmg2` of the sixteen buildings, two `damage` points each, the gallery's stage view, STYLE.md "Damage stages", the page test's `TODAY_*`; 2026-11-03 (Michael, ADR 0028 §3's amendment): stage 1 shows holes, down to half the body; stage 2 has largely collapsed, down to just above the foot; again 2026-11-03: stage 2 a low ruin (rubble, wall stubs); third: stage-2 poses may collapse the parts that carried anim elements, and the gallery's Stage view hides the `Anim` at stage 2 | models + 40 | P156; P157b for its final `TODAY_*` | - |
+| P159 | V1 | touch-ux-dev | view: building stages (`BuildingDamage`, the trimmed body and `Damage` child, the stage queue in the buildings' write share), the remembered stage, ghosts at their stage (`GhostMemoryLayer.building_layer`, `main.tscn`, `BuildingAnims.dress_ghost` by name), the `LifeSettings` fields; HOW_TO_PLAY Buildings; 2026-11-03: the `Damage` child at its region's scale, at least 1 texel of overlap (ADR 0028 §3's second amendment); at stage 2 the `Anim` child is hidden, shown again at stage 1 or 0 (third amendment) | 230 | P158; also P160 if P158 took ADR 0028 §3's fallback (b) | - |
 | P160 | A2 | art-director | art: the hand-written overlays (`scar1`, `scar2`, `loose`) in `assets/art/svg/damage/` with "Keep File" imports, their hand-written sheet `damage_sheet.tres` there (`root` set), STYLE.md "Damage overlays"; `damage`, `hang` and `scar_milli` on the eight vehicle models; the gallery | SVG + models + 30 | P156, P157 | - |
 | P161 | V1 | touch-ux-dev | view: vehicle overlays (`VehicleDamage`, `Scar` and `Loose` children of `Hull`, the rig kind bit, positions per hull frame, the pool reset, the stage queue in the vehicles' write share, `damage_loose`); HOW_TO_PLAY Units | 190 | P159, P160 | - |
 | P148 | V3 | touch-ux-dev | view (reworked, ADR 0028 §6): `AirFx`'s damage ring (64), soot, fire and sparks by stage from the `damage` points of buildings and vehicles, `LifeFx.unit_layer`; HOW_TO_PLAY Buildings and Units clauses | 200 | P145, P159, P160 | - |
@@ -161,7 +161,9 @@ the PR. `mix`-driven tests assert exact counts for fixed id sets.
   "cut in the top third" case is on P156's fixture model, not a rule for the sixteen buildings.) (Amended again 2026-11-03: stage 2
   is a low ruin, only rubble and wall stubs on the footprint, a `mount` or `anim` element alone on a
   stub; the patches are baked at `DAMAGE_SCALE` (P157b), and the final `TODAY_*` are measured after
-  P157b.)
+  P157b.) (Third amendment, 2026-11-03: stage-2 poses may collapse the parts that carried anim
+  elements, since the `Anim` is hidden at stage 2; the gallery's Stage view hides the `Anim` at
+  stage 2.)
 - **P160** The neutral overlays (`scar1` 2 frames, `scar2` 2, `loose` 4: two skirt plates for
   `tracks`, two fenders for `wheels`) pass the hand-drawn rules (STYLE.md, no pattern or filter, no
   colour in either key band at saturation 0.30 or more, embers at hue 46° or more), hold ink inside
@@ -192,7 +194,10 @@ the PR. `mix`-driven tests assert exact counts for fixed id sets.
   keeps it all. Under fallback (b) the stage-1 scars come from P160's sheet at the building's
   `damage` points (the same costs). (2026-11-03, ADR 0028 §3's second amendment: the `Damage`
   child is drawn at its region's scale (P157b), and the trimmed body and the patch keep at least 1
-  texel of overlap at every bake scale, a test at `MIN_SCALE`.)
+  texel of overlap at every bake scale, a test at `MIN_SCALE`. Third amendment: at stage 2 the
+  building's `Anim` child is hidden (one visibility write more in 0 → 2 and 1 → 2), and it shows
+  again, running, when the stage falls back to 1 or 0; a defence's `Head` stays at every stage; a
+  test pins it, replacing "the `Anim` keeps its frames and rate at both stages" for stage 2.)
   HOW_TO_PLAY Buildings row (below).
 - **P161** A vehicle (any non-`INFANTRY` armour) whose hp crosses a line shows `Scar` (`scar1` or
   `scar2`, the look by `mix(id, salt)`, scaled by `scar_milli`) and at stage 2 `Loose` (the `marks`
