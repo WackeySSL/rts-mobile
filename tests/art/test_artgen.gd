@@ -234,7 +234,8 @@ func test_a_part_has_one_canvas_in_every_direction_and_a_building_is_anchored_at
 					)
 			# The origin is in the canvas; a building's `anim` part is cropped to its element and the
 			# origin, which then lies on the bottom edge (the footprint's centre is the anchor).
-			var canvas: Rect2i = Rect2i(Vector2i.ZERO, layout.size + Vector2i.ONE)
+			var slack: Vector2i = Vector2i.ONE if part == ArtPrim.ANIM else Vector2i.ZERO
+			var canvas: Rect2i = Rect2i(Vector2i.ZERO, layout.size + slack)
 			assert_bool(canvas.has_point(layout.origin)).override_failure_message(path).is_true()
 			if part in [&"hull", ArtModel.SHADOW] and model.category == &"bld":
 				# A tile is 128 x 64 px at 2x: the canvas of the body is the footprint wide, the

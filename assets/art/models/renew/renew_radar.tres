@@ -28,12 +28,15 @@ prims = PackedStringArray(
 "prism anim graphite -0.4 0.3 2.28 0.24 0.24 0.05 sides=6",
 "prism anim team -0.4 0.44 0.89 0.62 0.13 0.62 sides=6 axis=y group=arr",
 "prism anim bluegrey -0.4 0.452 0.952 0.496 0.13 0.496 sides=6 axis=y group=arr",
+"prism anim bluegrey -0.4 0.369 0.952 0.496 0.012 0.496 sides=6 axis=y group=arr",
 "box anim mint -0.4 0.525 1.16 0.07 0.03 0.07 group=arr",
 "prism anim team -0.27 0.3 1.52 0.13 0.52 0.52 sides=6 axis=x group=arr",
 "prism anim bluegrey -0.258 0.3 1.572 0.13 0.416 0.416 sides=6 axis=x group=arr",
+"prism anim bluegrey -0.341 0.3 1.572 0.012 0.416 0.416 sides=6 axis=x group=arr",
 "box anim mint -0.185 0.3 1.74 0.03 0.07 0.07 group=arr",
 "prism anim team -0.4 0.42 1.85 0.42 0.13 0.42 sides=6 axis=y group=arr",
 "prism anim bluegrey -0.4 0.432 1.892 0.336 0.13 0.336 sides=6 axis=y group=arr",
+"prism anim bluegrey -0.4 0.349 1.892 0.336 0.012 0.336 sides=6 axis=y group=arr",
 "box anim mint -0.4 0.505 2.02 0.07 0.03 0.07 group=arr"
 )
 poses = PackedStringArray(

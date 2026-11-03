@@ -58,8 +58,10 @@ prims = PackedStringArray(
 "prism hull mint 0 0 2 0.3 0.3 0.12 sides=6",
 "box hull mint 0.5 0.6 0.14 0.07 0.07 0.05",
 "box hull mint -0.5 0.6 0.14 0.07 0.07 0.05",
-"prism anim mint 0 0 2.14 0.16 0.16 0.08 sides=6 group=spark_a",
-"prism anim mint 0 0 2.14 0.12 0.12 0.06 sides=6 group=spark_b"
+"prism anim graphite 0 0 2.11 0.32 0.32 0.03 sides=6 group=spark_a",
+"prism anim mint 0 0 2.14 0.24 0.24 0.08 sides=6 group=spark_a",
+"prism anim graphite 0 0 2.11 0.26 0.26 0.03 sides=6 group=spark_b",
+"prism anim mint 0 0 2.14 0.18 0.18 0.06 sides=6 group=spark_b"
 )
 poses = PackedStringArray(
 "anim 4",

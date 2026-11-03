@@ -78,9 +78,10 @@ const HEAD_CANVAS: Array = [204, 114, 102, 70]
 const MUZZLE_LIFT_PX: int = 33  ## Where a shot leaves the Rail Battery at zoom 1.
 const HEAD_DIR: int = 10  ## The Lumen Accord's default view (Spec 04): south-west.
 ## The team share of a default view, about a twelfth (STYLE.md "Light"; the generator's own pin is 3
-## to 20 %). The picture is the body with frame 0 of its `anim` part (P143): the Relay Tower's is
-## its array turned by a phase of 11 degrees, which shows a little less of the team frames (0.062).
-const SHARE: Vector2 = Vector2(0.06, 0.125)
+## to 20 %). The picture is the body with frame 0 of its `anim` part (P143). `SHARE_LOW` holds the
+## floors that differ: the Relay Tower's frame 0 is its array turned by a phase of 11 degrees.
+const SHARE: Vector2 = Vector2(0.065, 0.125)
+const SHARE_LOW: Dictionary[StringName, float] = {&"renew_radar": 0.06}
 const MAX_OVERLAP: float = 0.85  ## Silhouettes of two types at 32 px: intersection over union.
 ## The Blackout Array is an open frame: between the plate and the ring beam its members cover at
 ## most `FRAME_MEAN` of the box they stand in on average and `FRAME_MAX` at any height (the core's
@@ -287,7 +288,7 @@ func test_the_team_share_of_each_default_view_is_about_a_twelfth() -> void:
 		var picture: Image = Support.default_picture(_index.sheet(id), HEAD_DIR)
 		var share: float = Support.team_share(picture, &"renew")
 		assert_float(share).override_failure_message("%s team share %.3f" % [id, share]).is_between(
-			SHARE.x, SHARE.y
+			SHARE_LOW.get(id, SHARE.x), SHARE.y
 		)
 
 
@@ -460,7 +461,8 @@ func test_the_relay_tower_carries_three_array_faces_on_one_slim_pole() -> void:
 	var pole: int = 0
 	for prim: ArtPrim in model.primitives(&"hull") + model.primitives(ArtPrim.ANIM):
 		if prim.shape == &"prism" and prim.axis != 2 and prim.sides == 6:
-			if prim.material == &"bluegrey":
+			# A face's front panel is thick; the thin one behind the frame (P143) is its back.
+			if prim.material == &"bluegrey" and prim.size[prim.axis] > 0.05:
 				faces.append(prim.axis)
 			frames += int(prim.material == &"team")
 		pole += int(prim.shape == &"prism" and prim.sides == 12 and prim.material == &"titanium")

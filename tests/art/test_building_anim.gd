@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## The building `anim` parts, the `emitters` and the `marks` of the models (plan row P143, ADR 0027
-## section 4, STYLE.md "Building life (P143)"): the ten animated buildings of both factions play
+## section 4, STYLE.md "Building life (P143)"): the eight animated buildings of both factions play
 ## their frames (Signal Mast 16, Relay Tower 16, Wind Park 6, Turbine Hall 4, Deep Bore 4, Blackout
 ## Array 4, Grid Hub 2, Crew Hall 2), each frame is a picture of its own and the loop closes, the
 ## moving element leaves the body and stays in the shadow and the card, no turned face sits on a
@@ -28,6 +28,10 @@ const BUILDINGS: Dictionary[StringName, Array] = {
 ## for the Wind Park). Their floors are what the committed frames have.
 const CUT_MARGIN: float = 0.016
 const CUT_FLOORS: Dictionary[StringName, float] = {&"renew_radar": 0.007, &"renew_power": 0.011}
+const Support: GDScript = preload("res://tests/art/building_picture_support.gd")
+## The most a default view may show of the team colour in any frame of a loop (STYLE.md: about a
+## tenth, never a large plate): the pins of the building suites.
+const SHARE_MAX: Dictionary[StringName, float] = {&"fossil": 0.13, &"renew": 0.125}
 const MIN_FACING: float = 0.12  ## A face seen at a sliver is not judged (as in test_artgen_poses).
 ## Where each model's emitters are (kinds, in file order); the vehicles' is one `exhaust`.
 const EMITTERS: Dictionary[StringName, Array] = {
@@ -220,6 +224,24 @@ func test_no_turned_face_of_an_anim_frame_sits_on_a_light_cut() -> void:
 					)
 					checked += 1
 	assert_int(checked).is_greater(1000)
+
+
+func test_no_frame_of_a_loop_shows_a_team_plate_the_backs_of_the_array_faces_included() -> void:
+	var worst: Dictionary[StringName, float] = {}
+	for id: StringName in BUILDINGS:
+		var sheet: IsoSheetDef = _index.sheet(id)
+		for frame: int in sheet.frame_count(&"anim"):
+			var share: float = Support.team_share(
+				Support.default_picture(sheet, 10 if sheet.faction == &"renew" else 6, frame),
+				sheet.faction
+			)
+			worst[id] = maxf(worst.get(id, 0.0), share)
+			(
+				assert_float(share)
+				. override_failure_message("%s frame %d shows %.3f team" % [id, frame, share])
+				. is_less_equal(SHARE_MAX[sheet.faction])
+			)
+	assert_float(worst[&"renew_radar"]).is_greater(0.05)
 
 
 func test_the_blinking_lamps_are_a_lit_bar_that_turns_on_its_housing() -> void:

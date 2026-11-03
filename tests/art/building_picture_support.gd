@@ -26,9 +26,9 @@ static func svg_size(path: String) -> String:
 
 
 ## The default view of a building on a transparent page at zoom 1, its footprint's centre at
-## GROUND_POINT: the body, the first frame of its `anim` part (P143) and the head at its mount
+## GROUND_POINT: the body, frame `frame` of its `anim` part (P143) and the head at its mount
 ## facing `head_dir`.
-static func default_picture(sheet: IsoSheetDef, head_dir: int) -> Image:
+static func default_picture(sheet: IsoSheetDef, head_dir: int, frame: int = 0) -> Image:
 	var picture: Image = Image.create_empty(PAGE.x, PAGE.y, false, Image.FORMAT_RGBA8)
 	var body: Image = raster(FileAccess.get_file_as_string(sheet.path(&"hull", -1)), SCALE)
 	picture.blend_rect(
@@ -37,7 +37,9 @@ static func default_picture(sheet: IsoSheetDef, head_dir: int) -> Image:
 		GROUND_POINT - Vector2i(Vector2(sheet.origin(&"hull")) * SCALE)
 	)
 	if sheet.has_part(&"anim"):
-		var moving: Image = raster(FileAccess.get_file_as_string(sheet.path(&"anim", -1, 0)), SCALE)
+		var moving: Image = raster(
+			FileAccess.get_file_as_string(sheet.path(&"anim", -1, frame)), SCALE
+		)
 		picture.blend_rect(
 			moving,
 			Rect2i(Vector2i.ZERO, moving.get_size()),

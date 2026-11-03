@@ -3,14 +3,14 @@
 <g stroke-width="2" stroke-linejoin="round">
 <polygon points="39.6,45.3 32.3,45.3 32.3,6.1 39.6,6.1" fill="#E8681F" stroke="#B04B12"/>
 <polygon points="32.3,3.8 39.6,3.8 39.6,6.1 32.3,6.1" fill="#FF9446" stroke="#FF9446"/>
+<polygon points="57.7,60.1 56.6,60.7 56.6,21.5 57.7,21" fill="#51574D" stroke="#30342E"/>
+<polygon points="56.6,60.7 55.1,60.7 55.1,21.5 56.6,21.5" fill="#6B7366" stroke="#30342E"/>
+<polygon points="55.1,60.7 54.1,60.1 54.1,21 55.1,21.5" fill="#6B7366" stroke="#30342E"/>
+<polygon points="54.1,20.2 55.1,19.7 56.6,19.7 57.7,20.2 57.7,21 56.6,21.5 55.1,21.5 54.1,21" fill="#828C7C" stroke="#B4BAB1"/>
 <polygon points="44.1,67.5 38.7,67.5 38.7,59.6 44.1,59.6" fill="#6B7366" stroke="#30342E"/>
 <polygon points="38.7,55.1 44.1,55.1 44.1,59.6 38.7,59.6" fill="#828C7C" stroke="#B4BAB1"/>
 <polygon points="33.7,74.1 31,74.1 31,68.6 33.7,68.6" fill="#3B3F39" stroke="#1B1C1A"/>
 <polygon points="31,35.1 33.7,35.1 33.7,68.6 31,68.6" fill="#484D46" stroke="#919490"/>
-<polygon points="30.2,66.2 28.2,65.9 28.2,26.7 30.2,27" fill="#6B7366" stroke="#30342E"/>
-<polygon points="28.2,65.9 27.6,64.9 27.6,25.7 28.2,26.7" fill="#6B7366" stroke="#30342E"/>
-<polygon points="31.7,65.5 30.2,66.2 30.2,27 31.7,26.3" fill="#51574D" stroke="#30342E"/>
-<polygon points="30.2,27 28.2,26.7 27.6,25.7 29.1,25 31.1,25.3 31.7,26.3" fill="#828C7C" stroke="#B4BAB1"/>
 <polygon points="33.7,63.9 31,63.9 31,58.4 33.7,58.4" fill="#3B3F39" stroke="#1B1C1A"/>
 <polygon points="31,24.9 33.7,24.9 33.7,58.4 31,58.4" fill="#484D46" stroke="#919490"/>
 <polygon points="38.2,80.2 33.7,80.2 33.7,44.1 38.2,44.1" fill="#6B7366" stroke="#30342E"/>

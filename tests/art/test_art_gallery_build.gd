@@ -229,10 +229,28 @@ func test_an_animated_building_plays_its_anim_frames_on_the_pages_clock() -> voi
 					. is_equal(Rect2(want))
 				)
 			played += 1
-		# A frame later and a tick of the same frame: the region is not written again.
-		var before: Rect2 = (anims[0] as Sprite2D).region_rect
+		# A tick inside the same frame writes nothing: a sentinel region stays until the frame
+		# changes, and then the frame's region replaces it.
+		var sentinel: Rect2 = Rect2(1, 2, 3, 4)
+		for anim: Sprite2D in anims:
+			anim.region_rect = sentinel
 		page._process(frame_s * 0.1)
-		assert_that((anims[0] as Sprite2D).region_rect).is_equal(before)
+		for anim: Sprite2D in anims:
+			assert_that(anim.region_rect).override_failure_message(id).is_equal(sentinel)
+		page._process(frame_s)
+		for anim: Sprite2D in anims:
+			assert_that(anim.region_rect).override_failure_message(id).is_not_equal(sentinel)
+		# The scene's bounds hold the `anim` canvas, which can reach past the body's.
+		var tank: IsoSheetDef = index.sheet(
+			&"renew_tank" if sheet.faction == &"renew" else &"heavy_tank"
+		)
+		var bounds: Rect2 = page._scene_bounds(sheet, tank, 1.0)
+		var canvas: Rect2 = page._frame_rect(sheet, &"anim", Vector2.ZERO, 1.0)
+		(
+			assert_bool(canvas.has_area() and bounds.encloses(canvas))
+			. override_failure_message(id)
+			. is_true()
+		)
 	assert_int(played).is_equal(ANIMATED.size() * 5)
 	# A building without an `anim` part has no `Anim` sprite and the page plays nothing for it.
 	await _show(page, "barracks")
