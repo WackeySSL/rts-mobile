@@ -3,7 +3,7 @@ extends GdUnitTestSuite
 ## in the settings the target shows at once; with `menu_slide_ms` 160 and stepped frames the
 ## height eases out monotonically and ends on the target at 160 ms, a reversal continues from the
 ## height the menu has, at every step the zone is the drawn height of the holder and the menu's top
-## its drawn top with the ArmyBar 8 dp above it, the minimap keeps its size, a press on the Build
+## its drawn top with the ArmyBar 8 dp above it, a press on the Build
 ## button mid-slide is taken, and a press under the holder's clip edge reaches no hidden control
 ## (the `clip_contents` picking fact, proven here on the engine in use). A slide frame asks
 ## `UiScale` nothing: the lifts use the dp, the orientation and the safe area cached on the last
@@ -216,9 +216,8 @@ func test_a_reversal_mid_slide_continues_from_the_current_height_for_its_share_o
 
 
 ## At every step of a stepped slide, after the layout has run: the zone is the holder's drawn
-## height, the menu's top its drawn top, the ArmyBar 8 dp above it, and the minimap one size.
-func test_at_every_step_the_zone_and_the_top_are_the_drawn_menu_and_the_bar_and_minimap_follow(
-) -> void:
+## height, the menu's top its drawn top and the ArmyBar 8 dp above it.
+func test_at_every_step_the_zone_and_the_top_are_the_drawn_menu_and_the_bar_follows() -> void:
 	for size: Vector2i in ScreenSizes.PORTRAIT:
 		await _open(size, null)
 		BuildSidebar.set_slide_ms_override(SLIDE_MS)
@@ -226,7 +225,6 @@ func test_at_every_step_the_zone_and_the_top_are_the_drawn_menu_and_the_bar_and_
 		var why: String = str(size)
 		_sidebar.collapse()
 		await await_idle_frame()
-		var mini: Vector2 = (_hud("Minimap") as Control).get_global_rect().size  # The target's.
 		for step: int in 11:
 			await await_idle_frame()  # The layout of the height the step set.
 			var holder: Rect2 = _sidebar.get_global_rect()
@@ -240,11 +238,6 @@ func test_at_every_step_the_zone_and_the_top_are_the_drawn_menu_and_the_bar_and_
 			var bar: Rect2 = (_hud("ArmyBar") as Control).get_global_rect()
 			assert_float(bar.end.y + 8.0 * dp).override_failure_message(at).is_equal_approx(
 				holder.position.y, TOLERANCE_PX
-			)
-			(
-				assert_vector((_hud("Minimap") as Control).get_global_rect().size)
-				. override_failure_message(at)
-				. is_equal_approx(mini, Vector2.ONE * TOLERANCE_PX)
 			)
 			_sidebar.advance(STEP_S)
 

@@ -110,6 +110,8 @@ func test_a_hold_on_the_minimap_orders_nothing_under_a_modal() -> void:
 	for modal: String in MODALS:
 		await _open()
 		var mini: Minimap = _main.find_child("Minimap", true, false)
+		(_main.get_node("Hud/HudStateFeed") as HudStateFeed).state.open(HudState.Unfold.RADAR)
+		await await_idle_frame()
 		mini.clock = func() -> int: return _now[0]
 		var at: Vector2 = mini.get_global_rect().get_center()
 		TouchEvents.press(get_viewport(), 0, at)

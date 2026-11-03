@@ -4,7 +4,7 @@ extends GdUnitTestSuite
 ## both orientations, also with a cutout. The row of controls (check mark, X and the strike button)
 ## is shown only while the local player owns a strike building; every part is inside the safe rect,
 ## at least 48 dp on both axes and clear of every other HUD control, and the HUD does not grow.
-## Landscape: the top line, left of the minimap's slot; portrait: the right edge, a gap above the
+## Landscape: the top line, left of the radar scope; portrait: the right edge, a gap above the
 ## ArmyBar. The ring and the foot follow the charge (time left, then "Ready"), a tap on a charging
 ## button does nothing but nudge it, a tap on a ready one aims (its foot asks "Tap map" until a
 ## point is placed), the check mark waits for a point and sends exactly one SUPERWEAPON, the X, the
@@ -85,8 +85,7 @@ func test_every_part_is_inside_the_safe_rect_48_dp_clear_of_the_hud_and_the_hud_
 				if control.is_visible_in_tree():
 					others.append(control.get_global_rect())
 			others.append(_rect("EconomyPill"))
-			if not HudLayout.is_portrait():
-				others.append(_rect("MinimapSlot"))
+			others.append(_rect("RadarScope"))  # In both orientations (P121).
 			for part: String in TAPPABLE:
 				var control: Control = _hud(part)
 				var at: String = "%s: %s %s, safe %s" % [why, part, control.get_global_rect(), safe]
@@ -161,7 +160,7 @@ func test_the_check_mark_and_the_x_are_64_dp_and_the_row_fits_the_safe_rect_with
 		_aim.cancel()
 
 
-func test_landscape_has_the_row_on_the_top_line_left_of_the_slot_and_portrait_at_the_right_edge(
+func test_landscape_has_the_row_on_the_top_line_left_of_the_scope_and_portrait_at_the_right_edge(
 ) -> void:
 	for screen: Dictionary in _screens(null):
 		await _open(screen["size"], screen["metrics"], true)
@@ -184,12 +183,12 @@ func test_landscape_has_the_row_on_the_top_line_left_of_the_slot_and_portrait_at
 				bar.position.y - gap - 2.5, bar.position.y - gap + TOLERANCE_PX
 			)
 		else:
-			var slot: Rect2 = _rect("MinimapSlot")
+			var scope: Rect2 = _rect("RadarScope")
 			assert_float(strike.position.y).override_failure_message(why).is_equal_approx(
 				inner.position.y, 1.0
 			)
 			assert_float(strike.end.x).override_failure_message(why).is_less_equal(
-				slot.position.x - gap + 1.5
+				scope.position.x - gap + 1.5
 			)
 
 

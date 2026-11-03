@@ -327,10 +327,12 @@ PerfCard/styles/panel = SubResource("StyleBoxFlat_backdrop")
 ; to the economy pill's HudTokens with P119.)
 BuildSidebar/base_type = &"PanelContainer"
 BuildSidebar/styles/panel = SubResource("StyleBoxFlat_sidebar")
-; The minimap's camera frame (Minimap.gd, plan P88): a white line on a dark edge, so it reads on every terrain.
+; The minimap's camera frame (Minimap.gd, plan P88; RadarScope.gd draws the same frame, P121): a white line
+; on a dark edge, so it reads on every terrain. The picture's tint is white, so the texels show as painted.
 Minimap/base_type = &"Control"
 Minimap/colors/frame = Color(1, 1, 1, 1)
 Minimap/colors/frame_edge = Color(0.06, 0.08, 0.11, 0.9)
+Minimap/colors/picture = Color(1, 1, 1, 1)
 ; The three tabs: the icon is tinted #9AA5B1 at rest and white when the tab is open.
 SidebarTab/base_type = &"Button"
 SidebarTab/colors/icon_focus_color = Color(0.60392157, 0.64705882, 0.69411765, 1)
