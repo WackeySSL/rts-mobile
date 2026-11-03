@@ -67,6 +67,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Enemies come within weapon range of your standing units | The units fire at them on their own, without an order, until they are destroyed or out of range; units on a move order do not fire until they have arrived; a destroyed unit disappears from the map | |
 | Units that finish an attack meet more enemies | They stop to fight: they drive to weapon range of the enemy they picked, fire until it is destroyed, pick the next one, and go on to where the enemy you tapped stood when no enemy is left within their reach | yes |
 | A unit is selected, or has just been damaged | A health bar shows above its picture, filled by the hp it has left (a unit that lives always shows a little fill). Selected units keep their bar; a damaged unit shows it for a few seconds; an enemy hidden by the fog shows none. Your bars are plain, enemy bars have a notch in the top edge, so you can tell them apart without colour | |
+| A unit or building of yours is hit out of view | A red message at the top says what ("UNITS UNDER ATTACK", or the building's name), with "Tap to jump there": tap it and the view jumps to the hit (an open build drawer folds). A red wedge on the rim of the round radar points that way (a red ring on the radar instead when the hit is inside it), and the full map pings the spot. One hit near the last one soon after raises nothing new (`attack_cue_area_tiles`, `attack_cue_ms`); the message and the wedge go after `attack_toast_ms` (all in `data/input_settings.tres`). While the full map is open you get only the ping | yes |
 
 ## Terrain
 | Action | Result | Teach |
@@ -153,5 +154,4 @@ Menus and rewards get their entries when their phase ships them (ROADMAP Phases 
 
 | Action | Result | Teach |
 |---|---|---|
-| An "under attack" warning at the screen edge | Not shown yet: nothing points at a unit that is hit off screen | |
 | Gas fields | Not shown yet: every field is oil. Once a map names its gas fields, one shows a pale crust with a glowing vent instead of a black pool, with the same full, half and dry steps | |

@@ -18,11 +18,15 @@ extends Control
 const POINTS: int = 32  ## Corners of the disc and of its crop.
 const TOKENS: StringName = &"HudTokens"
 const RING_DP: float = 2.0  ## The rim's line, the HUD panel's edge colour.
+const WEDGE_HALF: float = 0.4  ## Half the cue wedge's spread on the rim (radians).
+const WEDGE_DEPTH_DP: float = 10.0  ## How far its tip reaches in from the rim.
+const PING_DP: float = 5.0  ## The ping's ring radius when the hit is inside the scope.
 
 @export var feed: HudStateFeed  ## `state.open(RADAR)` on a tap; its settings give the radius.
 @export var minimap: Minimap  ## The picture, painted at the fog's cadence.
 @export var camera: RtsCamera  ## The centre of the crop and the frame.
 @export var safe_area: SafeAreaMargin  ## Its gap is the safe rect's (ADR 0025 section 2).
+@export var cues: AttackCues  ## An attack cue shows as a rim wedge, or a ping inside (section 8).
 
 var _finger: int = -1  ## The index of the finger that pressed on the scope, else -1.
 var _view: Rect2 = Rect2()  ## The camera's visible world rect at the last draw.
@@ -35,6 +39,8 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP  # A touch on the scope never reaches the map.
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # A cell is a crisp diamond.
 	resized.connect(queue_redraw)
+	if cues != null:
+		cues.cue_changed.connect(queue_redraw)
 	get_viewport().size_changed.connect(place)
 	place()
 
@@ -184,9 +190,45 @@ func _draw() -> void:
 				piece, get_theme_color(&"picture", Minimap.THEME_TYPE), uvs, texture
 			)
 	_draw_frame(disc)
+	_draw_cue()
 	var ring: PackedVector2Array = disc.duplicate()
 	ring.append(disc[0])
 	draw_polyline(ring, get_theme_color(&"border", TOKENS), UiScale.dp(RING_DP))
+
+
+## Where the shown cue is on the scope, from its middle (the screen's directions); zero for none.
+func cue_offset() -> Vector2:
+	if cues == null or not cues.active:
+		return Vector2.ZERO
+	return world_to_local(cues.point) - size * 0.5
+
+
+## Whether the shown cue lies beyond the scope, so that it is a wedge on the rim, not a ping.
+func cue_on_rim() -> bool:
+	return cue_offset().length() > _radius() - UiScale.dp(PING_DP)
+
+
+## The attack cue: a red wedge on the rim toward the hit (a shape, not colour alone), or, when the
+## hit lies inside the scope's radius, a red ring at its place.
+func _draw_cue() -> void:
+	if cues == null or not cues.active:
+		return
+	var danger: Color = get_theme_color(&"danger", TOKENS)
+	var offset: Vector2 = cue_offset()
+	var radius: float = _radius()
+	var ping: float = UiScale.dp(PING_DP)
+	if offset.length() <= radius - ping:
+		var at: Vector2 = size * 0.5 + offset
+		draw_arc(at, ping, 0.0, TAU, 16, get_theme_color(&"frame_edge", Minimap.THEME_TYPE), ping)
+		draw_arc(at, ping, 0.0, TAU, 16, danger, UiScale.dp(RING_DP))
+		return
+	var angle: float = offset.angle()
+	var wedge: PackedVector2Array = PackedVector2Array()
+	wedge.append(size * 0.5 + Vector2.from_angle(angle) * (radius - UiScale.dp(WEDGE_DEPTH_DP)))
+	for step: int in 5:
+		var spread: float = lerpf(-WEDGE_HALF, WEDGE_HALF, step / 4.0)
+		wedge.append(size * 0.5 + Vector2.from_angle(angle + spread) * radius)
+	draw_colored_polygon(wedge, danger)
 
 
 ## The camera's frame, a dark edge under a light line, cut to the disc.

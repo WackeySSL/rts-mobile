@@ -28,6 +28,7 @@ extends Control
 ## `frame`, `frame_edge`), its widths dp.
 
 const THEME_TYPE: StringName = &"Minimap"
+const PING_DP: float = 8.0  ## The cue ping's ring radius.
 const FRAME_DP: float = 1.5  ## The frame's light line; its dark edge is as wide again each side.
 
 ## The sim's snapshot, for the picture; the camera, to jump and to frame; MapView, for the terrain
@@ -38,6 +39,8 @@ const FRAME_DP: float = 1.5  ## The frame's light line; its dark edge is as wide
 ## Sends the hold's MOVE and gives the thresholds (`long_press_ms`, `tap_slop_dp`); without one a
 ## hold does nothing.
 @export var controller: PlayerController
+## The attack cue (ADR 0025 section 8): a ping at the hit, drawn with the texture on a cue's change.
+@export var cues: AttackCues
 ## Keep equal to `FogLayer.explored_alpha`. The cadence is the scenario's `fog_period_ticks`.
 @export var explored_alpha: int = 140
 
@@ -84,6 +87,8 @@ func _ready() -> void:
 	_frame.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_frame)
 	resized.connect(queue_redraw)
+	if cues != null:
+		cues.cue_changed.connect(queue_redraw)
 	_portrait = UiScale.is_portrait_size(get_tree().root.size)
 	get_viewport().size_changed.connect(_on_size_changed)
 	if runner != null:
@@ -306,3 +311,10 @@ func _draw() -> void:
 	draw_set_transform_matrix(cell_transform())
 	draw_texture_rect(texture, Rect2(0.0, 0.0, _picture.cols(), _picture.rows()), false)
 	_draws += 1
+	if cues != null and cues.active:
+		draw_set_transform_matrix(Transform2D.IDENTITY)
+		var at: Vector2 = world_to_local(cues.point)
+		var radius: float = UiScale.dp(PING_DP)
+		var danger: Color = get_theme_color(&"danger", &"HudTokens")
+		draw_arc(at, radius, 0.0, TAU, 24, get_theme_color(&"frame_edge", THEME_TYPE), radius * 0.6)
+		draw_arc(at, radius, 0.0, TAU, 24, danger, UiScale.dp(FRAME_DP) * 2.0)
