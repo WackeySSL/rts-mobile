@@ -550,6 +550,7 @@ func _start(life: LifeSettings) -> void:
 	if is_instance_valid(_layer):
 		_layer.free()
 	_life = life
+	_life.idle_ms = 0  # The squad's idle pose has its own suite (test_squad_poses.gd).
 	_expect = RigLife.new()
 	_expect.setup(_life)
 	_layer = auto_free(UnitLayer.new())

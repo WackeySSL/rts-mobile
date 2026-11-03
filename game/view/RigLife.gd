@@ -22,6 +22,11 @@ extends RefCounted
 ## idle clock (`idle_clock`) is the match time that never goes back, so a WORKER resume, whose alpha
 ## restarts at 0, does not play a pose backwards. A record holds the answer and the stretch of
 ## match time it holds for, so a rig is asked again only outside it: two compares, not a hash.
+## Squad poses (P142, ADR 0027 section 5): `travel_step` and `walk_frame` turn the ground a squad
+## covered into a walk frame (the cadence follows the speed and stops with the squad), `pose_step`
+## and `pose_idle` give the idle frame of a squad that has stood a while, and `Pose` is the record
+## of the pose a rig's Hull shows. `note_shots` is the loop over a tick's `SHOT` records that both
+## layers share.
 
 const QUANT_PX: float = 0.5  ## Offsets are written in steps of this many world px.
 ## Salts of `LifeClock.mix` for the idle life: one base for each effect, the draws of an id at the
@@ -33,6 +38,20 @@ const SALT_SWEEP: int = 0x30000000
 ## the look (it writes the turret's region).
 const CHANGED_SHAKE: int = 1
 const CHANGED_LOOK: int = 2
+const SALT_POSE: int = 0x40000000  ## The idle pose of a squad (P142).
+## The poses a squad's Hull can show, and the sheet part each one draws.
+const POSE_HULL: int = 0
+const POSE_WALK: int = 1
+const POSE_IDLE: int = 2
+const POSE_PARTS: Array[StringName] = [&"hull", &"walk", &"idle"]
+## A row of the layer's walk table (`travel_step`): the sum of the ground covered, in milli, kept
+## below the stride; the length of the last tick's step; the tick the row was last brought to; and
+## the phase of the id's walk, so a squad does not step in lockstep with its neighbours.
+const WALK_STRIDE: int = 4
+const W_SUM: int = 0
+const W_STEP: int = 1
+const W_TICK: int = 2
+const W_PHASE: int = 3
 
 var life: LifeSettings = null  ## The numbers (`@export var life` of the layer that carries it).
 ## Sprite writes the layers made for life since `setup` (ADR 0027 section 9's hook).
@@ -78,6 +97,13 @@ class Idle:
 	var look_to: float = -1.0
 	var sweep_from: float = 0.0
 	var sweep_to: float = -1.0
+	## A squad's idle pose (P142): the idle-clock time it began to stand (-1 while it walks, fights
+	## or is new), the idle frame it shows (-1 none) and the stretch [pose_from, pose_to) that
+	## answer holds for.
+	var still_ms: float = -1.0
+	var pose: int = -1
+	var pose_from: float = 0.0
+	var pose_to: float = -1.0
 
 	## Back to a rig at rest that has never been idle (a rig out of the pool, a new head).
 	func reset() -> void:
@@ -88,6 +114,49 @@ class Idle:
 		shake_to = -1.0
 		look_to = -1.0
 		sweep_to = -1.0
+		still_ms = -1.0
+		pose = -1
+		pose_to = -1.0
+
+
+## The pose a squad rig's Hull shows (P142): one of the POSE_ constants, the base of the sheet part
+## for the hull's direction (`WorldSort.base_of`) and the frame within it, so a frame change is a
+## table read. `dress` fills what the sheet says, once per dressing: the Hull's offset in each pose
+## (the poses' anchors differ by a pixel or two, and `show_base` writes only the region), the frames
+## of each and the travel that one walk frame takes. `quarter` 0 means a rig with no poses.
+class Pose:
+	extends RefCounted
+
+	var shown: int = POSE_HULL
+	var base: int = -1
+	var frame: int = 0
+	var quarter: int = 0  ## Milli of travel per walk frame: `stride_milli` over the walk frames.
+	var offsets: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
+	var frames: PackedInt32Array = PackedInt32Array([1, 1, 1])
+
+	## The hull standing, at `hull_base`, with no poses until `dress`.
+	func reset(hull_base: int) -> void:
+		shown = POSE_HULL
+		base = hull_base
+		frame = 0
+		quarter = 0
+
+	## Reads the three parts of `sheet`, an atlas at `bake_scale`. False (and no poses) for a sheet
+	## without a `walk` and an `idle` part, a stride, or a stride that the walk frames do not divide.
+	@warning_ignore("integer_division")
+	func dress(sheet: IsoSheetDef, bake_scale: float) -> bool:
+		quarter = 0
+		for pose: int in POSE_PARTS.size():
+			var part: StringName = POSE_PARTS[pose]
+			if not sheet.has_part(part):
+				return false
+			offsets[pose] = -Vector2(sheet.origin(part)) * bake_scale
+			frames[pose] = sheet.frame_count(part)
+		var walk: int = frames[POSE_WALK]
+		if sheet.stride_milli <= 0 or walk < 2 or sheet.stride_milli % walk != 0:
+			return false
+		quarter = sheet.stride_milli / walk
+		return true
 
 
 ## Takes the numbers `new_life` and sizes the table from its `kick_slots`, empty. Not on the frame
@@ -117,6 +186,17 @@ func follow(serial: int) -> void:
 		_serial = serial
 		_count = 0
 		_idle_ms = 0.0
+
+
+## Notes the kicks of one tick's SHOT records, once per tick (the layer's `ticked`): for each SHOT
+## that `accepts.call(snap, at)` lets through (the layer's fog and part rules), `shot` starts a
+## kick. `rock` says whether the hull rocks too. `accepts` is made once by the layer.
+func note_shots(snap: MatchSnapshot, rock: bool, accepts: Callable) -> void:
+	follow(snap.match_serial)
+	var events: PackedInt32Array = snap.events
+	for at: int in range(0, events.size(), World.EVENT_STRIDE):
+		if events[at] == World.Event.SHOT and accepts.call(snap, at):
+			shot(snap, at, rock)
 
 
 ## The kicks in the table now (some may be over: `advance` marks them and `sweep` drops them).
@@ -365,6 +445,90 @@ func sweep_offset(id: int, now_ms: float) -> int:
 	if walk <= 3 * reach:
 		return 2 * reach - walk
 	return walk - steps
+
+
+## Brings row `at` of the walk table (`WALK_STRIDE` ints a row) to snapshot tick `tick`, once for
+## each new tick: the last tick's step joins the sum (kept below `stride`, the frame is periodic in
+## it) and this tick's step is the straight-line length of the move `moved_sq` (the squared milli
+## moved, `FixedMath.isqrt` as `Movement` has it, never |dx| + |dy|, which walks a diagonal sqrt(2)
+## too fast), or 0 for a squad that does not walk. A tick skipped by a catch-up loses its step: a
+## phase hiccup, never a slide.
+static func travel_step(
+	walk: PackedInt32Array, at: int, tick: int, moved_sq: int, walking: bool, stride: int
+) -> void:
+	if walk[at + W_TICK] == tick:
+		return
+	walk[at + W_SUM] = (walk[at + W_SUM] + walk[at + W_STEP]) % stride
+	walk[at + W_STEP] = FixedMath.isqrt(moved_sq) if walking else 0
+	walk[at + W_TICK] = tick
+
+
+## The walk frame of row `at` of the walk table at `alpha` into its tick: `floor((travel + phase) /
+## quarter) mod frames`, the travel being the sum plus `alpha` times the last step. It never goes
+## back inside a tick, and a tick's end meets the next tick's start.
+@warning_ignore("integer_division")
+static func walk_frame(
+	walk: PackedInt32Array, at: int, alpha: float, quarter: int, frames: int
+) -> int:
+	var travel: int = walk[at + W_SUM] + int(alpha * float(walk[at + W_STEP]))
+	return (travel + walk[at + W_PHASE]) / quarter % frames
+
+
+## Brings the pose record `state` of squad `id` to idle-clock time `now_ms` and returns its idle
+## frame (0 to `frames` - 1), -1 for the standing hull. A `standing` squad (it does not walk and has
+## no target) is asked again only outside the stretch its last answer holds for; any other goes
+## back to the hull and forgets when it began to stand.
+func pose_step(state: Idle, id: int, now_ms: float, standing: bool, frames: int) -> int:
+	if not standing:
+		state.still_ms = -1.0
+		state.pose = -1
+		state.pose_to = -1.0
+		return -1
+	if state.still_ms < 0.0:
+		state.still_ms = now_ms
+		state.pose_to = -1.0
+	if now_ms < state.pose_from or now_ms >= state.pose_to:
+		state.pose = pose_idle(id, state.still_ms, now_ms, frames)
+		state.pose_from = span_from
+		state.pose_to = span_to
+	return state.pose
+
+
+## Which idle frame squad `id` shows at match time `now_ms`, standing since `still_ms`: -1 for the
+## first `idle_after_ms`, then one window of `idle_ms` in each cycle of `idle_every_ms` plus up to
+## `idle_every_spread_ms` (4 to 7 s by default, fixed for the id) and the hull between, the window
+## starting in the first half of its cycle's spare time. The cycle's length and the window's place
+## are the id's own, so a column that halts together does not fidget together; the frame is drawn
+## per cycle. The answer holds for the stretch `span_from` and `span_to` say.
+@warning_ignore("integer_division")
+func pose_idle(id: int, still_ms: float, now_ms: float, frames: int) -> int:
+	var after: float = still_ms + float(life.idle_after_ms)
+	var window: int = life.idle_ms
+	span_from = still_ms
+	span_to = INF
+	if now_ms < after:
+		span_to = after
+		return -1
+	if window <= 0 or frames <= 0 or window >= life.idle_every_ms:
+		return -1
+	var period: int = life.idle_every_ms
+	period += LifeClock.pick(id, SALT_POSE, maxi(life.idle_every_spread_ms, 0) + 1)
+	var at: int = floori(now_ms - after)
+	var cycle: int = at / period
+	var start: int = LifeClock.pick(id, SALT_POSE + 3 * cycle + 2, ((period - window) >> 1) + 1)
+	var begins: float = after + float(cycle * period)  # The cycle's first ms.
+	var into: int = at - cycle * period
+	if into < start:
+		span_from = begins
+		span_to = begins + float(start)
+		return -1
+	if into < start + window:
+		span_from = begins + float(start)
+		span_to = begins + float(start + window)
+		return LifeClock.pick(id, SALT_POSE + 3 * cycle + 3, frames)
+	span_from = begins + float(start + window)
+	span_to = begins + float(period)
+	return -1
 
 
 ## An answer that holds for all time, until the function narrows it.

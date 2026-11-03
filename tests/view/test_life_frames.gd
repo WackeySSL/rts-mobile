@@ -34,18 +34,26 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"idle_clock",
 		"idle_step",
 		"sweep_step",
+		"note_shots",
+		"travel_step",
+		"walk_frame",
+		"pose_step",
+		"pose_idle",
 	],
+	"res://game/view/SquadPoses.gd": ["show", "turn"],
 	"res://game/view/LifeClock.gd": ["ms", "tick_ms", "age_ms", "mix", "pick"],
 	"res://game/view/UnitLayer.gd":
 	[
 		"_on_ticked",
-		"_note_shot",
+		"_shot_seen",
 		"_kick_rigs",
 		"_apply_kick",
 		"_apply_idle",
 		"_update_rigs",
+		"_pose_squad",
+		"_show_hull",
 	],
-	"res://game/view/BuildingLayer.gd": ["_on_ticked", "_note_shot", "_kick_heads", "_sweep_heads"],
+	"res://game/view/BuildingLayer.gd": ["_on_ticked", "_shot_seen", "_kick_heads", "_sweep_heads"],
 }
 const ALLOCATING: Array[String] = [
 	"Array(",
