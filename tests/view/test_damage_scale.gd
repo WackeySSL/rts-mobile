@@ -40,37 +40,101 @@ func test_planned_page_matches_the_bake_and_is_smaller_than_full_scale() -> void
 	assert_int(IsoAtlas.page_size(canvases, 1.0, factors).y).is_less(full.y)
 
 
-func test_dress_sizes_a_patch_and_a_body_sprite() -> void:
-	var sort: WorldSort = auto_free(WorldSort.new())
-	sort.atlas = IsoAtlas.build([_sheet()], [_art()], 0.5, false, _reader())
-	var sheet: IsoSheetDef = _sheet()
-	var body: Sprite2D = auto_free(Sprite2D.new())
-	var patch: Sprite2D = auto_free(Sprite2D.new())
-	sort.dress(body, sheet, &"hull")
-	sort.dress(patch, sheet, &"dmg1")
-	assert_float(body.scale.x).is_equal_approx(WorldSort.ART_SCALE / 0.5, 0.0001)
-	assert_float(patch.scale.x).is_equal_approx(WorldSort.ART_SCALE / 0.375, 0.0001)
-	assert_that(body.offset).is_equal(-Vector2(sheet.origin(&"hull")) * 0.5)
-	assert_that(patch.offset).is_equal(-Vector2(sheet.origin(&"dmg1")) * 0.375)
-	# A patch texel covers the same world size as the body's art px it replaces.
-	assert_float(100 * 0.375 * patch.scale.x).is_equal_approx(100 * 0.5 * body.scale.x, 0.0001)
+func test_dress_draws_every_part_over_its_canvas_at_odd_sizes_and_scales() -> void:
+	for scale: float in [1.0, 0.5, 0.875]:
+		var sheet: IsoSheetDef = _sheet({&"hull": Vector2i(101, 71), &"dmg1": Vector2i(102, 70)})
+		var sort: WorldSort = auto_free(WorldSort.new())
+		sort.atlas = IsoAtlas.build([sheet], [_art()], scale, false, _reader(sheet))
+		assert_float(sort.atlas.bake_scale()).is_equal(scale)
+		for part: StringName in [&"hull", &"dmg1", &"shadow"]:
+			var sprite: Sprite2D = auto_free(Sprite2D.new())
+			sort.dress(sprite, sheet, part)
+			sort.show_frame(sprite, sheet, part, -1, 1)
+			var canvas: Vector2 = Vector2(sheet.frame_size(part))
+			var drawn: Vector2 = (sprite.offset + Vector2(sprite.region_rect.size)) * sprite.scale
+			var want: Vector2 = (canvas - Vector2(sheet.origin(part))) * WorldSort.ART_SCALE
+			(
+				assert_vector(drawn)
+				. override_failure_message("%s at %s" % [part, scale])
+				. is_equal_approx(want, Vector2(0.001, 0.001))
+			)
+			assert_float(-sprite.offset.x * sprite.scale.x).is_equal_approx(
+				sheet.origin(part).x * WorldSort.ART_SCALE, 0.001
+			)
 
 
-func test_the_patch_overlap_keeps_a_texel_at_every_scale_down_to_min_scale() -> void:
-	# The generator's 4 px overlap is 3 px at 75 %, 0.75 texel at MIN_SCALE.
-	var overlap: float = 4.0
-	var scale: float = 1.0
-	while scale >= IsoAtlas.MIN_SCALE:
-		var patch: int = IsoAtlas.patch_overlap_texels(overlap, scale)
-		var trim: int = IsoAtlas.body_trim_texels(overlap, scale)
-		assert_int(patch).is_greater_equal(1)
-		# In art px: the body is trimmed by at most the overlap, the patch reaches at least it.
-		assert_float(trim / scale).is_less_equal(overlap + 0.0001)
-		assert_float(patch / (scale * IsoAtlas.DAMAGE_SCALE)).is_greater_equal(overlap - 0.0001)
-		scale *= IsoAtlas.SCALE_STEP
-	assert_int(IsoAtlas.patch_overlap_texels(overlap, IsoAtlas.MIN_SCALE)).is_equal(1)
-	assert_int(IsoAtlas.body_trim_texels(overlap, IsoAtlas.MIN_SCALE)).is_equal(1)
-	assert_int(IsoAtlas.patch_overlap_texels(overlap, 1.0)).is_equal(3)
+func test_a_patch_canvas_taller_than_a_body_but_raster_shorter_packs_after_it() -> void:
+	var sheet: IsoSheetDef = _sheet({&"hull": Vector2i(100, 100), &"dmg1": Vector2i(100, 120)})
+	var atlas: IsoAtlas = IsoAtlas.build([sheet], [_art()], 1.0, true, _reader(sheet))
+	var body: Rect2i = atlas.region(&"hut", &"hull", -1)
+	var patch: Rect2i = atlas.region(&"hut", &"dmg1", -1)
+	assert_int(patch.size.y).is_equal(90)
+	assert_that(body.position).is_equal(Vector2i(RuntimeAtlas.GUTTER_PX, RuntimeAtlas.GUTTER_PX))
+	assert_int(patch.position.x).is_greater(body.position.x)
+
+
+func test_planned_page_follows_the_factor_when_the_patches_set_the_shelf() -> void:
+	var sheet: IsoSheetDef = _sheet(
+		{&"hull": Vector2i(50, 50), &"dmg1": Vector2i(100, 100), &"shadow": Vector2i(50, 50)}
+	)
+	var sheets: Array[IsoSheetDef] = [sheet]
+	var arts: Array[IsoPlayerArt] = [_art()]
+	for scale: float in [1.0, 0.5]:
+		var atlas: IsoAtlas = IsoAtlas.build(sheets, arts, scale, false, _reader(sheet))
+		var planned: Vector2i = IsoAtlas.planned_page(sheets, arts, scale, _reader(sheet))
+		assert_that(planned).is_equal(atlas.page_px())
+	var flat: Array[Vector2i] = [Vector2i(100, 100)]
+	assert_int(IsoAtlas.planned_page(sheets, arts, 1.0, _reader(sheet)).y).is_equal(
+		IsoAtlas.page_size(flat, 1.0, [IsoAtlas.DAMAGE_SCALE] as Array[float]).y
+	)
+
+
+func test_a_set_that_fits_only_because_of_the_factor_keeps_the_scale() -> void:
+	var canvases: Array[Vector2i] = [
+		Vector2i(2100, 1100), Vector2i(2100, 1100), Vector2i(2100, 1100), Vector2i(2100, 1100)
+	]
+	var factors: Array[float] = [0.75, 0.75, 0.75, 0.75]
+	assert_float(IsoAtlas.fit_scale(canvases, 1.0)).is_less(1.0)
+	assert_float(IsoAtlas.fit_scale(canvases, 1.0, factors)).is_equal(1.0)
+	var sheet: IsoSheetDef = _sheet({&"hull": Vector2i(8, 8), &"dmg1": Vector2i(2100, 1100)})
+	sheet.parts = PackedStringArray(["hull", "dmg1", "dmg2"])
+	sheet.counts = PackedInt32Array([1, 1, 1])
+	sheet.frames = PackedInt32Array([1, 1, 1])
+	sheet.sizes = PackedInt32Array([8, 8, 2100, 1100, 2100, 1100])
+	sheet.anchors = PackedInt32Array([0, 0, 0, 0, 0, 0])
+	var players: Array[IsoPlayerArt] = [_art(), _art()]
+	var atlas: IsoAtlas = IsoAtlas.build([sheet], players, 1.0, false, _reader(sheet))
+	assert_float(atlas.bake_scale()).is_equal(1.0)
+
+
+func test_a_patch_region_is_the_rounded_raster_of_its_canvas() -> void:
+	for height: int in [99, 100, 101, 102]:
+		for scale: float in [1.0, 0.875, 0.5]:
+			var sheet: IsoSheetDef = _sheet({&"dmg1": Vector2i(height, height)})
+			var atlas: IsoAtlas = IsoAtlas.build([sheet], [_art()], scale, true, _reader(sheet))
+			var cell: Vector2i = IsoAtlas.page_size(
+				[Vector2i(height, height)] as Array[Vector2i],
+				scale,
+				[IsoAtlas.DAMAGE_SCALE] as Array[float]
+			)
+			var got: int = atlas.region(&"hut", &"dmg1", -1).size.y
+			assert_int(got).is_equal(roundi(height * scale * IsoAtlas.DAMAGE_SCALE))
+			assert_int(got).is_less_equal(cell.y - 2 * RuntimeAtlas.GUTTER_PX)
+
+
+func test_only_the_two_damage_parts_have_a_factor() -> void:
+	for part: StringName in [&"dmg", &"dmg10", &"dmg3", &"dmg1x", &"scar1", &"loose", &"anim"]:
+		assert_float(IsoAtlas.part_factor(part)).is_equal(1.0)
+	assert_float(IsoAtlas.part_factor(&"dmg1")).is_equal(0.75)
+	assert_float(IsoAtlas.part_factor(&"dmg2")).is_equal(0.75)
+
+
+func test_body_cut_row_is_the_integer_ceil() -> void:
+	assert_int(IsoAtlas.body_cut_row(4, 100, 100)).is_equal(4)
+	assert_int(IsoAtlas.body_cut_row(4, 100, 25)).is_equal(1)  # 1.0 exactly.
+	assert_int(IsoAtlas.body_cut_row(5, 100, 25)).is_equal(2)  # 1.25 rounds up.
+	assert_int(IsoAtlas.body_cut_row(0, 100, 50)).is_equal(0)
+	assert_int(IsoAtlas.body_cut_row(60, 101, 51)).is_equal(31)  # 30.3 rounds up.
 
 
 func test_a_sheet_with_no_patch_is_baked_as_before() -> void:
@@ -90,18 +154,32 @@ func test_a_sheet_with_no_patch_is_baked_as_before() -> void:
 	)
 
 
-func _sheet() -> IsoSheetDef:
+## A crafted building: a hull, a shadow and the patches, each `ART_PX` square unless `sizes` says.
+func _sheet(sizes: Dictionary = {}) -> IsoSheetDef:
 	var sheet: IsoSheetDef = IsoSheetDef.new()
 	sheet.art_id = &"hut"
 	sheet.faction = &"fossil"
 	sheet.category = &"bld"
 	sheet.footprint = 2
-	sheet.parts = PackedStringArray(["hull", "shadow", "dmg1", "dmg2"])
-	sheet.counts = PackedInt32Array([1, 1, 1, 1])
-	sheet.frames = PackedInt32Array([1, 1, 1, 1])
-	for part: int in 4:
-		sheet.sizes.append_array([ART_PX, ART_PX])
+	var names: Array[StringName] = [&"hull", &"shadow", &"dmg1", &"dmg2"]
+	if not sizes.is_empty():
+		names = []
+		for part: StringName in sizes:
+			names.append(part)
+		if not names.has(&"shadow"):
+			names.append(&"shadow")
+	var parts: PackedStringArray = PackedStringArray()
+	for part: StringName in names:
+		parts.append(part)
+		var size: Vector2i = sizes.get(part, Vector2i(ART_PX, ART_PX))
+		sheet.sizes.append_array([size.x, size.y])
 		sheet.anchors.append_array([40, 60])
+	sheet.parts = parts
+	sheet.counts = PackedInt32Array()
+	sheet.frames = PackedInt32Array()
+	for part: int in names.size():
+		sheet.counts.append(1)
+		sheet.frames.append(1)
 	return sheet
 
 
@@ -109,11 +187,16 @@ func _art() -> IsoPlayerArt:
 	return IsoPlayerArt.make(&"fossil", KEY, TRIAD)
 
 
-## Every frame is a distinct 100x100 canvas, so no two share a slot.
-func _reader() -> Callable:
+## Every frame is an SVG of its canvas size, distinct per file so no two frames share a slot.
+func _reader(sheet: IsoSheetDef = null) -> Callable:
+	var sheet_def: IsoSheetDef = sheet if sheet != null else _sheet()
 	return func(path: String) -> String:
+		var size: Vector2i = Vector2i(ART_PX, ART_PX)
+		for part: String in sheet_def.parts:
+			if path.get_file().contains(part):
+				size = sheet_def.frame_size(StringName(part))
 		var grey: int = 16 + (path.hash() % 200)
 		return (
-			'<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d">' % [ART_PX, ART_PX]
-			+ '<rect width="%d" height="%d" fill="#%02X8080"/></svg>' % [ART_PX, ART_PX, grey]
+			'<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d">' % [size.x, size.y]
+			+ '<rect width="%d" height="%d" fill="#%02X8080"/></svg>' % [size.x, size.y, grey]
 		)

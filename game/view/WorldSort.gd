@@ -164,10 +164,13 @@ func dress(sprite: Sprite2D, sheet_def: IsoSheetDef, part: StringName) -> void:
 	sprite.centered = false
 	sprite.modulate = Color.WHITE
 	if not atlas.is_empty():
-		# A damage patch is baked at DAMAGE_SCALE of the bake scale (ADR 0028 section 3): its sprite
-		# is that much larger per texel and its offset (texels) that much smaller.
-		var texels: float = atlas.part_scale(part)
-		sprite.scale = Vector2.ONE * (ART_SCALE / texels)
+		# The engine rounds a raster per axis and stretches the art to it, so a sprite is sized per
+		# axis from the raster; a damage patch is baked at IsoAtlas.DAMAGE_SCALE of the bake scale.
+		var canvas: Vector2i = sheet_def.frame_size(part)
+		var texels: Vector2 = (
+			Vector2(IsoAtlas.raster_size(canvas, atlas.part_scale(part))) / Vector2(canvas)
+		)
+		sprite.scale = Vector2(ART_SCALE / texels.x, ART_SCALE / texels.y)
 		sprite.offset = -Vector2(sheet_def.origin(part)) * texels
 
 

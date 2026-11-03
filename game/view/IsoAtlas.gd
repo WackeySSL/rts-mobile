@@ -4,7 +4,8 @@ extends RefCounted
 ## every player's faction, recoloured to the player's triad (`IsoPlayerArt.recolour`), rasterised
 ## with `Image.load_svg_from_string` and packed by `RuntimeAtlas` into one page (`texture()`), so
 ## every sorted sprite batches into one call. `build` is for the main thread at match start.
-## The page is 4096 px wide and at most 4096 tall, cells packed tallest first. The bake scale is
+## The page is 4096 px wide and at most 4096 tall, cells packed tallest raster first (canvas height
+## times `part_factor`). The bake scale is
 ## the largest `bake_scale * SCALE_STEP ^ k` (k = 0, 1, 2, ...), not below MIN_SCALE, whose page
 ## fits; a texel is a px of the 2x art times it, so a sprite draws its region at `0.5 /
 ## bake_scale()`. When none fits, or there is no frame, the atlas is empty and the caller decides.
@@ -20,7 +21,7 @@ extends RefCounted
 ## `frame_count_at(base)` is the group's own length, for a caller that wraps its frames.
 
 const PAGE_MAX_PX: int = 4096
-const SCALE_STEP: float = 0.875  ## A step of 7/8 keeps scale times a canvas exact in a float.
+const SCALE_STEP: float = 0.875  ## A step of 7/8 keeps scale times a canvas exact in a float32.
 const MIN_SCALE: float = 0.25
 ## The hand-written neutral sheet of the damage overlays (ADR 0028 section 4), read from this one
 ## path and not through the index; the file may not exist yet (row P160), and then there is none.
@@ -30,9 +31,16 @@ const NEUTRAL: StringName = &"neutral"  ## The faction of a sheet every player's
 ## The damage patches (`dmg1`, `dmg2`, ADR 0028 section 3, amended 2026-11-03) are rasterised at
 ## `bake_scale * DAMAGE_SCALE` so that their large frames keep the page in its budget; every other
 ## part stays at `bake_scale`. A view constant, not balance. `part_factor` is the one place that
-## names the parts; `WorldSort.dress` sizes a sprite by it. The 4 px art overlap at the cut is 3 px
-## at this scale (0.75 texel at MIN_SCALE): see `patch_overlap_texels`.
+## names the parts; `WorldSort.dress` sizes a sprite per axis from the raster, so it is right for
+## a patch too. The generator's 4 px art overlap at the cut is 3 texels at bake scale 1.0 and
+## under one at MIN_SCALE, so the rule for the Damage child (P159) is, with the body clipped and
+## the overlap > 0 at every scale (the drawn position at MIN_SCALE is P159's test):
+## (a) trim the body at T = `body_cut_row(cut, canvas_h, region_h)` texels: `region.position.y +=
+## T`, `region.size.y -= T`, `offset.y += T`; (b) set `region_filter_clip_enabled = true` on the
+## trimmed body; (c) the patch uses its whole region, through `dress`; (d) invariant:
+## `(patch.offset.y + patch region.size.y) * patch.scale.y >= body.offset.y * body.scale.y`.
 const DAMAGE_SCALE: float = 0.75
+const DAMAGE_PARTS: Array[StringName] = [&"dmg1", &"dmg2"]
 
 static var _keys_built: int = 0
 
@@ -98,7 +106,8 @@ static func build(
 
 
 ## The page a bake of `sheets` for `players` takes at `scale` itself (no scale is lowered), found
-## from the frame files alone: nothing is rasterised. `tests/view/test_iso_atlas_budget.gd` pins
+## from the frame files alone: nothing is rasterised. Damage patches count at `part_factor`.
+## `tests/view/test_iso_atlas_budget.gd` pins
 ## the page budget of ADR 0027 section 4 with it.
 static func planned_page(
 	sheets: Array[IsoSheetDef],
@@ -121,6 +130,7 @@ static func raster_size(canvas: Vector2i, scale: float) -> Vector2i:
 static func page_size(
 	canvases: Array[Vector2i], scale: float, factors: Array[float] = []
 ) -> Vector2i:
+	assert(factors.is_empty() or factors.size() == canvases.size(), "one factor per canvas")
 	var cells: Array[Vector2i] = []
 	for at: int in canvases.size():
 		var factor: float = factors[at] if at < factors.size() else 1.0
@@ -133,6 +143,7 @@ static func page_size(
 static func fit_scale(
 	canvases: Array[Vector2i], requested: float, factors: Array[float] = []
 ) -> float:
+	assert(factors.is_empty() or factors.size() == canvases.size(), "one factor per canvas")
 	var scale: float = requested
 	while scale >= MIN_SCALE:
 		var page: Vector2i = page_size(canvases, scale, factors)
@@ -145,26 +156,20 @@ static func fit_scale(
 ## How much of the bake scale a frame of `part` is rasterised at: DAMAGE_SCALE for a damage patch,
 ## else 1.0. Frame-path safe: comparisons only.
 static func part_factor(part: StringName) -> float:
-	return DAMAGE_SCALE if part == &"dmg1" or part == &"dmg2" else 1.0
+	return DAMAGE_SCALE if part in DAMAGE_PARTS else 1.0
 
 
-## The texels per px of the 2x art that `part` was baked at; 0.0 for an empty atlas. A sprite of
-## the part draws its region at `0.5 / part_scale(part)`, its offset is `-origin * part_scale`.
+## The requested texels per px of the 2x art for `part` (`bake_scale * part_factor`); 0.0 for an
+## empty atlas. The raster rounds each axis, so a sprite sizes itself per axis from
+## `raster_size` (see `WorldSort.dress`), not from this number alone.
 func part_scale(part: StringName) -> float:
 	return _scale * part_factor(part)
 
 
-## For the patch cut (rule for P159): the overlap of `overlap_art_px` (the generator's 4) is
-## `ceil(overlap * scale * DAMAGE_SCALE)` texels of a patch, at least 1, and the body is trimmed
-## by `body_trim_texels` = `floor(overlap * scale)` texels. Trim in the world never exceeds the
-## overlap and the patch reaches at least one texel past it, so no seam opens at any scale.
-static func patch_overlap_texels(overlap_art_px: float, scale: float) -> int:
-	return maxi(1, ceili(overlap_art_px * scale * DAMAGE_SCALE))
-
-
-## The texels to trim off the body at the cut; see `patch_overlap_texels`.
-static func body_trim_texels(overlap_art_px: float, scale: float) -> int:
-	return floori(overlap_art_px * scale)
+## The first body row, in texels, below a cut `cut` art px down a canvas `canvas_h` art px tall
+## whose raster is `region_h` texels tall: the integer ceil of `cut * region_h / canvas_h`.
+static func body_cut_row(cut: int, canvas_h: int, region_h: int) -> int:
+	return (cut * region_h + canvas_h - 1) / canvas_h
 
 
 ## The region of frame `frame` of a part, in texels of `texture()`: `dir` is the frame's `d<NN>`
@@ -298,15 +303,16 @@ static func _collect_sheet(
 				plan.slots.append(slot)
 
 
-## The slots of `plan`, tallest first (ties by name): the order `RuntimeAtlas.layout` packs them.
+## The slots of `plan`, tallest raster first (ties by name): the order `RuntimeAtlas.layout`
+## packs them.
 static func _packing_order(plan: Plan) -> Array[StringName]:
 	var order: Array[StringName] = []
 	for slot: StringName in plan.sizes:
 		order.append(slot)
 	order.sort_custom(
 		func(a: StringName, b: StringName) -> bool:
-			var ha: int = plan.sizes[a].y
-			var hb: int = plan.sizes[b].y
+			var ha: float = plan.sizes[a].y * part_factor(plan.parts[a])
+			var hb: float = plan.sizes[b].y * part_factor(plan.parts[b])
 			return ha > hb or (ha == hb and String(a) < String(b))
 	)
 	return order
