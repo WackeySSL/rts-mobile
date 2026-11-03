@@ -9,9 +9,9 @@ line). Amends ADR 0007 §10 (one new event kind), ADR 0023 §2 (the z table, the
 damage states and animations"). Everything else here is view and art: no rule, state column,
 Command or golden hash changes.
 
-Status note (2026-11-03, the docs row after wave y; Michael's decision of 2026-11-03): §3, §8 and
-the Consequences carry dated status notes: a standing vehicle never shakes, and a driving one
-rumbles (P140b); `StrikeFx` draws up to four line calls per net while it settles (P141); the idle
+Status note (2026-11-03, the docs row after wave y): §3, §8 and the Consequences carry dated
+status notes: a standing vehicle never shakes, and a driving one rumbles (Michael's decision of
+2026-11-03, P140b); `StrikeFx` draws up to four line calls per net while it settles (P141); the idle
 gates stay in `UnitLayer`. No accepted text changed.
 
 ## Michael's answers (2026-11-02)
@@ -356,11 +356,12 @@ and `drive_shake_ms` (80); "idle shake" in §1, §3 and "Reduced" means this rum
   notes in ADR 0007 and ADR 0023; the lead's P26aq applies the svg-art-style text.
 
 Status note (2026-11-03, the docs row after wave y; the text above stays as accepted): "grow only
-by calls into `RigLife.gd`" did not hold. P140, P140b and P142 keep the idle gates (who stands,
-who drives: the move, order, target and armour checks) and the loops that write the kicks and idle
-offsets in `UnitLayer` (916 lines on `main` at 64f0402); `BuildingLayer` is at 673. The per-rig
-state and its steps are in `RigLife.gd` (590). gdlint's 1000-line limit is the watch for lane V1's
-later rows (P153, P154): a row that would cross it first moves those loops into `RigLife`.
+by calls into `RigLife.gd`" did not hold. `UnitLayer` (916 lines on `main` at 64f0402) keeps the
+loop that writes the kicks (P136) and the idle gates (who stands, who drives: the move, order,
+target and armour checks) with the loop that writes the idle offsets (P140, P140b, P142);
+`BuildingLayer` is at 673. The per-rig state and its steps are in `RigLife.gd` (590). gdlint's
+1000-line limit is the watch for lane V1's later rows (P153, P154): a row that would cross it
+first moves those loops into `RigLife`.
 
 ## Alternatives considered
 - **Particles nodes** (`CPUParticles2D`): a node per emitter, their own random seeds (life would

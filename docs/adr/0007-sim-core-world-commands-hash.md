@@ -623,11 +623,12 @@ in command order beside the `SPAWNED` record a `PLACE` writes there. The kind is
 rupture, 2 blackout) and the landing tick the rupture's `strike_tick` (0 for a blackout). Events
 stay out of the state: no hash moves.
 
-Status note (2026-11-03, the docs row after wave y; P128b #265, 3c29b16, as merged; the text and
-the note above stay as accepted): `DIED` is `[2, id, x, y, type, owner, cancelled, 0]`. Index 6
-(`Production.DIED_CANCEL_FLAG_AT`) is 1 when the row was a construction site cancelled by
-`CANCEL_BUILD` (ADR 0026 §6, `build_left` -1) and 0 for every other death. The view gives such a
-record no burst, wreck or crater, and the attack cue skips it (ADR 0025 §8's note of 2026-11-03).
+Status note (2026-11-03, the docs row after wave y; P128b #265, 3c29b16, as merged; the text above
+stays as accepted and the note above as dated): `DIED` is `[2, id, x, y, type, owner, cancelled,
+0]`. Index 6 (`Production.DIED_CANCEL_FLAG_AT`) is 1 when the row was a construction site
+cancelled by `CANCEL_BUILD` (ADR 0026 §6, `build_left` -1) and 0 for every other death. The view
+is to give such a record no burst, wreck or crater (P130, ADR 0026 §6 and §9); the attack cue
+already skips it (ADR 0025 §8's note of 2026-11-03).
 
 ## Consequences
 - Supersedes ADR 0003 §2 (Command and World shapes) and §3 (application rules) where they

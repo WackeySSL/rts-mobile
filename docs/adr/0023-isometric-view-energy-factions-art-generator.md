@@ -358,6 +358,7 @@ the notes above stand):
 - **"Blocked"** (P86b): the ghost's word is drawn with the fallback font (`GhostLayer`), one more
   texture, so the ghost adds about 1 call to the P26an note's count while the word shows.
 
+### 3. Picking, selection and placement
 - **Ground taps:** `IsoProjection.px_to_ground` of the camera's world point, rounded to milli.
 - **Units first** (ADR 0022 §3's order kept): with a selection enemy unit > own unit > enemy
   building > own building, without one own unit > own building. A unit is hit within its pick

@@ -308,8 +308,9 @@ Status note (2026-11-03, the docs row after wave y; P90 #267, d3ef2d6, as merged
 stay as dated): Surrender stands **under** the Dev button, not beside it: both are in one
 top-left stack (`TopLeft`, a VBox), 104 dp high with both shown; in a release build, where the Dev
 button is hidden, Surrender stands alone at the top left. The pill follows the stack's first row
-(ADR 0025 §2) and the attack toast stands below the stack (ADR 0025 §2's note of 2026-11-03). P124
-moves Surrender into the pause menu, and the battle screen's Dev button goes (ADR 0025 §11).
+(ADR 0025 §2); in portrait, and where the landscape room is under `TOAST_LEAST_DP`, the toast
+stands below the stack (ADR 0025 §2's note of 2026-11-03). P124 moves Surrender into the pause
+menu, and the battle screen's Dev button goes (ADR 0025 §11).
 
 ### 7. Where a match starts in Phase 3
 A dev route "Skirmish" loads the battle scene with the skirmish scenario and the dummy opponent as

@@ -21,7 +21,7 @@ the skill change.
 Status note (2026-11-03, the docs row after wave y; P119-P123 as merged): §1, §2, §4-§6, §8 and
 §18 carry dated status notes: a pinned full map stays through placement and the aim; the tabs are
 56 dp, so §5's budget leaves 76 dp; the toast's least width and its fallback place; the economy
-card is the one overlay; an open question on the strike row beside five groups at 360 x 700; the
+card is the one overlay; a lead decision on the group column during a strike aim in portrait; the
 interim portrait zone of 64 dp; the ring of a READY head and the placement restart; a strike on
 own buildings out of view raises no cue (an open question). No accepted text changed.
 
@@ -132,8 +132,8 @@ closes it while the game runs on.
 Status note (2026-11-03, the docs row after wave y; P119c #271 and P121 #278 as merged; the text
 above stays as accepted): "starting either closes the unfold" has the same exceptions as a map
 gesture: **a pinned full map stays open** through the start of placement and of a strike aim
-(`HudState.mode_started` folds the drawer, the economy card and an unpinned full map), as §6's
-`GhostControls.clear_of` implies.
+(`HudState.mode_started` folds the drawer, the economy card and an unpinned full map), as the
+`GhostControls.clear_of` list in `scenes/main.tscn` (which names `RadarMap`) implies.
 
 ### 2. The corners
 Sizes in dp, inside the safe rect (`SafeAreaMargin`: the OS insets plus 12 dp, the larger inset on
@@ -197,14 +197,17 @@ as merged; the text above stays as accepted):
   the scope's foot (56) and that stack, so at y 64 at least, not under the pill's 48 dp line.
 - **One overlay** (a lead decision, 2026-11-02): "No part overlaps another" holds for every part
   but the economy card. The card is transient (any next touch closes it) and may cover the toast,
-  the group column, the scope's foot and, on the short landscape screens, the command bar.
+  the group column and, on the short landscape screens, the command bar; it touches the scope's
+  foot with no gap.
 - **Until P120d** the pill stays beside the open drawer (`Shown.pill_over_drawer`), so the economy
   shows once.
 - **The 8 dp gaps** are tested on the pure function (`test_hud_corners.gd`), with one exemption
-  beside the card's. **Open question (for P120c and P122b, not decided here):** at 360 x 700 dp
-  with five group items the strike aim's check mark and X touch the group column's second column
-  with no gap (the numbers above: a 120 dp column, the 136 dp row, 8 dp and the 72 dp button make
-  336 dp); the test exempts that pair until it is decided.
+  beside the card's: at 360 x 700 dp with five group items the strike aim's check mark and X touch
+  the group column's second column with no gap (the numbers above: a 120 dp column, the 136 dp
+  row, 8 dp and the 72 dp button make 336 dp). **Lead decision (2026-11-03):** in portrait, while
+  a strike aim is shown, the group column holds at most three items in one column and the rest
+  scroll. The strike row (check mark and X, 136 dp) is not moved or squeezed. P122b implements
+  it, and the test's exemption goes with it.
 
 ### 3. The economy pill and its detail card
 - **Content:** the menu button (48 x 48, `glyph_menu`, opens `PAUSE`), a divider, the coin and the
