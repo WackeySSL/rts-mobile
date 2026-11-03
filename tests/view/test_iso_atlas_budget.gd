@@ -104,7 +104,7 @@ func test_the_neutral_sheet_is_counted_once_for_all_players() -> void:
 	# one of 16 frames of 1000 x 500 px takes 16 slots for two players, where a faction's sheet with
 	# frames of the same colour takes 32 (a key colour in each, so one per player).
 	var players: Array[IsoPlayerArt] = [_art(&"fossil", 0), _art(&"fossil", 1)]
-	var base: int = _page(players).y
+	var base: int = IsoAtlas.planned_page(IsoAtlas.load_sheets(), players, 1.0).y
 	var reader: Callable = _giant_reader(NEUTRAL_FRAME)
 	var shared: Vector2i = IsoAtlas.planned_page(_with_giant(&"neutral"), players, 1.0, reader)
 	var shelf: int = 500 + 2 * RuntimeAtlas.GUTTER_PX
@@ -142,17 +142,15 @@ func _with_giant(faction: StringName) -> Array[IsoSheetDef]:
 func _page(players: Array[IsoPlayerArt]) -> Vector2i:
 	var sheets: Array[IsoSheetDef] = _page_sheets()
 	var reader: Callable = Callable()
-	if IsoAtlas.load_neutral_sheet() == null:
+	if IsoAtlas.load_neutral_sheet(IsoAtlas.NEUTRAL_SHEET) == null:
 		reader = _giant_reader(NEUTRAL_FRAME, CRAFTED_ROOT)
-	var page: Vector2i = IsoAtlas.planned_page(sheets, players, 1.0, reader)
-	print("atlas page with the neutral sheet (%s): %dx%d" % [sheets[-1].root, page.x, page.y])
-	return page
+	return IsoAtlas.planned_page(sheets, players, 1.0, reader)
 
 
 ## The committed sheets and, last, the neutral one (the committed one, else the crafted one).
 func _page_sheets() -> Array[IsoSheetDef]:
 	var sheets: Array[IsoSheetDef] = IsoAtlas.load_sheets()
-	var neutral: IsoSheetDef = IsoAtlas.load_neutral_sheet()
+	var neutral: IsoSheetDef = IsoAtlas.load_neutral_sheet(IsoAtlas.NEUTRAL_SHEET)
 	sheets.append(neutral if neutral != null else _crafted_neutral())
 	return sheets
 

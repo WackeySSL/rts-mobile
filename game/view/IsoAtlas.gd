@@ -49,7 +49,7 @@ static func load_sheets() -> Array[IsoSheetDef]:
 
 ## The neutral sheet at `path`, null while the file does not exist: no error, no slot, a bake as
 ## it was before the sheet. A file there that is no neutral `IsoSheetDef` is an error, and null.
-static func load_neutral_sheet(path: String = NEUTRAL_SHEET) -> IsoSheetDef:
+static func load_neutral_sheet(path: String) -> IsoSheetDef:
 	if not ResourceLoader.exists(path):
 		return null
 	var sheet: IsoSheetDef = load(path) as IsoSheetDef
@@ -64,6 +64,9 @@ static func load_neutral_sheet(path: String = NEUTRAL_SHEET) -> IsoSheetDef:
 static func neutral_problem(sheet: IsoSheetDef, path: String) -> String:
 	if sheet == null or sheet.faction != NEUTRAL:
 		return "IsoAtlas: %s is no neutral IsoSheetDef" % path
+	for views: int in sheet.counts:
+		if views != 1:
+			return "IsoAtlas: %s has a neutral part with %d views, not 1" % [path, views]
 	return ""
 
 

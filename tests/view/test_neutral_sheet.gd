@@ -98,6 +98,8 @@ func test_the_sheet_is_collected_for_every_player_as_shared_slots() -> void:
 	sort.neutral_path = _sheet
 	var atlas: IsoAtlas = sort.bake(_scenario(true))
 	assert_object(sort.neutral_sheet()).is_not_null()
+	assert_object(sort.sheet(&"damage")).is_null()  # `_sheets` holds type sheets only.
+	assert_object(sort.sheet(&"light_tank")).is_not_null()
 	for owner_id: int in [1, 2]:
 		assert_int(atlas.frame_count_at(sort.neutral_base(SCAR, owner_id))).is_equal(2)
 		assert_int(atlas.frame_count_at(sort.neutral_base(LOOSE, owner_id))).is_equal(4)
@@ -109,6 +111,33 @@ func test_the_sheet_is_collected_for_every_player_as_shared_slots() -> void:
 		assert_that(atlas.frame_region(sort.neutral_base(LOOSE, 2), frame)).is_equal(first)
 	# The six distinct frames are the only slots it adds, whatever the number of players.
 	assert_that(_distinct_neutral_regions(sort, atlas)).is_equal(6)
+
+
+func test_a_sheet_with_a_part_of_several_views_is_no_neutral_sheet() -> void:
+	var sheet: IsoSheetDef = IsoSheetDef.new()
+	sheet.faction = IsoAtlas.NEUTRAL
+	sheet.counts = PackedInt32Array([1, 16])
+	assert_str(IsoAtlas.neutral_problem(sheet, "a.tres")).contains("16 views")
+	sheet.counts = PackedInt32Array([1, 1])
+	assert_str(IsoAtlas.neutral_problem(sheet, "a.tres")).is_empty()
+
+
+func test_the_bake_key_follows_the_neutral_sheet_s_file_not_only_its_art_id() -> void:
+	var scenario: ScenarioDef = _scenario(true)
+	var sort: WorldSort = auto_free(WorldSort.new())
+	sort.neutral_path = _missing
+	var none: IsoAtlas = sort.bake(scenario)
+	assert_object(sort.neutral_sheet()).is_null()
+	sort.neutral_path = _sheet
+	var first: IsoAtlas = sort.bake(scenario)
+	assert_object(first).is_not_same(none)
+	assert_object(sort.neutral_sheet()).is_not_null()
+	assert_object(sort.bake(scenario)).is_same(first)  # The same file: nothing is baked again.
+	# A second file with the same art id.
+	var second: String = _dir + "/second.tres"
+	assert_int(ResourceSaver.save(load(_sheet).duplicate(), second)).is_equal(OK)
+	sort.neutral_path = second
+	assert_object(sort.bake(scenario)).is_not_same(first)
 
 
 func test_a_type_with_the_neutral_art_id_and_a_key_colour_are_found() -> void:

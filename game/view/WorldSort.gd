@@ -53,7 +53,7 @@ var _sheets: Dictionary[StringName, IsoSheetDef] = {}  ## The baked art ids.
 var _arts: Array[IsoPlayerArt] = []  ## Owner n is entry n - 1.
 var _muzzles: PackedFloat32Array = PackedFloat32Array()  ## Per weapon index of the match, px.
 var _neutral: IsoSheetDef  ## The neutral sheet of this bake, null when there is none.
-## Part -> the bases of the neutral sheet, player slot major: `slot * directions + direction index`.
+## Part -> the base of that part of the neutral sheet for each player slot (one view per part).
 var _neutral_bases: Dictionary[StringName, PackedInt32Array] = {}
 var _key: String = ""  ## The art and players the atlas holds.
 var _serial: int = -1  ## match_serial last synced.

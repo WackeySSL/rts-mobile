@@ -270,7 +270,7 @@ func _bake_atlas() -> IsoAtlas:
 	world_sort.bake(scenario)
 	var sheets: Array[IsoSheetDef] = IsoAtlas.load_sheets()
 	var players: Array[IsoPlayerArt] = _report_players(sheets)
-	var neutral: IsoSheetDef = IsoAtlas.load_neutral_sheet()  # After the players: no faction file.
+	var neutral: IsoSheetDef = world_sort.neutral_sheet()  # After the players: no faction file.
 	if neutral != null:
 		sheets.append(neutral)
 	return IsoAtlas.build(sheets, players, ATLAS_SCALE)
