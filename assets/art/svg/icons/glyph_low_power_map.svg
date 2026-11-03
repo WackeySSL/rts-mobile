@@ -1,0 +1,12 @@
+<!-- Low power glyph for the map: white and grey only, tinted at run time (a consuming building that is short of power). -->
+<!-- Shape: a white warning triangle, point up, with a dark lightning bolt cut into its middle. It sits on a dark rounded plate with a white rim. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- seat: a dark plate with a white rim, so the glyph reads on grass, sand and the red ghost -->
+  <rect x="6" y="6" width="116" height="116" rx="22" fill="#4D4D4D"/>
+  <rect x="11" y="11" width="106" height="106" rx="17" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+  <g transform="translate(64 64) scale(0.8) translate(-64 -64)">
+    <polygon points="64,20 108,100 20,100" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="12" stroke-linejoin="round"/>
+    <!-- bolt, in the edge grey so it reads as a cut-out -->
+    <polygon points="72,46 50,78 63,78 57,98 80,66 67,66 75,46" fill="#4D4D4D" stroke="#4D4D4D" stroke-width="2" stroke-linejoin="round"/>
+  </g>
+</svg>

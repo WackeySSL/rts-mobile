@@ -162,6 +162,30 @@ func test_the_pill_word_has_its_own_font_variation_with_the_tracking_inside_the_
 		assert_float(share).override_failure_message(why).is_between(BAND_LOW, BAND_HIGH)
 
 
+## The attack toast's title (P123) is Big Shoulders at 16 dp with 3 base px of tracking, its own
+## variation, listed in `base_px`, and inside the band on the phones like the classes.
+func test_the_attack_title_has_its_own_font_variation_with_the_tracking_inside_the_band() -> void:
+	var theme: Theme = HudThemes.source()
+	var variation: FontVariation = theme.get_font(&"font", &"AttackTitle") as FontVariation
+	assert_object(variation).is_not_null()
+	assert_str(variation.base_font.resource_path).is_equal(SHOULDERS)
+	assert_int(variation.spacing_glyph).is_equal(3)
+	assert_int(theme.get_font_size(&"font_size", &"AttackTitle")).is_equal(16)
+	assert_str(str(theme.get_type_variation_base(&"AttackTitle"))).is_equal("Label")
+	var kept: PackedStringArray = theme.get_meta(HudTheme.BASE_PX_META)
+	assert_array(kept).contains(["AttackTitle/fonts/font"])
+	for spec: Dictionary in CLASSES:
+		assert_bool(theme.get_font(&"font", spec["type"]) != variation).is_true()
+	for profile: StringName in PHONES:
+		var factor: float = UiScale.base_px_per_dp_for(UiProfiles.by_name(profile))
+		var copy: Theme = HudTheme.scaled(theme, factor)
+		var px: int = copy.get_font_size(&"font_size", &"AttackTitle")
+		var spacing: int = (copy.get_font(&"font", &"AttackTitle") as FontVariation).spacing_glyph
+		var share: float = float(spacing) / float(px)
+		var why: String = "%s: %d px of %d px is %.2f %%" % [profile, spacing, px, share * 100.0]
+		assert_float(share).override_failure_message(why).is_between(BAND_LOW, BAND_HIGH)
+
+
 ## The tablet and the desktop window are above the band, and the test says by how much: a tablet by
 ## up to 0.3 points, the desktop window (the dev window, not a phone) well above. Every profile of
 ## ui_profiles.gd is in exactly one of the three lists, so a new one has to be put in one.

@@ -92,6 +92,10 @@ func test_a_rupture_and_a_blackout_show_on_all_six_screens_in_both_scenes() -> v
 			snap.offline_until.fill(0)
 			snap.offline_until[OWN_HQ] = snap.tick + 450
 			snap.offline_until[ENEMY_HQ] = snap.tick + 450
+			# Enough power: on low power consumers and defences wear glyphs too (P89), and this
+			# test counts the blackout glyphs alone.
+			var local: int = runner.scenario.local_player
+			snap.power_made[local] = maxi(snap.power_made[local], snap.power_used[local])
 			var hall: Vector2 = IsoProjection.ground_to_px(snap.pos_x[OWN_HQ], snap.pos_y[OWN_HQ])
 			var burst: Vector2 = IsoProjection.ground_to_px(AT.x, AT.y)
 			camera.centre_on((hall + burst) * 0.5)
@@ -110,6 +114,9 @@ func test_a_rupture_and_a_blackout_show_on_all_six_screens_in_both_scenes() -> v
 			assert_bool(view.encloses(on_screen)).override_failure_message(note).is_true()
 			assert_int(bars.glyph_count()).override_failure_message(note).is_equal(
 				2 if arena else 1
+			)
+			assert_int(bars.offline_glyph_count()).override_failure_message(note).is_equal(
+				bars.glyph_count()
 			)
 			var glyph: Rect2 = bars.glyph_rect(0)
 			var side: float = GLYPH_DP * UiScale.base_px_per_dp()

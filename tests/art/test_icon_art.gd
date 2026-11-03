@@ -3,7 +3,7 @@ extends GdUnitTestSuite
 ## describes it: the three tab icons, the eleven item icons and the thirty-four glyphs, 128 px
 ## canvases at import scale 1.0, tab and glyph files in greys only, item icons in palette colours,
 ## nothing on the outer pixel, and icons that read apart at 32 px in greyscale over the HUD
-## backdrop; the nine glyphs of the map on a dark seat that keeps them apart from grass, sand and
+## backdrop; the ten glyphs of the map on a dark seat that keeps them apart from grass, sand and
 ## the red ghost, read apart as the HUD tints them; and the two rally flags, a hull and a grey team
 ## layer each, with the foot of the pole at the canvas centre. The gallery pages that show them are
 ## in test_art_gallery_icon_pages.gd. The fourteen glyphs of the corner HUD (plan row P118g) are in
@@ -68,7 +68,12 @@ const REASONS: Array[String] = [
 	"too_far",
 	"cap",
 ]
-const MAP_GLYPHS: Array[String] = ["glyph_offline", "glyph_construct", "glyph_under_attack"]
+const MAP_GLYPHS: Array[String] = [
+	"glyph_offline",
+	"glyph_low_power_map",
+	"glyph_construct",
+	"glyph_under_attack",
+]
 const FLAGS: Array[String] = ["rally_infantry", "rally_vehicles"]
 ## The factions' emblems (P103: the Derrick League's, pinned in test_fossil_buildings.gd; P104: the
 ## Lumen Accord's, pinned in test_renew_emblem.gd).
@@ -156,7 +161,7 @@ func test_the_icon_folder_holds_exactly_the_files_the_style_guide_lists() -> voi
 		found.append(path.get_file().get_basename())
 	expected.sort()
 	assert_array(found).is_equal(expected)
-	assert_int(found.size()).is_equal(50)
+	assert_int(found.size()).is_equal(51)
 
 
 func test_every_icon_is_a_128_px_canvas_imported_at_scale_one_and_every_flag_layer_at_half(
@@ -215,7 +220,7 @@ func test_every_new_svg_names_its_shape_in_one_line_and_item_icons_and_flags_use
 			if not PALETTE.has(found.get_string().to_upper()):
 				problems.append("%s uses %s" % [path, found.get_string()])
 	assert_array(problems).is_empty()
-	assert_int(paths.size()).is_equal(52)
+	assert_int(paths.size()).is_equal(53)
 
 
 ## The outer 2 px of the 128 px canvas (1 px of a 64 px raster) hold no ink, so an icon never
@@ -272,7 +277,7 @@ func test_the_pin_and_the_pin_off_read_apart_at_32_px_by_shape_alone() -> void:
 	assert_float(_closest_pair(["glyph_pin", "glyph_pin_off"])).is_greater_equal(PIN_DIFFERENCE_MIN)
 
 
-## The nine glyphs of the map are never seen white on the HUD (the construction badge is, untinted,
+## The ten glyphs of the map are never seen white on the HUD (the construction badge is, untinted,
 ## white on its dark seat): they are tinted (the gallery's
 ## `GLYPH_TINTS`) and lie on terrain or on the red ghost, so that is how they are compared.
 func test_the_map_glyphs_and_the_placement_reasons_read_apart_at_32_px_in_greyscale() -> void:
