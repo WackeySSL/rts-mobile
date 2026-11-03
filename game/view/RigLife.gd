@@ -46,12 +46,14 @@ const POSE_IDLE: int = 2
 const POSE_PARTS: Array[StringName] = [&"hull", &"walk", &"idle"]
 ## A row of the layer's walk table (`travel_step`): the sum of the ground covered, in milli, kept
 ## below the stride; the length of the last tick's step; the tick the row was last brought to; and
-## the phase of the id's walk, so a squad does not step in lockstep with its neighbours.
-const WALK_STRIDE: int = 4
+## the phase of the id's walk, so a squad does not step in lockstep with its neighbours; and the
+## share of the last step already shown in this tick, so a frame never steps back (`walk_frame`).
+const WALK_INTS: int = 5
 const W_SUM: int = 0
 const W_STEP: int = 1
 const W_TICK: int = 2
 const W_PHASE: int = 3
+const W_SHOWN: int = 4
 
 var life: LifeSettings = null  ## The numbers (`@export var life` of the layer that carries it).
 ## Sprite writes the layers made for life since `setup` (ADR 0027 section 9's hook).
@@ -128,8 +130,10 @@ class Pose:
 	extends RefCounted
 
 	var shown: int = POSE_HULL
-	var base: int = -1
+	## The atlas base of each pose for the hull's direction.
+	var bases: PackedInt32Array = PackedInt32Array([-1, -1, -1])
 	var frame: int = 0
+	var stride: int = 0  ## `stride_milli` of the sheet: the walk table's sum stays below it.
 	var quarter: int = 0  ## Milli of travel per walk frame: `stride_milli` over the walk frames.
 	var offsets: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
 	var frames: PackedInt32Array = PackedInt32Array([1, 1, 1])
@@ -137,8 +141,11 @@ class Pose:
 	## The hull standing, at `hull_base`, with no poses until `dress`.
 	func reset(hull_base: int) -> void:
 		shown = POSE_HULL
-		base = hull_base
+		bases[POSE_HULL] = hull_base
+		bases[POSE_WALK] = -1
+		bases[POSE_IDLE] = -1
 		frame = 0
+		stride = 0
 		quarter = 0
 
 	## Reads the three parts of `sheet`, an atlas at `bake_scale`. False (and no poses) for a sheet
@@ -146,6 +153,7 @@ class Pose:
 	@warning_ignore("integer_division")
 	func dress(sheet: IsoSheetDef, bake_scale: float) -> bool:
 		quarter = 0
+		stride = 0
 		for pose: int in POSE_PARTS.size():
 			var part: StringName = POSE_PARTS[pose]
 			if not sheet.has_part(part):
@@ -155,7 +163,8 @@ class Pose:
 		var walk: int = frames[POSE_WALK]
 		if sheet.stride_milli <= 0 or walk < 2 or sheet.stride_milli % walk != 0:
 			return false
-		quarter = sheet.stride_milli / walk
+		stride = sheet.stride_milli
+		quarter = stride / walk
 		return true
 
 
@@ -447,45 +456,52 @@ func sweep_offset(id: int, now_ms: float) -> int:
 	return walk - steps
 
 
-## Brings row `at` of the walk table (`WALK_STRIDE` ints a row) to snapshot tick `tick`, once for
+## Brings row `at` of the walk table (`WALK_INTS` ints a row) to snapshot tick `tick`, once for
 ## each new tick: the last tick's step joins the sum (kept below `stride`, the frame is periodic in
-## it) and this tick's step is the straight-line length of the move `moved_sq` (the squared milli
-## moved, `FixedMath.isqrt` as `Movement` has it, never |dx| + |dy|, which walks a diagonal sqrt(2)
-## too fast), or 0 for a squad that does not walk. A tick skipped by a catch-up loses its step: a
-## phase hiccup, never a slide.
+## it), nothing of the new tick is shown yet, and this tick's step is the straight-line length of
+## the move `moved_sq` (the squared milli moved, `FixedMath.isqrt` as `Movement` has it, never
+## |dx| + |dy|, which walks a diagonal sqrt(2) too fast), or 0 for a squad that does not walk. A
+## tick skipped by a catch-up loses its step: a phase hiccup, never a slide.
 static func travel_step(
 	walk: PackedInt32Array, at: int, tick: int, moved_sq: int, walking: bool, stride: int
 ) -> void:
 	if walk[at + W_TICK] == tick:
 		return
 	walk[at + W_SUM] = (walk[at + W_SUM] + walk[at + W_STEP]) % stride
+	walk[at + W_SHOWN] = 0
 	walk[at + W_STEP] = FixedMath.isqrt(moved_sq) if walking else 0
 	walk[at + W_TICK] = tick
 
 
 ## The walk frame of row `at` of the walk table at `alpha` into its tick: `floor((travel + phase) /
-## quarter) mod frames`, the travel being the sum plus `alpha` times the last step. It never goes
-## back inside a tick, and a tick's end meets the next tick's start.
+## quarter) mod frames`, the travel being the sum plus the share of the last step that `alpha`
+## reaches, never less than the share already shown in this tick (`W_SHOWN`): a WORKER resume
+## restarts alpha at 0 inside a tick, and the feet do not step back. A tick's end meets the next
+## tick's start.
 @warning_ignore("integer_division")
 static func walk_frame(
 	walk: PackedInt32Array, at: int, alpha: float, quarter: int, frames: int
 ) -> int:
-	var travel: int = walk[at + W_SUM] + int(alpha * float(walk[at + W_STEP]))
-	return (travel + walk[at + W_PHASE]) / quarter % frames
+	var into: int = maxi(walk[at + W_SHOWN], int(alpha * float(walk[at + W_STEP])))
+	walk[at + W_SHOWN] = into
+	return (walk[at + W_SUM] + into + walk[at + W_PHASE]) / quarter % frames
 
 
 ## Brings the pose record `state` of squad `id` to idle-clock time `now_ms` and returns its idle
 ## frame (0 to `frames` - 1), -1 for the standing hull. A `standing` squad (it does not walk and has
-## no target) is asked again only outside the stretch its last answer holds for; any other goes
-## back to the hull and forgets when it began to stand.
-func pose_step(state: Idle, id: int, now_ms: float, standing: bool, frames: int) -> int:
+## no target) is asked again only outside the stretch its last answer holds for; it began to stand
+## at `still_at`, the start of the first tick it stood in (`LifeClock.tick_ms`, so the windows do
+## not depend on the frame that saw it first). Any other squad goes back to the hull and forgets.
+func pose_step(
+	state: Idle, id: int, now_ms: float, still_at: float, standing: bool, frames: int
+) -> int:
 	if not standing:
 		state.still_ms = -1.0
 		state.pose = -1
 		state.pose_to = -1.0
 		return -1
 	if state.still_ms < 0.0:
-		state.still_ms = now_ms
+		state.still_ms = still_at
 		state.pose_to = -1.0
 	if now_ms < state.pose_from or now_ms >= state.pose_to:
 		state.pose = pose_idle(id, state.still_ms, now_ms, frames)

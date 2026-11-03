@@ -39,7 +39,7 @@ func before_test() -> void:
 
 
 func test_the_walk_frame_is_floor_of_travel_plus_phase_over_the_quarter_mod_the_frames() -> void:
-	var walk: PackedInt32Array = PackedInt32Array([0, 0, -1, 100])
+	var walk: PackedInt32Array = PackedInt32Array([0, 0, -1, 100, 0])
 	RigLife.travel_step(walk, 0, 7, 67 * 67, true, STRIDE)
 	assert_int(walk[RigLife.W_STEP]).is_equal(67)
 	assert_int(walk[RigLife.W_TICK]).is_equal(7)
@@ -52,24 +52,25 @@ func test_the_walk_frame_is_floor_of_travel_plus_phase_over_the_quarter_mod_the_
 	walk[RigLife.W_SUM] = 300
 	walk[RigLife.W_PHASE] = 100
 	walk[RigLife.W_STEP] = 0
+	walk[RigLife.W_SHOWN] = 0
 	assert_int(RigLife.walk_frame(walk, 0, 0.0, QUARTER, 4)).is_equal(0)
 
 
 func test_a_tick_joins_the_sum_once_and_a_new_tick_adds_the_step_of_the_last_one() -> void:
-	var walk: PackedInt32Array = PackedInt32Array([0, 0, -1, 0])
+	var walk: PackedInt32Array = PackedInt32Array([0, 0, -1, 0, 0])
 	RigLife.travel_step(walk, 0, 5, 67 * 67, true, STRIDE)
 	RigLife.travel_step(walk, 0, 5, 99 * 99, true, STRIDE)  # The same tick again: nothing.
-	assert_array(walk).is_equal([0, 67, 5, 0])
+	assert_array(walk).is_equal([0, 67, 5, 0, 0])
 	RigLife.travel_step(walk, 0, 6, 67 * 67, true, STRIDE)
-	assert_array(walk).is_equal([67, 67, 6, 0])
+	assert_array(walk).is_equal([67, 67, 6, 0, 0])
 	RigLife.travel_step(walk, 0, 7, 0, false, STRIDE)  # It stops: the last step joins, then none.
-	assert_array(walk).is_equal([134, 0, 7, 0])
+	assert_array(walk).is_equal([134, 0, 7, 0, 0])
 	RigLife.travel_step(walk, 0, 8, 0, false, STRIDE)
-	assert_array(walk).is_equal([134, 0, 8, 0])
+	assert_array(walk).is_equal([134, 0, 8, 0, 0])
 
 
 func test_the_sum_stays_below_the_stride_and_the_frame_does_not_notice() -> void:
-	var wrapped: PackedInt32Array = PackedInt32Array([0, 0, -1, 40])
+	var wrapped: PackedInt32Array = PackedInt32Array([0, 0, -1, 40, 0])
 	var plain: int = 0  # The same ground summed without the wrap.
 	for tick: int in 200:
 		RigLife.travel_step(wrapped, 0, tick, 67 * 67, true, STRIDE)
@@ -81,8 +82,28 @@ func test_the_sum_stays_below_the_stride_and_the_frame_does_not_notice() -> void
 		plain += 67
 
 
+func test_the_walk_frame_never_steps_back_inside_a_tick_after_a_resume() -> void:
+	# A WORKER resume restarts alpha at 0 inside the same tick: the share of the step already
+	# shown stays, so the frame holds (squad 1's phase 100 and a step of 67).
+	var walk: PackedInt32Array = PackedInt32Array([0, 0, -1, 40, 0])
+	RigLife.travel_step(walk, 0, 35, 80 * 80, true, STRIDE)
+	var at_quarter: int = RigLife.walk_frame(walk, 0, 0.25, QUARTER, 4)
+	var at_three_quarters: int = RigLife.walk_frame(walk, 0, 0.75, QUARTER, 4)
+	assert_int(at_three_quarters).is_equal((40 + 60) / QUARTER % 4)
+	assert_int(RigLife.walk_frame(walk, 0, 0.0, QUARTER, 4)).is_equal(at_three_quarters)
+	assert_int(at_quarter).is_equal((40 + 20) / QUARTER % 4)
+	# And a frame that sits just under a boundary at alpha 0.75 does not drop to the one before it.
+	var edge: PackedInt32Array = PackedInt32Array([80, 0, -1, 0, 0])
+	RigLife.travel_step(edge, 0, 1, 80 * 80, true, STRIDE)  # The sum 80, a step of 80.
+	RigLife.travel_step(edge, 0, 2, 80 * 80, true, STRIDE)  # The sum 160, a step of 80.
+	assert_int(RigLife.walk_frame(edge, 0, 0.75, QUARTER, 4)).is_equal((160 + 60) / QUARTER % 4)
+	assert_int(RigLife.walk_frame(edge, 0, 0.0, QUARTER, 4)).is_equal((160 + 60) / QUARTER % 4)
+	RigLife.travel_step(edge, 0, 3, 80 * 80, true, STRIDE)  # A new tick shows from 0 again.
+	assert_int(edge[RigLife.W_SHOWN]).is_equal(0)
+
+
 func test_the_step_is_the_straight_line_length_not_the_sum_of_the_axes() -> void:
-	var walk: PackedInt32Array = PackedInt32Array([0, 0, -1, 0])
+	var walk: PackedInt32Array = PackedInt32Array([0, 0, -1, 0, 0])
 	RigLife.travel_step(walk, 0, 1, 47 * 47 + 47 * 47, true, STRIDE)
 	assert_int(walk[RigLife.W_STEP]).is_equal(66)  # |dx| + |dy| would say 94.
 	RigLife.travel_step(walk, 0, 2, 60 * 60 + 80 * 80, true, STRIDE)
@@ -158,23 +179,24 @@ func test_the_ids_use_both_idle_frames_and_their_windows_are_not_in_step() -> vo
 			else:
 				now += 25.0
 	assert_array(frames.keys()).contains_exactly_in_any_order([0, 1])
-	assert_int(firsts.size()).is_greater(5)  # The first windows of 60 ids start all over.
+	# The first windows of ids 0 to 59 fall in 7 distinct half seconds (Python restatement).
+	assert_int(firsts.size()).is_equal(7)
 
 
 func test_pose_step_asks_again_only_outside_the_stretch_and_a_walk_forgets_the_stand() -> void:
 	var state: RigLife.Idle = RigLife.Idle.new()
-	assert_int(_life.pose_step(state, 3, 5000.0, true, 2)).is_equal(-1)  # It begins to stand.
+	assert_int(_life.pose_step(state, 3, 5000.0, 5000.0, true, 2)).is_equal(-1)  # It begins to stand.
 	assert_float(state.still_ms).is_equal(5000.0)
 	# Its windows are those of the id from 5000: id 3 shows frame 1 from 5000 + 2262.
-	assert_int(_life.pose_step(state, 3, 7261.5, true, 2)).is_equal(-1)
-	assert_int(_life.pose_step(state, 3, 7262.5, true, 2)).is_equal(1)
-	assert_int(_life.pose_step(state, 3, 7861.5, true, 2)).is_equal(1)
-	assert_int(_life.pose_step(state, 3, 7862.5, true, 2)).is_equal(-1)
-	assert_int(_life.pose_step(state, 3, 7500.0, false, 2)).is_equal(-1)  # It walks off.
+	assert_int(_life.pose_step(state, 3, 7261.5, 7000.0, true, 2)).is_equal(-1)
+	assert_int(_life.pose_step(state, 3, 7262.5, 7000.0, true, 2)).is_equal(1)
+	assert_int(_life.pose_step(state, 3, 7861.5, 7000.0, true, 2)).is_equal(1)
+	assert_int(_life.pose_step(state, 3, 7862.5, 7000.0, true, 2)).is_equal(-1)
+	assert_int(_life.pose_step(state, 3, 7500.0, 7000.0, false, 2)).is_equal(-1)  # It walks off.
 	assert_float(state.still_ms).is_equal(-1.0)
-	assert_int(_life.pose_step(state, 3, 7600.0, true, 2)).is_equal(-1)  # It stands from here.
+	assert_int(_life.pose_step(state, 3, 7600.0, 7600.0, true, 2)).is_equal(-1)  # It stands from here.
 	assert_float(state.still_ms).is_equal(7600.0)
-	assert_int(_life.pose_step(state, 3, 7600.0 + 2262.5, true, 2)).is_equal(1)
+	assert_int(_life.pose_step(state, 3, 7600.0 + 2262.5, 7000.0, true, 2)).is_equal(1)
 	state.reset()
 	assert_float(state.still_ms).is_equal(-1.0)
 	assert_int(state.pose).is_equal(-1)

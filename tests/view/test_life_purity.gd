@@ -26,7 +26,6 @@ const LIFE_FUNCTIONS: Dictionary[String, Array] = {
 		"_apply_kick",
 		"_update_rigs",
 		"_apply_idle",
-		"_pose_squad",
 		"_show_hull",
 	],
 	"res://game/view/BuildingLayer.gd": ["_on_ticked", "_shot_seen", "_kick_heads", "_sweep_heads"],

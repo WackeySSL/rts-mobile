@@ -385,10 +385,9 @@ func test_deaths_spawns_rings_and_restarts_leave_no_objects_behind() -> void:
 	# A spawn adds a rig, its Shadow, Hull and Turret, its idle record (`RigLife.Idle`, P140) and its
 	# pose record (`RigLife.Pose`, P142; the tick's snapshot replaced the last one). The first Ring
 	# also loads the ring texture, `loaded` objects that every later ring shares, so the second adds
-	# one. A death frees nothing: the rig
-	# and its ring wait in the pool (P114b), and the restart pools the 40 old rigs, which the 40
-	# rows of the new match take: nothing is made or freed, so a rig is never made twice for want of
-	# the pool.
+	# one. A death frees nothing: the rig and its ring wait in the pool (P114b), and the restart
+	# pools the 40 old rigs, which the 40 rows of the new match take: nothing is made or freed, so a
+	# rig is never made twice for want of the pool.
 	var loaded: int = counts[2] - counts[1] - 1
 	assert_int(loaded).is_greater_equal(0)
 	var expected: Array[int] = [base, base + 6, base + 7 + loaded, base + 8 + loaded]
