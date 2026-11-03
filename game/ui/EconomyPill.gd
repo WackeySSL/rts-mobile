@@ -228,7 +228,10 @@ func place() -> void:
 		shown.left_taken = HudLayout.first_visible_width(top_left) / dp
 	shown.pill_width = _wanted_dp()
 	shown.drawer = feed != null and feed.state.is_open(HudState.Unfold.DRAWER)
-	shown.pill_over_drawer = true  # The economy is the pill's until P120d.
+	visible = not shown.drawer  # Folded: the drawer's head shows the economy (`EconomyLine`).
+	if shown.drawer:
+		_update_chip()
+		return
 	shown.card = card != null and card.visible
 	if shown.card:
 		shown.card_height = card.get_combined_minimum_size().y / dp
@@ -354,6 +357,31 @@ func _pulse(ms: float) -> void:
 ## The step of the pulse the pill shows now (0 full).
 func pulse_step() -> int:
 	return _pulse_step
+
+
+## What the pill shows, for the drawer head's `EconomyLine` (it mirrors these once per frame; the
+## pill goes on reading the snapshots while it is folded).
+func credits_on_screen() -> int:
+	return _displayed
+
+
+func income_per_minute() -> int:
+	return _ring.per_minute()
+
+
+## Power made and power used.
+func power_on_screen() -> Vector2i:
+	return Vector2i(_shown.y, _shown.z)
+
+
+## The credits flash on show, signed; 0 for none.
+func flash_amount() -> int:
+	return _chip_amount if _chip_ms > 0.0 else 0
+
+
+## The pulse's tint of the plate and the triangle.
+func pulse_tint() -> Color:
+	return self_modulate
 
 
 func _flash_ms() -> int:

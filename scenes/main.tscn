@@ -368,7 +368,7 @@ runner = NodePath("../../MatchRunner")
 feed = NodePath("../HudStateFeed")
 safe_area = NodePath("../SafeArea")
 
-[node name="BuildSidebar" type="Control" parent="Hud" node_paths=PackedStringArray("runner", "controller", "placement", "strike_aim", "feed", "safe_area")]
+[node name="BuildSidebar" type="Control" parent="Hud" node_paths=PackedStringArray("runner", "controller", "placement", "strike_aim", "feed", "pill", "safe_area")]
 theme = ExtResource("16_theme")
 script = ExtResource("21_sidebar")
 runner = NodePath("../../MatchRunner")
@@ -376,6 +376,7 @@ controller = NodePath("../../PlayerController")
 placement = NodePath("../../PlacementController")
 strike_aim = NodePath("../../StrikeAim")
 feed = NodePath("../HudStateFeed")
+pill = NodePath("../EconomyPill")
 safe_area = NodePath("../SafeArea")
 
 [node name="SurrenderDialog" type="Control" parent="Hud"]

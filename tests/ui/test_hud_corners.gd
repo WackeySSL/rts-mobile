@@ -116,20 +116,17 @@ func test_the_pill_starts_after_what_stands_at_the_top_left_and_stays_clear_of_t
 	assert_float(out[HudCorners.PILL].size.x).is_equal(HudCorners.PILL_MAX_DP)
 
 
-func test_the_pill_stays_with_the_drawer_open_only_when_asked_and_ends_short_of_the_panel() -> void:
-	var shown: HudCorners.Shown = _shown(["drawer"], 1)
+func test_the_pill_folds_with_the_drawer_open_and_the_toast_starts_after_the_stack() -> void:
+	var shown: HudCorners.Shown = _shown(["drawer", "toast"], 1)
 	shown.left_taken = 48.0
 	shown.pill_width = 900.0
-	var safe: Rect2 = Rect2(0.0, 0.0, 776.0, 280.0)
-	var out: Dictionary[StringName, Rect2] = _place(safe, false, shown)
-	assert_bool(out.has(HudCorners.PILL)).is_false()  # As before: the drawer covers it.
-	shown.pill_over_drawer = true  # P120, until P120d puts the economy in the drawer's head.
-	out = _place(safe, false, shown)
-	assert_bool(out.has(HudCorners.PILL)).is_true()
-	assert_float(out[HudCorners.PILL].end.x).is_less_equal(out[HudCorners.DRAWER].position.x - 8.0)
-	out = _place(Rect2(0.0, 0.0, 336.0, 676.0), true, shown)  # Under the sheet's top: the pill too.
-	assert_bool(out.has(HudCorners.PILL)).is_true()
-	assert_bool(out[HudCorners.PILL].intersects(out[HudCorners.DRAWER])).is_false()
+	var out: Dictionary[StringName, Rect2] = _place(Rect2(0.0, 0.0, 776.0, 280.0), false, shown)
+	assert_bool(out.has(HudCorners.PILL)).is_false()  # The drawer's head shows the economy.
+	assert_float(out[HudCorners.TOAST].position.x).is_greater_equal(56.0)  # After the stack.
+	assert_float(out[HudCorners.TOAST].end.x).is_less_equal(out[HudCorners.DRAWER].position.x - 8.0)
+	out = _place(Rect2(0.0, 0.0, 336.0, 676.0), true, shown)
+	assert_bool(out.has(HudCorners.PILL)).is_false()
+	assert_bool(out.has(HudCorners.SCOPE)).is_true()  # The scope stays over the sheet.
 
 
 func test_the_drawer_is_a_side_panel_of_40_percent_between_312_and_420_dp_or_a_half_sheet() -> void:
