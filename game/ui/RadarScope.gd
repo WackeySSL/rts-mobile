@@ -32,6 +32,8 @@ var _finger: int = -1  ## The index of the finger that pressed on the scope, els
 var _view: Rect2 = Rect2()  ## The camera's visible world rect at the last draw.
 var _paints: int = -1  ## The picture's `redraw_count()` at the last draw.
 var _draws: int = 0
+var _wedges: int = 0
+var _rings: int = 0
 
 
 func _ready() -> void:
@@ -208,27 +210,42 @@ func cue_on_rim() -> bool:
 	return cue_offset().length() > _radius() - UiScale.dp(PING_DP)
 
 
+## The cue's wedge on the rim, tip first (the tip is inside, toward the middle), in the scope's own
+## px: it points the way the hit lies from the camera's centre. Empty for no cue or a hit inside
+## the scope (that one is a ring).
+func cue_wedge() -> PackedVector2Array:
+	var wedge: PackedVector2Array = PackedVector2Array()
+	if not cue_on_rim():
+		return wedge
+	var angle: float = cue_offset().angle()
+	var radius: float = _radius()
+	wedge.append(size * 0.5 + Vector2.from_angle(angle) * (radius - UiScale.dp(WEDGE_DEPTH_DP)))
+	for step: int in 5:
+		var spread: float = lerpf(-WEDGE_HALF, WEDGE_HALF, step / 4.0)
+		wedge.append(size * 0.5 + Vector2.from_angle(angle + spread) * radius)
+	return wedge
+
+
+## How many wedges and rings the scope drew for a cue (a seam for the tests).
+func cue_draws() -> Vector2i:
+	return Vector2i(_wedges, _rings)
+
+
 ## The attack cue: a red wedge on the rim toward the hit (a shape, not colour alone), or, when the
 ## hit lies inside the scope's radius, a red ring at its place.
 func _draw_cue() -> void:
 	if cues == null or not cues.active:
 		return
 	var danger: Color = get_theme_color(&"danger", TOKENS)
-	var offset: Vector2 = cue_offset()
-	var radius: float = _radius()
-	var ping: float = UiScale.dp(PING_DP)
-	if offset.length() <= radius - ping:
-		var at: Vector2 = size * 0.5 + offset
-		draw_arc(at, ping, 0.0, TAU, 16, get_theme_color(&"frame_edge", Minimap.THEME_TYPE), ping)
-		draw_arc(at, ping, 0.0, TAU, 16, danger, UiScale.dp(RING_DP))
+	if cue_on_rim():
+		draw_colored_polygon(cue_wedge(), danger)
+		_wedges += 1
 		return
-	var angle: float = offset.angle()
-	var wedge: PackedVector2Array = PackedVector2Array()
-	wedge.append(size * 0.5 + Vector2.from_angle(angle) * (radius - UiScale.dp(WEDGE_DEPTH_DP)))
-	for step: int in 5:
-		var spread: float = lerpf(-WEDGE_HALF, WEDGE_HALF, step / 4.0)
-		wedge.append(size * 0.5 + Vector2.from_angle(angle + spread) * radius)
-	draw_colored_polygon(wedge, danger)
+	var ping: float = UiScale.dp(PING_DP)
+	var at: Vector2 = size * 0.5 + cue_offset()
+	draw_arc(at, ping, 0.0, TAU, 16, get_theme_color(&"frame_edge", Minimap.THEME_TYPE), ping)
+	draw_arc(at, ping, 0.0, TAU, 16, danger, UiScale.dp(RING_DP))
+	_rings += 1
 
 
 ## The camera's frame, a dark edge under a light line, cut to the disc.

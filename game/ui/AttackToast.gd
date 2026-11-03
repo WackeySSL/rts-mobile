@@ -59,6 +59,8 @@ func _ready() -> void:
 		lines.add_child(label)
 	_hint.text = HINT
 	cues.cue_changed.connect(_sync)
+	if pill != null:  # A wider pill (the low-power word, more digits) moves the toast's room.
+		pill.item_rect_changed.connect(_replace)
 	if selection != null:  # The panel grows, shrinks and hides with the selection.
 		selection.item_rect_changed.connect(_replace)
 		selection.visibility_changed.connect(_replace)

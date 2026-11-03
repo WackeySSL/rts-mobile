@@ -117,11 +117,13 @@ func _note(snap: MatchSnapshot, type: int, ground: Vector2i) -> bool:
 		return false
 	if area >= 0 and _clock_ms - _area_ms[area] < float(_settings().attack_cue_ms):
 		return false
-	if area < 0:  # A new area takes the entry that was cued longest ago.
-		area = 0
-		for index: int in range(1, AREAS):
-			if _area_ms[index] < _area_ms[area]:
+	if area < 0:  # A new area takes a free entry or one whose interval has passed, else nothing.
+		for index: int in AREAS:
+			if _clock_ms - _area_ms[index] >= float(_settings().attack_cue_ms):
 				area = index
+				break
+		if area < 0:
+			return false
 	_area_x[area] = ground.x
 	_area_y[area] = ground.y
 	_area_ms[area] = _clock_ms

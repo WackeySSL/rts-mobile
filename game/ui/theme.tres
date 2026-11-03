@@ -44,7 +44,7 @@
 ; Type variations (DevButton, NumberLabel, SelectionPanel, PerfCard, BuildSidebar, SidebarTab, PowerBar,
 ; PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner, ItemCaption,
 ; StrikeButton, StrikeConfirm, BuildButton, ReadyBadge, HudPanel, CapsButton, CapsTitle,
-; CapsBigTitle, EconomyPill, EconomyPillLow, PillWord, EconomyChipLoss, EconomyChipGain,
+; CapsBigTitle, EconomyPill, EconomyPillLow, PillWord, AttackTitle, EconomyChipLoss, EconomyChipGain,
 ; EconomyConsumer, ResultScreen, Scrim) are set by
 ; theme_type_variation on the node, in main.tscn or at build in the script (the power bar's two
 ; pairs switch with the low-power state, the cost of an item tile with its money).
@@ -77,11 +77,11 @@ spacing_glyph = 6
 base_font = ExtResource("4_shoulders_800")
 spacing_glyph = 3
 
-; The title of the attack toast (AttackToast.gd): the same face with a 1 px tracking, so that the
-; longest building name ("SYNTHESIS WORKS UNDER ATTACK") fits the toast's 280 dp.
+; The title of the attack toast (AttackToast.gd): the same face at 16 dp with 3 px tracking (ADR 0025
+; section 13's 6 to 14 % band), so that the longest building name ("SYNTHESIS WORKS UNDER ATTACK") fits.
 [sub_resource type="FontVariation" id="FontVariation_attack_title"]
 base_font = ExtResource("4_shoulders_800")
-spacing_glyph = 1
+spacing_glyph = 3
 
 ; The HUD v2 panel (ADR 0025 section 13): rgba(10, 14, 17, 0.84), a flat box with no blur, a 1 dp
 ; edge in #2C383E, 8 dp corners and 8 dp inside.
@@ -513,4 +513,4 @@ ResultScreen/colors/draw = Color(0.60392157, 0.64705882, 0.69411765, 1)
 ResultScreen/colors/victory = Color(0.18823529, 0.64313725, 0.42352941, 1)
 Scrim/base_type = &"PanelContainer"
 Scrim/styles/panel = SubResource("StyleBoxFlat_scrim")
-metadata/base_px = PackedStringArray("DevButton/font_sizes/font_size", "CapsButton/fonts/font", "CapsTitle/fonts/font", "CapsBigTitle/fonts/font", "PillWord/fonts/font")
+metadata/base_px = PackedStringArray("DevButton/font_sizes/font_size", "CapsButton/fonts/font", "CapsTitle/fonts/font", "CapsBigTitle/fonts/font", "PillWord/fonts/font", "AttackTitle/fonts/font")
