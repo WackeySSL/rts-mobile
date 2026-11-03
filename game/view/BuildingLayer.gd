@@ -76,8 +76,10 @@ var _rig_life: RigLife = RigLife.new()  ## The kicks that run now (P136).
 var _shot_check: Callable = _shot_seen  ## What `note_shots` asks, made once.
 var _anims: Array[Entry] = []  ## The buildings that have an `Anim`, for the frame.
 var _anim_now: float = -1.0  ## The idle clock the animation clocks were last brought to; -1 none.
-var _anim_all_ms: float = 0.0  ## The clock of an enemy's loops, and the own ones at full power.
-var _anim_own_ms: float = 0.0  ## The clock of the local player's loops.
+var _anim_all_ms: float = 0.0  ## The clock of the loops of every building that is not the local
+## player's, at full rate.
+var _anim_own_ms: float = 0.0  ## The local player's loops' clock: slowed while short of power.
+var _anim_reach: float = 0.0  ## The highest `rise` of a building with an `Anim`, world px.
 
 
 ## One building: its row (moved by every merge), the nodes it owns and what its head shows.
@@ -164,7 +166,8 @@ func redraw_count() -> int:
 	return _redraws
 
 
-## The life sprite writes so far: one for each head position the recoil set (ADR 0027 section 9).
+## The life sprite writes so far: one for each head position the recoil or the idle sweep set and
+## each `Anim` region a new frame set (ADR 0027 section 9).
 func life_writes() -> int:
 	return _rig_life.writes
 
@@ -247,11 +250,12 @@ func frame_box(row: int) -> Rect2:
 
 
 ## Fills the building arrays of `out` for the `Picker` with the shown buildings, on the screen of
-## `camera` (centre, diamond, height of the picture, sort key and whether an attack on it is taken;
-## see `PickSnapshot`). The unit arrays are left alone. A building the fog hides is left out, so no
-## tap reaches it. One shown for a corner cell alone is listed, but not targetable: the sim sees an
-## enemy building at the cell under its position (`Targeting.sees`, as `UnitLayer`'s `pickable`).
-func fill_pick_snapshot(out: PickSnapshot, camera: RtsCamera) -> void:
+## `view_camera` (centre, diamond, height of the picture, sort key and whether an attack on it is
+## taken; see `PickSnapshot`). The unit arrays are left alone. A building the fog hides is left
+## out, so no tap reaches it. One shown for a corner cell alone is listed, but not targetable: the
+## sim sees an enemy building at the cell under its position (`Targeting.sees`, as `UnitLayer`'s
+## `pickable`).
+func fill_pick_snapshot(out: PickSnapshot, view_camera: RtsCamera) -> void:
 	var snap: MatchSnapshot = _sync()
 	out.building_ids.clear()
 	out.building_owners.clear()
@@ -262,7 +266,7 @@ func fill_pick_snapshot(out: PickSnapshot, camera: RtsCamera) -> void:
 	out.building_targetable.clear()
 	if snap == null:
 		return
-	var zoom: float = camera.zoom.x
+	var zoom: float = view_camera.zoom.x
 	var owners: PackedInt32Array = snap.owner
 	var cur_x: PackedInt32Array = snap.pos_x
 	var cur_y: PackedInt32Array = snap.pos_y
@@ -277,7 +281,7 @@ func fill_pick_snapshot(out: PickSnapshot, camera: RtsCamera) -> void:
 		var row: int = entry.row
 		out.building_ids.append(entry.id)
 		out.building_owners.append(owners[row])
-		out.building_centres.append(camera.world_to_screen(entry.node.position))
+		out.building_centres.append(view_camera.world_to_screen(entry.node.position))
 		out.building_half.append(
 			Vector2(IsoProjection.HALF_W, IsoProjection.HALF_H) * (entry.foot * zoom)
 		)
@@ -369,6 +373,7 @@ func _clear() -> void:
 	_anim_now = -1.0
 	_anim_all_ms = 0.0
 	_anim_own_ms = 0.0
+	_anim_reach = 0.0
 	decals.clear()
 	_fog_version = -1
 
@@ -456,6 +461,7 @@ func _dress_anim(entry: Entry, sheet: IsoSheetDef, owner_id: int) -> void:
 	entry.anim_ms = maxi(sheet.anim_ms, 1)
 	entry.anim_phase = BuildingAnims.phase_ms(entry.id, frames, entry.anim_ms)
 	entry.rise = maxf(entry.rise, -sprite.get_rect().position.y * sprite.scale.y)
+	_anim_reach = maxf(_anim_reach, entry.rise)
 	_anims.append(entry)
 
 
@@ -623,10 +629,12 @@ func _sweep_heads(snap: MatchSnapshot) -> void:
 			_rig_life.writes += 1
 
 
-## Plays the loops once a frame. The two clocks go on by the match time that passed (the idle
-## clock never goes back, so a resume after a pause does not play a frame backwards); the local
-## player's own is scaled by `low_power_rate` while it is short of power. A shown building in the
-## view rect shows frame 0 while it is a site or offline, else the frame of its clock; a region is
+## Plays the loops once a frame, while a building with an `Anim` exists. The two clocks go on by
+## the match time that passed since the last such frame (the idle clock never goes back, so a
+## resume after a pause does not play a frame backwards); the local player's own is scaled by
+## `low_power_rate` while it is short of power. A shown building whose centre is in the view rect
+## grown by a tile (and at the bottom by the tallest picture, whose moving part stands above the
+## centre) shows frame 0 while it is a site or offline, else the frame of its clock; a region is
 ## written only when that frame is not the one shown.
 func _play_anims(snap: MatchSnapshot) -> void:
 	var now: float = _rig_life.idle_clock(snap, runner.alpha())
@@ -643,7 +651,9 @@ func _play_anims(snap: MatchSnapshot) -> void:
 	_anim_now = now
 	var view: Rect2 = Rect2()  # Without a camera nothing is in view.
 	if camera != null:
-		view = camera.visible_world_rect().grow(ANIM_MARGIN_PX)
+		var m: float = ANIM_MARGIN_PX
+		view = camera.visible_world_rect().grow_individual(m, m, m, m + _anim_reach)
+	var tick: int = snap.tick
 	var owners: PackedInt32Array = snap.owner
 	var building: PackedInt32Array = snap.build_left
 	var offline: PackedInt32Array = snap.offline_until
@@ -652,7 +662,7 @@ func _play_anims(snap: MatchSnapshot) -> void:
 			continue
 		var row: int = entry.row
 		var frame: int = BuildingAnims.REST
-		if building[row] == 0 and offline[row] <= snap.tick:
+		if building[row] == 0 and offline[row] <= tick:
 			var clock: float = _anim_own_ms if owners[row] == player else _anim_all_ms
 			frame = BuildingAnims.frame_at(
 				entry.anim_phase, clock, entry.anim_frames, entry.anim_ms

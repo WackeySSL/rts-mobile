@@ -18,7 +18,6 @@ const ANIM: StringName = &"anim"  ## The sheet part of a building's moving eleme
 ## Salt of `LifeClock.pick` for the phase of a loop: far from RigLife's salts.
 const SALT_ANIM: int = 0x50000000
 const REST: int = 0
-const NO_DIR: int = -1  ## The `dir` of a building's frames, as `BuildingLayer.NO_FRAME`.
 
 
 ## The phase of building `id`'s loop, ms into it: the same for an id in every run, spread over the
@@ -50,7 +49,7 @@ static func dress_ghost(
 	var child: Sprite2D = parent.get_child(0) as Sprite2D if parent.get_child_count() > 0 else null
 	var base: int = -1
 	if sheet.has_part(ANIM):
-		base = world_sort.base_of(sheet, ANIM, NO_DIR, owner_id)
+		base = world_sort.base_of(sheet, ANIM, BuildingLayer.NO_FRAME, owner_id)
 	if world_sort.frame_count_at(base) < 1:
 		if child != null:
 			child.visible = false
@@ -58,9 +57,9 @@ static func dress_ghost(
 	if child == null:
 		child = Sprite2D.new()
 		child.name = "Anim"
-		child.texture = world_sort.atlas.texture()
 		child.region_enabled = true
 		child.centered = false
 		parent.add_child(child)
+	child.texture = world_sort.atlas.texture()  # Every dress: a re-bake makes a new page.
 	child.offset = -Vector2(sheet.origin(ANIM)) * world_sort.atlas.bake_scale()
 	world_sort.show_base(child, base, REST)

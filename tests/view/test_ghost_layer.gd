@@ -260,6 +260,16 @@ func test_a_ghost_draws_the_moving_element_at_frame_0_over_the_body() -> void:
 		Vector2(frame0.size) * per_px, Vector2.ONE * 0.01
 	)
 	assert_float(_layer.rise_px()).is_greater_equal(float(sheet.origin(&"anim").y) * 0.5 - 0.01)
+	# The element is as faded as the body, whatever the verdict: a fit and a refusal.
+	var fade: Color = Color(1.0, 1.0, 1.0, GhostLayer.SPRITE_ALPHA)
+	assert_that(_layer.last_anim_tint).is_equal(fade)
+	_placement.blocked = true
+	_layer.refresh()
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_that(_layer.tint()).is_equal(GhostLayer.DANGER)
+	assert_bool(_layer.last_anim.has_area()).is_true()
+	assert_that(_layer.last_anim_tint).is_equal(fade)
 
 
 func test_the_sprite_is_the_buildings_body_on_the_atlas_and_the_rise_is_the_sheets() -> void:

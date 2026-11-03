@@ -105,7 +105,8 @@ func test_the_layer_is_flat_at_z_5_sorted_by_y_and_carries_one_dim_colour() -> v
 
 ## A remembered building with a moving element (P144) keeps it: an `Anim` child of the ghost's
 ## sprite shows frame 0 of the owner's `anim` part at the footprint's centre, under the layer's
-## dim; one without (the Redoubt) has none, and a pooled sprite that is reused for it hides it.
+## dim; one without (the Redoubt) has none. A pooled sprite that is reused for a building without
+## one hides it (the next test).
 func test_a_ghost_keeps_the_moving_element_at_frame_0() -> void:
 	_remember_all()
 	_look([])
@@ -123,9 +124,28 @@ func test_a_ghost_keeps_the_moving_element_at_frame_0() -> void:
 		assert_vector(anim.offset).is_equal_approx(
 			-Vector2(sheet.origin(&"anim")) * bake, Vector2.ONE * 0.001
 		)
-		assert_bool(anim.get_index() > -1 and anim.get_parent() == ghost).is_true()
+		assert_object(anim.get_parent()).is_same(ghost)
 	var defence: Sprite2D = _ghosts.ghost(DEFENCE_ID)
 	assert_object(defence.get_node_or_null("Anim")).is_null()
+
+
+## A pooled sprite that drew a building with a moving element and is reused for one without shows
+## no stale element: its `Anim` is gone or hidden.
+func test_a_reused_ghost_sprite_hides_the_moving_element_of_the_last_building() -> void:
+	_remember_all()
+	_look([])
+	assert_array(_ghosts.ghost_ids()).is_equal([HQ_ID, DEFENCE_ID, POWER_ID])
+	var first: Sprite2D = _ghosts.ghost(HQ_ID)
+	assert_bool((first.get_node("Anim") as Sprite2D).visible).is_true()
+	var snap: MatchSnapshot = _runner.snapshot
+	var cell: int = Ghosts.centre_cell(snap, ENEMIES[1][2], 1, 1)
+	Ghosts.remember(snap, 1, [Ghosts.record(DEFENCE_ID, &"renew_defence", 2, cell)])
+	_look([])
+	assert_array(_ghosts.ghost_ids()).is_equal([DEFENCE_ID])
+	var reused: Sprite2D = _ghosts.ghost(DEFENCE_ID)
+	assert_object(reused).is_same(first)  # The same pool slot.
+	var stale: Node = reused.get_node_or_null("Anim")
+	assert_bool(stale == null or not (stale as Sprite2D).visible).is_true()
 
 
 func _type_of(id: int) -> int:

@@ -359,3 +359,71 @@ func _anim(id: int) -> Sprite2D:
 func _frame(tick: int, alpha: float) -> void:
 	Recoil.at(_runner, tick, alpha)
 	_layer._process(0.0)
+
+
+func test_a_tall_moving_part_plays_while_its_centre_is_below_the_view() -> void:
+	# The Signal Mast's antenna stands 80 to 121 px over its centre. With the view's bottom edge
+	# 100 px above the centre (more than a tile of margin) the antenna is on screen: it must play.
+	var at: Vector2 = _layer.building(MAST).position
+	var half: Vector2 = _camera.visible_world_rect().size * 0.5
+	_camera.position = at + Vector2(0.0, -100.0 - half.y)
+	var view: Rect2 = _camera.visible_world_rect()
+	assert_float(at.y - view.end.y).is_greater(BuildingLayer.ANIM_MARGIN_PX + 30.0)
+	var top: float = at.y - float(_sheet(MAST).origin(&"anim").y) * WorldSort.ART_SCALE
+	assert_float(top).is_less(view.end.y)  # The moving part is in view.
+	var seen: Dictionary[Rect2, bool] = {}
+	for step: int in 120:  # 2 s: a loop of 16 frames of 140 ms shows many.
+		_frame(step / 4, float(step % 4) * 0.25)
+		seen[_anim(MAST).region_rect] = true
+	assert_int(seen.size()).is_greater(8)
+	# A building whose picture is wholly out of view still does not play.
+	_camera.position = at + Vector2(0.0, -400.0 - half.y)
+	var stale: Rect2 = _anim(MAST).region_rect
+	_frame(60, 0.0)
+	assert_that(_anim(MAST).region_rect).is_equal(stale)
+
+
+func test_a_destroyed_building_leaves_the_loops_and_the_others_go_on() -> void:
+	var snap: MatchSnapshot = _runner.snapshot
+	_runner.world.hp[snap.index_of(HALL)] = 0
+	_runner.run_ticks(1)
+	_layer._process(0.0)  # Merges the rows: the Turbine Hall is dropped and freed.
+	await await_idle_frame()
+	assert_object(_layer.building(HALL)).is_null()
+	_camera.position = (_layer.building(MAST).position + _layer.building(WIND).position) * 0.5
+	var seen: Dictionary[Rect2, bool] = {}
+	for step: int in 120:  # Frames after the free: no access to the freed node.
+		_frame(10 + step / 4, float(step % 4) * 0.25)
+		seen[_anim(WIND).region_rect] = true
+	assert_int(seen.size()).is_greater(2)
+	assert_object(_layer.building(HALL_B)).is_not_null()
+
+
+## A tap on the Wind Park's rotor, above its body's top, selects it (the picture's rise holds the
+## moving part), and a tap above the rotor does not.
+func test_a_tap_on_the_rotor_above_the_body_selects_the_building() -> void:
+	var snap: MatchSnapshot = _runner.snapshot
+	var row: int = snap.index_of(WIND)
+	var sheet: IsoSheetDef = _sheet(WIND)
+	var body_top: float = float(sheet.origin(&"hull").y) * WorldSort.ART_SCALE
+	var anim_top: float = float(sheet.origin(&"anim").y) * WorldSort.ART_SCALE
+	assert_float(anim_top).is_greater(body_top)  # The rotors stand over the roof.
+	var pick: PickSnapshot = PickSnapshot.new()
+	_camera.zoom = Vector2.ONE
+	_layer.fill_pick_snapshot(pick, _camera)
+	var centre: Vector2 = pick.building_centres[pick.building_ids.find(WIND)]
+	var inside: Vector2 = centre - Vector2(0.0, (body_top + anim_top) * 0.5)
+	assert_int(row).is_greater_equal(0)
+	assert_float(_layer.frame_box(row).position.y).is_less(_layer.building(WIND).position.y)
+	# Above the rotor: not the Wind Park (alone, so a neighbour's picture is not what answers).
+	var at: int = pick.building_ids.find(WIND)
+	var one: PickSnapshot = PickSnapshot.new()
+	one.building_ids = pick.building_ids.slice(at, at + 1)
+	one.building_owners = pick.building_owners.slice(at, at + 1)
+	one.building_centres = pick.building_centres.slice(at, at + 1)
+	one.building_half = pick.building_half.slice(at, at + 1)
+	one.building_rise = pick.building_rise.slice(at, at + 1)
+	one.building_keys = pick.building_keys.slice(at, at + 1)
+	assert_int(Picker.pick_building(one, inside, 1, false, 0.0)).is_equal(0)
+	var above: Vector2 = centre - Vector2(0.0, anim_top + 6.0)
+	assert_int(Picker.pick_building(one, above, 1, false, 0.0)).is_equal(-1)

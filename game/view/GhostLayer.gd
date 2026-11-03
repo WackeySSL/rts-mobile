@@ -47,6 +47,8 @@ var last_word_px: float = 0.0  ## Its font size on the screen, base px, for the 
 var last_parts: int = 0  ## Sprite regions (body, anim, head) the last frame drew, for the tests.
 ## The box the last frame drew the moving element in, world px, empty for none, for the tests.
 var last_anim: Rect2 = Rect2()
+## The colour the last frame drew it in, for the tests.
+var last_anim_tint: Color = Color.TRANSPARENT
 ## The box the last frame drew the head in, world px, empty for none, for the tests.
 var last_head: Rect2 = Rect2()
 
@@ -185,6 +187,7 @@ func _draw() -> void:
 	last_parts = 0
 	last_head = Rect2()
 	last_anim = Rect2()
+	last_anim_tint = Color.TRANSPARENT
 	last_glyph = null
 	last_glyph_px = 0.0
 	last_word = ""
@@ -235,7 +238,8 @@ func _sprite() -> void:
 	last_parts = 1
 	if _anim.has_area():
 		last_anim = Rect2(centre + _anim_origin, _anim_size)
-		draw_texture_rect_region(texture, last_anim, Rect2(_anim), fade)
+		last_anim_tint = fade
+		draw_texture_rect_region(texture, last_anim, Rect2(_anim), last_anim_tint)
 		last_parts += 1
 	if _head.has_area():
 		last_head = Rect2(centre + _head_origin, _head_size)
