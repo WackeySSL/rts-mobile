@@ -40,7 +40,9 @@ env:
 jobs:
   verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # The suite is about 4400 cases and verify ran 29-30 min on push runs (main 1a6209c was
+    # cancelled at 29:43); 45 leaves room for growth.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
