@@ -27,8 +27,9 @@ extends Node2D
 ## enemy one only while `building_layer.is_shown`. The glyphs are planned after the frames and
 ## painted after the rects, as `glyph_count()` squares at `glyph_rect(i)`. While the local player's
 ## published `power_used` is above its `power_made` (low power, P89, ADR 0025 section 8) every own
-## defence that uses power wears the offline glyph too (it holds its fire), and every other own
-## building that uses power (`PowerConsumers`, the economy card's rows) wears the low-power map
+## defence (a complete building with a weapon, power use or not) wears the offline glyph too, and
+## every other own building that uses power (`PowerConsumers`, the card's rows) wears the
+## low-power map
 ## glyph (`glyph_low_power_map.svg`, tinted `low_power_color`), planned after the offline ones at
 ## the same place; nothing is dimmed.
 ##
@@ -163,7 +164,8 @@ func offline_glyph_count() -> int:
 	return _offline_glyphs
 
 
-## Glyph `index`'s art and tint: the offline glyph in amber, then the low-power one in danger red.
+## Glyph `index`'s art and tint: the offline glyph in amber, then the low-power one in orange
+## (#FF8A1F).
 func glyph_texture(index: int) -> Texture2D:
 	return GLYPH if index < _offline_glyphs else LOW_GLYPH
 
@@ -362,16 +364,22 @@ func _plan_glyphs(snap: MatchSnapshot, unit: float, local_player: int) -> void:
 		return
 	if used[local_player] <= made[local_player]:
 		return
-	# Low power: an own defence (a building with a weapon, `Combat.fire`'s rule) is offline, so it
-	# joins the offline group; every other consumer follows with the low-power glyph.
+	# Low power: every own defence, a complete building with a weapon that no blackout holds off,
+	# holds its fire (`Combat.fire` reads no `type_power`), so it wears the offline glyph and joins
+	# the offline group; every other consumer follows with the low-power glyph.
 	var owners: PackedInt32Array = snap.owner
 	var weapons: PackedInt32Array = snap.type_weapon
 	var types: PackedInt32Array = snap.type_index
+	var foot: PackedInt32Array = snap.type_foot_w
+	var sites: PackedInt32Array = snap.build_left
 	for row: int in until.size():
+		var type: int = types[row]
 		if (
 			owners[row] == local_player
-			and weapons[types[row]] >= 0
-			and PowerConsumers.is_consumer(snap, row)
+			and weapons[type] >= 0
+			and foot[type] > 0
+			and sites[row] == 0
+			and until[row] <= tick
 		):
 			_put_glyph(snap, row, rise)
 	_offline_glyphs = _glyphs

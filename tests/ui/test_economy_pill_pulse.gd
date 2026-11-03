@@ -1,9 +1,10 @@
 extends GdUnitTestSuite
 ## The economy pill's low-power pulse (plan P89, ADR 0025 section 3): on low power the pill's own
-## drawing (its border) and the warning triangle breathe between white and the pill type's
-## `pulse_dim` colour in PULSE_STEPS steps over PULSE_MS, through `self_modulate` so that the word
-## and the numbers stay full. The tint is written only when the step changes, a long frame wraps,
-## and the wave starts over when power is enough again. Frame time only: the sim is not asked.
+## drawing (the whole plate and edge) and the warning triangle breathe between white and the pill
+## type's `pulse_dim` colour in PULSE_STEPS steps over PULSE_MS, through `self_modulate` so that
+## the word and the numbers stay full. The tint is written only when the step changes, a long frame
+## wraps, and the wave starts over when power is enough again. Frame time only: the sim is not
+## asked.
 
 const SENTINEL: Color = Color(0.123, 0.5, 0.5, 0.77)
 

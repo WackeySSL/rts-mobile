@@ -483,6 +483,8 @@ CapsBigTitle/fonts/font = SubResource("FontVariation_caps_big_title")
 ; at 14 dp (the body text's least), dark on the red bar (5.9:1).
 EconomyPill/base_type = &"PanelContainer"
 EconomyPill/styles/panel = SubResource("StyleBoxFlat_pill")
+; The low-power pulse (EconomyPill.gd, P89): the plate, edge and triangle breathe between pulse_full (white)
+; and pulse_dim (white at 0.6); the word stays at full strength.
 EconomyPill/colors/pulse_full = Color(1, 1, 1, 1)
 EconomyPill/colors/pulse_dim = Color(1, 1, 1, 0.6)
 EconomyPillLow/base_type = &"EconomyPill"

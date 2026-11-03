@@ -49,10 +49,11 @@ const CREDITS_DIGITS: int = 5
 const CHIP_VARIATION: StringName = &"PowerNumberLow"  ## Dark digits, for a chip on a colour.
 const CHIP_LOSS_VARIATION: StringName = &"EconomyChipLoss"
 const CHIP_GAIN_VARIATION: StringName = &"EconomyChipGain"
-## The low-power pulse (plan P89): the pill's border and the warning triangle breathe between the
-## pill type's `pulse_full` (white) and `pulse_dim` colours over PULSE_MS in PULSE_STEPS steps, so
-## the tint is written only when the step changes. The word stays at full strength: it is dark on
-## the red bar and would lose its contrast. View feel, not a rule: no data key.
+## The low-power pulse (plan P89): the pill's plate and edge and the warning triangle breathe
+## between the pill type's `pulse_full` (white) and `pulse_dim` colours over PULSE_MS in
+## PULSE_STEPS steps, so the tint is written only when the step changes. The word stays at full
+## strength: it is dark on the red bar and would lose its contrast. View feel, not a rule: no data
+## key.
 const PULSE_MS: float = 1400.0
 const PULSE_STEPS: int = 6
 const CHIP_GAP_DP: float = 4.0  ## Between the pill and the chip under its credits.
@@ -325,9 +326,10 @@ func _advance(ms: float) -> void:
 			_update_chip()
 
 
-## `ms` passed: on low power the pill's own drawing (its border) and the triangle follow a triangle
-## wave in PULSE_STEPS steps (`self_modulate`, so the word and the numbers stay full), written only
-## when the step changes; off low power both are full again and the wave starts over.
+## `ms` passed: on low power the pill's own drawing (its whole plate and edge) and the triangle
+## follow a triangle wave in PULSE_STEPS steps (`self_modulate`, so the word and the numbers stay
+## full), written only when the step changes; off low power both are full again and the wave
+## starts over.
 func _pulse(ms: float) -> void:
 	var step: int = 0
 	if _low:

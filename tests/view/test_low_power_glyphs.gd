@@ -1,13 +1,13 @@
 extends GdUnitTestSuite
 ## The low-power glyph (plan P89 revision 5, ADR 0023 section 2, ADR 0025 section 8): while the
 ## local player's published `power_used` is above its `power_made`, every own building that uses
-## power wears the low-power map glyph (an own defence wears the offline glyph) in the bar layer at
-## z 30, no dim and no sprite touched. The rows
-## are `PowerConsumers`' (the economy card's too, and `Power.run`'s): not a construction site, not
-## held offline by a blackout, not a producer, not a unit, not the enemy's. The squares are the
-## offline glyph's (GLYPH_DP square, over the place of the bar) and follow the offline ones in the
-## plan. On a 32 x 32 map: player 1's Headquarters (row 0), power plant (1), Bunkhouse (2), defence
-## (3), refinery (4) and rifle squad (5), and player 2's Bunkhouse (6).
+## power wears the low-power map glyph (every own defence wears the offline glyph) in the bar layer
+## at z 30, no dim and no sprite touched. The rows are `PowerConsumers`' (the economy card's too,
+## and `Power.run`'s): not a construction site, not held offline by a blackout, not a producer, not
+## a unit, not the enemy's. The squares are the offline glyph's (GLYPH_DP square, over the place of
+## the bar) and follow the offline ones in the plan. On a 32 x 32 map: player 1's Headquarters (row
+## 0), power plant (1), Bunkhouse (2), defence (3), refinery (4) and rifle squad (5), and player
+## 2's Bunkhouse (6).
 
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -174,6 +174,33 @@ func test_a_site_that_finishes_gets_its_glyph_that_frame() -> void:
 	assert_str(_bars.glyph_texture(2).resource_path).is_equal(LOW_ART)
 
 
+## `Combat.fire` reads no `type_power`: a defence that uses none still holds its fire on low power.
+func test_a_defence_that_uses_no_power_wears_the_offline_glyph_on_low_power_only() -> void:
+	var snap: MatchSnapshot = _runner.snapshot
+	snap.type_power[snap.type_index[3]] = 0
+	_power(60, 100)
+	_frame()
+	assert_int(_bars.offline_glyph_count()).is_equal(1)
+	assert_int(_bars.glyph_count()).is_equal(3)  # The defence, the Bunkhouse, the refinery.
+	assert_str(_bars.glyph_texture(0).resource_path).is_equal(OFFLINE_ART)
+	assert_float(_bars.glyph_rect(0).get_center().x).is_equal_approx(
+		_buildings.building(_id(3)).position.x, 0.01
+	)
+	assert_str(_bars.glyph_texture(1).resource_path).is_equal(LOW_ART)
+	_power(100, 100)
+	_frame()
+	assert_int(_bars.glyph_count()).is_equal(0)
+	_power(60, 100)
+	snap.build_left[3] = 30  # A site holds no fire either way: no glyph.
+	_frame()
+	assert_int(_bars.glyph_count()).is_equal(2)
+	snap.build_left[3] = 0
+	snap.offline_until[3] = snap.tick + 100  # A blackout: one offline glyph, never two.
+	_frame()
+	assert_int(_bars.glyph_count()).is_equal(3)
+	assert_int(_bars.offline_glyph_count()).is_equal(1)
+
+
 func test_the_consumers_are_the_rows_the_power_rule_counts() -> void:
 	var world: World = _runner.world
 	world.build_left[2] = 30
@@ -217,20 +244,29 @@ func test_the_plan_allocates_nothing_after_the_first_low_power_frame() -> void:
 
 
 func test_no_sprite_is_dimmed_and_the_glyph_is_painted_in_the_map_tint_from_the_map_art() -> void:
-	var before: Array[Color] = []
+	var before: Dictionary[Node, Color] = {}
 	for row: int in CONSUMERS:
-		before.append(_buildings.building(_id(row)).modulate)
+		for node: Node in _sprites(_buildings.building(_id(row))):
+			before[node] = (node as CanvasItem).modulate
 	_power(60, 100)
 	_frame()
-	for at: int in CONSUMERS.size():
-		var node: Node2D = _buildings.building(_id(CONSUMERS[at]))
-		assert_that(node.modulate).is_equal(before[at])
-		assert_that(node.self_modulate).is_equal(Color.WHITE)
+	assert_int(before.size()).is_greater(0)
+	for row: int in CONSUMERS:
+		for node: Node in _sprites(_buildings.building(_id(row))):
+			assert_that((node as CanvasItem).modulate).is_equal(before[node])
+			assert_that((node as CanvasItem).self_modulate).is_equal(Color.WHITE)
 	assert_str(HealthBarLayer.LOW_GLYPH.resource_path).is_equal(LOW_ART)
 	# The tint is STYLE.md's map tint, which the gallery's table carries (#FF8A1F).
 	assert_that(_bars.low_power_color).is_equal(GALLERY.GLYPH_TINTS["glyph_low_power_map"])
 	await await_idle_frame()
 	assert_int(_bars.drawn_glyphs()).is_equal(CONSUMERS.size())
+
+
+## The building root and every Sprite2D under it.
+func _sprites(root: Node) -> Array[Node]:
+	var found: Array[Node] = [root]
+	found.append_array(root.find_children("*", "Sprite2D", true, false))
+	return found
 
 
 ## The power the local player's consumers use together, by `PowerConsumers`.
