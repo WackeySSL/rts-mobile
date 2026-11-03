@@ -158,6 +158,7 @@ const MIRRORABLE: Array[StringName] = [&"flare", &"fire", &"spark"]
 ## The net of the Blackout Array (STYLE.md "Life effects", "The net"): hexagons of side 16 world px
 ## with the lines a layer draws in code, a light line over a dark edge, so the lattice meets the
 ## `hex` sprite. The width of the edge and of the light line are world px.
+const NET_SIDE_PX: float = 16.0  ## A hexagon's side, and half its width.
 const NET_COLUMN_PX: float = 24.0
 const NET_ROW_PX: float = 13.86
 const NET_SHIFT_PX: float = 6.93  ## Every other column moves down by this much.

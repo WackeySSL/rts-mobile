@@ -70,19 +70,20 @@ var _point: PackedVector2Array = PackedVector2Array()
 var _launch: PackedVector2Array = PackedVector2Array()
 var _ground: PackedVector2Array = PackedVector2Array()
 var _ellipse: PackedVector2Array = PackedVector2Array()  ## A net's semi-axes, px.
-## The net's lines, relative to its centre: segment after segment, built once for a radius.
-var _lattice: PackedVector2Array = PackedVector2Array()
-var _lattice_axes: Vector2 = Vector2.ZERO
-## The frame's plan: quads (dst rect at 4i, part, alpha) and nets (centre, scale, alpha).
+var _lattice_of: PackedInt32Array = PackedInt32Array()  ## A net's lattice in `_net`, else -1.
+var _land_tick: PackedInt32Array = PackedInt32Array()  ## A rupture's landing tick, else 0.
+## Where a fall starts (y, world px), fixed on its first planned frame so that a pan or a pinch
+## during the fall does not slide it against the ground.
+var _started: PackedByteArray = PackedByteArray()
+var _start_y: PackedFloat32Array = PackedFloat32Array()
+## The frame's plan: quads (dst rect at 4i, part, alpha), and the nets in `_net`.
 var _quad_rect: PackedFloat32Array = PackedFloat32Array()
 var _quad_part: PackedByteArray = PackedByteArray()
 var _quad_alpha: PackedFloat32Array = PackedFloat32Array()
 var _quads: int = 0
 var _drawn_quads: int = 0
-var _net_at: PackedVector2Array = PackedVector2Array()
-var _net_scale: PackedFloat32Array = PackedFloat32Array()
-var _net_alpha: PackedFloat32Array = PackedFloat32Array()
-var _nets: int = 0
+var _net: StrikeNet = StrikeNet.new()
+var _tick: int = 0  ## The snapshot's tick at the frame.
 
 
 func _init() -> void:
@@ -102,27 +103,20 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	var had_plan: bool = _quads > 0 or _nets > 0
+	var had_plan: bool = _quads > 0 or _net.count() > 0
 	var snap: MatchSnapshot = runner.snapshot if runner != null else null
 	if snap == null:
 		return
 	_follow_match(snap)
 	_make_slots_if_resized()
 	_plan(snap)
-	if had_plan or _quads > 0 or _nets > 0:
+	if had_plan or _quads > 0 or _net.count() > 0:
 		queue_redraw()
 
 
 func _draw() -> void:
 	_drawn_quads = _quads
-	for net: int in _nets if _lattice.size() >= 2 else 0:
-		var scale_by: float = _net_scale[net]
-		draw_set_transform(_net_at[net], 0.0, Vector2(scale_by, scale_by))
-		var edge: Color = Color(LifeRegions.NET_EDGE, _net_alpha[net])
-		draw_multiline(_lattice, edge, LifeRegions.NET_EDGE_PX / scale_by)
-		var light: Color = Color(LifeRegions.NET_LIGHT, _net_alpha[net])
-		draw_multiline(_lattice, light, LifeRegions.NET_LIGHT_PX / scale_by)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	_net.draw(self)
 	for index: int in _quads:
 		draw_texture_rect_region(
 			_atlas,
@@ -162,25 +156,29 @@ func quad_alpha(index: int) -> float:
 	return _quad_alpha[index]
 
 
-## Nets of the plan, each with its centre, scale and alpha, and the segments of the lattice.
+## The nets of the plan (and their lattices), each with its centre, scale and two alphas.
+func nets() -> StrikeNet:
+	return _net
+
+
 func net_count() -> int:
-	return _nets
+	return _net.count()
 
 
 func net_at(index: int) -> Vector2:
-	return _net_at[index]
+	return _net.at(index)
 
 
 func net_scale(index: int) -> float:
-	return _net_scale[index]
+	return _net.scale_of(index)
 
 
 func net_alpha(index: int) -> float:
-	return _net_alpha[index]
+	return _net.alpha(index)
 
 
-func lattice_size() -> int:
-	return _lattice.size()
+func net_ring_alpha(index: int) -> float:
+	return _net.ring_alpha(index)
 
 
 ## Where slot `slot`'s strike launches and lands (world px), and the ms its fall runs between.
@@ -210,13 +208,17 @@ func _follow_match(snap: MatchSnapshot) -> void:
 func _empty() -> void:
 	_kind.fill(Strike.Kind.NONE)
 	_quads = 0
-	_nets = 0
+	_net.clear()
 
 
 func _make_slots_if_resized() -> void:
 	var want: int = maxi(life.strike_slots, 0)
-	if want == _size:
-		return
+	if want != _size:
+		_resize_slots(want)
+
+
+## Makes the arrays for `want` slots, once and whenever the quota changes.
+func _resize_slots(want: int) -> void:
 	_size = want
 	_kind.resize(want)
 	_born_ms.resize(want)
@@ -229,12 +231,14 @@ func _make_slots_if_resized() -> void:
 	_launch.resize(want)
 	_ground.resize(want)
 	_ellipse.resize(want)
+	_lattice_of.resize(want)
+	_land_tick.resize(want)
+	_started.resize(want)
+	_start_y.resize(want)
 	_quad_rect.resize(want * QUADS_PER_SLOT * 4)
 	_quad_part.resize(want * QUADS_PER_SLOT)
 	_quad_alpha.resize(want * QUADS_PER_SLOT)
-	_net_at.resize(want)
-	_net_scale.resize(want)
-	_net_alpha.resize(want)
+	_net.resize(want)
 	_empty()
 
 
@@ -252,7 +256,8 @@ func _on_ticked(_tick: int) -> void:
 
 
 ## The record at `at`: `[STRIKE, building id, x, y, kind, owner, landing tick, 0]`. A strike with
-## nothing to show (a launch at a building out of sight and a net on a dark tile) takes no slot.
+## nothing to show (a launch at a building out of sight and a net on a dark tile, or a rupture that
+## lands in its own step at such a building) takes no slot, so it never overwrites a live one.
 func _add_strike(snap: MatchSnapshot, at: int) -> void:
 	var events: PackedInt32Array = snap.events
 	var kind: int = events[at + 4]
@@ -268,6 +273,7 @@ func _add_strike(snap: MatchSnapshot, at: int) -> void:
 	if kind == Strike.Kind.RUPTURE:
 		land = LifeClock.tick_ms(events[at + 6])
 		from = maxf(land - float(life.fall_ms), born)  # Never earlier than the event.
+		falls = land > born  # A landing in the same step has no fall.
 	else:
 		land = born + float(life.net_land_ms)
 		var seen: bool = (
@@ -282,23 +288,23 @@ func _add_strike(snap: MatchSnapshot, at: int) -> void:
 	if not launched and not falls:
 		return
 	var slot: int = _take_slot()
-	var ground: Vector2 = IsoProjection.ground_to_px(events[at + 2], events[at + 3])
 	_kind[slot] = kind
 	_born_ms[slot] = born
 	_from_ms[slot] = from
 	_land_ms[slot] = land
+	_land_tick[slot] = events[at + 6] if kind == Strike.Kind.RUPTURE else 0
 	_launched[slot] = 1 if launched else 0
 	_falls[slot] = 1 if falls else 0
-	_point[slot] = ground
+	_started[slot] = 0
+	_point[slot] = IsoProjection.ground_to_px(events[at + 2], events[at + 3])
 	_ellipse[slot] = axes
+	_lattice_of[slot] = _net.lattice_for(axes) if axes.x > 0.0 and falls else -1
 	var end: float = land + (float(life.net_settle_ms) if kind == Strike.Kind.BLACKOUT else 0.0)
 	if launched:
 		_launch[slot] = _launch_point(snap, row)
 		_ground[slot] = IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row])
 		end = maxf(end, born + float(life.launch_ms))
 	_end_ms[slot] = end
-	if axes.x > 0.0 and falls and axes != _lattice_axes:
-		_build_lattice(axes)
 
 
 ## The first free slot, else the one whose strike is oldest.
@@ -334,52 +340,19 @@ func _launch_point(snap: MatchSnapshot, row: int) -> Vector2:
 	return centre - Vector2(0.0, centre.y - box.position.y if box.size != Vector2.ZERO else 0.0)
 
 
-## The lines of a net of semi-axes `axes`: flat-topped hexagons on `LifeRegions`' lattice whose
-## centre lies in the ellipse, three edges of each (the top and the two on the left; the others
-## belong to the neighbours). Built when the radius changes, never in a frame.
-func _build_lattice(axes: Vector2) -> void:
-	_lattice_axes = axes
-	_lattice.clear()
-	var high: float = LifeRegions.NET_SHIFT_PX  # Half the hexagon's height.
-	var cols: int = int(axes.x / LifeRegions.NET_COLUMN_PX) + 1
-	var rows: int = int(axes.y / LifeRegions.NET_ROW_PX) + 1
-	for col: int in range(-cols, cols + 1):
-		var x: float = float(col) * LifeRegions.NET_COLUMN_PX
-		var shift: float = LifeRegions.NET_SHIFT_PX if (col & 1) == 1 else 0.0
-		for row: int in range(-rows, rows + 1):
-			var y: float = float(row) * LifeRegions.NET_ROW_PX + shift
-			if (x * x) / (axes.x * axes.x) + (y * y) / (axes.y * axes.y) > 1.0:
-				continue
-			var upper_left: Vector2 = Vector2(x - 8.0, y - high)
-			var upper_right: Vector2 = Vector2(x + 8.0, y - high)
-			var left: Vector2 = Vector2(x - 16.0, y)
-			(
-				_lattice
-				. append_array(
-					PackedVector2Array(
-						[
-							upper_left,
-							upper_right,
-							left,
-							upper_left,
-							left,
-							Vector2(x - 8.0, y + high),
-						]
-					)
-				)
-			)
-
-
 ## The quads and nets of the strikes alive at the frame's match time. Allocates nothing.
 func _plan(snap: MatchSnapshot) -> void:
 	_quads = 0
-	_nets = 0
+	_net.clear()
+	_tick = snap.tick
 	_clock = maxf(_clock, LifeClock.ms(snap, runner.alpha()))
 	var top: float = camera.visible_world_rect().position.y if camera != null else 0.0
 	for slot: int in _size:
 		if _kind[slot] == Strike.Kind.NONE:
 			continue
-		if _clock >= _end_ms[slot]:
+		# A rupture stays until the snapshot of its landing tick is there, which brings the burst:
+		# the clock can reach the landing time while the worker is late with that tick.
+		if _clock >= _end_ms[slot] and _tick >= _land_tick[slot]:
 			_kind[slot] = Strike.Kind.NONE
 			continue
 		if _launched[slot] == 1:
@@ -399,58 +372,76 @@ func _plan_launch(slot: int) -> void:
 	var fade: float = 1.0 - u * u
 	var flash: float = clampf(1.0 - age / float(maxi(life.launch_flash_ms, 1)), 0.0, 1.0)
 	var at: Vector2 = _launch[slot]
-	var tip: Vector2 = at - Vector2(0.0, life.strike_rise_px * (1.0 - (1.0 - u) * (1.0 - u)))
+	var risen: float = life.strike_rise_px * (1.0 - (1.0 - u) * (1.0 - u))
+	var tip: Vector2 = at - Vector2(0.0, risen)
 	if _kind[slot] == Strike.Kind.RUPTURE:
-		_quad(Part.RING, _ground[slot], Vector2.ONE * (1.0 + u), 1.0 - u)
+		var grown: float = lerpf(1.0, life.launch_ring_grow_to, u)
+		_quad(Part.RING, _ground[slot], Vector2.ONE * grown, 1.0 - u)
 		_quad(Part.FLASH, at, Vector2.ONE, flash)
 		_quad(Part.LANCE_UP, tip, Vector2.ONE, fade)
 	else:
 		_quad(Part.CORE, at, Vector2.ONE, flash)
-		var stretch: float = lerpf(1.0, LifeRegions.MAX_STRETCH[&"seed_trail"], u)
-		_quad(Part.SEED_TRAIL, tip, Vector2(1.0, stretch), fade)
+		# The trail hangs below the seed and never lower than the point it left.
+		var length: float = float(LifeRegions.FIRST[&"seed_trail"].size.y)
+		var wanted: float = length * lerpf(1.0, LifeRegions.MAX_STRETCH[&"seed_trail"], u)
+		_quad(Part.SEED_TRAIL, tip, Vector2(1.0, minf(wanted, risen) / length), fade)
 		_quad(Part.SEED, tip, Vector2.ONE, fade)
 
 
-## The fall from the sky onto the point, then (a net) its settling. The fall starts above `top`,
-## the visible top edge, and ends at the landing time, when it is gone.
+## The fall from the sky onto the point, then (a net) its settling. A fall starts above the visible
+## top edge `top` of its first frame and ends at the landing time, when it is gone.
 func _plan_fall(slot: int, top: float) -> void:
 	var land: float = _land_ms[slot]
 	var from: float = _from_ms[slot]
 	var point: Vector2 = _point[slot]
-	if _clock >= land:
-		if _kind[slot] == Strike.Kind.BLACKOUT:
+	var rupture: bool = _kind[slot] == Strike.Kind.RUPTURE
+	var held: bool = rupture and _tick < _land_tick[slot]  # Landed by the clock, not yet in a tick.
+	if _clock >= land and not held:
+		if not rupture:
 			_plan_settle(slot, (_clock - land) / float(maxi(life.net_settle_ms, 1)))
 		return
-	if _clock < from:
+	if _clock < from or land <= from:
 		return
-	var t: float = (_clock - from) / (land - from)
+	var t: float = minf((_clock - from) / (land - from), 1.0)
 	var eased: float = t * t  # It falls faster as it comes.
-	if _kind[slot] == Strike.Kind.RUPTURE:
-		var below: float = _regions[Part.LANCE_DOWN].size.y - _anchors[Part.LANCE_DOWN].y
-		var tip: Vector2 = Vector2(point.x, lerpf(minf(top, point.y) - below, point.y, eased))
+	if _started[slot] == 0:
+		_started[slot] = 1
+		_start_y[slot] = minf(top, point.y) - _fall_below(slot)
+	var y: float = lerpf(_start_y[slot], point.y, eased)
+	if rupture:
+		var tip: Vector2 = Vector2(point.x, y)
 		var join: Vector2 = tip + LifeRegions.JOIN[&"lance_down"] - _anchors[Part.LANCE_DOWN]
 		var stretch: float = lerpf(1.0, LifeRegions.MAX_STRETCH[&"trail"], t)
-		_quad(
-			Part.SHADOW, point, Vector2.ONE * lerpf(life.shadow_from, 1.0, t), life.shadow_alpha * t
-		)
+		var grown: float = lerpf(life.fall_shadow_from, 1.0, t)
+		_quad(Part.SHADOW, point, Vector2.ONE * grown, life.fall_shadow_alpha * t)
 		_quad(Part.TRAIL, join, Vector2(1.0, stretch), 1.0)
 		_quad(Part.LANCE_DOWN, tip, Vector2.ONE, 1.0)
-	else:
-		var big: float = life.net_scale_from
-		var reach: float = _ellipse[slot].y * big + LifeRegions.NET_ROW_PX
-		var centre: Vector2 = Vector2(point.x, lerpf(minf(top, point.y) - reach, point.y, eased))
-		_net(centre, lerpf(big, 1.0, eased), life.net_alpha * t)
+	elif _lattice_of[slot] >= 0:
+		var alpha: float = life.net_alpha * t
+		var big: float = lerpf(life.net_scale_from, 1.0, eased)
+		_net.plan(_lattice_of[slot], Vector2(point.x, y), big, alpha, alpha)
 
 
-## The net after it landed: it fades where it lies, with the landing flash and a glint at each of
-## its four extremes.
+## How far the fall's picture reaches below its anchor at the start: the lance's foot, or the
+## net's lowest line (its last row of hexagons and half the line) at `net_scale_from` times.
+func _fall_below(slot: int) -> float:
+	if _kind[slot] == Strike.Kind.RUPTURE:
+		return _regions[Part.LANCE_DOWN].size.y - _anchors[Part.LANCE_DOWN].y
+	var rows: float = _ellipse[slot].y + LifeRegions.NET_SHIFT_PX
+	return rows * life.net_scale_from + LifeRegions.NET_EDGE_PX * 0.5
+
+
+## The net after it landed: the interior fades faster than the ring of its boundary cells, which
+## is what stays last, with the landing flash and a glint at each of the ellipse's four extremes.
 func _plan_settle(slot: int, s: float) -> void:
 	if s >= 1.0:
 		return
 	var point: Vector2 = _point[slot]
 	var axes: Vector2 = _ellipse[slot]
 	var left: float = 1.0 - s
-	_net(point, 1.0, life.net_alpha * left)
+	if _lattice_of[slot] >= 0:
+		var inside: float = life.net_alpha * left * left
+		_net.plan(_lattice_of[slot], point, 1.0, inside, life.net_alpha * left)
 	_quad(Part.HEX_LIT, point, Vector2.ONE, left)
 	for corner: int in CORNERS:
 		var sign_of: float = 1.0 if corner % 2 == 0 else -1.0
@@ -458,13 +449,6 @@ func _plan_settle(slot: int, s: float) -> void:
 			Vector2(axes.x * sign_of, 0.0) if corner < 2 else Vector2(0.0, axes.y * sign_of)
 		)
 		_quad(Part.GLINT, point + off, Vector2.ONE, left)
-
-
-func _net(at: Vector2, scale_by: float, alpha: float) -> void:
-	_net_at[_nets] = at
-	_net_scale[_nets] = scale_by
-	_net_alpha[_nets] = alpha
-	_nets += 1
 
 
 ## One quad of part `part` with its anchor on `at`, its size scaled by `scale_by`.

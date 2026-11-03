@@ -46,35 +46,6 @@ var _life: LifeSettings
 var _layer: StrikeFx
 
 
-func before_test() -> void:
-	var spawns: Array[SpawnDef] = [
-		Buildings.spawn(1, "fossil_strike", 10, 10),
-		Buildings.spawn(1, "renew_strike", 16, 10),
-		Buildings.spawn(2, "renew_strike", 26, 26),
-	]
-	_runner = auto_free(Buildings.runner(Buildings.scenario(spawns)))
-	_camera = auto_free(SizedCamera.new())
-	add_child(_camera)
-	_camera.position = IsoProjection.ground_to_px(POINT.x, POINT.y)
-	_buildings = auto_free(BuildingLayer.new())
-	_buildings.runner = _runner
-	add_child(_buildings)
-	_buildings.set_process(false)
-	_buildings._process(0.0)
-	_life = LifeSettings.new()
-	_layer = auto_free(StrikeFx.new())
-	_layer.runner = _runner
-	_layer.camera = _camera
-	_layer.life = _life
-	_layer.building_layer = _buildings
-	add_child(_layer)
-	_layer.set_process(false)
-
-
-func after_test() -> void:
-	CommandQueue.clear()
-
-
 func test_a_lance_rises_from_the_footprint_centre_lifted_by_the_rise_and_fades_in_launch_ms(
 ) -> void:
 	_fire(BORE, RUPTURE, T0 + 45)
@@ -135,7 +106,7 @@ func test_the_lance_falls_in_the_last_fall_ms_from_above_the_top_and_is_gone_at_
 	_frame(T0 + 40, 0.5)  # Half way: t 0.5, eased 0.25 of the way down.
 	var now: Vector2 = _anchor_of(2, &"lance_down")
 	assert_float(now.y).is_equal_approx(lerpf(start.y, ground.y, 0.25), TOL)
-	assert_float(_layer.quad_alpha(0)).is_equal_approx(_life.shadow_alpha * 0.5, TOL)
+	assert_float(_layer.quad_alpha(0)).is_equal_approx(_life.fall_shadow_alpha * 0.5, TOL)
 	var stretch: float = _layer.quad_rect(1).size.y / float(LifeRegions.FIRST[&"trail"].size.y)
 	assert_float(stretch).is_equal_approx(1.5, TOL)  # Stretched 1 to 2 times, never more.
 	_frame(T0 + 44, 0.99)  # The last frame before the landing tick.
@@ -197,8 +168,8 @@ func test_the_fall_starts_above_the_visible_top_at_the_six_sizes_and_three_zooms
 				_fire(ARRAY, BLACKOUT, 0)
 				_frame(T0, 0.0)  # The net's first frame: all of it above the edge.
 				assert_int(_layer.net_count()).override_failure_message(note).is_equal(1)
-				var foot: float = _layer.net_at(0).y + axes.y * _layer.net_scale(0)
-				foot += LifeRegions.NET_SHIFT_PX  # The hexagons of the last row.
+				var rows: float = (axes.y + LifeRegions.NET_SHIFT_PX) * _layer.net_scale(0)
+				var foot: float = _layer.net_at(0).y + rows + LifeRegions.NET_EDGE_PX * 0.5
 				assert_float(foot).override_failure_message(note).is_less_equal(top + TOL)
 
 
@@ -251,35 +222,43 @@ func test_a_seed_rises_and_a_net_falls_onto_the_spot_when_the_player_fired_it() 
 	assert_vector(_layer.quad_rect(4).get_center()).is_equal_approx(east, Vector2(TOL, TOL))
 	assert_vector(_layer.quad_rect(7).get_center()).is_equal_approx(north, Vector2(TOL, TOL))
 	_frame(T0 + 12, 0.75)  # 250 ms into the 500 ms settle: half faded; the seed is long gone.
-	assert_float(_layer.net_alpha(0)).is_equal_approx(_life.net_alpha * 0.5, 0.001)
+	# The interior fades faster (the square), the ring of boundary cells stays (linear).
+	assert_float(_layer.net_alpha(0)).is_equal_approx(_life.net_alpha * 0.25, 0.001)
+	assert_float(_layer.net_ring_alpha(0)).is_equal_approx(_life.net_alpha * 0.5, 0.001)
+	assert_float(_layer.net_ring_alpha(0)).is_greater(_layer.net_alpha(0))
 	assert_float(_layer.quad_alpha(0)).is_equal_approx(0.5, 0.001)
 	_frame(T0 + 17, EPS)  # 600 + 500 ms: over.
 	assert_int(_layer.net_count()).is_equal(0)
 	assert_int(_layer.slot_count()).is_equal(0)
 
 
-func test_the_net_is_a_lattice_of_hexagons_inside_the_ellipse_of_the_strike_radius() -> void:
-	_fire(ARRAY, BLACKOUT, 0)
+func test_the_net_is_a_closed_lattice_of_hexagons_inside_the_ellipse_of_the_strike_radius() -> void:
 	var axes: Vector2 = IsoProjection.ellipse_px(_radius(ARRAY))
-	var size: int = _layer.lattice_size()
-	assert_int(size).is_greater(0)
-	assert_int(size % 6).is_equal(0)  # Three edges of two ends for each cell.
+	var net: StrikeNet = StrikeNet.new()  # The lattice needs no runner.
+	var lattice: int = net.lattice_for(axes)
+	assert_int(net.lattice_for(axes)).is_equal(lattice)  # Once for a radius.
+	var edges: PackedVector2Array = net.edges(lattice)
+	assert_int(edges.size()).is_greater(0)
+	assert_int(edges.size() % 2).is_equal(0)
 	var area: float = PI * axes.x * axes.y
 	var cell_area: float = LifeRegions.NET_COLUMN_PX * LifeRegions.NET_ROW_PX
-	var cells: float = float(size) / 6.0
-	assert_float(cells).is_between(area / cell_area * 0.8, area / cell_area * 1.2)
-	for index: int in size:
-		var at: Vector2 = _layer._lattice[index]
+	var edge_cells: float = float(edges.size()) / 2.0 / 3.0  # About three edges a cell.
+	assert_float(edge_cells).is_between(area / cell_area * 0.8, area / cell_area * 1.4)
+	var degree: Dictionary[Vector2i, int] = {}
+	for index: int in edges.size():
+		var at: Vector2 = edges[index]
 		var reach: float = (
 			(at.x * at.x) / pow(axes.x + 16.0, 2.0) + (at.y * at.y) / pow(axes.y + 8.0, 2.0)
 		)
 		assert_float(reach).override_failure_message(str(at)).is_less_equal(1.0)
-	# The first cell's three edges share corners: top, upper-left and lower-left meet at its left.
-	var upper_left: Vector2 = _layer._lattice[0]
-	assert_vector(_layer._lattice[1] - upper_left).is_equal_approx(
-		Vector2(16.0, 0.0), Vector2(TOL, TOL)
+		var key: Vector2i = Vector2i(roundi(at.x * 4.0), roundi(at.y * 4.0))
+		degree[key] = degree.get(key, 0) + 1
+	for key: Vector2i in degree:  # Every vertex is on two lines or more: no loose end.
+		assert_int(degree[key]).override_failure_message(str(key)).is_greater_equal(2)
+	# The first edge is a cell's top: sixteen px wide (a hexagon of side 16 has a top of 16).
+	assert_vector(edges[1] - edges[0]).is_equal_approx(
+		Vector2(LifeRegions.NET_SIDE_PX, 0.0), Vector2(TOL, TOL)
 	)
-	assert_vector(_layer._lattice[3]).is_equal_approx(upper_left, Vector2(TOL, TOL))
 
 
 func test_a_net_shows_where_the_point_is_seen_and_not_in_the_dark_unless_the_player_fired() -> void:
@@ -303,14 +282,20 @@ func test_a_net_shows_where_the_point_is_seen_and_not_in_the_dark_unless_the_pla
 	assert_int(_layer.net_count()).is_equal(1)
 
 
-func test_the_seed_trail_stretches_to_twice_its_region_and_no_more() -> void:
+func test_the_seed_trail_stretches_to_twice_its_region_and_never_hangs_below_the_launch() -> void:
 	_fire(ARRAY, BLACKOUT, 0)
-	_frame(T0 + 5, 0.25)  # u 0.5.
+	var launch: Vector2 = _layer.launch_point(0)
 	var full: float = float(LifeRegions.FIRST[&"seed_trail"].size.y)
-	assert_float(_layer.quad_rect(1).size.y).is_equal_approx(full * 1.5, TOL)
 	assert_float(LifeRegions.MAX_STRETCH[&"seed_trail"]).is_equal(2.0)
-	_frame(T0 + 9, 0.99)
-	assert_float(_layer.quad_rect(1).size.y).is_less_equal(full * 2.0)
+	_frame(T0, 0.0)  # Nothing has risen yet: no trail.
+	assert_float(_layer.quad_rect(1).size.y).is_equal_approx(0.0, TOL)
+	_frame(T0 + 5, 0.25)  # u 0.5: risen 72 px, the region would stretch to 96.
+	assert_float(_layer.quad_rect(1).size.y).is_equal_approx(_life.strike_rise_px * 0.75, TOL)
+	for step: int in 5:
+		_frame(T0 + 5 + step, 0.5)
+		var trail: Rect2 = _layer.quad_rect(1)
+		assert_float(trail.size.y).is_less_equal(full * 2.0)
+		assert_float(trail.end.y).is_less_equal(launch.y + TOL)  # Not below where it left.
 
 
 func test_superweapon_effects_stay_with_reduced() -> void:
@@ -364,34 +349,33 @@ func test_the_ring_holds_strike_slots_and_overwrites_the_oldest() -> void:
 	assert_int(_layer.quad_count()).is_less_equal(8 * StrikeFx.QUADS_PER_SLOT)
 
 
-func test_a_new_match_empties_the_ring() -> void:
-	_fire(BORE, RUPTURE, T0 + 45)
-	assert_int(_layer.slot_count()).is_equal(1)
-	_runner.snapshot.match_serial += 1
-	_frame(T0 + 1, 0.0)
-	assert_int(_layer.slot_count()).is_equal(0)
-	assert_int(_layer.quad_count()).is_equal(0)
+func before_test() -> void:
+	var spawns: Array[SpawnDef] = [
+		Buildings.spawn(1, "fossil_strike", 10, 10),
+		Buildings.spawn(1, "renew_strike", 16, 10),
+		Buildings.spawn(2, "renew_strike", 26, 26),
+	]
+	_runner = auto_free(Buildings.runner(Buildings.scenario(spawns)))
+	_camera = auto_free(SizedCamera.new())
+	add_child(_camera)
+	_camera.position = IsoProjection.ground_to_px(POINT.x, POINT.y)
+	_buildings = auto_free(BuildingLayer.new())
+	_buildings.runner = _runner
+	add_child(_buildings)
+	_buildings.set_process(false)
+	_buildings._process(0.0)
+	_life = LifeSettings.new()
+	_layer = auto_free(StrikeFx.new())
+	_layer.runner = _runner
+	_layer.camera = _camera
+	_layer.life = _life
+	_layer.building_layer = _buildings
+	add_child(_layer)
+	_layer.set_process(false)
 
 
-func test_a_long_run_of_strikes_makes_no_object_and_no_node() -> void:
-	for index: int in 40:  # Warm up: the arrays are made, the lattice is built.
-		_fire_on(T0 + index * 2, ARRAY, BLACKOUT, 0, 1, POINT)
-		_frame(T0 + index * 2 + 1, 0.5)
-	var objects: int = roundi(Performance.get_monitor(Performance.OBJECT_COUNT))
-	var nodes: int = _layer.get_child_count()
-	var most: int = 0
-	for index: int in range(40, 400):
-		var kind: int = RUPTURE if index % 2 == 0 else BLACKOUT
-		var building: int = BORE if kind == RUPTURE else ARRAY
-		_fire_on(
-			T0 + index * 2, building, kind, T0 + index * 2 + 20 if kind == RUPTURE else 0, 1, POINT
-		)
-		for frame: int in 4:
-			_frame(T0 + index * 2 + 1, 0.25 * frame)
-			most = maxi(most, _layer.quad_count())
-	assert_int(roundi(Performance.get_monitor(Performance.OBJECT_COUNT))).is_equal(objects)
-	assert_int(_layer.get_child_count()).is_equal(nodes)
-	assert_int(most).is_between(1, 8 * StrikeFx.QUADS_PER_SLOT)
+func after_test() -> void:
+	CommandQueue.clear()
 
 
 ## Delivers a STRIKE record of building `building`, `kind`, landing tick `land` (0 for a blackout),

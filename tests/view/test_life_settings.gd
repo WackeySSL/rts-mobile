@@ -43,11 +43,12 @@ const SCALARS: Dictionary[StringName, Variant] = {
 	&"dust_grow_to": 1.2,
 	&"strike_rise_px": 96.0,
 	&"launch_flash_ms": 250,
-	&"shadow_from": 0.4,
-	&"shadow_alpha": 0.5,
+	&"fall_shadow_from": 0.4,
+	&"fall_shadow_alpha": 0.5,
 	&"net_scale_from": 1.6,
 	&"net_alpha": 0.9,
 	&"net_settle_ms": 500,
+	&"launch_ring_grow_to": 2.0,
 }
 const RECOIL: Dictionary[StringName, float] = {
 	&"tank_cannon": 3.0,

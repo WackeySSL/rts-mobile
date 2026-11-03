@@ -15,6 +15,7 @@ const LIFE_FILES: Array[String] = [
 	"res://game/view/LifeFx.gd",
 	"res://game/view/GroundFx.gd",
 	"res://game/view/StrikeFx.gd",
+	"res://game/view/StrikeNet.gd",
 	"res://game/view/RigLife.gd",
 ]
 ## The life functions of the layers, by file.
