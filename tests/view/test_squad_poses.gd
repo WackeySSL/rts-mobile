@@ -242,7 +242,7 @@ func test_two_runs_of_the_same_play_show_the_same_frames_offsets_and_writes() ->
 
 
 func test_a_walk_writes_once_per_frame_change_and_builds_no_string_key_after_the_first() -> void:
-	var calm: LifeSettings = Rig.calmed(null)  # Without the shake of the tank in view.
+	var calm: LifeSettings = Rig.calmed(null)  # Without the rumble of the tank in view.
 	calm.idle_ms = 600  # But with the squad's idle windows.
 	_restart(calm)
 	var row: int = _row(RIFLE)

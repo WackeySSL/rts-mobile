@@ -11,7 +11,7 @@ extends Resource
 ## only reads its section; the optional rows (P148 and on) append their own fields below.
 ## The art's own numbers (`stride_milli`, `anim_ms`, `emitters`, `marks`) are in the sheets.
 
-## Reduced effects (ADR 0027, answer 3): drops the ambient (dust, track marks, wrecks, idle shake,
+## Reduced effects (ADR 0027, answer 3): drops the ambient (dust, track marks, wrecks, drive rumble,
 ## look-around, head sweep, stack smoke, steam, flare flames, exhaust, muzzle smoke, the factory
 ## puff) and keeps what tells the player something (recoil, walking, idle poses, building
 ## animations, damage smoke, construction sparks, the superweapon effects). Only the perf arena's
@@ -46,15 +46,16 @@ extends Resource
 ## full does not kick: a rig never keeps a stale offset.
 @export var kick_slots: int = 128
 
-## Idle life of vehicles and defences (P140). A vehicle that stands with no target shakes its hull
-## and turret by up to `shake_px` on each axis (whole 0.5 px steps, so 0.5 is the smallest that
-## shakes), a new offset at most once per `shake_ms`; a turreted one also turns its turret one frame
+## Idle life of vehicles and defences (P140, P140b). A vehicle that moved in the last tick rumbles:
+## its hull and turret shift by up to `drive_shake_px` on each axis (whole 0.5 px steps, so 0.5 is
+## the smallest that rumbles), a new offset at most once per `drive_shake_ms`. A standing vehicle
+## never shakes; a turreted one with no target turns its turret one frame
 ## aside for `look_ms`, once in each cycle of `look_every_ms` plus up to `look_every_spread_ms` (by
 ## `LifeClock.mix`, fixed for a unit); a complete, online defence head with no target walks to
 ## `sweep_frames` frames either side of its last aim and back, holding each frame `sweep_ms`.
-## A 0 in `shake_px`, `look_ms` or `sweep_frames` turns that effect off.
-@export var shake_px: float = 0.5
-@export var shake_ms: int = 80
+## A 0 in `drive_shake_px`, `look_ms` or `sweep_frames` turns that effect off.
+@export var drive_shake_px: float = 0.5
+@export var drive_shake_ms: int = 80
 @export var look_every_ms: int = 6000
 @export var look_every_spread_ms: int = 4000
 @export var look_ms: int = 900
