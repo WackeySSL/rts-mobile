@@ -41,7 +41,7 @@
 ; skew (a shear ratio, the same angle on every screen), corner_detail (a count) and
 ; anti_aliasing_size (the soft edge, 1 px). Scale a constant in HudTheme.scaled() before putting
 ; one here. An entry that stays in base px is listed in metadata/base_px by its path in this file.
-; Type variations (DevButton, NumberLabel, SelectionPanel, PerfCard, BuildSidebar, SidebarTab, PowerBar,
+; Type variations (DevButton, NumberLabel, SelectionPanel, PerfCard, SidebarTab, PowerBar,
 ; PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner, ItemCaption,
 ; StrikeButton, StrikeConfirm, BuildButton, ReadyBadge, HudPanel, CapsButton, CapsTitle,
 ; CapsBigTitle, EconomyPill, EconomyPillLow, PillWord, EconomyChipLoss, EconomyChipGain,
@@ -173,19 +173,6 @@ content_margin_top = 8.0
 content_margin_right = 8.0
 content_margin_bottom = 8.0
 bg_color = Color(0.06, 0.08, 0.11, 0.78)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-
-; The build sidebar's backdrop (BuildSidebar): a little darker than the selection panel's, 8 dp at
-; the sides and 4 dp above and below (ADR 0015 section 5 budgets the portrait band's inner height).
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sidebar"]
-content_margin_left = 8.0
-content_margin_top = 4.0
-content_margin_right = 8.0
-content_margin_bottom = 4.0
-bg_color = Color(0.06, 0.08, 0.11, 0.9)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
@@ -323,10 +310,6 @@ SelectionPanel/styles/panel = SubResource("StyleBoxFlat_backdrop")
 ; The perf card's backdrop (PerfHud.gd, a developer tool): the same box as the selection panel's.
 PerfCard/base_type = &"PanelContainer"
 PerfCard/styles/panel = SubResource("StyleBoxFlat_backdrop")
-; The build sidebar (BuildSidebar.gd, plan P85): its backdrop. (Its credits, power and warning tints went
-; to the economy pill's HudTokens with P119.)
-BuildSidebar/base_type = &"PanelContainer"
-BuildSidebar/styles/panel = SubResource("StyleBoxFlat_sidebar")
 ; The minimap's camera frame (Minimap.gd, plan P88; RadarScope.gd draws the same frame, P121): a white line
 ; on a dark edge, so it reads on every terrain. The picture's tint is white, so the texels show as painted.
 Minimap/base_type = &"Control"

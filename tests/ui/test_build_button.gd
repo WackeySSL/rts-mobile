@@ -124,10 +124,23 @@ func test_the_badge_is_an_18_sp_number_and_the_word_a_14_dp_caps_face_from_the_t
 	var phone: UiMetrics = UiProfiles.by_name(&"android_6in")
 	await _open(phone.window_size, phone)
 	var dp: float = UiScale.dp(1.0)
-	var number: int = _button.get_theme_font_size(&"font_size", BuildButton.NUMBER_FONT)
-	assert_float(float(number)).is_greater_equal(roundf(18.0 * dp) - 0.5)
+	var world: World = Sw.world()
+	Sw.own(world, BASE)
+	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad"], 100)
+	_publish(world, 1)  # A count above 0: the badge is drawn.
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_int(_button.count).is_greater(0)
+	assert_object(_button.badge_font).is_not_null()  # What _draw really used for the digits.
+	assert_object(_button.badge_font).is_same(
+		_button.get_theme_font(&"font", BuildButton.NUMBER_FONT)
+	)
+	assert_float(float(_button.badge_font_size)).is_greater_equal(roundf(18.0 * dp) - 0.5)
 	var word: int = _button.get_theme_font_size(&"font_size", BuildButton.WORD_FONT)
 	assert_float(float(word)).is_greater_equal(roundf(14.0 * dp) - 0.5)
+	assert_object(_button.badge_font).is_not_same(
+		_button.get_theme_font(&"font", BuildButton.WORD_FONT)
+	)
 
 
 func test_it_hides_under_the_drawer_and_the_pause_menu_and_a_tap_opens_the_drawer() -> void:

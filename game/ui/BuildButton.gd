@@ -29,6 +29,8 @@ const ACCENTS: Array[StringName] = [&"AccentRenew", &"AccentFossil"]
 var progress: float = 0.0  ## The ring: the first-finishing head's share, 0 to 1.
 var count: int = 0  ## The badge: the items in the player's queues.
 var draws: int = 0  ## How many times it was drawn, for the tests.
+var badge_font: Font = null  ## The face and size the badge's digits were last drawn with.
+var badge_font_size: int = 0
 
 var _glyph: Texture2D = null
 var _seen: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot last read.
@@ -150,16 +152,18 @@ func _draw() -> void:
 	if count > 0:
 		var at: Vector2 = Vector2(size.x - BADGE_DP * dp, BADGE_DP * dp)
 		draw_circle(at, BADGE_DP * dp, get_theme_color(&"text", TOKENS))
-		var number: Font = get_theme_font(&"font", NUMBER_FONT)
-		var digits: int = get_theme_font_size(&"font_size", NUMBER_FONT)
+		badge_font = get_theme_font(&"font", NUMBER_FONT)  # One place: drawn and recorded.
+		badge_font_size = get_theme_font_size(&"font_size", NUMBER_FONT)
 		var text: String = str(count)
-		var span: float = number.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, digits).x
+		var span: float = (
+			badge_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, badge_font_size).x
+		)
 		draw_string(
-			number,
-			at + Vector2(-span * 0.5, digits * 0.35),
+			badge_font,
+			at + Vector2(-span * 0.5, badge_font_size * 0.35),
 			text,
 			HORIZONTAL_ALIGNMENT_LEFT,
 			-1,
-			digits,
+			badge_font_size,
 			get_theme_color(&"on_accent", accent)
 		)

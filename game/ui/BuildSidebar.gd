@@ -35,12 +35,13 @@ extends Control
 ## `GhostControls`), LOCKED, UNAFFORDABLE, FULL or AVAILABLE, in that order. A tap on one that
 ## cannot take an item shakes it. Until P120c the READY card is reached through BUILD and the
 ## Structures tab.
-## The look is the inherited theme's (`BuildSidebar`, `SidebarTab` and the `ItemTile` family), the
-## sizes are dp.
+## The look is the inherited theme's (`HudPanel` for the backdrop, `SidebarTab`, `ItemCaption` and
+## the `ItemTile` family), the sizes are dp.
 
 ## Emitted when another tab opens, by a tap or by `select_tab`.
 signal tab_selected(tab: int)
-## The drawer was opened or closed (at the request, not at the end of the slide).
+## The drawer was opened or closed (at the request, not at the end of the slide), or was laid out
+## anew by a resize while open.
 signal state_changed
 ## The sheet's top on the screen and the zone's height changed, both base px: a request, a frame of
 ## the slide, a resize. What rides on the drawer (the ArmyBar, the strike row) lifts by these.
@@ -324,6 +325,11 @@ static func _min_dp(control: Control, size_dp: Vector2) -> void:
 func _build_head() -> void:
 	_head.name = "Head"
 	_stack.add_child(_head)
+	var pad: Control = Control.new()  # As wide as the close button, so that the room is centred.
+	pad.name = "HeadPad"
+	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_min_dp(pad, Vector2(CLOSE_DP, CLOSE_DP))
+	_head.add_child(pad)
 	var room: Control = Control.new()
 	room.name = "HeadRoom"
 	room.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -577,6 +583,8 @@ func _apply_dp() -> void:
 	_pad.add_theme_constant_override("margin_bottom", pad + (roundi(_edge) if _portrait else 0))
 	_show_tab()
 	_place(true)
+	if is_open():
+		state_changed.emit()  # Whoever reserves the panel's room (`SelectionPanel`) reads it anew.
 
 
 ## Reads what the window decides, once per resize: the orientation and the dp, the drawer's rect

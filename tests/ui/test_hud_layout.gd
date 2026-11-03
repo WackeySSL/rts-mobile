@@ -107,10 +107,10 @@ func test_the_open_drawer_overlaps_none_of_the_hud_and_the_selection_panel_ends_
 	for screen: Dictionary in _cases():
 		await _open(screen)
 		var why: String = str(screen["label"])
-		if str(screen["label"]).begins_with("web_phone_small with a cutout"):
-			# The smallest web phone less a 100 px cutout leaves the bottom row less than its least
-			# row beside the 312 dp panel: the zone gives way there (`SelectionPanel._fit_zone`).
-			continue
+		# The smallest web phone less a 100 px cutout leaves the bottom row less than its least row
+		# beside the 312 dp panel: the zone gives way there (`SelectionPanel._fit_zone`), by no more
+		# than the drawer's own padding. The ArmyBar, the pill and Dev are checked all the same.
+		var tight: bool = str(screen["label"]).begins_with("web_phone_small with a cutout")
 		var sidebar: BuildSidebar = _hud("BuildSidebar")
 		sidebar.open()
 		await await_idle_frame()
@@ -137,10 +137,18 @@ func test_the_open_drawer_overlaps_none_of_the_hud_and_the_selection_panel_ends_
 			parts["DevButton"] = _rect("DevButton")
 		for part: String in parts:
 			var at: String = "%s: %s %s against the drawer %s" % [why, part, parts[part], drawer]
+			if part == "Panel" and tight:
+				var over: float = parts[part].end.x - drawer.position.x
+				assert_float(over).override_failure_message(at).is_less_equal(
+					UiScale.dp(16.0) + TOLERANCE_PX
+				)
+				continue
 			assert_bool(parts[part].intersects(drawer)).override_failure_message(at).is_false()
 		if not HudLayout.is_portrait():
 			var gap: float = UiScale.dp(8.0) - TOLERANCE_PX
 			for part: String in ["Panel", "ArmyBar"]:
+				if part == "Panel" and tight:
+					continue
 				var at: String = (
 					"%s: %s %s, drawer from %s" % [why, part, parts[part], drawer.position.x]
 				)
@@ -148,6 +156,28 @@ func test_the_open_drawer_overlaps_none_of_the_hud_and_the_selection_panel_ends_
 					drawer.position.x - gap
 				)
 		sidebar.collapse()
+
+
+## A resize while the drawer is open (the phone's window changes size, a turn) re-fits the bottom
+## row to the new panel width: the SelectionPanel's band margin reserves what `right_zone_px` says
+## after the resize, not the width the drawer had before it.
+func test_a_resize_with_the_drawer_open_refits_the_selection_panel_to_the_new_width() -> void:
+	var first: UiMetrics = UiProfiles.by_name(&"android_6in")
+	var wide: UiMetrics = UiProfiles.by_name(&"web_tablet")
+	await _open({"label": "phone", "size": first.window_size, "metrics": first, "counts": TANKS})
+	var sidebar: BuildSidebar = _hud("BuildSidebar")
+	sidebar.open()
+	await await_idle_frame()
+	await await_idle_frame()
+	UiScale.set_override(wide)
+	get_window().size = wide.window_size
+	await await_idle_frame()
+	await await_idle_frame()
+	var band: MarginContainer = _panel.get_parent() as MarginContainer
+	var inner: float = _inner_right() - _hud("SafeArea").get_theme_constant("margin_left")
+	var zone: float = HudLayout.right_zone_px(inner)
+	assert_float(HudLayout.drawer_side_dp).is_greater(0.0)
+	assert_float(float(band.get_theme_constant("margin_right"))).is_equal_approx(zone, 1.5)
 
 
 ## With the sidebar's real band (P85), no other control enters the band, the bar sits a gap above
