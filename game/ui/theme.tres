@@ -300,7 +300,7 @@ default_font = ExtResource("1_chakra_500")
 BoxOverlay/colors/fill = Color(1, 1, 1, 0.15)
 BoxOverlay/colors/outline = Color(0.10980392, 0.12941177, 0.15294118, 1)
 BoxOverlay/colors/stroke = Color(1, 1, 1, 1)
-; The ArmyBar's buttons: HUD numbers, 18 dp.
+; The default Button face, 18 dp (the group column draws Labels on its plates instead).
 Button/font_sizes/font_size = 18
 ; The Dev button of the main screen: 40 base px, not dp (see metadata/base_px).
 DevButton/base_type = &"Button"

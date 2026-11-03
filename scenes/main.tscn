@@ -16,7 +16,7 @@
 [ext_resource type="Script" path="res://game/ui/BoxOverlay.gd" id="12_box"]
 [ext_resource type="Script" path="res://game/ui/SafeAreaMargin.gd" id="12_safe"]
 [ext_resource type="Script" path="res://game/ui/DpMinSize.gd" id="13_dp"]
-[ext_resource type="Script" path="res://game/ui/ArmyBar.gd" id="14_army"]
+[ext_resource type="Script" path="res://game/ui/GroupColumn.gd" id="14_group_column"]
 [ext_resource type="Script" path="res://game/ui/SelectionPanel.gd" id="15_selection"]
 [ext_resource type="Theme" path="res://game/ui/theme.tres" id="16_theme"]
 [ext_resource type="Script" path="res://game/ui/HudTheme.gd" id="17_hud_theme"]
@@ -171,7 +171,7 @@ world_sort = NodePath("../WorldSort")
 script = ExtResource("2_cam")
 settings = ExtResource("6_settings")
 
-[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer", "camera", "marker_layer", "box_overlay", "army_bar", "strike_aim", "placement")]
+[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer", "camera", "marker_layer", "box_overlay", "group_column", "strike_aim", "placement")]
 script = ExtResource("10_player")
 runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
@@ -180,7 +180,7 @@ camera = NodePath("../Camera")
 settings = ExtResource("6_settings")
 marker_layer = NodePath("../MarkerLayer")
 box_overlay = NodePath("../Hud/BoxOverlay")
-army_bar = NodePath("../Hud/SafeArea/ArmyBand/ArmyBar")
+group_column = NodePath("../Hud/GroupColumn")
 strike_aim = NodePath("../StrikeAim")
 placement = NodePath("../PlacementController")
 
@@ -231,7 +231,7 @@ mouse_filter = 2
 theme = ExtResource("16_theme")
 script = ExtResource("38_ghost_controls")
 placement = NodePath("../../PlacementController")
-clear_of = [NodePath("../SafeArea/TopLeft"), NodePath("../SafeArea/ArmyBand/ArmyBar"), NodePath("../SafeArea/SelectionBand/SelectionPanel"), NodePath("../StrikeControls"), NodePath("../BuildButton"), NodePath("../BuildButton/ReadyChip"), NodePath("../BuildSidebar"), NodePath("../EconomyPill"), NodePath("../RadarScope"), NodePath("../RadarMap"), NodePath("../AttackToast")]
+clear_of = [NodePath("../SafeArea/TopLeft"), NodePath("../GroupColumn"), NodePath("../SafeArea/SelectionBand/SelectionPanel"), NodePath("../StrikeControls"), NodePath("../BuildButton"), NodePath("../BuildButton/ReadyChip"), NodePath("../BuildSidebar"), NodePath("../EconomyPill"), NodePath("../RadarScope"), NodePath("../RadarMap"), NodePath("../AttackToast")]
 
 [node name="SafeArea" type="MarginContainer" parent="Hud"]
 anchors_preset = 15
@@ -272,25 +272,16 @@ dialog = NodePath("../../../SurrenderDialog")
 [node name="DpMinSize" type="Node" parent="Hud/SafeArea/TopLeft/SurrenderButton"]
 script = ExtResource("13_dp")
 
-[node name="ArmyBand" type="MarginContainer" parent="Hud/SafeArea"]
-mouse_filter = 2
-
-[node name="ArmyBar" type="HBoxContainer" parent="Hud/SafeArea/ArmyBand"]
-size_flags_horizontal = 0
-size_flags_vertical = 8
-script = ExtResource("14_army")
-settings = ExtResource("6_settings")
-
 [node name="SelectionBand" type="MarginContainer" parent="Hud/SafeArea"]
 mouse_filter = 2
 
-[node name="SelectionPanel" type="PanelContainer" parent="Hud/SafeArea/SelectionBand" node_paths=PackedStringArray("runner", "army_bar", "top_left")]
+[node name="SelectionPanel" type="PanelContainer" parent="Hud/SafeArea/SelectionBand" node_paths=PackedStringArray("runner", "group_column", "top_left")]
 visible = false
 size_flags_horizontal = 4
 size_flags_vertical = 8
 script = ExtResource("15_selection")
 runner = NodePath("../../../../MatchRunner")
-army_bar = NodePath("../../ArmyBand/ArmyBar")
+group_column = NodePath("../../../GroupColumn")
 top_left = NodePath("../../TopLeft")
 
 [node name="EconomyPill" type="PanelContainer" parent="Hud" node_paths=PackedStringArray("runner", "safe_area", "top_left", "feed", "card")]
@@ -302,13 +293,24 @@ top_left = NodePath("../SafeArea/TopLeft")
 feed = NodePath("../HudStateFeed")
 card = NodePath("../EconomyCard")
 
+[node name="GroupColumn" type="Control" parent="Hud" node_paths=PackedStringArray("feed", "safe_area", "strike_aim", "top_left", "build_button")]
+mouse_filter = 2
+theme = ExtResource("16_theme")
+script = ExtResource("14_group_column")
+settings = ExtResource("6_settings")
+feed = NodePath("../HudStateFeed")
+safe_area = NodePath("../SafeArea")
+strike_aim = NodePath("../../StrikeAim")
+top_left = NodePath("../SafeArea/TopLeft")
+build_button = NodePath("../BuildButton")
+
 [node name="AttackCues" type="Node" parent="Hud" node_paths=PackedStringArray("runner", "camera", "feed")]
 script = ExtResource("44_attack_cues")
 runner = NodePath("../../MatchRunner")
 camera = NodePath("../../Camera")
 feed = NodePath("../HudStateFeed")
 
-[node name="AttackToast" type="PanelContainer" parent="Hud" node_paths=PackedStringArray("cues", "feed", "camera", "safe_area", "pill", "top_left", "selection")]
+[node name="AttackToast" type="PanelContainer" parent="Hud" node_paths=PackedStringArray("cues", "feed", "camera", "safe_area", "pill", "top_left", "selection", "group_column", "build_button")]
 visible = false
 theme = ExtResource("16_theme")
 script = ExtResource("45_attack_toast")
@@ -319,6 +321,8 @@ safe_area = NodePath("../SafeArea")
 pill = NodePath("../EconomyPill")
 top_left = NodePath("../SafeArea/TopLeft")
 selection = NodePath("../SafeArea/SelectionBand/SelectionPanel")
+group_column = NodePath("../GroupColumn")
+build_button = NodePath("../BuildButton")
 
 [node name="EconomyCard" type="PanelContainer" parent="Hud"]
 visible = false
@@ -411,6 +415,6 @@ runner = NodePath("../../MatchRunner")
 [connection signal="rally_ordered" from="PlayerController" to="RallyLayer" method="show_pending"]
 [connection signal="selection_changed" from="PlayerController" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="set_selected"]
 [connection signal="state_changed" from="Hud/BuildSidebar" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="refit"]
-[connection signal="zone_changed" from="Hud/BuildSidebar" to="Hud/SafeArea/ArmyBand/ArmyBar" method="_on_zone_changed"]
+[connection signal="laid_out" from="Hud/GroupColumn" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="refit"]
 [connection signal="reserved_changed" from="Hud/BuildButton" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="refit"]
 [connection signal="reserved_changed" from="Hud/StrikeControls" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="refit"]

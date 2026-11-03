@@ -16,10 +16,10 @@ extends PanelContainer
 ## and its own size flags by the orientation of the window (`HudLayout.is_portrait`), on a change
 ## of the selection and on a resize. A flip runs it twice, so every call lays out from the state
 ## it finds.
-## Landscape: the band lies between the ArmyBar and BUILD's column, or the open side drawer
+## Landscape: the band lies between the group column and BUILD's column, or the open side drawer
 ## (`HudLayout.right_zone_px`: its width and a gap, at the right) and the panel sits in its middle,
 ## at the bottom. A row is at most BAND_SHARE of the band's width (the safe area's inner width, the
-## band's own) and at most what the ArmyBar and the zone leave of it: a longer name or a larger
+## band's own) and at most what the group column and the zone leave of it: a longer name or a larger
 ## count clips the name with an ellipsis, so the panel stays between the two. Only a screen too
 ## narrow for the least row (see `_fit_zone`) lets the zone give way.
 ## Portrait (ADR 0015 section 5, ADR 0025 section 2): the rows stand side by side in one line at
@@ -47,7 +47,7 @@ const LEVEL_NO_TOTAL: int = 3
 const LEVEL_CHIP: int = 4
 
 @export var runner: MatchRunner
-@export var army_bar: ArmyBar  ## The landscape band starts after it.
+@export var group_column: GroupColumn  ## The landscape band starts after it.
 @export var top_left: Control  ## The portrait line starts below it and the pill (the Dev button).
 
 var _list: BoxContainer = BoxContainer.new()  ## A column in landscape, a line in portrait.
@@ -190,7 +190,7 @@ func _fit_band() -> void:
 	_show_level(LEVEL_NAMED, _shown)
 	var band: MarginContainer = get_parent() as MarginContainer
 	var safe: SafeAreaMargin = null if band == null else band.get_parent() as SafeAreaMargin
-	if safe == null or army_bar == null:
+	if safe == null or group_column == null:
 		_fit_rows(INF)  # No band, no cap.
 		return
 	var portrait: bool = HudLayout.is_portrait()
@@ -206,7 +206,8 @@ func _fit_band() -> void:
 	safe.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
-## Landscape: the band's margins are the ArmyBar on the left and BUILD's column, or the open side
+## Landscape: the band's margins are the group column on the left and BUILD's column, or the open
+## side
 ## panel, on the right, and the rows are capped to what they leave (the bottom row's room, less the
 ## backdrop's
 ## padding), so a long name clips and the panel never slides into the zone. The band's minimum
@@ -216,7 +217,7 @@ func _fit_zone(band: MarginContainer, band_px: float) -> void:
 	size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	size_flags_vertical = Control.SIZE_SHRINK_END
 	var zone: float = HudLayout.right_zone_px(band_px)
-	var left: int = ceili(army_bar.get_combined_minimum_size().x + UiScale.dp(GAP_DP))
+	var left: int = ceili(group_column.size.x + UiScale.dp(GAP_DP))
 	var between: float = band_px - left - ceilf(zone)  # The panel's room, backdrop included.
 	var cap: float = minf(
 		BAND_SHARE * band_px, between - get_theme_stylebox(&"panel").get_minimum_size().x

@@ -2,7 +2,8 @@ extends GdUnitTestSuite
 ## What opens and closes the build drawer (plan P120, ADR 0025 sections 1 and 5; it grew out of
 ## P85f, ADR 0024 sections 1, 5, 6 and 9), in the main scene through the real GUI at the six sizes
 ## of ScreenSizes.ALL. A match starts closed. A tap, a double-tap, a long-press with its box, a pan,
-## a pinch and a wheel step on the map close it and still do their own work; a touch on the ArmyBar,
+## a pinch and a wheel step on the map close it and still do their own work; a touch on the group
+## column,
 ## the SelectionPanel, a tab, a card, a hold on a card or a scroll of the grid never does. The start
 ## of placement closes it, and so does a restart of placement by a READY card tapped in a drawer
 ## opened meanwhile; the end of placement by a build or the X opens it again (it returns to the

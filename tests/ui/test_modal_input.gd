@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 ## acts (the positive control), and once with the modal shown, where it does not. The cases are the
 ## wheel (it zoomed the camera through the modal), a finger resting on the map whose lift sent a
 ## MOVE and whose drag went on panning, a finger held on the minimap whose hold sent a MOVE, and a
-## held army-bar button whose hold assigned a group. A modal that shows ends them all through
+## held group button whose hold assigned a group. A modal that shows ends them all through
 ## `TouchInput.CANCEL_GROUP`. The plain taps on the modal are test_surrender's and
 ## test_result_screen's.
 
@@ -131,11 +131,13 @@ func test_a_hold_on_the_minimap_orders_nothing_under_a_modal() -> void:
 		_main.free()
 
 
-## A hold button (an army-bar group here, an item tile is the same class) assigns its group once
+## A hold button (a group button here, an item tile is the same class) assigns its group once
 ## the finger has rested for `hold_ms`; under a modal the press is spent: no hold and no tap.
 func test_a_hold_button_does_not_hold_or_tap_under_a_modal() -> void:
 	for modal: String in MODALS:
 		await _open()
+		var controller: PlayerController = _main.get_node("PlayerController")
+		controller.assign_group(1)  # An empty group is not shown: save the units `_open` selected.
 		var group: HoldButton = _hud("Group1") as HoldButton
 		group.clock = func() -> int: return _now[0]
 		var counts: Dictionary[String, int] = {"held": 0, "tapped": 0}

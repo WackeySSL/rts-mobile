@@ -4,9 +4,9 @@ extends GdUnitTestSuite
 ## orientations, also with a cutout: every HUD control is inside the safe rect, at least 48 dp on
 ## each axis and clear of every other. BUILD (P120) is at the bottom right, the economy pill (P119)
 ## at the top left and the radar scope (P121) at the top right in both orientations; in landscape
-## the bottom row (the ArmyBar and the selection panel) stays left of BUILD's column
+## the bottom row (the selection panel, right of the group column) stays left of BUILD's column
 ## (`HudLayout.right_zone_px`), or of the open drawer. In portrait, while the drawer is closed, the
-## zone is BUILD's own 64 dp and the ArmyBar stands a gap above it (the plan's interim place).
+## zone is 0 (P122b) and the group column stands at the left edge, above the safe bottom.
 ## Portrait selects the six MVP types with 3-digit counts. Landscape selects the 30 tanks the scene
 ## starts with, and again 120 rocket squads (the widest single row) and three types with 3-digit
 ## counts (not the six: their
@@ -59,14 +59,14 @@ func test_every_hud_control_is_inside_the_safe_rect_48_dp_and_clear_of_the_other
 		var visible_rect: Rect2 = get_viewport().get_visible_rect()
 		var big: Dictionary[String, Rect2] = {
 			"DevButton": _rect("DevButton"),
-			"ArmyBar": _rect("ArmyBar"),
+			"GroupColumn": _rect("GroupColumn"),
 			"Panel": _rect(_panel),
 			"Build": _rect("BuildButton"),
 		}
 		big["Pill"] = _rect("EconomyPill")  # In both orientations (P119).
 		big["Scope"] = _rect("RadarScope")  # And the scope (P121).
 		var all: Dictionary[String, Rect2] = big.duplicate()
-		for button: String in ["AllArmy", "Group1", "Group2", "Group3"]:
+		for button: String in ["AllArmy"]:
 			all[button] = _rect(button)
 		assert_bool(_panel.visible).override_failure_message(why).is_true()
 		for control: String in all:
@@ -99,17 +99,17 @@ func test_every_hud_control_is_inside_the_safe_rect_48_dp_and_clear_of_the_other
 
 
 ## The open drawer is a HUD control too (plan P120): at every screen, sideways the bottom row's
-## SelectionPanel and the ArmyBar end before the panel with a gap (`HudLayout.right_zone_px`
+## SelectionPanel and the group column end before the panel with a gap (`HudLayout.right_zone_px`
 ## reserves the panel's width, and the panel re-fits when the drawer opens), upright the sheet
-## stands under the ArmyBar and the line; and none of the pill, the Dev button, the ArmyBar and the
-## panel overlaps the drawer's rect in either orientation.
+## covers the column; and none of the pill, the Dev button, the column and the panel overlaps the
+## drawer's rect in either orientation.
 func test_the_open_drawer_overlaps_none_of_the_hud_and_the_selection_panel_ends_before_it() -> void:
 	for screen: Dictionary in _cases():
 		await _open(screen)
 		var why: String = str(screen["label"])
 		# The smallest web phone less a 100 px cutout leaves the bottom row less than its least row
 		# beside the 312 dp panel: the zone gives way there (`SelectionPanel._fit_zone`), by no more
-		# than the drawer's own padding. The ArmyBar, the pill and Dev are checked all the same.
+		# than the drawer's own padding. The group column, the pill and Dev are checked all the same.
 		var tight: bool = str(screen["label"]).begins_with("web_phone_small with a cutout")
 		var sidebar: BuildSidebar = _hud("BuildSidebar")
 		sidebar.open()
@@ -130,9 +130,10 @@ func test_the_open_drawer_overlaps_none_of_the_hud_and_the_selection_panel_ends_
 		assert_bool(_panel.visible).override_failure_message(why).is_true()
 		var parts: Dictionary[String, Rect2] = {
 			"Panel": _rect(_panel),
-			"ArmyBar": _rect("ArmyBar"),
 			"Pill": _rect("EconomyPill"),
 		}
+		if (_hud("GroupColumn") as Control).is_visible_in_tree():  # The sheet covers it upright.
+			parts["GroupColumn"] = _rect("GroupColumn")
 		if (_hud("DevButton") as Control).is_visible_in_tree():
 			parts["DevButton"] = _rect("DevButton")
 		for part: String in parts:
@@ -146,7 +147,7 @@ func test_the_open_drawer_overlaps_none_of_the_hud_and_the_selection_panel_ends_
 			assert_bool(parts[part].intersects(drawer)).override_failure_message(at).is_false()
 		if not HudLayout.is_portrait():
 			var gap: float = UiScale.dp(8.0) - TOLERANCE_PX
-			for part: String in ["Panel", "ArmyBar"]:
+			for part: String in ["Panel", "GroupColumn"]:
 				if part == "Panel" and tight:
 					continue
 				var at: String = (
@@ -180,66 +181,64 @@ func test_a_resize_with_the_drawer_open_refits_the_selection_panel_to_the_new_wi
 	assert_float(float(band.get_theme_constant("margin_right"))).is_equal_approx(zone, 1.5)
 
 
-## With the sidebar's real band (P85), no other control enters the band, the bar sits a gap above
-## it, and nothing else is in the bottom stack. The limit of 40% of the safe height is the plan's,
-## for the six sizes and the profiles; a cutout takes height from both ends of the screen
-## (SafeAreaMargin gives top and bottom the larger inset), so a case with one is left out of the
-## limit, as a phone browser that is only 700 dp tall has no room left for it.
-func test_in_portrait_the_bar_stands_above_builds_row_and_nothing_else_is_below_it() -> void:
+## Upright the drawer is closed, the zone is 0 and BUILD stands on the safe bottom (P122b); the
+## group
+## column stands at the left edge, within 40% of the safe height from the bottom, left of BUILD and
+## clear of the Dev stack and the selection line at the top. A cutout takes height from both ends of
+## the screen (SafeAreaMargin gives top and bottom the larger inset), so a case with one is left out
+## of the limit, as a phone browser that is only 700 dp tall has no room left for it.
+func test_in_portrait_the_group_column_stands_at_the_bottom_left_beside_build() -> void:
 	for screen: Dictionary in _screens(true):
 		await _open(screen)
 		var why: String = str(screen["label"])
 		var safe: Rect2 = UiScale.safe_rect_base()
 		var gap: float = UiScale.dp(8.0)
-		var band: Rect2 = _rect("BuildButton")
-		var zone_top: float = _inner_bottom() - HudLayout.bottom_zone_px()
-		assert_float(HudLayout.bottom_zone_px()).override_failure_message(why).is_equal_approx(
-			UiScale.dp(64.0), 0.01
+		var build: Rect2 = _rect("BuildButton")
+		assert_float(HudLayout.bottom_zone_px()).override_failure_message(why).is_equal(0.0)
+		assert_float(build.end.y).override_failure_message(why).is_equal_approx(
+			_inner_bottom(), 1.0
 		)
-		assert_float(band.position.y).override_failure_message(why).is_equal_approx(
-			_inner_bottom() - UiScale.dp(64.0), 1.0
+		var column: Rect2 = _rect("GroupColumn")
+		assert_float(column.end.y).override_failure_message(why).is_equal_approx(
+			_inner_bottom(), 1.0
 		)
-		assert_float(band.end.y).override_failure_message(why).is_equal_approx(_inner_bottom(), 1.0)
-		assert_float(_rect("ArmyBar").end.y).override_failure_message(why).is_less_equal(
-			band.position.y
+		var inner_left: float = _hud("SafeArea").get_theme_constant("margin_left")
+		assert_float(column.position.x).override_failure_message(why).is_equal_approx(
+			inner_left, 1.0
 		)
-		var bar: Rect2 = _rect("ArmyBar")
-		assert_float(bar.end.y).override_failure_message(why).is_between(
-			zone_top - gap - 1.5, zone_top - gap + TOLERANCE_PX
+		assert_float(column.end.x).override_failure_message(why).is_less_equal(
+			build.position.x - gap + TOLERANCE_PX
 		)
-		for control: String in ["DevButton", "ArmyBar", "AllArmy", "Group1", "Group3"]:
-			var at: String = "%s: %s %s, band from %s" % [why, control, _rect(control), zone_top]
-			assert_float(_rect(control).end.y).override_failure_message(at).is_less_equal(
-				zone_top + TOLERANCE_PX
-			)
 		assert_float(_rect(_panel).end.y).override_failure_message(why).is_less_equal(
-			bar.position.y
+			column.position.y
 		)
 		assert_float(_rect("DevButton").end.y).override_failure_message(why).is_less_equal(
-			bar.position.y
+			column.position.y
 		)
-		assert_bool(safe.encloses(bar)).override_failure_message(why).is_true()
+		assert_bool(safe.encloses(column)).override_failure_message(why).is_true()
 		if not screen["cutout"]:
-			var stack: float = safe.end.y - bar.position.y
+			var stack: float = safe.end.y - column.position.y
 			var limit: float = STACK_LIMIT * safe.size.y
 			var share: String = "%s: stack %s of %s" % [why, stack, safe.size.y]
 			assert_float(stack).override_failure_message(share).is_less_equal(limit)
 
 
-## There is no band in landscape: the sidebar leaves the zone at 0 and the bar is on the bottom
-## edge, and the bar lifts for a band only in portrait, whatever zone it is told of.
-func test_in_landscape_the_bar_stays_on_the_bottom_edge_whatever_the_zone_it_is_told_of() -> void:
+## There is no band in landscape: the sidebar leaves the zone at 0 and the column stands at the left
+## edge under the Dev stack, whatever zone it is told of.
+func test_in_landscape_the_group_column_stands_under_the_dev_stack_whatever_the_zone() -> void:
 	for screen: Dictionary in _screens(false):
 		await _open(screen)
 		var why: String = str(screen["label"])
 		assert_float(HudLayout.bottom_zone_px()).override_failure_message(why).is_equal(0.0)
-		assert_float(_rect("ArmyBar").end.y).override_failure_message(why).is_equal_approx(
-			_inner_bottom(), 0.01
+		var column: Rect2 = _rect("GroupColumn")
+		var stack: Rect2 = _rect("TopLeft")
+		assert_float(column.position.y).override_failure_message(why).is_greater_equal(
+			stack.end.y + UiScale.dp(8.0) - TOLERANCE_PX
 		)
-		assert_int(_hud("ArmyBand").get_theme_constant("margin_bottom")).is_equal(0)
-		HudLayout.bottom_zone_dp = 200.0  # Not what the sidebar sets: the bar's own rule.
-		(_hud("ArmyBar") as ArmyBar)._lift()
-		assert_int(_hud("ArmyBand").get_theme_constant("margin_bottom")).is_equal(0)
+		var before: Rect2 = column
+		HudLayout.bottom_zone_dp = 200.0  # Not what the sidebar sets: nothing reads it here.
+		(_hud("GroupColumn") as GroupColumn).place()
+		assert_that(_rect("GroupColumn")).override_failure_message(why).is_equal(before)
 		HudLayout.bottom_zone_dp = 0.0
 
 

@@ -58,6 +58,19 @@ func group(slot: int) -> PackedInt32Array:
 	return ids.duplicate()
 
 
+## How many units group `slot` (1-3) holds, 0 for any other slot.
+func group_size(slot: int) -> int:
+	return _groups[slot].size() if _groups.has(slot) else 0
+
+
+## The lowest group (1-3) with no unit in it, 0 when all three hold some.
+func lowest_free_group() -> int:
+	for slot: int in range(1, GROUP_COUNT + 1):
+		if group_size(slot) == 0:
+			return slot
+	return 0
+
+
 ## Stores the current selection in group `slot`, even when it is empty (that empties the group).
 func assign_group(slot: int) -> void:
 	if slot >= 1 and slot <= GROUP_COUNT:

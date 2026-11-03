@@ -119,7 +119,7 @@ func test_a_red_rig_in_the_fog_is_hidden_and_not_pickable_and_a_tap_on_it_moves_
 func test_select_all_tap_a_visible_red_tank_and_fight_until_it_dies() -> void:
 	await _open()
 	_press_hud("AllArmy")
-	_press_hud("Group1", _touch.settings.group_assign_ms)  # A hold assigns the 30.
+	_press_hud("AddGroup")  # "+" saves the 30 in group 1.
 	_assert_blue_left(range(1, BLUE_TANKS + 1))
 	# The approach: a tap on the hidden red tank's ground drives the whole block there.
 	_centre_on_rig(RED_FIRST_ROW)
@@ -180,7 +180,7 @@ func _assert_blue_left(ids: Array) -> void:
 	assert_array(_controller.selection.selected).is_equal(ids)
 	assert_array(_controller.selection.group(1)).is_equal(ids)
 	_assert_panel("×%d" % ids.size())
-	assert_str((_hud("Group1") as Button).text).is_equal("1\n%d" % ids.size())
+	assert_str((_hud("GroupColumn") as GroupColumn).badge_text(1)).is_equal("1\n%d" % ids.size())
 
 
 ## Every unit of `ids` has the ATTACK order on `target` in the World, the tick after the tap.
@@ -298,7 +298,7 @@ func _assert_off_hud(at: Vector2) -> void:
 	await await_idle_frame()
 	var screen: Rect2 = get_viewport().get_visible_rect()
 	assert_bool(screen.has_point(at)).override_failure_message("%s is off screen" % at).is_true()
-	for node_name: String in ["SelectionPanel", "ArmyBar", "DevButton"]:
+	for node_name: String in ["SelectionPanel", "GroupColumn", "DevButton"]:
 		var hud: Control = _hud(node_name)
 		var why: String = "%s is on %s %s" % [at, node_name, hud.get_global_rect()]
 		var under: bool = hud.is_visible_in_tree() and hud.get_global_rect().has_point(at)

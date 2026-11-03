@@ -25,8 +25,8 @@ extends Control
 ## its target and lays the drawer out for the other orientation.
 ## The sheet's height goes to `HudLayout.bottom_zone_dp` and its real top on the screen to
 ## `HudLayout.menu_top_px` (ADR 0024 section 4), and `zone_changed` tells whoever lifts something by
-## them (the ArmyBar, the strike row). Upright the zone is BUILD's row while the drawer is closed
-## (`HudLayout.BUILD_ZONE_DP`, until P122b), the sheet's height while it is open; sideways it is 0.
+## them (the strike row). Upright the zone is the sheet's height while the drawer is open and 0
+## while it is closed; sideways it is 0.
 ## Cards: one `ItemTile` per buildable type (icon: its P99b item card), made per match from the
 ## snapshot's type tables, those of the open tab and of the local player's faction shown. The
 ## faction is that of the player's own rows (`type_faction`, the producer-faction rule of
@@ -44,7 +44,7 @@ signal tab_selected(tab: int)
 ## anew by a resize while open.
 signal state_changed
 ## The sheet's top on the screen and the zone's height changed, both base px: a request, a frame of
-## the slide, a resize. What rides on the drawer (the ArmyBar, the strike row) lifts by these.
+## the slide, a resize. What rides on the drawer (the strike row) lifts by these.
 signal zone_changed(top_px: float, height_px: float)
 
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
@@ -119,7 +119,6 @@ var _dp_px: float = 1.0  ## `UiScale.base_px_per_dp()` and the orientation, read
 var _portrait: bool = false  ## frames of a slide ask `UiScale` for nothing.
 var _placed: bool = false  ## The first layout is in: a later change may slide.
 var _told: Vector2 = Vector2(NAN, NAN)  ## The top and the height `zone_changed` last said.
-var _rise: float = 0.0  ## dp over BUILD that the strike button takes upright (interim, below).
 var _swipe: int = -1  ## The index of the finger that may swipe the drawer shut, else -1.
 var _swipe_from: Vector2 = Vector2.ZERO
 var _default_settings: InputSettings = null
@@ -150,15 +149,13 @@ func _ready() -> void:
 	_items.add_child(_grid)
 	_stack.add_child(_items)
 	select_tab(tab)
-	_apply_dp()  # Sets the zone before the ArmyBar reads it.
+	_apply_dp()  # Sets the zone before the strike row reads it.
 	get_viewport().size_changed.connect(_apply_dp)
 	feed.state.changed.connect(_on_hud_changed)
 	if controller != null:
 		controller.selection_changed.connect(set_selected)
 	if placement != null:
 		placement.changed.connect(_on_placement_changed)
-	if strike_aim != null:
-		strike_aim.changed.connect(_on_strike_changed)
 
 
 func _exit_tree() -> void:
@@ -223,16 +220,6 @@ func _on_hud_changed(previous: HudState.Unfold) -> void:
 	if folded or is_open():
 		_place(false)
 		state_changed.emit()
-
-
-## Interim, until P122b takes the ArmyBar away: upright the strike button stands over BUILD (ADR
-## 0025 section 10), so the zone the ArmyBar stands above grows by its height and a gap while a
-## strike building is owned.
-func _on_strike_changed() -> void:
-	var rise: float = HudCorners.GAP_DP + StrikeButton.SIZE_DP if strike_aim.owned else 0.0
-	if rise != _rise:
-		_rise = rise
-		_apply_extent(_extent)
 
 
 ## Placement ends with a build or the X: the drawer returns if it was open when placement began,
@@ -695,7 +682,7 @@ func _apply_extent(extent: float) -> void:
 	var zone: float = 0.0
 	var top: float = INF
 	if _portrait:
-		zone = maxf(extent, (HudLayout.BUILD_ZONE_DP + _rise) * _dp_px)
+		zone = extent
 		top = _rect.end.y - extent if extent > 0.0 else INF
 	HudLayout.bottom_zone_dp = zone / _dp_px
 	HudLayout.menu_top_px = top

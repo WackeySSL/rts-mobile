@@ -2,9 +2,10 @@ extends GdUnitTestSuite
 ## The HUD's one Theme (plan row P58): every colour, font size and StyleBox of the HUD's Controls
 ## resolves from `game/ui/theme.tres`, in dp turned into px by HudTheme, and is what the scripts
 ## set before the theme existed. The numbers below are those, typed again from the code of main at
-## 32bfb89 (ArmyBar.FONT_DP 18, SelectionPanel NAME_FONT_DP 16, NUMBER_FONT_DP 20, PAD_DP 8 and
-## BACKDROP, the Dev button's 40 base px, BoxOverlay's Color.WHITE with FeedbackStyle.OUTLINE and
-## FILL), so a changed theme value fails here and changes in the same PR as a new look.
+## 32bfb89 (the old army bar FONT_DP 18, SelectionPanel NAME_FONT_DP 16, NUMBER_FONT_DP 20,
+## PAD_DP 8 and BACKDROP, the Dev button's 40 base px, BoxOverlay's Color.WHITE with
+## FeedbackStyle.OUTLINE and FILL), so a changed theme value fails here and changes in the same PR
+## as a new look.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const HudThemes: GDScript = preload("res://tests/support/hud_theme.gd")
@@ -198,6 +199,7 @@ func test_every_control_that_is_a_child_of_the_hud_has_the_hud_theme() -> void:
 				"GhostControls",
 				"SafeArea",
 				"EconomyPill",
+				"GroupColumn",
 				"AttackToast",
 				"EconomyCard",
 				"RadarScope",

@@ -9,7 +9,7 @@ signal held
 
 ## Returns the time in ms. Tests replace it.
 var clock: Callable = Time.get_ticks_msec
-## ArmyBar sets it from `InputSettings.group_assign_ms`.
+## GroupColumn sets it from `InputSettings.group_assign_ms`.
 var hold_ms: int = InputSettings.new().group_assign_ms
 
 var _down_ms: int = 0

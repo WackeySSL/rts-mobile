@@ -5,11 +5,11 @@ extends GdUnitTestSuite
 ## a scene, turns the window and turns it back, and compares what the handlers made of the dp with
 ## a scene opened at that size; the middle step is compared with a fresh scene too. The handlers
 ## are the ones of main.tscn (DpMinSize, SafeAreaMargin, HudTheme, TouchInput, BuildSidebar,
-## ArmyBar, SelectionPanel, UnitLayer's rings, HealthBarLayer, EffectsLayer and RtsCamera), of the
-## touch probe, of the dev menu (P63) and of the perf arena (PerfHud and the arena's own). A
-## handler that a later row rewrites extends its case there (P61 SelectionPanel and ArmyBar, P62
-## RtsCamera and TouchInput, P63 the touch probe). The engine's own metrics are used, no override:
-## the stretch has to follow.
+## the group column, SelectionPanel, UnitLayer's rings, HealthBarLayer, EffectsLayer and
+## RtsCamera), of the touch probe, of the dev menu (P63) and of the perf arena
+## (PerfHud and the arena's own). A handler that a later row rewrites extends its case there (P61
+## SelectionPanel and the group column, P62 RtsCamera and TouchInput, P63 the touch probe). The
+## engine's own metrics are used, no override: the stretch has to follow.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/ui/support/arena_rig.gd")
@@ -50,8 +50,8 @@ func before_test() -> void:
 	MenuRig.begin()
 
 
-## The BuildSidebar's zone and the ArmyBar's lift above its band are part of the main scene's state
-## (P61, P85): the band's height differs between the two orientations, and the bar follows it.
+## The BuildSidebar's zone and the group column's place are part of the main scene's state
+## (P61, P85): the band's height differs between the two orientations, and the column follows it.
 func test_the_main_scene_handlers_end_in_the_state_of_a_fresh_scene() -> void:
 	await _check_flips(&"main")
 
@@ -253,7 +253,7 @@ func _read(kind: StringName, scene: Node) -> Dictionary:
 
 func _read_main(main: Node) -> Dictionary:
 	var safe: Control = main.get_node("Hud/SafeArea")
-	var army: Control = main.get_node("Hud/SafeArea/ArmyBand/ArmyBar")
+	var column: Control = main.get_node("Hud/GroupColumn")
 	var band: Control = main.get_node("Hud/SafeArea/SelectionBand")
 	var panel: SelectionPanel = main.get_node("Hud/SafeArea/SelectionBand/SelectionPanel")
 	var recognizer: GestureRecognizer = (main.get_node("TouchInput") as TouchInput)._recognizer
@@ -263,21 +263,18 @@ func _read_main(main: Node) -> Dictionary:
 		var ring: Sprite2D = main.get_node("UnitLayer").rig(row).get_node("Ring")
 		rings.append([ring.unit, ring.radius, ring.scale])
 	var dev: Control = main.get_node("Hud/SafeArea/TopLeft/DevButton")
-	var button_sizes: Array[Vector2] = [dev.custom_minimum_size]
-	for child: Node in army.get_children():
-		button_sizes.append((child as Button).custom_minimum_size)
+	var button_sizes: Array[Vector2] = [dev.custom_minimum_size, column.size]
 	return {
 		"button_sizes": button_sizes,
 		"safe_margins": _margins(safe),
-		"army_gap": army.get_theme_constant("separation"),
 		"band_margins":
 		[band.get_theme_constant("margin_left"), band.get_theme_constant("margin_right")],
 		"panel_gap": panel._list.get_theme_constant("separation"),
 		"panel_line": _panel_line(panel),
-		"army_lift": army.get_parent().get_theme_constant("margin_bottom"),
+		"column_rect": Rect2(column.position, column.size),
 		"sidebar": _sidebar_state(sidebar),
 		"pill": _pill_state(main.get_node("Hud/EconomyPill")),
-		"font_size": army.get_node("AllArmy").get_theme_font_size("font_size"),
+		"font_size": column.find_child("Count", true, false).get_theme_font_size("font_size"),
 		"slops": [recognizer._slop_px, recognizer._double_tap_slop_px, recognizer._min_pinch_px],
 		"rings": rings,
 		"bar_dp": main.get_node("HealthBarLayer")._dp_px,

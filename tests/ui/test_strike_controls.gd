@@ -35,15 +35,7 @@ const TOLERANCE_PX: float = 0.5
 ## The parts of the row, and the other HUD controls they must clear.
 const TAPPABLE: Array[String] = ["StrikeConfirm", "StrikeCancel", "StrikeButton"]
 const OTHERS: Array[String] = [
-	"DevButton",
-	"SurrenderButton",
-	"AllArmy",
-	"Group1",
-	"Group2",
-	"Group3",
-	"SelectionPanel",
-	"BuildSidebar",
-	"BuildButton"
+	"DevButton", "SurrenderButton", "GroupColumn", "SelectionPanel", "BuildSidebar", "BuildButton"
 ]
 
 var _window_size_before: Vector2i
@@ -51,6 +43,7 @@ var _main: Node2D
 var _aim: StrikeAim
 var _controller: PlayerController
 var _sent: Array[Command] = []
+var _buzzes: Array[int] = []
 
 
 func before() -> void:
@@ -302,22 +295,6 @@ func test_the_selection_panel_stays_clear_of_the_ready_chip_and_the_aim_row() ->
 		_aim.cancel()
 
 
-## Upright, a strike building owned lifts the zone the ArmyBar stands above by the button and its
-## gap (the interim until P122b); not owned, it is BUILD's own height.
-func test_upright_the_zone_rises_over_the_strike_button_only_while_a_strike_building_is_owned(
-) -> void:
-	var phone: UiMetrics = UiProfiles.by_name(&"android_6in_portrait")
-	await _open(phone.window_size, phone, false)
-	assert_float(HudLayout.bottom_zone_dp).is_equal_approx(64.0, 0.01)
-	await _open(phone.window_size, phone, true)
-	_wait(0)
-	await await_idle_frame()
-	assert_bool(_aim.owned).is_true()
-	assert_float(HudLayout.bottom_zone_dp).is_equal_approx(64.0 + 8.0 + 72.0, 0.01)
-	var army: Rect2 = _rect("ArmyBar")
-	assert_float(army.end.y).is_less_equal(_rect("StrikeButton").position.y - 7.0)
-
-
 ## The aim's room in the SelectionPanel's band goes with the row: lost the strike building during
 ## the aim, or covered by the drawer and lost then, the zone is BUILD's 72 dp again (no stale 224).
 func test_the_aim_gives_its_room_back_when_the_building_is_lost_during_the_aim() -> void:
@@ -363,6 +340,170 @@ func test_the_reserved_rooms_are_reset_when_the_hud_leaves_the_tree() -> void:
 	_main.free()
 	assert_float(HudLayout.chip_zone_dp).is_equal(0.0)
 	assert_float(HudLayout.aim_zone_dp).is_equal(0.0)
+
+
+## Lead decision (P122b): upright, during the aim, the group column holds three items in one column
+## (the rest scroll), so it keeps 8 dp or more from the check mark and the X, at every screen with
+## all three groups saved. Against the strike button's and the row's real rects (P120c: 8 dp above
+## BUILD, `HudCorners.STRIKE_ROW`). Outside the aim the strike button alone stands
+## there.
+func test_the_group_column_keeps_clear_of_the_strike_row_during_the_aim() -> void:
+	var gap: float = 0.0
+	for screen: Dictionary in _screens(null):
+		await _open(screen["size"], screen["metrics"], true)
+		var why: String = str(screen["label"])
+		_make_ready()  # The Ready chip stands beside BUILD: the column leaves it its width too.
+		var tank: Array = [2]
+		for slot: int in range(1, 4):
+			_controller.selection.set_ids(PackedInt32Array(tank))
+			_controller.assign_group(slot)
+		for aiming: bool in [false, true]:
+			_ready_to_fire()
+			if aiming:
+				assert_bool(_aim.begin()).override_failure_message(why).is_true()
+			await await_idle_frame()
+			await await_idle_frame()
+			var column: Rect2 = _rect("GroupColumn")
+			var near: float = UiScale.dp(8.0) - TOLERANCE_PX
+			var parts: Array[Rect2] = []
+			for part: String in TAPPABLE:
+				parts.append(_rect(part))
+			parts.append(_rect("ReadyChip"))
+			var shown: HudCorners.Shown = HudCorners.Shown.new()
+			shown.groups = 4
+			shown.ready = true
+			shown.strike = true
+			shown.aim = aiming
+			var dp: float = UiScale.base_px_per_dp()
+			var margin: float = (_hud("SafeArea") as SafeAreaMargin).margin_dp
+			var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), margin)
+			var placed: Dictionary[StringName, Rect2] = HudCorners.place(
+				safe, HudLayout.is_portrait(), dp, false, shown
+			)
+			if aiming:
+				parts.append(placed[HudCorners.STRIKE_ROW])
+			for rect: Rect2 in parts:
+				var at: String = "%s, aim %s: column %s, part %s" % [why, aiming, column, rect]
+				assert_bool(column.intersects(rect)).override_failure_message(at).is_false()
+				if aiming:
+					gap = maxf(column.position.x - rect.end.x, rect.position.x - column.end.x)
+					gap = maxf(
+						gap, maxf(column.position.y - rect.end.y, rect.position.y - column.end.y)
+					)
+					assert_float(gap).override_failure_message(at).is_greater_equal(near)
+			if aiming and HudLayout.is_portrait():
+				var three: float = dp * (3.0 * 56.0 + 2.0 * 8.0)
+				var tall: String = "%s: column %s holds more than three" % [why, column]
+				assert_float(column.size.y).override_failure_message(tall).is_less_equal(
+					three + 1.5
+				)
+				assert_float(column.size.x).override_failure_message(tall).is_less_equal(
+					dp * 56.0 + 1.5
+				)
+				# The fourth item is reached by scrolling.
+				var scroll: ScrollContainer = _hud("ColumnScroll")
+				assert_int(scroll.vertical_scroll_mode).is_not_equal(
+					ScrollContainer.SCROLL_MODE_DISABLED
+				)
+				assert_int(scroll.scroll_vertical).is_equal(0)
+				_buzzes.clear()
+				_controller.selection.set_ids(PackedInt32Array([BORE]))  # A spurious tap would recall.
+				var camera_before: Vector2 = (_main.get_node("Camera") as Camera2D).position
+				# Out and back to the start of the press: a drag, so neither a tap nor a hold.
+				await _drag_item("Group2", Vector2(0.0, -dp * 30.0), true)
+				assert_int(scroll.scroll_vertical).override_failure_message(tall).is_between(0, 3)
+				await _drag_item("Group2", Vector2(0.0, -dp * 40.0))  # A finger moves the items.
+				var moved: float = scroll.scroll_vertical  # By as much as the finger went.
+				assert_float(moved).override_failure_message(tall).is_equal_approx(dp * 40.0, 3.0)
+				await _drag_item("Group2", Vector2(0.0, -dp * 60.0))
+				var last: Rect2 = _rect("Group3")
+				var reached: bool = (
+					last.end.y <= column.end.y + 1.5 and last.position.y >= column.position.y - 1.5
+				)
+				assert_bool(scroll.scroll_vertical > 0).override_failure_message(tall).is_true()
+				assert_bool(reached).override_failure_message(tall).is_true()
+				_assert_drag_did_nothing(camera_before, why)
+			_aim.cancel()
+
+
+## A finger drag on an item of the limited column scrolls it and spends the press: no recall, no
+## assign, no Command, no buzz, and the camera stays (web_phone_portrait and the other upright
+## screens are walked by the test above).
+func _assert_drag_did_nothing(camera_before: Vector2, why: String) -> void:
+	assert_array(_controller.selection.selected).override_failure_message(why).is_equal([BORE])
+	for slot: int in range(1, 4):
+		assert_array(_controller.selection.group(slot)).override_failure_message(why).is_equal(
+			[TANK]
+		)
+	assert_array(_sent).override_failure_message(why).is_empty()
+	assert_array(_buzzes).override_failure_message(why).is_empty()
+	(
+		assert_vector((_main.get_node("Camera") as Camera2D).position)
+		. override_failure_message(why)
+		. is_equal(camera_before)
+	)
+
+
+## A finger down on the middle of the item `name`, moved by `by` in small steps, and lifted.
+func _drag_item(item: String, by: Vector2, and_back: bool = false) -> void:
+	var at: Vector2 = (_hud(item) as Control).get_global_rect().get_center()
+	TouchEvents.press(get_viewport(), 0, at)
+	var steps: int = 6
+	for step: int in steps:
+		at += by / steps
+		TouchEvents.drag(get_viewport(), 0, at, by / steps)
+	if and_back:
+		for step: int in steps:
+			at -= by / steps
+			TouchEvents.drag(get_viewport(), 0, at, -by / steps)
+	TouchEvents.release(get_viewport(), 0, at)
+	await await_idle_frame()
+
+
+## The charge counts down tick by tick (the aim's `changed` fires on each): the column is not laid
+## out again for it, only once when the aim begins.
+func test_the_charge_countdown_does_not_lay_the_column_out_again() -> void:
+	var phone: UiMetrics = UiProfiles.by_name(&"web_phone_portrait")
+	await _open(phone.window_size, phone, true)
+	for slot: int in range(1, 4):
+		_controller.selection.set_ids(PackedInt32Array([TANK]))
+		_controller.assign_group(slot)
+	_wait(40)
+	await await_idle_frame()
+	var column: GroupColumn = _hud("GroupColumn")
+	var laid: Array[int] = [0]
+	column.laid_out.connect(func() -> void: laid[0] += 1)
+	column.place()  # Placing again where nothing moved tells nobody.
+	column.place()
+	assert_int(laid[0]).is_equal(0)
+	for wait: int in range(39, 0, -1):  # 39 ticks of the countdown.
+		_wait(wait)
+	assert_int(laid[0]).is_equal(0)
+	_wait(0)
+	assert_int(laid[0]).is_equal(0)
+	assert_bool(_aim.begin()).is_true()  # The strike owned and the aim on: four items, three shown.
+	assert_int(laid[0]).is_equal(1)
+	_aim.cancel()
+	assert_int(laid[0]).is_equal(2)  # And back.
+
+
+## "+" and a hold need units: with the Deep Bore (a building) selected "+" hides, `save_group` and a
+## hold change nothing and make no sound.
+func test_a_building_selected_hides_plus_and_a_hold_changes_nothing() -> void:
+	var phone: UiMetrics = UiProfiles.by_name(&"web_phone_portrait")
+	await _open(phone.window_size, phone, true)
+	_controller.selection.set_ids(PackedInt32Array([TANK]))
+	_controller.assign_group(1)  # Group 1 holds the tank; groups 2 and 3 are free.
+	assert_bool((_hud("AddGroup") as Control).visible).is_true()
+	_buzzes.clear()
+	_controller.selection.set_ids(PackedInt32Array([BORE]))
+	assert_bool((_hud("AddGroup") as Control).visible).is_false()
+	_controller.save_group()
+	_controller.assign_group(1)
+	assert_array(_controller.selection.group(1)).is_equal([TANK])
+	assert_array(_controller.selection.group(2)).is_empty()
+	assert_array(_buzzes).is_empty()
+	assert_array(_sent).is_empty()
 
 
 func test_the_row_is_shown_only_while_a_strike_building_is_owned() -> void:
@@ -617,6 +758,8 @@ func _open(size: Vector2i, metrics: UiMetrics, strike: bool) -> void:
 	_controller = _main.get_node("PlayerController")
 	_sent.clear()
 	_controller.command_sink = func(command: Command) -> void: _sent.append(command)
+	_buzzes.clear()
+	_controller.vibrate = func(ms: int) -> void: _buzzes.append(ms)
 	if strike:
 		_controller.selection.set_ids(PackedInt32Array([TANK]))
 	await await_idle_frame()

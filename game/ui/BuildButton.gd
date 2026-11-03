@@ -21,6 +21,7 @@ extends Button
 ## Structures tab with that card in view (`BuildSidebar.show_ready`). It hides with BUILD.
 
 signal reserved_changed  ## The room the chip takes beside BUILD changed (`HudLayout.chip_zone_dp`).
+signal ready_changed  ## The chip showed or went (`ready_type` crossed -1).
 
 const ICON: String = "res://assets/art/svg/icons/glyph_menu_open.svg"
 const TOKENS: StringName = &"HudTokens"
@@ -177,9 +178,12 @@ func refresh(snap: MatchSnapshot) -> void:
 
 ## The chip for the finished structure `type` (-1: none): its card, and shown while there is one.
 func _show_ready(snap: MatchSnapshot, type: int) -> void:
+	var was: bool = ready_type >= 0
 	ready_type = type
 	_chip.visible = type >= 0
 	_reserve()
+	if was != (type >= 0):
+		ready_changed.emit()
 	if type >= 0 and type != _chip_type:
 		_chip_type = type
 		var art: String = SelectionPanel.ICON_ART % snap.type_ids[type]

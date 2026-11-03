@@ -1,6 +1,7 @@
 extends GdUnitTestSuite
 ## The SelectionPanel in the main scene (P21): one row per unit type with its art, name and count,
-## a total for several types, and a place in the safe area between the ArmyBar and the right fifth.
+## a total for several types, and a place in the safe area between the group column and the right
+## fifth.
 ## Fingers are touches through the real GUI, time is a fake clock. Tank n is row n - 1 of the
 ## 6-column block, and ids 1-30 are the player's.
 
@@ -166,7 +167,7 @@ func test_the_panel_is_dp_sized_and_sits_in_its_band_in_both_orientations() -> v
 		_select(range(1, 31))
 		await await_idle_frame()
 		var rect: Rect2 = _panel.get_global_rect()
-		var bar: Rect2 = (_hud("ArmyBar") as Control).get_global_rect()
+		var bar: Rect2 = (_hud("GroupColumn") as Control).get_global_rect()
 		var width: float = get_viewport().get_visible_rect().size.x
 		var sidebar: float = HudLayout.right_zone_px(_inner_width())  # The build panel and a gap.
 		var why: String = "%s: panel %s, bar %s" % [m.window_size, rect, bar]
@@ -196,7 +197,11 @@ func test_the_panel_is_dp_sized_and_sits_in_its_band_in_both_orientations() -> v
 			)
 			assert_bool(rect.intersects(pill)).override_failure_message(why).is_false()
 			continue  # The rest is the landscape band (test_selection_panel_portrait has the line).
-		assert_float(rect.end.y).override_failure_message(why).is_equal_approx(bar.end.y, 0.5)
+		var floor_y: float = (
+			get_viewport().get_visible_rect().end.y
+			- (_hud("SafeArea") as Control).get_theme_constant("margin_bottom")
+		)
+		assert_float(rect.end.y).override_failure_message(why).is_equal_approx(floor_y, 0.5)
 		if m == xhdpi:  # No room for the whole zone beside the panel: the zone gives way.
 			continue
 		assert_float(rect.end.x).override_failure_message(why).is_less_equal(width - sidebar)
@@ -240,7 +245,8 @@ func test_names_and_counts_come_from_the_snapshot_and_never_the_world() -> void:
 	assert_str(_panel.get_node("Rows/Row0/Name").text).is_not_equal("Flarejack")
 
 
-## A row is at most 40% of the band (the safe area's inner width) and at most what the ArmyBar and
+## A row is at most 40% of the band (the safe area's inner width) and at most what the group column
+## and
 ## the build panel's zone leave of it: a name past that is clipped with an ellipsis, and the icon
 ## and the count keep their room. "Flarejack" is not clipped. On the phones the second limit is
 ## the lower one, and the zone keeps its whole width: the panel ends before the build panel's gap.
@@ -260,7 +266,7 @@ func test_a_long_name_is_clipped_at_the_cap_and_light_tank_is_not() -> void:
 		await await_idle_frame()
 		_assert_capped("Row0", str(profile))
 		(
-			assert_bool(_panel.get_global_rect().intersects(_hud("ArmyBar").get_global_rect()))
+			assert_bool(_panel.get_global_rect().intersects(_hud("GroupColumn").get_global_rect()))
 			. is_false()
 		)
 		var zone: float = HudLayout.right_zone_px(_inner_width())
@@ -366,10 +372,11 @@ func _assert_capped(row_name: String, why: String) -> void:
 	)
 
 
-## The widest a row may be in landscape: 40% of the band, or what the ArmyBar and the build panel's
+## The widest a row may be in landscape: 40% of the band, or what the group column and the build
+## panel's
 ## zone leave of it less the backdrop's padding, whichever is less.
 func _row_cap(band_px: float) -> float:
-	var left: float = ceilf(_hud("ArmyBar").get_combined_minimum_size().x + UiScale.dp(8.0))
+	var left: float = ceilf((_hud("GroupColumn") as Control).size.x + UiScale.dp(8.0))
 	var room: float = band_px - left - ceilf(HudLayout.right_zone_px(band_px))
 	return minf(band_px * 0.4, room - _panel.get_theme_stylebox(&"panel").get_minimum_size().x)
 

@@ -28,7 +28,7 @@ const GESTURES: Array[StringName] = [&"tap", &"double_tap", &"box", &"pan", &"pi
 const FOLDING: Array[HudState.Unfold] = [
 	HudState.Unfold.DRAWER, HudState.Unfold.ECONOMY, HudState.Unfold.RADAR
 ]
-## HUD controls of the scene as it stands (the band, the army bar), found by name. The pill's
+## HUD controls of the scene as it stands (the band, the group column), found by name. The pill's
 ## numbers are not among them: a tap on them asks for the economy card, and opening an unfold
 ## closes the open one (test_economy_card.gd has the pill's touches). The scope is left out too:
 ## a tap on it opens the full map, and the full map's own touches are test_radar_map's.
@@ -122,6 +122,7 @@ func test_a_touch_on_a_hud_control_closes_nothing_but_the_economy_card() -> void
 		await _open(size)
 		panel = _hud("BuildSidebar") as BuildSidebar
 		_controller.selection.set_ids(PackedInt32Array([TANK_A]))
+		_controller.assign_group(1)  # A group with units shows its button: Group1 is in CONTROLS.
 		await _settle()
 		for label: String in CONTROLS:
 			# The open full map folds the drawer (one unfold at a time, both orientations) and the
@@ -136,6 +137,11 @@ func test_a_touch_on_a_hud_control_closes_nothing_but_the_economy_card() -> void
 				_state.open(unfold)
 				# The tabs are the drawer's: with the map open they are hidden, and say so.
 				var there: bool = unfold == HudState.Unfold.DRAWER or not label.begins_with("Tab")
+				# The portrait sheet covers the group column's place (`HudCorners.place`): the
+				# column is not shown then, so there is nothing of it to touch.
+				var column: bool = label == "AllArmy" or label.begins_with("Group")
+				if unfold == HudState.Unfold.DRAWER and column and HudLayout.is_portrait():
+					there = false
 				assert_bool(control.is_visible_in_tree()).override_failure_message(why).is_equal(
 					there
 				)

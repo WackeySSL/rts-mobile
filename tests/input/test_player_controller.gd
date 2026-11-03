@@ -461,6 +461,12 @@ func _fresh_match(profile: StringName) -> void:
 	_controller.selection.clear()
 	_sent.clear()
 	_changes.clear()
+	# These taps and boxes use the map's left edge, where the group column stands; its own touches
+	# are tested in test_group_column.
+	for button: Node in _main.get_node("Hud/GroupColumn").find_children(
+		"*", "BaseButton", true, false
+	):
+		(button as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 ## How high the Picker's centre of a light tank stands above its ground point on the screen now.

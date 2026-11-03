@@ -552,7 +552,7 @@ func test_no_font_is_named_outside_the_theme() -> void:
 func test_the_font_rule_reads_every_script_scene_and_resource_under_game_and_scenes() -> void:
 	var files: Array[String] = _font_files()
 	for path: String in [
-		"res://game/ui/ArmyBar.gd",
+		"res://game/ui/GroupColumn.gd",
 		"res://game/view/UnitLayer.gd",
 		"res://game/sim/World.gd",
 		"res://scenes/main.tscn",
@@ -635,13 +635,13 @@ func test_the_font_rule_flags_a_font_put_to_use_without_naming_a_file() -> void:
 func test_the_scan_reads_the_scripts_and_the_hud_nodes_it_should() -> void:
 	var files: Array[String] = _scanned_files()
 	for script_name: String in [
-		"SelectionPanel", "ArmyBar", "BoxOverlay", "HudTheme", "touch_probe"
+		"SelectionPanel", "GroupColumn", "BoxOverlay", "HudTheme", "touch_probe"
 	]:
 		assert_array(files).contains(["%s/%s.gd" % [UI_DIR, script_name]])
 	assert_array(files).contains([MAIN_SCENE])
 	assert_int(files.size()).is_greater_equal(14)
 	var names: Array[String] = _hud_node_names(FileAccess.get_file_as_string(MAIN_SCENE))
-	for node_name: String in ["Hud", "BoxOverlay", "SafeArea", "DevButton", "ArmyBar"]:
+	for node_name: String in ["Hud", "BoxOverlay", "SafeArea", "DevButton", "GroupColumn"]:
 		assert_array(names).contains([node_name])
 	assert_array(names).contains(["SelectionPanel"])
 	assert_array(names).not_contains(["MatchRunner", "UnitLayer", "MarkerLayer", "Camera"])

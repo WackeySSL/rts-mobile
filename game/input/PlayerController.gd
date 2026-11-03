@@ -53,7 +53,7 @@ signal rally_ordered(tab: int, x: int, y: int)
 @export var settings: InputSettings
 @export var marker_layer: MoveMarkerLayer
 @export var box_overlay: BoxOverlay
-@export var army_bar: ArmyBar
+@export var group_column: GroupColumn
 @export var strike_aim: StrikeAim  ## Without one there is no strike to aim.
 @export var placement: PlacementController  ## Without one there is no placement mode.
 
@@ -64,6 +64,7 @@ var command_sink: Callable = CommandQueue.submit
 var vibrate: Callable = Input.vibrate_handheld
 
 var _snap: PickSnapshot = PickSnapshot.new()
+var _group_counts: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## `_show_groups`' scratch.
 var _found: PackedInt32Array = PackedInt32Array()  ## Scratch for the Picker's box queries.
 var _dead: PackedInt32Array = PackedInt32Array()  ## Scratch for the ids a tick's events name.
 
@@ -77,10 +78,11 @@ func _ready() -> void:
 		settings = InputSettings.new()  # The script defaults are the ADR table.
 	if runner != null:
 		runner.ticked.connect(_on_ticked)
-	if army_bar != null:
-		army_bar.all_army_pressed.connect(select_all_army)
-		army_bar.group_tapped.connect(tap_group)
-		army_bar.group_assign_requested.connect(assign_group)
+	if group_column != null:
+		group_column.all_army_pressed.connect(select_all_army)
+		group_column.group_tapped.connect(tap_group)
+		group_column.group_assign_requested.connect(assign_group)
+		group_column.save_requested.connect(save_group)
 
 
 func handle_gesture(e: GestureEvent) -> void:
@@ -122,12 +124,24 @@ func tap_group(slot: int) -> void:
 	selection.recall_group(slot)
 
 
-## Stores the selection in group `slot`, shows the count and buzzes.
+## Stores the selected units in group `slot` (a hold on it overwrites it), shows the count and
+## buzzes. With no unit selected (nothing, or a building) it changes nothing and does not buzz: a
+## finger resting on a group never wipes it.
 func assign_group(slot: int) -> void:
+	if not _units_selected():
+		return
 	selection.assign_group(slot)
-	_show_group_count(slot)
+	_show_groups()
 	if settings.haptics_enabled:
 		vibrate.call(settings.haptic_ms)
+
+
+## "+": stores the selected units in the lowest free group, with the buzz. Nothing when all groups
+## hold some (`assign_group` sees to the units).
+func save_group() -> void:
+	var slot: int = selection.lowest_free_group()
+	if slot > 0:
+		assign_group(slot)
 
 
 func _tap(pos: Vector2) -> void:
@@ -225,13 +239,14 @@ func _refresh() -> void:
 func _units_selected() -> bool:
 	if selection.selected.is_empty():
 		return false
-	var snap: MatchSnapshot = runner.snapshot
+	var snap: MatchSnapshot = null if runner == null else runner.snapshot
 	var row: int = -1 if snap == null else snap.index_of(selection.selected[0])
 	return row < 0 or not WorldSort.is_building(snap, snap.type_index[row])
 
 
 func _on_selection_changed() -> void:
 	selection_changed.emit(selection.selected)
+	_show_groups()  # "+" follows the selection.
 
 
 ## The units that died in the tick just published leave the selection and the groups. A change of
@@ -246,13 +261,18 @@ func _on_ticked(_tick: int) -> void:
 	if _dead.is_empty():
 		return
 	selection.remove_ids(_dead)
+	_show_groups()
+
+
+## Tells the group column the counts of the groups and whether "+" can save (units are selected and
+## a group is free).
+func _show_groups() -> void:
+	if group_column == null:
+		return
 	for slot: int in range(1, SelectionModel.GROUP_COUNT + 1):
-		_show_group_count(slot)
-
-
-func _show_group_count(slot: int) -> void:
-	if army_bar != null:
-		army_bar.set_group_count(slot, selection.group(slot).size())
+		_group_counts[slot - 1] = selection.group_size(slot)
+	var can_save: bool = selection.lowest_free_group() > 0 and _units_selected()
+	group_column.show_groups(_group_counts, can_save)
 
 
 ## Move to a point in milli-tiles, with the chevrons. The units stop attacking and drive there in

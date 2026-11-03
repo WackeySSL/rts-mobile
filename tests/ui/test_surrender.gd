@@ -15,10 +15,10 @@ const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const MIN_DP: float = 48.0
 const BUTTON_DP: float = 64.0
 const TOLERANCE_PX: float = 0.5
-## Open ground at 1280x720, left of the panel and clear of the Dev button and the army bar.
+## Open ground at 1280x720, left of the panel and clear of the Dev button and the group column.
 const GROUND_POINT: Vector2 = Vector2(80, 300)
 ## The HUD controls the button must clear when they show.
-const NEIGHBOURS: Array[String] = ["DevButton", "EconomyPill", "RadarScope", "ArmyBar"]
+const NEIGHBOURS: Array[String] = ["DevButton", "EconomyPill", "RadarScope", "GroupColumn"]
 
 var _window_size_before: Vector2i
 var _main: Node

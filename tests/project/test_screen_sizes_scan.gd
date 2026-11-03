@@ -311,7 +311,7 @@ func test_the_scan_reads_the_folders_and_suites_it_should() -> void:
 	assert_int(files.size()).is_greater_equal(50)
 	for path: String in [
 		"res://tests/ui/test_ui_scale.gd",
-		"res://tests/ui/test_army_bar.gd",
+		"res://tests/ui/test_group_column.gd",
 		"res://tests/scenes/test_main_scene.gd",
 		"res://tests/view/test_rts_camera.gd",
 		"res://tests/ui/support/arena_rig.gd",
