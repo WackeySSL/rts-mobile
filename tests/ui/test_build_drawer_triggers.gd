@@ -449,17 +449,20 @@ func test_a_finger_down_when_the_drawer_folds_swipes_nothing_when_it_opens_again
 		TouchEvents.release(get_viewport(), 0, from + toward * far)
 
 
-## The pill stays on screen while the drawer is open (until P120d puts the economy in its head).
-func test_the_pill_stays_shown_while_the_drawer_is_open() -> void:
+## The pill folds while the drawer is open (P120d: the drawer's head shows the economy) and is back,
+## where it was, when the drawer closes.
+func test_the_pill_folds_while_the_drawer_is_open() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size, null, false, false)
 		var pill: Control = _hud("EconomyPill") as Control
 		var before: Rect2 = pill.get_global_rect()
 		_sidebar.open()
 		await _settle()
+		assert_bool(pill.is_visible_in_tree()).override_failure_message(str(size)).is_false()
+		_sidebar.collapse()
+		await _settle()
 		assert_bool(pill.is_visible_in_tree()).override_failure_message(str(size)).is_true()
 		assert_bool(pill.get_global_rect() == before).override_failure_message(str(size)).is_true()
-		assert_bool(pill.get_global_rect().intersects(_sidebar.get_global_rect())).is_false()
 
 
 func _swipe(from: Vector2, by: Vector2) -> void:

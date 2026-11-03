@@ -8,7 +8,7 @@ extends RefCounted
 ## `safe`. Mirrored, every rect is flipped about the safe rect's middle (left-handed mode, Phase 5).
 ## Drawer open: the landscape panel covers the right column (BUILD, the Ready chip, the strike
 ## button, the scope), the portrait sheet covers the bottom stack and the scope stays; the pill
-## goes too, unless `Shown.pill_over_drawer` keeps it (P120, until P120d).
+## folds too (P120d: the drawer's head shows the economy, so it is on screen once).
 ## The economy card, the full map and the strike aim's row are one unfold or mode
 ## at a time (ADR 0025 section 1), so a set that holds more than one of them is not a screen the
 ## HUD shows. The card is a transient overlay (any next touch closes it): it may cover the toast,
@@ -75,8 +75,6 @@ class Shown:
 	var card: bool = false  ## The economy card.
 	var card_height: float = 120.0
 	var drawer: bool = false
-	## The pill stays while the drawer is open (until P120d puts the economy in the drawer's head).
-	var pill_over_drawer: bool = false
 	var groups: int = 1  ## Buttons in the group column: "All army", saved groups, "+".
 
 
@@ -130,8 +128,8 @@ static func place(
 	if not side:
 		out[SCOPE] = Rect2(w - SCOPE_DP, 0.0, SCOPE_DP, SCOPE_DP)
 	var pill_x: float = shown.left_taken + (GAP_DP if shown.left_taken > 0.0 else 0.0)
-	if not shown.drawer or shown.pill_over_drawer:
-		var edge: float = open.position.x if side else w - SCOPE_DP  # The pill ends a gap short.
+	if not shown.drawer:
+		var edge: float = w - SCOPE_DP  # The pill ends a gap short.
 		var room: float = minf(PILL_MAX_DP, edge - GAP_DP - pill_x)
 		var pill_w: float = minf(maxf(shown.pill_width, PILL_DP.x), room)
 		out[PILL] = Rect2(pill_x, 0.0, pill_w, PILL_DP.y)
@@ -160,6 +158,7 @@ static func place(
 			out,
 			open if side else Rect2(w, 0.0, 0.0, 0.0),
 			shown.left_height,
+			pill_x,
 			column_end
 		)
 	var result: Dictionary[StringName, Rect2] = {}
@@ -199,27 +198,28 @@ static func _bar(
 ## `TOAST_LEAST_DP` (a wide pill beside the open panel on a narrow phone) the toast stands under
 ## the top line instead, as the portrait rule has it: from the pill's start (right of the top-left
 ## stack's first row, and of the group column, which starts on that line), a gap under the scope's
-## foot and under the stack (`left_height`), no further
-## right than the open panel or the safe edge.
+## foot and under the stack (`left_height`), no further right than the open panel or the safe edge.
+## With the drawer open the pill is folded (P120d): the toast starts where the pill would
+## (`start_dp`, after the top-left stack's first row).
 static func _toast(
 	w: float,
 	portrait: bool,
 	placed: Dictionary[StringName, Rect2],
 	open: Rect2,
 	left_height: float,
+	start_dp: float,
 	column_end: float
 ) -> Rect2:
 	if portrait:
 		var top: float = maxf(SCOPE_DP, left_height) + GAP_DP
 		return Rect2(0.0, top, minf(w, TOAST_W_DP.y), TOAST_H_DP)
-	var left: float = 0.0
+	var left: float = start_dp
 	if placed.has(PILL):
 		left = placed[PILL].end.x + GAP_DP
 	var edge: float = (open.position.x if open.size.x > 0.0 else w) - GAP_DP
 	var right: float = edge if open.size.x > 0.0 else w - SCOPE_DP - GAP_DP
 	if right - left < TOAST_LEAST_DP:
-		var start: float = placed[PILL].position.x if placed.has(PILL) else 0.0
-		start = maxf(start, column_end + GAP_DP if column_end > 0.0 else 0.0)  # Clear of the groups.
+		var start: float = maxf(start_dp, column_end + GAP_DP if column_end > 0.0 else 0.0)
 		var top: float = maxf(SCOPE_DP, left_height) + GAP_DP
 		return Rect2(start, top, maxf(minf(TOAST_W_DP.x, edge - start), 0.0), TOAST_H_DP)
 	var width: float = minf(TOAST_W_DP.x, right - left)
