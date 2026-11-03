@@ -252,7 +252,10 @@ as accepted):
   rows left after P143 (estimate 3534 of 3584 for the cross-faction page), so about 50 remain for
   P153 and P154. The neutral overlay sheet (`assets/art/svg/damage/damage_sheet.tres`, loaded from
   `IsoAtlas.NEUTRAL_SHEET`; its frames found through `IsoSheetDef.root`) is estimated at 0 px. The budget rule of 3584 and the "cut before a
-  bake scale drops" rule stand; ADR 0028 §3 lists the fallback order.
+  bake scale drops" rule stand; ADR 0028 §3 lists the fallback order. (Amended 2026-11-03: ADR
+  0028 §3's amendment makes the patches deeper, down to half the body at stage 1 and nearly the foot
+  at stage 2; P158's first pass measured 3376, its rework measures the page, and a fallback past
+  3584 is the lead's and Michael's choice.)
 
 ### 5. Walking without sliding feet
 - A squad shows `walk` while it moved in the last tick by at least half its type's step (the hull's

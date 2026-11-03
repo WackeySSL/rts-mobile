@@ -58,7 +58,7 @@ Size = production lines (tests, fixtures, models, generated frames and SVG not c
 | P26ar | - | lead | docs: ADR 0028 on acceptance: Michael's answers in it, the dated notes in ADR 0027 §3, §4, §8, ADR 0023 §2, §5 and the unit-life plan's P148 row | 0 | P155 | - |
 | P156 | A | art-director | art: generator v4, damage poses (`dmg1`, `dmg2`: `shift`, `turn`, `hide`, `char`, `damage=<k>` primitives), the geometric cut row, the patch crop with its overlap, `cuts`, `scar_milli`, the `damage` and `hang` kinds, `IsoSheetDef.root`; no model gets them here, today's files byte-identical (at once) | 230 | P26ar | - |
 | P157 | V2 | touch-ux-dev | view: the neutral sheet in the bake: loaded from `IsoAtlas.NEUTRAL_SHEET` (not the index), added by `WorldSort.bake` after its art-id filter and after `_player_arts`, collected for every player as shared slots, its bases resolved once per bake; the page test counts it | 70 | P156 | - |
-| P158 | A | art-director | art: `dmg1` and `dmg2` of the sixteen buildings, two `damage` points each, the gallery's stage view, STYLE.md "Damage stages", the page test's `TODAY_*` | models + 40 | P156 | - |
+| P158 | A | art-director | art: `dmg1` and `dmg2` of the sixteen buildings, two `damage` points each, the gallery's stage view, STYLE.md "Damage stages", the page test's `TODAY_*`; 2026-11-03 (Michael, ADR 0028 §3's amendment): stage 1 shows holes, down to half the body; stage 2 has largely collapsed, down to just above the foot | models + 40 | P156 | - |
 | P159 | V1 | touch-ux-dev | view: building stages (`BuildingDamage`, the trimmed body and `Damage` child, the stage queue in the buildings' write share), the remembered stage, ghosts at their stage (`GhostMemoryLayer.building_layer`, `main.tscn`, `BuildingAnims.dress_ghost` by name), the `LifeSettings` fields; HOW_TO_PLAY Buildings | 230 | P158; also P160 if P158 took ADR 0028 §3's fallback (b) | - |
 | P160 | A2 | art-director | art: the hand-written overlays (`scar1`, `scar2`, `loose`) in `assets/art/svg/damage/` with "Keep File" imports, their hand-written sheet `damage_sheet.tres` there (`root` set), STYLE.md "Damage overlays"; `damage`, `hang` and `scar_milli` on the eight vehicle models; the gallery | SVG + models + 30 | P156, P157 | - |
 | P161 | V1 | touch-ux-dev | view: vehicle overlays (`VehicleDamage`, `Scar` and `Loose` children of `Hull`, the rig kind bit, positions per hull frame, the pool reset, the stage queue in the vehicles' write share, `damage_loose`); HOW_TO_PLAY Units | 190 | P159, P160 | - |
@@ -138,7 +138,16 @@ the PR. `mix`-driven tests assert exact counts for fixed id sets.
   stage 1 and at stage 2, in both orientations' zooms; the page test passes at most 3584 for the
   cross-faction match and both mirrors and its `TODAY_*` are updated (estimate 3534 for the cross
   match); if it does not pass, the row applies ADR 0028 §3's fallback (a), then (b), and says so in
-  the PR; shadows and cards byte-identical.
+  the PR; shadows and cards byte-identical. (Amended 2026-11-03, Michael, after the first pass,
+  ADR 0028 §3's amendment: "the top part" and the estimate are replaced. Stage 1: clear holes, roof
+  or wall sections gone, the dark inside visible, the cut at most at 50 % of the body's rows from
+  its top. Stage 2: largely collapsed, most of the upper structure gone or fallen, walls lowered or
+  broken, rubble, the dark inside showing, down to just above the foot (a change that reaches the
+  foot is still refused); the footprint, the foot outline and the `mount` and `anim` groups stay;
+  stage 2 reads clearly stronger at game zoom without smoke. The first pass measured 3376 / 2774 /
+  3002; the rework reports the real figures. If the page passes 3584, the lead and Michael choose
+  the fallback, not this row; `tests/art/test_artgen_damage.gd`'s "cut in the top third" case is
+  on P156's fixture model, not a rule for the sixteen buildings.)
 - **P160** The neutral overlays (`scar1` 2 frames, `scar2` 2, `loose` 4: two skirt plates for
   `tracks`, two fenders for `wheels`) pass the hand-drawn rules (STYLE.md, no pattern or filter, no
   colour in either key band at saturation 0.30 or more, embers at hue 46° or more), hold ink inside
@@ -245,7 +254,8 @@ other life rows (about 0.3 ms). Draw calls unchanged (16, about 22 in the worst 
 No new control; wording only, no Teach mark.
 - **P159**, Buildings, a new row "A building is badly damaged": "Under half its health a building
   shows cracks, soot and broken edges at its top; under a quarter it is falling apart, with parts
-  tilted, fallen or missing. A building under construction does not show it. An enemy building shows
+  tilted, fallen or missing. (2026-11-03, ADR 0028 §3's amendment: P159 words it as holes under
+  half, largely collapsed under a quarter.) A building under construction does not show it. An enemy building shows
   its damage only while you see it; its dimmed picture in the fog shows the damage you last saw
   (`damage_stage_percent` in `data/life_settings.tres`)."
 - **P161**, Units, "Watch a unit drive or fight" gains: "A vehicle under half its health is sooty;
@@ -262,7 +272,9 @@ look), each with its recommendation.
   patches, so cropping to ink should leave more, but a building whose damage reaches down its walls
   costs rows fast (35 % patches: 3583). P158's page test decides; ADR 0028 §3's fallbacks are in order
   and never touch the bake scale. P153 and P154 (unit-life plan) may then not fit: their rows already
-  land only if the page has room.
+  land only if the page has room. (2026-11-03, ADR 0028 §3's amendment: the first pass measured
+  3376; stage 1 now reaches half the body and stage 2 nearly the foot, so the page may pass 3584;
+  P158's rework measures it and the lead and Michael choose the fallback.)
 - **The cut seam.** A sub-rectangle of a filtered texture samples the row above its top edge; the
   4 px overlap covers it at bake scale 0.75 and 0.5 too. P158's gallery check at the three zooms is
   where a seam would show.

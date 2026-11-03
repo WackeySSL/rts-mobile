@@ -18,6 +18,11 @@ and §8 carry dated notes from P156's review: the stage's draw order and its cut
 double fringe, the rules on damage parts and points, and the `hang` point's side per hull frame (a
 lead decision). No accepted text changed.
 
+Status note (2026-11-03, Michael, after seeing P158's first pass): answer 1's "top third" is
+amended: stage 1 shows holes and may reach down to half the body, stage 2 has largely collapsed and
+may reach down to just above the foot (§3's amendment; also Decisions in short 3, the
+Consequences and the Answers). No accepted text changed.
+
 ## Context
 - **Michael, 2026-11-03** (his own answers): buildings and vehicles under 50 % hp must look as if
   they are falling apart; infantry not. Two stages: under 50 % cracks, soot and smoke; under 25 %
@@ -76,6 +81,10 @@ lead decision). No accepted text changed.
    drop the sparks.
 8. **Budget:** no new draw call; stage writes share one budget of 60 a frame (20 buildings, 40
    vehicles); the page stays at most 3584.
+
+Amended 2026-11-03 (Michael; §3's amendment): item 3's "about a third of the body height" is
+replaced: stage 1 down to half the body, stage 2 down to just above the foot; item 8's page bound
+is measured again by P158's rework.
 
 ## Decision
 
@@ -209,6 +218,27 @@ above stays as accepted):
   - `scar_milli` is for vehicles only (0 on every other model).
   - A stage is refused when it changes nothing, when a change lies wholly above the body's canvas,
     or when a change reaches the body's foot (the overlap would not fit the canvas).
+
+Amended 2026-11-03 (Michael, after seeing P158's first pass, the sixteen buildings with patches at
+17-37 % of the body: "Meget kraftigere", then "det er slet ikke skade nok der skal være hul i
+bygningen eller være helt styrtet sammen", not nearly enough damage: there must be holes in the
+building, or it must have completely collapsed). This replaces answer 1's "top third" and "The art
+rule that follows" above; the text above stays as accepted:
+- **Stage 1 (under 50 %):** clear holes: roof or wall sections gone and the dark inside visible.
+  The change may reach down to half the body (the cut at most at 50 % of the body's rows, measured
+  from its top).
+- **Stage 2 (under 25 %):** largely collapsed: most of the upper structure gone or fallen, the
+  walls lowered or broken, rubble on what remains, the dark inside showing. The change may reach
+  down to just above the foot; the generator still refuses a change that reaches the body's foot
+  (`ArtGen.damage_problems`). The footprint and the foot outline stay, and the `mount` and `anim`
+  groups stay untouched. Stage 2 is clearly stronger than stage 1 and reads at game zoom without
+  smoke.
+- **The page:** P158's first pass measured `TODAY_CROSS` 3376, `TODAY_MIRROR_DERRICK` 2774 and
+  `TODAY_MIRROR_LUMEN` 3002 against the 3584 budget (208 rows left on the cross-faction page).
+  Deeper patches use more of that, and a stage-2 patch can now be most of the body, so the page may
+  pass 3584. P158's rework measures the real figures. If it does not fit, the lead and Michael
+  choose the fallback (for example a second page, or a lower scale for stage 2 only, which the
+  "Never" above would otherwise rule out); it is not decided here.
 
 ### 4. Vehicle overlays
 - **Where the sprites live: on the sorted world's page, not in `fx/life_atlas.svg`.** An overlay
@@ -392,6 +422,7 @@ numbers (`cuts`, `scar_milli`, the `damage` and `hang` points) are sheet fields 
   sixteen buildings; the patches spend about 268 of the page's 318 free rows, which leaves about 50
   for P153 and P154 (they may not fit; their rows already say they land only if the page has room).
 - Building damage sits in the top third of the picture; walls below the cut stay as they were.
+  (Amended 2026-11-03, §3: stage 1 down to half the body, stage 2 down to just above the foot.)
 - Two layers gain a small view memory (the last-seen stage) and `LifeFx` and `GhostMemoryLayer` gain
   one export each, wired in `main.tscn`.
 - `AirFx` gains its second ring; the damage quota grows from 24 to 64.
@@ -436,3 +467,9 @@ numbers (`cuts`, `scar_milli`, the `damage` and `hang` points) are sheet fields 
 **Answers (Michael, 2026-11-03):** 1 A (both stages are generated pictures of the top third; the
 automatic fallback to B stays if A does not fit), 2 A (no vehicle tint; soot patch, char patch with an
 ember seam and a hanging plate or fender, plus smoke, fire and sparks).
+
+**Amended answer 1 (Michael, 2026-11-03, after seeing P158's first pass):** "Meget kraftigere", then
+"det er slet ikke skade nok der skal være hul i bygningen eller være helt styrtet sammen". Stage 1
+shows holes and may reach down to half the body; stage 2 has largely collapsed and may reach down to
+just above the foot (§3's amendment). The fallback, if the page does not fit, is chosen by the lead
+and Michael then.
