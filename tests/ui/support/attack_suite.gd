@@ -174,6 +174,11 @@ func _open(size: Vector2i, metrics: UiMetrics = null) -> void:
 	_controller.command_sink = func(command: Command) -> void:
 		_sent.append(command)
 		CommandQueue.submit(command)
+	# The cue clock is the test's: no frame time enters it, and it stands on a whole ms, so that
+	# sums and differences of whole-ms steps are exact (a fractional clock rounds a 4000 ms
+	# difference to 3999.9999999999995 on about one start in five).
+	_cues.set_process(false)
+	_cues.advance(ceilf(_cues.clock_ms()) - _cues.clock_ms())
 	_camera.zoom = Vector2.ONE
 	_camera.centre_on(IsoProjection.cell_centre_px(HOME.x, HOME.y))
 	Rig.explore(_runner.snapshot)

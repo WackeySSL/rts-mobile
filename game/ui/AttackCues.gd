@@ -60,6 +60,11 @@ func advance(delta_ms: float) -> void:
 			dismiss()
 
 
+## The cue clock, ms of frame time.
+func clock_ms() -> float:
+	return _clock_ms
+
+
 ## What the shown cue has left, ms (0 for none).
 func remaining_ms() -> float:
 	return maxf(_left_ms, 0.0) if active else 0.0
