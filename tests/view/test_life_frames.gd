@@ -54,7 +54,9 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"_update_rigs",
 		"_show_hull",
 	],
-	"res://game/view/BuildingLayer.gd": ["_on_ticked", "_shot_seen", "_kick_heads", "_sweep_heads"],
+	"res://game/view/BuildingAnims.gd": ["phase_ms", "frame_at", "low_power"],
+	"res://game/view/BuildingLayer.gd":
+	["_on_ticked", "_shot_seen", "_kick_heads", "_sweep_heads", "_play_anims"],
 }
 const ALLOCATING: Array[String] = [
 	"Array(",

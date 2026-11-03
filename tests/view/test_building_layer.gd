@@ -104,12 +104,12 @@ func test_a_defence_has_a_head_at_the_sheets_mount_and_no_other_building_has_one
 		if not sheet.has_part(&"head"):
 			assert_object(Rig.head(_layer, id)).is_null()
 			assert_int(Rig.head_frame(_layer, id)).is_equal(BuildingLayer.NO_FRAME)
-			assert_array(_child_names(node)).is_equal([&"Body"])
+			assert_array(_child_names(node)).is_equal(_parts(sheet, false))
 			continue
 		heads += 1
 		var head: Sprite2D = Rig.head(_layer, id)
 		var slot: int = _layer.world_sort.slot_of(snap.owner[row])
-		assert_array(_child_names(node)).is_equal([&"Body", &"Head"])  # The head over the body.
+		assert_array(_child_names(node)).is_equal(_parts(sheet, true))  # The head over the body.
 		assert_object(head.get_parent()).is_same(node)
 		assert_object(head.texture).is_same(atlas.texture())
 		assert_that(head.position).is_equal(sheet.mount(6) * WorldSort.ART_SCALE)
@@ -159,7 +159,14 @@ func test_every_sprite_of_a_building_is_on_the_one_atlas_page_in_white() -> void
 	var atlas: IsoAtlas = _layer.world_sort.atlas
 	var sprites: Array[Node] = _layer.world_sort.find_children("*", "Sprite2D", true, false)
 	sprites.append_array(_layer.decals.find_children("*", "Sprite2D", true, false))
-	assert_int(sprites.size()).is_equal(5 + 5 + 2)  # Bodies, shadows and two heads.
+	var animated: int = 0  # The moving elements (P144): a child after the body.
+	for row: int in 5:
+		var sheet: IsoSheetDef = _layer.world_sort.sheet(
+			_runner.snapshot.type_ids[_runner.snapshot.type_index[row]]
+		)
+		animated += 1 if sheet.has_part(&"anim") else 0
+	assert_int(animated).is_greater(0)
+	assert_int(sprites.size()).is_equal(5 + 5 + 2 + animated)  # Bodies, shadows, heads, anims.
 	for node: Node in sprites:
 		var sprite: Sprite2D = node
 		var why: String = "%s of %s" % [sprite.name, sprite.get_parent().name]
@@ -331,3 +338,14 @@ func _open_with(spawns: Array[SpawnDef]) -> void:
 
 func _child_names(node: Node) -> Array:
 	return node.get_children().map(func(n: Node) -> StringName: return n.name)
+
+
+## The child names a building of `sheet` has: its Body, its Anim after it if it has a moving
+## element (P144), and its Head last if `head`.
+func _parts(sheet: IsoSheetDef, head: bool) -> Array[StringName]:
+	var names: Array[StringName] = [&"Body"]
+	if sheet.has_part(&"anim"):
+		names.append(&"Anim")
+	if head:
+		names.append(&"Head")
+	return names

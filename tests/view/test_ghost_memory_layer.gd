@@ -103,6 +103,55 @@ func test_the_layer_is_flat_at_z_5_sorted_by_y_and_carries_one_dim_colour() -> v
 	assert_int(fresh.explored_alpha).is_equal(fog.explored_alpha)
 
 
+## A remembered building with a moving element (P144) keeps it: an `Anim` child of the ghost's
+## sprite shows frame 0 of the owner's `anim` part at the footprint's centre, under the layer's
+## dim; one without (the Redoubt) has none. A pooled sprite that is reused for a building without
+## one hides it (the next test).
+func test_a_ghost_keeps_the_moving_element_at_frame_0() -> void:
+	_remember_all()
+	_look([])
+	var bake: float = _sort.atlas.bake_scale()
+	for id: int in [HQ_ID, POWER_ID]:
+		var ghost: Sprite2D = _ghosts.ghost(id)
+		var anim: Sprite2D = ghost.get_node("Anim")
+		var sheet: IsoSheetDef = _sort.sheet(_runner.snapshot.type_ids[_type_of(id)])
+		assert_bool(anim.visible).is_true()
+		assert_that(anim.region_rect).is_equal(
+			Rect2(_sort.atlas.region(sheet.art_id, &"anim", -1, _sort.slot_of(2), 0))
+		)
+		assert_vector(anim.position).is_equal(Vector2.ZERO)
+		assert_vector(anim.scale).is_equal(Vector2.ONE)  # The ghost sprite's scale carries it.
+		assert_vector(anim.offset).is_equal_approx(
+			-Vector2(sheet.origin(&"anim")) * bake, Vector2.ONE * 0.001
+		)
+		assert_object(anim.get_parent()).is_same(ghost)
+	var defence: Sprite2D = _ghosts.ghost(DEFENCE_ID)
+	assert_object(defence.get_node_or_null("Anim")).is_null()
+
+
+## A pooled sprite that drew a building with a moving element and is reused for one without shows
+## no stale element: its `Anim` is gone or hidden.
+func test_a_reused_ghost_sprite_hides_the_moving_element_of_the_last_building() -> void:
+	_remember_all()
+	_look([])
+	assert_array(_ghosts.ghost_ids()).is_equal([HQ_ID, DEFENCE_ID, POWER_ID])
+	var first: Sprite2D = _ghosts.ghost(HQ_ID)
+	assert_bool((first.get_node("Anim") as Sprite2D).visible).is_true()
+	var snap: MatchSnapshot = _runner.snapshot
+	var cell: int = Ghosts.centre_cell(snap, ENEMIES[1][2], 1, 1)
+	Ghosts.remember(snap, 1, [Ghosts.record(DEFENCE_ID, &"renew_defence", 2, cell)])
+	_look([])
+	assert_array(_ghosts.ghost_ids()).is_equal([DEFENCE_ID])
+	var reused: Sprite2D = _ghosts.ghost(DEFENCE_ID)
+	assert_object(reused).is_same(first)  # The same pool slot.
+	var stale: Node = reused.get_node_or_null("Anim")
+	assert_bool(stale == null or not (stale as Sprite2D).visible).is_true()
+
+
+func _type_of(id: int) -> int:
+	return _runner.snapshot.type_index[_runner.snapshot.index_of(id)]
+
+
 func test_a_building_out_of_sight_is_drawn_where_its_footprint_centre_is() -> void:
 	_remember_all()
 	_look([])
@@ -351,7 +400,15 @@ func test_a_ghost_is_a_plain_sprite_in_white_on_the_atlas_page_with_no_input_sur
 		assert_that(sprite.modulate).is_equal(Color.WHITE)  # The dim is the layer's, one for all.
 		assert_that(sprite.self_modulate).is_equal(Color.WHITE)
 		assert_object(sprite.material).is_null()
-		assert_int(sprite.get_child_count()).is_equal(0)  # No head, no bar, no ring.
+		# No head, no bar, no ring: at most the moving element (P144), a plain sprite as well.
+		assert_int(sprite.get_child_count()).is_less_equal(1)
+		for child: Node in sprite.get_children():
+			assert_str(child.name).is_equal("Anim")
+			var anim: Sprite2D = child as Sprite2D
+			assert_object(anim.texture).is_same(_sort.atlas.texture())
+			assert_that(anim.modulate).is_equal(Color.WHITE)
+			assert_object(anim.material).is_null()
+			assert_int(anim.get_child_count()).is_equal(0)
 	assert_array(_ghosts.find_children("*", "CollisionObject2D", true, false)).is_empty()
 	assert_array(_ghosts.find_children("*", "Control", true, false)).is_empty()
 	assert_bool(_ghosts.is_class("Control")).is_false()

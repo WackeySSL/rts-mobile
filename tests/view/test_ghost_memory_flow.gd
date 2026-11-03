@@ -156,7 +156,8 @@ func test_a_ghost_has_no_bar_even_when_the_building_is_hit_out_of_sight() -> voi
 	_hit(row)
 	_bars._process(0.0)
 	assert_int(_bars.bar_count()).is_equal(0)  # Hit, remembered and unseen: no bar for it.
-	assert_int(_ghosts.ghost(PARK_ID).get_child_count()).is_equal(0)
+	for child: Node in _ghosts.ghost(PARK_ID).get_children():  # Only the moving element (P144).
+		assert_str(child.name).is_equal("Anim")
 	Rig.see(_runner.snapshot, 1, [PARK_TILE])  # Control: the same hit shows a bar once seen.
 	_draw()
 	_hit(row)

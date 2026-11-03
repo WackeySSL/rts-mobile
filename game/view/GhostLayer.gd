@@ -44,7 +44,11 @@ var last_glyph: Texture2D = null  ## The glyph the last frame drew, null for non
 var last_glyph_px: float = 0.0  ## Its side on the screen, base px, for the tests.
 var last_word: String = ""  ## The word the last frame drew, "" for none, for the tests.
 var last_word_px: float = 0.0  ## Its font size on the screen, base px, for the tests.
-var last_parts: int = 0  ## Sprite regions (body, head) the last frame drew, for the tests.
+var last_parts: int = 0  ## Sprite regions (body, anim, head) the last frame drew, for the tests.
+## The box the last frame drew the moving element in, world px, empty for none, for the tests.
+var last_anim: Rect2 = Rect2()
+## The colour the last frame drew it in, for the tests.
+var last_anim_tint: Color = Color.TRANSPARENT
 ## The box the last frame drew the head in, world px, empty for none, for the tests.
 var last_head: Rect2 = Rect2()
 
@@ -56,6 +60,9 @@ var _rise: float = 0.0
 var _sprite_origin: Vector2 = Vector2.ZERO  ## The sprite's origin in its picture, world px.
 var _sprite_size: Vector2 = Vector2.ZERO  ## The picture's size, world px.
 var _glyph_art: Texture2D = null  ## The glyph of the verdict; null while the ghost fits.
+var _anim: Rect2i = Rect2i()  ## The moving element's rest frame on the atlas; empty for none.
+var _anim_origin: Vector2 = Vector2.ZERO  ## Its top left from the footprint's centre, world px.
+var _anim_size: Vector2 = Vector2.ZERO
 var _head: Rect2i = Rect2i()  ## The head's region on the atlas; empty for a building with none.
 var _head_origin: Vector2 = Vector2.ZERO  ## Its top left from the footprint's centre, world px.
 var _head_size: Vector2 = Vector2.ZERO
@@ -90,6 +97,7 @@ func refresh() -> void:
 	_cells.clear()
 	_region = Rect2i()
 	_head = Rect2i()
+	_anim = Rect2i()
 	_rise = 0.0
 	_glyph_art = null
 	_word = ""
@@ -123,6 +131,11 @@ func _read_sprite(sheet: IsoSheetDef) -> void:
 	_sprite_origin = Vector2(sheet.origin(PART)) * WorldSort.ART_SCALE
 	_sprite_size = Vector2(_region.size) * per_px
 	_rise = _sprite_origin.y
+	if sheet.has_part(BuildingAnims.ANIM):
+		_anim = atlas.region(sheet.art_id, BuildingAnims.ANIM, BuildingLayer.NO_FRAME, slot)
+		_anim_origin = -Vector2(sheet.origin(BuildingAnims.ANIM)) * WorldSort.ART_SCALE
+		_anim_size = Vector2(_anim.size) * per_px
+		_rise = maxf(_rise, -_anim_origin.y)
 	if sheet.has_part(HEAD):
 		_head = atlas.region(sheet.art_id, HEAD, UnitLayer.D_EAST, slot)
 		var mount: Vector2 = sheet.mount(UnitLayer.D_EAST) - Vector2(sheet.origin(HEAD))
@@ -153,6 +166,11 @@ func head_region() -> Rect2i:
 	return _head
 
 
+## The atlas region of the moving element's rest frame; empty for a building with none.
+func anim_region() -> Rect2i:
+	return _anim
+
+
 ## How far the picture rises above the footprint's centre, world px at zoom 1; 0 without a sprite.
 func rise_px() -> float:
 	return _rise
@@ -168,6 +186,8 @@ func _draw() -> void:
 	last_marks = 0
 	last_parts = 0
 	last_head = Rect2()
+	last_anim = Rect2()
+	last_anim_tint = Color.TRANSPARENT
 	last_glyph = null
 	last_glyph_px = 0.0
 	last_word = ""
@@ -202,9 +222,9 @@ func _tile(cell: Vector2i, mark: StringName, tint: Color, margin: int) -> void:
 	draw_texture_rect_region(_marks.texture(), quad_rect(cell, margin), Rect2(region), tint)
 
 
-## The building's body and, for a defence, its head, faded, with the body's origin on the
-## footprint's centre. The two are drawn one over the other at the same alpha, so the body shows
-## through the head a little: a group fade would need a CanvasGroup.
+## The building's body, its moving element at rest (`BuildingAnims`) and, for a defence, its head,
+## faded, with the body's origin on the footprint's centre. They are drawn one over the other at the
+## same alpha, so the body shows through the rest a little: a group fade would need a CanvasGroup.
 func _sprite() -> void:
 	if not _region.has_area():
 		return
@@ -216,10 +236,15 @@ func _sprite() -> void:
 		texture, Rect2(centre - _sprite_origin, _sprite_size), Rect2(_region), fade
 	)
 	last_parts = 1
+	if _anim.has_area():
+		last_anim = Rect2(centre + _anim_origin, _anim_size)
+		last_anim_tint = fade
+		draw_texture_rect_region(texture, last_anim, Rect2(_anim), last_anim_tint)
+		last_parts += 1
 	if _head.has_area():
 		last_head = Rect2(centre + _head_origin, _head_size)
 		draw_texture_rect_region(texture, last_head, Rect2(_head), fade)
-		last_parts = 2
+		last_parts += 1
 
 
 ## The reason's glyph over the footprint's centre, danger red, GLYPH_DP across whatever the zoom.

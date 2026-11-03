@@ -99,12 +99,18 @@ func test_the_pictures_height_comes_from_the_atlas_region_down_to_the_diamonds_c
 		# The picture is the region at 0.5 / bake_scale a texel; its origin is the footprint centre.
 		var scale: float = WorldSort.ART_SCALE / sort.atlas.bake_scale()
 		var rise: float = _snap.building_rise[row]
+		# The top of the highest part: the body, or the moving element over it (P144).
+		var body_rise: float = float(sheet.origin(&"hull").y) * WorldSort.ART_SCALE
+		var anim_rise: float = 0.0
+		if sheet.has_part(&"anim"):
+			anim_rise = float(sheet.origin(&"anim").y) * WorldSort.ART_SCALE
 		assert_float(rise).override_failure_message(note).is_equal_approx(
-			float(sheet.origin(&"hull").y) * WorldSort.ART_SCALE, 0.01
+			maxf(body_rise, anim_rise), 0.01
 		)
-		# So the region's bottom edge is the diamond's bottom corner: the picture fills the shape.
+		# So the region's bottom edge is the diamond's bottom corner: the picture fills the shape
+		# (measured on the body's own top).
 		(
-			assert_float(rise + _snap.building_half[row].y)
+			assert_float(body_rise + _snap.building_half[row].y)
 			. override_failure_message(note)
 			. is_equal_approx(region.size.y * scale, 0.5)
 		)
