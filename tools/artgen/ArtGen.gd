@@ -178,7 +178,7 @@ static func _shoot(model: ArtModel, part: StringName) -> Shot:
 			var polys: Array[ArtRender.Poly] = (
 				ArtShadow.polys(prims, turn)
 				if part == ArtModel.SHADOW
-				else ArtRender.render(prims, turn, model.faction)
+				else ArtRender.render(prims, turn, model.faction, model.frame_rest(part))
 			)
 			var bounds: Rect2 = ArtRender.bounds(polys)
 			box = bounds if shot.polys.is_empty() else box.merge(bounds)

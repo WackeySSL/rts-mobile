@@ -218,7 +218,8 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   they are bytes like the frames and `tests/art` compares them with a fresh run. The per-match
   bake (P113) loads `index.tres` and reads each frame at `sheet.path(part, dir)` (`sheet.path(part,
   dir, frame)` with the frame axis, next bullet).
-- **The frame axis** (P134, ADR 0027 section 4; no model has a pose yet, P139 and P143 add them).
+- **The frame axis** (P134, ADR 0027 section 4; the four squads have poses since P139, "Squad poses"
+  below, P143 adds the buildings' `anim` parts).
   The sets (ADR 0027): a squad gets `walk` (4 frames) and `idle` (2) in its 8 directions, a
   building's `anim` has at most 16 frames, cropped to the moving element; shadows are not posed (the
   standing shadow serves every pose). A primitive may carry `group=<name>` (hull and `anim`
@@ -443,6 +444,85 @@ page is one role.
   copied, and neither the twin gun nor the four track modules are used.
 - The gallery's **Units** page shows the six on both grounds in both triads under the Derrick
   League's ("Gallery"); the Iso page shows every direction.
+
+### Squad poses (P139)
+Plan row P139 gives each of the four squads (Roustabouts, Wildcatters, Linemen, Breakers) the walk
+and the idle that Michael asked for: soldiers move their legs when they walk and fidget a little
+when they stand (ADR 0027 sections 4 and 5). The standing figures are not touched: every hull
+frame, shadow, card and canvas is as it was, and a pose is a model pose, never an edited frame.
+The silhouette of a pose is the standing one with the legs scissored (walk) or the head turned and
+the weight shifted (idle): the same three figures in the same places, the same hats, rifles, tubes
+and team bands.
+- **The model.** Every primitive of a squad's hull carries a group `<figure>_<limb>`: figures `a`, `b`
+  and `c` in the order of the file, limbs `legl`, `legr` (the two legs, a box each), `body` (torso,
+  band, arms, weapon and pack) and `head` (neck, helmet, lamp or visor). `walk` has 4 frames and
+  `idle` 2 (`poses`), each with 8 directions, `d00` to `d14` in steps of two, in `<id>_walk_d<NN>_f<K>.svg`
+  and `<id>_idle_d<NN>_f<K>.svg`: 48 frames a squad, 192 in all. A leg turns about the hip (the top
+  of the leg, `turn y`; a positive angle swings the foot back); the body and head shift in z so
+  that the lowest planted foot stands on the ground (a tilted leg's corner would sink or float),
+  which is the small bob of a step.
+- **Walk, 4 frames.** Contact: one foot 36 degrees forward, the other 36 back, the body at its
+  lowest. Passing: the planted leg 10 degrees back and the swinging leg 10 forward and 0.035 tile
+  up, the body at its highest. Then the same with the feet swapped. A figure's four frames are four
+  different steps.
+- **A frame apart.** The three figures of a squad are never in the same step: figure `i` does in
+  frame `f` what figure `a` does in frame `f + i` (modulo the frame count, 4 for a walk and 2 for
+  an idle), so a squad does not march in lockstep (`test_artgen_poses.gd` pins it move for move).
+- **Idle, 2 frames.** The head turns 25 degrees (30 for the hexagonal Lumen Accord helmets) to one
+  side and the body sways 0.03 tile to it, while the opposite foot steps 10 degrees forward (a
+  `turn y`, set on the ground); the second frame does the other side. Both frames differ from the
+  standing frame, so a squad that fidgets always shows a change. Two frames for three figures
+  leave `a` and `c` in the same pose, so `c` looks the other way (its head's angle is the opposite;
+  the sway and the foot are `a`'s). No arm moves: the weapon is held across the chest and moves
+  with the body.
+- **`stride_milli`** is the ground travel of one walk cycle in milli-tiles (the frame advances every
+  quarter of it, ADR 0027 section 5): 352 for the Roustabouts and the Wildcatters, 376 for the
+  Linemen and the Breakers. A figure's leg is 0.15 tile (0.16 for the Lumen Accord) long, so a 36
+  degree swing carries its foot 2 x 0.15 x sin 36 = 0.176 tile back over a half cycle, which is
+  what half of 352 asks (and 0.188 for 376): the planted foot does not slide (4 x leg x sin 36
+  is the stride, a multiple of 4 because the view floors a quarter of it, a test pins it). At their
+  speeds (67, 60, 73 and 60 milli-tiles a tick, 15 ticks a second) the squads walk 2.9, 2.6, 2.9 and
+  2.4 cycles a second; `test_artgen_poses.gd` holds every squad of `data/units` to 1.5 to 3.5.
+- **Light.** `ArtRender`'s fill cuts were chosen for box faces at 16 yaws. A face turned by a pose can
+  land on one and band from frame to frame, so the angles are in the windows that keep every
+  visible turned face at least 0.016 of shade from a cut: 9 to 11 and 35 to 38 degrees about the
+  hip, 25 degrees about z for an octagonal or boxy head, 30 for a hexagonal one (a hexagon's best,
+  as far from the cut as the standing helmets). `test_artgen_poses.gd` checks every face of every
+  turned primitive in every frame and direction. No new colour: a pose frame uses the faction's
+  materials, its triad and their edges, and the key band holds.
+- **Order and edges.** A pose frame is drawn in the order of the standing figure and its light
+  edges are the standing figure's top faces (`ArtRender.render` takes the standing primitives, `rest`,
+  from `ArtModel.frame_rest`): a leg that swings or lifts rises into the boxes of its own torso,
+  where the centre-depth fallback would draw it over the waist, the pack or the rifle (a dark notch
+  that came and went), and a leg swung 36 degrees has a side face that faces 0.59 up, which is not a
+  roof and gets no light edge (a grey blink on the dark legs in every contact frame). The fill still
+  follows the posed face, so a tilted face is a little lighter. An `anim` element turns all round
+  and is judged as posed. `test_artgen_poses.gd` pins the order and the edges of all 192 frames.
+  **The trade-off:** the standing order lets a turned head's helmet hide part of its own visor or
+  lamp in some idle frames (`d04` and `d12`; in review the Breakers' idle `d12` f0, figure `b`, showed
+  4.2 px of its visor against 19.8 true, at 2x). An order that follows the pose for some groups was
+  worse on the walk legs, so the standing order stays. **`REST_ORDER` (in `ArtModel`) is a whole
+  pose part's:** a pose that moves a part in front of the body, as P154's firing pose raising the
+  rifle will, must not simply join it (the rifle would be drawn where it is not); it needs a part or
+  a group order of its own.
+- **Cost.** A pose canvas is the union of its frames and directions, at most 4 px wider or taller
+  than the hull's (walk and idle: 86 x 66 and 86 x 66 for the Roustabouts, 104 x 76 and 108 x 76
+  for the Wildcatters, 90 x 72 for the Linemen, 116 x 78 and 120 x 78 for the Breakers). The sorted
+  world's page at bake scale 1.0 grows from 2682 to 3066 px for the cross-faction match (budget
+  3584), from 2206 to 2524 for a Derrick League mirror and from 2226 to 2624 for a Lumen Accord
+  mirror (`tests/view/test_iso_atlas_budget.gd` pins them); the 192 files are 2.4 MiB of SVG, at
+  most 16.6 KB each.
+- **The gallery's Units page** plays them: each squad of the four lines stands for a second, walks
+  2.4 s, stands, shows idle 0 for 1.3 s, stands, shows idle 1 for 1.3 s (an idle window, the
+  standing frame, the other idle frame, as the game will), the squad made next 0.9 s further on in
+  the script, in the default view (`art_gallery_units.gd`, an inner class `Squad` that writes the
+  sprite only when its frame changes). The game shows them with P142.
+- **Readability.** At 32 px in greyscale every pose frame keeps a body and a spread of tones
+  (`test_artgen_readability.gd`), the legs reading as a dark wedge that opens and closes under the
+  pale hats (Roustabouts) or the dark heads (Wildcatters).
+- **Originality.** The poses are plain real-world ones: a stride and a glance. No salute, no
+  marching goose step, no kneeling or crouching weapon pose of another game's infantry; the firing
+  pose is P154's.
 
 ## Scale
 - 1 tile = 64 px in game at zoom 1. Author at 2x: 1 tile = 128 px in the SVG.
@@ -928,6 +1008,7 @@ The tints the HUD gives them (the gallery's `GLYPH_TINTS` holds the same values)
 | `glyph_credits` | #F2B705 |
 | `glyph_power`, `glyph_check`, `glyph_victory` | #30A46C |
 | `glyph_low_power`, `glyph_offline` | #F5A524 |
+| `glyph_low_power_map` | #FF8A1F |
 | `glyph_under_attack`, `glyph_cross`, `glyph_defeat`, every `glyph_reason_<reason>` | #E5484D |
 | `glyph_lock`, `glyph_draw`, `glyph_pin_off`, `glyph_alert` | #9AA5B1 |
 | `glyph_menu_open`, `glyph_pin` and the other thirteen glyphs of the corner HUD (below) | none (white) |
@@ -982,10 +1063,10 @@ section 5 and ADR 0019 section 1), a tab icon 32 to 48 dp inside its 48 dp tab, 
 tabs at 48, the items at 64, the HUD glyphs at 48 and the map glyphs at 32 dp, and the arrow at 48;
 its Hud page shows the corner HUD's fourteen at 48, 32 and 24 dp.
 
-**Map glyphs sit on a seat (new).** The nine glyphs that are drawn over the map, the six
-`glyph_reason_<reason>`, `glyph_offline`, `glyph_construct` and `glyph_under_attack`, carry their
+**Map glyphs sit on a seat (new).** The ten glyphs that are drawn over the map, the six
+`glyph_reason_<reason>`, `glyph_offline`, `glyph_low_power_map`, `glyph_construct` and `glyph_under_attack`, carry their
 own seat in the file: #4D4D4D with a 4 px white rim inside a 3 px dark edge, and the drawing scaled
-to 0.8 into it, so that no ink touches the rim. The reasons, the offline glyph and the construction
+to 0.8 into it, so that no ink touches the rim. The reasons, the offline glyph, the low-power map glyph and the construction
 badge sit on a rounded plate (6 to 122 px, corner radius 22); the arrow, which the HUD turns, on a
 disc (radius 60) that looks the same turned. The HUD tints the seat with the glyph, so it is a dark
 red (luminance 36) or amber (53) plate with a light rim on any ground: the glyph is one badge
@@ -996,6 +1077,8 @@ that does not fit, which has the same red, the same white band and the same #4D4
 grass, which is as bright as a red-tinted white (110 against 114), so its thin edge was all that set
 it apart. The tabs and the HUD glyphs are seen on the dark HUD panel and have no seat. The seat
 keeps the file at 79.5 % cover (the arrow 69 %), under the 82 % bound for an icon.
+
+**The low-power glyph has a map copy (new).** `glyph_low_power.svg` is the HUD glyph (the power bar and the economy pill, on the dark panel, no seat). The one over a consuming building on the map is `glyph_low_power_map.svg`, the same triangle and bolt on the offline glyph's plate, scaled 0.8 into it. Its tint is orange #FF8A1F, not the HUD amber #F5A524 that `glyph_offline` wears: a step from the amber of "warning" toward the danger red, so the two badges on one base differ in hue (38 against 28 degrees), in light (plate luminance 49 against 53, rim 161 against 174) and above all in shape (a triangle against a struck bolt). A lighter yellow (#FFD84D, plate 64) was tried and rejected: its plate is only 18 from scrub and 22 from water (83 and 86), under the 25 that a map glyph must clear. Tinted, the plate is luminance 49 and the rim 161: the plate stands 61 and 78 under the two grasses (110 and 127), 138 under sand (186) and 34 under scrub (83), and the triangle (161) stands 34 over grass_b (127), so the badge holds on every ground (on sand the dark plate carries it; the rim is 25 under it). A defence that is short of power shows the offline glyph, not this one.
 
 | File | Silhouette |
 | --- | --- |
@@ -1016,6 +1099,7 @@ keeps the file at 79.5 % cover (the arrow 69 %), under the 82 % bound for an ico
 | `glyph_credits.svg` | A short stack of three coins from the side, the top coin turned up as an ellipse with a second ring. |
 | `glyph_power.svg` | One fat zigzag lightning bolt leaning right, flat on top and pointed at the foot. |
 | `glyph_low_power.svg` | A rounded warning triangle, point up, with a dark lightning bolt in its middle. |
+| `glyph_low_power_map.svg` | The low-power glyph for the map: a white warning triangle, point up, with a dark lightning bolt cut into it, on the seat. |
 | `glyph_offline.svg` | A grey lightning bolt struck through by one thick white slash from top left to bottom right. |
 | `glyph_under_attack.svg` | A fat block arrow pointing right with a stubby tail and a wide head carrying an exclamation mark. |
 | `glyph_lock.svg` | A padlock: a wide rounded body with a keyhole under a tall rounded shackle. |
@@ -1048,7 +1132,7 @@ keeps the file at 79.5 % cover (the arrow 69 %), under the 82 % bound for an ico
 | `glyph_all_army.svg` | A soldier from the chest up under a grey half-dome helmet, in front of a small side-on tank with a sloped hull, a boxy turret and one barrel to the right. |
 | `glyph_construct.svg` | A tall straight-sided lattice mast of crossed braces on a flat foot, a long level jib across its top with a grey counterweight block at its back end and a hook hanging from the far end, on a dark rounded plate with a white rim. |
 
-The line names the symbol. Each of the nine map glyphs (the six reasons, offline, the construction
+The line names the symbol. Each of the ten map glyphs (the six reasons, offline, low power, the construction
 badge and under attack) is drawn on the seat described above, and its file header says so.
 
 Each meaning has its own shape (see "Shape as second cue"): the state of a tile is never the tint
@@ -1088,10 +1172,10 @@ more from the others and the Deselect glyph at 40 or more from the padlock, the 
 offline glyph. At 32 px they read as a flat ring cut by a slash, a ring round a square, a soldier
 before a tank, a plus, three bars, a play triangle, a ring with an arrowhead, a pole with a pennant
 at its foot, a doorway with an arrow, a phone between shake marks, two arrows meeting, a chevron,
-and a disc with a bar and a dot; the construction badge, one of the nine map glyphs, reads as a
+and a disc with a bar and a dot; the construction badge, one of the ten map glyphs, reads as a
 crane on a plate.
 
-The nine map glyphs are never seen plain on the HUD, so they are checked as they are seen: tinted
+The ten map glyphs are never seen plain on the HUD, so they are checked as they are seen: tinted
 (the construction badge is white, untinted), over
 the base colour of each terrain (grass, grass_b, sand, scrub, rock, water) and over the two areas of
 the ghost that does not fit (the wash over grass, and the hatch band over the wash). They differ
@@ -1104,7 +1188,7 @@ luminance at 32 px, the white body of the occupied glyph hardly at all (24 % on 
 seat it is 56 to 73 % (`tests/art` pins at least 50 %), on every one of those grounds; the white
 construction badge is 52 % on scrub and on water, where its dark plate (77) is hardly brighter than
 the ground (92 and 86), and 70 to 84 % on the others, and it is 52.8 or more from the nearest of the
-nine (the offline glyph) on every ground.
+ten (the offline glyph) on every ground.
 
 ## Rally flags
 Each producing tab has a rally flag (ADR 0019 section 3). Two layers share one 128x128 canvas at
@@ -1805,6 +1889,9 @@ hidden, so the Units page is as it was.
   called `Turret`, which the gallery script would turn). The team colour is in the SVG text: the
   frame is read with the faction's key triad replaced by the player's and rasterised at 0.5 x zoom,
   as the match-start bake does (until P113's `IsoAtlas` the gallery rasterises the frames itself).
+  The four squads play their poses on this page (P139, "Squad poses"): the `Hull` sprite shows the
+  standing frame, the walk, the standing frame and the idle in turn (`advance`, called by the
+  gallery's `_process`), each squad a little further on in the script than the one before.
   Under them the **zoom row**, the Flarejack at rig scale 0.75, 1.0 and 1.5, the camera zoom levels
   of `data/input_settings.tres`: team A on grass, team B on sand, labelled on the grass half. A rig
   scaled by the zoom holds a texture rasterised at that zoom and drawn back at 1 / zoom, so it is as
@@ -2147,3 +2234,5 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-02 | v1.16 (P118g, art-director): fourteen HUD v2 glyphs (`glyph_menu`, `glyph_deselect` as the game's 2:1 selection ring cut by a slash, `glyph_stop`, `glyph_plus`, `glyph_collapse`, `glyph_chevron`, `glyph_resume`, `glyph_restart`, `glyph_surrender` struck to the pole's foot, `glyph_exit`, `glyph_vibration`, `glyph_alert`, `glyph_all_army` as a soldier before a tank, and `glyph_construct` as a crane on the offline glyph's seat, a ninth map glyph, untinted white by Michael's choice), their shape lines, tints and measures, and the gallery's Hud page with the badges over the Heavy Yard and the Motor Works. |
 | 2026-11-02 | v1.17 (P135, art-director, ADR 0027): the two hand-written atlases of the unit-life layers, `fx/life_atlas.svg` (nine kinds: dust, smoke, soot, steam, puff, exhaust, flare, fire, spark) and `fx/strike_atlas.svg` (twelve: the bore lance falling and rising, its trail, shadow and launch flash and ring, the light seed and its trail, the mint hexagon of the net lit and unlit, a glint and the core flash), the section "Life effects" with the region table, the net lattice, the colours (no team colour, flames hue 46 degrees or more, smoke and dust greys, mint) and the readability numbers, two catalogue rows, and the gallery's Life page. |
 | 2026-11-02 | v1.18 (P134, art-director, ADR 0027 section 4): the generator's frame axis ("The frame axis" under "Generated art": `group=`, the `anim` part, `poses`, `_f<K>` files, `frames`, `stride_milli`, `anim_ms`, `emitters` with `emitter_points`, `marks`); no model has a pose, every committed frame and sheet is as before. |
+| 2026-11-03 | v1.19 (P139, art-director, ADR 0027 sections 4 and 5): walk (4) and idle (2) poses for the four squads ("Squad poses" under "Generated art": pose groups per figure and limb, `stride_milli` 352, 352, 376 and 376, 192 new frames drawn in the standing figure's order with its light edges, `ArtRender.render`'s `rest`, `ArtModel.frame_rest`), the sorted world's cross-faction page 2682 to 3066 px (mirrors 2206 to 2524 and 2226 to 2624), the Units page of the gallery plays them; the standing frames, shadows and cards are unchanged. |
+| 2026-11-03 | v1.20 (art-director, plan row P89): `glyph_low_power_map.svg`, the seated map copy of the low-power glyph (offline plate, triangle and bolt at 0.8), tinted #FF8A1F, the tenth map glyph; "Icons and glyphs" (tint table, "Map glyphs sit on a seat", catalogue) brought up to date. |

@@ -49,6 +49,13 @@ const CREDITS_DIGITS: int = 5
 const CHIP_VARIATION: StringName = &"PowerNumberLow"  ## Dark digits, for a chip on a colour.
 const CHIP_LOSS_VARIATION: StringName = &"EconomyChipLoss"
 const CHIP_GAIN_VARIATION: StringName = &"EconomyChipGain"
+## The low-power pulse (plan P89): the pill's plate and edge and the warning triangle breathe
+## between the pill type's `pulse_full` (white) and `pulse_dim` colours over PULSE_MS in
+## PULSE_STEPS steps, so the tint is written only when the step changes. The word stays at full
+## strength: it is dark on the red bar and would lose its contrast. View feel, not a rule: no data
+## key.
+const PULSE_MS: float = 1400.0
+const PULSE_STEPS: int = 6
 const CHIP_GAP_DP: float = 4.0  ## Between the pill and the chip under its credits.
 
 @export var runner: MatchRunner
@@ -71,6 +78,8 @@ var _bar: ProgressBar = ProgressBar.new()
 var _numbers: DigitRow = DigitRow.new()
 var _word: Label = Label.new()
 var _low: bool = false
+var _pulse_ms: float = 0.0  ## Time on low power, wrapped at PULSE_MS.
+var _pulse_step: int = 0  ## The step the power area shows: 0 is full, PULSE_STEPS the dimmest.
 var _shown: Vector3i = Vector3i(-1, -1, -1)  ## Credits, power made and power used on screen.
 var _seen: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot last read.
 var _ring: IncomeRing = IncomeRing.new()  ## The card's income, fed from every snapshot.
@@ -164,6 +173,7 @@ func _notification(what: int) -> void:
 ## one (a tick, or a new match), so a flash that starts now has all its time left.
 func _process(delta: float) -> void:
 	_advance(delta * 1000.0)
+	_pulse(delta * 1000.0)
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
 	if snap != null and Vector2i(snap.match_serial, snap.tick) != _seen:
 		refresh()
@@ -201,7 +211,7 @@ func set_menu_shown(shown: bool) -> void:
 	_divider.visible = shown
 
 
-## Whether the pill shows low power: the hook of P89's pulse (kept although nothing reads it yet).
+## Whether the pill shows low power.
 func is_low() -> bool:
 	return _low
 
@@ -317,6 +327,33 @@ func _advance(ms: float) -> void:
 		_chip_ms -= ms
 		if _chip_ms <= 0.0:
 			_update_chip()
+
+
+## `ms` passed: on low power the pill's own drawing (its whole plate and edge) and the triangle
+## follow a triangle wave in PULSE_STEPS steps (`self_modulate`, so the word and the numbers stay
+## full), written only when the step changes; off low power both are full again and the wave
+## starts over.
+func _pulse(ms: float) -> void:
+	var step: int = 0
+	if _low:
+		_pulse_ms = fmod(_pulse_ms + ms, PULSE_MS)
+		step = clampi(
+			roundi((1.0 - absf(2.0 * _pulse_ms / PULSE_MS - 1.0)) * PULSE_STEPS), 0, PULSE_STEPS
+		)
+	else:
+		_pulse_ms = 0.0
+	if step != _pulse_step:
+		_pulse_step = step
+		var tint: Color = get_theme_color(&"pulse_full", VARIATION).lerp(
+			get_theme_color(&"pulse_dim", VARIATION), float(step) / PULSE_STEPS
+		)
+		self_modulate = tint
+		_power_glyph.self_modulate = tint
+
+
+## The step of the pulse the pill shows now (0 full).
+func pulse_step() -> int:
+	return _pulse_step
 
 
 func _flash_ms() -> int:

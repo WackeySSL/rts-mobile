@@ -17,6 +17,8 @@ const POSE_PARTS: Array[StringName] = [&"walk", &"idle", &"anim"]
 const POSE_SOURCE: Dictionary[StringName, StringName] = {
 	&"walk": &"hull", &"idle": &"hull", &"anim": ArtPrim.ANIM
 }
+## The pose parts that are drawn in their rest order: the figures of a squad.
+const REST_ORDER: Array[StringName] = [&"walk", &"idle"]
 const MIN_FRAMES: int = 2
 const MAX_FRAMES: int = 16
 ## What an emitter is (a smoke, steam, flame, exhaust or launch point) and what a vehicle leaves on
@@ -110,6 +112,16 @@ func frame_prims(part: StringName, frame: int) -> Array[ArtPrim]:
 	var by: Array[ArtMove] = pose_moves(part, frame)
 	for prim: ArtPrim in primitives(POSE_SOURCE[part]):
 		found.append(prim.moved(by))
+	return found
+
+
+## The primitives of a squad's pose part at rest, in the order of `frame_prims`: the draw order and
+## the tops of its frames follow them (`ArtRender.render`), so a leg that swings or lifts is never
+## drawn over its own body. Empty for every other part, and for `anim`, whose element turns round.
+func frame_rest(part: StringName) -> Array[ArtPrim]:
+	var found: Array[ArtPrim] = []
+	if part in REST_ORDER:
+		found = primitives(POSE_SOURCE[part])
 	return found
 
 
