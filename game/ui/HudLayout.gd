@@ -26,6 +26,12 @@ static var menu_top_px: float = INF
 ## The open side panel's width in dp (the safe part, `BuildSidebar` writes it), 0 while it is
 ## closed, upright, or no BuildSidebar is in the tree: `right_zone_px` reserves it for the row.
 static var drawer_side_dp: float = 0.0
+## What the Ready chip (`BuildButton`) and the strike aim's row (`StrikeControls`) take from the
+## safe rect's right edge in landscape, in dp with a gap, 0 while they do not show: they stand at
+## the bottom right beside BUILD, so `right_zone_px` reserves them for the SelectionPanel's band.
+## Each writes its own and resets it when it leaves the tree.
+static var chip_zone_dp: float = 0.0
+static var aim_zone_dp: float = 0.0
 
 
 ## The width of the first visible child of `row`, 0 for none: what the credits pill stands after at
@@ -44,10 +50,12 @@ static func is_portrait() -> bool:
 	return UiScale.is_portrait_size(UiScale.current().window_size)
 
 
-## What the bottom row reserves at its right end in landscape, in base px: BUILD and a gap, or the
-## open side panel and a gap, whichever is wider. (The row's `inner` width no longer matters.)
+## What the bottom row reserves at its right end in landscape, in base px: BUILD and a gap, the open
+## side panel and a gap, the Ready chip or the aim's row with theirs, whichever is widest. (The
+## row's `inner` width no longer matters.)
 static func right_zone_px(_inner: float) -> float:
-	return UiScale.dp(maxf(BUILD_ROW_DP, drawer_side_dp + HudCorners.GAP_DP))
+	var beside: float = maxf(chip_zone_dp, aim_zone_dp)
+	return UiScale.dp(maxf(maxf(BUILD_ROW_DP, drawer_side_dp + HudCorners.GAP_DP), beside))
 
 
 ## The portrait bottom zone's height in base px, at the bottom of the safe area's inner rect.

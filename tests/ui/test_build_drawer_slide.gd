@@ -3,9 +3,9 @@ extends GdUnitTestSuite
 ## and 10), in the main scene: the game's frames run the slide (`_process` calls `advance`); a
 ## reversal mid-slide takes the share of `menu_slide_ms` that the distance left needs; a turn
 ## during a slide ends it at its target at once; a press under the holder's clip edge reaches no
-## hidden control; upright, the strike row stays a gap above the drawer's top at
-## every step; the per-frame functions name no `UiScale` and no engine query; and a whole match
-## with drawer actions ends in the state hash of one without, with no Command made.
+## hidden control; upright, the zone (what the bottom stack stands above) follows the slide at every
+## step; the per-frame functions name no `UiScale` and no engine query; and a whole match with
+## drawer actions ends in the state hash of one without, with no Command made.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/input/support/placement_rig.gd")
@@ -173,31 +173,34 @@ func test_a_press_under_the_holders_clip_edge_reaches_no_hidden_control() -> voi
 		BuildSidebar.set_slide_ms_override(0)
 
 
-## Upright, what rides on the drawer follows the slide, a gap above its top at every step: the
-## strike row's band lifts by the zone (0 while the drawer is closed, the sheet's extent as it
-## slides), a line of BUILD's row and two gaps (until P120c puts the row at `HudCorners.STRIKE`).
+## Upright, what rides on the drawer follows the slide: the zone (`HudLayout.bottom_zone_px`) is 0
+## while the drawer is closed (the strike button stands 8 dp above BUILD, placed by `HudCorners`
+## since P120c: it no longer rides on the drawer) and the sheet's extent as it slides. Settled, the
+## sheet's real top is on the screen.
 func test_upright_the_riders_stay_a_gap_above_the_drawer_at_every_step() -> void:
 	var metrics: UiMetrics = UiProfiles.by_name(&"android_6in_portrait")
 	await _open(metrics.window_size, metrics)
 	BuildSidebar.set_slide_ms_override(SLIDE_MS)
-	var dp: float = UiScale.dp(1.0)
-	var gap: int = ceili(8.0 * dp)
-	var strike: MarginContainer = _hud("StrikeBand") as MarginContainer
-	var line: int = ceili(StrikeControls.LINE_DP * dp)
+	var safe_end: float = (
+		SafeAreaMargin
+		. rect_inside(get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP)
+		. end
+		. y
+	)
 	await _settle()
 	assert_float(HudLayout.bottom_zone_px()).is_equal(0.0)  # Closed: the zone is 0.
-	assert_int(strike.get_theme_constant("margin_bottom")).is_equal(ceili(8.0 * dp) + line + gap)
 	_sidebar.open()
 	for step: int in 12:
 		_sidebar.advance(STEP_S)
 		var zone: float = _sidebar._extent
 		var why: String = "step %d, zone %s" % [step, zone]
 		(
-			assert_int(strike.get_theme_constant("margin_bottom"))
+			assert_float(HudLayout.bottom_zone_px())
 			. override_failure_message(why)
-			. is_equal(ceili(zone + 8.0 * dp) + line + gap)
+			. is_equal_approx(zone, TOLERANCE_PX)
 		)
 	await _settle()
+	assert_float(HudLayout.menu_top_px).is_less(safe_end)
 	BuildSidebar.set_slide_ms_override(0)
 
 
@@ -207,7 +210,6 @@ func test_the_per_frame_functions_name_no_ui_scale_and_no_engine_query() -> void
 	var frame: Dictionary[String, Array] = {
 		"res://game/ui/BuildSidebar.gd": ["advance", "_apply_extent", "_process"],
 		"res://game/ui/BuildButton.gd": ["_process", "_draw"],
-		"res://game/ui/StrikeControls.gd": ["_lift", "_on_zone_changed"],
 	}
 	var banned: RegEx = RegEx.create_from_string(
 		r"UiScale|is_portrait|DisplayServer|get_viewport|get_tree|\.new\(|\bload\(|\bpreload\("

@@ -9,11 +9,12 @@ extends RefCounted
 ## Drawer open: the landscape panel covers the right column (BUILD, the Ready chip, the strike
 ## button, the scope), the portrait sheet covers the bottom stack and the scope stays; the pill
 ## folds too (P120d: the drawer's head shows the economy, so it is on screen once).
-## The economy card, the full map and the strike aim's row are one unfold or mode
-## at a time (ADR 0025 section 1), so a set that holds more than one of them is not a screen the
-## HUD shows. The card is a transient overlay (any next touch closes it): it may cover the toast,
-## the group column and, on the short landscape screens, the command bar (its tallest content is
-## about 220 dp, the room under the pill on the 800 x 304 dp screen is 224 dp).
+## The economy card and the full map are one unfold at a time (ADR 0025 section 1), and the card
+## and the strike aim's row are not shown together either; a pinned full map does stay open
+## through the aim (`_map` keeps it clear of the row and the pill). The card is a transient overlay
+## (any next touch closes it): it may cover the toast, the group column and, on the short landscape
+## screens, the command bar (its tallest content is about 220 dp, the room under the pill on the
+## 800 x 304 dp screen is 224 dp).
 
 const GAP_DP: float = 8.0
 const PILL_DP: Vector2 = Vector2(200.0, 48.0)  ## The pill's least width and its height.
@@ -140,7 +141,8 @@ static func place(
 	if bar_on:
 		out[BAR] = _bar(w, h, portrait, shown, open, side)
 	if shown.map and not shown.drawer:
-		_map(out, w, portrait, strike if shown.strike else build)
+		var row: Rect2 = out.get(STRIKE_ROW, Rect2())
+		_map(out, w, portrait, strike if shown.strike else build, row)
 	var column_end: float = 0.0  # Where the group column ends (0 for none), for the toast.
 	if not sheet:
 		# Upright, the column leaves BUILD (and the Ready chip) their width: that many columns.
@@ -228,7 +230,12 @@ static func _toast(
 
 ## The full map: under the scope, right-aligned, when the room down to the right column's next part
 ## holds the head and a box 96 dp high at least; else left of the column, from the safe top.
-static func _map(out: Dictionary[StringName, Rect2], w: float, portrait: bool, next: Rect2) -> void:
+## Left of the column, while the strike aim's row (`row`, empty when it does not show) stands in
+## its way, the map ends a gap left of the row and narrows (the box stays 2:1, 192 dp wide at the
+## least) to start a gap right of the pill: the pinned map and the aim meet only here.
+static func _map(
+	out: Dictionary[StringName, Rect2], w: float, portrait: bool, next: Rect2, row: Rect2
+) -> void:
 	var cap: Vector2 = MAP_BOX_PORTRAIT_DP if portrait else MAP_BOX_DP
 	var top: float = SCOPE_DP + GAP_DP
 	var box_h: float = minf(cap.y, next.position.y - GAP_DP - top - MAP_HEAD_DP)
@@ -236,7 +243,13 @@ static func _map(out: Dictionary[StringName, Rect2], w: float, portrait: bool, n
 	if box_h >= MAP_BOX_LEAST_H_DP:
 		box = Rect2(w - 2.0 * box_h, top + MAP_HEAD_DP, 2.0 * box_h, box_h)
 	else:
-		box = Rect2(w - StrikeButton.SIZE_DP - GAP_DP - cap.x, MAP_HEAD_DP, cap.x, cap.y)
+		var right: float = w - StrikeButton.SIZE_DP - GAP_DP
+		var width: float = cap.x
+		if row.size.x > 0.0 and row.position.y < MAP_HEAD_DP + cap.y + GAP_DP:
+			right = row.position.x - GAP_DP
+			var from: float = out[PILL].end.x + GAP_DP if out.has(PILL) else 0.0
+			width = clampf(right - from, 2.0 * MAP_BOX_LEAST_H_DP, cap.x)
+		box = Rect2(right - width, MAP_HEAD_DP, width, width * cap.y / cap.x)
 	out[MAP_HEAD] = Rect2(box.position.x, box.position.y - MAP_HEAD_DP, box.size.x, MAP_HEAD_DP)
 	out[MAP_BOX] = box
 	out[MAP] = out[MAP_HEAD].merge(box)

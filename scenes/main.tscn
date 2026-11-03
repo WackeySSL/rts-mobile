@@ -231,7 +231,7 @@ mouse_filter = 2
 theme = ExtResource("16_theme")
 script = ExtResource("38_ghost_controls")
 placement = NodePath("../../PlacementController")
-clear_of = [NodePath("../SafeArea/TopLeft"), NodePath("../GroupColumn"), NodePath("../SafeArea/SelectionBand/SelectionPanel"), NodePath("../SafeArea/StrikeBand/StrikeControls"), NodePath("../BuildButton"), NodePath("../BuildSidebar"), NodePath("../EconomyPill"), NodePath("../RadarScope"), NodePath("../RadarMap"), NodePath("../AttackToast")]
+clear_of = [NodePath("../SafeArea/TopLeft"), NodePath("../GroupColumn"), NodePath("../SafeArea/SelectionBand/SelectionPanel"), NodePath("../StrikeControls"), NodePath("../BuildButton"), NodePath("../BuildButton/ReadyChip"), NodePath("../BuildSidebar"), NodePath("../EconomyPill"), NodePath("../RadarScope"), NodePath("../RadarMap"), NodePath("../AttackToast")]
 
 [node name="SafeArea" type="MarginContainer" parent="Hud"]
 anchors_preset = 15
@@ -283,15 +283,6 @@ script = ExtResource("15_selection")
 runner = NodePath("../../../../MatchRunner")
 group_column = NodePath("../../../GroupColumn")
 top_left = NodePath("../../TopLeft")
-
-[node name="StrikeBand" type="MarginContainer" parent="Hud/SafeArea"]
-mouse_filter = 2
-
-[node name="StrikeControls" type="HBoxContainer" parent="Hud/SafeArea/StrikeBand" node_paths=PackedStringArray("aim", "runner")]
-mouse_filter = 2
-script = ExtResource("34_strike_controls")
-aim = NodePath("../../../../StrikeAim")
-runner = NodePath("../../../../MatchRunner")
 
 [node name="EconomyPill" type="PanelContainer" parent="Hud" node_paths=PackedStringArray("runner", "safe_area", "top_left", "feed", "card")]
 theme = ExtResource("16_theme")
@@ -345,14 +336,15 @@ camera = NodePath("../../Camera")
 safe_area = NodePath("../SafeArea")
 cues = NodePath("../AttackCues")
 
-[node name="RadarMap" type="Control" parent="Hud" node_paths=PackedStringArray("feed", "minimap", "safe_area", "strike_row")]
+[node name="RadarMap" type="Control" parent="Hud" node_paths=PackedStringArray("feed", "minimap", "safe_area", "strike_row", "pill")]
 visible = false
 theme = ExtResource("16_theme")
 script = ExtResource("43_radar_map")
 feed = NodePath("../HudStateFeed")
 minimap = NodePath("Minimap")
 safe_area = NodePath("../SafeArea")
-strike_row = NodePath("../SafeArea/StrikeBand/StrikeControls")
+strike_row = NodePath("../StrikeControls")
+pill = NodePath("../EconomyPill")
 
 [node name="Minimap" type="Control" parent="Hud/RadarMap" node_paths=PackedStringArray("runner", "camera", "map_view", "controller", "cues")]
 anchors_preset = 0
@@ -363,12 +355,29 @@ map_view = NodePath("../../../MapView")
 controller = NodePath("../../../PlayerController")
 cues = NodePath("../../AttackCues")
 
-[node name="BuildButton" type="Button" parent="Hud" node_paths=PackedStringArray("runner", "feed", "safe_area")]
+[node name="StrikeControls" type="HBoxContainer" parent="Hud" node_paths=PackedStringArray("aim", "runner", "feed", "safe_area")]
+mouse_filter = 2
+theme = ExtResource("16_theme")
+script = ExtResource("34_strike_controls")
+aim = NodePath("../../StrikeAim")
+runner = NodePath("../../MatchRunner")
+feed = NodePath("../HudStateFeed")
+safe_area = NodePath("../SafeArea")
+
+[node name="BuildButton" type="Button" parent="Hud" node_paths=PackedStringArray("runner", "feed", "safe_area", "sidebar")]
 theme = ExtResource("16_theme")
 script = ExtResource("44_build_button")
 runner = NodePath("../../MatchRunner")
 feed = NodePath("../HudStateFeed")
 safe_area = NodePath("../SafeArea")
+sidebar = NodePath("../BuildSidebar")
+
+[node name="ReadyChip" type="Button" parent="Hud/BuildButton"]
+visible = false
+focus_mode = 0
+theme_type_variation = &"ReadyBadge"
+text = "Ready"
+icon_alignment = 0
 
 [node name="BuildSidebar" type="Control" parent="Hud" node_paths=PackedStringArray("runner", "controller", "placement", "strike_aim", "feed", "pill", "safe_area")]
 theme = ExtResource("16_theme")
@@ -405,4 +414,5 @@ runner = NodePath("../../MatchRunner")
 [connection signal="selection_changed" from="PlayerController" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="set_selected"]
 [connection signal="state_changed" from="Hud/BuildSidebar" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="refit"]
 [connection signal="laid_out" from="Hud/GroupColumn" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="refit"]
-[connection signal="zone_changed" from="Hud/BuildSidebar" to="Hud/SafeArea/StrikeBand/StrikeControls" method="_on_zone_changed"]
+[connection signal="reserved_changed" from="Hud/BuildButton" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="refit"]
+[connection signal="reserved_changed" from="Hud/StrikeControls" to="Hud/SafeArea/SelectionBand/SelectionPanel" method="refit"]

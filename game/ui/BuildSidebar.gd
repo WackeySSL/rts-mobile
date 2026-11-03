@@ -182,6 +182,19 @@ func open() -> void:
 	feed.state.open(HudState.Unfold.DRAWER)
 
 
+## The Ready chip's tap (ADR 0025 section 4, until P130): opens the drawer on the Structures tab
+## with the finished structure's card in view. The grid sorts a moment after the tab changes, so
+## the scroll waits a frame.
+func show_ready() -> void:
+	select_tab(World.Tab.STRUCTURES)
+	open()
+	await get_tree().process_frame
+	for tile: ItemTile in _tiles:
+		if tile.tab == World.Tab.STRUCTURES and tile.state == ItemTile.State.READY:
+			_items.ensure_control_visible(tile)
+			return
+
+
 ## Closes the drawer (its close button; a gesture on the map does it through the feed).
 func collapse() -> void:
 	feed.state.close(HudState.Unfold.DRAWER)

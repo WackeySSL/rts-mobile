@@ -5,26 +5,24 @@ extends HBoxContainer
 ## mark and the X before it. A tap on the ready button starts the aim (its foot asks "Tap map" until
 ## a point is placed) and a tap on the pressed one ends it; the check mark (dimmed until a point is
 ## placed) sends the one SUPERWEAPON, the X cancels.
-## Landscape: the top line, left of the radar scope. Portrait: the right edge, a gap above the
-## BUILD's row (a line of `LINE_DP` and two gaps above the zone, which is 0 while the drawer is
-## closed and the open sheet's height while it is up). The parent `MarginContainer` is the band the
-## row sits
-## in; this node sets its margins and takes the zone from `HudLayout`, then `zone_changed`. It
-## follows the drawer's slide through `zone_changed` (ADR 0024 section 4): the lift of a slide
-## frame uses the dp and the orientation cached on the last resize and the height the signal
-## carries, and the theme overrides are set on a resize only. The row is about 216 dp wide, which
-## every phone's width holds.
+## Placed by `HudCorners.place` (ADR 0025 section 10, plan P120c): the button stands 8 dp above
+## BUILD at its 72 dp, the check mark and the X to its left, in both orientations; the parent is
+## the Hud, and this node takes the rect that holds the button and, while aiming, the row, on
+## `_ready`, on every resize and when the aim starts or ends. It hides with BUILD while the drawer
+## or the pause menu is open (the landscape panel covers its column, the portrait sheet the bottom
+## stack).
+
+signal reserved_changed  ## The room the aim's row takes changed (`HudLayout.aim_zone_dp`).
 
 const GAP_DP: float = 8.0
 const ACTION_DP: float = 64.0  ## The check mark and the X: placement's size (touch-ui-rules).
 const ICON_DP: float = 32.0
-## The line above the zone the row stands on, with its gap: with the zone at 0 it is BUILD's row
-## (64 + 8 dp) until P120c puts the row at `HudCorners.STRIKE`.
-const LINE_DP: float = 56.0
 const CARD_ART: String = "res://assets/art/iso/icons/item_%s.svg"
 
 @export var aim: StrikeAim
 @export var runner: MatchRunner  ## The type ids that name the card.
+@export var feed: HudStateFeed  ## The unfolds that cover the column.
+@export var safe_area: SafeAreaMargin  ## Its gap is the safe rect's (ADR 0025 section 2).
 
 var _strike: StrikeButton = StrikeButton.new()
 var _confirm: Button = Button.new()
@@ -32,9 +30,7 @@ var _cancel: Button = Button.new()
 var _card: Texture2D = null
 var _card_type: int = -1
 var _dp_px: float = 1.0  ## `UiScale.base_px_per_dp()`, read when the window changes.
-var _portrait: bool = false  ## The orientation, likewise.
-var _zone_px: float = 0.0  ## The menu's height now, base px: `HudLayout`'s, then `zone_changed`'s.
-var _lifted: int = -1  ## The band's bottom margin as last set.
+var _aiming: bool = false  ## The aim showed when the rect was last taken.
 
 
 func _ready() -> void:
@@ -45,6 +41,8 @@ func _ready() -> void:
 	for part: Control in [_confirm, _cancel, _strike]:
 		part.size_flags_vertical = Control.SIZE_SHRINK_CENTER  # A plate keeps its shape.
 		add_child(part)
+	_confirm.hide()  # Only the button, until the player aims.
+	_cancel.hide()
 	_confirm.name = "StrikeConfirm"
 	_cancel.name = "StrikeCancel"
 	_strike.name = "StrikeButton"
@@ -58,6 +56,7 @@ func _ready() -> void:
 		fit.min_dp = Vector2(ACTION_DP, ACTION_DP)
 		button.add_child(fit)
 	aim.changed.connect(_show)
+	feed.state.changed.connect(_on_unfold)
 	get_viewport().size_changed.connect(_apply_dp)
 	_apply_dp()
 	_show()
@@ -75,8 +74,9 @@ func _on_toggled(on: bool) -> void:
 ## Shows what `aim` says: the button while a strike building is owned, the rest while aiming.
 func _show() -> void:
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
-	visible = aim.owned and snap != null
+	visible = aim.owned and snap != null and not _covered()
 	if not visible:
+		_release()
 		return
 	if aim.type_index != _card_type:
 		_card_type = aim.type_index
@@ -89,48 +89,77 @@ func _show() -> void:
 	_confirm.visible = aim.active
 	_confirm.disabled = not aim.has_point
 	_cancel.visible = aim.active
+	if aim.active != _aiming:
+		place()
 
 
-## Sizes are dp, so they follow a resize like DpMinSize does; then the band's margins.
+## Hidden (not owned, or covered): the row takes no room from the SelectionPanel's band, and the
+## next time it shows it is placed afresh.
+func _release() -> void:
+	_aiming = false
+	if HudLayout.aim_zone_dp != 0.0:
+		HudLayout.aim_zone_dp = 0.0
+		reserved_changed.emit()
+
+
+## The drawer or the pause menu opened or closed.
+func _on_unfold(_previous: HudState.Unfold) -> void:
+	_show()
+
+
+func _covered() -> bool:
+	return feed.state.is_open(HudState.Unfold.DRAWER) or feed.state.is_open(HudState.Unfold.PAUSE)
+
+
+## Sizes are dp, so they follow a resize like DpMinSize does; then the rect.
 func _apply_dp() -> void:
-	read_metrics()
+	_dp_px = UiScale.base_px_per_dp()
 	add_theme_constant_override("separation", roundi(GAP_DP * _dp_px))
 	for button: Button in [_confirm, _cancel]:
 		button.add_theme_constant_override("icon_max_width", roundi(ICON_DP * _dp_px))
-	_lifted = -1  # A resize writes the margins again.
-	_lift()
+	place()
 
 
-## Reads the dp, the orientation and the menu's height again: a resize does it, and a test that
-## puts in another `UiScale` override must call it. Not per frame (`UiScale.current()` makes a new
-## `UiMetrics` each time).
-func read_metrics() -> void:
-	_dp_px = UiScale.base_px_per_dp()
-	_portrait = HudLayout.is_portrait()
-	_zone_px = HudLayout.bottom_zone_px()
+## Takes the rect `HudCorners.place` gives the button (and, while aiming, the row to its left).
+func place() -> void:
+	_aiming = aim.active
+	var shown: HudCorners.Shown = HudCorners.Shown.new()
+	shown.strike = true
+	shown.aim = _aiming
+	var margin_dp: float = SafeAreaMargin.DEFAULT_MARGIN_DP
+	margin_dp = margin_dp if safe_area == null else safe_area.margin_dp
+	var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), margin_dp)
+	var rects: Dictionary[StringName, Rect2] = HudCorners.place(
+		safe, HudLayout.is_portrait(), UiScale.base_px_per_dp(), false, shown
+	)
+	var span: Rect2 = rects[HudCorners.STRIKE]
+	if _aiming:
+		span = span.merge(rects[HudCorners.STRIKE_ROW])
+	# The plates round their dp up, so the row may be a pixel more than the layout's: it grows
+	# toward the screen's inside (left and up), never out of the safe rect.
+	size = span.size.max(_least())
+	position = span.end - size
+	var room: float = 0.0
+	if _aiming and not HudLayout.is_portrait():
+		room = (safe.end.x - rects[HudCorners.STRIKE_ROW].position.x) / UiScale.base_px_per_dp()
+		room += HudCorners.GAP_DP
+	if room != HudLayout.aim_zone_dp:
+		HudLayout.aim_zone_dp = room
+		reserved_changed.emit()
 
 
-## The menu's top or height changed (`BuildSidebar.zone_changed`, base px): the row follows.
-func _on_zone_changed(_top_px: float, height_px: float) -> void:
-	_zone_px = height_px
-	_lift()
+func _exit_tree() -> void:
+	HudLayout.aim_zone_dp = 0.0
 
 
-## The row's place in the band: above BUILD's row (or the sheet) in portrait, left of the radar
-## scope in
-## landscape.
-func _lift() -> void:
-	var band: MarginContainer = get_parent() as MarginContainer
-	if band == null:
-		return
-	var gap: float = GAP_DP * _dp_px
-	var bar: int = ceili(_zone_px + gap) + ceili(LINE_DP * _dp_px)
-	var bottom: int = bar + ceili(gap) if _portrait else 0
-	if bottom == _lifted:
-		return
-	_lifted = bottom
-	size_flags_horizontal = Control.SIZE_SHRINK_END
-	size_flags_vertical = Control.SIZE_SHRINK_END if _portrait else Control.SIZE_SHRINK_BEGIN
-	band.add_theme_constant_override("margin_bottom", bottom)
-	var slot: float = HudCorners.SCOPE_DP * _dp_px + gap
-	band.add_theme_constant_override("margin_right", 0 if _portrait else ceili(slot))
+## What the shown plates ask for, in a row: the container's own cached answer lags a frame behind
+## a plate that was just shown or hidden.
+func _least() -> Vector2:
+	var least: Vector2 = Vector2.ZERO
+	for part: Control in [_confirm, _cancel, _strike]:
+		if part.visible:
+			var ask: Vector2 = part.get_combined_minimum_size()
+			least = Vector2(
+				least.x + ask.x + (_dp_px * GAP_DP if least.x > 0.0 else 0.0), maxf(least.y, ask.y)
+			)
+	return least
