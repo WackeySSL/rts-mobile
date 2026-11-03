@@ -356,6 +356,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	var step: float = turret_turn_speed * delta
+	_units.advance(delta)
 	for turret: Sprite2D in _turrets:
 		turret.rotation = wrapf(turret.rotation + step, 0.0, TAU)
 

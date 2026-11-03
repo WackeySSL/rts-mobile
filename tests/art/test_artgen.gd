@@ -219,13 +219,19 @@ func test_a_part_has_one_canvas_in_every_direction_and_a_building_is_anchored_at
 		for part: StringName in layouts:
 			var layout: ArtGen.Layout = layouts[part]
 			for dir: int in model.directions(part):
-				var root: String = _fresh[ArtGen.frame_path(model, part, dir)].split("\n")[1]
-				assert_int(_attribute(root, "width")).override_failure_message(path).is_equal(
-					layout.size.x
-				)
-				assert_int(_attribute(root, "height")).override_failure_message(path).is_equal(
-					layout.size.y
-				)
+				# A pose part has several frames per direction, each in a file of its own.
+				for frame: int in model.frames(part):
+					var file: String = ArtGen.frame_path(
+						model, part, dir, frame if model.frames(part) > 1 else -1
+					)
+					assert_bool(_fresh.has(file)).override_failure_message(file).is_true()
+					var root: String = _fresh[file].split("\n")[1]
+					assert_int(_attribute(root, "width")).override_failure_message(file).is_equal(
+						layout.size.x
+					)
+					assert_int(_attribute(root, "height")).override_failure_message(file).is_equal(
+						layout.size.y
+					)
 			assert_bool(Rect2i(Vector2i.ZERO, layout.size).has_point(layout.origin)).is_true()
 			if part in [&"hull", ArtModel.SHADOW] and model.category == &"bld":
 				# A tile is 128 x 64 px at 2x: the canvas of the body is the footprint wide, the

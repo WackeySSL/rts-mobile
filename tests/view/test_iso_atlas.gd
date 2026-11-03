@@ -408,11 +408,16 @@ func _assert_every_frame_has_its_rasterised_size(
 				var part: StringName = StringName(part_name)
 				var want: Vector2i = IsoAtlas.raster_size(sheet.frame_size(part), scale)
 				for dir: int in sheet.directions(part):
-					var region: Rect2i = atlas.region(sheet.art_id, part, dir, player)
-					(
-						assert_that(region.size)
-						. override_failure_message("%s %s %d" % [sheet.art_id, part, dir])
-						. is_equal(want)
-					)
-					frames += 1
-	assert_int(frames).is_equal(480)
+					for frame: int in sheet.frame_count(part):
+						var region: Rect2i = atlas.region(sheet.art_id, part, dir, player, frame)
+						(
+							assert_that(region.size)
+							. override_failure_message(
+								"%s %s %d f%d" % [sheet.art_id, part, dir, frame]
+							)
+							. is_equal(want)
+						)
+						frames += 1
+	# The 480 frames of the blockouts and the squads' poses (P139): 2 factions x 2 squads x 8
+	# directions x (4 walk + 2 idle) frames.
+	assert_int(frames).is_equal(480 + 192)

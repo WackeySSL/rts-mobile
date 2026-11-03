@@ -28,16 +28,19 @@ func test_every_frame_is_a_picture_of_the_size_its_canvas_says() -> void:
 		var layouts: Dictionary[StringName, ArtGen.Layout] = ArtGen.layouts(model)
 		for part: StringName in layouts:
 			for dir: int in model.directions(part):
-				var image: Image = _raster(model, part, dir)
-				var layout: ArtGen.Layout = layouts[part]
-				assert_vector(Vector2(image.get_size())).override_failure_message(path).is_equal(
-					Vector2(layout.size) * SCALE
-				)
-				(
-					assert_bool(image.get_used_rect().size.x > 0)
-					. override_failure_message(path)
-					. is_true()
-				)
+				for frame: int in model.frames(part):
+					var image: Image = _raster(model, part, dir, frame)
+					var layout: ArtGen.Layout = layouts[part]
+					(
+						assert_vector(Vector2(image.get_size()))
+						. override_failure_message(path)
+						. is_equal(Vector2(layout.size) * SCALE)
+					)
+					(
+						assert_bool(image.get_used_rect().size.x > 0)
+						. override_failure_message(path)
+						. is_true()
+					)
 
 
 func test_the_default_view_of_every_type_has_a_team_share_of_3_to_20_percent() -> void:
@@ -72,32 +75,54 @@ func test_the_default_view_of_every_type_has_a_team_share_of_3_to_20_percent() -
 
 func test_the_default_view_of_every_type_is_identifiable_at_32_px_in_greyscale() -> void:
 	for path: String in ArtGen.model_paths():
+		_assert_identifiable(path, _default_picture(load(path) as ArtModel))
+
+
+## A pose frame is as identifiable as the standing figure (plan row P139): the legs and the head
+## move, the body stays a body of tones, in every direction and every frame of a squad.
+func test_every_walk_and_idle_frame_is_identifiable_at_32_px_in_greyscale() -> void:
+	var seen: int = 0
+	for path: String in ArtGen.model_paths():
 		var model: ArtModel = load(path) as ArtModel
-		var picture: Image = _default_picture(model)
-		var box: Rect2i = picture.get_used_rect()
-		var small: Image = picture.get_region(box)
-		var factor: float = float(SIDE_PX) / maxi(box.size.x, box.size.y)
-		small.resize(
-			maxi(1, roundi(box.size.x * factor)),
-			maxi(1, roundi(box.size.y * factor)),
-			Image.INTERPOLATE_LANCZOS
-		)
-		var grey: Array[float] = []
-		for y: int in small.get_height():
-			for x: int in small.get_width():
-				var pixel: Color = small.get_pixel(x, y)
-				if pixel.a > 0.9:
-					grey.append((0.299 * pixel.r + 0.587 * pixel.g + 0.114 * pixel.b) * 255.0)
-		grey.sort()
-		assert_int(grey.size()).override_failure_message(path + " body").is_greater_equal(
-			MIN_BODY_PX
-		)
-		var spread: float = grey[int(grey.size() * 0.95)] - grey[int(grey.size() * 0.05)]
-		(
-			assert_float(spread)
-			. override_failure_message("%s spread %.0f" % [path, spread])
-			. is_greater_equal(MIN_SPREAD)
-		)
+		var layouts: Dictionary[StringName, ArtGen.Layout] = ArtGen.layouts(model)
+		for part: StringName in model.pose_parts():
+			if part not in [&"walk", &"idle"]:
+				continue
+			for dir: int in model.directions(part):
+				for frame: int in model.frames(part):
+					var picture: Image = Image.create_empty(
+						PAGE.x, PAGE.y, false, Image.FORMAT_RGBA8
+					)
+					_blit(picture, _raster(model, part, dir, frame), layouts[part], Vector2.ZERO)
+					_assert_identifiable("%s %s d%02d f%d" % [path, part, dir, frame], picture)
+					seen += 1
+	assert_int(seen).is_equal(4 * 8 * (4 + 2))
+
+
+## `picture` shrunk to 32 px in greyscale still has a body and a spread of tones.
+func _assert_identifiable(label: String, picture: Image) -> void:
+	var box: Rect2i = picture.get_used_rect()
+	var small: Image = picture.get_region(box)
+	var factor: float = float(SIDE_PX) / maxi(box.size.x, box.size.y)
+	small.resize(
+		maxi(1, roundi(box.size.x * factor)),
+		maxi(1, roundi(box.size.y * factor)),
+		Image.INTERPOLATE_LANCZOS
+	)
+	var grey: Array[float] = []
+	for y: int in small.get_height():
+		for x: int in small.get_width():
+			var pixel: Color = small.get_pixel(x, y)
+			if pixel.a > 0.9:
+				grey.append((0.299 * pixel.r + 0.587 * pixel.g + 0.114 * pixel.b) * 255.0)
+	grey.sort()
+	assert_int(grey.size()).override_failure_message(label + " body").is_greater_equal(MIN_BODY_PX)
+	var spread: float = grey[int(grey.size() * 0.95)] - grey[int(grey.size() * 0.05)]
+	(
+		assert_float(spread)
+		. override_failure_message("%s spread %.0f" % [label, spread])
+		. is_greater_equal(MIN_SPREAD)
+	)
 
 
 ## The default view of a type on a transparent page: the hull, and the turret or head at its mount.
@@ -118,9 +143,11 @@ func _default_picture(model: ArtModel) -> Image:
 	return picture
 
 
-func _raster(model: ArtModel, part: StringName, dir: int) -> Image:
+## One frame of a part as an image: a pose part's frame `frame`, the one frame of any other.
+func _raster(model: ArtModel, part: StringName, dir: int, frame: int = -1) -> Image:
+	var at: int = frame if model.frames(part) > 1 else -1
 	var image: Image = Image.new()
-	image.load_svg_from_string(_fresh[ArtGen.frame_path(model, part, dir)], SCALE)
+	image.load_svg_from_string(_fresh[ArtGen.frame_path(model, part, dir, at)], SCALE)
 	return image
 
 
