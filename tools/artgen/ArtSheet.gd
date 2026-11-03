@@ -25,6 +25,13 @@ const FIELDS: Array[StringName] = [
 	&"muzzle_lift_px",
 	&"icon",
 ]
+## The exports of the frame axis (ADR 0027 section 4), written after those only when a sheet has
+## them, so the sheet of a type without poses, emitters or marks is the bytes it was before.
+const LIFE_FIELDS: Array[StringName] = [
+	&"frames", &"stride_milli", &"anim_ms", &"emitters", &"emitter_points", &"marks"
+]
+## The exports written by hand to one decimal, as a `PackedVector2Array`.
+const POINT_FIELDS: Array[StringName] = [&"mounts", &"emitter_points"]
 
 
 ## The sheet of `model`, from the shots of all its frame parts. The lifts are world px at zoom 1.
@@ -39,31 +46,57 @@ static func of(model: ArtModel, shots: Dictionary[StringName, ArtGen.Shot]) -> I
 		var layout: ArtGen.Layout = shots[part].layout
 		sheet.parts.append(String(part))
 		sheet.counts.append(shots[part].dirs.size())
+		sheet.frames.append(shots[part].frames)
 		sheet.sizes.append_array([layout.size.x, layout.size.y])
 		sheet.anchors.append_array([layout.anchor.x, layout.anchor.y])
 	if shots.has(&"turret") or shots.has(&"head"):
 		for dir: int in model.directions(&"hull"):
 			var at: Vector2 = ArtGen.mount_px(model, 6 if dir < 0 else dir)
 			sheet.mounts.append(at.snapped(Vector2.ONE * 0.1))
+	sheet.stride_milli = model.stride_milli
+	sheet.anim_ms = model.anim_ms
+	sheet.marks = model.marks
+	for emitter: Array in model.emitter_list():
+		sheet.emitters.append(String(emitter[0]))
+		for dir: int in model.directions(&"hull"):
+			var at: Vector2 = ArtGen.point_px(emitter[1], 6 if dir < 0 else dir)
+			sheet.emitter_points.append(at.snapped(Vector2.ONE * 0.1))
 	sheet.bar_lift_px = ceili(_clearing_top(model, shots) / 2.0)
 	sheet.pick_lift_px = roundi(sheet.bar_lift_px / 2.0)
 	sheet.muzzle_lift_px = roundi(model.muzzle_z() * ArtRender.Z_PX / 2.0)
 	return sheet
 
 
-## The `.tres` text of a sheet, one value a line in the order of its exports (`var_to_str` writes
-## a value as the resource text does; the mounts are written by hand to one decimal).
+## The `.tres` text of a sheet, one value a line: the exports of `FIELDS` in their order
+## (`var_to_str` writes a value as the resource text does; the mounts and the emitter points are
+## written by hand to one decimal), then those of `LIFE_FIELDS` that the sheet has: `frames` when a
+## part has more than one frame, the numbers when they are not 0, the lists and `marks` when not
+## empty.
 static func text(sheet: IsoSheetDef) -> String:
 	var lines: PackedStringArray = _header("IsoSheetDef", "res://tools/artgen/IsoSheetDef.gd")
 	for field: StringName in FIELDS:
-		if field == &"mounts":
-			var mounts: PackedStringArray = PackedStringArray()
-			for mount: Vector2 in sheet.mounts:
-				mounts.append("%s, %s" % [ArtSvg.num(mount.x), ArtSvg.num(mount.y)])
-			lines.append("mounts = PackedVector2Array(%s)" % ", ".join(mounts))
-		else:
-			lines.append("%s = %s" % [field, var_to_str(sheet.get(field))])
+		lines.append("%s = %s" % [field, _value(sheet, field)])
+	for field: StringName in LIFE_FIELDS:
+		if _has(sheet, field):
+			lines.append("%s = %s" % [field, _value(sheet, field)])
 	return "\n".join(lines) + "\n"
+
+
+static func _value(sheet: IsoSheetDef, field: StringName) -> String:
+	if field not in POINT_FIELDS:
+		return var_to_str(sheet.get(field))
+	var points: PackedStringArray = PackedStringArray()
+	for point: Vector2 in sheet.get(field):
+		points.append("%s, %s" % [ArtSvg.num(point.x), ArtSvg.num(point.y)])
+	return "PackedVector2Array(%s)" % ", ".join(points)
+
+
+## Whether `text` writes a frame-axis export: `frames` only when a part has several frames, every
+## other when it differs from what a new sheet has.
+static func _has(sheet: IsoSheetDef, field: StringName) -> bool:
+	if field == &"frames":
+		return Array(sheet.frames).any(func(count: int) -> bool: return count > 1)
+	return sheet.get(field) != IsoSheetDef.new().get(field)
 
 
 ## `index.tres`: the sheet files of `models`, sorted by art id.
@@ -106,9 +139,10 @@ static func _header(
 
 
 ## How high the picture reaches above the ground point (px of the 2x art) in the pose that a share
-## `BAR_CLEARS` of the hull frames stay under, the turret or head straight ahead in each: a bar
-## standing on it clears at least that share of the poses, and covers only a taller one (a long
-## hull, or a barrel that points up the screen, which "Health bars" allows).
+## `BAR_CLEARS` of the hull frames stay under, the turret or head straight ahead in each and the
+## `anim` element in its highest frame: a bar standing on it clears at least that share of the
+## poses, and covers only a taller one (a long hull, or a barrel that points up the screen, which
+## "Health bars" allows).
 static func _clearing_top(model: ArtModel, shots: Dictionary[StringName, ArtGen.Shot]) -> float:
 	var hull: ArtGen.Shot = shots[&"hull"]
 	var tops: Array[float] = []
@@ -119,6 +153,11 @@ static func _clearing_top(model: ArtModel, shots: Dictionary[StringName, ArtGen.
 			if shots.has(part):
 				var at: Vector2 = ArtGen.mount_px(model, dir)
 				top = maxf(top, -(at.y + _top(shots[part].polys[dir])))
+		if shots.has(ArtPrim.ANIM):
+			# The moving element is part of the picture: the bar clears it in its highest frame.
+			var anim: ArtGen.Shot = shots[ArtPrim.ANIM]
+			for frame: int in anim.frames:
+				top = maxf(top, -_top(anim.polys[i * anim.frames + frame]))
 		tops.append(top)
 	tops.sort()
 	return tops[ceili(tops.size() * BAR_CLEARS) - 1]

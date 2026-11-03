@@ -25,9 +25,9 @@ func after() -> void:
 	_assert_quit_on_go_back_restored()
 
 
-func test_the_hud_page_is_the_last_of_seven_and_the_button_reaches_it() -> void:
+func test_the_hud_page_is_the_seventh_of_eight_and_the_button_reaches_it() -> void:
 	assert_array(Gallery.PAGES).is_equal(
-		["Units", "Build", "Ground", "Icons", "Iso", "Terrain", "Hud"]
+		["Units", "Build", "Ground", "Icons", "Iso", "Terrain", "Hud", "Life"]
 	)
 	var gallery: Control = await _open_gallery()
 	var button: Button = gallery.get_node("%PageButton")
@@ -38,8 +38,9 @@ func test_the_hud_page_is_the_last_of_seven_and_the_button_reaches_it() -> void:
 	assert_bool(gallery.get_node("HudPage").visible).is_true()
 	assert_bool(gallery.get_node("TerrainPage").visible).is_false()
 	button.pressed.emit()
-	assert_str(button.text).is_equal("Units")
+	assert_str(button.text).is_equal("Life")
 	assert_bool(gallery.get_node("HudPage").visible).is_false()
+	assert_bool(gallery.get_node("LifePage").visible).is_true()
 
 
 func test_the_hud_page_is_one_dark_panel_with_its_rows_in_order() -> void:
