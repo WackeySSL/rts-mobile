@@ -57,6 +57,7 @@ const TAB_ICON_DP: float = 22.0
 const NAME_VARIATION: StringName = &"ItemCaption"  ## 14 sp: "Structures" fits a tab.
 const HANDLE_DP: Vector2 = Vector2(40.0, 4.0)  ## The sheet's handle (ADR 0025 section 5).
 const CLOSE_DP: float = 48.0
+const HANDLE_GAP_DP: float = 2.0  ## Between the handle and the economy line below it.
 const CLOSE_ICON_DP: float = 28.0
 ## Beside the backdrop's own 8 dp: the 16 dp each side that three 88 dp cards need 312 dp for.
 const PAD_DP: float = 8.0
@@ -86,6 +87,8 @@ var _pad: MarginContainer = MarginContainer.new()  ## The padding, and the scree
 var _stack: VBoxContainer = VBoxContainer.new()
 var _head: HBoxContainer = HBoxContainer.new()
 var _economy: EconomyLine = EconomyLine.new()
+var _room: Control  ## The head's room for the line (and the handle upright).
+var _room_fit: DpMinSize = DpMinSize.new()
 var _close: Button = Button.new()
 var _chevron: TextureRect = TextureRect.new()  ## Faces the edge the drawer leaves by.
 var _tab_row: HBoxContainer = HBoxContainer.new()
@@ -331,13 +334,16 @@ func _build_head() -> void:
 	room.name = "HeadRoom"
 	room.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	room.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_min_dp(room, Vector2(0.0, CLOSE_DP))
+	_room_fit.min_dp = Vector2(0.0, CLOSE_DP)
+	room.add_child(_room_fit)
 	_head.add_child(room)
+	_room = room
 	if pill != null:
 		_economy.name = "Economy"
 		_economy.pill = pill
 		_economy.set_anchors_preset(Control.PRESET_FULL_RECT)
 		room.add_child(_economy)
+		room.add_child(_economy.chip())
 	_handle.name = "Handle"
 	_handle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_handle.set_anchors_preset(Control.PRESET_CENTER_TOP)
@@ -573,6 +579,13 @@ func _apply_dp() -> void:
 		content.offset_right = -plate.get_margin(SIDE_RIGHT)
 		content.offset_bottom = -plate.get_margin(SIDE_BOTTOM)
 	_handle.visible = _portrait
+	# Upright the head grows by the handle and its gap, the line stands under them, and the handle
+	# is centred on the sheet: the room is the close button's width short of the head's middle.
+	var lift: float = HANDLE_DP.y + HANDLE_GAP_DP if _portrait else 0.0
+	_room_fit.min_dp = Vector2(0.0, CLOSE_DP + lift)
+	_economy.offset_top = UiScale.dp(lift)
+	_handle.offset_left = UiScale.dp(CLOSE_DP * 0.5)
+	_handle.offset_right = UiScale.dp(CLOSE_DP * 0.5)
 	_handle.custom_minimum_size = Vector2(UiScale.dp(HANDLE_DP.x), UiScale.dp(HANDLE_DP.y))
 	_handle.color = _tab_tint(false)  # The resting grey of the tabs' icons.
 	for at: int in _tab_icons.size():

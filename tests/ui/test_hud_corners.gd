@@ -122,11 +122,27 @@ func test_the_pill_folds_with_the_drawer_open_and_the_toast_starts_after_the_sta
 	shown.pill_width = 900.0
 	var out: Dictionary[StringName, Rect2] = _place(Rect2(0.0, 0.0, 776.0, 280.0), false, shown)
 	assert_bool(out.has(HudCorners.PILL)).is_false()  # The drawer's head shows the economy.
-	assert_float(out[HudCorners.TOAST].position.x).is_greater_equal(56.0)  # After the stack.
-	assert_float(out[HudCorners.TOAST].end.x).is_less_equal(out[HudCorners.DRAWER].position.x - 8.0)
+	# Centred in 56..456 (after the stack's first row and a gap, short of the panel by a gap).
+	_assert_rect(out[HudCorners.TOAST], Rect2(116.0, 0.0, 280.0, 48.0))
 	out = _place(Rect2(0.0, 0.0, 336.0, 676.0), true, shown)
 	assert_bool(out.has(HudCorners.PILL)).is_false()
 	assert_bool(out.has(HudCorners.SCOPE)).is_true()  # The scope stays over the sheet.
+
+
+## Where the room from the stack to the panel is under `TOAST_LEAST_DP` (the pill is folded, so the
+## room starts at the pill's place), the toast stands under the top line, from that place.
+func test_a_folded_pill_leaves_the_toast_its_least_width_or_the_top_line() -> void:
+	var shown: HudCorners.Shown = _shown(["drawer", "toast"], 1)
+	shown.left_taken = 48.0
+	shown.left_height = 104.0  # Dev over Surrender.
+	var safe: Rect2 = Rect2(0.0, 0.0, 526.0, 280.0)  # Panel at 214..526: 56..206 is 150 dp.
+	var out: Dictionary[StringName, Rect2] = _place(safe, false, shown)
+	_assert_rect(out[HudCorners.TOAST], Rect2(56.0, 112.0, 150.0, 48.0))
+	safe = Rect2(0.0, 0.0, 576.0, 280.0)  # 56..256 is exactly the least width: beside the stack.
+	out = _place(safe, false, shown)
+	assert_float(out[HudCorners.TOAST].position.y).is_equal(0.0)
+	assert_float(out[HudCorners.TOAST].size.x).is_greater_equal(HudCorners.TOAST_LEAST_DP)
+	assert_float(out[HudCorners.TOAST].position.x).is_greater_equal(56.0)
 
 
 func test_the_drawer_is_a_side_panel_of_40_percent_between_312_and_420_dp_or_a_half_sheet() -> void:

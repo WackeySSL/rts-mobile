@@ -22,6 +22,11 @@ const NONE: int = -1  ## A cache that has seen nothing yet.
 
 @export var pill: EconomyPill  ## What the line mirrors.
 
+## How often each part was written, for the tests: a frame at rest writes none.
+var credits_sets: int = 0
+var income_sets: int = 0
+var power_sets: int = 0
+
 var _row: HBoxContainer = HBoxContainer.new()
 var _credits_glyph: TextureRect
 var _credits_column: VBoxContainer = VBoxContainer.new()
@@ -68,6 +73,7 @@ func _ready() -> void:
 	_build_bar()
 	_build_chip()
 	visibility_changed.connect(_on_visibility_changed)
+	resized.connect(_on_resized)
 	get_viewport().size_changed.connect(_apply_dp)
 	_apply_dp()
 	_on_visibility_changed()
@@ -88,7 +94,8 @@ func is_low() -> bool:
 	return _low
 
 
-## The flash chip under the credits (a cue: it takes no touch).
+## The flash chip under the credits (a cue: it takes no touch). The owner of the line adds it to
+## the Control the line stands in.
 func chip() -> Control:
 	return _chip
 
@@ -100,21 +107,22 @@ func _read() -> void:
 	var credits: int = pill.credits_on_screen()
 	if credits != _shown_credits:
 		_shown_credits = credits
+		credits_sets += 1
 		_credits.set_text(str(credits))
 	var income: int = pill.income_per_minute()
 	if income != _shown_income:
 		_shown_income = income
+		income_sets += 1
 		_income.text = "+%d/min" % income
 	var power: Vector2i = pill.power_on_screen()
 	if power != _shown_power:
 		_shown_power = power
+		power_sets += 1
 		_show_power(power.x, power.y)
 	var flash: int = pill.flash_amount()
 	if flash != _shown_flash:
 		_shown_flash = flash
 		_show_flash(flash)
-	if _chip.visible:
-		_place_chip()  # The drawer may still be sliding.
 	if pill.pulse_step() != _shown_step:
 		_shown_step = pill.pulse_step()
 		self_modulate = pill.pulse_tint()
@@ -134,6 +142,11 @@ func _on_visibility_changed() -> void:
 		_read()
 	else:
 		_chip.visible = false
+
+
+func _on_resized() -> void:
+	if _chip.visible:
+		_place_chip()
 
 
 func _show_power(made: int, used: int) -> void:
@@ -169,10 +182,16 @@ func _show_flash(amount: int) -> void:
 	_place_chip()
 
 
+## The chip hangs under the credits. It is the line's sibling in a plain Control (`chip()`, added by
+## the head), not top-level, so it is clipped with the drawer while that slides in. It is placed
+## when it shows and when the line is resized, never per frame.
 func _place_chip() -> void:
+	var home: Control = _chip.get_parent() as Control
+	if home == null:
+		return
 	_chip.reset_size()
-	var below: float = global_position.y + size.y + _chip_gap_px
-	_chip.position = Vector2(_credits_column.global_position.x, below)
+	var at: Vector2 = Vector2(_credits_column.global_position.x, global_position.y + size.y)
+	_chip.position = at - home.global_position + Vector2(0.0, _chip_gap_px)
 
 
 func _tint() -> void:
@@ -235,13 +254,11 @@ func _build_bar() -> void:
 func _build_chip() -> void:
 	_chip.name = "Flash"
 	_chip.theme_type_variation = EconomyPill.CHIP_LOSS_VARIATION
-	_chip.top_level = true
 	_chip.visible = false
 	_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_chip_text.name = "FlashText"
 	_chip_text.variation = EconomyPill.CHIP_VARIATION
 	_chip.add_child(_chip_text)
-	add_child(_chip)
 
 
 ## Sizes are dp, so they follow a resize.
