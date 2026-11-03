@@ -37,7 +37,7 @@ extends Node2D
 ## is noted in `ticked` for a shooter the local player sees in that tick's fog and drawn on match
 ## time (`LifeClock`), so a pause freezes it; the rig's own node, and so its sort key, pick and bar,
 ## never moves.
-## Idle life (P140, P140b): a vehicle that moved in the last tick, inside the view rect, rumbles:
+## Idle life (P140, P140b): a vehicle that drove half a step or more on an order, in view, rumbles:
 ## its Hull and Turret shift by a fraction of a px (`RigLife.shake_offset`). One that stood still
 ## with no target does not shake; with a turret it looks one frame aside now and then
 ## (`look_side`). A stop, a move, a target and `reduced` calm the other effect to its rest at once.
@@ -700,6 +700,7 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 		view = camera.visible_world_rect().grow(IDLE_MARGIN_PX)
 	var idle_ms: float = _rig_life.idle_clock(snap, alpha)
 	var armours: PackedInt32Array = snap.type_armour
+	var orders: PackedInt32Array = snap.order
 	var reduced: bool = life.reduced
 	_poses.begin(snap.tick, alpha, idle_ms, _walk, ids, targets)
 	for row: int in rigs.size():
@@ -742,9 +743,14 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 			and armours[types[row]] != World.Armour.INFANTRY
 			and not reduced
 		)
-		# A vehicle that moved in the last tick rumbles (P140b).
+		# A vehicle that drove at least half a step in the last tick on an order rumbles (P140b). A
+		# unit with no order that the separation pushes (up to half a step a tick, for about a
+		# second after it arrives) and a creep under half a step are neither driving nor standing.
 		var drives: bool = (
-			moved > 0 and armours[types[row]] != World.Armour.INFANTRY and not reduced
+			walking
+			and orders[row] != World.Order.IDLE
+			and armours[types[row]] != World.Armour.INFANTRY
+			and not reduced
 		)
 		var idle: RigLife.Idle = (rigs[row] as Rig).idle
 		if stands or drives or idle.live:  # A rig that is at rest and fires is not asked.

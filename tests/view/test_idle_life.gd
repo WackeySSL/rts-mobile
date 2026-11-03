@@ -86,11 +86,12 @@ func test_the_shake_of_20_ids_at_one_instant_is_spread_over_the_nine_offsets_as_
 	assert_int(counts[Vector2(0.5, 0.5)]).is_equal(4)
 
 
-func test_the_shake_is_in_whole_half_pixels_within_shake_px_and_changes_once_per_shake_ms() -> void:
-	# For every id, over 2 s in 1 ms steps: each axis is a multiple of 0.5 and at most shake_px, the
-	# offset changes only on a step boundary of the id, (ms + phase) % 80 == 0 (25 of them in 2 s, an
-	# eighth of which repeat the offset), so never twice inside one, 441 times in all for the 20
-	# ids and 25 at the most for one.
+func test_the_rumble_is_in_whole_half_pixels_within_drive_shake_px_and_changes_once_per_step(
+) -> void:
+	# For every id, over 2 s in 1 ms steps: each axis is a multiple of 0.5 and at most
+	# drive_shake_px, the offset changes only on a step boundary of the id, (ms + phase) % 80 == 0
+	# (25 of them in 2 s, an eighth of which repeat the offset), so never twice inside one, 441
+	# times in all for the 20 ids and 25 at the most for one.
 	var off_grid: int = 0
 	var too_far: int = 0
 	var off_boundary: int = 0

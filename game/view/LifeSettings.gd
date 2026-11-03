@@ -46,14 +46,14 @@ extends Resource
 ## full does not kick: a rig never keeps a stale offset.
 @export var kick_slots: int = 128
 
-## Idle life of vehicles and defences (P140, P140b). A vehicle that moved in the last tick rumbles:
-## its hull and turret shift by up to `drive_shake_px` on each axis (whole 0.5 px steps, so 0.5 is
-## the smallest that rumbles), a new offset at most once per `drive_shake_ms`. A standing vehicle
-## never shakes; a turreted one with no target turns its turret one frame
-## aside for `look_ms`, once in each cycle of `look_every_ms` plus up to `look_every_spread_ms` (by
-## `LifeClock.mix`, fixed for a unit); a complete, online defence head with no target walks to
-## `sweep_frames` frames either side of its last aim and back, holding each frame `sweep_ms`.
-## A 0 in `drive_shake_px`, `look_ms` or `sweep_frames` turns that effect off.
+## Idle life of vehicles and defences (P140, P140b). A vehicle that drove at least half a step in
+## the last tick on an order rumbles: its hull and turret shift by up to `drive_shake_px` on each
+## axis (whole 0.5 px steps, so 0.5 is the smallest that rumbles), a new offset at most once per
+## `drive_shake_ms`. A standing vehicle never shakes; a turreted one with no target turns its turret
+## one frame aside for `look_ms`, once in each cycle of `look_every_ms` plus up to
+## `look_every_spread_ms` (by `LifeClock.mix`, fixed for a unit); a complete, online defence head
+## with no target walks to `sweep_frames` frames either side of its last aim and back, holding each
+## frame `sweep_ms`. A 0 in `drive_shake_px`, `look_ms` or `sweep_frames` turns that effect off.
 @export var drive_shake_px: float = 0.5
 @export var drive_shake_ms: int = 80
 @export var look_every_ms: int = 6000

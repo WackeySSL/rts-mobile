@@ -158,6 +158,28 @@ func test_a_standing_vehicle_with_the_look_off_writes_nothing_over_a_long_stand(
 	assert_int(_layer.life_writes()).is_equal(0)
 
 
+func test_a_creep_under_half_a_step_neither_rumbles_nor_looks() -> void:
+	# The separation pushes a unit that has arrived by a few milli a tick for a while: not a drive
+	# (no rumble), and not a stand (no look either). Over 12 s, which hold the light tank's
+	# windows at 2192 and 10160 ms, with a creep of 1 to 5 milli in each tick the Hull never
+	# moves, the turret never looks, and nothing is written.
+	var row: int = _runner.snapshot.index_of(Rig.LIGHT)
+	var snap: MatchSnapshot = _runner.snapshot
+	_pin_down(Rig.HEAVY)
+	snap.order[row] = World.Order.MOVE  # Even on an order: a slow final approach is no drive.
+	var hull: Sprite2D = _rig(row).get_node("Hull")
+	_watch(Rig.LIGHT)
+	var wrong: int = 0
+	for creep: int in range(1, 6):
+		snap.prev_pos_x[row] = snap.pos_x[row] - creep
+		for ms: int in range(2000, 12000, 100):
+			_at_ms(float(ms))
+			wrong += 0 if hull.position == Vector2.ZERO else 1
+			wrong += 0 if Frames.dir(_layer, row, &"turret") == UnitLayer.D_EAST else 1
+	assert_int(wrong).is_equal(0)
+	assert_int(_layer.life_writes()).is_equal(0)
+
+
 ## Points the camera at the rig of unit `id`, and lets the rig settle with a frame at 1900 ms.
 func _watch(id: int) -> void:
 	_camera.position = _layer.rig(_runner.snapshot.index_of(id)).position

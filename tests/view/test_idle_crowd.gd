@@ -1,14 +1,14 @@
 extends GdUnitTestSuite
 ## The idle life of a crowd (plan P140 and P140b, ADR 0027 sections 3 and 9): 40 heavy and 30 light
-## tanks of player 1 drive in view (`_drive_all`: each moved a hair in the last tick), seen from
-## 1900 ms and played at 60 fps from there, a frame every 16.7 ms (`1900 + k x 1000 / 60`). The
+## tanks of player 1 drive in view (`_drive_all`: each moved a full step in the last tick), seen
+## from 1900 ms and played at 60 fps from there, a frame every 16.7 ms (`1900 + k x 1000 / 60`). The
 ## per-id phases spread the writes: a rig that has just begun to drive, or is seen again after the
-## camera has been elsewhere, rests for the step it is in and rumbles from the next one, so no
-## frame writes more than a fraction of the 140 sprites, and the rigs stay inside ADR 0027
-## section 9's 150 sprite writes a frame and 60 on average. The counts are restated in Python from
-## the same functions (a second implementation)
-## and match the layer's. Fixtures: building_rig.gd's 32 x 32 map with the crowd of
-## `_crowd_scenario`.
+## camera has been elsewhere, rests for the step it is in and rumbles from the next one, so no frame
+## writes more than a fraction of the 140 sprites, and the rigs stay inside ADR 0027 section 9's 150
+## sprite writes a frame and 60 on average. The counts are restated in Python from the same
+## functions (a second implementation) and match the layer's, except `FRAMES_BACK`, `TOTAL_PANNED`
+## and `STOP_BURST`, which were pinned from a run of the layer (their invariants are in the tests).
+## Fixtures: building_rig.gd's 32 x 32 map with the crowd of `_crowd_scenario`.
 
 const Buildings: GDScript = preload("res://tests/view/support/building_rig.gd")
 const Rig: GDScript = preload("res://tests/view/support/recoil_rig.gd")
@@ -16,6 +16,7 @@ const HEAVY_TANKS: int = 40
 const LIGHT_TANKS: int = 30
 const FAR: float = 1.0e6
 const TOTAL_PANNED: int = 7226
+const STOP_BURST: int = 130
 const OVER: Vector2 = Vector2(0.0, 240.0)  ## Where the camera sees the whole crowd at zoom 0.5.
 ## The sprite writes of the first eight frames: none in the first, then what the tanks whose first
 ## step is over write, 38 at the most (a mutant that does not rest writes 132). Driving tanks do not
@@ -175,6 +176,22 @@ func test_a_standing_crowd_writes_the_looks_alone_and_its_hulls_never_move() -> 
 	assert_int(_layer.life_writes()).is_greater(0)  # The looks are there.
 
 
+func test_a_column_that_stops_together_writes_inside_the_frame_budget() -> void:
+	# 70 tanks have rumbled for 4 s when all of them stop at once: each one that is off rest is
+	# written back to rest (Hull and Turret), the looks of a standing crowd come one by one later.
+	# The busiest frame of the stop stays inside ADR 0027 section 9's 150 sprite writes.
+	for frame: int in 240:
+		_at_ms(1900.0 + float(frame) * 1000.0 / 60.0)
+	_stand_all()
+	var worst: int = 0
+	for frame: int in range(240, 300):
+		var before: int = _layer.life_writes()
+		_at_ms(1900.0 + float(frame) * 1000.0 / 60.0)
+		worst = maxi(worst, _layer.life_writes() - before)
+	assert_int(worst).is_equal(STOP_BURST)
+	assert_int(worst).is_less_equal(150)
+
+
 func test_a_column_that_sets_off_together_does_not_write_in_one_frame() -> void:
 	# The per-id phases differ: the first frames at which the 70 tanks write spread over the first
 	# 80 ms (five 60 fps frames), no one of them takes more than half of the crowd, and many
@@ -197,11 +214,12 @@ func test_a_column_that_sets_off_together_does_not_write_in_one_frame() -> void:
 		assert_int(frames[frame]).is_less(snap.unit_count() / 2)
 
 
-## Makes every unit drive: it moved a hair in the last tick.
+## Makes every unit drive: it moved a full step east in the last tick.
 func _drive_all() -> void:
 	var snap: MatchSnapshot = _runner.snapshot
 	for row: int in snap.unit_count():
-		snap.prev_pos_x[row] = snap.pos_x[row] - 1
+		snap.prev_pos_x[row] = snap.pos_x[row] - snap.type_speed[snap.type_index[row]]
+		snap.order[row] = World.Order.MOVE
 
 
 ## Makes every unit stand: it did not move in the last tick.

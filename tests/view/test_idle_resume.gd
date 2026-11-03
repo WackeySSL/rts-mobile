@@ -123,10 +123,12 @@ func test_a_new_match_starts_the_idle_clock_again() -> void:
 	assert_int(Frames.dir(_units, row, &"turret")).is_equal(5)
 
 
-## Makes unit `id` drive: it moved a hair in the last tick.
+## Makes unit `id` drive: it moved a full step east in the last tick.
 func _drive(id: int) -> void:
 	var row: int = _runner.snapshot.index_of(id)
-	_runner.snapshot.prev_pos_x[row] = _runner.snapshot.pos_x[row] - 1
+	var snap: MatchSnapshot = _runner.snapshot
+	snap.prev_pos_x[row] = snap.pos_x[row] - snap.type_speed[snap.type_index[row]]
+	snap.order[row] = World.Order.MOVE
 
 
 ## Gives unit `id` a target it holds, as the sim writes it, so it is not idle.

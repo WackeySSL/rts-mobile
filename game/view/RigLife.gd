@@ -14,16 +14,17 @@ extends RefCounted
 ## step back by a tick when WORKER mode restarts alpha after a pause).
 ## The kicks live in a fixed table of `kick_slots` keyed by unit id, sized in `setup`: a shot of a
 ## rig that kicks restarts its slot, and one that finds the table full kicks nothing.
-## Idle life (P140): `shake_offset`, `look_side` and `sweep_offset` are functions of the unit id and
-## the match time alone, drawn with `LifeClock.mix`, so two runs, a replay and a second viewer see
-## the same pose at the same tick. The layer says who stands (a vehicle that stands with no target
-## looks around, a complete, online defence with none sweeps) and who drives (a vehicle that moved
-## in the last tick rumbles; a standing one never shakes) and `idle_step` and `sweep_step` bring
-## the `Idle` record of one rig up to the layer's idle clock and say what changed, for the layer to
-## write. The
-## idle clock (`idle_clock`) is the match time that never goes back, so a WORKER resume, whose alpha
-## restarts at 0, does not play a pose backwards. A record holds the answer and the stretch of
-## match time it holds for, so a rig is asked again only outside it: two compares, not a hash.
+## Idle life (P140, P140b): `shake_offset`, `look_side` and `sweep_offset` are functions of the unit
+## id and the match time alone, drawn with `LifeClock.mix`, so two runs, a replay and a second
+## viewer see the same pose at the same tick. The layer says who stands (a vehicle that stands with
+## no target looks around, a complete, online defence with none sweeps) and who drives (a vehicle
+## that drove half a step or more in the last tick on an order rumbles; a standing one never shakes;
+## a creep under half a step, or a push on a unit with no order, does neither), and `idle_step` and
+## `sweep_step` bring the `Idle` record of one rig up to the layer's idle clock and say what
+## changed, for the layer to write. The idle clock (`idle_clock`) is the match time that never goes
+## back, so a WORKER resume, whose alpha restarts at 0, does not play a pose backwards. A record
+## holds the answer and the stretch of match time it holds for, so a rig is asked again only outside
+## it: two compares, not a hash.
 ## Squad poses (P142, ADR 0027 section 5): `travel_step` and `walk_frame` turn the ground a squad
 ## covered into a walk frame (the cadence follows the speed and stops with the squad), `pose_step`
 ## and `pose_idle` give the idle frame of a squad that has stood a while, and `Pose` is the record
@@ -82,7 +83,7 @@ var _done: PackedByteArray = PackedByteArray()  ## 1 once the kick is over or it
 
 ## The idle state of one rig or head, held by its layer and made with it: what is shown now
 ## (`shake`, `look`, `sweep`) and, for each, the stretch of match time [from, to) its last answer
-## holds for. A `to` below 0 means "never asked": the rig has not been idle yet.
+## holds for. A `to` below 0 means "never asked": the rig has not stood or driven yet.
 class Idle:
 	extends RefCounted
 
@@ -326,12 +327,13 @@ func idle_clock(snap: MatchSnapshot, alpha: float) -> float:
 ## Brings the idle record `state` of vehicle `id` to idle-clock time `now_ms` and returns what
 ## changed (CHANGED_SHAKE, CHANGED_LOOK, or 0), for the layer to write. `stands`: the vehicle stood
 ## still in the last tick, has no target and `reduced` is off; it looks aside (only if
-## `state.turns`) and never shakes. `driving`: it moved in the last tick and `reduced` is off; it
-## rumbles and does not look. `seen`: it is shown and in view. A rig that does neither goes back to
-## rest, seen or not, and a rig that stops driving loses its rumble at once. A rig that is not seen
-## is left as it is, and rests for one step when it is seen again, like one that has just begun: its
-## phase spreads those first steps over `drive_shake_ms`, so a column that sets off together, or a
-## camera that pans back to a convoy, does not write every sprite in one frame.
+## `state.turns`) and never shakes. `driving`: it drove half a step in the last tick on an order and
+## `reduced` is off; it rumbles and does not look. `seen`: it is shown and in view. A rig that does
+## neither goes back to rest, seen or not, and a rig that stops driving loses its rumble at once. A
+## rig that is not seen is left as it is, and rests for one step when it is seen again, like one
+## that has just begun: its phase spreads those first steps over `drive_shake_ms`, so a column that
+## sets off together, or a camera that pans back to a convoy, does not write every sprite in one
+## frame.
 func idle_step(state: Idle, id: int, now_ms: float, stands: bool, driving: bool, seen: bool) -> int:
 	var changed: int = 0
 	if not driving:
@@ -358,7 +360,7 @@ func idle_step(state: Idle, id: int, now_ms: float, stands: bool, driving: bool,
 		state.shake_to = span_to
 		if settled and shake != state.shake:
 			state.shake = shake
-			changed = CHANGED_SHAKE
+			changed |= CHANGED_SHAKE
 	if stands and state.turns and (now_ms < state.look_from or now_ms >= state.look_to):
 		var side: int = look_side(id, now_ms)
 		state.look_from = span_from
