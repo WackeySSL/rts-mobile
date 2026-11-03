@@ -92,10 +92,12 @@ func test_frame_0_without_a_move_is_the_standing_figure_and_a_move_changes_only_
 ## A pose frame of a squad is drawn in the order of the standing primitives and its top faces are
 ## the standing ones (`rest` of `ArtRender.render`, `ArtModel.frame_rest`): a leg turned 36 degrees
 ## and lifted rises into the box of the torso above it, where the posed boxes alone leave the order
-## to the centre depth, and its front face then faces 0.59 up, which is not a roof and gets no light
-## edge. A part without a rest (an `anim` element, which turns all round) is judged as posed.
+## to the centre depth (the torso is thin here, so the leg's boxes overlap it all through and the
+## fallback draws the leg over it at some yaws), and its front face then faces 0.59 up, which is not
+## a roof and gets no light edge. A part without a rest (an `anim` element, which turns all round)
+## is judged as posed.
 func test_a_posed_leg_keeps_the_draw_order_and_the_light_edge_of_the_standing_figure() -> void:
-	var torso: ArtPrim = ArtPrim.parse("box hull olive 0 0 0.25 0.2 0.3 0.3")
+	var torso: ArtPrim = ArtPrim.parse("box hull olive 0 0 0.25 0.2 0.3 0.05")
 	var leg: ArtPrim = ArtPrim.parse("box hull iron 0 -0.07 0 0.1 0.08 0.25 group=leg")
 	var by: Array[ArtMove] = [
 		ArtMove.parse("walk 0 leg turn y -36 0 -0.07 0.25"),
@@ -104,27 +106,25 @@ func test_a_posed_leg_keeps_the_draw_order_and_the_light_edge_of_the_standing_fi
 	var standing: Array[ArtPrim] = [torso, leg]
 	var posed: Array[ArtPrim] = [torso, leg.moved(by)]
 	var light: String = ArtPalette.edge(&"fossil", &"iron", true)
-	for yaw: float in [0.0, 45.0, 90.0, 135.0, 180.0, -45.0, -90.0, -135.0]:
+	var late: int = 0  # The yaws at which the posed order alone draws the leg over the torso.
+	for yaw: float in [0.0, 45.0, 67.5, 90.0, 112.5, 135.0, 180.0, -45.0, -90.0, -135.0]:
 		var polys: Array[ArtRender.Poly] = ArtRender.render(posed, yaw, &"fossil", standing)
-		var last_leg: int = -1
-		var first_torso: int = polys.size()
 		var edges: int = 0
-		for at: int in polys.size():
-			if polys[at].prim == 1:
-				last_leg = at
-				edges += int(polys[at].stroke == light)
-			elif polys[at].prim == 0:
-				first_torso = mini(first_torso, at)
+		for poly: ArtRender.Poly in polys:
+			edges += int(poly.prim == 1 and poly.stroke == light)
 		(
-			assert_bool(last_leg >= 0 and last_leg < first_torso)
+			assert_bool(_leg_comes_first(polys))
 			. override_failure_message("yaw %s: the leg is drawn after the torso" % yaw)
 			. is_true()
 		)
+		late += int(not _leg_comes_first(ArtRender.render(posed, yaw, &"fossil")))
 		# The one top face of the leg has the light edge when it is seen (tilted back, it is not
 		# at every yaw), and no side face has.
 		assert_int(edges).override_failure_message("yaw %s" % yaw).is_less_equal(1)
 		if yaw == 0.0:
 			assert_int(edges).is_equal(1)
+	# Control: without the standing primitives the order goes wrong at some yaws.
+	assert_int(late).is_greater(0)
 	# As posed (no rest) the tilted front face is taken for a roof: a second light edge.
 	var as_posed: Array[ArtRender.Poly] = ArtRender.render(posed, 0.0, &"fossil")
 	var tilted: int = 0
@@ -703,6 +703,18 @@ func _squad_anim(model: ArtModel) -> void:
 func _grouped_turret(model: ArtModel) -> void:
 	model.prims.append("box turret steel 0 0 0 0.1 0.1 0.1 group=gun")
 	model.mount = Vector3(0, 0, 0.3)
+
+
+## Whether every polygon of primitive 1 (the leg) comes before every polygon of primitive 0.
+func _leg_comes_first(polys: Array[ArtRender.Poly]) -> bool:
+	var last_leg: int = -1
+	var first_torso: int = polys.size()
+	for at: int in polys.size():
+		if polys[at].prim == 1:
+			last_leg = at
+		elif polys[at].prim == 0:
+			first_torso = mini(first_torso, at)
+	return last_leg >= 0 and last_leg < first_torso
 
 
 func _tower() -> ArtModel:

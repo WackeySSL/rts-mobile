@@ -237,7 +237,7 @@ func test_no_turned_face_of_a_pose_sits_on_a_light_cut() -> void:
 							)
 							checked += 1
 	assert_int(checked).is_greater(4000)
-	assert_int(crossed).is_greater(20)
+	assert_int(crossed).is_equal(48)
 
 
 ## A pose frame is drawn in the order of the standing figure (`ArtRender.render` gets the standing
@@ -314,6 +314,30 @@ func test_a_pose_never_gives_a_side_face_the_light_edge() -> void:
 					)
 					checked += 1
 	assert_int(checked).is_greater(1000)
+
+
+## Only the walk and idle of a squad are drawn at rest: `frame_rest` gives their standing primitives
+## and nothing for any other part, an `anim` element above all, which turns all round and is judged
+## as posed (a face of a rotor that turns up is a top; `REST_ORDER` is a whole pose part, so a part
+## that must move in front of the body, as a raised rifle will, cannot simply join it).
+func test_only_the_walk_and_idle_of_a_squad_have_a_rest() -> void:
+	var tower: ArtModel = ArtModel.new()
+	tower.prims = PackedStringArray(
+		["box hull concrete 0 0 0 1.2 1.2 1.0", "box anim steel 0 0 1.0 0.3 0.1 0.6 group=head"]
+	)
+	tower.poses = PackedStringArray(["anim 2", "anim 1 head turn z 90 0 0 0"])
+	assert_array(tower.frame_rest(&"anim")).is_empty()
+	assert_array(tower.frame_rest(&"hull")).is_empty()
+	for id: StringName in SQUADS:
+		var model: ArtModel = _model(id)
+		var hull: Array[ArtPrim] = model.primitives(&"hull")
+		for part: StringName in [&"walk", &"idle"]:
+			var rest: Array[ArtPrim] = model.frame_rest(part)
+			assert_int(rest.size()).override_failure_message(id).is_equal(hull.size())
+			for at: int in hull.size():
+				assert_str(rest[at].line).is_equal(hull[at].line)
+		for part: StringName in [&"hull", ArtModel.SHADOW]:
+			assert_array(model.frame_rest(part)).is_empty()
 
 
 func test_the_pose_frames_use_only_the_palette_of_their_faction() -> void:

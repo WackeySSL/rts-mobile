@@ -498,6 +498,13 @@ and team bands.
   roof and gets no light edge (a grey blink on the dark legs in every contact frame). The fill still
   follows the posed face, so a tilted face is a little lighter. An `anim` element turns all round
   and is judged as posed. `test_artgen_poses.gd` pins the order and the edges of all 192 frames.
+  **The trade-off:** the standing order lets a turned head's helmet hide part of its own visor or
+  lamp in some idle frames (`d04` and `d12`; in review the Breakers' idle `d12` f0, figure `b`, showed
+  4.2 px of its visor against 19.8 true, at 2x). An order that follows the pose for some groups was
+  worse on the walk legs, so the standing order stays. **`REST_ORDER` (in `ArtModel`) is a whole
+  pose part's:** a pose that moves a part in front of the body, as P154's firing pose raising the
+  rifle will, must not simply join it (the rifle would be drawn where it is not); it needs a part or
+  a group order of its own.
 - **Cost.** A pose canvas is the union of its frames and directions, at most 4 px wider or taller
   than the hull's (walk and idle: 86 x 66 and 86 x 66 for the Roustabouts, 104 x 76 and 108 x 76
   for the Wildcatters, 90 x 72 for the Linemen, 116 x 78 and 120 x 78 for the Breakers). The sorted
