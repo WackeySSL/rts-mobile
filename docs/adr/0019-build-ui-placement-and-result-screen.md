@@ -65,6 +65,10 @@ radar's full map under a 56 dp scope at the top right. §5: the under-attack arr
 marker on the scope's rim and a ping on the full map. §6: Surrender moves into the pause menu
 (P124). No accepted text changed.
 
+Status note (2026-11-03, the docs row after wave y): §3 carries a dated status note that the rally
+flags stay drawn while no producer is selected (P87), and §6 one that Surrender stands under the
+Dev button, not beside it, until P124 (P90). No accepted text changed.
+
 ## Context
 - `touch-ui-rules` already fixes, in its gesture table and its "Building placement" section: tap an
   own building selects it and "a production building opens its build tab"; tap minimap moves the
@@ -251,6 +255,13 @@ cell `Targeting.sees` asks. One shown only for another cell of its footprint is 
 tap is a tap on the ground and moves the selected units there. HOW_TO_PLAY's Orders row ("One you
 see only at its edge, or the fog hides, is a tap on the ground") already says so.
 
+Status note (2026-11-03, the docs row after wave y; P87 #263, fc42dd8, as merged; the notes above
+stay as dated): **rally flags persist.** A tab's flag is drawn whenever its rally point is set (own
+flags only, `RallyLayer`), whether or not a producer is selected; only the line from the building
+to its flag shows just while the one own barracks or vehicle factory of that tab is selected. A
+flag stays after the tab's last producer dies, because the sim keeps the point (a phone check
+item, not a decision).
+
 ### 4. Minimap
 In the sidebar (top in landscape; at the right end of the portrait band, a square of the band's
 inner height, at most 40 % of the safe width). It draws the terrain, the fog (black and dimmed),
@@ -292,6 +303,14 @@ Status note (2026-10-26, P26ai docs, P76 as merged, #197; the text above stays a
 loss stats the overlay shows are counted only for a side that has had a producer (ADR 0018 §7's
 note of the same date). Every real match has one from its scenario buildings, so the result
 screen shows true counts; the perf arena and Worlds of units only show 0.
+
+Status note (2026-11-03, the docs row after wave y; P90 #267, d3ef2d6, as merged; the notes above
+stay as dated): Surrender stands **under** the Dev button, not beside it: both are in one
+top-left stack (`TopLeft`, a VBox), 104 dp high with both shown; in a release build, where the Dev
+button is hidden, Surrender stands alone at the top left. The pill follows the stack's first row
+(ADR 0025 §2); in portrait, and where the landscape room is under `TOAST_LEAST_DP`, the toast
+stands below the stack (ADR 0025 §2's note of 2026-11-03). P124 moves Surrender into the pause
+menu, and the battle screen's Dev button goes (ADR 0025 §11).
 
 ### 7. Where a match starts in Phase 3
 A dev route "Skirmish" loads the battle scene with the skirmish scenario and the dummy opponent as

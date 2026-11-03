@@ -28,7 +28,15 @@ const FIELDS: Array[StringName] = [
 ## The exports of the frame axis (ADR 0027 section 4), written after those only when a sheet has
 ## them, so the sheet of a type without poses, emitters or marks is the bytes it was before.
 const LIFE_FIELDS: Array[StringName] = [
-	&"frames", &"stride_milli", &"anim_ms", &"emitters", &"emitter_points", &"marks"
+	&"frames",
+	&"stride_milli",
+	&"anim_ms",
+	&"emitters",
+	&"emitter_points",
+	&"marks",
+	&"cuts",
+	&"scar_milli",
+	&"root"
 ]
 ## The exports written by hand to one decimal, as a `PackedVector2Array`.
 const POINT_FIELDS: Array[StringName] = [&"mounts", &"emitter_points"]
@@ -56,10 +64,19 @@ static func of(model: ArtModel, shots: Dictionary[StringName, ArtGen.Shot]) -> I
 	sheet.stride_milli = model.stride_milli
 	sheet.anim_ms = model.anim_ms
 	sheet.marks = model.marks
+	sheet.scar_milli = model.scar_milli
+	if not model.damage_parts().is_empty():
+		for part: StringName in ArtModel.DAMAGE_PARTS:
+			sheet.cuts.append(shots[part].cut if shots.has(part) else 0)
 	for emitter: Array in model.emitter_list():
 		sheet.emitters.append(String(emitter[0]))
 		for dir: int in model.directions(&"hull"):
-			var at: Vector2 = ArtGen.point_px(emitter[1], 6 if dir < 0 else dir)
+			var turned: int = 6 if dir < 0 else dir
+			var at: Vector2 = (
+				ArtGen.hang_point_px(emitter[1], turned)
+				if emitter[0] == &"hang"
+				else ArtGen.point_px(emitter[1], turned)
+			)
 			sheet.emitter_points.append(at.snapped(Vector2.ONE * 0.1))
 	sheet.bar_lift_px = ceili(_clearing_top(model, shots) / 2.0)
 	sheet.pick_lift_px = roundi(sheet.bar_lift_px / 2.0)

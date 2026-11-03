@@ -83,8 +83,8 @@ static func render(
 			poly.prim = i
 			for point: Vector3 in face.points:
 				poly.points.append(project(_turn(point, turn)))
-			poly.fill = ArtPalette.tone(faction, prim.material, level(normal))
-			poly.stroke = ArtPalette.edge(faction, prim.material, is_top)
+			poly.fill = _scorch(prim, ArtPalette.tone(faction, prim.material, level(normal)))
+			poly.stroke = _scorch(prim, ArtPalette.edge(faction, prim.material, is_top))
 			(tops if is_top else out).append(poly)
 		out.append_array(tops)
 	return out
@@ -100,6 +100,30 @@ static func rotate(v: Vector3, yaw: float) -> Vector3:
 	return _turn(v, ArtMesh.dir(yaw))
 
 
+## `polys` cut off below the row `max_y` (px from the model's origin): each polygon clipped to the
+## half plane above it, the ones that end up with fewer than 3 points dropped. A damage patch uses
+## it to stop at its cut (ADR 0028 section 3).
+static func clip_below(polys: Array[Poly], max_y: float) -> Array[Poly]:
+	var out: Array[Poly] = []
+	for poly: Poly in polys:
+		var kept: PackedVector2Array = PackedVector2Array()
+		for i: int in poly.points.size():
+			var a: Vector2 = poly.points[i]
+			var b: Vector2 = poly.points[(i + 1) % poly.points.size()]
+			if a.y <= max_y:
+				kept.append(a)
+			if (a.y <= max_y) != (b.y <= max_y):
+				kept.append(a.lerp(b, (max_y - a.y) / (b.y - a.y)))
+		if kept.size() >= 3:
+			var cut: Poly = Poly.new()
+			cut.points = kept
+			cut.fill = poly.fill
+			cut.stroke = poly.stroke
+			cut.prim = poly.prim
+			out.append(cut)
+	return out
+
+
 static func bounds(polys: Array[Poly]) -> Rect2:
 	var box: Rect2 = Rect2()
 	var first: bool = true
@@ -108,6 +132,13 @@ static func bounds(polys: Array[Poly]) -> Rect2:
 			box = Rect2(point, Vector2.ZERO) if first else box.expand(point)
 			first = false
 	return box
+
+
+## `hex` of a primitive's face after a `char` move; a team zone keeps its key colours.
+static func _scorch(prim: ArtPrim, hex: String) -> String:
+	if prim.char_percent <= 0.0 or prim.material == ArtPalette.TEAM:
+		return hex
+	return ArtPalette.scorched(hex, prim.char_percent)
 
 
 static func _turn(v: Vector3, turn: Vector2) -> Vector3:
@@ -191,8 +222,8 @@ static func _discs(prim: ArtPrim, turn: Vector2, faction: StringName) -> Array[P
 			poly.points.append(
 				at + ArtMesh.dir(i * 360.0 / DISC_POINTS) * disc.y * radius * TILE_PX
 			)
-		poly.fill = ArtPalette.tone(faction, prim.material, int(disc.x))
+		poly.fill = _scorch(prim, ArtPalette.tone(faction, prim.material, int(disc.x)))
 		if disc.x == ArtPalette.RIGHT:
-			poly.stroke = ArtPalette.edge(faction, prim.material, false)
+			poly.stroke = _scorch(prim, ArtPalette.edge(faction, prim.material, false))
 		out.append(poly)
 	return out

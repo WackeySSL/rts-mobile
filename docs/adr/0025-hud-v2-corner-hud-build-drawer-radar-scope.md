@@ -18,6 +18,13 @@ is **no Attack button and no attack-move mode**, and the command bar gets a **De
 instead (§9). The `touch-ui-rules` text of §18 is applied by its own commit, after Michael's yes to
 the skill change.
 
+Status note (2026-11-03, the docs row after wave y; P119-P123 as merged): §1, §2, §4-§6, §8 and
+§18 carry dated status notes: a pinned full map stays through placement and the aim; the tabs are
+56 dp, so §5's budget leaves 76 dp; the toast's least width and its fallback place; the economy
+card is the one overlay; a lead decision on the group column during a strike aim in portrait; the
+interim portrait zone of 64 dp; the ring of a READY head and the placement restart; a strike on
+own buildings out of view raises no cue (an open question). No accepted text changed.
+
 ## Michael's answers (2026-11-02, on #259)
 "Ja til anbefalinger undtagen attack" (yes to the recommendations except attack):
 1. **A:** the build menu's pin is dropped (P85f2 withdrawn); its glyphs serve the radar pin.
@@ -122,6 +129,12 @@ closes it while the game runs on.
   of the screen, and the design's battle state is the empty field), so Michael confirms it
   (question 8).
 
+Status note (2026-11-03, the docs row after wave y; P119c #271 and P121 #278 as merged; the text
+above stays as accepted): "starting either closes the unfold" has the same exceptions as a map
+gesture: **a pinned full map stays open** through the start of placement and of a strike aim
+(`HudState.mode_started` folds the drawer, the economy card and an unpinned full map), as the
+`GhostControls.clear_of` list in `scenes/main.tscn` (which names `RadarMap`) implies.
+
 ### 2. The corners
 Sizes in dp, inside the safe rect (`SafeAreaMargin`: the OS insets plus 12 dp, the larger inset on
 both ends of an axis, ADR 0015 §3). The design's safe zones (landscape 59 pt sides and 21 pt bottom,
@@ -172,6 +185,30 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   `MinimapSlot`, `SelectionPanel`, `ArmyBar` and the Dev button on the battle screen (the dev menu
   moves into the pause menu, §11). Their logic is reused where the table names it.
 
+Status note (2026-11-03, the docs row after wave y; P119 #268, P119b #276, P120 #285 and P123 #284
+as merged; the text above stays as accepted):
+- **Tabs are 56 dp high** (`BuildSidebar.TAB_DP`), not 48: an icon over a 14 sp name needs 53 dp.
+  §5's budget changes with it (§5's note).
+- **The toast's least width** is `HudCorners.TOAST_LEAST_DP`, 200 dp. Where the landscape room
+  between the pill and the scope (or the open drawer) is narrower, the toast stands under the top
+  line instead: from the pill's start, 8 dp below the lower of the scope's foot and the top-left
+  stack (Dev over Surrender until P124, `Shown.left_height`), no further right than the open drawer
+  or the safe edge (the P120 x P123 interaction fix). In portrait it stands 8 dp below the lower of
+  the scope's foot (56) and that stack, so at y 64 at least, not under the pill's 48 dp line.
+- **One overlay** (a lead decision, 2026-11-02): "No part overlaps another" holds for every part
+  but the economy card. The card is transient (any next touch closes it) and may cover the toast,
+  the group column and, on the short landscape screens, the command bar; it touches the scope's
+  foot with no gap.
+- **Until P120d** the pill stays beside the open drawer (`Shown.pill_over_drawer`), so the economy
+  shows once.
+- **The 8 dp gaps** are tested on the pure function (`test_hud_corners.gd`), with one exemption
+  beside the card's: at 360 x 700 dp with five group items the strike aim's check mark and X touch
+  the group column's second column with no gap (the numbers above: a 120 dp column, the 136 dp
+  row, 8 dp and the 72 dp button make 336 dp). **Lead decision (2026-11-03):** in portrait, while
+  a strike aim is shown, the group column holds at most three items in one column and the rest
+  scroll. The strike row (check mark and X, 136 dp) is not moved or squeezed. P122b implements
+  it, and the test's exemption goes with it.
+
 ### 3. The economy pill and its detail card
 - **Content:** the menu button (48 x 48, `glyph_menu`, opens `PAUSE`), a divider, the coin and the
   credits (tabular figures, `CREDITS_DIGITS` wide as today), the bolt and the power bar (P85c's
@@ -216,6 +253,10 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   badge, 48 dp high, at most 112 wide, an entry of `HudCorners`' `shown`) shows left of BUILD; a
   tap opens the drawer on the Structures tab with the READY card in view (ADR 0024 Q1 A kept).
   ADR 0026 removes the READY state and the chip with it.
+
+Status note (2026-11-03, the docs row after wave y; P120 #285 as merged; the text above stays as
+accepted): a finished structure waiting at the Structures head has no work left, so it is the item
+that "finishes first" and **the ring shows full** until it is placed (until P130).
 
 ### 5. The build drawer
 - **Container:** ADR 0024's clipping holder and slide (M1): `menu_slide_ms` (160) drives the
@@ -271,6 +312,16 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   X (ADR 0024 R1 kept; a strike aim leaves it closed). **Closes** on its close button, a map gesture
   (§1), a swipe, the start of placement or of a strike aim, `PAUSE`. No pin (§6).
 
+Status note (2026-11-03, the docs row after wave y; P120 #285 as merged; the text above stays as
+accepted):
+- **Budget:** with the 56 dp tabs (§2's note), `web_phone_small`'s head (48), tabs (56), queue row
+  (56 and its 20 dp label) and three 8 dp gaps leave **76 dp**, not 84; the grid still scrolls
+  there. P120b re-checks the budget with its queue row.
+- **The restart:** whether the drawer returns after a placement (R1) is decided when the placement
+  first begins. READY tapped again in a drawer the player opened with BUILD during the placement
+  restarts the ghost and closes the drawer, but does not set the return: the drawer comes back at
+  the end only if it was open at the first start.
+
 ### 6. What this does to ADR 0024's parts
 | Part (ADR 0024) | Here | Why |
 | --- | --- | --- |
@@ -285,6 +336,14 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
 | The return after placement (R1) and the producer tap (Q3 A) | Kept | Michael's answers stand |
 | `GhostControls` (P86c) | Kept beside the ghost (M2); after ADR 0026 the check mark shows the price under its glyph ("600", tabular, 18 sp as `touch-ui-rules` asks of HUD numbers and as the theme's `ItemCost` is), which fits its 64 dp (32 dp glyph, a 22 dp line) | M2 |
 | `HudPrefs` and `user://settings.cfg` | Kept as the settings file; first key `[hud] haptics` (§11) | P85f2's file without its key |
+
+Status note (2026-11-03, the docs row after wave y; P120 #285 as merged; the table above stays as
+accepted):
+- **`bottom_zone_dp` in portrait while closed** is BUILD's 64 dp (`HudLayout.BUILD_ZONE_DP`), not
+  0, until P122b replaces the ArmyBar; the ArmyBar adds its own 8 dp gap above it. Open, it is the
+  larger of the drawer's height and 64. In landscape it stays 0 and INF.
+- **`map_gesture`'s row:** "closes any unfold" means §1's rule: not a pinned full map, not `PAUSE`;
+  a touch on a HUD control closes only the economy card (§1, §3).
 
 ### 7. The radar scope and the full map
 - **Scope:** a 56 dp disc at the top right showing the ground round the camera: a crop of P88's
@@ -331,6 +390,19 @@ test profile with the design's insets (`ui_profiles.notch_design`). Gaps 8 dp.
   edge"): the rim marker is the direction cue, the toast the jump. touch-ui-rules' "edge-of-screen
   indicator" becomes the rim marker on acceptance (§18). P89 keeps the
   low-power part: the glyph on each consuming building and the pill's pulse.
+
+Status note (2026-11-03, the docs row after wave y; P123 #284 as merged; the text above stays as
+accepted):
+- **Detection** also counts the `DIED` record of an own row (a lethal hit leaves no row to read a
+  `SHOT` or `IMPACT` target from), except a cancelled site's (ADR 0026 §6's flag).
+- **The numbers:** `attack_cue_area_tiles` 12 and `attack_cue_ms` 4000 were placeholders with no
+  planned values (the plan's "P89's planned values" never existed); Michael's phone test of
+  64f0402 accepted them as they are (2026-11-03).
+- **Open question (a later row; not decided here):** a superweapon strike on the local player's
+  buildings out of view raises no cue: `Strike._land` writes no `SHOT` or `IMPACT`, and a blackout
+  writes neither, so only a row the rupture kills raises one (by its `DIED`). This section
+  is silent on strikes. Whether a strike should raise its own cue (perhaps from P133's `STRIKE`
+  event) is for a later row, with Michael if it changes what the player is told.
 
 ### 9. The command bar, the groups and the portrait BUILD lift
 - **Shows** as §1 says (and keeps its slot through placement and the strike aim). It holds, from
@@ -637,6 +709,15 @@ accepted texts stay):
 > "Under attack: a toast with a jump, a marker on the radar scope's rim and a ping on the full map".
 > New bullet: "Fonts: Big Shoulders for buttons and titles (upper case), Chakra Petch for numbers
 > (tabular) and body, from `theme.tres` only."
+
+Status note (2026-11-03, the docs row after wave y; the text above stays as accepted): the quoted
+gesture row "Any gesture on the map" ends with "a touch on a HUD control never closes them", which
+contradicts §1 and §3 for the economy card: any next touch closes it, a HUD control's included, as
+P119c and P119b do. `touch-ui-rules` line 40 carries the same clause. The proposed wording, for
+Michael's yes before any skill edit: "| Any gesture on the map | Also closes the open drawer, full
+map (unless pinned) or economy card; the gesture still does its work. A touch on a HUD control
+leaves the drawer and the full map open (only opening another unfold closes them); the economy card
+closes on any next touch, a HUD control's included |".
 
 ### 19. HOW_TO_PLAY rows per plan row
 Each row adds or rewrites these entries in `docs/HOW_TO_PLAY.md` in its own PR (CLAUDE.md); a

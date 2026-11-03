@@ -9,6 +9,11 @@ line). Amends ADR 0007 §10 (one new event kind), ADR 0023 §2 (the z table, the
 damage states and animations"). Everything else here is view and art: no rule, state column,
 Command or golden hash changes.
 
+Status note (2026-11-03, the docs row after wave y): §3, §8 and the Consequences carry dated
+status notes: a standing vehicle never shakes, and a driving one rumbles (Michael's decision of
+2026-11-03, P140b); `StrikeFx` draws up to four line calls per net while it settles (P141); the idle
+gates stay in `UnitLayer`. No accepted text changed.
+
 ## Michael's answers (2026-11-02)
 1. **Now:** the life lanes run beside HUD v2; where the lead must choose, HUD and the Phase 3 gate
    rows go first.
@@ -156,6 +161,13 @@ Command or golden hash changes.
   (either splits the one batch, ADR 0023 §2); Particles nodes (a node per emitter, their own
   randomness); a second atlas page for life frames (it would interleave in the sort).
 
+Status note (2026-11-03, the docs row after wave y; P141 #289, 64f0402, as merged; the text above
+stays as accepted): `StrikeFx` draws its quads from the strike atlas and each net of light with two
+`draw_multiline` calls (the dark edge and the light line), four while the net settles (the
+interior and the ring of its boundary cells fade apart, `net_settle_ms`), against the 1 or 2 calls
+forecast above. If each call is a draw call, the worst moment is about 25 instead of about 22,
+still under the trigger of 40; P146 and P147 count it on the base arena and the phone card.
+
 ### 4. Art: the frame axis and the atlas budget
 - **The frame axis** (the generator, art-director): an `ArtPrim` may carry `group=<name>`; an
   `ArtModel` may list poses, each a part (`walk`, `idle` or `anim`), a frame count and, per frame,
@@ -293,6 +305,19 @@ Command or golden hash changes.
   switch comes with Phase 5's settings screen, saved in `user://settings.cfg` like `[hud] haptics`
   (ADR 0025) and read at match start; no automatic switch.
 
+Status note (2026-11-03, the docs row after wave y; Michael's decision of 2026-11-03 after P140's
+phone check; the text above stays as accepted): **a standing vehicle never shakes.** The idle shake
+looked like the tanks jumping; Michael wants a gentle engine rumble only while a vehicle drives,
+and a standing one keeps its turret look-around ("stå utålmodigt at dreje lidt med kanon hovedet",
+stand impatiently turning the gun head a little). P140b (#286, 79d1b27) does it: a vehicle
+rumbles (`Hull` and `Turret` shift by up to `drive_shake_px` per axis, a new offset at most once
+per `drive_shake_ms`) only while it moved at least half a step in the last tick and its order is
+not `IDLE`; a creep under half a step, or a separation push on a unit with no order, neither
+rumbles nor counts as standing. `shake_px` and `shake_ms` above are now `drive_shake_px` (0.5)
+and `drive_shake_ms` (80); "idle shake" in §1, §3 and "Reduced" means this rumble, which
+`reduced` still drops. The look-around and the head sweep are unchanged. Michael's phone test of
+64f0402 accepted it ("Test ok", 2026-11-03).
+
 ### 9. Budget and proof
 - **Work:** life costs at most 0.56 ms of main-thread work per frame on the phone card, judged by
   the card with life full and reduced (P147). Life files cannot read `Time`, so the card times the
@@ -329,6 +354,14 @@ Command or golden hash changes.
   animations and damage smoke are no longer "not Phase 3") and §5 (frame names; "out of Phase 3:
   building damage states and animations" withdrawn for what this ADR adds). P132 wrote the dated
   notes in ADR 0007 and ADR 0023; the lead's P26aq applies the svg-art-style text.
+
+Status note (2026-11-03, the docs row after wave y; the text above stays as accepted): "grow only
+by calls into `RigLife.gd`" did not hold. `UnitLayer` (916 lines on `main` at 64f0402) keeps the
+loop that writes the kicks (P136) and the idle gates (who stands, who drives: the move, order,
+target and armour checks) with the loop that writes the idle offsets (P140, P140b, P142);
+`BuildingLayer` is at 673. The per-rig state and its steps are in `RigLife.gd` (590). gdlint's
+1000-line limit is the watch for lane V1's later rows (P153, P154): a row that would cross it
+first moves those loops into `RigLife`.
 
 ## Alternatives considered
 - **Particles nodes** (`CPUParticles2D`): a node per emitter, their own random seeds (life would

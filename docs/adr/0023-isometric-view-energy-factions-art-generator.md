@@ -97,6 +97,10 @@ superweapons' launch and fall) is view-only and no longer out of Phase 3; three 
 25, 55) and a forecast of 16; frame names with `_f<K>` and a page budget of 3584 px. No accepted
 text changed.
 
+Status note (2026-11-03, the docs row after wave y): §2 carries a dated status note on the rally
+flags as P87 merged them (always drawn while set, the line only while the producer is selected) and
+on the ghost's "Blocked" word in the draw-call forecast. No accepted text changed.
+
 ## Context
 - **Michael's canvas.** "Iron Meridian - grafisk udkast" (Claude Design) has two versions. A: a
   science alliance against an industrial bloc, violet crystals. B ("Øst/Vest"): the same mechanics
@@ -342,6 +346,17 @@ stand where ADR 0027 does not change them):
   during a strike).
 - **Nothing tints a sorted sprite** and life never moves a rig's or building's node: offsets and
   regions of child sprites only, so the one batch and the sort keys hold.
+
+Status note (2026-11-03, the docs row after wave y; P87 #263 and P86b #253 as merged; the text and
+the notes above stand):
+- **Rally flags persist** (z 61, `RallyLayer`): an own tab's flag is drawn whenever its rally point
+  is set, selected producer or not; only the line from the producer to its flag waits for that
+  producer's selection (ADR 0019 §3's note of 2026-11-03). So `RallyLayer` draws in an ordinary
+  moment, not only during an order: two flags use up to four textures (each flag's hull and team
+  layer are their own SVGs, drawn hulls first), the line adds its two passes while it shows. The
+  forecasts above do not list it; nothing has counted it yet.
+- **"Blocked"** (P86b): the ghost's word is drawn with the fallback font (`GhostLayer`), one more
+  texture, so the ghost adds about 1 call to the P26an note's count while the word shows.
 
 ### 3. Picking, selection and placement
 - **Ground taps:** `IsoProjection.px_to_ground` of the camera's world point, rounded to milli.
