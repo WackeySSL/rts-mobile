@@ -12,6 +12,12 @@ of `AirFx`), §8 (what `reduced` keeps) and the unit-life plan's P148; ADR 0023 
 building looks intact") and §5 (two new part names). No rule, state column, Command, event or
 golden hash changes.
 
+Status note (2026-11-03, P26ar docs; accepted on #291; P156 #294 as merged): the dated notes
+in ADR 0027 §3, §4 and §8, ADR 0023 §2 and §5 and the unit-life plan's P148 row are written. §3
+and §8 carry dated notes from P156's review: the stage's draw order and its cut row, the overlap's
+double fringe, the rules on damage parts and points, and the `hang` point's side per hull frame (a
+lead decision). No accepted text changed.
+
 ## Context
 - **Michael, 2026-11-03** (his own answers): buildings and vehicles under 50 % hp must look as if
   they are falling apart; infantry not. Two stages: under 50 % cracks, soot and smoke; under 25 %
@@ -177,6 +183,29 @@ golden hash changes.
   the build card (`assets/art/iso/icons/item_*.svg`), a defence's `Head` (16 directions per stage
   would cost page rows), the crater and the site look.
 
+Status note (2026-11-03, P26ar docs; P156 #294, 732cb6c, as merged in `tools/artgen/`; the text
+above stays as accepted):
+- **The stage and its cut.**
+  - A stage is drawn in its own greedy painter's order (`ArtGen.stage_polys`), not in the intact
+    body's.
+  - `cuts` holds the **first intact row**, not the last changed one:
+    `ceili(low + 1) + origin.y` (`ArtGen.damage_cut`), where `low` is the lowest outline row and
+    1 is half of the 2 px edge (`ArtSvg.EDGE_PX / 2`).
+  - The cut also covers the screen overlap (the intersection, not the union) of every pair of
+    untouched primitives that the stage draws in the other order than the intact body
+    (`ArtModel.damage_swaps`): such a swap shows only where the two overlap.
+  - The 4 overlap rows (`CUT_OVERLAP_PX`) draw an edge's anti-aliased fringe twice, the patch's
+    over the body's (edge pixels only). P159 trims the body at `ceil(cut x bake_scale)`
+    texels and draws the patch over it.
+- **Damage parts and points** (`ArtModel.problems`, `_damage_problems`):
+  - A building with stage 1 only (`dmg1` without `dmg2`) is refused; stage 2 only is allowed
+    (fallback (b)).
+  - The seated group is the hull group named `mount` (`ArtModel.SEATED_GROUP`); a damage move may
+    not touch it or an `anim` group. P158 puts a defence's `Head` seat in it.
+  - Count rules: a building has at most two `damage` points and no `hang`; a vehicle at most one
+    of each; infantry none.
+  - `scar_milli` is for vehicles only (0 on every other model).
+
 ### 4. Vehicle overlays
 - **Where the sprites live: on the sorted world's page, not in `fx/life_atlas.svg`.** An overlay
   sorts with its vehicle, so it is a sprite in `WorldSort`; a sprite of another texture there splits
@@ -333,6 +362,12 @@ golden hash changes.
   the life layers (estimated about 0.3 ms).
 - **Page:** at most 3584 at bake scale 1.0 for the cross-faction two-player match, pinned by
   `test_iso_atlas_budget.gd`; P158 and P160 update its `TODAY_*` values.
+
+Status note (2026-11-03, P26ar docs; a lead decision of 2026-11-03 on P156 #294; the table above
+stays as accepted): the generator mirrors the `hang` point per hull frame to the side that faces the
+camera (`ArtGen.hang_point_px`); the edge-on frames `d00` and `d08` keep the model's side. So the
+hang point changes side about **four times per full turn, not twice** (+1 write for the flip each
+time), and at the switch it jumps across the hull (from `d08` to `d09`).
 
 ### 9. Numbers in data
 `data/life_settings.tres` gains `damage_stage_percent` ([50, 25]), `damage_writes_per_frame` (60),

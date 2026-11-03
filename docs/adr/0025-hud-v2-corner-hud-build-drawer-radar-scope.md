@@ -25,6 +25,13 @@ card is the one overlay; a lead decision on the group column during a strike aim
 interim portrait zone of 64 dp; the ring of a READY head and the placement restart; a strike on
 own buildings out of view raises no cue (an open question). No accepted text changed.
 
+Status note (2026-11-03, P26ar docs; P120d #293, P120c #295 and P122b #296 as merged, main
+1a6209c): §2, §4 and §5 carry dated status notes from wave z's lead decisions: the drawer head's
+economy line takes no touch, drops the "POWER" caption and is 54 dp upright; the toast's top-left
+check; what "stalled" means on low power; a pinned full map on very short screens during the aim;
+a hold on a group with nothing selected; the group column under the portrait sheet. No accepted
+text changed.
+
 ## Michael's answers (2026-11-02, on #259)
 "Ja til anbefalinger undtagen attack" (yes to the recommendations except attack):
 1. **A:** the build menu's pin is dropped (P85f2 withdrawn); its glyphs serve the radar pin.
@@ -209,6 +216,13 @@ as merged; the text above stays as accepted):
   scroll. The strike row (check mark and X, 136 dp) is not moved or squeezed. P122b implements
   it, and the test's exemption goes with it.
 
+Status note (2026-11-03, P26ar docs; P122b #296 as merged; the text and the note above stand):
+- **The group column's "Always"** in the table: but hidden under the portrait drawer sheet, which
+  covers its place (P119's rule on main since #268; `GroupColumn` keeps it).
+- **A hold on a group with no units selected does nothing** (a lead decision, 2026-11-03), the same
+  rule as "+" (§9): a resting finger never empties a group.
+- The portrait strike-aim rule above (three items in one column, the rest scroll) is as merged.
+
 ### 3. The economy pill and its detail card
 - **Content:** the menu button (48 x 48, `glyph_menu`, opens `PAUSE`), a divider, the coin and the
   credits (tabular figures, `CREDITS_DIGITS` wide as today), the bolt and the power bar (P85c's
@@ -257,6 +271,16 @@ as merged; the text above stays as accepted):
 Status note (2026-11-03, the docs row after wave y; P120 #285 as merged; the text above stays as
 accepted): a finished structure waiting at the Structures head has no work left, so it is the item
 that "finishes first" and **the ring shows full** until it is placed (until P130).
+
+Status note (2026-11-03, P26ar docs; lead decisions on P120c #295, as merged; the text and the note
+above stand):
+- **Stalled** means that no queue head advanced between two published snapshots. Low power is no
+  exception and needs none: every head with a producer still advances, at `low_power_percent`. So
+  a producer that is blacked out (or destroyed) on low power is a stall like any other.
+- **Very short screens** (about 680 dp wide or less; the test rig's `tiny_short_landscape`,
+  680 x 293 dp): where a pinned full map cannot stand beside the pill and the aim's row even at its
+  least width, it folds when the aim begins (the pin stays), and a tap on the scope opens it again
+  after the aim. A follow-up row will let `HudCorners` leave MAP out instead.
 
 ### 5. The build drawer
 - **Container:** ADR 0024's clipping holder and slide (M1): `menu_slide_ms` (160) drives the
@@ -321,6 +345,16 @@ accepted):
   first begins. READY tapped again in a drawer the player opened with BUILD during the placement
   restarts the ghost and closes the drawer, but does not set the return: the drawer comes back at
   the end only if it was open at the first start.
+
+Status note (2026-11-03, P26ar docs; lead decisions on P120d #293, as merged; the text and the note
+above stand):
+- **The head's economy line takes no touch:** the economy card (§3) opens only from the pill, which
+  is folded while the drawer is open (§1: one unfold at a time).
+- **No "POWER" caption** in the head: the bolt, the numbers and LOW POWER carry it.
+- **The head's height:** upright 54 dp (the handle's 4 dp and a 2 dp gap above the 48 dp line);
+  sideways it stays 48 dp.
+- **The toast** beside the open drawer, with the pill folded, is checked against the top-left stack
+  for plain no-overlap, not for §2's 8 dp gap.
 
 ### 6. What this does to ADR 0024's parts
 | Part (ADR 0024) | Here | Why |
