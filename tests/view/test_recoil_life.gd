@@ -190,7 +190,7 @@ func _start(life: LifeSettings) -> void:
 		_layer.free()
 	_layer = auto_free(UnitLayer.new())
 	_layer.runner = _runner
-	_layer.life = life
+	_layer.life = Rig.calmed(life)
 	var camera: RtsCamera = auto_free(RtsCamera.new())
 	add_child(camera)
 	_layer.camera = camera

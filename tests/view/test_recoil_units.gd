@@ -271,7 +271,7 @@ func _make_layer(life: LifeSettings) -> UnitLayer:
 		_layer.free()
 	var layer: UnitLayer = auto_free(UnitLayer.new())
 	layer.runner = _runner
-	layer.life = life
+	layer.life = Rig.calmed(life)
 	var camera: RtsCamera = auto_free(RtsCamera.new())
 	add_child(camera)
 	layer.camera = camera

@@ -46,11 +46,13 @@ extends Resource
 ## full does not kick: a rig never keeps a stale offset.
 @export var kick_slots: int = 128
 
-## Idle life of vehicles and defences (P140). A standing vehicle shakes its hull and turret by up
-## to `shake_px`, one write per `shake_ms`; a turreted vehicle with no target turns its turret one
-## frame aside and back in one `look_ms` window per cycle of `look_every_ms` plus up to
-## `look_every_spread_ms` (by `LifeClock.mix`); a defence head with no target sweeps within
-## `sweep_frames` of its last aim over `sweep_ms`.
+## Idle life of vehicles and defences (P140). A vehicle that stands with no target shakes its hull
+## and turret by up to `shake_px` on each axis (whole 0.5 px steps, so 0.5 is the smallest that
+## shakes), a new offset at most once per `shake_ms`; a turreted one also turns its turret one frame
+## aside for `look_ms`, once in each cycle of `look_every_ms` plus up to `look_every_spread_ms` (by
+## `LifeClock.mix`, fixed for a unit); a complete, online defence head with no target walks to
+## `sweep_frames` frames either side of its last aim and back, holding each frame `sweep_ms`.
+## A 0 in `shake_px`, `look_ms` or `sweep_frames` turns that effect off.
 @export var shake_px: float = 0.5
 @export var shake_ms: int = 80
 @export var look_every_ms: int = 6000
