@@ -210,14 +210,17 @@ func test_stalled_is_no_head_advancing_between_two_snapshots_with_a_queue_not_em
 	assert_bool(_button.stalled).override_failure_message("advanced").is_false()
 	_publish(world, 4)
 	assert_bool(_button.stalled).override_failure_message("stopped again").is_true()
-	# Low power slows the ring; it is not stalled even when nothing moved.
-	var snap: MatchSnapshot = Sw.snapshot(world, 0)
-	snap.tick = 5
-	snap.power_used[1] = snap.power_made[1] + 10
-	_runner.snapshot = snap
-	_button.refresh(snap)
-	assert_bool(_button.stalled).override_failure_message("low power").is_false()
-	_publish(world, 6)  # Power back: the queue has not moved since.
+	# Low power slows the ring but the head still advances: not stalled. With the head not moving
+	# (the producer blacked out or destroyed) it is a stall like any other.
+	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad"], 250)
+	_publish_low(world, 5)
+	assert_bool(_button.stalled).override_failure_message("low power, advancing").is_false()
+	_publish_low(world, 6)
+	assert_bool(_button.stalled).override_failure_message("low power, no advance").is_true()
+	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad"], 260)
+	_publish_low(world, 7)
+	assert_bool(_button.stalled).override_failure_message("low power, slow advance").is_false()
+	_publish(world, 8)  # Power back: the queue has not moved since.
 	assert_bool(_button.stalled).override_failure_message("power back").is_true()
 	# An item that finished (the queue shorter, the next one at 0) is an advance.
 	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad", "rifle_squad"], goal - 50)
@@ -302,6 +305,9 @@ func test_the_stalled_look_redraws_once_per_change_and_nothing_per_snapshot() ->
 	var grey: Color = _button.get_theme_color(&"ring_stalled", BuildButton.STALLED)
 	var faction: Color = _button.get_theme_color(&"light", BuildButton.ACCENTS[0])
 	assert_bool(grey.is_equal_approx(faction)).is_false()
+	# What _draw really did: the grey arc and the "!" disc.
+	assert_bool(_button.ring_color.is_equal_approx(grey)).is_true()
+	assert_bool(_button.mark_drawn).is_true()
 	var drawn: int = _button.draws
 	for tick: int in range(3, 9):  # Stalled and staying so: nothing to redraw.
 		_publish(world, tick)
@@ -314,6 +320,8 @@ func test_the_stalled_look_redraws_once_per_change_and_nothing_per_snapshot() ->
 	await await_idle_frame()
 	assert_bool(_button.stalled).is_false()
 	assert_int(_button.draws).is_equal(drawn + 1)
+	assert_bool(_button.ring_color.is_equal_approx(faction)).is_true()  # The faction's, no mark.
+	assert_bool(_button.mark_drawn).is_false()
 	# The comparison keeps its numbers in arrays made once: `refresh` makes nothing.
 	var source: String = FileAccess.get_file_as_string("res://game/ui/BuildButton.gd")
 	var body: String = _function(source, "refresh")
@@ -443,6 +451,15 @@ func _post(world: World, tick: int) -> void:
 	var snap: MatchSnapshot = Sw.snapshot(world, 0)
 	snap.tick = tick
 	_runner.snapshot = snap
+
+
+## As `_publish`, on low power (the local player uses more than it makes).
+func _publish_low(world: World, tick: int) -> void:
+	var snap: MatchSnapshot = Sw.snapshot(world, 0)
+	snap.tick = tick
+	snap.power_used[1] = snap.power_made[1] + 10
+	_runner.snapshot = snap
+	_button.refresh(snap)
 
 
 func _publish(world: World, tick: int) -> void:

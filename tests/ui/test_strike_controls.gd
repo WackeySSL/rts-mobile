@@ -318,6 +318,53 @@ func test_upright_the_zone_rises_over_the_strike_button_only_while_a_strike_buil
 	assert_float(army.end.y).is_less_equal(_rect("StrikeButton").position.y - 7.0)
 
 
+## The aim's room in the SelectionPanel's band goes with the row: lost the strike building during
+## the aim, or covered by the drawer and lost then, the zone is BUILD's 72 dp again (no stale 224).
+func test_the_aim_gives_its_room_back_when_the_building_is_lost_during_the_aim() -> void:
+	var phone: UiMetrics = UiProfiles.by_name(&"android_6in")
+	for covered: bool in [false, true]:
+		await _open(phone.window_size, phone, true)
+		var feed: HudStateFeed = _main.get_node("Hud/HudStateFeed")
+		var told: Array[int] = [0]
+		(_hud("StrikeControls") as StrikeControls).reserved_changed.connect(
+			func() -> void: told[0] += 1
+		)
+		_wait(0)
+		assert_bool(_aim.begin()).is_true()
+		await await_idle_frame()
+		assert_float(HudLayout.aim_zone_dp).is_greater(HudLayout.BUILD_ROW_DP)
+		if covered:
+			feed.state.open(HudState.Unfold.DRAWER)
+		_aim.owned = false  # The Deep Bore is gone.
+		_aim.changed.emit()
+		if covered:
+			feed.state.close(HudState.Unfold.DRAWER)
+		await await_idle_frame()
+		var why: String = "covered %s" % covered
+		assert_float(HudLayout.aim_zone_dp).override_failure_message(why).is_equal(0.0)
+		assert_float(HudLayout.right_zone_px(0.0)).override_failure_message(why).is_equal_approx(
+			UiScale.dp(HudLayout.BUILD_ROW_DP), 0.01
+		)
+		assert_int(told[0]).override_failure_message(why).is_greater(0)
+		assert_bool((_hud("StrikeControls") as Control).visible).is_false()
+
+
+## The rooms the chip and the row reserve are given back when their nodes leave the tree.
+func test_the_reserved_rooms_are_reset_when_the_hud_leaves_the_tree() -> void:
+	var phone: UiMetrics = UiProfiles.by_name(&"android_6in")
+	await _open(phone.window_size, phone, true)
+	_make_ready()
+	_wait(0)
+	assert_bool(_aim.begin()).is_true()
+	await await_idle_frame()
+	assert_float(HudLayout.chip_zone_dp).is_greater(0.0)
+	assert_float(HudLayout.aim_zone_dp).is_greater(0.0)
+	remove_child(_main)
+	_main.free()
+	assert_float(HudLayout.chip_zone_dp).is_equal(0.0)
+	assert_float(HudLayout.aim_zone_dp).is_equal(0.0)
+
+
 func test_the_row_is_shown_only_while_a_strike_building_is_owned() -> void:
 	var phone: UiMetrics = UiProfiles.by_name(&"android_6in")
 	await _open(phone.window_size, phone, false)

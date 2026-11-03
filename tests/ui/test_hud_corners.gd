@@ -141,6 +141,28 @@ func test_the_pinned_map_with_the_aim_keeps_clear_of_the_row_and_the_pill() -> v
 	assert_bool(low[HudCorners.MAP].intersects(low[HudCorners.STRIKE_ROW])).is_false()
 
 
+## The row is "in the way" of the left-of-column map while it starts above the box's foot plus a
+## gap (box foot 168 dp): at a safe height of 312 dp the row starts at 172, 4 dp under the foot,
+## and the map steps aside by the gap; at 316 it starts at 176, a gap under it, and the map stays.
+func test_the_map_steps_aside_for_a_row_that_is_less_than_a_gap_below_its_foot() -> void:
+	for height: float in [312.0, 316.0]:
+		var out: Dictionary[StringName, Rect2] = _place(
+			Rect2(0.0, 0.0, 776.0, height), false, _shown(["strike", "aim", "map"])
+		)
+		var map: Rect2 = out[HudCorners.MAP]
+		var row: Rect2 = out[HudCorners.STRIKE_ROW]
+		var across: float = row.position.x - map.end.x
+		var along: float = row.position.y - map.end.y
+		assert_float(maxf(across, along)).override_failure_message(str(height)).is_greater_equal(
+			8.0
+		)
+		if height > 314.0:
+			assert_float(map.end.x).is_equal(776.0 - 80.0)  # Where the table has it.
+		else:
+			assert_float(across).is_greater_equal(8.0)
+			assert_float(map.end.x).is_less(776.0 - 80.0)
+
+
 ## ADR 0025 section 10: the strike button 8 dp above BUILD at 72 dp, its row to its left, upright
 ## too (the lift of the command bar included), on every table profile; the rects the lead checks
 ## against the group column are these.

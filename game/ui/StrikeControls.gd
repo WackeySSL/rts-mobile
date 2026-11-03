@@ -76,6 +76,7 @@ func _show() -> void:
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
 	visible = aim.owned and snap != null and not _covered()
 	if not visible:
+		_release()
 		return
 	if aim.type_index != _card_type:
 		_card_type = aim.type_index
@@ -90,6 +91,15 @@ func _show() -> void:
 	_cancel.visible = aim.active
 	if aim.active != _aiming:
 		place()
+
+
+## Hidden (not owned, or covered): the row takes no room from the SelectionPanel's band, and the
+## next time it shows it is placed afresh.
+func _release() -> void:
+	_aiming = false
+	if HudLayout.aim_zone_dp != 0.0:
+		HudLayout.aim_zone_dp = 0.0
+		reserved_changed.emit()
 
 
 ## The drawer or the pause menu opened or closed.

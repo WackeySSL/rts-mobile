@@ -50,6 +50,8 @@ const TABLE_DP: Dictionary[String, Vector2] = {
 	"web_phone_portrait": Vector2(260.0, 178.0),
 }
 const TABLE_TOP_DP: float = 64.0
+## Window widths (px at 3 px per dp) either side of the pinned map's fold: the first keeps it.
+const FOLD_WIDTHS: Array[int] = [2124, 2088]
 
 var _window_size_before: Vector2i
 var _main: Node2D
@@ -534,52 +536,6 @@ func test_with_a_strike_building_the_open_map_keeps_clear_of_the_strike_row_and_
 		assert_bool(_aim.active).override_failure_message(why).is_false()
 		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
 		assert_array(_sent).override_failure_message(why).is_empty()
-		_state.pinned = false
-
-
-## Where the pinned map cannot fit beside the pill and the aim's row (a safe width under about 680
-## dp) it folds when the aim begins, the pin kept, instead of covering the pill's end; opened again
-## during the aim it folds again. On the narrower screen of the test above it stays.
-func test_a_pinned_map_that_cannot_fit_beside_the_pill_folds_when_the_aim_begins() -> void:
-	var spawns: Array[SpawnDef] = []
-	for entry: Array in STRIKE_SPAWNS:
-		spawns.append(BuildingRig.spawn(entry[0], entry[1], entry[2], entry[3]))
-	var tiny: UiMetrics = RadarRig.tiny_short_landscape()
-	for screen: UiMetrics in [RadarRig.narrow_short_landscape(), tiny]:
-		await _open(screen.window_size, screen, BuildingRig.scenario(spawns))
-		_feed.set_process(false)
-		var why: String = str(screen.window_size)
-		_state.open(HudState.Unfold.RADAR)
-		_state.pinned = true
-		await _settle()
-		var snap: MatchSnapshot = _runner.snapshot
-		snap.ready_tick[snap.index_of(BORE)] = snap.tick + 1
-		_aim.refresh()
-		assert_bool(_aim.begin()).override_failure_message(why).is_true()
-		await _settle()
-		await _settle()
-		var folds: bool = screen.window_size == tiny.window_size
-		assert_bool(_state.is_open(HudState.Unfold.RADAR)).override_failure_message(why).is_equal(
-			not folds
-		)
-		assert_bool(_state.pinned).override_failure_message(why).is_true()
-		assert_bool(_aim.active).override_failure_message(why).is_true()
-		if folds:
-			_state.open(HudState.Unfold.RADAR)  # Opened during the aim: folds again.
-			await _settle()
-			await _settle()
-			(
-				assert_bool(_state.is_open(HudState.Unfold.RADAR))
-				. override_failure_message(why)
-				. is_false()
-			)
-		else:
-			var pill: Rect2 = _rect("EconomyPill")
-			(
-				assert_bool(_map.get_global_rect().intersects(pill))
-				. override_failure_message(why)
-				. is_false()
-			)
 		_state.pinned = false
 
 

@@ -11,7 +11,9 @@ extends Button
 ## Stalled (P120c, ADR 0025 section 4): when the heads of the queues did not advance between the
 ## last two published snapshots while some queue is not empty, the ring turns grey and stops and a
 ## "!" badge shows at the top left. A queue head that is a finished structure waiting to be placed
-## is not stalled (the Ready chip shows it), and neither is anything on low power (it only slows).
+## is not stalled (the Ready chip shows it). Low power is no exception and none is needed: every
+## head with a producer still gains its share per tick, so it advances; a producer blacked out or
+## destroyed on low power is a stall like any other.
 ## The comparison keeps two integers per queue, made once; the button redraws when `stalled`
 ## changes, as for the ring and the count.
 ## The Ready chip (until ADR 0026's P130): a child button left of BUILD, at the rect `HudCorners`
@@ -47,6 +49,8 @@ var ready_type: int = -1  ## The finished structure at the head of the Structure
 var draws: int = 0  ## How many times it was drawn, for the tests.
 var badge_font: Font = null  ## The face and size the badge's digits were last drawn with.
 var badge_font_size: int = 0
+var ring_color: Color = Color.TRANSPARENT  ## The colour the progress arc was last drawn in.
+var mark_drawn: bool = false  ## The last draw had the "!" disc.
 
 var _glyph: Texture2D = null
 var _chip_type: int = -1  ## The type whose card the chip shows.
@@ -160,10 +164,7 @@ func refresh(snap: MatchSnapshot) -> void:
 				_faction = faction
 				queue_redraw()
 			break
-	var low: bool = (
-		BuildSidebar._entry(snap.power_used, player) > BuildSidebar._entry(snap.power_made, player)
-	)
-	var halted: bool = waiting and not low and (stalled if not compare else not moved)
+	var halted: bool = waiting and (stalled if not compare else not moved)
 	if finished != ready_type:
 		_show_ready(snap, finished)
 	if halted != stalled or items != count or not is_equal_approx(share, progress):
@@ -192,6 +193,8 @@ func _on_changed(_previous: HudState.Unfold) -> void:
 
 func _draw() -> void:
 	draws += 1
+	ring_color = Color.TRANSPARENT
+	mark_drawn = false
 	var dp: float = _dp
 	var middle: Vector2 = size * 0.5
 	var ring: float = RING_DP * dp
@@ -202,19 +205,12 @@ func _draw() -> void:
 	)
 	if progress > 0.0:
 		var to: float = -PI * 0.5 + TAU * progress
-		draw_arc(
-			middle,
-			outer - ring * 0.5,
-			-PI * 0.5,
-			to,
-			ARC_POINTS,
-			(
-				get_theme_color(&"ring_stalled", STALLED)
-				if stalled
-				else get_theme_color(&"light", accent)
-			),
-			ring
+		ring_color = (
+			get_theme_color(&"ring_stalled", STALLED)
+			if stalled
+			else get_theme_color(&"light", accent)
 		)
+		draw_arc(middle, outer - ring * 0.5, -PI * 0.5, to, ARC_POINTS, ring_color, ring)
 	draw_circle(middle, outer - ring, get_theme_color(&"accent", accent))
 	var side: float = GLYPH_DP * dp
 	draw_texture_rect(
@@ -235,6 +231,7 @@ func _draw() -> void:
 		get_theme_color(&"on_accent", accent)
 	)
 	if stalled:  # A shape besides the grey: the "!" disc at the top left.
+		mark_drawn = true
 		var mark: Vector2 = Vector2(BADGE_DP * dp, BADGE_DP * dp)
 		draw_circle(mark, BADGE_DP * dp, get_theme_color(&"danger", TOKENS))
 		var face: Font = get_theme_font(&"font", NUMBER_FONT)
