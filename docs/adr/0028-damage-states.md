@@ -1,7 +1,7 @@
 # ADR 0028: Damage states of buildings and vehicles (view and art only)
 
-Status: proposed, 2026-11-03, on `main` at 64f0402 (P141 merged; P145 `AirFx` in review on
-`claude/p145-air-fx` at a803e2f). Michael accepts it. Plan: `docs/plans/2026-11-03-damage-states.md`
+Status: accepted 2026-11-03 (Michael's answers: 1 A, 2 A; see "Questions for Michael"). Written on
+`main` at 64f0402 (P141 merged; P145 `AirFx` in review on `claude/p145-air-fx` at a803e2f). Plan: `docs/plans/2026-11-03-damage-states.md`
 (rows P155-P162 and the reworked P148; P155 is this ADR and plan). On acceptance the lead's P26ar
 writes the dated notes in ADR 0027 §3, §4 and §8, ADR 0023 §2 and §5 and the unit-life plan's P148
 row (not done here: another lane edits those files today). It amends ADR 0027 §3 (the damage quota
@@ -324,3 +324,7 @@ numbers (`cuts`, `scar_milli`, the `damage` and `hang` points) are sheet fields 
    resolution); it costs about 268 px of the page and does not fit beside any building stage picture
    (3656 to 3768 of 3584), so the buildings would get no stage pictures. A tint at draw time is not
    an option: it would multiply the draw calls in a battle.
+
+**Answers (Michael, 2026-11-03):** 1 A (both stages are generated pictures of the top third; the
+automatic fallback to B stays if A does not fit), 2 A (no vehicle tint; soot patch, char patch with an
+ember seam and a hanging plate or fender, plus smoke, fire and sparks).

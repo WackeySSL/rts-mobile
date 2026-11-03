@@ -1,8 +1,8 @@
 # Plan: damage states of buildings and vehicles
 
 Date: 2026-11-03. Base: `main` at 64f0402 (P141 merged; P145 `AirFx` in review on
-`claude/p145-air-fx`). Decisions: `docs/adr/0028-damage-states.md`, **proposed** (Michael accepts
-it; two questions at its end). Phase: 3 by date, ROADMAP Phase 5 by kind (polish), like the unit
+`claude/p145-air-fx`). Decisions: `docs/adr/0028-damage-states.md`, **accepted** 2026-11-03
+(Michael's answers 1 A, 2 A). Phase: 3 by date, ROADMAP Phase 5 by kind (polish), like the unit
 life (ADR 0027); no ROADMAP box, and no row here is on the Phase 3 gate path. Rows P155-P162 and the
 reworked P148 of `docs/plans/2026-11-02-unit-life.md`; P155 (this plan and ADR 0028) is done on
 `claude/damage-states-plan`; the lead's acceptance row is P26ar.
@@ -50,7 +50,7 @@ Size = production lines (tests, fixtures, models, generated frames and SVG not c
 
 | Row | Lane | Owner | Title | Size | Depends | Box |
 | --- | --- | --- | --- | --- | --- | --- |
-| P155 | - | architect | docs: this plan and ADR 0028 (proposed); done on `claude/damage-states-plan` | 0 | - | - |
+| P155 | - | architect | docs: this plan and ADR 0028 (accepted 2026-11-03); done on `claude/damage-states-plan` | 0 | - | - |
 | P26ar | - | lead | docs: ADR 0028 on acceptance: Michael's answers in it, the dated notes in ADR 0027 §3, §4, §8, ADR 0023 §2, §5 and the unit-life plan's P148 row | 0 | P155 | - |
 | P156 | A | art-director | art: generator v4, damage poses (`dmg1`, `dmg2`: `shift`, `turn`, `hide`, `char`, `damage=<k>` primitives), the geometric cut row, the patch crop with its overlap, `cuts`, `scar_milli`, the `damage` and `hang` kinds; no model gets them here, today's files byte-identical (at once) | 220 | P26ar | - |
 | P157 | V2 | touch-ux-dev | view: the neutral sheet in the bake (`faction` `neutral`, collected for every match, shared slots) and its bases in `WorldSort`; the page test counts it (at once) | 60 | P26ar | - |
