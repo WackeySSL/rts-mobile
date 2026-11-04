@@ -83,11 +83,12 @@ static func sort(runner: MatchRunner, def: IsoSheetDef, scale: float = 1.0) -> W
 	return made
 
 
-## A paused runner with a Barracks for each of `spawns` (`[owner, x, y]`, the top-left tile).
+## A paused runner with a Barracks for each of `spawns` (`[owner, x, y]`, the top-left tile; a
+## fourth item names another unit file).
 static func runner(spawns: Array) -> MatchRunner:
 	var list: Array[SpawnDef] = []
 	for at: Array in spawns:
-		list.append(Rig.spawn(at[0], UNIT, at[1], at[2]))
+		list.append(Rig.spawn(at[0], at[3] if at.size() > 3 else UNIT, at[1], at[2]))
 	return Rig.runner(Rig.scenario(list))
 
 

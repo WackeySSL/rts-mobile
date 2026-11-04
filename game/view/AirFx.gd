@@ -27,6 +27,8 @@ extends Node2D
 ## The ambient is dropped by `life.reduced`: nothing is born and the ring is emptied on the switch;
 ## a new match empties it too. An ambient emitter stops from the stage its sheet's `emitter_quiet`
 ## names (an empty one reads as all zeros: it never stops), when the building is that damaged.
+## The hit ring (`HitFx`, ADR 0029 section 7: the flash and chips where a shot hits a shown
+## building) is a third ring, planned and drawn with the others.
 ## The damage ring (`DamageFx`, `FxRing`, ADR 0029 section 6) is a second ring of its own, planned
 ## and drawn in the same `_draw` from the same texture; every glow of it is drawn before every
 ## other quad, and a switch to `reduced` leaves its puffs alive.
@@ -80,7 +82,8 @@ var _em_at: PackedVector2Array = PackedVector2Array()  ## World px from the foot
 var _em_quiet: PackedByteArray = PackedByteArray()
 var _dmg: DamageFx = DamageFx.new()
 ## The other rings, planned and drawn with the ambient one: a ring is added with one line here.
-var _rings: Array[FxRing] = [_dmg.ring]
+var _hit: HitFx = HitFx.new()
+var _rings: Array[FxRing] = [_dmg.ring, _hit.ring]
 var _ring_quads: int = 0  ## Quads of the rings' plans.
 var _size: int = 0  ## Slots in the ring (`life.emitter_slots` when it was made).
 var _head: int = 0
@@ -190,6 +193,11 @@ func add_crater_source(
 ## Ends the crater sources over `foot` (tiles): a building was placed there. Their puffs live out.
 func end_crater_sources_on(foot: Rect2i) -> void:
 	_dmg.end_craters_on(foot)
+
+
+## The hit feedback (a test hook); its ring is the second of `_rings`.
+func hits() -> HitFx:
+	return _hit
 
 
 ## Puffs in the ring, alive or not yet overwritten.
@@ -370,6 +378,8 @@ func _on_ticked(_tick: int) -> void:
 		get_global_transform().affine_inverse(),
 		FogLayer.local_player_of(runner)
 	)
+	_hit.read(life)
+	_hit.emit(snap, life, building_layer, view)
 
 
 ## A puff at each ambient emitter whose cycle turned over, of a building the player can see that is

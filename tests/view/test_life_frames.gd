@@ -84,6 +84,8 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"_seen",
 		"_make_craters_if_resized",
 	],
+	# P166: the hit feedback.
+	"res://game/view/HitFx.gd": ["read", "emit", "_hit", "_died", "_unit"],
 	"res://game/view/GroundFx.gd":
 	["_process", "_draw", "_plan", "_on_ticked", "_add", "_empty", "quad_rect"],
 	"res://game/view/StrikeFx.gd":
@@ -143,7 +145,7 @@ const FRAME_PATH: Dictionary[String, Array] = {
 	["follow", "_place_loose", "_point", "apply", "cost", "stage_of"],
 	"res://game/view/BuildingAnims.gd": ["phase_ms", "frame_at", "low_power"],
 	"res://game/view/BuildingLayer.gd":
-	["_on_ticked", "_shot_seen", "_kick_heads", "_sweep_heads", "_play_anims"],
+	["_on_ticked", "_shot_seen", "_kick_heads", "_sweep_heads", "_play_anims", "row_of"],
 }
 const ALLOCATING: Array[String] = [
 	"Array(",
