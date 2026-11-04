@@ -269,7 +269,7 @@ func test_a_building_with_no_sheet_or_an_atlas_that_did_not_bake_is_a_flat_diamo
 	_open_with([Rig.spawn(1, "headquarters", 4, 4), spawn])
 	var snap: MatchSnapshot = _runner.snapshot
 	var art: Node2D = _layer.building(snap.unit_id[0])
-	assert_array(_child_names(art)).is_equal([&"Body"])
+	assert_array(_child_names(art)).is_equal([&"Body", &"Damage"])  # A patch (P158a).
 	var bare: Node2D = _layer.building(snap.unit_id[1])
 	assert_array(_child_names(bare)).is_equal([&"Marker"])
 	var marker: Node2D = bare.get_node("Marker")

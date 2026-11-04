@@ -7,7 +7,7 @@ extends Node2D
 ## (z 55: the superweapons' launch and fall) and `AirFx` (z 25: smoke, steam and flames of the
 ## buildings).
 ## View only: it reads the runner's snapshot and writes nothing back. The layers get this node's
-## `runner`, `camera`, `life`, `reveal_enemies` and `building_layer`.
+## `runner`, `camera`, `life`, `reveal_enemies`, `building_layer` and `unit_layer`.
 
 const DEFAULT_LIFE: LifeSettings = preload("res://data/life_settings.tres")
 
@@ -21,6 +21,8 @@ const DEFAULT_LIFE: LifeSettings = preload("res://data/life_settings.tres")
 
 ## Says which buildings are shown to the local player, and where their pictures are (`StrikeFx`).
 @export var building_layer: BuildingLayer
+## Says which units are shown and where their rigs are drawn (`AirFx`: a damaged vehicle's smoke).
+@export var unit_layer: UnitLayer
 
 var ground: GroundFx = null
 var strike: StrikeFx = null
@@ -42,5 +44,6 @@ func _make_layer(layer: Node2D, layer_name: StringName) -> Node2D:
 	layer.set("life", life)
 	layer.set("reveal_enemies", reveal_enemies)
 	layer.set("building_layer", building_layer)
+	layer.set("unit_layer", unit_layer)
 	add_child(layer)
 	return layer

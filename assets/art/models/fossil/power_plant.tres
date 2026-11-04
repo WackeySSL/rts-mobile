@@ -11,12 +11,12 @@ footprint = 2
 silhouette = "A long concrete turbine hall under a gabled steel roof with a team band round its walls and a team cap along its ridge, a bank of three fan housings with team rings along its right wall and two banded round steel stacks behind it."
 prims = PackedStringArray(
 "box hull concrete 0 0 0 1.92 1.92 0.06",
-"box hull concrete -0.2 0 0.06 1 1.7 0.3",
-"box hull team -0.2 0 0.36 1.06 1.76 0.16",
-"box hull concrete -0.2 0 0.52 1 1.7 0.24",
-"wedge hull steel -0.45 0 0.76 0.5 1.8 0.34 slope=-0.85",
-"wedge hull steel 0.05 0 0.76 0.5 1.8 0.34 slope=0.85",
-"box hull team -0.2 0 1.1 0.06 1.8 0.1",
+"box hull concrete -0.2 0 0.06 1 1.7 0.3 group=bodya",
+"box hull team -0.2 0 0.36 1.06 1.76 0.16 group=band",
+"box hull concrete -0.2 0 0.52 1 1.7 0.24 group=bodyb",
+"wedge hull steel -0.45 0 0.76 0.5 1.8 0.34 slope=-0.85 group=roofl",
+"wedge hull steel 0.05 0 0.76 0.5 1.8 0.34 slope=0.85 group=roofr",
+"box hull team -0.2 0 1.1 0.06 1.8 0.1 group=ridge",
 "box hull concrete 0.62 0 0.06 0.5 1.5 0.1",
 "prism hull steel 0.62 -0.5 0.16 0.4 0.4 0.1 sides=8",
 "prism hull team 0.62 -0.5 0.26 0.44 0.44 0.08 sides=8",
@@ -31,12 +31,12 @@ prims = PackedStringArray(
 "prism hull steel 0.62 0.5 0.34 0.4 0.4 0.12 sides=8",
 "prism hull iron 0.62 0.5 0.46 0.34 0.34 0.04 sides=8",
 "prism hull steel -0.72 -0.78 0.06 0.22 0.22 1.2 sides=12",
-"prism hull team -0.72 -0.78 1.26 0.26 0.26 0.14 sides=12",
-"prism hull steel -0.72 -0.78 1.4 0.22 0.22 0.2 sides=12",
-"prism hull iron -0.72 -0.78 1.6 0.27 0.27 0.06 sides=12",
-"prism hull steel -0.3 -0.78 0.06 0.22 0.22 0.9 sides=12",
+"prism hull team -0.72 -0.78 1.26 0.26 0.26 0.14 sides=12 group=st1top",
+"prism hull steel -0.72 -0.78 1.4 0.22 0.22 0.2 sides=12 group=st1top",
+"prism hull iron -0.72 -0.78 1.6 0.27 0.27 0.06 sides=12 group=st1top",
+"prism hull steel -0.3 -0.78 0.06 0.22 0.22 0.9 sides=12 group=st2s",
 "prism hull team -0.3 -0.78 0.96 0.26 0.26 0.14 sides=12",
-"prism hull steel -0.3 -0.78 1.1 0.22 0.22 0.1 sides=12",
+"prism hull steel -0.3 -0.78 1.1 0.22 0.22 0.1 sides=12 group=st2s",
 "prism hull iron -0.3 -0.78 1.2 0.27 0.27 0.06 sides=12",
 "box hull iron -0.2 0.86 0.06 0.3 0.02 0.3",
 "box hull lamp -0.5 0.86 0.2 0.14 0.02 0.1",
@@ -49,7 +49,28 @@ prims = PackedStringArray(
 "prism anim iron 0.62 0 0.56 0.1 0.1 0.04 sides=8",
 "box anim steel 0.62 0.5 0.5 0.3 0.05 0.03 group=fan_c",
 "box anim steel 0.62 0.5 0.53 0.05 0.3 0.03 group=fan_c",
-"prism anim iron 0.62 0.5 0.56 0.1 0.1 0.04 sides=8"
+"prism anim iron 0.62 0.5 0.56 0.1 0.1 0.04 sides=8",
+"box hull team -0.2 0.45 1.1 0.06 0.8 0.1 damage=1 group=p1",
+"broken hull team -0.2 -0.5 1.1 0.06 1.0 0.1 teeth=5 low=0.25 damage=1 group=p1r",
+"broken hull interior -0.02 -0.5 0.9 0.34 0.5 0.22 teeth=5 low=0.45 damage=1 group=p1",
+"rod hull beam 0.28 -0.85 0.8 0.15 -0.5 1.1 5 bend=20 damage=1 group=p1",
+"rod hull beam 0.05 -0.8 0.95 -0.05 -0.3 1.15 4 bend=-25 damage=1 group=p1",
+"box hull concrete -0.45 0 0.06 0.5 1.7 0.3 damage=2 group=k2",
+"box hull team -0.43 0 0.36 0.54 1.76 0.16 damage=2 group=k2",
+"box hull concrete -0.45 0 0.52 0.5 1.7 0.24 damage=2 group=k2",
+"box hull interior 0.05 0 0.06 0.5 1.5 0.3 damage=2 group=k2",
+"broken hull interior -0.18 0 0.2 0.08 1.5 0.5 teeth=6 low=0.4 damage=2 group=k2",
+"broken hull concrete 0.27 0 0.06 0.1 1.7 0.5 teeth=7 low=0.15 damage=2 group=k2",
+"broken hull concrete 0.05 0.8 0.06 0.5 0.1 0.6 teeth=4 low=0.25 damage=2 group=k2",
+"broken hull concrete 0.05 -0.8 0.06 0.5 0.1 0.7 teeth=4 low=0.3 damage=2 group=k2",
+"wedge hull steel 0.0 -0.3 0.36 0.4 0.6 0.25 slope=0.9 damage=2 group=k2",
+"broken hull steel 0.1 0.3 0.36 0.3 0.4 0.12 teeth=4 low=0.3 damage=2 group=k2",
+"rod hull beam -0.2 -0.2 0.78 0.2 -0.4 0.42 5 bend=20 damage=2 group=k2",
+"rod hull beam -0.2 0.4 0.78 0.25 0.1 0.45 5 bend=-20 damage=2 group=k2",
+"rod hull rebar 0.27 -0.2 0.5 0.27 -0.2 0.85 3 bend=30 damage=2 group=k2",
+"rod hull rebar 0.27 0.4 0.4 0.27 0.4 0.72 3 bend=-30 damage=2 group=k2",
+"rod hull rebar -0.18 0.1 0.62 -0.18 0.1 0.98 3 bend=25 damage=2 group=k2",
+"rod hull rebar -0.18 -0.5 0.6 -0.18 -0.5 0.9 3 bend=-25 damage=2 group=k2"
 )
 poses = PackedStringArray(
 "anim 4",
@@ -61,10 +82,27 @@ poses = PackedStringArray(
 "anim 2 fan_a turn z 45 0.62 -0.5 0",
 "anim 2 fan_b turn z 67.5 0.62 0 0",
 "anim 3 fan_a turn z 67.5 0.62 -0.5 0",
-"anim 3 fan_c turn z 22.5 0.62 0.5 0"
+"anim 3 fan_c turn z 22.5 0.62 0.5 0",
+"dmg1 0 st1top turn y 24 -0.72 -0.78 1.26",
+"dmg1 0 ridge hide",
+"dmg1 0 p1r char 100",
+"dmg2 0 bodya hide",
+"dmg2 0 band hide",
+"dmg2 0 bodyb hide",
+"dmg2 0 roofr hide",
+"dmg2 0 ridge hide",
+"dmg2 0 p1 hide",
+"dmg2 0 p1r hide",
+"dmg2 0 st1top turn y 80 -0.72 -0.78 1.26",
+"dmg2 0 st1top shift 0 0 -0.1",
+"dmg2 0 st2s char 45"
 )
 anim_ms = 90
 emitters = PackedStringArray(
-"smoke -0.72 -0.78 1.7",
-"smoke -0.3 -0.78 1.3"
+"smoke -0.72 -0.78 1.7 group=st1top",
+"smoke -0.3 -0.78 1.3",
+"damage -0.72 -0.78 1.2",
+"damage -0.3 -0.78 0.8",
+"dmg_spark 0.05 -0.5 0.9"
 )
+anim_kritisk = &"run"

@@ -14,6 +14,7 @@ var _runner: MatchRunner
 var _camera: RtsCamera
 var _buildings: BuildingLayer
 var _fx: LifeFx
+var _units: UnitLayer
 
 
 func before_test() -> void:
@@ -35,6 +36,11 @@ func before_test() -> void:
 	_fx.runner = _runner
 	_fx.camera = _camera
 	_fx.building_layer = _buildings
+	_units = auto_free(UnitLayer.new())
+	_units.runner = _runner
+	_units.camera = _camera
+	add_child(_units)
+	_fx.unit_layer = _units
 	add_child(_fx)
 	_fx.ground.set_process(false)
 	_fx.strike.set_process(false)
@@ -66,6 +72,7 @@ func test_life_fx_makes_air_fx_at_absolute_z_25_with_the_wiring_of_the_others() 
 	assert_object(air.camera).is_same(_camera)
 	assert_object(air.life).is_same(_fx.life)
 	assert_object(air.building_layer).is_same(_buildings)
+	assert_object(air.unit_layer).is_same(_units)
 	assert_int(_fx.get_child_count()).is_equal(3)  # GroundFx, StrikeFx and AirFx.
 	assert_str(air.texture().resource_path).is_equal(LifeRegions.LIFE_ART)
 	assert_str(air.texture().resource_path).is_equal(_fx.ground.texture().resource_path)

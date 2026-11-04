@@ -55,6 +55,7 @@ func test_main_scene_wires_life_fx_to_the_building_layer() -> void:
 			)
 		assert_that(wired[&"building_layer"]).is_equal(NodePath("../BuildingLayer"))
 		assert_that(wired[&"runner"]).is_equal(NodePath("../MatchRunner"))
+		assert_that(wired[&"unit_layer"]).is_equal(NodePath("../UnitLayer"))
 		return
 	fail("main.tscn has no LifeFx")
 
