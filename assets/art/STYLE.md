@@ -1053,6 +1053,27 @@ which is the wall with the door.
   with a tank in front of and behind it, at zoom 1, 0.75 and 1.5 in the Signal and the Arktisk
   triad on grass and sand, with the emblem in the faction's key colour beside the item card; the Iso
   page shows its frames, the head's 16 directions among them.
+- **Damage stages (P158b, ADR 0029 sections 3 to 5).** Each of the eight has `dmg1` (SKADET) and
+  `dmg2` (KRITISK) from its model, never by hand: SKADET blows the panes (`blow`, a dark ring or
+  band with the frames kept), soots the cap and the thin rings (`char`), tilts a lid or a nacelle
+  and burns a scorch patch on a team band (a `broken interior` strip laid flat on the wall,
+  `damage=1`); KRITISK collapses a part: the hidden group is replaced by a dark `interior` pad on
+  the floor below it with jagged `broken` wall stumps, a `slab` chunk and `rebar` or `beam` rods
+  that bend, and the wall breach is a larger `broken interior` strip. Per building: the barracks
+  and the headquarters lose the top of their rotunda and drum (the headquarters' mast comes down,
+  `anim_kritisk hide`; the barracks' signal pole stands, `run`), the factory its glass roof (two of
+  three panes at SKADET, all of it with the lid at KRITISK), the Wind Park one tower snapped at a
+  point with its top lying beside it and the other leaning 16 degrees (the rotors are hidden), the
+  Relay Tower its relay house open and its mast gone (the `anim` carries the mast, so it hides),
+  the Blackout Array two pillars snapped and the ring beam lying (the core and its sparks run),
+  the renew refinery one tank torn open as a flower (`petals`), one fallen over its neighbour and
+  one cracked (its steam emitters name `vent1` and `vent2`: the first goes quiet at SKADET, the
+  second at KRITISK), the Lumen defence a bite out of its plinth, a gaping breach and an open lid
+  (two damage points). A key-band wall overlay must stand clear of its prism's box (the painter's
+  order puts a primitive that overlaps the wall's box behind it): lay it 0.01 tile outside the
+  face. Where the team paint sits low on a wall (the barracks, the factory, the Relay Tower), the
+  scorch that brings the key share into 55-85 % and 20-50 % reaches below half the body, so those
+  SKADET patches are deeper than ADR 0029 section 4's half; the measured pages are in the PR.
 
 ## Ore
 Nine opaque tiles, `ore/ore_<level>[a|b].svg`, 128x128 at 2x, import scale 0.5, so one tile is
@@ -2496,3 +2517,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-04 | v1.24 (P160, art-director, ADR 0028 section 4): the neutral vehicle damage overlays (`scar1`, `scar2`, `loose`, 8 frames and their sheet in `assets/art/svg/damage/`), `damage`, `hang` and `scar_milli` on the eight vehicle models (their sheets regenerated, every frame byte for byte as before), the Iso page's Damage rows ("Damage overlays"). |
 | 2026-11-04 | v1.25 (P163, art-director, ADR 0029 section 5): generator v5a, the materials `interior`, `slab`, `hole`, `rebar`, `beam`, the move `blow`, a charred team face that leaves the key band, 2 to 4 typed damage points (`damage`, `dmg_gas`, `dmg_spark`) with their ink tests, emitter `group=` and `emitter_quiet`, `anim_kritisk`, the odd-canvas guard and the key-share raster test ("Generator v5a" under "Damage poses"); no model uses them, every committed frame and sheet is byte for byte as before. |
 | 2026-11-04 | v1.26 (P163b, art-director, ADR 0029 section 5): generator v5b, the shapes `broken` (teeth) and `rod` (with `bend`) and the helper `petals` ("Generator v5b" under "Damage poses"); no model uses them, every committed frame and sheet is byte for byte as before. |
+| 2026-11-04 | v1.28 (P158b, art-director, ADR 0029 sections 3 to 5): the eight Lumen Accord buildings gain `dmg1` and `dmg2` from their models (blown panes, soot, scorch patches, collapsed parts with `interior`, `slab`, `rebar`, `beam`, `broken` and `petals`), 2 to 3 typed damage points each, `anim_kritisk` on the five with an `anim`, the refinery's steam emitters in groups; shadows and cards unchanged ("The Lumen Accord's buildings (P104)"). |

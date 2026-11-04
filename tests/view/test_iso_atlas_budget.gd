@@ -16,9 +16,9 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## for Karmin and Kobolt (`OTHER_TRIADS_PX` allows that much); a mirror page can differ too:
 ## Derrick's is 2702 when a player wears Signal, its key triad (the default match), 2698 when
 ## neither does (the slot names, which break ties between frames of one height, order the shelves).
-const TODAY_CROSS: int = 3266
+const TODAY_CROSS: int = 3402
 const TODAY_MIRROR_DERRICK: int = 2702
-const TODAY_MIRROR_LUMEN: int = 2894
+const TODAY_MIRROR_LUMEN: int = 3136
 const OTHER_TRIADS_PX: int = 40  ## How far another pair of triads may move the page.
 const CRAFTED: String = (
 	'<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4">'

@@ -246,7 +246,10 @@ func test_a_part_has_one_canvas_in_every_direction_and_a_building_is_anchored_at
 			if part in ArtModel.DAMAGE_PARTS:
 				# Anchored like the body: the back corner, 32 px a tile above the footprint's centre.
 				assert_int(layout.origin.y - layout.anchor.y).is_equal(32 * model.footprint)
-				assert_int(layout.origin.y).is_greater_equal(layout.size.y)
+				# It may reach below the footprint's centre (a KRITISK patch, ADR 0029 section 4) and
+				# stand above the body's canvas (a snapped mast's rod); the generator refuses a
+				# change that reaches the foot.
+				assert_int(layout.size.y).is_greater(0)
 			elif part in [&"hull", ArtModel.SHADOW] and model.category == &"bld":
 				# A tile is 128 x 64 px at 2x: the canvas of the body is the footprint wide, the
 				# origin its centre, the anchor the diamond's back corner 32 x n px above it
