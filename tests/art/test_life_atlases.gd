@@ -14,7 +14,7 @@ const ATLAS_PATHS: Dictionary[String, String] = {
 }
 ## The canvases in imported px (the SVG is twice as large, the import scale is 0.5).
 const ATLAS_SIZES: Dictionary[String, Vector2i] = {
-	"life": Vector2i(276, 160),
+	"life": Vector2i(276, 268),
 	"strike": Vector2i(240, 236),
 }
 const MAX_BYTES: int = 28672  ## 28 KB.
@@ -95,7 +95,7 @@ func test_the_style_table_is_the_table_of_life_regions() -> void:
 			row["anchor"]
 		)
 	assert_array(kinds).is_equal(LifeRegions.ATLAS.keys())
-	assert_int(kinds.size()).is_equal(21)
+	assert_int(kinds.size()).is_equal(27)
 	assert_dict(Support.joins()).is_equal(LifeRegions.JOIN)
 	var text: String = Support.section().replace("\n", " ")
 	for strip: StringName in LifeRegions.MAX_STRETCH:
@@ -108,7 +108,7 @@ func test_the_style_table_is_the_table_of_life_regions() -> void:
 ## from the style guide, and the ink test below holds the SVG to the same cells.
 func test_every_frame_region_is_the_cell_the_style_guide_implies() -> void:
 	var cells: Array[Dictionary] = Support.cells()
-	assert_int(cells.size()).is_equal(36)
+	assert_int(cells.size()).is_equal(48)
 	for cell: Dictionary in cells:
 		var kind: StringName = cell["kind"]
 		var label: String = "%s %d" % [kind, cell["frame"]]
@@ -170,7 +170,44 @@ func test_no_colour_of_either_atlas_is_in_a_key_band_and_the_warm_ones_are_yello
 	assert_array(problems).is_empty()
 
 
-## The colour checks themselves: the key colours, an orange, a crimson and a magenta (the steam's
+## ADR 0029 (plan row P167): the hit and damage frames. Soft pixels count too (the glow is all
+## low alpha): any pixel that is the least bit there and saturated is yellow-white (hue 46 or more,
+## clear of both key bands), the flash is white and a chip is grey, and the glow is warm yellow.
+func test_the_hit_and_damage_frames_keep_clear_of_the_key_bands_and_the_glow_is_warm_yellow(
+) -> void:
+	var image: Image = _image("life")
+	var kinds: Array[StringName] = [&"hit_flash", &"chip", &"dust_cloud", &"ember", &"glow", &"jet"]
+	var problems: Array[String] = []
+	var glow_px: int = 0
+	for kind: StringName in kinds:
+		for frame: int in LifeRegions.FRAMES[kind]:
+			var cell: Rect2i = LifeRegions.region(kind, frame)
+			for y: int in cell.size.y:
+				for x: int in cell.size.x:
+					var pixel: Color = image.get_pixel(cell.position.x + x, cell.position.y + y)
+					# A dark pixel is a flame blended into its charcoal edge (as in the test above).
+					if pixel.a < 0.05 or (pixel.v < VALUE_FLOOR and kind != &"glow"):
+						continue
+					var label: String = "%s %d %s" % [kind, frame, pixel.to_html(false)]
+					if _in_key_band(pixel) or _is_orange_or_red(pixel):
+						problems.append(label + " is in a key band or orange")
+					if kind == &"hit_flash" and pixel.s > 0.1:
+						problems.append(label + " is not white")
+					if kind == &"glow" and pixel.a >= 0.05:
+						glow_px += 1
+						if pixel.h * 360.0 < 46.0 or pixel.h * 360.0 > 60.0:
+							problems.append(label + " is not a warm yellow")
+	assert_array(problems).is_empty()
+	assert_int(glow_px).is_greater(1000)
+	assert_int(LifeRegions.FRAMES[&"hit_flash"]).is_equal(2)
+	assert_int(LifeRegions.FRAMES[&"chip"]).is_equal(3)
+	assert_int(LifeRegions.FRAMES[&"dust_cloud"]).is_equal(2)
+	assert_int(LifeRegions.FRAMES[&"ember"]).is_equal(2)
+	assert_int(LifeRegions.FRAMES[&"glow"]).is_equal(1)
+	assert_int(LifeRegions.FRAMES[&"jet"]).is_equal(2)
+
+
+## The colour checks themselves:the key colours, an orange, a crimson and a magenta (the steam's
 ## rim turned red would be one) fail, a flame yellow, a mint and a grey pass.
 func test_the_colour_checks_catch_a_key_colour_an_orange_a_crimson_and_a_magenta() -> void:
 	for bad: String in ["#FF9446", "#1FA6C8", "#F5A524"]:

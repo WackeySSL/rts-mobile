@@ -4,10 +4,12 @@ extends RefCounted
 ## every player's faction, recoloured to the player's triad (`IsoPlayerArt.recolour`), rasterised
 ## with `Image.load_svg_from_string` and packed by `RuntimeAtlas` into one page (`texture()`), so
 ## every sorted sprite batches into one call. `build` is for the main thread at match start.
-## The page is 4096 px wide and at most 4096 tall, cells packed tallest first. The bake scale is
-## the largest `bake_scale * SCALE_STEP ^ k` (k = 0, 1, 2, ...), not below MIN_SCALE, whose page
-## fits; a texel is a px of the 2x art times it, so a sprite draws its region at `0.5 /
-## bake_scale()`. When none fits, or there is no frame, the atlas is empty and the caller decides.
+## The page is 4096 px wide and at most 4096 tall, cells packed tallest raster first (canvas height
+## times `part_factor`). The bake scale is the largest `bake_scale * SCALE_STEP ^ k` (k = 0, 1,
+## 2, ...), not below MIN_SCALE, whose page fits; the engine rounds a raster per axis, so a
+## sprite draws its region at `0.5 / texels` per axis, `texels = raster_size / canvas` (see
+## `texels_per_px`). When none fits, or there is no frame, the atlas is empty and the caller
+## decides.
 ## A frame no key colour touches (a shadow) is baked once and shared by the players of a faction.
 ## A sheet of faction `neutral` is collected for every player, so each of its frames is one slot.
 ## The CPU page is dropped after the upload unless `keep_image` is set (tests read it).
@@ -26,6 +28,25 @@ const MIN_SCALE: float = 0.25
 ## path and not through the index; the file may not exist yet (row P160), and then there is none.
 const NEUTRAL_SHEET: String = "res://assets/art/svg/damage/damage_sheet.tres"
 const NEUTRAL: StringName = &"neutral"  ## The faction of a sheet every player's atlas carries.
+
+## The damage patches (`dmg1`, `dmg2`, ADR 0028 section 3, amended 2026-11-03) are rasterised at
+## `bake_scale * DAMAGE_SCALE` so that their large frames keep the page in its budget; every other
+## part stays at `bake_scale`. A view constant, not balance. `part_factor` is the one place that
+## names the parts; `WorldSort.dress` sizes a sprite per axis from the raster, so it is right for
+## a patch too. The generator's 4 px art overlap at the cut is 3 texels at bake scale 1.0 and
+## under one at MIN_SCALE, so the rule for the Damage child (P159) keeps the body clipped and the
+## overlap > 0 at every scale (the drawn position at MIN_SCALE is P159's test). It assumes even
+## canvases, as all 80 real parts are: an odd one at 0.25 gives exactly 0 (H=101, cut=97).
+## Every row below holds for a patch that is a sibling of the body (same parent, same position);
+## under the ghost body (`BuildingAnims.dress_ghost`) the patch is a child with `scale =
+## body_texels / patch_texels` and `offset = -origin * patch_texels`, as the ghost's Anim.
+## `show_frame` and `show_base` rewrite `region_rect`, so apply the trim again after each one.
+## (a) trim the body at T = `body_cut_row(cut, canvas_h, region_h)` texels: `region.position.y +=
+## T`, `region.size.y -= T`, `offset.y += T`; (b) set `region_filter_clip_enabled = true` on the
+## trimmed body; (c) the patch uses its whole region, through `dress`; (d) invariant, strict:
+## `(patch.offset.y + patch region.size.y) * patch.scale.y > body.offset.y * body.scale.y`.
+const DAMAGE_SCALE: float = 0.75
+const DAMAGE_PARTS: Array[StringName] = [&"dmg1", &"dmg2"]
 
 static var _keys_built: int = 0
 
@@ -83,7 +104,7 @@ static func build(
 	var atlas: IsoAtlas = IsoAtlas.new()
 	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else read_text)
 	var order: Array[StringName] = _packing_order(plan)
-	var scale: float = fit_scale(_canvases(plan, order), bake_scale)
+	var scale: float = fit_scale(_canvases(plan, order), bake_scale, _factors(plan, order))
 	if scale > 0.0 and not order.is_empty():
 		atlas._bake(plan, order, scale, keep_image)
 	atlas._bake_usec = Time.get_ticks_usec() - started
@@ -91,7 +112,8 @@ static func build(
 
 
 ## The page a bake of `sheets` for `players` takes at `scale` itself (no scale is lowered), found
-## from the frame files alone: nothing is rasterised. `tests/view/test_iso_atlas_budget.gd` pins
+## from the frame files alone: nothing is rasterised. Damage patches count at `part_factor`.
+## `tests/view/test_iso_atlas_budget.gd` pins
 ## the page budget of ADR 0027 section 4 with it.
 static func planned_page(
 	sheets: Array[IsoSheetDef],
@@ -100,7 +122,17 @@ static func planned_page(
 	reader: Callable = Callable()
 ) -> Vector2i:
 	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else read_text)
-	return page_size(_canvases(plan, _packing_order(plan)), scale)
+	var order: Array[StringName] = _packing_order(plan)
+	return page_size(_canvases(plan, order), scale, _factors(plan, order))
+
+
+## The texels per px of the 2x art a canvas of `canvas` px really has at `scale`, per axis: the
+## raster is rounded, so this is `raster_size / canvas`, not `scale`. A sprite draws at `0.5 /
+## this` and its offset is `-origin * this`. `Vector2.ONE` for a zero canvas.
+static func texels_per_px(canvas: Vector2i, scale: float) -> Vector2:
+	if canvas.x <= 0 or canvas.y <= 0:
+		return Vector2.ONE * scale
+	return Vector2(raster_size(canvas, scale)) / Vector2(canvas)
 
 
 ## The size in texels the engine rasterises a canvas of `canvas` px (2x art) to at `scale`.
@@ -108,24 +140,52 @@ static func raster_size(canvas: Vector2i, scale: float) -> Vector2i:
 	return Vector2i(maxi(1, roundi(canvas.x * scale)), maxi(1, roundi(canvas.y * scale)))
 
 
-## The page `canvases` (2x art px, in packing order) take at `scale`, gutters included.
-static func page_size(canvases: Array[Vector2i], scale: float) -> Vector2i:
+## The page `canvases` (2x art px, in packing order) take at `scale`, gutters included. `factors`
+## (parallel to `canvases`, empty for all 1.0) is each canvas's `part_factor`.
+static func page_size(
+	canvases: Array[Vector2i], scale: float, factors: Array[float] = []
+) -> Vector2i:
+	assert(factors.is_empty() or factors.size() == canvases.size(), "one factor per canvas")
 	var cells: Array[Vector2i] = []
-	for canvas: Vector2i in canvases:
-		cells.append(RuntimeAtlas.cell_size(raster_size(canvas, scale)))
+	for at: int in canvases.size():
+		var factor: float = factors[at] if at < factors.size() else 1.0
+		cells.append(RuntimeAtlas.cell_size(raster_size(canvases[at], scale * factor)))
 	var places: Array[Vector2i] = []
 	return RuntimeAtlas.layout(cells, PAGE_MAX_PX, places)
 
 
 ## The scale a bake of `canvases` gets when `requested`: see the class comment. 0.0 when none.
-static func fit_scale(canvases: Array[Vector2i], requested: float) -> float:
+static func fit_scale(
+	canvases: Array[Vector2i], requested: float, factors: Array[float] = []
+) -> float:
+	assert(factors.is_empty() or factors.size() == canvases.size(), "one factor per canvas")
 	var scale: float = requested
 	while scale >= MIN_SCALE:
-		var page: Vector2i = page_size(canvases, scale)
+		var page: Vector2i = page_size(canvases, scale, factors)
 		if page.x <= PAGE_MAX_PX and page.y <= PAGE_MAX_PX:
 			return scale
 		scale *= SCALE_STEP
 	return 0.0
+
+
+## How much of the bake scale a frame of `part` is rasterised at: DAMAGE_SCALE for a damage patch,
+## else 1.0. Frame-path safe: comparisons only.
+static func part_factor(part: StringName) -> float:
+	return DAMAGE_SCALE if part in DAMAGE_PARTS else 1.0
+
+
+## The requested texels per px of the 2x art for `part` (`bake_scale * part_factor`); 0.0 for an
+## empty atlas. The raster rounds each axis, so a sprite sizes itself per axis from
+## `raster_size` (see `WorldSort.dress`), not from this number alone.
+func part_scale(part: StringName) -> float:
+	return _scale * part_factor(part)
+
+
+## The first body row, in texels, below a cut `cut` art px down a canvas `canvas_h` art px tall
+## whose raster is `region_h` texels tall: the integer ceil of `cut * region_h / canvas_h`.
+@warning_ignore("integer_division")
+static func body_cut_row(cut: int, canvas_h: int, region_h: int) -> int:
+	return (cut * region_h + canvas_h - 1) / canvas_h
 
 
 ## The region of frame `frame` of a part, in texels of `texture()`: `dir` is the frame's `d<NN>`
@@ -255,21 +315,30 @@ static func _collect_sheet(
 				)
 				plan.texts[slot] = baked
 				plan.sizes[slot] = sheet.frame_size(part)
+				plan.parts[slot] = part
 				plan.slots.append(slot)
 
 
-## The slots of `plan`, tallest first (ties by name): the order `RuntimeAtlas.layout` packs them.
+## The slots of `plan`, tallest raster first (ties by name): the order `RuntimeAtlas.layout`
+## packs them.
 static func _packing_order(plan: Plan) -> Array[StringName]:
 	var order: Array[StringName] = []
 	for slot: StringName in plan.sizes:
 		order.append(slot)
 	order.sort_custom(
 		func(a: StringName, b: StringName) -> bool:
-			var ha: int = plan.sizes[a].y
-			var hb: int = plan.sizes[b].y
+			var ha: float = plan.sizes[a].y * part_factor(plan.parts[a])
+			var hb: float = plan.sizes[b].y * part_factor(plan.parts[b])
 			return ha > hb or (ha == hb and String(a) < String(b))
 	)
 	return order
+
+
+static func _factors(plan: Plan, order: Array[StringName]) -> Array[float]:
+	var factors: Array[float] = []
+	for slot: StringName in order:
+		factors.append(part_factor(plan.parts[slot]))
+	return factors
 
 
 static func _canvases(plan: Plan, order: Array[StringName]) -> Array[Vector2i]:
@@ -284,7 +353,10 @@ func _bake(plan: Plan, order: Array[StringName], scale: float, keep_image: bool)
 	var images: Dictionary[StringName, Image] = {}
 	for slot: StringName in order:
 		var image: Image = Image.new()
-		if image.load_svg_from_string(plan.texts[slot], scale) != OK:
+		if (
+			image.load_svg_from_string(plan.texts[slot], scale * part_factor(plan.parts[slot]))
+			!= OK
+		):
 			image = null  # RuntimeAtlas reports it by name.
 		images[slot] = image
 	_atlas = RuntimeAtlas.build_images(images, PAGE_MAX_PX, keep_image)
@@ -305,6 +377,7 @@ func _bake(plan: Plan, order: Array[StringName], scale: float, keep_image: bool)
 class Plan:
 	var texts: Dictionary[StringName, String] = {}
 	var sizes: Dictionary[StringName, Vector2i] = {}
+	var parts: Dictionary[StringName, StringName] = {}  ## Slot -> the part it is a frame of.
 	var keys: Array[StringName] = []
 	var spans: PackedInt32Array = PackedInt32Array()
 	var slots: Array[StringName] = []

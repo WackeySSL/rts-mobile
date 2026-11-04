@@ -12,13 +12,13 @@ extends Node2D
 ## `IsoAtlas`), and `sync` does it again for a match whose art or players differ from what the
 ## atlas holds, so a restart of the same scenario costs nothing. A sprite is dressed once (`dress`)
 ## and shows another frame by a region (`show_frame`): a sheet's px are 2x art, so a region draws
-## at 0.5 / bake_scale. A part with several frames per direction (ADR 0027 section 4) takes the
-## frame number as the last argument; a layer that changes it at a rate keeps `base_of` from the
-## time it dresses or turns the sprite and calls `show_base`, a table read with no string;
-## `frame_count_at` is the length to wrap the frame number by. The players of the atlas are the
-## owners 1..N in order; `slot_of` maps an owner to its place, one past the ends to the nearest. A
-## scenario that lists no factions gives each player the faction of the first of its spawns whose
-## type has a sheet (the Derrick League when none has).
+## at 0.5 / texels, per axis (`texels`). A part with several frames per direction (ADR 0027
+## section 4) takes the frame number as the last argument; a layer that changes it at a rate
+## keeps `base_of` from the time it dresses or turns the sprite and calls `show_base`, a table
+## read with no string; `frame_count_at` is the length to wrap the frame number by. The players of
+## the atlas are the owners 1..N in order; `slot_of` maps an owner to its place, one past the ends
+## to the nearest. A scenario that lists no factions gives each player the faction of the first of
+## its spawns whose type has a sheet (the Derrick League when none has).
 ## The neutral damage sheet (ADR 0028 section 4, `IsoAtlas.NEUTRAL_SHEET`) is baked after the type
 ## sheets for every scenario once its file exists: `neutral_sheet` is it (null before), and
 ## `neutral_base` the base of one of its parts for an owner, resolved once per bake.
@@ -157,14 +157,25 @@ func mid_colour(owner_id: int) -> Color:
 ## Makes `sprite` the sprite of `part` of `sheet` on the atlas, white, whose origin is the part's
 ## `IsoSheetDef.origin`: a unit's ground point, a building's footprint centre (for its body and
 ## its shadow), a turret's or head's pivot. Frames come from `show_frame`.
+## A damage patch (`dmg1`, `dmg2`) is sized by `IsoAtlas.part_scale`: `dress` handles it by name.
 func dress(sprite: Sprite2D, sheet_def: IsoSheetDef, part: StringName) -> void:
 	sprite.texture = atlas.texture()
 	sprite.region_enabled = true
 	sprite.centered = false
 	sprite.modulate = Color.WHITE
 	if not atlas.is_empty():
-		sprite.scale = Vector2.ONE * (ART_SCALE / atlas.bake_scale())
-		sprite.offset = -Vector2(sheet_def.origin(part)) * atlas.bake_scale()
+		# The engine rounds a raster per axis and stretches the art to it, so a sprite is sized per
+		# axis from the raster; a damage patch is baked at IsoAtlas.DAMAGE_SCALE of the bake scale.
+		var per_px: Vector2 = texels(sheet_def, part)
+		sprite.scale = Vector2(ART_SCALE / per_px.x, ART_SCALE / per_px.y)
+		sprite.offset = -Vector2(sheet_def.origin(part)) * per_px
+
+
+## The texels per px of the 2x art that `part` of `sheet_def` has on the atlas, per axis: what
+## `dress` sizes the sprite and its offset by. The pose offsets and the ghost's Anim child use it
+## too, so that all writers of one sprite agree below scale 1.0.
+func texels(sheet_def: IsoSheetDef, part: StringName) -> Vector2:
+	return IsoAtlas.texels_per_px(sheet_def.frame_size(part), atlas.part_scale(part))
 
 
 ## Shows frame number `frame` (0 for a part with one frame) of direction `dir` (`d<NN>`, -1 for a

@@ -18,6 +18,8 @@ const ANIM: StringName = &"anim"  ## The sheet part of a building's moving eleme
 ## Salt of `LifeClock.pick` for the phase of a loop: far from RigLife's salts.
 const SALT_ANIM: int = 0x50000000
 const REST: int = 0
+const ANIM_NODE: StringName = &"Anim"  ## The name of a building's moving-element child.
+const ANIM_PATH: NodePath = ^"Anim"
 
 
 ## The phase of building `id`'s loop, ms into it: the same for an id in every run, spread over the
@@ -42,11 +44,12 @@ static func low_power(snap: MatchSnapshot, player: int) -> bool:
 
 ## Gives the ghost sprite `parent`, dressed for its body at the art scale, its `Anim` child showing
 ## the rest frame, or hides the child when the sheet has no loop the owner's faction has. The child
-## inherits the parent's scale, so it keeps scale 1 and only its offset moves it to its origin.
+## inherits the parent's scale and divides it out of its own, so it draws as the live Anim does.
 static func dress_ghost(
 	parent: Sprite2D, world_sort: WorldSort, sheet: IsoSheetDef, owner_id: int
 ) -> void:
-	var child: Sprite2D = parent.get_child(0) as Sprite2D if parent.get_child_count() > 0 else null
+	# By name: a `Damage` child may come first (P159).
+	var child: Sprite2D = parent.get_node_or_null(ANIM_PATH) as Sprite2D
 	var base: int = -1
 	if sheet.has_part(ANIM):
 		base = world_sort.base_of(sheet, ANIM, BuildingLayer.NO_FRAME, owner_id)
@@ -56,10 +59,15 @@ static func dress_ghost(
 		return
 	if child == null:
 		child = Sprite2D.new()
-		child.name = "Anim"
+		child.name = ANIM_NODE
 		child.region_enabled = true
 		child.centered = false
 		parent.add_child(child)
 	child.texture = world_sort.atlas.texture()  # Every dress: a re-bake makes a new page.
-	child.offset = -Vector2(sheet.origin(ANIM)) * world_sort.atlas.bake_scale()
+	# The parent is dressed for its body, so the child's scale undoes that and sizes by its own
+	# raster: its drawn size and top-left are the live Anim's (`WorldSort.dress`).
+	var texels: Vector2 = world_sort.texels(sheet, ANIM)
+	var want: Vector2 = Vector2(WorldSort.ART_SCALE / texels.x, WorldSort.ART_SCALE / texels.y)
+	child.scale = Vector2(want.x / parent.scale.x, want.y / parent.scale.y)
+	child.offset = -Vector2(sheet.origin(ANIM)) * texels
 	world_sort.show_base(child, base, REST)

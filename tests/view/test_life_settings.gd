@@ -54,6 +54,8 @@ const SCALARS: Dictionary[StringName, Variant] = {
 	&"emit_grow_to": 1.2,
 	&"emit_flame_from": 1.0,
 	&"emit_flame_to": 0.7,
+	&"damage_writes_per_frame": 60,  # P159: the two stage lists are in test_building_damage.gd.
+	&"damage_building_writes": 20,
 }
 const RECOIL: Dictionary[StringName, float] = {
 	&"tank_cannon": 3.0,
@@ -95,7 +97,14 @@ func test_the_settings_have_exactly_the_fields_of_the_core_rows() -> void:
 		if int(property["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE != 0:
 			fields.append(String(property["name"]))
 	fields.sort()
-	var expected: Array[String] = ["recoil_px", "rock_px", "emit_ms", "emit_life_ms"]
+	var expected: Array[String] = [
+		"recoil_px",
+		"rock_px",
+		"emit_ms",
+		"emit_life_ms",
+		"building_stage_percent",
+		"vehicle_stage_percent"
+	]
 	for field: StringName in SCALARS:
 		expected.append(String(field))
 	expected.sort()

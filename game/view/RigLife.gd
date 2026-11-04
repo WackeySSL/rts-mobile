@@ -161,7 +161,10 @@ class Pose:
 			var part: StringName = POSE_PARTS[pose]
 			if not sheet.has_part(part):
 				return false
-			offsets[pose] = -Vector2(sheet.origin(part)) * bake_scale
+			var texels: Vector2 = IsoAtlas.texels_per_px(
+				sheet.frame_size(part), bake_scale * IsoAtlas.part_factor(part)
+			)
+			offsets[pose] = -Vector2(sheet.origin(part)) * texels
 			frames[pose] = sheet.frame_count(part)
 		var walk: int = frames[POSE_WALK]
 		if sheet.stride_milli <= 0 or walk < 2 or sheet.stride_milli % walk != 0:

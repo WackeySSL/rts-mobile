@@ -1399,7 +1399,7 @@ in doubt, choose a plainer real-world form.
 | Field stage | A cell of an oil or gas field as an overlay on the ore earth: a black pool with a sheen or a pale crust over a vent that fills the cell when full, shrinks to a pool clear of the sides when half and is a cracked stain or a dusty crust when dry. | `fields/<kind>_<stage>.svg`, 128x64, see "Fields" |
 | Wellhead | A square concrete pad with a squat valve tree: a stout steel column with two flanges and two short arms that end in valves with dark hand-wheels, a small lamp on the cap, and a low flowline with a choke block running off to the south-east; neutral, no team colour. | `fields/wellhead.svg`, 112x116, anchor (56, 88); `fields/wellhead_shadow.svg`, 140x72, anchor (56, 31) |
 | Crater | A dark round pit seen as a 2:1 ellipse, its north-west wall in shade, inside a ragged lit ring of thrown earth with cracks and rock chips across a wide soot stain, radius 1.5 tiles. | `decals/crater.svg`, 288x144, anchor (144, 72), see "Fields" |
-| Life atlas | Lumpy grey and white cloud puffs of three to six round lobes in three tones with a dark rim, tall single and low three-tongue yellow-white flames with a charcoal edge, small pointed sparks and low flat heaps of dust, each on its own clear cell. | `fx/life_atlas.svg`, 552x320, import scale 0.5, see "Life effects" |
+| Life atlas | Lumpy grey and white cloud puffs of three to six round lobes in three tones with a dark rim, tall single and low three-tongue yellow-white flames with a charcoal edge, small pointed sparks and low flat heaps of dust, each on its own clear cell. | `fx/life_atlas.svg`, 552x536, import scale 0.5, see "Life effects" |
 | Strike atlas | A dark auger lance of steel with a collar, four helical flights and a swept-back yellow-white burn, falling or rising; a mint teardrop seed with a trail; a flat mint hexagon of light with a dark green edge; a yellow-white and a mint flash; a flat ground ring and a shadow. | `fx/strike_atlas.svg`, 480x472, import scale 0.5, see "Life effects" |
 
 ## Readability check (every asset)
@@ -1610,8 +1610,9 @@ grass 127) readable.
 The effects of the unit-life layers are two hand-written atlases, no team colour. Both are imported at
 scale 0.5 like `fx/effects_atlas.svg`, so a region's numbers are px of the imported texture, which at
 camera zoom 1 are world px, and the SVG is twice as large.
-- `fx/life_atlas.svg`, 552 x 320 at 2x (276 x 160 px, about 18 KB): the sprites of `GroundFx` (z 3) and
-  `AirFx` (z 25), the smokes, the flames, the sparks and the dust.
+- `fx/life_atlas.svg`, 552 x 536 at 2x (276 x 268 px, about 24 KB): the sprites of `GroundFx` (z 3) and
+  `AirFx` (z 25), the smokes, the flames, the sparks and the dust, and (P167, ADR 0029) the hit flash,
+  chips, embers, gas jet, dust cloud and glow of the damage and hit layers.
 - `fx/strike_atlas.svg`, 480 x 472 at 2x (240 x 236 px, about 10 KB): the sprites of `StrikeFx` (z 55), the
   two superweapon looks.
 
@@ -1639,6 +1640,12 @@ strips touch their region's edge at one end, below).
 | `flare` | life | 0, 84, 26, 42 | 4 | 30 | base 13, 38 | One tall yellow-white flame, round at its foot and drawn out to a tip that leans, with a small lick at its side and a white heart; the four frames flicker (upright, right, left, short). | flare flames (P145) |
 | `fire` | life | 124, 84, 26, 34 | 3 | 30 | base 13, 30 | A low burn of three unequal tongues on a wide foot, yellow-white with a white heart; the frames differ in which tongue is tallest. | damage fire on a roof (P148) |
 | `spark` | life | 218, 84, 16, 16 | 3 | 20 | centre 8, 8 | Three bright flecks: a pointed four-ray star, an eight-ray flash, and a comet (a round head with a short tapering tail to the lower left). | construction sparks (P150) |
+| `hit_flash` | life | 0, 164, 36, 36 | 2 | 40 | centre 18, 18 | A white eight-ray burst, a pale rim (#F2F6F8) round a white core, no edge: it lives for 60 ms. The second frame is smaller and turned by a sixteenth of a turn. | hit feedback (P166), the collapse flash (P165) |
+| `chip` | life | 84, 164, 14, 12 | 3 | 18 | centre 7, 6 | A flying splinter of wall under a charcoal edge with a lit north-west facet: concrete grey, dark steel, and a pale shard (a sharp four-sided one). | hit chips and collapse debris (P165, P166) |
+| `dust_cloud` | life | 0, 206, 64, 44 | 2 | 68 | centre 32, 22 | A large cloud of six round lobes in the dust greys, three stepped alphas (0.4, 0.5, 0.6) stacked so the middle is densest and the rim thin, no edge; the second frame has other lobes. | collapse dust (P165) |
+| `ember` | life | 142, 164, 14, 14 | 2 | 18 | centre 7, 7 | A glowing fleck under a charcoal edge: a squat diamond, and a teardrop with a white spot; yellow with a pale core. | the ruin's embers (P148, P165) |
+| `glow` | life | 140, 206, 56, 56 | 1 | 0 | centre 28, 28 | Seven stepped concentric discs of warm yellow (#FFE066) at 0.12 alpha each, no edge and no blur, so the centre is about 0.6 and the rim thin; drawn under every fire in one pass with normal alpha. | the glow pass under fires (P148) |
+| `jet` | life | 182, 164, 40, 18 | 2 | 44 | nozzle 2, 9 | A sideways gas flame that leaves a hole to the right: blunt at the nozzle, drawn out to a tip that flicks up in one frame and down in the other, four yellow-white tones with a white heart under a charcoal edge. | the burning gas jet of a hole in a tank or sphere at SKADET (P148) |
 | `lance_down` | strike | 0, 0, 34, 164 | 1 | 0 | tip 17, 157 | The Deep Bore's lance falling: a dark auger bit, a long cone of steel with a lit left half and a shaded right half and four slanting helical flights cut across it, below a heavy square collar with a lit top and a dark foot, and above the collar the burn: five narrow, straight yellow-white streaks of unequal length on flat bases that sit on the collar, swept back up the fall with no round foot, so it never reads as a torch and it hands over into `trail`. | `StrikeFx` the fall (P141) |
 | `lance_up` | strike | 38, 0, 34, 164 | 1 | 0 | tip 17, 7 | The same lance rising: point up, collar below the cone, a ragged spray of yellow-white tongues falling away below the collar. It is drawn on its own, not as the other turned upside down: the collar's lit band is still on top, its dark foot below, and the light still catches the upper edge of each flight. | the launch (P141) |
 | `trail` | strike | 76, 0, 16, 64 | 1 | 0 | bottom centre 8, 64 | A tapering yellow-white streak, white at its flush bottom edge and fading to nothing towards the point; a layer stretches it up the fall behind the lance. | the fall (P141) |
@@ -1695,6 +1702,13 @@ Derrick League, 169 to 213 for the Lumen Accord). Every colour of both files is 
   #6B7366 and shaded #3B3F39 with the burn colours above. **Launch ring:** #6F7D86, #D2DBE0,
   #F2F6F8. **Shadow** and the other soft fades: #000000 or the colour of their sprite at falling
   opacity.
+- **Hit and damage frames (P167)**, none in a key band: `hit_flash` is white, its rim #F2F6F8 and core
+  #FFFFFF; `chip` concrete grey #8A8F8C (lit #B4BAB6), dark steel #3A4248 (lit #5A646C) and a pale shard
+  #D8DCD6 (lit #F2F6F8), each under #2C2C2C; `ember` and `jet` use the flame colours above under #2C2C2C;
+  `dust_cloud` uses the dust colours #8D8574, #A39B89 and #B8B09E at alpha 0.4, 0.5 and 0.6; `glow` is
+  #FFE066 (hue 47.8) at alpha 0.12 a disc. The glow is a warm yellow with a hue above 46 degrees, clear
+  of the Derrick League's band (1.6 to 45.3), so it never reads as a team colour. No filter, no blur, no
+  pattern: softness is stacked alpha.
 - **Mint** (the Lumen Accord's status light, hue 127 degrees, outside both key bands): #A8F5B0 body,
   #D8FFE0 light line, #FFFFFF heart, edge #1F5C3A.
 
@@ -1715,8 +1729,8 @@ meant to be faint.
 The Life page of the gallery shows every kind at the three camera zooms on grass and on sand (see
 "Gallery"). The numbers of a life effect (sizes, lifetimes, rates, the quotas of ADR 0027 §3) are in
 `data/life_settings.tres`; this section owns only the looks and the regions. Not drawn yet: the track
-marks of P151 and the wrecks of P152 append their regions below y 156 of the life atlas (the canvas
-grows downwards, so no region here moves).
+marks of P151 and the wrecks of P152 append their regions below y 262 of the life atlas (the canvas
+grows downwards, so no region here moves; P167 grew it from 160 to 268 px of height).
 
 ## Health bars (new)
 Bars are filled rects only, drawn in one `_draw()` (ADR 0011 section 3), sized in dp so they look the
@@ -2386,4 +2400,5 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-03 | v1.20 (art-director, plan row P89): `glyph_low_power_map.svg`, the seated map copy of the low-power glyph (offline plate, triangle and bolt at 0.8), tinted #FF8A1F, the tenth map glyph; "Icons and glyphs" (tint table, "Map glyphs sit on a seat", catalogue) brought up to date. |
 | 2026-11-03 | v1.21 (P143, art-director, ADR 0027 sections 4 and 5): `anim` parts for eight buildings (Signal Mast 16 frames, Relay Tower 16, Wind Park 6, Turbine Hall 4, Deep Bore 4, Blackout Array 4, Grid Hub 2, Crew Hall 2), `emitters` on six building models and every vehicle, `marks` on every vehicle ("Building life (P143)" under "Generated art"), the sorted world's cross-faction page 3066 to 3266 px (mirrors 2524 to 2702 and 2624 to 2894), the Build page of the gallery plays the frames; 40 existing generated files changed, 108 are new, 1361 are byte for byte as before. |
 | 2026-11-03 | v1.22 (P156, art-director, ADR 0028 sections 3 and 4): generator v4, the damage poses (`dmg1`, `dmg2`: `shift`, `turn`, `hide`, `char`, `damage=<k>` primitives), the geometric cut row and the patch parts with their 4 px overlap, `cuts`, `scar_milli`, the `damage` and `hang` emitter kinds (`hang` on the camera side) and `IsoSheetDef.root` ("Damage poses" under "Generated art"); no model uses them, every committed frame and sheet is byte for byte as before. |
-| 2026-11-04 | v1.23 (P163, art-director, ADR 0029 section 5): generator v5a, the materials `interior`, `slab`, `hole`, `rebar`, `beam`, the move `blow`, a charred team face that leaves the key band, 2 to 4 typed damage points (`damage`, `dmg_gas`, `dmg_spark`) with their ink tests, emitter `group=` and `emitter_quiet`, `anim_kritisk`, the odd-canvas guard and the key-share raster test ("Generator v5a" under "Damage poses"); no model uses them, every committed frame and sheet is byte for byte as before. |
+| 2026-11-04 | v1.23 (P167, art-director, ADR 0029 sections 6 to 8): six kinds in `fx/life_atlas.svg` (`hit_flash`, `chip`, `dust_cloud`, `ember`, `glow`, `jet`; 12 frames), the canvas grown from 552x320 to 552x536 (below the old content, so no region moved), their `LifeRegions` entries, the table, colours and the Life page rows. |
+| 2026-11-04 | v1.25 (P163, art-director, ADR 0029 section 5): generator v5a, the materials `interior`, `slab`, `hole`, `rebar`, `beam`, the move `blow`, a charred team face that leaves the key band, 2 to 4 typed damage points (`damage`, `dmg_gas`, `dmg_spark`) with their ink tests, emitter `group=` and `emitter_quiet`, `anim_kritisk`, the odd-canvas guard and the key-share raster test ("Generator v5a" under "Damage poses"); no model uses them, every committed frame and sheet is byte for byte as before. |
