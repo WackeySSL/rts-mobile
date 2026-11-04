@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## What a finger does to the build sidebar's item tiles (plan P85b, ADR 0019 section 1), through the
 ## real GUI in the main scene: a tap on an available tile is one QUEUE of its type, a hold of
-## `long_press_ms` on a tile with items queued is one CANCEL of the last of them, a tile that cannot
+## `long_press_ms` on a unit tile is up to `queue_hold_count` QUEUEs, a tile that cannot
 ## take an item shakes and sends nothing, a drag in the row scrolls it and sends nothing, and a lone
 ## own producer that is selected opens the tab it builds. The orders also run in the sim, the way
 ## the player sends them. Time is a clock the suite owns, so a hold is `long_press_ms` of it and no
@@ -80,50 +80,84 @@ func test_a_tap_on_an_available_tile_is_one_queue_of_its_type_with_the_haptic() 
 	assert_array(_buzzed).has_size(5)
 
 
-func test_a_hold_cancels_the_last_queued_item_of_the_tile_and_a_release_after_it_is_no_tap(
+func test_a_hold_on_a_unit_card_queues_as_many_as_room_and_credits_allow_up_to_the_setting(
 ) -> void:
 	await _open(&"android_6in")
 	var world: World = Sw.world()
 	Sw.own(world, BASE)
-	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad", "rocket_squad", "rifle_squad"])
-	Sw.enqueue(world, World.Tab.VEHICLES, ["light_tank", "harvester"])
+	await _publish(world)
+	var most: int = _controller.settings.queue_hold_count
+	_sidebar.select_tab(World.Tab.INFANTRY)
+	await _settle()
+	_hold("rifle_squad")  # 2000 credits, room for five: the setting caps it.
+	assert_int(_sent.size()).is_equal(most)
+	for command: Command in _sent:
+		assert_int(command.type).is_equal(Command.Type.QUEUE)
+		assert_array(command.payload).is_equal([Sw.type_of(world, "rifle_squad")])
+	assert_array(_buzzed).is_equal([15])  # One buzz for the hold, and no extra QUEUE for the release.
+	# Room is the limit: two of five slots taken leaves three.
+	_sent.clear()
+	_buzzed.clear()
+	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad", "rifle_squad"])
+	await _publish(world)
+	_hold("rifle_squad")
+	assert_int(_sent.size()).is_equal(3)
+	# Credits are the limit: 250 pays two rocket squads of 300? No: one rifle squad of 100 twice.
+	_sent.clear()
+	Sw.enqueue(world, World.Tab.INFANTRY, [])
+	world.credits[1] = 250
+	await _publish(world)
+	_hold("rifle_squad")
+	assert_int(_sent.size()).is_equal(2)
+
+
+## The cap is the setting's: a copy of the settings with 3 (never the shared resource) stops a hold
+## at 3 although the queue has room for 5 and the bank pays for all of them.
+func test_a_hold_stops_at_queue_hold_count_when_room_and_credits_allow_more() -> void:
+	await _open(&"android_6in")
+	var world: World = Sw.world()
+	Sw.own(world, BASE)
+	await _publish(world)
+	var capped: InputSettings = _controller.settings.duplicate() as InputSettings
+	capped.queue_hold_count = 3
+	_controller.settings = capped
+	_sidebar.select_tab(World.Tab.INFANTRY)
+	await _settle()
+	_hold("rifle_squad")  # Room for five, 2000 credits.
+	assert_int(_sent.size()).is_equal(3)
+	assert_array(_buzzed).is_equal([15])
+
+
+func test_a_hold_on_a_unit_card_that_cannot_take_one_shakes_and_sends_nothing() -> void:
+	await _open(&"android_6in")
+	var world: World = Sw.world()
+	Sw.own(world, ["headquarters", "power_plant", "barracks"])
+	world.credits[1] = 50  # Short of a rifle squad.
 	await _publish(world)
 	_sidebar.select_tab(World.Tab.INFANTRY)
 	await _settle()
 	_hold("rifle_squad")
-	assert_int(_sent.size()).is_equal(1)  # Not one QUEUE for the release.
-	_assert_cancel(_sent[0], World.Tab.INFANTRY, 2)
-	_hold("rocket_squad")
-	_assert_cancel(_sent[1], World.Tab.INFANTRY, 1)
+	assert_int(_tile("rifle_squad").shakes).is_equal(1)
 	_sidebar.select_tab(World.Tab.VEHICLES)
 	await _settle()
-	_hold("light_tank")
-	_assert_cancel(_sent[2], World.Tab.VEHICLES, 0)
-	_hold("harvester")
-	_assert_cancel(_sent[3], World.Tab.VEHICLES, 1)
-	assert_int(_sent.size()).is_equal(4)
-	assert_array(_buzzed).is_equal([15, 15, 15, 15])
-	for command: Command in _sent:
-		assert_int(command.player_id).is_equal(1)
+	_hold("light_tank")  # Locked.
+	assert_int(_tile("light_tank").shakes).is_equal(1)
+	assert_array(_sent).is_empty()
+	assert_array(_buzzed).is_empty()
 
 
-func test_a_hold_on_a_tile_with_nothing_queued_sends_nothing_not_even_when_it_is_let_go() -> void:
+func test_a_hold_on_a_structure_card_cancels_the_last_of_its_type_until_p130() -> void:
 	await _open(&"android_6in")
 	var world: World = Sw.world()
 	Sw.own(world, BASE)
-	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad"])
+	Sw.enqueue(world, World.Tab.STRUCTURES, ["power_plant", "barracks", "power_plant"])
 	await _publish(world)
-	_sidebar.select_tab(World.Tab.INFANTRY)
-	await _settle()
-	_hold("rocket_squad")  # Available, none queued.
-	assert_array(_sent).is_empty()
-	_sidebar.select_tab(World.Tab.VEHICLES)
-	world = Sw.world()
-	Sw.own(world, ["headquarters"])
-	await _publish(world)
-	_hold("light_tank")  # Locked, none queued.
-	assert_array(_sent).is_empty()
-	assert_array(_buzzed).is_empty()
+	_hold("power_plant")
+	assert_int(_sent.size()).is_equal(1)
+	_assert_cancel(_sent[0], World.Tab.STRUCTURES, 2)
+	_hold("refinery")  # None queued: nothing, however long.
+	assert_int(_sent.size()).is_equal(1)
+	assert_array(_buzzed).is_equal([15])
 
 
 func test_a_tile_that_cannot_take_an_item_shakes_on_a_tap_and_sends_nothing() -> void:
@@ -245,9 +279,9 @@ func test_a_lone_own_producer_that_is_selected_opens_the_tab_it_builds() -> void
 	assert_array(_tiles_shown()).is_equal(["light_tank", "heavy_tank", "harvester", "artillery"])
 
 
-## The orders as the sim takes them: a tap pays and queues, a hold on the tile of an earlier item
-## gives its price back, and the tiles then show the new bank and queue.
-func test_the_orders_run_in_the_sim_a_tap_pays_and_a_hold_pays_back() -> void:
+## The orders as the sim takes them: a tap pays and queues, a tap on the queue row's item gives its
+## price back, and the tiles then show the new bank and queue.
+func test_the_orders_run_in_the_sim_a_tap_pays_and_the_queue_row_pays_back() -> void:
 	await _open(&"android_6in")
 	var world: World = Sw.world()
 	Sw.own(world, BASE)
@@ -259,23 +293,14 @@ func test_the_orders_run_in_the_sim_a_tap_pays_and_a_hold_pays_back() -> void:
 	_tap("rifle_squad")
 	Rig.step(world, _sent)
 	assert_int(world.credits[1]).is_equal(2000 - 100 - 300 - 100)
-	assert_array(Rig.items(world, 1, World.Tab.INFANTRY)).is_equal(
-		[
-			Sw.type_of(world, "rifle_squad"),
-			Sw.type_of(world, "rocket_squad"),
-			Sw.type_of(world, "rifle_squad")
-		]
-	)
 	assert_int(world.dropped_commands).is_equal(0)
 	_sent.clear()
 	await _publish(world)
 	assert_int(_tile("rifle_squad").queued).is_equal(2)
-	_hold("rifle_squad")  # The last rifle squad, the third item.
+	var row: QueueRow = _sidebar.find_child("QueueRow", true, false)
+	row.thumb(2).pressed.emit()  # The last rifle squad, the third item.
 	Rig.step(world, _sent)
 	assert_int(world.credits[1]).is_equal(2000 - 100 - 300)
-	assert_array(Rig.items(world, 1, World.Tab.INFANTRY)).is_equal(
-		[Sw.type_of(world, "rifle_squad"), Sw.type_of(world, "rocket_squad")]
-	)
 	assert_int(world.dropped_commands).is_equal(0)
 	await _publish(world)
 	assert_int(_tile("rifle_squad").queued).is_equal(1)

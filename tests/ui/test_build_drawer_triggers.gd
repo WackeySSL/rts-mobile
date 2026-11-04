@@ -144,7 +144,13 @@ func test_a_touch_on_a_hud_control_never_closes_the_drawer() -> void:
 			assert_bool(_sidebar.is_open()).override_failure_message(note).is_true()
 			assert_int(_told).override_failure_message(note).is_equal(0)
 		assert_int(card.shakes).override_failure_message(why).is_equal(shakes + 1)  # A locked card.
-		# A hold on a card (nothing queued, so nothing is cancelled), then a scroll of the row.
+		# Upright the sheet covers the group column, so a tap at its centre may land on an item of the
+		# queue row (P120b), which cancels it: at most such CANCELs, and nothing sideways.
+		for command: Command in _sent:
+			assert_bool(HudLayout.is_portrait()).override_failure_message(why).is_true()
+			assert_int(command.type).override_failure_message(why).is_equal(Command.Type.CANCEL)
+		_sent.clear()
+		# A hold on a locked card (it shakes, nothing is queued), then a scroll of the row.
 		var at: Vector2 = card.get_global_rect().get_center()
 		TouchEvents.press(get_viewport(), 0, at)
 		_now_ms += _touch.settings.long_press_ms

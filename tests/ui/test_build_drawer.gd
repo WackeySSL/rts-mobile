@@ -186,9 +186,16 @@ func test_on_the_smallest_web_phone_the_grid_scrolls_vertically() -> void:
 	var bar: VScrollBar = items.get_v_scroll_bar()
 	assert_float(bar.max_value).is_greater(bar.page + 1.0)  # More than the room shows.
 	assert_int(items.horizontal_scroll_mode).is_equal(ScrollContainer.SCROLL_MODE_DISABLED)
-	# At least one whole row of cards shows at the top.
+	# The queue row's 76 dp leave the grid less than a whole row (ADR 0025 section 5): the top of
+	# the first card shows, and the drawer's content stays inside the safe height.
 	var first: Rect2 = _visible_tiles()[0].get_global_rect()
-	assert_bool(items.get_global_rect().grow(TOLERANCE_PX).encloses(first)).is_true()
+	assert_float(first.position.y).is_greater_equal(items.get_global_rect().position.y - 0.5)
+	assert_float(first.position.y).is_less(items.get_global_rect().end.y)
+	var row: Control = _hud("QueueRow")
+	var safe: Rect2 = SafeAreaMargin.rect_inside(
+		get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
+	)
+	assert_bool(safe.grow(TOLERANCE_PX).encloses(row.get_global_rect())).is_true()
 
 
 func test_the_zone_is_zero_while_closed_upright_and_sideways() -> void:
