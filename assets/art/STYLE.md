@@ -249,7 +249,7 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
 - **Damage poses** (P156, ADR 0028 sections 3 and 4; generator v4, extended by v5a, P163, ADR
   0029 section 5; since P160 the eight vehicles carry `damage`, `hang` and `scar_milli`; the Derrick
   League's eight buildings use the damage poses since P158a, "Damage stages" below, and the Lumen
-  Accord's follow in P158b). A building's `poses` gain `dmg1` and `dmg2`, its body at
+  Accord's since P158b). A building's `poses` gain `dmg1` and `dmg2`, its body at
   damage stage 1 and 2, a move a line, frame
   0 and no header line: `dmg1|dmg2 0 <group> shift <dx> <dy> <dz>`, `... turn <x|y|z> <degrees>
   <px> <py> <pz>`, `... hide` (the group is not drawn) or `... char <percent>` (0 to 100: its
@@ -706,7 +706,8 @@ adds (the body, the shadow and the card do not move).
 
 ### Damage stages (P158a)
 Plan row P158a gives the Derrick League's eight buildings their two damage stages (ADR 0029 sections
-3 to 5 and 11; the Lumen Accord's eight follow in P158b). **SKADET** (`dmg1`, under 67 %) is small
+3 to 5 and 11; the Lumen Accord's eight follow the same rules since P158b, their notes under "The Lumen
+Accord's buildings"). **SKADET** (`dmg1`, under 67 %) is small
 breaks, a blown pane as a dark hole, soot over the break and one fire's worth of damage; **KRITISK**
 (`dmg2`, under 34 %) is a part collapsed with the inside showing (dark rooms, slabs, rebar, beams),
 jagged and never down to the foot. There is no ruin picture and no ruin point (Michael, 2026-11-04):
@@ -1121,6 +1122,38 @@ which is the wall with the door.
   with a tank in front of and behind it, at zoom 1, 0.75 and 1.5 in the Signal and the Arktisk
   triad on grass and sand, with the emblem in the faction's key colour beside the item card; the Iso
   page shows its frames, the head's 16 directions among them.
+- **Damage stages (P158b, ADR 0029 sections 3 to 5).** Each of the eight has `dmg1` (SKADET) and
+  `dmg2` (KRITISK) from its model, never by hand: SKADET blows the panes (`blow`, a dark ring or
+  band with the frames kept), soots the cap and the thin rings (`char`), tilts or slides a lid or turns a nacelle
+  and burns a scorch patch on a team band (a `broken interior` strip laid flat on the wall,
+  `damage=1`); KRITISK collapses a part: the hidden group is replaced by a dark `interior` pad on
+  the floor below it with jagged `broken` wall stumps, a `slab` chunk and `rebar` or `beam` rods
+  that bend, and the wall breach is a larger `broken interior` strip. Per building: the barracks
+  (Crew Hall) and the headquarters (Grid Hub) lose the top of their rotunda and drum (the
+  headquarters' mast comes down, `anim_kritisk hide`; the barracks' signal pole stands, `run`), the
+  factory its glass roof (two of three panes at SKADET, all of it with the lid at KRITISK), the
+  Wind Park one tower snapped at a point with its top lying beside it and the other leaning 16
+  degrees (the rotors are hidden), the Relay Tower its relay house opened (the dome punctured at
+  SKADET goes with the dome at KRITISK) and its mast gone (the `anim` carries the mast, so it
+  hides), the Blackout Array two pillars snapped with their tops lying beside the stumps, the back
+  bar of the ring beam hanging from the left pillar onto a stump and a front bar lying on the
+  floor (the core and its sparks run), the renew refinery two tanks torn open as flowers
+  (`petals`) and the tallest one fallen over its neighbour (its steam emitters name `vent1` and
+  `vent2`: the first goes quiet at SKADET, the second at KRITISK), the Lumen defence a bite out of
+  its plinth, two gaping breaches and an open lid (two damage points on the plinth's visible face).
+  A key-band wall overlay must stand clear of its prism's box (the painter's order puts a
+  primitive that overlaps the wall's box behind it): lay it 0.01 tile outside the face, and turn it
+  with a `turn` move to lie flat on a slanted face.
+  **Depth.** Michael's decision of 2026-11-04: no SKADET cut passes 80 % of the hull's rows
+  (`test_renew_damage.gd` pins it, and that KRITISK is deeper). Measured, cut row over hull rows
+  and what sets it: headquarters 179 / 352 (50.9 %, the blown glass ring of the drum), power 124 /
+  236 (52.5 %, the soot on tower A's ring and nacelle), refinery 158 / 294 (53.7 %, the blown tank
+  glass and the charred ring), strike 216 / 388 (55.7 %, the blown core glass), radar 96 / 160
+  (60.0 %, the blown glass ring of the relay house), barracks 150 / 236 (63.6 %) and defence 66 /
+  104 (63.5 %) and factory 240 / 332 (72.3 %): these three because the team paint sits low on the
+  wall and the scorch patch that brings the key share into 55-85 % reaches it. KRITISK cuts: 280,
+  187, 273, 240, 217, 350, 108 and 80 (headquarters, barracks, factory, refinery, power, strike,
+  radar, defence), none at the foot.
 
 ## Ore
 Nine opaque tiles, `ore/ore_<level>[a|b].svg`, 128x128 at 2x, import scale 0.5, so one tile is
@@ -2565,3 +2598,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-04 | v1.25 (P163, art-director, ADR 0029 section 5): generator v5a, the materials `interior`, `slab`, `hole`, `rebar`, `beam`, the move `blow`, a charred team face that leaves the key band, 2 to 4 typed damage points (`damage`, `dmg_gas`, `dmg_spark`) with their ink tests, emitter `group=` and `emitter_quiet`, `anim_kritisk`, the odd-canvas guard and the key-share raster test ("Generator v5a" under "Damage poses"); no model uses them, every committed frame and sheet is byte for byte as before. |
 | 2026-11-04 | v1.26 (P163b, art-director, ADR 0029 section 5): generator v5b, the shapes `broken` (teeth) and `rod` (with `bend`) and the helper `petals` ("Generator v5b" under "Damage poses"); no model uses them, every committed frame and sheet is byte for byte as before. |
 | 2026-11-04 | v1.27 (P158a, art-director, ADR 0029 sections 3 to 5 and 11): the Derrick League's eight buildings in three damage stages (`dmg1` SKADET, `dmg2` KRITISK: `broken` walls, `rod` rebar and beams, `interior` dark rooms, a `petals` flower on the sphere, bent and toppled steel; 2 to 4 typed damage points, `anim_kritisk`, emitter groups), 16 patch frames, the gallery's Stage button for three stages, the page 3266 to 3402 and 2702 to 3008 ("Damage stages" under "Generated art"); the intact bodies, shadows and cards are byte for byte as before. |
+| 2026-11-04 | v1.28 (P158b, art-director, ADR 0029 sections 3 to 5): the eight Lumen Accord buildings gain `dmg1` and `dmg2` from their models (blown panes, soot, scorch patches, collapsed parts with `interior`, `slab`, `rebar`, `beam`, `broken` and `petals`), 2 to 3 typed damage points each, `anim_kritisk` on the five with an `anim`, the refinery's steam emitters in groups; shadows and cards unchanged ("The Lumen Accord's buildings (P104)"). |

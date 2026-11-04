@@ -557,8 +557,9 @@ func test_only_squads_and_eight_buildings_have_a_pose_and_every_other_committed_
 				. is_false()
 			)
 		assert_str(ArtSheet.text(fresh)).override_failure_message(path).is_equal(committed)
-	# The four squads (P139), the eight animated buildings (P143) and the Derrick League's eight
-	# buildings with damage stages (P158a) are the only models with a pose.
+	# The four squads (P139), the eight animated buildings (P143) and the buildings with damage
+	# stages (P158a: the Derrick League's eight; P158b: the Lumen Accord's eight) are the models with
+	# a pose.
 	posed.sort()
 	(
 		assert_array(posed)
@@ -572,9 +573,12 @@ func test_only_squads_and_eight_buildings_have_a_pose_and_every_other_committed_
 				"power_plant",
 				"refinery",
 				"renew_barracks",
+				"renew_defence",
+				"renew_factory",
 				"renew_hq",
 				"renew_power",
 				"renew_radar",
+				"renew_refinery",
 				"renew_rifle",
 				"renew_rocket",
 				"renew_strike",

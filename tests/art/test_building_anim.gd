@@ -48,8 +48,15 @@ const EMITTERS: Dictionary[StringName, Array] = {
 	&"power_plant": [&"smoke", &"smoke", &"damage", &"damage", &"dmg_spark"],
 	&"refinery": [&"steam", &"flame", &"dmg_gas", &"dmg_gas", &"damage"],
 	&"vehicle_factory": [&"damage", &"dmg_spark"],
-	&"renew_refinery": [&"steam", &"steam"],
-	&"renew_strike": [&"launch"],
+	&"renew_refinery": [&"steam", &"steam", &"damage", &"dmg_gas"],
+	&"renew_strike": [&"launch", &"damage", &"dmg_spark"],
+	# P158b: the Lumen Accord's damage points (ADR 0029 section 5).
+	&"renew_hq": [&"damage", &"dmg_spark"],
+	&"renew_barracks": [&"damage", &"dmg_spark"],
+	&"renew_defence": [&"damage", &"dmg_spark"],
+	&"renew_factory": [&"damage", &"dmg_spark", &"dmg_spark"],
+	&"renew_power": [&"damage", &"dmg_spark"],
+	&"renew_radar": [&"damage", &"dmg_spark"],
 }
 const VEHICLES: Dictionary[StringName, StringName] = {
 	&"light_tank": &"wheels",
