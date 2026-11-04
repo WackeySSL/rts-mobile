@@ -124,6 +124,16 @@ func test_the_settings_have_exactly_the_fields_of_the_core_rows() -> void:
 		"damage_burning_points",
 		"damage_emit_ms",
 		"damage_life_ms",
+		# P166: the hit block (the scalars `hit_slots`, `hit_flash_ms`, `hit_flash_box_milli`,
+		# `hit_alpha`, `hit_chip_ms` are checked in test_hit_fx.gd, with the rest of the block).
+		"hit_chips",
+		"hit_chip_fly_px",
+		"hit_flash_grow",
+		"hit_slots",
+		"hit_flash_ms",
+		"hit_flash_box_milli",
+		"hit_alpha",
+		"hit_chip_ms",
 	]
 	for field: StringName in SCALARS:
 		expected.append(String(field))

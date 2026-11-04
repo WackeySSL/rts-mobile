@@ -208,6 +208,14 @@ func building(id: int) -> Node2D:
 	return _entries[id].node if _entries.has(id) else null
 
 
+## The row of building `id` in `runner.snapshot`, -1 for an id that is no building or is gone.
+## Brings the nodes up to the snapshot first, so a building that died has no row.
+func row_of(id: int) -> int:
+	_sync()
+	var entry: Entry = _entries.get(id)
+	return entry.row if entry != null else -1
+
+
 ## Brings the nodes up to `runner.snapshot`: the sync a frame starts with, and the one a layer that
 ## reads `is_shown` and `bar_lift_px` calls first.
 func sync_rows() -> void:

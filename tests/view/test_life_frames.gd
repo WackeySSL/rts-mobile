@@ -60,6 +60,8 @@ const FRAME_PATH: Dictionary[String, Array] = {
 	"res://game/view/FxRing.gd": ["set_style", "clear", "add", "compact", "plan", "draw"],
 	"res://game/view/DamageFx.gd":
 	["read", "emit", "_burn", "_drive", "_due", "_cloud", "_flame", "_birth", "_style"],
+	# P166: the hit feedback.
+	"res://game/view/HitFx.gd": ["read", "emit", "_hit", "_died", "_unit"],
 	"res://game/view/GroundFx.gd":
 	["_process", "_draw", "_plan", "_on_ticked", "_add", "_empty", "quad_rect"],
 	"res://game/view/StrikeFx.gd":
@@ -114,7 +116,7 @@ const FRAME_PATH: Dictionary[String, Array] = {
 	],
 	"res://game/view/BuildingAnims.gd": ["phase_ms", "frame_at", "low_power"],
 	"res://game/view/BuildingLayer.gd":
-	["_on_ticked", "_shot_seen", "_kick_heads", "_sweep_heads", "_play_anims"],
+	["_on_ticked", "_shot_seen", "_kick_heads", "_sweep_heads", "_play_anims", "row_of"],
 }
 const ALLOCATING: Array[String] = [
 	"Array(",

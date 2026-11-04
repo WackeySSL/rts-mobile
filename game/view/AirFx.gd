@@ -75,7 +75,8 @@ var _em_at: PackedVector2Array = PackedVector2Array()  ## World px from the foot
 var _em_quiet: PackedByteArray = PackedByteArray()
 var _dmg: DamageFx = DamageFx.new()
 ## The other rings, planned and drawn with the ambient one: a ring is added with one line here.
-var _rings: Array[FxRing] = [_dmg.ring]
+var _hit: HitFx = HitFx.new()
+var _rings: Array[FxRing] = [_dmg.ring, _hit.ring]
 var _ring_quads: int = 0  ## Quads of the rings' plans.
 var _size: int = 0  ## Slots in the ring (`life.emitter_slots` when it was made).
 var _head: int = 0
@@ -169,6 +170,11 @@ func _draw() -> void:
 ## The damage particles (a test hook); their ring is the first of `_rings`.
 func damage() -> DamageFx:
 	return _dmg
+
+
+## The hit feedback (a test hook); its ring is the second of `_rings`.
+func hits() -> HitFx:
+	return _hit
 
 
 ## Puffs in the ring, alive or not yet overwritten.
@@ -340,6 +346,8 @@ func _on_ticked(_tick: int) -> void:
 		_emit_ambient(snap, view)
 	_dmg.read(life)
 	_dmg.emit(snap, view, life, building_layer, unit_layer, get_global_transform().affine_inverse())
+	_hit.read(life)
+	_hit.emit(snap, life, building_layer)
 
 
 ## A puff at each ambient emitter whose cycle turned over, of a building the player can see that is

@@ -179,3 +179,19 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 @export var damage_spark_rise_px: float = 14.0
 @export var glow_weak_alpha: float = 0.3
 @export var glow_strong_alpha: float = 0.55
+
+## Hit feedback (P166, ADR 0029 sections 7 and 13): a shot that hits a shown building draws a white
+## `hit_flash` for `hit_flash_ms` (growing from `hit_flash_grow.x` to `.y` times its frame, at
+## `hit_alpha`) inside the middle `hit_flash_box_milli` (of 1000) of the building's `frame_box`, and
+## `hit_chips[0]` to `[1]` chips that fly out for `hit_chip_ms`, each along one of the
+## `hit_chip_fly_px` (east, up; at most four). The hit ring holds `hit_slots` of them.
+@export var hit_slots: int = 16
+@export var hit_flash_ms: int = 60
+@export var hit_flash_box_milli: int = 500
+@export var hit_flash_grow: Vector2 = Vector2(0.7, 1.2)
+@export var hit_alpha: float = 1.0
+@export var hit_chips: PackedInt32Array = PackedInt32Array([3, 5])
+@export var hit_chip_ms: int = 350
+@export var hit_chip_fly_px: PackedVector2Array = PackedVector2Array(
+	[Vector2(-14.0, 10.0), Vector2(-6.0, 18.0), Vector2(6.0, 18.0), Vector2(14.0, 10.0)]
+)
