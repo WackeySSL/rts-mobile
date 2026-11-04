@@ -41,8 +41,8 @@
 ; skew (a shear ratio, the same angle on every screen), corner_detail (a count) and
 ; anti_aliasing_size (the soft edge, 1 px). Scale a constant in HudTheme.scaled() before putting
 ; one here. An entry that stays in base px is listed in metadata/base_px by its path in this file.
-; Type variations (DevButton, NumberLabel, SelectionPanel, PerfCard, SidebarTab, PowerBar,
-; PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner, ItemCaption,
+; Type variations (DevButton, NumberLabel, SelectionPanel, SelectionPanelEnemy, PerfCard, SidebarTab,
+; PowerBar, PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner, ItemCaption,
 ; StrikeButton, StrikeConfirm, BuildButton, ReadyBadge, HudPanel, CapsButton, CapsTitle,
 ; CapsBigTitle, EconomyPill, EconomyPillLow, PillWord, AttackTitle, EconomyChipLoss, EconomyChipGain,
 ; EconomyConsumer, ResultScreen, Scrim) are set by
@@ -184,6 +184,24 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
+; An enemy building's chip: the backdrop with the warning amber frame (the enemy health bar's
+; colour, #F5A524). The content margins are the backdrop's, so the frame adds no size.
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_backdrop_enemy"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.06, 0.08, 0.11, 0.78)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.96078431, 0.64705882, 0.14117647, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
 ; A build tab at rest: a dark plate with a thin grey edge. The open tab (pressed) is lighter, with a
 ; white edge and a thick white bar at its foot, so that it differs by shape and not by colour alone.
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tab"]
@@ -313,6 +331,11 @@ NumberLabel/fonts/font = ExtResource("2_chakra_600")
 ; The command bar chip's backdrop (the variation keeps its old name, SelectionPanel).
 SelectionPanel/base_type = &"PanelContainer"
 SelectionPanel/styles/panel = SubResource("StyleBoxFlat_backdrop")
+; An enemy building's chip (CommandBar.ENEMY_CHIP): the amber frame, and the notch cut in its top
+; edge in the backdrop's dark.
+SelectionPanelEnemy/base_type = &"PanelContainer"
+SelectionPanelEnemy/colors/notch = Color(0.06, 0.08, 0.11, 1)
+SelectionPanelEnemy/styles/panel = SubResource("StyleBoxFlat_backdrop_enemy")
 ; The perf card's backdrop (PerfHud.gd, a developer tool): the same box as the command bar chip's.
 PerfCard/base_type = &"PanelContainer"
 PerfCard/styles/panel = SubResource("StyleBoxFlat_backdrop")

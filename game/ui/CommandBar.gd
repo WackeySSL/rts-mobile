@@ -2,8 +2,10 @@ class_name CommandBar
 extends Control
 ## The command bar (ADR 0025 section 9, plan P122): bottom left (upright: the full width at the
 ## bottom, BUILD lifted above it) while something is selected. From its start: Deselect (48 x 64
-## dp, `glyph_deselect` over "CLEAR"), the selection chip (the first type's item card, "xN" or a
-## building's name, the summed health, "+N" for further types) and the orders the game has, from
+## dp, `glyph_deselect` over "CLEAR"), the selection chips (one per selected type while they fit in
+## the bar's room: the type's item card, "xN" or a building's name, its health; then a "+N" chip for
+## the types left out; an enemy building's chip wears an amber frame and a notch in its top edge)
+## and the orders the game has, from
 ## `ORDERS` (Stop, for units; a building has none). Orders that do not fit scroll sideways inside
 ## the bar, a button never shrinks below 56 dp. A row that adds an order adds an `ORDERS` entry, its
 ## glyph and its HOW_TO_PLAY line. There is no Attack button (ADR 0025 answer 4).
@@ -31,6 +33,8 @@ const LABEL_MAX_DP: float = 140.0  ## The most a building's name or a count may 
 const CAPTION: StringName = &"ItemCaption"
 const NUMBER: StringName = &"NumberLabel"
 const CHIP: StringName = &"SelectionPanel"  ## The backdrop variation of the theme.
+const ENEMY_CHIP: StringName = &"SelectionPanelEnemy"  ## The same, in the amber frame.
+const NOTCH_DP: Vector2 = Vector2(6.0, 2.0)  ## An enemy chip's notch: width, depth under the frame.
 ## The orders, in the bar's order: id, glyph, word, and whether it is for units.
 const ORDERS: Array[Dictionary] = [
 	{"id": &"stop", "glyph": "stop", "label": "STOP", "units": true},
@@ -48,10 +52,9 @@ var mirror: bool = false
 
 var _row: HBoxContainer = HBoxContainer.new()
 var _clear: Button = Button.new()
-var _chip: PanelContainer = PanelContainer.new()
-var _card: TextureRect = TextureRect.new()
-var _label: Label = Label.new()  ## "xN" for units, the name of a building.
-var _health: ProgressBar = ProgressBar.new()
+var _chips: Array[Chip] = []  ## One per selected type; the first from the start.
+var _types: int = 0  ## The selected types, the first `_types` of `_chips` hold one.
+var _more_chip: PanelContainer = PanelContainer.new()  ## "+N": the types the bar has no room for.
 var _more: Label = Label.new()
 var _scroll: ScrollContainer = ScrollContainer.new()
 var _orders: HBoxContainer = HBoxContainer.new()
@@ -60,9 +63,108 @@ var _has: bool = false  ## Something is selected.
 var _frozen: bool = false  ## A mode runs: the slot is `_held`.
 var _held: bool = false
 var _slot: bool = false  ## The bar holds its place (shown or an empty plate).
-var _type: StringName = &""  ## The chip's card, to load it once.
 var _publish_queued: bool = false
 var _published: float = 0.0  ## The content width last told to the state, dp.
+
+
+## One selected type: its item card, "xN" (a building: its name) and the health of its rows.
+class Chip:
+	extends PanelContainer
+
+	var card: TextureRect = TextureRect.new()
+	var label: Label = Label.new()  ## "xN" for units, the name of a building.
+	var health: ProgressBar = ProgressBar.new()
+	var type: StringName = &""  ## The card's type, to load it once.
+	var enemy: bool = false
+
+	func _init() -> void:
+		theme_type_variation = CHIP
+		mouse_filter = Control.MOUSE_FILTER_STOP  # A touch on the read-only chip is no order.
+		var line: HBoxContainer = HBoxContainer.new()
+		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.name = "Card"
+		card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		card.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		line.add_child(card)
+		var text: VBoxContainer = VBoxContainer.new()
+		text.alignment = BoxContainer.ALIGNMENT_CENTER
+		text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		label.name = "Count"
+		label.theme_type_variation = NUMBER
+		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		text.add_child(label)
+		health.name = "Health"
+		health.show_percentage = false
+		health.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		text.add_child(health)
+		line.add_child(text)
+		add_child(line)
+
+	## Writes the chip for one type; an enemy building wears the amber frame and the notch.
+	func show_type(snap: MatchSnapshot, group: Group, as_enemy: bool) -> void:
+		var units: bool = not group.building
+		var text: String = "×%d" % group.count if units else snap.type_names[group.type]
+		if label.text != text:
+			label.text = text
+			fit_label()
+		if type != snap.type_ids[group.type]:
+			type = snap.type_ids[group.type]
+			var art: String = ICON_ART % type
+			card.texture = load(art) if ResourceLoader.exists(art) else null
+		if enemy != as_enemy:
+			enemy = as_enemy
+			theme_type_variation = ENEMY_CHIP if enemy else CHIP
+			queue_redraw()
+		health.max_value = maxf(group.max_hp, 1.0)
+		health.value = group.hp
+		health.visible = not group.fogged
+
+	## The label asks for its text's width, at most `LABEL_MAX_DP` (a longer name is cut), so the
+	## chip and the bar grow to it instead of cutting every building name to the health bar's width.
+	func fit_label() -> void:
+		var font: Font = label.get_theme_font(&"font")
+		var font_px: int = label.get_theme_font_size(&"font_size")
+		var text_px: float = (
+			font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_px).x
+		)
+		label.custom_minimum_size.x = minf(ceilf(text_px), UiScale.dp(LABEL_MAX_DP))
+
+	func apply_dp() -> void:
+		custom_minimum_size = UiScale.dp_vec(0.0, CLEAR_DP.y)
+		card.custom_minimum_size = UiScale.dp_vec(CARD_DP, CARD_DP)
+		health.custom_minimum_size = UiScale.dp_vec(HEALTH_DP.x, HEALTH_DP.y)
+		fit_label()
+
+	## The notch of an enemy chip (empty for an own one): a gap in the top edge of the amber frame,
+	## open down to `NOTCH_DP.y` under it, the cue that does not rest on colour alone (as the
+	## enemy health bar's, `HealthBarLayer`).
+	func notch_rect() -> Rect2:
+		if not enemy:
+			return Rect2()
+		var box: StyleBoxFlat = get_theme_stylebox(&"panel") as StyleBoxFlat
+		var depth: float = UiScale.dp(NOTCH_DP.y) + (0.0 if box == null else box.border_width_top)
+		var width: float = UiScale.dp(NOTCH_DP.x)
+		return Rect2(roundf((size.x - width) / 2.0), 0.0, width, ceilf(depth))
+
+	func _draw() -> void:
+		var notch: Rect2 = notch_rect()
+		if notch.size != Vector2.ZERO:
+			draw_rect(notch, get_theme_color(&"notch"))
+
+
+## What the selection holds of one type, for `_fill`.
+class Group:
+	extends RefCounted
+
+	var type: int = 0
+	var count: int = 0
+	var hp: int = 0
+	var max_hp: int = 0
+	var row: int = 0  ## The first row of the type.
+	var building: bool = false
+	var fogged: bool = false  ## A building the fog hides: its health is not told.
 
 
 func _ready() -> void:
@@ -73,6 +175,7 @@ func _ready() -> void:
 	add_child(_row)
 	_build_clear()
 	_build_chip()
+	_chip_for(0)  # The first chip stands from the start, the others when a selection needs them.
 	_scroll.name = "Orders"
 	_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -95,7 +198,6 @@ func _ready() -> void:
 	feed.state.changed.connect(_on_state_changed)
 	_row.minimum_size_changed.connect(_queue_publish)
 	_orders.minimum_size_changed.connect(_queue_publish)
-	_chip.minimum_size_changed.connect(_queue_publish)
 	get_viewport().size_changed.connect(_apply_dp)
 	_apply_dp()
 	_on_selection(controller.selection.selected)
@@ -158,36 +260,33 @@ func _face(button: Button, glyph: String, word: String) -> void:
 	button.add_child(face)
 
 
+## The "+N" chip (the type chips are made when a selection first needs them, `_chip_for`).
 func _build_chip() -> void:
-	_chip.name = "Chip"
-	_chip.theme_type_variation = CHIP
-	_chip.mouse_filter = Control.MOUSE_FILTER_STOP  # A touch on the read-only chip is no order.
-	var line: HBoxContainer = HBoxContainer.new()
-	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_card.name = "Card"
-	_card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_card.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	line.add_child(_card)
-	var text: VBoxContainer = VBoxContainer.new()
-	text.alignment = BoxContainer.ALIGNMENT_CENTER
-	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_label.name = "Count"
-	_label.theme_type_variation = NUMBER
-	_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	text.add_child(_label)
-	_health.name = "Health"
-	_health.show_percentage = false
-	_health.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	text.add_child(_health)
-	line.add_child(text)
-	_more.name = "More"
+	_more_chip.name = "More"
+	_more_chip.theme_type_variation = CHIP
+	_more_chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	_more_chip.visible = false
+	_more.name = "Number"
 	_more.theme_type_variation = NUMBER
 	_more.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	line.add_child(_more)
-	_chip.add_child(line)
-	_row.add_child(_chip)
+	_more_chip.add_child(_more)
+	_row.add_child(_more_chip)
+	_more_chip.minimum_size_changed.connect(_queue_publish)
+
+
+## Chip `index`, made (after the chips before it, before "+N") when the selection first has that
+## many types. The first is named "Chip", the others "Chip1", "Chip2" and so on.
+func _chip_for(index: int) -> Chip:
+	while _chips.size() <= index:
+		var chip: Chip = Chip.new()
+		chip.name = "Chip" if _chips.is_empty() else "Chip%d" % _chips.size()
+		chip.visible = false
+		chip.minimum_size_changed.connect(_queue_publish)
+		_row.add_child(chip)
+		chip.apply_dp()
+		_row.move_child(chip, 1 + _chips.size())  # After Deselect and the chips before it.
+		_chips.append(chip)
+	return _chips[index]
 
 
 ## Sizes are dp, so they follow a resize.
@@ -195,10 +294,9 @@ func _apply_dp() -> void:
 	_row.add_theme_constant_override("separation", roundi(UiScale.dp(HudCorners.GAP_DP)))
 	_orders.add_theme_constant_override("separation", roundi(UiScale.dp(HudCorners.GAP_DP)))
 	_clear.custom_minimum_size = UiScale.dp_vec(CLEAR_DP.x, CLEAR_DP.y)
-	_chip.custom_minimum_size = UiScale.dp_vec(0.0, CLEAR_DP.y)
-	_card.custom_minimum_size = UiScale.dp_vec(CARD_DP, CARD_DP)
-	_fit_label()
-	_health.custom_minimum_size = UiScale.dp_vec(HEALTH_DP.x, HEALTH_DP.y)
+	_more_chip.custom_minimum_size = UiScale.dp_vec(0.0, CLEAR_DP.y)
+	for chip: Chip in _chips:
+		chip.apply_dp()
 	for button: Button in _buttons.values():
 		button.custom_minimum_size = UiScale.dp_vec(ORDER_DP.x, ORDER_DP.y)
 	for button: Button in [_clear] + _buttons.values():
@@ -218,64 +316,77 @@ func _on_ticked(_tick: int) -> void:
 		_fill(controller.selection.selected)
 
 
-## Writes the chip and the order list for `ids` (texts only when they change).
+## Writes the chips and the order list for `ids` (texts only when they change).
 func _fill(ids: PackedInt32Array) -> void:
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
 	var units: bool = controller.units_selected()
-	var types: Dictionary[int, int] = {}  # Type index -> how many, in first-seen order.
-	var hp: int = 0
-	var max_hp: int = 0
+	var groups: Dictionary[int, Group] = {}  # Type index -> what is selected of it, first seen first.
 	if snap != null:
 		for id: int in ids:
 			var row: int = snap.index_of(id)
 			if row < 0:
 				continue
 			var type: int = snap.type_index[row]
-			types[type] = types.get(type, 0) + 1
-			hp += snap.hp[row]
-			max_hp += snap.type_max_hp[type]
-	_chip.visible = not types.is_empty()
+			var group: Group = groups.get(type)
+			if group == null:
+				group = Group.new()
+				group.type = type
+				group.row = row
+				group.building = WorldSort.is_building(snap, type)
+				groups[type] = group
+			group.count += 1
+			group.hp += snap.hp[row]
+			group.max_hp += snap.type_max_hp[type]
+			if group.building and building_layer != null and not building_layer.is_shown(row):
+				group.fogged = true
 	for order: Dictionary in ORDERS:
-		_buttons[order["id"]].visible = units and not types.is_empty()
-	if types.is_empty():
-		return
-	var first: int = types.keys()[0]
-	var text: String = "×%d" % types[first] if units else snap.type_names[first]
-	if _label.text != text:
-		_label.text = text
-		_fit_label()
-	if _type != snap.type_ids[first]:
-		_type = snap.type_ids[first]
-		var art: String = ICON_ART % _type
-		_card.texture = load(art) if ResourceLoader.exists(art) else null
-	var more: String = "+%d" % (types.size() - 1) if types.size() > 1 else ""
-	if _more.text != more:
-		_more.text = more
-	_more.visible = more != ""
-	_health.max_value = maxf(max_hp, 1.0)
-	_health.value = hp
-	_health.visible = not (not units and building_layer != null and _hidden(snap, ids))
+		_buttons[order["id"]].visible = units and not groups.is_empty()
+	var local: int = 1 if runner == null else FogLayer.local_player_of(runner)
+	var fit: bool = groups.size() != _types
+	_types = groups.size()
+	var index: int = 0
+	for group: Group in groups.values():
+		var chip: Chip = _chip_for(index)
+		var before: String = chip.label.text
+		chip.show_type(snap, group, group.building and snap.owner[group.row] != local)
+		fit = fit or before != chip.label.text
+		index += 1
+	if fit:
+		_fit_chips()
 
 
-## Whether a selected building stands in the fog (an enemy one the player does not see): its
-## health is not told then, as `HealthBarLayer` does not draw it.
-func _hidden(snap: MatchSnapshot, ids: PackedInt32Array) -> bool:
-	for id: int in ids:
-		var row: int = snap.index_of(id)
-		if row >= 0 and not building_layer.is_shown(row):
-			return true
-	return false
+## Shows the chips that fit in the bar's room, one per type while they do, then a "+N" chip for the
+## types left out (the old `SelectionPanel`'s rule). The first chip always shows. The room is what
+## the bar may be at the most (`HudCorners.place` with a content that asks for more than any screen
+## has), less Deselect, the orders and the gaps, so the fit never depends on the width it gave.
+func _fit_chips() -> void:
+	var shown: int = _types
+	if _types > 1:
+		var gap: float = roundf(UiScale.dp(HudCorners.GAP_DP))
+		var rects: Dictionary[StringName, Rect2] = _rects(true)
+		var room: float = rects[HudCorners.BAR].size.x if rects.has(HudCorners.BAR) else INF
+		room -= _clear.get_combined_minimum_size().x + _orders.get_combined_minimum_size().x
+		for count: int in range(_types, 0, -1):
+			shown = count
+			var need: float = gap * (count + 1)  # Between Deselect, the chips, "+N" and the orders.
+			for index: int in count:
+				need += _chips[index].get_combined_minimum_size().x
+			if count < _types:
+				_more.text = "+%d" % (_types - count)
+				need += gap + _more_chip.get_combined_minimum_size().x
+			if need <= room:
+				break
+	for index: int in _chips.size():
+		_chips[index].visible = index < shown
+	_more_chip.visible = shown < _types
+	if shown < _types:
+		_more.text = "+%d" % (_types - shown)
 
 
-## The label asks for its text's width, at most `LABEL_MAX_DP` (a longer name is cut), so the
-## chip and the bar grow to it instead of cutting every building name to the health bar's width.
+## Every chip's label asks for its own text again (the text or the dp changed).
 func _fit_label() -> void:
-	var font: Font = _label.get_theme_font(&"font")
-	var font_px: int = _label.get_theme_font_size(&"font_size")
-	var text_px: float = (
-		font.get_string_size(_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_px).x
-	)
-	_label.custom_minimum_size.x = minf(ceilf(text_px), UiScale.dp(LABEL_MAX_DP))
+	for chip: Chip in _chips:
+		chip.fit_label()
 
 
 ## The slot follows the selection, or what it was when a mode began (the freeze).
@@ -314,22 +425,30 @@ func _on_state_changed(_previous: HudState.Unfold) -> void:
 	place()
 
 
-## Takes the rect `HudCorners.place` gives the bar; hidden without a slot, under the upright sheet
-## and in the pause menu.
-func place() -> void:
+## The layout's rects: with the width the content asks for now, or (`widest`) with a content that
+## asks for more than any screen has, which gives the room the bar may take at the most.
+func _rects(widest: bool) -> Dictionary[StringName, Rect2]:
 	var dp: float = UiScale.base_px_per_dp()
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	feed.state.fill(shown)
 	feed.state.fill_bar(shown)
 	shown.bar = true  # Its own rect is asked for whether it holds the slot or not.
+	if widest:
+		shown.bar_width = INF
 	shown.ready = build_button != null and build_button.ready_type >= 0
 	var margin_dp: float = (
 		SafeAreaMargin.DEFAULT_MARGIN_DP if safe_area == null else safe_area.margin_dp
 	)
 	var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), margin_dp)
-	var rects: Dictionary[StringName, Rect2] = HudCorners.place(
-		safe, HudLayout.is_portrait(), dp, mirror, shown
-	)
+	return HudCorners.place(safe, HudLayout.is_portrait(), dp, mirror, shown)
+
+
+## Takes the rect `HudCorners.place` gives the bar; hidden without a slot, under the upright sheet
+## and in the pause menu.
+func place() -> void:
+	if _types > 1:
+		_fit_chips()  # The room changes with the Ready chip, the drawer and the window.
+	var rects: Dictionary[StringName, Rect2] = _rects(false)
 	_row.layout_direction = (
 		Control.LAYOUT_DIRECTION_RTL if mirror else Control.LAYOUT_DIRECTION_LTR
 	)
