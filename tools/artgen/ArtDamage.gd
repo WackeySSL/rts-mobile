@@ -12,7 +12,7 @@ static func blow_order(model: ArtModel, group: StringName) -> Array[int]:
 	var panes: Array[int] = []
 	for prim: ArtPrim in model.primitives(&"hull"):
 		if prim.group == group and prim.material == &"glass":
-			panes.append(prim.index)
+			panes.append(prim.key())
 	var seed: int = _djb2(String(model.art_id))
 	panes.sort_custom(
 		func(a: int, b: int) -> bool:

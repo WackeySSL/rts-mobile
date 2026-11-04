@@ -3,6 +3,7 @@ extends GdUnitTestSuite
 ## the shape `broken`, the shape `rod` with `bend`, and the helper `petals`.
 
 const Support = preload("res://tests/art/artgen_v5_support.gd")
+const PINNED_TEETH: Array[int] = [7453, 4907, 7776, 2470, 7225]  # ten-thousandths
 const BODY: String = "box hull concrete 0 0 0 1.6 1.6 0.4 group=body"
 
 
@@ -53,6 +54,140 @@ func test_broken_draws_n_teeth_between_low_and_the_full_height() -> void:
 	# Front and back, two ends, a floor and five tooth segments.
 	assert_int(ArtMesh.faces(prim).size()).is_equal(2 + 2 + 1 + 5)
 	assert_int(_hull_polys(model).size()).is_greater(0)
+
+
+## The front face (the one that looks towards +y, or +x for a box longer along y) of a broken box.
+func _front(prim: ArtPrim) -> ArtMesh.Face:
+	var along_x: bool = prim.size.x >= prim.size.y
+	for face: ArtMesh.Face in ArtMesh.faces(prim):
+		if (face.normal.y if along_x else face.normal.x) > 0.9:
+			return face
+	return null
+
+
+func test_broken_tooth_heights_are_the_vertices_of_the_front_face() -> void:
+	for size: String in ["1.2 0.3 1.0", "0.3 1.2 1.0"]:
+		var model: ArtModel = _model(
+			["broken hull concrete 0.1 -0.2 0.4 %s teeth=7 low=0.3" % size]
+		)
+		var prim: ArtPrim = _of_shape(model, &"broken")[0]
+		var along_x: bool = prim.size.x >= prim.size.y
+		var length: float = 1.2
+		var fractions: PackedFloat64Array = prim.tooth_fractions()
+		var points: PackedVector3Array = _front(prim).points
+		assert_int(points.size()).is_equal(2 + 7)
+		for i: int in 7:
+			# The ring runs floor, floor, then the tops from the last tooth back to the first.
+			var got: Vector3 = points[2 + 6 - i]
+			var t: float = -length / 2.0 + length * i / 6.0
+			var want: Vector3 = (
+				Vector3(0.1 + t, -0.2 + 0.15, 0.4 + fractions[i])
+				if along_x
+				else Vector3(0.1 + 0.15, -0.2 + t, 0.4 + fractions[i])
+			)
+			assert_vector(got).is_equal_approx(want, Vector3.ONE * 1e-5)
+
+
+func _inside(prim: ArtPrim, p: Vector3) -> bool:
+	var along_x: bool = prim.size.x >= prim.size.y
+	var length: float = prim.size.x if along_x else prim.size.y
+	var across: float = prim.size.y if along_x else prim.size.x
+	var t: float = (p.x - prim.centre.x) if along_x else (p.y - prim.centre.y)
+	var v: float = (p.y - prim.centre.y) if along_x else (p.x - prim.centre.x)
+	var f: PackedFloat64Array = prim.tooth_fractions()
+	var at: float = clampf((t + length / 2.0) / length * (f.size() - 1), 0.0, f.size() - 1.0)
+	var lo: int = mini(floori(at), f.size() - 2)
+	var top: float = lerpf(f[lo], f[lo + 1], at - lo) * prim.size.z
+	return (
+		absf(t) <= length / 2.0
+		and absf(v) <= across / 2.0
+		and p.z >= prim.z0
+		and p.z - prim.z0 <= top
+	)
+
+
+func test_every_face_of_a_broken_box_looks_away_from_the_inside() -> void:
+	for line: String in [
+		"broken hull concrete 0 0 0 1.6 0.2 0.8 teeth=8 low=0.2",
+		"broken hull concrete 0 0 0 0.2 1.6 0.8 teeth=8 low=0.2",
+		"broken hull concrete 0 0 0 3 0.2 1 teeth=10 low=0.3",
+		"broken hull concrete 0 0 0 1.5 0.3 0.6 teeth=12 low=0.1",
+		"broken hull concrete 0 0 0 0.3 1.2 1.0 teeth=12 low=0.2",
+	]:
+		var prim: ArtPrim = _of_shape(_model([line]), &"broken")[0]
+		for face: ArtMesh.Face in ArtMesh.faces(prim):
+			var mean: Vector3 = Vector3.ZERO
+			for point: Vector3 in face.points:
+				mean += point / face.points.size()
+			var message: String = "%s: face at %s" % [line, mean]
+			(
+				assert_bool(_inside(prim, mean - face.normal * 1e-3))
+				. override_failure_message(message)
+				. is_true()
+			)
+			(
+				assert_bool(_inside(prim, mean + face.normal * 1e-3))
+				. override_failure_message(message)
+				. is_false()
+			)
+
+
+func test_a_broken_box_draws_its_sides_over_the_tops() -> void:
+	var model: ArtModel = _model(["broken hull concrete 0 0 0.4 1.2 0.3 1.0 teeth=6 low=0.4"])
+	var prim: Array[ArtPrim] = _of_shape(model, &"broken")
+	var polys: Array[ArtRender.Poly] = ArtRender.render(prim, 0.0, &"fossil")
+	var image: Image = Image.new()
+	image.load_svg_from_string(
+		ArtSvg.frame("t", Vector2i(600, 500), Vector2i(300, 350), polys), 1.0
+	)
+	var checked: int = 0
+	for face: ArtMesh.Face in ArtMesh.faces(prim[0]):
+		if absf(face.normal.z) > 0.01 or face.normal.dot(ArtRender.VIEW) < ArtRender.MIN_FACING:
+			continue  # only the end cap and the front, which face the camera
+		var points: PackedVector2Array = PackedVector2Array()
+		for point: Vector3 in face.points:
+			points.append(ArtRender.project(point))
+		var want: Color = Color.html(
+			ArtPalette.tone(&"fossil", &"concrete", ArtRender.level(face.normal))
+		)
+		var box: Rect2 = Rect2(points[0], Vector2.ZERO)
+		for point: Vector2 in points:
+			box = box.expand(point)
+		for y: int in range(int(box.position.y), int(box.end.y), 2):
+			for x: int in range(int(box.position.x), int(box.end.x), 2):
+				var spot: Vector2 = Vector2(x, y)
+				var deep: bool = true
+				for step: Vector2 in [Vector2(3, 0), Vector2(-3, 0), Vector2(0, 3), Vector2(0, -3)]:
+					deep = deep and Geometry2D.is_point_in_polygon(spot + step, points)
+				if deep:
+					checked += 1
+					var got: Color = image.get_pixel(x + 300, y + 350)
+					(
+						assert_bool(got.is_equal_approx(want))
+						. override_failure_message(
+							"%s at %s is %s" % [want.to_html(), spot, got.to_html()]
+						)
+						. is_true()
+					)
+	assert_int(checked).is_greater(100)
+
+
+func test_broken_heights_are_pinned_for_an_id_and_a_line() -> void:
+	var model: ArtModel = _model(["broken hull concrete 0 0 0.4 1.2 0.3 1.0 teeth=5 low=0.2"])
+	var got: Array[int] = []
+	for f: float in _of_shape(model, &"broken")[0].tooth_fractions():
+		got.append(roundi(f * 10000.0))
+	assert_array(got).is_equal(PINNED_TEETH)
+	assert_int(ArtDamage.seed_of(&"crafted")).is_equal("crafted".hash())
+
+
+func test_broken_refuses_a_thirteenth_tooth_and_taper() -> void:
+	for line: String in [
+		"broken hull concrete 0 0 0.4 1 1 1 teeth=13",
+		"broken hull concrete 0 0 0.4 1 1 1 taper=0.5",
+		"rod hull rebar 0 0 0.4 0 0 1 4 taper=0.5",
+	]:
+		assert_str("\n".join(_model([line]).problems())).contains("not a primitive")
 
 
 func test_broken_is_the_same_on_two_runs_and_differs_for_two_lines() -> void:
@@ -120,7 +255,9 @@ func test_rod_with_bend_makes_two_segments() -> void:
 	assert_vector(path[0]).is_equal_approx(Vector3(0, 0, 0.4), Vector3.ONE * 1e-6)
 	assert_vector(path[1]).is_equal_approx(Vector3(0, 0, 0.9), Vector3.ONE * 1e-6)
 	assert_float(path[1].distance_to(path[2])).is_equal_approx(0.5, 1e-6)  # the half keeps its length
-	assert_float(path[2].x).is_greater(0.2)  # the upper half swings towards +x
+	assert_float(path[2].x).is_greater(0.2)  # the far half swings towards +x
+	var along: ArtModel = _model(["rod hull beam -0.5 0 0.8 0.5 0 0.8 4 bend=40"])
+	assert_float(_of_shape(along, &"rod")[0].rod_path()[2].z).is_less(0.8)  # a rod along +x droops
 
 
 func test_rod_is_ordered_at_its_midpoint_and_refuses_a_thin_width() -> void:
@@ -130,6 +267,12 @@ func test_rod_is_ordered_at_its_midpoint_and_refuses_a_thin_width() -> void:
 	assert_int(ArtRender.draw_order(prims, 0.0)[-1]).is_equal(1)  # nearer than the body: last
 	prims = back.primitives(&"hull")
 	assert_int(ArtRender.draw_order(prims, 0.0)[0]).is_equal(1)  # farther than the body: first
+	# A rod through the body, its midpoint inside it, is drawn after the body, as its midpoint is.
+	var through: ArtModel = _model(["rod hull rebar -1.2 -1.2 0.2 1.6 1.6 0.2 4"])
+	var rod: ArtPrim = through.primitives(&"hull")[1]
+	assert_vector(rod.aabb().position).is_equal_approx(Vector3(0.2, 0.2, 0.2), Vector3.ONE * 1e-6)
+	assert_vector(rod.aabb().size).is_equal_approx(Vector3.ZERO, Vector3.ONE * 1e-6)
+	assert_array(ArtRender.draw_order(through.primitives(&"hull"), 0.0)).is_equal([0, 1])
 	assert_str("\n".join(_model(["rod hull rebar 0 0 0.4 0 0 1 1.5"]).problems())).contains("not a")
 	assert_str("\n".join(_model(["rod hull rebar 0 0 0.4 0 0 0.4 4"]).problems())).contains("not a")
 	assert_str("\n".join(_model(["rod hull rebar 0 0 0.4 0 0 1 4 bend=120"]).problems())).contains(
@@ -165,13 +308,14 @@ func test_petals_expand_to_n_plates_turned_by_tilt_and_an_interior_disc() -> voi
 	assert_float(reach).is_equal_approx(
 		0.4 + 0.4 * sin(deg_to_rad(50.0)) + 0.02 * cos(deg_to_rad(50.0)), 0.03
 	)
-	# The fourth plate faces the other way (+y after 90 degrees): the first is turned about z.
+	# The second plate is turned 90 degrees about z: it reaches out along +y, as far as the first
+	# does along +x.
 	var second: ArtPrim = model.primitives(&"hull")[3]
 	var side: float = -INF
 	for face: ArtMesh.Face in ArtMesh.faces(second):
 		for point: Vector3 in face.points:
 			side = maxf(side, point.y)
-	assert_float(side).is_equal_approx(reach, 0.03)
+	assert_float(side).is_equal_approx(reach, 1e-3)
 
 
 func test_petals_refuse_a_wrong_line() -> void:
@@ -183,6 +327,12 @@ func test_petals_refuse_a_wrong_line() -> void:
 		"petals hull steel 0 0 0.4 0 4 50",
 		"petals hull steel 0 0 0.4 0.8 4",
 		"petals hull steel 0 0 0.4 0.8 4 50 bend=3",
+		"petals hull nosuchmaterial 0 0 0.4 0.8 4 50",
+		"petals hull glass 0 0 0.4 0.8 4 50",
+		"petals hull steel 0 0 0.4 0.8 4 50 sides=8",
+		"petals hull steel 0 0 0.4 0.8 4 50 axis=x",
+		"petals turret steel 0 0 0.4 0.8 4 50",
+		"petals head steel 0 0 0.4 0.8 4 50",
 	]:
 		assert_str("\n".join(_model([line]).problems())).contains("not a primitive")
 
@@ -210,3 +360,47 @@ func test_petals_survive_a_pose_and_draw() -> void:
 	]:
 		lids.append(count.filter(func(p: ArtPrim) -> bool: return p.group == &"lid").size())
 	assert_array(lids).is_equal([6, 6, 0])
+
+
+## A Renew model with `lines` and the two blow stages on group `lid`, for the helpers' keys.
+func _glass_lid(lines: Array[String], percent: int) -> ArtModel:
+	var prims: Array[String] = ["box hull titanium 0 0 0 1.6 1.6 0.4 group=body"]
+	prims.append_array(lines)
+	var model: ArtModel = Support.with_prims(
+		prims, ["dmg1 0 lid blow %d" % percent, "dmg2 0 lid blow 100"], []
+	)
+	model.faction = &"renew"
+	return model
+
+
+func test_the_primitives_of_one_petals_line_have_their_own_keys() -> void:
+	var model: ArtModel = _glass_lid(["petals hull glass 0 0 0.4 0.8 4 50 group=lid"], 50)
+	var keys: Array[int] = []
+	for prim: ArtPrim in model.primitives(&"hull"):
+		assert_bool(keys.has(prim.key())).is_false()
+		keys.append(prim.key())
+	var order: Array[int] = ArtDamage.blow_order(model, &"lid")
+	assert_int(order.size()).is_equal(4)
+	var unique: Dictionary = {}
+	for key: int in order:
+		unique[key] = true
+	assert_int(unique.size()).is_equal(4)
+	var holes: Array[int] = []
+	for prim: ArtPrim in model.damage_prims(1):
+		if prim.material == &"hole":
+			holes.append(prim.key())
+	holes.sort()
+	var first_two: Array[int] = [order[0], order[1]]
+	first_two.sort()
+	assert_array(holes).is_equal(first_two)  # roundi(50 x 4 / 100) = 2, in the hash order
+	assert_array(ArtDamage.blow_order(model, &"lid")).is_equal(order)
+
+
+func test_an_intact_petals_line_and_a_far_slab_report_no_swap() -> void:
+	var model: ArtModel = _model(
+		[
+			"petals hull steel 0 0 0.4 0.8 5 50 group=lid",
+			"box hull slab 0.4 -0.4 0.4 0.2 0.2 0.1 damage=2",
+		]
+	)
+	assert_array(model.damage_swaps(2)).is_empty()

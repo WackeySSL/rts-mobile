@@ -3,11 +3,14 @@ extends RefCounted
 ## The flat faces of an `ArtPrim`, in the model's frame, each with its outward normal. A box, a
 ## wedge and a prism are all one solid: a ring of `sides` points at the bottom and the same ring,
 ## scaled by `taper` and cut by `slope`, at the top, joined by one quad per side. A sphere has no
-## faces (`ArtRender` draws it as discs). A primitive with moves (a pose frame, `ArtPrim.moved`) has
+## faces (`ArtRender` draws it as discs), a rod none (it is a stroke). A `broken` box is concave:
+## its front and back are polygons with a zigzag top, and each tooth segment is a quad oriented
+## against a point below its own middle. A primitive with moves (a pose frame, `ArtPrim.moved`) has
 ## its faces placed by them, after the rest faces are built.
 
 
-## One convex face: its points and the unit normal that points out of the solid.
+## One flat face (convex, except the front and back of a `broken` box): its points and the unit
+## normal that points out of the solid.
 class Face:
 	extends RefCounted
 	var points: PackedVector3Array = PackedVector3Array()
@@ -98,7 +101,7 @@ static func _broken(prim: ArtPrim, found: Array[Face]) -> void:
 				pt.call(at[i], half, top[i]),
 			]
 		)
-		_add(found, quad, inside)
+		_add(found, quad, pt.call((at[i] + at[i + 1]) / 2.0, 0.0, 0.0))
 	for end: int in [0, last]:
 		var cap: PackedVector3Array = PackedVector3Array(
 			[

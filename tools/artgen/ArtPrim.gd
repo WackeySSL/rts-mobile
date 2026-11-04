@@ -3,13 +3,17 @@ extends RefCounted
 ## One primitive of an `ArtModel` (ADR 0023 section 5), parsed from one line of its `prims`:
 ##
 ##   <shape> <part> <material> <cx> <cy> <z0> <sx> <sy> <sz> [sides=N] [taper=T] [slope=S] [axis=A]
-##                                                          [group=NAME] [damage=K]
+##                                              [teeth=N] [low=F] [group=NAME] [damage=K]
+##   rod <part> <material> <x0> <y0> <z0> <x1> <y1> <z1> <width> [bend=DEG] [group=NAME]
+##                                              [damage=K]
+##   petals <part> <material> <cx> <cy> <z> <diameter> <n> <tilt> [group=NAME] [damage=K]
 ##
 ## Lengths are tiles in the model's frame (a unit faces +x; a building's origin is its footprint's
 ## centre). `cx cy` is the centre on the ground, `z0` the bottom, `sx sy sz` the extent along x, y
 ## and z. Shapes: `box`; `wedge`, a box whose top slopes down towards +x by `slope` (default 1);
 ## `prism`, a ring of `sides` (default 12, width across the flats) that `taper` scales at the top
-## and `axis` (x, y or z, default z) lays along its length (sx, sy or sz); `sphere` of diameter sx.
+## and `axis` (x, y or z, default z) lays along its length (sx, sy or sz); `sphere` of diameter sx;
+## `broken`, `rod` and the helper `petals` (generator v5b, below).
 ## `damage=K` (1 or 2, a hull primitive of a building) draws the primitive only from damage stage K
 ## on, so the intact picture has none of them (ADR 0028 section 3).
 ## `group` names the pose group the primitive belongs to (ADR 0027 section 4): a pose moves the
@@ -18,17 +22,20 @@ extends RefCounted
 
 const SHAPES: Array[StringName] = [&"box", &"wedge", &"prism", &"sphere", &"broken", &"rod"]
 ## `broken` (ADR 0029 section 5, generator v5b) is a box whose top edge, along its longer
-## horizontal axis, is a zigzag of `teeth=N` points (2 to 12, default 5) between `low=f` (0 to 1,
-## default 0.5) and the full height, the heights from a hash of the art id and the line.
+## horizontal axis, is a zigzag of `teeth=N` points (2 to 12, default 5) between `low=f` (above 0,
+## below 1, default 0.5) and the full height, the heights from a hash of the art id and the line.
 ## `rod <part> <material> x0 y0 z0 x1 y1 z1 width` is a stroke of `width` art px from one point to
-## another with no outline, ordered at its midpoint; `bend=<degrees>` (at most 90) turns its upper
-## half about the horizontal axis across it (a vertical rod's upper half swings towards +x).
-## `petals <part> <material> cx cy z diameter n tilt` is a helper line, `parse_all` expands it into
-## `n` thin plates round the opening, each turned outward by `tilt` degrees about its base, and an
-## `interior` disc in the opening.
+## another with no outline, ordered at its midpoint; `bend=<degrees>` (at most 90) turns the half
+## towards x1 y1 z1 about the horizontal axis (up x direction), right-handed: a vertical rod's far
+## half swings towards +x, a rod that runs along +x droops. `petals` (hull and anim only) is a
+## helper line, `parse_all` expands it into `n` (3 to 16) thin plates round the opening, each turned
+## outward by `tilt` degrees (above 0, at most 90) about its base, and an `interior` disc in it.
 const PETAL_THICK: float = 0.04
 const PETAL_FILL: float = 0.9  ## The share of its sector a plate's width covers.
 const MIN_ROD_PX: float = 2.0
+const PETAL_DISC: float = 0.03  ## Its height, 2.4 px at 2x.
+const PETAL_PARTS: Array[StringName] = [&"hull", &"anim"]
+const SUB_STEP: int = 65536  ## `key`: the step of a helper's primitives.
 const PARTS: Array[StringName] = [&"hull", &"turret", &"head"]
 ## The moving element of a building (or of a vehicle): only the pose part `anim` draws it, and it
 ## is not a part with frames of its own.
@@ -59,6 +66,8 @@ var width: float = 0.0  ## `rod`: its width in art px.
 var bend: float = 0.0  ## `rod`: degrees.
 var seed: int = 0  ## The djb2 of the art id, set by `ArtModel`: the hash of `broken`.
 var fixed: Array[ArtMove] = []  ## Placement before `moves` (the turn of a petal plate).
+var sub: int = 0  ## The place of a primitive among those one `petals` line expands to.
+var source: String = ""  ## The `petals` line a plate or disc came from.
 var index: int = 0  ## The line of the model it was parsed from, set by `ArtModel`.
 var line: String = ""  ## What it was parsed from, which `moved` parses again.
 var moves: Array[ArtMove] = []  ## Applied in order after the rest placement; see `moved`.
@@ -117,18 +126,17 @@ static func parse_all(line: String) -> Array[ArtPrim]:
 	var count: int = words[7].to_int()
 	var tilt: float = words[8].to_float()
 	var diameter: float = words[6].to_float()
-	if not words[7].is_valid_int() or count < 3 or count > 16 or diameter <= 0.0:
+	if StringName(words[1]) not in PETAL_PARTS or not words[7].is_valid_int():
 		return found
-	if tilt <= 0.0 or tilt > 90.0:
+	if count < 3 or count > 16 or diameter <= 0.0 or tilt <= 0.0 or tilt > 90.0:
 		return found
 	var centre: Vector3 = Vector3(words[3].to_float(), words[4].to_float(), words[5].to_float())
 	var opts: String = " ".join(words.slice(9))
 	var head: String = "%s %s" % [words[1], words[2]]
-	var floor_head: String = "%s interior" % words[1]
 	var disc: ArtPrim = parse(
 		(
-			"prism %s %s %s %s %s %s %s sides=16 %s"
-			% [floor_head, centre.x, centre.y, centre.z, diameter, diameter, 0.02, opts]
+			"prism %s interior %s %s %s %s %s %s sides=16 %s"
+			% [words[1], centre.x, centre.y, centre.z, diameter, diameter, PETAL_DISC, opts]
 		)
 	)
 	if disc == null:
@@ -150,9 +158,14 @@ static func parse_all(line: String) -> Array[ArtPrim]:
 				]
 			)
 		)
+		if plate == null:
+			return []
 		var base: Vector3 = Vector3(centre.x + diameter / 2.0, centre.y, centre.z)
 		plate.fixed = [ArtMove.turned(1, tilt, base), ArtMove.turned(2, k * 360.0 / count, centre)]
+		plate.sub = k + 1
 		found.append(plate)
+	for prim: ArtPrim in found:
+		prim.source = line
 	return found
 
 
@@ -185,6 +198,8 @@ func moved(by: Array[ArtMove]) -> ArtPrim:
 	copy.fixed = fixed
 	copy.seed = seed
 	copy.index = index
+	copy.sub = sub
+	copy.source = source
 	for move: ArtMove in mine:
 		copy.hidden = copy.hidden or move.kind == &"hide"
 		if move.kind == &"char":
@@ -208,6 +223,17 @@ func spin(direction: Vector3) -> Vector3:
 	for move: ArtMove in moves:
 		direction = move.spin(direction)
 	return direction
+
+
+## A key of the primitive that is unique in its model (`index` is shared by the primitives of one
+## `petals` line; it is the line number for messages). It equals `index` for any other primitive.
+func key() -> int:
+	return index + sub * SUB_STEP
+
+
+## What a message calls the primitive: the line it was written in.
+func label() -> String:
+	return source if source != "" else line
 
 
 ## A rod's points at rest, in tiles: its ends and the middle, where `bend` turns the upper half.

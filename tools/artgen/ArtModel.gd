@@ -222,7 +222,7 @@ func damage_swaps(stage: int) -> Array[Array]:
 	var rank: Dictionary[int, int] = {}
 	var seen: Array[int] = ArtRender.draw_order(intact, 0.0)
 	for at: int in seen.size():
-		rank[intact[seen[at]].index] = at
+		rank[intact[seen[at]].key()] = at
 	var order: Array[int] = ArtRender.draw_order(posed, 0.0)
 	var found: Array[Array] = []
 	for i: int in order.size():
@@ -231,7 +231,7 @@ func damage_swaps(stage: int) -> Array[Array]:
 			var second: ArtPrim = posed[order[j]]
 			var untouched: bool = first.damage == 0 and second.damage == 0
 			untouched = untouched and first.moves.is_empty() and second.moves.is_empty()
-			if untouched and rank[first.index] > rank[second.index]:
+			if untouched and rank[first.key()] > rank[second.key()]:
 				found.append([first, second])
 	return found
 
@@ -269,9 +269,9 @@ func _posed(prim: ArtPrim, by: Array[ArtMove]) -> ArtPrim:
 		order = ArtDamage.blow_order(self, prim.group)
 	for move: ArtMove in posed.moves:
 		only_blow = only_blow and move.kind == &"blow"
-		if move.kind == &"blow" and order.has(prim.index):
+		if move.kind == &"blow" and order.has(prim.key()):
 			taken = (
-				taken or order.find(prim.index) < roundi(order.size() * move.blow_percent / 100.0)
+				taken or order.find(prim.key()) < roundi(order.size() * move.blow_percent / 100.0)
 			)
 	if taken:
 		posed.material = &"hole"
@@ -359,7 +359,10 @@ func problems() -> PackedStringArray:
 	for line: String in prims:
 		var parsed: Array[ArtPrim] = ArtPrim.parse_all(line)
 		var prim: ArtPrim = parsed[0] if not parsed.is_empty() else null
-		if prim == null or not ArtPalette.has_material(faction, prim.material):
+		var known: bool = not parsed.is_empty()
+		for each: ArtPrim in parsed:
+			known = known and ArtPalette.has_material(faction, each.material)
+		if not known:
 			found.append("%s: not a primitive or an unknown material: %s" % [art_id, line])
 		elif prim.damage > 0 and (prim.part != &"hull" or category != &"bld"):
 			found.append(

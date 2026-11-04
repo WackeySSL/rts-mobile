@@ -130,10 +130,12 @@ ADR 0023 section 5; the canvas's Spec 02. One light for the whole game, from the
   material (0.45 of its mid tone) on the sides, a thin light edge (the top tone 40 % towards white)
   on top faces, so every top edge catches the light (Spec 02). A team zone's edges are its key
   colours. A sphere is three discs, dark, mid and a lit one up and left, in a ring of 16 points.
+  A `rod` has no outline (generator v5b, below).
 - **Cast shadows** are separate frames (`<id>_shadow_d<NN>.svg`, a building's `<id>_shadow.svg`, one
   per hull frame): every primitive is dropped onto the ground towards **+gx, the south-east of the
   screen** (Spec 02), a point `0.8 x its height` tiles further along +gx (`ArtShadow.REACH`), and
-  a convex solid's shadow is the hull of its dropped corners, a sphere's an ellipse. Black, one
+  a convex solid's shadow is the hull of its dropped corners, a sphere's an ellipse (a `rod`
+  casts none, generator v5b below). Black, one
   polygon per primitive, **35 % as one group** (`<g opacity="0.35">`, so where two overlap the
   shadow is no darker; the group is why a shadow file has a decimal that is an opacity). The light
   does not turn with a unit: the unit is turned first, so every frame's shadow falls to the right.
@@ -325,19 +327,27 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   **Generator v5b** (P163b, ADR 0029 section 5), on crafted models in `tests/art/test_artgen_v5b.gd`;
   a model that uses none of it gives the same bytes as before:
   - **`broken <part> <material> cx cy z0 sx sy sz teeth=N low=f`** is a box whose top edge, along
-    its longer horizontal axis, is a zigzag of `N` points (2 to 12, default 5) between `f` (0 to 1,
-    default 0.5) and the full height, high and low in turn. The heights come from an integer hash
+    its longer horizontal axis, is a zigzag of `N` points (2 to 12, default 5) between `f` (above
+    0, below 1, default 0.5) and the full height, high and low in turn. The heights come from an integer hash
     of the art id and the line (the inlined djb2 and `_mix` of `blow`; no randomness), so two runs
     agree and two lines differ. Faces: front and back with the zigzag, two ends, the floor and one
-    quad per tooth segment.
+    quad per tooth segment. It is one concave primitive: its tops are drawn far to near, then the
+    front and the end cap over them (no slices, so no seams), and each tooth quad is oriented
+    against a point below its own middle.
   - **`rod <part> <material> x0 y0 z0 x1 y1 z1 width [bend=deg]`** is one polygon quad `width` art
     px across (at least 2) in the material's mid tone, with no outline, ordered at its midpoint's
-    depth. `bend` (at most 90) turns the upper half about the horizontal axis across the rod
-    (a vertical rod's upper half swings towards +x) and makes two quads. It casts no shadow.
+    depth. `bend` (at most 90 degrees) turns the half towards the second point about the
+    horizontal axis (up x direction), right-handed, and makes two quads: a vertical rod's far half
+    swings towards +x, a rod that runs along +x droops. It takes any material. "No outline" is ADR
+    0029 section 5's decision; "casts no shadow" is the generator's own (a rod has no faces to
+    drop; the Edges and Cast shadows rules above do not apply to it).
   - **`petals <part> <material> cx cy z diameter n tilt [group=] [damage=]`** expands when the
     model is read into `n` (3 to 16) thin plates of the material round the opening, each turned
-    outward by `tilt` degrees (1 to 90) about its base, and an `interior` disc in the opening: `n`
-    plates and one disc, in exact counts, all in the line's group.
+    outward by `tilt` degrees (above 0, at most 90) about its base, and an `interior` disc 0.03
+    tile tall in the opening: `n` plates and one disc, in exact counts, all in the line's group.
+    Only in `hull` and `anim` (a turret or head would shift the plates' pivots). The primitives
+    of one line have keys of their own for `blow` and the swap test; a message names the `petals`
+    line.
   - There is no `rubble` helper: a KRITISK patch cannot reach the foot, so a ground heap has no
     stage to be in.
 - **Item cards** (`ArtIcon`): 128 x 128 px, a dark plate (#1C2127, rim #2F363D, the corners cut), a

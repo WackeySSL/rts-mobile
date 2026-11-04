@@ -76,6 +76,9 @@ static func render(
 				out.append(stroke)
 			continue
 		var tops: Array[Poly] = []
+		var sides: Array[Poly] = []
+		var depths: Array[float] = []
+		var broken: bool = prim.shape == &"broken"
 		var faces: Array[ArtMesh.Face] = ArtMesh.faces(prim)
 		var at_rest: Array[ArtMesh.Face] = faces if rest.is_empty() else ArtMesh.faces(rest[i])
 		for k: int in faces.size():
@@ -83,14 +86,34 @@ static func render(
 			var normal: Vector3 = _turn(face.normal, turn)
 			if normal.dot(VIEW) < MIN_FACING:
 				continue
-			var is_top: bool = at_rest[k].normal.z >= 0.5
+			var is_top: bool = at_rest[k].normal.z >= (0.01 if broken else 0.5)
 			var poly: Poly = Poly.new()
 			poly.prim = i
 			for point: Vector3 in face.points:
 				poly.points.append(project(_turn(point, turn)))
 			poly.fill = _scorch(prim, ArtPalette.tone(faction, prim.material, level(normal)))
 			poly.stroke = _scorch(prim, ArtPalette.edge(faction, prim.material, is_top))
+			if broken:
+				var middle: Vector3 = Vector3.ZERO
+				for point: Vector3 in face.points:
+					middle += _turn(point, turn) / face.points.size()
+				(tops if is_top else sides).append(poly)
+				if is_top:
+					depths.append(middle.dot(VIEW))
+				continue
 			(tops if is_top else out).append(poly)
+		if broken:
+			# A concave primitive: the tops far to near, then the sides and the end caps over them.
+			var order: Array[int] = []
+			order.assign(range(tops.size()))
+			order.sort_custom(
+				func(a: int, b: int) -> bool:
+					return depths[a] < depths[b] or (depths[a] == depths[b] and a < b)
+			)
+			for at: int in order:
+				out.append(tops[at])
+			out.append_array(sides)
+			continue
 		out.append_array(tops)
 	return out
 
