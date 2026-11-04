@@ -24,6 +24,12 @@ Status note (2026-11-04, P26au docs; on `main` at 48e7415): dated notes at the e
 (#307), P161 (#308) and P148 (#309) are merged. P148b (#310), P158a, P158b and P166 are on their
 branches. The decisions are Michael's and the lead's. No accepted text changed.
 
+Status note (2026-11-04, P26av docs; on `main` at 6eab1e6): P148b (#310), P158a (#312), P158b
+(#313), P166 (#314) and P165, as P165a (#315) and P165b (#316), are merged. A dated note at the end
+of §8 records what P165a and P165b built and what the lead decided for them, with pointers in §9,
+§10 and §13. The P26au notes written from their branches (the page figures in §4 and §10, §7's chips
+and cull, §13's P148b notes) hold as merged. No accepted text changed.
+
 It amends ADR 0028: §2 (the thresholds, one list per kind), §3 (what `dmg1` and `dmg2` show, the
 `Anim` at stage 2, the damage points, and the second amendment's open point on the seam, §11 here),
 §4 (what `scar_milli` means, the loose part's scale and mirror), §6 (the particles), §7 (reduced
@@ -472,6 +478,53 @@ rule 5 ("explosion 0-250 ms, dust cloud 250-900 ms"); its "ruin from 900 ms" bec
 - **No new draw call:** the sinking building is its own sprites on the page, the particles are quads
   in `AirFx`'s one `_draw`, the burst is `EffectsLayer`'s, the crater is `DecalLayer`'s existing one.
 
+Notes (2026-11-04, P26av docs; P165a #315 and P165b #316 as merged, lead decisions; the text above
+stays as accepted):
+- **`crater_scale_milli` also holds `renew_refinery` 1500**, the Lumen Accord's refinery. The text
+  above and §13 name only `refinery`.
+- **The crater source is added at DIED**, with its start tick at DIED + ceil(`collapse_end_ms` x 15
+  / 1000) ticks (14 ticks, about 933 ms, for 900 ms). So `end_crater_sources_on` finds the source
+  even when a building is placed on the tiles during the collapse, before the smoke starts. A site
+  that dies adds none, as above (it never burned).
+- **Where the smoke is ended.** `BuildingLayer._refresh_shown` calls
+  `AirFx.end_crater_sources_on` once per entry, the first time the entry is shown. That covers an
+  own site from its first tick, and a hidden enemy building when it is later shown.
+  `AirFx._on_ticked` calls `building_layer.sync_rows()` before it feeds any ring, so the stop lands
+  in that tick
+  whatever order the `ticked` handlers run in. This is how §13's P148b note ("P165 calls
+  `end_crater_sources_on` before `AirFx`'s `ticked` handler emits") is met.
+- **The shadow** goes at the hide (700 ms, `collapse_hide_ms`), as the table above has it (P159's
+  stub removed it at DIED). A building that plays no collapse (a cancelled site, or any with
+  `collapse_max` 0) still loses it at DIED.
+- **A cancelled site draws no DIED burst either.** `EffectsLayer._add_death` skips a DIED with
+  `Production.DIED_CANCEL_FLAG_AT` set, beside "no collapse and no crater" above.
+- **The sink.** The body keeps at least `ceil(patch.scale.y / body.scale.y)` rows (1 with no
+  patch). The patch follows the whole move, snapped to the body's rows, even where the body has no
+  rows left to give, and loses only the rows that would hang below the body's foot. So a building
+  whose body its stage has trimmed still sinks to `collapse_sink_percent` of its rise, and §11's
+  overlap stays above zero at every bake scale.
+- **Writes** (§10):
+  - starts and hides are written oldest first;
+  - a sink step goes to the collapse with the fewest steps written, so none is starved;
+  - with `collapse_max` 0 no collapse runs, but the crater and its smoke still stand.
+- **Particles** (P165b, `CollapseFx`, the collapse ring: the third `FxRing` of `AirFx._rings`, after
+  the damage and hit rings):
+  - the ring is split over every running collapse; this replaces "When `n` collapses start in one
+    tick, each gets at most `collapse_slots / n` puffs" above;
+  - a running collapse keeps what it has born; its unborn dust and debris are trimmed to the new
+    share;
+  - the order is dust, flash, fire, debris; this replaces "dust first (it covers the hide), then
+    fire, then debris" above;
+  - `reduced` turned on before the debris is born (at `collapse_sink_ms[0]`, 250 ms) drops it;
+    debris already in flight lives out;
+  - the fire's spread over the footprint is data, `collapse_fire_spread_milli` (350).
+- **An observed edge, recorded as a note only (no decision).** An enemy building seen one tick
+  before its death and unseen in its DIED tick still collapses and leaves a crater: `_drop` reads
+  `entry.shown` (§9's rule), which still holds the tick before. `EffectsLayer` draws no burst for
+  it, because it checks the DIED tick's fog at the point of the death. The same lag works the other
+  way: an enemy building unseen the tick before its death and seen in its DIED tick gets no collapse
+  and no crater, while `EffectsLayer` draws its burst when the death's tile is seen.
+
 ### 9. Fog and ghosts
 - **Live stages:** ADR 0028 §5 stands (a stage only on a shown row; the remembered stage; ghosts at
   it, dimmed, with no particles).
@@ -487,6 +540,9 @@ rule 5 ("explosion 0-250 ms, dust cloud 250-900 ms"); its "ruin from 900 ms" bec
   the ground is empty. Nothing is invented for a death the player did not see.
 - **A change of the local player** re-applies the fog rule to the craters' smoke; a collapse in
   flight plays on.
+
+(2026-11-04, P26av docs: whether an enemy building collapses follows whether it was shown the tick
+before its DIED, not in it; see the observed edge in §8's notes.)
 
 ### 10. Budget
 - **Draw calls: none new** (§8). ADR 0027's forecast stays 16 (about 22 in the worst moment).
@@ -533,6 +589,8 @@ rule 5 ("explosion 0-250 ms, dust cloud 250-900 ms"); its "ruin from 900 ms" bec
 - (2026-11-04, P26au docs) P158a and P158b, not yet merged, measured the cross-faction page with all
   16 buildings at 3550, within 3584. Fallback (1) can no longer apply to many buildings; see the
   notes at the end of §4.
+- (2026-11-04, P26av docs) How P165a writes the collapses (oldest first, the fewest steps first,
+  `collapse_max` 0) is in §8's notes.
 
 ### 11. The seam of the trimmed body and its patch (replaces ADR 0028 §3's second amendment's open point)
 ADR 0028 §3's second amendment asked for "at least 1 texel" of overlap and named "the `floor` of the
@@ -628,6 +686,13 @@ too; the text above stays as accepted). P148b is on `claude/p148b-crater-sources
   tick)` and `AirFx.end_crater_sources_on(foot)`, named apart from `DecalLayer.add_crater`. P165
   calls `end_crater_sources_on` before `AirFx`'s `ticked` handler emits, so a source stops in that
   tick. The crater sources moved from P148 to P148b; §6's "P148 draws them" is P148b's.
+
+(2026-11-04, P26av docs: `crater_scale_milli` also holds `renew_refinery` 1500; P165b's looks are
+data too, beside the list above: `collapse_dust_life_ms` 450, `collapse_dust_rise_px` 18,
+`collapse_dust_grow` (0.8, 1.5), `collapse_dust_alpha` 0.8, `collapse_spread_milli` 700 (the dust),
+`collapse_fire_spread_milli` 350 (the fire), `collapse_debris_ms` 450, `collapse_debris_fly_px`
+(eight directions), `collapse_flash_grow` (1.4, 2.6), `collapse_fire_grow` (1.2, 0.8),
+`collapse_alpha` 1.0 and `collapse_lift_milli` 500; see §8's notes.)
 
 ### 14. Repair (rule 7; none in the game)
 There is no repair, healing or regeneration (ADR 0028 §2). For a future repair ADR: **repair runs
