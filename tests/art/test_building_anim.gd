@@ -37,14 +37,26 @@ const SHARE_MAX: Dictionary[StringName, float] = {&"fossil": 0.13, &"renew": 0.1
 ## faction's cap would let through.
 const SHARE_MAX_ID: Dictionary[StringName, float] = {&"renew_radar": 0.105}
 const MIN_FACING: float = 0.12  ## A face seen at a sliver is not judged (as in test_artgen_poses).
-## Where each model's emitters are (kinds, in file order); the vehicles' is one `exhaust`.
+## Where each model's emitters are (kinds, in file order); the vehicles' is one `exhaust`. The
+## Derrick League's buildings carry their typed damage points (P158a, ADR 0029).
 const EMITTERS: Dictionary[StringName, Array] = {
-	&"headquarters": [&"smoke"],
-	&"refinery": [&"steam", &"flame"],
-	&"power_plant": [&"smoke", &"smoke"],
-	&"renew_refinery": [&"steam", &"steam"],
-	&"fossil_strike": [&"launch"],
-	&"renew_strike": [&"launch"],
+	&"barracks": [&"damage", &"dmg_spark", &"damage"],
+	&"defence_turret": [&"damage", &"dmg_spark"],
+	&"fossil_radar": [&"damage", &"dmg_spark"],
+	&"fossil_strike": [&"launch", &"damage", &"dmg_spark"],
+	&"headquarters": [&"smoke", &"damage", &"damage", &"dmg_spark"],
+	&"power_plant": [&"smoke", &"smoke", &"damage", &"damage", &"dmg_spark"],
+	&"refinery": [&"steam", &"flame", &"dmg_gas", &"dmg_gas", &"damage"],
+	&"vehicle_factory": [&"damage", &"dmg_spark"],
+	&"renew_refinery": [&"steam", &"steam", &"damage", &"dmg_gas"],
+	&"renew_strike": [&"launch", &"damage", &"dmg_spark"],
+	# P158b: the Lumen Accord's damage points (ADR 0029 section 5).
+	&"renew_hq": [&"damage", &"dmg_spark"],
+	&"renew_barracks": [&"damage", &"dmg_spark"],
+	&"renew_defence": [&"damage", &"dmg_spark"],
+	&"renew_factory": [&"damage", &"dmg_spark", &"dmg_spark"],
+	&"renew_power": [&"damage", &"dmg_spark"],
+	&"renew_radar": [&"damage", &"dmg_spark"],
 }
 const VEHICLES: Dictionary[StringName, StringName] = {
 	&"light_tank": &"wheels",
