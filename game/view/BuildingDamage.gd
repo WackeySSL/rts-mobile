@@ -14,7 +14,6 @@ const PATCH_PATH: NodePath = ^"Damage"
 ## The sheet part of each stage's patch: index stage - 1.
 const PARTS: Array[StringName] = [&"dmg1", &"dmg2"]
 const KRITISK: int = 2
-const ANIM_KRITISK: StringName = &"anim_kritisk"
 
 
 ## The stage of `hp` of `max_hp` for the lines `percents` (`[P1, P2]`): one for each line the hp is
@@ -37,12 +36,10 @@ static func picture(sheet: IsoSheetDef, stage: int) -> int:
 	return 0
 
 
-## Whether the `Anim` of `sheet` runs at KRITISK (ADR 0029 section 3). A sheet without the field
-## hides it, which is the default P163's `IsoSheetDef.anim_kritisk` has.
-## TODO(P163): once the field is on `IsoSheetDef`, this is `return sheet.anim_kritisk`.
+## Whether the `Anim` of `sheet` runs at KRITISK (ADR 0029 section 3): the sheet's
+## `anim_kritisk`, which the generator writes from the model (default false: hidden).
 static func anim_runs(sheet: IsoSheetDef) -> bool:
-	var field: Variant = sheet.get(ANIM_KRITISK)
-	return field as bool if field is bool else false
+	return sheet.anim_kritisk
 
 
 ## Whether the `Anim` is hidden at picture stage `stage`.
