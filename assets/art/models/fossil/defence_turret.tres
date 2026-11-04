@@ -12,18 +12,56 @@ silhouette = "A squat poured-concrete bunker with a team band and a short whip a
 mount = Vector3(0, 0, 0.72)
 prims = PackedStringArray(
 "box hull concrete 0 0 0 0.92 0.92 0.06",
-"box hull concrete 0 0 0.06 0.8 0.8 0.28",
-"box hull team 0 0 0.34 0.84 0.84 0.1",
-"box hull concrete 0 0 0.44 0.8 0.8 0.1",
+"box hull concrete 0 0 0.06 0.8 0.8 0.28 group=bodyc",
+"box hull team 0 0 0.34 0.84 0.84 0.1 group=band",
+"box hull concrete 0 0 0.44 0.8 0.8 0.1 group=cap",
 "prism hull iron 0 0 0.54 0.6 0.6 0.06 sides=16",
-"box hull iron 0.41 0 0.14 0.02 0.3 0.1",
-"box hull iron 0 0.41 0.14 0.3 0.02 0.1",
-"prism hull steel -0.3 -0.3 0.6 0.04 0.04 0.35 sides=6",
+"box hull iron 0.41 0 0.14 0.02 0.3 0.1 group=stubs",
+"box hull iron 0 0.41 0.14 0.3 0.02 0.1 group=stubs",
+"prism hull steel -0.3 -0.3 0.6 0.04 0.04 0.35 sides=6 group=aerial",
 "prism head olive 0 0 0 0.5 0.5 0.14 sides=8",
 "prism head team 0 0 0.14 0.52 0.52 0.08 sides=8",
 "prism head olive 0 0 0.22 0.46 0.46 0.08 sides=8",
 "box head iron -0.1 0 0.3 0.2 0.2 0.05",
 "prism head rust 0.36 0 0.035 0.26 0.17 0.17 sides=8 axis=x",
 "prism head steel 0.54 0 0.065 0.18 0.11 0.11 sides=8 axis=x",
-"prism head iron 0.67 0 0.045 0.1 0.15 0.15 sides=8 axis=x"
+"prism head iron 0.67 0 0.045 0.1 0.15 0.15 sides=8 axis=x",
+"box hull team -0.14 0 0.34 0.56 0.84 0.1 damage=1 group=p1",
+"box hull team 0.28 -0.14 0.34 0.28 0.56 0.1 damage=1 group=p1",
+"box hull team 0.28 0.28 0.34 0.28 0.28 0.1 damage=1 group=p1c",
+"box hull concrete -0.13 0 0.44 0.54 0.8 0.1 damage=1 group=p1",
+"box hull concrete 0.27 -0.13 0.44 0.26 0.54 0.1 damage=1 group=p1",
+"box hull interior 0.27 0.27 0.44 0.26 0.26 0.02 damage=1 group=p1",
+"broken hull concrete 0.3 0.3 0.46 0.22 0.22 0.08 teeth=4 low=0.3 damage=1 group=p1",
+"rod hull rebar 0.18 0.34 0.46 0.1 0.34 0.74 3 bend=30 damage=1 group=p1",
+"rod hull rebar 0.34 0.16 0.46 0.34 0.1 0.7 3 bend=-30 damage=1 group=p1",
+"rod hull steel -0.3 -0.3 0.6 -0.3 -0.3 0.95 4 bend=35 damage=1 group=p1",
+"box hull concrete 0 0 0.06 0.36 0.36 0.48 damage=2 group=k2",
+"box hull interior 0 0 0.06 0.7 0.7 0.12 damage=2 group=k2",
+"broken hull concrete 0.38 0 0.06 0.08 0.84 0.48 teeth=5 low=0.35 damage=2 group=k2",
+"broken hull concrete 0 -0.38 0.06 0.84 0.08 0.48 teeth=5 low=0.5 damage=2 group=k2",
+"broken hull concrete -0.38 0 0.06 0.08 0.84 0.4 teeth=4 low=0.2 damage=2 group=k2",
+"broken hull concrete 0.2 0.38 0.06 0.4 0.08 0.2 teeth=3 low=0.3 damage=2 group=k2",
+"broken hull team 0.43 0.2 0.32 0.1 0.36 0.12 teeth=3 low=0.3 damage=2 group=k2",
+"wedge hull slab -0.12 0.2 0.18 0.3 0.3 0.14 slope=0.9 damage=2 group=k2",
+"rod hull rebar 0.38 0.1 0.4 0.38 0.1 0.68 3 bend=25 damage=2 group=k2",
+"rod hull rebar -0.38 0.2 0.34 -0.38 0.2 0.58 3 bend=-30 damage=2 group=k2",
+"rod hull beam -0.3 -0.3 0.5 0.05 0.25 0.3 4 bend=20 damage=2 group=k2"
+)
+poses = PackedStringArray(
+"dmg1 0 band hide",
+"dmg1 0 cap hide",
+"dmg1 0 aerial hide",
+"dmg1 0 p1c char 100",
+"dmg2 0 bodyc hide",
+"dmg2 0 band hide",
+"dmg2 0 cap hide",
+"dmg2 0 stubs hide",
+"dmg2 0 aerial hide",
+"dmg2 0 p1 hide",
+"dmg2 0 p1c hide"
+)
+emitters = PackedStringArray(
+"damage 0.28 0.28 0.5",
+"dmg_spark -0.2 -0.2 0.56"
 )

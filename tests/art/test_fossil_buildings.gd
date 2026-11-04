@@ -125,6 +125,11 @@ func test_a_building_has_one_view_and_a_cast_shadow_and_the_redoubt_has_16_heads
 			# The moving element (P143) is a part of its own, between the body and the shadow.
 			parts.insert(parts.size() - 1, "anim")
 			counts.insert(counts.size() - 1, 1)
+		# The patches of the two damage stages (P158a) sit before the shadow.
+		parts.insert(parts.size() - 1, "dmg1")
+		parts.insert(parts.size() - 1, "dmg2")
+		counts.insert(counts.size() - 1, 1)
+		counts.insert(counts.size() - 1, 1)
 		assert_array(Array(sheet.parts)).override_failure_message("%s" % id).is_equal(parts)
 		assert_array(Array(sheet.counts)).override_failure_message("%s" % id).is_equal(counts)
 		assert_array(Array(sheet.directions(&"hull"))).is_equal([-1])

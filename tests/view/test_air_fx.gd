@@ -80,6 +80,8 @@ func test_a_complete_online_shown_building_puffs_at_each_emitter_from_its_sheet(
 	for id: int in EMITTING:
 		var sheet: IsoSheetDef = _sheet(id)
 		for index: int in sheet.emitters.size():
+			if not AirFx.EMITTERS.has(StringName(sheet.emitters[index])):
+				continue  # A damage point (P158a): it burns only at a stage (DamageFx).
 			var spot: Vector2 = _spot(id, index)
 			(
 				assert_int(_births(spot).size())
@@ -95,6 +97,8 @@ func test_an_emitter_puffs_when_the_cycle_of_its_kind_turns_over_from_the_phase_
 	for id: int in [REFINERY, HALL, LUMEN]:
 		var sheet: IsoSheetDef = _sheet(id)
 		for index: int in sheet.emitters.size():
+			if not AirFx.EMITTERS.has(StringName(sheet.emitters[index])):
+				continue  # A damage point (P158a): it burns only at a stage (DamageFx).
 			var every: int = _emit_ms(sheet.emitters[index])
 			var phase: int = LifeClock.mix(id, SALT + index) % every
 			var want: Array[int] = []

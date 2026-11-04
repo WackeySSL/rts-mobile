@@ -257,6 +257,133 @@ func test_an_animated_building_plays_its_anim_frames_on_the_pages_clock() -> voi
 	assert_int(page.find_children("Anim", "Sprite2D", true, false).size()).is_equal(0)
 
 
+## The Stage button (P158a, ADR 0029): intact, SKADET, KRITISK. A building that has the patches
+## draws the body from its cut row down and the stage's patch over it, `Damage` right after `Hull`
+## at the body's position, in every section and in the triad's own colours, sized per part from the
+## texels it really has (the patch is baked at `IsoAtlas.DAMAGE_SCALE`); the `Anim` runs at
+## SKADET and at KRITISK where the sheet says so; a defence's `Head` stays; the tanks stay as they
+## are; the third press is the intact page again. A building without patches shows no patch.
+func test_the_stage_button_shows_each_building_at_its_damage_stages() -> void:
+	var gallery: Control = await _open_gallery()
+	var page: Control = await _build_page(gallery)
+	var index: IsoIndex = load(IsoIndex.PATH) as IsoIndex
+	var button: Button = page.get_node("Stage")
+	assert_vector(button.size).is_greater_equal(Vector2(48, 48))
+	assert_bool(button.get_global_rect().intersects(_corner_buttons(gallery)[0])).is_false()
+	assert_bool(button.get_global_rect().intersects(_corner_buttons(gallery)[1])).is_false()
+	assert_str(button.text).is_equal(page.STAGE_NAMES[0])
+	var staged: int = 0
+	for id: String in _building_ids():
+		var sheet: IsoSheetDef = index.sheet(StringName(id))
+		if not sheet.has_part(&"dmg1"):
+			page.get_node("Next").pressed.emit()
+			continue
+		staged += 1
+		assert_int(sheet.cuts.size()).override_failure_message(id).is_equal(2)
+		assert_int(page.find_children("Damage", "Sprite2D", true, false).size()).is_equal(0)
+		for stage: int in [1, 2]:
+			button.pressed.emit()
+			assert_str(button.text).is_equal(page.STAGE_NAMES[stage])
+			var patches: Array[Node] = page.find_children("Damage", "Sprite2D", true, false)
+			assert_int(patches.size()).override_failure_message(id).is_equal(2 * SECTIONS.size())
+			# The `Anim` child runs at SKADET and at KRITISK only where the sheet says so.
+			var anims: int = page.find_children("Anim", "Sprite2D", true, false).size()
+			var runs: bool = sheet.has_part(&"anim") and (stage == 1 or sheet.anim_kritisk)
+			assert_int(anims).override_failure_message("%s stage %d" % [id, stage]).is_equal(
+				2 * SECTIONS.size() if runs else 0
+			)
+			if id in ARMED:
+				_check_heads(page, sheet, stage)
+			for patch: Sprite2D in patches:
+				_check_patch(page, patch, sheet, stage)
+		button.pressed.emit()  # Intact again.
+		assert_str(button.text).is_equal(page.STAGE_NAMES[0])
+		assert_int(page.find_children("Damage", "Sprite2D", true, false).size()).is_equal(0)
+		page.get_node("Next").pressed.emit()
+	assert_int(staged).is_equal(8)  # The Derrick League's; P158b adds the Lumen Accord's.
+
+
+## The body of a stage is trimmed at the integer ceil of the cut in texels, with the clip on, also
+## where the raster is not the canvas (a body baked below the bake scale): a floor would leave
+## a row that the patch does not cover.
+func test_the_body_is_trimmed_at_the_integer_ceil_of_the_cut_in_texels() -> void:
+	var gallery: Control = await _open_gallery()
+	var page: Control = await _build_page(gallery)
+	var sprite: Sprite2D = auto_free(Sprite2D.new())
+	sprite.region_rect = Rect2(10, 20, 100, 150)  # A raster of 150 rows for a canvas of 200.
+	sprite.offset = Vector2(-5, -7)
+	page._trim_to_cut(sprite, 89, 200)  # 89 * 150 / 200 = 66.75: row 67, not 66.
+	assert_that(sprite.region_rect).is_equal(Rect2(10, 87, 100, 83))
+	assert_that(sprite.offset).is_equal(Vector2(-5, 60))
+	assert_bool(sprite.region_filter_clip_enabled).is_true()
+	sprite.region_rect = Rect2(0, 0, 100, 150)
+	sprite.offset = Vector2.ZERO
+	page._trim_to_cut(sprite, 80, 200)  # 80 * 150 / 200 = 60 exactly: no extra row.
+	assert_that(sprite.region_rect).is_equal(Rect2(0, 60, 100, 90))
+	assert_that(sprite.offset).is_equal(Vector2(0, 60))
+	sprite.region_rect = Rect2(0, 0, 100, 200)  # The raster is the canvas: the cut itself.
+	sprite.offset = Vector2.ZERO
+	page._trim_to_cut(sprite, 89, 200)
+	assert_that(sprite.region_rect).is_equal(Rect2(0, 89, 100, 111))
+
+
+## A `Damage` sprite of `stage`: its region, its place right after its `Hull` at the body's
+## position, the trimmed body under it and the sizes that come from the texels each part really has.
+func _check_patch(page: Control, patch: Sprite2D, sheet: IsoSheetDef, stage: int) -> void:
+	var id: String = String(sheet.art_id)
+	var triad: int = TRIAD_OF[_triad_name(patch.get_node("../../../.."))]
+	var part: StringName = StringName("dmg%d" % stage)
+	var want: Rect2i = page.atlas.region(sheet.art_id, part, -1, triad)
+	assert_bool(want.has_area()).override_failure_message(id).is_true()
+	assert_that(patch.region_rect).override_failure_message(id).is_equal(Rect2(want))
+	var hull: Sprite2D = patch.get_parent().get_node("Hull")
+	assert_int(patch.get_index()).is_equal(hull.get_index() + 1)
+	assert_vector(patch.position).override_failure_message(id).is_equal(hull.position)
+	assert_bool(patch.centered).is_false()
+	assert_int(patch.z_index).is_equal(hull.z_index)
+	var whole: Rect2i = page.atlas.region(sheet.art_id, &"hull", -1, triad)
+	var rows: int = IsoAtlas.body_cut_row(
+		sheet.cuts[stage - 1], sheet.frame_size(&"hull").y, whole.size.y
+	)
+	assert_that(hull.region_rect).override_failure_message(id).is_equal(
+		Rect2(whole.position.x, whole.position.y + rows, whole.size.x, whole.size.y - rows)
+	)
+	assert_bool(hull.region_filter_clip_enabled).is_true()
+	var per_hull: Vector2 = IsoAtlas.texels_per_px(
+		sheet.frame_size(&"hull"), page.atlas.part_scale(&"hull")
+	)
+	var per_patch: Vector2 = IsoAtlas.texels_per_px(
+		sheet.frame_size(part), page.atlas.part_scale(part)
+	)
+	assert_vector(per_patch).is_not_equal(per_hull)
+	assert_vector(hull.offset).is_equal_approx(
+		Vector2(-sheet.origin(&"hull")) * per_hull + Vector2(0.0, rows), Vector2.ONE * 0.01
+	)
+	assert_vector(patch.offset).is_equal_approx(
+		Vector2(-sheet.origin(part)) * per_patch, Vector2.ONE * 0.01
+	)
+	var zoom: float = _zoom(patch.get_node("../../../.."))
+	assert_vector(patch.scale).is_equal_approx(
+		Vector2(0.5 / per_patch.x, 0.5 / per_patch.y) * zoom, Vector2.ONE * 0.001
+	)
+
+
+## A defence's `Head` is the intact one at every stage: the same region, at its mount.
+func _check_heads(page: Control, sheet: IsoSheetDef, stage: int) -> void:
+	var heads: Array[Node] = page.find_children("Head", "Sprite2D", true, false)
+	assert_int(heads.size()).is_equal(2 * SECTIONS.size())
+	for head: Sprite2D in heads:
+		var section: Node = head.get_node("../../../..")
+		var triad: int = TRIAD_OF[_triad_name(section)]
+		var message: String = "%s stage %d" % [sheet.art_id, stage]
+		assert_that(head.region_rect).override_failure_message(message).is_equal(
+			Rect2(page.atlas.region(sheet.art_id, &"head", 8, triad))
+		)
+		assert_vector(head.position).override_failure_message(message).is_equal_approx(
+			sheet.mount(0) * ART_SCALE * _zoom(section), Vector2.ONE * 0.01
+		)
+
+
 ## The Redoubt's and the Rail Battery's head face down the screen, at the tank in front, and stand
 ## at their mount.
 func test_the_defences_head_faces_the_tank_in_front_at_its_mount() -> void:
