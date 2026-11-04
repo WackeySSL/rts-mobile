@@ -19,6 +19,11 @@ and notes in §2, §3, §4, §6-§9), ADR 0027 (§3's quota table: damage 24 →
 a hit ring of 16; §8, what `reduced` keeps) and ADR 0023 §5 (the new sheet fields). The unit-life
 plan's "no camera shake" line stays as it is.
 
+Status note (2026-11-04, P26au docs; on `main` at 48e7415): dated notes at the end of §4, §5, §7,
+§12 and §13 (with pointers in §6 and §10) record what P163 (#306), P163b (#307), P161 (#308) and
+P148 (#309) built, what P148b (#310), P158a, P158b and P166 hold on their branches, and the
+decisions taken for them by Michael and the lead. No accepted text changed.
+
 It amends ADR 0028: §2 (the thresholds, one list per kind), §3 (what `dmg1` and `dmg2` show, the
 `Anim` at stage 2, the damage points, and the second amendment's open point on the seam, §11 here),
 §4 (what `scar_milli` means, the loose part's scale and mirror), §6 (the particles), §7 (reduced
@@ -231,6 +236,26 @@ owner's team colour.
 - **Originality** (CLAUDE.md Legal, ADR 0023 §13, ADR 0028 §4): every picture is generated here from
   our own models; flames stay yellow-white and smoke grey, outside both factions' key bands.
 
+Notes (2026-11-04, P26au docs; the text above stays as accepted):
+- (Michael, 2026-11-04, approved after the P158a and P158b sheets) **SKADET may reach past the top
+  half of the body's rows, at most 80 %.** This applies where the team colour or blown glass sits
+  low, so that the SKADET key share of 55-85 % (§5) holds. It replaces "at most half" in "Depth on
+  the body" above. Measured: the Redoubt (`defence_turret`) 76 %, the Rigworks (`headquarters`) and
+  the Heavy Yard (`vehicle_factory`) 69 % (P158a); the Lumen Accord's factory 72 %, its barracks and
+  defence 64 % (P158b).
+- (P158a) **The Derrick League has no glass.** A blown pane there is a `hole` box over a `lamp`
+  window. `blow` is used by the Lumen Accord only.
+- (P158a) **No brick.** The table's "brick" for the Turbine Hall (`power_plant`) and the Heavy Yard
+  (`vehicle_factory`) is concrete in the art, because ADR 0023 dropped brick. Both follow the
+  concrete rule; the brick line of the material rules has no building.
+- (P158a, P158b) **§10's first fallback** ("SKADET within the top 35 %") can no longer apply to the
+  Rigworks, the Heavy Yard or the Redoubt without breaking the key-share band. For them only the
+  second fallback (tighter KRITISK patches) is left.
+- (P158a and P158b together, on `claude/p158b-renew-damage` at 35f4954, not yet merged) **The page
+  with all 16 buildings** is measured: cross-faction 3550 (3558 in the other key triads), Derrick
+  League mirror 3008, Lumen Accord mirror 3140. All are within 3584, so no fallback of §10 is
+  taken.
+
 ### 5. Generator v5 (`tools/artgen/`)
 Features the art needs, each one a simple 3D-to-SVG step (primitives, moves, palette, the painter's
 order), deterministic (no randomness: where a helper varies, it varies by an integer hash of the
@@ -298,6 +323,22 @@ art id and the line), **generated, never hand-edited**:
   no per-pixel crack pattern. If `petals` turns out costly in review, the plates are authored boxes
   with `turn` moves and the helper is dropped; the art loses nothing but typing.
 
+Notes (2026-11-04, P26au docs; generator v5a, P163 #306, and v5b, P163b #307, as merged; the text
+above stays as accepted):
+- (P163) **The `blow` order** is djb2 over the UTF-8 bytes of the art id (32 bits), mixed with the
+  primitive's line index by `ArtDamage._mix`. It is not one hash of the id and the line, as "an
+  inlined djb2 of the art id and the primitive's line index" above may read. `broken`'s teeth vary
+  by the same seed and mix.
+- (P163) A damage point must also lie above `dmg1`'s cut, off a SKADET break. **A model with `dmg2`
+  only has no `dmg1` cut, so its points have no cut rule.** This is open; no real model has `dmg2`
+  only, so none hits it.
+- (P163b) **`petals` carries a part and a material**:
+  `petals <part> <material> <cx> <cy> <z> <diameter> <n> <tilt>`. It is allowed only in `hull` and
+  `anim`.
+- (P163b) **`rod` takes any material**, not only `rebar` and `beam`, **and casts no shadow.** Both
+  are the generator's own decisions; this ADR decided only "no outline".
+- (P163b) **`taper` is refused** on `rod`, `broken` and `petals`.
+
 ### 6. Particles per stage (P148, reworked again)
 - **Looks** (sprites of `fx/life_atlas.svg`; new frames in §13):
 
@@ -341,6 +382,10 @@ art id and the line), **generated, never hand-edited**:
   player sees (§9), inside the view rect grown by a tile, as ADR 0028 §6; a site never burns; a
   blackout does not stop a fire.
 
+(2026-11-04, P26au docs: what P148 (#309) and P148b (#310) built and decided for this section, the
+glow, the jet, the vehicles' fire, the ring and the crater sources, is in the note at the end of
+§13.)
+
 ### 7. Hit feedback (no camera shake)
 - **The flash and the chips** (rule 4): a hit on a building the local player is shown draws a white
   `hit_flash` for `hit_flash_ms` (60) and `hit_chips[0] + LifeClock.pick(hit id, SALT_CHIP,
@@ -372,6 +417,15 @@ art id and the line), **generated, never hand-edited**:
   må ryste kameraet", only a collapse may shake the camera) is a limit, and no shake at all meets
   it. `RtsCamera` is untouched; the camera moves only by the player's hand, as the unit-life plan
   has it. A collapse is felt through its flash, its sink and its dust.
+
+Notes (2026-11-04, P26au docs; P166, lead decisions; the text above stays as accepted). P166's PR
+is not open yet; its work is on `claude/p166-hit-fx` (ea2577a, built on P148b), in
+`game/view/HitFx.gd`.
+- **The chips fly straight**, each along one of five directions in data (`hit_chip_fly_px`), and
+  fade. They do not fly in arcs, because `FxRing` motion is linear: an arc would need a velocity per
+  puff. This replaces "in short arcs" above.
+- **A hit whose spot is outside the view is not drawn**, as the damage ring's puffs are not. So a
+  siege off screen does not push the flashes in view out of the 16-slot hit ring.
 
 ### 8. The collapse at 0 %
 Every time is match time from the DIED tick (`LifeClock.tick_ms(died_tick)`), so a pause freezes
@@ -471,6 +525,8 @@ rule 5 ("explosion 0-250 ms, dust cloud 250-900 ms"); its "ruin from 900 ms" bec
   `DAMAGE_SCALE` without Michael, never a second page (a draw call and about 16 MB more), never the
   512 rows above 3584 that ADR 0027 §4 keeps for later types. The page's GPU memory stays under ADR
   0023 §2's 64 MB.
+- (2026-11-04, P26au docs) P158a and P158b measured the page with all 16 buildings at 3550, within
+  3584, and fallback (1) can no longer apply to three buildings; see the notes at the end of §4.
 
 ### 11. The seam of the trimmed body and its patch (replaces ADR 0028 §3's second amendment's open point)
 ADR 0028 §3's second amendment asked for "at least 1 texel" of overlap and named "the `floor` of the
@@ -506,6 +562,16 @@ the P26ar note's `ceil(cut x bake_scale)`:
   picture and its offset together: a side switch stays **1 write**, as ADR 0028 §8 counts it (with
   `flip_h` it would be 2, the flip and the offset). The position write of the follow is unchanged.
 
+Notes (2026-11-04, P26au docs; P161 #308 as merged, lead decisions; the text above stays as
+accepted):
+- **A hidden rig makes no overlay writes.** It keeps its stage and marks its overlays stale. It is
+  placed once, and those writes are counted, when it is seen again.
+- **The vehicles' write share** is `damage_writes_per_frame - damage_building_writes` (40 by
+  default). It is at least 7, the dearest vehicle change (0 → 2 with the loose part); a test holds
+  it, so the queue never stalls.
+- **`LOOSE_SCALE` (0.8) lives in `VehicleDamage`.** The gallery's `LOOSE_SCALE` is an alias of it,
+  so there is one constant.
+
 ### 13. Numbers in data and new sprites
 - `data/life_settings.tres` (`LifeSettings`, view only), with their values:
   - stages: `building_stage_percent` [67, 34], `vehicle_stage_percent` [50, 25] (instead of
@@ -530,6 +596,30 @@ the P26ar note's `ceil(cut x bake_scale)`:
   `hit_flash` (white, 2), `chip` (3: concrete grey, dark steel, a pale shard), `dust_cloud` (2, large,
   stepped alpha), `ember` (2), `glow` (1, stepped discs, warm yellow), `jet` (2, a sideways gas
   flame, yellow-white). `smoke`, `soot`, `fire` and `spark` exist.
+
+Notes (2026-11-04, P26au docs; P148 #309 as merged and P148b #310, lead decisions; they concern §6
+too; the text above stays as accepted). P148b is on `claude/p148b-crater-sources` (PR #310, open).
+- (P148b) **A flame and its glow are born together**, on one grid per point of
+  `ceil(damage_emit_ms[fire] x 15 / 1000)` ticks (8). The glow lives one flame cycle, about 533 ms,
+  not the fire's 700 ms, so it is steady: it never pulses and never overlaps the next one. This
+  replaces "`glow` the life of its fire" above. The fire now comes every 533 ms, not every 500.
+- (P148b) **The jet rides the fire's cycle** at both stages (life 600 ms), so the SKADET and
+  KRITISK glows of a gas point follow each other with no gap. `damage_emit_ms[jet]` is removed;
+  "`jet` 300 / 600" above keeps only its life.
+- (P148b) **The rings are planned at alpha at most 0.98** (`AirFx.MAX_PLAN_ALPHA`), so the view
+  never draws time at or past a tick that is not yet published (a glow vanished at alpha 1.0 while
+  the worker held a tick).
+- (P148) **A vehicle's fire has no glow.** It keeps ADR 0028 §6's looks.
+- (P148) **The 80-slot damage ring** keeps every soot puff for 15 of the 56 id sets of three
+  buildings at KRITISK. In the other sets it peaks at 81-88 puffs and loses only soot at 80 % or
+  more of its 2000 ms life. That is §6's "the oldest, most faded smoke goes".
+- (P148b) **The crater's ground point** is each sheet point's x on the footprint centre line. A
+  sheet point is a 2D screen offset with no height of its own, so its "ground x and y" (§6) cannot
+  be read from it. A type without points uses the footprint centre.
+- (P148b) **The calls for P165** are `AirFx.add_crater_source(id, centre, type, foot, owner_id,
+  tick)` and `AirFx.end_crater_sources_on(foot)`, named apart from `DecalLayer.add_crater`. P165
+  calls `end_crater_sources_on` before `AirFx`'s `ticked` handler emits, so a source stops in that
+  tick. The crater sources moved from P148 to P148b; §6's "P148 draws them" is P148b's.
 
 ### 14. Repair (rule 7; none in the game)
 There is no repair, healing or regeneration (ADR 0028 §2). For a future repair ADR: **repair runs
