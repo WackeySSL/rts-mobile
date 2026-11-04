@@ -120,6 +120,8 @@ class Entry:
 	var owner_id: int = 0
 	var body: Sprite2D = null
 	var patch: Sprite2D = null  ## The `Damage` sibling of the body; null for a sheet without one.
+	var body_base: int = -1  ## The atlas bases of the body and of the two patches, resolved once.
+	var patch_bases: PackedInt32Array = PackedInt32Array()
 	var site: bool = false  ## Whether it was a site (or a cancelled one) at its last tick.
 	var stage_want: int = 0  ## The picture stage its row asks for now.
 	var stage_shown: int = 0  ## The picture stage its sprites show.
@@ -189,8 +191,9 @@ func redraw_count() -> int:
 	return _redraws
 
 
-## The life sprite writes so far: one for each head position the recoil or the idle sweep set and
-## each `Anim` region a new frame set (ADR 0027 section 9).
+## The life sprite writes so far: one for each head position the recoil or the idle sweep set,
+## each `Anim` region a new frame set (ADR 0027 section 9) and the writes of each damage stage
+## change (`BuildingDamage.cost`: 5, 5 and 4, one more when the `Anim` is shown or hidden).
 func life_writes() -> int:
 	return _rig_life.writes
 
@@ -422,8 +425,7 @@ func _merge(snap: MatchSnapshot) -> void:
 		if entry.stamp != _redraws:
 			_drop(entry, snap)
 	_refresh_shown(snap)
-	for entry: Entry in _entries.values():
-		_queue_stage(entry, snap)
+	_note_stages(snap, false)
 
 
 ## The entry of building row `row`: the node in the sort at the footprint centre with its Body (and
@@ -479,6 +481,8 @@ func _dress_patch(entry: Entry, sheet: IsoSheetDef) -> void:
 	entry.patch = Sprite2D.new()
 	entry.patch.name = BuildingDamage.PATCH
 	entry.patch.visible = false
+	entry.body_base = world_sort.base_of(sheet, BODY, NO_FRAME, entry.owner_id)
+	entry.patch_bases = BuildingDamage.bases_of(world_sort, sheet, entry.owner_id)
 	entry.patch.texture = world_sort.atlas.texture()
 	entry.patch.region_enabled = true
 	entry.patch.centered = false
@@ -495,7 +499,7 @@ func _dress_anim(entry: Entry, sheet: IsoSheetDef, owner_id: int) -> void:
 	if frames < 1:
 		return
 	var sprite: Sprite2D = Sprite2D.new()
-	sprite.name = "Anim"
+	sprite.name = BuildingAnims.ANIM_NODE
 	world_sort.dress(sprite, sheet, BuildingAnims.ANIM)
 	world_sort.show_base(sprite, base, BuildingAnims.REST)
 	entry.node.add_child(sprite)
@@ -523,8 +527,7 @@ func _sprite(
 
 ## Takes a building that left the rows out of its tables. One that was shown goes to
 ## `BuildingRuins` (the crater, and the node is freed); one that was not is freed here.
-func _drop(entry: Entry, snap: MatchSnapshot = null) -> void:
-	snap = snap if snap != null else runner.snapshot
+func _drop(entry: Entry, snap: MatchSnapshot) -> void:
 	if entry.shadow != null:
 		decals.remove_shadow(entry.shadow)
 	_heads.erase(entry)
@@ -737,26 +740,38 @@ func _follow_player() -> void:
 		_last_seen.clear()
 
 
-## Once per tick: every entry's stage of this tick is queued if it moved (a shown one only), and an
-## enemy building that is shown notes its stage for its ghost. A frame that plays two ticks notes
-## both.
-func _note_stages(snap: MatchSnapshot) -> void:
+## Once per tick: every entry's stage of this tick is queued if it moved (a shown one only), and
+## with `note` an enemy building that is shown notes its stage for its ghost. A frame that plays
+## two ticks notes both. The columns are read into locals once.
+func _note_stages(snap: MatchSnapshot, note: bool = true) -> void:
 	_follow_player()
-	for entry: Entry in _entries.values():
-		var raw: int = _queue_stage(entry, snap)
-		if entry.shown and snap.owner[entry.row] != _player:
-			_last_seen[entry.id] = raw
+	var builds: PackedInt32Array = snap.build_left
+	var hps: PackedInt32Array = snap.hp
+	var types: PackedInt32Array = snap.type_index
+	var max_hps: PackedInt32Array = snap.type_max_hp
+	var owners: PackedInt32Array = snap.owner
+	var lines: PackedInt32Array = life.building_stage_percent
+	for id: int in _entries:
+		var entry: Entry = _entries[id]
+		var row: int = entry.row
+		var raw: int = _stage_at(entry, builds[row], hps[row], max_hps[types[row]], lines)
+		if note and entry.shown and owners[row] != _player:
+			_last_seen[id] = raw
 
 
-## The stage of `entry`'s row now (0 for a site, whatever its hp), kept as the picture it wants;
-## queued when it is shown and its sprites show another. Returns the raw stage.
+## `_stage_at` for one entry, reading the snapshot itself.
 func _queue_stage(entry: Entry, snap: MatchSnapshot) -> int:
 	var row: int = entry.row
-	entry.site = snap.build_left[row] != 0
-	var raw: int = 0
-	if not entry.site:
-		var max_hp: int = snap.type_max_hp[snap.type_index[row]]
-		raw = BuildingDamage.stage_of(snap.hp[row], max_hp, life.building_stage_percent)
+	var max_hp: int = snap.type_max_hp[snap.type_index[row]]
+	return _stage_at(entry, snap.build_left[row], snap.hp[row], max_hp, life.building_stage_percent)
+
+
+## The stage of an entry whose row has `build_left`, `hp` and `max_hp` (0 for a site, whatever its
+## hp), kept as the picture it wants; queued when it is shown and its sprites show another.
+## Returns the raw stage.
+func _stage_at(entry: Entry, build_left: int, hp: int, max_hp: int, lines: PackedInt32Array) -> int:
+	entry.site = build_left != 0
+	var raw: int = 0 if entry.site else BuildingDamage.stage_of(hp, max_hp, lines)
 	if entry.patch != null:
 		entry.stage_want = BuildingDamage.picture(entry.sheet, raw)
 		if entry.shown and not entry.queued and entry.stage_want != entry.stage_shown:
@@ -781,8 +796,10 @@ func _write_stages() -> void:
 			if writes > left:
 				break
 			left -= writes
-			BuildingDamage.show_body(world_sort, entry.sheet, entry.body, entry.owner_id, to)
-			BuildingDamage.show_patch(world_sort, entry.sheet, entry.patch, entry.owner_id, to)
+			BuildingDamage.show_body(
+				world_sort, entry.sheet, entry.body, entry.body_base, entry.patch_bases, to
+			)
+			BuildingDamage.show_patch(world_sort, entry.sheet, entry.patch, entry.patch_bases, to)
 			if entry.anim != null and hide_anim != entry.anim_off:
 				entry.anim_off = hide_anim
 				entry.anim.visible = not hide_anim

@@ -10,11 +10,10 @@ extends RefCounted
 ## that writes it, so the trim is applied again after every `show_frame`.
 
 const PATCH: StringName = &"Damage"  ## The node name of the patch, and of a ghost's patch child.
+const PATCH_PATH: NodePath = ^"Damage"
 ## The sheet part of each stage's patch: index stage - 1.
 const PARTS: Array[StringName] = [&"dmg1", &"dmg2"]
 const KRITISK: int = 2
-## `IsoSheetDef.anim_kritisk` (P163) is not on the sheet yet: a sheet that has it, as a property or
-## as this meta key (a crafted test sheet), says whether the `Anim` runs at KRITISK; else it runs.
 const ANIM_KRITISK: StringName = &"anim_kritisk"
 
 
@@ -38,12 +37,12 @@ static func picture(sheet: IsoSheetDef, stage: int) -> int:
 	return 0
 
 
-## Whether the `Anim` of `sheet` runs at KRITISK (ADR 0029 section 3).
+## Whether the `Anim` of `sheet` runs at KRITISK (ADR 0029 section 3). A sheet without the field
+## hides it, which is the default P163's `IsoSheetDef.anim_kritisk` has.
+## TODO(P163): once the field is on `IsoSheetDef`, this is `return sheet.anim_kritisk`.
 static func anim_runs(sheet: IsoSheetDef) -> bool:
-	if sheet.has_meta(ANIM_KRITISK):
-		return bool(sheet.get_meta(ANIM_KRITISK))
 	var field: Variant = sheet.get(ANIM_KRITISK)
-	return field as bool if field is bool else true
+	return field as bool if field is bool else false
 
 
 ## Whether the `Anim` is hidden at picture stage `stage`.
@@ -60,21 +59,43 @@ static func cost(from: int, to: int, anim_write: bool) -> int:
 	return writes + (1 if anim_write else 0)
 
 
-## Shows the body frame and trims it for `stage`: the call that follows every frame the body gets.
+## Shows the body frame at `body_base` and trims it for `stage`: the call that follows every frame
+## the body gets. `patch_bases` is the atlas base of `dmg1` and `dmg2` for the owner (-1: none).
 static func show_body(
-	sort: WorldSort, sheet: IsoSheetDef, body: Sprite2D, owner_id: int, stage: int
+	sort: WorldSort,
+	sheet: IsoSheetDef,
+	body: Sprite2D,
+	body_base: int,
+	patch_bases: PackedInt32Array,
+	stage: int
 ) -> void:
-	sort.show_frame(body, sheet, BuildingLayer.BODY, BuildingLayer.NO_FRAME, owner_id)
-	trim(sort, sheet, body, stage)
+	sort.show_base(body, body_base, 0)
+	trim(sort, sheet, body, patch_bases, stage)
+
+
+## The atlas bases of the two patches for `owner_id`, -1 where the owner's art has none.
+static func bases_of(sort: WorldSort, sheet: IsoSheetDef, owner_id: int) -> PackedInt32Array:
+	var found: PackedInt32Array = PackedInt32Array()
+	for part: StringName in PARTS:
+		var base: int = -1
+		if sheet.has_part(part):
+			base = sort.base_of(sheet, part, BuildingLayer.NO_FRAME, owner_id)
+		found.append(base)
+	return found
 
 
 ## Trims `body`, whose region was just written whole, for `stage` (0 un-trims): the region from
 ## `IsoAtlas.body_cut_row` texels down, the offset moved down by as much, and the filter clipped to
-## the region so the cut edge does not bleed.
-static func trim(sort: WorldSort, sheet: IsoSheetDef, body: Sprite2D, stage: int) -> void:
+## the region so the cut edge does not bleed. A stage whose patch has no region for the owner
+## (`patch_bases`) cuts nothing: the body is never trimmed without the patch that covers the cut.
+static func trim(
+	sort: WorldSort, sheet: IsoSheetDef, body: Sprite2D, patch_bases: PackedInt32Array, stage: int
+) -> void:
 	var per_px: Vector2 = sort.texels(sheet, BuildingLayer.BODY)
 	body.offset.y = -float(sheet.origin(BuildingLayer.BODY).y) * per_px.y
 	var k: int = picture(sheet, stage)
+	if k > 0 and sort.frame_count_at(patch_bases[k - 1]) < 1:
+		k = 0
 	body.region_filter_clip_enabled = k > 0
 	if k == 0 or not body.visible:
 		return
@@ -89,16 +110,16 @@ static func trim(sort: WorldSort, sheet: IsoSheetDef, body: Sprite2D, stage: int
 
 
 ## Writes the patch of `stage` on the sibling `patch`: dressed for its part, its whole region
-## shown; hidden at stage 0.
+## shown (a table read at `patch_bases`); hidden at stage 0.
 static func show_patch(
-	sort: WorldSort, sheet: IsoSheetDef, patch: Sprite2D, owner_id: int, stage: int
+	sort: WorldSort, sheet: IsoSheetDef, patch: Sprite2D, patch_bases: PackedInt32Array, stage: int
 ) -> void:
 	var k: int = picture(sheet, stage)
 	if k == 0:
 		patch.visible = false
 		return
 	sort.dress(patch, sheet, PARTS[k - 1])
-	sort.show_frame(patch, sheet, PARTS[k - 1], BuildingLayer.NO_FRAME, owner_id)
+	sort.show_base(patch, patch_bases[k - 1], 0)
 
 
 ## Dresses the ghost sprite `parent` (its body already shown) for `stage`: the body trimmed and a
@@ -107,10 +128,11 @@ static func show_patch(
 static func dress_ghost(
 	parent: Sprite2D, sort: WorldSort, sheet: IsoSheetDef, owner_id: int, stage: int
 ) -> void:
-	trim(sort, sheet, parent, stage)
-	var child: Sprite2D = parent.get_node_or_null(NodePath(PATCH)) as Sprite2D
+	var bases: PackedInt32Array = bases_of(sort, sheet, owner_id)
+	trim(sort, sheet, parent, bases, stage)
+	var child: Sprite2D = parent.get_node_or_null(PATCH_PATH) as Sprite2D
 	var k: int = picture(sheet, stage)
-	if k == 0 or not parent.visible:
+	if k == 0 or not parent.visible or sort.frame_count_at(bases[k - 1]) < 1:
 		if child != null:
 			child.visible = false
 		return
@@ -126,12 +148,12 @@ static func dress_ghost(
 	var want: Vector2 = Vector2(WorldSort.ART_SCALE / texels.x, WorldSort.ART_SCALE / texels.y)
 	child.scale = Vector2(want.x / parent.scale.x, want.y / parent.scale.y)
 	child.offset = -Vector2(sheet.origin(PARTS[k - 1])) * texels
-	sort.show_frame(child, sheet, PARTS[k - 1], BuildingLayer.NO_FRAME, owner_id)
+	sort.show_base(child, bases[k - 1], 0)
 
 
 ## Hides a ghost's `Anim` where the sheet's does not run at `stage` (call it after
 ## `BuildingAnims.dress_ghost`).
 static func ghost_anim(parent: Sprite2D, sheet: IsoSheetDef, stage: int) -> void:
-	var anim: Sprite2D = parent.get_node_or_null(NodePath(BuildingAnims.ANIM_NODE)) as Sprite2D
+	var anim: Sprite2D = parent.get_node_or_null(BuildingAnims.ANIM_PATH) as Sprite2D
 	if anim != null and anim_hidden_at(sheet, picture(sheet, stage)):
 		anim.visible = false

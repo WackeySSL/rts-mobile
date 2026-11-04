@@ -15,12 +15,15 @@ const OVERLAP_PX: int = 4
 const ART_ID: StringName = &"barracks"
 const UNIT: String = "barracks"
 const ANIM_FRAMES: int = 4
+const KritiskSheet: GDScript = preload("res://tests/view/support/kritisk_sheet.gd")
 
 
-## The crafted sheet. `extras` may hold `anim`, `head` (true), `cuts` (PackedInt32Array), `sizes`
-## (part -> Vector2i).
+## The crafted sheet. `extras` may hold `anim`, `head` (true), `anim_kritisk` (a bool: the sheet
+## is then a `KritiskSheet`), `cuts` (PackedInt32Array), `sizes` (part -> Vector2i).
 static func sheet(extras: Dictionary = {}) -> IsoSheetDef:
-	var made: IsoSheetDef = IsoSheetDef.new()
+	var made: IsoSheetDef = KritiskSheet.new() if extras.has("anim_kritisk") else IsoSheetDef.new()
+	if extras.has("anim_kritisk"):
+		made.set(&"anim_kritisk", extras["anim_kritisk"])
 	made.art_id = ART_ID
 	made.faction = &"fossil"
 	made.category = &"bld"

@@ -140,6 +140,7 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 @export var vehicle_stage_percent: PackedInt32Array = PackedInt32Array([50, 25])
 ## Sprite writes a frame may spend on stage changes, and the part of them that is the buildings'
 ## (the rest is the vehicles'): a fixed split, so the result never depends on which layer runs
-## first.
+## first. The vehicle layer (P161) reads its share as `damage_writes_per_frame -
+## damage_building_writes`.
 @export var damage_writes_per_frame: int = 60
 @export var damage_building_writes: int = 20

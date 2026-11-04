@@ -47,6 +47,10 @@ func test_the_data_file_holds_both_lists_and_the_write_split() -> void:
 		assert_int(settings.damage_building_writes).is_equal(20)
 		assert_int(settings.damage_building_writes).is_greater(0)
 		assert_int(settings.damage_building_writes).is_less(settings.damage_writes_per_frame)
+		# The dearest change fits one frame, so the queue can never stall at its head.
+		assert_int(settings.damage_building_writes).is_greater_equal(
+			BuildingDamage.cost(0, 2, true)
+		)
 
 
 # --- The pictures ---
@@ -94,16 +98,16 @@ func test_the_body_is_trimmed_again_after_every_frame_written_to_it() -> void:
 	# A bare show_frame rewrites the whole region (the seam rule says why it must be followed).
 	_sort.show_frame(_body(1), _def, BuildingLayer.BODY, BuildingLayer.NO_FRAME, 1)
 	assert_that(_body(1).region_rect).is_equal(Rect2(_region(&"hull")))
-	BuildingDamage.show_body(_sort, _def, _body(1), 1, 2)
+	BuildingDamage.show_body(_sort, _def, _body(1), _body_base(), _bases(), 2)
 	assert_that(_body(1).region_rect).is_equal(trimmed)
 	assert_float(_body(1).offset.y).is_equal(offset)
 	# And a show_base of the same frame.
 	var base: int = _sort.base_of(_def, BuildingLayer.BODY, BuildingLayer.NO_FRAME, 1)
 	_sort.show_base(_body(1), base, 0)
-	BuildingDamage.trim(_sort, _def, _body(1), 2)
+	BuildingDamage.trim(_sort, _def, _body(1), _bases(), 2)
 	assert_that(_body(1).region_rect).is_equal(trimmed)
 	# Back to intact un-trims it.
-	BuildingDamage.show_body(_sort, _def, _body(1), 1, 0)
+	BuildingDamage.show_body(_sort, _def, _body(1), _body_base(), _bases(), 0)
 	assert_that(_body(1).region_rect).is_equal(Rect2(_region(&"hull")))
 	assert_bool(_body(1).region_filter_clip_enabled).is_false()
 
@@ -141,3 +145,18 @@ func test_an_odd_canvas_at_the_lowest_scale_has_no_overlap_the_reason_for_the_ge
 	var patch: Sprite2D = _patch(1)
 	var bottom: float = (patch.offset.y + patch.region_rect.size.y) * patch.scale.y
 	assert_float(bottom - body.offset.y * body.scale.y).is_equal_approx(0.0, 0.001)
+
+
+func test_a_body_is_not_trimmed_where_its_patch_has_no_region() -> void:
+	_open(_pair())
+	var none: PackedInt32Array = PackedInt32Array([-1, -1])
+	for stage: int in [1, 2]:
+		BuildingDamage.show_body(_sort, _def, _body(1), _body_base(), none, stage)
+		assert_that(_body(1).region_rect).is_equal(Rect2(_region(&"hull")))
+		assert_bool(_body(1).region_filter_clip_enabled).is_false()
+		var per_px: Vector2 = _sort.texels(_def, &"hull")
+		assert_float(_body(1).offset.y).is_equal_approx(
+			-float(_def.origin(&"hull").y) * per_px.y, 0.001
+		)
+	BuildingDamage.show_body(_sort, _def, _body(1), _body_base(), _bases(), 1)
+	assert_bool(_body(1).region_filter_clip_enabled).is_true()  # With its patch it is cut.

@@ -12,8 +12,9 @@ var _ghosts: GhostMemoryLayer
 
 ## The enemy building seen at `percent` of its hp, then out of sight and remembered.
 func _remember(percent: int, extras: Dictionary = {}, anim_runs: bool = true) -> void:
-	_open(_pair(), extras, 1.0, false)
-	_def.set_meta(&"anim_kritisk", anim_runs)
+	var given: Dictionary = extras.duplicate()
+	given["anim_kritisk"] = anim_runs
+	_open(_pair(), given, 1.0, false)
 	Dmg.Rig.see(_runner.snapshot, 1, [Vector2i(14, 14)])
 	_layer._process(0.0)
 	Dmg.hit(_runner, ENEMY, percent)  # The sim's fog is not the fixture's: the next lines write it.

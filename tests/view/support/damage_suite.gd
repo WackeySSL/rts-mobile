@@ -81,6 +81,10 @@ func _check_stage(id: int, stage: int) -> void:
 	assert_vector(patch.position).is_equal(body.position)  # A sibling at the same place.
 	assert_object(patch.get_parent()).is_same(body.get_parent())
 	assert_bool(patch.region_filter_clip_enabled).is_false()
+	var patch_texels: Vector2 = _sort.texels(_def, part)
+	assert_vector(patch.offset).is_equal_approx(
+		-Vector2(_def.origin(part)) * patch_texels, Vector2(1e-3, 1e-3)
+	)
 	var patch_scale: Vector2 = _sort.texels(_def, part)
 	assert_vector(patch.scale).is_equal_approx(
 		Vector2(WorldSort.ART_SCALE / patch_scale.x, WorldSort.ART_SCALE / patch_scale.y),
@@ -97,3 +101,11 @@ func _grid(count: int) -> Array:
 	for i: int in count:
 		spawns.append([1, 1 + (i % 10) * 3, 1 + (i / 10) * 3])
 	return spawns
+
+
+func _bases() -> PackedInt32Array:
+	return BuildingDamage.bases_of(_sort, _def, 1)
+
+
+func _body_base() -> int:
+	return _sort.base_of(_def, BuildingLayer.BODY, BuildingLayer.NO_FRAME, 1)

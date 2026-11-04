@@ -453,6 +453,10 @@ func test_both_scenes_hold_the_layer_wired_to_the_runner_and_the_sort_and_only_t
 		assert_that(_scene_value(state, "GhostMemoryLayer", &"world_sort", null)).is_equal(
 			NodePath("../WorldSort")
 		)
+		if path == MAIN_SCENE:  # The ghosts are drawn at the stage the live layer remembers.
+			assert_that(_scene_value(state, "GhostMemoryLayer", &"building_layer", null)).is_equal(
+				NodePath("../BuildingLayer")
+			)
 		# Neither scene sets a dim of its own, so the layer and the fog layer keep their defaults.
 		assert_object(_scene_value(state, "GhostMemoryLayer", &"explored_alpha", null)).is_null()
 		assert_object(_scene_value(state, "FogLayer", &"explored_alpha", null)).is_null()

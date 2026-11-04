@@ -6,8 +6,7 @@ const SpyRuins: GDScript = preload("res://tests/view/support/spy_ruins.gd")
 
 
 func test_the_anim_runs_at_kritisk_when_the_sheet_says_run() -> void:
-	_open(_pair(), {"anim": true})
-	_def.set_meta(&"anim_kritisk", true)
+	_open(_pair(), {"anim": true, "anim_kritisk": true})
 	_centre_camera(1)
 	_hit(1, 20)
 	var anim: Sprite2D = _layer.building(1).get_node("Anim")
@@ -23,8 +22,7 @@ func test_the_anim_runs_at_kritisk_when_the_sheet_says_run() -> void:
 
 
 func test_the_anim_is_hidden_at_kritisk_when_the_sheet_says_hide_and_runs_at_skadet() -> void:
-	_open(_pair(), {"anim": true})
-	_def.set_meta(&"anim_kritisk", false)
+	_open(_pair(), {"anim": true, "anim_kritisk": false})
 	_centre_camera(1)
 	var anim: Sprite2D = _layer.building(1).get_node("Anim")
 	_hit(1, 50)  # SKADET: runs.
@@ -33,7 +31,7 @@ func test_the_anim_is_hidden_at_kritisk_when_the_sheet_says_hide_and_runs_at_ska
 	var before: int = _layer.life_writes()
 	_hit(1, 10)  # KRITISK: one visibility write, on top of the stage's four (1 -> 2).
 	assert_bool(anim.visible).is_false()
-	assert_int(_layer.life_writes() - before).is_equal(BuildingDamage.cost(1, 2, true))
+	assert_int(_layer.life_writes() - before).is_equal(5)
 	_layer.camera = _camera
 	for step: int in 40:  # The loop's frame changes do not show it again.
 		_runner.snapshot.tick = step * 3
@@ -44,17 +42,18 @@ func test_the_anim_is_hidden_at_kritisk_when_the_sheet_says_hide_and_runs_at_ska
 	assert_bool(anim.visible).is_true()
 
 
-func test_a_sheet_that_says_nothing_about_the_anim_keeps_it_running() -> void:
-	_open(_pair(), {"anim": true})
-	_hit(1, 10)
+func test_a_sheet_that_says_nothing_about_the_anim_hides_it_at_kritisk() -> void:
+	_open(_pair(), {"anim": true})  # A plain sheet has no `anim_kritisk`: P163's default is hide.
+	_hit(1, 50)
 	assert_bool(_layer.building(1).get_node("Anim").visible).is_true()
+	_hit(1, 10)
+	assert_bool(_layer.building(1).get_node("Anim").visible).is_false()
 
 
 func test_a_defence_head_stays_at_every_stage() -> void:
 	_life = (load("res://data/life_settings.tres") as LifeSettings).duplicate() as LifeSettings
 	_life.sweep_frames = 0  # The idle sweep moves the head's frame; this test is about the stage.
-	_open(_pair(), {"anim": true, "head": true})
-	_def.set_meta(&"anim_kritisk", false)
+	_open(_pair(), {"anim": true, "head": true, "anim_kritisk": false})
 	var head: Sprite2D = _layer.building(1).get_node("Head")
 	var before: Rect2 = head.region_rect
 	for percent: int in [66, 10, 90]:
@@ -70,6 +69,9 @@ func test_the_stage_writes_cost_5_5_and_4() -> void:
 	assert_int(BuildingDamage.cost(0, 1, false)).is_equal(5)
 	assert_int(BuildingDamage.cost(0, 2, false)).is_equal(5)
 	assert_int(BuildingDamage.cost(1, 2, false)).is_equal(4)
+	assert_int(BuildingDamage.cost(0, 2, true)).is_equal(6)  # The Anim's visibility is one more.
+	assert_int(BuildingDamage.cost(1, 2, true)).is_equal(5)
+	assert_int(BuildingDamage.cost(2, 0, true)).is_equal(4)
 	_open(_pair())
 	var start: int = _layer.life_writes()
 	_hit(1, 66)
@@ -127,6 +129,7 @@ func test_the_same_snapshots_give_the_same_regions_on_two_runs() -> void:
 		var regions: Array[Rect2] = []
 		for id: int in _runner.snapshot.unit_id:
 			regions.append_array([_body(id).region_rect, _patch(id).region_rect])
+			regions.append_array([Rect2(_body(id).offset, _patch(id).offset)])
 		runs.append(regions)
 		_layer.queue_free()
 		_sort.queue_free()
@@ -203,3 +206,42 @@ func test_a_hidden_building_that_dies_is_freed_without_the_hook_or_a_crater() ->
 
 func _calls(spy: BuildingRuins) -> Array:
 	return spy.get("calls")
+
+
+func _drain(frames: int) -> void:
+	for frame: int in frames:
+		_layer._process(0.0)
+
+
+func test_a_building_that_dies_while_queued_leaves_the_queue_with_no_stale_write() -> void:
+	_open(_grid(40))
+	var ids: PackedInt32Array = _runner.snapshot.unit_id.duplicate()
+	for id: int in ids:
+		Dmg.set_hp(_runner, id, 66)
+	_runner.run_ticks(1)
+	var start: int = _layer.life_writes()
+	_layer._process(0.0)  # Four are written, the rest wait.
+	_runner.world.hp[_runner.world.index_of(ids[39])] = 0  # The last in the queue dies.
+	_runner.run_ticks(1)
+	await await_idle_frame()  # Its node is freed.
+	_drain(12)
+	assert_int(_layer.life_writes() - start).is_equal(39 * 5)
+	assert_int(_layer._stage_queue.size()).is_equal(0)
+	for id: int in ids.slice(0, 39):
+		assert_bool(_patch(id).visible).is_true()
+
+
+func test_a_new_match_drops_the_queue() -> void:
+	_open(_grid(40))
+	for id: int in _runner.snapshot.unit_id:
+		Dmg.set_hp(_runner, id, 66)
+	_runner.run_ticks(1)
+	_layer._process(0.0)
+	_runner.start()  # Another match serial: the 36 that waited belong to the old one.
+	_layer._process(0.0)
+	await await_idle_frame()
+	var writes: int = _layer.life_writes()
+	assert_int(_layer._stage_queue.size()).is_equal(0)
+	_drain(12)
+	assert_int(_layer.life_writes()).is_equal(writes)
+	assert_int(_layer.building_count()).is_equal(40)  # The new match's own entries, none queued.

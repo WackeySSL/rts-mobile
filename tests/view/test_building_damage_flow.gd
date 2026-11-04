@@ -101,3 +101,24 @@ func test_the_memory_is_cleared_with_a_new_match_and_with_a_change_of_the_local_
 	_runner.start()  # Another match serial.
 	_layer._process(0.0)
 	assert_int(_layer.remembered_stage(2)).is_equal(0)
+
+
+func test_a_building_hidden_after_it_was_queued_writes_nothing_until_seen_again() -> void:
+	_open(_pair(), {}, 1.0, false)
+	Dmg.Rig.see(_runner.snapshot, 1, [Vector2i(14, 14)])
+	_layer._process(0.0)
+	Dmg.set_hp(_runner, 2, 10)
+	_runner.run_ticks(1)
+	Dmg.Rig.see(_runner.snapshot, 1, [Vector2i(14, 14)])
+	_runner.ticked.emit(_runner.snapshot.tick)  # Shown, so queued.
+	assert_int(_layer._stage_queue.size()).is_equal(1)
+	var writes: int = _layer.life_writes()
+	Dmg.Rig.see(_runner.snapshot, 1, [])  # Out of sight before the frame writes it.
+	_layer._process(0.0)
+	assert_int(_layer.life_writes()).is_equal(writes)
+	assert_that(_body(2).region_rect).is_equal(Rect2(_region(&"hull")))
+	assert_bool(_patch(2).visible).is_false()
+	assert_int(_layer._stage_queue.size()).is_equal(0)
+	Dmg.Rig.see(_runner.snapshot, 1, [Vector2i(14, 14)])
+	_layer._process(0.0)
+	_check_stage(2, 2)

@@ -19,6 +19,7 @@ const ANIM: StringName = &"anim"  ## The sheet part of a building's moving eleme
 const SALT_ANIM: int = 0x50000000
 const REST: int = 0
 const ANIM_NODE: StringName = &"Anim"  ## The name of a building's moving-element child.
+const ANIM_PATH: NodePath = ^"Anim"
 
 
 ## The phase of building `id`'s loop, ms into it: the same for an id in every run, spread over the
@@ -48,7 +49,7 @@ static func dress_ghost(
 	parent: Sprite2D, world_sort: WorldSort, sheet: IsoSheetDef, owner_id: int
 ) -> void:
 	# By name: a `Damage` child may come first (P159).
-	var child: Sprite2D = parent.get_node_or_null(NodePath(ANIM_NODE)) as Sprite2D
+	var child: Sprite2D = parent.get_node_or_null(ANIM_PATH) as Sprite2D
 	var base: int = -1
 	if sheet.has_part(ANIM):
 		base = world_sort.base_of(sheet, ANIM, BuildingLayer.NO_FRAME, owner_id)
