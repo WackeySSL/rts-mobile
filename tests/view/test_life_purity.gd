@@ -16,6 +16,8 @@ const LIFE_FILES: Array[String] = [
 	"res://game/view/GroundFx.gd",
 	"res://game/view/StrikeFx.gd",
 	"res://game/view/AirFx.gd",
+	"res://game/view/FxRing.gd",
+	"res://game/view/DamageFx.gd",
 	"res://game/view/StrikeNet.gd",
 	"res://game/view/RigLife.gd",
 	"res://game/view/SquadPoses.gd",
