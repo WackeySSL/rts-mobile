@@ -167,6 +167,8 @@ static func all_shots(model: ArtModel) -> Dictionary[StringName, Shot]:
 	for part: StringName in model.frame_parts():
 		if part not in ArtModel.DAMAGE_PARTS:
 			found[part] = _shoot(model, part)
+		elif part == ArtModel.RUIN:
+			found[part] = _shoot_ruin(model)
 		else:
 			# A stage that changes nothing has no patch (`problems` refuses such a model).
 			var patch: Shot = _shoot_damage(model, part, found[&"hull"])
@@ -225,6 +227,8 @@ static func damage_problems(model: ArtModel) -> PackedStringArray:
 	var found: PackedStringArray = PackedStringArray()
 	var body: Layout = _shoot(model, &"hull").layout
 	for part: StringName in model.damage_parts():
+		if part not in ArtModel.PATCH_PARTS:
+			continue
 		var stage: int = ArtModel.DAMAGE_PARTS.find(part) + 1
 		var cut: int = damage_cut(model, stage, body)
 		var what: String = "%s: %s" % [model.art_id, part]
@@ -241,6 +245,7 @@ static func damage_problems(model: ArtModel) -> PackedStringArray:
 					% [what, line, cut, body.size.y]
 				)
 			)
+	found.append_array(ArtDamage.problems(model, body))
 	return found
 
 
@@ -309,6 +314,27 @@ static func _shoot_damage(model: ArtModel, part: StringName, body: Shot) -> Shot
 	shot.polys.append(polys)
 	shot.layout = Layout.new()
 	shot.layout.size = Vector2i(right - top.x, bottom - top.y)
+	shot.layout.origin = -top
+	shot.layout.anchor = shot.layout.origin - Vector2i(0, TILE_W_PX / 4 * model.footprint)
+	return shot
+
+
+## The ruin (ADR 0029 section 3): the whole picture of the ruin pose, no cut, cropped to its ink
+## in a canvas of its own (even in both directions) with the body's anchor.
+static func _shoot_ruin(model: ArtModel) -> Shot:
+	var polys: Array[ArtRender.Poly] = stage_polys(model, 3)
+	var box: Rect2 = ArtRender.bounds(polys)
+	var top: Vector2i = (
+		Vector2i(floori(box.position.x), floori(box.position.y)) - Vector2i.ONE * MARGIN_PX
+	)
+	var end: Vector2i = Vector2i(ceili(box.end.x), ceili(box.end.y)) + Vector2i.ONE * MARGIN_PX
+	top.x -= (end.x - top.x) % 2
+	top.y -= (end.y - top.y) % 2
+	var shot: Shot = Shot.new()
+	shot.dirs.append(-1)
+	shot.polys.append(polys)
+	shot.layout = Layout.new()
+	shot.layout.size = end - top
 	shot.layout.origin = -top
 	shot.layout.anchor = shot.layout.origin - Vector2i(0, TILE_W_PX / 4 * model.footprint)
 	return shot

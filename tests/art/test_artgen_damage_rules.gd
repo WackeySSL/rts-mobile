@@ -183,7 +183,7 @@ func test_every_committed_model_with_damage_is_intact_below_its_cut() -> void:
 	for path: String in ArtGen.model_paths():
 		var model: ArtModel = load(path) as ArtModel
 		for part: StringName in model.damage_parts():
-			var stage: int = ArtModel.DAMAGE_PARTS.find(part) + 1
+			var stage: int = ArtModel.PATCH_PARTS.find(part) + 1
 			(
 				assert_int(_rows_below_cut_differ(model, stage))
 				. override_failure_message("%s %s" % [path, part])
@@ -374,7 +374,7 @@ func test_the_cuts_and_the_patch_anchors_survive_a_loaded_sheet() -> void:
 	assert_object(loaded).is_not_null()
 	assert_array(Array(loaded.cuts)).is_equal(Array(sheet.cuts))
 	assert_array(Array(loaded.parts)).is_equal(["hull", "dmg1", "dmg2", "shadow"])
-	for part: StringName in ArtModel.DAMAGE_PARTS:
+	for part: StringName in ArtModel.PATCH_PARTS:
 		assert_vector(Vector2(loaded.anchor(part))).is_equal(Vector2(sheet.anchor(part)))
 		assert_vector(Vector2(loaded.frame_size(part))).is_equal(Vector2(sheet.frame_size(part)))
 		assert_vector(Vector2(loaded.origin(part))).is_equal(Vector2(sheet.origin(part)))
@@ -408,7 +408,7 @@ func test_the_origin_and_anchor_of_a_patch_follow_the_body() -> void:
 		[BODY, "box hull iron 0 0 1 0.3 0.3 0.1 group=g"], ["dmg1 0 g hide", "dmg2 0 g hide"]
 	)
 	var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
-	for part: StringName in ArtModel.DAMAGE_PARTS:
+	for part: StringName in ArtModel.PATCH_PARTS:
 		var layout: ArtGen.Layout = shots[part].layout
 		assert_int(layout.origin.y - layout.anchor.y).is_equal(32 * model.footprint)
 		# The patch ends above the ground point: the origin lies below its canvas.
@@ -419,7 +419,7 @@ func test_the_origin_and_anchor_of_a_patch_follow_the_body() -> void:
 func _rows_below_cut_differ(model: ArtModel, stage: int) -> int:
 	var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
 	var body: ArtGen.Layout = shots[&"hull"].layout
-	var cut: int = shots[ArtModel.DAMAGE_PARTS[stage - 1]].cut
+	var cut: int = shots[ArtModel.PATCH_PARTS[stage - 1]].cut
 	var intact: Image = _image(shots[&"hull"].polys[0], body)
 	var posed: Image = _image(ArtGen.stage_polys(model, stage), body)
 	var rows: int = 0

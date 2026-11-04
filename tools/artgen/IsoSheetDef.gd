@@ -9,7 +9,8 @@ extends Resource
 ## lifts are world px at zoom 1, half of that, which is what the view counts in.
 ##
 ## A part is `hull`, `turret` or `head`, a pose part (`walk`, `idle` or `anim`, ADR 0027 section
-## 4), a building's damage patch (`dmg1` or `dmg2`, ADR 0028 section 3) and `shadow`, each with
+## 4), a building's damage patch (`dmg1` or `dmg2`, ADR 0028 section 3), its `ruin` (a whole
+## picture in a canvas of its own, ADR 0029 section 3) and `shadow`, each with
 ## one canvas and one anchor for all its frames. The anchor is where a
 ## unit's ground point lies in the canvas; a building's body and shadow are anchored at the back
 ## corner of the footprint (Spec 03), `origin` gives the footprint's centre. A turret's or head's
@@ -63,6 +64,13 @@ const ROOT: String = "res://assets/art/iso"
 @export var cuts: PackedInt32Array = PackedInt32Array()
 ## A vehicle's damage scar scale, 1000 for the battle tank's hull top; 0 for a sheet without one.
 @export var scar_milli: int = 0
+## For each emitter (parallel to `emitters`): the first damage stage (1 or 2) whose pose moves or
+## hides the group the emitter names, from which the view stops it; 0 for never. Empty when no
+## emitter of the sheet goes quiet (ADR 0029 section 5).
+@export var emitter_quiet: PackedInt32Array = PackedInt32Array()
+## Whether the `anim` element runs at KRITISK (its carrier stands in `dmg2`) rather than being
+## hidden there (ADR 0029 section 3); false for a sheet without one.
+@export var anim_kritisk: bool = false
 ## The folder the frames are in. Empty is `ROOT/<faction>/<category>/`, which every generated sheet
 ## has; a hand-written sheet (the neutral damage overlays, ADR 0028 section 4) sets it.
 @export var root: String = ""
@@ -114,7 +122,7 @@ func anchor(part: StringName) -> Vector2i:
 ## Where the model's origin lies in the canvas: a unit's ground point, a building's footprint
 ## centre (32 px per footprint tile below its anchor); a damage patch is anchored like the body.
 func origin(part: StringName) -> Vector2i:
-	var body: bool = footprint > 0 and part in [&"hull", &"shadow", &"dmg1", &"dmg2"]
+	var body: bool = footprint > 0 and part in [&"hull", &"shadow", &"dmg1", &"dmg2", &"ruin"]
 	return anchor(part) + (Vector2i(0, 32 * footprint) if body else Vector2i.ZERO)
 
 

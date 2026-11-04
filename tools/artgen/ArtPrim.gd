@@ -10,8 +10,8 @@ extends RefCounted
 ## and z. Shapes: `box`; `wedge`, a box whose top slopes down towards +x by `slope` (default 1);
 ## `prism`, a ring of `sides` (default 12, width across the flats) that `taper` scales at the top
 ## and `axis` (x, y or z, default z) lays along its length (sx, sy or sz); `sphere` of diameter sx.
-## `damage=K` (1 or 2, a hull primitive of a building) draws the primitive only from damage stage K
-## on, so the intact picture has none of them (ADR 0028 section 3).
+## `damage=K` (1 to 3, a hull primitive of a building) draws the primitive only from damage stage K
+## on, so the intact picture has none of them (ADR 0028 section 3); 3 is the `ruin` pose's alone.
 ## `group` names the pose group the primitive belongs to (ADR 0027 section 4): a pose moves the
 ## primitives of a group together, see `ArtMove`. `moved` returns the primitive as a pose frame
 ## places it, which `aabb`, `ArtMesh.faces` and `ArtRender` all read.
@@ -94,7 +94,7 @@ func aabb() -> AABB:
 func moved(by: Array[ArtMove]) -> ArtPrim:
 	var mine: Array[ArtMove] = []
 	for move: ArtMove in by:
-		if group != &"" and move.group == group:
+		if (group != &"" and move.group == group) or move.kind == ArtMove.SOOT:
 			mine.append(move)
 	if mine.is_empty():
 		return self
@@ -103,7 +103,7 @@ func moved(by: Array[ArtMove]) -> ArtPrim:
 	copy.index = index
 	for move: ArtMove in mine:
 		copy.hidden = copy.hidden or move.kind == &"hide"
-		if move.kind == &"char":
+		if move.kind == &"char" or (move.kind == ArtMove.SOOT and material != ArtPalette.TEAM):
 			copy.char_percent = maxf(copy.char_percent, move.char_percent)
 	return copy
 
@@ -161,7 +161,7 @@ func _set_option(word: String) -> bool:
 			allowed = pair[1].is_valid_identifier()
 		"damage":
 			damage = int(value)
-			allowed = pair[1].is_valid_int() and damage >= 1 and damage <= 2
+			allowed = pair[1].is_valid_int() and damage >= 1 and damage <= 3
 		"taper":
 			taper = value
 			allowed = taper > 0.0 and shape != &"sphere"

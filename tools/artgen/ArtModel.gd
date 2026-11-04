@@ -22,7 +22,12 @@ const REST_ORDER: Array[StringName] = [&"walk", &"idle"]
 ## The damage poses of a building (ADR 0028 section 3): the body at damage stage 1 and 2, each a
 ## list of moves (`shift`, `turn`, `hide`, `char`) of the hull's groups, frame 0. Each has one frame
 ## and no direction, and is a part of its own (`<id>_dmg1.svg`), a patch over the top of the body.
-const DAMAGE_PARTS: Array[StringName] = [&"dmg1", &"dmg2"]
+## `ruin` (ADR 0029 section 3) is the third: a whole picture of the rubble, cropped to its ink, with
+## no cut; only `mount` may move in it.
+const DAMAGE_PARTS: Array[StringName] = [&"dmg1", &"dmg2", &"ruin"]
+## The damage parts that are patches over the body, with a cut row (`IsoSheetDef.cuts`).
+const PATCH_PARTS: Array[StringName] = [&"dmg1", &"dmg2"]
+const RUIN: StringName = &"ruin"
 ## A hull group no damage move may touch, as the `anim` groups are not: it holds what moves.
 const SEATED_GROUP: StringName = &"mount"
 const MIN_FRAMES: int = 2
@@ -31,8 +36,21 @@ const MAX_FRAMES: int = 16
 ## and damage smoke starts; `hang`, a vehicle's bracket, on the camera side) and what a vehicle
 ## leaves on the ground.
 const EMITTER_KINDS: Array[StringName] = [
-	&"smoke", &"steam", &"flame", &"exhaust", &"launch", &"damage", &"hang"
+	&"smoke",
+	&"steam",
+	&"flame",
+	&"exhaust",
+	&"launch",
+	&"damage",
+	&"hang",
+	&"dmg_gas",
+	&"dmg_spark",
+	&"ruin",
 ]
+## The typed damage points of a building (ADR 0029 section 5): fire and smoke, a gas jet, sparks.
+const DAMAGE_POINTS: Array[StringName] = [&"damage", &"dmg_gas", &"dmg_spark"]
+## The emitters that may name a group (`group=<name>`), the ambient ones a stage can break.
+const AMBIENT: Array[StringName] = [&"smoke", &"steam", &"flame"]
 const MARKS: Array[StringName] = [&"tracks", &"wheels"]
 
 @export var art_id: StringName = &""  ## The unit or building type id; the file name too.
@@ -60,6 +78,9 @@ const MARKS: Array[StringName] = [&"tracks", &"wheels"]
 @export var marks: StringName = &""
 ## A vehicle's damage scar scale, 1000 for the battle tank's hull top (ADR 0028 section 4); 0 none.
 @export var scar_milli: int = 0
+## What the `anim` element does at KRITISK (ADR 0029 section 3): `run` where its carrier still
+## stands in `dmg2`, `hide` where it fell; empty for a model without `anim` or damage.
+@export var anim_kritisk: StringName = &""
 
 
 ## The parts the model has, in file order: hull, turret, head.
@@ -81,13 +102,14 @@ func frame_parts() -> Array[StringName]:
 
 
 ## The damage poses that change the picture: those with a move, or with a primitive that appears at
-## that stage or before, in the order of `DAMAGE_PARTS`.
+## that stage or before (the ruin: one tagged for it alone), in the order of `DAMAGE_PARTS`.
 func damage_parts() -> Array[StringName]:
 	var found: Array[StringName] = []
 	for i: int in DAMAGE_PARTS.size():
 		var changes: bool = not pose_moves(DAMAGE_PARTS[i], 0).is_empty()
 		for prim: ArtPrim in _hull_prims():
-			changes = changes or (prim.damage > 0 and prim.damage <= i + 1)
+			var shown: bool = prim.damage > 0 and prim.damage <= i + 1
+			changes = changes or (prim.damage == 3 if i == 2 else shown)
 		if changes:
 			found.append(DAMAGE_PARTS[i])
 	return found
@@ -150,19 +172,25 @@ func frame_rest(part: StringName) -> Array[ArtPrim]:
 	return found
 
 
-## The valid emitters in file order: [kind, point in tiles].
+## The valid emitters in file order: [kind, point in tiles, group]. An ambient one (`smoke`,
+## `steam`, `flame`) may end in `group=<name>`: the group a stage can move or hide (`ArtDamage`).
 func emitter_list() -> Array[Array]:
 	var found: Array[Array] = []
 	for line: String in emitters:
 		var words: PackedStringArray = line.split(" ", false)
-		var ok: bool = words.size() == 4 and StringName(words[0]) in EMITTER_KINDS
-		for i: int in range(1, words.size()):
+		var grouped: bool = words.size() == 5 and words[4].begins_with("group=")
+		var ok: bool = (words.size() == 4 or grouped) and StringName(words[0]) in EMITTER_KINDS
+		for i: int in range(1, 4 if words.size() > 3 else words.size()):
 			ok = ok and words[i].is_valid_float()
+		ok = ok and (not grouped or (StringName(words[0]) in AMBIENT))
+		var group: String = words[4].trim_prefix("group=") if grouped else ""
+		ok = ok and (not grouped or group.is_valid_identifier())
 		if ok:
 			found.append(
 				[
 					StringName(words[0]),
-					Vector3(words[1].to_float(), words[2].to_float(), words[3].to_float())
+					Vector3(words[1].to_float(), words[2].to_float(), words[3].to_float()),
+					StringName(group)
 				]
 			)
 	return found
@@ -178,14 +206,14 @@ func primitives(part: StringName) -> Array[ArtPrim]:
 	return found
 
 
-## The hull primitives at damage `stage` (1 or 2): every hull primitive that is drawn from that
+## The hull primitives at damage `stage` (1 to 3): every hull primitive that is drawn from that
 ## stage on or before it, placed by the stage's moves, without the hidden ones.
 func damage_prims(stage: int) -> Array[ArtPrim]:
 	var found: Array[ArtPrim] = []
 	var by: Array[ArtMove] = pose_moves(DAMAGE_PARTS[stage - 1], 0)
 	for prim: ArtPrim in _hull_prims():
 		if prim.damage <= stage:
-			var posed: ArtPrim = prim.moved(by)
+			var posed: ArtPrim = _posed(prim, by)
 			if not posed.hidden:
 				found.append(posed)
 	return found
@@ -226,12 +254,27 @@ func damage_changes(stage: int) -> Array[Array]:
 	for prim: ArtPrim in _hull_prims():
 		if prim.damage > stage:
 			continue
-		var posed: ArtPrim = prim.moved(by)
+		var posed: ArtPrim = _posed(prim, by)
 		if prim.damage > 0:
 			found.append([null, posed])
 		elif posed != prim:
 			found.append([prim, null if posed.hidden else posed])
 	return found
+
+
+## The primitive as a stage's moves place it: `blow` turns the panes it takes (the first of the
+## group's `glass` primitives in `blow_order`) into `hole`, and nothing else about them.
+func _posed(prim: ArtPrim, by: Array[ArtMove]) -> ArtPrim:
+	var posed: ArtPrim = prim.moved(by)
+	if posed == prim or prim.material != &"glass":
+		return posed
+	var order: Array[int] = ArtDamage.blow_order(self, prim.group)
+	var rank: int = order.find(prim.index)
+	for move: ArtMove in posed.moves:
+		if move.kind == &"blow" and rank >= 0:
+			if rank < roundi(order.size() * move.blow_percent / 100.0):
+				posed.material = &"hole"
+	return posed
 
 
 ## Every valid hull primitive, also those that appear at a damage stage, in the model's order.
@@ -371,20 +414,67 @@ func _pose_problems() -> PackedStringArray:
 		found.append("%s: an emitter is a kind of %s and three numbers" % [art_id, EMITTER_KINDS])
 	if scar_milli < 0 or (scar_milli > 0 and category != &"veh"):
 		found.append("%s: scar_milli is 0 or above, and a vehicle's" % art_id)
-	if damage_parts() == [DAMAGE_PARTS[0]]:
+	var staged: Array[StringName] = damage_parts()
+	if staged.has(&"dmg1") and not staged.has(&"dmg2"):
 		found.append("%s: dmg1 without dmg2 (a building has both stages, or dmg2 alone)" % art_id)
+	if staged.has(RUIN) and not staged.has(&"dmg2"):
+		found.append("%s: a ruin needs dmg2 (the stage before it)" % art_id)
+	found.append_array(_anim_kritisk_problems(staged))
 	var kinds: Array[StringName] = []
 	for emitter: Array in emitter_list():
 		kinds.append(emitter[0])
 	if category != &"inf" and kinds.count(&"hang") > (1 if category == &"veh" else 0):
 		found.append("%s: hang is a vehicle's, one at most" % art_id)
-	var damage_points: int = kinds.count(&"damage")
-	if category == &"inf" and (damage_points > 0 or kinds.has(&"hang")):
-		found.append("%s: damage and hang points are for buildings and vehicles" % art_id)
-	elif damage_points > (1 if category == &"veh" else 2):
-		found.append("%s: a vehicle has one damage point, a building two at most" % art_id)
+	found.append_array(_point_problems(kinds))
+	var hull_groups: PackedStringArray = PackedStringArray()
+	for prim: ArtPrim in _hull_prims():
+		hull_groups.append(prim.group)
+	for emitter: Array in emitter_list():
+		if emitter[2] != &"" and not hull_groups.has(emitter[2]):
+			found.append(
+				"%s: an emitter names a group no hull primitive has: %s" % [art_id, emitter]
+			)
 	if marks != &"" and (marks not in MARKS or category != &"veh"):
 		found.append("%s: marks are tracks or wheels, of a vehicle" % art_id)
+	return found
+
+
+## What is wrong with the counts of the damage, `dmg_gas`, `dmg_spark` and `ruin` points: a vehicle
+## has one `damage`, a squad none, a building two at most; a building that uses generator v5
+## (`is_v5`) with damage poses has 2 to 4 typed ones and, with a ruin, 1 to 3 `ruin` points.
+func _point_problems(kinds: Array[StringName]) -> PackedStringArray:
+	var found: PackedStringArray = PackedStringArray()
+	var typed: int = 0
+	for kind: StringName in DAMAGE_POINTS:
+		typed += kinds.count(kind)
+	var ruins: int = kinds.count(RUIN)
+	if category != &"bld" and (typed > kinds.count(&"damage") or ruins > 0):
+		found.append("%s: dmg_gas, dmg_spark and ruin points are a building's" % art_id)
+	elif category == &"inf" and (typed > 0 or kinds.has(&"hang")):
+		found.append("%s: damage and hang points are for buildings and vehicles" % art_id)
+	elif not ArtDamage.is_v5(self):
+		if typed > (1 if category == &"veh" else 2):
+			found.append("%s: a vehicle has one damage point, a building two at most" % art_id)
+	else:
+		var least: int = 2 if not damage_parts().is_empty() else 0
+		if typed < least or typed > 4:
+			found.append("%s: a building with damage poses has 2 to 4 damage points" % art_id)
+		var want: int = 1 if damage_parts().has(RUIN) else 0
+		if ruins < want or ruins > (3 if want > 0 else 0):
+			found.append("%s: a ruin has 1 to 3 ruin points, no ruin none" % art_id)
+	return found
+
+
+## What is wrong with `anim_kritisk`: a word that is not `run` or `hide`, or one on a model without
+## an `anim` element and a `dmg2`. (That `run` has ink under it is `ArtGen.damage_problems`.)
+func _anim_kritisk_problems(staged: Array[StringName]) -> PackedStringArray:
+	var found: PackedStringArray = PackedStringArray()
+	if anim_kritisk == &"":
+		return found
+	if anim_kritisk not in [&"run", &"hide"]:
+		found.append("%s: anim_kritisk is run or hide" % art_id)
+	elif primitives(ArtPrim.ANIM).is_empty() or not staged.has(&"dmg2"):
+		found.append("%s: anim_kritisk is for a building with an anim and a dmg2" % art_id)
 	return found
 
 
@@ -398,9 +488,16 @@ func _damage_problems(move: ArtMove, line: String) -> PackedStringArray:
 	var hull_groups: PackedStringArray = PackedStringArray()
 	for prim: ArtPrim in _hull_prims():
 		hull_groups.append(prim.group)
+		# A charred team face must leave the key band (ADR 0029 section 5).
+		if move.kind == &"char" and prim.group == move.group and prim.material == ArtPalette.TEAM:
+			if not ArtPalette.char_leaves_band(faction, move.char_percent):
+				found.append("%s: a charred team face stays in the key band: %s" % [art_id, line])
+	if move.kind == ArtMove.SOOT:
+		return found
+	var seated: bool = move.group == SEATED_GROUP and move.part != RUIN  # the ruin may move it
 	if not hull_groups.has(move.group):
 		found.append("%s: no such hull group: %s" % [art_id, line])
-	elif move.group == SEATED_GROUP or _groups(ArtPrim.ANIM).has(move.group):
+	elif seated or _groups(ArtPrim.ANIM).has(move.group):
 		found.append(
 			"%s: a damage move may not touch the moving element or mount: %s" % [art_id, line]
 		)

@@ -134,9 +134,10 @@ static func bounds(polys: Array[Poly]) -> Rect2:
 	return box
 
 
-## `hex` of a primitive's face after a `char` move; a team zone keeps its key colours.
+## `hex` of a primitive's face after a `char` or `soot` move. A charred team face was checked to
+## leave the key band (`ArtModel`); soot spares the team faces.
 static func _scorch(prim: ArtPrim, hex: String) -> String:
-	if prim.char_percent <= 0.0 or prim.material == ArtPalette.TEAM:
+	if prim.char_percent <= 0.0:
 		return hex
 	return ArtPalette.scorched(hex, prim.char_percent)
 
