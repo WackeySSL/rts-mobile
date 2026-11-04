@@ -1,0 +1,10 @@
+<!-- Damage overlay loose, look A: a bent wheel fender (ADR 0028 section 4), neutral, 44x40 at 2x -->
+<!-- Silhouette: A grey steel wheel fender, a curved sheet peeled outward from one bolt and sagging in an arc with a dark inner face. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="44" height="40" viewBox="0 0 44 40">
+<polygon points="7,6 21,5 32,12 37,24 31,27 27,17 19,12 8,11" fill="#7D8893" stroke="#30342E" stroke-width="2" stroke-linejoin="round"/>
+<polyline points="9,8 20,8 29,14 33,23" fill="none" stroke="#A9B4BE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="27,17 31,27 37,24 35,30 28,32 25,22" fill="#5B6670" stroke="#30342E" stroke-width="2" stroke-linejoin="round"/>
+<ellipse cx="16" cy="12" rx="5" ry="2" fill="#1C2127" opacity="0.5"/>
+<polygon points="3,3 9,3 9,9 3,9" fill="#30342E"/>
+<ellipse cx="6" cy="6" rx="2" ry="2" fill="#A9B4BE" opacity="1"/>
+</svg>

@@ -9,7 +9,11 @@ extends Control
 ## rasterises the frames itself. A turret or head sits at its mount (`ArtGen.mount_px`). Under
 ## every hull lies its cast shadow, every shadow below every hull (the game draws them in one layer
 ## at z 2); the default view of a unit at the three zooms also has its selection ellipse. The type's
-## item card is left of the page button. Built on first show; view-only.
+## item card is left of the page button. A vehicle with a `damage` point also has the Damage rows
+## under them (plan row P160, STYLE.md "Damage overlays"): its 16 directions at stage 1 (`Scar` of
+## `scar1`) and at stage 2 (`Scar` of `scar2` and `Loose`), the neutral sheet's sprites at the
+## model's `damage` and `hang` points, over the hull and under the turret. Built on first show;
+## view-only.
 
 const FACTION_NAMES: Dictionary[StringName, String] = {
 	&"fossil": "Derrick League", &"renew": "Lumen Accord"
@@ -40,6 +44,7 @@ const RING_RADIUS_MILLI: int = 600  ## A selection radius for the rings shown he
 const Z_SHADOW: int = 1  ## Shadows, then rings, then the hulls and what sits on them.
 const Z_RING: int = 2
 const Z_BODY: int = 3
+const DAMAGE_STAGES: int = 2  ## The stages a vehicle is shown at.
 
 var grass_color: Color = Color("6F8F57")
 var sand_color: Color = Color("CDB98F")
@@ -49,6 +54,7 @@ var _title: Label = null
 var _icon: TextureRect = null
 var _content: Control = null
 var _textures: Dictionary[String, ImageTexture] = {}
+var _neutral: IsoSheetDef = null  ## The damage overlays' sheet, null while it is not there.
 
 
 func _init() -> void:
@@ -144,6 +150,11 @@ func _fill() -> void:
 		for ground: ColorRect in grounds:
 			height = _section(ground, model, layouts, box, triad, top)
 		top += height
+	if _shows_damage(model):
+		var damage_height: float = 0.0
+		for ground: ColorRect in grounds:
+			damage_height = _damage_section(ground, model, layouts, box, top)
+		top += damage_height
 	_content.custom_minimum_size = Vector2(0.0, maxf(top, get_viewport_rect().size.y))
 
 
@@ -182,6 +193,48 @@ func _section(
 		var rig_name: String = "Zoom%d" % roundi(zoom * 100.0)
 		rigs.append(_rig(model, layouts, model.default_dir(), triad, zoom, rig_name, true))
 	return _flow(row, rigs, ZOOMS, box, y, INF)
+
+
+## Whether the Damage rows are drawn: a vehicle with a `damage` point, once the neutral sheet is in.
+func _shows_damage(model: ArtModel) -> bool:
+	if _neutral == null:
+		_neutral = IsoAtlas.load_neutral_sheet(IsoAtlas.NEUTRAL_SHEET)
+	var kinds: Array[StringName] = []
+	for emitter: Array in model.emitter_list():
+		kinds.append(emitter[0])
+	return _neutral != null and model.category == &"veh" and kinds.has(&"damage")
+
+
+## The Damage rows of one ground: a line of 8 per 8 directions at zoom 1, for stage 1 and then
+## stage 2, in the Signal triad. Returns the height it took.
+func _damage_section(
+	ground: ColorRect,
+	model: ArtModel,
+	layouts: Dictionary[StringName, ArtGen.Layout],
+	box: Rect2,
+	top: float
+) -> float:
+	var row: Control = Control.new()
+	row.name = "Damage"
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.anchor_left = 0.5
+	row.anchor_right = 0.5
+	row.offset_top = top
+	ground.add_child(row)
+	var title: Label = _label("Stage 1 (scar1), then stage 2 (scar2, loose)", HALF_WIDTH_PX)
+	title.position.x = -HALF_WIDTH_PX / 2.0
+	row.add_child(title)
+	var y: float = LABEL_PX
+	for stage: int in range(1, DAMAGE_STAGES + 1):
+		var rigs: Array[Node2D] = []
+		var zooms: Array[float] = []
+		for dir: int in model.directions(&"hull"):
+			rigs.append(
+				_rig(model, layouts, dir, 0, 1.0, "Stage%dDir%02d" % [stage, dir], false, stage)
+			)
+			zooms.append(1.0)
+		y = _flow(row, rigs, zooms, box, y, _slot_cap(box))
+	return y
 
 
 ## The widest slot of a direction row that keeps eight to a line and the first and last rig, which
@@ -237,7 +290,8 @@ func _rig(
 	triad: int,
 	zoom: float,
 	rig_name: String,
-	ringed: bool
+	ringed: bool,
+	stage: int = 0
 ) -> Node2D:
 	var rig: Node2D = Node2D.new()
 	rig.name = rig_name
@@ -246,6 +300,8 @@ func _rig(
 	if ringed and model.category != &"bld":
 		rig.add_child(_ring(zoom))
 	rig.add_child(_sprite(model, &"hull", hull_dir, layouts[&"hull"], triad, zoom))
+	if stage > 0:
+		_add_damage(rig, model, dir, zoom, stage)
 	for part: StringName in [&"turret", &"head"]:
 		if layouts.has(part):
 			var top: Sprite2D = _sprite(model, part, dir, layouts[part], triad, zoom)
@@ -253,6 +309,50 @@ func _rig(
 			top.position *= BASE_SCALE * zoom
 			rig.add_child(top)
 	return rig
+
+
+## The overlays of damage `stage` on a vehicle's rig (`Scar`, and at stage 2 `Loose`), in the order
+## of the tree after the hull: the scar at the `damage` point scaled by `scar_milli`, the loose part
+## at the `hang` point (already on the camera side), mirrored when that is left of the centre.
+## A look is a frame of the part, alternating with the direction.
+func _add_damage(rig: Node2D, model: ArtModel, dir: int, zoom: float, stage: int) -> void:
+	var scale_px: float = BASE_SCALE * zoom
+	for emitter: Array in model.emitter_list():
+		if emitter[0] == &"damage":
+			var part: StringName = &"scar1" if stage == 1 else &"scar2"
+			var scar: Sprite2D = _overlay(part, dir % 2, false, zoom)
+			scar.name = "Scar"
+			scar.position = ArtGen.point_px(emitter[1], dir) * scale_px
+			scar.scale = Vector2.ONE * model.scar_milli / 1000.0
+			rig.add_child(scar)
+		elif emitter[0] == &"hang" and stage == DAMAGE_STAGES:
+			var at: Vector2 = ArtGen.hang_point_px(emitter[1], dir)
+			var look: int = dir % 2 + (0 if model.marks == &"tracks" else 2)
+			var loose: Sprite2D = _overlay(&"loose", look, at.x < 0.0, zoom)
+			loose.name = "Loose"
+			loose.position = at * scale_px
+			rig.add_child(loose)
+
+
+## A frame of the neutral sheet drawn with its anchor at the sprite's position, `flip` mirrors it
+## across the anchor.
+func _overlay(part: StringName, frame: int, flip: bool, zoom: float) -> Sprite2D:
+	var scale_px: float = BASE_SCALE * zoom
+	var path: String = _neutral.path(part, -1, frame)
+	var key: String = "%s %s" % [path, zoom]
+	if not _textures.has(key):
+		var image: Image = Image.new()
+		image.load_svg_from_string(FileAccess.get_file_as_string(path), scale_px)
+		_textures[key] = ImageTexture.create_from_image(image)
+	var anchor: Vector2 = Vector2(_neutral.anchor(part))
+	var size: Vector2 = Vector2(_neutral.frame_size(part))
+	var sprite: Sprite2D = Sprite2D.new()
+	sprite.texture = _textures[key]
+	sprite.centered = false
+	sprite.flip_h = flip
+	sprite.offset = -Vector2(size.x - anchor.x if flip else anchor.x, anchor.y) * scale_px
+	sprite.z_index = Z_BODY
+	return sprite
 
 
 func _sprite(

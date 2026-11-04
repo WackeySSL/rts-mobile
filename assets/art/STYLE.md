@@ -243,7 +243,7 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   when absent), `stride_milli`, `anim_ms`, `emitters` with `emitter_points` (px of the 2x art, per
   hull frame for each, once for a building: `emitter_point(index, dir)`) and `marks`, each written
   only when set, so today's sheets are unchanged. `tests/art/test_artgen_frames.gd` pins it.
-- **Damage poses** (P156, ADR 0028 sections 3 and 4; generator v4, no model uses them yet). A
+- **Damage poses** (P156, ADR 0028 sections 3 and 4; generator v4; since P160 the eight vehicles carry `damage`, `hang` and `scar_milli`, no building uses the poses yet). A
   building's `poses` gain `dmg1` and `dmg2`, its body at damage stage 1 and 2, a move a line, frame
   0 and no header line: `dmg1|dmg2 0 <group> shift <dx> <dy> <dz>`, `... turn <x|y|z> <degrees>
   <px> <py> <pz>`, `... hide` (the group is not drawn) or `... char <percent>` (0 to 100: its
@@ -1678,6 +1678,46 @@ The Life page of the gallery shows every kind at the three camera zooms on grass
 marks of P151 and the wrecks of P152 append their regions below y 156 of the life atlas (the canvas
 grows downwards, so no region here moves).
 
+## Damage overlays (plan row P160, ADR 0028 section 4)
+A damaged vehicle shows a scar on its hull and, at stage 2, a part hanging loose. The art is a
+hand-written neutral sheet in `assets/art/svg/damage/` (no team colour, authored here, so
+`assets/CREDITS.md` is unchanged): `damage_sheet.tres` (`IsoSheetDef`, `faction` `neutral`,
+`category` `dmg`, `root` this folder, every part one view) and eight SVGs, each with a "Keep File"
+import so the export carries the text the bake reads (`IsoAtlas.NEUTRAL_SHEET`). Every frame is a
+slot shared by all players (no key colour), 2x px, drawn at least 1 px inside its canvas. Vehicle
+stages are 50 and 25 % of max hp (`vehicle_stage_percent`); the view (P161) shows `scar1` at stage 1,
+`scar2` and `loose` at stage 2.
+
+| Part | Frames | Canvas | Anchor | Look |
+| --- | --- | --- | --- | --- |
+| `scar1` | 2 (`damage_scar1_f0`, `_f1`) | 64 x 36 | centre 32, 18 | A cluster of soot smudges in near-black at 30 to 50 % alpha, three pale scratches across it (#A9B4BE, #7D8893); the two looks mirror the heavy side. |
+| `scar2` | 2 | 64 x 36 | centre 32, 18 | A larger char patch (#2A2522, #1C2127) with a torn edge, bare-metal scratches and a thin ember seam through it, #FFD84D with a short #FFF2B0 core (hue 47 and 50 degrees, outside both key bands). |
+| `loose` | 4 (`_f0`, `_f1` skirt plates for `marks` `tracks`; `_f2`, `_f3` fenders for `wheels`) | 44 x 40 | bracket 6, 6 | A grey steel part (#7D8893 face, #A9B4BE lit edge, #5B6670 underside, #30342E edge) hanging off one bolt at its top left and dropping to the right: a slab with a torn low corner, a plate snapped in two, a curved fender peeled outward, a creased fender. |
+
+- **Shapes and colour.** Polygons, ellipses and polylines only, two tones of grey metal and the
+  char colours, so one sprite sits on olive, white and graphite hulls alike. No colour in either key
+  band (saturation 0.30 or more within 20 degrees of a key colour), and the only saturated colours are
+  the ember's yellow-white (hue at least 46 degrees, ADR 0027 section 4). The scar's alpha is the
+  group `opacity`, so it lets the hull's own shading through; the part is opaque.
+- **Placement.** A model's `damage` point (px of the 2x art from the hull's ground point, per hull
+  frame, on a top face the turret does not cover) is the scar's centre; `scar_milli` scales it to
+  that top (1000 is the Bullhead's, the battle tank: 900 the Torque, 700 the Tanker and the Fuel
+  Runner, 600 the Flarejack, the Mortar Rig and the Arcline, 550 the Swift). The `hang` point (a
+  track's outer top edge, or the top of a wheel) is on the side that faces the camera in every hull
+  frame, where `loose` is anchored; it is drawn mirrored when that point is left of the hull's centre,
+  so the part hangs away from the hull. Both draw over the hull and under the turret.
+- **Looks.** The two looks of a part are picked per vehicle by the view (`LifeClock.mix`); the
+  gallery alternates them with the direction.
+- **Gallery.** The Iso page's Damage rows (`art_gallery_iso.gd`, under the two triad rows of every
+  vehicle, on both grounds): the 16 directions at stage 1 (`scar1`), then at stage 2 (`scar2` and
+  `loose`), Signal triad, zoom 1. Judge there that the scar sits on the hull and not on the ground,
+  and that the loose part hangs from the near side in every direction.
+- **Readability.** At 32 px in greyscale a scar is a dark patch on the hull and a loose part a
+  light flag at its side; neither changes the silhouette's role cue (the gun, the drum, the wheels).
+  The vehicle must still read without them: they only add.
+- Tests: `tests/art/test_damage_overlays.gd` (sheet, files, imports, edge, key bands, the models'
+  points), `tests/view/test_neutral_sheet.gd` (the bake), `tests/art/test_art_gallery_iso.gd` (the rows).
+
 ## Health bars (new)
 Bars are filled rects only, drawn in one `_draw()` (ADR 0011 section 3), sized in dp so they look the
 same at every zoom. Sizes are outer boxes in dp, in rects of 1 dp, origin at the top-left corner. The
@@ -2346,3 +2386,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-03 | v1.20 (art-director, plan row P89): `glyph_low_power_map.svg`, the seated map copy of the low-power glyph (offline plate, triangle and bolt at 0.8), tinted #FF8A1F, the tenth map glyph; "Icons and glyphs" (tint table, "Map glyphs sit on a seat", catalogue) brought up to date. |
 | 2026-11-03 | v1.21 (P143, art-director, ADR 0027 sections 4 and 5): `anim` parts for eight buildings (Signal Mast 16 frames, Relay Tower 16, Wind Park 6, Turbine Hall 4, Deep Bore 4, Blackout Array 4, Grid Hub 2, Crew Hall 2), `emitters` on six building models and every vehicle, `marks` on every vehicle ("Building life (P143)" under "Generated art"), the sorted world's cross-faction page 3066 to 3266 px (mirrors 2524 to 2702 and 2624 to 2894), the Build page of the gallery plays the frames; 40 existing generated files changed, 108 are new, 1361 are byte for byte as before. |
 | 2026-11-03 | v1.22 (P156, art-director, ADR 0028 sections 3 and 4): generator v4, the damage poses (`dmg1`, `dmg2`: `shift`, `turn`, `hide`, `char`, `damage=<k>` primitives), the geometric cut row and the patch parts with their 4 px overlap, `cuts`, `scar_milli`, the `damage` and `hang` emitter kinds (`hang` on the camera side) and `IsoSheetDef.root` ("Damage poses" under "Generated art"); no model uses them, every committed frame and sheet is byte for byte as before. |
+| 2026-11-04 | v1.23 (P160, art-director, ADR 0028 section 4): the neutral vehicle damage overlays (`scar1`, `scar2`, `loose`, 8 frames and their sheet in `assets/art/svg/damage/`), `damage`, `hang` and `scar_milli` on the eight vehicle models (their sheets regenerated, every frame byte for byte as before), the Iso page's Damage rows ("Damage overlays"). |

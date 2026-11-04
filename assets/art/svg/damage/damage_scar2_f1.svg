@@ -1,0 +1,10 @@
+<!-- Damage overlay scar2, look B (ADR 0028 section 4), neutral, no team colour, 64x36 at 2x -->
+<!-- Silhouette: A second char patch with a torn edge, bare-metal scratches and a thin yellow-white ember seam, set differently. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="36" viewBox="0 0 64 36">
+<polygon points="6,20 10,13 16,9 23,11 28,5 36,8 42,5 49,10 56,12 58,19 53,23 56,29 47,27 41,31 34,27 27,31 20,27 12,29 14,24" fill="#2A2522" opacity="0.8"/>
+<polygon points="14,19 20,14 28,14 36,12 45,13 51,18 46,23 37,22 30,26 21,23" fill="#1C2127" opacity="0.6"/>
+<polyline points="16,17 25,20 32,18" fill="none" stroke="#A9B4BE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+<polyline points="38,22 46,20 53,22" fill="none" stroke="#7D8893" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+<polyline points="19,21 26,17 34,19 40,15 48,17" fill="none" stroke="#FFD84D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="26,17 31,18" fill="none" stroke="#FFF2B0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
