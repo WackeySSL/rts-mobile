@@ -184,7 +184,7 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 ## `hit_flash` for `hit_flash_ms` (growing from `hit_flash_grow.x` to `.y` times its frame, at
 ## `hit_alpha`) inside the middle `hit_flash_box_milli` (of 1000) of the building's `frame_box`, and
 ## `hit_chips[0]` to `[1]` chips that fly out for `hit_chip_ms`, each along one of the
-## `hit_chip_fly_px` (east, up; at most four). The hit ring holds `hit_slots` of them.
+## `hit_chip_fly_px` (east, up; at most five). The hit ring holds `hit_slots` of them.
 @export var hit_slots: int = 16
 @export var hit_flash_ms: int = 60
 @export var hit_flash_box_milli: int = 500
@@ -193,5 +193,11 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 @export var hit_chips: PackedInt32Array = PackedInt32Array([3, 5])
 @export var hit_chip_ms: int = 350
 @export var hit_chip_fly_px: PackedVector2Array = PackedVector2Array(
-	[Vector2(-14.0, 10.0), Vector2(-6.0, 18.0), Vector2(6.0, 18.0), Vector2(14.0, 10.0)]
+	[
+		Vector2(-14.0, 10.0),
+		Vector2(-6.0, 18.0),
+		Vector2(0.0, 22.0),
+		Vector2(6.0, 18.0),
+		Vector2(14.0, 10.0),
+	]
 )

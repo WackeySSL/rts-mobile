@@ -27,6 +27,8 @@ extends Node2D
 ## The ambient is dropped by `life.reduced`: nothing is born and the ring is emptied on the switch;
 ## a new match empties it too. An ambient emitter stops from the stage its sheet's `emitter_quiet`
 ## names (an empty one reads as all zeros: it never stops), when the building is that damaged.
+## The hit ring (`HitFx`, ADR 0029 section 7: the flash and chips where a shot hits a shown
+## building) is a third ring, planned and drawn with the others.
 ## The damage ring (`DamageFx`, `FxRing`, ADR 0029 section 6) is a second ring of its own, planned
 ## and drawn in the same `_draw` from the same texture; every glow of it is drawn before every
 ## other quad, and a switch to `reduced` leaves its puffs alive.
@@ -347,7 +349,7 @@ func _on_ticked(_tick: int) -> void:
 	_dmg.read(life)
 	_dmg.emit(snap, view, life, building_layer, unit_layer, get_global_transform().affine_inverse())
 	_hit.read(life)
-	_hit.emit(snap, life, building_layer)
+	_hit.emit(snap, life, building_layer, view)
 
 
 ## A puff at each ambient emitter whose cycle turned over, of a building the player can see that is
