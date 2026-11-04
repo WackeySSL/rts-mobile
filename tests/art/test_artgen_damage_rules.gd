@@ -99,9 +99,7 @@ func test_a_debris_primitive_is_drawn_behind_what_stands_in_front_of_it() -> voi
 	var model: ArtModel = barracks.duplicate()
 	var debris: String = "box hull iron -0.35 -0.75 1.0 0.15 0.35 0.25 damage=1"
 	model.prims = barracks.prims + PackedStringArray([debris])
-	model.emitters.append_array(
-		PackedStringArray(["damage -0.25 -0.5 1.3", "dmg_spark -0.25 -0.5 1.2"])
-	)
+	# The barracks carries its own 2-4 damage points since P158a, with ink at both stages.
 	assert_array(Array(model.problems())).is_empty()
 	var posed: Array[ArtPrim] = model.damage_prims(1)
 	var order: Array[int] = ArtRender.draw_order(posed, 0.0)

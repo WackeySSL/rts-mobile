@@ -11,14 +11,15 @@ extends GdUnitTestSuite
 const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## The pages of the committed sheets, px tall (4096 wide), with the squads' walk and idle frames
 ## (P139; before them the pages were 2682, 2206 and 2226) and the buildings' `anim` frames (P143;
-## before them 3066, 2524 and 2624): P153 and P154 update these in the PR that changes them. The
-## cross-faction page is 3266 for the default pair (Signal and Arktisk, the key triads) and 3286
-## for Karmin and Kobolt (`OTHER_TRIADS_PX` allows that much); a mirror page can differ too:
-## Derrick's is 2702 when a player wears Signal, its key triad (the default match), 2698 when
-## neither does (the slot names, which break ties between frames of one height, order the shelves).
-const TODAY_CROSS: int = 3266
-const TODAY_MIRROR_DERRICK: int = 2702
-const TODAY_MIRROR_LUMEN: int = 2894
+## before them 3066, 2524 and 2624) and the damage patches at 75 % of both factions (P158a and
+## P158b, ADR 0029; before them 3266, 2702 and 2894): P153 and P154 update these in the PR that
+## changes them. The cross-faction page is 3550 for the default pair (Signal and Arktisk, the key
+## triads) and 3558 for Karmin and Kobolt (`OTHER_TRIADS_PX` allows that); a mirror page can
+## differ too: Derrick's is 3008 for the default match and other triads alike (the slot names, which
+## break ties between frames of one height, order the shelves).
+const TODAY_CROSS: int = 3550
+const TODAY_MIRROR_DERRICK: int = 3008
+const TODAY_MIRROR_LUMEN: int = 3140
 const OTHER_TRIADS_PX: int = 40  ## How far another pair of triads may move the page.
 const CRAFTED: String = (
 	'<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4">'
@@ -44,7 +45,7 @@ func test_the_cross_faction_page_at_full_scale_is_within_the_budget() -> void:
 	_assert_within_budget("cross-faction", page)
 	_assert_today("cross-faction", page, TODAY_CROSS)
 	# Another pair of triads gives a page of nearly the same height (the slot names break ties
-	# between frames of one height, so the shelves can fall differently: 3286 for this pair).
+	# between frames of one height, so the shelves can fall differently: 3402 for this pair too).
 	var others: Array[IsoPlayerArt] = [_art(&"fossil", 2), _art(&"renew", 3)]
 	var other: Vector2i = _page(others)
 	_assert_within_budget("cross-faction in other triads", other)
