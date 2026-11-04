@@ -18,6 +18,7 @@ const ANIM: StringName = &"anim"  ## The sheet part of a building's moving eleme
 ## Salt of `LifeClock.pick` for the phase of a loop: far from RigLife's salts.
 const SALT_ANIM: int = 0x50000000
 const REST: int = 0
+const ANIM_NODE: StringName = &"Anim"  ## The name of a building's moving-element child.
 
 
 ## The phase of building `id`'s loop, ms into it: the same for an id in every run, spread over the
@@ -46,7 +47,8 @@ static func low_power(snap: MatchSnapshot, player: int) -> bool:
 static func dress_ghost(
 	parent: Sprite2D, world_sort: WorldSort, sheet: IsoSheetDef, owner_id: int
 ) -> void:
-	var child: Sprite2D = parent.get_child(0) as Sprite2D if parent.get_child_count() > 0 else null
+	# By name: a `Damage` child may come first (P159).
+	var child: Sprite2D = parent.get_node_or_null(NodePath(ANIM_NODE)) as Sprite2D
 	var base: int = -1
 	if sheet.has_part(ANIM):
 		base = world_sort.base_of(sheet, ANIM, BuildingLayer.NO_FRAME, owner_id)
@@ -56,7 +58,7 @@ static func dress_ghost(
 		return
 	if child == null:
 		child = Sprite2D.new()
-		child.name = "Anim"
+		child.name = ANIM_NODE
 		child.region_enabled = true
 		child.centered = false
 		parent.add_child(child)

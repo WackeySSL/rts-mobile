@@ -70,3 +70,7 @@ emit_grow_from = 0.6
 emit_grow_to = 1.2
 emit_flame_from = 1.0
 emit_flame_to = 0.7
+building_stage_percent = PackedInt32Array(67, 34)
+vehicle_stage_percent = PackedInt32Array(50, 25)
+damage_writes_per_frame = 60
+damage_building_writes = 20

@@ -20,7 +20,8 @@ extends Node2D
 ## live enemy building (`BuildingLayer.any_cell_seen`): at every moment exactly one of the live
 ## building and its ghost is drawn. A record is made on a tile the player saw, so the ground under
 ## it is explored. A type with no art on the atlas is not drawn (the live building shows a flat
-## diamond then; a ghost has no stand-in). A building with a moving element (`anim`, P144) has it
+## diamond then; a ghost has no stand-in). A ghost shows the stage last seen
+## (`building_layer`, P159). A building with a moving element (`anim`, P144) has it
 ## as an `Anim` child of the ghost's sprite at its rest frame (`BuildingAnims`), so the antenna, the
 ## array or the rotors are not missing from the memory; it is as dim as the body and does not play.
 ##
@@ -55,6 +56,10 @@ const ALPHA_MAX: int = 255
 ## `FogLayer.explored_alpha`, so a remembered building is as dark as the ground it stands on.
 ## Read when the layer enters the tree.
 @export var explored_alpha: int = 140
+## The layer of the live buildings, whose remembered stages (`remembered_stage`, P159) the ghosts
+## are drawn at: the trimmed body and a `Damage` child before the `Anim`. Without one every ghost is
+## intact.
+@export var building_layer: BuildingLayer
 ## Draws no ghosts: every enemy building is drawn live, as in the perf arena.
 @export var reveal_enemies: bool = false
 
@@ -175,7 +180,10 @@ func _place(snap: MatchSnapshot, player: int) -> int:
 		sprite.position = IsoProjection.ground_to_px(x, y)
 		world_sort.dress(sprite, sheet, PART)
 		world_sort.show_frame(sprite, sheet, PART, BuildingLayer.NO_FRAME, owners[entry])
+		var stage: int = building_layer.remembered_stage(ids[entry]) if building_layer else 0
+		BuildingDamage.dress_ghost(sprite, world_sort, sheet, owners[entry], stage)
 		BuildingAnims.dress_ghost(sprite, world_sort, sheet, owners[entry])
+		BuildingDamage.ghost_anim(sprite, sheet, stage)
 		if sprite.visible:  # A frame the owner's faction has not hides it, and its slot is reused.
 			_ids.append(ids[entry])
 			drawn += 1
