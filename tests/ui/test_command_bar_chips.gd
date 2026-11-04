@@ -176,13 +176,25 @@ func test_an_enemy_building_shows_amber_brackets_and_a_notched_amber_bar() -> vo
 		var dp: float = UiScale.base_px_per_dp()
 		var rects: Array[Rect2] = chip.frame_rects()
 		assert_int(rects.size()).override_failure_message(why).is_equal(16)
-		var card: Rect2 = Rect2(chip.card.global_position - chip.global_position, chip.card.size)
+		var card: Rect2 = Rect2(Vector2.ZERO, chip.card.size)  # The frame is in card coordinates.
+		assert_float(chip.card.size.x).override_failure_message(why).is_equal_approx(
+			UiScale.dp(CommandBar.CARD_DP), TOLERANCE_PX
+		)
+		assert_float(chip.card.size.y).override_failure_message(why).is_equal_approx(
+			UiScale.dp(CommandBar.CARD_DP), TOLERANCE_PX
+		)
+		# Painted by the card after its picture, not by the chip before its children.
+		assert_bool(chip.card.is_connected(&"draw", chip._paint_frame)).is_true()
+		assert_bool(chip.has_method(&"_draw")).override_failure_message(why).is_false()
 		var outer: Rect2 = card.grow(HealthBarLayer.EDGE_DP * dp + TOLERANCE_PX)
 		for index: int in rects.size():
 			var out: String = "%s: rect %d %s outside %s" % [why, index, rects[index], outer]
 			assert_bool(outer.encloses(rects[index])).override_failure_message(out).is_true()
 		# The arms: 2 dp thick, at most 12 dp long, one pair in each corner of the picture.
 		var arm: Rect2 = rects[8]
+		assert_that(arm.position).override_failure_message(why).is_equal(card.position)
+		var last: Rect2 = rects[15]  # The bottom right corner's arm ends at the card's corner.
+		assert_that(last.end).override_failure_message(why).is_equal(card.end)
 		assert_float(minf(arm.size.x, arm.size.y)).override_failure_message(why).is_equal_approx(
 			HealthBarLayer.FRAME_THICK_DP * dp, TOLERANCE_PX
 		)
@@ -279,12 +291,75 @@ func test_the_freeze_holds_while_the_selection_changes_during_the_strike_aim() -
 		_aim.cancel()
 
 
+## A building was selected before the mode: "All army" adds Stop (and "+N" alone counts the
+## types), so the bar widens by Stop and its gap at the most.
+func test_a_building_selected_before_the_mode_widens_the_bar_by_stop_at_the_most() -> void:
+	for profile: StringName in [&"android_6in", &"web_phone_small"]:
+		await _open(UiProfiles.by_name(profile))
+		await _select([BORE])
+		assert_bool(_bar.order_button(&"stop").is_visible_in_tree()).is_false()
+		_make_ready()
+		var snap: MatchSnapshot = _main.get_node("MatchRunner").snapshot
+		assert_bool(_placement.begin(PlacementRig.plant(snap))).is_true()
+		await await_idle_frame()
+		await await_idle_frame()
+		var stop: float = _bar.order_button(&"stop").get_combined_minimum_size().x
+		var gap: float = roundf(UiScale.dp(HudCorners.GAP_DP))
+		await _assert_selection_changes_freeze(profile, ["PlaceConfirm", "PlaceCancel"], stop + gap)
+		_placement.cancel()
+
+
+## The reviewer's run: one tank, placement, the ghost dragged low and left near the bar's end, then
+## "All army": the check mark and X stay where they are.
+func test_all_army_does_not_move_the_ghosts_check_mark_and_x_next_to_the_bar() -> void:
+	await _open(UiProfiles.by_name(&"web_phone_small"))
+	await _select([TANK])
+	_make_ready()
+	var snap: MatchSnapshot = _main.get_node("MatchRunner").snapshot
+	assert_bool(_placement.begin(PlacementRig.plant(snap))).is_true()
+	await await_idle_frame()
+	var bar: Rect2 = _bar.get_global_rect()
+	var dp: float = UiScale.base_px_per_dp()
+	var grab: float = _placement.controller.settings.ghost_grab_dp + GhostControls.RING_GAP_DP
+	var found: bool = false
+	for y: int in range(31, -1, -1):  # Low first.
+		for x: int in 32:
+			_placement._move_to(Vector2i(x, y))
+			var box: Rect2 = _placement.silhouette_rect()
+			var column_x: float = box.end.x + grab * dp
+			var reaches: bool = box.get_center().y + 72.0 * dp > bar.position.y
+			# Its column clear of the bar as it is, but over it if the bar grew a "+N" plate.
+			if reaches and column_x >= bar.end.x and column_x < bar.end.x + 30.0 * dp:
+				found = true
+				break
+		if found:
+			break
+	assert_bool(found).override_failure_message("no tile near the bar's end").is_true()
+	await await_idle_frame()
+	await await_idle_frame()
+	var confirm: Vector2 = (_hud("PlaceConfirm") as Control).global_position
+	var cancel: Vector2 = (_hud("PlaceCancel") as Control).global_position
+	_controller.select_all_army()
+	await await_idle_frame()
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_bool(_more().visible).is_true()
+	assert_that((_hud("PlaceConfirm") as Control).global_position).is_equal(confirm)
+	assert_that((_hud("PlaceCancel") as Control).global_position).is_equal(cancel)
+	assert_float(_bar.get_global_rect().size.x).is_less_equal(bar.size.x + 1.5)
+
+
 ## 1, then 5 types, 2, 3, 1 and 5 again: nothing under the thumb moves and the bar
 ## keeps the width it had.
-func _assert_selection_changes_freeze(profile: StringName, extra: Array[String]) -> void:
+func _assert_selection_changes_freeze(
+	profile: StringName, extra: Array[String], extra_px: float = 0.0
+) -> void:
 	var before: Dictionary[String, Rect2] = _frozen_rects(extra)
 	var column: Vector2 = _column_anchor()
 	var plate: Rect2 = _bar.get_global_rect()
+	assert_float(_bar._held_px).override_failure_message(str(profile)).is_equal_approx(
+		plate.size.x, 1.5
+	)
 	for ids: Array in [TYPES, [TANK, RIFLE], TYPES.slice(0, 3), [RIFLE], TYPES]:
 		await _select(ids)
 		var why: String = "%s, %d ids" % [profile, ids.size()]
@@ -299,7 +374,7 @@ func _assert_selection_changes_freeze(profile: StringName, extra: Array[String])
 			plate.position.y, 1.5
 		)
 		assert_float(now.size.x).override_failure_message(why + ": widened").is_less_equal(
-			maxf(plate.size.x, _floor()) + 1.5
+			plate.size.x + extra_px + 1.5
 		)
 		_assert_nothing_cut(why)
 	assert_array(_sent).is_empty()
@@ -308,7 +383,7 @@ func _assert_selection_changes_freeze(profile: StringName, extra: Array[String])
 ## Checks the fit of the shown chips for `types` selected; true when "+N" shows.
 func _assert_fit(why: String, types: int) -> bool:
 	var shown: int = _shown_chips()
-	assert_int(shown).override_failure_message(why).is_between(1, types)
+	assert_int(shown).override_failure_message(why).is_between(0 if _bar._frozen else 1, types)
 	var more: Control = _more()
 	assert_bool(more.visible).override_failure_message(why).is_equal(shown < types)
 	if shown < types:
@@ -384,22 +459,7 @@ func _row_ask() -> float:
 func _room() -> float:
 	var rects: Dictionary[StringName, Rect2] = _bar._rects(true)
 	var room: float = rects[HudCorners.BAR].size.x
-	return maxf(minf(room, _bar._held_px), _floor()) if _bar._frozen else room
-
-
-## The least a row asks while a mode runs and the selection holds more types than fit: Deselect,
-## the first chip, "+N", the orders and the gaps. The held width cannot go below it.
-func _floor() -> float:
-	var gap: float = roundf(UiScale.dp(HudCorners.GAP_DP))
-	var orders: Control = _bar.find_child("Orders", true, false).get_child(0)
-	var clear: Control = _hud("Deselect") as Control
-	var least: float = clear.get_combined_minimum_size().x + orders.get_combined_minimum_size().x
-	return (
-		least
-		+ _chip(0).get_combined_minimum_size().x
-		+ _more().get_combined_minimum_size().x
-		+ 3.0 * gap
-	)
+	return minf(room, _bar._held_px) if _bar._frozen else room
 
 
 func _shown_controls() -> Array[Control]:

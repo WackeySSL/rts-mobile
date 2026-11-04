@@ -87,6 +87,8 @@ class Chip:
 		card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		card.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.size_flags_vertical = Control.SIZE_SHRINK_CENTER  # The picture's square, not the slot.
+		card.draw.connect(_paint_frame)  # Over the picture: the card draws it before this signal.
 		line.add_child(card)
 		var text: VBoxContainer = VBoxContainer.new()
 		text.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -102,8 +104,6 @@ class Chip:
 		text.add_child(health)
 		line.add_child(text)
 		add_child(line)
-		card.resized.connect(queue_redraw)
-		resized.connect(queue_redraw)
 
 	## Writes the chip for one type; an enemy building wears P115b's look (brackets, amber bar).
 	func show_type(snap: MatchSnapshot, group: Group, as_enemy: bool) -> void:
@@ -119,7 +119,7 @@ class Chip:
 		if enemy != as_enemy:
 			enemy = as_enemy
 			health.set_enemy(enemy)
-			queue_redraw()
+			card.queue_redraw()
 		health.max_value = maxf(group.max_hp, 1.0)
 		health.value = group.hp
 		health.visible = not group.fogged
@@ -143,12 +143,12 @@ class Chip:
 	## The brackets of an enemy building's chip (none for any other), as `HealthBarLayer` frames a
 	## selected building: four corners round the picture, each an arm `FRAME_ARM_DP` long at the
 	## most and `FRAME_THICK_DP` thick, the dark outline of every arm first (8 rects), then the 8
-	## arms. It is drawn over the chip and takes no room.
+	## arms, in the card's coordinates. They are drawn over the picture and take no room.
 	func frame_rects() -> Array[Rect2]:
 		var out: Array[Rect2] = []
 		if not enemy:
 			return out
-		var box: Rect2 = Rect2(card.global_position - global_position, card.size)
+		var box: Rect2 = Rect2(Vector2.ZERO, card.size)  # In the card's own coordinates.
 		var dp: float = UiScale.base_px_per_dp()
 		var arm: float = minf(HealthBarLayer.FRAME_ARM_DP * dp, 0.4 * minf(box.size.x, box.size.y))
 		var thick: float = HealthBarLayer.FRAME_THICK_DP * dp
@@ -165,11 +165,12 @@ class Chip:
 				out.append(rect.grow(HealthBarLayer.EDGE_DP * dp) if outline == 0 else rect)
 		return out
 
-	func _draw() -> void:
+	## Paints the brackets on the card, after its picture (the card's `draw` signal).
+	func _paint_frame() -> void:
 		var rects: Array[Rect2] = frame_rects()
 		for index: int in rects.size():
 			var tone: StringName = &"edge" if index < 8 else &"enemy"
-			draw_rect(rects[index], get_theme_color(tone, FRAME))
+			card.draw_rect(rects[index], get_theme_color(tone, FRAME))
 
 
 ## A chip's health bar. An enemy building's is amber (the theme's `EnemyHealth`) with a notch in
@@ -408,14 +409,15 @@ func _fill(ids: PackedInt32Array) -> void:
 ## has), less Deselect, the orders and the gaps, so the fit never depends on the width it gave.
 func _fit_chips() -> void:
 	var shown: int = _types
-	if _types > 1:
+	if _types > 1:  # One type always shows its chip.
 		var gap: float = roundf(UiScale.dp(HudCorners.GAP_DP))
 		var rects: Dictionary[StringName, Rect2] = _rects(true)
 		var room: float = rects[HudCorners.BAR].size.x if rects.has(HudCorners.BAR) else INF
 		if _frozen:
-			room = minf(room, _held_px)  # A mode runs: the extra types go into "+N".
+			room = minf(room, _held_px)  # The bar never grows under the thumb.
 		room -= _clear.get_combined_minimum_size().x + _orders.get_combined_minimum_size().x
-		for count: int in range(_types, 0, -1):
+		# A mode runs: even the first chip may give way, so "+N" alone counts the types.
+		for count: int in range(_types, -1 if _frozen else 0, -1):
 			shown = count
 			var need: float = gap * (count + 1)  # Between Deselect, the chips, "+N" and the orders.
 			for index: int in count:
