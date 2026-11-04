@@ -122,6 +122,8 @@ func _ready() -> void:
 			_regions.append(Rect2(LifeRegions.region(sprite, frame)))
 	_emit_ms.resize(EMITTERS.size())
 	_life_ms.resize(EMITTERS.size())
+	if building_layer != null:  # The layer starts the crater smoke through this link.
+		building_layer.collapse().air = self
 	if runner != null:
 		runner.ticked.connect(_on_ticked)
 
@@ -359,6 +361,9 @@ func _on_ticked(_tick: int) -> void:
 	_follow_match(snap)
 	if building_layer == null:
 		return
+	# The buildings that fell or were placed in this tick first: the layer starts the collapses and
+	# ends the crater smoke under a new building before the rings below are fed.
+	building_layer.sync_rows()
 	_make_ring_if_resized()
 	if not _sync_types(snap):
 		return

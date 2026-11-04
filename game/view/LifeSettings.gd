@@ -218,3 +218,18 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 		Vector2(14.0, 10.0),
 	]
 )
+
+## The collapse of a building shot to pieces (P165, ADR 0029 sections 8, 10 and 13), on match time
+## from its DIED tick: the body and its patch sink in `collapse_sink_steps` steps from
+## `collapse_sink_ms[0]` to `[1]`, to `collapse_sink_percent` of the picture's rise; the node is
+## hidden at `collapse_hide_ms` and freed at `collapse_end_ms`. At most `collapse_max` run at once.
+## `crater_scale_milli` is the crater's size by building type, in thousandths of the footprint's
+## crater (a type with no entry has 1000).
+@export var collapse_max: int = 16
+@export var collapse_sink_ms: PackedInt32Array = PackedInt32Array([250, 700])
+@export var collapse_sink_steps: int = 6
+@export var collapse_sink_percent: int = 60
+@export var collapse_hide_ms: int = 700
+@export var collapse_end_ms: int = 900
+@export
+var crater_scale_milli: Dictionary[StringName, int] = {&"refinery": 1500, &"renew_refinery": 1500}

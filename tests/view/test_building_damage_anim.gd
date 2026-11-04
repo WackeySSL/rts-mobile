@@ -2,7 +2,7 @@ extends "res://tests/view/support/damage_suite.gd"
 ## The `Anim` and the `Head` at KRITISK, the write queue and the hook of a building that dies (plan
 ## P159, ADR 0028 section 8, ADR 0029 sections 3 and 8). Fixtures: support/damage_suite.gd.
 
-const SpyRuins: GDScript = preload("res://tests/view/support/spy_ruins.gd")
+const SpyCollapse: GDScript = preload("res://tests/view/support/spy_collapse.gd")
 
 
 func test_the_anim_runs_at_kritisk_when_the_sheet_says_run() -> void:
@@ -145,17 +145,17 @@ func test_reduced_effects_keep_the_stages() -> void:
 	_check_stage(1, 2)
 
 
-# --- The ruin hook ---
+# --- The collapse hook ---
 
 
-func test_a_shown_building_that_dies_goes_to_the_ruin_hook_and_is_freed_with_its_crater() -> void:
+func test_a_shown_building_that_dies_goes_to_the_collapse_and_is_freed_with_its_crater() -> void:
 	_open(_pair())
 	_layer.decals.crater_texture = ImageTexture.create_from_image(
 		Image.create(8, 4, false, Image.FORMAT_RGBA8)
 	)
-	var spy: BuildingRuins = SpyRuins.new()
+	var spy: BuildingCollapse = SpyCollapse.new()
 	spy.setup(_sort, _layer.decals)
-	_layer._ruins = spy
+	_layer._collapse = spy
 	var node: Node2D = _layer.building(1)
 	var nodes: int = _sort.get_child_count()
 	_runner.world.hp[_runner.world.index_of(1)] = 0
@@ -163,17 +163,19 @@ func test_a_shown_building_that_dies_goes_to_the_ruin_hook_and_is_freed_with_its
 	_layer._process(0.0)
 	assert_array(_calls(spy)).is_equal([[1, _runner.snapshot.tick, false, false]])
 	assert_int(_layer.decals.crater_count()).is_equal(1)
-	assert_int(_sort.get_child_count()).is_equal(nodes - 1)
+	assert_int(_sort.get_child_count()).is_equal(nodes)  # The collapse keeps the node until 900 ms.
 	assert_object(_layer.building(1)).is_null()
+	spy.advance(1.0e9, 0)  # Far past the end: freed whatever the budget.
+	assert_int(_sort.get_child_count()).is_equal(nodes - 1)
 	await await_idle_frame()
 	assert_bool(is_instance_valid(node)).is_false()
 
 
 func test_a_site_that_dies_is_handed_over_as_a_site_and_a_cancel_as_cancelled() -> void:
 	_open(_pair() + [[1, 22, 4], [2, 22, 14]])  # Spares: the match goes on.
-	var spy: BuildingRuins = SpyRuins.new()
+	var spy: BuildingCollapse = SpyCollapse.new()
 	spy.setup(_sort, _layer.decals)
-	_layer._ruins = spy
+	_layer._collapse = spy
 	_runner.world.build_left[0] = 100000
 	_runner.run_ticks(1)  # The layer notes it is a site.
 	_runner.world.hp[0] = 0
@@ -193,9 +195,9 @@ func test_a_hidden_building_that_dies_is_freed_without_the_hook_or_a_crater() ->
 	_open(_pair(), {}, 1.0, false)
 	Dmg.Rig.see(_runner.snapshot, 1, [])
 	_layer._process(0.0)
-	var spy: BuildingRuins = SpyRuins.new()
+	var spy: BuildingCollapse = SpyCollapse.new()
 	spy.setup(_sort, _layer.decals)
-	_layer._ruins = spy
+	_layer._collapse = spy
 	_runner.world.hp[_runner.world.index_of(2)] = 0
 	_runner.run_ticks(1)
 	_layer._process(0.0)
@@ -204,7 +206,7 @@ func test_a_hidden_building_that_dies_is_freed_without_the_hook_or_a_crater() ->
 	assert_object(_layer.building(2)).is_null()
 
 
-func _calls(spy: BuildingRuins) -> Array:
+func _calls(spy: BuildingCollapse) -> Array:
 	return spy.get("calls")
 
 
@@ -225,7 +227,8 @@ func test_a_building_that_dies_while_queued_leaves_the_queue_with_no_stale_write
 	_runner.run_ticks(1)
 	await await_idle_frame()  # Its node is freed.
 	_drain(12)
-	assert_int(_layer.life_writes() - start).is_equal(39 * 5)
+	# The 39 stage changes, and the dead one's collapse starting (its Anim and Head, written first).
+	assert_int(_layer.life_writes() - start).is_equal(39 * 5 + BuildingCollapse.START_WRITES)
 	assert_int(_layer._stage_queue.size()).is_equal(0)
 	for id: int in ids.slice(0, 39):
 		assert_bool(_patch(id).visible).is_true()

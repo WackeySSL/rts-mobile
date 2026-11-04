@@ -223,6 +223,9 @@ func test_a_destroyed_building_loses_its_nodes_the_others_keep_theirs_and_a_crat
 	assert_int(_layer.building_count()).is_equal(4)
 	assert_object(_layer.building(plant_id)).is_null()
 	assert_object(_layer.building(snap.unit_id[1])).is_same(kept)  # The Redoubt, one row up.
+	assert_int(_layer.decals.shadow_count()).is_equal(5)  # It collapses first (P165): the shadow
+	assert_int(_layer.world_sort.get_child_count()).is_equal(5)  # and the node stay for a while.
+	_layer.collapse().advance(1.0e9, 0)  # Its time is out.
 	assert_int(_layer.decals.shadow_count()).is_equal(4)
 	assert_int(_layer.world_sort.get_child_count()).is_equal(4)
 	await await_idle_frame()  # The freed nodes go.

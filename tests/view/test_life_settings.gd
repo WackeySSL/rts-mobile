@@ -151,6 +151,14 @@ func test_the_settings_have_exactly_the_fields_of_the_core_rows() -> void:
 		"hit_flash_box_milli",
 		"hit_alpha",
 		"hit_chip_ms",
+		# P165: the collapse block (its values are pinned in test_collapse_settings.gd).
+		"collapse_max",
+		"collapse_sink_ms",
+		"collapse_sink_steps",
+		"collapse_sink_percent",
+		"collapse_hide_ms",
+		"collapse_end_ms",
+		"crater_scale_milli",
 	]
 	for field: StringName in SCALARS:
 		expected.append(String(field))

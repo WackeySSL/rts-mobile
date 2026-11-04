@@ -407,10 +407,12 @@ func _add_impact(snap: MatchSnapshot, at: int, now: int) -> void:
 	_push(Kind.PUFF, now, landing, Vector2.ZERO, puff_px.get(weapon_id, PUFF_DEFAULT_PX))
 
 
-## [DIED, unit id, x, y, type index, owner, 0, 0]: a burst for a vehicle (any armour but
+## [DIED, unit id, x, y, type index, owner, cancel flag, 0]: a burst for a vehicle (any armour but
 ## infantry, a building too) and a fade for infantry, centred on the middle of the unit's frame.
 func _add_death(snap: MatchSnapshot, at: int, now: int) -> void:
 	var events: PackedInt32Array = snap.events
+	if events[at + Production.DIED_CANCEL_FLAG_AT] != 0:
+		return  # A cancelled site plays nothing (ADR 0029 section 8, P165).
 	var own: bool = events[at + 5] == FogLayer.local_player_of(runner)
 	if not (own or _seen(snap, events[at + 2], events[at + 3])):
 		return

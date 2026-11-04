@@ -44,7 +44,8 @@ extends Node2D
 ## read in `ticked` and queued, and written in the frame within `life.damage_building_writes`,
 ## oldest first; a hidden enemy building is written when it is shown again. The stage of an enemy
 ## building is remembered while it is shown (`remembered_stage`) for the ghosts. A shown building
-## that leaves the rows goes to `BuildingRuins`, which lays the crater (P165 fills it in).
+## that leaves the rows goes to `BuildingCollapse` (P165, ADR 0029 section 8): it plays the collapse
+## on its node, lays the crater and frees the node; its writes come first in the share above.
 
 const HEAD: StringName = &"head"
 const BODY: StringName = &"hull"  ## The sheet part of a building's body.
@@ -88,7 +89,7 @@ var _anim_all_ms: float = 0.0  ## The clock of the loops of every building that 
 ## player's, at full rate.
 var _anim_own_ms: float = 0.0  ## The local player's loops' clock: slowed while short of power.
 var _anim_reach: float = 0.0  ## The highest `rise` of a building with an `Anim`, world px.
-var _ruins: BuildingRuins = BuildingRuins.new()
+var _collapse: BuildingCollapse = BuildingCollapse.new()
 var _stage_queue: Array[Entry] = []  ## Stage changes to write, oldest first.
 var _last_seen: Dictionary[int, int] = {}  ## Enemy building id -> its stage when last shown.
 var _player: int = -1  ## The local player the remembered stages belong to.
@@ -123,6 +124,10 @@ class Entry:
 	var body_base: int = -1  ## The atlas bases of the body and of the two patches, resolved once.
 	var patch_bases: PackedInt32Array = PackedInt32Array()
 	var site: bool = false  ## Whether it was a site (or a cancelled one) at its last tick.
+	var type: int = 0  ## Its type index, and the type's id, for the collapse (P165).
+	var type_id: StringName = &""
+	var tiles: Rect2i = Rect2i()  ## Its footprint, tiles.
+	var cleared: bool = false  ## Whether it ended the crater smoke on its tiles (once shown).
 	var stage_want: int = 0  ## The picture stage its row asks for now.
 	var stage_shown: int = 0  ## The picture stage its sprites show.
 	var queued: bool = false
@@ -160,7 +165,7 @@ func _ready() -> void:
 	if life == null:
 		life = DEFAULT_LIFE
 	_rig_life.setup(life)
-	_ruins.setup(world_sort, decals)
+	_collapse.setup(world_sort, decals)
 	if runner != null:
 		runner.ticked.connect(_on_ticked)
 	_sync()
@@ -176,8 +181,8 @@ func _process(delta: float) -> void:
 	_kick_heads(snap)  # Also with no head left: the kicks of the heads that died end.
 	if not _anims.is_empty():
 		_play_anims(snap)
-	if not _stage_queue.is_empty():
-		_write_stages()
+	if _collapse.running() or not _stage_queue.is_empty():
+		_write_stages(snap)
 
 
 ## The buildings that have a node now: no sync.
@@ -214,6 +219,12 @@ func row_of(id: int) -> int:
 	_sync()
 	var entry: Entry = _entries.get(id)
 	return entry.row if entry != null else -1
+
+
+## The collapse of the buildings that die shown (`AirFx` links itself to it for the puffs and the
+## crater's smoke).
+func collapse() -> BuildingCollapse:
+	return _collapse
 
 
 ## Brings the nodes up to `runner.snapshot`: the sync a frame starts with, and the one a layer that
@@ -384,6 +395,7 @@ func _sync() -> MatchSnapshot:
 	if snap == null:
 		return null
 	world_sort.sync()  # The atlas of the match, before any node is dressed from it.
+	_collapse.life = life
 	var new_match: bool = snap.match_serial != _serial
 	if new_match or snap.rows_version != _rows_version:
 		if new_match:
@@ -406,6 +418,7 @@ func _clear() -> void:
 	_anims.clear()
 	_stage_queue.clear()
 	_last_seen.clear()
+	_collapse.clear()  # Before the decals, which hold the shadows it removes.
 	_anim_now = -1.0
 	_anim_all_ms = 0.0
 	_anim_own_ms = 0.0
@@ -444,6 +457,9 @@ func _make(snap: MatchSnapshot, row: int) -> Entry:
 	var entry: Entry = Entry.new()
 	entry.id = snap.unit_id[row]
 	entry.foot = snap.type_foot_w[type]
+	entry.type = type
+	entry.type_id = snap.type_ids[type]
+	entry.tiles = footprint_of(snap, row)
 	entry.sheet = world_sort.sheet(snap.type_ids[type])
 	entry.owner_id = owner_id
 	entry.node = Node2D.new()
@@ -534,10 +550,9 @@ func _sprite(
 
 
 ## Takes a building that left the rows out of its tables. One that was shown goes to
-## `BuildingRuins` (the crater, and the node is freed); one that was not is freed here.
+## `BuildingCollapse` (the collapse, the crater, and it frees the node and the shadow); one that was
+## not is freed here.
 func _drop(entry: Entry, snap: MatchSnapshot) -> void:
-	if entry.shadow != null:
-		decals.remove_shadow(entry.shadow)
 	_heads.erase(entry)
 	_anims.erase(entry)
 	_stage_queue.erase(entry)
@@ -546,8 +561,10 @@ func _drop(entry: Entry, snap: MatchSnapshot) -> void:
 		_selected.remove_at(chosen)
 	_entries.erase(entry.id)
 	if entry.shown:
-		_ruins.adopt(entry, snap.tick, entry.site, BuildingRuins.cancelled(snap, entry.id))
+		_collapse.adopt(entry, snap.tick, entry.site, BuildingCollapse.cancelled(snap, entry.id))
 		return
+	if entry.shadow != null:
+		decals.remove_shadow(entry.shadow)
 	world_sort.remove_child(entry.node)
 	entry.node.queue_free()
 
@@ -583,6 +600,10 @@ func _refresh_shown(snap: MatchSnapshot) -> void:
 				_queue_stage(entry, snap)  # Its stage of now.
 			if entry.shadow != null:
 				entry.shadow.visible = shown and entry.shadow.region_rect.has_area()
+		if shown and not entry.cleared:  # A building the player sees ends the smoke on its tiles.
+			entry.cleared = true
+			if _collapse.air != null:
+				_collapse.air.end_crater_sources_on(entry.tiles)
 
 
 ## The local player's fog version in `snap`, -2 when its fog does not cover the player.
@@ -788,11 +809,14 @@ func _stage_at(entry: Entry, build_left: int, hp: int, max_hp: int, lines: Packe
 	return raw
 
 
-## Writes the queued stage changes, oldest first, while the next one's cost fits what is left of
-## `life.damage_building_writes`. A hidden building is taken off the queue and written when it is
-## shown again.
-func _write_stages() -> void:
+## Writes the collapses' steps first (they are timed), then the queued stage changes, oldest first,
+## while the next one's cost fits what is left of `life.damage_building_writes`. A hidden building
+## is taken off the queue and written when it is shown again.
+func _write_stages(snap: MatchSnapshot) -> void:
 	var left: int = life.damage_building_writes
+	var fell: int = _collapse.advance(LifeClock.ms(snap, runner.alpha()), left)
+	_rig_life.writes += fell
+	left -= fell
 	while not _stage_queue.is_empty():
 		var entry: Entry = _stage_queue[0]
 		var to: int = entry.stage_want
