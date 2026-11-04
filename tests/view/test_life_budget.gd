@@ -41,7 +41,8 @@ const WORST_WRITES: int = 150
 const BUILDING_STAGE_WRITES: int = 20
 const VEHICLE_STAGE_WRITES: int = 40
 const PAGE_BUDGET_PX: int = 3584
-## The AirFx quads of a frame (its ambient quads and the three rings'), ADR 0029 section 13.
+## The AirFx quads of a frame (its ambient quads and the four rings'), ADR 0029 section 13: the
+## quotas 80 + 80 + 16 + 40 + 24 (P149's puff ring).
 const AIR_ITEMS: int = 240
 ## The most a frame of the settled tail may write: idle sweeps and animations only.
 const TAIL_WRITES: int = 10
@@ -83,7 +84,7 @@ var _atlas_unchanged: bool = false
 var _start_texture: Texture2D
 var _fx_items: int = 0  ## CanvasItems under LifeFx when the match opened / after the passes.
 var _fx_items_end: int = 0
-var _ring_sizes: Array[int] = []  ## The slots of the damage, hit and collapse rings.
+var _ring_sizes: Array[int] = []  ## The slots of the damage, hit, collapse and puff rings.
 var _killed: Array = []  ## The nodes of the buildings the COLLAPSE pass kills.
 var _died_tick: int = -1
 var _freed_tick: int = -1  ## The first tick every killed node was gone.
@@ -144,10 +145,11 @@ class Pass:
 	var dmg_ring_max: int = 0  ## The most puffs the damage / hit / collapse ring held.
 	var hit_ring_max: int = 0
 	var collapse_ring_max: int = 0
+	var puff_ring_max: int = 0  ## The most slots the puff ring held.
 	var collapses_max: int = 0  ## The most collapses running at once.
 	var collapse_end: int = 0  ## Collapses still running when the pass ended.
 	var craters_max: int = 0  ## The most crater sources alive.
-	var air_items_max: int = 0  ## The most AirFx quads (ambient and the three rings) in a frame.
+	var air_items_max: int = 0  ## The most AirFx quads (ambient and the four rings) in a frame.
 	var hitscan_shots: int = 0  ## SHOTs of a speed-0 weapon at a building.
 	var hitscan_damage: int = 0  ## Buildings only hitscan shots hit in a tick, whose hp fell.
 	var prev_sig: int = 0  ## Collapses running x 100 + hidden, at the last tick.
@@ -224,9 +226,8 @@ func before() -> void:
 	_heal = await _play("heal", PASS_TICKS, CRAFTED_WARM, 100, 0)  # Every stage back to 0.
 	_collapse = await _play("collapse", FALL_TICKS, 0, 0, 2)
 	_collapse.collapse_end = _buildings.collapse().count()
-	_ring_sizes = [
-		_fx.air.damage().ring._size, _fx.air.hits().ring._size, _fx.air.collapses().ring._size
-	]
+	for ring: FxRing in _rings_of(_fx.air):
+		_ring_sizes.append(ring._size)
 	_flip = await _play("flip", FLIP_TICKS, FLIP_TICKS, 0, 5)
 	_ambient_after = _fx.air.slot_count()
 	_dust_after = _fx.ground.slot_count()
@@ -722,17 +723,13 @@ func _frame(alpha: float, made: Pass, stages: Stages) -> void:
 	made.dmg_ring_max = maxi(made.dmg_ring_max, air.damage().ring.count())
 	made.hit_ring_max = maxi(made.hit_ring_max, air.hits().ring.count())
 	made.collapse_ring_max = maxi(made.collapse_ring_max, air.collapses().ring.count())
+	made.puff_ring_max = maxi(made.puff_ring_max, air.puffs().ring.count())
 	made.collapses_max = maxi(made.collapses_max, _buildings.collapse().count())
 	made.craters_max = maxi(made.craters_max, air.damage().crater_count())
-	made.air_items_max = maxi(
-		made.air_items_max,
-		(
-			air.quad_count()
-			+ air.damage().ring.quad_count()
-			+ air.hits().ring.quad_count()
-			+ air.collapses().ring.quad_count()
-		)
-	)
+	var rings: int = 0  # The quads of the damage, hit, collapse and puff rings.
+	for ring: FxRing in _rings_of(air):
+		rings += ring.quad_count()
+	made.air_items_max = maxi(made.air_items_max, air.quad_count() + rings)
 	made.ambient_max = maxi(made.ambient_max, air.slot_count())
 	made.dust_max = maxi(made.dust_max, _fx.ground.slot_count())
 	made.strike_slots_max = maxi(made.strike_slots_max, _fx.strike.slot_count())
@@ -744,15 +741,14 @@ func _frame(alpha: float, made: Pass, stages: Stages) -> void:
 		made.strike_parts |= 1 << _fx.strike.quad_part(index)
 	var ground: int = _fx.ground.quad_count()
 	var strike: int = _fx.strike.quad_count()
-	var rings: int = (
-		air.damage().ring.quad_count()
-		+ air.hits().ring.quad_count()
-		+ air.collapses().ring.quad_count()
-	)
 	made.quads_max = maxi(made.quads_max, air.quad_count())
 	made.ground_max = maxi(made.ground_max, ground)
 	made.strike_quads_max = maxi(made.strike_quads_max, strike)
 	made.items_max = maxi(made.items_max, ground + strike + air.quad_count() + rings)
+
+
+func _rings_of(air: AirFx) -> Array[FxRing]:
+	return [air.damage().ring, air.hits().ring, air.collapses().ring, air.puffs().ring]
 
 
 func _collect_textures() -> void:
@@ -787,7 +783,7 @@ func _compare_draw() -> void:
 	if air.drawn_quads() != air.quad_count():
 		_draw_mismatches += 1
 	_quads_drawn += air.drawn_quads() + _fx.ground.drawn_quads() + _fx.strike.drawn_quads()
-	for ring: FxRing in [air.damage().ring, air.hits().ring, air.collapses().ring]:
+	for ring: FxRing in _rings_of(air):
 		var painted: int = 0
 		for pass_of: int in FxRing.PASSES:
 			painted += ring.drawn(pass_of)
@@ -943,7 +939,10 @@ func test_slots_and_quotas_hold_in_every_damage_pass() -> void:
 	assert_int(_life.collapse_slots).is_equal(40)
 	assert_int(_life.collapse_max).is_equal(16)
 	assert_int(_life.crater_sources).is_equal(16)
-	assert_array(_ring_sizes).is_equal([_life.damage_slots, _life.hit_slots, _life.collapse_slots])
+	assert_int(_life.puff_slots).is_equal(24)
+	assert_array(_ring_sizes).is_equal(
+		[_life.damage_slots, _life.hit_slots, _life.collapse_slots, _life.puff_slots]
+	)
 	for run: Pass in _damage_passes():
 		assert_int(run.dmg_ring_max).is_less_equal(_life.damage_slots)
 		assert_int(run.hit_ring_max).is_less_equal(_life.hit_slots)
@@ -960,6 +959,7 @@ func test_slots_and_quotas_hold_in_every_damage_pass() -> void:
 	# The passes reached them: the test is not vacuous.
 	assert_int(_hp20.dmg_ring_max).is_greater(0)
 	assert_int(_assault_pass.hit_ring_max).is_greater(0)  # Shots hit shown buildings.
+	assert_int(_assault_pass.puff_ring_max).is_between(1, _life.puff_slots)  # Shells smoke.
 	assert_int(_collapse.collapse_ring_max).is_greater(0)
 	assert_int(_collapse.collapses_max).is_greater(0)
 	assert_int(_collapse.craters_max).is_greater(0)
