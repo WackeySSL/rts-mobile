@@ -269,7 +269,11 @@ func _bake_atlas() -> IsoAtlas:
 	world_sort.bake_scale = ATLAS_SCALE
 	world_sort.bake(scenario)
 	var sheets: Array[IsoSheetDef] = IsoAtlas.load_sheets()
-	return IsoAtlas.build(sheets, _report_players(sheets), ATLAS_SCALE)
+	var players: Array[IsoPlayerArt] = _report_players(sheets)
+	var neutral: IsoSheetDef = world_sort.neutral_sheet()  # After the players: no faction file.
+	if neutral != null:
+		sheets.append(neutral)
+	return IsoAtlas.build(sheets, players, ATLAS_SCALE)
 
 
 ## One player per faction that has a sheet, in the order of the faction ids, each wearing its

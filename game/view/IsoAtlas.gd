@@ -9,6 +9,7 @@ extends RefCounted
 ## fits; a texel is a px of the 2x art times it, so a sprite draws its region at `0.5 /
 ## bake_scale()`. When none fits, or there is no frame, the atlas is empty and the caller decides.
 ## A frame no key colour touches (a shadow) is baked once and shared by the players of a faction.
+## A sheet of faction `neutral` is collected for every player, so each of its frames is one slot.
 ## The CPU page is dropped after the upload unless `keep_image` is set (tests read it).
 ## The frame axis (ADR 0027 section 4): a part may have several frames per direction
 ## (`IsoSheetDef.frame_count`), each its own file and slot. The regions of all frames lie in one
@@ -21,6 +22,10 @@ extends RefCounted
 const PAGE_MAX_PX: int = 4096
 const SCALE_STEP: float = 0.875  ## A step of 7/8 keeps scale times a canvas exact in a float.
 const MIN_SCALE: float = 0.25
+## The hand-written neutral sheet of the damage overlays (ADR 0028 section 4), read from this one
+## path and not through the index; the file may not exist yet (row P160), and then there is none.
+const NEUTRAL_SHEET: String = "res://assets/art/svg/damage/damage_sheet.tres"
+const NEUTRAL: StringName = &"neutral"  ## The faction of a sheet every player's atlas carries.
 
 static var _keys_built: int = 0
 
@@ -42,6 +47,29 @@ static func load_sheets() -> Array[IsoSheetDef]:
 	return index.sheets.duplicate()
 
 
+## The neutral sheet at `path`, null while the file does not exist: no error, no slot, a bake as
+## it was before the sheet. A file there that is no neutral `IsoSheetDef` is an error, and null.
+static func load_neutral_sheet(path: String) -> IsoSheetDef:
+	if not ResourceLoader.exists(path):
+		return null
+	var sheet: IsoSheetDef = load(path) as IsoSheetDef
+	var problem: String = neutral_problem(sheet, path)
+	if problem != "":
+		push_error(problem)
+		return null
+	return sheet
+
+
+## What is wrong with `sheet` read from `path` as the neutral sheet, "" when nothing is.
+static func neutral_problem(sheet: IsoSheetDef, path: String) -> String:
+	if sheet == null or sheet.faction != NEUTRAL:
+		return "IsoAtlas: %s is no neutral IsoSheetDef" % path
+	for views: int in sheet.counts:
+		if views != 1:
+			return "IsoAtlas: %s has a neutral part with %d views, not 1" % [path, views]
+	return ""
+
+
 ## The atlas of `players` (index = player slot, see `region`) over `sheets`, requesting
 ## `bake_scale`. `reader` (path -> SVG text) replaces the file read; tests craft frames with it.
 static func build(
@@ -53,7 +81,7 @@ static func build(
 ) -> IsoAtlas:
 	var started: int = Time.get_ticks_usec()
 	var atlas: IsoAtlas = IsoAtlas.new()
-	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else _read_text)
+	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else read_text)
 	var order: Array[StringName] = _packing_order(plan)
 	var scale: float = fit_scale(_canvases(plan, order), bake_scale)
 	if scale > 0.0 and not order.is_empty():
@@ -71,7 +99,7 @@ static func planned_page(
 	scale: float,
 	reader: Callable = Callable()
 ) -> Vector2i:
-	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else _read_text)
+	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else read_text)
 	return page_size(_canvases(plan, _packing_order(plan)), scale)
 
 
@@ -181,7 +209,8 @@ static func _key(player: int, art_id: StringName, part: StringName, dir: int) ->
 	return StringName("%d/%s/%s/%d" % [player, art_id, part, dir])
 
 
-static func _read_text(path: String) -> String:
+## The text of the file at `path`, "" when there is none.
+static func read_text(path: String) -> String:
 	return FileAccess.get_file_as_string(path)
 
 
@@ -196,7 +225,7 @@ static func _collect(
 			push_error("IsoAtlas: player %d has no valid art (a faction and two triads)" % player)
 			continue
 		for sheet: IsoSheetDef in sheets:
-			if sheet.faction == art.faction:
+			if sheet.faction == art.faction or sheet.faction == NEUTRAL:
 				_collect_sheet(plan, sheet, art, player, read)
 	return plan
 
