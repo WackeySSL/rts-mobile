@@ -115,3 +115,13 @@ hit_alpha = 1.0
 hit_chips = PackedInt32Array(3, 5)
 hit_chip_ms = 350
 hit_chip_fly_px = PackedVector2Array(-14, 10, -6, 18, 0, 22, 6, 18, 14, 10)
+collapse_max = 16
+collapse_sink_ms = PackedInt32Array(250, 700)
+collapse_sink_steps = 6
+collapse_sink_percent = 60
+collapse_hide_ms = 700
+collapse_end_ms = 900
+crater_scale_milli = Dictionary[StringName, int]({
+&"refinery": 1500,
+&"renew_refinery": 1500
+})

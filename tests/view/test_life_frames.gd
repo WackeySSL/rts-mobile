@@ -84,6 +84,26 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"_seen",
 		"_make_craters_if_resized",
 	],
+	# P165: the collapse of a building, its sequence.
+	"res://game/view/BuildingCollapse.gd":
+	[
+		"adopt",
+		"running",
+		"count",
+		"advance",
+		"clear",
+		"_play",
+		"_step_due",
+		"_sink",
+		"_sink_steps",
+		"_cut_body",
+		"_cut_patch",
+		"_drawn_bottom",
+		"_make_if_resized",
+		"_end",
+		"_free",
+		"_remove_shadow",
+	],
 	# P166: the hit feedback.
 	"res://game/view/HitFx.gd": ["read", "emit", "_hit", "_died", "_unit"],
 	"res://game/view/GroundFx.gd":
@@ -145,7 +165,16 @@ const FRAME_PATH: Dictionary[String, Array] = {
 	["follow", "_place_loose", "_point", "apply", "cost", "stage_of"],
 	"res://game/view/BuildingAnims.gd": ["phase_ms", "frame_at", "low_power"],
 	"res://game/view/BuildingLayer.gd":
-	["_on_ticked", "_shot_seen", "_kick_heads", "_sweep_heads", "_play_anims", "row_of"],
+	[
+		"_on_ticked",
+		"_shot_seen",
+		"_kick_heads",
+		"_sweep_heads",
+		"_play_anims",
+		"row_of",
+		"_write_stages",
+		"_refresh_shown",
+	],
 }
 const ALLOCATING: Array[String] = [
 	"Array(",

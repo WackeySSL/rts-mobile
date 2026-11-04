@@ -219,6 +219,21 @@ func test_a_vehicle_death_bursts_and_an_infantry_death_fades() -> void:
 	assert_that(_layer.quad_region(0)).is_equal(BURST)
 
 
+func test_the_death_of_a_cancelled_site_bursts_nothing() -> void:
+	# ADR 0029 section 8 (P165): a DIED with the cancel flag set plays nothing, a site that was shot
+	# down (flag 0) bursts as any building.
+	var place: Vector2i = Vector2i(15000, 8000)
+	var squad: int = _type(&"rifle_squad")
+	var cancelled: PackedInt32Array = Rig.died(place, squad)
+	cancelled[Production.DIED_CANCEL_FLAG_AT] = 1
+	_runner.snapshot.type_armour[squad] = World.Armour.BUILDING
+	_tick_with(cancelled)
+	assert_int(_layer.quad_count()).is_equal(0)
+	_now_ms += 1000
+	_tick_with(Rig.died(place, squad))
+	assert_int(_layer.quad_count()).is_equal(1)
+
+
 func test_the_lift_follows_the_weapon_id_and_the_armour_of_the_snapshots_tables() -> void:
 	# A shot is lifted by the muzzle height of its weapon and a death, with no sheet to say, by the
 	# middle of its class's frame, both by the tables the snapshot carries: the test renames a

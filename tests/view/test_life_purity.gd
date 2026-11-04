@@ -24,7 +24,7 @@ const LIFE_FILES: Array[String] = [
 	"res://game/view/SquadPoses.gd",
 	"res://game/view/BuildingAnims.gd",
 	"res://game/view/BuildingDamage.gd",
-	"res://game/view/BuildingRuins.gd",
+	"res://game/view/BuildingCollapse.gd",
 	"res://game/view/VehicleDamage.gd",
 ]
 ## The life functions of the layers, by file.
@@ -59,6 +59,9 @@ const LIFE_FUNCTIONS: Dictionary[String, Array] = {
 		"remembered_stage",
 		"_follow_player",
 		"row_of",
+		"_drop",
+		"_refresh_shown",
+		"collapse",
 	],
 }
 const BANNED: String = (
