@@ -28,7 +28,8 @@ extends Node2D
 ## a new match empties it too. An ambient emitter stops from the stage its sheet's `emitter_quiet`
 ## names (an empty one reads as all zeros: it never stops), when the building is that damaged.
 ## The hit ring (`HitFx`, ADR 0029 section 7: the flash and chips where a shot hits a shown
-## building) is a third ring, planned and drawn with the others.
+## building) is a third ring, planned and drawn with the others, and so is the collapse ring
+## (`CollapseFx`, section 8: the flash, fire, dust and debris of a building that falls).
 ## The damage ring (`DamageFx`, `FxRing`, ADR 0029 section 6) is a second ring of its own, planned
 ## and drawn in the same `_draw` from the same texture; every glow of it is drawn before every
 ## other quad, and a switch to `reduced` leaves its puffs alive.
@@ -83,7 +84,8 @@ var _em_quiet: PackedByteArray = PackedByteArray()
 var _dmg: DamageFx = DamageFx.new()
 ## The other rings, planned and drawn with the ambient one: a ring is added with one line here.
 var _hit: HitFx = HitFx.new()
-var _rings: Array[FxRing] = [_dmg.ring, _hit.ring]
+var _collapse: CollapseFx = CollapseFx.new()
+var _rings: Array[FxRing] = [_dmg.ring, _hit.ring, _collapse.ring]
 var _ring_quads: int = 0  ## Quads of the rings' plans.
 var _size: int = 0  ## Slots in the ring (`life.emitter_slots` when it was made).
 var _head: int = 0
@@ -122,7 +124,7 @@ func _ready() -> void:
 			_regions.append(Rect2(LifeRegions.region(sprite, frame)))
 	_emit_ms.resize(EMITTERS.size())
 	_life_ms.resize(EMITTERS.size())
-	if building_layer != null:  # The layer starts the crater smoke through this link.
+	if building_layer != null:  # The layer starts the collapse puffs and the crater smoke here.
 		building_layer.collapse().air = self
 	if runner != null:
 		runner.ticked.connect(_on_ticked)
@@ -195,6 +197,11 @@ func add_crater_source(
 ## Ends the crater sources over `foot` (tiles): a building was placed there. Their puffs live out.
 func end_crater_sources_on(foot: Rect2i) -> void:
 	_dmg.end_craters_on(foot)
+
+
+## The collapse particles (`BuildingCollapse` starts them); their ring is the third of `_rings`.
+func collapses() -> CollapseFx:
+	return _collapse
 
 
 ## The hit feedback (a test hook); its ring is the second of `_rings`.
@@ -274,6 +281,7 @@ func _follow_match(snap: MatchSnapshot) -> void:
 		for ring: FxRing in _rings:
 			ring.clear()
 		_dmg.end_craters()
+		_collapse.end_all()
 
 
 func _empty() -> void:
@@ -385,6 +393,8 @@ func _on_ticked(_tick: int) -> void:
 	)
 	_hit.read(life)
 	_hit.emit(snap, life, building_layer, view)
+	_collapse.read(life)
+	_collapse.emit(snap, life, view)
 
 
 ## A puff at each ambient emitter whose cycle turned over, of a building the player can see that is

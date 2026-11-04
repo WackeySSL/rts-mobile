@@ -131,6 +131,29 @@ func test_a_hit_whose_target_died_in_the_same_tick_draws_nothing() -> void:
 	assert_int(_ring().count()).is_equal(0)
 
 
+func test_a_killing_hit_draws_no_hit_flash_and_the_collapse_plays_instead() -> void:
+	# With P165's collapse: the building really falls (the sim's DIED), the same tick's IMPACT on it
+	# is added to the published records, and the death's own effects stand for the hit.
+	_runner.run_ticks(1)  # The rings follow the match.
+	var at: Vector2i = Rig.position_of(_runner, 3)
+	_runner.world.hp[_runner.world.index_of(3)] = 0
+	_runner.run_ticks(1)
+	_runner.snapshot.events.append_array(Effects.impact(at, SHELL, 9, 3))
+	_runner.snapshot.events.append_array(Effects.shot(at + Vector2i(3000, 0), at, RIFLE, 1, 3))
+	_runner.ticked.emit(_runner.snapshot.tick)
+	assert_int(_ring().count()).is_equal(0)  # No flash, no chips.
+	assert_int(_buildings.collapse().count()).is_equal(1)  # The collapse plays.
+	assert_int(_air.collapses().ring.count()).is_greater(0)  # With its own flash.
+	var flashes: int = 0
+	for index: int in _air.collapses().ring.count():
+		flashes += 1 if _air.collapses().ring.puff_style(index) == CollapseFx.Style.FLASH else 0
+	assert_int(flashes).is_equal(1)
+	_runner.run_ticks(1)  # A later hit on the falling building finds no row either.
+	_runner.snapshot.events = Effects.impact(at, SHELL, 10, 3)
+	_runner.ticked.emit(_runner.snapshot.tick)
+	assert_int(_ring().count()).is_equal(0)
+
+
 func test_the_flash_lies_inside_the_middle_half_of_the_frame_box() -> void:
 	var spots: Dictionary = {}
 	for index: int in IMPACT_CHIPS.size():

@@ -57,6 +57,7 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"_stage_of",
 		"add_crater_source",
 		"end_crater_sources_on",
+		"collapses",
 	],
 	# P148: the damage particles' ring and rules, and the ambient emitters beside them.
 	"res://game/view/FxRing.gd":
@@ -84,7 +85,22 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"_seen",
 		"_make_craters_if_resized",
 	],
-	# P165: the collapse of a building, its sequence.
+	# P165: the collapse of a building, its sequence and its particles.
+	"res://game/view/CollapseFx.gd":
+	[
+		"read",
+		"end_all",
+		"count",
+		"start",
+		"emit",
+		"_split",
+		"_trim",
+		"_burn",
+		"_dusts",
+		"_chip",
+		"_half",
+		"_make_if_resized"
+	],
 	"res://game/view/BuildingCollapse.gd":
 	[
 		"adopt",
