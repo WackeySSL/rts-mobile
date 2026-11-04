@@ -94,7 +94,7 @@ func _hull(row: int) -> Sprite2D:
 func _offset(row: int, part: StringName) -> Vector2:
 	var snap: MatchSnapshot = _runner.snapshot
 	var sheet: IsoSheetDef = _layer.world_sort.sheet(snap.type_ids[snap.type_index[row]])
-	return -Vector2(sheet.origin(part)) * _layer.world_sort.atlas.bake_scale()
+	return -Vector2(sheet.origin(part)) * _layer.world_sort.texels(sheet, part)
 
 
 ## What the Hull of `row` shows, read back from the atlas: (pose, frame) of direction `dir`, or

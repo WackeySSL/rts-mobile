@@ -406,7 +406,9 @@ func _assert_every_frame_has_its_rasterised_size(
 				continue
 			for part_name: String in sheet.parts:
 				var part: StringName = StringName(part_name)
-				var want: Vector2i = IsoAtlas.raster_size(sheet.frame_size(part), scale)
+				var want: Vector2i = IsoAtlas.raster_size(
+					sheet.frame_size(part), scale * IsoAtlas.part_factor(part)
+				)
 				for dir: int in sheet.directions(part):
 					for frame: int in sheet.frame_count(part):
 						var region: Rect2i = atlas.region(sheet.art_id, part, dir, player, frame)
