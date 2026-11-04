@@ -145,6 +145,10 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 @export var damage_writes_per_frame: int = 60
 @export var damage_building_writes: int = 20
 
+## Vehicle overlays (P161, ADR 0028 sections 4 and 8): whether a vehicle at stage 2 hangs a loose
+## part. Off drops its region, visibility, position and flip writes (the fallback if P162's worst
+## frame passes 150); the scar stays.
+@export var damage_loose: bool = true
 ## Damage particles (P148, ADR 0029 sections 6 and 13, ADR 0028 section 6). The damage ring holds
 ## `damage_slots` puffs. A building at SKADET burns `damage_burning_points[0]` of its damage points
 ## and at KRITISK up to `[1]`; a data test holds each stage's smoke (points x ceil(life / emit))

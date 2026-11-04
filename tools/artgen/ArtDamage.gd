@@ -6,13 +6,14 @@ extends RefCounted
 ## Static helpers, called by `ArtModel` and `ArtGen`.
 
 
-## The line indices of the intact `glass` primitives of `group` in the order `blow` takes them: by
-## an integer hash of the model's id and the line, so two runs and two machines agree.
+## The keys (`ArtPrim.key`: the line index of an ordinary primitive) of the intact `glass`
+## primitives of `group` in the order `blow` takes them: by an integer hash of the model's id and
+## the line, so two runs and two machines agree.
 static func blow_order(model: ArtModel, group: StringName) -> Array[int]:
 	var panes: Array[int] = []
 	for prim: ArtPrim in model.primitives(&"hull"):
 		if prim.group == group and prim.material == &"glass":
-			panes.append(prim.index)
+			panes.append(prim.key())
 	var seed: int = _djb2(String(model.art_id))
 	panes.sort_custom(
 		func(a: int, b: int) -> bool:
@@ -21,6 +22,16 @@ static func blow_order(model: ArtModel, group: StringName) -> Array[int]:
 			return ha < hb or (ha == hb and a < b)
 	)
 	return panes
+
+
+## The hash of an art id, the seed of the per-line variation (`blow`, `broken`).
+static func seed_of(art_id: StringName) -> int:
+	return _djb2(String(art_id))
+
+
+## The hash of `line` under `seed`: where a helper varies by line, it varies by this.
+static func line_hash(seed: int, line: int) -> int:
+	return _mix(seed, line)
 
 
 ## The first damage stage (1 or 2) whose pose moves or hides `group` (a shift, a turn or a hide),

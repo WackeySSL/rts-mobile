@@ -56,6 +56,7 @@ const SCALARS: Dictionary[StringName, Variant] = {
 	&"emit_flame_to": 0.7,
 	&"damage_writes_per_frame": 60,  # P159: the two stage lists are in test_building_damage.gd.
 	&"damage_building_writes": 20,
+	&"damage_loose": true,  # P161
 	&"damage_slots": 80,  # P148: the damage particles (lists: DAMAGE_EMIT_MS and DAMAGE_LIFE_MS).
 	&"damage_smoke_cap": 30,
 	&"damage_fire_scale": 1.6,

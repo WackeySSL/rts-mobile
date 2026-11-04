@@ -24,6 +24,7 @@ const LIFE_FILES: Array[String] = [
 	"res://game/view/BuildingAnims.gd",
 	"res://game/view/BuildingDamage.gd",
 	"res://game/view/BuildingRuins.gd",
+	"res://game/view/VehicleDamage.gd",
 ]
 ## The life functions of the layers, by file.
 const LIFE_FUNCTIONS: Dictionary[String, Array] = {
@@ -37,6 +38,9 @@ const LIFE_FUNCTIONS: Dictionary[String, Array] = {
 		"_update_rigs",
 		"_apply_idle",
 		"_show_hull",
+		"_note_stage",
+		"_queue_damage",
+		"_write_damage",
 	],
 	"res://game/view/BuildingLayer.gd":
 	[

@@ -45,8 +45,9 @@ const Z_SHADOW: int = 1  ## Shadows, then rings, then the hulls and what sits on
 const Z_RING: int = 2
 const Z_BODY: int = 3
 const DAMAGE_STAGES: int = 2  ## The stages a vehicle is shown at.
-## The loose part's scale on every vehicle (STYLE.md "Damage overlays"); the scar's is `scar_milli`.
-const LOOSE_SCALE: float = 0.8
+## The loose part's scale on every vehicle (STYLE.md "Damage overlays"; the scar's is `scar_milli`):
+## an alias of the view's one constant, `VehicleDamage.LOOSE_SCALE`.
+const LOOSE_SCALE: float = VehicleDamage.LOOSE_SCALE
 
 var grass_color: Color = Color("6F8F57")
 var sand_color: Color = Color("CDB98F")
