@@ -144,3 +144,42 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 ## damage_building_writes`.
 @export var damage_writes_per_frame: int = 60
 @export var damage_building_writes: int = 20
+
+## Vehicle overlays (P161, ADR 0028 sections 4 and 8): whether a vehicle at stage 2 hangs a loose
+## part. Off drops its region, visibility, position and flip writes (the fallback if P162's worst
+## frame passes 150); the scar stays.
+@export var damage_loose: bool = true
+## Damage particles (P148, ADR 0029 sections 6 and 13, ADR 0028 section 6). The damage ring holds
+## `damage_slots` puffs. A building at SKADET burns `damage_burning_points[0]` of its damage points
+## and at KRITISK up to `[1]`; a data test holds each stage's smoke (points x ceil(life / emit))
+## under `damage_smoke_cap`. `damage_emit_ms` and `damage_life_ms` are keyed by the puff: `smoke`
+## (SKADET), `soot` (KRITISK), `fire`, `jet`, `spark` and `exhaust` (a damaged vehicle's trail). A
+## KRITISK fire and its glow are `damage_fire_scale` times their frame, a vehicle's fire
+## `damage_vehicle_fire_scale`. Smoke and soot rise `damage_rise_px` and drift `emit_drift_px`; a
+## spark rises `damage_spark_rise_px`. A glow's alpha is `glow_weak_alpha` (SKADET) or
+## `glow_strong_alpha` (KRITISK).
+@export var damage_slots: int = 80
+@export var damage_burning_points: PackedInt32Array = PackedInt32Array([1, 3])
+@export var damage_smoke_cap: int = 30
+@export var damage_emit_ms: Dictionary[StringName, int] = {
+	&"smoke": 500,
+	&"soot": 400,
+	&"fire": 500,
+	&"jet": 300,
+	&"spark": 400,
+	&"exhaust": 600,
+}
+@export var damage_life_ms: Dictionary[StringName, int] = {
+	&"smoke": 2000,
+	&"soot": 2000,
+	&"fire": 700,
+	&"jet": 600,
+	&"spark": 500,
+	&"exhaust": 1200,
+}
+@export var damage_fire_scale: float = 1.6
+@export var damage_vehicle_fire_scale: float = 0.8
+@export var damage_rise_px: float = 28.0
+@export var damage_spark_rise_px: float = 14.0
+@export var glow_weak_alpha: float = 0.3
+@export var glow_strong_alpha: float = 0.55

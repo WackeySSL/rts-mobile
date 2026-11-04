@@ -158,7 +158,11 @@ func test_every_sorted_sprite_is_on_the_atlas_texture_in_white_whatever_the_mix(
 	assert_int(_layer.rig_count()).is_equal(8)
 	var sprites: Array[Sprite2D] = []
 	for sprite: Node in _layer.world_sort.find_children("*", "Sprite2D", true, false):
-		if sprite.name != &"Ring":  # The ring is a ground mark with its own texture, at z 3.
+		if sprite.name in [&"Scar", &"Loose"]:  # A vehicle's damage overlays (P161): hidden, intact.
+			assert_object(sprite.texture).is_same(atlas.texture())
+			assert_that(sprite.modulate).is_equal(Color.WHITE)
+			assert_bool(sprite.visible).is_false()
+		elif sprite.name != &"Ring":  # The ring is a ground mark with its own texture, at z 3.
 			sprites.append(sprite)
 	var turrets: int = 0  # A shadow and a hull each, and a turret for the types whose sheet has one.
 	for row: int in _runner.snapshot.unit_count():

@@ -1866,7 +1866,7 @@ stage 1, `scar2` and `loose` at stage 2.
 - **Scale.** `scar_milli` scales the scar only (1000 is the canvas as drawn): 800 the Bullhead (its
   glacis is the one flat top face the turret leaves) and the Torque, 600 the Flarejack and the
   Mortar Rig, 500 the Tanker, the Fuel Runner and the Swift, 450 the Arcline. The loose part has one
-  scale for every vehicle, `LOOSE_SCALE` 0.8 (the gallery's constant): scaled with the scar it
+  scale for every vehicle, `LOOSE_SCALE` 0.8 (`VehicleDamage.LOOSE_SCALE`, which the gallery aliases): scaled with the scar it
   shrank to a 10 to 13 px curl at zoom 1 that merged with the wheel. At 0.8 it changes 49 to 71
   pixels of a vehicle at zoom 1 in its worst direction (the Flarejack's 53, the Mortar Rig's 49),
   and the drag rule below holds. The view (P161) takes the same constant.

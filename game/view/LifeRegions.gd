@@ -190,9 +190,10 @@ const EMITTER_SPRITE: Dictionary[StringName, StringName] = {
 	&"flame": &"flare",
 }
 ## The kinds a layer may draw mirrored in x for a second look: the ones that give light, so nothing
-## on them is lit from a side (STYLE.md "Life effects"). A cloud, a heap of dust, a lance, the seed
-## and a hexagon are lit from the north-west and are never mirrored.
-const MIRRORABLE: Array[StringName] = [&"flare", &"fire", &"spark"]
+## on them is lit from a side (STYLE.md "Life effects"). A `jet` is mirrored by its side of the
+## building, not by a look (it points away from the wall). A cloud, a heap of dust, a lance, the
+## seed and a hexagon are lit from the north-west and are never mirrored.
+const MIRRORABLE: Array[StringName] = [&"flare", &"fire", &"spark", &"jet"]
 ## The net of the Blackout Array (STYLE.md "Life effects", "The net"): hexagons of side 16 world px
 ## with the lines a layer draws in code, a light line over a dark edge, so the lattice meets the
 ## `hex` sprite. The width of the edge and of the light line are world px.

@@ -25,7 +25,11 @@ extends Node2D
 ## mirrored (the only kind that may be, `LifeRegions.mirrorable`), is `LifeClock.mix` of the id and
 ## the tick.
 ## The ambient is dropped by `life.reduced`: nothing is born and the ring is emptied on the switch;
-## a new match empties it too.
+## a new match empties it too. An ambient emitter stops from the stage its sheet's `emitter_quiet`
+## names (an empty one reads as all zeros: it never stops), when the building is that damaged.
+## The damage ring (`DamageFx`, `FxRing`, ADR 0029 section 6) is a second ring of its own, planned
+## and drawn in the same `_draw` from the same texture; every glow of it is drawn before every
+## other quad, and a switch to `reduced` leaves its puffs alive.
 
 const DEFAULT_LIFE: LifeSettings = preload("res://data/life_settings.tres")
 const Z: int = 25
@@ -49,6 +53,8 @@ const MAX_LIFE_MS: int = 2000
 @export var reveal_enemies: bool = false
 ## Says whether a building is shown to the local player, and where its sheet is.
 @export var building_layer: BuildingLayer
+## Says which units are shown and where their rigs are drawn (the damaged vehicles' smoke).
+@export var unit_layer: UnitLayer
 
 var _atlas: Texture2D = null
 var _regions: Array[Rect2] = []  ## The frames of every kind, kind after kind.
@@ -65,6 +71,12 @@ var _type_first: PackedInt32Array = PackedInt32Array()
 var _em_kind: PackedByteArray = PackedByteArray()
 var _em_index: PackedByteArray = PackedByteArray()  ## The emitter's index in its sheet.
 var _em_at: PackedVector2Array = PackedVector2Array()  ## World px from the footprint centre.
+## The stage (1 or 2) from which the emitter goes quiet, 0 for never.
+var _em_quiet: PackedByteArray = PackedByteArray()
+var _dmg: DamageFx = DamageFx.new()
+## The other rings, planned and drawn with the ambient one: a ring is added with one line here.
+var _rings: Array[FxRing] = [_dmg.ring]
+var _ring_quads: int = 0  ## Quads of the rings' plans.
 var _size: int = 0  ## Slots in the ring (`life.emitter_slots` when it was made).
 var _head: int = 0
 var _count: int = 0
@@ -107,24 +119,31 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	var had_plan: bool = _quads > 0
+	var had_plan: bool = _quads > 0 or _ring_quads > 0
 	var snap: MatchSnapshot = runner.snapshot if runner != null else null
 	if snap == null:
 		return
 	_follow_match(snap)
 	if life.reduced:
-		if _count > 0 or had_plan:  # The switch to reduced: nothing stays frozen mid-life.
+		if _count > 0 or _quads > 0:  # The switch to reduced: nothing stays frozen mid-life.
 			_empty()
-			queue_redraw()
-		return
-	_make_ring_if_resized()
-	_plan(snap)
-	if had_plan or _quads > 0:
+			had_plan = true
+	else:
+		_make_ring_if_resized()
+		_plan(snap)
+	_ring_quads = 0
+	var now_ms: float = LifeClock.ms(snap, runner.alpha())
+	for ring: FxRing in _rings:
+		ring.plan(now_ms)
+		_ring_quads += ring.quad_count()
+	if had_plan or _quads > 0 or _ring_quads > 0:
 		queue_redraw()
 
 
 func _draw() -> void:
 	_drawn_quads = _quads
+	for ring: FxRing in _rings:  # The glow pass, under every other quad.
+		ring.draw(self, _atlas, FxRing.GLOW)
 	var mirrored: bool = false
 	for index: int in _quads:
 		var rect: Rect2 = quad_rect(index)
@@ -142,6 +161,14 @@ func _draw() -> void:
 			draw_texture_rect_region(_atlas, rect, region, color)
 	if mirrored:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	for pass_of: int in range(FxRing.CLOUD, FxRing.PASSES):  # Clouds, then the flames over them.
+		for ring: FxRing in _rings:
+			ring.draw(self, _atlas, pass_of)
+
+
+## The damage particles (a test hook); their ring is the first of `_rings`.
+func damage() -> DamageFx:
+	return _dmg
 
 
 ## Puffs in the ring, alive or not yet overwritten.
@@ -213,6 +240,8 @@ func _follow_match(snap: MatchSnapshot) -> void:
 	if snap.match_serial != _serial:
 		_serial = snap.match_serial
 		_empty()
+		for ring: FxRing in _rings:
+			ring.clear()
 
 
 func _empty() -> void:
@@ -249,7 +278,8 @@ func _read_numbers() -> void:
 
 
 ## Makes the table of the emitters of each building type, once a match: the sheet's `smoke`,
-## `steam` and `flame` points, at the art scale. False while the layer has no sheets yet.
+## `steam` and `flame` points, at the art scale, and the damage points (`DamageFx.build`). False
+## while the layer has no sheets yet.
 func _sync_types(snap: MatchSnapshot) -> bool:
 	if _types_serial == snap.match_serial:
 		return true
@@ -262,6 +292,7 @@ func _sync_types(snap: MatchSnapshot) -> bool:
 	_em_kind.clear()
 	_em_index.clear()
 	_em_at.clear()
+	_em_quiet.clear()
 	for type: int in snap.type_ids.size():
 		_type_first.append(_em_kind.size())
 		var sheet: IsoSheetDef = sort.sheet(snap.type_ids[type])
@@ -273,7 +304,11 @@ func _sync_types(snap: MatchSnapshot) -> bool:
 				_em_kind.append(kind)
 				_em_index.append(index)
 				_em_at.append(sheet.emitter_point(index, -1) * WorldSort.ART_SCALE)
+				_em_quiet.append(
+					sheet.emitter_quiet[index] if index < sheet.emitter_quiet.size() else 0
+				)
 	_type_first.append(_em_kind.size())
+	_dmg.build(snap, sort)
 	return true
 
 
@@ -285,28 +320,36 @@ func _emitter_kind(named: String) -> int:
 	return -1
 
 
-## One tick: a puff at each emitter whose cycle turned over, of a building the player can see that
-## is complete and online.
+## One tick: a puff at each ambient emitter whose cycle turned over (`_emit_ambient`) and the
+## damage particles of the damaged buildings and vehicles in view (`DamageFx`).
 func _on_ticked(_tick: int) -> void:
 	var snap: MatchSnapshot = runner.snapshot
 	if snap == null or life == null:
 		return
 	_follow_match(snap)
-	if life.reduced or building_layer == null:
+	if building_layer == null:
 		return
 	_make_ring_if_resized()
-	if _size == 0 or not _sync_types(snap):
+	if not _sync_types(snap):
 		return
-	_read_numbers()
+	var view: Rect2 = Rect2()  # Without a camera nothing is in view.
+	if camera != null:
+		view = camera.visible_world_rect().grow(BuildingLayer.ANIM_MARGIN_PX)
+	if _size > 0 and not life.reduced:
+		_read_numbers()
+		_emit_ambient(snap, view)
+	_dmg.read(life)
+	_dmg.emit(snap, view, life, building_layer, unit_layer, get_global_transform().affine_inverse())
+
+
+## A puff at each ambient emitter whose cycle turned over, of a building the player can see that is
+## complete and online, and not so damaged that its sheet has the emitter go quiet.
+func _emit_ambient(snap: MatchSnapshot, view: Rect2) -> void:
 	var tick: int = snap.tick
 	var types: PackedInt32Array = snap.type_index
 	var building: PackedInt32Array = snap.build_left
 	var offline: PackedInt32Array = snap.offline_until
 	var ids: PackedInt32Array = snap.unit_id
-	var view: Rect2 = Rect2()  # Without a camera nothing is in view.
-	if camera != null:
-		var m: float = BuildingLayer.ANIM_MARGIN_PX
-		view = camera.visible_world_rect().grow(m)
 	for row: int in ids.size():
 		var first: int = _type_first[types[row]]
 		var last: int = _type_first[types[row] + 1]
@@ -315,17 +358,29 @@ func _on_ticked(_tick: int) -> void:
 		if not building_layer.is_shown(row):
 			continue
 		var centre: Vector2 = IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row])
+		var stage: int = -1  # Read when an emitter of the row can go quiet.
 		for em: int in range(first, last):
 			var kind: int = _em_kind[em]
 			var every: int = _emit_ms[kind]
 			if every <= 0:
 				continue
+			if _em_quiet[em] > 0:
+				if stage < 0:
+					stage = _stage_of(snap, row)
+				if stage >= _em_quiet[em]:
+					continue
 			var phase: int = phase_ms(ids[row], _em_index[em], every)
 			if cycle(tick, phase, every) == cycle(tick - 1, phase, every):
 				continue
 			var spot: Vector2 = centre + _em_at[em]
 			if view.has_point(spot):
 				_add(spot, tick, kind, LifeClock.mix(ids[row], SALT_LOOK + tick + em))
+
+
+## The damage stage of building row `row` (`BuildingDamage.stage_of` with the building lines).
+func _stage_of(snap: MatchSnapshot, row: int) -> int:
+	var max_hp: int = snap.type_max_hp[snap.type_index[row]]
+	return BuildingDamage.stage_of(snap.hp[row], max_hp, life.building_stage_percent)
 
 
 ## The newest puff takes the next slot, which holds the oldest once the ring is full. `look` picks

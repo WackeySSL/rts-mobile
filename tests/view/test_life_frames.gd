@@ -53,7 +53,13 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"cycle",
 		"phase_ms",
 		"quad_rect",
+		"_emit_ambient",
+		"_stage_of",
 	],
+	# P148: the damage particles' ring and rules, and the ambient emitters beside them.
+	"res://game/view/FxRing.gd": ["set_style", "clear", "add", "compact", "plan", "draw"],
+	"res://game/view/DamageFx.gd":
+	["read", "emit", "_burn", "_drive", "_due", "_cloud", "_flame", "_birth", "_style"],
 	"res://game/view/GroundFx.gd":
 	["_process", "_draw", "_plan", "_on_ticked", "_add", "_empty", "quad_rect"],
 	"res://game/view/StrikeFx.gd":
@@ -105,7 +111,12 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"_apply_idle",
 		"_update_rigs",
 		"_show_hull",
+		"_write_damage",
 	],
+	# P161: `_queue_damage` (appends to the queue) and `_pool_rig` (erases from it) run on events,
+	# not every frame, and are exempt like P159's `_queue_stage`.
+	"res://game/view/VehicleDamage.gd":
+	["follow", "_place_loose", "_point", "apply", "cost", "stage_of"],
 	"res://game/view/BuildingAnims.gd": ["phase_ms", "frame_at", "low_power"],
 	"res://game/view/BuildingLayer.gd":
 	["_on_ticked", "_shot_seen", "_kick_heads", "_sweep_heads", "_play_anims"],

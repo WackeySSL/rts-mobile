@@ -16,12 +16,15 @@ const LIFE_FILES: Array[String] = [
 	"res://game/view/GroundFx.gd",
 	"res://game/view/StrikeFx.gd",
 	"res://game/view/AirFx.gd",
+	"res://game/view/FxRing.gd",
+	"res://game/view/DamageFx.gd",
 	"res://game/view/StrikeNet.gd",
 	"res://game/view/RigLife.gd",
 	"res://game/view/SquadPoses.gd",
 	"res://game/view/BuildingAnims.gd",
 	"res://game/view/BuildingDamage.gd",
 	"res://game/view/BuildingRuins.gd",
+	"res://game/view/VehicleDamage.gd",
 ]
 ## The life functions of the layers, by file.
 const LIFE_FUNCTIONS: Dictionary[String, Array] = {
@@ -35,6 +38,9 @@ const LIFE_FUNCTIONS: Dictionary[String, Array] = {
 		"_update_rigs",
 		"_apply_idle",
 		"_show_hull",
+		"_note_stage",
+		"_queue_damage",
+		"_write_damage",
 	],
 	"res://game/view/BuildingLayer.gd":
 	[

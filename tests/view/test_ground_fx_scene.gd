@@ -107,13 +107,13 @@ func test_a_long_drive_makes_no_node_and_no_object_after_the_first_puffs() -> vo
 
 func test_the_mirror_rule_is_flames_and_sparks_only_and_every_frame_resolves() -> void:
 	for kind: StringName in LifeRegions.FIRST:
-		var allowed: bool = kind in [&"flare", &"fire", &"spark"]
+		var allowed: bool = kind in [&"flare", &"fire", &"spark", &"jet"]
 		assert_bool(LifeRegions.mirrorable(kind)).override_failure_message(kind).is_equal(allowed)
 		var last: int = LifeRegions.FRAMES[kind] - 1
 		var step: int = LifeRegions.STEP[kind]
 		var expected: Vector2i = LifeRegions.FIRST[kind].position + Vector2i(last * step, 0)
 		assert_that(LifeRegions.region(kind, last).position).is_equal(expected)
-	assert_array(LifeRegions.MIRRORABLE).has_size(3)
+	assert_array(LifeRegions.MIRRORABLE).has_size(4)
 
 
 func _drive(dx: int, dy: int, ticks: int) -> void:
