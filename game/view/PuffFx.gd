@@ -1,8 +1,9 @@
 class_name PuffFx
 extends RefCounted
-## The small short puffs of `AirFx` (ADR 0027 sections 3 and 8, plan P149): the muzzle smoke of a
-## shot and the exhaust of a vehicle, into a ring of `life.puff_slots` (24) slots of their own, each
-## puff living at most `MAX_LIFE_MS` of match time. Drawn in `AirFx`'s `_draw` with the clouds.
+## The small short puffs of `AirFx` (ADR 0027 sections 3 and 8, plans P149 and P150): the muzzle
+## smoke of a shot, the exhaust of a vehicle and the sparks of a construction site, into a ring
+## of `life.puff_slots` (24) slots of their own, each puff living at most `MAX_LIFE_MS` of match
+## time. Drawn in `AirFx`'s `_draw` with the clouds.
 ## A SHOT of a weapon that fires a projectile (`weapon_projectile_speed` above 0: a cannon,
 ## artillery or a rocket; the rifle is hitscan and has none) leaves a grey `puff` at the point where
 ## `EffectsLayer` draws the flash: `muzzle_reach_px` px from the shooter towards the target, at the
@@ -11,14 +12,21 @@ extends RefCounted
 ## drive (at least half a step in this tick, and not in the last), and, standing, every
 ## `puff_idle_ms` of its own (`LifeClock.pick` of its id, a function of the tick alone, so every
 ## device agrees). A puff
-## outside the view rect `AirFx` passes is not born. `reduced` drops all of it: nothing is born and
-## the puffs of the ring are taken out at once. View only; allocates nothing after `read` and
-## `build` (the table of the rows is made when the rows change).
+## outside the view rect `AirFx` passes is not born. `reduced` drops the smoke and the exhaust:
+## nothing of them is born and they are taken out of the ring at once.
+## A site (a building with `build_left` above 0 that `BuildingLayer.is_shown`: an own one, or an
+## enemy one the player sees) throws a `spark` every `spark_ms` from a spot of its footprint, lifted
+## `spark_lift_px`, the cycle and the spot by `LifeClock` of its id and the tick. Sparks tell the
+## player something (a building is going up), so `reduced` keeps them. Nothing here reads a DIED
+## record: a site that is cancelled or finished just stops, and the sparks alive live out. View
+## only; allocates nothing after `read` and `build` (the table of the rows is made when the rows
+## change).
 
-enum Style { MUZZLE, EXHAUST }
-const KINDS: Array[StringName] = [&"puff", &"exhaust"]
+enum Style { MUZZLE, EXHAUST, SPARK }
+const KINDS: Array[StringName] = [&"puff", &"exhaust", &"spark"]
 const K_PUFF: int = 0
 const K_EXHAUST: int = 1
+const K_SPARK: int = 2
 ## The emitter of a vehicle's sheet that the exhaust leaves from.
 const EXHAUST_POINT: StringName = &"exhaust"
 ## A puff lives no longer than this (ADR 0027 section 3: the quota's bound).
@@ -29,6 +37,9 @@ const MAX_LIFE_MS: int = 500
 const SALT_LOOK: int = 0x7A000000
 const SALT_EVERY: int = 0x7B000000
 const SALT_PHASE: int = 0x7C000000
+const SALT_SPARK_PHASE: int = 0x7D000000
+const SALT_SPARK_SPOT: int = 0x7E000000
+const SALT_SPARK_LOOK: int = 0x7F000000
 
 var ring: FxRing = FxRing.new()
 var _exhaust: PackedInt32Array = PackedInt32Array()  ## Per type: the sheet's exhaust emitter or -1.
@@ -44,8 +55,8 @@ var _reduced: bool = false
 
 func _init() -> void:
 	ring.setup(KINDS, Style.size())
-	for kind: int in KINDS.size():
-		ring.set_pass(kind, FxRing.CLOUD)
+	ring.set_pass(K_PUFF, FxRing.CLOUD)
+	ring.set_pass(K_EXHAUST, FxRing.CLOUD)  # The sparks keep the last pass, over the clouds.
 
 
 ## Forgets the rows and empties the ring: a new match.
@@ -100,6 +111,16 @@ func read(life: LifeSettings) -> void:
 		life.exhaust_alpha,
 		0.0
 	)
+	ring.set_style(
+		Style.SPARK,
+		K_SPARK,
+		float(clampi(life.spark_life_ms, 0, MAX_LIFE_MS)),
+		life.spark_rise_px,
+		0.0,
+		life.spark_grow,
+		life.spark_alpha,
+		0.0
+	)
 
 
 ## Takes the muzzle smoke and the exhaust out of the ring.
@@ -116,8 +137,9 @@ func follow_reduced(on: bool) -> void:
 	_reduced = on
 
 
-## One tick: the muzzle smoke of its SHOTs the player can see, and the exhaust of the vehicles that
-## started to drive or stand and are due. The puffs that lived out give their slots back first.
+## One tick: the muzzle smoke of its SHOTs the player can see, the exhaust of the vehicles that
+## started to drive or stand and are due and the sparks of the sites. The puffs that lived out give
+## their slots back first.
 func emit(
 	snap: MatchSnapshot,
 	life: LifeSettings,
@@ -142,6 +164,7 @@ func emit(
 			if weapon >= 0 and weapon < speeds.size() and speeds[weapon] > 0:
 				_muzzle(snap, at, life, view, buildings, local, reveal)
 	_drive(snap, life, view, units, world_to_local, reduced)
+	_sites(snap, life, view, buildings)
 
 
 # The smoke of the SHOT at `at`: at the flash's point, when the shooter's tile is seen.
@@ -233,6 +256,41 @@ func _drive(
 		var spot: Vector2 = base + sheet.emitter_point(point, dir) * WorldSort.ART_SCALE
 		if view.has_point(spot):
 			ring.add(Style.EXHAUST, spot, born, LifeClock.mix(id, SALT_LOOK + tick))
+
+
+# A spark at each shown site whose cycle turned over, at a spot of its footprint.
+func _sites(snap: MatchSnapshot, life: LifeSettings, view: Rect2, buildings: BuildingLayer) -> void:
+	var every: int = life.spark_ms
+	if every <= 0 or life.spark_life_ms <= 0 or buildings == null:
+		return
+	var tick: int = snap.tick
+	var ids: PackedInt32Array = snap.unit_id
+	var born: float = LifeClock.tick_ms(tick)
+	for row: int in ids.size():
+		var type: int = snap.type_index[row]
+		if snap.build_left[row] <= 0 or snap.type_foot_w[type] <= 0:
+			continue
+		var id: int = ids[row]
+		var phase: int = LifeClock.pick(id, SALT_SPARK_PHASE, every)
+		if AirFx.cycle(tick, phase, every) == AirFx.cycle(tick - 1, phase, every):
+			continue
+		if not buildings.is_shown(row):
+			continue
+		var look: int = LifeClock.mix(id, SALT_SPARK_LOOK + tick)
+		var spot: Vector2 = (
+			IsoProjection.ground_to_px(
+				snap.pos_x[row] + _across(id, tick, SALT_SPARK_SPOT, snap.type_foot_w[type]),
+				snap.pos_y[row] + _across(id, tick, SALT_SPARK_SPOT + 1, snap.type_foot_h[type])
+			)
+			- Vector2(0.0, life.spark_lift_px)
+		)
+		if view.has_point(spot):
+			ring.add(Style.SPARK, spot, born, look)
+
+
+# A milli-tile offset within a footprint `tiles` wide: -tiles/2 to tiles/2 of a tile, by hash.
+func _across(id: int, tick: int, salt: int, tiles: int) -> int:
+	return (LifeClock.pick(id, salt + tick * 2, 1001) - 500) * tiles
 
 
 # Keeps the per-row tables aligned with the snapshot's rows: when the rows change (or the idle

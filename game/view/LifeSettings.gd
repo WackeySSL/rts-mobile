@@ -307,3 +307,16 @@ var crater_scale_milli: Dictionary[StringName, int] = {&"refinery": 1500, &"rene
 @export var exhaust_grow: Vector2 = Vector2(0.7, 1.4)
 @export var exhaust_alpha: float = 0.8
 @export var puff_idle_ms: Vector2i = Vector2i(3000, 5000)
+
+## Construction sparks (P150, ADR 0027 sections 3 and 8): a site (`build_left` above 0) the player
+## is shown throws a `spark` every `spark_ms` from a `LifeClock.mix` spot of its footprint, lifted
+## `spark_lift_px` onto the framework. A spark lives `spark_life_ms` (at most 500) in the ring of
+## `puff_slots`, rises `spark_rise_px`, grows from `spark_grow.x` to `.y` times its frame and fades
+## from `spark_alpha` to 0. A `spark_ms` or `spark_life_ms` of 0 turns the sparks off; `reduced`
+## keeps them. The dust puff at a factory's exit is `GroundFx`'s dust (`dust_*`, `dust_slots`).
+@export var spark_ms: int = 200
+@export var spark_life_ms: int = 300
+@export var spark_lift_px: float = 16.0
+@export var spark_rise_px: float = 10.0
+@export var spark_grow: Vector2 = Vector2(1.0, 0.5)
+@export var spark_alpha: float = 1.0
