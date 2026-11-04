@@ -68,7 +68,7 @@ static func of(model: ArtModel, shots: Dictionary[StringName, ArtGen.Shot]) -> I
 	sheet.marks = model.marks
 	sheet.scar_milli = model.scar_milli
 	if not model.damage_parts().is_empty():
-		for part: StringName in ArtModel.PATCH_PARTS:
+		for part: StringName in ArtModel.DAMAGE_PARTS:
 			sheet.cuts.append(shots[part].cut if shots.has(part) else 0)
 	var quiet: PackedInt32Array = PackedInt32Array()
 	for emitter: Array in model.emitter_list():

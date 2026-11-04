@@ -7,7 +7,6 @@ extends RefCounted
 ##   <part> <frame> <group> hide
 ##   <part> <frame> <group> char <percent>
 ##   <part> <frame> <group> blow <percent>
-##   <part> <frame> soot <percent>
 ##
 ## `part` is `walk`, `idle` or `anim`, or a damage pose of a building, `dmg1` or `dmg2` (ADR 0028
 ## section 3; their one frame is 0), `frame` counts from 0, `group` is what the primitives carry
@@ -17,21 +16,20 @@ extends RefCounted
 ## y, about x takes y towards z, about y takes z towards x. So a positive turn about y swings a
 ## point below its pivot towards -x, backwards from a unit that faces +x. A group's moves apply in
 ## the order of their lines, each to the result of the one before; a pivot is a point of the
-## model's frame, it does not follow an earlier move. `hide`, `char`, `blow` and `soot` are for
-## the damage poses (`dmg1`, `dmg2`, `ruin`): the group is not drawn, or its face colours are mixed
+## model's frame, it does not follow an earlier move. `hide`, `char` and `blow` are for
+## the damage poses (`dmg1`, `dmg2`): the group is not drawn, or its face colours are mixed
 ## `percent` of the way (0 to 100) towards the palette's char colour (a team face may be charred
 ## only to a result outside its key band, `ArtModel`); `blow` turns the first `percent` of the
-## group's `glass` primitives, in the hash order, into `hole` (ADR 0029 section 5); `soot` chars
-## every hull primitive of the stage but the team faces, whatever its group.
+## group's intact `glass` primitives (a group with none is refused), in the hash order, into `hole`
+## (ADR 0029 section 5).
 
 const KINDS: Array[StringName] = [&"shift", &"turn", &"hide", &"char", &"blow"]
-const SOOT: StringName = &"soot"
 ## The words of a line by kind.
 const WORDS: Dictionary[StringName, int] = {
-	&"turn": 9, &"shift": 7, &"hide": 4, &"char": 5, &"blow": 5, SOOT: 4
+	&"turn": 9, &"shift": 7, &"hide": 4, &"char": 5, &"blow": 5
 }
 ## The kinds only a damage pose may use.
-const DAMAGE_KINDS: Array[StringName] = [&"hide", &"char", &"blow", SOOT]
+const DAMAGE_KINDS: Array[StringName] = [&"hide", &"char", &"blow"]
 
 var part: StringName = &""
 var line: String = ""  ## What it was parsed from.
@@ -42,7 +40,7 @@ var shift: Vector3 = Vector3.ZERO
 var axis: int = -1  ## 0, 1 or 2 for a turn about x, y or z; -1 for a shift.
 var degrees: float = 0.0
 var pivot: Vector3 = Vector3.ZERO
-var char_percent: float = 0.0  ## For `char` and `soot`.
+var char_percent: float = 0.0  ## For `char`.
 var blow_percent: float = 0.0  ## For `blow`.
 
 
@@ -51,11 +49,10 @@ var blow_percent: float = 0.0  ## For `blow`.
 ## not one).
 static func parse(line: String) -> ArtMove:
 	var words: PackedStringArray = line.split(" ", false)
-	var sooting: bool = words.size() == 4 and words[2] == "soot"
-	if words.size() < 4 or (not sooting and StringName(words[3]) not in KINDS):
+	if words.size() < 4 or StringName(words[3]) not in KINDS:
 		return null
 	var turning: bool = words[3] == "turn"
-	var kind: StringName = SOOT if sooting else StringName(words[3])
+	var kind: StringName = StringName(words[3])
 	var size: int = WORDS[kind]
 	var damage_part: bool = StringName(words[0]) in ArtModel.DAMAGE_PARTS
 	if words.size() != size or not (damage_part or StringName(words[0]) in ArtModel.POSE_PARTS):
@@ -64,10 +61,10 @@ static func parse(line: String) -> ArtMove:
 		return null
 	if not words[1].is_valid_int() or words[1].to_int() < 0:
 		return null
-	if not sooting and not words[2].is_valid_identifier():
+	if not words[2].is_valid_identifier():
 		return null
 	var nums: PackedFloat64Array = PackedFloat64Array()
-	for i: int in range(5 if turning else (3 if sooting else 4), words.size()):
+	for i: int in range(5 if turning else 4, words.size()):
 		if not words[i].is_valid_float():
 			return null
 		nums.append(words[i].to_float())
@@ -75,11 +72,11 @@ static func parse(line: String) -> ArtMove:
 	move.line = line
 	move.part = StringName(words[0])
 	move.frame = words[1].to_int()
-	move.group = &"" if sooting else StringName(words[2])
+	move.group = StringName(words[2])
 	move.kind = kind
 	if kind == &"hide":
 		return move
-	if kind in [&"char", &"blow", SOOT]:
+	if kind in [&"char", &"blow"]:
 		move.char_percent = nums[0] if kind != &"blow" else 0.0
 		move.blow_percent = nums[0] if kind == &"blow" else 0.0
 		return move if nums[0] >= 0.0 and nums[0] <= 100.0 else null

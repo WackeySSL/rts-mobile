@@ -5,8 +5,8 @@ extends GdUnitTestSuite
 ## round trip and the char colour's key band. The moves, the patch and `root` are in
 ## test_artgen_damage.gd.
 
-const BAND_DEGREES: float = 20.0  ## ADR 0023 section 5: the key band's half width.
-const BAND_SATURATION: float = 0.30
+## Two damage points on the body's top, which every stage draws (a building with poses has 2).
+const POINTS: Array[String] = ["damage -0.7 -0.3 1.0", "damage -0.6 -0.6 1.0"]
 const BODY: String = "box hull concrete 0 0 0 1.6 1.6 1.0"
 ## Three crafted bodies on which the greedy draw order of the stage, without the fix, swaps two
 ## primitives that the stage leaves alone (found by a search over random bodies): the rows below the
@@ -44,6 +44,7 @@ func _building(prims: Array, poses: Array) -> ArtModel:
 	model.footprint = 2
 	model.prims = PackedStringArray(prims)
 	model.poses = PackedStringArray(poses)
+	model.emitters = PackedStringArray(POINTS)
 	return model
 
 
@@ -98,6 +99,9 @@ func test_a_debris_primitive_is_drawn_behind_what_stands_in_front_of_it() -> voi
 	var model: ArtModel = barracks.duplicate()
 	var debris: String = "box hull iron -0.35 -0.75 1.0 0.15 0.35 0.25 damage=1"
 	model.prims = barracks.prims + PackedStringArray([debris])
+	model.emitters.append_array(
+		PackedStringArray(["damage -0.25 -0.5 1.3", "dmg_spark -0.25 -0.5 1.2"])
+	)
 	assert_array(Array(model.problems())).is_empty()
 	var posed: Array[ArtPrim] = model.damage_prims(1)
 	var order: Array[int] = ArtRender.draw_order(posed, 0.0)
@@ -183,7 +187,7 @@ func test_every_committed_model_with_damage_is_intact_below_its_cut() -> void:
 	for path: String in ArtGen.model_paths():
 		var model: ArtModel = load(path) as ArtModel
 		for part: StringName in model.damage_parts():
-			var stage: int = ArtModel.PATCH_PARTS.find(part) + 1
+			var stage: int = ArtModel.DAMAGE_PARTS.find(part) + 1
 			(
 				assert_int(_rows_below_cut_differ(model, stage))
 				. override_failure_message("%s %s" % [path, part])
@@ -374,7 +378,7 @@ func test_the_cuts_and_the_patch_anchors_survive_a_loaded_sheet() -> void:
 	assert_object(loaded).is_not_null()
 	assert_array(Array(loaded.cuts)).is_equal(Array(sheet.cuts))
 	assert_array(Array(loaded.parts)).is_equal(["hull", "dmg1", "dmg2", "shadow"])
-	for part: StringName in ArtModel.PATCH_PARTS:
+	for part: StringName in ArtModel.DAMAGE_PARTS:
 		assert_vector(Vector2(loaded.anchor(part))).is_equal(Vector2(sheet.anchor(part)))
 		assert_vector(Vector2(loaded.frame_size(part))).is_equal(Vector2(sheet.frame_size(part)))
 		assert_vector(Vector2(loaded.origin(part))).is_equal(Vector2(sheet.origin(part)))
@@ -383,7 +387,10 @@ func test_the_cuts_and_the_patch_anchors_survive_a_loaded_sheet() -> void:
 
 func test_char_never_enters_a_key_band() -> void:
 	for faction: StringName in ArtPalette.MATERIALS:
-		for material: StringName in ArtPalette.MATERIALS[faction]:
+		var materials: Array = ArtPalette.MATERIALS[faction].keys()
+		materials.append_array(ArtPalette.SHARED.keys())
+		materials.append(ArtPalette.INTERIOR)
+		for material: StringName in materials:
 			var colours: Array[String] = []
 			for level: int in 3:
 				colours.append(ArtPalette.tone(faction, material, level))
@@ -393,14 +400,14 @@ func test_char_never_enters_a_key_band() -> void:
 				for percent: int in 101:
 					var mixed: String = ArtPalette.scorched(hex, percent)
 					(
-						assert_bool(_in_band(mixed, faction))
+						assert_bool(ArtPalette.in_key_band(faction, mixed))
 						. override_failure_message(
 							"%s %s %d%%: %s" % [faction, material, percent, mixed]
 						)
 						. is_false()
 					)
-	assert_bool(_in_band(ArtPalette.CHAR, &"fossil")).is_false()
-	assert_bool(_in_band(ArtPalette.CHAR, &"renew")).is_false()
+	assert_bool(ArtPalette.in_key_band(&"fossil", ArtPalette.CHAR)).is_false()
+	assert_bool(ArtPalette.in_key_band(&"renew", ArtPalette.CHAR)).is_false()
 
 
 func test_the_origin_and_anchor_of_a_patch_follow_the_body() -> void:
@@ -408,7 +415,7 @@ func test_the_origin_and_anchor_of_a_patch_follow_the_body() -> void:
 		[BODY, "box hull iron 0 0 1 0.3 0.3 0.1 group=g"], ["dmg1 0 g hide", "dmg2 0 g hide"]
 	)
 	var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
-	for part: StringName in ArtModel.PATCH_PARTS:
+	for part: StringName in ArtModel.DAMAGE_PARTS:
 		var layout: ArtGen.Layout = shots[part].layout
 		assert_int(layout.origin.y - layout.anchor.y).is_equal(32 * model.footprint)
 		# The patch ends above the ground point: the origin lies below its canvas.
@@ -419,7 +426,7 @@ func test_the_origin_and_anchor_of_a_patch_follow_the_body() -> void:
 func _rows_below_cut_differ(model: ArtModel, stage: int) -> int:
 	var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
 	var body: ArtGen.Layout = shots[&"hull"].layout
-	var cut: int = shots[ArtModel.PATCH_PARTS[stage - 1]].cut
+	var cut: int = shots[ArtModel.DAMAGE_PARTS[stage - 1]].cut
 	var intact: Image = _image(shots[&"hull"].polys[0], body)
 	var posed: Image = _image(ArtGen.stage_polys(model, stage), body)
 	var rows: int = 0
@@ -441,14 +448,3 @@ func _image(polys: Array, layout: ArtGen.Layout) -> Image:
 	var image: Image = Image.create(layout.size.x, layout.size.y, false, Image.FORMAT_RGBA8)
 	image.load_svg_from_string(ArtSvg.frame("t", layout.size, layout.origin, typed), 1.0)
 	return image
-
-
-func _in_band(hex: String, faction: StringName) -> bool:
-	var colour: Color = Color(hex)
-	if colour.s < BAND_SATURATION:
-		return false
-	for key: String in ArtPalette.KEYS[faction]:
-		var gap: float = absf(colour.h * 360.0 - Color(key).h * 360.0)
-		if minf(gap, 360.0 - gap) <= BAND_DEGREES:
-			return true
-	return false

@@ -7,6 +7,8 @@ extends GdUnitTestSuite
 ## change is test_artgen.gd.
 
 const SCALE: float = 1.0
+## Two damage points on the body's top, which every stage draws (a building with poses has 2).
+const POINTS: Array[String] = ["damage -0.7 -0.3 1.0", "damage -0.6 -0.6 1.0"]
 ## The crafted building: a body of 1.6 x 1.6 x 1, a roof slab, a stack, a flag in the team's colour,
 ## a seated mast, debris for each stage and a beacon that moves.
 const PRIMS: Array[String] = [
@@ -41,6 +43,8 @@ func _model(extra_poses: Array[String] = [], extra_prims: Array[String] = []) ->
 	model.anim_ms = 100
 	model.prims = PackedStringArray(PRIMS + extra_prims)
 	model.poses = PackedStringArray(POSES + extra_poses)
+	model.emitters = PackedStringArray(POINTS)
+	model.anim_kritisk = &"hide"
 	return model
 
 
@@ -70,7 +74,7 @@ func test_a_primitive_tagged_damage_is_drawn_from_its_stage_on() -> void:
 	assert_int(ArtPrim.parse(PRIMS[5]).damage).is_equal(1)
 	assert_int(ArtPrim.parse(PRIMS[1]).damage).is_equal(0)
 	for line: String in [
-		"box hull steel 0 0 0 1 1 1 damage=0", "box hull steel 0 0 0 1 1 1 damage=4"
+		"box hull steel 0 0 0 1 1 1 damage=0", "box hull steel 0 0 0 1 1 1 damage=3"
 	]:
 		assert_object(ArtPrim.parse(line)).is_null()
 	assert_int(model.primitives(&"hull").size()).is_equal(5)  # intact: none of the tagged
@@ -113,7 +117,7 @@ func test_char_mixes_the_faces_towards_the_char_colour_and_a_flag_keeps_its_key_
 	# 0 % is the colour itself, 100 % the char colour.
 	assert_str(ArtPalette.scorched("#6E5D50", 0.0)).is_equal("#6E5D50")
 	assert_str(ArtPalette.scorched("#6E5D50", 100.0)).is_equal(ArtPalette.CHAR)
-	# The flag is not charred, and keeps its key triad (a charred team face is test_artgen_v5_ruin.gd).
+	# The flag is not charred, and keeps its key triad (a charred team face: v5_materials).
 	var stage2: Array[ArtRender.Poly] = ArtGen.stage_polys(model, 2)
 	for key: String in ArtPalette.KEYS[&"fossil"]:
 		assert_array(_fills(stage2)).contains([key])
@@ -155,8 +159,8 @@ func test_the_cut_row_is_the_lowest_row_of_what_the_stage_changes() -> void:
 	var model: ArtModel = _model()
 	var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
 	var body: ArtGen.Layout = shots[&"hull"].layout
-	for part: StringName in ArtModel.PATCH_PARTS:
-		var stage: int = ArtModel.PATCH_PARTS.find(part) + 1
+	for part: StringName in ArtModel.DAMAGE_PARTS:
+		var stage: int = ArtModel.DAMAGE_PARTS.find(part) + 1
 		var low: float = -INF
 		for pair: Array in model.damage_changes(stage):
 			for prim: ArtPrim in pair:
@@ -174,7 +178,7 @@ func test_the_cut_is_in_the_top_third_of_the_body() -> void:
 	polys.assign(body.polys[0])
 	var ink: Rect2 = ArtRender.bounds(polys)
 	var top: float = ink.position.y + body.layout.origin.y
-	for part: StringName in ArtModel.PATCH_PARTS:
+	for part: StringName in ArtModel.DAMAGE_PARTS:
 		assert_float(float(shots[part].cut)).is_less(top + ink.size.y / 3.0)
 
 
@@ -183,8 +187,8 @@ func test_below_the_cut_the_stage_picture_is_the_intact_one() -> void:
 	var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
 	var body: ArtGen.Layout = shots[&"hull"].layout
 	var intact: Image = _image(shots[&"hull"].polys[0], body)
-	for part: StringName in ArtModel.PATCH_PARTS:
-		var stage: int = ArtModel.PATCH_PARTS.find(part) + 1
+	for part: StringName in ArtModel.DAMAGE_PARTS:
+		var stage: int = ArtModel.DAMAGE_PARTS.find(part) + 1
 		var full: Array[ArtRender.Poly] = ArtGen.stage_polys(model, stage)
 		var posed: Image = _image(full, body)
 		var cut: int = shots[part].cut
@@ -197,8 +201,8 @@ func test_the_patch_over_the_body_gives_the_stage_picture() -> void:
 	var files: Dictionary[String, String] = ArtGen.build(model)
 	var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
 	var body: ArtGen.Layout = shots[&"hull"].layout
-	for part: StringName in ArtModel.PATCH_PARTS:
-		var stage: int = ArtModel.PATCH_PARTS.find(part) + 1
+	for part: StringName in ArtModel.DAMAGE_PARTS:
+		var stage: int = ArtModel.DAMAGE_PARTS.find(part) + 1
 		var shot: ArtGen.Shot = shots[part]
 		var layout: ArtGen.Layout = shot.layout
 		# The patch ends the overlap below the cut, and its canvas is even.
@@ -246,7 +250,7 @@ func test_the_sheet_lists_the_patches_cuts_and_files() -> void:
 	assert_vector(Vector2(sheet.frame_size(&"dmg1"))).is_equal(Vector2(shots[&"dmg1"].layout.size))
 	assert_vector(Vector2(sheet.anchor(&"dmg2"))).is_equal(Vector2(shots[&"dmg2"].layout.anchor))
 	assert_vector(Vector2(sheet.origin(&"dmg1"))).is_equal(Vector2(shots[&"dmg1"].layout.origin))
-	for part: StringName in ArtModel.PATCH_PARTS:
+	for part: StringName in ArtModel.DAMAGE_PARTS:
 		var path: String = "res://assets/art/iso/fossil/bld/crafted_%s.svg" % part
 		assert_str(sheet.path(part, -1)).is_equal(path)
 		assert_bool(files.has(path)).is_true()
@@ -294,6 +298,7 @@ func test_each_move_alone_sets_the_cut_at_its_own_outline() -> void:
 		var model: ArtModel = _model()
 		model.prims = PackedStringArray(LID)
 		model.anim_ms = 0
+		model.anim_kritisk = &""
 		model.poses = PackedStringArray([move, "dmg2 0 lid hide"])
 		assert_array(Array(model.problems())).override_failure_message(move).is_empty()
 		var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)

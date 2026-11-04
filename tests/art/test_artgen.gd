@@ -290,6 +290,12 @@ func test_the_key_band_is_the_one_of_adr_0023() -> void:
 		for material: StringName in ArtPalette.MATERIALS[faction]:
 			var hex: String = ArtPalette.MATERIALS[faction][material]
 			assert_bool(_in_band(hex, faction)).override_failure_message(hex).is_false()
+		# The damage materials, and every tone of them, stay outside it too.
+		var damage: Array = ArtPalette.SHARED.keys() + [ArtPalette.INTERIOR]
+		for material: StringName in damage:
+			for level: int in 3:
+				var hex: String = ArtPalette.tone(faction, material, level)
+				assert_bool(_in_band(hex, faction)).override_failure_message(hex).is_false()
 
 
 func test_no_colour_but_the_key_triad_is_in_the_key_band_of_its_faction() -> void:

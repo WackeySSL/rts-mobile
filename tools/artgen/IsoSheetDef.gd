@@ -9,8 +9,7 @@ extends Resource
 ## lifts are world px at zoom 1, half of that, which is what the view counts in.
 ##
 ## A part is `hull`, `turret` or `head`, a pose part (`walk`, `idle` or `anim`, ADR 0027 section
-## 4), a building's damage patch (`dmg1` or `dmg2`, ADR 0028 section 3), its `ruin` (a whole
-## picture in a canvas of its own, ADR 0029 section 3) and `shadow`, each with
+## 4), a building's damage patch (`dmg1` or `dmg2`, ADR 0028 section 3) and `shadow`, each with
 ## one canvas and one anchor for all its frames. The anchor is where a
 ## unit's ground point lies in the canvas; a building's body and shadow are anchored at the back
 ## corner of the footprint (Spec 03), `origin` gives the footprint's centre. A turret's or head's
@@ -122,7 +121,7 @@ func anchor(part: StringName) -> Vector2i:
 ## Where the model's origin lies in the canvas: a unit's ground point, a building's footprint
 ## centre (32 px per footprint tile below its anchor); a damage patch is anchored like the body.
 func origin(part: StringName) -> Vector2i:
-	var body: bool = footprint > 0 and part in [&"hull", &"shadow", &"dmg1", &"dmg2", &"ruin"]
+	var body: bool = footprint > 0 and part in [&"hull", &"shadow", &"dmg1", &"dmg2"]
 	return anchor(part) + (Vector2i(0, 32 * footprint) if body else Vector2i.ZERO)
 
 

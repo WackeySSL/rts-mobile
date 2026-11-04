@@ -1,15 +1,15 @@
 extends RefCounted
 ## What the generator v5a suites share (plan row P163, ADR 0029 section 5): a crafted building with
-## the three damage poses, and the key-share raster test that P158a and P158b run on the real
+## the two damage poses, and the key-share raster test that P158a and P158b run on the real
 ## buildings. Not a test suite (no GdUnitTestSuite base).
 
 ## The key-share bands of ADR 0029 section 5: the share of the intact picture's key-band pixels
-## that is still key-band at each stage (the sheet's 70 % / 35 % / remnants, with room).
-const SHARE_BANDS: Array[Vector2] = [Vector2(0.55, 0.85), Vector2(0.20, 0.50), Vector2(0.01, 0.20)]
+## that is still key-band at SKADET and KRITISK (the sheet's 70 % and 35 %, with room).
+const SHARE_BANDS: Array[Vector2] = [Vector2(0.55, 0.85), Vector2(0.20, 0.50)]
 const SCALE: float = 0.5  ## The 2x art at zoom 1.
 const MIN_ALPHA: float = 0.5  ## A pixel more transparent than this is not ink.
 ## The crafted building: a body, a tower that carries the beacon, a stack, four team panels, a
-## seated mast, an interior and a slab per stage, and a low ruin with debris outside the footprint.
+## seated mast, and an interior and a slab for the stages.
 const PRIMS: Array[String] = [
 	"box hull concrete 0 0 0 1.6 1.6 1.0 group=body",
 	"box hull steel -0.4 -0.4 1.0 0.3 0.3 0.8 group=tower",
@@ -22,9 +22,6 @@ const PRIMS: Array[String] = [
 	"box anim lamp -0.4 -0.4 1.8 0.1 0.1 0.1 group=beacon",
 	"box hull interior 0.0 0.2 0.9 0.4 0.4 0.3 group=rooms damage=1",
 	"box hull slab 0.3 -0.1 1.0 0.2 0.2 0.1 group=chunk damage=2",
-	"box hull slab 0 0 0 1.2 1.2 0.12 damage=3",
-	"box hull concrete 1.1 0 0 0.2 0.3 0.08 damage=3",
-	"box hull team 0.2 0.85 0 0.15 0.1 0.15 damage=3",
 ]
 const POSES: Array[String] = [
 	"anim 2",
@@ -37,19 +34,9 @@ const POSES: Array[String] = [
 	"dmg2 0 t2 hide",
 	"dmg2 0 t3 char 100",
 	"dmg2 0 tower turn y 12 -0.4 -0.4 1.0",
-	"ruin 0 body hide",
-	"ruin 0 rooms hide",
-	"ruin 0 chunk hide",
-	"ruin 0 tower hide",
-	"ruin 0 stack hide",
-	"ruin 0 t1 hide",
-	"ruin 0 t2 hide",
-	"ruin 0 t3 hide",
-	"ruin 0 t4 hide",
-	"ruin 0 mount shift 0 0 -1.0",
 ]
 const EMITTERS: Array[String] = [
-	"damage 0.2 0.2 1.0", "dmg_spark -0.2 0.3 1.0", "ruin 0 0 0.12", "smoke 0.4 0.4 1.4 group=stack"
+	"damage 0.2 0.2 1.0", "dmg_spark -0.2 0.3 1.0", "smoke 0.4 0.4 1.4 group=stack"
 ]
 
 
@@ -74,6 +61,7 @@ static func with_prims(
 	model.category = &"bld"
 	model.footprint = 2
 	model.anim_ms = 100 if animated else 0
+	model.anim_kritisk = &"run" if animated else &""
 	model.prims = PackedStringArray(prims)
 	model.poses = PackedStringArray(poses)
 	model.emitters = PackedStringArray(emitters)
@@ -91,8 +79,8 @@ static func key_pixels(image: Image, faction: StringName) -> int:
 	return count
 
 
-## The picture of damage `stage` (0 intact, 1 to 3) of `model` rasterised at zoom 1 with
-## `Image.load_svg_from_string`: the whole body at that stage, or the ruin's own canvas.
+## The picture of damage `stage` (0 intact, 1 or 2) of `model` rasterised at zoom 1 with
+## `Image.load_svg_from_string`: the whole body at that stage.
 static func stage_image(model: ArtModel, stage: int) -> Image:
 	var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
 	var polys: Array[ArtRender.Poly] = (
@@ -100,13 +88,13 @@ static func stage_image(model: ArtModel, stage: int) -> Image:
 		if stage == 0
 		else ArtGen.stage_polys(model, stage)
 	)
-	var layout: ArtGen.Layout = shots[&"ruin" if stage == 3 else &"hull"].layout
+	var layout: ArtGen.Layout = shots[&"hull"].layout
 	var image: Image = Image.new()
 	image.load_svg_from_string(ArtSvg.frame("t", layout.size, layout.origin, polys), SCALE)
 	return image
 
 
-## The key share of `stage` (1 to 3): its key-band pixels over the intact picture's.
+## The key share of `stage` (1 or 2): its key-band pixels over the intact picture's.
 static func key_share(model: ArtModel, stage: int) -> float:
 	var intact: int = key_pixels(stage_image(model, 0), model.faction)
 	return float(key_pixels(stage_image(model, stage), model.faction)) / maxf(float(intact), 1.0)
@@ -116,7 +104,7 @@ static func key_share(model: ArtModel, stage: int) -> float:
 ## passes.
 static func share_problems(model: ArtModel) -> PackedStringArray:
 	var found: PackedStringArray = PackedStringArray()
-	for stage: int in range(1, 4):
+	for stage: int in range(1, 3):
 		var share: float = key_share(model, stage)
 		var band: Vector2 = SHARE_BANDS[stage - 1]
 		if share < band.x or share > band.y:
