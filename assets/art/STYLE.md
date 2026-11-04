@@ -332,13 +332,15 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
     of the art id and the line (the inlined djb2 and `_mix` of `blow`; no randomness), so two runs
     agree and two lines differ. Faces: front and back with the zigzag, two ends, the floor and one
     quad per tooth segment. It is one concave primitive: its tops are drawn far to near, then the
-    front and the end cap over them (no slices, so no seams), and each tooth quad is oriented
+    front and the end cap over them, then the light edge of each visible tooth's front segment (no
+    slices, so no seams), and each tooth quad is oriented
     against a point below its own middle.
   - **`rod <part> <material> x0 y0 z0 x1 y1 z1 width [bend=deg]`** is one polygon quad `width` art
     px across (at least 2) in the material's mid tone, with no outline, ordered at its midpoint's
     depth. `bend` (at most 90 degrees) turns the half towards the second point about the
-    horizontal axis (up x direction), right-handed, and makes two quads: a vertical rod's far half
-    swings towards +x, a rod that runs along +x droops. It takes any material. "No outline" is ADR
+    horizontal axis (up x direction from the first point to the second), right-handed, and makes
+    two quads: a rod written bottom to top swings its far half towards +x, one written top to
+    bottom towards -x, and a rod written along +x droops. It takes any material. "No outline" is ADR
     0029 section 5's decision; "casts no shadow" is the generator's own (a rod has no faces to
     drop; the Edges and Cast shadows rules above do not apply to it).
   - **`petals <part> <material> cx cy z diameter n tilt [group=] [damage=]`** expands when the

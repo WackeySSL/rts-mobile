@@ -163,7 +163,7 @@ func test_a_broken_box_draws_its_sides_over_the_tops() -> void:
 					checked += 1
 					var got: Color = image.get_pixel(x + 300, y + 350)
 					(
-						assert_bool(got.is_equal_approx(want))
+						assert_bool(_near(got, want))
 						. override_failure_message(
 							"%s at %s is %s" % [want.to_html(), spot, got.to_html()]
 						)
@@ -178,7 +178,7 @@ func test_broken_heights_are_pinned_for_an_id_and_a_line() -> void:
 	for f: float in _of_shape(model, &"broken")[0].tooth_fractions():
 		got.append(roundi(f * 10000.0))
 	assert_array(got).is_equal(PINNED_TEETH)
-	assert_int(ArtDamage.seed_of(&"crafted")).is_equal("crafted".hash())
+	assert_int(ArtDamage.seed_of(&"crafted")).is_equal(3649463838)
 
 
 func test_broken_refuses_a_thirteenth_tooth_and_taper() -> void:
@@ -404,3 +404,98 @@ func test_an_intact_petals_line_and_a_far_slab_report_no_swap() -> void:
 		]
 	)
 	assert_array(model.damage_swaps(2)).is_empty()
+
+
+func _area(polys: Array[PackedVector2Array]) -> float:
+	var total: float = 0.0
+	for poly: PackedVector2Array in polys:
+		var twice: float = 0.0
+		for i: int in poly.size():
+			twice += poly[i].cross(poly[(i + 1) % poly.size()])
+		total += absf(twice) / 2.0
+	return total
+
+
+func test_the_tops_of_a_broken_box_are_drawn_far_to_near_at_every_yaw() -> void:
+	var overlaps: int = 0
+	for size: String in ["1.0 0.3 1.5", "0.3 1.0 1.5", "0.6 0.15 0.9"]:
+		var model: ArtModel = _model(["broken hull concrete 0 0 0.4 %s teeth=12 low=0.1" % size])
+		var prim: ArtPrim = _of_shape(model, &"broken")[0]
+		var along_x: bool = prim.size.x >= prim.size.y
+		var faces: Array[ArtMesh.Face] = ArtMesh.faces(prim)
+		for d: int in 16:
+			var yaw: float = (d - 6) * 22.5
+			var turn: Vector2 = ArtMesh.dir(yaw)
+			var cam: Vector3 = ArtRender.rotate(ArtRender.VIEW, -yaw)
+			var cam_t: float = cam.x if along_x else cam.y
+			var polys: Array[ArtRender.Poly] = ArtRender.render([prim], yaw, &"fossil")
+			var drawn: Dictionary[int, int] = {}  # tooth segment -> place in the drawing
+			for q: int in prim.teeth - 1:
+				var first: Vector2 = ArtRender.project(
+					ArtRender.rotate(faces[2 + q].points[0], yaw)
+				)
+				for at: int in polys.size():
+					if polys[at].points.size() == 4 and polys[at].points[0].is_equal_approx(first):
+						drawn[q] = at
+			for a: int in drawn:
+				for b: int in drawn:
+					var shared: Array[PackedVector2Array] = Geometry2D.intersect_polygons(
+						polys[drawn[a]].points, polys[drawn[b]].points
+					)
+					if a < b and _area(shared) > 0.5:
+						overlaps += 1
+						var near: int = b if cam_t > 0.0 else a
+						var far: int = a if near == b else b
+						(
+							assert_bool(drawn[far] < drawn[near])
+							. override_failure_message(
+								(
+									"%s yaw %s: tooth %d drawn after the nearer %d"
+									% [size, yaw, far, near]
+								)
+							)
+							. is_true()
+						)
+			assert_float(turn.length()).is_greater(0.5)
+	assert_int(overlaps).is_greater(100)
+
+
+func test_the_front_zigzag_keeps_the_light_edge_of_the_tops() -> void:
+	var model: ArtModel = _model(["broken hull concrete 0 0 0.4 1.2 0.3 1.0 teeth=6 low=0.4"])
+	var prim: Array[ArtPrim] = _of_shape(model, &"broken")
+	var polys: Array[ArtRender.Poly] = ArtRender.render(prim, 0.0, &"fossil")
+	var image: Image = Image.new()
+	image.load_svg_from_string(
+		ArtSvg.frame("t", Vector2i(600, 500), Vector2i(300, 350), polys), 1.0
+	)
+	var light: Color = Color.html(ArtPalette.edge(&"fossil", &"concrete", true))
+	var seen: int = 0
+	for q: int in 5:
+		var face: ArtMesh.Face = ArtMesh.faces(prim[0])[2 + q]
+		var mid: Vector2 = ArtRender.project(face.points[2]).lerp(
+			ArtRender.project(face.points[3]), 0.5
+		)
+		if face.normal.dot(ArtRender.VIEW) < ArtRender.MIN_FACING:
+			continue  # a tooth that slopes away is not drawn, nor is its edge
+		seen += 1
+		var found: bool = false
+		for dy: int in range(-1, 2):
+			for dx: int in range(-1, 2):
+				var got: Color = image.get_pixel(floori(mid.x) + 300 + dx, floori(mid.y) + 350 + dy)
+				found = found or _near(got, light)
+		assert_bool(found).override_failure_message("tooth %d has no light edge" % q).is_true()
+	assert_int(seen).is_greater(1)
+
+
+func test_the_petal_disc_is_three_hundredths_of_a_tile_tall_and_petals_take_no_taper() -> void:
+	var model: ArtModel = _model(["petals hull steel 0 0 0.4 0.8 4 50"])
+	assert_float(model.primitives(&"hull")[1].size.z).is_equal_approx(0.03, 1e-6)
+	(
+		assert_str("\n".join(_model(["petals hull steel 0 0 0.4 0.8 4 50 taper=0.5"]).problems()))
+		. contains("not a primitive")
+	)
+
+
+## Whether two colours are within an antialiasing step of each other.
+func _near(a: Color, b: Color) -> bool:
+	return absf(a.r - b.r) < 0.03 and absf(a.g - b.g) < 0.03 and absf(a.b - b.b) < 0.03

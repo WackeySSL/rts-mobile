@@ -6,8 +6,9 @@ extends RefCounted
 ## Static helpers, called by `ArtModel` and `ArtGen`.
 
 
-## The line indices of the intact `glass` primitives of `group` in the order `blow` takes them: by
-## an integer hash of the model's id and the line, so two runs and two machines agree.
+## The keys (`ArtPrim.key`: the line index of an ordinary primitive) of the intact `glass`
+## primitives of `group` in the order `blow` takes them: by an integer hash of the model's id and
+## the line, so two runs and two machines agree.
 static func blow_order(model: ArtModel, group: StringName) -> Array[int]:
 	var panes: Array[int] = []
 	for prim: ArtPrim in model.primitives(&"hull"):

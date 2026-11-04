@@ -26,8 +26,9 @@ const SHAPES: Array[StringName] = [&"box", &"wedge", &"prism", &"sphere", &"brok
 ## below 1, default 0.5) and the full height, the heights from a hash of the art id and the line.
 ## `rod <part> <material> x0 y0 z0 x1 y1 z1 width` is a stroke of `width` art px from one point to
 ## another with no outline, ordered at its midpoint; `bend=<degrees>` (at most 90) turns the half
-## towards x1 y1 z1 about the horizontal axis (up x direction), right-handed: a vertical rod's far
-## half swings towards +x, a rod that runs along +x droops. `petals` (hull and anim only) is a
+## towards x1 y1 z1 about the horizontal axis (up x direction from the first point to the second),
+## right-handed: a rod written bottom to top swings its far half towards +x, one written top to
+## bottom towards -x, and a rod written along +x droops. `petals` (hull and anim only) is a
 ## helper line, `parse_all` expands it into `n` (3 to 16) thin plates round the opening, each turned
 ## outward by `tilt` degrees (above 0, at most 90) about its base, and an `interior` disc in it.
 const PETAL_THICK: float = 0.04
@@ -122,6 +123,9 @@ static func parse_all(line: String) -> Array[ArtPrim]:
 		return found
 	for i: int in range(3, 9):
 		if not words[i].is_valid_float():
+			return found
+	for opt: String in words.slice(9):
+		if opt.begins_with("taper="):
 			return found
 	var count: int = words[7].to_int()
 	var tilt: float = words[8].to_float()
@@ -236,7 +240,8 @@ func label() -> String:
 	return source if source != "" else line
 
 
-## A rod's points at rest, in tiles: its ends and the middle, where `bend` turns the upper half.
+## A rod's points at rest, in tiles: its ends and the middle, where `bend` turns the half towards
+## the second point.
 func rod_path() -> PackedVector3Array:
 	var middle: Vector3 = (rod_a + rod_b) / 2.0
 	var half: Vector3 = rod_b - middle
