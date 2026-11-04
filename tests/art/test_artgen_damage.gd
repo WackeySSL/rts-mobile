@@ -7,6 +7,8 @@ extends GdUnitTestSuite
 ## change is test_artgen.gd.
 
 const SCALE: float = 1.0
+## Two damage points on the body's top, which every stage draws (a building with poses has 2).
+const POINTS: Array[String] = ["damage -0.7 -0.3 1.0", "damage -0.6 -0.6 1.0"]
 ## The crafted building: a body of 1.6 x 1.6 x 1, a roof slab, a stack, a flag in the team's colour,
 ## a seated mast, debris for each stage and a beacon that moves.
 const PRIMS: Array[String] = [
@@ -26,7 +28,6 @@ const POSES: Array[String] = [
 	"dmg1 0 stack char 60",
 	"dmg2 0 stack hide",
 	"dmg2 0 roof turn y 12 -0.4 -0.4 1.0",
-	"dmg2 0 flag char 50",
 ]
 const LID: Array[String] = [
 	"box hull concrete 0 0 0 1.6 1.6 1.0", "box hull steel -0.4 -0.4 1.0 0.4 0.4 0.25 group=lid"
@@ -42,6 +43,8 @@ func _model(extra_poses: Array[String] = [], extra_prims: Array[String] = []) ->
 	model.anim_ms = 100
 	model.prims = PackedStringArray(PRIMS + extra_prims)
 	model.poses = PackedStringArray(POSES + extra_poses)
+	model.emitters = PackedStringArray(POINTS)
+	model.anim_kritisk = &"hide"
 	return model
 
 
@@ -101,7 +104,7 @@ func test_a_pose_moves_hides_and_scorches_its_group() -> void:
 	assert_float(_find(model.primitives(&"hull"), &"stack").char_percent).is_equal(0.0)
 
 
-func test_char_mixes_the_faces_towards_the_char_colour_and_spares_the_team_zone() -> void:
+func test_char_mixes_the_faces_towards_the_char_colour_and_a_flag_keeps_its_key_triad() -> void:
 	var model: ArtModel = _model()
 	var intact: Array[ArtRender.Poly] = ArtRender.render(model.primitives(&"hull"), 0.0, &"fossil")
 	var burnt: Array[ArtRender.Poly] = ArtGen.stage_polys(model, 1)
@@ -114,7 +117,7 @@ func test_char_mixes_the_faces_towards_the_char_colour_and_spares_the_team_zone(
 	# 0 % is the colour itself, 100 % the char colour.
 	assert_str(ArtPalette.scorched("#6E5D50", 0.0)).is_equal("#6E5D50")
 	assert_str(ArtPalette.scorched("#6E5D50", 100.0)).is_equal(ArtPalette.CHAR)
-	# The flag is charred at stage 2 and keeps its key triad.
+	# The flag is not charred, and keeps its key triad (a charred team face: v5_materials).
 	var stage2: Array[ArtRender.Poly] = ArtGen.stage_polys(model, 2)
 	for key: String in ArtPalette.KEYS[&"fossil"]:
 		assert_array(_fills(stage2)).contains([key])
@@ -295,6 +298,7 @@ func test_each_move_alone_sets_the_cut_at_its_own_outline() -> void:
 		var model: ArtModel = _model()
 		model.prims = PackedStringArray(LID)
 		model.anim_ms = 0
+		model.anim_kritisk = &""
 		model.poses = PackedStringArray([move, "dmg2 0 lid hide"])
 		assert_array(Array(model.problems())).override_failure_message(move).is_empty()
 		var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)

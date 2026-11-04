@@ -238,24 +238,30 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   the ground point (an `anim` at the footprint centre); the bar lift clears the `anim` element in
   its highest frame. Model fields `stride_milli` (needs `walk`), `anim_ms` (needs `anim`),
   `emitters` (`<kind> <x> <y> <z>` in tiles; `smoke`, `steam`, `flame`, `exhaust`, `launch`,
-  `damage` and `hang`, see "Damage poses") and
+  `damage`, `dmg_gas`, `dmg_spark` and `hang`, an ambient one with `group=<name>`; see "Damage
+  poses") and
   `marks` (`tracks` or `wheels`, vehicles). The sheet gains `frames` (`frame_count(part)` says 1
   when absent), `stride_milli`, `anim_ms`, `emitters` with `emitter_points` (px of the 2x art, per
   hull frame for each, once for a building: `emitter_point(index, dir)`) and `marks`, each written
   only when set, so today's sheets are unchanged. `tests/art/test_artgen_frames.gd` pins it.
-- **Damage poses** (P156, ADR 0028 sections 3 and 4; generator v4; since P160 the eight vehicles
-  carry `damage`, `hang` and `scar_milli`). A building's `poses` gain `dmg1` and `dmg2`, its body at
+- **Damage poses** (P156, ADR 0028 sections 3 and 4; generator v4, extended by v5a, P163, ADR
+  0029 section 5; since P160 the eight vehicles carry `damage`, `hang` and `scar_milli`, and no
+  building uses the damage poses yet). A building's `poses` gain `dmg1` and `dmg2`, its body at
   damage stage 1 and 2, a move a line, frame
   0 and no header line: `dmg1|dmg2 0 <group> shift <dx> <dy> <dz>`, `... turn <x|y|z> <degrees>
   <px> <py> <pz>`, `... hide` (the group is not drawn) or `... char <percent>` (0 to 100: its
-  face colours, edges too, are mixed that far towards the char colour **#2A2522**; a `team`
-  primitive keeps its key triad, so the bake can still recolour it). The groups are the hull's. A
-  hull primitive tagged `damage=K` (1 or 2) is drawn from stage K on and never in the intact body,
-  the shadow or the card. **Stage 2 does not inherit stage 1's moves** (list them again), but the
+  face colours, edges too, are mixed that far towards the char colour **#2A2522**; a charred `team`
+  primitive leaves the key band or the generator refuses the model: the Derrick League's does from
+  about 97 %, the Lumen Accord's from about 86 %, where its mid key is a blue-grey, #283739, not the
+  char colour; a charred face is no longer a key colour, so the bake does not recolour it). The groups are the
+  hull's. A hull primitive tagged `damage=K` (1 or 2) is drawn from stage K on and never in the
+  intact body, the shadow or the card. **Stage 2 does not inherit stage 1's moves** (list them
+  again), but the
   `damage=1` primitives do appear at stage 2. A model has both stages or stage 2 alone. The group
-  `mount` (a defence's Head seat in P158) and the groups of the `anim` primitives may not be touched
-  by a damage move: the generator fails such a model, so the moving element stays seated and the
-  `anim` part keeps running at both stages.
+  `mount` (a defence's Head seat) and the groups of the `anim` primitives may not be touched by a
+  damage move: the generator fails such a model, so the moving element stays seated; the `anim`
+  part runs at stage 1 and follows `anim_kritisk` at stage 2. (There is no ruin picture: ADR 0029's ruin was dropped on
+  2026-11-04, a collapse ends in the crater.)
   **The patch.** Each stage is a part of its own, `<type_id>_dmg1.svg` and `_dmg2.svg`, drawn with
   today's projection, light, edge and team key. The stage is drawn in its own greedy painter's
   order (the depth between the changed and the untouched primitives is the stage's). Taking away or
@@ -275,13 +281,47 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   sets the lowest row, with its line in the model and the pose lines that move it. The art rule is
   that damage sits in the top third of a body; the page test, not a percentage, is the arbiter.
   **Sheet and model fields.** `cuts`; `scar_milli` (a vehicle's scar scale, 1000 for the battle
-  tank, vehicles only); the emitter kinds `damage` (where a scar sits and damage smoke starts: a
-  vehicle has one, a building up to two) and `hang` (a vehicle's bracket, one at most, none on a
+  tank, vehicles only); the emitter kinds `damage` (where a scar sits and damage smoke starts; the
+  counts are under "Generator v5a" below) and `hang` (a vehicle's bracket, one at most, none on a
   building; the generator mirrors the point across the hull's long axis in every hull frame so it
   is on the side that faces the camera); and `IsoSheetDef.root`, empty for every generated sheet
   (the frames are in `assets/art/iso/<faction>/<category>/`), set only by the hand-written neutral
   sheet of the damage overlays (P160), where it is the folder its frames are in.
   `tests/art/test_artgen_damage.gd` and `test_artgen_damage_rules.gd` pin it on crafted models.
+  **Generator v5a** (P163, ADR 0029 section 5), all of it on crafted models in
+  `tests/art/test_artgen_v5_materials.gd` and `test_artgen_v5_points.gd`:
+  - **Materials**, the same in both factions and outside both key bands: `interior` (the dark
+    room, two flat tones, **#1A1715** on top and left faces, **#100E0D** on right faces and edges,
+    no light ramp), `slab` (a slab's edge, mid **#8F8A7F**), `hole` (a blown pane, near-black
+    blue-grey, mid **#20262B**), `rebar` (rust-dark, mid **#4A4038**) and `beam` (steel, mid
+    **#5C645B**); the ramp is the usual top 122 %, left 100 %, right 76 % of the mid tone.
+  - **Moves.** `<stage> 0 <group> blow <percent>` turns the first `roundi(n x percent / 100)` of
+    the group's intact `glass` primitives, in the hash order (djb2 over the art id's UTF-8 bytes,
+    mixed with the line index by an integer `_mix`; no randomness), into `hole`; the frames, other primitives of the group, stay. A
+    `blow` on a group with no intact glass is refused.
+  - **Points.** A building has the typed damage points `damage` (fire and smoke), `dmg_gas` (a gas
+    jet, a fire at the torn opening) and `dmg_spark` (sparks, no fire); a vehicle has
+    one `damage` and one `hang`, infantry none. A building with damage poses has **2 to 4** typed
+    points together. A building without damage poses keeps the v4 limit of two points, and only
+    `damage` ones (`dmg_gas` and `dmg_spark` are refused there). The ink tests below run only for a
+    building with damage poses. The ink test is geometric, no
+    raster: a damage point lies inside a drawn face of stage 1 (the intact picture plus any
+    `damage=1` primitive when there is no `dmg1`) and of stage 2, and above `dmg1`'s cut row. The
+    tests wait for a sound cut.
+  - **Ambient emitters that break.** `smoke`, `steam` and `flame` may end in `group=<name>` (a
+    hull group; other kinds refuse it). The sheet's `emitter_quiet` (parallel to `emitters`; written
+    only when one is not 0) holds the first stage, 1 or 2, whose pose shifts, turns or hides the
+    group, 0 for never or no group. For a building with damage poses the emitter needs ink in the
+    intact picture and at each stage before its quiet stage.
+  - **`anim_kritisk`** (model field, `run` or `hide`) is required of a building with an `anim`
+    and a `dmg2`, and written as the sheet's bool `anim_kritisk` (true for `run`). `run` is refused
+    when the lowest vertex of the `anim` element over all its frames has no ink under it in `dmg2`.
+  - **Canvas.** The seam of the trimmed body (ADR 0029 section 11) holds only for even canvas
+    heights; `ArtGen` rounds every canvas up to even, so the refusal of an odd body canvas is a
+    guard against a later change, not a rule a model can break today.
+  - **Key share.** `tests/art/artgen_v5_support.gd` rasterises a stage (`Image.load_svg_from_string`)
+    and measures its key-band pixels against the intact picture's: SKADET 55 to 85 %, KRITISK 20 to
+    50 %; P158a and P158b run it on the real buildings.
 - **Item cards** (`ArtIcon`): 128 x 128 px, a dark plate (#1C2127, rim #2F363D, the corners cut), a
   faint 2:1 grid (#2A3036, lines every 16 px through the centre, so the diamonds are 32 x 16), the
   type's default view (`d06`, `d10` for the Lumen Accord, a building's one view, a turret or head
@@ -2424,3 +2464,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-03 | v1.22 (P156, art-director, ADR 0028 sections 3 and 4): generator v4, the damage poses (`dmg1`, `dmg2`: `shift`, `turn`, `hide`, `char`, `damage=<k>` primitives), the geometric cut row and the patch parts with their 4 px overlap, `cuts`, `scar_milli`, the `damage` and `hang` emitter kinds (`hang` on the camera side) and `IsoSheetDef.root` ("Damage poses" under "Generated art"); no model uses them, every committed frame and sheet is byte for byte as before. |
 | 2026-11-04 | v1.23 (P167, art-director, ADR 0029 sections 6 to 8): six kinds in `fx/life_atlas.svg` (`hit_flash`, `chip`, `dust_cloud`, `ember`, `glow`, `jet`; 12 frames), the canvas grown from 552x320 to 552x536 (below the old content, so no region moved), their `LifeRegions` entries, the table, colours and the Life page rows. |
 | 2026-11-04 | v1.24 (P160, art-director, ADR 0028 section 4): the neutral vehicle damage overlays (`scar1`, `scar2`, `loose`, 8 frames and their sheet in `assets/art/svg/damage/`), `damage`, `hang` and `scar_milli` on the eight vehicle models (their sheets regenerated, every frame byte for byte as before), the Iso page's Damage rows ("Damage overlays"). |
+| 2026-11-04 | v1.25 (P163, art-director, ADR 0029 section 5): generator v5a, the materials `interior`, `slab`, `hole`, `rebar`, `beam`, the move `blow`, a charred team face that leaves the key band, 2 to 4 typed damage points (`damage`, `dmg_gas`, `dmg_spark`) with their ink tests, emitter `group=` and `emitter_quiet`, `anim_kritisk`, the odd-canvas guard and the key-share raster test ("Generator v5a" under "Damage poses"); no model uses them, every committed frame and sheet is byte for byte as before. |

@@ -63,6 +63,13 @@ const ROOT: String = "res://assets/art/iso"
 @export var cuts: PackedInt32Array = PackedInt32Array()
 ## A vehicle's damage scar scale, 1000 for the battle tank's hull top; 0 for a sheet without one.
 @export var scar_milli: int = 0
+## For each emitter (parallel to `emitters`): the first damage stage (1 or 2) whose pose moves or
+## hides the group the emitter names, from which the view stops it; 0 for never. Empty when no
+## emitter of the sheet goes quiet (ADR 0029 section 5).
+@export var emitter_quiet: PackedInt32Array = PackedInt32Array()
+## Whether the `anim` element runs at KRITISK (its carrier stands in `dmg2`) rather than being
+## hidden there (ADR 0029 section 3); false for a sheet without one.
+@export var anim_kritisk: bool = false
 ## The folder the frames are in. Empty is `ROOT/<faction>/<category>/`, which every generated sheet
 ## has; a hand-written sheet (the neutral damage overlays, ADR 0028 section 4) sets it.
 @export var root: String = ""

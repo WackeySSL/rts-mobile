@@ -36,6 +36,8 @@ const LIFE_FIELDS: Array[StringName] = [
 	&"marks",
 	&"cuts",
 	&"scar_milli",
+	&"emitter_quiet",
+	&"anim_kritisk",
 	&"root"
 ]
 ## The exports written by hand to one decimal, as a `PackedVector2Array`.
@@ -68,7 +70,9 @@ static func of(model: ArtModel, shots: Dictionary[StringName, ArtGen.Shot]) -> I
 	if not model.damage_parts().is_empty():
 		for part: StringName in ArtModel.DAMAGE_PARTS:
 			sheet.cuts.append(shots[part].cut if shots.has(part) else 0)
+	var quiet: PackedInt32Array = PackedInt32Array()
 	for emitter: Array in model.emitter_list():
+		quiet.append(ArtDamage.quiet(model, emitter[2]))
 		sheet.emitters.append(String(emitter[0]))
 		for dir: int in model.directions(&"hull"):
 			var turned: int = 6 if dir < 0 else dir
@@ -78,6 +82,10 @@ static func of(model: ArtModel, shots: Dictionary[StringName, ArtGen.Shot]) -> I
 				else ArtGen.point_px(emitter[1], turned)
 			)
 			sheet.emitter_points.append(at.snapped(Vector2.ONE * 0.1))
+	# Written only when an emitter goes quiet, so a sheet without one keeps its bytes.
+	if quiet.count(0) < quiet.size():
+		sheet.emitter_quiet = quiet
+	sheet.anim_kritisk = model.anim_kritisk == &"run"
 	sheet.bar_lift_px = ceili(_clearing_top(model, shots) / 2.0)
 	sheet.pick_lift_px = roundi(sheet.bar_lift_px / 2.0)
 	sheet.muzzle_lift_px = roundi(model.muzzle_z() * ArtRender.Z_PX / 2.0)

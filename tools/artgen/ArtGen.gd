@@ -241,6 +241,9 @@ static func damage_problems(model: ArtModel) -> PackedStringArray:
 					% [what, line, cut, body.size.y]
 				)
 			)
+	# The ink tests read the cut and the stage pictures, so they wait for a sound cut.
+	if found.is_empty():
+		found.append_array(ArtDamage.problems(model, body))
 	return found
 
 

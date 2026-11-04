@@ -15,16 +15,13 @@ const OVERLAP_PX: int = 4
 const ART_ID: StringName = &"barracks"
 const UNIT: String = "barracks"
 const ANIM_FRAMES: int = 4
-# TODO(P163): use IsoSheetDef and its real `anim_kritisk` field, and delete kritisk_sheet.gd.
-const KritiskSheet: GDScript = preload("res://tests/view/support/kritisk_sheet.gd")
 
 
-## The crafted sheet. `extras` may hold `anim`, `head` (true), `anim_kritisk` (a bool: the sheet
-## is then a `KritiskSheet`), `cuts` (PackedInt32Array), `sizes` (part -> Vector2i).
+## The crafted sheet. `extras` may hold `anim`, `head` (true), `anim_kritisk` (a bool, the sheet's
+## field), `cuts` (PackedInt32Array), `sizes` (part -> Vector2i).
 static func sheet(extras: Dictionary = {}) -> IsoSheetDef:
-	var made: IsoSheetDef = KritiskSheet.new() if extras.has("anim_kritisk") else IsoSheetDef.new()
-	if extras.has("anim_kritisk"):
-		made.set(&"anim_kritisk", extras["anim_kritisk"])
+	var made: IsoSheetDef = IsoSheetDef.new()
+	made.anim_kritisk = extras.get("anim_kritisk", false)
 	made.art_id = ART_ID
 	made.faction = &"fossil"
 	made.category = &"bld"

@@ -31,8 +31,20 @@ const MAX_FRAMES: int = 16
 ## and damage smoke starts; `hang`, a vehicle's bracket, on the camera side) and what a vehicle
 ## leaves on the ground.
 const EMITTER_KINDS: Array[StringName] = [
-	&"smoke", &"steam", &"flame", &"exhaust", &"launch", &"damage", &"hang"
+	&"smoke",
+	&"steam",
+	&"flame",
+	&"exhaust",
+	&"launch",
+	&"damage",
+	&"hang",
+	&"dmg_gas",
+	&"dmg_spark",
 ]
+## The typed damage points of a building (ADR 0029 section 5): fire and smoke, a gas jet, sparks.
+const DAMAGE_POINTS: Array[StringName] = [&"damage", &"dmg_gas", &"dmg_spark"]
+## The emitters that may name a group (`group=<name>`), the ambient ones a stage can break.
+const AMBIENT: Array[StringName] = [&"smoke", &"steam", &"flame"]
 const MARKS: Array[StringName] = [&"tracks", &"wheels"]
 
 @export var art_id: StringName = &""  ## The unit or building type id; the file name too.
@@ -60,6 +72,9 @@ const MARKS: Array[StringName] = [&"tracks", &"wheels"]
 @export var marks: StringName = &""
 ## A vehicle's damage scar scale, 1000 for the battle tank's hull top (ADR 0028 section 4); 0 none.
 @export var scar_milli: int = 0
+## What the `anim` element does at KRITISK (ADR 0029 section 3): `run` where its carrier still
+## stands in `dmg2`, `hide` where it fell; empty for a model without `anim` or damage.
+@export var anim_kritisk: StringName = &""
 
 
 ## The parts the model has, in file order: hull, turret, head.
@@ -150,19 +165,25 @@ func frame_rest(part: StringName) -> Array[ArtPrim]:
 	return found
 
 
-## The valid emitters in file order: [kind, point in tiles].
+## The valid emitters in file order: [kind, point in tiles, group]. An ambient one (`smoke`,
+## `steam`, `flame`) may end in `group=<name>`: the group a stage can move or hide (`ArtDamage`).
 func emitter_list() -> Array[Array]:
 	var found: Array[Array] = []
 	for line: String in emitters:
 		var words: PackedStringArray = line.split(" ", false)
-		var ok: bool = words.size() == 4 and StringName(words[0]) in EMITTER_KINDS
-		for i: int in range(1, words.size()):
+		var grouped: bool = words.size() == 5 and words[4].begins_with("group=")
+		var ok: bool = (words.size() == 4 or grouped) and StringName(words[0]) in EMITTER_KINDS
+		for i: int in range(1, 4 if words.size() > 3 else words.size()):
 			ok = ok and words[i].is_valid_float()
+		ok = ok and (not grouped or (StringName(words[0]) in AMBIENT))
+		var group: String = words[4].trim_prefix("group=") if grouped else ""
+		ok = ok and (not grouped or group.is_valid_identifier())
 		if ok:
 			found.append(
 				[
 					StringName(words[0]),
-					Vector3(words[1].to_float(), words[2].to_float(), words[3].to_float())
+					Vector3(words[1].to_float(), words[2].to_float(), words[3].to_float()),
+					StringName(group)
 				]
 			)
 	return found
@@ -185,7 +206,7 @@ func damage_prims(stage: int) -> Array[ArtPrim]:
 	var by: Array[ArtMove] = pose_moves(DAMAGE_PARTS[stage - 1], 0)
 	for prim: ArtPrim in _hull_prims():
 		if prim.damage <= stage:
-			var posed: ArtPrim = prim.moved(by)
+			var posed: ArtPrim = _posed(prim, by)
 			if not posed.hidden:
 				found.append(posed)
 	return found
@@ -226,12 +247,35 @@ func damage_changes(stage: int) -> Array[Array]:
 	for prim: ArtPrim in _hull_prims():
 		if prim.damage > stage:
 			continue
-		var posed: ArtPrim = prim.moved(by)
+		var posed: ArtPrim = _posed(prim, by)
 		if prim.damage > 0:
 			found.append([null, posed])
 		elif posed != prim:
 			found.append([prim, null if posed.hidden else posed])
 	return found
+
+
+## The primitive as a stage's moves place it: `blow` turns the panes it takes (the first of the
+## group's `glass` primitives in `blow_order`) into `hole`, and nothing else about them. A primitive
+## that only `blow` moves touches and the blow does not take comes back as itself, unchanged.
+func _posed(prim: ArtPrim, by: Array[ArtMove]) -> ArtPrim:
+	var posed: ArtPrim = prim.moved(by)
+	if posed == prim:
+		return prim
+	var only_blow: bool = true
+	var taken: bool = false
+	var order: Array[int] = []
+	if prim.material == &"glass":
+		order = ArtDamage.blow_order(self, prim.group)
+	for move: ArtMove in posed.moves:
+		only_blow = only_blow and move.kind == &"blow"
+		if move.kind == &"blow" and order.has(prim.index):
+			taken = (
+				taken or order.find(prim.index) < roundi(order.size() * move.blow_percent / 100.0)
+			)
+	if taken:
+		posed.material = &"hole"
+	return posed if taken or not only_blow else prim
 
 
 ## Every valid hull primitive, also those that appear at a damage stage, in the model's order.
@@ -367,24 +411,84 @@ func _pose_problems() -> PackedStringArray:
 		found.append("%s: stride_milli is above 0 with a walk pose, and 0 without" % art_id)
 	if anim_ms < 0 or (anim_ms != 0) != (pose_frames(ArtPrim.ANIM) > 0):
 		found.append("%s: anim_ms is above 0 with an anim pose, and 0 without" % art_id)
-	if emitter_list().size() != emitters.size():
+	var stray: int = 0
+	for line: String in emitters:
+		var words: PackedStringArray = line.split(" ", false)
+		if (
+			words.size() == 5
+			and words[4].begins_with("group=")
+			and StringName(words[0]) not in AMBIENT
+		):
+			stray += 1
+			found.append(
+				"%s: group= is allowed on smoke, steam and flame only: %s" % [art_id, line]
+			)
+	if emitter_list().size() + stray != emitters.size():
 		found.append("%s: an emitter is a kind of %s and three numbers" % [art_id, EMITTER_KINDS])
 	if scar_milli < 0 or (scar_milli > 0 and category != &"veh"):
 		found.append("%s: scar_milli is 0 or above, and a vehicle's" % art_id)
-	if damage_parts() == [DAMAGE_PARTS[0]]:
+	var staged: Array[StringName] = damage_parts()
+	if staged.has(&"dmg1") and not staged.has(&"dmg2"):
 		found.append("%s: dmg1 without dmg2 (a building has both stages, or dmg2 alone)" % art_id)
+	found.append_array(_anim_kritisk_problems(staged))
 	var kinds: Array[StringName] = []
 	for emitter: Array in emitter_list():
 		kinds.append(emitter[0])
 	if category != &"inf" and kinds.count(&"hang") > (1 if category == &"veh" else 0):
 		found.append("%s: hang is a vehicle's, one at most" % art_id)
-	var damage_points: int = kinds.count(&"damage")
-	if category == &"inf" and (damage_points > 0 or kinds.has(&"hang")):
-		found.append("%s: damage and hang points are for buildings and vehicles" % art_id)
-	elif damage_points > (1 if category == &"veh" else 2):
-		found.append("%s: a vehicle has one damage point, a building two at most" % art_id)
+	found.append_array(_point_problems(kinds))
+	var hull_groups: PackedStringArray = PackedStringArray()
+	for prim: ArtPrim in _hull_prims():
+		hull_groups.append(prim.group)
+	for emitter: Array in emitter_list():
+		if emitter[2] != &"" and not hull_groups.has(emitter[2]):
+			found.append(
+				"%s: an emitter names a group no hull primitive has: %s" % [art_id, emitter]
+			)
 	if marks != &"" and (marks not in MARKS or category != &"veh"):
 		found.append("%s: marks are tracks or wheels, of a vehicle" % art_id)
+	return found
+
+
+## What is wrong with the counts of the damage, `dmg_gas` and `dmg_spark` points: a vehicle has
+## one `damage`, a squad none, a building without damage poses two at most; a building with damage
+## poses (`ArtDamage.staged`) has 2 to 4 typed ones.
+func _point_problems(kinds: Array[StringName]) -> PackedStringArray:
+	var found: PackedStringArray = PackedStringArray()
+	var typed: int = 0
+	for kind: StringName in DAMAGE_POINTS:
+		typed += kinds.count(kind)
+	if category != &"bld" and typed > kinds.count(&"damage"):
+		found.append("%s: dmg_gas and dmg_spark points are a building's" % art_id)
+	elif category == &"inf" and (typed > 0 or kinds.has(&"hang")):
+		found.append("%s: damage and hang points are for buildings and vehicles" % art_id)
+	elif not ArtDamage.staged(self):
+		if typed > (1 if category == &"veh" else 2):
+			found.append("%s: a vehicle has one damage point, a building two at most" % art_id)
+		if typed > kinds.count(&"damage"):
+			found.append("%s: dmg_gas and dmg_spark need a building with damage poses" % art_id)
+	else:
+		if typed < 2 or typed > 4:
+			found.append("%s: a building with damage poses has 2 to 4 damage points" % art_id)
+	return found
+
+
+## What is wrong with `anim_kritisk`: a word that is not `run` or `hide`, one on a model without an
+## `anim` element and a `dmg2`, or none on a model that has both (the model says which, ADR 0029
+## section 3). That `run` has ink under it is `ArtDamage.problems`.
+func _anim_kritisk_problems(staged: Array[StringName]) -> PackedStringArray:
+	var found: PackedStringArray = PackedStringArray()
+	var carries: bool = not primitives(ArtPrim.ANIM).is_empty() and staged.has(&"dmg2")
+	if anim_kritisk == &"":
+		if carries and category == &"bld":
+			found.append(
+				"%s: anim_kritisk is run or hide for a building with anim and dmg2" % art_id
+			)
+		return found
+	if anim_kritisk not in [&"run", &"hide"]:
+		found.append("%s: anim_kritisk is run or hide" % art_id)
+	elif primitives(ArtPrim.ANIM).is_empty() or not staged.has(&"dmg2"):
+		found.append("%s: anim_kritisk is for a building with an anim and a dmg2" % art_id)
 	return found
 
 
@@ -396,8 +500,22 @@ func _damage_problems(move: ArtMove, line: String) -> PackedStringArray:
 	if category != &"bld" or move.frame != 0:
 		found.append("%s: a damage pose is a building's, frame 0: %s" % [art_id, line])
 	var hull_groups: PackedStringArray = PackedStringArray()
+	var team: bool = false
+	var glass: bool = false
 	for prim: ArtPrim in _hull_prims():
 		hull_groups.append(prim.group)
+		if prim.group == move.group:
+			team = team or prim.material == ArtPalette.TEAM
+			glass = glass or (prim.material == &"glass" and prim.damage == 0)
+	# A charred team face must leave the key band (ADR 0029 section 5), said once for the group.
+	if (
+		move.kind == &"char"
+		and team
+		and not ArtPalette.char_leaves_band(faction, move.char_percent)
+	):
+		found.append("%s: a charred team face stays in the key band: %s" % [art_id, line])
+	if move.kind == &"blow" and not glass:
+		found.append("%s: blow needs intact glass in the group: %s" % [art_id, line])
 	if not hull_groups.has(move.group):
 		found.append("%s: no such hull group: %s" % [art_id, line])
 	elif move.group == SEATED_GROUP or _groups(ArtPrim.ANIM).has(move.group):

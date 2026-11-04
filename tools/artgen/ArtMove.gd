@@ -6,6 +6,7 @@ extends RefCounted
 ##   <part> <frame> <group> turn <axis> <degrees> <px> <py> <pz>
 ##   <part> <frame> <group> hide
 ##   <part> <frame> <group> char <percent>
+##   <part> <frame> <group> blow <percent>
 ##
 ## `part` is `walk`, `idle` or `anim`, or a damage pose of a building, `dmg1` or `dmg2` (ADR 0028
 ## section 3; their one frame is 0), `frame` counts from 0, `group` is what the primitives carry
@@ -15,15 +16,20 @@ extends RefCounted
 ## y, about x takes y towards z, about y takes z towards x. So a positive turn about y swings a
 ## point below its pivot towards -x, backwards from a unit that faces +x. A group's moves apply in
 ## the order of their lines, each to the result of the one before; a pivot is a point of the
-## model's frame, it does not follow an earlier move. `hide` and `char` are for the damage poses:
-## the group is not drawn, or its face colours are mixed `percent` of the way (0 to 100) towards
-## the palette's char colour (a team zone keeps its key colours).
+## model's frame, it does not follow an earlier move. `hide`, `char` and `blow` are for
+## the damage poses (`dmg1`, `dmg2`): the group is not drawn, or its face colours are mixed
+## `percent` of the way (0 to 100) towards the palette's char colour (a team face may be charred
+## only to a result outside its key band, `ArtModel`); `blow` turns the first `percent` of the
+## group's intact `glass` primitives (a group with none is refused), in the hash order, into `hole`
+## (ADR 0029 section 5).
 
-const KINDS: Array[StringName] = [&"shift", &"turn", &"hide", &"char"]
+const KINDS: Array[StringName] = [&"shift", &"turn", &"hide", &"char", &"blow"]
 ## The words of a line by kind.
-const WORDS: Dictionary[StringName, int] = {&"turn": 9, &"shift": 7, &"hide": 4, &"char": 5}
+const WORDS: Dictionary[StringName, int] = {
+	&"turn": 9, &"shift": 7, &"hide": 4, &"char": 5, &"blow": 5
+}
 ## The kinds only a damage pose may use.
-const DAMAGE_KINDS: Array[StringName] = [&"hide", &"char"]
+const DAMAGE_KINDS: Array[StringName] = [&"hide", &"char", &"blow"]
 
 var part: StringName = &""
 var line: String = ""  ## What it was parsed from.
@@ -35,6 +41,7 @@ var axis: int = -1  ## 0, 1 or 2 for a turn about x, y or z; -1 for a shift.
 var degrees: float = 0.0
 var pivot: Vector3 = Vector3.ZERO
 var char_percent: float = 0.0  ## For `char`.
+var blow_percent: float = 0.0  ## For `blow`.
 
 
 ## The move of a line, or null when the line is not one (a wrong word count, an unknown part or
@@ -52,7 +59,9 @@ static func parse(line: String) -> ArtMove:
 		return null
 	if kind in DAMAGE_KINDS and not damage_part:
 		return null
-	if not words[1].is_valid_int() or words[1].to_int() < 0 or not words[2].is_valid_identifier():
+	if not words[1].is_valid_int() or words[1].to_int() < 0:
+		return null
+	if not words[2].is_valid_identifier():
 		return null
 	var nums: PackedFloat64Array = PackedFloat64Array()
 	for i: int in range(5 if turning else 4, words.size()):
@@ -67,8 +76,9 @@ static func parse(line: String) -> ArtMove:
 	move.kind = kind
 	if kind == &"hide":
 		return move
-	if kind == &"char":
-		move.char_percent = nums[0]
+	if kind in [&"char", &"blow"]:
+		move.char_percent = nums[0] if kind != &"blow" else 0.0
+		move.blow_percent = nums[0] if kind == &"blow" else 0.0
 		return move if nums[0] >= 0.0 and nums[0] <= 100.0 else null
 	if not turning:
 		move.shift = Vector3(nums[0], nums[1], nums[2])

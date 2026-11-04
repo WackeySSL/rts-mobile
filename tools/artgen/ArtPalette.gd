@@ -39,6 +39,18 @@ const MATERIALS: Dictionary[StringName, Dictionary] = {
 		&"mint": "#A8F5B0",
 	},
 }
+## The materials of the damage stages (ADR 0029 section 5), the same in both factions and outside
+## both key bands: `slab` a concrete slab's edge, `hole` a blown pane (near-black blue-grey),
+## `rebar` rust-dark, `beam` steel. `interior`, the dark room, has two flat tones instead
+## (`INTERIOR_TONES`).
+const SHARED: Dictionary[StringName, String] = {
+	&"slab": "#8F8A7F", &"hole": "#20262B", &"rebar": "#4A4038", &"beam": "#5C645B"
+}
+const INTERIOR: StringName = &"interior"
+## The two flat tones of `interior`: the top and left faces, and the right faces (no light ramp).
+const INTERIOR_TONES: Array[String] = ["#1A1715", "#100E0D"]
+const BAND_DEGREES: float = 20.0  ## ADR 0023 section 5: the key band's half width.
+const BAND_SATURATION: float = 0.30  ## ... and the least saturation of a colour in it.
 ## The colour a `char` move mixes a group towards (ADR 0028 section 3): soot-black with a warm
 ## cast, outside both factions' key bands.
 const CHAR: String = "#2A2522"
@@ -47,13 +59,20 @@ const LIGHT_EDGE: float = 0.4  ## The thin light edge on top faces: top tone tow
 
 
 static func has_material(faction: StringName, material: StringName) -> bool:
-	return material == TEAM or MATERIALS.get(faction, {}).has(material)
+	return (
+		material == TEAM
+		or material == INTERIOR
+		or SHARED.has(material)
+		or MATERIALS.get(faction, {}).has(material)
+	)
 
 
 ## The fill of a face of `material` at `level` (TOP, LEFT or RIGHT), as "#RRGGBB".
 static func tone(faction: StringName, material: StringName, level: int) -> String:
 	if material == TEAM:
 		return KEYS[faction][level]
+	if material == INTERIOR:
+		return INTERIOR_TONES[1 if level == RIGHT else 0]
 	return _hex(_channels(faction, material, SHADES[level] / SHADES[LEFT]))
 
 
@@ -61,6 +80,8 @@ static func tone(faction: StringName, material: StringName, level: int) -> Strin
 static func edge(faction: StringName, material: StringName, light: bool) -> String:
 	if material == TEAM:
 		return KEYS[faction][TOP if light else RIGHT]
+	if material == INTERIOR:
+		return INTERIOR_TONES[1]
 	if not light:
 		return _hex(_channels(faction, material, DARK_EDGE))
 	var top: Vector3 = _channels(faction, material, SHADES[TOP] / SHADES[LEFT])
@@ -75,8 +96,32 @@ static func scorched(hex: String, percent: float) -> String:
 	return _hex(Vector3(from.r8, from.g8, from.b8).lerp(Vector3(to.r8, to.g8, to.b8), k))
 
 
+## Whether `hex` is in the key band of `faction`: a hue within `BAND_DEGREES` of one of its key
+## colours and a saturation of at least `BAND_SATURATION`.
+static func in_key_band(faction: StringName, hex: String) -> bool:
+	var colour: Color = Color(hex)
+	if colour.s < BAND_SATURATION:
+		return false
+	for key: String in KEYS[faction]:
+		var gap: float = absf(colour.h * 360.0 - Color(key).h * 360.0)
+		if minf(gap, 360.0 - gap) <= BAND_DEGREES:
+			return true
+	return false
+
+
+## Whether a `char` of `percent` takes all three key colours of `faction` out of its key band, so
+## a charred team face never reads as a wrong team colour (ADR 0029 section 5).
+static func char_leaves_band(faction: StringName, percent: float) -> bool:
+	for key: String in KEYS[faction]:
+		if in_key_band(faction, scorched(key, percent)):
+			return false
+	return true
+
+
 static func _channels(faction: StringName, material: StringName, factor: float) -> Vector3:
-	var mid: Color = Color(MATERIALS[faction][material])
+	var mid: Color = Color(
+		SHARED[material] if SHARED.has(material) else MATERIALS[faction][material]
+	)
 	var scaled: Vector3 = Vector3(mid.r8, mid.g8, mid.b8) * factor
 	return scaled.clamp(Vector3.ZERO, Vector3(255.0, 255.0, 255.0))
 
