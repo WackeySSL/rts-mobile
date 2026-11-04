@@ -71,7 +71,7 @@ func test_a_death_in_the_tick_compacts_the_rows_and_the_hit_still_lands_on_its_b
 	var box: Rect2 = _buildings.frame_box(0)
 	var inner: Rect2 = Rect2(box.get_center() - box.size * 0.25, box.size * 0.5)
 	assert_bool(inner.grow(0.01).has_point(_flash_spot())).is_true()
-	# And a hit on a building that died in the tick draws nothing.
+	# And a hit on a building that is already gone (no row) draws nothing.
 	_inject_target = 1
 	_ring().clear()
 	_runner.run_ticks(1)

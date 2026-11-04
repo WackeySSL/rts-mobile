@@ -1,6 +1,7 @@
 extends "res://tests/view/support/hit_fx_suite.gd"
 ## The hit feedback of buildings (plan P166, ADR 0029 section 7): which records are a hit,
-## what it draws (a pinned number of chips), x
+## what it draws (a pinned number of chips), the hits that draw nothing, the ring of 16 and
+## `reduced`.
 ## Fixture: support/hit_fx_suite.gd (Barracks 1 to 8 on a crafted sheet, all shown).
 
 
@@ -123,6 +124,11 @@ func test_a_hit_whose_target_died_in_the_same_tick_draws_nothing() -> void:
 	other.append_array(Effects.died(at, 0, 4, 1))
 	_hit_at(other)
 	assert_int(_of(HitFx.Style.FLASH)).is_equal(1)
+	var first: PackedInt32Array = _impact(3, 3)  # The target's DIED first, another unit's after it.
+	first.append_array(Effects.died(at, 0, 3, 1))
+	first.append_array(Effects.died(at, 0, 4, 1))
+	_hit_at(first)
+	assert_int(_ring().count()).is_equal(0)
 
 
 func test_the_flash_lies_inside_the_middle_half_of_the_frame_box() -> void:
@@ -189,7 +195,7 @@ func test_the_ring_holds_sixteen_and_overwrites_its_oldest() -> void:
 		events.append_array(_impact(id, 1))
 	Rig.deliver(_runner, events, START)
 	assert_int(_ring().count()).is_equal(DATA.hit_slots)
-	Rig.deliver(_runner, _impact(5, 1), START + 1)  # Nothing has lived out yet (67 ms).
+	Rig.deliver(_runner, _impact(5, 1), START + 1)  # START's flashes (60 ms) are gone
 	assert_int(_ring().count()).is_equal(DATA.hit_slots)
 	assert_float(_ring().puff_born(DATA.hit_slots - 1)).is_equal(LifeClock.tick_ms(START + 1))
 	assert_float(_ring().puff_born(0)).is_equal(LifeClock.tick_ms(START))
