@@ -93,6 +93,7 @@ func place() -> void:
 	var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), margin_dp)
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	shown.ready = true  # The chip's rect; whether it shows is `ready_type`.
+	feed.state.fill_bar(shown)  # Upright BUILD stands a gap above the command bar.
 	var rects: Dictionary[StringName, Rect2] = HudCorners.place(
 		safe, HudLayout.is_portrait(), UiScale.base_px_per_dp(), false, shown
 	)
@@ -106,7 +107,8 @@ func place() -> void:
 	queue_redraw()
 
 
-## Tells the SelectionPanel's band how much room the chip takes (landscape, while it shows).
+## Writes the room the chip takes into `HudLayout.chip_zone_dp` (landscape, while it shows). The
+## command bar reads `HudCorners` now; the static stays only for the tests that pin it.
 func _reserve() -> void:
 	var room: float = _chip_room if _chip.visible and not HudLayout.is_portrait() else 0.0
 	if room != HudLayout.chip_zone_dp:
@@ -186,11 +188,12 @@ func _show_ready(snap: MatchSnapshot, type: int) -> void:
 		ready_changed.emit()
 	if type >= 0 and type != _chip_type:
 		_chip_type = type
-		var art: String = SelectionPanel.ICON_ART % snap.type_ids[type]
+		var art: String = CommandBar.ICON_ART % snap.type_ids[type]
 		_chip.icon = load(art) if ResourceLoader.exists(art) else null
 
 
 func _on_changed(_previous: HudState.Unfold) -> void:
+	place()  # The command bar's slot lifts or lowers BUILD (upright).
 	visible = not (
 		feed.state.is_open(HudState.Unfold.DRAWER) or feed.state.is_open(HudState.Unfold.PAUSE)
 	)

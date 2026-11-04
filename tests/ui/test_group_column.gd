@@ -284,14 +284,16 @@ func test_a_groups_badge_shows_the_live_count_and_an_empty_group_leaves_the_colu
 
 
 ## ADR 0025 section 2: four items (All army and three groups) take two columns on web_phone_small
-## (2 to a column under the Dev stack). Upright, with no command bar yet (P122), the room is the
-## 40 % line down to the safe bottom, 270 dp at web_phone_portrait: 4 to a column, so one column;
-## the two columns of the ADR's table come with the bar's 72 dp (test_hud_corners pins them).
+## (2 to a column under the Dev stack) while no command bar shows. Upright, with no bar, the room is
+## the 40 % line down to the safe bottom, 270 dp at web_phone_portrait: 4 to a column, so one
+## column; the two columns of the ADR's table come with the bar's 72 dp (test_hud_corners has them).
 func test_four_items_take_two_columns_on_the_small_phone_and_one_upright_without_the_bar() -> void:
 	for profile_name: StringName in [&"web_phone_small", &"web_phone_portrait"]:
 		await _open(UiProfiles.by_name(profile_name))
 		assert_float(_column().size.x).is_equal_approx(UiScale.dp(56.0), 1.0)  # "All army" alone.
 		_save_groups(3)
+		_controller.deselect()  # Saving selects the tanks: the bar is gone again.
+		await await_idle_frame()
 		await await_idle_frame()
 		var xs: Dictionary = {}
 		for button_name: String in ["AllArmy", "Group1", "Group2", "Group3"]:

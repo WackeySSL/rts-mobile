@@ -11,9 +11,9 @@ extends Node
 ## diamond is a Command too, and the sim clamps its target.
 ## A tap acts at once. A double-tap on an own unit selects its type on screen, a box (a rect on the
 ## screen, over the units' projected positions) selects the own units inside it, and an empty box
-## clears the selection (the one way to deselect). Selection is not a Command, so it never reaches
-## the sim. A unit that dies leaves the selection and the groups at once, inside `runner.ticked`,
-## and the rings, the panel and the badges follow.
+## clears the selection (so does the bar's Deselect, `deselect`). Selection is not a Command, so it
+## never reaches the sim. A unit that dies leaves the selection and the groups at once, inside
+## `runner.ticked`, and the rings, the bar and the badges follow.
 ## A building (P115b, ADR 0019 section 3, ADR 0023 section 3) is picked after the units, on its
 ## silhouette (`Picker.pick_building`): a tap on an own or a shown enemy building selects it alone
 ## (an enemy one for its info only: it gets no order), the frame, the panel and the sidebar's tab
@@ -118,6 +118,29 @@ func select_all_army() -> void:
 	var snap: MatchSnapshot = runner.snapshot
 	if snap != null:
 		selection.set_ids(OrderRules.all_army(snap, _local_player()))
+
+
+## The command bar's Deselect (ADR 0025 section 9): clears the selection, units or a building, own
+## or an enemy's. No Command, nothing in the sim; it works during placement and the strike aim too.
+func deselect() -> void:
+	selection.clear()
+
+
+## The command bar's Stop: one STOP with the selected units, with the light buzz. Nothing with a
+## building or nothing selected. It is a HUD tap, not a map tap, so it works while a building is
+## placed or a strike aimed too.
+func stop() -> bool:
+	if not _units_selected():
+		return false
+	command_sink.call(Command.stop(_local_player(), selection.selected))
+	if settings.haptics_enabled:
+		vibrate.call(settings.haptic_ms)
+	return true
+
+
+## Whether the selection is own units (not nothing, not a building): what Stop is for.
+func units_selected() -> bool:
+	return _units_selected()
 
 
 func tap_group(slot: int) -> void:

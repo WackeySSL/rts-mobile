@@ -5,10 +5,10 @@ extends GdUnitTestSuite
 ## a scene, turns the window and turns it back, and compares what the handlers made of the dp with
 ## a scene opened at that size; the middle step is compared with a fresh scene too. The handlers
 ## are the ones of main.tscn (DpMinSize, SafeAreaMargin, HudTheme, TouchInput, BuildSidebar,
-## the group column, SelectionPanel, UnitLayer's rings, HealthBarLayer, EffectsLayer and
+## the group column, the command bar, UnitLayer's rings, HealthBarLayer, EffectsLayer and
 ## RtsCamera), of the touch probe, of the dev menu (P63) and of the perf arena
 ## (PerfHud and the arena's own). A handler that a later row rewrites extends its case there (P61
-## SelectionPanel and the group column, P62 RtsCamera and TouchInput, P63 the touch probe). The
+## the command bar and the group column, P62 RtsCamera and TouchInput, P63 the touch probe). The
 ## engine's own metrics are used, no override: the stretch has to follow.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
@@ -18,7 +18,7 @@ const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
 ## Rifle squads (units 41 and 42) and rocket squads (43 and 44) join the tanks, so the main scene's
-## SelectionPanel has a mixed selection to lay out in both orientations (P61).
+## The command bar has a mixed selection to lay out in both orientations (P61).
 const EXTRA_UNITS: Array[String] = [
 	"res://data/units/rifle_squad.tres", "res://data/units/rocket_squad.tres"
 ]
@@ -199,9 +199,11 @@ func _open(kind: StringName) -> Node:
 			scene.get_node("MatchRunner").scenario = _mixed_scenario()
 			add_child(scene)
 			await await_idle_frame()
+			(scene.get_node("PlayerController") as PlayerController).selection.set_ids(
+				PackedInt32Array(MIXED)
+			)
 			(scene.get_node("UnitLayer") as UnitLayer).set_selected(PackedInt32Array([2, 40]))
-			var panel: SelectionPanel = scene.get_node("Hud/SafeArea/SelectionBand/SelectionPanel")
-			panel.set_selected(PackedInt32Array(MIXED))
+			await await_idle_frame()
 		&"probe":
 			scene = (load(PROBE_SCENE) as PackedScene).instantiate()
 			add_child(scene)
@@ -254,8 +256,7 @@ func _read(kind: StringName, scene: Node) -> Dictionary:
 func _read_main(main: Node) -> Dictionary:
 	var safe: Control = main.get_node("Hud/SafeArea")
 	var column: Control = main.get_node("Hud/GroupColumn")
-	var band: Control = main.get_node("Hud/SafeArea/SelectionBand")
-	var panel: SelectionPanel = main.get_node("Hud/SafeArea/SelectionBand/SelectionPanel")
+	var panel: CommandBar = main.get_node("Hud/CommandBar")
 	var recognizer: GestureRecognizer = (main.get_node("TouchInput") as TouchInput)._recognizer
 	var sidebar: BuildSidebar = main.get_node("Hud/BuildSidebar")
 	var rings: Array[Array] = []
@@ -267,9 +268,7 @@ func _read_main(main: Node) -> Dictionary:
 	return {
 		"button_sizes": button_sizes,
 		"safe_margins": _margins(safe),
-		"band_margins":
-		[band.get_theme_constant("margin_left"), band.get_theme_constant("margin_right")],
-		"panel_gap": panel._list.get_theme_constant("separation"),
+		"panel_gap": panel._row.get_theme_constant("separation"),
 		"panel_line": _panel_line(panel),
 		"column_rect": Rect2(column.position, column.size),
 		"sidebar": _sidebar_state(sidebar),
@@ -327,21 +326,10 @@ func _pill_state(pill: EconomyPill) -> Dictionary:
 	}
 
 
-## How the SelectionPanel is laid out: the column or the line, its fit level and what shows, its
-## size flags and the "+N" chip. The rects are the layout's to settle, so what is read is the
-## state the handler sets.
-func _panel_line(panel: SelectionPanel) -> Dictionary:
-	var shown: Array[bool] = []
-	for row: SelectionPanel.Row in panel._rows:
-		shown.append(row.visible and row.title.visible)
-	return {
-		"vertical": panel._list.vertical,
-		"level": panel._level,
-		"names": shown,
-		"total": panel._total.visible,
-		"chip": "" if panel._chip == null or not panel._chip.visible else panel._chip.text,
-		"flags": [panel.size_flags_horizontal, panel.size_flags_vertical],
-	}
+## How the command bar is laid out: whether it shows and its rect, which `HudCorners` gives it for
+## the orientation in force.
+func _panel_line(panel: CommandBar) -> Dictionary:
+	return {"shown": panel.visible, "rect": Rect2(panel.position, panel.size)}
 
 
 func _read_probe(probe: Control) -> Dictionary:

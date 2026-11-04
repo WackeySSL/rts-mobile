@@ -32,6 +32,8 @@ const TAB_TYPE: StringName = &"SidebarTab"  ## Its grey (`icon_normal_color`) ti
 @export var safe_area: SafeAreaMargin  ## Its gap is the safe rect's (ADR 0025 section 2).
 @export var strike_row: StrikeControls  ## The strike button and its aim row: the map keeps clear.
 @export var pill: Control  ## The economy pill, whose right end the narrowed map keeps clear of.
+@export var group_column: GroupColumn  ## Its right end: the narrowed map keeps clear.
+@export var build_button: BuildButton  ## Its Ready chip narrows the column upright.
 
 var _panel: Panel = Panel.new()
 var _head: HBoxContainer = HBoxContainer.new()
@@ -71,6 +73,10 @@ func _ready() -> void:
 	_collapse.icon = load(ICON_ART % "glyph_collapse")
 	_pin.pressed.connect(_on_pin_pressed)
 	_collapse.pressed.connect(_on_collapse_pressed)
+	if group_column != null:  # More groups or a Ready chip move the column's right end.
+		group_column.laid_out.connect(_replace)
+	if build_button != null:
+		build_button.ready_changed.connect(_replace)
 	feed.state.changed.connect(_on_changed)
 	if strike_row != null:
 		strike_row.item_rect_changed.connect(place)  # The aim widens it; a turn moves it.
@@ -94,10 +100,20 @@ func _notification(what: int) -> void:
 		cancel_gestures()
 
 
+func _replace() -> void:
+	if visible:
+		place()
+
+
 ## Takes the rect `HudCorners.place` gives the full map, its head and its box.
 func place() -> void:
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	shown.map = true
+	feed.state.fill_bar(shown)
+	if group_column != null:  # The pinned map beside the aim keeps clear of the column too.
+		shown.groups = group_column.item_count()
+	if build_button != null:
+		shown.ready = build_button.ready_type >= 0
 	var margin_dp: float = (
 		SafeAreaMargin.DEFAULT_MARGIN_DP if safe_area == null else safe_area.margin_dp
 	)

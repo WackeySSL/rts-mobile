@@ -635,7 +635,7 @@ func test_the_font_rule_flags_a_font_put_to_use_without_naming_a_file() -> void:
 func test_the_scan_reads_the_scripts_and_the_hud_nodes_it_should() -> void:
 	var files: Array[String] = _scanned_files()
 	for script_name: String in [
-		"SelectionPanel", "GroupColumn", "BoxOverlay", "HudTheme", "touch_probe"
+		"CommandBar", "GroupColumn", "BoxOverlay", "HudTheme", "touch_probe"
 	]:
 		assert_array(files).contains(["%s/%s.gd" % [UI_DIR, script_name]])
 	assert_array(files).contains([MAIN_SCENE])
@@ -643,7 +643,7 @@ func test_the_scan_reads_the_scripts_and_the_hud_nodes_it_should() -> void:
 	var names: Array[String] = _hud_node_names(FileAccess.get_file_as_string(MAIN_SCENE))
 	for node_name: String in ["Hud", "BoxOverlay", "SafeArea", "DevButton", "GroupColumn"]:
 		assert_array(names).contains([node_name])
-	assert_array(names).contains(["SelectionPanel"])
+	assert_array(names).contains(["CommandBar"])
 	assert_array(names).not_contains(["MatchRunner", "UnitLayer", "MarkerLayer", "Camera"])
 	# The subtree holds a theme on its roots and a variation on the Dev button: lines it reads.
 	var scene: String = "\n".join(_hud_lines(FileAccess.get_file_as_string(MAIN_SCENE)))

@@ -1,7 +1,7 @@
 extends "res://tests/ui/support/attack_suite.gd"
 ## The attack toast and its place (plan P123, ADR 0025 sections 2 and 8): at every screen, with
 ## units selected, it is `HudCorners.place`'s rect and clear of the pill, the scope, the top-left
-## stack and the selection panel; a turn replaces it; the placement buttons keep clear of it; a tap
+## stack and the command bar; a turn replaces it; the placement buttons keep clear of it; a tap
 ## on it jumps the camera and nothing else; none while the full map or the pause menu is open; the
 ## longest title fits.
 
@@ -52,7 +52,7 @@ func test_a_tap_on_the_toast_jumps_the_camera_and_closes_the_drawer() -> void:
 
 
 ## The toast keeps clear of what stands near it at every screen: the pill, the scope, the top-left
-## stack and, with units selected, the selection panel; and it is the rect `HudCorners.place` gives.
+## stack and, with units selected, the command bar; and it is the rect `HudCorners.place` gives.
 func test_the_toast_keeps_clear_at_every_screen_with_units_selected() -> void:
 	var screens: Array[Dictionary] = RadarRig.screens()
 	var short: UiMetrics = RadarRig.short_landscape()
@@ -63,7 +63,7 @@ func test_the_toast_keeps_clear_at_every_screen_with_units_selected() -> void:
 		_controller.select_all_army()
 		_hit(_unit, _far())
 		await _settle()
-		var panel: Control = _hud("SelectionPanel") as Control
+		var panel: Control = _hud("CommandBar") as Control
 		panels += int(panel.is_visible_in_tree())
 		_expect_toast_placed(str(screen["label"]))
 	assert_int(panels).is_greater(0)

@@ -8,7 +8,7 @@ extends GdUnitTestSuite
 ## n is row n - 1 of the 6-column block, which the 2:1 projection (P117) shows as a diamond: column
 ## c = (n - 1) % 6 and row r = (n - 1) / 6 stand at world px x = -320 + 48 (c - r) and
 ## y = 432 + 24 (c + r). Ids 1-30 are blue (the player's), 31-40 red. No map touch
-## starts on the SelectionPanel, the group column or the Dev button: they keep their touches.
+## starts on the command bar, the group column or the Dev button: they keep their touches.
 ## Timings,
 ## buzzes and the formation bound come from the data. The zoom levels and the scenario are pins.
 
@@ -29,7 +29,7 @@ const VIEW_WIDTH: Dictionary[String, float] = {
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
 ## World px with no unit near it, past the tank block's upper right edge: milli (10000, 15000). The
 ## nearest tank is 102 px away, more than any hit area (49 px at most here), and the point is 128 px
-## right of and 144 px above the middle of the view: clear of the build sidebar, the selection panel
+## right of and 144 px above the middle of the view: clear of the build sidebar, the command bar
 ## and the group column at every profile (P85).
 const GROUND: Vector2 = Vector2(-160, 400)
 const GROUND_MILLI: Vector2i = Vector2i(10000, 15000)
@@ -39,8 +39,7 @@ const DRAG_FROM: Vector2 = Vector2(900, 400)
 const DRAG_FROM_PORTRAIT: Vector2 = Vector2(660, 400)
 ## A box with no tank in it, in base px: left of the block flat (it starts at x 576); upright the
 ## block is at y 688 and lower, so above it, under the Surrender button (P90) and under the
-## selection panel (P119: under the pill and the Dev and Surrender buttons; at 360 dp the line
-## reaches about 368 px, and `_assert_off_hud` checks that the box starts below it).
+## command bar's place (P122: along the bottom upright; `_assert_off_hud` checks its parts).
 const EMPTY_BOX: Rect2 = Rect2(80, 300, 220, 200)
 const EMPTY_BOX_PORTRAIT: Rect2 = Rect2(80, 372, 220, 120)
 ## The middle of a pinch, clear of the tanks and the HUD, above the block: the fingers go 170 px
@@ -67,7 +66,7 @@ var _layer: UnitLayer
 var _camera: RtsCamera
 var _touch: TouchInput
 var _controller: PlayerController
-var _panel: SelectionPanel
+var _panel: CommandBar
 var _scan: LogScan
 var _sent: Array[Command] = []
 var _buzzes: Array[int] = []
@@ -293,13 +292,12 @@ func _top_box() -> Rect2:
 
 func _assert_panel(count: String) -> void:
 	assert_bool(_panel.visible).is_true()
-	assert_str((_panel.get_node("Rows/Row0/Name") as Label).text).is_equal("Flarejack")
-	assert_str((_panel.get_node("Rows/Row0/Count") as Label).text).is_equal(count)
+	assert_str((_panel.find_child("Count", true, false) as Label).text).is_equal(count)
 
 
 ## The panel icon is the tank's item card, whose colours are its own: no tint of the owner's.
 func _assert_red_icon() -> void:
-	var card: TextureRect = _panel.get_node("Rows/Row0/Icon/Card")
+	var card: TextureRect = _panel.find_child("Card", true, false)
 	assert_str(card.texture.resource_path).is_equal(CARD)
 	assert_that(card.modulate).is_equal(Color.WHITE)
 
@@ -315,7 +313,9 @@ func _assert_off_hud(at: Vector2) -> void:
 	var screen: Rect2 = get_viewport().get_visible_rect()
 	assert_bool(screen.has_point(at)).override_failure_message("%s is off screen" % at).is_true()
 	for node_name: String in [
-		"SelectionPanel",
+		"Deselect",
+		"Chip",
+		"Stop",
 		"GroupColumn",
 		"DevButton",
 		"SurrenderButton",
@@ -364,7 +364,7 @@ func _open(profile: String, scenario: ScenarioDef = null) -> void:
 	_layer = _main.get_node("UnitLayer")
 	_touch = _main.get_node("TouchInput")
 	_controller = _main.get_node("PlayerController")
-	_panel = _main.get_node("Hud/SafeArea/SelectionBand/SelectionPanel")
+	_panel = _main.get_node("Hud/CommandBar")
 	_now_ms = 0
 	_sent.clear()
 	_buzzes.clear()

@@ -270,7 +270,7 @@ func _map_views() -> Array[MapView]:
 	return [fresh, _main_scene().get_node("MapView") as MapView]
 
 
-## main.tscn in the tree: its SelectionPanel makes two nodes of its own when it is built, and only
+## main.tscn in the tree: its command bar makes nodes of its own when it is built, and only
 ## the tree frees them with the scene.
 func _main_scene() -> Node:
 	var root: Node = auto_free((load(MAIN_SCENE) as PackedScene).instantiate())

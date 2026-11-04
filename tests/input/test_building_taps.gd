@@ -90,13 +90,13 @@ func test_a_tap_on_an_own_building_selects_it_alone_names_it_and_opens_its_tab()
 		var note: String = str(size)
 		assert_array(_controller.selection.selected).override_failure_message(note).is_equal([HQ])
 		assert_int(_sidebar.tab).override_failure_message(note).is_equal(World.Tab.STRUCTURES)
-		assert_array(_panel_texts()).override_failure_message(note).is_equal(["Rigworks", "×1"])
+		assert_array(_panel_texts()).override_failure_message(note).is_equal(["Rigworks"])
 		_tap_building(BARRACKS, 0.0)
 		assert_array(_controller.selection.selected).override_failure_message(note).is_equal(
 			[BARRACKS]
 		)
 		assert_int(_sidebar.tab).override_failure_message(note).is_equal(World.Tab.INFANTRY)
-		assert_array(_panel_texts()).override_failure_message(note).is_equal(["Bunkhouse", "×1"])
+		assert_array(_panel_texts()).override_failure_message(note).is_equal(["Bunkhouse"])
 		assert_array(_sent).override_failure_message(note).is_empty()  # Selecting orders nothing.
 
 
@@ -219,7 +219,7 @@ func test_an_enemy_building_is_selected_for_its_info_only_where_it_is_seen() -> 
 		assert_array(_controller.selection.selected).override_failure_message(note).is_equal(
 			[ENEMY_HQ]
 		)
-		assert_array(_panel_texts()).override_failure_message(note).is_equal(["Grid Hub", "×1"])
+		assert_array(_panel_texts()).override_failure_message(note).is_equal(["Grid Hub"])
 		# A ground tap lets go of it, and no order goes anywhere for a building that is not ours.
 		_tap_world(IsoProjection.cell_centre_px(GROUND_TILE.x, GROUND_TILE.y))
 		assert_array(_controller.selection.selected).override_failure_message(note).is_empty()
@@ -387,10 +387,9 @@ func _diamonds() -> int:
 
 
 func _panel() -> Control:
-	return _main.get_node("Hud/SafeArea/SelectionBand/SelectionPanel")
+	return _main.get_node("Hud/CommandBar")
 
 
-## The name and the count of the panel's first row.
+## The chip's text: a building's name.
 func _panel_texts() -> Array[String]:
-	var row: Node = _panel().get_node("Rows/Row0")
-	return [(row.get_node("Name") as Label).text, (row.get_node("Count") as Label).text]
+	return [(_panel().find_child("Count", true, false) as Label).text]

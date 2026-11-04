@@ -1,6 +1,6 @@
 ; The HUD's one Theme (plan row P58, Michael's decision of 2026-10-15): the look of the HUD's
 ; Controls lives here, so a new look is this file alone (STYLE.md "Reskin"). It holds the fonts,
-; the font sizes, the selection panel's backdrop, the HUD v2 tokens and accent pairs (P118, ADR
+; the font sizes, the command bar chip's backdrop, the HUD v2 tokens and accent pairs (P118, ADR
 ; 0025 section 13) and the colours of the selection box and anchor. The text and button colours
 ; and the Button StyleBoxes are the engine's defaults and are not in this file: a restyle adds
 ; them here (Label/colors/font_color, Button/styles/normal) with no code change. main.tscn sets
@@ -305,15 +305,15 @@ Button/font_sizes/font_size = 18
 ; The Dev button of the main screen: 40 base px, not dp (see metadata/base_px).
 DevButton/base_type = &"Button"
 DevButton/font_sizes/font_size = 40
-; The selection panel's unit names, 16 dp, and its counts and total (NumberLabel), 20 dp.
+; The labels' size, 16 dp, and the command bar chip's count (NumberLabel), 20 dp.
 Label/font_sizes/font_size = 16
 NumberLabel/base_type = &"Label"
 NumberLabel/font_sizes/font_size = 20
 NumberLabel/fonts/font = ExtResource("2_chakra_600")
-; The selection panel's backdrop.
+; The command bar chip's backdrop (the variation keeps its old name, SelectionPanel).
 SelectionPanel/base_type = &"PanelContainer"
 SelectionPanel/styles/panel = SubResource("StyleBoxFlat_backdrop")
-; The perf card's backdrop (PerfHud.gd, a developer tool): the same box as the selection panel's.
+; The perf card's backdrop (PerfHud.gd, a developer tool): the same box as the command bar chip's.
 PerfCard/base_type = &"PanelContainer"
 PerfCard/styles/panel = SubResource("StyleBoxFlat_backdrop")
 ; The minimap's camera frame (Minimap.gd, plan P88; RadarScope.gd draws the same frame, P121): a white line

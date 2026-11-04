@@ -92,9 +92,9 @@ func begin(type: int) -> bool:
 		return false
 	if active and pending:
 		return false
+	active = true  # Before the aim ends: the command bar keeps its slot through the swap.
 	if strike_aim != null:
 		strike_aim.cancel()
-	active = true
 	_forget_place()
 	type_index = type
 	foot = Vector2i(snap.type_foot_w[type], snap.type_foot_h[type])

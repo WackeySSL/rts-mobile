@@ -3,7 +3,8 @@ extends RefCounted
 ## Where the battle-screen HUD keeps room for the build drawer (ADR 0015 section 5, ADR 0025
 ## sections 2 and 5, plan rows P85d and P120). The corner parts (the pill, the scope, BUILD) are
 ## `HudCorners`'. Landscape: the drawer is a side panel and takes no bottom zone; `right_zone_px`
-## reserves BUILD's column at the bottom row's right end for the SelectionPanel's band. Portrait:
+## reserves BUILD's column at the bottom row's right end (the command bar takes its room from
+## `HudCorners` now; these zones stay for the tests that pin them). Portrait:
 ## `BuildSidebar` puts the zone in `bottom_zone_dp`: 0 while the drawer is closed, the sheet's
 ## height while it is open, between the two while it slides; every HUD part reads it here
 ## and nowhere else, so the strike row sits a gap above it. `menu_top_px` is the sheet's real top on
@@ -28,7 +29,7 @@ static var menu_top_px: float = INF
 static var drawer_side_dp: float = 0.0
 ## What the Ready chip (`BuildButton`) and the strike aim's row (`StrikeControls`) take from the
 ## safe rect's right edge in landscape, in dp with a gap, 0 while they do not show: they stand at
-## the bottom right beside BUILD, so `right_zone_px` reserves them for the SelectionPanel's band.
+## the bottom right beside BUILD, so `right_zone_px` reserves them (see the header).
 ## Each writes its own and resets it when it leaves the tree.
 static var chip_zone_dp: float = 0.0
 static var aim_zone_dp: float = 0.0

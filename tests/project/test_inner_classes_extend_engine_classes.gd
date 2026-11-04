@@ -58,7 +58,6 @@ const ROOTS: Array[String] = ["res://game", "res://tests"]
 const KNOWN_SCRIPTS: Dictionary[String, String] = {
 	"res://game/view/UnitLayer.gd": "Sprite2D",  # Ring, a Node2D until P40 made it the ring sprite.
 	"res://game/view/MoveMarkerLayer.gd": "CanvasGroup",
-	"res://game/ui/SelectionPanel.gd": "HBoxContainer",
 	"res://tests/scenes/test_controls_flow.gd": "Logger",
 	"res://tests/sim/native/test_kernel_abi.gd": "RefCounted",
 	"res://tests/input/test_touch_input.gd": "Node",
