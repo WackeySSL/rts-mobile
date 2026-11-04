@@ -7,7 +7,9 @@ extends Control
 ## (`BuildButton`) opens it. The head shows the credits and the power (`EconomyLine`, a mirror of
 ## the `EconomyPill`, which folds while the drawer is open). It sends nothing to the sim but
 ## Commands through `PlayerController.command_sink`: a tap on an available card is one QUEUE, a
-## hold on a card with items queued is one CANCEL of the last of them (P120b replaces that). It
+## hold on a unit card queues up to `queue_hold_count` (P120b; a hold on a structure card still
+## cancels the last of its type, until ADR 0026's P130), a tap on an item of the queue row at the
+## foot (`QueueRow`) is a CANCEL of that slot. It
 ## reads the published snapshot only and never keeps one.
 ## Open or closed is `HudState`'s DRAWER (`feed.state`, ADR 0025 section 1), view state only: no
 ## Command, nothing in the sim. A match starts closed. A gesture on the map, the start of placement
@@ -65,6 +67,9 @@ const GAP_DP: float = 8.0
 ## The slot of the cards is their height and this, because a box container sorts in whole px and
 ## would otherwise leave a card a fraction of a px taller than the slot that holds it.
 const ROW_SLACK_DP: float = 2.0
+## The grid's least height: the drawer's content must fit the safe height on `web_phone_small`
+## (ADR 0025 section 5: the grid scrolls there), so no whole card row is asked for.
+const FIT_LEAST_DP: float = 48.0
 const COLUMNS_LEAST: int = 2
 
 ## Tests only, like `UiScale`'s override: the slide's duration in ms, or -1 for the settings'. A
@@ -96,12 +101,17 @@ var _tabs: Array[Button] = []
 var _tab_icons: Array[TextureRect] = []
 var _handle: ColorRect = ColorRect.new()  ## Upright only, on the head.
 var _items: ScrollContainer = ScrollContainer.new()
-var _items_fit: DpMinSize = DpMinSize.new()  ## The least height of `_items`: one row of cards.
+var _items_fit: DpMinSize = DpMinSize.new()  ## The least height of `_items`: a sliver of a row.
+var _queue: QueueRow = QueueRow.new()  ## The open tab's queue, at the drawer's foot.
+var _arts: Array[Texture2D] = []  ## Scratch of a refresh: the card picture of each queued item.
+var _items_q: PackedInt32Array = PackedInt32Array()  ## And the queued types, head first.
+var _makers: PackedInt32Array = PackedInt32Array()  ## The type that produces each tab, else -1.
 var _grid: GridContainer = GridContainer.new()
 var _tiles: Array[ItemTile] = []
 var _faction: int = -1  ## The local player's faction (`type_faction`); -1 until a row shows it.
 var _seen: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot last read.
 var _built: Vector2i = Vector2i(-1, -1)  ## Match serial and type count the tiles are made for.
+var _art_cache: Dictionary[String, Texture2D] = {}
 var _owned: PackedInt32Array = PackedInt32Array()  ## Scratch of a refresh: own rows per type.
 var _producers: PackedInt32Array = PackedInt32Array()  ## And own producers per tab.
 var _placing: bool = false  ## Placement mode was on at the last `placement.changed`.
@@ -148,6 +158,9 @@ func _ready() -> void:
 	_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_items.add_child(_grid)
 	_stack.add_child(_items)
+	_queue.cancel_requested.connect(_on_queue_tapped)
+	_queue.configure(_input_settings().tap_slop_dp, _input_settings().long_press_ms)
+	_stack.add_child(_queue)
 	select_tab(tab)
 	_apply_dp()  # Sets the zone before the strike row reads it.
 	get_viewport().size_changed.connect(_apply_dp)
@@ -192,6 +205,8 @@ func show_ready() -> void:
 	for tile: ItemTile in _tiles:
 		if tile.tab == World.Tab.STRUCTURES and tile.state == ItemTile.State.READY:
 			_items.ensure_control_visible(tile)
+			if tile.size.y > _items.size.y:  # A short grid: show the card's top, not its foot.
+				_items.scroll_vertical = roundi(tile.position.y)
 			return
 
 
@@ -295,6 +310,7 @@ func select_tab(index: int) -> void:
 	if index != tab:
 		tab = index
 		_items.scroll_vertical = 0
+		_queue.release()  # Another queue is not the one a cancel has shifted.
 		_show_tab()
 		tab_selected.emit(index)
 
@@ -431,6 +447,7 @@ func _refresh_items(snap: MatchSnapshot, player: int) -> void:
 	var key: Vector2i = Vector2i(snap.match_serial, snap.type_tab.size())
 	if key != _built:
 		_built = key
+		_queue.release()  # A new match: the old one's Command and ticks mean nothing.
 		_build_tiles(snap)
 	if _tiles.is_empty():
 		return
@@ -450,9 +467,17 @@ func _refresh_items(snap: MatchSnapshot, player: int) -> void:
 	for type: int in _owned.size():
 		if _owned[type] > 0 and snap.type_produces[type] >= 0:
 			_producers[snap.type_produces[type]] += 1
+	_makers.resize(World.TABS)
+	_makers.fill(-1)
+	for type: int in snap.type_produces.size():
+		var made: int = snap.type_produces[type]
+		var kin: bool = snap.type_faction[type] < 0 or snap.type_faction[type] == _faction
+		if made >= 0 and made < World.TABS and kin and (_makers[made] < 0 or _owned[type] > 0):
+			_makers[made] = type
 	var slots: int = _queue_slots(snap)
 	for tile: ItemTile in _tiles:
 		_show_tile(tile, snap, player, slots)
+	_show_queue(snap, player, slots)
 
 
 ## One tile's state, queued count and progress from the player's queue of its tab.
@@ -479,6 +504,10 @@ func _show_tile(tile: ItemTile, snap: MatchSnapshot, player: int, slots: int) ->
 	elif count >= slots:
 		state = ItemTile.State.FULL
 	tile.show_state(state, queued, done)
+	var lacks: int = -1
+	if state == ItemTile.State.LOCKED:
+		lacks = _makers[tile.tab] if _producers[tile.tab] == 0 else requires
+	tile.set_needs(snap.type_names[lacks] if lacks >= 0 else "")
 
 
 ## One tile per buildable type, in the type table's order, for the snapshot's match.
@@ -507,7 +536,7 @@ func _build_tiles(snap: MatchSnapshot) -> void:
 		tile.hold_ms = settings.long_press_ms
 		tile.slop_dp = settings.tap_slop_dp
 		tile.chose.connect(_on_chose.bind(tile))
-		tile.cancelled.connect(_on_cancelled.bind(tile))
+		tile.long_pressed.connect(_on_long_pressed.bind(tile))
 		tile.dragged.connect(_scroll_by)
 		_grid.add_child(tile)
 		_tiles.append(tile)
@@ -521,7 +550,10 @@ func _show_tab() -> void:
 	for tile: ItemTile in _tiles:
 		tile.set_card(card)
 		tile.visible = tile.tab == tab and (tile.faction < 0 or tile.faction == _faction)
-	_items_fit.min_dp = Vector2(0.0, card.y + ROW_SLACK_DP)
+	_items_fit.min_dp = Vector2(0.0, FIT_LEAST_DP)
+	var snap: MatchSnapshot = null if runner == null else runner.snapshot
+	if snap != null and runner.scenario != null and not _makers.is_empty():
+		_show_queue(snap, runner.scenario.local_player, _queue_slots(snap))
 	var room: float = _rect.size.x / _dp_px - 4.0 * PAD_DP + GAP_DP
 	_grid.columns = maxi(floori(room / (card.x + GAP_DP)), COLUMNS_LEAST)
 
@@ -539,11 +571,35 @@ func _on_chose(tile: ItemTile) -> void:
 			tile.shake()
 
 
-## A hold: the last queued item of the tile's type leaves its queue (and is paid back).
-func _on_cancelled(tile: ItemTile) -> void:
+## A hold on a unit card: as many QUEUEs as the queue has room for and the credits pay, at most
+## `queue_hold_count` (ADR 0025 section 5, answer 2 A); a card that cannot take one shakes, as a
+## tap does. The hold is final once it fires at `hold_ms` (ADR 0004): a drag after it does not take
+## it back. A hold on a structure card cancels the last of its type, as before, until P130.
+@warning_ignore("integer_division")
+func _on_long_pressed(tile: ItemTile) -> void:
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
-	if snap == null:
+	if snap == null or controller == null:
 		return
+	if tile.tab == World.Tab.STRUCTURES:
+		_cancel_last(snap, tile)
+		return
+	if tile.state != ItemTile.State.AVAILABLE:
+		tile.shake()
+		return
+	var player: int = _local_player()
+	var queue: int = player * World.TABS + tile.tab
+	var room: int = _queue_slots(snap) - _entry(snap.queue_count, queue)
+	var cost: int = maxi(snap.type_cost[tile.type_index], 1)
+	var afford: int = _entry(snap.credits, player) / cost
+	var count: int = mini(mini(room, afford), _input_settings().queue_hold_count)
+	for _item: int in count:
+		controller.command_sink.call(Command.queue(player, tile.type_index))
+	if count > 0:
+		_buzz()
+
+
+## The last queued item of the tile's type leaves its queue (and is paid back).
+func _cancel_last(snap: MatchSnapshot, tile: ItemTile) -> void:
 	var player: int = _local_player()
 	var queue: int = player * World.TABS + tile.tab
 	var base: int = queue * _queue_slots(snap)
@@ -551,6 +607,49 @@ func _on_cancelled(tile: ItemTile) -> void:
 		if snap.queue_type[base + slot] == tile.type_index:
 			_send(Command.cancel(player, tile.tab, slot))
 			return
+
+
+## A tap on an item of the queue row: CANCEL for its slot in the open tab (the row then waits for
+## a snapshot past the tick the runner stamps on the Command).
+func _on_queue_tapped(slot: int) -> void:
+	if controller == null:
+		_queue.release()
+		return
+	var command: Command = Command.cancel(_local_player(), tab, slot)
+	_send(command)
+	_queue.wait_for(command)  # The runner stamps its tick; the row waits for a snapshot past it.
+
+
+## The open tab's queue in the row: the producer's name, the items, the head's progress.
+func _show_queue(snap: MatchSnapshot, player: int, slots: int) -> void:
+	var queue: int = player * World.TABS + tab
+	var count: int = mini(_entry(snap.queue_count, queue), slots)
+	_items_q.resize(count)
+	_arts.resize(count)
+	for slot: int in count:
+		var type: int = snap.queue_type[queue * slots + slot]
+		_items_q[slot] = type
+		var art: String = SelectionPanel.ICON_ART % snap.type_ids[type]
+		_arts[slot] = _art(art)
+	var share: float = 0.0
+	if count > 0:
+		var goal: int = maxi(snap.type_build_ticks[_items_q[0]], 1) * Production.PROGRESS_PER_TICK
+		share = clampf(float(_entry(snap.queue_progress, queue)) / goal, 0.0, 1.0)
+	var maker: int = _makers[tab] if _makers.size() > tab else -1
+	_queue.show_queue(
+		snap.type_names[maker] if maker >= 0 else TAB_NAMES[tab],
+		slots,
+		_items_q,
+		_arts,
+		share,
+		snap.tick
+	)
+
+
+func _art(path: String) -> Texture2D:
+	if not _art_cache.has(path):
+		_art_cache[path] = load(path) if ResourceLoader.exists(path) else null
+	return _art_cache[path]
 
 
 ## The grid follows a finger that went beyond the slop on a tile.
@@ -563,6 +662,10 @@ func _send(command: Command) -> void:
 	if controller == null:
 		return
 	controller.command_sink.call(command)
+	_buzz()
+
+
+func _buzz() -> void:
 	if controller.settings.haptics_enabled:
 		controller.vibrate.call(controller.settings.haptic_ms)
 

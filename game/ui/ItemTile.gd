@@ -14,12 +14,12 @@ extends HoldButton
 ## `CARD_PORTRAIT_DP` upright and shows the type's display name in a line under the plate, in 14 dp
 ## type, cut with an ellipsis where it does not fit; `SIZE_DP` is the nameless plate it starts as.
 ## `BuildSidebar` tells it what to show (`show_state`); it tells the sidebar what the finger did:
-## `chose` for a tap, `cancelled` for a hold of `hold_ms`, `dragged` for a drag beyond `slop_dp`,
+## `chose` for a tap, `long_pressed` for a hold of `hold_ms`, `dragged` for a drag beyond `slop_dp`,
 ## which scrolls the row and is then neither. The tile is a Button, so a touch on it never reaches
 ## the map. The look is the theme's (`ItemTile`, `ItemCost`, `ItemCostLow`, `ItemBanner`), in dp.
 
 signal chose  ## A tap: released before `hold_ms`, within `slop_dp`.
-signal cancelled  ## A hold of `hold_ms`, within `slop_dp`.
+signal long_pressed  ## A hold of `hold_ms`, within `slop_dp`.
 signal dragged(relative: Vector2)  ## The finger moved beyond `slop_dp`: the row follows it.
 
 enum State { AVAILABLE, LOCKED, UNAFFORDABLE, FULL, READY }
@@ -30,6 +30,9 @@ const CARD_DP: Vector2 = Vector2(88.0, 96.0)
 const CARD_PORTRAIT_DP: Vector2 = Vector2(92.0, 100.0)
 const ICON_INSET_DP: float = 3.0
 const LOCK_DP: float = 32.0
+## The padlock when words stand under it (the missing building's name, ADR 0025 section 5).
+const LOCK_WORDED_DP: float = 14.0
+const FULL_WORD: String = "FULL"
 const STRIPE_DP: Vector2 = Vector2(14.0, 5.0)  ## The step between stripes and their width.
 const VARIATION: StringName = &"ItemTile"
 const COST_VARIATION: StringName = &"ItemCost"
@@ -58,6 +61,9 @@ var _stripes: Stripes = Stripes.new()
 var _lock: TextureRect = TextureRect.new()
 var _banner: Label = Label.new()
 var _caption: Label = Label.new()
+var _word: Label = Label.new()  ## In the stage: "FULL", or the missing name.
+var _lock_fit: DpMinSize = DpMinSize.new()
+var _needs: String = ""  ## The display name of the missing requirement or producer.
 var _cost: Label = Label.new()
 var _badge: Label = Label.new()
 var _offset: Vector2 = Vector2.ZERO  ## The finger's move since the press.
@@ -97,9 +103,16 @@ func _init() -> void:
 	_lock.set_anchors_preset(Control.PRESET_CENTER)
 	_lock.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_lock.grow_vertical = Control.GROW_DIRECTION_BOTH
-	var lock_size: DpMinSize = DpMinSize.new()
-	lock_size.min_dp = Vector2(LOCK_DP, LOCK_DP)
-	_lock.add_child(lock_size)
+	_lock_fit.min_dp = Vector2(LOCK_DP, LOCK_DP)
+	_lock.add_child(_lock_fit)
+	_word.theme_type_variation = CAPTION_VARIATION
+	_word.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_word.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	_word.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_word.max_lines_visible = 2  # The stage holds two lines of 14 sp (a test pins every name).
+	_word.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING  # A name is never cut.
+	_word.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_word.visible = false
 	_banner.text = "Ready"
 	_banner.theme_type_variation = BANNER_VARIATION
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -126,6 +139,7 @@ func _init() -> void:
 	_add(_fill, "Fill", _stage)
 	_add(_stripes, "Stripes", _stage)
 	_add(_lock, "Lock", _stage)
+	_add(_word, "Word", _stage)
 	_add(_badge, "Badge")
 	show_state(State.AVAILABLE, 0, 0.0)
 
@@ -160,6 +174,22 @@ func set_card(size_dp: Vector2) -> void:
 	_fit.min_dp = size_dp
 
 
+## The display name of what a LOCKED card lacks (its requirement, or its producer when there is
+## none); "" when nothing is known. The card then shows that name beside a smaller padlock.
+func set_needs(display_name: String) -> void:
+	if display_name == _needs:
+		return
+	_needs = display_name
+	_show_word()
+
+
+## The word of the state: "FULL" in the middle of the stripes, the missing name in up to two
+## lines at the stage's foot, with the padlock shrunk into its top left corner (the count badge has
+## the top right).
+func word() -> String:
+	return _word.text if _word.visible else ""
+
+
 ## Shows the state, the queued count and the head's progress (a share, 0 to 1).
 func show_state(new_state: State, count: int, share: float) -> void:
 	if _shown and new_state == state and count == queued and is_equal_approx(share, progress):
@@ -181,6 +211,7 @@ func show_state(new_state: State, count: int, share: float) -> void:
 	_cost.theme_type_variation = (
 		COST_LOW_VARIATION if new_state == State.UNAFFORDABLE else COST_VARIATION
 	)
+	_show_word()
 
 
 ## A short wiggle: a tap on a tile that cannot take an item.
@@ -218,7 +249,22 @@ func _on_tapped() -> void:
 
 func _on_held() -> void:
 	if not _scrolling:
-		cancelled.emit()
+		long_pressed.emit()
+
+
+func _show_word() -> void:
+	var needs: bool = state == State.LOCKED and not _needs.is_empty()
+	_word.visible = needs or state == State.FULL
+	_word.text = _needs if needs else FULL_WORD
+	_word.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM if needs else VERTICAL_ALIGNMENT_CENTER
+	var size_dp: float = LOCK_WORDED_DP if needs else LOCK_DP
+	_lock_fit.min_dp = Vector2(size_dp, size_dp)
+	if needs:
+		_lock.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE)
+	else:
+		_lock.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
+	_lock.grow_horizontal = Control.GROW_DIRECTION_END if needs else Control.GROW_DIRECTION_BOTH
+	_lock.grow_vertical = Control.GROW_DIRECTION_END if needs else Control.GROW_DIRECTION_BOTH
 
 
 ## A part of the tile that the finger never finds: the tile is what it finds.

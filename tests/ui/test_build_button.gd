@@ -437,7 +437,11 @@ func test_a_tap_on_the_ready_chip_opens_the_drawer_on_structures_with_the_card_i
 		assert_int(sidebar.tab).override_failure_message(why).is_equal(World.Tab.STRUCTURES)
 		assert_int(last.state).override_failure_message(why).is_equal(ItemTile.State.READY)
 		var items: ScrollContainer = sidebar.find_child("Items", true, false) as ScrollContainer
-		var seen: bool = items.get_global_rect().encloses(last.get_global_rect().grow(-1.0))
+		var grid: Rect2 = items.get_global_rect()
+		var card: Rect2 = last.get_global_rect()
+		var seen: bool = grid.encloses(card.grow(-1.0))
+		if card.size.y > grid.size.y:  # The queue row leaves a short grid less than a card (P120b).
+			seen = card.position.y >= grid.position.y - 1.0 and card.position.y < grid.end.y
 		var cards: String = (
 			"%s: card %s, grid %s" % [why, last.get_global_rect(), items.get_global_rect()]
 		)

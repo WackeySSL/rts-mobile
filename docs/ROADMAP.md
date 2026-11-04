@@ -35,7 +35,7 @@ Tick a box in the PR that meets the criterion.
 
 ## Phase 3: Base building and economy
 - [x] Buildings from the GDD with placement (ghost, valid and invalid tint, confirm and cancel)
-- [ ] Build sidebar with tabs, queues, cost and progress; power bar and low-power effects
+- [x] Build sidebar with tabs, queues, cost and progress; power bar and low-power effects
 - [ ] Portrait and landscape on the battle screen (ADR 0015): the HUD, selection and build menu keep their dp sizes in both
   orientations and follow ADR 0015 §5's layout as ADR 0025 amends it (the corner HUD and the build drawer; the bottom stack
   within 40 % of the safe height); a turn during a match keeps the camera centre and the world size per dp and queues no
