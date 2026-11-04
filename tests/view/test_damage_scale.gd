@@ -158,11 +158,44 @@ func test_a_patch_region_is_the_rounded_raster_of_its_canvas() -> void:
 			assert_int(got).is_less_equal(cell.y - 2 * RuntimeAtlas.GUTTER_PX)
 
 
-func test_only_the_two_damage_parts_have_a_factor() -> void:
+func test_a_crafted_ruin_takes_its_own_factor_and_the_page_counts_it() -> void:
+	assert_float(IsoAtlas.RUIN_SCALE).is_equal(0.75)
+	assert_float(IsoAtlas.part_factor(&"ruin")).is_equal(IsoAtlas.RUIN_SCALE)
+	var sheet: IsoSheetDef = _sheet({&"hull": Vector2i(100, 100), &"ruin": Vector2i(102, 70)})
+	var sheets: Array[IsoSheetDef] = [sheet]
+	var arts: Array[IsoPlayerArt] = [_art()]
+	for scale: float in [1.0, 0.5]:
+		var atlas: IsoAtlas = IsoAtlas.build(sheets, arts, scale, false, _reader(sheet))
+		assert_that(atlas.region(&"hut", &"hull", -1).size).is_equal(
+			Vector2i(roundi(100 * scale), roundi(100 * scale))
+		)
+		assert_that(atlas.region(&"hut", &"ruin", -1).size).is_equal(
+			Vector2i(roundi(102 * scale * 0.75), roundi(70 * scale * 0.75))
+		)
+		assert_float(atlas.part_scale(&"ruin")).is_equal(scale * IsoAtlas.RUIN_SCALE)
+		assert_that(IsoAtlas.planned_page(sheets, arts, scale, _reader(sheet))).is_equal(
+			atlas.page_px()
+		)
+		var sort: WorldSort = auto_free(WorldSort.new())
+		sort.atlas = atlas
+		var sprite: Sprite2D = auto_free(Sprite2D.new())
+		sort.dress(sprite, sheet, &"ruin")
+		sort.show_frame(sprite, sheet, &"ruin", -1, 1)
+		var drawn: Vector2 = (sprite.offset + Vector2(sprite.region_rect.size)) * sprite.scale
+		var want: Vector2 = (
+			(Vector2(sheet.frame_size(&"ruin")) - Vector2(sheet.origin(&"ruin")))
+			* WorldSort.ART_SCALE
+		)
+		assert_vector(drawn).is_equal_approx(want, Vector2(0.001, 0.001))
+
+
+func test_only_the_three_damage_parts_have_a_factor() -> void:
 	for part: StringName in [&"dmg", &"dmg10", &"dmg3", &"dmg1x", &"scar1", &"loose", &"anim"]:
 		assert_float(IsoAtlas.part_factor(part)).is_equal(1.0)
 	assert_float(IsoAtlas.part_factor(&"dmg1")).is_equal(0.75)
 	assert_float(IsoAtlas.part_factor(&"dmg2")).is_equal(0.75)
+	assert_float(IsoAtlas.part_factor(&"ruin")).is_equal(0.75)
+	assert_array(IsoAtlas.DAMAGE_PARTS).is_equal([&"dmg1", &"dmg2", &"ruin"])
 
 
 func test_body_cut_row_is_the_integer_ceil() -> void:

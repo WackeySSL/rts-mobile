@@ -30,10 +30,11 @@ const NEUTRAL_SHEET: String = "res://assets/art/svg/damage/damage_sheet.tres"
 const NEUTRAL: StringName = &"neutral"  ## The faction of a sheet every player's atlas carries.
 
 ## The damage patches (`dmg1`, `dmg2`, ADR 0028 section 3, amended 2026-11-03) are rasterised at
-## `bake_scale * DAMAGE_SCALE` so that their large frames keep the page in its budget; every other
-## part stays at `bake_scale`. A view constant, not balance. `part_factor` is the one place that
-## names the parts; `WorldSort.dress` sizes a sprite per axis from the raster, so it is right for
-## a patch too. The generator's 4 px art overlap at the cut is 3 texels at bake scale 1.0 and
+## `bake_scale * DAMAGE_SCALE`, and the `ruin` (ADR 0029) at `bake_scale * RUIN_SCALE`, so that
+## their large frames keep the page in its budget; every other part stays at `bake_scale`.
+## A view constant, not balance. `part_factor` is the one place that names the parts;
+## `WorldSort.dress` sizes a sprite per axis from the raster, so it is right for a patch too.
+## The generator's 4 px art overlap at the cut is 3 texels at bake scale 1.0 and
 ## under one at MIN_SCALE, so the rule for the Damage child (P159) keeps the body clipped and the
 ## overlap > 0 at every scale (the drawn position at MIN_SCALE is P159's test). It assumes even
 ## canvases, as all 80 real parts are: an odd one at 0.25 gives exactly 0 (H=101, cut=97).
@@ -46,7 +47,10 @@ const NEUTRAL: StringName = &"neutral"  ## The faction of a sheet every player's
 ## trimmed body; (c) the patch uses its whole region, through `dress`; (d) invariant, strict:
 ## `(patch.offset.y + patch region.size.y) * patch.scale.y > body.offset.y * body.scale.y`.
 const DAMAGE_SCALE: float = 0.75
-const DAMAGE_PARTS: Array[StringName] = [&"dmg1", &"dmg2"]
+## The ruin (ADR 0029 section 3, the fourth stage) has a factor of its own so P158b can lower it
+## to 0.5 if its measured page needs it (ADR 0029 section 11); equal to DAMAGE_SCALE at first.
+const RUIN_SCALE: float = 0.75
+const DAMAGE_PARTS: Array[StringName] = [&"dmg1", &"dmg2", &"ruin"]
 
 static var _keys_built: int = 0
 
@@ -169,8 +173,10 @@ static func fit_scale(
 
 
 ## How much of the bake scale a frame of `part` is rasterised at: DAMAGE_SCALE for a damage patch,
-## else 1.0. Frame-path safe: comparisons only.
+## RUIN_SCALE for the ruin, else 1.0. Frame-path safe: comparisons only.
 static func part_factor(part: StringName) -> float:
+	if part == &"ruin":
+		return RUIN_SCALE
 	return DAMAGE_SCALE if part in DAMAGE_PARTS else 1.0
 
 
