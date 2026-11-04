@@ -151,13 +151,14 @@ script = ExtResource("33_strike_layer")
 runner = NodePath("../MatchRunner")
 aim = NodePath("../StrikeAim")
 
-[node name="GhostMemoryLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
+[node name="GhostMemoryLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort", "building_layer")]
 y_sort_enabled = true
 z_index = 5
 z_as_relative = false
 script = ExtResource("32_ghosts")
 runner = NodePath("../MatchRunner")
 world_sort = NodePath("../WorldSort")
+building_layer = NodePath("../BuildingLayer")
 
 [node name="GhostLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "placement", "world_sort")]
 z_index = 60

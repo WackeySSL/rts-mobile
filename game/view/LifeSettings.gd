@@ -132,3 +132,15 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 @export var emit_grow_to: float = 1.2
 @export var emit_flame_from: float = 1.0
 @export var emit_flame_to: float = 0.7
+
+## Damage stages (P159, ADR 0029 section 2, ADR 0028 section 8): the lines of the stages as
+## `[P1, P2]`, strict "under" (`BuildingDamage.stage_of`): hp x 100 below max x P1 is SKADET (stage
+## 1) and below max x P2 KRITISK (stage 2). One list per kind; a data test holds 100 > P1 > P2 > 0.
+@export var building_stage_percent: PackedInt32Array = PackedInt32Array([67, 34])
+@export var vehicle_stage_percent: PackedInt32Array = PackedInt32Array([50, 25])
+## Sprite writes a frame may spend on stage changes, and the part of them that is the buildings'
+## (the rest is the vehicles'): a fixed split, so the result never depends on which layer runs
+## first. The vehicle layer (P161) reads its share as `damage_writes_per_frame -
+## damage_building_writes`.
+@export var damage_writes_per_frame: int = 60
+@export var damage_building_writes: int = 20
