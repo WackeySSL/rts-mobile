@@ -145,15 +145,25 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 @export var damage_writes_per_frame: int = 60
 @export var damage_building_writes: int = 20
 
+## Vehicle overlays (P161, ADR 0028 sections 4 and 8): whether a vehicle at stage 2 hangs a loose
+## part. Off drops its region, visibility, position and flip writes (the fallback if P162's worst
+## frame passes 150); the scar stays.
+@export var damage_loose: bool = true
 ## Damage particles (P148, ADR 0029 sections 6 and 13, ADR 0028 section 6). The damage ring holds
 ## `damage_slots` puffs. A building at SKADET burns `damage_burning_points[0]` of its damage points
 ## and at KRITISK up to `[1]`; a data test holds each stage's smoke (points x ceil(life / emit))
 ## under `damage_smoke_cap`. `damage_emit_ms` and `damage_life_ms` are keyed by the puff: `smoke`
-## (SKADET), `soot` (KRITISK), `fire`, `jet`, `spark` and `exhaust` (a damaged vehicle's trail). A
+## (SKADET), `soot` (KRITISK), `fire`, `spark` and `exhaust` (a vehicle's trail); `jet` has a life
+## only, since a jet is born with the fire at its point. A
 ## KRITISK fire and its glow are `damage_fire_scale` times their frame, a vehicle's fire
 ## `damage_vehicle_fire_scale`. Smoke and soot rise `damage_rise_px` and drift `emit_drift_px`; a
-## spark rises `damage_spark_rise_px`. A glow's alpha is `glow_weak_alpha` (SKADET) or
-## `glow_strong_alpha` (KRITISK).
+## spark rises `damage_spark_rise_px`. A glow's alpha is `glow_weak_alpha` (SKADET),
+## `glow_strong_alpha` (KRITISK) or `glow_faint_alpha` (a crater). A glow is steady: one per burning
+## point, born again the tick the last one ends, each living the ticks of its fire's (or ember's)
+## `damage_emit_ms`, so at most one glow per point shows.
+## Craters (ADR 0029 section 6; P165 adds them): a source of a fallen building smokes
+## (`crater_smoke`) for `crater_smoke_ms` and glows with embers (`ember`) for `crater_ember_ms`; at
+## most `crater_sources` are alive at once, the oldest ends first.
 @export var damage_slots: int = 80
 @export var damage_burning_points: PackedInt32Array = PackedInt32Array([1, 3])
 @export var damage_smoke_cap: int = 30
@@ -161,9 +171,10 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 	&"smoke": 500,
 	&"soot": 400,
 	&"fire": 500,
-	&"jet": 300,
 	&"spark": 400,
 	&"exhaust": 600,
+	&"crater_smoke": 700,
+	&"ember": 900,
 }
 @export var damage_life_ms: Dictionary[StringName, int] = {
 	&"smoke": 2000,
@@ -172,6 +183,8 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 	&"jet": 600,
 	&"spark": 500,
 	&"exhaust": 1200,
+	&"crater_smoke": 2000,
+	&"ember": 1800,
 }
 @export var damage_fire_scale: float = 1.6
 @export var damage_vehicle_fire_scale: float = 0.8
@@ -179,6 +192,10 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 @export var damage_spark_rise_px: float = 14.0
 @export var glow_weak_alpha: float = 0.3
 @export var glow_strong_alpha: float = 0.55
+@export var glow_faint_alpha: float = 0.2
+@export var crater_smoke_ms: int = 8000
+@export var crater_ember_ms: int = 15000
+@export var crater_sources: int = 16
 
 ## Hit feedback (P166, ADR 0029 sections 7 and 13): a shot that hits a shown building draws a white
 ## `hit_flash` for `hit_flash_ms` (growing from `hit_flash_grow.x` to `.y` times its frame, at

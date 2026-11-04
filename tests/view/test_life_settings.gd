@@ -56,6 +56,7 @@ const SCALARS: Dictionary[StringName, Variant] = {
 	&"emit_flame_to": 0.7,
 	&"damage_writes_per_frame": 60,  # P159: the two stage lists are in test_building_damage.gd.
 	&"damage_building_writes": 20,
+	&"damage_loose": true,  # P161
 	&"damage_slots": 80,  # P148: the damage particles (lists: DAMAGE_EMIT_MS and DAMAGE_LIFE_MS).
 	&"damage_smoke_cap": 30,
 	&"damage_fire_scale": 1.6,
@@ -64,6 +65,10 @@ const SCALARS: Dictionary[StringName, Variant] = {
 	&"damage_spark_rise_px": 14.0,
 	&"glow_weak_alpha": 0.3,
 	&"glow_strong_alpha": 0.55,
+	&"glow_faint_alpha": 0.2,
+	&"crater_smoke_ms": 8000,
+	&"crater_ember_ms": 15000,
+	&"crater_sources": 16,
 }
 const RECOIL: Dictionary[StringName, float] = {
 	&"tank_cannon": 3.0,
@@ -82,10 +87,23 @@ const EMIT_MS: Dictionary[StringName, int] = {&"smoke": 700, &"steam": 600, &"fl
 const EMIT_LIFE_MS: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200, &"flare": 700}
 ## P148: the ms between the births of each damage puff and the life of each.
 const DAMAGE_EMIT_MS: Dictionary[StringName, int] = {
-	&"smoke": 500, &"soot": 400, &"fire": 500, &"jet": 300, &"spark": 400, &"exhaust": 600
+	&"smoke": 500,
+	&"soot": 400,
+	&"fire": 500,
+	&"spark": 400,
+	&"exhaust": 600,
+	&"crater_smoke": 700,
+	&"ember": 900,
 }
 const DAMAGE_LIFE_MS: Dictionary[StringName, int] = {
-	&"smoke": 2000, &"soot": 2000, &"fire": 700, &"jet": 600, &"spark": 500, &"exhaust": 1200
+	&"smoke": 2000,
+	&"soot": 2000,
+	&"fire": 700,
+	&"jet": 600,
+	&"spark": 500,
+	&"exhaust": 1200,
+	&"crater_smoke": 2000,
+	&"ember": 1800,
 }
 
 
