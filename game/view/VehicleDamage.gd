@@ -16,14 +16,12 @@ const SCAR: StringName = &"Scar"
 const LOOSE: StringName = &"Loose"
 const SCAR_PARTS: Array[StringName] = [&"scar1", &"scar2"]  ## The picture of stage index + 1.
 const LOOSE_PART: StringName = &"loose"
-const LOOSE_FRAMES_PER_KIND: int = 2  ## Two looks for tracks, two for wheels (frames 0-1, 2-3).
 ## The loose part's view scale on every vehicle (STYLE.md "Damage overlays", measured by P160
 ## against the hulls in the gallery); the scar's is the sheet's `scar_milli` (1000: its canvas as
 ## drawn).
 const LOOSE_SCALE: float = 0.8
 const SALT_SCAR: int = 0x70000000
 const SALT_LOOSE: int = 0x78000000
-const FIRST_DIR: int = 6  ## The hull frame a rig is dressed with (`UnitLayer.D_EAST`).
 
 
 ## What a rig keeps of its overlays: the sprites, the stage they show and the stage wanted, and
@@ -36,7 +34,7 @@ class Parts:
 	var sheet: IsoSheetDef = null
 	var texels: Vector2 = Vector2.ONE  ## The Hull's texels per px of the 2x art.
 	var owner_id: int = 0
-	var dir: int = FIRST_DIR  ## The hull frame the positions are for.
+	var dir: int = UnitLayer.D_EAST  ## The hull frame the positions are for.
 	var shown: int = 0
 	var want: int = 0
 	var queued: bool = false
@@ -69,16 +67,18 @@ static func dress(
 	parts.sheet = sheet
 	parts.texels = sort.texels(sheet, &"hull")
 	parts.owner_id = owner_id
-	parts.dir = FIRST_DIR
+	parts.dir = UnitLayer.D_EAST
 	parts.shown = 0
 	parts.want = 0
 	parts.left = false
 	parts.damage_at = sheet.emitters.find("damage")
 	parts.hang_at = sheet.emitters.find("hang")
-	parts.scar_look = LifeClock.mix(uid, SALT_SCAR) % LOOSE_FRAMES_PER_KIND
-	parts.loose_look = LifeClock.mix(uid, SALT_LOOSE) % LOOSE_FRAMES_PER_KIND
+	parts.scar_look = LifeClock.mix(uid, SALT_SCAR) % neutral.frame_count(SCAR_PARTS[0])
+	# The loose part's frames are the track guards, then the wheel fenders: half of them each.
+	var kinds: int = neutral.frame_count(LOOSE_PART) / 2
+	parts.loose_look = LifeClock.mix(uid, SALT_LOOSE) % kinds
 	if sheet.marks != &"tracks":
-		parts.loose_look += LOOSE_FRAMES_PER_KIND  # The wheel fenders follow the track guards.
+		parts.loose_look += kinds
 	_dress_child(parts.scar, sort, neutral, SCAR_PARTS[0], hull, float(sheet.scar_milli) / 1000.0)
 	_dress_child(parts.loose, sort, neutral, LOOSE_PART, hull, LOOSE_SCALE)
 
@@ -118,9 +118,16 @@ static func apply(parts: Parts, sort: WorldSort, to: int, loose_on: bool) -> int
 
 ## The hull turned to frame `dir`: the shown overlays follow it. Returns the writes: the positions
 ## (1 at stage 1, 2 at stage 2) and the flip when the hang point changed side. Nothing at stage 0.
-static func follow(parts: Parts, dir: int, loose_on: bool) -> int:
+## A hidden rig (`seen` false) writes none: it forgets its stage (both overlays hidden, `shown` 0)
+## and is placed afresh by the stage-of-now write when it is seen again.
+static func follow(parts: Parts, dir: int, loose_on: bool, seen: bool) -> int:
 	parts.dir = dir
 	if parts.shown == 0:
+		return 0
+	if not seen:
+		parts.shown = 0
+		parts.scar.visible = false
+		parts.loose.visible = false
 		return 0
 	parts.scar.position = _point(parts, parts.damage_at)
 	if parts.shown == 2 and loose_on:

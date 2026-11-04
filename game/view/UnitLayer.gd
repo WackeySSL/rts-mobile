@@ -873,7 +873,7 @@ func _show_hull(row: int, owner_id: int) -> void:
 	var rig: Rig = _rigs[row] as Rig
 	_poses.turn(rig.pose, _layers[at + HULL], sheet, dir, owner_id)
 	if rig.damage != null:  # The overlays follow the hull's frame (P161).
-		var followed: int = VehicleDamage.follow(rig.damage, dir, life.damage_loose)
+		var followed: int = VehicleDamage.follow(rig.damage, dir, life.damage_loose, rig.visible)
 		_follow_writes += followed
 		_rig_life.writes += followed
 	world_sort.show_frame(_layers[at + SHADOW], sheet, PART_NAMES[SHADOW], dir, owner_id)
