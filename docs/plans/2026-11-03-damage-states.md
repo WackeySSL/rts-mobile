@@ -342,6 +342,15 @@ Status (2026-11-04, P26au docs; on `main` at 48e7415; the rows above stay as wri
 - What P148, P148b, P161, P163, P163b, P166, P158a and P158b decided is in ADR 0029's dated notes
   (§4, §5, §7, §12, §13).
 
+Status (2026-11-04, P26av docs; on `main` at 6eab1e6; the rows and the status above stay as
+written):
+- **Merged:** P148b (#310), P158a (#312), P158b (#313), P166 (#314), and P165 as two PRs, **P165a**
+  (#315, the sequence: sink, hide, free, the crater's scale and smoke, cancelled sites, the write
+  budget) and **P165b** (#316, the particles: `CollapseFx` and the collapse ring, the third `FxRing` of `AirFx._rings` after the damage and hit rings).
+- **P162 is the one row left.** It waits for the unit-life plan's P146 (`test_life_budget.gd`),
+  which is not merged.
+- What P165a and P165b decided is in ADR 0029's dated note at the end of §8.
+
 ### Lanes, files and order (rework)
 Lane names are this plan's; the unit-life plan's V4 and V5 (P141, P147) are not reused.
 - **A** (art-director): P163 → P163b → P158a. Owns `tools/artgen/`, the Fossil building models,
