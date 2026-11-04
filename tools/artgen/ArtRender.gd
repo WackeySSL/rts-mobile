@@ -70,6 +70,11 @@ static func render(
 				disc.prim = i
 				out.append(disc)
 			continue
+		if prim.shape == &"rod":
+			for stroke: Poly in _strokes(prim, turn, faction):
+				stroke.prim = i
+				out.append(stroke)
+			continue
 		var tops: Array[Poly] = []
 		var faces: Array[ArtMesh.Face] = ArtMesh.faces(prim)
 		var at_rest: Array[ArtMesh.Face] = faces if rest.is_empty() else ArtMesh.faces(rest[i])
@@ -207,6 +212,23 @@ static func _is_behind(a: AABB, b: AABB, cam: Vector3) -> bool:
 		a_first = a_first or b_lo - a_hi >= -1e-4
 		b_first = b_first or a_lo - b_hi >= -1e-4
 	return a_first and not b_first
+
+
+## A rod as a quad per segment, `width` px across, in the middle tone of its material, no outline.
+static func _strokes(prim: ArtPrim, turn: Vector2, faction: StringName) -> Array[Poly]:
+	var path: PackedVector3Array = prim.rod_path()
+	var out: Array[Poly] = []
+	for k: int in path.size() - 1:
+		var from: Vector2 = project(_turn(prim.place(path[k]), turn))
+		var to: Vector2 = project(_turn(prim.place(path[k + 1]), turn))
+		if from.is_equal_approx(to):
+			continue
+		var side: Vector2 = (to - from).normalized().orthogonal() * prim.width / 2.0
+		var poly: Poly = Poly.new()
+		poly.points = PackedVector2Array([from + side, to + side, to - side, from - side])
+		poly.fill = _scorch(prim, ArtPalette.tone(faction, prim.material, ArtPalette.LEFT))
+		out.append(poly)
+	return out
 
 
 ## A sphere of diameter `size.x` as three discs, the dark one first and the lit one on top, each a

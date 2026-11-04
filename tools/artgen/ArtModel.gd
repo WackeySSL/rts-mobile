@@ -290,10 +290,11 @@ func _hull_prims() -> Array[ArtPrim]:
 ## Every valid primitive in the model's order, each with the index of its line.
 func _parsed() -> Array[ArtPrim]:
 	var found: Array[ArtPrim] = []
+	var seed: int = ArtDamage.seed_of(art_id)
 	for i: int in prims.size():
-		var prim: ArtPrim = ArtPrim.parse(prims[i])
-		if prim != null:
+		for prim: ArtPrim in ArtPrim.parse_all(prims[i]):
 			prim.index = i
+			prim.seed = seed
 			found.append(prim)
 	return found
 
@@ -356,7 +357,8 @@ func problems() -> PackedStringArray:
 	if (footprint > 0) != (category == &"bld") or footprint > 3:
 		found.append("%s: only a building has a footprint, 1 to 3" % art_id)
 	for line: String in prims:
-		var prim: ArtPrim = ArtPrim.parse(line)
+		var parsed: Array[ArtPrim] = ArtPrim.parse_all(line)
+		var prim: ArtPrim = parsed[0] if not parsed.is_empty() else null
 		if prim == null or not ArtPalette.has_material(faction, prim.material):
 			found.append("%s: not a primitive or an unknown material: %s" % [art_id, line])
 		elif prim.damage > 0 and (prim.part != &"hull" or category != &"bld"):

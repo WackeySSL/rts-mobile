@@ -23,6 +23,16 @@ static func blow_order(model: ArtModel, group: StringName) -> Array[int]:
 	return panes
 
 
+## The hash of an art id, the seed of the per-line variation (`blow`, `broken`).
+static func seed_of(art_id: StringName) -> int:
+	return _djb2(String(art_id))
+
+
+## The hash of `line` under `seed`: where a helper varies by line, it varies by this.
+static func line_hash(seed: int, line: int) -> int:
+	return _mix(seed, line)
+
+
 ## The first damage stage (1 or 2) whose pose moves or hides `group` (a shift, a turn or a hide),
 ## 0 for none or for no group: the stage from which an ambient emitter on it goes quiet.
 static func quiet(model: ArtModel, group: StringName) -> int:

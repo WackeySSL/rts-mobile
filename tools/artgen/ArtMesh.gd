@@ -22,8 +22,11 @@ static func dir(degrees: float) -> Vector2:
 
 static func faces(prim: ArtPrim) -> Array[Face]:
 	var found: Array[Face] = []
-	if prim.shape == &"sphere":
+	if prim.shape in [&"sphere", &"rod"]:
 		return found
+	if prim.shape == &"broken":
+		_broken(prim, found)
+		return _placed(prim, found)
 	var dims: Vector3 = _dims(prim)
 	var sides: int = prim.sides
 	var circ: float = 0.5 / cos(PI / sides)
@@ -47,12 +50,74 @@ static func faces(prim: ArtPrim) -> Array[Face]:
 		_add(found, PackedVector3Array([bottom[i], bottom[j], top[j], top[i]]), inside)
 	_add(found, top, inside)
 	_add(found, bottom, inside)
-	if not prim.moves.is_empty():
+	return _placed(prim, found)
+
+
+## `found` with the faces placed by the moves of `prim`.
+static func _placed(prim: ArtPrim, found: Array[Face]) -> Array[Face]:
+	if not prim.moves.is_empty() or not prim.fixed.is_empty():
 		for face: Face in found:
 			for i: int in face.points.size():
 				face.points[i] = prim.place(face.points[i])
 			face.normal = prim.spin(face.normal)
 	return found
+
+
+## The faces of a `broken` box: the front and the back as polygons with the zigzag top, the two
+## ends, the bottom, and one quad per tooth segment.
+static func _broken(prim: ArtPrim, found: Array[Face]) -> void:
+	var along_x: bool = prim.size.x >= prim.size.y
+	var length: float = prim.size.x if along_x else prim.size.y
+	var half: float = (prim.size.y if along_x else prim.size.x) / 2.0
+	var fractions: PackedFloat64Array = prim.tooth_fractions()
+	var last: int = prim.teeth - 1
+	var at: PackedFloat64Array = PackedFloat64Array()
+	var top: PackedFloat64Array = PackedFloat64Array()
+	for i: int in prim.teeth:
+		at.append(-length / 2.0 + length * i / last)
+		top.append(fractions[i] * prim.size.z)
+	var pt: Callable = func(t: float, v: float, w: float) -> Vector3:
+		return (
+			Vector3(prim.centre.x + t, prim.centre.y + v, prim.z0 + w)
+			if along_x
+			else Vector3(prim.centre.x + v, prim.centre.y + t, prim.z0 + w)
+		)
+	var inside: Vector3 = pt.call(0.0, 0.0, prim.size.z * prim.low / 2.0)
+	for side: float in [-half, half]:
+		var ring: PackedVector3Array = PackedVector3Array([pt.call(at[0], side, 0.0)])
+		ring.append(pt.call(at[last], side, 0.0))
+		for i: int in range(last, -1, -1):
+			ring.append(pt.call(at[i], side, top[i]))
+		_add(found, ring, inside)
+	for i: int in last:
+		var quad: PackedVector3Array = PackedVector3Array(
+			[
+				pt.call(at[i], -half, top[i]),
+				pt.call(at[i + 1], -half, top[i + 1]),
+				pt.call(at[i + 1], half, top[i + 1]),
+				pt.call(at[i], half, top[i]),
+			]
+		)
+		_add(found, quad, inside)
+	for end: int in [0, last]:
+		var cap: PackedVector3Array = PackedVector3Array(
+			[
+				pt.call(at[end], -half, 0.0),
+				pt.call(at[end], half, 0.0),
+				pt.call(at[end], half, top[end]),
+				pt.call(at[end], -half, top[end]),
+			]
+		)
+		_add(found, cap, inside)
+	var floor_ring: PackedVector3Array = PackedVector3Array(
+		[
+			pt.call(at[0], -half, 0.0),
+			pt.call(at[last], -half, 0.0),
+			pt.call(at[last], half, 0.0),
+			pt.call(at[0], half, 0.0),
+		]
+	)
+	_add(found, floor_ring, inside)
 
 
 ## The extent along the ring's two axes and along its length: (u, v, w).
