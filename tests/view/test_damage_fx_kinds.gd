@@ -27,28 +27,47 @@ func test_the_default_numbers_hold_every_stage_under_the_smoke_cap() -> void:
 	assert_int(DATA.damage_burning_points[0]).is_less(DATA.damage_burning_points[1])
 
 
-func test_every_glow_is_drawn_before_every_other_quad() -> void:
-	# The plan holds every kind in the order of the puffs; `_draw` paints the glow pass first, then
-	# the ambient ring, then the other damage quads.
+func test_every_glow_is_drawn_before_the_clouds_and_the_clouds_before_the_flames() -> void:
+	# The call order in `_draw`: every ring's glow, the ambient ring, then every ring's clouds, then
+	# every ring's flames and sparks.
 	var text: String = FileAccess.get_file_as_string(AIR)
 	var body: String = text.substr(text.find("func _draw()"), 1800)
-	var glow: int = body.find("ring.draw(self, _atlas, true)")
+	var glow: int = body.find("ring.draw(self, _atlas, FxRing.GLOW)")
 	var ambient: int = body.find("draw_texture_rect_region")
-	var rest: int = body.find("ring.draw(self, _atlas, false)")
+	var rest: int = body.find("range(FxRing.CLOUD, FxRing.PASSES)")
 	assert_int(glow).is_greater(-1)
 	assert_int(ambient).is_greater(glow)
 	assert_int(rest).is_greater(ambient)
+
+
+func test_a_real_frame_paints_each_pass_exactly_its_planned_quads_by_kind() -> void:
 	_only(1)
 	_hp(1, 20)
 	_only(1)
 	_run(START, START + 60)
-	_frame(START + 59, 0.5)
+	Rig.at(_runner, START + 59, 0.5)
+	_air.set_process(true)  # The engine's own frame plans and draws.
+	await await_idle_frame()
+	_air.set_process(false)
 	var ring: FxRing = _air.damage().ring
-	var glows: int = 0
+	var by_pass: Array[int] = [0, 0, 0]
+	var pass_of: Dictionary = {
+		DamageFx.K_GLOW: FxRing.GLOW,
+		DamageFx.K_SMOKE: FxRing.CLOUD,
+		DamageFx.K_SOOT: FxRing.CLOUD,
+		DamageFx.K_EXHAUST: FxRing.CLOUD,
+	}
 	for index: int in ring.quad_count():
-		glows += 1 if ring.quad_kind(index) == DamageFx.K_GLOW else 0
-	assert_int(glows).is_greater(0)
-	assert_int(glows).is_less(ring.quad_count())
+		by_pass[pass_of.get(ring.quad_kind(index), FxRing.FLAME)] += 1
+	for pass_index: int in FxRing.PASSES:
+		var note: String = "pass %d" % pass_index
+		assert_int(by_pass[pass_index]).override_failure_message(note).is_greater(0)
+		assert_int(ring.planned(pass_index)).override_failure_message(note).is_equal(
+			by_pass[pass_index]
+		)
+		assert_int(ring.drawn(pass_index)).override_failure_message(note).is_equal(
+			by_pass[pass_index]
+		)
 
 
 func test_an_ambient_emitter_goes_quiet_from_the_stage_of_its_sheet_and_not_before() -> void:
@@ -114,7 +133,7 @@ func test_ring_keeps_the_newest_puffs_and_plans_the_life_the_motion_and_the_fade
 	ring.setup([&"smoke", &"jet"], 2)
 	ring.set_style(0, 0, 1000.0, 20.0, 10.0, Vector2(1.0, 2.0), 0.5, 0.0)
 	ring.set_style(1, 1, 600.0, 0.0, 0.0, Vector2.ONE, 1.0, 300.0)
-	ring.resize(3)
+	ring.size_to(3)
 	for born: int in 5:
 		ring.add(0, Vector2(float(born), 0.0), float(born) * 100.0, 0)
 	assert_int(ring.count()).is_equal(3)

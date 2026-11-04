@@ -56,7 +56,7 @@ const SCALARS: Dictionary[StringName, Variant] = {
 	&"emit_flame_to": 0.7,
 	&"damage_writes_per_frame": 60,  # P159: the two stage lists are in test_building_damage.gd.
 	&"damage_building_writes": 20,
-	&"damage_slots": 80,  # P148: the damage particles (the lists are in test_damage_fx_data.gd).
+	&"damage_slots": 80,  # P148: the damage particles (lists: DAMAGE_EMIT_MS and DAMAGE_LIFE_MS).
 	&"damage_smoke_cap": 30,
 	&"damage_fire_scale": 1.6,
 	&"damage_vehicle_fire_scale": 0.8,
@@ -80,6 +80,13 @@ const ROCK: Dictionary[StringName, float] = {
 }
 const EMIT_MS: Dictionary[StringName, int] = {&"smoke": 700, &"steam": 600, &"flare": 500}
 const EMIT_LIFE_MS: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200, &"flare": 700}
+## P148: the ms between the births of each damage puff and the life of each.
+const DAMAGE_EMIT_MS: Dictionary[StringName, int] = {
+	&"smoke": 500, &"soot": 400, &"fire": 500, &"jet": 300, &"spark": 400, &"exhaust": 600
+}
+const DAMAGE_LIFE_MS: Dictionary[StringName, int] = {
+	&"smoke": 2000, &"soot": 2000, &"fire": 700, &"jet": 600, &"spark": 500, &"exhaust": 1200
+}
 
 
 func test_the_script_defaults_are_the_documented_ones() -> void:
@@ -95,7 +102,9 @@ func test_the_data_file_writes_every_default_out() -> void:
 	var text: String = FileAccess.get_file_as_string(PATH)
 	for field: StringName in SCALARS:
 		assert_str(text).override_failure_message(String(field)).contains("\n%s = " % field)
-	for field: String in ["recoil_px", "rock_px", "emit_ms", "emit_life_ms"]:
+	for field: String in [
+		"recoil_px", "rock_px", "emit_ms", "emit_life_ms", "damage_emit_ms", "damage_life_ms"
+	]:
 		assert_str(text).override_failure_message(field).contains("\n%s = " % field)
 
 
@@ -185,6 +194,9 @@ func _check(settings: LifeSettings) -> void:
 	assert_dict(settings.rock_px).is_equal(ROCK)
 	assert_dict(settings.emit_ms).is_equal(EMIT_MS)
 	assert_dict(settings.emit_life_ms).is_equal(EMIT_LIFE_MS)
+	assert_dict(settings.damage_emit_ms).is_equal(DAMAGE_EMIT_MS)
+	assert_dict(settings.damage_life_ms).is_equal(DAMAGE_LIFE_MS)
+	assert_array(settings.damage_burning_points).is_equal([1, 3])
 	for kind: StringName in settings.emit_ms:  # ADR 0027 section 3: at most 4 puffs alive.
 		assert_int(settings.emit_ms[kind]).is_greater_equal(500)
 		assert_int(settings.emit_life_ms[kind]).is_less_equal(2000)

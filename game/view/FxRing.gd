@@ -5,22 +5,29 @@ extends RefCounted
 ## line. A puff is a slot of the arrays (its sprite style, birth, spot and look); a style says which
 ## sprite it is and how it lives (`set_style`). The ring plans one quad per live puff for a frame
 ## and paints them into a `CanvasItem` that the owner passes, from the one life atlas. It makes no
-## object after `setup`, overwrites its oldest puff when full, and reads only match time, so a run
-## is the same on every device. View only.
+## object after `setup`, and reads only match time, so a run is the same on every device. A tick
+## `compact`s the puffs that have lived out away, so a full ring loses its oldest live puff only
+## when it holds nothing else. `draw` has three passes (the glow under all, then the clouds, then
+## the flames and sparks), each kind of sprite in one of them (`set_pass`). View only.
 
-## The sprite kind (an index of `setup`'s list) that `draw` paints in the glow pass.
-var glow_kind: int = -1
+const GLOW: int = 0  ## The passes of `draw`.
+const CLOUD: int = 1
+const FLAME: int = 2
+const PASSES: int = 3
 
 var _size: int = 0
 var _head: int = 0
 var _count: int = 0
 var _quads: int = 0
+var _planned: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## Quads of the plan, per pass.
+var _drawn: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## Quads the last `draw` of each.
 # The sprite kinds: first region, frames, anchor and mirror permission of each.
 var _regions: Array[Rect2] = []
 var _first: PackedInt32Array = PackedInt32Array()
 var _frames: PackedInt32Array = PackedInt32Array()
 var _anchors: PackedVector2Array = PackedVector2Array()
 var _mirror: PackedByteArray = PackedByteArray()
+var _pass: PackedByteArray = PackedByteArray()  ## The pass each kind is drawn in.
 # The styles: sprite kind, life ms, rise and drift px, growth from and to, alpha, hold ms.
 var _s_kind: PackedInt32Array = PackedInt32Array()
 var _s_life: PackedFloat32Array = PackedFloat32Array()
@@ -51,6 +58,7 @@ func setup(kinds: Array[StringName], styles: int) -> void:
 		_frames.append(LifeRegions.FRAMES[kind])
 		_anchors.append(LifeRegions.ANCHOR[kind])
 		_mirror.append(1 if LifeRegions.mirrorable(kind) else 0)
+		_pass.append(FLAME)
 		for frame: int in LifeRegions.FRAMES[kind]:
 			_regions.append(Rect2(LifeRegions.region(kind, frame)))
 	_s_life.resize(styles)
@@ -61,6 +69,11 @@ func setup(kinds: Array[StringName], styles: int) -> void:
 	_s_alpha.resize(styles)
 	_s_hold.resize(styles)
 	_s_kind.resize(styles)
+
+
+## Kind `kind` (an index of `setup`'s list) is drawn in pass `pass_of`.
+func set_pass(kind: int, pass_of: int) -> void:
+	_pass[kind] = pass_of
 
 
 ## Style `style` is sprite `kind`; a puff lives `life_ms`, rises `rise` px and drifts east `drift`
@@ -87,7 +100,7 @@ func set_style(
 
 
 ## Sets the slots of the ring (any change empties it).
-func resize(slots: int) -> void:
+func size_to(slots: int) -> void:
 	slots = maxi(slots, 0)
 	if slots == _size:
 		return
@@ -128,9 +141,34 @@ func add(style: int, spot: Vector2, born_ms: float, look: int, flip: int = -1) -
 	_count = mini(_count + 1, _size)
 
 
+## Drops the puffs that have lived out by match time `now_ms`, keeping the others in order: call it
+## once a tick, at the tick's time, before the tick's births. Allocates nothing.
+func compact(now_ms: float) -> void:
+	if _count == 0:
+		return
+	var oldest: int = (_head - _count + _size) % _size
+	var kept: int = 0
+	for step: int in _count:
+		var from: int = (oldest + step) % _size
+		var style: int = _style[from]
+		if LifeClock.age_ms(now_ms, _born[from]) >= _s_life[style]:
+			continue
+		var to: int = (oldest + kept) % _size
+		if to != from:
+			_born[to] = _born[from]
+			_at[to] = _at[from]
+			_style[to] = style
+			_frame[to] = _frame[from]
+			_flip[to] = _flip[from]
+		kept += 1
+	_count = kept
+	_head = (oldest + kept) % _size
+
+
 ## The quads of the puffs alive at match time `now_ms`, oldest first. Allocates nothing.
 func plan(now_ms: float) -> void:
 	_quads = 0
+	_planned.fill(0)
 	var oldest: int = _head - _count + _size
 	for step: int in _count:
 		var slot: int = (oldest + step) % _size
@@ -159,19 +197,22 @@ func plan(now_ms: float) -> void:
 		if hold > 0.0:
 			fade = clampf((span - age) / maxf(span - hold, 1.0), 0.0, 1.0)
 		_q_alpha[_quads] = _s_alpha[style] * fade
+		_planned[_pass[kind]] += 1
 		_quads += 1
 
 
-## Paints the plan into `item` from `atlas`: only the glow kind when `glow` is set, only the other
-## kinds when not, so the owner can paint every glow before every other quad.
-func draw(item: CanvasItem, atlas: Texture2D, glow: bool) -> void:
+## Paints the quads of the plan whose sprite is drawn in pass `pass_of` into `item` from `atlas`,
+## so the owner can paint every glow before every cloud and every cloud before every flame.
+func draw(item: CanvasItem, atlas: Texture2D, pass_of: int) -> void:
 	var mirrored: bool = false
+	var painted: int = 0
 	for index: int in _quads:
-		if (_q_kind[index] == glow_kind) != glow:
+		if _pass[_q_kind[index]] != pass_of:
 			continue
 		var rect: Rect2 = quad_rect(index)
 		var color: Color = Color(1.0, 1.0, 1.0, _q_alpha[index])
 		var region: Rect2 = _regions[_first[_q_kind[index]] + _q_frame[index]]
+		painted += 1
 		if _q_flip[index] == 1:  # About the vertical edge of its box: the right edge is the origin.
 			item.draw_set_transform(Vector2(rect.end.x, rect.position.y), 0.0, Vector2(-1.0, 1.0))
 			item.draw_texture_rect_region(atlas, Rect2(Vector2.ZERO, rect.size), region, color)
@@ -183,13 +224,10 @@ func draw(item: CanvasItem, atlas: Texture2D, glow: bool) -> void:
 			item.draw_texture_rect_region(atlas, rect, region, color)
 	if mirrored:
 		item.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	_drawn[pass_of] = painted
 
 
-## Slots of the ring, and the puffs in them (alive or not yet overwritten).
-func capacity() -> int:
-	return _size
-
-
+## The puffs in the ring (alive, or not yet compacted away).
 func count() -> int:
 	return _count
 
@@ -209,8 +247,13 @@ func quad_kind(index: int) -> int:
 	return _q_kind[index]
 
 
-func quad_frame(index: int) -> int:
-	return _q_frame[index]
+## Quads of the last plan in pass `pass_of`, and quads the last `draw` of it painted.
+func planned(pass_of: int) -> int:
+	return _planned[pass_of]
+
+
+func drawn(pass_of: int) -> int:
+	return _drawn[pass_of]
 
 
 func quad_flipped(index: int) -> bool:
@@ -221,14 +264,18 @@ func quad_alpha(index: int) -> float:
 	return _q_alpha[index]
 
 
-## Puff in slot `slot`: where and when it was born (match ms) and its style.
-func puff_at(slot: int) -> Vector2:
-	return _at[slot]
+## Puff number `index`, oldest first: where and when it was born (match ms) and its style.
+func puff_at(index: int) -> Vector2:
+	return _at[_slot(index)]
 
 
-func puff_born(slot: int) -> float:
-	return _born[slot]
+func puff_born(index: int) -> float:
+	return _born[_slot(index)]
 
 
-func puff_style(slot: int) -> int:
-	return _style[slot]
+func puff_style(index: int) -> int:
+	return _style[_slot(index)]
+
+
+func _slot(index: int) -> int:
+	return (_head - _count + _size + index) % _size

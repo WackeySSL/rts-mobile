@@ -61,7 +61,9 @@ var _life_ms: Dictionary[StringName, int] = {}
 
 func _init() -> void:
 	ring.setup(KINDS, Style.size())
-	ring.glow_kind = K_GLOW
+	ring.set_pass(K_GLOW, FxRing.GLOW)
+	for kind: int in [K_SMOKE, K_SOOT, K_EXHAUST]:
+		ring.set_pass(kind, FxRing.CLOUD)  # Under the fire, which they would otherwise cover.
 	_every.resize(Style.size())
 
 
@@ -97,16 +99,10 @@ func build(snap: MatchSnapshot, sort: WorldSort) -> void:
 	_first.append(_p_type.size())
 
 
-## The tick-by-tick cycle number of an emitter of `every` ms from `phase` ms (integers only).
-@warning_ignore("integer_division")
-static func cycle(tick: int, phase: int, every: int) -> int:
-	return (tick * 1000 + phase * Sim.TICK_RATE) / (every * Sim.TICK_RATE)
-
-
 ## Takes the rates and the looks of the styles from `life`: the ring's size, each style's sprite,
 ## life, motion, growth and alpha. Called once a tick.
 func read(life: LifeSettings) -> void:
-	ring.resize(life.damage_slots)
+	ring.size_to(life.damage_slots)
 	_emit_ms = life.damage_emit_ms
 	_life_ms = life.damage_life_ms
 	var grown: Vector2 = Vector2(life.emit_grow_from, life.emit_grow_to)
@@ -152,6 +148,7 @@ func emit(
 	var ids: PackedInt32Array = snap.unit_id
 	var building_lines: PackedInt32Array = life.building_stage_percent
 	var vehicle_lines: PackedInt32Array = life.vehicle_stage_percent
+	ring.compact(LifeClock.tick_ms(snap.tick))  # The puffs that lived out give their slots back.
 	if units != null:
 		units.sync_rows()
 	for row: int in ids.size():
@@ -259,7 +256,7 @@ func _due(style: int, id: int, salt: int, tick: int) -> bool:
 	if every <= 0:
 		return false
 	var phase: int = LifeClock.pick(id, SALT_PHASE + salt, every)
-	return cycle(tick, phase, every) != cycle(tick - 1, phase, every)
+	return AirFx.cycle(tick, phase, every) != AirFx.cycle(tick - 1, phase, every)
 
 
 func _cloud(style: int, id: int, spot: Vector2, tick: int, salt: int) -> void:

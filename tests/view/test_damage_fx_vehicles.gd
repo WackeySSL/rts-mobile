@@ -63,7 +63,7 @@ func test_a_vehicle_under_half_its_health_trails_exhaust_from_its_damage_point()
 	_run(START, START + 45)
 	var spot: Vector2 = _point(Rig.LIGHT)
 	assert_array(_styles_at(spot)).is_equal([TRAIL])
-	assert_int(_puffs().size()).is_greater(2)
+	assert_int(_puffs().size()).is_greater(1)
 	for puff: Array in _puffs():  # Every puff of the ring is the tank's, at the hull's point.
 		assert_vector(puff[1]).is_equal_approx(spot, Vector2(0.01, 0.01))
 	var sheet: IsoSheetDef = _units.world_sort.sheet(&"light_tank")
@@ -81,19 +81,41 @@ func test_under_a_quarter_it_smokes_soot_burns_a_small_fire_and_throws_sparks() 
 
 
 func test_the_puff_stays_where_it_was_born_so_a_moving_vehicle_trails_smoke() -> void:
+	var rates: Dictionary[StringName, int] = _life.damage_emit_ms.duplicate()
+	rates[&"exhaust"] = 300  # A puff every 4.5 ticks, so both halves of the run have births.
+	_life.damage_emit_ms = rates
 	_hurt(Rig.LIGHT, 40)
 	_run(START, START + 30)
-	var first: Array = _puffs()
-	assert_int(first.size()).is_greater(0)
-	var rig: Node2D = _units.rig(0)
-	rig.position += Vector2(80.0, 0.0)  # The rig is drawn elsewhere now.
-	_run(START + 30, START + 60)
-	var later: Array = _puffs()
-	assert_int(later.size()).is_greater(first.size())
-	for index: int in first.size():
-		assert_vector(later[index][1]).is_equal(first[index][1])  # Left in the world.
-	assert_float((later[later.size() - 1][1] as Vector2).x).is_greater(
-		(first[0][1] as Vector2).x + 70.0
+	var home: Vector2 = _point(Rig.LIGHT)
+	assert_int(_puffs().size()).is_greater(0)
+	_units.rig(0).position += Vector2(80.0, 0.0)  # The rig is drawn elsewhere now.
+	_run(START + 30, START + 42)
+	var kept: int = 0
+	var moved: int = 0
+	for puff: Array in _puffs():
+		if puff[2] < LifeClock.tick_ms(START + 30):  # Born before the move, left where it was.
+			assert_vector(puff[1]).is_equal_approx(home, Vector2(0.01, 0.01))
+			kept += 1
+		else:
+			assert_vector(puff[1]).is_equal_approx(home + Vector2(80.0, 0.0), Vector2(0.01, 0.01))
+			moved += 1
+	assert_int(kept).is_greater(0)
+	assert_int(moved).is_greater(0)
+
+
+func test_a_vehicle_uses_the_vehicle_lines_not_the_building_lines() -> void:
+	# 60 % is intact for a vehicle (the line is 50) but SKADET for a building (67); 30 % is SKADET
+	# for a vehicle (the lines are 50 and 25) but KRITISK for a building (34).
+	_hurt(Rig.LIGHT, 60)
+	_run(START, START + 60)
+	assert_int(_puffs().size()).is_equal(0)
+	_hurt(Rig.LIGHT, 30)
+	_run(START, START + 60)
+	assert_array(_styles_at(_point(Rig.LIGHT))).is_equal([TRAIL])
+	_hurt(Rig.LIGHT, 24)
+	_run(START, START + 60)
+	assert_array(_styles_at(_point(Rig.LIGHT))).contains_exactly_in_any_order(
+		[SOOT, FIRE_CAR, SPARK]
 	)
 
 

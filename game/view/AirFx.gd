@@ -74,6 +74,9 @@ var _em_at: PackedVector2Array = PackedVector2Array()  ## World px from the foot
 ## The stage (1 or 2) from which the emitter goes quiet, 0 for never.
 var _em_quiet: PackedByteArray = PackedByteArray()
 var _dmg: DamageFx = DamageFx.new()
+## The other rings, planned and drawn with the ambient one: a ring is added with one line here.
+var _rings: Array[FxRing] = [_dmg.ring]
+var _ring_quads: int = 0  ## Quads of the rings' plans.
 var _size: int = 0  ## Slots in the ring (`life.emitter_slots` when it was made).
 var _head: int = 0
 var _count: int = 0
@@ -116,7 +119,7 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	var had_plan: bool = _quads > 0 or _dmg.ring.quad_count() > 0
+	var had_plan: bool = _quads > 0 or _ring_quads > 0
 	var snap: MatchSnapshot = runner.snapshot if runner != null else null
 	if snap == null:
 		return
@@ -128,14 +131,19 @@ func _process(_delta: float) -> void:
 	else:
 		_make_ring_if_resized()
 		_plan(snap)
-	_dmg.ring.plan(LifeClock.ms(snap, runner.alpha()))
-	if had_plan or _quads > 0 or _dmg.ring.quad_count() > 0:
+	_ring_quads = 0
+	var now_ms: float = LifeClock.ms(snap, runner.alpha())
+	for ring: FxRing in _rings:
+		ring.plan(now_ms)
+		_ring_quads += ring.quad_count()
+	if had_plan or _quads > 0 or _ring_quads > 0:
 		queue_redraw()
 
 
 func _draw() -> void:
 	_drawn_quads = _quads
-	_dmg.ring.draw(self, _atlas, true)  # The glow pass, under every other quad.
+	for ring: FxRing in _rings:  # The glow pass, under every other quad.
+		ring.draw(self, _atlas, FxRing.GLOW)
 	var mirrored: bool = false
 	for index: int in _quads:
 		var rect: Rect2 = quad_rect(index)
@@ -153,10 +161,12 @@ func _draw() -> void:
 			draw_texture_rect_region(_atlas, rect, region, color)
 	if mirrored:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	_dmg.ring.draw(self, _atlas, false)
+	for pass_of: int in range(FxRing.CLOUD, FxRing.PASSES):  # Clouds, then the flames over them.
+		for ring: FxRing in _rings:
+			ring.draw(self, _atlas, pass_of)
 
 
-## The damage particles (a test hook).
+## The damage particles (a test hook); their ring is the first of `_rings`.
 func damage() -> DamageFx:
 	return _dmg
 
@@ -230,7 +240,8 @@ func _follow_match(snap: MatchSnapshot) -> void:
 	if snap.match_serial != _serial:
 		_serial = snap.match_serial
 		_empty()
-		_dmg.clear()
+		for ring: FxRing in _rings:
+			ring.clear()
 
 
 func _empty() -> void:
@@ -267,7 +278,8 @@ func _read_numbers() -> void:
 
 
 ## Makes the table of the emitters of each building type, once a match: the sheet's `smoke`,
-## `steam` and `flame` points, at the art scale. False while the layer has no sheets yet.
+## `steam` and `flame` points, at the art scale, and the damage points (`DamageFx.build`). False
+## while the layer has no sheets yet.
 func _sync_types(snap: MatchSnapshot) -> bool:
 	if _types_serial == snap.match_serial:
 		return true
@@ -308,8 +320,8 @@ func _emitter_kind(named: String) -> int:
 	return -1
 
 
-## One tick: a puff at each emitter whose cycle turned over, of a building the player can see that
-## is complete and online.
+## One tick: a puff at each ambient emitter whose cycle turned over (`_emit_ambient`) and the
+## damage particles of the damaged buildings and vehicles in view (`DamageFx`).
 func _on_ticked(_tick: int) -> void:
 	var snap: MatchSnapshot = runner.snapshot
 	if snap == null or life == null:
@@ -335,11 +347,13 @@ func _on_ticked(_tick: int) -> void:
 func _emit_ambient(snap: MatchSnapshot, view: Rect2) -> void:
 	var tick: int = snap.tick
 	var types: PackedInt32Array = snap.type_index
+	var building: PackedInt32Array = snap.build_left
+	var offline: PackedInt32Array = snap.offline_until
 	var ids: PackedInt32Array = snap.unit_id
 	for row: int in ids.size():
 		var first: int = _type_first[types[row]]
 		var last: int = _type_first[types[row] + 1]
-		if first == last or snap.build_left[row] != 0 or snap.offline_until[row] > tick:
+		if first == last or building[row] != 0 or offline[row] > tick:
 			continue
 		if not building_layer.is_shown(row):
 			continue

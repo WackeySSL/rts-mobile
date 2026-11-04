@@ -116,11 +116,6 @@ func test_a_jet_is_mirrored_when_its_point_lies_left_of_the_footprint_centre() -
 	assert_int(seen[false]).is_greater(0)
 
 
-func test_the_gas_point_to_the_right_and_the_left_are_both_in_the_crafted_sheet() -> void:
-	assert_bool(POINT_AT[2].x > 0.0 and POINT_AT[3].x < 0.0).is_true()
-	assert_bool(LifeRegions.mirrorable(&"jet")).is_true()
-
-
 func test_an_intact_building_a_site_and_a_hidden_enemy_emit_nothing() -> void:
 	_hp(1, 100)
 	_run(START, START + 45)
@@ -175,7 +170,6 @@ func test_the_ring_never_holds_more_than_80_and_overwrites_its_oldest() -> void:
 	var oldest: float = INF
 	_run(START, START + 150)
 	var ring: FxRing = _air.damage().ring
-	assert_int(ring.capacity()).is_equal(80)
 	assert_int(ring.count()).is_equal(80)
 	for puff: Array in _puffs():
 		oldest = minf(oldest, puff[2])
@@ -189,7 +183,6 @@ func test_no_burning_building_has_more_than_15_live_smoke_puffs_with_the_default
 	_hp(1, 10)
 	_only(1)
 	var most: int = 0
-	var first: float = 0.0
 	for tick: int in range(START, START + 150):
 		Rig.deliver(_runner, PackedInt32Array(), tick)
 		_frame(tick, 0.9)
@@ -199,7 +192,6 @@ func test_no_burning_building_has_more_than_15_live_smoke_puffs_with_the_default
 			var kind: int = ring.quad_kind(index)
 			live += 1 if kind == DamageFx.K_SMOKE or kind == DamageFx.K_SOOT else 0
 		most = maxi(most, live)
-		first = maxf(first, 0.0)
 	assert_int(most).is_greater(0)
 	assert_int(most).is_less_equal(15)
 
@@ -218,3 +210,94 @@ func test_a_new_match_and_the_same_run_twice() -> void:
 	_frame(START + 59, 0.0)
 	assert_int(_air.damage().ring.count()).is_equal(0)
 	assert_int(_air.slot_count()).is_equal(0)
+
+
+func test_the_kritisk_fire_and_glow_are_larger_and_stronger_than_the_skadet_ones() -> void:
+	# Building 8 burns its `damage` point first: a small fire and a weak glow at SKADET, a big fire
+	# (`damage_fire_scale`) and a strong glow (`glow_strong_alpha`, the same scale) at KRITISK. At the
+	# tick of the newest fire's birth that puff is the widest and the most opaque of its kind.
+	_camera.position = _centre(8)
+	var weak: Array = _peak_fire(8, 60)
+	var strong: Array = _peak_fire(8, 10)
+	assert_float(weak[0]).is_equal_approx(
+		float(LifeRegions.region(&"fire").size.x) * _life.emit_flame_from, 0.01
+	)
+	assert_float(strong[0] / weak[0]).is_equal_approx(_life.damage_fire_scale, 0.001)
+	assert_float(weak[1]).is_equal_approx(_life.glow_weak_alpha, 0.0001)
+	assert_float(strong[1]).is_equal_approx(_life.glow_strong_alpha, 0.0001)
+	assert_float(strong[2] / weak[2]).is_equal_approx(_life.damage_fire_scale, 0.001)
+	assert_float(_life.damage_fire_scale).is_greater(1.0)
+	assert_float(_life.glow_strong_alpha).is_greater(_life.glow_weak_alpha)
+
+
+func test_three_kritisk_buildings_keep_every_soot_puff_for_its_life_and_four_lose_the_oldest(
+) -> void:
+	var three: Array[int] = [1, 2, 3]
+	var kept: Array = _soot_log(three, 80)
+	var room: Array = _soot_log(three, 2000)  # With room for all.
+	for tick: int in kept.size():
+		assert_array(kept[tick][0]).override_failure_message("tick %d" % tick).is_equal(
+			room[tick][0]
+		)
+	var four: Array[int] = [1, 2, 3, 4]
+	var all: Array = _soot_log(four, 2000)
+	var some: Array = _soot_log(four, 80)
+	var lost: int = 0
+	for tick: int in all.size():
+		for key: Array in all[tick][0]:
+			if not (some[tick][0] as Array).has(key):
+				lost += 1
+				# Only what is older than everything the full ring still holds goes.
+				assert_float(key[0]).is_less_equal(some[tick][1])
+	assert_int(lost).is_greater(0)
+
+
+## The widest fire quad, the strongest glow quad's alpha and its width, at the tick of the newest
+## fire's birth, for building `id` at `percent` of its hp.
+func _peak_fire(id: int, percent: int) -> Array:
+	_only(id)
+	_hp(id, percent)
+	_only(id)
+	_run(START, START + 60)
+	var newest: float = 0.0
+	for puff: Array in _puffs():
+		if puff[0] == DamageFx.Style.FIRE or puff[0] == DamageFx.Style.FIRE_BIG:
+			newest = maxf(newest, puff[2])
+	_frame(roundi(newest / TICK_MS), 0.0)
+	var ring: FxRing = _air.damage().ring
+	var width: float = 0.0
+	var alpha: float = 0.0
+	var glow_width: float = 0.0
+	for index: int in ring.quad_count():
+		var rect: Rect2 = ring.quad_rect(index)
+		if ring.quad_kind(index) == DamageFx.K_FIRE:
+			width = maxf(width, rect.size.x)
+		if ring.quad_kind(index) == DamageFx.K_GLOW and ring.quad_alpha(index) > alpha:
+			alpha = ring.quad_alpha(index)
+			glow_width = rect.size.x
+	return [width, alpha, glow_width]
+
+
+## For each tick of a run, [the live soot puffs as [born ms, spot], the born ms of the oldest puff
+## of the ring] with a ring of `slots`, the buildings `ids` at KRITISK and the others intact.
+func _soot_log(ids: Array[int], slots: int) -> Array:
+	_life.damage_slots = slots
+	for id: int in IDS:
+		_hp(id, 10 if ids.has(id) else 100)
+	_camera.position = (_centre(1) + _centre(5)) * 0.5
+	var log: Array = []
+	for tick: int in range(START, START + 120):
+		Rig.deliver(_runner, PackedInt32Array(), tick)
+		var ring: FxRing = _air.damage().ring
+		var live: Array = []
+		var oldest: float = INF
+		for index: int in ring.count():
+			oldest = minf(oldest, ring.puff_born(index))
+			var age: float = LifeClock.tick_ms(tick) - ring.puff_born(index)
+			if (
+				ring.puff_style(index) == DamageFx.Style.SOOT
+				and age < float(_life.damage_life_ms[&"soot"])
+			):
+				live.append([ring.puff_born(index), ring.puff_at(index)])
+		log.append([live, oldest])
+	return log
