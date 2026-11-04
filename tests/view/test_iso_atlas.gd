@@ -422,5 +422,6 @@ func _assert_every_frame_has_its_rasterised_size(
 						frames += 1
 	# The 480 frames of the blockouts, the squads' poses (P139): 2 factions x 2 squads x 8
 	# directions x (4 walk + 2 idle) frames, and the buildings' `anim` frames (P143): 16 + 16 + 6 +
-	# 4 + 4 + 4 + 2 + 2.
+	# 4 + 4 + 4 + 2 + 2, and the Derrick League's damage patches (P158a): 8 buildings x 2 stages =
+	# 16 frames (P158b adds the Lumen Accord's 16).
 	assert_int(frames).is_equal(480 + 192 + 54 + 16)

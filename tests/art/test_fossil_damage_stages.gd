@@ -22,6 +22,7 @@ const MODELS: String = "res://assets/art/models/fossil/%s.tres"
 ## is at 76 %); the Barracks, the Signal Mast and the Turbine Hall keep to the half.
 const SKADET_MAX: float = 0.80
 const HALF: Array[StringName] = [&"barracks", &"fossil_radar", &"power_plant"]
+const FOOT_TOP: float = 0.06  ## The foot slab is 0.06 tile tall.
 const KRITISK_FOOT_ROWS: int = 4  ## The overlap a patch needs above the foot of the body.
 ## The first stage that moves, turns or hides the group of each ambient emitter (0: never), parallel
 ## to the sheet's emitters, which list the ambient ones first.
@@ -43,7 +44,11 @@ func test_each_building_has_both_patches_from_its_model_and_no_ruin() -> void:
 	var index: IsoIndex = load(IsoIndex.PATH) as IsoIndex
 	for id: StringName in IDS:
 		var model: ArtModel = load(MODELS % id) as ArtModel
-		assert_array(model.problems()).override_failure_message(String(id)).is_empty()
+		(
+			assert_array(Array(model.problems()))
+			. override_failure_message("%s: %s" % [id, "; ".join(model.problems())])
+			. is_empty()
+		)
 		assert_array(model.damage_parts()).is_equal([&"dmg1", &"dmg2"])
 		var sheet: IsoSheetDef = index.sheet(id)
 		var parts: Array = Array(sheet.parts)
@@ -75,6 +80,25 @@ func test_the_cuts_run_down_the_body_and_skadet_stays_in_the_upper_part() -> voi
 		)
 		if id in HALF:
 			assert_int(skadet * 2).override_failure_message(String(id)).is_less_equal(rows)
+
+
+## Nothing of KRITISK but the foot slab stands on the ground: no `damage=2` primitive and no moved
+## one reaches below the top of the foot slab (an independent check; the generator's own refusal is
+## the cut's).
+func test_nothing_of_kritisk_lies_on_the_ground_but_the_foot() -> void:
+	for id: StringName in IDS:
+		var model: ArtModel = load(MODELS % id) as ArtModel
+		for prim: ArtPrim in model.damage_prims(2):
+			if prim.index == 0:  # The foot slab.
+				continue
+			var low: float = prim.aabb().position.z
+			if prim.shape == &"rod":
+				low = minf(prim.place(prim.rod_a).z, prim.place(prim.rod_b).z)
+			(
+				assert_float(low)
+				. override_failure_message("%s: %s lies on the ground" % [id, prim.line])
+				. is_greater_equal(FOOT_TOP - 0.001)
+			)
 
 
 func test_each_building_has_two_to_four_typed_damage_points_and_the_defence_a_second() -> void:
@@ -127,7 +151,12 @@ func test_the_key_share_of_each_stage_is_in_its_band() -> void:
 	var support: GDScript = load(SUPPORT) as GDScript
 	for id: StringName in IDS:
 		var model: ArtModel = load(MODELS % id) as ArtModel
-		assert_array(support.share_problems(model)).override_failure_message(String(id)).is_empty()
+		var problems: PackedStringArray = support.share_problems(model)
+		(
+			assert_array(Array(problems))
+			. override_failure_message("%s: %s" % [id, "; ".join(problems)])
+			. is_empty()
+		)
 
 
 func test_the_damage_changes_only_the_patches_the_body_shadow_and_card_are_as_before() -> void:
@@ -160,8 +189,8 @@ func test_the_damage_changes_only_the_patches_the_body_shadow_and_card_are_as_be
 				assert_str(with[path]).override_failure_message(path).is_equal(without[path])
 
 
-## ADR 0029 section 4: concrete breaks with rebar in the break, steel bends and never shatters,
-## the dark rooms show in KRITISK, and every building shows something in SKADET.
+## ADR 0029 section 4: every building has rebar or beams and dark rooms in KRITISK and something in
+## SKADET, and every rod bends (a straight rod would be a plain stick, not bent steel).
 func test_the_stages_follow_the_material_rules() -> void:
 	for id: StringName in IDS:
 		var model: ArtModel = load(MODELS % id) as ArtModel
@@ -192,15 +221,33 @@ func test_the_stages_follow_the_material_rules() -> void:
 	var barracks: ArtModel = load(MODELS % &"barracks") as ArtModel
 	assert_array(_charred(barracks, &"dmg1")).is_equal([&"p1r"])
 	assert_array(_charred(barracks, &"dmg2")).contains([&"k2b"])
-	# The refinery: thin pipes and the flare bend and never shatter, the sphere is torn open in
-	# plates, and no part of it is hidden in pieces.
+	# The refinery: the flare is never hidden in pieces, it is replaced by one bent iron rod from its
+	# base at each stage; the pipe run is cut at the break; the sphere is torn open in plates.
 	var refinery: ArtModel = load(MODELS % &"refinery") as ArtModel
-	var bent: int = 0
+	for part: StringName in [&"dmg1", &"dmg2"]:
+		var hidden: Array[StringName] = []
+		for move: ArtMove in refinery.pose_moves(part, 0):
+			if move.kind == &"hide":
+				hidden.append(move.group)
+		assert_array(hidden).override_failure_message("%s hides the flare" % part).contains(
+			[&"flare"]
+		)
+	for tag: String in ["damage=1", "damage=2"]:
+		var flare_rods: int = 0
+		for line: String in refinery.prims:
+			flare_rods += (
+				1
+				if (
+					line.begins_with("rod hull iron 0.1 -1.25 0.06 ")
+					and line.contains("bend=")
+					and line.contains(tag)
+				)
+				else 0
+			)
+		assert_int(flare_rods).override_failure_message("flare rod at %s" % tag).is_equal(1)
 	var petals: int = 0
 	for line: String in refinery.prims:
-		bent += 1 if line.begins_with("rod ") and line.contains("bend=") else 0
 		petals += 1 if line.begins_with("petals ") else 0
-	assert_int(bent).is_greater_equal(2)
 	assert_int(petals).is_equal(1)
 	# The headquarters' chimney snaps and topples: a group that turns about its break in KRITISK.
 	var works: ArtModel = load(MODELS % &"headquarters") as ArtModel

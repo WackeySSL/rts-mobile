@@ -19,6 +19,6 @@ pick_lift_px = 49
 muzzle_lift_px = 0
 icon = "res://assets/art/iso/icons/item_refinery.svg"
 emitters = PackedStringArray("steam", "flame", "dmg_gas", "dmg_gas", "damage")
-emitter_points = PackedVector2Array(131.2, -156.9, 86.4, -192, 23.7, -113.8, -6.4, -109.3, 131.2, -102.1)
+emitter_points = PackedVector2Array(131.2, -156.9, 86.4, -192, 23.7, -113.8, 19.2, -104.3, 131.2, -102.1)
 cuts = PackedInt32Array(160, 242)
 emitter_quiet = PackedInt32Array(2, 1, 0, 0, 0)

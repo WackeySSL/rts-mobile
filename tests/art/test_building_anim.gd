@@ -44,7 +44,7 @@ const EMITTERS: Dictionary[StringName, Array] = {
 	&"defence_turret": [&"damage", &"dmg_spark"],
 	&"fossil_radar": [&"damage", &"dmg_spark"],
 	&"fossil_strike": [&"launch", &"damage", &"dmg_spark"],
-	&"headquarters": [&"smoke", &"damage", &"dmg_spark", &"damage"],
+	&"headquarters": [&"smoke", &"damage", &"damage", &"dmg_spark"],
 	&"power_plant": [&"smoke", &"smoke", &"damage", &"damage", &"dmg_spark"],
 	&"refinery": [&"steam", &"flame", &"dmg_gas", &"dmg_gas", &"damage"],
 	&"vehicle_factory": [&"damage", &"dmg_spark"],

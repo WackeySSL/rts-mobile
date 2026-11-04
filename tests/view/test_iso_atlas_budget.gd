@@ -45,7 +45,7 @@ func test_the_cross_faction_page_at_full_scale_is_within_the_budget() -> void:
 	_assert_within_budget("cross-faction", page)
 	_assert_today("cross-faction", page, TODAY_CROSS)
 	# Another pair of triads gives a page of nearly the same height (the slot names break ties
-	# between frames of one height, so the shelves can fall differently: 3286 for this pair).
+	# between frames of one height, so the shelves can fall differently: 3402 for this pair too).
 	var others: Array[IsoPlayerArt] = [_art(&"fossil", 2), _art(&"renew", 3)]
 	var other: Vector2i = _page(others)
 	_assert_within_budget("cross-faction in other triads", other)

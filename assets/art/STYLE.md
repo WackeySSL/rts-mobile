@@ -715,23 +715,28 @@ a building that dies sinks into the crater. Both stages are model poses (`dmg1`,
 the shadow, the card and the `anim` frames are byte for byte as before (a test builds each model
 without its damage lines and compares them). Smoke, fire and sparks are never drawn into a sprite
 (P148's particles are).
-- **Material rules.** *Concrete* breaks along its panel joints and slabs: `broken` walls (a zigzag
-  top, teeth and low point from the line's hash) with `rebar` rods standing out of every break and
-  `slab` lumps. *Steel* bends and twists and never shatters: a `turn` of a group about its break, or a
-  `rod` with `bend`, never a hidden piece. *Panes* go first, as `hole` boxes where a lit `lamp`
-  window was (the Derrick League has no glass material, so `blow` is the Lumen Accord's). *Tanks and
-  spheres* get a `hole` and a charred sphere in SKADET and, in KRITISK, a cup with a `petals` flower of
-  plates round a dark disc. *Masts and chimneys* snap at one point and fall one way: the group above
-  the break `turn`s about it and `shift`s down, and the stump keeps a bent rod. The dark inside is
-  `interior` (two flat tones, no light ramp), put where a stage hides a wall or a roof.
+- **Material rules.** *Concrete* breaks along its panel joints: `broken` walls (a zigzag top, teeth
+  and low point from the line's hash), most of them with a `rebar` rod standing out of the break and
+  a few with `slab` lumps (the Bunkhouse and the Redoubt). *Steel* bends and twists and never
+  shatters: a `turn` of a group about its break, or a `rod` with `bend` in place of a hidden bar. The
+  Derrick League has no glass material, so a blown pane is a `hole` box where a lit `lamp` window
+  was (`blow` is the Lumen Accord's). *Tanks and spheres* get a `hole` and a charred sphere in
+  SKADET and, in KRITISK, a cup with a `petals` flower of plates round a dark disc. *Masts and
+  chimneys* snap at one point and fall one way: the group above the break `turn`s about it and
+  `shift`s down (the Signal Mast's, the Rigworks' and the Vehicle Works' chimney, the Turbine Hall's
+  tall stack). The dark inside is `interior` (two flat tones, no light ramp): in KRITISK where a
+  wall or roof is hidden and replaced, in SKADET as a dark box standing on a roof that stays.
+  **Brick:** ADR 0029 section 4 calls the Turbine Hall brick and the Vehicle Works brick and steel,
+  but our art has no brick (ADR 0023 dropped it), so both follow the concrete rule, and the
+  Turbine Hall's fires are on its stacks and its roof.
 - **Per building** (cut row of the body canvas, SKADET / KRITISK; key share of the intact picture's
   team pixels; patch px at 2x):
 
   | Building (art id) | SKADET | KRITISK | Cut | Key share | Patch 1 / 2 |
   | --- | --- | --- | --- | --- | --- |
   | Bunkhouse (`barracks`) | the rear ridge cap burnt and broken, a dark ragged hole in the right roof with bare rafters, the aerial bent | the right half fallen in behind broken walls and rebar, the left half stands under its roof, the eave band burnt at the rear | 89 / 178 of 200 | 0.83 / 0.29 | 200x80 / 250x154 |
-  | Redoubt (`defence_turret`) | the front corner of the top slab and its team band torn off over a dark gap, rebar, the aerial bent | the front half gone, the head's pillar stands in a broken shell | 99 / 121 of 130 | 0.68 / 0.39 | 122x98 / 122x98 |
-  | Signal Mast (`fossil_radar`) | a leg of the third tier gone and one buckled, the top tier leaning with its girders burnt | snapped under the top tier, which lies on the ground; the bunker roof torn open, its team band burnt | 121 / 219 of 260 | 0.77 / 0.32 | 104x126 / 250x202 |
+  | Redoubt (`defence_turret`) | the front corner of the top slab torn off over a dark gap with rebar, its team band there burnt, the aerial bent | the front half gone, the head's pillar stands in a broken shell | 99 / 121 of 130 | 0.68 / 0.39 | 122x98 / 122x98 |
+  | Signal Mast (`fossil_radar`) | a leg of the third tier gone and one buckled, the top tier leaning with its girders burnt | snapped under the top tier, which lies on the ground (a stump of bent rods); the bunker roof torn open, its team band burnt | 121 / 219 of 260 | 0.77 / 0.32 | 104x126 / 250x202 |
   | Deep Bore (`fossil_strike`) | a leg and a girder of the top tier buckled, the crown scorched, the back team girders burnt | the upper tiers twisted and leaning over buckled legs, the doghouse fallen in, the ring burnt | 189 / 293 of 362 | 0.82 / 0.42 | 240x194 / 378x282 |
   | Rigworks (`headquarters`) | the control block's roof corner torn open, the skylight blown, the chimney top leaning and burnt, the crane beam scorched | the right half of the hall fallen in, the chimney snapped and lying in the pit | 265 / 328 of 382 | 0.65 / 0.35 | 338x264 / 378x270 |
   | Turbine Hall (`power_plant`) | the tall stack leaning over a kink, the rear ridge cap burnt, a dark hole in the roof with rafters | the right half of the hall fallen in, the stack toppled across the standing roof | 126 / 221 of 252 | 0.83 / 0.46 | 186x126 / 250x192 |
@@ -743,8 +748,9 @@ without its damage lines and compares them). Smoke, fire and sparks are never dr
   (cut at most 50 %) for the Bunkhouse, the Signal Mast and the Turbine Hall; the Deep Bore (52 %) and
   the Cracking Plant (54 %) go a little past it, and the Redoubt (76 %), the Rigworks and the Vehicle
   Works (69 %) further, because their team colour sits low and ADR 0029 section 5's key share (SKADET
-  55 to 85 %) needs a change there. `tests/art/test_fossil_damage_stages.gd` pins the cuts (at most
-  80 %, the half for the three). KRITISK reaches 81 to 93 % (the foot is refused).
+  55 to 85 %) needs a change there. Michael accepted this on 2026-11-04: SKADET may reach 80 % of
+  the body's rows. `tests/art/test_fossil_damage_stages.gd` pins the cuts (at most 80 %, the half
+  for the three). KRITISK reaches 81 to 93 % (the foot is refused).
 - **Points and emitters.** Two to four typed points each (`damage`, `dmg_spark`, and `dmg_gas` on the
   Cracking Plant's spheres); the Redoubt has two. Every point has ink under it at both stages and lies
   above SKADET's cut. The Rigworks' chimney `smoke` names `chtop` (quiet from SKADET), the Turbine
