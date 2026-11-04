@@ -45,6 +45,8 @@ const Z_SHADOW: int = 1  ## Shadows, then rings, then the hulls and what sits on
 const Z_RING: int = 2
 const Z_BODY: int = 3
 const DAMAGE_STAGES: int = 2  ## The stages a vehicle is shown at.
+## The loose part's scale on every vehicle (STYLE.md "Damage overlays"); the scar's is `scar_milli`.
+const LOOSE_SCALE: float = 0.8
 
 var grass_color: Color = Color("6F8F57")
 var sand_color: Color = Color("CDB98F")
@@ -313,7 +315,7 @@ func _rig(
 
 ## The overlays of damage `stage` on a vehicle's rig (`Scar`, and at stage 2 `Loose`), in the order
 ## of the tree after the hull: the scar at the `damage` point scaled by `scar_milli`, the loose part
-## at the `hang` point (on the camera side but in d00 and d08), scaled the same and mirrored when
+## at the `hang` point (on the camera side but in d00 and d08), at `LOOSE_SCALE` and mirrored when
 ## that is left of the centre.
 ## A look is a frame of the part, alternating with the direction.
 func _add_damage(rig: Node2D, model: ArtModel, dir: int, zoom: float, stage: int) -> void:
@@ -332,7 +334,7 @@ func _add_damage(rig: Node2D, model: ArtModel, dir: int, zoom: float, stage: int
 			var loose: Sprite2D = _overlay(&"loose", look, at.x < 0.0, zoom)
 			loose.name = "Loose"
 			loose.position = at * scale_px
-			loose.scale = Vector2.ONE * model.scar_milli / 1000.0  # With the vehicle, as the scar.
+			loose.scale = Vector2.ONE * LOOSE_SCALE
 			rig.add_child(loose)
 
 

@@ -22,6 +22,8 @@ const VEHICLES: Array[String] = [
 	"renew/renew_tanker",
 ]
 const TRACKED: Array[String] = ["heavy_tank", "renew_tank"]
+const Iso: GDScript = preload("res://game/view/art_gallery_iso.gd")
+const LOOSE_READ_MIN_PX: int = 65  ## Opaque ink of a loose frame at zoom 1 (0.5 x its scale).
 const ORIGIN: Vector2 = Vector2(200.0, 180.0)  ## The ground point in the 400 x 300 test canvas.
 const CANVAS: Vector2i = Vector2i(400, 300)
 const TURRET_FREE_MIN: int = 11  ## Frames (of 16) in which the damage point is clear of the turret.
@@ -202,7 +204,7 @@ func test_the_loose_part_is_bolted_to_the_hull_and_does_not_drag() -> void:
 	for id: String in VEHICLES:
 		var sheet: IsoSheetDef = _vehicle_sheet(id)
 		var at: int = sheet.emitters.find("hang")
-		var scale: float = sheet.scar_milli / 1000.0
+		var scale: float = Iso.LOOSE_SCALE
 		for dir: int in 16:
 			var hull: Image = _layer(sheet.path(&"hull", dir), sheet.origin(&"hull"), 1.0)
 			var point: Vector2 = sheet.emitter_point(at, dir)
@@ -226,6 +228,23 @@ func test_the_loose_part_is_bolted_to_the_hull_and_does_not_drag() -> void:
 			assert_int(drag).override_failure_message("%s d%02d" % [id, dir]).is_less_equal(
 				BELOW_MAX_PX
 			)
+
+
+## Zoom 1 draws the 2x art at 0.5: a loose part must still be a shape there, not a curl that merges
+## with a wheel, so every frame keeps at least `LOOSE_READ_MIN_PX` opaque pixels at that size.
+func test_every_loose_frame_still_reads_at_zoom_1() -> void:
+	var neutral: IsoSheetDef = _sheet()
+	for frame: int in 4:
+		var raster: Image = _raster(neutral.path(&"loose", -1, frame), 0.5 * Iso.LOOSE_SCALE)
+		var ink: int = 0
+		for y: int in raster.get_height():
+			for x: int in raster.get_width():
+				ink += int(raster.get_pixel(x, y).a > 0.5)
+		(
+			assert_int(ink)
+			. override_failure_message("loose f%d: %d px" % [frame, ink])
+			. is_greater_equal(LOOSE_READ_MIN_PX)
+		)
 
 
 func _vehicle_sheet(id: String) -> IsoSheetDef:

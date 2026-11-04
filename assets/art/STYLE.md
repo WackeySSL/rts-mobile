@@ -244,7 +244,8 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   hull frame for each, once for a building: `emitter_point(index, dir)`) and `marks`, each written
   only when set, so today's sheets are unchanged. `tests/art/test_artgen_frames.gd` pins it.
 - **Damage poses** (P156, ADR 0028 sections 3 and 4; generator v4; since P160 the eight vehicles
-  carry `damage`, `hang` and `scar_milli`). A building's `poses` gain `dmg1` and `dmg2`, its body at damage stage 1 and 2, a move a line, frame
+  carry `damage`, `hang` and `scar_milli`). A building's `poses` gain `dmg1` and `dmg2`, its body at
+  damage stage 1 and 2, a move a line, frame
   0 and no header line: `dmg1|dmg2 0 <group> shift <dx> <dy> <dz>`, `... turn <x|y|z> <degrees>
   <px> <py> <pz>`, `... hide` (the group is not drawn) or `... char <percent>` (0 to 100: its
   face colours, edges too, are mixed that far towards the char colour **#2A2522**; a `team`
@@ -1695,22 +1696,28 @@ stage 1, `scar2` and `loose` at stage 2.
 | `loose` | 4 (`_f0`, `_f1` skirt plates for `marks` `tracks`; `_f2`, `_f3` fenders for `wheels`) | 44 x 40 | bracket 6, 6 | A grey steel part (#7D8893 face, #A9B4BE lit edge, #5B6670 underside, #30342E edge and bolt, soot smudges) hanging off one bolt at its top left and dropping to the right: a slab with a torn low corner, a plate snapped in two, a curved fender peeled outward, a creased fender. |
 
 - **Shapes and colour.** Polygons, ellipses and polylines only. The scar's alpha is a per-element
-  `opacity`, so the hull's own shading shows through; the loose part is opaque, in four greys (face,
-  lit edge, underside, edge) so it sits on olive, white and graphite hulls alike. No colour in either
-  key band (saturation 0.30 or more within 20 degrees of a key colour); the only saturated colours
-  are the ember's yellow-white (hue at least 46 degrees, ADR 0027 section 4).
+  `opacity`, so the hull's own shading shows through. The loose part is a mid-grey plate with a dark
+  outline: four greys (face, lit edge, underside, edge) and a few soot smudges of #1C2127 at partial
+  alpha, so it sits on olive, white and graphite hulls alike. No colour in either key band
+  (saturation 0.30 or more within 20 degrees of a key colour); the only saturated colours are the
+  ember's yellow-white (hue at least 46 degrees, ADR 0027 section 4).
 - **The damage point** (px of the 2x art from the hull's ground point, per hull frame) is the
   scar's centre. It is on a top face the turret does not cover, at the turret's default aim
   (straight ahead): on the hull in all 16 frames and clear of the turret in at least 11. With a
-  centred turret and a long barrel, a vehicle facing up the screen may hide its scar (the Bullhead's
-  at d15 to d01, the Arcline's at d07 to d09 facing the camera); no vehicle hides it in more than
-  five frames. At most 5 % of a scar's ink falls outside the hull and turret silhouette, so a scar
-  on a drum (the two tankers) stays below its outline: the point sits about 0.1 tile under the drum top.
+  centred turret and a long barrel, a vehicle facing up the screen may hide its scar: the Bullhead's
+  at d14, d15 and d00 (0 to 12 % visible), the Mortar Rig's at d15 to d01 (24 to 38 %), and the
+  Torque's and the Arcline's facing the camera at d07 to d09 (the Torque's 2 to 23 %); no vehicle
+  hides it in more than five frames. At most 5 % of a scar's ink falls outside the hull and turret
+  silhouette, so a scar on a drum (the two tankers) stays below its outline: the point sits about
+  0.1 tile under the drum top, and the Torque's sits well inside its rear edge.
   `tests/art/test_damage_overlays.gd` measures all of it from the committed frames.
-- **Scale.** `scar_milli` scales both the scar and the loose part (1000 is the canvas as drawn).
-  The Bullhead takes 800 (its glacis is the one flat top face the turret leaves), 900 the Torque,
-  600 the Flarejack, the Mortar Rig, 500 the Tanker, the Fuel Runner and the Swift, 450 the Arcline.
-  The view (P161) scales `Loose` as it scales `Scar`.
+- **Scale.** `scar_milli` scales the scar only (1000 is the canvas as drawn): 800 the Bullhead (its
+  glacis is the one flat top face the turret leaves) and the Torque, 600 the Flarejack and the
+  Mortar Rig, 500 the Tanker, the Fuel Runner and the Swift, 450 the Arcline. The loose part has one
+  scale for every vehicle, `LOOSE_SCALE` 0.8 (the gallery's constant): scaled with the scar it
+  shrank to a 10 to 13 px curl at zoom 1 that merged with the wheel. At 0.8 it changes 49 to 71
+  pixels of a vehicle at zoom 1 in its worst direction (the Flarejack's 53, the Mortar Rig's 49),
+  and the drag rule below holds. The view (P161) takes the same constant.
 - **The hang point** is the bolt of `loose`, on the top edge of the hull body above the wheel or
   the track (about 0.28 tile from the long axis on a wheeled vehicle, 0.38 on the Bullhead, 0.4 on
   the Torque), on the side that faces the camera in every hull frame except the two edge-on ones
@@ -1726,8 +1733,9 @@ stage 1, `scar2` and `loose` at stage 2.
   `loose`), Signal triad, zoom 1. Judge there that the scar sits on the hull and not on the ground,
   and that the loose part hangs from the near side in every direction.
 - **Readability.** At 32 px in greyscale a scar is a dark patch on the hull and a loose part a
-  grey flag at its side, dark on grass and light on sand; neither changes the silhouette's role cue
-  (the gun, the drum, the wheels). The vehicle must still read without them: they only add.
+  mid-grey plate with a dark outline at its side, about as light as grass and darker than sand, so
+  its outline carries it; neither changes the silhouette's role cue (the gun, the drum, the
+  wheels). The vehicle must still read without them: they only add.
 - Tests: `tests/art/test_damage_overlays.gd` (sheet, files, imports, edge, key bands, the models'
   points, the visibility, silhouette and bolt measures), `tests/view/test_neutral_sheet.gd` (the
   bake), `tests/art/test_art_gallery_iso.gd` (the rows: positions, frames, order, z, anchor ink).

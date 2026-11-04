@@ -5,6 +5,7 @@ extends GdUnitTestSuite
 ## frames carry the triad of the row they are in, and everything stays on its ground at the base
 ## size of a phone held the wide way. The generator is in test_artgen.gd.
 
+const Iso: GDScript = preload("res://game/view/art_gallery_iso.gd")
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
 const ISO_PAGE: int = 4
 const ROWS: Array[String] = ["Signal", "Arktisk"]
@@ -131,7 +132,7 @@ func test_a_vehicle_shows_its_16_directions_at_stage_1_and_2_with_the_neutral_ov
 							. override_failure_message(label)
 							. is_equal_approx(hang * 0.5, Vector2.ONE * 0.06)
 						)
-						assert_vector(loose.scale).is_equal(scale)
+						assert_vector(loose.scale).is_equal(Vector2.ONE * Iso.LOOSE_SCALE)
 						assert_bool(loose.flip_h).is_equal(hang.x < 0.0)
 						assert_int(loose.z_index).is_equal(hull.z_index)
 						assert_int(loose.get_index()).is_greater(hull.get_index())
