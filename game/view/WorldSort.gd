@@ -157,8 +157,8 @@ func mid_colour(owner_id: int) -> Color:
 ## Makes `sprite` the sprite of `part` of `sheet` on the atlas, white, whose origin is the part's
 ## `IsoSheetDef.origin`: a unit's ground point, a building's footprint centre (for its body and
 ## its shadow), a turret's or head's pivot. Frames come from `show_frame`.
-## A damage patch (`dmg1`, `dmg2`, `ruin`) is sized by `IsoAtlas.part_scale`: `dress` handles it
-## by name.
+## A damage part (the `dmg1` and `dmg2` patches, the whole `ruin` picture) is sized by
+## `IsoAtlas.part_scale`: `dress` handles it by name.
 func dress(sprite: Sprite2D, sheet_def: IsoSheetDef, part: StringName) -> void:
 	sprite.texture = atlas.texture()
 	sprite.region_enabled = true
@@ -166,7 +166,7 @@ func dress(sprite: Sprite2D, sheet_def: IsoSheetDef, part: StringName) -> void:
 	sprite.modulate = Color.WHITE
 	if not atlas.is_empty():
 		# The engine rounds a raster per axis and stretches the art to it, so a sprite is sized per
-		# axis from the raster; a damage patch is baked at IsoAtlas.part_factor of the bake scale.
+		# axis from the raster; a damage part is baked at IsoAtlas.part_factor of the bake scale.
 		var per_px: Vector2 = texels(sheet_def, part)
 		sprite.scale = Vector2(ART_SCALE / per_px.x, ART_SCALE / per_px.y)
 		sprite.offset = -Vector2(sheet_def.origin(part)) * per_px
