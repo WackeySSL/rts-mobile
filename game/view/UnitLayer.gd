@@ -785,7 +785,12 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 		if rigs[row].visible != shown:
 			rigs[row].visible = shown
 			if shown and (rigs[row] as Rig).damage != null:
-				_queue_damage(rigs[row] as Rig)  # Seen again: the stage of now.
+				var seen: VehicleDamage.Parts = (rigs[row] as Rig).damage
+				if seen.stale:  # Turned while hidden: placed at the frame of now, never deferred.
+					var placed: int = VehicleDamage.place(seen, life.damage_loose)
+					_follow_writes += placed
+					_rig_life.writes += placed
+				_queue_damage(rigs[row] as Rig)  # A stage that changed meanwhile.
 		# A unit that stood still last tick keeps its heading. So does one that moved under half a
 		# full step: the step onto its goal is an integer remainder and can point anywhere.
 		var moved_x: int = cur_x[row] - prev_x[row]

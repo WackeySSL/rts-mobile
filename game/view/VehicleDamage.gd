@@ -39,6 +39,7 @@ class Parts:
 	var want: int = 0
 	var queued: bool = false
 	var left: bool = false  ## `Loose` is mirrored.
+	var stale: bool = false  ## The hull turned while the rig was hidden: place it when seen.
 	var damage_at: int = -1  ## The sheet's `damage` and `hang` emitter indices.
 	var hang_at: int = -1
 	var scar_look: int = 0
@@ -71,10 +72,12 @@ static func dress(
 	parts.shown = 0
 	parts.want = 0
 	parts.left = false
+	parts.stale = false
 	parts.damage_at = sheet.emitters.find("damage")
 	parts.hang_at = sheet.emitters.find("hang")
 	parts.scar_look = LifeClock.mix(uid, SALT_SCAR) % neutral.frame_count(SCAR_PARTS[0])
 	# The loose part's frames are the track guards, then the wheel fenders: half of them each.
+	@warning_ignore("integer_division")
 	var kinds: int = neutral.frame_count(LOOSE_PART) / 2
 	parts.loose_look = LifeClock.mix(uid, SALT_LOOSE) % kinds
 	if sheet.marks != &"tracks":
@@ -116,19 +119,23 @@ static func apply(parts: Parts, sort: WorldSort, to: int, loose_on: bool) -> int
 	return writes
 
 
-## The hull turned to frame `dir`: the shown overlays follow it. Returns the writes: the positions
-## (1 at stage 1, 2 at stage 2) and the flip when the hang point changed side. Nothing at stage 0.
-## A hidden rig (`seen` false) writes none: it forgets its stage (both overlays hidden, `shown` 0)
-## and is placed afresh by the stage-of-now write when it is seen again.
+## The hull turned to frame `dir`: the shown overlays follow it (`place`). A hidden rig (`seen`
+## false) writes nothing: it keeps its stage, marks the overlays `stale` and only notes `dir`; the
+## layer places it when it is seen again.
 static func follow(parts: Parts, dir: int, loose_on: bool, seen: bool) -> int:
 	parts.dir = dir
 	if parts.shown == 0:
 		return 0
 	if not seen:
-		parts.shown = 0
-		parts.scar.visible = false
-		parts.loose.visible = false
+		parts.stale = true
 		return 0
+	return place(parts, loose_on)
+
+
+## Puts the shown overlays at the points of `parts.dir`. Returns the writes: the positions (1 at
+## stage 1, 2 at stage 2) and the flip when the hang point changed side.
+static func place(parts: Parts, loose_on: bool) -> int:
+	parts.stale = false
 	parts.scar.position = _point(parts, parts.damage_at)
 	if parts.shown == 2 and loose_on:
 		return 2 + (1 if _place_loose(parts, false) else 0)

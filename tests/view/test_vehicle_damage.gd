@@ -68,7 +68,8 @@ func test_each_stage_shows_its_scar_and_the_marks_pick_the_loose_frames() -> voi
 	assert_object(_loose(LIGHT).texture).is_same(texture)
 
 
-func test_the_looks_are_picked_by_the_id_and_the_marks_and_are_the_same_on_two_runs() -> void:
+func test_the_looks_are_picked_by_the_id_and_the_marks_and_the_pinned_sums_hold() -> void:
+	# The sums are fixed numbers of the integer mix, so they hold on every run and device.
 	var scar_ones: int = 0
 	var loose_ones: int = 0
 	for id: int in range(1, 21):

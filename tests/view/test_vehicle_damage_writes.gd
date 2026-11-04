@@ -81,6 +81,7 @@ func test_a_crowd_dropped_to_forty_percent_is_applied_in_eight_frames_and_never_
 	var type: int = _runner.world.type_ids.find(&"light_tank")
 	var ids: PackedInt32Array = PackedInt32Array()
 	for index: int in CROWD:
+		@warning_ignore("integer_division")
 		var at: Vector2i = Vector2i(6000 + 300 * (index % 20), 10000 + 600 * (index / 20))
 		ids.append(_runner.world.add_unit(1, type, at.x, at.y))
 	_runner.run_ticks(1)
@@ -156,30 +157,67 @@ func test_the_follow_writes_come_first_and_the_queue_takes_what_is_left() -> voi
 
 
 func test_a_hidden_stage_two_enemy_that_turns_writes_nothing_and_is_placed_when_seen() -> void:
-	Rig.see(_runner.snapshot, 1, [Vector2i(28, 28)])
-	_layer._process(0.0)
-	_set_hp(ENEMY, 10)
-	_runner.run_ticks(1)
-	Rig.see(_runner.snapshot, 1, [Vector2i(28, 28)])
-	_layer._process(0.0)
+	_enemy_at_stage(10)
 	assert_int(_rig(ENEMY).damage.shown).is_equal(2)
-	Rig.see(_runner.snapshot, 1, [])
-	_layer._process(0.0)
+	_hide_enemy()
+	var before: Array = _sprite_state(ENEMY)
+	var flips: Array[int] = [0]
+	_scar(ENEMY).visibility_changed.connect(func() -> void: flips[0] += 1)
+	_loose(ENEMY).visibility_changed.connect(func() -> void: flips[0] += 1)
 	var writes: int = _layer.life_writes()
 	for dir: int in range(0, 8):
 		_turn(ENEMY, dir)
 	_layer._process(0.0)
 	assert_int(_layer.life_writes()).is_equal(writes)
-	Rig.see(_runner.snapshot, 1, [Vector2i(28, 28)])
+	assert_int(flips[0]).is_equal(0)
+	assert_array(_sprite_state(ENEMY)).is_equal(before)  # Not one property moved.
+	var left_before: bool = _rig(ENEMY).damage.left
+	_show_enemy()
+	var sheet: IsoSheetDef = _sheet(ENEMY)
+	var hang: Vector2 = sheet.emitter_point(sheet.emitters.find("hang"), 7)
+	var flip: int = 1 if (hang.x < 0.0) != left_before else 0
+	assert_int(_layer.life_writes() - writes).is_equal(2 + flip)  # Place only: the stage stands.
+	var texels: Vector2 = _layer.world_sort.texels(sheet, &"hull")
+	var point: Vector2 = sheet.emitter_point(sheet.emitters.find("damage"), 7)
+	assert_vector(_scar(ENEMY).position).is_equal_approx(point * texels, Vector2(0.001, 0.001))
+	assert_vector(_loose(ENEMY).position).is_equal_approx(hang * texels, Vector2(0.001, 0.001))
+	assert_bool(_loose(ENEMY).scale.x < 0.0).is_equal(hang.x < 0.0)
+	assert_bool(_scar(ENEMY).visible and _loose(ENEMY).visible).is_true()
+
+
+func test_a_stage_change_while_hidden_costs_the_place_and_the_queued_change_when_seen() -> void:
+	_enemy_at_stage(40)
+	_hide_enemy()
+	_turn(ENEMY, 7)
+	_set_hp(ENEMY, 10)  # 1 -> 2 while hidden: nothing is queued.
+	_runner.run_ticks(1)
+	Rig.see(_runner.snapshot, 1, [])
 	_layer._process(0.0)
-	assert_int(_layer.life_writes() - writes).is_equal(7)  # The stage of now, positions with it.
+	assert_int(_layer._damage_queue.size()).is_equal(0)
+	var writes: int = _layer.life_writes()
+	_show_enemy()
+	assert_int(_layer.life_writes() - writes).is_equal(1 + 5)  # Place at stage 1, then 1 -> 2.
+	assert_int(_rig(ENEMY).damage.shown).is_equal(2)
+
+
+func test_a_rig_seen_again_with_no_share_left_never_draws_at_an_old_frames_point() -> void:
+	_enemy_at_stage(40)
+	_hide_enemy()
+	_turn(ENEMY, 7)
+	_set_hp(ENEMY, 10)
+	_runner.run_ticks(1)
+	Rig.see(_runner.snapshot, 1, [])
+	_layer._process(0.0)
+	_life.damage_writes_per_frame = _life.damage_building_writes  # A share of 0.
+	var writes: int = _layer.life_writes()
+	_show_enemy()
+	assert_int(_layer.life_writes() - writes).is_equal(1)  # The place, never deferred.
+	assert_int(_layer._damage_queue.size()).is_equal(1)  # The change waits.
 	var sheet: IsoSheetDef = _sheet(ENEMY)
 	var texels: Vector2 = _layer.world_sort.texels(sheet, &"hull")
 	var point: Vector2 = sheet.emitter_point(sheet.emitters.find("damage"), 7)
 	assert_vector(_scar(ENEMY).position).is_equal_approx(point * texels, Vector2(0.001, 0.001))
-	var hang: Vector2 = sheet.emitter_point(sheet.emitters.find("hang"), 7)
-	assert_vector(_loose(ENEMY).position).is_equal_approx(hang * texels, Vector2(0.001, 0.001))
-	assert_bool(_loose(ENEMY).scale.x < 0.0).is_equal(hang.x < 0.0)
+	assert_bool(_loose(ENEMY).visible).is_false()
 
 
 func test_the_vehicles_share_of_the_write_budget_fits_the_dearest_change() -> void:
@@ -219,3 +257,32 @@ func _flips(id: int, from: int, to: int) -> int:
 		var b: float = sheet.emitter_point(at, (dir + 1) % UnitLayer.DIRECTIONS).x
 		count += 1 if (a < 0.0) != (b < 0.0) else 0
 	return count
+
+
+## The enemy tank in sight at `percent` of its hp, its stage applied.
+func _enemy_at_stage(percent: int) -> void:
+	Rig.see(_runner.snapshot, 1, [Vector2i(28, 28)])
+	_layer._process(0.0)
+	_set_hp(ENEMY, percent)
+	_runner.run_ticks(1)
+	Rig.see(_runner.snapshot, 1, [Vector2i(28, 28)])
+	_layer._process(0.0)
+
+
+func _hide_enemy() -> void:
+	Rig.see(_runner.snapshot, 1, [])
+	_layer._process(0.0)
+	assert_bool(_rig(ENEMY).visible).is_false()
+
+
+func _show_enemy() -> void:
+	Rig.see(_runner.snapshot, 1, [Vector2i(28, 28)])
+	_layer._process(0.0)
+
+
+## What the two overlays hold, to compare before and after.
+func _sprite_state(id: int) -> Array:
+	var state: Array = []
+	for sprite: Sprite2D in [_scar(id), _loose(id)]:
+		state.append_array([sprite.visible, sprite.position, sprite.scale, sprite.region_rect])
+	return state
