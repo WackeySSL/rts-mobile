@@ -14,7 +14,12 @@ extends RefCounted
 ## and kind (`LifeClock.pick`), so a run is the same on every device. Sites, squads and sources
 ## outside the view rect grown by a tile emit nothing; a blackout does not stop a fire. `reduced`
 ## keeps smoke, fire and glow and drops sparks, embers and the crater's smoke. A glow is steady: one
-## per burning point, born again the tick the last one ends (`_lamp`).
+## per burning point, and the flame it lights is born with it: a point has a grid of `span` ticks
+## (`ceil(damage_emit_ms[fire] x 15 / 1000)`, 8) with a phase of its own, and on every grid tick the
+## fire (or the jet, at a gas point: it takes the fire's cycle at both stages, so the SKADET and the
+## KRITISK glow follow each other with no gap and no overlap) and its glow are born together; a glow
+## lives exactly `span` ticks and a flame holds its alpha as long. A crater's embers ride the grid
+## of the ember's rate with the faint glow.
 
 ## The styles of the ring's puffs (a sprite and how it lives), and the sprite kinds.
 enum Style {
@@ -125,23 +130,34 @@ func build(snap: MatchSnapshot, sort: WorldSort) -> void:
 	_first.append(_p_type.size())
 
 
-## The damage points of `sheet` at ground height, the offsets a crater source takes. A sheet's point
-## is a screen offset from the footprint centre (art px, no height of its own), so the ground point
-## keeps its x and takes the footprint centre line (y 0): the smoke rises from the crater, not from
-## the air where the walls were.
-static func ground_points(sheet: IsoSheetDef) -> PackedVector2Array:
-	var found: PackedVector2Array = PackedVector2Array()
-	for index: int in sheet.emitters.size():
-		if POINTS.has(StringName(sheet.emitters[index])) and found.size() < MAX_POINTS:
-			found.append(Vector2(sheet.emitter_point(index, -1).x * WorldSort.ART_SCALE, 0.0))
-	return found
-
-
 ## Starts a crater source of building `id` at `centre` (world px) from tick `tick`, over the
-## footprint `foot` (tiles) of player `owner`: it smokes for `crater_smoke_ms` and glows with
-## embers for `crater_ember_ms` from `offsets` (none: from the centre). At most `crater_sources`
-## live; the oldest ends first.
+## footprint `foot` (tiles) of player `owner`, for a building of type index `type`: it smokes for
+## `crater_smoke_ms` and glows with embers for `crater_ember_ms` from the type's damage points at
+## ground height. A sheet's point is a screen offset from the footprint centre (art px, no height
+## of its own), so the ground point keeps its x and takes the footprint centre line (y 0): the
+## smoke rises from the crater, not from the air where the walls were. A type without points (or
+## none known) uses the centre. At most `crater_sources` live; the oldest ends first. Allocates
+## nothing.
 func add_crater(
+	life: LifeSettings, id: int, centre: Vector2, type: int, foot: Rect2i, owner: int, tick: int
+) -> void:
+	var slot: int = _take_crater(life, id, centre, foot, owner, tick)
+	if slot < 0:
+		return
+	var from: int = 0
+	var points: int = 0
+	if type >= 0 and type + 1 < _first.size():
+		from = _first[type]
+		points = _first[type + 1] - from
+	_c_n[slot] = maxi(points, 1)
+	for k: int in MAX_POINTS:
+		_c_off[slot * MAX_POINTS + k] = (
+			Vector2(_p_at[from + k].x, 0.0) if k < points else Vector2.ZERO
+		)
+
+
+## The same with the offsets from `centre` given (none: the centre): a crafted source.
+func add_crater_offsets(
 	life: LifeSettings,
 	id: int,
 	centre: Vector2,
@@ -150,9 +166,31 @@ func add_crater(
 	owner: int,
 	tick: int
 ) -> void:
+	var slot: int = _take_crater(life, id, centre, foot, owner, tick)
+	if slot < 0:
+		return
+	_c_n[slot] = clampi(offsets.size(), 1, MAX_POINTS)
+	for k: int in MAX_POINTS:
+		_c_off[slot * MAX_POINTS + k] = offsets[k] if k < offsets.size() else Vector2.ZERO
+
+
+## Ends every live crater source whose footprint meets `foot` (tiles): a building was placed on it.
+## Their puffs live out.
+func end_craters_on(foot: Rect2i) -> void:
+	for slot: int in _c_cap:
+		var at: int = slot * 4
+		var theirs: Rect2i = Rect2i(_c_foot[at], _c_foot[at + 1], _c_foot[at + 2], _c_foot[at + 3])
+		if _c_n[slot] > 0 and theirs.intersects(foot):
+			_c_n[slot] = 0
+
+
+# The slot of a new source, the oldest's when full; -1 without slots.
+func _take_crater(
+	life: LifeSettings, id: int, centre: Vector2, foot: Rect2i, owner: int, tick: int
+) -> int:
 	_make_craters_if_resized(life)
 	if _c_cap == 0:
-		return
+		return -1
 	var slot: int = _c_head
 	_c_head = (_c_head + 1) % _c_cap
 	_c_id[slot] = id
@@ -163,9 +201,7 @@ func add_crater(
 	_c_foot[slot * 4 + 2] = foot.size.x
 	_c_foot[slot * 4 + 3] = foot.size.y
 	_c_at[slot] = centre
-	_c_n[slot] = clampi(offsets.size(), 1, MAX_POINTS)
-	for k: int in MAX_POINTS:
-		_c_off[slot * MAX_POINTS + k] = offsets[k] if k < offsets.size() else Vector2.ZERO
+	return slot
 
 
 ## The crater sources alive.
@@ -204,12 +240,12 @@ func read(life: LifeSettings) -> void:
 		a,
 		true
 	)
-	_style(Style.JET, K_JET, &"jet", Vector2.ZERO, flame, a, true)
+	_style(Style.JET, K_JET, &"jet", Vector2.ZERO, flame, a, true, &"fire")
 	_style(Style.SPARK, K_SPARK, &"spark", Vector2(life.damage_spark_rise_px, drift), one, a, false)
 	_style(Style.EMBER, K_EMBER, &"ember", Vector2.ZERO, one, a, false)
 	_glow(Style.GLOW_WEAK, &"fire", one, life.glow_weak_alpha)
 	_glow(Style.GLOW_STRONG, &"fire", one * big, life.glow_strong_alpha)
-	_glow(Style.GLOW_JET, &"jet", one, life.glow_weak_alpha)
+	_glow(Style.GLOW_JET, &"fire", one, life.glow_weak_alpha)
 	_glow(Style.GLOW_FAINT, &"ember", one, life.glow_faint_alpha)
 
 
@@ -275,9 +311,9 @@ func _burn(
 			_cloud(Style.SMOKE, id, spot, tick, kinds)
 			if code == GAS:
 				var side: int = 1 if _p_at[first + point].x < 0.0 else 0  # Points away from the wall.
-				if _due(Style.JET, id, kinds + 1, tick):
+				if _on_grid(Style.GLOW_JET, id, tick, kinds + 1):
 					_birth(Style.JET, spot, tick, id, side)
-				_lamp(Style.GLOW_JET, id, spot, tick, kinds + 3)
+					_birth(Style.GLOW_JET, spot, tick, id, 0)
 			elif code != SPARKS:
 				_flame(Style.FIRE, Style.GLOW_WEAK, id, spot, tick, kinds + 1)
 		else:
@@ -319,24 +355,37 @@ func _drive(
 		_cloud(Style.SPARK, id, spot, snap.tick, 2)
 
 
-# Sets glow style `style`: a steady glow of `named`'s rate, living the whole ticks of one cycle.
+# The whole ticks of a cycle of `every` ms, rounded up; 0 for no cycle.
 @warning_ignore("integer_division")
+func _ticks(every: int) -> int:
+	return (every * Sim.TICK_RATE + 999) / 1000 if every > 0 else 0
+
+
+# Sets glow style `style`: a steady glow of `named`'s rate, living the whole ticks of one cycle.
 func _glow(style: int, named: StringName, grow: Vector2, a: float) -> void:
-	var every: int = _emit_ms.get(named, 0)
-	var span: int = (every * Sim.TICK_RATE + 999) / 1000 if every > 0 else 0
+	var span: int = _ticks(_emit_ms.get(named, 0))
 	_glow_ticks[style] = span
-	var life_ms: float = LifeClock.tick_ms(span)
+	var life_ms: float = LifeClock.tick_ms(span) - 0.01  # Gone in the tick the next one is born.
 	ring.set_style(style, K_GLOW, life_ms, 0.0, 0.0, grow, a, life_ms - 1.0)
 
 
 # Sets style `style`: sprite `kind`, the rate and life of `named`, motion = rise and drift px, the
 # growth, the alpha, and whether it is a flame (it holds its alpha until the next one is born).
 func _style(
-	style: int, kind: int, named: StringName, motion: Vector2, grow: Vector2, a: float, flame: bool
+	style: int,
+	kind: int,
+	named: StringName,
+	motion: Vector2,
+	grow: Vector2,
+	a: float,
+	flame: bool,
+	cycle_of: StringName = &""
 ) -> void:
 	var every: int = _emit_ms.get(named, 0)
 	_every[style] = every
-	var hold: float = float(every) if flame else 0.0
+	var hold: float = 0.0
+	if flame:  # Holds its alpha for one cycle of the grid (the glow's life).
+		hold = LifeClock.tick_ms(_ticks(_emit_ms.get(cycle_of if cycle_of != &"" else named, 0)))
 	ring.set_style(style, kind, float(_life_ms.get(named, 0)), motion.x, motion.y, grow, a, hold)
 
 
@@ -354,18 +403,18 @@ func _cloud(style: int, id: int, spot: Vector2, tick: int, salt: int) -> void:
 		_birth(style, spot, tick, id, -1)
 
 
-# A fire with the glow under it.
+# A fire with the glow under it, born together on the point's grid.
 func _flame(style: int, glow: int, id: int, spot: Vector2, tick: int, salt: int) -> void:
-	if _due(style, id, salt, tick):
+	if _on_grid(glow, id, tick, salt):
 		_birth(style, spot, tick, id, -1)
-	_lamp(glow, id, spot, tick, salt + 2)
+		_birth(glow, spot, tick, id, 0)
 
 
-# The glow of the source (`id`, `salt`): born in the tick its last one ended; one shows at a time.
-func _lamp(style: int, id: int, spot: Vector2, tick: int, salt: int) -> void:
-	var span: int = _glow_ticks[style]
-	if span > 0 and (tick + LifeClock.pick(id, SALT_PHASE + salt, span)) % span == 0:
-		_birth(style, spot, tick, id, 0)
+# Whether `tick` is on the grid of glow style `glow` for the source (`id`, `salt`): every `span`
+# ticks from a phase of its own.
+func _on_grid(glow: int, id: int, tick: int, salt: int) -> bool:
+	var span: int = _glow_ticks[glow]
+	return span > 0 and (tick + LifeClock.pick(id, SALT_PHASE + salt, span)) % span == 0
 
 
 func _birth(style: int, spot: Vector2, tick: int, id: int, flip: int) -> void:
@@ -396,9 +445,9 @@ func _craters(
 			var kinds: int = 64 + k * 8
 			if age < life.crater_smoke_ms and not life.reduced:
 				_cloud(Style.CRATER_SMOKE, id, spot, tick, kinds)
-			if age < life.crater_ember_ms:
-				_lamp(Style.GLOW_FAINT, id, spot, tick, kinds + 3)
-				if not life.reduced and _due(Style.EMBER, id, kinds + 1, tick):
+			if age < life.crater_ember_ms and _on_grid(Style.GLOW_FAINT, id, tick, kinds + 1):
+				_birth(Style.GLOW_FAINT, spot, tick, id, 0)
+				if not life.reduced:
 					_birth(Style.EMBER, spot, tick, id, -1)
 
 

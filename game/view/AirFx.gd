@@ -171,14 +171,20 @@ func damage() -> DamageFx:
 	return _dmg
 
 
-## Starts a crater source: smoke and embers over the spot of a building that fell (ADR 0029
-## section 6; P165's collapse calls it when it ends). `centre` is the footprint centre in world px,
-## `offsets` the damage points at ground height (`DamageFx.ground_points`; none: the centre),
-## `foot` the footprint in tiles, `owner_id` its player, `tick` the tick the smoke starts in.
-func add_crater(
-	id: int, centre: Vector2, offsets: PackedVector2Array, foot: Rect2i, owner_id: int, tick: int
+## Starts a crater source: smoke and embers over the spot of a building of type index `type` that
+## fell (ADR 0029 section 6; P165's collapse calls it when it ends). `centre` is the footprint
+## centre in world px, `foot` the footprint in tiles, `owner_id` its player, `tick` the tick the
+## smoke starts in. The damage points at ground height come from the type's sheet (`DamageFx`).
+## Named apart from `DecalLayer.add_crater`, which lays the crater itself.
+func add_crater_source(
+	id: int, centre: Vector2, type: int, foot: Rect2i, owner_id: int, tick: int
 ) -> void:
-	_dmg.add_crater(life, id, centre, offsets, foot, owner_id, tick)
+	_dmg.add_crater(life, id, centre, type, foot, owner_id, tick)
+
+
+## Ends the crater sources over `foot` (tiles): a building was placed there. Their puffs live out.
+func end_crater_sources_on(foot: Rect2i) -> void:
+	_dmg.end_craters_on(foot)
 
 
 ## Puffs in the ring, alive or not yet overwritten.

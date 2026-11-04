@@ -14,6 +14,8 @@ const SPAWNS: Array = [
 ## point (id 8), both gas points and the spark.
 const PINNED: Array[int] = [2, 4, 3, 4, 3, 2, 4, 1]
 const SECOND: float = 15.0
+const FLAMES: Array[String] = ["fire", "fire_big", "jet"]
+const GLOWS: Array[String] = ["glow_weak", "glow_strong", "glow_jet"]
 
 
 func before_test() -> void:
@@ -183,40 +185,123 @@ func test_the_ring_never_holds_more_than_80_and_a_new_puff_overwrites_the_oldest
 	assert_int(ring.quad_count()).is_less_equal(80)
 
 
-func test_a_kritisk_building_holds_three_glows_and_each_burning_point_glows_steadily() -> void:
-	_only(1)
-	_hp(1, 10)
-	_only(1)
-	var first: int = _first_point(1)
-	var spots: Array[Vector2] = []
-	for step: int in 3:
-		spots.append(_spot(1, 1 + (first - 1 + step) % 4))
+## How many puffs at `spot` are of the styles `names` (keys of `S`).
+func _at(spot: Vector2, names: Array[String]) -> int:
+	var found: int = 0
+	for puff: Array in _puffs():
+		if (puff[1] as Vector2).distance_to(spot) < 1.0:
+			for name: String in names:
+				found += 1 if puff[0] == S[name] else 0
+	return found
+
+
+## Changes building `id`'s hp in the running match without emptying the ring.
+func _live_hp(id: int, percent: int) -> void:
+	Dmg.set_hp(_runner, id, percent)
+	_runner.run_ticks(1)
+	_only(id)
+
+
+func test_each_burning_point_holds_exactly_one_glow_and_a_kritisk_building_three() -> void:
+	# Building 8 burns its `damage` point and both gas points; nothing else holds a glow.
+	_only(8)
+	_hp(8, 10)
+	_only(8)
+	_camera.position = _centre(8)
+	var burning: Array[int] = [1, 2, 3]
 	var ring: FxRing = _air.damage().ring
-	var sums: Array[float] = []
-	for tick: int in range(START, START + 75):  # 5 s; the glows start within a cycle.
+	for tick: int in range(START, START + 90):
 		Rig.deliver(_runner, PackedInt32Array(), tick)
-		var glows: int = 0
-		for index: int in ring.count():
-			var style: int = ring.puff_style(index)
-			if style == DamageFx.Style.GLOW_STRONG or style == DamageFx.Style.GLOW_WEAK:
-				glows += 1
-		assert_int(glows).override_failure_message("tick %d" % tick).is_less_equal(3)
-		if tick < START + 45:
+		for index: int in [1, 2, 3, 4]:
+			var spot: Vector2 = _spot(8, index)
+			var glows: int = _at(spot, GLOWS)
+			var note: String = "tick %d point %d" % [tick, index]
+			if not burning.has(index):
+				assert_int(glows).override_failure_message(note).is_equal(0)
+				continue
+			assert_int(glows).override_failure_message(note).is_less_equal(1)
+			if _at(spot, FLAMES) > 0:  # A fire is never without its glow.
+				assert_int(glows).override_failure_message(note).is_equal(1)
+		if tick < START + 8:  # Each point starts on its own tick of the first 8.
 			continue
-		for alpha: float in [0.0, 0.5, 0.9]:  # Two seconds of frames, three to a tick.
+		for alpha: float in [0.0, 0.5, 0.9]:
 			_frame(tick, alpha)
 			var sum: float = 0.0
-			for index: int in ring.quad_count():
-				sum += ring.quad_alpha(index) if ring.quad_kind(index) == DamageFx.K_GLOW else 0.0
-			sums.append(sum)
-	assert_int(sums.size()).is_equal(90)
-	var most: float = sums.max()
-	var least: float = sums.min()
-	assert_float(most - least).is_less(0.05)
-	# Two of the three points are fire points at most (a spark point has no fire or glow).
-	assert_float(most).is_less_equal(3.0 * _life.glow_strong_alpha + 0.001)
-	assert_float(least).is_greater(0.0)
-	assert_int(spots.size()).is_equal(3)
+			var quads: int = 0
+			for q: int in ring.quad_count():
+				if ring.quad_kind(q) == DamageFx.K_GLOW:
+					sum += ring.quad_alpha(q)
+					quads += 1
+			assert_int(quads).is_equal(3)
+			assert_float(sum).is_equal_approx(3.0 * _life.glow_strong_alpha, 0.01)
+
+
+func test_a_fire_a_jet_and_their_glow_start_together_at_both_stages() -> void:
+	for percent: int in [60, 10]:
+		for id: int in IDS:
+			_air.damage().clear()
+			_only(id)
+			_hp(id, percent)
+			_only(id)
+			_camera.position = _centre(id)
+			var first_flame: int = -1
+			var first_glow: int = -1
+			for tick: int in range(START, START + 40):
+				Rig.deliver(_runner, PackedInt32Array(), tick)
+				for index: int in [1, 2, 3, 4]:
+					var spot: Vector2 = _spot(id, index)
+					var note: String = "id %d point %d tick %d" % [id, index, tick]
+					if _at(spot, FLAMES) > 0:
+						assert_int(_at(spot, GLOWS)).override_failure_message(note).is_equal(1)
+				var flames: int = 0
+				var glows: int = 0
+				for index: int in [1, 2, 3, 4]:
+					flames += _at(_spot(id, index), FLAMES)
+					glows += _at(_spot(id, index), GLOWS)
+				first_flame = tick if flames > 0 and first_flame < 0 else first_flame
+				first_glow = tick if glows > 0 and first_glow < 0 else first_glow
+			assert_int(first_glow).override_failure_message("id %d" % id).is_equal(first_flame)
+
+
+func test_when_burning_stops_no_glow_outlives_its_flame() -> void:
+	_only(8)
+	_hp(8, 10)
+	_only(8)
+	_camera.position = _centre(8)
+	_run(START, START + 40)
+	_live_hp(8, 100)
+	var glow_left: bool = false
+	for tick: int in range(START + 40, START + 100):
+		Rig.deliver(_runner, PackedInt32Array(), tick)
+		for index: int in [1, 2, 3]:
+			var spot: Vector2 = _spot(8, index)
+			var glows: int = _at(spot, GLOWS)
+			glow_left = glow_left or glows > 0
+			if glows > 0:
+				assert_int(_at(spot, FLAMES)).override_failure_message("tick %d" % tick).is_greater(
+					0
+				)
+	assert_bool(glow_left).is_true()  # They were burning when it stopped.
+	assert_int(_air.damage().ring.count()).is_equal(0)
+
+
+func test_a_gas_point_changing_from_skadet_to_kritisk_never_holds_two_glows_or_none() -> void:
+	# Building 1 burns the gas point 2 first: a jet with a weak glow, then a fire with a strong one.
+	_only(1)
+	_hp(1, 60)
+	_only(1)
+	var spot: Vector2 = _spot(1, 2)
+	_run(START, START + 40)
+	assert_int(_at(spot, ["glow_jet"])).is_equal(1)
+	_live_hp(1, 10)
+	var strong: bool = false
+	for tick: int in range(START + 40, START + 120):
+		Rig.deliver(_runner, PackedInt32Array(), tick)
+		var note: String = "tick %d" % tick
+		assert_int(_at(spot, GLOWS)).override_failure_message(note).is_equal(1)
+		strong = strong or _at(spot, ["glow_strong"]) > 0
+	assert_bool(strong).is_true()
+	assert_int(_at(spot, ["glow_jet"])).is_equal(0)
 
 
 func test_no_burning_building_has_more_than_15_live_smoke_puffs_with_the_default_numbers() -> void:
