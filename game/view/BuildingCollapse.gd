@@ -8,7 +8,7 @@ extends RefCounted
 ## rise; at `collapse_hide_ms` the node is hidden and the cast shadow removed; at `collapse_end_ms`
 ## the node is freed. The crater is laid at the DIED, scaled by `crater_scale_milli` of the
 ## building's type, and stays; the smoke and embers over it (P148's crater source) start at the end,
-## unless the building was a site. The flash, dust and debris are a later row's (P165b). A
+## unless the building was a site. The puffs are `CollapseFx`'s, in `AirFx`. A
 ## cancelled site plays nothing and leaves no crater. A building that was not shown is not handed
 ## over at all.
 ## The sprite writes are timed, so `advance` spends them first in the buildings' share of a frame:
@@ -27,7 +27,7 @@ const HIDDEN: int = 2  ## and the node hidden.
 
 ## The numbers; the layer sets them before every call, so a change of its `life` is followed.
 var life: LifeSettings
-## Starts the crater's smoke; null in a scene with no `AirFx`.
+## Starts the puffs and the crater's smoke; null in a scene with no `AirFx`.
 var air: AirFx = null
 
 var _sort: WorldSort
@@ -94,6 +94,8 @@ func adopt(entry: BuildingLayer.Entry, died_tick: int, was_site: bool, cancelled
 		# How far the patch's drawn bottom stands above the body's (the ground), world px.
 		var body_foot: float = _drawn_bottom(entry.body) if entry.body != null else 0.0
 		_patch_room[slot] = maxf(body_foot - _drawn_bottom(entry.patch), 0.0)
+	if air != null:
+		air.collapses().start(entry.id, entry.node.position, entry.rise, entry.foot, died_tick)
 
 
 ## Whether any collapse runs.

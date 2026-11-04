@@ -220,16 +220,54 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 )
 
 ## The collapse of a building shot to pieces (P165, ADR 0029 sections 8, 10 and 13), on match time
-## from its DIED tick: the body and its patch sink in `collapse_sink_steps` steps from
-## `collapse_sink_ms[0]` to `[1]`, to `collapse_sink_percent` of the picture's rise; the node is
-## hidden at `collapse_hide_ms` and freed at `collapse_end_ms`. At most `collapse_max` run at once.
+## from its DIED tick: at 0 the picture's `Anim` and `Head` go, a `hit_flash` of
+## `collapse_flash_grow` times its frame and `collapse_fire_puffs[0]` to `[1]` `fire` puffs burn for
+## `collapse_flash_ms`;
+## the body and its patch sink in `collapse_sink_steps` steps from `collapse_sink_ms[0]` to `[1]`,
+## to `collapse_sink_percent` of the picture's rise; `collapse_dust_puffs` `dust_cloud` puffs, each
+## living `collapse_dust_life_ms`, are born inside `collapse_dust_ms` along the footprint diamond
+## (`collapse_spread_milli` of 1000 of it; the fire puffs `collapse_fire_spread_milli`) and rise
+## `collapse_dust_rise_px`; `collapse_debris[0]` to `[1]` chips fly out for `collapse_debris_ms`,
+## each along one of the `collapse_debris_fly_px`; the node is hidden at `collapse_hide_ms` and
+## freed at `collapse_end_ms`. The flash and the fire stand at `collapse_lift_milli` of 1000 of the
+## picture's rise. The collapses that run share the ring: each gets at most `collapse_slots / n`
+## puffs, dust first, then the flash, the fire and the debris. At most `collapse_max` run at once.
 ## `crater_scale_milli` is the crater's size by building type, in thousandths of the footprint's
 ## crater (a type with no entry has 1000).
+@export var collapse_slots: int = 40
 @export var collapse_max: int = 16
+@export var collapse_flash_ms: int = 250
+@export var collapse_fire_puffs: PackedInt32Array = PackedInt32Array([2, 3])
 @export var collapse_sink_ms: PackedInt32Array = PackedInt32Array([250, 700])
 @export var collapse_sink_steps: int = 6
 @export var collapse_sink_percent: int = 60
 @export var collapse_hide_ms: int = 700
+@export var collapse_dust_ms: PackedInt32Array = PackedInt32Array([250, 900])
+@export var collapse_dust_puffs: int = 8
+@export var collapse_dust_life_ms: int = 450
+@export var collapse_dust_rise_px: float = 18.0
+@export var collapse_dust_grow: Vector2 = Vector2(0.8, 1.5)
+@export var collapse_dust_alpha: float = 0.8
+@export var collapse_spread_milli: int = 700
+@export var collapse_fire_spread_milli: int = 350
+@export var collapse_debris: PackedInt32Array = PackedInt32Array([6, 8])
+@export var collapse_debris_ms: int = 450
+@export var collapse_debris_fly_px: PackedVector2Array = PackedVector2Array(
+	[
+		Vector2(-26.0, 8.0),
+		Vector2(-18.0, 22.0),
+		Vector2(-8.0, 30.0),
+		Vector2(0.0, 34.0),
+		Vector2(8.0, 30.0),
+		Vector2(18.0, 22.0),
+		Vector2(26.0, 8.0),
+		Vector2(0.0, 18.0),
+	]
+)
+@export var collapse_flash_grow: Vector2 = Vector2(1.4, 2.6)
+@export var collapse_fire_grow: Vector2 = Vector2(1.2, 0.8)
+@export var collapse_alpha: float = 1.0
+@export var collapse_lift_milli: int = 500
 @export var collapse_end_ms: int = 900
 @export
 var crater_scale_milli: Dictionary[StringName, int] = {&"refinery": 1500, &"renew_refinery": 1500}
