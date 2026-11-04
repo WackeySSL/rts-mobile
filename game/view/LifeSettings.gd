@@ -144,3 +144,8 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 ## damage_building_writes`.
 @export var damage_writes_per_frame: int = 60
 @export var damage_building_writes: int = 20
+
+## Vehicle overlays (P161, ADR 0028 sections 4 and 8): whether a vehicle at stage 2 hangs a loose
+## part. Off drops its region, visibility, position and flip writes (the fallback if P162's worst
+## frame passes 150); the scar stays.
+@export var damage_loose: bool = true

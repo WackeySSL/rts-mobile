@@ -56,6 +56,7 @@ const SCALARS: Dictionary[StringName, Variant] = {
 	&"emit_flame_to": 0.7,
 	&"damage_writes_per_frame": 60,  # P159: the two stage lists are in test_building_damage.gd.
 	&"damage_building_writes": 20,
+	&"damage_loose": true,  # P161
 }
 const RECOIL: Dictionary[StringName, float] = {
 	&"tank_cannon": 3.0,

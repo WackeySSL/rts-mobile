@@ -53,6 +53,8 @@ const PARTS: int = 3
 const PART_NAMES: Array[StringName] = [&"hull", &"turret", &"shadow"]  ## Sheet parts, also nodes.
 const DRAW_ORDER: Array[int] = [SHADOW, HULL, TURRET]  ## Also the order of a rig's nodes.
 const MARKER_KIND: int = 1 << PARTS  ## A rig's kind has a bit for each part it holds, then this.
+## And then this for a vehicle's damage overlays (P161): a squad never takes a vehicle's rig.
+const DAMAGE_KIND: int = 1 << (PARTS + 1)
 const DIRECTIONS: int = 16  ## Steps of a full turn in a hull's frames (a squad has every other).
 const D_EAST: int = 6  ## The frame `d06` faces grid +x, and each step is 22.5 degrees from it.
 const NO_FRAME: int = -1
@@ -118,6 +120,8 @@ var _shot_check: Callable = _shot_seen  ## What `note_shots` asks, made once.
 var _turret_serial: int = -1  ## match_serial `_has_turret` was built for.
 var _has_turret: PackedByteArray = PackedByteArray()  ## Per type index: 1 for a turret on its art.
 var _ring_zoom: float = 1.0  ## Camera zoom the rings are sized for.
+var _damage_queue: Array[Rig] = []  ## Rigs whose overlays await a stage write, oldest first (P161).
+var _follow_writes: int = 0  ## Overlay follow writes since the last `_write_damage`.
 var _dp_px: float = 1.0  ## Base px per dp, read when the selection or the window changes.
 
 
@@ -158,6 +162,7 @@ class Rig:
 	var hull_kick: Vector2 = Vector2.ZERO  ## What the Hull stands off its rest by life now.
 	var idle: RigLife.Idle = RigLife.Idle.new()  ## The drive rumble and the look, on top of the kicks.
 	var pose: RigLife.Pose = RigLife.Pose.new()  ## What a squad's Hull shows (P142).
+	var damage: VehicleDamage.Parts = null  ## The Scar and Loose of a vehicle's Hull (P161).
 
 
 func _ready() -> void:
@@ -184,6 +189,7 @@ func _process(delta: float) -> void:
 	if snap != null:
 		_update_rigs(snap, delta)
 		_kick_rigs(snap)
+		_write_damage()
 		if not _ringed.is_empty() and camera.zoom.x != _ring_zoom:
 			_refresh_rings(snap)
 
@@ -505,11 +511,51 @@ func _note_hits(snap: MatchSnapshot) -> void:
 	var hit_ms: PackedInt64Array = _hit_ms
 	var now: int = NEVER_HIT
 	for row: int in hp.size():
-		if hp[row] < last_hp[row]:
-			if now == NEVER_HIT:
-				now = clock.call()
-			hit_ms[row] = now
+		if hp[row] != last_hp[row]:
+			if hp[row] < last_hp[row]:
+				if now == NEVER_HIT:
+					now = clock.call()
+				hit_ms[row] = now
+			_note_stage(snap, row)
 		last_hp[row] = hp[row]
+
+
+## Notes the damage stage of vehicle row `row` after its hp changed (P161), queueing the write.
+func _note_stage(snap: MatchSnapshot, row: int) -> void:
+	var rig: Rig = _rigs[row] as Rig
+	if rig != null and rig.damage != null:
+		var max_hp: int = snap.type_max_hp[snap.type_index[row]]
+		rig.damage.want = VehicleDamage.stage_of(snap.hp[row], max_hp, life.vehicle_stage_percent)
+		_queue_damage(rig)
+
+
+## Queues `rig` for a stage write when it shows another stage than it wants and is shown (a hidden
+## enemy writes nothing; it is queued again when it turns visible).
+func _queue_damage(rig: Rig) -> void:
+	var parts: VehicleDamage.Parts = rig.damage
+	if parts.want != parts.shown and not parts.queued and rig.visible:
+		parts.queued = true
+		_damage_queue.append(rig)
+
+
+## Writes the queued stage changes, oldest first, while the next one's cost fits what is left of the
+## vehicles' share of `damage_writes_per_frame` after this frame's follow writes (never deferred).
+func _write_damage() -> void:
+	var left: int = life.damage_writes_per_frame - life.damage_building_writes - _follow_writes
+	_follow_writes = 0
+	while not _damage_queue.is_empty():
+		var rig: Rig = _damage_queue[0]
+		var parts: VehicleDamage.Parts = rig.damage
+		if rig.visible and parts.want != parts.shown:
+			var cost: int = VehicleDamage.cost(parts.shown, parts.want, life.damage_loose)
+			if cost > left:
+				break
+			left -= cost
+			_rig_life.writes += VehicleDamage.apply(
+				parts, world_sort, parts.want, life.damage_loose
+			)
+		parts.queued = false
+		_damage_queue.remove_at(0)
 
 
 func _drop_rig(old: int) -> void:
@@ -522,6 +568,9 @@ func _drop_rig(old: int) -> void:
 func _pool_rig(node: Node2D) -> void:
 	var rig: Rig = node as Rig
 	world_sort.remove_child(rig)
+	if rig.damage != null and rig.damage.queued:
+		rig.damage.queued = false
+		_damage_queue.erase(rig)
 	if rig.ring != null:
 		rig.ring.visible = false
 	_pool_root.add_child(rig)
@@ -553,7 +602,7 @@ func _new_rig(
 	var type: int = snap.type_index[row]
 	var owner_id: int = snap.owner[row]
 	var sheet: IsoSheetDef = world_sort.sheet(snap.type_ids[type])
-	var kind: int = _kind_of(sheet)
+	var kind: int = _kind_of(sheet, snap.type_armour[type])
 	var rig: Rig = _take_rig(kind)
 	if rig == null:
 		rig = _make_rig(kind)
@@ -567,6 +616,14 @@ func _new_rig(
 			)
 			hull_base = base if part == HULL else hull_base
 	_poses.dress(rig.pose, sheet, hull_base, owner_id)
+	if rig.damage != null:  # Out of the pool or new: the scales of this type, the stage of now.
+		VehicleDamage.dress(
+			rig.damage, world_sort, rig.sprites[HULL], sheet, snap.unit_id[row], owner_id
+		)
+		rig.damage.want = VehicleDamage.stage_of(
+			snap.hp[row], snap.type_max_hp[type], life.vehicle_stage_percent
+		)
+		_queue_damage(rig)
 	rig.turret_kick = Vector2.ZERO  # A rig out of the pool may have been kicked, shaken or turned.
 	rig.hull_kick = Vector2.ZERO
 	rig.idle.reset()
@@ -585,14 +642,23 @@ func _new_rig(
 	return rig
 
 
-## What a rig for `sheet` holds: a bit for each part it has, the Marker's without a sheet or atlas.
-func _kind_of(sheet: IsoSheetDef) -> int:
+## What a rig for `sheet` holds: a bit for each part it has, the Marker's without a sheet or atlas,
+## and the damage overlays' for a hull of any armour but infantry that has a scar and the neutral
+## sheet to draw it from.
+func _kind_of(sheet: IsoSheetDef, armour: int) -> int:
 	var kind: int = 0
 	for part: int in PARTS:
 		if sheet != null and sheet.has_part(PART_NAMES[part]):
 			kind |= 1 << part
 	if sheet == null or world_sort.atlas.is_empty():
 		kind |= MARKER_KIND
+	elif (
+		armour != World.Armour.INFANTRY
+		and sheet.scar_milli > 0
+		and (kind & (1 << HULL)) != 0
+		and world_sort.neutral_sheet() != null
+	):
+		kind |= DAMAGE_KIND
 	return kind
 
 
@@ -616,6 +682,8 @@ func _make_rig(kind: int) -> Rig:
 			rig.sprites[part] = Sprite2D.new()
 			rig.sprites[part].name = String(PART_NAMES[part]).capitalize()
 			rig.add_child(rig.sprites[part])
+	if kind & DAMAGE_KIND != 0:
+		rig.damage = VehicleDamage.make(rig.sprites[HULL])
 	if rig.sprites[SHADOW] != null:
 		rig.sprites[SHADOW].z_index = WorldSort.Z_SHADOW - WorldSort.Z_SORT
 	if kind & MARKER_KIND != 0:
@@ -716,6 +784,8 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 			shown = counts[counts_at + snap.cell_of(cur_x[row], cur_y[row])] > 0
 		if rigs[row].visible != shown:
 			rigs[row].visible = shown
+			if shown and (rigs[row] as Rig).damage != null:
+				_queue_damage(rigs[row] as Rig)  # Seen again: the stage of now.
 		# A unit that stood still last tick keeps its heading. So does one that moved under half a
 		# full step: the step onto its goal is an integer remainder and can point anywhere.
 		var moved_x: int = cur_x[row] - prev_x[row]
@@ -802,6 +872,10 @@ func _show_hull(row: int, owner_id: int) -> void:
 	var at: int = row * PARTS
 	var rig: Rig = _rigs[row] as Rig
 	_poses.turn(rig.pose, _layers[at + HULL], sheet, dir, owner_id)
+	if rig.damage != null:  # The overlays follow the hull's frame (P161).
+		var followed: int = VehicleDamage.follow(rig.damage, dir, life.damage_loose)
+		_follow_writes += followed
+		_rig_life.writes += followed
 	world_sort.show_frame(_layers[at + SHADOW], sheet, PART_NAMES[SHADOW], dir, owner_id)
 	if _layers[at + TURRET] != null:  # On its mount, off it by the recoil and the shake that run.
 		_layers[at + TURRET].position = (
