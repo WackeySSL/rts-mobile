@@ -524,7 +524,8 @@ func test_only_squads_and_eight_buildings_have_a_pose_and_every_other_committed_
 		if not model.poses.is_empty():
 			posed.append(String(model.art_id))
 			continue
-		# P143 tags the vehicles with marks and an exhaust and some buildings with emitters (the
+		# P143 tags the vehicles with marks and an exhaust (P160: a damage and a hang point and a
+		# scar_milli) and some buildings with emitters (the
 		# sheet says so, below); no model but a posed one has a stride or an `anim_ms`.
 		assert_bool(model.stride_milli == 0 and model.anim_ms == 0).is_true()
 		var tagged: bool = not model.emitters.is_empty() or model.marks != &""
@@ -548,7 +549,7 @@ func test_only_squads_and_eight_buildings_have_a_pose_and_every_other_committed_
 			)
 		var committed: String = FileAccess.get_file_as_string(ArtGen.sheet_path(model))
 		for field: StringName in ArtSheet.LIFE_FIELDS:
-			if tagged and field in [&"emitters", &"emitter_points", &"marks"]:
+			if tagged and field in [&"emitters", &"emitter_points", &"marks", &"scar_milli"]:
 				continue
 			(
 				assert_bool(committed.contains("\n%s = " % field))

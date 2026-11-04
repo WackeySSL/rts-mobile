@@ -1,0 +1,12 @@
+<!-- Damage overlay scar1, look A (ADR 0028 section 4), neutral, no team colour, 64x36 at 2x -->
+<!-- Silhouette: A cluster of soot smudges with three pale scratches across a vehicle's top face, near-black at partial alpha. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="36" viewBox="0 0 64 36">
+<ellipse cx="32" cy="18" rx="24" ry="11" fill="#1C2127" opacity="0.3"/>
+<ellipse cx="26" cy="17" rx="15" ry="7" fill="#1C2127" opacity="0.5"/>
+<ellipse cx="41" cy="21" rx="10" ry="4" fill="#1C2127" opacity="0.5"/>
+<ellipse cx="18" cy="22" rx="6" ry="3" fill="#2A2522" opacity="0.5"/>
+<ellipse cx="45" cy="13" rx="7" ry="3" fill="#2A2522" opacity="0.4"/>
+<polyline points="14,14 24,11 31,10" fill="none" stroke="#A9B4BE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+<polyline points="33,25 43,22 52,19" fill="none" stroke="#A9B4BE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+<polyline points="20,26 27,24" fill="none" stroke="#7D8893" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
+</svg>

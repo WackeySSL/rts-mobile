@@ -5,6 +5,7 @@ extends GdUnitTestSuite
 ## frames carry the triad of the row they are in, and everything stays on its ground at the base
 ## size of a phone held the wide way. The generator is in test_artgen.gd.
 
+const Iso: GDScript = preload("res://game/view/art_gallery_iso.gd")
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
 const ISO_PAGE: int = 4
 const ROWS: Array[String] = ["Signal", "Arktisk"]
@@ -40,7 +41,8 @@ func test_the_iso_page_is_built_when_it_is_first_shown_and_names_the_first_type(
 		var names: Array[StringName] = []
 		for row: Node in page.get_node("Scroll/Content/" + ground).get_children():
 			names.append(row.name)
-		assert_array(names).is_equal([&"Signal", &"Arktisk"])
+		# The artillery is a vehicle: the Damage rows (P160) come after its two triads.
+		assert_array(names).is_equal([&"Signal", &"Arktisk", &"Damage"])
 
 
 func test_every_type_shows_each_direction_in_both_triads_and_its_default_view_at_three_zooms(
@@ -80,6 +82,77 @@ func test_every_type_shows_each_direction_in_both_triads_and_its_default_view_at
 	page.get_node("Previous").pressed.emit()
 	await await_idle_frame()
 	assert_str((page.get_node("Title") as Label).text).contains("renew_tanker")
+
+
+func test_a_vehicle_shows_its_16_directions_at_stage_1_and_2_with_the_neutral_overlays() -> void:
+	var gallery: Control = await _open_gallery()
+	var page: Control = _show(gallery)
+	var sheet: IsoSheetDef = IsoAtlas.load_neutral_sheet(IsoAtlas.NEUTRAL_SHEET)
+	var checked: int = 0
+	for path: String in ArtGen.model_paths():
+		var model: ArtModel = load(path) as ArtModel
+		for ground: String in ["Grass", "Sand"]:
+			var row: Node = page.get_node("Scroll/Content/%s" % ground).get_node_or_null("Damage")
+			if model.category != &"veh":
+				assert_object(row).override_failure_message(path).is_null()
+				continue
+			assert_object(row).override_failure_message(path).is_not_null()
+			var committed: IsoSheetDef = load(
+				"res://assets/art/iso/%s/veh/%s_sheet.tres" % [model.faction, model.art_id]
+			)
+			var damage_at: int = committed.emitters.find("damage")
+			var hang_at: int = committed.emitters.find("hang")
+			for stage: int in [1, 2]:
+				for dir: int in 16:
+					var rig: Node2D = row.get_node("Stage%dDir%02d" % [stage, dir])
+					var hull: Sprite2D = rig.get_node("Hull")
+					var scar: Sprite2D = rig.get_node("Scar")
+					var scale: Vector2 = Vector2.ONE * model.scar_milli / 1000.0
+					var label: String = "%s s%d d%02d" % [model.art_id, stage, dir]
+					# Where: the committed sheet's points, at half (zoom 1 of the 2x art).
+					assert_vector(scar.position).override_failure_message(label).is_equal_approx(
+						committed.emitter_point(damage_at, dir) * 0.5, Vector2.ONE * 0.06
+					)
+					assert_vector(scar.scale).is_equal(scale)
+					assert_int(scar.z_index).is_equal(hull.z_index)
+					assert_bool(scar.flip_h).is_false()
+					# Which: the frame of the part, drawn as the sheet's file says.
+					var part: StringName = &"scar1" if stage == 1 else &"scar2"
+					_assert_frame(scar, sheet.path(part, -1, dir % 2), label)
+					# Order: over the hull, under the turret.
+					assert_bool(rig.has_node("Loose")).is_equal(stage == 2)
+					assert_int(scar.get_index()).is_greater(hull.get_index())
+					if model.parts().has(&"turret"):
+						assert_int(scar.get_index()).is_less(rig.get_node("Turret").get_index())
+					if stage == 2:
+						var loose: Sprite2D = rig.get_node("Loose")
+						var hang: Vector2 = committed.emitter_point(hang_at, dir)
+						(
+							assert_vector(loose.position)
+							. override_failure_message(label)
+							. is_equal_approx(hang * 0.5, Vector2.ONE * 0.06)
+						)
+						assert_vector(loose.scale).is_equal(Vector2.ONE * Iso.LOOSE_SCALE)
+						assert_bool(loose.flip_h).is_equal(hang.x < 0.0)
+						assert_int(loose.z_index).is_equal(hull.z_index)
+						assert_int(loose.get_index()).is_greater(hull.get_index())
+						if model.parts().has(&"turret"):
+							assert_int(loose.get_index()).is_less(
+								rig.get_node("Turret").get_index()
+							)
+						# The bolt is at the anchor, mirrored or not.
+						(
+							assert_bool(loose.is_pixel_opaque(Vector2.ZERO))
+							. override_failure_message(label)
+							. is_true()
+						)
+						var look: int = dir % 2 + (0 if model.marks == &"tracks" else 2)
+						_assert_frame(loose, sheet.path(&"loose", -1, look), label)
+						checked += 1
+		page.get_node("Next").pressed.emit()
+		await await_idle_frame()
+	assert_int(checked).is_equal(8 * 16 * 2)
+	assert_object(sheet).is_not_null()
 
 
 func test_a_turret_sits_at_its_mount_and_a_frame_carries_the_triad_of_its_row() -> void:
@@ -220,6 +293,9 @@ func test_no_export_preset_leaves_out_what_the_iso_page_reads() -> void:
 		"assets/art/iso/index.tres",
 		"assets/art/iso/icons/item_headquarters.svg",
 		"assets/art/svg/ui/selection_ellipse.svg",
+		"assets/art/svg/damage/damage_sheet.tres",
+		"assets/art/svg/damage/damage_scar1_f0.svg",
+		"assets/art/svg/damage/damage_loose_f3.svg",
 	]
 	var filtered: int = 0
 	for section: String in presets.get_sections():
@@ -239,6 +315,20 @@ func test_no_export_preset_leaves_out_what_the_iso_page_reads() -> void:
 					. is_false()
 				)
 	assert_int(filtered).is_greater(0)
+
+
+## `sprite` shows the SVG at `path`, rasterised at half scale like the gallery does.
+func _assert_frame(sprite: Sprite2D, path: String, label: String) -> void:
+	var want: Image = Image.new()
+	want.load_svg_from_string(FileAccess.get_file_as_string(path), 0.5)
+	var got: Image = sprite.texture.get_image()
+	assert_vector(got.get_size()).override_failure_message(label).is_equal(want.get_size())
+	want.convert(got.get_format())
+	(
+		assert_bool(got.get_data() == want.get_data())
+		. override_failure_message("%s: not the frame %s" % [label, path])
+		. is_true()
+	)
 
 
 func _open_gallery(base_size: Vector2 = BASE) -> Control:

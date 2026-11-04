@@ -1,9 +1,10 @@
 extends GdUnitTestSuite
-## The neutral damage sheet in the bake (plan P157, ADR 0028 section 4). The real file does not
-## exist before row P160, so a crafted sheet and its frames are written to `user://` and
-## `WorldSort.neutral_path` is pointed at it: absent, the bake is today's with no error and no slot;
-## present, it is added after the art-id filter and after `_player_arts`, collected for every
-## player as shared slots, with its bases resolved once per bake.
+## The neutral damage sheet in the bake (plan P157, ADR 0028 section 4). The real file exists since
+## row P160 (its own checks are in tests/art/test_damage_overlays.gd), but these cases write a
+## crafted sheet and its frames to `user://` and point `WorldSort.neutral_path` at it, so they do
+## not depend on the art: absent, the bake is today's with no error and no slot; present, it is
+## added after the art-id filter and after `_player_arts`, collected for every player as shared
+## slots, with its bases resolved once per bake.
 
 const NEUTRAL_PATH: String = "res://assets/art/svg/damage/damage_sheet.tres"
 const SVG: String = (
