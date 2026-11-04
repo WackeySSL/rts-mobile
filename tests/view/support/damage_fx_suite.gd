@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## The fixture and helpers of the damage particle suites (plan P148): test_damage_fx.gd,
-## test_damage_fx_kinds.gd and test_damage_fx_vehicles.gd extend this.
+## test_damage_fx_kinds.gd, test_damage_fx_craters.gd and test_damage_fx_vehicles.gd extend this.
 ## Crafted Barracks (the damage rig's sheet) with five emitters, in this order: 0 an ambient
 ## `smoke` (quiet from stage `QUIET`), 1 a `damage` point on the left, 2 a `dmg_gas` on the right,
 ## 3 a `dmg_gas` on the left, 4 a `dmg_spark`. A runner with the buildings of `spawns`, a
@@ -31,10 +31,13 @@ const S: Dictionary = {  ## The styles of DamageFx, by name.
 	"fire_car": DamageFx.Style.FIRE_CAR,
 	"jet": DamageFx.Style.JET,
 	"spark": DamageFx.Style.SPARK,
+	"ember": DamageFx.Style.EMBER,
 	"glow_weak": DamageFx.Style.GLOW_WEAK,
 	"glow_strong": DamageFx.Style.GLOW_STRONG,
 	"glow_jet": DamageFx.Style.GLOW_JET,
+	"glow_faint": DamageFx.Style.GLOW_FAINT,
 	"trail": DamageFx.Style.TRAIL,
+	"crater": DamageFx.Style.CRATER_SMOKE,
 }
 
 var _runner: MatchRunner

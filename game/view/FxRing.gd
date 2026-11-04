@@ -15,12 +15,14 @@ const CLOUD: int = 1
 const FLAME: int = 2
 const PASSES: int = 3
 
+static var _draws: int = 0  ## Calls of `draw` so far, over all rings: the order they ran in.
+
 var _size: int = 0
 var _head: int = 0
 var _count: int = 0
 var _quads: int = 0
-var _planned: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## Quads of the plan, per pass.
 var _drawn: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## Quads the last `draw` of each.
+var _stamp: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## When the last `draw` of each ran.
 # The sprite kinds: first region, frames, anchor and mirror permission of each.
 var _regions: Array[Rect2] = []
 var _first: PackedInt32Array = PackedInt32Array()
@@ -99,11 +101,14 @@ func set_style(
 	_s_hold[style] = hold_ms
 
 
-## Sets the slots of the ring (any change empties it).
+## Sets the slots of the ring (any change empties it): the guard, which a frame path may call.
 func size_to(slots: int) -> void:
-	slots = maxi(slots, 0)
-	if slots == _size:
-		return
+	if maxi(slots, 0) != _size:
+		_resize(maxi(slots, 0))
+
+
+## Makes the arrays for `slots` slots, once and whenever the quota changes.
+func _resize(slots: int) -> void:
 	_size = slots
 	_born.resize(slots)
 	_at.resize(slots)
@@ -168,7 +173,6 @@ func compact(now_ms: float) -> void:
 ## The quads of the puffs alive at match time `now_ms`, oldest first. Allocates nothing.
 func plan(now_ms: float) -> void:
 	_quads = 0
-	_planned.fill(0)
 	var oldest: int = _head - _count + _size
 	for step: int in _count:
 		var slot: int = (oldest + step) % _size
@@ -197,13 +201,14 @@ func plan(now_ms: float) -> void:
 		if hold > 0.0:
 			fade = clampf((span - age) / maxf(span - hold, 1.0), 0.0, 1.0)
 		_q_alpha[_quads] = _s_alpha[style] * fade
-		_planned[_pass[kind]] += 1
 		_quads += 1
 
 
 ## Paints the quads of the plan whose sprite is drawn in pass `pass_of` into `item` from `atlas`,
 ## so the owner can paint every glow before every cloud and every cloud before every flame.
 func draw(item: CanvasItem, atlas: Texture2D, pass_of: int) -> void:
+	_draws += 1
+	_stamp[pass_of] = _draws
 	var mirrored: bool = false
 	var painted: int = 0
 	for index: int in _quads:
@@ -247,13 +252,14 @@ func quad_kind(index: int) -> int:
 	return _q_kind[index]
 
 
-## Quads of the last plan in pass `pass_of`, and quads the last `draw` of it painted.
-func planned(pass_of: int) -> int:
-	return _planned[pass_of]
-
-
+## Quads the last `draw` of pass `pass_of` painted.
 func drawn(pass_of: int) -> int:
 	return _drawn[pass_of]
+
+
+## The number of the last `draw` of pass `pass_of`, counted over all rings: a lower one ran first.
+func drawn_at(pass_of: int) -> int:
+	return _stamp[pass_of]
 
 
 func quad_flipped(index: int) -> bool:
